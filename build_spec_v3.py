@@ -13,6 +13,8 @@ OUT = "/home/claude/Adlaire-db-spec.html"
 
 # ─── helpers ─────────────────────────────────────────────────────────────────
 _seen: dict[str, int] = {}
+_fn_defs: dict[str, str] = {}
+_fn_order: list[str] = []
 
 def slugify(text: str) -> str:
     t = re.sub(r'[`*_~\[\]]', '', text).strip()
@@ -62,7 +64,15 @@ def inline(text: str) -> str:
     t = re.sub(r'__(.+?)__', r'<strong>\1</strong>', t)
     t = re.sub(r'(?<!_)_(?!_)(.+?)(?<!_)_(?!_)', r'<em>\1</em>', t)
     t = re.sub(r'~~(.+?)~~', r'<del>\1</del>', t)
+    t = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', r'<img src="\2" alt="\1" style="max-width:100%">', t)
     t = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', t)
+    def _fn_ref(m):
+        key = m.group(1)
+        if key not in _fn_order:
+            _fn_order.append(key)
+        n = _fn_order.index(key) + 1
+        return f'<sup><a href="#fn-{esc(key)}" id="fnref-{esc(key)}" class="fn-ref">[{n}]</a></sup>'
+    t = re.sub(r'\[\^([^\]]+)\]', _fn_ref, t)
     return t
 
 # ─── parse headings ──────────────────────────────────────────────────────────
@@ -73,7 +83,7 @@ headings: list[tuple[int, str, str, int]] = []
 _fence = False
 for li, line in enumerate(raw_lines):
     s = line.rstrip('\n')
-    if re.match(r'^```|^~~~', s):
+    if re.match(r'^`{3,}|^~{3,}', s):
         _fence = not _fence
         continue
     if _fence:
@@ -85,6 +95,19 @@ for li, line in enumerate(raw_lines):
         headings.append((lv, tx, slugify(tx), li))
 
 slug_by_line = {li: sl for _, _, sl, li in headings}
+
+# ─── footnote pre-scan ───────────────────────────────────────────────────────
+_fn_fence = False
+for _fn_line in raw_lines:
+    _fn_s = _fn_line.rstrip('\n')
+    if re.match(r'^`{3,}|^~{3,}', _fn_s):
+        _fn_fence = not _fn_fence
+        continue
+    if _fn_fence:
+        continue
+    _fn_m = re.match(r'^\[\^([^\]]+)\]:\s*(.*)', _fn_s)
+    if _fn_m:
+        _fn_defs[_fn_m.group(1)] = _fn_m.group(2).strip()
 
 # ─── TOC HTML ────────────────────────────────────────────────────────────────
 def build_toc(headings):
@@ -244,13 +267,55 @@ def convert(lines, slug_by_line):
             i = j
             continue
 
-        # blockquote
+        # blockquote (nested)
         if stripped.startswith('>'):
             flush_para()
             flush_list()
-            content = re.sub(r'^>\s?', '', stripped)
-            out.append(f'<blockquote class="mbq">{inline(content)}</blockquote>')
-            i += 1
+            flush_table()
+            # collect contiguous blockquote lines
+            bq_lines = [stripped]
+            j = i + 1
+            while j < n and lines[j].strip().startswith('>'):
+                bq_lines.append(lines[j].strip())
+                j += 1
+            def _render_bq(blines):
+                inner = [re.sub(r'^>\s?', '', bl) for bl in blines]
+                parts = []
+                k = 0
+                while k < len(inner):
+                    if inner[k].startswith('>'):
+                        m2 = k
+                        while m2 < len(inner) and inner[m2].startswith('>'):
+                            m2 += 1
+                        parts.append(_render_bq(inner[k:m2]))
+                        k = m2
+                    else:
+                        if inner[k].strip():
+                            parts.append(inline(inner[k]))
+                        k += 1
+                return '<blockquote class="mbq">' + ''.join(parts) + '</blockquote>'
+            out.append(_render_bq(bq_lines))
+            i = j
+            continue
+
+        # definition list
+        if stripped.startswith(': ') and para_buf:
+            term = para_buf.pop()
+            flush_para()
+            flush_list()
+            flush_table()
+            if not out or not out[-1].startswith('<dl'):
+                out.append('<dl class="mdl">')
+            out.append(f'<dt>{inline(term)}</dt>')
+            out.append(f'<dd>{inline(stripped[2:].strip())}</dd>')
+            # collect additional definitions
+            j = i + 1
+            while j < n and lines[j].strip().startswith(': '):
+                out.append(f'<dd>{inline(lines[j].strip()[2:].strip())}</dd>')
+                j += 1
+            if j >= n or not lines[j].strip().startswith(': '):
+                out.append('</dl>')
+            i = j
             continue
 
         # list item
@@ -263,6 +328,15 @@ def convert(lines, slug_by_line):
             indent = len(lm.group(1))
             tag = 'ul' if ul_m else 'ol'
             content = lm.group(3)
+            # task list check
+            task_m = re.match(r'\[([ xX])\]\s+(.*)', content)
+            if task_m:
+                checked = task_m.group(1).lower() == 'x'
+                chk = ' checked' if checked else ''
+                task_content = task_m.group(2)
+                li_html = f'<li class="ml-task"><input type="checkbox" disabled{chk}> {inline(task_content)}</li>'
+            else:
+                li_html = f'<li>{inline(content)}</li>'
             if not list_stack:
                 out.append(f'<{tag} class="ml">')
                 list_stack.append((tag, indent))
@@ -275,7 +349,7 @@ def convert(lines, slug_by_line):
                     while list_stack and list_stack[-1][1] > indent:
                         t, _ = list_stack.pop()
                         out.append(f'</{t}>')
-            out.append(f'<li>{inline(content)}</li>')
+            out.append(li_html)
             i += 1
             continue
 
@@ -284,6 +358,11 @@ def convert(lines, slug_by_line):
             flush_para()
             if list_stack:
                 flush_list()
+            i += 1
+            continue
+
+        # footnote definition (skip — already pre-scanned)
+        if re.match(r'^\[\^([^\]]+)\]:\s*', stripped):
             i += 1
             continue
 
@@ -297,17 +376,21 @@ def convert(lines, slug_by_line):
             if (nxt
                     and not nxt.startswith('#')
                     and not nxt.startswith('|')
-                    and not nxt.startswith('```')
-                    and not nxt.startswith('~~~')
+                    and not re.match(r'^`{3,}', nxt)
+                    and not re.match(r'^~{3,}', nxt)
                     and not nxt.startswith('>')
                     and not re.match(r'^\s*[-*+]\s', lines[j])
                     and not re.match(r'^\s*\d+[.)]\s', lines[j])
-                    and not re.match(r'^(---+|\*\*\*+|___+)$', nxt)):
+                    and not re.match(r'^(---+|\*\*\*+|___+)$', nxt)
+                    and not nxt.startswith(': ')):
                 para_buf.append(nxt)
                 j += 1
             else:
                 break
-        flush_para()
+        # 次行が定義リストマーカーなら para_buf を保持（用語として使う）
+        nxt_test = lines[j].strip() if j < n else ''
+        if not nxt_test.startswith(': '):
+            flush_para()
         i = j
 
     flush_para()
@@ -315,6 +398,25 @@ def convert(lines, slug_by_line):
     flush_table()
     if fence_active and fence_buf:
         emit_code()
+
+    # footnote section
+    if _fn_order:
+        items = []
+        for fn_key in _fn_order:
+            n = _fn_order.index(fn_key) + 1
+            text = _fn_defs.get(fn_key, '')
+            back = f'<a href="#fnref-{esc(fn_key)}" class="fn-back" aria-label="本文に戻る">↩</a>'
+            items.append(
+                f'<li id="fn-{esc(fn_key)}" class="fn-item">'
+                f'<span class="fn-n">[{n}]</span> {inline(text)} {back}'
+                f'</li>'
+            )
+        out.append(
+            '<section class="fn-section" aria-label="脚注">'
+            '<hr class="mr">'
+            f'<ol class="fn-list">{"".join(items)}</ol>'
+            '</section>'
+        )
 
     return '\n'.join(out)
 
@@ -725,6 +827,53 @@ a:focus-visible {{
 /* ── リスト ── */
 .ml {{ padding-left: var(--adlaire-space-6); margin: var(--adlaire-space-2) 0 var(--adlaire-space-4) }}
 .ml li {{ margin-bottom: var(--adlaire-space-2); max-width: 68ch }}
+.ml-task {{ list-style: none; margin-left: calc(-1 * var(--adlaire-space-6)) }}
+.ml-task input[type=checkbox] {{ margin-right: var(--adlaire-space-2); cursor: default; accent-color: var(--adlaire-color-primary) }}
+
+/* ── 定義リスト ── */
+.mdl {{ margin: var(--adlaire-space-4) 0; max-width: 68ch }}
+.mdl dt {{
+  font-weight: var(--adlaire-font-weight-semibold);
+  color: var(--adlaire-surface-text);
+  margin-top: var(--adlaire-space-3);
+}}
+.mdl dd {{
+  margin-left: var(--adlaire-space-6);
+  color: var(--adlaire-surface-text-muted);
+  margin-bottom: var(--adlaire-space-1);
+}}
+
+/* ── 脚注 ── */
+.fn-ref {{
+  font-size: var(--adlaire-font-size-xs);
+  vertical-align: super;
+  color: var(--adlaire-color-primary);
+}}
+.fn-section {{
+  margin-top: var(--adlaire-space-12);
+  padding-top: var(--adlaire-space-4);
+}}
+.fn-list {{
+  list-style: none; padding: 0;
+  font-size: var(--adlaire-font-size-sm);
+  color: var(--adlaire-surface-text-muted);
+}}
+.fn-item {{
+  display: flex; gap: var(--adlaire-space-2);
+  margin-bottom: var(--adlaire-space-2);
+  align-items: baseline;
+}}
+.fn-n {{
+  font-family: var(--adlaire-font-family-mono);
+  font-size: var(--adlaire-font-size-xs);
+  color: var(--adlaire-surface-text-subtle);
+  flex-shrink: 0;
+}}
+.fn-back {{
+  margin-left: var(--adlaire-space-2);
+  color: var(--adlaire-color-primary);
+  font-size: var(--adlaire-font-size-xs);
+}}
 
 /* ══ BACK TO TOP ══════════════════════════════════════════════════════════ */
 #btt {{
