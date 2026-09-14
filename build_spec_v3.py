@@ -403,12 +403,12 @@ def convert(lines, slug_by_line):
     if _fn_order:
         items = []
         for fn_key in _fn_order:
-            n = _fn_order.index(fn_key) + 1
+            fn_num = _fn_order.index(fn_key) + 1
             text = _fn_defs.get(fn_key, '')
             back = f'<a href="#fnref-{esc(fn_key)}" class="fn-back" aria-label="本文に戻る">↩</a>'
             items.append(
                 f'<li id="fn-{esc(fn_key)}" class="fn-item">'
-                f'<span class="fn-n">[{n}]</span> {inline(text)} {back}'
+                f'<span class="fn-n">[{fn_num}]</span> {inline(text)} {back}'
                 f'</li>'
             )
         out.append(

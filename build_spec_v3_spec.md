@@ -1,25 +1,37 @@
-# build_spec_v3.py — ビルドスクリプト仕様ドキュメント
+# build_spec_v3.py / runner.py — ビルド・CI ランナー仕様ドキュメント
 
-**対象スクリプト：** `build_spec_v3.py`  
+**対象スクリプト：** `build_spec_v3.py`（ビルド）/ `runner.py`（CI ランナー）  
 **出力ファイル：** `Adlaire-db-spec.html`  
-**バージョン：** v3（Adlaire Design System ブルートークン正式採用）  
-**最終更新：** 2026-09-13  
-**開発方針：** 仕様駆動開発（Spec-Driven Development）  
-**デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)
+**スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）  
+**ドキュメントバージョン：** V.N（累積インクリメント、リセット禁止 → Part 2 §2 参照）  
+**最終更新：** 2026-09-14  
 
 ---
 
-## 1. 概要
+## 本ドキュメントの構成
+
+| Part | 名称 | 責務の問い | 記載する内容 |
+|------|------|-----------|------------|
+| Part 1 | 方針 | **なぜ・何を** | 目的、設計思想、方向性の原則。変更頻度が低く、判断の拠り所となる指針 |
+| Part 2 | ポリシー | **しなければならない／してはならない** | 遵守義務のある規則・制約・禁止事項。セキュリティ要件・運用ルール・バージョン管理規則 |
+| Part 3 | 仕様 | **どのように** | 実装の具体的詳細。要件・構成・API・アルゴリズム・設定値・手順 |
+
+新しい記載内容は「この内容はどの責務の問いに答えるか」を基準に Part を決定する。
+
+---
+
+# Part 1 — 方針
+> 目的・設計思想・方向性の原則を定める。「なぜこう作るか」に答える。
+
+## 1. 目的
 
 `build_spec_v3.py` は、Adlaire DB 仕様書の Markdown ソースを単一の自己完結型 HTML ドキュメントへ変換する Python スクリプトである。外部ライブラリに依存せず、標準ライブラリ（`re`、`html`、`unicodedata`）のみで動作する。
-
-### 1.1 目的
 
 - 14,000 行超の大規模 Markdown 仕様書を、快適に閲覧できる HTML ドキュメントサイトへ変換する
 - CSS・JS をすべてインラインに埋め込み、単一 HTML ファイルとして配布可能にする
 - Adlaire Design System（ADS）のトークンを採用し、一貫したデザイン言語を維持する
 
-### 1.2 開発方針
+## 2. 開発方針
 
 本プロジェクトは **仕様駆動開発（Spec-Driven Development）** を採用する。
 
@@ -27,9 +39,109 @@
 - **仕様→実装の順序**：設計上の決定は本ドキュメントに記録してから `build_spec_v3.py` に反映する
 - **仕様との乖離は不整合**：スクリプトの動作が本仕様書と食い違う場合、どちらかに誤りがある
 - **仕様書のバージョン管理**：スクリプトの変更履歴と仕様書の改訂履歴は同期して管理する
-- **デザイントークンの準拠**：CSS カスタムプロパティ（`--adlaire-*`）はすべて [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System) の `Tokens/` で定義された値のみを使用する。スクリプト側での独自トークンの追加・変更は行わない
 
-### 1.3 要件
+## 3. デザイン方針
+
+docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
+
+- ヘッダーのみアクセントカラーを使う。コンテンツ・サイドバーは中性色ベース
+- CSS カスタムプロパティは [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/`）定義の `--adlaire-*` トークンのみ使用
+- **ライトモード固定**（`prefers-color-scheme` 非対応、ダークモードなし）
+- 外部フォント不使用。システムフォントスタックで日本語環境の可読性を確保
+
+### — CI ランナー —
+
+## 4. CI ランナーの目的
+
+GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイルの変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（`runner.py`）。GitHub Actions・Webhook・外部 CI サービスへの依存をゼロにする。
+
+- GitHub Git Trees API で対象ファイルの blob SHA を取得し、前回 SHA と比較して変更を検出する
+- 変更検出時のみ Git Blobs API でファイル本文を取得し、ビルドを実行する
+- 外部公開エンドポイント・リバースプロキシ不要
+- 標準ライブラリのみで実装し、`pip install` 不要
+
+## 5. CI ランナーの開発方針
+
+- **仕様書が唯一の真実**：実装の変更は本ドキュメントへの反映を先行させる
+- **ゼロ外部依存**：Python 標準ライブラリのみ使用
+- **単一ファイル実装**：`runner.py` 1 ファイルで完結
+- **シンプル性優先**：HTTP サーバー不要。1 回実行して終了する oneshot 設計
+- **差分検出**：SHA キャッシュにより変更がない場合はビルドをスキップ
+
+## 6. GitHub Actions との対応関係
+
+| GitHub Actions | 内製ランナー |
+|---|---|
+| `.github/workflows/*.yml` | `.ci/pipeline.sh` |
+| `runs-on: ubuntu-latest` | 自前サーバー（固定） |
+| `steps:` の各ステップ | shell の各コマンド |
+| `secrets.*` | PAT ファイル（`.github_token`）・サーバー上の環境変数 |
+| Actions Marketplace | なし（自前実装のみ） |
+| push トリガー | systemd タイマーによる定期ポーリング + SHA 差分検出 |
+
+---
+
+# Part 2 — ポリシー
+> 遵守義務のある規則と制約を定める。「何をしなければならないか／してはならないか」に答える。
+
+## 1. デザイントークン準拠
+
+> ⚠️ **準拠義務：** `--adlaire-*` トークンの値は [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/` ディレクトリ）で定義された値に準拠すること。
+
+- スクリプト側での独自トークンの追加・変更は行わない
+- ライトモード固定のため、ダークモード用トークンブロックは不要
+- トークン値の変更は ADS 側のアップデートに追従する形でのみ実施する
+
+## 2. バージョン管理
+
+**スクリプトバージョン（`v3`）とドキュメントバージョン（`V.N`）は独立して管理する。** スクリプトバージョンはビルドロジックの世代を示し、ドキュメントバージョンはコンテンツの累積改訂番号を示す。
+
+| 項目 | 内容 |
+|------|------|
+| 形式 | `V.N`（`V` は固定、`N` は正の整数） |
+| 更新方針 | コンテンツの変更・追記のたびに `N` を 1 以上インクリメントする |
+| リセット禁止 | スクリプトバージョン（`v3`→`v4` 等）が上がっても `N` は継続する。`V.1` に戻してはならない |
+| 例 | `V.205` → `V.206` → `V.207`（スクリプトが v4 に移行しても `V.1` に戻さない） |
+
+## 3. カスタマイズ可能範囲
+
+以下の項目はスクリプト内で変更可能な設定ポイントである。
+
+| 設定項目 | 場所 | 変更方法 |
+|---------|------|---------|
+| 入出力パス | スクリプト冒頭の `SRC` / `OUT` 定数 | 値を書き換えて再実行 |
+| デザイントークン値 | `PAGE` f-string 内 `:root { }` ブロック | ADS 準拠の範囲内で変更可 |
+| ドキュメントタイトル | `PAGE` f-string 内 `<title>` タグ | 任意の文字列に変更可 |
+| ヘッダー表示名 | `PAGE` f-string 内 `<span class="hdr-title">` | 任意の文字列に変更可 |
+| バージョンバッジ | `PAGE` f-string 内 `<span class="hdr-ver">` | `V.N` 形式で累積インクリメント |
+| TOC 対象見出しレベル | `build_toc()` 内のフィルタ行（`lv <= 3`） | 上限レベルを変更可 |
+
+### — CI ランナー —
+
+## 4. CI ランナー セキュリティポリシー
+
+- GitHub PAT（Personal Access Token）はファイル（`.github_token`）に保存し、パーミッションを `600` に設定する。スクリプト内にハードコードしない
+- PAT のスコープは `contents: read`（読み取り専用）のみ付与する。書き込みスコープは不要
+- ランナーは外部公開エンドポイントを持たない。サーバーから GitHub API への送信のみで動作する
+
+## 5. CI ランナー 実行ポリシー
+
+- blob SHA が前回実行時と同一の場合はビルドをスキップする（差分なしと判断）
+- `runner.py` は 1 回実行して終了する oneshot 設計とし、多重起動は systemd タイマーの設定（`OnUnitActiveSec`）で防ぐ
+- `pipeline.sh` の終了コードが `0` 以外の場合はビルド失敗としてログに記録する
+- SHA ファイルはビルド成功後にのみ更新する。ビルド失敗時は前回 SHA を保持し、次回起動時に再試行する
+
+## 6. CI ランナー ブランチポリシー
+
+- デフォルトでは `main` ブランチの push のみを対象とする
+- 対象ブランチは設定値（`BRANCH`）で変更可能
+
+---
+
+# Part 3 — 仕様
+> 実装の具体的詳細を定める。「どのように動作・実装するか」に答える。
+
+## 1. 要件
 
 | 項目 | 内容 |
 |------|------|
@@ -45,8 +157,8 @@
 スクリプト冒頭の定数で入出力パスを管理する。
 
 ```python
-SRC = "/root/.claude/uploads/.../884f7812-adlaire-db-spec.md"  # 入力 Markdown
-OUT = "/home/claude/Adlaire-db-spec.html"                      # 出力 HTML
+SRC = "/opt/adlaire-builder/repo/adlaire-db-spec.md"  # 入力 Markdown
+OUT = "/var/www/html/Adlaire-db-spec.html"             # 出力 HTML
 ```
 
 別の環境で実行する場合はこの 2 変数を書き換える。
@@ -387,7 +499,7 @@ ADS 採用により、ダークモードおよびテーマトグルボタンは�
 
 `localStorage` キー `adb-sb` に `"1"`（開）または `"0"`（閉）を保存する。
 
-- デスクトップ（`> 768px`）：`#sb.closed` / CSS `margin-left` で幅を制御
+- デスクトップ（`> 768px`）：`#sb.closed` クラスと JS インラインスタイル（`ct.style.marginLeft`）で幅を制御。CSS の `#sb.closed ~ #ct { margin-left: 0 }` ルールは初期レンダリング時のみ効く。以降の開閉操作はすべて JS インラインスタイルが CSS クラスより優先する
 - モバイル（`≤ 768px`）：`#sb.open` / `transform: translateX` で画面外から引き出す
 - モバイルでは TOC リンククリック時に自動的にサイドバーを閉じる
 
@@ -433,51 +545,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 
 ---
 
-## 8. カスタマイズポイント
-
-### 8.1 デザイントークンの変更
-
-> ⚠️ **準拠義務：** `--adlaire-*` トークンの値は [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/` ディレクトリ）で定義された値に準拠すること。スクリプト側での独自値への変更・追加は行わない。
-
-スクリプト内 `PAGE` f-string の `:root { }` 内 `--adlaire-*` トークンブロックを編集して再実行する。  
-ライトモード固定のため、ダークモード用ブロックは不要。
-
-主なトークンの例：
-
-```css
---adlaire-surface-accent:  #0066cc;  /* ヘッダー背景色 */
---adlaire-surface-page:    #f5f5f5;  /* ページ背景色 */
---adlaire-surface-card:    #ffffff;  /* カード背景色 */
-```
-
-### 8.2 入出力パスの変更
-
-```python
-SRC = "path/to/input.md"
-OUT  = "path/to/output.html"
-```
-
-### 8.3 ドキュメントタイトル・バージョンの変更
-
-HTML テンプレートの `PAGE` f-string 内を直接編集する。
-
-```python
-<title>Adlaire DB 仕様書</title>          # ← ブラウザタブタイトル
-<span class="hdr-title">Adlaire DB</span>  # ← ヘッダー表示名
-<span class="hdr-ver">V.205</span>         # ← バージョンバッジ
-```
-
-### 8.4 TOC の対象見出しレベル
-
-`build_toc()` 内の以下の行でフィルタリングレベルを変更できる（現在は h1〜h3）。
-
-```python
-vis = [(lv, tx, sl) for lv, tx, sl, _ in headings if lv <= 3]
-```
-
----
-
-## 9. 実行方法
+## 8. 実行方法
 
 ```bash
 python3 build_spec_v3.py
@@ -488,13 +556,244 @@ python3 build_spec_v3.py
 Converting MD...
 Building TOC...
 Assembling HTML...
-Done → /home/claude/Adlaire-db-spec.html  (1,713,731 bytes / 1,673 KB)
+Done → /var/www/html/Adlaire-db-spec.html  (1,713,731 bytes / 1,673 KB)
 ```
 
-**再実行時の注意：** `slugify()` が参照するグローバル変数 `_seen` はスクリプト起動時にリセットされるため、複数回実行しても出力は同一になる。
+**再実行時の注意：** `_seen`（スラグ重複カウンタ）・`_fn_order`（脚注参照順）・`_fn_defs`（脚注定義）はいずれもモジュールレベル変数であり、スクリプトを起動するたびに初期化される。通常の `python3 build_spec_v3.py` 実行では複数回実行しても出力は同一になる。ただし本スクリプトを `import` して `convert()` を複数回呼ぶ場合は、呼び出し前に `_fn_order.clear()` および `_seen.clear()` を明示的にリセットする必要がある。
 
 ---
 
-## 10. 既知の制限
+## 9. 既知の制限
 
-現時点で既知の未対応 Markdown 記法はない。
+| 制限 | 詳細 |
+|------|------|
+| インデント付き閉じフェンス | CommonMark では `  ``` ` のようなインデント付き閉じフェンスが有効だが、本実装は `raw.strip() == fence_marker` で完全一致を要求するため非対応。インデント付き閉じフェンスはフェンス内の行として取り込まれる |
+| 生 HTML のパススルー | Markdown 中の生 HTML（`<div>`、`<span>` 等）は `esc()` でエスケープされテキストとして出力される。HTML をそのまま通過させる機能はない |
+
+---
+
+## 10. CI ランナー 要件
+
+| 項目 | 内容 |
+|------|------|
+| Python バージョン | 3.9 以上 |
+| 外部依存 | **なし** — `urllib.request`・`base64`・`json`・`subprocess`・`os`・`logging`（すべて標準ライブラリ） |
+| 対象 OS | Linux（systemd 対応環境） |
+| ネットワーク | サーバーから `api.github.com` への HTTPS 送信のみ |
+
+---
+
+## 11. CI ランナー ファイル構成
+
+### サーバー側
+
+```
+/opt/adlaire-builder/
+├── runner.py            # CI ランナー本体（単一ファイル、oneshot）
+├── build_spec_v3.py     # ビルドスクリプト（サーバー固定）
+├── .github_token        # GitHub PAT（パーミッション 600）
+└── .last_sha            # 前回取得時の blob SHA キャッシュ
+
+/opt/adlaire-builder/repo/
+└── adlaire-db-spec.md   # API 取得後に書き出されるソース Markdown
+
+/var/www/html/           # HTML 出力先（nginx / Apache が配信）
+
+/etc/systemd/system/
+├── adlaire-ci.service   # systemd ユニット（oneshot）
+└── adlaire-ci.timer     # systemd タイマー（定期実行）
+```
+
+### リポジトリ側
+
+```
+<repo>/
+├── adlaire-db-spec.md   # ソース Markdown（GitHub 上のマスター）
+└── .ci/
+    └── pipeline.sh      # ビルド手順定義（実行権限付き）
+```
+
+---
+
+## 12. 設定値（`runner.py` 冒頭）
+
+```python
+TOKEN_FILE   = "/opt/adlaire-builder/.github_token"   # GitHub PAT
+OWNER        = "<GitHubオーナー名>"                    # リポジトリオーナー
+REPO         = "<リポジトリ名>"                        # リポジトリ名
+BRANCH       = "main"                                  # 対象ブランチ
+TARGET_FILE  = "adlaire-db-spec.md"                   # 監視対象ファイル
+SHA_FILE     = "/opt/adlaire-builder/.last_sha"       # blob SHA キャッシュ
+SRC          = "/opt/adlaire-builder/repo/adlaire-db-spec.md"  # 書き出し先
+BUILD_SCRIPT = "/opt/adlaire-builder/build_spec_v3.py"
+LOG_LEVEL    = "INFO"
+```
+
+---
+
+## 13. 処理フロー
+
+```
+runner.py 起動（systemd タイマーから呼び出し）
+    │
+    ├─ .github_token 読み込み（不在の場合は起動失敗）
+    │
+    ├─ Step 1: Git Trees API
+    │   GET /repos/{OWNER}/{REPO}/git/trees/{BRANCH}?recursive=1
+    │   → TARGET_FILE の blob SHA を取得
+    │   └─ API 失敗時：ERROR ログ、終了
+    │
+    ├─ SHA_FILE の前回 SHA と比較
+    │   └─ 一致（変更なし）→ INFO ログ、正常終了
+    │
+    ├─ Step 2: Git Blobs API
+    │   GET /repos/{OWNER}/{REPO}/git/blobs/{sha}
+    │   → Base64 デコード → SRC パスへ書き出し
+    │   └─ API 失敗時：ERROR ログ、終了
+    │
+    ├─ pipeline.sh 実行（bash {SRC の親ディレクトリ}/.ci/pipeline.sh）
+    │   ├─ 成功（exit 0）：INFO ログ
+    │   └─ 失敗（exit ≠ 0）：ERROR ログ、SHA_FILE 更新せず終了
+    │
+    └─ SHA_FILE を新 SHA で更新
+```
+
+---
+
+## 14. `pipeline.sh`
+
+リポジトリの `.ci/pipeline.sh` にビルド手順を記述する。
+
+- 実行権限（`chmod +x`）が必要
+- `set -e` を先頭に記述し、ステップ失敗時に即座に終了させることを推奨
+- 終了コード `0` で成功、`0` 以外で失敗とみなす
+
+**例：**
+```bash
+#!/bin/bash
+set -e
+python3 /opt/adlaire-builder/build_spec_v3.py
+```
+
+`build_spec_v3.py` はサーバー固定（`/opt/adlaire-builder/`）のため、リポジトリには含めない。
+
+---
+
+## 15. ログ
+
+Python 標準の `logging` モジュールを使用する。出力先は stdout（systemd が journald に転送）。
+
+| レベル | 出力条件 |
+|--------|---------|
+| `INFO` | 起動、変更なしスキップ、ビルド開始・完了、SHA 更新 |
+| `WARNING` | — |
+| `ERROR` | トークン読み込み失敗、API 失敗、ビルド失敗 |
+| `DEBUG` | API レスポンス詳細等（`LOG_LEVEL = "DEBUG"` 時のみ） |
+
+---
+
+## 16. systemd タイマー
+
+### `adlaire-ci.service`（oneshot）
+
+```ini
+[Unit]
+Description=Adlaire CI Runner
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/usr/bin/python3 /opt/adlaire-builder/runner.py
+StandardOutput=journal
+StandardError=journal
+```
+
+### `adlaire-ci.timer`（5分ごと定期実行）
+
+```ini
+[Unit]
+Description=Adlaire CI Runner Timer
+After=network-online.target
+Wants=network-online.target
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+sudo systemctl enable --now adlaire-ci.timer  # タイマー登録・起動
+sudo systemctl list-timers adlaire-ci          # 次回実行時刻確認
+sudo journalctl -u adlaire-ci -f               # ログ確認
+```
+
+---
+
+## 17. GitHub 側設定
+
+| 項目 | 内容 |
+|------|------|
+| PAT スコープ | `contents: read`（読み取り専用）のみ |
+| PAT の種類 | Fine-grained PAT（特定リポジトリのみ許可）を推奨 |
+| Webhook 設定 | **不要** |
+
+---
+
+## 18. 初回セットアップ手順
+
+```bash
+# 1. deploy ユーザー作成
+sudo useradd -m -s /bin/bash deploy
+
+# 2. 作業ディレクトリ作成
+sudo mkdir -p /opt/adlaire-builder/repo
+sudo chown -R deploy:deploy /opt/adlaire-builder
+
+# 3. GitHub PAT を保存（Fine-grained PAT、contents: read のみ）
+echo "<PAT>" | sudo -u deploy tee /opt/adlaire-builder/.github_token
+sudo chmod 600 /opt/adlaire-builder/.github_token
+
+# 4. SHA キャッシュファイルを初期化
+sudo -u deploy touch /opt/adlaire-builder/.last_sha
+
+# 5. build_spec_v3.py を配置
+sudo cp build_spec_v3.py /opt/adlaire-builder/build_spec_v3.py
+sudo chown deploy:deploy /opt/adlaire-builder/build_spec_v3.py
+
+# 6. runner.py を配置
+sudo cp runner.py /opt/adlaire-builder/runner.py
+sudo chown deploy:deploy /opt/adlaire-builder/runner.py
+
+# 7. systemd ユニットを登録・タイマー起動
+sudo cp adlaire-ci.service /etc/systemd/system/
+sudo cp adlaire-ci.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now adlaire-ci.timer
+```
+
+---
+
+## 19. 拡張ポイント
+
+| 区分 | 機能 | 概要 |
+|------|------|------|
+| 拡張 | 複数ファイル監視 | `TARGET_FILE` をリストにし、複数 MD ファイルの変更を検出 |
+| 拡張 | ビルドログのファイル保存 | `subprocess` の stdout/stderr をファイルに記録 |
+| 拡張 | GitHub Commit Status API | ビルド結果（成功/失敗）を対象コミットに紐付けて GitHub に通知 |
+| 拡張 | ビルドタイムアウト | `subprocess` に `timeout` を設定し、長時間ビルドを強制終了 |
+| 拡張 | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整 |
+| 将来対応 | Webhook 方式 | 即時反応が必要な場合の代替方式。現行の Git Blobs API ポーリング方式を置き換える。サーバーに Git・nginx（リバースプロキシ）が必要。仕様化は対応時に本ドキュメントへ追記する |
+
+---
+
+## 20. CI ランナー 既知の制限
+
+| 制限 | 詳細 |
+|------|------|
+| 単一ファイル監視 | 初期実装は `TARGET_FILE` 1 ファイル固定。複数対応は §19 拡張ポイント参照 |
+| ポーリング遅延 | 変更検出はタイマー間隔（デフォルト 5 分）に依存する。即時反応は不可 |
+| `pipeline.sh` のみ対応 | YAML 形式のパイプライン定義には非対応（シェルスクリプト固定） |
+| ネットワーク断時の挙動 | API 失敗時はエラーログのみ記録し、次回タイマー起動まで再試行しない |

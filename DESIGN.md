@@ -1,117 +1,60 @@
 # Adlaire-db-spec デザイン仕様
 
-> **⚠️ 本仕様は廃止。**  
-> `Adlaire-db-spec` は **ADS（Adlaire Design System）トークン**に移行済み（2026-09-13）。  
-> 以降の CSS トークン管理は ADS リポジトリ（`--adlaire-*` 変数）を参照すること。  
-> 以下の内容は移行前の旧仕様として参照用に残す。
-
 **対象ファイル：** `Adlaire-db-spec.html`  
 **ビルドスクリプト：** `build_spec_v3.py`  
-**最終更新：** 2026-09-13（ADS 移行時点で廃止）
+**デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)  
+**最終更新：** 2026-09-14
 
 ---
 
 ## 1. デザイン方針
 
-ドキュメントサイト（docs.rs / MDN）に倣ったレイアウト。長大な技術仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
+docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
 
 - ヘッダーのみアクセントカラーを使う。コンテンツ・サイドバーは中性色ベース
-- 色はアクセントとして点在させる。背景・テキストのカラーウォッシュは避ける
-- フォントはシステムフォント近似を採用し、日本語環境での可読性を確保
-- ライト・ダーク双方で同品質の閲覧体験を保証する
+- CSS カスタムプロパティは [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/`）定義の `--adlaire-*` トークンのみ使用
+- **ライトモード固定**（`prefers-color-scheme` 非対応、ダークモードなし）
+- 外部フォント不使用。システムフォントスタックで日本語環境の可読性を確保
 
 ---
 
-## 2. カラートークン
+## 2. カラートークン（ADS トークン）
 
-### 2.1 ライトモード
-
-| トークン       | 値          | 用途                                   |
-|--------------|-------------|---------------------------------------|
-| `--bg`       | `#f7f8fa`   | ページ背景                              |
-| `--bg-alt`   | `#eef0f4`   | ホバー背景・h4背景                       |
-| `--surface`  | `#ffffff`   | カード・コピーボタン背景                 |
-| `--sidebar`  | `#f3f4f6`   | サイドバー背景                           |
-| `--bd`       | `#d8dce6`   | 主要ボーダー                             |
-| `--bd-soft`  | `#e8eaf0`   | 補助ボーダー（テーブル行間など）           |
-| `--tx`       | `#1a1d24`   | 本文テキスト                             |
-| `--tx2`      | `#52586a`   | 補助テキスト（TOCリンクなど）             |
-| `--tx3`      | `#8d94a6`   | 三次テキスト（プレースホルダーなど）       |
-| `--ac`       | `#0ea5e9`   | アクセント（ボーダー・ハイライト）         |
-| `--ac2`      | `#0284c7`   | アクセント濃（ヘッダー・リンク）           |
-| `--ac-dim`   | `#e0f5fe`   | アクセント薄背景（アクティブTOCなど）     |
-| `--ac-border`| `#7dd3fc`   | アクセントボーダー薄                     |
-| `--code-bg`  | `#f0f2f6`   | コードブロック背景                       |
-| `--code-tx`  | `#1a1d24`   | コードテキスト                           |
-| `--code-bd`  | `#d4d8e4`   | コードブロックボーダー                   |
-| `--link`     | `#0284c7`   | リンク色                                |
-| `--th-bg`    | `#ebedf4`   | テーブルヘッダー背景                     |
-| `--tr-alt`   | `#f7f8fa`   | テーブル偶数行背景                       |
-| `--scr`      | `#c4c8d4`   | スクロールバーサム色                     |
-| `--shadow`   | `rgba(26,29,36,.08)` | ボックスシャドウ色               |
-
-### 2.2 ダークモード
-
-| トークン       | 値          | 用途                                   |
-|--------------|-------------|---------------------------------------|
-| `--bg`       | `#18191c`   | ページ背景                              |
-| `--bg-alt`   | `#111214`   | ホバー背景                              |
-| `--surface`  | `#1e2024`   | カード・コピーボタン背景                 |
-| `--sidebar`  | `#16181c`   | サイドバー背景                           |
-| `--bd`       | `#2e3038`   | 主要ボーダー                             |
-| `--bd-soft`  | `#262830`   | 補助ボーダー                             |
-| `--tx`       | `#dde1ec`   | 本文テキスト                             |
-| `--tx2`      | `#8890a8`   | 補助テキスト                             |
-| `--tx3`      | `#525a70`   | 三次テキスト                             |
-| `--ac`       | `#38bdf8`   | アクセント（スカイブルー）               |
-| `--ac2`      | `#7dd3fc`   | アクセント淡                            |
-| `--ac-dim`   | `#0a2030`   | アクセント薄背景                         |
-| `--ac-border`| `#1a4060`   | アクセントボーダー薄                     |
-| `--code-bg`  | `#14161a`   | コードブロック背景                       |
-| `--code-tx`  | `#c8d4e8`   | コードテキスト                           |
-| `--code-bd`  | `#282c38`   | コードブロックボーダー                   |
-| `--link`     | `#38bdf8`   | リンク色                                |
-| `--th-bg`    | `#1c1e24`   | テーブルヘッダー背景                     |
-| `--tr-alt`   | `#161820`   | テーブル偶数行背景                       |
-| `--scr`      | `#32384a`   | スクロールバーサム色                     |
-| `--shadow`   | `rgba(0,0,0,.4)` | ボックスシャドウ色                   |
-
-### 2.3 テーマ切り替え実装
-
-```css
-/* ライトモード：bare :root に全トークンを定義 */
-:root { --bg: #f7f8fa; ... }
-
-/* OSダーク設定（data-theme 未付与のデフォルト状態） */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #18191c; ... }
-}
-
-/* 明示的ダーク選択（トグルボタンで付与） */
-:root[data-theme="dark"] { --bg: #18191c; ... }
-```
-
-`data-theme="dark"` / `"light"` は JS で `document.documentElement.dataset.theme` に書き込み、`localStorage` に保存する。
+| トークン | 値 | 用途 |
+|---|---|---|
+| `--adlaire-surface-accent` | `#0066cc` | ヘッダー背景 |
+| `--adlaire-surface-accent-mid` | `#0055aa` | ホバー・二次アクセント |
+| `--adlaire-surface-accent-strong` | `#004499` | コードテキスト色 |
+| `--adlaire-surface-page` | `#f5f5f5` | ページ背景 |
+| `--adlaire-surface-card` | `#ffffff` | カード・サイドバー背景 |
+| `--adlaire-surface-soft` | `#f0f7ff` | ホバー背景・引用背景 |
+| `--adlaire-surface-soft-strong` | `#e8f2ff` | コードブロック背景・インラインコード背景 |
+| `--adlaire-surface-border` | `#e0e0e0` | ボーダー全般 |
+| `--adlaire-surface-text` | `#333333` | 本文テキスト |
+| `--adlaire-surface-text-muted` | `#555555` | 補助テキスト（TOC lv2 等） |
+| `--adlaire-surface-text-subtle` | `#666666` | 三次テキスト（プレースホルダー等） |
+| `--adlaire-color-primary` | `#0066cc` | リンク・アクセントボーダー |
+| `--adlaire-color-secondary` | `#0055aa` | アクティブ TOC リンク色 |
 
 ---
 
 ## 3. タイポグラフィ
 
-| 変数   | フォントスタック                                          | 用途                    |
-|--------|----------------------------------------------------------|-----------------------|
-| `--fb` | `"Noto Sans JP", "Hiragino Kaku Gothic ProN", system-ui` | 本文・見出し全般         |
-| `--fm` | `"JetBrains Mono", "Menlo", "Consolas"`                  | コード・バッジ・h4・ラベル |
+| トークン | 値 |
+|---|---|
+| `--adlaire-font-family-base` | `"Helvetica Neue", Helvetica, Arial, sans-serif` |
+| `--adlaire-font-family-mono` | `"JetBrains Mono", "Courier New", Courier, monospace` |
 
-Google Fonts から `Noto Sans JP`（400/500）と `JetBrains Mono`（300/400/500）を読み込む。
+外部フォント（Google Fonts 等）は使用しない。
 
 ### 見出し階層
 
-| 要素 | サイズ       | ウェイト | 装飾                                  |
-|------|-------------|---------|--------------------------------------|
-| h1   | `1.75rem`   | 700     | 下線（`--bd`）                         |
-| h2   | `1.25rem`   | 600     | 下線（`--bd-soft`）、上マージン `2.8em` |
-| h3   | `1rem`      | 600     | 装飾なし                               |
-| h4   | `0.875rem`  | 500     | 左ボーダー（`--ac` 3px）＋背景（`--bg-alt`）、`--fm` |
+| 要素 | サイズ | ウェイト | 装飾 |
+|---|---|---|---|
+| h1 | `--adlaire-font-size-2xl`（2rem） | 700 | 下線（`--adlaire-color-primary` 2px） |
+| h2 | `--adlaire-font-size-xl`（1.5rem） | 600 | 下線（`--adlaire-surface-border` 1px）、上マージン `--adlaire-space-12` |
+| h3 | `--adlaire-font-size-lg`（1.125rem） | 600 | 装飾なし |
+| h4 | `--adlaire-font-size-sm`（0.875rem） | 500 | 左ボーダー（`--adlaire-color-primary` 3px）＋背景（`--adlaire-surface-soft`）、モノスペースフォント |
 
 本文行長は `max-width: 68ch` でキャップ。
 
@@ -120,62 +63,69 @@ Google Fonts から `Noto Sans JP`（400/500）と `JetBrains Mono`（300/400/50
 ## 4. レイアウト
 
 ```
-┌─────────────────────────────────────────────────┐
-│  HEADER（固定・高さ 52px・スカイブルー背景）       │
-├──────────┬──────────────────────────────────────┤
-│          │                                      │
-│ SIDEBAR  │  CONTENT                             │
-│  272px   │  max-width: 820px                    │
-│  固定    │  padding: 48px 48px 96px             │
-│          │                                      │
-└──────────┴──────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  HEADER（固定・高さ 52px・--adlaire-surface-accent 背景）    │
+├──────────┬─────────────────────────────────────────────────┤
+│          │                                                 │
+│ SIDEBAR  │  CONTENT                                        │
+│  260px   │  max-width: 760px                               │
+│  固定    │  padding: 3rem 3rem 96px                        │
+│          │                                                 │
+└──────────┴─────────────────────────────────────────────────┘
 ```
 
-- **ヘッダー：** `position: fixed`、z-index 300。背景色 `--ac2`（スカイブルー）
-- **サイドバー：** `position: fixed`、幅 `272px`、`transform: translateX` で開閉
-- **コンテンツ：** `margin-left: var(--sw)` でサイドバー幅を吸収。サイドバー閉時は `0` に遷移
+| 変数 | 値 | 用途 |
+|---|---|---|
+| `--hh` | `52px` | ヘッダー高さ |
+| `--sw` | `var(--adlaire-layout-sidebar-compact)` = `260px` | サイドバー幅 |
+| `--adlaire-layout-container-narrow` | `760px` | コンテンツ最大幅（`.ci`） |
 
 ### レスポンシブ
 
-| ブレークポイント | 動作                                                |
-|----------------|-----------------------------------------------------|
-| `≤ 768px`      | サイドバーを画面外に収納（`86vw` 幅）、トグルで開閉 |
-| `≤ 400px`      | コンテンツ padding を縮小                            |
+| ブレークポイント | 動作 |
+|---|---|
+| `≤ 768px` | サイドバーを画面外に収納（`86vw` 幅）、トグルで引き出し |
+| `≤ 400px` | コンテンツ padding を縮小（`1.5rem 1rem`） |
 
 ---
 
 ## 5. サイドバー（TOC）
 
-### 構造
+### 開閉制御
+
+デスクトップとモバイルで制御方法が異なる。
+
+| モード | 開 | 閉 |
+|---|---|---|
+| デスクトップ（> 768px） | `.closed` なし、`ct.style.marginLeft = 'var(--sw)'`（JS インライン） | `#sb.closed`、`ct.style.marginLeft = '0'`（JS インライン） |
+| モバイル（≤ 768px） | `#sb.open`（`translateX(0)`） | `.open` なし（`translateX(-86vw)` で画面外） |
+
+> **注意：** CSS の `#sb.closed ~ #ct { margin-left: 0 }` ルールは初期レンダリング時のみ機能する。以降の開閉操作はすべて JS のインラインスタイルが CSS クラスより優先して制御する。
+
+`localStorage` キー `adb-sb`（`"1"` = 開、`"0"` = 閉）で開閉状態を永続化。
+
+### TOC 構造
 
 ```
 ┌─ 検索ボックス ─────────────────────────────┐
 │  [🔍 セクションを検索…]                     │
 └─────────────────────────────────────────────┘
-┌─ TOCリスト ─────────────────────────────────┐
+┌─ TOC リスト ────────────────────────────────┐
 │  ▼ 1. 概要                    ← .tg（グループ）
 │      1.1 プロジェクト概要      ← .ti（リーフ）
-│      1.2 ポジション
 │  ▶ 2. 機能スコープ
-│  ▶ 9. 実装フェーズ
 └─────────────────────────────────────────────┘
 ```
 
-### TOC インタラクション
-
-- **グループ展開：** `.tg-btn` クリックで `aria-expanded` 切り替え、子 `<ul>` の `hidden` 属性トグル
-- **アクティブ追跡：** `IntersectionObserver` で画面内の見出しを検出し、対応 TOC リンクに `.active` クラスを付与。親グループを自動展開
-- **検索フィルター：** `input[type=search]` のリアルタイム入力で `.tl` テキストを照合。非一致項目は `li.hidden = true`。親グループは子一致時に表示を維持
-
 ### TOC リンクスタイル
 
-| クラス   | padding-left | フォントサイズ | 色         |
-|---------|-------------|--------------|------------|
-| `.lv1`  | `14px`      | `0.8125rem`  | `--tx`     |
-| `.lv2`  | `20px`      | `0.78125rem` | `--tx2`    |
-| `.lv3`  | `34px`      | `0.75rem`    | `--tx3`    |
+| クラス | `padding-left` | フォントサイズ | 色 |
+|---|---|---|---|
+| `.lv1` | `14px` | `--adlaire-font-size-sm`（0.875rem） | `--adlaire-surface-text` |
+| `.lv2` | `20px` | `0.8125rem` | `--adlaire-surface-text-muted` |
+| `.lv3` | `34px` | `--adlaire-font-size-xs`（0.75rem） | `--adlaire-surface-text-subtle` |
 
-アクティブ状態：`color: --ac2`、`background: --ac-dim`、`border-left: 2px solid --ac`
+アクティブ状態：`color: --adlaire-color-secondary`、`background: --adlaire-surface-soft`、`border-left: 2px solid --adlaire-color-primary`
 
 ---
 
@@ -190,50 +140,47 @@ Google Fonts から `Noto Sans JP`（400/500）と `JetBrains Mono`（300/400/50
 └─────────────────────────────────────────────────────┘
 ```
 
-- 背景 `--code-bg`、ボーダー `--code-bd 1px`、角丸 `8px`
-- `.cb-meta` は `position: absolute; top: 8px; right: 10px` で右上に浮かせる
-- 言語ラベル（`.cl`）：フォント `--fm`、サイズ `0.6875rem`、色 `--tx3`、大文字
-- コピーボタン（`.cb-copy`）：通常時は非表示（`opacity: 0`）、ホバー時に表示。クリック後「✓ 完了」に変化し 1.8 秒後に戻る
-- `pre.cb`：フォントサイズ `0.8125rem`、行高 `1.65`、`font-weight: 300`
+- 背景 `--adlaire-surface-soft-strong`、ボーダー `--adlaire-surface-border` 1px、角丸 `--adlaire-radius-lg`（8px）
+- `.cb-meta`：`position: absolute; top: 8px; right: 10px`
+- 言語ラベル（`.cl`）：モノフォント、`--adlaire-font-size-xs`、`--adlaire-surface-text-subtle`、大文字
+- コピーボタン（`.cb-copy`）：通常 `opacity: 0`、ホバーで表示。クリック後「✓ 完了」→ 1.8 秒後に「コピー」へ復元
+- `pre.cb`：フォントサイズ `--adlaire-font-size-sm`（0.875rem）、行高 `1.65`
 
 ### テーブル
 
-- `.tw`（ラッパー）で `overflow-x: auto`、ボーダー・角丸・シャドウ
-- ヘッダーセル（`th`）：`--fm`、サイズ `0.71875rem`、背景 `--th-bg`
-- 偶数行：背景 `--tr-alt`。ホバー行：背景 `--bg-alt`
+- `.tw`（ラッパー）：`overflow-x: auto`、ボーダー・角丸 `--adlaire-radius-lg`・シャドウ
+- `th`：モノフォント、`--adlaire-font-size-xs`、背景 `--adlaire-surface-soft`
+- 偶数行：背景 `--adlaire-surface-soft`。ホバー行：背景 `--adlaire-surface-soft-strong`
 
 ### インラインコード
 
-- フォント `--fm`、サイズ `0.83em`、背景 `--code-bg`、ボーダー `--code-bd 1px`、角丸 `4px`
+- モノフォント、サイズ `0.83em`、背景 `--adlaire-surface-soft-strong`、テキスト `--adlaire-surface-accent-strong`、ボーダー `--adlaire-surface-border` 1px、角丸 `--adlaire-radius-sm`（4px）
 
 ### 引用（blockquote）
 
-- 左ボーダー `3px solid --ac`、背景 `--ac-dim`、角丸 `0 6px 6px 0`
+- 左ボーダー `3px solid --adlaire-color-primary`、背景 `--adlaire-surface-soft`、角丸 `0 --adlaire-radius-lg --adlaire-radius-lg 0`、斜体テキスト
+
+### 定義リスト
+
+- `dt`：`font-weight: semibold`、`--adlaire-surface-text`
+- `dd`：`margin-left: --adlaire-space-6`、`--adlaire-surface-text-muted`
 
 ---
 
 ## 7. トップへ戻るボタン
 
-```
-画面右下（bottom: 28px / right: 24px）に固定。
-スクロール量が 400px を超えると表示（opacity: 0 → 1）。
-```
-
-- 直径 `38px` の円形ボタン、背景 `--ac2`、色 `#fff`
-- クリックで `window.scrollTo({ top: 0, behavior: 'smooth' })`
-- ホバー時 `translateY(-2px)` で浮き上がり効果
+- 画面右下（`bottom: 28px / right: 24px`）に固定。`z-index: --adlaire-z-sticky`
+- 直径 `38px` 円形、背景 `--adlaire-surface-accent`、色 `#fff`
+- `scrollY > 400` で表示（`opacity: 0 → 1`、`pointer-events: none → auto`）
+- ホバー時 `translateY(-2px)` で浮き上がり
 
 ---
 
 ## 8. ビルド方法
 
 ```bash
-# MDから HTML を生成
 python3 build_spec_v3.py
-
-# 出力先
-# /home/claude/Adlaire-db-spec.html
 ```
 
-MDファイルのパス・出力先はスクリプト冒頭の `SRC` / `OUT` 変数で管理。  
-CSS トークンのみ変更する場合は、スクリプト内 `/* ══ TOKENS ══ */` ブロックを編集して再実行する。
+入出力パスはスクリプト冒頭の `SRC` / `OUT` 変数で管理。  
+CSS トークンの変更はスクリプト内 `:root { }` ブロックを編集して再実行する。
