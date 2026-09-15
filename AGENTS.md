@@ -63,7 +63,7 @@
 
 `ADLAIRE_CI_SPEC.md` は、Adlaire CI のマスター仕様書正本である。
 
-`build_spec.py`、`runner.py`、将来コンポーネントである `api_server.py`、`adlaire-ci-sdk.js`、`admin/index.html`、`mcp_server.py` は、`ADLAIRE_CI_SPEC.md` に基づいて更新する。
+`build_spec.py`、`runner.py`、仕様化済み・未実装コンポーネントである `api_server.py`、`adlaire-ci-sdk.js`、`admin/index.html`、将来計画コンポーネントである `mcp_server.py` は、`ADLAIRE_CI_SPEC.md` に基づいて更新する。
 
 `DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。`ADLAIRE_CI_SPEC.md` と矛盾する場合は、`ADLAIRE_CI_SPEC.md` を優先する。
 
@@ -103,13 +103,13 @@
 | `build_spec.py` | Adlaire DB 仕様書 Markdown を単一 HTML へ変換するビルドスクリプト。 |
 | `runner.py` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する CI ランナー。 |
 
-仕様化済みだが未実装の主なコンポーネントは以下とする。
+仕様化済み・未実装および将来計画の主なコンポーネントは以下とする。
 
 | ファイル | 状態 |
 |---------|------|
-| `api_server.py` | 未実装 |
-| `adlaire-ci-sdk.js` | 未実装 |
-| `admin/index.html` | 未実装 |
+| `api_server.py` | 仕様化済み・未実装 |
+| `adlaire-ci-sdk.js` | 仕様化済み・未実装 |
+| `admin/index.html` | 仕様化済み・未実装 |
 | `mcp_server.py` | 将来計画 |
 
 未実装コンポーネントを追加する場合は、`ADLAIRE_CI_SPEC.md` の該当仕様、`DOCUMENT_INDEX.md`、本ファイルを必要に応じて整合させる。
