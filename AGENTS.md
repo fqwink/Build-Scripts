@@ -123,7 +123,14 @@ Build-Scripts の標準 GitHub リポジトリ設定は以下とする。
 - secret scanning: `enabled`
 - secret scanning push protection: `enabled`
 - Dependabot security updates: `disabled`
-- main branch protection: 設定対象
+- main branch protection: 設定対象（下記の初期標準を適用）
+
+GitHub 設定の初期適用方針は以下とする。
+
+- `delete_branch_on_merge=true` は即時設定対象とする。
+- `main` branch protection は、初期標準として Pull Request 必須、force push 禁止、branch deletion 禁止を設定する。
+- `main` branch protection の required approvals は初期値 `0` とする。
+- 運用が安定した後、必要に応じて required approvals を `1` へ引き上げる。
 
 標準 GitHub リポジトリ設定のうち、自動化に関わる設定が未確認の場合は、現在の設定状態を確認する。
 
