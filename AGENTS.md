@@ -154,6 +154,16 @@ local branch 削除の対象は、merge 済み Pull Request の head branch と�
 
 local branch 削除では、`main` へ移動した後に対象 local branch を削除する。
 
+Pull Request merge 後のローカル同期は、以下の手順を標準とする。
+
+1. `git fetch --prune`
+2. `git switch main`
+3. `git merge --ff-only origin/main`
+4. merge 済み Pull Request の head branch と同名の local branch を `git branch -d <branch>` で削除する
+5. `git status --short --branch` で `main` と `origin/main` が一致し、作業ツリーが clean であることを確認する
+
+上記手順で fast-forward できない場合、merge 対象やローカル変更の状態を確認し、勝手に履歴を書き換えてはならない。
+
 `main`、merge 未完了の作業ブランチ、merge 状態を確認できないブランチ、Pull Request と対応しないブランチは削除してはならない。
 
 `.gitignore` は作成・使用しない。
