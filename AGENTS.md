@@ -132,6 +132,18 @@ Python 実装の構文確認では、環境に応じて `PYTHONPYCACHEPREFIX=/tm
 
 作業ブランチは一本化し、ドキュメント変更作業と実装変更作業の両方で同じ作業ブランチを使用する。
 
+同一目的、同一仕様領域、同一ファイル群に対する変更は、原則として 1 本の作業ブランチと 1 本の Pull Request にまとめる。
+
+同一目的の変更を複数の積み上げ Pull Request に分割してはならない。
+
+複数の Pull Request に分ける場合は、変更対象ファイル、責務、merge 順序が明確に分離でき、相互に同一ファイルを編集しない場合に限る。
+
+既存の open Pull Request と同じファイルまたは同じ仕様領域を変更する必要がある場合は、新規 Pull Request を作成せず、既存 Pull Request へ変更を統合する。
+
+積み上げ Pull Request、同一ファイル編集の並行 Pull Request、または merge 順序依存の Pull Request が発生した場合は、最新 `origin/main` から一本化ブランチを作成し、必要な変更を 1 本の Pull Request に統合する。
+
+一本化後、重複する既存 Pull Request は、統合先 Pull Request を明記したコメントを残して close する。
+
 `main` への反映は、Pull Request 経由で行う。
 
 Pull Request の merge はユーザーが行う。
@@ -229,6 +241,10 @@ Pull Request作成自動化は、承認済み変更作業の範囲内で行うGi
 
 Pull Request 作成前には、変更内容に応じて以下を確認する。
 
+- `git fetch origin` を実行し、最新 `origin/main` を取得する。
+- `git diff --name-status origin/main...HEAD` で、変更対象が承認済み範囲内であることを確認する。
+- open Pull Request を確認し、同一ファイルまたは同一仕様領域を変更する Pull Request が存在しないことを確認する。
+- 同一ファイルまたは同一仕様領域の open Pull Request が存在する場合は、新規 Pull Request ではなく既存 Pull Request への統合、または最新 `origin/main` 起点の一本化 Pull Request を作成する。
 - 文書変更では、`rg` で旧名称、矛盾参照、移行前ファイル名が残っていないか確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
@@ -240,6 +256,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 - `Summary`
 - `Verification`
+- 競合防止確認
 - 未実施の確認がある場合は、その理由
 
 ---
