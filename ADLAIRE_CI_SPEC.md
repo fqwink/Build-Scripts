@@ -173,17 +173,24 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 ## 12. 機能一覧
 
-本仕様が定義する全機能の一覧。各機能の仕様詳細は `ADLAIRE_CI_DETAIL_SPEC.md` Part 3 §22〜§25 を参照。実装状態は、本ドキュメント冒頭の「実装状態」に従って判定する。
+本仕様が定義する全機能の一覧。各機能の仕様詳細は `ADLAIRE_CI_DETAIL_SPEC.md` を参照。実装状態は、本ドキュメント冒頭の「実装状態」と `ADLAIRE_CI_DETAIL_SPEC.md` §0b・§10a の成熟度分類に従って判定する。
 
 ### ビルド・CI ランナー（runner.py）
+
+**現行実装済み範囲：**
 
 - GitHub リポジトリの対象ファイルを定期ポーリング（systemd timer）
 - blob SHA による差分検出（変更なし時はビルドをスキップ）
 - Markdown → HTML 変換（`build_spec.py` を呼び出し）
+- ビルド成功後に SHA キャッシュを更新する
+- ビルド失敗時は SHA キャッシュを更新せず、次回起動時に再試行可能な状態を維持する
+- systemd oneshot ユニットとして動作（`adlaire-ci.service`）
+
+**仕様化済み・未実装範囲：**
+
 - ビルド結果を `.build_history` に記録（ID 形式：`b{YYYYMMDDHHmmss}`）
 - ビルドごとのログを `.build_logs/{id}.json` に保存
 - ビルド成功・失敗時に Webhook 通知を送信（`.notify_config` を読み込み送信。送信責務は `runner.py`。通知 API は設定の読み書きのみ）
-- systemd oneshot ユニットとして動作（`adlaire-ci.service`）
 - ビルド成功後、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する（差分転送・`DEPLOY_TARGETS` 複数先対応 → §14a）
 - SSH 転送失敗時は `.pending_transfers` へキューイングし、次回起動時に自動再試行する（→ §14a ペンディングキュー）
 - 転送成功後、出力ファイルを `.snapshots/` へアーカイブし `HISTORY_KEEP_N` 世代を超過分から自動削除する（→ §14b）

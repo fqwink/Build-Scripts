@@ -45,7 +45,7 @@
 | 対象範囲 | 対象コンポーネント | 成熟度 | 判定理由 | 次に必要な作業 |
 |----------|-------------------|--------|----------|----------------|
 | §0〜§9 | `build_spec.py` | 実装済み | 現行リポジトリに `build_spec.py` が存在し、Markdown から HTML を生成する現行ビルドスクリプトとして扱う。 | 詳細仕様と実装の関数・定数・出力レポートを突合し、差分があれば仕様または実装を改訂する。 |
-| §10〜§20 | `runner.py` | 改訂予定 | 現行リポジトリに `runner.py` は存在するが、詳細仕様にはマルチブランチ、SSH 転送、ペンディングキュー、スナップショット、通知再送、サーキットブレーカー等の拡張仕様が含まれる。現行実装との差分確認が未完了である。 | `runner.py` の現行実装と §10〜§20 を突合し、実装済み範囲、仕様化済み・未実装範囲、将来計画へ再分類する。 |
+| §10〜§20 | `runner.py` | 改訂予定 | 現行リポジトリに `runner.py` は存在する。§10a で現行実装範囲と仕様化済み・未実装範囲を再分類済みだが、§11〜§20 本文には拡張仕様が混在している。 | §11〜§20 本文を、現行実装範囲と未実装拡張仕様に分割して再構成する。 |
 | §21〜§22 | `api_server.py` | 仕様化済み・未実装 | 管理 API サーバーの責務、設定値、systemd、エンドポイント、レスポンス、エラー形式が定義されているが、現行リポジトリに `api_server.py` は存在しない。 | 実装前に API エンドポイントごとの入出力、状態ファイル、エラー条件の不足を確認する。 |
 | §23 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | SDK のクラス、メソッド、戻り値、HTTP 対応関係が定義されているが、現行リポジトリに `adlaire-ci-sdk.js` は存在しない。 | API 仕様と SDK メソッド一覧を同期確認し、未定義の戻り値型があれば具体化する。 |
 | §24 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツールの画面構成、表示条件、パネル責務が定義されているが、現行リポジトリに `admin/index.html` は存在しない。 | API・SDK と UI 操作の対応を確認し、各操作の成功/失敗表示を具体化する。 |
@@ -53,7 +53,7 @@
 | §26 | `runner.py` / `api_server.py` | 改訂予定 | セットアップ・アップデート手順は、未実装の `api_server.py` を含む導入手順であり、現行実装だけでは完了手順として扱えない。 | 現行実装向け手順と、管理 API 導入後の手順を分離する。 |
 | 概要内の MCP 記載 | `mcp_server.py` | 将来計画 | `mcp_server.py` は将来構成として言及されるが、詳細な入出力、ツール定義、起動手順、認証仕様は本ファイル内で実装可能な粒度まで定義されていない。 | 実装対象にする場合は、先に改訂予定へ昇格し、MCP 詳細仕様を新設する。 |
 
-成熟度棚卸しの結果、現時点で優先して整合すべき対象は `runner.py` 詳細仕様である。`runner.py` は現行実装ファイルが存在する一方で、詳細仕様側に拡張済みの未突合項目が多いため、実装済み範囲と未実装範囲を混在させたまま扱ってはならない。
+成熟度棚卸しの結果、現時点で優先して整合すべき対象は `runner.py` 詳細仕様である。`runner.py` は現行実装ファイルが存在する一方で、詳細仕様側に拡張済みの項目が多いため、§10a の分類に従って実装済み範囲と未実装範囲を区別して扱う。
 
 ---
 
@@ -875,6 +875,61 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 
 ---
 
+## 10a. CI ランナー 実装突合・再分類
+
+本節は、現行 `runner.py` と §10〜§20 の詳細仕様を突合した再分類である。
+
+現行 `runner.py` は、GitHub API で単一対象ファイルの blob SHA を確認し、変更がある場合に blob 本文を取得して `pipeline.sh` を実行し、成功後に SHA を更新する最小 CI ランナーである。
+
+### 現行実装済み範囲
+
+| 項目 | 現行実装 | 根拠 |
+|------|----------|------|
+| 起動形式 | oneshot 実行。`main()` が 1 回の変更確認とビルド実行を行って終了する。 | `main()` |
+| 設定値 | `TOKEN_FILE`、`OWNER`、`REPO`、`BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC`、`BUILD_SCRIPT`、`LOG_LEVEL`。 | `runner.py` 冒頭定数 |
+| GitHub PAT 読み込み | `TOKEN_FILE` を読み込み、不在または空の場合は ERROR ログ後に終了する。 | `read_token()` |
+| Git Trees API | `BRANCH` の tree を取得し、`TARGET_FILE` の blob SHA を検索する。 | `get_blob_sha()` |
+| SHA 比較 | `SHA_FILE` の前回 SHA と現在 SHA を比較し、一致時はビルドをスキップする。 | `read_last_sha()`、`main()` |
+| Git Blobs API | blob 本文を取得し、Base64 をデコードする。 | `fetch_blob()` |
+| ソース書き出し | 取得した Markdown を `SRC` へ書き出す。 | `write_src()` |
+| ビルド起動 | `SRC` と同じディレクトリ配下の `.ci/pipeline.sh` を `bash` で実行する。 | `run_pipeline()` |
+| 成功時 SHA 更新 | `pipeline.sh` が exit 0 の場合のみ `SHA_FILE` を現在 SHA で更新する。 | `save_sha()`、`main()` |
+| ログ出力 | Python `logging` を stdout へ出力する。 | `setup_logging()` |
+
+### 仕様化済み・未実装範囲
+
+以下は §10〜§20 に詳細仕様が存在するが、現行 `runner.py` には未実装である。実装する場合は、該当仕様を再確認し、必要に応じて詳細仕様を補強してから実装する。
+
+| 項目 | 関連節 | 未実装内容 |
+|------|--------|------------|
+| JSON 形式の SHA キャッシュ | §11〜§13 | 現行 `SHA_FILE` はプレーンテキスト SHA として読み書きされる。仕様上の `{"sha": "..."}` JSON 形式は未実装。 |
+| `BRANCH_TARGETS` | §12〜§13 | 複数ブランチ、複数 target file、複数出力先の設定構造は未実装。現行は `BRANCH` / `TARGET_FILE` / `SHA_FILE` / `SRC` の単一設定。 |
+| GitHub API リトライ | §12〜§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、レート制限待機は未実装。 |
+| ビルドロック | §11〜§13 | `.build_lock` による多重起動防止は未実装。 |
+| ビルドクールダウン | §12〜§13 | `BUILD_COOLDOWN_SECONDS` による起動抑制は未実装。 |
+| 強制再ビルド間隔 | §12〜§13 | `FORCE_BUILD_INTERVAL` による変更なし時の定期強制ビルドは未実装。 |
+| コミット情報記録 | §13 | ビルドトリガー commit の SHA、message、author、date 取得は未実装。 |
+| 事前チェック | §13 | ディスク空き容量、Python バージョン、`build_spec.py` 存在確認は未実装。 |
+| Webhook 通知 | §13 | `.notify_config` 読み込み、成功/失敗/転送失敗/週次サマリー通知、`.notify_pending` 再送は未実装。 |
+| ビルドログ保存 | §11〜§15 | `.build_logs/{id}.json` への stdout/stderr、変換レポート、所要時間保存は未実装。 |
+| SSH 転送 | §14a | SHA256 差分検出、stdin パイプ転送、転送後整合性検証、ペンディングキューは未実装。 |
+| スナップショット | §14b | `.snapshots/` への成果物保存、世代管理、ロールバック連携は未実装。 |
+| サーキットブレーカー | §13 | `.build_circuit_state` による連続失敗停止は未実装。 |
+| ログ世代管理 | §13 | `LOG_KEEP_N` による `.build_logs/` 削除は未実装。 |
+| 出力サイズ警告 | §12〜§13 | `OUTPUT_SIZE_WARN_MB` による WARN ログと `size_warn` 記録は未実装。 |
+
+### 将来計画として扱う範囲
+
+§10〜§20 には、現行 runner の直接責務ではなく管理 API、標準管理ツール、将来の運用機能と結合して成立する項目が含まれる。これらは実装対象へ進める前に、API・SDK・UI との責務境界を再確認する。
+
+| 項目 | 理由 |
+|------|------|
+| API 経由の動的ブランチ設定 | `runner.py` 単体では設定 API を持たないため、`api_server.py` 実装と合わせて扱う。 |
+| API 経由のロールバック | `POST /api/history/{id}/rollback` は `api_server.py` のエンドポイント実装が前提となる。 |
+| 管理画面からのスケジュール操作 | systemd timer の変更 API と標準管理ツール UI が前提となる。 |
+
+---
+
 ## 11. CI ランナー ファイル構成
 
 本節のファイル構成は、現行実装ファイルと仕様化済み・未実装ファイルを同じ運用ディレクトリ上で示す。現行リポジトリに存在する実装ファイルは `build_spec.py` と `runner.py` のみである。
@@ -947,6 +1002,10 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 
 ## 12. 設定値（`runner.py` 冒頭）
 
+現行 `runner.py` に実装済みの設定値は、`TOKEN_FILE`、`OWNER`、`REPO`、`BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC`、`BUILD_SCRIPT`、`LOG_LEVEL` のみである。
+
+以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`BUILD_COOLDOWN_SECONDS`、`HISTORY_KEEP_N`、`FORCE_BUILD_INTERVAL`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` は仕様化済み・未実装の拡張設定である。
+
 ```python
 TOKEN_FILE             = "/opt/adlaire-builder/.github_token"        # GitHub PAT（パーミッション 600）
 OWNER                  = "<GitHubオーナー名>"                         # リポジトリオーナー
@@ -985,9 +1044,11 @@ BRANCH_TARGETS = [
 ]
 ```
 
-**旧設定値との対応（廃止済み）：**
+**拡張設定への移行対応（仕様化済み・未実装）：**
 
-| 旧定数 | 移行先 |
+現行 `runner.py` の単一ターゲット設定を `BRANCH_TARGETS` へ拡張する場合の対応は以下とする。現行実装では、左列の定数が引き続き使用される。
+
+| 現行定数 | 拡張後の移行先 |
 |--------|--------|
 | `BRANCH` | `BRANCH_TARGETS[n]["branch"]` |
 | `TARGET_FILE` | `BRANCH_TARGETS[n]["target_file"]` |
@@ -1002,6 +1063,26 @@ BRANCH_TARGETS = [
 ---
 
 ## 13. 処理フロー
+
+本節の処理フローには、現行実装済みの最小フローと、仕様化済み・未実装の拡張フローが含まれる。現行 `runner.py` の実装済みフローは以下である。
+
+```
+runner.py 起動
+    │
+    ├─ .github_token 読み込み
+    ├─ Git Trees API で TARGET_FILE の blob SHA を取得
+    ├─ SHA_FILE の前回 SHA と比較
+    │   ├─ 一致 → INFO ログを出して正常終了
+    │   └─ 不一致 → 続行
+    ├─ Git Blobs API で blob 本文を取得
+    ├─ Base64 デコード後、SRC へ書き出し
+    ├─ bash {dirname(SRC)}/.ci/pipeline.sh を実行
+    │   ├─ exit 0 → SHA_FILE を現在 SHA で更新
+    │   └─ exit 0 以外 → SHA_FILE を更新せず終了コード 1 で終了
+    └─ 正常終了
+```
+
+以下は、仕様化済み・未実装の拡張フローである。
 
 ```
 runner.py 起動（systemd タイマーから呼び出し）
