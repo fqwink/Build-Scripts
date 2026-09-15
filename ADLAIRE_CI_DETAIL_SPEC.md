@@ -45,15 +45,44 @@
 | 対象範囲 | 対象コンポーネント | 成熟度 | 判定理由 | 次に必要な作業 |
 |----------|-------------------|--------|----------|----------------|
 | §0〜§9 | `build_spec.py` | 実装済み | 現行リポジトリに `build_spec.py` が存在し、Markdown から HTML を生成する現行ビルドスクリプトとして扱う。 | 詳細仕様と実装の関数・定数・出力レポートを突合し、差分があれば仕様または実装を改訂する。 |
-| §10〜§20 | `runner.py` | 改訂予定 | 現行リポジトリに `runner.py` は存在する。§10a で現行実装範囲と仕様化済み・未実装範囲を再分類済みだが、§11〜§20 本文には拡張仕様が混在している。 | §11〜§20 本文を、現行実装範囲と未実装拡張仕様に分割して再構成する。 |
+| §10〜§20 | `runner.py` | 実装済み / 仕様化済み・未実装 | 現行実装済みの最小 CI ランナーと、仕様化済み・未実装の拡張機能を §10a〜§20 で分離している。 | 実装着手時は対象項目の成熟度を確認し、現行実装と拡張仕様を混同しない。 |
 | §21〜§22 | `api_server.py` | 仕様化済み・未実装 | 管理 API サーバーの責務、設定値、systemd、エンドポイント、レスポンス、エラー形式が定義されているが、現行リポジトリに `api_server.py` は存在しない。 | 実装前に API エンドポイントごとの入出力、状態ファイル、エラー条件の不足を確認する。 |
-| §23 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | SDK のクラス、メソッド、戻り値、HTTP 対応関係が定義されているが、現行リポジトリに `adlaire-ci-sdk.js` は存在しない。 | API 仕様と SDK メソッド一覧を同期確認し、未定義の戻り値型があれば具体化する。 |
+| §23 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | SDK のクラス、メソッド、戻り値、HTTP 対応関係が定義されているが、現行リポジトリに `adlaire-ci-sdk.js` は存在しない。 | API 仕様と SDK メソッド一覧を同期確認し、不足している戻り値型があれば具体化する。 |
 | §24 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツールの画面構成、表示条件、パネル責務が定義されているが、現行リポジトリに `admin/index.html` は存在しない。 | API・SDK と UI 操作の対応を確認し、各操作の成功/失敗表示を具体化する。 |
 | §25 | `api_server.py` | 仕様化済み・未実装 | 認証情報ファイル、パスワードハッシュ、ログイン回数、パスワード変更フローが定義されているが、現行リポジトリに認証実装は存在しない。 | セッション管理、トークン生成、ファイル権限、異常系を API 仕様と突合する。 |
-| §26 | `runner.py` / `api_server.py` | 改訂予定 | セットアップ・アップデート手順は、未実装の `api_server.py` を含む導入手順であり、現行実装だけでは完了手順として扱えない。 | 現行実装向け手順と、管理 API 導入後の手順を分離する。 |
+| §26 | `runner.py` / `api_server.py` | 実装済み / 仕様化済み・未実装 | 現行実装向け手順と、管理 API 導入後の手順を分離している。 | 導入対象の成熟度に応じて、現行実装手順または管理 API 導入後手順を選択する。 |
 | 概要内の MCP 記載 | `mcp_server.py` | 将来計画 | `mcp_server.py` は将来構成として言及されるが、詳細な入出力、ツール定義、起動手順、認証仕様は本ファイル内で実装可能な粒度まで定義されていない。 | 実装対象にする場合は、先に改訂予定へ昇格し、MCP 詳細仕様を新設する。 |
 
 成熟度棚卸しの結果、現時点で優先して整合すべき対象は `runner.py` 詳細仕様である。`runner.py` は現行実装ファイルが存在する一方で、詳細仕様側に拡張済みの項目が多いため、§10a の分類に従って実装済み範囲と未実装範囲を区別して扱う。
+
+---
+
+## 0c. 完全実装精度ゲート
+
+本節は、仕様化済み・未実装項目を実装へ進める前の必須ゲートである。実装者は、対象機能について以下の条件をすべて満たすまで実装を開始してはならない。
+
+| ゲート | 合格条件 |
+|--------|----------|
+| 成熟度 | 対象項目が「仕様化済み・未実装」または「実装済み」に分類され、未仕様化・将来計画・改訂予定のまま残っていない。 |
+| 責務境界 | 対象コンポーネント、対象ファイル、呼び出し元、呼び出し先、変更してよい状態ファイルが明記されている。 |
+| 入出力 | すべての入力、出力、既定値、許容値、必須/任意、型、文字コード、時刻形式が明記されている。 |
+| 状態管理 | 状態ファイルのパス、JSON 形式、更新タイミング、初期状態、破損時の扱い、権限が明記されている。 |
+| 正常系 | 処理順序、分岐条件、ループ条件、成功条件、終了条件が明記されている。 |
+| 異常系 | エラー条件、ログレベル、HTTP ステータス、戻り値、再試行有無、処理継続/中断条件が明記されている。 |
+| 冪等性 | 同一リクエスト、再実行、途中失敗後の再開で二重実行・二重削除・状態破壊が発生しない条件が明記されている。 |
+| 排他制御 | 同時実行、ロック、タイムアウト、ロック残存時の扱いが明記されている。 |
+| セキュリティ | 秘密情報の保存禁止、マスク、ファイル権限、認証/認可、外部公開可否が明記されている。 |
+| 検証 | 構文確認、単体確認、手動 API 確認、生成物確認、ログ確認、失敗系確認のいずれを行うかが明記されている。 |
+
+上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に本ファイルまたは `ADLAIRE_CI_SPEC.md` を改訂し、未充足項目を仕様として確定する。
+
+実装後の完了条件は以下とする。
+
+1. 実装した機能が、本ファイルに記載された入力、出力、状態、異常系、検証条件と一致する。
+2. 未実装のまま残した仕様化済み項目がある場合、実装済み機能と誤読されないよう成熟度が明記されている。
+3. `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、`DOCUMENT_INDEX.md`、`AGENTS.md` の正本関係とファイル名が矛盾していない。
+4. 実装ファイルを変更した場合、構文確認または実行確認の結果が記録できる。
+5. 仕様外の挙動、暗黙の既定値、未記載の状態ファイル、未記載のエラー応答が存在しない。
 
 ---
 
@@ -835,8 +864,8 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
 
 警告が発生した場合、`[REPORT]` 行の直前に `[WARN] {メッセージ}` 形式で 1 件ずつ出力する。
 
-**runner.py による取り込み：**
-runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
+**runner.py による取り込み（仕様化済み・未実装）：**
+現行 `runner.py` は `[REPORT]` 行と `[WARN]` 行をパースせず、`.build_logs/{id}.json` も作成しない。将来の CI ランナー拡張では、`runner.py` が `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
 
 ```json
 {
@@ -1510,6 +1539,8 @@ sudo journalctl -u adlaire-ci -f               # ログ確認
 
 ## 18. 初回セットアップ手順
 
+本節は CI ランナー導入手順である。現行 `runner.py` の実装済み範囲と、SSH 転送・管理 API の仕様化済み・未実装範囲をコメントで分離する。
+
 ```bash
 # 1. deploy ユーザー作成
 sudo useradd -m -s /bin/bash deploy
@@ -1523,6 +1554,7 @@ echo "<PAT>" | sudo -u deploy tee /opt/adlaire-builder/.github_token
 sudo chmod 600 /opt/adlaire-builder/.github_token
 
 # 3b. CI サーバー → 配信サーバー SSH 鍵設定
+#     仕様化済み・未実装の SSH 転送機能を導入する場合のみ実行する。
 #     deploy ユーザーの SSH 鍵を生成（既存鍵がある場合はスキップ）
 sudo -u deploy ssh-keygen -t ed25519 -f /home/deploy/.ssh/id_ed25519 -N ""
 #     公開鍵を配信サーバーへ登録（配信サーバー側で実行）
@@ -1530,8 +1562,9 @@ sudo -u deploy ssh-keygen -t ed25519 -f /home/deploy/.ssh/id_ed25519 -N ""
 #     初回接続時の known_hosts 登録
 sudo -u deploy ssh-keyscan -H <配信サーバーIP> >> /home/deploy/.ssh/known_hosts
 
-# 4. SHA キャッシュファイルを初期化（JSON 形式）
-echo '{"sha": ""}' | sudo -u deploy tee /opt/adlaire-builder/.last_sha
+# 4. SHA キャッシュファイルを初期化
+#    現行 runner.py はプレーンテキスト SHA として読み書きする。
+printf '%s\n' "" | sudo -u deploy tee /opt/adlaire-builder/.last_sha
 sudo chmod 600 /opt/adlaire-builder/.last_sha
 
 # 5. build_spec.py を配置
@@ -1578,14 +1611,30 @@ sudo systemctl enable --now adlaire-admin
 
 ## 20. CI ランナー 既知の制限
 
+### 20.1 現行 `runner.py` の制限
+
 | 制限 | 詳細 |
 |------|------|
-| ポーリング遅延 | 変更検出はタイマー間隔（デフォルト 5 分）に依存する。即時反応は不可（Webhook 受信で補完可能 → §22） |
-| `pipeline.sh` のみ対応 | YAML 形式のパイプライン定義には非対応（シェルスクリプト固定） |
-| ネットワーク断時の挙動 | GitHub API 失敗時は `API_RETRY_MAX` 回まで指数バックオフで再試行する。全試行失敗時のみ ERROR ログを記録してエントリをスキップする |
-| `BRANCH_TARGETS` 直列処理 | 複数エントリはリスト順に順次処理する。並列処理には非対応 |
-| ペンディングキューは再試行のみ | ペンディング再試行が連続失敗した場合の上限・放棄ポリシーは未定義 |
-| Webhook 受信の外部公開 | `POST /api/webhook` は `api_server.py`（`127.0.0.1` バインド）のため、GitHub からの受信にはリバースプロキシが必要 |
+| ポーリング遅延 | 変更検出は systemd timer の実行間隔に依存する。現行実装単体では即時反応しない。 |
+| `pipeline.sh` のみ対応 | ビルド起動は `SRC` と同じディレクトリ配下の `.ci/pipeline.sh` 固定。YAML 形式のパイプライン定義、複数ステージ定義、動的パイプライン選択は行わない。 |
+| 単一ターゲットのみ対応 | 現行実装は `BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC` の単一設定のみ処理する。複数ブランチ、複数ファイル、複数出力先は処理しない。 |
+| GitHub API 失敗時の扱い | 現行実装は指数バックオフ再試行を行わない。GitHub API 呼び出しで例外または不正応答が発生した場合は ERROR ログを出して当該実行を失敗させ、SHA を更新しない。次回 systemd timer 実行時に通常の変更検出から再試行する。 |
+| ビルド失敗時の扱い | `pipeline.sh` が非 0 で終了した場合は ERROR ログを出し、SHA を更新しない。次回実行では同じ blob SHA を再検出して再度ビルド対象になる。 |
+| 転送なし | SSH 転送、転送検証、ペンディングキュー、スナップショット保存は実行しない。 |
+| ログ保存なし | `.build_logs/{id}.json`、`.build_history`、`.notify_pending`、`.build_circuit_state` は作成しない。ログは stdout / journald 経由の実行ログのみ。 |
+
+### 20.2 仕様化済み・未実装拡張の制限
+
+以下は §10a で未実装と分類した CI ランナー拡張を実装する場合の制限である。現行 `runner.py` の実装済み挙動として扱ってはならない。
+
+| 制限 | 詳細 |
+|------|------|
+| Webhook 受信の外部公開 | `POST /api/webhook` は `api_server.py`（`127.0.0.1` バインド）で受信するため、GitHub から直接受信する構成ではリバースプロキシと TLS 終端が必要。 |
+| `BRANCH_TARGETS` 直列処理 | 複数エントリはリスト順に順次処理する。並列処理は行わない。1 件の処理が失敗しても、失敗をログと `.build_logs/{id}.json` に記録した上で次エントリへ進む。 |
+| GitHub API リトライ | GitHub API 失敗時は `API_RETRY_MAX` 回まで指数バックオフで再試行する。全試行失敗時は ERROR ログを記録し、当該ターゲットのビルドをスキップする。SHA は更新しない。 |
+| ペンディングキュー | ペンディング再試行が失敗した場合、`retry_count` を 1 増やしてエントリを保持する。runner による自動放棄は行わない。削除は転送成功時、または管理 API / 手動運用で明示的に削除する場合に限定する。 |
+| ペンディングキュー肥大化 | `queue_max_size` を超えた新規投入は ERROR ログを記録し、新規エントリを追加しない。既存エントリは削除しない。 |
+| サーキットブレーカー | 連続失敗回数が `API_CIRCUIT_BREAKER_THRESHOLD` 以上になった場合はポーリングを停止し、`POST /api/circuit-breaker/reset` でのみ復帰する。 |
 
 ---
 
@@ -1595,8 +1644,8 @@ sudo systemctl enable --now adlaire-admin
 
 ```
 systemd timer
-  └─ runner.py（変更検出・ビルド起動・SSH 転送）
-       └─ SSH → 静的コンテンツ配信サーバー
+  └─ runner.py（現行: 変更検出・ビルド起動）
+       └─ SSH 転送（仕様化済み・未実装拡張）
 
 api_server.py（常駐 HTTP サーバー、仕様化済み・未実装）
 
@@ -1656,6 +1705,33 @@ sudo journalctl -u adlaire-admin -f        # ログ確認
 **ベース URL：** `http://localhost:{PORT}/api`
 **認証：** `Authorization: Bearer {SESSION_TOKEN}`（`/api/login` で取得したセッショントークン）
 **レスポンス形式：** JSON
+
+### 22.0 API 共通契約
+
+本節の API は `api_server.py` の仕様化済み・未実装仕様である。実装する場合は、エンドポイント固有仕様より先に以下の共通契約を満たす。
+
+| 項目 | 仕様 |
+|------|------|
+| 文字コード | リクエストボディ、レスポンスボディ、状態ファイルはいずれも UTF-8 とする。 |
+| JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
+| 成功レスポンス | 各エンドポイント例に記載した JSON オブジェクトを返す。空レスポンスは使用しない。 |
+| エラーレスポンス | エラー時は `{"error": "<message>"}` を返す。補足情報が必要な場合のみ `details` を追加し、`details` は文字列または JSON オブジェクトとする。 |
+| 未知のパス | 定義されていない `/api/...` は `404 Not Found` と `{"error": "Not found"}` を返す。 |
+| 未対応メソッド | パスは存在するがメソッドが異なる場合は `405 Method Not Allowed` と `{"error": "Method not allowed"}` を返す。 |
+| JSON 不正 | JSON ボディのパースに失敗した場合は `400 Bad Request` と `{"error": "Invalid JSON"}` を返す。 |
+| 入力検証失敗 | 型、必須キー、範囲、有効値が仕様と異なる場合は `422 Unprocessable Entity` と `{"error": "Validation failed", "details": ...}` を返す。 |
+| 認証なし | 認証必須エンドポイントで Bearer トークンがない、または無効な場合は `401 Unauthorized` と `{"error": "Unauthorized"}` を返す。 |
+| 権限不足 | 読み取り専用トークンで変更系 API を呼び出す場合など、認証済みだが権限不足の場合は `403 Forbidden` と `{"error": "Forbidden"}` を返す。 |
+| 競合 | 実行中ビルド、停止済みスケジュールへの重複 pause、存在しない実行状態への cancel など状態競合は `409 Conflict` を返す。 |
+| 未設定機能 | Secret 未設定など、機能が仕様化済みでも必要設定が存在しない場合は `501 Not Implemented` または各エンドポイントに明記されたステータスを返す。 |
+| 時刻形式 | API レスポンスと状態ファイルの時刻は ISO 8601 形式の文字列とする。タイムゾーンを付ける場合は UTC の `Z` または明示オフセットを使用する。 |
+| GET の副作用 | `GET` エンドポイントは状態ファイルを書き換えない。診断 API が外部確認を行う場合も、結果保存は行わない。 |
+| 状態ファイル更新 | JSON 状態ファイルの更新は一時ファイルへ書き出してから `os.replace()` で置換する。秘密情報を含むファイルは作成後に mode `600` を設定する。 |
+| 秘密情報 | PAT、Webhook Secret、セッショントークン、API トークンはログ、バックアップ、GET レスポンスへ平文出力しない。設定済み表示は `"***"` または boolean で返す。 |
+| 並列更新 | 同一状態ファイルを更新する API は、ファイル単位のロックを取得してから読み込み、検証、書き込みを行う。ロック取得待ちは最大 10 秒とし、超過時は `409 Conflict` を返す。 |
+| 監査ログ | 設定変更 API は、変更前後の値を `.config_log` に追記する。ただし秘密情報の値は変更前後とも `"***"` にマスクする。 |
+
+エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、§22、§23、§24 の対応関係を同時に確認する。
 
 | メソッド | パス | 認証 | 説明 |
 |---------|------|------|------|
@@ -3089,6 +3165,8 @@ POST /api/login
 
 > **安定版ポリシー：** タグ付き安定版リリース（例：`v1.0.0`）のみをサポートする。開発ブランチ（`main` 等）の直接追従は非対応。`git pull` は使用しない。
 
+本節は、現行実装のみのセットアップ手順と、仕様化済み・未実装コンポーネント導入後のセットアップ手順を分離する。現行リポジトリに存在しない `api_server.py`、`admin/index.html`、`adlaire-ci-sdk.js`、`.build_logs/`、`.snapshots/` を現行セットアップの必須手順として扱ってはならない。
+
 ### §26.1 要件
 
 | 項目 | 要件 |
@@ -3096,7 +3174,7 @@ POST /api/login
 | Python | 3.9 以上（標準ライブラリのみ、追加インストール不要） |
 | init システム | systemd（Linux） |
 | バージョン管理 | git |
-| ネットワーク | デプロイ先への SSH 接続（SSH 転送機能を使用する場合） |
+| ネットワーク | GitHub API への HTTPS 送信。SSH 転送機能を実装した場合のみデプロイ先への SSH 接続。 |
 
 ### §26.2 設定変数
 
@@ -3109,41 +3187,76 @@ POST /api/login
 | `SERVICE_USER` | `root` | systemd サービスの実行ユーザー |
 | `VERSION` | —（必須） | セットアップ・アップデート対象の安定版タグ（例：`v1.0.0`） |
 
-### §26.3 初回セットアップ手順
+### §26.3 現行実装の初回セットアップ手順
+
+対象は現行実装済みの `build_spec.py`、`runner.py`、`adlaire-ci.service`、`adlaire-ci.timer` のみとする。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
 REPO_URL="https://github.com/<owner>/<repo>.git"
 INSTALL_DIR="/opt/adlaire-builder"
 VERSION="v1.0.0"
+SERVICE_USER="root"
 
 # ── 1. リポジトリ取得 ─────────────────────────────────
 git clone "$REPO_URL" "$INSTALL_DIR"
 git -C "$INSTALL_DIR" checkout "$VERSION"
 
-# ── 2. 必要ディレクトリ作成 ───────────────────────────
+# ── 2. GitHub PAT 保存 ────────────────────────────────
+printf '%s\n' "<PAT>" > "$INSTALL_DIR/.github_token"
+chmod 600 "$INSTALL_DIR/.github_token"
+
+# ── 3. SHA キャッシュ初期化 ───────────────────────────
+printf '%s\n' "" > "$INSTALL_DIR/.last_sha"
+chmod 600 "$INSTALL_DIR/.last_sha"
+
+# ── 4. systemd サービスファイル配置 ───────────────────
+# §26.4.1 のファイル内容を /etc/systemd/system/ に配置した上で:
+systemctl daemon-reload
+
+# ── 5. タイマー有効化・起動 ───────────────────────────
+systemctl enable --now adlaire-ci.timer
+
+# ── 6. 起動確認 ───────────────────────────────────────
+systemctl status adlaire-ci.timer
+```
+
+現行セットアップでは以下を実行しない。
+
+| 対象 | 理由 |
+|------|------|
+| `python3 api_server.py --init-credentials` | `api_server.py` は仕様化済み・未実装。 |
+| `systemctl enable --now adlaire-admin` | 管理 API サーバーは仕様化済み・未実装。 |
+| `.build_logs/` 作成 | ビルドログ保存は仕様化済み・未実装。 |
+| `.snapshots/` 作成 | スナップショット保存は仕様化済み・未実装。 |
+
+### §26.3b 管理 API 導入後の追加セットアップ手順（仕様化済み・未実装）
+
+`api_server.py`、`admin/index.html`、`adlaire-ci-sdk.js` を実装した後にのみ本手順を実行する。
+
+```bash
+# ── 1. 拡張用ディレクトリ作成 ─────────────────────────
 mkdir -p "$INSTALL_DIR/.build_logs"
 mkdir -p "$INSTALL_DIR/.snapshots"
 
-# ── 3. 初期認証情報生成（初期パスワード: admin）────────
+# ── 2. 初期認証情報生成（初期パスワード: admin）────────
 python3 "$INSTALL_DIR/api_server.py" --init-credentials
-
-# ── 4. パーミッション設定 ─────────────────────────────
 chmod 600 "$INSTALL_DIR/.admin_credentials"
 
-# ── 5. systemd サービスファイル配置 ───────────────────
-# §26.4 のファイル内容を /etc/systemd/system/ に配置した上で:
+# ── 3. 管理 API systemd サービス配置 ─────────────────
+# §26.4.2 のファイル内容を /etc/systemd/system/adlaire-admin.service に配置した上で:
 systemctl daemon-reload
 
-# ── 6. サービス有効化・起動 ───────────────────────────
-systemctl enable adlaire-ci.timer adlaire-api
-systemctl start  adlaire-ci.timer adlaire-api
+# ── 4. サービス有効化・起動 ───────────────────────────
+systemctl enable --now adlaire-admin
 
-# ── 7. 起動確認 ───────────────────────────────────────
-systemctl status adlaire-ci.timer adlaire-api
+# ── 5. 起動確認 ───────────────────────────────────────
+systemctl status adlaire-admin
 ```
 
 ### §26.4 systemd サービスファイル
+
+#### §26.4.1 現行実装の systemd ファイル
 
 **`/etc/systemd/system/adlaire-ci.service`**（`runner.py`）：
 
@@ -3173,7 +3286,9 @@ Unit=adlaire-ci.service
 WantedBy=timers.target
 ```
 
-**`/etc/systemd/system/adlaire-api.service`**（`api_server.py`）：
+#### §26.4.2 管理 API 導入後の systemd ファイル（仕様化済み・未実装）
+
+**`/etc/systemd/system/adlaire-admin.service`**（`api_server.py`）：
 
 ```ini
 [Unit]
@@ -3196,7 +3311,7 @@ WantedBy=multi-user.target
 
 ### §26.5 アップデート手順
 
-`git pull` は使用しない。安定版タグを指定してチェックアウトし、サービスを再起動する。
+`git pull` は使用しない。安定版タグを指定してチェックアウトし、サービスを再起動する。現行実装のみの場合、管理 API サービスは再起動対象に含めない。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
@@ -3210,20 +3325,38 @@ git -C "$INSTALL_DIR" tag --list --sort=-v:refname
 # ── 2. 対象バージョンへ切り替え ───────────────────────
 git -C "$INSTALL_DIR" checkout "$NEW_VERSION"
 
-# ── 3. サービス再起動 ─────────────────────────────────
-systemctl restart adlaire-ci.timer adlaire-api
+# ── 3. 現行実装のサービス再起動 ───────────────────────
+systemctl restart adlaire-ci.timer
 
 # ── 4. 起動確認 ───────────────────────────────────────
-systemctl status adlaire-ci.timer adlaire-api
+systemctl status adlaire-ci.timer
+```
+
+管理 API 導入後は、追加で `adlaire-admin` を再起動する。
+
+```bash
+systemctl restart adlaire-admin
+systemctl status adlaire-admin
 ```
 
 ### §26.6 サービス操作リファレンス
 
+#### 現行実装
+
 | 操作 | コマンド |
 |------|---------|
-| 状態確認 | `systemctl status adlaire-ci.timer adlaire-api` |
-| 起動 | `systemctl start adlaire-ci.timer adlaire-api` |
-| 停止 | `systemctl stop adlaire-ci.timer adlaire-api` |
-| 再起動 | `systemctl restart adlaire-ci.timer adlaire-api` |
+| 状態確認 | `systemctl status adlaire-ci.timer` |
+| 起動 | `systemctl start adlaire-ci.timer` |
+| 停止 | `systemctl stop adlaire-ci.timer` |
+| 再起動 | `systemctl restart adlaire-ci.timer` |
 | ログ確認（runner） | `journalctl -u adlaire-ci.service -f` |
-| ログ確認（API） | `journalctl -u adlaire-api -f` |
+
+#### 管理 API 導入後（仕様化済み・未実装）
+
+| 操作 | コマンド |
+|------|---------|
+| 状態確認 | `systemctl status adlaire-admin` |
+| 起動 | `systemctl start adlaire-admin` |
+| 停止 | `systemctl stop adlaire-admin` |
+| 再起動 | `systemctl restart adlaire-admin` |
+| ログ確認（API） | `journalctl -u adlaire-admin -f` |
