@@ -193,6 +193,21 @@ Pull Request作成自動化では、Pull Requestのmergeを行ってはならな
 
 Pull Request作成自動化は、承認済み変更作業の範囲内で行うGit操作に限る。未承認のファイル作成、編集、移動、削除、リネーム、整形、生成物更新を含めてはならない。
 
+Pull Request 作成前には、変更内容に応じて以下を確認する。
+
+- 文書変更では、`rg` で旧名称、矛盾参照、移行前ファイル名が残っていないか確認する。
+- 文書変更では、`git diff --stat` で変更範囲を確認する。
+- ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
+- 実装変更では、対象言語に応じた構文確認を行う。Python 実装では `PYTHONPYCACHEPREFIX=/tmp/codex-pycache python3 -m py_compile ...` を標準の構文確認とする。
+- 実装変更では、必要に応じて対象スクリプトの実行確認または生成物確認を行う。
+- 仕様変更では、`build_spec_v3_spec.md`、`DOCUMENT_INDEX.md`、`DESIGN.md`、実装ファイルの整合を確認する。
+
+Pull Request 本文には、少なくとも以下を記載する。
+
+- `Summary`
+- `Verification`
+- 未実施の確認がある場合は、その理由
+
 ---
 
 ## 5. 外部依存ルール
