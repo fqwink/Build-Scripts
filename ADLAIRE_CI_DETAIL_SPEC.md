@@ -1422,6 +1422,10 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 
 ## 15. ログ
 
+本節は、現行実装済みの stdout ログと、仕様化済み・未実装の構造化ログ拡張を分けて定義する。
+
+### 現行実装済みログ
+
 Python 標準の `logging` モジュールを使用する。出力先は stdout（systemd が journald に転送）。
 
 | レベル | 出力条件 |
@@ -1430,6 +1434,26 @@ Python 標準の `logging` モジュールを使用する。出力先は stdout�
 | `WARNING` | — |
 | `ERROR` | トークン読み込み失敗、API 失敗、ビルド失敗 |
 | `DEBUG` | API レスポンス詳細等（`LOG_LEVEL = "DEBUG"` 時のみ） |
+
+現行 `runner.py` は `.build_logs/{id}.json` を作成しない。`pipeline.sh` の stdout / stderr 保存、`[REPORT]` / `[WARN]` の取り込み、ビルド所要時間、転送検証結果、コミット情報、ログ世代管理は現行実装済み機能として扱ってはならない。
+
+### 仕様化済み・未実装のログ拡張
+
+以下は CI ランナー拡張として仕様化済みだが、現行 `runner.py` には未実装である。
+
+| 項目 | 内容 |
+|------|------|
+| ビルドログファイル | ビルドごとに `.build_logs/{id}.json` を作成する。 |
+| stdout / stderr 保存 | `pipeline.sh` の標準出力・標準エラーをビルドログへ保存する。 |
+| 変換レポート取り込み | `build_spec.py` が出力する `[REPORT]` 行をパースし、`tables_count`、`code_blocks_count` 等へ変換して保存する。 |
+| 警告取り込み | `[WARN]` 行を配列として保存し、`warnings` 件数と整合させる。 |
+| ビルド所要時間 | `started_at`、`finished_at`、`duration_seconds` を保存する。 |
+| コミット情報 | ビルド対象 commit の SHA、message、author、date を保存する。 |
+| 転送検証結果 | SSH 転送後整合性検証の結果として `transfer_verified` を保存する。 |
+| 出力サイズ警告 | `OUTPUT_SIZE_WARN_MB` 超過時に `size_warn: true` を保存する。 |
+| ログ世代管理 | `LOG_KEEP_N` を超過した `.build_logs/{id}.json` を古いものから削除する。 |
+
+これらの拡張ログを実装する場合は、§10a の未実装範囲、§12 の拡張設定、§13 の拡張フロー、§22 の API レスポンス仕様と整合させる。
 
 ---
 
