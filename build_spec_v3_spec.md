@@ -3,7 +3,7 @@
 **対象スクリプト：** `build_spec_v3.py`（ビルド）/ `runner.py`（CI ランナー）  
 **出力ファイル：** `Adlaire-db-spec.html`  
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）  
-**ドキュメントバージョン：** V.N（累積インクリメント、リセット禁止 → Part 2 §2 参照）  
+**仕様バージョン：** V.N / **開発・安定版リリースバージョン：** V.X.N → Part 2 §2 参照  
 **最終更新：** 2026-09-14  
 
 ---
@@ -36,9 +36,8 @@
 本プロジェクトは **仕様駆動開発（Spec-Driven Development）** を採用する。
 
 - **仕様書が唯一の真実（Single Source of Truth）**：実装の追加・変更はすべて本ドキュメントへの反映を先行させる
-- **仕様→実装の順序**：設計上の決定は本ドキュメントに記録してから `build_spec_v3.py` に反映する
-- **仕様との乖離は不整合**：スクリプトの動作が本仕様書と食い違う場合、どちらかに誤りがある
-- **仕様書のバージョン管理**：スクリプトの変更履歴と仕様書の改訂履歴は同期して管理する
+- **仕様→実装の順序**：仕様書に基づいてスクリプトを修正する
+- **仕様との乖離は不整合**：乖離が生じた場合も仕様書を先に改訂し、仕様書に基づいて実装を修正する
 
 ## 3. デザイン方針
 
@@ -49,9 +48,21 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 - **ライトモード固定**（`prefers-color-scheme` 非対応、ダークモードなし）
 - 外部フォント不使用。システムフォントスタックで日本語環境の可読性を確保
 
+## 4. 技術方針
+
+| 領域 | 方針 |
+|---|---|
+| ランタイム | Python 3.9+ |
+| 言語 | Python（スクリプト）/ JavaScript（SDK） |
+| HTTP | Python 標準ライブラリ `http.server` |
+| データベース | なし（ファイルベース） |
+| Git 操作 | GitHub REST API（Blobs API）`urllib` 経由 |
+| フロントエンド | HTML / CSS / Vanilla JavaScript |
+| 推奨運用 | VPS / オンプレミス |
+
 ### — CI ランナー —
 
-## 4. CI ランナーの目的
+## 5. CI ランナーの目的
 
 GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイルの変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（`runner.py`）。GitHub Actions・Webhook・外部 CI サービスへの依存をゼロにする。
 
@@ -60,15 +71,13 @@ GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイ
 - 外部公開エンドポイント・リバースプロキシ不要
 - 標準ライブラリのみで実装し、`pip install` 不要
 
-## 5. CI ランナーの開発方針
+## 6. CI ランナーの開発方針
 
-- **仕様書が唯一の真実**：実装の変更は本ドキュメントへの反映を先行させる
-- **ゼロ外部依存**：Python 標準ライブラリのみ使用
 - **単一ファイル実装**：`runner.py` 1 ファイルで完結
 - **シンプル性優先**：HTTP サーバー不要。1 回実行して終了する oneshot 設計
 - **差分検出**：SHA キャッシュにより変更がない場合はビルドをスキップ
 
-## 6. GitHub Actions との対応関係
+## 7. GitHub Actions との対応関係
 
 | GitHub Actions | 内製ランナー |
 |---|---|
@@ -78,6 +87,37 @@ GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイ
 | `secrets.*` | PAT ファイル（`.github_token`）・サーバー上の環境変数 |
 | Actions Marketplace | なし（自前実装のみ） |
 | push トリガー | systemd タイマーによる定期ポーリング + SHA 差分検出 |
+
+### — 管理ツール —
+
+## 8. 管理ツールの目的
+
+ビルドスクリプトシステムの状態確認・操作を行う管理インターフェース。ヘッドレスアーキテクチャにより、フロントエンドとバックエンドを明確に分離する。
+
+## 9. ヘッドレスアーキテクチャ方針
+
+ビルドスクリプトシステムと管理ツールは API を介して通信する。フロントエンドとバックエンドを完全に分離し、管理ツールの実装・置き換えをバックエンドから独立させる。
+
+- バックエンド（ビルドスクリプトシステム）は API を公開する
+- フロントエンド（管理ツール）は API のみを通じてバックエンドと通信する
+- 直接のファイル操作・プロセス呼び出しは管理ツールから行わない
+
+## 10. SDK 方針
+
+API は SDK として提供し、管理ツール実装者が直接 HTTP 通信を記述しなくてよい抽象化レイヤーを提供する。
+
+- **現行対応言語**：JavaScript のみ
+- **フレームワーク非依存**：バニラ JS・React・Vue・Svelte 等、いずれの環境でも利用可能
+- **内製 SDK**：外部ライブラリへの依存はゼロ（→ Part 2 §4）
+- 標準管理ツールも本 SDK を経由して通信する
+
+## 11. 標準管理ツール方針
+
+ビルドスクリプトシステムはすぐに使える標準管理ツールを同梱する。
+
+- **実装技術**：HTML / CSS / JavaScript（バニラ）。外部フレームワーク不使用
+- **SDK 経由**：バックエンドとの通信はすべて SDK を介する
+- **カスタマイズ基盤**：標準管理ツールをベースとしたカスタマイズを前提とした設計とする。上書き・差し替えが容易な構造を維持する
 
 ---
 
@@ -94,14 +134,28 @@ GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイ
 
 ## 2. バージョン管理
 
-**スクリプトバージョン（`v3`）とドキュメントバージョン（`V.N`）は独立して管理する。** スクリプトバージョンはビルドロジックの世代を示し、ドキュメントバージョンはコンテンツの累積改訂番号を示す。
+### 仕様バージョン V.N
+
+本仕様書自体のバージョンを管理する。
 
 | 項目 | 内容 |
 |------|------|
 | 形式 | `V.N`（`V` は固定、`N` は正の整数） |
-| 更新方針 | コンテンツの変更・追記のたびに `N` を 1 以上インクリメントする |
-| リセット禁止 | スクリプトバージョン（`v3`→`v4` 等）が上がっても `N` は継続する。`V.1` に戻してはならない |
-| 例 | `V.205` → `V.206` → `V.207`（スクリプトが v4 に移行しても `V.1` に戻さない） |
+| 更新方針 | 仕様書の変更・追記のたびに `N` を 1 以上インクリメントする |
+| リセット禁止 | `N` はリセット禁止。`V.1` に戻してはならない |
+| 例 | `V.205` → `V.206` → `V.207` |
+
+### 開発・安定版リリースバージョン V.X.N
+
+ビルドおよび安定版リリースのバージョンを管理する。
+
+| 項目 | 内容 |
+|------|------|
+| 形式 | `V.X.N`（`V` は固定、`X` は安定版リリースの正の整数、`N` はビルドの正の整数） |
+| `N` 更新方針 | 開発・ビルドのたびに 1 以上インクリメントする |
+| `X` 更新方針 | 安定版リリースのたびに 1 以上インクリメントする |
+| リセット禁止 | `X` と `N` はリセット禁止。`V.1` に戻してはならない |
+| 例 | `V.0.205` → `V.1.206` → `V.1.207` |
 
 ## 3. カスタマイズ可能範囲
 
@@ -116,30 +170,140 @@ GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイ
 | バージョンバッジ | `PAGE` f-string 内 `<span class="hdr-ver">` | `V.N` 形式で累積インクリメント |
 | TOC 対象見出しレベル | `build_toc()` 内のフィルタ行（`lv <= 3`） | 上限レベルを変更可 |
 
+## 4. 外部ライブラリ・フレームワーク方針
+
+### 基本原則
+
+開発言語の**標準ライブラリのみ**を採用し、内製化を推し進める。
+
+### 外部フレームワーク
+
+**いかなる条件でも禁止する。** 例外なし。
+
+### 外部ライブラリ
+
+原則禁止とし、以下の条件を総合的に判断した上で例外的に許可する。
+
+- 内製化が技術的・実装コスト的に困難である
+- 実装難易度が著しく高い
+- 内製化完了時期の見通しが立たない
+
+許可した外部ライブラリは**許可リストへの登録を義務付ける**。リスト外のライブラリ使用は認めない。
+
+### 内製ライブラリ・フレームワーク
+
+内製化したライブラリ・フレームワークは、例外の有無に関わらず積極的に採用する。
+
+### 内製スクリプト一覧
+
+| スクリプト | 役割 |
+|-----------|------|
+| `build_spec_v3.py` | ビルドスクリプト（Markdown → HTML 変換） |
+| `runner.py` | CI ランナー（変更検出・ビルド起動） |
+| `api_server.py` | 管理 API サーバー（常駐 HTTP サーバー） |
+| `adlaire-ci-sdk.js` | JavaScript SDK（管理ツール用 API クライアント） |
+
+> 内製スクリプト・ライブラリは §4 方針に基づき積極的に採用する。新規スクリプトを追加する場合は本一覧へ登録する。  
+> 内製スクリプトは標準ライブラリのみで実装する。
+
+### 許可外部ライブラリ一覧
+
+内製スクリプト・ライブラリは許可外部ライブラリ一覧に記載しない。内製の管理は内製スクリプト一覧で行う。
+
+| ライブラリ | 用途 | 許可理由 |
+|-----------|------|---------|
+| （なし） | — | — |
+
+> 現行の許可外部ライブラリは存在しない。
+
+---
+
 ### — CI ランナー —
 
-## 4. CI ランナー セキュリティポリシー
+## 5. CI ランナー セキュリティポリシー
 
 - GitHub PAT（Personal Access Token）はファイル（`.github_token`）に保存し、パーミッションを `600` に設定する。スクリプト内にハードコードしない
 - PAT のスコープは `contents: read`（読み取り専用）のみ付与する。書き込みスコープは不要
 - ランナーは外部公開エンドポイントを持たない。サーバーから GitHub API への送信のみで動作する
 
-## 5. CI ランナー 実行ポリシー
+## 6. CI ランナー 実行ポリシー
 
 - blob SHA が前回実行時と同一の場合はビルドをスキップする（差分なしと判断）
 - `runner.py` は 1 回実行して終了する oneshot 設計とし、多重起動は systemd タイマーの設定（`OnUnitActiveSec`）で防ぐ
 - `pipeline.sh` の終了コードが `0` 以外の場合はビルド失敗としてログに記録する
 - SHA ファイルはビルド成功後にのみ更新する。ビルド失敗時は前回 SHA を保持し、次回起動時に再試行する
 
-## 6. CI ランナー ブランチポリシー
+## 7. CI ランナー ブランチポリシー
 
-- デフォルトでは `main` ブランチの push のみを対象とする
+- デフォルトでは `main` ブランチを監視対象とする
+- `main` ブランチへのマージ後、次回ポーリングサイクル（最大 5 分以内）で変更を検出しビルドを実行する
 - 対象ブランチは設定値（`BRANCH`）で変更可能
+
+### — 管理ツール —
+
+## 8. SDK ポリシー
+
+- SDK は内製とし、外部ライブラリに依存しない（→ Part 2 §4）
+- SDK の対応言語追加は本ドキュメントへの記載を先行させる
+- バックエンド API の変更は SDK の更新を伴う
+
+## 9. 標準管理ツール ポリシー
+
+- バニラ HTML / CSS / JavaScript のみで実装する。外部フレームワーク・外部ライブラリは使用しない（→ Part 2 §4）
+- バックエンドとの通信はすべて SDK 経由とする。SDK を迂回した直接 API 呼び出しは行わない
+- カスタマイズを妨げる密結合な実装は避ける
+
+## 10. データ永続化ポリシー
+
+- **現行方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・ビルドログ等）
+- RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、いかなるデータベースも現行実装では採用しない
+- 将来的にデータベースを採用する場合は、本ドキュメントへの仕様追記と §4 許可外部ライブラリ一覧の更新を先行させる
+- **データ形式：フラットファイル JSON 形式**を標準とする
+- ネストは最小限に抑え、1 ファイル 1 用途とする
+- ファイルエンコーディングは UTF-8 とする
+
+## 11. 管理ツール 認証ポリシー
+
+- **初期構成：シングルユーザー（`admin`）**
+- 初期パスワードは `admin` とする
+- 初回ログイン時はパスワード変更を促す通知を表示する
+- **5 回目のログイン時はパスワード変更を強制する**（変更完了まで管理画面の操作を制限する）
+- パスワードは平文保存禁止。ハッシュ化して保存する（§10 方針に基づきフラットファイル JSON 形式でファイル管理 → Part 3 §25）
 
 ---
 
 # Part 3 — 仕様
 > 実装の具体的詳細を定める。「どのように動作・実装するか」に答える。
+
+---
+
+## 0. システム概要
+
+本システムは 3 つのスクリプトで構成される。
+
+**`build_spec_v3.py`（ビルドスクリプト）**
+GitHub リポジトリ上の Markdown 仕様書（`adlaire-db-spec.md`）を HTML に変換してサーバーへ配置する。入力（`SRC`）と出力（`OUT`）はサーバー固定パスで管理する。
+
+**`runner.py`（CI ランナー）**
+GitHub の Git Blobs API をポーリングし、仕様書の変更を検出する。変更があった場合のみ `pipeline.sh` を介してビルドを起動する。systemd タイマー（5 分間隔）で定期実行する oneshot 設計。
+
+**`api_server.py`（管理 API サーバー）**
+常駐 HTTP サーバー（`http.server`）。管理ツールからの API リクエストを受け付け、認証・状態取得・手動ビルドトリガーを処理する。`adlaire-admin.service` として systemd に登録し、`runner.py` とは独立して常駐する。
+
+**実行フロー：**
+```
+systemd timer
+  └─ runner.py（oneshot）
+       ├─ 変更なし → スキップ
+       └─ 変更あり → pipeline.sh → build_spec_v3.py → HTML 配置
+
+adlaire-admin.service（常駐）
+  └─ api_server.py → SDK → 管理ツール
+```
+
+外部ライブラリ・git・nginx 不要。Python 標準ライブラリと GitHub PAT（`contents: read`）のみで動作する。
+
+---
 
 ## 1. 要件
 
@@ -572,12 +736,14 @@ Done → /var/www/html/Adlaire-db-spec.html  (1,713,731 bytes / 1,673 KB)
 
 ---
 
+### — CI ランナー —
+
 ## 10. CI ランナー 要件
 
 | 項目 | 内容 |
 |------|------|
 | Python バージョン | 3.9 以上 |
-| 外部依存 | **なし** — `urllib.request`・`base64`・`json`・`subprocess`・`os`・`logging`（すべて標準ライブラリ） |
+| 外部依存 | **なし** — `urllib.request`・`base64`・`json`・`subprocess`・`os`・`sys`・`logging`（すべて標準ライブラリ） |
 | 対象 OS | Linux（systemd 対応環境） |
 | ネットワーク | サーバーから `api.github.com` への HTTPS 送信のみ |
 
@@ -591,8 +757,10 @@ Done → /var/www/html/Adlaire-db-spec.html  (1,713,731 bytes / 1,673 KB)
 /opt/adlaire-builder/
 ├── runner.py            # CI ランナー本体（単一ファイル、oneshot）
 ├── build_spec_v3.py     # ビルドスクリプト（サーバー固定）
+├── api_server.py        # 管理 API サーバー（常駐）
 ├── .github_token        # GitHub PAT（パーミッション 600）
-└── .last_sha            # 前回取得時の blob SHA キャッシュ
+├── .admin_credentials   # 認証情報ファイル（JSON、パーミッション 600）
+└── .last_sha            # 前回取得時の blob SHA キャッシュ（JSON 形式）
 
 /opt/adlaire-builder/repo/
 └── adlaire-db-spec.md   # API 取得後に書き出されるソース Markdown
@@ -600,8 +768,9 @@ Done → /var/www/html/Adlaire-db-spec.html  (1,713,731 bytes / 1,673 KB)
 /var/www/html/           # HTML 出力先（nginx / Apache が配信）
 
 /etc/systemd/system/
-├── adlaire-ci.service   # systemd ユニット（oneshot）
-└── adlaire-ci.timer     # systemd タイマー（定期実行）
+├── adlaire-ci.service      # systemd ユニット（oneshot）
+├── adlaire-ci.timer        # systemd タイマー（定期実行）
+└── adlaire-admin.service   # 管理 API サーバー（常駐）
 ```
 
 ### リポジトリ側
@@ -623,9 +792,9 @@ OWNER        = "<GitHubオーナー名>"                    # リポジトリオ
 REPO         = "<リポジトリ名>"                        # リポジトリ名
 BRANCH       = "main"                                  # 対象ブランチ
 TARGET_FILE  = "adlaire-db-spec.md"                   # 監視対象ファイル
-SHA_FILE     = "/opt/adlaire-builder/.last_sha"       # blob SHA キャッシュ
+SHA_FILE     = "/opt/adlaire-builder/.last_sha"       # blob SHA キャッシュ（JSON 形式: {"sha": "..."}）
 SRC          = "/opt/adlaire-builder/repo/adlaire-db-spec.md"  # 書き出し先
-BUILD_SCRIPT = "/opt/adlaire-builder/build_spec_v3.py"
+BUILD_SCRIPT = "/opt/adlaire-builder/build_spec_v3.py"  # pipeline.sh から参照するビルドスクリプトのパス（runner.py は直接使用しない）
 LOG_LEVEL    = "INFO"
 ```
 
@@ -643,7 +812,7 @@ runner.py 起動（systemd タイマーから呼び出し）
     │   → TARGET_FILE の blob SHA を取得
     │   └─ API 失敗時：ERROR ログ、終了
     │
-    ├─ SHA_FILE の前回 SHA と比較
+    ├─ SHA_FILE の前回 SHA と比較（JSON 読み込み: `{"sha": "..."}` → sha フィールド取得）
     │   └─ 一致（変更なし）→ INFO ログ、正常終了
     │
     ├─ Step 2: Git Blobs API
@@ -655,7 +824,7 @@ runner.py 起動（systemd タイマーから呼び出し）
     │   ├─ 成功（exit 0）：INFO ログ
     │   └─ 失敗（exit ≠ 0）：ERROR ログ、SHA_FILE 更新せず終了
     │
-    └─ SHA_FILE を新 SHA で更新
+    └─ SHA_FILE を新 SHA で更新（`{"sha": "<new_sha>"}` を JSON 書き込み）
 ```
 
 ---
@@ -756,8 +925,9 @@ sudo chown -R deploy:deploy /opt/adlaire-builder
 echo "<PAT>" | sudo -u deploy tee /opt/adlaire-builder/.github_token
 sudo chmod 600 /opt/adlaire-builder/.github_token
 
-# 4. SHA キャッシュファイルを初期化
-sudo -u deploy touch /opt/adlaire-builder/.last_sha
+# 4. SHA キャッシュファイルを初期化（JSON 形式）
+echo '{"sha": ""}' | sudo -u deploy tee /opt/adlaire-builder/.last_sha
+sudo chmod 600 /opt/adlaire-builder/.last_sha
 
 # 5. build_spec_v3.py を配置
 sudo cp build_spec_v3.py /opt/adlaire-builder/build_spec_v3.py
@@ -772,6 +942,19 @@ sudo cp adlaire-ci.service /etc/systemd/system/
 sudo cp adlaire-ci.timer   /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now adlaire-ci.timer
+
+# 8. 認証情報ファイルを初期化（初期パスワード: admin）
+sudo -u deploy python3 /opt/adlaire-builder/api_server.py --init-credentials
+sudo chmod 600 /opt/adlaire-builder/.admin_credentials
+
+# 9. api_server.py を配置
+sudo cp api_server.py /opt/adlaire-builder/api_server.py
+sudo chown deploy:deploy /opt/adlaire-builder/api_server.py
+
+# 10. systemd ユニットを登録・起動
+sudo cp adlaire-admin.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now adlaire-admin
 ```
 
 ---
@@ -797,3 +980,220 @@ sudo systemctl enable --now adlaire-ci.timer
 | ポーリング遅延 | 変更検出はタイマー間隔（デフォルト 5 分）に依存する。即時反応は不可 |
 | `pipeline.sh` のみ対応 | YAML 形式のパイプライン定義には非対応（シェルスクリプト固定） |
 | ネットワーク断時の挙動 | API 失敗時はエラーログのみ記録し、次回タイマー起動まで再試行しない |
+
+---
+
+### — 管理ツール —
+
+## 21. 管理ツール システム構成
+
+```
+systemd timer
+  └─ runner.py（変更検出・ビルド起動）
+
+api_server.py（常駐 HTTP サーバー）  ← 新規コンポーネント
+  └─ adlaire-ci-sdk.js（SDK）
+       └─ admin/index.html（標準管理ツール）
+```
+
+新規コンポーネント `api_server.py` を Python 標準ライブラリ（`http.server`）で実装し、管理ツールからの API リクエストを受け付ける。`runner.py` とは独立して常駐する。
+
+**`api_server.py` 設定値（スクリプト冒頭）：**
+
+```python
+HOST       = "127.0.0.1"                           # バインドアドレス（外部公開禁止）
+PORT       = 8765                                   # リッスンポート
+CREDENTIALS_FILE = "/opt/adlaire-builder/.admin_credentials"  # 認証情報ファイル
+LOG_LEVEL  = "INFO"
+```
+
+**systemd ユニット（常駐型、タイマー不要）：**
+
+```ini
+[Unit]
+Description=Adlaire Admin API Server
+After=network.target
+
+[Service]
+Type=simple
+User=deploy
+ExecStart=/usr/bin/python3 /opt/adlaire-builder/api_server.py
+Restart=on-failure
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable --now adlaire-admin  # 登録・起動
+sudo journalctl -u adlaire-admin -f        # ログ確認
+```
+
+---
+
+## 22. バックエンド API 仕様
+
+**ベース URL：** `http://localhost:{PORT}/api`  
+**認証：** `Authorization: Bearer {SESSION_TOKEN}`（`/api/login` で取得したセッショントークン）  
+**レスポンス形式：** JSON
+
+| メソッド | パス | 認証 | 説明 |
+|---------|------|------|------|
+| `POST` | `/api/login` | 不要 | ログイン（セッショントークン返却） |
+| `POST` | `/api/logout` | 要 | ログアウト（セッション破棄） |
+| `POST` | `/api/change-password` | 要 | パスワード変更 |
+| `GET` | `/api/status` | 要 | 最終ビルド時刻・SHA・成否を返す |
+| `POST` | `/api/build` | 要 | 手動ビルドトリガー（`runner.py` を即時起動） |
+| `GET` | `/api/logs?n=100` | 要 | 最新ビルドログを n 行返す |
+
+**`POST /api/login` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "password": "admin" }
+
+// レスポンス
+{ "token": "<session_token>", "must_change": true }
+```
+
+`must_change: true` は初回ログイン（促す）または 5 回目以降（強制）のとき返す。
+
+**`POST /api/logout` リクエスト / レスポンス：**
+```json
+// リクエスト: なし（Bearer トークンのみ）
+// レスポンス: 200
+{ "message": "Logged out" }
+```
+
+**`POST /api/change-password` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "current_password": "...", "new_password": "..." }
+// レスポンス: 200
+{ "message": "Password changed" }
+```
+
+**`GET /api/status` レスポンス例：**
+```json
+{
+  "last_sha": "abc123",
+  "last_build_at": "2026-09-14T10:00:00",
+  "last_build_status": "success"
+}
+```
+
+`last_build_status` の有効値：`"success"` | `"failure"` | `"none"`（初回未実行時）
+
+**`GET /api/logs` レスポンス例：**
+```json
+{ "lines": ["2026-09-14T10:00:00 [INFO] Build start", "..."] }
+```
+
+**エラーレスポンス形式：**
+
+| ステータス | レスポンス |
+|-----------|-----------|
+| `401` | `{"error": "Unauthorized"}` |
+| `404` | `{"error": "Not Found"}` |
+| `500` | `{"error": "Internal Server Error"}` |
+
+---
+
+## 23. JavaScript SDK 仕様
+
+**ファイル：** `adlaire-ci-sdk.js`（単一ファイル、外部依存なし）  
+**モジュール形式：** ES Module（`import` / `export`）
+
+```js
+class AdalireCI {
+  constructor({ baseUrl })
+  // this._token でセッショントークンを管理。login() 後の全リクエストに自動付与
+
+  login(password)                               // POST /api/login → {token, must_change}; this._token にセット
+  logout()                                      // POST /api/logout; this._token をクリア
+  changePassword(currentPassword, newPassword)  // POST /api/change-password
+
+  getStatus()      // GET /api/status          → Promise<StatusObject>
+  triggerBuild()   // POST /api/build          → Promise<void>
+  getLogs(n = 100) // GET /api/logs?n={n}      → Promise<{lines: string[]}>
+}
+
+export { AdalireCI };
+```
+
+全メソッドは `Promise` を返す。HTTP エラー（4xx / 5xx）は `Error` としてスロー。`401` 受信時はセッション期限切れとして `this._token` をクリアする。
+
+---
+
+## 24. 標準管理ツール 仕様
+
+**ファイル構成：**
+```
+/opt/adlaire-builder/admin/
+├── index.html          # 管理画面（単一ファイル完結）
+└── adlaire-ci-sdk.js   # SDK（標準管理ツールに同梱）
+```
+
+**画面構成：**
+
+| パネル | 表示内容 | 表示条件 |
+|-------|---------|---------|
+| ログイン | パスワード入力フォーム | 未ログイン時のみ |
+| パスワード変更 | 現在・新パスワード入力フォーム | `must_change: true` 時（強制時は他パネル非表示） |
+| ステータス | 最終ビルド時刻・SHA・成否 | ログイン済み |
+| 手動実行 | ビルドトリガーボタン・実行結果表示 | ログイン済み |
+| ログビューア | 最新ビルドログ（n 行） | ログイン済み |
+
+**パスワード変更フロー：**
+- `must_change: true`（促す）: パスワード変更パネルを表示。他パネルも操作可能
+- `must_change: true`（5 回目以降、強制）: パスワード変更パネルのみ表示。変更完了後に通常画面へ遷移
+
+**カスタマイズポイント：**
+- SDK の `baseUrl` は `<script>` タグ内の設定変数で外出し
+- CSS カスタムプロパティで外観変更可能（ADS トークン準拠）
+- 各パネルは独立した `<section>` 単位で差し替え可能な構造とする
+
+---
+
+## 25. 認証 実装仕様
+
+**認証情報ファイル形式（JSON）：**
+```json
+{
+  "password_hash": "<pbkdf2_hmac_sha256_hex>",
+  "salt": "<hex>",
+  "login_count": 0
+}
+```
+
+**ハッシュアルゴリズム：** Python 標準ライブラリ `hashlib.pbkdf2_hmac`
+```python
+hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), bytes.fromhex(salt), 260000)
+```
+
+**セッショントークン生成：**
+```python
+import secrets
+token = secrets.token_hex(32)  # 256bit ランダムトークン
+```
+
+**セッション管理：** `api_server.py` 内のインメモリ辞書で管理。有効期限 8 時間。再起動で全セッション破棄。同一ユーザーの複数同時セッションを許容する。
+
+**セッション期限切れ時：** `401 Unauthorized` を返す。クライアント（SDK）は `this._token` をクリアし、再ログインを促す。
+
+**ログインフロー：**
+```
+POST /api/login
+  └─ パスワードハッシュ検証
+       ├─ 失敗 → 401
+       └─ 成功 → login_count + 1 → ファイル更新
+                  ├─ login_count == 1 → must_change: true（促す）
+                  ├─ login_count >= 5 → must_change: true（強制）
+                  └─ それ以外      → must_change: false
+                  → セッショントークン生成・返却
+```
+
+**パスワード変更時：** `login_count` を 0 にリセット。新しい salt を生成しハッシュを更新。変更完了後に現セッション以外のセッションを破棄。
+
+**`--init-credentials` オプション：** `api_server.py` を `--init-credentials` 引数で起動した場合、初期パスワード `admin` で `.admin_credentials` を生成して終了する（HTTP サーバーは起動しない）。
