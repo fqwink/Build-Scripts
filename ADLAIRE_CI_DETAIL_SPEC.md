@@ -64,10 +64,12 @@ Adlaire CI の現行実装は `build_spec.py` と `runner.py` の 2 つのスク
 本仕様では、管理 API サーバー `api_server.py`、標準管理ツール `admin/index.html`、JavaScript SDK `adlaire-ci-sdk.js` も仕様化済み・未実装コンポーネントとして定義する。将来的には `mcp_server.py` を加えた構成へ移行予定（→ §13 将来計画 MCP サーバー実装）。
 
 **`build_spec.py`（ビルドスクリプト）**
-GitHub リポジトリ上の Markdown 仕様書（`adlaire-db-spec.md`）を HTML に変換して CI サーバーのローカルパスへ出力する。入力（`SRC`）と出力（`OUT`）はサーバー固定パスで管理する。静的コンテンツ配信サーバーへの転送は `runner.py` が担う。
+GitHub リポジトリ上の Markdown 仕様書（`adlaire-db-spec.md`）を HTML に変換してローカルパスへ出力する。入力（`SRC`）と出力（`OUT`）は `build_spec.py` の定数で管理する。
 
 **`runner.py`（CI ランナー）**
-GitHub の Git Blobs API をポーリングし、仕様書の変更を検出する。変更があった場合のみ `pipeline.sh` を介してビルドを起動する。systemd タイマー（5 分間隔）で定期実行する oneshot 設計。
+GitHub の Git Trees API / Git Blobs API を使用し、単一対象ファイルの blob SHA 変更を検出する。変更があった場合のみ Markdown 本文を `SRC` へ書き出し、`pipeline.sh` を介してビルドを起動し、成功時に SHA キャッシュを更新する。systemd タイマー（5 分間隔）で定期実行する oneshot 設計。
+
+SSH 転送、ペンディングキュー、スナップショット、Webhook 通知、マルチブランチ、ビルドログ保存、サーキットブレーカーは §10a・§12〜§14b に定義する仕様化済み・未実装の拡張機能であり、現行 `runner.py` の実装済み範囲には含めない。
 
 **`api_server.py`（管理 API サーバー、仕様化済み・未実装）**
 常駐 HTTP サーバー（`http.server`）。管理ツールからの API リクエストを受け付け、認証・状態取得・手動ビルドトリガーを処理する。`adlaire-admin.service` として systemd に登録し、`runner.py` とは独立して常駐する。
@@ -78,11 +80,13 @@ systemd timer
   └─ runner.py（oneshot）
        ├─ 変更なし → スキップ
        └─ 変更あり → pipeline.sh → build_spec.py → HTML 生成
-                                                         └─ runner.py SSH 転送 → 静的配信サーバー（→ §14a）
 ```
 
-**仕様化済み・未実装コンポーネントを含む想定フロー：**
+**仕様化済み・未実装コンポーネントおよび拡張機能を含む想定フロー：**
 ```
+runner.py（拡張後）
+  └─ SSH 転送 / スナップショット / Webhook 通知 / ビルドログ保存
+
 adlaire-admin.service（常駐）
   └─ api_server.py → SDK → 管理ツール
 ```
