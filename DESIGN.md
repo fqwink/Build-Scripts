@@ -1,7 +1,7 @@
 # Adlaire-db-spec デザイン仕様
 
 **対象ファイル：** `Adlaire-db-spec.html`  
-**ビルドスクリプト：** `build_spec_v3.py`  
+**ビルドスクリプト：** `build_spec.py`
 **デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)  
 **最終更新：** 2026-09-14
 
@@ -179,7 +179,7 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 ## 8. ビルド方法
 
 ```bash
-python3 build_spec_v3.py
+python3 build_spec.py
 ```
 
 入出力パスはスクリプト冒頭の `SRC` / `OUT` 変数で管理。  
