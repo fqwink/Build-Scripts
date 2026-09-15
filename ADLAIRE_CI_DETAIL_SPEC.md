@@ -931,7 +931,7 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
 
 ### 仕様化済み・未実装範囲
 
-以下は §10〜§20 に詳細仕様が存在するが、現行 `runner.py` には未実装である。実装する場合は、該当仕様を再確認し、必要に応じて詳細仕様を補強してから実装する。
+以下は §10〜§20 に詳細仕様が存在するが、現行 `runner.py` には未実装である。実装する場合は、対象項目ごとに §0c の完全実装精度ゲートを満たしていることを確認する。ゲート未充足の項目が 1 つでもある場合は、実装を開始せず、先に本ファイルの該当節を改訂する。
 
 | 項目 | 関連節 | 未実装内容 |
 |------|--------|------------|
@@ -953,7 +953,7 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
 
 ### 将来計画として扱う範囲
 
-§10〜§20 には、現行 runner の直接責務ではなく管理 API、標準管理ツール、将来の運用機能と結合して成立する項目が含まれる。これらは実装対象へ進める前に、API・SDK・UI との責務境界を再確認する。
+§10〜§20 には、現行 runner の直接責務ではなく管理 API、標準管理ツール、将来の運用機能と結合して成立する項目が含まれる。これらを実装対象へ進める場合は、API・SDK・UI の対象節に、呼び出し元、呼び出し先、状態ファイル、失敗時応答、検証条件を追記してから実装する。
 
 | 項目 | 理由 |
 |------|------|
@@ -1733,6 +1733,64 @@ sudo journalctl -u adlaire-admin -f        # ログ確認
 
 エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、§22、§23、§24 の対応関係を同時に確認する。
 
+### 22.0a 状態ファイル共通仕様
+
+`api_server.py` および拡張後 `runner.py` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に本節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
+
+| パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
+|------|------|--------|----------|--------------|
+| `.admin_credentials` | JSON object | `--init-credentials` で生成 | `api_server.py` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
+| `.server_config` | JSON object | `{}` | `api_server.py` | `.server_config.corrupt.bak` へ退避し、空 object で再生成する。 |
+| `.notify_config` | JSON object | `{"webhooks":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `api_server.py` | `.notify_config.corrupt.bak` へ退避し、初期値で再生成する。 |
+| `.notify_log` | JSON Lines | 空ファイル | `runner.py` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.notify_pending` | JSON array | `[]` | `runner.py` | `.notify_pending.corrupt.bak` へ退避し、`[]` で再生成する。 |
+| `.pending_transfers` | JSON array | `[]` | `runner.py` | `.pending_transfers.corrupt.bak` へ退避し、`[]` で再生成する。 |
+| `.build_history` | JSON Lines | 空ファイル | `runner.py` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `runner.py` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
+| `.build_lock` | text | 不在 | `runner.py` | PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。 |
+| `.branch_config` | JSON object | 不在 | `api_server.py` | `.branch_config.corrupt.bak` へ退避し、`BRANCH_TARGETS` デフォルトへフォールバックする。 |
+| `.build_state` | JSON object | `{}` | `runner.py` / `api_server.py` | `.build_state.corrupt.bak` へ退避し、空 object で再生成する。 |
+| `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0}` | `runner.py` / `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.repo_config` | JSON object | `{}` | `api_server.py` | `.repo_config.corrupt.bak` へ退避し、スクリプト定数へフォールバックする。 |
+| `.config_log` | JSON Lines | 空ファイル | `api_server.py` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.access_log` | JSON Lines | 空ファイル | `api_server.py` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.webhook_secret` | text | 不在 | `api_server.py` | 読み込み不能時は Webhook 受信を `501` で拒否する。 |
+| `.webhook_events.json` | JSON Lines | 空ファイル | `api_server.py` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.access_control` | JSON object | `{"allow":[]}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.hooks` | JSON object | `{"hooks":[]}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.alert_rules` | JSON object | `{"rules":[]}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.tag_rules` | JSON object | `{"rules":[]}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.pipeline_config` | JSON object | `{"extra_args":[],"env":{}}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.notes` | UTF-8 text | 空文字列 | `api_server.py` | 読み込み不能時は `500` を返し、自動上書きしない。 |
+| `.smtp_config` | JSON object | SMTP 未設定値 | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.smtp_secret` | text | 不在 | `api_server.py` | 読み込み不能時は SMTP 送信を `422` で拒否する。 |
+| `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+
+JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時は末尾に改行を必ず付ける。秘密情報を含む可能性のある `.admin_credentials`、`.github_token`、`.webhook_secret`、`.smtp_secret` は mode `600` を必須とする。
+
+### 22.0b 入力検証共通仕様
+
+API 実装は以下の検証を共通で行う。違反時は、エンドポイント固有の指定がない限り `422 Unprocessable Entity` と `{"error":"Validation failed","details":...}` を返す。
+
+| 対象 | 検証条件 |
+|------|----------|
+| `id` パスパラメータ | `^[A-Za-z0-9_-]{1,64}$` に一致すること。`/`、`.`、空文字は禁止。 |
+| `page` | 1 以上の整数。 |
+| `per_page` | 1 以上 100 以下の整数。 |
+| `limit` | 1 以上 200 以下の整数。 |
+| `offset` | 0 以上の整数。 |
+| `days` | 1 以上 366 以下の整数。 |
+| `n` | 1 以上 1000 以下の整数。 |
+| 日付 | `YYYY-MM-DD` 形式で、存在する暦日であること。 |
+| 時刻 | 0 以上 23 以下の整数。 |
+| URL | `http://` または `https://` で始まること。Webhook URL は `https://` を推奨値とし、`http://` はローカル検証用途のみ許可する。 |
+| ファイルパス | 絶対パスのみ許可する。`..` を含むパス、NUL 文字、空文字は禁止。 |
+| タグ | 1 件 1〜32 文字、最大 20 件。重複は除去して保存する。 |
+| コメント | 最大 2000 文字。空文字 `""` はコメント削除として扱う。 |
+| メールアドレス | `local@domain` 形式で、空白を含まないこと。 |
+| CIDR | IPv4 アドレスまたは IPv4 CIDR として解釈できること。 |
+| コマンド引数配列 | `string[]` とし、1 要素以上 32 要素以下。各要素は 1〜256 文字。実行は `/bin/sh -c` を使わず、`subprocess.run(args, shell=False, ...)` とする。 |
+
 | メソッド | パス | 認証 | 説明 |
 |---------|------|------|------|
 | `POST` | `/api/login` | 不要 | ログイン（セッショントークン返却） |
@@ -1945,9 +2003,11 @@ sudo journalctl -u adlaire-admin -f        # ログ確認
 **`GET /api/config` レスポンス例：**
 ```json
 { "log_max_lines": 500, "history_max_count": 100, "build_timeout_seconds": 300, "log_retention_days": 30, "pat_expires_at": null, "snapshots_keep": 5, "queue_max_size": 3 }
+```
 
 `pat_expires_at`：PAT の有効期限日（`YYYY-MM-DD` 形式）。`null` = 未設定。`GET /api/diagnostics` の `pat` 項目で 7 日以内なら `"warn"`、期限当日以前なら `"error"` に変更。
-```
+
+`POST /api/config` で更新可能なキーは `log_max_lines`、`history_max_count`、`build_timeout_seconds`、`log_retention_days`、`pat_expires_at`、`snapshots_keep`、`queue_max_size` に限定する。未知キーを含む場合は `422` を返し、既存設定を変更しない。
 
 **`GET /api/health` レスポンス例：**
 ```json
@@ -2642,7 +2702,7 @@ Content-Type: application/json
 
 ### ビルドフック（14E）
 
-ビルド実行の直前（`pre`）・直後（`post`）に任意のシェルコマンドを実行する。フック設定は `.hooks` に保存する。
+ビルド実行の直前（`pre`）・直後（`post`）に事前登録したコマンド引数配列を実行する。フック設定は `.hooks` に保存する。外部入力文字列をシェルへ渡す実装は禁止し、`subprocess.run(args, shell=False, ...)` で実行する。
 
 - `pre` フックが失敗（`exit_code != 0`）し `abort_on_failure: true` の場合、ビルドを中断しステータスを `hook_error` とする。
 - `post` フックは `abort_on_failure` 設定に関わらずビルド結果（`success` / `failure`）を変更しない。
@@ -2651,18 +2711,20 @@ Content-Type: application/json
 **`GET /api/hooks` レスポンス例：**
 ```json
 { "hooks": [
-    { "id": "h001", "phase": "pre",  "command": "echo build start", "enabled": true, "abort_on_failure": true },
-    { "id": "h002", "phase": "post", "command": "echo build end",   "enabled": true, "abort_on_failure": false }
+    { "id": "h001", "phase": "pre",  "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true },
+    { "id": "h002", "phase": "post", "command_args": ["echo", "build end"],   "enabled": true, "abort_on_failure": false }
 ]}
 ```
 
 **`POST /api/hooks` リクエスト / レスポンス：**
 ```json
 // リクエスト
-{ "phase": "pre", "command": "echo build start", "abort_on_failure": true }
+{ "phase": "pre", "command_args": ["echo", "build start"], "abort_on_failure": true }
 // レスポンス: 201
-{ "id": "h001", "phase": "pre", "command": "echo build start", "enabled": true, "abort_on_failure": true }
+{ "id": "h001", "phase": "pre", "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true }
 ```
+
+`phase` の有効値は `"pre"` または `"post"`。`command_args[0]` は絶対パス、または `PATH` 解決可能なコマンド名とする。`command_args` に空文字、NUL 文字、改行を含めてはならない。
 
 **`DELETE /api/hooks/{id}` レスポンス：**
 ```json
@@ -2995,7 +3057,7 @@ class AdlaireCI {
   resumeSchedule()             // POST /api/schedule/resume  → Promise<void>
   setAllowedHours(from, to)    // POST /api/schedule/allowed-hours {from, to} → Promise<void>
   clearAllowedHours()          // POST /api/schedule/allowed-hours {from:null, to:null} → Promise<void>
-  setForceInterval(hours)      // POST /api/schedule/force-interval → Promise<{message: string, force_interval_hours: number}>
+  setForceInterval(hours)      // POST /api/schedule/force-interval → Promise<{message: string, hours: number}>
   searchLogs(q = '', from = '', to = '') // GET /api/logs/search?q={q}&from={from}&to={to} → Promise<SearchResult>
   getOutputMeta()              // GET /api/output-meta       → Promise<OutputMetaObject>
   getStatsTimeline(days = 30)  // GET /api/stats/timeline?days={days} → Promise<TimelineObject>
@@ -3016,7 +3078,7 @@ class AdlaireCI {
   setHistoryTags(id, tags)     // POST /api/history/{id}/tags → Promise<void>
   rollbackHistory(id)          // POST /api/history/{id}/rollback → Promise<void>
   getTokens()                  // GET /api/tokens            → Promise<{tokens: TokenRecord[]}>
-  createToken(label)           // POST /api/tokens           → Promise<TokenCreateResult>
+  createToken(label, scope = 'read') // POST /api/tokens     → Promise<TokenCreateResult>
   revokeToken(id)              // DELETE /api/tokens/{id}    → Promise<void>
   // 14A スナップショット
   getSnapshots()               // GET /api/snapshots         → Promise<{snapshots: SnapshotRecord[]}>
@@ -3031,7 +3093,7 @@ class AdlaireCI {
   setAccessControl(allowList)  // POST /api/access-control   → Promise<{message: string, allow: string[]}>
   // 14E フック
   getHooks()                   // GET /api/hooks             → Promise<{hooks: HookRecord[]}>
-  addHook(phase, command, abortOnFailure = true) // POST /api/hooks → Promise<HookRecord>
+  addHook(phase, commandArgs, abortOnFailure = true) // POST /api/hooks → Promise<HookRecord>
   deleteHook(id)               // DELETE /api/hooks/{id}     → Promise<void>
   getHookLog(id)               // GET /api/hooks/{id}/log    → Promise<{id: string, runs: HookRunRecord[]}>
   // 15A アラートルール
@@ -3065,7 +3127,22 @@ class AdlaireCI {
 export { AdlaireCI };
 ```
 
-全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。HTTP エラー（4xx / 5xx）は `Error` としてスロー。`401` 受信時はセッション期限切れとして `this._token` をクリアする。合計 95 メソッド。
+全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。HTTP エラー（4xx / 5xx）は `AdlaireCIError` としてスローする。`401` 受信時はセッション期限切れとして `this._token` をクリアする。合計 95 メソッド。
+
+**SDK 共通実装契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| `baseUrl` | 末尾 `/` を除去して保持する。空文字、`null`、`undefined` は `TypeError`。 |
+| URL 組み立て | パスは `/api/...` をそのまま連結し、クエリ値は `encodeURIComponent` でエンコードする。 |
+| 認証ヘッダー | `this._token` が存在する場合のみ `Authorization: Bearer ${token}` を付与する。 |
+| JSON 送信 | `POST` / `DELETE` で body を送る場合は `Content-Type: application/json` を付与し、`JSON.stringify` した body を送信する。 |
+| JSON 受信 | `Content-Type` が JSON の場合のみ `response.json()` を呼ぶ。空 body は `{}` として扱う。 |
+| `AdlaireCIError` | `name`、`status`、`message`、`details`、`responseBody` を持つ `Error` 派生クラスとする。 |
+| `logout()` | API 呼び出しが失敗しても `finally` で `this._token` をクリアする。 |
+| `streamBuild()` | `EventSource` 生成前に token がない場合は `AdlaireCIError(status=401)` を投げる。`end` イベント受信後は SDK 側で `EventSource.close()` を呼ぶ。 |
+| Blob レスポンス | `downloadSnapshot(id)` のみ `response.blob()` を使用する。その他は JSON とする。 |
+| メソッド引数検証 | SDK 側でも必須引数の空値、配列型、数値範囲を検証し、HTTP 送信前に `TypeError` を投げる。 |
 
 ---
 
@@ -3085,14 +3162,14 @@ export { AdlaireCI };
 | パネル | 表示内容 | 表示条件 |
 |-------|---------|---------|
 | ログイン | パスワード入力フォーム | 未ログイン時のみ |
-| パスワード変更 | 現在・新パスワード入力フォーム | `must_change: true` 時（強制時は他パネル非表示） |
+| パスワード変更 | 現在・新パスワード入力フォーム | `must_change: "prompt"` または `"forced"` 時（`"forced"` 時は他パネル非表示） |
 | ステータス | 最終ビルド時刻・SHA・成否・出力ファイルリンク・ダッシュボードウィジェット編集モード（表示するウィジェットをチェックボックスで選択・並び替え・保存） | ログイン済み |
 | 手動実行 | ビルドトリガーボタン・強制ビルドボタン・キャンセルボタン（実行中のみ有効）・SHA リセットボタン・実行結果表示・リアルタイムログ表示エリア（SSE ストリーミング）・キュー状態表示（待機中件数・クリアボタン） | ログイン済み |
 | ログビューア | 最新ビルドログ（n 行・キーワードフィルター・ログレベルフィルターボタン（INFO / WARNING / ERROR / DEBUG）・JSON エクスポートボタン・横断検索フォーム（期間指定）・検索結果一覧） | ログイン済み |
 | ビルド履歴 | 過去ビルド一覧（日時・SHA・成否・トリガー種別・所要時間・重要フラグ列・タグ列・ログ表示リンク・コメント入力欄）・フラグ付きのみ表示フィルター・タグフィルター・ページネーション UI・JSON エクスポートボタン | ログイン済み |
 | システム情報 | 出力ファイルサイズ・更新日時・稼働時間・ディスク使用量（ログ合計・出力ファイル）・PAT 即時検証ボタン・PAT 更新フォーム・PAT 有効期限表示（設定フォーム・期限切れ間近で警告表示）・GitHub API レート制限表示 | ログイン済み |
 | 通知設定     | Webhook 一覧（追加/削除/ラベル/有効無効切り替え/リトライ回数・間隔設定/シークレット入力欄）・通知条件設定（ビルド開始時・成功時・失敗時）・各 Webhook ペイロードテンプレート編集フォーム（変数一覧表示）・テスト送信ボタン・定期サマリー設定（間隔・時刻・曜日・即時送信ボタン）・送信履歴（試行回数・エラー内容列含む）・メール通知セクション（SMTP 設定フォーム・宛先リスト・通知条件・テスト送信ボタン） | ログイン済み |
-| 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・追加フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
+| 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・command_args 入力フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
 | アクセスログ | ログイン履歴（日時・成否）           | ログイン済み |
 | 統計         | ビルド回数・成功率・平均間隔・平均・最大ビルド時間・日別時系列データ（グラフ表示対応） | ログイン済み |
 | リポジトリ情報 | 監視対象リポジトリ・ブランチ・ファイルの確認・設定変更フォーム（OWNER / REPO / BRANCH / TARGET_FILE）・ポーリング間隔変更フォーム・ポーリング一時停止／再開ボタン・許可時間帯設定（from〜to、解除ボタン）・メンテナンスモード有効化フォーム（理由入力）・解除ボタン・現在の状態表示 | ログイン済み |
@@ -3104,11 +3181,29 @@ export { AdlaireCI };
 | スナップショット | ビルド成果物の世代一覧（最大`snapshots_keep`件）・個別ダウンロード・削除 | ログイン済み |
 | メンテナンス   | メンテナンスモードの有効化（理由テキスト付き）・無効化・状態・開始時刻表示 | ログイン済み |
 | アクセス制御   | 許可 IP / CIDR 一覧・CIDR 追加フォーム・削除ボタン（ブロック時は 403 を返す） | ログイン済み |
-| フック         | Pre/Post ビルドフック一覧・コマンド追加・削除・実行ログ（直近 N 件）確認 | ログイン済み |
+| フック         | Pre/Post ビルドフック一覧・command_args 追加・削除・実行ログ（直近 N 件）確認 | ログイン済み |
 
 **パスワード変更フロー：**
 - `must_change: "prompt"`: パスワード変更パネルを表示。他パネルも操作可能
 - `must_change: "forced"`: パスワード変更パネルのみ表示。変更完了後に通常画面へ遷移
+
+**UI 共通動作契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 初期表示 | `localStorage` から token を復元しない。画面読み込み時は未ログイン状態から開始する。 |
+| API 呼び出し中 | 対象ボタンを disabled にし、同一操作の二重送信を防ぐ。完了または失敗後に元へ戻す。 |
+| 成功表示 | 変更系操作は成功時にパネル内へ 1 行の成功メッセージを表示し、関連 GET API を再取得する。 |
+| 失敗表示 | SDK が投げた `AdlaireCIError.message` をパネル内エラー領域に表示する。`details` が object の場合はフィールド単位で表示する。 |
+| `401` | token を破棄し、ログインパネルへ戻す。直前の入力値のうち秘密情報は消去する。 |
+| `403` | 操作権限なしとしてエラー表示し、ログアウトはしない。 |
+| `409` | 状態競合としてエラー表示し、ステータス・キュー・スケジュールを再取得する。 |
+| `422` | 入力エラーとして該当フォーム項目へエラーを紐付ける。 |
+| `503` | メンテナンスバナーを表示し、ビルド操作ボタンを disabled にする。 |
+| 秘密情報入力 | PAT、Webhook Secret、SMTP password、発行直後 token は画面遷移、成功表示、再取得後にフォーム値から消去する。 |
+| 自動更新 | ステータス、キュー、SSE 以外のパネルは自動ポーリングしない。ユーザー操作または画面表示時に取得する。 |
+| SSE 切断 | `streamBuild()` が error になった場合はリアルタイム表示を停止し、`GET /api/status` と `GET /api/queue` を再取得する。 |
+| フォーム保存 | 保存 API が成功するまで UI 上の表示値を確定表示にしない。失敗時は入力値を保持する。 |
 
 **カスタマイズポイント：**
 - SDK の `baseUrl` は `<script>` タグ内の設定変数で外出し
@@ -3124,7 +3219,8 @@ export { AdlaireCI };
 {
   "password_hash": "<pbkdf2_hmac_sha256_hex>",
   "salt": "<hex>",
-  "login_count": 0
+  "login_count": 0,
+  "updated_at": "2026-09-15T10:00:00"
 }
 ```
 
@@ -3143,6 +3239,31 @@ token = secrets.token_hex(32)  # 256bit ランダムトークン
 
 **セッション期限切れ時：** `401 Unauthorized` を返す。クライアント（SDK）は `this._token` をクリアし、再ログインを促す。
 
+**パスワード入力制約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 最小長 | 8 文字 |
+| 最大長 | 128 文字 |
+| 許可文字 | UTF-8 文字列。NUL 文字は禁止。前後空白はトリムせず、入力値そのものを検証・ハッシュ化する。 |
+| 初期パスワード | `admin`。初回ログイン時は `must_change: "prompt"` を返す。 |
+| 変更時検証 | `new_password` が現在パスワードと同一の場合は `422` を返す。 |
+| 失敗時応答 | パスワード不一致は `401` と `{"error":"Unauthorized"}` を返し、どの条件に失敗したかは返さない。 |
+| 成功時保存 | 新 salt、新 hash、`login_count: 0`、`updated_at` を原子的に保存する。 |
+
+**セッションレコード形式（メモリ上）：**
+
+```json
+{
+  "token": "<session_token>",
+  "created_at": "2026-09-15T10:00:00",
+  "expires_at": "2026-09-15T18:00:00",
+  "last_used_at": "2026-09-15T10:05:00"
+}
+```
+
+認証必須 API で有効 token を受信した場合、`last_used_at` を現在時刻へ更新する。期限切れ token は検出時にメモリから削除する。`POST /api/logout` は対象 token のみ削除する。`POST /api/sessions/revoke-all` は現在 token 以外を削除する。
+
 **ログインフロー：**
 ```
 POST /api/login
@@ -3158,6 +3279,8 @@ POST /api/login
 **パスワード変更時：** `login_count` を 0 にリセット。新しい salt を生成しハッシュを更新。変更完了後に現セッション以外のセッションを破棄。
 
 **`--init-credentials` オプション：** `api_server.py` を `--init-credentials` 引数で起動した場合、初期パスワード `admin` で `.admin_credentials` を生成して終了する（HTTP サーバーは起動しない）。
+
+`.admin_credentials` が既に存在する場合、`--init-credentials` は上書きせず `409` 相当の終了コード `2` で終了し、標準エラーへ `credentials already exist` を出力する。初期化成功時の終了コードは `0` とする。
 
 ---
 
