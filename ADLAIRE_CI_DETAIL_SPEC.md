@@ -1281,7 +1281,11 @@ python3 /opt/adlaire-builder/build_spec.py
 
 ## 14a. SSH ファイル転送
 
-`runner.py` は `pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。
+本節は、仕様化済み・未実装の CI ランナー拡張仕様である。
+
+現行 `runner.py` は SSH 転送を実行しない。現行実装は `pipeline.sh` 起動と成功時 SHA 更新までを担当し、生成 HTML の静的コンテンツ配信サーバーへの転送は未実装である。
+
+本機能を実装する場合、`runner.py` は `pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。
 
 ### 設定値
 
@@ -1371,7 +1375,11 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 
 ## 14b. スナップショット管理
 
-`runner.py` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット機能を無効化する。
+本節は、仕様化済み・未実装の CI ランナー拡張仕様である。
+
+現行 `runner.py` は `.snapshots/` ディレクトリを作成・更新しない。スナップショット保存、世代管理、ロールバックは未実装である。
+
+本機能を実装する場合、`runner.py` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット機能を無効化する。
 
 ### ディレクトリ構造
 
@@ -1397,6 +1405,7 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 
 `POST /api/history/{id}/rollback`（→ §22）で指定ビルド ID のスナップショットから SSH 転送を再実行する。
 
+- ロールバック API は `api_server.py` の実装を前提とする。現行リポジトリに `api_server.py` は存在しないため、現行実装済み機能として扱ってはならない
 - `.snapshots/{id}/` が存在しない場合は `404` を返す
 - 転送成功時は `.build_history` に rollback エントリを追記する
 
