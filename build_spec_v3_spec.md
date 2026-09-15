@@ -3,7 +3,7 @@
 **対象スクリプト：** `build_spec_v3.py`（ビルド）/ `runner.py`（CI ランナー）  
 **出力ファイル：** `Adlaire-db-spec.html`  
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）  
-**仕様バージョン：** V.N / **開発・安定版リリースバージョン：** V.X.N → Part 2 §2 参照  
+**仕様バージョン：** V.N / **リリースバージョン：** V.X.N → Part 2 §2 参照  
 **最終更新：** 2026-09-14  
 
 ---
@@ -59,6 +59,7 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 | Git 操作 | GitHub REST API（Blobs API）`urllib` 経由 |
 | フロントエンド | HTML / CSS / Vanilla JavaScript |
 | 推奨運用 | VPS / オンプレミス |
+| データ交換形式 | JSON に統一する。エクスポート・インポートを含む全 API データ交換に CSV・XML 等の非 JSON 形式を使用しない |
 
 ### — CI ランナー —
 
@@ -121,6 +122,283 @@ API は SDK として提供し、管理ツール実装者が直接 HTTP 通信�
 
 ---
 
+## 12. 機能一覧
+
+システムが提供する全機能の一覧。各機能の仕様詳細は Part 3 §22〜§25 を参照。
+
+### ビルド・CI ランナー（runner.py）
+
+- GitHub リポジトリの対象ファイルを定期ポーリング（systemd timer）
+- blob SHA による差分検出（変更なし時はビルドをスキップ）
+- Markdown → HTML 変換（`build_spec_v3.py` を呼び出し）
+- ビルド結果を `.build_history` に記録（ID 形式：`b{YYYYMMDDHHmmss}`）
+- ビルドごとのログを `.build_logs/{id}.json` に保存
+- ビルド成功・失敗時に Webhook 通知を送信（`.notify_config` を読み込み送信。送信責務は `runner.py`。通知 API は設定の読み書きのみ）
+- systemd oneshot ユニットとして動作（`adlaire-ci.service`）
+
+### 管理 API エンドポイント（api_server.py）
+
+| カテゴリ | エンドポイント |
+|---------|--------------|
+| 認証 | `POST /api/login` / `POST /api/logout` / `POST /api/change-password` |
+| 死活監視 | `GET /api/health` |
+| ビルド操作 | `POST /api/build` / `POST /api/build/force` / `POST /api/build/cancel` / `POST /api/reset-sha` / `GET /api/build/stream` |
+| ステータス | `GET /api/status` / `GET /api/dashboard` |
+| ログ | `GET /api/logs` / `GET /api/logs/export` / `GET /api/logs/search` / `POST /api/logs/cleanup` |
+| ビルド履歴 | `GET /api/history` / `GET /api/history/{id}/log` / `GET /api/history/{id}/comment` / `POST /api/history/{id}/comment` / `GET /api/history/export` / `POST /api/history/{id}/flag` / `POST /api/history/{id}/tags` |
+| スケジュール | `GET /api/schedule` / `POST /api/schedule/interval` / `POST /api/schedule/pause` / `POST /api/schedule/resume` / `POST /api/schedule/allowed-hours` |
+| 通知 | `GET /api/notify-config` / `POST /api/notify-config` / `POST /api/notify-test` / `GET /api/notify-log` / `POST /api/notify-summary` |
+| システム情報 | `GET /api/sysinfo` / `GET /api/output-meta` / `GET /api/diagnostics` / `GET /api/rate-limit` / `GET /api/disk-usage` |
+| 統計 | `GET /api/stats` / `GET /api/stats/timeline` |
+| リポジトリ | `GET /api/repo-info` / `POST /api/repo-config` |
+| PAT 管理 | `GET /api/pat-status` / `POST /api/pat-verify` / `POST /api/pat-update` |
+| 設定 | `GET /api/config` / `POST /api/config` / `POST /api/log-level` / `GET /api/config-log` |
+| アクセスログ | `GET /api/access-log` |
+| バックアップ | `GET /api/backup` / `POST /api/restore` |
+| セッション管理 | `GET /api/sessions` / `POST /api/sessions/revoke-all` |
+| API トークン | `GET /api/tokens` / `POST /api/tokens` / `DELETE /api/tokens/{id}` |
+| スナップショット | `GET /api/snapshots` / `GET /api/snapshots/{id}/download` / `DELETE /api/snapshots/{id}` |
+| メンテナンス | `GET /api/maintenance` / `POST /api/maintenance/enable` / `POST /api/maintenance/disable` |
+| アクセス制御 | `GET /api/access-control` / `POST /api/access-control` |
+| フック | `GET /api/hooks` / `POST /api/hooks` / `DELETE /api/hooks/{id}` / `GET /api/hooks/{id}/log` |
+| アラートルール | `GET /api/alert-rules` / `POST /api/alert-rules` / `DELETE /api/alert-rules/{id}` |
+| 自動タグ付け | `GET /api/tag-rules` / `POST /api/tag-rules` / `DELETE /api/tag-rules/{id}` |
+| パイプライン | `GET /api/pipeline-config` / `POST /api/pipeline-config` / `POST /api/verify-output` |
+| 運用ノート | `GET /api/notes` / `POST /api/notes` |
+| メール通知 | `GET /api/smtp-config` / `POST /api/smtp-config` / `POST /api/smtp-test` |
+| ビルドキュー | `GET /api/queue` / `DELETE /api/queue` |
+| ダッシュボードレイアウト | `GET /api/dashboard-layout` / `POST /api/dashboard-layout` |
+
+### SDK メソッド（adlaire-ci-sdk.js）
+
+| カテゴリ | メソッド |
+|---------|--------|
+| 認証 | `login()` / `logout()` / `changePassword()` |
+| ビルド操作 | `triggerBuild()` / `buildForce()` / `cancelBuild()` / `resetSha()` / `streamBuild()` |
+| ステータス | `getStatus()` / `getDashboard()` |
+| ログ | `getLogs()` / `exportLogs()` / `searchLogs()` / `cleanupLogs()` |
+| ビルド履歴 | `getHistory()` / `getHistoryLog()` / `getHistoryComment()` / `setHistoryComment()` / `exportHistory()` / `setHistoryFlag()` / `setHistoryTags()` |
+| スケジュール | `getSchedule()` / `setScheduleInterval()` / `pauseSchedule()` / `resumeSchedule()` / `setAllowedHours()` / `clearAllowedHours()` |
+| 通知 | `getNotifyConfig()` / `setNotifyConfig()` / `notifyTest()` / `getNotifyLog()` / `notifySummary()` |
+| システム情報 | `getSysinfo()` / `getOutputMeta()` / `getDiagnostics()` / `getRateLimit()` / `getDiskUsage()` |
+| 統計 | `getStats()` / `getStatsTimeline()` |
+| リポジトリ | `getRepoInfo()` / `setRepoConfig()` |
+| PAT 管理 | `getPatStatus()` / `patVerify()` / `updatePat()` |
+| 設定 | `getConfig()` / `setConfig()` / `setLogLevel()` / `getConfigLog()` |
+| アクセスログ | `getAccessLog()` |
+| バックアップ | `backup()` / `restore()` |
+| セッション管理 | `getSessions()` / `revokeAllSessions()` |
+| API トークン | `getTokens()` / `createToken()` / `revokeToken()` |
+| スナップショット | `getSnapshots()` / `downloadSnapshot()` / `deleteSnapshot()` |
+| メンテナンス | `getMaintenance()` / `enableMaintenance()` / `disableMaintenance()` |
+| アクセス制御 | `getAccessControl()` / `setAccessControl()` |
+| フック | `getHooks()` / `addHook()` / `deleteHook()` / `getHookLog()` |
+| アラートルール | `getAlertRules()` / `addAlertRule()` / `deleteAlertRule()` |
+| 自動タグ付け | `getTagRules()` / `addTagRule()` / `deleteTagRule()` |
+| パイプライン | `getPipelineConfig()` / `setPipelineConfig()` / `verifyOutput()` |
+| 運用ノート | `getNotes()` / `setNotes()` |
+| メール通知 | `getSmtpConfig()` / `setSmtpConfig()` / `smtpTest()` |
+| ビルドキュー | `getQueue()` / `clearQueue()` |
+| ダッシュボードレイアウト | `getDashboardLayout()` / `setDashboardLayout()` |
+| 死活監視 | `health()` |
+
+ES Module・外部依存なし。全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。合計 87 メソッド。
+
+### 標準管理ツール パネル（admin/index.html）
+
+| パネル | 主な機能 |
+|-------|---------|
+| ログイン | パスワード認証 |
+| パスワード変更 | 強制変更フロー対応（5 回目以降は他パネルを非表示） |
+| ステータス | 最終ビルド情報・出力ファイルリンク・メンテナンスバナー表示（モード中） |
+| 手動実行 | ビルド起動・強制・キャンセル・SHA リセット・キュー状態表示・キューのクリア |
+| ログビューア | ログ閲覧・キーワードフィルター・ログレベルフィルター・JSON エクスポート・横断検索（期間指定） |
+| ビルド履歴 | 過去ビルド一覧・タグ列・フラグ列・ページネーション・タグ/フラグフィルター・JSON エクスポート・個別ログ参照 |
+| システム情報 | ファイルサイズ・稼働時間・ディスク使用量・PAT 検証・PAT 更新フォーム・PAT 有効期限表示・GitHub API レート制限表示 |
+| 通知設定 | 複数 Webhook 設定・ペイロードテンプレート編集・テスト送信・定期サマリー設定・送信履歴・メール通知設定（SMTP連携）・Webhook 署名シークレット設定 |
+| 設定 | 保持行数・件数・タイムアウト・ログレベル変更・ログ保持期間（日数）・手動クリーンアップ・設定変更履歴・キュー最大サイズ設定・スナップショット保持世代数設定 |
+| アクセスログ | ログイン履歴（日時・成否） |
+| 統計 | 成功率・平均/最大ビルド時間・時系列グラフ |
+| リポジトリ情報 | 監視設定確認・ポーリング間隔変更フォーム・ポーリング一時停止/再開・許可時間帯設定 |
+| セッション管理 | セッション一覧・全セッション強制無効化 |
+| システム診断 | PAT・GitHub API・ファイル・systemd・Webhook・出力整合性 一括診断・アラートバッジ表示・メンテナンスバナー表示 |
+| ビルド比較 | ビルド履歴から 2 件を選択してログを並列差分表示 |
+| API トークン管理 | 読み取り専用トークンの発行・一覧・失効 |
+| スナップショット | ビルド成果物の世代一覧・ダウンロード・削除 |
+| メンテナンス | メンテナンスモードの有効化・解除・状態表示 |
+| アクセス制御 | 許可 IP / CIDR 一覧・追加・削除 |
+| フック | Pre/Post ビルドフック設定・実行ログ確認 |
+| 運用ノート | Markdown 記述の運用メモ閲覧・編集 |
+
+---
+
+## 13. 拡張ポイント・将来計画
+
+現行仕様に対する拡張予定・将来検討項目の一覧。
+仕様化する際は本ドキュメントへの追記を先行させる。
+
+### 開発フロー
+
+将来計画リストの項目を以下の4段階で管理する。
+
+| 区分 | 意味 |
+|------|------|
+| 将来対応 | アイデア段階。実装時期・優先度未定 |
+| 改訂予定 | 仕様改訂リストに格上げ済み。仕様化作業中または予定 |
+| 仕様化済み | spec に反映完了。実装待ち |
+| 実装済み | ソースコード実装完了。実装済みリストへ移動 |
+
+**フロー：**
+1. 格上げ指示 → 対象項目を「改訂予定」に変更・改訂予定リストへ移動
+2. 提案提示 → 承認後に spec 各仕様節へ反映、「仕様化済み」に変更
+3. ソースコード実装（`api_server.py` / `adlaire-ci-sdk.js` / `admin/index.html`）→ 実装済みリストへ移動
+
+---
+
+### 改訂予定リスト
+
+格上げ済み項目の一覧。仕様化完了後は spec 各仕様節へ反映し、実装フェーズへ移行する。
+
+| 項目 | 元区分 | 格上げ日 | 担当領域 | 優先度 | ステータス |
+|------|--------|---------|---------|--------|----------|
+| （なし） | — | — | — | — | — |
+
+---
+
+### 実装済みリスト
+
+ソースコード実装が完了した項目の記録。実装完了のたびに本リストへ移動する。
+
+| 項目 | 実装完了日 | 担当領域 | 関連 spec 節 |
+|------|----------|---------|------------|
+| （なし） | — | — | — |
+
+---
+
+### 将来計画 一覧
+
+> 区分：将来対応 / 改訂予定 / 仕様化済み（実装済みは実装済みリストへ移動）
+
+| 区分 | 担当領域 | 機能 | 概要 |
+|------|---------|------|------|
+| 仕様化済み | CI ランナー | ビルドタイムアウト | `subprocess` に `timeout` を設定し長時間ビルドを強制終了（→ §22 `GET /api/config` `build_timeout_seconds`） |
+| 仕様化済み | CI ランナー | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整（→ §22 `POST /api/schedule/interval`） |
+| 仕様化済み | CI ランナー | ビルドログのファイル保存 | `subprocess` の stdout/stderr を `.build_logs/{id}.json` に記録（→ §11 ファイル構成） |
+| 将来対応 | CI ランナー | 複数ファイル監視 | `TARGET_FILE` をリストにし、複数 MD ファイルの変更を一括検出する |
+| 将来対応 | CI ランナー | GitHub Commit Status API | ビルド結果を対象コミットに紐付けて GitHub 上に通知する |
+| 将来対応 | CI ランナー | GitHub Webhook 方式 | 定期ポーリングに代わる即時検出方式（ポーリング方式と併用可）。nginx リバースプロキシと Git が必要 |
+| 将来対応 | CI ランナー | ビルドパイプライン YAML 定義 | `pipeline.sh` 固定の実行方式を YAML 形式に置き換える |
+| 将来対応 | CI ランナー | ネットワーク断時の再試行 | API 失敗時に指数バックオフで再試行する仕組みを追加する |
+| 将来対応 | CI ランナー | ドライラン実行モード | `--dry-run` オプションで SHA 比較まで行いビルドを起動しない（デバッグ・動作確認用） |
+| 将来対応 | CI ランナー | 複数ブランチ監視 | `BRANCH` をリスト化し、複数ブランチを並行監視する |
+| 将来対応 | CI ランナー | ビルドログのアーカイブ圧縮 | 保持期間を超えた `.build_logs/{id}.json` を gzip 圧縮してディスク使用量を削減する |
+| 将来対応 | CI ランナー | ビルド出力の外部転送 | ビルド成功時に生成 HTML を SCP / rsync 等で外部サーバーへ自動転送する |
+| 将来対応 | CI ランナー | ビルドクールダウン | 前回ビルドから最低 N 秒経過するまで次のビルドを保留する |
+| 将来対応 | CI ランナー | ローカルファイル監視モード | GitHub API を使わず、ローカルファイルシステムの変更を `inotify` 等で直接監視する |
+| 将来対応 | CI ランナー | タグ付きコミットのみビルド | Git タグが付いたコミット（リリース）の変更時のみビルドを実行するフィルター |
+| 将来対応 | CI ランナー | ビルド前の事前チェック | ビルド開始前にディスク空き容量・Python バージョン等の前提条件を確認し、不足時はスキップしてアラート |
+| 将来対応 | CI ランナー | ビルドキャッシュ | 前回ビルドとの差分ファイルのみ再処理し、ビルド時間を短縮する |
+| 将来対応 | CI ランナー | ビルド通知連携 | ビルド成功・失敗を Slack / Discord / メール等へ送信するフック機能 |
+| 将来対応 | CI ランナー | ビルド時間トレンド記録 | 過去のビルド所要時間を蓄積し、パフォーマンス回帰の検知に使用する |
+| 将来対応 | CI ランナー | ビルド失敗時の自動リトライ | 一時的なエラー（API レート制限等）でビルドが失敗した場合、N 回まで自動再試行する |
+| 将来対応 | CI ランナー | 定期ビルド（cron 実行） | コミットの有無に関わらず、cron 式で指定した時刻に定期ビルドを実行する |
+| 将来対応 | CI ランナー | 並列マルチターゲットビルド | 本番・ステージング等の複数出力先を同時並列でビルドする |
+| 将来対応 | CI ランナー | ビルド前後フック | ビルド開始前・完了後に任意の外部スクリプトを呼び出せるフック機構 |
+| 将来対応 | CI ランナー | ビルドロック機構 | 同一ターゲットへの並列ビルドを防ぐロックファイル機構を実装する |
+| 将来対応 | CI ランナー | 依存ファイルトラッキング | ビルド対象の依存関係を追跡し、変更に関連するビルドのみ選択実行する |
+| 将来対応 | CI ランナー | リモートビルド対応 | SSH 経由でリモートマシン上のビルドを実行・結果を回収する |
+| 将来対応 | CI ランナー | ビルドアーティファクト世代管理 | 最新 N 世代分の成果物を自動保持し、古いものを削除して蓄積を防ぐ |
+| 将来対応 | CI ランナー | ビルドステータスファイル出力 | 最終ビルド結果（成功/失敗・タイムスタンプ・所要時間）を JSON で書き出す |
+| 将来対応 | CI ランナー | ビルド承認フロー | 本番ビルド実行前に Webhook 通知→人間の確認→実行という承認ステップを挟む |
+| 将来対応 | CI ランナー | ブランチ別環境変数 | ブランチや条件に応じて異なる環境変数セットをビルドに注入する |
+| 将来対応 | CI ランナー | ビルド依存チェーン | 複数ビルドジョブ間の依存関係を定義し、実行順序を制御する |
+| 将来対応 | CI ランナー | ビルド優先度キュー | 緊急度に応じてビルドの優先順位を設定できるキューを実装する |
+| 将来対応 | CI ランナー | 失敗原因の自動分類 | エラーログを解析し「API 障害」「タイムアウト」「構文エラー」等にカテゴリ分けして記録する |
+| 将来対応 | CI ランナー | ビルド実行環境の記録 | Python バージョン・OS・ディスク使用量等のビルド時環境情報をログに残す |
+| 将来対応 | 管理ツール・API | マルチユーザー対応 | 現行のシングルユーザー（admin）を複数ユーザー・ロール管理に拡張する |
+| 将来対応 | 管理ツール・API | 通知先の拡張 | Webhook 以外にメール・Slack・Discord 等の通知チャンネルを追加する |
+| 将来対応 | 管理ツール・API | ビルドアーティファクト管理 | 過去の出力 HTML を世代管理し、任意バージョンに復元できるようにする |
+| 将来対応 | 管理ツール・API | データストア移行 | 大量ビルド履歴・ログ運用に備え、フラットファイルから SQLite 等への移行を検討する |
+| 将来対応 | 管理ツール・API | 外部認証連携 | SSO・OAuth 等の外部認証基盤との連携を検討する |
+| 将来対応 | 管理ツール・API | TOTP 二要素認証 | 管理画面ログインに TOTP（Google Authenticator / Authy 等）を追加する。パスワード認証成功後に TOTP コード入力画面へ遷移するフローと、QR コードによる初期セットアップを含む（→ `GET /api/auth/totp-status` / `POST /api/auth/totp-setup` / `POST /api/auth/totp-confirm` / `DELETE /api/auth/totp`） |
+| 将来対応 | 管理ツール・API | 統計データの CSV エクスポート | `GET /api/stats/timeline` の日別データを CSV 形式でダウンロードできるエンドポイントを追加する |
+| 将来対応 | 管理ツール・API | キュー内個別エントリのキャンセル | `DELETE /api/queue/{id}` で特定エントリのみキャンセルする（現行は全クリアのみ） |
+| 将来対応 | 管理ツール・API | 設定バリデーション API | `POST /api/config/validate` で設定値を適用前に検証し、エラー内容を返す |
+| 将来対応 | 管理ツール・API | Prometheus メトリクスエンドポイント | `GET /api/metrics` で Prometheus 形式のメトリクス（ビルド数・成功率・ディスク使用量等）を返す |
+| 将来対応 | 管理ツール・API | CLI 管理クライアント | Python 標準ライブラリのみで実装した `adlaire-ci-cli.py` で API を CUI 操作できるツール |
+| 将来対応 | 管理ツール・API | 設定の自動スナップショット | `POST /api/config` 変更時に自動で設定バックアップを世代保存する |
+| 将来対応 | 管理ツール・API | ステータスバッジ生成 | `GET /api/badge` で最終ビルド結果を SVG バッジとして返す（README 埋め込み用） |
+| 将来対応 | 管理ツール・API | ビルド履歴の自動削除設定 | `history_retention_days` 設定でビルド履歴エントリを自動削除する（ログの `log_retention_days` に対応する履歴版） |
+| 将来対応 | 管理ツール・API | セッションタイムアウト変更設定 | `GET/POST /api/config` でセッション有効期限（現行固定 8 時間）を変更可能にする |
+| 将来対応 | 管理ツール・API | ビルドトリガー専用 API スコープ | 現行の `read` スコープに加えて `trigger` スコープを追加し、ビルド起動のみ許可する |
+| 将来対応 | 管理ツール・API | 監査ログ | 設定変更・ビルドトリガー等の管理操作を操作者・日時・内容とともに記録する |
+| 将来対応 | 管理ツール・API | API レート制限 | エンドポイントへのリクエスト数を時間窓内で制限し、過負荷を防ぐ |
+| 将来対応 | 管理ツール・API | ロールベースアクセス制御 | 管理者・オペレーター・閲覧者等の役割ごとに API 権限を分ける |
+| 将来対応 | 管理ツール・API | ヘルスチェックエンドポイント | サービスの死活確認用 `/health` エンドポイントを実装する |
+| 将来対応 | 管理ツール・API | 成果物ダウンロード API | 生成 HTML を API エンドポイント経由で直接ダウンロードできるようにする |
+| 将来対応 | 管理ツール・API | 設定スナップショット差分表示 | 保存済みスナップショット間の設定変更点を diff 形式で確認できる API |
+| 将来対応 | 管理ツール・API | 複数プロジェクト管理 | 単一インスタンスで複数リポジトリ／プロジェクトを切り替え管理する |
+| 将来対応 | 管理ツール・API | API キー管理 | API キーの発行・失効・有効期限設定を管理 UI から操作する |
+| 将来対応 | 管理ツール・API | ビルドログのリアルタイム配信 | 実行中ビルドのログを SSE / WebSocket でストリーミング配信するエンドポイント |
+| 将来対応 | 管理ツール・API | 設定のインポート／エクスポート | 設定全体を JSON でエクスポートし、別環境へそのままインポートする |
+| 将来対応 | 管理ツール・API | ビルド統計ダッシュボード | 成功率・平均ビルド時間・エラー分布等を可視化する管理画面を生成する |
+| 将来対応 | 管理ツール・API | ユーザー管理 API | 管理者アカウントの追加・削除・パスワード変更を API で操作する |
+| 将来対応 | 管理ツール・API | IP アドレス制限 | 管理 API へのアクセスを許可 IP レンジに限定するフィルタリング |
+| 将来対応 | 管理ツール・API | API バージョニング | `/api/v1/` 等のバージョンプレフィックスで後方互換性を維持する |
+| 将来対応 | 管理ツール・API | Webhook 署名検証 | 受信 Webhook の HMAC 署名を検証し、なりすましリクエストを拒否する |
+| 将来対応 | 管理ツール・API | API ドキュメント自動生成 | OpenAPI / Swagger 仕様を自動生成し、インタラクティブなドキュメントとして提供する |
+| 将来対応 | 管理ツール・API | 通知チャンネル管理 | Slack / Discord / メール等の通知先を管理画面から追加・削除・テスト送信する |
+| 将来対応 | 管理ツール・API | ビルドキューの手動並び替え | 管理画面からキュー内ジョブの実行順序を変更する |
+| 将来対応 | 管理ツール・API | 設定テンプレート | よく使う設定パターンをテンプレートとして保存・再利用する |
+| 将来対応 | 管理ツール・API | API アクセスログ | いつ・誰が・どのエンドポイントを呼び出したかを記録・閲覧する（監査ログとは独立） |
+| 将来対応 | 管理ツール・API | 管理者向けイベントフィード | ビルド完了・エラー・設定変更等のシステムイベントをリアルタイムで流す管理ページ |
+| 将来対応 | 管理ツール・API | ビルドキュー可視化 | キューに積まれたビルドの状態一覧を静的 HTML ステータスページとして出力する |
+| 将来対応 | 管理ツール・API | メンテナンスモード | 管理 API から即時にメンテナンスモードへ切り替え、ビルドキューを一時停止する |
+| 将来対応 | 管理ツール・API | 読み取り専用共有リンク | ビルドステータス・統計を外部に公開する期限付き読み取り専用リンクを発行する |
+| 将来対応 | 管理ツール・API | アラート閾値設定 | ビルド失敗率・所要時間等が設定閾値を超えた際に自動アラートを発火する |
+| 将来対応 | 管理ツール・API | バックアップ／リストア | 設定・ビルド履歴・ログ等の全データをアーカイブ化してリストアできる機能 |
+| 将来対応 | 管理ツール・API | API レスポンスキャッシュ制御 | 頻繁に参照される統計・ログ API のキャッシュ TTL を設定から変更する |
+| 将来対応 | ビルドスクリプト | 差分ビルド | 変更箇所のみ処理し、大規模 MD の変換を高速化する |
+| 将来対応 | ビルドスクリプト | 複数出力形式 | HTML に加えて PDF・ePub 等の出力形式をサポートする |
+| 将来対応 | ビルドスクリプト | 変換レポート出力 | ビルド完了後に変換統計（見出し数・テーブル数・コードブロック数・警告）を stdout 出力する |
+| 将来対応 | ビルドスクリプト | Markdown 拡張記法サポート | アドモニション（`> [!NOTE]`）・カラーバッジ等の独自拡張記法に対応する |
+| 将来対応 | ビルドスクリプト | シンタックスハイライト | コードブロックに言語別の色分けを適用する（標準ライブラリのみで実装、またはインライン JS で軽量対応） |
+| 将来対応 | ビルドスクリプト | コードブロック行番号表示 | コードブロック左端に行番号を表示するオプションを追加する |
+| 将来対応 | ビルドスクリプト | 本文内全文検索 | TOC 検索に加えて本文コンテンツ全体をキーワード検索し、ヒット箇所へジャンプする |
+| 将来対応 | ビルドスクリプト | アンカーリンク自動検証 | 生成 HTML 内の `#anchor` リンクが実際の見出しスラグと一致するか検証し、不整合を警告出力する |
+| 将来対応 | ビルドスクリプト | 見出しの自動採番 | h2 以下の見出しに `1.1`・`1.2` 等の番号を自動付与するオプション |
+| 将来対応 | ビルドスクリプト | セクション折りたたみ | 見出しクリックでコンテンツを折りたたむ機能（デフォルト展開） |
+| 将来対応 | ビルドスクリプト | コードブロックの折りたたみ | 行数が閾値（例：30 行）を超えるコードブロックを初期折りたたみにする |
+| 将来対応 | ビルドスクリプト | 印刷最適化 CSS | `@media print` でサイドバー・ボタン類を非表示にし A4 印刷に最適化する |
+| 将来対応 | ビルドスクリプト | TOC 深さ制御 | TOC に含める見出しレベルを設定で指定する（例：h2–h3 のみ） |
+| 将来対応 | ビルドスクリプト | ページ分割出力 | 大規模ドキュメントを章単位で複数 HTML ファイルに分割するオプション |
+| 将来対応 | ビルドスクリプト | 最終更新日の自動埋め込み | ソースの git コミットタイムスタンプをフッターに自動出力する |
+| 将来対応 | ビルドスクリプト | 外部リンクの自動処理 | 外部リンクに `target="_blank" rel="noopener"` を付与し、内部リンクと区別する |
+| 将来対応 | ビルドスクリプト | 読み取り進捗バー | スクロール位置に応じたプログレスバーをヘッダーに表示する |
+| 将来対応 | ビルドスクリプト | コードブロックのコピーボタン | コードブロック右上にワンクリックコピーボタンを配置する |
+| 将来対応 | ビルドスクリプト | diff ハイライト | `+`/`-` で始まる行を git diff スタイルで緑/赤に色分けするコードブロックオプション |
+| 将来対応 | ビルドスクリプト | 画像の遅延読み込み | `<img>` に `loading="lazy"` を付与し、初期表示を高速化する |
+| 将来対応 | ビルドスクリプト | カスタムメタタグ注入 | OGP / Twitter Card 等のメタタグをビルド設定から生成・埋め込む |
+| 将来対応 | ビルドスクリプト | ダークモード対応 | `prefers-color-scheme` に応じたライト／ダーク切り替えを実装する（現在はライト固定） |
+| 将来対応 | ビルドスクリプト | 見出しへのパーマリンク | 各見出しにホバーで表示されるアンカーリンクアイコンを付与する |
+| 将来対応 | ビルドスクリプト | コードブロックのファイル名表示 | ` ```python:filename.py ` 記法でコードブロック上部にファイル名ラベルを表示する |
+| 将来対応 | ビルドスクリプト | テンプレート変数展開 | ビルド設定に定義した変数を `{{ VERSION }}` 等の記法で Markdown 本文中に展開する |
+| 将来対応 | ビルドスクリプト | HTML ミニファイ | 生成 HTML のホワイトスペース・コメントを除去してファイルサイズを削減する |
+| 将来対応 | ビルドスクリプト | TOC ハイライト追従 | スクロール位置に応じてサイドバー TOC の現在セクションを自動ハイライトする |
+| 将来対応 | ビルドスクリプト | Mermaid ダイアグラム描画 | ` ```mermaid ` コードブロックをフローチャート・シーケンス図として SVG 描画する |
+| 将来対応 | ビルドスクリプト | テーブルのソート機能 | 列ヘッダークリックで昇順/降順ソートができるインタラクティブテーブル |
+| 将来対応 | ビルドスクリプト | キーボードショートカット | `/` で検索フォーカス・`→`/`←` で章移動等のキーバインドを実装する |
+| 将来対応 | ビルドスクリプト | 脚注サポート | `[^1]` 記法の脚注をページ末尾に自動レンダリングする |
+| 将来対応 | ビルドスクリプト | インライン数式レンダリング | `$...$` / `$$...$$` 記法の数式を KaTeX 等で描画する |
+| 将来対応 | ビルドスクリプト | ページ内ナビゲーション履歴 | ブラウザの戻る/進むに対応したハッシュベースの履歴管理を実装する |
+| 将来対応 | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | `aria-label`・`role` 属性等を適切に付与しスクリーンリーダーでの閲覧に対応する |
+| 将来対応 | ビルドスクリプト | 画像ライトボックス | 画像クリックでモーダル拡大表示する |
+| 将来対応 | ビルドスクリプト | 印刷時 QR コード挿入 | `@media print` で元ページの URL を QR コードとしてフッターに埋め込む |
+| 将来対応 | ビルドスクリプト | 定義リストサポート | `term\n: definition` 記法を `<dl>/<dt>/<dd>` タグにレンダリングする |
+| 将来対応 | ビルドスクリプト | タスクリストサポート | `- [ ]` / `- [x]` 記法をチェックボックス付きリストとして描画する |
+
+---
+
 # Part 2 — ポリシー
 > 遵守義務のある規則と制約を定める。「何をしなければならないか／してはならないか」に答える。
 
@@ -145,17 +423,28 @@ API は SDK として提供し、管理ツール実装者が直接 HTTP 通信�
 | リセット禁止 | `N` はリセット禁止。`V.1` に戻してはならない |
 | 例 | `V.205` → `V.206` → `V.207` |
 
-### 開発・安定版リリースバージョン V.X.N
+### リリースバージョン V.X.N
 
-ビルドおよび安定版リリースのバージョンを管理する。
+開発・ビルド・安定版リリースのバージョンを管理する。`N` は開発・ビルドのたびに、`X` は安定版リリースのたびにインクリメントする。
 
 | 項目 | 内容 |
 |------|------|
-| 形式 | `V.X.N`（`V` は固定、`X` は安定版リリースの正の整数、`N` はビルドの正の整数） |
+| 形式 | `V.X.N`（`V` は固定、`X` は安定版リリースの正の整数、`N` は開発・ビルド番号） |
 | `N` 更新方針 | 開発・ビルドのたびに 1 以上インクリメントする |
 | `X` 更新方針 | 安定版リリースのたびに 1 以上インクリメントする |
 | リセット禁止 | `X` と `N` はリセット禁止。`V.1` に戻してはならない |
-| 例 | `V.0.205` → `V.1.206` → `V.1.207` |
+| 例 | `V.1.100` → `V.1.101` → `V.2.102`（X は安定版リリースのたびに、N はビルドのたびにインクリメント） |
+
+### GitHub リリースポリシー
+
+| 項目 | ルール |
+|------|--------|
+| リリース作成条件 | 安定版リリース（`X` インクリメント時）のみ GitHub Release を作成する。開発・ビルド（`N` インクリメントのみ）では作成しない |
+| タグ形式 | `V.X.N`（リリースバージョンと一致させる）例：`V.2.102` |
+| リリースタイトル | タグ名と同一にする |
+| 添付ファイル | ビルド済み `Adlaire-db-spec.html` を添付する |
+| プレリリースフラグ | 安定版リリースでは `Pre-release` にチェックを入れない |
+| ドラフト公開禁止 | Draft Release のまま公開しない |
 
 ## 3. カスタマイズ可能範囲
 
@@ -167,7 +456,7 @@ API は SDK として提供し、管理ツール実装者が直接 HTTP 通信�
 | デザイントークン値 | `PAGE` f-string 内 `:root { }` ブロック | ADS 準拠の範囲内で変更可 |
 | ドキュメントタイトル | `PAGE` f-string 内 `<title>` タグ | 任意の文字列に変更可 |
 | ヘッダー表示名 | `PAGE` f-string 内 `<span class="hdr-title">` | 任意の文字列に変更可 |
-| バージョンバッジ | `PAGE` f-string 内 `<span class="hdr-ver">` | `V.N` 形式で累積インクリメント |
+| バージョンバッジ | `PAGE` f-string 内 `<span class="hdr-ver">` | `V.X.N` 形式（安定版リリースのたびに `X` をインクリメント） |
 | TOC 対象見出しレベル | `build_toc()` 内のフィルタ行（`lv <= 3`） | 上限レベルを変更可 |
 
 ## 4. 外部ライブラリ・フレームワーク方針
@@ -255,7 +544,7 @@ API は SDK として提供し、管理ツール実装者が直接 HTTP 通信�
 
 ## 10. データ永続化ポリシー
 
-- **現行方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・ビルドログ等）
+- **現行方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.build_history`・`.notify_config`・`.notify_log`・`.server_config`・`.access_log`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.build_logs/`・`.snapshots/`・ビルドログ等）
 - RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、いかなるデータベースも現行実装では採用しない
 - 将来的にデータベースを採用する場合は、本ドキュメントへの仕様追記と §4 許可外部ライブラリ一覧の更新を先行させる
 - **データ形式：フラットファイル JSON 形式**を標準とする
@@ -269,6 +558,13 @@ API は SDK として提供し、管理ツール実装者が直接 HTTP 通信�
 - 初回ログイン時はパスワード変更を促す通知を表示する
 - **5 回目のログイン時はパスワード変更を強制する**（変更完了まで管理画面の操作を制限する）
 - パスワードは平文保存禁止。ハッシュ化して保存する（§10 方針に基づきフラットファイル JSON 形式でファイル管理 → Part 3 §25）
+
+## 12. 管理 API サーバー セキュリティポリシー
+
+- `HOST` は `127.0.0.1` に固定し、外部へ直接公開しない
+- HTTPS は nginx 等のリバースプロキシでターミネートする。`api_server.py` 自体に TLS を実装しない
+- セッショントークンはインメモリで管理し、ファイルに書き出さない
+- API エンドポイントはすべて認証必須とする（`GET /api/health` を除く）
 
 ---
 
@@ -760,7 +1056,29 @@ Done → /var/www/html/Adlaire-db-spec.html  (1,713,731 bytes / 1,673 KB)
 ├── api_server.py        # 管理 API サーバー（常駐）
 ├── .github_token        # GitHub PAT（パーミッション 600）
 ├── .admin_credentials   # 認証情報ファイル（JSON、パーミッション 600）
-└── .last_sha            # 前回取得時の blob SHA キャッシュ（JSON 形式）
+├── .last_sha            # 前回取得時の blob SHA キャッシュ（JSON 形式）
+├── .build_history       # ビルド履歴（JSON）
+├── .notify_config       # Webhook 通知設定（JSON）
+├── .notify_log          # Webhook 送信履歴（JSON）
+├── .server_config       # サーバー設定（JSON）
+├── .access_log          # ログイン履歴（JSON）
+├── .repo_config         # リポジトリ監視設定（JSON）
+├── .config_log          # 設定変更履歴（JSON）
+├── .access_control      # IP アクセス制限設定（JSON）
+├── .hooks               # ビルド前後フック設定（JSON）
+├── .maintenance         # メンテナンスモード状態（JSON）
+├── .alert_rules         # カスタムアラートルール（JSON）
+├── .tag_rules           # 自動タグ付けルール（JSON）
+├── .pipeline_config     # パイプライン設定（JSON）
+├── .notes               # 運用ノート（テキスト）
+├── .smtp_config         # SMTP 設定（JSON、パスワード除く）
+├── .smtp_secret         # SMTP パスワード（プレーンテキスト、パーミッション 600）
+├── .dashboard_layout    # ダッシュボードウィジェットレイアウト（JSON）
+├── .build_logs/         # ビルドごとの個別ログ（JSON、ファイル名: {id}.json）
+├── .snapshots/          # ビルド成果物スナップショット（世代保存）
+└── admin/
+    ├── index.html           # 管理画面（単一ファイル完結）
+    └── adlaire-ci-sdk.js    # JavaScript SDK
 
 /opt/adlaire-builder/repo/
 └── adlaire-db-spec.md   # API 取得後に書き出されるソース Markdown
@@ -794,7 +1112,6 @@ BRANCH       = "main"                                  # 対象ブランチ
 TARGET_FILE  = "adlaire-db-spec.md"                   # 監視対象ファイル
 SHA_FILE     = "/opt/adlaire-builder/.last_sha"       # blob SHA キャッシュ（JSON 形式: {"sha": "..."}）
 SRC          = "/opt/adlaire-builder/repo/adlaire-db-spec.md"  # 書き出し先
-BUILD_SCRIPT = "/opt/adlaire-builder/build_spec_v3.py"  # pipeline.sh から参照するビルドスクリプトのパス（runner.py は直接使用しない）
 LOG_LEVEL    = "INFO"
 ```
 
@@ -844,7 +1161,7 @@ set -e
 python3 /opt/adlaire-builder/build_spec_v3.py
 ```
 
-`build_spec_v3.py` はサーバー固定（`/opt/adlaire-builder/`）のため、リポジトリには含めない。
+`build_spec_v3.py` のパスは `pipeline.sh` 内に直接記述する（`runner.py` は参照しない）。`build_spec_v3.py` はサーバー固定（`/opt/adlaire-builder/`）のため、リポジトリには含めない。
 
 ---
 
@@ -943,13 +1260,13 @@ sudo cp adlaire-ci.timer   /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now adlaire-ci.timer
 
-# 8. 認証情報ファイルを初期化（初期パスワード: admin）
-sudo -u deploy python3 /opt/adlaire-builder/api_server.py --init-credentials
-sudo chmod 600 /opt/adlaire-builder/.admin_credentials
-
-# 9. api_server.py を配置
+# 8. api_server.py を配置
 sudo cp api_server.py /opt/adlaire-builder/api_server.py
 sudo chown deploy:deploy /opt/adlaire-builder/api_server.py
+
+# 9. 認証情報ファイルを初期化（初期パスワード: admin）
+sudo -u deploy python3 /opt/adlaire-builder/api_server.py --init-credentials
+sudo chmod 600 /opt/adlaire-builder/.admin_credentials
 
 # 10. systemd ユニットを登録・起動
 sudo cp adlaire-admin.service /etc/systemd/system/
@@ -959,16 +1276,14 @@ sudo systemctl enable --now adlaire-admin
 
 ---
 
-## 19. 拡張ポイント
+## 19. 管理 API サーバー 既知の制限
 
-| 区分 | 機能 | 概要 |
-|------|------|------|
-| 拡張 | 複数ファイル監視 | `TARGET_FILE` をリストにし、複数 MD ファイルの変更を検出 |
-| 拡張 | ビルドログのファイル保存 | `subprocess` の stdout/stderr をファイルに記録 |
-| 拡張 | GitHub Commit Status API | ビルド結果（成功/失敗）を対象コミットに紐付けて GitHub に通知 |
-| 拡張 | ビルドタイムアウト | `subprocess` に `timeout` を設定し、長時間ビルドを強制終了 |
-| 拡張 | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整 |
-| 将来対応 | Webhook 方式 | 即時反応が必要な場合の代替方式。現行の Git Blobs API ポーリング方式を置き換える。サーバーに Git・nginx（リバースプロキシ）が必要。仕様化は対応時に本ドキュメントへ追記する |
+| 制限 | 詳細 |
+|------|------|
+| セッションはインメモリ管理 | 再起動で全セッションが消去される |
+| HTTPS 非対応 | TLS ターミネーションは nginx 等リバースプロキシで行う。`api_server.py` 単体では HTTP のみ |
+| シングルユーザー専用 | 現行実装はユーザー名固定（admin）。マルチユーザー対応は Part 1 §13 参照 |
+| 並列リクエストの制限 | Python `http.server` ベースのため、高負荷並列リクエストには非対応 |
 
 ---
 
@@ -976,7 +1291,7 @@ sudo systemctl enable --now adlaire-admin
 
 | 制限 | 詳細 |
 |------|------|
-| 単一ファイル監視 | 初期実装は `TARGET_FILE` 1 ファイル固定。複数対応は §19 拡張ポイント参照 |
+| 単一ファイル監視 | 初期実装は `TARGET_FILE` 1 ファイル固定。複数対応は Part 1 §13 参照 |
 | ポーリング遅延 | 変更検出はタイマー間隔（デフォルト 5 分）に依存する。即時反応は不可 |
 | `pipeline.sh` のみ対応 | YAML 形式のパイプライン定義には非対応（シェルスクリプト固定） |
 | ネットワーク断時の挙動 | API 失敗時はエラーログのみ記録し、次回タイマー起動まで再試行しない |
@@ -992,8 +1307,9 @@ systemd timer
   └─ runner.py（変更検出・ビルド起動）
 
 api_server.py（常駐 HTTP サーバー）  ← 新規コンポーネント
-  └─ adlaire-ci-sdk.js（SDK）
-       └─ admin/index.html（標準管理ツール）
+
+admin/index.html（標準管理ツール）
+  └─ adlaire-ci-sdk.js（SDK）─── HTTP ───► api_server.py
 ```
 
 新規コンポーネント `api_server.py` を Python 標準ライブラリ（`http.server`）で実装し、管理ツールからの API リクエストを受け付ける。`runner.py` とは独立して常駐する。
@@ -1001,10 +1317,20 @@ api_server.py（常駐 HTTP サーバー）  ← 新規コンポーネント
 **`api_server.py` 設定値（スクリプト冒頭）：**
 
 ```python
-HOST       = "127.0.0.1"                           # バインドアドレス（外部公開禁止）
-PORT       = 8765                                   # リッスンポート
-CREDENTIALS_FILE = "/opt/adlaire-builder/.admin_credentials"  # 認証情報ファイル
-LOG_LEVEL  = "INFO"
+HOST               = "127.0.0.1"                                    # バインドアドレス（外部公開禁止）
+PORT               = 8765                                             # リッスンポート
+CREDENTIALS_FILE   = "/opt/adlaire-builder/.admin_credentials"        # 認証情報ファイル
+OUTPUT_URL         = "https://example.com/Adlaire-db-spec.html"       # 出力ファイルの公開 URL
+HISTORY_FILE       = "/opt/adlaire-builder/.build_history"            # ビルド履歴ファイル
+NOTIFY_CONFIG_FILE = "/opt/adlaire-builder/.notify_config"            # Webhook 通知設定
+SERVER_CONFIG_FILE = "/opt/adlaire-builder/.server_config"            # サーバー設定
+ACCESS_LOG_FILE    = "/opt/adlaire-builder/.access_log"               # ログイン履歴
+NOTIFY_LOG_FILE    = "/opt/adlaire-builder/.notify_log"               # Webhook 送信履歴
+LOG_LEVEL          = "INFO"
+OWNER              = "<GitHubオーナー名>"                              # 初期値。POST /api/repo-config で動的変更可能（.repo_config に保存）
+REPO               = "<リポジトリ名>"                                  # 初期値。POST /api/repo-config で動的変更可能（.repo_config に保存）
+BRANCH             = "main"                                            # 初期値。POST /api/repo-config で動的変更可能（.repo_config に保存）
+TARGET_FILE        = "adlaire-db-spec.md"                             # 初期値。POST /api/repo-config で動的変更可能（.repo_config に保存）
 ```
 
 **systemd ユニット（常駐型、タイマー不要）：**
@@ -1044,9 +1370,50 @@ sudo journalctl -u adlaire-admin -f        # ログ確認
 | `POST` | `/api/login` | 不要 | ログイン（セッショントークン返却） |
 | `POST` | `/api/logout` | 要 | ログアウト（セッション破棄） |
 | `POST` | `/api/change-password` | 要 | パスワード変更 |
-| `GET` | `/api/status` | 要 | 最終ビルド時刻・SHA・成否を返す |
+| `GET` | `/api/status` | 要 | 最終ビルド時刻・SHA・成否・実行中フラグを返す |
 | `POST` | `/api/build` | 要 | 手動ビルドトリガー（`runner.py` を即時起動） |
-| `GET` | `/api/logs?n=100` | 要 | 最新ビルドログを n 行返す |
+| `GET` | `/api/logs?n=100&q=<keyword>` | 要 | 最新ビルドログを n 行返す（`q` 省略時は全行） |
+| `GET` | `/api/logs/export` | 要 | ビルドログ全件を JSON 形式でエクスポートする |
+| `POST` | `/api/logs/cleanup` | 要 | 保持期間（`log_retention_days`）を超えた `.build_logs/` エントリを削除する |
+| `GET` | `/api/history?page=<n>&per_page=<n>` | 要 | 過去ビルド履歴一覧をページ指定で返す（省略時: `page=1`, `per_page=20`） |
+| `POST` | `/api/reset-sha` | 要 | SHA キャッシュをクリアし次回強制ビルドを起こす |
+| `GET` | `/api/sysinfo` | 要 | 出力ファイルサイズ・更新日時・稼働時間を返す |
+| `GET` | `/api/health`        | 不要 | 死活監視用ヘルスチェック |
+| `GET` | `/api/schedule` | 要 | systemd timer の次回実行予定時刻を返す |
+| `GET` | `/api/notify-config` | 要 | Webhook 通知設定を返す |
+| `POST` | `/api/notify-config` | 要 | Webhook 通知設定を更新する |
+| `GET` | `/api/config` | 要 | サーバー設定を返す |
+| `POST` | `/api/config` | 要 | サーバー設定を更新する |
+| `GET` | `/api/pat-status` | 要 | GitHub PAT の有効性確認 |
+| `GET` | `/api/access-log` | 要 | ログイン履歴一覧を返す |
+| `GET` | `/api/stats?days=7` | 要 | ビルド統計（成功率・回数・平均間隔）を返す |
+| `GET` | `/api/repo-info` | 要 | リポジトリ設定（OWNER/REPO/BRANCH/TARGET_FILE）を返す |
+| `GET` | `/api/backup` | 要 | 全設定（通知設定・サーバー設定）を JSON 形式でエクスポートする |
+| `POST` | `/api/restore` | 要 | JSON 形式の設定をインポートし全設定を上書き復元する |
+| `POST` | `/api/notify-test` | 要 | Webhook にテスト通知を送信し疎通を確認する |
+| `POST` | `/api/build/force` | 要 | SHA リセットとビルドをアトミックに実行する（強制ビルド） |
+| `POST` | `/api/pat-verify` | 要 | GitHub API を呼び出し PAT の有効性をリアルタイム検証する |
+| `GET` | `/api/history/{id}/log` | 要 | 指定ビルド ID のログを取得する |
+| `POST` | `/api/build/cancel` | 要 | 実行中のビルドを強制停止する（`running: true` のときのみ有効） |
+| `POST` | `/api/log-level` | 要 | `api_server.py` の LOG_LEVEL をランタイムで変更する |
+| `POST` | `/api/pat-update` | 要 | `.github_token` ファイルを更新し PAT を差し替える |
+| `GET` | `/api/dashboard` | 要 | ステータス・システム情報・統計・スケジュールを一括返却する |
+| `GET` | `/api/notify-log` | 要 | Webhook 送信履歴（日時・イベント・HTTP ステータス・成否）を返す |
+| `GET` | `/api/sessions` | 要 | 有効セッション一覧（作成日時・有効期限）を返す |
+| `POST` | `/api/sessions/revoke-all` | 要 | 現セッション以外の全セッションを強制無効化する |
+| `POST` | `/api/schedule/interval` | 要 | systemd タイマーのポーリング間隔を動的変更する |
+| `GET` | `/api/logs/search?q=<keyword>&from=<date>&to=<date>` | 要 | 日付範囲を指定して過去ビルドログ（`.build_logs/`）を横断検索する |
+| `GET` | `/api/output-meta` | 要 | 出力ファイルのサイズ・見出し数・生成日時・前回比サイズ差分を返す |
+| `GET` | `/api/stats/timeline?days=30` | 要 | 日別ビルド成功/失敗件数の時系列配列を返す |
+| `GET` | `/api/diagnostics` | 要 | PAT・GitHub API・出力ファイル・systemd・Webhook の一括自己診断結果を返す |
+| `GET` | `/api/rate-limit` | 要 | GitHub API のレート制限残量・上限・リセット時刻を返す |
+| `GET` | `/api/disk-usage` | 要 | ビルドログ合計・出力ファイルのディスク使用量を返す |
+| `GET` | `/api/config-log` | 要 | 設定変更履歴（変更日時・種別・変更前後の値）を返す |
+| `GET` | `/api/history/{id}/comment` | 要 | 指定ビルドのコメントを取得する |
+| `POST` | `/api/history/{id}/comment` | 要 | 指定ビルドにコメントを付与・更新する |
+| `POST` | `/api/repo-config` | 要 | リポジトリ監視設定（OWNER / REPO / BRANCH / TARGET_FILE）を更新する |
+| `GET` | `/api/history/export` | 要 | ビルド履歴一覧を JSON 形式でエクスポートする |
+| `POST` | `/api/history/{id}/flag` | 要 | 指定ビルドに重要フラグを設定・解除する |
 
 **`POST /api/login` リクエスト / レスポンス：**
 ```json
@@ -1054,10 +1421,10 @@ sudo journalctl -u adlaire-admin -f        # ログ確認
 { "password": "admin" }
 
 // レスポンス
-{ "token": "<session_token>", "must_change": true }
+{ "token": "<session_token>", "must_change": "prompt" }
 ```
 
-`must_change: true` は初回ログイン（促す）または 5 回目以降（強制）のとき返す。
+`must_change` の有効値：`"none"`（変更不要）| `"prompt"`（促す：初回ログイン時）| `"forced"`（強制：5 回目以降。変更完了まで管理画面の操作を制限）
 
 **`POST /api/logout` リクエスト / レスポンス：**
 ```json
@@ -1079,24 +1446,844 @@ sudo journalctl -u adlaire-admin -f        # ログ確認
 {
   "last_sha": "abc123",
   "last_build_at": "2026-09-14T10:00:00",
-  "last_build_status": "success"
+  "last_build_status": "success",
+  "output_url": "https://example.com/Adlaire-db-spec.html",
+  "running": false
 }
 ```
 
-`last_build_status` の有効値：`"success"` | `"failure"` | `"none"`（初回未実行時）
+`last_build_status` の有効値：`"success"` | `"failure"` | `"none"`（初回未実行時）  
+`running` の有効値：`true`（ビルド実行中）| `false`（待機中）  
+`running` の判定：`api_server.py` が `systemctl is-active adlaire-ci.service` を実行し、`active` の場合 `true` を返す。
 
 **`GET /api/logs` レスポンス例：**
 ```json
 { "lines": ["2026-09-14T10:00:00 [INFO] Build start", "..."] }
 ```
 
+**`GET /api/logs/export` レスポンス例：**
+```json
+{
+  "exported_at": "2026-09-15T10:00:00",
+  "lines": ["2026-09-14T10:00:00 [INFO] Build start", "..."]
+}
+```
+
+**`GET /api/history` レスポンス例：**
+```json
+{
+  "total": 42, "page": 1, "per_page": 20, "pages": 3,
+  "history": [
+    { "id": "b001", "build_at": "2026-09-15T10:00:00", "sha": "abc123", "status": "success", "output_size_bytes": 2048576, "trigger": "auto",    "duration_seconds": 42, "flagged": false, "tags": ["release"] },
+    { "id": "b002", "build_at": "2026-09-14T18:30:00", "sha": "def456", "status": "failure", "output_size_bytes": null,    "trigger": "manual", "duration_seconds": 7,  "flagged": true,  "tags": [] }
+  ]
+}
+```
+
+`page` は 1 始まり。`per_page` の最大値は 100。範囲外ページを指定した場合は `history: []` を返す。
+
+`id` はビルド実行時に生成するユニーク識別子（形式：`b{YYYYMMDDHHmmss}`）。`.build_logs/{id}.json` に対応するログファイルが保存される。
+
+**`POST /api/reset-sha` レスポンス例：**
+```json
+{ "message": "SHA reset" }
+```
+
+**`GET /api/sysinfo` レスポンス例：**
+```json
+{
+  "output_size_bytes": 2048576,
+  "output_mtime": "2026-09-15T10:00:00",
+  "uptime_seconds": 86400
+}
+```
+
+**`GET /api/schedule` レスポンス例：**
+```json
+{ "next_run_at": "2026-09-15T10:05:00", "interval": "5min", "paused": false, "allowed_hours": { "from": 9, "to": 18 } }
+```
+
+`paused` が `true` のとき、ポーリングは停止中で `next_run_at` は `null` を返す。
+
+`allowed_hours`：自動ビルドを許可する時間帯（UTC）。`null` = 無制限。`from` 以上 `to` 未満の時刻のみビルドを実行する。許可時間帯外のポーリングでは変更を検出しても実行を保留し、次の許可時間帯に入った時点で実行する。
+
+**`POST /api/schedule/allowed-hours` リクエスト / レスポンス：**
+```json
+// 設定
+{ "from": 9, "to": 18 }
+// 解除（無制限に戻す）
+{ "from": null, "to": null }
+// レスポンス: 200
+{ "message": "Allowed hours updated", "allowed_hours": { "from": 9, "to": 18 } }
+```
+
+**`POST /api/schedule/pause` / `POST /api/schedule/resume` レスポンス例：**
+```json
+{ "message": "Schedule paused" }
+{ "message": "Schedule resumed" }
+```
+
+既に一時停止中に `pause`、または稼働中に `resume` を呼び出した場合は `409 Conflict` を返す。
+
+> **責務分担：** Webhook 通知の**送信責務は `runner.py`** にある。`runner.py` はビルド完了時に `.notify_config` を読み込んで Webhook を送信する。`api_server.py`（通知 API）は設定の読み書きのみを担い、自身では通知を送信しない。
+
+**`GET /api/notify-config` レスポンス例：**
+```json
+{
+  "webhooks": [
+    { "url": "https://hooks.example.com/...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": null }
+  ],
+  "on": ["failure"],
+  "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 },
+  "email": { "enabled": false, "to": [], "on": [] }
+}
+```
+
+`secret`：Webhook 署名シークレット。未設定時は `null`、設定済み時は `"***"`（マスク）を返す（→ 16E 参照）。
+
+`on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）。複数指定可。
+
+`summary`：定期サマリー通知の設定。`enabled: true` のとき指定スケジュールで統計サマリーを Webhook 送信する。`interval` の有効値：`"daily"` | `"weekly"`。`hour` は 0〜23（UTC）。`day_of_week` は `"weekly"` 時のみ有効（0 = 日曜〜6 = 土曜）。
+
+**`POST /api/notify-summary` レスポンス例：**
+```json
+{ "message": "Summary sent", "webhook_url": "https://hooks.example.com/..." }
+```
+
+即時サマリー送信。Webhook 未設定または無効時は `422` を返す。
+
+`payload_template`：Webhook 送信 JSON ペイロードのテンプレート文字列。`null` = デフォルトペイロードを使用。テンプレート内で使用可能な変数は以下の通り。
+
+| 変数 | 内容 |
+|------|------|
+| `{{id}}` | ビルド ID |
+| `{{status}}` | ビルド結果（`success` / `failure`） |
+| `{{sha}}` | 対象コミット SHA |
+| `{{duration_seconds}}` | ビルド所要時間（秒） |
+| `{{build_at}}` | ビルド実行日時（ISO 8601） |
+
+`secret`（16E）：Webhook 送信時の HMAC-SHA256 署名用シークレット文字列。設定時はリクエストヘッダーに `X-Adlaire-Signature: sha256=<hmac>` を付与する。`null` = 署名なし。`GET /api/notify-config` で返却する際、設定済みの場合は `"***"` でマスクし、未設定の場合は `null` を返す。`POST /api/notify-config` で更新可能。
+
+**`GET /api/config` レスポンス例：**
+```json
+{ "log_max_lines": 500, "history_max_count": 100, "build_timeout_seconds": 300, "log_retention_days": 30, "pat_expires_at": null, "snapshots_keep": 5, "queue_max_size": 3 }
+
+`pat_expires_at`：PAT の有効期限日（`YYYY-MM-DD` 形式）。`null` = 未設定。`GET /api/diagnostics` の `pat` 項目で 7 日以内なら `"warn"`、期限当日以前なら `"error"` に変更。
+```
+
+**`GET /api/health` レスポンス例：**
+```json
+{ "status": "ok" }
+```
+
+**`GET /api/pat-status` レスポンス例：**
+```json
+{ "valid": true, "checked_at": "2026-09-15T10:00:00" }
+```
+
+**`GET /api/access-log` レスポンス例：**
+```json
+{ "log": [
+    { "at": "2026-09-15T10:00:00", "result": "success" },
+    { "at": "2026-09-15T09:00:00", "result": "failure" }
+]}
+```
+
+**`GET /api/stats` レスポンス例：**
+```json
+{
+  "days": 7,
+  "total_builds": 42,
+  "success_count": 40,
+  "failure_count": 2,
+  "success_rate": 0.952,
+  "avg_interval_minutes": 240,
+  "avg_duration_seconds": 38,
+  "max_duration_seconds": 91
+}
+```
+
+**`GET /api/repo-info` レスポンス例：**
+```json
+{
+  "owner": "fqwink",
+  "repo": "Adlaire-Design-System",
+  "branch": "main",
+  "target_file": "adlaire-db-spec.md"
+}
+```
+
+**`GET /api/backup` レスポンス例：**
+```json
+{
+  "exported_at": "2026-09-15T10:00:00",
+  "notify_config": {
+    "webhooks": [{ "url": "https://hooks.example.com/...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": null }],
+    "on": ["failure"],
+    "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 },
+    "email": { "enabled": false, "to": [], "on": [] }
+  },
+  "server_config": { "log_max_lines": 500, "history_max_count": 100 }
+}
+```
+
+**`POST /api/notify-test` レスポンス例：**
+```json
+{ "message": "Test notification sent", "webhook_url": "https://hooks.example.com/..." }
+```
+
+**`POST /api/build/force` レスポンス例：**
+```json
+{ "message": "SHA reset and build triggered" }
+```
+
+**`POST /api/pat-verify` レスポンス例：**
+```json
+{ "valid": true, "checked_at": "2026-09-15T10:05:00", "scopes": ["contents:read"] }
+```
+
+**`GET /api/history/{id}/log` レスポンス例：**
+```json
+{
+  "id": "b001",
+  "build_at": "2026-09-15T10:00:00",
+  "sha": "abc123",
+  "status": "success",
+  "output_size_bytes": 2048576,
+  "trigger": "auto",
+  "comment": null,
+  "flagged": false,
+  "tags": ["release"],
+  "lines": ["2026-09-15T10:00:00 [INFO] Build start", "..."]
+}
+```
+
+**`POST /api/restore` リクエスト / レスポンス：**
+```json
+// リクエスト（GET /api/backup と同一形式）
+{
+  "notify_config": {
+    "webhooks": [{ "url": "https://hooks.example.com/...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": null }],
+    "on": ["failure"],
+    "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 },
+    "email": { "enabled": false, "to": [], "on": [] }
+  },
+  "server_config": { "log_max_lines": 500, "history_max_count": 100 }
+}
+// レスポンス: 200
+{ "message": "Restored" }
+```
+
+**`GET /api/notify-log` レスポンス例：**
+```json
+{ "log": [
+    { "at": "2026-09-15T10:00:00", "event": "failure", "http_status": 200, "result": "success", "attempt": 1, "error": null },
+    { "at": "2026-09-14T18:30:00", "event": "start",   "http_status": 500, "result": "failure", "attempt": 3, "error": "HTTP 500" }
+]}
+```
+
+`event` の有効値：`"start"` | `"success"` | `"failure"`（`GET /api/notify-config` の `on` と同一）。`result` の有効値：`"success"` | `"failure"`（Webhook 送信の成否）。
+
+**`GET /api/sessions` レスポンス例：**
+```json
+{ "sessions": [
+    { "created_at": "2026-09-15T09:00:00", "expires_at": "2026-09-15T17:00:00", "current": true },
+    { "created_at": "2026-09-15T08:00:00", "expires_at": "2026-09-15T16:00:00", "current": false }
+]}
+```
+
+**`POST /api/sessions/revoke-all` レスポンス例：**
+```json
+{ "message": "All other sessions revoked", "revoked_count": 1 }
+```
+
+**`POST /api/schedule/interval` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "interval_seconds": 300 }
+// レスポンス: 200
+{ "message": "Interval updated", "interval_seconds": 300 }
+```
+
+**`POST /api/build/cancel` レスポンス例：**
+```json
+{ "message": "Build cancelled" }
+```
+
+`running: false` のときに呼び出した場合は `409 Conflict` → `{"error": "No build is running"}` を返す。
+
+**`GET /api/build/stream` — SSE ストリーミング：**
+
+`Content-Type: text/event-stream` で接続を維持し、ビルドログを逐次配信する。認証トークンをクエリパラメータ（`?token=<session_token>`）で受け付ける。
+
+```
+data: {"type": "log",  "line": "2026-09-15T10:00:01 [INFO] Build start"}
+
+data: {"type": "log",  "line": "2026-09-15T10:00:42 [INFO] Build success"}
+
+data: {"type": "end",  "status": "success", "duration_seconds": 42}
+```
+
+`type` の有効値：`"log"`（ログ行）| `"end"`（ビルド完了）。ビルドが未実行時に接続した場合は即時 `{"type": "end", "status": null}` を送信して切断する。
+
+**`POST /api/log-level` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "level": "DEBUG" }
+// レスポンス: 200
+{ "message": "Log level changed", "level": "DEBUG" }
+```
+
+`level` の有効値：`"DEBUG"` | `"INFO"` | `"WARNING"` | `"ERROR"`
+
+**`POST /api/pat-update` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "token": "github_pat_..." }
+// レスポンス: 200
+{ "message": "PAT updated" }
+```
+
+**`GET /api/dashboard` レスポンス例：**
+```json
+{
+  "status": {
+    "last_sha": "abc123",
+    "last_build_at": "2026-09-15T10:00:00",
+    "last_build_status": "success",
+    "output_url": "https://example.com/Adlaire-db-spec.html",
+    "running": false
+  },
+  "sysinfo": {
+    "output_size_bytes": 2048576,
+    "output_mtime": "2026-09-15T10:00:00",
+    "uptime_seconds": 86400
+  },
+  "stats": {
+    "days": 7,
+    "total_builds": 42,
+    "success_count": 40,
+    "failure_count": 2,
+    "success_rate": 0.952,
+    "avg_interval_minutes": 240
+  },
+  "schedule": { "next_run_at": "2026-09-15T10:05:00", "interval": "5min", "paused": false },
+  "alerts": [
+    { "level": "warn", "message": "PAT expires in 5 days" }
+  ]
+}
+```
+
+`alerts`：診断異常（`warn` / `error`）および PAT 期限切れ間近の場合に項目を返す。異常なしのときは空配列 `[]`。`level` の有効値：`"warn"` | `"error"`。パネルのナビゲーション項目に `alerts` の最高深刻度（`error` > `warn`）のバッジを表示する。
+
+**`GET /api/logs/search` レスポンス例：**
+```json
+{
+  "query": "ERROR",
+  "from": "2026-09-10",
+  "to": "2026-09-15",
+  "results": [
+    { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00", "lines": ["2026-09-15T10:00:01 [ERROR] Build failed"] },
+    { "id": "b20260912183000", "build_at": "2026-09-12T18:30:00", "lines": ["2026-09-12T18:30:05 [ERROR] Timeout"] }
+  ]
+}
+```
+
+`from` / `to` は `YYYY-MM-DD` 形式。省略時は全期間。`q` 省略時は全行返却。
+
+**`GET /api/output-meta` レスポンス例：**
+```json
+{
+  "size_bytes": 2048576,
+  "mtime": "2026-09-15T10:00:00",
+  "heading_count": 342,
+  "size_diff_bytes": 1024
+}
+```
+
+`size_diff_bytes`：前回ビルド時との差分（正＝増加、負＝減少、`null`＝比較不能）。  
+前回サイズは `.build_history` の直近エントリに記録された `output_size_bytes` フィールドから取得する。
+
+**`GET /api/stats/timeline` レスポンス例：**
+```json
+{
+  "days": 30,
+  "timeline": [
+    { "date": "2026-09-15", "success": 3, "failure": 0 },
+    { "date": "2026-09-14", "success": 2, "failure": 1 },
+    { "date": "2026-09-13", "success": 4, "failure": 0 }
+  ]
+}
+```
+
+日付降順。`days` 日分のうちビルドが 0 件の日はエントリなし。
+
+**`GET /api/diagnostics` レスポンス例：**
+```json
+{
+  "checked_at": "2026-09-15T10:00:00",
+  "items": [
+    { "name": "pat",         "status": "ok",   "message": "PAT is valid" },
+    { "name": "github_api",  "status": "ok",   "message": "GitHub API reachable" },
+    { "name": "output_file", "status": "ok",   "message": "Output file exists (2.0 MB)" },
+    { "name": "systemd",     "status": "ok",   "message": "adlaire-ci.service is active" },
+    { "name": "webhook",     "status": "warn", "message": "Webhook URL not configured" }
+  ]
+}
+```
+
+`status` の有効値：`"ok"` | `"warn"` | `"error"`。
+
+**`GET /api/rate-limit` レスポンス例：**
+```json
+{ "limit": 5000, "remaining": 4823, "reset_at": "2026-09-15T11:00:00", "used": 177 }
+```
+
+**`GET /api/disk-usage` レスポンス例：**
+```json
+{
+  "build_logs_bytes": 10485760,
+  "build_logs_count": 42,
+  "output_file_bytes": 2048576,
+  "total_bytes": 12534296
+}
+```
+
+**`GET /api/config-log` レスポンス例：**
+```json
+{ "log": [
+    { "at": "2026-09-15T10:00:00", "type": "server_config", "diff": { "log_max_lines": [500, 1000] } },
+    { "at": "2026-09-14T18:00:00", "type": "notify_config", "diff": { "enabled": [false, true] } },
+    { "at": "2026-09-13T12:00:00", "type": "repo_config",   "diff": { "branch": ["main", "develop"] } }
+]}
+```
+
+`type` の有効値：`"server_config"` | `"notify_config"` | `"repo_config"`  
+`diff` の形式：`{ フィールド名: [変更前, 変更後] }`。設定変更時に `.config_log` へ追記する。
+
+**`GET /api/history/{id}/comment` レスポンス例：**
+```json
+{ "id": "b20260914183000", "comment": "ネットワーク障害による失敗。再ビルド済み。", "updated_at": "2026-09-14T19:00:00" }
+```
+
+コメント未設定時は `"comment": null`。コメントは `.build_logs/{id}.json` の `comment` フィールドに保存する。
+
+**`POST /api/history/{id}/comment` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "comment": "ネットワーク障害による失敗。再ビルド済み。" }
+// レスポンス: 200
+{ "message": "Comment saved" }
+```
+
+**`POST /api/history/{id}/flag` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "flagged": true }
+// レスポンス: 200
+{ "message": "Flag updated" }
+```
+
+フラグは `.build_logs/{id}.json` の `flagged` フィールドに保存する。
+
+**`POST /api/history/{id}/tags` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "tags": ["release", "hotfix"] }
+// レスポンス: 200
+{ "message": "Tags updated" }
+```
+
+タグは `.build_logs/{id}.json` の `tags` フィールド（`string[]`）に保存する。空配列 `[]` を指定するとタグをすべて削除する。
+
+**`GET /api/tokens` レスポンス例：**
+```json
+{ "tokens": [
+    { "id": "tok001", "label": "監視用", "scope": "read", "created_at": "2026-09-15T10:00:00", "last_used_at": "2026-09-15T11:00:00" }
+]}
+```
+
+**`POST /api/tokens` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "label": "監視用", "scope": "read" }
+// レスポンス: 201
+{ "id": "tok001", "token": "act_...", "label": "監視用", "scope": "read", "created_at": "2026-09-15T10:00:00" }
+```
+
+`token` はレスポンス時のみ返却し、以後は取得不可。`scope` の有効値：`"read"`（読み取り専用）。読み取り専用トークンは `GET` 系エンドポイントのみ許可し、`POST` / `DELETE` 系は `403 Forbidden` を返す。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
+
+**`DELETE /api/tokens/{id}` レスポンス例：**
+```json
+{ "message": "Token revoked" }
+```
+
+---
+
+### スナップショット（14A）
+
+ビルド成功時に出力ファイルを `.snapshots/` へ自動保存する。保持世代数は `GET /api/config` の `snapshots_keep`（デフォルト `5`、`0` = 機能無効）で制御し、超過した古い世代は自動削除する。
+
+**`GET /api/snapshots` レスポンス例：**
+```json
+{ "snapshots": [
+    { "id": "snap001", "build_id": "b20260915100000", "saved_at": "2026-09-15T10:00:00", "size_bytes": 2048576 },
+    { "id": "snap002", "build_id": "b20260914183000", "saved_at": "2026-09-14T18:30:00", "size_bytes": 2031616 }
+]}
+```
+
+**`GET /api/snapshots/{id}/download`**  
+バイナリレスポンス。`Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="Adlaire-db-spec.html"` を付与する。
+
+**`DELETE /api/snapshots/{id}` レスポンス例：**
+```json
+{ "message": "Snapshot deleted" }
+```
+
+---
+
+### メンテナンスモード（14B）
+
+メンテナンスモード有効中は手動ビルド（`POST /api/build`・`POST /api/build/force`）・スケジュールビルドの両方を拒否し、`503 Service Unavailable` + `{ "error": "maintenance" }` を返す。`GET /api/health` は制限対象外とする。
+
+**`GET /api/maintenance` レスポンス例：**
+```json
+{ "enabled": false, "reason": null, "since": null }
+```
+メンテナンス中は `{ "enabled": true, "reason": "定期メンテナンス", "since": "2026-09-15T10:00:00" }`。
+
+**`POST /api/maintenance/enable` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "reason": "定期メンテナンス" }
+// レスポンス: 200
+{ "message": "Maintenance mode enabled", "since": "2026-09-15T10:00:00" }
+```
+
+**`POST /api/maintenance/disable` レスポンス：**
+```json
+{ "message": "Maintenance mode disabled" }
+```
+
+---
+
+### IP アクセス制限（14C）
+
+`allow` に IPv4 アドレスまたは CIDR 表記のリストを設定する。空リストは制限なし（全接続許可）を意味する。制限に一致しない接続元からのリクエストは `403 Forbidden` を返す。`GET /api/health` は制限対象外とする。設定は `.access_control` に保存する。
+
+**`GET /api/access-control` レスポンス例：**
+```json
+{ "allow": ["192.168.1.0/24", "10.0.0.1"] }
+```
+制限なしの場合: `{ "allow": [] }`
+
+**`POST /api/access-control` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "allow": ["192.168.1.0/24", "10.0.0.1"] }
+// レスポンス: 200
+{ "message": "Access control updated", "allow": ["192.168.1.0/24", "10.0.0.1"] }
+```
+
+---
+
+### ビルドフック（14E）
+
+ビルド実行の直前（`pre`）・直後（`post`）に任意のシェルコマンドを実行する。フック設定は `.hooks` に保存する。
+
+- `pre` フックが失敗（`exit_code != 0`）し `abort_on_failure: true` の場合、ビルドを中断しステータスを `hook_error` とする。
+- `post` フックは `abort_on_failure` 設定に関わらずビルド結果（`success` / `failure`）を変更しない。
+- フックの実行ログは `.build_logs/{build_id}_hook_{id}.json` に保存する。
+
+**`GET /api/hooks` レスポンス例：**
+```json
+{ "hooks": [
+    { "id": "h001", "phase": "pre",  "command": "echo build start", "enabled": true, "abort_on_failure": true },
+    { "id": "h002", "phase": "post", "command": "echo build end",   "enabled": true, "abort_on_failure": false }
+]}
+```
+
+**`POST /api/hooks` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "phase": "pre", "command": "echo build start", "abort_on_failure": true }
+// レスポンス: 201
+{ "id": "h001", "phase": "pre", "command": "echo build start", "enabled": true, "abort_on_failure": true }
+```
+
+**`DELETE /api/hooks/{id}` レスポンス：**
+```json
+{ "message": "Hook deleted" }
+```
+
+**`GET /api/hooks/{id}/log` レスポンス例：**
+```json
+{ "id": "h001", "runs": [
+    { "build_id": "b20260915100000", "ran_at": "2026-09-15T10:00:00", "exit_code": 0, "output": "build start\n" },
+    { "build_id": "b20260914183000", "ran_at": "2026-09-14T18:30:00", "exit_code": 1, "output": "Error: command not found\n" }
+]}
+```
+`runs` は直近 20 件を返す（新しい順）。
+
+---
+
+### カスタムアラートルール（15A）
+
+`GET /api/dashboard` 取得時にルールを評価し、条件を満たすものを `alerts` 配列へ自動追加する。`.alert_rules` に保存する。
+
+対応メトリクス：`success_rate_7d`（7日間成功率 %）/ `avg_duration_seconds`（7日間平均ビルド時間 秒）/ `last_build_age_hours`（最終ビルドからの経過時間 時間）/ `disk_usage_bytes`（ディスク使用量 バイト）  
+対応演算子：`lt`（未満）/ `gt`（超過）/ `lte`（以下）/ `gte`（以上）
+
+**`GET /api/alert-rules` レスポンス例：**
+```json
+{ "rules": [
+    { "id": "r001", "metric": "success_rate_7d", "operator": "lt", "threshold": 90, "level": "warn", "message": "7日間成功率が90%を下回っています" },
+    { "id": "r002", "metric": "last_build_age_hours", "operator": "gt", "threshold": 48, "level": "error", "message": "48時間以上ビルドが実行されていません" }
+]}
+```
+
+**`POST /api/alert-rules` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "metric": "avg_duration_seconds", "operator": "gt", "threshold": 120, "level": "warn", "message": "平均ビルド時間が2分を超えています" }
+// レスポンス: 201
+{ "id": "r003", "metric": "avg_duration_seconds", "operator": "gt", "threshold": 120, "level": "warn", "message": "平均ビルド時間が2分を超えています" }
+```
+
+**`DELETE /api/alert-rules/{id}` レスポンス：**
+```json
+{ "message": "Alert rule deleted" }
+```
+
+---
+
+### 自動タグ付けルール（15B）
+
+ビルド完了時に条件式を評価し、マッチしたルールのタグを `.build_history` のエントリへ自動追記する（手動タグと共存する）。`.tag_rules` に保存する。
+
+条件式で使用可能な変数：`status`（`"success"` / `"failure"`）/ `duration_seconds`（整数）/ `trigger`（`"auto"` / `"manual"` / `"force"`）  
+演算子：`==`・`!=`・`>`・`<`・`>=`・`<=`
+
+**`GET /api/tag-rules` レスポンス例：**
+```json
+{ "rules": [
+    { "id": "t001", "condition": "status == 'failure'", "tags": ["要確認"] },
+    { "id": "t002", "condition": "duration_seconds > 120", "tags": ["低速"] },
+    { "id": "t003", "condition": "trigger == 'force'", "tags": ["強制実行"] }
+]}
+```
+
+**`POST /api/tag-rules` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "condition": "status == 'success'", "tags": ["green"] }
+// レスポンス: 201
+{ "id": "t004", "condition": "status == 'success'", "tags": ["green"] }
+```
+
+**`DELETE /api/tag-rules/{id}` レスポンス：**
+```json
+{ "message": "Tag rule deleted" }
+```
+
+---
+
+### 出力ファイルチェックサム（15C）
+
+ビルド成功時に出力 HTML ファイルの SHA-256 ハッシュを算出し `.build_history` の該当エントリに `output_sha256` として記録する。
+
+**`GET /api/output-meta` レスポンス変更（`sha256` フィールド追加）：**
+```json
+{ "size_bytes": 2048576, "mtime": "2026-09-15T10:00:00", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" }
+```
+
+**`GET /api/history/{id}/log` レスポンス変更（`output_sha256` フィールド追加）：**
+```json
+{ "id": "b001", "build_at": "2026-09-15T10:00:00", "sha": "abc123", "status": "success",
+  "output_size_bytes": 2048576, "output_sha256": "e3b0c44298fc1c149afbf4c8996fb924...",
+  "trigger": "auto", "comment": null, "flagged": false, "tags": ["release"],
+  "lines": ["2026-09-15T10:00:00 [INFO] Build start", "..."] }
+```
+
+**`POST /api/verify-output` レスポンス例：**
+```json
+// 一致時
+{ "match": true, "expected": "e3b0c44298fc1c149afbf4c8996fb924...", "actual": "e3b0c44298fc1c149afbf4c8996fb924..." }
+// 不一致時
+{ "match": false, "expected": "e3b0c44298fc1c149afbf4c8996fb924...", "actual": "f4a2d5591c8f3a742f902e3b6f7c1c3d..." }
+```
+`expected` は `.build_history` の最終成功エントリに記録された `output_sha256`。現在の出力ファイルが存在しない場合は `404` を返す。
+
+---
+
+### ビルドパイプライン設定（15D）
+
+`runner.py` がビルド実行時に `.pipeline_config` を読み込み、`build_spec_v3.py` の呼び出しに `extra_args`・`env` を適用する。`.pipeline_config` に保存する。
+
+**`GET /api/pipeline-config` レスポンス例：**
+```json
+{ "extra_args": ["--verbose"], "env": { "DEBUG": "1" } }
+```
+初期値（未設定時）：`{ "extra_args": [], "env": {} }`
+
+**`POST /api/pipeline-config` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "extra_args": ["--verbose"], "env": { "DEBUG": "1" } }
+// レスポンス: 200
+{ "message": "Pipeline config updated" }
+```
+
+---
+
+### 運用ノート（15E）
+
+システム全体の運用メモを Markdown テキストで保存・取得する。`.notes` に保存する。認証必須。
+
+**`GET /api/notes` レスポンス例：**
+```json
+{ "content": "# 運用メモ\n定期メンテナンス: 毎週日曜 2:00〜4:00\nPAT 更新期限: 2026-12-01", "updated_at": "2026-09-15T10:00:00" }
+```
+初回（未作成）時：`{ "content": "", "updated_at": null }`
+
+**`POST /api/notes` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "content": "# 運用メモ\n定期メンテナンス: 毎週日曜 2:00〜4:00" }
+// レスポンス: 200
+{ "message": "Notes updated", "updated_at": "2026-09-15T10:00:00" }
+```
+
+---
+
+### メール通知（SMTP）（16B）
+
+Webhook に加えてメールでビルド結果を通知できる機能。SMTP 接続設定は `.smtp_config` に、パスワードは `.smtp_secret`（パーミッション 600）に分離して保存する。`GET /api/notify-config` のレスポンスに `email` セクションを追加する。
+
+**`GET /api/smtp-config` レスポンス例：**
+```json
+{ "host": "smtp.example.com", "port": 587, "user": "notify@example.com", "tls": true, "from": "notify@example.com", "to": ["ops@example.com"], "on": ["failure"], "enabled": true, "password_set": true }
+```
+`password_set`：`.smtp_secret` が存在するかを真偽値で返す。パスワード本体は返却しない。  
+未設定時：`{ "host": null, "port": 587, "user": null, "tls": true, "from": null, "to": [], "on": [], "enabled": false, "password_set": false }`
+
+**`POST /api/smtp-config` リクエスト / レスポンス：**
+```json
+// リクエスト（変更するフィールドのみ指定可。password フィールドは省略可能）
+{ "host": "smtp.example.com", "port": 587, "user": "notify@example.com", "password": "s3cr3t", "tls": true, "from": "notify@example.com", "to": ["ops@example.com"], "on": ["failure"], "enabled": true }
+// レスポンス: 200
+{ "message": "SMTP config updated" }
+```
+`on` の有効値：`"start"` / `"success"` / `"failure"`
+
+**`POST /api/smtp-test` レスポンス例：**
+```json
+// 成功時
+{ "result": "success", "message": "Test email sent to ops@example.com" }
+// 失敗時
+{ "result": "failure", "message": "Connection refused: smtp.example.com:587" }
+```
+SMTP 未設定または `enabled: false` の場合は `422` を返す。
+
+**`GET /api/notify-config` への追加（`email` セクション）：**
+```json
+{
+  "webhooks": [ { "url": "...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": "***" } ],
+  "on": ["failure"],
+  "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 },
+  "email": { "enabled": true, "to": ["ops@example.com"], "on": ["failure"] }
+}
+```
+
+---
+
+### ビルドキューイング（16C）
+
+ビルド実行中に `POST /api/build`・`POST /api/build/force` を受信した場合、キューに追加して順次実行する。キューの最大長は `GET /api/config` の `queue_max_size`（デフォルト `3`、`0` = キューなし）で制御する。キューが満杯の場合は `429 Too Many Requests` + `{ "error": "queue_full" }` を返す。
+
+**`GET /api/queue` レスポンス例：**
+```json
+{ "queued": [
+    { "id": "q001", "trigger": "manual", "queued_at": "2026-09-15T10:01:00" },
+    { "id": "q002", "trigger": "auto",   "queued_at": "2026-09-15T10:02:00" }
+  ], "max_size": 3 }
+```
+キューが空の場合：`{ "queued": [], "max_size": 3 }`
+
+**`DELETE /api/queue` レスポンス：**
+```json
+{ "message": "Queue cleared", "cleared_count": 2 }
+```
+実行中のビルドは停止しない（`POST /api/build/cancel` を別途使用する）。
+
+`POST /api/config` に `queue_max_size`（整数、`0` = キューなし）追加。
+
+---
+
+### ダッシュボードウィジェットカスタマイズ（16D）
+
+ダッシュボードに表示するウィジェットの種類・順序を設定できる機能。`.dashboard_layout` に保存する。
+
+有効なウィジェット識別子：`status`（ビルド状態）/ `stats`（統計サマリー）/ `schedule`（次回実行）/ `alerts`（アラート）/ `disk`（ディスク使用量）/ `rate_limit`（GitHub API レート制限）/ `snapshots`（スナップショット件数）/ `maintenance`（メンテナンス状態）/ `queue`（キュー状態）
+
+**`GET /api/dashboard-layout` レスポンス例：**
+```json
+{ "widgets": ["status", "alerts", "stats", "schedule", "disk"] }
+```
+未設定時はデフォルト順（全ウィジェット）を返す。
+
+**`POST /api/dashboard-layout` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "widgets": ["status", "alerts", "schedule", "stats"] }
+// レスポンス: 200
+{ "message": "Dashboard layout updated" }
+```
+`widgets` に未知の識別子が含まれる場合は `400` を返す。
+
+---
+
+**`POST /api/logs/cleanup` レスポンス例：**
+```json
+{ "message": "Cleanup completed", "deleted_count": 12 }
+```
+
+`log_retention_days` が `0` の場合は削除せず `deleted_count: 0` を返す。
+
+**`GET /api/history/export` レスポンス：**
+
+`Content-Type: application/json` で返却される。
+
+```json
+{ "export_at": "2026-09-15T10:00:00", "history": [
+    { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00", "sha": "abc123", "status": "success", "trigger": "auto", "duration_seconds": 42, "flagged": false, "tags": ["release"], "comment": "" },
+    { "id": "b20260914183000", "build_at": "2026-09-14T18:30:00", "sha": "def456", "status": "failure", "trigger": "manual", "duration_seconds": 7, "flagged": true, "tags": [], "comment": "ネットワーク障害による失敗" }
+]}
+```
+
+**`POST /api/repo-config` リクエスト / レスポンス：**
+```json
+// リクエスト（変更するフィールドのみ指定可）
+{ "owner": "fqwink", "repo": "Adlaire-Design-System", "branch": "main", "target_file": "adlaire-db-spec.md" }
+// レスポンス: 200
+{ "message": "Repo config updated" }
+```
+
+設定は `.repo_config` に保存し、`GET /api/repo-info` もこのファイルを参照する。
+
+`trigger` の有効値：`"auto"`（定期ポーリング）| `"manual"`（`POST /api/build`）| `"force"`（`POST /api/build/force`）
+
 **エラーレスポンス形式：**
 
-| ステータス | レスポンス |
-|-----------|-----------|
-| `401` | `{"error": "Unauthorized"}` |
-| `404` | `{"error": "Not Found"}` |
-| `500` | `{"error": "Internal Server Error"}` |
+| ステータス | 条件 | レスポンス |
+|-----------|------|-----------|
+| `401` | 認証失敗・セッション期限切れ | `{"error": "Unauthorized"}` |
+| `404` | リソース不存在 | `{"error": "Not Found"}` |
+| `409` | 状態競合（`POST /api/build/cancel` でビルド未実行時等） | `{"error": "No build is running"}` |
+| `422` | Webhook 送信失敗（`POST /api/notify-test`） | `{"error": "Webhook delivery failed"}` |
+| `429` | ビルドキューが満杯（`POST /api/build` / `POST /api/build/force`） | `{"error": "queue_full"}` |
+| `500` | サーバー内部エラー | `{"error": "Internal Server Error"}` |
+| `503` | メンテナンスモード中のリクエスト（`POST /api/build` 等） | `{"error": "maintenance"}` |
 
 ---
 
@@ -1106,7 +2293,7 @@ sudo journalctl -u adlaire-admin -f        # ログ確認
 **モジュール形式：** ES Module（`import` / `export`）
 
 ```js
-class AdalireCI {
+class AdlaireCI {
   constructor({ baseUrl })
   // this._token でセッショントークンを管理。login() 後の全リクエストに自動付与
 
@@ -1114,15 +2301,108 @@ class AdalireCI {
   logout()                                      // POST /api/logout; this._token をクリア
   changePassword(currentPassword, newPassword)  // POST /api/change-password
 
-  getStatus()      // GET /api/status          → Promise<StatusObject>
-  triggerBuild()   // POST /api/build          → Promise<void>
-  getLogs(n = 100) // GET /api/logs?n={n}      → Promise<{lines: string[]}>
+  getStatus()               // GET /api/status               → Promise<StatusObject>
+  triggerBuild()            // POST /api/build               → Promise<void>
+  getLogs(n = 100, q = '')  // GET /api/logs?n={n}&q={q}     → Promise<{lines: string[]}>
+  getHistory({ page = 1, perPage = 20 } = {}) // GET /api/history?page={page}&per_page={perPage} → Promise<HistoryPageObject>
+  resetSha()                // POST /api/reset-sha           → Promise<void>
+  getSysinfo()              // GET /api/sysinfo              → Promise<SysinfoObject>
+  getSchedule()             // GET /api/schedule             → Promise<ScheduleObject>
+  getNotifyConfig()         // GET /api/notify-config        → Promise<NotifyConfig>
+  setNotifyConfig(config)   // POST /api/notify-config       → Promise<void>
+  getConfig()               // GET /api/config               → Promise<ConfigObject>
+  setConfig(config)         // POST /api/config              → Promise<void>
+  health()                  // GET /api/health               → Promise<{status: string}>
+  getPatStatus()            // GET /api/pat-status           → Promise<PatStatusObject>
+  getAccessLog()            // GET /api/access-log           → Promise<{log: AccessRecord[]}>
+  getStats(days = 7)        // GET /api/stats?days={days}    → Promise<StatsObject>
+  exportLogs()              // GET /api/logs/export          → Promise<{exported_at: string, lines: string[]}>
+  cleanupLogs()             // POST /api/logs/cleanup        → Promise<{message: string, deleted_count: number}>
+  getRepoInfo()             // GET /api/repo-info            → Promise<RepoInfoObject>
+  backup()                  // GET /api/backup               → Promise<BackupObject>
+  restore(config)           // POST /api/restore             → Promise<void>
+  notifyTest()              // POST /api/notify-test         → Promise<{message: string, webhook_url: string}>
+  notifySummary()           // POST /api/notify-summary      → Promise<{message: string, webhook_url: string}>
+  buildForce()              // POST /api/build/force         → Promise<void>
+  patVerify()               // POST /api/pat-verify          → Promise<PatVerifyObject>
+  getHistoryLog(id)         // GET /api/history/{id}/log     → Promise<HistoryLogObject>
+  cancelBuild()             // POST /api/build/cancel        → Promise<void>
+  streamBuild(onLine, onEnd) // GET /api/build/stream (SSE)  → EventSource（onLine(line), onEnd({status, duration_seconds}) コールバック）
+  setLogLevel(level)        // POST /api/log-level           → Promise<{message: string, level: string}>
+  updatePat(token)          // POST /api/pat-update          → Promise<void>
+  getDashboard()            // GET /api/dashboard            → Promise<DashboardObject>
+  getNotifyLog()            // GET /api/notify-log           → Promise<{log: NotifyRecord[]}>
+  getSessions()             // GET /api/sessions             → Promise<{sessions: SessionRecord[]}>
+  revokeAllSessions()       // POST /api/sessions/revoke-all → Promise<{message: string, revoked_count: number}>
+  setScheduleInterval(seconds) // POST /api/schedule/interval → Promise<{message: string, interval_seconds: number}>
+  pauseSchedule()              // POST /api/schedule/pause   → Promise<void>
+  resumeSchedule()             // POST /api/schedule/resume  → Promise<void>
+  setAllowedHours(from, to)    // POST /api/schedule/allowed-hours {from, to} → Promise<void>
+  clearAllowedHours()          // POST /api/schedule/allowed-hours {from:null, to:null} → Promise<void>
+  searchLogs(q = '', from = '', to = '') // GET /api/logs/search?q={q}&from={from}&to={to} → Promise<SearchResult>
+  getOutputMeta()              // GET /api/output-meta       → Promise<OutputMetaObject>
+  getStatsTimeline(days = 30)  // GET /api/stats/timeline?days={days} → Promise<TimelineObject>
+  getDiagnostics()             // GET /api/diagnostics       → Promise<DiagnosticsObject>
+  getRateLimit()               // GET /api/rate-limit        → Promise<RateLimitObject>
+  getDiskUsage()               // GET /api/disk-usage        → Promise<DiskUsageObject>
+  getConfigLog()               // GET /api/config-log        → Promise<{log: ConfigLogRecord[]}>
+  getHistoryComment(id)        // GET /api/history/{id}/comment  → Promise<CommentObject>
+  setHistoryComment(id, comment) // POST /api/history/{id}/comment → Promise<void>
+  setRepoConfig(config)        // POST /api/repo-config      → Promise<void>
+  exportHistory()              // GET /api/history/export    → Promise<ExportObject>（JSON）
+  setHistoryFlag(id, flagged)  // POST /api/history/{id}/flag → Promise<void>
+  setHistoryTags(id, tags)     // POST /api/history/{id}/tags → Promise<void>
+  getTokens()                  // GET /api/tokens            → Promise<{tokens: TokenRecord[]}>
+  createToken(label)           // POST /api/tokens           → Promise<TokenCreateResult>
+  revokeToken(id)              // DELETE /api/tokens/{id}    → Promise<void>
+  // 14A スナップショット
+  getSnapshots()               // GET /api/snapshots         → Promise<{snapshots: SnapshotRecord[]}>
+  downloadSnapshot(id)         // GET /api/snapshots/{id}/download → Promise<Blob>
+  deleteSnapshot(id)           // DELETE /api/snapshots/{id} → Promise<void>
+  // 14B メンテナンスモード
+  getMaintenance()             // GET /api/maintenance       → Promise<MaintenanceObject>
+  enableMaintenance(reason)    // POST /api/maintenance/enable → Promise<{message: string, since: string}>
+  disableMaintenance()         // POST /api/maintenance/disable → Promise<void>
+  // 14C IP アクセス制限
+  getAccessControl()           // GET /api/access-control    → Promise<{allow: string[]}>
+  setAccessControl(allowList)  // POST /api/access-control   → Promise<{message: string, allow: string[]}>
+  // 14E フック
+  getHooks()                   // GET /api/hooks             → Promise<{hooks: HookRecord[]}>
+  addHook(phase, command, abortOnFailure = true) // POST /api/hooks → Promise<HookRecord>
+  deleteHook(id)               // DELETE /api/hooks/{id}     → Promise<void>
+  getHookLog(id)               // GET /api/hooks/{id}/log    → Promise<{id: string, runs: HookRunRecord[]}>
+  // 15A アラートルール
+  getAlertRules()              // GET /api/alert-rules       → Promise<{rules: AlertRule[]}>
+  addAlertRule(metric, operator, threshold, level, message) // POST /api/alert-rules → Promise<AlertRule>
+  deleteAlertRule(id)          // DELETE /api/alert-rules/{id} → Promise<void>
+  // 15B 自動タグ付けルール
+  getTagRules()                // GET /api/tag-rules         → Promise<{rules: TagRule[]}>
+  addTagRule(condition, tags)  // POST /api/tag-rules        → Promise<TagRule>
+  deleteTagRule(id)            // DELETE /api/tag-rules/{id} → Promise<void>
+  // 15C チェックサム
+  verifyOutput()               // POST /api/verify-output    → Promise<{match: boolean, expected: string, actual: string}>
+  // 15D パイプライン設定
+  getPipelineConfig()          // GET /api/pipeline-config   → Promise<PipelineConfig>
+  setPipelineConfig(config)    // POST /api/pipeline-config  → Promise<void>
+  // 15E 運用ノート
+  getNotes()                   // GET /api/notes             → Promise<{content: string, updated_at: string|null}>
+  setNotes(content)            // POST /api/notes            → Promise<{message: string, updated_at: string}>
+  // 16B メール通知
+  getSmtpConfig()              // GET /api/smtp-config       → Promise<SmtpConfig>
+  setSmtpConfig(config)        // POST /api/smtp-config      → Promise<void>
+  smtpTest()                   // POST /api/smtp-test        → Promise<{result: string, message: string}>
+  // 16C ビルドキュー
+  getQueue()                   // GET /api/queue             → Promise<{queued: QueueEntry[], max_size: number}>
+  clearQueue()                 // DELETE /api/queue          → Promise<{message: string, cleared_count: number}>
+  // 16D ダッシュボードレイアウト
+  getDashboardLayout()         // GET /api/dashboard-layout  → Promise<{widgets: string[]}>
+  setDashboardLayout(widgets)  // POST /api/dashboard-layout → Promise<void>
 }
 
-export { AdalireCI };
+export { AdlaireCI };
 ```
 
-全メソッドは `Promise` を返す。HTTP エラー（4xx / 5xx）は `Error` としてスロー。`401` 受信時はセッション期限切れとして `this._token` をクリアする。
+全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。HTTP エラー（4xx / 5xx）は `Error` としてスロー。`401` 受信時はセッション期限切れとして `this._token` をクリアする。合計 87 メソッド。
 
 ---
 
@@ -1141,13 +2421,29 @@ export { AdalireCI };
 |-------|---------|---------|
 | ログイン | パスワード入力フォーム | 未ログイン時のみ |
 | パスワード変更 | 現在・新パスワード入力フォーム | `must_change: true` 時（強制時は他パネル非表示） |
-| ステータス | 最終ビルド時刻・SHA・成否 | ログイン済み |
-| 手動実行 | ビルドトリガーボタン・実行結果表示 | ログイン済み |
-| ログビューア | 最新ビルドログ（n 行） | ログイン済み |
+| ステータス | 最終ビルド時刻・SHA・成否・出力ファイルリンク・ダッシュボードウィジェット編集モード（表示するウィジェットをチェックボックスで選択・並び替え・保存） | ログイン済み |
+| 手動実行 | ビルドトリガーボタン・強制ビルドボタン・キャンセルボタン（実行中のみ有効）・SHA リセットボタン・実行結果表示・リアルタイムログ表示エリア（SSE ストリーミング）・キュー状態表示（待機中件数・クリアボタン） | ログイン済み |
+| ログビューア | 最新ビルドログ（n 行・キーワードフィルター・ログレベルフィルターボタン（INFO / WARNING / ERROR / DEBUG）・JSON エクスポートボタン・横断検索フォーム（期間指定）・検索結果一覧） | ログイン済み |
+| ビルド履歴 | 過去ビルド一覧（日時・SHA・成否・トリガー種別・所要時間・重要フラグ列・タグ列・ログ表示リンク・コメント入力欄）・フラグ付きのみ表示フィルター・タグフィルター・ページネーション UI・JSON エクスポートボタン | ログイン済み |
+| システム情報 | 出力ファイルサイズ・更新日時・稼働時間・ディスク使用量（ログ合計・出力ファイル）・PAT 即時検証ボタン・PAT 更新フォーム・PAT 有効期限表示（設定フォーム・期限切れ間近で警告表示）・GitHub API レート制限表示 | ログイン済み |
+| 通知設定     | Webhook 一覧（追加/削除/ラベル/有効無効切り替え/リトライ回数・間隔設定/シークレット入力欄）・通知条件設定（ビルド開始時・成功時・失敗時）・各 Webhook ペイロードテンプレート編集フォーム（変数一覧表示）・テスト送信ボタン・定期サマリー設定（間隔・時刻・曜日・即時送信ボタン）・送信履歴（試行回数・エラー内容列含む）・メール通知セクション（SMTP 設定フォーム・宛先リスト・通知条件・テスト送信ボタン） | ログイン済み |
+| 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・追加フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
+| アクセスログ | ログイン履歴（日時・成否）           | ログイン済み |
+| 統計         | ビルド回数・成功率・平均間隔・平均・最大ビルド時間・日別時系列データ（グラフ表示対応） | ログイン済み |
+| リポジトリ情報 | 監視対象リポジトリ・ブランチ・ファイルの確認・設定変更フォーム（OWNER / REPO / BRANCH / TARGET_FILE）・ポーリング間隔変更フォーム・ポーリング一時停止／再開ボタン・許可時間帯設定（from〜to、解除ボタン）・メンテナンスモード有効化フォーム（理由入力）・解除ボタン・現在の状態表示 | ログイン済み |
+| セッション管理 | 有効セッション一覧・全セッション強制無効化ボタン | ログイン済み |
+| システム診断   | PAT・GitHub API・出力ファイル・systemd・Webhook の診断項目一覧（ok / warn / error）・診断実行ボタン・アラートバッジ（`GET /api/dashboard` の `alerts` に基づき warn / error を表示）・出力整合性チェック項目（`POST /api/verify-output` 結果表示）・メンテナンスモード中はバナーを全パネル上部に表示 | ログイン済み |
+| ビルド比較     | ビルド履歴から 2 件を選択・ログ並列表示・差分ハイライト（クライアントサイド処理） | ログイン済み |
+| API トークン管理 | 発行済みトークン一覧（ラベル・スコープ・作成日時・最終使用日時）・新規発行フォーム（ラベル入力・スコープ選択）・発行時のみトークン文字列を表示・失効ボタン | ログイン済み |
+| 運用ノート     | Markdown レンダリング表示・編集モード切替・保存ボタン・最終更新日時表示 | ログイン済み |
+| スナップショット | ビルド成果物の世代一覧（最大`snapshots_keep`件）・個別ダウンロード・削除 | ログイン済み |
+| メンテナンス   | メンテナンスモードの有効化（理由テキスト付き）・無効化・状態・開始時刻表示 | ログイン済み |
+| アクセス制御   | 許可 IP / CIDR 一覧・CIDR 追加フォーム・削除ボタン（ブロック時は 403 を返す） | ログイン済み |
+| フック         | Pre/Post ビルドフック一覧・コマンド追加・削除・実行ログ（直近 N 件）確認 | ログイン済み |
 
 **パスワード変更フロー：**
-- `must_change: true`（促す）: パスワード変更パネルを表示。他パネルも操作可能
-- `must_change: true`（5 回目以降、強制）: パスワード変更パネルのみ表示。変更完了後に通常画面へ遷移
+- `must_change: "prompt"`: パスワード変更パネルを表示。他パネルも操作可能
+- `must_change: "forced"`: パスワード変更パネルのみ表示。変更完了後に通常画面へ遷移
 
 **カスタマイズポイント：**
 - SDK の `baseUrl` は `<script>` タグ内の設定変数で外出し
@@ -1188,9 +2484,9 @@ POST /api/login
   └─ パスワードハッシュ検証
        ├─ 失敗 → 401
        └─ 成功 → login_count + 1 → ファイル更新
-                  ├─ login_count == 1 → must_change: true（促す）
-                  ├─ login_count >= 5 → must_change: true（強制）
-                  └─ それ以外      → must_change: false
+                  ├─ login_count == 1 → must_change: "prompt"（促す）
+                  ├─ login_count >= 5 → must_change: "forced"（強制）
+                  └─ それ以外      → must_change: "none"
                   → セッショントークン生成・返却
 ```
 
