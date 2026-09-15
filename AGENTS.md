@@ -1,4 +1,4 @@
-# Adlaire-Static-Base - 最上位ルールブック
+# Build-Scripts - 最上位ルールブック
 
 ## 0. 絶対原則
 
@@ -10,13 +10,15 @@
 
 `AGENTS.md` を確認しただけで、作業判断に必要な確認を完了したと扱ってはならない。
 
-本リポジトリの仕様判断は、`ASB-spec.md` を正本として行う。
+本リポジトリの仕様判断は、`build_spec_v3_spec.md` を正本として行う。
 
-`ASB-spec.html` は、`ASB-spec.md` に基づいて更新・再生成するHTML版仕様書である。
+`DESIGN.md` は、`Adlaire-db-spec.html` のデザイン仕様を整理する補助文書である。機能仕様、運用仕様、API 仕様、CI 仕様の正本ではない。
+
+`DOCUMENT_INDEX.md` は、文書・実装ファイルの役割を整理する索引である。仕様正本ではない。
 
 `AGENTS.md` と他ファイルが作業ルール上矛盾する場合は、`AGENTS.md` を正とする。
 
-`ASB-spec.md` と `ASB-spec.html` が仕様上矛盾する場合は、`ASB-spec.md` を正とする。
+`build_spec_v3_spec.md` と実装ファイルが仕様上矛盾する場合は、仕様と実装の不整合として扱う。仕様を変更する場合は、先に `build_spec_v3_spec.md` を改訂し、その内容に基づいて実装を更新する。
 
 ---
 
@@ -44,15 +46,15 @@
 
 ## 2. 仕様書管理ルール
 
-`ASB-spec.md` は、本リポジトリのマスター仕様書正本である。
+`build_spec_v3_spec.md` は、Adlaire CI のマスター仕様書正本である。
 
-`ASB-spec.html` は、`ASB-spec.md` に基づいて更新・再生成するHTML版仕様書である。
+`build_spec_v3.py`、`runner.py`、将来コンポーネントである `api_server.py`、`adlaire-ci-sdk.js`、`admin/index.html`、`mcp_server.py` は、`build_spec_v3_spec.md` に基づいて更新する。
 
-`ASB-spec.md` を変更した場合は、`ASB-spec.html` の更新・再生成要否を確認する。
+`DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。`build_spec_v3_spec.md` と矛盾する場合は、`build_spec_v3_spec.md` を優先する。
 
-`ASB-spec.md` と `ASB-spec.html` が仕様上矛盾する場合は、`ASB-spec.md` を正とする。
+仕様改訂では、既存仕様、`DOCUMENT_INDEX.md`、実装ファイルとの整合性を確認する。
 
-仕様改訂では、既存仕様との整合性を確認する。
+`build_spec_v3_spec.md` に記載された一部コンポーネントや機能は、仕様化済みであっても未実装の場合がある。リポジトリ内に実装ファイルまたは実装コードが存在しない内容を、実装済み機能として扱ってはならない。
 
 一時ファイル、退避ファイル、比較用ファイルは、整合性確認が完了するまで削除しない。
 
@@ -60,7 +62,33 @@
 
 ---
 
-## 3. Git 運用ルール
+## 3. 実装管理ルール
+
+現行実装ファイルは以下とする。
+
+| ファイル | 役割 |
+|---------|------|
+| `build_spec_v3.py` | Adlaire DB 仕様書 Markdown を単一 HTML へ変換するビルドスクリプト。 |
+| `runner.py` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する CI ランナー。 |
+
+仕様化済みだが未実装の主なコンポーネントは以下とする。
+
+| ファイル | 状態 |
+|---------|------|
+| `api_server.py` | 未実装 |
+| `adlaire-ci-sdk.js` | 未実装 |
+| `admin/index.html` | 未実装 |
+| `mcp_server.py` | 将来計画 |
+
+未実装コンポーネントを追加する場合は、`build_spec_v3_spec.md` の該当仕様、`DOCUMENT_INDEX.md`、本ファイルを必要に応じて整合させる。
+
+実装変更後は、変更範囲に応じて構文確認、実行確認、生成物確認を行う。
+
+Python 実装の構文確認では、環境に応じて `PYTHONPYCACHEPREFIX=/tmp/codex-pycache python3 -m py_compile ...` を使用してよい。
+
+---
+
+## 4. Git 運用ルール
 
 `main` は保護対象ブランチとする。
 
@@ -76,11 +104,9 @@ Pull Request の merge はユーザーが行う。
 
 エージェントは Pull Request の merge を行ってはならない。
 
-GitHub リポジトリ設定は、ASB の Git 運用前提として管理する。
-
 GitHub リポジトリ設定の変更は変更作業として扱い、事前に変更対象、変更内容、影響範囲を提示し、ユーザーから `承認` を得るまで実行してはならない。
 
-ASB の標準 GitHub リポジトリ設定は以下とする。
+Build-Scripts の標準 GitHub リポジトリ設定は以下とする。
 
 - visibility: `public`
 - default branch: `main`
@@ -117,8 +143,6 @@ local branch 削除では、`main` へ移動した後に対象 local branch を�
 
 `main`、merge 未完了の作業ブランチ、merge 状態を確認できないブランチ、Pull Request と対応しないブランチは削除してはならない。
 
-SSH URL は `origin` に設定し、HTTPS URL はバックアップ remote として保持する。
-
 `.gitignore` は作成・使用しない。
 
 `.gitignore` が必要になる生成物、一時ファイル、実行時データ、ビルド成果物が発生した場合は、除外設定で隠蔽せず、生成先、運用、または実装を見直す。
@@ -133,11 +157,11 @@ Pull Request作成自動化は、承認済み変更作業の範囲内で行うGi
 
 ---
 
-## 4. 外部依存ルール
+## 5. 外部依存ルール
 
 外部フレームワークおよび外部ライブラリは、原則として採用しない。
 
-機能実現は、Go標準ライブラリ、内製実装、例外承認済み外部ライブラリの順で検討する。
+機能実現は、Python 標準ライブラリ、Vanilla JavaScript、内製実装、例外承認済み外部ライブラリの順で検討する。
 
 外部依存は最小限に抑え、可能な範囲で内製化を重視する。
 
@@ -145,54 +169,20 @@ Pull Request作成自動化は、承認済み変更作業の範囲内で行うGi
 
 例外として外部ライブラリを採用する場合は、採用理由、対象範囲、影響範囲、代替困難性、保守方針を明示する。
 
-例外採用は、`ASB-spec.md` または承認済み変更範囲に明記された場合のみ有効とする。
+例外採用は、`build_spec_v3_spec.md` または承認済み変更範囲に明記された場合のみ有効とする。
 
 外部依存を追加、削除、更新、置換する作業は変更作業として扱い、事前承認を必須とする。
 
 ---
 
-## 5. テンプレート運用ルール
+## 6. 文書整合ルール
 
-`templates/` 配下のファイルは、新規文書、仕様節、実装フェーズ、変更履歴、ルールブックを作成または改訂する際の雛形である。
+`DOCUMENT_INDEX.md` は、リポジトリ内の文書・実装ファイルの役割を示す索引として維持する。
 
-テンプレートは、現行リポジトリの仕様正本、作業ルール、実装タスク、Git運用ルールを直接変更するものではない。
+ファイル名、正本関係、実装コンポーネントの追加・削除・リネームが発生した場合は、`DOCUMENT_INDEX.md` の更新要否を確認する。
 
-`templates/rulebook/AGENTS.md` は、新規リポジトリまたは派生リポジトリ向けの最上位ルールブック雛形であり、本リポジトリの作業判断には使用しない。
+`build_spec_v3_spec.md` を改訂した場合は、`DESIGN.md`、`DOCUMENT_INDEX.md`、実装ファイルへの影響を確認する。
 
-本リポジトリの作業判断では、常に現行の `AGENTS.md` を正とする。
+`DESIGN.md` を改訂した場合は、`build_spec_v3.py` 内の HTML / CSS / JavaScript テンプレートとの整合性を確認する。
 
-`templates/rulebook/` 配下のテンプレートと現行 `AGENTS.md` が矛盾する場合は、現行 `AGENTS.md` を正とする。
-
-テンプレートを変更しただけでは、本リポジトリの作業ルールは変更されない。
-
-本リポジトリの作業ルールを変更する場合は、必ず現行 `AGENTS.md` 本体を変更する。
-
-テンプレートを理由に、仕様、API、設定項目、保存JSON、ディレクトリ、外部依存、実行時データ、Git運用、承認ルールを追加または変更してはならない。
-
-テンプレートから新規文書を作成する場合も、ファイル作成、編集、移動、削除、リネーム、整形、生成物更新として扱い、事前承認を必須とする。
-
-テンプレートから作成した一時ファイル、比較用ファイル、生成途中ファイルを、承認なしに開発リポジトリ内へ残してはならない。
-
-テンプレート更新時は、`ASB-spec.md`、`DOCUMENT_INDEX.md`、`README.md`、`IMPLEMENTATION_TASKS.md` との整合を確認する。
-
----
-
-## 6. 仕様改訂後の整合自動化ルール
-
-`ASB-spec.md` は、本リポジトリの仕様正本である。
-
-仕様の改訂は、必ず `ASB-spec.md` のみで行う。
-
-`ASB-spec.html` および `IMPLEMENTATION_TASKS.md` を、仕様改訂の入力元として扱ってはならない。
-
-`ASB-spec.md` を改訂した場合は、改訂後の `ASB-spec.md` に記載された本書バージョンを確認する。
-
-`ASB-spec.md` の本書バージョンを確認した後、`ASB-spec.html` を `ASB-spec.md` に基づいて更新・再生成する。
-
-`ASB-spec.md` の本書バージョンを確認した後、`IMPLEMENTATION_TASKS.md` を `ASB-spec.md` に基づいて更新する。
-
-`ASB-spec.html` および `IMPLEMENTATION_TASKS.md` の更新は、`ASB-spec.md` 改訂後の整合作業として扱う。
-
-この整合作業は、`ASB-spec.md` 改訂後に省略してはならない。
-
-ただし、`ASB-spec.md`、`ASB-spec.html`、`IMPLEMENTATION_TASKS.md` の作成、編集、再生成、更新、Git 操作は、すべて本ルールブックの承認ルールに従う。
+仕様化済み項目を実装した場合は、`build_spec_v3_spec.md` 内の状態表現、`DOCUMENT_INDEX.md` の Planned Components、実装ファイルの存在を整合させる。
