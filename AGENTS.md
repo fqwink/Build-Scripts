@@ -125,6 +125,12 @@ Build-Scripts の標準 GitHub リポジトリ設定は以下とする。
 - Dependabot security updates: `disabled`
 - main branch protection: 設定対象
 
+標準 GitHub リポジトリ設定のうち、自動化に関わる設定が未確認の場合は、現在の設定状態を確認する。
+
+自動化に関わる設定が未設定または標準値と異なる場合は、変更対象、変更内容、影響範囲を提示し、ユーザーから `承認` を得たうえで標準値へ設定する。
+
+自動化に関わる設定には、少なくとも `delete_branch_on_merge=true` を含める。その他の自動化設定が `build_spec_v3_spec.md` または本ルールブックで標準化された場合も同様に扱う。
+
 `delete_branch_on_merge=true` は、remote branch 自動削除の必須設定とする。
 
 エージェントは、ユーザー承認なしに GitHub リポジトリ設定を変更、無効化、初期化してはならない。
