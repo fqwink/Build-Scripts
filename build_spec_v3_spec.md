@@ -1,6 +1,6 @@
 # Adlaire CI — 仕様ドキュメント
 
-**対象コンポーネント：** `build_spec_v3.py`（ビルドスクリプト）/ `runner.py`（CI ランナー）/ `api_server.py`（管理 API サーバー）  
+**対象コンポーネント：** `build_spec_v3.py`（ビルドスクリプト）/ `runner.py`（CI ランナー）/ `api_server.py`（管理 API サーバー、仕様化済み・未実装）/ `adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `mcp_server.py`（MCP サーバー、将来計画）
 **出力ファイル：** `Adlaire-db-spec.html`  
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）  
 **仕様バージョン：** V.N / **リリースバージョン：** V.X.N → Part 2 §2 参照  
@@ -8,7 +8,22 @@
 
 ---
 
-> **Adlaire CI** とは `build_spec_v3.py`・`runner.py`・`api_server.py` の 3 コンポーネントで構成されるビルド・CI・管理システムの総称である。管理ツール（`admin/index.html`）と SDK（`adlaire-ci-sdk.js`）はフロントエンド側に位置し、API を介して Adlaire CI と通信する。将来的には `mcp_server.py`（MCP サーバー）を加えた 4 コンポーネント構成へ移行予定（→ §13 将来計画 MCP サーバー実装）。
+> **Adlaire CI** とは、現行実装済みの `build_spec_v3.py`・`runner.py` と、仕様化済み・未実装の `api_server.py`、`admin/index.html`、`adlaire-ci-sdk.js` を含むビルド・CI・管理システムの総称である。現行リポジトリで実装済みとして扱うコンポーネントは `build_spec_v3.py` と `runner.py` のみである。将来的には `mcp_server.py`（MCP サーバー）を加えた構成へ移行予定（→ §13 将来計画 MCP サーバー実装）。
+
+## 実装状態
+
+本ドキュメントでは、仕様化済みの内容と実装済みの内容を区別して扱う。
+
+| コンポーネント | 状態 | 備考 |
+|---------------|------|------|
+| `build_spec_v3.py` | 実装済み | Markdown 仕様書を単一 HTML へ変換するビルドスクリプト。 |
+| `runner.py` | 実装済み | GitHub API による変更検出とビルド起動を行う CI ランナー。 |
+| `api_server.py` | 仕様化済み・未実装 | 管理 API サーバー。仕様は本ドキュメントに定義するが、現行リポジトリには実装ファイルが存在しない。 |
+| `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、現行リポジトリには実装ファイルが存在しない。 |
+| `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。仕様は本ドキュメントに定義するが、現行リポジトリには実装ファイルが存在しない。 |
+| `mcp_server.py` | 将来計画 | MCP サーバー。将来計画として管理し、現行実装済みとは扱わない。 |
+
+仕様化済み・未実装、または将来計画の項目を、実装済み機能として扱ってはならない。
 
 ---
 
@@ -99,6 +114,8 @@ GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイ
 
 Adlaire CI の状態確認・操作を行う管理インターフェース。ヘッドレスアーキテクチャにより、フロントエンドとバックエンドを明確に分離する。
 
+本節以降の管理ツール・管理 API・SDK に関する記載は、仕様化済み・未実装の内容である。現行リポジトリに `api_server.py`、`admin/index.html`、`adlaire-ci-sdk.js` が存在しない限り、実装済み機能として扱わない。
+
 ## 9. ヘッドレスアーキテクチャ方針
 
 Adlaire CI と管理ツールは API を介して通信する。フロントエンドとバックエンドを完全に分離し、管理ツールの実装・置き換えをバックエンドから独立させる。
@@ -128,7 +145,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 ## 12. 機能一覧
 
-システムが提供する全機能の一覧。各機能の仕様詳細は Part 3 §22〜§25 を参照。
+本仕様が定義する全機能の一覧。各機能の仕様詳細は Part 3 §22〜§25 を参照。実装状態は、本ドキュメント冒頭の「実装状態」に従って判定する。
 
 ### ビルド・CI ランナー（runner.py）
 
@@ -541,16 +558,18 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 
 ### 内製スクリプト一覧
 
-| スクリプト | 役割 |
-|-----------|------|
-| `build_spec_v3.py` | ビルドスクリプト（Markdown → HTML 変換） |
-| `runner.py` | CI ランナー（変更検出・ビルド起動） |
-| `api_server.py` | 管理 API サーバー（常駐 HTTP サーバー） |
-| `adlaire-ci-sdk.js` | JavaScript SDK（管理ツール用 API クライアント） |
-| `mcp_server.py` | MCP サーバー（将来追加予定 → §13 将来計画 MCP サーバー実装） |
+| スクリプト | 状態 | 役割 |
+|-----------|------|------|
+| `build_spec_v3.py` | 実装済み | ビルドスクリプト（Markdown → HTML 変換） |
+| `runner.py` | 実装済み | CI ランナー（変更検出・ビルド起動） |
+| `api_server.py` | 仕様化済み・未実装 | 管理 API サーバー（常駐 HTTP サーバー） |
+| `adlaire-ci-sdk.js` | 仕様化済み・未実装 | JavaScript SDK（管理ツール用 API クライアント） |
+| `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI |
+| `mcp_server.py` | 将来計画 | MCP サーバー（将来追加予定 → §13 将来計画 MCP サーバー実装） |
 
 > 内製スクリプト・ライブラリは §4 方針に基づき積極的に採用する。新規スクリプトを追加する場合は本一覧へ登録する。  
 > 内製スクリプトは標準ライブラリのみで実装する。
+> 仕様化済み・未実装または将来計画のスクリプトは、実装ファイルが追加されるまで実装済みとして扱わない。
 
 ### 許可外部ライブラリ一覧
 
@@ -590,11 +609,15 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 
 ## 8. SDK ポリシー
 
+本節は、仕様化済み・未実装の `adlaire-ci-sdk.js` に適用する。
+
 - SDK は内製とし、外部ライブラリに依存しない（→ Part 2 §4）
 - SDK の対応言語追加は本ドキュメントへの記載を先行させる
 - バックエンド API の変更は SDK の更新を伴う
 
 ## 9. 標準管理ツール ポリシー
+
+本節は、仕様化済み・未実装の `admin/index.html` に適用する。
 
 - バニラ HTML / CSS / JavaScript のみで実装する。外部フレームワーク・外部ライブラリは使用しない（→ Part 2 §4）
 - バックエンドとの通信はすべて SDK 経由とする。SDK を迂回した直接 API 呼び出しは行わない
@@ -611,6 +634,8 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 
 ## 11. 管理ツール 認証ポリシー
 
+本節は、仕様化済み・未実装の管理 API サーバーおよび標準管理ツールに適用する。
+
 - **初期構成：シングルユーザー（`admin`）**
 - 初期パスワードは `admin` とする
 - 初回ログイン時はパスワード変更を促す通知を表示する
@@ -618,6 +643,8 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 - パスワードは平文保存禁止。ハッシュ化して保存する（§10 方針に基づきフラットファイル JSON 形式でファイル管理 → Part 3 §25）
 
 ## 12. 管理 API サーバー セキュリティポリシー
+
+本節は、仕様化済み・未実装の `api_server.py` に適用する。
 
 - `HOST` は `127.0.0.1` に固定し、外部へ直接公開しない
 - HTTPS は nginx 等のリバースプロキシでターミネートする。`api_server.py` 自体に TLS を実装しない
@@ -633,7 +660,9 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 
 ## 0. システム概要
 
-Adlaire CI は 3 つのスクリプトで構成される（将来：`mcp_server.py` を加えた 4 スクリプト構成へ移行予定 → §13 将来計画 MCP サーバー実装）。
+Adlaire CI の現行実装は `build_spec_v3.py` と `runner.py` の 2 つのスクリプトで構成される。
+
+本仕様では、管理 API サーバー `api_server.py`、標準管理ツール `admin/index.html`、JavaScript SDK `adlaire-ci-sdk.js` も仕様化済み・未実装コンポーネントとして定義する。将来的には `mcp_server.py` を加えた構成へ移行予定（→ §13 将来計画 MCP サーバー実装）。
 
 **`build_spec_v3.py`（ビルドスクリプト）**
 GitHub リポジトリ上の Markdown 仕様書（`adlaire-db-spec.md`）を HTML に変換して CI サーバーのローカルパスへ出力する。入力（`SRC`）と出力（`OUT`）はサーバー固定パスで管理する。静的コンテンツ配信サーバーへの転送は `runner.py` が担う。
@@ -641,17 +670,20 @@ GitHub リポジトリ上の Markdown 仕様書（`adlaire-db-spec.md`）を HTM
 **`runner.py`（CI ランナー）**
 GitHub の Git Blobs API をポーリングし、仕様書の変更を検出する。変更があった場合のみ `pipeline.sh` を介してビルドを起動する。systemd タイマー（5 分間隔）で定期実行する oneshot 設計。
 
-**`api_server.py`（管理 API サーバー）**
+**`api_server.py`（管理 API サーバー、仕様化済み・未実装）**
 常駐 HTTP サーバー（`http.server`）。管理ツールからの API リクエストを受け付け、認証・状態取得・手動ビルドトリガーを処理する。`adlaire-admin.service` として systemd に登録し、`runner.py` とは独立して常駐する。
 
-**実行フロー：**
+**現行実装の実行フロー：**
 ```
 systemd timer
   └─ runner.py（oneshot）
        ├─ 変更なし → スキップ
        └─ 変更あり → pipeline.sh → build_spec_v3.py → HTML 生成
                                                          └─ runner.py SSH 転送 → 静的配信サーバー（→ §14a）
+```
 
+**仕様化済み・未実装コンポーネントを含む想定フロー：**
+```
 adlaire-admin.service（常駐）
   └─ api_server.py → SDK → 管理ツール
 ```
@@ -1446,13 +1478,15 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 
 ## 11. CI ランナー ファイル構成
 
+本節のファイル構成は、現行実装ファイルと仕様化済み・未実装ファイルを同じ運用ディレクトリ上で示す。現行リポジトリに存在する実装ファイルは `build_spec_v3.py` と `runner.py` のみである。
+
 ### サーバー側
 
 ```
 /opt/adlaire-builder/
 ├── runner.py            # CI ランナー本体（単一ファイル、oneshot）
 ├── build_spec_v3.py     # ビルドスクリプト（サーバー固定）
-├── api_server.py        # 管理 API サーバー（常駐）
+├── api_server.py        # 管理 API サーバー（常駐、仕様化済み・未実装）
 ├── .github_token        # GitHub PAT（パーミッション 600）
 ├── .admin_credentials   # 認証情報ファイル（JSON、パーミッション 600）
 ├── .last_sha            # 前回取得時の blob SHA キャッシュ（JSON 形式）
@@ -1483,8 +1517,8 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 ├── .build_logs/          # ビルドごとの個別ログ（JSON、ファイル名: {id}.json）
 ├── .snapshots/          # ビルド成果物スナップショット（HISTORY_KEEP_N 世代保存、ディレクトリ名: {id}/）
 └── admin/
-    ├── index.html           # 管理画面（単一ファイル完結）
-    └── adlaire-ci-sdk.js    # JavaScript SDK
+    ├── index.html           # 管理画面（単一ファイル完結、仕様化済み・未実装）
+    └── adlaire-ci-sdk.js    # JavaScript SDK（仕様化済み・未実装）
 
 /opt/adlaire-builder/repo/
 └── adlaire-db-spec.md   # API 取得後に書き出されるソース Markdown
@@ -1498,7 +1532,7 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 /etc/systemd/system/
 ├── adlaire-ci.service      # systemd ユニット（oneshot）
 ├── adlaire-ci.timer        # systemd タイマー（定期実行）
-└── adlaire-admin.service   # 管理 API サーバー（常駐）
+└── adlaire-admin.service   # 管理 API サーバー（常駐、仕様化済み・未実装）
 ```
 
 ### リポジトリ側
@@ -1948,6 +1982,7 @@ sudo cp adlaire-ci.timer   /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now adlaire-ci.timer
 
+# 以降は仕様化済み・未実装の管理 API サーバー導入手順
 # 8. api_server.py を配置
 sudo cp api_server.py /opt/adlaire-builder/api_server.py
 sudo chown deploy:deploy /opt/adlaire-builder/api_server.py
@@ -1997,13 +2032,13 @@ systemd timer
   └─ runner.py（変更検出・ビルド起動・SSH 転送）
        └─ SSH → 静的コンテンツ配信サーバー
 
-api_server.py（常駐 HTTP サーバー）  ← 新規コンポーネント
+api_server.py（常駐 HTTP サーバー、仕様化済み・未実装）
 
-admin/index.html（標準管理ツール）
+admin/index.html（標準管理ツール、仕様化済み・未実装）
   └─ adlaire-ci-sdk.js（SDK）─── HTTP ───► api_server.py
 ```
 
-新規コンポーネント `api_server.py` を Python 標準ライブラリ（`http.server`）で実装し、管理ツールからの API リクエストを受け付ける。`runner.py` とは独立して常駐する。
+仕様化済み・未実装コンポーネント `api_server.py` は、Python 標準ライブラリ（`http.server`）で実装し、管理ツールからの API リクエストを受け付ける。`runner.py` とは独立して常駐する。
 
 **`api_server.py` 設定値（スクリプト冒頭）：**
 
@@ -3265,6 +3300,8 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 ## 23. JavaScript SDK 仕様
 
+本節は、仕様化済み・未実装の `adlaire-ci-sdk.js` に関する仕様である。
+
 **ファイル：** `adlaire-ci-sdk.js`（単一ファイル、外部依存なし）  
 **モジュール形式：** ES Module（`import` / `export`）
 
@@ -3392,11 +3429,13 @@ export { AdlaireCI };
 
 ## 24. 標準管理ツール 仕様
 
+本節は、仕様化済み・未実装の `admin/index.html` に関する仕様である。
+
 **ファイル構成：**
 ```
 /opt/adlaire-builder/admin/
-├── index.html          # 管理画面（単一ファイル完結）
-└── adlaire-ci-sdk.js   # SDK（標準管理ツールに同梱）
+├── index.html          # 管理画面（単一ファイル完結、仕様化済み・未実装）
+└── adlaire-ci-sdk.js   # SDK（標準管理ツールに同梱、仕様化済み・未実装）
 ```
 
 **画面構成：**
