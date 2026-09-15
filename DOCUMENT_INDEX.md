@@ -1,33 +1,47 @@
-# ASB Document Index
+# Build-Scripts Document Index
 
-このファイルは、Adlaire-Static-Base（ASB）関連ドキュメントの参照先と役割を整理する索引である。
+このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。
 
 ## Documents
 
 | ファイル | 役割 |
 |---------|------|
-| `ASB-spec.md` | ASB の仕様正本。仕様判断の最上位基準。 |
-| `ASB-spec.html` | `ASB-spec.md` から生成する HTML 版仕様書。仕様改訂の入力元ではない。 |
-| `IMPLEMENTATION_TASKS.md` | `ASB-spec.md` に基づく実装フェーズ別タスクリスト。フェーズ番号、優先度、開発版バージョン、実装順序、実装タスク、フェーズ別完了条件を管理する。 |
-| `AGENTS.md` | エージェント作業ルールブック。承認、Git運用、仕様書管理の最上位ルール。 |
-| `README.md` | プロジェクト概要と主要文書への入口。仕様正本ではない。 |
-| `templates/docs/` | 仕様節、実装フェーズ、README節、変更履歴の雛形。仕様正本ではない。 |
-| `templates/rulebook/` | 新規・派生リポジトリ向けルールブック雛形。現行 `AGENTS.md` の代替ではない。 |
+| `build_spec_v3_spec.md` | Adlaire CI の仕様正本。`build_spec_v3.py`、`runner.py`、将来コンポーネントである `api_server.py`、`adlaire-ci-sdk.js`、`admin/index.html` の仕様判断の最上位基準。 |
+| `DESIGN.md` | `Adlaire-db-spec.html` のデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
+| `build_spec_v3.py` | Adlaire DB 仕様書 Markdown を単一 HTML へ変換するビルドスクリプト。仕様改訂の入力元ではなく、`build_spec_v3_spec.md` に基づいて更新する実装ファイル。 |
+| `runner.py` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する CI ランナー。仕様改訂の入力元ではなく、`build_spec_v3_spec.md` に基づいて更新する実装ファイル。 |
+| `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
+| `DOCUMENT_INDEX.md` | 本索引。リポジトリ内の文書・実装ファイルの役割と正本関係を示す。仕様正本ではない。 |
+
+## Planned Components
+
+`build_spec_v3_spec.md` では、以下のコンポーネントも仕様化されている。
+
+| パス | 状態 | 役割 |
+|------|------|------|
+| `api_server.py` | 未実装 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する予定。 |
+| `adlaire-ci-sdk.js` | 未実装 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する予定。 |
+| `admin/index.html` | 未実装 | 標準管理ツール UI。SDK 経由で API と通信する予定。 |
+| `mcp_server.py` | 将来計画 | MCP サーバー。将来の 4 コンポーネント構成で追加予定。 |
 
 ## Source Of Truth
 
-仕様判断では `ASB-spec.md` を正とする。
+仕様判断では `build_spec_v3_spec.md` を正とする。
 
-`ASB-spec.html`、`IMPLEMENTATION_TASKS.md`、`README.md` に仕様上の不整合がある場合は、`ASB-spec.md` に合わせて更新する。
+デザイン判断では、`build_spec_v3_spec.md` と矛盾しない範囲で `DESIGN.md` を参照する。
 
-仕様改訂は `ASB-spec.md` のみで行う。
+`build_spec_v3.py` または `runner.py` の挙動が `build_spec_v3_spec.md` と矛盾する場合は、仕様と実装の不整合として扱う。
 
-`ASB-spec.html` は `ASB-spec.md` に基づいて更新・再生成する。
+仕様を変更する場合は、先に `build_spec_v3_spec.md` を更新し、その内容に基づいて実装ファイルを更新する。
 
-`IMPLEMENTATION_TASKS.md` は `ASB-spec.md` で確定した仕様を実装フェーズ単位へ展開する文書であり、仕様を追加または変更する文書ではない。
+`DESIGN.md` はデザイン仕様の補助文書であり、Adlaire CI 全体の機能仕様・運用仕様の正本ではない。
 
-P0、P1、P2 などのフェーズ詳細は `IMPLEMENTATION_TASKS.md` で管理し、`ASB-spec.md` へ記載しない。
+`DOCUMENT_INDEX.md` は索引であり、仕様・デザイン・実装判断の正本ではない。
 
-`templates/` 配下のファイルは雛形であり、仕様判断、作業ルール判断、実装フェーズ判断の正本ではない。
+`AGENTS.md` と他ファイルが作業ルール上矛盾する場合は、`AGENTS.md` を正とする。
 
-`templates/rulebook/` 配下のファイルと現行 `AGENTS.md` が矛盾する場合は、現行 `AGENTS.md` を正とする。
+## Consistency Notes
+
+現時点では、`build_spec_v3_spec.md` に記載された一部コンポーネントや機能は仕様化済みだが、リポジトリ内に実装ファイルが存在しない。
+
+仕様化済みだが未実装の内容は、実装済み機能として扱わない。
