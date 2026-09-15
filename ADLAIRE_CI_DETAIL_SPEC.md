@@ -932,21 +932,59 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 
 ## 11. CI ランナー ファイル構成
 
-本節のファイル構成は、現行実装ファイルと仕様化済み・未実装ファイルを同じ運用ディレクトリ上で示す。現行リポジトリに存在する実装ファイルは `build_spec.py` と `runner.py` のみである。
+本節のファイル構成は、現行実装で使用するファイル、CI ランナー拡張で追加されるファイル、管理 API / SDK / UI 側のファイルを分離して示す。
 
-### サーバー側
+現行リポジトリに存在する実装ファイルは `build_spec.py` と `runner.py` のみである。`api_server.py`、`admin/index.html`、`adlaire-ci-sdk.js` は仕様化済み・未実装であり、現行実装済みファイルとして扱ってはならない。
+
+### 現行実装で使用するファイル
+
+| パス | 成熟度 | 用途 |
+|------|--------|------|
+| `/opt/adlaire-builder/runner.py` | 実装済み | CI ランナー本体。単一ブランチの SHA 検出、blob 取得、`pipeline.sh` 起動、SHA 更新を行う。 |
+| `/opt/adlaire-builder/build_spec.py` | 実装済み | Markdown から HTML を生成するビルドスクリプト。 |
+| `/opt/adlaire-builder/.github_token` | 実装済み | GitHub PAT。現行 `runner.py` が読み込む。 |
+| `/opt/adlaire-builder/.last_sha` | 実装済み | 前回取得した blob SHA。現行実装ではプレーンテキストで保存する。 |
+| `/opt/adlaire-builder/repo/adlaire-db-spec.md` | 実装済み | GitHub Blobs API から取得した Markdown の書き出し先。 |
+| `/opt/adlaire-builder/repo/.ci/pipeline.sh` | 実装済み | `runner.py` が `bash` で起動するビルド手順。 |
 
 ```
 /opt/adlaire-builder/
-├── runner.py            # CI ランナー本体（単一ファイル、oneshot）
-├── build_spec.py        # ビルドスクリプト（サーバー固定）
+├── runner.py
+├── build_spec.py
+├── .github_token
+├── .last_sha
+└── repo/
+    ├── adlaire-db-spec.md
+    └── .ci/
+        └── pipeline.sh
+```
+
+### 仕様化済み・未実装の CI ランナー拡張ファイル
+
+以下は §10a の「仕様化済み・未実装範囲」に対応するファイルである。現行 `runner.py` では作成・読み書きしない。
+
+| パス | 成熟度 | 用途 |
+|------|--------|------|
+| `/opt/adlaire-builder/.build_history` | 仕様化済み・未実装 | ビルド履歴。 |
+| `/opt/adlaire-builder/.notify_config` | 仕様化済み・未実装 | Webhook 通知設定。 |
+| `/opt/adlaire-builder/.notify_log` | 仕様化済み・未実装 | Webhook 送信履歴。 |
+| `/opt/adlaire-builder/.notify_pending` | 仕様化済み・未実装 | Webhook 通知失敗時の再送キュー。 |
+| `/opt/adlaire-builder/.pending_transfers` | 仕様化済み・未実装 | SSH 転送失敗時の再送キュー。 |
+| `/opt/adlaire-builder/.build_lock` | 仕様化済み・未実装 | 実行中ビルドの PID ロック。 |
+| `/opt/adlaire-builder/.branch_config` | 仕様化済み・未実装 | ブランチターゲット設定。 |
+| `/opt/adlaire-builder/.build_state` | 仕様化済み・未実装 | ビルド実行状態、週次サマリー送信日等。 |
+| `/opt/adlaire-builder/.build_circuit_state` | 仕様化済み・未実装 | サーキットブレーカー状態。 |
+| `/opt/adlaire-builder/.build_logs/` | 仕様化済み・未実装 | ビルドごとの個別ログ。 |
+| `/opt/adlaire-builder/.snapshots/` | 仕様化済み・未実装 | ビルド成果物スナップショット。 |
+
+### 管理 API / SDK / UI 側ファイル
+
+以下は `api_server.py`、`adlaire-ci-sdk.js`、`admin/index.html` の仕様に属する。CI ランナー拡張と連携するものを含むが、現行 `runner.py` 単体の実装済み範囲には含めない。
+
+```
+/opt/adlaire-builder/
 ├── api_server.py        # 管理 API サーバー（常駐、仕様化済み・未実装）
-├── .github_token        # GitHub PAT（パーミッション 600）
 ├── .admin_credentials   # 認証情報ファイル（JSON、パーミッション 600）
-├── .last_sha            # 前回取得時の blob SHA キャッシュ（JSON 形式）
-├── .build_history       # ビルド履歴（JSON）
-├── .notify_config       # Webhook 通知設定（JSON）
-├── .notify_log          # Webhook 送信履歴（JSON）
 ├── .server_config       # サーバー設定（JSON）
 ├── .access_log          # ログイン履歴（JSON）
 ├── .repo_config         # リポジトリ監視設定（JSON）
@@ -961,28 +999,24 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 ├── .smtp_config         # SMTP 設定（JSON、パスワード除く）
 ├── .smtp_secret         # SMTP パスワード（プレーンテキスト、パーミッション 600）
 ├── .dashboard_layout    # ダッシュボードウィジェットレイアウト（JSON）
-├── .pending_transfers   # SSH 転送ペンディングキュー（JSON）
-├── .build_lock          # 実行中ビルドの PID ロック（実行中のみ存在）
-├── .webhook_events.json  # Webhook 受信イベントログ（JSON Lines 形式、1行1イベント）
-├── .notify_pending       # Webhook 通知失敗ペンディングキュー（JSON）
-├── .branch_config        # ブランチターゲット設定（JSON、存在する場合は BRANCH_TARGETS より優先）
-├── .build_state          # ビルド実行状態記録（JSON。週次サマリー送信日等）
-├── .build_circuit_state  # サーキットブレーカー状態（JSON）
-├── .build_logs/          # ビルドごとの個別ログ（JSON、ファイル名: {id}.json）
-├── .snapshots/          # ビルド成果物スナップショット（HISTORY_KEEP_N 世代保存、ディレクトリ名: {id}/）
+├── .webhook_events.json # Webhook 受信イベントログ（JSON Lines 形式、1行1イベント）
 └── admin/
     ├── index.html           # 管理画面（単一ファイル完結、仕様化済み・未実装）
     └── adlaire-ci-sdk.js    # JavaScript SDK（仕様化済み・未実装）
+```
 
-/opt/adlaire-builder/repo/
-└── adlaire-db-spec.md   # API 取得後に書き出されるソース Markdown
+### 出力先・配信先
 
+```
 /opt/adlaire-builder/dist/
-└── Adlaire-db-spec.html # HTML 出力先（CI サーバーローカル。SSH 転送後に配信サーバーへ反映）
+└── Adlaire-db-spec.html # HTML 出力先
 
-# ── 静的コンテンツ配信サーバー（別サーバー）──
-/var/www/html/           # SSH 転送先（nginx / Apache が配信）
+/var/www/html/           # 仕様化済み・未実装の SSH 転送先
+```
 
+### systemd
+
+```
 /etc/systemd/system/
 ├── adlaire-ci.service      # systemd ユニット（oneshot）
 ├── adlaire-ci.timer        # systemd タイマー（定期実行）
@@ -1004,13 +1038,25 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 
 現行 `runner.py` に実装済みの設定値は、`TOKEN_FILE`、`OWNER`、`REPO`、`BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC`、`BUILD_SCRIPT`、`LOG_LEVEL` のみである。
 
+### 現行実装済み設定
+
+```python
+TOKEN_FILE   = "/opt/adlaire-builder/.github_token"   # GitHub PAT
+OWNER        = "<GitHubオーナー名>"                    # リポジトリオーナー
+REPO         = "<リポジトリ名>"                        # リポジトリ名
+BRANCH       = "main"                                  # 対象ブランチ
+TARGET_FILE  = "adlaire-db-spec.md"                   # 監視対象ファイル
+SHA_FILE     = "/opt/adlaire-builder/.last_sha"       # blob SHA キャッシュ
+SRC          = "/opt/adlaire-builder/repo/adlaire-db-spec.md"  # 書き出し先
+BUILD_SCRIPT = "/opt/adlaire-builder/build_spec.py"
+LOG_LEVEL    = "INFO"
+```
+
+### 仕様化済み・未実装の拡張設定
+
 以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`BUILD_COOLDOWN_SECONDS`、`HISTORY_KEEP_N`、`FORCE_BUILD_INTERVAL`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` は仕様化済み・未実装の拡張設定である。
 
 ```python
-TOKEN_FILE             = "/opt/adlaire-builder/.github_token"        # GitHub PAT（パーミッション 600）
-OWNER                  = "<GitHubオーナー名>"                         # リポジトリオーナー
-REPO                   = "<リポジトリ名>"                             # リポジトリ名
-LOG_LEVEL              = "INFO"
 PENDING_FILE           = "/opt/adlaire-builder/.pending_transfers"   # SSH 転送ペンディングキュー（JSON）
 API_RETRY_MAX          = 5    # GitHub API 失敗時の最大再試行回数（指数バックオフ）
 API_RETRY_BASE_SECONDS = 1    # バックオフ基底秒数（1→2→4→8→16 秒。0 = リトライ無効）
@@ -1046,25 +1092,26 @@ BRANCH_TARGETS = [
 
 **拡張設定への移行対応（仕様化済み・未実装）：**
 
-現行 `runner.py` の単一ターゲット設定を `BRANCH_TARGETS` へ拡張する場合の対応は以下とする。現行実装では、左列の定数が引き続き使用される。
+現行 `runner.py` の単一ターゲット設定を `BRANCH_TARGETS` へ拡張する場合の対応は以下とする。現行実装では、`BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC` が引き続き使用される。
 
-| 現行定数 | 拡張後の移行先 |
+| 現行項目 | 拡張後の移行先 |
 |--------|--------|
 | `BRANCH` | `BRANCH_TARGETS[n]["branch"]` |
 | `TARGET_FILE` | `BRANCH_TARGETS[n]["target_file"]` |
 | `SHA_FILE` | `BRANCH_TARGETS[n]["sha_file"]` |
 | `SRC` | `BRANCH_TARGETS[n]["src"]` |
-| `OUT` | `BRANCH_TARGETS[n]["out"]` |
-| `DEPLOY_HOST` | `BRANCH_TARGETS[n]["deploy_targets"][m]["host"]` |
-| `DEPLOY_USER` | `BRANCH_TARGETS[n]["deploy_targets"][m]["user"]` |
-| `DEPLOY_DEST_DIR` | `BRANCH_TARGETS[n]["deploy_targets"][m]["dest_dir"]` |
-| `DEPLOY_FILES` | `BRANCH_TARGETS[n]["out"]` から自動導出 |
+| 出力 HTML パス | `BRANCH_TARGETS[n]["out"]`。現行 `runner.py` では未管理であり、`pipeline.sh` / `build_spec.py` 側の責務。 |
+| SSH 転送先 | `BRANCH_TARGETS[n]["deploy_targets"][m]`。現行 `runner.py` では未実装。 |
 
 ---
 
 ## 13. 処理フロー
 
-本節の処理フローには、現行実装済みの最小フローと、仕様化済み・未実装の拡張フローが含まれる。現行 `runner.py` の実装済みフローは以下である。
+本節の処理フローは、現行実装済みの最小フローと、仕様化済み・未実装の拡張フローに分けて扱う。
+
+### 現行実装済みフロー
+
+現行 `runner.py` の実装済みフローは以下である。
 
 ```
 runner.py 起動
@@ -1082,7 +1129,9 @@ runner.py 起動
     └─ 正常終了
 ```
 
-以下は、仕様化済み・未実装の拡張フローである。
+### 仕様化済み・未実装の拡張フロー
+
+以下は、仕様化済み・未実装の拡張フローである。現行 `runner.py` はこのフローを実装していない。
 
 ```
 runner.py 起動（systemd タイマーから呼び出し）
