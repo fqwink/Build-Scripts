@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Adlaire CI Runner
-仕様: build_spec_v3_spec.md Part 3 §10–§20
+仕様: ADLAIRE_CI_SPEC.md Part 3 §10–§20
 """
 
 VERSION = "1.0"
