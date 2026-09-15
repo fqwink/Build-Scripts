@@ -204,12 +204,12 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 |---------|--------------|
 | 認証 | `POST /api/login` / `POST /api/logout` / `POST /api/change-password` |
 | 死活監視 | `GET /api/health` |
-| ビルド操作 | `POST /api/build` / `POST /api/build/force` / `POST /api/build/cancel` / `POST /api/reset-sha` / `GET /api/build/stream` / `POST /api/circuit-breaker/reset` |
+| ビルド操作 | `POST /api/build` / `POST /api/build/force` / `POST /api/build/cancel` / `GET /api/build/stream` / `POST /api/circuit-breaker/reset` |
 | ステータス | `GET /api/status` / `GET /api/dashboard` |
 | ログ | `GET /api/logs` / `GET /api/logs/export` / `GET /api/logs/search` / `POST /api/logs/cleanup` |
 | ビルド履歴 | `GET /api/history` / `GET /api/history/{id}/log` / `GET /api/history/{id}/comment` / `POST /api/history/{id}/comment` / `GET /api/history/export` / `POST /api/history/{id}/flag` / `POST /api/history/{id}/tags` / `POST /api/history/{id}/rollback` |
-| スケジュール | `GET /api/schedule` / `POST /api/schedule/interval` / `POST /api/schedule/pause` / `POST /api/schedule/resume` / `POST /api/schedule/allowed-hours` / `POST /api/schedule/force-interval` |
-| 通知 | `GET /api/notify-config` / `POST /api/notify-config` / `POST /api/notify-test` / `GET /api/notify-log` / `POST /api/notify-summary` / `POST /api/notify/weekly-summary` |
+| スケジュール | `GET /api/schedule` / `POST /api/schedule/interval` / `POST /api/schedule/pause` / `POST /api/schedule/resume` / `POST /api/schedule/allowed-hours` / `POST /api/schedule/force-interval` / `POST /api/schedule/cooldown` |
+| 通知 | `GET /api/notify-config` / `POST /api/notify-config` / `POST /api/notify-test` / `GET /api/notify-log` / `POST /api/notify/weekly-summary` |
 | システム情報 | `GET /api/sysinfo` / `GET /api/output-meta` / `GET /api/diagnostics` / `GET /api/rate-limit` / `GET /api/disk-usage` |
 | 統計 | `GET /api/stats` / `GET /api/stats/timeline` / `GET /api/stats/build-duration` |
 | リポジトリ | `GET /api/repo-info` / `POST /api/repo-config` / `GET /api/branch-config` / `POST /api/branch-config` |
@@ -224,7 +224,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 | アクセス制御 | `GET /api/access-control` / `POST /api/access-control` |
 | フック | `GET /api/hooks` / `POST /api/hooks` / `DELETE /api/hooks/{id}` / `GET /api/hooks/{id}/log` |
 | アラートルール | `GET /api/alert-rules` / `POST /api/alert-rules` / `DELETE /api/alert-rules/{id}` |
-| Webhook 受信 | `POST /api/webhook` / `GET /api/webhook-events` |
+| Webhook 受信 | `POST /api/webhook` / `GET /api/webhook-events` / `GET /api/webhook-config` / `POST /api/webhook-config` |
 | 自動タグ付け | `GET /api/tag-rules` / `POST /api/tag-rules` / `DELETE /api/tag-rules/{id}` |
 | パイプライン | `GET /api/pipeline-config` / `POST /api/pipeline-config` / `POST /api/verify-output` |
 | 運用ノート | `GET /api/notes` / `POST /api/notes` |
@@ -237,13 +237,13 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 | カテゴリ | メソッド |
 |---------|--------|
 | 認証 | `login()` / `logout()` / `changePassword()` |
-| ビルド操作 | `triggerBuild()` / `buildForce()` / `cancelBuild()` / `resetSha()` / `streamBuild()` / `resetCircuitBreaker()` |
+| ビルド操作 | `triggerBuild()` / `buildForce()` / `cancelBuild()` / `streamBuild()` / `resetCircuitBreaker()` |
 | ステータス | `getStatus()` / `getDashboard()` |
 | ログ | `getLogs()` / `exportLogs()` / `searchLogs()` / `cleanupLogs()` |
 | ビルド履歴 | `getHistory()` / `getHistoryLog()` / `getHistoryComment()` / `setHistoryComment()` / `exportHistory()` / `setHistoryFlag()` / `setHistoryTags()` / `rollbackHistory()` |
-| スケジュール | `getSchedule()` / `setScheduleInterval()` / `pauseSchedule()` / `resumeSchedule()` / `setAllowedHours()` / `clearAllowedHours()` / `setForceInterval()` |
-| Webhook 受信 | `getWebhookEvents()` |
-| 通知 | `getNotifyConfig()` / `setNotifyConfig()` / `notifyTest()` / `getNotifyLog()` / `notifySummary()` / `notifyWeeklySummary()` |
+| スケジュール | `getSchedule()` / `setScheduleInterval()` / `pauseSchedule()` / `resumeSchedule()` / `setAllowedHours()` / `clearAllowedHours()` / `setForceInterval()` / `setBuildCooldown()` |
+| Webhook 受信 | `getWebhookEvents()` / `getWebhookConfig()` / `setWebhookConfig()` |
+| 通知 | `getNotifyConfig()` / `setNotifyConfig()` / `notifyTest()` / `getNotifyLog()` / `notifyWeeklySummary()` |
 | システム情報 | `getSysinfo()` / `getOutputMeta()` / `getDiagnostics()` / `getRateLimit()` / `getDiskUsage()` |
 | 統計 | `getStats()` / `getStatsTimeline()` / `getStatsBuildDuration()` |
 | リポジトリ | `getRepoInfo()` / `setRepoConfig()` / `getBranchConfig()` / `setBranchConfig()` |
@@ -266,7 +266,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 | ダッシュボードレイアウト | `getDashboardLayout()` / `setDashboardLayout()` |
 | 死活監視 | `health()` |
 
-ES Module・外部依存なし。全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。合計 95 メソッド。
+ES Module・外部依存なし。全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。`constructor` を除く合計は 96 メソッド。
 
 ### 標準管理ツール パネル（admin/index.html）
 
@@ -275,7 +275,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | ログイン | パスワード認証 |
 | パスワード変更 | 強制変更フロー対応（5 回目以降は他パネルを非表示） |
 | ステータス | 最終ビルド情報・出力ファイルリンク・メンテナンスバナー表示（モード中） |
-| 手動実行 | ビルド起動・強制・キャンセル・SHA リセット・キュー状態表示・キューのクリア |
+| 手動実行 | ビルド起動・強制ビルド・キャンセル・キュー状態表示・キューのクリア |
 | ログビューア | ログ閲覧・キーワードフィルター・ログレベルフィルター・JSON エクスポート・横断検索（期間指定） |
 | ビルド履歴 | 過去ビルド一覧・タグ列・フラグ列・ページネーション・タグ/フラグフィルター・JSON エクスポート・個別ログ参照 |
 | システム情報 | ファイルサイズ・稼働時間・ディスク使用量・PAT 検証・PAT 更新フォーム・PAT 有効期限表示・GitHub API レート制限表示 |
