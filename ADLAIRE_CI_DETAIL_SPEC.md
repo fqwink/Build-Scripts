@@ -11,6 +11,81 @@
 
 ---
 
+## 0a. 詳細仕様の記載基準
+
+本ファイルの仕様項目は、実装者が追加の設計判断や推測を行わずに実装できる粒度で記載する。
+
+仕様項目を追加または改訂する場合は、対象範囲に応じて以下を明記する。
+
+| 項目 | 記載する内容 |
+|------|-------------|
+| 対象 | 対象コンポーネント、対象ファイル、対象機能、責務境界 |
+| 入力 | 引数、HTTP リクエスト、設定値、読み込みファイル、環境前提 |
+| 出力 | 戻り値、HTTP レスポンス、生成ファイル、ログ、通知、標準出力 |
+| 状態 | 状態ファイル、メモリ上の状態、ロック、キャッシュ、更新タイミング |
+| データ構造 | JSON キー、型、必須/任意、既定値、許容値、例 |
+| 処理順序 | 正常系フロー、分岐条件、ループ条件、疑似コード |
+| 異常系 | エラー条件、例外処理、ステータスコード、ログレベル、通知条件 |
+| 運用条件 | タイムアウト、再試行、冪等性、排他制御、世代管理、削除条件 |
+| セキュリティ | 認証、認可、秘密情報の保存禁止、権限、外部公開可否 |
+| 検証 | 構文確認、実行確認、API 確認、生成物確認、整合性確認 |
+
+未確定の内容は、実装可能な詳細仕様として記載してはならない。未確定の場合は、該当項目を「未仕様化」または「将来計画」として扱い、何が未確定かを明示する。
+
+仕様化済み・未実装の内容は、実装ファイルが存在しなくても、本節の基準に従って実装可能な粒度まで具体化する。
+
+---
+
+## 0b. 成熟度棚卸し
+
+本節は、`ADLAIRE_CI_SPEC.md` Part 1 §4b および Part 2 §0a に基づく詳細仕様の一次棚卸しである。
+
+成熟度は、詳細仕様の記載粒度、実装ファイルの存在、現行リポジトリ上で確認できる責務境界を基準に判定する。実装済み判定は、実装ファイルの存在だけでは成立しない。詳細なコード突合、構文確認、実行確認、生成物確認は、各実装作業または別途の仕様突合作業で行う。
+
+| 対象範囲 | 対象コンポーネント | 成熟度 | 判定理由 | 次に必要な作業 |
+|----------|-------------------|--------|----------|----------------|
+| §0〜§9 | `build_spec.py` | 実装済み | 現行リポジトリに `build_spec.py` が存在し、Markdown から HTML を生成する現行ビルドスクリプトとして扱う。 | 詳細仕様と実装の関数・定数・出力レポートを突合し、差分があれば仕様または実装を改訂する。 |
+| §10〜§20 | `runner.py` | 実装済み / 仕様化済み・未実装 | 現行実装済みの最小 CI ランナーと、仕様化済み・未実装の拡張機能を §10a〜§20 で分離している。 | 実装着手時は対象項目の成熟度を確認し、現行実装と拡張仕様を混同しない。 |
+| §21〜§22 | `api_server.py` | 仕様化済み・未実装 | 管理 API サーバーの責務、設定値、systemd、エンドポイント、レスポンス、エラー形式が定義されているが、現行リポジトリに `api_server.py` は存在しない。 | 実装前に API エンドポイントごとの入出力、状態ファイル、エラー条件の不足を確認する。 |
+| §23 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | SDK のクラス、メソッド、戻り値、HTTP 対応関係が定義されているが、現行リポジトリに `adlaire-ci-sdk.js` は存在しない。 | API 仕様と SDK メソッド一覧を同期確認し、不足している戻り値型があれば具体化する。 |
+| §24 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツールの画面構成、表示条件、パネル責務が定義されているが、現行リポジトリに `admin/index.html` は存在しない。 | API・SDK と UI 操作の対応を確認し、各操作の成功/失敗表示を具体化する。 |
+| §25 | `api_server.py` | 仕様化済み・未実装 | 認証情報ファイル、パスワードハッシュ、ログイン回数、パスワード変更フローが定義されているが、現行リポジトリに認証実装は存在しない。 | セッション管理、トークン生成、ファイル権限、異常系を API 仕様と突合する。 |
+| §26 | `runner.py` / `api_server.py` | 実装済み / 仕様化済み・未実装 | 現行実装向け手順と、管理 API 導入後の手順を分離している。 | 導入対象の成熟度に応じて、現行実装手順または管理 API 導入後手順を選択する。 |
+| 概要内の MCP 記載 | `mcp_server.py` | 将来計画 | `mcp_server.py` は将来構成として言及されるが、詳細な入出力、ツール定義、起動手順、認証仕様は本ファイル内で実装可能な粒度まで定義されていない。 | 実装対象にする場合は、先に改訂予定へ昇格し、MCP 詳細仕様を新設する。 |
+
+成熟度棚卸しの結果、現時点で優先して整合すべき対象は `runner.py` 詳細仕様である。`runner.py` は現行実装ファイルが存在する一方で、詳細仕様側に拡張済みの項目が多いため、§10a の分類に従って実装済み範囲と未実装範囲を区別して扱う。
+
+---
+
+## 0c. 完全実装精度ゲート
+
+本節は、仕様化済み・未実装項目を実装へ進める前の必須ゲートである。実装者は、対象機能について以下の条件をすべて満たすまで実装を開始してはならない。
+
+| ゲート | 合格条件 |
+|--------|----------|
+| 成熟度 | 対象項目が「仕様化済み・未実装」または「実装済み」に分類され、未仕様化・将来計画・改訂予定のまま残っていない。 |
+| 責務境界 | 対象コンポーネント、対象ファイル、呼び出し元、呼び出し先、変更してよい状態ファイルが明記されている。 |
+| 入出力 | すべての入力、出力、既定値、許容値、必須/任意、型、文字コード、時刻形式が明記されている。 |
+| 状態管理 | 状態ファイルのパス、JSON 形式、更新タイミング、初期状態、破損時の扱い、権限が明記されている。 |
+| 正常系 | 処理順序、分岐条件、ループ条件、成功条件、終了条件が明記されている。 |
+| 異常系 | エラー条件、ログレベル、HTTP ステータス、戻り値、再試行有無、処理継続/中断条件が明記されている。 |
+| 冪等性 | 同一リクエスト、再実行、途中失敗後の再開で二重実行・二重削除・状態破壊が発生しない条件が明記されている。 |
+| 排他制御 | 同時実行、ロック、タイムアウト、ロック残存時の扱いが明記されている。 |
+| セキュリティ | 秘密情報の保存禁止、マスク、ファイル権限、認証/認可、外部公開可否が明記されている。 |
+| 検証 | 構文確認、単体確認、手動 API 確認、生成物確認、ログ確認、失敗系確認のいずれを行うかが明記されている。 |
+
+上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に本ファイルまたは `ADLAIRE_CI_SPEC.md` を改訂し、未充足項目を仕様として確定する。
+
+実装後の完了条件は以下とする。
+
+1. 実装した機能が、本ファイルに記載された入力、出力、状態、異常系、検証条件と一致する。
+2. 未実装のまま残した仕様化済み項目がある場合、実装済み機能と誤読されないよう成熟度が明記されている。
+3. `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、`DOCUMENT_INDEX.md`、`AGENTS.md` の正本関係とファイル名が矛盾していない。
+4. 実装ファイルを変更した場合、構文確認または実行確認の結果が記録できる。
+5. 仕様外の挙動、暗黙の既定値、未記載の状態ファイル、未記載のエラー応答が存在しない。
+
+---
+
 ## 0. システム概要
 
 Adlaire CI の現行実装は `build_spec.py` と `runner.py` の 2 つのスクリプトで構成される。
@@ -18,10 +93,12 @@ Adlaire CI の現行実装は `build_spec.py` と `runner.py` の 2 つのスク
 本仕様では、管理 API サーバー `api_server.py`、標準管理ツール `admin/index.html`、JavaScript SDK `adlaire-ci-sdk.js` も仕様化済み・未実装コンポーネントとして定義する。将来的には `mcp_server.py` を加えた構成へ移行予定（→ §13 将来計画 MCP サーバー実装）。
 
 **`build_spec.py`（ビルドスクリプト）**
-GitHub リポジトリ上の Markdown 仕様書（`adlaire-db-spec.md`）を HTML に変換して CI サーバーのローカルパスへ出力する。入力（`SRC`）と出力（`OUT`）はサーバー固定パスで管理する。静的コンテンツ配信サーバーへの転送は `runner.py` が担う。
+GitHub リポジトリ上の Markdown 仕様書（`adlaire-db-spec.md`）を HTML に変換してローカルパスへ出力する。入力（`SRC`）と出力（`OUT`）は `build_spec.py` の定数で管理する。
 
 **`runner.py`（CI ランナー）**
-GitHub の Git Blobs API をポーリングし、仕様書の変更を検出する。変更があった場合のみ `pipeline.sh` を介してビルドを起動する。systemd タイマー（5 分間隔）で定期実行する oneshot 設計。
+GitHub の Git Trees API / Git Blobs API を使用し、単一対象ファイルの blob SHA 変更を検出する。変更があった場合のみ Markdown 本文を `SRC` へ書き出し、`pipeline.sh` を介してビルドを起動し、成功時に SHA キャッシュを更新する。systemd タイマー（5 分間隔）で定期実行する oneshot 設計。
+
+SSH 転送、ペンディングキュー、スナップショット、Webhook 通知、マルチブランチ、ビルドログ保存、サーキットブレーカーは §10a・§12〜§14b に定義する仕様化済み・未実装の拡張機能であり、現行 `runner.py` の実装済み範囲には含めない。
 
 **`api_server.py`（管理 API サーバー、仕様化済み・未実装）**
 常駐 HTTP サーバー（`http.server`）。管理ツールからの API リクエストを受け付け、認証・状態取得・手動ビルドトリガーを処理する。`adlaire-admin.service` として systemd に登録し、`runner.py` とは独立して常駐する。
@@ -32,11 +109,13 @@ systemd timer
   └─ runner.py（oneshot）
        ├─ 変更なし → スキップ
        └─ 変更あり → pipeline.sh → build_spec.py → HTML 生成
-                                                         └─ runner.py SSH 転送 → 静的配信サーバー（→ §14a）
 ```
 
-**仕様化済み・未実装コンポーネントを含む想定フロー：**
+**仕様化済み・未実装コンポーネントおよび拡張機能を含む想定フロー：**
 ```
+runner.py（拡張後）
+  └─ SSH 転送 / スナップショット / Webhook 通知 / ビルドログ保存
+
 adlaire-admin.service（常駐）
   └─ api_server.py → SDK → 管理ツール
 ```
@@ -785,8 +864,8 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
 
 警告が発生した場合、`[REPORT]` 行の直前に `[WARN] {メッセージ}` 形式で 1 件ずつ出力する。
 
-**runner.py による取り込み：**
-runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
+**runner.py による取り込み（仕様化済み・未実装）：**
+現行 `runner.py` は `[REPORT]` 行と `[WARN]` 行をパースせず、`.build_logs/{id}.json` も作成しない。将来の CI ランナー拡張では、`runner.py` が `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
 
 ```json
 {
@@ -829,23 +908,116 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 
 ---
 
+## 10a. CI ランナー 実装突合・再分類
+
+本節は、現行 `runner.py` と §10〜§20 の詳細仕様を突合した再分類である。
+
+現行 `runner.py` は、GitHub API で単一対象ファイルの blob SHA を確認し、変更がある場合に blob 本文を取得して `pipeline.sh` を実行し、成功後に SHA を更新する最小 CI ランナーである。
+
+### 現行実装済み範囲
+
+| 項目 | 現行実装 | 根拠 |
+|------|----------|------|
+| 起動形式 | oneshot 実行。`main()` が 1 回の変更確認とビルド実行を行って終了する。 | `main()` |
+| 設定値 | `TOKEN_FILE`、`OWNER`、`REPO`、`BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC`、`BUILD_SCRIPT`、`LOG_LEVEL`。 | `runner.py` 冒頭定数 |
+| GitHub PAT 読み込み | `TOKEN_FILE` を読み込み、不在または空の場合は ERROR ログ後に終了する。 | `read_token()` |
+| Git Trees API | `BRANCH` の tree を取得し、`TARGET_FILE` の blob SHA を検索する。 | `get_blob_sha()` |
+| SHA 比較 | `SHA_FILE` の前回 SHA と現在 SHA を比較し、一致時はビルドをスキップする。 | `read_last_sha()`、`main()` |
+| Git Blobs API | blob 本文を取得し、Base64 をデコードする。 | `fetch_blob()` |
+| ソース書き出し | 取得した Markdown を `SRC` へ書き出す。 | `write_src()` |
+| ビルド起動 | `SRC` と同じディレクトリ配下の `.ci/pipeline.sh` を `bash` で実行する。 | `run_pipeline()` |
+| 成功時 SHA 更新 | `pipeline.sh` が exit 0 の場合のみ `SHA_FILE` を現在 SHA で更新する。 | `save_sha()`、`main()` |
+| ログ出力 | Python `logging` を stdout へ出力する。 | `setup_logging()` |
+
+### 仕様化済み・未実装範囲
+
+以下は §10〜§20 に詳細仕様が存在するが、現行 `runner.py` には未実装である。実装する場合は、対象項目ごとに §0c の完全実装精度ゲートを満たしていることを確認する。ゲート未充足の項目が 1 つでもある場合は、実装を開始せず、先に本ファイルの該当節を改訂する。
+
+| 項目 | 関連節 | 未実装内容 |
+|------|--------|------------|
+| JSON 形式の SHA キャッシュ | §11〜§13 | 現行 `SHA_FILE` はプレーンテキスト SHA として読み書きされる。仕様上の `{"sha": "..."}` JSON 形式は未実装。 |
+| `BRANCH_TARGETS` | §12〜§13 | 複数ブランチ、複数 target file、複数出力先の設定構造は未実装。現行は `BRANCH` / `TARGET_FILE` / `SHA_FILE` / `SRC` の単一設定。 |
+| GitHub API リトライ | §12〜§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、レート制限待機は未実装。 |
+| ビルドロック | §11〜§13 | `.build_lock` による多重起動防止は未実装。 |
+| ビルドクールダウン | §12〜§13 | `BUILD_COOLDOWN_SECONDS` による起動抑制は未実装。 |
+| 強制再ビルド間隔 | §12〜§13 | `FORCE_BUILD_INTERVAL` による変更なし時の定期強制ビルドは未実装。 |
+| コミット情報記録 | §13 | ビルドトリガー commit の SHA、message、author、date 取得は未実装。 |
+| 事前チェック | §13 | ディスク空き容量、Python バージョン、`build_spec.py` 存在確認は未実装。 |
+| Webhook 通知 | §13 | `.notify_config` 読み込み、成功/失敗/転送失敗/週次サマリー通知、`.notify_pending` 再送は未実装。 |
+| ビルドログ保存 | §11〜§15 | `.build_logs/{id}.json` への stdout/stderr、変換レポート、所要時間保存は未実装。 |
+| SSH 転送 | §14a | SHA256 差分検出、stdin パイプ転送、転送後整合性検証、ペンディングキューは未実装。 |
+| スナップショット | §14b | `.snapshots/` への成果物保存、世代管理、ロールバック連携は未実装。 |
+| サーキットブレーカー | §13 | `.build_circuit_state` による連続失敗停止は未実装。 |
+| ログ世代管理 | §13 | `LOG_KEEP_N` による `.build_logs/` 削除は未実装。 |
+| 出力サイズ警告 | §12〜§13 | `OUTPUT_SIZE_WARN_MB` による WARN ログと `size_warn` 記録は未実装。 |
+
+### 将来計画として扱う範囲
+
+§10〜§20 には、現行 runner の直接責務ではなく管理 API、標準管理ツール、将来の運用機能と結合して成立する項目が含まれる。これらを実装対象へ進める場合は、API・SDK・UI の対象節に、呼び出し元、呼び出し先、状態ファイル、失敗時応答、検証条件を追記してから実装する。
+
+| 項目 | 理由 |
+|------|------|
+| API 経由の動的ブランチ設定 | `runner.py` 単体では設定 API を持たないため、`api_server.py` 実装と合わせて扱う。 |
+| API 経由のロールバック | `POST /api/history/{id}/rollback` は `api_server.py` のエンドポイント実装が前提となる。 |
+| 管理画面からのスケジュール操作 | systemd timer の変更 API と標準管理ツール UI が前提となる。 |
+
+---
+
 ## 11. CI ランナー ファイル構成
 
-本節のファイル構成は、現行実装ファイルと仕様化済み・未実装ファイルを同じ運用ディレクトリ上で示す。現行リポジトリに存在する実装ファイルは `build_spec.py` と `runner.py` のみである。
+本節のファイル構成は、現行実装で使用するファイル、CI ランナー拡張で追加されるファイル、管理 API / SDK / UI 側のファイルを分離して示す。
 
-### サーバー側
+現行リポジトリに存在する実装ファイルは `build_spec.py` と `runner.py` のみである。`api_server.py`、`admin/index.html`、`adlaire-ci-sdk.js` は仕様化済み・未実装であり、現行実装済みファイルとして扱ってはならない。
+
+### 現行実装で使用するファイル
+
+| パス | 成熟度 | 用途 |
+|------|--------|------|
+| `/opt/adlaire-builder/runner.py` | 実装済み | CI ランナー本体。単一ブランチの SHA 検出、blob 取得、`pipeline.sh` 起動、SHA 更新を行う。 |
+| `/opt/adlaire-builder/build_spec.py` | 実装済み | Markdown から HTML を生成するビルドスクリプト。 |
+| `/opt/adlaire-builder/.github_token` | 実装済み | GitHub PAT。現行 `runner.py` が読み込む。 |
+| `/opt/adlaire-builder/.last_sha` | 実装済み | 前回取得した blob SHA。現行実装ではプレーンテキストで保存する。 |
+| `/opt/adlaire-builder/repo/adlaire-db-spec.md` | 実装済み | GitHub Blobs API から取得した Markdown の書き出し先。 |
+| `/opt/adlaire-builder/repo/.ci/pipeline.sh` | 実装済み | `runner.py` が `bash` で起動するビルド手順。 |
 
 ```
 /opt/adlaire-builder/
-├── runner.py            # CI ランナー本体（単一ファイル、oneshot）
-├── build_spec.py        # ビルドスクリプト（サーバー固定）
+├── runner.py
+├── build_spec.py
+├── .github_token
+├── .last_sha
+└── repo/
+    ├── adlaire-db-spec.md
+    └── .ci/
+        └── pipeline.sh
+```
+
+### 仕様化済み・未実装の CI ランナー拡張ファイル
+
+以下は §10a の「仕様化済み・未実装範囲」に対応するファイルである。現行 `runner.py` では作成・読み書きしない。
+
+| パス | 成熟度 | 用途 |
+|------|--------|------|
+| `/opt/adlaire-builder/.build_history` | 仕様化済み・未実装 | ビルド履歴。 |
+| `/opt/adlaire-builder/.notify_config` | 仕様化済み・未実装 | Webhook 通知設定。 |
+| `/opt/adlaire-builder/.notify_log` | 仕様化済み・未実装 | Webhook 送信履歴。 |
+| `/opt/adlaire-builder/.notify_pending` | 仕様化済み・未実装 | Webhook 通知失敗時の再送キュー。 |
+| `/opt/adlaire-builder/.pending_transfers` | 仕様化済み・未実装 | SSH 転送失敗時の再送キュー。 |
+| `/opt/adlaire-builder/.build_lock` | 仕様化済み・未実装 | 実行中ビルドの PID ロック。 |
+| `/opt/adlaire-builder/.branch_config` | 仕様化済み・未実装 | ブランチターゲット設定。 |
+| `/opt/adlaire-builder/.build_state` | 仕様化済み・未実装 | ビルド実行状態、週次サマリー送信日等。 |
+| `/opt/adlaire-builder/.build_circuit_state` | 仕様化済み・未実装 | サーキットブレーカー状態。 |
+| `/opt/adlaire-builder/.build_logs/` | 仕様化済み・未実装 | ビルドごとの個別ログ。 |
+| `/opt/adlaire-builder/.snapshots/` | 仕様化済み・未実装 | ビルド成果物スナップショット。 |
+
+### 管理 API / SDK / UI 側ファイル
+
+以下は `api_server.py`、`adlaire-ci-sdk.js`、`admin/index.html` の仕様に属する。CI ランナー拡張と連携するものを含むが、現行 `runner.py` 単体の実装済み範囲には含めない。
+
+```
+/opt/adlaire-builder/
 ├── api_server.py        # 管理 API サーバー（常駐、仕様化済み・未実装）
-├── .github_token        # GitHub PAT（パーミッション 600）
 ├── .admin_credentials   # 認証情報ファイル（JSON、パーミッション 600）
-├── .last_sha            # 前回取得時の blob SHA キャッシュ（JSON 形式）
-├── .build_history       # ビルド履歴（JSON）
-├── .notify_config       # Webhook 通知設定（JSON）
-├── .notify_log          # Webhook 送信履歴（JSON）
 ├── .server_config       # サーバー設定（JSON）
 ├── .access_log          # ログイン履歴（JSON）
 ├── .repo_config         # リポジトリ監視設定（JSON）
@@ -860,28 +1032,24 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 ├── .smtp_config         # SMTP 設定（JSON、パスワード除く）
 ├── .smtp_secret         # SMTP パスワード（プレーンテキスト、パーミッション 600）
 ├── .dashboard_layout    # ダッシュボードウィジェットレイアウト（JSON）
-├── .pending_transfers   # SSH 転送ペンディングキュー（JSON）
-├── .build_lock          # 実行中ビルドの PID ロック（実行中のみ存在）
-├── .webhook_events.json  # Webhook 受信イベントログ（JSON Lines 形式、1行1イベント）
-├── .notify_pending       # Webhook 通知失敗ペンディングキュー（JSON）
-├── .branch_config        # ブランチターゲット設定（JSON、存在する場合は BRANCH_TARGETS より優先）
-├── .build_state          # ビルド実行状態記録（JSON。週次サマリー送信日等）
-├── .build_circuit_state  # サーキットブレーカー状態（JSON）
-├── .build_logs/          # ビルドごとの個別ログ（JSON、ファイル名: {id}.json）
-├── .snapshots/          # ビルド成果物スナップショット（HISTORY_KEEP_N 世代保存、ディレクトリ名: {id}/）
+├── .webhook_events.json # Webhook 受信イベントログ（JSON Lines 形式、1行1イベント）
 └── admin/
     ├── index.html           # 管理画面（単一ファイル完結、仕様化済み・未実装）
     └── adlaire-ci-sdk.js    # JavaScript SDK（仕様化済み・未実装）
+```
 
-/opt/adlaire-builder/repo/
-└── adlaire-db-spec.md   # API 取得後に書き出されるソース Markdown
+### 出力先・配信先
 
+```
 /opt/adlaire-builder/dist/
-└── Adlaire-db-spec.html # HTML 出力先（CI サーバーローカル。SSH 転送後に配信サーバーへ反映）
+└── Adlaire-db-spec.html # HTML 出力先
 
-# ── 静的コンテンツ配信サーバー（別サーバー）──
-/var/www/html/           # SSH 転送先（nginx / Apache が配信）
+/var/www/html/           # 仕様化済み・未実装の SSH 転送先
+```
 
+### systemd
+
+```
 /etc/systemd/system/
 ├── adlaire-ci.service      # systemd ユニット（oneshot）
 ├── adlaire-ci.timer        # systemd タイマー（定期実行）
@@ -901,11 +1069,27 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 
 ## 12. 設定値（`runner.py` 冒頭）
 
+現行 `runner.py` に実装済みの設定値は、`TOKEN_FILE`、`OWNER`、`REPO`、`BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC`、`BUILD_SCRIPT`、`LOG_LEVEL` のみである。
+
+### 現行実装済み設定
+
 ```python
-TOKEN_FILE             = "/opt/adlaire-builder/.github_token"        # GitHub PAT（パーミッション 600）
-OWNER                  = "<GitHubオーナー名>"                         # リポジトリオーナー
-REPO                   = "<リポジトリ名>"                             # リポジトリ名
-LOG_LEVEL              = "INFO"
+TOKEN_FILE   = "/opt/adlaire-builder/.github_token"   # GitHub PAT
+OWNER        = "<GitHubオーナー名>"                    # リポジトリオーナー
+REPO         = "<リポジトリ名>"                        # リポジトリ名
+BRANCH       = "main"                                  # 対象ブランチ
+TARGET_FILE  = "adlaire-db-spec.md"                   # 監視対象ファイル
+SHA_FILE     = "/opt/adlaire-builder/.last_sha"       # blob SHA キャッシュ
+SRC          = "/opt/adlaire-builder/repo/adlaire-db-spec.md"  # 書き出し先
+BUILD_SCRIPT = "/opt/adlaire-builder/build_spec.py"
+LOG_LEVEL    = "INFO"
+```
+
+### 仕様化済み・未実装の拡張設定
+
+以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`BUILD_COOLDOWN_SECONDS`、`HISTORY_KEEP_N`、`FORCE_BUILD_INTERVAL`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` は仕様化済み・未実装の拡張設定である。
+
+```python
 PENDING_FILE           = "/opt/adlaire-builder/.pending_transfers"   # SSH 転送ペンディングキュー（JSON）
 API_RETRY_MAX          = 5    # GitHub API 失敗時の最大再試行回数（指数バックオフ）
 API_RETRY_BASE_SECONDS = 1    # バックオフ基底秒数（1→2→4→8→16 秒。0 = リトライ無効）
@@ -939,23 +1123,48 @@ BRANCH_TARGETS = [
 ]
 ```
 
-**旧設定値との対応（廃止済み）：**
+**拡張設定への移行対応（仕様化済み・未実装）：**
 
-| 旧定数 | 移行先 |
+現行 `runner.py` の単一ターゲット設定を `BRANCH_TARGETS` へ拡張する場合の対応は以下とする。現行実装では、`BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC` が引き続き使用される。
+
+| 現行項目 | 拡張後の移行先 |
 |--------|--------|
 | `BRANCH` | `BRANCH_TARGETS[n]["branch"]` |
 | `TARGET_FILE` | `BRANCH_TARGETS[n]["target_file"]` |
 | `SHA_FILE` | `BRANCH_TARGETS[n]["sha_file"]` |
 | `SRC` | `BRANCH_TARGETS[n]["src"]` |
-| `OUT` | `BRANCH_TARGETS[n]["out"]` |
-| `DEPLOY_HOST` | `BRANCH_TARGETS[n]["deploy_targets"][m]["host"]` |
-| `DEPLOY_USER` | `BRANCH_TARGETS[n]["deploy_targets"][m]["user"]` |
-| `DEPLOY_DEST_DIR` | `BRANCH_TARGETS[n]["deploy_targets"][m]["dest_dir"]` |
-| `DEPLOY_FILES` | `BRANCH_TARGETS[n]["out"]` から自動導出 |
+| 出力 HTML パス | `BRANCH_TARGETS[n]["out"]`。現行 `runner.py` では未管理であり、`pipeline.sh` / `build_spec.py` 側の責務。 |
+| SSH 転送先 | `BRANCH_TARGETS[n]["deploy_targets"][m]`。現行 `runner.py` では未実装。 |
 
 ---
 
 ## 13. 処理フロー
+
+本節の処理フローは、現行実装済みの最小フローと、仕様化済み・未実装の拡張フローに分けて扱う。
+
+### 現行実装済みフロー
+
+現行 `runner.py` の実装済みフローは以下である。
+
+```
+runner.py 起動
+    │
+    ├─ .github_token 読み込み
+    ├─ Git Trees API で TARGET_FILE の blob SHA を取得
+    ├─ SHA_FILE の前回 SHA と比較
+    │   ├─ 一致 → INFO ログを出して正常終了
+    │   └─ 不一致 → 続行
+    ├─ Git Blobs API で blob 本文を取得
+    ├─ Base64 デコード後、SRC へ書き出し
+    ├─ bash {dirname(SRC)}/.ci/pipeline.sh を実行
+    │   ├─ exit 0 → SHA_FILE を現在 SHA で更新
+    │   └─ exit 0 以外 → SHA_FILE を更新せず終了コード 1 で終了
+    └─ 正常終了
+```
+
+### 仕様化済み・未実装の拡張フロー
+
+以下は、仕様化済み・未実装の拡張フローである。現行 `runner.py` はこのフローを実装していない。
 
 ```
 runner.py 起動（systemd タイマーから呼び出し）
@@ -1101,7 +1310,11 @@ python3 /opt/adlaire-builder/build_spec.py
 
 ## 14a. SSH ファイル転送
 
-`runner.py` は `pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。
+本節は、仕様化済み・未実装の CI ランナー拡張仕様である。
+
+現行 `runner.py` は SSH 転送を実行しない。現行実装は `pipeline.sh` 起動と成功時 SHA 更新までを担当し、生成 HTML の静的コンテンツ配信サーバーへの転送は未実装である。
+
+本機能を実装する場合、`runner.py` は `pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。
 
 ### 設定値
 
@@ -1191,7 +1404,11 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 
 ## 14b. スナップショット管理
 
-`runner.py` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット機能を無効化する。
+本節は、仕様化済み・未実装の CI ランナー拡張仕様である。
+
+現行 `runner.py` は `.snapshots/` ディレクトリを作成・更新しない。スナップショット保存、世代管理、ロールバックは未実装である。
+
+本機能を実装する場合、`runner.py` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット機能を無効化する。
 
 ### ディレクトリ構造
 
@@ -1217,6 +1434,7 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 
 `POST /api/history/{id}/rollback`（→ §22）で指定ビルド ID のスナップショットから SSH 転送を再実行する。
 
+- ロールバック API は `api_server.py` の実装を前提とする。現行リポジトリに `api_server.py` は存在しないため、現行実装済み機能として扱ってはならない
 - `.snapshots/{id}/` が存在しない場合は `404` を返す
 - 転送成功時は `.build_history` に rollback エントリを追記する
 
@@ -1233,6 +1451,10 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 
 ## 15. ログ
 
+本節は、現行実装済みの stdout ログと、仕様化済み・未実装の構造化ログ拡張を分けて定義する。
+
+### 現行実装済みログ
+
 Python 標準の `logging` モジュールを使用する。出力先は stdout（systemd が journald に転送）。
 
 | レベル | 出力条件 |
@@ -1241,6 +1463,26 @@ Python 標準の `logging` モジュールを使用する。出力先は stdout�
 | `WARNING` | — |
 | `ERROR` | トークン読み込み失敗、API 失敗、ビルド失敗 |
 | `DEBUG` | API レスポンス詳細等（`LOG_LEVEL = "DEBUG"` 時のみ） |
+
+現行 `runner.py` は `.build_logs/{id}.json` を作成しない。`pipeline.sh` の stdout / stderr 保存、`[REPORT]` / `[WARN]` の取り込み、ビルド所要時間、転送検証結果、コミット情報、ログ世代管理は現行実装済み機能として扱ってはならない。
+
+### 仕様化済み・未実装のログ拡張
+
+以下は CI ランナー拡張として仕様化済みだが、現行 `runner.py` には未実装である。
+
+| 項目 | 内容 |
+|------|------|
+| ビルドログファイル | ビルドごとに `.build_logs/{id}.json` を作成する。 |
+| stdout / stderr 保存 | `pipeline.sh` の標準出力・標準エラーをビルドログへ保存する。 |
+| 変換レポート取り込み | `build_spec.py` が出力する `[REPORT]` 行をパースし、`tables_count`、`code_blocks_count` 等へ変換して保存する。 |
+| 警告取り込み | `[WARN]` 行を配列として保存し、`warnings` 件数と整合させる。 |
+| ビルド所要時間 | `started_at`、`finished_at`、`duration_seconds` を保存する。 |
+| コミット情報 | ビルド対象 commit の SHA、message、author、date を保存する。 |
+| 転送検証結果 | SSH 転送後整合性検証の結果として `transfer_verified` を保存する。 |
+| 出力サイズ警告 | `OUTPUT_SIZE_WARN_MB` 超過時に `size_warn: true` を保存する。 |
+| ログ世代管理 | `LOG_KEEP_N` を超過した `.build_logs/{id}.json` を古いものから削除する。 |
+
+これらの拡張ログを実装する場合は、§10a の未実装範囲、§12 の拡張設定、§13 の拡張フロー、§22 の API レスポンス仕様と整合させる。
 
 ---
 
@@ -1297,6 +1539,8 @@ sudo journalctl -u adlaire-ci -f               # ログ確認
 
 ## 18. 初回セットアップ手順
 
+本節は CI ランナー導入手順である。現行 `runner.py` の実装済み範囲と、SSH 転送・管理 API の仕様化済み・未実装範囲をコメントで分離する。
+
 ```bash
 # 1. deploy ユーザー作成
 sudo useradd -m -s /bin/bash deploy
@@ -1310,6 +1554,7 @@ echo "<PAT>" | sudo -u deploy tee /opt/adlaire-builder/.github_token
 sudo chmod 600 /opt/adlaire-builder/.github_token
 
 # 3b. CI サーバー → 配信サーバー SSH 鍵設定
+#     仕様化済み・未実装の SSH 転送機能を導入する場合のみ実行する。
 #     deploy ユーザーの SSH 鍵を生成（既存鍵がある場合はスキップ）
 sudo -u deploy ssh-keygen -t ed25519 -f /home/deploy/.ssh/id_ed25519 -N ""
 #     公開鍵を配信サーバーへ登録（配信サーバー側で実行）
@@ -1317,8 +1562,9 @@ sudo -u deploy ssh-keygen -t ed25519 -f /home/deploy/.ssh/id_ed25519 -N ""
 #     初回接続時の known_hosts 登録
 sudo -u deploy ssh-keyscan -H <配信サーバーIP> >> /home/deploy/.ssh/known_hosts
 
-# 4. SHA キャッシュファイルを初期化（JSON 形式）
-echo '{"sha": ""}' | sudo -u deploy tee /opt/adlaire-builder/.last_sha
+# 4. SHA キャッシュファイルを初期化
+#    現行 runner.py はプレーンテキスト SHA として読み書きする。
+printf '%s\n' "" | sudo -u deploy tee /opt/adlaire-builder/.last_sha
 sudo chmod 600 /opt/adlaire-builder/.last_sha
 
 # 5. build_spec.py を配置
@@ -1365,14 +1611,30 @@ sudo systemctl enable --now adlaire-admin
 
 ## 20. CI ランナー 既知の制限
 
+### 20.1 現行 `runner.py` の制限
+
 | 制限 | 詳細 |
 |------|------|
-| ポーリング遅延 | 変更検出はタイマー間隔（デフォルト 5 分）に依存する。即時反応は不可（Webhook 受信で補完可能 → §22） |
-| `pipeline.sh` のみ対応 | YAML 形式のパイプライン定義には非対応（シェルスクリプト固定） |
-| ネットワーク断時の挙動 | GitHub API 失敗時は `API_RETRY_MAX` 回まで指数バックオフで再試行する。全試行失敗時のみ ERROR ログを記録してエントリをスキップする |
-| `BRANCH_TARGETS` 直列処理 | 複数エントリはリスト順に順次処理する。並列処理には非対応 |
-| ペンディングキューは再試行のみ | ペンディング再試行が連続失敗した場合の上限・放棄ポリシーは未定義 |
-| Webhook 受信の外部公開 | `POST /api/webhook` は `api_server.py`（`127.0.0.1` バインド）のため、GitHub からの受信にはリバースプロキシが必要 |
+| ポーリング遅延 | 変更検出は systemd timer の実行間隔に依存する。現行実装単体では即時反応しない。 |
+| `pipeline.sh` のみ対応 | ビルド起動は `SRC` と同じディレクトリ配下の `.ci/pipeline.sh` 固定。YAML 形式のパイプライン定義、複数ステージ定義、動的パイプライン選択は行わない。 |
+| 単一ターゲットのみ対応 | 現行実装は `BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC` の単一設定のみ処理する。複数ブランチ、複数ファイル、複数出力先は処理しない。 |
+| GitHub API 失敗時の扱い | 現行実装は指数バックオフ再試行を行わない。GitHub API 呼び出しで例外または不正応答が発生した場合は ERROR ログを出して当該実行を失敗させ、SHA を更新しない。次回 systemd timer 実行時に通常の変更検出から再試行する。 |
+| ビルド失敗時の扱い | `pipeline.sh` が非 0 で終了した場合は ERROR ログを出し、SHA を更新しない。次回実行では同じ blob SHA を再検出して再度ビルド対象になる。 |
+| 転送なし | SSH 転送、転送検証、ペンディングキュー、スナップショット保存は実行しない。 |
+| ログ保存なし | `.build_logs/{id}.json`、`.build_history`、`.notify_pending`、`.build_circuit_state` は作成しない。ログは stdout / journald 経由の実行ログのみ。 |
+
+### 20.2 仕様化済み・未実装拡張の制限
+
+以下は §10a で未実装と分類した CI ランナー拡張を実装する場合の制限である。現行 `runner.py` の実装済み挙動として扱ってはならない。
+
+| 制限 | 詳細 |
+|------|------|
+| Webhook 受信の外部公開 | `POST /api/webhook` は `api_server.py`（`127.0.0.1` バインド）で受信するため、GitHub から直接受信する構成ではリバースプロキシと TLS 終端が必要。 |
+| `BRANCH_TARGETS` 直列処理 | 複数エントリはリスト順に順次処理する。並列処理は行わない。1 件の処理が失敗しても、失敗をログと `.build_logs/{id}.json` に記録した上で次エントリへ進む。 |
+| GitHub API リトライ | GitHub API 失敗時は `API_RETRY_MAX` 回まで指数バックオフで再試行する。全試行失敗時は ERROR ログを記録し、当該ターゲットのビルドをスキップする。SHA は更新しない。 |
+| ペンディングキュー | ペンディング再試行が失敗した場合、`retry_count` を 1 増やしてエントリを保持する。runner による自動放棄は行わない。削除は転送成功時、または管理 API / 手動運用で明示的に削除する場合に限定する。 |
+| ペンディングキュー肥大化 | `queue_max_size` を超えた新規投入は ERROR ログを記録し、新規エントリを追加しない。既存エントリは削除しない。 |
+| サーキットブレーカー | 連続失敗回数が `API_CIRCUIT_BREAKER_THRESHOLD` 以上になった場合はポーリングを停止し、`POST /api/circuit-breaker/reset` でのみ復帰する。 |
 
 ---
 
@@ -1382,8 +1644,8 @@ sudo systemctl enable --now adlaire-admin
 
 ```
 systemd timer
-  └─ runner.py（変更検出・ビルド起動・SSH 転送）
-       └─ SSH → 静的コンテンツ配信サーバー
+  └─ runner.py（現行: 変更検出・ビルド起動）
+       └─ SSH 転送（仕様化済み・未実装拡張）
 
 api_server.py（常駐 HTTP サーバー、仕様化済み・未実装）
 
@@ -1443,6 +1705,91 @@ sudo journalctl -u adlaire-admin -f        # ログ確認
 **ベース URL：** `http://localhost:{PORT}/api`
 **認証：** `Authorization: Bearer {SESSION_TOKEN}`（`/api/login` で取得したセッショントークン）
 **レスポンス形式：** JSON
+
+### 22.0 API 共通契約
+
+本節の API は `api_server.py` の仕様化済み・未実装仕様である。実装する場合は、エンドポイント固有仕様より先に以下の共通契約を満たす。
+
+| 項目 | 仕様 |
+|------|------|
+| 文字コード | リクエストボディ、レスポンスボディ、状態ファイルはいずれも UTF-8 とする。 |
+| JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
+| 成功レスポンス | 各エンドポイント例に記載した JSON オブジェクトを返す。空レスポンスは使用しない。 |
+| エラーレスポンス | エラー時は `{"error": "<message>"}` を返す。補足情報が必要な場合のみ `details` を追加し、`details` は文字列または JSON オブジェクトとする。 |
+| 未知のパス | 定義されていない `/api/...` は `404 Not Found` と `{"error": "Not found"}` を返す。 |
+| 未対応メソッド | パスは存在するがメソッドが異なる場合は `405 Method Not Allowed` と `{"error": "Method not allowed"}` を返す。 |
+| JSON 不正 | JSON ボディのパースに失敗した場合は `400 Bad Request` と `{"error": "Invalid JSON"}` を返す。 |
+| 入力検証失敗 | 型、必須キー、範囲、有効値が仕様と異なる場合は `422 Unprocessable Entity` と `{"error": "Validation failed", "details": ...}` を返す。 |
+| 認証なし | 認証必須エンドポイントで Bearer トークンがない、または無効な場合は `401 Unauthorized` と `{"error": "Unauthorized"}` を返す。 |
+| 権限不足 | 読み取り専用トークンで変更系 API を呼び出す場合など、認証済みだが権限不足の場合は `403 Forbidden` と `{"error": "Forbidden"}` を返す。 |
+| 競合 | 実行中ビルド、停止済みスケジュールへの重複 pause、存在しない実行状態への cancel など状態競合は `409 Conflict` を返す。 |
+| 未設定機能 | Secret 未設定など、機能が仕様化済みでも必要設定が存在しない場合は `501 Not Implemented` または各エンドポイントに明記されたステータスを返す。 |
+| 時刻形式 | API レスポンスと状態ファイルの時刻は ISO 8601 形式の文字列とする。タイムゾーンを付ける場合は UTC の `Z` または明示オフセットを使用する。 |
+| GET の副作用 | `GET` エンドポイントは状態ファイルを書き換えない。診断 API が外部確認を行う場合も、結果保存は行わない。 |
+| 状態ファイル更新 | JSON 状態ファイルの更新は一時ファイルへ書き出してから `os.replace()` で置換する。秘密情報を含むファイルは作成後に mode `600` を設定する。 |
+| 秘密情報 | PAT、Webhook Secret、セッショントークン、API トークンはログ、バックアップ、GET レスポンスへ平文出力しない。設定済み表示は `"***"` または boolean で返す。 |
+| 並列更新 | 同一状態ファイルを更新する API は、ファイル単位のロックを取得してから読み込み、検証、書き込みを行う。ロック取得待ちは最大 10 秒とし、超過時は `409 Conflict` を返す。 |
+| 監査ログ | 設定変更 API は、変更前後の値を `.config_log` に追記する。ただし秘密情報の値は変更前後とも `"***"` にマスクする。 |
+
+エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、§22、§23、§24 の対応関係を同時に確認する。
+
+### 22.0a 状態ファイル共通仕様
+
+`api_server.py` および拡張後 `runner.py` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に本節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
+
+| パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
+|------|------|--------|----------|--------------|
+| `.admin_credentials` | JSON object | `--init-credentials` で生成 | `api_server.py` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
+| `.server_config` | JSON object | `{}` | `api_server.py` | `.server_config.corrupt.bak` へ退避し、空 object で再生成する。 |
+| `.notify_config` | JSON object | `{"webhooks":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `api_server.py` | `.notify_config.corrupt.bak` へ退避し、初期値で再生成する。 |
+| `.notify_log` | JSON Lines | 空ファイル | `runner.py` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.notify_pending` | JSON array | `[]` | `runner.py` | `.notify_pending.corrupt.bak` へ退避し、`[]` で再生成する。 |
+| `.pending_transfers` | JSON array | `[]` | `runner.py` | `.pending_transfers.corrupt.bak` へ退避し、`[]` で再生成する。 |
+| `.build_history` | JSON Lines | 空ファイル | `runner.py` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `runner.py` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
+| `.build_lock` | text | 不在 | `runner.py` | PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。 |
+| `.branch_config` | JSON object | 不在 | `api_server.py` | `.branch_config.corrupt.bak` へ退避し、`BRANCH_TARGETS` デフォルトへフォールバックする。 |
+| `.build_state` | JSON object | `{}` | `runner.py` / `api_server.py` | `.build_state.corrupt.bak` へ退避し、空 object で再生成する。 |
+| `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0}` | `runner.py` / `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.repo_config` | JSON object | `{}` | `api_server.py` | `.repo_config.corrupt.bak` へ退避し、スクリプト定数へフォールバックする。 |
+| `.config_log` | JSON Lines | 空ファイル | `api_server.py` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.access_log` | JSON Lines | 空ファイル | `api_server.py` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.webhook_secret` | text | 不在 | `api_server.py` | 読み込み不能時は Webhook 受信を `501` で拒否する。 |
+| `.webhook_events.json` | JSON Lines | 空ファイル | `api_server.py` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.access_control` | JSON object | `{"allow":[]}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.hooks` | JSON object | `{"hooks":[]}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.alert_rules` | JSON object | `{"rules":[]}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.tag_rules` | JSON object | `{"rules":[]}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.pipeline_config` | JSON object | `{"extra_args":[],"env":{}}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.notes` | UTF-8 text | 空文字列 | `api_server.py` | 読み込み不能時は `500` を返し、自動上書きしない。 |
+| `.smtp_config` | JSON object | SMTP 未設定値 | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.smtp_secret` | text | 不在 | `api_server.py` | 読み込み不能時は SMTP 送信を `422` で拒否する。 |
+| `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `api_server.py` | 初期値で再生成し、ERROR ログを記録する。 |
+
+JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時は末尾に改行を必ず付ける。秘密情報を含む可能性のある `.admin_credentials`、`.github_token`、`.webhook_secret`、`.smtp_secret` は mode `600` を必須とする。
+
+### 22.0b 入力検証共通仕様
+
+API 実装は以下の検証を共通で行う。違反時は、エンドポイント固有の指定がない限り `422 Unprocessable Entity` と `{"error":"Validation failed","details":...}` を返す。
+
+| 対象 | 検証条件 |
+|------|----------|
+| `id` パスパラメータ | `^[A-Za-z0-9_-]{1,64}$` に一致すること。`/`、`.`、空文字は禁止。 |
+| `page` | 1 以上の整数。 |
+| `per_page` | 1 以上 100 以下の整数。 |
+| `limit` | 1 以上 200 以下の整数。 |
+| `offset` | 0 以上の整数。 |
+| `days` | 1 以上 366 以下の整数。 |
+| `n` | 1 以上 1000 以下の整数。 |
+| 日付 | `YYYY-MM-DD` 形式で、存在する暦日であること。 |
+| 時刻 | 0 以上 23 以下の整数。 |
+| URL | `http://` または `https://` で始まること。Webhook URL は `https://` を推奨値とし、`http://` はローカル検証用途のみ許可する。 |
+| ファイルパス | 絶対パスのみ許可する。`..` を含むパス、NUL 文字、空文字は禁止。 |
+| タグ | 1 件 1〜32 文字、最大 20 件。重複は除去して保存する。 |
+| コメント | 最大 2000 文字。空文字 `""` はコメント削除として扱う。 |
+| メールアドレス | `local@domain` 形式で、空白を含まないこと。 |
+| CIDR | IPv4 アドレスまたは IPv4 CIDR として解釈できること。 |
+| コマンド引数配列 | `string[]` とし、1 要素以上 32 要素以下。各要素は 1〜256 文字。実行は `/bin/sh -c` を使わず、`subprocess.run(args, shell=False, ...)` とする。 |
 
 | メソッド | パス | 認証 | 説明 |
 |---------|------|------|------|
@@ -1656,9 +2003,11 @@ sudo journalctl -u adlaire-admin -f        # ログ確認
 **`GET /api/config` レスポンス例：**
 ```json
 { "log_max_lines": 500, "history_max_count": 100, "build_timeout_seconds": 300, "log_retention_days": 30, "pat_expires_at": null, "snapshots_keep": 5, "queue_max_size": 3 }
+```
 
 `pat_expires_at`：PAT の有効期限日（`YYYY-MM-DD` 形式）。`null` = 未設定。`GET /api/diagnostics` の `pat` 項目で 7 日以内なら `"warn"`、期限当日以前なら `"error"` に変更。
-```
+
+`POST /api/config` で更新可能なキーは `log_max_lines`、`history_max_count`、`build_timeout_seconds`、`log_retention_days`、`pat_expires_at`、`snapshots_keep`、`queue_max_size` に限定する。未知キーを含む場合は `422` を返し、既存設定を変更しない。
 
 **`GET /api/health` レスポンス例：**
 ```json
@@ -2353,7 +2702,7 @@ Content-Type: application/json
 
 ### ビルドフック（14E）
 
-ビルド実行の直前（`pre`）・直後（`post`）に任意のシェルコマンドを実行する。フック設定は `.hooks` に保存する。
+ビルド実行の直前（`pre`）・直後（`post`）に事前登録したコマンド引数配列を実行する。フック設定は `.hooks` に保存する。外部入力文字列をシェルへ渡す実装は禁止し、`subprocess.run(args, shell=False, ...)` で実行する。
 
 - `pre` フックが失敗（`exit_code != 0`）し `abort_on_failure: true` の場合、ビルドを中断しステータスを `hook_error` とする。
 - `post` フックは `abort_on_failure` 設定に関わらずビルド結果（`success` / `failure`）を変更しない。
@@ -2362,18 +2711,20 @@ Content-Type: application/json
 **`GET /api/hooks` レスポンス例：**
 ```json
 { "hooks": [
-    { "id": "h001", "phase": "pre",  "command": "echo build start", "enabled": true, "abort_on_failure": true },
-    { "id": "h002", "phase": "post", "command": "echo build end",   "enabled": true, "abort_on_failure": false }
+    { "id": "h001", "phase": "pre",  "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true },
+    { "id": "h002", "phase": "post", "command_args": ["echo", "build end"],   "enabled": true, "abort_on_failure": false }
 ]}
 ```
 
 **`POST /api/hooks` リクエスト / レスポンス：**
 ```json
 // リクエスト
-{ "phase": "pre", "command": "echo build start", "abort_on_failure": true }
+{ "phase": "pre", "command_args": ["echo", "build start"], "abort_on_failure": true }
 // レスポンス: 201
-{ "id": "h001", "phase": "pre", "command": "echo build start", "enabled": true, "abort_on_failure": true }
+{ "id": "h001", "phase": "pre", "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true }
 ```
+
+`phase` の有効値は `"pre"` または `"post"`。`command_args[0]` は絶対パス、または `PATH` 解決可能なコマンド名とする。`command_args` に空文字、NUL 文字、改行を含めてはならない。
 
 **`DELETE /api/hooks/{id}` レスポンス：**
 ```json
@@ -2706,7 +3057,7 @@ class AdlaireCI {
   resumeSchedule()             // POST /api/schedule/resume  → Promise<void>
   setAllowedHours(from, to)    // POST /api/schedule/allowed-hours {from, to} → Promise<void>
   clearAllowedHours()          // POST /api/schedule/allowed-hours {from:null, to:null} → Promise<void>
-  setForceInterval(hours)      // POST /api/schedule/force-interval → Promise<{message: string, force_interval_hours: number}>
+  setForceInterval(hours)      // POST /api/schedule/force-interval → Promise<{message: string, hours: number}>
   searchLogs(q = '', from = '', to = '') // GET /api/logs/search?q={q}&from={from}&to={to} → Promise<SearchResult>
   getOutputMeta()              // GET /api/output-meta       → Promise<OutputMetaObject>
   getStatsTimeline(days = 30)  // GET /api/stats/timeline?days={days} → Promise<TimelineObject>
@@ -2727,7 +3078,7 @@ class AdlaireCI {
   setHistoryTags(id, tags)     // POST /api/history/{id}/tags → Promise<void>
   rollbackHistory(id)          // POST /api/history/{id}/rollback → Promise<void>
   getTokens()                  // GET /api/tokens            → Promise<{tokens: TokenRecord[]}>
-  createToken(label)           // POST /api/tokens           → Promise<TokenCreateResult>
+  createToken(label, scope = 'read') // POST /api/tokens     → Promise<TokenCreateResult>
   revokeToken(id)              // DELETE /api/tokens/{id}    → Promise<void>
   // 14A スナップショット
   getSnapshots()               // GET /api/snapshots         → Promise<{snapshots: SnapshotRecord[]}>
@@ -2742,7 +3093,7 @@ class AdlaireCI {
   setAccessControl(allowList)  // POST /api/access-control   → Promise<{message: string, allow: string[]}>
   // 14E フック
   getHooks()                   // GET /api/hooks             → Promise<{hooks: HookRecord[]}>
-  addHook(phase, command, abortOnFailure = true) // POST /api/hooks → Promise<HookRecord>
+  addHook(phase, commandArgs, abortOnFailure = true) // POST /api/hooks → Promise<HookRecord>
   deleteHook(id)               // DELETE /api/hooks/{id}     → Promise<void>
   getHookLog(id)               // GET /api/hooks/{id}/log    → Promise<{id: string, runs: HookRunRecord[]}>
   // 15A アラートルール
@@ -2776,7 +3127,22 @@ class AdlaireCI {
 export { AdlaireCI };
 ```
 
-全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。HTTP エラー（4xx / 5xx）は `Error` としてスロー。`401` 受信時はセッション期限切れとして `this._token` をクリアする。合計 95 メソッド。
+全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。HTTP エラー（4xx / 5xx）は `AdlaireCIError` としてスローする。`401` 受信時はセッション期限切れとして `this._token` をクリアする。合計 95 メソッド。
+
+**SDK 共通実装契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| `baseUrl` | 末尾 `/` を除去して保持する。空文字、`null`、`undefined` は `TypeError`。 |
+| URL 組み立て | パスは `/api/...` をそのまま連結し、クエリ値は `encodeURIComponent` でエンコードする。 |
+| 認証ヘッダー | `this._token` が存在する場合のみ `Authorization: Bearer ${token}` を付与する。 |
+| JSON 送信 | `POST` / `DELETE` で body を送る場合は `Content-Type: application/json` を付与し、`JSON.stringify` した body を送信する。 |
+| JSON 受信 | `Content-Type` が JSON の場合のみ `response.json()` を呼ぶ。空 body は `{}` として扱う。 |
+| `AdlaireCIError` | `name`、`status`、`message`、`details`、`responseBody` を持つ `Error` 派生クラスとする。 |
+| `logout()` | API 呼び出しが失敗しても `finally` で `this._token` をクリアする。 |
+| `streamBuild()` | `EventSource` 生成前に token がない場合は `AdlaireCIError(status=401)` を投げる。`end` イベント受信後は SDK 側で `EventSource.close()` を呼ぶ。 |
+| Blob レスポンス | `downloadSnapshot(id)` のみ `response.blob()` を使用する。その他は JSON とする。 |
+| メソッド引数検証 | SDK 側でも必須引数の空値、配列型、数値範囲を検証し、HTTP 送信前に `TypeError` を投げる。 |
 
 ---
 
@@ -2796,14 +3162,14 @@ export { AdlaireCI };
 | パネル | 表示内容 | 表示条件 |
 |-------|---------|---------|
 | ログイン | パスワード入力フォーム | 未ログイン時のみ |
-| パスワード変更 | 現在・新パスワード入力フォーム | `must_change: true` 時（強制時は他パネル非表示） |
+| パスワード変更 | 現在・新パスワード入力フォーム | `must_change: "prompt"` または `"forced"` 時（`"forced"` 時は他パネル非表示） |
 | ステータス | 最終ビルド時刻・SHA・成否・出力ファイルリンク・ダッシュボードウィジェット編集モード（表示するウィジェットをチェックボックスで選択・並び替え・保存） | ログイン済み |
 | 手動実行 | ビルドトリガーボタン・強制ビルドボタン・キャンセルボタン（実行中のみ有効）・SHA リセットボタン・実行結果表示・リアルタイムログ表示エリア（SSE ストリーミング）・キュー状態表示（待機中件数・クリアボタン） | ログイン済み |
 | ログビューア | 最新ビルドログ（n 行・キーワードフィルター・ログレベルフィルターボタン（INFO / WARNING / ERROR / DEBUG）・JSON エクスポートボタン・横断検索フォーム（期間指定）・検索結果一覧） | ログイン済み |
 | ビルド履歴 | 過去ビルド一覧（日時・SHA・成否・トリガー種別・所要時間・重要フラグ列・タグ列・ログ表示リンク・コメント入力欄）・フラグ付きのみ表示フィルター・タグフィルター・ページネーション UI・JSON エクスポートボタン | ログイン済み |
 | システム情報 | 出力ファイルサイズ・更新日時・稼働時間・ディスク使用量（ログ合計・出力ファイル）・PAT 即時検証ボタン・PAT 更新フォーム・PAT 有効期限表示（設定フォーム・期限切れ間近で警告表示）・GitHub API レート制限表示 | ログイン済み |
 | 通知設定     | Webhook 一覧（追加/削除/ラベル/有効無効切り替え/リトライ回数・間隔設定/シークレット入力欄）・通知条件設定（ビルド開始時・成功時・失敗時）・各 Webhook ペイロードテンプレート編集フォーム（変数一覧表示）・テスト送信ボタン・定期サマリー設定（間隔・時刻・曜日・即時送信ボタン）・送信履歴（試行回数・エラー内容列含む）・メール通知セクション（SMTP 設定フォーム・宛先リスト・通知条件・テスト送信ボタン） | ログイン済み |
-| 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・追加フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
+| 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・command_args 入力フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
 | アクセスログ | ログイン履歴（日時・成否）           | ログイン済み |
 | 統計         | ビルド回数・成功率・平均間隔・平均・最大ビルド時間・日別時系列データ（グラフ表示対応） | ログイン済み |
 | リポジトリ情報 | 監視対象リポジトリ・ブランチ・ファイルの確認・設定変更フォーム（OWNER / REPO / BRANCH / TARGET_FILE）・ポーリング間隔変更フォーム・ポーリング一時停止／再開ボタン・許可時間帯設定（from〜to、解除ボタン）・メンテナンスモード有効化フォーム（理由入力）・解除ボタン・現在の状態表示 | ログイン済み |
@@ -2815,11 +3181,29 @@ export { AdlaireCI };
 | スナップショット | ビルド成果物の世代一覧（最大`snapshots_keep`件）・個別ダウンロード・削除 | ログイン済み |
 | メンテナンス   | メンテナンスモードの有効化（理由テキスト付き）・無効化・状態・開始時刻表示 | ログイン済み |
 | アクセス制御   | 許可 IP / CIDR 一覧・CIDR 追加フォーム・削除ボタン（ブロック時は 403 を返す） | ログイン済み |
-| フック         | Pre/Post ビルドフック一覧・コマンド追加・削除・実行ログ（直近 N 件）確認 | ログイン済み |
+| フック         | Pre/Post ビルドフック一覧・command_args 追加・削除・実行ログ（直近 N 件）確認 | ログイン済み |
 
 **パスワード変更フロー：**
 - `must_change: "prompt"`: パスワード変更パネルを表示。他パネルも操作可能
 - `must_change: "forced"`: パスワード変更パネルのみ表示。変更完了後に通常画面へ遷移
+
+**UI 共通動作契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 初期表示 | `localStorage` から token を復元しない。画面読み込み時は未ログイン状態から開始する。 |
+| API 呼び出し中 | 対象ボタンを disabled にし、同一操作の二重送信を防ぐ。完了または失敗後に元へ戻す。 |
+| 成功表示 | 変更系操作は成功時にパネル内へ 1 行の成功メッセージを表示し、関連 GET API を再取得する。 |
+| 失敗表示 | SDK が投げた `AdlaireCIError.message` をパネル内エラー領域に表示する。`details` が object の場合はフィールド単位で表示する。 |
+| `401` | token を破棄し、ログインパネルへ戻す。直前の入力値のうち秘密情報は消去する。 |
+| `403` | 操作権限なしとしてエラー表示し、ログアウトはしない。 |
+| `409` | 状態競合としてエラー表示し、ステータス・キュー・スケジュールを再取得する。 |
+| `422` | 入力エラーとして該当フォーム項目へエラーを紐付ける。 |
+| `503` | メンテナンスバナーを表示し、ビルド操作ボタンを disabled にする。 |
+| 秘密情報入力 | PAT、Webhook Secret、SMTP password、発行直後 token は画面遷移、成功表示、再取得後にフォーム値から消去する。 |
+| 自動更新 | ステータス、キュー、SSE 以外のパネルは自動ポーリングしない。ユーザー操作または画面表示時に取得する。 |
+| SSE 切断 | `streamBuild()` が error になった場合はリアルタイム表示を停止し、`GET /api/status` と `GET /api/queue` を再取得する。 |
+| フォーム保存 | 保存 API が成功するまで UI 上の表示値を確定表示にしない。失敗時は入力値を保持する。 |
 
 **カスタマイズポイント：**
 - SDK の `baseUrl` は `<script>` タグ内の設定変数で外出し
@@ -2835,7 +3219,8 @@ export { AdlaireCI };
 {
   "password_hash": "<pbkdf2_hmac_sha256_hex>",
   "salt": "<hex>",
-  "login_count": 0
+  "login_count": 0,
+  "updated_at": "2026-09-15T10:00:00"
 }
 ```
 
@@ -2854,6 +3239,31 @@ token = secrets.token_hex(32)  # 256bit ランダムトークン
 
 **セッション期限切れ時：** `401 Unauthorized` を返す。クライアント（SDK）は `this._token` をクリアし、再ログインを促す。
 
+**パスワード入力制約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 最小長 | 8 文字 |
+| 最大長 | 128 文字 |
+| 許可文字 | UTF-8 文字列。NUL 文字は禁止。前後空白はトリムせず、入力値そのものを検証・ハッシュ化する。 |
+| 初期パスワード | `admin`。初回ログイン時は `must_change: "prompt"` を返す。 |
+| 変更時検証 | `new_password` が現在パスワードと同一の場合は `422` を返す。 |
+| 失敗時応答 | パスワード不一致は `401` と `{"error":"Unauthorized"}` を返し、どの条件に失敗したかは返さない。 |
+| 成功時保存 | 新 salt、新 hash、`login_count: 0`、`updated_at` を原子的に保存する。 |
+
+**セッションレコード形式（メモリ上）：**
+
+```json
+{
+  "token": "<session_token>",
+  "created_at": "2026-09-15T10:00:00",
+  "expires_at": "2026-09-15T18:00:00",
+  "last_used_at": "2026-09-15T10:05:00"
+}
+```
+
+認証必須 API で有効 token を受信した場合、`last_used_at` を現在時刻へ更新する。期限切れ token は検出時にメモリから削除する。`POST /api/logout` は対象 token のみ削除する。`POST /api/sessions/revoke-all` は現在 token 以外を削除する。
+
 **ログインフロー：**
 ```
 POST /api/login
@@ -2870,11 +3280,15 @@ POST /api/login
 
 **`--init-credentials` オプション：** `api_server.py` を `--init-credentials` 引数で起動した場合、初期パスワード `admin` で `.admin_credentials` を生成して終了する（HTTP サーバーは起動しない）。
 
+`.admin_credentials` が既に存在する場合、`--init-credentials` は上書きせず `409` 相当の終了コード `2` で終了し、標準エラーへ `credentials already exist` を出力する。初期化成功時の終了コードは `0` とする。
+
 ---
 
 ## 26. セットアップ・アップデート手順
 
 > **安定版ポリシー：** タグ付き安定版リリース（例：`v1.0.0`）のみをサポートする。開発ブランチ（`main` 等）の直接追従は非対応。`git pull` は使用しない。
+
+本節は、現行実装のみのセットアップ手順と、仕様化済み・未実装コンポーネント導入後のセットアップ手順を分離する。現行リポジトリに存在しない `api_server.py`、`admin/index.html`、`adlaire-ci-sdk.js`、`.build_logs/`、`.snapshots/` を現行セットアップの必須手順として扱ってはならない。
 
 ### §26.1 要件
 
@@ -2883,7 +3297,7 @@ POST /api/login
 | Python | 3.9 以上（標準ライブラリのみ、追加インストール不要） |
 | init システム | systemd（Linux） |
 | バージョン管理 | git |
-| ネットワーク | デプロイ先への SSH 接続（SSH 転送機能を使用する場合） |
+| ネットワーク | GitHub API への HTTPS 送信。SSH 転送機能を実装した場合のみデプロイ先への SSH 接続。 |
 
 ### §26.2 設定変数
 
@@ -2896,41 +3310,76 @@ POST /api/login
 | `SERVICE_USER` | `root` | systemd サービスの実行ユーザー |
 | `VERSION` | —（必須） | セットアップ・アップデート対象の安定版タグ（例：`v1.0.0`） |
 
-### §26.3 初回セットアップ手順
+### §26.3 現行実装の初回セットアップ手順
+
+対象は現行実装済みの `build_spec.py`、`runner.py`、`adlaire-ci.service`、`adlaire-ci.timer` のみとする。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
 REPO_URL="https://github.com/<owner>/<repo>.git"
 INSTALL_DIR="/opt/adlaire-builder"
 VERSION="v1.0.0"
+SERVICE_USER="root"
 
 # ── 1. リポジトリ取得 ─────────────────────────────────
 git clone "$REPO_URL" "$INSTALL_DIR"
 git -C "$INSTALL_DIR" checkout "$VERSION"
 
-# ── 2. 必要ディレクトリ作成 ───────────────────────────
+# ── 2. GitHub PAT 保存 ────────────────────────────────
+printf '%s\n' "<PAT>" > "$INSTALL_DIR/.github_token"
+chmod 600 "$INSTALL_DIR/.github_token"
+
+# ── 3. SHA キャッシュ初期化 ───────────────────────────
+printf '%s\n' "" > "$INSTALL_DIR/.last_sha"
+chmod 600 "$INSTALL_DIR/.last_sha"
+
+# ── 4. systemd サービスファイル配置 ───────────────────
+# §26.4.1 のファイル内容を /etc/systemd/system/ に配置した上で:
+systemctl daemon-reload
+
+# ── 5. タイマー有効化・起動 ───────────────────────────
+systemctl enable --now adlaire-ci.timer
+
+# ── 6. 起動確認 ───────────────────────────────────────
+systemctl status adlaire-ci.timer
+```
+
+現行セットアップでは以下を実行しない。
+
+| 対象 | 理由 |
+|------|------|
+| `python3 api_server.py --init-credentials` | `api_server.py` は仕様化済み・未実装。 |
+| `systemctl enable --now adlaire-admin` | 管理 API サーバーは仕様化済み・未実装。 |
+| `.build_logs/` 作成 | ビルドログ保存は仕様化済み・未実装。 |
+| `.snapshots/` 作成 | スナップショット保存は仕様化済み・未実装。 |
+
+### §26.3b 管理 API 導入後の追加セットアップ手順（仕様化済み・未実装）
+
+`api_server.py`、`admin/index.html`、`adlaire-ci-sdk.js` を実装した後にのみ本手順を実行する。
+
+```bash
+# ── 1. 拡張用ディレクトリ作成 ─────────────────────────
 mkdir -p "$INSTALL_DIR/.build_logs"
 mkdir -p "$INSTALL_DIR/.snapshots"
 
-# ── 3. 初期認証情報生成（初期パスワード: admin）────────
+# ── 2. 初期認証情報生成（初期パスワード: admin）────────
 python3 "$INSTALL_DIR/api_server.py" --init-credentials
-
-# ── 4. パーミッション設定 ─────────────────────────────
 chmod 600 "$INSTALL_DIR/.admin_credentials"
 
-# ── 5. systemd サービスファイル配置 ───────────────────
-# §26.4 のファイル内容を /etc/systemd/system/ に配置した上で:
+# ── 3. 管理 API systemd サービス配置 ─────────────────
+# §26.4.2 のファイル内容を /etc/systemd/system/adlaire-admin.service に配置した上で:
 systemctl daemon-reload
 
-# ── 6. サービス有効化・起動 ───────────────────────────
-systemctl enable adlaire-ci.timer adlaire-api
-systemctl start  adlaire-ci.timer adlaire-api
+# ── 4. サービス有効化・起動 ───────────────────────────
+systemctl enable --now adlaire-admin
 
-# ── 7. 起動確認 ───────────────────────────────────────
-systemctl status adlaire-ci.timer adlaire-api
+# ── 5. 起動確認 ───────────────────────────────────────
+systemctl status adlaire-admin
 ```
 
 ### §26.4 systemd サービスファイル
+
+#### §26.4.1 現行実装の systemd ファイル
 
 **`/etc/systemd/system/adlaire-ci.service`**（`runner.py`）：
 
@@ -2960,7 +3409,9 @@ Unit=adlaire-ci.service
 WantedBy=timers.target
 ```
 
-**`/etc/systemd/system/adlaire-api.service`**（`api_server.py`）：
+#### §26.4.2 管理 API 導入後の systemd ファイル（仕様化済み・未実装）
+
+**`/etc/systemd/system/adlaire-admin.service`**（`api_server.py`）：
 
 ```ini
 [Unit]
@@ -2983,7 +3434,7 @@ WantedBy=multi-user.target
 
 ### §26.5 アップデート手順
 
-`git pull` は使用しない。安定版タグを指定してチェックアウトし、サービスを再起動する。
+`git pull` は使用しない。安定版タグを指定してチェックアウトし、サービスを再起動する。現行実装のみの場合、管理 API サービスは再起動対象に含めない。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
@@ -2997,20 +3448,38 @@ git -C "$INSTALL_DIR" tag --list --sort=-v:refname
 # ── 2. 対象バージョンへ切り替え ───────────────────────
 git -C "$INSTALL_DIR" checkout "$NEW_VERSION"
 
-# ── 3. サービス再起動 ─────────────────────────────────
-systemctl restart adlaire-ci.timer adlaire-api
+# ── 3. 現行実装のサービス再起動 ───────────────────────
+systemctl restart adlaire-ci.timer
 
 # ── 4. 起動確認 ───────────────────────────────────────
-systemctl status adlaire-ci.timer adlaire-api
+systemctl status adlaire-ci.timer
+```
+
+管理 API 導入後は、追加で `adlaire-admin` を再起動する。
+
+```bash
+systemctl restart adlaire-admin
+systemctl status adlaire-admin
 ```
 
 ### §26.6 サービス操作リファレンス
 
+#### 現行実装
+
 | 操作 | コマンド |
 |------|---------|
-| 状態確認 | `systemctl status adlaire-ci.timer adlaire-api` |
-| 起動 | `systemctl start adlaire-ci.timer adlaire-api` |
-| 停止 | `systemctl stop adlaire-ci.timer adlaire-api` |
-| 再起動 | `systemctl restart adlaire-ci.timer adlaire-api` |
+| 状態確認 | `systemctl status adlaire-ci.timer` |
+| 起動 | `systemctl start adlaire-ci.timer` |
+| 停止 | `systemctl stop adlaire-ci.timer` |
+| 再起動 | `systemctl restart adlaire-ci.timer` |
 | ログ確認（runner） | `journalctl -u adlaire-ci.service -f` |
-| ログ確認（API） | `journalctl -u adlaire-api -f` |
+
+#### 管理 API 導入後（仕様化済み・未実装）
+
+| 操作 | コマンド |
+|------|---------|
+| 状態確認 | `systemctl status adlaire-admin` |
+| 起動 | `systemctl start adlaire-admin` |
+| 停止 | `systemctl stop adlaire-admin` |
+| 再起動 | `systemctl restart adlaire-admin` |
+| ログ確認（API） | `journalctl -u adlaire-admin -f` |
