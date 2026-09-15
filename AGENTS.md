@@ -63,7 +63,7 @@
 
 `ADLAIRE_CI_SPEC.md` は、Adlaire CI のマスター仕様書正本である。
 
-`build_spec_v3.py`、`runner.py`、将来コンポーネントである `api_server.py`、`adlaire-ci-sdk.js`、`admin/index.html`、`mcp_server.py` は、`ADLAIRE_CI_SPEC.md` に基づいて更新する。
+`build_spec.py`、`runner.py`、将来コンポーネントである `api_server.py`、`adlaire-ci-sdk.js`、`admin/index.html`、`mcp_server.py` は、`ADLAIRE_CI_SPEC.md` に基づいて更新する。
 
 `DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。`ADLAIRE_CI_SPEC.md` と矛盾する場合は、`ADLAIRE_CI_SPEC.md` を優先する。
 
@@ -100,7 +100,7 @@
 
 | ファイル | 役割 |
 |---------|------|
-| `build_spec_v3.py` | Adlaire DB 仕様書 Markdown を単一 HTML へ変換するビルドスクリプト。 |
+| `build_spec.py` | Adlaire DB 仕様書 Markdown を単一 HTML へ変換するビルドスクリプト。 |
 | `runner.py` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する CI ランナー。 |
 
 仕様化済みだが未実装の主なコンポーネントは以下とする。
@@ -268,6 +268,6 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 `ADLAIRE_CI_SPEC.md` を改訂した場合は、`DESIGN.md`、`DOCUMENT_INDEX.md`、実装ファイルへの影響を確認する。
 
-`DESIGN.md` を改訂した場合は、`build_spec_v3.py` 内の HTML / CSS / JavaScript テンプレートとの整合性を確認する。
+`DESIGN.md` を改訂した場合は、`build_spec.py` 内の HTML / CSS / JavaScript テンプレートとの整合性を確認する。
 
 仕様化済み項目を実装した場合は、`ADLAIRE_CI_SPEC.md` 内の状態表現、`DOCUMENT_INDEX.md` の Planned Components、実装ファイルの存在を整合させる。

@@ -1,6 +1,6 @@
 # Adlaire CI — 仕様ドキュメント
 
-**対象コンポーネント：** `build_spec_v3.py`（ビルドスクリプト）/ `runner.py`（CI ランナー）/ `api_server.py`（管理 API サーバー）  
+**対象コンポーネント：** `build_spec.py`（ビルドスクリプト）/ `runner.py`（CI ランナー）/ `api_server.py`（管理 API サーバー）
 **出力ファイル：** `Adlaire-db-spec.html`  
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）  
 **仕様バージョン：** V.N / **リリースバージョン：** V.X.N → Part 2 §2 参照  
@@ -8,7 +8,7 @@
 
 ---
 
-> **Adlaire CI** とは `build_spec_v3.py`・`runner.py`・`api_server.py` の 3 コンポーネントで構成されるビルド・CI・管理システムの総称である。管理ツール（`admin/index.html`）と SDK（`adlaire-ci-sdk.js`）はフロントエンド側に位置し、API を介して Adlaire CI と通信する。将来的には `mcp_server.py`（MCP サーバー）を加えた 4 コンポーネント構成へ移行予定（→ §13 将来計画 MCP サーバー実装）。
+> **Adlaire CI** とは `build_spec.py`・`runner.py`・`api_server.py` の 3 コンポーネントで構成されるビルド・CI・管理システムの総称である。管理ツール（`admin/index.html`）と SDK（`adlaire-ci-sdk.js`）はフロントエンド側に位置し、API を介して Adlaire CI と通信する。将来的には `mcp_server.py`（MCP サーバー）を加えた 4 コンポーネント構成へ移行予定（→ §13 将来計画 MCP サーバー実装）。
 
 ---
 
@@ -29,7 +29,7 @@
 
 ## 1. 目的
 
-`build_spec_v3.py` は、Adlaire DB 仕様書の Markdown ソースを単一の自己完結型 HTML ドキュメントへ変換する Python スクリプトである。外部ライブラリに依存せず、標準ライブラリ（`re`、`html`、`unicodedata`）のみで動作する。
+`build_spec.py` は、Adlaire DB 仕様書の Markdown ソースを単一の自己完結型 HTML ドキュメントへ変換する Python スクリプトである。外部ライブラリに依存せず、標準ライブラリ（`re`、`html`、`unicodedata`）のみで動作する。
 
 - 14,000 行超の大規模 Markdown 仕様書を、快適に閲覧できる HTML ドキュメントサイトへ変換する
 - CSS・JS をすべてインラインに埋め込み、単一 HTML ファイルとして配布可能にする
@@ -134,7 +134,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 - GitHub リポジトリの対象ファイルを定期ポーリング（systemd timer）
 - blob SHA による差分検出（変更なし時はビルドをスキップ）
-- Markdown → HTML 変換（`build_spec_v3.py` を呼び出し）
+- Markdown → HTML 変換（`build_spec.py` を呼び出し）
 - ビルド結果を `.build_history` に記録（ID 形式：`b{YYYYMMDDHHmmss}`）
 - ビルドごとのログを `.build_logs/{id}.json` に保存
 - ビルド成功・失敗時に Webhook 通知を送信（`.notify_config` を読み込み送信。送信責務は `runner.py`。通知 API は設定の読み書きのみ）
@@ -313,7 +313,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 仕様化済み | CI ランナー | ビルドクールダウン | 前回ビルド完了から `BUILD_COOLDOWN_SECONDS` 秒以内の起動はビルドをスキップする（Webhook 二重トリガー防止 → §12・§13） |
 | 将来対応 | CI ランナー | ローカルファイル監視モード | GitHub API を使わず、ローカルファイルシステムの変更を `inotify` 等で直接監視する |
 | 将来対応 | CI ランナー | タグ付きコミットのみビルド | Git タグが付いたコミット（リリース）の変更時のみビルドを実行するフィルター |
-| 仕様化済み | CI ランナー | ビルド前の事前チェック | `pipeline.sh` 実行前にディスク空き容量・Python 3.9+・`build_spec_v3.py` 存在を確認し、不足時はスキップして ERROR ログ＋Webhook 通知（→ §13） |
+| 仕様化済み | CI ランナー | ビルド前の事前チェック | `pipeline.sh` 実行前にディスク空き容量・Python 3.9+・`build_spec.py` 存在を確認し、不足時はスキップして ERROR ログ＋Webhook 通知（→ §13） |
 | 将来対応 | CI ランナー | ビルドキャッシュ | 前回ビルドとの差分ファイルのみ再処理し、ビルド時間を短縮する |
 | 将来対応 | CI ランナー | ビルド通知連携 | `runner.py` が Webhook 以外の通知チャンネル（Slack / Discord / メール等）へ直接送信するフック機構。通知先の管理 UI・API 側の実装は → 通知先の拡張 |
 | 将来対応 | CI ランナー | ビルド時間トレンド記録 | 過去のビルド所要時間を蓄積し、パフォーマンス回帰の検知に使用する |
@@ -543,7 +543,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 
 | スクリプト | 役割 |
 |-----------|------|
-| `build_spec_v3.py` | ビルドスクリプト（Markdown → HTML 変換） |
+| `build_spec.py` | ビルドスクリプト（Markdown → HTML 変換） |
 | `runner.py` | CI ランナー（変更検出・ビルド起動） |
 | `api_server.py` | 管理 API サーバー（常駐 HTTP サーバー） |
 | `adlaire-ci-sdk.js` | JavaScript SDK（管理ツール用 API クライアント） |
@@ -635,7 +635,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 
 Adlaire CI は 3 つのスクリプトで構成される（将来：`mcp_server.py` を加えた 4 スクリプト構成へ移行予定 → §13 将来計画 MCP サーバー実装）。
 
-**`build_spec_v3.py`（ビルドスクリプト）**
+**`build_spec.py`（ビルドスクリプト）**
 GitHub リポジトリ上の Markdown 仕様書（`adlaire-db-spec.md`）を HTML に変換して CI サーバーのローカルパスへ出力する。入力（`SRC`）と出力（`OUT`）はサーバー固定パスで管理する。静的コンテンツ配信サーバーへの転送は `runner.py` が担う。
 
 **`runner.py`（CI ランナー）**
@@ -649,7 +649,7 @@ GitHub の Git Blobs API をポーリングし、仕様書の変更を検出す�
 systemd timer
   └─ runner.py（oneshot）
        ├─ 変更なし → スキップ
-       └─ 変更あり → pipeline.sh → build_spec_v3.py → HTML 生成
+       └─ 変更あり → pipeline.sh → build_spec.py → HTML 生成
                                                          └─ runner.py SSH 転送 → 静的配信サーバー（→ §14a）
 
 adlaire-admin.service（常駐）
@@ -1220,7 +1220,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 
 ビルド時に検索インデックスを生成し、インライン JSON として HTML に埋め込む。TOC 検索フィルター（§7.4）と検索 UI を統合し、本文ヒット箇所へのジャンプを提供する。
 
-**インデックス生成仕様（build_spec_v3.py）：**  
+**インデックス生成仕様（build_spec.py）：**
 ビルド時に全見出しと各段落の先頭 200 文字を抽出し、以下の配列形式で `<script id="search-index">` タグに埋め込む。
 
 ```json
@@ -1372,7 +1372,7 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 ## 8. 実行方法
 
 ```bash
-python3 build_spec_v3.py
+python3 build_spec.py
 ```
 
 **標準出力：**
@@ -1418,7 +1418,7 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 
 > **フィールド名の対応：** stdout の `[REPORT]` 行は `tables=` / `code_blocks=` の短縮キーを使用するが、`.build_logs/{id}.json` への保存時および `GET /api/output-meta` レスポンスでは `tables_count` / `code_blocks_count` に変換する（→ §22）。
 
-**再実行時の注意：** `_seen`（スラグ重複カウンタ）・`_fn_order`（脚注参照順）・`_fn_defs`（脚注定義）はいずれもモジュールレベル変数であり、スクリプトを起動するたびに初期化される。通常の `python3 build_spec_v3.py` 実行では複数回実行しても出力は同一になる。ただし本スクリプトを `import` して `convert()` を複数回呼ぶ場合は、呼び出し前に `_fn_order.clear()` および `_seen.clear()` を明示的にリセットする必要がある。
+**再実行時の注意：** `_seen`（スラグ重複カウンタ）・`_fn_order`（脚注参照順）・`_fn_defs`（脚注定義）はいずれもモジュールレベル変数であり、スクリプトを起動するたびに初期化される。通常の `python3 build_spec.py` 実行では複数回実行しても出力は同一になる。ただし本スクリプトを `import` して `convert()` を複数回呼ぶ場合は、呼び出し前に `_fn_order.clear()` および `_seen.clear()` を明示的にリセットする必要がある。
 
 ---
 
@@ -1451,7 +1451,7 @@ runner.py は `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行
 ```
 /opt/adlaire-builder/
 ├── runner.py            # CI ランナー本体（単一ファイル、oneshot）
-├── build_spec_v3.py     # ビルドスクリプト（サーバー固定）
+├── build_spec.py     # ビルドスクリプト（サーバー固定）
 ├── api_server.py        # 管理 API サーバー（常駐）
 ├── .github_token        # GitHub PAT（パーミッション 600）
 ├── .admin_credentials   # 認証情報ファイル（JSON、パーミッション 600）
@@ -1634,7 +1634,7 @@ runner.py 起動（systemd タイマーから呼び出し）
     │   ├─ [事前チェック] pipeline.sh 実行前に以下を確認し、不足時は ERROR ログ＋deploy_failure Webhook 通知、このエントリをスキップ
     │   │   ├─ ディスク空き容量 ≥ 出力ファイル推定サイズ × 3（`shutil.disk_usage`）
     │   │   ├─ Python バージョン ≥ 3.9（`sys.version_info`）
-    │   │   └─ `build_spec_v3.py` が存在すること（`os.path.exists`）
+    │   │   └─ `build_spec.py` が存在すること（`os.path.exists`）
     │   │
     │   ├─ pipeline.sh 実行（bash {src の親ディレクトリ}/.ci/pipeline.sh）
     │   │   ├─ 成功（exit 0）：INFO ログ
@@ -1705,10 +1705,10 @@ runner.py 起動（systemd タイマーから呼び出し）
 ```bash
 #!/bin/bash
 set -e
-python3 /opt/adlaire-builder/build_spec_v3.py
+python3 /opt/adlaire-builder/build_spec.py
 ```
 
-`build_spec_v3.py` のパスは `pipeline.sh` 内に直接記述する（`runner.py` は参照しない）。`build_spec_v3.py` はサーバー固定（`/opt/adlaire-builder/`）のため、リポジトリには含めない。
+`build_spec.py` のパスは `pipeline.sh` 内に直接記述する（`runner.py` は参照しない）。`build_spec.py` はサーバー固定（`/opt/adlaire-builder/`）のため、リポジトリには含めない。
 
 ---
 
@@ -1934,9 +1934,9 @@ sudo -u deploy ssh-keyscan -H <配信サーバーIP> >> /home/deploy/.ssh/known_
 echo '{"sha": ""}' | sudo -u deploy tee /opt/adlaire-builder/.last_sha
 sudo chmod 600 /opt/adlaire-builder/.last_sha
 
-# 5. build_spec_v3.py を配置
-sudo cp build_spec_v3.py /opt/adlaire-builder/build_spec_v3.py
-sudo chown deploy:deploy /opt/adlaire-builder/build_spec_v3.py
+# 5. build_spec.py を配置
+sudo cp build_spec.py /opt/adlaire-builder/build_spec.py
+sudo chown deploy:deploy /opt/adlaire-builder/build_spec.py
 
 # 6. runner.py を配置
 sudo cp runner.py /opt/adlaire-builder/runner.py
@@ -3094,7 +3094,7 @@ Content-Type: application/json
 
 ### ビルドパイプライン設定（15D）
 
-`runner.py` がビルド実行時に `.pipeline_config` を読み込み、`build_spec_v3.py` の呼び出しに `extra_args`・`env` を適用する。`.pipeline_config` に保存する。
+`runner.py` がビルド実行時に `.pipeline_config` を読み込み、`build_spec.py` の呼び出しに `extra_args`・`env` を適用する。`.pipeline_config` に保存する。
 
 **`GET /api/pipeline-config` レスポンス例：**
 ```json

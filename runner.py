@@ -23,7 +23,7 @@ BRANCH       = "main"                                  # 対象ブランチ
 TARGET_FILE  = "adlaire-db-spec.md"                   # 監視対象ファイル
 SHA_FILE     = "/opt/adlaire-builder/.last_sha"       # blob SHA キャッシュ
 SRC          = "/opt/adlaire-builder/repo/adlaire-db-spec.md"  # 書き出し先
-BUILD_SCRIPT = "/opt/adlaire-builder/build_spec_v3.py"
+BUILD_SCRIPT = "/opt/adlaire-builder/build_spec.py"
 LOG_LEVEL    = "INFO"
 # ─────────────────────────────────────────────────────────
 
