@@ -132,6 +132,21 @@ GitHub 設定の初期適用方針は以下とする。
 - `main` branch protection の required approvals は初期値 `0` とする。
 - 運用が安定した後、必要に応じて required approvals を `1` へ引き上げる。
 
+GitHub 設定を確認する場合は、少なくとも以下を確認する。
+
+- `gh api repos/fqwink/Build-Scripts` で、`delete_branch_on_merge`、`allow_auto_merge`、`allow_update_branch`、`allow_merge_commit`、`allow_squash_merge`、`allow_rebase_merge`、`has_issues`、`has_projects`、`has_wiki`、`has_discussions`、`security_and_analysis` を確認する。
+- `gh api repos/fqwink/Build-Scripts/branches/main/protection` で、`main` branch protection を確認する。
+- `main` branch protection の確認で `Branch not protected` が返る場合は、未設定として扱う。
+
+GitHub 設定を変更する前には、以下を必ず提示する。
+
+- 変更対象
+- 現在値
+- 推奨値
+- 影響範囲
+
+GitHub 設定を変更した後は、GitHub API で再取得し、`AGENTS.md` の標準設定との差分がないかを確認して報告する。
+
 標準 GitHub リポジトリ設定のうち、自動化に関わる設定が未確認の場合は、現在の設定状態を確認する。
 
 自動化に関わる設定が未設定または標準値と異なる場合は、変更対象、変更内容、影響範囲を提示し、ユーザーから `承認` を得たうえで標準値へ設定する。
