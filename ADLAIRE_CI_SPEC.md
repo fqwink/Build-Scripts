@@ -325,7 +325,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 - GitHub Trees API / Blobs API による対象 Markdown 取得
 - SHA 一致時の変更なし skip
 - `pipeline.sh` 起動、stdout/stderr 収集、`[REPORT]` / `[WARN]` 取り込み
-- `.build_logs/{id}.json`、`.build_history`、`.build_state`、`.build_lock` の作成・更新
+- `.build_logs/{id}.json`、`.build_history`、`.build_status.json`、`.build_state`、`.build_lock` の作成・更新
 - deploy 失敗時の `.pending_transfers` 追加
 - `.notify_pending` 破損時の退避と `[]` 再生成
 - GitHub API retry / rate limit 待機
@@ -558,14 +558,14 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 将来計画 | 実装不可 | CI ランナー | ビルド前後フック | ビルド開始前・完了後に任意の外部スクリプトを呼び出せるフック機構 | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | CI ランナー | 依存ファイルトラッキング | ビルド対象の依存関係を追跡し、変更に関連するビルドのみ選択実行する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | CI ランナー | リモートビルド対応 | SSH 経由でリモートマシン上のビルドを実行・結果を回収する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | CI ランナー | ビルドステータスファイル出力 | 最終ビルド結果（成功/失敗・タイムスタンプ・所要時間）を JSON で書き出す | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドステータスファイル出力 | runner の現在状態、最終ビルド、最終 deploy、pending 件数、circuit 状態、最終 trigger を `.build_status.json` に JSON object として出力し、API / UI / MCP の read-only 参照元にする。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§13、§15、§22.0a、§22.0c、§22.0e に従って実装する。 |
 | 将来計画 | 実装不可 | CI ランナー | ビルド承認フロー | 本番ビルド実行前に Webhook 通知→人間の確認→実行という承認ステップを挟む | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | CI ランナー | ブランチ別環境変数 | ブランチや条件に応じて異なる環境変数セットをビルドに注入する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | CI ランナー | ビルド依存チェーン | 複数ビルドジョブ間の依存関係を定義し、実行順序を制御する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | CI ランナー | ビルド優先度キュー | 緊急度に応じてビルドの優先順位を設定できるキューを実装する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | CI ランナー | 失敗原因の自動分類 | エラーログを解析し「API 障害」「タイムアウト」「構文エラー」等にカテゴリ分けして記録する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | CI ランナー | ビルド実行環境の記録 | Go バイナリバージョン・OS・ディスク使用量等のビルド時環境情報をログに残す | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | CI ランナー | ビルドトリガー種別の記録 | ポーリング・GitHub Webhook 受信・手動強制ビルド（`POST /api/build/force`）の 3 種を `.build_logs/{id}.json` の `trigger` フィールドに記録する。`GET /api/history` の `?trigger=` フィルターパラメータで絞り込み可能にする | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドトリガー種別の記録 | `polling`、`force_interval`、`manual`、`webhook`、`retry_pending_transfer`、`startup_config_integrity`、`rollback` を `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に記録し、履歴 filter と状態表示で同じ値を使う。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§15、§22.0c、§22.0e、§23、§24 に従って実装する。 |
 | 将来計画 | 実装不可 | CI ランナー | ビルド所要時間の異常検知 | 過去 N 件の平均ビルド時間を自動算出し、閾値（平均 × N 倍）を超過したビルドを WARN ログ＋Webhook 通知する。手動設定閾値アラート（→ アラート閾値設定）とは独立して、ビルド履歴から動的に基準を導出する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | 設定ファイル起動時整合性チェック | runner 起動時に `.branch_config`、`.notify_config`、`.build_state`、`.pending_transfers`、`.notify_pending`、`.build_circuit_state` の JSON 整合性を検証し、破損・型不一致・必須 key 不足を規定どおり退避、初期化、通知、または停止する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§12、§13、§22.0a、§22.0c に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | マルチユーザー対応 | 初期仕様のシングルユーザー（admin）を複数ユーザー・ロール管理に拡張する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -985,7 +985,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 ## 10. データ永続化ポリシー
 
-- **初期方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.build_history`・`.notify_config`・`.notify_log`・`.notify_pending`・`.server_config`・`.access_log`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.pending_transfers`・`.build_lock`・`.build_state`・`.build_circuit_state`・`.branch_config`・`.webhook_events.json`・`.build_logs/`・`.snapshots/`・ビルドログ等）
+- **初期方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.build_history`・`.build_status.json`・`.notify_config`・`.notify_log`・`.notify_pending`・`.server_config`・`.access_log`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.pending_transfers`・`.build_lock`・`.build_state`・`.build_circuit_state`・`.branch_config`・`.webhook_events.json`・`.build_logs/`・`.snapshots/`・ビルドログ等）
 - RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、初期仕様ではいかなるデータベースも採用しない
 - 将来的にデータベースを採用する場合は、本ドキュメントへの仕様追記と §4 許可外部ライブラリ一覧の更新を先行させる
 - **データ形式：フラットファイル JSON 形式**を標準とする

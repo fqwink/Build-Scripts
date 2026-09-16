@@ -239,8 +239,8 @@ Phase 2 は、`adlaire-ci-build` を呼び出す自己ホスト型 CI runner を
 |------|----------|
 | 実装開始条件 | Phase 1 が完了し、`adlaire-ci-build` の CLI 契約、`[REPORT]` 形式、出力構造が固定済みである。 |
 | 入力 | `--state-dir`、`.github_token`、`.last_sha`、`.branch_config` または `BRANCH_TARGETS`、GitHub API response、`.ci/pipeline.sh`、SSH 転送設定、通知設定。 |
-| 出力 | `.last_sha`、`.build_state`、`.build_history`、`.build_logs/{id}.json`、`.pending_transfers`、`.notify_log`、`.notify_pending`、`.build_circuit_state`、`.snapshots/`、stdout/stderr slog。 |
-| 状態更新順序 | lock 取得、`.build_state.running=true`、GitHub SHA 確認、必要時 pipeline、log/history、deploy/snapshot/notify、成功時 SHA 更新、`.build_state.running=false`、lock 削除の順で行う。 |
+| 出力 | `.last_sha`、`.build_state`、`.build_status.json`、`.build_history`、`.build_logs/{id}.json`、`.pending_transfers`、`.notify_log`、`.notify_pending`、`.build_circuit_state`、`.snapshots/`、stdout/stderr slog。 |
+| 状態更新順序 | lock 取得、設定整合性チェック、`.build_status.json` running 更新、`.build_state.running=true`、GitHub SHA 確認、必要時 pipeline、log/history、deploy/snapshot/notify、成功時 SHA 更新、`.build_status.json` 最終更新、`.build_state.running=false`、lock 削除の順で行う。 |
 | 正常系 | 変更なし skip、変更あり build 成功、deploy なし成功、deploy 成功、pending retry 成功、通知成功、snapshot 世代管理を §13〜§16 に一致させる。 |
 | 異常系 | GitHub API 失敗、rate limit、PAT 不足、pipeline 失敗、deploy 失敗、通知失敗、JSON 破損、lock 競合、stale lock、disk 不足を §11〜§16、§20、§22.0a に一致させる。 |
 | セキュリティ | PAT、Webhook Secret、SMTP password を stdout、stderr、JSON log、pending queue に平文出力しない。`.github_token` は `0600`。 |
@@ -248,7 +248,7 @@ Phase 2 は、`adlaire-ci-build` を呼び出す自己ホスト型 CI runner を
 | 必須 fixture | §15a Fixture R1〜R7。実 GitHub / 実 SSH 接続ではなく fake server / fake executable で再現する。 |
 | 完了条件 | §0e の `runner.go` 必須検証、§0f の完了判定、§15a の全 fixture、§26.7 の runner 対象を満たす。 |
 
-Phase 2 完了時は、Phase 3 以降へ引き継ぐ状態契約として、`.build_state`、`.build_history`、`.build_logs/{id}.json`、`.pending_transfers`、`.notify_*`、`.branch_config`、`.build_circuit_state` の schema、権限、atomic write 条件、破損時復旧条件を固定する。Phase 3 以降は、これらの schema を暗黙に変更してはならない。
+Phase 2 完了時は、Phase 3 以降へ引き継ぐ状態契約として、`.build_state`、`.build_status.json`、`.build_history`、`.build_logs/{id}.json`、`.pending_transfers`、`.notify_*`、`.branch_config`、`.build_circuit_state` の schema、権限、atomic write 条件、破損時復旧条件を固定する。Phase 3 以降は、これらの schema を暗黙に変更してはならない。
 
 #### 0g.2.1 Phase 2 実装順序
 
@@ -261,7 +261,7 @@ Phase 2 は、runner が後続 API の状態正本になるため、状態ファ
 | 3 | GitHub API polling、SHA 比較、変更なし skip、rate limit / API error 処理を実装する。 | 変更なしでは pipeline を起動せず、API 異常が `.last_sha` を更新しない。 |
 | 4 | pipeline 起動、`adlaire-ci-build` 呼び出し、stdout/stderr 収集、`[REPORT]` parse を実装する。 | build 成功 / 失敗が history、log、state に同一 build id で記録される。 |
 | 5 | deploy、pending transfer retry、snapshot、rollback 前提データ、通知、circuit breaker を実装する。 | fake ssh / fake notifier / fake server で成功、失敗、retry、circuit open が再現できる。 |
-| 6 | §15a Fixture R1〜R7 を追加し、Phase 3 が読む状態ファイルを fixture 結果で固定する。 | `.build_state`、`.build_history`、`.build_logs/{id}.json`、queue、notify、snapshot が受け入れ条件と一致する。 |
+| 6 | §15a Fixture R1〜R7 を追加し、Phase 3 が読む状態ファイルを fixture 結果で固定する。 | `.build_state`、`.build_status.json`、`.build_history`、`.build_logs/{id}.json`、queue、notify、snapshot が受け入れ条件と一致する。 |
 
 #### 0g.2.2 Phase 2 固定仕様
 
@@ -537,6 +537,8 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | GitHub API 連続失敗によるサーキットブレーカー | `runner.go` / `api_server.go` | §11、§12、§13、§22.0e | 閾値、open/close 状態、API reset、通知、状態ファイルが一致する。 |
 | 出力サイトサイズ警告閾値 | `build_spec.go` / `runner.go` / `api_server.go` | §8、§12、§13、§22.0e | `OUTPUT_SIZE_WARN_MB`、`size_warn`、WARN ログ、API 表示が一致する。 |
 | 設定ファイル起動時整合性チェック | `runner.go` | §11、§12、§13、§22.0a、§22.0c | 対象 JSON ファイル、検証順序、破損退避、初期化値、ログ、通知、終了コード、fixture が一致する。 |
+| ビルドステータスファイル出力 | `runner.go` / `api_server.go` | §11、§13、§15、§22.0a、§22.0c、§22.0e | `.build_status.json` の schema、更新タイミング、status/target_status、pending 件数、circuit 状態、API 参照元が一致する。 |
+| ビルドトリガー種別の記録 | `runner.go` / `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §13、§15、§22.0c、§22.0e、§23、§24 | `trigger` の有効値、判定条件、`.build_logs`、`.build_history`、`.build_status.json`、履歴 filter、UI 表示が一致する。 |
 | Webhook イベントログ | `api_server.go` | §11、§22.0e、§22-W | `.webhook_events.json` の JSON Lines schema と一覧 API が一致する。 |
 | ビルド所要時間の記録と統計 API | `runner.go` / `api_server.go` | §15、§22.0e | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
 | ビルドアーティファクト世代管理 | `runner.go` / `api_server.go` | §14b、§22.0e | `.snapshots/` の保持世代、削除、rollback API が一致する。 |
@@ -2086,6 +2088,7 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 | `/opt/adlaire-builder/.build_lock` | 実行中ビルドの PID ロック。 |
 | `/opt/adlaire-builder/.branch_config` | ブランチターゲット設定。永続 JSON key は `branch_targets` とする。 |
 | `/opt/adlaire-builder/.build_state` | ビルド実行状態、週次サマリー送信日等。 |
+| `/opt/adlaire-builder/.build_status.json` | runner 現在状態と直近結果の要約。API / UI / MCP の read-only 参照元。 |
 | `/opt/adlaire-builder/.build_circuit_state` | サーキットブレーカー状態。 |
 | `/opt/adlaire-builder/.build_logs/` | ビルドごとの個別ログ。 |
 | `/opt/adlaire-builder/.snapshots/` | ビルド成果物スナップショット。 |
@@ -2536,14 +2539,16 @@ runner が生成する build id は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` �
 
 1. `.build_lock` を作成する。
 2. 設定ファイル起動時整合性チェックを実行する。
-3. `.build_state.running=true`、`current_build_id`、`last_started_at` を atomic write で保存する。
-4. GitHub API、Blob 書き出し、事前チェック、`pipeline.sh` 実行を行う。
-5. ビルド成功時のみ `sha_file` を新 SHA に更新する。
-6. `.build_logs/{id}.json` を作成し、stdout/stderr、`[REPORT]`、警告、転送結果を保存する。
-7. `.build_history` に同じ `id` の要約行を JSON Lines で追記する。
-8. 転送成功後に `.snapshots/` を更新する。
-9. `.build_state.running=false`、`last_finished_at` を保存する。
-10. `.build_lock` を削除する。
+3. `.build_status.json` に `status="running"`、`trigger`、`started_at`、`current_build_id` を atomic write で保存する。
+4. `.build_state.running=true`、`current_build_id`、`last_started_at` を atomic write で保存する。
+5. GitHub API、Blob 書き出し、事前チェック、`pipeline.sh` 実行を行う。
+6. ビルド成功時のみ `sha_file` を新 SHA に更新する。
+7. `.build_logs/{id}.json` を作成し、stdout/stderr、`[REPORT]`、警告、転送結果、`trigger` を保存する。
+8. `.build_history` に同じ `id` の要約行を JSON Lines で追記する。
+9. 転送成功後に `.snapshots/` を更新する。
+10. `.build_status.json` に最終状態を atomic write で保存する。
+11. `.build_state.running=false`、`last_finished_at` を保存する。
+12. `.build_lock` を削除する。
 
 途中失敗時は、失敗が発生した段階以降の成功前提更新を行わない。例えば `pipeline.sh` 失敗時は `sha_file`、snapshot、転送成功履歴を更新しない。ただし `.build_logs/{id}.json`、`.build_history`、`.build_state.running=false`、通知 pending は失敗記録として保存する。
 
@@ -2588,6 +2593,7 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 |----------|------|-------|----------|------------|
 | lock acquisition | `.build_lock` | `.build_lock` | lock file を `O_CREATE|O_EXCL` で作成し、PID と started_at を書き込む。 | 実行中 PID がある場合は終了コード `0`。形式不正 lock は終了コード `4`、上書き禁止。 |
 | startup config integrity | `.branch_config`, `.notify_config`, `.build_state`, `.build_circuit_state`, `.pending_transfers`, `.notify_pending` | 同左、corrupt backup | 対象 JSON の parse、top-level type、必須 key、型、値範囲、未知 key 正規化が完了する。 | 復旧可能な破損は backup と初期化後に継続。権限エラーは終了コード `2`、IO エラーは終了コード `1`。 |
+| status start | `.build_state`, `.build_circuit_state`, `.pending_transfers`, `.notify_pending` | `.build_status.json` | `status="running"` と当該起動の `trigger` を保存する。 | 書き込み失敗は終了コード `1`。`.build_state.running=true` へ進まない。 |
 | state start | `.build_state` | `.build_state` | `running=true`、`current_build_id`、`last_started_at` を保存する。 | `.build_lock` を削除し、終了コード `1`。 |
 | pending transfer retry | `.pending_transfers` | `.pending_transfers`, `.build_logs/{id}.json` | 成功 entry を削除し、失敗 entry は `retry_count` を +1 して保持する。 | queue ファイル破損時は §22.0a に従い退避して `[]` で再生成する。 |
 | notify pending retry | `.notify_pending`, `.notify_config` | `.notify_pending`, `.notify_log` | HTTP 2xx の entry を削除し、失敗 entry は `retry_count` を +1 して保持する。 | `.notify_config` 不在時は送信せず entry を保持し、ERROR ログを記録する。 |
@@ -2601,13 +2607,103 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 | SHA updater | `sha_file`, new SHA | `sha_file` | `{"sha":"<new_sha>"}` を atomic write する。 | `failure_state_write`。deploy、snapshot を実行しない。 |
 | deploy executor | `deploy_targets`, output site | `.pending_transfers`, `.build_logs/{id}.json` | 全 deploy target の転送と検証が成功する。 | 失敗 target を `.pending_transfers` に保存し、`target_status=success_deploy_pending`。 |
 | snapshot writer | output site, `.server_config` | `.snapshots/`, `.build_logs/{id}.json` | `snapshots_keep > 0` の場合に新 snapshot を保存し、超過世代を削除する。 | snapshot 失敗は build 成功を取り消さず WARN として記録する。 |
+| status finalizer | target results, `.build_state`, `.build_circuit_state`, `.pending_transfers`, `.notify_pending` | `.build_status.json` | runner 起動 1 回の最終要約を保存する。 | 書き込み失敗は ERROR ログを出し、runner 終了コードを最低 `1` にする。 |
 | finalizer | target results, `.build_state` | `.build_state`, `.build_lock` | `running=false`、`last_finished_at` を保存し、lock を削除する。 | lock 削除失敗は WARN。`.build_state.running=false` 保存失敗は終了コード `1`。 |
 
 `failure_api`、`failure_decode`、`failure_precheck`、`failure_build`、`failure_state_write` は、同じ build id の `.build_logs/{id}.json.status` では `"failure"` として保存し、詳細理由は `error` に固定文言で保存する。`target_status` は runner 内部分類および `.build_logs/{id}.json.error` の詳細判定に使用し、API response の `status` 値としては返さない。
 
+**ビルドトリガー種別契約：**
+
+`trigger` は runner が処理を開始した原因を表す固定文字列であり、`.build_logs/{id}.json`、`.build_history`、`.build_status.json`、API response、SDK 型、UI 表示で同じ値を使用する。実装者判断で `auto`、`force`、`scheduled` など別名を追加してはならない。
+
+| `trigger` | 発生条件 | build log | history | status |
+|-----------|----------|-----------|---------|--------|
+| `polling` | systemd timer 等の通常起動で SHA 差分により build する。 | 記録する | 記録する | 記録する |
+| `force_interval` | SHA 差分なしだが `FORCE_BUILD_INTERVAL` 超過により build する。 | 記録する | 記録する | 記録する |
+| `manual` | `POST /api/build` により `.build_state.queued` へ投入された entry を処理する。 | 記録する | 記録する | 記録する |
+| `webhook` | GitHub Webhook 受信により `.build_state.queued` へ投入された entry を処理する。 | 記録する | 記録する | 記録する |
+| `retry_pending_transfer` | `.pending_transfers` の再送のみを実行する。 | 再送専用 log を作成する場合に記録する | 再送履歴を追記する場合に記録する | 記録する |
+| `startup_config_integrity` | 設定ファイル起動時整合性チェックで破損復旧または停止が発生する。 | 作成しない | 追記しない | 記録する |
+| `rollback` | `POST /api/history/{id}/rollback` により snapshot を再転送する。 | 記録する | 記録する | 記録する |
+
+queue entry の `trigger` は `"manual"` または `"webhook"` のみ許可する。`"force"` は使用せず、強制実行 API は queue 保存時に `"manual"` と `payload.force=true` を保存する。`force_interval` は runner が `.build_state.last_finished_at` と設定値から内部判定する場合のみ使用する。
+
+**`.build_status.json` schema：**
+
+`.build_status.json` は runner の現在状態と直近結果を 1 ファイルで読むための要約である。API / UI / MCP は現在状態を表示する場合、`.build_status.json` を第一参照元とし、存在しない場合のみ `.build_state`、`.build_history`、`.build_lock` から後方互換の値を算出してよい。
+
+```json
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-16T01:00:12Z",
+  "status": "success",
+  "running": false,
+  "current_build_id": null,
+  "last_build_id": "b20260916010000",
+  "last_trigger": "polling",
+  "last_target_status": "success",
+  "last_branch": "main",
+  "last_target_file": "docs",
+  "last_blob_sha": "012345",
+  "last_commit_sha": "abcdef",
+  "last_started_at": "2026-09-16T01:00:00Z",
+  "last_finished_at": "2026-09-16T01:00:12Z",
+  "last_duration_seconds": 12,
+  "last_error": null,
+  "last_deploy_status": "success",
+  "pending_transfers_count": 0,
+  "notify_pending_count": 0,
+  "circuit_open": false,
+  "circuit_consecutive_failures": 0,
+  "output_sha256": null,
+  "size_warn": false
+}
+```
+
+| キー | 型 | 必須 | 許容値 |
+|------|----|------|--------|
+| `schema_version` | integer | 必須 | `1` 固定。 |
+| `updated_at` | string/null | 必須 | UTC ISO 8601。初期値のみ `null`。 |
+| `status` | string | 必須 | `"none"`, `"running"`, `"success"`, `"failure"`, `"skipped_no_change"`, `"skipped_cooldown"`, `"success_deploy_pending"`, `"circuit_open"`, `"config_recovered"`, `"config_error"`, `"lock_skipped"`。`"none"` は初期値のみ。 |
+| `running` | boolean | 必須 | runner が build 処理中なら `true`。 |
+| `current_build_id` | string/null | 必須 | 実行中 build id。実行中でなければ `null`。 |
+| `last_build_id` | string/null | 必須 | 最後に build log / history を作成した build id。未実行なら `null`。 |
+| `last_trigger` | string/null | 必須 | 上記 `trigger` 有効値または `null`。 |
+| `last_target_status` | string/null | 必須 | §13 の `target_status` または `null`。 |
+| `last_branch` / `last_target_file` | string/null | 必須 | 最終対象。対象なしの skip / config 系では `null`。 |
+| `last_blob_sha` / `last_commit_sha` | string/null | 必須 | 取得不能時は `null`。 |
+| `last_started_at` / `last_finished_at` | string/null | 必須 | UTC ISO 8601 または `null`。 |
+| `last_duration_seconds` | integer/null | 必須 | 0 以上または `null`。 |
+| `last_error` | string/null | 必須 | 成功・通常 skip は `null`。 |
+| `last_deploy_status` | string/null | 必須 | `"success"`, `"pending"`, `"failed"`, `"skipped"`, `null`。 |
+| `pending_transfers_count` / `notify_pending_count` | integer | 必須 | 0 以上。 |
+| `circuit_open` | boolean | 必須 | `.build_circuit_state.open` と一致する。 |
+| `circuit_consecutive_failures` | integer | 必須 | 0 以上。 |
+| `output_sha256` | string/null | 必須 | 直近成功成果物の manifest SHA-256 または `null`。 |
+| `size_warn` | boolean | 必須 | 直近 report の size warning。 |
+
+`.build_status.json` の更新タイミングは次に固定する。
+
+| タイミング | `status` | `trigger` | 備考 |
+|------------|----------|-----------|------|
+| lock 取得後、target 処理前 | `running` | 判定済み trigger | `current_build_id` を設定する。 |
+| 実行中 lock 検出 | `lock_skipped` | `polling` | `.build_state` と build log は変更しない。 |
+| cooldown skip | `skipped_cooldown` | `polling` | `last_build_id` は既存値を保持する。 |
+| SHA 変更なし | `skipped_no_change` | `polling` | build log / history は作成しない。 |
+| force interval build 成功 | `success` | `force_interval` | build log / history と同じ build id を保存する。 |
+| build 成功・deploy 成功 | `success` | 実行 trigger | `last_deploy_status="success"`。 |
+| build 成功・deploy pending | `success_deploy_pending` | 実行 trigger | `pending_transfers_count` を更新する。 |
+| build 失敗 | `failure` | 実行 trigger | `last_error` に固定エラー文言を保存する。 |
+| circuit open skip | `circuit_open` | `polling` | GitHub API 呼び出し前に保存する。 |
+| startup config 復旧あり | `config_recovered` | `startup_config_integrity` | build log / history は作成しない。復旧後に通常 build へ進む場合、次の `running` 更新で上書きしてよい。 |
+| startup config 停止 | `config_error` | `startup_config_integrity` | `.build_state.running=true` へ進まない。 |
+| pending transfer retry のみ | `success` または `failure` | `retry_pending_transfer` | build が発生しない場合でも pending 件数を更新する。 |
+
+`.build_status.json` は atomic write 対象であり、書き込み失敗時に部分ファイルを残してはならない。未知 key を追加してはならない。API は GET request で `.build_status.json` を自動修復してはならない。
+
 **queue entry 実行契約：**
 
-`.build_state.queued` に entry がある場合、runner は通常ポーリング対象の前に queue を FIFO で 1 件だけ取り出して処理する。queue entry 処理が成功または失敗として `.build_history` に記録された場合、その entry を queue から削除する。runner 起動 1 回で複数 queue entry を連続処理してはならない。queue entry の `trigger` が `"force"` の場合は SHA 比較を行わず build を実行する。`trigger` が `"webhook"` の場合は payload の `ref` と `sha` を優先し、branch target に一致しない entry は `failure_api` として記録した後に queue から削除する。
+`.build_state.queued` に entry がある場合、runner は通常ポーリング対象の前に queue を FIFO で 1 件だけ取り出して処理する。queue entry 処理が成功または失敗として `.build_history` に記録された場合、その entry を queue から削除する。runner 起動 1 回で複数 queue entry を連続処理してはならない。queue entry の `trigger` が `"manual"` かつ `payload.force=true` の場合は SHA 比較を行わず build を実行する。`trigger` が `"webhook"` の場合は payload の `ref` と `sha` を優先し、branch target に一致しない entry は `failure_api` として記録した後に queue から削除する。
 
 **状態ファイル破損時の処理：**
 
@@ -2987,6 +3083,7 @@ Go 版 `runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成す
   "branch": "main",
   "target_file": "docs",
   "target_status": "success",
+  "trigger": "polling",
   "started_at": "2026-09-16T01:00:00Z",
   "finished_at": "2026-09-16T01:00:12Z",
   "duration_seconds": 12,
@@ -3043,6 +3140,7 @@ Go 版 `runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成す
 | `branch` | string | 必須 | `BranchTarget.Branch`。 |
 | `target_file` | string | 必須 | `BranchTarget.TargetFile`。 |
 | `target_status` | string | 必須 | §13 の分類値。 |
+| `trigger` | string | 必須 | §13 の `trigger` 有効値。 |
 | `started_at` / `finished_at` | string | 必須 | UTC ISO 8601。 |
 | `duration_seconds` | integer | 必須 | 0 以上。 |
 | `commit` | object | 必須 | 取得失敗時は各値を `null` にする。 |
@@ -3062,10 +3160,10 @@ Go 版 `runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成す
 `.build_history` は 1 行 1 JSON object とし、各行は次の schema を満たす。
 
 ```json
-{"id":"b20260916010000","branch":"main","target_file":"docs","status":"success","started_at":"2026-09-16T01:00:00Z","finished_at":"2026-09-16T01:00:12Z","duration_seconds":12,"commit_sha":"abcdef","blob_sha":"012345","pages":1,"warnings":0,"size_warn":false,"output_sha256":null,"rollback_from":null}
+{"id":"b20260916010000","branch":"main","target_file":"docs","status":"success","trigger":"polling","started_at":"2026-09-16T01:00:00Z","finished_at":"2026-09-16T01:00:12Z","duration_seconds":12,"commit_sha":"abcdef","blob_sha":"012345","pages":1,"warnings":0,"size_warn":false,"output_sha256":null,"rollback_from":null}
 ```
 
-`status` は `target_status` と同じ値を保存する。`output_sha256` は出力サイト全体 manifest の SHA-256 hex とし、manifest 生成に失敗した場合のみ `null` を許可する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
+`status` は `target_status` と同じ値を保存する。`trigger` は §13 の有効値を保存する。`output_sha256` は出力サイト全体 manifest の SHA-256 hex とし、manifest 生成に失敗した場合のみ `null` を許可する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
 
 **固定エラー文言：**
 
@@ -3443,6 +3541,7 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | `.build_lock` | text | 不在 | `runner.go` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
 | `.branch_config` | JSON object | 不在 | `runner.go` / `api_server.go` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、再生成せず `BRANCH_TARGETS` デフォルトへフォールバックする。 |
 | `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `runner.go` / `api_server.go` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.build_status.json` | JSON object | `{"schema_version":1,"updated_at":null,"status":"none","running":false,"current_build_id":null,"last_build_id":null,"last_trigger":null,"last_target_status":null,"last_branch":null,"last_target_file":null,"last_blob_sha":null,"last_commit_sha":null,"last_started_at":null,"last_finished_at":null,"last_duration_seconds":null,"last_error":null,"last_deploy_status":null,"pending_transfers_count":0,"notify_pending_count":0,"circuit_open":false,"circuit_consecutive_failures":0,"output_sha256":null,"size_warn":false}` | `runner.go` | `.build_status.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `runner.go` / `api_server.go` | `.build_circuit_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.repo_config` | JSON object | `{}` | `api_server.go` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
 | `.config_log` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
@@ -3678,7 +3777,7 @@ Queue entry:
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `id` | string | 必須 | `q` + 3 桁以上の数字 | queue id。 |
-| `trigger` | string | 必須 | `"manual"`, `"force"`, `"webhook"` | 起動種別。 |
+| `trigger` | string | 必須 | `"manual"`, `"webhook"` | 起動種別。強制実行は `"manual"` と `payload.force=true` で表す。 |
 | `queued_at` | string | 必須 | ISO 8601 | queue 追加日時。 |
 | `requested_by` | string | 必須 | `"api"`, `"webhook"` | queue 追加元。 |
 | `payload` | object | 必須 | JSON object | force/webhook 等の追加情報。不要時は `{}`。 |
@@ -3731,7 +3830,7 @@ Queue entry:
 | `build_at` | string | 必須 | ISO 8601 | ビルド完了日時。 |
 | `sha` | string/null | 必須 | Git SHA または `null` | 対象 blob / commit SHA。 |
 | `status` | string | 必須 | `"success"`, `"failure"`, `"cancelled"`, `"hook_error"` | ビルド結果。 |
-| `trigger` | string | 必須 | `"auto"`, `"manual"`, `"force"`, `"webhook"`, `"rollback"` | 起動種別。 |
+| `trigger` | string | 必須 | `"polling"`, `"force_interval"`, `"manual"`, `"webhook"`, `"retry_pending_transfer"`, `"startup_config_integrity"`, `"rollback"` | 起動種別。 |
 | `output_size_bytes` | integer/null | 必須 | 0 以上または `null` | 成果物サイズ。 |
 | `output_sha256` | string/null | 任意 | SHA-256 hex または `null` | 成果物チェックサム。 |
 | `duration_seconds` | integer/null | 必須 | 0 以上または `null` | 所要時間。 |
@@ -3795,7 +3894,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/access-log` | `.access_log` | なし | 壊れた行は無視し、新しい順で返す。 |
 | `GET /api/sessions` | メモリ上 session | なし | token 本体は返さない。 |
 | `POST /api/sessions/revoke-all` | メモリ上 session | メモリ上 session, `.access_log` | 現 session 以外を削除する。 |
-| `GET /api/status` | `.build_history`, `.build_state`, `.build_lock` | なし | 実行中判定は `.build_state` と `.build_lock` で行い、systemd 状態は保存しない。 |
+| `GET /api/status` | `.build_status.json`, `.build_state`, `.build_lock`, `.build_history` | なし | `.build_status.json` を第一参照元とする。不在時のみ `.build_state` と `.build_history` から後方互換の値を算出する。 |
 | `POST /api/build` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | `.build_state` または queue | 実行中かつ queue 有効なら queue へ追加する。 |
 | `POST /api/build/force` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state`, SHA cache | `.build_state`, SHA cache または queue | SHA reset と build trigger は同一ロック内で行う。 |
 | `POST /api/build/cancel` | `.build_lock` | `.build_state`, `.build_logs/{id}.json` | 実行中でない場合は `409`。 |
@@ -3804,7 +3903,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/logs/search` | `.build_logs/` | なし | 横断検索のみ。 |
 | `GET /api/logs/export` | `.build_logs/` | なし | JSON export。 |
 | `POST /api/logs/cleanup` | `.server_config`, `.build_logs/` | `.build_logs/` | 削除対象のみ削除する。 |
-| `GET /api/history` | `.build_history` | なし | ページングして返す。 |
+| `GET /api/history` | `.build_history` | なし | `page`、`per_page`、`trigger`、`tag`、`flagged` で絞り込み、ページングして返す。 |
 | `GET /api/history/export` | `.build_history` | なし | 全件 export。 |
 | `GET /api/history/{id}/log` | `.build_logs/{id}.json` | なし | ファイル破損時は `500`。 |
 | `GET /api/history/{id}/comment` | `.build_logs/{id}.json` | なし | なし。 |
@@ -3843,7 +3942,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST /api/schedule/allowed-hours` | `.server_config` | `.server_config`, `.config_log` | `null` で解除。 |
 | `POST /api/schedule/force-interval` | `.server_config` | `.server_config`, `.config_log` | `hours` を保存。 |
 | `POST /api/schedule/cooldown` | `.server_config` | `.server_config`, `.config_log` | `seconds` を保存。 |
-| `GET /api/dashboard` | `.build_history`, `.build_state`, `.build_lock`, `.server_config`, `.alert_rules`, `.dashboard_layout`, 出力サイト, process start time | なし | 集約のみ。 |
+| `GET /api/dashboard` | `.build_status.json`, `.build_history`, `.build_state`, `.build_lock`, `.server_config`, `.alert_rules`, `.dashboard_layout`, 出力サイト, process start time | なし | 集約のみ。 |
 | `GET /api/diagnostics` | `.github_token`, 出力サイト, systemd, `.notify_config` | なし | 診断結果は保存しない。 |
 | `GET /api/rate-limit` | `.github_token` | なし | GitHub API 結果を返す。 |
 | `GET /api/disk-usage` | `.build_logs/`, 出力サイト | なし | 集計のみ。 |
@@ -3902,7 +4001,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/access-log` | query `{limit,offset}` | `{log}` | `200` | `401`, `422` | `.access_log` | none | `getAccessLog()` | アクセスログ |
 | `GET /api/sessions` | none | `{sessions}` | `200` | `401` | memory session | none | `getSessions()` | セッション管理 |
 | `POST /api/sessions/revoke-all` | none | `{message,revoked_count}` | `200` | `401` | memory session | memory session, `.access_log` | `revokeAllSessions()` | セッション管理 |
-| `GET /api/status` | none | `StatusObject` | `200` | `401`, `500` | `.build_history`, `.build_state`, `.build_lock` | none | `getStatus()` | ステータス |
+| `GET /api/status` | none | `StatusObject` | `200` | `401`, `500` | `.build_status.json`, `.build_history`, `.build_state`, `.build_lock` | none | `getStatus()` | ステータス |
 | `POST /api/build` | none | `{message,build_id?,queued?}` | `202` | `401`, `409`, `422`, `429`, `503` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | `.build_state` or queue | `triggerBuild()` | 手動実行 |
 | `POST /api/build/force` | none | `{message,build_id?,queued?}` | `202` | `401`, `409`, `422`, `429`, `503` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state`, SHA cache | `.build_state`, SHA cache or queue | `buildForce()` | 手動実行 |
 | `POST /api/build/cancel` | none | `{message}` | `200` | `401`, `404`, `409` | `.build_lock` | `.build_state`, `.build_logs/{id}.json` | `cancelBuild()` | 手動実行 |
@@ -3911,7 +4010,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/logs/search` | query `{q,from,to,level}` | `SearchResult` | `200` | `401`, `422` | `.build_logs/` | none | `searchLogs()` | ログビューア |
 | `GET /api/logs/export` | none | `{exported_at,lines}` | `200` | `401` | `.build_logs/` | none | `exportLogs()` | ログビューア |
 | `POST /api/logs/cleanup` | none | `{message,deleted_count}` | `200` | `401`, `500` | `.server_config`, `.build_logs/` | `.build_logs/` | `cleanupLogs()` | ログビューア, 設定 |
-| `GET /api/history` | query `{page,per_page}` | `HistoryPageObject` | `200` | `401`, `422` | `.build_history` | none | `getHistory()` | ビルド履歴 |
+| `GET /api/history` | query `{page,per_page,trigger?,tag?,flagged?}` | `HistoryPageObject` | `200` | `401`, `422` | `.build_history` | none | `getHistory()` | ビルド履歴 |
 | `GET /api/history/export` | none | `ExportObject` | `200` | `401` | `.build_history` | none | `exportHistory()` | ビルド履歴 |
 | `GET /api/history/{id}/log` | path `{id}` | `HistoryLogObject` | `200` | `401`, `404`, `500` | `.build_logs/{id}.json` | none | `getHistoryLog(id)` | ビルド履歴 |
 | `GET /api/history/{id}/comment` | path `{id}` | `CommentObject` | `200` | `401`, `404`, `500` | `.build_logs/{id}.json` | none | `getHistoryComment(id)` | ビルド履歴 |
@@ -3950,7 +4049,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST /api/branch-config` | `{branches}` | `{message,branches_count}` | `200` | `401`, `422`, `500` | `.branch_config` | `.branch_config`, `.config_log` | `setBranchConfig(branches)` | リポジトリ情報 |
 | `GET /api/backup` | none | `BackupObject` | `200` | `401`, `500` | config state files | none | `backup()` | 設定 |
 | `POST /api/restore` | `BackupObject` | `{message}` | `200` | `401`, `422`, `500` | request body | config state files, `.config_log` | `restore(config)` | 設定 |
-| `GET /api/dashboard` | none | `DashboardObject` | `200` | `401`, `500` | `.build_history`, `.build_state`, `.build_lock`, `.server_config`, `.alert_rules`, `.dashboard_layout`, output file, process start time | none | `getDashboard()` | ステータス, システム診断 |
+| `GET /api/dashboard` | none | `DashboardObject` | `200` | `401`, `500` | `.build_status.json`, `.build_history`, `.build_state`, `.build_lock`, `.server_config`, `.alert_rules`, `.dashboard_layout`, output file, process start time | none | `getDashboard()` | ステータス, システム診断 |
 | `GET /api/diagnostics` | none | `DiagnosticsObject` | `200` | `401`, `500` | `.github_token`, output file, systemd, `.notify_config` | none | `getDiagnostics()` | システム診断 |
 | `GET /api/rate-limit` | none | `RateLimitObject` | `200` | `401`, `501`, `500` | `.github_token` | none | `getRateLimit()` | システム情報 |
 | `GET /api/disk-usage` | none | `DiskUsageObject` | `200` | `401`, `500` | `.build_logs/`, output file | none | `getDiskUsage()` | システム情報 |
@@ -4014,14 +4113,14 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 | 機能 | Endpoint | 読取元 | 算出方法 | 空状態 / 不足時 |
 |------|----------|--------|----------|-----------------|
-| 現在状態 | `GET /api/status` | `.build_history`, `.build_state`, `.build_lock` | `.build_history` の最新行から `last_sha`、`last_build_at`、`last_build_status` を返し、`.build_state.running` または有効な `.build_lock` で `running` を決定する。 | 履歴なしは `last_sha:null`, `last_build_at:null`, `last_build_status:"none"`, `output_url:null`。 |
+| 現在状態 | `GET /api/status` | `.build_status.json`, `.build_history`, `.build_state`, `.build_lock` | `.build_status.json` から `last_sha`、`last_build_at`、`last_build_status`、`last_trigger`、pending 件数、circuit 状態を返す。不在時のみ `.build_history` の最新行と `.build_state` から算出する。`last_sha` は `.build_status.json.last_blob_sha` があればその値、なければ `last_commit_sha`、両方なければ `null` とする。 | 履歴なしは `last_sha:null`, `last_build_at:null`, `last_build_status:"none"`, `last_trigger:null`, `output_url:null`。 |
 | 手動ビルド開始 | `POST /api/build` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | §22.0e の競合優先順位に従い、開始または queue 追加を行う。SHA cache は変更しない。 | queue 無効または満杯は `429 {"error":"queue_full"}`。 |
 | 強制ビルド開始 | `POST /api/build/force` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state`, SHA cache | 開始可能な場合のみ SHA cache を空 SHA に更新し、同一状態更新内で build を開始する。queue 追加時は queue entry の `payload.force=true` を保存する。 | queue 無効または満杯は `429 {"error":"queue_full"}`。 |
 | ログ一覧 | `GET /api/logs` | `.build_logs/` | 最新 build log の `stdout`、`stderr`、`warnings` を時系列順に連結し、`n` 件に丸める。`q` が空でない場合は部分一致行だけを返す。 | ログなしは `{"lines":[]}`。 |
 | ログ検索 | `GET /api/logs/search` | `.build_logs/` | 全 build log を新しい順に読み、`q`、`from`、`to`、`level` で絞り込む。`level` は行内の `[INFO]`、`[WARNING]`、`[ERROR]`、`[DEBUG]` に一致させる。 | 一致なしは `results:[]`。 |
-| 履歴一覧 | `GET /api/history` | `.build_history` | JSON Lines を新しい順でページングし、壊れた行は無視して ERROR ログに記録する。`total` と `pages` は有効行だけで算出する。 | 履歴なしは `total:0`, `pages:0`, `history:[]`。 |
+| 履歴一覧 | `GET /api/history` | `.build_history` | JSON Lines を新しい順で読み、`trigger`、`tag`、`flagged` を指定時のみ完全一致で絞り込み、ページングする。壊れた行は無視して ERROR ログに記録する。`total` と `pages` は絞り込み後の有効行だけで算出する。 | 履歴なしまたは一致なしは `total:0`, `pages:0`, `history:[]`。 |
 | 出力メタ | `GET /api/output-meta` | `.build_history`, `.build_logs/`, 出力サイト | 出力サイトの現在サイズと mtime、直近成功履歴の `output_sha256`、直近ログの `report` を返す。 | 出力サイト不在は `404`。report 不在の数値は `null`、warning は `[]`。 |
-| ダッシュボード | `GET /api/dashboard` | `.build_history`, `.server_config`, `.alert_rules`, `.dashboard_layout`, `.build_state`, `.build_lock`, 出力サイト, process start time | `status`、`sysinfo`、`stats(days=7)`、`schedule`、`alerts` を同一リクエスト時点で算出し、widget 順序は `.dashboard_layout.widgets` を使用する。 | `.dashboard_layout` 不在は既定 widget 順。alerts なしは `[]`。 |
+| ダッシュボード | `GET /api/dashboard` | `.build_status.json`, `.build_history`, `.server_config`, `.alert_rules`, `.dashboard_layout`, `.build_state`, `.build_lock`, 出力サイト, process start time | `status`、`sysinfo`、`stats(days=7)`、`schedule`、`alerts` を同一リクエスト時点で算出し、widget 順序は `.dashboard_layout.widgets` を使用する。 | `.dashboard_layout` 不在は既定 widget 順。alerts なしは `[]`。 |
 | 診断 | `GET /api/diagnostics` | `.github_token`, 出力サイト, systemd, `.notify_config`, `.webhook_secret` | PAT、GitHub API、出力サイト、systemd、Webhook 設定を個別 item として返す。診断結果は保存しない。 | 各項目は `ok`、`warn`、`error` のいずれかを返す。 |
 | キュー | `GET /api/queue` | `.build_state`, `.server_config` | `.build_state.queued` と `.server_config.queue_max_size` を返す。 | `.build_state` 不在は初期値で `queued:[]`。 |
 | バックアップ | `GET /api/backup` | §22.0d の backup 対象状態ファイル | 設定状態だけを export し、secret 値は `"***"` または boolean にマスクする。履歴、ログ、snapshot、session は含めない。 | 不在の任意設定ファイルは初期値で返す。 |
@@ -4048,7 +4147,7 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | 種別 | 対象 endpoint | 処理順序 | 成功時 | 失敗時 |
 |------|---------------|----------|--------|--------|
 | read-only list | `GET /api/history`, `GET /api/notify-log`, `GET /api/config-log`, `GET /api/webhook-events` | query 検証 → 対象ファイル読込 → 壊れた行を除外 → sort / paging → response 生成 | `total` がある endpoint は除外後件数を返す。 | query 不正は `422`。ファイル読込不能は `500`。 |
-| read-only aggregate | `GET /api/status`, `GET /api/dashboard`, `GET /api/health`, `GET /api/output-meta` | 必要ファイルを read-only で読込 → 不在時初期値適用 → 算出 → response 生成 | GET の副作用なし。 | 必須ファイル破損は endpoint 固有の `500`。任意ファイル不在は初期値。 |
+| read-only aggregate | `GET /api/status`, `GET /api/dashboard`, `GET /api/health`, `GET /api/output-meta` | 必要ファイルを read-only で読込 → 不在時初期値適用 → 算出 → response 生成 | GET の副作用なし。`.build_status.json` 破損時も API が自動修復しない。 | 必須ファイル破損は endpoint 固有の `500`。任意ファイル不在は初期値。 |
 | single-file update | `POST /api/config`, `POST /api/repo-config`, `POST /api/maintenance/*`, `POST /api/access-control`, `POST /api/dashboard-layout` | body 検証 → 現在値読込 → 差分生成 → atomic write → `.config_log` 追記 | 更新後値または `{message}` を返す。 | body 検証失敗は書込前に `422`。`.config_log` 失敗時は対象更新済みのまま `500`。 |
 | multi-file update | `POST /api/restore`, `POST /api/smtp-config`, `POST /api/history/{id}/tags` | 全入力検証 → 全対象読込 → 書込計画生成 → §22.0d の Write 順に atomic write | 全対象の更新完了後に response を返す。 | 検証失敗は書込なし `422`。途中失敗は未処理ファイルを書かず `500`。 |
 | secret update | `POST /api/pat-update`, `POST /api/webhook-config`, `POST /api/smtp-config` password あり | secret 入力検証 → secret ファイル atomic write mode `0600` → `.config_log` へ `"***"` で記録 | secret 本体を response に含めない。 | secret 書込失敗は `500`。ログ、response、stdout へ平文を出さない。 |
@@ -4215,12 +4314,18 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
   "last_sha": "abc123",
   "last_build_at": "2026-09-14T10:00:00Z",
   "last_build_status": "success",
+  "last_trigger": "polling",
+  "last_deploy_status": "success",
+  "pending_transfers_count": 0,
+  "notify_pending_count": 0,
+  "circuit_open": false,
   "output_url": "https://example.com/",
   "running": false
 }
 ```
 
-`last_build_status` の有効値：`"success"` | `"failure"` | `"none"`（初回未実行時）
+`last_build_status` の有効値：`"success"` | `"failure"` | `"success_deploy_pending"` | `"skipped_no_change"` | `"skipped_cooldown"` | `"circuit_open"` | `"config_recovered"` | `"config_error"` | `"lock_skipped"` | `"none"`（初回未実行時）
+`last_trigger` の有効値：§13 の `trigger` 有効値または `null`
 `running` の有効値：`true`（ビルド実行中）| `false`（待機中）
 `running` の判定：`.build_state.running == true` または有効な `.build_lock` が存在する場合に `true` を返す。`.build_state.running == false` かつ `.build_lock` が存在しない場合は `false` を返す。形式不正または PID 判定不能な `.build_lock` が存在する場合は、状態競合として `running: true` を返し、API 側でロックを上書きしない。
 
@@ -4242,13 +4347,13 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 {
   "total": 42, "page": 1, "per_page": 20, "pages": 3,
   "history": [
-    { "id": "b001", "build_at": "2026-09-15T10:00:00Z", "sha": "abc123", "status": "success", "output_size_bytes": 2048576, "trigger": "auto",    "duration_seconds": 42, "flagged": false, "tags": ["release"] },
+    { "id": "b001", "build_at": "2026-09-15T10:00:00Z", "sha": "abc123", "status": "success", "output_size_bytes": 2048576, "trigger": "polling", "duration_seconds": 42, "flagged": false, "tags": ["release"] },
     { "id": "b002", "build_at": "2026-09-14T18:30:00Z", "sha": "def456", "status": "failure", "output_size_bytes": null,    "trigger": "manual", "duration_seconds": 7,  "flagged": true,  "tags": [] }
   ]
 }
 ```
 
-`page` は 1 始まり。`per_page` の最大値は 100。範囲外ページを指定した場合は `history: []` を返す。
+`page` は 1 始まり。`per_page` の最大値は 100。`trigger` は §13 の固定値のみ許可する。`tag` はタグ検証と同じ文字列制約を適用する。`flagged` は `"true"` または `"false"` のみ許可する。未知 query、範囲外の `page` / `per_page`、不正な `trigger` / `tag` / `flagged` は `422` とする。範囲外ページを指定した場合は `history: []` を返す。
 
 `id` はビルド実行時に生成するユニーク識別子（形式：`b{YYYYMMDDHHmmss}`）。`.build_logs/{id}.json` に対応するログファイルが保存される。
 
@@ -4362,7 +4467,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 - `status`：常に `"ok"`（サーバーが応答している限り）
 - `last_build_at`：最終ビルド完了日時（未実行時 `null`）
-- `last_build_status`：`"success"` | `"failure"` | `"none"`
+- `last_build_status`：`GET /api/status` の `last_build_status` と同じ値
 - `last_deploy_at`：最終 SSH 転送完了日時（未実行時 `null`）
 - `last_deploy_status`：`"success"` | `"failure"` | `"skipped"` | `"none"`
 - `pending_transfers`：ペンディングキューのエントリ数
@@ -4442,7 +4547,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
   "sha": "abc123",
   "status": "success",
   "output_size_bytes": 2048576,
-  "trigger": "auto",
+  "trigger": "polling",
   "comment": null,
   "flagged": false,
   "tags": ["release"],
@@ -5120,7 +5225,7 @@ Content-Type: application/json
 
 ビルド完了時に条件式を評価し、マッチしたルールのタグを `.build_history` のエントリへ自動追記する（手動タグと共存する）。`.tag_rules` に保存する。
 
-条件式で使用可能な変数：`status`（`"success"` / `"failure"`）/ `duration_seconds`（整数）/ `trigger`（`"auto"` / `"manual"` / `"force"`）
+条件式で使用可能な変数：`status`（`"success"` / `"failure"`）/ `duration_seconds`（整数）/ `trigger`（`"polling"` / `"force_interval"` / `"manual"` / `"webhook"` / `"retry_pending_transfer"` / `"startup_config_integrity"` / `"rollback"`）
 演算子：`==`・`!=`・`>`・`<`・`>=`・`<=`
 
 **`GET /api/tag-rules` レスポンス例：**
@@ -5128,7 +5233,7 @@ Content-Type: application/json
 { "rules": [
     { "id": "t001", "condition": "status == 'failure'", "tags": ["要確認"] },
     { "id": "t002", "condition": "duration_seconds > 120", "tags": ["低速"] },
-    { "id": "t003", "condition": "trigger == 'force'", "tags": ["強制実行"] }
+    { "id": "t003", "condition": "trigger == 'force_interval'", "tags": ["強制実行"] }
 ]}
 ```
 
@@ -5160,7 +5265,7 @@ Content-Type: application/json
 ```json
 { "id": "b001", "build_at": "2026-09-15T10:00:00Z", "sha": "abc123", "status": "success",
   "output_size_bytes": 2048576, "output_sha256": "e3b0c44298fc1c149afbf4c8996fb924...",
-  "trigger": "auto", "comment": null, "flagged": false, "tags": ["release"],
+  "trigger": "polling", "comment": null, "flagged": false, "tags": ["release"],
   "lines": ["2026-09-15T10:00:00Z [INFO] Build start", "..."] }
 ```
 
@@ -5264,7 +5369,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 ```json
 { "queued": [
     { "id": "q001", "trigger": "manual", "queued_at": "2026-09-15T10:01:00Z" },
-    { "id": "q002", "trigger": "auto",   "queued_at": "2026-09-15T10:02:00Z" }
+    { "id": "q002", "trigger": "webhook", "queued_at": "2026-09-15T10:02:00Z" }
   ], "max_size": 3 }
 ```
 キューが空の場合：`{ "queued": [], "max_size": 3 }`
@@ -5315,7 +5420,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 ```json
 { "exported_at": "2026-09-15T10:00:00Z", "history": [
-    { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00Z", "sha": "abc123", "status": "success", "trigger": "auto", "duration_seconds": 42, "flagged": false, "tags": ["release"], "comment": "" },
+    { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00Z", "sha": "abc123", "status": "success", "trigger": "polling", "duration_seconds": 42, "flagged": false, "tags": ["release"], "comment": "" },
     { "id": "b20260914183000", "build_at": "2026-09-14T18:30:00Z", "sha": "def456", "status": "failure", "trigger": "manual", "duration_seconds": 7, "flagged": true, "tags": [], "comment": "ネットワーク障害による失敗" }
 ]}
 ```
@@ -5330,7 +5435,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 設定は `.repo_config` に保存し、`GET /api/repo-info` もこのファイルを参照する。
 
-`trigger` の有効値：`"auto"`（定期ポーリング）| `"manual"`（`POST /api/build`）| `"force"`（`POST /api/build/force`）
+`trigger` の有効値：§13 の固定値（`"polling"`、`"force_interval"`、`"manual"`、`"webhook"`、`"retry_pending_transfer"`、`"startup_config_integrity"`、`"rollback"`）
 
 **エラーレスポンス形式：**
 
@@ -5377,7 +5482,7 @@ class AdlaireCI {
   getStatus()               // GET /api/status               → Promise<StatusObject>
   triggerBuild()            // POST /api/build               → Promise<{message: string, build_id?: string, queued?: boolean}>
   getLogs(n = 100, q = '')  // GET /api/logs?n={n}&q={q}     → Promise<{lines: string[]}>
-  getHistory({ page = 1, perPage = 20 } = {}) // GET /api/history?page={page}&per_page={perPage} → Promise<HistoryPageObject>
+  getHistory({ page = 1, perPage = 20, trigger = null, tag = null, flagged = null } = {}) // GET /api/history?page={page}&per_page={perPage}&trigger={trigger}&tag={tag}&flagged={flagged} → Promise<HistoryPageObject>
   getSysinfo()              // GET /api/sysinfo              → Promise<SysinfoObject>
   getSchedule()             // GET /api/schedule             → Promise<ScheduleObject>
   getNotifyConfig()         // GET /api/notify-config        → Promise<NotifyConfig>
@@ -5519,7 +5624,7 @@ SDK method は、下表の通りに引数を path、query、body へ変換する
 | `login(password)` | `password` | body | `{password}` |
 | `changePassword(currentPassword,newPassword)` | `currentPassword`, `newPassword` | body | `{current_password: currentPassword, new_password: newPassword}` |
 | `getLogs(n,q)` | `n=100`, `q=""` | query | `n`、`q`。`q` は空文字でも送信する。 |
-| `getHistory({page,perPage})` | `page=1`, `perPage=20` | query | `page`、`per_page: perPage` |
+| `getHistory({page,perPage,trigger,tag,flagged})` | `page=1`, `perPage=20`, `trigger=null`, `tag=null`, `flagged=null` | query | `page`、`per_page: perPage` は常に送信する。`trigger`、`tag`、`flagged` は `null` の場合は送信しない。 |
 | `setNotifyConfig(config)` | `config` | body | `config` をそのまま送信する。 |
 | `setConfig(config)` | `config` | body | `config` をそのまま送信する。未知 key は送信前に削除せず、API の `422` に委ねる。 |
 | `updatePat(token)` | `token` | body | `{token}` |
@@ -5564,7 +5669,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 
 | 型名 | 必須キー | nullable キー | 配列キー | 対応 API |
 |------|----------|---------------|----------|----------|
-| `StatusObject` | `last_sha`, `last_build_at`, `last_build_status`, `output_url`, `running` | `last_sha`, `last_build_at`, `output_url` | なし | `GET /api/status` |
+| `StatusObject` | `last_sha`, `last_build_at`, `last_build_status`, `last_trigger`, `last_deploy_status`, `pending_transfers_count`, `notify_pending_count`, `circuit_open`, `output_url`, `running` | `last_sha`, `last_build_at`, `last_trigger`, `last_deploy_status`, `output_url` | なし | `GET /api/status` |
 | `HistoryPageObject` | `total`, `page`, `per_page`, `pages`, `history` | なし | `history: HistoryRecord[]` | `GET /api/history` |
 | `HistoryRecord` | `id`, `build_at`, `sha`, `status`, `trigger`, `output_size_bytes`, `duration_seconds`, `flagged`, `tags` | `sha`, `output_size_bytes`, `duration_seconds`, `comment`, `output_sha256`, `rollback_from` | `tags: string[]` | `.build_history` |
 | `HistoryLogObject` | `.build_logs/{id}.json` の全必須キー、`lines` | `.build_logs/{id}.json` の nullable キー | `stdout`, `stderr`, `warnings`, `tags`, `lines` | `GET /api/history/{id}/log` |
@@ -5627,7 +5732,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | ステータス | `panel-status` | `status` | なし | なし | `btn-refresh-status`, `btn-save-dashboard-layout` |
 | 手動実行 | `panel-build` | `build` | なし | なし | `btn-build`, `btn-build-force`, `btn-build-cancel`, `btn-stream-close`, `btn-queue-clear` |
 | ログビューア | `panel-logs` | `logs` | `form-log-search` | `n`, `q`, `from`, `to`, `level` | `btn-load-logs`, `btn-search-logs`, `btn-export-logs`, `btn-cleanup-logs` |
-| ビルド履歴 | `panel-history` | `history` | `form-history-filter` | `page`, `per_page`, `tag`, `flagged` | `btn-export-history` |
+| ビルド履歴 | `panel-history` | `history` | `form-history-filter` | `page`, `per_page`, `trigger`, `tag`, `flagged` | `btn-export-history` |
 | システム情報 | `panel-system` | `system` | `form-pat` | `token`, `pat_expires_at` | `btn-pat-verify`, `btn-pat-update` |
 | 通知設定 | `panel-notify` | `notify` | `form-notify` | `webhooks`, `on`, `summary`, `email`, `secret`, `smtp_password` | `btn-save-notify`, `btn-notify-test`, `btn-weekly-summary`, `btn-save-webhook-secret`, `btn-save-smtp`, `btn-smtp-test` |
 | 設定 | `panel-config` | `config` | `form-config` | `log_max_lines`, `history_max_count`, `build_timeout_seconds`, `log_retention_days`, `log_level`, `queue_max_size`, `snapshots_keep` | `btn-save-config`, `btn-set-log-level` |
@@ -5724,7 +5829,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | ログビューア | 横断検索 | `searchLogs(q,from,to)` | 検索結果件数を表示 | なし | 日付不正、検索中 |
 | ログビューア | JSON export | `exportLogs()` | export 完了表示 | なし | 処理中 |
 | ログビューア | cleanup | `cleanupLogs()` | 削除件数を表示 | `getLogs()`, `getDiskUsage()` | 処理中 |
-| ビルド履歴 | 一覧取得 | `getHistory({page,perPage})` | 件数を表示 | なし | 読み込み中 |
+| ビルド履歴 | 一覧取得 | `getHistory({page,perPage,trigger,tag,flagged})` | 件数を表示 | なし | 読み込み中 |
 | ビルド履歴 | コメント保存 | `setHistoryComment(id,comment)` | `Comment saved` | `getHistory()`, `getHistoryComment(id)` | id 未選択、送信中 |
 | ビルド履歴 | 重要フラグ切替 | `setHistoryFlag(id,flagged)` | `Flag updated` | `getHistory()` | id 未選択、送信中 |
 | ビルド履歴 | タグ保存 | `setHistoryTags(id,tags)` | `Tags updated` | `getHistory()` | id 未選択、送信中 |
