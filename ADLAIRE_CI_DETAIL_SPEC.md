@@ -285,6 +285,25 @@ var DefaultBuildConfig = BuildConfig{
 
 `--help` と `--version` は他の引数より優先し、成功時は終了コード `0` とする。
 
+**CLI パース固定仕様：**
+
+- 引数は `flag` package 互換の `--name value` と `--name=value` の両方を許可する。
+- 短縮オプション（例：`-s`、`-o`）は禁止する。指定された場合は未知の引数として扱う。
+- 同一引数が複数回指定された場合は最後の値を採用する。ただし `--strict` は 1 回以上指定されれば `true` とする。
+- `--src`、`--out`、`--base-dir` の相対パスは `os.Getwd()` の戻り値を基準に `filepath.Abs()` で絶対パスへ変換する。
+- `--base-dir` が空ではない場合、存在するディレクトリでなければならない。存在しない場合は終了コード `2`、stderr に `base directory not found: <path>` を出力する。
+- `--base-dir` がファイルの場合は終了コード `2`、stderr に `base path is not directory: <path>` を出力する。
+- stderr のエラー行は末尾に改行 1 つを付ける。複数エラーをまとめて出力せず、最初に検出したエラー 1 件で終了する。
+
+**固定出力：**
+
+| 条件 | stdout |
+|------|--------|
+| `--help` | `Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--version] [--help]` |
+| `--version` | `adlaire-ci-build ADLAIRE_CI_SPEC go=<runtime.Version()>` |
+
+`--help` と `--version` の stdout は 1 行固定とし、末尾に改行 1 つを付ける。`--help` または `--version` を指定した場合、`--src` の存在確認、`--theme` 検証、出力ディレクトリ作成は行わない。
+
 ---
 
 ## 2a. 入力収集・出力パス決定
@@ -319,6 +338,19 @@ Markdown ディレクトリ入力で Markdown ファイルが 0 件の場合は�
 | ディレクトリ入力の各 Markdown | `pages/{pageSlug}.html` |
 
 `assets/style.css`、`assets/app.js`、`assets/search-index.json` は常に出力する。`assets/` 配下へ Markdown 由来ファイルを出力してはならない。
+
+**リンク・画像・相対パス解決：**
+
+| 入力 | 処理 |
+|------|------|
+| `http://` / `https://` URL | 外部 URL としてそのまま出力する。 |
+| `mailto:` / `tel:` URL | 内部リンク検証対象外とし、`href` はそのまま出力する。 |
+| `#anchor` | 同一ページ内 anchor として、ページ内の一意化後 slug と照合する。 |
+| `./doc.md` / `../dir/doc.md` / `dir/doc.markdown#x` | `--base-dir` 基準で Markdown 入力ファイルへ解決し、該当ページの HTML パスへ変換する。anchor がある場合は `#x` を維持し、出力先ページの slug と照合する。 |
+| `.md` / `.markdown` 以外の相対リンク | ファイルをコピーせず、元の相対 URL を保持する。存在確認は警告対象外。 |
+| 画像 `![alt](path)` | ファイルコピーを行わず、`src` は元 URL を `esc()` して出力する。`assets/` へ画像を複製してはならない。 |
+
+Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま出力し、`[WARN] BROKEN_PAGE_LINK: <url> (in: <source>)` を出力する。`--strict` が `true` の場合、警告出力後に終了コード `2` とする。ページ間リンク解決で使用するパス比較は、絶対パス化、`filepath.Clean()`、パス区切り `/` 正規化を行った文字列で比較する。
 
 ---
 
@@ -467,7 +499,17 @@ type RenderContext struct {
 - 2 回目以降の同一 ID 参照では既存番号を再利用する。
 - `FootnoteDefs` に存在しない ID でも HTML 参照は出力し、脚注本文は空文字として扱わず、末尾脚注出力時に `[WARN] MISSING_FOOTNOTE: id` を出す。
 
-**制約：** ネストしたインライン記法（`**_text_**` など）は限定的にサポート。
+**インライン記法のネスト仕様：**
+
+| 入力 | 出力 |
+|------|------|
+| `***text***` | `<strong><em>text</em></strong>` |
+| `**_text_**` | `<strong><em>text</em></strong>` |
+| `__*text*__` | `<strong><em>text</em></strong>` |
+| `*__text__*` | `<em><strong>text</strong></em>` |
+| `_**text**_` | `<em><strong>text</strong></em>` |
+
+上表以外のネストした強調・削除・リンクの組み合わせは追加変換しない。未対応ネストは、先にマッチした外側または内側の単一記法だけを変換し、残った Markdown 記号は `esc()` 済みテキストとして出力する。実装者判断で CommonMark 全互換のネスト処理を追加してはならない。
 
 ---
 
@@ -608,6 +650,21 @@ type ConvertResult struct {
 
 **脚注定義行のスキップ：**
 `^\[\^[^\]]+\]:` に一致する行は `ctx.FootnoteDefs` への収集が完了しているためスキップし、本文への出力を行わない。
+
+**主要ブロックの固定 HTML 断片：**
+
+| Markdown | HTML |
+|----------|------|
+| `# Title` | `<h1 id="title" class="mh h1">Title<button class="hn-link" data-href="#title" aria-label="リンクをコピー">¶</button></h1>` |
+| `text` | `<p class="mp">text</p>` |
+| `---` | `<hr class="mr">` |
+| `> quote` | `<blockquote class="mbq">quote</blockquote>` |
+| `- item` | `<ul class="ml"><li>item</li></ul>` |
+| `1. item` | `<ol class="ml"><li>item</li></ol>` |
+| `- [x] done` | `<ul class="ml"><li class="ml-task"><input type="checkbox" disabled checked>done</li></ul>` |
+| `term` + 次行 `: desc` | `<dl class="mdl"><dt>term</dt><dd>desc</dd></dl>` |
+
+上表の属性順、class 名、button 文言、`checked` 属性の位置は固定する。テストでは空白の連続を 1 つへ正規化して比較してよいが、タグ名、属性名、属性値、親子構造は完全一致させる。
 
 **脚注セクションの末尾出力：**
 `convert()` 末尾で `ctx.FootnoteOrder` が非空の場合、`<section class="fn-section">` 内に参照順番号付きの脚注リスト（`<ol class="fn-list">`）を出力する。各脚注には本文への戻りリンク（`<a class="fn-back">↩</a>`）を付与する。
@@ -798,6 +855,18 @@ type SearchIndexEntry struct {
 
 単一 Markdown 入力の場合、本文ページを `index.html` として出力し、`pages/` は作成しなくてよい。Markdown ディレクトリ入力の場合、`index.html` はサイト目次ページとし、各 Markdown ファイルを `pages/{slug}.html` として出力する。
 
+**相対 root 算出：**
+
+`relativeRoot` は、各 HTML ファイルから `assets/` へ到達するための相対 prefix とする。
+
+| `PageData.OutputPath` | `relativeRoot` |
+|-----------------------|----------------|
+| `index.html` | `""` |
+| `pages/example.html` | `"../"` |
+| `pages/dir-example.html` | `"../"` |
+
+初期仕様ではページ HTML を `pages/` 直下に平坦化するため、`relativeRoot` は上表の 2 種類のみとする。将来、`pages/dir/page.html` のような階層出力を導入する場合は、先に本表、リンク解決、検索 index URL、breadcrumb 仕様を改訂する。
+
 **出力更新手順：**
 
 `assembleSite()` は `--out` を直接途中更新してはならない。以下の順で一時ディレクトリへ完全生成してから置換する。
@@ -870,6 +939,37 @@ type SearchIndexEntry struct {
 </body>
 </html>
 ```
+
+**ディレクトリ入力時の `index.html` 仕様：**
+
+`index.html` はサイト目次ページとして生成し、Markdown 本文を持たない。`PageData.Layout` は `index` とする。
+
+| 項目 | 仕様 |
+|------|------|
+| `<title>` | `SiteData.Title` |
+| `#doc-title` | `SiteData.Title` |
+| `.ci` 内 | `<h1 id="site-index" class="mh h1">{SiteData.Title}<button class="hn-link" data-href="#site-index" aria-label="リンクをコピー">¶</button></h1>` の後に `<ul class="site-page-list">` を出力する。 |
+| ページ一覧 | `SiteData.Pages` のうち `Layout == "document"` のページを入力ソート順で `<li><a href="{OutputPath}">{Title}</a></li>` として出力する。 |
+| TOC | サイト目次ページの TOC は `site-index` 1 件だけを含める。 |
+| 検索 index | サイト目次ページのエントリを 1 件追加し、`url` は `index.html#site-index`、`id` は `site-index`、`title` は `SiteData.Title`、`body` は空文字とする。 |
+
+**必須 DOM ID / class 契約：**
+
+| セレクター | 個数 | 使用者 | 変更可否 |
+|------------|------|--------|----------|
+| `#progress-bar` | 各 HTML 1 個 | `assets/app.js` §7.13 | 変更禁止 |
+| `#hdr` | 各 HTML 1 個 | CSS / layout | 変更禁止 |
+| `#doc-title` | 各 HTML 1 個 | header | 変更禁止 |
+| `#reading-time` | 各 HTML 1 個 | header | 変更禁止 |
+| `#lay` | 各 HTML 1 個 | CSS / sidebar layout | 変更禁止 |
+| `#sb` | 各 HTML 1 個 | sidebar JS | 変更禁止 |
+| `#sb-search` | 各 HTML 1 個 | TOC/search JS | 変更禁止 |
+| `#toc-root` | 各 HTML 1 個 | TOC JS | 変更禁止 |
+| `#ct` | 各 HTML 1 個 | content layout | 変更禁止 |
+| `.ci` | 各 HTML 1 個 | content width | 変更禁止 |
+| `#btt` | 各 HTML 1 個 | top button JS | 変更禁止 |
+
+実装は上表のセレクターを追加、削除、リネームしてはならない。UI 改善で新しいセレクターが必要な場合は、先に本表へ追加し、§6 と §7 の CSS / JavaScript 契約を同時に更新する。
 
 **サイト合成の禁止事項：**
 - `PageData.BodyHTML`、`PageData.TocHTML` はすでに HTML として生成済みのため、`assembleSite()` 内で再エスケープしない。
@@ -1100,6 +1200,16 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 ]
 ```
 
+**検索 index 固定契約：**
+
+- JSON の top-level は配列とする。object wrapper は使用しない。
+- entry の key 順は `url`、`id`、`title`、`body` とする。
+- `encoding/json` の標準エスケープを使用し、独自 pretty print は行わない。
+- entry の並び順は、ページ入力順、同一ページ内では見出し出現順とする。ページ単位エントリは各ページの先頭に 1 件だけ追加する。
+- `body` は HTML タグ除去後のプレーンテキストを Unicode rune 単位で最大 200 文字とする。200 文字を超える場合は 200 文字で切り、三点リーダーを追加しない。
+- 空白、タブ、改行の連続は半角スペース 1 つへ正規化し、前後空白を削除する。
+- `title` と `body` に HTML entity を残してはならない。検索 index は表示前に JS 側で `textContent` として挿入し、`innerHTML` へ直接挿入しない。
+
 **検索 UI の配置：**
 §7.4 の TOC 検索フィルター入力欄を兼用する。入力値が 2 文字以上になった時点でインデックスに対して部分一致検索を実行する。
 
@@ -1309,7 +1419,7 @@ Done → /opt/adlaire-builder/dist/site  (pages=12 files=15 bytes=1713731)
 固定順は以下とし、未使用フィールドの省略は禁止する。
 
 ```text
-headings tables code_blocks warnings size_warn broken_links heading_skips reading_time
+pages headings tables code_blocks warnings size_warn broken_links heading_skips reading_time theme
 ```
 
 `warnings` は出力した `[WARN]` 行数と一致しなければならない。`reading_time` は `ConvertResult.ReadingTimeMinutes`、`broken_links` は `ConvertResult.BrokenLinks`、`heading_skips` は `ConvertResult.HeadingSkips` を使用する。
@@ -1339,6 +1449,121 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 > **フィールド名の対応：** stdout の `[REPORT]` 行は `tables=` / `code_blocks=` の短縮キーを使用するが、`.build_logs/{id}.json` への保存時および `GET /api/output-meta` レスポンスでは `tables_count` / `code_blocks_count` に変換する（→ §22）。
 
 **再実行時の注意：** スラグ重複カウンタ、脚注参照順、脚注定義は `adlaire-ci-build` の 1 実行内で初期化する。通常の `/usr/local/bin/adlaire-ci-build` 実行では複数回実行しても出力は同一になる。Go 版では変換状態をパッケージグローバル変数として共有せず、変換処理ごとに専用の状態構造体を生成する。
+
+---
+
+## 8a. `build_spec.go` 受け入れ fixture
+
+Go 版 `build_spec.go` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/build_spec/` 配下へ追加する。仕様 PR では fixture の期待値を本節で固定する。
+
+### Fixture A: 単一 Markdown 入力
+
+**入力ファイル：** `testdata/build_spec/single/source.md`
+
+~~~markdown
+# Title
+
+Intro paragraph with [self](#title).
+
+## Install
+
+```bash
+echo hello
+```
+
+- [x] done
+- [ ] todo
+
+| Name | Value |
+| ---- | ----- |
+| A | 1 |
+
+[^n]: note body
+
+See footnote[^n].
+~~~
+
+**実行：**
+
+```bash
+adlaire-ci-build --src testdata/build_spec/single/source.md --out /tmp/adlaire-ci-fixture-single --title "Fixture Site"
+```
+
+**期待結果：**
+
+- 終了コード `0`。
+- `/tmp/adlaire-ci-fixture-single/index.html`、`assets/style.css`、`assets/app.js`、`assets/search-index.json` が存在する。
+- `pages/` は存在しない。
+- `index.html` に `<h1 id="title" class="mh h1">Title<button class="hn-link" data-href="#title" aria-label="リンクをコピー">¶</button></h1>` を含む。
+- `index.html` に `<a href="#title">self</a>` を含み、`BROKEN_LINK` 警告を出さない。
+- `index.html` に `<div class="cb-wrap" data-lang="bash">` と `<span class="cl">bash</span>` を含む。
+- `index.html` に `<li class="ml-task"><input type="checkbox" disabled checked>done</li>` と `<li class="ml-task"><input type="checkbox" disabled>todo</li>` を含む。
+- `[REPORT]` は `pages=1`、`theme=adlaire-default` を含む。
+
+### Fixture B: ディレクトリ Markdown 入力
+
+**入力ファイル：**
+
+```text
+testdata/build_spec/site/docs/intro.md
+testdata/build_spec/site/docs/guide/setup.md
+testdata/build_spec/site/docs/guide/setup_copy.md
+```
+
+`intro.md`:
+
+```markdown
+# Intro
+
+Go to [setup](guide/setup.md#setup).
+```
+
+`guide/setup.md`:
+
+```markdown
+# Setup
+
+Body.
+```
+
+`guide/setup_copy.md`:
+
+```markdown
+# Setup
+
+Second.
+```
+
+**実行：**
+
+```bash
+adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixture-site --title "Docs"
+```
+
+**期待結果：**
+
+- 終了コード `0`。
+- `/tmp/adlaire-ci-fixture-site/index.html` がサイト目次ページである。
+- document ページは `pages/guide-setup.html`、`pages/guide-setup-copy.html`、`pages/intro.html` として出力される。
+- 入力順は `guide/setup.md`、`guide/setup_copy.md`、`intro.md` の辞書順とし、サイト目次の表示順も同一とする。
+- `intro.html` 内の `guide/setup.md#setup` は、同じ `pages/` ディレクトリ内のページ間リンクとして `guide-setup.html#setup` に変換する。`guide/setup.html#setup`、`pages/guide-setup.html#setup`、元の `guide/setup.md#setup` のまま出力してはならない。
+- 2 つの `# Setup` 見出しはページごとの slug 空間でそれぞれ `setup` とする。ページをまたいだ見出し slug に `-2` を付けてはならない。
+- `assets/search-index.json` は `index.html#site-index`、`pages/guide-setup.html#setup`、`pages/guide-setup-copy.html#setup`、`pages/intro.html#intro` の entry を含む。
+
+### Fixture C: 異常系
+
+| 実行 | 終了コード | stderr |
+|------|------------|--------|
+| `adlaire-ci-build --theme unknown` | `2` | `unknown theme: unknown` |
+| `adlaire-ci-build --src /path/not-found.md` | `2` | `source not found: /path/not-found.md` |
+| `adlaire-ci-build --src testdata/build_spec/empty-dir` | `2` | `no markdown files found: testdata/build_spec/empty-dir` |
+| `adlaire-ci-build --title ""` | `2` | `title must not be empty` |
+
+異常系 fixture では `[REPORT]` を stdout へ出力してはならない。`--out` に既存の正常出力がある場合でも、異常系実行で既存出力を変更してはならない。
+
+### Fixture D: 冪等性
+
+同一入力、同一 CLI 引数で 2 回連続実行した場合、`GeneratedAtUTC` を含む meta 行を除き、全出力ファイルの内容が一致しなければならない。比較対象から除外できるのは、HTML 内の `name="adlaire-generated-at"` meta と footer の生成時刻表示だけとする。検索 index、ページ HTML の本文、CSS、JS、REPORT の数値は一致必須とする。
 
 ---
 
