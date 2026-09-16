@@ -130,6 +130,29 @@
 
 ---
 
+## 0f. 仕様策定完了チェック
+
+本節は、Go 版初期実装へ進む前に仕様策定が完了しているかを判定するチェックである。実装者は、対象コンポーネントごとに下表の必須条件を満たすまで実装を開始してはならない。
+
+| 対象 | 実装着手条件 | 実装禁止条件 | 完了判定 |
+|------|--------------|--------------|----------|
+| `build_spec.go` | §2〜§8 に CLI option、入力 Markdown、出力 HTML、終了コード、stderr、HTML 構造、JS/CSS、生成物確認が定義されている。 | §4〜§7 にない Markdown 記法、CSS class、JavaScript 機能、外部 asset を追加すること。 | §0e の `build_spec.go` 必須検証をすべて満たし、生成 HTML が §5〜§7 と一致する。 |
+| `runner.go` | §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd が定義されている。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。 | §0e の `runner.go` 必須検証をすべて満たし、状態ファイル更新順序が §13、§22.0a、§22.0d と一致する。 |
+| `api_server.go` | §21〜§22、§25、§26 に API 共通契約、endpoint、状態ファイル schema、認証、認可、systemd、セットアップが定義されている。 | §22.0e にない endpoint、method、status code、response body、状態ファイル write を追加すること。 | §22.0e の全 endpoint が Request、Response、Errors、Read、Write、SDK、UI の対応表と一致する。 |
+| `adlaire-ci-sdk.js` | §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が §22.0e と §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
+| `admin/index.html` | §24 に画面構成、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去が定義されている。 | SDK を介さず API を直接呼ぶこと、未定義の画面・操作・保存先を追加すること、秘密情報を DOM に残すこと。 | 全 UI 操作が §24 の表示条件と §23 の SDK method を満たし、秘密情報 field が指定条件で消去される。 |
+
+上表の対象外である `mcp_server.go`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらを実装対象にする場合は、`ADLAIRE_CI_SPEC.md` §13 の将来計画から改訂予定へ昇格し、本ファイルに独立した詳細仕様を追加する。
+
+仕様策定完了チェックで未充足が見つかった場合は、実装を開始せず、以下の順で仕様を補完する。
+
+1. 未充足項目が方針・ポリシー・状態分類に関わる場合は、先に `ADLAIRE_CI_SPEC.md` を改訂する。
+2. 未充足項目が入出力、状態ファイル、API、SDK、UI、処理順序、異常系、検証条件に関わる場合は、本ファイルの該当節を改訂する。
+3. ファイル名、正本関係、実装状態が変わる場合は、`DOCUMENT_INDEX.md` の更新要否を確認する。
+4. 補完後、§0b、§0c、§0e、本節の条件を再確認する。
+
+---
+
 ## 0. システム概要
 
 Adlaire CI は Go 版 3 コンポーネントと JavaScript/HTML 管理ツールで構成する。

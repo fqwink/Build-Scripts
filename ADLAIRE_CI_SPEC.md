@@ -664,6 +664,27 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 仕様凍結は永久固定ではない。変更する場合は、凍結解除理由、変更対象、影響範囲、再検証条件を PR 本文に明記する。
 
+## 0e. 初期実装スコープ確定ポリシー
+
+Go 版初期実装では、実装対象を `ADLAIRE_CI_DETAIL_SPEC.md` の成熟度棚卸しで `仕様化済み・未実装` と判定された範囲に限定する。
+
+初期実装の対象範囲は以下とする。
+
+| 対象 | 実装対象 | 境界 |
+|------|----------|------|
+| `build_spec.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §0〜§9 に記載された CLI、Markdown 変換、HTML 出力、検証条件。 |
+| `runner.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §10〜§20 に記載された CI ランナー、状態ファイル、ビルド起動、転送、通知、ログ保存。 |
+| `api_server.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §21〜§22 および §25〜§26 に記載された管理 API、認証、状態ファイル、セットアップ。 |
+| `adlaire-ci-sdk.js` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §23 に記載された API 呼び出し契約、戻り値、エラー処理。 |
+| `admin/index.html` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §24 に記載された標準管理ツール UI、操作、表示、秘密情報消去。 |
+| `mcp_server.go` | 対象外 | 将来計画。詳細仕様、起動手順、認証、ツール定義を別途仕様化するまで実装不可。 |
+
+初期実装 PR では、上表の対象外項目、将来計画、未仕様化項目、改訂予定項目を実装してはならない。
+
+初期実装中に対象範囲へ追加したい機能を発見した場合は、先に本節の表、`ADLAIRE_CI_DETAIL_SPEC.md` の該当詳細仕様、`DOCUMENT_INDEX.md` の状態表現を更新し、仕様凍結を再実施する。
+
+初期実装スコープの完了判定は、対象コンポーネントごとに `ADLAIRE_CI_DETAIL_SPEC.md` §0f の仕様策定完了チェックを満たしていることを条件とする。チェックを満たさない対象は、実装済みとして扱ってはならない。
+
 ## 1. デザイントークン準拠
 
 > ⚠️ **準拠義務：** `--adlaire-*` トークンの値は [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/` ディレクトリ）で定義された値に準拠すること。
