@@ -48,8 +48,8 @@
 | `BRANCH_TARGETS` | §12〜§13 | 複数ブランチ、複数 target file、複数出力先を 1 つの設定リストとして処理する。 |
 | GitHub API リトライ | §12〜§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、レート制限待機を実装する。 |
 | ビルドロック | §11〜§13 | `.build_lock` による多重起動防止を実装する。 |
-| ビルドクールダウン | §12〜§13 | `BUILD_COOLDOWN_SECONDS` による起動抑制を実装する。 |
-| 強制再ビルド間隔 | §12〜§13 | `FORCE_BUILD_INTERVAL` による変更なし時の定期強制ビルドを実装する。 |
+| ビルドクールダウン | §12〜§13 | `.server_config.build_cooldown_seconds` による起動抑制を実装する。 |
+| 強制再ビルド間隔 | §12〜§13 | `.server_config.force_build_interval_hours` による変更なし時の定期強制ビルドを実装する。 |
 | コミット情報記録 | §13 | ビルドトリガー commit の SHA、message、author、date をビルドログへ記録する。 |
 | 事前チェック | §13 | ディスク空き容量、`adlaire-ci-build` 実行可否、Go 版ビルドバイナリ配置を確認する。 |
 | Webhook 通知 | §13 | `.notify_config` 読み込み、成功/失敗/転送失敗/週次サマリー通知、`.notify_pending` 再送を実装する。 |
@@ -326,15 +326,15 @@ runner は CLI、`.server_config`、`.branch_config`、既定値を読み込ん�
 | `--state-dir` が存在しない | `2` | `state directory not found: <path>` |
 | `--state-dir` がディレクトリではない | `2` | `state path is not directory: <path>` |
 
-以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`BUILD_COOLDOWN_SECONDS`、`HISTORY_KEEP_N`、`FORCE_BUILD_INTERVAL`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` を Go 版 runner の標準設定とする。
+以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`.server_config.build_cooldown_seconds`、`HISTORY_KEEP_N`、`.server_config.force_build_interval_hours`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` を Go 版 runner の標準設定とする。
 
 ```text
 PENDING_FILE           = "/opt/adlaire-builder/.pending_transfers"   # SSH 転送ペンディングキュー（JSON）
 API_RETRY_MAX          = 5    # GitHub API 失敗時の最大再試行回数（指数バックオフ）
 API_RETRY_BASE_SECONDS = 1    # バックオフ基底秒数（1→2→4→8→16 秒。0 = リトライ無効）
-BUILD_COOLDOWN_SECONDS = 60   # 前回ビルド完了から次ビルドまでの最小間隔（秒。0 = 無効）→ §13
+server_config.build_cooldown_seconds = 60   # 前回ビルド完了から次ビルドまでの最小間隔（秒。0 = 無効）→ §13
 HISTORY_KEEP_N         = 10   # スナップショット保持世代数（0 = 無制限）→ §14b
-FORCE_BUILD_INTERVAL   = 0    # 強制再ビルド間隔（時間。0 = 無効）→ §13
+server_config.force_build_interval_hours = 0 # 強制再ビルド間隔（時間。0 = 無効）→ §13
 LOG_KEEP_N             = 50   # ビルドログ保持件数（0 = 無制限）→ §13
 API_CIRCUIT_BREAKER_THRESHOLD = 3    # 全ブランチ連続失敗の許容周回数（0 = 無効）→ §13
 OUTPUT_SIZE_WARN_MB           = 5    # 出力サイト合計サイズ警告閾値（MB。0 = 無効）→ §13・§8
@@ -684,7 +684,7 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 | `trigger` | 発生条件 | build log | history | status |
 |-----------|----------|-----------|---------|--------|
 | `polling` | systemd timer 等の通常起動で SHA 差分により build する。 | 記録する | 記録する | 記録する |
-| `force_interval` | SHA 差分なしだが `FORCE_BUILD_INTERVAL` 超過により build する。 | 記録する | 記録する | 記録する |
+| `force_interval` | SHA 差分なしだが `.server_config.force_build_interval_hours` 条件成立により build する。 | 記録する | 記録する | 記録する |
 | `manual` | `POST /api/build` により `.build_state.queued` へ投入された entry を処理する。 | 記録する | 記録する | 記録する |
 | `webhook` | GitHub Webhook 受信により `.build_state.queued` へ投入された entry を処理する。 | 記録する | 記録する | 記録する |
 | `retry_pending_transfer` | `.pending_transfers` の再送のみを実行する。 | 再送専用 log を作成する場合に記録する | 再送履歴を追記する場合に記録する | 記録する |
@@ -726,16 +726,18 @@ queue entry は JSON object とし、最低限 `id`、`trigger`、`created_at`�
 
 **cooldown / force build 判定契約：**
 
-判定順は queue、pending retry、circuit breaker、cooldown、SHA decision の順とする。manual queue entry の `payload.force=true` は cooldown を無視する。webhook queue entry は cooldown を適用する。`FORCE_BUILD_INTERVAL` は SHA 一致時だけ評価し、SHA 不一致時は常に通常 build とする。
+runner は起動ごとに `.server_config.build_cooldown_seconds` と `.server_config.force_build_interval_hours` を 1 回読み、当該起動中の cooldown / force build 判定に使用する。同一 runner 起動中に `.server_config` を再読込して判定値を変更してはならない。
+
+判定順は queue、pending retry、circuit breaker、cooldown、SHA decision の順とする。manual queue entry の `payload.force=true` は cooldown を無視する。webhook queue entry は cooldown を適用する。`force_build_interval_hours` は SHA 一致時だけ評価し、SHA 不一致時は常に通常 build とする。
 
 | 条件 | 結果 |
 |------|------|
 | `.build_state.last_finished_at=null` | cooldown は適用しない。 |
-| `BUILD_COOLDOWN_SECONDS=0` | cooldown は無効。 |
-| `now - last_finished_at < BUILD_COOLDOWN_SECONDS` | `skipped_cooldown`。GitHub API、pipeline、deploy、snapshot は実行しない。 |
-| SHA 一致かつ `FORCE_BUILD_INTERVAL=0` | `skipped_no_change`。 |
-| SHA 一致かつ `FORCE_BUILD_INTERVAL>0` かつ直近成功 build から指定時間未満 | `skipped_no_change`。 |
-| SHA 一致かつ `FORCE_BUILD_INTERVAL>0` かつ直近成功 build から指定時間以上 | `force_interval` として build を実行する。 |
+| `.server_config.build_cooldown_seconds=0` | cooldown は無効。 |
+| `now - last_finished_at < build_cooldown_seconds` | `skipped_cooldown`。GitHub API、pipeline、deploy、snapshot は実行しない。 |
+| SHA 一致かつ `.server_config.force_build_interval_hours=0` | `skipped_no_change`。 |
+| SHA 一致かつ `force_build_interval_hours>0` かつ直近成功 build から指定時間未満 | `skipped_no_change`。 |
+| SHA 一致かつ `force_build_interval_hours>0` かつ直近成功 build から指定時間以上 | `force_interval` として build を実行する。 |
 
 force interval の直近成功 build は `.build_history` のうち同じ `branch` と `target_file` で status が `success` または `success_deploy_pending` の最新行とする。`.build_history` が存在しない、または該当行がない場合は force interval 条件成立として build する。
 
@@ -812,8 +814,8 @@ components/runner.go 起動（systemd タイマーから呼び出し）
     │       ├─ 成功（HTTP 2xx）→ INFO ログ、エントリを .notify_pending から削除
     │       └─ 失敗（HTTP エラー・接続失敗）→ ERROR ログ、エントリを保持（次回起動時に再試行）
     │
-    ├─ [クールダウンチェック] BUILD_COOLDOWN_SECONDS > 0 の場合
-    │   └─ .build_state.last_finished_at から BUILD_COOLDOWN_SECONDS 秒未満
+    ├─ [クールダウンチェック] build_cooldown_seconds > 0 の場合
+    │   └─ .build_state.last_finished_at から build_cooldown_seconds 秒未満
     │       → INFO ログ（`COOLDOWN: skip, last_build N秒前`）、正常終了
     │
     ├─ BRANCH_TARGETS の各エントリを順次処理：
@@ -831,8 +833,8 @@ components/runner.go 起動（systemd タイマーから呼び出し）
     │   │        └─ 残日数 > 7 日 → 処理継続（チェックのみ）
     │   │
     │   ├─ SHA 比較（sha_file の前回 SHA と比較）
-    │   │   ├─ 一致（変更なし）かつ FORCE_BUILD_INTERVAL = 0 → INFO ログ、このエントリをスキップ
-    │   │   ├─ 一致（変更なし）かつ FORCE_BUILD_INTERVAL > 0 → 前回ビルドから指定時間以上経過していれば強制ビルド続行
+    │   │   ├─ 一致（変更なし）かつ force_build_interval_hours = 0 → INFO ログ、このエントリをスキップ
+    │   │   ├─ 一致（変更なし）かつ force_build_interval_hours > 0 → 前回ビルドから指定時間以上経過していれば強制ビルド続行
     │   │   └─ 不一致（変更あり）→ 続行
     │   │
     │   ├─ Step 2: Git Blobs API
@@ -1520,7 +1522,7 @@ adlaire-ci-runner --state-dir <state> --dry-run
 
 **前提状態：**
 
-- `.build_state.last_finished_at` が現在時刻から `BUILD_COOLDOWN_SECONDS` 未満。
+- `.build_state.last_finished_at` が現在時刻から `build_cooldown_seconds` 未満。
 - `.build_state.queued` は空。
 
 **期待結果 A: polling**

@@ -707,8 +707,8 @@ API の P0〜P5 実装順序、必須検証、fixture 名、入力状態、期�
 | `POST` | `/api/schedule/pause` | 要 | ポーリングを一時停止する |
 | `POST` | `/api/schedule/resume` | 要 | ポーリングを再開する |
 | `POST` | `/api/schedule/allowed-hours` | 要 | 自動ビルド許可時間帯を設定・解除する |
-| `POST` | `/api/schedule/force-interval` | 要 | `FORCE_BUILD_INTERVAL`（強制再ビルド間隔）を動的変更する |
-| `POST` | `/api/schedule/cooldown` | 要 | `BUILD_COOLDOWN_SECONDS`（ビルドクールダウン秒数）を動的変更する |
+| `POST` | `/api/schedule/force-interval` | 要 | `.server_config.force_build_interval_hours` を保存する |
+| `POST` | `/api/schedule/cooldown` | 要 | `.server_config.build_cooldown_seconds` を保存する |
 | `GET` | `/api/notify-config` | 要 | Webhook 通知設定を返す |
 | `POST` | `/api/notify-config` | 要 | Webhook 通知設定を更新する |
 | `GET` | `/api/notify-log` | 要 | Webhook 送信履歴（日時・イベント・HTTP ステータス・成否）を返す |
@@ -1606,7 +1606,7 @@ Content-Type: application/json
 { "message": "Force build interval updated", "hours": 24 }
 ```
 
-- `components/runner.go` 側の `FORCE_BUILD_INTERVAL` を動的変更する（`.server_config` に保存し、起動時に読み込む）
+- `.server_config.force_build_interval_hours` を保存する。runner による読込タイミングと判定適用は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13 の cooldown / force build 判定契約を正とする。
 - `hours` は 0 以上の整数。0 で機能無効化
 
 **`POST /api/schedule/cooldown` リクエスト / レスポンス：**
@@ -1619,7 +1619,7 @@ Content-Type: application/json
 { "message": "Build cooldown updated", "seconds": 120 }
 ```
 
-- `components/runner.go` 側の `BUILD_COOLDOWN_SECONDS` を動的変更する（`.server_config` に保存し、起動時に読み込む）
+- `.server_config.build_cooldown_seconds` を保存する。runner による読込タイミングと判定適用は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13 の cooldown / force build 判定契約を正とする。
 - `seconds` は 0 以上の整数。0 で機能無効化
 
 ---
