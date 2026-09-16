@@ -4483,6 +4483,25 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 
 上表の body は空白差分を除いて固定とする。`500` の response body に Go error、path、secret、状態ファイル内容、外部 API response body を含めてはならない。内部原因は server log にだけ固定コード付きで出力する。
 
+**API 実行順・副作用境界固定契約：**
+
+全 endpoint は、下表の順序と副作用境界に従う。endpoint 固有節で異なる順序を明記していない限り、実装者判断で検証順、状態読取、状態書込、外部呼び出し、ログ追記の順序を入れ替えてはならない。
+
+| 段階 | 処理 | 失敗時 status | 失敗時副作用 |
+|------|------|---------------|--------------|
+| 1 | path 解決。未知 path を判定する。 | `404` | 状態ファイル、外部 API、監査ログ、設定ログを変更しない。`.api_access_log` だけ §27.6 に従って記録する。 |
+| 2 | method 検証。path が存在し method が不一致か判定する。 | `405` | endpoint 固有処理を開始しない。`.api_access_log` 以外を変更しない。 |
+| 3 | body 禁止、body size、JSON parse を検証する。`Request=none` endpoint では JSON parse を行わない。 | `400` / `413` | 認証、状態読取、状態書込、外部呼び出しを行わない。 |
+| 4 | access control、maintenance、認証不要 endpoint 判定、Bearer/session/API token 認証を実行する。 | `401` / `403` / `503` | 認証失敗時は endpoint 状態を読まない。認証処理で定義された session/ticket 更新とログ追記だけを許可する。 |
+| 5 | scope、rate limit、権限を判定する。 | `403` / `429` | endpoint 固有の状態書込、外部呼び出し、コマンド実行を行わない。rate limit 状態更新と監査ログは §27.47 に限定する。 |
+| 6 | query、path parameter、body schema、enum、範囲を検証する。 | `422` | 状態ファイルを変更しない。外部 API、systemd、runner、hook、通知を呼び出さない。 |
+| 7 | endpoint 固有の read adapter を呼び、状態競合を判定する。 | `409` / `500` | write lock を取得していても target を変更しない。tmp file があれば削除する。 |
+| 8 | endpoint 固有処理を実行し、必要な状態ファイルを §22.0d の Write 列順に更新する。 | endpoint 固有 | 途中失敗時の巻き戻しは、endpoint 固有節または §26 rollback 節に明記された範囲だけ行う。 |
+| 9 | `.config_log`、`.audit_log`、`.access_log`、`.api_access_log` を仕様順に追記する。 | `500` | response を成功扱いにしない。既に確定済みの endpoint 状態は自動推測で再変更しない。 |
+| 10 | response body と header を確定する。 | - | response 生成時に追加の状態読取、状態書込、外部呼び出しを行わない。 |
+
+`GET` endpoint は段階 8 で状態ファイルを書き換えない。`POST`、`DELETE` endpoint でも、段階 6 までに失敗した場合は endpoint 固有の状態書込を一切行わない。外部 API 送信、systemd 操作、hook 実行、通知送信、snapshot 操作は、endpoint 固有節の処理順に現れる場合だけ実行する。実装者判断で「先に外部確認してから validation error を返す」処理にしてはならない。
+
 ### 22.0a 状態ファイル共通仕様
 
 `components/api.go` および拡張後 `components/runner.go` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に本節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
@@ -4546,6 +4565,23 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 8. ロックファイルを削除する。
 
 手順 3〜7 の途中で失敗した場合は target を変更せず、tmp を削除し、ロックを削除して `500 Internal Server Error` を返す。`os.Rename` 後の `Sync` に失敗した場合は target を維持し、ERROR ログと `.config_log` へ失敗を記録して `500` を返す。複数ファイル更新 API は §22.0d の Write 列順にこの手順を実行し、途中失敗時は未処理ファイルを書き込まない。既に書き込んだファイルの自動ロールバックは行わず、`.config_log` に失敗内容を記録する。
+
+**状態ファイル schema 厳格化契約：**
+
+状態ファイルの読込、正規化、保存は以下に固定する。§22.0c または個別機能節で例外を明記していない限り、実装者判断で旧形式、未知 key、null、欠落配列を成功扱いにしてはならない。
+
+| 対象 | 読込時 | 保存時 | 失敗時 |
+|------|--------|--------|--------|
+| 未知 key | JSON object に schema 未定義 key がある場合は破損扱いとする。例外は §22.0c で明記した旧形式正規化だけ。 | 未知 key を保存しない。既存未知 key を黙って削除して保存しない。 | read endpoint は `500 {"error":"State file is corrupted"}`。write endpoint は target を変更しない。 |
+| 必須 key 不足 | 既定値補完が個別節で明記されていない場合は破損扱いとする。 | 必須 key はすべて明示保存する。 | 初期値再生成が §22.0a 表で指定されたファイルだけ再生成する。 |
+| `null` | 型欄が `string/null`、`object/null`、`integer/null` 等で明示した key だけ許可する。 | nullable でない key に `null` を保存しない。 | validation error または破損扱い。 |
+| 配列 | `[]` を既定値とする key は read adapter の戻り値で空配列を返してよい。 | 保存 API は配列 key を省略せず、空の場合も `[]` を明示する。 | 型不一致は `422` または `500`。 |
+| 数値 | 整数 key は JSON number の整数だけ許可する。小数、指数表記由来の非整数、文字列数値は拒否する。 | 整数は JSON number として保存する。 | API 入力は `422`、状態ファイル読込は破損扱い。 |
+| 時刻 | UTC ISO 8601 秒精度 `Z` だけ許可する。 | 保存前に UTC 秒精度へ丸める。ミリ秒、local timezone、offset 付き文字列を保存しない。 | API 入力は `422`、状態ファイル読込は破損扱い。 |
+| mode | 秘密情報ファイルは `0600`、通常 JSON / JSON Lines は `0644`、directory は `0755` を標準とする。 | chmod 失敗時は成功扱いにしない。 | chmod 失敗は `500`。target を更新した後の chmod 失敗は ERROR ログに残す。 |
+| 改行 | text / JSON / JSON Lines は LF で保存する。JSON object / array ファイルは末尾 LF 1 個を付ける。 | CRLF、BOM、末尾余分空白を新規保存しない。 | 入力 text が CRLF を含む場合の扱いは個別機能節に従う。 |
+
+旧 schema からの正規化は、本ファイルに「旧 key」「変換後 key」「削除する key」「保存するか読み取り時だけか」を明記した場合だけ実装する。明記がない旧形式は破損扱いとし、黙って推測変換してはならない。
 
 **API 状態読取アダプタ固定契約：**
 
@@ -7439,6 +7475,37 @@ export { AdlaireCI, AdlaireCIError };
 | 戻り値補完禁止 | API response にない値を SDK が推測して追加しない。表示用加工は UI 側で行う。 |
 | retry | SDK は自動 retry を行わない。ユーザー操作による再実行、または UI の明示的な再取得のみを許可する。 |
 
+**SDK transport / error 固定契約：**
+
+SDK の内部 request helper は、すべての public method で下表の処理順に固定する。public method ごとに個別 fetch 処理を複製してはならない。
+
+| 順序 | 処理 | 固定仕様 |
+|------|------|----------|
+| 1 | 引数検証 | 必須引数、型、空配列、数値範囲を検証する。失敗時は `TypeError` を投げ、`fetch()` を呼ばない。 |
+| 2 | URL 生成 | `baseUrl + path + query` を生成する。query key は method 契約表の順序で追加する。 |
+| 3 | body 生成 | `Request=none` では `body` と `Content-Type` を設定しない。JSON body ありの場合だけ `JSON.stringify()` する。 |
+| 4 | header 生成 | `Accept`、必要時 `Content-Type`、必要時 `Authorization` を付与する。token が空の場合は `Authorization` header を付けない。 |
+| 5 | timeout 設定 | 通常 request は `AbortController` で 30 秒 timeout。`streamBuild()` は接続確立まで 30 秒。 |
+| 6 | `fetch()` 実行 | network error、abort、CORS 等の失敗はすべて `AdlaireCIError(status=0,message="Network error")`、timeout だけ `"Request timeout"` とする。 |
+| 7 | response parse | 成功 / 失敗に関わらず JSON error body がある場合は parse する。parse 不能 error body は `responseBody` に text を保持し、`message` は HTTP status 固定文言とする。 |
+| 8 | token 変化 | `401` の場合だけ `this._token = null`。`403`、`429`、`500`、network error、timeout では token を破棄しない。 |
+| 9 | return / throw | `2xx` は endpoint の型で返す。`4xx` / `5xx` は `AdlaireCIError` を投げる。 |
+
+HTTP status と SDK error の対応は下表に固定する。
+
+| 条件 | `AdlaireCIError.status` | `message` | `details` | token |
+|------|-------------------------|-----------|-----------|-------|
+| API JSON error | HTTP status | response の `error` | response の `details` が配列なら保持 | `401` のみ破棄 |
+| API error body なし | HTTP status | `HTTP {status}` | `null` | `401` のみ破棄 |
+| API error JSON parse 不能 | HTTP status | `HTTP {status}` | `null` | `401` のみ破棄 |
+| network error | `0` | `Network error` | `null` | 維持 |
+| timeout | `0` | `Request timeout` | `null` | 維持 |
+| empty success JSON | `0` | `Empty JSON response` | `null` | 維持 |
+| invalid success JSON | `0` | `Invalid JSON response` | `null` | 維持 |
+| invalid SSE frame | `0` | `Invalid SSE frame` | `null` | 維持 |
+
+`429` は SDK で自動待機、自動再送、自動 refresh を行わない。binary response は `downloadSnapshot(id)` の `2xx` のみ `Blob` とし、`4xx` / `5xx` では可能な限り JSON error として parse して `AdlaireCIError` を投げる。`streamBuild()` は接続後の `close()` をユーザー停止として扱い、`AdlaireCIError` を投げない。接続後に network error または invalid frame が発生した場合は `StreamHandle.closed=true` にし、呼び出し側へ stream error として通知できる状態にする。
+
 **SDK メソッド実装固定契約：**
 
 | 項目 | 仕様 |
@@ -7894,6 +7961,26 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 成功後再取得列に複数 SDK method がある操作では、成功 message を先に表示せず、再取得がすべて成功した後に成功 message を表示する。途中の再取得が失敗した場合は、対象操作自体は成功済みとして扱い、`global-success` に操作成功の固定文言、該当 panel error に再取得失敗を表示する。再取得失敗を理由に同じ変更 API を自動再実行してはならない。
 
+**UI 操作状態固定契約：**
+
+標準管理ツールは、同一操作の多重実行、API 成功前の確定表示、秘密情報の残存を防ぐため、各操作を下表の状態で管理する。
+
+| 状態 | 開始条件 | UI 表示 | 許可される遷移 |
+|------|----------|---------|----------------|
+| `idle` | 初期状態、前操作完了後 | 操作可能。継続 disabled 条件がある場合は対象だけ disabled。 | `validating` |
+| `validating` | ユーザー操作直後 | panel error / success を空にする。field error を初期化する。 | `blocked` / `sending` |
+| `blocked` | UI 入力検証失敗、確認 dialog cancel | SDK method を呼ばない。該当 field error または表示変更なし。 | `idle` |
+| `sending` | SDK method 呼び出し開始 | 同一操作 button / submit だけ disabled。spinner または loading 表示は対象 panel 内だけ。 | `refreshing` / `failed` |
+| `refreshing` | 変更 API 成功後、成功後再取得が必要 | success を未表示のまま、再取得を左から順に実行する。 | `succeeded` / `refresh_failed` |
+| `succeeded` | 変更 API と必要な再取得が成功 | panel success を 1 行表示し、secret field を消去する。 | `idle` |
+| `refresh_failed` | 変更 API は成功したが再取得に失敗 | `global-success` に操作成功、panel error に再取得失敗を表示する。secret field を消去する。 | `idle` |
+| `failed` | SDK method が `AdlaireCIError` を投げる | panel error と field error を表示する。secret field を消去する。 | `idle` / `unauthorized` |
+| `unauthorized` | `401` | token / ticket / secret field を消去し、全 panel を hidden、`panel-login` だけ表示する。 | `idle` |
+
+同一 panel に複数操作がある場合でも、`sending` による disabled は同一操作グループに限定する。ただし §24 の disabled 優先順位で maintenance、forced password change、SSE 接続中、`401` が上位条件として残る場合は、その上位条件に従う。UI は `sending` または `refreshing` の間、同じ SDK method を再実行してはならない。
+
+秘密情報 field は、`blocked` のうち確認 dialog cancel を除き、`succeeded`、`refresh_failed`、`failed`、`unauthorized`、panel 遷移、logout、revoke all のいずれでも空にする。API 成功前に入力欄以外の確定表示、一覧更新、badge 更新、設定値反映を行ってはならない。入力中の form 値は、secret を除き、`failed` と `refresh_failed` では保持する。
+
 **UI DOM 更新契約：**
 
 | 項目 | 仕様 |
@@ -8156,6 +8243,22 @@ P2〜P5 UI の秘密情報消去条件は以下に固定する。
 
 上表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、個別節で別指定がない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
 
+**認証副作用順序固定契約：**
+
+認証関連 endpoint は、以下の順序で副作用を確定する。response を返した後に session、ticket、credentials、ログを遅延更新してはならない。
+
+| 処理 | 固定順序 | 失敗時 |
+|------|----------|--------|
+| `POST /api/login` password 不一致 | credentials 読込 → lock 判定 → hash 比較 → 失敗回数更新 → `.access_log` → `.audit_log` → `401` response | ログ追記失敗は `500`。失敗回数は戻さない。session/ticket は作成しない。 |
+| `POST /api/login` password 成功 / TOTP 無効 | credentials 読込 → hash 比較 → 失敗回数 reset → `.admin_credentials` 更新 → session token 生成 → `.access_log` → `.audit_log` → token response | credentials またはログ追記失敗は `500`。token は response しない。 |
+| `POST /api/login` password 成功 / TOTP 有効 | credentials 読込 → hash 比較 → 失敗回数 reset → ticket 生成 → `.access_log` → `.audit_log` → ticket response | ログ追記失敗は `500`。ticket は保存しない。 |
+| `POST /api/login/totp` 成功 | ticket 検証 → TOTP secret 読込 → code 検証 → `.totp_secret.last_accepted_step` 更新 → `.admin_credentials` 更新 → session token 生成 → `.access_log` → `.audit_log` → token response | 途中失敗時は token を response しない。ticket は成功/失敗いずれも再利用不可にする。 |
+| `POST /api/logout` | token 認証 → 対象 session 削除 → `.access_log` → `.audit_log` → response | ログ追記失敗は `500`。削除済み session は戻さない。 |
+| `POST /api/change-password` | token 認証 → current password 検証 → new password 検証 → salt/hash 生成 → `.admin_credentials` 更新 → 現 session 以外削除 → `.access_log` → `.audit_log` → response | credentials 更新失敗は session を変更しない。ログ追記失敗時は `500` だが更新済み credentials は戻さない。 |
+| `POST /api/sessions/revoke-all` | token 認証 → 現 session 以外を削除 → `.access_log` → `.audit_log` → response | ログ追記失敗時は `500`。削除済み session は戻さない。 |
+
+session token と login ticket は `crypto/rand` 成功後にだけ生成し、生成した値はメモリ上で hash 化して保持する。response body に含める token / ticket は、その request の成功 response 1 回だけに含める。`403`、`429`、`500`、network 切断検出時に、未送信 token をログや状態ファイルへ退避してはならない。
+
 **パスワード入力制約：**
 
 | 項目 | 仕様 |
@@ -8347,6 +8450,26 @@ Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は 
 | API setup 失敗 | runner binary、runner timer、runner state | API binary、admin 一時展開 directory | runner timer 停止、`.github_token` 変更。 |
 | admin UI 差し替え失敗 | 旧 admin UI、API binary、runner state | admin 一時 directory / backup directory | API restart、credentials 変更。 |
 | rollback 失敗 | 現在配置済み binary、state、secret | journal 確認対象の報告 | 追加 rollback 推測、state/history/secret 巻き戻し。 |
+
+**セットアップ / アップデート副作用固定契約：**
+
+セットアップ、管理 API 導入、アップデートは、下表の副作用境界を超えてはならない。実装者判断で部分成功を成功報告したり、secret、state、systemd、admin UI をまとめて巻き戻したりしてはならない。
+
+| 段階 | 変更可能対象 | 成功確定条件 | 失敗時固定動作 |
+|------|--------------|--------------|----------------|
+| 変数検証 | なし | すべての必須変数が空でなく、危険 path でない。 | 終了コード `2`。directory 作成、download、systemd 操作を行わない。 |
+| download | `DOWNLOAD_DIR` 配下だけ | 対象 asset と `SHA256SUMS` を取得し、size > 0。 | 既存 binary、state、secret、systemd、admin UI を変更しない。 |
+| checksum | `DOWNLOAD_DIR` 配下だけ | 対象 filename が `SHA256SUMS` に 1 回だけ存在し、SHA-256 が一致する。 | 未検証 asset を配置しない。 |
+| binary 配置 | `$BIN_DIR` の対象 binary だけ | 通常ファイルへ `0755` で配置し、`--version` が対象 version を返す。 | systemd restart を行わない。配置済み新 binary は rollback 表に従う。 |
+| secret / state 初期化 | 対象 secret / state file だけ | 一時ファイル、mode、rename、fsync、親 directory sync が成功する。 | systemd unit を変更しない。secret 平文を出力しない。 |
+| admin UI 展開 | admin 一時 directory、成功時のみ `$INSTALL_DIR/admin` | archive 安全検査、必須ファイル確認、差し替えがすべて成功する。 | 既存 admin UI を維持する。API restart を行わない。 |
+| systemd unit 配置 | 対象 unit file だけ | unit 書込、mode、`systemctl daemon-reload` が成功する。 | enable / restart / start を行わない。 |
+| service 起動 / 再起動 | 対象 unit だけ | `systemctl is-active` が `active`。API は health check も成功。 | rollback 表に従い、追加推測復旧を行わない。 |
+| 最終確認 | なし | §26.3、§26.3b、§26.5 の確認項目がすべて成功。 | 成功報告しない。確認失敗箇所と journal 確認対象を出力する。 |
+
+setup / update 実装は、各段階の開始と成功を stderr または stdout に固定文言で 1 行ずつ出してよいが、PAT、password、session token、API token、Webhook secret、SMTP password、Release URL の credential 部分は出力してはならない。secret file が既に存在する場合は、個別手順で上書きを明記している場合を除き、既存値を保持する。特に `.github_token`、`.admin_credentials`、`.webhook_secret`、`.smtp_secret` は、アップデートで自動上書きしない。
+
+`systemctl daemon-reload` 成功だけではセットアップ成功と扱わない。`enable --now`、`restart`、`is-active`、API 導入時の `/api/health` 確認まで完了して初めて成功とする。確認コマンドが利用環境に存在しない場合は、同等確認を実装 PR の検証で実施し、未確認のまま成功扱いにしない。
 
 ### §26.3 Go 版初回セットアップ手順
 
