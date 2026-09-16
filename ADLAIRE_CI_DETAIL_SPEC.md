@@ -577,6 +577,17 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | 設定変更の詳細 diff 記録 | `components/api.go` | §22.0a、§22.0e、§27.20 | `.config_log` の diff 文字列、対象 API、マスク条件が一致する。 |
 | テーブルのソート機能 | `components/builder.go` | §7.14 | クリック操作、昇順/降順、`aria-sort`、インジケーターが一致する。 |
 | キーボードショートカット | `components/builder.go` | §7.12 | `/`、`Escape`、`t` の対象、フォーカス条件、入力中の無効化が一致する。 |
+| 複数ファイル監視 | `components/runner.go` / `components/builder.go` / `components/api.go` | §11、§12、§13、§15、§27.21 | `target_files` の検証、対象別 SHA 差分、build target 決定、履歴・ログ・API 表示が一致する。 |
+| ビルドパイプライン YAML 定義 | `components/runner.go` / `components/api.go` | §12、§13、§15、§22.0e、§27.22 | `.pipeline.yml` の内製 subset parse、step 実行順、timeout、env、失敗時 status、API 保存が一致する。 |
+| ローカルファイル監視モード | `components/runner.go` | §11、§12、§13、§27.23 | GitHub API を呼ばず、local snapshot の SHA-256 差分だけで変更検出し、trigger と status が一致する。 |
+| タグ付きコミットのみビルド | `components/runner.go` / `components/api.go` | §12、§13、§15、§22.0e、§27.24 | tag pattern、GitHub tags API、skip 条件、build log/history、設定 API が一致する。 |
+| ビルドキャッシュ | `components/builder.go` / `components/runner.go` | §5、§8、§11、§13、§27.25 | `.build_cache.json`、入力 manifest、再利用条件、無効化条件、report counters が一致する。 |
+| 並列マルチターゲットビルド | `components/runner.go` | §12、§13、§14a、§15、§27.26 | worker 上限、target 別 status、pending transfer、最終 build status、ログ順序が一致する。 |
+| ビルド前後フック | `components/runner.go` / `components/api.go` | §13、§15、§22.0e、§27.27 | `.hooks` schema、pre/post 実行、abort 条件、hook log、API CRUD が一致する。 |
+| 依存ファイルトラッキング | `components/builder.go` / `components/runner.go` | §4.3、§5、§11、§13、§27.28 | `.dependency_manifest.json`、依存抽出、関連 target 判定、破損時 full build が一致する。 |
+| リモートビルド対応 | `components/runner.go` / `components/api.go` | §12、§13、§14a、§15、§27.29 | remote command、archive 取得、manifest 検証、状態記録、失敗時 rollback 不実行が一致する。 |
+| ビルド承認フロー | `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §11、§13、§15、§16、§22.0e、§27.30 | `.approval_queue`、承認/却下 API、通知、timeout、UI 操作、履歴 status が一致する。 |
+| ブランチ別環境変数 | `components/runner.go` / `components/api.go` | §12、§13、§15、§22.0e、§27.31 | branch env schema、許可 key、secret mask、process env 注入、API 保存が一致する。 |
 
 ---
 
@@ -2180,6 +2191,11 @@ adlaire-ci-build --src testdata/builder/site/docs --out /tmp/adlaire-ci-fixture-
 | `/opt/adlaire-builder/.build_state` | ビルド実行状態、週次サマリー送信日等。 |
 | `/opt/adlaire-builder/.build_status.json` | runner 現在状態と直近結果の要約。API / UI / MCP の read-only 参照元。 |
 | `/opt/adlaire-builder/.build_circuit_state` | サーキットブレーカー状態。 |
+| `/opt/adlaire-builder/.local_watch_state.json` | ローカルファイル監視モードの SHA-256 snapshot。 |
+| `/opt/adlaire-builder/.build_cache.json` | ビルドキャッシュの manifest。 |
+| `/opt/adlaire-builder/.build_cache/` | ビルドキャッシュの page fragment 保存先。 |
+| `/opt/adlaire-builder/.dependency_manifest.json` | Markdown 入力と依存ファイルの対応 manifest。 |
+| `/opt/adlaire-builder/.approval_queue` | ビルド承認フローの保留 queue。 |
 | `/opt/adlaire-builder/.build_logs/` | ビルドごとの個別ログ。 |
 | `/opt/adlaire-builder/.snapshots/` | ビルド成果物スナップショット。 |
 
@@ -2206,6 +2222,7 @@ adlaire-ci-build --src testdata/builder/site/docs --out /tmp/adlaire-ci-fixture-
 ├── .smtp_secret         # SMTP パスワード（プレーンテキスト、パーミッション 600）
 ├── .dashboard_layout    # ダッシュボードウィジェットレイアウト（JSON）
 ├── .webhook_events.json # Webhook 受信イベントログ（JSON Lines 形式、1行1イベント）
+├── .approval_queue      # ビルド承認フロー保留 queue（JSON Lines）
 └── admin/
     ├── index.html           # 管理画面（単一ファイル完結）
     └── adlaire-ci-sdk.js    # JavaScript SDK（管理画面に同梱）
@@ -2717,8 +2734,10 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 | `retry_pending_transfer` | `.pending_transfers` の再送のみを実行する。 | 再送専用 log を作成する場合に記録する | 再送履歴を追記する場合に記録する | 記録する |
 | `startup_config_integrity` | 設定ファイル起動時整合性チェックで破損復旧または停止が発生する。 | 作成しない | 追記しない | 記録する |
 | `rollback` | `POST /api/history/{id}/rollback` により snapshot を再転送する。 | 記録する | 記録する | 記録する |
+| `local_watch` | `watch_mode="local"` の local SHA 差分により build する。 | 記録する | 記録する | 記録する |
+| `approval` | `POST /api/approvals/{id}/approve` により承認済み queue entry を処理する。 | 記録する | 記録する | 記録する |
 
-queue entry の `trigger` は `"manual"` または `"webhook"` のみ許可する。`"force"` は使用せず、強制実行 API は queue 保存時に `"manual"` と `payload.force=true` を保存する。`force_interval` は runner が `.build_state.last_finished_at` と設定値から内部判定する場合のみ使用する。
+queue entry の `trigger` は `"manual"`、`"webhook"`、`"approval"` のみ許可する。`"force"` は使用せず、強制実行 API は queue 保存時に `"manual"` と `payload.force=true` を保存する。`force_interval` と `local_watch` は runner が設定値と差分検出結果から内部判定する場合のみ使用する。
 
 **`.build_status.json` schema：**
 
@@ -3635,6 +3654,11 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `components/runner.go` / `components/api.go` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.build_status.json` | JSON object | `{"schema_version":1,"updated_at":null,"status":"none","running":false,"current_build_id":null,"last_build_id":null,"last_trigger":null,"last_target_status":null,"last_branch":null,"last_target_file":null,"last_blob_sha":null,"last_commit_sha":null,"last_started_at":null,"last_finished_at":null,"last_duration_seconds":null,"last_error":null,"last_deploy_status":null,"pending_transfers_count":0,"notify_pending_count":0,"circuit_open":false,"circuit_consecutive_failures":0,"output_sha256":null,"size_warn":false}` | `components/runner.go` | `.build_status.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `components/runner.go` / `components/api.go` | `.build_circuit_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.local_watch_state.json` | JSON object | `{"files":{}}` | `components/runner.go` | `.local_watch_state.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、full build 後に再生成する。 |
+| `.build_cache.json` | JSON object | `{"schema_version":1,"entries":{}}` | `components/builder.go` | 破損時は WARN を出し、cache miss として扱い、成功後に再生成する。 |
+| `.build_cache/pages/` | directory | 空ディレクトリ | `components/builder.go` | entry 不一致または読み取り不能 file は miss とし、他 entry は継続使用する。 |
+| `.dependency_manifest.json` | JSON object | `{"pages":{}}` | `components/builder.go` / `components/runner.go` | 破損時は full build とし、成功後に再生成する。 |
+| `.approval_queue` | JSON Lines | 空ファイル | `components/runner.go` / `components/api.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
 | `.repo_config` | JSON object | `{}` | `components/api.go` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
 | `.config_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.access_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
@@ -3950,7 +3974,7 @@ Queue entry:
 | `build_at` | string | 必須 | ISO 8601 | ビルド完了日時。 |
 | `sha` | string/null | 必須 | Git SHA または `null` | 対象 blob / commit SHA。 |
 | `status` | string | 必須 | `"success"`, `"failure"`, `"cancelled"`, `"hook_error"` | ビルド結果。 |
-| `trigger` | string | 必須 | `"polling"`, `"force_interval"`, `"manual"`, `"webhook"`, `"retry_pending_transfer"`, `"startup_config_integrity"`, `"rollback"` | 起動種別。 |
+| `trigger` | string | 必須 | `"polling"`, `"force_interval"`, `"manual"`, `"webhook"`, `"retry_pending_transfer"`, `"startup_config_integrity"`, `"rollback"`, `"local_watch"`, `"approval"` | 起動種別。 |
 | `output_size_bytes` | integer/null | 必須 | 0 以上または `null` | 成果物サイズ。 |
 | `output_sha256` | string/null | 任意 | SHA-256 hex または `null` | 成果物チェックサム。 |
 | `duration_seconds` | integer/null | 必須 | 0 以上または `null` | 所要時間。 |
@@ -4445,6 +4469,9 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | `POST` | `/api/smtp-test` | 要 | SMTP テスト送信を行う |
 | `GET` | `/api/queue` | 要 | ビルドキュー状態を返す |
 | `DELETE` | `/api/queue` | 要 | 待機中ビルドキューを削除する |
+| `GET` | `/api/approvals` | 要 | ビルド承認待ち entry を返す |
+| `POST` | `/api/approvals/{id}/approve` | 要 | 指定承認 entry を承認し build queue へ投入する |
+| `POST` | `/api/approvals/{id}/reject` | 要 | 指定承認 entry を却下する |
 | `GET` | `/api/dashboard-layout` | 要 | ダッシュボードウィジェット設定を返す |
 | `POST` | `/api/dashboard-layout` | 要 | ダッシュボードウィジェット設定を置換する |
 | `GET` | `/api/tokens` | 要 | API token 一覧を返す。token 本体は返さない |
@@ -5403,7 +5430,7 @@ Content-Type: application/json
 
 ビルド完了時に条件式を評価し、マッチしたルールのタグを `.build_history` のエントリへ自動追記する（手動タグと共存する）。`.tag_rules` に保存する。
 
-条件式で使用可能な変数：`status`（`"success"` / `"failure"`）/ `duration_seconds`（整数）/ `trigger`（`"polling"` / `"force_interval"` / `"manual"` / `"webhook"` / `"retry_pending_transfer"` / `"startup_config_integrity"` / `"rollback"`）
+条件式で使用可能な変数：`status`（`"success"` / `"failure"`）/ `duration_seconds`（整数）/ `trigger`（`"polling"` / `"force_interval"` / `"manual"` / `"webhook"` / `"retry_pending_transfer"` / `"startup_config_integrity"` / `"rollback"` / `"local_watch"` / `"approval"`）
 演算子：`==`・`!=`・`>`・`<`・`>=`・`<=`
 
 **`GET /api/tag-rules` レスポンス例：**
@@ -5620,7 +5647,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 設定は `.repo_config` に保存し、`GET /api/repo-info` もこのファイルを参照する。
 
-`trigger` の有効値：§13 の固定値（`"polling"`、`"force_interval"`、`"manual"`、`"webhook"`、`"retry_pending_transfer"`、`"startup_config_integrity"`、`"rollback"`）
+`trigger` の有効値：§13 の固定値（`"polling"`、`"force_interval"`、`"manual"`、`"webhook"`、`"retry_pending_transfer"`、`"startup_config_integrity"`、`"rollback"`、`"local_watch"`、`"approval"`）
 
 **エラーレスポンス形式：**
 
@@ -5720,6 +5747,9 @@ class AdlaireCI {
   getWebhookEvents(limit = 50, offset = 0) // GET /api/webhook-events?limit={limit}&offset={offset} → Promise<{events: WebhookEventRecord[], total: number}>
   getWebhookConfig()          // GET /api/webhook-config    → Promise<{configured: boolean}>
   setWebhookConfig(secret)    // POST /api/webhook-config   → Promise<{message: string}>
+  getApprovals()              // GET /api/approvals         → Promise<{approvals: ApprovalRecord[]}>
+  approveBuild(id)            // POST /api/approvals/{id}/approve → Promise<{message: string, queued: boolean}>
+  rejectBuild(id)             // POST /api/approvals/{id}/reject  → Promise<{message: string}>
   getHistoryComment(id)        // GET /api/history/{id}/comment  → Promise<CommentObject>
   setHistoryComment(id, comment) // POST /api/history/{id}/comment → Promise<{message: string}>
   setRepoConfig(config)        // POST /api/repo-config      → Promise<{message: string}>
@@ -5897,6 +5927,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | `TagRule` | `id`, `condition`, `tags` | なし | `tags` | `GET/POST /api/tag-rules` |
 | `PipelineConfig` | `extra_args`, `env` | なし | `extra_args` | `GET /api/pipeline-config` |
 | `SmtpConfig` | `host`, `port`, `user`, `tls`, `from`, `to`, `on`, `enabled`, `password_set` | `host`, `user`, `from` | `to`, `on` | `GET /api/smtp-config` |
+| `ApprovalRecord` | `id`, `status`, `branch`, `sha`, `target`, `created_at`, `expires_at` | なし | なし | `GET /api/approvals` |
 | `BackupObject` | `exported_at`, `server_config`, `notify_config` | なし | 設定内容に従う | `GET /api/backup` |
 | `ExportObject` | `exported_at`, `history` | なし | `history` | `GET /api/history/export` |
 
@@ -5923,6 +5954,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | パスワード変更 | `panel-password` | `password` | `form-password` | `current_password`, `new_password` | `btn-change-password` |
 | ステータス | `panel-status` | `status` | なし | なし | `btn-refresh-status`, `btn-save-dashboard-layout` |
 | 手動実行 | `panel-build` | `build` | なし | なし | `btn-build`, `btn-build-force`, `btn-build-cancel`, `btn-stream-close`, `btn-queue-clear` |
+| 承認待ち | `panel-approvals` | `approvals` | なし | なし | `btn-refresh-approvals` |
 | ログビューア | `panel-logs` | `logs` | `form-log-search` | `n`, `q`, `from`, `to`, `level` | `btn-load-logs`, `btn-search-logs`, `btn-export-logs`, `btn-cleanup-logs`, `btn-archive-logs` |
 | ビルド履歴 | `panel-history` | `history` | `form-history-filter` | `page`, `per_page`, `trigger`, `tag`, `flagged` | `btn-export-history` |
 | システム情報 | `panel-system` | `system` | `form-pat` | `token`, `pat_expires_at` | `btn-pat-verify`, `btn-pat-update` |
@@ -5951,6 +5983,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | パスワード変更 | 現在・新パスワード入力フォーム | `must_change: "prompt"` または `"forced"` 時（`"forced"` 時は他パネル非表示） |
 | ステータス | 最終ビルド時刻・SHA・成否・出力サイトリンク・ダッシュボードウィジェット編集モード（表示するウィジェットをチェックボックスで選択・並び替え・保存） | ログイン済み |
 | 手動実行 | ビルドトリガーボタン・SHA リセットを含む強制ビルドボタン・キャンセルボタン（実行中のみ有効）・実行結果表示・リアルタイムログ表示エリア（SSE ストリーミング）・キュー状態表示（待機中件数・クリアボタン） | ログイン済み |
+| 承認待ち | 承認待ち build の一覧（id・branch・sha・target・status・created_at・expires_at）・承認ボタン・却下ボタン・再取得ボタン。pending 以外の entry は操作ボタンを disabled にする。 | ログイン済み |
 | ログビューア | 最新ビルドログ（n 行・キーワードフィルター・ログレベルフィルターボタン（INFO / WARNING / ERROR / DEBUG）・JSON エクスポートボタン・横断検索フォーム（期間指定）・検索結果一覧） | ログイン済み |
 | ビルド履歴 | 過去ビルド一覧（日時・SHA・成否・トリガー種別・所要時間・重要フラグ列・タグ列・ログ表示リンク・コメント入力欄）・フラグ付きのみ表示フィルター・タグフィルター・ページネーション UI・JSON エクスポートボタン | ログイン済み |
 | システム情報 | 出力サイトサイズ・更新日時・稼働時間・ディスク使用量（ログ合計・出力サイト）・PAT 即時検証ボタン・PAT 更新フォーム・PAT 有効期限表示（設定フォーム・期限切れ間近で警告表示）・GitHub API レート制限表示 | ログイン済み |
@@ -6912,6 +6945,8 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 | `retry_pending_transfer` | `.pending_transfers` の再送のみを実行する。 | 通常 build とは別 trigger。 |
 | `startup_config_integrity` | 起動時整合性チェックで復旧、正規化、または停止が発生する。 | build log / history は作成しない。 |
 | `rollback` | `POST /api/history/{id}/rollback` により snapshot を再転送する。 | 新しい build id を作成する。 |
+| `local_watch` | `watch_mode="local"` の local SHA 差分により build する。 | GitHub API を呼ばない。 |
+| `approval` | `POST /api/approvals/{id}/approve` 由来の queue entry を処理する。 | 承認済み entry のみ。 |
 
 上表以外の値を保存、返却、表示してはならない。特に `"auto"`、`"force"`、`"scheduled"`、`"timer"` は使用禁止とする。
 
@@ -6922,7 +6957,7 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 | `.build_logs/{id}.json.trigger` | build log を作成する全処理で必須。 |
 | `.build_history.trigger` | build history を追記する全処理で必須。 |
 | `.build_status.json.last_trigger` | build、skip、復旧、rollback の最終 trigger を保存する。 |
-| Queue entry `trigger` | `"manual"` または `"webhook"` のみ許可する。 |
+| Queue entry `trigger` | `"manual"`、`"webhook"`、`"approval"` のみ許可する。 |
 | API response | `StatusObject.last_trigger`、`HistoryRecord.trigger`、`DashboardObject.status.last_trigger` で同じ値を返す。 |
 
 **判定順序：**
@@ -6931,15 +6966,16 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 2. 起動時整合性チェックで復旧、正規化、停止が発生した場合、`startup_config_integrity` を `.build_status.json` に記録する。
 3. queue entry が存在する場合、entry の `trigger` を採用する。
 4. pending transfer の再送だけで終了する起動は `retry_pending_transfer` とする。
-5. SHA 差分がある通常起動は `polling` とする。
-6. SHA 差分がなく force interval 条件を満たす場合は `force_interval` とする。
-7. rollback API が作成する処理は `rollback` とする。
+5. `watch_mode="local"` で local SHA 差分がある場合は `local_watch` とする。
+6. SHA 差分がある通常起動は `polling` とする。
+7. SHA 差分がなく force interval 条件を満たす場合は `force_interval` とする。
+8. rollback API が作成する処理は `rollback` とする。
 
 複数条件が同時に成立した場合は、上記順序で最初に該当した trigger を採用する。1 回の runner 起動で複数 branch target を処理する場合、target ごとに同じ trigger を保存する。ただし queue entry が target を指定する場合は、対象 target のみにその trigger を適用する。
 
 **API / SDK / UI：**
 
-`GET /api/history` の `trigger` query は上表の値だけを受け付ける。不正値は `422` を返す。SDK `getHistory({trigger})` は値を変換せず送信する。UI は filter の選択肢を上表の 7 件に固定し、未知 trigger を受け取った場合は `Unknown` へ丸めず、該当行に `invalid trigger` エラーを表示する。
+`GET /api/history` の `trigger` query は上表の値だけを受け付ける。不正値は `422` を返す。SDK `getHistory({trigger})` は値を変換せず送信する。UI は filter の選択肢を上表の 9 件に固定し、未知 trigger を受け取った場合は `Unknown` へ丸めず、該当行に `invalid trigger` エラーを表示する。
 
 **異常系：**
 
@@ -7411,3 +7447,479 @@ runner 起動時に、現在 UTC の曜日と時が設定値に一致し、`.bui
 | secret 変更 | 値は `"***"` だけ保存される。 |
 | 変更なし | 状態ファイルも config log も更新しない。 |
 | 複数 key | key 昇順で diff_text を生成する。 |
+
+### 27.21 複数ファイル監視
+
+本機能の目的は、単一 `target_file` 前提を拡張し、複数 Markdown ファイルまたは Markdown ディレクトリを 1 回の runner 起動で監視、差分判定、ビルド対象決定できるようにすることである。
+
+対象コンポーネントは `components/runner.go`、`components/builder.go`、`components/api.go` とする。runner は差分検出と build target 決定、builder は複数入力の静的サイト生成、API は設定表示・更新を担当する。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定 key | `.branch_config.branch_targets[].target_files` |
+| 型 | string 配列。要素は UTF-8 path。 |
+| 既定値 | 既存 `target_file` を 1 要素配列へ正規化する。 |
+| 上限 | branch target ごとに 100 件。 |
+| 許容 path | 相対 path のみ。空文字、絶対 path、`..`、NUL、改行は禁止。 |
+| SHA cache | `.sha_cache/{branch}/{target_hash}.sha` に target file 単位で保存する。 |
+| build log | `.build_logs/{id}.json.changed_targets[]` に `{target_file,before_sha,after_sha}` を保存する。 |
+
+**正常系：**
+
+1. runner 起動時に `.branch_config` を読み、`target_file` と `target_files` を正規化する。
+2. `target_files` を辞書順に重複排除する。
+3. 各 target の GitHub content SHA または local SHA-256 を取得する。
+4. SHA cache と比較し、変更 target だけ `changed_targets` に追加する。
+5. `changed_targets` が空で force 条件もない場合は `skipped_no_change` とする。
+6. 1 件以上変更がある場合は builder に `--src` として branch target の `src` を渡し、対象一覧を `ADLAIRE_CHANGED_TARGETS` 環境変数の JSON array で渡す。
+7. build 成功時だけ対象 target の SHA cache を更新する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| `target_files` が空 | `422`。API 保存不可。runner は設定エラーで終了コード `2`。 |
+| target が GitHub 上に存在しない | 該当 target を `missing` として build log に記録し、全体 status は `failure`。SHA cache は更新しない。 |
+| 一部 target の SHA 取得失敗 | retry 対象。最終失敗時は build 実行しない。 |
+| SHA cache 破損 | 該当 target は変更ありとして扱い、成功時に上書きする。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 1 件変更 | `changed_targets` が 1 件、該当 SHA cache だけ更新。 |
+| 複数変更 | 辞書順で記録、build は 1 回だけ実行。 |
+| 変更なし | build なし、status `skipped_no_change`。 |
+| 不正 path | API は `422`、runner は終了コード `2`。 |
+
+### 27.22 ビルドパイプライン YAML 定義
+
+本機能の目的は、固定 `pipeline.sh` 依存をなくし、内製 YAML subset で build step を明示定義できるようにすることである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。外部 YAML ライブラリは使用しない。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定ファイル | `.pipeline.yml` または `.pipeline_config.inline_yaml` |
+| API | `GET /api/pipeline-config` / `POST /api/pipeline-config` |
+| YAML root | `version: 1`、`steps:` のみ許可。 |
+| step key | `name`、`phase`、`command`、`args`、`env`、`timeout_seconds`、`required`。 |
+| phase | `"precheck"`、`"build"`、`"test"`、`"deploy"`、`"post"`。 |
+| command | 絶対 path または PATH 解決可能なコマンド名。shell 文字列は禁止。 |
+| args | string 配列。空文字、NUL、改行は禁止。 |
+| env | string:string object。key は `^[A-Z_][A-Z0-9_]{0,63}$`。 |
+| timeout_seconds | 1〜86400。省略時は `build_timeout_seconds`。 |
+
+**YAML subset：**
+
+対応する構文は、2 space indent、string scalar、integer scalar、boolean scalar、string array、object array のみとする。anchor、alias、複数 document、flow style、tag、複数行 string、コメント行以外の inline comment は禁止する。禁止構文を検出した場合は parse error とする。
+
+**正常系：**
+
+1. `.pipeline.yml` があれば優先し、なければ `.pipeline_config.inline_yaml` を使用する。
+2. YAML subset parser で `PipelineConfig` に変換する。
+3. step を定義順に実行する。
+4. `required=false` の step 失敗は WARN として継続し、build log に `optional_failed` を記録する。
+5. `required=true` または省略 step の失敗は build を中断する。
+6. 各 step の stdout/stderr、exit_code、duration_seconds を `.build_logs/{id}.json.pipeline_steps[]` に保存する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| YAML parse error | build 実行前に `failure_pipeline_config`、終了コード `2`。 |
+| command 不正 | `failure_pipeline_config`。 |
+| timeout | step を kill し、`failure_timeout`。 |
+| `.pipeline.yml` 読み取り権限エラー | 終了コード `1`、状態更新なし。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| build step 成功 | step log と build success が記録される。 |
+| required step 失敗 | 後続 step を実行せず failure。 |
+| optional step 失敗 | WARN、後続 step 継続。 |
+| 禁止 YAML 構文 | parse error、build なし。 |
+
+### 27.23 ローカルファイル監視モード
+
+本機能の目的は、GitHub API を使わない環境で、ローカル Markdown 入力の変更を SHA-256 snapshot により検出することである。
+
+対象コンポーネントは `components/runner.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定 key | `.server_config.watch_mode` |
+| 値 | `"github"` または `"local"`。既定値 `"github"`。 |
+| local root | branch target の `src`。絶対 path 必須。 |
+| 状態 | `.local_watch_state.json` |
+| trigger | local 差分起動時は `"local_watch"`。 |
+
+`.local_watch_state.json` は `{ "files": { "<relative_path>": { "sha256": "...", "mtime_unix": 0, "size": 0 } } }` とする。mode は `600`。
+
+**正常系：**
+
+1. `watch_mode="local"` の場合、GitHub API、PAT、rate limit 処理を呼ばない。
+2. `src` 配下の `.md` と `.markdown` を辞書順に列挙する。
+3. hidden directory、`.git`、出力先 `out`、`.snapshots` は走査対象外とする。
+4. SHA-256 manifest を作成し、前回 `.local_watch_state.json` と比較する。
+5. 差分があれば build を実行し、成功時だけ state を更新する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| `src` 不在 | `failure_precheck`、終了コード `2`。 |
+| state 破損 | full build 扱い、成功時に state 再作成。 |
+| ファイル読み取り失敗 | build なし、終了コード `1`。 |
+| `watch_mode` 不正 | 起動時設定エラー、終了コード `2`。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 初回 | full build、state 作成。 |
+| 変更なし | `skipped_no_change`。 |
+| 1 ファイル変更 | build 実行、該当 SHA 更新。 |
+| GitHub token 不在 | local mode では失敗しない。 |
+
+### 27.24 タグ付きコミットのみビルド
+
+本機能の目的は、release tag が付いた commit だけを build 対象にする filter を提供することである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定 key | `.server_config.tag_filter` |
+| schema | `{ "enabled": boolean, "patterns": string[] }` |
+| pattern | `*` suffix の prefix match または完全一致のみ。正規表現は禁止。 |
+| 既定値 | `{ "enabled": false, "patterns": [] }` |
+| log | `.build_logs/{id}.json.matched_tags[]` |
+
+**正常系：**
+
+1. SHA 差分を検出する。
+2. `tag_filter.enabled=true` の場合、対象 commit に紐付く tags を GitHub refs API から取得する。
+3. `patterns` が空の場合は「任意の tag が 1 件以上」を条件とする。
+4. tag が条件に一致した場合だけ build を実行する。
+5. 不一致の場合は status `skipped_tag_filter` とし、SHA cache は更新しない。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| GitHub tags API 失敗 | retry 対象。最終失敗時は build なし、終了コード `3`。 |
+| pattern 不正 | API は `422`、runner は終了コード `2`。 |
+| tag 数が 1000 超 | 先頭 1000 件だけ評価し、WARN を記録する。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| tag 一致 | build 実行、matched_tags 記録。 |
+| tag 不一致 | build skip、SHA cache 未更新。 |
+| patterns 空で tag あり | build 実行。 |
+| API 失敗 | retry 後 failure、build なし。 |
+
+### 27.25 ビルドキャッシュ
+
+本機能の目的は、複数ページ静的サイト生成時に未変更入力の変換結果を再利用し、build 時間を短縮することである。
+
+対象コンポーネントは `components/builder.go`、`components/runner.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| CLI | `adlaire-ci-build --cache-dir <path>` |
+| 設定 key | `.server_config.build_cache_enabled` |
+| 既定値 | `false` |
+| 状態 | `.build_cache.json` と `.build_cache/pages/` |
+| cache key | input relative path、input sha256、builder version、theme、build config hash。 |
+
+**正常系：**
+
+1. cache 有効時、builder は入力 file ごとに cache key を計算する。
+2. cache hit かつ依存 manifest が一致する場合、HTML fragment と page metadata を再利用する。
+3. cache miss の場合、通常変換し、成功後に cache entry を atomic write する。
+4. `[REPORT]` に `cache_hits`、`cache_misses`、`cache_disabled_reason` を出力する。
+
+**無効化条件：**
+
+`--strict`、theme 変更、builder version 変更、依存 file 変更、cache schema version 不一致、cache entry 破損時は該当 entry を miss とする。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| cache 読み取り失敗 | WARN、該当 entry miss。 |
+| cache 書き込み失敗 | build は成功扱い、WARN と report に記録。 |
+| cache 破損 | 該当 entry 削除を試み、miss。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 2 回目同一入力 | cache hit、出力内容一致。 |
+| 1 file 変更 | 変更 file のみ miss。 |
+| theme 変更 | 全対象 miss。 |
+| cache 破損 | build 継続、WARN。 |
+
+### 27.26 並列マルチターゲットビルド
+
+本機能の目的は、複数 deploy target への転送を bounded parallelism で処理し、遅い target が全体を不必要に止めないようにすることである。
+
+対象コンポーネントは `components/runner.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定 key | `.server_config.deploy_parallelism` |
+| 許容値 | 1〜16。既定値 1。 |
+| 対象 | `branch_targets[].deploy_targets[]` |
+| build log | `target_results[]` に target id、status、started_at、finished_at、error を保存。 |
+
+**正常系：**
+
+1. build 成功後、deploy target を設定順に queue へ入れる。
+2. worker 数は `min(deploy_parallelism, len(targets))` とする。
+3. target ごとに SSH 転送と remote checksum 検証を行う。
+4. target 成功/失敗を個別に記録する。
+5. 1 target 以上失敗した場合、全体 status は `success_deploy_pending` とし、失敗 target だけ `.pending_transfers` に追加する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| parallelism 不正 | API は `422`、runner は終了コード `2`。 |
+| worker panic 相当の内部エラー | 該当 target failure、他 target は継続。 |
+| 全 target 失敗 | status `success_deploy_pending`、pending に全件追加。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 3 target / parallelism 2 | 同時実行最大 2、全 target result 記録。 |
+| 1 target 失敗 | pending は 1 件、成功 target は再投入しない。 |
+| parallelism 1 | 既存順次処理と同じ結果。 |
+
+### 27.27 ビルド前後フック
+
+本機能の目的は、build 前後に登録済み command を安全に実行し、外部 shell 文字列に依存しない拡張点を提供することである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 状態 | `.hooks` JSON object。mode `600`。 |
+| API | `GET /api/hooks`、`POST /api/hooks`、`DELETE /api/hooks/{id}`、`GET /api/hooks/{id}/log` |
+| phase | `"pre"` または `"post"`。 |
+| command_args | string 配列。shell 経由禁止。 |
+| timeout_seconds | 1〜3600。省略時 300。 |
+| log | `.build_logs/{build_id}_hook_{hook_id}.json` |
+
+**正常系：**
+
+1. pre hook を id 昇順に実行する。
+2. pre hook が成功した場合だけ build 本体へ進む。
+3. build 終了後、post hook を id 昇順に実行する。
+4. hook ごとに stdout/stderr、exit_code、duration_seconds を保存する。
+5. post hook 失敗は build status を変更しない。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| pre hook 失敗かつ `abort_on_failure=true` | build 本体を実行せず status `hook_error`。 |
+| pre hook 失敗かつ `abort_on_failure=false` | WARN、build 継続。 |
+| command 不正 | API は `422`、runner は該当 hook failure。 |
+| timeout | process kill、exit_code `null`、status `timeout`。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| pre success | build 本体が実行される。 |
+| pre abort | build なし、history `hook_error`。 |
+| post failure | build 結果維持、hook log 記録。 |
+| shell metachar | command_args として渡され、shell 展開されない。 |
+
+### 27.28 依存ファイルトラッキング
+
+本機能の目的は、Markdown から参照される画像、相対リンク、include 対象を追跡し、関連する入力だけを再ビルド対象にすることである。
+
+対象コンポーネントは `components/builder.go`、`components/runner.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 状態 | `.dependency_manifest.json` |
+| 対象 | Markdown link、image、HTML `<img src>`、`{{ include "path" }}` |
+| path | 相対 path のみ。絶対 URL、fragment-only link は対象外。 |
+| schema | `{ "pages": { "<page>": { "deps": [{"path":"...","sha256":"..."}] } } }` |
+
+**正常系：**
+
+1. builder が page ごとに依存 path を抽出する。
+2. base dir 基準で正規化し、`..` で base 外へ出る path は broken dependency とする。
+3. 依存 file の SHA-256 を記録する。
+4. runner は入力 SHA と依存 SHA を比較し、変更された dependency を参照する page を build 対象へ追加する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| dependency 不在 | builder は WARN、strict なら終了コード `2`。 |
+| manifest 破損 | runner は full build。成功時に再作成。 |
+| base 外参照 | WARN、strict なら終了コード `2`。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 画像変更 | 参照 page が再ビルド対象。 |
+| 未参照画像変更 | build 対象にしない。 |
+| manifest 破損 | full build、manifest 再作成。 |
+
+### 27.29 リモートビルド対応
+
+本機能の目的は、runner が SSH 先で build を実行し、成果物を archive と manifest で回収できるようにすることである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定 key | `.server_config.remote_build` |
+| schema | `{ "enabled": boolean, "host": string, "user": string, "work_dir": string, "command_args": string[], "artifact_path": string }` |
+| command_args | shell 経由禁止。SSH 先で実行する argv。 |
+| artifact | tar.gz。必須ファイル `site/`、`manifest.json`。 |
+| log | `.build_logs/{id}.json.remote_build` |
+
+**正常系：**
+
+1. remote build enabled の場合、local builder を起動しない。
+2. SSH で remote work dir を確認する。
+3. `command_args` を remote で実行する。
+4. `artifact_path` を取得し、一時 directory へ展開する。
+5. `manifest.json` の SHA-256 と展開 file を検証する。
+6. 検証成功後、既存 deploy 処理へ渡す。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| SSH 接続失敗 | retry 対象。最終失敗で status `failure_remote_build`。 |
+| artifact 不在 | failure、deploy しない。 |
+| manifest 不一致 | failure、deploy しない。 |
+| remote command timeout | process kill、failure_timeout。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| remote 成功 | artifact 検証後 deploy。 |
+| manifest 不一致 | deploy なし、failure。 |
+| SSH 一時失敗 | retry 後成功なら success。 |
+
+### 27.30 ビルド承認フロー
+
+本機能の目的は、本番向けなど approval_required な target の build / deploy を人間承認後にだけ実行することである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定 key | `branch_targets[].approval_required` |
+| 状態 | `.approval_queue` JSON Lines。mode `600`。 |
+| API | `GET /api/approvals`、`POST /api/approvals/{id}/approve`、`POST /api/approvals/{id}/reject` |
+| status | `"pending"`、`"approved"`、`"rejected"`、`"expired"`。 |
+| timeout | `.server_config.approval_timeout_seconds`。既定値 86400。 |
+
+**正常系：**
+
+1. runner は差分検出後、approval_required target について build を開始せず approval entry を作成する。
+2. `.notify_config` に従い approval request 通知を送信する。
+3. API approve 後、queue entry に `trigger="approval"` を追加する。
+4. reject 後は build せず `.build_history.status="approval_rejected"` を記録する。
+5. timeout 超過 entry は runner 起動時に `expired` へ更新する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| entry 不在 | API は `404`。 |
+| pending 以外への approve/reject | `409`。 |
+| 通知失敗 | approval entry は残し、`.notify_pending` に追記する。 |
+| queue full | approve API は `429`。approval status は pending のまま。 |
+
+**SDK / UI：**
+
+SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供する。UI は pending 件数、branch、sha、target、created_at、expires_at、approve/reject 操作を表示する。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| approval required | build せず pending 作成。 |
+| approve | queue 追加、trigger approval。 |
+| reject | build なし、history 記録。 |
+| timeout | expired、build なし。 |
+
+### 27.31 ブランチ別環境変数
+
+本機能の目的は、branch target ごとに build process へ注入する環境変数を定義し、branch や deploy 先ごとの差分を安全に扱うことである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定 key | `branch_targets[].env` |
+| 型 | string:string object |
+| key | `^[A-Z_][A-Z0-9_]{0,63}$` |
+| value | UTF-8 string。最大 4096 bytes。NUL 禁止。 |
+| secret key | key に `TOKEN`、`SECRET`、`PASSWORD`、`PAT` を含むもの。 |
+| 上限 | branch target ごとに 100 key。 |
+
+**正常系：**
+
+1. API は env key/value を検証して `.branch_config` に保存する。
+2. runner は build process の environment に branch env を追加する。
+3. 同名 key が system env に存在する場合、branch env を優先する。
+4. build log には env key 一覧だけを保存し、value は保存しない。
+5. secret key は stdout/stderr の mask 対象に追加する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| key 不正 | API は `422`、runner は終了コード `2`。 |
+| value 上限超過 | `422`。 |
+| secret mask 漏れ | 実装不合格。該当 build は完了扱いにしない。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| env 注入 | build command が指定値を参照できる。 |
+| system env と同名 | branch env が優先される。 |
+| secret stdout 出力 | log では `"***"` に置換。 |
+| 不正 key | 保存不可、状態差分なし。 |
