@@ -74,7 +74,7 @@
 | P0 | 認証、セッション、共通エラー、状態ファイル読み書き、`.access_log`、`.config_log` | `POST /api/login` から認証必須 API の共通処理までが `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0〜§22.0e と一致し、秘密情報がログとレスポンスに出ない。 |
 | P1 | ビルド操作、status、logs、history、queue、circuit breaker | 手動ビルド、強制ビルド、キャンセル、キュー、履歴、ログ取得が同一状態ファイル契約で動作する。 |
 | P2 | config、repo、branch、schedule、PAT、diagnostics、dashboard | 設定変更が `.config_log` に残り、GET 系集約 API が状態ファイルを更新しない。 |
-| P3 | notify、SMTP、webhook、webhook config、weekly summary | 通知送信責務が `components/runner.go`、設定責務が `components/api.go` に分離され、secret はマスクされる。 |
+| P3 | notify、SMTP、webhook、webhook config、weekly summary | 通知送信責務が `runner`、設定責務が `api` に分離され、secret はマスクされる。 |
 | P4 | snapshots、rollback、maintenance、access control、hooks | 運用系 API が `409`、`422`、`503` を仕様どおり返し、ロールバックは履歴に `trigger: "rollback"` を残す。 |
 | P5 | alert rules、tag rules、pipeline config、notes、dashboard layout、tokens | 拡張設定が schema どおり保存され、SDK と UI の操作名が `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e と一致する。 |
 
