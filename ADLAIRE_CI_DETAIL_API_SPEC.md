@@ -1675,11 +1675,7 @@ Secret は `.webhook_secret` を正とする。secret 不在、header 不在、p
 
 ### ビルドフック（14E）
 
-ビルド実行の直前（`pre`）・直後（`post`）に事前登録したコマンド引数配列を実行する。フック設定は `.hooks` に保存する。外部入力文字列をシェルへ渡す実装は禁止し、Go 標準ライブラリ `os/exec` の `exec.CommandContext(args[0], args[1:]...)` で実行する。
-
-- `pre` フックが失敗（`exit_code != 0`）し `abort_on_failure: true` の場合、ビルドを中断しステータスを `hook_error` とする。
-- `post` フックは `abort_on_failure` 設定に関わらずビルド結果（`success` / `failure`）を変更しない。
-- フックの実行ログは `.build_logs/{build_id}_hook_{id}.json` に保存する。
+本節は hooks API の request / response、`.hooks` 保存、`.config_log` 追記、hook log 参照境界だけを定義する。pre / post hook の実行順、timeout、process kill、hook log 保存、secret mask、pre abort、post failure、build status への影響は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.27 を正とする。
 
 **`GET /api/hooks` レスポンス例：**
 ```json
@@ -1713,19 +1709,6 @@ Secret は `.webhook_secret` を正とする。secret 不在、header 不在、p
 ```
 `runs` は直近 20 件を返す（新しい順）。
 
-**フック実行・保存固定契約：**
-
-| 項目 | 仕様 |
-|------|------|
-| 実行順 | `phase` ごとに `.hooks.hooks` の配列順。`pre` は pipeline 前、`post` は pipeline/deploy/snapshot 後。 |
-| disabled | `enabled:false` は読み飛ばし、hook log を作成しない。 |
-| timeout | `timeout_seconds` 超過時は process を kill し、`exit_code:null`、`timed_out:true` として hook log を保存する。 |
-| stdout/stderr | 最大各 10000 文字。超過分は末尾切り捨て、`truncated:true` を保存する。 |
-| hook log | `.build_logs/{build_id}_hook_{hook_id}.json` に JSON object で保存し、同一 build/hook の再実行時は上書きせず `runs` へ追記する。 |
-| pre abort | `pre` 失敗かつ `abort_on_failure:true` の場合、pipeline を実行せず build status を `hook_error` とする。 |
-| secret mask | stdout、stderr、保存済み output、server log、通知 payload へ保存する前に runner の secret mask を適用する。 |
-| log 保存失敗 | `pre` hook では build 本体を開始せず `hook_error`。`post` hook では build 結果を維持し、server log に `HOOK_LOG_WRITE_FAILED` を出す。 |
-
 `.hooks` record schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.hooks` schema を正とする。`.hooks` に未知 key、必須 key 不足、型不一致、不正 phase、不正 command、重複 id がある場合、`GET /api/hooks`、`POST /api/hooks`、`DELETE /api/hooks/{id}` は `500 {"error":"Internal server error"}` を返す。破損内容、command_args の secret らしき値、stdout/stderr は response と log に出さない。
 
 **hooks API 更新順：**
@@ -1736,11 +1719,9 @@ Secret は `.webhook_secret` を正とする。secret 不在、header 不在、p
 | `DELETE /api/hooks/{id}` | path id 検証 → `.hooks` lock → 対象存在確認 → record 削除 → `.hooks` atomic write → `.config_log` 追記 → response | 対象不在は `404`。`.config_log` 失敗時は `500`、削除済み record は巻き戻さない。 |
 | `GET /api/hooks/{id}/log` | path id 検証 → `.hooks` で存在確認 → `.build_logs/*_hook_{id}.json` を新しい順で最大 20 件読込 → response | hook 不在は `404`。個別 hook log 破損はその file を除外し、server log に固定コードを出す。 |
 
-hook log JSON は `{ "hook_id", "build_id", "phase", "started_at", "finished_at", "duration_seconds", "exit_code", "timed_out", "stdout", "stderr", "truncated" }` を必須 key とする。`GET /api/hooks/{id}/log` の `output` は `stdout + stderr` をこの順で連結した表示用互換値とし、保存時点で secret mask 済みの値だけを返す。
+hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙動は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.27 を正とする。`GET /api/hooks/{id}/log` は保存済み hook log を読み取り、response の `runs[]` へ `build_id`、`ran_at`、`exit_code`、`output` を返す。`output` は保存済み `stdout + stderr` をこの順で連結した表示用互換値とし、保存時点で secret mask 済みの値だけを返す。
 
 hooks fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルでは hooks fixture 本体を重複定義しない。
-
-保存する hook log file は 1 実行 1 JSON object とし、`hook_id`、`build_id`、`phase`、`started_at`、`finished_at`、`duration_seconds`、`exit_code`、`timed_out`、`stdout`、`stderr`、`truncated` を必須 key とする。`GET /api/hooks/{id}/log` は複数 file を集約し、response の `runs[]` へ `build_id`、`ran_at`、`exit_code`、`output` を返す。
 
 ---
 

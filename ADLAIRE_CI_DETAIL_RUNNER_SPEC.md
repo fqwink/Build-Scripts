@@ -2599,8 +2599,6 @@ owner component は `runner` とする。collaborator component は `statefile` 
 
 ### 27.27 ビルド前後フック
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
-
 本機能の目的は、build 前後に登録済み command を安全に実行し、外部 shell 文字列に依存しない拡張点を提供することである。
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
@@ -2631,7 +2629,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | hook id | `^[A-Za-z0-9_-]{1,64}$`。重複 id は API 保存時 `422`。 |
 | 実行順 | phase ごとに id 昇順。pre 全件後に build、build 後に post。 |
 | env | branch env と hook 固有 env を渡す。secret key の値は hook log 保存前に mask する。 |
-| hook log | `status`、`started_at`、`finished_at`、`duration_seconds`、`stdout`、`stderr`、`exit_code`、`timed_out` を保存する。 |
+| hook log | 1 実行 1 JSON object とし、`hook_id`、`build_id`、`phase`、`status`、`started_at`、`finished_at`、`duration_seconds`、`stdout`、`stderr`、`exit_code`、`timed_out`、`truncated` を保存する。 |
 | log 保存失敗 | pre hook の log 保存失敗は build を開始せず failure。post hook の log 保存失敗は build status を維持し runner 終了コードを最低 `1`。 |
 | shell 禁止 | `command_args` を `exec.Command` 相当で実行し、shell 展開、変数展開、glob 展開を行わない。 |
 
