@@ -2881,7 +2881,7 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `runner.go` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
 | `.build_lock` | text | 不在 | `runner.go` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
 | `.branch_config` | JSON object | 不在 | `api_server.go` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`BRANCH_TARGETS` デフォルトへフォールバックする。 |
-| `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null}` | `runner.go` / `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `runner.go` / `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `runner.go` / `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.repo_config` | JSON object | `{}` | `api_server.go` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
 | `.config_log` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
@@ -3032,7 +3032,7 @@ Email object:
 | `deploy_targets[].user` | string | 必須 | 1〜64 文字 | SSH user。 |
 | `deploy_targets[].dest_dir` | string | 必須 | 絶対パス | 転送先ディレクトリ。 |
 
-`.branch_config` が不在の場合、`GET /api/branch-config` は `source: "default"` と `BRANCH_TARGETS` の定数値を返す。`.branch_config` が存在する場合、`source: "file"` とファイル内容を返す。
+`.branch_config` が不在の場合、`GET /api/branch-config` は `source: "default"` と `BRANCH_TARGETS` の定数値を返す。`.branch_config` が存在する場合、`source: "file"` とファイル内容を返す。API は `branches: []` を `.branch_config` の空配列保存として扱ってはならない。`POST /api/branch-config` で `branches: []` を受け取った場合は `.branch_config` を削除し、default 復帰として扱う。
 
 **`.repo_config` schema：**
 

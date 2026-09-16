@@ -766,8 +766,8 @@ Go 版初期実装では、実装対象を `ADLAIRE_CI_DETAIL_SPEC.md` の成熟
 | 入出力パス | `adlaire-ci-build --src` / `--out`、または `DefaultBuildConfig` | `--src` は Markdown ファイルまたは Markdown ディレクトリ、`--out` は出力サイトディレクトリ。CLI 引数を優先し、既定値変更時は `ADLAIRE_CI_DETAIL_SPEC.md` §2 と整合させる |
 | テーマ | `adlaire-ci-build --theme`、または `DefaultBuildConfig.Theme` | 初期仕様では `adlaire-default` のみ許可。カスタムテーマ、外部テンプレート、テーマパッケージは将来計画とする |
 | デザイントークン値 | `adlaire-default` の `style.css` が定義する `:root { }` ブロック | ADS 準拠の範囲内で変更し、`DESIGN.md` と整合させる |
-| ドキュメントタイトル | `PageData.Title` | 空文字時は `Adlaire CI Specification`。変更時は §5 `PageData` 契約に従う |
-| ヘッダー表示名 | `<span id="doc-title">` に出力する `PageData.Title` | `PageData.Title` と同一値を使用し、別名を持たせない |
+| ドキュメントタイトル | `PageData.Title` / `SiteData.Title` | `PageData.Title` が空の場合は `SiteData.Title` を使用する。`SiteData.Title` は空文字禁止。変更時は `ADLAIRE_CI_DETAIL_SPEC.md` §5 `PageData` / `SiteData` 契約に従う |
+| ヘッダー表示名 | `<span id="doc-title">` に出力する表示タイトル | `PageData.Title` が空の場合は `SiteData.Title` を表示し、別名を持たせない |
 | バージョンバッジ | 安定版リリース情報を表示する場合の `PageData` 拡張 | `V.X.N` 形式。追加する場合は先に `ADLAIRE_CI_DETAIL_SPEC.md` §5 の `PageData` にフィールドを追加する |
 | TOC 対象見出しレベル | `buildTOC(headings []Heading)` | 初期仕様では h1〜h3 固定。変更する場合は §4.4、§6、§7.3〜§7.5 を同時に改訂する |
 
