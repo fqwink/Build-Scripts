@@ -425,6 +425,8 @@ runner 実装は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` に未定義の状態フ�
 
 `.branch_config` が存在しない場合は §12 の `BRANCH_TARGETS` 既定値を使用する。存在する場合の schema、空配列の扱い、永続 key、API 表示名との境界は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c の `.branch_config` schema を正とする。
 
+runner は起動時の設定正規化で `.branch_config` を 1 回だけ読み、正規化後の `RunnerConfig.BranchTargets` を当該起動中の唯一の branch target 情報として使用する。同一 runner 起動中に `.branch_config` を再読込してはならない。API による `.branch_config` 更新、削除、default 復帰は、既に実行中の runner には反映せず、次回 runner 起動から反映する。
+
 `.pending_transfers` entry は §14a の形式と `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c の状態 schema を同時に満たす。JSON array 内の entry は投入順を保持し、再試行も投入順で処理する。重複統合は `out`、`host`、`user`、`dest_dir` の 4 項目完全一致で判定する。
 
 **SHA cache 読み書き契約：**

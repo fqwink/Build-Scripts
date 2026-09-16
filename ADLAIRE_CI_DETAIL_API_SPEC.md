@@ -2519,7 +2519,7 @@ owner component は `api` とする。collaborator component は `runner`、`sta
 
 **runner 取り込み：**
 
-`components/runner.go` は起動ごとに `.branch_config` を読む。API 更新後、runner 再起動は不要だが、既に実行中の runner へは反映しない。次回起動から反映する。
+runner による `.branch_config` の読込、`RunnerConfig.BranchTargets` への正規化、起動中の反映タイミングは `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12〜§13 の runner 設定正規化契約を正とする。本節では API endpoint、request / response、保存、削除、検証条件だけを定義する。
 
 **検証条件：**
 
