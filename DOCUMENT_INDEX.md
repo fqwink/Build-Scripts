@@ -26,7 +26,9 @@
 
 ## Detail Spec Split
 
-`ADLAIRE_CI_DETAIL_SPEC.md` を責務 component 別に分割する場合は、以下のファイル名と役割に固定する。未作成の分割先については、分割されるまで `ADLAIRE_CI_DETAIL_SPEC.md` を正とする。
+詳細仕様は、責務 component 別の分割済み詳細仕様ファイルとして管理する。
+
+`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表、横断補足契約を持つ。各 component の入出力、処理順序、状態、異常系、検証条件は下表の owner component 別詳細仕様ファイルを正とする。
 
 | ファイル | 状態 | 役割 |
 |----------|------|------|
