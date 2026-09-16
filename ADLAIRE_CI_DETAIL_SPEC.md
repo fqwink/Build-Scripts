@@ -3007,6 +3007,44 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 
 `sha_file` は pipeline 成功後、deploy 実行前に更新する。理由は、ビルド成果物生成が成功した時点で入力 SHA の処理は完了しており、deploy 失敗は `.pending_transfers` の責務で再試行するためである。
 
+**runner 失敗段階別副作用固定契約：**
+
+| 失敗段階 | `target_status` | 保存必須 | 保存禁止 | finalizer | 終了コード |
+|----------|-----------------|----------|----------|-----------|------------|
+| lock 実行中 PID | `lock_skipped` | `.build_status.json` に `lock_skipped` を保存してよい。 | `.build_state`、`.build_logs/`、`.build_history`、`sha_file`、deploy、snapshot。 | lock を削除しない。 | `0` |
+| startup config permission error | `config_error` | `.build_status.json` に `config_error`、ERROR log。 | `.build_state.running=true`、`.build_logs/`、`.build_history`、`sha_file`、deploy、snapshot。 | lock 作成済みなら削除する。 | `2` |
+| status start write failure | `failure_state_write` | ERROR log。 | `.build_state.running=true`、`.build_logs/`、`.build_history`、`sha_file`、deploy、snapshot。 | lock 作成済みなら削除する。 | `1` |
+| state start write failure | `failure_state_write` | `.build_status.json` に `failure`、ERROR log。 | `.build_logs/`、`.build_history`、`sha_file`、deploy、snapshot。 | lock を削除する。 | `1` |
+| GitHub tree / blob API failure | `failure_api` | `.build_logs/{id}.json`、`.build_history`、`.build_status.json`、`.build_state.running=false`。 | `sha_file`、deploy、snapshot、materialized src の確定置換。 | 実行する。 | 全 target 失敗なら `3`、一部なら `1` |
+| blob decode / materialize failure | `failure_decode` | `.build_logs/{id}.json`、`.build_history`、`.build_status.json`、`.build_state.running=false`。 | `sha_file`、pipeline、deploy、snapshot。 | 実行する。 | `1` |
+| precheck failure | `failure_precheck` | `.build_logs/{id}.json`、`.build_history`、`.build_status.json`、`.build_state.running=false`。 | `sha_file`、pipeline、deploy、snapshot。 | 実行する。 | `1` |
+| pipeline non-zero / timeout | `failure_build` | `.build_logs/{id}.json`、`.build_history`、`.build_status.json`、`.build_state.running=false`。 | `sha_file`、deploy、snapshot。 | 実行する。 | `1` |
+| build log write failure | `failure_state_write` | `.build_status.json`、`.build_state.running=false`、ERROR log。 | `.build_history`、`sha_file`、deploy、snapshot。 | 実行する。 | `1` |
+| build history append failure | `failure_state_write` | `.build_logs/{id}.json`、`.build_status.json`、`.build_state.running=false`、ERROR log。 | `sha_file`、deploy、snapshot。 | 実行する。 | `1` |
+| SHA write failure | `failure_state_write` | `.build_logs/{id}.json`、`.build_history`、`.build_status.json`、`.build_state.running=false`。 | deploy、snapshot。 | 実行する。 | `1` |
+| deploy failure | `success_deploy_pending` | `sha_file`、`.pending_transfers`、`.build_logs/{id}.json`、`.build_history`、`.build_status.json`、`.build_state.running=false`。 | snapshot。 | 実行する。 | `1` |
+| snapshot failure | `success` | `sha_file`、deploy 成功、`.build_logs/{id}.json` に WARN、`.build_history`、`.build_status.json`、`.build_state.running=false`。 | snapshot 成功扱い、`.pending_transfers` 追加。 | 実行する。 | `0` |
+| status finalizer write failure | 実行結果に従う | `.build_logs/{id}.json`、`.build_history`、`.build_state.running=false`、ERROR log。 | 部分 `.build_status.json`。 | 継続する。 | 最低 `1` |
+| build_state finalizer write failure | 実行結果に従う | `.build_logs/{id}.json`、`.build_history`、`.build_status.json`、ERROR log。 | 正常終了扱い。 | lock 削除を試みる。 | `1` |
+
+上表の保存必須に含まれる状態ファイルは、保存失敗時に `failure_state_write` へ分類する。ただし status finalizer と build_state finalizer は、既に確定した target の log / history を取り消さない。保存禁止に含まれる処理を実行した場合は仕様違反とし、実装 PR の fixture で失敗として扱う。
+
+**複数 target 継続 / 中断固定契約：**
+
+| 条件 | 継続可否 | 次 target への影響 |
+|------|----------|--------------------|
+| 1 target の `failure_api`、`failure_decode`、`failure_precheck`、`failure_build` | 継続する。 | 当該 target の `sha_file` は更新せず、次 target は通常判定する。 |
+| 1 target の `success_deploy_pending` | 継続する。 | `.pending_transfers` に当該 target を保存し、次 target は通常判定する。 |
+| 1 target の snapshot failure | 継続する。 | 当該 target は `success` とし、次 target は通常判定する。 |
+| `.build_logs/{id}.json` 保存失敗 | 継続しない。 | 同一 runner 起動内の後続 target を開始しない。 |
+| `.build_history` 追記失敗 | 継続しない。 | 同一 runner 起動内の後続 target を開始しない。 |
+| `.build_status.json` start 保存失敗 | 継続しない。 | `.build_state.running=true` へ進まない。 |
+| `.build_state.running=true` 保存失敗 | 継続しない。 | target 処理へ進まない。 |
+| `.github_token` 不備 / mode 不正 | 継続しない。 | GitHub API、pipeline、deploy を一切実行しない。 |
+| `.branch_config` 全体破損かつ復旧不能 | 継続しない。 | target を推測して実行しない。 |
+
+複数 target の終了コードは、処理済み target の最大重大度で決める。重大度は `4`（lock 形式不正など実行継続不能） > `3`（全 target GitHub API 失敗） > `2`（設定・secret・権限不正） > `1`（target 失敗または deploy pending） > `0`（成功または通常 skip）とする。`failure_api` が一部 target だけの場合は `1`、全処理 target が `failure_api` の場合だけ `3` とする。
+
 **runner 機能単位契約：**
 
 `components/runner.go` は、下表の機能単位で状態を更新する。各機能単位は、Write 列にない状態ファイルを更新してはならない。
@@ -4048,6 +4086,122 @@ adlaire-ci-runner --state-dir <state> --dry-run
 - 一時 directory `{build_id}.tmp.{pid}` は残らない。
 - snapshot 内に通常ファイルだけが保存され、`.github_token`、`.build_lock`、`.pending_transfers` を含まない。
 - snapshot は 2 件だけ残り、最古 snapshot が削除される。
+
+### Fixture R21: status start write failure
+
+**前提状態：**
+
+- `.build_lock` は存在しない。
+- `.build_status.json` の atomic write だけが失敗する fake filesystem を使用する。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.build_state.running` を `true` にしない。
+- GitHub API、pipeline、deploy、snapshot を実行しない。
+- `.build_logs/` と `.build_history` を作成しない。
+- `.build_lock` は削除される。
+
+### Fixture R22: build log write failure
+
+**前提状態：**
+
+- GitHub fake response は変更ありを返す。
+- pipeline は成功する。
+- `.build_logs/{id}.json` の atomic write だけが失敗する fake filesystem を使用する。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.build_history` は追記しない。
+- `.last_sha` は旧 SHA のまま。
+- deploy、snapshot は実行しない。
+- `.build_status.json` は `status="failure"`、`last_target_status="failure_state_write"`、`last_error="state write failed"` を含む。
+- `.build_state.running=false`、`current_build_id=null`、`.build_lock` 不在で終了する。
+
+### Fixture R23: history append failure
+
+**前提状態：**
+
+- GitHub fake response は変更ありを返す。
+- pipeline は成功する。
+- `.build_logs/{id}.json` は保存成功する。
+- `.build_history` の追記だけが失敗する fake filesystem を使用する。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.build_logs/{id}.json` は成功結果を保持する。
+- `.last_sha` は旧 SHA のまま。
+- deploy、snapshot は実行しない。
+- `.build_status.json.last_target_status` は `failure_state_write`。
+- `.build_state.running=false`、`.build_lock` 不在で終了する。
+
+### Fixture R24: multi target partial failure continues
+
+**前提状態：**
+
+- `BRANCH_TARGETS` が 2 件。
+- 1 件目の GitHub Trees API は HTTP `503` を返し続ける。
+- 2 件目は変更あり、pipeline 成功、deploy なし。
+
+**期待結果：**
+
+- 終了コード `1`。
+- 1 件目は `.build_logs/{id1}.json.target_status="failure_api"`、`.build_history.status="failure_api"`。
+- 1 件目の `sha_file` は更新しない。
+- 2 件目は `.build_logs/{id2}.json.target_status="success"`、`.build_history.status="success"`、`sha_file` を更新する。
+- runner は 1 件目の失敗で中断しない。
+
+### Fixture R25: all targets GitHub API failure
+
+**前提状態：**
+
+- `BRANCH_TARGETS` が 2 件。
+- 両方の GitHub Trees API が retry 対象 HTTP `503` を返し続ける。
+
+**期待結果：**
+
+- 終了コード `3`。
+- 各 target の `.build_logs/{id}.json.target_status` は `failure_api`。
+- 各 target の `.build_history.status` は `failure_api`。
+- すべての `sha_file` は旧値のまま。
+- pipeline、deploy、snapshot は実行しない。
+
+### Fixture R26: snapshot failure remains success
+
+**前提状態：**
+
+- GitHub fake response は変更ありを返す。
+- pipeline と deploy は成功する。
+- snapshot writer だけが失敗する fake filesystem を使用する。
+
+**期待結果：**
+
+- 終了コード `0`。
+- `.last_sha` は新 SHA に更新する。
+- `.build_logs/{id}.json.target_status="success"`。
+- `.build_logs/{id}.json.warnings` に `SNAPSHOT_SAVE_FAILED` を含める。
+- `.build_history.status="success"`。
+- `.pending_transfers` は追加しない。
+- `.build_status.json.status="success"`。
+
+### Fixture R27: build_state finalizer failure keeps failure
+
+**前提状態：**
+
+- pipeline は成功する。
+- `.build_logs/{id}.json`、`.build_history`、`.build_status.json` は保存成功する。
+- finalizer の `.build_state` atomic write だけが失敗する fake filesystem を使用する。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.build_logs/{id}.json.target_status="success"` と `.build_history.status="success"` は保持する。
+- `.build_status.json.status="success"` は保持する。
+- ERROR ログ `BUILD_STATE_FINALIZE_FAILED` を出す。
+- `.build_lock` は削除を試みる。
+- `.build_state.running=false` 保存失敗を正常扱いにしない。
 
 ---
 
