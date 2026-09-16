@@ -3601,6 +3601,21 @@ Go 版 `components/runner.go` は、SSH 転送成功後に `.snapshots/` ディ�
 
 snapshot 保存は `{StateDir}/.snapshots/{build_id}.tmp.{pid}` へ copy した後、`{StateDir}/.snapshots/{build_id}` へ rename する。同じ snapshot id が既に存在する場合は上書きせず、WARN `SNAPSHOT_EXISTS: id={id}` を出して snapshot 保存を skip する。snapshot 内には output site 配下の通常ファイルだけを含め、`.github_token`、runner 状態ファイル、`.git`、lock、pending queue を含めてはならない。
 
+**snapshot 保存対象固定契約：**
+
+| 対象 | 扱い |
+|------|------|
+| 通常ファイル | output site 配下の相対 path を保持して copy する。file mode は実行 bit を含めて保持してよいが、setuid / setgid bit は落とす。 |
+| directory | 必要な directory だけ作成し、mode は最大 `0755` とする。 |
+| symlink | file / directory を問わず保存しない。WARN `SNAPSHOT_SKIP_SYMLINK: path={path}` を出す。 |
+| hidden file | output site 配下の通常ファイルであれば保存してよい。ただし `.git` directory 配下は除外する。 |
+| path traversal | snapshot 内相対 path に `..`、絶対 path、空 segment、NUL を含む場合は snapshot 保存失敗とする。 |
+| runner 状態ファイル | `.github_token`、`.build_lock`、`.pending_transfers`、`.notify_pending`、`.build_state`、`.build_status.json`、`.admin_credentials`、`.api_tokens` は保存禁止。 |
+| tmp directory | `{build_id}.tmp.{pid}` は成功時に残してはならない。失敗時も削除を 1 回試行し、失敗時は WARN `SNAPSHOT_TMP_CLEANUP_FAILED`。 |
+| prune | 新 snapshot rename 成功後に実行する。prune 失敗は WARN とし、snapshot 成功を取り消さない。 |
+
+snapshot copy 中に読み取り失敗、書き込み失敗、path 検証失敗、tmp rename 失敗が発生した場合、当該 snapshot は作成失敗とし、build 成功を取り消さない。`.build_logs/{id}.json.warnings` に `SNAPSHOT_SAVE_FAILED` を追加し、`snapshot_id=null` とする。snapshot 失敗を理由に `.pending_transfers` を作成してはならない。
+
 ### ロールバック
 
 `POST /api/history/{id}/rollback`（→ §22）で指定ビルド ID のスナップショットから SSH 転送を再実行する。
@@ -5375,6 +5390,21 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/tokens` | none | `{tokens}` | `200` | `401`, `403`, `500` | `.api_tokens` | none | `getTokens()` | API トークン管理 |
 | `POST /api/tokens` | `{label,scopes,expires_at?}` | `TokenCreateResult` | `201` | `401`, `403`, `422`, `500` | `.api_tokens` | `.api_tokens`, `.access_log`, `.audit_log` | `createToken(label,scopes,expiresAt)` | API トークン管理 |
 | `DELETE /api/tokens/{id}` | path `{id}` | `{message}` | `200` | `401`, `403`, `404`, `500` | `.api_tokens` | `.api_tokens`, `.access_log`, `.audit_log` | `revokeToken(id)` | API トークン管理 |
+
+**成果物 / archive / backup API 副作用固定契約：**
+
+| API | 処理順序 | 成功時副作用 | 失敗時副作用 |
+|-----|----------|--------------|--------------|
+| `POST /api/logs/cleanup` | `.server_config` 読込 → cleanup 対象 log 算出 → 対象 file 削除 → response。 | 対象 `.build_logs/{id}.json` だけを削除する。archive 済み `.json.gz` は削除しない。 | 算出前失敗は差分なし。途中削除失敗は `500` とし、削除済み file は戻さない。 |
+| `POST /api/logs/archive` | `.server_config` 読込 → 対象 log 算出 → `.build_logs/archive/{id}.json.gz.tmp.{pid}` 作成 → gzip 書込 → fsync → rename → 元 log 削除 → response。 | archive 成功した log だけ元 `.json` を削除する。gzip は 1 log 1 file。 | gzip 作成または rename 失敗時は元 log を残す。元 log 削除失敗は `500` とし、archive 済み `.json.gz` は残す。 |
+| `GET /api/backup` | 対象設定 file 読込 → 不在 file に既定値適用 → secret mask → response。 | 状態ファイルを更新しない。 | 読込不能な必須 file は `500`。任意 file 不在は既定値で返す。 |
+| `POST /api/restore` | request 検証 → secret mask `"***"` の既存値補完 → 全対象 payload 生成 → §22.0d の順に atomic write → `.config_log` 追記 → response。 | 設定系状態 file だけを置換する。履歴、ログ、snapshot、session、token 本体は復元しない。 | 検証失敗は差分なし。途中 write 失敗は未処理 file を書かず `500`。処理済み file は戻さない。 |
+| `GET /api/snapshots/{id}/download` | id 検証 → snapshot directory 検証 → tar.gz stream 生成 → response。 | 状態ファイルを更新しない。 | 不正 id は `422`、不在は `404`、stream 中の読込失敗は接続を終了し状態差分なし。 |
+| `POST /api/history/{id}/rollback` | id 検証 → running 確認 → snapshot 検証 → 新 build id 採番 → deploy 転送 → rollback log/history 保存 → response。 | 新規 rollback build log/history だけを追加する。元 snapshot、元 history、state 全体は巻き戻さない。 | 転送失敗は rollback build log/history を failure として保存し、元 snapshot は削除しない。running 中は差分なし `409`。 |
+
+archive 対象 id と snapshot id は build id 形式だけを許可する。API は request path の URL decode 後に `/`、`\`、`..`、空文字、NUL を含む id を `422` とする。tar.gz へ格納する path は snapshot directory からの相対 path とし、絶対 path、`..`、symlink entry、hardlink entry、device entry を含めてはならない。
+
+backup response に secret 原文を含めてはならない。`password`、`token`、`secret`、`smtp_password`、`webhook_secret`、`.github_token`、`.smtp_secret`、`.api_tokens` の hash 元値は `"***"` または `*_set:boolean` で表現する。`POST /api/restore` で `"***"` を受け取った secret は既存値保持を意味し、既存値がない場合は未設定として扱う。
 
 **ビルド操作の競合優先順位：**
 
@@ -9282,9 +9312,34 @@ Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`�
 
 `id` は build id と一致するものだけ許可する。`/`、`..`、空文字、URL decode 後に path separator を含む値は `422` とする。
 
+**download tar.gz 生成契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| root | `.snapshots/{id}/` を root とし、root 外を参照しない。 |
+| entry path | root からの相対 path。`/` 始まり、`..`、空 segment、NUL、Windows drive prefix は禁止。 |
+| entry 種別 | 通常ファイルと directory だけを含める。symlink、hardlink、device、socket、fifo は含めない。 |
+| header | `Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="{id}.tar.gz"`。 |
+| 順序 | directory、file とも相対 path 辞書順。 |
+| mtime | snapshot 内 file の mtime を使用してよい。存在しない場合は build log の `finished_at`。 |
+| secret 除外 | `.github_token`、`.admin_credentials`、`.api_tokens`、`.smtp_secret`、`.webhook_secret`、runner 状態ファイル名は検出時点で `500` とし、download を中止する。 |
+
 **Rollback 仕様：**
 
 rollback は新しい build id を採番し、`.build_history.trigger="rollback"`、`rollback_from=<元id>` を保存する。元 snapshot は変更しない。rollback 中に別 build が running の場合は `409` とする。転送失敗時は rollback build log を `failure` とし、元 snapshot は削除しない。
+
+rollback は snapshot 内の成果物を deploy target へ再転送する操作であり、以下を行ってはならない。
+
+| 禁止対象 | 理由 |
+|----------|------|
+| `.last_sha` 更新 | rollback は監視対象 SHA の処理完了ではない。 |
+| `.server_config`、`.branch_config`、`.notify_config` の復元 | 設定 rollback ではない。 |
+| `.build_history` の過去行書き換え | rollback は新規履歴として追記する。 |
+| `.build_logs/{元id}.json` の変更 | 元 build の証跡を保持する。 |
+| 元 snapshot の削除または上書き | rollback 成否に関係なく元成果物を保持する。 |
+| secret / token / credentials の復元 | snapshot に secret を含めないため復元対象外。 |
+
+rollback build log は `target_status="success"` または `failure_build` とし、`trigger="rollback"`、`rollback_from=<元id>`、`snapshot_id=<元id>` を含める。rollback 転送で pending が発生した場合は `success_deploy_pending` とし、`.pending_transfers` に rollback 用 entry を追加する。
 
 **UI / SDK：**
 
@@ -9299,6 +9354,9 @@ SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`roll
 | delete | 対象 id だけ削除、config log 追記。 |
 | rollback 成功 | 新規 build id、trigger rollback、rollback_from 保存。 |
 | 不正 id | `422`、状態差分なし。 |
+| download symlink | symlink entry を含めず、secret 名検出時は `500`。 |
+| rollback pending | 新規 rollback log/history、pending entry、元 snapshot 維持。 |
+| rollback running | `409`、状態差分なし。 |
 
 ### 27.16 ヘルスチェックエンドポイント
 
