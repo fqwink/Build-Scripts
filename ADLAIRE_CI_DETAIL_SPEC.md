@@ -9396,6 +9396,43 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 
 component 責務を別 PR へ分割する場合でも、分割先 PR が満たすべき fixture 名、期待ファイル、禁止副作用を PR 本文に明記する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
 
+**§27 実装順序・PR 分割固定契約：**
+
+§27 の機能は、下表の wave 順に実装する。後続 wave は、先行 wave の対象機能が §27 実装 PR 最終受け入れゲートを満たすまで開始してはならない。下表は §27 に既に記載済みの機能だけを対象とし、将来計画、MCP、外部公開構成、未定義 endpoint、未定義 UI、未定義状態ファイルを追加する根拠にしてはならない。
+
+| wave | 対象節 | 実装単位 | 依存条件 | PR 上限 | 完了時固定契約 |
+|------|--------|----------|----------|---------|----------------|
+| W1 | §27.1〜§27.4 | runner / builder の基礎拡張。commit status、dry-run、retry、output meta。 | §8〜§20 の builder / runner 基本契約が完了している。 | 1 PR につき 1〜2 機能。 | build log、history、status、REPORT、HTML meta、外部 GitHub call の fixture が固定される。 |
+| W2 | §27.5〜§27.11 | API / runner 運用基盤。config validation、access log、archive、status、trigger、startup integrity、schedule。 | W1 完了。API 共通契約 §22.0 が固定済み。 | 1 PR につき 1〜3 機能。 | 設定、状態 read/write、access/config log、systemd fake の fixture が固定される。 |
+| W3 | §27.12〜§27.20 | webhook、stats、snapshot、health、search、branch config、summary、config diff。 | W2 完了。状態ファイルと API read/write 境界が固定済み。 | 1 PR につき 1〜3 機能。 | webhook event、queue、snapshot、stats、branch config、notify summary、config diff の fixture が固定される。 |
+| W4 | §27.21〜§27.29 | runner / builder 拡張前半。複数監視、YAML pipeline、local watch、tag filter、cache、parallel targets、hooks、dependency、remote build。 | W1〜W3 完了。runner 状態、API 設定、fixture fake が固定済み。 | 1 PR につき 1〜2 機能。 | target selection、pipeline、cache、hook、dependency、remote artifact の成功 / 失敗 / partial fixture が固定される。 |
+| W5 | §27.30〜§27.38 | runner / operation 拡張後半。approval、branch env、notification、trend、chain、priority、failure category、environment、duration anomaly。 | W4 完了。queue、notification、history、trend の状態境界が固定済み。 | 1 PR につき 1〜2 機能。 | approval、env、notify、trend、chain、queue、category、environment、anomaly の保存順と再実行 fixture が固定される。 |
+| W6 | §27.42〜§27.47 | security / auth / audit / rate limit。trigger scope、API key、audit、session timeout、TOTP、rate limit。 | W2〜W5 完了。API endpoint、audit/access log、secret mask 境界が固定済み。 | 1 PR につき 1〜2 機能。 | scope、token、audit、session、TOTP、rate limit の security fixture と forbidden side effect が固定される。 |
+
+**§27 PR 分割禁止条件：**
+
+| 条件 | 扱い |
+|------|------|
+| 1 PR で 4 機能以上を実装する。 | レビュー不能として未完了。W2 / W3 の軽量 read-only API を含む場合でも最大 3 機能までとする。 |
+| 先行 wave の未完了機能に依存する後続 wave を実装する。 | 順序違反として未完了。 |
+| API だけ、SDK だけ、UI だけを先行し、状態 schema または fixture を同一 PR で固定しない。 | component 責務不足として未完了。 |
+| fixture カタログにない機能を便宜的に同梱する。 | 仕様外実装として差し戻し。 |
+| 既存 fixture の期待値を弱めて新機能を通す。 | 検証の形骸化として差し戻し。 |
+| 複数 wave にまたがる横断 refactor を主目的にする。 | §27 機能実装 PR として扱わず、先に仕様改訂が必要。 |
+
+**§27 PR 別必須記録固定契約：**
+
+各 §27 実装 PR は、本文に下表を記録する。記録がない PR は、コードと fixture が存在しても未完了とする。
+
+| 記録項目 | 必須内容 |
+|----------|----------|
+| wave | 対象 wave、対象 §27.x、先行 wave 完了 commit または PR 番号。 |
+| 実装対象 | 実装する機能名、対象 component、変更ファイル、追加 fixture path。 |
+| 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイル。 |
+| fixture | §27 fixture カタログの fixture 名、manifest / effects / security の検証結果。 |
+| acceptance | §27 実装 PR acceptance checklist の各項目の pass / fail / 未実行。 |
+| 後続影響 | 後続 PR が利用してよい contract、利用してはならない未固定 contract。 |
+
 **§27 実装 PR 最終受け入れゲート：**
 
 §27 の機能実装 PR は、下表の全 gate を満たした場合だけ「完了」と判定する。1 件でも未達がある場合は「未完了」、仕様逸脱または secret 漏えいリスクがある場合は「差し戻し」とする。
