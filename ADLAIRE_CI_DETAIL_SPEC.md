@@ -6845,7 +6845,94 @@ Phase 完了判定テンプレートは以下とする。実装 PR 本文では�
 
 ## 27. 追加仕様化機能 詳細仕様
 
-本節は、将来計画から実装可能仕様へ昇格した機能の詳細仕様である。本節に定義された機能は、§0i、§12、§13、§15、§22、§23、§24 と同時に満たす。
+本節は、`ADLAIRE_CI_DETAIL_SPEC.md` に定義済みの追加機能の詳細仕様である。本節に定義された機能は、§0i、§12、§13、§15、§22、§23、§24 と同時に満たす。
+
+### 27.0 追加仕様化機能 共通実装契約
+
+本節の §27.1〜§27.38、§27.42〜§27.47 は、各個別節に別指定がない限り、以下の共通実装契約を満たす。
+
+**実装対象判定：**
+
+| 項目 | 仕様 |
+|------|------|
+| 対象節 | §27.1〜§27.38、§27.42〜§27.47。 |
+| 対象外 | 本ファイルに詳細節が存在しない機能、`ADLAIRE_CI_SPEC.md` で実装不可に分類される機能、MCP 専用機能。 |
+| 実装単位 | 個別節単位で実装する。ただし API、SDK、UI、状態ファイル schema、検証条件が同一機能に含まれる場合は同一実装 PR 内でそろえる。 |
+| 補完禁止 | 個別節に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method を実装判断で追加してはならない。 |
+
+**共通処理順序：**
+
+| 順序 | 処理 | 失敗時 |
+|------|------|--------|
+| 1 | CLI / HTTP path / method / body size / JSON parse を検証する。 | §8、§13、§22.0 の終了コードまたは HTTP status を返す。 |
+| 2 | 認証、scope、maintenance、rate limit、lock 競合を判定する。 | 対象処理を開始せず固定エラーを返す。 |
+| 3 | 入力値を schema と個別節の許容値で検証する。 | 状態ファイル、外部 API、外部 command を変更しない。 |
+| 4 | 読取対象状態ファイルを読み、破損時処理を個別節または §22.0a に従って行う。 | 自動復旧が定義されていない場合は `500` または終了コード `1`。 |
+| 5 | 外部呼び出し前に build id、request id、queue id などの id を採番する。 | 採番不能は `500` または終了コード `1`。 |
+| 6 | 個別節の主要処理を実行する。 | 個別節の異常系に従う。 |
+| 7 | 状態ファイル、ログ、履歴、通知、監査を個別節の保存順で更新する。 | 保存順が未定義の場合は下表の保存順を使う。 |
+| 8 | API response、stdout、UI 表示用値を返す。 | response 生成不能は `500`。 |
+
+**保存順が未定義の場合の既定保存順：**
+
+| 種別 | 保存順 |
+|------|--------|
+| runner build 成功 | `.build_logs/{id}.json` → `.build_history` → `.build_status.json` → SHA cache / local watch state → notification。 |
+| runner build 失敗 | `.build_logs/{id}.json` → `.build_history` → `.build_status.json` → notification。SHA cache は更新しない。 |
+| runner skip | `.build_status.json` のみ。個別節が明示しない限り `.build_logs/{id}.json` と `.build_history` は作成しない。 |
+| API 設定変更 | 対象状態ファイル → `.config_log` → `.audit_log` → response。 |
+| API token / auth / security | 対象状態ファイル → `.access_log` → `.audit_log` → response。 |
+| Webhook / queue | イベントログ → `.build_state.queued` → response。個別節で queue 先行が明記される場合は個別節を優先する。 |
+
+状態更新は、§22.0a の lock、atomic write、fsync、rename、親ディレクトリ fsync を使用する。JSON Lines の追記は 1 行 1 object、UTF-8、LF、末尾改行必須とする。追記対象ファイルの親ディレクトリが存在しない場合は、個別節で作成可と明記されている場合だけ作成する。
+
+**共通エラー優先順位：**
+
+| 優先 | 条件 | HTTP / 終了コード |
+|------|------|-------------------|
+| 1 | path 不存在、method 不一致 | `404` / `405` |
+| 2 | body 禁止、body size 超過、JSON parse 失敗 | `400` / `413` |
+| 3 | 認証なし、token 不正、session 期限切れ | `401` |
+| 4 | scope 不足、管理操作不可 | `403` |
+| 5 | rate limit 超過、queue full | `429` |
+| 6 | 入力 schema、範囲、enum、path 検証失敗 | `422` |
+| 7 | 状態競合、二重実行、未準備状態 | `409` |
+| 8 | 必須外部設定なし | `501`、個別節が `422` または `503` を指定する場合は個別節優先 |
+| 9 | 状態ファイル read/write、外部 command、外部 API の処理失敗 | `500` または個別節の終了コード |
+
+複数条件が同時に成立する場合は、上表の上位を返す。ただし `POST /api/webhook` の署名検証失敗は、情報漏えいを避けるため JSON parse より前に `401` を返してよい。
+
+**共通データ制約：**
+
+| 対象 | 仕様 |
+|------|------|
+| 時刻 | UTC ISO 8601 `YYYY-MM-DDTHH:MM:SSZ`。保存時にミリ秒と timezone offset は使わない。 |
+| id | 個別節に定義がない場合は `^[A-Za-z0-9_-]{1,64}$`。path separator、`.`、`..`、空文字は禁止。 |
+| path | API request の path 値は、個別節に絶対 path と明記したもの以外は相対 path とし、`..`、NUL、改行を禁止する。 |
+| 並び順 | API 一覧は個別節に明記がない限り、新しい順、同時刻は id 昇順。 |
+| 文字列上限 | message、reason、error、description は個別節に指定がない限り 500 文字。改行は `\n` 文字列へ escape する。 |
+| secret | `password`、`token`、`secret`、`pat`、`smtp_password` を key 名に含む値は、response、log、history、audit、backup、UI 表示で `"***"` に mask する。 |
+
+**API / SDK / UI 同期契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| API | §22.0e に endpoint が存在する機能だけを実装対象とする。endpoint 追加が必要な場合は、先に §22.0d、§22.0e、§23、§24 を同時に更新する。 |
+| SDK | SDK method は §22.0e の SDK 列と §23 の引数変換契約だけに従う。API response を推測補完しない。 |
+| UI | UI 操作は §24 UI 操作契約表に存在する SDK method だけを呼ぶ。直接 `fetch()`、状態ファイル操作、外部 command 実行を行わない。 |
+| 状態ファイル | §22.0a と §22.0c に存在しない状態ファイルを作成しない。必要な場合は本ファイル内で schema と破損時処理を先に定義する。 |
+
+**共通検証完了条件：**
+
+| 検証 | 合格条件 |
+|------|----------|
+| scope | 変更対象が `ADLAIRE_CI_DETAIL_SPEC.md` の既存詳細機能に限定されている。 |
+| schema | 状態ファイル schema、API response、SDK 型、UI 表示が同じ key 名と nullable 条件で一致する。 |
+| success | 正常系 fixture が、保存順、response、ログ、履歴、通知、監査の期待値をすべて満たす。 |
+| failure | 異常系 fixture が、状態差分なしまたは定義済み部分更新だけで終了する。 |
+| secret | token、password、secret、PAT、TOTP secret、session token が response、log、history、audit、backup、UI に平文で出ない。 |
+| idempotency | 同じ GET、同じ dry-run、変更なし保存、同じ cleanup/archive 対象なしの再実行で追加差分が出ない。 |
+| conflict | lock 競合、queue full、running build、破損 state の結果が固定 status / 終了コードで再現できる。 |
 
 ### 27.1 GitHub Commit Status API
 
@@ -8398,6 +8485,95 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | 平均 2 倍超 | WARN、flag、tag、通知 event。 |
 | p95 以内 | anomaly なし。 |
 | 通知失敗 | build success 維持、pending 追加。 |
+
+### 27.38a Runner 拡張機能 実装補足契約
+
+本節は §27.21〜§27.38 の runner / builder 拡張機能に共通する補足契約である。各個別節と矛盾する場合は個別節を優先する。
+
+**設定 key と保存責務：**
+
+| 機能 | 設定 key / 状態 | 更新責務 | 読取責務 |
+|------|------------------|----------|----------|
+| 複数ファイル監視 | `.branch_config.branch_targets[].target_files`、`.sha_cache/` | API は `.branch_config`、runner は SHA cache | runner、API |
+| YAML pipeline | `.pipeline.yml`、`.pipeline_config` | API は `.pipeline_config`、runner はログのみ | runner |
+| local watch | `.server_config.watch_mode`、`.local_watch_state.json` | API は `.server_config`、runner は local watch state | runner |
+| tag filter | `.server_config.tag_filter` | API | runner |
+| build cache | `.server_config.build_cache_enabled`、`.build_cache.json`、`.build_cache/pages/` | API は `.server_config`、builder は cache | builder、runner |
+| deploy parallelism | `.server_config.deploy_parallelism` | API | runner |
+| hooks | `.hooks`、`.build_logs/{build_id}_hook_{hook_id}.json` | API は `.hooks`、runner は hook log | runner、API |
+| dependency manifest | `.dependency_manifest.json` | builder | runner、builder |
+| remote build | `.server_config.remote_build` | API | runner |
+| approvals | `.approval_queue`、`.build_state.queued` | runner と API | runner、API |
+| branch env | `.branch_config.branch_targets[].env` | API | runner |
+| notifications | `.notify_config`、`.notify_log`、`.notify_pending` | API は config、runner は log/pending | runner、API |
+| build trends | `.build_trends.json` | runner | runner、API |
+| build chain | `.build_chain_config` | API | runner |
+| priority queue | `.build_state.queued[]` | API と runner | runner、API |
+| failure category | `.build_logs/{id}.json.failure_category`、`.build_history.failure_category` | runner | API、UI |
+| environment | `.build_logs/{id}.json.environment` | runner | API、UI |
+| duration anomaly | `.server_config.duration_anomaly`、`.build_trends.json`、`.build_history` | API は config、runner は判定結果 | runner、API |
+
+上表にない状態ファイルへ保存してはならない。複数機能が同じ状態ファイルを更新する場合、§22.0a のファイル lock を共有し、読み込み直後の最新内容に対して差分を適用する。
+
+**runner 起動時の拡張機能処理順：**
+
+1. CLI 引数、`--dry-run`、`--state-dir`、`--config` を検証する。
+2. `.build_lock` を取得する。dry-run は lock を取得しない。
+3. §27.10 の起動時整合性チェックを実行する。
+4. `.server_config`、`.branch_config`、`.notify_config`、`.build_chain_config`、`.hooks` を読む。
+5. queue entry がある場合は §27.35 の順序で 1 件だけ選ぶ。
+6. §27.30 approval timeout を更新する。
+7. watch mode、branch target、target files、tag filter、dependency manifest から build 対象を決定する。
+8. build id、trigger、environment、start time を確定する。
+9. pre hook、remote build または local builder、pipeline、dependency manifest、cache、deploy、post hook を個別節の順序で実行する。
+10. failure category、duration、trend、duration anomaly、status、history、notification を保存する。
+11. `.build_lock` を削除し、`.build_status.json.running=false` を finalizer として保存する。
+
+手順 8 以降で異常終了した場合でも、可能な限り `.build_status.json.running=false` を保存する。finalizer 保存に失敗した場合は ERROR ログを出し、終了コードを最低 `1` にする。
+
+**機能別の不変条件：**
+
+| 機能 | 不変条件 |
+|------|----------|
+| 複数ファイル監視 | `target_file` と `target_files` が同時に存在する場合、API response は両方を返してよいが、runner 内部では `target_files` に正規化して処理する。重複 target は 1 回だけ build 対象にする。 |
+| YAML pipeline | `.pipeline.yml` と `.pipeline_config.inline_yaml` が両方存在する場合、`.pipeline.yml` を優先する。どちらを使用したかを `.build_logs/{id}.json.pipeline_source` に保存する。 |
+| local watch | local mode では GitHub Commit Status、GitHub rate limit、GitHub tag refs を呼ばない。tag filter が有効な場合は設定不整合として終了コード `2`。 |
+| tag filter | skip 時は SHA cache を更新しないため、次回も同じ commit を評価する。matched tag 名は最大 100 件まで build log に保存する。 |
+| build cache | cache hit の出力は通常変換結果と byte 単位で一致しなければならない。不一致検出時は hit を破棄し miss として再変換する。 |
+| deploy parallelism | target result は設定順で保存する。実行完了順で保存してはならない。 |
+| hooks | hook stdout/stderr に secret mask を適用してから保存する。hook log の保存失敗は runner log に ERROR を出し、pre hook の場合は build を中断する。 |
+| dependency manifest | manifest 生成は build 成功後だけ確定保存する。失敗 build の途中 manifest で既存 manifest を上書きしない。 |
+| remote build | remote artifact 展開先は state dir 配下の一時 directory とし、既存 output directory へ直接展開しない。検証成功後に deploy 処理へ渡す。 |
+| approvals | approval entry は pending の間だけ approve/reject 可能。approved、rejected、expired を物理削除せず、API 一覧で状態を返す。 |
+| branch env | secret key の値は child process には渡すが、build log には key 名だけ保存する。mask は stdout/stderr、hook log、notification payload に適用する。 |
+| notifications | 通知送信は build 成否を反転させない。通知失敗は `.notify_log` と `.notify_pending` だけで表現する。 |
+| build trends | 同一 build id の sample が既にある場合は append せず置換する。再実行や rollback で別 build id なら別 sample とする。 |
+| build chain | chain job ごとに独立した build log を作成する。同一 chain 内の job は `chain_run_id` を共有する。 |
+| priority queue | queue 取り出し時に対象 entry を `.build_state.queued` から削除し、`.build_state.running=true` と同一 lock 内で保存する。 |
+| failure category | failure 以外の status では `failure_category` を `null` とする。過去互換で値がある成功行は API response に warning を付ける。 |
+| environment | `state_dir` は保存してよいが、home directory 内の secret file path は保存しない。該当する場合は basename のみ保存する。 |
+| duration anomaly | anomaly 判定は trend 更新前の summary で行う。同じ build id の再判定で tag を重複追加しない。 |
+
+**API 更新時の補足検証：**
+
+| API | 追加検証 |
+|-----|----------|
+| `POST /api/branch-config` | `target_file` と `target_files` の少なくとも一方が必須。両方ある場合は正規化後に同一 target 集合になること。 |
+| `POST /api/pipeline-config` | `inline_yaml` は最大 64 KiB。保存前に YAML subset parse を実行し、parse 不能なら `422`。 |
+| `POST /api/config` | `watch_mode`, `tag_filter`, `build_cache_enabled`, `deploy_parallelism`, `remote_build`, `duration_anomaly`, `build_trend_keep_count`, `approval_timeout_seconds` を検証する。 |
+| `POST /api/hooks` | `command_args[0]` が空、相対 path かつ PATH 解決不能、または 256 文字超の場合は `422`。 |
+| `POST /api/build-chain-config` | job id 重複、循環、未定義依存、disabled job への required 依存を `422`。 |
+| `POST /api/notify-config` | channel id 重複、未知 event、secret 平文の GET response 混入を禁止する。 |
+
+**受け入れ fixture 固定：**
+
+| fixture | 入力 | 合格条件 |
+|---------|------|----------|
+| runner extension dry-run | §27.21〜§27.38 の各設定を 1 つずつ有効化した dry-run | 状態ファイル差分なし、`would_call` と `would_write` が個別節どおり。 |
+| runner extension success | local fixture で build 成功 | build log、history、status、trend、notification の保存順と値が一致する。 |
+| runner extension failure | pipeline timeout、deploy failure、hook abort、config error | failure_category、history status、status file、通知 event が固定値になる。 |
+| API config validation | 各設定 key の正常値、境界値、範囲外、不正型 | 正常値は保存、範囲外と不正型は `422`、状態差分なし。 |
+| secret masking | env secret、webhook secret、SMTP password、API token を含む build / API 操作 | response、log、history、audit、notify log、UI 表示に平文がない。 |
 
 
 ### 27.42 ビルドトリガー専用 API スコープ
