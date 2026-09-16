@@ -4521,7 +4521,7 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | `.access_control` | JSON object | `{"allow":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.hooks` | JSON object | `{"hooks":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.maintenance` | JSON object | `{"enabled":false,"reason":null,"since":null}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.api_tokens` | JSON object | `{"tokens":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.api_tokens` | JSON object | `{"tokens":[]}` | `components/api.go` | `500` を返し、自動再生成しない。token 管理情報の消失による意図しない再許可を防ぐため、破損ファイルは上書きしない。 |
 | `.alert_rules` | JSON object | `{"rules":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.tag_rules` | JSON object | `{"rules":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.pipeline_config` | JSON object | `{"extra_args":[],"env":{}}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
@@ -4837,7 +4837,7 @@ Email object:
 {
   "tokens": [
     {
-      "id": "tok001",
+      "id": "tok000001",
       "label": "監視用",
       "scopes": ["read"],
       "token_hash": "<sha256_hex>",
@@ -6466,7 +6466,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 **`GET /api/tokens` レスポンス例：**
 ```json
 { "tokens": [
-    { "id": "tok001", "label": "監視用", "scopes": ["read"], "created_at": "2026-09-15T10:00:00Z", "last_used_at": "2026-09-15T11:00:00Z", "expires_at": null, "revoked_at": null }
+    { "id": "tok000001", "label": "監視用", "scopes": ["read"], "created_at": "2026-09-15T10:00:00Z", "last_used_at": "2026-09-15T11:00:00Z", "expires_at": null, "revoked_at": null }
 ]}
 ```
 
@@ -6475,7 +6475,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 // リクエスト
 { "label": "監視用", "scopes": ["read"], "expires_at": null }
 // レスポンス: 201
-{ "id": "tok001", "token": "act_...", "label": "監視用", "scopes": ["read"], "created_at": "2026-09-15T10:00:00Z", "expires_at": null }
+{ "id": "tok000001", "token": "act_...", "label": "監視用", "scopes": ["read"], "created_at": "2026-09-15T10:00:00Z", "expires_at": null }
 ```
 
 `token` はレスポンス時のみ返却し、以後は取得不可。`scopes` の有効値は `read`、`trigger`、`operate`、`config`、`admin` とする。管理 session は全 API 操作を許可し、API token は指定 scope の範囲だけを許可する。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
@@ -7965,6 +7965,22 @@ P2〜P5 UI の秘密情報消去条件は以下に固定する。
 
 **セッション期限切れ時：** `401 Unauthorized` を返す。クライアント（SDK）は `this._token` をクリアし、再ログインを促す。
 
+**認証処理の副作用境界：**
+
+| ケース | HTTP status | `.admin_credentials` | メモリ session / ticket | `.access_log` | `.audit_log` | 備考 |
+|--------|-------------|----------------------|-------------------------|---------------|--------------|------|
+| password 不一致 | `401` | 変更なし | 変更なし | `login_failure` を追記 | `login_failure` を追記 | 連続失敗回数はメモリ上で +1。 |
+| 連続失敗ロック | `429` | 変更なし | 変更なし | `login_locked` を追記 | `permission_denied` を追記 | password hash 検証は実行しない。 |
+| password 成功 / TOTP 無効 | `200` | `login_count`、`last_login_at` 更新 | session 追加 | `login_success` を追記 | `login_success` を追記 | session token は全永続ログに保存しない。 |
+| password 成功 / TOTP 有効 | `200` | 変更なし | ticket 追加 | `totp_required` を追記 | `totp_required` を追記 | `login_count` と `last_login_at` は更新しない。 |
+| TOTP code 不一致 | `401` | 変更なし | ticket 削除 | `totp_failure` を追記 | `totp_failure` を追記 | ticket は再利用不可。 |
+| TOTP 成功 | `200` | `login_count`、`last_login_at` 更新 | ticket 削除、session 追加 | `login_success` を追記 | `login_success` を追記 | session 期限は成功時点の設定で決める。 |
+| session 期限切れ | `401` | 変更なし | 対象 session 削除 | 追記しない | 追記しない | `.api_access_log` は通常 API request として記録する。 |
+| logout | `200` | 変更なし | 対象 session 削除 | `logout` を追記 | `logout` を追記 | token 本体と token hash は保存しない。 |
+| password 変更成功 | `200` | 新 salt / hash、`must_change:false`、`updated_at` 更新 | 現 session 以外削除 | `password_change` を追記 | `password_change` を追記 | 新旧 password、hash、salt は保存しない。 |
+
+上表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、個別節で別指定がない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
+
 **パスワード入力制約：**
 
 | 項目 | 仕様 |
@@ -8001,19 +8017,18 @@ P2〜P5 UI の秘密情報消去条件は以下に固定する。
 | 応答時間 | パスワード不一致、存在しない credentials、ロック中を除く検証失敗では、条件の詳細をレスポンスへ出さない。 |
 | ログ | 成功、失敗、ロック拒否はいずれも `.access_log` へ追記する。password、token、hash、salt は記録しない。 |
 
-`.access_log` 追記失敗時は、ログイン失敗では `500` を返し、失敗回数は増加済みのままとする。ログイン成功時は session token 発行前に `.admin_credentials` と `.access_log` を更新し、どちらかに失敗した場合は session token を発行しない。TOTP 有効時は ticket 発行前に `.access_log` を追記し、追記失敗時は ticket を発行しない。
+`.access_log` または `.audit_log` 追記失敗時は、ログイン失敗では `500` を返し、失敗回数は増加済みのままとする。ログイン成功時は session token 発行前に `.admin_credentials`、`.access_log`、`.audit_log` を更新し、いずれかに失敗した場合は session token を発行しない。TOTP 有効時は ticket 発行前に `.access_log` と `.audit_log` を追記し、追記失敗時は ticket を発行しない。
 
 **ログインフロー：**
 ```
 POST /api/login
   ├─ 連続失敗ロック中 → 429
   └─ パスワードハッシュ検証
-       ├─ 失敗 → 連続失敗回数 + 1 → .access_log 追記 → 401
-       └─ 成功 → last_login_at 更新
-                  → 連続失敗回数を 0 へリセット
+       ├─ 失敗 → 連続失敗回数 + 1 → .access_log 追記 → .audit_log 追記 → 401
+       └─ 成功 → 連続失敗回数を 0 へリセット
                   ├─ must_change == true → must_change: "prompt"
                   ├─ TOTP 有効 → ticket 生成・返却
-                  └─ TOTP 無効 → セッショントークン生成・返却
+                  └─ TOTP 無効 → login_count / last_login_at 更新 → セッショントークン生成・返却
 ```
 
 **パスワード変更時：** 新しい salt を生成しハッシュを更新し、`must_change:false` を保存する。変更完了後に現セッション以外のセッションを破棄。
@@ -8033,6 +8048,17 @@ POST /api/login
 | rand 失敗 | 空 | `random source failed` + LF | `1` | ファイル作成なし。 |
 
 生成手順は、state dir 検証 → 既存確認 → salt 生成 → hash 生成 → `{path}.tmp.{pid}` へ JSON + LF 書込 → mode `0600` → file sync → rename → parent directory sync の順に固定する。rename 後の sync に失敗した場合は `1` を返し、作成済みファイルは残る。実装者判断で初期パスワードを環境変数、対話入力、ランダム生成へ変更してはならない。
+
+**認証 fixture 固定：**
+
+| fixture | 入力 | 期待結果 |
+|---------|------|----------|
+| auth-password-failure | 誤 password で `POST /api/login` | `401`、session/ticket なし、失敗回数 +1、`.access_log` と `.audit_log` に secret なし。 |
+| auth-login-lock | 連続 10 回失敗後の `POST /api/login` | `429`、password hash 検証なし、`.access_log` に `login_locked`、`.audit_log` に `permission_denied`。 |
+| auth-session-issued | TOTP 無効で password 成功 | token は response のみ、`.admin_credentials.login_count` +1、ログに token/hash/salt なし。 |
+| auth-session-expired | 期限切れ session で保護 API | `401`、対象 session 削除、`.access_log` と `.audit_log` は追記しない。 |
+| auth-password-change | password 変更成功 | 新 salt/hash、現 session 以外削除、`password_change` ログ、password/hash/salt 平文なし。 |
+| auth-log-write-failure | login 成功時に `.audit_log` 追記失敗 | `500`、session token を response しない。 |
 
 ---
 
@@ -10444,6 +10470,18 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 
 `permission_denied` の監査ログ追記に失敗した場合は `500` を返し、対象 endpoint の処理は実行しない。
 
+**scope 判定固定条件：**
+
+| 条件 | 判定 |
+|------|------|
+| session token | scope 表を参照せず許可する。 |
+| API token の `scopes` が空 | token record 破損として扱い `500`。 |
+| API token の `scopes` に未知値 | token record 破損として扱い `500`。 |
+| endpoint が複数 group に現れる | §27.42 の表で先に定義された group を採用する。 |
+| path parameter 付き endpoint | 正規化 path pattern で scope 判定する。例: `DELETE /api/tokens/abc` は `DELETE /api/tokens/{id}`。 |
+| query string | scope 判定には使用しない。method と path pattern だけで判定する。 |
+| `GET /api/health` | 認証不要。API token scope 判定を行わない。 |
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -10453,6 +10491,8 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | trigger token で config | `403`。 |
 | 未定義 endpoint | token scope に関係なく `404` または `405`。 |
 | 複数 scope | いずれかに一致する endpoint だけ成功。 |
+| path parameter endpoint | pattern 正規化後の scope で判定する。 |
+| query 付き endpoint | query を除外して scope 判定する。 |
 
 ### 27.43 API キー管理
 
@@ -10476,6 +10516,33 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 4. response の `token` は作成時 1 回だけ返す。`GET /api/tokens` では返さない。
 5. 認証時は hash 一致、`revoked_at == null`、`expires_at == null または now < expires_at` を満たす token だけ有効とする。
 6. 作成、認証成功、失効、期限切れ拒否を `.audit_log` へ記録する。ただし token 本体は記録しない。
+
+**`.api_tokens` record schema：**
+
+| キー | 型 | 必須 | 許容値 |
+|------|----|------|--------|
+| `id` | string | 必須 | `tok` + 6 桁以上の数字。 |
+| `label` | string | 必須 | 1〜64 文字。前後空白は保存前に除去し、空になれば `422`。 |
+| `token_hash` | string | 必須 | `sha256(token)` の 64 文字 lowercase hex。 |
+| `scopes` | array[string] | 必須 | `read`、`trigger`、`operate`、`config`、`admin` の 1〜5 件。保存時は重複除去し固定順へ正規化する。 |
+| `created_at` | string | 必須 | UTC ISO 8601。 |
+| `last_used_at` | string/null | 必須 | 認証成功後に更新する。 |
+| `expires_at` | string/null | 必須 | `null` または UTC ISO 8601。 |
+| `revoked_at` | string/null | 必須 | 失効時に UTC ISO 8601 を保存する。 |
+
+`.api_tokens` に未知 key、必須 key 不足、型不一致、未知 scope、空 scopes、hash 形式不正、時刻形式不正がある場合は破損として扱い、token 認証、一覧、作成、失効をすべて `500 {"error":"Internal server error"}` で拒否する。ただし旧 `scope` 文字列から `scopes:[scope]` への正規化は §22.0c の例外に従う。破損内容、hash、token 本体は response、`.access_log`、`.audit_log`、journal に出力しない。
+
+**API token 認証時の副作用境界：**
+
+| ケース | HTTP status | `.api_tokens` | `.access_log` | `.audit_log` | 備考 |
+|--------|-------------|---------------|---------------|--------------|------|
+| hash 不一致 | `401` | 変更なし | 追記しない | 追記しない | token id が特定できないため監査対象外。 |
+| 期限切れ | `401` | `last_used_at` 更新なし | `token_expired` を追記 | `token_expired` を追記 | token id が特定できた場合だけ記録する。 |
+| 失効済み | `401` | `last_used_at` 更新なし | `token_revoked_reject` を追記 | `token_revoked_reject` を追記 | token 本体と hash は保存しない。 |
+| scope 不足 | `403` | `last_used_at` 更新なし | `permission_denied` を追記 | `permission_denied` を追記 | 対象 endpoint は実行しない。 |
+| 認証成功 | endpoint 固有 | `last_used_at` を現在時刻へ更新 | `token_auth` を追記 | `token_auth` を追記 | endpoint 実行前に更新する。 |
+
+上表で `.api_tokens` 保存後に `.access_log` または `.audit_log` 追記へ失敗した場合、対象 API は `500` とし、endpoint 固有処理へ進まない。`last_used_at` 更新済み record は巻き戻さない。
 
 **処理順：**
 
@@ -10528,6 +10595,8 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | 失効 | `revoked_at` 保存、以後 `401`。 |
 | 自己失効 | 失効リクエストは `200`、以後同 token は `401`。 |
 | log 追記失敗 | `500`。token record は残る。 |
+| token record 破損 | `500`、自動再生成なし、secret 出力なし。 |
+| scope 不足 | `403`、endpoint 実行なし、`permission_denied` 記録。 |
 
 ### 27.44 監査ログ
 
@@ -10537,10 +10606,10 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 
 | action | target_type |
 |--------|-------------|
-| `login_success`, `login_failure`, `logout`, `totp_required`, `totp_enabled`, `totp_disabled` | `auth` |
+| `login_success`, `login_failure`, `logout`, `totp_required`, `totp_failure`, `totp_enabled`, `totp_disabled` | `auth` |
 | `password_change` | `auth` |
-| `token_create`, `token_revoke`, `token_auth`, `token_expired` | `api_token` |
-| `permission_denied` | `endpoint` |
+| `token_create`, `token_revoke`, `token_auth`, `token_expired`, `token_revoked_reject` | `api_token` |
+| `permission_denied` | `endpoint` または `auth` |
 | `build_trigger`, `build_force_trigger` | `build` |
 | `config_update`, `rate_limit_update` | `config` |
 
@@ -10557,6 +10626,31 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | `message` | 固定文言のみ。入力値を連結しない。最大 500 文字。 |
 
 監査ログへ保存する object は `.audit_log` schema のキーだけとする。未知キー、request body、query 全体、header 全体、cookie、secret、token、password、hash、salt、TOTP secret を保存してはならない。
+
+**action 生成固定値：**
+
+| 操作 | action | actor_type | target_type | target_id | result |
+|------|--------|------------|-------------|-----------|--------|
+| password login 成功 | `login_success` | `anonymous` | `auth` | `login` | `success` |
+| password login 失敗 | `login_failure` | `anonymous` | `auth` | `login` | `failure` |
+| login ロック拒否 | `permission_denied` | `anonymous` | `auth` | `login` | `denied` |
+| TOTP 必須 ticket 発行 | `totp_required` | `anonymous` | `auth` | `login` | `success` |
+| TOTP login 失敗 | `totp_failure` | `anonymous` | `auth` | `login_totp` | `failure` |
+| logout | `logout` | `admin` または `api_token` | `auth` | `logout` | `success` |
+| password 変更 | `password_change` | `admin` | `auth` | `password` | `success` |
+| API token 作成 | `token_create` | `admin` または `api_token` | `api_token` | 作成 token id | `success` |
+| API token 認証成功 | `token_auth` | `api_token` | `api_token` | token id | `success` |
+| API token 期限切れ拒否 | `token_expired` | `api_token` | `api_token` | token id | `failure` |
+| API token 失効済み拒否 | `token_revoked_reject` | `api_token` | `api_token` | token id | `failure` |
+| API token 失効 | `token_revoke` | `admin` または `api_token` | `api_token` | 失効 token id | `success` |
+| scope 不足 | `permission_denied` | `api_token` | `endpoint` | `{METHOD} {path}` | `denied` |
+| rate limit 超過 | `permission_denied` | `anonymous`、`admin`、`api_token` | `endpoint` | `{METHOD} {path}` | `denied` |
+| TOTP 有効化 | `totp_enabled` | `admin` | `auth` | `totp` | `success` |
+| TOTP 無効化 | `totp_disabled` | `admin` | `auth` | `totp` | `success` |
+| 設定変更 | `config_update` | `admin` または `api_token` | `config` | 変更 key | `success` |
+| rate limit 設定変更 | `rate_limit_update` | `admin` または `api_token` | `config` | `api_rate_limit` | `success` |
+
+同一操作で `.config_log` と `.audit_log` の両方を追記する場合、`.config_log` を先に追記する。`.config_log` 成功後に `.audit_log` が失敗した場合は `500` を返し、`.config_log` は巻き戻さない。`.audit_log` 追記失敗そのものを `.audit_log` に記録しようとしてはならない。
 
 **正常系：**
 
@@ -10577,6 +10671,8 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | 壊れた行 | 無視する。API response に壊れた行の内容を含めない。 |
 | 返却上限 | `limit` は §22.0b の 1〜200。未指定時は 100。 |
 
+`GET /api/audit-log` は監査ログ取得操作自体を `.audit_log` へ記録しない。通常の API request として `.api_access_log` には記録する。フィルタ値が未知 action、未知 result、200 文字超過 actor の場合は `422` とし、壊れた行の有無とは独立して判定する。
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -10587,6 +10683,8 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | 壊れた行 | API は無視して返す。 |
 | filter | `actor`、`action`、`result` が完全一致で絞り込まれる。 |
 | 追記失敗 | 対象操作は `500`。 |
+| 取得操作 | `GET /api/audit-log` 自身は監査ログへ追記されない。 |
+| 未知 filter | `422`。 |
 
 ### 27.45 セッションタイムアウト変更設定
 
@@ -10675,6 +10773,19 @@ TOTP code は 6 桁の ASCII 数字のみ受け付ける。空文字、全角数
 
 TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記録する。code 不一致、replay、ticket 不正は `result:"failure"` とし、code、secret、ticket 本体は保存しない。
 
+**TOTP 状態更新順：**
+
+| 操作 | 更新順 | 失敗時 |
+|------|--------|--------|
+| setup 開始 | 仮 secret 生成 → メモリ保存 → response | メモリ保存失敗時は `500`、secret を返さない。 |
+| confirm 成功 | `.totp_secret` 保存 → 仮 secret 削除 → `.audit_log` 追記 → response | `.audit_log` 失敗時は `500`。保存済み `.totp_secret` と仮 secret 削除は巻き戻さない。 |
+| login password 成功 / TOTP 有効 | ticket 生成 → メモリ保存 → `.access_log` 追記 → `.audit_log` 追記 → response | log 失敗時は ticket を削除し `500`。 |
+| login TOTP 成功 | code step 採用 → `.totp_secret.last_accepted_step` 保存 → ticket 削除 → `.admin_credentials` 更新 → `.access_log` 追記 → `.audit_log` 追記 → session 追加 → response | session 追加前の失敗は token を返さない。ticket 削除後は同 ticket を再利用不可。 |
+| login TOTP 失敗 | ticket 削除 → `.access_log` 追記 → `.audit_log` 追記 → response | log 失敗時は `500`。ticket は巻き戻さない。 |
+| disable 成功 | `.totp_secret` を無効値で保存 → 未使用 ticket / 仮 secret 全削除 → `.audit_log` 追記 → response | `.audit_log` 失敗時は `500`。保存済み無効化は巻き戻さない。 |
+
+`POST /api/login/totp` は、ticket が存在しない、期限切れ、hash 不一致、既に削除済みのいずれの場合も `401 {"error":"Unauthorized"}` を返す。ticket 不正の詳細、ticket hash、ticket 発行時刻は response と log に含めない。TOTP 有効化または無効化に成功した場合、既存 session は破棄しない。
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10686,6 +10797,8 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 | TOTP 無効状態の disable | `409`。 |
 | TOTP 有効状態の setup | `409`。 |
 | `.totp_secret` 破損 | TOTP 有効 login、status、confirm、disable は `500`。自動無効化しない。 |
+| `.totp_secret` 書き込み失敗 | `500`。response に secret、token、ticket を含めない。 |
+| `.audit_log` 追記失敗 | `500`。保存済み `.totp_secret` は巻き戻さない。 |
 
 **検証条件：**
 
@@ -10697,6 +10810,8 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 | secret 表示 | response と UI の一回表示以外に平文が残らない。 |
 | setup 期限切れ | confirm は `409`。 |
 | login ticket 再利用 | 1 回成功後または失敗後の同一 ticket は `401`。 |
+| confirm audit 失敗 | `500`、`.totp_secret` は保存済み、secret 平文は log なし。 |
+| disable 成功 | `.totp_secret` は無効値、既存 session は維持、ticket と仮 secret は削除。 |
 
 ### 27.47 API レート制限
 
@@ -10722,6 +10837,8 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 | API token | `token:{token_id}:{group}` と `ip:{remote_addr}:{group}` の両方 |
 
 どちらか一方でも上限を超えた場合は `429 Too Many Requests` と `{"error":"Too many requests"}` を返す。
+
+`remote_addr` は `net/http.Request.RemoteAddr` の host 部分を使用する。`X-Forwarded-For`、`X-Real-IP`、`Forwarded` header は標準では信用せず、key 生成に使用しない。IPv6 は `net.SplitHostPort` で host を抽出し、正規化済み文字列をそのまま key に入れる。host 抽出に失敗した場合は `ip:unknown:{group}` を使用する。
 
 **policy object：**
 
@@ -10761,16 +10878,46 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 3. `GET /api/api-rate-limit` は policy と window summary を返す。
 4. `POST /api/api-rate-limit` は policy を検証して保存し、`.api_rate_state.windows` を空にする。
 
+**endpoint group 判定：**
+
+| 条件 | group |
+|------|-------|
+| `POST /api/login`、`POST /api/login/totp` | `login` |
+| §27.42 の `trigger` 許可 endpoint | `trigger` |
+| §27.42 の `operate` 許可 endpoint | `operate` |
+| §27.42 の `config` 許可 endpoint | `config` |
+| §27.42 の `admin` 許可 endpoint | `admin` |
+| §27.42 の `read` 許可 endpoint | `read` |
+| `GET /api/health` | rate limit 対象外 |
+| 未知 path / method 不一致 | rate limit 判定前に `404` / `405` |
+
+endpoint が複数 group に現れる場合は、`login`、`admin`、`config`、`operate`、`trigger`、`read` の順で最初に一致した group を採用する。
+
 **判定・更新手順：**
 
 1. `.server_config.api_rate_limit.enabled == false` の場合、`.api_rate_state` を読まずに対象 API 処理へ進む。
-2. endpoint group を決める。未分類 endpoint は `read` ではなく `admin` として扱う。
-3. 対象 key ごとに `.api_rate_state.windows[key]` を確認する。
-4. window が存在しない、または `now >= window_start + window_seconds` の場合、`window_start=now`, `count=0` で初期化する。
-5. `count >= max_requests` の key が 1 つでもあれば、count を増やさず `429` を返す。
-6. 上限未満の場合、対象 key すべての `count` を 1 増やして保存し、対象 API 処理へ進む。
+2. endpoint group を決める。
+3. `.api_rate_state` のファイルロックを取得する。
+4. 対象 key ごとに `.api_rate_state.windows[key]` を確認する。
+5. window が存在しない、または `now >= window_start + window_seconds` の場合、`window_start=now`, `count=0` で初期化する。
+6. `count >= max_requests` の key が 1 つでもあれば、count を増やさず `.audit_log` に `permission_denied` を追記し、`429` を返す。
+7. 上限未満の場合、対象 key すべての `count` を 1 増やして `.api_rate_state` を保存し、対象 API 処理へ進む。
 
 rate limit の `429` は `.audit_log` に `permission_denied` として記録する。監査ログ追記に失敗した場合は `500` を返す。login group の認証前 `429` は `actor_type:"anonymous"`、`actor_id:null` とする。
+
+認証後 endpoint の rate limit では、actor key と IP key の両方を同じ lock 内で判定・更新する。片方だけの count 更新に成功した状態を残してはならない。`.api_rate_state` 保存失敗時は対象 API を実行せず `500` を返す。rate limit 判定で `429` になる request は count を増やさない。
+
+**設定更新契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 必須 group | `login`、`read`、`trigger`、`operate`、`config`、`admin` をすべて含める。 |
+| 余分な group | `422`。 |
+| `enabled` | boolean 必須。 |
+| `window_seconds` | integer 必須、1〜86400。 |
+| `max_requests` | integer 必須、1〜100000。 |
+| 保存順 | `.server_config` 保存 → `.api_rate_state.windows` 空保存 → `.config_log` 追記 → `.audit_log` に `rate_limit_update` 追記 → response。 |
+| 同値更新 | `200` とし、`.server_config` と `.api_rate_state` は変更しない。`.config_log` と `.audit_log` に追記しない。 |
 
 **異常系：**
 
@@ -10783,6 +10930,8 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 | unknown group | `422`。 |
 | `enabled` 欠落 | `422`。 |
 | `.api_rate_state` 破損 | §22.0a に従って退避し、空 window で再生成する。 |
+| `.audit_log` 追記失敗 | `500`。`429` response は返さない。 |
+| lock 取得 10 秒超過 | `409`。対象 API は実行しない。 |
 
 **検証条件：**
 
@@ -10794,3 +10943,6 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 | disabled | `enabled:false` の場合は判定せず成功。 |
 | policy 更新 | `.api_rate_state.windows` が空になる。 |
 | state_summary | 最大 100 件、`reset_at` 降順で返る。 |
+| 429 count | `429` になった request では count が増えない。 |
+| 同値更新 | state と log を変更せず `200`。 |
+| proxy header | `X-Forwarded-For` ではなく `RemoteAddr` host で key を作る。 |
