@@ -145,7 +145,7 @@ Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は 
 | secret / state 初期化 | 対象 secret / state file だけ | 一時ファイル、mode、rename、fsync、親 directory sync が成功する。 | systemd unit を変更しない。secret 平文を出力しない。 |
 | admin UI 展開 | admin 一時 directory、成功時のみ `$INSTALL_DIR/admin` | archive 安全検査、必須ファイル確認、差し替えがすべて成功する。 | 既存 admin UI を維持する。API restart を行わない。 |
 | systemd unit 配置 | 対象 unit file だけ | unit 書込、mode、`systemctl daemon-reload` が成功する。 | enable / restart / start を行わない。 |
-| service 起動 / 再起動 | 対象 unit だけ | `systemctl is-active` が `active`。API は health check も成功。 | rollback 表に従い、追加推測復旧を行わない。 |
+| service 起動 / 再起動 | 対象 unit だけ | `systemctl is-active` が `active`。api は health check も成功。 | rollback 表に従い、追加推測復旧を行わない。 |
 | 最終確認 | なし | §26.3、§26.3b、§26.5 の確認項目がすべて成功。 | 成功報告しない。確認失敗箇所と journal 確認対象を出力する。 |
 
 setup / update 実装は、各段階の開始と成功を stderr または stdout に固定文言で 1 行ずつ出してよいが、PAT、password、session token、API token、Webhook secret、SMTP password、Release URL の credential 部分は出力してはならない。secret file が既に存在する場合は、個別手順で上書きを明記している場合を除き、既存値を保持する。特に `.github_token`、`.admin_credentials`、`.webhook_secret`、`.smtp_secret` は、アップデートで自動上書きしない。
@@ -232,7 +232,7 @@ Go 版初回セットアップでは以下を実行しない。
 |------|------|
 | `/usr/local/bin/adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"` | 初回セットアップ対象は runner と build バイナリに限定し、API 認証情報生成は §26.3b で実行する。 |
 | `systemctl enable --now adlaire-ci-api` | API service は §26.3b の API バイナリ配置、認証情報生成、unit 配置がすべて成功した後にのみ起動する。 |
-| `.build_logs/` 作成 | runner 初期導入ではビルド実行時に必要な状態だけを初期化し、API が参照する履歴ディレクトリは §26.3b で作成する。 |
+| `.build_logs/` 作成 | runner 初期導入ではビルド実行時に必要な状態だけを初期化し、api が参照する履歴ディレクトリは §26.3b で作成する。 |
 | `.snapshots/` 作成 | snapshot 参照・rollback API と組み合わせて使うため、§26.3b の管理 API 導入時に作成する。 |
 
 ### §26.3b 管理 API 導入後の追加セットアップ手順

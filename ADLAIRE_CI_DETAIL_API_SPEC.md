@@ -8,7 +8,7 @@
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、本ファイルへ移動しない。api 連動機能を実装する場合は、本ファイルの個別節と合わせて `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を確認する。
 
-`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 は security owner component の詳細仕様であり、本ファイルへ移動しない。API が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` を正とする。
+`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 は security owner component の詳細仕様であり、本ファイルへ移動しない。api が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` を正とする。
 
 ---
 
@@ -18,7 +18,7 @@
 |------|------|
 | owner component | `api` |
 | collaborator component | `statefile`、`sdk`、`ui`、`security`、`archive`、`runner` |
-| 持つ内容 | HTTP 共通契約、endpoint、状態ファイル read/write 呼び出し境界、認証連携、API owner 追加機能。 |
+| 持つ内容 | HTTP 共通契約、endpoint、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 |
 | 持たない内容 | SDK 内部実装、UI DOM 詳細、runner の build 実行責務、admin 静的配信、security 主本文、fixture 詳細。 |
 
 ---
@@ -65,7 +65,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ## 21a. 管理 API サーバー制限
 
-本節は `api` の実行時制限を定義する。runner、setup、admin、SDK、UI は本節の制限を上書きしてはならない。
+本節は `api` の実行時制限を定義する。runner、setup、admin、sdk、ui は本節の制限を上書きしてはならない。
 
 | 制限 | 詳細 | 実装時の禁止事項 |
 |------|------|------------------|
@@ -73,7 +73,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | HTTPS listener 非対応 | `api` は HTTP listener のみ起動する。標準 bind は `127.0.0.1:8765` とする。 | TLS listener、証明書読み込み、HTTPS redirect、外部公開 bind を実装しない。 |
 | 外部認証非対応 | 認証は `.admin_credentials`、`.totp_secret`、session、API token で完結する。 | SSO、OAuth、LDAP、SAML、複数ユーザー管理を追加しない。 |
 | 独自接続数制限なし | Go 標準ライブラリ `net/http` の標準 server で処理する。API rate limit は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.47 の固定窓で行う。 | 独自 worker pool、connection pool、接続数上限、外部 queue を追加しない。 |
-| runner 起動責務なし | API は HTTP endpoint の request / response と状態 read/write 呼び出し境界を担当する。 | runner の通常 polling loop、GitHub read、pipeline 実行、build log 確定処理を API 本文へ移動しない。 |
+| runner 起動責務なし | api は HTTP endpoint の request / response と状態 read/write 呼び出し境界を担当する。 | runner の通常 polling loop、GitHub read、pipeline 実行、build log 確定処理を api 本文へ移動しない。 |
 
 セッション、API token、TOTP、rate limit、audit log の security 主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 を正とし、本節は API server の実行時境界だけを定義する。
 
@@ -87,7 +87,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ### 22.0 API 共通契約
 
-本節の API は `api` の対象仕様である。実装時は、エンドポイント固有仕様より先に以下の共通契約を満たす。
+本節の api は `api` の対象仕様である。実装時は、エンドポイント固有仕様より先に以下の共通契約を満たす。
 
 | 項目 | 仕様 |
 |------|------|
@@ -221,7 +221,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | query が整数でない | query 名 | `integer required` |
 | 日付の暦日不正 | query 名または key 名 | `invalid date` |
 
-複数エラーがある場合、body key は JSON object の出現順、query は URL query の出現順、path parameter は route 定義順で並べる。body、query、path にまたがる場合は body → query → path の順とする。SDK と UI は `details[].field` と `details[].message` をそのまま扱うため、実装者判断で文言を言い換えてはならない。
+複数エラーがある場合、body key は JSON object の出現順、query は URL query の出現順、path parameter は route 定義順で並べる。body、query、path にまたがる場合は body → query → path の順とする。sdk と ui は `details[].field` と `details[].message` をそのまま扱うため、実装者判断で文言を言い換えてはならない。
 
 ### 22.0c 主要状態ファイル schema
 
@@ -2088,7 +2088,7 @@ queue fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 f
 
 ---
 
-## 27. API owner 追加仕様化機能 詳細仕様
+## 27. api owner 追加仕様化機能 詳細仕様
 
 ### 27.5 設定バリデーション API
 owner component は `api` とする。collaborator component は `sdk`、`ui`、`statefile` とする。
@@ -2310,7 +2310,7 @@ queue entry は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.build_state` sch
 ### 27.13 Webhook イベントログ / 一覧取得 API
 owner component は `api` とする。collaborator component は `sdk`、`ui`、`statefile` とする。
 
-本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、SDK、UI からページング参照できるようにすることである。
+本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、sdk、ui からページング参照できるようにすることである。
 
 `.webhook_events.json` の保存 schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.webhook_events.json` JSON Lines schema を正とする。保存時に request header 全体、署名値、secret、payload 全体を保存してはならない。
 
@@ -2318,7 +2318,7 @@ owner component は `api` とする。collaborator component は `sdk`、`ui`、
 
 `GET /api/webhook-events` は `limit` と `offset` query を受け付ける。`limit` は 1〜1000、既定値 50。`offset` は 0 以上、既定値 0。新しい順で返す。壊れた行は無視し、server log に `WEBHOOK_EVENT_LOG_SKIP_CORRUPT` を出す。
 
-Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `getWebhookEvents(limit,offset)` は `limit` と `offset` を常に query へ送信する。UI は件数、delivery id、event、branch、sha、result、queued id を表示する。
+Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `getWebhookEvents(limit,offset)` は `limit` と `offset` を常に query へ送信する。ui は件数、delivery id、event、branch、sha、result、queued id を表示する。
 
 **webhook events 取得固定契約：**
 
@@ -2414,7 +2414,7 @@ owner component は `api` とする。collaborator component は `sdk`、`ui`、
 
 **SDK / UI：**
 
-SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信する。UI は INFO / WARNING / ERROR / DEBUG の filter control を提供し、選択なしでは全件を表示する。
+SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信する。ui は INFO / WARNING / ERROR / DEBUG の filter control を提供し、選択なしでは全件を表示する。
 
 **検証条件：**
 
@@ -2590,7 +2590,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | §27.36 | history/stats API の filter と response に含める。 | history / stats methods は category を保持する。 | 履歴 panel で failure category filter を表示する。 |
 | §27.37 | output meta / status / history log に含める。 | `getOutputMeta()` / `getStatus()` / `getHistoryLog()`。 | システム情報または履歴 detail に表示する。 |
 | §27.38 | config / stats / dashboard alerts に含める。 | config / stats / dashboard methods。 | 統計 panel と dashboard alert で anomaly を表示する。 |
-| §27.42 | endpoint ごとの scope 判定。 | SDK は token scope を推測せず API error を返す。 | UI は `403` を権限不足として表示し、logout しない。 |
+| §27.42 | endpoint ごとの scope 判定。 | sdk は token scope を推測せず API error を返す。 | ui は `403` を権限不足として表示し、logout しない。 |
 | §27.43 | token API。 | token methods。 | API token 管理 panel で発行 token を 1 回だけ表示する。 |
 | §27.44 | audit log API。 | `getAuditLog()`。 | 監査ログ panel で filter 表示し、secret は表示しない。 |
 | §27.45 | config API。 | `setConfig({session_timeout_seconds})`。 | セキュリティ panel で session timeout を表示 / 保存する。 |
@@ -2642,7 +2642,7 @@ owner component は `api` とする。collaborator component は `runner`、`sdk
 
 **SDK / UI：**
 
-SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供する。UI は pending 件数、branch、sha、target、created_at、expires_at、approve/reject 操作を表示する。
+sdk は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供する。ui は pending 件数、branch、sha、target、created_at、expires_at、approve/reject 操作を表示する。
 
 **検証条件：**
 

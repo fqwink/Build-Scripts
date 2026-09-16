@@ -17,7 +17,7 @@
 | 持つ内容 | build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理。 |
 | 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態ファイル schema 定義。 |
 
-archive owner は、保存済み build log と snapshot artifact を安全に圧縮、展開、列挙、削除、転送する実体処理だけを担当する。API は HTTP endpoint の request / response と archive owner 呼び出し境界、SDK は API method 呼び出し、UI は操作表示だけを担当する。runner の build 実行、build id 採番、通常 snapshot 作成タイミング、history / status finalizer は runner owner の詳細仕様を正とし、本ファイルへ重複定義しない。
+archive owner は、保存済み build log と snapshot artifact を安全に圧縮、展開、列挙、削除、転送する実体処理だけを担当する。api は HTTP endpoint の request / response と archive owner 呼び出し境界、sdk は API method 呼び出し、ui は操作表示だけを担当する。runner の build 実行、build id 採番、通常 snapshot 作成タイミング、history / status finalizer は runner owner の詳細仕様を正とし、本ファイルへ重複定義しない。
 
 ---
 
@@ -67,11 +67,11 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 
 ### 27.15 ビルドアーティファクト管理
 
-本機能の目的は、`.snapshots/` に保存された build artifact を API、SDK、UI から一覧、download、削除、rollback できるようにすることである。
+本機能の目的は、`.snapshots/` に保存された build artifact を api、sdk、ui から一覧、download、削除、rollback できるようにすることである。
 
 owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は `runner` の §14b を正とする。
 
-archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。API は下表 endpoint の request / response と archive owner 呼び出し境界だけを担当する。SDK は API method 呼び出し、UI は操作表示と disabled 判定だけを担当する。runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は runner owner を正とし、本節へ重複定義しない。
+archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api は下表 endpoint の request / response と archive owner 呼び出し境界だけを担当する。sdk は API method 呼び出し、ui は操作表示と disabled 判定だけを担当する。runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は runner owner を正とし、本節へ重複定義しない。
 
 **API 呼び出し境界：**
 
@@ -137,9 +137,9 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は `
 | delete log 失敗 | snapshot 削除済みのまま `500`。削除は巻き戻さない。 |
 | rollback pending | pending entry には `rollback_from`、`snapshot_id`、deploy target を保存する。 |
 
-**SDK / UI 操作境界：**
+**sdk / ui 操作境界：**
 
-SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。SDK は snapshot の存在、download 安全性、rollback 可否を状態ファイルから推測せず、API response / error をそのまま扱う。UI は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は実行中 build がある場合 disabled とする。UI は snapshot directory、tar.gz、rollback state を直接操作してはならない。
+sdk は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。sdk は snapshot の存在、download 安全性、rollback 可否を状態ファイルから推測せず、API response / error をそのまま扱う。ui は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は実行中 build がある場合 disabled とする。ui は snapshot directory、tar.gz、rollback state を直接操作してはならない。
 
 **検証条件：**
 

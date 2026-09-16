@@ -111,7 +111,7 @@
 | `/opt/adlaire-builder/.build_lock` | 実行中ビルドの PID ロック。 |
 | `/opt/adlaire-builder/.branch_config` | ブランチターゲット設定。永続 JSON key は `branch_targets` とする。 |
 | `/opt/adlaire-builder/.build_state` | ビルド実行状態、週次サマリー送信日等。 |
-| `/opt/adlaire-builder/.build_status.json` | runner 現在状態と直近結果の要約。API / UI / MCP の read-only 参照元。 |
+| `/opt/adlaire-builder/.build_status.json` | runner 現在状態と直近結果の要約。api / ui / mcp の read-only 参照元。 |
 | `/opt/adlaire-builder/.build_circuit_state` | サーキットブレーカー状態。 |
 | `/opt/adlaire-builder/.local_watch_state.json` | ローカルファイル監視モードの SHA-256 snapshot。 |
 | `/opt/adlaire-builder/.build_cache.json` | ビルドキャッシュの manifest。 |
@@ -451,7 +451,7 @@ runner が新規作成する状態ファイルは JSON object / array、SHA cach
 
 **設定ファイル起動時整合性チェック：**
 
-本機能の目的は、runner 起動時に状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、ビルド処理開始前に復旧または停止することである。owner component は `runner` とし、collaborator component は `statefile` とする。管理 API の HTTP endpoint、SDK、UI は本機能の実行責務を持たない。
+本機能の目的は、runner 起動時に状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、ビルド処理開始前に復旧または停止することである。owner component は `runner` とし、collaborator component は `statefile` とする。管理 API の HTTP endpoint、sdk、ui は本機能の実行責務を持たない。
 
 対象ファイルは次の 6 件に固定する。実装者判断で対象ファイルを追加または除外してはならない。
 
@@ -699,7 +699,7 @@ queue entry の `trigger` は `"manual"`、`"webhook"`、`"approval"` のみ許�
 
 **`.build_status.json` 更新契約：**
 
-`.build_status.json` の schema、許容値、初期値、API / UI / MCP の読取 priority は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c を正とする。本ファイルでは runner が `.build_status.json` を更新するタイミングと、更新失敗時の runner 挙動だけを定義する。
+`.build_status.json` の schema、許容値、初期値、api / ui / mcp の読取 priority は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c を正とする。本ファイルでは runner が `.build_status.json` を更新するタイミングと、更新失敗時の runner 挙動だけを定義する。
 
 `.build_status.json` の更新タイミングは次に固定する。
 
@@ -1746,11 +1746,11 @@ runner が起動時に必要ファイル不足または権限不備を検出し�
 
 ## 19. 管理 API サーバー制限参照
 
-管理 API サーバーの HTTP listener、認証、session、rate limit、TLS 非対応、外部認証非対応、worker pool 非採用の制限は API owner component の責務とし、`ADLAIRE_CI_DETAIL_API_SPEC.md` §21a および `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 を正とする。
+管理 API サーバーの HTTP listener、認証、session、rate limit、TLS 非対応、外部認証非対応、worker pool 非採用の制限は api owner component の責務とし、`ADLAIRE_CI_DETAIL_API_SPEC.md` §21a および `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 を正とする。
 
 runner owner component は、管理 API サーバーの起動、listener、session、認証、HTTP response、rate limit を実装してはならない。
 
-runner と API が同じ状態ファイルを参照する場合でも、runner は API session、API token、TOTP、rate limit、HTTP access log を読み書きしない。runner が読み書きする状態ファイルは §11、§13、§15、§22.0a、§22.0d、および runner owner の個別 §27.x に明記されたものだけとする。
+runner と api が同じ状態ファイルを参照する場合でも、runner は API session、API token、TOTP、rate limit、HTTP access log を読み書きしない。runner が読み書きする状態ファイルは §11、§13、§15、§22.0a、§22.0d、および runner owner の個別 §27.x に明記されたものだけとする。
 
 ---
 
@@ -1921,9 +1921,9 @@ retry 待機中に SIGTERM、context timeout、lock 喪失を検出した場合�
 
 ### 27.8 ビルドステータスファイル出力
 
-本機能の目的は、runner の現在状態と直近結果を `.build_status.json` に集約し、API、SDK、UI が同じ read-only 情報を参照できるようにすることである。
+本機能の目的は、runner の現在状態と直近結果を `.build_status.json` に集約し、api、sdk、ui が同じ read-only 情報を参照できるようにすることである。
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。`runner` は `.build_status.json` の唯一の通常更新責務を持つ。`api` は `GET /api/status`、`GET /api/dashboard`、`GET /api/health` で read-only 参照する。API は `.build_status.json` を自動修復してはならない。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。`runner` は `.build_status.json` の唯一の通常更新責務を持つ。`api` は `GET /api/status`、`GET /api/dashboard`、`GET /api/health` で read-only 参照する。api は `.build_status.json` を自動修復してはならない。
 
 **入力：**
 
@@ -1992,7 +1992,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 ### 27.9 ビルドトリガー種別の記録
 
-本機能の目的は、runner がなぜ build または関連処理を開始したかを、履歴、ログ、状態、API、SDK、UI で同一の固定値として扱うことである。
+本機能の目的は、runner がなぜ build または関連処理を開始したかを、履歴、ログ、状態、api、sdk、ui で同一の固定値として扱うことである。
 
 owner component は `runner` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。`runner` は trigger の確定と永続化を担当し、api / sdk / ui は既存値の表示と filter のみを担当する。
 
@@ -2037,7 +2037,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 
 **api / sdk / ui：**
 
-`GET /api/history` の `trigger` query は上表の値だけを受け付ける。不正値は `422` を返す。SDK `getHistory({trigger})` は値を変換せず送信する。UI は filter の選択肢を上表の 9 件に固定し、未知 trigger を受け取った場合は `Unknown` へ丸めず、該当行に `invalid trigger` エラーを表示する。
+`GET /api/history` の `trigger` query は上表の値だけを受け付ける。不正値は `422` を返す。SDK `getHistory({trigger})` は値を変換せず送信する。ui は filter の選択肢を上表の 9 件に固定し、未知 trigger を受け取った場合は `Unknown` へ丸めず、該当行に `invalid trigger` エラーを表示する。
 
 **異常系：**
 
@@ -2073,7 +2073,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 
 本機能の目的は、runner が build 処理に入る前に、runner が読む状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、規定どおり復旧または停止することである。
 
-owner component は `runner` とする。collaborator component は `statefile` とする。管理 API、SDK、UI は本機能の実行責務を持たない。API が同じ状態ファイルを読む場合も、起動時整合性チェックを代行してはならない。
+owner component は `runner` とする。collaborator component は `statefile` とする。管理 API、sdk、ui は本機能の実行責務を持たない。api が同じ状態ファイルを読む場合も、起動時整合性チェックを代行してはならない。
 
 **対象ファイル：**
 
@@ -2199,7 +2199,7 @@ Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`�
 
 本機能の目的は、過去 7 日間の build 結果を指定曜日・時刻に集計し、Webhook へ定期通知することである。
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。runner は自動送信、API は設定表示・手動送信を担当する。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。runner は自動送信、api は設定表示・手動送信を担当する。
 
 **設定：**
 
@@ -2267,7 +2267,7 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 
 本機能の目的は、単一 `target_file` 前提を拡張し、複数 Markdown ファイルまたは Markdown ディレクトリを 1 回の runner 起動で監視、差分判定、ビルド対象決定できるようにすることである。
 
-owner component は `runner` とする。collaborator component は `builder`、`api`、`statefile` とする。runner は差分検出と build target 決定、builder は複数入力の静的サイト生成、API は設定表示・更新を担当する。
+owner component は `runner` とする。collaborator component は `builder`、`api`、`statefile` とする。runner は差分検出と build target 決定、builder は複数入力の静的サイト生成、api は設定表示・更新を担当する。
 
 **入力 / 状態：**
 
@@ -2694,7 +2694,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 本機能の目的は、`approval_required` な target を通常 build として即時実行せず、人間承認後の queue entry だけを build / deploy 実行対象にすることである。
 
-API endpoint、approve / reject の request / response、SDK / UI 操作境界は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.30 を正とする。`.approval_queue` record schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c を正とする。
+API endpoint、approve / reject の request / response、sdk / ui 操作境界は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.30 を正とする。`.approval_queue` record schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c を正とする。
 
 **入力 / 状態：**
 
@@ -3101,7 +3101,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 1. failure 確定時に分類優先順位で category を決定する。
 2. `.build_logs/{id}.json.failure_category` と `failure_evidence[]` を保存する。
 3. `.build_history.failure_category` に同じ値を保存する。
-4. API / UI は category で filter できる。未知 query は `422`。
+4. api / ui は category で filter できる。未知 query は `422`。
 
 **`failure_evidence[]` schema：**
 
