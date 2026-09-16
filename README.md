@@ -24,6 +24,8 @@ Adlaire CI は、最初から Go を前提として仕様策定します。
 
 `build_spec.go`、`runner.go`、`api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html` は仕様化済み・未実装のコンポーネントです。`mcp_server.go` は将来計画のコンポーネントです。
 
+リポジトリ内に既存の `build_spec.py` や `runner.py` が存在する場合でも、Go 正本コンポーネントまたは実装済み機能として扱いません。実装判断では `ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に記載された Go 仕様を優先します。
+
 ## 注意
 
 仕様や挙動を変更する場合は、先に `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` を改訂し、その内容に基づいて実装ファイルと関連文書を整合させます。

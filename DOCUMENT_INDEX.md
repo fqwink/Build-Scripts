@@ -48,3 +48,7 @@ Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_
 現時点では、`ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に記載された一部コンポーネントや機能は仕様化済みだが、リポジトリ内に実装ファイルが存在しない。
 
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
+
+リポジトリ内に既存の `build_spec.py` や `runner.py` が存在する場合でも、`build_spec.go`、`runner.go`、`api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html`、`mcp_server.go` の状態判定には使用しない。
+
+Go 版コンポーネントの実装状態は、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、実ファイルの存在、検証結果の整合によって判定する。
