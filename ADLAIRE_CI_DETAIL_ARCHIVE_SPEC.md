@@ -12,10 +12,12 @@
 
 | 項目 | 内容 |
 |------|------|
-| owner component | `components/archive.go` |
-| collaborator component | `components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html`、`components/statefile.go` |
-| 持つ内容 | build log archive、snapshot、download、delete、rollback、cleanup。 |
-| 持たない内容 | runner の build 実行、API 共通 request / response、SDK method 実装、UI DOM 詳細。 |
+| owner component | `archive` |
+| collaborator component | `runner`、`api`、`sdk`、`ui`、`statefile` |
+| 持つ内容 | build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理。 |
+| 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態ファイル schema 定義。 |
+
+archive owner は、保存済み build log と snapshot artifact を安全に圧縮、展開、列挙、削除、転送する実体処理だけを担当する。API は HTTP endpoint の request / response と archive owner 呼び出し境界、SDK は API method 呼び出し、UI は操作表示だけを担当する。runner の build 実行、build id 採番、通常 snapshot 作成タイミング、history / status finalizer は runner owner の詳細仕様を正とし、本ファイルへ重複定義しない。
 
 ---
 
@@ -30,13 +32,15 @@
 
 ### 27.7 ビルドログのアーカイブ圧縮
 
-runner と `POST /api/logs/archive` は、`.server_config.log_archive_after_days > 0` の場合、対象日数より古い `.build_logs/{id}.json` を gzip 圧縮し、`.build_logs/archive/{id}.json.gz` へ保存する。圧縮成功後、元の `.build_logs/{id}.json` を削除する。`.build_logs/archive/` 内のファイルを再圧縮してはならない。
+owner component は `archive` とする。collaborator component は `runner`、`api`、`statefile` とする。
+
+archive owner は、runner または `POST /api/logs/archive` から呼び出された場合に、`.server_config.log_archive_after_days > 0` で対象日数より古い `.build_logs/{id}.json` を gzip 圧縮し、`.build_logs/archive/{id}.json.gz` へ保存する。圧縮成功後、元の `.build_logs/{id}.json` を削除する。`.build_logs/archive/` 内のファイルを再圧縮してはならない。
 
 gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元ファイル mtime ではなく圧縮実行時刻でよい。圧縮前 JSON を読み込めないファイルは archive 対象外とし、WARN `LOG_ARCHIVE_SKIP_CORRUPT: id=<id>` を出す。実行中 build の `current_build_id` と一致する log は対象外とする。
 
-ログ参照 API は通常ファイルを先に探し、存在しない場合に archive を探す。archive を読む場合は gzip 展開後に通常 `.build_logs/{id}.json` と同じ schema として扱う。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` は archive を含めて動作する。
+archive owner は、通常 log が存在しない場合に archive log を gzip 展開し、通常 `.build_logs/{id}.json` と同じ schema の JSON object として API へ返す。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` の endpoint、query、response body は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e を正とし、本節は archive log の探索、展開、除外、件数返却だけを定義する。
 
-`POST /api/logs/cleanup` は、archive 済みファイルも `log_retention_days` の削除対象に含める。archive component は `POST /api/logs/archive` へ `archived_count`、`POST /api/logs/cleanup` へ `deleted_count` と `failed_count` を返す。HTTP response body の形式は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e を正とする。
+archive owner は、`POST /api/logs/cleanup` から呼び出された場合に、archive 済みファイルも `log_retention_days` の削除対象に含める。archive owner は `POST /api/logs/archive` へ `archived_count`、`POST /api/logs/cleanup` へ `deleted_count` と `failed_count` を返す。HTTP response body の形式は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e を正とする。
 
 **archive / cleanup 固定契約：**
 
@@ -67,14 +71,16 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 
 owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は `runner` の §14b を正とする。
 
-**API 契約：**
+archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。API は下表 endpoint の request / response と archive owner 呼び出し境界だけを担当する。SDK は API method 呼び出し、UI は操作表示と disabled 判定だけを担当する。runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は runner owner を正とし、本節へ重複定義しない。
+
+**API 呼び出し境界：**
 
 | API | 処理 |
 |-----|------|
-| `GET /api/snapshots` | `.snapshots/{id}/` を新しい順で一覧する。 |
-| `GET /api/snapshots/{id}/download` | 対象 snapshot を tar.gz として streaming download する。 |
-| `DELETE /api/snapshots/{id}` | 対象 snapshot だけを削除し、`.config_log` に記録する。 |
-| `POST /api/history/{id}/rollback` | 対象 snapshot を deploy target へ再転送し、新規 rollback build log/history を作成する。 |
+| `GET /api/snapshots` | archive owner の snapshot 一覧読取を呼び出し、response schema は API 仕様に従う。 |
+| `GET /api/snapshots/{id}/download` | archive owner の download tar.gz 生成を呼び出し、streaming response を返す。 |
+| `DELETE /api/snapshots/{id}` | archive owner の snapshot delete を呼び出し、成功後に `.config_log` 追記を行う。 |
+| `POST /api/history/{id}/rollback` | archive owner の rollback 転送を呼び出し、rollback build log/history の作成境界を runner 共通処理と整合させる。 |
 
 `id` は build id と一致するものだけ許可する。snapshot 専用 id は採番しない。`/`、`..`、空文字、URL decode 後に path separator を含む値は `422` とする。
 
@@ -125,15 +131,15 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は `
 
 | 項目 | 仕様 |
 |------|------|
-| 一覧対象 | `.snapshots/{id}/manifest.json` が存在する directory だけ。 |
+| 一覧対象 | `.snapshots/{id}/meta.json` が存在する directory だけ。 |
 | size | directory 配下の通常ファイル size 合計。symlink は size 集計前に異常扱い。 |
 | delete 順 | id validation → running check → snapshot directory 確認 → delete → `.config_log` 追記 → response。 |
 | delete log 失敗 | snapshot 削除済みのまま `500`。削除は巻き戻さない。 |
 | rollback pending | pending entry には `rollback_from`、`snapshot_id`、deploy target を保存する。 |
 
-**UI / SDK：**
+**SDK / UI 操作境界：**
 
-SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。UI は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は実行中 build がある場合 disabled とする。
+SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。SDK は snapshot の存在、download 安全性、rollback 可否を状態ファイルから推測せず、API response / error をそのまま扱う。UI は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は実行中 build がある場合 disabled とする。UI は snapshot directory、tar.gz、rollback state を直接操作してはならない。
 
 **検証条件：**
 
