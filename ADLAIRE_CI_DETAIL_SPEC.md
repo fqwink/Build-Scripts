@@ -5450,6 +5450,7 @@ API が新規 ID を生成する機能は、下表の形式に従う。既存 ID
 | queue id | `q{YYYYMMDDHHmmss}` | `q20260915100500` | `q20260915100500-001` |
 | token id | `tok` + 6 桁連番 | `tok000001` | 既存最大番号 + 1。999999 超過時は `500` |
 | hook id | `h{YYYYMMDDHHmmss}` | `h20260915100500` | `h20260915100500-001` |
+| approval id | `appr{YYYYMMDDHHmmss}` | `appr20260915100500` | `appr20260915100500-001` |
 | alert rule id | `r{YYYYMMDDHHmmss}` | `r20260915100500` | `r20260915100500-001` |
 | tag rule id | `t{YYYYMMDDHHmmss}` | `t20260915100500` | `t20260915100500-001` |
 | snapshot id | `snap{YYYYMMDDHHmmss}` | `snap20260915100500` | `snap20260915100500-001` |
@@ -5466,7 +5467,7 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | multi-file update | `POST /api/restore`, `POST /api/smtp-config`, `POST /api/history/{id}/tags` | 全入力検証 → 全対象読込 → 書込計画生成 → §22.0d の Write 順に atomic write | 全対象の更新完了後に response を返す。 | 検証失敗は書込なし `422`。途中失敗は未処理ファイルを書かず `500`。 |
 | secret update | `POST /api/pat-update`, `POST /api/webhook-config`, `POST /api/smtp-config` password あり | secret 入力検証 → secret ファイル atomic write mode `0600` → `.config_log` へ `"***"` で記録 | secret 本体を response に含めない。 | secret 書込失敗は `500`。ログ、response、stdout へ平文を出さない。 |
 | build command | `POST /api/build`, `POST /api/build/force`, `POST /api/history/{id}/rollback` | 認証 → maintenance → circuit → running / queue 判定 → `.build_state` 更新 | `202` と開始または queue 結果を返す。 | running 競合は `409` または `429`。状態更新失敗は `500`。 |
-| destructive delete | `DELETE /api/queue`, `DELETE /api/snapshots/{id}`, `DELETE /api/hooks/{id}`, `DELETE /api/alert-rules/{id}`, `DELETE /api/tag-rules/{id}`, `DELETE /api/tokens/{id}` | path / auth 検証 → 対象存在確認 → 削除または失効 → audit log | `{message}` と件数がある場合は件数を返す。 | 対象不在は `404`。部分削除は禁止し、失敗時は `500`。 |
+| destructive delete | `DELETE /api/queue`, `DELETE /api/snapshots/{id}`, `DELETE /api/hooks/{id}`, `DELETE /api/alert-rules/{id}`, `DELETE /api/tag-rules/{id}`, `DELETE /api/tokens/{id}` | path / auth 検証 → 対象存在確認 → 削除または失効 → 対象 endpoint の契約に従い `.config_log` または `.audit_log` 追記 | `{message}` と件数がある場合は件数を返す。 | 対象不在は `404`。部分削除は禁止し、失敗時は `500`。 |
 | external check | `POST /api/pat-verify`, `GET /api/rate-limit`, `GET /api/diagnostics`, `POST /api/smtp-test`, `POST /api/notify-test` | 設定読込 → timeout 付き外部確認 → 結果 response → 必要時 log 追記 | 確認結果を保存しない。ただし test 送信 log は仕様どおり追記する。 | 未設定は `501` または endpoint 固有 `422`。timeout は `500`。 |
 | binary response | `GET /api/snapshots/{id}/download` | path 検証 → snapshot 存在確認 → archive stream | `Content-Type` と `Content-Disposition` を付与する。 | 不在は `404`。読込失敗は `500`。 |
 | stream response | `GET /api/build/stream` | 認証 → 最新 / 実行中 log 特定 → SSE header → frame 送信 | `log` frame 後、必ず `end` frame を送って close する。 | log 不在は `404`。送信中断時は状態ファイルを更新しない。 |
@@ -6681,6 +6682,27 @@ Content-Type: application/json
 
 メンテナンス判定は §22.0e の共通判定順に従い、`POST /api/build`、`POST /api/build/force`、署名検証済み `POST /api/webhook`、`POST /api/history/{id}/rollback` を拒否対象とする。設定参照系 GET、認証、ログ参照、メンテナンス解除は拒否しない。
 
+**メンテナンス判定・副作用固定契約：**
+
+| 対象 | 判定 | 拒否時 |
+|------|------|--------|
+| `POST /api/build` | 認証、rate limit、入力検証後、`.build_state` 更新前に `.maintenance.enabled` を確認する。 | `503 {"error":"maintenance"}`。queue 追加、build id 採番、`.build_state` 更新を行わない。 |
+| `POST /api/build/force` | SHA reset 前に `.maintenance.enabled` を確認する。 | `503 {"error":"maintenance"}`。SHA cache、queue、`.build_state` を変更しない。 |
+| `POST /api/webhook` | 署名検証、payload 検証後、`.webhook_events.json` 追記前に確認する。 | `503 {"error":"maintenance"}`。event log と queue を変更しない。 |
+| `POST /api/history/{id}/rollback` | snapshot 存在確認後、rollback build log 作成前に確認する。 | `503 {"error":"maintenance"}`。history、build log、pending transfer を変更しない。 |
+| runner 定期起動 | lock 取得後、差分検出前に確認する。 | build せず `.build_status.json.status="skipped_maintenance"` を保存し、`.last_sha` を更新しない。 |
+
+`POST /api/maintenance/enable` と `POST /api/maintenance/disable` の保存順は、`.maintenance` atomic write → `.config_log` 追記 → response とする。`.config_log` 追記失敗時は `500` を返し、保存済み `.maintenance` は巻き戻さない。同一状態 no-op では `.maintenance`、`.config_log`、`.audit_log` を変更しない。
+
+**メンテナンス fixture 固定：**
+
+| fixture | 入力 | 期待結果 |
+|---------|------|----------|
+| maintenance-build-deny | enabled 中に `POST /api/build` | `503`、queue 差分なし、build id なし。 |
+| maintenance-force-deny | enabled 中に `POST /api/build/force` | `503`、SHA cache 差分なし。 |
+| maintenance-webhook-deny | enabled 中に署名済み webhook | `503`、event log と queue 差分なし。 |
+| maintenance-disable-noop | disabled 中に disable | `200 No changes`、状態ファイル差分なし。 |
+
 ---
 
 ### IP アクセス制限（14C）
@@ -6711,6 +6733,28 @@ Content-Type: application/json
 
 `POST /api/access-control` は正規化後の `allow` 配列が既存値と一致する場合、`.access_control` と `.config_log` を変更せず `{ "message":"No changes","allow":[...] }` を返す。
 
+**アクセス制御更新・拒否固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 判定順 | path / method 判定後、body parse 前、認証前に実行する。拒否時は password、session token、API token、rate limit state を検証または更新しない。 |
+| 対象外 | `GET /api/health` だけを対象外とする。静的 admin UI、SDK JS、その他 `/api/` 以外の配信は本契約の対象外。 |
+| allow 正規化 | 重複除去、辞書順 sort、単一 IPv4 は canonical 文字列、CIDR は `IP/mask` 表記へ正規化する。 |
+| IPv6 | 初期実装では保存不可。IPv6 literal または IPv6 CIDR は `422`。 |
+| private / public | private address に限定しない。入力が IPv4 または IPv4 CIDR として妥当なら保存可能。 |
+| 保存順 | `.access_control` atomic write → `.config_log` 追記 → response。 |
+| `.config_log` 失敗 | `500`。保存済み `.access_control` は巻き戻さない。 |
+| 破損時 | §22.0a に従い初期値で再生成し、制限なしとして扱う。 |
+
+**アクセス制御 fixture 固定：**
+
+| fixture | 入力 | 期待結果 |
+|---------|------|----------|
+| access-allow-empty | `.access_control.allow=[]` | 任意 IP の API が認証処理へ進む。 |
+| access-deny-before-auth | allow 不一致 IP で `POST /api/login` | `403`、`.access_log`、`.audit_log`、rate state 差分なし。 |
+| access-normalize | 重複 allow を保存 | sort / 重複除去後の配列を返し `.config_log` 記録。 |
+| access-ipv6-reject | IPv6 literal を保存 | `422`、状態差分なし。 |
+
 ---
 
 ### ビルドフック（14E）
@@ -6724,8 +6768,8 @@ Content-Type: application/json
 **`GET /api/hooks` レスポンス例：**
 ```json
 { "hooks": [
-    { "id": "h001", "phase": "pre",  "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true, "timeout_seconds": 300 },
-    { "id": "h002", "phase": "post", "command_args": ["echo", "build end"],   "enabled": true, "abort_on_failure": false, "timeout_seconds": 300 }
+    { "id": "h20260915100500", "phase": "pre",  "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true, "timeout_seconds": 300, "created_at": "2026-09-15T10:05:00Z" },
+    { "id": "h20260915100600", "phase": "post", "command_args": ["echo", "build end"],   "enabled": true, "abort_on_failure": false, "timeout_seconds": 300, "created_at": "2026-09-15T10:06:00Z" }
 ]}
 ```
 
@@ -6734,7 +6778,7 @@ Content-Type: application/json
 // リクエスト
 { "phase": "pre", "command_args": ["echo", "build start"], "abort_on_failure": true }
 // レスポンス: 201
-{ "id": "h001", "phase": "pre", "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true, "timeout_seconds": 300 }
+{ "id": "h20260915100500", "phase": "pre", "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true, "timeout_seconds": 300, "created_at": "2026-09-15T10:05:00Z" }
 ```
 
 `phase` の有効値は `"pre"` または `"post"`。`command_args[0]` は絶対パス、または `PATH` 解決可能なコマンド名とする。`command_args` に空文字、NUL 文字、改行を含めてはならない。
@@ -6746,7 +6790,7 @@ Content-Type: application/json
 
 **`GET /api/hooks/{id}/log` レスポンス例：**
 ```json
-{ "id": "h001", "runs": [
+{ "id": "h20260915100500", "runs": [
     { "build_id": "b20260915100000", "ran_at": "2026-09-15T10:00:00Z", "exit_code": 0, "output": "build start\n" },
     { "build_id": "b20260914183000", "ran_at": "2026-09-14T18:30:00Z", "exit_code": 1, "output": "Error: command not found\n" }
 ]}
@@ -6763,9 +6807,46 @@ Content-Type: application/json
 | stdout/stderr | 最大各 10000 文字。超過分は末尾切り捨て、`truncated:true` を保存する。 |
 | hook log | `.build_logs/{build_id}_hook_{hook_id}.json` に JSON object で保存し、同一 build/hook の再実行時は上書きせず `runs` へ追記する。 |
 | pre abort | `pre` 失敗かつ `abort_on_failure:true` の場合、pipeline を実行せず build status を `hook_error` とする。 |
+| secret mask | stdout、stderr、保存済み output、server log、通知 payload へ保存する前に runner の secret mask を適用する。 |
+| log 保存失敗 | `pre` hook では build 本体を開始せず `hook_error`。`post` hook では build 結果を維持し、server log に `HOOK_LOG_WRITE_FAILED` を出す。 |
+
+**`.hooks` record schema：**
+
+| キー | 型 | 必須 | 許容値 |
+|------|----|------|--------|
+| `id` | string | 必須 | §22.0e.2 の hook id。 |
+| `phase` | string | 必須 | `"pre"` または `"post"`。 |
+| `command_args` | string[] | 必須 | 1〜20 件。各値は NUL、LF、CR 禁止。 |
+| `enabled` | boolean | 必須 | boolean。作成時 `true` 固定。 |
+| `abort_on_failure` | boolean | 必須 | boolean。 |
+| `timeout_seconds` | integer | 必須 | 1〜3600。省略時 300。 |
+| `created_at` | string | 必須 | UTC ISO 8601。 |
+
+`.hooks` に未知 key、必須 key 不足、型不一致、不正 phase、不正 command、重複 id がある場合、`GET /api/hooks`、`POST /api/hooks`、`DELETE /api/hooks/{id}` は `500 {"error":"Internal server error"}` を返す。破損内容、command_args の secret らしき値、stdout/stderr は response と log に出さない。
+
+**hooks API 更新順：**
+
+| API | 更新順 | 失敗時 |
+|-----|--------|--------|
+| `POST /api/hooks` | 入力検証 → `.hooks` lock → id 採番 → record append → `.hooks` atomic write → `.config_log` 追記 → response | `.config_log` 失敗時は `500`。追加済み record は巻き戻さない。 |
+| `DELETE /api/hooks/{id}` | path id 検証 → `.hooks` lock → 対象存在確認 → record 削除 → `.hooks` atomic write → `.config_log` 追記 → response | 対象不在は `404`。`.config_log` 失敗時は `500`、削除済み record は巻き戻さない。 |
+| `GET /api/hooks/{id}/log` | path id 検証 → `.hooks` で存在確認 → `.build_logs/*_hook_{id}.json` を新しい順で最大 20 件読込 → response | hook 不在は `404`。個別 hook log 破損はその file を除外し、server log に固定コードを出す。 |
+
+hook log JSON は `{ "hook_id", "build_id", "phase", "started_at", "finished_at", "duration_seconds", "exit_code", "timed_out", "stdout", "stderr", "truncated" }` を必須 key とする。`GET /api/hooks/{id}/log` の `output` は `stdout + stderr` をこの順で連結した表示用互換値とし、保存時点で secret mask 済みの値だけを返す。
+
+**hooks fixture 固定：**
+
+| fixture | 入力 | 期待結果 |
+|---------|------|----------|
+| hook-pre-success | pre hook exit 0 | pipeline 実行、hook log 保存、secret mask 済み。 |
+| hook-pre-abort | pre hook exit 1 / abort true | pipeline 未実行、status `hook_error`、history に `failure_category:"hook_error"`。 |
+| hook-pre-warn | pre hook exit 1 / abort false | build 継続、hook log に exit code。 |
+| hook-post-failure | build success 後 post hook failure | build success 維持、hook log 保存。 |
+| hook-timeout | timeout 超過 | process kill、`timed_out:true`、`exit_code:null`。 |
+| hook-log-write-failure | pre hook log 保存失敗 | build 本体未実行、`hook_error`。 |
 | post failure | build status を変更しない。WARN log と hook log だけを残す。 |
 
-Hook log schema は `id`、`build_id`、`runs` を必須 key とする。`runs[]` は `ran_at`、`phase`、`command_args`、`exit_code`、`timed_out`、`duration_ms`、`stdout`、`stderr`、`truncated` を必須 key とする。
+保存する hook log file は 1 実行 1 JSON object とし、`hook_id`、`build_id`、`phase`、`started_at`、`finished_at`、`duration_seconds`、`exit_code`、`timed_out`、`stdout`、`stderr`、`truncated` を必須 key とする。`GET /api/hooks/{id}/log` は複数 file を集約し、response の `runs[]` へ `build_id`、`ran_at`、`exit_code`、`output` を返す。
 
 ---
 
@@ -6990,8 +7071,8 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 **`GET /api/queue` レスポンス例：**
 ```json
 { "queued": [
-    { "id": "q001", "trigger": "manual", "queued_at": "2026-09-15T10:01:00Z" },
-    { "id": "q002", "trigger": "webhook", "queued_at": "2026-09-15T10:02:00Z" }
+    { "id": "q20260915100100", "trigger": "manual", "queued_at": "2026-09-15T10:01:00Z", "requested_by": "admin", "priority": "normal", "created_seq": 1, "payload": { "force": false } },
+    { "id": "q20260915100200", "trigger": "webhook", "queued_at": "2026-09-15T10:02:00Z", "requested_by": "webhook", "priority": "normal", "created_seq": 2, "payload": { "delivery_id": "delivery-1", "branch": "main", "sha": "0123456789abcdef0123456789abcdef01234567" } }
   ], "max_size": 3 }
 ```
 キューが空の場合：`{ "queued": [], "max_size": 3 }`
@@ -7009,6 +7090,48 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 queue 追加は `.build_state` の atomic write で行い、id は §22.0e.2 の queue id とする。queue entry は FIFO を標準とし、§27.35 の優先度キューが有効な場合だけ priority を使用する。`DELETE /api/queue` は `.build_state.queued` だけを空配列にし、実行中 build、lock、history、log を変更しない。
 
 `queue_max_size=0` の場合、実行中に受けた queue 対応 API は `429 {"error":"queue_full"}` を返す。`.build_state.queued` の件数が `queue_max_size` 以上の場合も同じ body とする。
+
+**queue entry schema：**
+
+| キー | 型 | 必須 | 許容値 |
+|------|----|------|--------|
+| `id` | string | 必須 | §22.0e.2 の queue id。 |
+| `trigger` | string | 必須 | `"manual"`、`"webhook"`、`"approval"`。 |
+| `queued_at` | string | 必須 | UTC ISO 8601。 |
+| `requested_by` | string | 必須 | `"admin"`、`"webhook"`、`"approval"`、API token id。 |
+| `priority` | string | 必須 | §27.35 の値。未指定作成時は `"normal"`。 |
+| `created_seq` | integer | 必須 | 1 以上。既存最大 + 1。 |
+| `payload` | object | 必須 | trigger ごとの固定 payload。未使用時は `{}`。 |
+
+`payload` は trigger ごとに以下を許可する。未知 key は `422`、runner 読込時は queue entry 破損として当該 entry を処理せず ERROR ログに記録する。
+
+| trigger | payload |
+|---------|---------|
+| `manual` | `{ "force": boolean }`。 |
+| `webhook` | `{ "delivery_id": string, "branch": string, "sha": string }`。 |
+| `approval` | `{ "approval_id": string, "branch": string, "sha": string, "target": string }`。 |
+
+**queue 更新順：**
+
+| 操作 | 更新順 | 失敗時 |
+|------|--------|--------|
+| API queue 追加 | `.build_state` lock → 最新 state 読込 → running / max_size / 重複確認 → id と created_seq 採番 → atomic write → response | write 失敗は `500`。queue 追加なし。 |
+| webhook queue 追加 | event 検証 → `.webhook_events.json` 追記 → `.build_state` lock → queue append → response | event 追記前の失敗は queue なし。queue 追加失敗は event result を `error` にできる場合だけ追記し、response は `500`。 |
+| approval approve queue 追加 | `.approval_queue` lock → pending 確認 → `.build_state` lock → queue append → approval status `approved` 追記 → response | queue full は `429`、approval は pending のまま。approval status 追記失敗時は `500`、queue 追加済み entry は巻き戻さない。 |
+| runner 取り出し | `.build_state` lock → §27.35 の順で 1 件選択 → selected entry 削除 → `running=true` と `current_build_id` 設定 → atomic write | write 失敗は build 開始なし、lock を解放し終了コード `1`。 |
+| queue clear | `.build_state` lock → `queued=[]` → atomic write → `.config_log` 追記 → response | `.config_log` 失敗時は `500`。cleared queue は巻き戻さない。 |
+
+重複判定は `trigger` と `payload` の正規化 JSON が一致する waiting entry を対象とする。重複時は新規 entry を追加せず `200 {"message":"Already queued","queued":true,"queue_id":"<existing>"}` を返す。`force=true` の manual entry は `force=false` と別 entry として扱う。
+
+**queue fixture 固定：**
+
+| fixture | 入力 | 期待結果 |
+|---------|------|----------|
+| queue-add-running | running 中に manual build | queue append、created_seq 最大 + 1。 |
+| queue-duplicate | 同一 manual payload を再投入 | 新規追加なし、既存 queue_id を返す。 |
+| queue-full | max_size 到達 | `429 {"error":"queue_full"}`、差分なし。 |
+| queue-clear | waiting 2 件で `DELETE /api/queue` | `cleared_count=2`、running/current_build_id 維持。 |
+| queue-runner-take | urgent と normal が混在 | urgent を削除し running に設定、他 entry 維持。 |
 
 ---
 
@@ -9995,6 +10118,57 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | reject | build なし、history 記録。 |
 | timeout | expired、build なし。 |
 
+**`.approval_queue` record schema：**
+
+| キー | 型 | 必須 | 許容値 |
+|------|----|------|--------|
+| `id` | string | 必須 | `appr{YYYYMMDDHHmmss}`、衝突時 `-001`。 |
+| `status` | string | 必須 | `"pending"`、`"approved"`、`"rejected"`、`"expired"`。 |
+| `branch` | string | 必須 | branch target 名。 |
+| `sha` | string | 必須 | 40 文字 lowercase hex。 |
+| `target` | string | 必須 | branch target id または target file。 |
+| `created_at` | string | 必須 | UTC ISO 8601。 |
+| `expires_at` | string | 必須 | UTC ISO 8601。 |
+| `decided_at` | string/null | 必須 | approve / reject / expire 時刻。 |
+| `decided_by` | string/null | 必須 | 管理 session は `"admin"`、API token は token id。 |
+| `queue_id` | string/null | 必須 | approve で追加した queue id。 |
+| `reason` | string/null | 必須 | reject 理由または expire 理由。 |
+
+`.approval_queue` は JSON Lines append-only とする。同一 id の最新 record を有効状態として扱い、古い record は監査履歴として残す。`GET /api/approvals` は id ごとに最新 record だけを返し、`created_at` 降順、同時刻は id 昇順で並べる。壊れた行は無視し、response に含めない。
+
+**approval 状態遷移固定契約：**
+
+| 現在 status | 操作 | 次 status | 副作用 |
+|-------------|------|-----------|--------|
+| `pending` | approve | `approved` | `.build_state.queued[]` に `trigger:"approval"` entry を追加し、`queue_id` を保存する。 |
+| `pending` | reject | `rejected` | `.build_history` に `status:"approval_rejected"` を追記する。queue は追加しない。 |
+| `pending` | timeout | `expired` | `.build_history` に `status:"approval_expired"` を追記する。queue は追加しない。 |
+| `approved` | approve / reject | 変更なし | `409 {"error":"Conflict"}`。 |
+| `rejected` | approve / reject | 変更なし | `409 {"error":"Conflict"}`。 |
+| `expired` | approve / reject | 変更なし | `409 {"error":"Conflict"}`。 |
+
+**approval 更新順：**
+
+| 操作 | 更新順 | 失敗時 |
+|------|--------|--------|
+| pending 作成 | `.approval_queue` lock → 重複確認 → pending record append → 通知送信 → `.notify_log` / `.notify_pending` 更新 | 通知失敗でも pending は残す。pending append 失敗時は build を開始せず runner failure。 |
+| approve | `.approval_queue` lock → 最新 pending 確認 → `.build_state` lock → queue append → approved record append → response | queue full は `429`、approval は pending のまま。approved append 失敗時は `500`、queue 追加済み entry は巻き戻さない。 |
+| reject | `.approval_queue` lock → 最新 pending 確認 → rejected record append → `.build_history` append → response | history append 失敗時は `500`。rejected record は巻き戻さない。 |
+| timeout | runner 起動時に `.approval_queue` lock → expires_at 超過 pending を expired record append → `.build_history` append | history append 失敗時も expired record は残し、runner は ERROR を出して継続する。 |
+
+pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、最新 status が `pending` の record とする。重複時は新規 record を作成せず、既存 pending id を使用する。approve / reject API は body を受け付けない。reject reason は初期実装では固定 `"rejected"` とする。
+
+**approval fixture 固定：**
+
+| fixture | 入力 | 期待結果 |
+|---------|------|----------|
+| approval-create | approval_required target に差分 | build なし、pending record、通知成功または pending。 |
+| approval-duplicate | 同一 branch/sha/target を再検出 | pending 重複作成なし。 |
+| approval-approve | pending approve | queue 追加、approved record、queue_id 保存。 |
+| approval-reject | pending reject | rejected record、history `approval_rejected`。 |
+| approval-timeout | expires_at 超過 | expired record、history `approval_expired`。 |
+| approval-queue-full | max_size 到達時 approve | `429`、status pending 維持。 |
+
 ### 27.31 ブランチ別環境変数
 
 本機能の目的は、branch target ごとに build process へ注入する環境変数を定義し、branch や deploy 先ごとの差分を安全に扱うことである。
@@ -10189,12 +10363,26 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 3. `GET /api/queue` は並び替え後の queue を返す。
 4. `DELETE /api/queue` は waiting entry 全件を削除し、実行中 build は停止しない。
 
+**priority / created_seq 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 採番元 | `.build_state.queued[].created_seq` の最大値。存在しない場合は `0`。次 entry は最大 + 1。 |
+| 旧 entry | `created_seq` 欠落 entry は GET 表示時だけ末尾扱いとし、runner 取り出し前に `.build_state` lock 内で created_seq を補完保存する。 |
+| priority 省略 | API / webhook / approval の queue 追加時は `"normal"` を保存する。 |
+| 表示順 | priority 数値昇順、created_seq 昇順、同値なら id 昇順。 |
+| 取り出し順 | 表示順と同一。 |
+| clear | priority に関係なく waiting entry 全件を削除する。 |
+| queue full | priority が高くても既存 entry を押し出さない。 |
+
+runner が旧 entry の `created_seq` 補完保存に失敗した場合、build を開始せず終了コード `1` とする。補完前の推測順で build を開始してはならない。
+
 **異常系：**
 
 | 条件 | 処理 |
 |------|------|
 | priority 不正 | API は `422`。 |
-| created_seq 欠落の旧 entry | 読み込み時に末尾扱いで正規化し、次回保存時に補完する。 |
+| created_seq 欠落の旧 entry | GET 表示時は末尾扱いにする。runner 取り出し前または queue 更新時に `.build_state` lock 内で補完保存する。補完失敗時は build を開始しない。 |
 | queue full | `429`。priority による上書き削除はしない。 |
 
 **検証条件：**
@@ -10204,6 +10392,8 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | urgent 後投入 | normal より先に処理。 |
 | 同一 priority | FIFO。 |
 | 不正 priority | 状態差分なしで `422`。 |
+| created_seq 欠落 | 補完後に順序判定し、補完失敗なら build なし。 |
+| urgent queue full | `429`、既存 low entry も削除しない。 |
 
 ### 27.36 失敗原因の自動分類
 
