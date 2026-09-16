@@ -584,7 +584,7 @@ GitHub の Git Trees API / Git Blobs API を使用し、対象ファイルの bl
 
 SSH 転送、ペンディングキュー、スナップショット、Webhook 通知、マルチブランチ、ビルドログ保存、サーキットブレーカーは Go 版 `runner.go` の対象機能である。
 
-**`api_server.go`（管理 API サーバー、）**
+**`api_server.go`（管理 API サーバー）**
 Go 標準ライブラリ `net/http` を使用する常駐 HTTP サーバー。管理ツールからの API リクエストを受け付け、認証・状態取得・手動ビルドトリガーを処理する。`adlaire-ci-api.service` として systemd に登録し、`runner.go` とは独立して常駐する。
 
 **Go 版実行フロー：**
@@ -2066,7 +2066,7 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 
 ```
 /opt/adlaire-builder/
-├── api_server.go        # 管理 API サーバー（常駐、）
+├── api_server.go        # 管理 API サーバー（常駐）
 ├── .admin_credentials   # 認証情報ファイル（JSON、パーミッション 600）
 ├── .server_config       # サーバー設定（JSON）
 ├── .access_log          # ログイン履歴（JSON）
@@ -2104,7 +2104,7 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 /etc/systemd/system/
 ├── adlaire-ci.service      # systemd ユニット（oneshot）
 ├── adlaire-ci.timer        # systemd タイマー（定期実行）
-└── adlaire-ci-api.service  # 管理 API サーバー（常駐、）
+└── adlaire-ci-api.service  # 管理 API サーバー（常駐）
 ```
 
 ### リポジトリ側
@@ -3056,9 +3056,9 @@ sudo journalctl -u adlaire-ci -f               # ログ確認
 | 項目 | 内容 |
 |------|------|
 | PAT スコープ | `contents: read`（読み取り専用）のみ |
-| PAT の種類 | Fine-grained PAT（特定リポジトリのみ許可）を推奨 |
+| PAT の種類 | Fine-grained PAT（特定リポジトリのみ許可）を使用する。 |
 | Webhook 設定（ポーリング方式） | **不要**（デフォルト。`BRANCH_TARGETS` によるポーリングのみ使用する場合） |
-| Webhook 設定（受信方式） | GitHub リポジトリ設定 → Webhooks → Add webhook で `POST /api/webhook` の URL・Secret を設定する（→ §22）。`push` イベントのみ選択を推奨。**外部公開エンドポイントが必要**（リバースプロキシ経由） |
+| Webhook 設定（受信方式） | GitHub リポジトリ設定 → Webhooks → Add webhook で `POST /api/webhook` の URL・Secret を設定する（→ §22）。イベントは `push` のみ選択する。**外部公開エンドポイントが必要**（リバースプロキシ経由） |
 
 ---
 
@@ -3162,9 +3162,9 @@ systemd timer
   └─ runner.go（変更検出・ビルド起動）
        └─ SSH 転送
 
-api_server.go（常駐 HTTP サーバー、）
+api_server.go（常駐 HTTP サーバー）
 
-admin/index.html（標準管理ツール、）
+admin/index.html（標準管理ツール）
   └─ adlaire-ci-sdk.js（SDK）─── HTTP ───► api_server.go
 ```
 
@@ -3320,7 +3320,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | `n` | 1 以上 1000 以下の整数。 |
 | 日付 | `YYYY-MM-DD` 形式で、存在する暦日であること。 |
 | 時刻 | 0 以上 23 以下の整数。 |
-| URL | `http://` または `https://` で始まること。Webhook URL は `https://` を推奨値とし、`http://` はローカル検証用途のみ許可する。 |
+| URL | `http://` または `https://` で始まること。Webhook URL は本番用途では `https://` のみ許可し、`http://` はローカル検証用途のみ許可する。 |
 | ファイルパス | 絶対パスのみ許可する。`..` を含むパス、NUL 文字、空文字は禁止。 |
 | タグ | 1 件 1〜32 文字、最大 20 件。重複は除去して保存する。 |
 | コメント | 最大 2000 文字。空文字 `""` はコメント削除として扱う。 |
@@ -3621,9 +3621,9 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/access-log` | `.access_log` | なし | 壊れた行は無視し、新しい順で返す。 |
 | `GET /api/sessions` | メモリ上 session | なし | token 本体は返さない。 |
 | `POST /api/sessions/revoke-all` | メモリ上 session | メモリ上 session, `.access_log` | 現 session 以外を削除する。 |
-| `GET /api/status` | `.build_history`, `.build_lock` | なし | systemd 状態取得は外部確認であり保存しない。 |
-| `POST /api/build` | `.server_config`, `.build_lock` | `.build_state` または queue | 実行中かつ queue 有効なら queue へ追加する。 |
-| `POST /api/build/force` | `.server_config`, `.build_lock` | `.build_state`, SHA cache または queue | SHA reset と build trigger は同一ロック内で行う。 |
+| `GET /api/status` | `.build_history`, `.build_state`, `.build_lock` | なし | 実行中判定は `.build_state` と `.build_lock` で行い、systemd 状態は保存しない。 |
+| `POST /api/build` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | `.build_state` または queue | 実行中かつ queue 有効なら queue へ追加する。 |
+| `POST /api/build/force` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state`, SHA cache | `.build_state`, SHA cache または queue | SHA reset と build trigger は同一ロック内で行う。 |
 | `POST /api/build/cancel` | `.build_lock` | `.build_state`, `.build_logs/{id}.json` | 実行中でない場合は `409`。 |
 | `GET /api/build/stream` | `.build_logs/{id}.json`, `.build_state` | なし | SSE 配信のみ。ログファイルは更新しない。 |
 | `GET /api/logs` | `.build_logs/` | なし | 最新ログを読む。 |
@@ -3669,12 +3669,12 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST /api/schedule/allowed-hours` | `.server_config` | `.server_config`, `.config_log` | `null` で解除。 |
 | `POST /api/schedule/force-interval` | `.server_config` | `.server_config`, `.config_log` | `hours` を保存。 |
 | `POST /api/schedule/cooldown` | `.server_config` | `.server_config`, `.config_log` | `seconds` を保存。 |
-| `GET /api/dashboard` | `.build_history`, `.server_config`, `.alert_rules`, `.dashboard_layout` | なし | 集約のみ。 |
+| `GET /api/dashboard` | `.build_history`, `.build_state`, `.build_lock`, `.server_config`, `.alert_rules`, `.dashboard_layout`, 出力サイト, process start time | なし | 集約のみ。 |
 | `GET /api/diagnostics` | `.github_token`, 出力サイト, systemd, `.notify_config` | なし | 診断結果は保存しない。 |
 | `GET /api/rate-limit` | `.github_token` | なし | GitHub API 結果を返す。 |
 | `GET /api/disk-usage` | `.build_logs/`, 出力サイト | なし | 集計のみ。 |
 | `GET /api/webhook-events` | `.webhook_events.json` | なし | ページングして返す。 |
-| `POST /api/webhook` | `.webhook_secret`, `.branch_config` | `.webhook_events.json`, `.build_state` または queue | 署名検証成功後のみイベント記録する。 |
+| `POST /api/webhook` | `.webhook_secret`, `.branch_config`, `.build_state`, `.maintenance`, `.build_circuit_state` | `.webhook_events.json`, `.build_state` または queue | 署名検証成功後のみイベント記録する。 |
 | `GET /api/webhook-config` | `.webhook_secret` | なし | secret 本体は返さない。 |
 | `POST /api/webhook-config` | なし | `.webhook_secret`, `.config_log` | secret 値は `.config_log` でマスクする。 |
 | `POST /api/circuit-breaker/reset` | `.build_circuit_state` | `.build_circuit_state`, `.config_log` | 初期値へ戻す。冪等。 |
@@ -3728,9 +3728,9 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/access-log` | query `{limit,offset}` | `{log}` | `200` | `401`, `422` | `.access_log` | none | `getAccessLog()` | アクセスログ |
 | `GET /api/sessions` | none | `{sessions}` | `200` | `401` | memory session | none | `getSessions()` | セッション管理 |
 | `POST /api/sessions/revoke-all` | none | `{message,revoked_count}` | `200` | `401` | memory session | memory session, `.access_log` | `revokeAllSessions()` | セッション管理 |
-| `GET /api/status` | none | `StatusObject` | `200` | `401`, `500` | `.build_history`, `.build_lock` | none | `getStatus()` | ステータス |
-| `POST /api/build` | none | `{message,build_id?,queued?}` | `202` | `401`, `409`, `422`, `429`, `503` | `.server_config`, `.build_lock`, `.maintenance` | `.build_state` or queue | `triggerBuild()` | 手動実行 |
-| `POST /api/build/force` | none | `{message,build_id?,queued?}` | `202` | `401`, `409`, `422`, `429`, `503` | `.server_config`, `.build_lock`, `.maintenance` | `.build_state`, SHA cache or queue | `buildForce()` | 手動実行 |
+| `GET /api/status` | none | `StatusObject` | `200` | `401`, `500` | `.build_history`, `.build_state`, `.build_lock` | none | `getStatus()` | ステータス |
+| `POST /api/build` | none | `{message,build_id?,queued?}` | `202` | `401`, `409`, `422`, `429`, `503` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | `.build_state` or queue | `triggerBuild()` | 手動実行 |
+| `POST /api/build/force` | none | `{message,build_id?,queued?}` | `202` | `401`, `409`, `422`, `429`, `503` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state`, SHA cache | `.build_state`, SHA cache or queue | `buildForce()` | 手動実行 |
 | `POST /api/build/cancel` | none | `{message}` | `200` | `401`, `404`, `409` | `.build_lock` | `.build_state`, `.build_logs/{id}.json` | `cancelBuild()` | 手動実行 |
 | `GET /api/build/stream` | none | SSE `log/end` events | `200` | `401`, `404` | `.build_logs/{id}.json`, `.build_state` | none | `streamBuild()` | 手動実行 |
 | `GET /api/logs` | query `{n,q}` | `{lines}` | `200` | `401`, `422`, `500` | `.build_logs/` | none | `getLogs()` | ログビューア |
@@ -3776,12 +3776,12 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST /api/branch-config` | `{branches}` | `{message,branches_count}` | `200` | `401`, `422`, `500` | `.branch_config` | `.branch_config`, `.config_log` | `setBranchConfig(branches)` | リポジトリ情報 |
 | `GET /api/backup` | none | `BackupObject` | `200` | `401`, `500` | config state files | none | `backup()` | 設定 |
 | `POST /api/restore` | `BackupObject` | `{message}` | `200` | `401`, `422`, `500` | request body | config state files, `.config_log` | `restore(config)` | 設定 |
-| `GET /api/dashboard` | none | `DashboardObject` | `200` | `401`, `500` | `.build_history`, `.server_config`, `.alert_rules`, `.dashboard_layout` | none | `getDashboard()` | ステータス, システム診断 |
+| `GET /api/dashboard` | none | `DashboardObject` | `200` | `401`, `500` | `.build_history`, `.build_state`, `.build_lock`, `.server_config`, `.alert_rules`, `.dashboard_layout`, output file, process start time | none | `getDashboard()` | ステータス, システム診断 |
 | `GET /api/diagnostics` | none | `DiagnosticsObject` | `200` | `401`, `500` | `.github_token`, output file, systemd, `.notify_config` | none | `getDiagnostics()` | システム診断 |
 | `GET /api/rate-limit` | none | `RateLimitObject` | `200` | `401`, `501`, `500` | `.github_token` | none | `getRateLimit()` | システム情報 |
 | `GET /api/disk-usage` | none | `DiskUsageObject` | `200` | `401`, `500` | `.build_logs/`, output file | none | `getDiskUsage()` | システム情報 |
 | `GET /api/webhook-events` | query `{limit,offset}` | `{events,total}` | `200` | `401`, `422`, `500` | `.webhook_events.json` | none | `getWebhookEvents(limit,offset)` | システム診断 |
-| `POST /api/webhook` | GitHub webhook body | `{message,ref?}` | `200` | `400`, `403`, `409`, `501`, `503` | `.webhook_secret`, `.branch_config`, `.maintenance` | `.webhook_events.json`, `.build_state` or queue | none | 外部 Webhook |
+| `POST /api/webhook` | GitHub webhook body | `{message,ref?}` | `200` | `400`, `403`, `409`, `501`, `503` | `.webhook_secret`, `.branch_config`, `.build_state`, `.maintenance`, `.build_circuit_state` | `.webhook_events.json`, `.build_state` or queue | none | 外部 Webhook |
 | `GET /api/webhook-config` | none | `{configured}` | `200` | `401`, `500` | `.webhook_secret` | none | `getWebhookConfig()` | 通知設定 |
 | `POST /api/webhook-config` | `{secret}` | `{message}` | `200` | `401`, `422`, `500` | none | `.webhook_secret`, `.config_log` | `setWebhookConfig(secret)` | 通知設定 |
 | `POST /api/circuit-breaker/reset` | none | `{message,open,consecutive_failures}` | `200` | `401`, `500` | `.build_circuit_state` | `.build_circuit_state`, `.config_log` | `resetCircuitBreaker()` | 手動実行, システム診断 |
@@ -3833,6 +3833,39 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 5. 実行中でなければ `.build_state.running=true` と新しい `build_id` を保存し、`202 {"message":"Build started","build_id":"...","queued":false}` を返す。
 
 `POST /api/build/cancel` は queue を削除しない。実行中 build のみを cancel 対象とし、実行中でない場合は `409 {"error":"No build is running"}` を返す。`DELETE /api/queue` は実行中 build を停止せず、待機 queue のみ削除する。
+
+### 22.0e.1 API 機能別処理契約
+
+集約 API は、下表の読取元、算出方法、空状態の戻り値に従う。下表にない読取元や推測値を使用してレスポンスを補完してはならない。
+
+| 機能 | Endpoint | 読取元 | 算出方法 | 空状態 / 不足時 |
+|------|----------|--------|----------|-----------------|
+| 現在状態 | `GET /api/status` | `.build_history`, `.build_state`, `.build_lock` | `.build_history` の最新行から `last_sha`、`last_build_at`、`last_build_status` を返し、`.build_state.running` または有効な `.build_lock` で `running` を決定する。 | 履歴なしは `last_sha:null`, `last_build_at:null`, `last_build_status:"none"`, `output_url:null`。 |
+| 手動ビルド開始 | `POST /api/build` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | §22.0e の競合優先順位に従い、開始または queue 追加を行う。SHA cache は変更しない。 | queue 無効または満杯は `429 {"error":"queue_full"}`。 |
+| 強制ビルド開始 | `POST /api/build/force` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state`, SHA cache | 開始可能な場合のみ SHA cache を空 SHA に更新し、同一状態更新内で build を開始する。queue 追加時は queue entry の `payload.force=true` を保存する。 | queue 無効または満杯は `429 {"error":"queue_full"}`。 |
+| ログ一覧 | `GET /api/logs` | `.build_logs/` | 最新 build log の `stdout`、`stderr`、`warnings` を時系列順に連結し、`n` 件に丸める。`q` が空でない場合は部分一致行だけを返す。 | ログなしは `{"lines":[]}`。 |
+| ログ検索 | `GET /api/logs/search` | `.build_logs/` | 全 build log を新しい順に読み、`q`、`from`、`to`、`level` で絞り込む。`level` は行内の `[INFO]`、`[WARNING]`、`[ERROR]`、`[DEBUG]` に一致させる。 | 一致なしは `results:[]`。 |
+| 履歴一覧 | `GET /api/history` | `.build_history` | JSON Lines を新しい順でページングし、壊れた行は無視して ERROR ログに記録する。`total` と `pages` は有効行だけで算出する。 | 履歴なしは `total:0`, `pages:0`, `history:[]`。 |
+| 出力メタ | `GET /api/output-meta` | `.build_history`, `.build_logs/`, 出力サイト | 出力サイトの現在サイズと mtime、直近成功履歴の `output_sha256`、直近ログの `report` を返す。 | 出力サイト不在は `404`。report 不在の数値は `null`、warning は `[]`。 |
+| ダッシュボード | `GET /api/dashboard` | `.build_history`, `.server_config`, `.alert_rules`, `.dashboard_layout`, `.build_state`, `.build_lock`, 出力サイト, process start time | `status`、`sysinfo`、`stats(days=7)`、`schedule`、`alerts` を同一リクエスト時点で算出し、widget 順序は `.dashboard_layout.widgets` を使用する。 | `.dashboard_layout` 不在は既定 widget 順。alerts なしは `[]`。 |
+| 診断 | `GET /api/diagnostics` | `.github_token`, 出力サイト, systemd, `.notify_config`, `.webhook_secret` | PAT、GitHub API、出力サイト、systemd、Webhook 設定を個別 item として返す。診断結果は保存しない。 | 各項目は `ok`、`warn`、`error` のいずれかを返す。 |
+| キュー | `GET /api/queue` | `.build_state`, `.server_config` | `.build_state.queued` と `.server_config.queue_max_size` を返す。 | `.build_state` 不在は初期値で `queued:[]`。 |
+| バックアップ | `GET /api/backup` | §22.0d の backup 対象状態ファイル | 設定状態だけを export し、secret 値は `"***"` または boolean にマスクする。履歴、ログ、snapshot、session は含めない。 | 不在の任意設定ファイルは初期値で返す。 |
+| リストア | `POST /api/restore` | request body | 対象 state schema をすべて検証してから §22.0d の write 順に保存する。secret が `"***"` の場合は既存 secret を保持する。 | 検証失敗は書き込み前に `422`。途中失敗は未処理ファイルを書かない。 |
+
+### 22.0e.2 API ID 採番契約
+
+API が新規 ID を生成する機能は、下表の形式に従う。既存 ID と衝突した場合は、同一時刻内で末尾に 3 桁の連番を付け、最大 999 まで試行する。999 回衝突した場合は `500 Internal Server Error` を返す。
+
+| 対象 | 形式 | 例 | 衝突時 |
+|------|------|----|--------|
+| build id | `b{YYYYMMDDHHmmss}` | `b20260915100500` | `b20260915100500-001` |
+| queue id | `q{YYYYMMDDHHmmss}` | `q20260915100500` | `q20260915100500-001` |
+| token id | `tok{YYYYMMDDHHmmss}` | `tok20260915100500` | `tok20260915100500-001` |
+| hook id | `h{YYYYMMDDHHmmss}` | `h20260915100500` | `h20260915100500-001` |
+| alert rule id | `r{YYYYMMDDHHmmss}` | `r20260915100500` | `r20260915100500-001` |
+| tag rule id | `t{YYYYMMDDHHmmss}` | `t20260915100500` | `t20260915100500-001` |
+| snapshot id | `snap{YYYYMMDDHHmmss}` | `snap20260915100500` | `snap20260915100500-001` |
 
 ### 22.0f 実装優先度
 
@@ -3996,7 +4029,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 `last_build_status` の有効値：`"success"` | `"failure"` | `"none"`（初回未実行時）
 `running` の有効値：`true`（ビルド実行中）| `false`（待機中）
-`running` の判定：`api_server.go` が `systemctl is-active adlaire-ci.service` を実行し、`active` の場合 `true` を返す。
+`running` の判定：`.build_state.running == true` または有効な `.build_lock` が存在する場合に `true` を返す。`.build_state.running == false` かつ `.build_lock` が存在しない場合は `false` を返す。形式不正または PID 判定不能な `.build_lock` が存在する場合は、状態競合として `running: true` を返し、API 側でロックを上書きしない。
 
 **`GET /api/logs` レスポンス例：**
 ```json
@@ -5068,7 +5101,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 // レスポンス: 200
 { "message": "Dashboard layout updated" }
 ```
-`widgets` に未知の識別子が含まれる場合は `400` を返す。
+`widgets` に未知の識別子が含まれる場合は `422` を返す。
 
 ---
 
@@ -5084,7 +5117,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 `Content-Type: application/json` で返却される。
 
 ```json
-{ "export_at": "2026-09-15T10:00:00Z", "history": [
+{ "exported_at": "2026-09-15T10:00:00Z", "history": [
     { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00Z", "sha": "abc123", "status": "success", "trigger": "auto", "duration_seconds": 42, "flagged": false, "tags": ["release"], "comment": "" },
     { "id": "b20260914183000", "build_at": "2026-09-14T18:30:00Z", "sha": "def456", "status": "failure", "trigger": "manual", "duration_seconds": 7, "flagged": true, "tags": [], "comment": "ネットワーク障害による失敗" }
 ]}
@@ -5280,6 +5313,41 @@ export { AdlaireCI, AdlaireCIError };
 | 戻り値補完禁止 | API response にない値を SDK が推測して追加しない。表示用加工は UI 側で行う。 |
 | retry | SDK は自動 retry を行わない。ユーザー操作による再実行、または UI の明示的な再取得のみを許可する。 |
 
+**SDK 引数変換契約：**
+
+SDK method は、下表の通りに引数を path、query、body へ変換する。下表にない引数、既定値、body key を追加してはならない。
+
+| SDK method | 引数 | 変換先 | 送信値 |
+|------------|------|--------|--------|
+| `login(password)` | `password` | body | `{password}` |
+| `changePassword(currentPassword,newPassword)` | `currentPassword`, `newPassword` | body | `{current_password: currentPassword, new_password: newPassword}` |
+| `getLogs(n,q)` | `n=100`, `q=""` | query | `n`、`q`。`q` は空文字でも送信する。 |
+| `getHistory({page,perPage})` | `page=1`, `perPage=20` | query | `page`、`per_page: perPage` |
+| `setNotifyConfig(config)` | `config` | body | `config` をそのまま送信する。 |
+| `setConfig(config)` | `config` | body | `config` をそのまま送信する。未知 key は送信前に削除せず、API の `422` に委ねる。 |
+| `updatePat(token)` | `token` | body | `{token}` |
+| `setScheduleInterval(seconds)` | `seconds` | body | `{interval_seconds: seconds}` |
+| `setAllowedHours(from,to)` | `from`, `to` | body | `{from,to}` |
+| `clearAllowedHours()` | なし | body | `{from:null,to:null}` |
+| `setForceInterval(hours)` | `hours` | body | `{hours}` |
+| `setBuildCooldown(seconds)` | `seconds` | body | `{seconds}` |
+| `searchLogs(q,from,to,level)` | `q=""`, `from=""`, `to=""`, `level=undefined` | query | `q`、`from`、`to` は空文字でも送信する。`level` は指定時のみ送信する。 |
+| `getWebhookEvents(limit,offset)` | `limit=50`, `offset=0` | query | `limit`、`offset` |
+| `setWebhookConfig(secret)` | `secret` | body | `{secret}` |
+| `setHistoryComment(id,comment)` | `id`, `comment` | path/body | path `{id}`、body `{comment}` |
+| `setHistoryFlag(id,flagged)` | `id`, `flagged` | path/body | path `{id}`、body `{flagged}` |
+| `setHistoryTags(id,tags)` | `id`, `tags` | path/body | path `{id}`、body `{tags}` |
+| `createToken(label,scope)` | `label`, `scope="read"` | body | `{label,scope}` |
+| `addHook(phase,commandArgs,abortOnFailure)` | `phase`, `commandArgs`, `abortOnFailure=true` | body | `{phase,command_args: commandArgs, abort_on_failure: abortOnFailure}` |
+| `addAlertRule(metric,operator,threshold,level,message)` | 各引数 | body | `{metric,operator,threshold,level,message}` |
+| `addTagRule(condition,tags)` | `condition`, `tags` | body | `{condition,tags}` |
+| `setPipelineConfig(config)` | `config` | body | `config` をそのまま送信する。 |
+| `setNotes(content)` | `content` | body | `{content}` |
+| `setSmtpConfig(config)` | `config` | body | `config` をそのまま送信する。`password` が未指定の場合は送信しない。 |
+| `setDashboardLayout(widgets)` | `widgets` | body | `{widgets}` |
+
+path に入る `id` は `encodeURIComponent` したうえで 1 segment として連結する。`/`、`.`、空文字を含む `id` は HTTP 送信前に `TypeError` とする。
+
 **SDK 型定義表：**
 
 本表は SDK が返す object 型の正本である。`nullable` は `null` を許可することを示す。配列は未取得時でも `[]` を返し、`undefined` を返してはならない。API response に存在しないキーを SDK が補完してはならない。ただし `GET /api/config`、`GET /api/notify-config`、`GET /api/dashboard-layout` の既定値 merge は API 側の責務とする。
@@ -5334,8 +5402,8 @@ export { AdlaireCI, AdlaireCIError };
 **ファイル構成：**
 ```
 /opt/adlaire-builder/admin/
-├── index.html          # 管理画面（単一ファイル完結、）
-└── adlaire-ci-sdk.js   # SDK（標準管理ツールに同梱、）
+├── index.html          # 管理画面（単一ファイル完結）
+└── adlaire-ci-sdk.js   # SDK（標準管理ツールに同梱）
 ```
 
 **DOM / section / form field 命名契約：**
@@ -5393,6 +5461,34 @@ export { AdlaireCI, AdlaireCIError };
 | メンテナンス   | メンテナンスモードの有効化（理由テキスト付き）・無効化・状態・開始時刻表示 | ログイン済み |
 | アクセス制御   | 許可 IP / CIDR 一覧・CIDR 追加フォーム・削除ボタン（ブロック時は 403 を返す） | ログイン済み |
 | フック         | Pre/Post ビルドフック一覧・command_args 追加・削除・実行ログ（直近 N 件）確認 | ログイン済み |
+
+**UI パネル初期取得契約：**
+
+各パネルを表示する時は、下表の SDK method を上から順に呼び出す。表示済み panel へ再遷移した場合も、ユーザー操作で表示した時点で同じ順序で再取得する。空配列はエラーではなく空状態として表示する。
+
+| パネル | 初期取得 SDK method | 空状態表示 |
+|--------|---------------------|------------|
+| ステータス | `getDashboard()`, `getDashboardLayout()`, `getQueue()` | alerts なし、queue なしを 1 行で表示する。 |
+| 手動実行 | `getStatus()`, `getQueue()`, `getMaintenance()` | queue なしを 1 行で表示する。 |
+| ログビューア | `getLogs(100,"")` | ログなしを 1 行で表示する。 |
+| ビルド履歴 | `getHistory({page:1,perPage:20})` | 履歴なしを 1 行で表示する。 |
+| システム情報 | `getSysinfo()`, `getPatStatus()`, `getRateLimit()`, `getDiskUsage()` | 取得不能項目は該当ブロックにエラー表示し、他ブロックは表示する。 |
+| 通知設定 | `getNotifyConfig()`, `getWebhookConfig()`, `getSmtpConfig()`, `getNotifyLog()` | webhook / email / log なしをそれぞれ 1 行で表示する。 |
+| 設定 | `getConfig()`, `getConfigLog()`, `getAccessControl()`, `getHooks()`, `getAlertRules()`, `getTagRules()`, `getPipelineConfig()` | 各一覧なしを 1 行で表示する。 |
+| アクセスログ | `getAccessLog()` | ログなしを 1 行で表示する。 |
+| 統計 | `getStats(7)`, `getStatsTimeline(30)`, `getStatsBuildDuration(20)` | 統計対象なしを 1 行で表示する。 |
+| リポジトリ情報 | `getRepoInfo()`, `getBranchConfig()`, `getSchedule()`, `getMaintenance()` | branch target なしを 1 行で表示する。 |
+| セッション管理 | `getSessions()` | 現 session だけの場合も通常一覧として表示する。 |
+| システム診断 | `getDiagnostics()` | 診断 item なしは `No diagnostics` と表示する。 |
+| ビルド比較 | `getHistory({page:1,perPage:100})` | 比較対象 2 件未満は compare button を disabled にする。 |
+| API トークン管理 | `getTokens()` | token なしを 1 行で表示する。 |
+| 運用ノート | `getNotes()` | content 空文字は空 editor として表示する。 |
+| スナップショット | `getSnapshots()` | snapshot なしを 1 行で表示する。 |
+| メンテナンス | `getMaintenance()` | disabled 状態を通常表示する。 |
+| アクセス制御 | `getAccessControl()` | `allow:[]` は制限なしとして表示する。 |
+| フック | `getHooks()` | hook なしを 1 行で表示する。 |
+
+UI は、初期取得で一部 API が失敗した場合、ログイン状態を維持し、該当 panel の error 領域に失敗を表示する。ただし `401` は全 panel 表示を中止してログイン画面へ戻す。
 
 **パスワード変更フロー：**
 - `must_change: "prompt"`: パスワード変更パネルを表示。他パネルも操作可能
@@ -5508,10 +5604,15 @@ export { AdlaireCI, AdlaireCIError };
 
 秘密情報 field は、`password`、`current_password`、`new_password`、`token`、`secret`、`smtp_password`、`issued-token-once` とする。これらは成功、失敗、画面遷移、`401`、`logout()`、`revokeAllSessions()` のいずれの場合も DOM 値を空にする。発行直後 token は `issued-token-once` に 1 回だけ表示し、次の任意の user action で消去する。
 
-**カスタマイズポイント：**
-- SDK の `baseUrl` は `<script>` タグ内の設定変数で外出し
-- CSS カスタムプロパティで外観変更可能（ADS トークン準拠）
-- 各パネルは独立した `<section>` 単位で差し替え可能な構造とする
+**UI 設定値契約：**
+
+| 設定値 | 取得元 | 既定値 | 仕様 |
+|--------|--------|--------|------|
+| SDK `baseUrl` | `index.html` 内の `data-api-base-url` 属性 | `/api` | 空文字の場合は `/api` を使用する。外部 origin の URL は標準仕様では使用しない。 |
+| 初期表示 panel | 固定値 | `panel-login` | token 永続化を行わないため、画面読み込み直後は常にログイン panel を表示する。 |
+| theme token | `:root` CSS custom property | §6 の値 | JavaScript は theme token を変更しない。UI 操作で theme 切替を実装しない。 |
+| panel 表示制御 | `hidden` 属性 | 全 panel hidden、`panel-login` のみ表示 | DOM 削除ではなく `hidden` で切り替える。 |
+| API 呼び出し経路 | `AdlaireCI` instance | 1 instance | panel ごとに SDK instance を作らず、画面全体で 1 つの `AdlaireCI` instance を共有する。 |
 
 ---
 
@@ -5644,7 +5745,7 @@ POST /api/login
 | `adlaire-ci-build-$OS_ARCH` | 初回セットアップ、アップデート | `build_spec.go` から生成した Markdown → 静的 Web サイトビルドバイナリ。 |
 | `adlaire-ci-runner-$OS_ARCH` | 初回セットアップ、アップデート | `runner.go` から生成した CI ランナーバイナリ。 |
 | `adlaire-ci-api-$OS_ARCH` | 管理 API 導入手順、管理 API 導入後のアップデート | `api_server.go` から生成した管理 API サーバーバイナリ。 |
-| `admin-ui.tar.gz` | 管理 API 導入手順 | `admin/index.html` と `adlaire-ci-sdk.js` を含む管理 UI 配布物。 |
+| `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | `admin/index.html` と `adlaire-ci-sdk.js` を含む管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | Release 添付ファイルの SHA-256 checksum 一覧。 |
 
 ### §26.2b セットアップ・アップデート機能単位
