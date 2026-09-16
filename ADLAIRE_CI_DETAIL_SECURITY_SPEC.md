@@ -97,7 +97,7 @@
 | 項目 | 仕様 |
 |------|------|
 | session token 生成 | `crypto/rand` で 32 bytes を生成し、`encoding/hex` で 64 文字の lowercase hex 文字列へ変換する。 |
-| session 保存場所 | `components/api.go` 内のインメモリ辞書。再起動で全 session を破棄する。 |
+| session 保存場所 | `api` 内のインメモリ辞書。再起動で全 session を破棄する。 |
 | session key | token 本体ではなく `sha256(token)` の lowercase hex。 |
 | session 期限 | 新規発行時点の `.server_config.session_timeout_seconds`。設定不在時は 8 時間。 |
 | session_id | `crypto/rand` で 16 bytes を生成し、lowercase hex とする。 |
@@ -112,7 +112,7 @@
 
 | 項目 | 仕様 |
 |------|------|
-| 失敗記録 | `components/api.go` はメモリ上で直近の連続 login 失敗回数と最終失敗時刻を保持する。再起動で失敗回数はリセットされる。 |
+| 失敗記録 | `api` はメモリ上で直近の連続 login 失敗回数と最終失敗時刻を保持する。再起動で失敗回数はリセットされる。 |
 | lock 条件 | 連続 10 回失敗した場合、最終失敗から 10 分間 `POST /api/login` を `429 {"error":"Too many attempts"}` で拒否する。 |
 | 成功時 | login 成功時は連続失敗回数を 0 に戻す。 |
 | 応答時間 | password 不一致、存在しない credentials、lock 中を除く検証失敗では、条件の詳細を response へ出さない。 |
@@ -534,8 +534,8 @@ QR code 生成は初期実装対象外とする。UI は secret と otpauth URI 
 
 | 状態 | 保存場所 | 期限 | 内容 |
 |------|----------|------|------|
-| setup 仮 secret | `components/api.go` のメモリ | 10 分 | `secret_base32`, `created_at`。サーバー再起動で破棄する。 |
-| login ticket | `components/api.go` のメモリ | 5 分 | `ticket_hash`, `created_at`, `password_verified_at`。ticket 本体は hash 化して保持する。 |
+| setup 仮 secret | `api` のメモリ | 10 分 | `secret_base32`, `created_at`。サーバー再起動で破棄する。 |
+| login ticket | `api` のメモリ | 5 分 | `ticket_hash`, `created_at`, `password_verified_at`。ticket 本体は hash 化して保持する。 |
 
 setup 仮 secret と login ticket は永続ファイルへ保存しない。API response、UI 一回表示、メモリ上状態以外に secret/ticket 本体を残してはならない。
 
