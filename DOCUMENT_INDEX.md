@@ -7,13 +7,14 @@
 | ファイル | 役割 |
 |---------|------|
 | `ADLAIRE_CI_SPEC.md` | Adlaire CI の方針、ポリシー、実装状態、正本関係を定めるマスター仕様書正本。 |
-| `ADLAIRE_CI_DETAIL_SPEC.md` | `ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様の入口。索引、共通固定値、責務 component 対応表、未分割 component の詳細仕様を持つ。方針、ポリシー、実装状態、ロードマップ状態、実装可否は記載しない。 |
+| `ADLAIRE_CI_DETAIL_SPEC.md` | `ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様の入口。索引、共通固定値、責務 component 対応表、未分割 component の詳細仕様を持つ。fixture 共通契約は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を正とする。方針、ポリシー、実装状態、ロードマップ状態、実装可否は記載しない。 |
 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner component の詳細仕様。Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能を扱う。 |
 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner component の詳細仕様。GitHub 監視、状態ファイル更新、pipeline、deploy、snapshot、通知、runner fixture、runner owner 追加機能を扱う。 |
 | `ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner component の詳細仕様。HTTP 共通契約、endpoint、状態ファイル read/write、認証連携、API fixture、API owner 追加機能を扱う。 |
 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | `sdk` owner component の詳細仕様。SDK class、method、HTTP 対応、error、stream、token 破棄を扱う。 |
 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` | `ui` owner component の詳細仕様。DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を扱う。 |
 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner component の詳細仕様。バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証を扱う。 |
+| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture / fake / testdata / assertion / PR 証跡の詳細仕様。Phase 別 fixture 配置、§27 fixture カタログ、manifest、expected/effects、受け入れゲートを扱う。 |
 | `DESIGN.md` | 生成静的 Web サイトのデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | `DOCUMENT_INDEX.md` | 本索引。リポジトリ内の文書・実装ファイルの役割と正本関係を示す。仕様正本ではない。 |
@@ -30,7 +31,7 @@
 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | 分割済み | `sdk` owner の SDK class、method、HTTP 対応、error、stream、token 破棄。 |
 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` | 分割済み | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | 分割済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
-| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | 分割予定 | fixture manifest、assertion、fake、testdata、受け入れ fixture 共通契約、PR 証跡テンプレート。 |
+| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | 分割済み | fixture manifest、assertion、fake、testdata、受け入れ fixture 共通契約、PR 証跡テンプレート。 |
 
 `COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。横断する固定値は `ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値として扱い、component として扱わない。
 
