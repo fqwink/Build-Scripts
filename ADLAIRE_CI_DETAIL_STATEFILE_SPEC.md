@@ -430,6 +430,7 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 | `enabled` | boolean | 必須 | boolean | `false` の hook は実行しない。 |
 | `abort_on_failure` | boolean | 必須 | boolean | `pre` hook 失敗時だけ参照する。 |
 | `timeout_seconds` | integer | 必須 | 1〜3600 | hook 単体の timeout。未指定作成時は `300`。 |
+| `created_at` | string | 必須 | UTC ISO 8601 | hook 作成日時。 |
 
 `command_args[0]` は 1〜256 文字、`command_args[1:]` の各要素は 1〜500 文字とし、NUL、改行、CR を禁止する。`command_args[0]` は絶対 path または PATH 解決可能なコマンド名に限定する。`phase` と `command_args` が既存 enabled hook と完全一致する場合、`POST /api/hooks` は `409 {"error":"Conflict"}` を返す。
 
@@ -510,15 +511,25 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 | `weekly_summary_last_sent_at` | string/null | 必須 | ISO 8601 または `null` | 週次サマリー最終送信日時。 |
 | `weekly_summary_sent_date` | string/null | 必須 | `YYYY-MM-DD` または `null` | 週次サマリー二重送信防止日付。 |
 
-Queue entry:
+Queue entry schema:
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
-| `id` | string | 必須 | `q` + 3 桁以上の数字 | queue id。 |
-| `trigger` | string | 必須 | `"manual"`, `"webhook"` | 起動種別。強制実行は `"manual"` と `payload.force=true` で表す。 |
-| `queued_at` | string | 必須 | ISO 8601 | queue 追加日時。 |
-| `requested_by` | string | 必須 | `"api"`, `"webhook"` | queue 追加元。 |
-| `payload` | object | 必須 | JSON object | force/webhook 等の追加情報。不要時は `{}`。 |
+| `id` | string | 必須 | §22.0e.2 の queue id | queue id。 |
+| `trigger` | string | 必須 | `"manual"`, `"webhook"`, `"approval"` | 起動種別。 |
+| `queued_at` | string | 必須 | UTC ISO 8601 | queue 追加日時。 |
+| `requested_by` | string | 必須 | `"admin"`, `"webhook"`, `"approval"`, API token id | queue 追加元。 |
+| `priority` | string | 必須 | §27.35 の値 | 優先度。未指定作成時は `"normal"`。 |
+| `created_seq` | integer | 必須 | 1 以上 | 既存最大 + 1。 |
+| `payload` | object | 必須 | trigger ごとの固定 payload | 不要時は `{}`。 |
+
+Queue entry `payload` は trigger ごとに以下を許可する。未知 key は API 追加時 `422`、runner 読込時は queue entry 破損として当該 entry を処理せず ERROR ログに記録する。
+
+| trigger | payload |
+|---------|---------|
+| `manual` | `{ "force": boolean }`。 |
+| `webhook` | `{ "delivery_id": string, "branch": string, "sha": string }`。 |
+| `approval` | `{ "approval_id": string, "branch": string, "sha": string, "target": string }`。 |
 
 `running: false` の場合、`current_build_id` は `null` とする。`DELETE /api/queue` は `queued` を空配列へ置換し、`running` と `current_build_id` は変更しない。
 
@@ -543,6 +554,8 @@ Queue entry:
 | `action` | string | 必須 | `"create"`, `"update"`, `"delete"` | 変更種別。 |
 | `diff` | object | 必須 | `{key:[before,after]}` | 変更前後。秘密情報は `"***"`。 |
 | `diff_text` | string | 必須 | 1 文字以上 | 人間向け差分。秘密情報は `"***"`。 |
+
+`diff` は `{key:[before,after]}` とする。`diff_text` は 1 行以上の文字列とし、値は JSON 表現で記録する。キー名に `password`、`token`、`secret`、`pat`、`smtp_password` を含む値は before / after とも `"***"` に置換する。配列や object の内部 key も同じ規則で再帰的にマスクする。
 
 **`.access_log` JSON Lines schema：**
 
@@ -576,6 +589,41 @@ Queue entry:
 | `remote_addr` | string/null | 必須 | IP 文字列または `null` | 接続元。 |
 | `user_agent` | string/null | 必須 | 文字列または `null` | 取得不能時は `null`。 |
 | `error` | string/null | 必須 | エラーコードまたは `null` | 成功時は `null`。 |
+
+**`.webhook_events.json` JSON Lines schema：**
+
+`.webhook_events.json` は 1 行 1 event を追記する。mode は `0600` とする。request header 全体、署名値、Webhook secret、payload 全体を保存してはならない。
+
+| key | 型 | 必須 | 許容値 / 説明 |
+|-----|----|------|---------------|
+| `timestamp` | string | 必須 | UTC ISO 8601。 |
+| `delivery_id` | string/null | 必須 | `X-GitHub-Delivery`。1〜200 文字または `null`。 |
+| `event` | string | 必須 | GitHub event 名。1〜100 文字。 |
+| `ref` | string/null | 必須 | push ref または `null`。 |
+| `branch` | string/null | 必須 | `refs/heads/` を除いた branch または `null`。 |
+| `sha` | string/null | 必須 | push `after`。40 文字 lowercase hex または `null`。 |
+| `repository` | string/null | 必須 | `owner/repo` 形式または `null`。 |
+| `build_triggered` | boolean | 必須 | queue 追加済みなら `true`。 |
+| `queued_id` | string/null | 必須 | queue id または `null`。 |
+| `result` | string | 必須 | `"queued"`, `"duplicate"`, `"ignored_event"`, `"ignored_branch"`, `"queue_full"`, `"error"`。 |
+
+**`.approval_queue` JSON Lines schema：**
+
+`.approval_queue` は append-only とし、1 行 1 record を追記する。同一 id の最新 record を有効状態として扱い、古い record は監査履歴として残す。
+
+| キー | 型 | 必須 | 許容値 / 説明 |
+|------|----|------|---------------|
+| `id` | string | 必須 | `appr{YYYYMMDDHHmmss}`、衝突時 `-001`。 |
+| `status` | string | 必須 | `"pending"`、`"approved"`、`"rejected"`、`"expired"`。 |
+| `branch` | string | 必須 | branch target 名。 |
+| `sha` | string | 必須 | 40 文字 lowercase hex。 |
+| `target` | string | 必須 | branch target id または target file。 |
+| `created_at` | string | 必須 | UTC ISO 8601。 |
+| `expires_at` | string | 必須 | UTC ISO 8601。 |
+| `decided_at` | string/null | 必須 | approve / reject / expire 時刻または `null`。 |
+| `decided_by` | string/null | 必須 | 管理 session は `"admin"`、API token は token id、未決定時は `null`。 |
+| `queue_id` | string/null | 必須 | approve で追加した queue id または `null`。 |
+| `reason` | string/null | 必須 | reject 理由、expire 理由、または `null`。 |
 
 **`.build_history` JSON Lines schema：**
 

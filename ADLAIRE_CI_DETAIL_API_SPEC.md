@@ -1787,19 +1787,7 @@ Content-Type: application/json
 | secret mask | stdout、stderr、保存済み output、server log、通知 payload へ保存する前に runner の secret mask を適用する。 |
 | log 保存失敗 | `pre` hook では build 本体を開始せず `hook_error`。`post` hook では build 結果を維持し、server log に `HOOK_LOG_WRITE_FAILED` を出す。 |
 
-**`.hooks` record schema：**
-
-| キー | 型 | 必須 | 許容値 |
-|------|----|------|--------|
-| `id` | string | 必須 | §22.0e.2 の hook id。 |
-| `phase` | string | 必須 | `"pre"` または `"post"`。 |
-| `command_args` | string[] | 必須 | 1〜20 件。各値は NUL、LF、CR 禁止。 |
-| `enabled` | boolean | 必須 | boolean。作成時 `true` 固定。 |
-| `abort_on_failure` | boolean | 必須 | boolean。 |
-| `timeout_seconds` | integer | 必須 | 1〜3600。省略時 300。 |
-| `created_at` | string | 必須 | UTC ISO 8601。 |
-
-`.hooks` に未知 key、必須 key 不足、型不一致、不正 phase、不正 command、重複 id がある場合、`GET /api/hooks`、`POST /api/hooks`、`DELETE /api/hooks/{id}` は `500 {"error":"Internal server error"}` を返す。破損内容、command_args の secret らしき値、stdout/stderr は response と log に出さない。
+`.hooks` record schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.hooks` schema を正とする。`.hooks` に未知 key、必須 key 不足、型不一致、不正 phase、不正 command、重複 id がある場合、`GET /api/hooks`、`POST /api/hooks`、`DELETE /api/hooks/{id}` は `500 {"error":"Internal server error"}` を返す。破損内容、command_args の secret らしき値、stdout/stderr は response と log に出さない。
 
 **hooks API 更新順：**
 
@@ -2073,25 +2061,7 @@ queue 追加は `.build_state` の atomic write で行い、id は §22.0e.2 の
 
 `queue_max_size=0` の場合、実行中に受けた queue 対応 API は `429 {"error":"queue_full"}` を返す。`.build_state.queued` の件数が `queue_max_size` 以上の場合も同じ body とする。
 
-**queue entry schema：**
-
-| キー | 型 | 必須 | 許容値 |
-|------|----|------|--------|
-| `id` | string | 必須 | §22.0e.2 の queue id。 |
-| `trigger` | string | 必須 | `"manual"`、`"webhook"`、`"approval"`。 |
-| `queued_at` | string | 必須 | UTC ISO 8601。 |
-| `requested_by` | string | 必須 | `"admin"`、`"webhook"`、`"approval"`、API token id。 |
-| `priority` | string | 必須 | §27.35 の値。未指定作成時は `"normal"`。 |
-| `created_seq` | integer | 必須 | 1 以上。既存最大 + 1。 |
-| `payload` | object | 必須 | trigger ごとの固定 payload。未使用時は `{}`。 |
-
-`payload` は trigger ごとに以下を許可する。未知 key は `422`、runner 読込時は queue entry 破損として当該 entry を処理せず ERROR ログに記録する。
-
-| trigger | payload |
-|---------|---------|
-| `manual` | `{ "force": boolean }`。 |
-| `webhook` | `{ "delivery_id": string, "branch": string, "sha": string }`。 |
-| `approval` | `{ "approval_id": string, "branch": string, "sha": string, "target": string }`。 |
+queue entry schema と trigger 別 payload schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.build_state` schema を正とする。未知 key は `422`、runner 読込時は queue entry 破損として当該 entry を処理せず ERROR ログに記録する。
 
 **queue 更新順：**
 
@@ -2532,7 +2502,7 @@ owner component は `api` とする。collaborator component は `runner`、`sta
 | event log 追記失敗 / queue 追加前 | 変更なし | 変更なし | `500 {"error":"Internal server error"}` |
 | event log 追記失敗 / queue 追加後 | 変更なし | queue entry は残す | `202 {"message":"Webhook accepted","queued":true,"event_log_failed":true,"queue_id":...}` |
 
-queue entry は §16C の queue entry schema を使用し、`trigger:"webhook"`、`requested_by:"webhook"`、`priority:"normal"`、`payload.delivery_id`、`payload.branch`、`payload.sha` を保存する。`X-GitHub-Delivery` が既に pending queue に存在し、同一 branch / sha の場合は重複投入せず、event log に `result:"duplicate"`、既存 `queued_id` を記録し、`202 {"message":"Webhook already queued","queued":true,"queue_id":"<existing>"}` を返す。
+queue entry は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.build_state` schema の queue entry schema を使用し、`trigger:"webhook"`、`requested_by:"webhook"`、`priority:"normal"`、`payload.delivery_id`、`payload.branch`、`payload.sha` を保存する。`X-GitHub-Delivery` が既に pending queue に存在し、同一 branch / sha の場合は重複投入せず、event log に `result:"duplicate"`、既存 `queued_id` を記録し、`202 {"message":"Webhook already queued","queued":true,"queue_id":"<existing>"}` を返す。
 
 **Webhook validation 固定契約：**
 
@@ -2572,24 +2542,7 @@ owner component は `api` とする。collaborator component は `sdk`、`ui`、
 
 本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、SDK、UI からページング参照できるようにすることである。
 
-**保存 schema：**
-
-`.webhook_events.json` は JSON Lines とし、1 行 1 event を追記する。mode は `600` とする。
-
-| key | 型 | 必須 | 説明 |
-|-----|----|------|------|
-| `timestamp` | string | 必須 | ISO 8601 UTC。 |
-| `delivery_id` | string/null | 必須 | `X-GitHub-Delivery`。 |
-| `event` | string | 必須 | GitHub event 名。 |
-| `ref` | string/null | 必須 | push ref。 |
-| `branch` | string/null | 必須 | `refs/heads/` を除いた branch。 |
-| `sha` | string/null | 必須 | push `after`。 |
-| `repository` | string/null | 必須 | `owner/repo`。 |
-| `build_triggered` | boolean | 必須 | queue 追加済みなら `true`。 |
-| `queued_id` | string/null | 必須 | queue id または `null`。 |
-| `result` | string | 必須 | `"queued"`, `"duplicate"`, `"ignored_event"`, `"ignored_branch"`, `"queue_full"`, `"error"`。 |
-
-`delivery_id` は 1〜200 文字、`event` は 1〜100 文字、`repository` は `owner/repo` 形式、`sha` は `null` または 40 文字 lowercase hex とする。保存時に request header 全体、署名値、secret、payload 全体を保存してはならない。
+`.webhook_events.json` の保存 schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.webhook_events.json` JSON Lines schema を正とする。保存時に request header 全体、署名値、secret、payload 全体を保存してはならない。
 
 **一覧 API：**
 
@@ -2755,9 +2708,7 @@ owner component は `api` とする。collaborator component は `statefile` と
 
 `.config_log` を write する全 API を対象とする。少なくとも `POST /api/config`、`POST /api/log-level`、`POST /api/notify-config`、`POST /api/repo-config`、`POST /api/branch-config`、`POST /api/webhook-config`、`POST /api/pat-update`、schedule 系 API、maintenance、access-control、hooks、alert-rules、tag-rules、pipeline-config、notes、smtp-config、dashboard-layout、snapshot delete を含む。
 
-**ログ schema：**
-
-各行は §22.0c `.config_log` schema に従う。`diff` は `{key:[before,after]}`、`diff_text` は 1 行以上の文字列とする。差分がない場合、対象 API は状態ファイルを書かず、`.config_log` も追記せず、response は `{ "message": "No changes" }` とする。
+`.config_log` のログ schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.config_log` JSON Lines schema を正とする。差分がない場合、対象 API は状態ファイルを書かず、`.config_log` も追記せず、response は `{ "message": "No changes" }` とする。
 
 **マスク条件：**
 
@@ -2933,23 +2884,7 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | reject | build なし、history 記録。 |
 | timeout | expired、build なし。 |
 
-**`.approval_queue` record schema：**
-
-| キー | 型 | 必須 | 許容値 |
-|------|----|------|--------|
-| `id` | string | 必須 | `appr{YYYYMMDDHHmmss}`、衝突時 `-001`。 |
-| `status` | string | 必須 | `"pending"`、`"approved"`、`"rejected"`、`"expired"`。 |
-| `branch` | string | 必須 | branch target 名。 |
-| `sha` | string | 必須 | 40 文字 lowercase hex。 |
-| `target` | string | 必須 | branch target id または target file。 |
-| `created_at` | string | 必須 | UTC ISO 8601。 |
-| `expires_at` | string | 必須 | UTC ISO 8601。 |
-| `decided_at` | string/null | 必須 | approve / reject / expire 時刻。 |
-| `decided_by` | string/null | 必須 | 管理 session は `"admin"`、API token は token id。 |
-| `queue_id` | string/null | 必須 | approve で追加した queue id。 |
-| `reason` | string/null | 必須 | reject 理由または expire 理由。 |
-
-`.approval_queue` は JSON Lines append-only とする。同一 id の最新 record を有効状態として扱い、古い record は監査履歴として残す。`GET /api/approvals` は id ごとに最新 record だけを返し、`created_at` 降順、同時刻は id 昇順で並べる。壊れた行は無視し、response に含めない。
+`.approval_queue` record schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.approval_queue` JSON Lines schema を正とする。同一 id の最新 record を有効状態として扱い、古い record は監査履歴として残す。`GET /api/approvals` は id ごとに最新 record だけを返し、`created_at` 降順、同時刻は id 昇順で並べる。壊れた行は無視し、response に含めない。
 
 **approval 状態遷移固定契約：**
 
