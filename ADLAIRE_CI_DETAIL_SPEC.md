@@ -6764,10 +6764,27 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
   "salt": "<hex>",
   "algorithm": "sha256_iter_v1",
   "iterations": 260000,
+  "must_change": true,
   "login_count": 0,
+  "last_login_at": null,
   "updated_at": "2026-09-15T10:00:00Z"
 }
 ```
+
+**`.admin_credentials` schema 固定：**
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `password_hash` | string | 必須 | 64 文字 lowercase hex | password 本体は保存しない。 |
+| `salt` | string | 必須 | 64 文字 lowercase hex | 32 bytes salt。 |
+| `algorithm` | string | 必須 | `"sha256_iter_v1"` 固定 | 他 algorithm は初期実装で拒否する。 |
+| `iterations` | integer | 必須 | `260000` 固定 | 値が異なる場合は認証を `500` で拒否する。 |
+| `must_change` | boolean | 必須 | boolean | 初期生成時 `true`、パスワード変更後 `false`。 |
+| `login_count` | integer | 必須 | 0 以上 | session token 発行成功時だけ +1。TOTP ticket 発行時は増やさない。 |
+| `last_login_at` | string/null | 必須 | UTC ISO 8601 または `null` | session token 発行成功時だけ更新する。 |
+| `updated_at` | string | 必須 | UTC ISO 8601 | password hash 更新時刻。 |
+
+`.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致もすべて credentials 破損とする。API 起動時検証で credentials 破損を検出した場合は、§22.0a に従って ERROR ログを出し、HTTP サーバーを起動しない。HTTP サーバー稼働中の読込時検証で credentials 破損を検出した場合、`POST /api/login` と `POST /api/change-password` は `500 {"error":"Internal server error"}` を返す。API response、`.access_log`、`.audit_log`、journal に破損内容、hash、salt を出してはならない。
 
 **ハッシュアルゴリズム：** Go 標準ライブラリのみで実装する `sha256_iter_v1`
 
@@ -6785,6 +6802,18 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 `crypto/rand` で 32 bytes を生成し、`encoding/hex` で 64 文字の lowercase hex 文字列へ変換する。
 
 **セッション管理：** `components/api.go` 内のインメモリ辞書で管理。有効期限は新規発行時点の `.server_config.session_timeout_seconds` とする。設定不在時は 8 時間。再起動で全セッション破棄。単一 admin の複数同時セッションを許容する。辞書 key は token 本体ではなく `sha256(token)` の lowercase hex とし、API response、`.access_log`、`.audit_log`、サーバーログへ token 本体を出力してはならない。
+
+**認証入力・保存禁止契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 認証 header | `Authorization: Bearer {token}` だけを受け付ける。 |
+| Cookie | session cookie、remember-me cookie、CSRF cookie は発行しない。受信しても認証に使わない。 |
+| query token | `?token=`、`access_token`、`session` query は認証に使わず、存在しても無視する。 |
+| body token | login / totp 以外の body token は認証に使わない。 |
+| 永続化禁止 | session token、login ticket、setup 仮 secret、連続失敗回数はファイル保存しない。 |
+| response 禁止 | password hash、salt、session token hash、ticket hash、TOTP secret 保存値は response に含めない。 |
+| log 禁止 | password、current_password、new_password、token、ticket、hash、salt、TOTP code は `.access_log`、`.audit_log`、`.api_access_log`、journal に含めない。 |
 
 **セッション期限切れ時：** `401 Unauthorized` を返す。クライアント（SDK）は `this._token` をクリアし、再ログインを促す。
 
@@ -6824,6 +6853,8 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | 応答時間 | パスワード不一致、存在しない credentials、ロック中を除く検証失敗では、条件の詳細をレスポンスへ出さない。 |
 | ログ | 成功、失敗、ロック拒否はいずれも `.access_log` へ追記する。password、token、hash、salt は記録しない。 |
 
+`.access_log` 追記失敗時は、ログイン失敗では `500` を返し、失敗回数は増加済みのままとする。ログイン成功時は session token 発行前に `.admin_credentials` と `.access_log` を更新し、どちらかに失敗した場合は session token を発行しない。TOTP 有効時は ticket 発行前に `.access_log` を追記し、追記失敗時は ticket を発行しない。
+
 **ログインフロー：**
 ```
 POST /api/login
@@ -6842,6 +6873,18 @@ POST /api/login
 **`--init-credentials` オプション：** `components/api.go` を `--init-credentials` 引数で起動した場合、初期パスワード `admin` で `.admin_credentials` を生成して終了する（HTTP サーバーは起動しない）。
 
 `.admin_credentials` が既に存在する場合、`--init-credentials` は上書きせず `409` 相当の終了コード `2` で終了し、標準エラーへ `credentials already exist` を出力する。初期化成功時の終了コードは `0` とする。
+
+**`--init-credentials` CLI 固定契約：**
+
+| ケース | stdout | stderr | 終了コード | 副作用 |
+|--------|--------|--------|------------|--------|
+| 新規生成成功 | `credentials initialized` + LF | 空 | `0` | `.admin_credentials` を mode `0600` で作成する。 |
+| 既存あり | 空 | `credentials already exist` + LF | `2` | 既存ファイルを変更しない。 |
+| `--state-dir` 相対 path | 空 | `state directory must be absolute: {path}` + LF | `2` | ファイル作成なし。 |
+| 書込失敗 | 空 | `credentials write failed` + LF | `1` | tmp を削除し、部分ファイルを残さない。 |
+| rand 失敗 | 空 | `random source failed` + LF | `1` | ファイル作成なし。 |
+
+生成手順は、state dir 検証 → 既存確認 → salt 生成 → hash 生成 → `{path}.tmp.{pid}` へ JSON + LF 書込 → mode `0600` → file sync → rename → parent directory sync の順に固定する。rename 後の sync に失敗した場合は `1` を返し、作成済みファイルは残る。実装者判断で初期パスワードを環境変数、対話入力、ランダム生成へ変更してはならない。
 
 ---
 
@@ -6886,6 +6929,8 @@ POST /api/login
 | `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | `admin/index.html` と `admin/adlaire-ci-sdk.js` を含む管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | Release 添付ファイルの SHA-256 checksum 一覧。 |
 
+Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は `linux-amd64` だけを初期標準とし、未知 OS/arch を指定した場合は取得前に `unsupported OS_ARCH: {OS_ARCH}` を stderr へ出力して終了コード `2` とする。`SHA256SUMS` は `"{sha256}  {filename}"` 形式の LF 区切り text とし、対象 filename が 1 回だけ出現することを必須とする。対象行が 0 件または 2 件以上の場合は checksum 検証失敗とする。
+
 ### §26.2b セットアップ・アップデート機能単位
 
 セットアップ・アップデート実装は、以下の機能単位に分割する。各機能は前段の出力だけを入力として受け取り、失敗時は後続機能を実行しない。
@@ -6901,6 +6946,16 @@ POST /api/login
 | service activator | systemd unit 名 | active な timer / service | `enable --now` 失敗、`is-active` 非 `active` | 直前の journal 確認コマンドを出力して終了 |
 | admin UI installer | `admin-ui.tar.gz`、`INSTALL_DIR` | `$INSTALL_DIR/admin/index.html`、`$INSTALL_DIR/admin/adlaire-ci-sdk.js` | archive 不在、checksum 不一致、展開後必須ファイル不在 | API service 起動を実行せず終了 |
 | rollback executor | `BACKUP_DIR`、`BIN_DIR`、再起動対象 unit | 旧バイナリ復元済み状態 | 旧バイナリ不在、復元失敗、復元後 restart 失敗 | 自動復旧を継続せず journal 確認対象を出力 |
+
+**セットアップ / アップデート共通終了コード：**
+
+| 終了コード | 条件 |
+|------------|------|
+| `0` | 全手順成功。 |
+| `1` | 取得失敗、checksum 不一致、配置失敗、systemd 操作失敗、権限補正失敗、rollback 失敗。 |
+| `2` | 変数不正、unsupported OS/arch、必須入力空、既存 credentials あり、実行前検証不合格。 |
+
+各手順は失敗時に固定文言を stderr へ 1 行以上出力する。secret 値、PAT、token、password、Release URL に埋め込まれた認証情報を stderr/stdout に出してはならない。
 
 ### §26.3 Go 版初回セットアップ手順
 
@@ -6918,6 +6973,18 @@ POST /api/login
 | 起動確認 | `systemctl is-active adlaire-ci.timer` が `active` でない | 失敗として扱い、直前のログ確認コマンドを表示する。 |
 
 初回セットアップが中断した場合、作成済みの通常ディレクトリと展開済みリリース資産は自動削除しない。秘密情報ファイルを作成した後に失敗した場合は、`.github_token` の mode が `0600` であることを確認し、mode 補正に失敗した場合はその場で停止する。
+
+**初回セットアップ後の固定確認：**
+
+| 確認 | コマンド | 合格条件 |
+|------|----------|----------|
+| build binary | `$BIN_DIR/adlaire-ci-build --version` | exit `0`、stdout が `adlaire-ci-build ADLAIRE_CI_SPEC` を含む。 |
+| runner binary | `$BIN_DIR/adlaire-ci-runner --version` | exit `0`、stdout が `adlaire-ci-runner ADLAIRE_CI_SPEC` を含む。 |
+| PAT file | `stat -c '%a' "$INSTALL_DIR/.github_token"` | `600`。 |
+| SHA cache | `cat "$INSTALL_DIR/.last_sha"` | `{"sha":""}` + LF。 |
+| timer | `systemctl is-active adlaire-ci.timer` | `active`。 |
+
+確認のいずれかが失敗した場合、セットアップは失敗扱いとする。ただし自動削除や状態ファイル巻き戻しは行わない。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
@@ -6991,6 +7058,18 @@ Go 版初回セットアップでは以下を実行しない。
 | 認証情報生成 | `.admin_credentials` 新規生成に失敗。ただし既存ファイルがある場合は成功扱い | API service を起動せず終了する。 |
 | systemd 配置 | unit 書き込みまたは `systemctl daemon-reload` 失敗 | API service を enable/start せず終了する。 |
 | 起動確認 | `systemctl is-active adlaire-ci-api` が `active` でない | runner timer を停止せず、API の journal 確認コマンドを出力して終了する。 |
+
+**管理 API 導入後の固定確認：**
+
+| 確認 | コマンド | 合格条件 |
+|------|----------|----------|
+| API binary | `$BIN_DIR/adlaire-ci-api --version` | exit `0`、stdout が `adlaire-ci-api ADLAIRE_CI_SPEC` を含む。 |
+| credentials | `stat -c '%a' "$INSTALL_DIR/.admin_credentials"` | `600`。 |
+| admin UI | `test -f "$INSTALL_DIR/admin/index.html"` / `test -f "$INSTALL_DIR/admin/adlaire-ci-sdk.js"` | 両方成功。 |
+| API service | `systemctl is-active adlaire-ci-api` | `active`。 |
+| local health | `curl -fsS http://127.0.0.1:8765/api/health` | HTTP `200`、JSON object。 |
+
+`curl` が利用できない環境では、Go 実装 PR の検証で `net/http` client または同等のローカル HTTP 確認を行う。未確認のまま API 導入完了扱いにしてはならない。
 
 ```bash
 # ── 1. 拡張用ディレクトリ作成 ─────────────────────────
@@ -7085,6 +7164,8 @@ WantedBy=multi-user.target
 
 `User` / `WorkingDirectory` / `ExecStart` のパスは §26.2 の設定変数に合わせて変更する。
 
+systemd unit は上記キー以外を初期標準で追加しない。`Environment=`、`EnvironmentFile=`、`ExecStartPre=`、`ExecStartPost=` を追加する場合は、先に本節へ対象変数、secret 扱い、失敗時挙動を定義する。API service は `127.0.0.1:8765` bind を標準とし、外部公開 bind は本ファイルで未定義のため設定しない。
+
 ### §26.5 アップデート手順
 
 `git pull`、利用環境での `go build`、開発ブランチ checkout は使用しない。タグ付き安定版のリリースバイナリを配置し、サービスを再起動する。管理 API を導入していない構成では、管理 API サービスは再起動対象に含めない。
@@ -7101,6 +7182,20 @@ WantedBy=multi-user.target
 | 管理 UI 更新 | API 導入済みの場合のみ `admin-ui.tar.gz` の取得、checksum 検証、一時ディレクトリへの展開、必須ファイル確認、旧 `admin/` との差し替えが成功する。 | 旧 `admin/` を維持または退避先から復元し、API 再起動を実行しない。 |
 
 rollback 後も service が active にならない場合は、自動復旧を継続せず、`journalctl -u adlaire-ci.service -n 100`、API 導入済みなら `journalctl -u adlaire-ci-api -n 100` を確認対象として報告する。rollback はバイナリ差し戻しと service restart のみを行い、状態ファイル、履歴、ログ、secret を巻き戻してはならない。
+
+**アップデート rollback 固定契約：**
+
+| 失敗箇所 | rollback 対象 | rollback 後に実行する確認 | 禁止事項 |
+|----------|---------------|----------------------------|----------|
+| checksum 検証前 | なし | 旧 service active 確認のみ | 取得済み未検証ファイルを配置しない。 |
+| build / runner 配置失敗 | 配置に成功した新バイナリだけ旧版へ戻す。 | `adlaire-ci-build --version`、`adlaire-ci-runner --version` | systemd restart しない。 |
+| runner restart 失敗 | build / runner 旧版復元 | `systemctl is-active adlaire-ci.timer` | state、history、secret を戻さない。 |
+| API binary 配置失敗 | API 旧版復元。runner は戻さない。 | `adlaire-ci-api --version` | runner service を restart しない。 |
+| API restart 失敗 | API 旧版復元 | `systemctl is-active adlaire-ci-api` | `.admin_credentials`、admin UI を戻さない。ただし UI 更新前に失敗した場合。 |
+| admin UI 展開失敗 | 旧 `admin/` 維持 | 必須ファイル確認 | API restart しない。 |
+| admin UI 差し替え後 API restart 失敗 | 旧 `admin/` 復元、API 旧版復元 | API service active 確認 | runner state を戻さない。 |
+
+rollback は 1 回だけ実行する。rollback 自体が失敗した場合は、追加の推測復旧を行わず、失敗箇所、退避先、現在配置済みファイル、journal 確認コマンドを報告対象として固定する。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
@@ -7198,6 +7293,19 @@ systemctl status adlaire-ci-api
 | setup | §26.3 または §26.3b の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
 | update | §26.5 の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 条件が仕様どおり。 |
 | security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示を確認する。 | PAT、Webhook Secret、SMTP password、session token、API token 本体が平文で出ない。 |
+
+**認証 / セットアップ fixture 固定：**
+
+| fixture | 入力 | 合格条件 |
+|---------|------|----------|
+| credentials init success | 空 state dir で `adlaire-ci-api --init-credentials --state-dir <abs>` | `.admin_credentials` mode `600`、schema 全 key、`must_change=true`、stdout 固定文言。 |
+| credentials init existing | `.admin_credentials` 既存 | exit `2`、stderr `credentials already exist`、既存ファイル差分なし。 |
+| login success | 初期 password `admin` | `must_change:"prompt"`、TOTP 無効時 token 発行、hash/salt 非表示、`.access_log` 成功行。 |
+| login failure lock | password 連続 10 回失敗 | 10 回目後、10 分間 `429 {"error":"Too many attempts"}`、password 詳細非表示。 |
+| change password | current 正、新 password 有効 | `.admin_credentials` の salt/hash 更新、`must_change=false`、現 session 以外破棄。 |
+| session restart | token 発行後に API process restart | 旧 token は `401`、session file は存在しない。 |
+| setup checksum mismatch | Release asset と `SHA256SUMS` 不一致 | バイナリ配置なし、systemd 変更なし、終了コード `1`。 |
+| update restart failure | 新バイナリ配置後に service restart 失敗 | 旧バイナリ復元を 1 回だけ行い、state/history/secret は巻き戻さない。 |
 
 Phase 別の実装受け入れ条件は以下とする。
 
