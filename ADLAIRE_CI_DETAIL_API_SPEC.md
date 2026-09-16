@@ -914,7 +914,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 既に一時停止中に `pause`、または稼働中に `resume` を呼び出した場合は `409 Conflict` を返す。
 
-> **責務分担：** Webhook 通知の**送信責務は `components/runner.go`** にある。`components/runner.go` はビルド完了時に `.notify_config` を読み込んで Webhook を送信する。`components/api.go`（通知 API）は設定の読み書きのみを担い、自身では通知を送信しない。
+> **責務分担：** build lifecycle 通知、pending retry、自動 weekly summary の送信責務は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.32 および §27.19 を正とする。本節では通知 API の request / response、設定 read/write、履歴参照、手動送信 endpoint 境界だけを定義する。
 
 **`GET /api/notify-config` レスポンス例：**
 ```json
@@ -935,16 +935,16 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 `on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"deploy_failure"`（転送失敗時）| `"weekly_summary"`（定期サマリー送信時）| `"approval_required"`（承認待ち発生時）| `"duration_anomaly"`（所要時間異常時）| `"config_corrupt"`（設定破損復旧時）。複数指定可。
 
-`summary`：週次サマリー通知の設定。`enabled: true` のとき指定曜日・時刻で統計サマリーを Webhook 送信する。`interval` の有効値は `"weekly"` 固定。`hour` は 0〜23（UTC）。`day_of_week` は 0 = 日曜〜6 = 土曜。
+`summary`：週次サマリー通知の設定。`interval` の有効値は `"weekly"` 固定。`hour` は 0〜23（UTC）。`day_of_week` は 0 = 日曜〜6 = 土曜。自動送信条件、二重送信防止、集計、送信順序、`.build_state` 更新は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.19 を正とする。
 
 **`POST /api/notify/weekly-summary` レスポンス例：**
 ```json
 { "message": "Weekly summary sent", "period": "2026-09-08/2026-09-14", "success_count": 12, "failure_count": 1, "success_rate": 92.3 }
 ```
 
-即時週次サマリー送信。Webhook 未設定または無効時は `422` を返す。
+`POST /api/notify/weekly-summary` は手動送信 API とする。集計、対象 channel 抽出、通知送信、`.notify_log` 追記、失敗時 response、sent date を更新しない契約は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.19 の手動 weekly summary 契約を正とする。Webhook 未設定または無効時は `422` を返す。
 
-`payload_template`：Webhook 送信 JSON ペイロードのテンプレート文字列。`null` = デフォルトペイロードを使用。テンプレート内で使用可能な変数は以下の通り。
+`payload_template`：Webhook 送信 JSON ペイロードのテンプレート文字列。`null` = デフォルトペイロードを使用。build lifecycle 通知 payload、channel 選択、retry、pending 保存、secret mask は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.32 を正とする。テンプレート内で使用可能な変数は以下の通り。
 
 | 変数 | 内容 |
 |------|------|
@@ -1348,7 +1348,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 { "message": "Weekly summary sent", "period": "2026-09-08/2026-09-14", "success_count": 12, "failure_count": 1, "success_rate": 92.3 }
 ```
 
-`on: ["weekly_summary"]` 設定の Webhook 宛先がない場合は `422 Unprocessable Entity` を返す。
+手動 weekly summary の集計、送信、`.notify_log` 追記、失敗時 response は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.19 を正とする。`on: ["weekly_summary"]` 設定の Webhook 宛先がない場合は `422 Unprocessable Entity` を返す。
 
 **`.build_logs/{id}.json` 追加フィールド（ビルド所要時間・コミット情報・サイズ警告）：**
 
