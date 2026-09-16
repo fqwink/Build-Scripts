@@ -4206,6 +4206,81 @@ Email object:
 
 `enabled: false` の場合、`reason` と `since` は `null` とする。`POST /api/maintenance/enable` は `enabled: true`、`reason`、`since` を同時に保存する。
 
+**`.access_control` schema：**
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `allow` | string[] | 必須 | IPv4 address または CIDR、0〜100 件 | 空配列は制限なし。保存時は入力順を保持し、重複は除去する。 |
+
+`allow` の各要素は前後空白を除去してから検証する。空文字、IPv6、hostname、URL、CIDR prefix が 0〜32 以外、parse 不能な値は `422` とし、既存 `.access_control` を変更しない。
+
+**`.hooks` schema：**
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `hooks` | object[] | 必須 | 0〜50 件 | 登録済み hook。 |
+| `id` | string | 必須 | §22.0e.2 の hook id | hook 識別子。 |
+| `phase` | string | 必須 | `"pre"` / `"post"` | 実行 phase。 |
+| `command_args` | string[] | 必須 | 1〜20 件 | shell を介さず `exec.CommandContext` に渡す引数配列。 |
+| `enabled` | boolean | 必須 | boolean | `false` の hook は実行しない。 |
+| `abort_on_failure` | boolean | 必須 | boolean | `pre` hook 失敗時だけ参照する。 |
+| `timeout_seconds` | integer | 必須 | 1〜3600 | hook 単体の timeout。未指定作成時は `300`。 |
+
+`command_args[0]` は 1〜256 文字、`command_args[1:]` の各要素は 1〜500 文字とし、NUL、改行、CR を禁止する。`command_args[0]` は絶対 path または PATH 解決可能なコマンド名に限定する。`phase` と `command_args` が既存 enabled hook と完全一致する場合、`POST /api/hooks` は `409 {"error":"Conflict"}` を返す。
+
+**`.alert_rules` schema：**
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `rules` | object[] | 必須 | 0〜100 件 | dashboard alert rule。 |
+| `id` | string | 必須 | §22.0e.2 の alert rule id | rule 識別子。 |
+| `metric` | string | 必須 | `success_rate_7d`, `avg_duration_seconds`, `last_build_age_hours`, `disk_usage_bytes` | 評価対象。 |
+| `operator` | string | 必須 | `lt`, `gt`, `lte`, `gte` | 比較演算子。 |
+| `threshold` | number | 必須 | 0 以上 | 比較値。 |
+| `level` | string | 必須 | `info`, `warn`, `error` | alert severity。 |
+| `message` | string | 必須 | 1〜200 文字 | UI 表示文。secret を含めない。 |
+
+**`.tag_rules` schema：**
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `rules` | object[] | 必須 | 0〜100 件 | 自動タグ付け rule。 |
+| `id` | string | 必須 | §22.0e.2 の tag rule id | rule 識別子。 |
+| `condition` | string | 必須 | §15B の条件式 grammar | 評価条件。 |
+| `tags` | string[] | 必須 | 1〜20 件、各 1〜50 文字 | 付与するタグ。重複は除去する。 |
+
+`condition` は `変数 空白 演算子 空白 値` の 1 条件だけを許可する。`&&`、`||`、括弧、関数呼び出し、正規表現、算術式は `422` とする。
+
+**`.pipeline_config` schema：**
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `extra_args` | string[] | 必須 | 0〜50 件 | `components/builder.go` に渡す追加 CLI 引数。 |
+| `env` | object | 必須 | key/value は下記 | builder process に追加する環境変数。 |
+
+`extra_args` は空文字、NUL、改行、CR を禁止し、`--src`、`--out`、`--build-id`、`--commit-sha`、`--build-at`、`--version`、`--help` を指定してはならない。`env` key は `^[A-Z_][A-Z0-9_]{0,63}$`、value は 0〜1000 文字とし、`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN` は上書き禁止とする。
+
+**`.dashboard_layout` schema：**
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `widgets` | string[] | 必須 | §16D の widget id、1〜9 件 | 表示 widget 順序。重複禁止。 |
+
+**`.smtp_config` schema：**
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `host` | string/null | 必須 | hostname または IP、または `null` | SMTP server。 |
+| `port` | integer | 必須 | 1〜65535 | SMTP port。 |
+| `user` | string/null | 必須 | 0〜255 文字または `null` | SMTP user。 |
+| `tls` | boolean | 必須 | boolean | STARTTLS または TLS 使用。 |
+| `from` | string/null | 必須 | email address または `null` | From address。 |
+| `to` | string[] | 必須 | email address、0〜50 件 | 送信先。 |
+| `on` | string[] | 必須 | `start`, `success`, `failure`, `duration_anomaly` | 送信イベント。 |
+| `enabled` | boolean | 必須 | boolean | メール通知有効状態。 |
+
+`.smtp_secret` は UTF-8 text とし、末尾 LF なしで password 本体だけを保存する。mode は `0600` 固定。`POST /api/smtp-config` で `password` が未指定の場合、既存 `.smtp_secret` を変更しない。`password:null` は secret 削除を意味し、`.smtp_secret` が存在する場合だけ削除する。
+
 **`.build_state` schema：**
 
 ```json
@@ -4609,14 +4684,14 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/access-control` | none | `{allow}` | `200` | `401`, `500` | `.access_control` | none | `getAccessControl()` | アクセス制御 |
 | `POST /api/access-control` | `{allow}` | `{message,allow}` | `200` | `401`, `422`, `500` | `.access_control` | `.access_control`, `.config_log` | `setAccessControl(allowList)` | アクセス制御 |
 | `GET /api/hooks` | none | `{hooks}` | `200` | `401`, `500` | `.hooks` | none | `getHooks()` | フック |
-| `POST /api/hooks` | `{phase,command_args,abort_on_failure}` | `HookRecord` | `201` | `401`, `422`, `500` | `.hooks` | `.hooks`, `.config_log` | `addHook()` | フック |
+| `POST /api/hooks` | `{phase,command_args,abort_on_failure,timeout_seconds?}` | `HookRecord` | `201` | `401`, `409`, `422`, `500` | `.hooks` | `.hooks`, `.config_log` | `addHook()` | フック |
 | `DELETE /api/hooks/{id}` | path `{id}` | `{message}` | `200` | `401`, `404`, `500` | `.hooks` | `.hooks`, `.config_log` | `deleteHook(id)` | フック |
 | `GET /api/hooks/{id}/log` | path `{id}` | `{id,runs}` | `200` | `401`, `404`, `500` | `.build_logs/{build_id}_hook_{id}.json` | none | `getHookLog(id)` | フック |
 | `GET /api/alert-rules` | none | `{rules}` | `200` | `401`, `500` | `.alert_rules` | none | `getAlertRules()` | 設定 |
-| `POST /api/alert-rules` | `{metric,operator,threshold,level,message}` | `AlertRule` | `201` | `401`, `422`, `500` | `.alert_rules` | `.alert_rules`, `.config_log` | `addAlertRule()` | 設定 |
+| `POST /api/alert-rules` | `{metric,operator,threshold,level,message}` | `AlertRule` | `201` | `401`, `409`, `422`, `500` | `.alert_rules` | `.alert_rules`, `.config_log` | `addAlertRule()` | 設定 |
 | `DELETE /api/alert-rules/{id}` | path `{id}` | `{message}` | `200` | `401`, `404`, `500` | `.alert_rules` | `.alert_rules`, `.config_log` | `deleteAlertRule(id)` | 設定 |
 | `GET /api/tag-rules` | none | `{rules}` | `200` | `401`, `500` | `.tag_rules` | none | `getTagRules()` | 設定 |
-| `POST /api/tag-rules` | `{condition,tags}` | `TagRule` | `201` | `401`, `422`, `500` | `.tag_rules` | `.tag_rules`, `.config_log` | `addTagRule()` | 設定 |
+| `POST /api/tag-rules` | `{condition,tags}` | `TagRule` | `201` | `401`, `409`, `422`, `500` | `.tag_rules` | `.tag_rules`, `.config_log` | `addTagRule()` | 設定 |
 | `DELETE /api/tag-rules/{id}` | path `{id}` | `{message}` | `200` | `401`, `404`, `500` | `.tag_rules` | `.tag_rules`, `.config_log` | `deleteTagRule(id)` | 設定 |
 | `POST /api/verify-output` | none | `{match,expected,actual}` | `200` | `401`, `404`, `500` | `.build_history`, output file | none | `verifyOutput()` | システム診断 |
 | `GET /api/pipeline-config` | none | `PipelineConfig` | `200` | `401`, `500` | `.pipeline_config` | none | `getPipelineConfig()` | 設定 |
@@ -5660,6 +5735,19 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 - ロールバックは非同期で SSH 転送を実行する（`running: true` 中は `409 Conflict` を返す）
 - 転送成功時は `.build_history` に `trigger: "rollback"` のエントリを追記する
 
+**スナップショット保存・削除固定契約：**
+
+| 処理 | 固定仕様 |
+|------|----------|
+| snapshot id | §22.0e.2 の `snap{YYYYMMDDHHmmss}` 形式。build id を使い回さない。 |
+| 保存対象 | 出力サイトディレクトリ配下の通常ファイルだけ。symlink、socket、device、隠し一時ファイルは保存対象外。 |
+| archive 形式 | `.snapshots/{snapshot_id}/site.tar.gz` と `.snapshots/{snapshot_id}/meta.json` を作成する。 |
+| `meta.json` | `id`、`build_id`、`saved_at`、`size_bytes`、`file_count`、`output_sha256` を必須 key とする。 |
+| 世代削除 | 新 snapshot 作成成功後に `saved_at` 昇順で超過分だけ削除する。削除失敗は build 成功を失敗へ反転しないが、WARN log に固定コード `SNAPSHOT_PRUNE_FAILED` を出す。 |
+| rollback | 対象 snapshot の `site.tar.gz` を展開して転送し、新しい build id で `.build_logs/{id}.json` と `.build_history` を作成する。 |
+
+rollback 開始時は `.build_lock` を取得し、取得できない場合は `409 {"error":"Build is running"}` を返す。`.build_lock` 取得後に `.build_state.running=true`、`current_build_id=<new_id>` を保存し、転送完了後に finalizer で `running=false` とする。rollback は queue に積まない。
+
 ---
 
 ### Webhook 受信仕様（22-W）
@@ -5801,6 +5889,15 @@ Content-Type: application/json
 { "message": "Maintenance mode disabled" }
 ```
 
+**メンテナンス更新固定契約：**
+
+| API | 入力検証 | 保存値 | no-op | 失敗時 |
+|-----|----------|--------|-------|--------|
+| `POST /api/maintenance/enable` | `reason` 必須、1〜500 文字、前後空白除去後空は禁止 | `enabled:true`、`reason`、`since=now` | 既に同一 reason で enabled の場合は状態を変更せず `{ "message":"No changes","since":"<existing since>" }` | 検証失敗 `422`、保存失敗 `500` |
+| `POST /api/maintenance/disable` | body 禁止 | `enabled:false`、`reason:null`、`since:null` | 既に disabled の場合は状態を変更せず `{ "message":"No changes" }` | 保存失敗 `500` |
+
+メンテナンス判定は §22.0e の共通判定順に従い、`POST /api/build`、`POST /api/build/force`、署名検証済み `POST /api/webhook`、`POST /api/history/{id}/rollback` を拒否対象とする。設定参照系 GET、認証、ログ参照、メンテナンス解除は拒否しない。
+
 ---
 
 ### IP アクセス制限（14C）
@@ -5821,6 +5918,16 @@ Content-Type: application/json
 { "message": "Access control updated", "allow": ["192.168.1.0/24", "10.0.0.1"] }
 ```
 
+**アクセス制限判定固定契約：**
+
+1. 接続元 IP は `X-Forwarded-For`、`X-Real-IP` を使わず、`net/http.Request.RemoteAddr` から取得する。
+2. `RemoteAddr` が parse 不能な場合は `403 {"error":"Forbidden"}` を返す。
+3. `.access_control` 不在、または `allow:[]` は全許可とする。
+4. CIDR は `net.ParseCIDR`、単一 IPv4 は `net.ParseIP` で判定する。
+5. 判定失敗時は認証処理より前に `403` を返し、password や token 検証を実行しない。
+
+`POST /api/access-control` は正規化後の `allow` 配列が既存値と一致する場合、`.access_control` と `.config_log` を変更せず `{ "message":"No changes","allow":[...] }` を返す。
+
 ---
 
 ### ビルドフック（14E）
@@ -5834,8 +5941,8 @@ Content-Type: application/json
 **`GET /api/hooks` レスポンス例：**
 ```json
 { "hooks": [
-    { "id": "h001", "phase": "pre",  "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true },
-    { "id": "h002", "phase": "post", "command_args": ["echo", "build end"],   "enabled": true, "abort_on_failure": false }
+    { "id": "h001", "phase": "pre",  "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true, "timeout_seconds": 300 },
+    { "id": "h002", "phase": "post", "command_args": ["echo", "build end"],   "enabled": true, "abort_on_failure": false, "timeout_seconds": 300 }
 ]}
 ```
 
@@ -5844,7 +5951,7 @@ Content-Type: application/json
 // リクエスト
 { "phase": "pre", "command_args": ["echo", "build start"], "abort_on_failure": true }
 // レスポンス: 201
-{ "id": "h001", "phase": "pre", "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true }
+{ "id": "h001", "phase": "pre", "command_args": ["echo", "build start"], "enabled": true, "abort_on_failure": true, "timeout_seconds": 300 }
 ```
 
 `phase` の有効値は `"pre"` または `"post"`。`command_args[0]` は絶対パス、または `PATH` 解決可能なコマンド名とする。`command_args` に空文字、NUL 文字、改行を含めてはならない。
@@ -5862,6 +5969,20 @@ Content-Type: application/json
 ]}
 ```
 `runs` は直近 20 件を返す（新しい順）。
+
+**フック実行・保存固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 実行順 | `phase` ごとに `.hooks.hooks` の配列順。`pre` は pipeline 前、`post` は pipeline/deploy/snapshot 後。 |
+| disabled | `enabled:false` は読み飛ばし、hook log を作成しない。 |
+| timeout | `timeout_seconds` 超過時は process を kill し、`exit_code:null`、`timed_out:true` として hook log を保存する。 |
+| stdout/stderr | 最大各 10000 文字。超過分は末尾切り捨て、`truncated:true` を保存する。 |
+| hook log | `.build_logs/{build_id}_hook_{hook_id}.json` に JSON object で保存し、同一 build/hook の再実行時は上書きせず `runs` へ追記する。 |
+| pre abort | `pre` 失敗かつ `abort_on_failure:true` の場合、pipeline を実行せず build status を `hook_error` とする。 |
+| post failure | build status を変更しない。WARN log と hook log だけを残す。 |
+
+Hook log schema は `id`、`build_id`、`runs` を必須 key とする。`runs[]` は `ran_at`、`phase`、`command_args`、`exit_code`、`timed_out`、`duration_ms`、`stdout`、`stderr`、`truncated` を必須 key とする。
 
 ---
 
@@ -5893,6 +6014,12 @@ Content-Type: application/json
 { "message": "Alert rule deleted" }
 ```
 
+**アラート評価固定契約：**
+
+`.alert_rules` 不在時は `rules:[]` と扱う。`GET /api/dashboard` は rule 配列順で評価し、条件一致した rule だけ `alerts` へ追加する。alert object は `id`、`level`、`message`、`metric`、`value`、`threshold` を必須 key とする。評価に必要な metric が算出不能な rule は alert 化せず、WARN log `ALERT_METRIC_UNAVAILABLE` を出す。
+
+`POST /api/alert-rules` は `metric`、`operator`、`threshold`、`level`、`message` の正規化後値が既存 rule と一致する場合、`409 {"error":"Conflict"}` を返す。`DELETE` は対象 id 不在時 `404` とし、部分削除は行わない。
+
 ---
 
 ### 自動タグ付けルール（15B）
@@ -5923,6 +6050,12 @@ Content-Type: application/json
 ```json
 { "message": "Tag rule deleted" }
 ```
+
+**自動タグ評価固定契約：**
+
+タグ評価は build log の最終 status / duration / trigger が確定した後、`.build_history` 追記前に行う。手動タグと自動タグが重複した場合は 1 件に正規化し、既存順を保持したうえで自動タグを末尾へ追加する。条件式 parse 失敗を含む破損 rule がある場合、その rule を無視せず build を `failure` にし、ERROR log `TAG_RULE_INVALID` を出す。
+
+`POST /api/tag-rules` は同一 `condition` と同一 `tags` の rule が存在する場合、`409 {"error":"Conflict"}` を返す。
 
 ---
 
@@ -5959,6 +6092,12 @@ Content-Type: application/json
 ```
 `expected` は `.build_history` の最終成功エントリに記録された `output_sha256`。現在の出力サイトが存在しない場合は `404` を返す。
 
+**checksum 算出固定契約：**
+
+対象 path は `/` 区切りの相対 path とし、先頭 `/`、`..`、NUL、改行を含む path は manifest 算出前に build 失敗とする。ディレクトリ、symlink、device、socket は manifest に含めない。空ディレクトリの checksum は空文字列に対する SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` とする。
+
+`POST /api/verify-output` は状態ファイルを変更しない。`.build_history` に成功履歴がない場合、`404 {"error":"Not Found"}` を返す。
+
 ---
 
 ### ビルドパイプライン設定（15D）
@@ -5979,6 +6118,10 @@ Content-Type: application/json
 { "message": "Pipeline config updated" }
 ```
 
+`POST /api/pipeline-config` は `.pipeline_config` 全体置換とし、部分更新を許可しない。`extra_args` または `env` のいずれかが欠ける場合は `422`。正規化後値が既存値と一致する場合は `.pipeline_config` と `.config_log` を変更せず `{ "message":"No changes" }` を返す。
+
+runner は build 開始後、builder command 組み立て直前に `.pipeline_config` を 1 回だけ読む。読込不能または schema 不正は build を開始せず `failure` とし、SHA cache を更新しない。
+
 ---
 
 ### 運用ノート（15E）
@@ -5998,6 +6141,8 @@ Content-Type: application/json
 // レスポンス: 200
 { "message": "Notes updated", "updated_at": "2026-09-15T10:00:00Z" }
 ```
+
+`.notes` は UTF-8 text として保存し、JSON ではない。`POST /api/notes` の `content` は 0〜100000 文字、NUL 禁止とする。保存時は本文をそのまま `.notes` に atomic write し、更新時刻は `.config_log` の `at` を返す。既存本文と一致する場合は `.notes` と `.config_log` を変更せず `{ "message":"No changes","updated_at":null }` を返す。
 
 ---
 
@@ -6029,6 +6174,18 @@ Webhook に加えてメールでビルド結果を通知できる機能。SMTP �
 { "result": "failure", "message": "Connection refused: smtp.example.com:587" }
 ```
 SMTP 未設定または `enabled: false` の場合は `422` を返す。
+
+**SMTP 更新・送信固定契約：**
+
+| 処理 | 仕様 |
+|------|------|
+| 更新 | `.smtp_config` → 必要時 `.smtp_secret` → `.config_log` の順に書く。途中失敗時は未処理ファイルを書かない。 |
+| 削除 | `password:null` は `.smtp_secret` 削除。削除対象が不在なら no-op。 |
+| GET | `.smtp_secret` の存在だけを `password_set` で返し、password 本体は返さない。 |
+| 送信 timeout | 接続、TLS、送信全体を合計 30 秒で timeout する。 |
+| 送信 log | `.notify_log` に `type:"smtp_test"`、`result`、`message`、`at` を追記する。password は記録しない。 |
+
+`enabled:true` にする場合は `host`、`port`、`from`、`to` 1 件以上を必須とする。`POST /api/smtp-test` は `enabled:false`、宛先なし、secret 必須構成で `.smtp_secret` 不在のいずれも `422 {"error":"SMTP not configured"}` を返す。
 
 **`GET /api/notify-config` への追加（`email` セクション）：**
 ```json
@@ -6064,6 +6221,12 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 `POST /api/config` に `queue_max_size`（整数、`0` = キューなし）追加。
 
+**queue 処理固定契約：**
+
+queue 追加は `.build_state` の atomic write で行い、id は §22.0e.2 の queue id とする。queue entry は FIFO を標準とし、§27.35 の優先度キューが有効な場合だけ priority を使用する。`DELETE /api/queue` は `.build_state.queued` だけを空配列にし、実行中 build、lock、history、log を変更しない。
+
+`queue_max_size=0` の場合、実行中に受けた queue 対応 API は `429 {"error":"queue_full"}` を返す。`.build_state.queued` の件数が `queue_max_size` 以上の場合も同じ body とする。
+
 ---
 
 ### ダッシュボードウィジェットカスタマイズ（16D）
@@ -6086,6 +6249,10 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 { "message": "Dashboard layout updated" }
 ```
 `widgets` に未知の識別子が含まれる場合は `422` を返す。
+
+**dashboard layout 固定契約：**
+
+既定 widget 順は `["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]` とする。`POST /api/dashboard-layout` は `widgets` 全体置換のみ許可し、空配列、重複、未知 id は `422`。正規化後値が既存値と一致する場合は `.dashboard_layout` と `.config_log` を変更せず `{ "message":"No changes" }` を返す。
 
 ---
 
@@ -6254,7 +6421,7 @@ class AdlaireCI {
   setAccessControl(allowList)  // POST /api/access-control   → Promise<{message: string, allow: string[]}>
   // 14E フック
   getHooks()                   // GET /api/hooks             → Promise<{hooks: HookRecord[]}>
-  addHook(phase, commandArgs, abortOnFailure = true) // POST /api/hooks → Promise<HookRecord>
+  addHook(phase, commandArgs, abortOnFailure = true, timeoutSeconds = 300) // POST /api/hooks → Promise<HookRecord>
   deleteHook(id)               // DELETE /api/hooks/{id}     → Promise<{message: string}>
   getHookLog(id)               // GET /api/hooks/{id}/log    → Promise<{id: string, runs: HookRunRecord[]}>
   // 15A アラートルール
@@ -6272,7 +6439,7 @@ class AdlaireCI {
   setPipelineConfig(config)    // POST /api/pipeline-config  → Promise<{message: string}>
   // 15E 運用ノート
   getNotes()                   // GET /api/notes             → Promise<{content: string, updated_at: string|null}>
-  setNotes(content)            // POST /api/notes            → Promise<{message: string, updated_at: string}>
+  setNotes(content)            // POST /api/notes            → Promise<{message: string, updated_at: string|null}>
   // 16B メール通知
   getSmtpConfig()              // GET /api/smtp-config       → Promise<SmtpConfig>
   setSmtpConfig(config)        // POST /api/smtp-config      → Promise<{message: string}>
@@ -6372,7 +6539,7 @@ SDK method は、下表の通りに引数を path、query、body へ変換する
 | `setHistoryFlag(id,flagged)` | `id`, `flagged` | path/body | path `{id}`、body `{flagged}` |
 | `setHistoryTags(id,tags)` | `id`, `tags` | path/body | path `{id}`、body `{tags}` |
 | `createToken(label,scopes,expiresAt)` | `label`, `scopes=["read"]`, `expiresAt=null` | body | `{label,scopes,expires_at: expiresAt}` |
-| `addHook(phase,commandArgs,abortOnFailure)` | `phase`, `commandArgs`, `abortOnFailure=true` | body | `{phase,command_args: commandArgs, abort_on_failure: abortOnFailure}` |
+| `addHook(phase,commandArgs,abortOnFailure,timeoutSeconds)` | `phase`, `commandArgs`, `abortOnFailure=true`, `timeoutSeconds=300` | body | `{phase,command_args: commandArgs, abort_on_failure: abortOnFailure, timeout_seconds: timeoutSeconds}` |
 | `addAlertRule(metric,operator,threshold,level,message)` | 各引数 | body | `{metric,operator,threshold,level,message}` |
 | `addTagRule(condition,tags)` | `condition`, `tags` | body | `{condition,tags}` |
 | `setPipelineConfig(config)` | `config` | body | `config` をそのまま送信する。 |
@@ -6436,7 +6603,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | `QueueEntry` | `id`, `trigger`, `queued_at`, `requested_by`, `payload` | なし | なし | `GET /api/queue` |
 | `TokenRecord` | `id`, `label`, `scopes`, `created_at`, `last_used_at`, `expires_at`, `revoked_at` | `last_used_at`, `expires_at`, `revoked_at` | `scopes` | `GET /api/tokens` |
 | `TokenCreateResult` | `id`, `token`, `label`, `scopes`, `created_at`, `expires_at` | `expires_at` | `scopes` | `POST /api/tokens` |
-| `HookRecord` | `id`, `phase`, `command_args`, `enabled`, `abort_on_failure` | なし | `command_args` | `GET/POST /api/hooks` |
+| `HookRecord` | `id`, `phase`, `command_args`, `enabled`, `abort_on_failure`, `timeout_seconds` | なし | `command_args` | `GET/POST /api/hooks` |
 | `HookRunRecord` | `build_id`, `ran_at`, `exit_code`, `output` | なし | なし | `GET /api/hooks/{id}/log` |
 | `AlertRule` | `id`, `metric`, `operator`, `threshold`, `level`, `message` | なし | なし | `GET/POST /api/alert-rules` |
 | `TagRule` | `id`, `condition`, `tags` | なし | `tags` | `GET/POST /api/tag-rules` |
@@ -7306,6 +7473,24 @@ systemctl status adlaire-ci-api
 | session restart | token 発行後に API process restart | 旧 token は `401`、session file は存在しない。 |
 | setup checksum mismatch | Release asset と `SHA256SUMS` 不一致 | バイナリ配置なし、systemd 変更なし、終了コード `1`。 |
 | update restart failure | 新バイナリ配置後に service restart 失敗 | 旧バイナリ復元を 1 回だけ行い、state/history/secret は巻き戻さない。 |
+
+**運用 API fixture 固定：**
+
+| fixture | 入力 | 合格条件 |
+|---------|------|----------|
+| snapshot save and prune | `snapshots_keep=2` で build success を 3 回実行 | 最新 2 世代だけ残り、各 snapshot に `site.tar.gz` と `meta.json` が存在する。 |
+| snapshot rollback running | `.build_state.running=true` で `POST /api/history/{id}/rollback` | `409 {"error":"Build is running"}`、queue 追加なし、history 追記なし。 |
+| maintenance enable no-op | 同一 reason で enable を 2 回実行 | 2 回目は `No changes`、`.config_log` 追記なし。 |
+| access-control deny | allow に接続元以外を設定して API 呼び出し | 認証前に `403 {"error":"Forbidden"}`、password/token 検証なし。 |
+| hook pre abort | `pre` hook が exit `1`、`abort_on_failure=true` | pipeline 未実行、build status `hook_error`、hook log 保存。 |
+| alert duplicate | 同一 alert rule を 2 回作成 | 2 回目は `409 {"error":"Conflict"}`、`.alert_rules` 差分なし。 |
+| tag rule invalid | 破損 condition を含む `.tag_rules` で build | build failure、ERROR log `TAG_RULE_INVALID`、SHA cache 更新なし。 |
+| verify-output no history | 成功履歴なしで `POST /api/verify-output` | `404 {"error":"Not Found"}`、状態ファイル変更なし。 |
+| pipeline config reserved arg | `extra_args:["--src","x"]` | `422`、`.pipeline_config` 差分なし。 |
+| notes no-op | 同一 content を 2 回保存 | 2 回目は `No changes`、`.config_log` 追記なし。 |
+| smtp secret mask | password 付き `POST /api/smtp-config` 後に GET / backup / log 確認 | password 本体は返らず、mask または `password_set:true` だけ表示。 |
+| queue disabled | `queue_max_size=0`、build running 中に `POST /api/build` | `429 {"error":"queue_full"}`、`.build_state.queued` は空。 |
+| dashboard duplicate widget | widgets に重複 id を指定 | `422`、`.dashboard_layout` 差分なし。 |
 
 Phase 別の実装受け入れ条件は以下とする。
 
