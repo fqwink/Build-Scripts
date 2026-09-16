@@ -9202,6 +9202,85 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | §27.46 | `security-totp-setup-once`、`success-totp-confirm`、`failure-totp-code-reuse`、`success-totp-disable` | setup ticket、TOTP code、clock、secret state。 | secret 有効保存条件、ticket 一回使用、window、disable。 |
 | §27.47 | `security-rate-limit-login`、`success-rate-limit-window-reset`、`security-rate-limit-ip-actor`、`failure-rate-limit-state-save` | policy、rate state、RemoteAddr、actor。 | count、`429`、audit 成功条件、部分 count 更新なし。 |
 
+**§27 fixture ファイルセット固定契約：**
+
+各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。実装者は fixture ごとに必要ファイルを推測してはならない。
+
+| ファイル | 必須 | 内容 | 禁止事項 |
+|----------|------|------|----------|
+| `manifest.json` | 必須 | fixture 名、対象節、機能名、分類、fake clock、対象 component、参照仕様節、not_applicable 理由。 | 実行環境依存 path、乱数、実 secret。 |
+| `input/request.json` | API / SDK / UI fixture で必須 | HTTP method、path、query、headers、body、SDK method、SDK args、UI action。 | Authorization header の実 token、secret 平文。 |
+| `input/cli.json` | runner / builder fixture で必須 | binary 名、argv、env key、cwd、stdin、fake clock。 | 実 home path、実 credential path。 |
+| `input/state/` | 状態参照 fixture で必須 | 実行前状態ファイル一式。存在しない状態は `manifest.json` の `missing_state` に列挙する。 | 期待状態を混ぜること、実 secret。 |
+| `input/files/` | builder / artifact / hook / remote fixture で必須 | Markdown、YAML、archive、snapshot、hook 入力などの対象ファイル。 | 実外部サービスから取得した未固定ファイル。 |
+| `input/fakes.json` | 外部 API / command fixture で必須 | fake GitHub、fake SSH、fake SMTP、fake webhook、fake systemd、fake command の応答順。 | 実ネットワーク呼び出し前提。 |
+| `expected/response.json` | HTTP / SDK fixture で必須 | HTTP status、headers、JSON body、SDK return/error。 | 未定義 key、順序非決定配列。 |
+| `expected/stdout.txt` | CLI stdout がある fixture で必須 | stdout 完全一致。stdout なしは空ファイル。 | 現在時刻、絶対環境 path。 |
+| `expected/stderr.txt` | CLI stderr がある fixture で必須 | stderr 完全一致。stderr なしは空ファイル。 | secret、実 token、実 URL credential。 |
+| `expected/state/` | 状態差分がある fixture で必須 | 実行後状態ファイル一式、または `state-diff.json`。 | 期待しないファイルの混入。 |
+| `expected/logs/` | log / history / audit / notify fixture で必須 | build log、history、access log、audit log、notify log の期待値。 | secret 平文、実 Authorization header。 |
+| `expected/effects.json` | 必須 | 外部 API 呼び出し、command 実行、通知送信、download/stream 中断、呼び出し 0 件の期待値。 | 呼び出し順未指定、実外部送信。 |
+| `expected/security.json` | secret / auth / rate limit fixture で必須 | secret 非表示確認対象、禁止文字列、token hash 検証、scope 判定、rate count。 | secret を検証用に平文保存すること。 |
+
+`expected/state/` は、fixture が検証対象とする状態ファイルだけを含める。変更してはならない状態ファイルは `expected/effects.json` の `unchanged_paths` に列挙する。削除されるべきファイルは `expected/effects.json` の `deleted_paths` に列挙し、空 directory の存在可否も明記する。
+
+**§27 fixture manifest schema 固定契約：**
+
+`manifest.json` は次の schema に従う。未知 key は禁止する。
+
+```json
+{
+  "name": "success-example",
+  "section": "27.1",
+  "feature": "commit_status",
+  "category": "success",
+  "components": ["runner"],
+  "references": ["§27.1", "§22.0a"],
+  "fake_clock": "2026-09-16T00:00:00Z",
+  "not_applicable": [
+    { "path": "input/request.json", "reason": "CLI fixture" }
+  ],
+  "missing_state": [
+    ".build_status.json"
+  ],
+  "assertions": [
+    "state",
+    "logs",
+    "effects",
+    "secret-mask"
+  ]
+}
+```
+
+| key | 型 | 必須 | 許容値 |
+|-----|----|------|--------|
+| `name` | string | 必須 | §27 fixture カタログ固定契約に記載された fixture 名。 |
+| `section` | string | 必須 | `27.1`〜`27.38`、`27.42`〜`27.47`。 |
+| `feature` | string | 必須 | lowercase snake_case。 |
+| `category` | string | 必須 | `success`、`failure`、`partial`、`noop`、`security`。fixture 名 prefix と一致する。 |
+| `components` | array[string] | 必須 | `builder`、`runner`、`api`、`sdk`、`ui`、`setup`、`security` の 1 件以上。 |
+| `references` | array[string] | 必須 | 参照仕様節。対象 §27.x と関連 §22 / §23 / §24 / §25 / §26 を含める。 |
+| `fake_clock` | string/null | 必須 | UTC ISO 8601 または `null`。時刻依存 fixture は `null` 禁止。 |
+| `not_applicable` | array[object] | 必須 | 該当しない必須候補ファイルと理由。空配列可。 |
+| `missing_state` | array[string] | 必須 | 実行前に存在しないことを期待する状態ファイル。空配列可。 |
+| `assertions` | array[string] | 必須 | `response`、`stdout`、`stderr`、`state`、`logs`、`effects`、`secret-mask`、`order`、`idempotency`、`no-write` の 1 件以上。 |
+
+**§27 fixture 合否判定固定契約：**
+
+| 判定 | 合格条件 |
+|------|----------|
+| response | status、headers、body、error details、request id が期待値と一致する。 |
+| stdout / stderr | 改行を含め完全一致する。時刻や path は fake 値だけを使う。 |
+| state | 期待対象状態ファイルが byte 等価または `state-diff.json` と一致する。未列挙状態ファイルに差分がない。 |
+| logs | JSON Lines は行順、key、値、末尾改行が一致する。破損行 fixture では破損行を修復しない。 |
+| effects | 外部 API、外部 command、通知、download、stream の呼び出し回数、順序、payload が一致する。 |
+| secret-mask | 禁止文字列が response、stdout/stderr、state、logs、effects、UI DOM に存在しない。 |
+| order | 複数状態更新は仕様の保存順と一致する。途中失敗 fixture は失敗地点以降の副作用がない。 |
+| idempotency | 同一 fixture を 2 回適用した場合、2 回目の差分が no-op 仕様と一致する。 |
+| no-write | read-only / dry-run fixture で状態、logs、effects の差分がない。 |
+
+上表のうち `manifest.json.assertions` に含まれる判定が 1 つでも失敗した場合、その fixture は失敗とする。対象機能の必須 fixture が 1 件でも存在しない、または skip された場合、その機能の実装 PR は未完了とする。
+
 **§27 部分失敗・再実行固定契約：**
 
 | ケース | 固定挙動 |
