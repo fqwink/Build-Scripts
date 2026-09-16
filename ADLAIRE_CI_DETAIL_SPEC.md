@@ -9227,7 +9227,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 | ファイル | 必須 | 内容 | 禁止事項 |
 |----------|------|------|----------|
-| `manifest.json` | 必須 | fixture 名、対象節、機能名、分類、fake clock、対象 component、参照仕様節、not_applicable 理由。 | 実行環境依存 path、乱数、実 secret。 |
+| `manifest.json` | 必須 | fixture 名、対象節、機能名、分類、fake clock、owner component、collaborator component、参照仕様節、not_applicable 理由。 | 実行環境依存 path、乱数、実 secret。 |
 | `input/request.json` | API / SDK / UI fixture で必須 | HTTP method、path、query、headers、body、SDK method、SDK args、UI action。 | Authorization header の実 token、secret 平文。 |
 | `input/cli.json` | runner / builder fixture で必須 | binary 名、argv、env key、cwd、stdin、fake clock。 | 実 home path、実 credential path。 |
 | `input/state/` | 状態参照 fixture で必須 | 実行前状態ファイル一式。存在しない状態は `manifest.json` の `missing_state` に列挙する。 | 期待状態を混ぜること、実 secret。 |
@@ -9253,7 +9253,9 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
   "section": "27.1",
   "feature": "commit_status",
   "category": "success",
-  "components": ["runner"],
+  "owner_component": "commitstatus",
+  "collaborator_components": ["runner", "statefile"],
+  "components": ["commitstatus", "runner", "statefile"],
   "references": ["§27.1", "§22.0a"],
   "fake_clock": "2026-09-16T00:00:00Z",
   "not_applicable": [
@@ -9277,7 +9279,9 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | `section` | string | 必須 | `27.1`〜`27.38`、`27.42`〜`27.47`。 |
 | `feature` | string | 必須 | lowercase snake_case。 |
 | `category` | string | 必須 | `success`、`failure`、`partial`、`noop`、`security`。fixture 名 prefix と一致する。 |
-| `components` | array[string] | 必須 | `builder`、`runner`、`api`、`sdk`、`ui`、`setup`、`security` の 1 件以上。 |
+| `owner_component` | string | 必須 | `builder`、`runner`、`api`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`security` のいずれか 1 件。 |
+| `collaborator_components` | array[string] | 必須 | owner 以外の component。該当なしは空配列。 |
+| `components` | array[string] | 必須 | `owner_component` と `collaborator_components` を重複なしで含む配列。許容値は `builder`、`runner`、`api`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`security`。 |
 | `references` | array[string] | 必須 | 参照仕様節。対象 §27.x と関連 §22 / §23 / §24 / §25 / §26 を含める。 |
 | `fake_clock` | string/null | 必須 | UTC ISO 8601 または `null`。時刻依存 fixture は `null` 禁止。 |
 | `not_applicable` | array[object] | 必須 | 該当しない必須候補ファイルと理由。空配列可。 |
@@ -9302,7 +9306,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 **§27 fixture assertion 選択固定契約：**
 
-fixture の `manifest.json.assertions` は、実装者が任意に減らしてはならない。fixture 名 prefix と対象 component に応じて、下表の assertion を必ず含める。個別節で追加検証が必要な場合は、下表へ追加してから fixture を作成する。
+fixture の `manifest.json.assertions` は、実装者が任意に減らしてはならない。fixture 名 prefix、owner component、collaborator component に応じて、下表の assertion を必ず含める。個別節で追加検証が必要な場合は、下表へ追加してから fixture を作成する。
 
 | 条件 | 必須 assertion |
 |------|----------------|
@@ -9389,6 +9393,8 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `manifest.json.name` と directory 名 | directory 名は `manifest.json.name` と完全一致する。 | fixture 名不一致として失敗。 |
 | `manifest.json.category` と fixture 名 prefix | `success-*` は `success`、`failure-*` は `failure`、`partial-*` は `partial`、`noop-*` は `noop`、`security-*` は `security` とする。 | 分類不一致として失敗。 |
 | `manifest.json.section` と fixture カタログ | section と fixture 名の組み合わせは §27 fixture カタログ固定契約に存在する組み合わせだけ許可する。 | カタログ外として失敗。 |
+| `manifest.json.owner_component` と `components` | `owner_component` は `components` に必ず含める。 | owner 責務不一致として失敗。 |
+| `manifest.json.collaborator_components` と `components` | `collaborator_components` は `components` にすべて含め、`owner_component` を含めてはならない。 | collaborator 責務不一致として失敗。 |
 | `manifest.json.components` と入力ファイル | `runner` / `builder` を含む場合は `input/cli.json`、`api` / `sdk` / `ui` を含む場合は `input/request.json` を置く。該当しない場合は `not_applicable` に理由を置く。 | 入力責務不一致として失敗。 |
 | `manifest.json.assertions` と期待値ファイル | `response` は `expected/response.json`、`stdout` は `expected/stdout.txt`、`stderr` は `expected/stderr.txt`、`state` は `expected/state/`、`logs` は `expected/logs/`、`effects` は `expected/effects.json`、`secret-mask` は `expected/security.json` を要求する。 | 期待値不足として失敗。 |
 | `expected/effects.json.write_order` と `expected/state/` | `write_order` に列挙された path は `expected/state/` または `expected/logs/` に期待値を持つ。 | 保存順だけの空検証として失敗。 |
@@ -9438,7 +9444,8 @@ W1 の最初の実装 PR は `§27.2 ドライラン実行モード` だけを�
 | 項目 | 固定内容 |
 |------|----------|
 | 対象節 | `§27.2` のみ。 |
-| 対象 component | `runner`。必要な fake GitHub response と fixture harness は含める。 |
+| owner component | `runner`。必要な fake GitHub response と fixture harness は含める。 |
+| collaborator component | `statefile`。状態ファイル、lock、log、history、SHA cache、notification、deploy、snapshot の no-write / forbidden write を検証する。 |
 | 対象外 | `§27.1` commit status、`§27.3` retry、`§27.4` output meta、API、SDK、UI、MCP、外部公開構成、状態ファイル schema 新設。 |
 | 許可される副作用 | なし。dry-run は状態ファイル、lock、SHA cache、build log、history、notification、deploy、snapshot、GitHub Commit Status を作成、更新、削除してはならない。 |
 | 許可される外部呼び出し | fake GitHub read だけ。実 GitHub API、GitHub write API、SSH、pipeline、notification、systemd、hook は呼び出さない。 |
@@ -9478,7 +9485,9 @@ W1-PR1 の全 fixture は、§27 fixture manifest schema 固定契約と §27 ex
 |------|----------|
 | `manifest.json.section` | `27.2` に固定する。 |
 | `manifest.json.feature` | `dry_run` に固定する。 |
-| `manifest.json.components` | `["runner"]` に固定する。API、SDK、UI、builder、setup、security を含めてはならない。 |
+| `manifest.json.owner_component` | `runner` に固定する。 |
+| `manifest.json.collaborator_components` | `["statefile"]` に固定する。dry-run no-write を検証するために statefile 責務を collaborator として記録する。 |
+| `manifest.json.components` | `["runner","statefile"]` に固定する。API、SDK、UI、builder、archive、commitstatus、setup、security を含めてはならない。 |
 | `manifest.json.references` | `§27.2`、`§12`、`§13`、`§15`、`§22.0a`、`§27 fixture` を含める。 |
 | `manifest.json.not_applicable` | `input/request.json`、`expected/response.json`、UI DOM、SDK return、download、stream が該当しない理由を記録する。 |
 | `manifest.json.missing_state` | fixture ごとに実行前に存在しない状態ファイルだけを列挙する。存在する状態を missing として扱ってはならない。 |
@@ -9527,7 +9536,7 @@ W1-PR1 完了後、W1 内の後続 PR は `§27.1`、`§27.3`、`§27.4` のい�
 | 記録項目 | 必須内容 |
 |----------|----------|
 | wave | 対象 wave、対象 §27.x、先行 wave 完了 commit または PR 番号。 |
-| 実装対象 | 実装する機能名、対象 component、変更ファイル、追加 fixture path。 |
+| 実装対象 | 実装する機能名、owner component、collaborator component、変更ファイル、追加 fixture path。 |
 | 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイル。 |
 | fixture | §27 fixture カタログの fixture 名、manifest / effects / security の検証結果。 |
 | acceptance | §27 実装 PR acceptance checklist の各項目の pass / fail / 未実行。 |
@@ -9541,11 +9550,11 @@ W1-PR1 完了後、W1 内の後続 PR は `§27.1`、`§27.3`、`§27.4` のい�
 |------|----------|------------|--------------|
 | scope | 実装対象が §27 fixture カタログ固定契約に存在する機能だけである。 | 実装対象節の記載が PR 本文にない。 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加している。 |
 | fixture | 対象 §27.x の必須 fixture がすべて存在し、skip されていない。 | 必須 fixture が不足、または fixture 名が不一致。 | fixture が実装挙動に合わせて期待値を緩めている。 |
-| manifest | 全 fixture の `manifest.json` が schema、assertion 選択、component 責務を満たす。 | assertion、references、components、fake_clock のいずれかが不足。 | unknown key、実 secret、実環境 path、乱数依存を含む。 |
+| manifest | 全 fixture の `manifest.json` が schema、assertion 選択、owner / collaborator component 責務を満たす。 | assertion、references、owner_component、collaborator_components、components、fake_clock のいずれかが不足。 | unknown key、実 secret、実環境 path、乱数依存を含む。 |
 | expected | `expected/response.json`、`expected/state/`、`expected/logs/`、`expected/effects.json`、`expected/security.json` が assertion と一致する。 | assertion に対応する expected file が不足。 | expected と manifest / effects / security が矛盾する。 |
 | side effect | `write_order`、`unchanged_paths`、`forbidden_writes`、`forbidden_calls` が対象機能の成功 / 失敗 / no-op / partial を説明できる。 | 禁止副作用または無変更保証が不足。 | 失敗時に未許可状態を書き換える、外部呼び出しを行う。 |
 | secret | secret 平文が expected、logs、effects、UI DOM、stdout/stderr に存在しない。 | secret 検証対象が不足。 | token、password、TOTP secret、PAT、Authorization header が平文で残る。 |
-| component | builder / runner / api / sdk / ui / security / setup の該当責務が全て fixture に紐づく。 | component 責務の所在が不明。 | SDK / UI が API response を推測補完、または UI が直接 API / 状態ファイルを操作する。 |
+| component | builder / runner / api / sdk / ui / statefile / archive / commitstatus / security / setup の該当責務が全て fixture に紐づく。 | owner / collaborator component の所在が不明。 | SDK / UI が API response を推測補完、または UI が直接 API / 状態ファイルを操作する。 |
 | repeatability | fake clock、fake external response、固定 path により、同じ fixture が同じ結果を再現する。 | idempotency / no-op の 2 回目期待値が不足。 | 現在時刻、実ネットワーク、実 OS 差分に依存する。 |
 
 **§27 実装 PR acceptance checklist：**
@@ -9554,7 +9563,7 @@ W1-PR1 完了後、W1 内の後続 PR は `§27.1`、`§27.3`、`§27.4` のい�
 
 | 項目 | 記録内容 |
 |------|----------|
-| 対象仕様 | 実装した §27.x、関連 §22 / §23 / §24 / §25 / §26、対象 component。 |
+| 対象仕様 | 実装した §27.x、関連 §22 / §23 / §24 / §25 / §26、owner component、collaborator component。 |
 | 対象 fixture | 作成または更新した fixture 名一覧。fixture 名は §27 fixture カタログ固定契約と一致させる。 |
 | 実行結果 | fixture ごとの pass / fail、実行コマンド、終了コード。 |
 | 状態差分 | 作成、更新、削除、変更禁止の path。`expected/effects.json` と一致させる。 |
