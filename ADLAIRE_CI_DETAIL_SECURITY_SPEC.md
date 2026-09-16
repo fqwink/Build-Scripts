@@ -64,6 +64,104 @@
 
 ---
 
+## 認証共通詳細
+
+本節は、password 認証、session、login ticket、認証ログ、`--init-credentials` の security owner 詳細仕様である。HTTP endpoint の method、path、request、response、status は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e および §25 を正とする。`.admin_credentials` schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c を正とする。
+
+**password hash 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| algorithm | Go 標準ライブラリのみで実装する `sha256_iter_v1`。 |
+| salt 生成 | `crypto/rand` で 32 bytes を生成し、`encoding/hex` で 64 文字の hex 文字列として保存する。 |
+| 初回 digest | `sha256(salt_bytes || password_utf8_bytes)`。 |
+| 反復 | `iterations = 260000`。2 回目以降は `sha256(previous_digest || salt_bytes || password_utf8_bytes)` を繰り返す。 |
+| 保存値 | 最終 digest を lowercase hex 文字列で `.admin_credentials.password_hash` に保存する。 |
+| 比較 | 入力 password から同一手順で digest を生成し、`crypto/subtle.ConstantTimeCompare` で比較する。 |
+| 外部依存 | `golang.org/x/crypto/pbkdf2` 等の外部パッケージは使用しない。 |
+
+**password 入力制約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 最小長 | 8 文字。 |
+| 最大長 | 128 文字。 |
+| 許可文字 | UTF-8 文字列。NUL 文字は禁止。前後空白はトリムせず、入力値そのものを検証・ハッシュ化する。 |
+| 初期 password | `--init-credentials` で `.admin_credentials` に生成する。初回 login 時は `must_change:"prompt"` を返す。 |
+| 変更時検証 | `new_password` が現在 password と同一の場合は `422`。 |
+| 失敗時応答 | password 不一致は `401 {"error":"Unauthorized"}`。どの条件に失敗したかは返さない。 |
+| 成功時保存 | `.admin_credentials` に新 salt、新 hash、`must_change:false`、`updated_at` を原子的に保存する。 |
+
+**session / ticket 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| session token 生成 | `crypto/rand` で 32 bytes を生成し、`encoding/hex` で 64 文字の lowercase hex 文字列へ変換する。 |
+| session 保存場所 | `components/api.go` 内のインメモリ辞書。再起動で全 session を破棄する。 |
+| session key | token 本体ではなく `sha256(token)` の lowercase hex。 |
+| session 期限 | 新規発行時点の `.server_config.session_timeout_seconds`。設定不在時は 8 時間。 |
+| session_id | `crypto/rand` で 16 bytes を生成し、lowercase hex とする。 |
+| login ticket | TOTP 有効 login の password 成功時だけ生成し、メモリ上で hash 化して保持する。 |
+| 永続化禁止 | session token、login ticket、setup 仮 secret、連続失敗回数はファイル保存しない。 |
+| response 禁止 | password hash、salt、session token hash、ticket hash、TOTP secret 保存値は response に含めない。 |
+| log 禁止 | password、current_password、new_password、token、ticket、hash、salt、TOTP code は `.access_log`、`.audit_log`、`.api_access_log`、journal に含めない。 |
+
+`GET /api/sessions` は `session_id` ではなく `current`、`created_at`、`expires_at`、`last_used_at` のみ返す。認証必須 API で有効 token を受信した場合、`last_used_at` を現在時刻へ更新する。期限切れ token は検出時にメモリから削除する。`POST /api/logout` は対象 token のみ削除する。`POST /api/sessions/revoke-all` は現在 token 以外を削除する。
+
+**login 失敗制御：**
+
+| 項目 | 仕様 |
+|------|------|
+| 失敗記録 | `components/api.go` はメモリ上で直近の連続 login 失敗回数と最終失敗時刻を保持する。再起動で失敗回数はリセットされる。 |
+| lock 条件 | 連続 10 回失敗した場合、最終失敗から 10 分間 `POST /api/login` を `429 {"error":"Too many attempts"}` で拒否する。 |
+| 成功時 | login 成功時は連続失敗回数を 0 に戻す。 |
+| 応答時間 | password 不一致、存在しない credentials、lock 中を除く検証失敗では、条件の詳細を response へ出さない。 |
+| log | 成功、失敗、lock 拒否はいずれも `.access_log` へ追記する。password、token、hash、salt は記録しない。 |
+
+**認証処理の副作用境界：**
+
+| ケース | HTTP status | `.admin_credentials` | メモリ session / ticket | `.access_log` | `.audit_log` | 備考 |
+|--------|-------------|----------------------|-------------------------|---------------|--------------|------|
+| password 不一致 | `401` | 変更なし | 変更なし | `login_failure` を追記 | `login_failure` を追記 | 連続失敗回数はメモリ上で +1。 |
+| 連続失敗 lock | `429` | 変更なし | 変更なし | `login_locked` を追記 | `permission_denied` を追記 | password hash 検証は実行しない。 |
+| password 成功 / TOTP 無効 | `200` | `login_count`、`last_login_at` 更新 | session 追加 | `login_success` を追記 | `login_success` を追記 | session token は全永続ログに保存しない。 |
+| password 成功 / TOTP 有効 | `200` | 変更なし | ticket 追加 | `totp_required` を追記 | `totp_required` を追記 | `login_count` と `last_login_at` は更新しない。 |
+| TOTP code 不一致 | `401` | 変更なし | ticket 削除 | `totp_failure` を追記 | `totp_failure` を追記 | ticket は再利用不可。 |
+| TOTP 成功 | `200` | `login_count`、`last_login_at` 更新 | ticket 削除、session 追加 | `login_success` を追記 | `login_success` を追記 | session 期限は成功時点の設定で決める。 |
+| session 期限切れ | `401` | 変更なし | 対象 session 削除 | 追記しない | 追記しない | `.api_access_log` は通常 API request として記録する。 |
+| logout | `200` | 変更なし | 対象 session 削除 | `logout` を追記 | `logout` を追記 | token 本体と token hash は保存しない。 |
+| password 変更成功 | `200` | 新 salt / hash、`must_change:false`、`updated_at` 更新 | 現 session 以外削除 | `password_change` を追記 | `password_change` を追記 | 新旧 password、hash、salt は保存しない。 |
+
+上表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、個別節で別指定がない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
+
+**認証副作用順序固定契約：**
+
+| 処理 | 固定順序 | 失敗時 |
+|------|----------|--------|
+| `POST /api/login` password 不一致 | credentials 読込 → lock 判定 → hash 比較 → 失敗回数更新 → `.access_log` → `.audit_log` → `401` response | ログ追記失敗は `500`。失敗回数は戻さない。session/ticket は作成しない。 |
+| `POST /api/login` password 成功 / TOTP 無効 | credentials 読込 → hash 比較 → 失敗回数 reset → `.admin_credentials` 更新 → session token 生成 → `.access_log` → `.audit_log` → token response | credentials またはログ追記失敗は `500`。token は response しない。 |
+| `POST /api/login` password 成功 / TOTP 有効 | credentials 読込 → hash 比較 → 失敗回数 reset → ticket 生成 → `.access_log` → `.audit_log` → ticket response | ログ追記失敗は `500`。ticket は保存しない。 |
+| `POST /api/login/totp` 成功 | ticket 検証 → TOTP secret 読込 → code 検証 → `.totp_secret.last_accepted_step` 更新 → `.admin_credentials` 更新 → session token 生成 → `.access_log` → `.audit_log` → token response | 途中失敗時は token を response しない。ticket は成功/失敗いずれも再利用不可にする。 |
+| `POST /api/logout` | token 認証 → 対象 session 削除 → `.access_log` → `.audit_log` → response | ログ追記失敗は `500`。削除済み session は戻さない。 |
+| `POST /api/change-password` | token 認証 → current password 検証 → new password 検証 → salt/hash 生成 → `.admin_credentials` 更新 → 現 session 以外削除 → `.access_log` → `.audit_log` → response | credentials 更新失敗は session を変更しない。ログ追記失敗時は `500` だが更新済み credentials は戻さない。 |
+| `POST /api/sessions/revoke-all` | token 認証 → 現 session 以外を削除 → `.access_log` → `.audit_log` → response | ログ追記失敗時は `500`。削除済み session は戻さない。 |
+
+session token と login ticket は `crypto/rand` 成功後にだけ生成し、生成した値はメモリ上で hash 化して保持する。response body に含める token / ticket は、その request の成功 response 1 回だけに含める。`403`、`429`、`500`、network 切断検出時に、未送信 token をログや状態ファイルへ退避してはならない。
+
+**`--init-credentials` CLI 固定契約：**
+
+| ケース | stdout | stderr | 終了コード | 副作用 |
+|--------|--------|--------|------------|--------|
+| 新規生成成功 | `credentials initialized` + LF | 空 | `0` | `.admin_credentials` を mode `0600` で作成する。 |
+| 既存あり | 空 | `credentials already exist` + LF | `2` | 既存ファイルを変更しない。 |
+| `--state-dir` 相対 path | 空 | `state directory must be absolute: {path}` + LF | `2` | ファイル作成なし。 |
+| 書込失敗 | 空 | `credentials write failed` + LF | `1` | tmp を削除し、部分ファイルを残さない。 |
+| rand 失敗 | 空 | `random source failed` + LF | `1` | ファイル作成なし。 |
+
+生成手順は、state dir 検証 → 既存確認 → salt 生成 → hash 生成 → `{path}.tmp.{pid}` へ JSON + LF 書込 → mode `0600` → file sync → rename → parent directory sync の順に固定する。rename 後の sync に失敗した場合は `1` を返し、作成済みファイルは残る。実装者判断で初期 password を環境変数、対話入力、ランダム生成へ変更してはならない。
+
+---
+
 ### 27.42 ビルドトリガー専用 API スコープ
 owner component は `security` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 

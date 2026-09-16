@@ -320,6 +320,34 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 | `confirmed_at` | string/null | 必須 | ISO 8601 または `null` | TOTP 有効化完了日時。 |
 | `last_accepted_step` | integer/null | 必須 | Unix time 30 秒 step または `null` | 同一 code 再利用防止。 |
 
+**`.admin_credentials` schema：**
+
+```json
+{
+  "password_hash": "<sha256_iter_v1_hex>",
+  "salt": "<hex>",
+  "algorithm": "sha256_iter_v1",
+  "iterations": 260000,
+  "must_change": true,
+  "login_count": 0,
+  "last_login_at": null,
+  "updated_at": "2026-09-15T10:00:00Z"
+}
+```
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `password_hash` | string | 必須 | 64 文字 lowercase hex | password 本体は保存しない。 |
+| `salt` | string | 必須 | 64 文字 lowercase hex | 32 bytes salt。 |
+| `algorithm` | string | 必須 | `"sha256_iter_v1"` 固定 | 他 algorithm は初期実装で拒否する。 |
+| `iterations` | integer | 必須 | `260000` 固定 | 値が異なる場合は認証を `500` で拒否する。 |
+| `must_change` | boolean | 必須 | boolean | 初期生成時 `true`、パスワード変更後 `false`。 |
+| `login_count` | integer | 必須 | 0 以上 | session token 発行成功時だけ +1。TOTP ticket 発行時は増やさない。 |
+| `last_login_at` | string/null | 必須 | UTC ISO 8601 または `null` | session token 発行成功時だけ更新する。 |
+| `updated_at` | string | 必須 | UTC ISO 8601 | password hash 更新時刻。 |
+
+`.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致もすべて credentials 破損とする。API 起動時検証で credentials 破損を検出した場合は、§22.0a に従って ERROR ログを出し、HTTP サーバーを起動しない。HTTP サーバー稼働中の読込時検証で credentials 破損を検出した場合、`POST /api/login` と `POST /api/change-password` は `500 {"error":"Internal server error"}` を返す。API response、`.access_log`、`.audit_log`、journal に破損内容、hash、salt を出してはならない。
+
 **`.audit_log` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
