@@ -595,6 +595,15 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | 失敗原因の自動分類 | `components/runner.go` / `components/api.go` | §13、§15、§22.0e、§27.36 | failure_category、evidence、分類優先順位、history / log / UI 表示が一致する。 |
 | ビルド実行環境の記録 | `components/runner.go` | §13、§15、§27.37 | build 開始時の environment snapshot、secret 非含有、log schema、検証 fixture が一致する。 |
 | ビルド所要時間の異常検知 | `components/runner.go` / `components/api.go` | §13、§15、§16、§22.0e、§27.38 | trend 基準、異常判定、WARN、history flag、通知 payload、設定値が一致する。 |
+| マルチユーザー対応 | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§25、§27.39 | `.users`、session、login、監査、UI 表示の user id / role が一致する。 |
+| ユーザー管理 API | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§25、§27.40 | user 作成、停止、削除、password reset、role 変更、監査記録、UI 操作が一致する。 |
+| ロールベースアクセス制御 | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§27.41 | role、permission、endpoint group、session / API token 判定、403 応答が一致する。 |
+| ビルドトリガー専用 API スコープ | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§27.42 | `trigger` scope token が build 起動系だけを許可し、その他 API を拒否する。 |
+| API キー管理 | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§27.43 | API key 本体の一回表示、hash 保存、scope、role、期限、失効、監査が一致する。 |
+| 監査ログ | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§27.44 | `.audit_log` schema、対象操作、mask、検索 API、UI 表示が一致する。 |
+| セッションタイムアウト変更設定 | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0c、§22.0e、§23、§24、§25、§27.45 | `session_timeout_seconds` の範囲、保存、既存 session の扱い、新規 session 期限が一致する。 |
+| TOTP 二要素認証 | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§25、§27.46 | RFC 6238 TOTP、二段階 login、secret 保存、確認、無効化、UI 操作が一致する。 |
+| API レート制限 | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§27.47 | IP / actor / endpoint group の固定窓制限、`429`、状態保存、設定 API、UI 表示が一致する。 |
 
 ---
 
@@ -3514,8 +3523,8 @@ sudo systemctl enable --now adlaire-ci-api
 |------|------|
 | セッションはインメモリ管理 | 再起動で全セッションが消去される |
 | HTTPS 非対応 | `components/api.go` は TLS listener、証明書読み込み、HTTPS redirect を実装しない。HTTP listener のみ起動する |
-| シングルユーザー専用 | `POST /api/login` は `password` のみを受け取り、`username`、`user_id`、role、group を受け取らない。該当 field を含む request は `422` を返す |
-| 並列リクエストの制限 | `components/api.go` は Go 標準ライブラリ `net/http` の標準サーバーで処理し、独自の接続数上限、IP 単位 rate limit、worker pool を実装しない |
+| 外部認証非対応 | SSO、OAuth、LDAP、SAML は初期実装対象外。認証は `.users`、`.roles`、`.totp_secrets`、session、API token で完結する |
+| 接続数制限 | `components/api.go` は Go 標準ライブラリ `net/http` の標準サーバーで処理し、独自の接続数上限や worker pool を実装しない。API rate limit は §27.47 の固定窓で行う |
 
 ---
 
@@ -3631,7 +3640,7 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | JSON 不正 | JSON ボディのパースに失敗した場合は `400 Bad Request` と `{"error": "Invalid JSON"}` を返す。 |
 | 入力検証失敗 | 型、必須キー、範囲、有効値が仕様と異なる場合は `422 Unprocessable Entity` と `{"error":"Validation failed","details":[...]}` を返す。`field` は JSON body key、query key、または path parameter 名とし、body 全体の形式不正は `field` を `"$"` とする。 |
 | 認証なし | 認証必須エンドポイントで Bearer トークンがない、または無効な場合は `401 Unauthorized` と `{"error": "Unauthorized"}` を返す。 |
-| 権限不足 | 認証済み token の scope が不足する場合は `403 Forbidden` と `{"error":"Forbidden"}` を返す。初期仕様の API token scope は `read` のみであり、API token は `GET` のみ許可する。`POST`、`DELETE`、設定変更、ビルド起動、token 発行、secret 更新は `/api/login` で発行された管理セッション token のみ許可する。 |
+| 権限不足 | 認証済み session または API token の permission / scope が不足する場合は `403 Forbidden` と `{"error":"Forbidden"}` を返す。判定は §27.41 の endpoint group と permission に従う。API token は `read`、`trigger`、`operate`、`config`、`admin` の scope だけを許可し、token 作成時に指定された scope 外の endpoint は拒否する。 |
 | 競合 | 現在状態と要求操作が両立しない場合は `409 Conflict` を返す。対象は、実行中ビルドへの二重開始、ビルド未実行時の cancel、停止済みスケジュールへの pause、稼働中スケジュールへの resume、lock 取得 10 秒超過、stale 判定不能な `.build_lock` である。 |
 | 未設定機能 | endpoint の必須 secret、必須外部設定、必須状態ファイルが未設定で処理を開始できない場合は `501 Not Implemented` と `{"error":"Not configured"}` を返す。エンドポイント固有仕様で `422`、`503`、`500` を明記している場合のみ個別指定を優先する。 |
 | 時刻形式 | API レスポンスと状態ファイルの機械処理用時刻は UTC ISO 8601 `YYYY-MM-DDTHH:MM:SSZ` とする。明示オフセット、timezone なし文字列、ミリ秒付き文字列は保存しない。外部 API から取得した時刻も保存前に UTC `Z` へ正規化する。 |
@@ -3653,6 +3662,11 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
 |------|------|--------|----------|--------------|
 | `.admin_credentials` | JSON object | `--init-credentials` で生成 | `components/api.go` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
+| `.users` | JSON object | `{"users":[{"id":"u000001","username":"admin","display_name":"Admin","role":"admin","enabled":true,"deleted_at":null,"password_hash":"<migrated>","salt":"<migrated>","algorithm":"sha256_iter_v1","iterations":260000,"must_change":true,"totp_enabled":false,"created_at":"<now>","updated_at":"<now>","last_login_at":null}]}` | `components/api.go` | `.users.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`.admin_credentials` が有効な場合だけ admin user へ migration して再生成する。migration 不能時は HTTP サーバーを起動しない。 |
+| `.roles` | JSON object | `{"roles":[{"id":"admin","label":"Admin","permissions":["read","trigger","operate","config","admin"]},{"id":"operator","label":"Operator","permissions":["read","trigger","operate"]},{"id":"viewer","label":"Viewer","permissions":["read"]}]}` | `components/api.go` | 初期値で再生成し、ERROR ログと `.audit_log` へ `role_state_recreated` を記録する。 |
+| `.totp_secrets` | JSON object | `{"users":{}}` | `components/api.go` | 読み込み不能時は TOTP 有効 user の login を `500` で拒否する。破損時は退避するが自動再生成で認証を弱めてはならない。 |
+| `.audit_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。追記不能時は対象操作を失敗扱いにする。 |
+| `.api_rate_state` | JSON object | `{"windows":{}}` | `components/api.go` | `.api_rate_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 window で再生成する。 |
 | `.server_config` | JSON object | `{}` | `components/api.go` | `.server_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 object で再生成する。 |
 | `.notify_config` | JSON object | `{"webhooks":[],"channels":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `components/runner.go` / `components/api.go` | `.notify_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.notify_log` | JSON Lines | 空ファイル | `components/runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
@@ -3692,7 +3706,7 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 
 `.build_logs/archive/` は gzip 圧縮済み build log の保存先ディレクトリである。初期値は空ディレクトリとし、`components/runner.go` または `POST /api/logs/archive` が必要時に作成する。圧縮済みファイル名は `{id}.json.gz` 固定とし、通常 `.build_logs/{id}.json` と同じ build id を表す。
 
-JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時は末尾に改行を必ず付ける。秘密情報を含む可能性のある `.admin_credentials`、`.github_token`、`.webhook_secret`、`.smtp_secret` は mode `600` を必須とする。
+JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時は末尾に改行を必ず付ける。秘密情報を含む可能性のある `.admin_credentials`、`.users`、`.totp_secrets`、`.github_token`、`.webhook_secret`、`.smtp_secret` は mode `600` を必須とする。
 
 **状態ファイル更新手順：**
 
@@ -3759,6 +3773,8 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | `schedule_interval_seconds` | integer | `300` | 30〜86400 | `POST /api/schedule/interval`, `GET /api/schedule` | systemd timer 更新値。 |
 | `schedule_paused` | boolean | `false` | `true` / `false` | `POST /api/schedule/pause`, `POST /api/schedule/resume`, `GET /api/schedule` | 自動ポーリング停止状態。 |
 | `allowed_hours` | object/null | `null` | `{"from":0〜23,"to":0〜23}` または `null` | `POST /api/schedule/allowed-hours`, `GET /api/schedule` | UTC の自動ビルド許可時間帯。 |
+| `session_timeout_seconds` | integer | `28800` | 300〜2592000 | `GET/POST /api/config` | 新規 session の有効期限秒数。既存 session の `expires_at` は変更しない。 |
+| `api_rate_limit` | object | `{"enabled":true,"login":{"window_seconds":60,"max_requests":10},"read":{"window_seconds":60,"max_requests":600},"trigger":{"window_seconds":60,"max_requests":60},"operate":{"window_seconds":60,"max_requests":120},"config":{"window_seconds":60,"max_requests":60},"admin":{"window_seconds":60,"max_requests":60}}` | §27.47 | `GET /api/api-rate-limit`, `POST /api/api-rate-limit`, `GET/POST /api/config` | API rate limit の endpoint group 別固定窓設定。 |
 
 `.server_config` の `POST /api/config` では `force_build_interval_hours`、`build_cooldown_seconds`、`schedule_interval_seconds`、`schedule_paused`、`allowed_hours` を直接更新してはならない。これらは専用スケジュール API からのみ更新する。
 
@@ -3861,6 +3877,116 @@ Email object:
 
 `POST /api/repo-config` は指定されたキーのみ更新する。未指定キーは既存値を保持する。全キーが未指定の場合は `422` を返す。
 
+**`.users` schema：**
+
+```json
+{
+  "users": [
+    {
+      "id": "u000001",
+      "username": "admin",
+      "display_name": "Admin",
+      "role": "admin",
+      "enabled": true,
+      "deleted_at": null,
+      "password_hash": "<sha256_iter_v1_hex>",
+      "salt": "<hex>",
+      "algorithm": "sha256_iter_v1",
+      "iterations": 260000,
+      "must_change": true,
+      "totp_enabled": false,
+      "created_at": "2026-09-15T10:00:00Z",
+      "updated_at": "2026-09-15T10:00:00Z",
+      "last_login_at": null
+    }
+  ]
+}
+```
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `users` | object[] | 必須 | 1〜100 件 | 管理ユーザー一覧。物理削除後も admin user が 1 件以上残ること。 |
+| `id` | string | 必須 | `u` + 6 桁以上の数字 | user 識別子。 |
+| `username` | string | 必須 | 3〜64 文字、英数字 `_` `-` `.`、大文字小文字を区別しない一意値 | login 名。保存時は小文字へ正規化する。 |
+| `display_name` | string | 必須 | 1〜64 文字 | UI 表示名。 |
+| `role` | string | 必須 | `.roles.roles[].id` のいずれか | 権限 role。 |
+| `enabled` | boolean | 必須 | boolean | `false` の user は login 不可。 |
+| `deleted_at` | string/null | 必須 | ISO 8601 または `null` | 論理削除日時。`null` は有効。 |
+| `password_hash` | string | 必須 | `sha256_iter_v1` hex | §25 の hash。API response には含めない。 |
+| `salt` | string | 必須 | 64 文字 hex | §25 の salt。API response には含めない。 |
+| `algorithm` | string | 必須 | `"sha256_iter_v1"` | hash algorithm。 |
+| `iterations` | integer | 必須 | `260000` | hash iteration。 |
+| `must_change` | boolean | 必須 | boolean | 次回 login 後の password 変更要求。 |
+| `totp_enabled` | boolean | 必須 | boolean | TOTP 有効状態。`.totp_secrets.users[id]` と一致させる。 |
+| `created_at` | string | 必須 | ISO 8601 | 作成日時。 |
+| `updated_at` | string | 必須 | ISO 8601 | 更新日時。 |
+| `last_login_at` | string/null | 必須 | ISO 8601 または `null` | 最終 login 成功日時。 |
+
+**`.roles` schema：**
+
+`roles` は組み込み 3 role 固定とする。初期実装では custom role の作成、削除、権限編集を実装しない。
+
+| role id | label | permissions | 用途 |
+|---------|-------|-------------|------|
+| `admin` | `Admin` | `read`, `trigger`, `operate`, `config`, `admin` | 全操作。user、role、token、TOTP、rate limit、設定変更を含む。 |
+| `operator` | `Operator` | `read`, `trigger`, `operate` | build 起動、cancel、queue、ログ、履歴、診断など運用操作。設定変更と user 管理は不可。 |
+| `viewer` | `Viewer` | `read` | 読み取り専用。 |
+
+**`.totp_secrets` schema：**
+
+```json
+{
+  "users": {
+    "u000001": {
+      "secret_base32": "JBSWY3DPEHPK3PXP",
+      "confirmed_at": "2026-09-15T10:00:00Z",
+      "last_accepted_step": 59652320
+    }
+  }
+}
+```
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `users` | object | 必須 | user id を key とする object | TOTP 有効 user の secret。 |
+| `secret_base32` | string | 必須 | RFC 4648 base32、padding なし、16〜64 文字 | TOTP secret。API response、log、backup へ平文出力しない。 |
+| `confirmed_at` | string | 必須 | ISO 8601 | TOTP 有効化完了日時。 |
+| `last_accepted_step` | integer/null | 必須 | Unix time 30 秒 step または `null` | 同一 code 再利用防止。 |
+
+**`.audit_log` schema：**
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `timestamp` | string | 必須 | ISO 8601 | 発生日時。 |
+| `request_id` | string | 必須 | 16 byte hex | API request 単位の識別子。 |
+| `actor_type` | string | 必須 | `"user"` / `"api_token"` / `"system"` / `"anonymous"` | 操作者種別。 |
+| `actor_id` | string/null | 必須 | user id、token id、`"system"`、または `null` | 操作者。secret 本体は保存しない。 |
+| `action` | string | 必須 | §27.44 | 操作種別。 |
+| `target_type` | string | 必須 | §27.44 | 対象種別。 |
+| `target_id` | string/null | 必須 | 対象 id または `null` | 対象識別子。 |
+| `result` | string | 必須 | `"success"` / `"failure"` / `"denied"` | 結果。 |
+| `remote_addr` | string/null | 必須 | IP 文字列または `null` | 接続元。 |
+| `message` | string/null | 必須 | 0〜500 文字または `null` | 固定文言。secret、token、password は保存しない。 |
+
+**`.api_rate_state` schema：**
+
+```json
+{
+  "windows": {
+    "ip:127.0.0.1:login": {
+      "window_start": "2026-09-15T10:00:00Z",
+      "count": 1
+    }
+  }
+}
+```
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `windows` | object | 必須 | key は `{dimension}:{id}:{endpoint_group}` | 固定窓状態。 |
+| `window_start` | string | 必須 | ISO 8601 | 現在窓の開始時刻。 |
+| `count` | integer | 必須 | 0 以上 | 現在窓内リクエスト数。 |
+
 **`.api_tokens` schema：**
 
 ```json
@@ -3869,10 +3995,12 @@ Email object:
     {
       "id": "tok001",
       "label": "監視用",
-      "scope": "read",
+      "scopes": ["read"],
+      "role": "viewer",
       "token_hash": "<sha256_hex>",
       "created_at": "2026-09-15T10:00:00Z",
       "last_used_at": null,
+      "expires_at": null,
       "revoked_at": null
     }
   ]
@@ -3884,13 +4012,15 @@ Email object:
 | `tokens` | object[] | 必須 | 0〜100 件 | 発行済み API token 一覧。 |
 | `id` | string | 必須 | `tok` + 3 桁以上の数字 | token 識別子。 |
 | `label` | string | 必須 | 1〜64 文字 | 表示名。 |
-| `scope` | string | 必須 | `"read"` | 初期仕様では read のみ。 |
+| `scopes` | string[] | 必須 | `read`, `trigger`, `operate`, `config`, `admin` の 1〜5 件 | token に許可する scope。 |
+| `role` | string | 必須 | `.roles.roles[].id` | role による permission 上限。 |
 | `token_hash` | string | 必須 | SHA-256 hex | token 本体は保存しない。 |
 | `created_at` | string | 必須 | ISO 8601 | 作成日時。 |
 | `last_used_at` | string/null | 必須 | ISO 8601 または `null` | 最終使用日時。 |
+| `expires_at` | string/null | 必須 | ISO 8601 または `null` | 有効期限。`null` は無期限。 |
 | `revoked_at` | string/null | 必須 | ISO 8601 または `null` | 失効日時。`null` は有効。 |
 
-`POST /api/tokens` は token 本体を `act_` + 32 byte 相当のランダム文字列として生成し、レスポンス時に 1 回だけ返す。保存する値は `token_hash` のみとする。`DELETE /api/tokens/{id}` は物理削除せず、`revoked_at` を現在時刻へ更新する。
+`POST /api/tokens` は token 本体を `act_` + 32 byte 相当のランダム文字列として生成し、レスポンス時に 1 回だけ返す。保存する値は `token_hash` のみとする。`DELETE /api/tokens/{id}` は物理削除せず、`revoked_at` を現在時刻へ更新する。旧 `scope` 文字列が存在する場合は読み込み時に `scopes:[scope]`、`role:"viewer"` へ正規化して保存し直す。
 
 **`.maintenance` schema：**
 
@@ -4104,13 +4234,25 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 | API | Read | Write | 補足 |
 |-----|------|-------|------|
-| `POST /api/login` | `.admin_credentials` | `.admin_credentials`, `.access_log` | 成功時のみ `login_count` を更新する。 |
+| `POST /api/login` | `.users`, `.admin_credentials`, `.totp_secrets` | `.users`, `.access_log`, `.audit_log` | `.users` 不在時のみ `.admin_credentials` から admin user を migration する。TOTP 有効時は session を発行せず ticket を返す。 |
+| `POST /api/login/totp` | `.users`, `.totp_secrets` | `.users`, `.access_log`, `.audit_log` | password verified ticket と TOTP code を検証し、成功時に session を発行する。 |
 | `POST /api/logout` | メモリ上 session | メモリ上 session | ファイルは更新しない。 |
 | `POST /api/change-password` | `.admin_credentials` | `.admin_credentials` | 現 session 以外をメモリから削除する。 |
+| `GET /api/users` | `.users`, `.roles` | なし | password hash、salt、TOTP secret は返さない。 |
+| `POST /api/users` | `.users`, `.roles` | `.users`, `.audit_log` | user id を新規採番し、password hash を保存する。 |
+| `PATCH /api/users/{id}` | `.users`, `.roles` | `.users`, `.audit_log` | role、display_name、enabled、must_change を部分更新する。 |
+| `DELETE /api/users/{id}` | `.users` | `.users`, `.audit_log` | 論理削除し、最後の admin user は削除しない。 |
+| `POST /api/users/{id}/password-reset` | `.users` | `.users`, `.audit_log` | 新 password hash を保存し、対象 user の既存 session を削除する。 |
+| `GET /api/roles` | `.roles` | なし | 組み込み role 一覧を返す。 |
+| `GET /api/audit-log` | `.audit_log` | なし | 壊れた行は無視し、新しい順で返す。 |
 | `GET /api/access-log` | `.access_log` | なし | 壊れた行は無視し、新しい順で返す。 |
 | `GET /api/api-access-log` | `.api_access_log` | なし | 壊れた行は無視し、新しい順で返す。 |
 | `GET /api/sessions` | メモリ上 session | なし | token 本体は返さない。 |
 | `POST /api/sessions/revoke-all` | メモリ上 session | メモリ上 session, `.access_log` | 現 session 以外を削除する。 |
+| `GET /api/auth/totp-status` | `.users`, `.totp_secrets` | なし | current user の TOTP 状態を返す。 |
+| `POST /api/auth/totp-setup` | `.users` | なし | 仮 secret と otpauth URI をメモリで生成し、未確認のまま永続化しない。 |
+| `POST /api/auth/totp-confirm` | `.users`, `.totp_secrets` | `.users`, `.totp_secrets`, `.audit_log` | 仮 secret を code 検証後に保存し、TOTP を有効化する。 |
+| `DELETE /api/auth/totp` | `.users`, `.totp_secrets` | `.users`, `.totp_secrets`, `.audit_log` | code 検証後に current user の TOTP を無効化する。 |
 | `GET /api/status` | `.build_status.json`, `.build_state`, `.build_lock`, `.build_history` | なし | `.build_status.json` を第一参照元とする。不在時のみ `.build_state` と `.build_history` から後方互換の値を算出する。 |
 | `POST /api/build` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | `.build_state` または queue | 実行中かつ queue 有効なら queue へ追加する。 |
 | `POST /api/build/force` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state`, SHA cache | `.build_state`, SHA cache または queue | SHA reset と build trigger は同一ロック内で行う。 |
@@ -4139,6 +4281,8 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST /api/config` | `.server_config` | `.server_config`, `.config_log` | 許可キーのみ更新する。 |
 | `POST /api/log-level` | `.server_config` | `.server_config`, `.config_log` | `log_level` のみ更新する短縮 API。 |
 | `GET /api/config-log` | `.config_log` | なし | 壊れた行は無視する。 |
+| `GET /api/api-rate-limit` | `.server_config`, `.api_rate_state` | なし | rate limit 設定と現在 window summary を返す。 |
+| `POST /api/api-rate-limit` | `.server_config` | `.server_config`, `.api_rate_state`, `.config_log`, `.audit_log` | policy を保存し、window state を初期化する。 |
 | `GET /api/repo-info` | `.repo_config` | なし | 不在時は定数値を返す。 |
 | `POST /api/repo-config` | `.repo_config` | `.repo_config`, `.config_log` | 未指定キーは保持する。 |
 | `GET /api/branch-config` | `.branch_config` | なし | 不在時は default。 |
@@ -4200,9 +4344,9 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `DELETE /api/queue` | `.build_state` | `.build_state`, `.config_log` | 実行中 build は停止しない。 |
 | `GET /api/dashboard-layout` | `.dashboard_layout` | なし | 不在時は既定 widget 順。 |
 | `POST /api/dashboard-layout` | `.dashboard_layout` | `.dashboard_layout`, `.config_log` | widgets 全体を置換する。 |
-| `GET /api/tokens` | `.api_tokens` | なし | token 本体は返さない。 |
-| `POST /api/tokens` | `.api_tokens` | `.api_tokens`, `.access_log` | token 本体は作成時のみ返し、保存はハッシュのみ。 |
-| `DELETE /api/tokens/{id}` | `.api_tokens` | `.api_tokens`, `.access_log` | 対象 token を失効する。 |
+| `GET /api/tokens` | `.api_tokens`, `.roles` | なし | token 本体は返さない。 |
+| `POST /api/tokens` | `.api_tokens`, `.roles` | `.api_tokens`, `.access_log`, `.audit_log` | token 本体は作成時のみ返し、保存はハッシュのみ。 |
+| `DELETE /api/tokens/{id}` | `.api_tokens` | `.api_tokens`, `.access_log`, `.audit_log` | 対象 token を失効する。 |
 
 ### 22.0e API 完全契約表
 
@@ -4214,13 +4358,25 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 | Endpoint | Request | Response | Success | Errors | Read | Write | SDK | UI |
 |----------|---------|----------|---------|--------|------|-------|-----|----|
-| `POST /api/login` | `{password}` | `{token,must_change}` | `200` | `401`, `422`, `429`, `500` | `.admin_credentials` | `.admin_credentials`, `.access_log` | `login()` | ログイン |
+| `POST /api/login` | `{username,password}` | `{token?,must_change,user?,totp_required?,ticket?}` | `200` | `401`, `422`, `429`, `500` | `.users`, `.admin_credentials` | `.users`, `.access_log`, `.audit_log` | `login(username,password)` | ログイン |
+| `POST /api/login/totp` | `{ticket,code}` | `{token,must_change,user}` | `200` | `401`, `422`, `429`, `500` | `.users`, `.totp_secrets` | `.users`, `.access_log`, `.audit_log` | `loginTotp(ticket,code)` | ログイン |
 | `POST /api/logout` | none | `{message}` | `200` | `401` | memory session | memory session | `logout()` | 全パネル共通 |
 | `POST /api/change-password` | `{current_password,new_password}` | `{message}` | `200` | `401`, `422`, `500` | `.admin_credentials` | `.admin_credentials`, memory session | `changePassword()` | パスワード変更 |
+| `GET /api/users` | query `{limit?,offset?,include_disabled?}` | `{users,total}` | `200` | `401`, `403`, `422`, `500` | `.users`, `.roles` | none | `getUsers()` | ユーザー管理 |
+| `POST /api/users` | `{username,display_name,password,role,enabled?}` | `UserRecord` | `201` | `401`, `403`, `409`, `422`, `500` | `.users`, `.roles` | `.users`, `.audit_log` | `createUser(user)` | ユーザー管理 |
+| `PATCH /api/users/{id}` | partial `{display_name,role,enabled,must_change}` | `UserRecord` | `200` | `401`, `403`, `404`, `409`, `422`, `500` | `.users`, `.roles` | `.users`, `.audit_log` | `updateUser(id,patch)` | ユーザー管理 |
+| `DELETE /api/users/{id}` | path `{id}` | `{message}` | `200` | `401`, `403`, `404`, `409`, `500` | `.users` | `.users`, `.audit_log` | `deleteUser(id)` | ユーザー管理 |
+| `POST /api/users/{id}/password-reset` | `{new_password,must_change?}` | `{message}` | `200` | `401`, `403`, `404`, `422`, `500` | `.users` | `.users`, `.audit_log`, memory session | `resetUserPassword(id,newPassword,mustChange)` | ユーザー管理 |
+| `GET /api/roles` | none | `{roles}` | `200` | `401`, `403`, `500` | `.roles` | none | `getRoles()` | ユーザー管理 |
+| `GET /api/audit-log` | query `{limit,offset,actor?,action?,result?}` | `{log,total}` | `200` | `401`, `403`, `422`, `500` | `.audit_log` | none | `getAuditLog()` | 監査ログ |
 | `GET /api/access-log` | query `{limit,offset}` | `{log}` | `200` | `401`, `422` | `.access_log` | none | `getAccessLog()` | アクセスログ |
 | `GET /api/api-access-log` | query `{limit,offset,method?,path?,status?}` | `{log,total}` | `200` | `401`, `422`, `500` | `.api_access_log` | none | `getApiAccessLog()` | アクセスログ |
 | `GET /api/sessions` | none | `{sessions}` | `200` | `401` | memory session | none | `getSessions()` | セッション管理 |
 | `POST /api/sessions/revoke-all` | none | `{message,revoked_count}` | `200` | `401` | memory session | memory session, `.access_log` | `revokeAllSessions()` | セッション管理 |
+| `GET /api/auth/totp-status` | none | `TotpStatus` | `200` | `401`, `500` | `.users`, `.totp_secrets` | none | `getTotpStatus()` | セキュリティ |
+| `POST /api/auth/totp-setup` | none | `{secret,otpauth_uri}` | `200` | `401`, `403`, `409`, `500` | `.users` | none | `setupTotp()` | セキュリティ |
+| `POST /api/auth/totp-confirm` | `{code}` | `TotpStatus` | `200` | `401`, `403`, `409`, `422`, `500` | `.users`, `.totp_secrets` | `.users`, `.totp_secrets`, `.audit_log` | `confirmTotp(code)` | セキュリティ |
+| `DELETE /api/auth/totp` | `{code}` | `TotpStatus` | `200` | `401`, `403`, `409`, `422`, `500` | `.users`, `.totp_secrets` | `.users`, `.totp_secrets`, `.audit_log` | `disableTotp(code)` | セキュリティ |
 | `GET /api/status` | none | `StatusObject` | `200` | `401`, `500` | `.build_status.json`, `.build_history`, `.build_state`, `.build_lock` | none | `getStatus()` | ステータス |
 | `POST /api/build` | none | `{message,build_id?,queued?}` | `202` | `401`, `409`, `422`, `429`, `503` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | `.build_state` or queue | `triggerBuild()` | 手動実行 |
 | `POST /api/build/force` | none | `{message,build_id?,queued?}` | `202` | `401`, `409`, `422`, `429`, `503` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state`, SHA cache | `.build_state`, SHA cache or queue | `buildForce()` | 手動実行 |
@@ -4258,6 +4414,8 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST /api/config` | partial `ConfigObject` | `{message,config}` | `200` | `401`, `422`, `500` | `.server_config` | `.server_config`, `.config_log` | `setConfig(config)` | 設定 |
 | `POST /api/log-level` | `{level}` | `{message,level}` | `200` | `401`, `422`, `500` | `.server_config` | `.server_config`, `.config_log` | `setLogLevel(level)` | 設定 |
 | `GET /api/config-log` | query `{limit,offset}` | `{log}` | `200` | `401`, `422` | `.config_log` | none | `getConfigLog()` | 設定 |
+| `GET /api/api-rate-limit` | none | `ApiRateLimitPolicy` | `200` | `401`, `403`, `500` | `.server_config`, `.api_rate_state` | none | `getApiRateLimit()` | セキュリティ |
+| `POST /api/api-rate-limit` | `ApiRateLimitPolicy` | `ApiRateLimitPolicy` | `200` | `401`, `403`, `422`, `500` | `.server_config` | `.server_config`, `.api_rate_state`, `.config_log`, `.audit_log` | `setApiRateLimit(policy)` | セキュリティ |
 | `GET /api/pat-status` | none | `PatStatusObject` | `200` | `401`, `501`, `500` | `.github_token` | none | `getPatStatus()` | システム情報 |
 | `POST /api/pat-verify` | none | `PatVerifyObject` | `200` | `401`, `501`, `500` | `.github_token` | none | `patVerify()` | システム情報 |
 | `POST /api/pat-update` | `{token}` | `{message}` | `200` | `401`, `422`, `500` | none | `.github_token`, `.config_log` | `updatePat(token)` | システム情報 |
@@ -4310,9 +4468,9 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `DELETE /api/queue` | none | `{message,cleared_count}` | `200` | `401`, `500` | `.build_state` | `.build_state`, `.config_log` | `clearQueue()` | 手動実行 |
 | `GET /api/dashboard-layout` | none | `{widgets}` | `200` | `401`, `500` | `.dashboard_layout` | none | `getDashboardLayout()` | ステータス |
 | `POST /api/dashboard-layout` | `{widgets}` | `{message}` | `200` | `401`, `422`, `500` | `.dashboard_layout` | `.dashboard_layout`, `.config_log` | `setDashboardLayout(widgets)` | ステータス |
-| `GET /api/tokens` | none | `{tokens}` | `200` | `401`, `500` | `.api_tokens` | none | `getTokens()` | API トークン管理 |
-| `POST /api/tokens` | `{label,scope}` | `TokenCreateResult` | `201` | `401`, `422`, `500` | `.api_tokens` | `.api_tokens`, `.access_log` | `createToken(label,scope)` | API トークン管理 |
-| `DELETE /api/tokens/{id}` | path `{id}` | `{message}` | `200` | `401`, `404`, `500` | `.api_tokens` | `.api_tokens`, `.access_log` | `revokeToken(id)` | API トークン管理 |
+| `GET /api/tokens` | none | `{tokens}` | `200` | `401`, `403`, `500` | `.api_tokens`, `.roles` | none | `getTokens()` | API トークン管理 |
+| `POST /api/tokens` | `{label,scopes,role,expires_at?}` | `TokenCreateResult` | `201` | `401`, `403`, `422`, `500` | `.api_tokens`, `.roles` | `.api_tokens`, `.access_log`, `.audit_log` | `createToken(label,scopes,role,expiresAt)` | API トークン管理 |
+| `DELETE /api/tokens/{id}` | path `{id}` | `{message}` | `200` | `401`, `403`, `404`, `500` | `.api_tokens` | `.api_tokens`, `.access_log`, `.audit_log` | `revokeToken(id)` | API トークン管理 |
 
 **ビルド操作の競合優先順位：**
 
@@ -4513,13 +4671,25 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 **`POST /api/login` リクエスト / レスポンス：**
 ```json
 // リクエスト
-{ "password": "admin" }
+{ "username": "admin", "password": "admin" }
 
-// レスポンス
-{ "token": "<session_token>", "must_change": "prompt" }
+// レスポンス（TOTP 無効）
+{ "token": "<session_token>", "must_change": "prompt", "user": { "id": "u000001", "username": "admin", "role": "admin" } }
+
+// レスポンス（TOTP 有効）
+{ "totp_required": true, "ticket": "<login_ticket>", "must_change": "none", "user": { "id": "u000001", "username": "admin", "role": "admin" } }
 ```
 
 `must_change` の有効値：`"none"`（変更不要）| `"prompt"`（促す：初回ログイン時）| `"forced"`（強制：5 回目以降。変更完了まで管理画面の操作を制限）
+
+**`POST /api/login/totp` リクエスト / レスポンス：**
+```json
+// リクエスト
+{ "ticket": "<login_ticket>", "code": "123456" }
+
+// レスポンス
+{ "token": "<session_token>", "must_change": "none", "user": { "id": "u000001", "username": "admin", "role": "admin" } }
+```
 
 **`POST /api/logout` リクエスト / レスポンス：**
 ```json
@@ -5174,19 +5344,19 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 **`GET /api/tokens` レスポンス例：**
 ```json
 { "tokens": [
-    { "id": "tok001", "label": "監視用", "scope": "read", "created_at": "2026-09-15T10:00:00Z", "last_used_at": "2026-09-15T11:00:00Z" }
+    { "id": "tok001", "label": "監視用", "scopes": ["read"], "role": "viewer", "created_at": "2026-09-15T10:00:00Z", "last_used_at": "2026-09-15T11:00:00Z", "expires_at": null, "revoked_at": null }
 ]}
 ```
 
 **`POST /api/tokens` リクエスト / レスポンス：**
 ```json
 // リクエスト
-{ "label": "監視用", "scope": "read" }
+{ "label": "監視用", "scopes": ["read"], "role": "viewer", "expires_at": null }
 // レスポンス: 201
-{ "id": "tok001", "token": "act_...", "label": "監視用", "scope": "read", "created_at": "2026-09-15T10:00:00Z" }
+{ "id": "tok001", "token": "act_...", "label": "監視用", "scopes": ["read"], "role": "viewer", "created_at": "2026-09-15T10:00:00Z", "expires_at": null }
 ```
 
-`token` はレスポンス時のみ返却し、以後は取得不可。`scope` の有効値：`"read"`（読み取り専用）。読み取り専用トークンは `GET` 系エンドポイントのみ許可し、`POST` / `DELETE` 系は `403 Forbidden` を返す。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
+`token` はレスポンス時のみ返却し、以後は取得不可。`scopes` の有効値は `read`、`trigger`、`operate`、`config`、`admin` とする。実効権限は token scopes と role permissions の積集合で決定する。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
 
 **`DELETE /api/tokens/{id}` レスポンス例：**
 ```json
@@ -5723,9 +5893,17 @@ class AdlaireCI {
   constructor({ baseUrl })
   // this._token でセッショントークンを管理。login() 後の全リクエストに自動付与
 
-  login(password)                               // POST /api/login → {token, must_change}; this._token にセット
+  login(username, password)                     // POST /api/login → {token?, must_change, user?, totp_required?, ticket?}; token がある場合は this._token にセット
+  loginTotp(ticket, code)                       // POST /api/login/totp → {token, must_change, user}; this._token にセット
   logout()                                      // POST /api/logout; this._token をクリア
   changePassword(currentPassword, newPassword)  // POST /api/change-password
+  getUsers({ limit = 100, offset = 0, includeDisabled = false } = {}) // GET /api/users → Promise<{users: UserRecord[], total: number}>
+  createUser(user)                              // POST /api/users → Promise<UserRecord>
+  updateUser(id, patch)                         // PATCH /api/users/{id} → Promise<UserRecord>
+  deleteUser(id)                                // DELETE /api/users/{id} → Promise<{message: string}>
+  resetUserPassword(id, newPassword, mustChange = true) // POST /api/users/{id}/password-reset → Promise<{message: string}>
+  getRoles()                                    // GET /api/roles → Promise<{roles: RoleRecord[]}>
+  getAuditLog({ limit = 100, offset = 0, actor = null, action = null, result = null } = {}) // GET /api/audit-log → Promise<{log: AuditLogRecord[], total: number}>
 
   getStatus()               // GET /api/status               → Promise<StatusObject>
   triggerBuild()            // POST /api/build               → Promise<{message: string, build_id?: string, queued?: boolean}>
@@ -5762,6 +5940,10 @@ class AdlaireCI {
   getNotifyLog()            // GET /api/notify-log           → Promise<{log: NotifyRecord[]}>
   getSessions()             // GET /api/sessions             → Promise<{sessions: SessionRecord[]}>
   revokeAllSessions()       // POST /api/sessions/revoke-all → Promise<{message: string, revoked_count: number}>
+  getTotpStatus()           // GET /api/auth/totp-status     → Promise<TotpStatus>
+  setupTotp()               // POST /api/auth/totp-setup     → Promise<{secret: string, otpauth_uri: string}>
+  confirmTotp(code)         // POST /api/auth/totp-confirm   → Promise<TotpStatus>
+  disableTotp(code)         // DELETE /api/auth/totp         → Promise<TotpStatus>
   setScheduleInterval(seconds) // POST /api/schedule/interval → Promise<{message: string, interval_seconds: number}>
   pauseSchedule()              // POST /api/schedule/pause   → Promise<{message: string}>
   resumeSchedule()             // POST /api/schedule/resume  → Promise<{message: string}>
@@ -5778,6 +5960,8 @@ class AdlaireCI {
   getRateLimit()               // GET /api/rate-limit        → Promise<RateLimitObject>
   getDiskUsage()               // GET /api/disk-usage        → Promise<DiskUsageObject>
   getConfigLog()               // GET /api/config-log        → Promise<{log: ConfigLogRecord[]}>
+  getApiRateLimit()            // GET /api/api-rate-limit    → Promise<ApiRateLimitPolicy>
+  setApiRateLimit(policy)      // POST /api/api-rate-limit   → Promise<ApiRateLimitPolicy>
   getBranchConfig()            // GET /api/branch-config     → Promise<{source: string, branches: BranchTargetRecord[]}>
   setBranchConfig(branches)    // POST /api/branch-config    → Promise<{message: string, branches_count: number}>
   notifyWeeklySummary()        // POST /api/notify/weekly-summary → Promise<{message: string, period: string, success_count: number, failure_count: number, success_rate: number}>
@@ -5797,7 +5981,7 @@ class AdlaireCI {
   setHistoryTags(id, tags)     // POST /api/history/{id}/tags → Promise<{message: string}>
   rollbackHistory(id)          // POST /api/history/{id}/rollback → Promise<{message: string, build_id: string}>
   getTokens()                  // GET /api/tokens            → Promise<{tokens: TokenRecord[]}>
-  createToken(label, scope = 'read') // POST /api/tokens     → Promise<TokenCreateResult>
+  createToken(label, scopes = ['read'], role = 'viewer', expiresAt = null) // POST /api/tokens → Promise<TokenCreateResult>
   revokeToken(id)              // DELETE /api/tokens/{id}    → Promise<{message: string}>
   // 14A スナップショット
   getSnapshots()               // GET /api/snapshots         → Promise<{snapshots: SnapshotRecord[]}>
@@ -5846,7 +6030,7 @@ class AdlaireCI {
 export { AdlaireCI, AdlaireCIError };
 ```
 
-全メソッドは `Promise` を返す。`streamBuild` は SSE 接続確立後に `StreamHandle` で resolve し、接続前エラーは `AdlaireCIError` で reject する。HTTP エラー（4xx / 5xx）は `AdlaireCIError` としてスローする。`401` 受信時はセッション期限切れとして `this._token` をクリアする。`constructor` を除く合計は 96 メソッド。
+全メソッドは `Promise` を返す。`streamBuild` は SSE 接続確立後に `StreamHandle` で resolve し、接続前エラーは `AdlaireCIError` で reject する。HTTP エラー（4xx / 5xx）は `AdlaireCIError` としてスローする。`401` 受信時はセッション期限切れとして `this._token` をクリアする。constructor、private method、helper 関数を除く public method は §22.0e の SDK 列と完全一致させる。
 
 **SDK 共通実装契約：**
 
@@ -5878,8 +6062,15 @@ SDK method は、下表の通りに引数を path、query、body へ変換する
 
 | SDK method | 引数 | 変換先 | 送信値 |
 |------------|------|--------|--------|
-| `login(password)` | `password` | body | `{password}` |
+| `login(username,password)` | `username`, `password` | body | `{username,password}` |
+| `loginTotp(ticket,code)` | `ticket`, `code` | body | `{ticket,code}` |
 | `changePassword(currentPassword,newPassword)` | `currentPassword`, `newPassword` | body | `{current_password: currentPassword, new_password: newPassword}` |
+| `getUsers({limit,offset,includeDisabled})` | `limit=100`, `offset=0`, `includeDisabled=false` | query | `limit`、`offset`、`include_disabled: includeDisabled` |
+| `createUser(user)` | `user` | body | `{username,display_name,password,role,enabled}`。`enabled` 未指定時は API 既定値に委ねる。 |
+| `updateUser(id,patch)` | `id`, `patch` | path/body | path `{id}`、body は `display_name`、`role`、`enabled`、`must_change` の指定キーだけ。 |
+| `deleteUser(id)` | `id` | path | path `{id}`。body は送らない。 |
+| `resetUserPassword(id,newPassword,mustChange)` | `id`, `newPassword`, `mustChange=true` | path/body | path `{id}`、body `{new_password: newPassword, must_change: mustChange}` |
+| `getAuditLog({limit,offset,actor,action,result})` | `limit=100`, `offset=0`, `actor=null`, `action=null`, `result=null` | query | `limit`、`offset` は常に送信する。任意値は `null` の場合送信しない。 |
 | `getLogs(n,q)` | `n=100`, `q=""` | query | `n`、`q`。`q` は空文字でも送信する。 |
 | `getHistory({page,perPage,trigger,tag,flagged})` | `page=1`, `perPage=20`, `trigger=null`, `tag=null`, `flagged=null` | query | `page`、`per_page: perPage` は常に送信する。`trigger`、`tag`、`flagged` は `null` の場合は送信しない。 |
 | `getApiAccessLog({limit,offset,method,path,status})` | `limit=100`, `offset=0`, `method=null`, `path=null`, `status=null` | query | `limit`、`offset` は常に送信する。`method`、`path`、`status` は `null` の場合は送信しない。 |
@@ -5895,10 +6086,13 @@ SDK method は、下表の通りに引数を path、query、body へ変換する
 | `searchLogs(q,from,to,level)` | `q=""`, `from=""`, `to=""`, `level=undefined` | query | `q`、`from`、`to` は空文字でも送信する。`level` は指定時のみ送信する。 |
 | `getWebhookEvents(limit,offset)` | `limit=50`, `offset=0` | query | `limit`、`offset` |
 | `setWebhookConfig(secret)` | `secret` | body | `{secret}` |
+| `confirmTotp(code)` | `code` | body | `{code}` |
+| `disableTotp(code)` | `code` | body | `{code}` |
+| `setApiRateLimit(policy)` | `policy` | body | `policy` をそのまま送信する。 |
 | `setHistoryComment(id,comment)` | `id`, `comment` | path/body | path `{id}`、body `{comment}` |
 | `setHistoryFlag(id,flagged)` | `id`, `flagged` | path/body | path `{id}`、body `{flagged}` |
 | `setHistoryTags(id,tags)` | `id`, `tags` | path/body | path `{id}`、body `{tags}` |
-| `createToken(label,scope)` | `label`, `scope="read"` | body | `{label,scope}` |
+| `createToken(label,scopes,role,expiresAt)` | `label`, `scopes=["read"]`, `role="viewer"`, `expiresAt=null` | body | `{label,scopes,role,expires_at: expiresAt}` |
 | `addHook(phase,commandArgs,abortOnFailure)` | `phase`, `commandArgs`, `abortOnFailure=true` | body | `{phase,command_args: commandArgs, abort_on_failure: abortOnFailure}` |
 | `addAlertRule(metric,operator,threshold,level,message)` | 各引数 | body | `{metric,operator,threshold,level,message}` |
 | `addTagRule(condition,tags)` | `condition`, `tags` | body | `{condition,tags}` |
@@ -5935,6 +6129,11 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | `CommentObject` | `id`, `comment`, `updated_at` | `comment`, `updated_at` | なし | `GET /api/history/{id}/comment` |
 | `ConfigObject` | `.server_config` schema の全キー | `pat_expires_at`, `allowed_hours` | なし | `GET /api/config` |
 | `ConfigValidationObject` | `valid`, `config`, `errors`, `warnings` | なし | `errors`, `warnings` | `POST /api/config/validate` |
+| `UserRecord` | `id`, `username`, `display_name`, `role`, `enabled`, `deleted_at`, `must_change`, `totp_enabled`, `created_at`, `updated_at`, `last_login_at` | `deleted_at`, `last_login_at` | なし | `GET/POST/PATCH /api/users` |
+| `RoleRecord` | `id`, `label`, `permissions` | なし | `permissions` | `GET /api/roles` |
+| `AuditLogRecord` | `.audit_log` schema の全必須キー | `actor_id`, `target_id`, `remote_addr`, `message` | なし | `GET /api/audit-log` |
+| `TotpStatus` | `enabled`, `confirmed_at` | `confirmed_at` | なし | `GET /api/auth/totp-status`, `POST /api/auth/totp-confirm`, `DELETE /api/auth/totp` |
+| `ApiRateLimitPolicy` | `enabled`, `groups`, `state_summary` | なし | `groups`, `state_summary` | `GET/POST /api/api-rate-limit` |
 | `NotifyConfig` | `webhooks`, `channels`, `on`, `summary`, `email` | `webhooks[].payload_template`, `webhooks[].secret` | `webhooks`, `channels`, `on`, `email.to`, `email.on` | `GET /api/notify-config` |
 | `RepoInfoObject` | `owner`, `repo`, `branch`, `target_file` | なし | なし | `GET /api/repo-info` |
 | `BranchTargetRecord` | `branch`, `target_file`, `sha_file`, `src`, `out`, `deploy_targets` | なし | `deploy_targets` | `GET /api/branch-config` |
@@ -5958,8 +6157,8 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | `SnapshotRecord` | `id`, `build_id`, `saved_at`, `size_bytes` | なし | なし | `GET /api/snapshots` |
 | `MaintenanceObject` | `enabled`, `reason`, `since` | `reason`, `since` | なし | `GET /api/maintenance` |
 | `QueueEntry` | `id`, `trigger`, `queued_at`, `requested_by`, `payload` | なし | なし | `GET /api/queue` |
-| `TokenRecord` | `id`, `label`, `scope`, `created_at`, `last_used_at` | `last_used_at` | なし | `GET /api/tokens` |
-| `TokenCreateResult` | `id`, `token`, `label`, `scope`, `created_at` | なし | なし | `POST /api/tokens` |
+| `TokenRecord` | `id`, `label`, `scopes`, `role`, `created_at`, `last_used_at`, `expires_at`, `revoked_at` | `last_used_at`, `expires_at`, `revoked_at` | `scopes` | `GET /api/tokens` |
+| `TokenCreateResult` | `id`, `token`, `label`, `scopes`, `role`, `created_at`, `expires_at` | `expires_at` | `scopes` | `POST /api/tokens` |
 | `HookRecord` | `id`, `phase`, `command_args`, `enabled`, `abort_on_failure` | なし | `command_args` | `GET/POST /api/hooks` |
 | `HookRunRecord` | `build_id`, `ran_at`, `exit_code`, `output` | なし | なし | `GET /api/hooks/{id}/log` |
 | `AlertRule` | `id`, `metric`, `operator`, `threshold`, `level`, `message` | なし | なし | `GET/POST /api/alert-rules` |
@@ -5991,7 +6190,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 
 | パネル | section id | data-panel | 主フォーム id | 主要 field name | 主要 button id |
 |--------|------------|------------|---------------|-----------------|----------------|
-| ログイン | `panel-login` | `login` | `form-login` | `password` | `btn-login` |
+| ログイン | `panel-login` | `login` | `form-login` | `username`, `password`, `totp_code` | `btn-login`, `btn-login-totp` |
 | パスワード変更 | `panel-password` | `password` | `form-password` | `current_password`, `new_password` | `btn-change-password` |
 | ステータス | `panel-status` | `status` | なし | なし | `btn-refresh-status`, `btn-save-dashboard-layout` |
 | 手動実行 | `panel-build` | `build` | なし | なし | `btn-build`, `btn-build-force`, `btn-build-cancel`, `btn-stream-close`, `btn-queue-clear` |
@@ -6001,13 +6200,16 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | システム情報 | `panel-system` | `system` | `form-pat` | `token`, `pat_expires_at` | `btn-pat-verify`, `btn-pat-update` |
 | 通知設定 | `panel-notify` | `notify` | `form-notify` | `webhooks`, `channels`, `on`, `summary`, `email`, `secret`, `smtp_password` | `btn-save-notify`, `btn-notify-test`, `btn-weekly-summary`, `btn-save-webhook-secret`, `btn-save-smtp`, `btn-smtp-test` |
 | 設定 | `panel-config` | `config` | `form-config` | `log_max_lines`, `history_max_count`, `build_timeout_seconds`, `log_retention_days`, `log_archive_after_days`, `log_level`, `queue_max_size`, `snapshots_keep`, `build_retry_max`, `build_retry_base_seconds`, `commit_status_enabled`, `commit_status_context`, `commit_status_target_url`, `build_trend_keep_count`, `duration_anomaly_enabled`, `duration_anomaly_min_samples`, `duration_anomaly_avg_multiplier`, `duration_anomaly_p95_multiplier` | `btn-save-config`, `btn-validate-config`, `btn-set-log-level` |
+| ユーザー管理 | `panel-users` | `users` | `form-user` | `username`, `display_name`, `password`, `role`, `enabled`, `must_change` | `btn-load-users`, `btn-create-user`, `btn-update-user`, `btn-delete-user`, `btn-reset-user-password` |
+| セキュリティ | `panel-security` | `security` | `form-security` | `totp_code`, `api_rate_enabled`, `api_rate_group`, `api_rate_window_seconds`, `api_rate_max_requests`, `session_timeout_seconds` | `btn-load-security`, `btn-totp-setup`, `btn-totp-confirm`, `btn-totp-disable`, `btn-save-api-rate-limit`, `btn-save-session-timeout` |
 | アクセスログ | `panel-access-log` | `access-log` | `form-api-access-log-filter` | `limit`, `offset`, `method`, `path`, `status` | `btn-load-access-log`, `btn-load-api-access-log` |
+| 監査ログ | `panel-audit-log` | `audit-log` | `form-audit-log-filter` | `limit`, `offset`, `actor`, `action`, `result` | `btn-load-audit-log` |
 | 統計 | `panel-stats` | `stats` | なし | なし | `btn-load-stats` |
 | リポジトリ情報 | `panel-repo` | `repo` | `form-repo` | `owner`, `repo`, `branch`, `target_file`, `interval_seconds`, `allowed_from`, `allowed_to`, `maintenance_reason` | `btn-save-repo`, `btn-save-branch-config`, `btn-pause-schedule`, `btn-resume-schedule`, `btn-enable-maintenance`, `btn-disable-maintenance` |
 | セッション管理 | `panel-sessions` | `sessions` | なし | なし | `btn-load-sessions`, `btn-revoke-sessions` |
 | システム診断 | `panel-diagnostics` | `diagnostics` | なし | なし | `btn-run-diagnostics`, `btn-verify-output` |
 | ビルド比較 | `panel-compare` | `compare` | `form-compare` | `left_build_id`, `right_build_id` | `btn-compare-builds` |
-| API トークン管理 | `panel-tokens` | `tokens` | `form-token` | `label`, `scope` | `btn-create-token` |
+| API トークン管理 | `panel-tokens` | `tokens` | `form-token` | `label`, `scopes`, `role`, `expires_at` | `btn-create-token` |
 | 運用ノート | `panel-notes` | `notes` | `form-notes` | `content` | `btn-save-notes` |
 | スナップショット | `panel-snapshots` | `snapshots` | なし | なし | `btn-load-snapshots` |
 | メンテナンス | `panel-maintenance` | `maintenance` | `form-maintenance` | `reason` | `btn-maintenance-enable`, `btn-maintenance-disable` |
@@ -6020,7 +6222,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 
 | パネル | 表示内容 | 表示条件 |
 |-------|---------|---------|
-| ログイン | パスワード入力フォーム | 未ログイン時のみ |
+| ログイン | ユーザー名・パスワード入力フォーム。TOTP が必要な場合は同じ panel 内で TOTP code 入力へ切り替える。 | 未ログイン時のみ |
 | パスワード変更 | 現在・新パスワード入力フォーム | `must_change: "prompt"` または `"forced"` 時（`"forced"` 時は他パネル非表示） |
 | ステータス | 最終ビルド時刻・SHA・成否・出力サイトリンク・ダッシュボードウィジェット編集モード（表示するウィジェットをチェックボックスで選択・並び替え・保存） | ログイン済み |
 | 手動実行 | ビルドトリガーボタン・SHA リセットを含む強制ビルドボタン・キャンセルボタン（実行中のみ有効）・実行結果表示・リアルタイムログ表示エリア（SSE ストリーミング）・キュー状態表示（待機中件数・クリアボタン） | ログイン済み |
@@ -6030,13 +6232,16 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | システム情報 | 出力サイトサイズ・更新日時・稼働時間・ディスク使用量（ログ合計・出力サイト）・PAT 即時検証ボタン・PAT 更新フォーム・PAT 有効期限表示（設定フォーム・期限切れ間近で警告表示）・GitHub API レート制限表示 | ログイン済み |
 | 通知設定     | Webhook 一覧（追加/削除/ラベル/有効無効切り替え/リトライ回数・間隔設定/シークレット入力欄）・通知条件設定（ビルド開始時・成功時・失敗時）・各 Webhook ペイロードテンプレート編集フォーム（変数一覧表示）・テスト送信ボタン・定期サマリー設定（間隔・時刻・曜日・即時送信ボタン）・送信履歴（試行回数・エラー内容列含む）・メール通知セクション（SMTP 設定フォーム・宛先リスト・通知条件・テスト送信ボタン） | ログイン済み |
 | 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・command_args 入力フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
+| ユーザー管理 | user 一覧、role 表示、作成フォーム、display name / role / enabled / must_change 更新、password reset、削除操作。password hash、salt、TOTP secret は表示しない。 | admin 権限 |
+| セキュリティ | current user の TOTP 状態、TOTP setup secret / otpauth URI の一回表示、TOTP 確認/無効化、API rate limit policy、session timeout 設定。QR code 生成は初期実装対象外。 | ログイン済み。rate limit と session timeout 保存は admin 権限 |
 | アクセスログ | ログイン履歴（日時・成否）・API アクセスログ（method、path、status、duration、actor、remote_addr）・API アクセスログフィルター | ログイン済み |
+| 監査ログ | 設定変更、認証、user、token、build trigger、権限拒否の監査イベント一覧と actor / action / result フィルター。secret、password、token 本体は表示しない。 | admin 権限 |
 | 統計         | ビルド回数・成功率・平均間隔・平均・最大ビルド時間・中央値・p95・異常件数・日別時系列データ（グラフ表示対応） | ログイン済み |
 | リポジトリ情報 | 監視対象リポジトリ・ブランチ・ファイルの確認・設定変更フォーム（OWNER / REPO / BRANCH / TARGET_FILE）・ポーリング間隔変更フォーム・ポーリング一時停止／再開ボタン・許可時間帯設定（from〜to、解除ボタン）・メンテナンスモード有効化フォーム（理由入力）・解除ボタン・現在の状態表示 | ログイン済み |
 | セッション管理 | 有効セッション一覧・全セッション強制無効化ボタン | ログイン済み |
 | システム診断   | PAT・GitHub API・出力サイト・systemd・Webhook の診断項目一覧（ok / warn / error）・診断実行ボタン・アラートバッジ（`GET /api/dashboard` の `alerts` に基づき warn / error を表示）・出力整合性チェック項目（`POST /api/verify-output` 結果表示）・メンテナンスモード中はバナーを全パネル上部に表示 | ログイン済み |
 | ビルド比較     | ビルド履歴から 2 件を選択・ログ並列表示・差分ハイライト（クライアントサイド処理） | ログイン済み |
-| API トークン管理 | 発行済みトークン一覧（ラベル・スコープ・作成日時・最終使用日時）・新規発行フォーム（ラベル入力・スコープ選択）・発行時のみトークン文字列を表示・失効ボタン | ログイン済み |
+| API トークン管理 | 発行済みトークン一覧（ラベル・スコープ・role・作成日時・最終使用日時・有効期限・失効日時）・新規発行フォーム（ラベル入力・scope 複数選択・role 選択・有効期限）・発行時のみトークン文字列を表示・失効ボタン | admin 権限 |
 | 運用ノート     | Markdown レンダリング表示・編集モード切替・保存ボタン・最終更新日時表示 | ログイン済み |
 | スナップショット | ビルド成果物の世代一覧（最大`snapshots_keep`件）・個別ダウンロード・削除 | ログイン済み |
 | メンテナンス   | メンテナンスモードの有効化（理由テキスト付き）・無効化・状態・開始時刻表示 | ログイン済み |
@@ -6056,13 +6261,16 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | システム情報 | `getSysinfo()`, `getPatStatus()`, `getRateLimit()`, `getDiskUsage()` | 取得不能項目は該当ブロックにエラー表示し、他ブロックは表示する。 |
 | 通知設定 | `getNotifyConfig()`, `getWebhookConfig()`, `getSmtpConfig()`, `getNotifyLog()` | webhook / email / log なしをそれぞれ 1 行で表示する。 |
 | 設定 | `getConfig()`, `getConfigLog()`, `getAccessControl()`, `getHooks()`, `getAlertRules()`, `getTagRules()`, `getPipelineConfig()` | 各一覧なしを 1 行で表示する。 |
+| ユーザー管理 | `getUsers()`, `getRoles()` | user なしはエラーとして表示する。admin 権限なしの `403` は panel を非表示にする。 |
+| セキュリティ | `getTotpStatus()`, `getApiRateLimit()`, `getConfig()` | TOTP disabled、rate limit disabled は通常状態として表示する。admin 権限なしの `403` は rate limit と session timeout 編集欄だけ非表示にする。 |
 | アクセスログ | `getAccessLog()`, `getApiAccessLog({limit:100,offset:0})` | ログなしを 1 行で表示する。 |
+| 監査ログ | `getAuditLog({limit:100,offset:0})` | log なしを 1 行で表示する。admin 権限なしの `403` は panel を非表示にする。 |
 | 統計 | `getStats(7)`, `getStatsTimeline(30)`, `getStatsBuildDuration(20)` | 統計対象なしを 1 行で表示する。 |
 | リポジトリ情報 | `getRepoInfo()`, `getBranchConfig()`, `getSchedule()`, `getMaintenance()` | branch target なしを 1 行で表示する。 |
 | セッション管理 | `getSessions()` | 現 session だけの場合も通常一覧として表示する。 |
 | システム診断 | `getDiagnostics()` | 診断 item なしは `No diagnostics` と表示する。 |
 | ビルド比較 | `getHistory({page:1,perPage:100})` | 比較対象 2 件未満は compare button を disabled にする。 |
-| API トークン管理 | `getTokens()` | token なしを 1 行で表示する。 |
+| API トークン管理 | `getTokens()`, `getRoles()` | token なしを 1 行で表示する。admin 権限なしの `403` は panel を非表示にする。 |
 | 運用ノート | `getNotes()` | content 空文字は空 editor として表示する。 |
 | スナップショット | `getSnapshots()` | snapshot なしを 1 行で表示する。 |
 | メンテナンス | `getMaintenance()` | disabled 状態を通常表示する。 |
@@ -6081,7 +6289,8 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 | パネル | 操作 | SDK method | 成功時表示 | 成功後再取得 | disabled 条件 |
 |--------|------|------------|------------|--------------|---------------|
-| ログイン | ログイン | `login(password)` | 通常画面へ遷移 | `getDashboard()`, `getStatus()`, `getQueue()` | password 空欄、送信中 |
+| ログイン | ログイン | `login(username,password)` | 通常画面へ遷移、または TOTP 入力へ切替 | `getDashboard()`, `getStatus()`, `getQueue()` | username/password 空欄、送信中 |
+| ログイン | TOTP 確認 | `loginTotp(ticket,code)` | 通常画面へ遷移 | `getDashboard()`, `getStatus()`, `getQueue()` | ticket なし、code 空欄、送信中 |
 | パスワード変更 | 変更保存 | `changePassword(currentPassword,newPassword)` | `Password changed` | なし | 入力不足、送信中 |
 | 全パネル共通 | ログアウト | `logout()` | ログイン画面へ戻る | なし | 送信中 |
 | ステータス | 再読み込み | `getDashboard()` | 最終更新時刻を表示 | `getDashboard()` | 読み込み中 |
@@ -6117,8 +6326,19 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | 設定 | alert rule 追加/削除 | `addAlertRule()`, `deleteAlertRule(id)` | rule 件数を表示 | `getAlertRules()`, `getDashboard()` | 入力不正、送信中 |
 | 設定 | tag rule 追加/削除 | `addTagRule()`, `deleteTagRule(id)` | rule 件数を表示 | `getTagRules()` | 入力不正、送信中 |
 | 設定 | pipeline config 保存 | `setPipelineConfig(config)` | `Pipeline config updated` | `getPipelineConfig()`, `getConfigLog()` | 入力不正、送信中 |
+| ユーザー管理 | 一覧取得 | `getUsers()`, `getRoles()` | 件数を表示 | なし | 読み込み中 |
+| ユーザー管理 | user 作成 | `createUser(user)` | `User created` | `getUsers()`, `getAuditLog()` | username/password/role 空欄、送信中 |
+| ユーザー管理 | user 更新 | `updateUser(id,patch)` | `User updated` | `getUsers()`, `getAuditLog()` | id 未選択、送信中 |
+| ユーザー管理 | user 削除 | `deleteUser(id)` | `User deleted` | `getUsers()`, `getAuditLog()` | id 未選択、送信中 |
+| ユーザー管理 | password reset | `resetUserPassword(id,newPassword,mustChange)` | `Password reset` | `getUsers()`, `getAuditLog()` | id 未選択、password 空欄、送信中 |
+| セキュリティ | TOTP setup | `setupTotp()` | secret と otpauth URI を一回表示 | なし | TOTP enabled、送信中 |
+| セキュリティ | TOTP confirm | `confirmTotp(code)` | `TOTP enabled` | `getTotpStatus()`, `getAuditLog()` | code 空欄、送信中 |
+| セキュリティ | TOTP disable | `disableTotp(code)` | `TOTP disabled` | `getTotpStatus()`, `getAuditLog()` | code 空欄、送信中 |
+| セキュリティ | API rate limit 保存 | `setApiRateLimit(policy)` | `API rate limit updated` | `getApiRateLimit()`, `getAuditLog()` | 入力不正、送信中 |
+| セキュリティ | session timeout 保存 | `setConfig({session_timeout_seconds})` | `Session timeout updated` | `getConfig()`, `getConfigLog()` | 範囲外、送信中 |
 | アクセスログ | 取得 | `getAccessLog()` | 件数を表示 | なし | 読み込み中 |
 | アクセスログ | API アクセスログ取得 | `getApiAccessLog({limit,offset,method,path,status})` | 件数を表示 | なし | 読み込み中 |
+| 監査ログ | 取得 | `getAuditLog({limit,offset,actor,action,result})` | 件数を表示 | なし | 読み込み中 |
 | 統計 | 取得 | `getStats()`, `getStatsTimeline()`, `getStatsBuildDuration()` | グラフと数値を更新 | なし | 読み込み中 |
 | リポジトリ情報 | repo 保存 | `setRepoConfig(config)` | `Repo config updated` | `getRepoInfo()`, `getConfigLog()` | 入力不正、送信中 |
 | リポジトリ情報 | branch config 保存 | `setBranchConfig(branches)` | `Branch config updated` | `getBranchConfig()`, `getConfigLog()` | 入力不正、送信中 |
@@ -6126,7 +6346,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | セッション管理 | 全 revoke | `revokeAllSessions()` | revoke 件数を表示 | `getSessions()` | 送信中 |
 | システム診断 | 診断実行 | `getDiagnostics()` | 診断結果を表示 | なし | 読み込み中 |
 | システム診断 | 出力 checksum 検証 | `verifyOutput()` | match 結果を表示 | なし | 送信中 |
-| API トークン管理 | token 発行 | `createToken(label,scope)` | token 本体を 1 回だけ表示 | `getTokens()` | label 空欄、送信中 |
+| API トークン管理 | token 発行 | `createToken(label,scopes,role,expiresAt)` | token 本体を 1 回だけ表示 | `getTokens()`, `getAuditLog()` | label 空欄、scope 未選択、role 未選択、送信中 |
 | API トークン管理 | token 失効 | `revokeToken(id)` | `Token revoked` | `getTokens()` | id 未選択、送信中 |
 | 運用ノート | 保存 | `setNotes(content)` | `Notes updated` | `getNotes()` | 送信中 |
 | スナップショット | 一覧取得 | `getSnapshots()` | 件数を表示 | なし | 読み込み中 |
@@ -6150,7 +6370,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | `422` | 入力エラーとして該当フォーム項目へエラーを紐付ける。 |
 | `429` | rate limit または login lock としてエラー表示し、同一操作ボタンを 10 秒間 disabled にする。ログインロックの場合は password field を空にする。 |
 | `503` | メンテナンスバナーを表示し、ビルド操作ボタンを disabled にする。 |
-| 秘密情報入力 | PAT、Webhook Secret、SMTP password、発行直後 token は画面遷移、成功表示、再取得後にフォーム値から消去する。 |
+| 秘密情報入力 | password、TOTP code、TOTP secret、PAT、Webhook Secret、SMTP password、発行直後 token は画面遷移、成功表示、再取得後にフォーム値から消去する。 |
 | 自動更新 | ステータス、キュー、SSE 以外のパネルは自動ポーリングしない。ユーザー操作または画面表示時に取得する。 |
 | SSE 切断 | `streamBuild()` が error になった場合はリアルタイム表示を停止し、`getStatus()` と `getQueue()` を再取得する。ユーザーが停止した場合はエラー表示しない。 |
 | フォーム保存 | 保存 API が成功するまで UI 上の表示値を確定表示にしない。失敗時は入力値を保持する。 |
@@ -6186,7 +6406,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 7. 秘密情報 field を消去する。
 8. disabled を解除する。ただし `401`、`503`、SSE 接続中、メンテナンス中、または仕様上 disabled 条件が継続する場合は解除しない。
 
-秘密情報 field は、`password`、`current_password`、`new_password`、`token`、`secret`、`smtp_password`、`issued-token-once` とする。これらは成功、失敗、画面遷移、`401`、`logout()`、`revokeAllSessions()` のいずれの場合も DOM 値を空にする。発行直後 token は `issued-token-once` に 1 回だけ表示し、次の任意の user action で消去する。
+秘密情報 field は、`password`、`current_password`、`new_password`、`totp_code`、`token`、`secret`、`smtp_password`、`issued-token-once`、`totp-secret-once` とする。これらは成功、失敗、画面遷移、`401`、`logout()`、`revokeAllSessions()` のいずれの場合も DOM 値を空にする。発行直後 token は `issued-token-once`、TOTP setup secret は `totp-secret-once` に 1 回だけ表示し、次の任意の user action で消去する。
 
 **UI 操作完全性検証契約：**
 
@@ -6217,7 +6437,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 ## 25. 認証 実装仕様
 
-**認証情報ファイル形式（JSON）：**
+**初期認証情報ファイル形式（JSON）：**
 ```json
 {
   "password_hash": "<sha256_iter_v1_hex>",
@@ -6239,12 +6459,12 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | 保存値 | 最終 digest を lowercase hex 文字列で `password_hash` に保存する。 |
 | 比較 | 入力パスワードから同一手順で digest を生成し、`crypto/subtle.ConstantTimeCompare` で比較する。 |
 
-`golang.org/x/crypto/pbkdf2` 等の外部パッケージは使用しない。PBKDF2、bcrypt、Argon2 等は本ファイルでは実装値を定義しない。
+`golang.org/x/crypto/pbkdf2` 等の外部パッケージは使用しない。PBKDF2、bcrypt、Argon2 等は本ファイルでは実装値を定義しない。新規 user の password hash は `.users.users[].password_hash` に保存する。`.admin_credentials` は初期 admin user 生成時の入力元としてのみ扱い、API response へは出さない。
 
 **セッショントークン生成：**
 `crypto/rand` で 32 bytes を生成し、`encoding/hex` で 64 文字の lowercase hex 文字列へ変換する。
 
-**セッション管理：** `components/api.go` 内のインメモリ辞書で管理。有効期限 8 時間。再起動で全セッション破棄。同一ユーザーの複数同時セッションを許容する。辞書 key は token 本体ではなく `sha256(token)` の lowercase hex とし、API response、`.access_log`、サーバーログへ token 本体を出力してはならない。
+**セッション管理：** `components/api.go` 内のインメモリ辞書で管理。有効期限は新規発行時点の `.server_config.session_timeout_seconds` とする。設定不在時は 8 時間。再起動で全セッション破棄。同一ユーザーの複数同時セッションを許容する。辞書 key は token 本体ではなく `sha256(token)` の lowercase hex とし、API response、`.access_log`、`.audit_log`、サーバーログへ token 本体を出力してはならない。
 
 **セッション期限切れ時：** `401 Unauthorized` を返す。クライアント（SDK）は `this._token` をクリアし、再ログインを促す。
 
@@ -6255,10 +6475,10 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | 最小長 | 8 文字 |
 | 最大長 | 128 文字 |
 | 許可文字 | UTF-8 文字列。NUL 文字は禁止。前後空白はトリムせず、入力値そのものを検証・ハッシュ化する。 |
-| 初期パスワード | `admin`。初回ログイン時は `must_change: "prompt"` を返す。 |
+| 初期パスワード | `--init-credentials` で生成した初期値を admin user に設定する。初回ログイン時は `must_change: "prompt"` を返す。 |
 | 変更時検証 | `new_password` が現在パスワードと同一の場合は `422` を返す。 |
 | 失敗時応答 | パスワード不一致は `401` と `{"error":"Unauthorized"}` を返し、どの条件に失敗したかは返さない。 |
-| 成功時保存 | 新 salt、新 hash、`login_count: 0`、`updated_at` を原子的に保存する。 |
+| 成功時保存 | password 変更対象 user に新 salt、新 hash、`must_change:false`、`updated_at` を原子的に保存する。 |
 
 **セッションレコード形式（メモリ上）：**
 
@@ -6266,13 +6486,17 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 {
   "token_hash": "<sha256_hex>",
   "session_id": "<16_byte_hex>",
+  "user_id": "u000001",
+  "username": "admin",
+  "role": "admin",
+  "permissions": ["read", "trigger", "operate", "config", "admin"],
   "created_at": "2026-09-15T10:00:00Z",
   "expires_at": "2026-09-15T18:00:00Z",
   "last_used_at": "2026-09-15T10:05:00Z"
 }
 ```
 
-`session_id` は `crypto/rand` で 16 bytes を生成し、lowercase hex とする。`GET /api/sessions` は `session_id` ではなく `current`、`created_at`、`expires_at`、`last_used_at` のみ返す。認証必須 API で有効 token を受信した場合、`last_used_at` を現在時刻へ更新する。期限切れ token は検出時にメモリから削除する。`POST /api/logout` は対象 token のみ削除する。`POST /api/sessions/revoke-all` は現在 token 以外を削除する。
+`session_id` は `crypto/rand` で 16 bytes を生成し、lowercase hex とする。`GET /api/sessions` は `session_id` ではなく `current`、`user_id`、`username`、`role`、`created_at`、`expires_at`、`last_used_at` のみ返す。認証必須 API で有効 token を受信した場合、`last_used_at` を現在時刻へ更新する。期限切れ token は検出時にメモリから削除する。`POST /api/logout` は対象 token のみ削除する。`POST /api/sessions/revoke-all` は現在 token 以外を削除する。`POST /api/users/{id}/password-reset` は対象 user の全 session を削除する。
 
 **ログイン失敗制御：**
 
@@ -6288,17 +6512,16 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 ```
 POST /api/login
   ├─ 連続失敗ロック中 → 429
-  └─ パスワードハッシュ検証
+  └─ username 正規化・user 検索・パスワードハッシュ検証
        ├─ 失敗 → 連続失敗回数 + 1 → .access_log 追記 → 401
-       └─ 成功 → login_count + 1 → ファイル更新
+       └─ 成功 → last_login_at 更新
                   → 連続失敗回数を 0 へリセット
-                  ├─ login_count == 1 → must_change: "prompt"（促す）
-                  ├─ login_count >= 5 → must_change: "forced"（強制）
-                  └─ それ以外      → must_change: "none"
-                  → セッショントークン生成・返却
+                  ├─ must_change == true → must_change: "prompt"
+                  ├─ TOTP 有効 → ticket 生成・返却
+                  └─ TOTP 無効 → セッショントークン生成・返却
 ```
 
-**パスワード変更時：** `login_count` を 0 にリセット。新しい salt を生成しハッシュを更新。変更完了後に現セッション以外のセッションを破棄。
+**パスワード変更時：** 新しい salt を生成しハッシュを更新し、`must_change:false` を保存する。変更完了後に現セッション以外のセッションを破棄。
 
 **`--init-credentials` オプション：** `components/api.go` を `--init-credentials` 引数で起動した場合、初期パスワード `admin` で `.admin_credentials` を生成して終了する（HTTP サーバーは起動しない）。
 
@@ -8263,3 +8486,331 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | 平均 2 倍超 | WARN、flag、tag、通知 event。 |
 | p95 以内 | anomaly なし。 |
 | 通知失敗 | build success 維持、pending 追加。 |
+
+### 27.39 マルチユーザー対応
+
+本機能の目的は、管理 API / SDK / UI の操作者を単一 admin ではなく user として識別し、session、権限、監査、表示を同一 user id で結び付けることである。
+
+対象コンポーネントは `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| user 保存先 | `.users`。schema は §22.0c。 |
+| role 保存先 | `.roles`。schema は §22.0c。 |
+| login request | `POST /api/login` は `{username,password}` を必須とする。 |
+| 初期 user | 起動時に `.users` が不在で `.admin_credentials` が存在する場合、`username:"admin"`、`role:"admin"` の user を 1 件生成する。 |
+| session actor | session record は `user_id`、`username`、`role`、`permissions` を保持する。 |
+
+**正常系：**
+
+1. API 起動時に `.users`、`.roles` を読み込む。
+2. `.users` 不在かつ `.admin_credentials` 有効時は admin user を生成し、`.users` を mode `600` で保存する。
+3. login は username を小文字へ正規化し、`deleted_at == null` かつ `enabled == true` の user だけを対象に password を検証する。
+4. password 成功かつ TOTP 無効の場合は session token を発行し、response に `{token,must_change,user}` を返す。
+5. password 成功かつ TOTP 有効の場合は session token を発行せず、`{totp_required:true,ticket,must_change,user}` を返す。
+6. `GET /api/sessions`、`.access_log`、`.audit_log`、`.api_access_log` は actor として user id を記録する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| username 不在 | `422`。 |
+| user 不在、disabled、deleted | `401`。存在有無は返さない。 |
+| `.users` 破損かつ migration 不可 | API server 起動失敗。 |
+| 最後の admin user を無効化または削除 | `409`。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| admin 初期生成 | `.users` に admin user が作成される。 |
+| user login | session に user id / role が保持される。 |
+| disabled user | `401`、session 不発行。 |
+| response | password hash、salt、TOTP secret、token hash を含まない。 |
+
+### 27.40 ユーザー管理 API
+
+本機能の目的は、admin 権限を持つ操作者が user の作成、更新、削除、password reset を API / SDK / UI から実行できるようにすることである。
+
+**API：**
+
+| Endpoint | 処理 |
+|----------|------|
+| `GET /api/users` | user 一覧を返す。既定では `deleted_at == null` の user のみ返す。 |
+| `POST /api/users` | user を作成する。`username`、`display_name`、`password`、`role` が必須。 |
+| `PATCH /api/users/{id}` | `display_name`、`role`、`enabled`、`must_change` を部分更新する。 |
+| `DELETE /api/users/{id}` | user を論理削除する。 |
+| `POST /api/users/{id}/password-reset` | password を再設定し、対象 user の session を削除する。 |
+
+**正常系：**
+
+1. すべての変更系 user API は `admin` permission を必須とする。
+2. user id は `u` + 6 桁以上の連番とする。既存 user の最大数値部分に 1 を加算し、初回 admin は `u000001` とする。
+3. password は §25 の `sha256_iter_v1` で hash 化し、平文は保存しない。
+4. username は小文字で保存し、削除済み user を含めて重複禁止とする。
+5. 作成、更新、削除、password reset は `.audit_log` へ記録する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| username 重複 | `409`。 |
+| role 不在 | `422`。 |
+| 対象 user 不在 | `404`。 |
+| 自分自身の削除 | `409`。 |
+| 最後の admin user 削除または admin role 解除 | `409`。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| user 作成 | `.users` に hash 保存、response に secret なし。 |
+| role 変更 | 次回認証時の permission が変わる。 |
+| password reset | 対象 user の既存 session が無効になる。 |
+| viewer 操作 | `403`。 |
+
+### 27.41 ロールベースアクセス制御
+
+本機能の目的は、endpoint を固定 group に分類し、session user と API token の権限判定を一貫させることである。
+
+**permission と endpoint group：**
+
+| permission | 許可 group | 主な endpoint |
+|------------|------------|---------------|
+| `read` | `read` | `GET /api/status`、logs、history、stats、diagnostics、health 以外の認証必須 GET。 |
+| `trigger` | `trigger` | `POST /api/build`、`POST /api/build/force`。 |
+| `operate` | `operate` | `POST /api/build/cancel`、queue clear、rollback、maintenance 操作、hook 実行関連操作。 |
+| `config` | `config` | config、repo、branch、notify、pipeline、access control、PAT、SMTP、webhook secret の変更。 |
+| `admin` | `admin` | users、roles、tokens、audit log、TOTP 管理、API rate limit。 |
+
+**判定順：**
+
+1. 認証不要 endpoint は `GET /api/health` と署名検証済み `POST /api/webhook` のみ。
+2. Bearer token が session の場合、session に保存された `permissions` で判定する。
+3. Bearer token が API token の場合、`.api_tokens.scopes` と `role` の permissions の積集合で判定する。
+4. endpoint group に必要 permission が不足する場合は `403` を返し、`.audit_log` に `permission_denied` を記録する。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| viewer GET | 成功。 |
+| viewer POST build | `403`。 |
+| operator build | 成功。 |
+| operator user 作成 | `403`。 |
+| token scope と role 不一致 | 積集合だけ許可。 |
+
+### 27.42 ビルドトリガー専用 API スコープ
+
+本機能の目的は、外部システムが最小権限で build を開始できる API token を発行できるようにすることである。
+
+**scope：**
+
+| scope | 許可 |
+|-------|------|
+| `trigger` | `POST /api/build`、`POST /api/build/force` のみ。 |
+| `read` | 読み取り endpoint のみ。 |
+| `operate` | 運用操作。 |
+| `config` | 設定変更。 |
+| `admin` | 管理操作。 |
+
+`trigger` scope は cancel、queue clear、config、token、user、audit、PAT 更新を許可しない。
+
+**正常系：**
+
+1. `POST /api/tokens` は `scopes:["trigger"]` を受け付ける。
+2. 発行 token は `Authorization: Bearer <token>` で使用する。
+3. `trigger` token による build は `.audit_log` と `.build_logs/{id}.json.trigger_actor` に token id を記録する。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| trigger token で `POST /api/build` | `202`。 |
+| trigger token で `GET /api/status` | `403`。`read` を併用した場合のみ成功。 |
+| trigger token で config | `403`。 |
+
+### 27.43 API キー管理
+
+本機能の目的は、API key の発行、一覧、失効、期限、scope、role を実装し、key 本体を保存しないことである。
+
+**正常系：**
+
+1. `POST /api/tokens` は `label`、`scopes`、`role`、`expires_at` を受け取る。
+2. token 本体は `act_` + 32 byte 相当のランダム文字列とする。
+3. `.api_tokens` には `sha256(token)` の lowercase hex だけを保存する。
+4. response の `token` は作成時 1 回だけ返す。`GET /api/tokens` では返さない。
+5. 認証時は hash 一致、`revoked_at == null`、`expires_at == null または now < expires_at` を満たす token だけ有効とする。
+6. 作成、認証成功、失効、期限切れ拒否を `.audit_log` へ記録する。ただし token 本体は記録しない。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| scopes 空 | `422`。 |
+| 未知 scope | `422`。 |
+| role 不在 | `422`。 |
+| 期限切れ token | `401`。 |
+| 失効済み token 再失効 | `404` または冪等成功にせず `404` 固定。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 作成 | token 本体は response だけ。 |
+| 一覧 | token hash と本体を返さない。 |
+| 期限切れ | `401`、last_used_at 更新なし。 |
+| 失効 | `revoked_at` 保存、以後 `401`。 |
+
+### 27.44 監査ログ
+
+本機能の目的は、認証、権限拒否、user、token、設定、build trigger などの重要操作を追跡できる JSON Lines 監査ログとして保存することである。
+
+**対象 action：**
+
+| action | target_type |
+|--------|-------------|
+| `login_success`, `login_failure`, `logout`, `totp_required`, `totp_enabled`, `totp_disabled` | `auth` |
+| `user_create`, `user_update`, `user_delete`, `password_reset` | `user` |
+| `token_create`, `token_revoke`, `token_auth`, `token_expired` | `api_token` |
+| `permission_denied` | `endpoint` |
+| `build_trigger`, `build_force_trigger` | `build` |
+| `config_update`, `rate_limit_update` | `config` |
+| `role_state_recreated` | `role` |
+
+**正常系：**
+
+1. 監査対象操作の成否が確定した後、`.audit_log` へ 1 行追記する。
+2. 監査ログ追記に失敗した場合、対象操作は失敗扱いにし、`500` を返す。
+3. secret、password、session token、API token 本体、hash、salt、TOTP secret は保存しない。
+4. `GET /api/audit-log` は `limit`、`offset`、`actor`、`action`、`result` で絞り込み、新しい順で返す。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| user 作成 | `user_create` が記録される。 |
+| 権限拒否 | `permission_denied` が記録される。 |
+| secret 入力 | 監査ログに平文がない。 |
+| 壊れた行 | API は無視して返す。 |
+
+### 27.45 セッションタイムアウト変更設定
+
+本機能の目的は、新規 session の有効期限を管理 API から変更可能にし、既存 session への影響を明確にすることである。
+
+**仕様：**
+
+| 項目 | 値 |
+|------|----|
+| 設定 key | `.server_config.session_timeout_seconds` |
+| 既定値 | `28800` |
+| 最小値 | `300` |
+| 最大値 | `2592000` |
+| 更新 API | `POST /api/config` または `setConfig({session_timeout_seconds})` |
+
+設定変更は新規 session にだけ適用する。既存 session の `expires_at` は延長も短縮もしない。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 300 秒設定 | 新規 session が 300 秒後に期限切れ。 |
+| 既存 session | 設定変更後も元の `expires_at`。 |
+| 範囲外 | `422`。 |
+
+### 27.46 TOTP 二要素認証
+
+本機能の目的は、外部ライブラリなしで RFC 6238 TOTP を検証し、password 漏えい時の管理 API 不正利用を抑止することである。
+
+**アルゴリズム：**
+
+| 項目 | 仕様 |
+|------|------|
+| secret | `crypto/rand` 20 bytes を RFC 4648 base32 padding なしで表示する。 |
+| HMAC | `crypto/hmac` + `crypto/sha1`。 |
+| step | 30 秒。 |
+| digits | 6 桁。 |
+| window | 現在 step の前後 1 step を許可する。 |
+| replay 防止 | `.totp_secrets.users[id].last_accepted_step` 以下の step は拒否する。 |
+| otpauth URI | `otpauth://totp/Adlaire%20CI:{username}?secret={secret}&issuer=Adlaire%20CI&algorithm=SHA1&digits=6&period=30`。 |
+
+QR code 生成は初期実装対象外とする。UI は secret と otpauth URI を一回表示し、ユーザーが認証アプリへ手入力またはURI貼り付けできるようにする。
+
+**正常系：**
+
+1. `POST /api/auth/totp-setup` は仮 secret と otpauth URI を返すが、永続化しない。
+2. `POST /api/auth/totp-confirm` は仮 secret と code を検証し、成功時だけ `.totp_secrets` と `.users.totp_enabled=true` を保存する。
+3. TOTP 有効 user の `POST /api/login` は password 成功後に ticket を返し、session token は返さない。
+4. `POST /api/login/totp` は ticket と code を検証し、成功時に session token を返す。
+5. `DELETE /api/auth/totp` は current user の code を検証して TOTP を無効化する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| code 不一致 | `401`。 |
+| code 形式不正 | `422`。 |
+| ticket 期限切れ | `401`。ticket 有効期限は 5 分。 |
+| setup 未実行 confirm | `409`。 |
+| TOTP 無効 user の disable | `409`。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 正常 setup | secret は確認まで保存されない。 |
+| 正常 login | password 後 ticket、TOTP 後 token。 |
+| replay | 同一 step の再利用は `401`。 |
+| secret 表示 | response と UI の一回表示以外に平文が残らない。 |
+
+### 27.47 API レート制限
+
+本機能の目的は、login 総当たり、API token 濫用、外部連携の暴走を Go 標準ライブラリだけで抑止することである。
+
+**固定窓 policy：**
+
+| group | 既定 window | 既定 max | 対象 |
+|-------|-------------|----------|------|
+| `login` | 60 秒 | 10 | `POST /api/login`、`POST /api/login/totp`。 |
+| `read` | 60 秒 | 600 | 読み取り endpoint。 |
+| `trigger` | 60 秒 | 60 | build trigger endpoint。 |
+| `operate` | 60 秒 | 120 | 運用操作 endpoint。 |
+| `config` | 60 秒 | 60 | 設定変更 endpoint。 |
+| `admin` | 60 秒 | 60 | user、token、audit、rate limit endpoint。 |
+
+**判定キー：**
+
+| 認証状態 | key |
+|----------|-----|
+| 認証前 | `ip:{remote_addr}:{group}` |
+| session | `user:{user_id}:{group}` と `ip:{remote_addr}:{group}` の両方 |
+| API token | `token:{token_id}:{group}` と `ip:{remote_addr}:{group}` の両方 |
+
+どちらか一方でも上限を超えた場合は `429 Too Many Requests` と `{"error":"Too many requests"}` を返す。
+
+**正常系：**
+
+1. path 解決後、認証前に IP key の login 制限を確認する。
+2. 認証後、endpoint group を判定し、actor key と IP key の count を更新する。
+3. `GET /api/api-rate-limit` は policy と window summary を返す。
+4. `POST /api/api-rate-limit` は policy を検証して保存し、`.api_rate_state.windows` を空にする。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| policy group 不足 | `422`。 |
+| window_seconds 範囲外 | `422`。許容値は 1〜86400。 |
+| max_requests 範囲外 | `422`。許容値は 1〜100000。 |
+| `.api_rate_state` 書き込み失敗 | `500`。対象 API は実行しない。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| login 11 回目 | `429`。 |
+| window 経過 | count reset、成功。 |
+| session と IP | どちらか超過で `429`。 |
+| disabled | `enabled:false` の場合は判定せず成功。 |
