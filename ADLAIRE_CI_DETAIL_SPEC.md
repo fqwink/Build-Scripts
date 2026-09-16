@@ -153,6 +153,33 @@
 
 ---
 
+## 0g. 初期実装 Phase 分割
+
+Go 版初期実装は、`ADLAIRE_CI_SPEC.md` §0e の対象範囲を一括実装せず、下表の Phase 順に進める。上位 Phase の完了判定を満たす前に、下位 Phase の実装 PR を開始してはならない。
+
+| Phase | 対象 | 実装範囲 | 依存条件 | 完了条件 |
+|-------|------|----------|----------|----------|
+| Phase 1 | `build_spec.go` | §2〜§9 の CLI、Markdown 変換、HTML 出力、生成物確認。 | なし。 | §0e の `build_spec.go` 必須検証と §0f の `build_spec.go` 完了判定を満たす。 |
+| Phase 2 | `runner.go` | §10〜§20 の CI ランナー、GitHub API 連携、SHA キャッシュ、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd。 | Phase 1 が完了し、`adlaire-ci-build` の CLI 契約が固定されている。 | §0e の `runner.go` 必須検証と §0f の `runner.go` 完了判定を満たす。 |
+| Phase 3 | `api_server.go` P0 / P1 | §21〜§22、§25、§26 のうち、認証、セッション、共通エラー、状態ファイル読み書き、ビルド操作、status、logs、history、queue、circuit breaker。 | Phase 2 が完了し、runner が書き込む状態ファイル schema が固定されている。 | §22.0f P0 / P1 の必須検証、§0e の `api_server.go` API 共通・状態ファイル検証、§0f の `api_server.go` 完了判定の該当範囲を満たす。 |
+| Phase 4 | `api_server.go` P2〜P5 | §22.0f P2〜P5 の config、repo、branch、schedule、notify、snapshot、rollback、maintenance、access control、hooks、tokens 等。 | Phase 3 が完了し、API 共通処理と認証が固定されている。 | §22.0f P2〜P5 の必須検証と §0e の `api_server.go` endpoint 契約を満たす。 |
+| Phase 5 | `adlaire-ci-sdk.js` | §23 の SDK class、method、戻り値、HTTP error、token 破棄、query 生成。 | Phase 3 と Phase 4 が完了し、§22.0e の endpoint 契約が固定されている。 | §0e の SDK 契約と §0f の `adlaire-ci-sdk.js` 完了判定を満たす。 |
+| Phase 6 | `admin/index.html` | §24 の標準管理ツール UI、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去。 | Phase 5 が完了し、SDK method 契約が固定されている。 | §0e の UI 契約と §0f の `admin/index.html` 完了判定を満たす。 |
+
+各 Phase は、原則として独立した実装 PR とする。ただし、同一 Phase 内で API、SDK、UI、状態ファイルの整合が必要な場合は、`ADLAIRE_CI_SPEC.md` §0c の PR 分割ポリシーを優先し、片方だけ merge されると仕様矛盾が起きる変更を別 PR に分けてはならない。
+
+Phase をまたぐ実装を 1 本の PR にまとめる場合は、PR 本文に以下を明記する。
+
+- 対象 Phase
+- Phase を統合する理由
+- 上位 Phase の完了条件を満たしている根拠
+- 下位 Phase が上位 Phase の未確定仕様へ依存していない根拠
+- 実装対象外に残す機能
+
+Phase 外の将来計画、未仕様化、改訂予定項目は、初期実装 PR に含めてはならない。必要な場合は、先に `ADLAIRE_CI_SPEC.md` §13 の状態を改訂し、本ファイルへ実装可能な詳細仕様と検証条件を追加する。
+
+---
+
 ## 0. システム概要
 
 Adlaire CI は Go 版 3 コンポーネントと JavaScript/HTML 管理ツールで構成する。
