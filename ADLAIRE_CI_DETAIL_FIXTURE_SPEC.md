@@ -24,7 +24,7 @@
 | 範囲 | 内容 |
 |------|------|
 | §0g.8-F | Phase fixture / testdata 配置、fake 実装、実装 PR 証跡。 |
-| §22-F | API P0〜P5 実装順序、必須検証、API fixture 固定。 |
+| §22-F | API P0〜P5 実装順序、必須検証、API fixture、API / SDK / UI / 状態ファイル cross fixture 固定。 |
 | §27-F | §27 fixture 配置、fixture カタログ、manifest、assertion、expected/effects、相互整合、component 別検証責務。 |
 | §27-F-PR | §27 実装 PR 証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
 
@@ -135,6 +135,21 @@ P2〜P5 実装は、下表の fixture をすべて満たした場合だけ完了
 | E4 pipeline config reserved arg | P5 | `extra_args` に `--src`、`--out`、`--state-dir` を含める。 | `422 {"error":"Validation failed","details":[...]}`。 | `.pipeline_config` を変更しない。 |
 | E5 notes same content | P5 | 同じ `content` を 2 回 `POST /api/notes`。 | 2 回目は `No changes`。 | 2 回目は `.notes`、`.config_log` を変更しない。 |
 | E6 dashboard layout invalid | P5 | 重複 widget、未知 widget、空配列を `POST /api/dashboard-layout`。 | `422 {"error":"Validation failed","details":[...]}`。 | `.dashboard_layout` を変更しない。 |
+
+**API / SDK / UI / 状態ファイル cross fixture 固定：**
+
+下表の fixture は、API endpoint、SDK method、UI 操作、状態ファイル副作用の横断整合を固定する。API endpoint の method、path、request、response、error、read / write 境界は `ADLAIRE_CI_DETAIL_API_SPEC.md`、SDK method と error 変換は `ADLAIRE_CI_DETAIL_SDK_SPEC.md`、UI DOM と表示状態は `ADLAIRE_CI_DETAIL_UI_SPEC.md`、状態ファイル schema と保存手順は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。
+
+| fixture | 入力 | 必須確認 |
+|---------|------|----------|
+| cross auth expired | 任意の認証必須 API が `401`。 | SDK は token を破棄し、UI は全 secret field を消去して `panel-login` だけを表示する。対象 API の状態ファイル副作用なし。 |
+| cross config no-op | `POST /api/config` に既存値と同一の正規化済み body。 | API は `No changes`、SDK は response をそのまま返し、UI は成功表示する。`.server_config`、`.config_log`、`.audit_log` に差分なし。 |
+| cross validation details | 任意の保存 API が `422 details`。 | SDK は `AdlaireCIError.details` を保持し、UI は該当 field と panel summary に表示する。状態ファイルを書かない。 |
+| cross refresh failure | 変更 API は成功し、成功後再取得の 2 件目が `500`。 | 変更副作用は維持し、同じ変更 API を再実行しない。UI は操作成功を `global-success`、再取得失敗を panel error に分けて表示する。 |
+| cross secret failure | secret 保存 API が `500`。 | SDK error に secret 原文を含めず、UI は secret field を消去する。状態ファイル、log、fixture に secret 原文が残らない。 |
+| cross stream invalid frame | `GET /api/build/stream` が parse 不能 frame を返す。 | SDK は `AdlaireCIError(status=0,message="Invalid SSE frame")`、UI は stream error を表示し、status / queue を再取得する。状態ファイルは変更しない。 |
+| cross binary snapshot | `downloadSnapshot(id)` が binary success。 | API は binary header、SDK は `Blob`、UI は download 開始表示。JSON parse、success JSON body、状態ファイル更新なし。 |
+| cross destructive cancel | 削除 / rollback 確認 dialog を cancel。 | SDK method 呼び出し 0 回、状態ファイル副作用なし、success / error 表示差分なし。 |
 
 ## 27-F §27 fixture / PR 証跡詳細契約
 
