@@ -780,7 +780,11 @@ Go 版初期実装では、実装対象を `ADLAIRE_CI_DETAIL_SPEC.md` の成熟
 | リリース作成条件 | 安定版リリース（`X` インクリメント時）のみ GitHub Release を作成する。開発・ビルド（`N` インクリメントのみ）では作成しない |
 | タグ形式 | `V.X.N`（リリースバージョンと一致させる）例：`V.2.102` |
 | リリースタイトル | タグ名と同一にする |
-| 添付ファイル | ビルド済み静的 Web サイトを release archive として添付する |
+| リリース形式 | バイナリ配布を標準とする。利用者は GitHub Release から OS/arch 別の実行バイナリを取得し、ソースからのビルドを標準導入手順に含めない |
+| 標準 OS/arch | 初期標準は Linux x86_64（`linux-amd64`）とする。追加 OS/arch は将来のリリース対象として個別に仕様化する |
+| 添付ファイル | `adlaire-ci-build`、`adlaire-ci-runner`、管理 API 導入後は `adlaire-ci-api` の実行バイナリを添付する。将来 `adlaire-ci-cli` を実装した場合のみ CLI バイナリを追加する |
+| 管理 UI 配布物 | `adlaire-ci-sdk.js` と `admin/index.html` はバイナリではなく管理 UI 配布物として扱い、管理 API 導入後の release archive に含める |
+| checksum | Release 添付ファイルごとに SHA-256 checksum を提供する。セットアップ手順では配置前に checksum を検証する |
 | プレリリースフラグ | 安定版リリースでは `Pre-release` にチェックを入れない |
 | ドラフト公開禁止 | Draft Release のまま公開しない |
 

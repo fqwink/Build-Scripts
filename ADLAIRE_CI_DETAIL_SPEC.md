@@ -5303,7 +5303,7 @@ POST /api/login
 
 ## 26. セットアップ・アップデート手順
 
-> **安定版ポリシー：** タグ付き安定版リリース（例：`v1.0.0`）のみをサポートする。開発ブランチ（`main` 等）の直接追従は非対応。`git pull` は使用しない。
+> **安定版ポリシー：** タグ付き安定版リリース（例：`V.1.100`）のみをサポートする。開発ブランチ（`main` 等）の直接追従は非対応。`git pull` は使用しない。
 
 本節は、Go 版 Adlaire CI のセットアップ手順を定義する。
 
@@ -5312,7 +5312,9 @@ POST /api/login
 | 項目 | 要件 |
 |------|------|
 | Go 版バイナリ | `adlaire-ci-build`、`adlaire-ci-runner`。管理 API 導入時は `adlaire-ci-api` も配置する。 |
-| Go toolchain | ソースからビルドする場合のみ必要。リリースバイナリを配置する場合は不要。 |
+| 配布形式 | GitHub Release に添付された OS/arch 別の実行バイナリを標準とする。初期標準は Linux x86_64（`linux-amd64`）。 |
+| Go toolchain | 標準セットアップでは不要。リリースバイナリをそのまま配置し、利用環境で `go build` しない。 |
+| checksum | Release 添付ファイルごとの SHA-256 checksum を取得し、配置前に必ず検証する。 |
 | init システム | systemd（Linux） |
 | バージョン管理 | git |
 | ネットワーク | GitHub API への HTTPS 送信。SSH 転送機能を実装した場合のみデプロイ先への SSH 接続。 |
@@ -5327,7 +5329,23 @@ POST /api/login
 | `INSTALL_DIR` | `/opt/adlaire-builder` | インストール先ディレクトリ |
 | `BIN_DIR` | `/usr/local/bin` | Go 版バイナリ配置先 |
 | `SERVICE_USER` | `root` | systemd サービスの実行ユーザー |
-| `VERSION` | —（必須） | セットアップ・アップデート対象の安定版タグ（例：`v1.0.0`） |
+| `VERSION` | —（必須） | セットアップ・アップデート対象の安定版タグ（例：`V.1.100`） |
+| `OS_ARCH` | `linux-amd64` | 取得するリリースバイナリの OS/arch。初期標準は `linux-amd64` のみ |
+
+### §26.2a リリース成果物
+
+安定版 GitHub Release には、以下の成果物を添付する。
+
+| 成果物 | 状態 | 説明 |
+|--------|------|------|
+| `adlaire-ci-build-linux-amd64` | 必須 | `build_spec.go` から生成した Markdown → 静的 Web サイトビルドバイナリ。 |
+| `adlaire-ci-runner-linux-amd64` | 必須 | `runner.go` から生成した CI ランナーバイナリ。 |
+| `adlaire-ci-api-linux-amd64` | 管理 API 導入後に必須 | `api_server.go` から生成した管理 API サーバーバイナリ。 |
+| `adlaire-ci-cli-linux-amd64` | 将来計画 | CLI 管理クライアントを実装した場合のみ添付する。 |
+| `admin-ui.tar.gz` | 管理 API 導入後に必須 | `admin/index.html` と `adlaire-ci-sdk.js` を含む管理 UI 配布物。 |
+| `SHA256SUMS` | 必須 | Release 添付ファイルの SHA-256 checksum 一覧。 |
+
+`mcp_server.go` は将来計画であり、初期リリース成果物に含めない。MCP サーバーを実装対象にする場合は、先に `ADLAIRE_CI_SPEC.md` §13.6 から §13.3 へ昇格し、MCP 専用の詳細仕様とリリース成果物名を追加する。
 
 ### §26.3 Go 版初回セットアップ手順
 
@@ -5340,7 +5358,8 @@ POST /api/login
 | 変数検証 | `REPO_URL`、`INSTALL_DIR`、`BIN_DIR`、`VERSION` が空、`INSTALL_DIR` が `/`、`BIN_DIR` が `/` | 何も変更せず終了する。 |
 | リポジトリ取得 | `INSTALL_DIR` が既に存在し、Git repository でない | 上書きせず終了する。 |
 | tag checkout | `VERSION` tag が存在しない | checkout せず終了する。既に clone 済みの場合は元の checkout を維持する。 |
-| バイナリ配置 | 配置元バイナリが存在しない、または `go build` が失敗 | systemd 設定を変更せず終了する。 |
+| バイナリ取得 | Release バイナリまたは `SHA256SUMS` の取得に失敗、checksum 検証に失敗 | バイナリを配置せず、systemd 設定を変更せず終了する。 |
+| バイナリ配置 | checksum 検証済みバイナリが存在しない、または `install` が失敗 | systemd 設定を変更せず終了する。 |
 | secret 保存 | PAT が空 | `.github_token` を作成せず終了する。 |
 | systemd 配置 | unit ファイル生成または `systemctl daemon-reload` が失敗 | timer を enable せず終了する。 |
 | 起動確認 | `systemctl is-active adlaire-ci.timer` が `active` でない | 失敗として扱い、直前のログ確認コマンドを表示する。 |
@@ -5352,38 +5371,41 @@ POST /api/login
 REPO_URL="https://github.com/<owner>/<repo>.git"
 INSTALL_DIR="/opt/adlaire-builder"
 BIN_DIR="/usr/local/bin"
-VERSION="v1.0.0"
+VERSION="V.1.100"
+OS_ARCH="linux-amd64"
 SERVICE_USER="root"
 
 # ── 1. リポジトリ取得 ─────────────────────────────────
 git clone "$REPO_URL" "$INSTALL_DIR"
 git -C "$INSTALL_DIR" checkout "$VERSION"
 
-# ── 2. Go 版バイナリ配置 ──────────────────────────────
-# リリースバイナリを使う場合:
-install -m 0755 adlaire-ci-build  "$BIN_DIR/adlaire-ci-build"
-install -m 0755 adlaire-ci-runner "$BIN_DIR/adlaire-ci-runner"
+# ── 2. Release バイナリ取得・checksum 検証 ────────────
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/adlaire-ci-build-$OS_ARCH"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/adlaire-ci-runner-$OS_ARCH"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/SHA256SUMS"
+grep "  adlaire-ci-build-$OS_ARCH$" SHA256SUMS | sha256sum -c -
+grep "  adlaire-ci-runner-$OS_ARCH$" SHA256SUMS | sha256sum -c -
 
-# ソースからビルドする場合:
-# go build -o "$BIN_DIR/adlaire-ci-build"  ./cmd/adlaire-ci-build
-# go build -o "$BIN_DIR/adlaire-ci-runner" ./cmd/adlaire-ci-runner
+# ── 3. Go 版バイナリ配置 ──────────────────────────────
+install -m 0755 "adlaire-ci-build-$OS_ARCH"  "$BIN_DIR/adlaire-ci-build"
+install -m 0755 "adlaire-ci-runner-$OS_ARCH" "$BIN_DIR/adlaire-ci-runner"
 
-# ── 3. GitHub PAT 保存 ────────────────────────────────
+# ── 4. GitHub PAT 保存 ────────────────────────────────
 printf '%s\n' "<PAT>" > "$INSTALL_DIR/.github_token"
 chmod 600 "$INSTALL_DIR/.github_token"
 
-# ── 4. SHA キャッシュ初期化 ───────────────────────────
+# ── 5. SHA キャッシュ初期化 ───────────────────────────
 printf '%s\n' '{"sha":""}' > "$INSTALL_DIR/.last_sha"
 chmod 600 "$INSTALL_DIR/.last_sha"
 
-# ── 5. systemd サービスファイル配置 ───────────────────
+# ── 6. systemd サービスファイル配置 ───────────────────
 # §26.4.1 のファイル内容を /etc/systemd/system/ に配置した上で:
 systemctl daemon-reload
 
-# ── 6. タイマー有効化・起動 ───────────────────────────
+# ── 7. タイマー有効化・起動 ───────────────────────────
 systemctl enable --now adlaire-ci.timer
 
-# ── 7. 起動確認 ───────────────────────────────────────
+# ── 8. 起動確認 ───────────────────────────────────────
 systemctl status adlaire-ci.timer
 ```
 
@@ -5407,25 +5429,26 @@ Go 版初回セットアップでは以下を実行しない。
 mkdir -p "$INSTALL_DIR/.build_logs"
 mkdir -p "$INSTALL_DIR/.snapshots"
 
-# ── 2. Go 版 API バイナリ配置 ─────────────────────────
-# リリースバイナリを使う場合:
-install -m 0755 adlaire-ci-api "$BIN_DIR/adlaire-ci-api"
+# ── 2. Release バイナリ取得・checksum 検証 ────────────
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/adlaire-ci-api-$OS_ARCH"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/SHA256SUMS"
+grep "  adlaire-ci-api-$OS_ARCH$" SHA256SUMS | sha256sum -c -
 
-# ソースからビルドする場合:
-# go build -o "$BIN_DIR/adlaire-ci-api" ./cmd/adlaire-ci-api
+# ── 3. Go 版 API バイナリ配置 ─────────────────────────
+install -m 0755 "adlaire-ci-api-$OS_ARCH" "$BIN_DIR/adlaire-ci-api"
 
-# ── 3. 初期認証情報生成（初期パスワード: admin）────────
+# ── 4. 初期認証情報生成（初期パスワード: admin）────────
 /usr/local/bin/adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"
 chmod 600 "$INSTALL_DIR/.admin_credentials"
 
-# ── 4. 管理 API systemd サービス配置 ─────────────────
+# ── 5. 管理 API systemd サービス配置 ─────────────────
 # §26.4.2 のファイル内容を /etc/systemd/system/adlaire-ci-api.service に配置した上で:
 systemctl daemon-reload
 
-# ── 5. サービス有効化・起動 ───────────────────────────
+# ── 6. サービス有効化・起動 ───────────────────────────
 systemctl enable --now adlaire-ci-api
 
-# ── 6. 起動確認 ───────────────────────────────────────
+# ── 7. 起動確認 ───────────────────────────────────────
 systemctl status adlaire-ci-api
 ```
 
@@ -5496,7 +5519,8 @@ WantedBy=multi-user.target
 | tag 取得 | `git fetch --tags` が成功する。 | checkout せず終了する。 |
 | tag 検証 | `git -C "$INSTALL_DIR" rev-parse --verify "$NEW_VERSION^{commit}"` が成功する。 | checkout せず終了する。 |
 | checkout | `git -C "$INSTALL_DIR" checkout "$NEW_VERSION"` が成功する。 | `git -C "$INSTALL_DIR" checkout "$PREV_REV"` を実行する。戻せない場合は timer / API を再起動しない。 |
-| バイナリ更新 | 新バイナリ配置または `go build` が成功する。 | `PREV_REV` へ戻し、既存バイナリを維持する。 |
+| バイナリ取得 | 新 Release バイナリと `SHA256SUMS` の取得、checksum 検証が成功する。 | `PREV_REV` へ戻し、既存バイナリを維持する。 |
+| バイナリ更新 | checksum 検証済みの新バイナリ配置が成功する。 | `PREV_REV` へ戻し、既存バイナリを維持する。 |
 | runner 再起動 | `systemctl restart adlaire-ci.timer` と `systemctl is-active adlaire-ci.timer` が成功する。 | `PREV_REV` へ戻し、再度 `systemctl restart adlaire-ci.timer` を 1 回だけ実行する。 |
 | API 再起動 | API 導入済みの場合のみ `systemctl restart adlaire-ci-api` と `systemctl is-active adlaire-ci-api` が成功する。 | `PREV_REV` へ戻し、runner と API の再起動を 1 回だけ実行する。 |
 
@@ -5505,7 +5529,9 @@ rollback 後も service が active にならない場合は、自動復旧を継
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
 INSTALL_DIR="/opt/adlaire-builder"
-NEW_VERSION="v1.2.0"
+BIN_DIR="/usr/local/bin"
+NEW_VERSION="V.2.102"
+OS_ARCH="linux-amd64"
 
 # ── 1. 最新タグ一覧を確認 ─────────────────────────────
 PREV_REV="$(git -C "$INSTALL_DIR" rev-parse --verify HEAD)"
@@ -5516,16 +5542,30 @@ git -C "$INSTALL_DIR" rev-parse --verify "$NEW_VERSION^{commit}"
 # ── 2. 対象バージョンへ切り替え ───────────────────────
 git -C "$INSTALL_DIR" checkout "$NEW_VERSION"
 
-# ── 3. runner サービス再起動 ─────────────────────────
+# ── 3. Release バイナリ取得・checksum 検証 ────────────
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/adlaire-ci-build-$OS_ARCH"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/adlaire-ci-runner-$OS_ARCH"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/SHA256SUMS"
+grep "  adlaire-ci-build-$OS_ARCH$" SHA256SUMS | sha256sum -c -
+grep "  adlaire-ci-runner-$OS_ARCH$" SHA256SUMS | sha256sum -c -
+
+# ── 4. Go 版バイナリ更新 ──────────────────────────────
+install -m 0755 "adlaire-ci-build-$OS_ARCH"  "$BIN_DIR/adlaire-ci-build"
+install -m 0755 "adlaire-ci-runner-$OS_ARCH" "$BIN_DIR/adlaire-ci-runner"
+
+# ── 5. runner サービス再起動 ─────────────────────────
 systemctl restart adlaire-ci.timer
 
-# ── 4. 起動確認 ───────────────────────────────────────
+# ── 6. 起動確認 ───────────────────────────────────────
 systemctl status adlaire-ci.timer
 ```
 
 管理 API 導入後は、追加で `adlaire-ci-api` を再起動する。
 
 ```bash
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/adlaire-ci-api-$OS_ARCH"
+grep "  adlaire-ci-api-$OS_ARCH$" SHA256SUMS | sha256sum -c -
+install -m 0755 "adlaire-ci-api-$OS_ARCH" "$BIN_DIR/adlaire-ci-api"
 systemctl restart adlaire-ci-api
 systemctl status adlaire-ci-api
 ```
