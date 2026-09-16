@@ -9472,7 +9472,20 @@ W1-PR1 の全 fixture は、§27 fixture manifest schema 固定契約と §27 ex
 
 W1-PR1 fixture の `manifest.json`、`expected/effects.json`、`expected/security.json` が上表を満たさない場合、fixture は存在していても未完了とする。
 
-W1-PR1 完了後、W1 内の後続 PR は `§27.1`、`§27.3`、`§27.4` のいずれか 1〜2 機能を対象にできる。ただし W1-PR1 の dry-run no-write 契約、stdout JSON schema、secret mask 契約、fake GitHub read 契約を変更してはならない。変更が必要な場合は、W1-PR1 の仕様改訂として本節を先に更新する。
+**§27 W1-PR1 stdout / exit code 整合固定契約：**
+
+W1-PR1 の dry-run stdout は、`§27.2 ドライラン実行モード` の JSON schema と完全一致させる。fixture expected が `§27.2` と異なる key 名、reason 値、終了コード、no-write 判定を持つ場合は、fixture ではなく本仕様を修正対象とする。
+
+| 対象 | 固定内容 |
+|------|----------|
+| stdout JSON | JSON object 1 件と末尾 LF だけを出力する。通常ログ、進捗行、secret 平文、追加 JSON 行を混在させてはならない。 |
+| `would_write` | 実書込結果ではなく、非 dry-run なら発生する論理書込予定だけを列挙する。dry-run 実行中の実ファイル差分は常に 0 件でなければならない。 |
+| `expected/effects.json.write_order` | dry-run の実書込順序であるため常に空配列にする。`stdout.would_write` と混同してはならない。 |
+| GitHub read 失敗 | fake GitHub read の最終失敗、rate limit、network failure は終了コード `3`、`reason="github_error"`、`errors[]` 出力、状態 / log / 通知 / status / deploy 差分なしに固定する。 |
+| 設定破損 | 起動時設定検証で破損を検出した場合は終了コード `2`、`reason="config_error"`、`errors[]` 出力、backup / 初期化 / 正規化 / quarantine / rewrite なしに固定する。 |
+| 後続 PR 制約 | W1 後続 PR は `§27.2` の stdout key、reason 値、終了コード、no-write、fake GitHub read、secret mask を変更してはならない。 |
+
+W1-PR1 完了後、W1 内の後続 PR は `§27.1`、`§27.3`、`§27.4` のいずれか 1〜2 機能を対象にできる。ただし W1-PR1 の dry-run no-write 契約、stdout JSON schema、終了コード、secret mask 契約、fake GitHub read 契約を変更してはならない。変更が必要な場合は、W1-PR1 の仕様改訂として本節と `§27.2` を先に更新する。
 
 **§27 PR 分割禁止条件：**
 
@@ -9667,6 +9680,7 @@ dry-run の stdout は JSON object 1 件と末尾改行に固定する。
 
 ```json
 {
+  "mode": "dry-run",
   "dry_run": true,
   "state_dir": "/opt/adlaire-builder",
   "targets": [
@@ -9678,43 +9692,71 @@ dry-run の stdout は JSON object 1 件と末尾改行に固定する。
       "current_commit_sha": "abcdef",
       "would_build": true,
       "trigger": "polling",
-      "reason": "sha_changed"
+      "reason": "sha_changed",
+      "warnings": []
     }
   ],
-  "would_write": [],
+  "would_write": [
+    "build_log",
+    "history",
+    "status",
+    "sha_cache"
+  ],
   "would_call": ["github_tree", "github_blob"],
+  "secrets_masked": true,
   "errors": [],
   "warnings": []
 }
 ```
 
-`targets[].reason` は `"sha_changed"`、`"no_change"`、`"cooldown"`、`"circuit_open"`、`"config_error"`、`"github_error"`、`"precheck_error"` のいずれかとする。`would_write` は常に空配列でなければならない。
+`targets[].reason` は `"sha_changed"`、`"no_change"`、`"cooldown"`、`"circuit_open"`、`"config_error"`、`"github_error"`、`"precheck_error"` のいずれかとする。`would_write` は実際に書き込んだ path ではなく、非 dry-run 実行で書込対象になる論理種別の予告である。dry-run は `would_write` に値がある場合でも実ファイルを作成、更新、削除してはならない。
 
 **dry-run 出力 schema 固定契約：**
 
 | key | 型 | 仕様 |
 |-----|----|------|
+| `mode` | string | 常に `"dry-run"`。 |
+| `dry_run` | boolean | 常に `true`。 |
+| `state_dir` | string | 解決後の state directory を返す。secret、token、URL credential を含めてはならない。 |
 | `targets` | array | branch target 正規化後の処理順で返す。複数 target は branch 名昇順、同一 branch は target path 昇順。 |
+| `targets[].branch` | string | 対象 branch 名。 |
+| `targets[].target_file` | string | 対象 Markdown file または directory。 |
+| `targets[].previous_sha` | string|null | dry-run 開始時点の保存済み SHA。存在しない場合は `null`。 |
+| `targets[].current_blob_sha` | string|null | fake GitHub read で取得した blob SHA。GitHub read 失敗または precheck failure では `null`。 |
+| `targets[].current_commit_sha` | string|null | fake GitHub read で取得した commit SHA。GitHub read 失敗または precheck failure では `null`。 |
+| `targets[].would_build` | boolean | 非 dry-run なら build を開始する場合だけ `true`。`github_error`、`config_error`、`precheck_error` では `false`。 |
+| `targets[].trigger` | string | 判定 trigger。既定は `"polling"`。 |
+| `targets[].reason` | string | `"sha_changed"`、`"no_change"`、`"cooldown"`、`"circuit_open"`、`"config_error"`、`"github_error"`、`"precheck_error"` のいずれか。 |
+| `targets[].warnings` | array[object] | target 固有 warning。形式は `warnings[]` と同じ。 |
 | `would_call` | array[string] | 実行予定の外部 API / command 種別だけを固定文字列で返す。secret、URL query 全体、token は含めない。 |
-| `would_write` | array | 常に `[]`。dry-run で書込予定を列挙してはならない。 |
+| `would_write` | array[string] | 非 dry-run なら発生する論理書込予定を固定文字列で返す。許可値は `"lock"`、`"build_log"`、`"history"`、`"status"`、`"sha_cache"`、`"notification"`、`"deploy"`、`"snapshot"`、`"commit_status"`。実書込が発生したことを意味しない。 |
+| `secrets_masked` | boolean | stdout、stderr、expected、effects に secret 平文が残らない検証を通した場合だけ `true`。 |
 | `errors` | array[object] | `{ "code": string, "message": string, "target": string|null }`。 |
 | `warnings` | array[object] | `{ "code": string, "message": string, "target": string|null }`。 |
 
-dry-run は、破損 state の backup、初期値作成、lock 作成、通知、GitHub Commit Status、deploy、archive、cleanup を実行しない。stdout 以外の状態差分が発生した場合は実装不合格とする。
+`would_call` の許可値は `"github_tree"`、`"github_blob"`、`"github_commit"`、`"github_rate_limit"` に限定する。dry-run は fake GitHub read だけを実行対象にし、実 GitHub write API、GitHub Commit Status、SSH、pipeline、deploy、snapshot、notification、systemd、hook、remote build を `would_call` に含めてはならない。
 
-終了コードは、検証が完了した場合 `0`、設定不正または入力不正 `2`、GitHub API 全再試行失敗 `3` とする。`--help` / `--version` と同時指定された場合は `--help` / `--version` を優先し、dry-run JSON を出力しない。
+dry-run は、破損 state の backup、初期値作成、lock 作成、通知、GitHub Commit Status、deploy、archive、cleanup、quarantine、状態正規化を実行しない。stdout 以外の状態差分が発生した場合は実装不合格とする。
+
+終了コードは下表に固定する。`--help` / `--version` と同時指定された場合は `--help` / `--version` を優先し、dry-run JSON を出力しない。
+
+| 終了コード | 条件 | stdout / stderr | 副作用 |
+|------------|------|-----------------|--------|
+| `0` | dry-run 検証が完了した。`would_build=true`、`would_build=false`、warning あり、cooldown、circuit open を含む。 | stdout に dry-run JSON 1 件。stderr は空、または環境依存でなく secret mask 済み warning だけ。 | 状態 / log / cache / lock / 通知 / deploy / status 差分なし。 |
+| `2` | CLI 引数不正、設定不正、設定破損、path 不正、schema 不正、precheck failure。GitHub read 前に確定する failure。 | stdout に dry-run JSON 1 件、`errors[]` に原因、該当 target の `reason="config_error"` または `"precheck_error"`。stderr は secret mask 済み。 | backup、初期化、正規化、quarantine、rewrite を含めて差分なし。 |
+| `3` | fake GitHub read の最終失敗、rate limit、network failure、GitHub response schema 不正。 | stdout に dry-run JSON 1 件、`errors[]` に原因、該当 target の `reason="github_error"`。stderr は secret mask 済み。 | pipeline、deploy、notification、commit status、状態更新を含めて差分なし。 |
 
 検証条件:
 
 | ケース | 期待結果 |
 |--------|----------|
-| SHA 差分あり | `would_build=true`、状態ファイル差分なし。 |
+| SHA 差分あり | `would_build=true`、`reason="sha_changed"`、`would_write` に非 dry-run 時の論理書込予定、状態ファイル差分なし。 |
 | SHA 差分なし | `would_build=false`、`reason="no_change"`。 |
 | cooldown | `would_build=false`、`reason="cooldown"`。 |
-| GitHub API 失敗 | 終了コード `3`、`errors[]` に理由、状態ファイル差分なし。 |
-| 設定破損 | 終了コード `2`、破損ファイルの退避も再生成も行わない。 |
+| GitHub API 失敗 | 終了コード `3`、`reason="github_error"`、`errors[]` に理由、状態ファイル差分なし、pipeline / deploy / notification / commit status 呼び出しなし。 |
+| 設定破損 | 終了コード `2`、`reason="config_error"`、破損ファイルの退避、再生成、正規化、quarantine、rewrite を行わない。 |
 | 複数 target | branch / target path の固定順で返る。 |
-| secret 設定済み | stdout JSON に secret 平文が出ない。 |
+| secret 設定済み | stdout JSON、stderr、expected、effects に secret 平文が出ず、`secrets_masked=true`。 |
 
 ### 27.3 ビルド失敗時の自動リトライ
 
