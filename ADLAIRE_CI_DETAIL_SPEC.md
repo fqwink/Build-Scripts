@@ -9808,6 +9808,18 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 6. 1 件以上変更がある場合は builder に `--src` として branch target の `src` を渡し、対象一覧を `ADLAIRE_CHANGED_TARGETS` 環境変数の JSON array で渡す。
 7. build 成功時だけ対象 target の SHA cache を更新する。
 
+**target_files 正規化・SHA cache 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 正規化順 | `target_file` を 1 要素配列化 → `target_files` と統合 → `/` 区切りへ変換 → `.` segment 除去 → 重複除去 → 辞書順 sort。 |
+| 重複判定 | 大文字小文字を区別する。`docs/a.md` と `Docs/a.md` は別 target として扱う。 |
+| `target_hash` | 正規化済み target path の SHA-256 hex 先頭 32 文字。 |
+| SHA cache path | branch 名と `target_hash` を URL encode せず、branch 名は `/` を `_` に置換して `.sha_cache/{branch_safe}/{target_hash}.sha` に保存する。 |
+| force build | force 条件では `changed_targets` が空でも build を実行し、`changed_targets=[]` を build log に保存する。SHA cache は build 成功時に全 target 分を更新する。 |
+| 部分失敗 | 1 target でも SHA 取得に最終失敗した場合、build は開始せず、成功取得済み target の SHA cache も更新しない。 |
+| 環境変数 | `ADLAIRE_CHANGED_TARGETS` は JSON array string。要素順は正規化済み target path の辞書順。secret は含めない。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -9825,6 +9837,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 複数変更 | 辞書順で記録、build は 1 回だけ実行。 |
 | 変更なし | build なし、status `skipped_no_change`。 |
 | 不正 path | API は `422`、runner は終了コード `2`。 |
+| force build | 変更なしでも build 実行、成功時に全 SHA cache 更新。 |
+| SHA 部分失敗 | build なし、SHA cache 差分なし。 |
 
 ### 27.22 ビルドパイプライン YAML 定義
 
@@ -9859,6 +9873,28 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 5. `required=true` または省略 step の失敗は build を中断する。
 6. 各 step の stdout/stderr、exit_code、duration_seconds を `.build_logs/{id}.json.pipeline_steps[]` に保存する。
 
+**step 実行・保存固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| step id | 保存時は 0 始まりの `index` と `name` を保存する。`name` が空の場合は API 保存時 `422`。 |
+| env merge | runner 基本 env → branch env → pipeline step env の順で上書きする。 |
+| secret mask | branch env と step env の secret key 値を stdout/stderr、hook log、notify payload、pipeline step log へ保存前に mask する。 |
+| optional failure | `required=false` の step が失敗した場合、`status="optional_failed"` として保存し、後続 step を継続する。全体 status は後続 required step の結果で決める。 |
+| timeout | step timeout 時は process group を kill し、`exit_code:null`、`status:"timeout"`、`error:"step timeout"` を保存する。 |
+| 保存順 | step 完了ごとにメモリへ結果を追加し、build 終了時に `.build_logs/{id}.json.pipeline_steps[]` へ定義順で保存する。完了順で並べ替えない。 |
+
+**YAML parser 禁止構文固定：**
+
+| 構文 | 処理 |
+|------|------|
+| tab indent | parse error。 |
+| anchor / alias | parse error。 |
+| `---` / `...` | parse error。 |
+| flow style `{}` / `[]` | parse error。 |
+| block scalar `|` / `>` | parse error。 |
+| inline comment | quoted string 外の `#` は、行頭 comment 以外 parse error。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -9876,6 +9912,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | required step 失敗 | 後続 step を実行せず failure。 |
 | optional step 失敗 | WARN、後続 step 継続。 |
 | 禁止 YAML 構文 | parse error、build なし。 |
+| secret env stdout | pipeline step log では `"***"`。 |
+| step timeout | process kill、後続 required step なし。 |
 
 ### 27.23 ローカルファイル監視モード
 
@@ -9903,6 +9941,17 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 4. SHA-256 manifest を作成し、前回 `.local_watch_state.json` と比較する。
 5. 差分があれば build を実行し、成功時だけ state を更新する。
 
+**local scan 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 相対 path | `src` からの相対 path を `/` 区切りで保存する。先頭 `/`、`..`、空 segment は保存しない。 |
+| 除外 directory | `.git`、`.snapshots`、`.build_cache`、`.sha_cache`、出力先 `out` 配下、名前が `.` で始まる directory。 |
+| 対象拡張子 | `.md`、`.markdown`。大文字拡張子は対象外。 |
+| 削除検知 | 前回 state に存在し今回 scan に存在しない path は差分として扱う。 |
+| state 更新 | build 成功時に今回 scan 結果へ置換する。skip、failure、dry-run では更新しない。 |
+| dry-run | `.local_watch_state.json` を作成・更新せず、差分結果だけ stdout JSON に含める。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -9920,6 +9969,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 変更なし | `skipped_no_change`。 |
 | 1 ファイル変更 | build 実行、該当 SHA 更新。 |
 | GitHub token 不在 | local mode では失敗しない。 |
+| ファイル削除 | build 実行、成功時に state から削除。 |
+| out 配下変更 | 差分対象外。 |
 
 ### 27.24 タグ付きコミットのみビルド
 
@@ -9945,6 +9996,16 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 4. tag が条件に一致した場合だけ build を実行する。
 5. 不一致の場合は status `skipped_tag_filter` とし、SHA cache は更新しない。
 
+**tag 判定固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| tag 正規化 | `refs/tags/` prefix を除いた tag 名で pattern 判定する。 |
+| 取得順 | GitHub refs API response の順序を維持し、`matched_tags[]` には一致した tag を最大 100 件まで保存する。 |
+| pattern `*` | suffix `*` は prefix match。`*` 単体は任意 tag に一致する。中間 `*`、正規表現、glob は禁止。 |
+| skip 副作用 | tag 不一致 skip では `.build_status.json` だけ更新し、`.build_logs/{id}.json`、`.build_history`、SHA cache、snapshot、deploy、notify は更新しない。 |
+| local mode | `watch_mode="local"` かつ `tag_filter.enabled=true` は設定不整合として終了コード `2`。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -9961,6 +10022,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | tag 不一致 | build skip、SHA cache 未更新。 |
 | patterns 空で tag あり | build 実行。 |
 | API 失敗 | retry 後 failure、build なし。 |
+| `v*` pattern | `v1.0.0` は一致、`release/v1` は不一致。 |
+| local mode 併用 | build なし、終了コード `2`。 |
 
 ### 27.25 ビルドキャッシュ
 
@@ -9985,6 +10048,18 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 3. cache miss の場合、通常変換し、成功後に cache entry を atomic write する。
 4. `[REPORT]` に `cache_hits`、`cache_misses`、`cache_disabled_reason` を出力する。
 
+**cache entry 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| schema version | `.build_cache.json.schema_version=1`。不一致時は全 entry miss。 |
+| cache key | `sha256(input_relative_path + "\n" + input_sha256 + "\n" + builder_version + "\n" + theme + "\n" + build_config_hash)` の hex。 |
+| page file | `.build_cache/pages/{cache_key}.json`。 |
+| page schema | `{ "cache_key", "input_path", "input_sha256", "deps", "html_fragment", "metadata", "created_at" }`。 |
+| hit 検証 | cache entry の `cache_key`、`input_path`、`input_sha256`、依存 SHA、builder version、theme、build config hash がすべて一致する場合だけ hit。 |
+| 破損 entry | WARN を出し、該当 page file の削除を試みる。削除失敗でも build は継続する。 |
+| report | `cache_hits`、`cache_misses` は integer、`cache_disabled_reason` は `null` または固定文字列。 |
+
 **無効化条件：**
 
 `--strict`、theme 変更、builder version 変更、依存 file 変更、cache schema version 不一致、cache entry 破損時は該当 entry を miss とする。
@@ -10005,6 +10080,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 1 file 変更 | 変更 file のみ miss。 |
 | theme 変更 | 全対象 miss。 |
 | cache 破損 | build 継続、WARN。 |
+| entry 不一致 | miss として通常変換。 |
+| cache write failure | build success、report に warning。 |
 
 ### 27.26 並列マルチターゲットビルド
 
@@ -10029,6 +10106,17 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 4. target 成功/失敗を個別に記録する。
 5. 1 target 以上失敗した場合、全体 status は `success_deploy_pending` とし、失敗 target だけ `.pending_transfers` に追加する。
 
+**parallel deploy 保存固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| result 順序 | `target_results[]` は設定順で保存する。完了順では保存しない。 |
+| worker 上限 | `deploy_parallelism` が target 数を超える場合も worker 数は target 数まで。 |
+| pending 重複 | 同一 build id、target id、dest path の pending が既にある場合は重複追加しない。 |
+| 成功 target | 失敗 target があっても成功 target は pending に入れない。 |
+| status | 1 件以上 pending があれば `success_deploy_pending`、全件成功なら `success`。 |
+| 保存順 | `.build_logs/{id}.json.target_results` → `.pending_transfers` → `.build_history` → `.build_status.json`。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10044,6 +10132,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 3 target / parallelism 2 | 同時実行最大 2、全 target result 記録。 |
 | 1 target 失敗 | pending は 1 件、成功 target は再投入しない。 |
 | parallelism 1 | 既存順次処理と同じ結果。 |
+| result order | 完了順に関係なく設定順で保存。 |
+| pending duplicate | 同一 pending は 1 件。 |
 
 ### 27.27 ビルド前後フック
 
@@ -10070,6 +10160,17 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 4. hook ごとに stdout/stderr、exit_code、duration_seconds を保存する。
 5. post hook 失敗は build status を変更しない。
 
+**hook 保存・mask 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| hook id | `^[A-Za-z0-9_-]{1,64}$`。重複 id は API 保存時 `422`。 |
+| 実行順 | phase ごとに id 昇順。pre 全件後に build、build 後に post。 |
+| env | branch env と hook 固有 env を渡す。secret key の値は hook log 保存前に mask する。 |
+| hook log | `status`、`started_at`、`finished_at`、`duration_seconds`、`stdout`、`stderr`、`exit_code`、`timed_out` を保存する。 |
+| log 保存失敗 | pre hook の log 保存失敗は build を開始せず failure。post hook の log 保存失敗は build status を維持し runner 終了コードを最低 `1`。 |
+| shell 禁止 | `command_args` を `exec.Command` 相当で実行し、shell 展開、変数展開、glob 展開を行わない。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10087,6 +10188,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | pre abort | build なし、history `hook_error`。 |
 | post failure | build 結果維持、hook log 記録。 |
 | shell metachar | command_args として渡され、shell 展開されない。 |
+| hook log write failure | pre は build なし、post は build 結果維持。 |
+| secret stdout | hook log では `"***"`。 |
 
 ### 27.28 依存ファイルトラッキング
 
@@ -10110,6 +10213,17 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 3. 依存 file の SHA-256 を記録する。
 4. runner は入力 SHA と依存 SHA を比較し、変更された dependency を参照する page を build 対象へ追加する。
 
+**dependency manifest 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| page key | 入力 Markdown の base dir 相対 path。`/` 区切り、辞書順。 |
+| dep path | base dir 相対 path。URL、fragment-only、mailto、tel、data URI は対象外。 |
+| include | `{{ include "path" }}` の double quote 形式だけを対象にする。single quote、式展開、glob は対象外。 |
+| 重複 dep | page 内で同一 dep path が複数回出ても 1 件だけ保存する。 |
+| 保存条件 | build 成功後だけ `.dependency_manifest.json` を置換する。failure build では既存 manifest を維持する。 |
+| broken deps | `broken_dependencies[]` に page、path、reason を保存する。strict では終了コード `2`。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10125,6 +10239,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 画像変更 | 参照 page が再ビルド対象。 |
 | 未参照画像変更 | build 対象にしない。 |
 | manifest 破損 | full build、manifest 再作成。 |
+| base 外参照 | broken dependency として記録。 |
+| failure build | 既存 manifest を上書きしない。 |
 
 ### 27.29 リモートビルド対応
 
@@ -10151,6 +10267,17 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 5. `manifest.json` の SHA-256 と展開 file を検証する。
 6. 検証成功後、既存 deploy 処理へ渡す。
 
+**remote artifact 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 一時展開先 | state dir 配下 `.remote_artifacts/{build_id}/`。既存 output directory へ直接展開しない。 |
+| tar.gz entry | `site/` と `manifest.json` だけを root 直下必須とする。entry path の `..`、絶対 path、NUL、symlink、device は拒否する。 |
+| manifest schema | `{ "files": [{"path": string, "sha256": string, "size": integer}] }`。 |
+| 検証順 | tar.gz 展開前 entry 検査 → 一時展開 → manifest parse → file 存在 / size / sha256 検証 → deploy へ渡す。 |
+| secret | remote command stdout/stderr は保存前に mask する。SSH 秘密鍵 path や token 値は log に保存しない。 |
+| cleanup | 成功・失敗に関係なく、検証後に一時展開先の削除を試みる。削除失敗は WARN。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10167,6 +10294,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | remote 成功 | artifact 検証後 deploy。 |
 | manifest 不一致 | deploy なし、failure。 |
 | SSH 一時失敗 | retry 後成功なら success。 |
+| unsafe tar entry | 展開中止、deploy なし。 |
+| cleanup 失敗 | build 結果維持、WARN。 |
 
 ### 27.30 ビルド承認フロー
 
@@ -10191,6 +10320,16 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 3. API approve 後、queue entry に `trigger="approval"` を追加する。
 4. reject 後は build せず `.build_history.status="approval_rejected"` を記録する。
 5. timeout 超過 entry は runner 起動時に `expired` へ更新する。
+
+**approval queue / notify 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| pending id | `appr{YYYYMMDDHHmmss}`、同秒衝突時は `-001` から連番。既存 id は再利用しない。 |
+| queue payload | approve で追加する queue entry は `trigger:"approval"`、`priority:"normal"`、`requested_by` は actor id、`payload.approval_id` を含める。 |
+| 通知 payload | `{event:"approval_required", approval_id, branch, sha, target, expires_at}`。secret、token、path secret は含めない。 |
+| 重複 pending | 同一 branch / sha / target の pending がある場合、新規通知は送らず既存 id を返す。 |
+| expired 更新 | runner 起動時に期限超過 pending をすべて処理し、created_at 昇順で expired record を追記する。 |
 
 **異常系：**
 
@@ -10264,6 +10403,8 @@ pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、�
 | approval-reject | pending reject | rejected record、history `approval_rejected`。 |
 | approval-timeout | expires_at 超過 | expired record、history `approval_expired`。 |
 | approval-queue-full | max_size 到達時 approve | `429`、status pending 維持。 |
+| approval duplicate notify | 重複時は通知を送らない。 |
+| approved append failure | queue は残り、API は `500`。 |
 
 ### 27.31 ブランチ別環境変数
 
@@ -10290,6 +10431,17 @@ pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、�
 4. build log には env key 一覧だけを保存し、value は保存しない。
 5. secret key は stdout/stderr の mask 対象に追加する。
 
+**env 正規化・mask 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 保存順 | env key は ASCII 昇順で保存する。 |
+| value 正規化 | UTF-8 不正、NUL、改行を含む値は禁止。前後空白は保持する。 |
+| secret 判定 | key に `TOKEN`、`SECRET`、`PASSWORD`、`PAT` を含む場合は大文字小文字を区別せず secret。 |
+| log 保存 | `.build_logs/{id}.json.environment.env_keys` に key 名だけを保存する。value、value length、hash は保存しない。 |
+| process env | branch env は builder、pipeline step、hook、command notification に渡す。通知 payload には値を含めない。 |
+| mask failure | mask 対象値を保存前に置換できない場合、build を失敗扱いにし、平文を保存しない。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10306,6 +10458,8 @@ pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、�
 | system env と同名 | branch env が優先される。 |
 | secret stdout 出力 | log では `"***"` に置換。 |
 | 不正 key | 保存不可、状態差分なし。 |
+| lower secret key | `my_token` も secret 扱い。 |
+| mask failure | build 完了扱いにしない。 |
 
 ### 27.32 ビルド通知連携
 
@@ -10334,6 +10488,17 @@ pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、�
 4. 各送信結果を `.notify_log` へ JSON Lines で追記する。
 5. retry 対象失敗は `.notify_pending` に追加する。
 6. build 自体の status は通知失敗で変更しない。
+
+**通知 payload / id 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| notify id | `.notify_log` は `ntfy{YYYYMMDDHHmmss}`、pending は `np{YYYYMMDDHHmmss}`、衝突時 `-001`。 |
+| payload 共通 key | `event`、`build_id`、`status`、`branch`、`trigger`、`created_at` を可能な範囲で含める。存在しない値は `null`。 |
+| channel 順 | channel id 昇順。送信失敗しても次 channel を継続する。 |
+| timeout | webhook と command は 30 秒。SMTP は 60 秒。timeout は retry 対象か個別表に従う。 |
+| pending payload | mask 後 payload だけを保存し、secret は retry 送信直前に状態ファイルから再読込する。 |
+| pending 保存順 | `.notify_log` 追記成功後に `.notify_pending` を保存する。log 失敗時は pending を追加しない。 |
 
 **通知 channel 正規化契約：**
 
