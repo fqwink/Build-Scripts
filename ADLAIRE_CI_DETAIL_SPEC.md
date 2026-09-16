@@ -506,6 +506,8 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 本節は、移行後の標準配置を定義する。標準配置への実装移行が完了するまでは、現行リポジトリに `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` が残る場合がある。実装移行 PR では、本節の配置へそろえ、移行後に旧配置を残してはならない。
 
+標準配置への移行完了前は、`components/builder.go` の現行実装実体を `build_spec.go`、`components/runner.go` の現行実装実体を `runner.go` として扱う。詳細仕様内で `components/builder.go` または `components/runner.go` から生成すると記載するバイナリは、移行完了前に限り、それぞれ `build_spec.go` または `runner.go` から生成する同等バイナリとして扱う。
+
 ```text
 .
 ├── main.go

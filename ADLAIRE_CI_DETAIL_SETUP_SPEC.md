@@ -56,8 +56,8 @@
 
 | 成果物 | 取得タイミング | 説明 |
 |--------|----------------|------|
-| `adlaire-ci-build-$OS_ARCH` | 初回セットアップ、アップデート | `components/builder.go` から生成した Markdown → 静的 Web サイトビルドバイナリ。 |
-| `adlaire-ci-runner-$OS_ARCH` | 初回セットアップ、アップデート | `components/runner.go` から生成した CI ランナーバイナリ。 |
+| `adlaire-ci-build-$OS_ARCH` | 初回セットアップ、アップデート | `components/builder.go` から生成した Markdown → 静的 Web サイトビルドバイナリ。標準配置への移行完了前は、現行実装実体 `build_spec.go` から生成する同等バイナリ。 |
+| `adlaire-ci-runner-$OS_ARCH` | 初回セットアップ、アップデート | `components/runner.go` から生成した CI ランナーバイナリ。標準配置への移行完了前は、現行実装実体 `runner.go` から生成する同等バイナリ。 |
 | `adlaire-ci-api-$OS_ARCH` | 管理 API 導入手順、管理 API 導入後のアップデート | `components/api.go` から生成した管理 API サーバーバイナリ。 |
 | `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A1 の管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | Release 添付ファイルの SHA-256 checksum 一覧。 |
@@ -154,7 +154,7 @@ setup / update 実装は、各段階の開始と成功を stderr または stdou
 
 ### §26.3 Go 版初回セットアップ手順
 
-対象は Go 版の `components/builder.go` と `components/runner.go` から生成した `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci.service`、`adlaire-ci.timer` とする。
+対象は Go 版の `components/builder.go` と `components/runner.go` から生成した `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci.service`、`adlaire-ci.timer` とする。標準配置への移行完了前は、`components/builder.go` を現行実装実体 `build_spec.go`、`components/runner.go` を現行実装実体 `runner.go` と読み替える。
 
 初回セットアップは以下の停止条件に従う。各手順は直前の手順が成功した場合のみ実行する。失敗時に後続手順を継続してはならない。
 
@@ -308,7 +308,7 @@ systemctl status adlaire-ci-api
 
 #### §26.4.1 Go 版 runner の systemd ファイル
 
-**`/etc/systemd/system/adlaire-ci.service`**（`components/runner.go`）：
+**`/etc/systemd/system/adlaire-ci.service`**（`components/runner.go`。標準配置への移行完了前の現行実装実体は `runner.go`）：
 
 ```ini
 [Unit]
@@ -321,7 +321,7 @@ WorkingDirectory=/opt/adlaire-builder
 ExecStart=/usr/local/bin/adlaire-ci-runner --state-dir /opt/adlaire-builder
 ```
 
-**`/etc/systemd/system/adlaire-ci.timer`**（`components/runner.go` 定期起動タイマー）：
+**`/etc/systemd/system/adlaire-ci.timer`**（`components/runner.go` 定期起動タイマー。標準配置への移行完了前の現行実装実体は `runner.go`）：
 
 ```ini
 [Unit]

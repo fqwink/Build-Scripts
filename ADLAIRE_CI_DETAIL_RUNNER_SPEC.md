@@ -80,8 +80,8 @@
 
 | パス | 用途 |
 |------|------|
-| `/usr/local/bin/adlaire-ci-runner` | `components/runner.go` から生成する CI ランナーバイナリ。 |
-| `/usr/local/bin/adlaire-ci-build` | `components/builder.go` から生成する Markdown → 静的 Web サイトビルドバイナリ。 |
+| `/usr/local/bin/adlaire-ci-runner` | `components/runner.go` から生成する CI ランナーバイナリ。標準配置への移行完了前は、現行実装実体 `runner.go` から生成する同等バイナリとして扱う。 |
+| `/usr/local/bin/adlaire-ci-build` | `components/builder.go` から生成する Markdown → 静的 Web サイトビルドバイナリ。標準配置への移行完了前は、現行実装実体 `build_spec.go` から生成する同等バイナリとして扱う。 |
 | `/opt/adlaire-builder/.github_token` | GitHub PAT。`runner` が読み込む。 |
 | `/opt/adlaire-builder/.last_sha` | 前回取得した blob SHA。JSON 形式で保存する。 |
 | `/opt/adlaire-builder/repo/docs/` | GitHub Blobs API から取得した Markdown の書き出し先。単一 Markdown の場合も本ディレクトリ内へ保存する。 |
@@ -936,7 +936,7 @@ set -euo pipefail
 /usr/local/bin/adlaire-ci-build --src "$ADLAIRE_CI_SRC" --out "$ADLAIRE_CI_OUT"
 ```
 
-ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`runner` は参照しない）。`adlaire-ci-build` は `components/builder.go` から生成した Go 版バイナリである。
+ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`runner` は参照しない）。`adlaire-ci-build` は `components/builder.go` から生成した Go 版バイナリである。標準配置への移行完了前は、現行実装実体 `build_spec.go` から生成した同等バイナリとして扱う。
 
 **runner からの実行契約：**
 
