@@ -801,6 +801,18 @@ var DefaultBuildConfig = BuildConfig{
 
 `--help` と `--version` の stdout は 1 行固定とし、末尾に改行 1 つを付ける。`--help` または `--version` を指定した場合、`--src` の存在確認、`--theme` 検証、出力ディレクトリ作成は行わない。
 
+**CLI 値正規化・path 安全契約：**
+
+| 対象 | 正規化 | 禁止 / 失敗条件 |
+|------|--------|-----------------|
+| `--src` | `filepath.Abs` → `filepath.Clean` | NUL、空文字、存在しない path。 |
+| `--out` | `filepath.Abs` → `filepath.Clean` | NUL、空文字、親ディレクトリ不存在、既存通常ファイル。 |
+| `--base-dir` | 空なら §2a の規則で決定。指定時は `filepath.Abs` → `filepath.Clean` | NUL、空文字、存在しない path、通常ファイル。 |
+| `--title` | 前後空白を除去せず入力値をそのまま使用 | 空文字だけ禁止。空白だけの文字列は空 title として扱い `2`。 |
+| `--theme` | 前後空白を除去せず完全一致 | `adlaire-default` 以外。 |
+
+`--src` と `--out` が同一 path、または `--out` が `--src` 配下にある場合は終了コード `2` とし、stderr に `output path must be outside source: <path>` を出力する。`--src` が `--out` 配下にある場合も同じ扱いとする。実装者判断で入力ディレクトリ内へ生成物を混在させてはならない。
+
 ---
 
 ## 2a. 入力収集・出力パス決定
@@ -848,6 +860,19 @@ Markdown ディレクトリ入力で Markdown ファイルが 0 件の場合は�
 | 画像 `![alt](path)` | ファイルコピーを行わず、`src` は元 URL を `esc()` して出力する。`assets/` へ画像を複製してはならない。 |
 
 Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま出力し、`[WARN] BROKEN_PAGE_LINK: <url> (in: <source>)` を出力する。`--strict` が `true` の場合、警告出力後に終了コード `2` とする。ページ間リンク解決で使用するパス比較は、絶対パス化、`filepath.Clean()`、パス区切り `/` 正規化を行った文字列で比較する。
+
+**入力収集固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 対象拡張子 | `.md`、`.markdown` だけ。大文字拡張子 `.MD`、`.Markdown` は対象外。 |
+| 隠しファイル | ファイル名が `.` で始まる Markdown は収集対象外。 |
+| symlink | ファイル・ディレクトリとも追跡しない。`os.Lstat` で symlink と判定した path は無視する。 |
+| 最大ファイルサイズ | 1 ファイル 10 MiB。超過時は終了コード `2`、stderr `source file too large: <path>`。 |
+| 改行 | `\r\n` と `\r` は読み込み時に `\n` へ正規化する。 |
+| BOM | 先頭 UTF-8 BOM は除去する。本文途中の BOM は通常文字として扱う。 |
+
+ディレクトリ再帰では、除外ディレクトリに入る前に prune する。除外対象配下で Markdown が見つかっても警告を出さない。
 
 **入力収集・出力生成の機能単位契約：**
 
@@ -1162,14 +1187,29 @@ type ConvertResult struct {
 9. 脚注定義行（`[^id]:` で始まる行、`ctx.FootnoteDefs` 収集済みのためスキップ）
 10. 段落（上記以外の非空行、連続行を 1 つの `<p>` にまとめる）。先読みループは次のいずれかに該当する行で停止する：`#`（見出し）、`|`（テーブル）、`` ` ``×3以上（フェンス）、`~`×3以上（フェンス）、`>`（引用）、リストマーカー（`[-*+]` または `\d+[.)]`）、`: `（定義リストマーカー）、水平線（`---+`・`***+`・`___+`）
 
+**Markdown passthrough 禁止契約：**
+
+| 入力 | 出力 |
+|------|------|
+| 生 HTML 行 `<div>text</div>` | `<p class="mp">&lt;div&gt;text&lt;/div&gt;</p>` |
+| HTML comment `<!-- x -->` | `<p class="mp">&lt;!-- x --&gt;</p>` |
+| script/style tag | tag 全体を text として `esc()` し、実行可能 HTML にしない。 |
+| unknown Markdown 記法 | text として `esc()` し、独自 HTML を生成しない。 |
+
+`components/builder.go` は Markdown 入力由来の HTML を信頼済みとして扱ってはならない。`PageData.BodyHTML` に入る HTML は、本仕様で生成すると定義したタグと属性だけで構成する。
+
 **テーブル変換の詳細：**
 セパレーター行（`:---:`、`---` などで構成された行）のインデックスを自動検出し、セパレーター行より前の行をヘッダー（`<th>`）、それ以降を本文（`<td>`）として出力する。セパレーター行自体は出力しない。
+
+テーブル列数はヘッダー行のセル数を正とする。本文行のセル数が不足する場合は空文字セルを補い、超過する場合は超過分を最後のセルへ ` | ` で連結する。ヘッダー行が存在しない、またはセパレーター行だけの場合はテーブルとして扱わず、段落として出力する。
 
 **引用ネストの詳細：**
 `>` で始まる連続行をまとめて収集し、`renderBlockquote(lines []string, ctx *RenderContext) string` が再帰的にネストを処理する。1 レベル分の `>` を剥いた後、内側行を先頭から走査し、`>` で始まる連続する行は `renderBlockquote()` を再帰呼び出し、それ以外の行は `inline(text, ctx)` でレンダリングして結合する。これにより、単一行・複数行・混在ネスト（同一ブロック内で `>` 行と `>>` 行が混在する場合）をすべて正しく処理する。例：`>> text` → `<blockquote class="mbq"><blockquote class="mbq">text</blockquote></blockquote>`。
 
 **タスクリストの詳細：**
 リスト項目のコンテンツが正規表現 `^\[([ xX])\]\s+` に一致する場合、`<li class="ml-task">` として出力する。チェック済み（`[x]` / `[X]`）は `checked` 属性付き、未チェック（`[ ]`）は属性なしの `<input type="checkbox" disabled>` を先頭に配置する。
+
+リストネストは先頭空白 2 文字を 1 レベルとして扱い、tab は 4 空白へ展開してから判定する。最大ネストは 6 レベルとし、7 レベル以上は 6 レベルとして出力し `[WARN] LIST_NESTING_CLAMPED: line={line}` を出す。
 
 **定義リストの詳細：**
 `: 定義` 行（`strings.HasPrefix(line, ": ")`、コロン＋スペース1文字）を検出したとき `para_buf` に内容があれば、`para_buf` の末尾要素を用語（`<dt>`）として取り出し、`<dl class="mdl"><dt>用語</dt><dd>定義</dd></dl>` を出力する。連続する `: ` 行は同一 `<dl>` 内の追加 `<dd>` としてまとめて処理し、その後に `</dl>` を閉じる。
@@ -1381,6 +1421,18 @@ type SearchIndexEntry struct {
 
 単一 Markdown 入力の場合、本文ページを `index.html` として出力し、`pages/` は作成しなくてよい。Markdown ディレクトリ入力の場合、`index.html` はサイト目次ページとし、各 Markdown ファイルを `pages/{slug}.html` として出力する。
 
+**必須生成物内容契約：**
+
+| ファイル | 内容 | 空許可 |
+|----------|------|--------|
+| `index.html` | 完全な HTML document。`<!DOCTYPE html>` から始まる。 | 不可 |
+| `pages/{slug}.html` | 完全な HTML document。directory 入力時のみ。 | 不可 |
+| `assets/style.css` | §6 の class / selector を含む CSS。 | 不可 |
+| `assets/app.js` | §7 の DOMContentLoaded handler と機能実装。 | 不可 |
+| `assets/search-index.json` | `SearchIndexEntry[]` の JSON。entry 0 件でも `[]`。 | 可 |
+
+生成物は UTF-8、LF 改行とする。HTML、CSS、JS、JSON の末尾には LF を 1 つ付ける。BOM は出力しない。
+
 **相対 root 算出：**
 
 `relativeRoot` は、各 HTML ファイルから `assets/` へ到達するための相対 prefix とする。
@@ -1506,6 +1558,20 @@ type SearchIndexEntry struct {
 - `<header id="hdr">`、`<nav id="sb">`、`<main id="ct">`、`<div class="ci">` の id / class を変更しない。
 - `assets/style.css`、`assets/app.js` 以外の CSS / JavaScript を生成してはならない。
 - 外部 CSS、外部 JavaScript、外部フォント参照を追加しない。
+
+**HTML head / asset 参照固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| `<title>` | `PageData.Title` を `esc()` した値。site index は `SiteData.Title`。 |
+| meta build id | `--build-id` 未指定時も `content=""` で出力する。 |
+| meta commit sha | `--commit-sha` 未指定時も `content=""` で出力する。 |
+| meta build at | `--build-at` 未指定時も `content=""` で出力する。 |
+| generated at | `GeneratedAtUTC` が空でない場合だけ `<meta name="adlaire-generated-at" content="{GeneratedAtUTC}">` を出力する。 |
+| CSS link | HTML ごとに `{relativeRoot}assets/style.css` 1 件だけ。 |
+| JS script | `</body>` 直前に `{relativeRoot}assets/app.js` 1 件だけ。 |
+
+HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、画像 preload を出力しない。
 
 ---
 
@@ -1650,12 +1716,16 @@ ADS 採用により、ダークモードおよびテーマトグルボタンは�
 - モバイル（`≤ 768px`）：`#sb.open` / `transform: translateX` で画面外から引き出す
 - モバイルでは TOC リンククリック時に自動的にサイドバーを閉じる
 
+`localStorage` 読み書きは `try/catch` で保護する。読み込み失敗、保存失敗、保存値が `"1"` / `"0"` 以外の場合は、デスクトップでは開、モバイルでは閉を初期状態とする。`assets/app.js` は localStorage 以外の永続 storage、cookie、IndexedDB を使用してはならない。
+
 ### 7.3 TOC グループ展開
 
 `.tg-btn` クリックで対応する `<ul id="tg-{slug}">` の `hidden` 属性をトグルし、`aria-expanded` 属性を更新する。`data-target` 属性で対象 `<ul>` の ID を指定する。
 
 **開閉状態の永続化：**
 展開操作のたびに現在展開中のグループのスラグ配列を `localStorage` キー `adlaire-toc-state` に JSON 文字列で保存する。ページ読み込み時（`DOMContentLoaded`）に同キーを読み込み、保存済みスラグのグループを展開状態で描画する。`localStorage` アクセスはすべて `try/catch` で保護し、失敗時はデフォルト状態（初期展開なし）にフォールバックする。
+
+保存値が JSON 配列でない場合、存在しない slug を含む場合、100 件を超える場合は保存値を無視し、書き戻しは行わない。`aria-expanded` と `hidden` は常に逆状態に保ち、`aria-expanded="true"` のとき対象 `<ul>` から `hidden` を外す。
 
 ### 7.4 TOC 検索フィルター
 
@@ -1747,6 +1817,18 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 
 **クリア：**
 入力欄を空にすると TOC ハイライトおよびページ内マーキングをすべて解除する。
+
+**検索 UI 実行時契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| fetch path | 現在 HTML の `relativeRoot + "assets/search-index.json"`。 |
+| fetch 失敗 | TOC 検索だけを継続し、console に `search index unavailable` を 1 回だけ出す。 |
+| 最小文字数 | 2 文字未満は index 検索を実行しない。TOC filter は 1 文字から実行する。 |
+| 最大結果 | 20 件。entry 順を保持する。 |
+| 表示先 | `#sb-toc` 内に `<div id="search-results">` を 1 個だけ作成し、結果更新時に中身を置換する。 |
+| 挿入方法 | result title/body/url は `textContent` または `setAttribute` で設定し、`innerHTML` へ検索 index 由来値を入れない。 |
+| mark 解除 | 検索ごとに前回の `<mark data-search-hit="true">` を text node へ戻してから新規 mark を挿入する。 |
 
 ### 7.10 コードブロック折りたたみ
 
@@ -1840,6 +1922,8 @@ document.getElementById('progress-bar').style.width = pct + '%';
 
 **スコープ：** 同一テーブル内のソートのみ。複数列ソートは対象外。
 
+同値比較の場合は元の行順を保持する安定ソートとする。数値比較では空文字は文字列として扱い、`Number("")` による `0` 扱いを禁止する。
+
 ---
 
 ### 7.15 前後章ナビゲーションボタン
@@ -1879,6 +1963,20 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 **挿入失敗時の扱い：** 対象 h2 の HTML 位置を特定できない場合、本文 HTML を変更せず `[WARN] CHAPTER_NAV_SKIPPED: slug={slug}` を出力し、`[REPORT] warnings` に含める。
 
 **印刷時：** `@media print` で `.ch-nav { display: none }` とする（§6 CSS 参照）。
+
+**JavaScript 初期化順序固定契約：**
+
+`assets/app.js` は `DOMContentLoaded` 後に以下の順で初期化する。
+
+1. 必須 DOM 参照を取得し、存在しない要素があっても例外で停止せず該当機能だけ無効化する。
+2. sidebar 状態を復元する。
+3. TOC group 状態を復元する。
+4. TOC 検索と search index fetch を初期化する。
+5. syntax highlight を適用する。
+6. copy button、heading anchor、table sort、code expand、top button、keyboard shortcut を登録する。
+7. IntersectionObserver と scroll handler を登録し、進捗バーを 1 回更新する。
+
+初期化中の 1 機能の失敗で他機能を停止してはならない。catch した例外は `console.warn("adlaire static init failed", name)` の形式で機能名だけを出し、Markdown 本文、search query、secret 相当値を出力しない。
 
 ---
 
@@ -2118,6 +2216,89 @@ adlaire-ci-build --src testdata/builder/site/docs --out /tmp/adlaire-ci-fixture-
 ### Fixture D: 冪等性
 
 同一入力、同一 CLI 引数で 2 回連続実行した場合、`GeneratedAtUTC` を含む meta 行を除き、全出力ファイルの内容が一致しなければならない。比較対象から除外できるのは、HTML 内の `name="adlaire-generated-at"` meta と footer の生成時刻表示だけとする。検索 index、ページ HTML の本文、CSS、JS、REPORT の数値は一致必須とする。
+
+### Fixture E: path 安全性と既存出力保護
+
+**事前状態：**
+
+`/tmp/adlaire-ci-fixture-safe/index.html` に `previous output` を含む正常出力を作成しておく。
+
+**実行と期待結果：**
+
+| 実行 | 終了コード | 期待結果 |
+|------|------------|----------|
+| `adlaire-ci-build --src testdata/builder/site/docs --out testdata/builder/site/docs/out` | `2` | stderr `output path must be outside source: <path>`、出力作成なし。 |
+| `adlaire-ci-build --src /tmp/adlaire-ci-fixture-safe --out /tmp/adlaire-ci-fixture-safe` | `2` | stderr `output path must be outside source: <path>`、既存 `index.html` 維持。 |
+| 10 MiB 超の Markdown file を `--src` に指定 | `2` | stderr `source file too large: <path>`、`[REPORT]` なし。 |
+
+### Fixture F: HTML escape と Markdown 境界
+
+**入力：**
+
+```markdown
+# Unsafe
+
+<script>alert(1)</script>
+
+| A | B |
+| - | - |
+| 1 |
+| 2 | 3 | 4 |
+
+- item
+        - too deep
+              - deeper
+```
+
+**期待結果：**
+
+- `<script>` は実行可能 tag にならず、`&lt;script&gt;alert(1)&lt;/script&gt;` として出力される。
+- テーブル不足セルは空 `<td></td>` で補完される。
+- テーブル超過セルは最後のセルに `3 | 4` として連結される。
+- 7 レベル以上の list nesting は 6 レベルへ丸められ、`[WARN] LIST_NESTING_CLAMPED` が出る。
+
+### Fixture G: search index / JavaScript contract
+
+**入力：** Fixture B と同じ directory 入力。
+
+**期待結果：**
+
+- `assets/search-index.json` は top-level array で、entry key 順が `url`、`id`、`title`、`body`。
+- `body` は HTML tag を含まず、200 文字を超えない。
+- `assets/app.js` に `localStorage` access の `try` / `catch`、`search-results`、`data-search-hit`、`search index unavailable` が含まれる。
+- `assets/app.js` に `document.cookie`、`indexedDB`、外部 URL fetch が含まれない。
+
+### Fixture H: strict warning and atomic output
+
+**事前状態：**
+
+`/tmp/adlaire-ci-fixture-strict/index.html` に `previous output` を含む正常出力を作成しておく。
+
+**入力：**
+
+~~~markdown
+# Title
+
+[missing](#does-not-exist)
+
+```bash
+echo unclosed
+~~~
+
+上記 fixture では実ファイル上の fence を閉じずに EOF とする。
+
+**実行：**
+
+```bash
+adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-fixture-strict --strict
+```
+
+**期待結果：**
+
+- 終了コード `2`。
+- stdout に `[WARN] BROKEN_LINK` と `[WARN] UNCLOSED_FENCE` と `[REPORT]` を出力する。
+- stderr は空。
+- `/tmp/adlaire-ci-fixture-strict/index.html` は `previous output` のままで置換されない。
 
 ---
 
