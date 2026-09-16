@@ -3179,9 +3179,9 @@ sudo systemctl enable --now adlaire-ci-api
 | 制限 | 詳細 |
 |------|------|
 | セッションはインメモリ管理 | 再起動で全セッションが消去される |
-| HTTPS 非対応 | TLS ターミネーションは nginx 等リバースプロキシで行う。`api_server.go` 単体では HTTP のみ |
-| シングルユーザー専用 | 初期仕様ではユーザー名固定（admin）とする。マルチユーザー対応は Part 1 §13 参照 |
-| 並列リクエストの制限 | Go 標準ライブラリ `net/http` の標準サーバーで処理する。高負荷運用ではリバースプロキシ、タイムアウト、接続数制限を別途設定する |
+| HTTPS 非対応 | `api_server.go` は TLS listener、証明書読み込み、HTTPS redirect を実装しない。HTTP listener のみ起動する |
+| シングルユーザー専用 | `POST /api/login` は `password` のみを受け取り、`username`、`user_id`、role、group を受け取らない。該当 field を含む request は `422` を返す |
+| 並列リクエストの制限 | `api_server.go` は Go 標準ライブラリ `net/http` の標準サーバーで処理し、独自の接続数上限、IP 単位 rate limit、worker pool を実装しない |
 
 ---
 
@@ -3285,7 +3285,7 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | 項目 | 仕様 |
 |------|------|
 | Go バージョン | Go `1.22` 以上。HTTP 実装は Go 標準ライブラリ `net/http` を使用する。 |
-| bind | 既定値は `127.0.0.1:8765`。`--addr` で上書き可能。`0.0.0.0` を指定する場合はリバースプロキシとアクセス制御を別途設定する。 |
+| bind | 既定値は `127.0.0.1:8765`。`--addr` で上書き可能。`--addr 0.0.0.0:<port>` を指定しても、`api_server.go` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルはいずれも UTF-8 とする。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
 | リクエスト body 上限 | JSON body は 1 MiB を上限とする。超過時は `413 Payload Too Large` と `{"error": "Payload too large"}` を返す。 |
