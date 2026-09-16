@@ -28,53 +28,53 @@
 
 ### 22.0a 状態ファイル共通仕様
 
-`components/api.go` および拡張後 `components/runner.go` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に本節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
+`api` および拡張後 `runner` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に本節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
 
 | パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
 |------|------|--------|----------|--------------|
-| `.admin_credentials` | JSON object | `--init-credentials` で生成 | `components/api.go` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
-| `.totp_secret` | JSON object | `{"enabled":false,"secret_base32":null,"confirmed_at":null,"last_accepted_step":null}` | `components/api.go` | 読み込み不能時は TOTP 有効 login を `500` で拒否する。破損時は退避するが自動再生成で認証を弱めてはならない。 |
-| `.audit_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。追記不能時は対象操作を失敗扱いにする。 |
-| `.api_rate_state` | JSON object | `{"windows":{}}` | `components/api.go` | `.api_rate_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 window で再生成する。 |
-| `.server_config` | JSON object | `{}` | `components/api.go` | `.server_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 object で再生成する。 |
-| `.notify_config` | JSON object | `{"webhooks":[],"channels":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `components/runner.go` / `components/api.go` | `.notify_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
-| `.notify_log` | JSON Lines | 空ファイル | `components/runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
-| `.notify_pending` | JSON array | `[]` | `components/runner.go` | `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
-| `.pending_transfers` | JSON array | `[]` | `components/runner.go` | `.pending_transfers.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
-| `.build_history` | JSON Lines | 空ファイル | `components/runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
-| `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `components/runner.go` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
-| `.build_lock` | text | 不在 | `components/runner.go` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
-| `.last_sha` / `BranchTarget.SHAFile` | JSON object | `{"sha":""}` | `components/runner.go` | JSON 破損、object 以外、`sha` key 不在、`sha` 型不一致は当該 target の decode failure とし、成功時まで更新しない。 |
-| `.branch_config` | JSON object | 不在 | `components/runner.go` / `components/api.go` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、再生成せず `BRANCH_TARGETS` デフォルトへフォールバックする。 |
-| `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `components/runner.go` / `components/api.go` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
-| `.build_status.json` | JSON object | `{"schema_version":1,"updated_at":null,"status":"none","running":false,"current_build_id":null,"last_build_id":null,"last_trigger":null,"last_target_status":null,"last_branch":null,"last_target_file":null,"last_blob_sha":null,"last_commit_sha":null,"last_started_at":null,"last_finished_at":null,"last_duration_seconds":null,"last_error":null,"last_deploy_status":null,"pending_transfers_count":0,"notify_pending_count":0,"circuit_open":false,"circuit_consecutive_failures":0,"output_sha256":null,"size_warn":false}` | `components/runner.go` | `.build_status.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
-| `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `components/runner.go` / `components/api.go` | `.build_circuit_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
-| `.local_watch_state.json` | JSON object | `{"files":{}}` | `components/runner.go` | `.local_watch_state.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、full build 後に再生成する。 |
-| `.build_cache.json` | JSON object | `{"schema_version":1,"entries":{}}` | `components/builder.go` | 破損時は WARN を出し、cache miss として扱い、成功後に再生成する。 |
-| `.build_cache/pages/` | directory | 空ディレクトリ | `components/builder.go` | entry 不一致または読み取り不能 file は miss とし、他 entry は継続使用する。 |
-| `.dependency_manifest.json` | JSON object | `{"pages":{}}` | `components/builder.go` / `components/runner.go` | 破損時は full build とし、成功後に再生成する。 |
-| `.approval_queue` | JSON Lines | 空ファイル | `components/runner.go` / `components/api.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
-| `.build_trends.json` | JSON object | `{"schema_version":1,"samples":[],"summary":{"count":0,"avg_seconds":null,"median_seconds":null,"p95_seconds":null}}` | `components/runner.go` / `components/api.go` | `.build_trends.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`.build_history` から再集計する。 |
-| `.build_chain_config` | JSON object | `{"chains":[]}` | `components/runner.go` / `components/api.go` | `.build_chain_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、chain 無効として通常 build のみ継続する。 |
-| `.repo_config` | JSON object | `{}` | `components/api.go` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
-| `.config_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
-| `.access_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
-| `.api_access_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。秘密情報は記録しない。 |
-| `.webhook_secret` | text | 不在 | `components/api.go` | 読み込み不能時は Webhook 受信を `501` で拒否する。 |
-| `.webhook_events.json` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
-| `.access_control` | JSON object | `{"allow":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.hooks` | JSON object | `{"hooks":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.maintenance` | JSON object | `{"enabled":false,"reason":null,"since":null}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.api_tokens` | JSON object | `{"tokens":[]}` | `components/api.go` | `500` を返し、自動再生成しない。token 管理情報の消失による意図しない再許可を防ぐため、破損ファイルは上書きしない。 |
-| `.alert_rules` | JSON object | `{"rules":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.tag_rules` | JSON object | `{"rules":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.pipeline_config` | JSON object | `{"extra_args":[],"env":{}}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.notes` | UTF-8 text | 空文字列 | `components/api.go` | 読み込み不能時は `500` を返し、自動上書きしない。 |
-| `.smtp_config` | JSON object | SMTP 未設定値 | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.smtp_secret` | text | 不在 | `components/api.go` | 読み込み不能時は SMTP 送信を `422` で拒否する。 |
-| `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.admin_credentials` | JSON object | `--init-credentials` で生成 | `api` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
+| `.totp_secret` | JSON object | `{"enabled":false,"secret_base32":null,"confirmed_at":null,"last_accepted_step":null}` | `api` | 読み込み不能時は TOTP 有効 login を `500` で拒否する。破損時は退避するが自動再生成で認証を弱めてはならない。 |
+| `.audit_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。追記不能時は対象操作を失敗扱いにする。 |
+| `.api_rate_state` | JSON object | `{"windows":{}}` | `api` | `.api_rate_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 window で再生成する。 |
+| `.server_config` | JSON object | `{}` | `api` | `.server_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 object で再生成する。 |
+| `.notify_config` | JSON object | `{"webhooks":[],"channels":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `runner` / `api` | `.notify_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.notify_log` | JSON Lines | 空ファイル | `runner` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.notify_pending` | JSON array | `[]` | `runner` | `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
+| `.pending_transfers` | JSON array | `[]` | `runner` | `.pending_transfers.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
+| `.build_history` | JSON Lines | 空ファイル | `runner` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `runner` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
+| `.build_lock` | text | 不在 | `runner` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
+| `.last_sha` / `BranchTarget.SHAFile` | JSON object | `{"sha":""}` | `runner` | JSON 破損、object 以外、`sha` key 不在、`sha` 型不一致は当該 target の decode failure とし、成功時まで更新しない。 |
+| `.branch_config` | JSON object | 不在 | `runner` / `api` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、再生成せず `BRANCH_TARGETS` デフォルトへフォールバックする。 |
+| `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `runner` / `api` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.build_status.json` | JSON object | `{"schema_version":1,"updated_at":null,"status":"none","running":false,"current_build_id":null,"last_build_id":null,"last_trigger":null,"last_target_status":null,"last_branch":null,"last_target_file":null,"last_blob_sha":null,"last_commit_sha":null,"last_started_at":null,"last_finished_at":null,"last_duration_seconds":null,"last_error":null,"last_deploy_status":null,"pending_transfers_count":0,"notify_pending_count":0,"circuit_open":false,"circuit_consecutive_failures":0,"output_sha256":null,"size_warn":false}` | `runner` | `.build_status.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `runner` / `api` | `.build_circuit_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.local_watch_state.json` | JSON object | `{"files":{}}` | `runner` | `.local_watch_state.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、full build 後に再生成する。 |
+| `.build_cache.json` | JSON object | `{"schema_version":1,"entries":{}}` | `builder` | 破損時は WARN を出し、cache miss として扱い、成功後に再生成する。 |
+| `.build_cache/pages/` | directory | 空ディレクトリ | `builder` | entry 不一致または読み取り不能 file は miss とし、他 entry は継続使用する。 |
+| `.dependency_manifest.json` | JSON object | `{"pages":{}}` | `builder` / `runner` | 破損時は full build とし、成功後に再生成する。 |
+| `.approval_queue` | JSON Lines | 空ファイル | `runner` / `api` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.build_trends.json` | JSON object | `{"schema_version":1,"samples":[],"summary":{"count":0,"avg_seconds":null,"median_seconds":null,"p95_seconds":null}}` | `runner` / `api` | `.build_trends.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`.build_history` から再集計する。 |
+| `.build_chain_config` | JSON object | `{"chains":[]}` | `runner` / `api` | `.build_chain_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、chain 無効として通常 build のみ継続する。 |
+| `.repo_config` | JSON object | `{}` | `api` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
+| `.config_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.access_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.api_access_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。秘密情報は記録しない。 |
+| `.webhook_secret` | text | 不在 | `api` | 読み込み不能時は Webhook 受信を `501` で拒否する。 |
+| `.webhook_events.json` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.access_control` | JSON object | `{"allow":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.hooks` | JSON object | `{"hooks":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.maintenance` | JSON object | `{"enabled":false,"reason":null,"since":null}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.api_tokens` | JSON object | `{"tokens":[]}` | `api` | `500` を返し、自動再生成しない。token 管理情報の消失による意図しない再許可を防ぐため、破損ファイルは上書きしない。 |
+| `.alert_rules` | JSON object | `{"rules":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.tag_rules` | JSON object | `{"rules":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.pipeline_config` | JSON object | `{"extra_args":[],"env":{}}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.notes` | UTF-8 text | 空文字列 | `api` | 読み込み不能時は `500` を返し、自動上書きしない。 |
+| `.smtp_config` | JSON object | SMTP 未設定値 | `api` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.smtp_secret` | text | 不在 | `api` | 読み込み不能時は SMTP 送信を `422` で拒否する。 |
+| `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 
-`.build_logs/archive/` は gzip 圧縮済み build log の保存先ディレクトリである。初期値は空ディレクトリとし、`components/runner.go` または `POST /api/logs/archive` が必要時に作成する。圧縮済みファイル名は `{id}.json.gz` 固定とし、通常 `.build_logs/{id}.json` と同じ build id を表す。
+`.build_logs/archive/` は gzip 圧縮済み build log の保存先ディレクトリである。初期値は空ディレクトリとし、`runner` または `POST /api/logs/archive` が必要時に作成する。圧縮済みファイル名は `{id}.json.gz` 固定とし、通常 `.build_logs/{id}.json` と同じ build id を表す。
 
 JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時は末尾に改行を必ず付ける。秘密情報を含む可能性のある `.admin_credentials`、`.totp_secret`、`.github_token`、`.webhook_secret`、`.smtp_secret` は mode `600` を必須とする。
 
@@ -110,7 +110,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 
 **API 状態読取アダプタ固定契約：**
 
-`components/api.go` は、P0 / P1 endpoint の状態読取を下表の adapter 名と戻り値で実装する。各 adapter は Go 内部関数名として固定し、同じ状態ファイルを endpoint ごとに別ロジックで直接 parse してはならない。
+`api` は、P0 / P1 endpoint の状態読取を下表の adapter 名と戻り値で実装する。各 adapter は Go 内部関数名として固定し、同じ状態ファイルを endpoint ごとに別ロジックで直接 parse してはならない。
 
 | Adapter | 読取対象 | 正常戻り値 | 不在時 | 破損時 / 読込不能時 |
 |---------|----------|------------|--------|---------------------|
@@ -157,7 +157,7 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 | `history_max_count` | integer | `100` | 1〜10000 | `GET/POST /api/config` | `.build_history` の通常表示上限。削除処理の上限ではない。 |
 | `build_timeout_seconds` | integer | `300` | 1〜86400 | `GET/POST /api/config` | 手動/自動ビルドのタイムアウト秒数。 |
 | `log_retention_days` | integer | `30` | 0〜3650 | `GET/POST /api/config`, `POST /api/logs/cleanup` | `0` は自動削除なし。 |
-| `log_level` | string | `"INFO"` | `"INFO"` / `"DEBUG"` / `"WARNING"` / `"ERROR"` | `GET/POST /api/config`, `POST /api/log-level` | `components/api.go` のランタイムログレベル。 |
+| `log_level` | string | `"INFO"` | `"INFO"` / `"DEBUG"` / `"WARNING"` / `"ERROR"` | `GET/POST /api/config`, `POST /api/log-level` | `api` のランタイムログレベル。 |
 | `pat_expires_at` | string/null | `null` | `YYYY-MM-DD` または `null` | `GET/POST /api/config` | PAT 期限表示・診断用。 |
 | `snapshots_keep` | integer | `5` | 0〜100 | `GET/POST /api/config` | `0` はスナップショット保存無効。 |
 | `queue_max_size` | integer | `3` | 0〜100 | `GET/POST /api/config`, `GET /api/queue` | `0` はキュー無効。 |
@@ -489,7 +489,7 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
-| `extra_args` | string[] | 必須 | 0〜50 件 | `components/builder.go` に渡す追加 CLI 引数。 |
+| `extra_args` | string[] | 必須 | 0〜50 件 | `builder` に渡す追加 CLI 引数。 |
 | `env` | object | 必須 | key/value は下記 | builder process に追加する環境変数。 |
 
 `extra_args` は空文字、NUL、改行、CR を禁止し、`--src`、`--out`、`--build-id`、`--commit-sha`、`--build-at`、`--version`、`--help` を指定してはならない。`env` key は `^[A-Z_][A-Z0-9_]{0,63}$`、value は 0〜1000 文字とし、`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN` は上書き禁止とする。
