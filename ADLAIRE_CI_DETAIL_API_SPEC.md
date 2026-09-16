@@ -1904,7 +1904,7 @@ hooks fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 f
 
 ### ビルドパイプライン設定（15D）
 
-`components/runner.go` がビルド実行時に `.pipeline_config` を読み込み、`components/builder.go` の呼び出しに `extra_args`・`env` を適用する。`.pipeline_config` に保存する。
+本節は、`GET /api/pipeline-config` と `POST /api/pipeline-config` の request / response、`.pipeline_config` read/write 境界だけを定義する。runner による `.pipeline_config` 読込タイミング、`extra_args` / `env` 適用、読込不能または schema 不正時の build 停止条件は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.22 を正とする。
 
 **`GET /api/pipeline-config` レスポンス例：**
 ```json
@@ -1921,8 +1921,6 @@ hooks fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 f
 ```
 
 `POST /api/pipeline-config` は `.pipeline_config` 全体置換とし、部分更新を許可しない。`extra_args` または `env` のいずれかが欠ける場合は `422`。正規化後値が既存値と一致する場合は `.pipeline_config` と `.config_log` を変更せず `{ "message":"No changes" }` を返す。
-
-runner は build 開始後、builder command 組み立て直前に `.pipeline_config` を 1 回だけ読む。読込不能または schema 不正は build を開始せず `failure` とし、SHA cache を更新しない。
 
 ---
 

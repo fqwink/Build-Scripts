@@ -2357,6 +2357,23 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 対応する構文は、2 space indent、string scalar、integer scalar、boolean scalar、string array、object array のみとする。anchor、alias、複数 document、flow style、tag、複数行 string、コメント行以外の inline comment は禁止する。禁止構文を検出した場合は parse error とする。
 
+**`.pipeline_config` 適用固定契約：**
+
+`.pipeline_config` schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c を正とする。API による保存、request / response、HTTP status は `ADLAIRE_CI_DETAIL_API_SPEC.md` §15D を正とする。
+
+runner は build 開始後、builder command または pipeline step command を組み立てる直前に `.pipeline_config` を 1 回だけ読む。同一 build 中に `.pipeline_config` を再読込してはならない。
+
+| 項目 | 仕様 |
+|------|------|
+| 読込タイミング | build id 採番、target 確定、`running=true` 保存後、builder / step command 組み立て直前。 |
+| `extra_args` | legacy builder command を使う場合にだけ、固定引数の後ろへ配列順で追加する。YAML step command には追加しない。 |
+| `env` | runner 基本 env → branch env → `.pipeline_config.env` → YAML step env の順で上書きする。 |
+| 読込不能 | build 本体を開始せず `failure_pipeline_config`、終了コード `2`。SHA cache、deploy、snapshot は更新しない。 |
+| schema 不正 | build 本体を開始せず `failure_pipeline_config`、終了コード `2`。SHA cache、deploy、snapshot は更新しない。 |
+| secret mask | `.pipeline_config.env` の secret key 値は stdout/stderr、hook log、notify payload、pipeline step log へ保存前に mask する。 |
+
+`.pipeline_config.extra_args` は、builder の固定引数である `--src`、`--out`、`--build-id`、`--commit-sha`、`--build-at`、`--version`、`--help` を上書きまたは追加してはならない。禁止引数を検出した場合は build 本体を開始せず `failure_pipeline_config` とする。
+
 **正常系：**
 
 1. `.pipeline.yml` があれば優先し、なければ `.pipeline_config.inline_yaml` を使用する。
@@ -2371,7 +2388,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 項目 | 仕様 |
 |------|------|
 | step id | 保存時は 0 始まりの `index` と `name` を保存する。`name` が空の場合は API 保存時 `422`。 |
-| env merge | runner 基本 env → branch env → pipeline step env の順で上書きする。 |
+| env merge | runner 基本 env → branch env → `.pipeline_config.env` → pipeline step env の順で上書きする。 |
 | secret mask | branch env と step env の secret key 値を stdout/stderr、hook log、notify payload、pipeline step log へ保存前に mask する。 |
 | optional failure | `required=false` の step が失敗した場合、`status="optional_failed"` として保存し、後続 step を継続する。全体 status は後続 required step の結果で決める。 |
 | timeout | step timeout 時は process group を kill し、`exit_code:null`、`status:"timeout"`、`error:"step timeout"` を保存する。 |
