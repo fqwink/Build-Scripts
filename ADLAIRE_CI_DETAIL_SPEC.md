@@ -132,6 +132,22 @@
 | 終了コード | CLI / runner は `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` ロック競合を標準とする。個別節に明記がある場合もこの意味から外してはならない。 |
 | 禁止事項 | 仕様にない環境変数、状態ファイル、HTTP endpoint、CLI option、外部依存を実装者判断で追加してはならない。必要な場合は先に本仕様を改訂する。 |
 
+### コンポーネント自律性チェック
+
+実装者は、各コンポーネントの実装 PR で、`ADLAIRE_CI_SPEC.md` Part 1 §4.1 のゼロ依存・フルインハウス原則を満たすことを確認する。
+
+| 対象 | 確認項目 | 不合格条件 |
+|------|----------|------------|
+| Go 共通 | `go.mod`、`go.sum`、import 一覧に、標準ライブラリ以外の module が追加されていない。 | `require` に外部 module が存在する、または標準ライブラリ以外の import がある。 |
+| `build_spec.go` | Markdown 変換、template、syntax highlight、search index、theme component を内製処理で実装している。 | Markdown parser、template engine、highlight library、search library、CSS framework に依存する。 |
+| `runner.go` | GitHub API、ビルド起動、lock、retry、log、notification、SSH 転送、snapshot を Go 標準ライブラリと OS 標準コマンドで実装している。 | 外部 CI、queue、scheduler、retry library、SSH library を必須依存にする。 |
+| `api_server.go` | routing、認証、session、JSON、入力検証、状態ファイル CRUD を Go 標準ライブラリで実装している。 | web framework、router、ORM、database driver、auth framework に依存する。 |
+| `adlaire-ci-sdk.js` | browser 標準 API だけで API client、timeout、streaming、error handling を実装している。 | npm package、bundler、polyfill、framework、global runtime を必須にする。 |
+| `admin/index.html` | HTML / CSS / Vanilla JavaScript と `adlaire-ci-sdk.js` だけで UI を構成している。 | frontend framework、CSS framework、icon package、chart library、CDN script を必須にする。 |
+| `mcp_server.go` | 将来仕様化時も Go 標準ライブラリで JSON-RPC、stdio / HTTP transport、API bridge を実装する前提になっている。 | 外部 MCP framework の採用を前提条件にする。 |
+
+不合格条件に該当する場合、その実装 PR は完了扱いにしてはならない。外部依存が必要な場合は、実装ではなく仕様改訂 PR として `ADLAIRE_CI_SPEC.md` Part 2 §4 の許可外部ライブラリ一覧、採用理由、代替困難性、責務範囲、削除方針、検証条件を先に確定する。
+
 ---
 
 ## 0e. 完全実装検証マトリクス
@@ -333,7 +349,7 @@ Go 標準ライブラリと GitHub PAT（`contents: read`）を基本要件と�
 | 項目 | 内容 |
 |------|------|
 | Go バージョン | Go `1.22` 以上。 |
-| 外部依存 | 原則なし。Go 標準ライブラリを基本とし、外部依存を採用する場合は `ADLAIRE_CI_SPEC.md` Part 2 §4 の許可リスト更新を先行する。 |
+| 外部依存 | なし。Go 標準ライブラリのみを使用する。外部依存が必要になった場合は実装せず、先に `ADLAIRE_CI_SPEC.md` Part 1 §4.1 と Part 2 §4 に従って仕様改訂する。 |
 | 入力 | UTF-8 エンコードの Markdown ファイル、または Markdown ファイルを含むディレクトリ |
 | 出力 | 静的 Web サイトディレクトリ（HTML / CSS / JavaScript / search index） |
 
