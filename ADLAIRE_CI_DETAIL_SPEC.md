@@ -1309,13 +1309,73 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 
 Go 版 `runner.go` は本節の設定値を正とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
 
+**関連型：**
+
+```go
+type RunnerConfig struct {
+    StateDir                    string
+    PendingFile                 string
+    APIRetryMax                 int
+    APIRetryBaseSeconds         int
+    BuildCooldownSeconds        int
+    HistoryKeepN                int
+    ForceBuildIntervalHours     int
+    LogKeepN                    int
+    APICircuitBreakerThreshold  int
+    OutputSizeWarnMB            int
+    WeeklySummaryEnabled        bool
+    WeeklySummaryDay            int
+    WeeklySummaryHour           int
+    BranchTargets               []BranchTarget
+}
+
+type BranchTarget struct {
+    Branch        string
+    TargetFile    string
+    SHAFile       string
+    Src           string
+    Out           string
+    DeployTargets []DeployTarget
+}
+
+type DeployTarget struct {
+    Host    string
+    User    string
+    DestDir string
+}
+```
+
+**設定値検証：**
+
+| 項目 | 条件 | 不正時 |
+|------|------|--------|
+| `StateDir` | 絶対パス。空文字不可。 | 終了コード `2` |
+| `PendingFile` | 絶対パス。空文字不可。 | 終了コード `2` |
+| `APIRetryMax` | 0 以上。 | 終了コード `2` |
+| `APIRetryBaseSeconds` | 0 以上。 | 終了コード `2` |
+| `BuildCooldownSeconds` | 0 以上。 | 終了コード `2` |
+| `HistoryKeepN` | 0 以上。 | 終了コード `2` |
+| `ForceBuildIntervalHours` | 0 以上。 | 終了コード `2` |
+| `LogKeepN` | 0 以上。 | 終了コード `2` |
+| `APICircuitBreakerThreshold` | 0 以上。 | 終了コード `2` |
+| `OutputSizeWarnMB` | 0 以上。 | 終了コード `2` |
+| `WeeklySummaryDay` | 0〜6。 | 終了コード `2` |
+| `WeeklySummaryHour` | 0〜23。 | 終了コード `2` |
+| `BranchTargets` | 1 件以上。 | 終了コード `2` |
+| `BranchTarget.Branch` | 空文字不可。`..`、`~`、制御文字禁止。 | 終了コード `2` |
+| `BranchTarget.TargetFile` | 相対パス。絶対パス、`..`、先頭 `/` 禁止。 | 終了コード `2` |
+| `BranchTarget.SHAFile` / `Src` / `Out` | 絶対パス。空文字不可。 | 終了コード `2` |
+| `DeployTarget.Host` / `User` / `DestDir` | 空文字不可。`DestDir` は絶対パス。 | 当該 deploy target を無効として ERROR ログ。全 target 無効なら終了コード `2` |
+
+`.server_config`、`.branch_config`、CLI 引数から読み込んだ値は `RunnerConfig` に正規化してから使用する。正規化後の `RunnerConfig` にないキーを処理フローで直接参照してはならない。
+
 **設定入力の優先順位：**
 
 1. CLI 引数
 2. `.server_config` / `.branch_config` など状態ファイルの保存値
 3. 本節の既定値
 
-同一キーが複数の入力経路に存在する場合は、上位の値だけを採用する。採用しなかった値を混合してはならない。未知キーは WARN ログを出して無視する。
+同一キーが複数の入力経路に存在する場合は、上位の値だけを採用する。採用しなかった値を混合してはならない。未知キーは WARN ログ `CONFIG_UNKNOWN_KEY: key={key}` を出して無視する。
 
 **runner CLI 引数仕様：**
 
@@ -1378,6 +1438,32 @@ BRANCH_TARGETS = [
 
 systemd timer からの再実行を妨げないため、終了コード `1` と `3` でもロック削除、ログ保存、通知キュー保存を試行してから終了する。
 
+**atomic write 共通契約：**
+
+runner が JSON object、JSON array、SHA cache、`.build_state`、`.build_circuit_state`、`.notify_pending`、`.pending_transfers`、`.server_config`、`.branch_config` を更新する場合は、以下の順序で atomic write を行う。
+
+1. 対象ファイルと同じディレクトリに `.{basename}.tmp.{pid}` を作成する。
+2. JSON は末尾改行付き UTF-8 として書き込む。
+3. `file.Sync()` を実行してから close する。
+4. `os.Rename(tmp, target)` で置換する。
+5. 親ディレクトリを open できる場合は directory sync を実行する。directory sync が `EINVAL` 等で未対応の場合は WARN ログ `DIR_SYNC_UNSUPPORTED: path={dir}` を出し、処理は成功扱いとする。
+
+atomic write 失敗時は対象ファイルを更新済みとして扱わない。tmp ファイルが残った場合は削除を試行し、削除失敗時は WARN ログ `TMP_CLEANUP_FAILED: path={tmp}` を出す。
+
+**lock ファイル契約：**
+
+`.build_lock` は UTF-8 text で、内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。
+
+| 状態 | 処理 |
+|------|------|
+| lock なし | `os.OpenFile(path, O_CREATE|O_EXCL|O_WRONLY, 0600)` で作成する。 |
+| lock あり・PID 実行中 | INFO ログ `BUILD_SKIP: already running (PID {pid})` を出し終了コード `0`。 |
+| lock あり・PID 不在 | WARN ログ `STALE_LOCK: pid={pid}` を出し、lock を削除してから再作成する。 |
+| lock あり・PID 解析不能 | ERROR ログ `LOCK_CORRUPT: path={path}` を出し終了コード `4`。 |
+| lock 作成失敗 | ERROR ログ `LOCK_CREATE_FAILED: {reason}` を出し終了コード `4`。 |
+
+PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` を読めない場合は PID 実行中確認不能として終了コード `4` とする。
+
 ---
 
 ## 13. 処理フロー
@@ -1405,14 +1491,14 @@ runner が読み込む JSON object / JSON array の状態ファイルが破損�
 ```
 runner.go 起動（systemd タイマーから呼び出し）
     │
-    ├─ .github_token 読み込み（不在の場合は起動失敗）
+    ├─ .github_token 読み込み（不在、空、改行除去後 1 文字未満の場合は ERROR ログ、終了コード 2）
     │
     ├─ [重複チェック] .build_lock が存在する場合
     │   ├─ ファイル内 PID が実行中 → INFO ログ（`BUILD_SKIP: already running (PID N)`）、正常終了
     │   └─ PID が存在しない（前回の異常終了） → .build_lock を削除して続行
     │
-    ├─ .build_lock に自プロセスの PID を書き込み
-    │   （以降、正常終了・例外終了いずれの場合も finally で .build_lock を削除）
+    ├─ .build_lock に自プロセスの PID と started_at を書き込み
+    │   （以降、正常終了・例外終了いずれの場合も defer で .build_lock を削除）
     │
     ├─ [ペンディングキュー再試行] PENDING_FILE が存在する場合（→ §14a）
     │   └─ ペンディングエントリごとに SSH 転送を再試行
@@ -1425,7 +1511,7 @@ runner.go 起動（systemd タイマーから呼び出し）
     │       └─ 失敗（HTTP エラー・接続失敗）→ ERROR ログ、エントリを保持（次回起動時に再試行）
     │
     ├─ [クールダウンチェック] BUILD_COOLDOWN_SECONDS > 0 の場合
-    │   └─ 前回ビルド完了（.build_history の最終 finished_at）から BUILD_COOLDOWN_SECONDS 秒未満
+    │   └─ .build_state.last_finished_at から BUILD_COOLDOWN_SECONDS 秒未満
     │       → INFO ログ（`COOLDOWN: skip, last_build N秒前`）、正常終了
     │
     ├─ BRANCH_TARGETS の各エントリを順次処理：
@@ -1434,7 +1520,7 @@ runner.go 起動（systemd タイマーから呼び出し）
     │   │   GET /repos/{OWNER}/{REPO}/git/trees/{branch}?recursive=1
     │   │   → target_file の blob SHA を取得
     │   │   └─ API 失敗時：API_RETRY_MAX 回まで指数バックオフ（API_RETRY_BASE_SECONDS × 2^n 秒）で再試行
-    │   │        ├─ 全試行失敗時：ERROR ログ、このエントリをスキップ
+    │   │        ├─ 全試行失敗時：ERROR ログ、このエントリを failure(api_error) として記録し、SHA を更新せず次エントリへ進む
     │   │        └─ レスポンスヘッダー X-RateLimit-Remaining = 0 の場合
     │   │             → X-RateLimit-Reset（Unix 時刻）まで待機してから再試行
     │   │               INFO ログ（`RATE_LIMIT: waiting until {reset_time}`）
@@ -1451,7 +1537,7 @@ runner.go 起動（systemd タイマーから呼び出し）
     │   │   GET /repos/{OWNER}/{REPO}/git/blobs/{sha}
     │   │   → Base64 デコード → src パスへ書き出し
     │   │   └─ API 失敗時：API_RETRY_MAX 回まで指数バックオフで再試行
-    │   │        ├─ 全試行失敗時：ERROR ログ、このエントリをスキップ
+    │   │        ├─ 全試行失敗時：ERROR ログ、このエントリを failure(api_error) として記録し、SHA を更新せず次エントリへ進む
     │   │        └─ レスポンスヘッダー GitHub-Authentication-Token-Expiration が存在する場合は Step 1 と同様に PAT 有効期限チェックを行う
     │   │
     │   ├─ [コミット情報取得] ビルドトリガーとなったコミット情報を取得し、ビルドログへ記録する
@@ -1464,9 +1550,9 @@ runner.go 起動（systemd タイマーから呼び出し）
     │   │   └─ API 失敗時：各フィールドを null として記録し、処理続行（ビルドは妨げない）
     │   │
     │   ├─ [事前チェック] pipeline.sh 実行前に以下を確認し、不足時は ERROR ログ＋deploy_failure Webhook 通知、このエントリをスキップ
-    │   │   ├─ ディスク空き容量 ≥ 出力ファイル推定サイズ × 3（`syscall.Statfs` または同等の Go 標準ライブラリ処理）
+    │   │   ├─ ディスク空き容量 ≥ max(出力ファイル推定サイズ × 3, 64MiB)。取得は `syscall.Statfs(outDir)` を使用する
     │   │   ├─ `adlaire-ci-build` が存在し実行可能であること（`os.Stat` と mode bit）
-    │   │   └─ `build_spec.go` 由来の Go 版ビルドバイナリとして `--version` またはビルド情報で識別できること
+    │   │   └─ `/usr/local/bin/adlaire-ci-build --version` が終了コード 0 で、stdout に `adlaire-ci-build` と `ADLAIRE_CI_SPEC` を含むこと
     │   │
     │   ├─ pipeline.sh 実行（bash {src の親ディレクトリ}/.ci/pipeline.sh）
     │   │   ├─ 成功（exit 0）：INFO ログ
@@ -1475,7 +1561,7 @@ runner.go 起動（systemd タイマーから呼び出し）
     │   │   │       → 送信失敗（HTTP エラー・接続失敗・タイムアウト）の場合：
     │   │   │           ERROR ログ（`NOTIFY_FAIL: url={url} status={code}`）
     │   │   │           .notify_pending へ `{"event":"success","url":"...","payload":{...},"queued_at":"<ISO8601>"}` を追記
-    │   │   └─ 失敗（exit ≠ 0）：ERROR ログ、sha_file 更新せず、このエントリをスキップ
+    │   │   └─ 失敗（exit ≠ 0）：ERROR ログ、sha_file 更新せず、このエントリを failure(build_failed) として記録し、次エントリへ進む
     │   │       └─ [Webhook 通知送信] on: ["failure"] 設定時
     │   │           → .notify_config の Webhook 宛先へ POST（ペイロード: event="failure", branch, build_id 等）
     │   │           → 送信失敗の場合：ERROR ログ、.notify_pending へキューイング（success と同一形式）
@@ -1530,14 +1616,18 @@ runner.go 起動（systemd タイマーから呼び出し）
 リポジトリの `.ci/pipeline.sh` にビルド手順を記述する。
 
 - 実行権限（`chmod +x`）が必要
-- `set -e` を先頭に記述し、ステップ失敗時に即座に終了させることを推奨
+- 先頭の shebang は `#!/usr/bin/env bash` または `#!/bin/bash` とする
+- `set -euo pipefail` を shebang 直後に記述する
 - 終了コード `0` で成功、`0` 以外で失敗とみなす
+- runner は `bash {src の親ディレクトリ}/.ci/pipeline.sh` として実行し、作業ディレクトリは `src` の親ディレクトリに設定する
+- 環境変数として `ADLAIRE_CI_SRC`、`ADLAIRE_CI_OUT`、`ADLAIRE_CI_BRANCH`、`ADLAIRE_CI_BUILD_ID` を渡す
+- `pipeline.sh` は最終的に `ADLAIRE_CI_OUT` のパスへ HTML を生成しなければならない
 
 **例：**
 ```bash
-#!/bin/bash
-set -e
-/usr/local/bin/adlaire-ci-build
+#!/usr/bin/env bash
+set -euo pipefail
+/usr/local/bin/adlaire-ci-build --src "$ADLAIRE_CI_SRC" --out "$ADLAIRE_CI_OUT"
 ```
 
 ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`runner.go` は参照しない）。`adlaire-ci-build` は `build_spec.go` から生成した Go 版バイナリである。
@@ -1550,7 +1640,7 @@ set -e
 
 Go 版 `runner.go` は、`pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節を SSH 転送の正本仕様とする。
 
-`runner.go` は `pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。
+`runner.go` は `pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。SSH コマンドは `ssh` バイナリを `exec.CommandContext` で直接起動し、`/bin/sh -c` を使わない。
 
 ### 設定値
 
@@ -1570,7 +1660,7 @@ Go 版 `runner.go` は、`pipeline.sh` 成功後に、出力ファイルを SSH 
 
 ```bash
 # runner.go が os/exec 経由で実行
-ssh <user>@<host> "sha256sum <dest_dir>/<filename>"
+ssh <user>@<host> sha256sum <dest_dir>/<filename>
 ```
 
 - ハッシュが一致 → スキップ（`SKIP` ログを記録）
@@ -1582,8 +1672,10 @@ stdin パイプ経由で SSH 転送する。
 
 ```bash
 # runner.go が os/exec（StdinPipe）経由で実行
-ssh <user>@<host> "cat > <dest_dir>/<filename>" < <localfile>
+ssh <user>@<host> tee <dest_dir>/<filename>
 ```
+
+runner は local file を開き、SSH process の stdin へ `io.Copy` で送る。リモート側 stdout は破棄してよいが、stderr は失敗理由として `.build_logs/{id}.json.error` と ERROR ログへ記録する。
 
 ### ペンディングキュー
 
@@ -1598,7 +1690,7 @@ ssh <user>@<host> "cat > <dest_dir>/<filename>" < <localfile>
     "host": "192.0.2.1",
     "user": "deploy",
     "dest_dir": "/var/www/html",
-    "failed_at": "2026-09-15T10:00:00",
+    "failed_at": "2026-09-15T10:00:00Z",
     "retry_count": 1
   }
 ]
@@ -1607,6 +1699,7 @@ ssh <user>@<host> "cat > <dest_dir>/<filename>" < <localfile>
 - `runner.go` 起動時（`BRANCH_TARGETS` 処理前）に `PENDING_FILE` を読み込み、エントリごとに再試行する（→ §13 処理フロー）
 - 再試行成功時にエントリを削除する。失敗時は `retry_count` をインクリメントして保持する
 - SSH 転送失敗 Webhook 通知（`deploy_failure` イベント）を送信する（on: `["deploy_failure"]` 設定時）
+- 同一 `out`、`host`、`user`、`dest_dir` の pending エントリが既に存在する場合は新規追記せず、既存エントリの `retry_count` を +1 し、`failed_at` を最新時刻へ更新する
 
 ### 転送後整合性検証
 
@@ -1614,7 +1707,7 @@ SSH 転送完了後に、リモートファイルの SHA-256 チェックサム�
 
 **検証コマンド：**
 ```
-ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
+ssh {user}@{host} sha256sum {dest_dir}/{filename}
 ```
 出力形式 `{hash}  {filename}` の最初のフィールドをローカル `crypto/sha256` の hex digest と比較する。
 
@@ -1698,7 +1791,7 @@ Go 版 `runner.go` は、SSH 転送成功後に `.snapshots/` ディレクトリ
 | `ERROR` | トークン読み込み失敗、API 失敗、ビルド失敗 |
 | `DEBUG` | API レスポンス詳細等（`LOG_LEVEL = "DEBUG"` 時のみ） |
 
-stdout は Go 標準ライブラリ `log/slog` または同等の標準ライブラリ実装で出力し、systemd が journald に転送する。
+stdout は Go 標準ライブラリ `log/slog` で出力し、systemd が journald に転送する。独自 logger 実装を使用してはならない。
 
 ### 構造化ビルドログ
 
@@ -1797,7 +1890,7 @@ sudo -u deploy ssh-keygen -t ed25519 -f /home/deploy/.ssh/id_ed25519 -N ""
 sudo -u deploy ssh-keyscan -H <配信サーバーIP> >> /home/deploy/.ssh/known_hosts
 
 # 4. SHA キャッシュファイルを初期化
-printf '%s\n' "" | sudo -u deploy tee /opt/adlaire-builder/.last_sha
+printf '%s\n' '{"sha":""}' | sudo -u deploy tee /opt/adlaire-builder/.last_sha
 sudo chmod 600 /opt/adlaire-builder/.last_sha
 
 # 5. Go 版バイナリを配置
@@ -4283,7 +4376,7 @@ printf '%s\n' "<PAT>" > "$INSTALL_DIR/.github_token"
 chmod 600 "$INSTALL_DIR/.github_token"
 
 # ── 4. SHA キャッシュ初期化 ───────────────────────────
-printf '%s\n' "" > "$INSTALL_DIR/.last_sha"
+printf '%s\n' '{"sha":""}' > "$INSTALL_DIR/.last_sha"
 chmod 600 "$INSTALL_DIR/.last_sha"
 
 # ── 5. systemd サービスファイル配置 ───────────────────

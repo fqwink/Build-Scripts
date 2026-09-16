@@ -617,12 +617,12 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 | 設定項目 | 場所 | 変更方法 |
 |---------|------|---------|
-| 入出力パス | スクリプト冒頭の `SRC` / `OUT` 定数 | 値を書き換えて再実行 |
-| デザイントークン値 | `PAGE` f-string 内 `:root { }` ブロック | ADS 準拠の範囲内で変更可 |
-| ドキュメントタイトル | `PAGE` f-string 内 `<title>` タグ | 任意の文字列に変更可 |
-| ヘッダー表示名 | `PAGE` f-string 内 `<span class="hdr-title">` | 任意の文字列に変更可 |
-| バージョンバッジ | `PAGE` f-string 内 `<span class="hdr-ver">` | `V.X.N` 形式（安定版リリースのたびに `X` をインクリメント） |
-| TOC 対象見出しレベル | `build_toc()` 内のフィルタ行（`lv <= 3`） | 上限レベルを変更可 |
+| 入出力パス | `adlaire-ci-build --src` / `--out`、または `DefaultBuildConfig` | CLI 引数を優先し、既定値変更時は `ADLAIRE_CI_DETAIL_SPEC.md` §2 と整合させる |
+| デザイントークン値 | `assembleHTML(PageData)` が埋め込むインライン CSS の `:root { }` ブロック | ADS 準拠の範囲内で変更し、`DESIGN.md` と整合させる |
+| ドキュメントタイトル | `PageData.Title` | 空文字時は `Adlaire CI Specification`。変更時は §5 `PageData` 契約に従う |
+| ヘッダー表示名 | `<span id="doc-title">` に出力する `PageData.Title` | `PageData.Title` と同一値を使用し、別名を持たせない |
+| バージョンバッジ | 安定版リリース情報を表示する場合の `PageData` 拡張 | `V.X.N` 形式。追加する場合は先に `ADLAIRE_CI_DETAIL_SPEC.md` §5 の `PageData` にフィールドを追加する |
+| TOC 対象見出しレベル | `buildTOC(headings []Heading)` | 初期仕様では h1〜h3 固定。変更する場合は §4.4、§6、§7.3〜§7.5 を同時に改訂する |
 
 ## 4. 外部ライブラリ・フレームワーク方針
 
