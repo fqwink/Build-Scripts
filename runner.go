@@ -25,6 +25,7 @@ import (
 
 var runnerGitHubAPIBase = "https://api.github.com"
 var runnerNow = time.Now
+var runnerSleep = time.Sleep
 
 type RunnerConfig struct {
 	StateDir                   string
@@ -164,6 +165,23 @@ type pendingTransfer struct {
 	RetryCount int    `json:"retry_count"`
 }
 
+type notifyPendingEntry struct {
+	Event      string         `json:"event"`
+	URL        string         `json:"url"`
+	Payload    map[string]any `json:"payload"`
+	QueuedAt   string         `json:"queued_at"`
+	RetryCount int            `json:"retry_count"`
+	LastError  string         `json:"last_error"`
+}
+
+type buildCircuitState struct {
+	Open                bool    `json:"open"`
+	ConsecutiveFailures int     `json:"consecutive_failures"`
+	OpenedAt            *string `json:"opened_at"`
+	LastFailureAt       *string `json:"last_failure_at"`
+	LastError           *string `json:"last_error"`
+}
+
 type gitTreeResponse struct {
 	Tree []struct {
 		Path string `json:"path"`
@@ -277,6 +295,9 @@ func executeRunner(cfg RunnerConfig, stdout, stderr io.Writer) int {
 		logger.Error(err.Error())
 		return 1
 	}
+	if err := retryNotifyPending(filepath.Join(cfg.StateDir, ".notify_pending"), logger); err != nil {
+		logger.Error("NOTIFY_PENDING_RETRY_FAILED: " + err.Error())
+	}
 	token, err := readRunnerToken(filepath.Join(cfg.StateDir, ".github_token"))
 	if err != nil {
 		logger.Error(err.Error())
@@ -291,6 +312,14 @@ func executeRunner(cfg RunnerConfig, stdout, stderr io.Writer) int {
 	buildID := runnerBuildID(runnerNow().UTC(), 1)
 	if err := writeBuildState(cfg.StateDir, true, &buildID); err != nil {
 		logger.Error("STATE_START_FAILED: " + err.Error())
+		return 1
+	}
+	if circuitOpen(cfg.StateDir) {
+		logger.Error("CIRCUIT_OPEN: polling skipped")
+		finished := runnerNow().UTC().Format(time.RFC3339)
+		state := defaultBuildState()
+		state.LastFinishedAt = &finished
+		_ = runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_state"), state, 0600)
 		return 1
 	}
 	exit := 0
@@ -432,22 +461,30 @@ func pidRunning(pid int) bool {
 func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, buildID string, logger *slog.Logger) int {
 	started := runnerNow().UTC()
 	prevSHA, _ := readSHACache(target.SHAFile)
-	blobSHA, err := fetchTargetSHA(token, target.Branch, target.TargetFile)
+	blobSHA, err := fetchTargetSHA(cfg, token, target.Branch, target.TargetFile)
 	if err != nil {
 		logFailure(cfg, target, buildID, started, nil, prevSHA, "failure_api", "github api failed", nil, nil, logger)
+		recordCircuitFailure(cfg, "github api failed")
 		return 3
 	}
 	if blobSHA == prevSHA {
 		logger.Info(fmt.Sprintf("NO_CHANGE: branch=%s target=%s sha=%s", target.Branch, target.TargetFile, blobSHA))
 		return 0
 	}
-	content, err := fetchBlobContent(token, blobSHA)
+	content, err := fetchBlobContent(cfg, token, blobSHA)
 	if err != nil {
 		logFailure(cfg, target, buildID, started, &blobSHA, prevSHA, "failure_decode", "blob decode failed", nil, nil, logger)
+		recordCircuitFailure(cfg, "blob decode failed")
 		return 1
 	}
 	if err := materializeSource(target.Src, content); err != nil {
 		logFailure(cfg, target, buildID, started, &blobSHA, prevSHA, "failure_decode", "source write failed", nil, nil, logger)
+		recordCircuitFailure(cfg, "source write failed")
+		return 1
+	}
+	if err := precheckRunnerTarget(target); err != nil {
+		logFailure(cfg, target, buildID, started, &blobSHA, prevSHA, "failure_precheck", "precheck failed", nil, nil, logger)
+		recordCircuitFailure(cfg, "precheck failed")
 		return 1
 	}
 	pl := runPipeline(cfg, target, buildID)
@@ -478,6 +515,14 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 			}
 		}
 	}
+	var snapshotID *string
+	if status == "success" {
+		if id, err := writeSnapshot(cfg, target, buildID); err == nil {
+			snapshotID = &id
+		} else {
+			logger.Warn("SNAPSHOT_FAILED: " + err.Error())
+		}
+	}
 	finished := runnerNow().UTC()
 	blog := buildLog{
 		ID:              buildID,
@@ -494,7 +539,7 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		Report:          rep,
 		Warnings:        warns,
 		Deploy:          deploys,
-		SnapshotID:      nil,
+		SnapshotID:      snapshotID,
 		Error:           errText,
 	}
 	if err := writeBuildLog(cfg.StateDir, blog); err != nil {
@@ -505,14 +550,19 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		logger.Error("BUILD_HISTORY_WRITE_FAILED: " + err.Error())
 		return 1
 	}
+	if exitCode == 0 {
+		resetCircuitState(cfg)
+	} else if strings.HasPrefix(status, "failure_") {
+		recordCircuitFailure(cfg, derefString(errText, "runner target failed"))
+	}
 	return exitCode
 }
 
-func fetchTargetSHA(token, branch, targetFile string) (string, error) {
+func fetchTargetSHA(cfg RunnerConfig, token, branch, targetFile string) (string, error) {
 	owner, repo := runnerRepo()
 	url := fmt.Sprintf("%s/repos/%s/%s/git/trees/%s?recursive=1", strings.TrimRight(runnerGitHubAPIBase, "/"), owner, repo, branch)
 	var tree gitTreeResponse
-	if err := runnerGetJSON(token, url, &tree); err != nil {
+	if err := runnerGetJSON(cfg, token, url, &tree); err != nil {
 		return "", err
 	}
 	for _, item := range tree.Tree {
@@ -523,11 +573,11 @@ func fetchTargetSHA(token, branch, targetFile string) (string, error) {
 	return "", errors.New("target not found")
 }
 
-func fetchBlobContent(token, sha string) ([]byte, error) {
+func fetchBlobContent(cfg RunnerConfig, token, sha string) ([]byte, error) {
 	owner, repo := runnerRepo()
 	url := fmt.Sprintf("%s/repos/%s/%s/git/blobs/%s", strings.TrimRight(runnerGitHubAPIBase, "/"), owner, repo, sha)
 	var blob gitBlobResponse
-	if err := runnerGetJSON(token, url, &blob); err != nil {
+	if err := runnerGetJSON(cfg, token, url, &blob); err != nil {
 		return nil, err
 	}
 	content := strings.ReplaceAll(blob.Content, "\n", "")
@@ -546,25 +596,72 @@ func runnerRepo() (string, string) {
 	return owner, name
 }
 
-func runnerGetJSON(token, url string, out any) error {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("User-Agent", "adlaire-ci-runner")
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+func runnerGetJSON(cfg RunnerConfig, token, url string, out any) error {
 	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
+	var lastErr error
+	for attempt := 0; attempt <= cfg.APIRetryMax; attempt++ {
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("User-Agent", "adlaire-ci-runner")
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Accept", "application/vnd.github+json")
+		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+		resp, err := client.Do(req)
+		if err == nil && resp != nil {
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				defer resp.Body.Close()
+				return json.NewDecoder(resp.Body).Decode(out)
+			}
+			lastErr = fmt.Errorf("github api status %d", resp.StatusCode)
+			if !runnerRetryable(resp) || attempt == cfg.APIRetryMax {
+				resp.Body.Close()
+				return lastErr
+			}
+			wait := retryDelay(cfg, attempt, resp)
+			resp.Body.Close()
+			runnerSleep(wait)
+			continue
+		}
+		lastErr = err
+		if attempt == cfg.APIRetryMax {
+			break
+		}
+		runnerSleep(retryDelay(cfg, attempt, nil))
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("github api status %d", resp.StatusCode)
+	return lastErr
+}
+
+func runnerRetryable(resp *http.Response) bool {
+	if resp == nil {
+		return true
 	}
-	return json.NewDecoder(resp.Body).Decode(out)
+	switch resp.StatusCode {
+	case http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	case http.StatusForbidden:
+		return resp.Header.Get("X-RateLimit-Remaining") == "0"
+	default:
+		return false
+	}
+}
+
+func retryDelay(cfg RunnerConfig, attempt int, resp *http.Response) time.Duration {
+	if resp != nil && resp.Header.Get("X-RateLimit-Remaining") == "0" {
+		if reset := resp.Header.Get("X-RateLimit-Reset"); reset != "" {
+			if unix, err := strconv.ParseInt(reset, 10, 64); err == nil {
+				wait := time.Until(time.Unix(unix, 0))
+				if wait > 0 {
+					return wait
+				}
+			}
+		}
+	}
+	if cfg.APIRetryBaseSeconds <= 0 {
+		return 0
+	}
+	return time.Duration(cfg.APIRetryBaseSeconds) * time.Second * time.Duration(1<<attempt)
 }
 
 func materializeSource(src string, content []byte) error {
@@ -575,6 +672,47 @@ func materializeSource(src string, content []byte) error {
 		return err
 	}
 	return os.WriteFile(filepath.Join(src, "source.md"), content, 0644)
+}
+
+func precheckRunnerTarget(target BranchTarget) error {
+	if err := ensureDiskAvailable(filepath.Dir(target.Out)); err != nil {
+		return err
+	}
+	buildBin := os.Getenv("ADLAIRE_CI_BUILD_BIN")
+	if buildBin == "" {
+		buildBin = "/usr/local/bin/adlaire-ci-build"
+	}
+	info, err := os.Stat(buildBin)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() || info.Mode()&0111 == 0 {
+		return fmt.Errorf("build binary is not executable: %s", buildBin)
+	}
+	cmd := exec.Command(buildBin, "--version")
+	out, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(string(out), "adlaire-ci-build") || !strings.Contains(string(out), "ADLAIRE_CI_SPEC") {
+		return fmt.Errorf("build binary version mismatch: %s", buildBin)
+	}
+	return nil
+}
+
+func ensureDiskAvailable(path string) error {
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return err
+	}
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(path, &stat); err != nil {
+		return err
+	}
+	free := stat.Bavail * uint64(stat.Bsize)
+	if free < 64*1024*1024 {
+		return fmt.Errorf("disk free below 64MiB: %s", path)
+	}
+	return nil
 }
 
 func runPipeline(cfg RunnerConfig, target BranchTarget, buildID string) pipelineLog {
@@ -669,6 +807,68 @@ func executeDeploy(cfg RunnerConfig, branchIdx, deployIdx int, target BranchTarg
 	return dl
 }
 
+func writeSnapshot(cfg RunnerConfig, target BranchTarget, buildID string) (string, error) {
+	if cfg.HistoryKeepN == 0 {
+		return "", errors.New("snapshot disabled")
+	}
+	dest := filepath.Join(cfg.StateDir, ".snapshots", buildID, "site")
+	if err := os.RemoveAll(filepath.Dir(dest)); err != nil {
+		return "", err
+	}
+	if err := copyDir(target.Out, dest); err != nil {
+		return "", err
+	}
+	if err := pruneSnapshots(filepath.Join(cfg.StateDir, ".snapshots"), cfg.HistoryKeepN); err != nil {
+		return "", err
+	}
+	return buildID, nil
+}
+
+func copyDir(src, dest string) error {
+	return filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		out := filepath.Join(dest, rel)
+		if d.IsDir() {
+			return os.MkdirAll(out, 0755)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(out, data, 0644)
+	})
+}
+
+func pruneSnapshots(root string, keep int) error {
+	if keep <= 0 {
+		return nil
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return err
+	}
+	dirs := []string{}
+	for _, e := range entries {
+		if e.IsDir() {
+			dirs = append(dirs, e.Name())
+		}
+	}
+	sort.Strings(dirs)
+	for len(dirs) > keep {
+		if err := os.RemoveAll(filepath.Join(root, dirs[0])); err != nil {
+			return err
+		}
+		dirs = dirs[1:]
+	}
+	return nil
+}
+
 func addPendingTransfer(path string, entry pendingTransfer) error {
 	var entries []pendingTransfer
 	_ = readJSONArray(path, &entries)
@@ -681,6 +881,37 @@ func addPendingTransfer(path string, entry pendingTransfer) error {
 	}
 	entries = append(entries, entry)
 	return runnerAtomicWriteJSON(path, entries, 0600)
+}
+
+func retryNotifyPending(path string, logger *slog.Logger) error {
+	var entries []notifyPendingEntry
+	if err := readJSONArray(path, &entries); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	remaining := []notifyPendingEntry{}
+	client := &http.Client{Timeout: 30 * time.Second}
+	for _, entry := range entries {
+		body, _ := json.Marshal(entry.Payload)
+		resp, err := client.Post(entry.URL, "application/json", bytes.NewReader(body))
+		if err == nil && resp != nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			resp.Body.Close()
+			logger.Info("NOTIFY_PENDING_RETRY_OK: url=" + entry.URL)
+			continue
+		}
+		if resp != nil {
+			entry.LastError = fmt.Sprintf("http status %d", resp.StatusCode)
+			resp.Body.Close()
+		} else if err != nil {
+			entry.LastError = err.Error()
+		}
+		entry.RetryCount++
+		remaining = append(remaining, entry)
+		logger.Error("NOTIFY_PENDING_RETRY_FAILED: url=" + entry.URL)
+	}
+	return runnerAtomicWriteJSON(path, remaining, 0600)
 }
 
 func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started time.Time, blobSHA *string, prevSHA, status, msg string, pl *pipelineLog, rep *runnerReport, logger *slog.Logger) {
@@ -701,6 +932,48 @@ func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started t
 	if err := appendHistory(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_HISTORY_WRITE_FAILED: " + err.Error())
 	}
+}
+
+func circuitOpen(stateDir string) bool {
+	state, err := readCircuitState(stateDir)
+	return err == nil && state.Open
+}
+
+func recordCircuitFailure(cfg RunnerConfig, msg string) {
+	if cfg.APICircuitBreakerThreshold <= 0 {
+		return
+	}
+	state, _ := readCircuitState(cfg.StateDir)
+	now := runnerNow().UTC().Format(time.RFC3339)
+	state.ConsecutiveFailures++
+	state.LastFailureAt = &now
+	state.LastError = &msg
+	if state.ConsecutiveFailures >= cfg.APICircuitBreakerThreshold {
+		state.Open = true
+		state.OpenedAt = &now
+	}
+	_ = runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_circuit_state"), state, 0600)
+}
+
+func resetCircuitState(cfg RunnerConfig) {
+	state := buildCircuitState{}
+	_ = runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_circuit_state"), state, 0600)
+}
+
+func readCircuitState(stateDir string) (buildCircuitState, error) {
+	var state buildCircuitState
+	err := readJSONFile(filepath.Join(stateDir, ".build_circuit_state"), &state)
+	if errors.Is(err, os.ErrNotExist) {
+		return buildCircuitState{}, nil
+	}
+	return state, err
+}
+
+func derefString(s *string, fallback string) string {
+	if s == nil {
+		return fallback
+	}
+	return *s
 }
 
 func readSHACache(path string) (string, error) {

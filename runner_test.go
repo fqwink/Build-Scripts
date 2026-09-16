@@ -78,6 +78,12 @@ func TestRunnerFixtureR3BuildSuccessNoDeploy(t *testing.T) {
 		if log.TargetStatus != "success" || log.Pipeline.ExitCode == nil || *log.Pipeline.ExitCode != 0 || log.Report == nil || log.Report.Pages != 1 || len(log.Deploy) != 0 || log.Error != nil {
 			t.Fatalf("unexpected log: %+v", log)
 		}
+		if log.SnapshotID == nil {
+			t.Fatalf("snapshot id must be recorded")
+		}
+		if _, err := os.Stat(filepath.Join(state, ".snapshots", *log.SnapshotID, "site", "index.html")); err != nil {
+			t.Fatalf("snapshot missing: %v", err)
+		}
 		if !strings.Contains(readFile(t, filepath.Join(state, ".build_history")), `"status":"success"`) {
 			t.Fatalf("history missing success")
 		}
@@ -108,6 +114,105 @@ func TestRunnerFixtureR4PipelineFailure(t *testing.T) {
 		log := onlyBuildLog(t, state)
 		if log.TargetStatus != "failure_build" || log.Pipeline.ExitCode == nil || *log.Pipeline.ExitCode != 7 || log.Pipeline.Stdout != "before fail" || log.Pipeline.Stderr != "failed" || log.Error == nil || *log.Error != "pipeline failed" {
 			t.Fatalf("unexpected failure log: %+v", log)
+		}
+	})
+}
+
+func TestRunnerHardeningRetriesGitHubAPI(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
+	hits := 0
+	encoded := base64.StdEncoding.EncodeToString([]byte("# Title\n"))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/git/trees/") {
+			hits++
+			if hits == 1 {
+				http.Error(w, "temporary", http.StatusInternalServerError)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"tree": []map[string]string{{"path": "docs", "type": "blob", "sha": "retry-blob"}}})
+			return
+		}
+		if strings.Contains(r.URL.Path, "/git/blobs/") {
+			_ = json.NewEncoder(w).Encode(map[string]string{"content": encoded, "encoding": "base64"})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	oldSleep := runnerSleep
+	runnerSleep = func(time.Duration) {}
+	defer func() { runnerSleep = oldSleep }()
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if hits != 2 {
+			t.Fatalf("expected retry hits=2 got %d", hits)
+		}
+	})
+}
+
+func TestRunnerHardeningPrecheckFailure(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
+	t.Setenv("ADLAIRE_CI_BUILD_BIN", filepath.Join(state, "missing-build-bin"))
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		log := onlyBuildLog(t, state)
+		if log.TargetStatus != "failure_precheck" || log.Error == nil || *log.Error != "precheck failed" {
+			t.Fatalf("unexpected precheck log: %+v", log)
+		}
+	})
+}
+
+func TestRunnerHardeningNotifyPendingRetry(t *testing.T) {
+	state := newRunnerState(t, "blob-1", nil)
+	received := 0
+	hook := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer hook.Close()
+	writeJSON(t, filepath.Join(state, ".notify_pending"), []notifyPendingEntry{{
+		Event: "success", URL: hook.URL, Payload: map[string]any{"ok": true},
+		QueuedAt: "2026-09-16T00:00:00Z", RetryCount: 1,
+	}})
+	server := fakeGitHub(t, "docs", "blob-1", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if received != 1 {
+			t.Fatalf("expected one notify retry, got %d", received)
+		}
+		if strings.TrimSpace(readFile(t, filepath.Join(state, ".notify_pending"))) != "[]" {
+			t.Fatalf("notify pending must be empty")
+		}
+	})
+}
+
+func TestRunnerHardeningCircuitOpenSkipsPolling(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	now := "2026-09-16T00:00:00Z"
+	msg := "github api failed"
+	writeJSON(t, filepath.Join(state, ".build_circuit_state"), buildCircuitState{Open: true, ConsecutiveFailures: 3, OpenedAt: &now, LastFailureAt: &now, LastError: &msg})
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if _, err := os.Stat(filepath.Join(state, ".build_history")); !os.IsNotExist(err) {
+			t.Fatalf("history must not be touched while circuit is open")
+		}
+		if !strings.Contains(stdout.String(), "CIRCUIT_OPEN") {
+			t.Fatalf("missing circuit log: %s", stdout.String())
 		}
 	})
 }
@@ -185,6 +290,9 @@ func TestRunnerFixtureR7CorruptNotifyPending(t *testing.T) {
 func newRunnerState(t *testing.T, sha string, deploy []DeployTarget) string {
 	t.Helper()
 	state := t.TempDir()
+	buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
+	writeExecutable(t, buildBin, "#!/bin/sh\nprintf 'adlaire-ci-build ADLAIRE_CI_SPEC go=fake\\n'\n")
+	t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
 	if err := os.WriteFile(filepath.Join(state, ".github_token"), []byte("token\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
