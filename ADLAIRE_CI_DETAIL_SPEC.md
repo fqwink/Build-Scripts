@@ -536,6 +536,7 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | コミット情報のビルドログ記録 | `runner.go` | §13、§15 | SHA、message、author、date を build id と同じログへ記録する。 |
 | GitHub API 連続失敗によるサーキットブレーカー | `runner.go` / `api_server.go` | §11、§12、§13、§22.0e | 閾値、open/close 状態、API reset、通知、状態ファイルが一致する。 |
 | 出力サイトサイズ警告閾値 | `build_spec.go` / `runner.go` / `api_server.go` | §8、§12、§13、§22.0e | `OUTPUT_SIZE_WARN_MB`、`size_warn`、WARN ログ、API 表示が一致する。 |
+| 設定ファイル起動時整合性チェック | `runner.go` | §11、§12、§13、§22.0a、§22.0c | 対象 JSON ファイル、検証順序、破損退避、初期化値、ログ、通知、終了コード、fixture が一致する。 |
 | Webhook イベントログ | `api_server.go` | §11、§22.0e、§22-W | `.webhook_events.json` の JSON Lines schema と一覧 API が一致する。 |
 | ビルド所要時間の記録と統計 API | `runner.go` / `api_server.go` | §15、§22.0e | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
 | ビルドアーティファクト世代管理 | `runner.go` / `api_server.go` | §14b、§22.0e | `.snapshots/` の保持世代、削除、rollback API が一致する。 |
@@ -2078,12 +2079,12 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 | パス | 用途 |
 |------|------|
 | `/opt/adlaire-builder/.build_history` | ビルド履歴。 |
-| `/opt/adlaire-builder/.notify_config` | Webhook 通知設定。 |
+| `/opt/adlaire-builder/.notify_config` | Webhook 通知設定。runner は起動時整合性チェックと送信読み込みを行い、管理 API は設定更新を行う。 |
 | `/opt/adlaire-builder/.notify_log` | Webhook 送信履歴。 |
 | `/opt/adlaire-builder/.notify_pending` | Webhook 通知失敗時の再送キュー。 |
 | `/opt/adlaire-builder/.pending_transfers` | SSH 転送失敗時の再送キュー。 |
 | `/opt/adlaire-builder/.build_lock` | 実行中ビルドの PID ロック。 |
-| `/opt/adlaire-builder/.branch_config` | ブランチターゲット設定。 |
+| `/opt/adlaire-builder/.branch_config` | ブランチターゲット設定。永続 JSON key は `branch_targets` とする。 |
 | `/opt/adlaire-builder/.build_state` | ビルド実行状態、週次サマリー送信日等。 |
 | `/opt/adlaire-builder/.build_circuit_state` | サーキットブレーカー状態。 |
 | `/opt/adlaire-builder/.build_logs/` | ビルドごとの個別ログ。 |
@@ -2416,6 +2417,111 @@ PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` �
 
 `.pending_transfers` entry は §14a の形式を正とする。JSON array 内の entry は投入順を保持し、再試行も投入順で処理する。重複統合は `out`、`host`、`user`、`dest_dir` の 4 項目完全一致で判定する。
 
+**設定ファイル起動時整合性チェック：**
+
+本機能の目的は、runner 起動時に状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、ビルド処理開始前に復旧または停止することである。対象コンポーネントは `runner.go` のみとし、管理 API の HTTP endpoint、SDK、UI は本機能の実装対象に含めない。
+
+対象ファイルは次の 6 件に固定する。実装者判断で対象ファイルを追加または除外してはならない。
+
+| 順序 | ファイル | 必須性 | 正常時の扱い | 不在時の扱い |
+|------|----------|--------|--------------|--------------|
+| 1 | `.branch_config` | 任意 | JSON object として検証し、`branch_targets` を `RunnerConfig.BranchTargets` へ正規化する。 | ファイルを作成せず、§12 の `BRANCH_TARGETS` 既定値を使用する。 |
+| 2 | `.notify_config` | 任意 | JSON object として検証し、通知送信時の設定として使用する。 | 初期値を atomic write で作成する。 |
+| 3 | `.build_state` | 必須 | JSON object として検証し、`queued`、`last_finished_at`、週次サマリー状態を保持する。 | 初期値を atomic write で作成する。 |
+| 4 | `.build_circuit_state` | 必須 | JSON object として検証し、circuit breaker 状態を保持する。 | 初期値を atomic write で作成する。 |
+| 5 | `.pending_transfers` | 必須 | JSON array として検証し、entry の投入順を保持する。 | `[]` を atomic write で作成する。 |
+| 6 | `.notify_pending` | 必須 | JSON array として検証し、entry の投入順を保持する。 | `[]` を atomic write で作成する。 |
+
+実行順序は固定とする。
+
+1. CLI 引数を検証し、`--help` または `--version` の場合は本チェックを実行しない。
+2. `StateDir` が絶対パスかつ既存ディレクトリであることを確認する。
+3. `.build_lock` を取得する。実行中 PID がある場合は本チェックを実行せず終了コード `0` で終了する。
+4. 本チェックを上表の順序で実行する。
+5. 本チェックが復旧可能な問題のみで完了した場合は、`.github_token` 読み込み、pending retry、cooldown、target 処理へ進む。
+6. 本チェックが停止条件に該当した場合は、`.build_state.running` を `true` にせず、`.build_logs/{id}.json` と `.build_history` を作成せず、`.build_lock` を削除して終了する。
+
+判定分類は次のとおり固定する。
+
+| 分類 | 条件 | 処理 |
+|------|------|------|
+| `missing_optional` | `.branch_config` が存在しない。 | ファイルを作成せず、`BRANCH_TARGETS` 既定値を採用する。ログは出さない。 |
+| `missing_required` | `.notify_config`、`.build_state`、`.build_circuit_state`、`.pending_transfers`、`.notify_pending` が存在しない。 | 初期値を atomic write で作成し、WARN ログ `CONFIG_INIT: path={path}` を出す。 |
+| `empty_file` | ファイルサイズ 0 byte。 | `parse_error` と同じ扱い。 |
+| `parse_error` | UTF-8 として読めない、または JSON parse に失敗する。 | corrupt backup へ退避し、ファイル別初期化を行う。 |
+| `top_level_type_mismatch` | object 必須のファイルが array/string/null、array 必須のファイルが object/string/null。 | corrupt backup へ退避し、ファイル別初期化を行う。 |
+| `required_key_missing` | 必須 key が存在しない。 | corrupt backup へ退避し、ファイル別初期化を行う。 |
+| `required_key_type_mismatch` | 必須 key の型が schema と異なる。 | corrupt backup へ退避し、ファイル別初期化を行う。 |
+| `invalid_value` | 値が許容範囲外。例: 負の `retry_count`、不正な ISO 8601、相対 `sha_file`。 | corrupt backup へ退避し、ファイル別初期化を行う。 |
+| `unknown_key` | schema にない key が存在する。 | backup せず、未知 key を除去した正規化 JSON を atomic write し、WARN ログ `CONFIG_UNKNOWN_KEY: path={path} key={key}` を出す。 |
+| `permission_error` | 読み込み、rename、chmod、親ディレクトリ sync、lock 作成のいずれかが権限エラー。 | 自動退避せず、ERROR ログ `CONFIG_PERMISSION_ERROR: path={path} op={op}` を出し、終了コード `2`。 |
+| `io_error` | 権限以外の read/write/rename/sync 失敗。 | 自動退避せず、ERROR ログ `CONFIG_IO_ERROR: path={path} op={op}` を出し、終了コード `1`。 |
+
+corrupt backup のファイル名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。timestamp は UTC、秒単位、ゼロ埋め固定とする。同一秒内に同じファイルの backup 名が衝突した場合は、2 件目以降を `{original}.corrupt.{YYYYMMDDHHMMSS}.{n}.bak` とし、`n` は `2` から始める。
+
+ファイル別の復旧結果は次のとおり固定する。
+
+| ファイル | 復旧時の書き込み内容 | 復旧後の処理継続 | 備考 |
+|----------|----------------------|------------------|------|
+| `.branch_config` | 書き込まない。破損元を backup した後、`.branch_config` は不在状態にする。 | 継続する。 | §12 の `BRANCH_TARGETS` 既定値へ fallback する。 |
+| `.notify_config` | §22.0a の初期値。 | 継続する。 | このファイル自体が破損していた場合、`config_corrupt` 通知は送信しない。 |
+| `.build_state` | §22.0a の初期値。 | 継続する。 | `queued` は失われるため、ERROR ログと通知対象に含める。 |
+| `.build_circuit_state` | §22.0a の初期値。 | 継続する。 | circuit open 状態は解除されるため、ERROR ログと通知対象に含める。 |
+| `.pending_transfers` | `[]`。 | 継続する。 | 未再送転送は失われるため、ERROR ログと通知対象に含める。 |
+| `.notify_pending` | `[]`。 | 継続する。 | 未送信通知は失われるため、ERROR ログを出す。通知 queue 自体が失われるため追加 queue は行わない。 |
+
+復旧時ログは次の 3 種に固定する。
+
+| 条件 | ログ level | メッセージ |
+|------|------------|------------|
+| 初期作成 | WARN | `CONFIG_INIT: path={path}` |
+| corrupt backup 成功 | ERROR | `CONFIG_CORRUPT_BACKUP: path={path} backup={backup_path} reason={reason}` |
+| 正規化書き戻し | WARN | `CONFIG_NORMALIZED: path={path}` |
+
+復旧通知は `.notify_config` の復旧と検証が完了した後に 1 回だけ送信する。送信条件は、復旧対象に `.notify_config` と `.notify_pending` 以外のファイルが 1 件以上含まれ、かつ `.notify_config.webhooks[]` のうち `enabled=true` で `on` に `"config_corrupt"` または `"*"` を含む宛先が存在する場合とする。payload は以下の JSON object に固定する。
+
+```json
+{
+  "event": "config_corrupt",
+  "reason": "config_corrupt",
+  "recovered_at": "2026-09-16T00:00:00Z",
+  "files": [
+    {
+      "path": "/opt/adlaire-builder/.build_state",
+      "action": "backup_and_init",
+      "backup": "/opt/adlaire-builder/.build_state.corrupt.20260916000000.bak",
+      "reason": "parse_error"
+    }
+  ]
+}
+```
+
+通知送信に失敗した場合は、`.notify_pending` が本チェックで破損していない場合に限り、`event="config_corrupt"` の entry を `.notify_pending` へ追記する。`.notify_pending` が本チェックで初期化された場合は、二重消失を避けるため追記せず、ERROR ログ `NOTIFY_FAILED: event=config_corrupt url={url}` のみ出す。
+
+schema 検証では次を必須とする。
+
+- `.branch_config` は `branch_targets` のみを永続 key とし、`branches` だけを持つファイルは `required_key_missing` として扱う。API request / response の alias は永続ファイルへ保存する前に `branch_targets` へ変換する。
+- `.notify_config.webhooks[].on` は `start`、`success`、`failure`、`deploy_failure`、`weekly_summary`、`config_corrupt`、`*` のみ許可する。
+- `.build_state` は `weekly_summary_sent_date` を必須 key とする。値は `null` または `YYYY-MM-DD` とする。
+- `.pending_transfers[]` は §14a の pending entry schema と一致すること。1 件でも不正 entry がある場合はファイル全体を corrupt として扱う。
+- `.notify_pending[]` は `event`、`url`、`payload`、`queued_at`、`retry_count`、`last_error` を必須 key とする。`payload` は JSON object、`retry_count` は 0 以上の integer とする。
+
+本チェックは冪等でなければならない。初期化または正規化済みの状態で runner を再起動した場合、追加 backup、追加通知、追加 WARN/ERROR は発生しない。同一破損ファイルが復旧失敗後に残っている場合だけ、次回起動時に再度同じ判定を行う。
+
+検証 fixture は以下を必須とする。
+
+| fixture | 入力状態 | 期待結果 |
+|---------|----------|----------|
+| `config-startup/missing-required` | 対象必須ファイルが存在しない。 | 初期値が作成され、終了コード `0`、ビルド処理へ進む。 |
+| `config-startup/corrupt-build-state` | `.build_state` が `{bad json`。 | `.build_state.corrupt.{timestamp}.bak` へ退避、初期値作成、`config_corrupt` 通知対象、終了コード `0`。 |
+| `config-startup/corrupt-branch-config` | `.branch_config` が JSON array。 | backup 後 `.branch_config` は不在、既定 `BRANCH_TARGETS` 採用、終了コード `0`。 |
+| `config-startup/unknown-key` | `.build_circuit_state` に未知 key がある。 | backup なしで未知 key を除去、`CONFIG_NORMALIZED`、終了コード `0`。 |
+| `config-startup/invalid-pending-entry` | `.pending_transfers` に必須 key 不足 entry がある。 | backup 後 `[]` 作成、終了コード `0`。 |
+| `config-startup/permission-error` | 対象ファイルが読み込み不可。 | 自動退避なし、終了コード `2`、`.build_state.running` 未変更。 |
+| `config-startup/help-version-skip` | `--help` または `--version`。 | 対象ファイルを読まず、変更しない。 |
+
+完了条件は、上記 fixture を Go test で検証し、`ADLAIRE_CI_SPEC.md` の状態表、`DOCUMENT_INDEX.md` の実装状態、PR 本文の検証結果が一致していることとする。
+
 **build id 契約：**
 
 runner が生成する build id は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` とする。同一秒内に複数 target のビルドログが必要な場合は、2 件目以降を `b{YYYYMMDDHHmmss}-2`、`-3` とする。build id は `.build_logs/{id}.json`、`.build_history`、`.snapshots/{id}/` で同一値を使用する。
@@ -2429,14 +2535,15 @@ runner が生成する build id は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` �
 **状態更新順序の規範：**
 
 1. `.build_lock` を作成する。
-2. `.build_state.running=true`、`current_build_id`、`last_started_at` を atomic write で保存する。
-3. GitHub API、Blob 書き出し、事前チェック、`pipeline.sh` 実行を行う。
-4. ビルド成功時のみ `sha_file` を新 SHA に更新する。
-5. `.build_logs/{id}.json` を作成し、stdout/stderr、`[REPORT]`、警告、転送結果を保存する。
-6. `.build_history` に同じ `id` の要約行を JSON Lines で追記する。
-7. 転送成功後に `.snapshots/` を更新する。
-8. `.build_state.running=false`、`last_finished_at` を保存する。
-9. `.build_lock` を削除する。
+2. 設定ファイル起動時整合性チェックを実行する。
+3. `.build_state.running=true`、`current_build_id`、`last_started_at` を atomic write で保存する。
+4. GitHub API、Blob 書き出し、事前チェック、`pipeline.sh` 実行を行う。
+5. ビルド成功時のみ `sha_file` を新 SHA に更新する。
+6. `.build_logs/{id}.json` を作成し、stdout/stderr、`[REPORT]`、警告、転送結果を保存する。
+7. `.build_history` に同じ `id` の要約行を JSON Lines で追記する。
+8. 転送成功後に `.snapshots/` を更新する。
+9. `.build_state.running=false`、`last_finished_at` を保存する。
+10. `.build_lock` を削除する。
 
 途中失敗時は、失敗が発生した段階以降の成功前提更新を行わない。例えば `pipeline.sh` 失敗時は `sha_file`、snapshot、転送成功履歴を更新しない。ただし `.build_logs/{id}.json`、`.build_history`、`.build_state.running=false`、通知 pending は失敗記録として保存する。
 
@@ -2480,6 +2587,7 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 | 機能単位 | Read | Write | 成功条件 | 失敗時更新 |
 |----------|------|-------|----------|------------|
 | lock acquisition | `.build_lock` | `.build_lock` | lock file を `O_CREATE|O_EXCL` で作成し、PID と started_at を書き込む。 | 実行中 PID がある場合は終了コード `0`。形式不正 lock は終了コード `4`、上書き禁止。 |
+| startup config integrity | `.branch_config`, `.notify_config`, `.build_state`, `.build_circuit_state`, `.pending_transfers`, `.notify_pending` | 同左、corrupt backup | 対象 JSON の parse、top-level type、必須 key、型、値範囲、未知 key 正規化が完了する。 | 復旧可能な破損は backup と初期化後に継続。権限エラーは終了コード `2`、IO エラーは終了コード `1`。 |
 | state start | `.build_state` | `.build_state` | `running=true`、`current_build_id`、`last_started_at` を保存する。 | `.build_lock` を削除し、終了コード `1`。 |
 | pending transfer retry | `.pending_transfers` | `.pending_transfers`, `.build_logs/{id}.json` | 成功 entry を削除し、失敗 entry は `retry_count` を +1 して保持する。 | queue ファイル破損時は §22.0a に従い退避して `[]` で再生成する。 |
 | notify pending retry | `.notify_pending`, `.notify_config` | `.notify_pending`, `.notify_log` | HTTP 2xx の entry を削除し、失敗 entry は `retry_count` を +1 して保持する。 | `.notify_config` 不在時は送信せず entry を保持し、ERROR ログを記録する。 |
@@ -2516,6 +2624,12 @@ runner.go 起動（systemd タイマーから呼び出し）
     │
     ├─ .build_lock に自プロセスの PID と started_at を書き込み
     │   （以降、正常終了・例外終了いずれの場合も defer で .build_lock を削除）
+    │
+    ├─ [設定ファイル起動時整合性チェック]
+    │   ├─ .branch_config / .notify_config / .build_state / .build_circuit_state / .pending_transfers / .notify_pending を固定順序で検証
+    │   ├─ 復旧可能な破損 → corrupt backup、初期化または default fallback、必要時 config_corrupt 通知
+    │   ├─ unknown key のみ → backup せず正規化書き戻し
+    │   └─ permission error / IO error → .build_state.running=true にせず終了
     │
     ├─ [ペンディングキュー再試行] PENDING_FILE が存在する場合（→ §14a）
     │   └─ ペンディングエントリごとに SSH 転送を再試行
@@ -3320,16 +3434,16 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 |------|------|--------|----------|--------------|
 | `.admin_credentials` | JSON object | `--init-credentials` で生成 | `api_server.go` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
 | `.server_config` | JSON object | `{}` | `api_server.go` | `.server_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 object で再生成する。 |
-| `.notify_config` | JSON object | `{"webhooks":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `api_server.go` | `.notify_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.notify_config` | JSON object | `{"webhooks":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `runner.go` / `api_server.go` | `.notify_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.notify_log` | JSON Lines | 空ファイル | `runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
 | `.notify_pending` | JSON array | `[]` | `runner.go` | `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
 | `.pending_transfers` | JSON array | `[]` | `runner.go` | `.pending_transfers.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
 | `.build_history` | JSON Lines | 空ファイル | `runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
 | `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `runner.go` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
 | `.build_lock` | text | 不在 | `runner.go` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
-| `.branch_config` | JSON object | 不在 | `api_server.go` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`BRANCH_TARGETS` デフォルトへフォールバックする。 |
-| `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `runner.go` / `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `runner.go` / `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.branch_config` | JSON object | 不在 | `runner.go` / `api_server.go` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、再生成せず `BRANCH_TARGETS` デフォルトへフォールバックする。 |
+| `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `runner.go` / `api_server.go` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `runner.go` / `api_server.go` | `.build_circuit_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.repo_config` | JSON object | `{}` | `api_server.go` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
 | `.config_log` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.access_log` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
@@ -3414,7 +3528,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | キー | 型 | 既定値 | 許容値 | 説明 |
 |------|----|--------|--------|------|
 | `webhooks` | object[] | `[]` | 下記 Webhook object | 通知先一覧。 |
-| `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"weekly_summary"` | 通知イベント。重複は除去する。 |
+| `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"deploy_failure"`, `"weekly_summary"`, `"config_corrupt"` | 通知イベント。重複は除去する。 |
 | `summary` | object | 下記 Summary object | 下記 | 定期サマリー設定。 |
 | `email` | object | 下記 Email object | 下記 | メール通知設定。SMTP 詳細は `.smtp_config` / `.smtp_secret` を正とする。 |
 
@@ -3425,6 +3539,7 @@ Webhook object:
 | `url` | string | 必須 | URL 検証に従う | 送信先 URL。 |
 | `label` | string | `""` | 0〜64 文字 | 管理画面表示名。 |
 | `enabled` | boolean | `true` | boolean | `false` の宛先へは送信しない。 |
+| `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"deploy_failure"`, `"weekly_summary"`, `"config_corrupt"`, `"*"` | この宛先が受け取るイベント。空配列の場合は top-level `on` に従う。 |
 | `payload_template` | string/null | `null` | 0〜10000 文字または `null` | `null` は標準 payload。 |
 | `retry_count` | integer | `2` | 0〜10 | 送信失敗時の追加試行回数。 |
 | `retry_interval_seconds` | integer | `30` | 1〜3600 | 再試行間隔。 |
@@ -3451,7 +3566,7 @@ Email object:
 
 ```json
 {
-  "branches": [
+  "branch_targets": [
     {
       "branch": "main",
       "target_file": "docs",
@@ -3468,7 +3583,7 @@ Email object:
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
-| `branches` | object[] | 必須 | 0〜50 件 | 空配列は `.branch_config` 削除と同義。 |
+| `branch_targets` | object[] | 必須 | 0〜50 件 | 永続ファイルの正本 key。空配列は `.branch_config` 削除と同義。 |
 | `branch` | string | 必須 | 1〜128 文字、`refs/heads/` は含めない | GitHub branch 名。 |
 | `target_file` | string | 必須 | 相対パス、`..` 禁止 | GitHub リポジトリ内の監視対象ファイル。 |
 | `sha_file` | string | 必須 | 絶対パス | 対象 branch/file の SHA キャッシュ。 |
@@ -3479,7 +3594,7 @@ Email object:
 | `deploy_targets[].user` | string | 必須 | 1〜64 文字 | SSH user。 |
 | `deploy_targets[].dest_dir` | string | 必須 | 絶対パス | 転送先ディレクトリ。 |
 
-`.branch_config` が不在の場合、`GET /api/branch-config` は `source: "default"` と `BRANCH_TARGETS` の定数値を返す。`.branch_config` が存在する場合、`source: "file"` とファイル内容を返す。API は `branches: []` を `.branch_config` の空配列保存として扱ってはならない。`POST /api/branch-config` で `branches: []` を受け取った場合は `.branch_config` を削除し、default 復帰として扱う。
+`.branch_config` が不在の場合、`GET /api/branch-config` は `source: "default"` と `BRANCH_TARGETS` の定数値を返す。`.branch_config` が存在する場合、`source: "file"` とファイル内容を返す。API request / response の表示名として `branches` を使う場合でも、永続ファイルへ保存する key は必ず `branch_targets` とする。API は `branches: []` または `branch_targets: []` を `.branch_config` の空配列保存として扱ってはならない。`POST /api/branch-config` で空配列を受け取った場合は `.branch_config` を削除し、default 復帰として扱う。
 
 **`.repo_config` schema：**
 
@@ -3543,7 +3658,8 @@ Email object:
   "queued": [],
   "last_started_at": null,
   "last_finished_at": null,
-  "weekly_summary_last_sent_at": null
+  "weekly_summary_last_sent_at": null,
+  "weekly_summary_sent_date": null
 }
 ```
 
@@ -3555,6 +3671,7 @@ Email object:
 | `last_started_at` | string/null | 必須 | ISO 8601 または `null` | 最終開始日時。 |
 | `last_finished_at` | string/null | 必須 | ISO 8601 または `null` | 最終完了日時。 |
 | `weekly_summary_last_sent_at` | string/null | 必須 | ISO 8601 または `null` | 週次サマリー最終送信日時。 |
+| `weekly_summary_sent_date` | string/null | 必須 | `YYYY-MM-DD` または `null` | 週次サマリー二重送信防止日付。 |
 
 Queue entry:
 
@@ -4560,6 +4677,8 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
   "branches": [
     {
       "branch": "main",
+      "target_file": "docs",
+      "sha_file": "/opt/adlaire-builder/.last_sha",
       "src": "/opt/adlaire-builder/repo/docs",
       "out": "/opt/adlaire-builder/dist/site",
       "deploy_targets": [
@@ -4580,6 +4699,8 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
   "branches": [
     {
       "branch": "main",
+      "target_file": "docs",
+      "sha_file": "/opt/adlaire-builder/.last_sha",
       "src": "/opt/adlaire-builder/repo/docs",
       "out": "/opt/adlaire-builder/dist/site",
       "deploy_targets": [
