@@ -610,43 +610,79 @@ uniqueSlug := func(base string) string {
 
 ## 5. HTML 出力構造
 
+HTML 全体の合成は `assembleHTML(data PageData) string` が担当する。`convert()` は本文 HTML を生成し、`assembleHTML()` はページ枠、CSS、JavaScript、TOC、検索インデックス、読了時間表示を合成する。
+
+**関連型：**
+
+```go
+type PageData struct {
+    Title              string
+    TocHTML            string
+    BodyHTML           string
+    SearchIndexJSON    string
+    ReadingTimeMinutes int
+    GeneratedAtUTC     string
+}
+```
+
+**入力契約：**
+
+| フィールド | 型 | 条件 |
+|------------|----|------|
+| `Title` | `string` | 空の場合は `Adlaire CI Specification` を使用する。HTML 出力時は `esc()` する。 |
+| `TocHTML` | `string` | `buildTOC(headings)` の戻り値。`<ul id="toc-root">` の内側へ挿入する。 |
+| `BodyHTML` | `string` | `ConvertResult.HTML`。`<div class="ci">` の内側へ挿入する。 |
+| `SearchIndexJSON` | `string` | `encoding/json` で生成した JSON 配列文字列。未生成時は `[]`。 |
+| `ReadingTimeMinutes` | `int` | 1 以上。0 以下の場合は `1` として表示する。 |
+| `GeneratedAtUTC` | `string` | UTC ISO 8601。空の場合は生成日時 meta を出力しない。 |
+
+`assembleHTML()` は上記フィールドを結合するだけとし、Markdown 変換、slug 生成、TOC 生成、検索インデックス抽出、警告集計を行ってはならない。
+
+**必須 DOM 構造：**
+
 ```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{PageData.Title}</title>
   <!-- インライン CSS（ADS トークン + レイアウト + コンポーネント） -->
 </head>
 <body>
   <div id="progress-bar"></div>   <!-- 読み取り進捗バー（ページ上端固定、高さ 3px、幅 = スクロール率 % → §7.13） -->
   <header id="hdr">        <!-- 固定ヘッダー（高さ 52px、背景 --adlaire-surface-accent） -->
-    <span id="reading-time">約 87 分</span>  <!-- 読了時間（ビルド時に静的埋め込み → §4.5・§6） -->
+    <span id="doc-title">{PageData.Title}</span>
+    <span id="reading-time">約 {PageData.ReadingTimeMinutes} 分</span>  <!-- 読了時間（ビルド時に静的埋め込み → §4.5・§6） -->
+  </header>
   <div id="lay">           <!-- フレックスコンテナ -->
     <nav id="sb">          <!-- サイドバー（幅 260px、固定） -->
       <div class="sb-search-wrap">
-        <input id="sb-search">  <!-- TOC 検索 -->
+        <input id="sb-search" type="search" autocomplete="off" aria-label="セクション検索">  <!-- TOC 検索 -->
       </div>
       <div id="sb-toc">
-        <ul class="tr" id="toc-root">  <!-- TOC リスト -->
+        <ul class="tr" id="toc-root">{PageData.TocHTML}</ul>  <!-- TOC リスト -->
+        <p id="sb-none" class="sb-none" hidden>一致するセクションはありません</p>
       </div>
     </nav>
     <main id="ct">         <!-- コンテンツエリア -->
       <div class="ci">     <!-- 最大幅 760px センタリングコンテナ -->
-        <!-- h2 章の区切りごとに以下の <nav class="ch-nav"> が挿入される（→ §7.15） -->
-        <!-- 各 h2 章の末尾（次の h2 または文書末）に静的生成 -->
-        <nav class="ch-nav">
-          <!-- 先頭章は .ch-prev なし、最終章は .ch-next なし -->
-          <a class="ch-prev" href="#{prev-slug}">← {prev-title}</a>
-          <a class="ch-next" href="#{next-slug}">{next-title} →</a>
-        </nav>
-        {body_html}
+        {PageData.BodyHTML}
       </div>
     </main>
   </div>
-  <button id="btt">        <!-- トップへ戻るボタン -->
+  <button id="btt" type="button" aria-label="トップへ戻る">↑</button>        <!-- トップへ戻るボタン -->
+  <script id="search-index" type="application/json">{PageData.SearchIndexJSON}</script>
   <script>…インライン JS…</script>
 </body>
 </html>
 ```
+
+**HTML 合成の禁止事項：**
+- `PageData.BodyHTML`、`PageData.TocHTML` はすでに HTML として生成済みのため、`assembleHTML()` 内で再エスケープしない。
+- `PageData.SearchIndexJSON` は `encoding/json` の出力だけを受け付け、文字列連結で JSON を自作しない。
+- `<header id="hdr">`、`<nav id="sb">`、`<main id="ct">`、`<div class="ci">`、`<script id="search-index">` の id / class を変更しない。
+- 外部 CSS、外部 JavaScript、外部フォント、外部画像参照を追加しない。
 
 ---
 
@@ -953,7 +989,7 @@ document.getElementById('progress-bar').style.width = pct + '%';
 
 `<th>` クリックで列を昇順／降順ソートする。
 
-**HTML 構造：** `flush_table()` が生成する全 `<th>` に `data-sort="{col_index}"` 属性（0始まりの列インデックス）と `aria-sort="none"` を付与する。
+**HTML 構造：** `flushTable()` が生成する全 `<th>` に `data-sort="{col_index}"` 属性（0始まりの列インデックス）と `aria-sort="none"` を付与する。
 
 ```html
 <th data-sort="0" aria-sort="none">列名</th>
@@ -977,7 +1013,9 @@ document.getElementById('progress-bar').style.width = pct + '%';
 
 h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末尾に静的生成する（→ §4.5・§5・§6 CSS）。
 
-**生成方法：** `convert()` の第2パスとして実装する。本文 HTML 生成後、h2 見出しの位置（`id` スラグ・タイトルテキスト）を収集し、各 h2 章の末尾（次の h2 の直前、または文書末）に `<nav class="ch-nav">` を挿入する。
+**生成方法：** `injectChapterNavigation(bodyHTML string, headings []Heading) string` として実装する。`convert()` が `ConvertResult.HTML` を返した後、呼び出し元が h2 見出しの `Slug` と `Text` を `headings` から抽出し、各 h2 章の末尾（次の h2 の直前、または文書末）に `<nav class="ch-nav">` を挿入する。
+
+`injectChapterNavigation()` は `Heading.Level == 2` の見出しだけを対象とする。対象 h2 が 0 件または 1 件の場合、章ナビゲーションを挿入しない。
 
 **HTML 構造：**
 
@@ -1005,6 +1043,8 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 **スコープ：** h2 レベルの見出しのみ。h3 以下の小節には生成しない。
 
+**挿入失敗時の扱い：** 対象 h2 の HTML 位置を特定できない場合、本文 HTML を変更せず `[WARN] CHAPTER_NAV_SKIPPED: slug={slug}` を出力し、`[REPORT] warnings` に含める。
+
 **印刷時：** `@media print` で `.ch-nav { display: none }` とする（§6 CSS 参照）。
 
 ---
@@ -1016,6 +1056,22 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 ```
 
 `adlaire-ci-build` の実行は、§2 の CLI 引数仕様に従う。引数なしの場合は `DefaultBuildConfig` の `Src` と `Out` を使用する。
+
+**実行順序契約：**
+
+1. CLI 引数を検証する。`--help` / `--version` はここで処理し、Markdown 読み込みを行わない。
+2. `--src` を UTF-8 として読み込み、行配列 `lines []string` を作成する。
+3. 見出しを収集し、`[]Heading` と `slugByLine` を作成する。
+4. 脚注定義を収集し、`RenderContext` を初期化する。
+5. `buildTOC(headings)` で `PageData.TocHTML` を作成する。
+6. `convert(lines, headings, ctx)` で `ConvertResult` を作成する。
+7. `injectChapterNavigation(result.HTML, headings)` を適用し、`PageData.BodyHTML` を確定する。
+8. 検索インデックスを `encoding/json` で生成し、`PageData.SearchIndexJSON` を確定する。
+9. `assembleHTML(pageData)` で最終 HTML を生成する。
+10. 出力先と同じディレクトリに一時ファイルを書き込み、成功後に `os.Rename` で `--out` へ置換する。
+11. 出力ファイルのサイズを取得し、stdout に完了行と `[REPORT]` 行を出力する。
+
+途中で失敗した場合は、失敗段階以降を実行しない。一時ファイルが存在する場合は削除してから終了する。
 
 **終了コード：**
 
@@ -1052,6 +1108,14 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
 | `heading_skips` | 見出しレベルが 2 段以上の降順スキップとなった件数 |
 | `reading_time` | 推計読了時間（分、切り上げ）。200文字/分で算出 |
 
+固定順は以下とし、未使用フィールドの省略は禁止する。
+
+```text
+headings tables code_blocks warnings size_warn broken_links heading_skips reading_time
+```
+
+`warnings` は出力した `[WARN]` 行数と一致しなければならない。`reading_time` は `ConvertResult.ReadingTimeMinutes`、`broken_links` は `ConvertResult.BrokenLinks`、`heading_skips` は `ConvertResult.HeadingSkips` を使用する。
+
 警告が発生した場合、`[REPORT]` 行の直前に `[WARN] {メッセージ}` 形式で 1 件ずつ出力する。
 
 **runner.go による取り込み：**
@@ -1065,7 +1129,11 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
     "headings": 342,
     "tables_count": 128,
     "code_blocks_count": 64,
-    "warnings": ["未対応記法: admonition (3箇所)"]
+    "warnings_count": 3,
+    "size_warn": false,
+    "broken_links": 1,
+    "heading_skips": 0,
+    "reading_time": 87
   }
 }
 ```
@@ -2243,6 +2311,7 @@ Report object:
 | `tables_count` | integer | 必須 | テーブル数。 |
 | `code_blocks_count` | integer | 必須 | コードブロック数。 |
 | `warnings_count` | integer | 必須 | 警告件数。 |
+| `size_warn` | boolean | 必須 | 出力 HTML サイズ警告。 |
 | `broken_links` | integer | 必須 | 内部リンク不整合数。 |
 | `heading_skips` | integer | 必須 | 見出しレベルスキップ数。 |
 | `reading_time` | integer | 必須 | 推計読了時間。 |
