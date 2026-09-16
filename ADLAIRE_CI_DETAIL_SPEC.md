@@ -548,20 +548,20 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 └── go.mod
 ```
 
-| パス | 役割 |
-|------|------|
-| `main.go` | 起動入口。サブコマンド判定、引数受け取り、責務 component 呼び出しを行う。 |
-| `components/builder.go` | Markdown / Markdown ディレクトリを静的 Web サイトへ変換する。 |
-| `components/runner.go` | GitHub polling、変更検出、ビルド起動、履歴、ログ、deploy を実行する。 |
-| `components/api.go` | 管理 API サーバー、認証、状態ファイル操作を提供する。 |
-| `components/admin.go` | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を扱う。詳細は `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` を正とする。 |
-| `components/statefile.go` | `.build_history`、`.build_logs`、`.server_config` など状態ファイルの読み書きを扱う。詳細は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。 |
-| `components/archive.go` | ビルドログ圧縮、snapshot、配布アーカイブを扱う。 |
-| `components/commitstatus.go` | GitHub Commit Status API 送信を扱う。 |
-| `components/mcp.go` | MCP 接続を扱う。 |
-| `admin/` | 標準管理 UI の静的ファイルを配置する。 |
-| `testdata/` | コンポーネント別 fixture を配置する。 |
-| `docs/examples/` | 利用例、設定例、サンプル構成を配置する。 |
+| パス | component | 役割 |
+|------|-----------|------|
+| `main.go` | `-` | 起動入口。サブコマンド判定、引数受け取り、責務 component 呼び出しを行う。 |
+| `components/builder.go` | `builder` | Markdown / Markdown ディレクトリを静的 Web サイトへ変換する。 |
+| `components/runner.go` | `runner` | GitHub polling、変更検出、ビルド起動、履歴、ログ、deploy を実行する。 |
+| `components/api.go` | `api` | 管理 API サーバー、認証、状態ファイル操作を提供する。 |
+| `components/admin.go` | `admin` | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を扱う。詳細は `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` を正とする。 |
+| `components/statefile.go` | `statefile` | `.build_history`、`.build_logs`、`.server_config` など状態ファイルの読み書きを扱う。詳細は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。 |
+| `components/archive.go` | `archive` | ビルドログ圧縮、snapshot、配布アーカイブを扱う。 |
+| `components/commitstatus.go` | `commitstatus` | GitHub Commit Status API 送信を扱う。 |
+| `components/mcp.go` | `mcp` | MCP 接続を扱う。 |
+| `admin/` | `ui` / `sdk` | 標準管理 UI の静的ファイルを配置する。 |
+| `testdata/` | `fixture` | コンポーネント別 fixture を配置する。 |
+| `docs/examples/` | `-` | 利用例、設定例、サンプル構成を配置する。 |
 
 `main.go` は 1 ファイルとし、実装詳細を含めない。`components/` 配下は 1 コンポーネント = 1 Go ファイルとし、各ファイルは上表の責務を実装する。
 
