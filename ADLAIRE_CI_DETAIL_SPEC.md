@@ -7650,6 +7650,63 @@ P2〜P5 UI の秘密情報消去条件は以下に固定する。
 | ui p5 duplicate rule | `addAlertRule()` が `409 Conflict` | 競合表示、rule list は前回表示を保持し、自動 retry しない。 |
 | ui p5 layout invalid | `setDashboardLayout()` が `422 details` | 該当 widget field error、dashboard 表示順を変更しない。 |
 
+**UI 表示データ固定契約：**
+
+| 表示対象 | 表示元 | 表示順 | 補完禁止 |
+|----------|--------|--------|----------|
+| dashboard widget | `getDashboardLayout().widgets`、`getDashboard()` | layout の `widgets` 順。未知 widget は表示せず、panel error に `Unknown dashboard widget` を 1 行表示する。 | UI が widget を自動追加、並び替え、既定復元してはならない。 |
+| build history | `getHistory()` | API response の `history` 配列順。 | UI 独自 sort、欠落 duration の算出、status 名の言い換えは禁止。 |
+| build compare | `getHistory({page:1,perPage:100})`、選択後 `getHistoryLog(left)`, `getHistoryLog(right)` | 左選択、右選択の順。ログ行は各 response の行順。 | API にない diff 結果を保存しない。比較結果は DOM 上の一時表示だけとする。 |
+| approvals | `getApprovals()` | API response の `approvals` 配列順。`pending` 以外は操作 button disabled。 | 期限切れ判定を UI 時刻だけで確定しない。API status を正とする。 |
+| tokens | `getTokens()`、`createToken()` | 一覧は API 配列順。発行直後 token は `issued-token-once` だけへ表示する。 | `GET /api/tokens` の record に token 本体を合成しない。 |
+| notes | `getNotes()` | `content` を editor へそのまま入れる。表示 preview は HTML escape 後の簡易 Markdown 表示に限定する。 | UI が保存前に trim、整形、Markdown 拡張を行わない。 |
+| hooks / rules | `getHooks()`、`getAlertRules()`、`getTagRules()` | API 配列順。 | UI 側で重複排除、無効化推測、command 文字列結合を行わない。 |
+| pipeline config | `getPipelineConfig()` | `extra_args` と `env` を response 順で表示する。 | reserved arg の削除、env key の補完、inline YAML の再整形を行わない。 |
+
+**UI 入力正規化固定契約：**
+
+| 入力 | UI 正規化 | SDK 送信値 | 禁止事項 |
+|------|-----------|------------|----------|
+| 数値 field | ASCII 数字だけを整数化する。空文字は未指定として扱う。 | number または未指定。 | `Number("") == 0` 扱い、範囲外丸め、自動既定値保存は禁止。 |
+| checkbox 群 | checked の DOM 順で配列化する。 | string array または boolean。 | 未選択時に UI が勝手に全選択へ戻さない。 |
+| comma separated tag / scope | `,` で分割し、各要素の前後 ASCII whitespace だけ除去し、空要素を捨てる。 | string array。 | 重複削除、大小文字変換、未知値削除は API に委ねる。 |
+| URL / webhook / SMTP host | 前後 whitespace を除去する。 | string。 | scheme 補完、host 置換、password 埋め込みは禁止。 |
+| CIDR / IP | 前後 whitespace を除去し、空行を捨てる。 | string array。 | UI 側で CIDR 正規化や範囲展開を行わない。 |
+| command_args | 1 行 1 引数として配列化する。空行は捨てる。 | string array。 | shell 文字列結合、quote 展開、環境変数展開は禁止。 |
+| notes content | 入力値をそのまま送る。 | `{content}`。 | trim、改行正規化、Markdown 整形は禁止。 |
+| date / expires_at | 空文字は `null`、入力ありは browser が返す ISO 互換文字列を送る。 | string/null。 | UI が現在時刻を補完しない。 |
+
+**UI error / disabled 優先順位固定：**
+
+| 優先 | 条件 | UI 処理 |
+|------|------|---------|
+| 1 | fatal UI init error | 全 API 呼び出しを停止し、`global-error` に `UI initialization failed`。 |
+| 2 | `401` | token / ticket / secret field を消去し、全 panel を hidden、`panel-login` だけ表示。 |
+| 3 | must_change forced | password panel 以外を hidden または disabled。 |
+| 4 | maintenance enabled | build、force build、rollback、hook 追加、設定変更系を disabled。maintenance disable は有効。 |
+| 5 | SSE 接続中 | stream 開始、manual build、force build を disabled。stream close は有効。 |
+| 6 | 対象 SDK method 実行中 | 同一操作 button / submit だけ disabled。 |
+| 7 | `429` | 同一操作 button を 10 秒 disabled。10 秒後に必要な再取得を行い、上位条件がなければ解除。 |
+| 8 | `422 details` | 最初の invalid field へ focus し、field error と panel summary を表示。 |
+| 9 | `403` / `409` / `500` | panel error を表示し、仕様上の再取得だけ実行。logout や自動 retry は行わない。 |
+
+上位条件が残っている場合、下位条件の解除処理で button を有効化してはならない。複数 error が同時に発生した場合は、最上位の条件だけを global 表示し、下位の詳細は対象 panel error に残す。
+
+**UI 詳細 fixture 固定：**
+
+| fixture | fake SDK 入力 | 合格条件 |
+|---------|---------------|----------|
+| ui dashboard unknown widget | `getDashboardLayout()` が `["status","unknown","stats"]` を返す。 | `status`、`stats` だけ表示し、順序保持。`unknown` は panel error 1 行。layout 保存を自動実行しない。 |
+| ui compare two builds | history 2 件選択後、左右の `getHistoryLog()` が異なる stdout を返す。 | 左右ログを別 column で API 行順表示し、差分 class は DOM 一時表示だけ。状態保存 API を呼ばない。 |
+| ui compare missing build | 右側 `getHistoryLog()` が `404`。 | compare panel error、左側表示は維持、history 再取得なし、選択値は保持。 |
+| ui approvals expired | `getApprovals()` が `status:"expired"` を含む。 | approve / reject button disabled、期限切れ表示、UI が pending へ戻さない。 |
+| ui approval approve conflict | `approveBuild(id)` が `409`。 | error 表示後に `getApprovals()` を 1 回呼び、同じ approve を再送しない。 |
+| ui notes preserve content | notes に前後空白と連続改行を含めて保存。 | `setNotes(content)` へ入力値そのまま送信し、trim しない。 |
+| ui hook command args | 3 行の command args を入力し、中央行が空。 | 空行を除いた配列を `addHook()` に渡し、shell 文字列を作らない。 |
+| ui pipeline reserved arg | `setPipelineConfig()` が `422 details`。 | field error を表示し、入力値を保持し、`getPipelineConfig()` を呼ばない。 |
+| ui token issued clear | `createToken()` が token 本体を返す。 | `issued-token-once` に 1 回表示し、次 user action で消去。`getTokens()` の一覧に token 本体を表示しない。 |
+| ui disabled priority | maintenance enabled 中に `429` が発生し 10 秒経過。 | maintenance が継続する限り build / rollback / 設定変更系は disabled のまま。 |
+
 **UI 設定値契約：**
 
 | 設定値 | 取得元 | 既定値 | 仕様 |
