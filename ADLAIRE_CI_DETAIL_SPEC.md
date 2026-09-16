@@ -9396,6 +9396,51 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 
 component 責務を別 PR へ分割する場合でも、分割先 PR が満たすべき fixture 名、期待ファイル、禁止副作用を PR 本文に明記する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
 
+**§27 実装 PR 最終受け入れゲート：**
+
+§27 の機能実装 PR は、下表の全 gate を満たした場合だけ「完了」と判定する。1 件でも未達がある場合は「未完了」、仕様逸脱または secret 漏えいリスクがある場合は「差し戻し」とする。
+
+| gate | 完了条件 | 未完了条件 | 差し戻し条件 |
+|------|----------|------------|--------------|
+| scope | 実装対象が §27 fixture カタログ固定契約に存在する機能だけである。 | 実装対象節の記載が PR 本文にない。 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加している。 |
+| fixture | 対象 §27.x の必須 fixture がすべて存在し、skip されていない。 | 必須 fixture が不足、または fixture 名が不一致。 | fixture が実装挙動に合わせて期待値を緩めている。 |
+| manifest | 全 fixture の `manifest.json` が schema、assertion 選択、component 責務を満たす。 | assertion、references、components、fake_clock のいずれかが不足。 | unknown key、実 secret、実環境 path、乱数依存を含む。 |
+| expected | `expected/response.json`、`expected/state/`、`expected/logs/`、`expected/effects.json`、`expected/security.json` が assertion と一致する。 | assertion に対応する expected file が不足。 | expected と manifest / effects / security が矛盾する。 |
+| side effect | `write_order`、`unchanged_paths`、`forbidden_writes`、`forbidden_calls` が対象機能の成功 / 失敗 / no-op / partial を説明できる。 | 禁止副作用または無変更保証が不足。 | 失敗時に未許可状態を書き換える、外部呼び出しを行う。 |
+| secret | secret 平文が expected、logs、effects、UI DOM、stdout/stderr に存在しない。 | secret 検証対象が不足。 | token、password、TOTP secret、PAT、Authorization header が平文で残る。 |
+| component | builder / runner / api / sdk / ui / security / setup の該当責務が全て fixture に紐づく。 | component 責務の所在が不明。 | SDK / UI が API response を推測補完、または UI が直接 API / 状態ファイルを操作する。 |
+| repeatability | fake clock、fake external response、固定 path により、同じ fixture が同じ結果を再現する。 | idempotency / no-op の 2 回目期待値が不足。 | 現在時刻、実ネットワーク、実 OS 差分に依存する。 |
+
+**§27 実装 PR acceptance checklist：**
+
+実装 PR 本文または検証ログには、下表の項目を記録する。記録がない項目は未検証として扱い、対象機能を完了扱いにしてはならない。
+
+| 項目 | 記録内容 |
+|------|----------|
+| 対象仕様 | 実装した §27.x、関連 §22 / §23 / §24 / §25 / §26、対象 component。 |
+| 対象 fixture | 作成または更新した fixture 名一覧。fixture 名は §27 fixture カタログ固定契約と一致させる。 |
+| 実行結果 | fixture ごとの pass / fail、実行コマンド、終了コード。 |
+| 状態差分 | 作成、更新、削除、変更禁止の path。`expected/effects.json` と一致させる。 |
+| 外部副作用 | GitHub、SSH、SMTP、webhook、systemd、hook、remote build、notification の呼び出し回数と順序。 |
+| secret 検証 | 禁止文字列、mask 対象、平文が残らないことを確認した出力範囲。 |
+| 部分失敗 | partial / failure fixture の失敗地点、完了済み副作用、禁止副作用。 |
+| 再実行 | idempotency / no-op fixture の 1 回目と 2 回目の差分。 |
+| 対象外確認 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加していないこと。 |
+
+**§27 差し戻し固定条件：**
+
+次のいずれかに該当する PR は、fixture が pass していても差し戻しとする。
+
+| 条件 | 理由 |
+|------|------|
+| 仕様にない endpoint、SDK method、UI 操作、状態ファイルを追加している。 | 仕様外実装。 |
+| fixture の期待値が実装都合に合わせて仕様より弱い。 | 検証の形骸化。 |
+| secret 平文、Authorization header、TOTP secret、PAT、password が expected または log に残る。 | secret 漏えい。 |
+| read-only / dry-run / validation failure で状態、log、外部 call が変化する。 | 副作用違反。 |
+| partial failure で失敗地点以降の write / call が発生する。 | 部分失敗境界違反。 |
+| SDK が API response を補完し、UI が SDK を迂回し、runner / builder が未定義状態ファイルを作成する。 | component 責務違反。 |
+| 実ネットワーク、実時刻、実ユーザー環境、実 secret に依存する fixture だけで合格している。 | 再現性不足。 |
+
 **§27 部分失敗・再実行固定契約：**
 
 | ケース | 固定挙動 |
