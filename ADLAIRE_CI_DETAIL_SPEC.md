@@ -9448,6 +9448,30 @@ W1-PR1 の PR 本文には、下表を記録する。記録がない項目は未
 | secret 確認 | token、password、secret、PAT、Authorization header が stdout/stderr/effects/expected に平文で存在しないこと。 |
 | 後続影響 | W1 後続 PR が利用してよい dry-run JSON schema、終了コード、no-write 契約。 |
 
+**§27 W1-PR1 manifest / effects 整合固定契約：**
+
+W1-PR1 の全 fixture は、§27 fixture manifest schema 固定契約と §27 expected/effects.json schema 固定契約に加えて、下表を満たす。
+
+| 対象 | 固定内容 |
+|------|----------|
+| `manifest.json.section` | `27.2` に固定する。 |
+| `manifest.json.feature` | `dry_run` に固定する。 |
+| `manifest.json.components` | `["runner"]` に固定する。API、SDK、UI、builder、setup、security を含めてはならない。 |
+| `manifest.json.references` | `§27.2`、`§12`、`§13`、`§15`、`§22.0a`、`§27 fixture` を含める。 |
+| `manifest.json.not_applicable` | `input/request.json`、`expected/response.json`、UI DOM、SDK return、download、stream が該当しない理由を記録する。 |
+| `manifest.json.missing_state` | fixture ごとに実行前に存在しない状態ファイルだけを列挙する。存在する状態を missing として扱ってはならない。 |
+| `expected/effects.json.external_calls` | fake GitHub read のみを記録する。変更なし fixture でも GitHub read を実行する場合は 1 件記録する。GitHub read を行わない fixture は理由を `manifest.json.not_applicable` に記録する。 |
+| `expected/effects.json.commands` | 常に空配列。pipeline、ssh、systemd、hook、archive、setup/update を含めてはならない。 |
+| `expected/effects.json.notifications` | 常に空配列。通知送信、pending 化、retry 対象を含めてはならない。 |
+| `expected/effects.json.write_order` | 常に空配列。dry-run は状態、log、history、SHA cache、lock を書かない。 |
+| `expected/effects.json.created_paths` / `deleted_paths` | 常に空配列。dry-run は file / directory を作成、削除しない。 |
+| `expected/effects.json.unchanged_paths` | 状態ファイル、lock、SHA cache、build log、history、pending、snapshot、notify、deploy 出力を列挙する。 |
+| `expected/effects.json.forbidden_writes` | `unchanged_paths` と同じ対象に加え、`.build_status.json`、`.build_state`、`.build_history`、`.build_logs/`、`.last_sha`、`.notify_pending`、`.pending_transfers` を列挙する。 |
+| `expected/effects.json.forbidden_calls` | GitHub write API、GitHub Commit Status、SSH、pipeline、deploy、snapshot、notification、systemd、hook、remote build を列挙する。 |
+| `expected/security.json` | 禁止文字列として token、Authorization header 値、PAT、password、secret、webhook URL credential、notification URL credential を含める。 |
+
+W1-PR1 fixture の `manifest.json`、`expected/effects.json`、`expected/security.json` が上表を満たさない場合、fixture は存在していても未完了とする。
+
 W1-PR1 完了後、W1 内の後続 PR は `§27.1`、`§27.3`、`§27.4` のいずれか 1〜2 機能を対象にできる。ただし W1-PR1 の dry-run no-write 契約、stdout JSON schema、secret mask 契約、fake GitHub read 契約を変更してはならない。変更が必要な場合は、W1-PR1 の仕様改訂として本節を先に更新する。
 
 **§27 PR 分割禁止条件：**
