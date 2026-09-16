@@ -15,7 +15,7 @@
 | 項目 | 内容 |
 |------|------|
 | owner component | `setup` |
-| collaborator component | `components/runner.go`、`components/api.go`、`components/statefile.go`、`components/admin.go` |
+| collaborator component | `runner`、`api`、`statefile`、`admin` |
 | 持つ内容 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
 | 持たない内容 | runner / API / SDK / UI / admin の個別機能本文、状態 schema の暗黙変更、外部依存追加。 |
 

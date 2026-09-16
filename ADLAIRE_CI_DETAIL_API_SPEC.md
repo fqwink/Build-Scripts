@@ -16,8 +16,8 @@
 
 | 項目 | 内容 |
 |------|------|
-| owner component | `components/api.go` |
-| collaborator component | `components/statefile.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html`、`security`、`components/archive.go`、`components/runner.go` |
+| owner component | `api` |
+| collaborator component | `statefile`、`sdk`、`ui`、`security`、`archive`、`runner` |
 | 持つ内容 | HTTP 共通契約、endpoint、状態ファイル read/write 呼び出し境界、認証連携、API owner 追加機能。 |
 | 持たない内容 | SDK 内部実装、UI DOM 詳細、runner の build 実行責務、admin 静的配信、security 主本文、fixture 詳細。 |
 
