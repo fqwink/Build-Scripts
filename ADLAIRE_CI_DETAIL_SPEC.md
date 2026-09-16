@@ -536,9 +536,9 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | コミット情報のビルドログ記録 | `components/runner.go` | §13、§15 | SHA、message、author、date を build id と同じログへ記録する。 |
 | GitHub API 連続失敗によるサーキットブレーカー | `components/runner.go` / `components/api.go` | §11、§12、§13、§22.0e | 閾値、open/close 状態、API reset、通知、状態ファイルが一致する。 |
 | 出力サイトサイズ警告閾値 | `components/builder.go` / `components/runner.go` / `components/api.go` | §8、§12、§13、§22.0e | `OUTPUT_SIZE_WARN_MB`、`size_warn`、WARN ログ、API 表示が一致する。 |
-| 設定ファイル起動時整合性チェック | `components/runner.go` | §11、§12、§13、§22.0a、§22.0c | 対象 JSON ファイル、検証順序、破損退避、初期化値、ログ、通知、終了コード、fixture が一致する。 |
-| ビルドステータスファイル出力 | `components/runner.go` / `components/api.go` | §11、§13、§15、§22.0a、§22.0c、§22.0e | `.build_status.json` の schema、更新タイミング、status/target_status、pending 件数、circuit 状態、API 参照元が一致する。 |
-| ビルドトリガー種別の記録 | `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §13、§15、§22.0c、§22.0e、§23、§24 | `trigger` の有効値、判定条件、`.build_logs`、`.build_history`、`.build_status.json`、履歴 filter、UI 表示が一致する。 |
+| 設定ファイル起動時整合性チェック | `components/runner.go` | §11、§12、§13、§22.0a、§22.0c、§27.10 | 対象 JSON ファイル、検証順序、破損退避、初期化値、ログ、通知、終了コード、fixture が一致する。 |
+| ビルドステータスファイル出力 | `components/runner.go` / `components/api.go` | §11、§13、§15、§22.0a、§22.0c、§22.0e、§27.8 | `.build_status.json` の schema、更新タイミング、status/target_status、pending 件数、circuit 状態、API 参照元が一致する。 |
+| ビルドトリガー種別の記録 | `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §13、§15、§22.0c、§22.0e、§23、§24、§27.9 | `trigger` の有効値、判定条件、`.build_logs`、`.build_history`、`.build_status.json`、履歴 filter、UI 表示が一致する。 |
 | GitHub Commit Status API | `components/runner.go` | §12、§13、§15、§22.0c、§27.1 | `commit_status_enabled`、context、target_url、pending/success/failure の送信条件、失敗時の扱い、build log 記録が一致する。 |
 | ドライラン実行モード | `components/runner.go` | §11、§12、§13、§15、§27.2 | `--dry-run` が状態ファイル、log、history、deploy、通知を変更せず、設定・GitHub・SHA 判定結果を固定 JSON で返す。 |
 | ビルド失敗時の自動リトライ | `components/runner.go` | §12、§13、§15、§22.0c、§27.3 | retry 対象エラー、最大回数、backoff、attempt log、最終 status、SHA 更新禁止条件が一致する。 |
@@ -6834,3 +6834,197 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 | 破損ログ | archive しない、WARN、処理継続。 |
 | archive API | 件数を返し、disk usage に archive bytes を含める。 |
 | cleanup | 通常 log と archive log の両方を保持期間で削除する。 |
+
+### 27.8 ビルドステータスファイル出力
+
+本機能の目的は、runner の現在状態と直近結果を `.build_status.json` に集約し、API、SDK、UI、将来 MCP が同じ read-only 情報を参照できるようにすることである。
+
+対象コンポーネントは `components/runner.go` と `components/api.go` とする。`components/runner.go` は `.build_status.json` の唯一の通常更新責務を持つ。`components/api.go` は `GET /api/status`、`GET /api/dashboard`、`GET /api/health` で read-only 参照する。API は `.build_status.json` を自動修復してはならない。
+
+**入力：**
+
+| 入力 | 説明 |
+|------|------|
+| runner 起動状態 | lock 取得、起動時整合性チェック結果、target 処理結果、pending transfer / notify 件数、circuit 状態。 |
+| `.build_state` | `running`、`current_build_id`、`last_started_at`、`last_finished_at`、`queued`。 |
+| `.build_history` | 直近 build id、status、trigger、duration。 |
+| `.pending_transfers` | pending transfer 件数。 |
+| `.notify_pending` | pending notify 件数。 |
+| `.build_circuit_state` | circuit open 状態、連続失敗回数。 |
+
+**出力：**
+
+`.build_status.json` は §22.0a / §22.0c の schema に従う JSON object とする。文字コードは UTF-8、改行は末尾 1 つ、ファイル mode は `600` とする。更新は同一ディレクトリ一時ファイルへの書き込み、`fsync`、`os.Rename`、親ディレクトリ `fsync` の順で atomic write する。
+
+**更新タイミング：**
+
+| タイミング | 必須値 |
+|------------|--------|
+| 起動時整合性チェックで復旧または停止が発生した直後 | `status="warning"` または `"failure"`、`last_trigger="startup_config_integrity"`、`running=false`。 |
+| build 開始前 | `status="running"`、`running=true`、`current_build_id`、`last_trigger`、`last_started_at` を保存する。 |
+| 変更なし skip | `status="skipped"`、`last_target_status="skipped_no_change"`、`running=false`。build id は更新しない。 |
+| cooldown skip | `status="skipped"`、`last_target_status="skipped_cooldown"`、`running=false`。 |
+| build 成功 | `status="success"`、`last_build_id`、`last_finished_at`、`last_duration_seconds`、`output_sha256` を保存する。 |
+| deploy pending | `status="success"`、`last_deploy_status="pending"`、`pending_transfers_count` を保存する。 |
+| build 失敗 | `status="failure"`、`last_error`、`last_target_status`、`last_finished_at` を保存する。 |
+| runner finalizer | `running=false`、`current_build_id=null` を必ず保存する。 |
+
+`status` の許容値は `"none"`、`"running"`、`"success"`、`"failure"`、`"skipped"`、`"warning"` に固定する。`last_target_status` は §13 の `target_status` 値、または `null` とする。`last_deploy_status` は `"success"`、`"failure"`、`"pending"`、`"skipped"`、`"none"`、`null` のいずれかとする。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| `.build_status.json` 書き込み失敗 | ERROR ログ `BUILD_STATUS_WRITE_FAILED: path={path} error={reason}` を出し、runner 終了コードを最低 `1` にする。build 成功後に発生した場合も終了コードは `1` とする。 |
+| `.build_status.json` 破損を API が検出 | `GET /api/status` と `GET /api/dashboard` は `500` を返す。`GET /api/health` は `status="degraded"` を返し、破損を `checks[]` に含める。 |
+| `.build_status.json` 不在 | API は `.build_state`、`.build_history`、`.build_lock` から後方互換値を算出して返してよい。ただしファイル作成はしない。 |
+| pending 件数読取失敗 | 件数を `null` にせず `0` として返してはならない。status 書き込み時はエラー扱いにし、`last_error` に固定文言を保存する。 |
+
+**セキュリティ：**
+
+`.build_status.json` に GitHub PAT、Webhook URL secret、SMTP password、API token、session token、request body を保存してはならない。`last_error` は最大 500 文字に切り詰め、改行は `\n` 文字列へ escape する。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| build 開始 | `status="running"`、`running=true`、`current_build_id` が保存される。 |
+| build 成功 | `status="success"`、`running=false`、`last_build_id` と `last_duration_seconds` が保存される。 |
+| 変更なし | build log / history を作らず、`.build_status.json` は `skipped_no_change` を保持する。 |
+| 起動時整合性復旧 | `last_trigger="startup_config_integrity"`、復旧内容が `last_error` または warning として確認できる。 |
+| 書込失敗 | runner 終了コードが最低 `1`、ERROR ログが出る。 |
+| API read | `GET /api/status`、`GET /api/dashboard` が `.build_status.json` を第一参照元にする。 |
+
+### 27.9 ビルドトリガー種別の記録
+
+本機能の目的は、runner がなぜ build または関連処理を開始したかを、履歴、ログ、状態、API、SDK、UI で同一の固定値として扱うことである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。`components/runner.go` は trigger の確定と永続化を担当し、API / SDK / UI は既存値の表示と filter のみを担当する。
+
+**trigger 許容値：**
+
+| 値 | 発生条件 | 補足 |
+|----|----------|------|
+| `polling` | systemd timer 等の通常起動で SHA 差分がある。 | 既定の自動ビルド。 |
+| `force_interval` | SHA 差分なし、かつ `force_build_interval_hours` 条件を満たす。 | 手動 force には使わない。 |
+| `manual` | `POST /api/build` または `POST /api/build/force` 由来の queue entry を処理する。 | force は `payload.force=true` で表す。 |
+| `webhook` | `POST /api/webhook` 由来の queue entry を処理する。 | 署名検証成功済み event のみ。 |
+| `retry_pending_transfer` | `.pending_transfers` の再送のみを実行する。 | 通常 build とは別 trigger。 |
+| `startup_config_integrity` | 起動時整合性チェックで復旧、正規化、または停止が発生する。 | build log / history は作成しない。 |
+| `rollback` | `POST /api/history/{id}/rollback` により snapshot を再転送する。 | 新しい build id を作成する。 |
+
+上表以外の値を保存、返却、表示してはならない。特に `"auto"`、`"force"`、`"scheduled"`、`"timer"` は使用禁止とする。
+
+**保存先：**
+
+| 保存先 | 必須条件 |
+|--------|----------|
+| `.build_logs/{id}.json.trigger` | build log を作成する全処理で必須。 |
+| `.build_history.trigger` | build history を追記する全処理で必須。 |
+| `.build_status.json.last_trigger` | build、skip、復旧、rollback の最終 trigger を保存する。 |
+| Queue entry `trigger` | `"manual"` または `"webhook"` のみ許可する。 |
+| API response | `StatusObject.last_trigger`、`HistoryRecord.trigger`、`DashboardObject.status.last_trigger` で同じ値を返す。 |
+
+**判定順序：**
+
+1. 起動引数が `--help` または `--version` の場合、trigger を確定しない。
+2. 起動時整合性チェックで復旧、正規化、停止が発生した場合、`startup_config_integrity` を `.build_status.json` に記録する。
+3. queue entry が存在する場合、entry の `trigger` を採用する。
+4. pending transfer の再送だけで終了する起動は `retry_pending_transfer` とする。
+5. SHA 差分がある通常起動は `polling` とする。
+6. SHA 差分がなく force interval 条件を満たす場合は `force_interval` とする。
+7. rollback API が作成する処理は `rollback` とする。
+
+複数条件が同時に成立した場合は、上記順序で最初に該当した trigger を採用する。1 回の runner 起動で複数 branch target を処理する場合、target ごとに同じ trigger を保存する。ただし queue entry が target を指定する場合は、対象 target のみにその trigger を適用する。
+
+**API / SDK / UI：**
+
+`GET /api/history` の `trigger` query は上表の値だけを受け付ける。不正値は `422` を返す。SDK `getHistory({trigger})` は値を変換せず送信する。UI は filter の選択肢を上表の 7 件に固定し、未知 trigger を受け取った場合は `Unknown` へ丸めず、該当行に `invalid trigger` エラーを表示する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| queue entry の trigger が不正 | queue entry を処理せず ERROR ログ `INVALID_TRIGGER: id={id} trigger={value}`、HTTP API 由来なら queue 作成時に `422`。 |
+| 既存 history に未知 trigger がある | API はその行を返すが、`warnings[]` に `unknown_trigger` を含める。新規保存では未知値を禁止する。 |
+| build log と history の trigger 不一致 | API は `500` を返し、server log に `TRIGGER_MISMATCH: id={id}` を出す。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| polling build | log、history、status が `polling` で一致する。 |
+| manual force | queue は `manual`、payload は `force=true`、保存 trigger は `manual`。 |
+| webhook | 署名検証成功時だけ `webhook` が保存される。 |
+| force interval | SHA 差分なしで `force_interval` が保存される。 |
+| filter | `GET /api/history?trigger=manual` が manual のみ返す。 |
+| 不正 trigger | queue 作成または history filter が `422`。 |
+
+### 27.10 設定ファイル起動時整合性チェック
+
+本機能の目的は、runner が build 処理に入る前に、runner が読む状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、規定どおり復旧または停止することである。
+
+対象コンポーネントは `components/runner.go` のみとする。管理 API、SDK、UI は本機能の実行責務を持たない。API が同じ状態ファイルを読む場合も、起動時整合性チェックを代行してはならない。
+
+**対象ファイル：**
+
+| 順序 | ファイル | 不在時 | 破損時 | unknown key |
+|------|----------|--------|--------|-------------|
+| 1 | `.branch_config` | 作成せず default 採用 | backup 後、不在扱い | 除去して正規化 |
+| 2 | `.notify_config` | 初期値作成 | backup 後、初期値作成 | 除去して正規化 |
+| 3 | `.build_state` | 初期値作成 | backup 後、初期値作成 | 除去して正規化 |
+| 4 | `.build_circuit_state` | 初期値作成 | backup 後、初期値作成 | 除去して正規化 |
+| 5 | `.pending_transfers` | `[]` 作成 | backup 後、`[]` 作成 | 除去して正規化 |
+| 6 | `.notify_pending` | `[]` 作成 | backup 後、`[]` 作成 | 除去して正規化 |
+
+**実行順序：**
+
+1. CLI 引数を検証する。
+2. `--help` または `--version` の場合は本チェックを実行しない。
+3. `--dry-run` の場合は検証だけ行い、backup、初期化、正規化、通知、状態更新を行わない。
+4. `StateDir` が絶対パスかつ既存ディレクトリであることを確認する。
+5. `.build_lock` を取得する。
+6. 上表の順序で対象ファイルを検証する。
+7. 復旧可能な問題は backup、初期化、正規化を行う。
+8. 復旧結果に応じて `.build_status.json.last_trigger="startup_config_integrity"` を保存する。
+9. 復旧通知条件を満たす場合は `config_corrupt` 通知を 1 回だけ送信する。
+10. 停止条件がなければ pending retry、cooldown、target 処理へ進む。
+
+**判定分類と停止条件：**
+
+| 分類 | 処理 | runner 終了コード |
+|------|------|------------------|
+| `missing_optional` | `.branch_config` を作らず default 採用。 | 継続、最終結果に従う |
+| `missing_required` | 初期値を atomic write。 | 継続、最終結果に従う |
+| `parse_error` | corrupt backup 後、ファイル別復旧。 | 継続、最終結果に従う |
+| `top_level_type_mismatch` | corrupt backup 後、ファイル別復旧。 | 継続、最終結果に従う |
+| `required_key_missing` | corrupt backup 後、ファイル別復旧。 | 継続、最終結果に従う |
+| `required_key_type_mismatch` | corrupt backup 後、ファイル別復旧。 | 継続、最終結果に従う |
+| `invalid_value` | corrupt backup 後、ファイル別復旧。 | 継続、最終結果に従う |
+| `unknown_key` | backup せず未知 key を除去して atomic write。 | 継続、最終結果に従う |
+| `permission_error` | 自動復旧しない。`.build_state.running` を変更しない。 | `2` |
+| `io_error` | 自動復旧しない。`.build_state.running` を変更しない。 | `1` |
+
+backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単位で衝突する場合は `{original}.corrupt.{YYYYMMDDHHMMSS}.{n}.bak` とし、`n` は `2` から始める。
+
+**状態更新禁止事項：**
+
+本チェックだけで `.build_logs/{id}.json` と `.build_history` を作成してはならない。`startup_config_integrity` は `.build_status.json` の `last_trigger` にだけ記録する。ただし、本チェック後に通常 build が発生する場合、通常 build の log / history は実際の build trigger を保存する。
+
+`--dry-run` では、破損検出結果を dry-run JSON の `errors[]` または `warnings[]` に出力するだけとし、backup、初期化、正規化、通知、`.build_status.json` 更新を行わない。
+
+**復旧通知：**
+
+復旧通知は `.notify_config` の検証完了後、復旧対象に `.notify_config` と `.notify_pending` 以外のファイルが 1 件以上ある場合だけ送信する。送信イベントは `config_corrupt` とする。`.notify_pending` が破損復旧された場合、通知失敗時の pending 追記は行わない。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 必須ファイル不在 | 初期値作成、終了コード `0`、追加 backup なし。 |
+| `.branch_config` 破損 | backup 後に `.branch_config` 不在、default 採用。 |
+| `.build_state` 破損 | backup、初期値作成、`startup_config_integrity` 記録。 |
+| unknown key | backup なしで正規化、2 回目起動では追加 WARN なし。 |
+| permission error | 自動復旧なし、終了コード `2`、running 未変更。 |
+| dry-run | 差分なし、backup なし、dry-run JSON に検出結果。 |
+| 通知失敗 | `.notify_pending` が正常な場合だけ pending 追記。 |
