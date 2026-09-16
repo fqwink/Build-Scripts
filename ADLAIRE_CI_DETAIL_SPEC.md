@@ -44,8 +44,8 @@
 
 | 対象範囲 | 対象コンポーネント | 成熟度 | 判定理由 | 次に必要な作業 |
 |----------|-------------------|--------|----------|----------------|
-| §0〜§9 | `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプトを次期正本とする。現行 `build_spec.py` は旧実装であり、互換対象ではない。 | Go 版 CLI、入出力、Markdown 変換、HTML 出力、検証条件を本仕様に基づいて実装する。 |
-| §10〜§20 | `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナーを次期正本とする。現行 `runner.py` は旧実装であり、互換対象ではない。 | Go 版 runner の設定、状態ファイル、ビルド起動、通知、転送、ログ保存を本仕様に基づいて実装する。 |
+| §0〜§9 | `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプトの CLI、入出力、Markdown 変換、HTML 出力、検証条件を定義する。 | Go 版 `adlaire-ci-build` として本仕様に基づいて実装する。 |
+| §10〜§20 | `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナーの設定、状態ファイル、ビルド起動、通知、転送、ログ保存を定義する。 | Go 版 `adlaire-ci-runner` として本仕様に基づいて実装する。 |
 | §21〜§22 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバーの責務、設定値、systemd、エンドポイント、レスポンス、エラー形式を定義する。 | 実装前に API 完全契約表、状態ファイル schema、SDK、UI 操作契約を同期確認する。 |
 | §23 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | SDK のクラス、メソッド、戻り値、HTTP 対応関係が定義されているが、現行リポジトリに `adlaire-ci-sdk.js` は存在しない。 | API 仕様と SDK メソッド一覧を同期確認し、不足している戻り値型があれば具体化する。 |
 | §24 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツールの画面構成、表示条件、パネル責務が定義されているが、現行リポジトリに `admin/index.html` は存在しない。 | API・SDK と UI 操作の対応を確認し、各操作の成功/失敗表示を具体化する。 |
@@ -53,7 +53,7 @@
 | §26 | `runner.go` / `api_server.go` | 仕様化済み・未実装 | Go 版バイナリ前提のセットアップ、systemd、更新手順を定義する。 | Go 版バイナリ名、配置先、systemd unit、再生成・再設定・再検証手順を確定する。 |
 | 概要内の MCP 記載 | `mcp_server.go` | 将来計画 | `mcp_server.go` は将来構成として言及されるが、詳細な入出力、ツール定義、起動手順、認証仕様は本ファイル内で実装可能な粒度まで定義されていない。 | 実装対象にする場合は、先に改訂予定へ昇格し、MCP 詳細仕様を新設する。 |
 
-成熟度棚卸しの結果、現時点で優先して整合すべき対象は Go 版 3 コンポーネント（`build_spec.go`、`runner.go`、`api_server.go`）である。旧 Python 実装の存在は Go 版の実装済み判定に使用しない。
+成熟度棚卸しの結果、現時点で優先して整合すべき対象は Go 版 3 コンポーネント（`build_spec.go`、`runner.go`、`api_server.go`）である。本仕様は Go 新規実装を正本として扱い、他言語実装や過去の試作を判定基準にしない。
 
 ---
 
@@ -88,12 +88,12 @@
 
 ## 0. システム概要
 
-Adlaire CI の次期正本実装は Go 版 3 コンポーネントと JavaScript/HTML 管理ツールで構成する。
+Adlaire CI は Go 版 3 コンポーネントと JavaScript/HTML 管理ツールで構成する。
 
-本仕様では、`build_spec.go`、`runner.go`、`api_server.go`、標準管理ツール `admin/index.html`、JavaScript SDK `adlaire-ci-sdk.js` を仕様化済み・未実装コンポーネントとして定義する。将来的には `mcp_server.go` を加えた構成へ移行予定（→ §13 将来計画 MCP サーバー実装）。
+本仕様では、`build_spec.go`、`runner.go`、`api_server.go`、標準管理ツール `admin/index.html`、JavaScript SDK `adlaire-ci-sdk.js` を仕様化済み・未実装コンポーネントとして定義する。将来的には `mcp_server.go` を加えた構成へ拡張予定（→ §13 将来計画 MCP サーバー実装）。
 
 **`build_spec.go`（ビルドスクリプト）**
-GitHub リポジトリ上またはローカル上の Markdown 仕様書を HTML に変換してローカルパスへ出力する。旧 `build_spec.py` との CLI 互換、生成 HTML 互換、ログ互換は保証しない。
+GitHub リポジトリ上またはローカル上の Markdown 仕様書を HTML に変換してローカルパスへ出力する。標準実行バイナリ名は `adlaire-ci-build` とする。
 
 **`runner.go`（CI ランナー）**
 GitHub の Git Trees API / Git Blobs API を使用し、対象ファイルの blob SHA 変更を検出する。変更があった場合のみ Markdown 本文を書き出し、`adlaire-ci-build` を起動し、成功時に SHA キャッシュを更新する。systemd タイマーで定期実行する oneshot 設計。
@@ -120,7 +120,7 @@ adlaire-ci-api.service（常駐）
   └─ adlaire-ci-api（api_server.go）→ SDK → 管理ツール
 ```
 
-Go 版は旧 Python 実装との互換を保証しない。Go 標準ライブラリと GitHub PAT（`contents: read`）を基本要件とする。TLS 終端に nginx 等のリバースプロキシを使う場合でも、Adlaire CI 本体は HTTP サーバーとして実装する。
+Go 標準ライブラリと GitHub PAT（`contents: read`）を基本要件とする。TLS 終端に nginx 等のリバースプロキシを使う場合でも、Adlaire CI 本体は HTTP サーバーとして実装する。
 
 ---
 
@@ -151,7 +151,7 @@ var DefaultBuildConfig = BuildConfig{
 }
 ```
 
-別の環境で実行する場合は、この既定値を CLI 引数または設定ファイルで上書きする。旧 Python 実装の定数書き換え方式との互換は保証しない。
+別の環境で実行する場合は、この既定値を CLI 引数または設定ファイルで上書きする。
 
 ---
 
@@ -875,8 +875,8 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
 
 警告が発生した場合、`[REPORT]` 行の直前に `[WARN] {メッセージ}` 形式で 1 件ずつ出力する。
 
-**runner.go による取り込み（仕様化済み・未実装）：**
-旧 `runner.py` は `[REPORT]` 行と `[WARN]` 行をパースせず、`.build_logs/{id}.json` も作成しない。Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
+**runner.go による取り込み：**
+Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
 
 ```json
 {
@@ -919,52 +919,35 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
 
 ---
 
-## 10a. CI ランナー 実装突合・再分類
+## 10a. CI ランナー 実装対象
 
-本節は、旧 `runner.py` と §10〜§20 の詳細仕様を突合した再分類である。
+本節は、Go 版 `runner.go` として実装する CI ランナー機能を定義する。
 
-現行 `runner.py` は、GitHub API で単一対象ファイルの blob SHA を確認し、変更がある場合に blob 本文を取得して `pipeline.sh` を実行し、成功後に SHA を更新する旧 Python CI ランナーである。Go 版 `runner.go` の実装済み判定には使用しない。
+`runner.go` は `adlaire-ci-runner` バイナリとして実行する。起動形式は systemd timer から呼び出される oneshot 実行とし、1 回の起動で対象ブランチ設定を読み込み、変更検出、ビルド起動、ログ保存、通知、転送、後処理を完了して終了する。
 
-### 現行実装済み範囲
+実装する場合は、対象項目ごとに §0c の完全実装精度ゲートを満たしていることを確認する。ゲート未充足の項目が 1 つでもある場合は、実装を開始せず、先に本ファイルの該当節を改訂する。
 
-| 項目 | 現行実装 | 根拠 |
-|------|----------|------|
-| 起動形式 | oneshot 実行。`main()` が 1 回の変更確認とビルド実行を行って終了する。 | `main()` |
-| 設定値 | `TOKEN_FILE`、`OWNER`、`REPO`、`BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC`、`BUILD_SCRIPT`、`LOG_LEVEL`。 | 旧 `runner.py` 冒頭定数 |
-| GitHub PAT 読み込み | `TOKEN_FILE` を読み込み、不在または空の場合は ERROR ログ後に終了する。 | `read_token()` |
-| Git Trees API | `BRANCH` の tree を取得し、`TARGET_FILE` の blob SHA を検索する。 | `get_blob_sha()` |
-| SHA 比較 | `SHA_FILE` の前回 SHA と現在 SHA を比較し、一致時はビルドをスキップする。 | `read_last_sha()`、`main()` |
-| Git Blobs API | blob 本文を取得し、Base64 をデコードする。 | `fetch_blob()` |
-| ソース書き出し | 取得した Markdown を `SRC` へ書き出す。 | `write_src()` |
-| ビルド起動 | `SRC` と同じディレクトリ配下の `.ci/pipeline.sh` を `bash` で実行する。 | `run_pipeline()` |
-| 成功時 SHA 更新 | `pipeline.sh` が exit 0 の場合のみ `SHA_FILE` を現在 SHA で更新する。 | `save_sha()`、`main()` |
-| ログ出力 | Python `logging` を stdout へ出力する。 | 旧 `runner.py` の `setup_logging()` |
-
-### 仕様化済み・未実装範囲
-
-以下は §10〜§20 に詳細仕様が存在するが、旧 `runner.py` には未実装であり、Go 版 `runner.go` で実装する対象である。実装する場合は、対象項目ごとに §0c の完全実装精度ゲートを満たしていることを確認する。ゲート未充足の項目が 1 つでもある場合は、実装を開始せず、先に本ファイルの該当節を改訂する。
-
-| 項目 | 関連節 | 未実装内容 |
+| 項目 | 関連節 | 実装内容 |
 |------|--------|------------|
-| JSON 形式の SHA キャッシュ | §11〜§13 | 現行 `SHA_FILE` はプレーンテキスト SHA として読み書きされる。仕様上の `{"sha": "..."}` JSON 形式は未実装。 |
-| `BRANCH_TARGETS` | §12〜§13 | 複数ブランチ、複数 target file、複数出力先の設定構造は未実装。現行は `BRANCH` / `TARGET_FILE` / `SHA_FILE` / `SRC` の単一設定。 |
-| GitHub API リトライ | §12〜§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、レート制限待機は未実装。 |
-| ビルドロック | §11〜§13 | `.build_lock` による多重起動防止は未実装。 |
-| ビルドクールダウン | §12〜§13 | `BUILD_COOLDOWN_SECONDS` による起動抑制は未実装。 |
-| 強制再ビルド間隔 | §12〜§13 | `FORCE_BUILD_INTERVAL` による変更なし時の定期強制ビルドは未実装。 |
-| コミット情報記録 | §13 | ビルドトリガー commit の SHA、message、author、date 取得は未実装。 |
-| 事前チェック | §13 | ディスク空き容量、`adlaire-ci-build` 実行可否、Go 版ビルドバイナリ配置確認は未実装。 |
-| Webhook 通知 | §13 | `.notify_config` 読み込み、成功/失敗/転送失敗/週次サマリー通知、`.notify_pending` 再送は未実装。 |
-| ビルドログ保存 | §11〜§15 | `.build_logs/{id}.json` への stdout/stderr、変換レポート、所要時間保存は未実装。 |
-| SSH 転送 | §14a | SHA256 差分検出、stdin パイプ転送、転送後整合性検証、ペンディングキューは未実装。 |
-| スナップショット | §14b | `.snapshots/` への成果物保存、世代管理、ロールバック連携は未実装。 |
-| サーキットブレーカー | §13 | `.build_circuit_state` による連続失敗停止は未実装。 |
-| ログ世代管理 | §13 | `LOG_KEEP_N` による `.build_logs/` 削除は未実装。 |
-| 出力サイズ警告 | §12〜§13 | `OUTPUT_SIZE_WARN_MB` による WARN ログと `size_warn` 記録は未実装。 |
+| JSON 形式の SHA キャッシュ | §11〜§13 | 各ターゲットの `sha_file` を `{"sha": "..."}` JSON 形式で読み書きする。 |
+| `BRANCH_TARGETS` | §12〜§13 | 複数ブランチ、複数 target file、複数出力先を 1 つの設定リストとして処理する。 |
+| GitHub API リトライ | §12〜§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、レート制限待機を実装する。 |
+| ビルドロック | §11〜§13 | `.build_lock` による多重起動防止を実装する。 |
+| ビルドクールダウン | §12〜§13 | `BUILD_COOLDOWN_SECONDS` による起動抑制を実装する。 |
+| 強制再ビルド間隔 | §12〜§13 | `FORCE_BUILD_INTERVAL` による変更なし時の定期強制ビルドを実装する。 |
+| コミット情報記録 | §13 | ビルドトリガー commit の SHA、message、author、date をビルドログへ記録する。 |
+| 事前チェック | §13 | ディスク空き容量、`adlaire-ci-build` 実行可否、Go 版ビルドバイナリ配置を確認する。 |
+| Webhook 通知 | §13 | `.notify_config` 読み込み、成功/失敗/転送失敗/週次サマリー通知、`.notify_pending` 再送を実装する。 |
+| ビルドログ保存 | §11〜§15 | `.build_logs/{id}.json` へ stdout/stderr、変換レポート、所要時間を保存する。 |
+| SSH 転送 | §14a | SHA256 差分検出、stdin パイプ転送、転送後整合性検証、ペンディングキューを実装する。 |
+| スナップショット | §14b | `.snapshots/` への成果物保存、世代管理、ロールバック連携を実装する。 |
+| サーキットブレーカー | §13 | `.build_circuit_state` による連続失敗停止を実装する。 |
+| ログ世代管理 | §13 | `LOG_KEEP_N` による `.build_logs/` 削除を実装する。 |
+| 出力サイズ警告 | §12〜§13 | `OUTPUT_SIZE_WARN_MB` による WARN ログと `size_warn` 記録を実装する。 |
 
 ### 将来計画として扱う範囲
 
-§10〜§20 には、現行 runner の直接責務ではなく管理 API、標準管理ツール、将来の運用機能と結合して成立する項目が含まれる。これらを実装対象へ進める場合は、API・SDK・UI の対象節に、呼び出し元、呼び出し先、状態ファイル、失敗時応答、検証条件を追記してから実装する。
+§10〜§20 には、`runner.go` 単体の責務ではなく管理 API、標準管理ツール、将来の運用機能と結合して成立する項目が含まれる。これらを実装対象へ進める場合は、API・SDK・UI の対象節に、呼び出し元、呼び出し先、状態ファイル、失敗時応答、検証条件を追記してから実装する。
 
 | 項目 | 理由 |
 |------|------|
@@ -976,25 +959,21 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
 
 ## 11. CI ランナー ファイル構成
 
-本節のファイル構成は、旧 Python 実装で使用するファイル、Go 版 CI ランナー拡張で追加されるファイル、管理 API / SDK / UI 側のファイルを分離して示す。
+本節のファイル構成は、Go 版 CI ランナーで使用するファイル、管理 API / SDK / UI 側のファイル、出力先、systemd ファイルを分離して示す。
 
-現行リポジトリに存在する旧実装ファイルは `build_spec.py` と `runner.py` である。`build_spec.go`、`runner.go`、`api_server.go`、`admin/index.html`、`adlaire-ci-sdk.js` は仕様化済み・未実装であり、実装済みファイルとして扱ってはならない。
-
-### 旧 Python 実装で使用するファイル
+### Go 版 CI ランナーで使用するファイル
 
 | パス | 成熟度 | 用途 |
 |------|--------|------|
-| `/opt/adlaire-builder/runner.py` | 旧実装 | CI ランナー本体。単一ブランチの SHA 検出、blob 取得、`pipeline.sh` 起動、SHA 更新を行う。 |
-| `/opt/adlaire-builder/build_spec.py` | 旧実装 | Markdown から HTML を生成するビルドスクリプト。 |
-| `/opt/adlaire-builder/.github_token` | 旧実装済み / Go 版仕様化済み | GitHub PAT。旧 `runner.py` が読み込み、Go 版 `runner.go` も同一パスを読み込む。 |
-| `/opt/adlaire-builder/.last_sha` | 旧実装 | 前回取得した blob SHA。旧実装ではプレーンテキストで保存する。 |
-| `/opt/adlaire-builder/repo/adlaire-db-spec.md` | 旧実装 | GitHub Blobs API から取得した Markdown の書き出し先。 |
-| `/opt/adlaire-builder/repo/.ci/pipeline.sh` | 旧実装 / Go 版仕様化済み | 旧 `runner.py` および Go 版 `runner.go` が `bash` で起動するビルド手順。 |
+| `/usr/local/bin/adlaire-ci-runner` | 仕様化済み・未実装 | `runner.go` から生成する CI ランナーバイナリ。 |
+| `/usr/local/bin/adlaire-ci-build` | 仕様化済み・未実装 | `build_spec.go` から生成する Markdown → HTML ビルドバイナリ。 |
+| `/opt/adlaire-builder/.github_token` | 仕様化済み・未実装 | GitHub PAT。Go 版 `runner.go` が読み込む。 |
+| `/opt/adlaire-builder/.last_sha` | 仕様化済み・未実装 | 前回取得した blob SHA。JSON 形式で保存する。 |
+| `/opt/adlaire-builder/repo/adlaire-db-spec.md` | 仕様化済み・未実装 | GitHub Blobs API から取得した Markdown の書き出し先。 |
+| `/opt/adlaire-builder/repo/.ci/pipeline.sh` | 仕様化済み・未実装 | `runner.go` が `bash` で起動するビルド手順。 |
 
 ```
 /opt/adlaire-builder/
-├── runner.py
-├── build_spec.py
 ├── .github_token
 ├── .last_sha
 └── repo/
@@ -1003,9 +982,9 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
         └── pipeline.sh
 ```
 
-### 仕様化済み・未実装の CI ランナー拡張ファイル
+### CI ランナー状態ファイル
 
-以下は §10a の「仕様化済み・未実装範囲」に対応するファイルである。旧 `runner.py` では作成・読み書きしない。Go 版 `runner.go` では本仕様に従って作成・読み書きする。
+以下は §10a の実装対象に対応するファイルである。Go 版 `runner.go` は本仕様に従って作成・読み書きする。
 
 | パス | 成熟度 | 用途 |
 |------|--------|------|
@@ -1079,27 +1058,11 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
 
 ---
 
-## 12. 設定値（`runner.go` 冒頭）
+## 12. 設定値（`runner.go`）
 
-旧 `runner.py` に実装済みの設定値は、`TOKEN_FILE`、`OWNER`、`REPO`、`BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC`、`BUILD_SCRIPT`、`LOG_LEVEL` のみである。Go 版 `runner.go` は本節の設定値を正とし、旧設定名との互換を保証しない。
+Go 版 `runner.go` は本節の設定値を正とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
 
-### 旧 Python 実装設定
-
-```text
-TOKEN_FILE   = "/opt/adlaire-builder/.github_token"   # GitHub PAT
-OWNER        = "<GitHubオーナー名>"                    # リポジトリオーナー
-REPO         = "<リポジトリ名>"                        # リポジトリ名
-BRANCH       = "main"                                  # 対象ブランチ
-TARGET_FILE  = "adlaire-db-spec.md"                   # 監視対象ファイル
-SHA_FILE     = "/opt/adlaire-builder/.last_sha"       # blob SHA キャッシュ
-SRC          = "/opt/adlaire-builder/repo/adlaire-db-spec.md"  # 書き出し先
-BUILD_SCRIPT = "/opt/adlaire-builder/build_spec.py"
-LOG_LEVEL    = "INFO"
-```
-
-### 仕様化済み・未実装の拡張設定
-
-以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`BUILD_COOLDOWN_SECONDS`、`HISTORY_KEEP_N`、`FORCE_BUILD_INTERVAL`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` は仕様化済み・未実装の拡張設定である。
+以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`BUILD_COOLDOWN_SECONDS`、`HISTORY_KEEP_N`、`FORCE_BUILD_INTERVAL`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` を Go 版 runner の標準設定とする。
 
 ```text
 PENDING_FILE           = "/opt/adlaire-builder/.pending_transfers"   # SSH 転送ペンディングキュー（JSON）
@@ -1135,48 +1098,13 @@ BRANCH_TARGETS = [
 ]
 ```
 
-**拡張設定への移行対応（仕様化済み・未実装）：**
-
-旧 `runner.py` の単一ターゲット設定を Go 版 `BRANCH_TARGETS` へ移行する場合の対応は以下とする。Go 版は `BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC` との互換を保証せず、`BRANCH_TARGETS` を正とする。
-
-| 現行項目 | 拡張後の移行先 |
-|--------|--------|
-| `BRANCH` | `BRANCH_TARGETS[n]["branch"]` |
-| `TARGET_FILE` | `BRANCH_TARGETS[n]["target_file"]` |
-| `SHA_FILE` | `BRANCH_TARGETS[n]["sha_file"]` |
-| `SRC` | `BRANCH_TARGETS[n]["src"]` |
-| 出力 HTML パス | `BRANCH_TARGETS[n]["out"]`。Go 版 `runner.go` がビルドログ・転送・スナップショットの対象パスとして扱う。 |
-| SSH 転送先 | `BRANCH_TARGETS[n]["deploy_targets"][m]`。Go 版 `runner.go` が仕様に従って処理する。 |
+`BRANCH_TARGETS` が空の場合、`runner.go` は ERROR ログを出力し、ビルドを実行せず終了コード `2` で終了する。
 
 ---
 
 ## 13. 処理フロー
 
-本節の処理フローは、現行実装済みの最小フローと、仕様化済み・未実装の拡張フローに分けて扱う。
-
-### 現行実装済みフロー
-
-旧 `runner.py` の実装済みフローは以下である。Go 版 `runner.go` の仕様化済みフローではない。
-
-```
-runner.go 起動
-    │
-    ├─ .github_token 読み込み
-    ├─ Git Trees API で TARGET_FILE の blob SHA を取得
-    ├─ SHA_FILE の前回 SHA と比較
-    │   ├─ 一致 → INFO ログを出して正常終了
-    │   └─ 不一致 → 続行
-    ├─ Git Blobs API で blob 本文を取得
-    ├─ Base64 デコード後、SRC へ書き出し
-    ├─ bash {dirname(SRC)}/.ci/pipeline.sh を実行
-    │   ├─ exit 0 → SHA_FILE を現在 SHA で更新
-    │   └─ exit 0 以外 → SHA_FILE を更新せず終了コード 1 で終了
-    └─ 正常終了
-```
-
-### 仕様化済み・未実装の拡張フロー
-
-以下は、Go 版 `runner.go` の仕様化済み・未実装フローである。旧 `runner.py` はこのフローを実装していない。
+本節の処理フローは、Go 版 `runner.go` の標準フローである。
 
 ```
 runner.go 起動（systemd タイマーから呼び出し）
@@ -1316,7 +1244,7 @@ set -e
 /usr/local/bin/adlaire-ci-build
 ```
 
-ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`runner.go` は参照しない）。`adlaire-ci-build` は `build_spec.go` から生成した Go 版バイナリであり、旧 Python スクリプトを呼び出してはならない。
+ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`runner.go` は参照しない）。`adlaire-ci-build` は `build_spec.go` から生成した Go 版バイナリである。
 
 ---
 
@@ -1324,7 +1252,7 @@ set -e
 
 本節は、仕様化済み・未実装の CI ランナー拡張仕様である。
 
-旧 `runner.py` は SSH 転送を実行しない。旧実装は `pipeline.sh` 起動と成功時 SHA 更新までを担当し、生成 HTML の静的コンテンツ配信サーバーへの転送は未実装である。Go 版 `runner.go` では本節を正として実装する。
+Go 版 `runner.go` は、`pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節を SSH 転送の正本仕様とする。
 
 本機能を実装する場合、`runner.go` は `pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。
 
@@ -1418,7 +1346,7 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 
 本節は、仕様化済み・未実装の CI ランナー拡張仕様である。
 
-旧 `runner.py` は `.snapshots/` ディレクトリを作成・更新しない。スナップショット保存、世代管理、ロールバックは旧実装では未実装である。Go 版 `runner.go` では本節を正として実装する。
+Go 版 `runner.go` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節をスナップショット保存、世代管理、ロールバック連携の正本仕様とする。
 
 本機能を実装する場合、`runner.go` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット機能を無効化する。
 
@@ -1446,7 +1374,7 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 
 `POST /api/history/{id}/rollback`（→ §22）で指定ビルド ID のスナップショットから SSH 転送を再実行する。
 
-- ロールバック API は `api_server.go` の実装を前提とする。現行リポジトリに `api_server.go` は存在しないため、現行実装済み機能として扱ってはならない
+- ロールバック API は `api_server.go` の実装を前提とする。`api_server.go` が実装されるまでは、API 経由のロールバックは仕様化済み・未実装として扱う
 - `.snapshots/{id}/` が存在しない場合は `404` を返す
 - 転送成功時は `.build_history` に rollback エントリを追記する
 
@@ -1463,11 +1391,9 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 
 ## 15. ログ
 
-本節は、現行実装済みの stdout ログと、仕様化済み・未実装の構造化ログ拡張を分けて定義する。
+本節は、Go 版 `runner.go` の stdout ログと構造化ビルドログを定義する。
 
-### 旧 Python 実装のログ
-
-旧 `runner.py` は Python 標準の `logging` モジュールを使用する。出力先は stdout（systemd が journald に転送）。Go 版 `runner.go` の実装済みログとして扱ってはならない。
+### stdout ログ
 
 | レベル | 出力条件 |
 |--------|---------|
@@ -1476,11 +1402,11 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 | `ERROR` | トークン読み込み失敗、API 失敗、ビルド失敗 |
 | `DEBUG` | API レスポンス詳細等（`LOG_LEVEL = "DEBUG"` 時のみ） |
 
-旧 `runner.py` は `.build_logs/{id}.json` を作成しない。`pipeline.sh` の stdout / stderr 保存、`[REPORT]` / `[WARN]` の取り込み、ビルド所要時間、転送検証結果、コミット情報、ログ世代管理は Go 版 `runner.go` の実装済み機能として扱ってはならない。
+stdout は Go 標準ライブラリ `log/slog` または同等の標準ライブラリ実装で出力し、systemd が journald に転送する。
 
-### 仕様化済み・未実装のログ拡張
+### 構造化ビルドログ
 
-以下は CI ランナー拡張として仕様化済みだが、Go 版 `runner.go` には未実装である。
+Go 版 `runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成する。
 
 | 項目 | 内容 |
 |------|------|
@@ -1551,7 +1477,7 @@ sudo journalctl -u adlaire-ci -f               # ログ確認
 
 ## 18. 初回セットアップ手順
 
-本節は Go 版 CI ランナー導入手順である。旧 Python 実装のファイル配置手順は互換対象外とし、`adlaire-ci-build`、`adlaire-ci-runner`、管理 API 導入後の `adlaire-ci-api` の各バイナリを配置する。
+本節は Go 版 CI ランナー導入手順である。`adlaire-ci-build`、`adlaire-ci-runner`、管理 API 導入後の `adlaire-ci-api` の各バイナリを配置する。
 
 ```bash
 # 1. deploy ユーザー作成
@@ -1610,34 +1536,30 @@ sudo systemctl enable --now adlaire-admin
 |------|------|
 | セッションはインメモリ管理 | 再起動で全セッションが消去される |
 | HTTPS 非対応 | TLS ターミネーションは nginx 等リバースプロキシで行う。`api_server.go` 単体では HTTP のみ |
-| シングルユーザー専用 | 現行実装はユーザー名固定（admin）。マルチユーザー対応は Part 1 §13 参照 |
+| シングルユーザー専用 | 初期仕様ではユーザー名固定（admin）とする。マルチユーザー対応は Part 1 §13 参照 |
 | 並列リクエストの制限 | Go 標準ライブラリ `net/http` の標準サーバーで処理する。高負荷運用ではリバースプロキシ、タイムアウト、接続数制限を別途設定する |
 
 ---
 
 ## 20. CI ランナー 既知の制限
 
-### 20.1 旧 `runner.py` の制限
+### 20.1 Go 版 runner の制限
 
 | 制限 | 詳細 |
 |------|------|
-| ポーリング遅延 | 変更検出は systemd timer の実行間隔に依存する。現行実装単体では即時反応しない。 |
-| `pipeline.sh` のみ対応 | ビルド起動は `SRC` と同じディレクトリ配下の `.ci/pipeline.sh` 固定。YAML 形式のパイプライン定義、複数ステージ定義、動的パイプライン選択は行わない。 |
-| 単一ターゲットのみ対応 | 現行実装は `BRANCH`、`TARGET_FILE`、`SHA_FILE`、`SRC` の単一設定のみ処理する。複数ブランチ、複数ファイル、複数出力先は処理しない。 |
-| GitHub API 失敗時の扱い | 現行実装は指数バックオフ再試行を行わない。GitHub API 呼び出しで例外または不正応答が発生した場合は ERROR ログを出して当該実行を失敗させ、SHA を更新しない。次回 systemd timer 実行時に通常の変更検出から再試行する。 |
+| ポーリング遅延 | 変更検出は systemd timer の実行間隔に依存する。即時反応が必要な場合は `POST /api/webhook` を併用する。 |
+| `pipeline.sh` 起動 | ビルド起動は `src` と同じディレクトリ配下の `.ci/pipeline.sh` を標準とする。YAML 形式のパイプライン定義は将来計画とする。 |
+| `BRANCH_TARGETS` 直列処理 | 複数エントリはリスト順に順次処理する。並列処理は行わない。1 件の処理が失敗しても、失敗をログと `.build_logs/{id}.json` に記録した上で次エントリへ進む。 |
+| GitHub API リトライ | GitHub API 失敗時は `API_RETRY_MAX` 回まで指数バックオフで再試行する。全試行失敗時は ERROR ログを記録し、当該ターゲットのビルドをスキップする。SHA は更新しない。 |
 | ビルド失敗時の扱い | `pipeline.sh` が非 0 で終了した場合は ERROR ログを出し、SHA を更新しない。次回実行では同じ blob SHA を再検出して再度ビルド対象になる。 |
-| 転送なし | SSH 転送、転送検証、ペンディングキュー、スナップショット保存は実行しない。 |
-| ログ保存なし | `.build_logs/{id}.json`、`.build_history`、`.notify_pending`、`.build_circuit_state` は作成しない。ログは stdout / journald 経由の実行ログのみ。 |
 
 ### 20.2 仕様化済み・未実装拡張の制限
 
-以下は §10a で未実装と分類した CI ランナー拡張を実装する場合の制限である。旧 `runner.py` の実装済み挙動として扱ってはならない。
+以下は管理 API または将来拡張と連携する場合の制限である。
 
 | 制限 | 詳細 |
 |------|------|
 | Webhook 受信の外部公開 | `POST /api/webhook` は `api_server.go`（`127.0.0.1` バインド）で受信するため、GitHub から直接受信する構成ではリバースプロキシと TLS 終端が必要。 |
-| `BRANCH_TARGETS` 直列処理 | 複数エントリはリスト順に順次処理する。並列処理は行わない。1 件の処理が失敗しても、失敗をログと `.build_logs/{id}.json` に記録した上で次エントリへ進む。 |
-| GitHub API リトライ | GitHub API 失敗時は `API_RETRY_MAX` 回まで指数バックオフで再試行する。全試行失敗時は ERROR ログを記録し、当該ターゲットのビルドをスキップする。SHA は更新しない。 |
 | ペンディングキュー | ペンディング再試行が失敗した場合、`retry_count` を 1 増やしてエントリを保持する。runner による自動放棄は行わない。削除は転送成功時、または管理 API / 手動運用で明示的に削除する場合に限定する。 |
 | ペンディングキュー肥大化 | `queue_max_size` を超えた新規投入は ERROR ログを記録し、新規エントリを追加しない。既存エントリは削除しない。 |
 | サーキットブレーカー | 連続失敗回数が `API_CIRCUIT_BREAKER_THRESHOLD` 以上になった場合はポーリングを停止し、`POST /api/circuit-breaker/reset` でのみ復帰する。 |
@@ -1801,7 +1723,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 
 ### 22.0c 主要状態ファイル schema
 
-本節の schema は、API 実装、SDK 型、標準管理ツール表示、バックアップ/リストアの基準である。ここに定義したキー以外を保存してはならない。将来キーを追加する場合は、型、既定値、読み書き API、後方互換処理を本節へ追記してから実装する。
+本節の schema は、API 実装、SDK 型、標準管理ツール表示、バックアップ/リストアの基準である。ここに定義したキー以外を保存してはならない。将来キーを追加する場合は、型、既定値、読み書き API、既存データの扱いを本節へ追記してから実装する。
 
 **`.server_config` schema：**
 
@@ -2184,7 +2106,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 ### 22.0e API 完全契約表
 
-本表は API 実装、SDK 実装、標準管理ツール実装の契約インデックスである。実装者は endpoint を追加、削除、名称変更、body 変更、response 変更する前に本表を先に更新する。下表に存在しない endpoint は実装対象外とする。SHA reset 専用 endpoint と旧サマリー送信 endpoint は定義しない。
+本表は API 実装、SDK 実装、標準管理ツール実装の契約インデックスである。実装者は endpoint を追加、削除、名称変更、body 変更、response 変更する前に本表を先に更新する。下表に存在しない endpoint は実装対象外とする。SHA reset 専用 endpoint とサマリー送信専用 endpoint は定義しない。
 
 `Request` が `none` の場合、request body を受け付けない。空 JSON object `{}` も送信してはならない。`Response` は成功時 body の schema 名または最小 object を示す。詳細 schema は §22.0c、各 endpoint の個別例、§23 SDK 仕様、§24 UI 仕様を正とする。
 
@@ -3902,7 +3824,7 @@ export { AdlaireCI };
 | 保存値 | 最終 digest を lowercase hex 文字列で `password_hash` に保存する。 |
 | 比較 | 入力パスワードから同一手順で digest を生成し、`crypto/subtle.ConstantTimeCompare` で比較する。 |
 
-外部依存を追加しない方針のため、`golang.org/x/crypto/pbkdf2` 等の外部パッケージは使用しない。将来 PBKDF2、bcrypt、Argon2 等へ移行する場合は、`algorithm` を新値に変更し、移行手順と許可外部ライブラリを先に仕様化する。
+外部依存を追加しない方針のため、`golang.org/x/crypto/pbkdf2` 等の外部パッケージは使用しない。将来 PBKDF2、bcrypt、Argon2 等へ切り替える場合は、`algorithm` を新値に変更し、切り替え手順と許可外部ライブラリを先に仕様化する。
 
 **セッショントークン生成：**
 `crypto/rand` で 32 bytes を生成し、`encoding/hex` で 64 文字の lowercase hex 文字列へ変換する。
@@ -3960,7 +3882,7 @@ POST /api/login
 
 > **安定版ポリシー：** タグ付き安定版リリース（例：`v1.0.0`）のみをサポートする。開発ブランチ（`main` 等）の直接追従は非対応。`git pull` は使用しない。
 
-本節は、Go 版 Adlaire CI のセットアップ手順を定義する。旧 Python 実装のセットアップ手順は互換対象外とし、本節の手順へ自動移行しない。
+本節は、Go 版 Adlaire CI のセットアップ手順を定義する。
 
 ### §26.1 要件
 
@@ -4125,7 +4047,7 @@ WantedBy=multi-user.target
 
 ### §26.5 アップデート手順
 
-`git pull` は使用しない。安定版タグを指定してチェックアウトし、サービスを再起動する。現行実装のみの場合、管理 API サービスは再起動対象に含めない。
+`git pull` は使用しない。安定版タグを指定してチェックアウトし、サービスを再起動する。管理 API を導入していない構成では、管理 API サービスは再起動対象に含めない。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
@@ -4139,7 +4061,7 @@ git -C "$INSTALL_DIR" tag --list --sort=-v:refname
 # ── 2. 対象バージョンへ切り替え ───────────────────────
 git -C "$INSTALL_DIR" checkout "$NEW_VERSION"
 
-# ── 3. 現行実装のサービス再起動 ───────────────────────
+# ── 3. runner サービス再起動 ─────────────────────────
 systemctl restart adlaire-ci.timer
 
 # ── 4. 起動確認 ───────────────────────────────────────
@@ -4155,7 +4077,7 @@ systemctl status adlaire-admin
 
 ### §26.6 サービス操作リファレンス
 
-#### 現行実装
+#### Go 版 runner
 
 | 操作 | コマンド |
 |------|---------|

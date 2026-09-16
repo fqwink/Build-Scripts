@@ -12,15 +12,6 @@
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | `DOCUMENT_INDEX.md` | 本索引。リポジトリ内の文書・実装ファイルの役割と正本関係を示す。仕様正本ではない。 |
 
-## Legacy Implementation Files
-
-旧 Python 実装は、Go 版移行後の正本ではない。Go 版との CLI 互換、生成物互換、状態ファイル互換は保証しない。
-
-| パス | 状態 | 役割 |
-|------|------|------|
-| `build_spec.py` | 旧実装 | Adlaire DB 仕様書 Markdown を単一 HTML へ変換する旧 Python 版ビルドスクリプト。 |
-| `runner.py` | 旧実装 | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する旧 Python 版 CI ランナー。 |
-
 ## Planned Components
 
 `ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` では、以下のコンポーネントも仕様化されている。
