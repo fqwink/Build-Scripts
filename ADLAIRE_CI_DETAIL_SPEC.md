@@ -86,6 +86,50 @@
 
 ---
 
+## 0d. 実装判断禁止の共通決定
+
+本節は、各コンポーネントで共通する実装判断を固定する。個別節に別の値が明記されていない限り、本節を優先する。
+
+| 項目 | 決定 |
+|------|------|
+| Go 最小バージョン | Go `1.22` 以上。標準ライブラリのみを使用し、外部 module は追加しない。 |
+| 文字コード | 入力、出力、状態ファイル、HTTP body は UTF-8 固定。UTF-8 として読み取れない入力は処理を中断する。 |
+| 改行 | 新規に書き出す text / JSON Lines ファイルは LF 固定。CRLF 入力は読み込み時に LF として扱う。 |
+| 時刻 | 状態ファイル、API、ログの機械処理用時刻は UTC の ISO 8601 形式（例: `2026-09-16T09:00:00Z`）で保存する。UI 表示のみローカル時刻へ変換してよい。 |
+| JSON | JSON object の未知キーは保存しない。読み込み時に未知キーを見つけた場合は無視し、次回保存時に除去する。 |
+| atomic write | JSON / text 状態ファイル更新は同一ディレクトリに一時ファイルを書き出し、`file.Sync()` と `file.Close()` の成功後に `os.Rename` で置換する。同一ファイルシステム外への一時ファイル作成は禁止する。 |
+| 権限 | 秘密情報を含むファイルは `0600`、通常状態ファイルは `0644`、ディレクトリは `0755` を既定値とする。既存ファイル更新時も権限が緩い場合は既定値へ補正する。 |
+| ロック | 共有状態ファイル更新は `{filename}.lock` を同一ディレクトリに作成して排他する。ロック取得待ちは runner では 0 秒、API では最大 10 秒。超過時は runner が ERROR ログで当該処理をスキップし、API は `409 Conflict` を返す。 |
+| ログ秘密情報 | PAT、Webhook Secret、SMTP password、session token、API token は stdout、stderr、JSON log、API response、UI 表示へ平文出力しない。表示が必要な場合は `"***"` とする。 |
+| 終了コード | CLI / runner は `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` ロック競合を標準とする。個別節に明記がある場合もこの意味から外してはならない。 |
+| 禁止事項 | 仕様にない環境変数、状態ファイル、HTTP endpoint、CLI option、外部依存を実装者判断で追加してはならない。必要な場合は先に本仕様を改訂する。 |
+
+---
+
+## 0e. 完全実装検証マトリクス
+
+仕様化済み・未実装項目を実装済みに変更する場合は、対象コンポーネントごとに下表の検証を満たす。実装ファイルが存在しても、本表の必須検証が未完了の場合は実装済みとして扱わない。
+
+| 対象 | 必須検証 | 合格条件 |
+|------|----------|----------|
+| `build_spec.go` | CLI 正常系 | `adlaire-ci-build --src <valid.md> --out <out.html>` が終了コード `0` で終了し、HTML と `[REPORT]` を生成する。 |
+| `build_spec.go` | CLI 異常系 | 入力不存在、UTF-8 不正、未知引数、出力不可ディレクトリで §2・§8 の終了コードと stderr が一致する。 |
+| `build_spec.go` | Markdown 変換 | 見出し、重複 slug、内部リンク警告、脚注、表、引用、リスト、コードフェンス、未閉鎖フェンス、HTML escape が §4 の出力構造と一致する。 |
+| `build_spec.go` | 生成物 | 出力 HTML が単一ファイルで、外部 JS/CSS 参照を持たず、§5〜§7 の ID / class / JS 機能を含む。 |
+| `runner.go` | 設定検証 | `--state-dir`、`BRANCH_TARGETS`、必須ファイル不足、未知設定キーで §12 のログ・終了コード・採用優先順位が一致する。 |
+| `runner.go` | 状態更新 | 成功、ビルド失敗、GitHub API 失敗、転送失敗、lock 競合、JSON 破損で §13 と §22.0a の更新順序・未更新条件が一致する。 |
+| `runner.go` | 冪等性 | 同一 SHA 再実行、pending retry 再実行、通知 pending 再実行、stale lock 復旧で二重履歴・二重 snapshot・状態破壊が発生しない。 |
+| `api_server.go` | API 共通 | 未知 path、未対応 method、body 禁止、JSON 不正、body 上限、認証なし、権限不足、入力検証失敗、ロック競合が §22.0 の status と body を返す。 |
+| `api_server.go` | 状態ファイル | 全 write API が §22.0a / §22.0d の対象ファイルだけを atomic write し、秘密情報を平文出力しない。 |
+| `api_server.go` | endpoint 契約 | §22.0e の全 endpoint について Request、Response、Success、Errors、Read、Write、SDK、UI の対応が実装と一致する。 |
+| `adlaire-ci-sdk.js` | SDK 契約 | 全 method が §22.0e の endpoint のみを呼び、body なし endpoint に body を送らず、HTTP error を `AdlaireCIError` として返す。 |
+| `admin/index.html` | UI 契約 | 全操作が §24 の SDK method 経由で動作し、成功表示、失敗表示、disabled、再取得、秘密情報消去が一致する。 |
+| セットアップ | systemd | §26 の unit 名、`ExecStart`、配置パス、権限、起動確認コマンドが実際の導入手順と一致する。 |
+
+検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、期待結果、実結果を対応付けて記録する。検証不能な項目がある場合は、その項目を実装済みにしてはならない。
+
+---
+
 ## 0. システム概要
 
 Adlaire CI は Go 版 3 コンポーネントと JavaScript/HTML 管理ツールで構成する。
@@ -128,7 +172,7 @@ Go 標準ライブラリと GitHub PAT（`contents: read`）を基本要件と�
 
 | 項目 | 内容 |
 |------|------|
-| Go バージョン | 安定版 Go。具体的な最小バージョンは実装着手時に本表へ明記する。 |
+| Go バージョン | Go `1.22` 以上。 |
 | 外部依存 | 原則なし。Go 標準ライブラリを基本とし、外部依存を採用する場合は `ADLAIRE_CI_SPEC.md` Part 2 §4 の許可リスト更新を先行する。 |
 | 入力 | UTF-8 エンコードの Markdown ファイル |
 | 出力 | UTF-8 エンコードの単一 HTML ファイル |
@@ -151,7 +195,29 @@ var DefaultBuildConfig = BuildConfig{
 }
 ```
 
-別の環境で実行する場合は、この既定値を CLI 引数または設定ファイルで上書きする。
+別の環境で実行する場合は、この既定値を CLI 引数で上書きする。Go 版 `build_spec.go` は設定ファイルを読み込まない。
+
+**CLI 引数仕様：**
+
+| 引数 | 必須 | 既定値 | 説明 |
+|------|------|--------|------|
+| `--src <path>` | 任意 | `DefaultBuildConfig.Src` | 入力 Markdown ファイルの絶対パスまたは相対パス。相対パスはカレントディレクトリ基準で解決する。 |
+| `--out <path>` | 任意 | `DefaultBuildConfig.Out` | 出力 HTML ファイルの絶対パスまたは相対パス。親ディレクトリが存在しない場合は作成する。 |
+| `--version` | 任意 | なし | バイナリ名、仕様名、Go build 情報を 1 行で標準出力へ表示して終了する。 |
+| `--help` | 任意 | なし | 引数一覧を標準出力へ表示して終了する。 |
+
+**CLI 引数の異常系：**
+
+| 条件 | 終了コード | 出力 |
+|------|------------|------|
+| 未知の引数 | `2` | stderr に `unknown option: <name>` |
+| `--src` / `--out` の値欠落 | `2` | stderr に `missing value: <name>` |
+| `--src` が存在しない | `2` | stderr に `source not found: <path>` |
+| `--src` が UTF-8 として読めない | `2` | stderr に `source is not valid UTF-8: <path>` |
+| `--out` 親ディレクトリ作成失敗 | `1` | stderr に `cannot create output directory: <path>` |
+| `--out` 書き込み失敗 | `1` | stderr に `cannot write output: <path>` |
+
+`--help` と `--version` は他の引数より優先し、成功時は終了コード `0` とする。
 
 ---
 
@@ -205,7 +271,7 @@ var DefaultBuildConfig = BuildConfig{
 
 ### 4.2 `esc(s: str) → str`
 
-`html.escape(s, quote=True)` のラッパー。HTML 特殊文字（`<`、`>`、`&`、`"`、`'`）をエスケープする。
+Go 標準ライブラリ `html.EscapeString(s)` 相当の処理を行う。HTML 特殊文字（`<`、`>`、`&`、`"`、`'`）をエスケープする。
 
 ---
 
@@ -358,7 +424,7 @@ Markdown の行リストを走査し、HTML コンテンツ文字列を生成す
 `convert()` 末尾で `_fn_order` が非空の場合、`<section class="fn-section">` 内に参照順番号付きの脚注リスト（`<ol class="fn-list">`）を出力する。各脚注には本文への戻りリンク（`<a class="fn-back">↩</a>`）を付与する。
 
 **フェンスコードブロックの未閉鎖フォールバック：**
-ファイル末尾まで読んだ時点で `fence_active` が `True` のままの場合（閉じる `` ``` `` がない場合）、`fence_buf` にコンテンツがあれば `emit_code()` を呼び出して強制出力する。`fence_buf` が空（フェンス開始直後に EOF）の場合は何も出力しない。
+ファイル末尾まで読んだ時点で `fence_active` が `true` のままの場合（閉じる `` ``` `` がない場合）、`fence_buf` にコンテンツがあれば `emit_code()` を呼び出して強制出力する。`fence_buf` が空（フェンス開始直後に EOF）の場合は何も出力しない。
 
 **見出し階層スキップ警告：**
 
@@ -850,6 +916,20 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 /usr/local/bin/adlaire-ci-build
 ```
 
+`adlaire-ci-build` の実行は、§2 の CLI 引数仕様に従う。引数なしの場合は `DefaultBuildConfig` の `Src` と `Out` を使用する。
+
+**終了コード：**
+
+| 終了コード | 条件 | 後続処理 |
+|------------|------|----------|
+| `0` | HTML 生成に成功し、`[REPORT]` 行を出力した。 | `runner.go` は成功として扱う。 |
+| `1` | 出力ディレクトリ作成、HTML 書き込み、テンプレート合成など処理中の一般エラー。 | `runner.go` はビルド失敗として扱い、SHA を更新しない。 |
+| `2` | CLI 引数不正、入力ファイル不存在、入力 UTF-8 不正。 | `runner.go` は設定または入力エラーとして扱い、SHA を更新しない。 |
+
+終了コード `0` の場合、stdout には必ず `Converting MD...`、`Building TOC...`、`Assembling HTML...`、`Done → ...`、`[REPORT] ...` をこの順序で出力する。警告がある場合は `[REPORT]` の直前に `[WARN] ...` を 1 件 1 行で出力する。
+
+終了コード `1` または `2` の場合、stderr に原因を 1 行以上出力し、`[REPORT]` 行は出力しない。途中まで作成した出力 HTML は同一パスへ残してはならず、一時ファイルを削除して終了する。
+
 **標準出力：**
 ```
 Converting MD...
@@ -912,7 +992,7 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 
 | 項目 | 内容 |
 |------|------|
-| Go バージョン | 安定版 Go。具体的な最小バージョンは実装着手時に本表へ明記する。 |
+| Go バージョン | Go `1.22` 以上。 |
 | 外部依存 | **なし** — Go 標準ライブラリ（`net/http`、`encoding/json`、`os`、`os/exec`、`log/slog` 等）を使用する |
 | 対象 OS | Linux（systemd 対応環境） |
 | ネットワーク | サーバーから `api.github.com` への HTTPS 送信のみ |
@@ -925,7 +1005,7 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 
 `runner.go` は `adlaire-ci-runner` バイナリとして実行する。起動形式は systemd timer から呼び出される oneshot 実行とし、1 回の起動で対象ブランチ設定を読み込み、変更検出、ビルド起動、ログ保存、通知、転送、後処理を完了して終了する。
 
-実装する場合は、対象項目ごとに §0c の完全実装精度ゲートを満たしていることを確認する。ゲート未充足の項目が 1 つでもある場合は、実装を開始せず、先に本ファイルの該当節を改訂する。
+実装時は、対象項目ごとに §0c の完全実装精度ゲートを満たしていることを確認する。ゲート未充足の項目が 1 つでもある場合は、実装を開始せず、先に本ファイルの該当節を改訂する。
 
 | 項目 | 関連節 | 実装内容 |
 |------|--------|------------|
@@ -1062,6 +1142,25 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 
 Go 版 `runner.go` は本節の設定値を正とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
 
+**設定入力の優先順位：**
+
+1. CLI 引数
+2. `.server_config` / `.branch_config` など状態ファイルの保存値
+3. 本節の既定値
+
+同一キーが複数の入力経路に存在する場合は、上位の値だけを採用する。採用しなかった値を混合してはならない。未知キーは WARN ログを出して無視する。
+
+**runner CLI 引数仕様：**
+
+| 引数 | 必須 | 既定値 | 説明 |
+|------|------|--------|------|
+| `--state-dir <path>` | 任意 | `/opt/adlaire-builder` | 状態ファイル、repo、dist、admin の基準ディレクトリ。相対パスは禁止。 |
+| `--once` | 任意 | `true` | 1 回だけ実行して終了する。Go 版 runner は oneshot 固定のため、指定してもしなくても同じ挙動とする。 |
+| `--version` | 任意 | なし | バイナリ名、仕様名、Go build 情報を 1 行で標準出力へ表示して終了する。 |
+| `--help` | 任意 | なし | 引数一覧を標準出力へ表示して終了する。 |
+
+未知引数、値欠落、相対 `--state-dir` は終了コード `2` とし、ビルド処理を開始しない。
+
 以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`BUILD_COOLDOWN_SECONDS`、`HISTORY_KEEP_N`、`FORCE_BUILD_INTERVAL`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` を Go 版 runner の標準設定とする。
 
 ```text
@@ -1074,7 +1173,7 @@ FORCE_BUILD_INTERVAL   = 0    # 強制再ビルド間隔（時間。0 = 無効�
 LOG_KEEP_N             = 50   # ビルドログ保持件数（0 = 無制限）→ §13
 API_CIRCUIT_BREAKER_THRESHOLD = 3    # 全ブランチ連続失敗の許容周回数（0 = 無効）→ §13
 OUTPUT_SIZE_WARN_MB           = 5    # 出力 HTML サイズ警告閾値（MB。0 = 無効）→ §13・§8
-WEEKLY_SUMMARY_ENABLED        = True # 週次サマリー Webhook の有効/無効 → §13
+WEEKLY_SUMMARY_ENABLED        = true # 週次サマリー Webhook の有効/無効 → §13
 WEEKLY_SUMMARY_DAY            = 0    # 送信曜日（0=月曜〜6=日曜） → §13
 WEEKLY_SUMMARY_HOUR           = 9    # 送信時刻（0〜23、ローカル時刻） → §13
 
@@ -1100,11 +1199,41 @@ BRANCH_TARGETS = [
 
 `BRANCH_TARGETS` が空の場合、`runner.go` は ERROR ログを出力し、ビルドを実行せず終了コード `2` で終了する。
 
+**runner 終了コード：**
+
+| 終了コード | 条件 |
+|------------|------|
+| `0` | 起動、ロック確認、対象処理が完了した。変更なし、クールダウン、既存ロックによるスキップも正常終了に含める。 |
+| `1` | 1 件以上のビルドまたは転送が失敗したが、runner 自体は最後まで処理できた。 |
+| `2` | 設定不正、必須ファイル不足、CLI 引数不正。 |
+| `3` | GitHub API など外部サービスへの全再試行が失敗し、全ターゲットが処理不能。 |
+| `4` | `.build_lock` 作成に失敗し、既存 PID の実行中確認もできない。 |
+
+systemd timer からの再実行を妨げないため、終了コード `1` と `3` でもロック削除、ログ保存、通知キュー保存を試行してから終了する。
+
 ---
 
 ## 13. 処理フロー
 
 本節の処理フローは、Go 版 `runner.go` の標準フローである。
+
+**状態更新順序の規範：**
+
+1. `.build_lock` を作成する。
+2. `.build_state.running=true`、`current_build_id`、`last_started_at` を atomic write で保存する。
+3. GitHub API、Blob 書き出し、事前チェック、`pipeline.sh` 実行を行う。
+4. ビルド成功時のみ `sha_file` を新 SHA に更新する。
+5. `.build_logs/{id}.json` を作成し、stdout/stderr、`[REPORT]`、警告、転送結果を保存する。
+6. `.build_history` に同じ `id` の要約行を JSON Lines で追記する。
+7. 転送成功後に `.snapshots/` を更新する。
+8. `.build_state.running=false`、`last_finished_at` を保存する。
+9. `.build_lock` を削除する。
+
+途中失敗時は、失敗が発生した段階以降の成功前提更新を行わない。例えば `pipeline.sh` 失敗時は `sha_file`、snapshot、転送成功履歴を更新しない。ただし `.build_logs/{id}.json`、`.build_history`、`.build_state.running=false`、通知 pending は失敗記録として保存する。
+
+**状態ファイル破損時の処理：**
+
+runner が読み込む JSON object / JSON array の状態ファイルが破損している場合は、§22.0a の破損時の扱いに従う。JSON Lines は壊れた行だけを無視し、ファイル全体を破棄してはならない。破損退避ファイル名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。
 
 ```
 runner.go 起動（systemd タイマーから呼び出し）
@@ -1214,7 +1343,7 @@ runner.go 起動（systemd タイマーから呼び出し）
     │   .build_logs/ 内の {id}.json を mtime 昇順でソートし、
     │   件数が LOG_KEEP_N を超えた分を古いものから削除
     │
-    └─ [週次サマリー判定] WEEKLY_SUMMARY_ENABLED = True かつ on: ["weekly_summary"] 設定の Webhook 宛先が存在する場合
+    └─ [週次サマリー判定] WEEKLY_SUMMARY_ENABLED = true かつ on: ["weekly_summary"] 設定の Webhook 宛先が存在する場合
         現在の曜日が WEEKLY_SUMMARY_DAY かつ現在時刻が WEEKLY_SUMMARY_HOUR:00±30分以内の場合：
         ├─ 二重送信防止チェック：.build_state の weekly_summary_sent_date と当日の日付（YYYY-MM-DD）を比較
         │   → 一致（本日送信済み）→ スキップ（INFO ログ: `WEEKLY_SUMMARY_SKIP: already sent today`）
@@ -1420,7 +1549,7 @@ Go 版 `runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成す
 | 出力サイズ警告 | `OUTPUT_SIZE_WARN_MB` 超過時に `size_warn: true` を保存する。 |
 | ログ世代管理 | `LOG_KEEP_N` を超過した `.build_logs/{id}.json` を古いものから削除する。 |
 
-これらの拡張ログを実装する場合は、§10a の未実装範囲、§12 の拡張設定、§13 の拡張フロー、§22 の API レスポンス仕様と整合させる。
+これらのログ項目を実装対象に含める時点で、§10a の実装対象、§12 の設定値、§13 の処理フロー、§22 の API レスポンス仕様と整合させる。
 
 ---
 
@@ -1636,12 +1765,16 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 
 ### 22.0 API 共通契約
 
-本節の API は `api_server.go` の仕様化済み・未実装仕様である。実装する場合は、エンドポイント固有仕様より先に以下の共通契約を満たす。
+本節の API は `api_server.go` の仕様化済み・未実装仕様である。実装時は、エンドポイント固有仕様より先に以下の共通契約を満たす。
 
 | 項目 | 仕様 |
 |------|------|
+| Go バージョン | Go `1.22` 以上。HTTP 実装は Go 標準ライブラリ `net/http` を使用する。 |
+| bind | 既定値は `127.0.0.1:8765`。`--addr` で上書き可能。`0.0.0.0` を指定する場合はリバースプロキシとアクセス制御を別途設定する。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルはいずれも UTF-8 とする。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
+| リクエスト body 上限 | JSON body は 1 MiB を上限とする。超過時は `413 Payload Too Large` と `{"error": "Payload too large"}` を返す。 |
+| request body 禁止 | §22.0e で `Request` が `none` の endpoint に body がある場合は `400 Bad Request` と `{"error": "Request body is not allowed"}` を返す。 |
 | 成功レスポンス | 各エンドポイント例に記載した JSON オブジェクトを返す。空レスポンスは使用しない。 |
 | エラーレスポンス | エラー時は `{"error": "<message>"}` を返す。補足情報が必要な場合のみ `details` を追加し、`details` は文字列または JSON オブジェクトとする。 |
 | 未知のパス | 定義されていない `/api/...` は `404 Not Found` と `{"error": "Not found"}` を返す。 |
@@ -1654,10 +1787,12 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | 未設定機能 | Secret 未設定など、機能が仕様化済みでも必要設定が存在しない場合は `501 Not Implemented` または各エンドポイントに明記されたステータスを返す。 |
 | 時刻形式 | API レスポンスと状態ファイルの時刻は ISO 8601 形式の文字列とする。タイムゾーンを付ける場合は UTC の `Z` または明示オフセットを使用する。 |
 | GET の副作用 | `GET` エンドポイントは状態ファイルを書き換えない。診断 API が外部確認を行う場合も、結果保存は行わない。 |
-| 状態ファイル更新 | JSON 状態ファイルの更新は一時ファイルへ書き出してから `os.replace()` で置換する。秘密情報を含むファイルは作成後に mode `600` を設定する。 |
+| 状態ファイル更新 | JSON 状態ファイルの更新は同一ディレクトリの一時ファイルへ書き出してから `os.Rename` で置換する。秘密情報を含むファイルは作成後に mode `600` を設定する。 |
 | 秘密情報 | PAT、Webhook Secret、セッショントークン、API トークンはログ、バックアップ、GET レスポンスへ平文出力しない。設定済み表示は `"***"` または boolean で返す。 |
 | 並列更新 | 同一状態ファイルを更新する API は、ファイル単位のロックを取得してから読み込み、検証、書き込みを行う。ロック取得待ちは最大 10 秒とし、超過時は `409 Conflict` を返す。 |
 | 監査ログ | 設定変更 API は、変更前後の値を `.config_log` に追記する。ただし秘密情報の値は変更前後とも `"***"` にマスクする。 |
+| CORS | 既定では CORS ヘッダーを付与しない。標準管理ツールは同一 origin から配信する。 |
+| 判定順 | path 解決 → method 検証 → body 可否/サイズ検証 → JSON parse → 認証 → 権限 → 入力検証 → 状態競合 → 処理実行の順に判定する。 |
 
 エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、§22、§23、§24 の対応関係を同時に確認する。
 
@@ -1697,6 +1832,18 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
 
 JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時は末尾に改行を必ず付ける。秘密情報を含む可能性のある `.admin_credentials`、`.github_token`、`.webhook_secret`、`.smtp_secret` は mode `600` を必須とする。
+
+**状態ファイル更新手順：**
+
+1. 対象ファイルの `{name}.lock` を `O_CREATE|O_EXCL` で作成する。
+2. ロック取得に失敗した場合は 100ms 間隔で最大 10 秒待つ。
+3. 現在値を読み込み、schema と入力値を検証する。
+4. 更新後 JSON を `{name}.tmp.{pid}` に UTF-8 / LF で書き出す。
+5. ファイルを close し、通常状態ファイルは `0644`、秘密情報ファイルは `0600` に chmod する。
+6. `os.Rename(tmp, target)` で置換する。
+7. ロックファイルを削除する。
+
+手順 3〜6 の途中で失敗した場合は target を変更せず、tmp を削除し、ロックを削除して `500 Internal Server Error` を返す。複数ファイル更新 API は §22.0d の Write 列順にこの手順を実行し、途中失敗時は未処理ファイルを書き込まない。既に書き込んだファイルの自動ロールバックは行わず、`.config_log` に失敗内容を記録する。
 
 ### 22.0b 入力検証共通仕様
 
@@ -2211,7 +2358,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 ### 22.0f 実装優先度
 
-仕様化済み・未実装項目を実装する場合は、下表の順に進める。上位の完了条件を満たす前に下位へ進んではならない。同一優先度内では、API、SDK、UI、状態ファイル、検証手順を同じ Pull Request で同期する。
+仕様化済み・未実装項目の実装時は、下表の順に進める。上位の完了条件を満たす前に下位へ進んではならない。同一優先度内では、API、SDK、UI、状態ファイル、検証手順を同じ Pull Request で同期する。
 
 | 優先度 | 対象 | 完了条件 |
 |--------|------|----------|
@@ -3629,6 +3776,12 @@ export { AdlaireCI };
 | `streamBuild()` | `EventSource` 生成前に token がない場合は `AdlaireCIError(status=401)` を投げる。`end` イベント受信後は SDK 側で `EventSource.close()` を呼ぶ。 |
 | Blob レスポンス | `downloadSnapshot(id)` のみ `response.blob()` を使用する。その他は JSON とする。 |
 | メソッド引数検証 | SDK 側でも必須引数の空値、配列型、数値範囲を検証し、HTTP 送信前に `TypeError` を投げる。 |
+| endpoint 対応 | SDK method は §22.0e の SDK 列に存在する endpoint だけを呼び出す。§22.0e にない endpoint を SDK 独自判断で追加してはならない。 |
+| body なし endpoint | §22.0e の `Request` が `none` の場合、SDK は `fetch` に `body` を設定しない。`{}` も送信しない。 |
+| token 保存 | セッショントークンはメモリ上の `this._token` のみに保持する。`localStorage`、`sessionStorage`、Cookie へ保存しない。 |
+| 秘密情報引数 | `updatePat(token)`、`setWebhookConfig(secret)`、SMTP password、`createToken()` の返却 token は console 出力しない。 |
+| query 生成 | `undefined`、`null`、空文字の任意 query は送信しない。ただし仕様上 `""` が意味を持つ `q`、`from`、`to` は空文字を送ってよい。 |
+| 戻り値補完禁止 | API response にない値を SDK が推測して追加しない。表示用加工は UI 側で行う。 |
 
 **SDK 型定義表：**
 
@@ -3780,6 +3933,7 @@ export { AdlaireCI };
 | 項目 | 仕様 |
 |------|------|
 | 初期表示 | `localStorage` から token を復元しない。画面読み込み時は未ログイン状態から開始する。 |
+| API 経路 | UI は必ず `AdlaireCI` SDK method を呼び出す。`fetch()`、`XMLHttpRequest`、`EventSource` の直接生成は禁止する。ただし SDK 内部の `streamBuild()` が返した `EventSource` を閉じる操作は許可する。 |
 | API 呼び出し中 | 対象ボタンを disabled にし、同一操作の二重送信を防ぐ。完了または失敗後に元へ戻す。 |
 | 成功表示 | 変更系操作は成功時にパネル内へ 1 行の成功メッセージを表示し、関連 GET API を再取得する。 |
 | 失敗表示 | SDK が投げた `AdlaireCIError.message` をパネル内エラー領域に表示する。`details` が object の場合はフィールド単位で表示する。 |
@@ -3792,6 +3946,10 @@ export { AdlaireCI };
 | 自動更新 | ステータス、キュー、SSE 以外のパネルは自動ポーリングしない。ユーザー操作または画面表示時に取得する。 |
 | SSE 切断 | `streamBuild()` が error になった場合はリアルタイム表示を停止し、`GET /api/status` と `GET /api/queue` を再取得する。 |
 | フォーム保存 | 保存 API が成功するまで UI 上の表示値を確定表示にしない。失敗時は入力値を保持する。 |
+| 入力検証 | UI は送信前に必須入力、数値範囲、配列空、URL、CIDR、日付形式を検証する。UI 検証に通っても API 側検証は省略しない。 |
+| 破壊的操作 | snapshot 削除、token 失効、queue clear、session revoke all、rollback はクリック後に確認ダイアログを 1 回表示する。確認文には対象 ID または件数を含める。 |
+| 表示時刻 | API から受け取った UTC ISO 8601 をブラウザのローカル時刻で表示してよい。ただし data 属性または title 属性に元の ISO 8601 文字列を保持する。 |
+| 一覧の空状態 | 配列が空の場合は、空表ではなくパネル内に 1 行の空状態メッセージを表示する。空状態はエラーとして扱わない。 |
 
 **カスタマイズポイント：**
 - SDK の `baseUrl` は `<script>` タグ内の設定変数で外出し
