@@ -65,7 +65,7 @@
 
 `ADLAIRE_CI_DETAIL_SPEC.md` は、`ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様であり、実装の具体的詳細に関する正本である。
 
-`build_spec.py`、`runner.py`、仕様化済み・未実装コンポーネントである `api_server.py`、`adlaire-ci-sdk.js`、`admin/index.html`、将来計画コンポーネントである `mcp_server.py` は、`ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に基づいて更新する。
+`build_spec.go`、`runner.go`、仕様化済み・未実装コンポーネントである `api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html`、将来計画コンポーネントである `mcp_server.go` は、`ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に基づいて更新する。
 
 `DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。`ADLAIRE_CI_SPEC.md` と矛盾する場合は、`ADLAIRE_CI_SPEC.md` を優先する。
 
@@ -117,27 +117,34 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 ## 3. 実装管理ルール
 
-現行実装ファイルは以下とする。
+Go 版の実装対象ファイルは以下とする。
 
 | ファイル | 役割 |
 |---------|------|
-| `build_spec.py` | Adlaire DB 仕様書 Markdown を単一 HTML へ変換するビルドスクリプト。 |
-| `runner.py` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する CI ランナー。 |
+| `build_spec.go` | Adlaire DB 仕様書 Markdown を単一 HTML へ変換する Go 版ビルドスクリプト。 |
+| `runner.go` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する Go 版 CI ランナー。 |
+
+旧 Python 実装ファイルは以下とする。
+
+| ファイル | 状態 |
+|---------|------|
+| `build_spec.py` | 旧実装。Go 版との互換は保証しない。 |
+| `runner.py` | 旧実装。Go 版との互換は保証しない。 |
 
 仕様化済み・未実装および将来計画の主なコンポーネントは以下とする。
 
 | ファイル | 状態 |
 |---------|------|
-| `api_server.py` | 仕様化済み・未実装 |
+| `api_server.go` | 仕様化済み・未実装 |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 |
 | `admin/index.html` | 仕様化済み・未実装 |
-| `mcp_server.py` | 将来計画 |
+| `mcp_server.go` | 将来計画 |
 
 未実装コンポーネントを追加する場合は、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md` の該当仕様、`DOCUMENT_INDEX.md`、本ファイルを必要に応じて整合させる。
 
 実装変更後は、変更範囲に応じて構文確認、実行確認、生成物確認を行う。
 
-Python 実装の構文確認では、環境に応じて `PYTHONPYCACHEPREFIX=/tmp/codex-pycache python3 -m py_compile ...` を使用してよい。
+Go 実装の構文確認では、対象ファイルに対して `gofmt -l ...` を実行し、Go module が存在する場合は `go test ./...` を実行する。
 
 ---
 
@@ -267,7 +274,7 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - 文書変更では、`rg` で旧名称、矛盾参照、移行前ファイル名が残っていないか確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
-- 実装変更では、対象言語に応じた構文確認を行う。Python 実装では `PYTHONPYCACHEPREFIX=/tmp/codex-pycache python3 -m py_compile ...` を標準の構文確認とする。
+- 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。
 - 実装変更では、必要に応じて対象スクリプトの実行確認または生成物確認を行う。
 - 仕様変更では、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、`DOCUMENT_INDEX.md`、`DESIGN.md`、実装ファイルの整合を確認する。
 
@@ -284,7 +291,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 外部フレームワークおよび外部ライブラリは、原則として採用しない。
 
-機能実現は、Python 標準ライブラリ、Vanilla JavaScript、内製実装、例外承認済み外部ライブラリの順で検討する。
+機能実現は、Go 標準ライブラリ、Vanilla JavaScript、内製実装、例外承認済み外部ライブラリの順で検討する。
 
 外部依存は最小限に抑え、可能な範囲で内製化を重視する。
 
@@ -306,6 +313,6 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` を改訂した場合は、`DESIGN.md`、`DOCUMENT_INDEX.md`、実装ファイルへの影響を確認する。
 
-`DESIGN.md` を改訂した場合は、`build_spec.py` 内の HTML / CSS / JavaScript テンプレートとの整合性を確認する。
+`DESIGN.md` を改訂した場合は、`build_spec.go` 内の HTML / CSS / JavaScript テンプレートとの整合性を確認する。
 
 仕様化済み項目を実装した場合は、`ADLAIRE_CI_SPEC.md` および `ADLAIRE_CI_DETAIL_SPEC.md` 内の状態表現、`DOCUMENT_INDEX.md` の Planned Components、実装ファイルの存在を整合させる。

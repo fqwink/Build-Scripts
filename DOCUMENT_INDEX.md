@@ -7,12 +7,19 @@
 | ファイル | 役割 |
 |---------|------|
 | `ADLAIRE_CI_SPEC.md` | Adlaire CI の方針、ポリシー、実装状態、正本関係を定めるマスター仕様書正本。 |
-| `ADLAIRE_CI_DETAIL_SPEC.md` | `ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様。`build_spec.py`、`runner.py`、仕様化済み・未実装コンポーネント、将来計画コンポーネントの実装詳細に関する正本。 |
+| `ADLAIRE_CI_DETAIL_SPEC.md` | `ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様。`build_spec.go`、`runner.go`、仕様化済み・未実装コンポーネント、将来計画コンポーネントの実装詳細に関する正本。 |
 | `DESIGN.md` | `Adlaire-db-spec.html` のデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
-| `build_spec.py` | Adlaire DB 仕様書 Markdown を単一 HTML へ変換するビルドスクリプト。仕様改訂の入力元ではなく、`ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に基づいて更新する実装ファイル。 |
-| `runner.py` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する CI ランナー。仕様改訂の入力元ではなく、`ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に基づいて更新する実装ファイル。 |
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | `DOCUMENT_INDEX.md` | 本索引。リポジトリ内の文書・実装ファイルの役割と正本関係を示す。仕様正本ではない。 |
+
+## Legacy Implementation Files
+
+旧 Python 実装は、Go 版移行後の正本ではない。Go 版との CLI 互換、生成物互換、状態ファイル互換は保証しない。
+
+| パス | 状態 | 役割 |
+|------|------|------|
+| `build_spec.py` | 旧実装 | Adlaire DB 仕様書 Markdown を単一 HTML へ変換する旧 Python 版ビルドスクリプト。 |
+| `runner.py` | 旧実装 | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する旧 Python 版 CI ランナー。 |
 
 ## Planned Components
 
@@ -20,10 +27,12 @@
 
 | パス | 状態 | 役割 |
 |------|------|------|
-| `api_server.py` | 仕様化済み・未実装 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する予定。 |
+| `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプト。`adlaire-ci-build` バイナリとして実行する予定。 |
+| `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する予定。 |
+| `api_server.go` | 仕様化済み・未実装 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する予定。 |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する予定。 |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。SDK 経由で API と通信する予定。 |
-| `mcp_server.py` | 将来計画 | MCP サーバー。将来の 4 コンポーネント構成で追加予定。 |
+| `mcp_server.go` | 将来計画 | MCP サーバー。将来の 4 コンポーネント構成で追加予定。 |
 
 ## Source Of Truth
 
@@ -33,7 +42,7 @@
 
 デザイン判断では、`ADLAIRE_CI_SPEC.md` と矛盾しない範囲で `DESIGN.md` を参照する。
 
-`build_spec.py` または `runner.py` の挙動が `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` と矛盾する場合は、仕様と実装の不整合として扱う。
+Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` と矛盾する場合は、仕様と実装の不整合として扱う。
 
 仕様を変更する場合は、先に該当する仕様書を更新し、その内容に基づいて実装ファイルを更新する。
 
