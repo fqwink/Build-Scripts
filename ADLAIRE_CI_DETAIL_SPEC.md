@@ -35,7 +35,7 @@
 | §24 | `ADLAIRE_CI_DETAIL_UI_SPEC.md`。`admin/index.html` の詳細仕様 |
 | §25 | `ADLAIRE_CI_DETAIL_API_SPEC.md`。認証の実装仕様 |
 | §26 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md`。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
-| `components/admin.go` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md`。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
+| `admin` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md`。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
 
 本ファイルを分割する場合は、§0b.1 の責務 component 分割仕様に従う。分割後も `ADLAIRE_CI_DETAIL_SPEC.md` は入口、索引、共通固定値、責務 component 対応表を持つ。分割先ファイルは、それぞれの owner component と collaborator component の詳細仕様だけを持つ。
 
@@ -70,18 +70,18 @@
 
 | 責務 component | 詳細仕様節 | 主な確認対象 |
 |--------------------|------------|--------------|
-| `components/builder.go` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture、builder owner 追加機能。 |
-| `components/runner.go` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | 設定、状態ファイル、GitHub API 読取、pipeline、転送、snapshot、通知、fixture、runner owner 追加機能、Commit Status 呼び出し境界、systemd / setup 参照境界。 |
-| `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、API server 制限、endpoint、状態ファイル read/write、認証連携、security 呼び出し境界、API owner 追加機能。 |
-| `components/admin.go` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A0〜A5 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
-| `admin/adlaire-ci-sdk.js` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
-| `admin/index.html` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
+| `builder` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture、builder owner 追加機能。 |
+| `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | 設定、状態ファイル、GitHub API 読取、pipeline、転送、snapshot、通知、fixture、runner owner 追加機能、Commit Status 呼び出し境界、systemd / setup 参照境界。 |
+| `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、API server 制限、endpoint、状態ファイル read/write、認証連携、security 呼び出し境界、API owner 追加機能。 |
+| `admin` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A0〜A5 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
+| `sdk` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
+| `ui` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
 | `setup` | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
-| `components/statefile.go` | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | 状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
-| `components/archive.go` | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7、§27.15 | build log archive、snapshot、download、delete、rollback、cleanup。 |
-| `components/commitstatus.go` | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 |
+| `statefile` | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | 状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
+| `archive` | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7、§27.15 | build log archive、snapshot、download、delete、rollback、cleanup。 |
+| `commitstatus` | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 |
 | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| `components/mcp.go` | 詳細仕様なし | 本ファイルでは実装可能な入出力、状態、起動手順、検証条件を定義しない。 |
+| `mcp` | 詳細仕様なし | 本ファイルでは実装可能な入出力、状態、起動手順、検証条件を定義しない。 |
 
 ---
 
