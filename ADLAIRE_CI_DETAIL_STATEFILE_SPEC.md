@@ -44,6 +44,7 @@
 | `.build_history` | JSON Lines | 空ファイル | `components/runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
 | `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `components/runner.go` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
 | `.build_lock` | text | 不在 | `components/runner.go` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
+| `.last_sha` / `BranchTarget.SHAFile` | JSON object | `{"sha":""}` | `components/runner.go` | JSON 破損、object 以外、`sha` key 不在、`sha` 型不一致は当該 target の decode failure とし、成功時まで更新しない。 |
 | `.branch_config` | JSON object | 不在 | `components/runner.go` / `components/api.go` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、再生成せず `BRANCH_TARGETS` デフォルトへフォールバックする。 |
 | `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `components/runner.go` / `components/api.go` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.build_status.json` | JSON object | `{"schema_version":1,"updated_at":null,"status":"none","running":false,"current_build_id":null,"last_build_id":null,"last_trigger":null,"last_target_status":null,"last_branch":null,"last_target_file":null,"last_blob_sha":null,"last_commit_sha":null,"last_started_at":null,"last_finished_at":null,"last_duration_seconds":null,"last_error":null,"last_deploy_status":null,"pending_transfers_count":0,"notify_pending_count":0,"circuit_open":false,"circuit_consecutive_failures":0,"output_sha256":null,"size_warn":false}` | `components/runner.go` | `.build_status.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
@@ -264,6 +265,30 @@ Email object:
 | `deploy_targets[].dest_dir` | string | 必須 | 絶対パス | 転送先ディレクトリ。 |
 
 `.branch_config` が不在の場合、`GET /api/branch-config` は `source: "default"` と `BRANCH_TARGETS` の定数値を返す。`.branch_config` が存在する場合、`source: "file"` とファイル内容を返す。API request / response の表示名として `branches` を使う場合でも、永続ファイルへ保存する key は必ず `branch_targets` とする。API は `branches: []` または `branch_targets: []` を `.branch_config` の空配列保存として扱ってはならない。`POST /api/branch-config` で空配列を受け取った場合は `.branch_config` を削除し、default 復帰として扱う。
+
+**`.last_sha` / `BranchTarget.SHAFile` schema：**
+
+```json
+{"sha":""}
+```
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `sha` | string | 必須 | 空文字または Git blob SHA | 空文字は初回実行扱い。 |
+
+SHA cache は target ごとの処理済み Git blob SHA を保存する JSON object とする。legacy text 形式は自動変換しない。
+
+| 状態 | 読込時の扱い | 保存時の扱い |
+|------|--------------|--------------|
+| 不在 | 初回実行として `previous_blob_sha=""` を扱う。 | build 成功時に `{"sha":"<new_sha>"}` を atomic write する。 |
+| `{"sha":""}` | 初回実行として扱う。 | build 成功時に新 SHA で上書きする。 |
+| `{"sha":"<value>"}` | `<value>` を前回 SHA として比較する。 | build 成功時に新 SHA で上書きする。 |
+| JSON 破損 | 当該 target の decode failure として扱う。 | 更新しない。 |
+| object 以外 | JSON 破損と同じ扱い。 | 更新しない。 |
+| `sha` key 不在または string 以外 | JSON 破損と同じ扱い。 | 更新しない。 |
+| 未知 key あり | 前回 SHA として `sha` だけを読む。 | build 成功時に `sha` だけの object で上書きする。 |
+
+SHA cache の更新タイミング、skip / failure 時の更新可否、複数 target 時の個別更新は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13 の SHA cache 読み書き契約を正とする。
 
 **`.repo_config` schema：**
 
@@ -656,3 +681,63 @@ BuildMeta object:
 | `build_id` | string | 必須 | HTML meta `adlaire-build-id` と同じ値。 |
 | `commit_sha` | string | 必須 | HTML meta `adlaire-commit-sha` と同じ値。 |
 | `build_at` | string | 必須 | HTML meta `adlaire-build-at` と同じ値。 |
+
+**`.build_status.json` schema：**
+
+`.build_status.json` は runner の現在状態と直近結果を 1 ファイルで読むための要約である。API / UI / MCP は現在状態を表示する場合、`.build_status.json` を第一参照元とし、存在しない場合のみ `.build_state`、`.build_history`、`.build_lock` から後方互換の値を算出してよい。
+
+```json
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-16T01:00:12Z",
+  "status": "success",
+  "running": false,
+  "current_build_id": null,
+  "last_build_id": "b20260916010000",
+  "last_trigger": "polling",
+  "last_target_status": "success",
+  "last_branch": "main",
+  "last_target_file": "docs",
+  "last_blob_sha": "012345",
+  "last_commit_sha": "abcdef",
+  "last_started_at": "2026-09-16T01:00:00Z",
+  "last_finished_at": "2026-09-16T01:00:12Z",
+  "last_duration_seconds": 12,
+  "last_error": null,
+  "last_deploy_status": "success",
+  "pending_transfers_count": 0,
+  "notify_pending_count": 0,
+  "circuit_open": false,
+  "circuit_consecutive_failures": 0,
+  "output_sha256": null,
+  "size_warn": false
+}
+```
+
+| キー | 型 | 必須 | 許容値 | 説明 |
+|------|----|------|--------|------|
+| `schema_version` | integer | 必須 | `1` 固定 | schema version。 |
+| `updated_at` | string/null | 必須 | UTC ISO 8601 または `null` | 初期値のみ `null`。 |
+| `status` | string | 必須 | `"none"`, `"running"`, `"success"`, `"failure"`, `"skipped_no_change"`, `"skipped_cooldown"`, `"success_deploy_pending"`, `"circuit_open"`, `"config_recovered"`, `"config_error"`, `"lock_skipped"` | `"none"` は初期値のみ。 |
+| `running` | boolean | 必須 | boolean | runner が build 処理中なら `true`。 |
+| `current_build_id` | string/null | 必須 | build id または `null` | 実行中 build id。実行中でなければ `null`。 |
+| `last_build_id` | string/null | 必須 | build id または `null` | 最後に build log / history を作成した build id。未実行なら `null`。 |
+| `last_trigger` | string/null | 必須 | `.build_history.trigger` と同じ値または `null` | 起動種別。 |
+| `last_target_status` | string/null | 必須 | runner target status または `null` | runner 内部分類。 |
+| `last_branch` | string/null | 必須 | branch 名または `null` | 最終対象 branch。 |
+| `last_target_file` | string/null | 必須 | 相対 path または `null` | 最終対象 file。 |
+| `last_blob_sha` | string/null | 必須 | Git blob SHA または `null` | 取得不能時は `null`。 |
+| `last_commit_sha` | string/null | 必須 | Git commit SHA または `null` | 取得不能時は `null`。 |
+| `last_started_at` | string/null | 必須 | UTC ISO 8601 または `null` | 最終開始時刻。 |
+| `last_finished_at` | string/null | 必須 | UTC ISO 8601 または `null` | 最終終了時刻。 |
+| `last_duration_seconds` | integer/null | 必須 | 0 以上または `null` | 最終所要時間。 |
+| `last_error` | string/null | 必須 | 文字列または `null` | 成功・通常 skip は `null`。 |
+| `last_deploy_status` | string/null | 必須 | `"success"`, `"pending"`, `"failed"`, `"skipped"`, `null` | 最終 deploy 状態。 |
+| `pending_transfers_count` | integer | 必須 | 0 以上 | pending transfer 件数。 |
+| `notify_pending_count` | integer | 必須 | 0 以上 | pending notification 件数。 |
+| `circuit_open` | boolean | 必須 | boolean | `.build_circuit_state.open` と一致する。 |
+| `circuit_consecutive_failures` | integer | 必須 | 0 以上 | `.build_circuit_state.consecutive_failures` と一致する。 |
+| `output_sha256` | string/null | 必須 | SHA-256 hex または `null` | 直近成功成果物の manifest SHA-256。 |
+| `size_warn` | boolean | 必須 | boolean | 直近 report の size warning。 |
+
+`.build_status.json` の更新タイミング、各 `status` の選択条件、書き込み失敗時の runner 終了コードは `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13 の build status 更新契約を正とする。
