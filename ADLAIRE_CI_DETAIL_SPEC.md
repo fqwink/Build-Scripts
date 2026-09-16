@@ -70,13 +70,14 @@
 | 責務 component | 詳細仕様節 | 主な確認対象 |
 |--------------------|------------|--------------|
 | `components/builder.go` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture、builder owner 追加機能。 |
-| `components/runner.go` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.1〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38 | 設定、状態ファイル、GitHub API、pipeline、転送、snapshot、通知、systemd、fixture、runner owner 追加機能。 |
+| `components/runner.go` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | 設定、状態ファイル、GitHub API 読取、pipeline、転送、snapshot、通知、systemd、fixture、runner owner 追加機能、Commit Status 呼び出し境界。 |
 | `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、endpoint、状態ファイル read/write、認証、session、API owner 追加機能。 |
 | `admin/adlaire-ci-sdk.js` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
 | `admin/index.html` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
 | `setup` | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
 | `components/statefile.go` | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | 状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
 | `components/archive.go` | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7、§27.15 | build log archive、snapshot、download、delete、rollback、cleanup。 |
+| `components/commitstatus.go` | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 |
 | `components/mcp.go` | 詳細仕様なし | 本ファイルでは実装可能な入出力、状態、起動手順、検証条件を定義しない。 |
 
 ---
@@ -98,6 +99,7 @@
 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 | runner / API / SDK / UI の個別機能本文。 |
 | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 | API endpoint の request / response、runner の業務処理、UI 表示判断。 |
 | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 | runner の build 実行、API 共通 request / response、SDK method 実装、UI DOM 詳細。 |
+| `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture manifest、assertion、fake、testdata、受け入れ fixture 共通契約、PR 証跡テンプレート。 | 個別 component の通常処理本文。 |
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、API、SDK、UI にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 を実装する場合は、owner component の分割先詳細仕様ファイルと §27.38a を同時に満たす。
@@ -798,7 +800,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 |--------------|--------|
 | §10〜§20 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20 |
 | §15a | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15a |
-| runner owner の §27 個別節 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27 |
+| runner owner の §27 個別節（§27.1 を除く） | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27 |
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は横断補足契約として本ファイルに残す。
 
@@ -1139,7 +1141,7 @@ UI は、上表に存在しない §27.1〜§27.20 の SDK method を呼んで�
 
 ### 27.1 GitHub Commit Status API
 
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.1 を正とする。owner component は `runner`、collaborator component は `commitstatus`、`statefile` とする。
+本節の主本文は `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 を正とする。owner component は `commitstatus`、collaborator component は `runner`、`statefile` とする。runner の build 実行、commit SHA 確定、build id 採番、pipeline / deploy / snapshot / history の最終結果確定は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` を正とする。
 
 ### 27.2 ドライラン実行モード
 
