@@ -36,7 +36,7 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 
 ログ参照 API は通常ファイルを先に探し、存在しない場合に archive を探す。archive を読む場合は gzip 展開後に通常 `.build_logs/{id}.json` と同じ schema として扱う。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` は archive を含めて動作する。
 
-`POST /api/logs/cleanup` は、archive 済みファイルも `log_retention_days` の削除対象に含める。`POST /api/logs/archive` は `{ "message": "Logs archived", "archived_count": N }` を返す。
+`POST /api/logs/cleanup` は、archive 済みファイルも `log_retention_days` の削除対象に含める。archive component は `POST /api/logs/archive` へ `archived_count`、`POST /api/logs/cleanup` へ `deleted_count` と `failed_count` を返す。HTTP response body の形式は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e を正とする。
 
 **archive / cleanup 固定契約：**
 
@@ -46,8 +46,8 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 | archive id | file 名 `{id}.json` の id と JSON 内 `id` が一致する場合だけ対象。 |
 | gzip path | `.build_logs/archive/{id}.json.gz`。既存 archive がある場合は上書きせず skip する。 |
 | cleanup 順 | 通常 log 削除 → archive log 削除 → 空 archive directory 削除試行。 |
-| 削除失敗 | 処理継続し、response に `failed_count` を含める。 |
-| response | archive は `archived_count`、cleanup は `deleted_count` と `failed_count` を返す。 |
+| 削除失敗 | 処理継続し、処理結果に `failed_count` を含める。 |
+| 処理結果 | archive は `archived_count`、cleanup は `deleted_count` と `failed_count` を API へ返す。 |
 
 検証条件:
 
@@ -76,7 +76,19 @@ owner component は `archive` とする。collaborator component は `api`、`sd
 | `DELETE /api/snapshots/{id}` | 対象 snapshot だけを削除し、`.config_log` に記録する。 |
 | `POST /api/history/{id}/rollback` | 対象 snapshot を deploy target へ再転送し、新規 rollback build log/history を作成する。 |
 
-`id` は build id と一致するものだけ許可する。`/`、`..`、空文字、URL decode 後に path separator を含む値は `422` とする。
+`id` は build id と一致するものだけ許可する。snapshot 専用 id は採番しない。`/`、`..`、空文字、URL decode 後に path separator を含む値は `422` とする。
+
+**snapshot 保存固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| snapshot id | build id と同一。`snap{YYYYMMDDHHmmss}` 形式の専用 id は作成しない。 |
+| 保存 path | `{StateDir}/.snapshots/{build_id}`。保存中は `{StateDir}/.snapshots/{build_id}.tmp.{pid}` を使い、完了後に rename する。 |
+| 保存対象 | 出力サイトディレクトリ配下の通常ファイルだけ。symlink、hardlink、socket、device、fifo、`.git`、secret、runner 状態ファイル、lock、pending queue は保存対象外。 |
+| archive 形式 | `.snapshots/{build_id}/site.tar.gz` と `.snapshots/{build_id}/meta.json` を作成する。 |
+| `meta.json` | `id`、`build_id`、`saved_at`、`size_bytes`、`file_count`、`output_sha256` を必須 key とする。 |
+| 既存 snapshot | 同じ build id の snapshot が既に存在する場合は上書きせず、WARN `SNAPSHOT_EXISTS: id={id}` を出して snapshot 保存を skip する。 |
+| 世代削除 | 新 snapshot 作成成功後に `saved_at` 昇順で `snapshots_keep` 超過分だけ削除する。削除失敗は build 成功を失敗へ反転せず、WARN `SNAPSHOT_PRUNE_FAILED` を出す。 |
 
 **download tar.gz 生成契約：**
 
@@ -106,6 +118,8 @@ rollback は snapshot 内の成果物を deploy target へ再転送する操作�
 | secret / token / credentials の復元 | snapshot に secret を含めないため復元対象外。 |
 
 rollback build log は `target_status="success"` または `failure_build` とし、`trigger="rollback"`、`rollback_from=<元id>`、`snapshot_id=<元id>` を含める。rollback 転送で pending が発生した場合は `success_deploy_pending` とし、`.pending_transfers` に rollback 用 entry を追加する。
+
+rollback 開始時は `.build_lock` を取得し、取得できない場合は `409 {"error":"Build is running"}` を返す。`.build_lock` 取得後に `.build_state.running=true`、`current_build_id=<new_id>` を保存し、転送完了後に finalizer で `running=false` とする。rollback は queue に積まない。
 
 **snapshot 一覧・削除固定契約：**
 

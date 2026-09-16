@@ -372,7 +372,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/logs` | query `{n,q}` | `{lines}` | `200` | `401`, `422`, `500` | `.build_logs/` | none | `getLogs()` | ログビューア |
 | `GET /api/logs/search` | query `{q,from,to,level}` | `SearchResult` | `200` | `401`, `422` | `.build_logs/` | none | `searchLogs()` | ログビューア |
 | `GET /api/logs/export` | none | `{exported_at,lines}` | `200` | `401` | `.build_logs/` | none | `exportLogs()` | ログビューア |
-| `POST /api/logs/cleanup` | none | `{message,deleted_count}` | `200` | `401`, `500` | `.server_config`, `.build_logs/` | `.build_logs/` | `cleanupLogs()` | ログビューア, 設定 |
+| `POST /api/logs/cleanup` | none | `{message,deleted_count,failed_count}` | `200` | `401`, `500` | `.server_config`, `.build_logs/` | `.build_logs/` | `cleanupLogs()` | ログビューア, 設定 |
 | `POST /api/logs/archive` | none | `{message,archived_count}` | `200` | `401`, `500` | `.server_config`, `.build_logs/` | `.build_logs/archive/`, `.build_logs/` | `archiveLogs()` | ログビューア, 設定 |
 | `GET /api/history` | query `{page,per_page,trigger?,tag?,flagged?}` | `HistoryPageObject` | `200` | `401`, `422` | `.build_history` | none | `getHistory()` | ビルド履歴 |
 | `GET /api/history/export` | none | `ExportObject` | `200` | `401` | `.build_history` | none | `exportHistory()` | ビルド履歴 |
@@ -459,18 +459,16 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST /api/tokens` | `{label,scopes,expires_at?}` | `TokenCreateResult` | `201` | `401`, `403`, `422`, `500` | `.api_tokens` | `.api_tokens`, `.access_log`, `.audit_log` | `createToken(label,scopes,expiresAt)` | API トークン管理 |
 | `DELETE /api/tokens/{id}` | path `{id}` | `{message}` | `200` | `401`, `403`, `404`, `500` | `.api_tokens` | `.api_tokens`, `.access_log`, `.audit_log` | `revokeToken(id)` | API トークン管理 |
 
-**成果物 / archive / backup API 副作用固定契約：**
+**archive / snapshot / rollback 処理参照：**
+
+`POST /api/logs/cleanup`、`POST /api/logs/archive`、`GET /api/snapshots`、`GET /api/snapshots/{id}/download`、`DELETE /api/snapshots/{id}`、`POST /api/history/{id}/rollback` の保存、圧縮、削除、download 安全性、rollback 実体処理は `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7 および §27.15 を正とする。本ファイルでは API endpoint、request / response、HTTP status、read / write 境界だけを定義する。
+
+**backup / restore API 副作用固定契約：**
 
 | API | 処理順序 | 成功時副作用 | 失敗時副作用 |
 |-----|----------|--------------|--------------|
-| `POST /api/logs/cleanup` | `.server_config` 読込 → cleanup 対象 log 算出 → 対象 file 削除 → response。 | 対象 `.build_logs/{id}.json` だけを削除する。archive 済み `.json.gz` は削除しない。 | 算出前失敗は差分なし。途中削除失敗は `500` とし、削除済み file は戻さない。 |
-| `POST /api/logs/archive` | `.server_config` 読込 → 対象 log 算出 → `.build_logs/archive/{id}.json.gz.tmp.{pid}` 作成 → gzip 書込 → fsync → rename → 元 log 削除 → response。 | archive 成功した log だけ元 `.json` を削除する。gzip は 1 log 1 file。 | gzip 作成または rename 失敗時は元 log を残す。元 log 削除失敗は `500` とし、archive 済み `.json.gz` は残す。 |
 | `GET /api/backup` | 対象設定 file 読込 → 不在 file に既定値適用 → secret mask → response。 | 状態ファイルを更新しない。 | 読込不能な必須 file は `500`。任意 file 不在は既定値で返す。 |
 | `POST /api/restore` | request 検証 → secret mask `"***"` の既存値補完 → 全対象 payload 生成 → §22.0d の順に atomic write → `.config_log` 追記 → response。 | 設定系状態 file だけを置換する。履歴、ログ、snapshot、session、token 本体は復元しない。 | 検証失敗は差分なし。途中 write 失敗は未処理 file を書かず `500`。処理済み file は戻さない。 |
-| `GET /api/snapshots/{id}/download` | id 検証 → snapshot directory 検証 → tar.gz stream 生成 → response。 | 状態ファイルを更新しない。 | 不正 id は `422`、不在は `404`、stream 中の読込失敗は接続を終了し状態差分なし。 |
-| `POST /api/history/{id}/rollback` | id 検証 → running 確認 → snapshot 検証 → 新 build id 採番 → deploy 転送 → rollback log/history 保存 → response。 | 新規 rollback build log/history だけを追加する。元 snapshot、元 history、state 全体は巻き戻さない。 | 転送失敗は rollback build log/history を failure として保存し、元 snapshot は削除しない。running 中は差分なし `409`。 |
-
-archive 対象 id と snapshot id は build id 形式だけを許可する。API は request path の URL decode 後に `/`、`\`、`..`、空文字、NUL を含む id を `422` とする。tar.gz へ格納する path は snapshot directory からの相対 path とし、絶対 path、`..`、symlink entry、hardlink entry、device entry を含めてはならない。
 
 backup response に secret 原文を含めてはならない。`password`、`token`、`secret`、`smtp_password`、`webhook_secret`、`.github_token`、`.smtp_secret`、`.api_tokens` の hash 元値は `"***"` または `*_set:boolean` で表現する。`POST /api/restore` で `"***"` を受け取った secret は既存値保持を意味し、既存値がない場合は未設定として扱う。
 
@@ -540,7 +538,7 @@ API が新規 ID を生成する機能は、下表の形式に従う。既存 ID
 | approval id | `appr{YYYYMMDDHHmmss}` | `appr20260915100500` | `appr20260915100500-001` |
 | alert rule id | `r{YYYYMMDDHHmmss}` | `r20260915100500` | `r20260915100500-001` |
 | tag rule id | `t{YYYYMMDDHHmmss}` | `t20260915100500` | `t20260915100500-001` |
-| snapshot id | `snap{YYYYMMDDHHmmss}` | `snap20260915100500` | `snap20260915100500-001` |
+| snapshot id | build id と同一 | `b20260915100500` | build id 衝突時の値と同一。snapshot 専用 id は採番しない。 |
 
 ### 22.0e.3 API Endpoint 種別別実装契約
 
@@ -1481,18 +1479,18 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 ### スナップショット（14A）
 
-ビルド成功時に出力サイトを `.snapshots/` へ自動保存する。保持世代数は `GET /api/config` の `snapshots_keep`（デフォルト `5`、`0` = 機能無効）で制御し、超過した古い世代は自動削除する。
+snapshot の保存、世代削除、download、delete、rollback 実体処理は `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.15 を正とする。本節では API request / response と HTTP 境界だけを定義する。
 
 **`GET /api/snapshots` レスポンス例：**
 ```json
 { "snapshots": [
-    { "id": "snap001", "build_id": "b20260915100000", "saved_at": "2026-09-15T10:00:00Z", "size_bytes": 2048576 },
-    { "id": "snap002", "build_id": "b20260914183000", "saved_at": "2026-09-14T18:30:00Z", "size_bytes": 2031616 }
+    { "id": "b20260915100000", "build_id": "b20260915100000", "saved_at": "2026-09-15T10:00:00Z", "size_bytes": 2048576 },
+    { "id": "b20260914183000", "build_id": "b20260914183000", "saved_at": "2026-09-14T18:30:00Z", "size_bytes": 2031616 }
 ]}
 ```
 
 **`GET /api/snapshots/{id}/download`**
-バイナリレスポンス。`Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="site"` を付与する。
+バイナリレスポンス。`Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="{id}.tar.gz"` を付与する。download tar.gz 生成と安全性検証は `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.15 を正とする。
 
 **`DELETE /api/snapshots/{id}` レスポンス例：**
 ```json
@@ -1506,22 +1504,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 { "message": "Rollback started", "build_id": "b20260914183000" }
 ```
 
-- `.snapshots/{id}/` が存在しない場合は `404 Not Found` を返す
-- ロールバックは非同期で SSH 転送を実行する（`running: true` 中は `409 Conflict` を返す）
-- 転送成功時は `.build_history` に `trigger: "rollback"` のエントリを追記する
-
-**スナップショット保存・削除固定契約：**
-
-| 処理 | 固定仕様 |
-|------|----------|
-| snapshot id | §22.0e.2 の `snap{YYYYMMDDHHmmss}` 形式。build id を使い回さない。 |
-| 保存対象 | 出力サイトディレクトリ配下の通常ファイルだけ。symlink、socket、device、隠し一時ファイルは保存対象外。 |
-| archive 形式 | `.snapshots/{snapshot_id}/site.tar.gz` と `.snapshots/{snapshot_id}/meta.json` を作成する。 |
-| `meta.json` | `id`、`build_id`、`saved_at`、`size_bytes`、`file_count`、`output_sha256` を必須 key とする。 |
-| 世代削除 | 新 snapshot 作成成功後に `saved_at` 昇順で超過分だけ削除する。削除失敗は build 成功を失敗へ反転しないが、WARN log に固定コード `SNAPSHOT_PRUNE_FAILED` を出す。 |
-| rollback | 対象 snapshot の `site.tar.gz` を展開して転送し、新しい build id で `.build_logs/{id}.json` と `.build_history` を作成する。 |
-
-rollback 開始時は `.build_lock` を取得し、取得できない場合は `409 {"error":"Build is running"}` を返す。`.build_lock` 取得後に `.build_state.running=true`、`current_build_id=<new_id>` を保存し、転送完了後に finalizer で `running=false` とする。rollback は queue に積まない。
+`.snapshots/{id}/` が存在しない場合は `404 Not Found` を返す。ロールバックは非同期で SSH 転送を実行し、`running: true` 中は `409 Conflict` を返す。rollback の状態更新、転送、履歴、ログ、pending transfer、禁止副作用は `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.15 を正とする。
 
 ---
 
@@ -2108,10 +2091,10 @@ queue fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 f
 
 **`POST /api/logs/cleanup` レスポンス例：**
 ```json
-{ "message": "Cleanup completed", "deleted_count": 12 }
+{ "message": "Cleanup completed", "deleted_count": 12, "failed_count": 0 }
 ```
 
-`log_retention_days` が `0` の場合は削除せず `deleted_count: 0` を返す。
+`log_retention_days` が `0` の場合は削除せず `deleted_count: 0`、`failed_count: 0` を返す。
 
 **`GET /api/history/export` レスポンス：**
 
