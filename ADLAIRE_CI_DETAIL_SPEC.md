@@ -10405,13 +10405,28 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 3. summary に `count`、`avg_seconds`、`median_seconds`、`p95_seconds`、`anomaly_count` を保存する。
 4. API は `n` の最新 sample と summary を返す。`n` は 1〜1000、既定値 100。
 
+**統計算出固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 対象 sample | `duration_seconds` が 0 以上の数値で、`status` が `"success"`、`"failure"`、`"success_deploy_pending"` のいずれかである sample。 |
+| `avg_seconds` | 対象 duration の合計を対象件数で割り、小数第 3 位を四捨五入して小数第 2 位まで保存する。対象 0 件の場合は `null`。 |
+| `median_seconds` | duration 昇順の中央値。偶数件の場合は中央 2 件の平均を使い、小数第 3 位を四捨五入して小数第 2 位まで保存する。 |
+| `p95_seconds` | duration 昇順配列の `ceil(count * 0.95) - 1` 番目を採用する。`count=0` の場合は `null`。 |
+| `anomaly_count` | `sample.anomaly == true` の件数。 |
+| 同一 build id | 既存 sample と同じ `build_id` を追加する場合は append せず既存 sample を置換し、`finished_at` 昇順に再整列する。 |
+| API response | `{ "samples": TrendSample[], "summary": TrendSummary, "warnings": string[] }` を返す。warnings がない場合は空配列。 |
+
+`.build_trends.json` は sample 置換または追加後に summary を再計算して atomic write する。summary だけの部分更新は禁止する。
+
 **異常系：**
 
 | 条件 | 処理 |
 |------|------|
-| `.build_trends.json` 破損 | backup 後に `.build_history` から再集計する。 |
+| `.build_trends.json` 破損 | `.build_trends.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避後、`.build_history` の有効行から再集計する。 |
 | 再集計不能 | 初期値で作成し、WARN を出す。 |
 | `n` 不正 | API は `422`。 |
+| `.build_history` に duration 欠落 | 当該行は再集計対象外とし、warnings に `trend_sample_skipped` を 1 回だけ含める。 |
 
 **検証条件：**
 
@@ -10421,6 +10436,8 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 | build failure | duration があれば sample 追加。 |
 | 保持件数超過 | 古い sample だけ削除。 |
 | API n=10 | 最新 10 件を返す。 |
+| 同一 build id 再記録 | sample は 1 件のまま値が置換される。 |
+| p95 算出 | `ceil(count * 0.95) - 1` の値と一致する。 |
 
 ### 27.34 ビルド依存チェーン
 
@@ -10448,6 +10465,17 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 4. `required=false` の依存失敗は WARN とし、後続 job を継続できる。
 5. `.build_logs/{id}.json.chain` に job id、depends_on、chain_index を保存する。
 
+**chain 実行固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| `chain_run_id` | chain 起動ごとに `chain{YYYYMMDDHHmmss}`、衝突時 `-001` を付与する。chain 内の全 job log / history で同じ値を使う。 |
+| topological 同順位 | 依存数が同じで同時に実行可能な job は、`.build_chain_config.chains[]` の出現順で実行する。 |
+| disabled job | `enabled=false` の job は DAG から除外する。enabled job が disabled job に依存する場合、API 保存時に `422`。 |
+| job build id | 各 job は独立した build id を持つ。build id は通常採番規則に従い、chain job であることを id 文字列へ埋め込まない。 |
+| skip log | dependency failure により skip した job も `.build_history` に 1 行追記し、`.build_logs/{id}.json` は作成しない。 |
+| chain summary | 最終 job 処理後、`.build_logs/{last_id}.json.chain_summary` に `chain_run_id`、`total_jobs`、`success_count`、`failure_count`、`skipped_count` を保存する。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10455,6 +10483,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 | 循環依存 | API は `422`、runner は chain 無効化して通常 build。 |
 | 依存 job 不在 | `422`。 |
 | job 実行中に runner 停止 | 完了済み job だけ history に残し、未実行 job は次回再判定。 |
+| chain summary 保存失敗 | job 結果は維持し、ERROR ログを出して runner 終了コードを最低 `1` にする。 |
 
 **検証条件：**
 
@@ -10464,6 +10493,8 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 | A 失敗 / B required | B は `skipped_dependency_failed`。 |
 | 循環 | 保存不可。 |
 | optional 依存失敗 | 後続 job 継続。 |
+| 同順位 job | config 出現順で実行される。 |
+| disabled 依存 | 保存時 `422`、状態差分なし。 |
 
 ### 27.35 ビルド優先度キュー
 
@@ -10546,6 +10577,26 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 3. `.build_history.failure_category` に同じ値を保存する。
 4. API / UI は category で filter できる。未知 query は `422`。
 
+**`failure_evidence[]` schema：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `source` | string | 必須 | `"github_api"`、`"pipeline"`、`"deploy"`、`"hook"`、`"config"`、`"resource"`、`"runner"`。 |
+| `code` | string | 必須 | 固定コード。例: `http_500`、`timeout`、`exit_nonzero`、`checksum_mismatch`。 |
+| `message` | string | 必須 | 固定文言。入力値、secret、token、path 全体を連結しない。最大 300 文字。 |
+| `at` | string | 必須 | UTC ISO 8601。 |
+
+分類時は `failure_evidence[]` を最大 10 件まで保存する。10 件を超える場合は分類に使った evidence を先頭に残し、残りは発生順で 9 件まで保存する。
+
+**API filter 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| query | `failure_category` を受け付ける。空文字は未指定扱い。 |
+| 未知 category | `422 {"error":"Invalid failure category"}`。 |
+| 成功 history | `failure_category:null` として返す。 |
+| 既存未知値 | response に含め、top-level `warnings:["unknown_failure_category"]` を 1 回だけ返す。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10562,6 +10613,8 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | SSH 失敗 | `deploy_failure`。 |
 | 設定不正 | `config_error`。 |
 | filter | category 指定で該当履歴だけ返る。 |
+| evidence 上限超過 | 最大 10 件で保存され、secret 平文を含まない。 |
+| 成功履歴 | `failure_category:null`。 |
 
 ### 27.37 ビルド実行環境の記録
 
@@ -10592,6 +10645,16 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 3. 取得不能項目は `null` または `"unknown"` とし、build は継続する。
 4. 環境変数の値、token、secret、PATH 全体は保存しない。
 
+**取得・保存固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| `builder_version` | `adlaire-ci-build --version` を最大 2 秒で実行し、stdout 先頭行の最初の空白区切り token を保存する。stderr は保存しない。 |
+| `runner_version` | Go build info の main version が空の場合は `"unknown"`。VCS revision は保存しない。 |
+| `hostname` | 255 文字を超える場合は 255 文字で切り詰める。取得失敗時は `"unknown"`。 |
+| `state_dir` | `--state-dir` が home directory 配下の場合は basename だけ保存する。それ以外は絶対 path を保存してよい。 |
+| 保存失敗 | environment 保存失敗は build を開始せず、`.build_status.json` に `failure_state_write` を保存し、終了コード `1`。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10599,6 +10662,7 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | hostname 取得失敗 | `"unknown"`。 |
 | disk stat 失敗 | `disk_free_bytes=null`、WARN。 |
 | builder version 取得 timeout | `"unknown"`、build 継続。 |
+| environment 保存失敗 | build 本体を実行せず failure。 |
 
 **検証条件：**
 
@@ -10607,6 +10671,8 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | 通常 build | environment object が保存される。 |
 | builder version 失敗 | build 継続、unknown。 |
 | secret env 存在 | log に値が出ない。 |
+| home 配下 state dir | basename だけ保存される。 |
+| environment write failure | pipeline を起動しない。 |
 
 ### 27.38 ビルド所要時間の異常検知
 
@@ -10633,6 +10699,16 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 5. `.notify_config` に `duration_anomaly` event 対象 channel がある場合は通知する。
 6. 最後に `.build_trends.json` へ今回 sample を追加する。
 
+**判定・通知固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 判定対象 | build status が `"success"` または `"success_deploy_pending"` で、`duration_seconds` が 0 以上の場合だけ判定する。failure build は trend sample には含めるが anomaly 判定しない。 |
+| 比較基準 | 今回 sample を追加する前の `.build_trends.json.summary` を使う。復旧再集計が発生した場合も復旧後、追加前の summary を使う。 |
+| tag 更新 | 既存 `tags` に `"duration_anomaly"` がある場合は追加しない。 |
+| notify payload | `{event:"duration_anomaly", build_id, branch, duration_seconds, avg_seconds, p95_seconds, threshold_source}`。`threshold_source` は `"avg"`、`"p95"`、`"avg_and_p95"`。 |
+| 設定 validation | `min_samples` は 1〜10000、`avg_multiplier` と `p95_multiplier` は 1.0〜100.0。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10641,6 +10717,7 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | avg / p95 が null | 判定しない。 |
 | 通知失敗 | build status は変更せず notify retry 契約に従う。 |
 | 設定値不正 | API は `422`、runner は既定値ではなく機能無効として扱う。 |
+| trend 保存失敗 | anomaly 判定結果と history は維持し、runner 終了コードを最低 `1` にする。 |
 
 **検証条件：**
 
@@ -10650,6 +10727,8 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | 平均 2 倍超 | WARN、flag、tag、通知 event。 |
 | p95 以内 | anomaly なし。 |
 | 通知失敗 | build success 維持、pending 追加。 |
+| failure build | trend sample 追加、anomaly 判定なし。 |
+| tag 重複 | `duration_anomaly` が 1 件だけ。 |
 
 ### 27.38a Runner 拡張機能 実装補足契約
 
@@ -10785,6 +10864,20 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 
 `permission_denied` の監査ログ追記に失敗した場合は `500` を返し、対象 endpoint の処理は実行しない。
 
+**認証・rate limit 組み合わせ順：**
+
+| 段階 | 処理 |
+|------|------|
+| 1 | route match と method check を行う。未定義は `404` / `405` を返し、API token scope 判定は行わない。 |
+| 2 | 認証不要 endpoint か判定する。`GET /api/health` と `POST /api/webhook` は API token scope 判定対象外。 |
+| 3 | login endpoint は §27.47 の login rate limit を先に判定する。 |
+| 4 | 認証必須 endpoint は Bearer token を検証し、actor を確定する。 |
+| 5 | API token の場合だけ scope 判定を行う。管理 session は scope 表を参照しない。 |
+| 6 | 認証後 endpoint の rate limit を §27.47 に従って判定する。 |
+| 7 | endpoint 固有処理へ進む。 |
+
+scope 判定前に endpoint 固有の request body parse、状態ファイル更新、外部送信を実行してはならない。
+
 **scope 判定固定条件：**
 
 | 条件 | 判定 |
@@ -10808,6 +10901,7 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | 複数 scope | いずれかに一致する endpoint だけ成功。 |
 | path parameter endpoint | pattern 正規化後の scope で判定する。 |
 | query 付き endpoint | query を除外して scope 判定する。 |
+| scope 前 body | 権限不足時に request body validation や状態更新を行わない。 |
 
 ### 27.43 API キー管理
 
@@ -10887,6 +10981,17 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 
 認証に使用中の API token 自身を失効してよい。その場合、当該リクエストは成功し、次リクエストから `401` になる。
 
+**token ID 採番・返却固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 採番元 | `.api_tokens.tokens[].id` の数値 suffix 最大値。存在しない場合は `tok000001`。 |
+| 衝突時 | 最大 suffix + 1 を採用する。削除済みや失効済み id は再利用しない。 |
+| token 本体 | `act_` + `crypto/rand` 32 bytes を base64url padding なしで encode した文字列。 |
+| 作成 response | `{ "id", "label", "scopes", "created_at", "expires_at", "revoked_at", "last_used_at", "token" }`。`token` はこの response だけに含める。 |
+| 一覧 response | `tokens` 配列に `token_hash` と `token` を含めない。並び順は `created_at` 降順、同時刻は `id` 昇順。 |
+| label 正規化 | 前後空白を除去し、内部空白は保持する。64 文字判定は Unicode code point 数ではなく UTF-8 byte 数で行う。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10912,6 +11017,8 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | log 追記失敗 | `500`。token record は残る。 |
 | token record 破損 | `500`、自動再生成なし、secret 出力なし。 |
 | scope 不足 | `403`、endpoint 実行なし、`permission_denied` 記録。 |
+| 採番衝突 | 既存最大 suffix + 1 で作成される。 |
+| 作成 response | token 本体は 1 回だけ含まれ、一覧では返らない。 |
 
 ### 27.44 監査ログ
 
@@ -10967,6 +11074,16 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 
 同一操作で `.config_log` と `.audit_log` の両方を追記する場合、`.config_log` を先に追記する。`.config_log` 成功後に `.audit_log` が失敗した場合は `500` を返し、`.config_log` は巻き戻さない。`.audit_log` 追記失敗そのものを `.audit_log` に記録しようとしてはならない。
 
+**監査 record 保存順・失敗契約：**
+
+| 操作種別 | 保存順 | `.audit_log` 失敗時 |
+|----------|--------|----------------------|
+| 認証成功 | session または token 状態更新 → `.access_log` → `.audit_log` → response | token / session 状態は巻き戻さず `500`。response に token 本体を含めない。 |
+| 認証失敗 | `.access_log` → `.audit_log` → response | `500`。失敗理由詳細は返さない。 |
+| 権限拒否 | `.access_log` → `.audit_log` → `403` | `500`。対象 endpoint は実行しない。 |
+| 設定変更 | 対象設定保存 → `.config_log` → `.audit_log` → response | 対象設定と `.config_log` は巻き戻さず `500`。 |
+| token 作成 | `.api_tokens` 保存 → `.access_log` → `.audit_log` → response | 作成済み record は残し、token 本体は返さず `500`。 |
+
 **正常系：**
 
 1. 監査対象操作の成否が確定した後、`.audit_log` へ 1 行追記する。
@@ -11000,6 +11117,8 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | 追記失敗 | 対象操作は `500`。 |
 | 取得操作 | `GET /api/audit-log` 自身は監査ログへ追記されない。 |
 | 未知 filter | `422`。 |
+| audit failure token create | token record は残るが token 本体は返らない。 |
+| body secret | request body 全体が保存されない。 |
 
 ### 27.45 セッションタイムアウト変更設定
 
@@ -11028,6 +11147,8 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | 変更監査 | `POST /api/config` で値が変わった場合は `.config_log` に差分を記録する。`.audit_log` は `config_update`、`target_type:"config"`、`target_id:"session_timeout_seconds"` を記録する。 |
 | 同値更新 | 同じ値の更新は `200` とし、`.server_config` の再保存は行ってよいが、差分なしとして `.config_log` と `.audit_log` には記録しない。 |
 
+session timeout の値は session 発行時に秒単位で加算する。`expires_at = issued_at + session_timeout_seconds` とし、計算後の時刻は UTC ISO 8601 秒精度で保存する。ミリ秒、ナノ秒、local timezone は保存しない。
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -11037,6 +11158,7 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | 範囲外 | `422`。 |
 | key 不在 | `GET /api/config` は `28800`。 |
 | TOTP login | `POST /api/login/totp` 成功時点の値で session 期限を決める。 |
+| 秒精度 | `expires_at` は UTC ISO 8601 秒精度。 |
 
 ### 27.46 TOTP 二要素認証
 
@@ -11088,6 +11210,16 @@ TOTP code は 6 桁の ASCII 数字のみ受け付ける。空文字、全角数
 
 TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記録する。code 不一致、replay、ticket 不正は `result:"failure"` とし、code、secret、ticket 本体は保存しない。
 
+**TOTP 計算固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| counter | `floor(unix_seconds / 30)` を 8 byte big-endian unsigned integer として HMAC 入力にする。 |
+| truncation | RFC 4226 dynamic truncation を使い、31 bit integer を `10^6` で剰余する。 |
+| 表示 | 6 桁未満は左ゼロ埋めする。 |
+| base32 decode | 大文字 ASCII のみ保存する。入力確認時は空白を除去せず、保存値と同じ RFC 4648 padding なし形式だけを扱う。 |
+| clock source | API server の現在時刻だけを使う。client 時刻は受け取らない。 |
+
 **TOTP 状態更新順：**
 
 | 操作 | 更新順 | 失敗時 |
@@ -11127,6 +11259,8 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 | login ticket 再利用 | 1 回成功後または失敗後の同一 ticket は `401`。 |
 | confirm audit 失敗 | `500`、`.totp_secret` は保存済み、secret 平文は log なし。 |
 | disable 成功 | `.totp_secret` は無効値、既存 session は維持、ticket と仮 secret は削除。 |
+| window 前後 | 現在 step の前後 1 step が成功し、同 step 再利用は失敗する。 |
+| 全角 code | `422`。 |
 
 ### 27.47 API レート制限
 
@@ -11222,6 +11356,17 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 
 認証後 endpoint の rate limit では、actor key と IP key の両方を同じ lock 内で判定・更新する。片方だけの count 更新に成功した状態を残してはならない。`.api_rate_state` 保存失敗時は対象 API を実行せず `500` を返す。rate limit 判定で `429` になる request は count を増やさない。
 
+**rate limit 副作用固定契約：**
+
+| ケース | `.api_rate_state` | `.access_log` | `.audit_log` | endpoint 固有処理 |
+|--------|-------------------|---------------|--------------|-------------------|
+| 上限未満 | count を増やす | response 確定後に通常追記 | endpoint が監査対象の場合だけ追記 | 実行する |
+| 上限超過 | count を増やさない | `429` として追記 | `permission_denied` を追記 | 実行しない |
+| `.api_rate_state` 保存失敗 | 部分更新を残さない | `500` として追記を試行 | 追記しない | 実行しない |
+| `.audit_log` 失敗 | count を増やさない | `500` として追記を試行 | 失敗 | 実行しない |
+
+`429` 判定時は `.audit_log` 追記を `.api_rate_state` 保存前に行う。`.audit_log` 追記に成功した場合だけ `429` を返す。`.audit_log` 追記に失敗した場合は `.api_rate_state` を変更せず `500` を返す。
+
 **設定更新契約：**
 
 | 項目 | 仕様 |
@@ -11261,3 +11406,5 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 | 429 count | `429` になった request では count が増えない。 |
 | 同値更新 | state と log を変更せず `200`。 |
 | proxy header | `X-Forwarded-For` ではなく `RemoteAddr` host で key を作る。 |
+| audit failure on 429 | count は増えず `500`。 |
+| state save failure | endpoint 固有処理なし、部分 count 更新なし。 |
