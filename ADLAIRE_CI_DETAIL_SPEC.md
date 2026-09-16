@@ -1913,11 +1913,29 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 |------------|------|----------|
 | `0` | 静的 Web サイト生成に成功し、`[REPORT]` 行を出力した。 | `components/runner.go` は成功として扱う。 |
 | `1` | 出力ディレクトリ作成、HTML / CSS / JavaScript / search index 書き込み、テンプレート合成など処理中の一般エラー。 | `components/runner.go` はビルド失敗として扱い、SHA を更新しない。 |
-| `2` | CLI 引数不正、入力ファイル不存在、入力 UTF-8 不正。 | `components/runner.go` は設定または入力エラーとして扱い、SHA を更新しない。 |
+| `2` | CLI 引数不正、入力ファイル不存在、入力 UTF-8 不正、または `--strict` 指定時の警告発生。 | `components/runner.go` は設定または入力エラーとして扱い、SHA を更新しない。ただし `--strict` 警告時は `[REPORT]` を取り込む。 |
 
 終了コード `0` の場合、stdout には必ず `Collecting Markdown...`、`Converting MD...`、`Building site...`、`Writing assets...`、`Done → ...`、`[REPORT] ...` をこの順序で出力する。警告がある場合は `[REPORT]` の直前に `[WARN] ...` を 1 件 1 行で出力する。
 
-終了コード `1` または `2` の場合、stderr に原因を 1 行以上出力し、`[REPORT]` 行は出力しない。途中まで作成した出力サイトは公開用パスへ残してはならず、一時ディレクトリを削除して終了する。
+終了コード `1` または `2` の場合、stderr に原因を 1 行以上出力し、`[REPORT]` 行は出力しない。ただし `--strict` 警告による終了コード `2` だけは、stdout に通常進捗、`[WARN]`、`[REPORT]` を出力し、stderr は空とする。途中まで作成した出力サイトは公開用パスへ残してはならず、一時ディレクトリを削除して終了する。
+
+**CLI 出力固定契約：**
+
+| ケース | stdout | stderr | 終了コード | 副作用 |
+|--------|--------|--------|------------|--------|
+| `--help` | `Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--version] [--help]` + LF | 空 | `0` | 入力読込、出力作成なし。 |
+| `--version` | `adlaire-ci-build ADLAIRE_CI_SPEC go={version}` + LF | 空 | `0` | 入力読込、出力作成なし。 |
+| 引数不正 | 空 | 固定エラー 1 行 + LF | `2` | 入力読込、出力作成なし。 |
+| 入力不存在 | 空 | `source not found: {path}` + LF | `2` | 出力作成なし。 |
+| UTF-8 不正 | 空 | `source is not valid UTF-8: {path}` + LF | `2` | 出力作成なし。 |
+| strict 警告あり | 通常進捗、`[WARN]`、`[REPORT]` | 空 | `2` | 一時出力は削除し、公開用 `--out` は置換しない。 |
+| 書込失敗 | 失敗前までの進捗行 | `write failed: {path}` + LF | `1` | 一時出力を削除し、公開用 `--out` は置換しない。 |
+
+進捗 stdout は LF 改行だけを使用する。`Done → ...` 行の path は `--out` の解決後絶対パスとする。`--help` と `--version` が同時指定された場合は `--help` を優先する。`--strict` で警告が発生した場合も `[REPORT]` は出力し、runner は終了コード `2` と `[REPORT]` の両方を保存する。
+
+**一時出力・置換契約：**
+
+`adlaire-ci-build` は公開用 `--out` へ直接書き込まず、同一親ディレクトリに `{out}.tmp.{pid}` を作成して全ファイルを書き込む。全ファイルの write、close、sync、検索 index 生成、asset 生成が成功した場合だけ、既存 `--out` を `{out}.previous.{pid}` へ rename し、tmp を `--out` へ rename する。rename 後に親ディレクトリを sync する。置換成功後、旧 directory を削除する。置換前に失敗した場合は tmp だけ削除し、既存 `--out` を保持する。置換後の旧 directory 削除に失敗した場合は WARN を出すが終了コードは `0` のままとする。
 
 **標準出力：**
 ```
@@ -2833,6 +2851,35 @@ queue entry の `trigger` は `"manual"`、`"webhook"`、`"approval"` のみ許�
 
 `.build_state.queued` に entry がある場合、runner は通常ポーリング対象の前に queue を FIFO で 1 件だけ取り出して処理する。queue entry 処理が成功または失敗として `.build_history` に記録された場合、その entry を queue から削除する。runner 起動 1 回で複数 queue entry を連続処理してはならない。queue entry の `trigger` が `"manual"` かつ `payload.force=true` の場合は SHA 比較を行わず build を実行する。`trigger` が `"webhook"` の場合は payload の `ref` と `sha` を優先し、branch target に一致しない entry は `failure_api` として記録した後に queue から削除する。
 
+**runner finalizer 固定契約：**
+
+runner は lock 取得後、正常終了、失敗終了、panic 相当の recover、context timeout のいずれでも finalizer を実行する。finalizer は次の順序に固定する。
+
+1. 未保存の `.build_logs/{id}.json` がある場合は、可能な範囲の最終形を保存する。
+2. `.build_history` へ追記対象の build がある場合は 1 行だけ追記する。同じ `id` が既に存在する場合は追記せず、ERROR ログ `BUILD_HISTORY_DUPLICATE: id={id}` を出す。
+3. `.build_status.json` を最終状態へ更新する。
+4. `.build_state.running=false`、`current_build_id=null`、`last_finished_at={now}` を保存する。
+5. `.build_lock` を削除する。
+6. 通知対象 event がある場合は通知または `.notify_pending` 追記を行う。
+
+finalizer 中に複数失敗が発生した場合、終了コードは最も重い値を採用する。`.build_state.running=false` の保存失敗は終了コード `1` 固定とし、lock 削除だけ成功しても正常終了扱いにしない。lock 削除失敗は WARN とし、他失敗がなければ終了コードを変更しない。
+
+**SHA 更新禁止条件：**
+
+runner は以下のいずれかに該当する場合、`sha_file` を更新してはならない。
+
+| 条件 | 理由 |
+|------|------|
+| GitHub Trees API 失敗 | 対象 SHA が確定していない。 |
+| GitHub Blob API 失敗 | 入力 Markdown が取得できていない。 |
+| blob decode / src 書込失敗 | builder へ渡す入力が確定していない。 |
+| precheck 失敗 | pipeline を実行していない。 |
+| pipeline timeout / 非 0 | 出力成果物が成功状態ではない。 |
+| `[REPORT]` 不在かつ pipeline 非 0 | 成功確認できない。 |
+| status / log / history の必須保存失敗 | 実行結果を追跡できない。 |
+
+pipeline が終了コード `0` で `[REPORT]` が不在の場合、SHA は更新してよい。ただし `.build_logs/{id}.json.report=null`、`warnings` に `REPORT_MISSING` を追加し、`.build_history.warnings` に 1 を加算する。
+
 **状態ファイル破損時の処理：**
 
 runner が読み込む JSON object / JSON array の状態ファイルが破損している場合は、§22.0a の破損時の扱いに従う。JSON Lines は壊れた行だけを無視し、ファイル全体を破棄してはならない。破損退避ファイル名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。
@@ -3023,6 +3070,21 @@ set -euo pipefail
 | backoff | `API_RETRY_BASE_SECONDS * 2^attempt` 秒。attempt は 0 始まり。 |
 
 HTTP `401` は `failure_api` とし、ERROR ログ `GITHUB_AUTH_FAILED` を出す。HTTP `404` は `target_file` または branch 設定不正として `failure_api` とし、ERROR ログ `GITHUB_NOT_FOUND: branch={branch} target={target_file}` を出す。HTTP `403` で `X-RateLimit-Remaining: 0` の場合のみ rate limit として reset まで待機する。
+
+**pipeline 実行結果分類：**
+
+| 条件 | `pipeline.exit_code` | `target_status` | `error` | retry |
+|------|----------------------|-----------------|---------|-------|
+| exit `0` | `0` | `success` 候補 | `null` | なし |
+| exit `1`〜`125` | 実際の終了コード | `failure_build` | `pipeline failed` | §27.3 の retry 対象。 |
+| exit `126` | `126` | `failure_precheck` | `precheck failed` | retry しない。 |
+| exit `127` | `127` | `failure_precheck` | `precheck failed` | retry しない。 |
+| signal 終了 | `128 + signal` | `failure_build` | `pipeline failed` | retry 対象。 |
+| timeout | `null` | `failure_build` | `pipeline timeout` | retry 対象。 |
+| stdout 上限超過 | 実際の終了コード | exit code に従う | exit code に従う | exit code に従う。 |
+| stderr 上限超過 | 実際の終了コード | exit code に従う | exit code に従う | exit code に従う。 |
+
+runner は stdout / stderr の CRLF を LF に正規化して保存する。NUL byte は `\u0000` 文字列へ置換する。保存する stdout / stderr は UTF-8 不正 byte を `�` に置換する。secret mask は保存前に適用し、PAT、Webhook Secret、SMTP password、API token、session token、TOTP secret に一致する値を `***` に置換する。
 
 ---
 
@@ -3283,6 +3345,35 @@ Go 版 `components/runner.go` は、ビルドごとに `.build_logs/{id}.json` �
 
 `.build_logs/{id}.json` は `encoding/json` で生成し、末尾改行を付ける。未知キーを追加してはならない。`report.tables_count` と `report.code_blocks_count` は stdout `[REPORT]` の `tables`、`code_blocks` から変換して保存する。
 
+**ビルドログ最終形契約：**
+
+| 状況 | `finished_at` | `duration_seconds` | `pipeline` | `report` | `deploy` | `snapshot_id` |
+|------|---------------|--------------------|------------|----------|----------|---------------|
+| GitHub API 失敗 | 保存時刻 | 0 以上 | `exit_code:null`, stdout/stderr 空 | `null` | `[]` | `null` |
+| blob decode 失敗 | 保存時刻 | 0 以上 | `exit_code:null`, stdout/stderr 空 | `null` | `[]` | `null` |
+| precheck 失敗 | 保存時刻 | 0 以上 | `exit_code:null`, stdout/stderr 空 | `null` | `[]` | `null` |
+| pipeline timeout | timeout 検出時刻 | 0 以上 | 取得済み stdout/stderr、`exit_code:null` | parse できた場合のみ object | `[]` | `null` |
+| pipeline 非 0 | process 終了時刻 | 0 以上 | 実 exit code と取得済み stdout/stderr | parse できた場合のみ object | `[]` | `null` |
+| pipeline 成功 / deploy なし | process 終了時刻 | 0 以上 | `exit_code:0` | object または `null` | `[]` | `null` |
+| pipeline 成功 / deploy pending | deploy 判定時刻 | 0 以上 | `exit_code:0` | object または `null` | pending entry | `null` |
+| pipeline 成功 / deploy 成功 / snapshot 成功 | snapshot 保存時刻 | 0 以上 | `exit_code:0` | object または `null` | success entry | build id |
+| snapshot 失敗 | snapshot 失敗時刻 | 0 以上 | `exit_code:0` | object または `null` | success entry | `null` |
+
+`finished_at` は `started_at` より前にしてはならない。同一 build id のログを複数回保存する場合は、最後の保存が完全 schema を満たすように全 key を含める。途中保存で欠けた key がある状態を最終状態として残してはならない。
+
+**ログ行・secret mask 契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| stdout/stderr 行長 | 1 行最大 4000 文字。超過分は末尾を切り捨て、`...[truncated]` を付ける。 |
+| 配列化 | API 表示用の `stdout` / `stderr` 配列は LF で分割し、空末尾行は除外する。 |
+| raw 保存 | `.build_logs/{id}.json.pipeline.stdout` / `stderr` は LF 正規化後の文字列として保存する。 |
+| secret mask | 保存前に既知 secret 値を長い順で置換する。空文字 secret は mask 対象にしない。 |
+| mask 対象 | `.github_token`、`.webhook_secret`、`.smtp_secret`、`.api_tokens` の有効 token hash 元値は保存しないため対象外、実行時に保持する平文 token、session token、TOTP secret。 |
+| WARN 取り込み | stdout 行頭が `[WARN] ` または `[WARNING] ` の行だけを `warnings` に取り込む。stderr は WARN 取り込み対象外。 |
+| REPORT 重複 | `[REPORT]` が複数ある場合は最初の 1 行を採用し、`warnings` に `REPORT_DUPLICATE` を追加する。 |
+| REPORT parse 失敗 | `report:null` とし、`warnings` に `REPORT_PARSE_FAILED` を追加する。pipeline exit code は変更しない。 |
+
 **`.build_history` JSON Lines schema：**
 
 `.build_history` は 1 行 1 JSON object とし、各行は次の schema を満たす。
@@ -3405,6 +3496,82 @@ GitHub Trees API fake response は `target_file=docs` の SHA として `blob-1`
 ### Fixture R7: 状態破損
 
 `.notify_pending` が JSON として壊れている場合、runner は `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`.notify_pending` を `[]` で再生成する。その後、通常処理を継続する。退避ファイル名の timestamp は UTC とし、秒単位で固定する。
+
+### Fixture R8: pipeline timeout
+
+**前提状態：**
+
+- GitHub fake response は変更ありを返す。
+- `.server_config.build_timeout_seconds` は `1`。
+- fake `.ci/pipeline.sh` は stdout に `started` を出力後、timeout まで終了しない。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.last_sha` は旧 SHA のまま。
+- `.build_logs/{id}.json` は `target_status="failure_build"`、`pipeline.exit_code=null`、`pipeline.stdout="started\n"`、`error="pipeline timeout"` を含む。
+- `.build_history` に `status="failure_build"` を 1 行だけ追記する。
+- `.build_state.running=false`、`current_build_id=null`、`.build_lock` 不在で終了する。
+
+### Fixture R9: GitHub API 全再試行失敗
+
+**前提状態：**
+
+- GitHub Trees API fake server は retry 対象の HTTP `503` を返し続ける。
+- `.last_sha` は `{"sha":"old-blob"}`。
+
+**期待結果：**
+
+- 終了コード `3`。
+- `.last_sha` は旧 SHA のまま。
+- `.build_logs/{id}.json` は `target_status="failure_api"`、`blob_sha=null`、`pipeline.exit_code=null`、`error="github api failed"` を含む。
+- `.build_history` に `status="failure_api"` を 1 行だけ追記する。
+- pipeline、deploy、snapshot は実行しない。
+
+### Fixture R10: 通知失敗は build 成功を反転しない
+
+**前提状態：**
+
+- pipeline は成功する。
+- `.notify_config` は `on:["success"]` の webhook channel を 1 件持つ。
+- fake webhook endpoint は HTTP `500` を返す。
+
+**期待結果：**
+
+- 終了コード `0`。
+- `.last_sha` は新 SHA に更新する。
+- `.build_logs/{id}.json.target_status` は `"success"`。
+- `.notify_pending` に `event="success"`、`retry_count=1` の entry を保存する。
+- `.notify_log` に失敗記録を残す。通知失敗を理由に `.build_history.status` を failure にしない。
+
+### Fixture R11: REPORT 重複
+
+**前提状態：**
+
+- pipeline は終了コード `0`。
+- stdout に `[REPORT]` 行が 2 行ある。
+
+**期待結果：**
+
+- 終了コード `0`。
+- 1 行目の `[REPORT]` だけを `report` に保存する。
+- `.build_logs/{id}.json.warnings` に `REPORT_DUPLICATE` を含める。
+- `.build_history.warnings` は `[WARN]` 行数に `REPORT_DUPLICATE` 分を加えた値にする。
+
+### Fixture R12: finalizer state write failure
+
+**前提状態：**
+
+- pipeline は成功する。
+- `.build_state` の atomic write が finalizer 時だけ失敗する fake filesystem を使用する。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.build_logs/{id}.json` と `.build_history` は成功結果を保存済み。
+- `.build_status.json` は最終状態を保存済み。
+- ERROR ログ `BUILD_STATE_FINALIZE_FAILED` を出す。
+- `.build_lock` は削除を試みる。削除成功/失敗に関わらず、`.build_state.running=false` 保存失敗を正常扱いにしない。
 
 ---
 
