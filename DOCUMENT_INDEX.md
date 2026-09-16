@@ -18,7 +18,10 @@
 
 | パス | 状態 | 役割 |
 |------|------|------|
-| `build_spec.go` | 仕様化済み・未実装 | Go 版静的 Web サイトビルドスクリプト。`adlaire-ci-build` バイナリとして実行する。 |
+| `build_spec.go` | 実装中・検証未完了 | Go 版静的 Web サイトビルドスクリプト。`adlaire-ci-build` バイナリとして実行する。 |
+| `build_spec_test.go` | 実装中・検証未完了 | `build_spec.go` の Phase 1 fixture テスト。 |
+| `go.mod` | 実装中・検証未完了 | Go module 定義。外部 module は追加しない。 |
+| `testdata/build_spec/` | 実装中・検証未完了 | Phase 1 の受け入れ fixture 入力。 |
 | `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。 |
 | `api_server.go` | 仕様化済み・未実装 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
@@ -49,6 +52,6 @@ Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_
 
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
-リポジトリ内に既存の `build_spec.py` や `runner.py` が存在する場合でも、`build_spec.go`、`runner.go`、`api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html`、`mcp_server.go` の状態判定には使用しない。
+`build_spec.go` は Phase 1 実装中だが、Go toolchain による `gofmt` と `go test` が完了するまでは実装済み完了として扱わない。
 
 Go 版コンポーネントの実装状態は、`ADLAIRE_CI_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` は検証条件と実装詳細の参照先として扱う。
