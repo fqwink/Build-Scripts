@@ -2691,6 +2691,85 @@ owner component は `runner` とする。collaborator component は `api`、`arc
 | unsafe tar entry | 展開中止、deploy なし。 |
 | cleanup 失敗 | build 結果維持、WARN。 |
 
+### 27.30 ビルド承認フロー
+
+owner component は `runner` とする。collaborator component は `api`、`statefile`、`sdk`、`ui` とする。
+
+本機能の目的は、`approval_required` な target を通常 build として即時実行せず、人間承認後の queue entry だけを build / deploy 実行対象にすることである。
+
+API endpoint、approve / reject の request / response、SDK / UI 操作境界は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.30 を正とする。`.approval_queue` record schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c を正とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定 key | `branch_targets[].approval_required` |
+| timeout | `.server_config.approval_timeout_seconds`。既定値 86400。 |
+| 承認状態 | `.approval_queue` JSON Lines。 |
+| 実行 queue | `.build_state.queued[]` の `trigger:"approval"` entry。 |
+| 通知設定 | `.notify_config` の `approval_required` event。 |
+
+**正常系：**
+
+1. runner は target 判定時、`approval_required=true` かつ通常 build 条件成立の場合、pipeline / deploy / snapshot を開始しない。
+2. runner は `.approval_queue` lock を取得し、同一 branch / sha / target の最新 `pending` record を確認する。
+3. 重複 pending がない場合、runner は `pending` record を `.approval_queue` へ追記する。
+4. runner は `.notify_config` に従い approval request 通知を送信する。
+5. 通知成功時は `.notify_log` に結果を記録し、通知失敗時は `.notify_pending` に retry entry を追記する。
+6. runner は起動時に期限超過 pending を検出し、`expired` record と `.build_history.status="approval_expired"` を追記する。
+7. runner は approve API 由来の queue entry を通常 queue 処理として取り出し、`trigger="approval"` で build / deploy を実行する。
+
+**pending 作成固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| pending id | `appr{YYYYMMDDHHmmss}`、同秒衝突時は `-001` から連番。既存 id は再利用しない。 |
+| 重複 pending | 同一 branch / sha / target の最新 status が `pending` の record。 |
+| 重複時 | 新規 record を作成せず、既存 pending id を使用する。新規通知は送らない。 |
+| 通知 payload | `{event:"approval_required", approval_id, branch, sha, target, expires_at}`。secret、token、path secret は含めない。 |
+| build 抑止 | pending 作成成功または重複 pending 検出時、当該 target の build は開始しない。 |
+
+**approval runner 状態遷移：**
+
+| 現在 status | runner 操作 | 次 status | 副作用 |
+|-------------|-------------|-----------|--------|
+| なし | approval_required 検出 | `pending` | `.approval_queue` に pending record を追記し、通知を試行する。 |
+| `pending` | 重複検出 | `pending` | 新規 record / 通知 / build を発生させない。 |
+| `pending` | timeout | `expired` | `.build_history` に `status:"approval_expired"` を追記する。queue は追加しない。 |
+| `approved` | queue 取り出し | 変更なし | `trigger:"approval"` として build / deploy を実行する。 |
+| `rejected` | runner 起動 | 変更なし | build しない。 |
+| `expired` | runner 起動 | 変更なし | build しない。 |
+
+**approval runner 更新順：**
+
+| 操作 | 更新順 | 失敗時 |
+|------|--------|--------|
+| pending 作成 | `.approval_queue` lock → 重複確認 → pending record append → 通知送信 → `.notify_log` / `.notify_pending` 更新 | 通知失敗でも pending は残す。pending append 失敗時は build を開始せず runner failure。 |
+| timeout | runner 起動時に `.approval_queue` lock → expires_at 超過 pending を created_at 昇順で抽出 → expired record append → `.build_history` append | history append 失敗時も expired record は残し、runner は ERROR を出して継続する。 |
+| approved queue 実行 | `.build_state` lock → `trigger:"approval"` entry を 1 件取り出し → build / deploy 実行 → history / status finalizer | queue entry が不正な場合は `failure_decode` として記録し、次 entry は次回起動まで処理しない。 |
+
+runner は `approval_required=true` の target に対して、approval queue 以外の経路で build を開始してはならない。manual force、webhook、force interval、local watch のいずれであっても、対象 target が approval_required の場合は pending 作成を優先し、承認済み queue entry になるまで pipeline を起動しない。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| `.approval_queue` lock 取得失敗 | build を開始せず終了コード `1`。 |
+| pending append 失敗 | build を開始せず終了コード `1`。 |
+| 通知失敗 | pending は維持し、`.notify_pending` に追記する。 |
+| `.notify_pending` 追記失敗 | pending は維持し、ERROR ログを出して runner 終了コードを最低 `1` にする。 |
+| timeout history append 失敗 | expired record は維持し、ERROR ログを出して継続する。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| approval required | build せず pending 作成。 |
+| duplicate pending | 新規 record / 通知なし、build なし。 |
+| notify failure | pending 維持、`.notify_pending` 追記。 |
+| timeout | expired、history `approval_expired`、build なし。 |
+| approved queue | `trigger="approval"` で build / deploy 実行。 |
+
 ### 27.31 ブランチ別環境変数
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。

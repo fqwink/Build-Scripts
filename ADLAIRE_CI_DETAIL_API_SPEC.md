@@ -2617,7 +2617,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | §27.27 | build hooks | `.hooks`、pre/post hook command_args。 | hook log、build log hook result。 | pre は build 前、post は build 後に id 昇順で実行する。 | pre abort で build 本体を開始しない。post 失敗は build status を変更しない。 | pre success、pre abort、post failure、timeout、delete hook、secret mask。 |
 | §27.28 | dependency tracking | builder dependency manifest、Markdown link / asset reference。 | `.dependency_manifest.json`、affected target 判定。 | build 成功時だけ manifest を更新する。 | manifest 破損は full build 扱い。dry-run は更新しない。 | direct dep、shared asset、deleted dep、manifest corrupt、dry-run no write。 |
 | §27.29 | remote build | remote build 設定、ssh target、artifact path。 | remote artifact metadata、build log remote section。 | remote command と artifact fetch を行い、検証成功時だけ deploy / history へ進む。 | remote timeout / checksum mismatch は failure とし、secret / command credential を保存しない。 | remote success、timeout、checksum mismatch、artifact missing、secret mask。 |
-| §27.30 | approval flow | approval policy、pending request、approve/reject API。 | `.approval_queue`、history `approval_*`、通知。 | pending 作成後、承認時だけ queue / build へ進む。 | expired / rejected は build を開始しない。history append 失敗時も approval record は残す。 | pending、approve、reject、expired、duplicate approve、notify failure。 |
+| §27.30 | approval API | approval 一覧取得、approve/reject API。 | `.approval_queue`、`.build_state.queued[]`、`.build_history`。 | pending entry だけ approve/reject できる。 | entry 不在は `404`、pending 以外は `409`、queue full は `429`。 | list、approve、reject、duplicate approve、queue full。 |
 | §27.31 | branch env | branch env 設定、pipeline / hook env。 | merged env、masked log。 | runner env → branch env → step/hook env の順で上書きする。 | env key 不正は保存不可 / runner 設定エラー。secret はログに出さない。 | merge order、invalid key、secret stdout、branch missing、override。 |
 | §27.32 | build notification | notify config、build event、channel 設定。 | notify payload、`.notify_log`、`.notify_pending`。 | event ごとに payload を生成し、送信結果を記録する。 | retry 対象失敗は pending。secret は payload/log に含めない。 | success notify、failure notify、webhook 5xx、command timeout、disabled、secret mask。 |
 | §27.33 | build trends | build duration samples、history/log。 | `.build_trends.json`、trend stats response。 | build 完了時に sample を追加し、上限件数で trim する。 | trend 保存失敗は build 成否を反転しない。破損時は再集計契約に従う。 | sample append、trim、median/p95、corrupt rebuild、save failure。 |
@@ -2667,35 +2667,34 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 ### 27.30 ビルド承認フロー
 owner component は `api` とする。collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。
 
-本機能の目的は、本番向けなど approval_required な target の build / deploy を人間承認後にだけ実行することである。
+本節は、ビルド承認フローにおける API endpoint、request / response、状態ファイル read/write 呼び出し境界だけを定義する。`approval_required` 検出、pending 作成、approval request 通知、timeout 処理、承認済み queue entry の実行は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.30 を正とする。
 
 **入力 / 状態：**
 
 | 項目 | 仕様 |
 |------|------|
-| 設定 key | `branch_targets[].approval_required` |
 | 状態 | `.approval_queue` JSON Lines。mode `600`。 |
 | API | `GET /api/approvals`、`POST /api/approvals/{id}/approve`、`POST /api/approvals/{id}/reject` |
 | status | `"pending"`、`"approved"`、`"rejected"`、`"expired"`。 |
-| timeout | `.server_config.approval_timeout_seconds`。既定値 86400。 |
 
 **正常系：**
 
-1. runner は差分検出後、approval_required target について build を開始せず approval entry を作成する。
-2. `.notify_config` に従い approval request 通知を送信する。
-3. API approve 後、queue entry に `trigger="approval"` を追加する。
-4. reject 後は build せず `.build_history.status="approval_rejected"` を記録する。
-5. timeout 超過 entry は runner 起動時に `expired` へ更新する。
+1. `GET /api/approvals` は `.approval_queue` を読み取り、id ごとの最新 record だけを返す。
+2. `POST /api/approvals/{id}/approve` は最新 status が `pending` の entry だけを承認し、`.build_state.queued[]` に `trigger:"approval"` の queue entry を追加する。
+3. approve 成功後、`.approval_queue` に `approved` record を追記し、response を返す。
+4. `POST /api/approvals/{id}/reject` は最新 status が `pending` の entry だけを却下し、`.approval_queue` に `rejected` record を追記する。
+5. reject 成功後、`.build_history` に `status:"approval_rejected"` を追記し、response を返す。
 
-**approval queue / notify 固定契約：**
+**approval API 固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
-| pending id | `appr{YYYYMMDDHHmmss}`、同秒衝突時は `-001` から連番。既存 id は再利用しない。 |
 | queue payload | approve で追加する queue entry は `trigger:"approval"`、`priority:"normal"`、`requested_by` は actor id、`payload.approval_id` を含める。 |
-| 通知 payload | `{event:"approval_required", approval_id, branch, sha, target, expires_at}`。secret、token、path secret は含めない。 |
-| 重複 pending | 同一 branch / sha / target の pending がある場合、新規通知は送らず既存 id を返す。 |
-| expired 更新 | runner 起動時に期限超過 pending をすべて処理し、created_at 昇順で expired record を追記する。 |
+| approval id | path parameter の `{id}` と `.approval_queue` の `id` が完全一致する entry だけを対象にする。 |
+| list 並び順 | `created_at` 降順、同時刻は id 昇順。 |
+| list 対象 | id ごとの最新 record だけを返す。古い record は監査履歴として返さない。 |
+| body | approve / reject API は body を受け付けない。 |
+| reject reason | 初期実装では固定 `"rejected"` とする。 |
 
 **異常系：**
 
@@ -2703,8 +2702,8 @@ owner component は `api` とする。collaborator component は `runner`、`sdk
 |------|------|
 | entry 不在 | API は `404`。 |
 | pending 以外への approve/reject | `409`。 |
-| 通知失敗 | approval entry は残し、`.notify_pending` に追記する。 |
 | queue full | approve API は `429`。approval status は pending のまま。 |
+| `.approval_queue` の壊れた行 | `GET /api/approvals` response には含めない。 |
 
 **SDK / UI：**
 
@@ -2714,10 +2713,11 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 
 | ケース | 期待結果 |
 |--------|----------|
-| approval required | build せず pending 作成。 |
+| list | id ごとの最新 record だけを返す。 |
 | approve | queue 追加、trigger approval。 |
 | reject | build なし、history 記録。 |
-| timeout | expired、build なし。 |
+| duplicate approve | `409`、状態差分なし。 |
+| queue full | `429`、approval は pending のまま。 |
 
 `.approval_queue` record schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.approval_queue` JSON Lines schema を正とする。同一 id の最新 record を有効状態として扱い、古い record は監査履歴として残す。`GET /api/approvals` は id ごとに最新 record だけを返し、`created_at` 降順、同時刻は id 昇順で並べる。壊れた行は無視し、response に含めない。
 
@@ -2727,7 +2727,6 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 |-------------|------|-----------|--------|
 | `pending` | approve | `approved` | `.build_state.queued[]` に `trigger:"approval"` entry を追加し、`queue_id` を保存する。 |
 | `pending` | reject | `rejected` | `.build_history` に `status:"approval_rejected"` を追記する。queue は追加しない。 |
-| `pending` | timeout | `expired` | `.build_history` に `status:"approval_expired"` を追記する。queue は追加しない。 |
 | `approved` | approve / reject | 変更なし | `409 {"error":"Conflict"}`。 |
 | `rejected` | approve / reject | 変更なし | `409 {"error":"Conflict"}`。 |
 | `expired` | approve / reject | 変更なし | `409 {"error":"Conflict"}`。 |
@@ -2736,12 +2735,10 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 
 | 操作 | 更新順 | 失敗時 |
 |------|--------|--------|
-| pending 作成 | `.approval_queue` lock → 重複確認 → pending record append → 通知送信 → `.notify_log` / `.notify_pending` 更新 | 通知失敗でも pending は残す。pending append 失敗時は build を開始せず runner failure。 |
 | approve | `.approval_queue` lock → 最新 pending 確認 → `.build_state` lock → queue append → approved record append → response | queue full は `429`、approval は pending のまま。approved append 失敗時は `500`、queue 追加済み entry は巻き戻さない。 |
 | reject | `.approval_queue` lock → 最新 pending 確認 → rejected record append → `.build_history` append → response | history append 失敗時は `500`。rejected record は巻き戻さない。 |
-| timeout | runner 起動時に `.approval_queue` lock → expires_at 超過 pending を expired record append → `.build_history` append | history append 失敗時も expired record は残し、runner は ERROR を出して継続する。 |
 
-pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、最新 status が `pending` の record とする。重複時は新規 record を作成せず、既存 pending id を使用する。approve / reject API は body を受け付けない。reject reason は初期実装では固定 `"rejected"` とする。
+approve / reject API は body を受け付けない。reject reason は初期実装では固定 `"rejected"` とする。
 
 approval fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルでは approval fixture 本体を重複定義しない。
 
