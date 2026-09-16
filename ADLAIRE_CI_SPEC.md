@@ -1,7 +1,7 @@
 # Adlaire CI — 仕様ドキュメント
 
 **対象コンポーネント：** `build_spec.go`（ビルドスクリプト、仕様化済み・未実装）/ `runner.go`（CI ランナー、仕様化済み・未実装）/ `api_server.go`（管理 API サーバー、仕様化済み・未実装）/ `adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `mcp_server.go`（MCP サーバー、将来計画）
-**出力ファイル：** `Adlaire-db-spec.html`
+**出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記） → Part 2 §2 参照
 **最終更新：** 2026-09-15
@@ -16,7 +16,7 @@
 
 | コンポーネント | 状態 | 備考 |
 |---------------|------|------|
-| `build_spec.go` | 仕様化済み・未実装 | Go 版 Markdown → HTML ビルドスクリプト。 |
+| `build_spec.go` | 仕様化済み・未実装 | Go 版 Markdown → 静的 Web サイトビルドスクリプト。 |
 | `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー。 |
 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
@@ -44,11 +44,12 @@
 
 ## 1. 目的
 
-`build_spec.go` は、Adlaire DB 仕様書の Markdown ソースを単一の自己完結型 HTML ドキュメントへ変換する Go プログラムである。本仕様では、Go 実装を最初からの正本として定義する。
+`build_spec.go` は、任意の UTF-8 Markdown ファイルまたは Markdown ディレクトリを、静的配信可能な Web サイトへ変換する Go プログラムである。本仕様では、Go 実装を最初からの正本として定義する。
 
-- 14,000 行超の大規模 Markdown 仕様書を、快適に閲覧できる HTML ドキュメントサイトへ変換する
-- CSS・JS をすべてインラインに埋め込み、単一 HTML ファイルとして配布可能にする
-- Adlaire Design System（ADS）のトークンを採用し、一貫したデザイン言語を維持する
+- 大規模 Markdown 仕様書、複数 Markdown ドキュメント、運用メモを、快適に閲覧できる静的 Web サイトへ変換する
+- `index.html`、ページ HTML、共通 CSS、共通 JavaScript、検索 index を出力ディレクトリへ生成する
+- 初期テーマ `adlaire-default` と固定テーマコンポーネントにより、一貫したデザイン言語を維持する
+- Adlaire Design System（ADS）のトークンを採用し、テーマの見た目は ADS 準拠の範囲内で管理する
 
 ## 2. 開発方針
 
@@ -240,7 +241,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 - GitHub リポジトリの対象ファイルを定期ポーリング（systemd timer）
 - blob SHA による差分検出（変更なし時はビルドをスキップ）
-- Markdown → HTML 変換（`adlaire-ci-build` を呼び出し）
+- Markdown → 静的 Web サイト変換（`adlaire-ci-build` を呼び出し）
 - ビルド成功後に SHA キャッシュを更新する
 - ビルド失敗時は SHA キャッシュを更新せず、次回起動時に再試行可能な状態を維持する
 - systemd oneshot ユニットとして動作（`adlaire-ci.service`）
@@ -248,9 +249,9 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 - ビルド結果を `.build_history` に記録（ID 形式：`b{YYYYMMDDHHmmss}`）
 - ビルドごとのログを `.build_logs/{id}.json` に保存
 - ビルド成功・失敗時に Webhook 通知を送信（`.notify_config` を読み込み送信。送信責務は `runner.go`。通知 API は設定の読み書きのみ）
-- ビルド成功後、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する（差分転送・`DEPLOY_TARGETS` 複数先対応 → §14a）
+- ビルド成功後、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する（差分転送・`DEPLOY_TARGETS` 複数先対応 → §14a）
 - SSH 転送失敗時は `.pending_transfers` へキューイングし、次回起動時に自動再試行する（→ §14a ペンディングキュー）
-- 転送成功後、出力ファイルを `.snapshots/` へアーカイブし `HISTORY_KEEP_N` 世代を超過分から自動削除する（→ §14b）
+- 転送成功後、出力サイトディレクトリを `.snapshots/` へアーカイブし `HISTORY_KEEP_N` 世代を超過分から自動削除する（→ §14b）
 - SSH 転送失敗時に Webhook 通知を送信する（`on: ["deploy_failure"]` 設定時）
 - `BRANCH_TARGETS` リストで複数ブランチを順次ポーリング・ビルドする（→ §12 設定値）
 - `FORCE_BUILD_INTERVAL` 設定時、前回ビルドから指定時間経過で変更なしでも強制ビルドする
@@ -331,7 +332,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 |-------|---------|
 | ログイン | パスワード認証 |
 | パスワード変更 | 強制変更フロー対応（5 回目以降は他パネルを非表示） |
-| ステータス | 最終ビルド情報・出力ファイルリンク・メンテナンスバナー表示（モード中） |
+| ステータス | 最終ビルド情報・出力サイトリンク・メンテナンスバナー表示（モード中） |
 | 手動実行 | ビルド起動・強制ビルド・キャンセル・キュー状態表示・キューのクリア |
 | ログビューア | ログ閲覧・キーワードフィルター・ログレベルフィルター・JSON エクスポート・横断検索（期間指定） |
 | ビルド履歴 | 過去ビルド一覧・タグ列・フラグ列・ページネーション・タグ/フラグフィルター・JSON エクスポート・個別ログ参照 |
@@ -422,7 +423,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 仕様化済み | CI ランナー | マルチブランチビルド | `BRANCH_TARGETS` リストで複数ブランチを順次ポーリング・ビルド・転送する（→ §12 設定値・§13 処理フロー） |
 | 仕様化済み | CI ランナー | ビルドログ世代管理 | `LOG_KEEP_N` 件を超えた `.build_logs/{id}.json` を古いものから自動削除する（→ §12・§13） |
 | 将来対応 | CI ランナー | ビルドログのアーカイブ圧縮 | 保持期間を超えた `.build_logs/{id}.json` を gzip 圧縮してディスク使用量を削減する |
-| 仕様化済み | CI ランナー | ビルド出力の外部転送 | ビルド成功時に生成 HTML を SSH 経由（差分転送・複数ファイル対応）で静的コンテンツ配信サーバーへ自動転送する（→ §14a） |
+| 仕様化済み | CI ランナー | ビルド出力の外部転送 | ビルド成功時に生成静的 Web サイトを SSH 経由（差分転送・複数ファイル対応）で静的コンテンツ配信サーバーへ自動転送する（→ §14a） |
 | 仕様化済み | CI ランナー | ビルドクールダウン | 前回ビルド完了から `BUILD_COOLDOWN_SECONDS` 秒以内の起動はビルドをスキップする（Webhook 二重トリガー防止 → §12・§13） |
 | 将来対応 | CI ランナー | ローカルファイル監視モード | GitHub API を使わず、ローカルファイルシステムの変更を `inotify` 等で直接監視する |
 | 将来対応 | CI ランナー | タグ付きコミットのみビルド | Git タグが付いたコミット（リリース）の変更時のみビルドを実行するフィルター |
@@ -438,7 +439,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 仕様化済み | CI ランナー | GitHub PAT 有効期限の事前警告 | GitHub API レスポンスの `GitHub-Authentication-Token-Expiration` ヘッダーを解析し、7 日以内の期限切れを WARN ログで通知する（→ §13） |
 | 仕様化済み | CI ランナー | コミット情報のビルドログ記録 | ビルドトリガーとなったコミットの SHA・メッセージ・作者名・コミット日時を `.build_logs/{id}.json` に記録する（→ §13） |
 | 仕様化済み | CI ランナー | GitHub API 連続失敗によるサーキットブレーカー | 全ブランチで連続失敗が `API_CIRCUIT_BREAKER_THRESHOLD` 周回を超えた場合にポーリングを一時停止し ERROR ログ＋Webhook 通知する（→ §11・§12・§13） |
-| 仕様化済み | CI ランナー | 出力ファイルサイズ警告閾値 | ビルド後の出力 HTML が `OUTPUT_SIZE_WARN_MB` を超えた場合に WARN ログを出力する。§8 変換レポートに `size_warn` フラグを追加（→ §8・§12・§13・§22） |
+| 仕様化済み | CI ランナー | 出力サイトサイズ警告閾値 | ビルド後の出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` を超えた場合に WARN ログを出力する。§8 変換レポートに `size_warn` フラグを追加（→ §8・§12・§13・§22） |
 | 仕様化済み | CI ランナー | Webhook イベントログ | 受信した Webhook push イベントを `.webhook_events.json` に JSON Lines 形式で追記記録する。`delivery_id`・`event`・`ref`・`sha`・`build_triggered` を保存（→ §11・§22） |
 | 仕様化済み | CI ランナー | ビルド所要時間の記録と統計 API | `.build_logs/{id}.json` に `started_at`・`finished_at`・`duration_seconds` を記録し、`GET /api/stats/build-duration` で過去 N 件の平均・最小・最大を提供する（→ §22） |
 | 将来対応 | CI ランナー | 依存ファイルトラッキング | ビルド対象の依存関係を追跡し、変更に関連するビルドのみ選択実行する |
@@ -474,7 +475,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 将来対応 | 管理ツール・API | API レート制限 | エンドポイントへのリクエスト数を時間窓内で制限し、過負荷を防ぐ |
 | 将来対応 | 管理ツール・API | ロールベースアクセス制御 | 管理者・オペレーター・閲覧者等の役割ごとに API 権限を分ける |
 | 仕様化済み | 管理ツール・API | ヘルスチェックエンドポイント | `GET /api/health` を拡充。最終ビルド時刻・最終ビルド結果・最終転送結果・稼働秒数を返す（→ §22） |
-| 将来対応 | 管理ツール・API | 成果物ダウンロード API | 生成 HTML を API エンドポイント経由で直接ダウンロードできるようにする |
+| 将来対応 | 管理ツール・API | 成果物ダウンロード API | 生成静的 Web サイトを archive として API エンドポイント経由で直接ダウンロードできるようにする |
 | 将来対応 | 管理ツール・API | 設定スナップショット差分表示 | 保存済みスナップショット間の設定変更点を diff 形式で確認できる API |
 | 将来対応 | 管理ツール・API | 複数プロジェクト管理 | 単一インスタンスで複数リポジトリ／プロジェクトを切り替え管理する |
 | 将来対応 | 管理ツール・API | API キー管理 | API キーの発行・失効・有効期限設定を管理 UI から操作する |
@@ -499,7 +500,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 将来対応 | 管理ツール・API | アラート閾値設定 | ビルド失敗率・所要時間等が設定閾値を超えた際に自動アラートを発火する |
 | 将来対応 | 管理ツール・API | バックアップ／リストア | 設定・ビルド履歴・ログ等の全データをアーカイブ化してリストアできる機能 |
 | 将来対応 | 管理ツール・API | API レスポンスキャッシュ制御 | 頻繁に参照される統計・ログ API のキャッシュ TTL を設定から変更する |
-| 将来対応 | 管理ツール・API | スナップショット間 HTML 差分 API | 2 つのスナップショット ID を指定し、出力 HTML の追加/削除行数・変更率を返す `GET /api/snapshots/{id1}/diff/{id2}` を追加する |
+| 将来対応 | 管理ツール・API | スナップショット間サイト差分 API | 2 つのスナップショット ID を指定し、出力サイトの追加/削除行数・変更率を返す `GET /api/snapshots/{id1}/diff/{id2}` を追加する |
 | 将来対応 | 管理ツール・API | Webhook 送信履歴の手動再送 API | `GET /api/notify-log` の各エントリに対して `POST /api/notify-log/{id}/retry` で同一ペイロードを即時再送できる手動リトライ API。`.notify_pending` 自動再試行とは別に特定通知だけ個別再送できる運用機能 |
 | 将来対応 | MCP サーバー | MCP サーバー実装 | `mcp_server.go` を第 4 コンポーネントとして追加。MCP プロトコル（JSON-RPC over stdio）で Claude Desktop 等の AI クライアントから直接接続可能にする。内部では `api_server.go` REST API に Go 標準ライブラリ `net/http` でローカル接続するラッパー設計（`encoding/json` + `os.Stdin` / `os.Stdout` + `net/http`、ゼロ外部依存）。認証は `.mcp_token` に専用 API トークンを保存し、スコープ（`read` のみ / `trigger` 許可）をトークン単位で選択可能。Claude Desktop の `mcpServers` 設定に `/usr/local/bin/adlaire-ci-mcp` を指定して接続する |
 | 将来対応 | MCP サーバー | MCP ツール・リソース公開 | MCP サーバーが公開するツール：`get_status`（ビルド状態・CB 状態・PAT 残日数）/ `get_history(n)`（直近 N 件）/ `search_logs(query, level?, from?, to?)`（ログ全文検索）/ `get_build_log(id)`（個別ビルドログ）/ `trigger_build(force?)`（ビルドトリガー、`trigger` スコープ必須）/ `reset_circuit_breaker`（CB リセット、`trigger` スコープ必須）。リソース：`adlaire://status` / `adlaire://history` / `adlaire://logs/{id}` / `adlaire://config`（→ MCP サーバー実装） |
@@ -520,16 +521,17 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 将来対応 | ビルドスクリプト | 複数出力形式 | HTML に加えて PDF・ePub 等の出力形式をサポートする |
 | 仕様化済み | ビルドスクリプト | 変換レポート出力 | ビルド完了後に変換統計（見出し数・テーブル数・コードブロック数・警告）を stdout 出力する。runner.go が取り込み `GET /api/output-meta` で参照可（→ §8・§22） |
 | 将来対応 | ビルドスクリプト | Markdown 拡張記法サポート | アドモニション（`> [!NOTE]`）・カラーバッジ等の独自拡張記法に対応する |
-| 仕様化済み | ビルドスクリプト | シンタックスハイライト | コードブロックに言語別色分けをインライン JS で適用する。対応言語：`python`・`bash`・`json`・`sql`・`ini`・`diff`（→ §7.8） |
+| 仕様化済み | ビルドスクリプト | シンタックスハイライト | コードブロックに言語別色分けを `assets/app.js` で適用する。対応言語：`python`・`bash`・`json`・`sql`・`ini`・`diff`（→ §7.8） |
 | 将来対応 | ビルドスクリプト | コードブロック行番号表示 | コードブロック左端に行番号を表示するオプションを追加する |
-| 仕様化済み | ビルドスクリプト | 本文内全文検索 | ビルド時に検索インデックスを生成してインライン JS に埋め込む。TOC 検索と統合し、本文ヒット箇所へジャンプ（→ §7.9） |
+| 仕様化済み | ビルドスクリプト | 本文内全文検索 | ビルド時に `assets/search-index.json` を生成し、`assets/app.js` の検索 UI と統合して本文ヒット箇所へジャンプ（→ §7.9） |
 | 仕様化済み | ビルドスクリプト | アンカーリンク自動検証 | 生成 HTML 内の `#anchor` リンクが実際の見出しスラグと一致するか検証し、不整合を `[WARN] BROKEN_LINK` として警告出力する（→ §4.3・§8） |
 | 将来対応 | ビルドスクリプト | 見出しの自動採番 | h2 以下の見出しに `1.1`・`1.2` 等の番号を自動付与するオプション |
 | 将来対応 | ビルドスクリプト | セクション折りたたみ | 見出しクリックでコンテンツを折りたたむ機能（デフォルト展開） |
 | 仕様化済み | ビルドスクリプト | コードブロックの折りたたみ | 30 行超のコードブロックを初期折りたたみ。「全 N 行を表示」リンクで展開（→ §7.10） |
 | 仕様化済み | ビルドスクリプト | 印刷スタイル（`@media print`） | サイドバー・ヘッダー・ボタン類を非表示、コードブロック展開、リンク URL 末尾表示（→ §6） |
 | 将来対応 | ビルドスクリプト | TOC 深さ制御 | TOC に含める見出しレベルを設定で指定する（例：h2–h3 のみ） |
-| 将来対応 | ビルドスクリプト | ページ分割出力 | 大規模ドキュメントを章単位で複数 HTML ファイルに分割するオプション |
+| 仕様化済み | ビルドスクリプト | 静的 Web サイト出力 | Markdown ファイルまたは Markdown ディレクトリから `index.html`、ページ HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` を生成する（→ §5） |
+| 仕様化済み | ビルドスクリプト | テーマコンポーネント | 初期テーマ `adlaire-default` の header / sidebar / breadcrumb / toc / search / footer / codeblock / table / pagination を内製テンプレートとして提供する（→ §5） |
 | 将来対応 | ビルドスクリプト | 最終更新日の自動埋め込み | ソースの git コミットタイムスタンプをフッターに自動出力する |
 | 仕様化済み | ビルドスクリプト | 外部リンクの自動処理 | 外部リンク（`http://`・`https://`）に `target="_blank" rel="noopener noreferrer"` を付与し、内部リンクと区別する（→ §4.3） |
 | 仕様化済み | ビルドスクリプト | 読み取り進捗バー | スクロール位置に応じた 3px プログレスバーをページ上端に固定表示する（→ §7.13） |
@@ -561,7 +563,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 将来対応 | ビルドスクリプト | ページ内ナビゲーション履歴 | ブラウザの戻る/進むに対応したハッシュベースの履歴管理を実装する |
 | 将来対応 | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | `aria-label`・`role` 属性の付与対象、値、検証方法を詳細仕様で定義した上でスクリーンリーダー閲覧に対応する |
 | 将来対応 | ビルドスクリプト | 画像ライトボックス | 画像クリックでモーダル拡大表示する |
-| 将来対応 | ビルドスクリプト | 出力 HTML へのビルドメタ埋め込み | 生成 HTML の `<head>` に `<meta name="adlaire-build-id" content="...">` / `<meta name="adlaire-commit-sha" content="...">` / `<meta name="adlaire-build-at" content="...">` を静的埋め込みする。`GET /api/output-meta` の取得値と突合でき、デプロイ済み HTML のビルド追跡に使用する |
+| 将来対応 | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | 生成 HTML の `<head>` に `<meta name="adlaire-build-id" content="...">` / `<meta name="adlaire-commit-sha" content="...">` / `<meta name="adlaire-build-at" content="...">` を静的埋め込みする。`GET /api/output-meta` の取得値と突合でき、デプロイ済みサイトのビルド追跡に使用する |
 | 将来対応 | ビルドスクリプト | 印刷時 QR コード挿入 | `@media print` で元ページの URL を QR コードとしてフッターに埋め込む |
 | 将来対応 | ビルドスクリプト | 定義リストサポート | `term\n: definition` 記法を `<dl>/<dt>/<dd>` タグにレンダリングする |
 | 将来対応 | ビルドスクリプト | タスクリストサポート | `- [ ]` / `- [x]` 記法をチェックボックス付きリストとして描画する |
@@ -673,7 +675,7 @@ Go 版初期実装では、実装対象を `ADLAIRE_CI_DETAIL_SPEC.md` の成熟
 
 | 対象 | 実装対象 | 境界 |
 |------|----------|------|
-| `build_spec.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §0〜§9 に記載された CLI、Markdown 変換、HTML 出力、検証条件。 |
+| `build_spec.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §0〜§9 に記載された CLI、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、検証条件。 |
 | `runner.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §10〜§20 に記載された CI ランナー、状態ファイル、ビルド起動、転送、通知、ログ保存。 |
 | `api_server.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §21〜§22 および §25〜§26 に記載された管理 API、認証、状態ファイル、セットアップ。 |
 | `adlaire-ci-sdk.js` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §23 に記載された API 呼び出し契約、戻り値、エラー処理。 |
@@ -737,7 +739,7 @@ Go 版初期実装では、実装対象を `ADLAIRE_CI_DETAIL_SPEC.md` の成熟
 | リリース作成条件 | 安定版リリース（`X` インクリメント時）のみ GitHub Release を作成する。開発・ビルド（`N` インクリメントのみ）では作成しない |
 | タグ形式 | `V.X.N`（リリースバージョンと一致させる）例：`V.2.102` |
 | リリースタイトル | タグ名と同一にする |
-| 添付ファイル | ビルド済み `Adlaire-db-spec.html` を添付する |
+| 添付ファイル | ビルド済み静的 Web サイトを release archive として添付する |
 | プレリリースフラグ | 安定版リリースでは `Pre-release` にチェックを入れない |
 | ドラフト公開禁止 | Draft Release のまま公開しない |
 
@@ -761,8 +763,9 @@ Go 版初期実装では、実装対象を `ADLAIRE_CI_DETAIL_SPEC.md` の成熟
 
 | 設定項目 | 場所 | 変更方法 |
 |---------|------|---------|
-| 入出力パス | `adlaire-ci-build --src` / `--out`、または `DefaultBuildConfig` | CLI 引数を優先し、既定値変更時は `ADLAIRE_CI_DETAIL_SPEC.md` §2 と整合させる |
-| デザイントークン値 | `assembleHTML(PageData)` が埋め込むインライン CSS の `:root { }` ブロック | ADS 準拠の範囲内で変更し、`DESIGN.md` と整合させる |
+| 入出力パス | `adlaire-ci-build --src` / `--out`、または `DefaultBuildConfig` | `--src` は Markdown ファイルまたは Markdown ディレクトリ、`--out` は出力サイトディレクトリ。CLI 引数を優先し、既定値変更時は `ADLAIRE_CI_DETAIL_SPEC.md` §2 と整合させる |
+| テーマ | `adlaire-ci-build --theme`、または `DefaultBuildConfig.Theme` | 初期仕様では `adlaire-default` のみ許可。カスタムテーマ、外部テンプレート、テーマパッケージは将来計画とする |
+| デザイントークン値 | `adlaire-default` の `style.css` が定義する `:root { }` ブロック | ADS 準拠の範囲内で変更し、`DESIGN.md` と整合させる |
 | ドキュメントタイトル | `PageData.Title` | 空文字時は `Adlaire CI Specification`。変更時は §5 `PageData` 契約に従う |
 | ヘッダー表示名 | `<span id="doc-title">` に出力する `PageData.Title` | `PageData.Title` と同一値を使用し、別名を持たせない |
 | バージョンバッジ | 安定版リリース情報を表示する場合の `PageData` 拡張 | `V.X.N` 形式。追加する場合は先に `ADLAIRE_CI_DETAIL_SPEC.md` §5 の `PageData` にフィールドを追加する |
@@ -796,7 +799,7 @@ Go 版初期実装では、実装対象を `ADLAIRE_CI_DETAIL_SPEC.md` の成熟
 
 | スクリプト | 状態 | 役割 |
 |-----------|------|------|
-| `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプト（Markdown → HTML 変換） |
+| `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプト（Markdown → 静的 Web サイト変換） |
 | `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー（変更検出・ビルド起動） |
 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー（常駐 HTTP サーバー） |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | JavaScript SDK（管理ツール用 API クライアント） |

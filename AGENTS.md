@@ -12,7 +12,7 @@
 
 本リポジトリの仕様判断は、`ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` を正本として行う。
 
-`DESIGN.md` は、`Adlaire-db-spec.html` のデザイン仕様を整理する補助文書である。機能仕様、運用仕様、API 仕様、CI 仕様の正本ではない。
+`DESIGN.md` は、生成静的 Web サイトのデザイン仕様を整理する補助文書である。機能仕様、運用仕様、API 仕様、CI 仕様の正本ではない。
 
 `DOCUMENT_INDEX.md` は、文書・実装ファイルの役割を整理する索引である。仕様正本ではない。
 
@@ -121,7 +121,7 @@ Go 実装対象ファイルは以下とする。
 
 | ファイル | 役割 |
 |---------|------|
-| `build_spec.go` | Adlaire DB 仕様書 Markdown を単一 HTML へ変換する Go 版ビルドスクリプト。 |
+| `build_spec.go` | Markdown ファイルまたは Markdown ディレクトリを静的 Web サイトへ変換する Go 版ビルドスクリプト。 |
 | `runner.go` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する Go 版 CI ランナー。 |
 
 仕様化済み・未実装および将来計画の主なコンポーネントは以下とする。
@@ -306,6 +306,6 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` を改訂した場合は、`DESIGN.md`、`DOCUMENT_INDEX.md`、実装ファイルへの影響を確認する。
 
-`DESIGN.md` を改訂した場合は、`build_spec.go` 内の HTML / CSS / JavaScript テンプレートとの整合性を確認する。
+`DESIGN.md` を改訂した場合は、`build_spec.go` 内の HTML / CSS / JavaScript / theme component テンプレートとの整合性を確認する。
 
 仕様化済み項目を実装した場合は、`ADLAIRE_CI_SPEC.md` および `ADLAIRE_CI_DETAIL_SPEC.md` 内の状態表現、`DOCUMENT_INDEX.md` の Specified Components、実装ファイルの存在を整合させる。
