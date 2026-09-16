@@ -65,7 +65,9 @@
 
 `ADLAIRE_CI_DETAIL_SPEC.md` は、`ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様であり、実装の具体的詳細に関する正本である。
 
-`build_spec.go`、`runner.go`、仕様化済み・未実装コンポーネントである `api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html`、将来計画コンポーネントである `mcp_server.go` は、`ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に基づいて更新する。
+`build_spec.go`、`runner.go`、仕様化済み・未実装コンポーネントである `api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html` は、`ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に基づいて更新する。
+
+`mcp_server.go` は将来計画コンポーネントであり、実装状態、実装可否、ロードマップ状態は `ADLAIRE_CI_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
 
 `DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。`ADLAIRE_CI_SPEC.md` と矛盾する場合は、`ADLAIRE_CI_SPEC.md` を優先する。
 
@@ -73,13 +75,13 @@
 
 `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` に記載された一部コンポーネントや機能は、仕様化済みであっても未実装の場合がある。リポジトリ内に実装ファイルまたは実装コードが存在しない内容を、実装済み機能として扱ってはならない。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` を改訂する場合は、`ADLAIRE_CI_SPEC.md` Part 1 §4a および Part 2 §0 の詳細仕様方針・詳細仕様記載ポリシーに従い、実装者が実装レベルで迷わない粒度になっていることを確認する。
+`ADLAIRE_CI_DETAIL_SPEC.md` を改訂する場合は、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-詳細仕様では、対象コンポーネント、入出力、設定値、データ構造、処理順序、異常系、状態管理、セキュリティ制約、検証条件のうち、該当する項目を具体化する。
+`ADLAIRE_CI_DETAIL_SPEC.md` には、実装者が実装時に必要とする対象コンポーネント、入出力、設定値、データ構造、処理順序、異常系、状態管理、セキュリティ制約、検証条件だけを記載する。
 
-未確定の内容を実装可能な詳細仕様として扱ってはならない。実装判断に必要な具体値、条件、処理が未確定の場合は、未仕様化または将来計画として明示する。
+未確定の内容を実装可能な詳細仕様として扱ってはならない。実装判断に必要な具体値、条件、処理が未確定の場合は、`ADLAIRE_CI_SPEC.md` の状態分類を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` へ推測で具体値を記載してはならない。
 
-仕様項目の成熟度は、`ADLAIRE_CI_SPEC.md` Part 1 §4b および Part 2 §0a の仕様成熟度方針・仕様成熟度ポリシーに従って判定する。
+仕様項目の成熟度と実装可否は、`ADLAIRE_CI_SPEC.md` Part 1 §4b および Part 2 §0a の仕様成熟度方針・仕様成熟度ポリシーに従って判定する。
 
 作業開始時には、対象機能・対象コンポーネントについて `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` の該当節と実ファイルの存在を確認する。
 
@@ -308,4 +310,4 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 `DESIGN.md` を改訂した場合は、`build_spec.go` 内の HTML / CSS / JavaScript / theme component テンプレートとの整合性を確認する。
 
-仕様化済み項目を実装した場合は、`ADLAIRE_CI_SPEC.md` および `ADLAIRE_CI_DETAIL_SPEC.md` 内の状態表現、`DOCUMENT_INDEX.md` の Specified Components、実装ファイルの存在を整合させる。
+仕様化済み項目を実装した場合は、`ADLAIRE_CI_SPEC.md` 内の状態表現、`DOCUMENT_INDEX.md` の Specified Components、`ADLAIRE_CI_DETAIL_SPEC.md` の検証条件、実装ファイルの存在を整合させる。

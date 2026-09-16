@@ -26,6 +26,10 @@ Adlaire CI は、最初から Go を前提として仕様策定します。
 
 リポジトリ内に既存の `build_spec.py` や `runner.py` が存在する場合でも、Go 正本コンポーネントまたは実装済み機能として扱いません。実装判断では `ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に記載された Go 仕様を優先します。
 
+## リリース形式
+
+Adlaire CI の標準リリース形式は、GitHub Releases に添付する OS/arch 別の Go 実行バイナリです。初期標準は Linux x86_64 とし、`adlaire-ci-build`、`adlaire-ci-runner`、管理 API 導入後の `adlaire-ci-api` を SHA-256 checksum 検証後に `/usr/local/bin/` へ配置します。
+
 ## 注意
 
 仕様や挙動を変更する場合は、先に `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` を改訂し、その内容に基づいて実装ファイルと関連文書を整合させます。
