@@ -1,29 +1,31 @@
 # Adlaire CI — 詳細仕様
 
-本ファイルは `ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様であり、実装の具体的詳細に関する正本である。
+本ファイルは `ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様の入口であり、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約を持つ正本である。
+
+各 owner component の具体的な入出力、状態、処理順序、異常系、セキュリティ制約、検証条件の本文は、責務 component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を正本とする。
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
 ---
 
 # Part 3 — 仕様
-> 実装の具体的詳細を定める。「どのように動作・実装するか」に答える。
+> Part 3 詳細仕様セットとして、実装の具体的詳細を定める。「どのように動作・実装するか」に答える。
 
 ---
 
 ## 詳細仕様の読み方
 
-本ファイルは、実装者が実装時に参照する詳細仕様だけを扱う。方針、ポリシー、成熟度定義、ロードマップ状態、実装可否、PR 分割判断は `ADLAIRE_CI_SPEC.md` を正とし、本ファイルで再定義しない。
+本ファイルは、実装者が実装時に最初に参照する詳細仕様入口だけを扱う。方針、ポリシー、成熟度定義、ロードマップ状態、実装可否、PR 分割判断は `ADLAIRE_CI_SPEC.md` を正とし、本ファイルで再定義しない。
 
 実装者は、対象機能ごとに以下の順で読む。
 
 1. `ADLAIRE_CI_SPEC.md` の実装状態、Part 1 §12、§13 で、対象が実装対象であることを確認する。
 2. 本ファイル §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
 3. 本ファイル §0a〜§0h で、詳細仕様の記載基準、共通固定値、実装前確認項目、検証条件、Phase 順序を確認する。
-4. 責務 component の詳細節を読み、owner component、collaborator component、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
+4. owner component の `ADLAIRE_CI_DETAIL_*_SPEC.md` を読み、owner component、collaborator component、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
 5. `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 のセットアップ・アップデート手順と `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
 
-詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に本ファイルを改訂し、`ADLAIRE_CI_SPEC.md` の対象範囲と整合させる。
+詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルまたは本ファイルの対応表を改訂し、`ADLAIRE_CI_SPEC.md` の対象範囲と整合させる。
 
 | 範囲 | 役割 |
 |------|------|
@@ -37,11 +39,11 @@
 | §26 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md`。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
 | `admin` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md`。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
 
-本ファイルを分割する場合は、§0b.1 の責務 component 分割仕様に従う。分割後も `ADLAIRE_CI_DETAIL_SPEC.md` は入口、索引、共通固定値、責務 component 対応表を持つ。分割先ファイルは、それぞれの owner component と collaborator component の詳細仕様だけを持つ。
+責務 component 別詳細仕様ファイルの管理は、§0b.1 に従う。`ADLAIRE_CI_DETAIL_SPEC.md` は入口、索引、共通固定値、責務 component 対応表、横断補足契約だけを持つ。責務 component 別詳細仕様ファイルは、それぞれの owner component と collaborator component の詳細仕様だけを持つ。
 
 ## 0a. 詳細仕様の記載基準
 
-本ファイルの仕様項目は、実装者が追加の設計判断や推測を行わずに実装できる粒度で記載する。
+Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を行わずに実装できる粒度で記載する。
 
 仕様項目を追加または改訂する場合は、対象範囲に応じて以下を明記する。
 
@@ -58,9 +60,9 @@
 | セキュリティ | 認証、認可、秘密情報の保存禁止、権限、外部公開可否 |
 | 検証 | 構文確認、実行確認、API 確認、生成物確認、整合性確認 |
 
-未確定の内容は、実装可能な詳細仕様として記載してはならない。未確定の場合は、本ファイルへ推測で具体値を記載せず、`ADLAIRE_CI_SPEC.md` で状態を確認する。
+未確定の内容は、実装可能な詳細仕様として記載してはならない。未確定の場合は、本ファイルまたは責務 component 別詳細仕様ファイルへ推測で具体値を記載せず、`ADLAIRE_CI_SPEC.md` で状態を確認する。
 
-対象範囲の内容は、実装ファイルが存在しなくても、本節の基準に従って実装可能な粒度まで具体化する。
+対象範囲の内容は、実装ファイルが存在しなくても、本節の基準に従って責務 component 別詳細仕様ファイルへ実装可能な粒度まで具体化する。
 
 ---
 
@@ -85,15 +87,15 @@
 
 ---
 
-## 0b.1 責務 component 別 詳細仕様ファイル分割仕様
+## 0b.1 責務 component 別 詳細仕様ファイル管理仕様
 
-本節は、`ADLAIRE_CI_DETAIL_SPEC.md` を責務 component 別に分割する場合の固定仕様である。分割は、仕様内容の移動と参照先更新だけを対象とし、機能追加、実装状態変更、実装可否変更、ロードマップ変更、方針・ポリシー追加を含めてはならない。
+本節は、責務 component 別に分割済みの詳細仕様ファイルを維持するための固定仕様である。責務境界の変更、仕様内容の移動、参照先更新を行う場合も、機能追加、実装状態変更、実装可否変更、ロードマップ変更、方針・ポリシー追加を含めてはならない。
 
-分割後の詳細仕様ファイルは以下に固定する。`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。
+詳細仕様ファイルは以下に固定する。`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。
 
 | ファイル | 持つ内容 | 持たない内容 |
 |----------|----------|--------------|
-| `ADLAIRE_CI_DETAIL_SPEC.md` | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 分割仕様。 | 各 component の詳細な処理本文、fixture 詳細、状態ファイル schema 詳細、個別 endpoint 詳細、個別 UI 操作詳細。 |
+| `ADLAIRE_CI_DETAIL_SPEC.md` | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様。 | 各 component の詳細な処理本文、fixture 詳細、状態ファイル schema 詳細、個別 endpoint 詳細、個別 UI 操作詳細。 |
 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture。 | runner / api / sdk / ui の実行責務。 |
 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner の GitHub 監視、状態ファイル更新、pipeline、deploy、snapshot、通知、runner fixture。 | API endpoint の認証・応答本文、SDK method、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner の HTTP 共通契約、endpoint、状態ファイル read/write、認証連携。 | SDK 内部実装、UI DOM 詳細、runner の build 実行責務、fixture 詳細。 |
@@ -109,21 +111,21 @@
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと §27.38a を同時に満たす。
 
-分割時の移動単位は、owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには参照リンク、禁止事項、受け入れ観点だけを置く。主本文を複数ファイルへ重複定義してはならない。
+詳細仕様の配置単位は、owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには参照リンク、禁止事項、受け入れ観点だけを置く。主本文を複数ファイルへ重複定義してはならない。
 
-分割先ファイルへ移動する各節は、移動後も以下を満たす。
+責務 component 別詳細仕様ファイルの各節は、以下を満たす。
 
 | 項目 | 必須条件 |
 |------|----------|
 | 節番号 | 既存の節番号を維持する。番号の再採番は行わない。 |
-| 参照 | 旧参照先と新参照先が一意に追跡できるよう、`ADLAIRE_CI_DETAIL_SPEC.md` の対応表を更新する。 |
+| 参照 | 入口ファイルと owner component ファイルの参照先が一意に追跡できるよう、`ADLAIRE_CI_DETAIL_SPEC.md` の対応表を更新する。 |
 | owner | 各機能節に owner component を 1 件だけ明記する。 |
 | collaborator | collaborator component は 0 件以上を明記し、owner component を含めない。 |
 | 重複禁止 | 同じ入力、出力、状態 schema、HTTP body、DOM id、fixture assertion を複数ファイルで重複定義しない。 |
 | 横断事項 | 横断する固定値は `ADLAIRE_CI_DETAIL_SPEC.md` に置く。横断共通基盤を component として扱わない。 |
 | 索引 | `DOCUMENT_INDEX.md` に、分割後ファイルの役割と正本範囲を反映する。 |
 
-分割後に実装者が詳細仕様を読む順序は以下に固定する。
+実装者が詳細仕様を読む順序は以下に固定する。
 
 1. `ADLAIRE_CI_SPEC.md` で実装対象、実装状態、実装可否を確認する。
 2. `ADLAIRE_CI_DETAIL_SPEC.md` で共通固定値、責務 component、詳細節対応表を確認する。
@@ -133,12 +135,12 @@
 6. 認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` を読む。
 7. fixture、fake、PR 証跡が必要な場合は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を読む。
 
-分割作業は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
+詳細仕様ファイルの責務整理、節移動、参照先更新は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
 
 | 完了条件 | 判定 |
 |----------|------|
 | 旧ファイル内の移動対象本文が対応する分割先に移動している。 | 必須 |
-| `ADLAIRE_CI_DETAIL_SPEC.md` には入口、索引、共通固定値、対応表、分割仕様だけが残っている。 | 必須 |
+| `ADLAIRE_CI_DETAIL_SPEC.md` には入口、索引、共通固定値、対応表、管理仕様、横断補足契約だけが残っている。 | 必須 |
 | `ADLAIRE_CI_SPEC.md`、`DOCUMENT_INDEX.md`、各分割先ファイル間の参照が矛盾していない。 | 必須 |
 | `rg` で旧節名、旧ファイル名、移動前参照の取り残しを確認している。 | 必須 |
 | 実装ファイル、fixture、testdata の内容を分割作業だけで変更していない。 | 必須 |
@@ -163,12 +165,12 @@
 | セキュリティ | 秘密情報の保存禁止、マスク、ファイル権限、認証/認可、外部公開可否が明記されている。 |
 | 検証 | 構文確認、単体確認、手動 API 確認、生成物確認、ログ確認、失敗系確認のいずれを行うかが明記されている。 |
 
-上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に本ファイルまたは `ADLAIRE_CI_SPEC.md` を改訂し、未充足項目を仕様として確定する。
+上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイル、本ファイルの対応表、または `ADLAIRE_CI_SPEC.md` を改訂し、未充足項目を仕様として確定する。
 
 実装後の完了条件は以下とする。
 
-1. 実装した機能が、本ファイルに記載された入力、出力、状態、異常系、検証条件と一致する。
-2. 対象機能が §0h の機能仕様テンプレートを満たし、§0i の詳細節対応表の受け入れ条件を満たしている。
+1. 実装した機能が、該当 owner component の詳細仕様ファイルと本ファイルの対応表に記載された入力、出力、状態、異常系、検証条件と一致する。
+2. 対象機能が owner component の詳細仕様本文で §0h の機能仕様テンプレートを満たし、§0i の詳細節対応表の受け入れ条件を満たしている。
 3. 実装対象外に残す機能が PR 本文に明記されている。
 4. `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、`DOCUMENT_INDEX.md`、`AGENTS.md` のファイル名参照が矛盾していない。
 5. 実装ファイルを変更した場合、構文確認または実行確認の結果が記録できる。
@@ -192,7 +194,7 @@
 | ロック | 状態ファイル lock の作成、待機、解除、競合時応答は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a を正とする。 |
 | ログ秘密情報 | PAT、Webhook Secret、SMTP password、session token、API token は stdout、stderr、JSON log、API response、UI 表示へ平文出力しない。表示が必要な場合は `"***"` とする。 |
 | 終了コード | CLI / runner は `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` ロック競合を標準とする。個別節に明記がある場合もこの意味から外してはならない。 |
-| 禁止事項 | 仕様にない環境変数、状態ファイル、HTTP endpoint、CLI option、外部依存を実装者判断で追加してはならない。必要な場合は先に本仕様を改訂する。 |
+| 禁止事項 | 仕様にない環境変数、状態ファイル、HTTP endpoint、CLI option、外部依存を実装者判断で追加してはならない。必要な場合は先に該当 owner component の詳細仕様ファイルまたは本ファイルの対応表を改訂する。 |
 
 ---
 
@@ -232,14 +234,14 @@
 | `sdk` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e と `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
 | `ui` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 に画面構成、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去が定義されている。 | SDK を介さず API を直接呼ぶこと、未定義の画面・操作・保存先を追加すること、秘密情報を DOM に残すこと。 | 全 UI 操作が `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 の表示条件と `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 の SDK method を満たし、秘密情報 field が指定条件で消去される。 |
 
-上表の対象外である `mcp`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらは、本ファイル内に入出力、状態、起動手順、検証条件を定義しない。
+上表の対象外である `mcp`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらは、Part 3 詳細仕様セット内に入出力、状態、起動手順、検証条件を定義しない。
 
 仕様策定完了チェックで未充足が見つかった場合は、実装を開始せず、以下の順で仕様を補完する。
 
 1. 未充足項目が本ファイルの記載対象外である場合は、先に `ADLAIRE_CI_SPEC.md` を確認する。
-2. 未充足項目が入出力、状態ファイル、api、sdk、ui、処理順序、異常系、検証条件に関わる場合は、本ファイルの該当節を改訂する。
+2. 未充足項目が入出力、状態ファイル、api、sdk、ui、処理順序、異常系、検証条件に関わる場合は、該当 owner component の詳細仕様ファイルまたは collaborator の詳細仕様ファイルを改訂する。
 3. ファイル名、正本関係、対象範囲が変わる場合は、`DOCUMENT_INDEX.md` の更新要否を確認する。
-4. 対象項目の詳細節または受け入れ条件が変わる場合は、§0i の詳細節対応表を更新する。
+4. 対象項目の詳細節、参照先、受け入れ条件が変わる場合は、§0i の詳細節対応表を更新する。
 5. 補完後、§0b、§0c、§0e、本節、§0g、§0h、§0i、§0j の条件を再確認する。
 
 ---
@@ -347,7 +349,7 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 
 ## 0h. 機能仕様テンプレート
 
-対象項目を追加または改訂する場合は、該当する詳細仕様節に以下の項目をすべて含める。既存節に含める場合も、実装者が下表の項目を本文から一意に読み取れる状態にする。
+対象項目を追加または改訂する場合は、該当する owner component の詳細仕様節に以下の項目をすべて含める。既存節に含める場合も、実装者が下表の項目を本文から一意に読み取れる状態にする。
 
 | 項目 | 必須内容 | 未記載時の扱い |
 |------|----------|----------------|
@@ -362,7 +364,7 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 | 検証 | 必須テスト、手動確認、fixture、生成物確認、API 確認、異常系確認。 | 完了扱い不可。 |
 | 完了条件 | どの検証が成功したら実装完了と扱うか。関連文書の更新要否。 | 完了扱い不可。 |
 
-上表のいずれかが不足する対象項目は、実装者判断で補完してはならない。不足を見つけた場合は、実装 PR ではなく仕様改訂 PR として本ファイルを先に更新する。
+上表のいずれかが不足する対象項目は、実装者判断で補完してはならない。不足を見つけた場合は、実装 PR ではなく仕様改訂 PR として該当 owner component の詳細仕様ファイルまたは本ファイルの対応表を先に更新する。
 
 ---
 
@@ -464,9 +466,9 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 
 ## 0. システム概要
 
-Adlaire CI は Go 版 3 コンポーネントと JavaScript/HTML 管理ツールで構成する。
+Adlaire CI は Go 版コンポーネントと JavaScript/HTML 管理ツールで構成する。
 
-本ファイルは、`builder`、`runner`、`api`、`ui`、`sdk` の実装詳細を定義する。`mcp` の入出力、状態、起動手順、検証条件は本ファイルでは定義しない。
+Part 3 詳細仕様セットは、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を責務 component 別に定義する。`mcp` の入出力、状態、起動手順、検証条件は定義しない。
 
 **`builder`（ビルドスクリプト）**
 GitHub リポジトリ上またはローカル上の Markdown ファイルまたは Markdown ディレクトリを静的 Web サイトに変換してローカルディレクトリへ出力する。標準実行バイナリ名は `adlaire-ci-build` とする。
