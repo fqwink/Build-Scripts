@@ -94,20 +94,20 @@
 | ファイル | 持つ内容 | 持たない内容 |
 |----------|----------|--------------|
 | `ADLAIRE_CI_DETAIL_SPEC.md` | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 分割仕様。 | 各 component の詳細な処理本文、fixture 詳細、状態ファイル schema 詳細、個別 endpoint 詳細、個別 UI 操作詳細。 |
-| `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture。 | runner / API / SDK / UI の実行責務。 |
+| `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture。 | runner / api / sdk / ui の実行責務。 |
 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner の GitHub 監視、状態ファイル更新、pipeline、deploy、snapshot、通知、runner fixture。 | API endpoint の認証・応答本文、SDK method、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner の HTTP 共通契約、endpoint、状態ファイル read/write、認証連携。 | SDK 内部実装、UI DOM 詳細、runner の build 実行責務、fixture 詳細。 |
 | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 | UI DOM 詳細、SDK method 実装、API endpoint 実装、systemd 導入手順。 |
 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | `sdk` owner の SDK class、method、HTTP 対応、error、stream、token 破棄。 | API endpoint の状態ファイル更新責務、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 | SDK method 実装、API endpoint 実装、状態ファイル直接操作。 |
-| `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 | runner / API / SDK / UI の個別機能本文。 |
+| `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 | runner / api / sdk / ui の個別機能本文。 |
 | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 | API endpoint の request / response、runner の業務処理、UI 表示判断。 |
 | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 | runner の build 実行、API 共通 request / response、SDK method 実装、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理。 |
 | `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture manifest、assertion、fake、testdata、API P0〜P5 fixture、受け入れ fixture 共通契約、PR 証跡テンプレート。 | 個別 component の通常処理本文。 |
 
-`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、API、SDK、UI、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 または API / SDK / UI / 状態ファイルの横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと §27.38a を同時に満たす。
+`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと §27.38a を同時に満たす。
 
 分割時の移動単位は、owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには参照リンク、禁止事項、受け入れ観点だけを置く。主本文を複数ファイルへ重複定義してはならない。
 
@@ -237,7 +237,7 @@
 仕様策定完了チェックで未充足が見つかった場合は、実装を開始せず、以下の順で仕様を補完する。
 
 1. 未充足項目が本ファイルの記載対象外である場合は、先に `ADLAIRE_CI_SPEC.md` を確認する。
-2. 未充足項目が入出力、状態ファイル、API、SDK、UI、処理順序、異常系、検証条件に関わる場合は、本ファイルの該当節を改訂する。
+2. 未充足項目が入出力、状態ファイル、api、sdk、ui、処理順序、異常系、検証条件に関わる場合は、本ファイルの該当節を改訂する。
 3. ファイル名、正本関係、対象範囲が変わる場合は、`DOCUMENT_INDEX.md` の更新要否を確認する。
 4. 対象項目の詳細節または受け入れ条件が変わる場合は、§0i の詳細節対応表を更新する。
 5. 補完後、§0b、§0c、§0e、本節、§0g、§0h、§0i、§0j の条件を再確認する。
@@ -593,7 +593,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は横断補足契約として本ファイルに残す。
 
-§27.21〜§27.38 の runner 拡張機能を実装する場合は、`ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` の個別節を正本とし、横断する処理順、状態ファイル保存責務、API / SDK / UI 連動条件、受け入れ fixture は本ファイル §27.38a を同時に確認する。
+§27.21〜§27.38 の runner 拡張機能を実装する場合は、`ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` の個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture は本ファイル §27.38a を同時に確認する。
 
 ### — 管理ツール —
 
@@ -609,7 +609,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は横断補足契約として本ファイルに残す。
 
-§27.21〜§27.38 に関わる API / SDK / UI 連動条件は、各 owner component の分割先詳細仕様ファイルと本ファイル §27.38a を同時に満たす。§27.38a の内容を API / SDK / UI の分割先へ重複定義してはならない。
+§27.21〜§27.38 に関わる api / sdk / ui 連動条件は、各 owner component の分割先詳細仕様ファイルと本ファイル §27.38a を同時に満たす。§27.38a の内容を api / sdk / ui の分割先へ重複定義してはならない。
 
 ## 23. SDK 詳細仕様（分割済み）
 
@@ -651,12 +651,12 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 |------|----------|
 | 実装対象判定 | `ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用機能を実装対象にしない。 |
 | owner 確定 | §0b と §0i で owner component を 1 件に確定し、主本文は owner の分割先詳細仕様ファイルで確認する。 |
-| collaborator 確認 | API / SDK / UI / statefile / security / archive / commitstatus などの collaborator がある場合は、該当分割先ファイルの参照節を同時に読む。 |
+| collaborator 確認 | api / sdk / ui / statefile / security / archive / commitstatus などの collaborator がある場合は、該当分割先ファイルの参照節を同時に読む。 |
 | 補完禁止 | 個別節または分割先詳細仕様に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存を実装判断で追加しない。 |
 | 状態更新 | 状態ファイル更新は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c を正とし、lock、atomic write、JSON Lines、破損時処理を独自定義しない。 |
 | security | secret mask、token、session、scope、audit、rate limit は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` を正とし、平文保存・平文表示を行わない。 |
 | fixture / PR 証跡 | fixture manifest、expected/effects、assertion、PR 証跡、受け入れゲートは `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §27-F を正とする。 |
-| API / SDK / UI 同期 | API endpoint、SDK method、UI 操作が同一機能に関わる場合は、`ADLAIRE_CI_DETAIL_API_SPEC.md`、`ADLAIRE_CI_DETAIL_SDK_SPEC.md`、`ADLAIRE_CI_DETAIL_UI_SPEC.md` を同時に満たす。 |
+| api / sdk / ui 同期 | API endpoint、SDK method、UI 操作が同一機能に関わる場合は、`ADLAIRE_CI_DETAIL_API_SPEC.md`、`ADLAIRE_CI_DETAIL_SDK_SPEC.md`、`ADLAIRE_CI_DETAIL_UI_SPEC.md` を同時に満たす。 |
 
 §27 の機能を実装した PR は、対象節、owner 詳細仕様、collaborator 詳細仕様、fixture、secret mask、失敗時副作用、実装対象外を PR 本文に記録する。記録が不足する場合は、実装完了として扱わない。
 
@@ -816,7 +816,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 ### 27.38a 横断連動・Runner 拡張機能 実装補足契約
 
-本節は、責務 component 別詳細仕様へ分割しない。§27.21〜§27.38 および API / SDK / UI / 状態ファイルの横断連動は runner、builder、API、SDK、UI、statefile、archive にまたがるため、実装者は owner 詳細仕様と本節の横断確認を同時に満たす。
+本節は、責務 component 別詳細仕様へ分割しない。§27.21〜§27.38 および api / sdk / ui / statefile の横断連動は runner、builder、api、sdk、ui、statefile、archive にまたがるため、実装者は owner 詳細仕様と本節の横断確認を同時に満たす。
 
 本節は、個別機能の処理本文、fixture schema、endpoint 詳細、UI DOM 詳細を持たない。これらは各 owner / collaborator の分割先詳細仕様ファイルを正とする。
 
@@ -830,7 +830,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | archive | snapshot、artifact、download、delete、rollback、log archive は `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` を正とする。 |
 | fixture | §27.21〜§27.38 の受け入れ fixture、secret mask、effects、PR 証跡は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §27-F を正とする。 |
 
-**API / SDK / UI / 状態ファイル 横断連動契約：**
+**api / sdk / ui / statefile 横断連動契約：**
 
 下表の機能群は、API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえる。API だけ、SDK だけ、UI だけを先行して仕様外の仮実装にしてはならない。UI が未実装の Phase では、UI 列は fixture の期待操作として固定し、実装完了扱いには含めない。
 

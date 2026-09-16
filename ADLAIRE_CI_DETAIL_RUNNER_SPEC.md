@@ -6,7 +6,7 @@
 
 `ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は runner / builder / API / SDK / UI にまたがる横断補足契約であり、本ファイルへ移動しない。runner 拡張機能を実装する場合は、本ファイルの個別節を正本とし、横断する処理順、状態ファイル保存責務、API / SDK / UI 連動条件、受け入れ fixture は `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。§27.38a の内容を本ファイルへ重複定義してはならない。
+`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は runner / builder / api / sdk / ui にまたがる横断補足契約であり、本ファイルへ移動しない。runner 拡張機能を実装する場合は、本ファイルの個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture は `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。§27.38a の内容を本ファイルへ重複定義してはならない。
 
 ---
 
@@ -74,7 +74,7 @@
 
 ## 11. CI ランナー ファイル構成
 
-本節のファイル構成は、Go 版 CI ランナーで使用するファイル、管理 API / SDK / UI 側のファイル、出力先、systemd ファイルを分離して示す。
+本節のファイル構成は、Go 版 CI ランナーで使用するファイル、管理 API / sdk / ui 側のファイル、出力先、systemd ファイルを分離して示す。
 
 ### Go 版 CI ランナーで使用するファイル
 
@@ -123,7 +123,7 @@
 | `/opt/adlaire-builder/.build_logs/` | ビルドごとの個別ログ。 |
 | `/opt/adlaire-builder/.snapshots/` | ビルド成果物スナップショット。 |
 
-### 管理 API / SDK / UI 側ファイル
+### 管理 API / sdk / ui 側ファイル
 
 以下は `api`、`sdk`、`ui` の仕様に属する。CI ランナー拡張と連携するものを含むが、`runner` 単体の実装対象範囲には含めない。
 
@@ -1737,7 +1737,7 @@ runner 実装は以下を行ってはならない。
 | OS user 作成、directory 作成、chown / chmod の初期設定 | setup owner component の責務。 |
 | Release asset 取得、checksum 検証、バイナリ配置 | setup owner component の責務。 |
 | `.github_token` の新規生成または対話入力 | setup owner component の secret initializer の責務。 |
-| `.admin_credentials` 初期化、API service 配置、管理 UI 配置 | API / admin / setup owner component の責務。 |
+| `.admin_credentials` 初期化、API service 配置、管理 UI 配置 | api / admin / setup owner component の責務。 |
 | systemd unit file の配置、enable、restart | setup owner component の責務。ただし API endpoint が systemd timer を変更する機能は `ADLAIRE_CI_DETAIL_API_SPEC.md` の該当節を正とする。 |
 
 runner が起動時に必要ファイル不足または権限不備を検出した場合は、§13、§15a、§20 の異常系に従い、セットアップ手順を自動実行せずに失敗として記録する。
@@ -1994,7 +1994,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 本機能の目的は、runner がなぜ build または関連処理を開始したかを、履歴、ログ、状態、API、SDK、UI で同一の固定値として扱うことである。
 
-owner component は `runner` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。`runner` は trigger の確定と永続化を担当し、API / SDK / UI は既存値の表示と filter のみを担当する。
+owner component は `runner` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。`runner` は trigger の確定と永続化を担当し、api / sdk / ui は既存値の表示と filter のみを担当する。
 
 **trigger 許容値：**
 
@@ -2035,7 +2035,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 
 複数条件が同時に成立した場合は、上記順序で最初に該当した trigger を採用する。1 回の runner 起動で複数 branch target を処理する場合、target ごとに同じ trigger を保存する。ただし queue entry が target を指定する場合は、対象 target のみにその trigger を適用する。
 
-**API / SDK / UI：**
+**api / sdk / ui：**
 
 `GET /api/history` の `trigger` query は上表の値だけを受け付ける。不正値は `422` を返す。SDK `getHistory({trigger})` は値を変換せず送信する。UI は filter の選択肢を上表の 9 件に固定し、未知 trigger を受け取った場合は `Unknown` へ丸めず、該当行に `invalid trigger` エラーを表示する。
 
@@ -2826,7 +2826,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 本機能の目的は、build lifecycle event を複数通知 channel へ同一契約で送信し、通知の成功、失敗、再試行、監査を固定仕様で扱えるようにすることである。
 
-owner component は `runner` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。runner は送信、API は設定・履歴表示、SDK/UI は設定操作と履歴表示を担当する。
+owner component は `runner` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。runner は送信、api は設定・履歴表示、sdk / ui は設定操作と履歴表示を担当する。
 
 **入力 / 状態：**
 

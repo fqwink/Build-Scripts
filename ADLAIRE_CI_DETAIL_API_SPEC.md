@@ -6,7 +6,7 @@
 
 `ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は runner / builder / API / SDK / UI / statefile / archive にまたがる横断補足契約であり、本ファイルへ移動しない。API 連動機能を実装する場合は、本ファイルの個別節と合わせて `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を確認する。
+`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、本ファイルへ移動しない。api 連動機能を実装する場合は、本ファイルの個別節と合わせて `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を確認する。
 
 `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 は security owner component の詳細仕様であり、本ファイルへ移動しない。API が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` を正とする。
 
@@ -661,13 +661,13 @@ no-op response は endpoint 固有の `No changes` が定義されている場�
 | SSE 正常終了 | `end` frame が 1 回だけ送信される。 |
 | snapshot download | binary body、固定 header、JSON success body なし。 |
 
-**API / SDK / UI / 状態ファイル 横断契約参照：**
+**api / sdk / ui / statefile 横断契約参照：**
 
-API endpoint、SDK method、UI 操作、状態ファイル副作用、成功後再取得、失敗時固定、横断処理順は `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a の API / SDK / UI / 状態ファイル横断連動契約と横断処理順契約を正とする。本ファイルでは横断連動表と横断処理順表を重複定義しない。
+API endpoint、SDK method、UI 操作、状態ファイル副作用、成功後再取得、失敗時固定、横断処理順は `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a の api / sdk / ui / statefile 横断連動契約と横断処理順契約を正とする。本ファイルでは横断連動表と横断処理順表を重複定義しない。
 
 **横断 fixture 参照：**
 
-API / SDK / UI / 状態ファイルにまたがる横断 fixture の fixture 名、入力、必須確認は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の cross fixture 固定契約を正とする。本ファイルでは横断 fixture 本体を重複定義しない。
+api / sdk / ui / statefile にまたがる横断 fixture の fixture 名、入力、必須確認は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の cross fixture 固定契約を正とする。本ファイルでは横断 fixture 本体を重複定義しない。
 
 ### 22.0f API 実装順序・fixture 参照
 
@@ -2568,7 +2568,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | §27.46 | TOTP | setup secret、ticket、TOTP code。 | `.totp_secret`、ticket/session response、audit/access log。 | secret / ticket はメモリと 1 回 response に限定し、成功時だけ永続状態を更新する。 | code 不一致 / replay は token を返さない。audit 失敗時も secret 平文を出さない。 | setup、login、replay、secret one-time、ticket reuse、disable、window、全角 code。 |
 | §27.47 | API rate limit | rate policy、remote addr、actor key。 | `.api_rate_state`、`429`、state summary。 | key 群を同一 lock で判定 / 更新する。 | 上限超過では count を増やさず endpoint 固有処理を行わない。audit 失敗時は `500`。 | under limit、over IP、over token、disabled、policy update、audit failure、window reset。 |
 
-**§27.21〜§27.38 / §27.42〜§27.47 API / SDK / UI 連動固定契約：**
+**§27.21〜§27.38 / §27.42〜§27.47 api / sdk / ui 連動固定契約：**
 
 | 節 | API | SDK | UI |
 |----|-----|-----|----|
@@ -2597,7 +2597,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | §27.46 | TOTP/auth API。 | TOTP/auth methods。 | セキュリティ/login panel で one-time secret/ticket flow を扱う。 |
 | §27.47 | rate limit API。 | `getApiRateLimit()` / `setApiRateLimit()`。 | セキュリティ panel で policy と state summary を表示する。 |
 
-API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補完 method、補完 UI 操作を追加してはならない。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
+api / sdk / ui のいずれも、上表に存在しない補完 endpoint、補完 method、補完 UI 操作を追加してはならない。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
 
 ### 27.30 ビルド承認フロー
 owner component は `api` とする。collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。
