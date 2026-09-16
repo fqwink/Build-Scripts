@@ -4721,7 +4721,7 @@ Summary object:
 | キー | 型 | 既定値 | 許容値 |
 |------|----|--------|--------|
 | `enabled` | boolean | `false` | boolean |
-| `interval` | string | `"weekly"` | `"daily"` / `"weekly"` |
+| `interval` | string | `"weekly"` | `"weekly"` 固定 |
 | `hour` | integer | `9` | 0〜23 |
 | `day_of_week` | integer | `1` | 0〜6 |
 
@@ -5406,6 +5406,34 @@ archive 対象 id と snapshot id は build id 形式だけを許可する。API
 
 backup response に secret 原文を含めてはならない。`password`、`token`、`secret`、`smtp_password`、`webhook_secret`、`.github_token`、`.smtp_secret`、`.api_tokens` の hash 元値は `"***"` または `*_set:boolean` で表現する。`POST /api/restore` で `"***"` を受け取った secret は既存値保持を意味し、既存値がない場合は未設定として扱う。
 
+**backup / restore 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| backup 対象 | `.server_config`、`.notify_config`、`.repo_config`、`.branch_config`、`.access_control`、`.hooks`、`.alert_rules`、`.tag_rules`、`.pipeline_config`、`.dashboard_layout`、`.smtp_config`、`.webhook_secret`、`.smtp_secret`。 |
+| backup 対象外 | `.admin_credentials`、`.api_tokens`、`.totp_secret`、session、`.build_history`、`.build_logs/`、`.snapshots/`、`.notify_log`、`.notify_pending`、`.webhook_events.json`、`.approval_queue`、`.build_state`。 |
+| backup 不在値 | 任意設定 file 不在は schema 既定値で返す。secret file 不在は `*_set:false`。 |
+| backup secret | `.webhook_secret` と `.smtp_secret` は本体を返さず、`webhook_secret_set` / `smtp_password_set` boolean だけ返す。 |
+| restore 検証 | すべての対象 payload を先に schema 検証し、1 件でも不正なら書込を開始せず `422`。 |
+| restore `"***"` | 対応する既存 secret がある場合だけ既存値保持。既存 secret がない場合は未設定として扱い、新規 secret 文字列として保存しない。 |
+| restore secret 削除 | secret key が `null` の場合は削除。key 省略は既存保持。 |
+| restore 書込順 | `.server_config` → `.notify_config` → `.repo_config` → `.branch_config` → `.access_control` → `.hooks` → `.alert_rules` → `.tag_rules` → `.pipeline_config` → `.dashboard_layout` → `.smtp_config` → `.webhook_secret` → `.smtp_secret` → `.config_log`。 |
+| restore 途中失敗 | 未処理 file は書かない。処理済み file は巻き戻さない。response は `500`。 |
+| restore no-op | 全対象が既存値と同一の場合は file と `.config_log` を変更せず `{ "message":"No changes" }`。 |
+
+restore の `.config_log` は対象 file ごとの差分を 1 record にまとめ、secret はすべて `"***"` とする。backup / restore の response、server log、fixture expected に secret 平文を含めてはならない。
+
+**backup / restore fixture 固定：**
+
+| fixture | 入力 | 期待結果 |
+|---------|------|----------|
+| backup-mask | secret 設定済みで backup | secret 本体なし、`*_set:true`。 |
+| restore-validate-fail | 1 file schema 不正 | `422`、全 file 差分なし。 |
+| restore-secret-keep | `"***"` かつ既存 secret あり | 既存 secret 維持、平文出力なし。 |
+| restore-secret-missing | `"***"` かつ既存 secret なし | secret 未設定のまま、`"***"` を保存しない。 |
+| restore-secret-delete | secret `null` | secret file 削除。 |
+| restore-write-failure | 中途 write 失敗 | 未処理 file は差分なし、処理済み file は維持、`500`。 |
+
 **ビルド操作の競合優先順位：**
 
 `POST /api/build`、`POST /api/build/force`、`POST /api/webhook`、`POST /api/history/{id}/rollback` は、以下の順に判定する。
@@ -5946,7 +5974,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 `on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"deploy_failure"`（転送失敗時）| `"weekly_summary"`（定期サマリー送信時）| `"approval_required"`（承認待ち発生時）| `"duration_anomaly"`（所要時間異常時）| `"config_corrupt"`（設定破損復旧時）。複数指定可。
 
-`summary`：定期サマリー通知の設定。`enabled: true` のとき指定スケジュールで統計サマリーを Webhook 送信する。`interval` の有効値：`"daily"` | `"weekly"`。`hour` は 0〜23（UTC）。`day_of_week` は `"weekly"` 時のみ有効（0 = 日曜〜6 = 土曜）。
+`summary`：週次サマリー通知の設定。`enabled: true` のとき指定曜日・時刻で統計サマリーを Webhook 送信する。`interval` の有効値は `"weekly"` 固定。`hour` は 0〜23（UTC）。`day_of_week` は 0 = 日曜〜6 = 土曜。
 
 **`POST /api/notify/weekly-summary` レスポンス例：**
 ```json
@@ -7050,6 +7078,30 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 | 送信 log | `.notify_log` に `type:"smtp_test"`、`result`、`message`、`at` を追記する。password は記録しない。 |
 
 `enabled:true` にする場合は `host`、`port`、`from`、`to` 1 件以上を必須とする。`POST /api/smtp-test` は `enabled:false`、宛先なし、secret 必須構成で `.smtp_secret` 不在のいずれも `422 {"error":"SMTP not configured"}` を返す。
+
+**SMTP 更新詳細：**
+
+| ケース | `.smtp_config` | `.smtp_secret` | `.config_log` | response |
+|--------|----------------|----------------|---------------|----------|
+| config のみ変更 | 保存 | 変更なし | mask 済み diff 追記 | `200 {"message":"SMTP config updated"}` |
+| password 追加 / 変更 | 保存 | mode `0600` で atomic write | password は `"***"` で追記 | `200` |
+| `password:null` | 保存 | 存在すれば削除 | password は `"***"` で追記 | `200` |
+| 完全 no-op | 変更なし | 変更なし | 追記なし | `200 {"message":"No changes"}` |
+| `.smtp_secret` 書込失敗 | 必要なら `.smtp_config` 保存済み | 失敗 | 追記なし | `500` |
+| `.config_log` 追記失敗 | 保存済み | 保存または削除済み | 失敗 | `500` |
+
+`POST /api/smtp-test` は `.smtp_config` と `.smtp_secret` を読み、送信成功 / 失敗のどちらも `.notify_log` へ追記してから response を返す。`.notify_log` 追記失敗時は `500` を返す。SMTP password、認証失敗時の server response に含まれる credential 断片、接続 URL の userinfo は `message` と log に含めず固定文言へ置換する。
+
+**SMTP fixture 固定：**
+
+| fixture | 入力 | 期待結果 |
+|---------|------|----------|
+| smtp-save-password | password 付き保存 | `.smtp_secret` mode `0600`、GET は `password_set:true`、log は `"***"`。 |
+| smtp-delete-password | `password:null` | `.smtp_secret` 削除、password 平文なし。 |
+| smtp-noop | 同一 config / password 未指定 | 状態差分なし、`.config_log` 追記なし。 |
+| smtp-test-success | 設定済み test | `.notify_log` に success、response success。 |
+| smtp-test-disabled | `enabled:false` | `422`、`.notify_log` 差分なし。 |
+| smtp-log-failure | test 後 `.notify_log` 追記失敗 | `500`、password 平文なし。 |
 
 **`GET /api/notify-config` への追加（`email` セクション）：**
 ```json
@@ -9352,6 +9404,21 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 8. `.webhook_events.json` にイベント結果を JSON Lines で追記する。
 9. response を返す。
 
+**Webhook 副作用固定契約：**
+
+| ケース | `.webhook_events.json` | `.build_state.queued` | response |
+|--------|------------------------|-----------------------|----------|
+| 署名不正 / secret 不在 | 変更なし | 変更なし | `401 {"error":"Unauthorized"}` |
+| JSON 不正 | 変更なし | 変更なし | `422 {"error":"Validation failed",...}` |
+| event が `push` 以外 | `ignored_event` を追記 | 変更なし | `202 {"message":"Webhook ignored","queued":false,"event_id":...}` |
+| 対象 branch なし | `ignored_branch` を追記 | 変更なし | `202 {"message":"Webhook ignored","queued":false,"event_id":...}` |
+| queue 追加成功 | `queued` を追記 | queue entry を追加 | `202 {"message":"Webhook accepted","queued":true,"event_id":...,"queue_id":...}` |
+| queue full | `queue_full` を追記 | 変更なし | `429 {"error":"queue_full"}` |
+| event log 追記失敗 / queue 追加前 | 変更なし | 変更なし | `500 {"error":"Internal server error"}` |
+| event log 追記失敗 / queue 追加後 | 変更なし | queue entry は残す | `202 {"message":"Webhook accepted","queued":true,"event_log_failed":true,"queue_id":...}` |
+
+queue entry は §16C の queue entry schema を使用し、`trigger:"webhook"`、`requested_by:"webhook"`、`priority:"normal"`、`payload.delivery_id`、`payload.branch`、`payload.sha` を保存する。`X-GitHub-Delivery` が既に pending queue に存在し、同一 branch / sha の場合は重複投入せず、event log に `result:"duplicate"`、既存 `queued_id` を記録し、`202 {"message":"Webhook already queued","queued":true,"queue_id":"<existing>"}` を返す。
+
 **異常系：**
 
 | 条件 | 応答 / 処理 |
@@ -9393,7 +9460,9 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 | `repository` | string/null | 必須 | `owner/repo`。 |
 | `build_triggered` | boolean | 必須 | queue 追加済みなら `true`。 |
 | `queued_id` | string/null | 必須 | queue id または `null`。 |
-| `result` | string | 必須 | `"queued"`, `"ignored_event"`, `"ignored_branch"`, `"queue_full"`, `"error"`。 |
+| `result` | string | 必須 | `"queued"`, `"duplicate"`, `"ignored_event"`, `"ignored_branch"`, `"queue_full"`, `"error"`。 |
+
+`delivery_id` は 1〜200 文字、`event` は 1〜100 文字、`repository` は `owner/repo` 形式、`sha` は `null` または 40 文字 lowercase hex とする。保存時に request header 全体、署名値、secret、payload 全体を保存してはならない。
 
 **一覧 API：**
 
@@ -9408,6 +9477,7 @@ Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `g
 | event 追記 | JSON Lines へ schema 通り保存される。 |
 | 一覧取得 | 新しい順、limit/offset が効く。 |
 | 壊れた行 | API は継続し、壊れた行を返さない。 |
+| duplicate delivery | queue 重複なし、event log は `duplicate`。 |
 
 ### 27.14 ビルド所要時間の記録と統計 API
 
@@ -9636,6 +9706,16 @@ runner 起動時に、現在 UTC の曜日と時が設定値に一致し、`.bui
 
 `POST /api/notify/weekly-summary` は同じ集計を即時送信する。手動送信は `weekly_summary_sent_date` を更新しない。
 
+**送信・状態更新固定契約：**
+
+| 操作 | 更新順 | 失敗時 |
+|------|--------|--------|
+| 自動 weekly summary | 集計 → 対象 channel 抽出 → 通知送信 → `.notify_log` 追記 → `.build_state.weekly_summary_last_sent_at` / `weekly_summary_sent_date` 保存 | 送信または `.notify_log` 追記失敗時は sent date を更新しない。build status は変更しない。 |
+| 手動 weekly summary | 認証 → 対象 channel 抽出 → 集計 → 通知送信 → `.notify_log` 追記 → response | 宛先なしは `422`。送信失敗は `500`、sent date は更新しない。 |
+| 同日二重自動 | `.build_state.weekly_summary_sent_date` が現在 UTC 日付と一致する場合は送信しない | `.notify_log`、`.notify_pending`、`.build_state` を変更しない。 |
+
+weekly summary payload は secret、repository token、SMTP password、Webhook secret、API token、session token を含めてはならない。`success_rate` は小数第 2 位まで `math.Round(x*100)/100` 相当で丸める。集計対象 0 件の場合は `success_count=0`、`failure_count=0`、`success_rate=0`、`avg_duration_seconds=null` とする。
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -9644,6 +9724,7 @@ runner 起動時に、現在 UTC の曜日と時が設定値に一致し、`.bui
 | 同日二重起動 | 2 回目は送信しない。 |
 | 宛先なし | 自動送信は WARN、手動 API は `422`。 |
 | 手動送信 | payload を返し、sent date は変更しない。 |
+| 送信失敗 | sent date を更新せず、retry 対象なら `.notify_pending` に追加。 |
 
 ### 27.20 設定変更の詳細 diff 記録
 
@@ -9667,6 +9748,19 @@ runner 起動時に、現在 UTC の曜日と時が設定値に一致し、`.bui
 
 `{key}: {before} -> {after}` を key 名昇順で 1 行ずつ連結する。値は JSON 表現とし、secret は `"***"` とする。複数行値は `\n` escape した 1 行 JSON string とする。
 
+**diff 生成固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 比較対象 | 正規化後、既定値 merge 後の before / after object。保存対象外 key、response 専用 key、password 平文は比較対象に含めない。 |
+| object | dot path で再帰比較する。例: `summary.hour`。 |
+| array | index 比較ではなく配列全体を JSON 値として比較する。並び順が仕様上正規化される配列は正規化後に比較する。 |
+| secret key | key path のいずれかに `password`、`token`、`secret`、`pat`、`smtp_password` を含む場合、before / after を `"***"` にする。 |
+| no-op | diff が空の場合は状態ファイル、secret file、`.config_log` を変更しない。 |
+| 追記順 | 対象状態ファイル保存後に `.config_log` を追記する。`.config_log` 失敗時は `500`、保存済み状態は巻き戻さない。 |
+
+`.config_log` record の `target` は endpoint 固定名、`actor` は管理 session なら `"admin"`、API token なら token id とする。`request body` 全体、HTTP header、cookie、secret 平文を保存してはならない。
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -9683,6 +9777,8 @@ runner 起動時に、現在 UTC の曜日と時が設定値に一致し、`.bui
 | secret 変更 | 値は `"***"` だけ保存される。 |
 | 変更なし | 状態ファイルも config log も更新しない。 |
 | 複数 key | key 昇順で diff_text を生成する。 |
+| array 正規化 | 正規化後に同一なら no-op。 |
+| config log 失敗 | 対象状態は保存済み、response は `500`。 |
 
 ### 27.21 複数ファイル監視
 
@@ -10239,6 +10335,33 @@ pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、�
 5. retry 対象失敗は `.notify_pending` に追加する。
 6. build 自体の status は通知失敗で変更しない。
 
+**通知 channel 正規化契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| channel id | 未指定時は `n` + 6 桁連番。重複 id は `422`。 |
+| event 判定 | channel `on` が空の場合は top-level `on` を使用する。channel `on` に `"*"` があれば全 event 対象。 |
+| webhook config | `config.url` 必須。`http` / `https` のみ許可。userinfo、fragment、空 host は `422`。 |
+| email config | `.smtp_config` / `.smtp_secret` を正とする。channel `config.to` がある場合は `.smtp_config.to` より優先して送信先に使う。 |
+| command config | `config.command_args` 必須。shell 経由は禁止。stdout/stderr は `.notify_log` に secret mask 後で保存する。 |
+| secret mask | `secret`、`password`、`token`、`smtp_password`、Webhook secret、SMTP password は GET、backup、log、pending、UI 表示で `"***"`。 |
+
+**通知送信・pending 固定契約：**
+
+| ケース | `.notify_log` | `.notify_pending` | build status |
+|--------|---------------|-------------------|--------------|
+| 送信成功 | `result:"success"` を追記 | 変更なし | 変更しない |
+| webhook 5xx / timeout | `result:"failure"` を追記 | retry entry 追加 | 変更しない |
+| webhook 4xx | `result:"failure"` を追記 | 追加しない | 変更しない |
+| email SMTP 未設定 | `result:"not_configured"` を追記 | 追加しない | 変更しない |
+| command exit 非 0 | `result:"failure"` を追記 | 追加しない | 変更しない |
+| `.notify_log` 追記失敗 | server log に固定コード | pending 追加判定は実行しない | 変更しない |
+| `.notify_pending` 保存失敗 | `result:"failure"` を追記済み | 追加なし | 変更しない |
+
+pending entry は `{ "id", "event", "channel_id", "channel_type", "payload", "attempts", "next_attempt_at", "last_error", "created_at" }` を必須 key とする。`payload` は secret mask 済み JSON object とし、送信時に secret を復元しない。Webhook secret や SMTP password は送信直前に状態ファイルから再読込する。`event`、`channel_id`、mask 後 `payload` が同一の pending entry が既にある場合は重複追加しない。
+
+runner 起動時の pending retry は `next_attempt_at <= now` の entry を `created_at` 昇順で処理する。成功した entry は削除する。失敗した entry は `attempts += 1`、`next_attempt_at = now + retry_interval_seconds` として保存する。`attempts > retry_count` になった entry は `.notify_log` に `result:"dropped"` を追記して pending から削除する。
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -10257,6 +10380,8 @@ pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、�
 | webhook 5xx | pending 追加。 |
 | secret 設定済み | GET / log / UI で値が `"***"`。 |
 | command channel | shell 展開されず argv 実行。 |
+| pending duplicate | 同一 event/channel/payload の pending は 1 件だけ。 |
+| retry exhausted | dropped log 追記後 pending から削除。 |
 
 ### 27.33 ビルド時間トレンド記録
 
