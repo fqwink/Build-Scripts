@@ -624,7 +624,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドトリガー種別の記録 | `polling`、`force_interval`、`manual`、`webhook`、`retry_pending_transfer`、`startup_config_integrity`、`rollback`、`local_watch`、`approval` を `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に記録し、履歴 filter と状態表示で同じ値を使う。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§15、§22.0c、§22.0e、§23、§24、§27.9、§27.23、§27.30 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の異常検知 | `.build_trends.json` の移動平均と p95 を基準に異常に遅い build を検出し、WARN、history flag、通知へ反映する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§15、§16、§22.0e、§27.38 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | 設定ファイル起動時整合性チェック | runner 起動時に `.branch_config`、`.notify_config`、`.build_state`、`.pending_transfers`、`.notify_pending`、`.build_circuit_state` の JSON 整合性を検証し、破損・型不一致・必須 key 不足を規定どおり退避、初期化、通知、または停止する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§12、§13、§22.0a、§22.0c、§27.10 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | マルチユーザー対応 | `.users` に複数管理ユーザーを保存し、login、session、監査、UI 表示で user id / role を一貫して扱う。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0a、§22.0e、§23、§24、§27.39 に従って実装する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | マルチユーザー対応 | 初期仕様の単一 admin 認証を、複数ユーザー・ユーザー別セッション・ユーザー別監査へ拡張する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 通知先の拡張 | 管理画面・API からメール・Slack・Discord 等の通知チャンネルを設定・追加できるようにする。`components/runner.go` 側のフック実装は → ビルド通知連携 | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | データストア切り替え | 大量ビルド履歴・ログ運用に備え、フラットファイルから SQLite 等への切り替えを検討する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 外部認証連携 | SSO・OAuth 等の外部認証基盤との連携を検討する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -641,15 +641,15 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドトリガー専用 API スコープ | API token scope に `trigger` を追加し、build 起動系だけを許可する最小権限 token を発行できるようにする。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0a、§22.0e、§23、§24、§27.42 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | 監査ログ | `.audit_log` に設定変更、認証、token、build trigger、承認、権限拒否を actor 付き JSON Lines で記録する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0a、§22.0e、§23、§24、§27.44 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | API レート制限 | `.api_rate_state` で actor / IP / endpoint group ごとの固定窓 rate limit を管理し、超過時 `429` を返す。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0a、§22.0e、§23、§24、§27.47 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ロールベースアクセス制御 | `.roles` に role と permission を保存し、user / API token / session の権限判定を endpoint group 単位で行う。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0a、§22.0e、§23、§24、§27.41 に従って実装する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | ロールベースアクセス制御 | 複数ユーザー対応後に、管理者・オペレーター・閲覧者等の役割ごとに API 権限を分ける | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 成果物ダウンロード API | 生成静的 Web サイトを archive として API エンドポイント経由で直接ダウンロードできるようにする | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 設定スナップショット差分表示 | 保存済みスナップショット間の設定変更点を diff 形式で確認できる API | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 複数プロジェクト管理 | 単一インスタンスで複数リポジトリ／プロジェクトを切り替え管理する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API キー管理 | `.api_tokens` で API key の hash、scope、role、expires_at、revoked_at を管理し、発行時だけ token 本体を返す。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0a、§22.0e、§23、§24、§27.43 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API キー管理 | `.api_tokens` で API key の hash、scopes、expires_at、revoked_at を管理し、発行時だけ token 本体を返す。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0a、§22.0e、§23、§24、§27.43 に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルドログのリアルタイム配信 | 実行中ビルドのログを SSE / WebSocket でストリーミング配信するエンドポイント | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 設定のインポート／エクスポート | 設定全体を JSON でエクスポートし、別環境へそのままインポートする | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルド統計ダッシュボード | 成功率・平均ビルド時間・エラー分布等を可視化する管理画面を生成する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ユーザー管理 API | admin 権限で user 作成、停止、削除、password reset、role 変更を API / SDK / UI から操作できるようにする。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0a、§22.0e、§23、§24、§27.40 に従って実装する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | ユーザー管理 API | 複数ユーザー対応後に、管理者アカウントの追加・削除・パスワード変更を API で操作する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | IP アドレス制限 | 管理 API へのアクセスを許可 IP レンジに限定するフィルタリング | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | API バージョニング | `/api/v1/` 等のバージョンプレフィックスで API 世代を明示する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | Webhook 署名検証 | 受信 Webhook の HMAC 署名を検証し、なりすましリクエストを拒否する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -1041,7 +1041,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 ## 10. データ永続化ポリシー
 
-- **初期方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.users`・`.roles`・`.totp_secrets`・`.build_history`・`.build_status.json`・`.notify_config`・`.notify_log`・`.notify_pending`・`.server_config`・`.access_log`・`.audit_log`・`.api_rate_state`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.pending_transfers`・`.build_lock`・`.build_state`・`.build_circuit_state`・`.branch_config`・`.webhook_events.json`・`.local_watch_state.json`・`.build_cache.json`・`.build_cache/`・`.dependency_manifest.json`・`.approval_queue`・`.build_trends.json`・`.build_chain_config`・`.api_tokens`・`.build_logs/`・`.snapshots/`・ビルドログ等）
+- **初期方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.totp_secret`・`.build_history`・`.build_status.json`・`.notify_config`・`.notify_log`・`.notify_pending`・`.server_config`・`.access_log`・`.audit_log`・`.api_rate_state`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.pending_transfers`・`.build_lock`・`.build_state`・`.build_circuit_state`・`.branch_config`・`.webhook_events.json`・`.local_watch_state.json`・`.build_cache.json`・`.build_cache/`・`.dependency_manifest.json`・`.approval_queue`・`.build_trends.json`・`.build_chain_config`・`.api_tokens`・`.build_logs/`・`.snapshots/`・ビルドログ等）
 - RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、初期仕様ではいかなるデータベースも採用しない
 - 将来的にデータベースを採用する場合は、本ドキュメントへの仕様追記と §4 許可外部ライブラリ一覧の更新を先行させる
 - **データ形式：フラットファイル JSON 形式**を標準とする
