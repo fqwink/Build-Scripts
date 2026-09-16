@@ -1921,8 +1921,6 @@ retry 待機中に SIGTERM、context timeout、lock 喪失を検出した場合�
 
 ### 27.8 ビルドステータスファイル出力
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
-
 本機能の目的は、runner の現在状態と直近結果を `.build_status.json` に集約し、API、SDK、UI が同じ read-only 情報を参照できるようにすることである。
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。`runner` は `.build_status.json` の唯一の通常更新責務を持つ。`api` は `GET /api/status`、`GET /api/dashboard`、`GET /api/health` で read-only 参照する。API は `.build_status.json` を自動修復してはならない。
@@ -1993,8 +1991,6 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | finalizer | `last_build_id` を消さない。 |
 
 ### 27.9 ビルドトリガー種別の記録
-
-owner component は `runner` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
 本機能の目的は、runner がなぜ build または関連処理を開始したかを、履歴、ログ、状態、API、SDK、UI で同一の固定値として扱うことである。
 
@@ -2074,8 +2070,6 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 | mismatch | API は `500`。 |
 
 ### 27.10 設定ファイル起動時整合性チェック
-
-owner component は `runner` とする。collaborator component は `statefile` とする。
 
 本機能の目的は、runner が build 処理に入る前に、runner が読む状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、規定どおり復旧または停止することである。
 
@@ -2158,8 +2152,6 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 
 ### 27.14 ビルド所要時間の記録と統計 API
 
-owner component は `runner` とする。collaborator component は `api`、`statefile`、`archive` とする。
-
 本機能の目的は、build ごとの開始・終了・所要時間を構造化ログへ保存し、統計 API で直近 N 件の平均、最小、最大を返すことである。
 
 owner component は `runner` とする。collaborator component は `api`、`statefile`、`archive` とする。
@@ -2204,8 +2196,6 @@ Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`�
 | duplicate id | 通常 log を優先し二重集計しない。 |
 
 ### 27.19 週次ビルドサマリー Webhook
-
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 本機能の目的は、過去 7 日間の build 結果を指定曜日・時刻に集計し、Webhook へ定期通知することである。
 
@@ -2275,8 +2265,6 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 
 ### 27.21 複数ファイル監視
 
-owner component は `runner` とする。collaborator component は `builder`、`api`、`statefile` とする。
-
 本機能の目的は、単一 `target_file` 前提を拡張し、複数 Markdown ファイルまたは Markdown ディレクトリを 1 回の runner 起動で監視、差分判定、ビルド対象決定できるようにすることである。
 
 owner component は `runner` とする。collaborator component は `builder`、`api`、`statefile` とする。runner は差分検出と build target 決定、builder は複数入力の静的サイト生成、API は設定表示・更新を担当する。
@@ -2336,8 +2324,6 @@ owner component は `runner` とする。collaborator component は `builder`、
 | SHA 部分失敗 | build なし、SHA cache 差分なし。 |
 
 ### 27.22 ビルドパイプライン YAML 定義
-
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 本機能の目的は、固定 `pipeline.sh` 依存をなくし、内製 YAML subset で build step を明示定義できるようにすることである。
 
@@ -2435,8 +2421,6 @@ owner component は `runner` とする。collaborator component は `statefile` 
 
 本機能の目的は、GitHub API を使わない環境で、ローカル Markdown 入力の変更を SHA-256 snapshot により検出することである。
 
-owner component は `runner` とする。collaborator component は `statefile` とする。
-
 **入力 / 状態：**
 
 | 項目 | 仕様 |
@@ -2494,8 +2478,6 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 本機能の目的は、release tag が付いた commit だけを build 対象にする filter を提供することである。
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
-
 **入力 / 状態：**
 
 | 項目 | 仕様 |
@@ -2548,8 +2530,6 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 owner component は `runner` とする。collaborator component は `statefile` とする。
 
 本機能の目的は、複数 deploy target への転送を bounded parallelism で処理し、遅い target が全体を不必要に止めないようにすることである。
-
-owner component は `runner` とする。collaborator component は `statefile` とする。
 
 **入力 / 状態：**
 
@@ -2658,8 +2638,6 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 owner component は `runner` とする。collaborator component は `api`、`archive`、`statefile` とする。
 
 本機能の目的は、runner が SSH 先で build を実行し、成果物を archive と manifest で回収できるようにすることである。
-
-owner component は `runner` とする。collaborator component は `api`、`archive`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -2795,8 +2773,6 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 本機能の目的は、branch target ごとに build process へ注入する環境変数を定義し、branch や deploy 先ごとの差分を安全に扱うことである。
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
-
 **入力 / 状態：**
 
 | 項目 | 仕様 |
@@ -2847,8 +2823,6 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | mask failure | build 完了扱いにしない。 |
 
 ### 27.32 ビルド通知連携
-
-owner component は `runner` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
 本機能の目的は、build lifecycle event を複数通知 channel へ同一契約で送信し、通知の成功、失敗、再試行、監査を固定仕様で扱えるようにすることである。
 
@@ -2941,8 +2915,6 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 本機能の目的は、build 所要時間の統計を蓄積し、性能傾向と回帰検知の基準を提供することである。
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
-
 **入力 / 状態：**
 
 | 項目 | 仕様 |
@@ -2998,8 +2970,6 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 本機能の目的は、複数 build job の依存関係を DAG として定義し、依存 job 成功後だけ後続 job を実行することである。
-
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -3058,8 +3028,6 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 本機能の目的は、manual、webhook、approval などの queue entry を優先度順に処理し、緊急 build を先に実行できるようにすることである。
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
-
 **入力 / 状態：**
 
 | 項目 | 仕様 |
@@ -3114,8 +3082,6 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 本機能の目的は、build failure を固定カテゴリへ分類し、調査開始点を build log、history、UI に残すことである。
-
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **分類値：**
 
@@ -3182,8 +3148,6 @@ owner component は `runner` とする。collaborator component は `statefile` 
 
 本機能の目的は、build 時点の実行環境を記録し、後から再現性と障害原因を確認できるようにすることである。
 
-owner component は `runner` とする。collaborator component は `statefile` とする。
-
 **記録先：**
 
 `.build_logs/{id}.json.environment` に以下を保存する。
@@ -3241,8 +3205,6 @@ owner component は `runner` とする。collaborator component は `statefile` 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 本機能の目的は、過去 trend と比較して異常に遅い build を検出し、性能劣化を WARN、history flag、通知で可視化することである。
-
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **入力 / 状態：**
 
