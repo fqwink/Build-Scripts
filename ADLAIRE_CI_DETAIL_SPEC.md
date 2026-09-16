@@ -2085,8 +2085,8 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 ├── .dashboard_layout    # ダッシュボードウィジェットレイアウト（JSON）
 ├── .webhook_events.json # Webhook 受信イベントログ（JSON Lines 形式、1行1イベント）
 └── admin/
-    ├── index.html           # 管理画面（単一ファイル完結、）
-    └── adlaire-ci-sdk.js    # JavaScript SDK（）
+    ├── index.html           # 管理画面（単一ファイル完結）
+    └── adlaire-ci-sdk.js    # JavaScript SDK（管理画面に同梱）
 ```
 
 ### 出力先・配信先
@@ -5647,6 +5647,22 @@ POST /api/login
 | `admin-ui.tar.gz` | 管理 API 導入手順 | `admin/index.html` と `adlaire-ci-sdk.js` を含む管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | Release 添付ファイルの SHA-256 checksum 一覧。 |
 
+### §26.2b セットアップ・アップデート機能単位
+
+セットアップ・アップデート実装は、以下の機能単位に分割する。各機能は前段の出力だけを入力として受け取り、失敗時は後続機能を実行しない。
+
+| 機能 | 入力 | 出力 | 失敗条件 | 失敗時の終了状態 |
+|------|------|------|----------|------------------|
+| Release asset resolver | `VERSION`、`OS_ARCH`、取得対象成果物名、GitHub Release URL | `DOWNLOAD_DIR` 内の取得済みファイル | `VERSION` / `OS_ARCH` 空、HTTP status 非 2xx、取得ファイル 0 byte | 取得済みファイルを配置せず終了 |
+| checksum verifier | `SHA256SUMS`、取得済み成果物 | 検証済み成果物一覧 | `SHA256SUMS` 不在、対象行不在、SHA-256 不一致 | バイナリ配置を実行せず終了 |
+| binary installer | 検証済みバイナリ、`BIN_DIR` | `adlaire-ci-build`、`adlaire-ci-runner`、必要時 `adlaire-ci-api` | 入力バイナリ不在、実行権限付与失敗、`install` 失敗 | systemd 変更を実行せず終了 |
+| secret initializer | PAT 入力、`INSTALL_DIR` | `.github_token` mode `0600` | PAT 空、書き込み失敗、mode 補正失敗 | systemd 変更を実行せず終了 |
+| state initializer | `INSTALL_DIR` | `.last_sha`、必要時 `.build_logs/`、`.snapshots/` | 書き込み失敗、mode 補正失敗 | systemd 変更を実行せず終了 |
+| systemd unit writer | unit 内容、`SERVICE_USER`、`INSTALL_DIR`、`BIN_DIR` | `/etc/systemd/system/adlaire-ci.service`、`adlaire-ci.timer`、必要時 `adlaire-ci-api.service` | unit 書き込み失敗、`systemctl daemon-reload` 失敗 | enable/start を実行せず終了 |
+| service activator | systemd unit 名 | active な timer / service | `enable --now` 失敗、`is-active` 非 `active` | 直前の journal 確認コマンドを出力して終了 |
+| admin UI installer | `admin-ui.tar.gz`、`INSTALL_DIR` | `$INSTALL_DIR/admin/index.html`、`$INSTALL_DIR/admin/adlaire-ci-sdk.js` | archive 不在、checksum 不一致、展開後必須ファイル不在 | API service 起動を実行せず終了 |
+| rollback executor | `BACKUP_DIR`、`BIN_DIR`、再起動対象 unit | 旧バイナリ復元済み状態 | 旧バイナリ不在、復元失敗、復元後 restart 失敗 | 自動復旧を継続せず journal 確認対象を出力 |
+
 ### §26.3 Go 版初回セットアップ手順
 
 対象は Go 版の `build_spec.go` と `runner.go` から生成した `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci.service`、`adlaire-ci.timer` とする。
@@ -5713,44 +5729,65 @@ Go 版初回セットアップでは以下を実行しない。
 
 | 対象 | 理由 |
 |------|------|
-| `/usr/local/bin/adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"` | `api_server.go` は。 |
-| `systemctl enable --now adlaire-ci-api` | 管理 API サーバーは。 |
-| `.build_logs/` 作成 | ビルドログ保存は。 |
-| `.snapshots/` 作成 | スナップショット保存は。 |
+| `/usr/local/bin/adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"` | 初回セットアップ対象は runner と build バイナリに限定し、API 認証情報生成は §26.3b で実行する。 |
+| `systemctl enable --now adlaire-ci-api` | API service は §26.3b の API バイナリ配置、認証情報生成、unit 配置がすべて成功した後にのみ起動する。 |
+| `.build_logs/` 作成 | runner 初期導入ではビルド実行時に必要な状態だけを初期化し、API が参照する履歴ディレクトリは §26.3b で作成する。 |
+| `.snapshots/` 作成 | snapshot 参照・rollback API と組み合わせて使うため、§26.3b の管理 API 導入時に作成する。 |
 
-### §26.3b 管理 API 導入後の追加セットアップ手順（）
+### §26.3b 管理 API 導入後の追加セットアップ手順
 
 `api_server.go`、`admin/index.html`、`adlaire-ci-sdk.js` を実装した後にのみ本手順を実行する。
 
 管理 API 導入手順は、runner の既存稼働状態を壊してはならない。`adlaire-ci-api` の配置、認証情報生成、systemd enable のいずれかが失敗した場合でも、`adlaire-ci.timer` は停止しない。`.admin_credentials` が既に存在する場合は `--init-credentials` を再実行せず、既存 credentials を維持する。
 
+管理 API 導入手順は以下の停止条件に従う。
+
+| 手順 | 停止条件 | 失敗時の扱い |
+|------|----------|--------------|
+| ディレクトリ作成 | `$INSTALL_DIR/.build_logs`、`$INSTALL_DIR/.snapshots`、`$INSTALL_DIR/admin` の作成に失敗 | runner timer を変更せず終了する。 |
+| API バイナリ取得 | `adlaire-ci-api-$OS_ARCH` または `SHA256SUMS` の取得、checksum 検証に失敗 | API バイナリを配置せず終了する。 |
+| 管理 UI 取得 | `admin-ui.tar.gz` の取得、checksum 検証、展開に失敗 | API service を起動せず終了する。 |
+| 管理 UI 必須ファイル確認 | `$INSTALL_DIR/admin/index.html` または `$INSTALL_DIR/admin/adlaire-ci-sdk.js` が存在しない | API service を起動せず終了する。 |
+| API バイナリ配置 | checksum 検証済み API バイナリ不在、または `install` 失敗 | API service を起動せず終了する。 |
+| 認証情報生成 | `.admin_credentials` 新規生成に失敗。ただし既存ファイルがある場合は成功扱い | API service を起動せず終了する。 |
+| systemd 配置 | unit 書き込みまたは `systemctl daemon-reload` 失敗 | API service を enable/start せず終了する。 |
+| 起動確認 | `systemctl is-active adlaire-ci-api` が `active` でない | runner timer を停止せず、API の journal 確認コマンドを出力して終了する。 |
+
 ```bash
 # ── 1. 拡張用ディレクトリ作成 ─────────────────────────
 mkdir -p "$INSTALL_DIR/.build_logs"
 mkdir -p "$INSTALL_DIR/.snapshots"
+mkdir -p "$INSTALL_DIR/admin"
 
 # ── 2. Release バイナリ取得・checksum 検証 ────────────
 mkdir -p "$DOWNLOAD_DIR"
 cd "$DOWNLOAD_DIR"
 curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/adlaire-ci-api-$OS_ARCH"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/admin-ui.tar.gz"
 curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/SHA256SUMS"
 grep "  adlaire-ci-api-$OS_ARCH$" SHA256SUMS | sha256sum -c -
+grep "  admin-ui.tar.gz$" SHA256SUMS | sha256sum -c -
 
 # ── 3. Go 版 API バイナリ配置 ─────────────────────────
 install -m 0755 "adlaire-ci-api-$OS_ARCH" "$BIN_DIR/adlaire-ci-api"
 
-# ── 4. 初期認証情報生成（初期パスワード: admin）────────
+# ── 4. 管理 UI 配布物展開 ────────────────────────────
+tar -xzf admin-ui.tar.gz -C "$INSTALL_DIR/admin"
+test -f "$INSTALL_DIR/admin/index.html"
+test -f "$INSTALL_DIR/admin/adlaire-ci-sdk.js"
+
+# ── 5. 初期認証情報生成（初期パスワード: admin）────────
 /usr/local/bin/adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"
 chmod 600 "$INSTALL_DIR/.admin_credentials"
 
-# ── 5. 管理 API systemd サービス配置 ─────────────────
+# ── 6. 管理 API systemd サービス配置 ─────────────────
 # §26.4.2 のファイル内容を /etc/systemd/system/adlaire-ci-api.service に配置した上で:
 systemctl daemon-reload
 
-# ── 6. サービス有効化・起動 ───────────────────────────
+# ── 7. サービス有効化・起動 ───────────────────────────
 systemctl enable --now adlaire-ci-api
 
-# ── 7. 起動確認 ───────────────────────────────────────
+# ── 8. 起動確認 ───────────────────────────────────────
 systemctl status adlaire-ci-api
 ```
 
@@ -5786,7 +5823,7 @@ Unit=adlaire-ci.service
 WantedBy=timers.target
 ```
 
-#### §26.4.2 管理 API 導入後の systemd ファイル（）
+#### §26.4.2 管理 API 導入後の systemd ファイル
 
 **`/etc/systemd/system/adlaire-ci-api.service`**（`api_server.go`）：
 
@@ -5822,6 +5859,7 @@ WantedBy=multi-user.target
 | バイナリ更新 | checksum 検証済みの新バイナリを `install -m 0755` で配置できる。 | 退避済み旧バイナリを元へ戻し、サービスを再起動しない。 |
 | runner 再起動 | `systemctl restart adlaire-ci.timer` と `systemctl is-active adlaire-ci.timer` が成功する。 | 旧バイナリを戻し、再度 `systemctl restart adlaire-ci.timer` を 1 回だけ実行する。 |
 | API 再起動 | API 導入済みの場合のみ `systemctl restart adlaire-ci-api` と `systemctl is-active adlaire-ci-api` が成功する。 | 旧バイナリを戻し、runner と API の再起動を 1 回だけ実行する。 |
+| 管理 UI 更新 | API 導入済みの場合のみ `admin-ui.tar.gz` の取得、checksum 検証、一時ディレクトリへの展開、必須ファイル確認、旧 `admin/` との差し替えが成功する。 | 旧 `admin/` を維持または退避先から復元し、API 再起動を実行しない。 |
 
 rollback 後も service が active にならない場合は、自動復旧を継続せず、`journalctl -u adlaire-ci.service -n 100`、API 導入済みなら `journalctl -u adlaire-ci-api -n 100` を確認対象として報告する。rollback はバイナリ差し戻しと service restart のみを行い、状態ファイル、履歴、ログ、secret を巻き戻してはならない。
 
@@ -5832,11 +5870,16 @@ NEW_VERSION="V.2.102"
 OS_ARCH="linux-amd64"
 DOWNLOAD_DIR="/tmp/adlaire-ci-release-$NEW_VERSION"
 BACKUP_DIR="/tmp/adlaire-ci-bin-backup-${NEW_VERSION}"
+ADMIN_BACKUP_DIR="/tmp/adlaire-ci-admin-backup-${NEW_VERSION}"
+ADMIN_TMP_DIR="/tmp/adlaire-ci-admin-new-${NEW_VERSION}"
 
 # ── 1. 既存バイナリ退避 ──────────────────────────────
 mkdir -p "$BACKUP_DIR"
 cp "$BIN_DIR/adlaire-ci-build"  "$BACKUP_DIR/adlaire-ci-build"
 cp "$BIN_DIR/adlaire-ci-runner" "$BACKUP_DIR/adlaire-ci-runner"
+if [ -d "/opt/adlaire-builder/admin" ]; then
+  cp -a "/opt/adlaire-builder/admin" "$ADMIN_BACKUP_DIR"
+fi
 
 # ── 2. Release バイナリ取得・checksum 検証 ────────────
 mkdir -p "$DOWNLOAD_DIR"
@@ -5862,8 +5905,18 @@ systemctl status adlaire-ci.timer
 
 ```bash
 curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/adlaire-ci-api-$OS_ARCH"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/admin-ui.tar.gz"
 grep "  adlaire-ci-api-$OS_ARCH$" SHA256SUMS | sha256sum -c -
+grep "  admin-ui.tar.gz$" SHA256SUMS | sha256sum -c -
 install -m 0755 "adlaire-ci-api-$OS_ARCH" "$BIN_DIR/adlaire-ci-api"
+mkdir -p "$ADMIN_TMP_DIR"
+tar -xzf admin-ui.tar.gz -C "$ADMIN_TMP_DIR"
+test -f "$ADMIN_TMP_DIR/index.html"
+test -f "$ADMIN_TMP_DIR/adlaire-ci-sdk.js"
+if [ -d "/opt/adlaire-builder/admin" ]; then
+  mv "/opt/adlaire-builder/admin" "$ADMIN_BACKUP_DIR"
+fi
+mv "$ADMIN_TMP_DIR" "/opt/adlaire-builder/admin"
 systemctl restart adlaire-ci-api
 systemctl status adlaire-ci-api
 ```
@@ -5880,7 +5933,7 @@ systemctl status adlaire-ci-api
 | 再起動 | `systemctl restart adlaire-ci.timer` |
 | ログ確認（runner） | `journalctl -u adlaire-ci.service -f` |
 
-#### 管理 API 導入後（）
+#### 管理 API 導入後
 
 | 操作 | コマンド |
 |------|---------|
