@@ -17,7 +17,7 @@
 | 持つ内容 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
 | 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、systemd 導入手順、release asset 取得手順。 |
 
-`admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`admin/index.html` の UI 仕様は `ADLAIRE_CI_DETAIL_UI_SPEC.md` を正とし、`admin/adlaire-ci-sdk.js` の SDK 仕様は `ADLAIRE_CI_DETAIL_SDK_SPEC.md` を正とする。
+`admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の仕様は `ADLAIRE_CI_DETAIL_UI_SPEC.md` を正とし、`sdk` の仕様は `ADLAIRE_CI_DETAIL_SDK_SPEC.md` を正とする。
 
 ---
 
