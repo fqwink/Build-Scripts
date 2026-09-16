@@ -9428,10 +9428,10 @@ W1-PR1 は、下表の fixture をすべて含める。1 件でも不足、skip�
 
 | fixture 名 | 必須 assertion | 入力 | 期待結果 |
 |------------|----------------|------|----------|
-| `success-dry-run-changed` | `stdout`、`state`、`effects`、`no-write`、`secret-mask` | `--dry-run`、変更あり fake GitHub response、既存 SHA cache、対象 branch / target。 | stdout JSON に `would_build=true`、対象 commit/blob、`would_write` 一覧、状態差分なし、外部 write 0。 |
-| `noop-dry-run-unchanged` | `stdout`、`state`、`effects`、`no-write`、`idempotency` | `--dry-run`、変更なし fake GitHub response、既存 SHA cache。 | stdout JSON に `would_build=false`、理由 `unchanged`、2 回実行して差分なし。 |
-| `failure-dry-run-github-error` | `stdout`、`stderr`、`state`、`effects`、`no-write`、`order` | `--dry-run`、fake GitHub `500` または rate limit failure。 | 終了コード `3`、状態差分なし、pipeline / deploy / notification 呼び出し 0、error detail は secret を含まない。 |
-| `security-dry-run-secret-mask` | `stdout`、`stderr`、`effects`、`secret-mask`、`no-write` | token、webhook URL、notification URL、branch config secret を含む入力。 | stdout/stderr/effects/log 期待値に secret 平文が存在せず、mask 後値だけを含む。 |
+| `success-dry-run-changed` | `stdout`、`state`、`logs`、`effects`、`no-write`、`secret-mask` | `--dry-run`、変更あり fake GitHub response、既存 SHA cache、対象 branch / target。 | stdout JSON に `would_build=true`、対象 commit/blob、`would_write` 一覧、状態 / logs 差分なし、fake GitHub read 以外の外部 call 0。 |
+| `noop-dry-run-unchanged` | `stdout`、`state`、`logs`、`effects`、`no-write`、`idempotency` | `--dry-run`、変更なし fake GitHub response、既存 SHA cache。 | stdout JSON に `would_build=false`、理由 `unchanged`、状態 / logs 差分なし、2 回実行して差分なし。 |
+| `failure-dry-run-github-error` | `stdout`、`stderr`、`state`、`logs`、`effects`、`no-write`、`order`、`secret-mask` | `--dry-run`、fake GitHub `500` または rate limit failure。 | 終了コード `3`、状態 / logs 差分なし、pipeline / deploy / notification 呼び出し 0、error detail は secret を含まない。 |
+| `security-dry-run-secret-mask` | `stdout`、`stderr`、`state`、`logs`、`effects`、`secret-mask`、`no-write` | token、webhook URL、notification URL、branch config secret を含む入力。 | stdout/stderr/effects/log 期待値に secret 平文が存在せず、mask 後値だけを含み、状態 / logs 差分なし。 |
 
 **§27 W1-PR1 acceptance checklist：**
 
@@ -9443,7 +9443,8 @@ W1-PR1 の PR 本文には、下表を記録する。記録がない項目は未
 | 対象外 | `§27.1`、`§27.3`、`§27.4`、API、SDK、UI、MCP、外部公開構成、状態ファイル schema 新設。 |
 | fixture | `success-dry-run-changed`、`noop-dry-run-unchanged`、`failure-dry-run-github-error`、`security-dry-run-secret-mask`。 |
 | 副作用確認 | 状態ファイル、lock、SHA cache、build log、history、notification、deploy、snapshot、commit status に差分がないこと。 |
-| 外部呼び出し確認 | fake GitHub read 以外の呼び出しが 0 件であること。 |
+| effects 確認 | `expected/effects.json` の `external_calls` には fake GitHub read だけを記録し、`commands`、`notifications`、`downloads`、`streams` は空配列にする。`unchanged_paths` と `forbidden_writes` には状態ファイル、lock、SHA cache、build log、history、pending、snapshot、notify を列挙する。 |
+| 外部呼び出し確認 | fake GitHub read 以外の呼び出しが 0 件であること。`forbidden_calls` には GitHub write API、SSH、pipeline、notification、systemd、hook、commit status を列挙する。 |
 | secret 確認 | token、password、secret、PAT、Authorization header が stdout/stderr/effects/expected に平文で存在しないこと。 |
 | 後続影響 | W1 後続 PR が利用してよい dry-run JSON schema、終了コード、no-write 契約。 |
 
