@@ -1,6 +1,6 @@
 # Adlaire CI — 仕様ドキュメント
 
-**対象コンポーネント：** `build_spec.go`（ビルドスクリプト、実装済み）/ `runner.go`（CI ランナー、仕様化済み・未実装）/ `api_server.go`（管理 API サーバー、仕様化済み・未実装）/ `adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `mcp_server.go`（MCP サーバー、将来計画）
+**対象コンポーネント：** `build_spec.go`（ビルドスクリプト、実装済み）/ `runner.go`（CI ランナー、実装済み）/ `api_server.go`（管理 API サーバー、仕様化済み・未実装）/ `adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `mcp_server.go`（MCP サーバー、将来計画）
 **出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記） → Part 2 §2 参照
@@ -30,7 +30,7 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 | コンポーネント | 状態 | 備考 |
 |---------------|------|------|
 | `build_spec.go` | 実装済み | Go 版 Markdown → 静的 Web サイトビルドスクリプト。Phase 1 の `gofmt` と `go test` 検証済み。 |
-| `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー。 |
+| `runner.go` | 実装済み | Go 版 CI ランナー。Phase 2 初期 fixture R1〜R7 の `gofmt` と `go test` 検証済み。 |
 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
@@ -318,7 +318,19 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 ### ビルド・CI ランナー（runner.go）
 
-**Go 版で仕様化済み・未実装の範囲：**
+**Go 版で実装済みの初期範囲：**
+
+- `--state-dir`、`--once`、`--version`、`--help` の CLI 契約
+- `.branch_config` と `.last_sha` による branch target / SHA cache 読み込み
+- GitHub Trees API / Blobs API による対象 Markdown 取得
+- SHA 一致時の変更なし skip
+- `pipeline.sh` 起動、stdout/stderr 収集、`[REPORT]` / `[WARN]` 取り込み
+- `.build_logs/{id}.json`、`.build_history`、`.build_state`、`.build_lock` の作成・更新
+- deploy 失敗時の `.pending_transfers` 追加
+- `.notify_pending` 破損時の退避と `[]` 再生成
+- Phase 2 初期 fixture R1〜R7
+
+**Go 版で仕様化済みの全体範囲：**
 
 - GitHub リポジトリの対象ファイルを定期ポーリング（systemd timer）
 - blob SHA による差分検出（変更なし時はビルドをスキップ）
@@ -889,7 +901,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 | スクリプト | 状態 | 役割 |
 |-----------|------|------|
 | `build_spec.go` | 実装済み | Go 版ビルドスクリプト（Markdown → 静的 Web サイト変換）。Phase 1 の `gofmt` と `go test` 検証済み。 |
-| `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー（変更検出・ビルド起動） |
+| `runner.go` | 実装済み | Go 版 CI ランナー（変更検出・ビルド起動）。Phase 2 初期 fixture R1〜R7 の `gofmt` と `go test` 検証済み。 |
 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー（常駐 HTTP サーバー） |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | JavaScript SDK（管理ツール用 API クライアント） |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI |
