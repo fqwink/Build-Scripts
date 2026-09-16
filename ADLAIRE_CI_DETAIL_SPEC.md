@@ -879,7 +879,7 @@ type SearchIndexEntry struct {
 6. 一時ディレクトリを `--out` へ `os.Rename` する。
 7. 置換成功後、旧 `{basename}.prev.{pid}` を削除する。
 
-手順 1〜4 で失敗した場合は一時ディレクトリを削除し、既存 `--out` を変更してはならない。手順 6 で失敗した場合は、可能であれば `{basename}.prev.{pid}` を `--out` へ戻し、stderr に `cannot replace output directory: <path>` を出力して終了コード `1` とする。
+手順 1〜4 で失敗した場合は一時ディレクトリを削除し、既存 `--out` を変更してはならない。手順 6 で失敗した場合は `{basename}.prev.{pid}` が存在するか確認し、存在する場合は `{basename}.prev.{pid}` を `--out` へ戻す復旧 rename を必ず 1 回試行する。復旧 rename が失敗した場合は stderr に `cannot restore previous output directory: <path>` を出力した後、続けて `cannot replace output directory: <path>` を出力し、終了コード `1` とする。`{basename}.prev.{pid}` が存在しない場合は `cannot replace output directory: <path>` のみを出力し、終了コード `1` とする。
 
 `--out` が既存ファイルでディレクトリではない場合は終了コード `1` とし、stderr に `output path is not directory: <path>` を出力する。
 
@@ -1811,6 +1811,32 @@ type DeployTarget struct {
 
 未知引数、値欠落、相対 `--state-dir` は終了コード `2` とし、ビルド処理を開始しない。
 
+**runner CLI パース固定仕様：**
+
+- 引数は `flag` package 互換の `--name value` と `--name=value` の両方を許可する。
+- 短縮オプション（例：`-s`、`-o`）は禁止する。指定された場合は未知の引数として扱う。
+- 同一引数が複数回指定された場合は最後の値を採用する。ただし `--once` は指定有無にかかわらず `true` として扱う。
+- `--help` と `--version` は他の引数より優先し、`.github_token` 読み込み、lock 作成、状態ファイル読み込み、GitHub API 呼び出しを行わない。
+- stderr のエラー行は末尾に改行 1 つを付ける。複数エラーをまとめて出力せず、最初に検出したエラー 1 件で終了する。
+
+**固定出力：**
+
+| 条件 | stdout |
+|------|--------|
+| `--help` | `Usage: adlaire-ci-runner [--state-dir path] [--once] [--version] [--help]` |
+| `--version` | `adlaire-ci-runner ADLAIRE_CI_SPEC go=<runtime.Version()>` |
+
+**CLI 異常系：**
+
+| 条件 | 終了コード | stderr |
+|------|------------|--------|
+| 未知の引数 | `2` | `unknown option: <name>` |
+| `--state-dir` 値欠落 | `2` | `missing value: --state-dir` |
+| `--state-dir` が空文字 | `2` | `state directory must not be empty` |
+| `--state-dir` が相対パス | `2` | `state directory must be absolute: <path>` |
+| `--state-dir` が存在しない | `2` | `state directory not found: <path>` |
+| `--state-dir` がディレクトリではない | `2` | `state path is not directory: <path>` |
+
 以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`BUILD_COOLDOWN_SECONDS`、`HISTORY_KEEP_N`、`FORCE_BUILD_INTERVAL`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` を Go 版 runner の標準設定とする。
 
 ```text
@@ -1887,6 +1913,94 @@ atomic write 失敗時は対象ファイルを更新済みとして扱わない�
 
 PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` を読めない場合は PID 実行中確認不能として終了コード `4` とする。
 
+**runner 状態ファイル schema（実装固定）：**
+
+`.last_sha` / `BranchTarget.SHAFile`:
+
+```json
+{"sha":""}
+```
+
+| キー | 型 | 必須 | 許容値 |
+|------|----|------|--------|
+| `sha` | string | 必須 | 空文字または Git blob SHA。空文字は初回実行扱い。 |
+
+`.branch_config`:
+
+```json
+{
+  "branch_targets": [
+    {
+      "branch": "main",
+      "target_file": "docs",
+      "sha_file": "/opt/adlaire-builder/.last_sha",
+      "src": "/opt/adlaire-builder/repo/docs",
+      "out": "/opt/adlaire-builder/dist/site",
+      "deploy_targets": [
+        {"host": "192.0.2.1", "user": "deploy", "dest_dir": "/var/www/html"}
+      ]
+    }
+  ]
+}
+```
+
+`.branch_config` が存在しない場合は §12 の `BRANCH_TARGETS` 既定値を使用する。存在する場合は `branch_targets` を必須キーとし、未知キーは `CONFIG_UNKNOWN_KEY: key={key}` を出して無視する。`branch_targets` が空配列の場合は終了コード `2` とする。
+
+`.build_state`:
+
+```json
+{
+  "running": false,
+  "current_build_id": null,
+  "queued": [],
+  "last_started_at": null,
+  "last_finished_at": null,
+  "weekly_summary_last_sent_at": null,
+  "weekly_summary_sent_date": null
+}
+```
+
+| キー | 型 | 必須 | 更新責務 |
+|------|----|------|----------|
+| `running` | boolean | 必須 | lock 取得後 `true`、終了直前 `false`。 |
+| `current_build_id` | string/null | 必須 | 実行中 build id。終了後は `null`。 |
+| `queued` | array | 必須 | API 側の手動キュー用。runner は読み取りのみとし、初期実装では変更しない。 |
+| `last_started_at` | string/null | 必須 | UTC ISO 8601。 |
+| `last_finished_at` | string/null | 必須 | UTC ISO 8601。 |
+| `weekly_summary_last_sent_at` | string/null | 必須 | UTC ISO 8601。 |
+| `weekly_summary_sent_date` | string/null | 必須 | `YYYY-MM-DD`。二重送信防止に使用する。 |
+
+`.build_circuit_state`:
+
+```json
+{
+  "open": false,
+  "consecutive_failures": 0,
+  "opened_at": null,
+  "last_failure_at": null,
+  "last_error": null
+}
+```
+
+`.notify_pending` entry:
+
+```json
+{
+  "event": "success",
+  "url": "https://example.com/hook",
+  "payload": {},
+  "queued_at": "2026-09-16T00:00:00Z",
+  "retry_count": 1,
+  "last_error": "connection refused"
+}
+```
+
+`.pending_transfers` entry は §14a の形式を正とする。JSON array 内の entry は投入順を保持し、再試行も投入順で処理する。重複統合は `out`、`host`、`user`、`dest_dir` の 4 項目完全一致で判定する。
+
+**build id 契約：**
+
+runner が生成する build id は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` とする。同一秒内に複数 target のビルドログが必要な場合は、2 件目以降を `b{YYYYMMDDHHmmss}-2`、`-3` とする。build id は `.build_logs/{id}.json`、`.build_history`、`.snapshots/{id}/` で同一値を使用する。
+
 ---
 
 ## 13. 処理フロー
@@ -1906,6 +2020,39 @@ PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` �
 9. `.build_lock` を削除する。
 
 途中失敗時は、失敗が発生した段階以降の成功前提更新を行わない。例えば `pipeline.sh` 失敗時は `sha_file`、snapshot、転送成功履歴を更新しない。ただし `.build_logs/{id}.json`、`.build_history`、`.build_state.running=false`、通知 pending は失敗記録として保存する。
+
+**ターゲット結果分類：**
+
+runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいずれか 1 つの `target_status` を確定する。
+
+| `target_status` | 条件 | runner 終了コードへの影響 |
+|-----------------|------|---------------------------|
+| `skipped_no_change` | SHA 一致かつ強制ビルド条件未達。 | 失敗扱いしない。 |
+| `skipped_cooldown` | クールダウンで全体処理を開始しない。 | `0`。 |
+| `success` | pipeline 成功、SHA 更新成功、deploy target がないか全 deploy target が成功。 | `0` 候補。 |
+| `success_deploy_pending` | pipeline 成功、SHA 更新成功、1 件以上の deploy が pending。 | `1`。 |
+| `failure_api` | GitHub API が全再試行失敗。 | 全 target がこれなら `3`、一部なら `1`。 |
+| `failure_decode` | Blob Base64 decode または Markdown 書き出し失敗。 | `1`。 |
+| `failure_precheck` | 事前チェック失敗。 | `1`。 |
+| `failure_build` | `pipeline.sh` が非 0 終了または timeout。 | `1`。 |
+| `failure_state_write` | SHA、ログ、履歴、状態ファイルの必須更新に失敗。 | `1`。 |
+
+`BRANCH_TARGETS` が複数ある場合、runner は設定不正を除き、1 target の失敗で全体処理を中断しない。全 target 処理後、最も重い終了コードを採用する。重さは `4 > 3 > 2 > 1 > 0` とする。
+
+**更新可否マトリクス：**
+
+| 状況 | `sha_file` | `.build_logs/{id}.json` | `.build_history` | deploy | snapshot |
+|------|------------|-------------------------|------------------|--------|----------|
+| 変更なし | 更新しない | 作成しない | 追記しない | 実行しない | 作成しない |
+| 強制ビルド成功 | 新 SHA または既存 SHA を保存 | 作成する | 追記する | 実行する | deploy 成功時のみ作成 |
+| API 失敗 | 更新しない | 作成する | 追記する | 実行しない | 作成しない |
+| Blob decode 失敗 | 更新しない | 作成する | 追記する | 実行しない | 作成しない |
+| 事前チェック失敗 | 更新しない | 作成する | 追記する | 実行しない | 作成しない |
+| pipeline 失敗 | 更新しない | 作成する | 追記する | 実行しない | 作成しない |
+| pipeline 成功・deploy 成功 | 更新する | 作成する | 追記する | 実行する | 作成する |
+| pipeline 成功・deploy pending | 更新する | 作成する | 追記する | pending へ投入 | 作成しない |
+
+`sha_file` は pipeline 成功後、deploy 実行前に更新する。理由は、ビルド成果物生成が成功した時点で入力 SHA の処理は完了しており、deploy 失敗は `.pending_transfers` の責務で再試行するためである。
 
 **状態ファイル破損時の処理：**
 
@@ -2054,6 +2201,43 @@ set -euo pipefail
 ```
 
 ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`runner.go` は参照しない）。`adlaire-ci-build` は `build_spec.go` から生成した Go 版バイナリである。
+
+**runner からの実行契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| command | `bash {srcParent}/.ci/pipeline.sh` |
+| working directory | `{srcParent}` |
+| timeout | `.server_config.build_timeout_seconds` が存在すればその値、なければ `300` 秒。 |
+| stdout/stderr | それぞれ最大 1 MiB までメモリに保持し、超過分は末尾 1 MiB を保存する。超過時は `stdout_truncated` / `stderr_truncated` を `true` にする。 |
+| 環境変数 | 親 process の環境を引き継ぎ、下表の値で上書きする。 |
+
+| 環境変数 | 値 |
+|----------|----|
+| `ADLAIRE_CI_SRC` | `BranchTarget.Src` |
+| `ADLAIRE_CI_OUT` | `BranchTarget.Out` |
+| `ADLAIRE_CI_BRANCH` | `BranchTarget.Branch` |
+| `ADLAIRE_CI_BUILD_ID` | build id |
+| `ADLAIRE_CI_TARGET_FILE` | `BranchTarget.TargetFile` |
+| `ADLAIRE_CI_STATE_DIR` | `RunnerConfig.StateDir` |
+
+`pipeline.sh` が timeout した場合、runner は process group を終了し、`target_status="failure_build"`、`error="pipeline timeout"` として記録する。timeout 時も stdout/stderr の取得済み内容は `.build_logs/{id}.json` に保存する。
+
+**GitHub API 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| Base URL | `https://api.github.com` |
+| User-Agent | `adlaire-ci-runner` |
+| Authorization | `Bearer {token}` |
+| Accept | `application/vnd.github+json` |
+| API version header | `X-GitHub-Api-Version: 2022-11-28` |
+| timeout | 30 秒 |
+| retry 対象 | network error、timeout、HTTP `429`、`500`、`502`、`503`、`504` |
+| retry 対象外 | HTTP `400`、`401`、`403`（rate limit を除く）、`404`、`422` |
+| backoff | `API_RETRY_BASE_SECONDS * 2^attempt` 秒。attempt は 0 始まり。 |
+
+HTTP `401` は `failure_api` とし、ERROR ログ `GITHUB_AUTH_FAILED` を出す。HTTP `404` は `target_file` または branch 設定不正として `failure_api` とし、ERROR ログ `GITHUB_NOT_FOUND: branch={branch} target={target_file}` を出す。HTTP `403` で `X-RateLimit-Remaining: 0` の場合のみ rate limit として reset まで待機する。
 
 ---
 
@@ -2233,6 +2417,207 @@ Go 版 `runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成す
 | ログ世代管理 | `LOG_KEEP_N` を超過した `.build_logs/{id}.json` を古いものから削除する。 |
 
 これらのログ項目を実装対象に含める時点で、§10a の実装対象、§12 の設定値、§13 の処理フロー、§22 の API レスポンス仕様と整合させる。
+
+**`.build_logs/{id}.json` 完全 schema：**
+
+```json
+{
+  "id": "b20260916010000",
+  "branch": "main",
+  "target_file": "docs",
+  "target_status": "success",
+  "started_at": "2026-09-16T01:00:00Z",
+  "finished_at": "2026-09-16T01:00:12Z",
+  "duration_seconds": 12,
+  "commit": {
+    "sha": "abcdef",
+    "message": "Update docs",
+    "author": "example",
+    "date": "2026-09-16T00:59:00Z"
+  },
+  "blob_sha": "012345",
+  "previous_blob_sha": "",
+  "pipeline": {
+    "exit_code": 0,
+    "stdout": "...",
+    "stderr": "",
+    "stdout_truncated": false,
+    "stderr_truncated": false
+  },
+  "report": {
+    "pages": 1,
+    "headings": 1,
+    "tables_count": 0,
+    "code_blocks_count": 0,
+    "warnings_count": 0,
+    "size_warn": false,
+    "broken_links": 0,
+    "heading_skips": 0,
+    "reading_time": 1,
+    "theme": "adlaire-default"
+  },
+  "warnings": [],
+  "deploy": [
+    {
+      "host": "192.0.2.1",
+      "user": "deploy",
+      "dest_dir": "/var/www/html",
+      "status": "success",
+      "transfer_verified": true,
+      "files_total": 3,
+      "files_uploaded": 3,
+      "files_skipped": 0,
+      "bytes_uploaded": 1234,
+      "error": null
+    }
+  ],
+  "snapshot_id": "b20260916010000",
+  "error": null
+}
+```
+
+| キー | 型 | 必須 | 条件 |
+|------|----|------|------|
+| `id` | string | 必須 | build id。 |
+| `branch` | string | 必須 | `BranchTarget.Branch`。 |
+| `target_file` | string | 必須 | `BranchTarget.TargetFile`。 |
+| `target_status` | string | 必須 | §13 の分類値。 |
+| `started_at` / `finished_at` | string | 必須 | UTC ISO 8601。 |
+| `duration_seconds` | integer | 必須 | 0 以上。 |
+| `commit` | object | 必須 | 取得失敗時は各値を `null` にする。 |
+| `blob_sha` | string/null | 必須 | GitHub Trees API で検出した SHA。API 失敗時は `null`。 |
+| `previous_blob_sha` | string | 必須 | sha_file 読み込み値。未設定時は空文字。 |
+| `pipeline` | object | 必須 | pipeline 未実行時も `exit_code:null`、stdout/stderr 空文字で保存する。 |
+| `report` | object/null | 必須 | `[REPORT]` が存在しない場合は `null`。 |
+| `warnings` | string[] | 必須 | `[WARN]` 行から prefix を除いた文字列配列。 |
+| `deploy` | object[] | 必須 | deploy target がない場合は空配列。 |
+| `snapshot_id` | string/null | 必須 | snapshot 未作成時は `null`。 |
+| `error` | string/null | 必須 | 成功時 `null`。失敗時は固定文言を保存する。 |
+
+`.build_logs/{id}.json` は `encoding/json` で生成し、末尾改行を付ける。未知キーを追加してはならない。`report.tables_count` と `report.code_blocks_count` は stdout `[REPORT]` の `tables`、`code_blocks` から変換して保存する。
+
+**`.build_history` JSON Lines schema：**
+
+`.build_history` は 1 行 1 JSON object とし、各行は次の schema を満たす。
+
+```json
+{"id":"b20260916010000","branch":"main","target_file":"docs","status":"success","started_at":"2026-09-16T01:00:00Z","finished_at":"2026-09-16T01:00:12Z","duration_seconds":12,"commit_sha":"abcdef","blob_sha":"012345","pages":1,"warnings":0,"size_warn":false,"output_sha256":null,"rollback_from":null}
+```
+
+`status` は `target_status` と同じ値を保存する。`output_sha256` は出力サイト全体 manifest の SHA-256 hex とし、manifest 生成に失敗した場合のみ `null` を許可する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
+
+**固定エラー文言：**
+
+| 条件 | `error` |
+|------|---------|
+| GitHub 認証失敗 | `github authentication failed` |
+| GitHub target 不在 | `github target not found` |
+| GitHub API 全再試行失敗 | `github api failed` |
+| Blob decode 失敗 | `blob decode failed` |
+| Markdown 書き出し失敗 | `source write failed` |
+| 事前チェック失敗 | `precheck failed` |
+| pipeline timeout | `pipeline timeout` |
+| pipeline 非 0 | `pipeline failed` |
+| deploy pending | `deploy pending` |
+| 状態ファイル書き込み失敗 | `state write failed` |
+
+---
+
+## 15a. `runner.go` 受け入れ fixture
+
+Go 版 `runner.go` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
+
+### Fixture R1: CLI 異常系
+
+| 実行 | 終了コード | stdout | stderr |
+|------|------------|--------|--------|
+| `adlaire-ci-runner --help` | `0` | `Usage: adlaire-ci-runner [--state-dir path] [--once] [--version] [--help]` | 空 |
+| `adlaire-ci-runner --state-dir relative` | `2` | 空 | `state directory must be absolute: relative` |
+| `adlaire-ci-runner --unknown` | `2` | 空 | `unknown option: --unknown` |
+
+### Fixture R2: 変更なし skip
+
+**前提状態：**
+
+```text
+testdata/runner/r2/state/.github_token
+testdata/runner/r2/state/.last_sha
+testdata/runner/r2/state/.branch_config
+```
+
+`.last_sha`:
+
+```json
+{"sha":"blob-1"}
+```
+
+GitHub Trees API fake response は `target_file=docs` の SHA として `blob-1` を返す。
+
+**期待結果：**
+
+- 終了コード `0`。
+- `.last_sha` は変更しない。
+- `.build_logs/` に新規 log を作成しない。
+- `.build_history` に追記しない。
+- stdout slog に INFO ログ `NO_CHANGE: branch=main target=docs sha=blob-1` を 1 件出力する。
+
+### Fixture R3: 変更あり build 成功 deploy なし
+
+**前提状態：**
+
+- `.last_sha` は `{"sha":"old-blob"}`。
+- GitHub Trees API fake response は `new-blob` を返す。
+- GitHub Blobs API fake response は UTF-8 Markdown を Base64 で返す。
+- `deploy_targets` は空配列。
+- fake `.ci/pipeline.sh` は終了コード `0` で、stdout に `adlaire-ci-build` の `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default` を出力する。
+
+**期待結果：**
+
+- 終了コード `0`。
+- `.last_sha` は `{"sha":"new-blob"}` に atomic write される。
+- `.build_logs/{id}.json` が作成され、`target_status="success"`、`pipeline.exit_code=0`、`report.pages=1`、`report.tables_count=0`、`deploy=[]`、`error=null` を含む。
+- `.build_history` に同じ `id` の JSON Lines が 1 行追記される。
+- `.build_state.running` は終了時 `false`、`current_build_id` は `null`。
+- `.build_lock` は終了時に存在しない。
+
+### Fixture R4: pipeline 失敗
+
+**前提状態：**
+
+- GitHub fake response は変更ありを返す。
+- fake `.ci/pipeline.sh` は終了コード `7`、stdout `before fail`、stderr `failed` を出力する。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.last_sha` は旧 SHA のまま。
+- `.build_logs/{id}.json` は `target_status="failure_build"`、`pipeline.exit_code=7`、`pipeline.stdout="before fail"`、`pipeline.stderr="failed"`、`error="pipeline failed"` を含む。
+- `.build_history` に `status="failure_build"` の行を追記する。
+- deploy、snapshot は実行しない。
+
+### Fixture R5: deploy pending
+
+**前提状態：**
+
+- pipeline は成功する。
+- `deploy_targets` は 1 件。
+- fake `ssh` は転送時に終了コード `255` を返す。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.last_sha` は新 SHA に更新する。
+- `.pending_transfers` に `out`、`host`、`user`、`dest_dir`、`failed_at`、`retry_count=1` を持つ entry を 1 件追加する。
+- `.build_logs/{id}.json` は `target_status="success_deploy_pending"`、`deploy[0].status="pending"`、`deploy[0].transfer_verified=false`、`error="deploy pending"` を含む。
+- snapshot は作成しない。
+
+### Fixture R6: lock 競合
+
+`.build_lock` が存在し、`pid` が `/proc/{pid}` に存在する実行中 PID を指す場合、runner は終了コード `0` で終了し、`.build_state`、`.build_logs/`、`.build_history` を変更しない。stdout slog に `BUILD_SKIP: already running (PID {pid})` を出力する。
+
+### Fixture R7: 状態破損
+
+`.notify_pending` が JSON として壊れている場合、runner は `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`.notify_pending` を `[]` で再生成する。その後、通常処理を継続する。退避ファイル名の timestamp は UTC とし、秒単位で固定する。
 
 ---
 
