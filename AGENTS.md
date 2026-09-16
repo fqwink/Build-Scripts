@@ -10,7 +10,7 @@
 
 `AGENTS.md` を確認しただけで、作業判断に必要な確認を完了したと扱ってはならない。
 
-本リポジトリの仕様判断は、方針、ポリシー、実装状態、ロードマップは `ADLAIRE_CI_SPEC.md`、詳細仕様の入口、索引、共通固定値、責務 component 対応表は `ADLAIRE_CI_DETAIL_SPEC.md`、各 owner component の詳細本文は `ADLAIRE_CI_DETAIL_*_SPEC.md` を正本として行う。
+本リポジトリの仕様判断は、方針、ポリシー、実装状態、ロードマップは `ADLAIRE_CI_SPEC.md`、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md`、各 owner component の詳細本文は `ADLAIRE_CI_DETAIL_*_SPEC.md` を正本として行う。
 
 `DESIGN.md` は、生成静的 Web サイトのデザイン仕様を整理する補助文書である。機能仕様、運用仕様、API 仕様、CI 仕様の正本ではない。
 
@@ -63,7 +63,7 @@
 
 `ADLAIRE_CI_SPEC.md` は、Adlaire CI の方針、ポリシー、実装状態、正本関係を定めるマスター仕様書正本である。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、`ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ正本である。
+`ADLAIRE_CI_DETAIL_SPEC.md` は、`ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約を持つ正本である。
 
 owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` は、各 component の詳細仕様本文に関する正本である。
 
@@ -76,6 +76,8 @@ owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` は、各 component の詳�
 仕様化済み・未実装コンポーネントである `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` に基づいて更新する。
 
 `components/mcp.go` は将来計画コンポーネントであり、実装状態、実装可否、ロードマップ状態は `ADLAIRE_CI_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` の責務 component 対応表と該当する owner component 別詳細仕様に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
+
+`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、詳細仕様ファイルとして作成してはならない。横断する固定値、読み順、対応表、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値・管理仕様として扱い、component として扱わない。
 
 `DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。`ADLAIRE_CI_SPEC.md` と矛盾する場合は、`ADLAIRE_CI_SPEC.md` を優先する。
 
