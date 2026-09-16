@@ -10,6 +10,17 @@
 
 ---
 
+## 0. 責務境界
+
+| 項目 | 内容 |
+|------|------|
+| owner component | `components/runner.go` |
+| collaborator component | `components/builder.go`、`components/statefile.go`、`components/commitstatus.go`、`components/api.go`、`components/archive.go` |
+| 持つ内容 | GitHub 監視、設定読取、状態ファイル更新、pipeline、deploy、snapshot、通知、runner fixture、runner owner 追加機能。 |
+| 持たない内容 | API endpoint の認証・応答本文、SDK method、UI DOM、admin 静的配信、security 主本文。 |
+
+---
+
 ### — CI ランナー —
 
 ## 10. CI ランナー 要件

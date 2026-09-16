@@ -1,21 +1,21 @@
-# Adlaire CI — Admin Detail Specification
+# Adlaire CI — Admin 詳細仕様
 
-本ファイルは、`components/admin.go` の詳細仕様である。
+本ファイルは `ADLAIRE_CI_DETAIL_SPEC.md` から分割した `admin` owner component の詳細仕様である。
 
-`components/admin.go` は、標準管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を扱う。UI DOM、SDK method、API endpoint、systemd 導入手順、release asset 取得手順は本ファイルで定義しない。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
+
+`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
 
 ---
 
-## A0. Admin Component Scope
+## 0. 責務境界
 
 | 項目 | 内容 |
 |------|------|
 | owner component | `components/admin.go` |
 | collaborator component | `components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js`、`setup` |
-| 入力 | repository 内 `admin/` directory、release 展開後の `$INSTALL_DIR/admin/` directory、HTTP request path。 |
-| 出力 | `admin-ui.tar.gz` に含める静的ファイル一覧、配置済み admin file 検証結果、静的 file HTTP response。 |
-| 状態ファイル | 直接読み書きしない。 |
-| 外部依存 | 使用しない。Go 標準ライブラリだけを使う。 |
+| 持つ内容 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
+| 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、systemd 導入手順、release asset 取得手順。 |
 
 `components/admin.go` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`admin/index.html` の UI 仕様は `ADLAIRE_CI_DETAIL_UI_SPEC.md` を正とし、`admin/adlaire-ci-sdk.js` の SDK 仕様は `ADLAIRE_CI_DETAIL_SDK_SPEC.md` を正とする。
 

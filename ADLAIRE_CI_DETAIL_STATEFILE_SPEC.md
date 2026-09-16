@@ -1,8 +1,23 @@
-# Adlaire CI Detail Statefile Specification
+# Adlaire CI — Statefile 詳細仕様
 
-このファイルは、`ADLAIRE_CI_DETAIL_SPEC.md` および `ADLAIRE_CI_DETAIL_API_SPEC.md` から分離した `statefile` owner component の詳細仕様である。
+本ファイルは `ADLAIRE_CI_DETAIL_SPEC.md` および `ADLAIRE_CI_DETAIL_API_SPEC.md` から分割した `statefile` owner component の詳細仕様である。
 
-本ファイルは、状態ファイルの読み書き、lock、atomic write、JSON Lines、破損時処理、schema 厳格化、状態読取 adapter、主要状態ファイル schema を固定する。個別 API endpoint の request / response、runner の業務処理、UI 表示、実装状態、実装可否、ロードマップ状態、方針、ポリシーは記載しない。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
+
+`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+
+---
+
+## 0. 責務境界
+
+| 項目 | 内容 |
+|------|------|
+| owner component | `components/statefile.go` |
+| collaborator component | `components/runner.go`、`components/api.go`、`components/archive.go`、`security` |
+| 持つ内容 | 状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
+| 持たない内容 | API endpoint の request / response、runner の業務処理、UI 表示判断、個別 component の業務判断。 |
+
+---
 
 ## 対象範囲
 

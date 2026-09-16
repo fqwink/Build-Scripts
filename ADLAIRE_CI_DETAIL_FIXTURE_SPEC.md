@@ -1,8 +1,23 @@
-# Adlaire CI Detail Fixture Specification
+# Adlaire CI — Fixture 詳細仕様
 
-このファイルは、`ADLAIRE_CI_DETAIL_SPEC.md` から分離した fixture / fake / testdata / assertion / PR 証跡の詳細仕様正本である。
+本ファイルは `ADLAIRE_CI_DETAIL_SPEC.md` から分割した fixture / fake / testdata / assertion / PR 証跡の詳細仕様である。
 
-本ファイルは、実装時の検証入力、期待出力、期待副作用、禁止副作用、secret 非表示確認、PR 証跡記録を固定する。個別 component の通常処理本文、実装状態、実装可否、ロードマップ状態、方針、ポリシーは記載しない。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
+
+`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+
+---
+
+## 0. 責務境界
+
+| 項目 | 内容 |
+|------|------|
+| owner component | `fixture` |
+| collaborator component | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`security`、`setup` |
+| 持つ内容 | fixture manifest、assertion、fake、testdata、受け入れ fixture 共通契約、PR 証跡テンプレート。 |
+| 持たない内容 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細。 |
+
+---
 
 ## 対象範囲
 

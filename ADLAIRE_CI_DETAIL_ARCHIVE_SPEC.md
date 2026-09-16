@@ -1,8 +1,23 @@
-# Adlaire CI Detail Archive Specification
+# Adlaire CI — Archive 詳細仕様
 
-このファイルは、`ADLAIRE_CI_DETAIL_SPEC.md` から分離した `archive` owner component の詳細仕様である。
+本ファイルは `ADLAIRE_CI_DETAIL_SPEC.md` から分割した `archive` owner component の詳細仕様である。
 
-本ファイルは、build log archive、snapshot、download、delete、rollback、cleanup の入出力、処理順序、禁止副作用、検証条件を固定する。runner の build 実行、API 共通 request / response、SDK method 実装、UI DOM 詳細、実装状態、実装可否、ロードマップ状態、方針、ポリシーは記載しない。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
+
+`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+
+---
+
+## 0. 責務境界
+
+| 項目 | 内容 |
+|------|------|
+| owner component | `components/archive.go` |
+| collaborator component | `components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html`、`components/statefile.go` |
+| 持つ内容 | build log archive、snapshot、download、delete、rollback、cleanup。 |
+| 持たない内容 | runner の build 実行、API 共通 request / response、SDK method 実装、UI DOM 詳細。 |
+
+---
 
 ## 対象範囲
 

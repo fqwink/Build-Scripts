@@ -1,8 +1,23 @@
-# Adlaire CI Detail Commit Status Specification
+# Adlaire CI — Commit Status 詳細仕様
 
-このファイルは、`ADLAIRE_CI_DETAIL_SPEC.md` および `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` から分離した `commitstatus` owner component の詳細仕様である。
+本ファイルは `ADLAIRE_CI_DETAIL_SPEC.md` および `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` から分割した `commitstatus` owner component の詳細仕様である。
 
-本ファイルは、GitHub Commit Status API の payload、送信順、失敗時非反転、保存値、secret mask、検証条件を固定する。runner の build 実行、差分判定、lock、pipeline、deploy、snapshot、API endpoint、SDK method、UI DOM 詳細、実装状態、実装可否、ロードマップ状態、方針、ポリシーは記載しない。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
+
+`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+
+---
+
+## 0. 責務境界
+
+| 項目 | 内容 |
+|------|------|
+| owner component | `components/commitstatus.go` |
+| collaborator component | `components/runner.go`、`components/statefile.go` |
+| 持つ内容 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
+| 持たない内容 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細。 |
+
+---
 
 ## 対象範囲
 

@@ -1,8 +1,23 @@
-# Adlaire CI Detail Security Specification
+# Adlaire CI — Security 詳細仕様
 
-このファイルは、`ADLAIRE_CI_DETAIL_SPEC.md` および `ADLAIRE_CI_DETAIL_API_SPEC.md` から分離した `security` owner component の詳細仕様である。
+本ファイルは `ADLAIRE_CI_DETAIL_SPEC.md` および `ADLAIRE_CI_DETAIL_API_SPEC.md` から分割した `security` owner component の詳細仕様である。
 
-本ファイルは、API token scope、API key 管理、監査ログ、session timeout、TOTP、API rate limit、漏えい禁止値、認証・監査・制限の横断順序、検証条件を固定する。API endpoint dispatch、HTTP request / response 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、実装状態、実装可否、ロードマップ状態、方針、ポリシーは記載しない。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
+
+`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+
+---
+
+## 0. 責務境界
+
+| 項目 | 内容 |
+|------|------|
+| owner component | `security` |
+| collaborator component | `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html`、`components/statefile.go` |
+| 持つ内容 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
+| 持たない内容 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理。 |
+
+---
 
 ## 対象範囲
 

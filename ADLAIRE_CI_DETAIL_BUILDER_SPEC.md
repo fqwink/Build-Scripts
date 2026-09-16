@@ -8,6 +8,17 @@
 
 ---
 
+## 0. 責務境界
+
+| 項目 | 内容 |
+|------|------|
+| owner component | `components/builder.go` |
+| collaborator component | `components/runner.go`、`components/api.go`、`components/statefile.go` |
+| 持つ内容 | Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
+| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method、UI DOM、release / systemd 導入手順。 |
+
+---
+
 ## 1. 要件
 
 | 項目 | 内容 |
