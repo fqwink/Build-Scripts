@@ -618,6 +618,71 @@ Go 標準ライブラリと GitHub PAT（`contents: read`）を基本要件と�
 
 ---
 
+## 0j. リポジトリ内ソース配置
+
+Adlaire CI のリポジトリ内ソース配置は以下とする。
+
+```text
+.
+├── main.go
+│
+├── components/
+│   ├── builder.go
+│   ├── runner.go
+│   ├── api.go
+│   ├── admin.go
+│   ├── statefile.go
+│   ├── archive.go
+│   ├── commitstatus.go
+│   └── mcp.go
+│
+├── admin/
+│   ├── index.html
+│   ├── adlaire-ci-sdk.js
+│   ├── style.css
+│   └── app.js
+│
+├── testdata/
+│   ├── builder/
+│   ├── runner/
+│   ├── api/
+│   ├── admin/
+│   ├── statefile/
+│   ├── archive/
+│   ├── commitstatus/
+│   └── mcp/
+│
+├── docs/
+│   └── examples/
+│
+├── ADLAIRE_CI_SPEC.md
+├── ADLAIRE_CI_DETAIL_SPEC.md
+├── DOCUMENT_INDEX.md
+├── DESIGN.md
+├── README.md
+├── AGENTS.md
+└── go.mod
+```
+
+| パス | 役割 |
+|------|------|
+| `main.go` | 起動入口。サブコマンド判定、引数受け取り、対象コンポーネント呼び出しを行う。 |
+| `components/builder.go` | Markdown / Markdown ディレクトリを静的 Web サイトへ変換する。 |
+| `components/runner.go` | GitHub polling、変更検出、ビルド起動、履歴、ログ、deploy を実行する。 |
+| `components/api.go` | 管理 API サーバー、認証、状態ファイル操作を提供する。 |
+| `components/admin.go` | 管理 UI 静的ファイルの配布・配置を扱う。 |
+| `components/statefile.go` | `.build_history`、`.build_logs`、`.server_config` など状態ファイルの読み書きを扱う。 |
+| `components/archive.go` | ビルドログ圧縮、snapshot、配布アーカイブを扱う。 |
+| `components/commitstatus.go` | GitHub Commit Status API 送信を扱う。 |
+| `components/mcp.go` | MCP 接続を扱う。 |
+| `admin/` | 標準管理 UI の静的ファイルを配置する。 |
+| `testdata/` | コンポーネント別 fixture を配置する。 |
+| `docs/examples/` | 利用例、設定例、サンプル構成を配置する。 |
+
+`main.go` は 1 ファイルとし、実装詳細を含めない。`components/` 配下は 1 コンポーネント = 1 Go ファイルとし、各ファイルは上表の責務を実装する。
+
+---
+
 ## 1. 要件
 
 | 項目 | 内容 |

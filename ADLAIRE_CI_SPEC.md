@@ -159,6 +159,60 @@ Adlaire CI は、`core`、`adlaire-ci-core`、`internal/core`、`common`、`base
 
 共通責務コンポーネントは、コード共有のためだけに追加してはならない。重複削減より、責務境界、仕様の明確さ、依存方向の追跡可能性を優先する。
 
+### 4.3 リポジトリ構成方針
+
+Adlaire CI のリポジトリ内ソース構成は、責務ベースで整理する。
+
+標準構成は以下とする。
+
+```text
+.
+├── main.go
+│
+├── components/
+│   ├── builder.go
+│   ├── runner.go
+│   ├── api.go
+│   ├── admin.go
+│   ├── statefile.go
+│   ├── archive.go
+│   ├── commitstatus.go
+│   └── mcp.go
+│
+├── admin/
+│   ├── index.html
+│   ├── adlaire-ci-sdk.js
+│   ├── style.css
+│   └── app.js
+│
+├── testdata/
+│   ├── builder/
+│   ├── runner/
+│   ├── api/
+│   ├── admin/
+│   ├── statefile/
+│   ├── archive/
+│   ├── commitstatus/
+│   └── mcp/
+│
+├── docs/
+│   └── examples/
+│
+├── ADLAIRE_CI_SPEC.md
+├── ADLAIRE_CI_DETAIL_SPEC.md
+├── DOCUMENT_INDEX.md
+├── DESIGN.md
+├── README.md
+├── AGENTS.md
+└── go.mod
+```
+
+`main.go` は 1 ファイルとし、起動入口、サブコマンド判定、引数受け取り、対象コンポーネント呼び出しだけを担当する。`main.go` に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、MCP 処理の実装詳細を書いてはならない。
+
+`components/` は、1 コンポーネント = 1 Go ファイルとする。ファイル名は責務名を表し、`builder.go`、`runner.go`、`api.go`、`admin.go`、`statefile.go`、`archive.go`、`commitstatus.go`、`mcp.go` を標準コンポーネントとする。
+
+`admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
+
 ## 4c. Go 正本策定方針
 
 本仕様は、Adlaire CI を最初から Go 言語で設計・実装する前提で策定する。
