@@ -20,7 +20,7 @@
 1. `ADLAIRE_CI_SPEC.md` の実装状態、Part 1 §12、§13 で、対象が実装対象であることを確認する。
 2. 本ファイル §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
 3. 本ファイル §0a〜§0h で、詳細仕様の記載基準、共通固定値、実装前確認項目、検証条件、Phase 順序を確認する。
-4. 対象コンポーネントの詳細節を読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
+4. 責務 component の詳細節を読み、owner component、collaborator component、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
 5. §26 のセットアップ・アップデート手順と §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
 
 詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に本ファイルを改訂し、`ADLAIRE_CI_SPEC.md` の対象範囲と整合させる。
@@ -44,7 +44,7 @@
 
 | 項目 | 記載する内容 |
 |------|-------------|
-| 対象 | 対象コンポーネント、対象ファイル、対象機能、責務境界 |
+| 対象 | owner component、collaborator component、対象ファイル、対象機能、責務境界 |
 | 入力 | 引数、HTTP リクエスト、設定値、読み込みファイル、環境前提 |
 | 出力 | 戻り値、HTTP レスポンス、生成ファイル、ログ、通知、標準出力 |
 | 状態 | 状態ファイル、メモリ上の状態、ロック、キャッシュ、更新タイミング |
@@ -63,9 +63,9 @@
 
 ## 0b. 詳細仕様参照表
 
-本節は、対象コンポーネントごとに参照する詳細仕様節を示す。実装状態、実装可否、ロードマップ状態は `ADLAIRE_CI_SPEC.md` を確認する。
+本節は、責務 component ごとに参照する詳細仕様節を示す。実装状態、実装可否、ロードマップ状態は `ADLAIRE_CI_SPEC.md` を確認する。
 
-| 対象コンポーネント | 詳細仕様節 | 主な確認対象 |
+| 責務 component | 詳細仕様節 | 主な確認対象 |
 |--------------------|------------|--------------|
 | `components/builder.go` | §1〜§9、§8a | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture。 |
 | `components/runner.go` | §10〜§20、§15a、§26 | 設定、状態ファイル、GitHub API、pipeline、転送、snapshot、通知、systemd、fixture。 |
@@ -84,7 +84,7 @@
 |--------|----------|
 | 対応表 | 対象機能が §0i の詳細節対応表に記載され、詳細仕様節と受け入れ条件が一意に示されている。 |
 | テンプレート | 対象機能の詳細仕様が §0h の機能仕様テンプレートの必須項目を満たしている。 |
-| 責務境界 | 対象コンポーネント、対象ファイル、呼び出し元、呼び出し先、変更してよい状態ファイルが明記されている。 |
+| 責務境界 | owner component、collaborator component、対象ファイル、呼び出し元、呼び出し先、変更してよい状態ファイルが明記されている。 |
 | 入出力 | すべての入力、出力、既定値、許容値、必須/任意、型、文字コード、時刻形式が明記されている。 |
 | 状態管理 | 状態ファイルのパス、JSON 形式、更新タイミング、初期状態、破損時の扱い、権限が明記されている。 |
 | 正常系 | 処理順序、分岐条件、ループ条件、成功条件、終了条件が明記されている。 |
@@ -129,7 +129,7 @@
 
 ## 0e. 完全実装検証マトリクス
 
-対象項目を完了扱いにする場合は、対象コンポーネントごとに下表の検証を満たす。実装ファイルが存在しても、本表の必須検証が未完了の場合は完了扱いにしない。
+対象項目を完了扱いにする場合は、責務 component ごとに下表の検証を満たす。実装ファイルが存在しても、本表の必須検証が未完了の場合は完了扱いにしない。
 
 | 対象 | 必須検証 | 合格条件 |
 |------|----------|----------|
@@ -153,7 +153,7 @@
 
 ## 0f. 仕様策定完了チェック
 
-本節は、Go 版初期実装へ進む前に仕様策定が完了しているかを判定するチェックである。実装者は、対象コンポーネントごとに下表の必須条件を満たすまで実装を開始してはならない。
+本節は、Go 版初期実装へ進む前に仕様策定が完了しているかを判定するチェックである。実装者は、責務 component ごとに下表の必須条件を満たすまで実装を開始してはならない。
 
 | 対象 | 実装着手条件 | 実装禁止条件 | 完了判定 |
 |------|--------------|--------------|----------|
@@ -500,7 +500,7 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 
 | 証跡 | 必須記載 | 不足時の扱い |
 |------|----------|--------------|
-| 変更対象 | 対象 Phase、対象コンポーネント、変更ファイル、追加 fixture / testdata path。 | 対象 Phase の成果物不足として未完了。 |
+| 変更対象 | 対象 Phase、owner component、collaborator component、変更ファイル、追加 fixture / testdata path。 | 対象 Phase の成果物不足として未完了。 |
 | 固定契約 | 追加または固定した CLI、状態 schema、HTTP API、SDK method、DOM id、fake 動作、終了コード、error body。 | 後続 Phase が参照できないため未完了。 |
 | 検証 | 実行コマンド、fixture 名、期待結果、実結果、判定。 | 合否を再現できないため未完了。 |
 | 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定など実装していない範囲。 | 先取り実装または範囲不明として未完了。 |
@@ -529,7 +529,7 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | 項目 | 必須内容 | 未記載時の扱い |
 |------|----------|----------------|
 | 目的 | 何を解決する機能か、どの利用者または運用者のための機能か。 | 実装不可。 |
-| 対象コンポーネント | `components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` のいずれが責務を持つか。複数の場合は責務境界を分けて書く。 | 実装不可。 |
+| 責務 component | owner component と collaborator component を明記し、複数 component が関わる場合は責務境界を分けて書く。 | 実装不可。 |
 | 入力 | CLI 引数、HTTP request、設定値、状態ファイル、環境変数、Markdown 入力、UI 操作などの入力元、型、必須/任意、既定値。 | 実装不可。 |
 | 出力 | 生成ファイル、HTTP response、stdout/stderr、ログ、通知、UI 表示、終了コード。 | 実装不可。 |
 | 状態 | 読み書きする状態ファイル、ディレクトリ、メモリ状態、ロック、更新責務、初期値、破損時の扱い。 | 状態を持つ実装は禁止。 |
@@ -547,9 +547,11 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 
 本節は、対象機能から本ファイル内の実装詳細へ移動するための対応表である。実装者は対象機能を実装する前に、下表の「詳細仕様節」と「受け入れ条件」を確認する。
 
+表の「責務 component」は参照先を探すための component 一覧である。owner component と collaborator component は、対象機能の詳細仕様節に記載された値を正とする。
+
 表の「詳細仕様節」が複数ある場合は、すべての節を同時に満たす。該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。
 
-| 機能 | 対象コンポーネント | 詳細仕様節 | 受け入れ条件 |
+| 機能 | 責務 component | 詳細仕様節 | 受け入れ条件 |
 |------|-------------------|------------|--------------|
 | ビルドタイムアウト | `components/runner.go` / `components/api.go` | §12、§13、§22.0e | `build_timeout_seconds` の既定値、設定 API、`context.WithTimeout` の中断処理、終了コード、ログが一致する。 |
 | ポーリング間隔の動的変更 | `components/api.go` | §22.0e、§26、§27.11 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
@@ -725,7 +727,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 | パス | 役割 |
 |------|------|
-| `main.go` | 起動入口。サブコマンド判定、引数受け取り、対象コンポーネント呼び出しを行う。 |
+| `main.go` | 起動入口。サブコマンド判定、引数受け取り、責務 component 呼び出しを行う。 |
 | `components/builder.go` | Markdown / Markdown ディレクトリを静的 Web サイトへ変換する。 |
 | `components/runner.go` | GitHub polling、変更検出、ビルド起動、履歴、ログ、deploy を実行する。 |
 | `components/api.go` | 管理 API サーバー、認証、状態ファイル操作を提供する。 |
@@ -2873,7 +2875,7 @@ runner が新規作成する状態ファイルは JSON object / array、SHA cach
 
 **設定ファイル起動時整合性チェック：**
 
-本機能の目的は、runner 起動時に状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、ビルド処理開始前に復旧または停止することである。対象コンポーネントは `components/runner.go` のみとし、管理 API の HTTP endpoint、SDK、UI は本機能の実装対象に含めない。
+本機能の目的は、runner 起動時に状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、ビルド処理開始前に復旧または停止することである。owner component は `runner` とし、collaborator component は `statefile` とする。管理 API の HTTP endpoint、SDK、UI は本機能の実行責務を持たない。
 
 対象ファイルは次の 6 件に固定する。実装者判断で対象ファイルを追加または除外してはならない。
 
@@ -4406,7 +4408,7 @@ admin/index.html（標準管理ツール）
   └─ adlaire-ci-sdk.js（SDK）─── HTTP ───► components/api.go
 ```
 
-対象コンポーネント `components/api.go` は、Go 標準ライブラリ `net/http` で実装し、管理ツールからの API リクエストを受け付ける。`components/runner.go` とは独立して常駐する。
+owner component `api` は、Go 標準ライブラリ `net/http` で実装し、管理ツールからの API リクエストを受け付ける。`runner` とは独立して常駐する。
 
 **`components/api.go` 設定値（スクリプト冒頭）：**
 
@@ -9012,7 +9014,8 @@ Phase 完了判定テンプレートは以下とする。実装 PR 本文では�
 ## Phase 完了判定
 
 - 対象 Phase:
-- 対象コンポーネント:
+- owner component:
+- collaborator component:
 - 実装対象ファイル:
 - 追加 fixture / testdata:
 - 固定契約:
@@ -9979,7 +9982,7 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 
 本機能の目的は、runner の現在状態と直近結果を `.build_status.json` に集約し、API、SDK、UI が同じ read-only 情報を参照できるようにすることである。
 
-対象コンポーネントは `components/runner.go` と `components/api.go` とする。`components/runner.go` は `.build_status.json` の唯一の通常更新責務を持つ。`components/api.go` は `GET /api/status`、`GET /api/dashboard`、`GET /api/health` で read-only 参照する。API は `.build_status.json` を自動修復してはならない。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。`runner` は `.build_status.json` の唯一の通常更新責務を持つ。`api` は `GET /api/status`、`GET /api/dashboard`、`GET /api/health` で read-only 参照する。API は `.build_status.json` を自動修復してはならない。
 
 **入力：**
 
@@ -10050,7 +10053,7 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 
 本機能の目的は、runner がなぜ build または関連処理を開始したかを、履歴、ログ、状態、API、SDK、UI で同一の固定値として扱うことである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。`components/runner.go` は trigger の確定と永続化を担当し、API / SDK / UI は既存値の表示と filter のみを担当する。
+owner component は `runner` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。`runner` は trigger の確定と永続化を担当し、API / SDK / UI は既存値の表示と filter のみを担当する。
 
 **trigger 許容値：**
 
@@ -10129,7 +10132,7 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 
 本機能の目的は、runner が build 処理に入る前に、runner が読む状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、規定どおり復旧または停止することである。
 
-対象コンポーネントは `components/runner.go` のみとする。管理 API、SDK、UI は本機能の実行責務を持たない。API が同じ状態ファイルを読む場合も、起動時整合性チェックを代行してはならない。
+owner component は `runner` とする。collaborator component は `statefile` とする。管理 API、SDK、UI は本機能の実行責務を持たない。API が同じ状態ファイルを読む場合も、起動時整合性チェックを代行してはならない。
 
 **対象ファイル：**
 
@@ -10210,7 +10213,7 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 
 本機能の目的は、管理 API から systemd timer の実行間隔を変更し、次回以降の runner 起動間隔を固定仕様どおり反映することである。
 
-対象コンポーネントは `components/api.go` とする。`components/runner.go` は本機能で systemd timer を変更しない。
+owner component は `api` とする。collaborator component は `runner`、`statefile` とする。`api` は schedule 設定と systemd timer 更新の責務を持つ。`runner` は本機能で systemd timer を変更しない。
 
 **入力 / 出力：**
 
@@ -10266,7 +10269,7 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 
 本機能の目的は、GitHub push event を HMAC-SHA256 署名検証したうえで受信し、定期 polling を待たずに build queue へ投入することである。
 
-対象コンポーネントは `components/api.go` と `components/runner.go` とする。`components/api.go` は署名検証、イベント記録、queue 投入を担当し、`components/runner.go` は queue entry を処理する。
+owner component は `api` とする。collaborator component は `runner`、`statefile` とする。`api` は署名検証、イベント記録、queue 投入を担当し、`runner` は queue entry を処理する。
 
 **入力 / 出力：**
 
@@ -10347,7 +10350,7 @@ queue entry は §16C の queue entry schema を使用し、`trigger:"webhook"`�
 
 本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、SDK、UI からページング参照できるようにすることである。
 
-対象コンポーネントは `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。
+owner component は `api` とする。collaborator component は `sdk`、`ui`、`statefile` とする。
 
 **保存 schema：**
 
@@ -10397,7 +10400,7 @@ Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `g
 
 本機能の目的は、build ごとの開始・終了・所要時間を構造化ログへ保存し、統計 API で直近 N 件の平均、最小、最大を返すことである。
 
-対象コンポーネントは `components/runner.go` と `components/api.go` とする。
+owner component は `runner` とする。collaborator component は `api`、`statefile`、`archive` とする。
 
 **記録仕様：**
 
@@ -10442,7 +10445,7 @@ Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`�
 
 本機能の目的は、`.snapshots/` に保存された build artifact を API、SDK、UI から一覧、download、削除、rollback できるようにすることである。
 
-対象コンポーネントは `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。snapshot 作成は `components/runner.go` の §14b を正とする。
+owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は `runner` の §14b を正とする。
 
 **API 契約：**
 
@@ -10516,7 +10519,7 @@ SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`roll
 
 本機能の目的は、認証不要の `GET /api/health` で、外部監視が Adlaire CI の最低限の稼働状態を確認できるようにすることである。
 
-対象コンポーネントは `components/api.go` とする。
+owner component は `api` とする。collaborator component は `statefile` とする。
 
 **Response：**
 
@@ -10565,7 +10568,7 @@ SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`roll
 
 本機能の目的は、`GET /api/logs/search` と UI ログビューアで重大度別に build log を絞り込めるようにすることである。
 
-対象コンポーネントは `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。
+owner component は `api` とする。collaborator component は `sdk`、`ui`、`archive`、`statefile` とする。
 
 **入力：**
 
@@ -10606,7 +10609,7 @@ SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信す
 
 本機能の目的は、監視対象 branch / target / deploy target を `.branch_config` で管理し、API 経由で変更できるようにすることである。
 
-対象コンポーネントは `components/api.go` と `components/runner.go` とする。
+owner component は `api` とする。collaborator component は `runner`、`statefile` とする。
 
 **API：**
 
@@ -10649,7 +10652,7 @@ SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信す
 
 本機能の目的は、過去 7 日間の build 結果を指定曜日・時刻に集計し、Webhook へ定期通知することである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。runner は自動送信、API は設定表示・手動送信を担当する。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。runner は自動送信、API は設定表示・手動送信を担当する。
 
 **設定：**
 
@@ -10717,7 +10720,7 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 
 本機能の目的は、設定変更 API が何を変更したかを `.config_log` に機械可読 diff と人間可読 diff の両方で残すことである。
 
-対象コンポーネントは `components/api.go` とする。
+owner component は `api` とする。collaborator component は `statefile` とする。
 
 **対象 API：**
 
@@ -10850,7 +10853,7 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 
 本機能の目的は、単一 `target_file` 前提を拡張し、複数 Markdown ファイルまたは Markdown ディレクトリを 1 回の runner 起動で監視、差分判定、ビルド対象決定できるようにすることである。
 
-対象コンポーネントは `components/runner.go`、`components/builder.go`、`components/api.go` とする。runner は差分検出と build target 決定、builder は複数入力の静的サイト生成、API は設定表示・更新を担当する。
+owner component は `runner` とする。collaborator component は `builder`、`api`、`statefile` とする。runner は差分検出と build target 決定、builder は複数入力の静的サイト生成、API は設定表示・更新を担当する。
 
 **入力 / 状態：**
 
@@ -10910,7 +10913,7 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 
 本機能の目的は、固定 `pipeline.sh` 依存をなくし、内製 YAML subset で build step を明示定義できるようにすることである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。外部 YAML ライブラリは使用しない。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。外部 YAML ライブラリは使用しない。
 
 **入力 / 状態：**
 
@@ -10985,7 +10988,7 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 
 本機能の目的は、GitHub API を使わない環境で、ローカル Markdown 入力の変更を SHA-256 snapshot により検出することである。
 
-対象コンポーネントは `components/runner.go` とする。
+owner component は `runner` とする。collaborator component は `statefile` とする。
 
 **入力 / 状態：**
 
@@ -11042,7 +11045,7 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 
 本機能の目的は、release tag が付いた commit だけを build 対象にする filter を提供することである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -11095,7 +11098,7 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 
 本機能の目的は、複数ページ静的サイト生成時に未変更入力の変換結果を再利用し、build 時間を短縮することである。
 
-対象コンポーネントは `components/builder.go`、`components/runner.go` とする。
+owner component は `builder` とする。collaborator component は `runner`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -11153,7 +11156,7 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 
 本機能の目的は、複数 deploy target への転送を bounded parallelism で処理し、遅い target が全体を不必要に止めないようにすることである。
 
-対象コンポーネントは `components/runner.go` とする。
+owner component は `runner` とする。collaborator component は `statefile` とする。
 
 **入力 / 状態：**
 
@@ -11205,7 +11208,7 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 
 本機能の目的は、build 前後に登録済み command を安全に実行し、外部 shell 文字列に依存しない拡張点を提供することである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -11261,7 +11264,7 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 
 本機能の目的は、Markdown から参照される画像、相対リンク、include 対象を追跡し、関連する入力だけを再ビルド対象にすることである。
 
-対象コンポーネントは `components/builder.go`、`components/runner.go` とする。
+owner component は `builder` とする。collaborator component は `runner`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -11312,7 +11315,7 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 
 本機能の目的は、runner が SSH 先で build を実行し、成果物を archive と manifest で回収できるようにすることである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+owner component は `runner` とする。collaborator component は `api`、`archive`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -11367,7 +11370,7 @@ API / SDK / UI のいずれも、上表に存在しない補完 endpoint、補�
 
 本機能の目的は、本番向けなど approval_required な target の build / deploy を人間承認後にだけ実行することである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。
+owner component は `api` とする。collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -11476,7 +11479,7 @@ pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、�
 
 本機能の目的は、branch target ごとに build process へ注入する環境変数を定義し、branch や deploy 先ごとの差分を安全に扱うことである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -11531,7 +11534,7 @@ pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、�
 
 本機能の目的は、build lifecycle event を複数通知 channel へ同一契約で送信し、通知の成功、失敗、再試行、監査を固定仕様で扱えるようにすることである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。runner は送信、API は設定・履歴表示、SDK/UI は設定操作と履歴表示を担当する。
+owner component は `runner` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。runner は送信、API は設定・履歴表示、SDK/UI は設定操作と履歴表示を担当する。
 
 **入力 / 状態：**
 
@@ -11618,7 +11621,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 
 本機能の目的は、build 所要時間の統計を蓄積し、性能傾向と回帰検知の基準を提供することである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -11674,7 +11677,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 
 本機能の目的は、複数 build job の依存関係を DAG として定義し、依存 job 成功後だけ後続 job を実行することである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -11731,7 +11734,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 
 本機能の目的は、manual、webhook、approval などの queue entry を優先度順に処理し、緊急 build を先に実行できるようにすることである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -11786,7 +11789,7 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 
 本機能の目的は、build failure を固定カテゴリへ分類し、調査開始点を build log、history、UI に残すことである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **分類値：**
 
@@ -11851,7 +11854,7 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 
 本機能の目的は、build 時点の実行環境を記録し、後から再現性と障害原因を確認できるようにすることである。
 
-対象コンポーネントは `components/runner.go` とする。
+owner component は `runner` とする。collaborator component は `statefile` とする。
 
 **記録先：**
 
@@ -11909,7 +11912,7 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 
 本機能の目的は、過去 trend と比較して異常に遅い build を検出し、性能劣化を WARN、history flag、通知で可視化することである。
 
-対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
 **入力 / 状態：**
 
