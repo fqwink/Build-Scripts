@@ -35,6 +35,7 @@
 | §24 | `ADLAIRE_CI_DETAIL_UI_SPEC.md`。`admin/index.html` の詳細仕様 |
 | §25 | `ADLAIRE_CI_DETAIL_API_SPEC.md`。認証の実装仕様 |
 | §26 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md`。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
+| `components/admin.go` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md`。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
 
 本ファイルを分割する場合は、§0b.1 の責務 component 分割仕様に従う。分割後も `ADLAIRE_CI_DETAIL_SPEC.md` は入口、索引、共通固定値、責務 component 対応表を持つ。分割先ファイルは、それぞれの owner component と collaborator component の詳細仕様だけを持つ。
 
@@ -72,6 +73,7 @@
 | `components/builder.go` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture、builder owner 追加機能。 |
 | `components/runner.go` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | 設定、状態ファイル、GitHub API 読取、pipeline、転送、snapshot、通知、systemd、fixture、runner owner 追加機能、Commit Status 呼び出し境界。 |
 | `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、endpoint、状態ファイル read/write、認証連携、security 呼び出し境界、API owner 追加機能。 |
+| `components/admin.go` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A0〜A5 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
 | `admin/adlaire-ci-sdk.js` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
 | `admin/index.html` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
 | `setup` | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
@@ -95,6 +97,7 @@
 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture。 | runner / API / SDK / UI の実行責務。 |
 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner の GitHub 監視、状態ファイル更新、pipeline、deploy、snapshot、通知、runner fixture。 | API endpoint の認証・応答本文、SDK method、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner の HTTP 共通契約、endpoint、状態ファイル read/write、認証連携、API fixture。 | SDK 内部実装、UI DOM 詳細、runner の build 実行責務。 |
+| `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 | UI DOM 詳細、SDK method 実装、API endpoint 実装、systemd 導入手順。 |
 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | `sdk` owner の SDK class、method、HTTP 対応、error、stream、token 破棄。 | API endpoint の状態ファイル更新責務、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 | SDK method 実装、API endpoint 実装、状態ファイル直接操作。 |
 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 | runner / API / SDK / UI の個別機能本文。 |
@@ -768,7 +771,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | `components/builder.go` | Markdown / Markdown ディレクトリを静的 Web サイトへ変換する。 |
 | `components/runner.go` | GitHub polling、変更検出、ビルド起動、履歴、ログ、deploy を実行する。 |
 | `components/api.go` | 管理 API サーバー、認証、状態ファイル操作を提供する。 |
-| `components/admin.go` | 管理 UI 静的ファイルの配布・配置を扱う。 |
+| `components/admin.go` | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を扱う。詳細は `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` を正とする。 |
 | `components/statefile.go` | `.build_history`、`.build_logs`、`.server_config` など状態ファイルの読み書きを扱う。詳細は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。 |
 | `components/archive.go` | ビルドログ圧縮、snapshot、配布アーカイブを扱う。 |
 | `components/commitstatus.go` | GitHub Commit Status API 送信を扱う。 |
@@ -941,6 +944,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | `builder` | Markdown 入力から静的 Web サイト、asset、REPORT、HTML meta、dependency / cache 出力を生成する。 | §2〜§8、§27.4、§27.25、§27.28 | `runner`、`api` | GitHub read、状態ファイル直接更新、API response 補完、通知送信。 |
 | `runner` | CLI、設定、GitHub / local read、差分判定、lock、build 実行、dry-run、retry、queue、status / log / history / notification を制御する。 | §10〜§16、§27.1〜§27.4、§27.21〜§27.38 | `builder`、`statefile`、`commitstatus` | API endpoint 追加、UI 操作追加、SDK method 追加、状態 schema の暗黙追加。 |
 | `api` | HTTP endpoint、auth / scope、validation、状態 read/write、response schema、access / audit / config log を提供する。 | §22、§25、§27.5〜§27.20、§27.42〜§27.47 | `statefile`、`sdk`、`security` | runner 専用 CLI 処理、UI DOM 操作、SDK 側補完前提の response 欠落。 |
+| `admin` | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を固定する。 | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A0〜A5 | `api`、`ui`、`sdk`、`setup` | UI DOM 実装、SDK method 実装、API endpoint 実装、状態ファイル直接操作。 |
 | `sdk` | API endpoint を仕様どおり呼び出す JavaScript method、query / body 生成、error 伝播、binary / stream 処理を提供する。 | §23、§27 API / SDK / UI 連動固定契約 | `api`、`ui` | API response の推測補完、未定義 endpoint 呼び出し、状態ファイル直接操作。 |
 | `ui` | SDK method を使った管理画面表示、入力、loading / disabled / error / secret field 消去、再取得順を提供する。 | §24、§27 API / SDK / UI 連動固定契約 | `sdk`、`api` | 直接 `fetch()`、状態ファイル操作、外部 command 実行、secret DOM 残存。 |
 | `statefile` | 状態 schema、atomic write、JSON Lines、lock、破損時処理、保存順、no-write / forbidden write を固定する。 | §22.0a、§22.0c、§27 fixture / effects 契約 | `runner`、`api`、`archive` | component 固有の業務判断、API response 補完、UI 表示判断。 |

@@ -6,7 +6,7 @@
 
 `ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
 
-本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、Phase 完了判定 fixture 記録を定義する。runner / API / SDK / UI の個別機能本文は各 owner component の詳細仕様ファイルを正とする。
+本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、Phase 完了判定 fixture 記録を定義する。runner / API / SDK / UI / admin の個別機能本文は各 owner component の詳細仕様ファイルを正とする。
 
 ---
 
@@ -48,7 +48,7 @@
 | `adlaire-ci-build-$OS_ARCH` | 初回セットアップ、アップデート | `components/builder.go` から生成した Markdown → 静的 Web サイトビルドバイナリ。 |
 | `adlaire-ci-runner-$OS_ARCH` | 初回セットアップ、アップデート | `components/runner.go` から生成した CI ランナーバイナリ。 |
 | `adlaire-ci-api-$OS_ARCH` | 管理 API 導入手順、管理 API 導入後のアップデート | `components/api.go` から生成した管理 API サーバーバイナリ。 |
-| `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | `admin/index.html` と `admin/adlaire-ci-sdk.js` を含む管理 UI 配布物。 |
+| `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A1 の管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | Release 添付ファイルの SHA-256 checksum 一覧。 |
 
 Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は `linux-amd64` だけを初期標準とし、未知 OS/arch を指定した場合は取得前に `unsupported OS_ARCH: {OS_ARCH}` を stderr へ出力して終了コード `2` とする。`SHA256SUMS` は `"{sha256}  {filename}"` 形式の LF 区切り text とし、対象 filename が 1 回だけ出現することを必須とする。対象行が 0 件または 2 件以上の場合は checksum 検証失敗とする。
@@ -93,7 +93,7 @@ Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は 
 | 6. checksum 検証 | 対象 asset、対象 SHA-256 | 実ファイル digest が一致する。 | 終了コード `1`。asset を配置しない。 |
 | 7. 実行権限付与前確認 | 検証済み binary asset | 通常ファイルであり、directory / symlink ではない。 | 終了コード `1`。配置しない。 |
 
-`admin-ui.tar.gz` は checksum 検証後に一時展開ディレクトリへ展開する。展開後に `index.html` と `adlaire-ci-sdk.js` が同一展開ルート直下に存在しない場合は失敗とし、既存 `$INSTALL_DIR/admin` を変更しない。archive 展開時に絶対 path、`..`、symlink、hardlink、device file を含む entry がある場合は失敗とする。
+`admin-ui.tar.gz` は checksum 検証後に一時展開ディレクトリへ展開する。配布物の中身、必須 file、拒否する archive entry は `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A1〜A2 を正とする。検証に失敗した場合は、既存 `$INSTALL_DIR/admin` を変更しない。
 
 **配置・権限固定契約：**
 

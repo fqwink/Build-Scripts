@@ -11,6 +11,7 @@
 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner component の詳細仕様。Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能を扱う。 |
 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner component の詳細仕様。GitHub 監視、状態ファイル更新、pipeline、deploy、snapshot、通知、runner fixture、runner owner 追加機能を扱う。 |
 | `ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner component の詳細仕様。HTTP 共通契約、endpoint、状態ファイル read/write の呼び出し境界、認証連携、API fixture、API owner 追加機能を扱う。状態ファイル schema と更新手順は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。 |
+| `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | `admin` owner component の詳細仕様。管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を扱う。 |
 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | `sdk` owner component の詳細仕様。SDK class、method、HTTP 対応、error、stream、token 破棄を扱う。 |
 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` | `ui` owner component の詳細仕様。DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を扱う。 |
 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner component の詳細仕様。バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証を扱う。 |
@@ -32,6 +33,7 @@
 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | 分割済み | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture。 |
 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | 分割済み | `runner` owner の GitHub 監視、状態ファイル更新、pipeline、deploy、snapshot、通知、runner fixture。 |
 | `ADLAIRE_CI_DETAIL_API_SPEC.md` | 分割済み | `api` owner の HTTP 共通契約、endpoint、状態ファイル read/write、認証連携、API fixture。 |
+| `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | 分割済み | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 |
 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | 分割済み | `sdk` owner の SDK class、method、HTTP 対応、error、stream、token 破棄。 |
 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` | 分割済み | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | 分割済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
@@ -51,7 +53,7 @@
 
 リポジトリ内ソース配置の標準構成は、`ADLAIRE_CI_SPEC.md` Part 1 §4.3 と `ADLAIRE_CI_DETAIL_SPEC.md` §0j を参照する。
 
-下表は、現行リポジトリに存在する実装ファイルを示す。`components/` 標準配置への移行前は、現行ファイルを実装実体として扱う。
+下表は、現行リポジトリに存在する実装ファイルと、標準配置で仕様化済みの未実装ファイルを示す。`components/` 標準配置への移行前は、現行ファイルを実装実体として扱う。
 
 | パス | 状態 | 役割 |
 |------|------|------|
@@ -62,6 +64,7 @@
 | `runner.go` | 実装済み | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。Phase 2 完了判定パスを対象とする。標準移行後の配置は `components/runner.go`。 |
 | `runner_test.go` | 実装済み | `runner.go` の Phase 2 fixture、hardening、完了判定パステスト。標準移行後のテスト配置は実装 PR で決定する。 |
 | `components/api.go` | 仕様化済み・未実装 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
+| `components/admin.go` | 仕様化済み・未実装 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を提供する。 |
 | `admin/adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。SDK 経由で API と通信する。 |
 | `components/mcp.go` | 将来計画 | MCP サーバー。将来追加コンポーネントとして追加予定。 |
