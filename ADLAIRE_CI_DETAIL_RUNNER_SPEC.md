@@ -36,9 +36,9 @@
 
 ## 10a. CI ランナー 実装対象
 
-本節は、Go 版 `components/runner.go` として実装する CI ランナー機能を定義する。
+本節は、`runner` として実装する CI ランナー機能を定義する。
 
-`components/runner.go` は `adlaire-ci-runner` バイナリとして実行する。起動形式は systemd timer から呼び出される oneshot 実行とし、1 回の起動で対象ブランチ設定を読み込み、変更検出、ビルド起動、ログ保存、通知、転送、後処理を完了して終了する。
+`runner` は `adlaire-ci-runner` バイナリとして実行する。起動形式は systemd timer から呼び出される oneshot 実行とし、1 回の起動で対象ブランチ設定を読み込み、変更検出、ビルド起動、ログ保存、通知、転送、後処理を完了して終了する。
 
 実装時は、対象項目ごとに §0c の実装前確認項目を満たしていることを確認する。未充足の項目が 1 つでもある場合は、実装を開始せず、先に本ファイルの該当節を改訂する。
 
@@ -62,12 +62,12 @@
 
 ### 初期実装対象外の連携範囲
 
-§10〜§20 には、`components/runner.go` 単体の責務ではなく管理 API、標準管理ツール、追加の運用機能と結合して成立する項目が含まれる。これらは、API・SDK・UI の対象節に、呼び出し元、呼び出し先、状態ファイル、失敗時応答、検証条件が定義されるまで `components/runner.go` 単体で実装しない。
+§10〜§20 には、`runner` 単体の責務ではなく管理 API、標準管理ツール、追加の運用機能と結合して成立する項目が含まれる。これらは、API・SDK・UI の対象節に、呼び出し元、呼び出し先、状態ファイル、失敗時応答、検証条件が定義されるまで `runner` 単体で実装しない。
 
 | 項目 | 理由 |
 |------|------|
-| API 経由の動的ブランチ設定 | `components/runner.go` 単体では設定 API を持たないため、`components/api.go` 実装と合わせて扱う。 |
-| API 経由のロールバック | `POST /api/history/{id}/rollback` は `components/api.go` のエンドポイント実装が前提となる。 |
+| API 経由の動的ブランチ設定 | `runner` 単体では設定 API を持たないため、`api` 実装と合わせて扱う。 |
+| API 経由のロールバック | `POST /api/history/{id}/rollback` は `api` のエンドポイント実装が前提となる。 |
 | 管理画面からのスケジュール操作 | systemd timer の変更 API と標準管理ツール UI が前提となる。 |
 
 ---
@@ -82,10 +82,10 @@
 |------|------|
 | `/usr/local/bin/adlaire-ci-runner` | `components/runner.go` から生成する CI ランナーバイナリ。 |
 | `/usr/local/bin/adlaire-ci-build` | `components/builder.go` から生成する Markdown → 静的 Web サイトビルドバイナリ。 |
-| `/opt/adlaire-builder/.github_token` | GitHub PAT。Go 版 `components/runner.go` が読み込む。 |
+| `/opt/adlaire-builder/.github_token` | GitHub PAT。`runner` が読み込む。 |
 | `/opt/adlaire-builder/.last_sha` | 前回取得した blob SHA。JSON 形式で保存する。 |
 | `/opt/adlaire-builder/repo/docs/` | GitHub Blobs API から取得した Markdown の書き出し先。単一 Markdown の場合も本ディレクトリ内へ保存する。 |
-| `/opt/adlaire-builder/repo/.ci/pipeline.sh` | `components/runner.go` が `bash` で起動するビルド手順。 |
+| `/opt/adlaire-builder/repo/.ci/pipeline.sh` | `runner` が `bash` で起動するビルド手順。 |
 
 ```
 /opt/adlaire-builder/
@@ -99,7 +99,7 @@
 
 ### CI ランナー状態ファイル
 
-以下は §10a の実装対象に対応するファイルである。Go 版 `components/runner.go` は本仕様に従って作成・読み書きする。
+以下は §10a の実装対象に対応するファイルである。`runner` は本仕様に従って作成・読み書きする。
 
 | パス | 用途 |
 |------|------|
@@ -125,7 +125,7 @@
 
 ### 管理 API / SDK / UI 側ファイル
 
-以下は `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` の仕様に属する。CI ランナー拡張と連携するものを含むが、Go 版 `components/runner.go` 単体の実装対象範囲には含めない。
+以下は `api`、`sdk`、`ui` の仕様に属する。CI ランナー拡張と連携するものを含むが、`runner` 単体の実装対象範囲には含めない。
 
 ```
 /opt/adlaire-builder/
@@ -187,9 +187,9 @@
 
 ---
 
-## 12. 設定値（`components/runner.go`）
+## 12. 設定値（`runner`）
 
-Go 版 `components/runner.go` は本節の設定値を正とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
+`runner` は本節の設定値を正とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
 
 **関連型：**
 
@@ -362,7 +362,7 @@ BRANCH_TARGETS = [
 ]
 ```
 
-`BRANCH_TARGETS` が空の場合、`components/runner.go` は ERROR ログを出力し、ビルドを実行せず終了コード `2` で終了する。
+`BRANCH_TARGETS` が空の場合、`runner` は ERROR ログを出力し、ビルドを実行せず終了コード `2` で終了する。
 
 **runner 終了コード：**
 
@@ -562,7 +562,7 @@ runner が生成する build id は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` �
 
 ## 13. 処理フロー
 
-本節の処理フローは、Go 版 `components/runner.go` の標準フローである。
+本節の処理フローは、`runner` の標準フローである。
 
 **状態更新順序の規範：**
 
@@ -654,7 +654,7 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 
 **runner 機能単位契約：**
 
-`components/runner.go` は、下表の機能単位で状態を更新する。各機能単位は、Write 列にない状態ファイルを更新してはならない。
+`runner` は、下表の機能単位で状態を更新する。各機能単位は、Write 列にない状態ファイルを更新してはならない。
 
 | 機能単位 | Read | Write | 成功条件 | 失敗時更新 |
 |----------|------|-------|----------|------------|
@@ -789,7 +789,7 @@ pipeline が終了コード `0` で `[REPORT]` が不在の場合、SHA は更�
 runner が読み込む JSON object / JSON array の状態ファイルが破損している場合は、§22.0a の破損時の扱いに従う。JSON Lines は壊れた行だけを無視し、ファイル全体を破棄してはならない。破損退避ファイル名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。
 
 ```
-components/runner.go 起動（systemd タイマーから呼び出し）
+runner 起動（systemd タイマーから呼び出し）
     │
     ├─ .github_token 読み込み（不在、空、改行除去後 1 文字未満の場合は ERROR ログ、終了コード 2）
     │
@@ -936,7 +936,7 @@ set -euo pipefail
 /usr/local/bin/adlaire-ci-build --src "$ADLAIRE_CI_SRC" --out "$ADLAIRE_CI_OUT"
 ```
 
-ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`components/runner.go` は参照しない）。`adlaire-ci-build` は `components/builder.go` から生成した Go 版バイナリである。
+ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`runner` は参照しない）。`adlaire-ci-build` は `components/builder.go` から生成した Go 版バイナリである。
 
 **runner からの実行契約：**
 
@@ -1013,9 +1013,9 @@ runner は stdout / stderr の CRLF を LF に正規化して保存する。NUL 
 
 本節は、Go 版 CI ランナーの SSH 転送標準仕様である。
 
-Go 版 `components/runner.go` は、`pipeline.sh` 成功後に、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節を SSH 転送の正本仕様とする。
+`runner` は、`pipeline.sh` 成功後に、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節を SSH 転送の正本仕様とする。
 
-`components/runner.go` は `pipeline.sh` 成功後に、出力サイトディレクトリ配下の全ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。SSH コマンドは `ssh` バイナリを `exec.CommandContext` で直接起動し、`/bin/sh -c` を使わない。
+`runner` は `pipeline.sh` 成功後に、出力サイトディレクトリ配下の全ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。SSH コマンドは `ssh` バイナリを `exec.CommandContext` で直接起動し、`/bin/sh -c` を使わない。
 
 ### 設定値
 
@@ -1034,7 +1034,7 @@ Go 版 `components/runner.go` は、`pipeline.sh` 成功後に、出力サイト
 転送前にリモートサーバーで対象ファイルごとの SHA256 ハッシュを取得し、ローカルファイルのハッシュと比較する。
 
 ```bash
-# components/runner.go が os/exec 経由で実行
+# runner が os/exec 経由で実行
 ssh <user>@<host> sha256sum <dest_dir>/<relative-path>
 ```
 
@@ -1048,7 +1048,7 @@ relative path は `out` からの相対 path とし、`filepath.Rel` 後に `/` 
 stdin パイプ経由で SSH 転送する。
 
 ```bash
-# components/runner.go が os/exec（StdinPipe）経由で実行
+# runner が os/exec（StdinPipe）経由で実行
 ssh <user>@<host> 'mkdir -p <dest_dir>/<relative-dir> && tee <dest_dir>/<relative-path>'
 ```
 
@@ -1077,7 +1077,7 @@ SSH command は local shell 文字列を組み立てず、`exec.CommandContext` 
 ]
 ```
 
-- `components/runner.go` 起動時（`BRANCH_TARGETS` 処理前）に `PENDING_FILE` を読み込み、エントリごとに再試行する（→ §13 処理フロー）
+- `runner` 起動時（`BRANCH_TARGETS` 処理前）に `PENDING_FILE` を読み込み、エントリごとに再試行する（→ §13 処理フロー）
 - 再試行成功時にエントリを削除する。失敗時は `retry_count` をインクリメントして保持する
 - SSH 転送失敗 Webhook 通知（`deploy_failure` イベント）を送信する（on: `["deploy_failure"]` 設定時）
 - 同一 `out`、`host`、`user`、`dest_dir` の pending エントリが既に存在する場合は新規追記せず、既存エントリの `retry_count` を +1 し、`failed_at` を最新時刻へ更新する
@@ -1134,9 +1134,9 @@ remote `sha256sum` 出力は 1 行目の先頭 field だけを採用し、hex 64
 
 本節は、Go 版 CI ランナーのスナップショット標準仕様である。
 
-Go 版 `components/runner.go` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節をスナップショット保存、世代管理、ロールバック連携の正本仕様とする。
+`runner` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節をスナップショット保存、世代管理、ロールバック連携の正本仕様とする。
 
-`components/runner.go` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット世代削除を行わず、無制限保持とする。
+`runner` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット世代削除を行わず、無制限保持とする。
 
 ### ディレクトリ構造
 
@@ -1179,7 +1179,7 @@ snapshot copy 中に読み取り失敗、書き込み失敗、path 検証失敗�
 
 `POST /api/history/{id}/rollback`（→ §22）で指定ビルド ID のスナップショットから SSH 転送を再実行する。
 
-- ロールバック API は `components/api.go` の実装を前提とする。`components/api.go` が実装されるまでは、API 経由のロールバックはとして扱う
+- ロールバック API は `api` の実装を前提とする。`api` が実装されるまでは、API 経由のロールバックはとして扱う
 - `.snapshots/{id}/` が存在しない場合は `404` を返す
 - 転送成功時は `.build_history` に rollback エントリを追記する
 
@@ -1196,7 +1196,7 @@ snapshot copy 中に読み取り失敗、書き込み失敗、path 検証失敗�
 
 ## 15. ログ
 
-本節は、Go 版 `components/runner.go` の stdout ログと構造化ビルドログを定義する。
+本節は、`runner` の stdout ログと構造化ビルドログを定義する。
 
 ### stdout ログ
 
@@ -1211,13 +1211,13 @@ stdout は Go 標準ライブラリ `log/slog` で出力し、systemd が journa
 
 ### 構造化ビルドログ
 
-Go 版 `components/runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成する。
+`runner` は、ビルドごとに `.build_logs/{id}.json` を作成する。
 
 | 項目 | 内容 |
 |------|------|
 | ビルドログファイル | ビルドごとに `.build_logs/{id}.json` を作成する。 |
 | stdout / stderr 保存 | `pipeline.sh` の標準出力・標準エラーをビルドログへ保存する。 |
-| 変換レポート取り込み | `components/builder.go` が出力する `[REPORT]` 行をパースし、`tables_count`、`code_blocks_count` 等へ変換して保存する。 |
+| 変換レポート取り込み | `builder` が出力する `[REPORT]` 行をパースし、`tables_count`、`code_blocks_count` 等へ変換して保存する。 |
 | 警告取り込み | `[WARN]` 行を配列として保存し、`warnings` 件数と整合させる。 |
 | ビルド所要時間 | `started_at`、`finished_at`、`duration_seconds` を保存する。 |
 | コミット情報 | ビルド対象 commit の SHA、message、author、date を保存する。 |
@@ -1285,9 +1285,9 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 
 ---
 
-## 15a. `components/runner.go` 受け入れ fixture
+## 15a. `runner` 受け入れ fixture
 
-Go 版 `components/runner.go` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
+`runner` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
 
 ### Fixture R1: CLI 異常系
 
@@ -1772,7 +1772,7 @@ runner と API が同じ状態ファイルを参照する場合でも、runner �
 
 | 制限 | 詳細 |
 |------|------|
-| Webhook 受信の外部公開 | `POST /api/webhook` は `components/api.go`（`127.0.0.1` バインド）で受信するため、GitHub から直接受信する構成ではリバースプロキシと TLS 終端が必要。 |
+| Webhook 受信の外部公開 | `POST /api/webhook` は `api`（`127.0.0.1` バインド）で受信するため、GitHub から直接受信する構成ではリバースプロキシと TLS 終端が必要。 |
 | ペンディングキュー | ペンディング再試行が失敗した場合、`retry_count` を 1 増やしてエントリを保持する。runner による自動放棄は行わない。削除は転送成功時、または管理 API / 手動運用で明示的に削除する場合に限定する。 |
 | ペンディングキュー肥大化 | `queue_max_size` を超えた新規投入は ERROR ログを記録し、新規エントリを追加しない。既存エントリは削除しない。 |
 | サーキットブレーカー | 連続失敗回数が `API_CIRCUIT_BREAKER_THRESHOLD` 以上になった場合はポーリングを停止し、`POST /api/circuit-breaker/reset` でのみ復帰する。 |
@@ -2158,7 +2158,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 **記録仕様：**
 
-`components/runner.go` は `.build_logs/{id}.json` に `started_at`、`finished_at`、`duration_seconds` を必ず保存する。`started_at` は build id 採番直後、`finished_at` は最終 target status 確定直後とする。`duration_seconds` は `finished_at - started_at` を秒単位で切り上げず整数化し、1 秒未満は `0` とする。
+`runner` は `.build_logs/{id}.json` に `started_at`、`finished_at`、`duration_seconds` を必ず保存する。`started_at` は build id 採番直後、`finished_at` は最終 target status 確定直後とする。`duration_seconds` は `finished_at - started_at` を秒単位で切り上げず整数化し、1 秒未満は `0` とする。
 
 `.build_history.duration_seconds` は `.build_logs/{id}.json.duration_seconds` と同じ値にする。失敗、deploy pending、rollback でも記録する。変更なし skip で build log を作らない場合は記録しない。
 

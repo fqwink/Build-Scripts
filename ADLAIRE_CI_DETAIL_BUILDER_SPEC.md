@@ -32,7 +32,7 @@
 
 ## 2. ファイルパス設定
 
-Go 版 `components/builder.go` は、以下の既定値を持つ設定構造体で入出力パスを管理する。
+`builder` は、以下の既定値を持つ設定構造体で入出力パスを管理する。
 
 ```go
 type BuildConfig struct {
@@ -54,7 +54,7 @@ var DefaultBuildConfig = BuildConfig{
 }
 ```
 
-別の環境で実行する場合は、この既定値を CLI 引数で上書きする。Go 版 `components/builder.go` は設定ファイルを読み込まない。
+別の環境で実行する場合は、この既定値を CLI 引数で上書きする。`builder` は設定ファイルを読み込まない。
 
 **CLI 引数仕様：**
 
@@ -127,7 +127,7 @@ var DefaultBuildConfig = BuildConfig{
 
 ## 2a. 入力収集・出力パス決定
 
-`components/builder.go` は、`--src` がファイルかディレクトリかで入力収集方法を切り替える。
+`builder` は、`--src` がファイルかディレクトリかで入力収集方法を切り替える。
 
 | `--src` 種別 | 入力収集 | 出力 |
 |--------------|----------|------|
@@ -186,7 +186,7 @@ Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま�
 
 **入力収集・出力生成の機能単位契約：**
 
-`components/builder.go` は、以下の機能単位を順番に実行する。各機能単位は前段の出力だけを入力とし、失敗時は後続機能を実行しない。
+`builder` は、以下の機能単位を順番に実行する。各機能単位は前段の出力だけを入力とし、失敗時は後続機能を実行しない。
 
 | 機能単位 | 入力 | 出力 | 失敗条件 | 失敗時の状態 |
 |----------|------|------|----------|--------------|
@@ -506,7 +506,7 @@ type ConvertResult struct {
 | script/style tag | tag 全体を text として `esc()` し、実行可能 HTML にしない。 |
 | unknown Markdown 記法 | text として `esc()` し、独自 HTML を生成しない。 |
 
-`components/builder.go` は Markdown 入力由来の HTML を信頼済みとして扱ってはならない。`PageData.BodyHTML` に入る HTML は、本仕様で生成すると定義したタグと属性だけで構成する。
+`builder` は Markdown 入力由来の HTML を信頼済みとして扱ってはならない。`PageData.BodyHTML` に入る HTML は、本仕様で生成すると定義したタグと属性だけで構成する。
 
 **テーブル変換の詳細：**
 セパレーター行（`:---:`、`---` などで構成された行）のインデックスを自動検出し、セパレーター行より前の行をヘッダー（`<th>`）、それ以降を本文（`<td>`）として出力する。セパレーター行自体は出力しない。
@@ -1099,7 +1099,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 
 ビルド時に `assets/search-index.json` を生成し、`assets/app.js` の検索 UI から読み込む。TOC 検索フィルター（§7.4）と検索 UI を統合し、本文ヒット箇所へのジャンプを提供する。
 
-**インデックス生成仕様（components/builder.go）：**
+**インデックス生成仕様（builder）：**
 ビルド時に全ページの見出しと各段落の先頭 200 文字を抽出し、以下の配列形式で `assets/search-index.json` に書き出す。
 
 ```json
@@ -1319,9 +1319,9 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 | 終了コード | 条件 | 後続処理 |
 |------------|------|----------|
-| `0` | 静的 Web サイト生成に成功し、`[REPORT]` 行を出力した。 | `components/runner.go` は成功として扱う。 |
-| `1` | 出力ディレクトリ作成、HTML / CSS / JavaScript / search index 書き込み、テンプレート合成など処理中の一般エラー。 | `components/runner.go` はビルド失敗として扱い、SHA を更新しない。 |
-| `2` | CLI 引数不正、入力ファイル不存在、入力 UTF-8 不正、または `--strict` 指定時の警告発生。 | `components/runner.go` は設定または入力エラーとして扱い、SHA を更新しない。ただし `--strict` 警告時は `[REPORT]` を取り込む。 |
+| `0` | 静的 Web サイト生成に成功し、`[REPORT]` 行を出力した。 | `runner` は成功として扱う。 |
+| `1` | 出力ディレクトリ作成、HTML / CSS / JavaScript / search index 書き込み、テンプレート合成など処理中の一般エラー。 | `runner` はビルド失敗として扱い、SHA を更新しない。 |
+| `2` | CLI 引数不正、入力ファイル不存在、入力 UTF-8 不正、または `--strict` 指定時の警告発生。 | `runner` は設定または入力エラーとして扱い、SHA を更新しない。ただし `--strict` 警告時は `[REPORT]` を取り込む。 |
 
 終了コード `0` の場合、stdout には必ず `Collecting Markdown...`、`Converting MD...`、`Building site...`、`Writing assets...`、`Done → ...`、`[REPORT] ...` をこの順序で出力する。警告がある場合は `[REPORT]` の直前に `[WARN] ...` を 1 件 1 行で出力する。
 
@@ -1384,8 +1384,8 @@ pages headings tables code_blocks warnings size_warn broken_links heading_skips 
 
 警告が発生した場合、`[REPORT]` 行の直前に `[WARN] {メッセージ}` 形式で 1 件ずつ出力する。
 
-**`components/runner.go` による取り込み：**
-Go 版 CI ランナーでは、`components/runner.go` が `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
+**`runner` による取り込み：**
+Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
 
 ```json
 {
@@ -1414,9 +1414,9 @@ Go 版 CI ランナーでは、`components/runner.go` が `pipeline.sh` の標�
 
 ---
 
-## 8a. `components/builder.go` 受け入れ fixture
+## 8a. `builder` 受け入れ fixture
 
-Go 版 `components/builder.go` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/builder/` 配下へ追加する。仕様 PR では fixture の期待値を本節で固定する。
+`builder` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/builder/` 配下へ追加する。仕様 PR では fixture の期待値を本節で固定する。
 
 ### Fixture A: 単一 Markdown 入力
 

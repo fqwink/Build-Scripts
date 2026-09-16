@@ -40,7 +40,7 @@ admin/index.html（標準管理ツール）
 
 owner component `api` は、Go 標準ライブラリ `net/http` で実装し、管理ツールからの API リクエストを受け付ける。`runner` とは独立して常駐する。
 
-**`components/api.go` 設定値（スクリプト冒頭）：**
+**`api` 設定値（スクリプト冒頭）：**
 
 ```go
 Host              = "127.0.0.1"                               // バインドアドレス（外部公開禁止）
@@ -61,16 +61,16 @@ Repo              = "<リポジトリ名>"                           // 初期�
 
 API service の systemd unit、配置、起動、更新、rollback は setup owner component の責務とし、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.3b、§26.4.2、§26.5 を正とする。
 
-`components/api.go` は `adlaire-ci-api --addr 127.0.0.1:8765 --state-dir /opt/adlaire-builder` として起動された後の HTTP listener、request / response、状態ファイル read/write 呼び出し境界だけを定義する。
+`api` は `adlaire-ci-api --addr 127.0.0.1:8765 --state-dir /opt/adlaire-builder` として起動された後の HTTP listener、request / response、状態ファイル read/write 呼び出し境界だけを定義する。
 
 ## 21a. 管理 API サーバー制限
 
-本節は `components/api.go` の実行時制限を定義する。runner、setup、admin、SDK、UI は本節の制限を上書きしてはならない。
+本節は `api` の実行時制限を定義する。runner、setup、admin、SDK、UI は本節の制限を上書きしてはならない。
 
 | 制限 | 詳細 | 実装時の禁止事項 |
 |------|------|------------------|
 | session はインメモリ管理 | 再起動で全 session を消去する。永続 session store は持たない。 | session を状態ファイル、cookie store、外部 DB、外部 cache に保存しない。 |
-| HTTPS listener 非対応 | `components/api.go` は HTTP listener のみ起動する。標準 bind は `127.0.0.1:8765` とする。 | TLS listener、証明書読み込み、HTTPS redirect、外部公開 bind を実装しない。 |
+| HTTPS listener 非対応 | `api` は HTTP listener のみ起動する。標準 bind は `127.0.0.1:8765` とする。 | TLS listener、証明書読み込み、HTTPS redirect、外部公開 bind を実装しない。 |
 | 外部認証非対応 | 認証は `.admin_credentials`、`.totp_secret`、session、API token で完結する。 | SSO、OAuth、LDAP、SAML、複数ユーザー管理を追加しない。 |
 | 独自接続数制限なし | Go 標準ライブラリ `net/http` の標準 server で処理する。API rate limit は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.47 の固定窓で行う。 | 独自 worker pool、connection pool、接続数上限、外部 queue を追加しない。 |
 | runner 起動責務なし | API は HTTP endpoint の request / response と状態 read/write 呼び出し境界を担当する。 | runner の通常 polling loop、GitHub read、pipeline 実行、build log 確定処理を API 本文へ移動しない。 |
@@ -87,12 +87,12 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ### 22.0 API 共通契約
 
-本節の API は `components/api.go` の対象仕様である。実装時は、エンドポイント固有仕様より先に以下の共通契約を満たす。
+本節の API は `api` の対象仕様である。実装時は、エンドポイント固有仕様より先に以下の共通契約を満たす。
 
 | 項目 | 仕様 |
 |------|------|
 | Go バージョン | Go `1.22` 以上。HTTP 実装は Go 標準ライブラリ `net/http` を使用する。 |
-| bind | 既定値は `127.0.0.1:8765`。`--addr` で上書き可能。`--addr 0.0.0.0:<port>` を指定しても、`components/api.go` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
+| bind | 既定値は `127.0.0.1:8765`。`--addr` で上書き可能。`--addr 0.0.0.0:<port>` を指定しても、`api` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルはいずれも UTF-8 とする。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
 | リクエスト body 上限 | JSON body は 1 MiB を上限とする。超過時は `413 Payload Too Large` と `{"error": "Payload too large"}` を返す。 |
@@ -159,7 +159,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ### 22.0a 状態ファイル共通仕様
 
-状態ファイルのパス、形式、初期値、更新責務、破損時の扱い、更新手順、schema 厳格化、状態読取 adapter、状態読取 priority は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a を正とする。`components/api.go` は同節の adapter と更新手順を利用し、endpoint 固有の request / response / validation は本ファイル §22.0b 以降を正とする。
+状態ファイルのパス、形式、初期値、更新責務、破損時の扱い、更新手順、schema 厳格化、状態読取 adapter、状態読取 priority は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a を正とする。`api` は同節の adapter と更新手順を利用し、endpoint 固有の request / response / validation は本ファイル §22.0b 以降を正とする。
 
 ### 22.0b 入力検証共通仕様
 
@@ -684,7 +684,7 @@ API の P0〜P5 実装順序、必須検証、fixture 名、入力状態、期�
 | `GET` | `/api/sessions` | 要 | 有効セッション一覧を返す |
 | `POST` | `/api/sessions/revoke-all` | 要 | 現セッション以外の全セッションを強制無効化する |
 | `GET` | `/api/status` | 要 | 最終ビルド時刻・SHA・成否・実行中フラグを返す |
-| `POST` | `/api/build` | 要 | 手動ビルドトリガー（`components/runner.go` を即時起動） |
+| `POST` | `/api/build` | 要 | 手動ビルドトリガー（`runner` を即時起動） |
 | `POST` | `/api/build/force` | 要 | SHA リセットとビルドをアトミックに実行する（強制ビルド） |
 | `POST` | `/api/build/cancel` | 要 | 実行中のビルドを強制停止する（`running: true` のときのみ有効） |
 | `GET` | `/api/build/stream` | 要 | 実行中または直近ビルドログを SSE で配信する |
@@ -716,7 +716,7 @@ API の P0〜P5 実装順序、必須検証、fixture 名、入力状態、期�
 | `POST` | `/api/notify/weekly-summary` | 要 | 週次サマリー Webhook を即時手動送信する（過去 7 日間の統計を集計して送信） |
 | `GET` | `/api/config` | 要 | サーバー設定を返す |
 | `POST` | `/api/config` | 要 | サーバー設定を更新する |
-| `POST` | `/api/log-level` | 要 | `components/api.go` の `log_level` を変更する |
+| `POST` | `/api/log-level` | 要 | `api` の `log_level` を変更する |
 | `GET` | `/api/config-log` | 要 | 設定変更履歴（変更日時・種別・変更前後の値）を返す |
 | `GET` | `/api/pat-status` | 要 | GitHub PAT の有効性確認 |
 | `POST` | `/api/pat-verify` | 要 | GitHub API を呼び出し PAT の有効性をリアルタイム検証する |
@@ -984,7 +984,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 - `last_deploy_at`：最終 SSH 転送完了日時（未実行時 `null`）
 - `last_deploy_status`：`"success"` | `"failure"` | `"skipped"` | `"none"`
 - `pending_transfers`：ペンディングキューのエントリ数
-- `uptime_seconds`：`components/api.go` 起動からの経過秒数
+- `uptime_seconds`：`api` 起動からの経過秒数
 
 **`GET /api/pat-status` レスポンス例：**
 ```json
@@ -1226,7 +1226,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 `tables_count` / `code_blocks_count`：直近ビルドの変換レポート（§8）より取得。ビルド前は `null`。
 `build_warnings`：直近ビルドで発生した警告メッセージの配列（§8 参照）。ビルド前は空配列 `[]`。
 `build_id` / `commit_sha` / `build_at`：直近ビルドログの `build_meta` を優先し、不在の場合は出力 HTML の meta tag を読み取る。どちらにも存在しない場合は空文字を返す。
-値は `components/runner.go` が `.build_logs/{id}.json` または `.build_logs/archive/{id}.json.gz` から最新エントリを読み取って返す。
+値は `runner` が `.build_logs/{id}.json` または `.build_logs/archive/{id}.json.gz` から最新エントリを読み取って返す。
 
 **`GET /api/stats/timeline` レスポンス例：**
 ```json
@@ -2140,7 +2140,7 @@ Request body は partial `ConfigObject` とする。未知 key を含む場合�
 owner component は `api` とする。collaborator component は `sdk`、`ui`、`statefile` とする。
 
 
-`components/api.go` は全 `/api/` request について `.api_access_log` へ JSON Lines を追記する。`GET /api/health` も対象とする。静的 file 配信、admin HTML、SDK JS は対象外とする。
+`api` は全 `/api/` request について `.api_access_log` へ JSON Lines を追記する。`GET /api/health` も対象とする。静的 file 配信、admin HTML、SDK JS は対象外とする。
 
 追記タイミングは response status 確定後とする。追記失敗時は、対象 API の本来の response を優先し、サーバーログに `API_ACCESS_LOG_WRITE_FAILED` を出す。access log 書き込み失敗を理由に API response を `500` へ変更してはならない。
 
