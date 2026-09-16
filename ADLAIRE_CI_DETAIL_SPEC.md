@@ -5401,6 +5401,34 @@ P0 / P1 実装は、下表の fixture をすべて満たした場合だけ完了
 | A11 write lock timeout | `.build_state.lock` を保持した状態で `.build_state` 更新 endpoint を呼ぶ。 | 10 秒経過後 `409 {"error":"Conflict"}`。 | tmp file を残さず、target を変更しない。 |
 | A12 GET side-effect zero | `GET /api/status`、`GET /api/history`、`GET /api/logs`、`GET /api/queue` を連続実行する。 | 各 endpoint は入力状態に応じた正常 response または固定 error response。 | request 前後で対象状態ファイル一覧、mtime、mode、内容が一致する。 |
 
+**API P2〜P5 fixture 固定：**
+
+P2〜P5 実装は、下表の fixture をすべて満たした場合だけ完了扱いにする。fixture は既存 endpoint と既存状態ファイルだけを対象とし、§22.0e にない endpoint、§22.0a にない状態ファイル、§24 にない UI 操作を追加してはならない。
+
+| Fixture | 優先度 | 入力状態 / Request | 期待 response | 状態ファイル副作用 |
+|---------|--------|--------------------|---------------|--------------------|
+| B1 config no-op | P2 | 既存 `.server_config` と同じ body で `POST /api/config`。 | `200` と `{message:"No changes",config}`。 | `.server_config`、`.config_log`、`.audit_log` を変更しない。 |
+| B2 config validation failure | P2 | `queue_max_size=-1`、未知 enum、相対 path を含む `POST /api/config`。 | `422 {"error":"Validation failed","details":[...]}`。 | 状態ファイルを変更しない。 |
+| B3 branch config save | P2 | 有効な branch target 2 件で `POST /api/branch-config`。 | `{message:"Branch config updated",branches_count:2}`。 | `.branch_config` を atomic write し、`.config_log` に差分を記録する。 |
+| B4 schedule systemd failure | P2 | `.server_config` 保存成功後、systemd timer 更新を fake failure にする。 | `500`。 | `.server_config` は更新済み、`.config_log` に `systemd_update_failed` を記録し、未定義 rollback を行わない。 |
+| B5 PAT update secret mask | P2 | `POST /api/pat-update` に token を送る。 | `{message:"PAT updated"}`。 | secret file は mode `600`。response、`.config_log`、`.audit_log`、server log に token 平文を出さない。 |
+| B6 dashboard read-only | P2 | `.dashboard_layout`、`.build_state`、`.build_status.json`、`.alert_rules` を置き `GET /api/dashboard`。 | widget 順に dashboard object を返す。 | GET は対象状態ファイルを作成、修復、更新しない。 |
+| C1 notify config mask | P3 | Webhook secret と SMTP password を含む通知設定保存後、GET / backup / log を確認する。 | secret は `"***"` または `*_set:true` だけを返す。 | secret 平文を状態表示、履歴、通知ログ、backup に残さない。 |
+| C2 webhook receive signed | P3 | 正常署名の GitHub push payload を `POST /api/webhook`。 | `202` と queued 結果。 | `.webhook_events.json` 追記後、必要時 `.build_state.queued` へ `trigger:"webhook"` を追加する。 |
+| C3 webhook invalid signature | P3 | 署名なし、不正 prefix、不一致署名。 | `401 {"error":"Unauthorized"}`。 | event log、queue、history を変更しない。 |
+| C4 SMTP test disabled | P3 | SMTP disabled で `POST /api/smtp-test`。 | endpoint 固有の `422`。 | `.notify_log` へ成功扱いを残さず、secret を出力しない。 |
+| D1 snapshot delete | P4 | 存在する snapshot id で `DELETE /api/snapshots/{id}`。 | `{message:"Snapshot deleted"}`。 | 対象 snapshot だけ削除し、`.config_log` または監査対象 log に削除を記録する。 |
+| D2 rollback running conflict | P4 | `.build_state.running=true` で `POST /api/history/{id}/rollback`。 | `409 {"error":"Build is running"}`。 | queue、history、snapshot、deploy target を変更しない。 |
+| D3 maintenance blocks build | P4 | maintenance enabled 状態で `POST /api/build`。 | `503` と endpoint 固有 maintenance error。 | build queue、history、log を変更しない。 |
+| D4 access-control deny | P4 | allowlist に接続元が含まれない状態で任意認証必須 API。 | 認証判定前に `403 {"error":"Forbidden"}`。 | password / token 検証、access log 成功行、対象操作副作用を行わない。 |
+| D5 hook timeout | P4 | `pre` hook が timeout。 | build status は `hook_error` または endpoint 固有の hook error。 | pipeline を実行せず、hook log と build log に timeout を固定値で記録する。 |
+| E1 token issue once | P5 | `POST /api/tokens` で token 作成。 | token 本体を作成 response に 1 回だけ含める。 | `.api_tokens` には hash だけを保存し、再取得 API では token 本体を返さない。 |
+| E2 token revoke missing | P5 | 存在しない token id を `DELETE /api/tokens/{id}`。 | `404 {"error":"Not found"}`。 | `.api_tokens`、`.audit_log` を変更しない。 |
+| E3 alert/tag duplicate | P5 | 同一 alert rule または tag rule を 2 回作成。 | 2 回目は `409 {"error":"Conflict"}`。 | 2 回目は該当状態ファイルと `.config_log` を変更しない。 |
+| E4 pipeline config reserved arg | P5 | `extra_args` に `--src`、`--out`、`--state-dir` を含める。 | `422 {"error":"Validation failed","details":[...]}`。 | `.pipeline_config` を変更しない。 |
+| E5 notes same content | P5 | 同じ `content` を 2 回 `POST /api/notes`。 | 2 回目は `No changes`。 | 2 回目は `.notes`、`.config_log` を変更しない。 |
+| E6 dashboard layout invalid | P5 | 重複 widget、未知 widget、空配列を `POST /api/dashboard-layout`。 | `422 {"error":"Validation failed","details":[...]}`。 | `.dashboard_layout` を変更しない。 |
+
 | メソッド | パス | 認証 | 説明 |
 |---------|------|------|------|
 | `POST` | `/api/login` | 不要 | ログイン（セッショントークン返却） |
@@ -7038,6 +7066,34 @@ P0 / P1 実装では、下表の SDK method を最小運用範囲として固定
 | sdk p1 stream invalid | `data:` 行が JSON parse 不能 | `AdlaireCIError(status=0,message="Invalid SSE frame")`、`closed=true`。 |
 | sdk p1 unauthorized | 任意 P0/P1 endpoint が `401` | `this._token=null`、次 request に Authorization header を付けない。 |
 
+**SDK P2〜P5 操作固定契約：**
+
+P2〜P5 SDK は、§22.0e の endpoint 契約と §23 SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行ってよいが、API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
+
+| 機能群 | SDK method | 成功時 | 失敗時 | 追加禁止事項 |
+|--------|------------|--------|--------|--------------|
+| config / repo / branch | `getConfig()`, `setConfig(config)`, `validateConfig(config)`, `setRepoConfig(config)`, `getBranchConfig()`, `setBranchConfig(branches)` | API response をそのまま返す。`set*` は success message と count / config を保持する。 | `422 details` は `AdlaireCIError.details` に保持する。`500` は固定 message。 | SDK 側で未知 key を削除しない。既定値 merge しない。 |
+| schedule | `setScheduleInterval()`, `pauseSchedule()`, `resumeSchedule()`, `setAllowedHours()`, `clearAllowedHours()`, `setForceInterval()`, `setBuildCooldown()` | response の interval / hours / seconds / allowed_hours をそのまま返す。 | systemd 更新失敗の `500` を `AdlaireCIError` にする。 | timer 状態を SDK が推測しない。 |
+| diagnostics / dashboard | `getDiagnostics()`, `getDashboard()`, `getRateLimit()`, `getDiskUsage()`, `getOutputMeta()` | read-only response をそのまま返す。 | item 単位 warn/error は成功 response として返し、HTTP error だけ例外にする。 | read-only response を SDK が保存・集計しない。 |
+| notify / SMTP / webhook | `getNotifyConfig()`, `setNotifyConfig()`, `notifyTest()`, `notifyWeeklySummary()`, `getWebhookEvents()`, `getWebhookConfig()`, `setWebhookConfig()`, `getSmtpConfig()`, `setSmtpConfig()`, `smtpTest()` | secret は API が mask した値だけ返す。 | 未設定 `422` / `501`、送信失敗 `500` を保持する。 | secret 平文を console、throw message、responseBody 加工結果へ出さない。 |
+| snapshots / rollback | `getSnapshots()`, `downloadSnapshot(id)`, `deleteSnapshot(id)`, `rollbackHistory(id)` | list は API 順序、download は Blob、rollback は `{message,build_id}`。 | `404`、running `409` を `AdlaireCIError`。 | SDK が snapshot 存在確認や rollback 可否を事前推測しない。 |
+| maintenance / access / hooks | `getMaintenance()`, `enableMaintenance()`, `disableMaintenance()`, `getAccessControl()`, `setAccessControl()`, `getHooks()`, `addHook()`, `deleteHook()`, `getHookLog()` | API response をそのまま返す。 | access deny `403`、validation `422`、hook timeout `500` を保持する。 | command args を文字列結合しない。CIDR を SDK 独自正規化しない。 |
+| alert / tag / pipeline / notes / dashboard layout | `getAlertRules()`, `addAlertRule()`, `deleteAlertRule()`, `getTagRules()`, `addTagRule()`, `deleteTagRule()`, `getPipelineConfig()`, `setPipelineConfig()`, `getNotes()`, `setNotes()`, `getDashboardLayout()`, `setDashboardLayout()` | API response の rules / config / notes / widgets をそのまま返す。 | duplicate `409`、validation `422`、read failure `500` を保持する。 | rule 重複排除、widget 補完、notes trim を行わない。 |
+| tokens / sessions / audit | `getTokens()`, `createToken()`, `revokeToken()`, `getSessions()`, `revokeAllSessions()`, `getAuditLog()`, `getApiAccessLog()` | `createToken()` の token 本体は response として 1 回だけ返す。 | `403`、`404`、`422`、`429` を status 付きで保持する。 | token 本体を保存しない。token list に作成時 token を合成しない。 |
+
+**SDK P2〜P5 fixture 固定：**
+
+| fixture | fake fetch 入力 | 合格条件 |
+|---------|-----------------|----------|
+| sdk p2 config validation | `POST /api/config` が `422 details` | `AdlaireCIError.status=422`、`details` 配列保持、送信 body の未知 key は削除されていない。 |
+| sdk p2 schedule failure | `POST /api/schedule/interval` が `500 {"error":"Internal server error"}` | error を投げ、SDK が timer 再試行や rollback request を行わない。 |
+| sdk p3 secret mask | `GET /api/notify-config` と `GET /api/smtp-config` が mask 値を返す | mask 値をそのまま返し、secret 平文を生成しない。 |
+| sdk p3 webhook events paging | `getWebhookEvents(20,40)` | query は `limit=20&offset=40`、`total` は API 値をそのまま返す。 |
+| sdk p4 snapshot binary | `downloadSnapshot(id)` が binary response | `Blob` を返し、JSON parse を試みない。 |
+| sdk p4 rollback conflict | `rollbackHistory(id)` が `409 {"error":"Build is running"}` | `AdlaireCIError.status=409`、自動 `getStatus()` 呼び出しなし。 |
+| sdk p5 token issue | `createToken()` が `{token:"..."}` を返す | token を response として返すだけで、SDK 内部保存、console 出力、token list 合成をしない。 |
+| sdk p5 duplicate rule | `addAlertRule()` または `addTagRule()` が `409 Conflict` | `AdlaireCIError.status=409`、自動 retry なし。 |
+
 **SDK 引数変換契約：**
 
 SDK method は、下表の通りに引数を path、query、body へ変換する。下表にない引数、既定値、body key を追加してはならない。
@@ -7482,6 +7538,45 @@ P0 / P1 UI の disabled 条件は以下に固定する。
 | ui p1 log not found | `getHistoryLog(id)` が `404 Not found` | detail panel に not found を表示し、履歴一覧は再取得しない。 |
 | ui p1 circuit reset | `resetCircuitBreaker()` 成功 | circuit 表示を閉じ、status/queue を再取得し、build を自動開始しない。 |
 | ui p1 unauthorized | 任意操作が `401` | token/ticket/secret field を消去し、`panel-login` だけ表示する。 |
+
+**UI P2〜P5 操作固定契約：**
+
+P2〜P5 UI は、§24 UI 操作契約表の SDK method だけを呼び出す。UI は API / SDK response の補完、状態ファイル直接操作、未定義 endpoint 呼び出し、保存成功前の確定表示を行ってはならない。
+
+| 機能群 | 主操作 | 成功時表示 | 成功後再取得 | 失敗時表示 / disabled |
+|--------|--------|------------|--------------|------------------------|
+| config / repo / branch | config 保存、repo 保存、branch config 保存、config validate | API message を表示する。validate は `valid` と errors / warnings を表示する。 | 保存系は `getConfig()` または対象 GET と `getConfigLog()`。validate は再取得なし。 | `422` は field error。`500` は panel error。入力値は保持する。 |
+| schedule | interval、pause、resume、allowed hours、force interval、cooldown | 変更後値を表示する。 | `getSchedule()`, `getConfigLog()` | systemd 失敗 `500` は schedule panel error とし、再取得で保存済み値を表示する。 |
+| diagnostics / dashboard | diagnostics、dashboard、rate limit、disk、output meta 取得 | item ごとの ok/warn/error を表示する。 | なし | HTTP error は panel error。item warn/error を HTTP error として扱わない。 |
+| notify / SMTP / webhook | notify config 保存、webhook secret 保存、SMTP 保存、test、weekly summary、webhook events 表示 | API message、送信結果、件数を表示する。 | 保存系は対象 GET と `getConfigLog()`。test / summary は `getNotifyLog()`。 | secret 入力は成功・失敗の両方で消去する。未設定 `422` / `501` は panel error。 |
+| snapshots / rollback | snapshot list、download、delete、rollback | list 件数、download 開始、delete 完了、rollback 開始を表示する。 | delete は `getSnapshots()`。rollback は `getHistory()`, `getStatus()`。 | delete / rollback は確認 dialog 必須。running `409` は status 再取得。 |
+| maintenance / access / hooks | maintenance enable/disable、access 保存、hook 追加/削除 | 固定成功文言と件数または状態を表示する。 | `getMaintenance()` / `getAccessControl()` / `getHooks()` と `getConfigLog()`。 | maintenance enabled 中は build / rollback / 設定変更系を disabled。hook 追加失敗時は command 入力を保持する。 |
+| alert / tag / pipeline / notes / layout | rule 追加/削除、pipeline 保存、notes 保存、dashboard layout 保存 | 固定成功文言を表示する。 | 対象 GET、必要時 `getDashboard()` または `getConfigLog()`。 | duplicate `409` は競合表示。validation `422` は field error。no-op は成功表示のみ。 |
+| tokens / sessions / audit | token 発行/失効、session revoke、audit/API access log 表示 | token 発行時は token 本体を一回表示する。失効/revoke は固定成功文言。 | token 操作は `getTokens()`, `getAuditLog()`。session revoke は `getSessions()`。 | token 本体は次 user action、panel 遷移、logout、`401` で消去する。`403` は logout しない。 |
+
+P2〜P5 UI の秘密情報消去条件は以下に固定する。
+
+| 対象 field / 表示 | 消去タイミング |
+|-------------------|----------------|
+| PAT、Webhook Secret、SMTP password | 保存成功、保存失敗、panel 遷移、logout、`401`。 |
+| 発行直後 API token | 次 user action、copy button 押下後、panel 遷移、logout、`401`。 |
+| TOTP secret / ticket / code | confirm 成功、confirm 失敗、panel 遷移、logout、`401`。 |
+| password / current_password / new_password | login / change 成功、login / change 失敗、logout、`401`。 |
+
+**UI P2〜P5 fixture 固定：**
+
+| fixture | fake SDK 入力 | 合格条件 |
+|---------|---------------|----------|
+| ui p2 config validation | `setConfig()` が `422 details` | 該当 field に error、panel error summary 1 行、入力値保持、`getConfig()` を呼ばない。 |
+| ui p2 schedule save failure | `setScheduleInterval()` が `500` | panel error 表示後に `getSchedule()` を 1 回呼び、保存済み値を表示する。 |
+| ui p3 secret save failure | `setWebhookConfig()` または `setSmtpConfig()` が `500` | secret field を消去し、secret 平文を error 表示しない。 |
+| ui p3 notify test | `notifyTest()` 成功 | 結果表示後に `getNotifyLog()` を呼び、通知設定を自動保存しない。 |
+| ui p4 snapshot delete cancel | delete 確認 dialog cancel | SDK method 呼び出し 0 回、success / error 表示差分なし。 |
+| ui p4 rollback conflict | `rollbackHistory()` が `409 Build is running` | error 表示、`getStatus()` を呼ぶ、rollback request を再送しない。 |
+| ui p4 maintenance enabled | `getMaintenance()` が enabled | maintenance banner 表示、build / rollback / 設定変更系 disabled、disable maintenance は enabled。 |
+| ui p5 token issue once | `createToken()` 成功 | token 本体を一回表示し、`getTokens()` 後の一覧には token 本体を表示しない。 |
+| ui p5 duplicate rule | `addAlertRule()` が `409 Conflict` | 競合表示、rule list は前回表示を保持し、自動 retry しない。 |
+| ui p5 layout invalid | `setDashboardLayout()` が `422 details` | 該当 widget field error、dashboard 表示順を変更しない。 |
 
 **UI 設定値契約：**
 
