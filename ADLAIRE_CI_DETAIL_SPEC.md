@@ -519,9 +519,9 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | 機能 | 対象コンポーネント | 詳細仕様節 | 受け入れ条件 |
 |------|-------------------|------------|--------------|
 | ビルドタイムアウト | `components/runner.go` / `components/api.go` | §12、§13、§22.0e | `build_timeout_seconds` の既定値、設定 API、`context.WithTimeout` の中断処理、終了コード、ログが一致する。 |
-| ポーリング間隔の動的変更 | `components/api.go` | §22.0e、§26 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
+| ポーリング間隔の動的変更 | `components/api.go` | §22.0e、§26、§27.11 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
 | ビルドログのファイル保存 | `components/runner.go` | §11、§13、§15 | `.build_logs/{id}.json` の schema、stdout/stderr、変換レポート、duration、権限が一致する。 |
-| GitHub Webhook 受信 | `components/api.go` / `components/runner.go` | §22.0e、§22-W、§13 | HMAC 検証、イベント記録、キュー投入またはビルドトリガー、エラー応答が一致する。 |
+| GitHub Webhook 受信 | `components/api.go` / `components/runner.go` | §22.0e、§22-W、§13、§27.12 | HMAC 検証、イベント記録、キュー投入またはビルドトリガー、エラー応答が一致する。 |
 | ネットワーク断時の再試行 | `components/runner.go` | §12、§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、失敗時ログが一致する。 |
 | GitHub API レート制限自動待機 | `components/runner.go` / `components/api.go` | §13、§22.0e | `X-RateLimit-Remaining` と `X-RateLimit-Reset` の扱い、待機、API 表示が一致する。 |
 | 転送後リモート整合性検証 | `components/runner.go` | §14a、§13 | SSH 転送後の SHA256 照合、不一致時の `.pending_transfers` 再投入、ログが一致する。 |
@@ -546,13 +546,13 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | 設定バリデーション API | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0c、§22.0e、§23、§24、§27.5 | `POST /api/config/validate` が状態を変更せず、正規化後設定、warnings、errors を返す。 |
 | API アクセスログ | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§27.6 | `.api_access_log` の schema、追記対象、マスク条件、一覧 API、UI 表示が一致する。 |
 | ビルドログのアーカイブ圧縮 | `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §12、§13、§15、§22.0c、§22.0e、§23、§24、§27.7 | gzip 形式、archive 先、参照順、cleanup/archive API、disk usage 集計、UI 表示が一致する。 |
-| Webhook イベントログ | `components/api.go` | §11、§22.0e、§22-W | `.webhook_events.json` の JSON Lines schema と一覧 API が一致する。 |
-| ビルド所要時間の記録と統計 API | `components/runner.go` / `components/api.go` | §15、§22.0e | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
+| Webhook イベントログ | `components/api.go` | §11、§22.0e、§22-W、§27.13 | `.webhook_events.json` の JSON Lines schema と一覧 API が一致する。 |
+| ビルド所要時間の記録と統計 API | `components/runner.go` / `components/api.go` | §15、§22.0e、§27.14 | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
 | ビルドアーティファクト世代管理 | `components/runner.go` / `components/api.go` | §14b、§22.0e | `.snapshots/` の保持世代、削除、rollback API が一致する。 |
-| ビルドアーティファクト管理 | `components/api.go` / `admin/index.html` / `admin/adlaire-ci-sdk.js` | §14b、§22.0e、§23、§24 | 一覧、ダウンロード、削除、ロールバックの API、SDK、UI が一致する。 |
-| ヘルスチェックエンドポイント | `components/api.go` | §22.0e | `GET /api/health` の稼働秒数、最終ビルド、最終転送、エラー応答が一致する。 |
-| Webhook イベント一覧取得 API | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24 | `GET /api/webhook-events` の query、response、SDK method、UI 表示が一致する。 |
-| ビルドログ重大度フィルター | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24 | `level=warn\|error` の query、検索結果、UI filter が一致する。 |
+| ビルドアーティファクト管理 | `components/api.go` / `admin/index.html` / `admin/adlaire-ci-sdk.js` | §14b、§22.0e、§23、§24、§27.15 | 一覧、ダウンロード、削除、ロールバックの API、SDK、UI が一致する。 |
+| ヘルスチェックエンドポイント | `components/api.go` | §22.0e、§27.16 | `GET /api/health` の稼働秒数、最終ビルド、最終転送、エラー応答が一致する。 |
+| Webhook イベント一覧取得 API | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24、§27.13 | `GET /api/webhook-events` の query、response、SDK method、UI 表示が一致する。 |
+| ビルドログ重大度フィルター | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24、§27.17 | `level=warn\|error` の query、検索結果、UI filter が一致する。 |
 | 変換レポート出力 | `components/builder.go` / `components/runner.go` / `components/api.go` | §8、§13、§15、§22.0e | `[REPORT]` stdout、runner 取り込み、`.build_logs`、`GET /api/output-meta` が一致する。 |
 | シンタックスハイライト | `components/builder.go` | §7.8 | 対応言語、class 名、HTML escape、CSS 表示が一致する。 |
 | 本文内全文検索 | `components/builder.go` | §7.9 | `assets/search-index.json`、検索 UI、ヒット遷移、対象テキストが一致する。 |
@@ -572,9 +572,9 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | 見出し階層スキップ警告 | `components/builder.go` | §4.5、§8 | h1→h3 等の検出、WARN、`heading_skips` が一致する。 |
 | 読了時間推計と表示 | `components/builder.go` | §4.5、§5、§6、§8 | 対象文字数、200文字/分、切り上げ、header 表示、report が一致する。 |
 | Webhook 通知失敗リトライキュー | `components/runner.go` | §11、§13、§16 | `.notify_pending` の schema、再送順序、失敗時保持が一致する。 |
-| ブランチ設定の動的変更 API | `components/runner.go` / `components/api.go` | §11、§12、§22.0e | `.branch_config`、GET/POST API、runner 再起動不要条件が一致する。 |
-| 週次ビルドサマリー Webhook | `components/runner.go` / `components/api.go` | §12、§13、§16、§22.0e | 週次判定、集計対象、通知 payload、手動送信 API が一致する。 |
-| 設定変更の詳細 diff 記録 | `components/api.go` | §22.0a、§22.0e | `.config_log` の diff 文字列、対象 API、マスク条件が一致する。 |
+| ブランチ設定の動的変更 API | `components/runner.go` / `components/api.go` | §11、§12、§22.0e、§27.18 | `.branch_config`、GET/POST API、runner 再起動不要条件が一致する。 |
+| 週次ビルドサマリー Webhook | `components/runner.go` / `components/api.go` | §12、§13、§16、§22.0e、§27.19 | 週次判定、集計対象、通知 payload、手動送信 API が一致する。 |
+| 設定変更の詳細 diff 記録 | `components/api.go` | §22.0a、§22.0e、§27.20 | `.config_log` の diff 文字列、対象 API、マスク条件が一致する。 |
 | テーブルのソート機能 | `components/builder.go` | §7.14 | クリック操作、昇順/降順、`aria-sort`、インジケーターが一致する。 |
 | キーボードショートカット | `components/builder.go` | §7.12 | `/`、`Escape`、`t` の対象、フォーカス条件、入力中の無効化が一致する。 |
 
@@ -7028,3 +7028,386 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 | permission error | 自動復旧なし、終了コード `2`、running 未変更。 |
 | dry-run | 差分なし、backup なし、dry-run JSON に検出結果。 |
 | 通知失敗 | `.notify_pending` が正常な場合だけ pending 追記。 |
+
+### 27.11 ポーリング間隔の動的変更
+
+本機能の目的は、管理 API から systemd timer の実行間隔を変更し、次回以降の runner 起動間隔を固定仕様どおり反映することである。
+
+対象コンポーネントは `components/api.go` とする。`components/runner.go` は本機能で systemd timer を変更しない。
+
+**入力 / 出力：**
+
+| 項目 | 仕様 |
+|------|------|
+| API | `POST /api/schedule/interval` |
+| Request | `{ "interval_seconds": integer }` |
+| 許容値 | 30〜86400 秒 |
+| Response | `{ "message": "Schedule interval updated", "interval_seconds": N }` |
+| 状態 | `.server_config.schedule_interval_seconds` を更新し、`.config_log` へ記録する。 |
+| systemd | `/etc/systemd/system/adlaire-ci.timer` の `OnUnitActiveSec` を `N seconds` 相当へ更新する。 |
+
+**処理順序：**
+
+1. 認証、maintenance、入力型、範囲を検証する。
+2. `.server_config` を atomic write で更新する。
+3. `.config_log` に `schedule_interval_seconds` の diff を追記する。
+4. systemd timer ファイルを書き換える。
+5. `systemctl daemon-reload` を実行する。
+6. `systemctl restart adlaire-ci.timer` を実行する。
+7. `systemctl show adlaire-ci.timer -p OnUnitActiveSec` 相当で反映を確認する。
+8. 成功 response を返す。
+
+**異常系：**
+
+| 条件 | 応答 / 処理 |
+|------|-------------|
+| 入力が integer でない、または範囲外 | `422`。状態ファイル、systemd は変更しない。 |
+| `.server_config` 書き込み失敗 | `500`。systemd は変更しない。 |
+| systemd timer 書き換え失敗 | `500`。`.server_config` は更新済みのまま残し、`.config_log` に `systemd_update_failed` を記録する。 |
+| daemon-reload / restart / show 失敗 | `500`。server log に `SCHEDULE_INTERVAL_APPLY_FAILED` を出す。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 正常値 300 | `.server_config`、timer、API response が 300 で一致する。 |
+| 最小値 30 | 成功する。 |
+| 範囲外 29 | `422`、差分なし。 |
+| systemd 失敗 | `500`、`.config_log` に失敗記録。 |
+
+### 27.12 GitHub Webhook 受信
+
+本機能の目的は、GitHub push event を HMAC-SHA256 署名検証したうえで受信し、定期 polling を待たずに build queue へ投入することである。
+
+対象コンポーネントは `components/api.go` と `components/runner.go` とする。`components/api.go` は署名検証、イベント記録、queue 投入を担当し、`components/runner.go` は queue entry を処理する。
+
+**入力 / 出力：**
+
+| 項目 | 仕様 |
+|------|------|
+| API | `POST /api/webhook` |
+| 必須 header | `X-GitHub-Event`, `X-GitHub-Delivery`, `X-Hub-Signature-256` |
+| 対象 event | `push` のみ |
+| Secret | `.webhook_secret` |
+| 成功 response | `{ "message": "Webhook accepted", "queued": true, "event_id": "..." }` |
+| 状態 | `.webhook_events.json` へ追記し、必要に応じて `.build_state.queued` へ `trigger="webhook"` entry を追加する。 |
+
+**署名検証：**
+
+署名は `sha256=` prefix を含む lowercase hex とする。検証は raw request body に対して `HMAC-SHA256(secret, body)` を計算し、定数時間比較で行う。secret 不在、header 不在、prefix 不正、hex 不正、署名不一致はすべて `401` とし、queue へ投入しない。
+
+**処理順序：**
+
+1. method と body size を検証する。
+2. `.webhook_secret` を読み込む。
+3. HMAC 署名を検証する。
+4. JSON body を parse する。
+5. event が `push` であることを確認する。
+6. `ref`、`after`、`repository.owner.login`、`repository.name` を抽出する。
+7. `.branch_config` と照合し、対象 branch がある場合だけ queue へ追加する。
+8. `.webhook_events.json` にイベント結果を JSON Lines で追記する。
+9. response を返す。
+
+**異常系：**
+
+| 条件 | 応答 / 処理 |
+|------|-------------|
+| 署名不正 | `401`、イベントログ追記なし、queue なし。 |
+| event が `push` 以外 | `202`、`queued=false`、イベントログには `ignored_event` として記録する。 |
+| JSON 不正 | `422`、queue なし。 |
+| 対象 branch なし | `202`、`queued=false`、イベントログに記録する。 |
+| queue 上限 | `429`、イベントログに `queue_full` を記録する。 |
+| イベントログ書き込み失敗 | `500`、queue 追加前なら queue しない。queue 追加後なら response に `queued=true` と `event_log_failed=true` を含める。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 正常 push | 署名検証成功、イベントログ追記、queue entry `trigger="webhook"`。 |
+| 署名不一致 | `401`、状態差分なし。 |
+| 対象外 branch | `202 queued=false`、イベントログのみ。 |
+| queue full | `429`、queue 差分なし。 |
+
+### 27.13 Webhook イベントログ / 一覧取得 API
+
+本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、SDK、UI からページング参照できるようにすることである。
+
+対象コンポーネントは `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。
+
+**保存 schema：**
+
+`.webhook_events.json` は JSON Lines とし、1 行 1 event を追記する。mode は `600` とする。
+
+| key | 型 | 必須 | 説明 |
+|-----|----|------|------|
+| `timestamp` | string | 必須 | ISO 8601 UTC。 |
+| `delivery_id` | string/null | 必須 | `X-GitHub-Delivery`。 |
+| `event` | string | 必須 | GitHub event 名。 |
+| `ref` | string/null | 必須 | push ref。 |
+| `branch` | string/null | 必須 | `refs/heads/` を除いた branch。 |
+| `sha` | string/null | 必須 | push `after`。 |
+| `repository` | string/null | 必須 | `owner/repo`。 |
+| `build_triggered` | boolean | 必須 | queue 追加済みなら `true`。 |
+| `queued_id` | string/null | 必須 | queue id または `null`。 |
+| `result` | string | 必須 | `"queued"`, `"ignored_event"`, `"ignored_branch"`, `"queue_full"`, `"error"`。 |
+
+**一覧 API：**
+
+`GET /api/webhook-events` は `limit` と `offset` query を受け付ける。`limit` は 1〜1000、既定値 50。`offset` は 0 以上、既定値 0。新しい順で返す。壊れた行は無視し、server log に `WEBHOOK_EVENT_LOG_SKIP_CORRUPT` を出す。
+
+Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `getWebhookEvents(limit,offset)` は `limit` と `offset` を常に query へ送信する。UI は件数、delivery id、event、branch、sha、result、queued id を表示する。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| event 追記 | JSON Lines へ schema 通り保存される。 |
+| 一覧取得 | 新しい順、limit/offset が効く。 |
+| 壊れた行 | API は継続し、壊れた行を返さない。 |
+
+### 27.14 ビルド所要時間の記録と統計 API
+
+本機能の目的は、build ごとの開始・終了・所要時間を構造化ログへ保存し、統計 API で直近 N 件の平均、最小、最大を返すことである。
+
+対象コンポーネントは `components/runner.go` と `components/api.go` とする。
+
+**記録仕様：**
+
+`components/runner.go` は `.build_logs/{id}.json` に `started_at`、`finished_at`、`duration_seconds` を必ず保存する。`started_at` は build id 採番直後、`finished_at` は最終 target status 確定直後とする。`duration_seconds` は `finished_at - started_at` を秒単位で切り上げず整数化し、1 秒未満は `0` とする。
+
+`.build_history.duration_seconds` は `.build_logs/{id}.json.duration_seconds` と同じ値にする。失敗、deploy pending、rollback でも記録する。変更なし skip で build log を作らない場合は記録しない。
+
+**統計 API：**
+
+`GET /api/stats/build-duration?n=N` は `.build_logs/` と `.build_logs/archive/` を読み、完了済み build log の `duration_seconds` が `null` でない最新 N 件を集計する。`N` は 1〜1000、既定値 20 とする。
+
+Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`、`min_seconds`、`max_seconds` を `null`、`recent` を `[]` とする。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| `n` 不正 | `422`。 |
+| build log 破損 | 対象 log を除外し、server log に WARN。 |
+| archive gzip 展開失敗 | 対象 log を除外し、server log に WARN。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 成功 build | log/history に同一 duration。 |
+| 失敗 build | duration を記録する。 |
+| 統計対象なし | `count=0`、平均/最小/最大 `null`。 |
+| archive 含む | 通常 log と archive log を横断集計する。 |
+
+### 27.15 ビルドアーティファクト管理
+
+本機能の目的は、`.snapshots/` に保存された build artifact を API、SDK、UI から一覧、download、削除、rollback できるようにすることである。
+
+対象コンポーネントは `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。snapshot 作成は `components/runner.go` の §14b を正とする。
+
+**API 契約：**
+
+| API | 処理 |
+|-----|------|
+| `GET /api/snapshots` | `.snapshots/{id}/` を新しい順で一覧する。 |
+| `GET /api/snapshots/{id}/download` | 対象 snapshot を tar.gz として streaming download する。 |
+| `DELETE /api/snapshots/{id}` | 対象 snapshot だけを削除し、`.config_log` に記録する。 |
+| `POST /api/history/{id}/rollback` | 対象 snapshot を deploy target へ再転送し、新規 rollback build log/history を作成する。 |
+
+`id` は build id と一致するものだけ許可する。`/`、`..`、空文字、URL decode 後に path separator を含む値は `422` とする。
+
+**Rollback 仕様：**
+
+rollback は新しい build id を採番し、`.build_history.trigger="rollback"`、`rollback_from=<元id>` を保存する。元 snapshot は変更しない。rollback 中に別 build が running の場合は `409` とする。転送失敗時は rollback build log を `failure` とし、元 snapshot は削除しない。
+
+**UI / SDK：**
+
+SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。UI は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は実行中 build がある場合 disabled とする。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 一覧 | snapshot id、build id、保存日時、size が返る。 |
+| download | tar.gz を返し、snapshot 外のファイルを含まない。 |
+| delete | 対象 id だけ削除、config log 追記。 |
+| rollback 成功 | 新規 build id、trigger rollback、rollback_from 保存。 |
+| 不正 id | `422`、状態差分なし。 |
+
+### 27.16 ヘルスチェックエンドポイント
+
+本機能の目的は、認証不要の `GET /api/health` で、外部監視が Adlaire CI の最低限の稼働状態を確認できるようにすることである。
+
+対象コンポーネントは `components/api.go` とする。
+
+**Response：**
+
+```json
+{
+  "status": "ok",
+  "last_build_at": "2026-09-16T00:00:00Z",
+  "last_build_status": "success",
+  "last_deploy_at": "2026-09-16T00:01:00Z",
+  "last_deploy_status": "success",
+  "pending_transfers": 0,
+  "uptime_seconds": 3600,
+  "checks": []
+}
+```
+
+`status` は `"ok"`、`"degraded"`、`"error"` のいずれかとする。必須状態ファイル破損がある場合は `degraded`、API process が応答できるが重大な read error がある場合は `error` とする。HTTP status は、API 自体が response を生成できる限り `200` とし、JSON 生成不能などの場合だけ `500` とする。
+
+**読み取り元：**
+
+`.build_status.json` を第一参照元とし、不在時は `.build_history` と `.pending_transfers` から算出する。`.build_status.json` 破損時は自動修復せず、`checks[]` に `build_status_corrupt` を含める。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 正常 | HTTP 200、`status="ok"`。 |
+| pending transfer あり | `pending_transfers` に件数、`status="degraded"`。 |
+| build status 破損 | HTTP 200、`status="degraded"`、checks に記録。 |
+| read error | HTTP 200 または 500 の条件が仕様通り。 |
+
+### 27.17 ビルドログ重大度フィルター
+
+本機能の目的は、`GET /api/logs/search` と UI ログビューアで重大度別に build log を絞り込めるようにすることである。
+
+対象コンポーネントは `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。
+
+**入力：**
+
+`GET /api/logs/search` は既存 query に加えて `level` を受け付ける。`level` の許容値は `"info"`、`"warn"`、`"warning"`、`"error"`、`"debug"` とし、大文字小文字は区別しない。正規化後は `"INFO"`、`"WARNING"`、`"ERROR"`、`"DEBUG"` とする。`warn` は `"WARNING"` と同義とする。不正値は `422`。
+
+**検索対象：**
+
+`.build_logs/{id}.json.stdout`、`stderr`、`warnings`、`error`、archive log を対象とする。行頭が `[WARN]` または `[WARNING]` の行は WARNING、`[ERROR]` または stderr の非空行は ERROR、`[DEBUG]` は DEBUG、それ以外は INFO と分類する。
+
+**SDK / UI：**
+
+SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信する。UI は INFO / WARNING / ERROR / DEBUG の filter control を提供し、選択なしでは全件を表示する。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| `level=warn` | WARNING 行だけ返る。 |
+| `level=error` | ERROR 行だけ返る。 |
+| 不正 level | `422`。 |
+| archive log | 通常 log と同じ分類で検索される。 |
+
+### 27.18 ブランチ設定の動的変更 API
+
+本機能の目的は、監視対象 branch / target / deploy target を `.branch_config` で管理し、API 経由で変更できるようにすることである。
+
+対象コンポーネントは `components/api.go` と `components/runner.go` とする。
+
+**API：**
+
+`GET /api/branch-config` は `.branch_config` が存在する場合 `{"source":"file","branches":[...]}`、不在の場合 `{"source":"default","branches":[...]}` を返す。`POST /api/branch-config` は `{ "branches": BranchTargetRecord[] }` を受け取る。
+
+**保存仕様：**
+
+永続ファイルの key は必ず `branch_targets` とする。API request / response で `branches` を使う場合も保存前に `branch_targets` へ変換する。空配列を受け取った場合は `.branch_config` を削除し、default 復帰とする。
+
+**検証：**
+
+各 branch target は `branch`、`target_file`、`sha_file`、`src`、`out`、`deploy_targets` を必須とする。`target_file` は相対パスで `..` 禁止、`sha_file` / `src` / `out` / `dest_dir` は絶対パス、deploy target は最大 20 件、branch target は最大 50 件とする。
+
+**runner 取り込み：**
+
+`components/runner.go` は起動ごとに `.branch_config` を読む。API 更新後、runner 再起動は不要だが、既に実行中の runner へは反映しない。次回起動から反映する。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| GET default | `.branch_config` 不在で `source="default"`。 |
+| POST valid | `.branch_config.branch_targets` として保存、config log 追記。 |
+| POST empty | `.branch_config` 削除、default 復帰。 |
+| 相対 `sha_file` | `422`、状態差分なし。 |
+
+### 27.19 週次ビルドサマリー Webhook
+
+本機能の目的は、過去 7 日間の build 結果を指定曜日・時刻に集計し、Webhook へ定期通知することである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。runner は自動送信、API は設定表示・手動送信を担当する。
+
+**設定：**
+
+`.notify_config.summary.enabled=true` の場合だけ有効とする。`interval` は `"weekly"`、`hour` は 0〜23、`day_of_week` は 0〜6 とする。タイムゾーンは UTC 固定。
+
+**自動送信条件：**
+
+runner 起動時に、現在 UTC の曜日と時が設定値に一致し、`.build_state.weekly_summary_sent_date` が当日でない場合に送信する。送信成功時だけ `weekly_summary_last_sent_at` と `weekly_summary_sent_date` を更新する。
+
+**集計対象：**
+
+`.build_history` のうち、現在時刻から過去 7 日以内の行を対象とする。`status="success"` を成功、`"failure"`、`"cancelled"`、`"hook_error"` を失敗として数える。所要時間は `duration_seconds != null` の行だけ平均対象にする。
+
+**通知 payload：**
+
+```json
+{
+  "event": "weekly_summary",
+  "period_days": 7,
+  "success_count": 10,
+  "failure_count": 2,
+  "success_rate": 83.33,
+  "avg_duration_seconds": 42
+}
+```
+
+**手動送信 API：**
+
+`POST /api/notify/weekly-summary` は同じ集計を即時送信する。手動送信は `weekly_summary_sent_date` を更新しない。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 条件一致 | Webhook 送信、`.notify_log` 追記、sent date 更新。 |
+| 同日二重起動 | 2 回目は送信しない。 |
+| 宛先なし | 自動送信は WARN、手動 API は `422`。 |
+| 手動送信 | payload を返し、sent date は変更しない。 |
+
+### 27.20 設定変更の詳細 diff 記録
+
+本機能の目的は、設定変更 API が何を変更したかを `.config_log` に機械可読 diff と人間可読 diff の両方で残すことである。
+
+対象コンポーネントは `components/api.go` とする。
+
+**対象 API：**
+
+`.config_log` を write する全 API を対象とする。少なくとも `POST /api/config`、`POST /api/log-level`、`POST /api/notify-config`、`POST /api/repo-config`、`POST /api/branch-config`、`POST /api/webhook-config`、`POST /api/pat-update`、schedule 系 API、maintenance、access-control、hooks、alert-rules、tag-rules、pipeline-config、notes、smtp-config、dashboard-layout、snapshot delete を含む。
+
+**ログ schema：**
+
+各行は §22.0c `.config_log` schema に従う。`diff` は `{key:[before,after]}`、`diff_text` は 1 行以上の文字列とする。差分がない場合、対象 API は状態ファイルを書かず、`.config_log` も追記せず、response は `{ "message": "No changes" }` とする。
+
+**マスク条件：**
+
+キー名に `password`、`token`、`secret`、`pat`、`smtp_password` を含む値は before / after とも `"***"` に置換する。配列や object の内部 key も同じ規則で再帰的にマスクする。
+
+**diff_text 形式：**
+
+`{key}: {before} -> {after}` を key 名昇順で 1 行ずつ連結する。値は JSON 表現とし、secret は `"***"` とする。複数行値は `\n` escape した 1 行 JSON string とする。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| config log 追記失敗 | 対象状態ファイルの更新を失敗扱いにし、`500` を返す。 |
+| diff 生成失敗 | 状態ファイルを書かず `500`。 |
+| secret マスク漏れ検出 | 実装不合格。該当 API は完了扱いにしない。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 通常変更 | `.config_log` に diff と diff_text が残る。 |
+| secret 変更 | 値は `"***"` だけ保存される。 |
+| 変更なし | 状態ファイルも config log も更新しない。 |
+| 複数 key | key 昇順で diff_text を生成する。 |

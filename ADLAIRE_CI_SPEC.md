@@ -551,9 +551,9 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 実装済み | 完了済み | CI ランナー | Phase 2 完了判定パス | GitHub API polling、SHA 差分検出、ビルド起動、ログ、履歴、snapshot、lock、precheck、retry、rate limit、circuit breaker、通知、転送、cooldown、force interval、commit info、PAT 期限警告、出力サイズ警告を `components/runner.go` で実装済み。 | Go test で Phase 2 fixture、hardening、完了判定パスを検証済み。 |
 | 改訂予定 | 実装不可 | 全領域 | （なし） | 現時点で、将来計画から格上げ済みの仕様作成中項目はない。 | 格上げ時に元状態、格上げ日、優先度、詳細仕様作成先を概要へ記録する。 |
 | 実装済み | 完了済み | CI ランナー | ビルドタイムアウト | Go 標準ライブラリ `context.WithTimeout` と `os/exec` で長時間ビルドを強制終了する。API 経由の `build_timeout_seconds` 動的変更は管理 API 実装対象として残す（→ §22 `GET /api/config`）。 | Go test と runner 回帰検証で pipeline 起動経路を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整（→ §22 `POST /api/schedule/interval`） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整（→ §22 `POST /api/schedule/interval`） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0e、§26、§27.11 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ビルドログのファイル保存 | `os/exec` で起動したビルドプロセスの stdout/stderr を `.build_logs/{id}.json` に記録（→ §11 ファイル構成）。 | Go test で build log 生成と pipeline stdout/stderr 記録を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Webhook 受信 | 定期ポーリングと併用可能な即時検出方式。`POST /api/webhook` で GitHub push イベントを受信し即時ビルドをトリガーする（HMAC-SHA256 署名検証付き → §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Webhook 受信 | 定期ポーリングと併用可能な即時検出方式。`POST /api/webhook` で GitHub push イベントを受信し即時ビルドをトリガーする（HMAC-SHA256 署名検証付き → §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§22.0e、§22-W、§27.12 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ネットワーク断時の再試行 | GitHub API 失敗時に指数バックオフ（`API_RETRY_BASE_SECONDS × 2^n`、最大 `API_RETRY_MAX` 回）で再試行する（→ §12・§13）。 | Go test で fake GitHub 一時失敗からの retry 成功を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | GitHub API レート制限自動待機 | `X-RateLimit-Remaining: 0` 検出時に `X-RateLimit-Reset` まで待機してから再試行する（→ §13）。 | Go test 対象の retry 経路と同じ GitHub API retry 実装で検証済み。 |
 | 実装済み | 完了済み | CI ランナー | 転送後リモート整合性検証 | SSH 転送後に `sha256sum` でリモートファイルを検証し、不一致時はペンディングキューへ再投入する（→ §13・§14a）。 | Go test で転送失敗時 pending 化と pending 再試行成功を検証済み。 |
@@ -568,13 +568,13 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 実装済み | 完了済み | CI ランナー | コミット情報のビルドログ記録 | ビルドトリガーとなったコミットの SHA・メッセージ・作者名・コミット日時を `.build_logs/{id}.json` に記録する（→ §13）。 | Go test で fake commits API からの commit info 記録を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | GitHub API 連続失敗によるサーキットブレーカー | 連続失敗が `API_CIRCUIT_BREAKER_THRESHOLD` 周回以上になった場合に `.build_circuit_state.open=true` とし、open 中はポーリングをスキップする（→ §11・§12・§13）。 | Go test で circuit open 時の polling skip を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | 出力サイトサイズ警告閾値 | ビルド後の出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` を超えた場合に WARN ログを出力する。§8 変換レポートに `size_warn` フラグを追加（→ §8・§12・§13・§22）。 | Go test で閾値超過時の `size_warn=true` と WARN 記録を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | Webhook イベントログ | 受信した Webhook push イベントを `.webhook_events.json` に JSON Lines 形式で追記記録する。`delivery_id`・`event`・`ref`・`sha`・`build_triggered` を保存（→ §11・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の記録と統計 API | `.build_logs/{id}.json` に `started_at`・`finished_at`・`duration_seconds` を記録し、`GET /api/stats/build-duration` で過去 N 件の平均・最小・最大を提供する（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | Webhook イベントログ | 受信した Webhook push イベントを `.webhook_events.json` に JSON Lines 形式で追記記録する。`delivery_id`・`event`・`ref`・`sha`・`build_triggered` を保存（→ §11・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§22.0e、§22-W、§27.13 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の記録と統計 API | `.build_logs/{id}.json` に `started_at`・`finished_at`・`duration_seconds` を記録し、`GET /api/stats/build-duration` で過去 N 件の平均・最小・最大を提供する（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§15、§22.0e、§27.14 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ビルドアーティファクト世代管理 | `HISTORY_KEEP_N` 世代分を `.snapshots/` に自動保持し超過分を削除する。`POST /api/history/{id}/rollback` による再転送は API 実装対象として残す（→ §14b）。 | Go test で build 成功時の `.snapshots/{id}/site` 作成を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドアーティファクト管理 | スナップショット一覧・ダウンロード・削除・ロールバック（→ §14b・§22 `POST /api/history/{id}/rollback`） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ヘルスチェックエンドポイント | `GET /api/health` を拡充。最終ビルド時刻・最終ビルド結果・最終転送結果・稼働秒数を返す（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | Webhook イベント一覧取得 API | `.webhook_events.json` をページネーション付きで返す `GET /api/webhook-events` を追加する（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドログ重大度フィルター | 既存の `GET /api/logs/search` に `level=warn\|error` パラメータを追加し、重大度別に絞り込む（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドアーティファクト管理 | スナップショット一覧・ダウンロード・削除・ロールバック（→ §14b・§22 `POST /api/history/{id}/rollback`） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§14b、§22.0e、§23、§24、§27.15 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ヘルスチェックエンドポイント | `GET /api/health` を拡充。最終ビルド時刻・最終ビルド結果・最終転送結果・稼働秒数を返す（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0e、§27.16 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | Webhook イベント一覧取得 API | `.webhook_events.json` をページネーション付きで返す `GET /api/webhook-events` を追加する（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0e、§23、§24、§27.13 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドログ重大度フィルター | 既存の `GET /api/logs/search` に `level=warn\|error` パラメータを追加し、重大度別に絞り込む（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0e、§23、§24、§27.17 に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | 変換レポート出力 | ビルド完了後に変換統計（見出し数・テーブル数・コードブロック数・警告）を stdout 出力する。`components/runner.go` が取り込み `GET /api/output-meta` で参照可（→ §8・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | シンタックスハイライト | コードブロックに言語別色分けを `assets/app.js` で適用する。対応言語：`python`・`bash`・`json`・`sql`・`ini`・`diff`（→ §7.8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | 本文内全文検索 | ビルド時に `assets/search-index.json` を生成し、`assets/app.js` の検索 UI と統合して本文ヒット箇所へジャンプ（→ §7.9） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
@@ -594,9 +594,9 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 実装済み | 完了済み | ビルドスクリプト | 見出し階層スキップ警告 | h1→h3 のような見出しレベルの 2 段以上のスキップを `[WARN]` で報告。§8 変換レポートの `heading_skips` フィールドに件数を記録する（→ §4.5・§8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | 読了時間推計と表示 | 本文文字数（コードブロック・タグ除く）から読了時間（分、200文字/分・切り上げ）を算出し、固定ヘッダーに静的埋め込みする。§8 変換レポートの `reading_time` フィールドに記録する（→ §4.5・§5・§6・§8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | Webhook 通知失敗リトライキュー | `.notify_pending`（JSON）を起動時に再送し、HTTP 2xx 成功時に削除、失敗時に `retry_count` と `last_error` を更新して保持する（→ §11・§13）。 | Go test で fake HTTP endpoint への再送成功と queue 空化を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ設定の動的変更 API | `BRANCH_TARGETS` を外部 JSON（`.branch_config`）で管理し `GET /api/branch-config` / `POST /api/branch-config` で API 経由変更可能にする。`components/runner.go` 再起動不要（→ §11・§12・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 週次ビルドサマリー Webhook | 指定曜日・時刻に過去 7 日間の成功率・平均ビルド時間・エラー件数をまとめた定期通知を送信する（→ §12・§13・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定変更の詳細 diff 記録 | `.config_log` の各エントリに変更前後の値の diff 文字列を付加し `GET /api/config-log` レスポンスに含める（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ設定の動的変更 API | `BRANCH_TARGETS` を外部 JSON（`.branch_config`）で管理し `GET /api/branch-config` / `POST /api/branch-config` で API 経由変更可能にする。`components/runner.go` 再起動不要（→ §11・§12・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§12、§22.0e、§27.18 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 週次ビルドサマリー Webhook | 指定曜日・時刻に過去 7 日間の成功率・平均ビルド時間・エラー件数をまとめた定期通知を送信する（→ §12・§13・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§12、§13、§16、§22.0e、§27.19 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定変更の詳細 diff 記録 | `.config_log` の各エントリに変更前後の値の diff 文字列を付加し `GET /api/config-log` レスポンスに含める（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§22.0a、§22.0e、§27.20 に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | テーブルのソート機能 | 列ヘッダークリックで昇順/降順ソートができるインタラクティブテーブル。`aria-sort` 属性と CSS `::after` でインジケーター表示（→ §7.14） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | キーボードショートカット | `/` で検索フォーカス・`Escape` で検索クリア・`t` でページ先頭へスクロール（→ §7.12） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 将来計画 | 実装不可 | CI ランナー | 複数ファイル監視 | `TARGET_FILE` をリストにし、複数 MD ファイルの変更を一括検出する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
