@@ -9409,6 +9409,46 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | W5 | §27.30〜§27.38 | runner / operation 拡張後半。approval、branch env、notification、trend、chain、priority、failure category、environment、duration anomaly。 | W4 完了。queue、notification、history、trend の状態境界が固定済み。 | 1 PR につき 1〜2 機能。 | approval、env、notify、trend、chain、queue、category、environment、anomaly の保存順と再実行 fixture が固定される。 |
 | W6 | §27.42〜§27.47 | security / auth / audit / rate limit。trigger scope、API key、audit、session timeout、TOTP、rate limit。 | W2〜W5 完了。API endpoint、audit/access log、secret mask 境界が固定済み。 | 1 PR につき 1〜2 機能。 | scope、token、audit、session、TOTP、rate limit の security fixture と forbidden side effect が固定される。 |
 
+**§27 W1-PR1 実装対象固定契約：**
+
+W1 の最初の実装 PR は `§27.2 ドライラン実行モード` だけを対象とする。`§27.1`、`§27.3`、`§27.4` は W1 内の後続 PR とし、W1-PR1 で同時実装してはならない。W1-PR1 は副作用なしで runner の設定読取、GitHub 読取、差分判定、終了コード、stdout JSON、secret mask を固定するための PR とする。
+
+| 項目 | 固定内容 |
+|------|----------|
+| 対象節 | `§27.2` のみ。 |
+| 対象 component | `runner`。必要な fake GitHub response と fixture harness は含める。 |
+| 対象外 | `§27.1` commit status、`§27.3` retry、`§27.4` output meta、API、SDK、UI、MCP、外部公開構成、状態ファイル schema 新設。 |
+| 許可される副作用 | なし。dry-run は状態ファイル、lock、SHA cache、build log、history、notification、deploy、snapshot、GitHub Commit Status を作成、更新、削除してはならない。 |
+| 許可される外部呼び出し | fake GitHub read だけ。実 GitHub API、GitHub write API、SSH、pipeline、notification、systemd、hook は呼び出さない。 |
+| 完了後に固定される契約 | dry-run stdout JSON schema、終了コード、secret mask、GitHub read failure、設定破損時 no-write、複数 target 表示、cooldown 表示。 |
+
+**§27 W1-PR1 必須 fixture 固定契約：**
+
+W1-PR1 は、下表の fixture をすべて含める。1 件でも不足、skip、期待副作用不足、secret mask 不足がある場合、W1-PR1 は未完了とする。
+
+| fixture 名 | 必須 assertion | 入力 | 期待結果 |
+|------------|----------------|------|----------|
+| `success-dry-run-changed` | `stdout`、`state`、`effects`、`no-write`、`secret-mask` | `--dry-run`、変更あり fake GitHub response、既存 SHA cache、対象 branch / target。 | stdout JSON に `would_build=true`、対象 commit/blob、`would_write` 一覧、状態差分なし、外部 write 0。 |
+| `noop-dry-run-unchanged` | `stdout`、`state`、`effects`、`no-write`、`idempotency` | `--dry-run`、変更なし fake GitHub response、既存 SHA cache。 | stdout JSON に `would_build=false`、理由 `unchanged`、2 回実行して差分なし。 |
+| `failure-dry-run-github-error` | `stdout`、`stderr`、`state`、`effects`、`no-write`、`order` | `--dry-run`、fake GitHub `500` または rate limit failure。 | 終了コード `3`、状態差分なし、pipeline / deploy / notification 呼び出し 0、error detail は secret を含まない。 |
+| `security-dry-run-secret-mask` | `stdout`、`stderr`、`effects`、`secret-mask`、`no-write` | token、webhook URL、notification URL、branch config secret を含む入力。 | stdout/stderr/effects/log 期待値に secret 平文が存在せず、mask 後値だけを含む。 |
+
+**§27 W1-PR1 acceptance checklist：**
+
+W1-PR1 の PR 本文には、下表を記録する。記録がない項目は未検証として扱い、W1-PR1 を完了扱いにしてはならない。
+
+| 項目 | 必須記録 |
+|------|----------|
+| 対象仕様 | `§27.2`、関連する `§12`、`§13`、`§15`、`§22.0a`、`§27 fixture` 契約。 |
+| 対象外 | `§27.1`、`§27.3`、`§27.4`、API、SDK、UI、MCP、外部公開構成、状態ファイル schema 新設。 |
+| fixture | `success-dry-run-changed`、`noop-dry-run-unchanged`、`failure-dry-run-github-error`、`security-dry-run-secret-mask`。 |
+| 副作用確認 | 状態ファイル、lock、SHA cache、build log、history、notification、deploy、snapshot、commit status に差分がないこと。 |
+| 外部呼び出し確認 | fake GitHub read 以外の呼び出しが 0 件であること。 |
+| secret 確認 | token、password、secret、PAT、Authorization header が stdout/stderr/effects/expected に平文で存在しないこと。 |
+| 後続影響 | W1 後続 PR が利用してよい dry-run JSON schema、終了コード、no-write 契約。 |
+
+W1-PR1 完了後、W1 内の後続 PR は `§27.1`、`§27.3`、`§27.4` のいずれか 1〜2 機能を対象にできる。ただし W1-PR1 の dry-run no-write 契約、stdout JSON schema、secret mask 契約、fake GitHub read 契約を変更してはならない。変更が必要な場合は、W1-PR1 の仕様改訂として本節を先に更新する。
+
 **§27 PR 分割禁止条件：**
 
 | 条件 | 扱い |
