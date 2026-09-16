@@ -237,7 +237,7 @@ Go 版初回セットアップでは以下を実行しない。
 
 ### §26.3b 管理 API 導入後の追加セットアップ手順
 
-`components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js` を実装した後にのみ本手順を実行する。
+`api`、`ui`、`sdk` を実装した後にのみ本手順を実行する。
 
 管理 API 導入手順は、runner の既存稼働状態を壊してはならない。`adlaire-ci-api` の配置、認証情報生成、systemd enable のいずれかが失敗した場合でも、`adlaire-ci.timer` は停止しない。`.admin_credentials` が既に存在する場合は `--init-credentials` を再実行せず、既存 credentials を維持する。
 
@@ -619,8 +619,8 @@ Phase 別の実装検証記録は以下の単位で行う。
 
 | Phase | 必須記録 | 失敗時の扱い |
 |-------|----------|--------------|
-| Phase 1 | CLI 引数、fixture A〜D、生成物一覧、`[REPORT]`、冪等性、strict / non-strict の結果。 | `components/builder.go` を完了扱いにせず、Phase 2 着手禁止。 |
-| Phase 2 | secret 不足、lock、GitHub fake、pipeline fake、deploy fake、snapshot、notify、状態ファイル schema の結果。 | `components/runner.go` を完了扱いにせず、Phase 3 着手禁止。 |
+| Phase 1 | CLI 引数、fixture A〜D、生成物一覧、`[REPORT]`、冪等性、strict / non-strict の結果。 | `builder` を完了扱いにせず、Phase 2 着手禁止。 |
+| Phase 2 | secret 不足、lock、GitHub fake、pipeline fake、deploy fake、snapshot、notify、状態ファイル schema の結果。 | `runner` を完了扱いにせず、Phase 3 着手禁止。 |
 | Phase 3 | P0 / P1 endpoint、認証、session、error body、SSE、状態 read/write、systemd service の結果。 | API P0 / P1 を完了扱いにせず、Phase 4 着手禁止。 |
 | Phase 4 | P2〜P5 endpoint、secret mask、rollback、maintenance、hook、token、P0 / P1 互換確認の結果。 | endpoint 契約を固定扱いにせず、Phase 5 着手禁止。 |
 | Phase 5 | method 対応表、fake fetch、HTTP error、timeout、stream、`401` token 破棄、body 禁止の結果。 | SDK 契約を固定扱いにせず、Phase 6 着手禁止。 |

@@ -28,11 +28,11 @@
 | 範囲 | 役割 |
 |------|------|
 | §0〜§0j | 詳細仕様の記載基準、実装前確認項目、共通固定値、検証、Phase、詳細節対応表、リポジトリ内ソース配置 |
-| §1〜§9 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md`。`components/builder.go` / `adlaire-ci-build` の詳細仕様 |
-| §10〜§20 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md`。`components/runner.go` / `adlaire-ci-runner` の詳細仕様 |
-| §21〜§22 | `ADLAIRE_CI_DETAIL_API_SPEC.md`。`components/api.go` / `adlaire-ci-api` の詳細仕様。§21a は管理 API サーバー制限を定義する。 |
-| §23 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md`。`admin/adlaire-ci-sdk.js` の詳細仕様 |
-| §24 | `ADLAIRE_CI_DETAIL_UI_SPEC.md`。`admin/index.html` の詳細仕様 |
+| §1〜§9 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md`。`builder` / `adlaire-ci-build` の詳細仕様 |
+| §10〜§20 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md`。`runner` / `adlaire-ci-runner` の詳細仕様 |
+| §21〜§22 | `ADLAIRE_CI_DETAIL_API_SPEC.md`。`api` / `adlaire-ci-api` の詳細仕様。§21a は管理 API サーバー制限を定義する。 |
+| §23 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md`。`sdk` の詳細仕様 |
+| §24 | `ADLAIRE_CI_DETAIL_UI_SPEC.md`。`ui` の詳細仕様 |
 | §25 | `ADLAIRE_CI_DETAIL_API_SPEC.md`。認証の実装仕様 |
 | §26 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md`。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
 | `admin` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md`。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
@@ -466,18 +466,18 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 
 Adlaire CI は Go 版 3 コンポーネントと JavaScript/HTML 管理ツールで構成する。
 
-本ファイルは、`components/builder.go`、`components/runner.go`、`components/api.go`、標準管理ツール `admin/index.html`、JavaScript SDK `admin/adlaire-ci-sdk.js` の実装詳細を定義する。`components/mcp.go` の入出力、状態、起動手順、検証条件は本ファイルでは定義しない。
+本ファイルは、`builder`、`runner`、`api`、`ui`、`sdk` の実装詳細を定義する。`mcp` の入出力、状態、起動手順、検証条件は本ファイルでは定義しない。
 
-**`components/builder.go`（ビルドスクリプト）**
+**`builder`（ビルドスクリプト）**
 GitHub リポジトリ上またはローカル上の Markdown ファイルまたは Markdown ディレクトリを静的 Web サイトに変換してローカルディレクトリへ出力する。標準実行バイナリ名は `adlaire-ci-build` とする。
 
-**`components/runner.go`（CI ランナー）**
+**`runner`（CI ランナー）**
 GitHub の Git Trees API / Git Blobs API を使用し、対象ファイルの blob SHA 変更を検出する。変更があった場合のみ Markdown 本文を書き出し、`adlaire-ci-build` を起動し、成功時に SHA キャッシュを更新する。systemd タイマーで定期実行する oneshot 設計。
 
-SSH 転送、ペンディングキュー、スナップショット、Webhook 通知、マルチブランチ、ビルドログ保存、サーキットブレーカーは Go 版 `components/runner.go` の対象機能である。
+SSH 転送、ペンディングキュー、スナップショット、Webhook 通知、マルチブランチ、ビルドログ保存、サーキットブレーカーは `runner` の対象機能である。
 
-**`components/api.go`（管理 API サーバー）**
-Go 標準ライブラリ `net/http` を使用する常駐 HTTP サーバー。管理ツールからの API リクエストを受け付け、認証・状態取得・手動ビルドトリガーを処理する。`adlaire-ci-api.service` として systemd に登録し、`components/runner.go` とは独立して常駐する。
+**`api`（管理 API サーバー）**
+Go 標準ライブラリ `net/http` を使用する常駐 HTTP サーバー。管理ツールからの API リクエストを受け付け、認証・状態取得・手動ビルドトリガーを処理する。`adlaire-ci-api.service` として systemd に登録し、`runner` とは独立して常駐する。
 
 **Go 版実行フロー：**
 ```
