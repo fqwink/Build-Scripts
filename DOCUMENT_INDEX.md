@@ -23,7 +23,7 @@
 | `api_server.go` | 仕様化済み・未実装 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。SDK 経由で API と通信する。 |
-| `mcp_server.go` | 将来計画 | MCP サーバー。将来の 4 コンポーネント構成で追加予定。 |
+| `mcp_server.go` | 将来計画 | MCP サーバー。将来追加コンポーネントとして追加予定。 |
 
 ## Source Of Truth
 

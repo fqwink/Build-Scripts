@@ -356,8 +356,8 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 
 ## 13. 拡張ポイント・将来計画
 
-本仕様に対する拡張予定・将来検討項目の一覧。
-仕様化する際は本ドキュメントへの追記を先行させる。
+本仕様に対する仕様化済み拡張、拡張予定、将来検討項目の一覧。
+仕様化する際は `ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` への追記を先行させる。
 
 将来計画は、実装対象ではない。将来計画内の「検討」「予定」「候補」「推奨」は、実装可能な仕様を意味しない。将来計画を実装対象にする場合は、先に対象項目を `改訂予定` へ昇格し、`ADLAIRE_CI_DETAIL_SPEC.md` に実装可能な詳細仕様を追加したうえで `仕様化済み` とする。
 
@@ -365,21 +365,21 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 
 ### 開発フロー
 
-将来計画リストの項目を以下の4段階で管理する。
+拡張項目は以下の4段階で管理し、段階に応じて `改訂予定リスト`、`仕様化済み拡張一覧`、`将来計画 一覧`、`実装済みリスト` のいずれかに配置する。
 
 | 区分 | 意味 |
 |------|------|
 | 将来対応 | アイデア段階。実装時期・優先度未定 |
-| 改訂予定 | 仕様改訂リストに格上げ済み。仕様化作業中または予定 |
-| 仕様化済み | spec に反映完了。実装待ち |
+| 改訂予定 | 改訂予定リストに格上げ済み。仕様化作業中または予定 |
+| 仕様化済み | `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` に正本仕様として反映完了。実装待ち |
 | 実装済み | ソースコード実装完了。実装済みリストへ移動 |
 
 将来計画表では、実装可能仕様と誤読される断定表現を避ける。実装条件、API、状態ファイル、UI、検証条件を確定済みとして記載する場合は、将来計画表だけで完結させず、該当する Part 2 ポリシーおよび `ADLAIRE_CI_DETAIL_SPEC.md` へ正本仕様を追加する。
 
 **フロー：**
-1. 格上げ指示 → 対象項目を「改訂予定」に変更・改訂予定リストへ移動
-2. 提案提示 → 承認後に spec 各仕様節へ反映、「仕様化済み」に変更
-3. ソースコード実装（`api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html`）→ 実装済みリストへ移動
+1. 格上げ指示 → 対象項目を「改訂予定」に変更し、改訂予定リストへ移動する。
+2. 提案提示 → 承認後に `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` の該当仕様節へ反映し、「仕様化済み」に変更する。
+3. ソースコード実装（`build_spec.go` / `runner.go` / `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html`）→ 実装済みリストへ移動する。
 
 ---
 
@@ -570,7 +570,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 
 | 担当領域 | 機能 | 概要 |
 |---------|------|------|
-| MCP サーバー | MCP サーバー実装 | `mcp_server.go` を第 4 コンポーネントとして追加。MCP プロトコル（JSON-RPC over stdio）で Claude Desktop 等の AI クライアントから直接接続可能にする。内部では `api_server.go` REST API に Go 標準ライブラリ `net/http` でローカル接続するラッパー設計（`encoding/json` + `os.Stdin` / `os.Stdout` + `net/http`、ゼロ外部依存）。認証は `.mcp_token` に専用 API トークンを保存し、スコープ（`read` のみ / `trigger` 許可）をトークン単位で選択可能。Claude Desktop の `mcpServers` 設定に `/usr/local/bin/adlaire-ci-mcp` を指定して接続する |
+| MCP サーバー | MCP サーバー実装 | `mcp_server.go` を将来追加コンポーネントとして追加。MCP プロトコル（JSON-RPC over stdio）で Claude Desktop 等の AI クライアントから直接接続可能にする。内部では `api_server.go` REST API に Go 標準ライブラリ `net/http` でローカル接続するラッパー設計（`encoding/json` + `os.Stdin` / `os.Stdout` + `net/http`、ゼロ外部依存）。認証は `.mcp_token` に専用 API トークンを保存し、スコープ（`read` のみ / `trigger` 許可）をトークン単位で選択可能。Claude Desktop の `mcpServers` 設定に `/usr/local/bin/adlaire-ci-mcp` を指定して接続する |
 | MCP サーバー | MCP ツール・リソース公開 | MCP サーバーが公開するツール：`get_status`（ビルド状態・CB 状態・PAT 残日数）/ `get_history(n)`（直近 N 件）/ `search_logs(query, level?, from?, to?)`（ログ全文検索）/ `get_build_log(id)`（個別ビルドログ）/ `trigger_build(force?)`（ビルドトリガー、`trigger` スコープ必須）/ `reset_circuit_breaker`（CB リセット、`trigger` スコープ必須）。リソース：`adlaire://status` / `adlaire://history` / `adlaire://logs/{id}` / `adlaire://config`（→ MCP サーバー実装） |
 | MCP サーバー | AI 支援ビルドエラー分析 | ビルド失敗時、AI クライアント（Claude Desktop 等）が `get_build_log` / `search_logs` ツールを自律的に呼び出してエラーログを取得し、原因推定と修正提案を生成できる設計。AI 側が pull するため `runner.go` のゼロ依存を完全維持。将来的には Webhook 通知をトリガーに AI が自動分析を開始する構成も検討可（→ MCP サーバー実装） |
 | MCP サーバー | MCP Prompts 定義 | よく使う分析シナリオを MCP Prompts として定義し、Claude Desktop 等のプロンプトメニューから即時呼び出し可能にする。例：「先週のビルド失敗率をまとめて」「最後のエラーの原因を分析して」「PAT 有効期限が近いか確認して」。`get_history` / `search_logs` ツールと組み合わせて定型分析を 1 クリックで実行できる（→ MCP サーバー実装） |
