@@ -3925,6 +3925,18 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 **ファイル：** `adlaire-ci-sdk.js`（単一ファイル、外部依存なし）
 **モジュール形式：** ES Module（`import` / `export`）
 
+**SDK 実行環境契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| JavaScript | ECMAScript 2022 以上を前提とする。transpile、bundle、polyfill は標準仕様に含めない。 |
+| module | `adlaire-ci-sdk.js` は ES Module とし、`export { AdlaireCI, AdlaireCIError }` を必須 export とする。default export は定義しない。 |
+| browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder`、`URLSearchParams` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
+| Node.js | Node.js runtime は標準対応外とする。Node.js 対応が必要な場合は、別途仕様化する。 |
+| 外部依存 | npm package、CDN script、framework、build tool を使用してはならない。 |
+| global 汚染 | `window.AdlaireCI` 等の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
+| stream 前提 | `streamBuild()` は native `EventSource` を使用しない。Authorization header を付与できる `fetch` streaming を必須実装とする。 |
+
 ```js
 class AdlaireCI {
   constructor({ baseUrl })
@@ -4041,7 +4053,7 @@ class AdlaireCI {
   setDashboardLayout(widgets)  // POST /api/dashboard-layout → Promise<{message: string}>
 }
 
-export { AdlaireCI };
+export { AdlaireCI, AdlaireCIError };
 ```
 
 全メソッドは `Promise` を返す。`streamBuild` は SSE 接続確立後に `StreamHandle` で resolve し、接続前エラーは `AdlaireCIError` で reject する。HTTP エラー（4xx / 5xx）は `AdlaireCIError` としてスローする。`401` 受信時はセッション期限切れとして `this._token` をクリアする。`constructor` を除く合計は 96 メソッド。
@@ -4127,6 +4139,36 @@ export { AdlaireCI };
 ├── index.html          # 管理画面（単一ファイル完結、仕様化済み・未実装）
 └── adlaire-ci-sdk.js   # SDK（標準管理ツールに同梱、仕様化済み・未実装）
 ```
+
+**DOM / section / form field 命名契約：**
+
+標準管理ツールは、下表の DOM id、`data-panel`、form field name を使用する。表にない主要パネル id、主要 form name、主要 button id を追加してはならない。表示・非表示は `hidden` 属性で制御し、DOM 要素の生成順は本表の順序とする。
+
+| パネル | section id | data-panel | 主フォーム id | 主要 field name | 主要 button id |
+|--------|------------|------------|---------------|-----------------|----------------|
+| ログイン | `panel-login` | `login` | `form-login` | `password` | `btn-login` |
+| パスワード変更 | `panel-password` | `password` | `form-password` | `current_password`, `new_password` | `btn-change-password` |
+| ステータス | `panel-status` | `status` | なし | なし | `btn-refresh-status`, `btn-save-dashboard-layout` |
+| 手動実行 | `panel-build` | `build` | なし | なし | `btn-build`, `btn-build-force`, `btn-build-cancel`, `btn-stream-close`, `btn-queue-clear` |
+| ログビューア | `panel-logs` | `logs` | `form-log-search` | `n`, `q`, `from`, `to`, `level` | `btn-load-logs`, `btn-search-logs`, `btn-export-logs`, `btn-cleanup-logs` |
+| ビルド履歴 | `panel-history` | `history` | `form-history-filter` | `page`, `per_page`, `tag`, `flagged` | `btn-export-history` |
+| システム情報 | `panel-system` | `system` | `form-pat` | `token`, `pat_expires_at` | `btn-pat-verify`, `btn-pat-update` |
+| 通知設定 | `panel-notify` | `notify` | `form-notify` | `webhooks`, `on`, `summary`, `email`, `secret`, `smtp_password` | `btn-save-notify`, `btn-notify-test`, `btn-weekly-summary`, `btn-save-webhook-secret`, `btn-save-smtp`, `btn-smtp-test` |
+| 設定 | `panel-config` | `config` | `form-config` | `log_max_lines`, `history_max_count`, `build_timeout_seconds`, `log_retention_days`, `log_level`, `queue_max_size`, `snapshots_keep` | `btn-save-config`, `btn-set-log-level` |
+| アクセスログ | `panel-access-log` | `access-log` | なし | なし | `btn-load-access-log` |
+| 統計 | `panel-stats` | `stats` | なし | なし | `btn-load-stats` |
+| リポジトリ情報 | `panel-repo` | `repo` | `form-repo` | `owner`, `repo`, `branch`, `target_file`, `interval_seconds`, `allowed_from`, `allowed_to`, `maintenance_reason` | `btn-save-repo`, `btn-save-branch-config`, `btn-pause-schedule`, `btn-resume-schedule`, `btn-enable-maintenance`, `btn-disable-maintenance` |
+| セッション管理 | `panel-sessions` | `sessions` | なし | なし | `btn-load-sessions`, `btn-revoke-sessions` |
+| システム診断 | `panel-diagnostics` | `diagnostics` | なし | なし | `btn-run-diagnostics`, `btn-verify-output` |
+| ビルド比較 | `panel-compare` | `compare` | `form-compare` | `left_build_id`, `right_build_id` | `btn-compare-builds` |
+| API トークン管理 | `panel-tokens` | `tokens` | `form-token` | `label`, `scope` | `btn-create-token` |
+| 運用ノート | `panel-notes` | `notes` | `form-notes` | `content` | `btn-save-notes` |
+| スナップショット | `panel-snapshots` | `snapshots` | なし | なし | `btn-load-snapshots` |
+| メンテナンス | `panel-maintenance` | `maintenance` | `form-maintenance` | `reason` | `btn-maintenance-enable`, `btn-maintenance-disable` |
+| アクセス制御 | `panel-access-control` | `access-control` | `form-access-control` | `allow` | `btn-save-access-control` |
+| フック | `panel-hooks` | `hooks` | `form-hook` | `phase`, `command_args`, `abort_on_failure` | `btn-add-hook` |
+
+共通領域の DOM id は、`app-root`、`nav-panels`、`global-banner`、`global-error`、`global-success`、`maintenance-banner`、`build-log-stream`、`build-queue-summary`、`issued-token-once` とする。エラー表示要素は各 panel 内に `id="{section-id}-error"`、成功表示要素は `id="{section-id}-success"` を置く。`label[for]` と input `id` は `field-{field_name}` 形式で一致させる。複数行・配列入力は `textarea` または table row で表現し、保存直前に SDK 引数の型へ変換する。
 
 **画面構成：**
 

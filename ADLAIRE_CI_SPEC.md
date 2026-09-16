@@ -277,7 +277,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 | ダッシュボードレイアウト | `getDashboardLayout()` / `setDashboardLayout()` |
 | 死活監視 | `health()` |
 
-ES Module・外部依存なし。全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。`constructor` を除く合計は 96 メソッド。
+ES Module・外部依存なし。全メソッドは `Promise` を返す。`streamBuild` は SSE 接続確立後に `Promise<StreamHandle>` として resolve し、`StreamHandle` は `{ close(): void, closed: boolean }` を持つ。`constructor` を除く合計は 96 メソッド。
 
 ### 標準管理ツール パネル（admin/index.html）
 
@@ -403,7 +403,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 将来対応 | CI ランナー | ビルド実行環境の記録 | Go バイナリバージョン・OS・ディスク使用量等のビルド時環境情報をログに残す |
 | 将来対応 | CI ランナー | ビルドトリガー種別の記録 | ポーリング・GitHub Webhook 受信・手動強制ビルド（`POST /api/build/force`）の 3 種を `.build_logs/{id}.json` の `trigger` フィールドに記録する。`GET /api/history` の `?trigger=` フィルターパラメータで絞り込み可能にする |
 | 将来対応 | CI ランナー | ビルド所要時間の異常検知 | 過去 N 件の平均ビルド時間を自動算出し、閾値（平均 × N 倍）を超過したビルドを WARN ログ＋Webhook 通知する。手動設定閾値アラート（→ アラート閾値設定）とは独立して、ビルド履歴から動的に基準を導出する |
-| 将来対応 | CI ランナー | 設定ファイル起動時整合性チェック | 起動時に各 `.json` ファイルの JSON 整合性を検証し、パース不能なファイルを `.{name}.corrupt.bak` へ退避して空の初期値で再生成する。ERROR ログ＋Webhook 通知（`reason="config_corrupt"`） |
+| 将来対応 | CI ランナー | 設定ファイル起動時整合性チェック | 起動時に各 `.json` ファイルの JSON 整合性を検証し、パース不能なファイルを `.{name}.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避して空の初期値で再生成する。ERROR ログ＋Webhook 通知（`reason="config_corrupt"`） |
 | 将来対応 | 管理ツール・API | マルチユーザー対応 | 初期仕様のシングルユーザー（admin）を複数ユーザー・ロール管理に拡張する |
 | 将来対応 | 管理ツール・API | 通知先の拡張 | 管理画面・API からメール・Slack・Discord 等の通知チャンネルを設定・追加できるようにする。`runner.go` 側のフック実装は → ビルド通知連携 |
 | 仕様化済み | 管理ツール・API | ビルドアーティファクト管理 | スナップショット一覧・ダウンロード・削除・ロールバック（→ §14b・§22 `POST /api/history/{id}/rollback`） |
