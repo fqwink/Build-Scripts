@@ -75,11 +75,11 @@
 
 方針、ポリシー、実装状態、正本関係の判断では `ADLAIRE_CI_SPEC.md` を正とする。
 
-実装の具体的詳細の判断では `ADLAIRE_CI_DETAIL_SPEC.md` を正とする。
+実装の具体的詳細の判断では、入口、索引、共通固定値、責務 component 対応表は `ADLAIRE_CI_DETAIL_SPEC.md`、各 component の詳細本文は owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする。
 
 デザイン判断では、`ADLAIRE_CI_SPEC.md` と矛盾しない範囲で `DESIGN.md` を参照する。
 
-Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_DETAIL_SPEC.md` と矛盾する場合は、仕様と実装の不整合として扱う。
+Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、または該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` と矛盾する場合は、仕様と実装の不整合として扱う。
 
 仕様を変更する場合は、先に該当する仕様書を更新し、その内容に基づいて実装ファイルを更新する。
 
@@ -91,10 +91,10 @@ Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md` または `ADLAIRE_CI_
 
 ## Consistency Notes
 
-現時点では、`ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に記載された一部コンポーネントや機能は仕様化済みだが、リポジトリ内に実装ファイルが存在しない。
+現時点では、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` に記載された一部コンポーネントや機能は仕様化済みだが、リポジトリ内に実装ファイルが存在しない。
 
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
 現行配置では、`build_spec.go` は標準配置名 `components/builder.go` の現行実装実体として Phase 1 実装済みであり、`runner.go` は標準配置名 `components/runner.go` の現行実装実体として Phase 2 完了判定パス実装済みである。Go toolchain による `gofmt` と `go test` の検証を完了している。
 
-Go 版コンポーネントの実装状態は、`ADLAIRE_CI_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` は検証条件と実装詳細の参照先として扱う。
+Go 版コンポーネントの実装状態は、`ADLAIRE_CI_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` は入口、索引、共通固定値、責務 component 対応表として扱い、実装詳細本文と検証条件は owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を参照する。
