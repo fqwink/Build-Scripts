@@ -18,9 +18,9 @@
 |---------------|------|------|
 | `build_spec.go` | 仕様化済み・未実装 | Go 版 Markdown → HTML ビルドスクリプト。 |
 | `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー。 |
-| `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー。仕様は本ドキュメントに定義するが、現行リポジトリには実装ファイルが存在しない。 |
-| `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、現行リポジトリには実装ファイルが存在しない。 |
-| `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。仕様は本ドキュメントに定義するが、現行リポジトリには実装ファイルが存在しない。 |
+| `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
+| `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
+| `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
 | `mcp_server.go` | 将来計画 | Go 版 MCP サーバー。将来計画として管理し、実装済みとは扱わない。 |
 
 仕様化済み・未実装、または将来計画の項目を、実装済み機能として扱ってはならない。
@@ -155,7 +155,7 @@ GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイ
 
 Adlaire CI の状態確認・操作を行う管理インターフェース。ヘッドレスアーキテクチャにより、フロントエンドとバックエンドを明確に分離する。
 
-本節以降の管理ツール・管理 API・SDK に関する記載は、仕様化済み・未実装の内容である。現行リポジトリに `api_server.go`、`admin/index.html`、`adlaire-ci-sdk.js` が存在しない限り、実装済み機能として扱わない。
+本節以降の管理ツール・管理 API・SDK に関する記載は、仕様化済み・未実装の内容である。リポジトリに `api_server.go`、`admin/index.html`、`adlaire-ci-sdk.js` が存在しない限り、実装済み機能として扱わない。
 
 ## 9. ヘッドレスアーキテクチャ方針
 
@@ -169,7 +169,7 @@ Adlaire CI と管理ツールは API を介して通信する。フロントエ�
 
 API は SDK として提供し、管理ツール実装者が直接 HTTP 通信を記述しなくてよい抽象化レイヤーを提供する。
 
-- **現行対応言語**：JavaScript のみ
+- **初期対応言語**：JavaScript のみ
 - **フレームワーク非依存**：バニラ JS・React・Vue・Svelte 等、いずれの環境でも利用可能
 - **内製 SDK**：外部ライブラリへの依存はゼロ（→ Part 2 §4）
 - 標準管理ツールも本 SDK を経由して通信する
@@ -309,7 +309,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 
 ## 13. 拡張ポイント・将来計画
 
-現行仕様に対する拡張予定・将来検討項目の一覧。
+本仕様に対する拡張予定・将来検討項目の一覧。
 仕様化する際は本ドキュメントへの追記を先行させる。
 
 **担当領域：** `CI ランナー` / `管理ツール・API` / `MCP サーバー` / `ビルドスクリプト`
@@ -404,22 +404,22 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 将来対応 | CI ランナー | ビルドトリガー種別の記録 | ポーリング・GitHub Webhook 受信・手動強制ビルド（`POST /api/build/force`）の 3 種を `.build_logs/{id}.json` の `trigger` フィールドに記録する。`GET /api/history` の `?trigger=` フィルターパラメータで絞り込み可能にする |
 | 将来対応 | CI ランナー | ビルド所要時間の異常検知 | 過去 N 件の平均ビルド時間を自動算出し、閾値（平均 × N 倍）を超過したビルドを WARN ログ＋Webhook 通知する。手動設定閾値アラート（→ アラート閾値設定）とは独立して、ビルド履歴から動的に基準を導出する |
 | 将来対応 | CI ランナー | 設定ファイル起動時整合性チェック | 起動時に各 `.json` ファイルの JSON 整合性を検証し、パース不能なファイルを `.{name}.corrupt.bak` へ退避して空の初期値で再生成する。ERROR ログ＋Webhook 通知（`reason="config_corrupt"`） |
-| 将来対応 | 管理ツール・API | マルチユーザー対応 | 現行のシングルユーザー（admin）を複数ユーザー・ロール管理に拡張する |
+| 将来対応 | 管理ツール・API | マルチユーザー対応 | 初期仕様のシングルユーザー（admin）を複数ユーザー・ロール管理に拡張する |
 | 将来対応 | 管理ツール・API | 通知先の拡張 | 管理画面・API からメール・Slack・Discord 等の通知チャンネルを設定・追加できるようにする。`runner.go` 側のフック実装は → ビルド通知連携 |
 | 仕様化済み | 管理ツール・API | ビルドアーティファクト管理 | スナップショット一覧・ダウンロード・削除・ロールバック（→ §14b・§22 `POST /api/history/{id}/rollback`） |
 | 将来対応 | 管理ツール・API | データストア切り替え | 大量ビルド履歴・ログ運用に備え、フラットファイルから SQLite 等への切り替えを検討する |
 | 将来対応 | 管理ツール・API | 外部認証連携 | SSO・OAuth 等の外部認証基盤との連携を検討する |
 | 将来対応 | 管理ツール・API | TOTP 二要素認証 | 管理画面ログインに TOTP（Google Authenticator / Authy 等）を追加する。パスワード認証成功後に TOTP コード入力画面へ遷移するフローと、QR コードによる初期セットアップを含む（→ `GET /api/auth/totp-status` / `POST /api/auth/totp-setup` / `POST /api/auth/totp-confirm` / `DELETE /api/auth/totp`） |
 | 将来対応 | 管理ツール・API | 統計データの CSV エクスポート | `GET /api/stats/timeline` の日別データを CSV 形式でダウンロードできるエンドポイントを追加する |
-| 将来対応 | 管理ツール・API | キュー内個別エントリのキャンセル | `DELETE /api/queue/{id}` で特定エントリのみキャンセルする（現行は全クリアのみ） |
+| 将来対応 | 管理ツール・API | キュー内個別エントリのキャンセル | `DELETE /api/queue/{id}` で特定エントリのみキャンセルする（初期仕様では全クリアのみ） |
 | 将来対応 | 管理ツール・API | 設定バリデーション API | `POST /api/config/validate` で設定値を適用前に検証し、エラー内容を返す |
 | 将来対応 | 管理ツール・API | Prometheus メトリクスエンドポイント | `GET /api/metrics` で Prometheus 形式のメトリクス（ビルド数・成功率・ディスク使用量等）を返す |
 | 将来対応 | 管理ツール・API | CLI 管理クライアント | Go 標準ライブラリのみで実装した `adlaire-ci-cli` で API を CUI 操作できるツール |
 | 将来対応 | 管理ツール・API | 設定の自動スナップショット | `POST /api/config` 変更時に自動で設定バックアップを世代保存する |
 | 将来対応 | 管理ツール・API | ステータスバッジ生成 | `GET /api/badge` で最終ビルド結果を SVG バッジとして返す（README 埋め込み用） |
 | 将来対応 | 管理ツール・API | ビルド履歴の自動削除設定 | `history_retention_days` 設定でビルド履歴エントリを自動削除する（ログの `log_retention_days` に対応する履歴版） |
-| 将来対応 | 管理ツール・API | セッションタイムアウト変更設定 | `GET/POST /api/config` でセッション有効期限（現行固定 8 時間）を変更可能にする |
-| 将来対応 | 管理ツール・API | ビルドトリガー専用 API スコープ | 現行の `read` スコープに加えて `trigger` スコープを追加し、ビルド起動のみ許可する |
+| 将来対応 | 管理ツール・API | セッションタイムアウト変更設定 | `GET/POST /api/config` でセッション有効期限（初期値 8 時間）を変更可能にする |
+| 将来対応 | 管理ツール・API | ビルドトリガー専用 API スコープ | 初期仕様の `read` スコープに加えて `trigger` スコープを追加し、ビルド起動のみ許可する |
 | 将来対応 | 管理ツール・API | 監査ログ | 設定変更・ビルドトリガー等の管理操作を操作者・日時・内容とともに記録する |
 | 将来対応 | 管理ツール・API | API レート制限 | エンドポイントへのリクエスト数を時間窓内で制限し、過負荷を防ぐ |
 | 将来対応 | 管理ツール・API | ロールベースアクセス制御 | 管理者・オペレーター・閲覧者等の役割ごとに API 権限を分ける |
@@ -457,8 +457,8 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 将来対応 | MCP サーバー | MCP Prompts 定義 | よく使う分析シナリオを MCP Prompts として定義し、Claude Desktop 等のプロンプトメニューから即時呼び出し可能にする。例：「先週のビルド失敗率をまとめて」「最後のエラーの原因を分析して」「PAT 有効期限が近いか確認して」。`get_history` / `search_logs` ツールと組み合わせて定型分析を 1 クリックで実行できる（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP Sampling によるビルドログ自動分析 | MCP Sampling 機能を使い、ビルド失敗時に `mcp_server.go` が AI クライアントへ sampling リクエストを送って原因推定テキストを生成し `.build_logs/{id}.json` の `ai_analysis` フィールドへ自動記録する。`runner.go` は MCP サーバーへソケット通知を送るだけで Anthropic API キーは `mcp_server.go` も保持しない（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP Notifications（イベントプッシュ） | ビルド完了・失敗・CB 開放等のシステムイベントを MCP Notifications として接続中の AI クライアントへリアルタイムプッシュする。`runner.go` が `api_server.go` 経由でイベントをキューに積み `mcp_server.go` が接続クライアントへ転送する設計（→ MCP サーバー実装） |
-| 将来対応 | MCP サーバー | MCP HTTP SSE transport 対応 | 現行の stdio transport に加えて HTTP + SSE transport をサポートし、リモートマシンや複数クライアントからの同時接続を可能にする。Go 標準ライブラリ `net/http` で実装しゼロ依存を維持。`api_server.go` と同一プロセス統合か独立ポート起動かを設定で選択可能（→ MCP サーバー実装） |
-| 将来対応 | MCP サーバー | MCP ツールスコープ細分化 | 現行の `read` / `trigger` 2 スコープを `read`（参照のみ）/ `trigger`（ビルド起動）/ `admin`（設定変更・CB リセット・ブランチ設定変更）の 3 スコープに細分化する。`.mcp_token` の各トークンにスコープを紐付け、ツール呼び出し時にスコープ検証を行う（→ MCP サーバー実装） |
+| 将来対応 | MCP サーバー | MCP HTTP SSE transport 対応 | 初期仕様の stdio transport に加えて HTTP + SSE transport をサポートし、リモートマシンや複数クライアントからの同時接続を可能にする。Go 標準ライブラリ `net/http` で実装しゼロ依存を維持。`api_server.go` と同一プロセス統合か独立ポート起動かを設定で選択可能（→ MCP サーバー実装） |
+| 将来対応 | MCP サーバー | MCP ツールスコープ細分化 | 初期仕様の `read` / `trigger` 2 スコープを `read`（参照のみ）/ `trigger`（ビルド起動）/ `admin`（設定変更・CB リセット・ブランチ設定変更）の 3 スコープに細分化する。`.mcp_token` の各トークンにスコープを紐付け、ツール呼び出し時にスコープ検証を行う（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP ツール呼び出し監査ログ | MCP 経由で呼び出されたツールの履歴（呼び出し日時・ツール名・引数サマリー・成否）を `.mcp_access_log` に記録する。`GET /api/mcp-access-log` で参照可能にし、AI クライアントがどの操作をいつ実行したかを追跡できる（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP リソース購読（Resource Subscriptions） | クライアントが `adlaire://status` 等のリソースを subscribe し、状態変化時に `notifications/resources/updated` を自動受信できる MCP 標準機能。MCP Notifications（イベント起点プッシュ）とは異なりリソース変更起点のプッシュで、クライアントがポーリングなしに最新状態を保持できる（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP クライアント情報ログ | initialize リクエストの `clientInfo`（クライアント名・バージョン）を `.mcp_access_log` の接続エントリとして記録する。Claude Desktop / Cursor / 自作クライアント等どのツールから接続されたかを追跡し、監査と動作確認に利用する（→ MCP サーバー実装） |
@@ -671,7 +671,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 |-----------|------|---------|
 | （なし） | — | — |
 
-> 現行の許可外部ライブラリは存在しない。
+> 許可外部ライブラリは存在しない。
 
 ---
 
@@ -717,7 +717,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 ## 10. データ永続化ポリシー
 
-- **現行方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.build_history`・`.notify_config`・`.notify_log`・`.notify_pending`・`.server_config`・`.access_log`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.pending_transfers`・`.build_lock`・`.build_state`・`.build_circuit_state`・`.branch_config`・`.webhook_events.json`・`.build_logs/`・`.snapshots/`・ビルドログ等）
+- **初期方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.build_history`・`.notify_config`・`.notify_log`・`.notify_pending`・`.server_config`・`.access_log`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.pending_transfers`・`.build_lock`・`.build_state`・`.build_circuit_state`・`.branch_config`・`.webhook_events.json`・`.build_logs/`・`.snapshots/`・ビルドログ等）
 - RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、初期仕様ではいかなるデータベースも採用しない
 - 将来的にデータベースを採用する場合は、本ドキュメントへの仕様追記と §4 許可外部ライブラリ一覧の更新を先行させる
 - **データ形式：フラットファイル JSON 形式**を標準とする

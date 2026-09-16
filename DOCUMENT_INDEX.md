@@ -7,22 +7,22 @@
 | ファイル | 役割 |
 |---------|------|
 | `ADLAIRE_CI_SPEC.md` | Adlaire CI の方針、ポリシー、実装状態、正本関係を定めるマスター仕様書正本。 |
-| `ADLAIRE_CI_DETAIL_SPEC.md` | `ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様。`build_spec.go`、`runner.go`、仕様化済み・未実装コンポーネント、将来計画コンポーネントの実装詳細に関する正本。 |
+| `ADLAIRE_CI_DETAIL_SPEC.md` | `ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様。Go 版コンポーネント、標準管理ツール、将来計画コンポーネントの実装詳細に関する正本。 |
 | `DESIGN.md` | `Adlaire-db-spec.html` のデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | `DOCUMENT_INDEX.md` | 本索引。リポジトリ内の文書・実装ファイルの役割と正本関係を示す。仕様正本ではない。 |
 
-## Planned Components
+## Specified Components
 
 `ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` では、以下のコンポーネントも仕様化されている。
 
 | パス | 状態 | 役割 |
 |------|------|------|
-| `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプト。`adlaire-ci-build` バイナリとして実行する予定。 |
-| `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する予定。 |
-| `api_server.go` | 仕様化済み・未実装 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する予定。 |
-| `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する予定。 |
-| `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。SDK 経由で API と通信する予定。 |
+| `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプト。`adlaire-ci-build` バイナリとして実行する。 |
+| `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。 |
+| `api_server.go` | 仕様化済み・未実装 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
+| `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
+| `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。SDK 経由で API と通信する。 |
 | `mcp_server.go` | 将来計画 | MCP サーバー。将来の 4 コンポーネント構成で追加予定。 |
 
 ## Source Of Truth

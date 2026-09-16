@@ -40,15 +40,15 @@
 
 本節は、`ADLAIRE_CI_SPEC.md` Part 1 §4b および Part 2 §0a に基づく詳細仕様の一次棚卸しである。
 
-成熟度は、詳細仕様の記載粒度、実装ファイルの存在、現行リポジトリ上で確認できる責務境界を基準に判定する。実装済み判定は、実装ファイルの存在だけでは成立しない。詳細なコード突合、構文確認、実行確認、生成物確認は、各実装作業または別途の仕様突合作業で行う。
+成熟度は、詳細仕様の記載粒度、実装ファイルの存在、リポジトリ上で確認できる責務境界を基準に判定する。実装済み判定は、実装ファイルの存在だけでは成立しない。詳細なコード突合、構文確認、実行確認、生成物確認は、各実装作業または別途の仕様突合作業で行う。
 
 | 対象範囲 | 対象コンポーネント | 成熟度 | 判定理由 | 次に必要な作業 |
 |----------|-------------------|--------|----------|----------------|
 | §0〜§9 | `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプトの CLI、入出力、Markdown 変換、HTML 出力、検証条件を定義する。 | Go 版 `adlaire-ci-build` として本仕様に基づいて実装する。 |
 | §10〜§20 | `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナーの設定、状態ファイル、ビルド起動、通知、転送、ログ保存を定義する。 | Go 版 `adlaire-ci-runner` として本仕様に基づいて実装する。 |
 | §21〜§22 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバーの責務、設定値、systemd、エンドポイント、レスポンス、エラー形式を定義する。 | 実装前に API 完全契約表、状態ファイル schema、SDK、UI 操作契約を同期確認する。 |
-| §23 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | SDK のクラス、メソッド、戻り値、HTTP 対応関係が定義されているが、現行リポジトリに `adlaire-ci-sdk.js` は存在しない。 | API 仕様と SDK メソッド一覧を同期確認し、不足している戻り値型があれば具体化する。 |
-| §24 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツールの画面構成、表示条件、パネル責務が定義されているが、現行リポジトリに `admin/index.html` は存在しない。 | API・SDK と UI 操作の対応を確認し、各操作の成功/失敗表示を具体化する。 |
+| §23 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | SDK のクラス、メソッド、戻り値、HTTP 対応関係が定義されているが、リポジトリに `adlaire-ci-sdk.js` は存在しない。 | API 仕様と SDK メソッド一覧を同期確認し、不足している戻り値型があれば具体化する。 |
+| §24 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツールの画面構成、表示条件、パネル責務が定義されているが、リポジトリに `admin/index.html` は存在しない。 | API・SDK と UI 操作の対応を確認し、各操作の成功/失敗表示を具体化する。 |
 | §25 | `api_server.go` | 仕様化済み・未実装 | 認証情報ファイル、パスワードハッシュ、ログイン回数、パスワード変更フローを Go 版 API サーバー向けに定義する。 | セッション管理、トークン生成、ファイル権限、異常系を API 仕様と突合する。 |
 | §26 | `runner.go` / `api_server.go` | 仕様化済み・未実装 | Go 版バイナリ前提のセットアップ、systemd、更新手順を定義する。 | Go 版バイナリ名、配置先、systemd unit、再生成・再設定・再検証手順を確定する。 |
 | 概要内の MCP 記載 | `mcp_server.go` | 将来計画 | `mcp_server.go` は将来構成として言及されるが、詳細な入出力、ツール定義、起動手順、認証仕様は本ファイル内で実装可能な粒度まで定義されていない。 | 実装対象にする場合は、先に改訂予定へ昇格し、MCP 詳細仕様を新設する。 |
@@ -1044,7 +1044,7 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 /etc/systemd/system/
 ├── adlaire-ci.service      # systemd ユニット（oneshot）
 ├── adlaire-ci.timer        # systemd タイマー（定期実行）
-└── adlaire-admin.service   # 管理 API サーバー（常駐、仕様化済み・未実装）
+└── adlaire-ci-api.service  # 管理 API サーバー（常駐、仕様化済み・未実装）
 ```
 
 ### リポジトリ側
@@ -1250,11 +1250,11 @@ set -e
 
 ## 14a. SSH ファイル転送
 
-本節は、仕様化済み・未実装の CI ランナー拡張仕様である。
+本節は、Go 版 CI ランナーの SSH 転送標準仕様である。
 
 Go 版 `runner.go` は、`pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節を SSH 転送の正本仕様とする。
 
-本機能を実装する場合、`runner.go` は `pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。
+`runner.go` は `pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。
 
 ### 設定値
 
@@ -1344,11 +1344,11 @@ ssh {user}@{host} "sha256sum {dest_dir}/{filename}"
 
 ## 14b. スナップショット管理
 
-本節は、仕様化済み・未実装の CI ランナー拡張仕様である。
+本節は、Go 版 CI ランナーのスナップショット標準仕様である。
 
 Go 版 `runner.go` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節をスナップショット保存、世代管理、ロールバック連携の正本仕様とする。
 
-本機能を実装する場合、`runner.go` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット機能を無効化する。
+`runner.go` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット機能を無効化する。
 
 ### ディレクトリ構造
 
@@ -1435,7 +1435,7 @@ Description=Adlaire CI Runner
 [Service]
 Type=oneshot
 User=deploy
-ExecStart=/usr/local/bin/adlaire-ci-runner
+ExecStart=/usr/local/bin/adlaire-ci-runner --state-dir /opt/adlaire-builder
 StandardOutput=journal
 StandardError=journal
 ```
@@ -1492,7 +1492,7 @@ echo "<PAT>" | sudo -u deploy tee /opt/adlaire-builder/.github_token
 sudo chmod 600 /opt/adlaire-builder/.github_token
 
 # 3b. CI サーバー → 配信サーバー SSH 鍵設定
-#     仕様化済み・未実装の SSH 転送機能を導入する場合のみ実行する。
+#     SSH 転送機能を使用する場合のみ実行する。
 #     deploy ユーザーの SSH 鍵を生成（既存鍵がある場合はスキップ）
 sudo -u deploy ssh-keygen -t ed25519 -f /home/deploy/.ssh/id_ed25519 -N ""
 #     公開鍵を配信サーバーへ登録（配信サーバー側で実行）
@@ -1523,9 +1523,9 @@ sudo -u deploy /usr/local/bin/adlaire-ci-api --init-credentials --state-dir /opt
 sudo chmod 600 /opt/adlaire-builder/.admin_credentials
 
 # 9. systemd ユニットを登録・起動
-sudo cp adlaire-admin.service /etc/systemd/system/
+sudo cp adlaire-ci-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now adlaire-admin
+sudo systemctl enable --now adlaire-ci-api
 ```
 
 ---
@@ -1553,7 +1553,7 @@ sudo systemctl enable --now adlaire-admin
 | GitHub API リトライ | GitHub API 失敗時は `API_RETRY_MAX` 回まで指数バックオフで再試行する。全試行失敗時は ERROR ログを記録し、当該ターゲットのビルドをスキップする。SHA は更新しない。 |
 | ビルド失敗時の扱い | `pipeline.sh` が非 0 で終了した場合は ERROR ログを出し、SHA を更新しない。次回実行では同じ blob SHA を再検出して再度ビルド対象になる。 |
 
-### 20.2 仕様化済み・未実装拡張の制限
+### 20.2 標準機能の制限
 
 以下は管理 API または将来拡張と連携する場合の制限である。
 
@@ -1572,8 +1572,8 @@ sudo systemctl enable --now adlaire-admin
 
 ```
 systemd timer
-  └─ runner.go（現行: 変更検出・ビルド起動）
-       └─ SSH 転送（仕様化済み・未実装拡張）
+  └─ runner.go（変更検出・ビルド起動）
+       └─ SSH 転送
 
 api_server.go（常駐 HTTP サーバー、仕様化済み・未実装）
 
@@ -1606,7 +1606,7 @@ Repo              = "<リポジトリ名>"                           // 初期�
 
 ```ini
 [Unit]
-Description=Adlaire Admin API Server
+Description=Adlaire CI API Server
 After=network.target
 
 [Service]
@@ -1622,8 +1622,8 @@ WantedBy=multi-user.target
 ```
 
 ```bash
-sudo systemctl enable --now adlaire-admin  # 登録・起動
-sudo journalctl -u adlaire-admin -f        # ログ確認
+sudo systemctl enable --now adlaire-ci-api  # 登録・起動
+sudo journalctl -u adlaire-ci-api -f        # ログ確認
 ```
 
 ---
@@ -1852,7 +1852,7 @@ Email object:
 | `tokens` | object[] | 必須 | 0〜100 件 | 発行済み API token 一覧。 |
 | `id` | string | 必須 | `tok` + 3 桁以上の数字 | token 識別子。 |
 | `label` | string | 必須 | 1〜64 文字 | 表示名。 |
-| `scope` | string | 必須 | `"read"` | 現行仕様では read のみ。 |
+| `scope` | string | 必須 | `"read"` | 初期仕様では read のみ。 |
 | `token_hash` | string | 必須 | SHA-256 hex | token 本体は保存しない。 |
 | `created_at` | string | 必須 | ISO 8601 | 作成日時。 |
 | `last_used_at` | string/null | 必須 | ISO 8601 または `null` | 最終使用日時。 |
@@ -3955,7 +3955,7 @@ Go 版初回セットアップでは以下を実行しない。
 | 対象 | 理由 |
 |------|------|
 | `/usr/local/bin/adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"` | `api_server.go` は仕様化済み・未実装。 |
-| `systemctl enable --now adlaire-admin` | 管理 API サーバーは仕様化済み・未実装。 |
+| `systemctl enable --now adlaire-ci-api` | 管理 API サーバーは仕様化済み・未実装。 |
 | `.build_logs/` 作成 | ビルドログ保存は仕様化済み・未実装。 |
 | `.snapshots/` 作成 | スナップショット保存は仕様化済み・未実装。 |
 
@@ -3980,14 +3980,14 @@ install -m 0755 adlaire-ci-api "$BIN_DIR/adlaire-ci-api"
 chmod 600 "$INSTALL_DIR/.admin_credentials"
 
 # ── 4. 管理 API systemd サービス配置 ─────────────────
-# §26.4.2 のファイル内容を /etc/systemd/system/adlaire-admin.service に配置した上で:
+# §26.4.2 のファイル内容を /etc/systemd/system/adlaire-ci-api.service に配置した上で:
 systemctl daemon-reload
 
 # ── 5. サービス有効化・起動 ───────────────────────────
-systemctl enable --now adlaire-admin
+systemctl enable --now adlaire-ci-api
 
 # ── 6. 起動確認 ───────────────────────────────────────
-systemctl status adlaire-admin
+systemctl status adlaire-ci-api
 ```
 
 ### §26.4 systemd サービスファイル
@@ -4024,7 +4024,7 @@ WantedBy=timers.target
 
 #### §26.4.2 管理 API 導入後の systemd ファイル（仕様化済み・未実装）
 
-**`/etc/systemd/system/adlaire-admin.service`**（`api_server.go`）：
+**`/etc/systemd/system/adlaire-ci-api.service`**（`api_server.go`）：
 
 ```ini
 [Unit]
@@ -4068,11 +4068,11 @@ systemctl restart adlaire-ci.timer
 systemctl status adlaire-ci.timer
 ```
 
-管理 API 導入後は、追加で `adlaire-admin` を再起動する。
+管理 API 導入後は、追加で `adlaire-ci-api` を再起動する。
 
 ```bash
-systemctl restart adlaire-admin
-systemctl status adlaire-admin
+systemctl restart adlaire-ci-api
+systemctl status adlaire-ci-api
 ```
 
 ### §26.6 サービス操作リファレンス
@@ -4091,8 +4091,8 @@ systemctl status adlaire-admin
 
 | 操作 | コマンド |
 |------|---------|
-| 状態確認 | `systemctl status adlaire-admin` |
-| 起動 | `systemctl start adlaire-admin` |
-| 停止 | `systemctl stop adlaire-admin` |
-| 再起動 | `systemctl restart adlaire-admin` |
-| ログ確認（API） | `journalctl -u adlaire-admin -f` |
+| 状態確認 | `systemctl status adlaire-ci-api` |
+| 起動 | `systemctl start adlaire-ci-api` |
+| 停止 | `systemctl stop adlaire-ci-api` |
+| 再起動 | `systemctl restart adlaire-ci-api` |
+| ログ確認（API） | `journalctl -u adlaire-ci-api -f` |
