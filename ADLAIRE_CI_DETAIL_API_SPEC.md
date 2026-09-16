@@ -421,7 +421,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/rate-limit` | none | `RateLimitObject` | `200` | `401`, `501`, `500` | `.github_token` | none | `getRateLimit()` | システム情報 |
 | `GET /api/disk-usage` | none | `DiskUsageObject` | `200` | `401`, `500` | `.build_logs/`, `.build_logs/archive/`, output file | none | `getDiskUsage()` | システム情報 |
 | `GET /api/webhook-events` | query `{limit,offset}` | `{events,total}` | `200` | `401`, `422`, `500` | `.webhook_events.json` | none | `getWebhookEvents(limit,offset)` | システム診断 |
-| `POST /api/webhook` | GitHub webhook body | `{message,ref?}` | `200` | `400`, `403`, `409`, `501`, `503` | `.webhook_secret`, `.branch_config`, `.build_state`, `.maintenance`, `.build_circuit_state` | `.webhook_events.json`, `.build_state` or queue | none | 外部 Webhook |
+| `POST /api/webhook` | GitHub webhook body | `{message,queued,event_id,queue_id?}` | `202` | `401`, `413`, `422`, `429`, `500`, `503` | `.webhook_secret`, `.branch_config`, `.build_state`, `.maintenance`, `.build_circuit_state` | `.webhook_events.json`, `.build_state` or queue | none | 外部 Webhook |
 | `GET /api/webhook-config` | none | `{configured}` | `200` | `401`, `500` | `.webhook_secret` | none | `getWebhookConfig()` | 通知設定 |
 | `POST /api/webhook-config` | `{secret}` | `{message}` | `200` | `401`, `422`, `500` | none | `.webhook_secret`, `.config_log` | `setWebhookConfig(secret)` | 通知設定 |
 | `POST /api/circuit-breaker/reset` | none | `{message,open,consecutive_failures}` | `200` | `401`, `500` | `.build_circuit_state` | `.build_circuit_state`, `.config_log` | `resetCircuitBreaker()` | 手動実行, システム診断 |
@@ -737,7 +737,7 @@ API の P0〜P5 実装順序、必須検証、fixture 名、入力状態、期�
 | `GET` | `/api/rate-limit` | 要 | GitHub API のレート制限残量・上限・リセット時刻を返す |
 | `GET` | `/api/disk-usage` | 要 | ビルドログ合計・出力サイトのディスク使用量を返す |
 | `GET` | `/api/webhook-events?limit=50&offset=0` | 要 | 受信 Webhook イベント一覧を新しい順にページネーション付きで返す（→ `.webhook_events.json`） |
-| `POST` | `/api/webhook` | 不要（Secret 検証） | GitHub push Webhook を受信し、署名検証後にビルドをトリガーする（→ §22 Webhook 受信仕様） |
+| `POST` | `/api/webhook` | 不要（Secret 検証） | GitHub push Webhook を受信し、署名検証後に build queue へ投入する（→ §22 Webhook 受信仕様 / §27.12） |
 | `GET` | `/api/webhook-config` | 要 | Webhook Secret 設定状態を返す |
 | `POST` | `/api/webhook-config` | 要 | Webhook Secret を設定する |
 | `POST` | `/api/circuit-breaker/reset` | 要 | サーキットブレーカーをリセットする（`open: false`・`consecutive_failures: 0` に戻しポーリングを再開） |
@@ -1264,7 +1264,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 **`GET /api/webhook-events` レスポンス例：**
 
-クエリパラメータ `limit`（デフォルト 50、上限 200）と `offset` でページネーションする。`.webhook_events.json` を逆順（新しい順）で返す。
+クエリパラメータ `limit`（デフォルト 50、上限 1000）と `offset` でページネーションする。`.webhook_events.json` を逆順（新しい順）で返す。
 
 ```json
 {
@@ -1277,8 +1277,12 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
       "delivery_id": "abc-123-def",
       "event": "push",
       "ref": "refs/heads/main",
-      "sha": "abc123def456",
-      "build_triggered": true
+      "branch": "main",
+      "sha": "0123456789abcdef0123456789abcdef01234567",
+      "repository": "fqwink/Build-Scripts",
+      "build_triggered": true,
+      "queued_id": "q20260915100200",
+      "result": "queued"
     }
   ]
 }
@@ -1510,67 +1514,19 @@ snapshot の保存、世代削除、download、delete、rollback 実体処理は
 
 ### Webhook 受信仕様（22-W）
 
-`POST /api/webhook` は GitHub からの push イベントを受信し、署名検証後にビルドをトリガーする。認証ヘッダー（`Authorization: Bearer`）は不要だが、`X-Hub-Signature-256` ヘッダーによる HMAC-SHA256 署名検証が必須である。
+`POST /api/webhook` は GitHub からの push event を受信し、HMAC-SHA256 署名検証後に build queue へ投入する。認証ヘッダー（`Authorization: Bearer`）は不要とし、Webhook 署名検証を認証代替として扱う。
 
-**署名検証：**
-```go
-// components/api.go の実装例
-mac := hmac.New(sha256.New, []byte(secret))
-mac.Write(body)
-expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
-if subtle.ConstantTimeCompare([]byte(expected), []byte(requestHeader.Get("X-Hub-Signature-256"))) != 1 {
-    return 403
-}
-```
-
-- Secret は `WEBHOOK_SECRET_FILE`（`/opt/adlaire-builder/.webhook_secret`）から読み込む
-- Secret 未設定時（ファイル不在）は Webhook 受信を `501 Not Implemented` で拒否する
+本節は Webhook 受信 endpoint の概要と必須 header だけを定義する。署名検証、status code、response、event log、queue 投入、重複判定、異常系、検証条件は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.12 を正とする。本節へ `POST /api/webhook` の response 例、event log schema、queue entry schema を重複定義してはならない。
 
 **`POST /api/webhook` リクエストヘッダー：**
 ```
 X-GitHub-Event: push
+X-GitHub-Delivery: <delivery_id>
 X-Hub-Signature-256: sha256=<hmac_hex>
 Content-Type: application/json
 ```
 
-**`POST /api/webhook` レスポンス：**
-```json
-// 200: ビルドトリガー成功
-{ "message": "Build triggered", "ref": "refs/heads/main" }
-
-// 400: ペイロード不正（ref フィールド欠損等）
-{ "error": "Invalid payload" }
-
-// 403: 署名検証失敗
-{ "error": "Invalid signature" }
-
-// 409: ビルド実行中
-{ "error": "Build already running" }
-
-// 501: Secret 未設定
-{ "error": "Webhook not configured" }
-```
-
-**ビルドトリガー条件：**
-- `ref` フィールドが `BRANCH_TARGETS` のいずれかの `branch` と一致する push イベントのみビルドをトリガーする
-- 一致する branch が存在しない場合は `200` + `{ "message": "No matching branch" }` を返す（ビルドはしない）
-
-**イベントログ：**
-署名検証成功後、受信イベントを `.webhook_events.json` に JSON Lines 形式（1行1イベント）で追記する。ビルドの実行可否によらず全受信イベントを記録する。
-
-記録フォーマット（1行）：
-```json
-{"timestamp": "2026-09-15T10:00:00Z", "delivery_id": "abc-123-def", "event": "push", "ref": "refs/heads/main", "sha": "abc123def456", "build_triggered": true}
-```
-
-| フィールド | 型 | 説明 |
-|-----------|-----|------|
-| `timestamp` | string (ISO 8601) | イベント受信日時 |
-| `delivery_id` | string | `X-GitHub-Delivery` ヘッダー値 |
-| `event` | string | `X-GitHub-Event` ヘッダー値（`"push"` 等） |
-| `ref` | string | ペイロードの `ref` フィールド |
-| `sha` | string | ペイロードの `after` フィールド（push 後の HEAD SHA） |
-| `build_triggered` | boolean | ビルドをトリガーしたか（`true` / `false`） |
+Secret は `.webhook_secret` を正とする。secret 不在、header 不在、prefix 不正、hex 不正、署名不一致はいずれも §27.12 の固定契約どおり `401` とし、event log と queue を変更しない。
 
 **Webhook Secret 設定 API：**
 
