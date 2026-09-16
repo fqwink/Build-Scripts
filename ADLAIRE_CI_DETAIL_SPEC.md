@@ -2036,22 +2036,23 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | リクエスト body 上限 | JSON body は 1 MiB を上限とする。超過時は `413 Payload Too Large` と `{"error": "Payload too large"}` を返す。 |
 | request body 禁止 | §22.0e で `Request` が `none` の endpoint に body がある場合は `400 Bad Request` と `{"error": "Request body is not allowed"}` を返す。 |
 | 成功レスポンス | 各エンドポイント例に記載した JSON オブジェクトを返す。空レスポンスは使用しない。 |
-| エラーレスポンス | エラー時は `{"error": "<message>"}` を返す。補足情報が必要な場合のみ `details` を追加し、`details` は文字列または JSON オブジェクトとする。 |
+| エラーレスポンス | エラー時は `{"error":"<message>"}` を返す。入力検証失敗時のみ `details` を配列 `[{ "field": "<field>", "message": "<reason>" }]` とし、複数エラーがある場合はリクエスト JSON の出現順、query、path parameter の順で並べる。入力検証以外の補足は `details` を使わず、`error` を実装者向けではない固定文言にする。 |
 | 未知のパス | 定義されていない `/api/...` は `404 Not Found` と `{"error": "Not found"}` を返す。 |
 | 未対応メソッド | パスは存在するがメソッドが異なる場合は `405 Method Not Allowed` と `{"error": "Method not allowed"}` を返す。 |
 | JSON 不正 | JSON ボディのパースに失敗した場合は `400 Bad Request` と `{"error": "Invalid JSON"}` を返す。 |
-| 入力検証失敗 | 型、必須キー、範囲、有効値が仕様と異なる場合は `422 Unprocessable Entity` と `{"error": "Validation failed", "details": ...}` を返す。 |
+| 入力検証失敗 | 型、必須キー、範囲、有効値が仕様と異なる場合は `422 Unprocessable Entity` と `{"error":"Validation failed","details":[...]}` を返す。`field` は JSON body key、query key、または path parameter 名とし、body 全体の形式不正は `field` を `"$"` とする。 |
 | 認証なし | 認証必須エンドポイントで Bearer トークンがない、または無効な場合は `401 Unauthorized` と `{"error": "Unauthorized"}` を返す。 |
-| 権限不足 | 読み取り専用トークンで変更系 API を呼び出す場合など、認証済みだが権限不足の場合は `403 Forbidden` と `{"error": "Forbidden"}` を返す。 |
-| 競合 | 実行中ビルド、停止済みスケジュールへの重複 pause、存在しない実行状態への cancel など状態競合は `409 Conflict` を返す。 |
-| 未設定機能 | Secret 未設定など、機能が仕様化済みでも必要設定が存在しない場合は `501 Not Implemented` または各エンドポイントに明記されたステータスを返す。 |
-| 時刻形式 | API レスポンスと状態ファイルの時刻は ISO 8601 形式の文字列とする。タイムゾーンを付ける場合は UTC の `Z` または明示オフセットを使用する。 |
+| 権限不足 | 認証済み token の scope が不足する場合は `403 Forbidden` と `{"error":"Forbidden"}` を返す。初期仕様の API token scope は `read` のみであり、API token は `GET` のみ許可する。`POST`、`DELETE`、設定変更、ビルド起動、token 発行、secret 更新は `/api/login` で発行された管理セッション token のみ許可する。 |
+| 競合 | 現在状態と要求操作が両立しない場合は `409 Conflict` を返す。対象は、実行中ビルドへの二重開始、ビルド未実行時の cancel、停止済みスケジュールへの pause、稼働中スケジュールへの resume、lock 取得 10 秒超過、stale 判定不能な `.build_lock` である。 |
+| 未設定機能 | 仕様化済み機能の必須 secret、必須外部設定、必須状態ファイルが未設定で処理を開始できない場合は `501 Not Implemented` と `{"error":"Not configured"}` を返す。エンドポイント固有仕様で `422`、`503`、`500` を明記している場合のみ個別指定を優先する。 |
+| 時刻形式 | API レスポンスと状態ファイルの機械処理用時刻は UTC ISO 8601 `YYYY-MM-DDTHH:MM:SSZ` とする。明示オフセット、timezone なし文字列、ミリ秒付き文字列は保存しない。外部 API から取得した時刻も保存前に UTC `Z` へ正規化する。 |
 | GET の副作用 | `GET` エンドポイントは状態ファイルを書き換えない。診断 API が外部確認を行う場合も、結果保存は行わない。 |
-| 状態ファイル更新 | JSON 状態ファイルの更新は同一ディレクトリの一時ファイルへ書き出してから `os.Rename` で置換する。秘密情報を含むファイルは作成後に mode `600` を設定する。 |
+| 状態ファイル更新 | JSON 状態ファイルの更新は同一ディレクトリの一時ファイルへ書き出してから `os.Rename` で置換する。秘密情報を含むファイルは作成後に mode `600` を設定する。rename 後は対象ファイルと親ディレクトリを `Sync` し、永続化失敗時は `500` を返す。 |
 | 秘密情報 | PAT、Webhook Secret、セッショントークン、API トークンはログ、バックアップ、GET レスポンスへ平文出力しない。設定済み表示は `"***"` または boolean で返す。 |
 | 並列更新 | 同一状態ファイルを更新する API は、ファイル単位のロックを取得してから読み込み、検証、書き込みを行う。ロック取得待ちは最大 10 秒とし、超過時は `409 Conflict` を返す。 |
 | 監査ログ | 設定変更 API は、変更前後の値を `.config_log` に追記する。ただし秘密情報の値は変更前後とも `"***"` にマスクする。 |
-| CORS | 既定では CORS ヘッダーを付与しない。標準管理ツールは同一 origin から配信する。 |
+| CORS | 既定では CORS ヘッダーを付与しない。標準管理ツールは同一 origin から配信する。`OPTIONS` preflight は定義しない。CORS を有効化する拡張は未仕様化とし、実装してはならない。 |
+| セキュリティヘッダー | すべての API レスポンスに `Cache-Control: no-store`、`X-Content-Type-Options: nosniff` を付与する。SSE は `Cache-Control: no-store` と `X-Accel-Buffering: no` を付与する。 |
 | 判定順 | path 解決 → method 検証 → body 可否/サイズ検証 → JSON parse → 認証 → 権限 → 入力検証 → 状態競合 → 処理実行の順に判定する。 |
 
 エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、§22、§23、§24 の対応関係を同時に確認する。
@@ -2063,18 +2064,18 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
 |------|------|--------|----------|--------------|
 | `.admin_credentials` | JSON object | `--init-credentials` で生成 | `api_server.go` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
-| `.server_config` | JSON object | `{}` | `api_server.go` | `.server_config.corrupt.bak` へ退避し、空 object で再生成する。 |
-| `.notify_config` | JSON object | `{"webhooks":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `api_server.go` | `.notify_config.corrupt.bak` へ退避し、初期値で再生成する。 |
+| `.server_config` | JSON object | `{}` | `api_server.go` | `.server_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 object で再生成する。 |
+| `.notify_config` | JSON object | `{"webhooks":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `api_server.go` | `.notify_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.notify_log` | JSON Lines | 空ファイル | `runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
-| `.notify_pending` | JSON array | `[]` | `runner.go` | `.notify_pending.corrupt.bak` へ退避し、`[]` で再生成する。 |
-| `.pending_transfers` | JSON array | `[]` | `runner.go` | `.pending_transfers.corrupt.bak` へ退避し、`[]` で再生成する。 |
+| `.notify_pending` | JSON array | `[]` | `runner.go` | `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
+| `.pending_transfers` | JSON array | `[]` | `runner.go` | `.pending_transfers.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
 | `.build_history` | JSON Lines | 空ファイル | `runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
 | `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `runner.go` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
-| `.build_lock` | text | 不在 | `runner.go` | PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。 |
-| `.branch_config` | JSON object | 不在 | `api_server.go` | `.branch_config.corrupt.bak` へ退避し、`BRANCH_TARGETS` デフォルトへフォールバックする。 |
+| `.build_lock` | text | 不在 | `runner.go` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
+| `.branch_config` | JSON object | 不在 | `api_server.go` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`BRANCH_TARGETS` デフォルトへフォールバックする。 |
 | `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null}` | `runner.go` / `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `runner.go` / `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.repo_config` | JSON object | `{}` | `api_server.go` | `.repo_config.corrupt.bak` へ退避し、スクリプト定数へフォールバックする。 |
+| `.repo_config` | JSON object | `{}` | `api_server.go` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
 | `.config_log` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.access_log` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.webhook_secret` | text | 不在 | `api_server.go` | 読み込み不能時は Webhook 受信を `501` で拒否する。 |
@@ -2099,15 +2100,16 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 2. ロック取得に失敗した場合は 100ms 間隔で最大 10 秒待つ。
 3. 現在値を読み込み、schema と入力値を検証する。
 4. 更新後 JSON を `{name}.tmp.{pid}` に UTF-8 / LF で書き出す。
-5. ファイルを close し、通常状態ファイルは `0644`、秘密情報ファイルは `0600` に chmod する。
+5. ファイルを close し、通常状態ファイルは `0644`、秘密情報ファイルと lock file は `0600` に chmod する。
 6. `os.Rename(tmp, target)` で置換する。
-7. ロックファイルを削除する。
+7. target file を open して `Sync` し、続けて親ディレクトリを open して `Sync` する。
+8. ロックファイルを削除する。
 
-手順 3〜6 の途中で失敗した場合は target を変更せず、tmp を削除し、ロックを削除して `500 Internal Server Error` を返す。複数ファイル更新 API は §22.0d の Write 列順にこの手順を実行し、途中失敗時は未処理ファイルを書き込まない。既に書き込んだファイルの自動ロールバックは行わず、`.config_log` に失敗内容を記録する。
+手順 3〜7 の途中で失敗した場合は target を変更せず、tmp を削除し、ロックを削除して `500 Internal Server Error` を返す。`os.Rename` 後の `Sync` に失敗した場合は target を維持し、ERROR ログと `.config_log` へ失敗を記録して `500` を返す。複数ファイル更新 API は §22.0d の Write 列順にこの手順を実行し、途中失敗時は未処理ファイルを書き込まない。既に書き込んだファイルの自動ロールバックは行わず、`.config_log` に失敗内容を記録する。
 
 ### 22.0b 入力検証共通仕様
 
-API 実装は以下の検証を共通で行う。違反時は、エンドポイント固有の指定がない限り `422 Unprocessable Entity` と `{"error":"Validation failed","details":...}` を返す。
+API 実装は以下の検証を共通で行う。違反時は、エンドポイント固有の指定がない限り `422 Unprocessable Entity` と `{"error":"Validation failed","details":[{"field":"<field>","message":"<reason>"}]}` を返す。
 
 | 対象 | 検証条件 |
 |------|----------|
@@ -2246,7 +2248,7 @@ Email object:
       "label": "監視用",
       "scope": "read",
       "token_hash": "<sha256_hex>",
-      "created_at": "2026-09-15T10:00:00",
+      "created_at": "2026-09-15T10:00:00Z",
       "last_used_at": null,
       "revoked_at": null
     }
@@ -2522,7 +2524,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 | Endpoint | Request | Response | Success | Errors | Read | Write | SDK | UI |
 |----------|---------|----------|---------|--------|------|-------|-----|----|
-| `POST /api/login` | `{password}` | `{token,must_change}` | `200` | `401`, `422`, `500` | `.admin_credentials` | `.admin_credentials`, `.access_log` | `login()` | ログイン |
+| `POST /api/login` | `{password}` | `{token,must_change}` | `200` | `401`, `422`, `429`, `500` | `.admin_credentials` | `.admin_credentials`, `.access_log` | `login()` | ログイン |
 | `POST /api/logout` | none | `{message}` | `200` | `401` | memory session | memory session | `logout()` | 全パネル共通 |
 | `POST /api/change-password` | `{current_password,new_password}` | `{message}` | `200` | `401`, `422`, `500` | `.admin_credentials` | `.admin_credentials`, memory session | `changePassword()` | パスワード変更 |
 | `GET /api/access-log` | query `{limit,offset}` | `{log}` | `200` | `401`, `422` | `.access_log` | none | `getAccessLog()` | アクセスログ |
@@ -2532,7 +2534,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST /api/build` | none | `{message,build_id?,queued?}` | `202` | `401`, `409`, `422`, `429`, `503` | `.server_config`, `.build_lock`, `.maintenance` | `.build_state` or queue | `triggerBuild()` | 手動実行 |
 | `POST /api/build/force` | none | `{message,build_id?,queued?}` | `202` | `401`, `409`, `422`, `429`, `503` | `.server_config`, `.build_lock`, `.maintenance` | `.build_state`, SHA cache or queue | `buildForce()` | 手動実行 |
 | `POST /api/build/cancel` | none | `{message}` | `200` | `401`, `404`, `409` | `.build_lock` | `.build_state`, `.build_logs/{id}.json` | `cancelBuild()` | 手動実行 |
-| `GET /api/build/stream` | query `{token}` | SSE `log/end` events | `200` | `401`, `404` | `.build_logs/{id}.json`, `.build_state` | none | `streamBuild()` | 手動実行 |
+| `GET /api/build/stream` | none | SSE `log/end` events | `200` | `401`, `404` | `.build_logs/{id}.json`, `.build_state` | none | `streamBuild()` | 手動実行 |
 | `GET /api/logs` | query `{n,q}` | `{lines}` | `200` | `401`, `422`, `500` | `.build_logs/` | none | `getLogs()` | ログビューア |
 | `GET /api/logs/search` | query `{q,from,to,level}` | `SearchResult` | `200` | `401`, `422` | `.build_logs/` | none | `searchLogs()` | ログビューア |
 | `GET /api/logs/export` | none | `{exported_at,lines}` | `200` | `401` | `.build_logs/` | none | `exportLogs()` | ログビューア |
@@ -2787,7 +2789,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 ```json
 {
   "last_sha": "abc123",
-  "last_build_at": "2026-09-14T10:00:00",
+  "last_build_at": "2026-09-14T10:00:00Z",
   "last_build_status": "success",
   "output_url": "https://example.com/Adlaire-db-spec.html",
   "running": false
@@ -2800,14 +2802,14 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 **`GET /api/logs` レスポンス例：**
 ```json
-{ "lines": ["2026-09-14T10:00:00 [INFO] Build start", "..."] }
+{ "lines": ["2026-09-14T10:00:00Z [INFO] Build start", "..."] }
 ```
 
 **`GET /api/logs/export` レスポンス例：**
 ```json
 {
-  "exported_at": "2026-09-15T10:00:00",
-  "lines": ["2026-09-14T10:00:00 [INFO] Build start", "..."]
+  "exported_at": "2026-09-15T10:00:00Z",
+  "lines": ["2026-09-14T10:00:00Z [INFO] Build start", "..."]
 }
 ```
 
@@ -2816,8 +2818,8 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 {
   "total": 42, "page": 1, "per_page": 20, "pages": 3,
   "history": [
-    { "id": "b001", "build_at": "2026-09-15T10:00:00", "sha": "abc123", "status": "success", "output_size_bytes": 2048576, "trigger": "auto",    "duration_seconds": 42, "flagged": false, "tags": ["release"] },
-    { "id": "b002", "build_at": "2026-09-14T18:30:00", "sha": "def456", "status": "failure", "output_size_bytes": null,    "trigger": "manual", "duration_seconds": 7,  "flagged": true,  "tags": [] }
+    { "id": "b001", "build_at": "2026-09-15T10:00:00Z", "sha": "abc123", "status": "success", "output_size_bytes": 2048576, "trigger": "auto",    "duration_seconds": 42, "flagged": false, "tags": ["release"] },
+    { "id": "b002", "build_at": "2026-09-14T18:30:00Z", "sha": "def456", "status": "failure", "output_size_bytes": null,    "trigger": "manual", "duration_seconds": 7,  "flagged": true,  "tags": [] }
   ]
 }
 ```
@@ -2841,14 +2843,14 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 ```json
 {
   "output_size_bytes": 2048576,
-  "output_mtime": "2026-09-15T10:00:00",
+  "output_mtime": "2026-09-15T10:00:00Z",
   "uptime_seconds": 86400
 }
 ```
 
 **`GET /api/schedule` レスポンス例：**
 ```json
-{ "next_run_at": "2026-09-15T10:05:00", "interval": "5min", "paused": false, "allowed_hours": { "from": 9, "to": 18 } }
+{ "next_run_at": "2026-09-15T10:05:00Z", "interval": "5min", "paused": false, "allowed_hours": { "from": 9, "to": 18 } }
 ```
 
 `paused` が `true` のとき、ポーリングは停止中で `next_run_at` は `null` を返す。
@@ -2925,9 +2927,9 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 ```json
 {
   "status": "ok",
-  "last_build_at": "2026-09-15T10:00:00",
+  "last_build_at": "2026-09-15T10:00:00Z",
   "last_build_status": "success",
-  "last_deploy_at": "2026-09-15T10:01:00",
+  "last_deploy_at": "2026-09-15T10:01:00Z",
   "last_deploy_status": "success",
   "pending_transfers": 0,
   "uptime_seconds": 86400
@@ -2944,14 +2946,14 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 **`GET /api/pat-status` レスポンス例：**
 ```json
-{ "valid": true, "checked_at": "2026-09-15T10:00:00" }
+{ "valid": true, "checked_at": "2026-09-15T10:00:00Z" }
 ```
 
 **`GET /api/access-log` レスポンス例：**
 ```json
 { "log": [
-    { "at": "2026-09-15T10:00:00", "result": "success" },
-    { "at": "2026-09-15T09:00:00", "result": "failure" }
+    { "at": "2026-09-15T10:00:00Z", "result": "success" },
+    { "at": "2026-09-15T09:00:00Z", "result": "failure" }
 ]}
 ```
 
@@ -2982,7 +2984,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 **`GET /api/backup` レスポンス例：**
 ```json
 {
-  "exported_at": "2026-09-15T10:00:00",
+  "exported_at": "2026-09-15T10:00:00Z",
   "notify_config": {
     "webhooks": [{ "url": "https://hooks.example.com/...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": null }],
     "on": ["failure"],
@@ -3005,14 +3007,14 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 **`POST /api/pat-verify` レスポンス例：**
 ```json
-{ "valid": true, "checked_at": "2026-09-15T10:05:00", "scopes": ["contents:read"] }
+{ "valid": true, "checked_at": "2026-09-15T10:05:00Z", "scopes": ["contents:read"] }
 ```
 
 **`GET /api/history/{id}/log` レスポンス例：**
 ```json
 {
   "id": "b001",
-  "build_at": "2026-09-15T10:00:00",
+  "build_at": "2026-09-15T10:00:00Z",
   "sha": "abc123",
   "status": "success",
   "output_size_bytes": 2048576,
@@ -3020,7 +3022,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
   "comment": null,
   "flagged": false,
   "tags": ["release"],
-  "lines": ["2026-09-15T10:00:00 [INFO] Build start", "..."]
+  "lines": ["2026-09-15T10:00:00Z [INFO] Build start", "..."]
 }
 ```
 
@@ -3043,8 +3045,8 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 **`GET /api/notify-log` レスポンス例：**
 ```json
 { "log": [
-    { "at": "2026-09-15T10:00:00", "event": "failure", "http_status": 200, "result": "success", "attempt": 1, "error": null },
-    { "at": "2026-09-14T18:30:00", "event": "start",   "http_status": 500, "result": "failure", "attempt": 3, "error": "HTTP 500" }
+    { "at": "2026-09-15T10:00:00Z", "event": "failure", "http_status": 200, "result": "success", "attempt": 1, "error": null },
+    { "at": "2026-09-14T18:30:00Z", "event": "start",   "http_status": 500, "result": "failure", "attempt": 3, "error": "HTTP 500" }
 ]}
 ```
 
@@ -3053,8 +3055,8 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 **`GET /api/sessions` レスポンス例：**
 ```json
 { "sessions": [
-    { "created_at": "2026-09-15T09:00:00", "expires_at": "2026-09-15T17:00:00", "current": true },
-    { "created_at": "2026-09-15T08:00:00", "expires_at": "2026-09-15T16:00:00", "current": false }
+    { "created_at": "2026-09-15T09:00:00Z", "expires_at": "2026-09-15T17:00:00Z", "current": true },
+    { "created_at": "2026-09-15T08:00:00Z", "expires_at": "2026-09-15T16:00:00Z", "current": false }
 ]}
 ```
 
@@ -3080,12 +3082,12 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 **`GET /api/build/stream` — SSE ストリーミング：**
 
-`Content-Type: text/event-stream` で接続を維持し、ビルドログを逐次配信する。認証トークンをクエリパラメータ（`?token=<session_token>`）で受け付ける。
+`Content-Type: text/event-stream` で接続を維持し、ビルドログを逐次配信する。認証は他 API と同じ `Authorization: Bearer {SESSION_TOKEN}` ヘッダーで行う。セッショントークンを query parameter、Cookie、body で受け付けてはならない。
 
 ```
-data: {"type": "log",  "line": "2026-09-15T10:00:01 [INFO] Build start"}
+data: {"type": "log",  "line": "2026-09-15T10:00:01Z [INFO] Build start"}
 
-data: {"type": "log",  "line": "2026-09-15T10:00:42 [INFO] Build success"}
+data: {"type": "log",  "line": "2026-09-15T10:00:42Z [INFO] Build success"}
 
 data: {"type": "end",  "status": "success", "duration_seconds": 42}
 ```
@@ -3115,14 +3117,14 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 {
   "status": {
     "last_sha": "abc123",
-    "last_build_at": "2026-09-15T10:00:00",
+    "last_build_at": "2026-09-15T10:00:00Z",
     "last_build_status": "success",
     "output_url": "https://example.com/Adlaire-db-spec.html",
     "running": false
   },
   "sysinfo": {
     "output_size_bytes": 2048576,
-    "output_mtime": "2026-09-15T10:00:00",
+    "output_mtime": "2026-09-15T10:00:00Z",
     "uptime_seconds": 86400
   },
   "stats": {
@@ -3133,7 +3135,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
     "success_rate": 0.952,
     "avg_interval_minutes": 240
   },
-  "schedule": { "next_run_at": "2026-09-15T10:05:00", "interval": "5min", "paused": false },
+  "schedule": { "next_run_at": "2026-09-15T10:05:00Z", "interval": "5min", "paused": false },
   "alerts": [
     { "level": "warn", "message": "PAT expires in 5 days" }
   ]
@@ -3149,7 +3151,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
   "from": "2026-09-10",
   "to": "2026-09-15",
   "results": [
-    { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00", "lines": ["2026-09-15T10:00:01 [ERROR] Build failed"] },
+    { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00Z", "lines": ["2026-09-15T10:00:01Z [ERROR] Build failed"] },
     { "id": "b20260912183000", "build_at": "2026-09-12T18:30:00", "lines": ["2026-09-12T18:30:05 [ERROR] Timeout"] }
   ]
 }
@@ -3162,7 +3164,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 ```json
 {
   "size_bytes": 2048576,
-  "mtime": "2026-09-15T10:00:00",
+  "mtime": "2026-09-15T10:00:00Z",
   "heading_count": 342,
   "size_diff_bytes": 1024,
   "tables_count": 128,
@@ -3205,8 +3207,8 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
   "min_seconds": 22,
   "max_seconds": 67,
   "recent": [
-    { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00", "duration_seconds": 42, "status": "success" },
-    { "id": "b20260914183000", "build_at": "2026-09-14T18:30:00", "duration_seconds": 7,  "status": "failure" }
+    { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00Z", "duration_seconds": 42, "status": "success" },
+    { "id": "b20260914183000", "build_at": "2026-09-14T18:30:00Z", "duration_seconds": 7,  "status": "failure" }
   ]
 }
 ```
@@ -3224,7 +3226,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
   "limit": 50,
   "events": [
     {
-      "timestamp": "2026-09-15T10:00:00",
+      "timestamp": "2026-09-15T10:00:00Z",
       "delivery_id": "abc-123-def",
       "event": "push",
       "ref": "refs/heads/main",
@@ -3298,14 +3300,14 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 ```json
 {
   "id": "b20260915100000",
-  "started_at": "2026-09-15T09:59:18",
-  "finished_at": "2026-09-15T10:00:00",
+  "started_at": "2026-09-15T09:59:18Z",
+  "finished_at": "2026-09-15T10:00:00Z",
   "duration_seconds": 42,
   "status": "success",
   "commit_sha": "abc123def456",
   "commit_message": "fix: typo in §4.3 description",
   "commit_author": "Kazuhiro Kurata",
-  "commit_at": "2026-09-15T09:58:00",
+  "commit_at": "2026-09-15T09:58:00Z",
   "size_warn": false,
   "broken_links": 0,
   "heading_skips": 0,
@@ -3320,7 +3322,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 **`GET /api/diagnostics` レスポンス例：**
 ```json
 {
-  "checked_at": "2026-09-15T10:00:00",
+  "checked_at": "2026-09-15T10:00:00Z",
   "items": [
     { "name": "pat",         "status": "ok",   "message": "PAT is valid" },
     { "name": "github_api",  "status": "ok",   "message": "GitHub API reachable" },
@@ -3335,7 +3337,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 **`GET /api/rate-limit` レスポンス例：**
 ```json
-{ "limit": 5000, "remaining": 4823, "reset_at": "2026-09-15T11:00:00", "used": 177 }
+{ "limit": 5000, "remaining": 4823, "reset_at": "2026-09-15T11:00:00Z", "used": 177 }
 ```
 
 **`GET /api/disk-usage` レスポンス例：**
@@ -3351,8 +3353,8 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 **`GET /api/config-log` レスポンス例：**
 ```json
 { "log": [
-    { "at": "2026-09-15T10:00:00", "type": "server_config", "diff": { "log_max_lines": [500, 1000] }, "diff_text": "- log_max_lines: 500\n+ log_max_lines: 1000" },
-    { "at": "2026-09-14T18:00:00", "type": "notify_config", "diff": { "enabled": [false, true] },    "diff_text": "- enabled: false\n+ enabled: true" },
+    { "at": "2026-09-15T10:00:00Z", "type": "server_config", "diff": { "log_max_lines": [500, 1000] }, "diff_text": "- log_max_lines: 500\n+ log_max_lines: 1000" },
+    { "at": "2026-09-14T18:00:00Z", "type": "notify_config", "diff": { "enabled": [false, true] },    "diff_text": "- enabled: false\n+ enabled: true" },
     { "at": "2026-09-13T12:00:00", "type": "repo_config",   "diff": { "branch": ["main", "develop"] }, "diff_text": "- branch: main\n+ branch: develop" }
 ]}
 ```
@@ -3363,7 +3365,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 **`GET /api/history/{id}/comment` レスポンス例：**
 ```json
-{ "id": "b20260914183000", "comment": "ネットワーク障害による失敗。再ビルド済み。", "updated_at": "2026-09-14T19:00:00" }
+{ "id": "b20260914183000", "comment": "ネットワーク障害による失敗。再ビルド済み。", "updated_at": "2026-09-14T19:00:00Z" }
 ```
 
 コメント未設定時は `"comment": null`。コメントは `.build_logs/{id}.json` の `comment` フィールドに保存する。
@@ -3399,7 +3401,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 **`GET /api/tokens` レスポンス例：**
 ```json
 { "tokens": [
-    { "id": "tok001", "label": "監視用", "scope": "read", "created_at": "2026-09-15T10:00:00", "last_used_at": "2026-09-15T11:00:00" }
+    { "id": "tok001", "label": "監視用", "scope": "read", "created_at": "2026-09-15T10:00:00Z", "last_used_at": "2026-09-15T11:00:00Z" }
 ]}
 ```
 
@@ -3408,7 +3410,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 // リクエスト
 { "label": "監視用", "scope": "read" }
 // レスポンス: 201
-{ "id": "tok001", "token": "act_...", "label": "監視用", "scope": "read", "created_at": "2026-09-15T10:00:00" }
+{ "id": "tok001", "token": "act_...", "label": "監視用", "scope": "read", "created_at": "2026-09-15T10:00:00Z" }
 ```
 
 `token` はレスポンス時のみ返却し、以後は取得不可。`scope` の有効値：`"read"`（読み取り専用）。読み取り専用トークンは `GET` 系エンドポイントのみ許可し、`POST` / `DELETE` 系は `403 Forbidden` を返す。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
@@ -3427,8 +3429,8 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 **`GET /api/snapshots` レスポンス例：**
 ```json
 { "snapshots": [
-    { "id": "snap001", "build_id": "b20260915100000", "saved_at": "2026-09-15T10:00:00", "size_bytes": 2048576 },
-    { "id": "snap002", "build_id": "b20260914183000", "saved_at": "2026-09-14T18:30:00", "size_bytes": 2031616 }
+    { "id": "snap001", "build_id": "b20260915100000", "saved_at": "2026-09-15T10:00:00Z", "size_bytes": 2048576 },
+    { "id": "snap002", "build_id": "b20260914183000", "saved_at": "2026-09-14T18:30:00Z", "size_bytes": 2031616 }
 ]}
 ```
 
@@ -3505,7 +3507,7 @@ Content-Type: application/json
 
 記録フォーマット（1行）：
 ```json
-{"timestamp": "2026-09-15T10:00:00", "delivery_id": "abc-123-def", "event": "push", "ref": "refs/heads/main", "sha": "abc123def456", "build_triggered": true}
+{"timestamp": "2026-09-15T10:00:00Z", "delivery_id": "abc-123-def", "event": "push", "ref": "refs/heads/main", "sha": "abc123def456", "build_triggered": true}
 ```
 
 | フィールド | 型 | 説明 |
@@ -3577,14 +3579,14 @@ Content-Type: application/json
 ```json
 { "enabled": false, "reason": null, "since": null }
 ```
-メンテナンス中は `{ "enabled": true, "reason": "定期メンテナンス", "since": "2026-09-15T10:00:00" }`。
+メンテナンス中は `{ "enabled": true, "reason": "定期メンテナンス", "since": "2026-09-15T10:00:00Z" }`。
 
 **`POST /api/maintenance/enable` リクエスト / レスポンス：**
 ```json
 // リクエスト
 { "reason": "定期メンテナンス" }
 // レスポンス: 200
-{ "message": "Maintenance mode enabled", "since": "2026-09-15T10:00:00" }
+{ "message": "Maintenance mode enabled", "since": "2026-09-15T10:00:00Z" }
 ```
 
 **`POST /api/maintenance/disable` レスポンス：**
@@ -3648,8 +3650,8 @@ Content-Type: application/json
 **`GET /api/hooks/{id}/log` レスポンス例：**
 ```json
 { "id": "h001", "runs": [
-    { "build_id": "b20260915100000", "ran_at": "2026-09-15T10:00:00", "exit_code": 0, "output": "build start\n" },
-    { "build_id": "b20260914183000", "ran_at": "2026-09-14T18:30:00", "exit_code": 1, "output": "Error: command not found\n" }
+    { "build_id": "b20260915100000", "ran_at": "2026-09-15T10:00:00Z", "exit_code": 0, "output": "build start\n" },
+    { "build_id": "b20260914183000", "ran_at": "2026-09-14T18:30:00Z", "exit_code": 1, "output": "Error: command not found\n" }
 ]}
 ```
 `runs` は直近 20 件を返す（新しい順）。
@@ -3723,15 +3725,15 @@ Content-Type: application/json
 
 **`GET /api/output-meta` レスポンス変更（`sha256` フィールド追加）：**
 ```json
-{ "size_bytes": 2048576, "mtime": "2026-09-15T10:00:00", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" }
+{ "size_bytes": 2048576, "mtime": "2026-09-15T10:00:00Z", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" }
 ```
 
 **`GET /api/history/{id}/log` レスポンス変更（`output_sha256` フィールド追加）：**
 ```json
-{ "id": "b001", "build_at": "2026-09-15T10:00:00", "sha": "abc123", "status": "success",
+{ "id": "b001", "build_at": "2026-09-15T10:00:00Z", "sha": "abc123", "status": "success",
   "output_size_bytes": 2048576, "output_sha256": "e3b0c44298fc1c149afbf4c8996fb924...",
   "trigger": "auto", "comment": null, "flagged": false, "tags": ["release"],
-  "lines": ["2026-09-15T10:00:00 [INFO] Build start", "..."] }
+  "lines": ["2026-09-15T10:00:00Z [INFO] Build start", "..."] }
 ```
 
 **`POST /api/verify-output` レスポンス例：**
@@ -3771,7 +3773,7 @@ Content-Type: application/json
 
 **`GET /api/notes` レスポンス例：**
 ```json
-{ "content": "# 運用メモ\n定期メンテナンス: 毎週日曜 2:00〜4:00\nPAT 更新期限: 2026-12-01", "updated_at": "2026-09-15T10:00:00" }
+{ "content": "# 運用メモ\n定期メンテナンス: 毎週日曜 2:00〜4:00\nPAT 更新期限: 2026-12-01", "updated_at": "2026-09-15T10:00:00Z" }
 ```
 初回（未作成）時：`{ "content": "", "updated_at": null }`
 
@@ -3780,7 +3782,7 @@ Content-Type: application/json
 // リクエスト
 { "content": "# 運用メモ\n定期メンテナンス: 毎週日曜 2:00〜4:00" }
 // レスポンス: 200
-{ "message": "Notes updated", "updated_at": "2026-09-15T10:00:00" }
+{ "message": "Notes updated", "updated_at": "2026-09-15T10:00:00Z" }
 ```
 
 ---
@@ -3833,8 +3835,8 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 **`GET /api/queue` レスポンス例：**
 ```json
 { "queued": [
-    { "id": "q001", "trigger": "manual", "queued_at": "2026-09-15T10:01:00" },
-    { "id": "q002", "trigger": "auto",   "queued_at": "2026-09-15T10:02:00" }
+    { "id": "q001", "trigger": "manual", "queued_at": "2026-09-15T10:01:00Z" },
+    { "id": "q002", "trigger": "auto",   "queued_at": "2026-09-15T10:02:00Z" }
   ], "max_size": 3 }
 ```
 キューが空の場合：`{ "queued": [], "max_size": 3 }`
@@ -3884,9 +3886,9 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 `Content-Type: application/json` で返却される。
 
 ```json
-{ "export_at": "2026-09-15T10:00:00", "history": [
-    { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00", "sha": "abc123", "status": "success", "trigger": "auto", "duration_seconds": 42, "flagged": false, "tags": ["release"], "comment": "" },
-    { "id": "b20260914183000", "build_at": "2026-09-14T18:30:00", "sha": "def456", "status": "failure", "trigger": "manual", "duration_seconds": 7, "flagged": true, "tags": [], "comment": "ネットワーク障害による失敗" }
+{ "export_at": "2026-09-15T10:00:00Z", "history": [
+    { "id": "b20260915100000", "build_at": "2026-09-15T10:00:00Z", "sha": "abc123", "status": "success", "trigger": "auto", "duration_seconds": 42, "flagged": false, "tags": ["release"], "comment": "" },
+    { "id": "b20260914183000", "build_at": "2026-09-14T18:30:00Z", "sha": "def456", "status": "failure", "trigger": "manual", "duration_seconds": 7, "flagged": true, "tags": [], "comment": "ネットワーク障害による失敗" }
 ]}
 ```
 
@@ -3957,7 +3959,7 @@ class AdlaireCI {
   getHistoryLog(id)         // GET /api/history/{id}/log     → Promise<HistoryLogObject>
   cancelBuild()             // POST /api/build/cancel        → Promise<{message: string}>
   resetCircuitBreaker()     // POST /api/circuit-breaker/reset → Promise<{message: string, open: boolean, consecutive_failures: number}>
-  streamBuild(onLine, onEnd) // GET /api/build/stream (SSE)  → EventSource（onLine(line), onEnd({status, duration_seconds}) コールバック）
+  streamBuild(onLine, onEnd) // GET /api/build/stream (SSE)  → Promise<StreamHandle>（onLine(line), onEnd({status, duration_seconds}) コールバック）
   setLogLevel(level)        // POST /api/log-level           → Promise<{message: string, level: string}>
   updatePat(token)          // POST /api/pat-update          → Promise<{message: string}>
   getDashboard()            // GET /api/dashboard            → Promise<DashboardObject>
@@ -4042,7 +4044,7 @@ class AdlaireCI {
 export { AdlaireCI };
 ```
 
-全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。HTTP エラー（4xx / 5xx）は `AdlaireCIError` としてスローする。`401` 受信時はセッション期限切れとして `this._token` をクリアする。`constructor` を除く合計は 96 メソッド。
+全メソッドは `Promise` を返す。`streamBuild` は SSE 接続確立後に `StreamHandle` で resolve し、接続前エラーは `AdlaireCIError` で reject する。HTTP エラー（4xx / 5xx）は `AdlaireCIError` としてスローする。`401` 受信時はセッション期限切れとして `this._token` をクリアする。`constructor` を除く合計は 96 メソッド。
 
 **SDK 共通実装契約：**
 
@@ -4053,9 +4055,11 @@ export { AdlaireCI };
 | 認証ヘッダー | `this._token` が存在する場合のみ `Authorization: Bearer ${token}` を付与する。 |
 | JSON 送信 | `POST` / `DELETE` で body を送る場合は `Content-Type: application/json` を付与し、`JSON.stringify` した body を送信する。 |
 | JSON 受信 | `Content-Type` が JSON の場合のみ `response.json()` を呼ぶ。§22.0e で JSON response を定義した endpoint の成功時に空 body を受信した場合は protocol error として `AdlaireCIError(status=0, message="Empty JSON response")` を投げる。 |
-| `AdlaireCIError` | `name`、`status`、`message`、`details`、`responseBody` を持つ `Error` 派生クラスとする。 |
+| `AdlaireCIError` | `name="AdlaireCIError"`、`status`、`message`、`details`、`responseBody` を持つ `Error` 派生クラスとする。constructor は `new AdlaireCIError({status, message, details = null, responseBody = null})` とし、network error、timeout、protocol error は `status=0` とする。`message` は API error response の `error`、network error は `"Network error"`、timeout は `"Request timeout"`、protocol error は固定文言を使用する。 |
 | `logout()` | API 呼び出しが失敗しても `finally` で `this._token` をクリアする。 |
-| `streamBuild()` | `EventSource` 生成前に token がない場合は `AdlaireCIError(status=401)` を投げる。`end` イベント受信後は SDK 側で `EventSource.close()` を呼ぶ。 |
+| request timeout | 通常 API は 30 秒で abort し、`AdlaireCIError(status=0, message="Request timeout")` を投げる。`streamBuild()` は接続確立まで 30 秒、接続確立後は timeout なしとし、利用者が `StreamHandle.close()` で停止する。 |
+| `streamBuild()` | token がない場合は接続前に `AdlaireCIError(status=401, message="Unauthorized")` を投げる。native `EventSource` は Authorization header を付与できないため使用禁止とする。SDK は `fetch()`、`AbortController`、`ReadableStream` reader を使用し、`Accept: text/event-stream` と `Authorization` header を付与して SSE frame を解析する。`data:` 行の JSON を parse し、`type="log"` は `onLine(line)`、`type="end"` は `onEnd({status, duration_seconds})` を呼んで reader を close する。parse 不能 frame は `AdlaireCIError(status=0, message="Invalid SSE frame")` として stream error にする。 |
+| `StreamHandle` | `streamBuild()` の戻り値は `{ close(): void, closed: boolean }` とする。`close()` は AbortController を abort し、複数回呼んでも例外を投げない。`closed` は `end` 受信、error、または `close()` 後に `true` になる。 |
 | Blob レスポンス | `downloadSnapshot(id)` のみ `response.blob()` を使用する。その他は JSON とする。 |
 | メソッド引数検証 | SDK 側でも必須引数の空値、配列型、数値範囲を検証し、HTTP 送信前に `TypeError` を投げる。 |
 | endpoint 対応 | SDK method は §22.0e の SDK 列に存在する endpoint だけを呼び出す。§22.0e にない endpoint を SDK 独自判断で追加してはならない。 |
@@ -4064,6 +4068,7 @@ export { AdlaireCI };
 | 秘密情報引数 | `updatePat(token)`、`setWebhookConfig(secret)`、SMTP password、`createToken()` の返却 token は console 出力しない。 |
 | query 生成 | `undefined`、`null`、空文字の任意 query は送信しない。ただし仕様上 `""` が意味を持つ `q`、`from`、`to` は空文字を送ってよい。 |
 | 戻り値補完禁止 | API response にない値を SDK が推測して追加しない。表示用加工は UI 側で行う。 |
+| retry | SDK は自動 retry を行わない。ユーザー操作による再実行、または UI の明示的な再取得のみを許可する。 |
 
 **SDK 型定義表：**
 
@@ -4215,23 +4220,25 @@ export { AdlaireCI };
 | 項目 | 仕様 |
 |------|------|
 | 初期表示 | `localStorage` から token を復元しない。画面読み込み時は未ログイン状態から開始する。 |
-| API 経路 | UI は必ず `AdlaireCI` SDK method を呼び出す。`fetch()`、`XMLHttpRequest`、`EventSource` の直接生成は禁止する。ただし SDK 内部の `streamBuild()` が返した `EventSource` を閉じる操作は許可する。 |
+| API 経路 | UI は必ず `AdlaireCI` SDK method を呼び出す。`fetch()`、`XMLHttpRequest`、`EventSource`、`ReadableStream` reader の直接生成は禁止する。ただし SDK の `streamBuild()` が返した `StreamHandle.close()` を呼ぶ操作は許可する。 |
 | API 呼び出し中 | 対象ボタンを disabled にし、同一操作の二重送信を防ぐ。完了または失敗後に元へ戻す。 |
 | 成功表示 | 変更系操作は成功時にパネル内へ 1 行の成功メッセージを表示し、関連 GET API を再取得する。 |
-| 失敗表示 | SDK が投げた `AdlaireCIError.message` をパネル内エラー領域に表示する。`details` が object の場合はフィールド単位で表示する。 |
+| 失敗表示 | SDK が投げた `AdlaireCIError.message` をパネル内エラー領域に表示する。`details` が配列の場合は各 `field` のフォーム項目に `message` を紐付け、該当項目が存在しない場合はパネル内エラー領域へ箇条書きで表示する。`responseBody`、token、secret、PAT は表示しない。 |
 | `401` | token を破棄し、ログインパネルへ戻す。直前の入力値のうち秘密情報は消去する。 |
 | `403` | 操作権限なしとしてエラー表示し、ログアウトはしない。 |
 | `409` | 状態競合としてエラー表示し、ステータス・キュー・スケジュールを再取得する。 |
 | `422` | 入力エラーとして該当フォーム項目へエラーを紐付ける。 |
+| `429` | rate limit または login lock としてエラー表示し、同一操作ボタンを 10 秒間 disabled にする。ログインロックの場合は password field を空にする。 |
 | `503` | メンテナンスバナーを表示し、ビルド操作ボタンを disabled にする。 |
 | 秘密情報入力 | PAT、Webhook Secret、SMTP password、発行直後 token は画面遷移、成功表示、再取得後にフォーム値から消去する。 |
 | 自動更新 | ステータス、キュー、SSE 以外のパネルは自動ポーリングしない。ユーザー操作または画面表示時に取得する。 |
-| SSE 切断 | `streamBuild()` が error になった場合はリアルタイム表示を停止し、`GET /api/status` と `GET /api/queue` を再取得する。 |
+| SSE 切断 | `streamBuild()` が error になった場合はリアルタイム表示を停止し、`getStatus()` と `getQueue()` を再取得する。ユーザーが停止した場合はエラー表示しない。 |
 | フォーム保存 | 保存 API が成功するまで UI 上の表示値を確定表示にしない。失敗時は入力値を保持する。 |
 | 入力検証 | UI は送信前に必須入力、数値範囲、配列空、URL、CIDR、日付形式を検証する。UI 検証に通っても API 側検証は省略しない。 |
 | 破壊的操作 | snapshot 削除、token 失効、queue clear、session revoke all、rollback はクリック後に確認ダイアログを 1 回表示する。確認文には対象 ID または件数を含める。 |
 | 表示時刻 | API から受け取った UTC ISO 8601 をブラウザのローカル時刻で表示してよい。ただし data 属性または title 属性に元の ISO 8601 文字列を保持する。 |
 | 一覧の空状態 | 配列が空の場合は、空表ではなくパネル内に 1 行の空状態メッセージを表示する。空状態はエラーとして扱わない。 |
+| focus / aria | `422` は最初の invalid field へ focus する。`401` はログイン password field へ focus する。SSE ログ領域は `aria-live="polite"` とし、エラー領域は `role="alert"` とする。 |
 
 **カスタマイズポイント：**
 - SDK の `baseUrl` は `<script>` タグ内の設定変数で外出し
@@ -4250,7 +4257,7 @@ export { AdlaireCI };
   "algorithm": "sha256_iter_v1",
   "iterations": 260000,
   "login_count": 0,
-  "updated_at": "2026-09-15T10:00:00"
+  "updated_at": "2026-09-15T10:00:00Z"
 }
 ```
 
@@ -4269,7 +4276,7 @@ export { AdlaireCI };
 **セッショントークン生成：**
 `crypto/rand` で 32 bytes を生成し、`encoding/hex` で 64 文字の lowercase hex 文字列へ変換する。
 
-**セッション管理：** `api_server.go` 内のインメモリ辞書で管理。有効期限 8 時間。再起動で全セッション破棄。同一ユーザーの複数同時セッションを許容する。
+**セッション管理：** `api_server.go` 内のインメモリ辞書で管理。有効期限 8 時間。再起動で全セッション破棄。同一ユーザーの複数同時セッションを許容する。辞書 key は token 本体ではなく `sha256(token)` の lowercase hex とし、API response、`.access_log`、サーバーログへ token 本体を出力してはならない。
 
 **セッション期限切れ時：** `401 Unauthorized` を返す。クライアント（SDK）は `this._token` をクリアし、再ログインを促す。
 
@@ -4289,21 +4296,34 @@ export { AdlaireCI };
 
 ```json
 {
-  "token": "<session_token>",
-  "created_at": "2026-09-15T10:00:00",
-  "expires_at": "2026-09-15T18:00:00",
-  "last_used_at": "2026-09-15T10:05:00"
+  "token_hash": "<sha256_hex>",
+  "session_id": "<16_byte_hex>",
+  "created_at": "2026-09-15T10:00:00Z",
+  "expires_at": "2026-09-15T18:00:00Z",
+  "last_used_at": "2026-09-15T10:05:00Z"
 }
 ```
 
-認証必須 API で有効 token を受信した場合、`last_used_at` を現在時刻へ更新する。期限切れ token は検出時にメモリから削除する。`POST /api/logout` は対象 token のみ削除する。`POST /api/sessions/revoke-all` は現在 token 以外を削除する。
+`session_id` は `crypto/rand` で 16 bytes を生成し、lowercase hex とする。`GET /api/sessions` は `session_id` ではなく `current`、`created_at`、`expires_at`、`last_used_at` のみ返す。認証必須 API で有効 token を受信した場合、`last_used_at` を現在時刻へ更新する。期限切れ token は検出時にメモリから削除する。`POST /api/logout` は対象 token のみ削除する。`POST /api/sessions/revoke-all` は現在 token 以外を削除する。
+
+**ログイン失敗制御：**
+
+| 項目 | 仕様 |
+|------|------|
+| 失敗記録 | `api_server.go` はメモリ上で直近の連続ログイン失敗回数と最終失敗時刻を保持する。再起動で失敗回数はリセットされる。 |
+| ロック条件 | 連続 10 回失敗した場合、最終失敗から 10 分間 `POST /api/login` を `429 Too Many Requests` と `{"error":"Too many attempts"}` で拒否する。 |
+| 成功時 | ログイン成功時は連続失敗回数を 0 に戻す。 |
+| 応答時間 | パスワード不一致、存在しない credentials、ロック中を除く検証失敗では、条件の詳細をレスポンスへ出さない。 |
+| ログ | 成功、失敗、ロック拒否はいずれも `.access_log` へ追記する。password、token、hash、salt は記録しない。 |
 
 **ログインフロー：**
 ```
 POST /api/login
+  ├─ 連続失敗ロック中 → 429
   └─ パスワードハッシュ検証
-       ├─ 失敗 → 401
+       ├─ 失敗 → 連続失敗回数 + 1 → .access_log 追記 → 401
        └─ 成功 → login_count + 1 → ファイル更新
+                  → 連続失敗回数を 0 へリセット
                   ├─ login_count == 1 → must_change: "prompt"（促す）
                   ├─ login_count >= 5 → must_change: "forced"（強制）
                   └─ それ以外      → must_change: "none"
