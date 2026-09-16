@@ -2567,6 +2567,35 @@ type DeployTarget struct {
 - `--help` と `--version` は他の引数より優先し、`.github_token` 読み込み、lock 作成、状態ファイル読み込み、GitHub API 呼び出しを行わない。
 - stderr のエラー行は末尾に改行 1 つを付ける。複数エラーをまとめて出力せず、最初に検出したエラー 1 件で終了する。
 
+**runner 設定正規化契約：**
+
+runner は CLI、`.server_config`、`.branch_config`、既定値を読み込んだ後、処理開始前に 1 回だけ `RunnerConfig` へ正規化する。正規化前の map、JSON raw message、環境変数、CLI flag 値を、GitHub API、pipeline、deploy、snapshot、通知処理から直接参照してはならない。
+
+| 入力 | 正規化先 | 正規化ルール |
+|------|----------|--------------|
+| `--state-dir` | `RunnerConfig.StateDir` | `filepath.Clean` 後も絶対パスであることを確認する。末尾 `/` の有無で別パス扱いしない。 |
+| `PENDING_FILE` | `RunnerConfig.PendingFile` | CLI で `StateDir` が変更された場合、明示設定がない限り `{StateDir}/.pending_transfers` に再解決する。 |
+| `.branch_config.branch_targets[]` | `RunnerConfig.BranchTargets` | 配列順を保持する。各 entry は `branch`、`target_file`、`sha_file`、`src`、`out`、`deploy_targets` だけを採用する。 |
+| `BRANCH_TARGETS` 既定値 | `RunnerConfig.BranchTargets` | `.branch_config` が存在しない場合だけ使用する。`.branch_config` が破損復旧で不在化された場合も同じ既定値へ fallback する。 |
+| `.server_config` の数値 | `RunnerConfig` の数値 field | JSON number が整数でない場合は設定不正とする。文字列数値の暗黙変換は禁止する。 |
+| `.server_config` の boolean | `RunnerConfig` の boolean field | JSON boolean のみ許可する。`"true"`、`1`、`"yes"` は不正値とする。 |
+
+正規化後は、全 path を絶対パス文字列として保持する。`BranchTarget.TargetFile` だけは GitHub repository 内の相対パスとして保持し、`filepath.Clean` 後に `.`、空文字、`..` を含む path、先頭 `/`、NUL byte、制御文字を禁止する。`BranchTarget.Src` と `BranchTarget.Out` が同一または親子関係になる場合は終了コード `2` とし、ERROR ログ `CONFIG_PATH_CONFLICT: src={src} out={out}` を出す。
+
+**状態ディレクトリ構造検証契約：**
+
+`--state-dir` 検証後、runner は以下を処理開始前に確認する。
+
+| 対象 | 条件 | 不正時 |
+|------|------|--------|
+| `StateDir` | directory、owner が実行ユーザーまたは書き込み可能、mode に owner write がある。 | 終了コード `2`、ERROR `STATE_DIR_INVALID: path={path}`。 |
+| `{StateDir}/repo` | 不在なら作成する。file の場合は不正。 | 作成失敗または file の場合、終了コード `2`。 |
+| `{StateDir}/dist` | 不在なら作成する。file の場合は不正。 | 作成失敗または file の場合、終了コード `2`。 |
+| `{StateDir}/.build_logs` | 不在なら `0700` で作成する。 | 作成失敗時は終了コード `2`。 |
+| `{StateDir}/.snapshots` | 不在なら `0700` で作成する。ただし snapshot 無効時も directory 作成は許可する。 | 作成失敗時は終了コード `2`。 |
+
+上記 directory 作成は dry-run では実行しない。dry-run では作成予定を stdout slog に `DRY_RUN_WOULD_CREATE_DIR: path={path}` として出し、終了コードには反映しない。ただし既存 path が file の場合は dry-run でも終了コード `2` とする。
+
 **固定出力：**
 
 | 条件 | stdout |
@@ -2661,6 +2690,21 @@ atomic write 失敗時は対象ファイルを更新済みとして扱わない�
 
 PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` を読めない場合は PID 実行中確認不能として終了コード `4` とする。
 
+**GitHub token 読み込み契約：**
+
+`.github_token` は `StateDir` 直下の通常ファイルだけを認める。symbolic link、directory、device file、FIFO は禁止する。
+
+| 条件 | 処理 |
+|------|------|
+| ファイル不在 | ERROR `GITHUB_TOKEN_MISSING: path={path}`、終了コード `2`。 |
+| 読み込み権限なし | ERROR `GITHUB_TOKEN_PERMISSION: path={path}`、終了コード `2`。 |
+| mode が `0600` より広い | ERROR `GITHUB_TOKEN_INSECURE_MODE: path={path} mode={mode}`、終了コード `2`。 |
+| UTF-8 不正 | ERROR `GITHUB_TOKEN_INVALID: reason=utf8`、終了コード `2`。 |
+| trim 後空文字 | ERROR `GITHUB_TOKEN_INVALID: reason=empty`、終了コード `2`。 |
+| trim 後に改行、空白、NUL、制御文字を含む | ERROR `GITHUB_TOKEN_INVALID: reason=character`、終了コード `2`。 |
+
+token は `strings.TrimSpace` 後の値だけを HTTP Authorization header に使用する。token の値、先頭文字、末尾文字、長さ、hash は stdout、stderr、`.build_logs/{id}.json`、`.build_history`、`.notify_pending`、`.notify_log`、snapshot、fixture expected output に保存してはならない。secret mask は token 読み込み成功直後に登録し、以降の全ログ保存処理より前に適用する。
+
 **runner 状態ファイル schema（実装固定）：**
 
 `.last_sha` / `BranchTarget.SHAFile`:
@@ -2744,6 +2788,26 @@ PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` �
 ```
 
 `.pending_transfers` entry は §14a の形式を正とする。JSON array 内の entry は投入順を保持し、再試行も投入順で処理する。重複統合は `out`、`host`、`user`、`dest_dir` の 4 項目完全一致で判定する。
+
+**SHA cache 読み書き契約：**
+
+`sha_file` は target ごとの処理済み Git blob SHA を保存する JSON file である。runner は legacy text 形式を自動変換してはならない。
+
+| 状態 | 処理 |
+|------|------|
+| 不在 | 初回実行として `previous_blob_sha=""` を扱う。build 成功時に `{"sha":"<new_sha>"}` を atomic write する。 |
+| `{"sha":""}` | 初回実行として扱う。 |
+| `{"sha":"<value>"}` | `<value>` を前回 SHA として比較する。 |
+| JSON 破損 | `failure_state_write` ではなく `failure_decode` として当該 target を失敗扱いし、sha_file を更新しない。 |
+| object 以外 | JSON 破損と同じ扱い。 |
+| `sha` key 不在または string 以外 | JSON 破損と同じ扱い。 |
+| 未知 key あり | 未知 key を除去し、build 成功時に `sha` だけの object で上書きする。 |
+
+SHA cache の更新は、pipeline 成功後、deploy 前に行う。複数 target のうち一部 target が成功した場合は、成功 target の `sha_file` だけを更新する。失敗 target、skip target、branch target 設定不正 target の `sha_file` を更新してはならない。
+
+**状態ファイル権限契約：**
+
+runner が新規作成する状態ファイルは JSON object / array、SHA cache、lock、pending、log、history を問わず原則 `0600` とする。directory は `0700` とする。既存ファイルの mode が広い場合、secret を含む `.github_token`、`.notify_config`、`.notify_pending`、`.pending_transfers` は停止条件とし、それ以外の runner 状態ファイルは WARN `STATE_FILE_INSECURE_MODE: path={path} mode={mode}` を出して `0600` へ chmod する。chmod 失敗時は終了コード `2` とする。
 
 **設定ファイル起動時整合性チェック：**
 
@@ -3032,6 +3096,23 @@ queue entry の `trigger` は `"manual"`、`"webhook"`、`"approval"` のみ許�
 
 `.build_state.queued` に entry がある場合、runner は通常ポーリング対象の前に queue を FIFO で 1 件だけ取り出して処理する。queue entry 処理が成功または失敗として `.build_history` に記録された場合、その entry を queue から削除する。runner 起動 1 回で複数 queue entry を連続処理してはならない。queue entry の `trigger` が `"manual"` かつ `payload.force=true` の場合は SHA 比較を行わず build を実行する。`trigger` が `"webhook"` の場合は payload の `ref` と `sha` を優先し、branch target に一致しない entry は `failure_api` として記録した後に queue から削除する。
 
+queue entry は JSON object とし、最低限 `id`、`trigger`、`created_at`、`payload` を持つ。`id` は queue 内で一意、`created_at` は UTC ISO 8601、`payload` は JSON object とする。不正 entry が先頭にある場合、runner はその entry を `failure_decode` として build log / history に記録して queue から削除し、次回起動まで次 entry は処理しない。queue 全体が JSON として破損している場合は §12 の `.build_state` 破損処理に従う。
+
+**cooldown / force build 判定契約：**
+
+判定順は queue、pending retry、circuit breaker、cooldown、SHA decision の順とする。manual queue entry の `payload.force=true` は cooldown を無視する。webhook queue entry は cooldown を適用する。`FORCE_BUILD_INTERVAL` は SHA 一致時だけ評価し、SHA 不一致時は常に通常 build とする。
+
+| 条件 | 結果 |
+|------|------|
+| `.build_state.last_finished_at=null` | cooldown は適用しない。 |
+| `BUILD_COOLDOWN_SECONDS=0` | cooldown は無効。 |
+| `now - last_finished_at < BUILD_COOLDOWN_SECONDS` | `skipped_cooldown`。GitHub API、pipeline、deploy、snapshot は実行しない。 |
+| SHA 一致かつ `FORCE_BUILD_INTERVAL=0` | `skipped_no_change`。 |
+| SHA 一致かつ `FORCE_BUILD_INTERVAL>0` かつ直近成功 build から指定時間未満 | `skipped_no_change`。 |
+| SHA 一致かつ `FORCE_BUILD_INTERVAL>0` かつ直近成功 build から指定時間以上 | `force_interval` として build を実行する。 |
+
+force interval の直近成功 build は `.build_history` のうち同じ `branch` と `target_file` で status が `success` または `success_deploy_pending` の最新行とする。`.build_history` が存在しない、または該当行がない場合は force interval 条件成立として build する。
+
 **runner finalizer 固定契約：**
 
 runner は lock 取得後、正常終了、失敗終了、panic 相当の recover、context timeout のいずれでも finalizer を実行する。finalizer は次の順序に固定する。
@@ -3044,6 +3125,18 @@ runner は lock 取得後、正常終了、失敗終了、panic 相当の recove
 6. 通知対象 event がある場合は通知または `.notify_pending` 追記を行う。
 
 finalizer 中に複数失敗が発生した場合、終了コードは最も重い値を採用する。`.build_state.running=false` の保存失敗は終了コード `1` 固定とし、lock 削除だけ成功しても正常終了扱いにしない。lock 削除失敗は WARN とし、他失敗がなければ終了コードを変更しない。
+
+**build log / history 書き込み契約：**
+
+`.build_logs/{id}.json` は atomic write で 1 build id につき 1 file だけ作成する。既に同名 file が存在する場合は上書きせず、次の suffix 付き build id を採番し直す。`.build_history` は JSON Lines とし、追記前に既存 file の末尾が LF で終わることを確認する。LF がない場合は 1 個だけ LF を追加してから新規行を追記する。
+
+`.build_history` の 1 行は `.build_logs/{id}.json` の要約であり、少なくとも `id`、`status`、`trigger`、`branch`、`target_file`、`started_at`、`finished_at`、`duration_seconds`、`commit_sha`、`blob_sha`、`warnings`、`error` を含む。history へ保存する `status` は `target_status` と同じ値を使用する。JSON Lines の壊れた既存行は読み取り時に無視してよいが、追記時に既存 file 全体を書き換えてはならない。
+
+**サーキットブレーカー更新契約：**
+
+`.build_circuit_state.open=true` の場合、runner は GitHub API、pipeline、deploy、snapshot を実行せず、`.build_status.json` に `status="circuit_open"` を保存して終了コード `0` で終了する。pending transfer retry と notify pending retry は circuit open 中でも先に実行してよい。
+
+連続失敗数を増やす対象は `failure_build`、`failure_precheck`、`failure_decode`、`failure_state_write`、`success_deploy_pending` とする。`failure_api`、`skipped_no_change`、`skipped_cooldown`、`lock_skipped`、通知失敗だけの成功 build は連続失敗数を増やさない。いずれかの target が `success` になった場合だけ、`consecutive_failures` は 0 に戻す。
 
 **SHA 更新禁止条件：**
 
@@ -3252,6 +3345,23 @@ set -euo pipefail
 
 HTTP `401` は `failure_api` とし、ERROR ログ `GITHUB_AUTH_FAILED` を出す。HTTP `404` は `target_file` または branch 設定不正として `failure_api` とし、ERROR ログ `GITHUB_NOT_FOUND: branch={branch} target={target_file}` を出す。HTTP `403` で `X-RateLimit-Remaining: 0` の場合のみ rate limit として reset まで待機する。
 
+**GitHub API response 処理契約：**
+
+| 対象 | 条件 | 処理 |
+|------|------|------|
+| Trees API | `truncated=true` | `failure_api`。ERROR `GITHUB_TREE_TRUNCATED: branch={branch}` を出し、Blob API へ進まない。 |
+| Trees API | `target_file` が file として一致 | 対象 blob SHA を使用する。 |
+| Trees API | `target_file` が directory として一致 | 配下 `.md` file の blob SHA を path 昇順に連結し、SHA-256 hex を target digest とする。Blob API は各 `.md` file に対して実行する。 |
+| Trees API | `target_file` が見つからない | `failure_api`。ERROR `GITHUB_TARGET_MISSING: branch={branch} target={target_file}`。 |
+| Blob API | `encoding!="base64"` | `failure_decode`。 |
+| Blob API | Base64 decode 失敗 | `failure_decode`。 |
+| Blob API | decode 後 UTF-8 不正 | `failure_decode`。 |
+| Commits API | 取得失敗 | build は継続し、commit fields を `null` にする。 |
+
+directory target の materialize では、GitHub path から `target_file` prefix を取り除いた相対 path を `BranchTarget.Src` 配下に再現する。対象外 file、hidden directory、`.git`、`.ci` は書き出さない。書き出し前に `BranchTarget.Src` 配下の前回 materialized Markdown を一時 directory へ置換し、途中失敗時は既存 `src` を保持する。
+
+rate limit 待機は `X-RateLimit-Reset` が現在時刻より未来かつ 3600 秒以内の場合だけ実行する。3600 秒を超える場合、または header が不正な場合は待機せず `failure_api` とする。待機中に context timeout または SIGTERM を受けた場合は `failure_api` として finalizer へ進む。
+
 **pipeline 実行結果分類：**
 
 | 条件 | `pipeline.exit_code` | `target_status` | `error` | retry |
@@ -3301,6 +3411,8 @@ ssh <user>@<host> sha256sum <dest_dir>/<relative-path>
 - ハッシュが一致 → 当該ファイルをスキップ（`SKIP` ログを記録）
 - ハッシュが不一致、またはリモートにファイルが存在しない → 当該ファイルを転送する
 
+relative path は `out` からの相対 path とし、`filepath.Rel` 後に `/` 区切りへ変換して保存する。空文字、`.`、`..` を含む path、先頭 `/`、NUL byte、制御文字を含む path は転送対象から除外し、`failure_precheck` とする。symbolic link、directory、device file、FIFO は転送しない。symbolic link を検出した場合は ERROR `DEPLOY_UNSUPPORTED_FILE: path={path}` を出し、当該 target を `failure_precheck` とする。
+
 ### 転送
 
 stdin パイプ経由で SSH 転送する。
@@ -3311,6 +3423,10 @@ ssh <user>@<host> 'mkdir -p <dest_dir>/<relative-dir> && tee <dest_dir>/<relativ
 ```
 
 runner は local file を開き、SSH process の stdin へ `io.Copy` で送る。リモート側 stdout は破棄してよいが、stderr は失敗理由として `.build_logs/{id}.json.error` と ERROR ログへ記録する。
+
+SSH command は local shell 文字列を組み立てず、`exec.CommandContext` の argv として分離して起動する。directory 作成は `exec.CommandContext(ctx, "ssh", user+"@"+host, "mkdir", "-p", "--", remoteDir)`、file 転送は `exec.CommandContext(ctx, "ssh", user+"@"+host, "tee", "--", remotePath)` の 2 段階に分ける。`dest_dir`、relative path、host、user を `/bin/sh -c` 用の 1 文字列へ連結して渡してはならない。host と user は `^[A-Za-z0-9._-]+$` に一致する値だけ許可する。
+
+転送は file 単位で行い、1 file の転送 timeout は 60 秒とする。timeout 時は SSH process group を終了し、当該 deploy target を pending とする。1 deploy target 内で 1 file でも転送または検証に失敗した場合、その deploy target 全体を pending とし、snapshot は作成しない。
 
 ### ペンディングキュー
 
@@ -3336,6 +3452,22 @@ runner は local file を開き、SSH process の stdin へ `io.Copy` で送る�
 - SSH 転送失敗 Webhook 通知（`deploy_failure` イベント）を送信する（on: `["deploy_failure"]` 設定時）
 - 同一 `out`、`host`、`user`、`dest_dir` の pending エントリが既に存在する場合は新規追記せず、既存エントリの `retry_count` を +1 し、`failed_at` を最新時刻へ更新する
 
+pending entry は次の key だけを保存する。未知 key を保存してはならない。
+
+| key | 型 | 内容 |
+|-----|----|------|
+| `branch_idx` | integer | `RunnerConfig.BranchTargets` の 0 始まり index。 |
+| `deploy_idx` | integer | `DeployTargets` の 0 始まり index。 |
+| `out` | string | local output directory の絶対パス。 |
+| `host` | string | deploy target host。 |
+| `user` | string | deploy target user。 |
+| `dest_dir` | string | remote destination directory。 |
+| `failed_at` | string | UTC ISO 8601。 |
+| `retry_count` | integer | 1 以上。 |
+| `last_error` | string | secret mask 済みの短い失敗理由。最大 500 文字。 |
+
+pending retry 時に元の `branch_idx` または `deploy_idx` が現在設定範囲外の場合は、その entry を削除せず `retry_count` を +1 し、ERROR `PENDING_TARGET_MISSING: branch_idx={branch_idx} deploy_idx={deploy_idx}` を出す。現在設定の `out`、`host`、`user`、`dest_dir` が pending entry と異なる場合は、entry の保存値を優先して再送する。
+
 ### 転送後整合性検証
 
 SSH 転送完了後に、リモートファイルの SHA-256 チェックサムをローカルのものと照合する。
@@ -3352,6 +3484,8 @@ ssh {user}@{host} sha256sum {dest_dir}/{filename}
 | 検証失敗時 | ERROR ログ＋ペンディングキューへ再投入。スナップショット保存はしない |
 | ログフィールド | `transfer_verified: false`（`.build_logs/{id}.json` に記録） |
 | 正常時 | `transfer_verified: true`（`.build_logs/{id}.json` に記録） |
+
+remote `sha256sum` 出力は 1 行目の先頭 field だけを採用し、hex 64 文字以外は検証失敗とする。複数行出力、空出力、stderr 出力のみ、終了コード非 0 は検証失敗とする。local checksum は転送直前に読んだ file 内容ではなく、転送後に local file を再読込して計算する。
 
 ### ログ
 
@@ -3372,7 +3506,7 @@ ssh {user}@{host} sha256sum {dest_dir}/{filename}
 
 Go 版 `components/runner.go` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節をスナップショット保存、世代管理、ロールバック連携の正本仕様とする。
 
-`components/runner.go` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット機能を無効化する。
+`components/runner.go` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット世代削除を行わず、無制限保持とする。
 
 ### ディレクトリ構造
 
@@ -3393,6 +3527,8 @@ Go 版 `components/runner.go` は、SSH 転送成功後に `.snapshots/` ディ�
 
 - スナップショット保存後、`.snapshots/` 内のディレクトリ数が `HISTORY_KEEP_N` を超えた場合、最古のディレクトリから順に削除する
 - 削除対象ディレクトリの特定は作成日時降順ソートで行う（ディレクトリ名の辞書順 = 時系列順）
+
+snapshot 保存は `{StateDir}/.snapshots/{build_id}.tmp.{pid}` へ copy した後、`{StateDir}/.snapshots/{build_id}` へ rename する。同じ snapshot id が既に存在する場合は上書きせず、WARN `SNAPSHOT_EXISTS: id={id}` を出して snapshot 保存を skip する。snapshot 内には output site 配下の通常ファイルだけを含め、`.github_token`、runner 状態ファイル、`.git`、lock、pending queue を含めてはならない。
 
 ### ロールバック
 
@@ -3590,7 +3726,7 @@ Go 版 `components/runner.go` の初期実装は、本節の fixture をすべ�
 
 | 実行 | 終了コード | stdout | stderr |
 |------|------------|--------|--------|
-| `adlaire-ci-runner --help` | `0` | `Usage: adlaire-ci-runner [--state-dir path] [--once] [--version] [--help]` | 空 |
+| `adlaire-ci-runner --help` | `0` | `Usage: adlaire-ci-runner [--state-dir path] [--once] [--dry-run] [--version] [--help]` | 空 |
 | `adlaire-ci-runner --state-dir relative` | `2` | 空 | `state directory must be absolute: relative` |
 | `adlaire-ci-runner --unknown` | `2` | 空 | `unknown option: --unknown` |
 
@@ -3753,6 +3889,132 @@ GitHub Trees API fake response は `target_file=docs` の SHA として `blob-1`
 - `.build_status.json` は最終状態を保存済み。
 - ERROR ログ `BUILD_STATE_FINALIZE_FAILED` を出す。
 - `.build_lock` は削除を試みる。削除成功/失敗に関わらず、`.build_state.running=false` 保存失敗を正常扱いにしない。
+
+### Fixture R13: token 権限不正
+
+**前提状態：**
+
+- `.github_token` が存在し、mode が `0644`。
+- `.build_lock` は存在しない。
+
+**期待結果：**
+
+- 終了コード `2`。
+- ERROR ログ `GITHUB_TOKEN_INSECURE_MODE` を出す。
+- `.build_state.running` を `true` にしない。
+- `.build_logs/` と `.build_history` を作成しない。
+- token 値、token 長、token hash を stdout、stderr、状態ファイルへ出力しない。
+
+### Fixture R14: dry-run directory 作成なし
+
+**前提状態：**
+
+- `--state-dir` は既存 directory。
+- `{StateDir}/repo`、`{StateDir}/dist`、`{StateDir}/.build_logs`、`{StateDir}/.snapshots` は存在しない。
+
+**実行：**
+
+```bash
+adlaire-ci-runner --state-dir <state> --dry-run
+```
+
+**期待結果：**
+
+- 終了コード `0`。
+- 上記 directory を作成しない。
+- stdout slog に `DRY_RUN_WOULD_CREATE_DIR` を対象 directory ごとに出す。
+- `.github_token`、`.build_lock`、GitHub API、pipeline、deploy、通知を実行しない。
+
+### Fixture R15: SHA cache 破損
+
+**前提状態：**
+
+- `.last_sha` が `{bad json`。
+- GitHub Trees API fake response は `new-blob` を返す。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.last_sha` は変更しない。
+- `.build_logs/{id}.json` は `target_status="failure_decode"`、`previous_blob_sha=""`、`error="sha cache invalid"` を含む。
+- pipeline、deploy、snapshot は実行しない。
+
+### Fixture R16: GitHub rate limit reset 不正
+
+**前提状態：**
+
+- GitHub Trees API fake server は HTTP `403`、`X-RateLimit-Remaining: 0`、不正な `X-RateLimit-Reset` を返す。
+- `.last_sha` は `{"sha":"old-blob"}`。
+
+**期待結果：**
+
+- 終了コード `3`。
+- `.last_sha` は旧 SHA のまま。
+- `.build_logs/{id}.json` は `target_status="failure_api"`、`error="github api failed"` を含む。
+- runner は reset header を無視して長時間待機しない。
+
+### Fixture R17: cooldown skip と manual force
+
+**前提状態：**
+
+- `.build_state.last_finished_at` が現在時刻から `BUILD_COOLDOWN_SECONDS` 未満。
+- `.build_state.queued` は空。
+
+**期待結果 A: polling**
+
+- 終了コード `0`。
+- `.build_status.json.status` は `skipped_cooldown`。
+- GitHub API、pipeline、deploy、snapshot を実行しない。
+
+**期待結果 B: manual force queue**
+
+- `.build_state.queued[0].trigger="manual"`、`payload.force=true` の場合、cooldown を無視して build を実行する。
+- build log / history の `trigger` は `manual`。
+- 処理済み queue entry は `.build_state.queued` から削除する。
+
+### Fixture R18: SSH checksum mismatch pending
+
+**前提状態：**
+
+- pipeline は成功する。
+- fake `ssh` は転送コマンドを成功させる。
+- fake `ssh sha256sum` は local checksum と異なる hash を返す。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.last_sha` は新 SHA に更新する。
+- `.pending_transfers` に `last_error` を含む entry を 1 件保存する。
+- `.build_logs/{id}.json.deploy[0].transfer_verified=false`、`target_status="success_deploy_pending"`、`error="deploy pending"`。
+- snapshot は作成しない。
+
+### Fixture R19: pending 重複統合
+
+**前提状態：**
+
+- `.pending_transfers` に `out`、`host`、`user`、`dest_dir` が同一の entry が 1 件存在する。
+- 新規 deploy 失敗も同じ `out`、`host`、`user`、`dest_dir`。
+
+**期待結果：**
+
+- `.pending_transfers` の件数は増えない。
+- 既存 entry の `retry_count` が +1 され、`failed_at` と `last_error` が最新値に更新される。
+- entry の投入順は保持する。
+
+### Fixture R20: snapshot atomic save and prune
+
+**前提状態：**
+
+- pipeline と deploy は成功する。
+- `HISTORY_KEEP_N=2`。
+- `.snapshots/` に古い snapshot directory が 2 件存在する。
+
+**期待結果：**
+
+- `{StateDir}/.snapshots/{build_id}` が作成される。
+- 一時 directory `{build_id}.tmp.{pid}` は残らない。
+- snapshot 内に通常ファイルだけが保存され、`.github_token`、`.build_lock`、`.pending_transfers` を含まない。
+- snapshot は 2 件だけ残り、最古 snapshot が削除される。
 
 ---
 
