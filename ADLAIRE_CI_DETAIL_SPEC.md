@@ -4282,6 +4282,34 @@ export { AdlaireCI, AdlaireCIError };
 | 一覧の空状態 | 配列が空の場合は、空表ではなくパネル内に 1 行の空状態メッセージを表示する。空状態はエラーとして扱わない。 |
 | focus / aria | `422` は最初の invalid field へ focus する。`401` はログイン password field へ focus する。SSE ログ領域は `aria-live="polite"` とし、エラー領域は `role="alert"` とする。 |
 
+**UI 初期ロード / イベント処理順序：**
+
+標準管理ツールは、`DOMContentLoaded` 後に以下の順で初期化する。順序を入れ替えてはならない。
+
+1. `app-root`、`nav-panels`、`global-error`、`global-success`、各 `panel-*` の存在を検査する。欠落時は `global-error` に `UI initialization failed` を表示し、以降の API 呼び出しを行わない。
+2. `window.AdlaireCI` 等の global 参照を使わず、`./adlaire-ci-sdk.js` から `AdlaireCI` と `AdlaireCIError` を ES Module import する。
+3. `AdlaireCI` を `new AdlaireCI({baseUrl})` で 1 回だけ生成する。`baseUrl` は同一 origin の `/api` を既定値とし、外部 origin は標準仕様では許可しない。
+4. すべての panel を `hidden=true` にし、`panel-login` だけを表示する。
+5. form submit と button click の event listener を登録する。登録対象は §24 の DOM / section / form field 命名契約表の id に限定する。
+6. `localStorage`、`sessionStorage`、Cookie から token を読み込まない。
+7. `global-error`、`global-success`、各 panel error/success を空にする。
+8. login password field へ focus する。
+
+ログイン成功後の初期取得順は、`getDashboard()` → `getStatus()` → `getQueue()` → `getMaintenance()` → `getDashboardLayout()` とする。途中で `401` を受信した場合は残りの取得を中止してログイン画面へ戻す。`getMaintenance()` が `enabled=true` を返した場合は `maintenance-banner` を表示し、ビルド開始、強制ビルド、rollback、hook 追加、設定変更系ボタンを disabled にする。
+
+イベント処理は、各操作につき以下の順で行う。
+
+1. 対象 panel の error/success を空にする。
+2. UI 側入力検証を行う。失敗時は SDK method を呼ばない。
+3. 対象 button と同一操作グループを disabled にする。
+4. SDK method を呼ぶ。
+5. 成功時は成功メッセージを表示し、§24 UI 操作契約表の成功後再取得を左から順に実行する。
+6. 失敗時は `AdlaireCIError` として表示する。`TypeError` は UI 実装エラーとして `global-error` に `Client error` を表示する。
+7. 秘密情報 field を消去する。
+8. disabled を解除する。ただし `401`、`503`、SSE 接続中、メンテナンス中、または仕様上 disabled 条件が継続する場合は解除しない。
+
+秘密情報 field は、`password`、`current_password`、`new_password`、`token`、`secret`、`smtp_password`、`issued-token-once` とする。これらは成功、失敗、画面遷移、`401`、`logout()`、`revokeAllSessions()` のいずれの場合も DOM 値を空にする。発行直後 token は `issued-token-once` に 1 回だけ表示し、次の任意の user action で消去する。
+
 **カスタマイズポイント：**
 - SDK の `baseUrl` は `<script>` タグ内の設定変数で外出し
 - CSS カスタムプロパティで外観変更可能（ADS トークン準拠）
@@ -4412,6 +4440,20 @@ POST /api/login
 
 対象は Go 版の `build_spec.go` と `runner.go` から生成した `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci.service`、`adlaire-ci.timer` とする。
 
+初回セットアップは以下の停止条件に従う。各手順は直前の手順が成功した場合のみ実行する。失敗時に後続手順を継続してはならない。
+
+| 手順 | 停止条件 | 失敗時の扱い |
+|------|----------|--------------|
+| 変数検証 | `REPO_URL`、`INSTALL_DIR`、`BIN_DIR`、`VERSION` が空、`INSTALL_DIR` が `/`、`BIN_DIR` が `/` | 何も変更せず終了する。 |
+| リポジトリ取得 | `INSTALL_DIR` が既に存在し、Git repository でない | 上書きせず終了する。 |
+| tag checkout | `VERSION` tag が存在しない | checkout せず終了する。既に clone 済みの場合は元の checkout を維持する。 |
+| バイナリ配置 | 配置元バイナリが存在しない、または `go build` が失敗 | systemd 設定を変更せず終了する。 |
+| secret 保存 | PAT が空 | `.github_token` を作成せず終了する。 |
+| systemd 配置 | unit ファイル生成または `systemctl daemon-reload` が失敗 | timer を enable せず終了する。 |
+| 起動確認 | `systemctl is-active adlaire-ci.timer` が `active` でない | 失敗として扱い、直前のログ確認コマンドを表示する。 |
+
+初回セットアップが中断した場合、作成済みの通常ディレクトリと clone 済み repository は自動削除しない。秘密情報ファイルを作成した後に失敗した場合は、`.github_token` の mode が `0600` であることを確認し、mode 補正に失敗した場合はその場で停止する。
+
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
 REPO_URL="https://github.com/<owner>/<repo>.git"
@@ -4464,6 +4506,8 @@ Go 版初回セットアップでは以下を実行しない。
 ### §26.3b 管理 API 導入後の追加セットアップ手順（仕様化済み・未実装）
 
 `api_server.go`、`admin/index.html`、`adlaire-ci-sdk.js` を実装した後にのみ本手順を実行する。
+
+管理 API 導入手順は、runner の既存稼働状態を壊してはならない。`adlaire-ci-api` の配置、認証情報生成、systemd enable のいずれかが失敗した場合でも、`adlaire-ci.timer` は停止しない。`.admin_credentials` が既に存在する場合は `--init-credentials` を再実行せず、既存 credentials を維持する。
 
 ```bash
 # ── 1. 拡張用ディレクトリ作成 ─────────────────────────
@@ -4551,14 +4595,30 @@ WantedBy=multi-user.target
 
 `git pull` は使用しない。安定版タグを指定してチェックアウトし、サービスを再起動する。管理 API を導入していない構成では、管理 API サービスは再起動対象に含めない。
 
+アップデートは以下の順序で実行し、途中失敗時は表の rollback 方針に従う。
+
+| 手順 | 成功条件 | 失敗時 rollback / 停止条件 |
+|------|----------|-----------------------------|
+| 現在版記録 | `git -C "$INSTALL_DIR" rev-parse --verify HEAD` が成功し、`PREV_REV` を保持する。 | 更新を開始しない。 |
+| tag 取得 | `git fetch --tags` が成功する。 | checkout せず終了する。 |
+| tag 検証 | `git -C "$INSTALL_DIR" rev-parse --verify "$NEW_VERSION^{commit}"` が成功する。 | checkout せず終了する。 |
+| checkout | `git -C "$INSTALL_DIR" checkout "$NEW_VERSION"` が成功する。 | `git -C "$INSTALL_DIR" checkout "$PREV_REV"` を実行する。戻せない場合は timer / API を再起動しない。 |
+| バイナリ更新 | 新バイナリ配置または `go build` が成功する。 | `PREV_REV` へ戻し、既存バイナリを維持する。 |
+| runner 再起動 | `systemctl restart adlaire-ci.timer` と `systemctl is-active adlaire-ci.timer` が成功する。 | `PREV_REV` へ戻し、再度 `systemctl restart adlaire-ci.timer` を 1 回だけ実行する。 |
+| API 再起動 | API 導入済みの場合のみ `systemctl restart adlaire-ci-api` と `systemctl is-active adlaire-ci-api` が成功する。 | `PREV_REV` へ戻し、runner と API の再起動を 1 回だけ実行する。 |
+
+rollback 後も service が active にならない場合は、自動復旧を継続せず、`journalctl -u adlaire-ci.service -n 100`、API 導入済みなら `journalctl -u adlaire-ci-api -n 100` を確認対象として報告する。rollback は Git checkout と service restart のみを行い、状態ファイル、履歴、ログ、secret を巻き戻してはならない。
+
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
 INSTALL_DIR="/opt/adlaire-builder"
 NEW_VERSION="v1.2.0"
 
 # ── 1. 最新タグ一覧を確認 ─────────────────────────────
+PREV_REV="$(git -C "$INSTALL_DIR" rev-parse --verify HEAD)"
 git -C "$INSTALL_DIR" fetch --tags
 git -C "$INSTALL_DIR" tag --list --sort=-v:refname
+git -C "$INSTALL_DIR" rev-parse --verify "$NEW_VERSION^{commit}"
 
 # ── 2. 対象バージョンへ切り替え ───────────────────────
 git -C "$INSTALL_DIR" checkout "$NEW_VERSION"
@@ -4598,3 +4658,22 @@ systemctl status adlaire-ci-api
 | 停止 | `systemctl stop adlaire-ci-api` |
 | 再起動 | `systemctl restart adlaire-ci-api` |
 | ログ確認（API） | `journalctl -u adlaire-ci-api -f` |
+
+### §26.7 実装受け入れ条件
+
+実装 PR は、下表の受け入れ条件をすべて満たすまで完了扱いにしてはならない。実装対象外のコンポーネントは「未実装」として明記し、合格扱いにしない。
+
+| 対象 | 必須コマンド / 確認 | 合格条件 |
+|------|---------------------|----------|
+| Go 共通 | `gofmt -l <実装済みGoファイル>` | 実装済み Go ファイルが存在する場合、出力が空。未実装ファイルはコマンド対象に含めない。 |
+| Go test | `go test ./...` | Go module が存在する場合に成功する。Go module が存在しない場合は、その理由を実装完了報告に明記する。 |
+| build script | `adlaire-ci-build --src <sample.md> --out <tmp.html>` | exit code `0`、HTML 出力あり、`[REPORT]` の `status` が `success`。 |
+| runner | `adlaire-ci-runner --state-dir <tmp-state>` | 必須 secret 未設定時の exit code / ERROR log が §12 と一致し、`.build_lock` が残らない。 |
+| API | `POST /api/login`、`GET /api/status`、未知 path、body 禁止 endpoint、JSON 不正、認証なし | §22.0 / §22.0e の status code と body に一致する。 |
+| SDK | browser runtime で `login()`、`getStatus()`、`streamBuild()`、HTTP error、timeout を確認する。 | `AdlaireCIError`、`StreamHandle`、token 破棄、timeout が §23 と一致する。 |
+| UI | login、manual build、SSE 表示、config 保存、token 発行、logout を確認する。 | §24 の DOM id、disabled、成功表示、失敗表示、再取得、秘密情報消去に一致する。 |
+| setup | §26.3 または §26.3b の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
+| update | §26.5 の手順を前版から新 tag へ実行する。 | `PREV_REV` 記録、checkout、restart、失敗時 rollback 方針が仕様どおり。 |
+| security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示を確認する。 | PAT、Webhook Secret、SMTP password、session token、API token 本体が平文で出ない。 |
+
+受け入れ結果は、実装 PR 本文に `対象 / コマンド / 期待結果 / 実結果 / 判定` の形式で記録する。失敗、未実行、環境都合で省略した項目がある場合、そのコンポーネントを実装済みとして扱ってはならない。
