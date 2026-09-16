@@ -136,6 +136,59 @@ P2〜P5 実装は、下表の fixture をすべて満たした場合だけ完了
 | E5 notes same content | P5 | 同じ `content` を 2 回 `POST /api/notes`。 | 2 回目は `No changes`。 | 2 回目は `.notes`、`.config_log` を変更しない。 |
 | E6 dashboard layout invalid | P5 | 重複 widget、未知 widget、空配列を `POST /api/dashboard-layout`。 | `422 {"error":"Validation failed","details":[...]}`。 | `.dashboard_layout` を変更しない。 |
 
+**API 機能別 fixture 固定契約：**
+
+下表は、API component の機能別 fixture 名、入力、期待結果を固定する。API endpoint の処理順序、request / response、状態ファイル read / write 境界は `ADLAIRE_CI_DETAIL_API_SPEC.md` を正とし、本表では fixture 本体だけを定義する。
+
+| 機能 | fixture | 入力 | 期待結果 |
+|------|---------|------|----------|
+| backup / restore | backup-mask | secret 設定済みで backup | secret 本体なし、`*_set:true`。 |
+| backup / restore | restore-validate-fail | 1 file schema 不正 | `422`、全 file 差分なし。 |
+| backup / restore | restore-secret-keep | `"***"` かつ既存 secret あり | 既存 secret 維持、平文出力なし。 |
+| backup / restore | restore-secret-missing | `"***"` かつ既存 secret なし | secret 未設定のまま、`"***"` を保存しない。 |
+| backup / restore | restore-secret-delete | secret `null` | secret file 削除。 |
+| backup / restore | restore-write-failure | 中途 write 失敗 | 未処理 file は差分なし、処理済み file は維持、`500`。 |
+| メンテナンス | maintenance-build-deny | enabled 中に `POST /api/build` | `503`、queue 差分なし、build id なし。 |
+| メンテナンス | maintenance-force-deny | enabled 中に `POST /api/build/force` | `503`、SHA cache 差分なし。 |
+| メンテナンス | maintenance-webhook-deny | enabled 中に署名済み webhook | `503`、event log と queue 差分なし。 |
+| メンテナンス | maintenance-disable-noop | disabled 中に disable | `200 No changes`、状態ファイル差分なし。 |
+| アクセス制御 | access-allow-empty | `.access_control.allow=[]` | 任意 IP の API が認証処理へ進む。 |
+| アクセス制御 | access-deny-before-auth | allow 不一致 IP で `POST /api/login` | `403`、`.access_log`、`.audit_log`、rate state 差分なし。 |
+| アクセス制御 | access-normalize | 重複 allow を保存 | sort / 重複除去後の配列を返し `.config_log` 記録。 |
+| アクセス制御 | access-ipv6-reject | IPv6 literal を保存 | `422`、状態差分なし。 |
+| hooks | hook-pre-success | pre hook exit 0 | pipeline 実行、hook log 保存、secret mask 済み。 |
+| hooks | hook-pre-abort | pre hook exit 1 / abort true | pipeline 未実行、status `hook_error`、history に `failure_category:"hook_error"`。 |
+| hooks | hook-pre-warn | pre hook exit 1 / abort false | build 継続、hook log に exit code。 |
+| hooks | hook-post-failure | build success 後 post hook failure | build success 維持、hook log 保存。 |
+| hooks | hook-timeout | timeout 超過 | process kill、`timed_out:true`、`exit_code:null`。 |
+| hooks | hook-log-write-failure | pre hook log 保存失敗 | build 本体未実行、`hook_error`。 |
+| hooks | post failure | build status を変更しない。WARN log と hook log だけを残す。 |
+| SMTP | smtp-save-password | password 付き保存 | `.smtp_secret` mode `0600`、GET は `password_set:true`、log は `"***"`。 |
+| SMTP | smtp-delete-password | `password:null` | `.smtp_secret` 削除、password 平文なし。 |
+| SMTP | smtp-noop | 同一 config / password 未指定 | 状態差分なし、`.config_log` 追記なし。 |
+| SMTP | smtp-test-success | 設定済み test | `.notify_log` に success、response success。 |
+| SMTP | smtp-test-disabled | `enabled:false` | `422`、`.notify_log` 差分なし。 |
+| SMTP | smtp-log-failure | test 後 `.notify_log` 追記失敗 | `500`、password 平文なし。 |
+| queue | queue-add-running | running 中に manual build | queue append、created_seq 最大 + 1。 |
+| queue | queue-duplicate | 同一 manual payload を再投入 | 新規追加なし、既存 queue_id を返す。 |
+| queue | queue-full | max_size 到達 | `429 {"error":"queue_full"}`、差分なし。 |
+| queue | queue-clear | waiting 2 件で `DELETE /api/queue` | `cleared_count=2`、running/current_build_id 維持。 |
+| queue | queue-runner-take | urgent と normal が混在 | urgent を削除し running に設定、他 entry 維持。 |
+| 認証 | auth-password-failure | 誤 password で `POST /api/login` | `401`、session/ticket なし、失敗回数 +1、`.access_log` と `.audit_log` に secret なし。 |
+| 認証 | auth-login-lock | 連続 10 回失敗後の `POST /api/login` | `429`、password hash 検証なし、`.access_log` に `login_locked`、`.audit_log` に `permission_denied`。 |
+| 認証 | auth-session-issued | TOTP 無効で password 成功 | token は response のみ、`.admin_credentials.login_count` +1、ログに token/hash/salt なし。 |
+| 認証 | auth-session-expired | 期限切れ session で保護 API | `401`、対象 session 削除、`.access_log` と `.audit_log` は追記しない。 |
+| 認証 | auth-password-change | password 変更成功 | 新 salt/hash、現 session 以外削除、`password_change` ログ、password/hash/salt 平文なし。 |
+| 認証 | auth-log-write-failure | login 成功時に `.audit_log` 追記失敗 | `500`、session token を response しない。 |
+| approval | approval-create | approval_required target に差分 | build なし、pending record、通知成功または pending。 |
+| approval | approval-duplicate | 同一 branch/sha/target を再検出 | pending 重複作成なし。 |
+| approval | approval-approve | pending approve | queue 追加、approved record、queue_id 保存。 |
+| approval | approval-reject | pending reject | rejected record、history `approval_rejected`。 |
+| approval | approval-timeout | expires_at 超過 | expired record、history `approval_expired`。 |
+| approval | approval-queue-full | max_size 到達時 approve | `429`、status pending 維持。 |
+| approval | approval duplicate notify | 重複時は通知を送らない。 |
+| approval | approved append failure | queue は残り、API は `500`。 |
+
 **API / SDK / UI / 状態ファイル cross fixture 固定：**
 
 下表の fixture は、API endpoint、SDK method、UI 操作、状態ファイル副作用の横断整合を固定する。API endpoint の method、path、request、response、error、read / write 境界は `ADLAIRE_CI_DETAIL_API_SPEC.md`、SDK method と error 変換は `ADLAIRE_CI_DETAIL_SDK_SPEC.md`、UI DOM と表示状態は `ADLAIRE_CI_DETAIL_UI_SPEC.md`、状態ファイル schema と保存手順は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。

@@ -491,16 +491,7 @@ backup response に secret 原文を含めてはならない。`password`、`tok
 
 restore の `.config_log` は対象 file ごとの差分を 1 record にまとめ、secret はすべて `"***"` とする。backup / restore の response、server log、fixture expected に secret 平文を含めてはならない。
 
-**backup / restore fixture 固定：**
-
-| fixture | 入力 | 期待結果 |
-|---------|------|----------|
-| backup-mask | secret 設定済みで backup | secret 本体なし、`*_set:true`。 |
-| restore-validate-fail | 1 file schema 不正 | `422`、全 file 差分なし。 |
-| restore-secret-keep | `"***"` かつ既存 secret あり | 既存 secret 維持、平文出力なし。 |
-| restore-secret-missing | `"***"` かつ既存 secret なし | secret 未設定のまま、`"***"` を保存しない。 |
-| restore-secret-delete | secret `null` | secret file 削除。 |
-| restore-write-failure | 中途 write 失敗 | 未処理 file は差分なし、処理済み file は維持、`500`。 |
+backup / restore fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルでは backup / restore fixture 本体を重複定義しない。
 
 **ビルド操作の競合優先順位：**
 
@@ -1694,14 +1685,7 @@ Content-Type: application/json
 
 `POST /api/maintenance/enable` と `POST /api/maintenance/disable` の保存順は、`.maintenance` atomic write → `.config_log` 追記 → response とする。`.config_log` 追記失敗時は `500` を返し、保存済み `.maintenance` は巻き戻さない。同一状態 no-op では `.maintenance`、`.config_log`、`.audit_log` を変更しない。
 
-**メンテナンス fixture 固定：**
-
-| fixture | 入力 | 期待結果 |
-|---------|------|----------|
-| maintenance-build-deny | enabled 中に `POST /api/build` | `503`、queue 差分なし、build id なし。 |
-| maintenance-force-deny | enabled 中に `POST /api/build/force` | `503`、SHA cache 差分なし。 |
-| maintenance-webhook-deny | enabled 中に署名済み webhook | `503`、event log と queue 差分なし。 |
-| maintenance-disable-noop | disabled 中に disable | `200 No changes`、状態ファイル差分なし。 |
+メンテナンス fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルではメンテナンス fixture 本体を重複定義しない。
 
 ---
 
@@ -1746,14 +1730,7 @@ Content-Type: application/json
 | `.config_log` 失敗 | `500`。保存済み `.access_control` は巻き戻さない。 |
 | 破損時 | §22.0a に従い初期値で再生成し、制限なしとして扱う。 |
 
-**アクセス制御 fixture 固定：**
-
-| fixture | 入力 | 期待結果 |
-|---------|------|----------|
-| access-allow-empty | `.access_control.allow=[]` | 任意 IP の API が認証処理へ進む。 |
-| access-deny-before-auth | allow 不一致 IP で `POST /api/login` | `403`、`.access_log`、`.audit_log`、rate state 差分なし。 |
-| access-normalize | 重複 allow を保存 | sort / 重複除去後の配列を返し `.config_log` 記録。 |
-| access-ipv6-reject | IPv6 literal を保存 | `422`、状態差分なし。 |
+アクセス制御 fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルではアクセス制御 fixture 本体を重複定義しない。
 
 ---
 
@@ -1834,17 +1811,7 @@ Content-Type: application/json
 
 hook log JSON は `{ "hook_id", "build_id", "phase", "started_at", "finished_at", "duration_seconds", "exit_code", "timed_out", "stdout", "stderr", "truncated" }` を必須 key とする。`GET /api/hooks/{id}/log` の `output` は `stdout + stderr` をこの順で連結した表示用互換値とし、保存時点で secret mask 済みの値だけを返す。
 
-**hooks fixture 固定：**
-
-| fixture | 入力 | 期待結果 |
-|---------|------|----------|
-| hook-pre-success | pre hook exit 0 | pipeline 実行、hook log 保存、secret mask 済み。 |
-| hook-pre-abort | pre hook exit 1 / abort true | pipeline 未実行、status `hook_error`、history に `failure_category:"hook_error"`。 |
-| hook-pre-warn | pre hook exit 1 / abort false | build 継続、hook log に exit code。 |
-| hook-post-failure | build success 後 post hook failure | build success 維持、hook log 保存。 |
-| hook-timeout | timeout 超過 | process kill、`timed_out:true`、`exit_code:null`。 |
-| hook-log-write-failure | pre hook log 保存失敗 | build 本体未実行、`hook_error`。 |
-| post failure | build status を変更しない。WARN log と hook log だけを残す。 |
+hooks fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルでは hooks fixture 本体を重複定義しない。
 
 保存する hook log file は 1 実行 1 JSON object とし、`hook_id`、`build_id`、`phase`、`started_at`、`finished_at`、`duration_seconds`、`exit_code`、`timed_out`、`stdout`、`stderr`、`truncated` を必須 key とする。`GET /api/hooks/{id}/log` は複数 file を集約し、response の `runs[]` へ `build_id`、`ran_at`、`exit_code`、`output` を返す。
 
@@ -2064,16 +2031,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 `POST /api/smtp-test` は `.smtp_config` と `.smtp_secret` を読み、送信成功 / 失敗のどちらも `.notify_log` へ追記してから response を返す。`.notify_log` 追記失敗時は `500` を返す。SMTP password、認証失敗時の server response に含まれる credential 断片、接続 URL の userinfo は `message` と log に含めず固定文言へ置換する。
 
-**SMTP fixture 固定：**
-
-| fixture | 入力 | 期待結果 |
-|---------|------|----------|
-| smtp-save-password | password 付き保存 | `.smtp_secret` mode `0600`、GET は `password_set:true`、log は `"***"`。 |
-| smtp-delete-password | `password:null` | `.smtp_secret` 削除、password 平文なし。 |
-| smtp-noop | 同一 config / password 未指定 | 状態差分なし、`.config_log` 追記なし。 |
-| smtp-test-success | 設定済み test | `.notify_log` に success、response success。 |
-| smtp-test-disabled | `enabled:false` | `422`、`.notify_log` 差分なし。 |
-| smtp-log-failure | test 後 `.notify_log` 追記失敗 | `500`、password 平文なし。 |
+SMTP fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルでは SMTP fixture 本体を重複定義しない。
 
 **`GET /api/notify-config` への追加（`email` セクション）：**
 ```json
@@ -2147,15 +2105,7 @@ queue 追加は `.build_state` の atomic write で行い、id は §22.0e.2 の
 
 重複判定は `trigger` と `payload` の正規化 JSON が一致する waiting entry を対象とする。重複時は新規 entry を追加せず `200 {"message":"Already queued","queued":true,"queue_id":"<existing>"}` を返す。`force=true` の manual entry は `force=false` と別 entry として扱う。
 
-**queue fixture 固定：**
-
-| fixture | 入力 | 期待結果 |
-|---------|------|----------|
-| queue-add-running | running 中に manual build | queue append、created_seq 最大 + 1。 |
-| queue-duplicate | 同一 manual payload を再投入 | 新規追加なし、既存 queue_id を返す。 |
-| queue-full | max_size 到達 | `429 {"error":"queue_full"}`、差分なし。 |
-| queue-clear | waiting 2 件で `DELETE /api/queue` | `cleared_count=2`、running/current_build_id 維持。 |
-| queue-runner-take | urgent と normal が混在 | urgent を削除し running に設定、他 entry 維持。 |
+queue fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルでは queue fixture 本体を重複定義しない。
 
 ---
 
@@ -2392,16 +2342,7 @@ POST /api/login
 
 生成手順は、state dir 検証 → 既存確認 → salt 生成 → hash 生成 → `{path}.tmp.{pid}` へ JSON + LF 書込 → mode `0600` → file sync → rename → parent directory sync の順に固定する。rename 後の sync に失敗した場合は `1` を返し、作成済みファイルは残る。実装者判断で初期パスワードを環境変数、対話入力、ランダム生成へ変更してはならない。
 
-**認証 fixture 固定：**
-
-| fixture | 入力 | 期待結果 |
-|---------|------|----------|
-| auth-password-failure | 誤 password で `POST /api/login` | `401`、session/ticket なし、失敗回数 +1、`.access_log` と `.audit_log` に secret なし。 |
-| auth-login-lock | 連続 10 回失敗後の `POST /api/login` | `429`、password hash 検証なし、`.access_log` に `login_locked`、`.audit_log` に `permission_denied`。 |
-| auth-session-issued | TOTP 無効で password 成功 | token は response のみ、`.admin_credentials.login_count` +1、ログに token/hash/salt なし。 |
-| auth-session-expired | 期限切れ session で保護 API | `401`、対象 session 削除、`.access_log` と `.audit_log` は追記しない。 |
-| auth-password-change | password 変更成功 | 新 salt/hash、現 session 以外削除、`password_change` ログ、password/hash/salt 平文なし。 |
-| auth-log-write-failure | login 成功時に `.audit_log` 追記失敗 | `500`、session token を response しない。 |
+認証 fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルでは認証 fixture 本体を重複定義しない。
 
 ---
 
@@ -3032,18 +2973,7 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 
 pending 作成時の重複判定は `branch`、`sha`、`target` が同一で、最新 status が `pending` の record とする。重複時は新規 record を作成せず、既存 pending id を使用する。approve / reject API は body を受け付けない。reject reason は初期実装では固定 `"rejected"` とする。
 
-**approval fixture 固定：**
-
-| fixture | 入力 | 期待結果 |
-|---------|------|----------|
-| approval-create | approval_required target に差分 | build なし、pending record、通知成功または pending。 |
-| approval-duplicate | 同一 branch/sha/target を再検出 | pending 重複作成なし。 |
-| approval-approve | pending approve | queue 追加、approved record、queue_id 保存。 |
-| approval-reject | pending reject | rejected record、history `approval_rejected`。 |
-| approval-timeout | expires_at 超過 | expired record、history `approval_expired`。 |
-| approval-queue-full | max_size 到達時 approve | `429`、status pending 維持。 |
-| approval duplicate notify | 重複時は通知を送らない。 |
-| approved append failure | queue は残り、API は `500`。 |
+approval fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルでは approval fixture 本体を重複定義しない。
 
 ### 27.42 ビルドトリガー専用 API スコープ
 
