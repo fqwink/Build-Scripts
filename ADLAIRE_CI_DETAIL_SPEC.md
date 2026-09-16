@@ -2333,6 +2333,35 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 - stderr は空。
 - `/tmp/adlaire-ci-fixture-strict/index.html` は `previous output` のままで置換されない。
 
+**§8〜§20 builder / runner 中核機能別実装完全性固定契約：**
+
+§8〜§20 の中核機能は、各節の本文と fixture に加えて下表を満たした場合だけ実装完了とする。下表は既存機能の実装時チェックリストであり、将来機能、MCP、外部公開構成、上位方針は扱わない。
+
+| 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
+|----|------|------|------|---------------------------|--------------|--------------|
+| §8 | builder CLI 実行 | CLI 引数、Markdown file / directory、theme、build meta。 | 静的 Web サイト、stdout 進捗、`[REPORT]`。 | 公開用 `--out` は tmp 完成後だけ置換する。 | 引数不正、UTF-8 不正、strict 警告、書込失敗時は既存出力を保持する。 | help/version、単一入力、directory 入力、strict、atomic output。 |
+| §8a | builder fixture | `testdata/builder/` 入力一式。 | expected HTML / CSS / JS / search index / stdout / stderr。 | fixture 実行時だけ一時出力を作成する。 | 異常系 fixture で `[REPORT]` を出さず既存出力を変えない。 | Fixture A〜H 全件。 |
+| §10〜§12 | runner 起動 / 設定 | `--state-dir`、secret、branch target、server config、systemd oneshot。 | runner 終了コード、slog、正規化設定。 | 必須検証成功後だけ lock / state を更新する。 | secret 不足、設定不正、insecure mode では build を開始しない。 | secret 不足、token mode 不正、branch config default、dry-run directory 作成なし。 |
+| §13 | runner 処理フロー | SHA cache、GitHub API、build queue、cooldown、circuit、trigger。 | build log、history、status、queue 更新。 | finalizer で lock/state/status を固定順に更新する。 | GitHub 全失敗、lock 不正、state write 失敗時の副作用を固定する。 | R1〜R17、R21〜R27。 |
+| §14 | pipeline 起動 | `.ci/pipeline.sh`、builder binary、timeout、stdout/stderr。 | pipeline result、`[REPORT]` parse、warnings。 | pipeline 成功後だけ deploy / snapshot へ進む。 | timeout / exit 非 0 で SHA cache、deploy、snapshot を更新しない。 | pipeline success、non-zero、timeout、duplicate report。 |
+| §14a | SSH deploy | deploy target、local output、remote checksum。 | deploy result、pending transfer。 | 転送成功 target だけ success、失敗 target は pending へ保存する。 | checksum mismatch / SSH 失敗で snapshot を作成しない。 | SSH success、checksum mismatch、pending duplicate。 |
+| §14b | snapshot | build output、history keep、snapshot keep。 | `.snapshots/{build_id}`、snapshot manifest。 | build / deploy 成功後に atomic save し、世代 prune する。 | snapshot 保存失敗は WARN とし、build success を反転しない。 | snapshot save/prune、snapshot failure remains success。 |
+| §15 | logs/history | stdout/stderr、report、warnings、duration、target status。 | `.build_logs/{id}.json`、`.build_history`。 | build log 成功後だけ history を追記する。 | log write failure では history / SHA / deploy / snapshot を行わない。 | build log write failure、history append failure、report parse。 |
+| §16〜§18 | systemd / GitHub / setup | unit file、PAT、binary path、timer。 | service/timer 設定、導入済み状態。 | setup 手順で明示された file / unit だけ作成する。 | PAT 不正、checksum 不一致、unit 失敗で後続手順を開始しない。 | setup success、checksum mismatch、service failure。 |
+| §19〜§20 | 既知制限反映 | API / runner 制限事項。 | 実装対象外の明示。 | 制限を回避する隠れ機能を追加しない。 | 未定義 endpoint、外部認証、HTTPS listener、worker pool を実装しない。 | 実装 PR 証跡で対象外確認。 |
+
+**§8〜§20 中核機能 横断受け入れ固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| atomicity | builder output、runner state、build log、history、status、snapshot は、各節で定義した順序以外で確定しない。 |
+| no hidden dependency | Go 標準ライブラリと既存 shell / systemd 契約以外の外部依存を追加しない。 |
+| no silent success | write failure、history failure、state finalizer failure、checksum mismatch、pipeline timeout を成功扱いにしない。 |
+| no secret leak | PAT、SSH secret、token、env secret を stdout、stderr、journal、build log、history、snapshot に平文保存しない。 |
+| reproducibility | 同一入力、同一 CLI、同一 fake 外部応答では、時刻・build id を除き同じ状態差分になる。 |
+| fixture completeness | §8a と §15a の対象 fixture を未実行または FAIL のまま該当コンポーネント完了扱いにしない。 |
+| downstream handoff | runner が生成する `.build_status.json`、`.build_history`、`.build_logs/{id}.json` は §22 の API adapter が追加判断なしに読める schema とする。 |
+
 ---
 
 ## 9. 既知の制限
@@ -8884,6 +8913,44 @@ systemctl status adlaire-ci-api
 | smtp secret mask | password 付き `POST /api/smtp-config` 後に GET / backup / log 確認 | password 本体は返らず、mask または `password_set:true` だけ表示。 |
 | queue disabled | `queue_max_size=0`、build running 中に `POST /api/build` | `429 {"error":"queue_full"}`、`.build_state.queued` は空。 |
 | dashboard duplicate widget | widgets に重複 id を指定 | `422`、`.dashboard_layout` 差分なし。 |
+
+**§22〜§26 API / SDK / UI / 認証 / セットアップ 実装完全性固定契約：**
+
+§22〜§26 のコンポーネントは、各節の本文、endpoint 表、SDK method 表、UI 操作契約、fixture に加えて下表を満たした場合だけ実装完了とする。下表は既存機能の詳細実装を固めるものであり、未定義 endpoint、未定義 UI、未定義認証方式、将来計画機能を追加する根拠にしてはならない。
+
+| 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
+|----|------|------|------|---------------------------|--------------|--------------|
+| §22.0 | API 共通 | HTTP method/path/header/body、remote addr。 | 固定 status、固定 error body、security header。 | `.api_access_log` 以外は endpoint 契約に従う。 | path/method/body/JSON/auth/scope/validation 失敗時は endpoint 固有処理を開始しない。 | unknown path、method mismatch、body 禁止、JSON 不正、401、403、422、500 mask。 |
+| §22.0a〜§22.0c | 状態ファイル / schema | state dir、JSON / JSON Lines / text state。 | typed adapter result、固定初期値、破損時 error。 | atomic write、lock、chmod、fsync、corrupt backup。 | read-only API は状態を修復しない。write 失敗は target を部分更新しない。 | corrupt JSON、unknown key、nullable 違反、lock timeout、chmod failure、GET no write。 |
+| §22.0d〜§22.0e | endpoint 契約 | endpoint ごとの request/query/body/path。 | endpoint ごとの response、SDK/UI 対応。 | Read / Write 列に明記された状態だけ扱う。 | 個別 status と共通 error 優先順位に従う。未定義 endpoint を追加しない。 | P0/P1、P2〜P5、pagination、SSE、binary、no-op、partial failure。 |
+| §23 | SDK | public method 引数、token、fake fetch response。 | Promise return、`AdlaireCIError`、`StreamHandle`、Blob。 | token は memory のみ。DOM / state file / storage を変更しない。 | `401` だけ token 破棄。`403`、`429`、`500`、network、timeout は token 維持。 | request shape、error shape、timeout、invalid JSON、invalid SSE、body 禁止、401 purge。 |
+| §24 | 標準管理 UI | DOM event、form value、SDK return/error。 | DOM 表示、disabled/loading、success/error、secret 消去。 | SDK method だけを呼ぶ。直接 API、状態ファイル、systemd を触らない。 | API 成功前に確定表示しない。失敗時は secret を消し、非 secret 入力は保持する。 | login/TOTP、manual build、stream、refresh failure、secret clearing、disabled priority、direct fetch absence。 |
+| §25 | 認証 | password、TOTP code、session token、API token。 | session token、ticket、auth error、access/audit log。 | `.admin_credentials`、`.totp_secret`、memory session/ticket、logs。 | token/ticket は必要ログ成功まで返さない。hash/salt/secret/token 本体を保存しない。 | init、login success/failure、lock、change password、session restart、TOTP replay、audit failure。 |
+| §26 | setup/update | release asset、checksum、INSTALL_DIR、BIN_DIR、systemd。 | binary 配置、admin UI、unit、service active、health。 | 検証済み asset だけ配置。secret/state/systemd は段階順に変更する。 | checksum/download/unsafe archive/restart 失敗で後続段階に進まない。rollback は定義範囲だけ 1 回。 | setup invalid、download failure、checksum duplicate、symlink target、API setup、update rollback、health failure。 |
+
+**§22〜§26 横断失敗時副作用固定契約：**
+
+| ケース | 固定結果 |
+|--------|----------|
+| API validation failure | 状態ファイル、外部 API、systemd、runner、hook、通知を変更しない。`.api_access_log` だけ通常記録対象とする。 |
+| API write success / log failure | 個別節が巻き戻しを明記していない限り、保存済み状態は巻き戻さず `500` を返す。 |
+| SDK network / timeout | `AdlaireCIError(status=0)` とし、自動 retry、自動 refresh、token 破棄を行わない。 |
+| UI refresh failure after success | 操作成功は保持し、再取得失敗だけ panel error に表示する。同じ変更 API を自動再実行しない。 |
+| auth log failure before token response | session token、login ticket、API token 本体を response しない。 |
+| setup partial failure | 既存 binary、state、secret、admin UI、systemd を、表で許可した対象以外は変更しない。 |
+| update rollback failure | 追加推測復旧を行わず、失敗箇所、退避先、現在配置済みファイル、journal 確認対象を報告する。 |
+
+**§22〜§26 実装前・実装後確認固定契約：**
+
+| 段階 | 確認 | 合格条件 |
+|------|------|----------|
+| 実装前 | endpoint / SDK / UI 対応 | §22.0e の API、§23 の SDK method、§24 の UI 操作が同一機能でそろっている。欠落時は先に仕様改訂する。 |
+| 実装前 | state schema | 使用する状態ファイルが §22.0a / §22.0c にあり、型、初期値、破損時処理、更新責務が定義済み。 |
+| 実装前 | secret handling | secret 値の保存先、mask、response 禁止、log 禁止、UI 消去条件が定義済み。 |
+| 実装後 | common error | unknown path、method mismatch、body 禁止、JSON 不正、401、403、422、500 が固定 body と一致する。 |
+| 実装後 | state side effect | 成功、validation failure、conflict、write failure、log failure の状態差分が fixture expected と一致する。 |
+| 実装後 | client behavior | SDK error、UI disabled、success/error、refresh、secret 消去、direct fetch 不在が固定契約どおり。 |
+| 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が §26 fixture と一致する。 |
 
 Phase 別の実装受け入れ条件は以下とする。
 
