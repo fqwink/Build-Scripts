@@ -2656,7 +2656,7 @@ runner は CLI、`.server_config`、`.branch_config`、既定値を読み込ん�
 | `{StateDir}/.build_logs` | 不在なら `0700` で作成する。 | 作成失敗時は終了コード `2`。 |
 | `{StateDir}/.snapshots` | 不在なら `0700` で作成する。ただし snapshot 無効時も directory 作成は許可する。 | 作成失敗時は終了コード `2`。 |
 
-上記 directory 作成は dry-run では実行しない。dry-run では作成予定を stdout slog に `DRY_RUN_WOULD_CREATE_DIR: path={path}` として出し、終了コードには反映しない。ただし既存 path が file の場合は dry-run でも終了コード `2` とする。
+上記 directory 作成は dry-run では実行しない。dry-run では作成予定を `§27.2` の stdout JSON `warnings[]` に `code="DRY_RUN_WOULD_CREATE_DIR"` として出し、`would_write` に `"state_dir"` を追加してはならない。ただし既存 path が file の場合は dry-run でも終了コード `2` とし、stdout JSON `errors[]` に原因を出す。
 
 **固定出力：**
 
@@ -4037,7 +4037,7 @@ adlaire-ci-runner --state-dir <state> --dry-run
 
 - 終了コード `0`。
 - 上記 directory を作成しない。
-- stdout slog に `DRY_RUN_WOULD_CREATE_DIR` を対象 directory ごとに出す。
+- stdout は `§27.2` の dry-run JSON 1 件だけを出し、`warnings[]` に `code="DRY_RUN_WOULD_CREATE_DIR"` を対象 directory ごとに出す。
 - `.github_token`、`.build_lock`、GitHub API、pipeline、deploy、通知を実行しない。
 
 ### Fixture R15: SHA cache 破損
@@ -5165,8 +5165,8 @@ Queue entry:
 | `output_sha256` | string/null | 任意 | SHA-256 hex または `null` | 成果物チェックサム。 |
 | `size_warn` | boolean | 必須 | boolean | サイズ警告。 |
 | `transfer_verified` | boolean/null | 必須 | boolean または `null` | SSH 転送未実行時は `null`。 |
-| `dry_run` | boolean | 必須 | boolean | dry-run log の場合のみ `true`。通常 build は `false`。 |
-| `attempts` | object[] | 必須 | 1 件以上 | build / deploy の試行履歴。dry-run は空配列ではなく検証 attempt 1 件を保存する。 |
+| `dry_run` | boolean | 必須 | boolean | 通常 build log では常に `false`。dry-run は build log を作成しないため、本 field が `true` の build log を新規作成してはならない。 |
+| `attempts` | object[] | 必須 | 1 件以上 | build / deploy の試行履歴。dry-run は build log を作成しないため、本配列へ検証 attempt を保存しない。 |
 | `retry_count` | integer | 必須 | 0 以上 | 追加 retry 回数。初回のみで終わった場合は `0`。 |
 | `commit_status` | object/null | 必須 | CommitStatus object または `null` | GitHub Commit Status API 送信結果。無効時は `null`。 |
 | `build_meta` | object | 必須 | BuildMeta object | 出力サイトへ埋め込んだ build metadata。 |
@@ -5198,8 +5198,8 @@ Attempt object:
 |------|----|------|------|
 | `attempt` | integer | 必須 | 初回は `1`。retry ごとに +1。 |
 | `started_at` | string | 必須 | UTC ISO 8601。 |
-| `finished_at` | string/null | 必須 | 完了時刻。dry-run 検証のみでも設定する。 |
-| `stage` | string | 必須 | `"dry_run"`, `"github"`, `"pipeline"`, `"deploy"` のいずれか。 |
+| `finished_at` | string/null | 必須 | 完了時刻。dry-run は build log を作成しないため、本 field を保存しない。 |
+| `stage` | string | 必須 | `"github"`, `"pipeline"`, `"deploy"` のいずれか。dry-run は build log を作成しないため `"dry_run"` stage を新規保存してはならない。 |
 | `status` | string | 必須 | `"success"` または `"failure"`。 |
 | `retryable` | boolean | 必須 | この失敗が retry 対象か。成功時は `false`。 |
 | `error` | string/null | 必須 | 失敗理由。成功時は `null`。 |
@@ -11962,18 +11962,19 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 **runner 起動時の拡張機能処理順：**
 
 1. CLI 引数、`--dry-run`、`--state-dir`、`--config` を検証する。
-2. `.build_lock` を取得する。dry-run は lock を取得しない。
-3. §27.10 の起動時整合性チェックを実行する。
-4. `.server_config`、`.branch_config`、`.notify_config`、`.build_chain_config`、`.hooks` を読む。
-5. queue entry がある場合は §27.35 の順序で 1 件だけ選ぶ。
-6. §27.30 approval timeout を更新する。
-7. watch mode、branch target、target files、tag filter、dependency manifest から build 対象を決定する。
-8. build id、trigger、environment、start time を確定する。
-9. pre hook、remote build または local builder、pipeline、dependency manifest、cache、deploy、post hook を個別節の順序で実行する。
-10. failure category、duration、trend、duration anomaly、status、history、notification を保存する。
-11. `.build_lock` を削除し、`.build_status.json.running=false` を finalizer として保存する。
+2. `--dry-run` の場合は `.build_lock` を取得せず、状態 directory 作成、backup、初期化、正規化、log / history / status 保存を行わない。設定、既存状態、fake GitHub read、差分判定だけを `§27.2` の dry-run flow で評価し、stdout JSON を出力して終了する。
+3. `.build_lock` を取得する。
+4. §27.10 の起動時整合性チェックを実行する。
+5. `.server_config`、`.branch_config`、`.notify_config`、`.build_chain_config`、`.hooks` を読む。
+6. queue entry がある場合は §27.35 の順序で 1 件だけ選ぶ。
+7. §27.30 approval timeout を更新する。
+8. watch mode、branch target、target files、tag filter、dependency manifest から build 対象を決定する。
+9. build id、trigger、environment、start time を確定する。
+10. pre hook、remote build または local builder、pipeline、dependency manifest、cache、deploy、post hook を個別節の順序で実行する。
+11. failure category、duration、trend、duration anomaly、status、history、notification を保存する。
+12. `.build_lock` を削除し、`.build_status.json.running=false` を finalizer として保存する。
 
-手順 8 以降で異常終了した場合でも、可能な限り `.build_status.json.running=false` を保存する。finalizer 保存に失敗した場合は ERROR ログを出し、終了コードを最低 `1` にする。
+手順 9 以降で異常終了した場合でも、可能な限り `.build_status.json.running=false` を保存する。finalizer 保存に失敗した場合は ERROR ログを出し、終了コードを最低 `1` にする。
 
 **機能別の不変条件：**
 
