@@ -4451,7 +4451,7 @@ API が新規 ID を生成する機能は、下表の形式に従う。既存 ID
 |------|------|----|--------|
 | build id | `b{YYYYMMDDHHmmss}` | `b20260915100500` | `b20260915100500-001` |
 | queue id | `q{YYYYMMDDHHmmss}` | `q20260915100500` | `q20260915100500-001` |
-| token id | `tok{YYYYMMDDHHmmss}` | `tok20260915100500` | `tok20260915100500-001` |
+| token id | `tok` + 6 桁連番 | `tok000001` | 既存最大番号 + 1。999999 超過時は `500` |
 | hook id | `h{YYYYMMDDHHmmss}` | `h20260915100500` | `h20260915100500-001` |
 | alert rule id | `r{YYYYMMDDHHmmss}` | `r20260915100500` | `r20260915100500-001` |
 | tag rule id | `t{YYYYMMDDHHmmss}` | `t20260915100500` | `t20260915100500-001` |
@@ -4475,6 +4475,80 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | stream response | `GET /api/build/stream` | 認証 → 最新 / 実行中 log 特定 → SSE header → frame 送信 | `log` frame 後、必ず `end` frame を送って close する。 | log 不在は `404`。送信中断時は状態ファイルを更新しない。 |
 
 `.config_log`、`.access_log`、`.notify_log` への追記は JSON Lines 1 行単位で行う。追記失敗時は対象 endpoint の副作用が既に完了している場合でも、失敗を `500` として返し、次回 GET で破損行を無視できる形式を維持する。追記行の末尾改行を書けなかった場合は、その行を破損行として扱う。
+
+### 22.0e.4 API レスポンス正規化契約
+
+API response は、§22.0e の Response 列、§22.0c の schema、§23 の SDK 型定義表に一致させる。実装者は endpoint ごとに以下の正規化を行う。
+
+| 対象 | 仕様 |
+|------|------|
+| object response | 必須 key をすべて含める。値が存在しない場合は、schema で nullable の key だけ `null` を使用する。 |
+| array response | 配列 key は未取得、対象なし、空状態のいずれでも `[]` を返す。`null`、key 省略は禁止する。 |
+| boolean | `true` / `false` だけを返す。`"true"`、`1`、`0` は使用しない。 |
+| integer | JSON number の整数として返す。文字列化しない。 |
+| float | JSON number とし、小数第 2 位までに丸める指定がある値だけ `math.Round(x*100)/100` 相当にする。 |
+| timestamp | UTC ISO 8601 `YYYY-MM-DDTHH:MM:SSZ`。空状態は nullable key なら `null`、非 nullable key なら endpoint 固有の既定値。 |
+| message | 成功 message は endpoint ごとの固定文言とし、入力値を連結しない。 |
+| unknown key | response に schema 外 key を追加しない。互換目的の旧 key 追加も禁止する。 |
+
+**ページング response：**
+
+| Endpoint | 入力 | 出力 | 算出 |
+|----------|------|------|------|
+| `GET /api/history` | `page`, `per_page` | `total`, `page`, `per_page`, `pages`, `history` | `pages = ceil(total / per_page)`。`total=0` の場合 `pages=0`。 |
+| `GET /api/webhook-events` | `limit`, `offset` | `events`, `total` | `total` は filter 後、limit/offset 前の件数。 |
+| `GET /api/api-access-log` | `limit`, `offset` | `log`, `total` | `total` は filter 後、limit/offset 前の件数。 |
+| `GET /api/audit-log` | `limit`, `offset` | `log`, `total` | `total` は filter 後、limit/offset 前の件数。 |
+
+`offset >= total` の場合は空配列を返し、`404` にしない。`page > pages` の場合は `history:[]` を返し、`page` は request 値を保持する。`page < 1`、`per_page < 1`、`limit < 1`、`offset < 0` は `422`。
+
+**部分更新 response：**
+
+| Endpoint | 成功 response | 補足 |
+|----------|---------------|------|
+| `POST /api/config` | `{message:"Config updated",config}` または `{message:"No changes",config}` | `config` は更新後に既定値 merge 済みの `ConfigObject`。 |
+| `POST /api/repo-config` | `{message:"Repo config updated"}` または `{message:"No changes"}` | 未指定 key は保持する。 |
+| `POST /api/branch-config` | `{message:"Branch config updated",branches_count}` | 空配列で default 復帰した場合 `branches_count=0`。 |
+| `POST /api/notify-config` | `{message:"Notify config updated"}` | secret は返さない。 |
+| `POST /api/smtp-config` | `{message:"SMTP config updated"}` | password は返さない。 |
+| `POST /api/dashboard-layout` | `{message:"Dashboard layout updated"}` | 保存後 widgets は再取得で確認する。 |
+
+**削除 / 失効 response：**
+
+| Endpoint | 成功 response | 不在時 |
+|----------|---------------|--------|
+| `DELETE /api/snapshots/{id}` | `{message:"Snapshot deleted"}` | `404` |
+| `DELETE /api/hooks/{id}` | `{message:"Hook deleted"}` | `404` |
+| `DELETE /api/alert-rules/{id}` | `{message:"Alert rule deleted"}` | `404` |
+| `DELETE /api/tag-rules/{id}` | `{message:"Tag rule deleted"}` | `404` |
+| `DELETE /api/tokens/{id}` | `{message:"Token revoked"}` | `404` |
+| `DELETE /api/queue` | `{message:"Queue cleared",cleared_count}` | queue 空でも `200`、`cleared_count=0` |
+
+**SSE frame 契約：**
+
+`GET /api/build/stream` は `text/event-stream; charset=utf-8` を返し、各 frame は以下の JSON を `data:` 行に 1 件ずつ出力する。
+
+```json
+{"type":"log","line":"[INFO] build started","at":"2026-09-16T10:00:00Z"}
+{"type":"end","status":"success","duration_seconds":12}
+```
+
+`type` は `"log"` または `"end"` だけとする。`log.line` は最大 4000 文字とし、超過分は末尾を切り捨てる。`end` frame は接続終了前に 1 回だけ送る。送信中に client が切断した場合、状態ファイル、history、log を変更しない。
+
+**バイナリ response 契約：**
+
+`GET /api/snapshots/{id}/download` は JSON error 以外では binary response とし、成功時に JSON body を返さない。`Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="{id}.tar.gz"` を付与する。`id` に `"`、`\`、改行を含む値は path 検証で `422` とする。
+
+**レスポンス検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| schema 必須 key | 全 endpoint が必須 key を返す。 |
+| 空配列 | 配列 key は `[]`、`null` や key 省略なし。 |
+| 変更なし config | `No changes`、不要な `.config_log` 追記なし。 |
+| delete queue 空 | `200`、`cleared_count=0`。 |
+| SSE 正常終了 | `end` frame が 1 回だけ送信される。 |
+| snapshot download | binary body、固定 header、JSON success body なし。 |
 
 ### 22.0f 実装優先度
 
@@ -5987,6 +6061,32 @@ export { AdlaireCI, AdlaireCIError };
 | 戻り値補完禁止 | API response にない値を SDK が推測して追加しない。表示用加工は UI 側で行う。 |
 | retry | SDK は自動 retry を行わない。ユーザー操作による再実行、または UI の明示的な再取得のみを許可する。 |
 
+**SDK メソッド実装固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| public method 定義順 | class 内の public method は §23 の一覧順に定義する。追加 public method を末尾に置くことは禁止し、先に §22.0e と本一覧を更新する。 |
+| private helper | private helper は `_request`, `_json`, `_query`, `_requireToken`, `_validateId`, `_clearTokenOn401` の範囲で定義してよい。helper を export しない。 |
+| TypeError 文言 | SDK 側引数検証の `TypeError.message` は `"Invalid argument: <name>"` に固定する。複数不正がある場合は最初に検出した引数だけを返す。 |
+| path parameter | `id` を path に入れる method は、SDK 側で `encodeURIComponent(id)` を必ず行う。`/`、`.`、`..`、空文字は送信前に `TypeError`。 |
+| query parameter | query key は §23 SDK 引数変換契約の表記順で生成する。任意 query が未指定の場合、`?` 自体を付けない。 |
+| body parameter | body object の key 順は §23 SDK 引数変換契約の送信値順とする。未知 key を SDK が追加しない。 |
+| token mutation | `login()` と `loginTotp()` は response に `token` が存在する場合だけ `this._token` を更新する。`totp_required:true` かつ token なしの場合は既存 token を保持せず `null` にする。 |
+| logout failure | `logout()` は network error、`401`、`500` のいずれでも `finally` で `this._token=null` にする。 |
+| response passthrough | 成功 response は clone、整形、既定値 merge を行わず、そのまま返す。Blob と StreamHandle は例外とする。 |
+| error details | API error response の `details` が配列なら `AdlaireCIError.details` に同じ配列を保持する。配列でなければ `null`。 |
+| responseBody | JSON parse できた error body は object のまま、parse 不能 error body は先頭 4000 文字の string として `responseBody` に保持する。 |
+
+**SDK 検証 fixture：**
+
+| fixture | 入力 | 合格条件 |
+|---------|------|----------|
+| auth token flow | `login()`、`loginTotp()`、`logout()`、`401` response | token set / clear が仕様どおり。localStorage、sessionStorage、Cookie を使わない。 |
+| request shape | 全 public method を fake fetch で呼ぶ | method、path、query、body、headers が §22.0e と §23 引数変換契約に一致する。 |
+| error shape | `400`、`401`、`403`、`422 details`、`500`、network error、timeout | `AdlaireCIError` の `status`、`message`、`details`、`responseBody` が固定値になる。 |
+| stream | log frame、end frame、invalid frame、client close | callback、closed、error が仕様どおり。EventSource を使用しない。 |
+| binary | `downloadSnapshot(id)` | `Blob` を返し、JSON parse を試みない。 |
+
 **SDK 引数変換契約：**
 
 SDK method は、下表の通りに引数を path、query、body へ変換する。下表にない引数、既定値、body key を追加してはならない。
@@ -6338,6 +6438,57 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | secret clearing | §24 の秘密情報 field が、成功、失敗、画面遷移、`401`、logout、revoke all の全経路で空になる。 |
 | empty state | UI パネル初期取得契約の空状態表示が、各 panel 内に 1 行で表示される。 |
 | global error | 初期化失敗、SDK constructor 失敗、想定外 `TypeError` は `global-error` に固定文言 `Client error` または `UI initialization failed` を表示する。 |
+
+**UI 状態遷移固定契約：**
+
+| 状態 | 表示 / 処理 |
+|------|-------------|
+| 未ログイン | `panel-login` だけを表示し、nav item は disabled。API token、session token、TOTP ticket を永続化しない。 |
+| password 成功 / TOTP 必須 | login password field を消去し、同じ login panel 内で TOTP field を表示する。`ticket` はメモリだけに保持する。 |
+| login 完了 | `panel-status` を表示し、ログイン成功後の初期取得順を実行する。 |
+| must_change prompt | パスワード変更 panel を表示するが、他 panel 操作を許可する。 |
+| must_change forced | パスワード変更 panel 以外を hidden または disabled にする。 |
+| maintenance enabled | `maintenance-banner` を表示し、build、force build、rollback、hook 追加、設定変更系操作を disabled にする。 |
+| session expired | token と ticket を破棄し、秘密情報 field を消去し、`panel-login` に戻す。 |
+| fatal UI init error | API 呼び出しを行わず、`global-error` に `UI initialization failed` を表示する。 |
+
+**UI 成功後再取得失敗契約：**
+
+成功後再取得列に複数 SDK method がある操作では、成功 message を先に表示せず、再取得がすべて成功した後に成功 message を表示する。途中の再取得が失敗した場合は、対象操作自体は成功済みとして扱い、`global-success` に操作成功の固定文言、該当 panel error に再取得失敗を表示する。再取得失敗を理由に同じ変更 API を自動再実行してはならない。
+
+**UI DOM 更新契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 一覧描画 | API response 配列の順序を保持する。UI 独自 sort は行わない。 |
+| 件数表示 | `total` がある API は `total` を表示する。配列長を total の代替にしない。 |
+| 日時表示 | 表示テキストはローカル時刻でよいが、`datetime` または `title` に元の UTC ISO 8601 を保持する。 |
+| disabled | 送信中 disabled は操作単位で行う。同一 panel の無関係 button は disabled にしない。ただし maintenance、forced password change、SSE 接続中は仕様上の対象をまとめて disabled にする。 |
+| error 領域 | panel ごとに 1 つの error 領域を使う。field error は該当 field に紐付け、panel error にも summary を 1 行表示する。 |
+| success 領域 | 変更系操作成功時だけ更新する。GET 再読み込みだけでは success を表示しない。 |
+| secret one-time 表示 | issued token と TOTP secret は専用領域に 1 回だけ表示し、任意の次 user action、panel 遷移、logout、`401` で消去する。 |
+
+**破壊的操作確認文言：**
+
+| 操作 | 確認文 |
+|------|--------|
+| snapshot 削除 | `Delete snapshot {id}?` |
+| token 失効 | `Revoke token {id}?` |
+| queue clear | `Clear {count} queued builds?` |
+| session revoke all | `Revoke all other sessions?` |
+| rollback | `Rollback from build {id}?` |
+
+確認 dialog で cancel した場合は SDK method を呼ばず、success / error 表示を変更しない。
+
+**UI fixture 固定：**
+
+| fixture | 入力 | 合格条件 |
+|---------|------|----------|
+| login totp | `login()` が `totp_required:true` を返す | password 消去、TOTP field 表示、ticket は DOM に表示しない。 |
+| forced password | `must_change:"forced"` | password panel 以外が操作不可。変更成功後に通常初期取得を行う。 |
+| refresh failure | 変更 API 成功後の再取得 2 件目が失敗 | 変更成功は維持し、再取得失敗だけ panel error に表示する。 |
+| destructive cancel | 確認 dialog cancel | SDK method 呼び出し 0 回、表示差分なし。 |
+| secret clearing | token 発行、TOTP setup、PAT 更新、Webhook secret 保存 | 次 user action または遷移で秘密情報 field と一回表示が消える。 |
 
 **UI 設定値契約：**
 
@@ -7133,7 +7284,7 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 
 ### 27.8 ビルドステータスファイル出力
 
-本機能の目的は、runner の現在状態と直近結果を `.build_status.json` に集約し、API、SDK、UI、将来 MCP が同じ read-only 情報を参照できるようにすることである。
+本機能の目的は、runner の現在状態と直近結果を `.build_status.json` に集約し、API、SDK、UI が同じ read-only 情報を参照できるようにすることである。
 
 対象コンポーネントは `components/runner.go` と `components/api.go` とする。`components/runner.go` は `.build_status.json` の唯一の通常更新責務を持つ。`components/api.go` は `GET /api/status`、`GET /api/dashboard`、`GET /api/health` で read-only 参照する。API は `.build_status.json` を自動修復してはならない。
 
