@@ -114,8 +114,10 @@ type siteFile struct {
 }
 
 func main() {
-	code := run(os.Args[1:], os.Stdout, os.Stderr)
-	os.Exit(code)
+	if strings.Contains(filepath.Base(os.Args[0]), "adlaire-ci-runner") {
+		os.Exit(runRunner(os.Args[1:], os.Stdout, os.Stderr))
+	}
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
