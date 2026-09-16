@@ -607,8 +607,8 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ローカルファイル監視モード | GitHub API を使わず、ローカル状態 snapshot の SHA-256 差分で対象 Markdown の変更を検出する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§12、§13、§27.23 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | タグ付きコミットのみビルド | 監視対象 commit に許可 tag pattern が付いている場合だけ build を実行する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§12、§13、§15、§22.0e、§27.24 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドキャッシュ | 入力ファイル単位の SHA-256 manifest を `.build_cache.json` に保存し、未変更ページの変換結果を再利用する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§5、§8、§11、§13、§27.25 に従って実装する。 |
-| 将来計画 | 実装不可 | CI ランナー | ビルド通知連携 | `components/runner.go` が Webhook 以外の通知チャンネル（Slack / Discord / メール等）へ直接送信するフック機構。通知先の管理 UI・API 側の実装は → 通知先の拡張 | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | CI ランナー | ビルド時間トレンド記録 | 過去のビルド所要時間を蓄積し、パフォーマンス回帰の検知に使用する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド通知連携 | `components/runner.go` が `.notify_config.channels` に基づき Webhook / email / command 通知を同一通知イベント契約で送信する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§15、§16、§22.0e、§27.32 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド時間トレンド記録 | build ごとの所要時間を `.build_trends.json` に集計保存し、移動平均、中央値、p95、直近件数を API / UI から参照できるようにする。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§15、§22.0e、§27.33 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド失敗時の自動リトライ | 一時的な GitHub API / network / pipeline timeout / deploy 検証失敗を対象に、設定回数まで同一 build id 内で再試行し、attempt ごとの結果を build log と history に記録する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§12、§13、§15、§22.0c、§27.3 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | 並列マルチターゲットビルド | branch target 内の複数 deploy target を bounded worker で並列処理し、target ごとの結果を build log に記録する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§12、§13、§14a、§15、§27.26 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド前後フック | `.hooks` の pre / post hook を shell 経由なしで実行し、abort 条件と hook log を固定仕様どおり扱う。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§15、§22.0e、§27.27 に従って実装する。 |
@@ -617,12 +617,12 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドステータスファイル出力 | runner の現在状態、最終ビルド、最終 deploy、pending 件数、circuit 状態、最終 trigger を `.build_status.json` に JSON object として出力し、API / UI / MCP の read-only 参照元にする。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§13、§15、§22.0a、§22.0c、§22.0e、§27.8 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド承認フロー | approval_required な target を `.approval_queue` に保留し、API 承認後だけ build / deploy を継続する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§13、§15、§16、§22.0e、§27.30 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ別環境変数 | branch target ごとに許可済み環境変数を build process へ注入し、secret を log に出さない。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§12、§13、§15、§22.0e、§27.31 に従って実装する。 |
-| 将来計画 | 実装不可 | CI ランナー | ビルド依存チェーン | 複数ビルドジョブ間の依存関係を定義し、実行順序を制御する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | CI ランナー | ビルド優先度キュー | 緊急度に応じてビルドの優先順位を設定できるキューを実装する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | CI ランナー | 失敗原因の自動分類 | エラーログを解析し「API 障害」「タイムアウト」「構文エラー」等にカテゴリ分けして記録する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | CI ランナー | ビルド実行環境の記録 | Go バイナリバージョン・OS・ディスク使用量等のビルド時環境情報をログに残す | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド依存チェーン | `.build_chain_config` で job 間依存を定義し、依存成功後だけ後続 job を実行する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§13、§15、§22.0e、§27.34 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド優先度キュー | `.build_state.queued` に priority / created_seq を保存し、優先度順かつ同一優先度 FIFO で build queue を処理する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§13、§22.0e、§27.35 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 失敗原因の自動分類 | stdout / stderr / exit code / runner error を固定分類ルールで解析し、failure_category と evidence を build log / history に記録する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§15、§22.0e、§27.36 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド実行環境の記録 | build 開始時の OS、arch、Go version、binary version、disk usage、hostname を `.build_logs/{id}.json.environment` に記録する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§15、§27.37 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドトリガー種別の記録 | `polling`、`force_interval`、`manual`、`webhook`、`retry_pending_transfer`、`startup_config_integrity`、`rollback`、`local_watch`、`approval` を `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に記録し、履歴 filter と状態表示で同じ値を使う。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§15、§22.0c、§22.0e、§23、§24、§27.9、§27.23、§27.30 に従って実装する。 |
-| 将来計画 | 実装不可 | CI ランナー | ビルド所要時間の異常検知 | 過去 N 件の平均ビルド時間を自動算出し、閾値（平均 × N 倍）を超過したビルドを WARN ログ＋Webhook 通知する。手動設定閾値アラート（→ アラート閾値設定）とは独立して、ビルド履歴から動的に基準を導出する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の異常検知 | `.build_trends.json` の移動平均と p95 を基準に異常に遅い build を検出し、WARN、history flag、通知へ反映する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§13、§15、§16、§22.0e、§27.38 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | 設定ファイル起動時整合性チェック | runner 起動時に `.branch_config`、`.notify_config`、`.build_state`、`.pending_transfers`、`.notify_pending`、`.build_circuit_state` の JSON 整合性を検証し、破損・型不一致・必須 key 不足を規定どおり退避、初期化、通知、または停止する。 | `ADLAIRE_CI_DETAIL_SPEC.md` §0i、§11、§12、§13、§22.0a、§22.0c、§27.10 に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | マルチユーザー対応 | 初期仕様のシングルユーザー（admin）を複数ユーザー・ロール管理に拡張する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 通知先の拡張 | 管理画面・API からメール・Slack・Discord 等の通知チャンネルを設定・追加できるようにする。`components/runner.go` 側のフック実装は → ビルド通知連携 | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -1041,7 +1041,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 ## 10. データ永続化ポリシー
 
-- **初期方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.build_history`・`.build_status.json`・`.notify_config`・`.notify_log`・`.notify_pending`・`.server_config`・`.access_log`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.pending_transfers`・`.build_lock`・`.build_state`・`.build_circuit_state`・`.branch_config`・`.webhook_events.json`・`.local_watch_state.json`・`.build_cache.json`・`.build_cache/`・`.dependency_manifest.json`・`.approval_queue`・`.build_logs/`・`.snapshots/`・ビルドログ等）
+- **初期方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.build_history`・`.build_status.json`・`.notify_config`・`.notify_log`・`.notify_pending`・`.server_config`・`.access_log`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.pending_transfers`・`.build_lock`・`.build_state`・`.build_circuit_state`・`.branch_config`・`.webhook_events.json`・`.local_watch_state.json`・`.build_cache.json`・`.build_cache/`・`.dependency_manifest.json`・`.approval_queue`・`.build_trends.json`・`.build_chain_config`・`.build_logs/`・`.snapshots/`・ビルドログ等）
 - RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、初期仕様ではいかなるデータベースも採用しない
 - 将来的にデータベースを採用する場合は、本ドキュメントへの仕様追記と §4 許可外部ライブラリ一覧の更新を先行させる
 - **データ形式：フラットファイル JSON 形式**を標準とする

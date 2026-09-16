@@ -588,6 +588,13 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | リモートビルド対応 | `components/runner.go` / `components/api.go` | §12、§13、§14a、§15、§27.29 | remote command、archive 取得、manifest 検証、状態記録、失敗時 rollback 不実行が一致する。 |
 | ビルド承認フロー | `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §11、§13、§15、§16、§22.0e、§27.30 | `.approval_queue`、承認/却下 API、通知、timeout、UI 操作、履歴 status が一致する。 |
 | ブランチ別環境変数 | `components/runner.go` / `components/api.go` | §12、§13、§15、§22.0e、§27.31 | branch env schema、許可 key、secret mask、process env 注入、API 保存が一致する。 |
+| ビルド通知連携 | `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §13、§15、§16、§22.0e、§27.32 | 通知 event、channel schema、送信順、retry、mask、notify log、API / UI 表示が一致する。 |
+| ビルド時間トレンド記録 | `components/runner.go` / `components/api.go` | §13、§15、§22.0e、§27.33 | `.build_trends.json`、移動平均、中央値、p95、API response、破損時復旧が一致する。 |
+| ビルド依存チェーン | `components/runner.go` / `components/api.go` | §11、§13、§15、§22.0e、§27.34 | `.build_chain_config`、依存 DAG 検証、実行順、skip / failure status、chain log が一致する。 |
+| ビルド優先度キュー | `components/runner.go` / `components/api.go` | §11、§13、§22.0e、§27.35 | queue priority、created_seq、同一優先度 FIFO、API 表示、cancel / clear が一致する。 |
+| 失敗原因の自動分類 | `components/runner.go` / `components/api.go` | §13、§15、§22.0e、§27.36 | failure_category、evidence、分類優先順位、history / log / UI 表示が一致する。 |
+| ビルド実行環境の記録 | `components/runner.go` | §13、§15、§27.37 | build 開始時の environment snapshot、secret 非含有、log schema、検証 fixture が一致する。 |
+| ビルド所要時間の異常検知 | `components/runner.go` / `components/api.go` | §13、§15、§16、§22.0e、§27.38 | trend 基準、異常判定、WARN、history flag、通知 payload、設定値が一致する。 |
 
 ---
 
@@ -2196,6 +2203,8 @@ adlaire-ci-build --src testdata/builder/site/docs --out /tmp/adlaire-ci-fixture-
 | `/opt/adlaire-builder/.build_cache/` | ビルドキャッシュの page fragment 保存先。 |
 | `/opt/adlaire-builder/.dependency_manifest.json` | Markdown 入力と依存ファイルの対応 manifest。 |
 | `/opt/adlaire-builder/.approval_queue` | ビルド承認フローの保留 queue。 |
+| `/opt/adlaire-builder/.build_trends.json` | build 所要時間 trend と異常検知基準。 |
+| `/opt/adlaire-builder/.build_chain_config` | build job 依存チェーン設定。 |
 | `/opt/adlaire-builder/.build_logs/` | ビルドごとの個別ログ。 |
 | `/opt/adlaire-builder/.snapshots/` | ビルド成果物スナップショット。 |
 
@@ -2223,6 +2232,8 @@ adlaire-ci-build --src testdata/builder/site/docs --out /tmp/adlaire-ci-fixture-
 ├── .dashboard_layout    # ダッシュボードウィジェットレイアウト（JSON）
 ├── .webhook_events.json # Webhook 受信イベントログ（JSON Lines 形式、1行1イベント）
 ├── .approval_queue      # ビルド承認フロー保留 queue（JSON Lines）
+├── .build_trends.json   # ビルド時間 trend（JSON）
+├── .build_chain_config  # ビルド依存チェーン設定（JSON）
 └── admin/
     ├── index.html           # 管理画面（単一ファイル完結）
     └── adlaire-ci-sdk.js    # JavaScript SDK（管理画面に同梱）
@@ -2590,7 +2601,7 @@ corrupt backup のファイル名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` �
 | corrupt backup 成功 | ERROR | `CONFIG_CORRUPT_BACKUP: path={path} backup={backup_path} reason={reason}` |
 | 正規化書き戻し | WARN | `CONFIG_NORMALIZED: path={path}` |
 
-復旧通知は `.notify_config` の復旧と検証が完了した後に 1 回だけ送信する。送信条件は、復旧対象に `.notify_config` と `.notify_pending` 以外のファイルが 1 件以上含まれ、かつ `.notify_config.webhooks[]` のうち `enabled=true` で `on` に `"config_corrupt"` または `"*"` を含む宛先が存在する場合とする。payload は以下の JSON object に固定する。
+復旧通知は `.notify_config` の復旧と検証が完了した後に 1 回だけ送信する。送信条件は、復旧対象に `.notify_config` と `.notify_pending` 以外のファイルが 1 件以上含まれ、かつ `.notify_config.channels[]` または互換 `.notify_config.webhooks[]` のうち `enabled=true` で `on` に `"config_corrupt"` または `"*"` を含む宛先が存在する場合とする。payload は以下の JSON object に固定する。
 
 ```json
 {
@@ -2613,7 +2624,7 @@ corrupt backup のファイル名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` �
 schema 検証では次を必須とする。
 
 - `.branch_config` は `branch_targets` のみを永続 key とし、`branches` だけを持つファイルは `required_key_missing` として扱う。API request / response の alias は永続ファイルへ保存する前に `branch_targets` へ変換する。
-- `.notify_config.webhooks[].on` は `start`、`success`、`failure`、`deploy_failure`、`weekly_summary`、`config_corrupt`、`*` のみ許可する。
+- `.notify_config.channels[].on` と `.notify_config.webhooks[].on` は `start`、`success`、`failure`、`deploy_failure`、`weekly_summary`、`approval_required`、`duration_anomaly`、`config_corrupt`、`*` のみ許可する。
 - `.build_state` は `weekly_summary_sent_date` を必須 key とする。値は `null` または `YYYY-MM-DD` とする。
 - `.pending_transfers[]` は §14a の pending entry schema と一致すること。1 件でも不正 entry がある場合はファイル全体を corrupt として扱う。
 - `.notify_pending[]` は `event`、`url`、`payload`、`queued_at`、`retry_count`、`last_error` を必須 key とする。`payload` は JSON object、`retry_count` は 0 以上の integer とする。
@@ -3643,7 +3654,7 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 |------|------|--------|----------|--------------|
 | `.admin_credentials` | JSON object | `--init-credentials` で生成 | `components/api.go` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
 | `.server_config` | JSON object | `{}` | `components/api.go` | `.server_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 object で再生成する。 |
-| `.notify_config` | JSON object | `{"webhooks":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `components/runner.go` / `components/api.go` | `.notify_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.notify_config` | JSON object | `{"webhooks":[],"channels":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `components/runner.go` / `components/api.go` | `.notify_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.notify_log` | JSON Lines | 空ファイル | `components/runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
 | `.notify_pending` | JSON array | `[]` | `components/runner.go` | `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
 | `.pending_transfers` | JSON array | `[]` | `components/runner.go` | `.pending_transfers.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
@@ -3659,6 +3670,8 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | `.build_cache/pages/` | directory | 空ディレクトリ | `components/builder.go` | entry 不一致または読み取り不能 file は miss とし、他 entry は継続使用する。 |
 | `.dependency_manifest.json` | JSON object | `{"pages":{}}` | `components/builder.go` / `components/runner.go` | 破損時は full build とし、成功後に再生成する。 |
 | `.approval_queue` | JSON Lines | 空ファイル | `components/runner.go` / `components/api.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.build_trends.json` | JSON object | `{"schema_version":1,"samples":[],"summary":{"count":0,"avg_seconds":null,"median_seconds":null,"p95_seconds":null}}` | `components/runner.go` / `components/api.go` | `.build_trends.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`.build_history` から再集計する。 |
+| `.build_chain_config` | JSON object | `{"chains":[]}` | `components/runner.go` / `components/api.go` | `.build_chain_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、chain 無効として通常 build のみ継続する。 |
 | `.repo_config` | JSON object | `{}` | `components/api.go` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
 | `.config_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.access_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
@@ -3739,6 +3752,8 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | `commit_status_context` | string | `"Adlaire CI"` | 1〜100 文字 | `GET/POST /api/config` | GitHub commit status の `context`。 |
 | `commit_status_target_url` | string/null | `null` | `http://` または `https://` の URL、または `null` | `GET/POST /api/config` | Commit Status の `target_url`。`null` の場合は送信 payload から省略する。 |
 | `log_archive_after_days` | integer | `0` | 0〜3650 | `GET/POST /api/config`, `POST /api/logs/archive` | `0` は archive 無効。指定日数より古い通常 build log を gzip 圧縮する。 |
+| `build_trend_keep_count` | integer | `1000` | 10〜10000 | `GET/POST /api/config` | `.build_trends.json` に保持する trend sample 件数。 |
+| `duration_anomaly` | object | `{"enabled":false,"min_samples":20,"avg_multiplier":2.0,"p95_multiplier":1.5}` | §27.38 | `GET/POST /api/config` | build 所要時間異常検知の設定。 |
 | `force_build_interval_hours` | integer | `0` | 0〜8760 | `POST /api/schedule/force-interval`, `GET /api/schedule` | `0` は強制再ビルド無効。 |
 | `build_cooldown_seconds` | integer | `0` | 0〜86400 | `POST /api/schedule/cooldown`, `GET /api/schedule` | `0` はクールダウン無効。 |
 | `schedule_interval_seconds` | integer | `300` | 30〜86400 | `POST /api/schedule/interval`, `GET /api/schedule` | systemd timer 更新値。 |
@@ -3751,10 +3766,24 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 
 | キー | 型 | 既定値 | 許容値 | 説明 |
 |------|----|--------|--------|------|
-| `webhooks` | object[] | `[]` | 下記 Webhook object | 通知先一覧。 |
-| `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"deploy_failure"`, `"weekly_summary"`, `"config_corrupt"` | 通知イベント。重複は除去する。 |
+| `webhooks` | object[] | `[]` | 下記 Webhook object | 互換通知先一覧。`channels` が空の場合、runner は `webhooks` を webhook channel として扱う。 |
+| `channels` | object[] | `[]` | 下記 Channel object | 統一通知 channel 一覧。`channels` が存在する場合、runner は `channels` を優先し、`webhooks` / `email` は互換表示用として扱う。 |
+| `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"deploy_failure"`, `"weekly_summary"`, `"approval_required"`, `"duration_anomaly"`, `"config_corrupt"` | 通知イベント。重複は除去する。 |
 | `summary` | object | 下記 Summary object | 下記 | 定期サマリー設定。 |
 | `email` | object | 下記 Email object | 下記 | メール通知設定。SMTP 詳細は `.smtp_config` / `.smtp_secret` を正とする。 |
+
+Channel object:
+
+| キー | 型 | 既定値 | 許容値 | 説明 |
+|------|----|--------|--------|------|
+| `id` | string | 自動採番 | `n` + 数字、または 1〜64 文字の英数字 `_` `-` | channel 識別子。 |
+| `type` | string | 必須 | `"webhook"` / `"email"` / `"command"` | 送信方式。 |
+| `label` | string | `""` | 0〜64 文字 | 管理画面表示名。 |
+| `enabled` | boolean | `true` | boolean | `false` の channel へは送信しない。 |
+| `on` | string[] | `[]` | top-level `on` と同じ、または `"*"` | 空配列の場合は top-level `on` に従う。 |
+| `config` | object | `{}` | type 別 schema | webhook url、email to、command_args 等。 |
+| `retry_count` | integer | `2` | 0〜10 | retry 対象失敗時の追加試行回数。 |
+| `retry_interval_seconds` | integer | `30` | 1〜3600 | 再試行間隔。 |
 
 Webhook object:
 
@@ -3763,7 +3792,7 @@ Webhook object:
 | `url` | string | 必須 | URL 検証に従う | 送信先 URL。 |
 | `label` | string | `""` | 0〜64 文字 | 管理画面表示名。 |
 | `enabled` | boolean | `true` | boolean | `false` の宛先へは送信しない。 |
-| `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"deploy_failure"`, `"weekly_summary"`, `"config_corrupt"`, `"*"` | この宛先が受け取るイベント。空配列の場合は top-level `on` に従う。 |
+| `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"deploy_failure"`, `"weekly_summary"`, `"approval_required"`, `"duration_anomaly"`, `"config_corrupt"`, `"*"` | この宛先が受け取るイベント。空配列の場合は top-level `on` に従う。 |
 | `payload_template` | string/null | `null` | 0〜10000 文字または `null` | `null` は標準 payload。 |
 | `retry_count` | integer | `2` | 0〜10 | 送信失敗時の追加試行回数。 |
 | `retry_interval_seconds` | integer | `30` | 1〜3600 | 再試行間隔。 |
@@ -3784,7 +3813,7 @@ Email object:
 |------|----|--------|--------|
 | `enabled` | boolean | `false` | boolean |
 | `to` | string[] | `[]` | メールアドレス配列、最大 50 件 |
-| `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"` |
+| `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"duration_anomaly"` |
 
 **`.branch_config` schema：**
 
@@ -4425,6 +4454,7 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | `GET` | `/api/stats?days=7` | 要 | ビルド統計（成功率・回数・平均間隔）を返す |
 | `GET` | `/api/stats/timeline?days=30` | 要 | 日別ビルド成功/失敗件数の時系列配列を返す |
 | `GET` | `/api/stats/build-duration?n=20` | 要 | 過去 N 件のビルド所要時間統計（平均・最小・最大・直近リスト）を返す |
+| `GET` | `/api/stats/build-trends?n=100` | 要 | `.build_trends.json` から所要時間 trend、中央値、p95、異常件数を返す |
 | `GET` | `/api/output-meta` | 要 | 出力サイトのサイズ・見出し数・生成日時・前回比サイズ差分を返す |
 | `GET` | `/api/repo-info` | 要 | リポジトリ設定（OWNER/REPO/BRANCH/TARGET_FILE）を返す |
 | `POST` | `/api/repo-config` | 要 | リポジトリ監視設定（OWNER / REPO / BRANCH / TARGET_FILE）を更新する |
@@ -4462,6 +4492,8 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | `POST` | `/api/verify-output` | 要 | 現在の出力サイト checksum を検証する |
 | `GET` | `/api/pipeline-config` | 要 | ビルドパイプライン設定を返す |
 | `POST` | `/api/pipeline-config` | 要 | ビルドパイプライン設定を置換する |
+| `GET` | `/api/build-chain-config` | 要 | ビルド依存チェーン設定を返す |
+| `POST` | `/api/build-chain-config` | 要 | ビルド依存チェーン設定を置換する |
 | `GET` | `/api/notes` | 要 | 運用ノートを返す |
 | `POST` | `/api/notes` | 要 | 運用ノートを保存する |
 | `GET` | `/api/smtp-config` | 要 | SMTP 設定を返す |
@@ -4608,6 +4640,9 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
   "webhooks": [
     { "url": "https://hooks.example.com/...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": null }
   ],
+  "channels": [
+    { "id": "n001", "type": "webhook", "label": "メイン", "enabled": true, "on": ["failure"], "config": { "url": "https://hooks.example.com/..." }, "retry_count": 2, "retry_interval_seconds": 30 }
+  ],
   "on": ["failure"],
   "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 },
   "email": { "enabled": false, "to": [], "on": [] }
@@ -4616,7 +4651,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 `secret`：Webhook 署名シークレット。未設定時は `null`、設定済み時は `"***"`（マスク）を返す（→ 16E 参照）。
 
-`on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"weekly_summary"`（定期サマリー送信時）。複数指定可。
+`on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"deploy_failure"`（転送失敗時）| `"weekly_summary"`（定期サマリー送信時）| `"approval_required"`（承認待ち発生時）| `"duration_anomaly"`（所要時間異常時）| `"config_corrupt"`（設定破損復旧時）。複数指定可。
 
 `summary`：定期サマリー通知の設定。`enabled: true` のとき指定スケジュールで統計サマリーを Webhook 送信する。`interval` の有効値：`"daily"` | `"weekly"`。`hour` は 0〜23（UTC）。`day_of_week` は `"weekly"` 時のみ有効（0 = 日曜〜6 = 土曜）。
 
@@ -4641,12 +4676,12 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 **`GET /api/config` レスポンス例：**
 ```json
-{ "log_max_lines": 500, "history_max_count": 100, "build_timeout_seconds": 300, "log_retention_days": 30, "log_archive_after_days": 0, "log_level": "INFO", "pat_expires_at": null, "snapshots_keep": 5, "queue_max_size": 3, "build_retry_max": 0, "build_retry_base_seconds": 5, "commit_status_enabled": false, "commit_status_context": "Adlaire CI", "commit_status_target_url": null }
+{ "log_max_lines": 500, "history_max_count": 100, "build_timeout_seconds": 300, "log_retention_days": 30, "log_archive_after_days": 0, "log_level": "INFO", "pat_expires_at": null, "snapshots_keep": 5, "queue_max_size": 3, "build_retry_max": 0, "build_retry_base_seconds": 5, "commit_status_enabled": false, "commit_status_context": "Adlaire CI", "commit_status_target_url": null, "build_trend_keep_count": 1000, "duration_anomaly": { "enabled": false, "min_samples": 20, "avg_multiplier": 2.0, "p95_multiplier": 1.5 } }
 ```
 
 `pat_expires_at`：PAT の有効期限日（`YYYY-MM-DD` 形式）。`null` = 未設定。`GET /api/diagnostics` の `pat` 項目で 7 日以内なら `"warn"`、期限当日以前なら `"error"` に変更。
 
-`POST /api/config` で更新可能なキーは `log_max_lines`、`history_max_count`、`build_timeout_seconds`、`log_retention_days`、`log_archive_after_days`、`log_level`、`pat_expires_at`、`snapshots_keep`、`queue_max_size`、`build_retry_max`、`build_retry_base_seconds`、`commit_status_enabled`、`commit_status_context`、`commit_status_target_url` に限定する。未知キーを含む場合は `422` を返し、既存設定を変更しない。
+`POST /api/config` で更新可能なキーは `log_max_lines`、`history_max_count`、`build_timeout_seconds`、`log_retention_days`、`log_archive_after_days`、`log_level`、`pat_expires_at`、`snapshots_keep`、`queue_max_size`、`build_retry_max`、`build_retry_base_seconds`、`commit_status_enabled`、`commit_status_context`、`commit_status_target_url`、`build_trend_keep_count`、`duration_anomaly` に限定する。未知キーを含む場合は `422` を返し、既存設定を変更しない。
 
 **`GET /api/health` レスポンス例：**
 ```json
@@ -5565,6 +5600,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 ```json
 {
   "webhooks": [ { "url": "...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": "***" } ],
+  "channels": [ { "id": "n002", "type": "email", "label": "Ops", "enabled": true, "on": ["failure", "duration_anomaly"], "config": { "to": ["ops@example.com"] }, "retry_count": 2, "retry_interval_seconds": 30 } ],
   "on": ["failure"],
   "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 },
   "email": { "enabled": true, "to": ["ops@example.com"], "on": ["failure"] }
@@ -5737,6 +5773,7 @@ class AdlaireCI {
   getOutputMeta()              // GET /api/output-meta       → Promise<OutputMetaObject>
   getStatsTimeline(days = 30)  // GET /api/stats/timeline?days={days} → Promise<TimelineObject>
   getStatsBuildDuration(n = 10) // GET /api/stats/build-duration?n={n} → Promise<BuildDurationStats>
+  getBuildTrends(n = 100)       // GET /api/stats/build-trends?n={n} → Promise<BuildTrendStats>
   getDiagnostics()             // GET /api/diagnostics       → Promise<DiagnosticsObject>
   getRateLimit()               // GET /api/rate-limit        → Promise<RateLimitObject>
   getDiskUsage()               // GET /api/disk-usage        → Promise<DiskUsageObject>
@@ -5747,6 +5784,8 @@ class AdlaireCI {
   getWebhookEvents(limit = 50, offset = 0) // GET /api/webhook-events?limit={limit}&offset={offset} → Promise<{events: WebhookEventRecord[], total: number}>
   getWebhookConfig()          // GET /api/webhook-config    → Promise<{configured: boolean}>
   setWebhookConfig(secret)    // POST /api/webhook-config   → Promise<{message: string}>
+  getBuildChainConfig()       // GET /api/build-chain-config → Promise<BuildChainConfig>
+  setBuildChainConfig(chains) // POST /api/build-chain-config → Promise<{message: string, chains_count: number}>
   getApprovals()              // GET /api/approvals         → Promise<{approvals: ApprovalRecord[]}>
   approveBuild(id)            // POST /api/approvals/{id}/approve → Promise<{message: string, queued: boolean}>
   rejectBuild(id)             // POST /api/approvals/{id}/reject  → Promise<{message: string}>
@@ -5896,7 +5935,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | `CommentObject` | `id`, `comment`, `updated_at` | `comment`, `updated_at` | なし | `GET /api/history/{id}/comment` |
 | `ConfigObject` | `.server_config` schema の全キー | `pat_expires_at`, `allowed_hours` | なし | `GET /api/config` |
 | `ConfigValidationObject` | `valid`, `config`, `errors`, `warnings` | なし | `errors`, `warnings` | `POST /api/config/validate` |
-| `NotifyConfig` | `webhooks`, `on`, `summary`, `email` | `webhooks[].payload_template`, `webhooks[].secret` | `webhooks`, `on`, `email.to`, `email.on` | `GET /api/notify-config` |
+| `NotifyConfig` | `webhooks`, `channels`, `on`, `summary`, `email` | `webhooks[].payload_template`, `webhooks[].secret` | `webhooks`, `channels`, `on`, `email.to`, `email.on` | `GET /api/notify-config` |
 | `RepoInfoObject` | `owner`, `repo`, `branch`, `target_file` | なし | なし | `GET /api/repo-info` |
 | `BranchTargetRecord` | `branch`, `target_file`, `sha_file`, `src`, `out`, `deploy_targets` | なし | `deploy_targets` | `GET /api/branch-config` |
 | `SysinfoObject` | `output_size_bytes`, `output_mtime`, `uptime_seconds` | `output_mtime` | なし | `GET /api/sysinfo` |
@@ -5926,6 +5965,8 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | `AlertRule` | `id`, `metric`, `operator`, `threshold`, `level`, `message` | なし | なし | `GET/POST /api/alert-rules` |
 | `TagRule` | `id`, `condition`, `tags` | なし | `tags` | `GET/POST /api/tag-rules` |
 | `PipelineConfig` | `extra_args`, `env` | なし | `extra_args` | `GET /api/pipeline-config` |
+| `BuildChainConfig` | `chains` | なし | `chains` | `GET /api/build-chain-config` |
+| `BuildTrendStats` | `count`, `avg_seconds`, `median_seconds`, `p95_seconds`, `anomaly_count`, `samples` | `avg_seconds`, `median_seconds`, `p95_seconds` | `samples` | `GET /api/stats/build-trends` |
 | `SmtpConfig` | `host`, `port`, `user`, `tls`, `from`, `to`, `on`, `enabled`, `password_set` | `host`, `user`, `from` | `to`, `on` | `GET /api/smtp-config` |
 | `ApprovalRecord` | `id`, `status`, `branch`, `sha`, `target`, `created_at`, `expires_at` | なし | なし | `GET /api/approvals` |
 | `BackupObject` | `exported_at`, `server_config`, `notify_config` | なし | 設定内容に従う | `GET /api/backup` |
@@ -5958,8 +5999,8 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | ログビューア | `panel-logs` | `logs` | `form-log-search` | `n`, `q`, `from`, `to`, `level` | `btn-load-logs`, `btn-search-logs`, `btn-export-logs`, `btn-cleanup-logs`, `btn-archive-logs` |
 | ビルド履歴 | `panel-history` | `history` | `form-history-filter` | `page`, `per_page`, `trigger`, `tag`, `flagged` | `btn-export-history` |
 | システム情報 | `panel-system` | `system` | `form-pat` | `token`, `pat_expires_at` | `btn-pat-verify`, `btn-pat-update` |
-| 通知設定 | `panel-notify` | `notify` | `form-notify` | `webhooks`, `on`, `summary`, `email`, `secret`, `smtp_password` | `btn-save-notify`, `btn-notify-test`, `btn-weekly-summary`, `btn-save-webhook-secret`, `btn-save-smtp`, `btn-smtp-test` |
-| 設定 | `panel-config` | `config` | `form-config` | `log_max_lines`, `history_max_count`, `build_timeout_seconds`, `log_retention_days`, `log_archive_after_days`, `log_level`, `queue_max_size`, `snapshots_keep`, `build_retry_max`, `build_retry_base_seconds`, `commit_status_enabled`, `commit_status_context`, `commit_status_target_url` | `btn-save-config`, `btn-validate-config`, `btn-set-log-level` |
+| 通知設定 | `panel-notify` | `notify` | `form-notify` | `webhooks`, `channels`, `on`, `summary`, `email`, `secret`, `smtp_password` | `btn-save-notify`, `btn-notify-test`, `btn-weekly-summary`, `btn-save-webhook-secret`, `btn-save-smtp`, `btn-smtp-test` |
+| 設定 | `panel-config` | `config` | `form-config` | `log_max_lines`, `history_max_count`, `build_timeout_seconds`, `log_retention_days`, `log_archive_after_days`, `log_level`, `queue_max_size`, `snapshots_keep`, `build_retry_max`, `build_retry_base_seconds`, `commit_status_enabled`, `commit_status_context`, `commit_status_target_url`, `build_trend_keep_count`, `duration_anomaly_enabled`, `duration_anomaly_min_samples`, `duration_anomaly_avg_multiplier`, `duration_anomaly_p95_multiplier` | `btn-save-config`, `btn-validate-config`, `btn-set-log-level` |
 | アクセスログ | `panel-access-log` | `access-log` | `form-api-access-log-filter` | `limit`, `offset`, `method`, `path`, `status` | `btn-load-access-log`, `btn-load-api-access-log` |
 | 統計 | `panel-stats` | `stats` | なし | なし | `btn-load-stats` |
 | リポジトリ情報 | `panel-repo` | `repo` | `form-repo` | `owner`, `repo`, `branch`, `target_file`, `interval_seconds`, `allowed_from`, `allowed_to`, `maintenance_reason` | `btn-save-repo`, `btn-save-branch-config`, `btn-pause-schedule`, `btn-resume-schedule`, `btn-enable-maintenance`, `btn-disable-maintenance` |
@@ -5990,7 +6031,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | 通知設定     | Webhook 一覧（追加/削除/ラベル/有効無効切り替え/リトライ回数・間隔設定/シークレット入力欄）・通知条件設定（ビルド開始時・成功時・失敗時）・各 Webhook ペイロードテンプレート編集フォーム（変数一覧表示）・テスト送信ボタン・定期サマリー設定（間隔・時刻・曜日・即時送信ボタン）・送信履歴（試行回数・エラー内容列含む）・メール通知セクション（SMTP 設定フォーム・宛先リスト・通知条件・テスト送信ボタン） | ログイン済み |
 | 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・command_args 入力フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
 | アクセスログ | ログイン履歴（日時・成否）・API アクセスログ（method、path、status、duration、actor、remote_addr）・API アクセスログフィルター | ログイン済み |
-| 統計         | ビルド回数・成功率・平均間隔・平均・最大ビルド時間・日別時系列データ（グラフ表示対応） | ログイン済み |
+| 統計         | ビルド回数・成功率・平均間隔・平均・最大ビルド時間・中央値・p95・異常件数・日別時系列データ（グラフ表示対応） | ログイン済み |
 | リポジトリ情報 | 監視対象リポジトリ・ブランチ・ファイルの確認・設定変更フォーム（OWNER / REPO / BRANCH / TARGET_FILE）・ポーリング間隔変更フォーム・ポーリング一時停止／再開ボタン・許可時間帯設定（from〜to、解除ボタン）・メンテナンスモード有効化フォーム（理由入力）・解除ボタン・現在の状態表示 | ログイン済み |
 | セッション管理 | 有効セッション一覧・全セッション強制無効化ボタン | ログイン済み |
 | システム診断   | PAT・GitHub API・出力サイト・systemd・Webhook の診断項目一覧（ok / warn / error）・診断実行ボタン・アラートバッジ（`GET /api/dashboard` の `alerts` に基づき warn / error を表示）・出力整合性チェック項目（`POST /api/verify-output` 結果表示）・メンテナンスモード中はバナーを全パネル上部に表示 | ログイン済み |
@@ -7923,3 +7964,302 @@ SDK は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | system env と同名 | branch env が優先される。 |
 | secret stdout 出力 | log では `"***"` に置換。 |
 | 不正 key | 保存不可、状態差分なし。 |
+
+### 27.32 ビルド通知連携
+
+本機能の目的は、build lifecycle event を複数通知 channel へ同一契約で送信し、通知の成功、失敗、再試行、監査を固定仕様で扱えるようにすることである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` とする。runner は送信、API は設定・履歴表示、SDK/UI は設定操作と履歴表示を担当する。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定 | `.notify_config.channels[]` |
+| channel type | `"webhook"`、`"email"`、`"command"` |
+| event | `"start"`、`"success"`、`"failure"`、`"deploy_failure"`、`"weekly_summary"`、`"approval_required"`、`"duration_anomaly"`、`"config_corrupt"` |
+| log | `.notify_log` JSON Lines |
+| pending | `.notify_pending` JSON array |
+| secret | webhook secret、SMTP password、command env secret は GET response と log で必ず mask。 |
+
+`command` channel は `command_args` 配列だけを許可し、shell 文字列は禁止する。`command_args[0]` は絶対 path または PATH 解決可能なコマンド名とする。
+
+**正常系：**
+
+1. build event 発生時に `.notify_config` を読み込む。
+2. `enabled=true` かつ event が `on[]` に含まれる channel を抽出する。
+3. channel id 昇順で送信する。
+4. 各送信結果を `.notify_log` へ JSON Lines で追記する。
+5. retry 対象失敗は `.notify_pending` に追加する。
+6. build 自体の status は通知失敗で変更しない。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| `.notify_config` 破損 | 起動時整合性チェックに従い復旧し、通知送信は skip。 |
+| webhook HTTP 5xx / timeout | retry 対象として `.notify_pending` へ追加。 |
+| webhook HTTP 4xx | retry しない。`.notify_log` に failure。 |
+| SMTP 未設定 | email channel は `not_configured` として log、retry しない。 |
+| command timeout | process kill、retry 対象外、failure log。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| success event | 対象 channel へ送信、notify log 追記。 |
+| webhook 5xx | pending 追加。 |
+| secret 設定済み | GET / log / UI で値が `"***"`。 |
+| command channel | shell 展開されず argv 実行。 |
+
+### 27.33 ビルド時間トレンド記録
+
+本機能の目的は、build 所要時間の統計を蓄積し、性能傾向と回帰検知の基準を提供することである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 状態 | `.build_trends.json` |
+| API | `GET /api/stats/build-trends?n=N` |
+| sample | `{build_id, finished_at, branch, trigger, duration_seconds, status, anomaly}` |
+| 保持件数 | `.server_config.build_trend_keep_count`。既定値 1000、許容値 10〜10000。 |
+
+**正常系：**
+
+1. build 完了時、`duration_seconds != null` の場合だけ sample を追加する。
+2. `finished_at` 昇順で保存し、保持件数超過分は古い順に削除する。
+3. summary に `count`、`avg_seconds`、`median_seconds`、`p95_seconds`、`anomaly_count` を保存する。
+4. API は `n` の最新 sample と summary を返す。`n` は 1〜1000、既定値 100。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| `.build_trends.json` 破損 | backup 後に `.build_history` から再集計する。 |
+| 再集計不能 | 初期値で作成し、WARN を出す。 |
+| `n` 不正 | API は `422`。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| build success | sample 追加、summary 更新。 |
+| build failure | duration があれば sample 追加。 |
+| 保持件数超過 | 古い sample だけ削除。 |
+| API n=10 | 最新 10 件を返す。 |
+
+### 27.34 ビルド依存チェーン
+
+本機能の目的は、複数 build job の依存関係を DAG として定義し、依存 job 成功後だけ後続 job を実行することである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 状態 | `.build_chain_config` |
+| API | `GET /api/build-chain-config` / `POST /api/build-chain-config` |
+| schema | `{ "chains": ChainJob[] }` |
+| job key | `id`, `branch`, `target_file`, `depends_on`, `required`, `enabled` |
+| 上限 | job 100 件、依存 20 件 / job。 |
+
+`id` は `^[a-zA-Z0-9_-]{1,64}$` とする。`depends_on` は同一 config 内の job id のみ許可する。循環依存は禁止する。
+
+**正常系：**
+
+1. API 保存時に schema、参照整合、循環を検証する。
+2. runner は chain enabled job を topological order で実行する。
+3. 依存 job が失敗した場合、後続 required job は `skipped_dependency_failed` として history に記録する。
+4. `required=false` の依存失敗は WARN とし、後続 job を継続できる。
+5. `.build_logs/{id}.json.chain` に job id、depends_on、chain_index を保存する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| 循環依存 | API は `422`、runner は chain 無効化して通常 build。 |
+| 依存 job 不在 | `422`。 |
+| job 実行中に runner 停止 | 完了済み job だけ history に残し、未実行 job は次回再判定。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| A -> B | A 成功後 B 実行。 |
+| A 失敗 / B required | B は `skipped_dependency_failed`。 |
+| 循環 | 保存不可。 |
+| optional 依存失敗 | 後続 job 継続。 |
+
+### 27.35 ビルド優先度キュー
+
+本機能の目的は、manual、webhook、approval などの queue entry を優先度順に処理し、緊急 build を先に実行できるようにすることである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 状態 | `.build_state.queued[]` |
+| priority | `"low"`、`"normal"`、`"high"`、`"urgent"` |
+| 数値順 | urgent=0、high=10、normal=20、low=30 |
+| created_seq | queue 追加時に単調増加する整数。 |
+| 既定値 | priority `"normal"` |
+
+**正常系：**
+
+1. queue 追加時に priority と created_seq を保存する。
+2. runner は priority 数値昇順、同一 priority では created_seq 昇順で 1 件だけ処理する。
+3. `GET /api/queue` は並び替え後の queue を返す。
+4. `DELETE /api/queue` は waiting entry 全件を削除し、実行中 build は停止しない。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| priority 不正 | API は `422`。 |
+| created_seq 欠落の旧 entry | 読み込み時に末尾扱いで正規化し、次回保存時に補完する。 |
+| queue full | `429`。priority による上書き削除はしない。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| urgent 後投入 | normal より先に処理。 |
+| 同一 priority | FIFO。 |
+| 不正 priority | 状態差分なしで `422`。 |
+
+### 27.36 失敗原因の自動分類
+
+本機能の目的は、build failure を固定カテゴリへ分類し、調査開始点を build log、history、UI に残すことである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+
+**分類値：**
+
+| category | 判定条件 |
+|----------|----------|
+| `github_api` | GitHub API 最終失敗、rate limit 復帰不可、認証失敗。 |
+| `pipeline_timeout` | build step timeout。 |
+| `pipeline_exit` | build command exit code 非 0。 |
+| `deploy_failure` | SSH 転送、remote checksum、pending transfer 発生。 |
+| `hook_error` | pre hook abort または hook timeout。 |
+| `config_error` | 設定 parse、validation、必須値不足。 |
+| `resource_error` | disk 不足、binary 不在、権限エラー。 |
+| `unknown` | 上記に該当しない failure。 |
+
+**正常系：**
+
+1. failure 確定時に分類優先順位で category を決定する。
+2. `.build_logs/{id}.json.failure_category` と `failure_evidence[]` を保存する。
+3. `.build_history.failure_category` に同じ値を保存する。
+4. API / UI は category で filter できる。未知 query は `422`。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| 複数カテゴリ該当 | 表の上から最初に該当した category を採用する。 |
+| evidence 抽出不能 | category は保存し、evidence は空配列。 |
+| 既存 history に未知 category | API は返すが warnings に `unknown_failure_category`。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| timeout | `pipeline_timeout`。 |
+| SSH 失敗 | `deploy_failure`。 |
+| 設定不正 | `config_error`。 |
+| filter | category 指定で該当履歴だけ返る。 |
+
+### 27.37 ビルド実行環境の記録
+
+本機能の目的は、build 時点の実行環境を記録し、後から再現性と障害原因を確認できるようにすることである。
+
+対象コンポーネントは `components/runner.go` とする。
+
+**記録先：**
+
+`.build_logs/{id}.json.environment` に以下を保存する。
+
+| key | 型 | 説明 |
+|-----|----|------|
+| `os` | string | `runtime.GOOS`。 |
+| `arch` | string | `runtime.GOARCH`。 |
+| `go_version` | string | `runtime.Version()`。 |
+| `runner_version` | string | build info または `"unknown"`。 |
+| `builder_version` | string | `adlaire-ci-build --version` の先頭 token。 |
+| `hostname` | string | OS hostname。 |
+| `state_dir` | string | `--state-dir`。 |
+| `disk_free_bytes` | integer/null | state dir filesystem の空き容量。 |
+| `captured_at` | string | UTC ISO 8601。 |
+
+**正常系：**
+
+1. build id 採番直後に environment snapshot を取得する。
+2. builder 起動前に `.build_logs/{id}.json.environment` へ保存する。
+3. 取得不能項目は `null` または `"unknown"` とし、build は継続する。
+4. 環境変数の値、token、secret、PATH 全体は保存しない。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| hostname 取得失敗 | `"unknown"`。 |
+| disk stat 失敗 | `disk_free_bytes=null`、WARN。 |
+| builder version 取得 timeout | `"unknown"`、build 継続。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 通常 build | environment object が保存される。 |
+| builder version 失敗 | build 継続、unknown。 |
+| secret env 存在 | log に値が出ない。 |
+
+### 27.38 ビルド所要時間の異常検知
+
+本機能の目的は、過去 trend と比較して異常に遅い build を検出し、性能劣化を WARN、history flag、通知で可視化することである。
+
+対象コンポーネントは `components/runner.go`、`components/api.go` とする。
+
+**入力 / 状態：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定 key | `.server_config.duration_anomaly` |
+| schema | `{ "enabled": boolean, "min_samples": integer, "avg_multiplier": number, "p95_multiplier": number }` |
+| 既定値 | `{ "enabled": false, "min_samples": 20, "avg_multiplier": 2.0, "p95_multiplier": 1.5 }` |
+| 参照状態 | `.build_trends.json` |
+| 通知 event | `duration_anomaly` |
+
+**正常系：**
+
+1. build 完了後、今回 duration を trend 更新前の summary と比較する。
+2. sample 数が `min_samples` 未満の場合は判定しない。
+3. `duration > avg_seconds * avg_multiplier` または `duration > p95_seconds * p95_multiplier` なら anomaly とする。
+4. anomaly の場合、WARN log、`.build_history.flagged=true`、`.build_history.tags += ["duration_anomaly"]` を保存する。
+5. `.notify_config` に `duration_anomaly` event 対象 channel がある場合は通知する。
+6. 最後に `.build_trends.json` へ今回 sample を追加する。
+
+**異常系：**
+
+| 条件 | 処理 |
+|------|------|
+| trend 破損 | §27.33 の復旧後、復旧できた場合だけ判定する。 |
+| avg / p95 が null | 判定しない。 |
+| 通知失敗 | build status は変更せず notify retry 契約に従う。 |
+| 設定値不正 | API は `422`、runner は既定値ではなく機能無効として扱う。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| sample 不足 | anomaly 判定なし。 |
+| 平均 2 倍超 | WARN、flag、tag、通知 event。 |
+| p95 以内 | anomaly なし。 |
+| 通知失敗 | build success 維持、pending 追加。 |
