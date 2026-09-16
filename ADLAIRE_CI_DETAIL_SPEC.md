@@ -11,6 +11,31 @@
 
 ---
 
+## 詳細仕様の読み方
+
+本ファイルは、実装者が実装時に参照する詳細仕様だけを扱う。方針、ポリシー、成熟度定義、ロードマップ状態の最終判断は `ADLAIRE_CI_SPEC.md` を正とし、本ファイルで再定義しない。
+
+実装者は、対象機能ごとに以下の順で読む。
+
+1. `ADLAIRE_CI_SPEC.md` の実装状態、Part 1 §12、§13 で、対象が `仕様化済み・未実装` または `実装済み` であることを確認する。
+2. 本ファイル §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
+3. 本ファイル §0a〜§0h で、詳細仕様の記載基準、共通決定、実装ゲート、検証条件、Phase 順序を確認する。
+4. 対象コンポーネントの詳細節を読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
+5. §26 のセットアップ・アップデート手順と §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
+
+詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に本ファイルを改訂し、`ADLAIRE_CI_SPEC.md` の状態分類と整合させる。
+
+| 範囲 | 役割 |
+|------|------|
+| §0〜§0i | 実装ゲート、成熟度棚卸し、共通決定、検証、Phase、詳細節対応表 |
+| §1〜§9 | `build_spec.go` / `adlaire-ci-build` の詳細仕様 |
+| §10〜§20 | `runner.go` / `adlaire-ci-runner` の詳細仕様 |
+| §21〜§22 | `api_server.go` / `adlaire-ci-api` の詳細仕様 |
+| §23 | `adlaire-ci-sdk.js` の詳細仕様 |
+| §24 | `admin/index.html` の詳細仕様 |
+| §25 | 認証の実装仕様 |
+| §26 | バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
+
 ## 0a. 詳細仕様の記載基準
 
 本ファイルの仕様項目は、実装者が追加の設計判断や推測を行わずに実装できる粒度で記載する。
@@ -5303,7 +5328,7 @@ POST /api/login
 
 ## 26. セットアップ・アップデート手順
 
-> **安定版ポリシー：** タグ付き安定版リリース（例：`v1.0.0`）のみをサポートする。開発ブランチ（`main` 等）の直接追従は非対応。`git pull` は使用しない。
+> **バイナリ配布ポリシー：** リリース形式はタグ付き安定版のバイナリ配布のみとする。開発ブランチ（`main` 等）の直接追従、利用環境でのソースビルド、`git pull` による更新は非対応。
 
 本節は、Go 版 Adlaire CI のセットアップ手順を定義する。
 
@@ -5312,9 +5337,9 @@ POST /api/login
 | 項目 | 要件 |
 |------|------|
 | Go 版バイナリ | `adlaire-ci-build`、`adlaire-ci-runner`。管理 API 導入時は `adlaire-ci-api` も配置する。 |
-| Go toolchain | ソースからビルドする場合のみ必要。リリースバイナリを配置する場合は不要。 |
+| Go toolchain | 利用環境には不要。バイナリはリリース作成側でビルド済みのものだけを配布する。 |
 | init システム | systemd（Linux） |
-| バージョン管理 | git |
+| バージョン管理 | GitHub Releases のタグ付き安定版を使用する。利用環境でリポジトリ checkout を更新経路にしない。 |
 | ネットワーク | GitHub API への HTTPS 送信。SSH 転送機能を実装した場合のみデプロイ先への SSH 接続。 |
 
 ### §26.2 設定変数
@@ -5323,11 +5348,10 @@ POST /api/login
 
 | 変数 | デフォルト値 | 説明 |
 |------|------------|------|
-| `REPO_URL` | —（必須） | GitHub 等のリポジトリ URL |
 | `INSTALL_DIR` | `/opt/adlaire-builder` | インストール先ディレクトリ |
 | `BIN_DIR` | `/usr/local/bin` | Go 版バイナリ配置先 |
 | `SERVICE_USER` | `root` | systemd サービスの実行ユーザー |
-| `VERSION` | —（必須） | セットアップ・アップデート対象の安定版タグ（例：`v1.0.0`） |
+| `RELEASE_ASSET_DIR` | —（必須） | `adlaire-ci-build`、`adlaire-ci-runner`、必要に応じて `adlaire-ci-api` を展開済みのディレクトリ。 |
 
 ### §26.3 Go 版初回セットアップ手順
 
@@ -5337,36 +5361,31 @@ POST /api/login
 
 | 手順 | 停止条件 | 失敗時の扱い |
 |------|----------|--------------|
-| 変数検証 | `REPO_URL`、`INSTALL_DIR`、`BIN_DIR`、`VERSION` が空、`INSTALL_DIR` が `/`、`BIN_DIR` が `/` | 何も変更せず終了する。 |
-| リポジトリ取得 | `INSTALL_DIR` が既に存在し、Git repository でない | 上書きせず終了する。 |
-| tag checkout | `VERSION` tag が存在しない | checkout せず終了する。既に clone 済みの場合は元の checkout を維持する。 |
-| バイナリ配置 | 配置元バイナリが存在しない、または `go build` が失敗 | systemd 設定を変更せず終了する。 |
+| 変数検証 | `INSTALL_DIR`、`BIN_DIR`、`RELEASE_ASSET_DIR` が空、`INSTALL_DIR` が `/`、`BIN_DIR` が `/` | 何も変更せず終了する。 |
+| リリース資産確認 | `RELEASE_ASSET_DIR` が存在しない、または必要なバイナリが存在しない | ディレクトリ、secret、systemd を変更せず終了する。 |
+| バイナリ配置 | 配置元バイナリが実行不可、または `install` が失敗 | systemd 設定を変更せず終了する。 |
 | secret 保存 | PAT が空 | `.github_token` を作成せず終了する。 |
 | systemd 配置 | unit ファイル生成または `systemctl daemon-reload` が失敗 | timer を enable せず終了する。 |
 | 起動確認 | `systemctl is-active adlaire-ci.timer` が `active` でない | 失敗として扱い、直前のログ確認コマンドを表示する。 |
 
-初回セットアップが中断した場合、作成済みの通常ディレクトリと clone 済み repository は自動削除しない。秘密情報ファイルを作成した後に失敗した場合は、`.github_token` の mode が `0600` であることを確認し、mode 補正に失敗した場合はその場で停止する。
+初回セットアップが中断した場合、作成済みの通常ディレクトリと展開済みリリース資産は自動削除しない。秘密情報ファイルを作成した後に失敗した場合は、`.github_token` の mode が `0600` であることを確認し、mode 補正に失敗した場合はその場で停止する。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
-REPO_URL="https://github.com/<owner>/<repo>.git"
 INSTALL_DIR="/opt/adlaire-builder"
 BIN_DIR="/usr/local/bin"
-VERSION="v1.0.0"
+RELEASE_ASSET_DIR="/tmp/adlaire-ci-release"
 SERVICE_USER="root"
 
-# ── 1. リポジトリ取得 ─────────────────────────────────
-git clone "$REPO_URL" "$INSTALL_DIR"
-git -C "$INSTALL_DIR" checkout "$VERSION"
+# ── 1. インストール先作成 ─────────────────────────────
+mkdir -p "$INSTALL_DIR"
+chmod 0755 "$INSTALL_DIR"
 
 # ── 2. Go 版バイナリ配置 ──────────────────────────────
-# リリースバイナリを使う場合:
-install -m 0755 adlaire-ci-build  "$BIN_DIR/adlaire-ci-build"
-install -m 0755 adlaire-ci-runner "$BIN_DIR/adlaire-ci-runner"
-
-# ソースからビルドする場合:
-# go build -o "$BIN_DIR/adlaire-ci-build"  ./cmd/adlaire-ci-build
-# go build -o "$BIN_DIR/adlaire-ci-runner" ./cmd/adlaire-ci-runner
+test -x "$RELEASE_ASSET_DIR/adlaire-ci-build"
+test -x "$RELEASE_ASSET_DIR/adlaire-ci-runner"
+install -m 0755 "$RELEASE_ASSET_DIR/adlaire-ci-build"  "$BIN_DIR/adlaire-ci-build"
+install -m 0755 "$RELEASE_ASSET_DIR/adlaire-ci-runner" "$BIN_DIR/adlaire-ci-runner"
 
 # ── 3. GitHub PAT 保存 ────────────────────────────────
 printf '%s\n' "<PAT>" > "$INSTALL_DIR/.github_token"
@@ -5408,11 +5427,8 @@ mkdir -p "$INSTALL_DIR/.build_logs"
 mkdir -p "$INSTALL_DIR/.snapshots"
 
 # ── 2. Go 版 API バイナリ配置 ─────────────────────────
-# リリースバイナリを使う場合:
-install -m 0755 adlaire-ci-api "$BIN_DIR/adlaire-ci-api"
-
-# ソースからビルドする場合:
-# go build -o "$BIN_DIR/adlaire-ci-api" ./cmd/adlaire-ci-api
+test -x "$RELEASE_ASSET_DIR/adlaire-ci-api"
+install -m 0755 "$RELEASE_ASSET_DIR/adlaire-ci-api" "$BIN_DIR/adlaire-ci-api"
 
 # ── 3. 初期認証情報生成（初期パスワード: admin）────────
 /usr/local/bin/adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"
@@ -5486,35 +5502,37 @@ WantedBy=multi-user.target
 
 ### §26.5 アップデート手順
 
-`git pull` は使用しない。安定版タグを指定してチェックアウトし、サービスを再起動する。管理 API を導入していない構成では、管理 API サービスは再起動対象に含めない。
+`git pull`、利用環境での `go build`、開発ブランチ checkout は使用しない。タグ付き安定版のリリースバイナリを配置し、サービスを再起動する。管理 API を導入していない構成では、管理 API サービスは再起動対象に含めない。
 
 アップデートは以下の順序で実行し、途中失敗時は表の rollback 方針に従う。
 
 | 手順 | 成功条件 | 失敗時 rollback / 停止条件 |
 |------|----------|-----------------------------|
-| 現在版記録 | `git -C "$INSTALL_DIR" rev-parse --verify HEAD` が成功し、`PREV_REV` を保持する。 | 更新を開始しない。 |
-| tag 取得 | `git fetch --tags` が成功する。 | checkout せず終了する。 |
-| tag 検証 | `git -C "$INSTALL_DIR" rev-parse --verify "$NEW_VERSION^{commit}"` が成功する。 | checkout せず終了する。 |
-| checkout | `git -C "$INSTALL_DIR" checkout "$NEW_VERSION"` が成功する。 | `git -C "$INSTALL_DIR" checkout "$PREV_REV"` を実行する。戻せない場合は timer / API を再起動しない。 |
-| バイナリ更新 | 新バイナリ配置または `go build` が成功する。 | `PREV_REV` へ戻し、既存バイナリを維持する。 |
-| runner 再起動 | `systemctl restart adlaire-ci.timer` と `systemctl is-active adlaire-ci.timer` が成功する。 | `PREV_REV` へ戻し、再度 `systemctl restart adlaire-ci.timer` を 1 回だけ実行する。 |
-| API 再起動 | API 導入済みの場合のみ `systemctl restart adlaire-ci-api` と `systemctl is-active adlaire-ci-api` が成功する。 | `PREV_REV` へ戻し、runner と API の再起動を 1 回だけ実行する。 |
+| 現在版記録 | 既存バイナリを退避し、退避先パスを保持する。 | 更新を開始しない。 |
+| リリース資産確認 | `NEW_RELEASE_ASSET_DIR` に必要な新バイナリが存在し実行可能である。 | 既存バイナリを維持して終了する。 |
+| バイナリ更新 | `install -m 0755` で新バイナリを配置できる。 | 退避済み旧バイナリを元へ戻し、サービスを再起動しない。 |
+| runner 再起動 | `systemctl restart adlaire-ci.timer` と `systemctl is-active adlaire-ci.timer` が成功する。 | 旧バイナリを戻し、再度 `systemctl restart adlaire-ci.timer` を 1 回だけ実行する。 |
+| API 再起動 | API 導入済みの場合のみ `systemctl restart adlaire-ci-api` と `systemctl is-active adlaire-ci-api` が成功する。 | 旧バイナリを戻し、runner と API の再起動を 1 回だけ実行する。 |
 
-rollback 後も service が active にならない場合は、自動復旧を継続せず、`journalctl -u adlaire-ci.service -n 100`、API 導入済みなら `journalctl -u adlaire-ci-api -n 100` を確認対象として報告する。rollback は Git checkout と service restart のみを行い、状態ファイル、履歴、ログ、secret を巻き戻してはならない。
+rollback 後も service が active にならない場合は、自動復旧を継続せず、`journalctl -u adlaire-ci.service -n 100`、API 導入済みなら `journalctl -u adlaire-ci-api -n 100` を確認対象として報告する。rollback はバイナリ差し戻しと service restart のみを行い、状態ファイル、履歴、ログ、secret を巻き戻してはならない。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
-INSTALL_DIR="/opt/adlaire-builder"
-NEW_VERSION="v1.2.0"
+BIN_DIR="/usr/local/bin"
+NEW_VERSION="<release-tag>"
+NEW_RELEASE_ASSET_DIR="/tmp/adlaire-ci-release-new"
+BACKUP_DIR="/tmp/adlaire-ci-bin-backup-${NEW_VERSION}"
 
-# ── 1. 最新タグ一覧を確認 ─────────────────────────────
-PREV_REV="$(git -C "$INSTALL_DIR" rev-parse --verify HEAD)"
-git -C "$INSTALL_DIR" fetch --tags
-git -C "$INSTALL_DIR" tag --list --sort=-v:refname
-git -C "$INSTALL_DIR" rev-parse --verify "$NEW_VERSION^{commit}"
+# ── 1. 既存バイナリ退避 ──────────────────────────────
+mkdir -p "$BACKUP_DIR"
+cp "$BIN_DIR/adlaire-ci-build"  "$BACKUP_DIR/adlaire-ci-build"
+cp "$BIN_DIR/adlaire-ci-runner" "$BACKUP_DIR/adlaire-ci-runner"
 
-# ── 2. 対象バージョンへ切り替え ───────────────────────
-git -C "$INSTALL_DIR" checkout "$NEW_VERSION"
+# ── 2. 新バイナリ配置 ────────────────────────────────
+test -x "$NEW_RELEASE_ASSET_DIR/adlaire-ci-build"
+test -x "$NEW_RELEASE_ASSET_DIR/adlaire-ci-runner"
+install -m 0755 "$NEW_RELEASE_ASSET_DIR/adlaire-ci-build"  "$BIN_DIR/adlaire-ci-build"
+install -m 0755 "$NEW_RELEASE_ASSET_DIR/adlaire-ci-runner" "$BIN_DIR/adlaire-ci-runner"
 
 # ── 3. runner サービス再起動 ─────────────────────────
 systemctl restart adlaire-ci.timer
@@ -5566,7 +5584,7 @@ systemctl status adlaire-ci-api
 | SDK | browser runtime で `login()`、`getStatus()`、`streamBuild()`、HTTP error、timeout を確認する。 | `AdlaireCIError`、`StreamHandle`、token 破棄、timeout が §23 と一致する。 |
 | UI | login、manual build、SSE 表示、config 保存、token 発行、logout を確認する。 | §24 の DOM id、disabled、成功表示、失敗表示、再取得、秘密情報消去に一致する。 |
 | setup | §26.3 または §26.3b の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
-| update | §26.5 の手順を前版から新 tag へ実行する。 | `PREV_REV` 記録、checkout、restart、失敗時 rollback 方針が仕様どおり。 |
+| update | §26.5 の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 方針が仕様どおり。 |
 | security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示を確認する。 | PAT、Webhook Secret、SMTP password、session token、API token 本体が平文で出ない。 |
 
 受け入れ結果は、実装 PR 本文に `対象 / コマンド / 期待結果 / 実結果 / 判定` の形式で記録する。失敗、未実行、環境都合で省略した項目がある場合、そのコンポーネントを実装済みとして扱ってはならない。
