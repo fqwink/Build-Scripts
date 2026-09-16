@@ -14,8 +14,8 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は `AD
 
 | 項目 | 内容 |
 |------|------|
-| owner component | `admin/index.html` |
-| collaborator component | `admin/adlaire-ci-sdk.js`、`components/api.go`、`security` |
+| owner component | `ui` |
+| collaborator component | `sdk`、`api`、`security` |
 | 持つ内容 | DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
 | 持たない内容 | SDK method 実装、API endpoint 実装、状態ファイル直接操作、admin 静的配信。 |
 

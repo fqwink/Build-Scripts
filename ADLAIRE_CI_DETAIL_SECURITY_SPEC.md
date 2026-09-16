@@ -13,7 +13,7 @@
 | 項目 | 内容 |
 |------|------|
 | owner component | `security` |
-| collaborator component | `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html`、`components/statefile.go` |
+| collaborator component | `api`、`sdk`、`ui`、`statefile` |
 | 持つ内容 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
 | 持たない内容 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理。 |
 

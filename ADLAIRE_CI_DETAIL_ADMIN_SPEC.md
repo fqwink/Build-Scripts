@@ -12,8 +12,8 @@
 
 | 項目 | 内容 |
 |------|------|
-| owner component | `components/admin.go` |
-| collaborator component | `components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js`、`setup` |
+| owner component | `admin` |
+| collaborator component | `api`、`ui`、`sdk`、`setup` |
 | 持つ内容 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
 | 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、systemd 導入手順、release asset 取得手順。 |
 

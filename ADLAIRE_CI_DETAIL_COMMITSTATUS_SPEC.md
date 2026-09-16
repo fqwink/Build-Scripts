@@ -12,8 +12,8 @@
 
 | 項目 | 内容 |
 |------|------|
-| owner component | `components/commitstatus.go` |
-| collaborator component | `components/runner.go`、`components/statefile.go` |
+| owner component | `commitstatus` |
+| collaborator component | `runner`、`statefile` |
 | 持つ内容 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
 | 持たない内容 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細。 |
 

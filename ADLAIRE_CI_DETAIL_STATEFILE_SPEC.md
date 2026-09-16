@@ -12,8 +12,8 @@
 
 | 項目 | 内容 |
 |------|------|
-| owner component | `components/statefile.go` |
-| collaborator component | `components/runner.go`、`components/api.go`、`components/archive.go`、`security` |
+| owner component | `statefile` |
+| collaborator component | `runner`、`api`、`archive`、`security` |
 | 持つ内容 | 状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
 | 持たない内容 | API endpoint の request / response、runner の業務処理、UI 表示判断、個別 component の業務判断。 |
 
