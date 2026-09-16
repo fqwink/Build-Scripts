@@ -8955,6 +8955,18 @@ runner は `.server_config.commit_status_enabled == true` の場合、対象 com
 
 Commit Status 送信失敗は build 成否を反転させない。送信失敗時は WARN ログ `COMMIT_STATUS_FAILED: status=<http_status> error=<reason>` を出し、`.build_logs/{id}.json.commit_status.state` を最後に送信しようとした state、`error` を固定文言で保存する。GitHub API 認証失敗、403、404、5xx、network error はすべて送信失敗として扱う。
 
+**Commit Status 保存固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| pending 送信成功 | `.build_logs/{id}.json.commit_status.pending_sent=true` を保存する。 |
+| pending 送信失敗 | `pending_sent=false`、`pending_error` に固定文言を保存し、build は継続する。 |
+| final 送信成功 | `final_sent=true`、`state` に最終 state を保存する。 |
+| final 送信失敗 | `final_sent=false`、`state` に送信しようとした最終 state、`error` に固定文言を保存する。 |
+| description | 140 文字を超える場合は 137 文字 + `...` に切り詰める。改行は空白へ置換する。 |
+| target_url | `null` または空文字の場合は payload から省略する。`http` / `https` 以外は設定 validation で `422`。 |
+| secret | GitHub token、Authorization header、response body 全体は build log に保存しない。 |
+
 検証条件:
 
 | ケース | 期待結果 |
@@ -8965,6 +8977,8 @@ Commit Status 送信失敗は build 成否を反転させない。送信失敗�
 | commit SHA なし | status 送信なし、build は継続、log に `commit sha unavailable`。 |
 | GitHub status 送信失敗 | build 成否は維持、WARN と `commit_status.error` を保存する。 |
 | 無効 | status API 呼び出し 0 回、`commit_status.enabled=false`。 |
+| description 長文 | 140 文字以内に切り詰められる。 |
+| pending 失敗 | build 継続、`pending_sent=false`。 |
 
 ### 27.2 ドライラン実行モード
 
@@ -8997,6 +9011,18 @@ dry-run の stdout は JSON object 1 件と末尾改行に固定する。
 
 `targets[].reason` は `"sha_changed"`、`"no_change"`、`"cooldown"`、`"circuit_open"`、`"config_error"`、`"github_error"`、`"precheck_error"` のいずれかとする。`would_write` は常に空配列でなければならない。
 
+**dry-run 出力 schema 固定契約：**
+
+| key | 型 | 仕様 |
+|-----|----|------|
+| `targets` | array | branch target 正規化後の処理順で返す。複数 target は branch 名昇順、同一 branch は target path 昇順。 |
+| `would_call` | array[string] | 実行予定の外部 API / command 種別だけを固定文字列で返す。secret、URL query 全体、token は含めない。 |
+| `would_write` | array | 常に `[]`。dry-run で書込予定を列挙してはならない。 |
+| `errors` | array[object] | `{ "code": string, "message": string, "target": string|null }`。 |
+| `warnings` | array[object] | `{ "code": string, "message": string, "target": string|null }`。 |
+
+dry-run は、破損 state の backup、初期値作成、lock 作成、通知、GitHub Commit Status、deploy、archive、cleanup を実行しない。stdout 以外の状態差分が発生した場合は実装不合格とする。
+
 終了コードは、検証が完了した場合 `0`、設定不正または入力不正 `2`、GitHub API 全再試行失敗 `3` とする。`--help` / `--version` と同時指定された場合は `--help` / `--version` を優先し、dry-run JSON を出力しない。
 
 検証条件:
@@ -9008,6 +9034,8 @@ dry-run の stdout は JSON object 1 件と末尾改行に固定する。
 | cooldown | `would_build=false`、`reason="cooldown"`。 |
 | GitHub API 失敗 | 終了コード `3`、`errors[]` に理由、状態ファイル差分なし。 |
 | 設定破損 | 終了コード `2`、破損ファイルの退避も再生成も行わない。 |
+| 複数 target | branch / target path の固定順で返る。 |
+| secret 設定済み | stdout JSON に secret 平文が出ない。 |
 
 ### 27.3 ビルド失敗時の自動リトライ
 
@@ -9025,6 +9053,18 @@ retry 待機秒数は `build_retry_base_seconds * attempt` とする。初回失
 
 attempt ごとの結果は `.build_logs/{id}.json.attempts[]` に必ず保存する。最終 attempt が成功した場合、`.build_history.status` は `"success"` とし、`retry_count` に追加 retry 回数を保存する。全 attempt 失敗時は `"failure"` とする。SHA 更新、snapshot、deploy 成功記録は最終成功時だけ行う。
 
+**attempt schema / 更新固定契約：**
+
+| key | 型 | 仕様 |
+|-----|----|------|
+| `attempt` | integer | 初回を `1` とする。 |
+| `started_at` / `finished_at` | string | UTC ISO 8601 秒精度。 |
+| `target_status` | string | §13 の固定値。 |
+| `retryable` | boolean | 次 attempt の対象なら `true`。 |
+| `error` | string/null | 固定文言。secret、token、command 全文は含めない。 |
+
+retry 待機中に SIGTERM、context timeout、lock 喪失を検出した場合は待機を中断し、未実行 attempt を作成せず、現在までの attempts だけを保存する。最終成功時だけ `.last_sha`、snapshot、deploy success、history success を確定する。途中失敗 attempt で SHA cache を更新してはならない。
+
 検証条件:
 
 | ケース | 期待結果 |
@@ -9034,6 +9074,8 @@ attempt ごとの結果は `.build_logs/{id}.json.attempts[]` に必ず保存す
 | pipeline exit 1 | retry なし、history failure、retry_count 0。 |
 | deploy checksum mismatch | retry なし、pending transfer 記録。 |
 | retry 上限到達 | history failure、attempts は `1 + build_retry_max` 件。 |
+| retry 中断 | 未実行 attempt を作らず終了する。 |
+| secret error | attempts[].error に secret 平文が出ない。 |
 
 ### 27.4 出力サイトへのビルドメタ埋め込み
 
@@ -9049,6 +9091,16 @@ attempt ごとの結果は `.build_logs/{id}.json.attempts[]` に必ず保存す
 
 `[REPORT]` には `build_id`、`commit_sha`、`build_at` を追加する。`.build_logs/{id}.json.build_meta`、`GET /api/output-meta` は HTML meta と同じ値を返す。
 
+**build meta 入力固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| `build_id` | 空文字または `^[A-Za-z0-9_-]{1,64}$`。不正値は builder 終了コード `2`。 |
+| `commit_sha` | 空文字、7〜40 文字 lowercase hex。その他は終了コード `2`。 |
+| `build_at` | 空文字または UTC ISO 8601 秒精度。timezone offset、ミリ秒は終了コード `2`。 |
+| HTML / REPORT / API | 3 箇所の値は byte 単位で一致させる。空文字は `""` として保持する。 |
+| escape | HTML meta attribute は `esc()` ではなく attribute escape を使う。 |
+
 検証条件:
 
 | ケース | 期待結果 |
@@ -9057,6 +9109,8 @@ attempt ごとの結果は `.build_logs/{id}.json.attempts[]` に必ず保存す
 | 値なし | 3 meta が `content=""` で出力される。 |
 | 複数ページ | index と全ページで同じ build meta。 |
 | output-meta | HTML meta、REPORT、build log、API response が一致する。 |
+| 不正 sha | 終了コード `2`、出力差分なし。 |
+| 空値 | HTML / REPORT / API がすべて空文字で一致する。 |
 
 ### 27.5 設定バリデーション API
 
@@ -9081,6 +9135,16 @@ Request body は partial `ConfigObject` とする。未知 key を含む場合�
 
 `config` は既存 `.server_config` に request body を merge した正規化後の値を返す。ただし保存してはならない。`.config_log`、`.api_access_log` 以外の状態ファイルを更新してはならない。`.api_access_log` は通常 API 呼び出しとして記録する。
 
+**validate 副作用固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| merge | request body は既存 config に shallow merge し、object 値は対象 object 単位で置換する。 |
+| secret key | secret 風 key は未知 key と同じく `422`。値は response、access log、server log に出さない。 |
+| `valid=false` | HTTP status は `200`。状態ファイルは更新しない。 |
+| error 順 | request body の key 出現順で `errors[]` を返す。 |
+| warning 順 | field 名昇順で返す。 |
+
 検証条件:
 
 | ケース | 期待結果 |
@@ -9089,6 +9153,8 @@ Request body は partial `ConfigObject` とする。未知 key を含む場合�
 | 範囲外 | `valid=false`、該当 field error。 |
 | 未知 key | HTTP 422、状態差分なし。 |
 | secret 風 key | HTTP 422、response と log に値を含めない。 |
+| 複数 error | request key 出現順で返る。 |
+| valid false | HTTP 200、保存差分なし。 |
 
 ### 27.6 API アクセスログ
 
@@ -9097,6 +9163,20 @@ Request body は partial `ConfigObject` とする。未知 key を含む場合�
 追記タイミングは response status 確定後とする。追記失敗時は、対象 API の本来の response を優先し、サーバーログに `API_ACCESS_LOG_WRITE_FAILED` を出す。access log 書き込み失敗を理由に API response を `500` へ変更してはならない。
 
 `GET /api/api-access-log` は `limit`、`offset`、`method`、`path`、`status` query を受け付ける。`limit` は 1〜1000、既定値 100。`offset` は 0 以上、既定値 0。`method` は大文字 HTTP method 完全一致。`path` は prefix match。`status` は HTTP status 完全一致。壊れた行は無視し、新しい順で返す。
+
+**access log record 固定契約：**
+
+| key | 型 | 仕様 |
+|-----|----|------|
+| `timestamp` | string | response status 確定時刻。 |
+| `request_id` | string | 16 byte hex。response header `X-Request-Id` と一致させる。 |
+| `method` | string | 大文字 HTTP method。 |
+| `path` | string | query を除いた path。 |
+| `status` | integer | 実際に返した HTTP status。 |
+| `actor` | string/null | admin、token id、webhook、または `null`。 |
+| `auth_type` | string | `"none"`、`"session"`、`"api_token"`、`"webhook"`。 |
+
+request body、query 全体、cookie、Authorization header、token、password、secret は保存しない。access log 追記失敗時も、既に確定した response status を変更しない。
 
 検証条件:
 
@@ -9107,6 +9187,8 @@ Request body は partial `ConfigObject` とする。未知 key を含む場合�
 | Webhook | auth_type `webhook`、actor `webhook`。 |
 | filter | method/path/status が完全に効く。 |
 | 書込失敗 | 本来 response を維持し、server log に WARN。 |
+| request id | response header と log の `request_id` が一致する。 |
+| secret query | query 全体を保存しない。 |
 
 ### 27.7 ビルドログのアーカイブ圧縮
 
@@ -9118,6 +9200,17 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 
 `POST /api/logs/cleanup` は、archive 済みファイルも `log_retention_days` の削除対象に含める。`POST /api/logs/archive` は `{ "message": "Logs archived", "archived_count": N }` を返す。
 
+**archive / cleanup 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| archive 対象判定 | build log JSON の `finished_at` を基準にする。欠落時は file mtime を使わず対象外。 |
+| archive id | file 名 `{id}.json` の id と JSON 内 `id` が一致する場合だけ対象。 |
+| gzip path | `.build_logs/archive/{id}.json.gz`。既存 archive がある場合は上書きせず skip する。 |
+| cleanup 順 | 通常 log 削除 → archive log 削除 → 空 archive directory 削除試行。 |
+| 削除失敗 | 処理継続し、response に `failed_count` を含める。 |
+| response | archive は `archived_count`、cleanup は `deleted_count` と `failed_count` を返す。 |
+
 検証条件:
 
 | ケース | 期待結果 |
@@ -9127,6 +9220,8 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 | 破損ログ | archive しない、WARN、処理継続。 |
 | archive API | 件数を返し、disk usage に archive bytes を含める。 |
 | cleanup | 通常 log と archive log の両方を保持期間で削除する。 |
+| archive 既存 | 上書きせず skip。 |
+| cleanup 一部失敗 | `failed_count` に計上し処理継続。 |
 
 ### 27.8 ビルドステータスファイル出力
 
@@ -9177,6 +9272,15 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 
 `.build_status.json` に GitHub PAT、Webhook URL secret、SMTP password、API token、session token、request body を保存してはならない。`last_error` は最大 500 文字に切り詰め、改行は `\n` 文字列へ escape する。
 
+**status 算出・不一致固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| `running=true` 不一致 | `.build_lock` が存在しないのに `running=true` の場合、API は `degraded` として返し、自動修復しない。 |
+| pending 件数 | `.pending_transfers` と `.notify_pending` は読めた場合だけ件数を返す。読取失敗は `checks[]` に記録する。 |
+| history 不一致 | `.build_status.json.last_build_id` と最新 history id が異なる場合、API は status file を優先し、warnings に `history_status_mismatch` を含める。 |
+| finalizer | finalizer は既存 `last_build_id`、`last_finished_at` を消さず、`running=false` と `current_build_id=null` だけを最低更新する。 |
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -9187,6 +9291,8 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 | 起動時整合性復旧 | `last_trigger="startup_config_integrity"`、復旧内容が `last_error` または warning として確認できる。 |
 | 書込失敗 | runner 終了コードが最低 `1`、ERROR ログが出る。 |
 | API read | `GET /api/status`、`GET /api/dashboard` が `.build_status.json` を第一参照元にする。 |
+| running stale | API が自動修復せず degraded を返す。 |
+| finalizer | `last_build_id` を消さない。 |
 
 ### 27.9 ビルドトリガー種別の記録
 
@@ -9245,6 +9351,15 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 | 既存 history に未知 trigger がある | API はその行を返すが、`warnings[]` に `unknown_trigger` を含める。新規保存では未知値を禁止する。 |
 | build log と history の trigger 不一致 | API は `500` を返し、server log に `TRIGGER_MISMATCH: id={id}` を出す。 |
 
+**trigger 保存・queue 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| queue 取り出し | queue entry の trigger は取り出し時に validation し、不正なら entry を削除せず処理を中断する。 |
+| rollback | rollback API は queue を経由しない場合でも build log / history に `rollback` を保存する。 |
+| startup | `startup_config_integrity` は build id を採番しない。 |
+| unknown 既存値 | API response に既存値をそのまま返し、UI が検出できるよう warnings を付ける。 |
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -9255,6 +9370,8 @@ gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元フ
 | force interval | SHA 差分なしで `force_interval` が保存される。 |
 | filter | `GET /api/history?trigger=manual` が manual のみ返す。 |
 | 不正 trigger | queue 作成または history filter が `422`。 |
+| startup trigger | build log / history を作らない。 |
+| mismatch | API は `500`。 |
 
 ### 27.10 設定ファイル起動時整合性チェック
 
@@ -9313,6 +9430,16 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 
 復旧通知は `.notify_config` の検証完了後、復旧対象に `.notify_config` と `.notify_pending` 以外のファイルが 1 件以上ある場合だけ送信する。送信イベントは `config_corrupt` とする。`.notify_pending` が破損復旧された場合、通知失敗時の pending 追記は行わない。
 
+**復旧 record 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| status warning | 復旧して継続する場合、`.build_status.json.status="warning"`、`last_error` に固定文言を保存する。 |
+| status failure | permission / io error で停止する場合、可能なら `.build_status.json.status="failure"` を保存する。保存不能でも終了コードを優先する。 |
+| backup 内容 | 破損元 file を byte 単位でコピーする。整形、マスク、改行変換を行わない。 |
+| unknown key 正規化 | unknown key のみの場合は corrupt backup を作らない。 |
+| 通知 payload | `{event:"config_corrupt", files:[...], recovered:boolean}`。secret 値と破損内容は含めない。 |
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -9324,6 +9451,8 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 | permission error | 自動復旧なし、終了コード `2`、running 未変更。 |
 | dry-run | 差分なし、backup なし、dry-run JSON に検出結果。 |
 | 通知失敗 | `.notify_pending` が正常な場合だけ pending 追記。 |
+| backup byte | 破損元と backup が byte 単位一致。 |
+| unknown only | backup なしで正規化。 |
 
 ### 27.11 ポーリング間隔の動的変更
 
@@ -9353,6 +9482,15 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 7. `systemctl show adlaire-ci.timer -p OnUnitActiveSec` 相当で反映を確認する。
 8. 成功 response を返す。
 
+**systemd 更新固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| timer 書換 | 既存 unit を直接編集せず、管理対象 drop-in `/etc/systemd/system/adlaire-ci.timer.d/override.conf` を atomic write する。 |
+| drop-in 内容 | `[Timer]`、`OnUnitActiveSec={N}s`、`Persistent=true` のみを書き込む。 |
+| 反映確認 | `systemctl show` の値を秒へ正規化して request 値と一致確認する。 |
+| rollback | systemd 失敗時に `.server_config` は巻き戻さない。失敗を `.config_log` に追加する。 |
+
 **異常系：**
 
 | 条件 | 応答 / 処理 |
@@ -9370,6 +9508,7 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 | 最小値 30 | 成功する。 |
 | 範囲外 29 | `422`、差分なし。 |
 | systemd 失敗 | `500`、`.config_log` に失敗記録。 |
+| show 不一致 | `500`、server config は更新済み。 |
 
 ### 27.12 GitHub Webhook 受信
 
@@ -9419,6 +9558,17 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 
 queue entry は §16C の queue entry schema を使用し、`trigger:"webhook"`、`requested_by:"webhook"`、`priority:"normal"`、`payload.delivery_id`、`payload.branch`、`payload.sha` を保存する。`X-GitHub-Delivery` が既に pending queue に存在し、同一 branch / sha の場合は重複投入せず、event log に `result:"duplicate"`、既存 `queued_id` を記録し、`202 {"message":"Webhook already queued","queued":true,"queue_id":"<existing>"}` を返す。
 
+**Webhook validation 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| body size | 最大 1 MiB。超過時は署名検証後に `413`。 |
+| branch 抽出 | `ref` が `refs/heads/{branch}` 形式でない場合は `ignored_branch`。 |
+| sha | `after` が 40 文字 lowercase hex でない場合は `422`。 |
+| repository | `owner.login` と `name` から `owner/name` を作る。欠落時は `422`。 |
+| event id | `wh{YYYYMMDDHHmmss}`、衝突時 `-001`。 |
+| secret | signature、secret、raw payload は event log、access log、audit log に保存しない。 |
+
 **異常系：**
 
 | 条件 | 応答 / 処理 |
@@ -9438,6 +9588,8 @@ queue entry は §16C の queue entry schema を使用し、`trigger:"webhook"`�
 | 署名不一致 | `401`、状態差分なし。 |
 | 対象外 branch | `202 queued=false`、イベントログのみ。 |
 | queue full | `429`、queue 差分なし。 |
+| duplicate | queue 追加なし、既存 queue id を返す。 |
+| payload oversized | `413`、状態差分なし。 |
 
 ### 27.13 Webhook イベントログ / 一覧取得 API
 
@@ -9470,6 +9622,15 @@ queue entry は §16C の queue entry schema を使用し、`trigger:"webhook"`�
 
 Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `getWebhookEvents(limit,offset)` は `limit` と `offset` を常に query へ送信する。UI は件数、delivery id、event、branch、sha、result、queued id を表示する。
 
+**webhook events 取得固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 並び順 | `timestamp` 降順、同時刻は file 出現順の逆順。 |
+| total | 壊れた行を除外した総件数。 |
+| offset | filter 後、並び替え後に適用する。 |
+| 壊れた行 | 内容を response、server log に含めない。固定コードだけ出す。 |
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -9478,6 +9639,7 @@ Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `g
 | 一覧取得 | 新しい順、limit/offset が効く。 |
 | 壊れた行 | API は継続し、壊れた行を返さない。 |
 | duplicate delivery | queue 重複なし、event log は `duplicate`。 |
+| total | 壊れた行を除外した件数。 |
 
 ### 27.14 ビルド所要時間の記録と統計 API
 
@@ -9497,6 +9659,15 @@ Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `g
 
 Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`、`min_seconds`、`max_seconds` を `null`、`recent` を `[]` とする。
 
+**duration stats 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| latest 判定 | `finished_at` 降順、同時刻は build id 昇順で最新 N 件を選ぶ。 |
+| avg | 合計 / count を小数第 3 位で四捨五入し小数第 2 位まで返す。 |
+| recent | `{build_id, finished_at, duration_seconds, status}` を返す。 |
+| archive 優先 | 同じ id が通常 log と archive にある場合、通常 log を採用する。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -9513,6 +9684,7 @@ Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`�
 | 失敗 build | duration を記録する。 |
 | 統計対象なし | `count=0`、平均/最小/最大 `null`。 |
 | archive 含む | 通常 log と archive log を横断集計する。 |
+| duplicate id | 通常 log を優先し二重集計しない。 |
 
 ### 27.15 ビルドアーティファクト管理
 
@@ -9560,6 +9732,16 @@ rollback は snapshot 内の成果物を deploy target へ再転送する操作�
 
 rollback build log は `target_status="success"` または `failure_build` とし、`trigger="rollback"`、`rollback_from=<元id>`、`snapshot_id=<元id>` を含める。rollback 転送で pending が発生した場合は `success_deploy_pending` とし、`.pending_transfers` に rollback 用 entry を追加する。
 
+**snapshot 一覧・削除固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 一覧対象 | `.snapshots/{id}/manifest.json` が存在する directory だけ。 |
+| size | directory 配下の通常ファイル size 合計。symlink は size 集計前に異常扱い。 |
+| delete 順 | id validation → running check → snapshot directory 確認 → delete → `.config_log` 追記 → response。 |
+| delete log 失敗 | snapshot 削除済みのまま `500`。削除は巻き戻さない。 |
+| rollback pending | pending entry には `rollback_from`、`snapshot_id`、deploy target を保存する。 |
+
 **UI / SDK：**
 
 SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。UI は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は実行中 build がある場合 disabled とする。
@@ -9576,6 +9758,7 @@ SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`roll
 | download symlink | symlink entry を含めず、secret 名検出時は `500`。 |
 | rollback pending | 新規 rollback log/history、pending entry、元 snapshot 維持。 |
 | rollback running | `409`、状態差分なし。 |
+| delete log failure | snapshot は削除済み、response は `500`。 |
 
 ### 27.16 ヘルスチェックエンドポイント
 
@@ -9604,6 +9787,18 @@ SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`roll
 
 `.build_status.json` を第一参照元とし、不在時は `.build_history` と `.pending_transfers` から算出する。`.build_status.json` 破損時は自動修復せず、`checks[]` に `build_status_corrupt` を含める。
 
+**health checks 固定契約：**
+
+| check | 条件 |
+|-------|------|
+| `build_status_missing` | `.build_status.json` 不在で fallback 算出した。 |
+| `build_status_corrupt` | `.build_status.json` parse 失敗。 |
+| `pending_transfers_read_error` | `.pending_transfers` 読取失敗。 |
+| `notify_pending_read_error` | `.notify_pending` 読取失敗。 |
+| `runner_stale` | `running=true` かつ `last_started_at` が 24 時間より古い。 |
+
+`checks[]` は上表の順で返す。`status` は checks が空なら `"ok"`、read error または stale があれば `"degraded"`、response 生成不能だけ `"error"` とする。
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -9612,6 +9807,7 @@ SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`roll
 | pending transfer あり | `pending_transfers` に件数、`status="degraded"`。 |
 | build status 破損 | HTTP 200、`status="degraded"`、checks に記録。 |
 | read error | HTTP 200 または 500 の条件が仕様通り。 |
+| stale runner | checks に `runner_stale`。 |
 
 ### 27.17 ビルドログ重大度フィルター
 
@@ -9627,6 +9823,18 @@ SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`roll
 
 `.build_logs/{id}.json.stdout`、`stderr`、`warnings`、`error`、archive log を対象とする。行頭が `[WARN]` または `[WARNING]` の行は WARNING、`[ERROR]` または stderr の非空行は ERROR、`[DEBUG]` は DEBUG、それ以外は INFO と分類する。
 
+**ログ行分類固定契約：**
+
+| 入力 | level |
+|------|-------|
+| stderr の非空行 | `ERROR` |
+| stdout / warnings の `[ERROR]` prefix | `ERROR` |
+| stdout / warnings の `[WARN]` または `[WARNING]` prefix | `WARNING` |
+| stdout / warnings の `[DEBUG]` prefix | `DEBUG` |
+| 上記以外 | `INFO` |
+
+検索結果は `{build_id, level, source, line_number, message}` とし、`source` は `"stdout"`、`"stderr"`、`"warnings"`、`"error"` のいずれかとする。`line_number` は 1 始まり、配列項目は配列内 index + 1 とする。
+
 **SDK / UI：**
 
 SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信する。UI は INFO / WARNING / ERROR / DEBUG の filter control を提供し、選択なしでは全件を表示する。
@@ -9639,6 +9847,8 @@ SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信す
 | `level=error` | ERROR 行だけ返る。 |
 | 不正 level | `422`。 |
 | archive log | 通常 log と同じ分類で検索される。 |
+| stderr | prefix なしでも ERROR。 |
+| line number | 1 始まりで返る。 |
 
 ### 27.18 ブランチ設定の動的変更 API
 
@@ -9653,6 +9863,16 @@ SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信す
 **保存仕様：**
 
 永続ファイルの key は必ず `branch_targets` とする。API request / response で `branches` を使う場合も保存前に `branch_targets` へ変換する。空配列を受け取った場合は `.branch_config` を削除し、default 復帰とする。
+
+**branch config 正規化固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| branch 重複 | 同一 `branch` の重複は `422`。 |
+| deploy target id | branch 内で一意。重複は `422`。 |
+| target_files | 存在する場合は §27.21 の正規化を適用する。 |
+| 保存順 | branch 名昇順、同一 branch 内 deploy target id 昇順で保存する。 |
+| 削除 | POST empty で `.branch_config` を削除した後、`.config_log` に default 復帰を記録する。 |
 
 **検証：**
 
@@ -9670,6 +9890,8 @@ SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信す
 | POST valid | `.branch_config.branch_targets` として保存、config log 追記。 |
 | POST empty | `.branch_config` 削除、default 復帰。 |
 | 相対 `sha_file` | `422`、状態差分なし。 |
+| branch 重複 | `422`、状態差分なし。 |
+| POST empty log failure | `.branch_config` は削除済み、response は `500`。 |
 
 ### 27.19 週次ビルドサマリー Webhook
 
@@ -9716,6 +9938,17 @@ runner 起動時に、現在 UTC の曜日と時が設定値に一致し、`.bui
 
 weekly summary payload は secret、repository token、SMTP password、Webhook secret、API token、session token を含めてはならない。`success_rate` は小数第 2 位まで `math.Round(x*100)/100` 相当で丸める。集計対象 0 件の場合は `success_count=0`、`failure_count=0`、`success_rate=0`、`avg_duration_seconds=null` とする。
 
+**weekly 集計固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 期間 | `now - 7*24h <= finished_at <= now`。timezone は UTC。 |
+| 成功 | `status="success"`、`"success_deploy_pending"`。 |
+| 失敗 | `status="failure"`、`"cancelled"`、`"hook_error"`、`"failure_remote_build"`。 |
+| 除外 | `skipped_*`、`approval_*`、duration 欠落の平均対象。 |
+| 最大 duration | payload に `max_duration_seconds`、`max_duration_build_id` を含める。対象なしは `null`。 |
+| 手動 response | 送信 payload と送信結果 `{sent:boolean, channel_results:[]}` を返す。 |
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -9725,6 +9958,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 宛先なし | 自動送信は WARN、手動 API は `422`。 |
 | 手動送信 | payload を返し、sent date は変更しない。 |
 | 送信失敗 | sent date を更新せず、retry 対象なら `.notify_pending` に追加。 |
+| deploy pending | 成功として数える。 |
+| skipped | 集計から除外する。 |
 
 ### 27.20 設定変更の詳細 diff 記録
 
@@ -9761,6 +9996,21 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 
 `.config_log` record の `target` は endpoint 固定名、`actor` は管理 session なら `"admin"`、API token なら token id とする。`request body` 全体、HTTP header、cookie、secret 平文を保存してはならない。
 
+**diff 対象 endpoint 固定名：**
+
+| endpoint | target |
+|----------|--------|
+| `POST /api/config` | `server_config` |
+| `POST /api/notify-config` | `notify_config` |
+| `POST /api/repo-config` | `repo_config` |
+| `POST /api/branch-config` | `branch_config` |
+| `POST /api/webhook-config` | `webhook_config` |
+| `POST /api/smtp-config` | `smtp_config` |
+| `POST /api/pipeline-config` | `pipeline_config` |
+| その他 `.config_log` 対象 | method と path から `/api/` prefix を除き、`/` と `-` を `_` に置換した固定名。 |
+
+diff 生成は状態保存前に memory 上で完了させる。diff 生成に失敗した場合は状態ファイルを書かない。`.config_log` 追記に失敗した場合は保存済み状態を巻き戻さず、response は `500` とする。
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -9779,6 +10029,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 複数 key | key 昇順で diff_text を生成する。 |
 | array 正規化 | 正規化後に同一なら no-op。 |
 | config log 失敗 | 対象状態は保存済み、response は `500`。 |
+| diff failure | 状態差分なしで `500`。 |
+| target name | endpoint から固定 target 名が生成される。 |
 
 ### 27.21 複数ファイル監視
 
