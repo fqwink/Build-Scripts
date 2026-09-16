@@ -9429,7 +9429,7 @@ W1-PR1 は、下表の fixture をすべて含める。1 件でも不足、skip�
 | fixture 名 | 必須 assertion | 入力 | 期待結果 |
 |------------|----------------|------|----------|
 | `success-dry-run-changed` | `stdout`、`state`、`logs`、`effects`、`no-write`、`secret-mask` | `--dry-run`、変更あり fake GitHub response、既存 SHA cache、対象 branch / target。 | stdout JSON に `would_build=true`、対象 commit/blob、`would_write` 一覧、状態 / logs 差分なし、fake GitHub read 以外の外部 call 0。 |
-| `noop-dry-run-unchanged` | `stdout`、`state`、`logs`、`effects`、`no-write`、`idempotency` | `--dry-run`、変更なし fake GitHub response、既存 SHA cache。 | stdout JSON に `would_build=false`、理由 `unchanged`、状態 / logs 差分なし、2 回実行して差分なし。 |
+| `noop-dry-run-unchanged` | `stdout`、`state`、`logs`、`effects`、`no-write`、`idempotency` | `--dry-run`、変更なし fake GitHub response、既存 SHA cache。 | stdout JSON に `would_build=false`、`reason="no_change"`、状態 / logs 差分なし、2 回実行して差分なし。 |
 | `failure-dry-run-github-error` | `stdout`、`stderr`、`state`、`logs`、`effects`、`no-write`、`order`、`secret-mask` | `--dry-run`、fake GitHub `500` または rate limit failure。 | 終了コード `3`、状態 / logs 差分なし、pipeline / deploy / notification 呼び出し 0、error detail は secret を含まない。 |
 | `security-dry-run-secret-mask` | `stdout`、`stderr`、`state`、`logs`、`effects`、`secret-mask`、`no-write` | token、webhook URL、notification URL、branch config secret を含む入力。 | stdout/stderr/effects/log 期待値に secret 平文が存在せず、mask 後値だけを含み、状態 / logs 差分なし。 |
 
@@ -9576,7 +9576,7 @@ W1-PR1 完了後、W1 内の後続 PR は `§27.1`、`§27.3`、`§27.4` のい�
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|
 | §27.1 | GitHub Commit Status API | `.server_config.commit_status_*`、commit SHA、build 結果。 | GitHub status payload、`.build_logs.{commit_status}`、`.build_history.commit_status_state`。 | GitHub Status API 送信、build log / history 追記。 | status 送信失敗で build 成否を反転しない。token、response body 全体を保存しない。 | pending→success、pending→failure、commit SHA なし、pending 失敗、final 失敗、無効時呼び出し 0。 |
-| §27.2 | dry-run | CLI option、runner 設定、GitHub API read 結果。 | stdout JSON 1 object、終了コード。 | 状態ファイル、lock、通知、deploy、status API を変更しない。 | 設定破損でも退避 / 再生成しない。GitHub 失敗は終了コード `3`。 | SHA 差分、差分なし、cooldown、GitHub 失敗、設定破損、複数 target、secret 非表示。 |
+| §27.2 | dry-run | CLI option、runner 設定、fake GitHub read 結果。 | stdout JSON 1 object、終了コード。 | 状態ファイル、lock、通知、deploy、status API を変更しない。 | 設定破損でも退避 / 再生成しない。fake GitHub read 失敗は終了コード `3`。 | SHA 差分、差分なし、cooldown、fake GitHub read 失敗、設定破損、複数 target、secret 非表示。 |
 | §27.3 | 自動リトライ | retry 設定、失敗種別、attempt 結果。 | `.build_logs.attempts[]`、`.build_history.retry_count`。 | retry 対象だけ再試行。最終成功時だけ SHA / snapshot / deploy success を確定。 | 非 retry 対象では再試行しない。中断時は未実行 attempt を作らない。 | API 429 後成功、pipeline timeout 後成功、pipeline exit 1、deploy checksum mismatch、上限到達、中断。 |
 | §27.4 | build meta | builder CLI 引数または環境変数。 | HTML meta、`[REPORT]`、build log、`GET /api/output-meta`。 | 出力 HTML と report 生成。 | 不正値は builder 終了コード `2`、既存出力を成功扱いしない。 | 値あり、空値、複数ページ、不正 SHA、HTML / REPORT / API 一致。 |
 | §27.5 | config validate API | partial config JSON。 | `valid`、正規化 config、`errors[]`、`warnings[]`。 | `.api_access_log` 以外を変更しない。 | unknown key は `422`。validation error は `200 valid=false`。 | valid true、valid false、unknown key、secret key、破損 config、no write。 |
@@ -9753,7 +9753,7 @@ dry-run は、破損 state の backup、初期値作成、lock 作成、通知�
 | SHA 差分あり | `would_build=true`、`reason="sha_changed"`、`would_write` に非 dry-run 時の論理書込予定、状態ファイル差分なし。 |
 | SHA 差分なし | `would_build=false`、`reason="no_change"`。 |
 | cooldown | `would_build=false`、`reason="cooldown"`。 |
-| GitHub API 失敗 | 終了コード `3`、`reason="github_error"`、`errors[]` に理由、状態ファイル差分なし、pipeline / deploy / notification / commit status 呼び出しなし。 |
+| fake GitHub read 失敗 | 終了コード `3`、`reason="github_error"`、`errors[]` に理由、状態ファイル差分なし、pipeline / deploy / notification / commit status 呼び出しなし。 |
 | 設定破損 | 終了コード `2`、`reason="config_error"`、破損ファイルの退避、再生成、正規化、quarantine、rewrite を行わない。 |
 | 複数 target | branch / target path の固定順で返る。 |
 | secret 設定済み | stdout JSON、stderr、expected、effects に secret 平文が出ず、`secrets_masked=true`。 |
