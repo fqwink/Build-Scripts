@@ -2257,6 +2257,8 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 `Request` が `none` の場合、request body を受け付けない。空 JSON object `{}` も送信してはならない。`Response` は成功時 body の schema 名または最小 object を示す。詳細 schema は §22.0c、各 endpoint の個別例、§23 SDK 仕様、§24 UI 仕様を正とする。
 
+`{message}` は `{"message": string}` を意味する。`{message,...}` 形式の response では `message` を必須キーとし、その他のキーも表記どおり必須とする。`?` が付いたキーだけを任意キーとする。成功時に空 body、`null` body、HTTP 204 は使用しない。
+
 | Endpoint | Request | Response | Success | Errors | Read | Write | SDK | UI |
 |----------|---------|----------|---------|--------|------|-------|-----|----|
 | `POST /api/login` | `{password}` | `{token,must_change}` | `200` | `401`, `422`, `500` | `.admin_credentials` | `.admin_credentials`, `.access_log` | `login()` | ログイン |
@@ -2355,6 +2357,21 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/tokens` | none | `{tokens}` | `200` | `401`, `500` | `.api_tokens` | none | `getTokens()` | API トークン管理 |
 | `POST /api/tokens` | `{label,scope}` | `TokenCreateResult` | `201` | `401`, `422`, `500` | `.api_tokens` | `.api_tokens`, `.access_log` | `createToken(label,scope)` | API トークン管理 |
 | `DELETE /api/tokens/{id}` | path `{id}` | `{message}` | `200` | `401`, `404`, `500` | `.api_tokens` | `.api_tokens`, `.access_log` | `revokeToken(id)` | API トークン管理 |
+
+**ビルド操作の競合優先順位：**
+
+`POST /api/build`、`POST /api/build/force`、`POST /api/webhook`、`POST /api/history/{id}/rollback` は、以下の順に判定する。
+
+1. 認証・権限を確認する。Webhook は署名検証を認証の代替とする。
+2. `.maintenance.enabled == true` の場合は `503 {"error":"maintenance"}` を返す。
+3. `.build_circuit_state.open == true` の場合は `409 {"error":"circuit_open"}` を返す。ただし `POST /api/circuit-breaker/reset` は対象外。
+4. `.build_state.running == true` の場合:
+   - queue 対応 API（`POST /api/build`、`POST /api/build/force`、署名検証済み `POST /api/webhook`）は `queue_max_size > 0` かつ空きがあれば queue に追加し、`202 {"message":"Build queued","queued":true}` を返す。
+   - queue が無効または満杯の場合は `429 {"error":"queue_full"}` を返す。
+   - rollback は queue へ積まず、`409 {"error":"Build is running"}` を返す。
+5. 実行中でなければ `.build_state.running=true` と新しい `build_id` を保存し、`202 {"message":"Build started","build_id":"...","queued":false}` を返す。
+
+`POST /api/build/cancel` は queue を削除しない。実行中 build のみを cancel 対象とし、実行中でない場合は `409 {"error":"No build is running"}` を返す。`DELETE /api/queue` は実行中 build を停止せず、待機 queue のみ削除する。
 
 ### 22.0f 実装優先度
 
@@ -2548,9 +2565,13 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 `id` はビルド実行時に生成するユニーク識別子（形式：`b{YYYYMMDDHHmmss}`）。`.build_logs/{id}.json` に対応するログファイルが保存される。
 
-**`POST /api/build/force` レスポンス例：**
+**`POST /api/build` / `POST /api/build/force` レスポンス例：**
 ```json
-{ "message": "SHA reset and build triggered" }
+// 即時開始
+{ "message": "Build started", "build_id": "b20260915100500", "queued": false }
+
+// 実行中のため queue へ追加
+{ "message": "Build queued", "queued": true }
 ```
 
 SHA キャッシュのクリアだけを行う専用 API は定義しない。強制再ビルドは必ず `POST /api/build/force` を使用し、SHA reset と build trigger を同一ロック内で実行する。
@@ -2718,7 +2739,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 **`POST /api/build/force` レスポンス例：**
 ```json
-{ "message": "SHA reset and build triggered" }
+{ "message": "Build started", "build_id": "b20260915100500", "queued": false }
 ```
 
 **`POST /api/pat-verify` レスポンス例：**
@@ -3161,7 +3182,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 **`POST /api/history/{id}/rollback` リクエスト / レスポンス：**
 ```json
 // リクエスト: なし（パスパラメーターのみ）
-// レスポンス: 200
+// レスポンス: 202
 { "message": "Rollback started", "build_id": "b20260914183000" }
 ```
 
@@ -3651,15 +3672,15 @@ class AdlaireCI {
   changePassword(currentPassword, newPassword)  // POST /api/change-password
 
   getStatus()               // GET /api/status               → Promise<StatusObject>
-  triggerBuild()            // POST /api/build               → Promise<void>
+  triggerBuild()            // POST /api/build               → Promise<{message: string, build_id?: string, queued?: boolean}>
   getLogs(n = 100, q = '')  // GET /api/logs?n={n}&q={q}     → Promise<{lines: string[]}>
   getHistory({ page = 1, perPage = 20 } = {}) // GET /api/history?page={page}&per_page={perPage} → Promise<HistoryPageObject>
   getSysinfo()              // GET /api/sysinfo              → Promise<SysinfoObject>
   getSchedule()             // GET /api/schedule             → Promise<ScheduleObject>
   getNotifyConfig()         // GET /api/notify-config        → Promise<NotifyConfig>
-  setNotifyConfig(config)   // POST /api/notify-config       → Promise<void>
+  setNotifyConfig(config)   // POST /api/notify-config       → Promise<{message: string}>
   getConfig()               // GET /api/config               → Promise<ConfigObject>
-  setConfig(config)         // POST /api/config              → Promise<void>
+  setConfig(config)         // POST /api/config              → Promise<{message: string, config: ConfigObject}>
   health()                  // GET /api/health               → Promise<{status: string}>
   getPatStatus()            // GET /api/pat-status           → Promise<PatStatusObject>
   getAccessLog()            // GET /api/access-log           → Promise<{log: AccessRecord[]}>
@@ -3668,25 +3689,25 @@ class AdlaireCI {
   cleanupLogs()             // POST /api/logs/cleanup        → Promise<{message: string, deleted_count: number}>
   getRepoInfo()             // GET /api/repo-info            → Promise<RepoInfoObject>
   backup()                  // GET /api/backup               → Promise<BackupObject>
-  restore(config)           // POST /api/restore             → Promise<void>
+  restore(config)           // POST /api/restore             → Promise<{message: string}>
   notifyTest()              // POST /api/notify-test         → Promise<{message: string, webhook_url: string}>
-  buildForce()              // POST /api/build/force         → Promise<void>
+  buildForce()              // POST /api/build/force         → Promise<{message: string, build_id?: string, queued?: boolean}>
   patVerify()               // POST /api/pat-verify          → Promise<PatVerifyObject>
   getHistoryLog(id)         // GET /api/history/{id}/log     → Promise<HistoryLogObject>
-  cancelBuild()             // POST /api/build/cancel        → Promise<void>
+  cancelBuild()             // POST /api/build/cancel        → Promise<{message: string}>
   resetCircuitBreaker()     // POST /api/circuit-breaker/reset → Promise<{message: string, open: boolean, consecutive_failures: number}>
   streamBuild(onLine, onEnd) // GET /api/build/stream (SSE)  → EventSource（onLine(line), onEnd({status, duration_seconds}) コールバック）
   setLogLevel(level)        // POST /api/log-level           → Promise<{message: string, level: string}>
-  updatePat(token)          // POST /api/pat-update          → Promise<void>
+  updatePat(token)          // POST /api/pat-update          → Promise<{message: string}>
   getDashboard()            // GET /api/dashboard            → Promise<DashboardObject>
   getNotifyLog()            // GET /api/notify-log           → Promise<{log: NotifyRecord[]}>
   getSessions()             // GET /api/sessions             → Promise<{sessions: SessionRecord[]}>
   revokeAllSessions()       // POST /api/sessions/revoke-all → Promise<{message: string, revoked_count: number}>
   setScheduleInterval(seconds) // POST /api/schedule/interval → Promise<{message: string, interval_seconds: number}>
-  pauseSchedule()              // POST /api/schedule/pause   → Promise<void>
-  resumeSchedule()             // POST /api/schedule/resume  → Promise<void>
-  setAllowedHours(from, to)    // POST /api/schedule/allowed-hours {from, to} → Promise<void>
-  clearAllowedHours()          // POST /api/schedule/allowed-hours {from:null, to:null} → Promise<void>
+  pauseSchedule()              // POST /api/schedule/pause   → Promise<{message: string}>
+  resumeSchedule()             // POST /api/schedule/resume  → Promise<{message: string}>
+  setAllowedHours(from, to)    // POST /api/schedule/allowed-hours {from, to} → Promise<{message: string, allowed_hours: {from: number, to: number}}>
+  clearAllowedHours()          // POST /api/schedule/allowed-hours {from:null, to:null} → Promise<{message: string, allowed_hours: null}>
   setForceInterval(hours)      // POST /api/schedule/force-interval → Promise<{message: string, hours: number}>
   setBuildCooldown(seconds)    // POST /api/schedule/cooldown → Promise<{message: string, seconds: number}>
   searchLogs(q = '', from = '', to = '') // GET /api/logs/search?q={q}&from={from}&to={to} → Promise<SearchResult>
@@ -3704,57 +3725,57 @@ class AdlaireCI {
   getWebhookConfig()          // GET /api/webhook-config    → Promise<{configured: boolean}>
   setWebhookConfig(secret)    // POST /api/webhook-config   → Promise<{message: string}>
   getHistoryComment(id)        // GET /api/history/{id}/comment  → Promise<CommentObject>
-  setHistoryComment(id, comment) // POST /api/history/{id}/comment → Promise<void>
-  setRepoConfig(config)        // POST /api/repo-config      → Promise<void>
+  setHistoryComment(id, comment) // POST /api/history/{id}/comment → Promise<{message: string}>
+  setRepoConfig(config)        // POST /api/repo-config      → Promise<{message: string}>
   exportHistory()              // GET /api/history/export    → Promise<ExportObject>（JSON）
-  setHistoryFlag(id, flagged)  // POST /api/history/{id}/flag → Promise<void>
-  setHistoryTags(id, tags)     // POST /api/history/{id}/tags → Promise<void>
-  rollbackHistory(id)          // POST /api/history/{id}/rollback → Promise<void>
+  setHistoryFlag(id, flagged)  // POST /api/history/{id}/flag → Promise<{message: string}>
+  setHistoryTags(id, tags)     // POST /api/history/{id}/tags → Promise<{message: string}>
+  rollbackHistory(id)          // POST /api/history/{id}/rollback → Promise<{message: string, build_id: string}>
   getTokens()                  // GET /api/tokens            → Promise<{tokens: TokenRecord[]}>
   createToken(label, scope = 'read') // POST /api/tokens     → Promise<TokenCreateResult>
-  revokeToken(id)              // DELETE /api/tokens/{id}    → Promise<void>
+  revokeToken(id)              // DELETE /api/tokens/{id}    → Promise<{message: string}>
   // 14A スナップショット
   getSnapshots()               // GET /api/snapshots         → Promise<{snapshots: SnapshotRecord[]}>
   downloadSnapshot(id)         // GET /api/snapshots/{id}/download → Promise<Blob>
-  deleteSnapshot(id)           // DELETE /api/snapshots/{id} → Promise<void>
+  deleteSnapshot(id)           // DELETE /api/snapshots/{id} → Promise<{message: string}>
   // 14B メンテナンスモード
   getMaintenance()             // GET /api/maintenance       → Promise<MaintenanceObject>
   enableMaintenance(reason)    // POST /api/maintenance/enable → Promise<{message: string, since: string}>
-  disableMaintenance()         // POST /api/maintenance/disable → Promise<void>
+  disableMaintenance()         // POST /api/maintenance/disable → Promise<{message: string}>
   // 14C IP アクセス制限
   getAccessControl()           // GET /api/access-control    → Promise<{allow: string[]}>
   setAccessControl(allowList)  // POST /api/access-control   → Promise<{message: string, allow: string[]}>
   // 14E フック
   getHooks()                   // GET /api/hooks             → Promise<{hooks: HookRecord[]}>
   addHook(phase, commandArgs, abortOnFailure = true) // POST /api/hooks → Promise<HookRecord>
-  deleteHook(id)               // DELETE /api/hooks/{id}     → Promise<void>
+  deleteHook(id)               // DELETE /api/hooks/{id}     → Promise<{message: string}>
   getHookLog(id)               // GET /api/hooks/{id}/log    → Promise<{id: string, runs: HookRunRecord[]}>
   // 15A アラートルール
   getAlertRules()              // GET /api/alert-rules       → Promise<{rules: AlertRule[]}>
   addAlertRule(metric, operator, threshold, level, message) // POST /api/alert-rules → Promise<AlertRule>
-  deleteAlertRule(id)          // DELETE /api/alert-rules/{id} → Promise<void>
+  deleteAlertRule(id)          // DELETE /api/alert-rules/{id} → Promise<{message: string}>
   // 15B 自動タグ付けルール
   getTagRules()                // GET /api/tag-rules         → Promise<{rules: TagRule[]}>
   addTagRule(condition, tags)  // POST /api/tag-rules        → Promise<TagRule>
-  deleteTagRule(id)            // DELETE /api/tag-rules/{id} → Promise<void>
+  deleteTagRule(id)            // DELETE /api/tag-rules/{id} → Promise<{message: string}>
   // 15C チェックサム
   verifyOutput()               // POST /api/verify-output    → Promise<{match: boolean, expected: string, actual: string}>
   // 15D パイプライン設定
   getPipelineConfig()          // GET /api/pipeline-config   → Promise<PipelineConfig>
-  setPipelineConfig(config)    // POST /api/pipeline-config  → Promise<void>
+  setPipelineConfig(config)    // POST /api/pipeline-config  → Promise<{message: string}>
   // 15E 運用ノート
   getNotes()                   // GET /api/notes             → Promise<{content: string, updated_at: string|null}>
   setNotes(content)            // POST /api/notes            → Promise<{message: string, updated_at: string}>
   // 16B メール通知
   getSmtpConfig()              // GET /api/smtp-config       → Promise<SmtpConfig>
-  setSmtpConfig(config)        // POST /api/smtp-config      → Promise<void>
+  setSmtpConfig(config)        // POST /api/smtp-config      → Promise<{message: string}>
   smtpTest()                   // POST /api/smtp-test        → Promise<{result: string, message: string}>
   // 16C ビルドキュー
   getQueue()                   // GET /api/queue             → Promise<{queued: QueueEntry[], max_size: number}>
   clearQueue()                 // DELETE /api/queue          → Promise<{message: string, cleared_count: number}>
   // 16D ダッシュボードレイアウト
   getDashboardLayout()         // GET /api/dashboard-layout  → Promise<{widgets: string[]}>
-  setDashboardLayout(widgets)  // POST /api/dashboard-layout → Promise<void>
+  setDashboardLayout(widgets)  // POST /api/dashboard-layout → Promise<{message: string}>
 }
 
 export { AdlaireCI };
@@ -3770,7 +3791,7 @@ export { AdlaireCI };
 | URL 組み立て | パスは `/api/...` をそのまま連結し、クエリ値は `encodeURIComponent` でエンコードする。 |
 | 認証ヘッダー | `this._token` が存在する場合のみ `Authorization: Bearer ${token}` を付与する。 |
 | JSON 送信 | `POST` / `DELETE` で body を送る場合は `Content-Type: application/json` を付与し、`JSON.stringify` した body を送信する。 |
-| JSON 受信 | `Content-Type` が JSON の場合のみ `response.json()` を呼ぶ。空 body は `{}` として扱う。 |
+| JSON 受信 | `Content-Type` が JSON の場合のみ `response.json()` を呼ぶ。§22.0e で JSON response を定義した endpoint の成功時に空 body を受信した場合は protocol error として `AdlaireCIError(status=0, message="Empty JSON response")` を投げる。 |
 | `AdlaireCIError` | `name`、`status`、`message`、`details`、`responseBody` を持つ `Error` 派生クラスとする。 |
 | `logout()` | API 呼び出しが失敗しても `finally` で `this._token` をクリアする。 |
 | `streamBuild()` | `EventSource` 生成前に token がない場合は `AdlaireCIError(status=401)` を投げる。`end` イベント受信後は SDK 側で `EventSource.close()` を呼ぶ。 |
