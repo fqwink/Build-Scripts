@@ -30,7 +30,7 @@
 | §0〜§0j | 詳細仕様の記載基準、実装前確認項目、共通固定値、検証、Phase、詳細節対応表、リポジトリ内ソース配置 |
 | §1〜§9 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md`。`components/builder.go` / `adlaire-ci-build` の詳細仕様 |
 | §10〜§20 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md`。`components/runner.go` / `adlaire-ci-runner` の詳細仕様 |
-| §21〜§22 | `ADLAIRE_CI_DETAIL_API_SPEC.md`。`components/api.go` / `adlaire-ci-api` の詳細仕様 |
+| §21〜§22 | `ADLAIRE_CI_DETAIL_API_SPEC.md`。`components/api.go` / `adlaire-ci-api` の詳細仕様。§21a は管理 API サーバー制限を定義する。 |
 | §23 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md`。`admin/adlaire-ci-sdk.js` の詳細仕様 |
 | §24 | `ADLAIRE_CI_DETAIL_UI_SPEC.md`。`admin/index.html` の詳細仕様 |
 | §25 | `ADLAIRE_CI_DETAIL_API_SPEC.md`。認証の実装仕様 |
@@ -71,8 +71,8 @@
 | 責務 component | 詳細仕様節 | 主な確認対象 |
 |--------------------|------------|--------------|
 | `components/builder.go` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture、builder owner 追加機能。 |
-| `components/runner.go` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | 設定、状態ファイル、GitHub API 読取、pipeline、転送、snapshot、通知、systemd、fixture、runner owner 追加機能、Commit Status 呼び出し境界。 |
-| `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、endpoint、状態ファイル read/write、認証連携、security 呼び出し境界、API owner 追加機能。 |
+| `components/runner.go` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | 設定、状態ファイル、GitHub API 読取、pipeline、転送、snapshot、通知、fixture、runner owner 追加機能、Commit Status 呼び出し境界、systemd / setup 参照境界。 |
+| `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、API server 制限、endpoint、状態ファイル read/write、認証連携、security 呼び出し境界、API owner 追加機能。 |
 | `components/admin.go` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A0〜A5 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
 | `admin/adlaire-ci-sdk.js` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
 | `admin/index.html` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
@@ -227,8 +227,8 @@
 | 対象 | 実装着手条件 | 実装禁止条件 | 完了判定 |
 |------|--------------|--------------|----------|
 | `components/builder.go` | §2〜§8 に CLI option、入力 Markdown、出力サイトディレクトリ、終了コード、stderr、HTML 構造、テーマコンポーネント、JS/CSS、生成物確認が定義されている。 | §4〜§7 にない Markdown 記法、CSS class、JavaScript 機能、外部 asset、theme を追加すること。 | §0e の `components/builder.go` 必須検証をすべて満たし、生成サイトが §5〜§7 と一致する。 |
-| `components/runner.go` | §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd が定義されている。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。 | §0e の `components/runner.go` 必須検証をすべて満たし、状態ファイル更新順序が §13、§22.0a、§22.0d と一致する。 |
-| `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25 と `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 に API 共通契約、endpoint、状態ファイル schema、認証、認可、systemd、セットアップが定義されている。 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e にない endpoint、method、status code、response body、状態ファイル write を追加すること。 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e の全 endpoint が Request、Response、Errors、Read、Write、SDK、UI の対応表と一致する。 |
+| `components/runner.go` | §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd / setup 参照境界が定義されている。systemd unit 本文とセットアップ手順は `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 を正とする。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。systemd unit file の生成、配置、更新、enable、restart を runner に追加すること。 | §0e の `components/runner.go` 必須検証をすべて満たし、状態ファイル更新順序が §13、§22.0a、§22.0d と一致する。 |
+| `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a、§25 と `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 に API 共通契約、API server 制限、endpoint、状態ファイル schema、認証、認可、systemd、セットアップが定義されている。 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e にない endpoint、method、status code、response body、状態ファイル write を追加すること。 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e の全 endpoint が Request、Response、Errors、Read、Write、SDK、UI の対応表と一致する。 |
 | `admin/adlaire-ci-sdk.js` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e と `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
 | `admin/index.html` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 に画面構成、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去が定義されている。 | SDK を介さず API を直接呼ぶこと、未定義の画面・操作・保存先を追加すること、秘密情報を DOM に残すこと。 | 全 UI 操作が `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 の表示条件と `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 の SDK method を満たし、秘密情報 field が指定条件で消去される。 |
 
@@ -251,8 +251,8 @@ Go 版初期実装は、`ADLAIRE_CI_SPEC.md` §0e の対象範囲を一括実装
 | Phase | 対象 | 実装範囲 | 依存条件 | 完了条件 |
 |-------|------|----------|----------|----------|
 | Phase 1 | `components/builder.go` | §2〜§9 の CLI、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、生成物確認。 | なし。 | §0e の `components/builder.go` 必須検証と §0f の `components/builder.go` 完了判定を満たす。 |
-| Phase 2 | `components/runner.go` | §10〜§20 の CI ランナー、GitHub API 連携、SHA キャッシュ、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd。 | Phase 1 が完了し、`adlaire-ci-build` の CLI 契約が固定されている。 | §0e の `components/runner.go` 必須検証と §0f の `components/runner.go` 完了判定を満たす。 |
-| Phase 3 | `components/api.go` P0 / P1 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25 と `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 のうち、認証、セッション、共通エラー、状態ファイル読み書き、ビルド操作、status、logs、history、queue、circuit breaker。 | Phase 2 が完了し、runner が書き込む状態ファイル schema が固定されている。 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0f P0 / P1 の必須検証、§0e の `components/api.go` API 共通・状態ファイル検証、§0f の `components/api.go` 完了判定の該当範囲を満たす。 |
+| Phase 2 | `components/runner.go` | §10〜§20 の CI ランナー、GitHub API 連携、SHA キャッシュ、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd / setup 参照境界。systemd unit 本文と配置手順は `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 を正とする。 | Phase 1 が完了し、`adlaire-ci-build` の CLI 契約が固定されている。 | §0e の `components/runner.go` 必須検証と §0f の `components/runner.go` 完了判定を満たす。 |
+| Phase 3 | `components/api.go` P0 / P1 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a、§25 と `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 のうち、認証、セッション、共通エラー、状態ファイル読み書き、ビルド操作、status、logs、history、queue、circuit breaker。 | Phase 2 が完了し、runner が書き込む状態ファイル schema が固定されている。 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0f P0 / P1 の必須検証、§0e の `components/api.go` API 共通・状態ファイル検証、§0f の `components/api.go` 完了判定の該当範囲を満たす。 |
 | Phase 4 | `components/api.go` P2〜P5 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0f P2〜P5 の config、repo、branch、schedule、notify、snapshot、rollback、maintenance、access control、hooks、tokens 等。 | Phase 3 が完了し、API 共通処理と認証が固定されている。 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0f P2〜P5 の必須検証と §0e の `components/api.go` endpoint 契約を満たす。 |
 | Phase 5 | `admin/adlaire-ci-sdk.js` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 の SDK class、method、戻り値、HTTP error、token 破棄、query 生成。 | Phase 3 と Phase 4 が完了し、`ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e の endpoint 契約が固定されている。 | §0e の SDK 契約と §0f の `admin/adlaire-ci-sdk.js` 完了判定を満たす。 |
 | Phase 6 | `admin/index.html` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 の標準管理ツール UI、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去。 | Phase 5 が完了し、SDK method 契約が固定されている。 | §0e の UI 契約と §0f の `admin/index.html` 完了判定を満たす。 |
@@ -283,7 +283,7 @@ Phase 3 の実装詳細本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` と `ADLAIRE_CI
 
 | 確認 | 参照先 |
 |------|--------|
-| API 共通処理、認証、P0 / P1 endpoint、状態 read/write | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25、§22.0f |
+| API 共通処理、API server 制限、認証、P0 / P1 endpoint、状態 read/write | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a、§25、§22.0f |
 | 状態ファイル schema、lock、atomic write | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c |
 | 管理 API 導入、systemd、release 受け入れ条件 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 |
 
@@ -603,7 +603,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 | 移動済み範囲 | 移動先 |
 |--------------|--------|
-| §21〜§22 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22 |
+| §21〜§22 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a |
 | §25 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §25 |
 | api owner の §27 個別節 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27 |
 

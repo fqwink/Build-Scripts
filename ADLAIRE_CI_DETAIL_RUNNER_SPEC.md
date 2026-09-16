@@ -167,6 +167,8 @@
 
 ### systemd
 
+以下は runner が起動される運用上の配置である。unit 本文、配置、enable、restart、更新、rollback は `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 を正とする。
+
 ```
 /etc/systemd/system/
 ├── adlaire-ci.service      # systemd ユニット（oneshot）
@@ -1897,43 +1899,15 @@ adlaire-ci-runner --state-dir <state> --dry-run
 
 ---
 
-## 16. systemd タイマー
+## 16. systemd タイマー参照
 
-### `adlaire-ci.service`（oneshot）
+systemd unit 本文、配置先、起動手順、更新手順は setup owner component の責務とし、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.4.1、§26.5 を正とする。
 
-```ini
-[Unit]
-Description=Adlaire CI Runner
+runner owner component は、`adlaire-ci-runner --state-dir /opt/adlaire-builder` として oneshot 実行された場合の処理、終了コード、状態ファイル更新、ログ出力だけを定義する。
 
-[Service]
-Type=oneshot
-User=deploy
-ExecStart=/usr/local/bin/adlaire-ci-runner --state-dir /opt/adlaire-builder
-StandardOutput=journal
-StandardError=journal
-```
+runner 実装は systemd unit file を生成、配置、更新、enable、restart してはならない。systemd 操作が必要な機能は `setup` または `api` owner component の詳細仕様で定義する。
 
-### `adlaire-ci.timer`（5分ごと定期実行）
-
-```ini
-[Unit]
-Description=Adlaire CI Runner Timer
-After=network-online.target
-Wants=network-online.target
-
-[Timer]
-OnBootSec=1min
-OnUnitActiveSec=5min
-
-[Install]
-WantedBy=timers.target
-```
-
-```bash
-sudo systemctl enable --now adlaire-ci.timer  # タイマー登録・起動
-sudo systemctl list-timers adlaire-ci          # 次回実行時刻確認
-sudo journalctl -u adlaire-ci -f               # ログ確認
-```
+runner が journal へ出力する内容は §15 のログ仕様を正とする。`systemctl`、`journalctl` の操作手順は本ファイルでは定義しない。
 
 ---
 
@@ -1948,69 +1922,33 @@ sudo journalctl -u adlaire-ci -f               # ログ確認
 
 ---
 
-## 18. 初回セットアップ手順
+## 18. 初回セットアップ手順参照
 
-本節は Go 版 CI ランナー導入手順である。`adlaire-ci-build`、`adlaire-ci-runner`、管理 API 導入後の `adlaire-ci-api` の各バイナリを配置する。
+初回セットアップ、Release asset 取得、checksum 検証、バイナリ配置、secret 初期化、状態ファイル初期化、systemd unit 書き込み、service 起動、管理 API 導入、管理 UI 配置は setup owner component の責務とし、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.1〜§26.4 を正とする。
 
-```bash
-# 1. deploy ユーザー作成
-sudo useradd -m -s /bin/bash deploy
+runner owner component は、セットアップ済み環境で `/usr/local/bin/adlaire-ci-runner` が起動された後の処理だけを定義する。
 
-# 2. 作業ディレクトリ作成
-sudo mkdir -p /opt/adlaire-builder/repo
-sudo chown -R deploy:deploy /opt/adlaire-builder
+runner 実装は以下を行ってはならない。
 
-# 3. GitHub PAT を保存（Fine-grained PAT、contents: read のみ）
-echo "<PAT>" | sudo -u deploy tee /opt/adlaire-builder/.github_token
-sudo chmod 600 /opt/adlaire-builder/.github_token
+| 禁止事項 | 理由 |
+|----------|------|
+| OS user 作成、directory 作成、chown / chmod の初期設定 | setup owner component の責務。 |
+| Release asset 取得、checksum 検証、バイナリ配置 | setup owner component の責務。 |
+| `.github_token` の新規生成または対話入力 | setup owner component の secret initializer の責務。 |
+| `.admin_credentials` 初期化、API service 配置、管理 UI 配置 | API / admin / setup owner component の責務。 |
+| systemd unit file の配置、enable、restart | setup owner component の責務。ただし API endpoint が systemd timer を変更する機能は `ADLAIRE_CI_DETAIL_API_SPEC.md` の該当節を正とする。 |
 
-# 3b. CI サーバー → 配信サーバー SSH 鍵設定
-#     SSH 転送機能を使用する場合のみ実行する。
-#     deploy ユーザーの SSH 鍵を生成（既存鍵がある場合はスキップ）
-sudo -u deploy ssh-keygen -t ed25519 -f /home/deploy/.ssh/id_ed25519 -N ""
-#     公開鍵を配信サーバーへ登録（配信サーバー側で実行）
-#     cat /home/deploy/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
-#     初回接続時の known_hosts 登録
-sudo -u deploy ssh-keyscan -H <配信サーバーIP> >> /home/deploy/.ssh/known_hosts
-
-# 4. SHA キャッシュファイルを初期化
-printf '%s\n' '{"sha":""}' | sudo -u deploy tee /opt/adlaire-builder/.last_sha
-sudo chmod 600 /opt/adlaire-builder/.last_sha
-
-# 5. Go 版バイナリを配置
-sudo install -m 0755 adlaire-ci-build /usr/local/bin/adlaire-ci-build
-sudo install -m 0755 adlaire-ci-runner /usr/local/bin/adlaire-ci-runner
-
-# 6. systemd ユニットを登録・タイマー起動
-sudo cp adlaire-ci.service /etc/systemd/system/
-sudo cp adlaire-ci.timer   /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now adlaire-ci.timer
-
-# 以降はの管理 API サーバー導入手順
-# 7. adlaire-ci-api を配置
-sudo install -m 0755 adlaire-ci-api /usr/local/bin/adlaire-ci-api
-
-# 8. 認証情報ファイルを初期化（初期パスワード: admin）
-sudo -u deploy /usr/local/bin/adlaire-ci-api --init-credentials --state-dir /opt/adlaire-builder
-sudo chmod 600 /opt/adlaire-builder/.admin_credentials
-
-# 9. systemd ユニットを登録・起動
-sudo cp adlaire-ci-api.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now adlaire-ci-api
-```
+runner が起動時に必要ファイル不足または権限不備を検出した場合は、§13、§15a、§20 の異常系に従い、セットアップ手順を自動実行せずに失敗として記録する。
 
 ---
 
-## 19. 管理 API サーバー 既知の制限
+## 19. 管理 API サーバー制限参照
 
-| 制限 | 詳細 |
-|------|------|
-| セッションはインメモリ管理 | 再起動で全セッションが消去される |
-| HTTPS 非対応 | `components/api.go` は TLS listener、証明書読み込み、HTTPS redirect を実装しない。HTTP listener のみ起動する |
-| 外部認証非対応 | SSO、OAuth、LDAP、SAML、複数ユーザー管理は初期実装対象外。認証は `.admin_credentials`、`.totp_secret`、session、API token で完結する |
-| 接続数制限 | `components/api.go` は Go 標準ライブラリ `net/http` の標準サーバーで処理し、独自の接続数上限や worker pool を実装しない。API rate limit は §27.47 の固定窓で行う |
+管理 API サーバーの HTTP listener、認証、session、rate limit、TLS 非対応、外部認証非対応、worker pool 非採用の制限は API owner component の責務とし、`ADLAIRE_CI_DETAIL_API_SPEC.md` §21a および `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 を正とする。
+
+runner owner component は、管理 API サーバーの起動、listener、session、認証、HTTP response、rate limit を実装してはならない。
+
+runner と API が同じ状態ファイルを参照する場合でも、runner は API session、API token、TOTP、rate limit、HTTP access log を読み書きしない。runner が読み書きする状態ファイルは §11、§13、§15、§22.0a、§22.0d、および runner owner の個別 §27.x に明記されたものだけとする。
 
 ---
 

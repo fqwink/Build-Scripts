@@ -59,29 +59,23 @@ Owner             = "<GitHubオーナー名>"                       // 初期値
 Repo              = "<リポジトリ名>"                           // 初期値。POST /api/repo-config で動的変更可能（.repo_config に保存）
 ```
 
-**systemd ユニット（常駐型、タイマー不要）：**
+API service の systemd unit、配置、起動、更新、rollback は setup owner component の責務とし、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.3b、§26.4.2、§26.5 を正とする。
 
-```ini
-[Unit]
-Description=Adlaire CI API Server
-After=network.target
+`components/api.go` は `adlaire-ci-api --addr 127.0.0.1:8765 --state-dir /opt/adlaire-builder` として起動された後の HTTP listener、request / response、状態ファイル read/write 呼び出し境界だけを定義する。
 
-[Service]
-Type=simple
-User=deploy
-ExecStart=/usr/local/bin/adlaire-ci-api
-Restart=on-failure
-StandardOutput=journal
-StandardError=journal
+## 21a. 管理 API サーバー制限
 
-[Install]
-WantedBy=multi-user.target
-```
+本節は `components/api.go` の実行時制限を定義する。runner、setup、admin、SDK、UI は本節の制限を上書きしてはならない。
 
-```bash
-sudo systemctl enable --now adlaire-ci-api  # 登録・起動
-sudo journalctl -u adlaire-ci-api -f        # ログ確認
-```
+| 制限 | 詳細 | 実装時の禁止事項 |
+|------|------|------------------|
+| session はインメモリ管理 | 再起動で全 session を消去する。永続 session store は持たない。 | session を状態ファイル、cookie store、外部 DB、外部 cache に保存しない。 |
+| HTTPS listener 非対応 | `components/api.go` は HTTP listener のみ起動する。標準 bind は `127.0.0.1:8765` とする。 | TLS listener、証明書読み込み、HTTPS redirect、外部公開 bind を実装しない。 |
+| 外部認証非対応 | 認証は `.admin_credentials`、`.totp_secret`、session、API token で完結する。 | SSO、OAuth、LDAP、SAML、複数ユーザー管理を追加しない。 |
+| 独自接続数制限なし | Go 標準ライブラリ `net/http` の標準 server で処理する。API rate limit は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.47 の固定窓で行う。 | 独自 worker pool、connection pool、接続数上限、外部 queue を追加しない。 |
+| runner 起動責務なし | API は HTTP endpoint の request / response と状態 read/write 呼び出し境界を担当する。 | runner の通常 polling loop、GitHub read、pipeline 実行、build log 確定処理を API 本文へ移動しない。 |
+
+セッション、API token、TOTP、rate limit、audit log の security 主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 を正とし、本節は API server の実行時境界だけを定義する。
 
 ---
 
