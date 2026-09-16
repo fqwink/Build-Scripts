@@ -180,6 +180,87 @@ Phase 外の将来計画、未仕様化、改訂予定項目は、初期実装 P
 
 ---
 
+## 0h. 機能仕様テンプレート
+
+仕様化済み項目を追加または改訂する場合は、該当する詳細仕様節に以下の項目をすべて含める。既存節に含める場合も、実装者が下表の項目を本文から一意に読み取れる状態にする。
+
+| 項目 | 必須内容 | 未記載時の扱い |
+|------|----------|----------------|
+| 目的 | 何を解決する機能か、どの利用者または運用者のための機能か。 | 実装不可。 |
+| 対象コンポーネント | `build_spec.go`、`runner.go`、`api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html` のいずれが責務を持つか。複数の場合は責務境界を分けて書く。 | 実装不可。 |
+| 入力 | CLI 引数、HTTP request、設定値、状態ファイル、環境変数、Markdown 入力、UI 操作などの入力元、型、必須/任意、既定値。 | 実装不可。 |
+| 出力 | 生成ファイル、HTTP response、stdout/stderr、ログ、通知、UI 表示、終了コード。 | 実装不可。 |
+| 状態 | 読み書きする状態ファイル、ディレクトリ、メモリ状態、ロック、更新責務、初期値、破損時の扱い。 | 状態を持つ実装は禁止。 |
+| 正常系 | 処理順序、分岐条件、成功条件、保存順序、外部コマンド呼び出し条件。 | 実装不可。 |
+| 異常系 | エラー条件、継続/中断、HTTP status、終了コード、ログレベル、通知、リトライ有無。 | 実装不可。 |
+| セキュリティ | 秘密情報、認証、認可、ファイル権限、外部公開可否、ログ出力禁止事項。 | セキュリティ影響がある機能は実装不可。 |
+| 検証 | 必須テスト、手動確認、fixture、生成物確認、API 確認、異常系確認。 | 実装済みに変更不可。 |
+| 完了条件 | どの検証が成功したら実装完了と扱うか。関連文書の更新要否。 | 実装済みに変更不可。 |
+
+上表のいずれかが不足する仕様化済み項目は、実装者判断で補完してはならない。不足を見つけた場合は、実装 PR ではなく仕様改訂 PR として本ファイルを先に更新する。
+
+---
+
+## 0i. 仕様化済み項目の詳細節対応表
+
+本節は、`ADLAIRE_CI_SPEC.md` §13「仕様化済み拡張一覧」から、本ファイル内の実装詳細へ移動するための対応表である。実装者は対象機能を実装する前に、下表の「詳細仕様節」と「受け入れ条件」を確認する。
+
+表の「詳細仕様節」が複数ある場合は、すべての節を同時に満たす。該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。
+
+| 機能 | 対象コンポーネント | 詳細仕様節 | 受け入れ条件 |
+|------|-------------------|------------|--------------|
+| ビルドタイムアウト | `runner.go` / `api_server.go` | §12、§13、§22.0e | `build_timeout_seconds` の既定値、設定 API、`context.WithTimeout` の中断処理、終了コード、ログが一致する。 |
+| ポーリング間隔の動的変更 | `api_server.go` | §22.0e、§26 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
+| ビルドログのファイル保存 | `runner.go` | §11、§13、§15 | `.build_logs/{id}.json` の schema、stdout/stderr、変換レポート、duration、権限が一致する。 |
+| GitHub Webhook 受信 | `api_server.go` / `runner.go` | §22.0e、§22-W、§13 | HMAC 検証、イベント記録、キュー投入またはビルドトリガー、エラー応答が一致する。 |
+| ネットワーク断時の再試行 | `runner.go` | §12、§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、失敗時ログが一致する。 |
+| GitHub API レート制限自動待機 | `runner.go` / `api_server.go` | §13、§22.0e | `X-RateLimit-Remaining` と `X-RateLimit-Reset` の扱い、待機、API 表示が一致する。 |
+| 転送後リモート整合性検証 | `runner.go` | §14a、§13 | SSH 転送後の SHA256 照合、不一致時の `.pending_transfers` 再投入、ログが一致する。 |
+| マルチブランチビルド | `runner.go` / `api_server.go` | §12、§13、§22.0e | `BRANCH_TARGETS` と `.branch_config` の優先順位、順次処理、API 更新が一致する。 |
+| ビルドログ世代管理 | `runner.go` | §12、§13、§15 | `LOG_KEEP_N` 超過時の削除順序、0 の扱い、削除ログが一致する。 |
+| ビルド出力の外部転送 | `runner.go` | §14a、§13 | SSH 差分転送、複数ファイル処理、失敗時 pending、通知が一致する。 |
+| ビルドクールダウン | `runner.go` | §12、§13 | `BUILD_COOLDOWN_SECONDS` 内の起動スキップ、Webhook 二重トリガー抑止、ログが一致する。 |
+| ビルド前の事前チェック | `runner.go` | §13、§26 | ディスク、`adlaire-ci-build`、pipeline 前提の確認、不足時の ERROR と通知が一致する。 |
+| 定期強制ビルド | `runner.go` / `api_server.go` | §12、§13、§22.0e | `FORCE_BUILD_INTERVAL`、変更なし時の強制ビルド、設定 API が一致する。 |
+| ビルド中重複スキップ | `runner.go` | §11、§13 | `.build_lock` の PID 判定、stale lock、競合時終了コードとログが一致する。 |
+| GitHub PAT 有効期限の事前警告 | `runner.go` / `api_server.go` | §13、§22.0e | `GitHub-Authentication-Token-Expiration` の解析、7 日以内 WARN、API 表示が一致する。 |
+| コミット情報のビルドログ記録 | `runner.go` | §13、§15 | SHA、message、author、date を build id と同じログへ記録する。 |
+| GitHub API 連続失敗によるサーキットブレーカー | `runner.go` / `api_server.go` | §11、§12、§13、§22.0e | 閾値、open/close 状態、API reset、通知、状態ファイルが一致する。 |
+| 出力サイトサイズ警告閾値 | `build_spec.go` / `runner.go` / `api_server.go` | §8、§12、§13、§22.0e | `OUTPUT_SIZE_WARN_MB`、`size_warn`、WARN ログ、API 表示が一致する。 |
+| Webhook イベントログ | `api_server.go` | §11、§22.0e、§22-W | `.webhook_events.json` の JSON Lines schema と一覧 API が一致する。 |
+| ビルド所要時間の記録と統計 API | `runner.go` / `api_server.go` | §15、§22.0e | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
+| ビルドアーティファクト世代管理 | `runner.go` / `api_server.go` | §14b、§22.0e | `.snapshots/` の保持世代、削除、rollback API が一致する。 |
+| ビルドアーティファクト管理 | `api_server.go` / `admin/index.html` / `adlaire-ci-sdk.js` | §14b、§22.0e、§23、§24 | 一覧、ダウンロード、削除、ロールバックの API、SDK、UI が一致する。 |
+| ヘルスチェックエンドポイント | `api_server.go` | §22.0e | `GET /api/health` の稼働秒数、最終ビルド、最終転送、エラー応答が一致する。 |
+| Webhook イベント一覧取得 API | `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24 | `GET /api/webhook-events` の query、response、SDK method、UI 表示が一致する。 |
+| ビルドログ重大度フィルター | `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24 | `level=warn\|error` の query、検索結果、UI filter が一致する。 |
+| 変換レポート出力 | `build_spec.go` / `runner.go` / `api_server.go` | §8、§13、§15、§22.0e | `[REPORT]` stdout、runner 取り込み、`.build_logs`、`GET /api/output-meta` が一致する。 |
+| シンタックスハイライト | `build_spec.go` | §7.8 | 対応言語、class 名、HTML escape、CSS 表示が一致する。 |
+| 本文内全文検索 | `build_spec.go` | §7.9 | `assets/search-index.json`、検索 UI、ヒット遷移、対象テキストが一致する。 |
+| アンカーリンク自動検証 | `build_spec.go` | §4.3、§8 | broken anchor 検出、`[WARN] BROKEN_LINK`、report 件数が一致する。 |
+| コードブロックの折りたたみ | `build_spec.go` | §7.10 | 30 行超の初期折りたたみ、展開操作、印刷時展開が一致する。 |
+| 印刷スタイル（`@media print`） | `build_spec.go` | §6 | `@media print` の非表示対象、コード展開、リンク URL 表示が一致する。 |
+| 静的 Web サイト出力 | `build_spec.go` | §2、§5、§6、§7 | 入力ファイル/ディレクトリ、出力ファイル構成、asset、ページ生成が一致する。 |
+| テーマコンポーネント | `build_spec.go` | §5、§6、§7 | `adlaire-default` の component、class、slot、asset 出力が一致する。 |
+| 外部リンクの自動処理 | `build_spec.go` | §4.3 | `target="_blank"`、`rel="noopener noreferrer"`、内部リンクとの区別が一致する。 |
+| 読み取り進捗バー | `build_spec.go` | §7.13 | 3px 固定表示、scroll 連動、初期/末尾状態が一致する。 |
+| コードブロックのコピーボタン | `build_spec.go` | §7.6 | ボタン配置、コピー対象、成功/失敗時表示、アクセシビリティが一致する。 |
+| 見出しアンカーリンクコピー | `build_spec.go` | §3、§7.11 | `.hn-link`、copy URL、重複 slug 連動が一致する。 |
+| TOC 開閉状態の永続化 | `build_spec.go` | §7.3 | `localStorage` key、展開/折りたたみ、復元条件が一致する。 |
+| 見出しスラグ重複解決 | `build_spec.go` | §4.5 | `-2`、`-3` の付与、TOC、検索、コピー URL との共通化が一致する。 |
+| 前後章ナビゲーションボタン | `build_spec.go` | §4.5、§5、§7.15 | h2 単位の前後判定、章末尾配置、端の非表示条件が一致する。 |
+| 内部リンク整合性チェック | `build_spec.go` | §4.3、§8 | `[label](#anchor)` 検証、WARN、`broken_links` が一致する。 |
+| 見出し階層スキップ警告 | `build_spec.go` | §4.5、§8 | h1→h3 等の検出、WARN、`heading_skips` が一致する。 |
+| 読了時間推計と表示 | `build_spec.go` | §4.5、§5、§6、§8 | 対象文字数、200文字/分、切り上げ、header 表示、report が一致する。 |
+| Webhook 通知失敗リトライキュー | `runner.go` | §11、§13、§16 | `.notify_pending` の schema、再送順序、失敗時保持が一致する。 |
+| ブランチ設定の動的変更 API | `runner.go` / `api_server.go` | §11、§12、§22.0e | `.branch_config`、GET/POST API、runner 再起動不要条件が一致する。 |
+| 週次ビルドサマリー Webhook | `runner.go` / `api_server.go` | §12、§13、§16、§22.0e | 週次判定、集計対象、通知 payload、手動送信 API が一致する。 |
+| 設定変更の詳細 diff 記録 | `api_server.go` | §22.0a、§22.0e | `.config_log` の diff 文字列、対象 API、マスク条件が一致する。 |
+| テーブルのソート機能 | `build_spec.go` | §7.14 | クリック操作、昇順/降順、`aria-sort`、インジケーターが一致する。 |
+| キーボードショートカット | `build_spec.go` | §7.12 | `/`、`Escape`、`t` の対象、フォーカス条件、入力中の無効化が一致する。 |
+
+---
+
 ## 0. システム概要
 
 Adlaire CI は Go 版 3 コンポーネントと JavaScript/HTML 管理ツールで構成する。
