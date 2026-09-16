@@ -7006,6 +7006,38 @@ export { AdlaireCI, AdlaireCIError };
 | stream | log frame、end frame、invalid frame、client close | callback、closed、error が仕様どおり。EventSource を使用しない。 |
 | binary | `downloadSnapshot(id)` | `Blob` を返し、JSON parse を試みない。 |
 
+**SDK P0 / P1 操作固定契約：**
+
+P0 / P1 実装では、下表の SDK method を最小運用範囲として固定する。SDK は API response を成功時に補完せず、失敗時はすべて `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
+
+| SDK method | HTTP | 成功時 | 失敗時 | 追加禁止事項 |
+|------------|------|--------|--------|--------------|
+| `login(password)` | `POST /api/login` | `token` がある場合だけ `this._token` へ保存する。`totp_required:true` の場合は token を保存せず response を返す。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | password を console、error、responseBody 加工結果へ出さない。 |
+| `logout()` | `POST /api/logout` | response に関わらず `finally` で token を破棄する。 | network error、`401`、`500` でも token 破棄後に error を投げる。 | logout 失敗を理由に token を保持しない。 |
+| `getStatus()` | `GET /api/status` | `StatusObject` をそのまま返す。 | `500 State file is corrupted` / `State file read failed` を message として保持する。 | `.build_status.json` 不在時の fallback 値を SDK が推測しない。 |
+| `triggerBuild()` | `POST /api/build` | `{message, build_id?, queued?}` を返す。 | `409`、`429`、`503` を UI が分岐できる `status` 付き error にする。 | running / queue / circuit を SDK 側で事前判定しない。 |
+| `buildForce()` | `POST /api/build/force` | `{message, build_id?, queued?}` を返す。 | `409`、`429`、`503` を `AdlaireCIError`。 | force 可否を SDK 側で状態推測しない。 |
+| `cancelBuild()` | `POST /api/build/cancel` | `{message}` を返す。 | running なしの `409` を `AdlaireCIError(status=409)`。 | cancel 後に SDK が自動 `getStatus()` を呼ばない。 |
+| `getLogs(n,q)` | `GET /api/logs` | `{lines}` を返す。`lines` は API 順序を保持する。 | `500` は固定 error message を保持する。 | line を結合、trim、level 分類しない。 |
+| `getHistory(options)` | `GET /api/history` | `{total,page,per_page,pages,history}` を返す。 | query 不正 `422` は `details` を保持する。 | `pages`、`total` を SDK 側で再計算しない。 |
+| `getHistoryLog(id)` | `GET /api/history/{id}/log` | log object を返す。 | `404`、`500` を `AdlaireCIError`。 | archive fallback を SDK 側で再試行しない。 |
+| `getQueue()` | `GET /api/queue` | `{queued,max_size}` を返す。`running` が response に含まれる場合も削除しない。 | `.build_state` 破損の `500` を固定 message で保持する。 | queue 並び替え、重複排除、上限補正をしない。 |
+| `resetCircuitBreaker()` | `POST /api/circuit-breaker/reset` | `{message,open,consecutive_failures}` を返す。 | 破損状態 `500` を `AdlaireCIError`。 | reset 成功後に SDK が自動 build を開始しない。 |
+| `streamBuild(onLine,onEnd)` | `GET /api/build/stream` | `StreamHandle` を返し、`log` frame を `onLine`、`end` frame を `onEnd` へ渡す。 | 接続前 `401`、`404`、timeout、invalid frame を `AdlaireCIError`。 | `EventSource`、自動 reconnect、log 永続化を行わない。 |
+
+**SDK P0 / P1 fixture 固定：**
+
+| fixture | fake fetch 入力 | 合格条件 |
+|---------|-----------------|----------|
+| sdk p1 status corrupted | `GET /api/status` が `500 {"error":"State file is corrupted"}` | `AdlaireCIError.status=500`、`message="State file is corrupted"`、token 維持。 |
+| sdk p1 build conflict | `POST /api/build` が `409 {"error":"Conflict"}` | `AdlaireCIError.status=409`、自動 retry なし、自動 `getStatus()` 呼び出しなし。 |
+| sdk p1 queue full | `POST /api/build` が `429 {"error":"queue_full"}` | `AdlaireCIError.status=429`、`message="queue_full"`、body 再送なし。 |
+| sdk p1 history paging | `getHistory({page:2,perPage:20,trigger:"manual"})` | query は `page=2&per_page=20&trigger=manual`、`total` と `pages` は API 値をそのまま返す。 |
+| sdk p1 log not found | `GET /api/history/{id}/log` が `404 {"error":"Not found"}` | `AdlaireCIError.status=404`、`id` は `encodeURIComponent` 済み。 |
+| sdk p1 stream end | `log` frame 2 件、`end` frame 1 件 | `onLine` 2 回、`onEnd` 1 回、`StreamHandle.closed=true`。 |
+| sdk p1 stream invalid | `data:` 行が JSON parse 不能 | `AdlaireCIError(status=0,message="Invalid SSE frame")`、`closed=true`。 |
+| sdk p1 unauthorized | 任意 P0/P1 endpoint が `401` | `this._token=null`、次 request に Authorization header を付けない。 |
+
 **SDK 引数変換契約：**
 
 SDK method は、下表の通りに引数を path、query、body へ変換する。下表にない引数、既定値、body key を追加してはならない。
@@ -7408,6 +7440,48 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | refresh failure | 変更 API 成功後の再取得 2 件目が失敗 | 変更成功は維持し、再取得失敗だけ panel error に表示する。 |
 | destructive cancel | 確認 dialog cancel | SDK method 呼び出し 0 回、表示差分なし。 |
 | secret clearing | token 発行、TOTP setup、PAT 更新、Webhook secret 保存 | 次 user action または遷移で秘密情報 field と一回表示が消える。 |
+
+**UI P0 / P1 操作固定契約：**
+
+P0 / P1 UI は、ビルド状態確認、手動ビルド、強制ビルド、キャンセル、SSE ログ表示、履歴、ログ、キュー、circuit breaker reset だけを最小運用操作として固定する。UI は SDK response に存在しない状態を推測せず、API / SDK の error status と message に基づいて表示を分岐する。
+
+| 操作 | 使用 SDK method | 成功時表示 | 成功後再取得 | 失敗時表示 / disabled |
+|------|-----------------|------------|--------------|------------------------|
+| 初期状態取得 | `getStatus()`, `getQueue()` | status badge、last build、queue 件数を表示する。 | なし | `500` は status panel error。`401` は login panel へ戻す。 |
+| 手動 build | `triggerBuild()` | `Build queued` または `Build started` を表示する。 | `getStatus()`, `getQueue()` | `409` は競合表示後に status/queue 再取得。`429` は build button を 10 秒 disabled。`503` は maintenance/circuit 表示。 |
+| 強制 build | `buildForce()` | `Force build queued` または `Force build started` を表示する。 | `getStatus()`, `getQueue()` | `409`、`429`、`503` は手動 build と同じ扱い。 |
+| cancel | `cancelBuild()` | `Build cancel requested` を表示する。 | `getStatus()`, `getQueue()` | `409` は「実行中 build なし」として表示し、status/queue を再取得する。 |
+| SSE 表示開始 | `streamBuild(onLine,onEnd)` | 接続中は stream indicator を表示し、受信行を append する。 | `onEnd` 後に `getStatus()`, `getQueue()`, `getLogs()` | invalid frame / network error は stream error 表示後に status/queue 再取得。ユーザー停止は error 表示なし。 |
+| ログ取得 | `getLogs(n,q)` | 行順を保持して log panel に表示する。空配列は空状態表示。 | なし | `500` は log panel error。検索条件は保持する。 |
+| 履歴取得 | `getHistory(options)` | `total`、`pages`、history 行を API 順序で表示する。 | なし | `422` は該当 filter field、`500` は history panel error。 |
+| 履歴 log 表示 | `getHistoryLog(id)` | 選択 build の log detail を表示する。 | なし | `404` は選択解除して not found 表示。`500` は detail error。 |
+| キュー取得 | `getQueue()` | queue 件数、max size、各 entry を API 順序で表示する。 | なし | `500` は queue panel error。 |
+| circuit reset | `resetCircuitBreaker()` | `Circuit breaker reset` を表示する。 | `getStatus()`, `getQueue()` | `500` は circuit error。成功後に build を自動開始しない。 |
+
+P0 / P1 UI の disabled 条件は以下に固定する。
+
+| 条件 | disabled 対象 | 解除条件 |
+|------|---------------|----------|
+| SDK method 実行中 | 同一操作 button と同一 form submit | 成功または失敗後。ただし下記継続条件がある場合は解除しない。 |
+| `streamBuild()` 接続中 | stream 開始 button、manual build button、force build button | `end` frame、stream error、またはユーザー停止。 |
+| `getStatus().running=true` | manual build button。force build は仕様上許可される場合のみ有効。rollback は disabled。 | 次回 `getStatus().running=false`。 |
+| `429` | 同一操作 button | 10 秒経過後に status/queue 再取得し、継続条件がなければ解除する。 |
+| `503` maintenance / circuit | build、force build、cancel 以外の状態変更操作。circuit reset は有効。 | maintenance disabled または circuit reset 成功後の再取得。 |
+| `401` | 全 authenticated 操作 | login 成功後。 |
+
+**UI P0 / P1 fixture 固定：**
+
+| fixture | fake SDK 入力 | 合格条件 |
+|---------|---------------|----------|
+| ui p1 initial status error | `getStatus()` が `AdlaireCIError(status=500,message="State file is corrupted")` | status panel error に固定 message を表示し、build button を成功扱いにしない。 |
+| ui p1 manual build conflict | `triggerBuild()` が `409 Conflict` | error 表示、`getStatus()` と `getQueue()` をこの順で再取得、同じ build request を再送しない。 |
+| ui p1 queue full | `triggerBuild()` が `429 queue_full` | build button を 10 秒 disabled、password や secret field は変更しない。 |
+| ui p1 stream success | `streamBuild()` が log 2 件と end 1 件を返す | log 行 2 件を append、end 後に status、queue、logs を順に再取得、stream indicator を消す。 |
+| ui p1 stream user close | ユーザーが `StreamHandle.close()` を押す | error 表示なし、closed 表示、status/queue 再取得あり。 |
+| ui p1 history validation | `getHistory()` が `422 details` を返す | 該当 filter field に message を紐付け、history rows を前回表示のまま維持する。 |
+| ui p1 log not found | `getHistoryLog(id)` が `404 Not found` | detail panel に not found を表示し、履歴一覧は再取得しない。 |
+| ui p1 circuit reset | `resetCircuitBreaker()` 成功 | circuit 表示を閉じ、status/queue を再取得し、build を自動開始しない。 |
+| ui p1 unauthorized | 任意操作が `401` | token/ticket/secret field を消去し、`panel-login` だけ表示する。 |
 
 **UI 設定値契約：**
 
