@@ -71,10 +71,11 @@
 |--------------------|------------|--------------|
 | `components/builder.go` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture、builder owner 追加機能。 |
 | `components/runner.go` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.1〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38 | 設定、状態ファイル、GitHub API、pipeline、転送、snapshot、通知、systemd、fixture、runner owner 追加機能。 |
-| `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47 | API 共通処理、endpoint、状態ファイル read/write、認証、session、API owner 追加機能。 |
+| `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、endpoint、状態ファイル read/write、認証、session、API owner 追加機能。 |
 | `admin/adlaire-ci-sdk.js` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
 | `admin/index.html` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
 | `setup` | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
+| `components/statefile.go` | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | 状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
 | `components/mcp.go` | 詳細仕様なし | 本ファイルでは実装可能な入出力、状態、起動手順、検証条件を定義しない。 |
 
 ---
@@ -87,13 +88,14 @@
 
 | ファイル | 持つ内容 | 持たない内容 |
 |----------|----------|--------------|
-| `ADLAIRE_CI_DETAIL_SPEC.md` | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 分割仕様。 | 各 component の詳細な処理本文、fixture 詳細、個別 endpoint 詳細、個別 UI 操作詳細。 |
+| `ADLAIRE_CI_DETAIL_SPEC.md` | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 分割仕様。 | 各 component の詳細な処理本文、fixture 詳細、状態ファイル schema 詳細、個別 endpoint 詳細、個別 UI 操作詳細。 |
 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture。 | runner / API / SDK / UI の実行責務。 |
 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner の GitHub 監視、状態ファイル更新、pipeline、deploy、snapshot、通知、runner fixture。 | API endpoint の認証・応答本文、SDK method、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner の HTTP 共通契約、endpoint、状態ファイル read/write、認証連携、API fixture。 | SDK 内部実装、UI DOM 詳細、runner の build 実行責務。 |
 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | `sdk` owner の SDK class、method、HTTP 対応、error、stream、token 破棄。 | API endpoint の状態ファイル更新責務、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 | SDK method 実装、API endpoint 実装、状態ファイル直接操作。 |
 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 | runner / API / SDK / UI の個別機能本文。 |
+| `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 | API endpoint の request / response、runner の業務処理、UI 表示判断。 |
 | `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture manifest、assertion、fake、testdata、受け入れ fixture 共通契約、PR 証跡テンプレート。 | 個別 component の通常処理本文。 |
 
 分割時の移動単位は、owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには参照リンク、禁止事項、受け入れ観点だけを置く。主本文を複数ファイルへ重複定義してはならない。
@@ -116,7 +118,8 @@
 2. `ADLAIRE_CI_DETAIL_SPEC.md` で共通固定値、責務 component、詳細節対応表を確認する。
 3. owner component の分割先詳細仕様ファイルを読む。
 4. collaborator component がある場合は、該当する分割先詳細仕様ファイルの参照節を読む。
-5. fixture、fake、PR 証跡が必要な場合は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を読む。
+5. 状態ファイルの読み書き、lock、atomic write、schema を扱う場合は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を読む。
+6. fixture、fake、PR 証跡が必要な場合は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を読む。
 
 分割作業は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
 
@@ -172,9 +175,9 @@
 | 改行 | 新規に書き出す text / JSON Lines ファイルは LF 固定。CRLF 入力は読み込み時に LF として扱う。 |
 | 時刻 | 状態ファイル、API、ログの機械処理用時刻は UTC の ISO 8601 形式（例: `2026-09-16T09:00:00Z`）で保存する。UI 表示のみローカル時刻へ変換してよい。 |
 | JSON | JSON object の未知キーは保存しない。読み込み時に未知キーを見つけた場合は無視し、次回保存時に除去する。 |
-| atomic write | JSON / text 状態ファイル更新は同一ディレクトリに一時ファイルを書き出し、`file.Sync()` と `file.Close()` の成功後に `os.Rename` で置換する。同一ファイルシステム外への一時ファイル作成は禁止する。 |
-| 権限 | 秘密情報を含むファイルは `0600`、通常状態ファイルは `0644`、ディレクトリは `0755` を既定値とする。既存ファイル更新時も権限が緩い場合は既定値へ補正する。 |
-| ロック | 共有状態ファイル更新は `{filename}.lock` を同一ディレクトリに作成して排他する。ロック取得待ちは runner では 0 秒、API では最大 10 秒。超過時は runner が ERROR ログで当該処理をスキップし、API は `409 Conflict` を返す。 |
+| atomic write | 状態ファイル更新手順は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a を正とする。各 component は同節の手順を使用し、独自更新手順を持たない。 |
+| 権限 | 状態ファイル、秘密情報ファイル、ディレクトリの権限は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a を正とする。 |
+| ロック | 状態ファイル lock の作成、待機、解除、競合時応答は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a を正とする。 |
 | ログ秘密情報 | PAT、Webhook Secret、SMTP password、session token、API token は stdout、stderr、JSON log、API response、UI 表示へ平文出力しない。表示が必要な場合は `"***"` とする。 |
 | 終了コード | CLI / runner は `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` ロック競合を標準とする。個別節に明記がある場合もこの意味から外してはならない。 |
 | 禁止事項 | 仕様にない環境変数、状態ファイル、HTTP endpoint、CLI option、外部依存を実装者判断で追加してはならない。必要な場合は先に本仕様を改訂する。 |
@@ -757,7 +760,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | `components/runner.go` | GitHub polling、変更検出、ビルド起動、履歴、ログ、deploy を実行する。 |
 | `components/api.go` | 管理 API サーバー、認証、状態ファイル操作を提供する。 |
 | `components/admin.go` | 管理 UI 静的ファイルの配布・配置を扱う。 |
-| `components/statefile.go` | `.build_history`、`.build_logs`、`.server_config` など状態ファイルの読み書きを扱う。 |
+| `components/statefile.go` | `.build_history`、`.build_logs`、`.server_config` など状態ファイルの読み書きを扱う。詳細は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。 |
 | `components/archive.go` | ビルドログ圧縮、snapshot、配布アーカイブを扱う。 |
 | `components/commitstatus.go` | GitHub Commit Status API 送信を扱う。 |
 | `components/mcp.go` | MCP 接続を扱う。 |
