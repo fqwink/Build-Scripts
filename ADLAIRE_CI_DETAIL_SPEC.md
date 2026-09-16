@@ -27,11 +27,11 @@
 
 | 範囲 | 役割 |
 |------|------|
-| §0〜§0i | 詳細仕様の記載基準、実装前確認項目、共通固定値、検証、Phase、詳細節対応表 |
-| §1〜§9 | `build_spec.go` / `adlaire-ci-build` の詳細仕様 |
-| §10〜§20 | `runner.go` / `adlaire-ci-runner` の詳細仕様 |
-| §21〜§22 | `api_server.go` / `adlaire-ci-api` の詳細仕様 |
-| §23 | `adlaire-ci-sdk.js` の詳細仕様 |
+| §0〜§0j | 詳細仕様の記載基準、実装前確認項目、共通固定値、検証、Phase、詳細節対応表、リポジトリ内ソース配置 |
+| §1〜§9 | `components/builder.go` / `adlaire-ci-build` の詳細仕様 |
+| §10〜§20 | `components/runner.go` / `adlaire-ci-runner` の詳細仕様 |
+| §21〜§22 | `components/api.go` / `adlaire-ci-api` の詳細仕様 |
+| §23 | `admin/adlaire-ci-sdk.js` の詳細仕様 |
 | §24 | `admin/index.html` の詳細仕様 |
 | §25 | 認証の実装仕様 |
 | §26 | バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
@@ -67,12 +67,12 @@
 
 | 対象コンポーネント | 詳細仕様節 | 主な確認対象 |
 |--------------------|------------|--------------|
-| `build_spec.go` | §1〜§9、§8a | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture。 |
-| `runner.go` | §10〜§20、§15a、§26 | 設定、状態ファイル、GitHub API、pipeline、転送、snapshot、通知、systemd、fixture。 |
-| `api_server.go` | §21〜§22、§25、§26 | API 共通処理、endpoint、状態ファイル、認証、session、systemd。 |
-| `adlaire-ci-sdk.js` | §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
+| `components/builder.go` | §1〜§9、§8a | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture。 |
+| `components/runner.go` | §10〜§20、§15a、§26 | 設定、状態ファイル、GitHub API、pipeline、転送、snapshot、通知、systemd、fixture。 |
+| `components/api.go` | §21〜§22、§25、§26 | API 共通処理、endpoint、状態ファイル、認証、session、systemd。 |
+| `admin/adlaire-ci-sdk.js` | §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
 | `admin/index.html` | §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
-| `mcp_server.go` | 詳細仕様なし | 本ファイルでは実装可能な入出力、状態、起動手順、検証条件を定義しない。 |
+| `components/mcp.go` | 詳細仕様なし | 本ファイルでは実装可能な入出力、状態、起動手順、検証条件を定義しない。 |
 
 ---
 
@@ -133,17 +133,17 @@
 
 | 対象 | 必須検証 | 合格条件 |
 |------|----------|----------|
-| `build_spec.go` | CLI 正常系 | `adlaire-ci-build --src <valid.md-or-dir> --out <site-dir>` が終了コード `0` で終了し、静的 Web サイトと `[REPORT]` を生成する。 |
-| `build_spec.go` | CLI 異常系 | 入力不存在、UTF-8 不正、未知引数、出力不可ディレクトリ、未知 theme で §2・§8 の終了コードと stderr が一致する。 |
-| `build_spec.go` | Markdown 変換 | 見出し、重複 slug、内部リンク警告、脚注、表、引用、リスト、コードフェンス、未閉鎖フェンス、HTML escape が §4 の出力構造と一致する。 |
-| `build_spec.go` | 生成物 | 出力サイトディレクトリに `index.html`、ページ HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` が生成され、§5〜§7 の ID / class / JS 機能を含む。 |
-| `runner.go` | 設定検証 | `--state-dir`、`BRANCH_TARGETS`、必須ファイル不足、未知設定キーで §12 のログ・終了コード・採用優先順位が一致する。 |
-| `runner.go` | 状態更新 | 成功、ビルド失敗、GitHub API 失敗、転送失敗、lock 競合、JSON 破損で §13 と §22.0a の更新順序・未更新条件が一致する。 |
-| `runner.go` | 冪等性 | 同一 SHA 再実行、pending retry 再実行、通知 pending 再実行、stale lock 復旧で二重履歴・二重 snapshot・状態破壊が発生しない。 |
-| `api_server.go` | API 共通 | 未知 path、未対応 method、body 禁止、JSON 不正、body 上限、認証なし、権限不足、入力検証失敗、ロック競合が §22.0 の status と body を返す。 |
-| `api_server.go` | 状態ファイル | 全 write API が §22.0a / §22.0d の対象ファイルだけを atomic write し、秘密情報を平文出力しない。 |
-| `api_server.go` | endpoint 契約 | §22.0e の全 endpoint について Request、Response、Success、Errors、Read、Write、SDK、UI の対応が実装と一致する。 |
-| `adlaire-ci-sdk.js` | SDK 契約 | 全 method が §22.0e の endpoint のみを呼び、body なし endpoint に body を送らず、HTTP error を `AdlaireCIError` として返す。 |
+| `components/builder.go` | CLI 正常系 | `adlaire-ci-build --src <valid.md-or-dir> --out <site-dir>` が終了コード `0` で終了し、静的 Web サイトと `[REPORT]` を生成する。 |
+| `components/builder.go` | CLI 異常系 | 入力不存在、UTF-8 不正、未知引数、出力不可ディレクトリ、未知 theme で §2・§8 の終了コードと stderr が一致する。 |
+| `components/builder.go` | Markdown 変換 | 見出し、重複 slug、内部リンク警告、脚注、表、引用、リスト、コードフェンス、未閉鎖フェンス、HTML escape が §4 の出力構造と一致する。 |
+| `components/builder.go` | 生成物 | 出力サイトディレクトリに `index.html`、ページ HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` が生成され、§5〜§7 の ID / class / JS 機能を含む。 |
+| `components/runner.go` | 設定検証 | `--state-dir`、`BRANCH_TARGETS`、必須ファイル不足、未知設定キーで §12 のログ・終了コード・採用優先順位が一致する。 |
+| `components/runner.go` | 状態更新 | 成功、ビルド失敗、GitHub API 失敗、転送失敗、lock 競合、JSON 破損で §13 と §22.0a の更新順序・未更新条件が一致する。 |
+| `components/runner.go` | 冪等性 | 同一 SHA 再実行、pending retry 再実行、通知 pending 再実行、stale lock 復旧で二重履歴・二重 snapshot・状態破壊が発生しない。 |
+| `components/api.go` | API 共通 | 未知 path、未対応 method、body 禁止、JSON 不正、body 上限、認証なし、権限不足、入力検証失敗、ロック競合が §22.0 の status と body を返す。 |
+| `components/api.go` | 状態ファイル | 全 write API が §22.0a / §22.0d の対象ファイルだけを atomic write し、秘密情報を平文出力しない。 |
+| `components/api.go` | endpoint 契約 | §22.0e の全 endpoint について Request、Response、Success、Errors、Read、Write、SDK、UI の対応が実装と一致する。 |
+| `admin/adlaire-ci-sdk.js` | SDK 契約 | 全 method が §22.0e の endpoint のみを呼び、body なし endpoint に body を送らず、HTTP error を `AdlaireCIError` として返す。 |
 | `admin/index.html` | UI 契約 | 全操作が §24 の SDK method 経由で動作し、成功表示、失敗表示、disabled、再取得、秘密情報消去が一致する。 |
 | セットアップ | systemd | §26 の unit 名、`ExecStart`、配置パス、権限、起動確認コマンドが実際の導入手順と一致する。 |
 
@@ -157,13 +157,13 @@
 
 | 対象 | 実装着手条件 | 実装禁止条件 | 完了判定 |
 |------|--------------|--------------|----------|
-| `build_spec.go` | §2〜§8 に CLI option、入力 Markdown、出力サイトディレクトリ、終了コード、stderr、HTML 構造、テーマコンポーネント、JS/CSS、生成物確認が定義されている。 | §4〜§7 にない Markdown 記法、CSS class、JavaScript 機能、外部 asset、theme を追加すること。 | §0e の `build_spec.go` 必須検証をすべて満たし、生成サイトが §5〜§7 と一致する。 |
-| `runner.go` | §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd が定義されている。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。 | §0e の `runner.go` 必須検証をすべて満たし、状態ファイル更新順序が §13、§22.0a、§22.0d と一致する。 |
-| `api_server.go` | §21〜§22、§25、§26 に API 共通契約、endpoint、状態ファイル schema、認証、認可、systemd、セットアップが定義されている。 | §22.0e にない endpoint、method、status code、response body、状態ファイル write を追加すること。 | §22.0e の全 endpoint が Request、Response、Errors、Read、Write、SDK、UI の対応表と一致する。 |
-| `adlaire-ci-sdk.js` | §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が §22.0e と §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
+| `components/builder.go` | §2〜§8 に CLI option、入力 Markdown、出力サイトディレクトリ、終了コード、stderr、HTML 構造、テーマコンポーネント、JS/CSS、生成物確認が定義されている。 | §4〜§7 にない Markdown 記法、CSS class、JavaScript 機能、外部 asset、theme を追加すること。 | §0e の `components/builder.go` 必須検証をすべて満たし、生成サイトが §5〜§7 と一致する。 |
+| `components/runner.go` | §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd が定義されている。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。 | §0e の `components/runner.go` 必須検証をすべて満たし、状態ファイル更新順序が §13、§22.0a、§22.0d と一致する。 |
+| `components/api.go` | §21〜§22、§25、§26 に API 共通契約、endpoint、状態ファイル schema、認証、認可、systemd、セットアップが定義されている。 | §22.0e にない endpoint、method、status code、response body、状態ファイル write を追加すること。 | §22.0e の全 endpoint が Request、Response、Errors、Read、Write、SDK、UI の対応表と一致する。 |
+| `admin/adlaire-ci-sdk.js` | §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が §22.0e と §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
 | `admin/index.html` | §24 に画面構成、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去が定義されている。 | SDK を介さず API を直接呼ぶこと、未定義の画面・操作・保存先を追加すること、秘密情報を DOM に残すこと。 | 全 UI 操作が §24 の表示条件と §23 の SDK method を満たし、秘密情報 field が指定条件で消去される。 |
 
-上表の対象外である `mcp_server.go`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらは、本ファイル内に入出力、状態、起動手順、検証条件を定義しない。
+上表の対象外である `components/mcp.go`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらは、本ファイル内に入出力、状態、起動手順、検証条件を定義しない。
 
 仕様策定完了チェックで未充足が見つかった場合は、実装を開始せず、以下の順で仕様を補完する。
 
@@ -171,7 +171,7 @@
 2. 未充足項目が入出力、状態ファイル、API、SDK、UI、処理順序、異常系、検証条件に関わる場合は、本ファイルの該当節を改訂する。
 3. ファイル名、正本関係、対象範囲が変わる場合は、`DOCUMENT_INDEX.md` の更新要否を確認する。
 4. 対象項目の詳細節または受け入れ条件が変わる場合は、§0i の詳細節対応表を更新する。
-5. 補完後、§0b、§0c、§0e、本節、§0g、§0h、§0i の条件を再確認する。
+5. 補完後、§0b、§0c、§0e、本節、§0g、§0h、§0i、§0j の条件を再確認する。
 
 ---
 
@@ -181,20 +181,20 @@ Go 版初期実装は、`ADLAIRE_CI_SPEC.md` §0e の対象範囲を一括実装
 
 | Phase | 対象 | 実装範囲 | 依存条件 | 完了条件 |
 |-------|------|----------|----------|----------|
-| Phase 1 | `build_spec.go` | §2〜§9 の CLI、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、生成物確認。 | なし。 | §0e の `build_spec.go` 必須検証と §0f の `build_spec.go` 完了判定を満たす。 |
-| Phase 2 | `runner.go` | §10〜§20 の CI ランナー、GitHub API 連携、SHA キャッシュ、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd。 | Phase 1 が完了し、`adlaire-ci-build` の CLI 契約が固定されている。 | §0e の `runner.go` 必須検証と §0f の `runner.go` 完了判定を満たす。 |
-| Phase 3 | `api_server.go` P0 / P1 | §21〜§22、§25、§26 のうち、認証、セッション、共通エラー、状態ファイル読み書き、ビルド操作、status、logs、history、queue、circuit breaker。 | Phase 2 が完了し、runner が書き込む状態ファイル schema が固定されている。 | §22.0f P0 / P1 の必須検証、§0e の `api_server.go` API 共通・状態ファイル検証、§0f の `api_server.go` 完了判定の該当範囲を満たす。 |
-| Phase 4 | `api_server.go` P2〜P5 | §22.0f P2〜P5 の config、repo、branch、schedule、notify、snapshot、rollback、maintenance、access control、hooks、tokens 等。 | Phase 3 が完了し、API 共通処理と認証が固定されている。 | §22.0f P2〜P5 の必須検証と §0e の `api_server.go` endpoint 契約を満たす。 |
-| Phase 5 | `adlaire-ci-sdk.js` | §23 の SDK class、method、戻り値、HTTP error、token 破棄、query 生成。 | Phase 3 と Phase 4 が完了し、§22.0e の endpoint 契約が固定されている。 | §0e の SDK 契約と §0f の `adlaire-ci-sdk.js` 完了判定を満たす。 |
+| Phase 1 | `components/builder.go` | §2〜§9 の CLI、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、生成物確認。 | なし。 | §0e の `components/builder.go` 必須検証と §0f の `components/builder.go` 完了判定を満たす。 |
+| Phase 2 | `components/runner.go` | §10〜§20 の CI ランナー、GitHub API 連携、SHA キャッシュ、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd。 | Phase 1 が完了し、`adlaire-ci-build` の CLI 契約が固定されている。 | §0e の `components/runner.go` 必須検証と §0f の `components/runner.go` 完了判定を満たす。 |
+| Phase 3 | `components/api.go` P0 / P1 | §21〜§22、§25、§26 のうち、認証、セッション、共通エラー、状態ファイル読み書き、ビルド操作、status、logs、history、queue、circuit breaker。 | Phase 2 が完了し、runner が書き込む状態ファイル schema が固定されている。 | §22.0f P0 / P1 の必須検証、§0e の `components/api.go` API 共通・状態ファイル検証、§0f の `components/api.go` 完了判定の該当範囲を満たす。 |
+| Phase 4 | `components/api.go` P2〜P5 | §22.0f P2〜P5 の config、repo、branch、schedule、notify、snapshot、rollback、maintenance、access control、hooks、tokens 等。 | Phase 3 が完了し、API 共通処理と認証が固定されている。 | §22.0f P2〜P5 の必須検証と §0e の `components/api.go` endpoint 契約を満たす。 |
+| Phase 5 | `admin/adlaire-ci-sdk.js` | §23 の SDK class、method、戻り値、HTTP error、token 破棄、query 生成。 | Phase 3 と Phase 4 が完了し、§22.0e の endpoint 契約が固定されている。 | §0e の SDK 契約と §0f の `admin/adlaire-ci-sdk.js` 完了判定を満たす。 |
 | Phase 6 | `admin/index.html` | §24 の標準管理ツール UI、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去。 | Phase 5 が完了し、SDK method 契約が固定されている。 | §0e の UI 契約と §0f の `admin/index.html` 完了判定を満たす。 |
 
-### 0g.1 Phase 1 完全仕様ゲート（`build_spec.go`）
+### 0g.1 Phase 1 完全仕様ゲート（`components/builder.go`）
 
 Phase 1 は、Markdown 入力から静的 Web サイト出力までを `adlaire-ci-build` 単体で完結させる。実装者は、本 Phase で CI runner、管理 API、SDK、UI、MCP、GitHub API、SSH 転送を実装してはならない。
 
 | 項目 | 固定仕様 |
 |------|----------|
-| 実装開始条件 | §2〜§8、§8a、§0e、§0f、§0h、§0i を確認済みである。 |
+| 実装開始条件 | §2〜§8、§8a、§0e、§0f、§0h、§0i、§0j を確認済みである。 |
 | 入力 | `--src` で指定された UTF-8 Markdown ファイルまたは Markdown ディレクトリ、`--out`、`--title`、`--theme`、`--base-dir`、`--strict`。 |
 | 出力 | `index.html`、必要なページ HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json`、stdout の進捗行、`[WARN]`、`[REPORT]`。 |
 | 状態 | 実行中のメモリ状態だけを使用する。状態ファイル、cache、lock、network、secret は使用しない。 |
@@ -203,7 +203,7 @@ Phase 1 は、Markdown 入力から静的 Web サイト出力までを `adlaire-
 | セキュリティ | 生 HTML は pass-through せず escape する。外部 asset、外部 font、CDN、外部 JavaScript を読み込まない。 |
 | 実装対象外 | GitHub API、runner 状態ファイル、deploy、snapshot、通知、API server、SDK、admin UI、MCP。 |
 | 必須 fixture | §8a Fixture A〜D。 |
-| 完了条件 | §0e の `build_spec.go` 必須検証、§0f の完了判定、§8a の全 fixture、§26.7 の build script 対象を満たす。 |
+| 完了条件 | §0e の `components/builder.go` 必須検証、§0f の完了判定、§8a の全 fixture、§26.7 の build script 対象を満たす。 |
 
 Phase 1 完了時は、次 Phase へ引き継ぐ CLI 契約として、`adlaire-ci-build` の終了コード、stdout 進捗行、`[WARN]` 行、`[REPORT]` 行、出力ディレクトリ構造を固定する。Phase 2 以降は、この契約を変更してはならない。変更が必要な場合は Phase 1 仕様改訂に戻る。
 
@@ -231,7 +231,7 @@ Phase 1 は、以下の順序で実装する。順序を入れ替える場合は
 | report | `[REPORT]` は runner が読む契約であるため、field 名、status 値、stdout 出力位置を実装者判断で変更してはならない。 |
 | URL / path | 生成 URL、asset URL、slug、relative link は §7〜§8 の規則に従う。環境依存の絶対 URL を混入してはならない。 |
 
-### 0g.2 Phase 2 完全仕様ゲート（`runner.go`）
+### 0g.2 Phase 2 完全仕様ゲート（`components/runner.go`）
 
 Phase 2 は、`adlaire-ci-build` を呼び出す自己ホスト型 CI runner を実装する。実装者は、本 Phase で管理 API、SDK、admin UI の endpoint や画面を実装してはならない。ただし、後続 API が読む状態ファイル schema は本 Phase で固定する。
 
@@ -246,7 +246,7 @@ Phase 2 は、`adlaire-ci-build` を呼び出す自己ホスト型 CI runner を
 | セキュリティ | PAT、Webhook Secret、SMTP password を stdout、stderr、JSON log、pending queue に平文出力しない。`.github_token` は `0600`。 |
 | 実装対象外 | HTTP server、API endpoint、browser SDK、admin UI、API token、session UI、MCP。 |
 | 必須 fixture | §15a Fixture R1〜R7。実 GitHub / 実 SSH 接続ではなく fake server / fake executable で再現する。 |
-| 完了条件 | §0e の `runner.go` 必須検証、§0f の完了判定、§15a の全 fixture、§26.7 の runner 対象を満たす。 |
+| 完了条件 | §0e の `components/runner.go` 必須検証、§0f の完了判定、§15a の全 fixture、§26.7 の runner 対象を満たす。 |
 
 Phase 2 完了時は、Phase 3 以降へ引き継ぐ状態契約として、`.build_state`、`.build_status.json`、`.build_history`、`.build_logs/{id}.json`、`.pending_transfers`、`.notify_*`、`.branch_config`、`.build_circuit_state` の schema、権限、atomic write 条件、破損時復旧条件を固定する。Phase 3 以降は、これらの schema を暗黙に変更してはならない。
 
@@ -274,7 +274,7 @@ Phase 2 は、runner が後続 API の状態正本になるため、状態ファ
 | secret | PAT、SSH 秘密情報、SMTP password、Webhook Secret は log、history、pending queue、notification body に平文保存しない。 |
 | API 連携 | Phase 2 では HTTP endpoint を持たない。API 用に状態を固定するだけで、API server を起動しない。 |
 
-### 0g.3 Phase 3 完全仕様ゲート（`api_server.go` P0 / P1）
+### 0g.3 Phase 3 完全仕様ゲート（`components/api.go` P0 / P1）
 
 Phase 3 は、管理 API の最小運用範囲を実装する。対象は §22.0f の P0 / P1 に限定し、認証、session、共通エラー、状態ファイル読み書き、ビルド操作、status、logs、history、queue、circuit breaker を固定する。
 
@@ -289,7 +289,7 @@ Phase 3 は、管理 API の最小運用範囲を実装する。対象は §22.0
 | セキュリティ | `GET /api/health` 以外は認証必須。session token は file 保存しない。password hash と token は response / log に平文出力しない。 |
 | 実装対象外 | P2〜P5 endpoint、SDK 実装、admin UI 実装、MCP、外部 reverse proxy 設定。 |
 | 必須検証 | §22.0f P0 / P1、§25、§26.4.2、§26.7 API 対象。 |
-| 完了条件 | §0e の API 共通・状態ファイル検証、§0f の `api_server.go` 完了判定の P0 / P1 範囲、§22.0f P0 / P1 の検証を満たす。 |
+| 完了条件 | §0e の API 共通・状態ファイル検証、§0f の `components/api.go` 完了判定の P0 / P1 範囲、§22.0f P0 / P1 の検証を満たす。 |
 
 Phase 3 完了時は、Phase 4〜6 へ引き継ぐ API 共通契約として、認証 header、session expiry、error body、pagination、lock error、validation error、SSE event 形式、状態ファイル read/write 境界を固定する。
 
@@ -317,7 +317,7 @@ Phase 3 は、API 共通契約を後続 endpoint の土台として固定する�
 | SSE | browser SDK が `fetch()` stream で読む前提に固定する。EventSource 専用仕様へ変更してはならない。 |
 | external exposure | 初期 binding は `127.0.0.1` を標準とする。外部公開、TLS 終端、reverse proxy 設定は Phase 3 の対象外とする。 |
 
-### 0g.4 Phase 4 完全仕様ゲート（`api_server.go` P2〜P5）
+### 0g.4 Phase 4 完全仕様ゲート（`components/api.go` P2〜P5）
 
 Phase 4 は、Phase 3 の API 共通処理を変更せず、§22.0f P2〜P5 の拡張 endpoint を追加する。Phase 4 では SDK と admin UI を実装しないが、SDK/UI が利用する endpoint 契約を最終固定する。
 
@@ -332,7 +332,7 @@ Phase 4 は、Phase 3 の API 共通処理を変更せず、§22.0f P2〜P5 の�
 | セキュリティ | secret は保存時も response 時も mask 条件に従う。API token 本体は作成時 response のみ返し、再取得不可。 |
 | 実装対象外 | SDK class、admin UI DOM、MCP、外部通知 channel の本ファイルで未定義の拡張。 |
 | 必須検証 | §22.0f P2〜P5 の検証条件、§22.0d の read/write 対応表、§26.7 API/security 対象。 |
-| 完了条件 | §0e の endpoint 契約、§0f の `api_server.go` 完了判定、§22.0e の全 endpoint 契約を満たす。 |
+| 完了条件 | §0e の endpoint 契約、§0f の `components/api.go` 完了判定、§22.0e の全 endpoint 契約を満たす。 |
 
 Phase 4 完了時は、Phase 5 へ引き継ぐ SDK 契約として、全 endpoint の method、path、query、request body、response body、error status、error body、認証要否、body 禁止条件を固定する。
 
@@ -360,7 +360,7 @@ Phase 4 は、P0 / P1 の互換を保持したまま endpoint 面を完成させ
 | hook | hook は登録済み引数配列のみ実行する。shell 展開、環境変数補完、任意 script 文字列実行は禁止する。 |
 | endpoint 追加 | SDK/UI の都合で §22.0e にない endpoint を追加してはならない。必要な場合は先に仕様改訂する。 |
 
-### 0g.5 Phase 5 完全仕様ゲート（`adlaire-ci-sdk.js`）
+### 0g.5 Phase 5 完全仕様ゲート（`admin/adlaire-ci-sdk.js`）
 
 Phase 5 は、固定済み API 契約に対する browser SDK を単一 ES Module として実装する。SDK は API 通信抽象化だけを責務とし、UI 表示、DOM 操作、状態ファイル直接操作を行わない。
 
@@ -404,7 +404,7 @@ Phase 5 は API 契約の薄い wrapper とし、表示判断を持たせない�
 
 ### 0g.6 Phase 6 完全仕様ゲート（`admin/index.html`）
 
-Phase 6 は、標準管理ツール UI を単一 HTML と Vanilla JavaScript で実装する。UI は `adlaire-ci-sdk.js` 経由でのみ API と通信し、API を直接 `fetch` してはならない。
+Phase 6 は、標準管理ツール UI を単一 HTML と Vanilla JavaScript で実装する。UI は `admin/adlaire-ci-sdk.js` 経由でのみ API と通信し、API を直接 `fetch` してはならない。
 
 | 項目 | 固定仕様 |
 |------|----------|
@@ -418,7 +418,7 @@ Phase 6 は、標準管理ツール UI を単一 HTML と Vanilla JavaScript で
 | 必須検証 | §24 の全 panel と主要操作、§0e の UI 契約、§26.7 UI/security 対象。SDK は fake implementation で成功 / 失敗 / loading / stream を再現する。 |
 | 完了条件 | 全 UI 操作が §24 の表示条件と §23 の SDK method を満たし、成功表示、失敗表示、disabled、再取得、secret 消去が一致する。 |
 
-Phase 6 完了時は、初期実装全体の完了判定として、Phase 1〜6 の引き継ぎ契約、§0e、§0f、§0g、§0i、§22.0f、§23、§24、§26.7 を再確認する。
+Phase 6 完了時は、初期実装全体の完了判定として、Phase 1〜6 の引き継ぎ契約、§0e、§0f、§0g、§0i、§0j、§22.0f、§23、§24、§26.7 を再確認する。
 
 #### 0g.6.1 Phase 6 実装順序
 
@@ -465,11 +465,11 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 
 | Phase | 変更対象ファイル | fixture / testdata | PR 本文に固定する契約 | 必須検証 | 実装対象外として明記するもの |
 |-------|------------------|--------------------|------------------------|----------|------------------------------|
-| Phase 1 | `build_spec.go`、必要な Go test、`testdata/build_spec/`。 | §8a Fixture A〜D の入力、期待出力、失敗系入力。 | CLI option、終了コード、stdout / stderr、`[WARN]`、`[REPORT]`、出力サイト構造、asset path、search index schema。 | `gofmt -l`、Go test、fixture A〜D、冪等性、strict / non-strict、外部 asset 不存在。 | runner、GitHub API、SSH、API server、SDK、admin UI、MCP。 |
-| Phase 2 | `runner.go`、必要な Go test、`testdata/runner/`、fake GitHub server、fake ssh / notifier。 | §15a Fixture R1〜R7 の状態ディレクトリ、API 応答、pipeline 結果、deploy / notify 結果。 | 状態ファイル schema、lock、build id、`.last_sha` 更新条件、pending queue、snapshot、notify、circuit breaker。 | `gofmt -l`、Go test、secret 不足、lock 競合、変更なし skip、build 成功 / 失敗、deploy retry、通知失敗、JSON 破損。 | HTTP API、SDK、admin UI、API token、session UI、MCP。 |
-| Phase 3 | `api_server.go`、必要な Go test、API fixture、状態ファイル fixture、systemd service 確認資料。 | P0 / P1 endpoint の request / response、認証あり / なし、SSE、状態 read / write fixture。 | API 共通 error body、auth header、session expiry、pagination、SSE event、P0 / P1 endpoint 契約、状態 read/write 境界。 | `gofmt -l`、Go test、login/logout、認証なし、未知 path、body 禁止、JSON 不正、status/history/logs/queue、manual build、cancel、stream。 | P2〜P5 endpoint、SDK、admin UI、MCP、外部公開設定。 |
-| Phase 4 | `api_server.go`、必要な Go test、P2〜P5 API fixture、secret mask fixture。 | config、repo、branch、schedule、notify、snapshot、rollback、maintenance、access、hooks、tokens の request / response。 | 全 endpoint の method、path、query、request、response、error、auth、secret mask、token 再取得不可条件、P0 / P1 互換。 | `gofmt -l`、Go test、P2〜P5 endpoint、validation、secret mask、rollback、maintenance、hook timeout、token 発行 / 失効、P0 / P1 回帰確認。 | SDK class、admin UI DOM、MCP、本ファイルで未定義通知 channel。 |
-| Phase 5 | `adlaire-ci-sdk.js`、SDK test fixture、fake fetch / stream fixture。 | 成功 response、HTTP error、network error、timeout、SSE frame、invalid frame、body 禁止 endpoint。 | SDK method 名、引数、戻り値、`AdlaireCIError`、`StreamHandle`、token 破棄、query 生成、body 禁止。 | browser runtime または同等環境で fake fetch 検証、HTTP error、timeout、stream、`401` token 破棄、storage 不使用確認。 | DOM 操作、admin UI、API endpoint 新設、Node.js 専用 API、bundler、npm package。 |
+| Phase 1 | `components/builder.go`、必要な Go test、`testdata/builder/`。 | §8a Fixture A〜D の入力、期待出力、失敗系入力。 | CLI option、終了コード、stdout / stderr、`[WARN]`、`[REPORT]`、出力サイト構造、asset path、search index schema。 | `gofmt -l`、Go test、fixture A〜D、冪等性、strict / non-strict、外部 asset 不存在。 | runner、GitHub API、SSH、API server、SDK、admin UI、MCP。 |
+| Phase 2 | `components/runner.go`、必要な Go test、`testdata/runner/`、fake GitHub server、fake ssh / notifier。 | §15a Fixture R1〜R7 の状態ディレクトリ、API 応答、pipeline 結果、deploy / notify 結果。 | 状態ファイル schema、lock、build id、`.last_sha` 更新条件、pending queue、snapshot、notify、circuit breaker。 | `gofmt -l`、Go test、secret 不足、lock 競合、変更なし skip、build 成功 / 失敗、deploy retry、通知失敗、JSON 破損。 | HTTP API、SDK、admin UI、API token、session UI、MCP。 |
+| Phase 3 | `components/api.go`、必要な Go test、API fixture、状態ファイル fixture、systemd service 確認資料。 | P0 / P1 endpoint の request / response、認証あり / なし、SSE、状態 read / write fixture。 | API 共通 error body、auth header、session expiry、pagination、SSE event、P0 / P1 endpoint 契約、状態 read/write 境界。 | `gofmt -l`、Go test、login/logout、認証なし、未知 path、body 禁止、JSON 不正、status/history/logs/queue、manual build、cancel、stream。 | P2〜P5 endpoint、SDK、admin UI、MCP、外部公開設定。 |
+| Phase 4 | `components/api.go`、必要な Go test、P2〜P5 API fixture、secret mask fixture。 | config、repo、branch、schedule、notify、snapshot、rollback、maintenance、access、hooks、tokens の request / response。 | 全 endpoint の method、path、query、request、response、error、auth、secret mask、token 再取得不可条件、P0 / P1 互換。 | `gofmt -l`、Go test、P2〜P5 endpoint、validation、secret mask、rollback、maintenance、hook timeout、token 発行 / 失効、P0 / P1 回帰確認。 | SDK class、admin UI DOM、MCP、本ファイルで未定義通知 channel。 |
+| Phase 5 | `admin/adlaire-ci-sdk.js`、SDK test fixture、fake fetch / stream fixture。 | 成功 response、HTTP error、network error、timeout、SSE frame、invalid frame、body 禁止 endpoint。 | SDK method 名、引数、戻り値、`AdlaireCIError`、`StreamHandle`、token 破棄、query 生成、body 禁止。 | browser runtime または同等環境で fake fetch 検証、HTTP error、timeout、stream、`401` token 破棄、storage 不使用確認。 | DOM 操作、admin UI、API endpoint 新設、Node.js 専用 API、bundler、npm package。 |
 | Phase 6 | `admin/index.html`、UI test fixture、fake SDK、必要な静的 asset。 | fake SDK の成功、失敗、loading、stream、session expiry、secret 入力 fixture。 | DOM id、panel、SDK method 対応、success / error 表示、disabled、loading、再取得、secret 消去、直接 API 呼び出し禁止。 | UI 操作確認、fake SDK 成功 / 失敗、loading、stream、session expiry、secret 消去、直接 `fetch()` 不存在。 | API endpoint 新設、SDK 契約変更、frontend framework、CSS framework、CDN、build tool、MCP。 |
 
 各 Phase の実装 PR は、本文に `成果物 / 固定契約 / 検証 / 未実装対象 / 後続 Phase への影響` を記録する。未実行の検証がある場合は、環境理由だけで合格扱いにせず、未完了として扱う。
@@ -485,7 +485,7 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | 実装対象外の機能を先取りしている。 | 仕様違反として扱い、対象外機能を削除するか、先に仕様改訂する。 |
 | 後続 Phase が依存する契約を PR 本文に固定していない。 | 後続 Phase の実装を開始してはならない。 |
 | secret、token、password を log、fixture、snapshot、UI 表示へ平文出力している。 | security 不合格として Phase 未完了とする。 |
-| §0g の順序、§0i の対応表、§26.7 の受け入れ条件のいずれかと矛盾している。 | 仕様不整合として扱い、実装または仕様を修正する。 |
+| §0g の順序、§0i の対応表、§0j のソース配置、§26.7 の受け入れ条件のいずれかと矛盾している。 | 仕様不整合として扱い、実装または仕様を修正する。 |
 
 ---
 
@@ -496,7 +496,7 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 | 項目 | 必須内容 | 未記載時の扱い |
 |------|----------|----------------|
 | 目的 | 何を解決する機能か、どの利用者または運用者のための機能か。 | 実装不可。 |
-| 対象コンポーネント | `build_spec.go`、`runner.go`、`api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html` のいずれが責務を持つか。複数の場合は責務境界を分けて書く。 | 実装不可。 |
+| 対象コンポーネント | `components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` のいずれが責務を持つか。複数の場合は責務境界を分けて書く。 | 実装不可。 |
 | 入力 | CLI 引数、HTTP request、設定値、状態ファイル、環境変数、Markdown 入力、UI 操作などの入力元、型、必須/任意、既定値。 | 実装不可。 |
 | 出力 | 生成ファイル、HTTP response、stdout/stderr、ログ、通知、UI 表示、終了コード。 | 実装不可。 |
 | 状態 | 読み書きする状態ファイル、ディレクトリ、メモリ状態、ロック、更新責務、初期値、破損時の扱い。 | 状態を持つ実装は禁止。 |
@@ -518,65 +518,65 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 
 | 機能 | 対象コンポーネント | 詳細仕様節 | 受け入れ条件 |
 |------|-------------------|------------|--------------|
-| ビルドタイムアウト | `runner.go` / `api_server.go` | §12、§13、§22.0e | `build_timeout_seconds` の既定値、設定 API、`context.WithTimeout` の中断処理、終了コード、ログが一致する。 |
-| ポーリング間隔の動的変更 | `api_server.go` | §22.0e、§26 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
-| ビルドログのファイル保存 | `runner.go` | §11、§13、§15 | `.build_logs/{id}.json` の schema、stdout/stderr、変換レポート、duration、権限が一致する。 |
-| GitHub Webhook 受信 | `api_server.go` / `runner.go` | §22.0e、§22-W、§13 | HMAC 検証、イベント記録、キュー投入またはビルドトリガー、エラー応答が一致する。 |
-| ネットワーク断時の再試行 | `runner.go` | §12、§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、失敗時ログが一致する。 |
-| GitHub API レート制限自動待機 | `runner.go` / `api_server.go` | §13、§22.0e | `X-RateLimit-Remaining` と `X-RateLimit-Reset` の扱い、待機、API 表示が一致する。 |
-| 転送後リモート整合性検証 | `runner.go` | §14a、§13 | SSH 転送後の SHA256 照合、不一致時の `.pending_transfers` 再投入、ログが一致する。 |
-| マルチブランチビルド | `runner.go` / `api_server.go` | §12、§13、§22.0e | `BRANCH_TARGETS` と `.branch_config` の優先順位、順次処理、API 更新が一致する。 |
-| ビルドログ世代管理 | `runner.go` | §12、§13、§15 | `LOG_KEEP_N` 超過時の削除順序、0 の扱い、削除ログが一致する。 |
-| ビルド出力の外部転送 | `runner.go` | §14a、§13 | SSH 差分転送、複数ファイル処理、失敗時 pending、通知が一致する。 |
-| ビルドクールダウン | `runner.go` | §12、§13 | `BUILD_COOLDOWN_SECONDS` 内の起動スキップ、Webhook 二重トリガー抑止、ログが一致する。 |
-| ビルド前の事前チェック | `runner.go` | §13、§26 | ディスク、`adlaire-ci-build`、pipeline 前提の確認、不足時の ERROR と通知が一致する。 |
-| 定期強制ビルド | `runner.go` / `api_server.go` | §12、§13、§22.0e | `FORCE_BUILD_INTERVAL`、変更なし時の強制ビルド、設定 API が一致する。 |
-| ビルド中重複スキップ | `runner.go` | §11、§13 | `.build_lock` の PID 判定、stale lock、競合時終了コードとログが一致する。 |
-| GitHub PAT 有効期限の事前警告 | `runner.go` / `api_server.go` | §13、§22.0e | `GitHub-Authentication-Token-Expiration` の解析、7 日以内 WARN、API 表示が一致する。 |
-| コミット情報のビルドログ記録 | `runner.go` | §13、§15 | SHA、message、author、date を build id と同じログへ記録する。 |
-| GitHub API 連続失敗によるサーキットブレーカー | `runner.go` / `api_server.go` | §11、§12、§13、§22.0e | 閾値、open/close 状態、API reset、通知、状態ファイルが一致する。 |
-| 出力サイトサイズ警告閾値 | `build_spec.go` / `runner.go` / `api_server.go` | §8、§12、§13、§22.0e | `OUTPUT_SIZE_WARN_MB`、`size_warn`、WARN ログ、API 表示が一致する。 |
-| 設定ファイル起動時整合性チェック | `runner.go` | §11、§12、§13、§22.0a、§22.0c | 対象 JSON ファイル、検証順序、破損退避、初期化値、ログ、通知、終了コード、fixture が一致する。 |
-| ビルドステータスファイル出力 | `runner.go` / `api_server.go` | §11、§13、§15、§22.0a、§22.0c、§22.0e | `.build_status.json` の schema、更新タイミング、status/target_status、pending 件数、circuit 状態、API 参照元が一致する。 |
-| ビルドトリガー種別の記録 | `runner.go` / `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §13、§15、§22.0c、§22.0e、§23、§24 | `trigger` の有効値、判定条件、`.build_logs`、`.build_history`、`.build_status.json`、履歴 filter、UI 表示が一致する。 |
-| GitHub Commit Status API | `runner.go` | §12、§13、§15、§22.0c、§27.1 | `commit_status_enabled`、context、target_url、pending/success/failure の送信条件、失敗時の扱い、build log 記録が一致する。 |
-| ドライラン実行モード | `runner.go` | §11、§12、§13、§15、§27.2 | `--dry-run` が状態ファイル、log、history、deploy、通知を変更せず、設定・GitHub・SHA 判定結果を固定 JSON で返す。 |
-| ビルド失敗時の自動リトライ | `runner.go` | §12、§13、§15、§22.0c、§27.3 | retry 対象エラー、最大回数、backoff、attempt log、最終 status、SHA 更新禁止条件が一致する。 |
-| 出力サイトへのビルドメタ埋め込み | `build_spec.go` / `runner.go` / `api_server.go` | §2、§5、§8、§13、§22.0e、§27.4 | CLI/env 入力、HTML meta、REPORT、build log、`GET /api/output-meta` の値が一致する。 |
-| 設定バリデーション API | `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §22.0c、§22.0e、§23、§24、§27.5 | `POST /api/config/validate` が状態を変更せず、正規化後設定、warnings、errors を返す。 |
-| API アクセスログ | `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§27.6 | `.api_access_log` の schema、追記対象、マスク条件、一覧 API、UI 表示が一致する。 |
-| ビルドログのアーカイブ圧縮 | `runner.go` / `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §12、§13、§15、§22.0c、§22.0e、§23、§24、§27.7 | gzip 形式、archive 先、参照順、cleanup/archive API、disk usage 集計、UI 表示が一致する。 |
-| Webhook イベントログ | `api_server.go` | §11、§22.0e、§22-W | `.webhook_events.json` の JSON Lines schema と一覧 API が一致する。 |
-| ビルド所要時間の記録と統計 API | `runner.go` / `api_server.go` | §15、§22.0e | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
-| ビルドアーティファクト世代管理 | `runner.go` / `api_server.go` | §14b、§22.0e | `.snapshots/` の保持世代、削除、rollback API が一致する。 |
-| ビルドアーティファクト管理 | `api_server.go` / `admin/index.html` / `adlaire-ci-sdk.js` | §14b、§22.0e、§23、§24 | 一覧、ダウンロード、削除、ロールバックの API、SDK、UI が一致する。 |
-| ヘルスチェックエンドポイント | `api_server.go` | §22.0e | `GET /api/health` の稼働秒数、最終ビルド、最終転送、エラー応答が一致する。 |
-| Webhook イベント一覧取得 API | `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24 | `GET /api/webhook-events` の query、response、SDK method、UI 表示が一致する。 |
-| ビルドログ重大度フィルター | `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24 | `level=warn\|error` の query、検索結果、UI filter が一致する。 |
-| 変換レポート出力 | `build_spec.go` / `runner.go` / `api_server.go` | §8、§13、§15、§22.0e | `[REPORT]` stdout、runner 取り込み、`.build_logs`、`GET /api/output-meta` が一致する。 |
-| シンタックスハイライト | `build_spec.go` | §7.8 | 対応言語、class 名、HTML escape、CSS 表示が一致する。 |
-| 本文内全文検索 | `build_spec.go` | §7.9 | `assets/search-index.json`、検索 UI、ヒット遷移、対象テキストが一致する。 |
-| アンカーリンク自動検証 | `build_spec.go` | §4.3、§8 | broken anchor 検出、`[WARN] BROKEN_LINK`、report 件数が一致する。 |
-| コードブロックの折りたたみ | `build_spec.go` | §7.10 | 30 行超の初期折りたたみ、展開操作、印刷時展開が一致する。 |
-| 印刷スタイル（`@media print`） | `build_spec.go` | §6 | `@media print` の非表示対象、コード展開、リンク URL 表示が一致する。 |
-| 静的 Web サイト出力 | `build_spec.go` | §2、§5、§6、§7 | 入力ファイル/ディレクトリ、出力ファイル構成、asset、ページ生成が一致する。 |
-| テーマコンポーネント | `build_spec.go` | §5、§6、§7 | `adlaire-default` の component、class、slot、asset 出力が一致する。 |
-| 外部リンクの自動処理 | `build_spec.go` | §4.3 | `target="_blank"`、`rel="noopener noreferrer"`、内部リンクとの区別が一致する。 |
-| 読み取り進捗バー | `build_spec.go` | §7.13 | 3px 固定表示、scroll 連動、初期/末尾状態が一致する。 |
-| コードブロックのコピーボタン | `build_spec.go` | §7.6 | ボタン配置、コピー対象、成功/失敗時表示、アクセシビリティが一致する。 |
-| 見出しアンカーリンクコピー | `build_spec.go` | §3、§7.11 | `.hn-link`、copy URL、重複 slug 連動が一致する。 |
-| TOC 開閉状態の永続化 | `build_spec.go` | §7.3 | `localStorage` key、展開/折りたたみ、復元条件が一致する。 |
-| 見出しスラグ重複解決 | `build_spec.go` | §4.5 | `-2`、`-3` の付与、TOC、検索、コピー URL との共通化が一致する。 |
-| 前後章ナビゲーションボタン | `build_spec.go` | §4.5、§5、§7.15 | h2 単位の前後判定、章末尾配置、端の非表示条件が一致する。 |
-| 内部リンク整合性チェック | `build_spec.go` | §4.3、§8 | `[label](#anchor)` 検証、WARN、`broken_links` が一致する。 |
-| 見出し階層スキップ警告 | `build_spec.go` | §4.5、§8 | h1→h3 等の検出、WARN、`heading_skips` が一致する。 |
-| 読了時間推計と表示 | `build_spec.go` | §4.5、§5、§6、§8 | 対象文字数、200文字/分、切り上げ、header 表示、report が一致する。 |
-| Webhook 通知失敗リトライキュー | `runner.go` | §11、§13、§16 | `.notify_pending` の schema、再送順序、失敗時保持が一致する。 |
-| ブランチ設定の動的変更 API | `runner.go` / `api_server.go` | §11、§12、§22.0e | `.branch_config`、GET/POST API、runner 再起動不要条件が一致する。 |
-| 週次ビルドサマリー Webhook | `runner.go` / `api_server.go` | §12、§13、§16、§22.0e | 週次判定、集計対象、通知 payload、手動送信 API が一致する。 |
-| 設定変更の詳細 diff 記録 | `api_server.go` | §22.0a、§22.0e | `.config_log` の diff 文字列、対象 API、マスク条件が一致する。 |
-| テーブルのソート機能 | `build_spec.go` | §7.14 | クリック操作、昇順/降順、`aria-sort`、インジケーターが一致する。 |
-| キーボードショートカット | `build_spec.go` | §7.12 | `/`、`Escape`、`t` の対象、フォーカス条件、入力中の無効化が一致する。 |
+| ビルドタイムアウト | `components/runner.go` / `components/api.go` | §12、§13、§22.0e | `build_timeout_seconds` の既定値、設定 API、`context.WithTimeout` の中断処理、終了コード、ログが一致する。 |
+| ポーリング間隔の動的変更 | `components/api.go` | §22.0e、§26 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
+| ビルドログのファイル保存 | `components/runner.go` | §11、§13、§15 | `.build_logs/{id}.json` の schema、stdout/stderr、変換レポート、duration、権限が一致する。 |
+| GitHub Webhook 受信 | `components/api.go` / `components/runner.go` | §22.0e、§22-W、§13 | HMAC 検証、イベント記録、キュー投入またはビルドトリガー、エラー応答が一致する。 |
+| ネットワーク断時の再試行 | `components/runner.go` | §12、§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、失敗時ログが一致する。 |
+| GitHub API レート制限自動待機 | `components/runner.go` / `components/api.go` | §13、§22.0e | `X-RateLimit-Remaining` と `X-RateLimit-Reset` の扱い、待機、API 表示が一致する。 |
+| 転送後リモート整合性検証 | `components/runner.go` | §14a、§13 | SSH 転送後の SHA256 照合、不一致時の `.pending_transfers` 再投入、ログが一致する。 |
+| マルチブランチビルド | `components/runner.go` / `components/api.go` | §12、§13、§22.0e | `BRANCH_TARGETS` と `.branch_config` の優先順位、順次処理、API 更新が一致する。 |
+| ビルドログ世代管理 | `components/runner.go` | §12、§13、§15 | `LOG_KEEP_N` 超過時の削除順序、0 の扱い、削除ログが一致する。 |
+| ビルド出力の外部転送 | `components/runner.go` | §14a、§13 | SSH 差分転送、複数ファイル処理、失敗時 pending、通知が一致する。 |
+| ビルドクールダウン | `components/runner.go` | §12、§13 | `BUILD_COOLDOWN_SECONDS` 内の起動スキップ、Webhook 二重トリガー抑止、ログが一致する。 |
+| ビルド前の事前チェック | `components/runner.go` | §13、§26 | ディスク、`adlaire-ci-build`、pipeline 前提の確認、不足時の ERROR と通知が一致する。 |
+| 定期強制ビルド | `components/runner.go` / `components/api.go` | §12、§13、§22.0e | `FORCE_BUILD_INTERVAL`、変更なし時の強制ビルド、設定 API が一致する。 |
+| ビルド中重複スキップ | `components/runner.go` | §11、§13 | `.build_lock` の PID 判定、stale lock、競合時終了コードとログが一致する。 |
+| GitHub PAT 有効期限の事前警告 | `components/runner.go` / `components/api.go` | §13、§22.0e | `GitHub-Authentication-Token-Expiration` の解析、7 日以内 WARN、API 表示が一致する。 |
+| コミット情報のビルドログ記録 | `components/runner.go` | §13、§15 | SHA、message、author、date を build id と同じログへ記録する。 |
+| GitHub API 連続失敗によるサーキットブレーカー | `components/runner.go` / `components/api.go` | §11、§12、§13、§22.0e | 閾値、open/close 状態、API reset、通知、状態ファイルが一致する。 |
+| 出力サイトサイズ警告閾値 | `components/builder.go` / `components/runner.go` / `components/api.go` | §8、§12、§13、§22.0e | `OUTPUT_SIZE_WARN_MB`、`size_warn`、WARN ログ、API 表示が一致する。 |
+| 設定ファイル起動時整合性チェック | `components/runner.go` | §11、§12、§13、§22.0a、§22.0c | 対象 JSON ファイル、検証順序、破損退避、初期化値、ログ、通知、終了コード、fixture が一致する。 |
+| ビルドステータスファイル出力 | `components/runner.go` / `components/api.go` | §11、§13、§15、§22.0a、§22.0c、§22.0e | `.build_status.json` の schema、更新タイミング、status/target_status、pending 件数、circuit 状態、API 参照元が一致する。 |
+| ビルドトリガー種別の記録 | `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §13、§15、§22.0c、§22.0e、§23、§24 | `trigger` の有効値、判定条件、`.build_logs`、`.build_history`、`.build_status.json`、履歴 filter、UI 表示が一致する。 |
+| GitHub Commit Status API | `components/runner.go` | §12、§13、§15、§22.0c、§27.1 | `commit_status_enabled`、context、target_url、pending/success/failure の送信条件、失敗時の扱い、build log 記録が一致する。 |
+| ドライラン実行モード | `components/runner.go` | §11、§12、§13、§15、§27.2 | `--dry-run` が状態ファイル、log、history、deploy、通知を変更せず、設定・GitHub・SHA 判定結果を固定 JSON で返す。 |
+| ビルド失敗時の自動リトライ | `components/runner.go` | §12、§13、§15、§22.0c、§27.3 | retry 対象エラー、最大回数、backoff、attempt log、最終 status、SHA 更新禁止条件が一致する。 |
+| 出力サイトへのビルドメタ埋め込み | `components/builder.go` / `components/runner.go` / `components/api.go` | §2、§5、§8、§13、§22.0e、§27.4 | CLI/env 入力、HTML meta、REPORT、build log、`GET /api/output-meta` の値が一致する。 |
+| 設定バリデーション API | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0c、§22.0e、§23、§24、§27.5 | `POST /api/config/validate` が状態を変更せず、正規化後設定、warnings、errors を返す。 |
+| API アクセスログ | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0a、§22.0c、§22.0e、§23、§24、§27.6 | `.api_access_log` の schema、追記対象、マスク条件、一覧 API、UI 表示が一致する。 |
+| ビルドログのアーカイブ圧縮 | `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §12、§13、§15、§22.0c、§22.0e、§23、§24、§27.7 | gzip 形式、archive 先、参照順、cleanup/archive API、disk usage 集計、UI 表示が一致する。 |
+| Webhook イベントログ | `components/api.go` | §11、§22.0e、§22-W | `.webhook_events.json` の JSON Lines schema と一覧 API が一致する。 |
+| ビルド所要時間の記録と統計 API | `components/runner.go` / `components/api.go` | §15、§22.0e | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
+| ビルドアーティファクト世代管理 | `components/runner.go` / `components/api.go` | §14b、§22.0e | `.snapshots/` の保持世代、削除、rollback API が一致する。 |
+| ビルドアーティファクト管理 | `components/api.go` / `admin/index.html` / `admin/adlaire-ci-sdk.js` | §14b、§22.0e、§23、§24 | 一覧、ダウンロード、削除、ロールバックの API、SDK、UI が一致する。 |
+| ヘルスチェックエンドポイント | `components/api.go` | §22.0e | `GET /api/health` の稼働秒数、最終ビルド、最終転送、エラー応答が一致する。 |
+| Webhook イベント一覧取得 API | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24 | `GET /api/webhook-events` の query、response、SDK method、UI 表示が一致する。 |
+| ビルドログ重大度フィルター | `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24 | `level=warn\|error` の query、検索結果、UI filter が一致する。 |
+| 変換レポート出力 | `components/builder.go` / `components/runner.go` / `components/api.go` | §8、§13、§15、§22.0e | `[REPORT]` stdout、runner 取り込み、`.build_logs`、`GET /api/output-meta` が一致する。 |
+| シンタックスハイライト | `components/builder.go` | §7.8 | 対応言語、class 名、HTML escape、CSS 表示が一致する。 |
+| 本文内全文検索 | `components/builder.go` | §7.9 | `assets/search-index.json`、検索 UI、ヒット遷移、対象テキストが一致する。 |
+| アンカーリンク自動検証 | `components/builder.go` | §4.3、§8 | broken anchor 検出、`[WARN] BROKEN_LINK`、report 件数が一致する。 |
+| コードブロックの折りたたみ | `components/builder.go` | §7.10 | 30 行超の初期折りたたみ、展開操作、印刷時展開が一致する。 |
+| 印刷スタイル（`@media print`） | `components/builder.go` | §6 | `@media print` の非表示対象、コード展開、リンク URL 表示が一致する。 |
+| 静的 Web サイト出力 | `components/builder.go` | §2、§5、§6、§7 | 入力ファイル/ディレクトリ、出力ファイル構成、asset、ページ生成が一致する。 |
+| テーマコンポーネント | `components/builder.go` | §5、§6、§7 | `adlaire-default` の component、class、slot、asset 出力が一致する。 |
+| 外部リンクの自動処理 | `components/builder.go` | §4.3 | `target="_blank"`、`rel="noopener noreferrer"`、内部リンクとの区別が一致する。 |
+| 読み取り進捗バー | `components/builder.go` | §7.13 | 3px 固定表示、scroll 連動、初期/末尾状態が一致する。 |
+| コードブロックのコピーボタン | `components/builder.go` | §7.6 | ボタン配置、コピー対象、成功/失敗時表示、アクセシビリティが一致する。 |
+| 見出しアンカーリンクコピー | `components/builder.go` | §3、§7.11 | `.hn-link`、copy URL、重複 slug 連動が一致する。 |
+| TOC 開閉状態の永続化 | `components/builder.go` | §7.3 | `localStorage` key、展開/折りたたみ、復元条件が一致する。 |
+| 見出しスラグ重複解決 | `components/builder.go` | §4.5 | `-2`、`-3` の付与、TOC、検索、コピー URL との共通化が一致する。 |
+| 前後章ナビゲーションボタン | `components/builder.go` | §4.5、§5、§7.15 | h2 単位の前後判定、章末尾配置、端の非表示条件が一致する。 |
+| 内部リンク整合性チェック | `components/builder.go` | §4.3、§8 | `[label](#anchor)` 検証、WARN、`broken_links` が一致する。 |
+| 見出し階層スキップ警告 | `components/builder.go` | §4.5、§8 | h1→h3 等の検出、WARN、`heading_skips` が一致する。 |
+| 読了時間推計と表示 | `components/builder.go` | §4.5、§5、§6、§8 | 対象文字数、200文字/分、切り上げ、header 表示、report が一致する。 |
+| Webhook 通知失敗リトライキュー | `components/runner.go` | §11、§13、§16 | `.notify_pending` の schema、再送順序、失敗時保持が一致する。 |
+| ブランチ設定の動的変更 API | `components/runner.go` / `components/api.go` | §11、§12、§22.0e | `.branch_config`、GET/POST API、runner 再起動不要条件が一致する。 |
+| 週次ビルドサマリー Webhook | `components/runner.go` / `components/api.go` | §12、§13、§16、§22.0e | 週次判定、集計対象、通知 payload、手動送信 API が一致する。 |
+| 設定変更の詳細 diff 記録 | `components/api.go` | §22.0a、§22.0e | `.config_log` の diff 文字列、対象 API、マスク条件が一致する。 |
+| テーブルのソート機能 | `components/builder.go` | §7.14 | クリック操作、昇順/降順、`aria-sort`、インジケーターが一致する。 |
+| キーボードショートカット | `components/builder.go` | §7.12 | `/`、`Escape`、`t` の対象、フォーカス条件、入力中の無効化が一致する。 |
 
 ---
 
@@ -584,25 +584,25 @@ Phase 6 は、SDK 契約の利用者として UI を実装する。API 仕様の
 
 Adlaire CI は Go 版 3 コンポーネントと JavaScript/HTML 管理ツールで構成する。
 
-本ファイルは、`build_spec.go`、`runner.go`、`api_server.go`、標準管理ツール `admin/index.html`、JavaScript SDK `adlaire-ci-sdk.js` の実装詳細を定義する。`mcp_server.go` の入出力、状態、起動手順、検証条件は本ファイルでは定義しない。
+本ファイルは、`components/builder.go`、`components/runner.go`、`components/api.go`、標準管理ツール `admin/index.html`、JavaScript SDK `admin/adlaire-ci-sdk.js` の実装詳細を定義する。`components/mcp.go` の入出力、状態、起動手順、検証条件は本ファイルでは定義しない。
 
-**`build_spec.go`（ビルドスクリプト）**
+**`components/builder.go`（ビルドスクリプト）**
 GitHub リポジトリ上またはローカル上の Markdown ファイルまたは Markdown ディレクトリを静的 Web サイトに変換してローカルディレクトリへ出力する。標準実行バイナリ名は `adlaire-ci-build` とする。
 
-**`runner.go`（CI ランナー）**
+**`components/runner.go`（CI ランナー）**
 GitHub の Git Trees API / Git Blobs API を使用し、対象ファイルの blob SHA 変更を検出する。変更があった場合のみ Markdown 本文を書き出し、`adlaire-ci-build` を起動し、成功時に SHA キャッシュを更新する。systemd タイマーで定期実行する oneshot 設計。
 
-SSH 転送、ペンディングキュー、スナップショット、Webhook 通知、マルチブランチ、ビルドログ保存、サーキットブレーカーは Go 版 `runner.go` の対象機能である。
+SSH 転送、ペンディングキュー、スナップショット、Webhook 通知、マルチブランチ、ビルドログ保存、サーキットブレーカーは Go 版 `components/runner.go` の対象機能である。
 
-**`api_server.go`（管理 API サーバー）**
-Go 標準ライブラリ `net/http` を使用する常駐 HTTP サーバー。管理ツールからの API リクエストを受け付け、認証・状態取得・手動ビルドトリガーを処理する。`adlaire-ci-api.service` として systemd に登録し、`runner.go` とは独立して常駐する。
+**`components/api.go`（管理 API サーバー）**
+Go 標準ライブラリ `net/http` を使用する常駐 HTTP サーバー。管理ツールからの API リクエストを受け付け、認証・状態取得・手動ビルドトリガーを処理する。`adlaire-ci-api.service` として systemd に登録し、`components/runner.go` とは独立して常駐する。
 
 **Go 版実行フロー：**
 ```
 systemd timer
-  └─ adlaire-ci-runner（runner.go, oneshot）
+  └─ adlaire-ci-runner（components/runner.go, oneshot）
        ├─ 変更なし → スキップ
-       └─ 変更あり → adlaire-ci-build（build_spec.go）→ 静的 Web サイト生成
+       └─ 変更あり → adlaire-ci-build（components/builder.go）→ 静的 Web サイト生成
 ```
 
 **管理 API を含む想定フロー：**
@@ -611,7 +611,7 @@ adlaire-ci-runner
   └─ SSH 転送 / スナップショット / Webhook 通知 / ビルドログ保存
 
 adlaire-ci-api.service（常駐）
-  └─ adlaire-ci-api（api_server.go）→ SDK → 管理ツール
+  └─ adlaire-ci-api（components/api.go）→ SDK → 管理ツール
 ```
 
 Go 標準ライブラリと GitHub PAT（`contents: read`）を基本要件とする。TLS 終端に nginx 等のリバースプロキシを使う場合でも、Adlaire CI 本体は HTTP サーバーとして実装する。
@@ -620,7 +620,9 @@ Go 標準ライブラリと GitHub PAT（`contents: read`）を基本要件と�
 
 ## 0j. リポジトリ内ソース配置
 
-Adlaire CI のリポジトリ内ソース配置は以下とする。
+Adlaire CI の標準リポジトリ内ソース配置は以下とする。
+
+本節は、移行後の標準配置を定義する。標準配置への実装移行が完了するまでは、現行リポジトリに `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` が残る場合がある。実装移行 PR では、本節の配置へそろえ、移行後に旧配置を残してはならない。
 
 ```text
 .
@@ -696,7 +698,7 @@ Adlaire CI のリポジトリ内ソース配置は以下とする。
 
 ## 2. ファイルパス設定
 
-Go 版 `build_spec.go` は、以下の既定値を持つ設定構造体で入出力パスを管理する。
+Go 版 `components/builder.go` は、以下の既定値を持つ設定構造体で入出力パスを管理する。
 
 ```go
 type BuildConfig struct {
@@ -718,7 +720,7 @@ var DefaultBuildConfig = BuildConfig{
 }
 ```
 
-別の環境で実行する場合は、この既定値を CLI 引数で上書きする。Go 版 `build_spec.go` は設定ファイルを読み込まない。
+別の環境で実行する場合は、この既定値を CLI 引数で上書きする。Go 版 `components/builder.go` は設定ファイルを読み込まない。
 
 **CLI 引数仕様：**
 
@@ -779,7 +781,7 @@ var DefaultBuildConfig = BuildConfig{
 
 ## 2a. 入力収集・出力パス決定
 
-`build_spec.go` は、`--src` がファイルかディレクトリかで入力収集方法を切り替える。
+`components/builder.go` は、`--src` がファイルかディレクトリかで入力収集方法を切り替える。
 
 | `--src` 種別 | 入力収集 | 出力 |
 |--------------|----------|------|
@@ -825,7 +827,7 @@ Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま�
 
 **入力収集・出力生成の機能単位契約：**
 
-`build_spec.go` は、以下の機能単位を順番に実行する。各機能単位は前段の出力だけを入力とし、失敗時は後続機能を実行しない。
+`components/builder.go` は、以下の機能単位を順番に実行する。各機能単位は前段の出力だけを入力とし、失敗時は後続機能を実行しない。
 
 | 機能単位 | 入力 | 出力 | 失敗条件 | 失敗時の状態 |
 |----------|------|------|----------|--------------|
@@ -1693,7 +1695,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 
 ビルド時に `assets/search-index.json` を生成し、`assets/app.js` の検索 UI から読み込む。TOC 検索フィルター（§7.4）と検索 UI を統合し、本文ヒット箇所へのジャンプを提供する。
 
-**インデックス生成仕様（build_spec.go）：**
+**インデックス生成仕様（components/builder.go）：**
 ビルド時に全ページの見出しと各段落の先頭 200 文字を抽出し、以下の配列形式で `assets/search-index.json` に書き出す。
 
 ```json
@@ -1885,9 +1887,9 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 | 終了コード | 条件 | 後続処理 |
 |------------|------|----------|
-| `0` | 静的 Web サイト生成に成功し、`[REPORT]` 行を出力した。 | `runner.go` は成功として扱う。 |
-| `1` | 出力ディレクトリ作成、HTML / CSS / JavaScript / search index 書き込み、テンプレート合成など処理中の一般エラー。 | `runner.go` はビルド失敗として扱い、SHA を更新しない。 |
-| `2` | CLI 引数不正、入力ファイル不存在、入力 UTF-8 不正。 | `runner.go` は設定または入力エラーとして扱い、SHA を更新しない。 |
+| `0` | 静的 Web サイト生成に成功し、`[REPORT]` 行を出力した。 | `components/runner.go` は成功として扱う。 |
+| `1` | 出力ディレクトリ作成、HTML / CSS / JavaScript / search index 書き込み、テンプレート合成など処理中の一般エラー。 | `components/runner.go` はビルド失敗として扱い、SHA を更新しない。 |
+| `2` | CLI 引数不正、入力ファイル不存在、入力 UTF-8 不正。 | `components/runner.go` は設定または入力エラーとして扱い、SHA を更新しない。 |
 
 終了コード `0` の場合、stdout には必ず `Collecting Markdown...`、`Converting MD...`、`Building site...`、`Writing assets...`、`Done → ...`、`[REPORT] ...` をこの順序で出力する。警告がある場合は `[REPORT]` の直前に `[WARN] ...` を 1 件 1 行で出力する。
 
@@ -1932,8 +1934,8 @@ pages headings tables code_blocks warnings size_warn broken_links heading_skips 
 
 警告が発生した場合、`[REPORT]` 行の直前に `[WARN] {メッセージ}` 形式で 1 件ずつ出力する。
 
-**runner.go による取り込み：**
-Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
+**`components/runner.go` による取り込み：**
+Go 版 CI ランナーでは、`components/runner.go` が `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
 
 ```json
 {
@@ -1962,13 +1964,13 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 
 ---
 
-## 8a. `build_spec.go` 受け入れ fixture
+## 8a. `components/builder.go` 受け入れ fixture
 
-Go 版 `build_spec.go` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/build_spec/` 配下へ追加する。仕様 PR では fixture の期待値を本節で固定する。
+Go 版 `components/builder.go` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/builder/` 配下へ追加する。仕様 PR では fixture の期待値を本節で固定する。
 
 ### Fixture A: 単一 Markdown 入力
 
-**入力ファイル：** `testdata/build_spec/single/source.md`
+**入力ファイル：** `testdata/builder/single/source.md`
 
 ~~~markdown
 # Title
@@ -1996,7 +1998,7 @@ See footnote[^n].
 **実行：**
 
 ```bash
-adlaire-ci-build --src testdata/build_spec/single/source.md --out /tmp/adlaire-ci-fixture-single --title "Fixture Site"
+adlaire-ci-build --src testdata/builder/single/source.md --out /tmp/adlaire-ci-fixture-single --title "Fixture Site"
 ```
 
 **期待結果：**
@@ -2015,9 +2017,9 @@ adlaire-ci-build --src testdata/build_spec/single/source.md --out /tmp/adlaire-c
 **入力ファイル：**
 
 ```text
-testdata/build_spec/site/docs/intro.md
-testdata/build_spec/site/docs/guide/setup.md
-testdata/build_spec/site/docs/guide/setup_copy.md
+testdata/builder/site/docs/intro.md
+testdata/builder/site/docs/guide/setup.md
+testdata/builder/site/docs/guide/setup_copy.md
 ```
 
 `intro.md`:
@@ -2047,7 +2049,7 @@ Second.
 **実行：**
 
 ```bash
-adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixture-site --title "Docs"
+adlaire-ci-build --src testdata/builder/site/docs --out /tmp/adlaire-ci-fixture-site --title "Docs"
 ```
 
 **期待結果：**
@@ -2066,7 +2068,7 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 |------|------------|--------|
 | `adlaire-ci-build --theme unknown` | `2` | `unknown theme: unknown` |
 | `adlaire-ci-build --src /path/not-found.md` | `2` | `source not found: /path/not-found.md` |
-| `adlaire-ci-build --src testdata/build_spec/empty-dir` | `2` | `no markdown files found: testdata/build_spec/empty-dir` |
+| `adlaire-ci-build --src testdata/builder/empty-dir` | `2` | `no markdown files found: testdata/builder/empty-dir` |
 | `adlaire-ci-build --title ""` | `2` | `title must not be empty` |
 
 異常系 fixture では `[REPORT]` を stdout へ出力してはならない。`--out` に既存の正常出力がある場合でも、異常系実行で既存出力を変更してはならない。
@@ -2101,9 +2103,9 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 
 ## 10a. CI ランナー 実装対象
 
-本節は、Go 版 `runner.go` として実装する CI ランナー機能を定義する。
+本節は、Go 版 `components/runner.go` として実装する CI ランナー機能を定義する。
 
-`runner.go` は `adlaire-ci-runner` バイナリとして実行する。起動形式は systemd timer から呼び出される oneshot 実行とし、1 回の起動で対象ブランチ設定を読み込み、変更検出、ビルド起動、ログ保存、通知、転送、後処理を完了して終了する。
+`components/runner.go` は `adlaire-ci-runner` バイナリとして実行する。起動形式は systemd timer から呼び出される oneshot 実行とし、1 回の起動で対象ブランチ設定を読み込み、変更検出、ビルド起動、ログ保存、通知、転送、後処理を完了して終了する。
 
 実装時は、対象項目ごとに §0c の実装前確認項目を満たしていることを確認する。未充足の項目が 1 つでもある場合は、実装を開始せず、先に本ファイルの該当節を改訂する。
 
@@ -2127,12 +2129,12 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 
 ### 初期実装対象外の連携範囲
 
-§10〜§20 には、`runner.go` 単体の責務ではなく管理 API、標準管理ツール、追加の運用機能と結合して成立する項目が含まれる。これらは、API・SDK・UI の対象節に、呼び出し元、呼び出し先、状態ファイル、失敗時応答、検証条件が定義されるまで `runner.go` 単体で実装しない。
+§10〜§20 には、`components/runner.go` 単体の責務ではなく管理 API、標準管理ツール、追加の運用機能と結合して成立する項目が含まれる。これらは、API・SDK・UI の対象節に、呼び出し元、呼び出し先、状態ファイル、失敗時応答、検証条件が定義されるまで `components/runner.go` 単体で実装しない。
 
 | 項目 | 理由 |
 |------|------|
-| API 経由の動的ブランチ設定 | `runner.go` 単体では設定 API を持たないため、`api_server.go` 実装と合わせて扱う。 |
-| API 経由のロールバック | `POST /api/history/{id}/rollback` は `api_server.go` のエンドポイント実装が前提となる。 |
+| API 経由の動的ブランチ設定 | `components/runner.go` 単体では設定 API を持たないため、`components/api.go` 実装と合わせて扱う。 |
+| API 経由のロールバック | `POST /api/history/{id}/rollback` は `components/api.go` のエンドポイント実装が前提となる。 |
 | 管理画面からのスケジュール操作 | systemd timer の変更 API と標準管理ツール UI が前提となる。 |
 
 ---
@@ -2145,12 +2147,12 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 
 | パス | 用途 |
 |------|------|
-| `/usr/local/bin/adlaire-ci-runner` | `runner.go` から生成する CI ランナーバイナリ。 |
-| `/usr/local/bin/adlaire-ci-build` | `build_spec.go` から生成する Markdown → 静的 Web サイトビルドバイナリ。 |
-| `/opt/adlaire-builder/.github_token` | GitHub PAT。Go 版 `runner.go` が読み込む。 |
+| `/usr/local/bin/adlaire-ci-runner` | `components/runner.go` から生成する CI ランナーバイナリ。 |
+| `/usr/local/bin/adlaire-ci-build` | `components/builder.go` から生成する Markdown → 静的 Web サイトビルドバイナリ。 |
+| `/opt/adlaire-builder/.github_token` | GitHub PAT。Go 版 `components/runner.go` が読み込む。 |
 | `/opt/adlaire-builder/.last_sha` | 前回取得した blob SHA。JSON 形式で保存する。 |
 | `/opt/adlaire-builder/repo/docs/` | GitHub Blobs API から取得した Markdown の書き出し先。単一 Markdown の場合も本ディレクトリ内へ保存する。 |
-| `/opt/adlaire-builder/repo/.ci/pipeline.sh` | `runner.go` が `bash` で起動するビルド手順。 |
+| `/opt/adlaire-builder/repo/.ci/pipeline.sh` | `components/runner.go` が `bash` で起動するビルド手順。 |
 
 ```
 /opt/adlaire-builder/
@@ -2164,7 +2166,7 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 
 ### CI ランナー状態ファイル
 
-以下は §10a の実装対象に対応するファイルである。Go 版 `runner.go` は本仕様に従って作成・読み書きする。
+以下は §10a の実装対象に対応するファイルである。Go 版 `components/runner.go` は本仕様に従って作成・読み書きする。
 
 | パス | 用途 |
 |------|------|
@@ -2183,11 +2185,10 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 
 ### 管理 API / SDK / UI 側ファイル
 
-以下は `api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html` の仕様に属する。CI ランナー拡張と連携するものを含むが、Go 版 `runner.go` 単体の実装対象範囲には含めない。
+以下は `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` の仕様に属する。CI ランナー拡張と連携するものを含むが、Go 版 `components/runner.go` 単体の実装対象範囲には含めない。
 
 ```
 /opt/adlaire-builder/
-├── api_server.go        # 管理 API サーバー（常駐）
 ├── .admin_credentials   # 認証情報ファイル（JSON、パーミッション 600）
 ├── .server_config       # サーバー設定（JSON）
 ├── .access_log          # ログイン履歴（JSON）
@@ -2209,6 +2210,8 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
     ├── index.html           # 管理画面（単一ファイル完結）
     └── adlaire-ci-sdk.js    # JavaScript SDK（管理画面に同梱）
 ```
+
+管理 API サーバーの実行ファイルは `/usr/local/bin/adlaire-ci-api` とし、`components/api.go` から生成する。
 
 ### 出力先・配信先
 
@@ -2239,9 +2242,9 @@ adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixtu
 
 ---
 
-## 12. 設定値（`runner.go`）
+## 12. 設定値（`components/runner.go`）
 
-Go 版 `runner.go` は本節の設定値を正とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
+Go 版 `components/runner.go` は本節の設定値を正とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
 
 **関連型：**
 
@@ -2385,7 +2388,7 @@ BRANCH_TARGETS = [
 ]
 ```
 
-`BRANCH_TARGETS` が空の場合、`runner.go` は ERROR ログを出力し、ビルドを実行せず終了コード `2` で終了する。
+`BRANCH_TARGETS` が空の場合、`components/runner.go` は ERROR ログを出力し、ビルドを実行せず終了コード `2` で終了する。
 
 **runner 終了コード：**
 
@@ -2511,7 +2514,7 @@ PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` �
 
 **設定ファイル起動時整合性チェック：**
 
-本機能の目的は、runner 起動時に状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、ビルド処理開始前に復旧または停止することである。対象コンポーネントは `runner.go` のみとし、管理 API の HTTP endpoint、SDK、UI は本機能の実装対象に含めない。
+本機能の目的は、runner 起動時に状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、ビルド処理開始前に復旧または停止することである。対象コンポーネントは `components/runner.go` のみとし、管理 API の HTTP endpoint、SDK、UI は本機能の実装対象に含めない。
 
 対象ファイルは次の 6 件に固定する。実装者判断で対象ファイルを追加または除外してはならない。
 
@@ -2622,7 +2625,7 @@ runner が生成する build id は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` �
 
 ## 13. 処理フロー
 
-本節の処理フローは、Go 版 `runner.go` の標準フローである。
+本節の処理フローは、Go 版 `components/runner.go` の標準フローである。
 
 **状態更新順序の規範：**
 
@@ -2676,7 +2679,7 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 
 **runner 機能単位契約：**
 
-`runner.go` は、下表の機能単位で状態を更新する。各機能単位は、Write 列にない状態ファイルを更新してはならない。
+`components/runner.go` は、下表の機能単位で状態を更新する。各機能単位は、Write 列にない状態ファイルを更新してはならない。
 
 | 機能単位 | Read | Write | 成功条件 | 失敗時更新 |
 |----------|------|-------|----------|------------|
@@ -2799,7 +2802,7 @@ queue entry の `trigger` は `"manual"` または `"webhook"` のみ許可す�
 runner が読み込む JSON object / JSON array の状態ファイルが破損している場合は、§22.0a の破損時の扱いに従う。JSON Lines は壊れた行だけを無視し、ファイル全体を破棄してはならない。破損退避ファイル名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。
 
 ```
-runner.go 起動（systemd タイマーから呼び出し）
+components/runner.go 起動（systemd タイマーから呼び出し）
     │
     ├─ .github_token 読み込み（不在、空、改行除去後 1 文字未満の場合は ERROR ログ、終了コード 2）
     │
@@ -2946,7 +2949,7 @@ set -euo pipefail
 /usr/local/bin/adlaire-ci-build --src "$ADLAIRE_CI_SRC" --out "$ADLAIRE_CI_OUT"
 ```
 
-ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`runner.go` は参照しない）。`adlaire-ci-build` は `build_spec.go` から生成した Go 版バイナリである。
+ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`components/runner.go` は参照しない）。`adlaire-ci-build` は `components/builder.go` から生成した Go 版バイナリである。
 
 **runner からの実行契約：**
 
@@ -2991,9 +2994,9 @@ HTTP `401` は `failure_api` とし、ERROR ログ `GITHUB_AUTH_FAILED` を出�
 
 本節は、Go 版 CI ランナーの SSH 転送標準仕様である。
 
-Go 版 `runner.go` は、`pipeline.sh` 成功後に、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節を SSH 転送の正本仕様とする。
+Go 版 `components/runner.go` は、`pipeline.sh` 成功後に、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節を SSH 転送の正本仕様とする。
 
-`runner.go` は `pipeline.sh` 成功後に、出力サイトディレクトリ配下の全ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。SSH コマンドは `ssh` バイナリを `exec.CommandContext` で直接起動し、`/bin/sh -c` を使わない。
+`components/runner.go` は `pipeline.sh` 成功後に、出力サイトディレクトリ配下の全ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。SSH コマンドは `ssh` バイナリを `exec.CommandContext` で直接起動し、`/bin/sh -c` を使わない。
 
 ### 設定値
 
@@ -3012,7 +3015,7 @@ Go 版 `runner.go` は、`pipeline.sh` 成功後に、出力サイトディレ�
 転送前にリモートサーバーで対象ファイルごとの SHA256 ハッシュを取得し、ローカルファイルのハッシュと比較する。
 
 ```bash
-# runner.go が os/exec 経由で実行
+# components/runner.go が os/exec 経由で実行
 ssh <user>@<host> sha256sum <dest_dir>/<relative-path>
 ```
 
@@ -3024,7 +3027,7 @@ ssh <user>@<host> sha256sum <dest_dir>/<relative-path>
 stdin パイプ経由で SSH 転送する。
 
 ```bash
-# runner.go が os/exec（StdinPipe）経由で実行
+# components/runner.go が os/exec（StdinPipe）経由で実行
 ssh <user>@<host> 'mkdir -p <dest_dir>/<relative-dir> && tee <dest_dir>/<relative-path>'
 ```
 
@@ -3049,7 +3052,7 @@ runner は local file を開き、SSH process の stdin へ `io.Copy` で送る�
 ]
 ```
 
-- `runner.go` 起動時（`BRANCH_TARGETS` 処理前）に `PENDING_FILE` を読み込み、エントリごとに再試行する（→ §13 処理フロー）
+- `components/runner.go` 起動時（`BRANCH_TARGETS` 処理前）に `PENDING_FILE` を読み込み、エントリごとに再試行する（→ §13 処理フロー）
 - 再試行成功時にエントリを削除する。失敗時は `retry_count` をインクリメントして保持する
 - SSH 転送失敗 Webhook 通知（`deploy_failure` イベント）を送信する（on: `["deploy_failure"]` 設定時）
 - 同一 `out`、`host`、`user`、`dest_dir` の pending エントリが既に存在する場合は新規追記せず、既存エントリの `retry_count` を +1 し、`failed_at` を最新時刻へ更新する
@@ -3088,9 +3091,9 @@ ssh {user}@{host} sha256sum {dest_dir}/{filename}
 
 本節は、Go 版 CI ランナーのスナップショット標準仕様である。
 
-Go 版 `runner.go` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節をスナップショット保存、世代管理、ロールバック連携の正本仕様とする。
+Go 版 `components/runner.go` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節をスナップショット保存、世代管理、ロールバック連携の正本仕様とする。
 
-`runner.go` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット機能を無効化する。
+`components/runner.go` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット機能を無効化する。
 
 ### ディレクトリ構造
 
@@ -3116,7 +3119,7 @@ Go 版 `runner.go` は、SSH 転送成功後に `.snapshots/` ディレクトリ
 
 `POST /api/history/{id}/rollback`（→ §22）で指定ビルド ID のスナップショットから SSH 転送を再実行する。
 
-- ロールバック API は `api_server.go` の実装を前提とする。`api_server.go` が実装されるまでは、API 経由のロールバックはとして扱う
+- ロールバック API は `components/api.go` の実装を前提とする。`components/api.go` が実装されるまでは、API 経由のロールバックはとして扱う
 - `.snapshots/{id}/` が存在しない場合は `404` を返す
 - 転送成功時は `.build_history` に rollback エントリを追記する
 
@@ -3133,7 +3136,7 @@ Go 版 `runner.go` は、SSH 転送成功後に `.snapshots/` ディレクトリ
 
 ## 15. ログ
 
-本節は、Go 版 `runner.go` の stdout ログと構造化ビルドログを定義する。
+本節は、Go 版 `components/runner.go` の stdout ログと構造化ビルドログを定義する。
 
 ### stdout ログ
 
@@ -3148,13 +3151,13 @@ stdout は Go 標準ライブラリ `log/slog` で出力し、systemd が journa
 
 ### 構造化ビルドログ
 
-Go 版 `runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成する。
+Go 版 `components/runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成する。
 
 | 項目 | 内容 |
 |------|------|
 | ビルドログファイル | ビルドごとに `.build_logs/{id}.json` を作成する。 |
 | stdout / stderr 保存 | `pipeline.sh` の標準出力・標準エラーをビルドログへ保存する。 |
-| 変換レポート取り込み | `build_spec.go` が出力する `[REPORT]` 行をパースし、`tables_count`、`code_blocks_count` 等へ変換して保存する。 |
+| 変換レポート取り込み | `components/builder.go` が出力する `[REPORT]` 行をパースし、`tables_count`、`code_blocks_count` 等へ変換して保存する。 |
 | 警告取り込み | `[WARN]` 行を配列として保存し、`warnings` 件数と整合させる。 |
 | ビルド所要時間 | `started_at`、`finished_at`、`duration_seconds` を保存する。 |
 | コミット情報 | ビルド対象 commit の SHA、message、author、date を保存する。 |
@@ -3271,9 +3274,9 @@ Go 版 `runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成す
 
 ---
 
-## 15a. `runner.go` 受け入れ fixture
+## 15a. `components/runner.go` 受け入れ fixture
 
-Go 版 `runner.go` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
+Go 版 `components/runner.go` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
 
 ### Fixture R1: CLI 異常系
 
@@ -3480,9 +3483,9 @@ sudo systemctl enable --now adlaire-ci-api
 | 制限 | 詳細 |
 |------|------|
 | セッションはインメモリ管理 | 再起動で全セッションが消去される |
-| HTTPS 非対応 | `api_server.go` は TLS listener、証明書読み込み、HTTPS redirect を実装しない。HTTP listener のみ起動する |
+| HTTPS 非対応 | `components/api.go` は TLS listener、証明書読み込み、HTTPS redirect を実装しない。HTTP listener のみ起動する |
 | シングルユーザー専用 | `POST /api/login` は `password` のみを受け取り、`username`、`user_id`、role、group を受け取らない。該当 field を含む request は `422` を返す |
-| 並列リクエストの制限 | `api_server.go` は Go 標準ライブラリ `net/http` の標準サーバーで処理し、独自の接続数上限、IP 単位 rate limit、worker pool を実装しない |
+| 並列リクエストの制限 | `components/api.go` は Go 標準ライブラリ `net/http` の標準サーバーで処理し、独自の接続数上限、IP 単位 rate limit、worker pool を実装しない |
 
 ---
 
@@ -3504,7 +3507,7 @@ sudo systemctl enable --now adlaire-ci-api
 
 | 制限 | 詳細 |
 |------|------|
-| Webhook 受信の外部公開 | `POST /api/webhook` は `api_server.go`（`127.0.0.1` バインド）で受信するため、GitHub から直接受信する構成ではリバースプロキシと TLS 終端が必要。 |
+| Webhook 受信の外部公開 | `POST /api/webhook` は `components/api.go`（`127.0.0.1` バインド）で受信するため、GitHub から直接受信する構成ではリバースプロキシと TLS 終端が必要。 |
 | ペンディングキュー | ペンディング再試行が失敗した場合、`retry_count` を 1 増やしてエントリを保持する。runner による自動放棄は行わない。削除は転送成功時、または管理 API / 手動運用で明示的に削除する場合に限定する。 |
 | ペンディングキュー肥大化 | `queue_max_size` を超えた新規投入は ERROR ログを記録し、新規エントリを追加しない。既存エントリは削除しない。 |
 | サーキットブレーカー | 連続失敗回数が `API_CIRCUIT_BREAKER_THRESHOLD` 以上になった場合はポーリングを停止し、`POST /api/circuit-breaker/reset` でのみ復帰する。 |
@@ -3517,18 +3520,18 @@ sudo systemctl enable --now adlaire-ci-api
 
 ```
 systemd timer
-  └─ runner.go（変更検出・ビルド起動）
+  └─ components/runner.go（変更検出・ビルド起動）
        └─ SSH 転送
 
-api_server.go（常駐 HTTP サーバー）
+components/api.go（常駐 HTTP サーバー）
 
 admin/index.html（標準管理ツール）
-  └─ adlaire-ci-sdk.js（SDK）─── HTTP ───► api_server.go
+  └─ adlaire-ci-sdk.js（SDK）─── HTTP ───► components/api.go
 ```
 
-対象コンポーネント `api_server.go` は、Go 標準ライブラリ `net/http` で実装し、管理ツールからの API リクエストを受け付ける。`runner.go` とは独立して常駐する。
+対象コンポーネント `components/api.go` は、Go 標準ライブラリ `net/http` で実装し、管理ツールからの API リクエストを受け付ける。`components/runner.go` とは独立して常駐する。
 
-**`api_server.go` 設定値（スクリプト冒頭）：**
+**`components/api.go` 設定値（スクリプト冒頭）：**
 
 ```go
 Host              = "127.0.0.1"                               // バインドアドレス（外部公開禁止）
@@ -3581,12 +3584,12 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 
 ### 22.0 API 共通契約
 
-本節の API は `api_server.go` の対象仕様である。実装時は、エンドポイント固有仕様より先に以下の共通契約を満たす。
+本節の API は `components/api.go` の対象仕様である。実装時は、エンドポイント固有仕様より先に以下の共通契約を満たす。
 
 | 項目 | 仕様 |
 |------|------|
 | Go バージョン | Go `1.22` 以上。HTTP 実装は Go 標準ライブラリ `net/http` を使用する。 |
-| bind | 既定値は `127.0.0.1:8765`。`--addr` で上書き可能。`--addr 0.0.0.0:<port>` を指定しても、`api_server.go` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
+| bind | 既定値は `127.0.0.1:8765`。`--addr` で上書き可能。`--addr 0.0.0.0:<port>` を指定しても、`components/api.go` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルはいずれも UTF-8 とする。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
 | リクエスト body 上限 | JSON body は 1 MiB を上限とする。超過時は `413 Payload Too Large` と `{"error": "Payload too large"}` を返す。 |
@@ -3615,42 +3618,42 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 
 ### 22.0a 状態ファイル共通仕様
 
-`api_server.go` および拡張後 `runner.go` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に本節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
+`components/api.go` および拡張後 `components/runner.go` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に本節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
 
 | パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
 |------|------|--------|----------|--------------|
-| `.admin_credentials` | JSON object | `--init-credentials` で生成 | `api_server.go` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
-| `.server_config` | JSON object | `{}` | `api_server.go` | `.server_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 object で再生成する。 |
-| `.notify_config` | JSON object | `{"webhooks":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `runner.go` / `api_server.go` | `.notify_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
-| `.notify_log` | JSON Lines | 空ファイル | `runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
-| `.notify_pending` | JSON array | `[]` | `runner.go` | `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
-| `.pending_transfers` | JSON array | `[]` | `runner.go` | `.pending_transfers.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
-| `.build_history` | JSON Lines | 空ファイル | `runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
-| `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `runner.go` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
-| `.build_lock` | text | 不在 | `runner.go` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
-| `.branch_config` | JSON object | 不在 | `runner.go` / `api_server.go` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、再生成せず `BRANCH_TARGETS` デフォルトへフォールバックする。 |
-| `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `runner.go` / `api_server.go` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
-| `.build_status.json` | JSON object | `{"schema_version":1,"updated_at":null,"status":"none","running":false,"current_build_id":null,"last_build_id":null,"last_trigger":null,"last_target_status":null,"last_branch":null,"last_target_file":null,"last_blob_sha":null,"last_commit_sha":null,"last_started_at":null,"last_finished_at":null,"last_duration_seconds":null,"last_error":null,"last_deploy_status":null,"pending_transfers_count":0,"notify_pending_count":0,"circuit_open":false,"circuit_consecutive_failures":0,"output_sha256":null,"size_warn":false}` | `runner.go` | `.build_status.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
-| `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `runner.go` / `api_server.go` | `.build_circuit_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
-| `.repo_config` | JSON object | `{}` | `api_server.go` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
-| `.config_log` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
-| `.access_log` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
-| `.api_access_log` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。秘密情報は記録しない。 |
-| `.webhook_secret` | text | 不在 | `api_server.go` | 読み込み不能時は Webhook 受信を `501` で拒否する。 |
-| `.webhook_events.json` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
-| `.access_control` | JSON object | `{"allow":[]}` | `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.hooks` | JSON object | `{"hooks":[]}` | `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.maintenance` | JSON object | `{"enabled":false,"reason":null,"since":null}` | `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.api_tokens` | JSON object | `{"tokens":[]}` | `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.alert_rules` | JSON object | `{"rules":[]}` | `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.tag_rules` | JSON object | `{"rules":[]}` | `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.pipeline_config` | JSON object | `{"extra_args":[],"env":{}}` | `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.notes` | UTF-8 text | 空文字列 | `api_server.go` | 読み込み不能時は `500` を返し、自動上書きしない。 |
-| `.smtp_config` | JSON object | SMTP 未設定値 | `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.smtp_secret` | text | 不在 | `api_server.go` | 読み込み不能時は SMTP 送信を `422` で拒否する。 |
-| `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.admin_credentials` | JSON object | `--init-credentials` で生成 | `components/api.go` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
+| `.server_config` | JSON object | `{}` | `components/api.go` | `.server_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 object で再生成する。 |
+| `.notify_config` | JSON object | `{"webhooks":[],"on":[],"summary":{"enabled":false,"interval":"weekly","hour":9,"day_of_week":1},"email":{"enabled":false,"to":[],"on":[]}}` | `components/runner.go` / `components/api.go` | `.notify_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.notify_log` | JSON Lines | 空ファイル | `components/runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.notify_pending` | JSON array | `[]` | `components/runner.go` | `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
+| `.pending_transfers` | JSON array | `[]` | `components/runner.go` | `.pending_transfers.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
+| `.build_history` | JSON Lines | 空ファイル | `components/runner.go` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `components/runner.go` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
+| `.build_lock` | text | 不在 | `components/runner.go` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
+| `.branch_config` | JSON object | 不在 | `components/runner.go` / `components/api.go` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、再生成せず `BRANCH_TARGETS` デフォルトへフォールバックする。 |
+| `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `components/runner.go` / `components/api.go` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.build_status.json` | JSON object | `{"schema_version":1,"updated_at":null,"status":"none","running":false,"current_build_id":null,"last_build_id":null,"last_trigger":null,"last_target_status":null,"last_branch":null,"last_target_file":null,"last_blob_sha":null,"last_commit_sha":null,"last_started_at":null,"last_finished_at":null,"last_duration_seconds":null,"last_error":null,"last_deploy_status":null,"pending_transfers_count":0,"notify_pending_count":0,"circuit_open":false,"circuit_consecutive_failures":0,"output_sha256":null,"size_warn":false}` | `components/runner.go` | `.build_status.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `components/runner.go` / `components/api.go` | `.build_circuit_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
+| `.repo_config` | JSON object | `{}` | `components/api.go` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
+| `.config_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.access_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.api_access_log` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。秘密情報は記録しない。 |
+| `.webhook_secret` | text | 不在 | `components/api.go` | 読み込み不能時は Webhook 受信を `501` で拒否する。 |
+| `.webhook_events.json` | JSON Lines | 空ファイル | `components/api.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
+| `.access_control` | JSON object | `{"allow":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.hooks` | JSON object | `{"hooks":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.maintenance` | JSON object | `{"enabled":false,"reason":null,"since":null}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.api_tokens` | JSON object | `{"tokens":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.alert_rules` | JSON object | `{"rules":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.tag_rules` | JSON object | `{"rules":[]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.pipeline_config` | JSON object | `{"extra_args":[],"env":{}}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.notes` | UTF-8 text | 空文字列 | `components/api.go` | 読み込み不能時は `500` を返し、自動上書きしない。 |
+| `.smtp_config` | JSON object | SMTP 未設定値 | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.smtp_secret` | text | 不在 | `components/api.go` | 読み込み不能時は SMTP 送信を `422` で拒否する。 |
+| `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `components/api.go` | 初期値で再生成し、ERROR ログを記録する。 |
 
-`.build_logs/archive/` は gzip 圧縮済み build log の保存先ディレクトリである。初期値は空ディレクトリとし、`runner.go` または `POST /api/logs/archive` が必要時に作成する。圧縮済みファイル名は `{id}.json.gz` 固定とし、通常 `.build_logs/{id}.json` と同じ build id を表す。
+`.build_logs/archive/` は gzip 圧縮済み build log の保存先ディレクトリである。初期値は空ディレクトリとし、`components/runner.go` または `POST /api/logs/archive` が必要時に作成する。圧縮済みファイル名は `{id}.json.gz` 固定とし、通常 `.build_logs/{id}.json` と同じ build id を表す。
 
 JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時は末尾に改行を必ず付ける。秘密情報を含む可能性のある `.admin_credentials`、`.github_token`、`.webhook_secret`、`.smtp_secret` は mode `600` を必須とする。
 
@@ -3702,7 +3705,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | `history_max_count` | integer | `100` | 1〜10000 | `GET/POST /api/config` | `.build_history` の通常表示上限。削除処理の上限ではない。 |
 | `build_timeout_seconds` | integer | `300` | 1〜86400 | `GET/POST /api/config` | 手動/自動ビルドのタイムアウト秒数。 |
 | `log_retention_days` | integer | `30` | 0〜3650 | `GET/POST /api/config`, `POST /api/logs/cleanup` | `0` は自動削除なし。 |
-| `log_level` | string | `"INFO"` | `"INFO"` / `"DEBUG"` / `"WARNING"` / `"ERROR"` | `GET/POST /api/config`, `POST /api/log-level` | `api_server.go` のランタイムログレベル。 |
+| `log_level` | string | `"INFO"` | `"INFO"` / `"DEBUG"` / `"WARNING"` / `"ERROR"` | `GET/POST /api/config`, `POST /api/log-level` | `components/api.go` のランタイムログレベル。 |
 | `pat_expires_at` | string/null | `null` | `YYYY-MM-DD` または `null` | `GET/POST /api/config` | PAT 期限表示・診断用。 |
 | `snapshots_keep` | integer | `5` | 0〜100 | `GET/POST /api/config` | `0` はスナップショット保存無効。 |
 | `queue_max_size` | integer | `3` | 0〜100 | `GET/POST /api/config`, `GET /api/queue` | `0` はキュー無効。 |
@@ -4334,7 +4337,7 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | P0 | 認証、セッション、共通エラー、状態ファイル読み書き、`.access_log`、`.config_log` | `POST /api/login` から認証必須 API の共通処理までが §22.0〜§22.0e と一致し、秘密情報がログとレスポンスに出ない。 |
 | P1 | ビルド操作、status、logs、history、queue、circuit breaker | 手動ビルド、強制ビルド、キャンセル、キュー、履歴、ログ取得が同一状態ファイル契約で動作する。 |
 | P2 | config、repo、branch、schedule、PAT、diagnostics、dashboard | 設定変更が `.config_log` に残り、GET 系集約 API が状態ファイルを更新しない。 |
-| P3 | notify、SMTP、webhook、webhook config、weekly summary | 通知送信責務が `runner.go`、設定責務が `api_server.go` に分離され、secret はマスクされる。 |
+| P3 | notify、SMTP、webhook、webhook config、weekly summary | 通知送信責務が `components/runner.go`、設定責務が `components/api.go` に分離され、secret はマスクされる。 |
 | P4 | snapshots、rollback、maintenance、access control、hooks | 運用系 API が `409`、`422`、`503` を仕様どおり返し、ロールバックは履歴に `trigger: "rollback"` を残す。 |
 | P5 | alert rules、tag rules、pipeline config、notes、dashboard layout、tokens | 拡張設定が schema どおり保存され、SDK と UI の操作名が §22.0e と一致する。 |
 
@@ -4358,7 +4361,7 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | `GET` | `/api/sessions` | 要 | 有効セッション一覧を返す |
 | `POST` | `/api/sessions/revoke-all` | 要 | 現セッション以外の全セッションを強制無効化する |
 | `GET` | `/api/status` | 要 | 最終ビルド時刻・SHA・成否・実行中フラグを返す |
-| `POST` | `/api/build` | 要 | 手動ビルドトリガー（`runner.go` を即時起動） |
+| `POST` | `/api/build` | 要 | 手動ビルドトリガー（`components/runner.go` を即時起動） |
 | `POST` | `/api/build/force` | 要 | SHA リセットとビルドをアトミックに実行する（強制ビルド） |
 | `POST` | `/api/build/cancel` | 要 | 実行中のビルドを強制停止する（`running: true` のときのみ有効） |
 | `GET` | `/api/build/stream` | 要 | 実行中または直近ビルドログを SSE で配信する |
@@ -4390,7 +4393,7 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | `POST` | `/api/notify/weekly-summary` | 要 | 週次サマリー Webhook を即時手動送信する（過去 7 日間の統計を集計して送信） |
 | `GET` | `/api/config` | 要 | サーバー設定を返す |
 | `POST` | `/api/config` | 要 | サーバー設定を更新する |
-| `POST` | `/api/log-level` | 要 | `api_server.go` の `log_level` を変更する |
+| `POST` | `/api/log-level` | 要 | `components/api.go` の `log_level` を変更する |
 | `GET` | `/api/config-log` | 要 | 設定変更履歴（変更日時・種別・変更前後の値）を返す |
 | `GET` | `/api/pat-status` | 要 | GitHub PAT の有効性確認 |
 | `POST` | `/api/pat-verify` | 要 | GitHub API を呼び出し PAT の有効性をリアルタイム検証する |
@@ -4570,7 +4573,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 既に一時停止中に `pause`、または稼働中に `resume` を呼び出した場合は `409 Conflict` を返す。
 
-> **責務分担：** Webhook 通知の**送信責務は `runner.go`** にある。`runner.go` はビルド完了時に `.notify_config` を読み込んで Webhook を送信する。`api_server.go`（通知 API）は設定の読み書きのみを担い、自身では通知を送信しない。
+> **責務分担：** Webhook 通知の**送信責務は `components/runner.go`** にある。`components/runner.go` はビルド完了時に `.notify_config` を読み込んで Webhook を送信する。`components/api.go`（通知 API）は設定の読み書きのみを担い、自身では通知を送信しない。
 
 **`GET /api/notify-config` レスポンス例：**
 ```json
@@ -4637,7 +4640,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 - `last_deploy_at`：最終 SSH 転送完了日時（未実行時 `null`）
 - `last_deploy_status`：`"success"` | `"failure"` | `"skipped"` | `"none"`
 - `pending_transfers`：ペンディングキューのエントリ数
-- `uptime_seconds`：`api_server.go` 起動からの経過秒数
+- `uptime_seconds`：`components/api.go` 起動からの経過秒数
 
 **`GET /api/pat-status` レスポンス例：**
 ```json
@@ -4879,7 +4882,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 `tables_count` / `code_blocks_count`：直近ビルドの変換レポート（§8）より取得。ビルド前は `null`。
 `build_warnings`：直近ビルドで発生した警告メッセージの配列（§8 参照）。ビルド前は空配列 `[]`。
 `build_id` / `commit_sha` / `build_at`：直近ビルドログの `build_meta` を優先し、不在の場合は出力 HTML の meta tag を読み取る。どちらにも存在しない場合は空文字を返す。
-値は runner.go が `.build_logs/{id}.json` または `.build_logs/archive/{id}.json.gz` から最新エントリを読み取って返す。
+値は `components/runner.go` が `.build_logs/{id}.json` または `.build_logs/archive/{id}.json.gz` から最新エントリを読み取って返す。
 
 **`GET /api/stats/timeline` レスポンス例：**
 ```json
@@ -5169,7 +5172,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 **署名検証：**
 ```go
-// api_server.go の実装例
+// components/api.go の実装例
 mac := hmac.New(sha256.New, []byte(secret))
 mac.Write(body)
 expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
@@ -5261,7 +5264,7 @@ Content-Type: application/json
 { "message": "Force build interval updated", "hours": 24 }
 ```
 
-- `runner.go` 側の `FORCE_BUILD_INTERVAL` を動的変更する（`.server_config` に保存し、起動時に読み込む）
+- `components/runner.go` 側の `FORCE_BUILD_INTERVAL` を動的変更する（`.server_config` に保存し、起動時に読み込む）
 - `hours` は 0 以上の整数。0 で機能無効化
 
 **`POST /api/schedule/cooldown` リクエスト / レスポンス：**
@@ -5274,7 +5277,7 @@ Content-Type: application/json
 { "message": "Build cooldown updated", "seconds": 120 }
 ```
 
-- `runner.go` 側の `BUILD_COOLDOWN_SECONDS` を動的変更する（`.server_config` に保存し、起動時に読み込む）
+- `components/runner.go` 側の `BUILD_COOLDOWN_SECONDS` を動的変更する（`.server_config` に保存し、起動時に読み込む）
 - `seconds` は 0 以上の整数。0 で機能無効化
 
 ---
@@ -5464,7 +5467,7 @@ Content-Type: application/json
 
 ### ビルドパイプライン設定（15D）
 
-`runner.go` がビルド実行時に `.pipeline_config` を読み込み、`build_spec.go` の呼び出しに `extra_args`・`env` を適用する。`.pipeline_config` に保存する。
+`components/runner.go` がビルド実行時に `.pipeline_config` を読み込み、`components/builder.go` の呼び出しに `extra_args`・`env` を適用する。`.pipeline_config` に保存する。
 
 **`GET /api/pipeline-config` レスポンス例：**
 ```json
@@ -5635,9 +5638,9 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 ## 23. JavaScript SDK 仕様
 
-本節は、`adlaire-ci-sdk.js` に関する仕様である。
+本節は、`admin/adlaire-ci-sdk.js` に関する仕様である。
 
-**ファイル：** `adlaire-ci-sdk.js`（単一ファイル、外部依存なし）
+**ファイル：** `admin/adlaire-ci-sdk.js`（単一ファイル、外部依存なし）
 **モジュール形式：** ES Module（`import` / `export`）
 
 **SDK 実行環境契約：**
@@ -5645,7 +5648,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 | 項目 | 仕様 |
 |------|------|
 | JavaScript | ECMAScript 2022 以上を前提とする。transpile、bundle、polyfill は標準仕様に含めない。 |
-| module | `adlaire-ci-sdk.js` は ES Module とし、`export { AdlaireCI, AdlaireCIError }` を必須 export とする。default export は定義しない。 |
+| module | `admin/adlaire-ci-sdk.js` は ES Module とし、`export { AdlaireCI, AdlaireCIError }` を必須 export とする。default export は定義しない。 |
 | browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder`、`URLSearchParams` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
 | 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。Node.js 専用 API、npm package、bundler、polyfill による補完は行わない。 |
 | 外部依存 | npm package、CDN script、framework、build tool を使用してはならない。 |
@@ -6000,7 +6003,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 **UI 操作契約表：**
 
-標準管理ツールは、下表の SDK method 以外を直接呼び出してはならない。ファイル操作、`fetch()` の直接呼び出し、`systemctl` 実行、`runner.go` 直接起動は禁止する。成功時表示は対象パネル内に 1 行で表示し、失敗時表示は `AdlaireCIError.message` と `details` を同じパネル内に表示する。
+標準管理ツールは、下表の SDK method 以外を直接呼び出してはならない。ファイル操作、`fetch()` の直接呼び出し、`systemctl` 実行、`components/runner.go` 直接起動は禁止する。成功時表示は対象パネル内に 1 行で表示し、失敗時表示は `AdlaireCIError.message` と `details` を同じパネル内に表示する。
 
 | パネル | 操作 | SDK method | 成功時表示 | 成功後再取得 | disabled 条件 |
 |--------|------|------------|------------|--------------|---------------|
@@ -6167,7 +6170,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 **セッショントークン生成：**
 `crypto/rand` で 32 bytes を生成し、`encoding/hex` で 64 文字の lowercase hex 文字列へ変換する。
 
-**セッション管理：** `api_server.go` 内のインメモリ辞書で管理。有効期限 8 時間。再起動で全セッション破棄。同一ユーザーの複数同時セッションを許容する。辞書 key は token 本体ではなく `sha256(token)` の lowercase hex とし、API response、`.access_log`、サーバーログへ token 本体を出力してはならない。
+**セッション管理：** `components/api.go` 内のインメモリ辞書で管理。有効期限 8 時間。再起動で全セッション破棄。同一ユーザーの複数同時セッションを許容する。辞書 key は token 本体ではなく `sha256(token)` の lowercase hex とし、API response、`.access_log`、サーバーログへ token 本体を出力してはならない。
 
 **セッション期限切れ時：** `401 Unauthorized` を返す。クライアント（SDK）は `this._token` をクリアし、再ログインを促す。
 
@@ -6201,7 +6204,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 | 項目 | 仕様 |
 |------|------|
-| 失敗記録 | `api_server.go` はメモリ上で直近の連続ログイン失敗回数と最終失敗時刻を保持する。再起動で失敗回数はリセットされる。 |
+| 失敗記録 | `components/api.go` はメモリ上で直近の連続ログイン失敗回数と最終失敗時刻を保持する。再起動で失敗回数はリセットされる。 |
 | ロック条件 | 連続 10 回失敗した場合、最終失敗から 10 分間 `POST /api/login` を `429 Too Many Requests` と `{"error":"Too many attempts"}` で拒否する。 |
 | 成功時 | ログイン成功時は連続失敗回数を 0 に戻す。 |
 | 応答時間 | パスワード不一致、存在しない credentials、ロック中を除く検証失敗では、条件の詳細をレスポンスへ出さない。 |
@@ -6223,7 +6226,7 @@ POST /api/login
 
 **パスワード変更時：** `login_count` を 0 にリセット。新しい salt を生成しハッシュを更新。変更完了後に現セッション以外のセッションを破棄。
 
-**`--init-credentials` オプション：** `api_server.go` を `--init-credentials` 引数で起動した場合、初期パスワード `admin` で `.admin_credentials` を生成して終了する（HTTP サーバーは起動しない）。
+**`--init-credentials` オプション：** `components/api.go` を `--init-credentials` 引数で起動した場合、初期パスワード `admin` で `.admin_credentials` を生成して終了する（HTTP サーバーは起動しない）。
 
 `.admin_credentials` が既に存在する場合、`--init-credentials` は上書きせず `409` 相当の終了コード `2` で終了し、標準エラーへ `credentials already exist` を出力する。初期化成功時の終了コードは `0` とする。
 
@@ -6264,10 +6267,10 @@ POST /api/login
 
 | 成果物 | 取得タイミング | 説明 |
 |--------|----------------|------|
-| `adlaire-ci-build-$OS_ARCH` | 初回セットアップ、アップデート | `build_spec.go` から生成した Markdown → 静的 Web サイトビルドバイナリ。 |
-| `adlaire-ci-runner-$OS_ARCH` | 初回セットアップ、アップデート | `runner.go` から生成した CI ランナーバイナリ。 |
-| `adlaire-ci-api-$OS_ARCH` | 管理 API 導入手順、管理 API 導入後のアップデート | `api_server.go` から生成した管理 API サーバーバイナリ。 |
-| `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | `admin/index.html` と `adlaire-ci-sdk.js` を含む管理 UI 配布物。 |
+| `adlaire-ci-build-$OS_ARCH` | 初回セットアップ、アップデート | `components/builder.go` から生成した Markdown → 静的 Web サイトビルドバイナリ。 |
+| `adlaire-ci-runner-$OS_ARCH` | 初回セットアップ、アップデート | `components/runner.go` から生成した CI ランナーバイナリ。 |
+| `adlaire-ci-api-$OS_ARCH` | 管理 API 導入手順、管理 API 導入後のアップデート | `components/api.go` から生成した管理 API サーバーバイナリ。 |
+| `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | `admin/index.html` と `admin/adlaire-ci-sdk.js` を含む管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | Release 添付ファイルの SHA-256 checksum 一覧。 |
 
 ### §26.2b セットアップ・アップデート機能単位
@@ -6288,7 +6291,7 @@ POST /api/login
 
 ### §26.3 Go 版初回セットアップ手順
 
-対象は Go 版の `build_spec.go` と `runner.go` から生成した `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci.service`、`adlaire-ci.timer` とする。
+対象は Go 版の `components/builder.go` と `components/runner.go` から生成した `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci.service`、`adlaire-ci.timer` とする。
 
 初回セットアップは以下の停止条件に従う。各手順は直前の手順が成功した場合のみ実行する。失敗時に後続手順を継続してはならない。
 
@@ -6359,7 +6362,7 @@ Go 版初回セットアップでは以下を実行しない。
 
 ### §26.3b 管理 API 導入後の追加セットアップ手順
 
-`api_server.go`、`admin/index.html`、`adlaire-ci-sdk.js` を実装した後にのみ本手順を実行する。
+`components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js` を実装した後にのみ本手順を実行する。
 
 管理 API 導入手順は、runner の既存稼働状態を壊してはならない。`adlaire-ci-api` の配置、認証情報生成、systemd enable のいずれかが失敗した場合でも、`adlaire-ci.timer` は停止しない。`.admin_credentials` が既に存在する場合は `--init-credentials` を再実行せず、既存 credentials を維持する。
 
@@ -6418,7 +6421,7 @@ systemctl status adlaire-ci-api
 
 #### §26.4.1 Go 版 runner の systemd ファイル
 
-**`/etc/systemd/system/adlaire-ci.service`**（`runner.go`）：
+**`/etc/systemd/system/adlaire-ci.service`**（`components/runner.go`）：
 
 ```ini
 [Unit]
@@ -6431,7 +6434,7 @@ WorkingDirectory=/opt/adlaire-builder
 ExecStart=/usr/local/bin/adlaire-ci-runner --state-dir /opt/adlaire-builder
 ```
 
-**`/etc/systemd/system/adlaire-ci.timer`**（`runner.go` 定期起動タイマー）：
+**`/etc/systemd/system/adlaire-ci.timer`**（`components/runner.go` 定期起動タイマー）：
 
 ```ini
 [Unit]
@@ -6448,7 +6451,7 @@ WantedBy=timers.target
 
 #### §26.4.2 管理 API 導入後の systemd ファイル
 
-**`/etc/systemd/system/adlaire-ci-api.service`**（`api_server.go`）：
+**`/etc/systemd/system/adlaire-ci-api.service`**（`components/api.go`）：
 
 ```ini
 [Unit]
@@ -6598,8 +6601,8 @@ Phase 別の実装検証記録は以下の単位で行う。
 
 | Phase | 必須記録 | 失敗時の扱い |
 |-------|----------|--------------|
-| Phase 1 | CLI 引数、fixture A〜D、生成物一覧、`[REPORT]`、冪等性、strict / non-strict の結果。 | `build_spec.go` を完了扱いにせず、Phase 2 着手禁止。 |
-| Phase 2 | secret 不足、lock、GitHub fake、pipeline fake、deploy fake、snapshot、notify、状態ファイル schema の結果。 | `runner.go` を完了扱いにせず、Phase 3 着手禁止。 |
+| Phase 1 | CLI 引数、fixture A〜D、生成物一覧、`[REPORT]`、冪等性、strict / non-strict の結果。 | `components/builder.go` を完了扱いにせず、Phase 2 着手禁止。 |
+| Phase 2 | secret 不足、lock、GitHub fake、pipeline fake、deploy fake、snapshot、notify、状態ファイル schema の結果。 | `components/runner.go` を完了扱いにせず、Phase 3 着手禁止。 |
 | Phase 3 | P0 / P1 endpoint、認証、session、error body、SSE、状態 read/write、systemd service の結果。 | API P0 / P1 を完了扱いにせず、Phase 4 着手禁止。 |
 | Phase 4 | P2〜P5 endpoint、secret mask、rollback、maintenance、hook、token、P0 / P1 互換確認の結果。 | endpoint 契約を固定扱いにせず、Phase 5 着手禁止。 |
 | Phase 5 | method 対応表、fake fetch、HTTP error、timeout、stream、`401` token 破棄、body 禁止の結果。 | SDK 契約を固定扱いにせず、Phase 6 着手禁止。 |
@@ -6796,7 +6799,7 @@ Request body は partial `ConfigObject` とする。未知 key を含む場合�
 
 ### 27.6 API アクセスログ
 
-`api_server.go` は全 `/api/` request について `.api_access_log` へ JSON Lines を追記する。`GET /api/health` も対象とする。静的 file 配信、admin HTML、SDK JS は対象外とする。
+`components/api.go` は全 `/api/` request について `.api_access_log` へ JSON Lines を追記する。`GET /api/health` も対象とする。静的 file 配信、admin HTML、SDK JS は対象外とする。
 
 追記タイミングは response status 確定後とする。追記失敗時は、対象 API の本来の response を優先し、サーバーログに `API_ACCESS_LOG_WRITE_FAILED` を出す。access log 書き込み失敗を理由に API response を `500` へ変更してはならない。
 
