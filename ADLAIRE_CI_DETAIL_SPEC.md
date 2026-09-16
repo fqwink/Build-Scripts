@@ -3652,6 +3652,25 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 
 エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、§22、§23、§24 の対応関係を同時に確認する。
 
+**API 共通エラー固定文言：**
+
+| 条件 | HTTP status | body |
+|------|-------------|------|
+| 未知 path | `404` | `{"error":"Not found"}` |
+| method 不一致 | `405` | `{"error":"Method not allowed"}` |
+| body 禁止 endpoint に body あり | `400` | `{"error":"Request body is not allowed"}` |
+| body 上限超過 | `413` | `{"error":"Payload too large"}` |
+| JSON parse 失敗 | `400` | `{"error":"Invalid JSON"}` |
+| 認証なし / 無効 token / 期限切れ session | `401` | `{"error":"Unauthorized"}` |
+| scope 不足 / 管理操作不可 | `403` | `{"error":"Forbidden"}` |
+| rate limit 超過 | `429` | `{"error":"Too many requests"}` |
+| 入力検証失敗 | `422` | `{"error":"Validation failed","details":[...]}` |
+| 状態競合 | `409` | endpoint 固有文言。未定義の場合は `{"error":"Conflict"}` |
+| 必須設定なし | `501` | `{"error":"Not configured"}` |
+| 内部処理失敗 | `500` | `{"error":"Internal server error"}` |
+
+上表の body は空白差分を除いて固定とする。`500` の response body に Go error、path、secret、状態ファイル内容、外部 API response body を含めてはならない。内部原因は server log にだけ固定コード付きで出力する。
+
 ### 22.0a 状態ファイル共通仕様
 
 `components/api.go` および拡張後 `components/runner.go` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に本節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
@@ -3738,6 +3757,45 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | メールアドレス | `local@domain` 形式で、空白を含まないこと。 |
 | CIDR | IPv4 アドレスまたは IPv4 CIDR として解釈できること。 |
 | コマンド引数配列 | `string[]` とし、1 要素以上 32 要素以下。各要素は 1〜256 文字。実行は `/bin/sh -c` を使わず、Go 標準ライブラリ `os/exec` の `exec.CommandContext(args[0], args[1:]...)` とする。 |
+
+**endpoint 別 query 検証上書き：**
+
+共通検証値と endpoint 個別節の値が異なる場合は、下表を優先する。下表にない query は §22.0b の共通検証を使用する。
+
+| Endpoint | query | 既定値 | 許容値 | 補足 |
+|----------|-------|--------|--------|------|
+| `GET /api/history` | `page` | `1` | 1 以上 | 整数文字列だけ許可する。 |
+| `GET /api/history` | `per_page` | `20` | 1〜100 | `0`、負数、小数、指数表記は禁止。 |
+| `GET /api/logs` | `n` | `100` | 1〜1000 | `q` は空文字を許可する。 |
+| `GET /api/logs/search` | `q` | `""` | 0〜500 文字 | 空文字は全件検索ではなく level/from/to のみ検索として扱う。 |
+| `GET /api/logs/search` | `from`, `to` | `""` | 空文字または `YYYY-MM-DD` | `from > to` は `422`。 |
+| `GET /api/logs/search` | `level` | `""` | `info`, `warn`, `warning`, `error`, `debug`, 空文字 | 大文字小文字は区別しない。 |
+| `GET /api/api-access-log` | `limit` | `100` | 1〜1000 | §27.6 を優先する。 |
+| `GET /api/api-access-log` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
+| `GET /api/webhook-events` | `limit` | `50` | 1〜1000 | §27.13 を優先する。 |
+| `GET /api/webhook-events` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
+| `GET /api/audit-log` | `limit` | `100` | 1〜200 | §27.44 を優先する。 |
+| `GET /api/audit-log` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
+| `GET /api/stats` | `days` | `7` | 1〜366 | 整数文字列だけ許可する。 |
+| `GET /api/stats/timeline` | `days` | `30` | 1〜366 | 整数文字列だけ許可する。 |
+| `GET /api/stats/build-duration` | `n` | `10` | 1〜1000 | 整数文字列だけ許可する。 |
+| `GET /api/stats/build-trends` | `n` | `100` | 1〜1000 | 整数文字列だけ許可する。 |
+
+**入力検証 details 固定：**
+
+| ケース | `details[].field` | `details[].message` |
+|--------|-------------------|---------------------|
+| 必須 body key 不足 | key 名 | `required` |
+| 未知 body key | key 名 | `unknown field` |
+| 型不一致 | key 名 | `invalid type` |
+| 範囲外 | key 名または query 名 | `out of range` |
+| enum 不一致 | key 名または query 名 | `invalid value` |
+| path parameter 不正 | parameter 名 | `invalid path parameter` |
+| body 全体が object でない | `$` | `object required` |
+| query が整数でない | query 名 | `integer required` |
+| 日付の暦日不正 | query 名または key 名 | `invalid date` |
+
+複数エラーがある場合、body key は JSON object の出現順、query は URL query の出現順、path parameter は route 定義順で並べる。body、query、path にまたがる場合は body → query → path の順とする。SDK と UI は `details[].field` と `details[].message` をそのまま扱うため、実装者判断で文言を言い換えてはならない。
 
 ### 22.0c 主要状態ファイル schema
 
@@ -4476,6 +4534,21 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 
 `.config_log`、`.access_log`、`.notify_log` への追記は JSON Lines 1 行単位で行う。追記失敗時は対象 endpoint の副作用が既に完了している場合でも、失敗を `500` として返し、次回 GET で破損行を無視できる形式を維持する。追記行の末尾改行を書けなかった場合は、その行を破損行として扱う。
 
+**JSON Lines 読取・破損行契約：**
+
+| ファイル | GET / 集計時 | 追記失敗時 | server log 固定コード |
+|----------|--------------|------------|-----------------------|
+| `.build_history` | 壊れた行を無視し、有効行だけで算出する。 | runner build 処理は失敗扱い。 | `BUILD_HISTORY_SKIP_CORRUPT` |
+| `.config_log` | 壊れた行を無視する。 | 設定変更 API は `500`。対象状態ファイル更新済みの場合は戻さない。 | `CONFIG_LOG_WRITE_FAILED` |
+| `.access_log` | 壊れた行を無視する。 | auth / token 操作は `500`。logout だけは token 破棄を優先する。 | `ACCESS_LOG_WRITE_FAILED` |
+| `.api_access_log` | 壊れた行を無視する。 | 本来の API response を優先し、`500` へ変更しない。 | `API_ACCESS_LOG_WRITE_FAILED` |
+| `.audit_log` | 壊れた行を無視する。 | 監査対象操作は `500`。既に状態更新済みの場合は戻さない。 | `AUDIT_LOG_WRITE_FAILED` |
+| `.notify_log` | 壊れた行を無視する。 | 通知送信結果だけ失敗扱いにし、build 成否は反転しない。 | `NOTIFY_LOG_WRITE_FAILED` |
+| `.webhook_events.json` | 壊れた行を無視する。 | queue 追加前なら `500`、queue 追加後なら response に `event_log_failed:true` を含める。 | `WEBHOOK_EVENT_LOG_WRITE_FAILED` |
+| `.approval_queue` | 壊れた行を無視する。 | approval entry 作成は失敗扱い。 | `APPROVAL_QUEUE_WRITE_FAILED` |
+
+JSON Lines の壊れた行は、空行、JSON parse 失敗、JSON object 以外、必須 key 不足、型不一致のいずれかとする。壊れた行を response に含めてはならない。壊れた行を検出しても GET API が対象ファイルを自動修復、削除、上書きしてはならない。
+
 ### 22.0e.4 API レスポンス正規化契約
 
 API response は、§22.0e の Response 列、§22.0c の schema、§23 の SDK 型定義表に一致させる。実装者は endpoint ごとに以下の正規化を行う。
@@ -4512,6 +4585,19 @@ API response は、§22.0e の Response 列、§22.0c の schema、§23 の SDK 
 | `POST /api/notify-config` | `{message:"Notify config updated"}` | secret は返さない。 |
 | `POST /api/smtp-config` | `{message:"SMTP config updated"}` | password は返さない。 |
 | `POST /api/dashboard-layout` | `{message:"Dashboard layout updated"}` | 保存後 widgets は再取得で確認する。 |
+
+**no-op / 部分更新副作用契約：**
+
+| Endpoint | no-op 判定 | no-op 時の副作用 | 更新時の副作用 |
+|----------|------------|------------------|----------------|
+| `POST /api/config` | 正規化後 config が既存値と一致 | `.server_config`、`.config_log`、`.audit_log` を変更しない。 | `.server_config` → `.config_log` → `.audit_log`。 |
+| `POST /api/repo-config` | 指定 key の正規化後値が既存値と一致 | `.repo_config`、`.config_log` を変更しない。 | `.repo_config` → `.config_log`。 |
+| `POST /api/branch-config` | 正規化後 `branch_targets` が既存値と一致 | `.branch_config`、`.config_log` を変更しない。 | `.branch_config` 作成/置換/削除 → `.config_log`。 |
+| `POST /api/notify-config` | secret mask 適用後の比較で既存値と一致 | `.notify_config`、`.config_log` を変更しない。 | `.notify_config` → `.config_log`。 |
+| `POST /api/smtp-config` | config と password 更新有無が既存値と一致 | `.smtp_config`、`.smtp_secret`、`.config_log` を変更しない。 | `.smtp_config` → 必要時 `.smtp_secret` → `.config_log`。 |
+| `POST /api/dashboard-layout` | widgets 配列が既存値と一致 | `.dashboard_layout`、`.config_log` を変更しない。 | `.dashboard_layout` → `.config_log`。 |
+
+no-op response は endpoint 固有の `No changes` が定義されている場合はその文言を返す。定義がない endpoint は通常成功文言を返してよいが、状態ファイル、JSON Lines、監査ログ、通知ログに差分を作ってはならない。部分更新では未指定 key を保持し、`null` が削除を意味する key は個別節に明記された key だけとする。
 
 **削除 / 失効 response：**
 
