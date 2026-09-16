@@ -1,0 +1,121 @@
+# Adlaire CI Detail Archive Specification
+
+このファイルは、`ADLAIRE_CI_DETAIL_SPEC.md` から分離した `archive` owner component の詳細仕様である。
+
+本ファイルは、build log archive、snapshot、download、delete、rollback、cleanup の入出力、処理順序、禁止副作用、検証条件を固定する。runner の build 実行、API 共通 request / response、SDK method 実装、UI DOM 詳細、実装状態、実装可否、ロードマップ状態、方針、ポリシーは記載しない。
+
+## 対象範囲
+
+| 範囲 | 内容 |
+|------|------|
+| §27.7 | ビルドログのアーカイブ圧縮。 |
+| §27.15 | ビルドアーティファクト管理。 |
+
+---
+
+### 27.7 ビルドログのアーカイブ圧縮
+
+runner と `POST /api/logs/archive` は、`.server_config.log_archive_after_days > 0` の場合、対象日数より古い `.build_logs/{id}.json` を gzip 圧縮し、`.build_logs/archive/{id}.json.gz` へ保存する。圧縮成功後、元の `.build_logs/{id}.json` を削除する。`.build_logs/archive/` 内のファイルを再圧縮してはならない。
+
+gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元ファイル mtime ではなく圧縮実行時刻でよい。圧縮前 JSON を読み込めないファイルは archive 対象外とし、WARN `LOG_ARCHIVE_SKIP_CORRUPT: id=<id>` を出す。実行中 build の `current_build_id` と一致する log は対象外とする。
+
+ログ参照 API は通常ファイルを先に探し、存在しない場合に archive を探す。archive を読む場合は gzip 展開後に通常 `.build_logs/{id}.json` と同じ schema として扱う。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` は archive を含めて動作する。
+
+`POST /api/logs/cleanup` は、archive 済みファイルも `log_retention_days` の削除対象に含める。`POST /api/logs/archive` は `{ "message": "Logs archived", "archived_count": N }` を返す。
+
+**archive / cleanup 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| archive 対象判定 | build log JSON の `finished_at` を基準にする。欠落時は file mtime を使わず対象外。 |
+| archive id | file 名 `{id}.json` の id と JSON 内 `id` が一致する場合だけ対象。 |
+| gzip path | `.build_logs/archive/{id}.json.gz`。既存 archive がある場合は上書きせず skip する。 |
+| cleanup 順 | 通常 log 削除 → archive log 削除 → 空 archive directory 削除試行。 |
+| 削除失敗 | 処理継続し、response に `failed_count` を含める。 |
+| response | archive は `archived_count`、cleanup は `deleted_count` と `failed_count` を返す。 |
+
+検証条件:
+
+| ケース | 期待結果 |
+|--------|----------|
+| 対象ログあり | `.json.gz` 作成、元 `.json` 削除、API 参照可。 |
+| 実行中ログ | archive しない。 |
+| 破損ログ | archive しない、WARN、処理継続。 |
+| archive API | 件数を返し、disk usage に archive bytes を含める。 |
+| cleanup | 通常 log と archive log の両方を保持期間で削除する。 |
+| archive 既存 | 上書きせず skip。 |
+| cleanup 一部失敗 | `failed_count` に計上し処理継続。 |
+
+### 27.15 ビルドアーティファクト管理
+
+本機能の目的は、`.snapshots/` に保存された build artifact を API、SDK、UI から一覧、download、削除、rollback できるようにすることである。
+
+owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は `runner` の §14b を正とする。
+
+**API 契約：**
+
+| API | 処理 |
+|-----|------|
+| `GET /api/snapshots` | `.snapshots/{id}/` を新しい順で一覧する。 |
+| `GET /api/snapshots/{id}/download` | 対象 snapshot を tar.gz として streaming download する。 |
+| `DELETE /api/snapshots/{id}` | 対象 snapshot だけを削除し、`.config_log` に記録する。 |
+| `POST /api/history/{id}/rollback` | 対象 snapshot を deploy target へ再転送し、新規 rollback build log/history を作成する。 |
+
+`id` は build id と一致するものだけ許可する。`/`、`..`、空文字、URL decode 後に path separator を含む値は `422` とする。
+
+**download tar.gz 生成契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| root | `.snapshots/{id}/` を root とし、root 外を参照しない。 |
+| entry path | root からの相対 path。`/` 始まり、`..`、空 segment、NUL、Windows drive prefix は禁止。 |
+| entry 種別 | 通常ファイルと directory だけを含める。symlink、hardlink、device、socket、fifo は含めない。 |
+| header | `Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="{id}.tar.gz"`。 |
+| 順序 | directory、file とも相対 path 辞書順。 |
+| mtime | snapshot 内 file の mtime を使用してよい。存在しない場合は build log の `finished_at`。 |
+| secret 除外 | `.github_token`、`.admin_credentials`、`.api_tokens`、`.smtp_secret`、`.webhook_secret`、runner 状態ファイル名は検出時点で `500` とし、download を中止する。 |
+
+**Rollback 仕様：**
+
+rollback は新しい build id を採番し、`.build_history.trigger="rollback"`、`rollback_from=<元id>` を保存する。元 snapshot は変更しない。rollback 中に別 build が running の場合は `409` とする。転送失敗時は rollback build log を `failure` とし、元 snapshot は削除しない。
+
+rollback は snapshot 内の成果物を deploy target へ再転送する操作であり、以下を行ってはならない。
+
+| 禁止対象 | 理由 |
+|----------|------|
+| `.last_sha` 更新 | rollback は監視対象 SHA の処理完了ではない。 |
+| `.server_config`、`.branch_config`、`.notify_config` の復元 | 設定 rollback ではない。 |
+| `.build_history` の過去行書き換え | rollback は新規履歴として追記する。 |
+| `.build_logs/{元id}.json` の変更 | 元 build の証跡を保持する。 |
+| 元 snapshot の削除または上書き | rollback 成否に関係なく元成果物を保持する。 |
+| secret / token / credentials の復元 | snapshot に secret を含めないため復元対象外。 |
+
+rollback build log は `target_status="success"` または `failure_build` とし、`trigger="rollback"`、`rollback_from=<元id>`、`snapshot_id=<元id>` を含める。rollback 転送で pending が発生した場合は `success_deploy_pending` とし、`.pending_transfers` に rollback 用 entry を追加する。
+
+**snapshot 一覧・削除固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 一覧対象 | `.snapshots/{id}/manifest.json` が存在する directory だけ。 |
+| size | directory 配下の通常ファイル size 合計。symlink は size 集計前に異常扱い。 |
+| delete 順 | id validation → running check → snapshot directory 確認 → delete → `.config_log` 追記 → response。 |
+| delete log 失敗 | snapshot 削除済みのまま `500`。削除は巻き戻さない。 |
+| rollback pending | pending entry には `rollback_from`、`snapshot_id`、deploy target を保存する。 |
+
+**UI / SDK：**
+
+SDK は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。UI は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は実行中 build がある場合 disabled とする。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 一覧 | snapshot id、build id、保存日時、size が返る。 |
+| download | tar.gz を返し、snapshot 外のファイルを含まない。 |
+| delete | 対象 id だけ削除、config log 追記。 |
+| rollback 成功 | 新規 build id、trigger rollback、rollback_from 保存。 |
+| 不正 id | `422`、状態差分なし。 |
+| download symlink | symlink entry を含めず、secret 名検出時は `500`。 |
+| rollback pending | 新規 rollback log/history、pending entry、元 snapshot 維持。 |
+| rollback running | `409`、状態差分なし。 |
+| delete log failure | snapshot は削除済み、response は `500`。 |
