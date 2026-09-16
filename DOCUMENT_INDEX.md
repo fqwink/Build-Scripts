@@ -17,6 +17,7 @@
 | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | `statefile` owner component の詳細仕様。状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema を扱う。 |
 | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner component の詳細仕様。build log archive、snapshot、download、delete、rollback、cleanup を扱う。 |
 | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner component の詳細仕様。GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask を扱う。 |
+| `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner component の詳細仕様。API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序を扱う。 |
 | `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture / fake / testdata / assertion / PR 証跡の詳細仕様。Phase 別 fixture 配置、§27 fixture カタログ、manifest、expected/effects、受け入れゲートを扱う。 |
 | `DESIGN.md` | 生成静的 Web サイトのデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
@@ -37,6 +38,7 @@
 | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | 分割済み | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
 | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | 分割済み | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 |
 | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | 分割済み | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 |
+| `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | 分割済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
 | `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | 分割済み | fixture manifest、assertion、fake、testdata、受け入れ fixture 共通契約、PR 証跡テンプレート。 |
 
 `COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。横断する固定値は `ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値として扱い、component として扱わない。

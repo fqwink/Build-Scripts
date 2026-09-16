@@ -71,13 +71,14 @@
 |--------------------|------------|--------------|
 | `components/builder.go` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture、builder owner 追加機能。 |
 | `components/runner.go` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | 設定、状態ファイル、GitHub API 読取、pipeline、転送、snapshot、通知、systemd、fixture、runner owner 追加機能、Commit Status 呼び出し境界。 |
-| `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、endpoint、状態ファイル read/write、認証、session、API owner 追加機能。 |
+| `components/api.go` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、endpoint、状態ファイル read/write、認証連携、security 呼び出し境界、API owner 追加機能。 |
 | `admin/adlaire-ci-sdk.js` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
 | `admin/index.html` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
 | `setup` | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
 | `components/statefile.go` | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | 状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
 | `components/archive.go` | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7、§27.15 | build log archive、snapshot、download、delete、rollback、cleanup。 |
 | `components/commitstatus.go` | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 |
+| `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
 | `components/mcp.go` | 詳細仕様なし | 本ファイルでは実装可能な入出力、状態、起動手順、検証条件を定義しない。 |
 
 ---
@@ -100,6 +101,7 @@
 | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 | API endpoint の request / response、runner の業務処理、UI 表示判断。 |
 | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 | runner の build 実行、API 共通 request / response、SDK method 実装、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細。 |
+| `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理。 |
 | `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture manifest、assertion、fake、testdata、受け入れ fixture 共通契約、PR 証跡テンプレート。 | 個別 component の通常処理本文。 |
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、API、SDK、UI にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 を実装する場合は、owner component の分割先詳細仕様ファイルと §27.38a を同時に満たす。
@@ -125,7 +127,8 @@
 3. owner component の分割先詳細仕様ファイルを読む。
 4. collaborator component がある場合は、該当する分割先詳細仕様ファイルの参照節を読む。
 5. 状態ファイルの読み書き、lock、atomic write、schema を扱う場合は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を読む。
-6. fixture、fake、PR 証跡が必要な場合は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を読む。
+6. 認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` を読む。
+7. fixture、fake、PR 証跡が必要な場合は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を読む。
 
 分割作業は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
 
@@ -1418,55 +1421,30 @@ UI は、上表に存在しない §27.1〜§27.20 の SDK method を呼んで�
 | notification / trend / anomaly | notify、stats、history API だけを使う。 | retry / pending を成功扱いに変換しない。 | 送信失敗を build 失敗として表示しない。 |
 | security interaction | API token、rate limit、audit、access log の共通契約を通す。 | `401` では token を破棄し、`403` と区別する。 | `401` で login panel に戻し、secret field を消去する。 |
 
-**§27.42〜§27.47 認証・監査・制限機能 実装完全性固定契約：**
+**§27.42〜§27.47 認証・監査・制限機能 横断契約：**
 
-§27.42〜§27.47 は、API token、監査、session、TOTP、rate limit に関する安全機能である。各機能は個別節に加えて下表を満たした場合だけ実装完了とする。
-
-| 節 | 機能 | 判定入口 | 成功時副作用 | 失敗時副作用 | 漏えい禁止値 | 必須 fixture |
-|----|------|----------|--------------|--------------|--------------|--------------|
-| §27.42 | API token scope | route / method 確定後、body parse 前。 | 許可 endpoint だけ処理し、必要時 audit に actor を残す。 | 権限不足は対象処理を実行せず `403`。audit 失敗時は `500`。 | token 本体、Authorization header。 | trigger allowed、read denied、multi scope、path param、body 未評価、audit failure。 |
-| §27.43 | API key 管理 | admin session または admin scope。 | token hash だけ保存し、作成時だけ token 本体を返す。 | validation 失敗は保存差分なし。失効済み token は再有効化しない。 | token 本体、token hash の不要露出。 | create、list mask、revoke、expired、duplicate label、admin token create。 |
-| §27.44 | 監査ログ | security / config / operation event 確定時。 | 1 event 1 JSON Lines で追記し、actor / target / result を保存する。 | 必須 audit 失敗は対象処理を `500` にする。任意 audit は個別節優先。 | secret、password、token、TOTP secret、raw request body。 | success、denied、failure、mask、append failure、pagination。 |
-| §27.45 | session timeout | login、authenticated request、timeout config API。 | session の last_seen / expires_at を固定規則で更新する。 | timeout session は `401`、対象 endpoint は実行しない。 | session token。 | active、expired、sliding update、config update、revoke all、clock boundary。 |
-| §27.46 | TOTP | setup、confirm、login/totp、disable。 | secret は confirm 成功後だけ有効保存し、ticket は一回だけ使う。 | ticket 再利用、期限切れ、code 不正は対象状態を変更しない。 | TOTP secret、backup code 相当値、ticket token。 | setup、confirm、login success、code reuse、disable、audit failure。 |
-| §27.47 | API rate limit | route / auth / scope 判定の定義済み位置。 | 上限未満だけ count を増やし endpoint 処理へ進む。 | `429` は count を増やさず、audit 成功時だけ返す。 | API token、session token、request body。 | login 11 回目、window reset、IP+actor、disabled、policy update、state save failure。 |
-
-**§27.42〜§27.47 セキュリティ機能 横断順序固定契約：**
-
-| 順序 | 処理 | 固定条件 |
-|------|------|----------|
-| 1 | route / method を確定する。 | 未定義 route は認証、rate limit、body parse より前に `404` / `405`。 |
-| 2 | 認証不要 endpoint を判定する。 | `GET /api/health` と `POST /api/webhook` は個別契約を優先する。 |
-| 3 | login rate limit を判定する。 | login group は認証前 IP key で判定する。 |
-| 4 | 認証情報を検証する。 | session と API token を混同しない。形式不一致は `401`。 |
-| 5 | API token scope を判定する。 | scope 不足時は body validation と状態更新を行わない。 |
-| 6 | 認証後 rate limit を判定する。 | actor key と IP key を同一 lock 内で判定・更新する。 |
-| 7 | endpoint 固有 validation を行う。 | 失敗時は対象状態、外部 API、外部 command を変更しない。 |
-| 8 | endpoint 固有処理を実行する。 | 成功時だけ個別節の保存順で状態、access log、audit log を確定する。 |
-
-上表の順序を変更してはならない。個別節が別順序を明記する場合は、セキュリティ上の漏えいを増やさない範囲で個別節を優先する。順序変更が必要な場合は、先に本表と該当個別節を同時に改訂する。
-
+本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` の横断固定契約を正とする。§27.42〜§27.47 を実装する場合は、owner component の `security` 詳細仕様と、collaborator component の API / SDK / UI / statefile 詳細仕様を同時に満たす。
 
 ### 27.42 ビルドトリガー専用 API スコープ
 
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.42 を正とする。owner component は `api`、collaborator component は `sdk`、`ui`、`security`、`statefile` とする。
+本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42 を正とする。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
 ### 27.43 API キー管理
 
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.43 を正とする。owner component は `api`、collaborator component は `sdk`、`ui`、`security`、`statefile` とする。
+本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.43 を正とする。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
 ### 27.44 監査ログ
 
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.44 を正とする。owner component は `api`、collaborator component は `security`、`statefile` とする。
+本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.44 を正とする。owner component は `security`、collaborator component は `api`、`statefile` とする。
 
 ### 27.45 セッションタイムアウト変更設定
 
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.45 を正とする。owner component は `api`、collaborator component は `sdk`、`ui`、`security`、`statefile` とする。
+本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.45 を正とする。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
 ### 27.46 TOTP 二要素認証
 
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.46 を正とする。owner component は `api`、collaborator component は `sdk`、`ui`、`security`、`statefile` とする。
+本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.46 を正とする。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
 ### 27.47 API レート制限
 
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.47 を正とする。owner component は `api`、collaborator component は `sdk`、`ui`、`security`、`statefile` とする。
+本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.47 を正とする。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
