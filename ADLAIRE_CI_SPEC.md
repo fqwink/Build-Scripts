@@ -17,11 +17,12 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 | 文書 | 正本範囲 | 記載する内容 | 記載しない内容 |
 |------|----------|--------------|----------------|
 | `ADLAIRE_CI_SPEC.md` | 方針、ポリシー、実装状態、ロードマップ、リリース判断 | 目的、設計方針、禁止事項、成熟度、実装可否、仕様昇格手順 | 関数単位の処理、HTTP response schema、状態ファイル schema、具体的な実行手順 |
-| `ADLAIRE_CI_DETAIL_SPEC.md` | 実装詳細 | CLI、API、SDK、UI、状態ファイル、処理順序、異常系、セットアップ、受け入れ条件 | 方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
+| `ADLAIRE_CI_DETAIL_SPEC.md` | 実装詳細の入口 | 詳細仕様の読み方、共通固定値、責務 component 対応表、分割先詳細仕様への索引、横断補足契約 | 各 component の詳細な処理本文、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
+| `ADLAIRE_CI_DETAIL_*_SPEC.md` | owner component 別の実装詳細 | CLI、API、SDK、UI、状態ファイル、処理順序、異常系、セットアップ、受け入れ条件の本文 | 方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
 | `DOCUMENT_INDEX.md` | 文書・実装ファイル索引 | ファイルの役割、正本関係、実装ファイルの所在 | 仕様本文、詳細仕様、実装状態の最終判断 |
 | `DESIGN.md` | 生成静的 Web サイトのデザイン補助 | 見た目、レイアウト、デザイントークン参照 | CI、API、運用、実装可否の判断 |
 
-同じ内容を複数文書に重複定義してはならない。方針や実装可否は本ファイルを正とし、入出力・状態・処理・検証は `ADLAIRE_CI_DETAIL_SPEC.md` を正とする。
+同じ内容を複数文書に重複定義してはならない。方針や実装可否は本ファイルを正とし、入出力・状態・処理・検証は `ADLAIRE_CI_DETAIL_SPEC.md` の索引と owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする。
 
 ## 実装状態
 
@@ -50,7 +51,7 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 |------|------|-----------|------------|
 | Part 1 | 方針 | **なぜ・何を** | 目的、設計思想、方向性の原則。変更頻度が低く、判断の拠り所となる指針 |
 | Part 2 | ポリシー | **しなければならない／してはならない** | 遵守義務のある規則・制約・禁止事項。セキュリティ要件・運用ルール・バージョン管理規則 |
-| Part 3 | 仕様 | **どのように** | 実装の具体的詳細。要件・構成・API・アルゴリズム・設定値・手順。詳細は `ADLAIRE_CI_DETAIL_SPEC.md` を正とする |
+| Part 3 | 仕様 | **どのように** | 実装の具体的詳細。要件・構成・API・アルゴリズム・設定値・手順。入口と対応表は `ADLAIRE_CI_DETAIL_SPEC.md`、本文は owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする |
 
 新しい記載内容は「この内容はどの責務の問いに答えるか」を基準に Part を決定する。
 
@@ -283,7 +284,7 @@ Go 実装の判断基準は以下とする。
 - `ADLAIRE_CI_DETAIL_SPEC.md` §0e の完全実装検証マトリクスと §0f の仕様策定完了チェックを満たしている。
 - `ADLAIRE_CI_DETAIL_SPEC.md` §0g の初期実装 Phase 分割に従い、対象 Phase の依存条件、完了条件、PR 分割条件を満たしている。
 - 対象機能が `ADLAIRE_CI_DETAIL_SPEC.md` §0h の機能仕様テンプレートを満たし、§0i の詳細節対応表に記載された受け入れ条件を満たしている。
-- セットアップまたは運用手順に影響する場合、`ADLAIRE_CI_DETAIL_SPEC.md` §26.7 の実装受け入れ条件を満たしている。
+- セットアップまたは運用手順に影響する場合、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.7 の実装受け入れ条件を満たしている。
 - API、SDK、UI のいずれかを変更した場合、§22、§23、§24 の対応関係が崩れていない。
 - 実装状態表、`DOCUMENT_INDEX.md`、本ドキュメント、詳細仕様の更新要否を確認済みである。
 - 実装 PR 本文に、対象、実行コマンド、期待結果、実結果、判定を記録している。
@@ -839,11 +840,11 @@ Go 版初期実装では、実装対象を本ファイルで `仕様化済み・
 
 | 対象 | 実装対象 | 境界 |
 |------|----------|------|
-| `components/builder.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §0〜§9 に記載された CLI、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、検証条件。 |
-| `components/runner.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §10〜§20 に記載された CI ランナー、状態ファイル、ビルド起動、転送、通知、ログ保存。 |
-| `components/api.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §21〜§22 および §25〜§26 に記載された管理 API、認証、状態ファイル、セットアップ。 |
-| `admin/adlaire-ci-sdk.js` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §23 に記載された API 呼び出し契約、戻り値、エラー処理。 |
-| `admin/index.html` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §24 に記載された標準管理ツール UI、操作、表示、秘密情報消去。 |
+| `components/builder.go` | 対象 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9 に記載された CLI、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、検証条件。 |
+| `components/runner.go` | 対象 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20 に記載された CI ランナー、状態ファイル、ビルド起動、転送、通知、ログ保存。 |
+| `components/api.go` | 対象 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25 および `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 に記載された管理 API、認証、状態ファイル、セットアップ。 |
+| `admin/adlaire-ci-sdk.js` | 対象 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 に記載された API 呼び出し契約、戻り値、エラー処理。 |
+| `admin/index.html` | 対象 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 に記載された標準管理ツール UI、操作、表示、秘密情報消去。 |
 | `components/mcp.go` | 対象外 | 将来計画。詳細仕様、起動手順、認証、ツール定義を別途仕様化するまで実装不可。 |
 
 初期実装 PR では、上表の対象外項目、将来計画、未仕様化項目、改訂予定項目を実装してはならない。
@@ -931,12 +932,12 @@ Go 版初期実装では、実装対象を本ファイルで `仕様化済み・
 
 | 設定項目 | 場所 | 変更方法 |
 |---------|------|---------|
-| 入出力パス | `adlaire-ci-build --src` / `--out`、または `DefaultBuildConfig` | `--src` は Markdown ファイルまたは Markdown ディレクトリ、`--out` は出力サイトディレクトリ。CLI 引数を優先し、既定値変更時は `ADLAIRE_CI_DETAIL_SPEC.md` §2 と整合させる |
+| 入出力パス | `adlaire-ci-build --src` / `--out`、または `DefaultBuildConfig` | `--src` は Markdown ファイルまたは Markdown ディレクトリ、`--out` は出力サイトディレクトリ。CLI 引数を優先し、既定値変更時は `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §2 と整合させる |
 | テーマ | `adlaire-ci-build --theme`、または `DefaultBuildConfig.Theme` | 初期仕様では `adlaire-default` のみ許可。カスタムテーマ、外部テンプレート、テーマパッケージは将来計画とする |
 | デザイントークン値 | `adlaire-default` の `style.css` が定義する `:root { }` ブロック | ADS 準拠の範囲内で変更し、`DESIGN.md` と整合させる |
-| ドキュメントタイトル | `PageData.Title` / `SiteData.Title` | `PageData.Title` が空の場合は `SiteData.Title` を使用する。`SiteData.Title` は空文字禁止。変更時は `ADLAIRE_CI_DETAIL_SPEC.md` §5 `PageData` / `SiteData` 契約に従う |
+| ドキュメントタイトル | `PageData.Title` / `SiteData.Title` | `PageData.Title` が空の場合は `SiteData.Title` を使用する。`SiteData.Title` は空文字禁止。変更時は `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §5 `PageData` / `SiteData` 契約に従う |
 | ヘッダー表示名 | `<span id="doc-title">` に出力する表示タイトル | `PageData.Title` が空の場合は `SiteData.Title` を表示し、別名を持たせない |
-| バージョンバッジ | 安定版リリース情報を表示する場合の `PageData` 拡張 | `V.X.N` 形式。追加する場合は先に `ADLAIRE_CI_DETAIL_SPEC.md` §5 の `PageData` にフィールドを追加する |
+| バージョンバッジ | 安定版リリース情報を表示する場合の `PageData` 拡張 | `V.X.N` 形式。追加する場合は先に `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §5 の `PageData` にフィールドを追加する |
 | TOC 対象見出しレベル | `buildTOC(headings []Heading)` | 初期仕様では h1〜h3 固定。変更する場合は §4.4、§6、§7.3〜§7.5 を同時に改訂する |
 
 ## 4. 外部ライブラリ・フレームワーク方針
@@ -1027,7 +1028,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 - SDK の対応言語追加は本ドキュメントへの記載を先行させる
 - バックエンド API の変更は SDK の更新を伴う
 - SDK は ES Module とし、`AdlaireCI` と `AdlaireCIError` を明示 export する
-- SDK の実行環境、timeout、error class、`streamBuild()` の `StreamHandle` 契約は `ADLAIRE_CI_DETAIL_SPEC.md` §23 を正とする
+- SDK の実行環境、timeout、error class、`streamBuild()` の `StreamHandle` 契約は `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 を正とする
 - SDK は自動 retry、戻り値補完、token 永続化、global 代入を行ってはならない
 
 ## 9. 標準管理ツール ポリシー
@@ -1037,7 +1038,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 - バニラ HTML / CSS / JavaScript のみで実装する。外部フレームワーク・外部ライブラリは使用しない（→ Part 2 §4）
 - バックエンドとの通信はすべて SDK 経由とする。SDK を迂回した直接 API 呼び出しは行わない
 - カスタマイズを妨げる密結合な実装は避ける
-- DOM id、`data-panel`、form field name、初期ロード順、イベント処理順、成功/失敗表示、秘密情報消去条件は `ADLAIRE_CI_DETAIL_SPEC.md` §24 を正とする
+- DOM id、`data-panel`、form field name、初期ロード順、イベント処理順、成功/失敗表示、秘密情報消去条件は `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 を正とする
 - UI は `localStorage`、`sessionStorage`、Cookie から token を復元してはならない
 - `fetch()`、`XMLHttpRequest`、`EventSource`、`ReadableStream` reader を UI から直接生成してはならない
 
@@ -1058,7 +1059,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 - 初期パスワードは `admin` とする
 - 初回ログイン時はパスワード変更を促す通知を表示する
 - **5 回目のログイン時はパスワード変更を強制する**（変更完了まで管理画面の操作を制限する）
-- パスワードは平文保存禁止。ハッシュ化して保存する（§10 方針に基づきフラットファイル JSON 形式でファイル管理 → `ADLAIRE_CI_DETAIL_SPEC.md` Part 3 §25）
+- パスワードは平文保存禁止。ハッシュ化して保存する（§10 方針に基づきフラットファイル JSON 形式でファイル管理 → `ADLAIRE_CI_DETAIL_API_SPEC.md` §25）
 
 ## 12. 管理 API サーバー セキュリティポリシー
 
@@ -1073,8 +1074,8 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 ## 詳細仕様
 
-Part 3 の実装詳細は `ADLAIRE_CI_DETAIL_SPEC.md` を正とする。
+Part 3 の実装詳細は、入口、索引、共通固定値、責務 component 対応表については `ADLAIRE_CI_DETAIL_SPEC.md`、各 owner component の詳細本文については `ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` には、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断を記載しない。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、Part 1 §4a と Part 2 §0 に定める範囲に従い、実装者が迷わない入出力、状態、処理順序、異常系、検証条件だけを維持する。
+`ADLAIRE_CI_DETAIL_SPEC.md` と owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` は、Part 1 §4a と Part 2 §0 に定める範囲に従い、実装者が迷わない入出力、状態、処理順序、異常系、検証条件だけを維持する。
