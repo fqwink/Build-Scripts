@@ -100,6 +100,8 @@
 | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 | runner の build 実行、API 共通 request / response、SDK method 実装、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture manifest、assertion、fake、testdata、受け入れ fixture 共通契約、PR 証跡テンプレート。 | 個別 component の通常処理本文。 |
 
+`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、API、SDK、UI にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 を実装する場合は、owner component の分割先詳細仕様ファイルと §27.38a を同時に満たす。
+
 分割時の移動単位は、owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには参照リンク、禁止事項、受け入れ観点だけを置く。主本文を複数ファイルへ重複定義してはならない。
 
 分割先ファイルへ移動する各節は、移動後も以下を満たす。
@@ -800,6 +802,8 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は横断補足契約として本ファイルに残す。
 
+§27.21〜§27.38 の runner 拡張機能を実装する場合は、`ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` の個別節を正本とし、横断する処理順、状態ファイル保存責務、API / SDK / UI 連動条件、受け入れ fixture は本ファイル §27.38a を同時に確認する。
+
 ### — 管理ツール —
 
 ## 21. API 詳細仕様（分割済み）
@@ -813,6 +817,8 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | api owner の §27 個別節 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27 |
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は横断補足契約として本ファイルに残す。
+
+§27.21〜§27.38 に関わる API / SDK / UI 連動条件は、各 owner component の分割先詳細仕様ファイルと本ファイル §27.38a を同時に満たす。§27.38a の内容を API / SDK / UI の分割先へ重複定義してはならない。
 
 ## 23. SDK 詳細仕様（分割済み）
 
@@ -1284,6 +1290,8 @@ UI は、上表に存在しない §27.1〜§27.20 の SDK method を呼んで�
 本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.38 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
 
 ### 27.38a Runner 拡張機能 実装補足契約
+
+本節は、責務 component 別詳細仕様へ分割しない。本節の内容は、runner、builder、API、SDK、UI、statefile、archive の境界をまたぐ横断補足契約であり、特定 owner component の主本文として扱ってはならない。
 
 本節は §27.21〜§27.38 の runner / builder 拡張機能に共通する補足契約である。各個別節と矛盾する場合は個別節を優先する。
 
