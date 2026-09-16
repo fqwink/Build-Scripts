@@ -228,20 +228,20 @@ var DefaultBuildConfig = BuildConfig{
 │ 1. MDファイル読み込み（raw_lines）                              │
 ├────────────────────────────────────────────────────────────────┤
 │ 2. 見出し抽出パス（フェンス内を除外）                           │
-│    → headings: list[(level, text, slug, line_number)]          │
-│    → slug_by_line: dict[line_number → slug]                    │
+│    → headings: []Heading（slug は重複解決済み）                 │
+│    → slugByLine: map[int]string                                │
 ├────────────────────────────────────────────────────────────────┤
 │ 2b. 脚注定義収集パス                                            │
-│    → _fn_defs: dict[id → text]（脚注 ID とテキストの対応）      │
-│    ※ _fn_order は convert() 実行中に inline() が参照順に更新    │
+│    → ctx.FootnoteDefs: map[string]string                       │
+│    ※ ctx.FootnoteOrder は convert() 実行中に inline() が更新    │
 ├────────────────────────────────────────────────────────────────┤
-│ 3. TOC HTML 生成（build_toc()）                                 │
-│    → toc_html: str                                             │
+│ 3. TOC HTML 生成（buildTOC(headings)）                          │
+│    → tocHTML: string                                           │
 ├────────────────────────────────────────────────────────────────┤
-│ 4. MD → HTML 変換（convert()）                                  │
-│    → body_html: str                                            │
+│ 4. MD → HTML 変換（convert(lines, headings, ctx)）              │
+│    → ConvertResult.HTML                                        │
 ├────────────────────────────────────────────────────────────────┤
-│ 5. HTML テンプレート合成（PAGE f-string）                        │
+│ 5. HTML テンプレート合成                                        │
 │    CSS トークン・レイアウト・JS をすべてインライン埋め込み        │
 ├────────────────────────────────────────────────────────────────┤
 │ 6. ファイル書き出し（OUT）                                       │
@@ -252,32 +252,69 @@ var DefaultBuildConfig = BuildConfig{
 
 ## 4. 関数リファレンス
 
-### 4.1 `slugify(text: str) → str`
+### 4.1 `slugify(text string) string`
 
 見出しテキストから HTML アンカー用のスラグ（`id` 属性値）を生成する。
+
+**責務：** `slugify` は入力テキストから重複解決前の base slug だけを返す。重複解決は §4.5 の見出し収集処理で `slugCount map[string]int` を使って行う。`slugify` 内で状態を保持してはならない。
 
 **処理手順：**
 1. Markdown 記法文字（`` ` * _ ~ [ ] ``）を除去
 2. 文字を 1 文字ずつ走査し、空白・ハイフン・ドット・アンダースコアは `-` に変換、英数字・Unicode 文字（カテゴリ `L*`、`N*`）はそのまま保持、それ以外は除去
 3. 連続する `-` を 1 つに正規化、前後の `-` をトリム
 4. 空文字列になった場合は `section` にフォールバック
-5. 同一スラグが複数回出現した場合、2 回目以降は `-1`、`-2` と連番サフィックスを付与
 
-**グローバル状態：** `_seen: dict[str, int]` — 同一スラグの出現回数を追跡
+**入力：**
 
-**注意：** `_seen` はモジュールレベルのグローバル変数であり、スクリプト実行中に状態が蓄積される。スクリプトを複数回 `import` して使用する場合、`_seen` をリセットする必要がある。
+| 引数 | 型 | 条件 |
+|------|----|------|
+| `text` | `string` | UTF-8 文字列。空文字を許可する。 |
+
+**出力：**
+
+| 戻り値 | 型 | 条件 |
+|--------|----|------|
+| `baseSlug` | `string` | 空文字は禁止。入力が空または除去後に空になる場合は `section`。 |
+
+**エラー：** 戻り値エラーは持たない。入力が UTF-8 不正になる可能性は §2 の入力ファイル読み込み段階で排除する。
+
+**禁止事項：**
+- package 変数、グローバル map、呼び出し間で残る状態を使用しない。
+- 重複時の `-2` 付与を `slugify` 内で行わない。
+- URL encode は行わない。`id` と `href` には本関数の戻り値または一意化後 slug をそのまま使用する。
 
 ---
 
-### 4.2 `esc(s: str) → str`
+### 4.2 `esc(s string) string`
 
 Go 標準ライブラリ `html.EscapeString(s)` 相当の処理を行う。HTML 特殊文字（`<`、`>`、`&`、`"`、`'`）をエスケープする。
 
+**実装契約：**
+- Go 実装では `html.EscapeString` を使用する。
+- 追加の独自置換、Markdown 記法変換、改行変換を行わない。
+- 空文字は空文字を返す。
+
 ---
 
-### 4.3 `inline(text: str) → str`
+### 4.3 `inline(text string, ctx *RenderContext) string`
 
 インライン Markdown 記法を HTML に変換する。コードスパンを先にキャラクターレベルのスキャンで処理することで、後続の正規表現がコードスパン内の記法を誤って変換するのを防ぐ。
+
+**関連型：**
+
+```go
+type RenderContext struct {
+    FootnoteDefs      map[string]string
+    FootnoteOrder     []string
+    FootnoteSeen      map[string]bool
+    InternalLinkRefs  map[string]bool
+    BrokenLinks       []string
+    HeadingSkipCount  int
+    CharCount         int
+}
+```
+
+`ctx` は `nil` 禁止。呼び出し元は `convert()` 実行前に `RenderContext` を作成し、脚注定義を `FootnoteDefs` に収集しておく。
 
 **処理手順：**
 
@@ -307,7 +344,7 @@ Go 標準ライブラリ `html.EscapeString(s)` 相当の処理を行う。HTML 
 
 **内部リンク整合性チェック：**
 
-`url` が `#` で始まる内部アンカーリンクを処理する際、アンカー部分（`#` 以降）をモジュールレベルのグローバル変数 `_internal_link_refs: set[str]` に追記する。`convert()` 末尾で生成済みスラグの全集合（`_slug_count` のキー）と照合し、一致しないアンカーを次のように報告する：
+`url` が `#` で始まる内部アンカーリンクを処理する際、アンカー部分（`#` 以降）を `ctx.InternalLinkRefs[anchor] = true` として記録する。`convert()` 末尾で生成済み slug の集合と照合し、一致しないアンカーを次のように報告する：
 
 ```
 [WARN] BROKEN_LINK: #anchor-text  (in: [label](#anchor-text))
@@ -315,30 +352,56 @@ Go 標準ライブラリ `html.EscapeString(s)` 相当の処理を行う。HTML 
 
 不一致件数は `[REPORT]` の `broken_links` フィールドに反映される。照合は変換完了後に行うため、ドキュメント内の順序（前方参照・後方参照）を問わず検証できる。
 
-**グローバル状態（脚注・内部リンク）：**
+**脚注・内部リンク状態：**
 
 | 変数 | 型 | 用途 |
 |------|-----|------|
-| `_fn_defs` | `dict[str, str]` | 脚注 ID → テキストの対応（`convert()` 呼び出し前に収集） |
-| `_fn_order` | `list[str]` | 本文中での参照順脚注 ID リスト（`inline()` が参照時に追記） |
-| `_internal_link_refs` | `set[str]` | 本文中に出現した内部アンカー参照（`#` 除いた文字列）の集合 |
+| `ctx.FootnoteDefs` | `map[string]string` | 脚注 ID → テキストの対応（`convert()` 呼び出し前に収集） |
+| `ctx.FootnoteOrder` | `[]string` | 本文中での参照順脚注 ID リスト（`inline()` が参照時に追記） |
+| `ctx.FootnoteSeen` | `map[string]bool` | 同一脚注 ID の重複登録防止 |
+| `ctx.InternalLinkRefs` | `map[string]bool` | 本文中に出現した内部アンカー参照（`#` 除いた文字列）の集合 |
+
+**脚注番号付与：**
+- 初回参照時のみ `FootnoteOrder` へ ID を append する。
+- 2 回目以降の同一 ID 参照では既存番号を再利用する。
+- `FootnoteDefs` に存在しない ID でも HTML 参照は出力し、脚注本文は空文字として扱わず、末尾脚注出力時に `[WARN] MISSING_FOOTNOTE: id` を出す。
 
 **制約：** ネストしたインライン記法（`**_text_**` など）は限定的にサポート。
 
 ---
 
-### 4.4 `build_toc(headings) → str`
+### 4.4 `buildTOC(headings []Heading) string`
 
 見出しリストから TOC（目次）の HTML を生成する。h1〜h3 のみを対象とし（h4 は除外）、子見出しを持つ見出しはグループとしてアコーディオン形式に構築する。
 
-**引数：** `headings: list[tuple[int, str, str, int]]` — `(level, text, slug, line_number)` のリスト
+**関連型：**
+
+```go
+type Heading struct {
+    Level      int
+    Text       string
+    Slug       string
+    LineNumber int
+}
+```
+
+**引数：** `headings []Heading`
 
 **出力：** TOC の `<li>` 要素群の HTML 文字列（`<ul>` ルートは HTML テンプレート側で定義）
 
 **グループ（`.tg`）とリーフ（`.ti`）の判定：**
 現在の見出しの次の見出しレベルが現在より深い場合、グループとして扱い、展開ボタン（`.tg-btn`）付きの `<ul>` をネストする。それ以外はリーフ（`.ti`）として `<li>` 1 個を出力する。
 
-**スタック管理：** 内部スタック `stack: list[tuple[int, str]]` でグループの開閉を追跡し、`close_to(target_lv)` で不要になった `</ul></li>` を閉じる。スタックにはグループ（`'group'`）だけでなく、レベル管理のためリーフ（`'item'`）も積まれる。`close_to()` はリーフをサイレントに捨て、グループのみ `</ul></li>` を出力する。
+**スタック管理：** 内部スタックは `[]tocStackItem` とする。
+
+```go
+type tocStackItem struct {
+    Level int
+    Kind  string // "group" または "item"
+}
+```
+
+`closeTo(targetLevel int)` で不要になった `</ul></li>` を閉じる。スタックにはグループ（`"group"`）だけでなく、レベル管理のためリーフ（`"item"`）も積む。`closeTo()` はリーフをサイレントに捨て、グループのみ `</ul></li>` を出力する。
 
 **生成 HTML 構造（グループの場合）：**
 ```html
@@ -362,35 +425,60 @@ Go 標準ライブラリ `html.EscapeString(s)` 相当の処理を行う。HTML 
 </li>
 ```
 
+**エラー：** 戻り値エラーは持たない。`Level` が 1〜4 以外の `Heading` は無視し、`[WARN] INVALID_HEADING_LEVEL: line={LineNumber}` を stdout へ出力する。警告件数は `[REPORT]` の `warnings` に含める。
+
 ---
 
-### 4.5 `convert(lines, slug_by_line) → str`
+### 4.5 `convert(lines []string, headings []Heading, ctx *RenderContext) ConvertResult`
 
 Markdown の行リストを走査し、HTML コンテンツ文字列を生成するメインコンバーター。
 
+**関連型：**
+
+```go
+type ConvertResult struct {
+    HTML               string
+    ReadingTimeMinutes int
+    BrokenLinks        int
+    HeadingSkips       int
+    Warnings           []string
+}
+```
+
 **引数：**
-- `lines: list[str]` — Markdown の全行
-- `slug_by_line: dict[int, str]` — 行番号から見出しスラグへのマッピング
+- `lines []string` — Markdown の全行。末尾改行は含めない。
+- `headings []Heading` — 見出し収集済みリスト。各 `Heading.Slug` は重複解決済みとする。
+- `ctx *RenderContext` — `inline()` と共有する変換状態。`nil` 禁止。
+
+**戻り値：**
+- `HTML` — 本文 HTML 文字列。
+- `ReadingTimeMinutes` — §4.5 の読了時間算出結果。
+- `BrokenLinks` — 内部リンク不一致件数。
+- `HeadingSkips` — 見出し階層スキップ件数。
+- `Warnings` — `[WARN]` として stdout 出力した警告本文の一覧。
+
+**エラー：** 戻り値エラーは持たない。入力ファイル不存在、UTF-8 不正、書き込み失敗などの異常は §8 の実行方法と終了コードで扱う。Markdown 構文上の不足は警告またはフォールバック出力で処理する。
 
 **内部バッファと状態変数：**
 
 | 変数 | 型 | 用途 |
 |------|-----|------|
-| `out` | `list[str]` | 出力 HTML 断片の蓄積 |
+| `out` | `strings.Builder` | 出力 HTML 断片の蓄積 |
 | `fence_active` | `bool` | コードフェンス内かどうか |
-| `fence_lang` | `str` | コードフェンスの言語識別子 |
-| `fence_buf` | `list[str]` | フェンス内の行バッファ |
-| `fence_marker` | `str` | フェンス開始マーカー（`` ``` `` or `~~~`） |
-| `para_buf` | `list[str]` | 段落テキストの行バッファ |
-| `list_stack` | `list[tuple[str, int]]` | リストのネスト状態スタック |
-| `table_buf` | `list[str]` | テーブル行のバッファ |
+| `fence_lang` | `string` | コードフェンスの言語識別子 |
+| `fence_buf` | `[]string` | フェンス内の行バッファ |
+| `fence_marker` | `string` | フェンス開始マーカー（`` ``` `` or `~~~`） |
+| `para_buf` | `[]string` | 段落テキストの行バッファ |
+| `list_stack` | `[]listStackItem` | リストのネスト状態スタック |
+| `table_buf` | `[]string` | テーブル行のバッファ |
+| `slugByLine` | `map[int]string` | `headings` から生成する行番号 → slug の対応 |
 
-**内部ヘルパー関数（`convert` のクロージャ）：**
+**内部ヘルパー関数：**
 
-- `flush_para()` — `para_buf` を `<p class="mp">` として出力し、バッファをクリア
-- `flush_list()` — `list_stack` を巻き戻し、すべての `</ul>` / `</ol>` を閉じる
-- `flush_table()` — `table_buf` をパースし `<div class="tw"><table class="mt">` として出力
-- `emit_code()` — `fence_buf` を `<div class="cb-wrap">` 構造として出力
+- `flushPara()` — `para_buf` を `<p class="mp">` として出力し、バッファをクリア
+- `flushList()` — `list_stack` を巻き戻し、すべての `</ul>` / `</ol>` を閉じる
+- `flushTable()` — `table_buf` をパースし `<div class="tw"><table class="mt">` として出力
+- `emitCode(&out, fence_lang, fence_buf)` — `fence_buf` を `<div class="cb-wrap">` 構造として出力
 
 **ブロック要素の検出優先順位（1 行ずつ処理）：**
 
@@ -402,33 +490,33 @@ Markdown の行リストを走査し、HTML コンテンツ文字列を生成す
 6. 定義リスト（`: 定義` 形式の行かつ `para_buf` に用語がある場合）
 7. リスト項目（`- * +` または `1.` 形式、`[ ]`/`[x]` プレフィックスでタスクリスト）
 8. 空行（バッファのフラッシュトリガー）
-9. 脚注定義行（`[^id]:` で始まる行、`_fn_defs` 収集済みのためスキップ）
+9. 脚注定義行（`[^id]:` で始まる行、`ctx.FootnoteDefs` 収集済みのためスキップ）
 10. 段落（上記以外の非空行、連続行を 1 つの `<p>` にまとめる）。先読みループは次のいずれかに該当する行で停止する：`#`（見出し）、`|`（テーブル）、`` ` ``×3以上（フェンス）、`~`×3以上（フェンス）、`>`（引用）、リストマーカー（`[-*+]` または `\d+[.)]`）、`: `（定義リストマーカー）、水平線（`---+`・`***+`・`___+`）
 
 **テーブル変換の詳細：**
 セパレーター行（`:---:`、`---` などで構成された行）のインデックスを自動検出し、セパレーター行より前の行をヘッダー（`<th>`）、それ以降を本文（`<td>`）として出力する。セパレーター行自体は出力しない。
 
 **引用ネストの詳細：**
-`>` で始まる連続行をまとめて収集し、内部関数 `_render_bq(blines)` が再帰的にネストを処理する。1 レベル分の `>` を剥いた後、内側行を先頭から走査し、`>` で始まる連続する行は `_render_bq()` を再帰呼び出し、それ以外の行は `inline()` でレンダリングして結合する。これにより、単一行・複数行・混在ネスト（同一ブロック内で `>` 行と `>>` 行が混在する場合）をすべて正しく処理する。例：`>> text` → `<blockquote class="mbq"><blockquote class="mbq">text</blockquote></blockquote>`。
+`>` で始まる連続行をまとめて収集し、`renderBlockquote(lines []string, ctx *RenderContext) string` が再帰的にネストを処理する。1 レベル分の `>` を剥いた後、内側行を先頭から走査し、`>` で始まる連続する行は `renderBlockquote()` を再帰呼び出し、それ以外の行は `inline(text, ctx)` でレンダリングして結合する。これにより、単一行・複数行・混在ネスト（同一ブロック内で `>` 行と `>>` 行が混在する場合）をすべて正しく処理する。例：`>> text` → `<blockquote class="mbq"><blockquote class="mbq">text</blockquote></blockquote>`。
 
 **タスクリストの詳細：**
-リスト項目のコンテンツが `r'^\[([ xX])\]\s+'` に一致する場合、`<li class="ml-task">` として出力する。チェック済み（`[x]` / `[X]`）は `checked` 属性付き、未チェック（`[ ]`）は属性なしの `<input type="checkbox" disabled>` を先頭に配置する。
+リスト項目のコンテンツが正規表現 `^\[([ xX])\]\s+` に一致する場合、`<li class="ml-task">` として出力する。チェック済み（`[x]` / `[X]`）は `checked` 属性付き、未チェック（`[ ]`）は属性なしの `<input type="checkbox" disabled>` を先頭に配置する。
 
 **定義リストの詳細：**
-`: 定義` 行（`startswith(': ')`、コロン＋スペース1文字）を検出したとき `para_buf` に内容があれば、`para_buf` の末尾要素を用語（`<dt>`）として取り出し、`<dl class="mdl"><dt>用語</dt><dd>定義</dd></dl>` を出力する。連続する `: ` 行は同一 `<dl>` 内の追加 `<dd>` としてまとめて処理し、その後に `</dl>` を閉じる。
+`: 定義` 行（`strings.HasPrefix(line, ": ")`、コロン＋スペース1文字）を検出したとき `para_buf` に内容があれば、`para_buf` の末尾要素を用語（`<dt>`）として取り出し、`<dl class="mdl"><dt>用語</dt><dd>定義</dd></dl>` を出力する。連続する `: ` 行は同一 `<dl>` 内の追加 `<dd>` としてまとめて処理し、その後に `</dl>` を閉じる。
 
 **脚注定義行のスキップ：**
-`r'^\[\^[^\]]+\]:'` に一致する行は `_fn_defs` への収集が完了しているためスキップし、本文への出力を行わない。
+`^\[\^[^\]]+\]:` に一致する行は `ctx.FootnoteDefs` への収集が完了しているためスキップし、本文への出力を行わない。
 
 **脚注セクションの末尾出力：**
-`convert()` 末尾で `_fn_order` が非空の場合、`<section class="fn-section">` 内に参照順番号付きの脚注リスト（`<ol class="fn-list">`）を出力する。各脚注には本文への戻りリンク（`<a class="fn-back">↩</a>`）を付与する。
+`convert()` 末尾で `ctx.FootnoteOrder` が非空の場合、`<section class="fn-section">` 内に参照順番号付きの脚注リスト（`<ol class="fn-list">`）を出力する。各脚注には本文への戻りリンク（`<a class="fn-back">↩</a>`）を付与する。
 
 **フェンスコードブロックの未閉鎖フォールバック：**
-ファイル末尾まで読んだ時点で `fence_active` が `true` のままの場合（閉じる `` ``` `` がない場合）、`fence_buf` にコンテンツがあれば `emit_code()` を呼び出して強制出力する。`fence_buf` が空（フェンス開始直後に EOF）の場合は何も出力しない。
+ファイル末尾まで読んだ時点で `fence_active` が `true` のままの場合（閉じる `` ``` `` がない場合）、`fence_buf` にコンテンツがあれば `emitCode(&out, fence_lang, fence_buf)` を呼び出して強制出力する。`fence_buf` が空（フェンス開始直後に EOF）の場合は何も出力しない。未閉鎖フェンスは `[WARN] UNCLOSED_FENCE: line={startLine}` を出力し、`Warnings` に追加する。
 
 **見出し階層スキップ警告：**
 
-`convert()` 内で `_prev_heading_level: int = 0` をローカル変数として保持する。見出し行（`#` で始まる行）を処理するたびに現在レベルと前回レベルを比較し、2 段以上の降順スキップ（例：h1→h3、h2→h4）を検出した場合に次の形式で `[WARN]` を出力する：
+`convert()` 内で `prevHeadingLevel int = 0` をローカル変数として保持する。見出し行（`#` で始まる行）を処理するたびに現在レベルと前回レベルを比較し、2 段以上の降順スキップ（例：h1→h3、h2→h4）を検出した場合に次の形式で `[WARN]` を出力する：
 
 ```
 [WARN] HEADING_SKIP: h1→h3 "見出しテキスト"
@@ -440,14 +528,14 @@ Markdown の行リストを走査し、HTML コンテンツ文字列を生成す
 
 **読了時間集計：**
 
-`convert()` 内で `_char_count: int = 0` をローカル変数として保持する。段落・リスト・引用テキストを `inline()` 処理する直前に、元の Markdown テキスト文字数（スペース・改行を含む）を加算する。コードブロック・フェンス内テキスト・見出しテキスト・テーブルは集計対象外とする。
+`convert()` 内で `ctx.CharCount = 0` に初期化する。段落・リスト・引用テキストを `inline(text, ctx)` 処理する直前に、元の Markdown テキスト文字数（スペース・改行を含む）を加算する。コードブロック・フェンス内テキスト・見出しテキスト・テーブルは集計対象外とする。
 
 読了時間の算出：
 ```go
-readingTimeMinutes := int(math.Ceil(float64(charCount) / 200.0)) // 200文字/分、切り上げ
+readingTimeMinutes := int(math.Ceil(float64(ctx.CharCount) / 200.0)) // 200文字/分、切り上げ
 ```
 
-算出した `readingTimeMinutes` は `convert()` の戻り値と並んで呼び出し元（`runner.go` / `pipeline.sh` 経由）に渡し、`[REPORT]` 行と `.build_logs/{id}.json` に記録する。また HTML ヘッダーへの静的埋め込み（§5）にも使用する。
+算出した `readingTimeMinutes` は `ConvertResult.ReadingTimeMinutes` として返し、呼び出し元が `[REPORT]` 行と `.build_logs/{id}.json` に記録する。また HTML ヘッダーへの静的埋め込み（§5）にも使用する。
 
 **見出し出力 HTML 構造：**
 `#` で始まる行を `h1`〜`h4` に変換する際、末尾に `.hn-link` ボタンを付与する。
@@ -456,13 +544,13 @@ readingTimeMinutes := int(math.Ceil(float64(charCount) / 200.0)) // 200文字/�
 <h2 id="slug" class="mh h2">見出しテキスト<button class="hn-link" data-href="#slug" aria-label="リンクをコピー">¶</button></h2>
 ```
 
-- `data-href` 属性：`#` + `slugify()` で生成したスラグ
+- `data-href` 属性：`#` + 一意化後 slug
 - `¶`（U+00B6 PILCROW SIGN）を使用
 - CSS で通常時 `opacity: 0`、親見出し要素のホバー時に `opacity: 1` に変化する
 
 **見出しスラグ重複解決：**
 
-`convert()` 内では `slugCount map[string]int` をローカル変数として保持し、同一スラグが複数の見出しに割り当てられる場合に一意化する。
+見出し収集処理では `slugCount map[string]int` をローカル変数として保持し、同一 base slug が複数の見出しに割り当てられる場合に一意化する。
 
 | 条件 | スラグ |
 |------|--------|
@@ -484,13 +572,21 @@ uniqueSlug := func(base string) string {
 }
 ```
 
-一意化後のスラグは `id` 属性・`data-href` 属性・TOC リンク `href`（§4.2）・`¶` ボタン・全文検索インデックス（§7.9）・前後章ナビゲーション（§7.15）のすべてで共通使用する。
+一意化後のスラグは `id` 属性・`data-href` 属性・TOC リンク `href`（§4.4）・`¶` ボタン・全文検索インデックス（§7.9）・前後章ナビゲーション（§7.15）のすべてで共通使用する。
 
 ---
 
-### 4.6 `emit_code()` （`convert` 内クロージャ）
+### 4.6 `emitCode(out *strings.Builder, lang string, buf []string)`
 
-フェンスコードブロックを HTML に変換して `out` に追記する。
+フェンスコードブロックを HTML に変換して `out` に追記する。`convert()` 内クロージャではなく、Go ファイル内の非公開補助関数として実装する。
+
+**入力：**
+
+| 引数 | 型 | 条件 |
+|------|----|------|
+| `out` | `*strings.Builder` | `nil` 禁止。呼び出し元の本文 HTML 出力先。 |
+| `lang` | `string` | フェンス開始行の言語識別子。未指定時は空文字。 |
+| `buf` | `[]string` | フェンス内本文。空配列を許可する。 |
 
 **出力 HTML 構造：**
 ```html
@@ -505,7 +601,10 @@ uniqueSlug := func(base string) string {
 
 - `data-lang` 属性：言語識別子（なければ空文字列）
 - `.cl`（言語ラベル）：言語識別子がない場合は出力しない
-- コード内容：`\n`.join(fence_buf) を `esc()` でエスケープしてから出力
+- コード内容：`strings.Join(buf, "\n")` を `esc()` でエスケープしてから出力
+- `buf` が空の場合でも空の `<pre class="cb"><code></code></pre>` を出力する
+
+**エラー：** 戻り値エラーは持たない。`out == nil` はプログラム不備として `panic("nil output builder")` を許可する。
 
 ---
 
