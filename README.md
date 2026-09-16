@@ -12,7 +12,7 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 - `ADLAIRE_CI_SPEC.md`: Adlaire CI のマスター仕様書。
 - `ADLAIRE_CI_DETAIL_SPEC.md`: Adlaire CI の Part 3 詳細仕様。
-- `build_spec.go`: Markdown を静的 Web サイトへ変換する Go 版ビルドスクリプト。Phase 1 実装中・検証未完了。
+- `build_spec.go`: Markdown を静的 Web サイトへ変換する Go 版ビルドスクリプト。Phase 1 実装済み。
 - `build_spec_test.go`: `build_spec.go` の Phase 1 fixture テスト。
 - `go.mod`: Go module 定義。外部 module は追加しない。
 - `testdata/build_spec/`: Phase 1 受け入れ fixture。
@@ -25,7 +25,7 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 Adlaire CI は、最初から Go を前提として仕様策定します。
 
-`build_spec.go` は Phase 1 実装中ですが、`go test` と `gofmt` の検証が完了するまでは実装済み完了として扱いません。
+`build_spec.go` は Phase 1 実装済みです。`gofmt` と `go test` による検証を完了しています。
 
 `runner.go`、`api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html` は仕様化済み・未実装のコンポーネントです。`mcp_server.go` は将来計画のコンポーネントです。
 

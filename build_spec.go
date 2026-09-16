@@ -93,19 +93,19 @@ type RenderContext struct {
 }
 
 type report struct {
-	Pages          int
-	Headings       int
-	Tables         int
-	CodeBlocks     int
-	Warnings       int
-	SizeWarn       bool
-	BrokenLinks    int
-	HeadingSkips   int
-	ReadingTime    int
-	Theme          string
-	OutputFiles    int
-	OutputBytes    int64
-	OutputDir      string
+	Pages        int
+	Headings     int
+	Tables       int
+	CodeBlocks   int
+	Warnings     int
+	SizeWarn     bool
+	BrokenLinks  int
+	HeadingSkips int
+	ReadingTime  int
+	Theme        string
+	OutputFiles  int
+	OutputBytes  int64
+	OutputDir    string
 }
 
 type siteFile struct {

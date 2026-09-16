@@ -1,6 +1,6 @@
 # Adlaire CI — 仕様ドキュメント
 
-**対象コンポーネント：** `build_spec.go`（ビルドスクリプト、実装中・検証未完了）/ `runner.go`（CI ランナー、仕様化済み・未実装）/ `api_server.go`（管理 API サーバー、仕様化済み・未実装）/ `adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `mcp_server.go`（MCP サーバー、将来計画）
+**対象コンポーネント：** `build_spec.go`（ビルドスクリプト、実装済み）/ `runner.go`（CI ランナー、仕様化済み・未実装）/ `api_server.go`（管理 API サーバー、仕様化済み・未実装）/ `adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `mcp_server.go`（MCP サーバー、将来計画）
 **出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記） → Part 2 §2 参照
@@ -29,7 +29,7 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 
 | コンポーネント | 状態 | 備考 |
 |---------------|------|------|
-| `build_spec.go` | 実装中・検証未完了 | Go 版 Markdown → 静的 Web サイトビルドスクリプト。`gofmt` と `go test` の検証完了までは実装済み完了として扱わない。 |
+| `build_spec.go` | 実装済み | Go 版 Markdown → 静的 Web サイトビルドスクリプト。Phase 1 の `gofmt` と `go test` 検証済み。 |
 | `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー。 |
 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
@@ -493,30 +493,30 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | ヘルスチェックエンドポイント | `GET /api/health` を拡充。最終ビルド時刻・最終ビルド結果・最終転送結果・稼働秒数を返す（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | Webhook イベント一覧取得 API | `.webhook_events.json` をページネーション付きで返す `GET /api/webhook-events` を追加する（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドログ重大度フィルター | 既存の `GET /api/logs/search` に `level=warn\|error` パラメータを追加し、重大度別に絞り込む（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 変換レポート出力 | ビルド完了後に変換統計（見出し数・テーブル数・コードブロック数・警告）を stdout 出力する。runner.go が取り込み `GET /api/output-meta` で参照可（→ §8・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | シンタックスハイライト | コードブロックに言語別色分けを `assets/app.js` で適用する。対応言語：`python`・`bash`・`json`・`sql`・`ini`・`diff`（→ §7.8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 本文内全文検索 | ビルド時に `assets/search-index.json` を生成し、`assets/app.js` の検索 UI と統合して本文ヒット箇所へジャンプ（→ §7.9） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | アンカーリンク自動検証 | 生成 HTML 内の `#anchor` リンクが実際の見出しスラグと一致するか検証し、不整合を `[WARN] BROKEN_LINK` として警告出力する（→ §4.3・§8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | コードブロックの折りたたみ | 30 行超のコードブロックを初期折りたたみ。「全 N 行を表示」リンクで展開（→ §7.10） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 印刷スタイル（`@media print`） | サイドバー・ヘッダー・ボタン類を非表示、コードブロック展開、リンク URL 末尾表示（→ §6） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 静的 Web サイト出力 | Markdown ファイルまたは Markdown ディレクトリから `index.html`、ページ HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` を生成する（→ §5） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | テーマコンポーネント | 初期テーマ `adlaire-default` の header / sidebar / breadcrumb / toc / search / footer / codeblock / table / pagination を内製テンプレートとして提供する（→ §5） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 外部リンクの自動処理 | 外部リンク（`http://`・`https://`）に `target="_blank" rel="noopener noreferrer"` を付与し、内部リンクと区別する（→ §4.3） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 読み取り進捗バー | スクロール位置に応じた 3px プログレスバーをページ上端に固定表示する（→ §7.13） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | コードブロックのコピーボタン | コードブロック右上にワンクリックコピーボタンを配置する（→ §7.6） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 見出しアンカーリンクコピー | ホバーで表示される `.hn-link` ボタンクリックでアンカー URL をクリップボードにコピー（→ §3・§7.11） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | TOC 開閉状態の永続化 | TOC グループの展開／折りたたみ状態を `localStorage` に保存し、リロード後も復元する（→ §7.3） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 見出しスラグ重複解決 | 同一テキストの見出しが複数存在する場合に 2 番目以降のスラグへ `-2`・`-3` を付与して一意にする。TOC・アンカーコピー・全文検索と整合させる（→ §4.5） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 前後章ナビゲーションボタン | h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末尾に静的生成する（→ §4.5・§5・§7.15） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 内部リンク整合性チェック | `[label](#anchor)` 形式の内部リンクが実際のスラグと一致するか変換時に検証し、不一致を `[WARN]` で報告。§8 変換レポートの `broken_links` フィールドに件数を記録する（→ §4.3・§8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 見出し階層スキップ警告 | h1→h3 のような見出しレベルの 2 段以上のスキップを `[WARN]` で報告。§8 変換レポートの `heading_skips` フィールドに件数を記録する（→ §4.5・§8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | 読了時間推計と表示 | 本文文字数（コードブロック・タグ除く）から読了時間（分、200文字/分・切り上げ）を算出し、固定ヘッダーに静的埋め込みする。§8 変換レポートの `reading_time` フィールドに記録する（→ §4.5・§5・§6・§8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 変換レポート出力 | ビルド完了後に変換統計（見出し数・テーブル数・コードブロック数・警告）を stdout 出力する。runner.go が取り込み `GET /api/output-meta` で参照可（→ §8・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | シンタックスハイライト | コードブロックに言語別色分けを `assets/app.js` で適用する。対応言語：`python`・`bash`・`json`・`sql`・`ini`・`diff`（→ §7.8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 本文内全文検索 | ビルド時に `assets/search-index.json` を生成し、`assets/app.js` の検索 UI と統合して本文ヒット箇所へジャンプ（→ §7.9） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | アンカーリンク自動検証 | 生成 HTML 内の `#anchor` リンクが実際の見出しスラグと一致するか検証し、不整合を `[WARN] BROKEN_LINK` として警告出力する（→ §4.3・§8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | コードブロックの折りたたみ | 30 行超のコードブロックを初期折りたたみ。「全 N 行を表示」リンクで展開（→ §7.10） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 印刷スタイル（`@media print`） | サイドバー・ヘッダー・ボタン類を非表示、コードブロック展開、リンク URL 末尾表示（→ §6） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 静的 Web サイト出力 | Markdown ファイルまたは Markdown ディレクトリから `index.html`、ページ HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` を生成する（→ §5） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | テーマコンポーネント | 初期テーマ `adlaire-default` の header / sidebar / breadcrumb / toc / search / footer / codeblock / table / pagination を内製テンプレートとして提供する（→ §5） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 外部リンクの自動処理 | 外部リンク（`http://`・`https://`）に `target="_blank" rel="noopener noreferrer"` を付与し、内部リンクと区別する（→ §4.3） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 読み取り進捗バー | スクロール位置に応じた 3px プログレスバーをページ上端に固定表示する（→ §7.13） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | コードブロックのコピーボタン | コードブロック右上にワンクリックコピーボタンを配置する（→ §7.6） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 見出しアンカーリンクコピー | ホバーで表示される `.hn-link` ボタンクリックでアンカー URL をクリップボードにコピー（→ §3・§7.11） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | TOC 開閉状態の永続化 | TOC グループの展開／折りたたみ状態を `localStorage` に保存し、リロード後も復元する（→ §7.3） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 見出しスラグ重複解決 | 同一テキストの見出しが複数存在する場合に 2 番目以降のスラグへ `-2`・`-3` を付与して一意にする。TOC・アンカーコピー・全文検索と整合させる（→ §4.5） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 前後章ナビゲーションボタン | h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末尾に静的生成する（→ §4.5・§5・§7.15） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 内部リンク整合性チェック | `[label](#anchor)` 形式の内部リンクが実際のスラグと一致するか変換時に検証し、不一致を `[WARN]` で報告。§8 変換レポートの `broken_links` フィールドに件数を記録する（→ §4.3・§8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 見出し階層スキップ警告 | h1→h3 のような見出しレベルの 2 段以上のスキップを `[WARN]` で報告。§8 変換レポートの `heading_skips` フィールドに件数を記録する（→ §4.5・§8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 読了時間推計と表示 | 本文文字数（コードブロック・タグ除く）から読了時間（分、200文字/分・切り上げ）を算出し、固定ヘッダーに静的埋め込みする。§8 変換レポートの `reading_time` フィールドに記録する（→ §4.5・§5・§6・§8） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | Webhook 通知失敗リトライキュー | Webhook 通知送信失敗時に `.notify_pending`（JSON）へキューイングし次回起動時に自動再送する。SSH 転送の `.pending_transfers` と対称な設計（→ §11・§13） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ設定の動的変更 API | `BRANCH_TARGETS` を外部 JSON（`.branch_config`）で管理し `GET /api/branch-config` / `POST /api/branch-config` で API 経由変更可能にする。runner.go 再起動不要（→ §11・§12・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | 週次ビルドサマリー Webhook | 指定曜日・時刻に過去 7 日間の成功率・平均ビルド時間・エラー件数をまとめた定期通知を送信する（→ §12・§13・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定変更の詳細 diff 記録 | `.config_log` の各エントリに変更前後の値の diff 文字列を付加し `GET /api/config-log` レスポンスに含める（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | テーブルのソート機能 | 列ヘッダークリックで昇順/降順ソートができるインタラクティブテーブル。`aria-sort` 属性と CSS `::after` でインジケーター表示（→ §7.14） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 実装中・検証未完了 | 検証待ち | ビルドスクリプト | キーボードショートカット | `/` で検索フォーカス・`Escape` で検索クリア・`t` でページ先頭へスクロール（→ §7.12） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | テーブルのソート機能 | 列ヘッダークリックで昇順/降順ソートができるインタラクティブテーブル。`aria-sort` 属性と CSS `::after` でインジケーター表示（→ §7.14） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | キーボードショートカット | `/` で検索フォーカス・`Escape` で検索クリア・`t` でページ先頭へスクロール（→ §7.12） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 将来計画 | 実装不可 | CI ランナー | 複数ファイル監視 | `TARGET_FILE` をリストにし、複数 MD ファイルの変更を一括検出する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | CI ランナー | GitHub Commit Status API | ビルド結果を対象コミットに紐付けて GitHub 上に通知する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | CI ランナー | ビルドパイプライン YAML 定義 | `pipeline.sh` 固定の実行方式を YAML 形式に置き換える | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -888,7 +888,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 | スクリプト | 状態 | 役割 |
 |-----------|------|------|
-| `build_spec.go` | 実装中・検証未完了 | Go 版ビルドスクリプト（Markdown → 静的 Web サイト変換）。`gofmt` と `go test` の検証完了までは実装済み完了として扱わない。 |
+| `build_spec.go` | 実装済み | Go 版ビルドスクリプト（Markdown → 静的 Web サイト変換）。Phase 1 の `gofmt` と `go test` 検証済み。 |
 | `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー（変更検出・ビルド起動） |
 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー（常駐 HTTP サーバー） |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | JavaScript SDK（管理ツール用 API クライアント） |
