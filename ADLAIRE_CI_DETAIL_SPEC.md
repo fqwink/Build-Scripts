@@ -9281,6 +9281,86 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 上表のうち `manifest.json.assertions` に含まれる判定が 1 つでも失敗した場合、その fixture は失敗とする。対象機能の必須 fixture が 1 件でも存在しない、または skip された場合、その機能の実装 PR は未完了とする。
 
+**§27 fixture assertion 選択固定契約：**
+
+fixture の `manifest.json.assertions` は、実装者が任意に減らしてはならない。fixture 名 prefix と対象 component に応じて、下表の assertion を必ず含める。個別節で追加検証が必要な場合は、下表へ追加してから fixture を作成する。
+
+| 条件 | 必須 assertion |
+|------|----------------|
+| `success-*` | `state`、`logs`、`effects`。HTTP / SDK fixture では `response` も必須。CLI fixture では `stdout` または `stderr` の少なくとも一方を必須とする。 |
+| `failure-*` | `response` または `stdout` / `stderr`、`state`、`effects`、`order`。状態差分なしを期待する場合は `no-write` も必須。 |
+| `partial-*` | `state`、`logs`、`effects`、`order`。どの副作用まで完了し、どこから未実行かを `expected/effects.json` で明示する。 |
+| `noop-*` | `response` または `stdout`、`no-write`、`idempotency`、`effects`。外部呼び出し 0 件を `expected/effects.json` に明記する。 |
+| `security-*` | `response` または `stdout` / `stderr`、`secret-mask`、`effects`。認証 / scope / rate limit / TOTP / token fixture では `state` も必須。 |
+| `components` に `api` を含む | `response`、`state`、`effects`。read-only API は `no-write` も必須。 |
+| `components` に `sdk` を含む | `response`、`effects`。`401` fixture では token 破棄の期待値を `expected/state/` または `expected/effects.json` に含める。 |
+| `components` に `ui` を含む | `response`、`effects`、`secret-mask`。DOM 期待値または UI action 後の field 消去期待を含める。 |
+| `components` に `runner` を含む | `state`、`logs`、`effects`、`order`。dry-run は `no-write` を必須とする。 |
+| `components` に `builder` を含む | `stdout` または `state`、`effects`。出力ファイル byte 比較または `state-diff.json` を必須とする。 |
+| 外部 API / command / 通知を扱う | `effects`、`secret-mask`。呼び出し回数、順序、payload、mask 済み値を必須とする。 |
+
+**§27 expected/effects.json schema 固定契約：**
+
+`expected/effects.json` は次の schema に従う。未知 key は禁止する。
+
+```json
+{
+  "external_calls": [
+    {
+      "type": "github_status",
+      "order": 1,
+      "method": "POST",
+      "target": "/repos/{owner}/{repo}/statuses/{sha}",
+      "payload": {},
+      "result": "success"
+    }
+  ],
+  "commands": [],
+  "notifications": [],
+  "downloads": [],
+  "streams": [],
+  "unchanged_paths": [],
+  "deleted_paths": [],
+  "created_paths": [],
+  "write_order": [],
+  "forbidden_writes": [],
+  "forbidden_calls": []
+}
+```
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `external_calls` | array[object] | 必須 | GitHub、SMTP、webhook、SSH、remote build など process 外呼び出し。呼び出しなしは空配列。 |
+| `commands` | array[object] | 必須 | pipeline、hook、systemd、archive、setup/update など local command 実行。実行なしは空配列。 |
+| `notifications` | array[object] | 必須 | 通知送信、pending 化、retry 対象。通知なしは空配列。 |
+| `downloads` | array[object] | 必須 | snapshot / artifact download の byte size、content type、中断有無。該当なしは空配列。 |
+| `streams` | array[object] | 必須 | SSE / fetch stream の event、close、error。該当なしは空配列。 |
+| `unchanged_paths` | array[string] | 必須 | 実行後に変更があってはならない状態ファイル、出力ファイル、log。 |
+| `deleted_paths` | array[string] | 必須 | 実行後に削除される path。削除なしは空配列。 |
+| `created_paths` | array[string] | 必須 | 実行後に新規作成される path。作成なしは空配列。 |
+| `write_order` | array[string] | 必須 | 書き込み順。書き込みなしは空配列。複数状態更新 fixture では空配列禁止。 |
+| `forbidden_writes` | array[string] | 必須 | 書き込み禁止 path。read-only、dry-run、validation failure fixture では対象状態ファイルを必ず列挙する。 |
+| `forbidden_calls` | array[string] | 必須 | 呼び出し禁止の外部 API / command / notification。呼び出し禁止なしは空配列。 |
+
+`external_calls[]`、`commands[]`、`notifications[]` は `order` を持つ。並列処理 fixture で完了順が非決定の場合でも、期待保存順は `write_order` に固定する。secret を含む payload は、fixture 内でも平文を保存せず `"***"` を使う。
+
+**§27 fixture 不足時 未完了判定固定契約：**
+
+| 不足 | 未完了理由 |
+|------|------------|
+| fixture 名が §27 fixture カタログに存在しない。 | カタログ外 fixture のため未完了。 |
+| 必須 fixture が存在しない。 | 機能の正常 / 異常 / no-op / security / partial coverage 不足。 |
+| `manifest.json.assertions` が §27 fixture assertion 選択固定契約を満たさない。 | 合否判定不足。 |
+| `expected/effects.json` が存在しない、または必須 key が欠落する。 | 副作用検証不足。 |
+| `unchanged_paths` または `forbidden_writes` が空で、fixture が failure / noop / read-only / dry-run / validation error のいずれかである。 | 無変更保証不足。 |
+| 外部 API / command / notification を扱う fixture で `forbidden_calls` が空、かつ禁止対象なしの理由が `manifest.json.not_applicable` にない。 | 外部副作用境界不足。 |
+| secret fixture で `expected/security.json` が存在しない。 | secret mask 検証不足。 |
+| JSON Lines を扱う fixture で末尾改行、行順、破損行保持/除外条件を期待値に含めていない。 | log / audit / history 検証不足。 |
+| idempotency fixture で 1 回目と 2 回目の期待差分を分離していない。 | 再実行検証不足。 |
+| partial fixture で失敗地点より後の `forbidden_writes` / `forbidden_calls` を列挙していない。 | 部分失敗境界不足。 |
+
+上表に 1 件でも該当する場合、対象機能は実装済みとして扱わない。fixture が多くても、期待副作用、禁止副作用、secret mask、保存順、再実行差分が明示されていなければ、バグ修正ゼロ化の検証を満たさない。
+
 **§27 部分失敗・再実行固定契約：**
 
 | ケース | 固定挙動 |
