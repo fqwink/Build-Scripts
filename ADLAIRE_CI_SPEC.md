@@ -1,14 +1,14 @@
 # Adlaire CI — 仕様ドキュメント
 
-**対象コンポーネント：** `build_spec.py`（ビルドスクリプト）/ `runner.py`（CI ランナー）/ `api_server.py`（管理 API サーバー、仕様化済み・未実装）/ `adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `mcp_server.py`（MCP サーバー、将来計画）
+**対象コンポーネント：** `build_spec.go`（ビルドスクリプト、仕様化済み・未実装）/ `runner.go`（CI ランナー、仕様化済み・未実装）/ `api_server.go`（管理 API サーバー、仕様化済み・未実装）/ `adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `mcp_server.go`（MCP サーバー、将来計画）
 **出力ファイル：** `Adlaire-db-spec.html`
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）
-**仕様バージョン：** V.N / **リリースバージョン：** V.X.N → Part 2 §2 参照
+**仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記） → Part 2 §2 参照
 **最終更新：** 2026-09-15
 
 ---
 
-> **Adlaire CI** とは、現行実装済みの `build_spec.py`・`runner.py` と、仕様化済み・未実装の `api_server.py`、`admin/index.html`、`adlaire-ci-sdk.js` を含むビルド・CI・管理システムの総称である。現行リポジトリで実装済みとして扱うコンポーネントは `build_spec.py` と `runner.py` のみである。将来的には `mcp_server.py`（MCP サーバー）を加えた構成へ移行予定（→ §13 将来計画 MCP サーバー実装）。
+> **Adlaire CI** とは、最初から Go を前提として仕様策定するビルド・CI・管理システムの総称である。正本コンポーネントは `build_spec.go`、`runner.go`、`api_server.go`、`admin/index.html`、`adlaire-ci-sdk.js` とする。将来的には `mcp_server.go`（MCP サーバー）を加えた構成へ拡張予定（→ §13 将来計画 MCP サーバー実装）。
 
 ## 実装状態
 
@@ -16,12 +16,12 @@
 
 | コンポーネント | 状態 | 備考 |
 |---------------|------|------|
-| `build_spec.py` | 実装済み | Markdown 仕様書を単一 HTML へ変換するビルドスクリプト。 |
-| `runner.py` | 実装済み | GitHub API による単一対象ファイルの変更検出とビルド起動を行う最小 CI ランナー。拡張機能の実装状態は `ADLAIRE_CI_DETAIL_SPEC.md` §0b・§10a に従う。 |
-| `api_server.py` | 仕様化済み・未実装 | 管理 API サーバー。仕様は本ドキュメントに定義するが、現行リポジトリには実装ファイルが存在しない。 |
-| `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、現行リポジトリには実装ファイルが存在しない。 |
-| `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。仕様は本ドキュメントに定義するが、現行リポジトリには実装ファイルが存在しない。 |
-| `mcp_server.py` | 将来計画 | MCP サーバー。将来計画として管理し、現行実装済みとは扱わない。 |
+| `build_spec.go` | 仕様化済み・未実装 | Go 版 Markdown → HTML ビルドスクリプト。 |
+| `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー。 |
+| `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
+| `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
+| `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
+| `mcp_server.go` | 将来計画 | Go 版 MCP サーバー。将来計画として管理し、実装済みとは扱わない。 |
 
 仕様化済み・未実装、または将来計画の項目を、実装済み機能として扱ってはならない。
 
@@ -44,7 +44,7 @@
 
 ## 1. 目的
 
-`build_spec.py` は、Adlaire DB 仕様書の Markdown ソースを単一の自己完結型 HTML ドキュメントへ変換する Python スクリプトである。外部ライブラリに依存せず、標準ライブラリ（`re`、`html`、`unicodedata`）のみで動作する。
+`build_spec.go` は、Adlaire DB 仕様書の Markdown ソースを単一の自己完結型 HTML ドキュメントへ変換する Go プログラムである。本仕様では、Go 実装を最初からの正本として定義する。
 
 - 14,000 行超の大規模 Markdown 仕様書を、快適に閲覧できる HTML ドキュメントサイトへ変換する
 - CSS・JS をすべてインラインに埋め込み、単一 HTML ファイルとして配布可能にする
@@ -71,14 +71,27 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 | 領域 | 方針 |
 |---|---|
-| ランタイム | Python 3.9+ |
-| 言語 | Python（スクリプト）/ JavaScript（SDK） |
-| HTTP | Python 標準ライブラリ `http.server` |
+| ランタイム | Go stable release |
+| 言語 | Go（ビルド、ランナー、管理 API）/ JavaScript（SDK）/ HTML・CSS・Vanilla JavaScript（UI） |
+| HTTP | Go 標準ライブラリ `net/http` |
 | データベース | なし（ファイルベース） |
-| Git 操作 | GitHub REST API（Blobs API）`urllib` 経由 |
+| Git 操作 | GitHub REST API（Blobs API）を Go 標準ライブラリ `net/http` 経由で呼び出す |
 | フロントエンド | HTML / CSS / Vanilla JavaScript |
 | 推奨運用 | CI サーバー（VPS 等）でビルドし、静的コンテンツ配信サーバーへ SSH で転送する 2 サーバー構成 |
 | データ交換形式 | JSON に統一する。エクスポート・インポートを含む全 API データ交換に CSV・XML 等の非 JSON 形式を使用しない |
+
+## 4c. Go 正本策定方針
+
+本仕様は、Adlaire CI を最初から Go 言語で設計・実装する前提で策定する。
+
+実装者は、`ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` に記載された Go 仕様を正とする。過去の実装、試作、他言語スクリプト、既存ファイル名、既存 CLI、既存ログ、既存生成物、既存状態ファイルを前提にしてはならない。
+
+Go 実装の判断基準は以下とする。
+
+- `build_spec.go`、`runner.go`、`api_server.go` を Go 正本コンポーネントとして扱う。
+- `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-api` を標準実行バイナリ名とする。
+- 仕様未記載の自動変換処理、暗黙の読み替え処理、仕様外分岐を実装判断で追加してはならない。
+- 本仕様に記載されていない挙動は、仕様対象外として扱う。
 
 ## 4a. 詳細仕様方針
 
@@ -108,20 +121,66 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 実装中に仕様不足、実装者判断に依存する分岐、未定義の入出力、未定義の状態ファイル、未定義の異常系を発見した場合は、実装判断で補完せず、仕様改訂へ戻す。
 
+## 4d. 実装着手ゲート方針
+
+実装者は、対象コンポーネントについて以下をすべて満たすまで実装に着手してはならない。
+
+| 判定項目 | 着手条件 |
+|----------|----------|
+| 正本確認 | `ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` の該当節を確認済みである。 |
+| 状態分類 | 対象が `仕様化済み・未実装` または `実装済み` に分類され、`未仕様化`、`将来計画`、`改訂予定` ではない。 |
+| 責務境界 | 対象コンポーネント、呼び出し元、呼び出し先、状態ファイル、外部接続先が明確である。 |
+| 契約同期 | API、SDK、UI、状態ファイル、セットアップ、検証条件のうち関係する仕様が同時に整合している。 |
+| 禁止事項 | 外部依存、秘密情報、直接 API 呼び出し、互換処理、暗黙フォールバックなどの禁止事項が明確である。 |
+| 完了条件 | `ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0f、§0g および §26.7 の受け入れ条件で、実装完了と実装順序を判定できる。 |
+
+着手条件を満たさない場合、実装者はコードで補完せず、先に仕様改訂を行う。実装 PR では、着手前に参照した詳細仕様節を PR 本文へ明記する。
+
+## 4e. 完了判定方針
+
+実装完了は、実装ファイルの作成やテスト成功だけでは成立しない。以下をすべて満たした場合にのみ `実装済み` と扱う。
+
+- 実装が `ADLAIRE_CI_DETAIL_SPEC.md` の入力、出力、状態、処理順序、異常系、セキュリティ制約と一致している。
+- `ADLAIRE_CI_DETAIL_SPEC.md` §0e の完全実装検証マトリクスと §0f の仕様策定完了チェックを満たしている。
+- `ADLAIRE_CI_DETAIL_SPEC.md` §0g の初期実装 Phase 分割に従い、対象 Phase の依存条件、完了条件、PR 分割条件を満たしている。
+- セットアップまたは運用手順に影響する場合、`ADLAIRE_CI_DETAIL_SPEC.md` §26.7 の実装受け入れ条件を満たしている。
+- API、SDK、UI のいずれかを変更した場合、§22、§23、§24 の対応関係が崩れていない。
+- 実装状態表、`DOCUMENT_INDEX.md`、本ドキュメント、詳細仕様の更新要否を確認済みである。
+- 実装 PR 本文に、対象、実行コマンド、期待結果、実結果、判定を記録している。
+
+検証不能な項目、未実行の項目、環境都合で省略した項目が残る場合、そのコンポーネントを `実装済み` として扱ってはならない。
+
+## 4f. 仕様策定単位方針
+
+仕様策定は、実装者が 1 つの責務単位として読める範囲でまとめる。
+
+同一責務に属する API、SDK、UI、状態ファイル、セットアップ、検証条件は、同じ仕様策定単位として扱う。これらを別々の仕様 PR に分割して、片方だけが先に merge される状態を作ってはならない。
+
+仕様策定単位は以下のいずれかに分類する。
+
+| 単位 | 含める内容 | 分割可否 |
+|------|------------|----------|
+| コンポーネント単位 | `build_spec.go`、`runner.go`、`api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html` の単一責務変更 | 同一コンポーネント内で完結する場合のみ単独 PR 可 |
+| 横断契約単位 | API / SDK / UI / 状態ファイル / 認証 / セットアップの対応関係 | 分割不可。同一 PR で同期する |
+| 運用単位 | systemd、セットアップ、アップデート、rollback、受け入れ条件 | 分割不可。手順と検証を同一 PR に含める |
+| 将来計画単位 | 実装時期未定の方向性、候補、未確定案 | 実装可能仕様と混在禁止。将来計画として明示する |
+
+仕様策定時に詳細が不足する項目は、推測で仕様化済みへ昇格してはならない。具体値、処理順序、異常系、検証条件を確定できない場合は、`将来計画` または `未仕様化` として残す。
+
 ### — CI ランナー —
 
 ## 5. CI ランナーの目的
 
-GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイルの変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（`runner.py`）。GitHub Actions・Webhook・外部 CI サービスへの依存をゼロにする。
+GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイルの変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（`runner.go`）。GitHub Actions・Webhook・外部 CI サービスへの依存をゼロにする。
 
 - GitHub Git Trees API で対象ファイルの blob SHA を取得し、前回 SHA と比較して変更を検出する
 - 変更検出時のみ Git Blobs API でファイル本文を取得し、ビルドを実行する
 - 外部公開エンドポイント・リバースプロキシ不要
-- 標準ライブラリのみで実装し、`pip install` 不要
+- Go 標準ライブラリを基本とし、外部依存を追加する場合は Part 2 §4 の例外承認を必須とする
 
 ## 6. CI ランナーの開発方針
 
-- **単一ファイル実装**：`runner.py` 1 ファイルで完結
+- **単一責務実装**：`runner.go` は CI ランナー責務に限定し、Markdown 変換と管理 API を内包しない
 - **シンプル性優先**：HTTP サーバー不要。1 回実行して終了する oneshot 設計
 - **差分検出**：SHA キャッシュにより変更がない場合はビルドをスキップ
 
@@ -142,7 +201,7 @@ GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイ
 
 Adlaire CI の状態確認・操作を行う管理インターフェース。ヘッドレスアーキテクチャにより、フロントエンドとバックエンドを明確に分離する。
 
-本節以降の管理ツール・管理 API・SDK に関する記載は、仕様化済み・未実装の内容である。現行リポジトリに `api_server.py`、`admin/index.html`、`adlaire-ci-sdk.js` が存在しない限り、実装済み機能として扱わない。
+本節以降の管理ツール・管理 API・SDK に関する記載は、仕様化済み・未実装の内容である。リポジトリに `api_server.go`、`admin/index.html`、`adlaire-ci-sdk.js` が存在しない限り、実装済み機能として扱わない。
 
 ## 9. ヘッドレスアーキテクチャ方針
 
@@ -156,7 +215,7 @@ Adlaire CI と管理ツールは API を介して通信する。フロントエ�
 
 API は SDK として提供し、管理ツール実装者が直接 HTTP 通信を記述しなくてよい抽象化レイヤーを提供する。
 
-- **現行対応言語**：JavaScript のみ
+- **初期対応言語**：JavaScript のみ
 - **フレームワーク非依存**：バニラ JS・React・Vue・Svelte 等、いずれの環境でも利用可能
 - **内製 SDK**：外部ライブラリへの依存はゼロ（→ Part 2 §4）
 - 標準管理ツールも本 SDK を経由して通信する
@@ -175,22 +234,20 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 本仕様が定義する全機能の一覧。各機能の仕様詳細は `ADLAIRE_CI_DETAIL_SPEC.md` を参照。実装状態は、本ドキュメント冒頭の「実装状態」と `ADLAIRE_CI_DETAIL_SPEC.md` §0b・§10a の成熟度分類に従って判定する。
 
-### ビルド・CI ランナー（runner.py）
+### ビルド・CI ランナー（runner.go）
 
-**現行実装済み範囲：**
+**Go 版で仕様化済み・未実装の範囲：**
 
 - GitHub リポジトリの対象ファイルを定期ポーリング（systemd timer）
 - blob SHA による差分検出（変更なし時はビルドをスキップ）
-- Markdown → HTML 変換（`build_spec.py` を呼び出し）
+- Markdown → HTML 変換（`adlaire-ci-build` を呼び出し）
 - ビルド成功後に SHA キャッシュを更新する
 - ビルド失敗時は SHA キャッシュを更新せず、次回起動時に再試行可能な状態を維持する
 - systemd oneshot ユニットとして動作（`adlaire-ci.service`）
 
-**仕様化済み・未実装範囲：**
-
 - ビルド結果を `.build_history` に記録（ID 形式：`b{YYYYMMDDHHmmss}`）
 - ビルドごとのログを `.build_logs/{id}.json` に保存
-- ビルド成功・失敗時に Webhook 通知を送信（`.notify_config` を読み込み送信。送信責務は `runner.py`。通知 API は設定の読み書きのみ）
+- ビルド成功・失敗時に Webhook 通知を送信（`.notify_config` を読み込み送信。送信責務は `runner.go`。通知 API は設定の読み書きのみ）
 - ビルド成功後、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する（差分転送・`DEPLOY_TARGETS` 複数先対応 → §14a）
 - SSH 転送失敗時は `.pending_transfers` へキューイングし、次回起動時に自動再試行する（→ §14a ペンディングキュー）
 - 転送成功後、出力ファイルを `.snapshots/` へアーカイブし `HISTORY_KEEP_N` 世代を超過分から自動削除する（→ §14b）
@@ -198,7 +255,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 - `BRANCH_TARGETS` リストで複数ブランチを順次ポーリング・ビルドする（→ §12 設定値）
 - `FORCE_BUILD_INTERVAL` 設定時、前回ビルドから指定時間経過で変更なしでも強制ビルドする
 
-### 管理 API エンドポイント（api_server.py）
+### 管理 API エンドポイント（api_server.go）
 
 | カテゴリ | エンドポイント |
 |---------|--------------|
@@ -266,7 +323,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 | ダッシュボードレイアウト | `getDashboardLayout()` / `setDashboardLayout()` |
 | 死活監視 | `health()` |
 
-ES Module・外部依存なし。全メソッドは `Promise` を返す（`streamBuild` は `EventSource` を返す）。`constructor` を除く合計は 96 メソッド。
+ES Module・外部依存なし。全メソッドは `Promise` を返す。`streamBuild` は SSE 接続確立後に `Promise<StreamHandle>` として resolve し、`StreamHandle` は `{ close(): void, closed: boolean }` を持つ。`constructor` を除く合計は 96 メソッド。
 
 ### 標準管理ツール パネル（admin/index.html）
 
@@ -298,8 +355,10 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 
 ## 13. 拡張ポイント・将来計画
 
-現行仕様に対する拡張予定・将来検討項目の一覧。
+本仕様に対する拡張予定・将来検討項目の一覧。
 仕様化する際は本ドキュメントへの追記を先行させる。
+
+将来計画は、実装対象ではない。将来計画内の「検討」「予定」「候補」「推奨」は、実装可能な仕様を意味しない。将来計画を実装対象にする場合は、先に対象項目を `改訂予定` へ昇格し、`ADLAIRE_CI_DETAIL_SPEC.md` に実装可能な詳細仕様を追加したうえで `仕様化済み` とする。
 
 **担当領域：** `CI ランナー` / `管理ツール・API` / `MCP サーバー` / `ビルドスクリプト`
 
@@ -314,16 +373,18 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 仕様化済み | spec に反映完了。実装待ち |
 | 実装済み | ソースコード実装完了。実装済みリストへ移動 |
 
+将来計画表では、実装可能仕様と誤読される断定表現を避ける。実装条件、API、状態ファイル、UI、検証条件を確定済みとして記載する場合は、将来計画表だけで完結させず、該当する Part 2 ポリシーおよび `ADLAIRE_CI_DETAIL_SPEC.md` へ正本仕様を追加する。
+
 **フロー：**
 1. 格上げ指示 → 対象項目を「改訂予定」に変更・改訂予定リストへ移動
 2. 提案提示 → 承認後に spec 各仕様節へ反映、「仕様化済み」に変更
-3. ソースコード実装（`api_server.py` / `adlaire-ci-sdk.js` / `admin/index.html`）→ 実装済みリストへ移動
+3. ソースコード実装（`api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html`）→ 実装済みリストへ移動
 
 ---
 
 ### 改訂予定リスト
 
-格上げ済み項目の一覧。仕様化完了後は spec 各仕様節へ反映し、実装フェーズへ移行する。
+格上げ済み項目の一覧。仕様化完了後は spec 各仕様節へ反映し、実装フェーズへ進める。
 
 | 項目 | 元区分 | 格上げ日 | 担当領域 | 優先度 | ステータス |
 |------|--------|---------|---------|--------|----------|
@@ -347,9 +408,9 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 
 | 区分 | 担当領域 | 機能 | 概要 |
 |------|---------|------|------|
-| 仕様化済み | CI ランナー | ビルドタイムアウト | `subprocess` に `timeout` を設定し長時間ビルドを強制終了（→ §22 `GET /api/config` `build_timeout_seconds`） |
+| 仕様化済み | CI ランナー | ビルドタイムアウト | Go 標準ライブラリ `context.WithTimeout` と `os/exec` で長時間ビルドを強制終了（→ §22 `GET /api/config` `build_timeout_seconds`） |
 | 仕様化済み | CI ランナー | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整（→ §22 `POST /api/schedule/interval`） |
-| 仕様化済み | CI ランナー | ビルドログのファイル保存 | `subprocess` の stdout/stderr を `.build_logs/{id}.json` に記録（→ §11 ファイル構成） |
+| 仕様化済み | CI ランナー | ビルドログのファイル保存 | `os/exec` で起動したビルドプロセスの stdout/stderr を `.build_logs/{id}.json` に記録（→ §11 ファイル構成） |
 | 将来対応 | CI ランナー | 複数ファイル監視 | `TARGET_FILE` をリストにし、複数 MD ファイルの変更を一括検出する |
 | 将来対応 | CI ランナー | GitHub Commit Status API | ビルド結果を対象コミットに紐付けて GitHub 上に通知する |
 | 仕様化済み | CI ランナー | GitHub Webhook 受信 | 定期ポーリングと併用可能な即時検出方式。`POST /api/webhook` で GitHub push イベントを受信し即時ビルドをトリガーする（HMAC-SHA256 署名検証付き → §22） |
@@ -365,9 +426,9 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 仕様化済み | CI ランナー | ビルドクールダウン | 前回ビルド完了から `BUILD_COOLDOWN_SECONDS` 秒以内の起動はビルドをスキップする（Webhook 二重トリガー防止 → §12・§13） |
 | 将来対応 | CI ランナー | ローカルファイル監視モード | GitHub API を使わず、ローカルファイルシステムの変更を `inotify` 等で直接監視する |
 | 将来対応 | CI ランナー | タグ付きコミットのみビルド | Git タグが付いたコミット（リリース）の変更時のみビルドを実行するフィルター |
-| 仕様化済み | CI ランナー | ビルド前の事前チェック | `pipeline.sh` 実行前にディスク空き容量・Python 3.9+・`build_spec.py` 存在を確認し、不足時はスキップして ERROR ログ＋Webhook 通知（→ §13） |
+| 仕様化済み | CI ランナー | ビルド前の事前チェック | `pipeline.sh` 実行前にディスク空き容量・`adlaire-ci-build` 実行可否・`build_spec.go` 由来のビルドバイナリ配置を確認し、不足時はスキップして ERROR ログ＋Webhook 通知（→ §13） |
 | 将来対応 | CI ランナー | ビルドキャッシュ | 前回ビルドとの差分ファイルのみ再処理し、ビルド時間を短縮する |
-| 将来対応 | CI ランナー | ビルド通知連携 | `runner.py` が Webhook 以外の通知チャンネル（Slack / Discord / メール等）へ直接送信するフック機構。通知先の管理 UI・API 側の実装は → 通知先の拡張 |
+| 将来対応 | CI ランナー | ビルド通知連携 | `runner.go` が Webhook 以外の通知チャンネル（Slack / Discord / メール等）へ直接送信するフック機構。通知先の管理 UI・API 側の実装は → 通知先の拡張 |
 | 将来対応 | CI ランナー | ビルド時間トレンド記録 | 過去のビルド所要時間を蓄積し、パフォーマンス回帰の検知に使用する |
 | 将来対応 | CI ランナー | ビルド失敗時の自動リトライ | 一時的なエラー（API レート制限等）でビルドが失敗した場合、N 回まで自動再試行する |
 | 仕様化済み | CI ランナー | 定期強制ビルド | `FORCE_BUILD_INTERVAL`（時間単位）設定時、変更なしでも前回ビルドから経過時間超過で強制ビルドする。`POST /api/schedule/force-interval` で動的変更可（→ §12・§13） |
@@ -389,26 +450,26 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 将来対応 | CI ランナー | ビルド依存チェーン | 複数ビルドジョブ間の依存関係を定義し、実行順序を制御する |
 | 将来対応 | CI ランナー | ビルド優先度キュー | 緊急度に応じてビルドの優先順位を設定できるキューを実装する |
 | 将来対応 | CI ランナー | 失敗原因の自動分類 | エラーログを解析し「API 障害」「タイムアウト」「構文エラー」等にカテゴリ分けして記録する |
-| 将来対応 | CI ランナー | ビルド実行環境の記録 | Python バージョン・OS・ディスク使用量等のビルド時環境情報をログに残す |
+| 将来対応 | CI ランナー | ビルド実行環境の記録 | Go バイナリバージョン・OS・ディスク使用量等のビルド時環境情報をログに残す |
 | 将来対応 | CI ランナー | ビルドトリガー種別の記録 | ポーリング・GitHub Webhook 受信・手動強制ビルド（`POST /api/build/force`）の 3 種を `.build_logs/{id}.json` の `trigger` フィールドに記録する。`GET /api/history` の `?trigger=` フィルターパラメータで絞り込み可能にする |
 | 将来対応 | CI ランナー | ビルド所要時間の異常検知 | 過去 N 件の平均ビルド時間を自動算出し、閾値（平均 × N 倍）を超過したビルドを WARN ログ＋Webhook 通知する。手動設定閾値アラート（→ アラート閾値設定）とは独立して、ビルド履歴から動的に基準を導出する |
-| 将来対応 | CI ランナー | 設定ファイル起動時整合性チェック | 起動時に各 `.json` ファイルの JSON 整合性を検証し、パース不能なファイルを `.{name}.corrupt.bak` へ退避して空の初期値で再生成する。ERROR ログ＋Webhook 通知（`reason="config_corrupt"`） |
-| 将来対応 | 管理ツール・API | マルチユーザー対応 | 現行のシングルユーザー（admin）を複数ユーザー・ロール管理に拡張する |
-| 将来対応 | 管理ツール・API | 通知先の拡張 | 管理画面・API からメール・Slack・Discord 等の通知チャンネルを設定・追加できるようにする。`runner.py` 側のフック実装は → ビルド通知連携 |
+| 将来対応 | CI ランナー | 設定ファイル起動時整合性チェック | 起動時に各 `.json` ファイルの JSON 整合性を検証し、パース不能なファイルを `.{name}.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避して空の初期値で再生成する。ERROR ログ＋Webhook 通知（`reason="config_corrupt"`） |
+| 将来対応 | 管理ツール・API | マルチユーザー対応 | 初期仕様のシングルユーザー（admin）を複数ユーザー・ロール管理に拡張する |
+| 将来対応 | 管理ツール・API | 通知先の拡張 | 管理画面・API からメール・Slack・Discord 等の通知チャンネルを設定・追加できるようにする。`runner.go` 側のフック実装は → ビルド通知連携 |
 | 仕様化済み | 管理ツール・API | ビルドアーティファクト管理 | スナップショット一覧・ダウンロード・削除・ロールバック（→ §14b・§22 `POST /api/history/{id}/rollback`） |
-| 将来対応 | 管理ツール・API | データストア移行 | 大量ビルド履歴・ログ運用に備え、フラットファイルから SQLite 等への移行を検討する |
+| 将来対応 | 管理ツール・API | データストア切り替え | 大量ビルド履歴・ログ運用に備え、フラットファイルから SQLite 等への切り替えを検討する |
 | 将来対応 | 管理ツール・API | 外部認証連携 | SSO・OAuth 等の外部認証基盤との連携を検討する |
 | 将来対応 | 管理ツール・API | TOTP 二要素認証 | 管理画面ログインに TOTP（Google Authenticator / Authy 等）を追加する。パスワード認証成功後に TOTP コード入力画面へ遷移するフローと、QR コードによる初期セットアップを含む（→ `GET /api/auth/totp-status` / `POST /api/auth/totp-setup` / `POST /api/auth/totp-confirm` / `DELETE /api/auth/totp`） |
 | 将来対応 | 管理ツール・API | 統計データの CSV エクスポート | `GET /api/stats/timeline` の日別データを CSV 形式でダウンロードできるエンドポイントを追加する |
-| 将来対応 | 管理ツール・API | キュー内個別エントリのキャンセル | `DELETE /api/queue/{id}` で特定エントリのみキャンセルする（現行は全クリアのみ） |
+| 将来対応 | 管理ツール・API | キュー内個別エントリのキャンセル | `DELETE /api/queue/{id}` で特定エントリのみキャンセルする（初期仕様では全クリアのみ） |
 | 将来対応 | 管理ツール・API | 設定バリデーション API | `POST /api/config/validate` で設定値を適用前に検証し、エラー内容を返す |
 | 将来対応 | 管理ツール・API | Prometheus メトリクスエンドポイント | `GET /api/metrics` で Prometheus 形式のメトリクス（ビルド数・成功率・ディスク使用量等）を返す |
-| 将来対応 | 管理ツール・API | CLI 管理クライアント | Python 標準ライブラリのみで実装した `adlaire-ci-cli.py` で API を CUI 操作できるツール |
+| 将来対応 | 管理ツール・API | CLI 管理クライアント | Go 標準ライブラリのみで実装した `adlaire-ci-cli` で API を CUI 操作できるツール |
 | 将来対応 | 管理ツール・API | 設定の自動スナップショット | `POST /api/config` 変更時に自動で設定バックアップを世代保存する |
 | 将来対応 | 管理ツール・API | ステータスバッジ生成 | `GET /api/badge` で最終ビルド結果を SVG バッジとして返す（README 埋め込み用） |
 | 将来対応 | 管理ツール・API | ビルド履歴の自動削除設定 | `history_retention_days` 設定でビルド履歴エントリを自動削除する（ログの `log_retention_days` に対応する履歴版） |
-| 将来対応 | 管理ツール・API | セッションタイムアウト変更設定 | `GET/POST /api/config` でセッション有効期限（現行固定 8 時間）を変更可能にする |
-| 将来対応 | 管理ツール・API | ビルドトリガー専用 API スコープ | 現行の `read` スコープに加えて `trigger` スコープを追加し、ビルド起動のみ許可する |
+| 将来対応 | 管理ツール・API | セッションタイムアウト変更設定 | `GET/POST /api/config` でセッション有効期限（初期値 8 時間）を変更可能にする |
+| 将来対応 | 管理ツール・API | ビルドトリガー専用 API スコープ | 初期仕様の `read` スコープに加えて `trigger` スコープを追加し、ビルド起動のみ許可する |
 | 将来対応 | 管理ツール・API | 監査ログ | 設定変更・ビルドトリガー等の管理操作を操作者・日時・内容とともに記録する |
 | 将来対応 | 管理ツール・API | API レート制限 | エンドポイントへのリクエスト数を時間窓内で制限し、過負荷を防ぐ |
 | 将来対応 | 管理ツール・API | ロールベースアクセス制御 | 管理者・オペレーター・閲覧者等の役割ごとに API 権限を分ける |
@@ -422,7 +483,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 将来対応 | 管理ツール・API | ビルド統計ダッシュボード | 成功率・平均ビルド時間・エラー分布等を可視化する管理画面を生成する |
 | 将来対応 | 管理ツール・API | ユーザー管理 API | 管理者アカウントの追加・削除・パスワード変更を API で操作する |
 | 将来対応 | 管理ツール・API | IP アドレス制限 | 管理 API へのアクセスを許可 IP レンジに限定するフィルタリング |
-| 将来対応 | 管理ツール・API | API バージョニング | `/api/v1/` 等のバージョンプレフィックスで後方互換性を維持する |
+| 将来対応 | 管理ツール・API | API バージョニング | `/api/v1/` 等のバージョンプレフィックスで API 世代を明示する |
 | 仕様化済み | 管理ツール・API | Webhook イベント一覧取得 API | `.webhook_events.json` をページネーション付きで返す `GET /api/webhook-events` を追加する（→ §22） |
 | 仕様化済み | 管理ツール・API | ビルドログ重大度フィルター | 既存の `GET /api/logs/search` に `level=warn\|error` パラメータを追加し、重大度別に絞り込む（→ §22） |
 | 将来対応 | 管理ツール・API | Webhook 署名検証 | 受信 Webhook の HMAC 署名を検証し、なりすましリクエストを拒否する |
@@ -440,24 +501,24 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 将来対応 | 管理ツール・API | API レスポンスキャッシュ制御 | 頻繁に参照される統計・ログ API のキャッシュ TTL を設定から変更する |
 | 将来対応 | 管理ツール・API | スナップショット間 HTML 差分 API | 2 つのスナップショット ID を指定し、出力 HTML の追加/削除行数・変更率を返す `GET /api/snapshots/{id1}/diff/{id2}` を追加する |
 | 将来対応 | 管理ツール・API | Webhook 送信履歴の手動再送 API | `GET /api/notify-log` の各エントリに対して `POST /api/notify-log/{id}/retry` で同一ペイロードを即時再送できる手動リトライ API。`.notify_pending` 自動再試行とは別に特定通知だけ個別再送できる運用機能 |
-| 将来対応 | MCP サーバー | MCP サーバー実装 | `mcp_server.py` を第 4 コンポーネントとして追加。MCP プロトコル（JSON-RPC over stdio）で Claude Desktop 等の AI クライアントから直接接続可能にする。内部では `api_server.py` REST API に `urllib` でローカル接続するラッパー設計（`json` + `sys.stdin/stdout` + `urllib` のみ、ゼロ外部依存）。認証は `.mcp_token` に専用 API トークンを保存し、スコープ（`read` のみ / `trigger` 許可）をトークン単位で選択可能。Claude Desktop の `mcpServers` 設定に `python3 /opt/adlaire-builder/mcp_server.py` を指定して接続する |
+| 将来対応 | MCP サーバー | MCP サーバー実装 | `mcp_server.go` を第 4 コンポーネントとして追加。MCP プロトコル（JSON-RPC over stdio）で Claude Desktop 等の AI クライアントから直接接続可能にする。内部では `api_server.go` REST API に Go 標準ライブラリ `net/http` でローカル接続するラッパー設計（`encoding/json` + `os.Stdin` / `os.Stdout` + `net/http`、ゼロ外部依存）。認証は `.mcp_token` に専用 API トークンを保存し、スコープ（`read` のみ / `trigger` 許可）をトークン単位で選択可能。Claude Desktop の `mcpServers` 設定に `/usr/local/bin/adlaire-ci-mcp` を指定して接続する |
 | 将来対応 | MCP サーバー | MCP ツール・リソース公開 | MCP サーバーが公開するツール：`get_status`（ビルド状態・CB 状態・PAT 残日数）/ `get_history(n)`（直近 N 件）/ `search_logs(query, level?, from?, to?)`（ログ全文検索）/ `get_build_log(id)`（個別ビルドログ）/ `trigger_build(force?)`（ビルドトリガー、`trigger` スコープ必須）/ `reset_circuit_breaker`（CB リセット、`trigger` スコープ必須）。リソース：`adlaire://status` / `adlaire://history` / `adlaire://logs/{id}` / `adlaire://config`（→ MCP サーバー実装） |
-| 将来対応 | MCP サーバー | AI 支援ビルドエラー分析 | ビルド失敗時、AI クライアント（Claude Desktop 等）が `get_build_log` / `search_logs` ツールを自律的に呼び出してエラーログを取得し、原因推定と修正提案を生成できる設計。AI 側が pull するため `runner.py` のゼロ依存を完全維持。将来的には Webhook 通知をトリガーに AI が自動分析を開始する構成も検討可（→ MCP サーバー実装） |
+| 将来対応 | MCP サーバー | AI 支援ビルドエラー分析 | ビルド失敗時、AI クライアント（Claude Desktop 等）が `get_build_log` / `search_logs` ツールを自律的に呼び出してエラーログを取得し、原因推定と修正提案を生成できる設計。AI 側が pull するため `runner.go` のゼロ依存を完全維持。将来的には Webhook 通知をトリガーに AI が自動分析を開始する構成も検討可（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP Prompts 定義 | よく使う分析シナリオを MCP Prompts として定義し、Claude Desktop 等のプロンプトメニューから即時呼び出し可能にする。例：「先週のビルド失敗率をまとめて」「最後のエラーの原因を分析して」「PAT 有効期限が近いか確認して」。`get_history` / `search_logs` ツールと組み合わせて定型分析を 1 クリックで実行できる（→ MCP サーバー実装） |
-| 将来対応 | MCP サーバー | MCP Sampling によるビルドログ自動分析 | MCP Sampling 機能を使い、ビルド失敗時に `mcp_server.py` が AI クライアントへ sampling リクエストを送って原因推定テキストを生成し `.build_logs/{id}.json` の `ai_analysis` フィールドへ自動記録する。`runner.py` は MCP サーバーへソケット通知を送るだけで Anthropic API キーは `mcp_server.py` も保持しない（→ MCP サーバー実装） |
-| 将来対応 | MCP サーバー | MCP Notifications（イベントプッシュ） | ビルド完了・失敗・CB 開放等のシステムイベントを MCP Notifications として接続中の AI クライアントへリアルタイムプッシュする。`runner.py` が `api_server.py` 経由でイベントをキューに積み `mcp_server.py` が接続クライアントへ転送する設計（→ MCP サーバー実装） |
-| 将来対応 | MCP サーバー | MCP HTTP SSE transport 対応 | 現行の stdio transport に加えて HTTP + SSE transport をサポートし、リモートマシンや複数クライアントからの同時接続を可能にする。`http.server` + `socketserver` で実装しゼロ依存を維持。`api_server.py` と同一プロセス統合か独立ポート起動かを設定で選択可能（→ MCP サーバー実装） |
-| 将来対応 | MCP サーバー | MCP ツールスコープ細分化 | 現行の `read` / `trigger` 2 スコープを `read`（参照のみ）/ `trigger`（ビルド起動）/ `admin`（設定変更・CB リセット・ブランチ設定変更）の 3 スコープに細分化する。`.mcp_token` の各トークンにスコープを紐付け、ツール呼び出し時にスコープ検証を行う（→ MCP サーバー実装） |
+| 将来対応 | MCP サーバー | MCP Sampling によるビルドログ自動分析 | MCP Sampling 機能を使い、ビルド失敗時に `mcp_server.go` が AI クライアントへ sampling リクエストを送って原因推定テキストを生成し `.build_logs/{id}.json` の `ai_analysis` フィールドへ自動記録する。`runner.go` は MCP サーバーへソケット通知を送るだけで Anthropic API キーは `mcp_server.go` も保持しない（→ MCP サーバー実装） |
+| 将来対応 | MCP サーバー | MCP Notifications（イベントプッシュ） | ビルド完了・失敗・CB 開放等のシステムイベントを MCP Notifications として接続中の AI クライアントへリアルタイムプッシュする。`runner.go` が `api_server.go` 経由でイベントをキューに積み `mcp_server.go` が接続クライアントへ転送する設計（→ MCP サーバー実装） |
+| 将来対応 | MCP サーバー | MCP HTTP SSE transport 対応 | 初期仕様の stdio transport に加えて HTTP + SSE transport をサポートし、リモートマシンや複数クライアントからの同時接続を可能にする。Go 標準ライブラリ `net/http` で実装しゼロ依存を維持。`api_server.go` と同一プロセス統合か独立ポート起動かを設定で選択可能（→ MCP サーバー実装） |
+| 将来対応 | MCP サーバー | MCP ツールスコープ細分化 | 初期仕様の `read` / `trigger` 2 スコープを `read`（参照のみ）/ `trigger`（ビルド起動）/ `admin`（設定変更・CB リセット・ブランチ設定変更）の 3 スコープに細分化する。`.mcp_token` の各トークンにスコープを紐付け、ツール呼び出し時にスコープ検証を行う（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP ツール呼び出し監査ログ | MCP 経由で呼び出されたツールの履歴（呼び出し日時・ツール名・引数サマリー・成否）を `.mcp_access_log` に記録する。`GET /api/mcp-access-log` で参照可能にし、AI クライアントがどの操作をいつ実行したかを追跡できる（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP リソース購読（Resource Subscriptions） | クライアントが `adlaire://status` 等のリソースを subscribe し、状態変化時に `notifications/resources/updated` を自動受信できる MCP 標準機能。MCP Notifications（イベント起点プッシュ）とは異なりリソース変更起点のプッシュで、クライアントがポーリングなしに最新状態を保持できる（→ MCP サーバー実装） |
-| 将来対応 | MCP サーバー | MCP クライアント情報ログ | initialize リクエストの `clientInfo`（クライアント名・バージョン）を `.mcp_access_log` の接続エントリとして記録する。Claude Desktop / Cursor / 自作クライアント等どのツールから接続されたかを追跡し、監査と互換性確認に利用する（→ MCP サーバー実装） |
+| 将来対応 | MCP サーバー | MCP クライアント情報ログ | initialize リクエストの `clientInfo`（クライアント名・バージョン）を `.mcp_access_log` の接続エントリとして記録する。Claude Desktop / Cursor / 自作クライアント等どのツールから接続されたかを追跡し、監査と動作確認に利用する（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP ツール実行統計 | ツールごとの呼び出し回数・平均応答時間（ms）・エラー率を `.mcp_stats` に蓄積する。`GET /api/mcp-stats` で参照可能にし、どのツールが頻用されているか・ボトルネックがどこかを可視化する（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP ツール実行タイムアウト設定 | `.mcp_config` にツールごとのタイムアウト秒数を設定可能にする（例：`search_logs: 10`、`trigger_build: 30`）。タイムアウト超過時は JSON-RPC エラーを返し、MCP サーバーが無応答になる事態を防ぐ（→ MCP サーバー実装） |
-| 将来対応 | MCP サーバー | MCP 設定 CRUD ツール | `get_config(section?)` / `set_config(key, value)` ツールを `admin` スコープで公開する。AI クライアントから直接 `.server_config` / `.notify_config` 等を読み書きでき、チャット上で「ポーリング間隔を 30 秒に変更して」と指示するだけで設定変更が完結する（`runner.py` 再起動不要）。`admin` スコープの定義は → MCP ツールスコープ細分化（→ MCP サーバー実装） |
+| 将来対応 | MCP サーバー | MCP 設定 CRUD ツール | `get_config(section?)` / `set_config(key, value)` ツールを `admin` スコープで公開する。AI クライアントから直接 `.server_config` / `.notify_config` 等を読み書きでき、チャット上で「ポーリング間隔を 30 秒に変更して」と指示するだけで設定変更が完結する（`runner.go` 再起動不要）。`admin` スコープの定義は → MCP ツールスコープ細分化（→ MCP サーバー実装） |
 | 将来対応 | MCP サーバー | MCP Elicitation による副作用操作の確認 | MCP Elicitation に対応し、`trigger_build(force=true)` / `reset_circuit_breaker` 等の副作用操作の実行前に AI クライアントへ確認プロンプトを送信して明示的な承認を得てから実行する。JSON-RPC メッセージの追加のみで実装しゼロ依存を維持。意図しない操作の誤実行を防ぐ安全機構（→ MCP サーバー実装） |
 | 将来対応 | ビルドスクリプト | 差分ビルド | 変更箇所のみ処理し、大規模 MD の変換を高速化する |
 | 将来対応 | ビルドスクリプト | 複数出力形式 | HTML に加えて PDF・ePub 等の出力形式をサポートする |
-| 仕様化済み | ビルドスクリプト | 変換レポート出力 | ビルド完了後に変換統計（見出し数・テーブル数・コードブロック数・警告）を stdout 出力する。runner.py が取り込み `GET /api/output-meta` で参照可（→ §8・§22） |
+| 仕様化済み | ビルドスクリプト | 変換レポート出力 | ビルド完了後に変換統計（見出し数・テーブル数・コードブロック数・警告）を stdout 出力する。runner.go が取り込み `GET /api/output-meta` で参照可（→ §8・§22） |
 | 将来対応 | ビルドスクリプト | Markdown 拡張記法サポート | アドモニション（`> [!NOTE]`）・カラーバッジ等の独自拡張記法に対応する |
 | 仕様化済み | ビルドスクリプト | シンタックスハイライト | コードブロックに言語別色分けをインライン JS で適用する。対応言語：`python`・`bash`・`json`・`sql`・`ini`・`diff`（→ §7.8） |
 | 将来対応 | ビルドスクリプト | コードブロック行番号表示 | コードブロック左端に行番号を表示するオプションを追加する |
@@ -479,7 +540,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 将来対応 | ビルドスクリプト | ダークモード対応 | `prefers-color-scheme` に応じたライト／ダーク切り替えを実装する（現在はライト固定） |
 | 仕様化済み | ビルドスクリプト | 見出しアンカーリンクコピー | ホバーで表示される `.hn-link` ボタンクリックでアンカー URL をクリップボードにコピー（→ §3・§7.11） |
 | 仕様化済み | ビルドスクリプト | TOC 開閉状態の永続化 | TOC グループの展開／折りたたみ状態を `localStorage` に保存し、リロード後も復元する（→ §7.3） |
-| 将来対応 | ビルドスクリプト | コードブロックのファイル名表示 | ` ```python:filename.py ` 記法でコードブロック上部にファイル名ラベルを表示する |
+| 将来対応 | ビルドスクリプト | コードブロックのファイル名表示 | ` ```go:filename.go ` や ` ```言語名:filename.ext ` 記法でコードブロック上部にファイル名ラベルを表示する |
 | 将来対応 | ビルドスクリプト | テンプレート変数展開 | ビルド設定に定義した変数を `{{ VERSION }}` 等の記法で Markdown 本文中に展開する |
 | 将来対応 | ビルドスクリプト | HTML ミニファイ | 生成 HTML のホワイトスペース・コメントを除去してファイルサイズを削減する |
 | 将来対応 | ビルドスクリプト | TOC ハイライト追従 | スクロール位置に応じてサイドバー TOC の現在セクションを自動ハイライトする |
@@ -490,7 +551,7 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 | 仕様化済み | ビルドスクリプト | 見出し階層スキップ警告 | h1→h3 のような見出しレベルの 2 段以上のスキップを `[WARN]` で報告。§8 変換レポートの `heading_skips` フィールドに件数を記録する（→ §4.5・§8） |
 | 仕様化済み | ビルドスクリプト | 読了時間推計と表示 | 本文文字数（コードブロック・タグ除く）から読了時間（分、200文字/分・切り上げ）を算出し、固定ヘッダーに静的埋め込みする。§8 変換レポートの `reading_time` フィールドに記録する（→ §4.5・§5・§6・§8） |
 | 仕様化済み | CI ランナー | Webhook 通知失敗リトライキュー | Webhook 通知送信失敗時に `.notify_pending`（JSON）へキューイングし次回起動時に自動再送する。SSH 転送の `.pending_transfers` と対称な設計（→ §11・§13） |
-| 仕様化済み | CI ランナー | ブランチ設定の動的変更 API | `BRANCH_TARGETS` を外部 JSON（`.branch_config`）で管理し `GET /api/branch-config` / `POST /api/branch-config` で API 経由変更可能にする。runner.py 再起動不要（→ §11・§12・§22） |
+| 仕様化済み | CI ランナー | ブランチ設定の動的変更 API | `BRANCH_TARGETS` を外部 JSON（`.branch_config`）で管理し `GET /api/branch-config` / `POST /api/branch-config` で API 経由変更可能にする。runner.go 再起動不要（→ §11・§12・§22） |
 | 仕様化済み | CI ランナー | 週次ビルドサマリー Webhook | 指定曜日・時刻に過去 7 日間の成功率・平均ビルド時間・エラー件数をまとめた定期通知を送信する（→ §12・§13・§22） |
 | 仕様化済み | 管理ツール・API | 設定変更の詳細 diff 記録 | `.config_log` の各エントリに変更前後の値の diff 文字列を付加し `GET /api/config-log` レスポンスに含める（→ §22） |
 | 仕様化済み | ビルドスクリプト | テーブルのソート機能 | 列ヘッダークリックで昇順/降順ソートができるインタラクティブテーブル。`aria-sort` 属性と CSS `::after` でインジケーター表示（→ §7.14） |
@@ -556,6 +617,77 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す（`strea
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。いずれか一方だけを変更して完了扱いにしてはならない。
 
+## 0b. 仕様 PR 完了ポリシー
+
+仕様策定または仕様改訂の Pull Request は、以下を満たすまで完了扱いにしてはならない。
+
+| 対象 | 完了条件 |
+|------|----------|
+| マスター仕様 | 方針、ポリシー、実装状態、実装着手ゲート、完了判定が `ADLAIRE_CI_SPEC.md` に明記されている。 |
+| 詳細仕様 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が `ADLAIRE_CI_DETAIL_SPEC.md` に明記されている。 |
+| API / SDK / UI | いずれかを変更した場合、endpoint、SDK method、UI 操作、エラー表示、再取得、秘密情報消去が同期している。 |
+| セットアップ | バイナリ名、配置パス、systemd unit、権限、初期化順、失敗時停止条件、アップデート rollback 方針が同期している。 |
+| 実装状態 | 仕様化済み・未実装、実装済み、将来計画の区分が矛盾していない。 |
+| 索引 | ファイル名、正本関係、実装対象の変更がある場合、`DOCUMENT_INDEX.md` の更新要否を確認している。 |
+
+仕様 PR は、未確定事項を「推奨」「検討」「適切に」等の表現だけで残してはならない。未確定事項を残す場合は、実装不可の `未仕様化` または `将来計画` として明示する。
+
+## 0c. 仕様 PR 分割ポリシー
+
+仕様 PR は、変更責務と merge 順序が明確な単位で作成する。
+
+| 分類 | ルール |
+|------|--------|
+| 同一ファイル変更 | 同じ仕様領域で同一ファイルを編集する変更は、1 本の PR にまとめる。 |
+| API / SDK / UI | endpoint、SDK method、UI 操作のいずれかを変更する場合、対応する仕様を同一 PR に含める。 |
+| 状態ファイル | 状態ファイル schema、read/write 対応、破損時処理、権限、atomic write を同一 PR に含める。 |
+| セットアップ | systemd、配置パス、権限、初期化、アップデート、rollback、受け入れ条件を同一 PR に含める。 |
+| 将来計画 | 実装不可の将来計画は、実装可能仕様と同一表で混在させる場合でも状態を明示する。 |
+| 別 PR 許可 | 変更対象ファイル、責務、merge 順序が完全に独立し、片方だけ merge されても仕様矛盾が起きない場合のみ別 PR を許可する。 |
+
+同一目的の仕様 PR を複数に分割してはならない。分割済みの PR 間で同一ファイルまたは同一仕様領域を編集している場合は、最新の作業ブランチへ統合し、1 本の PR にまとめる。
+
+## 0d. 仕様凍結ポリシー
+
+実装着手可能な仕様として扱うには、対象仕様を一時的に凍結する。
+
+仕様凍結は、以下をすべて満たす状態をいう。
+
+| 判定項目 | 条件 |
+|----------|------|
+| 成熟度 | 対象項目が `仕様化済み・未実装` である。 |
+| 詳細仕様 | `ADLAIRE_CI_DETAIL_SPEC.md` に入力、出力、状態、処理順序、異常系、検証条件が明記されている。 |
+| 横断整合 | API、SDK、UI、状態ファイル、セットアップ、受け入れ条件が矛盾していない。 |
+| 未確定事項 | 実装判断に必要な未確定事項が残っていない。 |
+| 変更境界 | 実装 PR で変更してよい範囲と変更してはならない範囲が明確である。 |
+
+仕様凍結後、実装中に仕様不足を発見した場合は、実装 PR 内で独自判断による補完を行わず、仕様改訂 PR または同一 PR 内の仕様改訂コミットで凍結状態を更新する。
+
+仕様凍結は永久固定ではない。変更する場合は、凍結解除理由、変更対象、影響範囲、再検証条件を PR 本文に明記する。
+
+## 0e. 初期実装スコープ確定ポリシー
+
+Go 版初期実装では、実装対象を `ADLAIRE_CI_DETAIL_SPEC.md` の成熟度棚卸しで `仕様化済み・未実装` と判定された範囲に限定する。
+
+初期実装の対象範囲は以下とする。
+
+| 対象 | 実装対象 | 境界 |
+|------|----------|------|
+| `build_spec.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §0〜§9 に記載された CLI、Markdown 変換、HTML 出力、検証条件。 |
+| `runner.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §10〜§20 に記載された CI ランナー、状態ファイル、ビルド起動、転送、通知、ログ保存。 |
+| `api_server.go` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §21〜§22 および §25〜§26 に記載された管理 API、認証、状態ファイル、セットアップ。 |
+| `adlaire-ci-sdk.js` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §23 に記載された API 呼び出し契約、戻り値、エラー処理。 |
+| `admin/index.html` | 対象 | `ADLAIRE_CI_DETAIL_SPEC.md` §24 に記載された標準管理ツール UI、操作、表示、秘密情報消去。 |
+| `mcp_server.go` | 対象外 | 将来計画。詳細仕様、起動手順、認証、ツール定義を別途仕様化するまで実装不可。 |
+
+初期実装 PR では、上表の対象外項目、将来計画、未仕様化項目、改訂予定項目を実装してはならない。
+
+初期実装中に対象範囲へ追加したい機能を発見した場合は、先に本節の表、`ADLAIRE_CI_DETAIL_SPEC.md` の該当詳細仕様、`DOCUMENT_INDEX.md` の状態表現を更新し、仕様凍結を再実施する。
+
+初期実装スコープの実装順序と PR 分割は、`ADLAIRE_CI_DETAIL_SPEC.md` §0g の初期実装 Phase 分割に従う。
+
+初期実装スコープの完了判定は、対象コンポーネントごとに `ADLAIRE_CI_DETAIL_SPEC.md` §0f の仕様策定完了チェックと §0g の対象 Phase 完了条件を満たしていることを条件とする。チェックまたは Phase 完了条件を満たさない対象は、実装済みとして扱ってはならない。
+
 ## 1. デザイントークン準拠
 
 > ⚠️ **準拠義務：** `--adlaire-*` トークンの値は [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/` ディレクトリ）で定義された値に準拠すること。
@@ -565,6 +697,15 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 - トークン値の変更は ADS 側のアップデートに追従する形でのみ実施する
 
 ## 2. バージョン管理
+
+正式リリース前は、ヘッダーの `仕様バージョン: V.N` と `リリースバージョン: V.X.N` を暫定表記として扱う。暫定表記は、バージョン体系そのものを示す placeholder であり、実在する release tag、GitHub Release、実装済みバージョンを意味しない。
+
+実数運用を開始する場合は、同一 PR で以下をすべて実施する。
+
+1. ヘッダーの `V.N` と `V.X.N` を具体値へ置換する。
+2. 具体値に対応する tag / GitHub Release の作成条件を満たしているか確認する。
+3. `README.md`、`DOCUMENT_INDEX.md`、`ADLAIRE_CI_DETAIL_SPEC.md` にバージョン表記がある場合は整合させる。
+4. 実数運用開始後は placeholder 表記へ戻さない。
 
 ### 仕様バージョン V.N
 
@@ -600,18 +741,32 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | プレリリースフラグ | 安定版リリースでは `Pre-release` にチェックを入れない |
 | ドラフト公開禁止 | Draft Release のまま公開しない |
 
+### 仕様変更とバージョン更新条件
+
+| 変更種別 | 仕様バージョン | リリースバージョン | 備考 |
+|----------|----------------|--------------------|------|
+| マスター仕様の方針・ポリシー変更 | `V.N` を 1 以上更新 | 変更しない | 実装物が変わらない仕様策定のみの変更。 |
+| 詳細仕様の実装契約変更 | `V.N` を 1 以上更新 | 変更しない | 実装着手条件や受け入れ条件が変わる。 |
+| 仕様影響ありの実装コード変更 | `V.N` を 1 以上更新 | `N` を 1 以上更新 | 実装に合わせて仕様を変更する場合。仕様 PR と実装 PR の両方の完了条件を満たす。 |
+| 仕様準拠のみの実装コード変更 | 変更しない | `N` を 1 以上更新 | 既存仕様に完全準拠する実装のみ。仕様文書の変更は不要だが、検証結果は実装 PR に記録する。 |
+| 実装内部のみの修正 | 変更しない | `N` を 1 以上更新 | 仕様上の入出力、状態、API、UI、運用手順に影響しない内部修正。 |
+| 安定版リリース | 未反映の仕様変更がある場合のみ `V.N` を更新 | `X` と `N` を 1 以上更新 | GitHub Release と tag を作成する。 |
+| 将来計画の追記 | `V.N` を 1 以上更新 | 変更しない | 実装可能仕様として扱わない。 |
+
+仕様策定 PR で実装コードを変更しない場合、リリースバージョンを更新してはならない。実装 PR と仕様 PR を同一 PR にまとめる場合は、仕様変更と実装変更の両方の完了条件を満たす。
+
 ## 3. カスタマイズ可能範囲
 
 以下の項目はスクリプト内で変更可能な設定ポイントである。
 
 | 設定項目 | 場所 | 変更方法 |
 |---------|------|---------|
-| 入出力パス | スクリプト冒頭の `SRC` / `OUT` 定数 | 値を書き換えて再実行 |
-| デザイントークン値 | `PAGE` f-string 内 `:root { }` ブロック | ADS 準拠の範囲内で変更可 |
-| ドキュメントタイトル | `PAGE` f-string 内 `<title>` タグ | 任意の文字列に変更可 |
-| ヘッダー表示名 | `PAGE` f-string 内 `<span class="hdr-title">` | 任意の文字列に変更可 |
-| バージョンバッジ | `PAGE` f-string 内 `<span class="hdr-ver">` | `V.X.N` 形式（安定版リリースのたびに `X` をインクリメント） |
-| TOC 対象見出しレベル | `build_toc()` 内のフィルタ行（`lv <= 3`） | 上限レベルを変更可 |
+| 入出力パス | `adlaire-ci-build --src` / `--out`、または `DefaultBuildConfig` | CLI 引数を優先し、既定値変更時は `ADLAIRE_CI_DETAIL_SPEC.md` §2 と整合させる |
+| デザイントークン値 | `assembleHTML(PageData)` が埋め込むインライン CSS の `:root { }` ブロック | ADS 準拠の範囲内で変更し、`DESIGN.md` と整合させる |
+| ドキュメントタイトル | `PageData.Title` | 空文字時は `Adlaire CI Specification`。変更時は §5 `PageData` 契約に従う |
+| ヘッダー表示名 | `<span id="doc-title">` に出力する `PageData.Title` | `PageData.Title` と同一値を使用し、別名を持たせない |
+| バージョンバッジ | 安定版リリース情報を表示する場合の `PageData` 拡張 | `V.X.N` 形式。追加する場合は先に `ADLAIRE_CI_DETAIL_SPEC.md` §5 の `PageData` にフィールドを追加する |
+| TOC 対象見出しレベル | `buildTOC(headings []Heading)` | 初期仕様では h1〜h3 固定。変更する場合は §4.4、§6、§7.3〜§7.5 を同時に改訂する |
 
 ## 4. 外部ライブラリ・フレームワーク方針
 
@@ -641,15 +796,15 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 | スクリプト | 状態 | 役割 |
 |-----------|------|------|
-| `build_spec.py` | 実装済み | ビルドスクリプト（Markdown → HTML 変換） |
-| `runner.py` | 実装済み | CI ランナー（変更検出・ビルド起動） |
-| `api_server.py` | 仕様化済み・未実装 | 管理 API サーバー（常駐 HTTP サーバー） |
+| `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプト（Markdown → HTML 変換） |
+| `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナー（変更検出・ビルド起動） |
+| `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー（常駐 HTTP サーバー） |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | JavaScript SDK（管理ツール用 API クライアント） |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI |
-| `mcp_server.py` | 将来計画 | MCP サーバー（将来追加予定 → §13 将来計画 MCP サーバー実装） |
+| `mcp_server.go` | 将来計画 | Go 版 MCP サーバー（将来追加予定 → §13 将来計画 MCP サーバー実装） |
 
 > 内製スクリプト・ライブラリは §4 方針に基づき積極的に採用する。新規スクリプトを追加する場合は本一覧へ登録する。
-> 内製スクリプトは標準ライブラリのみで実装する。
+> 内製 Go コンポーネントは Go 標準ライブラリを基本とする。外部依存は許可リスト登録を必須とする。
 > 仕様化済み・未実装または将来計画のスクリプトは、実装ファイルが追加されるまで実装済みとして扱わない。
 
 ### 許可外部ライブラリ一覧
@@ -660,7 +815,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 |-----------|------|---------|
 | （なし） | — | — |
 
-> 現行の許可外部ライブラリは存在しない。
+> 許可外部ライブラリは存在しない。
 
 ---
 
@@ -675,7 +830,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 ## 6. CI ランナー 実行ポリシー
 
 - blob SHA が前回実行時と同一の場合はビルドをスキップする（差分なしと判断）
-- `runner.py` は 1 回実行して終了する oneshot 設計とし、多重起動は systemd タイマーの設定（`OnUnitActiveSec`）で防ぐ
+- `runner.go` から生成する `adlaire-ci-runner` は 1 回実行して終了する oneshot 設計とし、多重起動は systemd タイマーの設定（`OnUnitActiveSec`）で防ぐ
 - `pipeline.sh` の終了コードが `0` 以外の場合はビルド失敗としてログに記録する
 - SHA ファイルはビルド成功後にのみ更新する。ビルド失敗時は前回 SHA を保持し、次回起動時に再試行する
 
@@ -695,6 +850,9 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 - SDK は内製とし、外部ライブラリに依存しない（→ Part 2 §4）
 - SDK の対応言語追加は本ドキュメントへの記載を先行させる
 - バックエンド API の変更は SDK の更新を伴う
+- SDK は ES Module とし、`AdlaireCI` と `AdlaireCIError` を明示 export する
+- SDK の実行環境、timeout、error class、`streamBuild()` の `StreamHandle` 契約は `ADLAIRE_CI_DETAIL_SPEC.md` §23 を正とする
+- SDK は自動 retry、戻り値補完、token 永続化、global 代入を行ってはならない
 
 ## 9. 標準管理ツール ポリシー
 
@@ -703,11 +861,14 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 - バニラ HTML / CSS / JavaScript のみで実装する。外部フレームワーク・外部ライブラリは使用しない（→ Part 2 §4）
 - バックエンドとの通信はすべて SDK 経由とする。SDK を迂回した直接 API 呼び出しは行わない
 - カスタマイズを妨げる密結合な実装は避ける
+- DOM id、`data-panel`、form field name、初期ロード順、イベント処理順、成功/失敗表示、秘密情報消去条件は `ADLAIRE_CI_DETAIL_SPEC.md` §24 を正とする
+- UI は `localStorage`、`sessionStorage`、Cookie から token を復元してはならない
+- `fetch()`、`XMLHttpRequest`、`EventSource`、`ReadableStream` reader を UI から直接生成してはならない
 
 ## 10. データ永続化ポリシー
 
-- **現行方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.build_history`・`.notify_config`・`.notify_log`・`.notify_pending`・`.server_config`・`.access_log`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.pending_transfers`・`.build_lock`・`.build_state`・`.build_circuit_state`・`.branch_config`・`.webhook_events.json`・`.build_logs/`・`.snapshots/`・ビルドログ等）
-- RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、いかなるデータベースも現行実装では採用しない
+- **初期方針：データベース不使用。** 状態はファイルで管理する（`.last_sha`・`.admin_credentials`・`.build_history`・`.notify_config`・`.notify_log`・`.notify_pending`・`.server_config`・`.access_log`・`.repo_config`・`.config_log`・`.access_control`・`.hooks`・`.maintenance`・`.alert_rules`・`.tag_rules`・`.pipeline_config`・`.notes`・`.smtp_config`・`.smtp_secret`・`.dashboard_layout`・`.pending_transfers`・`.build_lock`・`.build_state`・`.build_circuit_state`・`.branch_config`・`.webhook_events.json`・`.build_logs/`・`.snapshots/`・ビルドログ等）
+- RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、初期仕様ではいかなるデータベースも採用しない
 - 将来的にデータベースを採用する場合は、本ドキュメントへの仕様追記と §4 許可外部ライブラリ一覧の更新を先行させる
 - **データ形式：フラットファイル JSON 形式**を標準とする
 - ネストは最小限に抑え、1 ファイル 1 用途とする
@@ -725,10 +886,10 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 ## 12. 管理 API サーバー セキュリティポリシー
 
-本節は、仕様化済み・未実装の `api_server.py` に適用する。
+本節は、仕様化済み・未実装の `api_server.go` に適用する。
 
 - `HOST` は `127.0.0.1` に固定し、外部へ直接公開しない
-- HTTPS は nginx 等のリバースプロキシでターミネートする。`api_server.py` 自体に TLS を実装しない
+- HTTPS は nginx 等のリバースプロキシでターミネートする。`api_server.go` 自体に TLS を実装しない
 - セッショントークンはインメモリで管理し、ファイルに書き出さない
 - API エンドポイントはすべて認証必須とする（`GET /api/health` を除く）
 

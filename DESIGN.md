@@ -1,11 +1,13 @@
 # Adlaire-db-spec デザイン仕様
 
 **対象ファイル：** `Adlaire-db-spec.html`  
-**ビルドスクリプト：** `build_spec.py`
+**ビルドスクリプト：** `build_spec.go` から生成する `adlaire-ci-build`
 **デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)  
 **最終更新：** 2026-09-14
 
 ---
+
+本ファイルは生成 HTML の視覚仕様を整理する補助文書である。Adlaire CI の機能仕様、運用仕様、API 仕様、実装状態、正本関係は `ADLAIRE_CI_SPEC.md` と `ADLAIRE_CI_DETAIL_SPEC.md` を正とする。
 
 ## 1. デザイン方針
 
@@ -179,8 +181,9 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 ## 8. ビルド方法
 
 ```bash
-python3 build_spec.py
+adlaire-ci-build --src <source.md> --out Adlaire-db-spec.html
 ```
 
-入出力パスはスクリプト冒頭の `SRC` / `OUT` 変数で管理。  
-CSS トークンの変更はスクリプト内 `:root { }` ブロックを編集して再実行する。
+入出力パス、既定値、終了コード、レポート出力は `ADLAIRE_CI_DETAIL_SPEC.md` の `build_spec.go` 詳細仕様を正とする。
+
+CSS トークンの変更は Go 版 `build_spec.go` の HTML テンプレート内 `:root { }` ブロックに反映して再ビルドする。
