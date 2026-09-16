@@ -44,7 +44,7 @@
 
 | 対象範囲 | 対象コンポーネント | 成熟度 | 判定理由 | 次に必要な作業 |
 |----------|-------------------|--------|----------|----------------|
-| §0〜§9 | `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプトの CLI、入出力、Markdown 変換、HTML 出力、検証条件を定義する。 | Go 版 `adlaire-ci-build` として本仕様に基づいて実装する。 |
+| §0〜§9 | `build_spec.go` | 仕様化済み・未実装 | Go 版ビルドスクリプトの CLI、入出力、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、検証条件を定義する。 | Go 版 `adlaire-ci-build` として本仕様に基づいて実装する。 |
 | §10〜§20 | `runner.go` | 仕様化済み・未実装 | Go 版 CI ランナーの設定、状態ファイル、ビルド起動、通知、転送、ログ保存を定義する。 | Go 版 `adlaire-ci-runner` として本仕様に基づいて実装する。 |
 | §21〜§22 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバーの責務、設定値、systemd、エンドポイント、レスポンス、エラー形式を定義する。 | 実装前に API 完全契約表、状態ファイル schema、SDK、UI 操作契約を同期確認する。 |
 | §23 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | SDK のクラス、メソッド、戻り値、HTTP 対応関係が定義されているが、リポジトリに `adlaire-ci-sdk.js` は存在しない。 | API 仕様と SDK メソッド一覧を同期確認し、不足している戻り値型があれば具体化する。 |
@@ -64,6 +64,8 @@
 | ゲート | 合格条件 |
 |--------|----------|
 | 成熟度 | 対象項目が「仕様化済み・未実装」または「実装済み」に分類され、未仕様化・将来計画・改訂予定のまま残っていない。 |
+| 対応表 | 対象機能が §0i の詳細節対応表に記載され、詳細仕様節と受け入れ条件が一意に示されている。 |
+| テンプレート | 対象機能の詳細仕様が §0h の機能仕様テンプレートの必須項目を満たしている。 |
 | 責務境界 | 対象コンポーネント、対象ファイル、呼び出し元、呼び出し先、変更してよい状態ファイルが明記されている。 |
 | 入出力 | すべての入力、出力、既定値、許容値、必須/任意、型、文字コード、時刻形式が明記されている。 |
 | 状態管理 | 状態ファイルのパス、JSON 形式、更新タイミング、初期状態、破損時の扱い、権限が明記されている。 |
@@ -79,10 +81,11 @@
 実装後の完了条件は以下とする。
 
 1. 実装した機能が、本ファイルに記載された入力、出力、状態、異常系、検証条件と一致する。
-2. 未実装のまま残した仕様化済み項目がある場合、実装済み機能と誤読されないよう成熟度が明記されている。
-3. `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、`DOCUMENT_INDEX.md`、`AGENTS.md` の正本関係とファイル名が矛盾していない。
-4. 実装ファイルを変更した場合、構文確認または実行確認の結果が記録できる。
-5. 仕様外の挙動、暗黙の既定値、未記載の状態ファイル、未記載のエラー応答が存在しない。
+2. 対象機能が §0h の機能仕様テンプレートを満たし、§0i の詳細節対応表の受け入れ条件を満たしている。
+3. 未実装のまま残した仕様化済み項目がある場合、実装済み機能と誤読されないよう成熟度が明記されている。
+4. `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、`DOCUMENT_INDEX.md`、`AGENTS.md` の正本関係とファイル名が矛盾していない。
+5. 実装ファイルを変更した場合、構文確認または実行確認の結果が記録できる。
+6. 仕様外の挙動、暗黙の既定値、未記載の状態ファイル、未記載のエラー応答が存在しない。
 
 ---
 
@@ -112,10 +115,10 @@
 
 | 対象 | 必須検証 | 合格条件 |
 |------|----------|----------|
-| `build_spec.go` | CLI 正常系 | `adlaire-ci-build --src <valid.md> --out <out.html>` が終了コード `0` で終了し、HTML と `[REPORT]` を生成する。 |
-| `build_spec.go` | CLI 異常系 | 入力不存在、UTF-8 不正、未知引数、出力不可ディレクトリで §2・§8 の終了コードと stderr が一致する。 |
+| `build_spec.go` | CLI 正常系 | `adlaire-ci-build --src <valid.md-or-dir> --out <site-dir>` が終了コード `0` で終了し、静的 Web サイトと `[REPORT]` を生成する。 |
+| `build_spec.go` | CLI 異常系 | 入力不存在、UTF-8 不正、未知引数、出力不可ディレクトリ、未知 theme で §2・§8 の終了コードと stderr が一致する。 |
 | `build_spec.go` | Markdown 変換 | 見出し、重複 slug、内部リンク警告、脚注、表、引用、リスト、コードフェンス、未閉鎖フェンス、HTML escape が §4 の出力構造と一致する。 |
-| `build_spec.go` | 生成物 | 出力 HTML が単一ファイルで、外部 JS/CSS 参照を持たず、§5〜§7 の ID / class / JS 機能を含む。 |
+| `build_spec.go` | 生成物 | 出力サイトディレクトリに `index.html`、ページ HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` が生成され、§5〜§7 の ID / class / JS 機能を含む。 |
 | `runner.go` | 設定検証 | `--state-dir`、`BRANCH_TARGETS`、必須ファイル不足、未知設定キーで §12 のログ・終了コード・採用優先順位が一致する。 |
 | `runner.go` | 状態更新 | 成功、ビルド失敗、GitHub API 失敗、転送失敗、lock 競合、JSON 破損で §13 と §22.0a の更新順序・未更新条件が一致する。 |
 | `runner.go` | 冪等性 | 同一 SHA 再実行、pending retry 再実行、通知 pending 再実行、stale lock 復旧で二重履歴・二重 snapshot・状態破壊が発生しない。 |
@@ -136,7 +139,7 @@
 
 | 対象 | 実装着手条件 | 実装禁止条件 | 完了判定 |
 |------|--------------|--------------|----------|
-| `build_spec.go` | §2〜§8 に CLI option、入力 Markdown、出力 HTML、終了コード、stderr、HTML 構造、JS/CSS、生成物確認が定義されている。 | §4〜§7 にない Markdown 記法、CSS class、JavaScript 機能、外部 asset を追加すること。 | §0e の `build_spec.go` 必須検証をすべて満たし、生成 HTML が §5〜§7 と一致する。 |
+| `build_spec.go` | §2〜§8 に CLI option、入力 Markdown、出力サイトディレクトリ、終了コード、stderr、HTML 構造、テーマコンポーネント、JS/CSS、生成物確認が定義されている。 | §4〜§7 にない Markdown 記法、CSS class、JavaScript 機能、外部 asset、theme を追加すること。 | §0e の `build_spec.go` 必須検証をすべて満たし、生成サイトが §5〜§7 と一致する。 |
 | `runner.go` | §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd が定義されている。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。 | §0e の `runner.go` 必須検証をすべて満たし、状態ファイル更新順序が §13、§22.0a、§22.0d と一致する。 |
 | `api_server.go` | §21〜§22、§25、§26 に API 共通契約、endpoint、状態ファイル schema、認証、認可、systemd、セットアップが定義されている。 | §22.0e にない endpoint、method、status code、response body、状態ファイル write を追加すること。 | §22.0e の全 endpoint が Request、Response、Errors、Read、Write、SDK、UI の対応表と一致する。 |
 | `adlaire-ci-sdk.js` | §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が §22.0e と §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
@@ -149,7 +152,8 @@
 1. 未充足項目が方針・ポリシー・状態分類に関わる場合は、先に `ADLAIRE_CI_SPEC.md` を改訂する。
 2. 未充足項目が入出力、状態ファイル、API、SDK、UI、処理順序、異常系、検証条件に関わる場合は、本ファイルの該当節を改訂する。
 3. ファイル名、正本関係、実装状態が変わる場合は、`DOCUMENT_INDEX.md` の更新要否を確認する。
-4. 補完後、§0b、§0c、§0e、本節、§0g の条件を再確認する。
+4. 仕様化済み項目の詳細節または受け入れ条件が変わる場合は、§0i の詳細節対応表を更新する。
+5. 補完後、§0b、§0c、§0e、本節、§0g、§0h、§0i の条件を再確認する。
 
 ---
 
@@ -159,7 +163,7 @@ Go 版初期実装は、`ADLAIRE_CI_SPEC.md` §0e の対象範囲を一括実装
 
 | Phase | 対象 | 実装範囲 | 依存条件 | 完了条件 |
 |-------|------|----------|----------|----------|
-| Phase 1 | `build_spec.go` | §2〜§9 の CLI、Markdown 変換、HTML 出力、生成物確認。 | なし。 | §0e の `build_spec.go` 必須検証と §0f の `build_spec.go` 完了判定を満たす。 |
+| Phase 1 | `build_spec.go` | §2〜§9 の CLI、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、生成物確認。 | なし。 | §0e の `build_spec.go` 必須検証と §0f の `build_spec.go` 完了判定を満たす。 |
 | Phase 2 | `runner.go` | §10〜§20 の CI ランナー、GitHub API 連携、SHA キャッシュ、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd。 | Phase 1 が完了し、`adlaire-ci-build` の CLI 契約が固定されている。 | §0e の `runner.go` 必須検証と §0f の `runner.go` 完了判定を満たす。 |
 | Phase 3 | `api_server.go` P0 / P1 | §21〜§22、§25、§26 のうち、認証、セッション、共通エラー、状態ファイル読み書き、ビルド操作、status、logs、history、queue、circuit breaker。 | Phase 2 が完了し、runner が書き込む状態ファイル schema が固定されている。 | §22.0f P0 / P1 の必須検証、§0e の `api_server.go` API 共通・状態ファイル検証、§0f の `api_server.go` 完了判定の該当範囲を満たす。 |
 | Phase 4 | `api_server.go` P2〜P5 | §22.0f P2〜P5 の config、repo、branch、schedule、notify、snapshot、rollback、maintenance、access control、hooks、tokens 等。 | Phase 3 が完了し、API 共通処理と認証が固定されている。 | §22.0f P2〜P5 の必須検証と §0e の `api_server.go` endpoint 契約を満たす。 |
@@ -180,6 +184,87 @@ Phase 外の将来計画、未仕様化、改訂予定項目は、初期実装 P
 
 ---
 
+## 0h. 機能仕様テンプレート
+
+仕様化済み項目を追加または改訂する場合は、該当する詳細仕様節に以下の項目をすべて含める。既存節に含める場合も、実装者が下表の項目を本文から一意に読み取れる状態にする。
+
+| 項目 | 必須内容 | 未記載時の扱い |
+|------|----------|----------------|
+| 目的 | 何を解決する機能か、どの利用者または運用者のための機能か。 | 実装不可。 |
+| 対象コンポーネント | `build_spec.go`、`runner.go`、`api_server.go`、`adlaire-ci-sdk.js`、`admin/index.html` のいずれが責務を持つか。複数の場合は責務境界を分けて書く。 | 実装不可。 |
+| 入力 | CLI 引数、HTTP request、設定値、状態ファイル、環境変数、Markdown 入力、UI 操作などの入力元、型、必須/任意、既定値。 | 実装不可。 |
+| 出力 | 生成ファイル、HTTP response、stdout/stderr、ログ、通知、UI 表示、終了コード。 | 実装不可。 |
+| 状態 | 読み書きする状態ファイル、ディレクトリ、メモリ状態、ロック、更新責務、初期値、破損時の扱い。 | 状態を持つ実装は禁止。 |
+| 正常系 | 処理順序、分岐条件、成功条件、保存順序、外部コマンド呼び出し条件。 | 実装不可。 |
+| 異常系 | エラー条件、継続/中断、HTTP status、終了コード、ログレベル、通知、リトライ有無。 | 実装不可。 |
+| セキュリティ | 秘密情報、認証、認可、ファイル権限、外部公開可否、ログ出力禁止事項。 | セキュリティ影響がある機能は実装不可。 |
+| 検証 | 必須テスト、手動確認、fixture、生成物確認、API 確認、異常系確認。 | 実装済みに変更不可。 |
+| 完了条件 | どの検証が成功したら実装完了と扱うか。関連文書の更新要否。 | 実装済みに変更不可。 |
+
+上表のいずれかが不足する仕様化済み項目は、実装者判断で補完してはならない。不足を見つけた場合は、実装 PR ではなく仕様改訂 PR として本ファイルを先に更新する。
+
+---
+
+## 0i. 仕様化済み項目の詳細節対応表
+
+本節は、`ADLAIRE_CI_SPEC.md` §13「仕様化済み拡張一覧」から、本ファイル内の実装詳細へ移動するための対応表である。実装者は対象機能を実装する前に、下表の「詳細仕様節」と「受け入れ条件」を確認する。
+
+表の「詳細仕様節」が複数ある場合は、すべての節を同時に満たす。該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。
+
+| 機能 | 対象コンポーネント | 詳細仕様節 | 受け入れ条件 |
+|------|-------------------|------------|--------------|
+| ビルドタイムアウト | `runner.go` / `api_server.go` | §12、§13、§22.0e | `build_timeout_seconds` の既定値、設定 API、`context.WithTimeout` の中断処理、終了コード、ログが一致する。 |
+| ポーリング間隔の動的変更 | `api_server.go` | §22.0e、§26 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
+| ビルドログのファイル保存 | `runner.go` | §11、§13、§15 | `.build_logs/{id}.json` の schema、stdout/stderr、変換レポート、duration、権限が一致する。 |
+| GitHub Webhook 受信 | `api_server.go` / `runner.go` | §22.0e、§22-W、§13 | HMAC 検証、イベント記録、キュー投入またはビルドトリガー、エラー応答が一致する。 |
+| ネットワーク断時の再試行 | `runner.go` | §12、§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、失敗時ログが一致する。 |
+| GitHub API レート制限自動待機 | `runner.go` / `api_server.go` | §13、§22.0e | `X-RateLimit-Remaining` と `X-RateLimit-Reset` の扱い、待機、API 表示が一致する。 |
+| 転送後リモート整合性検証 | `runner.go` | §14a、§13 | SSH 転送後の SHA256 照合、不一致時の `.pending_transfers` 再投入、ログが一致する。 |
+| マルチブランチビルド | `runner.go` / `api_server.go` | §12、§13、§22.0e | `BRANCH_TARGETS` と `.branch_config` の優先順位、順次処理、API 更新が一致する。 |
+| ビルドログ世代管理 | `runner.go` | §12、§13、§15 | `LOG_KEEP_N` 超過時の削除順序、0 の扱い、削除ログが一致する。 |
+| ビルド出力の外部転送 | `runner.go` | §14a、§13 | SSH 差分転送、複数ファイル処理、失敗時 pending、通知が一致する。 |
+| ビルドクールダウン | `runner.go` | §12、§13 | `BUILD_COOLDOWN_SECONDS` 内の起動スキップ、Webhook 二重トリガー抑止、ログが一致する。 |
+| ビルド前の事前チェック | `runner.go` | §13、§26 | ディスク、`adlaire-ci-build`、pipeline 前提の確認、不足時の ERROR と通知が一致する。 |
+| 定期強制ビルド | `runner.go` / `api_server.go` | §12、§13、§22.0e | `FORCE_BUILD_INTERVAL`、変更なし時の強制ビルド、設定 API が一致する。 |
+| ビルド中重複スキップ | `runner.go` | §11、§13 | `.build_lock` の PID 判定、stale lock、競合時終了コードとログが一致する。 |
+| GitHub PAT 有効期限の事前警告 | `runner.go` / `api_server.go` | §13、§22.0e | `GitHub-Authentication-Token-Expiration` の解析、7 日以内 WARN、API 表示が一致する。 |
+| コミット情報のビルドログ記録 | `runner.go` | §13、§15 | SHA、message、author、date を build id と同じログへ記録する。 |
+| GitHub API 連続失敗によるサーキットブレーカー | `runner.go` / `api_server.go` | §11、§12、§13、§22.0e | 閾値、open/close 状態、API reset、通知、状態ファイルが一致する。 |
+| 出力サイトサイズ警告閾値 | `build_spec.go` / `runner.go` / `api_server.go` | §8、§12、§13、§22.0e | `OUTPUT_SIZE_WARN_MB`、`size_warn`、WARN ログ、API 表示が一致する。 |
+| Webhook イベントログ | `api_server.go` | §11、§22.0e、§22-W | `.webhook_events.json` の JSON Lines schema と一覧 API が一致する。 |
+| ビルド所要時間の記録と統計 API | `runner.go` / `api_server.go` | §15、§22.0e | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
+| ビルドアーティファクト世代管理 | `runner.go` / `api_server.go` | §14b、§22.0e | `.snapshots/` の保持世代、削除、rollback API が一致する。 |
+| ビルドアーティファクト管理 | `api_server.go` / `admin/index.html` / `adlaire-ci-sdk.js` | §14b、§22.0e、§23、§24 | 一覧、ダウンロード、削除、ロールバックの API、SDK、UI が一致する。 |
+| ヘルスチェックエンドポイント | `api_server.go` | §22.0e | `GET /api/health` の稼働秒数、最終ビルド、最終転送、エラー応答が一致する。 |
+| Webhook イベント一覧取得 API | `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24 | `GET /api/webhook-events` の query、response、SDK method、UI 表示が一致する。 |
+| ビルドログ重大度フィルター | `api_server.go` / `adlaire-ci-sdk.js` / `admin/index.html` | §22.0e、§23、§24 | `level=warn\|error` の query、検索結果、UI filter が一致する。 |
+| 変換レポート出力 | `build_spec.go` / `runner.go` / `api_server.go` | §8、§13、§15、§22.0e | `[REPORT]` stdout、runner 取り込み、`.build_logs`、`GET /api/output-meta` が一致する。 |
+| シンタックスハイライト | `build_spec.go` | §7.8 | 対応言語、class 名、HTML escape、CSS 表示が一致する。 |
+| 本文内全文検索 | `build_spec.go` | §7.9 | `assets/search-index.json`、検索 UI、ヒット遷移、対象テキストが一致する。 |
+| アンカーリンク自動検証 | `build_spec.go` | §4.3、§8 | broken anchor 検出、`[WARN] BROKEN_LINK`、report 件数が一致する。 |
+| コードブロックの折りたたみ | `build_spec.go` | §7.10 | 30 行超の初期折りたたみ、展開操作、印刷時展開が一致する。 |
+| 印刷スタイル（`@media print`） | `build_spec.go` | §6 | `@media print` の非表示対象、コード展開、リンク URL 表示が一致する。 |
+| 静的 Web サイト出力 | `build_spec.go` | §2、§5、§6、§7 | 入力ファイル/ディレクトリ、出力ファイル構成、asset、ページ生成が一致する。 |
+| テーマコンポーネント | `build_spec.go` | §5、§6、§7 | `adlaire-default` の component、class、slot、asset 出力が一致する。 |
+| 外部リンクの自動処理 | `build_spec.go` | §4.3 | `target="_blank"`、`rel="noopener noreferrer"`、内部リンクとの区別が一致する。 |
+| 読み取り進捗バー | `build_spec.go` | §7.13 | 3px 固定表示、scroll 連動、初期/末尾状態が一致する。 |
+| コードブロックのコピーボタン | `build_spec.go` | §7.6 | ボタン配置、コピー対象、成功/失敗時表示、アクセシビリティが一致する。 |
+| 見出しアンカーリンクコピー | `build_spec.go` | §3、§7.11 | `.hn-link`、copy URL、重複 slug 連動が一致する。 |
+| TOC 開閉状態の永続化 | `build_spec.go` | §7.3 | `localStorage` key、展開/折りたたみ、復元条件が一致する。 |
+| 見出しスラグ重複解決 | `build_spec.go` | §4.5 | `-2`、`-3` の付与、TOC、検索、コピー URL との共通化が一致する。 |
+| 前後章ナビゲーションボタン | `build_spec.go` | §4.5、§5、§7.15 | h2 単位の前後判定、章末尾配置、端の非表示条件が一致する。 |
+| 内部リンク整合性チェック | `build_spec.go` | §4.3、§8 | `[label](#anchor)` 検証、WARN、`broken_links` が一致する。 |
+| 見出し階層スキップ警告 | `build_spec.go` | §4.5、§8 | h1→h3 等の検出、WARN、`heading_skips` が一致する。 |
+| 読了時間推計と表示 | `build_spec.go` | §4.5、§5、§6、§8 | 対象文字数、200文字/分、切り上げ、header 表示、report が一致する。 |
+| Webhook 通知失敗リトライキュー | `runner.go` | §11、§13、§16 | `.notify_pending` の schema、再送順序、失敗時保持が一致する。 |
+| ブランチ設定の動的変更 API | `runner.go` / `api_server.go` | §11、§12、§22.0e | `.branch_config`、GET/POST API、runner 再起動不要条件が一致する。 |
+| 週次ビルドサマリー Webhook | `runner.go` / `api_server.go` | §12、§13、§16、§22.0e | 週次判定、集計対象、通知 payload、手動送信 API が一致する。 |
+| 設定変更の詳細 diff 記録 | `api_server.go` | §22.0a、§22.0e | `.config_log` の diff 文字列、対象 API、マスク条件が一致する。 |
+| テーブルのソート機能 | `build_spec.go` | §7.14 | クリック操作、昇順/降順、`aria-sort`、インジケーターが一致する。 |
+| キーボードショートカット | `build_spec.go` | §7.12 | `/`、`Escape`、`t` の対象、フォーカス条件、入力中の無効化が一致する。 |
+
+---
+
 ## 0. システム概要
 
 Adlaire CI は Go 版 3 コンポーネントと JavaScript/HTML 管理ツールで構成する。
@@ -187,7 +272,7 @@ Adlaire CI は Go 版 3 コンポーネントと JavaScript/HTML 管理ツール
 本仕様では、`build_spec.go`、`runner.go`、`api_server.go`、標準管理ツール `admin/index.html`、JavaScript SDK `adlaire-ci-sdk.js` を仕様化済み・未実装コンポーネントとして定義する。将来的には `mcp_server.go` を加えた構成へ拡張予定（→ §13 将来計画 MCP サーバー実装）。
 
 **`build_spec.go`（ビルドスクリプト）**
-GitHub リポジトリ上またはローカル上の Markdown 仕様書を HTML に変換してローカルパスへ出力する。標準実行バイナリ名は `adlaire-ci-build` とする。
+GitHub リポジトリ上またはローカル上の Markdown ファイルまたは Markdown ディレクトリを静的 Web サイトに変換してローカルディレクトリへ出力する。標準実行バイナリ名は `adlaire-ci-build` とする。
 
 **`runner.go`（CI ランナー）**
 GitHub の Git Trees API / Git Blobs API を使用し、対象ファイルの blob SHA 変更を検出する。変更があった場合のみ Markdown 本文を書き出し、`adlaire-ci-build` を起動し、成功時に SHA キャッシュを更新する。systemd タイマーで定期実行する oneshot 設計。
@@ -202,7 +287,7 @@ Go 標準ライブラリ `net/http` を使用する常駐 HTTP サーバー。�
 systemd timer
   └─ adlaire-ci-runner（runner.go, oneshot）
        ├─ 変更なし → スキップ
-       └─ 変更あり → adlaire-ci-build（build_spec.go）→ HTML 生成
+       └─ 変更あり → adlaire-ci-build（build_spec.go）→ 静的 Web サイト生成
 ```
 
 **管理 API を含む想定フロー：**
@@ -224,8 +309,8 @@ Go 標準ライブラリと GitHub PAT（`contents: read`）を基本要件と�
 |------|------|
 | Go バージョン | Go `1.22` 以上。 |
 | 外部依存 | 原則なし。Go 標準ライブラリを基本とし、外部依存を採用する場合は `ADLAIRE_CI_SPEC.md` Part 2 §4 の許可リスト更新を先行する。 |
-| 入力 | UTF-8 エンコードの Markdown ファイル |
-| 出力 | UTF-8 エンコードの単一 HTML ファイル |
+| 入力 | UTF-8 エンコードの Markdown ファイル、または Markdown ファイルを含むディレクトリ |
+| 出力 | 静的 Web サイトディレクトリ（HTML / CSS / JavaScript / search index） |
 
 ---
 
@@ -235,13 +320,21 @@ Go 版 `build_spec.go` は、以下の既定値を持つ設定構造体で入出
 
 ```go
 type BuildConfig struct {
-    Src string
-    Out string
+    Src     string
+    Out     string
+    Title   string
+    Theme   string
+    BaseDir string
+    Strict  bool
 }
 
 var DefaultBuildConfig = BuildConfig{
-    Src: "/opt/adlaire-builder/repo/adlaire-db-spec.md",
-    Out: "/opt/adlaire-builder/dist/Adlaire-db-spec.html",
+    Src: "/opt/adlaire-builder/repo/docs",
+    Out: "/opt/adlaire-builder/dist/site",
+    Title: "Adlaire Documentation",
+    Theme: "adlaire-default",
+    BaseDir: "",
+    Strict: false,
 }
 ```
 
@@ -251,8 +344,12 @@ var DefaultBuildConfig = BuildConfig{
 
 | 引数 | 必須 | 既定値 | 説明 |
 |------|------|--------|------|
-| `--src <path>` | 任意 | `DefaultBuildConfig.Src` | 入力 Markdown ファイルの絶対パスまたは相対パス。相対パスはカレントディレクトリ基準で解決する。 |
-| `--out <path>` | 任意 | `DefaultBuildConfig.Out` | 出力 HTML ファイルの絶対パスまたは相対パス。親ディレクトリが存在しない場合は作成する。 |
+| `--src <path>` | 任意 | `DefaultBuildConfig.Src` | 入力 Markdown ファイルまたは Markdown ディレクトリの絶対パスまたは相対パス。相対パスはカレントディレクトリ基準で解決する。 |
+| `--out <path>` | 任意 | `DefaultBuildConfig.Out` | 出力サイトディレクトリの絶対パスまたは相対パス。存在しない場合は作成する。 |
+| `--title <text>` | 任意 | `DefaultBuildConfig.Title` | サイト名、`index.html` の `<title>`、header 表示名に使用する。空文字は禁止。 |
+| `--theme <name>` | 任意 | `DefaultBuildConfig.Theme` | 初期仕様では `adlaire-default` のみ許可する。 |
+| `--base-dir <path>` | 任意 | `DefaultBuildConfig.BaseDir` | 相対リンク・画像解決の基準ディレクトリ。空の場合は `--src` がファイルなら親ディレクトリ、ディレクトリなら `--src` 自身を使用する。 |
+| `--strict` | 任意 | `false` | 警告をビルド失敗として扱う。警告が 1 件以上ある場合は終了コード `2` とする。 |
 | `--version` | 任意 | なし | バイナリ名、仕様名、Go build 情報を 1 行で標準出力へ表示して終了する。 |
 | `--help` | 任意 | なし | 引数一覧を標準出力へ表示して終了する。 |
 
@@ -261,13 +358,84 @@ var DefaultBuildConfig = BuildConfig{
 | 条件 | 終了コード | 出力 |
 |------|------------|------|
 | 未知の引数 | `2` | stderr に `unknown option: <name>` |
-| `--src` / `--out` の値欠落 | `2` | stderr に `missing value: <name>` |
+| `--src` / `--out` / `--title` / `--theme` / `--base-dir` の値欠落 | `2` | stderr に `missing value: <name>` |
 | `--src` が存在しない | `2` | stderr に `source not found: <path>` |
-| `--src` が UTF-8 として読めない | `2` | stderr に `source is not valid UTF-8: <path>` |
-| `--out` 親ディレクトリ作成失敗 | `1` | stderr に `cannot create output directory: <path>` |
+| `--src` が Markdown ファイルでもディレクトリでもない | `2` | stderr に `source is not markdown file or directory: <path>` |
+| `--src` 内の Markdown が UTF-8 として読めない | `2` | stderr に `source is not valid UTF-8: <path>` |
+| `--title` が空文字 | `2` | stderr に `title must not be empty` |
+| `--theme` が `adlaire-default` 以外 | `2` | stderr に `unknown theme: <name>` |
+| `--out` ディレクトリ作成失敗 | `1` | stderr に `cannot create output directory: <path>` |
+| `--out` が既存ファイル | `1` | stderr に `output path is not directory: <path>` |
 | `--out` 書き込み失敗 | `1` | stderr に `cannot write output: <path>` |
 
 `--help` と `--version` は他の引数より優先し、成功時は終了コード `0` とする。
+
+**CLI パース固定仕様：**
+
+- 引数は `flag` package 互換の `--name value` と `--name=value` の両方を許可する。
+- 短縮オプション（例：`-s`、`-o`）は禁止する。指定された場合は未知の引数として扱う。
+- 同一引数が複数回指定された場合は最後の値を採用する。ただし `--strict` は 1 回以上指定されれば `true` とする。
+- `--src`、`--out`、`--base-dir` の相対パスは `os.Getwd()` の戻り値を基準に `filepath.Abs()` で絶対パスへ変換する。
+- `--base-dir` が空ではない場合、存在するディレクトリでなければならない。存在しない場合は終了コード `2`、stderr に `base directory not found: <path>` を出力する。
+- `--base-dir` がファイルの場合は終了コード `2`、stderr に `base path is not directory: <path>` を出力する。
+- stderr のエラー行は末尾に改行 1 つを付ける。複数エラーをまとめて出力せず、最初に検出したエラー 1 件で終了する。
+
+**固定出力：**
+
+| 条件 | stdout |
+|------|--------|
+| `--help` | `Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--version] [--help]` |
+| `--version` | `adlaire-ci-build ADLAIRE_CI_SPEC go=<runtime.Version()>` |
+
+`--help` と `--version` の stdout は 1 行固定とし、末尾に改行 1 つを付ける。`--help` または `--version` を指定した場合、`--src` の存在確認、`--theme` 検証、出力ディレクトリ作成は行わない。
+
+---
+
+## 2a. 入力収集・出力パス決定
+
+`build_spec.go` は、`--src` がファイルかディレクトリかで入力収集方法を切り替える。
+
+| `--src` 種別 | 入力収集 | 出力 |
+|--------------|----------|------|
+| Markdown ファイル | 指定ファイル 1 件のみを入力とする。拡張子は `.md` または `.markdown` のみ許可する。 | `index.html` 1 件と `assets/` を出力する。 |
+| ディレクトリ | 配下の `.md` / `.markdown` ファイルを再帰収集する。隠しディレクトリ、`.git`、`.ci`、`node_modules`、`vendor`、`dist` は収集対象外とする。 | `index.html` をサイト目次、各 Markdown を `pages/{slug}.html` として出力する。 |
+
+入力ファイルの並び順は、`--base-dir` からの相対パスを `/` 区切りに正規化した文字列の昇順とする。OS やファイルシステムの列挙順に依存してはならない。
+
+Markdown ディレクトリ入力で Markdown ファイルが 0 件の場合は終了コード `2` とし、stderr に `no markdown files found: <path>` を出力する。
+
+`PageData.Title` は、各 Markdown ファイルの最初の h1 見出しを使用する。h1 が存在しない場合は、拡張子を除いたファイル名をタイトル化して使用する。ファイル名タイトル化では、`-` と `_` を空白に置換し、前後空白を除去する。空になった場合は `Untitled` とする。
+
+ページ slug は以下の順で決定する。
+
+1. `--base-dir` からの相対パスから拡張子を除く。
+2. パス区切り `/`、空白、`_` を `-` に置換する。
+3. §4.1 `slugify` と同じ文字種ルールで正規化する。
+4. 空になった場合は `page` とする。
+5. 同一 slug が重複した場合は、2 件目以降に `-2`、`-3` のように連番を付与する。
+
+出力パスは以下とする。
+
+| 条件 | `PageData.OutputPath` |
+|------|-----------------------|
+| 単一 Markdown 入力 | `index.html` |
+| ディレクトリ入力のサイト目次 | `index.html` |
+| ディレクトリ入力の各 Markdown | `pages/{pageSlug}.html` |
+
+`assets/style.css`、`assets/app.js`、`assets/search-index.json` は常に出力する。`assets/` 配下へ Markdown 由来ファイルを出力してはならない。
+
+**リンク・画像・相対パス解決：**
+
+| 入力 | 処理 |
+|------|------|
+| `http://` / `https://` URL | 外部 URL としてそのまま出力する。 |
+| `mailto:` / `tel:` URL | 内部リンク検証対象外とし、`href` はそのまま出力する。 |
+| `#anchor` | 同一ページ内 anchor として、ページ内の一意化後 slug と照合する。 |
+| `./doc.md` / `../dir/doc.md` / `dir/doc.markdown#x` | `--base-dir` 基準で Markdown 入力ファイルへ解決し、該当ページの HTML パスへ変換する。anchor がある場合は `#x` を維持し、出力先ページの slug と照合する。 |
+| `.md` / `.markdown` 以外の相対リンク | ファイルをコピーせず、元の相対 URL を保持する。存在確認は警告対象外。 |
+| 画像 `![alt](path)` | ファイルコピーを行わず、`src` は元 URL を `esc()` して出力する。`assets/` へ画像を複製してはならない。 |
+
+Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま出力し、`[WARN] BROKEN_PAGE_LINK: <url> (in: <source>)` を出力する。`--strict` が `true` の場合、警告出力後に終了コード `2` とする。ページ間リンク解決で使用するパス比較は、絶対パス化、`filepath.Clean()`、パス区切り `/` 正規化を行った文字列で比較する。
 
 ---
 
@@ -291,10 +459,10 @@ var DefaultBuildConfig = BuildConfig{
 │ 4. MD → HTML 変換（convert(lines, headings, ctx)）              │
 │    → ConvertResult.HTML                                        │
 ├────────────────────────────────────────────────────────────────┤
-│ 5. HTML テンプレート合成                                        │
-│    CSS トークン・レイアウト・JS をすべてインライン埋め込み        │
+│ 5. サイトテンプレート合成                                      │
+│    theme component、CSS、JS、search index を生成                 │
 ├────────────────────────────────────────────────────────────────┤
-│ 6. ファイル書き出し（OUT）                                       │
+│ 6. サイトディレクトリ書き出し（OUT）                            │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -416,7 +584,17 @@ type RenderContext struct {
 - 2 回目以降の同一 ID 参照では既存番号を再利用する。
 - `FootnoteDefs` に存在しない ID でも HTML 参照は出力し、脚注本文は空文字として扱わず、末尾脚注出力時に `[WARN] MISSING_FOOTNOTE: id` を出す。
 
-**制約：** ネストしたインライン記法（`**_text_**` など）は限定的にサポート。
+**インライン記法のネスト仕様：**
+
+| 入力 | 出力 |
+|------|------|
+| `***text***` | `<strong><em>text</em></strong>` |
+| `**_text_**` | `<strong><em>text</em></strong>` |
+| `__*text*__` | `<strong><em>text</em></strong>` |
+| `*__text__*` | `<em><strong>text</strong></em>` |
+| `_**text**_` | `<em><strong>text</strong></em>` |
+
+上表以外のネストした強調・削除・リンクの組み合わせは追加変換しない。未対応ネストは、先にマッチした外側または内側の単一記法だけを変換し、残った Markdown 記号は `esc()` 済みテキストとして出力する。実装者判断で CommonMark 全互換のネスト処理を追加してはならない。
 
 ---
 
@@ -513,7 +691,7 @@ type ConvertResult struct {
 
 | 変数 | 型 | 用途 |
 |------|-----|------|
-| `out` | `strings.Builder` | 出力 HTML 断片の蓄積 |
+| `out` | `strings.Builder` | 本文 HTML 断片の蓄積 |
 | `fence_active` | `bool` | コードフェンス内かどうか |
 | `fence_lang` | `string` | コードフェンスの言語識別子 |
 | `fence_buf` | `[]string` | フェンス内の行バッファ |
@@ -557,6 +735,21 @@ type ConvertResult struct {
 
 **脚注定義行のスキップ：**
 `^\[\^[^\]]+\]:` に一致する行は `ctx.FootnoteDefs` への収集が完了しているためスキップし、本文への出力を行わない。
+
+**主要ブロックの固定 HTML 断片：**
+
+| Markdown | HTML |
+|----------|------|
+| `# Title` | `<h1 id="title" class="mh h1">Title<button class="hn-link" data-href="#title" aria-label="リンクをコピー">¶</button></h1>` |
+| `text` | `<p class="mp">text</p>` |
+| `---` | `<hr class="mr">` |
+| `> quote` | `<blockquote class="mbq">quote</blockquote>` |
+| `- item` | `<ul class="ml"><li>item</li></ul>` |
+| `1. item` | `<ol class="ml"><li>item</li></ol>` |
+| `- [x] done` | `<ul class="ml"><li class="ml-task"><input type="checkbox" disabled checked>done</li></ul>` |
+| `term` + 次行 `: desc` | `<dl class="mdl"><dt>term</dt><dd>desc</dd></dl>` |
+
+上表の属性順、class 名、button 文言、`checked` 属性の位置は固定する。テストでは空白の連続を 1 つへ正規化して比較してよいが、タグ名、属性名、属性値、親子構造は完全一致させる。
 
 **脚注セクションの末尾出力：**
 `convert()` 末尾で `ctx.FootnoteOrder` が非空の場合、`<section class="fn-section">` 内に参照順番号付きの脚注リスト（`<ol class="fn-list">`）を出力する。各脚注には本文への戻りリンク（`<a class="fn-back">↩</a>`）を付与する。
@@ -658,20 +851,54 @@ uniqueSlug := func(base string) string {
 
 ---
 
-## 5. HTML 出力構造
+## 5. 静的 Web サイト出力構造
 
-HTML 全体の合成は `assembleHTML(data PageData) string` が担当する。`convert()` は本文 HTML を生成し、`assembleHTML()` はページ枠、CSS、JavaScript、TOC、検索インデックス、読了時間表示を合成する。
+サイト全体の合成は `assembleSite(site SiteData, theme Theme) error` が担当する。`convert()` は各 Markdown ページの本文 HTML を生成し、`assembleSite()` はページ HTML、共通 CSS、共通 JavaScript、検索インデックス、テーマコンポーネントを出力サイトディレクトリへ書き出す。
 
 **関連型：**
 
 ```go
+type SiteData struct {
+    Title          string
+    Pages          []PageData
+    SearchIndex    []SearchIndexEntry
+    GeneratedAtUTC string
+}
+
 type PageData struct {
     Title              string
+    SourcePath         string
+    OutputPath         string
+    Layout             string
     TocHTML            string
     BodyHTML           string
-    SearchIndexJSON    string
     ReadingTimeMinutes int
-    GeneratedAtUTC     string
+}
+
+type Theme struct {
+    Name       string
+    Components ThemeComponents
+    CSS        string
+    JS         string
+}
+
+type ThemeComponents struct {
+    Header     string
+    Sidebar    string
+    Breadcrumb string
+    TOC        string
+    Search     string
+    Footer     string
+    CodeBlock  string
+    Table      string
+    Pagination string
+}
+
+type SearchIndexEntry struct {
+    URL   string
+    ID    string
+    Title string
+    Body  string
 }
 ```
 
@@ -679,16 +906,87 @@ type PageData struct {
 
 | フィールド | 型 | 条件 |
 |------------|----|------|
-| `Title` | `string` | 空の場合は `Adlaire CI Specification` を使用する。HTML 出力時は `esc()` する。 |
+| `SiteData.Title` | `string` | 空は禁止。HTML 出力時は `esc()` する。 |
+| `SiteData.Pages` | `[]PageData` | 1 件以上。単一 Markdown 入力の場合も 1 ページのサイトとして扱う。 |
+| `SiteData.SearchIndex` | `[]SearchIndexEntry` | サイト内検索用。未生成時は空配列。 |
+| `SearchIndexEntry.URL` | `string` | `PageData.OutputPath` または `PageData.OutputPath + "#" + headingSlug`。空は禁止。 |
+| `SearchIndexEntry.ID` | `string` | 見出し slug。ページ単位エントリの場合は空文字を許可する。 |
+| `SearchIndexEntry.Title` | `string` | 検索結果に表示するタイトル。空は禁止。 |
+| `SearchIndexEntry.Body` | `string` | 段落先頭 200 文字以内の説明文。該当本文がない場合は空文字を許可する。 |
+| `Theme.Name` | `string` | 初期仕様では `adlaire-default` 固定。 |
+| `PageData.Title` | `string` | 空の場合は `SiteData.Title` を使用する。HTML 出力時は `esc()` する。 |
+| `PageData.SourcePath` | `string` | 入力 Markdown の絶対パスまたは `--base-dir` からの相対パス。 |
+| `PageData.OutputPath` | `string` | `--out` からの相対 HTML パス。トップページは `index.html`。 |
+| `PageData.Layout` | `string` | 初期仕様では `document` または `index`。未知値は禁止。 |
 | `TocHTML` | `string` | `buildTOC(headings)` の戻り値。`<ul id="toc-root">` の内側へ挿入する。 |
 | `BodyHTML` | `string` | `ConvertResult.HTML`。`<div class="ci">` の内側へ挿入する。 |
-| `SearchIndexJSON` | `string` | `encoding/json` で生成した JSON 配列文字列。未生成時は `[]`。 |
 | `ReadingTimeMinutes` | `int` | 1 以上。0 以下の場合は `1` として表示する。 |
 | `GeneratedAtUTC` | `string` | UTC ISO 8601。空の場合は生成日時 meta を出力しない。 |
 
-`assembleHTML()` は上記フィールドを結合するだけとし、Markdown 変換、slug 生成、TOC 生成、検索インデックス抽出、警告集計を行ってはならない。
+`assembleSite()` は上記フィールドを結合してファイルを書き出すだけとし、Markdown 変換、slug 生成、TOC 生成、検索インデックス抽出、警告集計を行ってはならない。
 
-**必須 DOM 構造：**
+**出力ディレクトリ構造：**
+
+```text
+{out}/
+  index.html
+  pages/
+    {slug}.html
+  assets/
+    style.css
+    app.js
+    search-index.json
+```
+
+単一 Markdown 入力の場合、本文ページを `index.html` として出力し、`pages/` は作成しなくてよい。Markdown ディレクトリ入力の場合、`index.html` はサイト目次ページとし、各 Markdown ファイルを `pages/{slug}.html` として出力する。
+
+**相対 root 算出：**
+
+`relativeRoot` は、各 HTML ファイルから `assets/` へ到達するための相対 prefix とする。
+
+| `PageData.OutputPath` | `relativeRoot` |
+|-----------------------|----------------|
+| `index.html` | `""` |
+| `pages/example.html` | `"../"` |
+| `pages/dir-example.html` | `"../"` |
+
+初期仕様ではページ HTML を `pages/` 直下に平坦化するため、`relativeRoot` は上表の 2 種類のみとする。将来、`pages/dir/page.html` のような階層出力を導入する場合は、先に本表、リンク解決、検索 index URL、breadcrumb 仕様を改訂する。
+
+**出力更新手順：**
+
+`assembleSite()` は `--out` を直接途中更新してはならない。以下の順で一時ディレクトリへ完全生成してから置換する。
+
+1. `--out` と同じ親ディレクトリに `{basename}.tmp.{pid}` を作成する。
+2. 一時ディレクトリ配下へ `index.html`、ページ HTML、`assets/` をすべて書き出す。
+3. すべてのファイルについて `file.Sync()` と `file.Close()` を完了する。
+4. 一時ディレクトリ内の必須ファイル存在を検証する。
+5. 既存 `--out` が存在する場合は `{basename}.prev.{pid}` へ `os.Rename` する。
+6. 一時ディレクトリを `--out` へ `os.Rename` する。
+7. 置換成功後、旧 `{basename}.prev.{pid}` を削除する。
+
+手順 1〜4 で失敗した場合は一時ディレクトリを削除し、既存 `--out` を変更してはならない。手順 6 で失敗した場合は `{basename}.prev.{pid}` が存在するか確認し、存在する場合は `{basename}.prev.{pid}` を `--out` へ戻す復旧 rename を必ず 1 回試行する。復旧 rename が失敗した場合は stderr に `cannot restore previous output directory: <path>` を出力した後、続けて `cannot replace output directory: <path>` を出力し、終了コード `1` とする。`{basename}.prev.{pid}` が存在しない場合は `cannot replace output directory: <path>` のみを出力し、終了コード `1` とする。
+
+`--out` が既存ファイルでディレクトリではない場合は終了コード `1` とし、stderr に `output path is not directory: <path>` を出力する。
+
+**初期テーマコンポーネント：**
+
+初期実装の theme は `adlaire-default` のみとする。theme component は Go コード内の内製テンプレートとして保持し、外部テンプレートファイルを読み込んではならない。
+
+| コンポーネント | 責務 |
+|----------------|------|
+| `header` | サイト名、現在ページ名、読了時間を表示する。 |
+| `sidebar` | サイト内ページ一覧と現在ページの TOC を表示する。 |
+| `breadcrumb` | `index.html` から現在ページまでの階層を表示する。 |
+| `toc` | 現在ページの見出し TOC を表示する。 |
+| `search` | `assets/search-index.json` を読み込み、サイト内検索 UI を提供する。 |
+| `footer` | 生成時刻とサイト名を表示する。 |
+| `codeblock` | 言語ラベル、コピー操作、折りたたみ状態を提供する。 |
+| `table` | 横スクロール wrapper と列 sort を提供する。 |
+| `pagination` | 前後ページへのリンクを表示する。 |
+
+カスタムテーマ、外部テンプレート、テーマパッケージ、theme component 差し替え、複数 theme 同梱は将来計画とし、初期実装に含めてはならない。
+
+**ページ HTML の必須 DOM 構造：**
 
 ```html
 <!DOCTYPE html>
@@ -697,7 +995,7 @@ type PageData struct {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{PageData.Title}</title>
-  <!-- インライン CSS（ADS トークン + レイアウト + コンポーネント） -->
+  <link rel="stylesheet" href="{relativeRoot}assets/style.css">
 </head>
 <body>
   <div id="progress-bar"></div>   <!-- 読み取り進捗バー（ページ上端固定、高さ 3px、幅 = スクロール率 % → §7.13） -->
@@ -722,17 +1020,48 @@ type PageData struct {
     </main>
   </div>
   <button id="btt" type="button" aria-label="トップへ戻る">↑</button>        <!-- トップへ戻るボタン -->
-  <script id="search-index" type="application/json">{PageData.SearchIndexJSON}</script>
-  <script>…インライン JS…</script>
+  <script src="{relativeRoot}assets/app.js"></script>
 </body>
 </html>
 ```
 
-**HTML 合成の禁止事項：**
-- `PageData.BodyHTML`、`PageData.TocHTML` はすでに HTML として生成済みのため、`assembleHTML()` 内で再エスケープしない。
-- `PageData.SearchIndexJSON` は `encoding/json` の出力だけを受け付け、文字列連結で JSON を自作しない。
-- `<header id="hdr">`、`<nav id="sb">`、`<main id="ct">`、`<div class="ci">`、`<script id="search-index">` の id / class を変更しない。
-- 外部 CSS、外部 JavaScript、外部フォント、外部画像参照を追加しない。
+**ディレクトリ入力時の `index.html` 仕様：**
+
+`index.html` はサイト目次ページとして生成し、Markdown 本文を持たない。`PageData.Layout` は `index` とする。
+
+| 項目 | 仕様 |
+|------|------|
+| `<title>` | `SiteData.Title` |
+| `#doc-title` | `SiteData.Title` |
+| `.ci` 内 | `<h1 id="site-index" class="mh h1">{SiteData.Title}<button class="hn-link" data-href="#site-index" aria-label="リンクをコピー">¶</button></h1>` の後に `<ul class="site-page-list">` を出力する。 |
+| ページ一覧 | `SiteData.Pages` のうち `Layout == "document"` のページを入力ソート順で `<li><a href="{OutputPath}">{Title}</a></li>` として出力する。 |
+| TOC | サイト目次ページの TOC は `site-index` 1 件だけを含める。 |
+| 検索 index | サイト目次ページのエントリを 1 件追加し、`url` は `index.html#site-index`、`id` は `site-index`、`title` は `SiteData.Title`、`body` は空文字とする。 |
+
+**必須 DOM ID / class 契約：**
+
+| セレクター | 個数 | 使用者 | 変更可否 |
+|------------|------|--------|----------|
+| `#progress-bar` | 各 HTML 1 個 | `assets/app.js` §7.13 | 変更禁止 |
+| `#hdr` | 各 HTML 1 個 | CSS / layout | 変更禁止 |
+| `#doc-title` | 各 HTML 1 個 | header | 変更禁止 |
+| `#reading-time` | 各 HTML 1 個 | header | 変更禁止 |
+| `#lay` | 各 HTML 1 個 | CSS / sidebar layout | 変更禁止 |
+| `#sb` | 各 HTML 1 個 | sidebar JS | 変更禁止 |
+| `#sb-search` | 各 HTML 1 個 | TOC/search JS | 変更禁止 |
+| `#toc-root` | 各 HTML 1 個 | TOC JS | 変更禁止 |
+| `#ct` | 各 HTML 1 個 | content layout | 変更禁止 |
+| `.ci` | 各 HTML 1 個 | content width | 変更禁止 |
+| `#btt` | 各 HTML 1 個 | top button JS | 変更禁止 |
+
+実装は上表のセレクターを追加、削除、リネームしてはならない。UI 改善で新しいセレクターが必要な場合は、先に本表へ追加し、§6 と §7 の CSS / JavaScript 契約を同時に更新する。
+
+**サイト合成の禁止事項：**
+- `PageData.BodyHTML`、`PageData.TocHTML` はすでに HTML として生成済みのため、`assembleSite()` 内で再エスケープしない。
+- `assets/search-index.json` は `encoding/json` の出力だけを受け付け、文字列連結で JSON を自作しない。
+- `<header id="hdr">`、`<nav id="sb">`、`<main id="ct">`、`<div class="ci">` の id / class を変更しない。
+- `assets/style.css`、`assets/app.js` 以外の CSS / JavaScript を生成してはならない。
+- 外部 CSS、外部 JavaScript、外部フォント参照を追加しない。
 
 ---
 
@@ -867,7 +1196,7 @@ type PageData struct {
 ### 7.1 テーマ切り替え（廃止）
 
 ADS 採用により、ダークモードおよびテーマトグルボタンは廃止。
-出力 HTML はライトモード固定（`prefers-color-scheme` 非対応）。
+出力サイトはライトモード固定（`prefers-color-scheme` 非対応）。
 
 ### 7.2 サイドバー開閉
 
@@ -924,7 +1253,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 
 ### 7.8 シンタックスハイライト
 
-コードブロックに言語別の色分けをインライン JS で適用する。外部ライブラリ不要。
+コードブロックに言語別の色分けを `assets/app.js` で適用する。外部ライブラリ不要。
 
 **対応言語：** `python` / `bash` / `json` / `sql` / `ini` / `diff`
 
@@ -944,23 +1273,33 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 
 ### 7.9 本文内全文検索
 
-ビルド時に検索インデックスを生成し、インライン JSON として HTML に埋め込む。TOC 検索フィルター（§7.4）と検索 UI を統合し、本文ヒット箇所へのジャンプを提供する。
+ビルド時に `assets/search-index.json` を生成し、`assets/app.js` の検索 UI から読み込む。TOC 検索フィルター（§7.4）と検索 UI を統合し、本文ヒット箇所へのジャンプを提供する。
 
 **インデックス生成仕様（build_spec.go）：**
-ビルド時に全見出しと各段落の先頭 200 文字を抽出し、以下の配列形式で `<script id="search-index">` タグに埋め込む。
+ビルド時に全ページの見出しと各段落の先頭 200 文字を抽出し、以下の配列形式で `assets/search-index.json` に書き出す。
 
 ```json
 [
-  { "id": "anchor-slug", "title": "見出しテキスト", "body": "段落先頭200文字..." },
+  { "url": "pages/example.html#anchor-slug", "id": "anchor-slug", "title": "見出しテキスト", "body": "段落先頭200文字..." },
   ...
 ]
 ```
+
+**検索 index 固定契約：**
+
+- JSON の top-level は配列とする。object wrapper は使用しない。
+- entry の key 順は `url`、`id`、`title`、`body` とする。
+- `encoding/json` の標準エスケープを使用し、独自 pretty print は行わない。
+- entry の並び順は、ページ入力順、同一ページ内では見出し出現順とする。ページ単位エントリは各ページの先頭に 1 件だけ追加する。
+- `body` は HTML タグ除去後のプレーンテキストを Unicode rune 単位で最大 200 文字とする。200 文字を超える場合は 200 文字で切り、三点リーダーを追加しない。
+- 空白、タブ、改行の連続は半角スペース 1 つへ正規化し、前後空白を削除する。
+- `title` と `body` に HTML entity を残してはならない。検索 index は表示前に JS 側で `textContent` として挿入し、`innerHTML` へ直接挿入しない。
 
 **検索 UI の配置：**
 §7.4 の TOC 検索フィルター入力欄を兼用する。入力値が 2 文字以上になった時点でインデックスに対して部分一致検索を実行する。
 
 **ヒット箇所ハイライト：**
-一致したエントリの見出しを TOC 内でハイライト（`.toc-hit` クラス付与）。クリックで対象アンカーへスクロールし、`<mark>` 要素でヒット文字列をページ内マーキングする（外部依存なし・標準 DOM 操作のみ）。
+一致したエントリの見出しを検索結果として表示する。現在ページ内のヒットは TOC 内でハイライト（`.toc-hit` クラス付与）し、クリックで対象アンカーへスクロールする。別ページのヒットは `url` へ遷移する。現在ページ内では `<mark>` 要素でヒット文字列をページ内マーキングする（外部依存なし・標準 DOM 操作のみ）。
 
 **クリア：**
 入力欄を空にすると TOC ハイライトおよびページ内マーキングをすべて解除する。
@@ -1105,21 +1444,22 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 /usr/local/bin/adlaire-ci-build
 ```
 
-`adlaire-ci-build` の実行は、§2 の CLI 引数仕様に従う。引数なしの場合は `DefaultBuildConfig` の `Src` と `Out` を使用する。
+`adlaire-ci-build` の実行は、§2 の CLI 引数仕様に従う。引数なしの場合は `DefaultBuildConfig` の `Src`、`Out`、`Title`、`Theme`、`BaseDir`、`Strict` を使用する。
 
 **実行順序契約：**
 
 1. CLI 引数を検証する。`--help` / `--version` はここで処理し、Markdown 読み込みを行わない。
-2. `--src` を UTF-8 として読み込み、行配列 `lines []string` を作成する。
-3. 見出しを収集し、`[]Heading` と `slugByLine` を作成する。
-4. 脚注定義を収集し、`RenderContext` を初期化する。
-5. `buildTOC(headings)` で `PageData.TocHTML` を作成する。
-6. `convert(lines, headings, ctx)` で `ConvertResult` を作成する。
-7. `injectChapterNavigation(result.HTML, headings)` を適用し、`PageData.BodyHTML` を確定する。
-8. 検索インデックスを `encoding/json` で生成し、`PageData.SearchIndexJSON` を確定する。
-9. `assembleHTML(pageData)` で最終 HTML を生成する。
-10. 出力先と同じディレクトリに一時ファイルを書き込み、成功後に `os.Rename` で `--out` へ置換する。
-11. 出力ファイルのサイズを取得し、stdout に完了行と `[REPORT]` 行を出力する。
+2. `--theme` を検証し、`adlaire-default` の `Theme` を選択する。
+3. `--src` がファイルの場合は 1 ページ、ディレクトリの場合は配下の `.md` ファイルを辞書順に収集する。
+4. 各 Markdown を UTF-8 として読み込み、行配列 `lines []string` を作成する。
+5. 各ページの見出しを収集し、`[]Heading` と `slugByLine` を作成する。
+6. 各ページの脚注定義を収集し、`RenderContext` を初期化する。
+7. `buildTOC(headings)` で `PageData.TocHTML` を作成する。
+8. `convert(lines, headings, ctx)` で `ConvertResult` を作成する。
+9. `injectChapterNavigation(result.HTML, headings)` を適用し、`PageData.BodyHTML` を確定する。
+10. サイト全体の検索インデックスを `encoding/json` で生成し、`SiteData.SearchIndex` を確定する。
+11. `assembleSite(siteData, theme)` で `index.html`、ページ HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` を生成する。
+12. 出力サイトディレクトリのファイル数と合計サイズを取得し、stdout に完了行と `[REPORT]` 行を出力する。
 
 途中で失敗した場合は、失敗段階以降を実行しない。一時ファイルが存在する場合は削除してから終了する。
 
@@ -1127,21 +1467,22 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 | 終了コード | 条件 | 後続処理 |
 |------------|------|----------|
-| `0` | HTML 生成に成功し、`[REPORT]` 行を出力した。 | `runner.go` は成功として扱う。 |
-| `1` | 出力ディレクトリ作成、HTML 書き込み、テンプレート合成など処理中の一般エラー。 | `runner.go` はビルド失敗として扱い、SHA を更新しない。 |
+| `0` | 静的 Web サイト生成に成功し、`[REPORT]` 行を出力した。 | `runner.go` は成功として扱う。 |
+| `1` | 出力ディレクトリ作成、HTML / CSS / JavaScript / search index 書き込み、テンプレート合成など処理中の一般エラー。 | `runner.go` はビルド失敗として扱い、SHA を更新しない。 |
 | `2` | CLI 引数不正、入力ファイル不存在、入力 UTF-8 不正。 | `runner.go` は設定または入力エラーとして扱い、SHA を更新しない。 |
 
-終了コード `0` の場合、stdout には必ず `Converting MD...`、`Building TOC...`、`Assembling HTML...`、`Done → ...`、`[REPORT] ...` をこの順序で出力する。警告がある場合は `[REPORT]` の直前に `[WARN] ...` を 1 件 1 行で出力する。
+終了コード `0` の場合、stdout には必ず `Collecting Markdown...`、`Converting MD...`、`Building site...`、`Writing assets...`、`Done → ...`、`[REPORT] ...` をこの順序で出力する。警告がある場合は `[REPORT]` の直前に `[WARN] ...` を 1 件 1 行で出力する。
 
-終了コード `1` または `2` の場合、stderr に原因を 1 行以上出力し、`[REPORT]` 行は出力しない。途中まで作成した出力 HTML は同一パスへ残してはならず、一時ファイルを削除して終了する。
+終了コード `1` または `2` の場合、stderr に原因を 1 行以上出力し、`[REPORT]` 行は出力しない。途中まで作成した出力サイトは公開用パスへ残してはならず、一時ディレクトリを削除して終了する。
 
 **標準出力：**
 ```
+Collecting Markdown...
 Converting MD...
-Building TOC...
-Assembling HTML...
-Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,673 KB)
-[REPORT] headings=342 tables=128 code_blocks=64 warnings=3 size_warn=false broken_links=1 heading_skips=0 reading_time=87
+Building site...
+Writing assets...
+Done → /opt/adlaire-builder/dist/site  (pages=12 files=15 bytes=1713731)
+[REPORT] pages=12 headings=342 tables=128 code_blocks=64 warnings=3 size_warn=false broken_links=1 heading_skips=0 reading_time=87 theme=adlaire-default
 ```
 
 **変換レポート行（`[REPORT]` プレフィックス）：**
@@ -1149,19 +1490,21 @@ Done → /opt/adlaire-builder/dist/Adlaire-db-spec.html  (1,713,731 bytes / 1,67
 
 | フィールド | 内容 |
 |---|---|
-| `headings` | 出力 HTML 内の見出し要素（`h1`〜`h6`）の総数 |
+| `pages` | 出力した HTML ページ数 |
+| `headings` | 出力サイト内の見出し要素（`h1`〜`h6`）の総数 |
 | `tables` | 変換したテーブルの総数 |
 | `code_blocks` | 変換したコードブロックの総数 |
 | `warnings` | ビルド中に発生した警告件数 |
-| `size_warn` | 出力 HTML が `OUTPUT_SIZE_WARN_MB` を超えた場合 `true`、それ以外 `false`（`OUTPUT_SIZE_WARN_MB = 0` の場合は常に `false`） |
+| `size_warn` | 出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` を超えた場合 `true`、それ以外 `false`（`OUTPUT_SIZE_WARN_MB = 0` の場合は常に `false`） |
 | `broken_links` | 参照先スラグが存在しない内部アンカーリンク（`[label](#anchor)`）の件数 |
 | `heading_skips` | 見出しレベルが 2 段以上の降順スキップとなった件数 |
 | `reading_time` | 推計読了時間（分、切り上げ）。200文字/分で算出 |
+| `theme` | 使用した theme 名。初期仕様では `adlaire-default` |
 
 固定順は以下とし、未使用フィールドの省略は禁止する。
 
 ```text
-headings tables code_blocks warnings size_warn broken_links heading_skips reading_time
+pages headings tables code_blocks warnings size_warn broken_links heading_skips reading_time theme
 ```
 
 `warnings` は出力した `[WARN]` 行数と一致しなければならない。`reading_time` は `ConvertResult.ReadingTimeMinutes`、`broken_links` は `ConvertResult.BrokenLinks`、`heading_skips` は `ConvertResult.HeadingSkips` を使用する。
@@ -1191,6 +1534,121 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 > **フィールド名の対応：** stdout の `[REPORT]` 行は `tables=` / `code_blocks=` の短縮キーを使用するが、`.build_logs/{id}.json` への保存時および `GET /api/output-meta` レスポンスでは `tables_count` / `code_blocks_count` に変換する（→ §22）。
 
 **再実行時の注意：** スラグ重複カウンタ、脚注参照順、脚注定義は `adlaire-ci-build` の 1 実行内で初期化する。通常の `/usr/local/bin/adlaire-ci-build` 実行では複数回実行しても出力は同一になる。Go 版では変換状態をパッケージグローバル変数として共有せず、変換処理ごとに専用の状態構造体を生成する。
+
+---
+
+## 8a. `build_spec.go` 受け入れ fixture
+
+Go 版 `build_spec.go` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/build_spec/` 配下へ追加する。仕様 PR では fixture の期待値を本節で固定する。
+
+### Fixture A: 単一 Markdown 入力
+
+**入力ファイル：** `testdata/build_spec/single/source.md`
+
+~~~markdown
+# Title
+
+Intro paragraph with [self](#title).
+
+## Install
+
+```bash
+echo hello
+```
+
+- [x] done
+- [ ] todo
+
+| Name | Value |
+| ---- | ----- |
+| A | 1 |
+
+[^n]: note body
+
+See footnote[^n].
+~~~
+
+**実行：**
+
+```bash
+adlaire-ci-build --src testdata/build_spec/single/source.md --out /tmp/adlaire-ci-fixture-single --title "Fixture Site"
+```
+
+**期待結果：**
+
+- 終了コード `0`。
+- `/tmp/adlaire-ci-fixture-single/index.html`、`assets/style.css`、`assets/app.js`、`assets/search-index.json` が存在する。
+- `pages/` は存在しない。
+- `index.html` に `<h1 id="title" class="mh h1">Title<button class="hn-link" data-href="#title" aria-label="リンクをコピー">¶</button></h1>` を含む。
+- `index.html` に `<a href="#title">self</a>` を含み、`BROKEN_LINK` 警告を出さない。
+- `index.html` に `<div class="cb-wrap" data-lang="bash">` と `<span class="cl">bash</span>` を含む。
+- `index.html` に `<li class="ml-task"><input type="checkbox" disabled checked>done</li>` と `<li class="ml-task"><input type="checkbox" disabled>todo</li>` を含む。
+- `[REPORT]` は `pages=1`、`theme=adlaire-default` を含む。
+
+### Fixture B: ディレクトリ Markdown 入力
+
+**入力ファイル：**
+
+```text
+testdata/build_spec/site/docs/intro.md
+testdata/build_spec/site/docs/guide/setup.md
+testdata/build_spec/site/docs/guide/setup_copy.md
+```
+
+`intro.md`:
+
+```markdown
+# Intro
+
+Go to [setup](guide/setup.md#setup).
+```
+
+`guide/setup.md`:
+
+```markdown
+# Setup
+
+Body.
+```
+
+`guide/setup_copy.md`:
+
+```markdown
+# Setup
+
+Second.
+```
+
+**実行：**
+
+```bash
+adlaire-ci-build --src testdata/build_spec/site/docs --out /tmp/adlaire-ci-fixture-site --title "Docs"
+```
+
+**期待結果：**
+
+- 終了コード `0`。
+- `/tmp/adlaire-ci-fixture-site/index.html` がサイト目次ページである。
+- document ページは `pages/guide-setup.html`、`pages/guide-setup-copy.html`、`pages/intro.html` として出力される。
+- 入力順は `guide/setup.md`、`guide/setup_copy.md`、`intro.md` の辞書順とし、サイト目次の表示順も同一とする。
+- `intro.html` 内の `guide/setup.md#setup` は、同じ `pages/` ディレクトリ内のページ間リンクとして `guide-setup.html#setup` に変換する。`guide/setup.html#setup`、`pages/guide-setup.html#setup`、元の `guide/setup.md#setup` のまま出力してはならない。
+- 2 つの `# Setup` 見出しはページごとの slug 空間でそれぞれ `setup` とする。ページをまたいだ見出し slug に `-2` を付けてはならない。
+- `assets/search-index.json` は `index.html#site-index`、`pages/guide-setup.html#setup`、`pages/guide-setup-copy.html#setup`、`pages/intro.html#intro` の entry を含む。
+
+### Fixture C: 異常系
+
+| 実行 | 終了コード | stderr |
+|------|------------|--------|
+| `adlaire-ci-build --theme unknown` | `2` | `unknown theme: unknown` |
+| `adlaire-ci-build --src /path/not-found.md` | `2` | `source not found: /path/not-found.md` |
+| `adlaire-ci-build --src testdata/build_spec/empty-dir` | `2` | `no markdown files found: testdata/build_spec/empty-dir` |
+| `adlaire-ci-build --title ""` | `2` | `title must not be empty` |
+
+異常系 fixture では `[REPORT]` を stdout へ出力してはならない。`--out` に既存の正常出力がある場合でも、異常系実行で既存出力を変更してはならない。
+
+### Fixture D: 冪等性
+
+同一入力、同一 CLI 引数で 2 回連続実行した場合、`GeneratedAtUTC` を含む meta 行を除き、全出力ファイルの内容が一致しなければならない。比較対象から除外できるのは、HTML 内の `name="adlaire-generated-at"` meta と footer の生成時刻表示だけとする。検索 index、ページ HTML の本文、CSS、JS、REPORT の数値は一致必須とする。
 
 ---
 
@@ -1263,10 +1721,10 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 | パス | 成熟度 | 用途 |
 |------|--------|------|
 | `/usr/local/bin/adlaire-ci-runner` | 仕様化済み・未実装 | `runner.go` から生成する CI ランナーバイナリ。 |
-| `/usr/local/bin/adlaire-ci-build` | 仕様化済み・未実装 | `build_spec.go` から生成する Markdown → HTML ビルドバイナリ。 |
+| `/usr/local/bin/adlaire-ci-build` | 仕様化済み・未実装 | `build_spec.go` から生成する Markdown → 静的 Web サイトビルドバイナリ。 |
 | `/opt/adlaire-builder/.github_token` | 仕様化済み・未実装 | GitHub PAT。Go 版 `runner.go` が読み込む。 |
 | `/opt/adlaire-builder/.last_sha` | 仕様化済み・未実装 | 前回取得した blob SHA。JSON 形式で保存する。 |
-| `/opt/adlaire-builder/repo/adlaire-db-spec.md` | 仕様化済み・未実装 | GitHub Blobs API から取得した Markdown の書き出し先。 |
+| `/opt/adlaire-builder/repo/docs/` | 仕様化済み・未実装 | GitHub Blobs API から取得した Markdown の書き出し先。単一 Markdown の場合も本ディレクトリ内へ保存する。 |
 | `/opt/adlaire-builder/repo/.ci/pipeline.sh` | 仕様化済み・未実装 | `runner.go` が `bash` で起動するビルド手順。 |
 
 ```
@@ -1274,7 +1732,7 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 ├── .github_token
 ├── .last_sha
 └── repo/
-    ├── adlaire-db-spec.md
+    ├── docs/
     └── .ci/
         └── pipeline.sh
 ```
@@ -1330,7 +1788,7 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 
 ```
 /opt/adlaire-builder/dist/
-└── Adlaire-db-spec.html # HTML 出力先
+└── site/                # 静的 Web サイト出力先
 
 /var/www/html/           # 仕様化済み・未実装の SSH 転送先
 ```
@@ -1348,7 +1806,7 @@ Go 版 CI ランナーでは、`runner.go` が `pipeline.sh` の標準出力か�
 
 ```
 <repo>/
-├── adlaire-db-spec.md   # ソース Markdown（GitHub 上のマスター）
+├── docs   # ソース Markdown（GitHub 上のマスター）
 └── .ci/
     └── pipeline.sh      # ビルド手順定義（実行権限付き）
 ```
@@ -1438,6 +1896,32 @@ type DeployTarget struct {
 
 未知引数、値欠落、相対 `--state-dir` は終了コード `2` とし、ビルド処理を開始しない。
 
+**runner CLI パース固定仕様：**
+
+- 引数は `flag` package 互換の `--name value` と `--name=value` の両方を許可する。
+- 短縮オプション（例：`-s`、`-o`）は禁止する。指定された場合は未知の引数として扱う。
+- 同一引数が複数回指定された場合は最後の値を採用する。ただし `--once` は指定有無にかかわらず `true` として扱う。
+- `--help` と `--version` は他の引数より優先し、`.github_token` 読み込み、lock 作成、状態ファイル読み込み、GitHub API 呼び出しを行わない。
+- stderr のエラー行は末尾に改行 1 つを付ける。複数エラーをまとめて出力せず、最初に検出したエラー 1 件で終了する。
+
+**固定出力：**
+
+| 条件 | stdout |
+|------|--------|
+| `--help` | `Usage: adlaire-ci-runner [--state-dir path] [--once] [--version] [--help]` |
+| `--version` | `adlaire-ci-runner ADLAIRE_CI_SPEC go=<runtime.Version()>` |
+
+**CLI 異常系：**
+
+| 条件 | 終了コード | stderr |
+|------|------------|--------|
+| 未知の引数 | `2` | `unknown option: <name>` |
+| `--state-dir` 値欠落 | `2` | `missing value: --state-dir` |
+| `--state-dir` が空文字 | `2` | `state directory must not be empty` |
+| `--state-dir` が相対パス | `2` | `state directory must be absolute: <path>` |
+| `--state-dir` が存在しない | `2` | `state directory not found: <path>` |
+| `--state-dir` がディレクトリではない | `2` | `state path is not directory: <path>` |
+
 以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`BUILD_COOLDOWN_SECONDS`、`HISTORY_KEEP_N`、`FORCE_BUILD_INTERVAL`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` を Go 版 runner の標準設定とする。
 
 ```text
@@ -1449,7 +1933,7 @@ HISTORY_KEEP_N         = 10   # スナップショット保持世代数（0 = �
 FORCE_BUILD_INTERVAL   = 0    # 強制再ビルド間隔（時間。0 = 無効）→ §13
 LOG_KEEP_N             = 50   # ビルドログ保持件数（0 = 無制限）→ §13
 API_CIRCUIT_BREAKER_THRESHOLD = 3    # 全ブランチ連続失敗の許容周回数（0 = 無効）→ §13
-OUTPUT_SIZE_WARN_MB           = 5    # 出力 HTML サイズ警告閾値（MB。0 = 無効）→ §13・§8
+OUTPUT_SIZE_WARN_MB           = 5    # 出力サイト合計サイズ警告閾値（MB。0 = 無効）→ §13・§8
 WEEKLY_SUMMARY_ENABLED        = true # 週次サマリー Webhook の有効/無効 → §13
 WEEKLY_SUMMARY_DAY            = 0    # 送信曜日（0=月曜〜6=日曜） → §13
 WEEKLY_SUMMARY_HOUR           = 9    # 送信時刻（0〜23、ローカル時刻） → §13
@@ -1459,10 +1943,10 @@ WEEKLY_SUMMARY_HOUR           = 9    # 送信時刻（0〜23、ローカル時�
 BRANCH_TARGETS = [
     {
         "branch":      "main",                                        # 監視対象ブランチ
-        "target_file": "adlaire-db-spec.md",                         # 監視対象ファイル
+        "target_file": "docs",                                        # 監視対象 Markdown ファイルまたはディレクトリ
         "sha_file":    "/opt/adlaire-builder/.last_sha",             # blob SHA キャッシュ（JSON 形式: {"sha": "..."}）
-        "src":         "/opt/adlaire-builder/repo/adlaire-db-spec.md",  # Blobs API 書き出し先
-        "out":         "/opt/adlaire-builder/dist/Adlaire-db-spec.html", # ビルド成果物パス
+        "src":         "/opt/adlaire-builder/repo/docs",              # Blobs API 書き出し先
+        "out":         "/opt/adlaire-builder/dist/site",              # ビルド成果物ディレクトリ
         "deploy_targets": [
             {
                 "host":     "<配信サーバーIP>",                       # SSH 転送先ホスト
@@ -1514,6 +1998,94 @@ atomic write 失敗時は対象ファイルを更新済みとして扱わない�
 
 PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` を読めない場合は PID 実行中確認不能として終了コード `4` とする。
 
+**runner 状態ファイル schema（実装固定）：**
+
+`.last_sha` / `BranchTarget.SHAFile`:
+
+```json
+{"sha":""}
+```
+
+| キー | 型 | 必須 | 許容値 |
+|------|----|------|--------|
+| `sha` | string | 必須 | 空文字または Git blob SHA。空文字は初回実行扱い。 |
+
+`.branch_config`:
+
+```json
+{
+  "branch_targets": [
+    {
+      "branch": "main",
+      "target_file": "docs",
+      "sha_file": "/opt/adlaire-builder/.last_sha",
+      "src": "/opt/adlaire-builder/repo/docs",
+      "out": "/opt/adlaire-builder/dist/site",
+      "deploy_targets": [
+        {"host": "192.0.2.1", "user": "deploy", "dest_dir": "/var/www/html"}
+      ]
+    }
+  ]
+}
+```
+
+`.branch_config` が存在しない場合は §12 の `BRANCH_TARGETS` 既定値を使用する。存在する場合は `branch_targets` を必須キーとし、未知キーは `CONFIG_UNKNOWN_KEY: key={key}` を出して無視する。`branch_targets` が空配列の場合は終了コード `2` とする。
+
+`.build_state`:
+
+```json
+{
+  "running": false,
+  "current_build_id": null,
+  "queued": [],
+  "last_started_at": null,
+  "last_finished_at": null,
+  "weekly_summary_last_sent_at": null,
+  "weekly_summary_sent_date": null
+}
+```
+
+| キー | 型 | 必須 | 更新責務 |
+|------|----|------|----------|
+| `running` | boolean | 必須 | lock 取得後 `true`、終了直前 `false`。 |
+| `current_build_id` | string/null | 必須 | 実行中 build id。終了後は `null`。 |
+| `queued` | array | 必須 | API 側の手動キュー用。runner は読み取りのみとし、初期実装では変更しない。 |
+| `last_started_at` | string/null | 必須 | UTC ISO 8601。 |
+| `last_finished_at` | string/null | 必須 | UTC ISO 8601。 |
+| `weekly_summary_last_sent_at` | string/null | 必須 | UTC ISO 8601。 |
+| `weekly_summary_sent_date` | string/null | 必須 | `YYYY-MM-DD`。二重送信防止に使用する。 |
+
+`.build_circuit_state`:
+
+```json
+{
+  "open": false,
+  "consecutive_failures": 0,
+  "opened_at": null,
+  "last_failure_at": null,
+  "last_error": null
+}
+```
+
+`.notify_pending` entry:
+
+```json
+{
+  "event": "success",
+  "url": "https://example.com/hook",
+  "payload": {},
+  "queued_at": "2026-09-16T00:00:00Z",
+  "retry_count": 1,
+  "last_error": "connection refused"
+}
+```
+
+`.pending_transfers` entry は §14a の形式を正とする。JSON array 内の entry は投入順を保持し、再試行も投入順で処理する。重複統合は `out`、`host`、`user`、`dest_dir` の 4 項目完全一致で判定する。
+
+**build id 契約：**
+
+runner が生成する build id は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` とする。同一秒内に複数 target のビルドログが必要な場合は、2 件目以降を `b{YYYYMMDDHHmmss}-2`、`-3` とする。build id は `.build_logs/{id}.json`、`.build_history`、`.snapshots/{id}/` で同一値を使用する。
+
 ---
 
 ## 13. 処理フロー
@@ -1533,6 +2105,39 @@ PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` �
 9. `.build_lock` を削除する。
 
 途中失敗時は、失敗が発生した段階以降の成功前提更新を行わない。例えば `pipeline.sh` 失敗時は `sha_file`、snapshot、転送成功履歴を更新しない。ただし `.build_logs/{id}.json`、`.build_history`、`.build_state.running=false`、通知 pending は失敗記録として保存する。
+
+**ターゲット結果分類：**
+
+runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいずれか 1 つの `target_status` を確定する。
+
+| `target_status` | 条件 | runner 終了コードへの影響 |
+|-----------------|------|---------------------------|
+| `skipped_no_change` | SHA 一致かつ強制ビルド条件未達。 | 失敗扱いしない。 |
+| `skipped_cooldown` | クールダウンで全体処理を開始しない。 | `0`。 |
+| `success` | pipeline 成功、SHA 更新成功、deploy target がないか全 deploy target が成功。 | `0` 候補。 |
+| `success_deploy_pending` | pipeline 成功、SHA 更新成功、1 件以上の deploy が pending。 | `1`。 |
+| `failure_api` | GitHub API が全再試行失敗。 | 全 target がこれなら `3`、一部なら `1`。 |
+| `failure_decode` | Blob Base64 decode または Markdown 書き出し失敗。 | `1`。 |
+| `failure_precheck` | 事前チェック失敗。 | `1`。 |
+| `failure_build` | `pipeline.sh` が非 0 終了または timeout。 | `1`。 |
+| `failure_state_write` | SHA、ログ、履歴、状態ファイルの必須更新に失敗。 | `1`。 |
+
+`BRANCH_TARGETS` が複数ある場合、runner は設定不正を除き、1 target の失敗で全体処理を中断しない。全 target 処理後、最も重い終了コードを採用する。重さは `4 > 3 > 2 > 1 > 0` とする。
+
+**更新可否マトリクス：**
+
+| 状況 | `sha_file` | `.build_logs/{id}.json` | `.build_history` | deploy | snapshot |
+|------|------------|-------------------------|------------------|--------|----------|
+| 変更なし | 更新しない | 作成しない | 追記しない | 実行しない | 作成しない |
+| 強制ビルド成功 | 新 SHA または既存 SHA を保存 | 作成する | 追記する | 実行する | deploy 成功時のみ作成 |
+| API 失敗 | 更新しない | 作成する | 追記する | 実行しない | 作成しない |
+| Blob decode 失敗 | 更新しない | 作成する | 追記する | 実行しない | 作成しない |
+| 事前チェック失敗 | 更新しない | 作成する | 追記する | 実行しない | 作成しない |
+| pipeline 失敗 | 更新しない | 作成する | 追記する | 実行しない | 作成しない |
+| pipeline 成功・deploy 成功 | 更新する | 作成する | 追記する | 実行する | 作成する |
+| pipeline 成功・deploy pending | 更新する | 作成する | 追記する | pending へ投入 | 作成しない |
+
+`sha_file` は pipeline 成功後、deploy 実行前に更新する。理由は、ビルド成果物生成が成功した時点で入力 SHA の処理は完了しており、deploy 失敗は `.pending_transfers` の責務で再試行するためである。
 
 **状態ファイル破損時の処理：**
 
@@ -1600,7 +2205,7 @@ runner.go 起動（systemd タイマーから呼び出し）
     │   │   └─ API 失敗時：各フィールドを null として記録し、処理続行（ビルドは妨げない）
     │   │
     │   ├─ [事前チェック] pipeline.sh 実行前に以下を確認し、不足時は ERROR ログ＋deploy_failure Webhook 通知、このエントリをスキップ
-    │   │   ├─ ディスク空き容量 ≥ max(出力ファイル推定サイズ × 3, 64MiB)。取得は `syscall.Statfs(outDir)` を使用する
+    │   │   ├─ ディスク空き容量 ≥ max(出力サイト推定サイズ × 3, 64MiB)。取得は `syscall.Statfs(outDir)` を使用する
     │   │   ├─ `adlaire-ci-build` が存在し実行可能であること（`os.Stat` と mode bit）
     │   │   └─ `/usr/local/bin/adlaire-ci-build --version` が終了コード 0 で、stdout に `adlaire-ci-build` と `ADLAIRE_CI_SPEC` を含むこと
     │   │
@@ -1617,15 +2222,15 @@ runner.go 起動（systemd タイマーから呼び出し）
     │   │           → 送信失敗の場合：ERROR ログ、.notify_pending へキューイング（success と同一形式）
     │   │
     │   └─ sha_file を新 SHA で更新（`{"sha": "<new_sha>"}` を JSON 書き込み）
-    │        └─ SSH ファイル転送（deploy_targets リストの各エントリへ転送 → §14a）
-    │             ├─ [転送後整合性検証] ssh user@host "sha256sum /dest/file" でリモート SHA を取得
-    │             │   ├─ ローカル sha256 と一致 → 転送成功
+    │        └─ SSH サイト転送（deploy_targets リストの各エントリへ転送 → §14a）
+    │             ├─ [転送後整合性検証] ssh user@host "sha256sum /dest/<relative-path>" でリモート SHA を取得
+    │             │   ├─ 全ファイルのローカル sha256 と一致 → 転送成功
     │             │   └─ 不一致またはコマンド失敗 → ERROR ログ、ペンディングキューへ再投入（§14a）
     │             └─ 整合性検証成功後 → スナップショット保存（→ §14b）
     │
     │        [出力サイズチェック] OUTPUT_SIZE_WARN_MB > 0 の場合
-    │        出力 HTML ファイルのサイズを取得し、閾値と比較：
-    │            size_mb = file_size_bytes / (1024 * 1024)
+    │        出力サイト配下の通常ファイル合計サイズを取得し、閾値と比較：
+    │            size_mb = total_site_bytes / (1024 * 1024)
     │            size_mb > OUTPUT_SIZE_WARN_MB の場合：
     │            → WARN ログ（`OUTPUT_SIZE_WARN: size={size_mb:.1f}MB threshold={OUTPUT_SIZE_WARN_MB}MB`）
     │            → ビルドログの size_warn フィールドを true に設定（§8）
@@ -1682,15 +2287,52 @@ set -euo pipefail
 
 ビルド実行コマンドは `pipeline.sh` 内に直接記述する（`runner.go` は参照しない）。`adlaire-ci-build` は `build_spec.go` から生成した Go 版バイナリである。
 
+**runner からの実行契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| command | `bash {srcParent}/.ci/pipeline.sh` |
+| working directory | `{srcParent}` |
+| timeout | `.server_config.build_timeout_seconds` が存在すればその値、なければ `300` 秒。 |
+| stdout/stderr | それぞれ最大 1 MiB までメモリに保持し、超過分は末尾 1 MiB を保存する。超過時は `stdout_truncated` / `stderr_truncated` を `true` にする。 |
+| 環境変数 | 親 process の環境を引き継ぎ、下表の値で上書きする。 |
+
+| 環境変数 | 値 |
+|----------|----|
+| `ADLAIRE_CI_SRC` | `BranchTarget.Src` |
+| `ADLAIRE_CI_OUT` | `BranchTarget.Out` |
+| `ADLAIRE_CI_BRANCH` | `BranchTarget.Branch` |
+| `ADLAIRE_CI_BUILD_ID` | build id |
+| `ADLAIRE_CI_TARGET_FILE` | `BranchTarget.TargetFile` |
+| `ADLAIRE_CI_STATE_DIR` | `RunnerConfig.StateDir` |
+
+`pipeline.sh` が timeout した場合、runner は process group を終了し、`target_status="failure_build"`、`error="pipeline timeout"` として記録する。timeout 時も stdout/stderr の取得済み内容は `.build_logs/{id}.json` に保存する。
+
+**GitHub API 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| Base URL | `https://api.github.com` |
+| User-Agent | `adlaire-ci-runner` |
+| Authorization | `Bearer {token}` |
+| Accept | `application/vnd.github+json` |
+| API version header | `X-GitHub-Api-Version: 2022-11-28` |
+| timeout | 30 秒 |
+| retry 対象 | network error、timeout、HTTP `429`、`500`、`502`、`503`、`504` |
+| retry 対象外 | HTTP `400`、`401`、`403`（rate limit を除く）、`404`、`422` |
+| backoff | `API_RETRY_BASE_SECONDS * 2^attempt` 秒。attempt は 0 始まり。 |
+
+HTTP `401` は `failure_api` とし、ERROR ログ `GITHUB_AUTH_FAILED` を出す。HTTP `404` は `target_file` または branch 設定不正として `failure_api` とし、ERROR ログ `GITHUB_NOT_FOUND: branch={branch} target={target_file}` を出す。HTTP `403` で `X-RateLimit-Remaining: 0` の場合のみ rate limit として reset まで待機する。
+
 ---
 
-## 14a. SSH ファイル転送
+## 14a. SSH サイト転送
 
 本節は、Go 版 CI ランナーの SSH 転送標準仕様である。
 
-Go 版 `runner.go` は、`pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節を SSH 転送の正本仕様とする。
+Go 版 `runner.go` は、`pipeline.sh` 成功後に、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節を SSH 転送の正本仕様とする。
 
-`runner.go` は `pipeline.sh` 成功後に、出力ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。SSH コマンドは `ssh` バイナリを `exec.CommandContext` で直接起動し、`/bin/sh -c` を使わない。
+`runner.go` は `pipeline.sh` 成功後に、出力サイトディレクトリ配下の全ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。SSH コマンドは `ssh` バイナリを `exec.CommandContext` で直接起動し、`/bin/sh -c` を使わない。
 
 ### 設定値
 
@@ -1702,19 +2344,19 @@ Go 版 `runner.go` は、`pipeline.sh` 成功後に、出力ファイルを SSH 
 | `user` | SSH 接続ユーザー | `"deploy"` |
 | `dest_dir` | 配信サーバー上の転送先ディレクトリ | `"/var/www/html"` |
 
-転送対象ファイルは `BRANCH_TARGETS[n]["out"]` から自動導出する。`deploy_targets` に複数エントリを定義した場合は全ての転送先へ順次転送する。
+転送対象は `BRANCH_TARGETS[n]["out"]` のディレクトリ配下にある通常ファイルすべてとする。`deploy_targets` に複数エントリを定義した場合は全ての転送先へ順次転送する。
 
 ### 差分検出
 
-転送前にリモートサーバーで対象ファイルの SHA256 ハッシュを取得し、ローカルファイルのハッシュと比較する。
+転送前にリモートサーバーで対象ファイルごとの SHA256 ハッシュを取得し、ローカルファイルのハッシュと比較する。
 
 ```bash
 # runner.go が os/exec 経由で実行
-ssh <user>@<host> sha256sum <dest_dir>/<filename>
+ssh <user>@<host> sha256sum <dest_dir>/<relative-path>
 ```
 
-- ハッシュが一致 → スキップ（`SKIP` ログを記録）
-- ハッシュが不一致、またはリモートにファイルが存在しない → 転送実行
+- ハッシュが一致 → 当該ファイルをスキップ（`SKIP` ログを記録）
+- ハッシュが不一致、またはリモートにファイルが存在しない → 当該ファイルを転送する
 
 ### 転送
 
@@ -1722,7 +2364,7 @@ stdin パイプ経由で SSH 転送する。
 
 ```bash
 # runner.go が os/exec（StdinPipe）経由で実行
-ssh <user>@<host> tee <dest_dir>/<filename>
+ssh <user>@<host> 'mkdir -p <dest_dir>/<relative-dir> && tee <dest_dir>/<relative-path>'
 ```
 
 runner は local file を開き、SSH process の stdin へ `io.Copy` で送る。リモート側 stdout は破棄してよいが、stderr は失敗理由として `.build_logs/{id}.json.error` と ERROR ログへ記録する。
@@ -1736,7 +2378,7 @@ runner は local file を開き、SSH process の stdin へ `io.Copy` で送る�
   {
     "branch_idx": 0,
     "deploy_idx": 0,
-    "out": "/opt/adlaire-builder/dist/Adlaire-db-spec.html",
+    "out": "/opt/adlaire-builder/dist/site",
     "host": "192.0.2.1",
     "user": "deploy",
     "dest_dir": "/var/www/html",
@@ -1772,12 +2414,12 @@ ssh {user}@{host} sha256sum {dest_dir}/{filename}
 
 | 状態 | ログレベル | メッセージ例 |
 |------|-----------|------------|
-| スキップ（差分なし） | `INFO` | `SKIP Adlaire-db-spec.html: no change` |
-| 転送成功 | `INFO` | `DEPLOY Adlaire-db-spec.html → 192.0.2.1` |
-| 転送失敗→キューイング | `ERROR` | `DEPLOY FAILED Adlaire-db-spec.html: <reason> (queued)` |
-| ペンディング再試行成功 | `INFO` | `PENDING RETRY OK Adlaire-db-spec.html → 192.0.2.1` |
-| ペンディング再試行失敗 | `ERROR` | `PENDING RETRY FAILED Adlaire-db-spec.html: <reason>` |
-| 整合性検証失敗→再投入 | `ERROR` | `VERIFY FAILED Adlaire-db-spec.html → 192.0.2.1: checksum mismatch (queued)` |
+| スキップ（差分なし） | `INFO` | `SKIP site: no change` |
+| 転送成功 | `INFO` | `DEPLOY site → 192.0.2.1` |
+| 転送失敗→キューイング | `ERROR` | `DEPLOY FAILED site: <reason> (queued)` |
+| ペンディング再試行成功 | `INFO` | `PENDING RETRY OK site → 192.0.2.1` |
+| ペンディング再試行失敗 | `ERROR` | `PENDING RETRY FAILED site: <reason>` |
+| 整合性検証失敗→再投入 | `ERROR` | `VERIFY FAILED site → 192.0.2.1: checksum mismatch (queued)` |
 
 ---
 
@@ -1795,9 +2437,9 @@ Go 版 `runner.go` は、SSH 転送成功後に `.snapshots/` ディレクトリ
 /opt/adlaire-builder/
 └── .snapshots/
     ├── b20260915100000/           # build_id = b{YYYYMMDDHHmmss}
-    │   └── Adlaire-db-spec.html  # ビルド成果物のコピー
+    │   └── site  # ビルド成果物のコピー
     ├── b20260914180000/
-    │   └── Adlaire-db-spec.html
+    │   └── site
     └── ...
 ```
 
@@ -1860,6 +2502,207 @@ Go 版 `runner.go` は、ビルドごとに `.build_logs/{id}.json` を作成す
 | ログ世代管理 | `LOG_KEEP_N` を超過した `.build_logs/{id}.json` を古いものから削除する。 |
 
 これらのログ項目を実装対象に含める時点で、§10a の実装対象、§12 の設定値、§13 の処理フロー、§22 の API レスポンス仕様と整合させる。
+
+**`.build_logs/{id}.json` 完全 schema：**
+
+```json
+{
+  "id": "b20260916010000",
+  "branch": "main",
+  "target_file": "docs",
+  "target_status": "success",
+  "started_at": "2026-09-16T01:00:00Z",
+  "finished_at": "2026-09-16T01:00:12Z",
+  "duration_seconds": 12,
+  "commit": {
+    "sha": "abcdef",
+    "message": "Update docs",
+    "author": "example",
+    "date": "2026-09-16T00:59:00Z"
+  },
+  "blob_sha": "012345",
+  "previous_blob_sha": "",
+  "pipeline": {
+    "exit_code": 0,
+    "stdout": "...",
+    "stderr": "",
+    "stdout_truncated": false,
+    "stderr_truncated": false
+  },
+  "report": {
+    "pages": 1,
+    "headings": 1,
+    "tables_count": 0,
+    "code_blocks_count": 0,
+    "warnings_count": 0,
+    "size_warn": false,
+    "broken_links": 0,
+    "heading_skips": 0,
+    "reading_time": 1,
+    "theme": "adlaire-default"
+  },
+  "warnings": [],
+  "deploy": [
+    {
+      "host": "192.0.2.1",
+      "user": "deploy",
+      "dest_dir": "/var/www/html",
+      "status": "success",
+      "transfer_verified": true,
+      "files_total": 3,
+      "files_uploaded": 3,
+      "files_skipped": 0,
+      "bytes_uploaded": 1234,
+      "error": null
+    }
+  ],
+  "snapshot_id": "b20260916010000",
+  "error": null
+}
+```
+
+| キー | 型 | 必須 | 条件 |
+|------|----|------|------|
+| `id` | string | 必須 | build id。 |
+| `branch` | string | 必須 | `BranchTarget.Branch`。 |
+| `target_file` | string | 必須 | `BranchTarget.TargetFile`。 |
+| `target_status` | string | 必須 | §13 の分類値。 |
+| `started_at` / `finished_at` | string | 必須 | UTC ISO 8601。 |
+| `duration_seconds` | integer | 必須 | 0 以上。 |
+| `commit` | object | 必須 | 取得失敗時は各値を `null` にする。 |
+| `blob_sha` | string/null | 必須 | GitHub Trees API で検出した SHA。API 失敗時は `null`。 |
+| `previous_blob_sha` | string | 必須 | sha_file 読み込み値。未設定時は空文字。 |
+| `pipeline` | object | 必須 | pipeline 未実行時も `exit_code:null`、stdout/stderr 空文字で保存する。 |
+| `report` | object/null | 必須 | `[REPORT]` が存在しない場合は `null`。 |
+| `warnings` | string[] | 必須 | `[WARN]` 行から prefix を除いた文字列配列。 |
+| `deploy` | object[] | 必須 | deploy target がない場合は空配列。 |
+| `snapshot_id` | string/null | 必須 | snapshot 未作成時は `null`。 |
+| `error` | string/null | 必須 | 成功時 `null`。失敗時は固定文言を保存する。 |
+
+`.build_logs/{id}.json` は `encoding/json` で生成し、末尾改行を付ける。未知キーを追加してはならない。`report.tables_count` と `report.code_blocks_count` は stdout `[REPORT]` の `tables`、`code_blocks` から変換して保存する。
+
+**`.build_history` JSON Lines schema：**
+
+`.build_history` は 1 行 1 JSON object とし、各行は次の schema を満たす。
+
+```json
+{"id":"b20260916010000","branch":"main","target_file":"docs","status":"success","started_at":"2026-09-16T01:00:00Z","finished_at":"2026-09-16T01:00:12Z","duration_seconds":12,"commit_sha":"abcdef","blob_sha":"012345","pages":1,"warnings":0,"size_warn":false,"output_sha256":null,"rollback_from":null}
+```
+
+`status` は `target_status` と同じ値を保存する。`output_sha256` は出力サイト全体 manifest の SHA-256 hex とし、manifest 生成に失敗した場合のみ `null` を許可する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
+
+**固定エラー文言：**
+
+| 条件 | `error` |
+|------|---------|
+| GitHub 認証失敗 | `github authentication failed` |
+| GitHub target 不在 | `github target not found` |
+| GitHub API 全再試行失敗 | `github api failed` |
+| Blob decode 失敗 | `blob decode failed` |
+| Markdown 書き出し失敗 | `source write failed` |
+| 事前チェック失敗 | `precheck failed` |
+| pipeline timeout | `pipeline timeout` |
+| pipeline 非 0 | `pipeline failed` |
+| deploy pending | `deploy pending` |
+| 状態ファイル書き込み失敗 | `state write failed` |
+
+---
+
+## 15a. `runner.go` 受け入れ fixture
+
+Go 版 `runner.go` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
+
+### Fixture R1: CLI 異常系
+
+| 実行 | 終了コード | stdout | stderr |
+|------|------------|--------|--------|
+| `adlaire-ci-runner --help` | `0` | `Usage: adlaire-ci-runner [--state-dir path] [--once] [--version] [--help]` | 空 |
+| `adlaire-ci-runner --state-dir relative` | `2` | 空 | `state directory must be absolute: relative` |
+| `adlaire-ci-runner --unknown` | `2` | 空 | `unknown option: --unknown` |
+
+### Fixture R2: 変更なし skip
+
+**前提状態：**
+
+```text
+testdata/runner/r2/state/.github_token
+testdata/runner/r2/state/.last_sha
+testdata/runner/r2/state/.branch_config
+```
+
+`.last_sha`:
+
+```json
+{"sha":"blob-1"}
+```
+
+GitHub Trees API fake response は `target_file=docs` の SHA として `blob-1` を返す。
+
+**期待結果：**
+
+- 終了コード `0`。
+- `.last_sha` は変更しない。
+- `.build_logs/` に新規 log を作成しない。
+- `.build_history` に追記しない。
+- stdout slog に INFO ログ `NO_CHANGE: branch=main target=docs sha=blob-1` を 1 件出力する。
+
+### Fixture R3: 変更あり build 成功 deploy なし
+
+**前提状態：**
+
+- `.last_sha` は `{"sha":"old-blob"}`。
+- GitHub Trees API fake response は `new-blob` を返す。
+- GitHub Blobs API fake response は UTF-8 Markdown を Base64 で返す。
+- `deploy_targets` は空配列。
+- fake `.ci/pipeline.sh` は終了コード `0` で、stdout に `adlaire-ci-build` の `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default` を出力する。
+
+**期待結果：**
+
+- 終了コード `0`。
+- `.last_sha` は `{"sha":"new-blob"}` に atomic write される。
+- `.build_logs/{id}.json` が作成され、`target_status="success"`、`pipeline.exit_code=0`、`report.pages=1`、`report.tables_count=0`、`deploy=[]`、`error=null` を含む。
+- `.build_history` に同じ `id` の JSON Lines が 1 行追記される。
+- `.build_state.running` は終了時 `false`、`current_build_id` は `null`。
+- `.build_lock` は終了時に存在しない。
+
+### Fixture R4: pipeline 失敗
+
+**前提状態：**
+
+- GitHub fake response は変更ありを返す。
+- fake `.ci/pipeline.sh` は終了コード `7`、stdout `before fail`、stderr `failed` を出力する。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.last_sha` は旧 SHA のまま。
+- `.build_logs/{id}.json` は `target_status="failure_build"`、`pipeline.exit_code=7`、`pipeline.stdout="before fail"`、`pipeline.stderr="failed"`、`error="pipeline failed"` を含む。
+- `.build_history` に `status="failure_build"` の行を追記する。
+- deploy、snapshot は実行しない。
+
+### Fixture R5: deploy pending
+
+**前提状態：**
+
+- pipeline は成功する。
+- `deploy_targets` は 1 件。
+- fake `ssh` は転送時に終了コード `255` を返す。
+
+**期待結果：**
+
+- 終了コード `1`。
+- `.last_sha` は新 SHA に更新する。
+- `.pending_transfers` に `out`、`host`、`user`、`dest_dir`、`failed_at`、`retry_count=1` を持つ entry を 1 件追加する。
+- `.build_logs/{id}.json` は `target_status="success_deploy_pending"`、`deploy[0].status="pending"`、`deploy[0].transfer_verified=false`、`error="deploy pending"` を含む。
+- snapshot は作成しない。
+
+### Fixture R6: lock 競合
+
+`.build_lock` が存在し、`pid` が `/proc/{pid}` に存在する実行中 PID を指す場合、runner は終了コード `0` で終了し、`.build_state`、`.build_logs/`、`.build_history` を変更しない。stdout slog に `BUILD_SKIP: already running (PID {pid})` を出力する。
+
+### Fixture R7: 状態破損
+
+`.notify_pending` が JSON として壊れている場合、runner は `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`.notify_pending` を `[]` で再生成する。その後、通常処理を継続する。退避ファイル名の timestamp は UTC とし、秒単位で固定する。
 
 ---
 
@@ -2028,7 +2871,7 @@ admin/index.html（標準管理ツール、仕様化済み・未実装）
 Host              = "127.0.0.1"                               // バインドアドレス（外部公開禁止）
 Port              = 8765                                      // リッスンポート
 CredentialsFile   = "/opt/adlaire-builder/.admin_credentials" // 認証情報ファイル
-OutputURL         = "https://example.com/Adlaire-db-spec.html" // 出力ファイルの公開 URL
+OutputURL         = "https://example.com/" // 出力サイトの公開 URL
 HistoryFile       = "/opt/adlaire-builder/.build_history"     // ビルド履歴ファイル
 NotifyConfigFile  = "/opt/adlaire-builder/.notify_config"     // Webhook 通知設定
 ServerConfigFile  = "/opt/adlaire-builder/.server_config"     // サーバー設定
@@ -2123,7 +2966,7 @@ sudo journalctl -u adlaire-ci-api -f        # ログ確認
 | `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `runner.go` | 対象 ID の API は `500` を返し、既存ファイルは上書きしない。 |
 | `.build_lock` | text | 不在 | `runner.go` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
 | `.branch_config` | JSON object | 不在 | `api_server.go` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`BRANCH_TARGETS` デフォルトへフォールバックする。 |
-| `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null}` | `runner.go` / `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `runner.go` / `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.build_circuit_state` | JSON object | `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` | `runner.go` / `api_server.go` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.repo_config` | JSON object | `{}` | `api_server.go` | `.repo_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、スクリプト定数へフォールバックする。 |
 | `.config_log` | JSON Lines | 空ファイル | `api_server.go` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
@@ -2249,10 +3092,10 @@ Email object:
   "branches": [
     {
       "branch": "main",
-      "target_file": "adlaire-db-spec.md",
+      "target_file": "docs",
       "sha_file": "/opt/adlaire-builder/.last_sha",
-      "src": "/opt/adlaire-builder/repo/adlaire-db-spec.md",
-      "out": "/opt/adlaire-builder/dist/Adlaire-db-spec.html",
+      "src": "/opt/adlaire-builder/repo/docs",
+      "out": "/opt/adlaire-builder/dist/site",
       "deploy_targets": [
         { "host": "192.0.2.1", "user": "deploy", "dest_dir": "/var/www/html/" }
       ]
@@ -2274,7 +3117,7 @@ Email object:
 | `deploy_targets[].user` | string | 必須 | 1〜64 文字 | SSH user。 |
 | `deploy_targets[].dest_dir` | string | 必須 | 絶対パス | 転送先ディレクトリ。 |
 
-`.branch_config` が不在の場合、`GET /api/branch-config` は `source: "default"` と `BRANCH_TARGETS` の定数値を返す。`.branch_config` が存在する場合、`source: "file"` とファイル内容を返す。
+`.branch_config` が不在の場合、`GET /api/branch-config` は `source: "default"` と `BRANCH_TARGETS` の定数値を返す。`.branch_config` が存在する場合、`source: "file"` とファイル内容を返す。API は `branches: []` を `.branch_config` の空配列保存として扱ってはならない。`POST /api/branch-config` で `branches: []` を受け取った場合は `.branch_config` を削除し、default 復帰として扱う。
 
 **`.repo_config` schema：**
 
@@ -2456,7 +3299,7 @@ Report object:
 | `tables_count` | integer | 必須 | テーブル数。 |
 | `code_blocks_count` | integer | 必須 | コードブロック数。 |
 | `warnings_count` | integer | 必須 | 警告件数。 |
-| `size_warn` | boolean | 必須 | 出力 HTML サイズ警告。 |
+| `size_warn` | boolean | 必須 | 出力サイトサイズ警告。 |
 | `broken_links` | integer | 必須 | 内部リンク不整合数。 |
 | `heading_skips` | integer | 必須 | 見出しレベルスキップ数。 |
 | `reading_time` | integer | 必須 | 推計読了時間。 |
@@ -2503,12 +3346,12 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST /api/repo-config` | `.repo_config` | `.repo_config`, `.config_log` | 未指定キーは保持する。 |
 | `GET /api/branch-config` | `.branch_config` | なし | 不在時は default。 |
 | `POST /api/branch-config` | `.branch_config` | `.branch_config`, `.config_log` | 空配列は `.branch_config` 削除。 |
-| `GET /api/sysinfo` | 出力ファイル, process start time | なし | 状態ファイルは更新しない。 |
+| `GET /api/sysinfo` | 出力サイト, process start time | なし | 状態ファイルは更新しない。 |
 | `GET /api/health` | `.build_history`, `.pending_transfers` | なし | 認証不要。 |
 | `GET /api/stats` | `.build_history`, `.build_logs/` | なし | `days` の範囲を集計する。 |
 | `GET /api/stats/timeline` | `.build_history` | なし | 日別集計のみ。 |
 | `GET /api/stats/build-duration` | `.build_logs/` | なし | duration 集計のみ。 |
-| `GET /api/output-meta` | `.build_history`, `.build_logs/`, 出力ファイル | なし | 出力ファイルと直近ログを集約する。 |
+| `GET /api/output-meta` | `.build_history`, `.build_logs/`, 出力サイト | なし | 出力サイトと直近ログを集約する。 |
 | `GET /api/pat-status` | `.github_token` | なし | 結果保存なし。 |
 | `POST /api/pat-verify` | `.github_token` | なし | 結果保存なし。 |
 | `POST /api/pat-update` | なし | `.github_token`, `.config_log` | token 値は `.config_log` でマスクする。 |
@@ -2522,9 +3365,9 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST /api/schedule/force-interval` | `.server_config` | `.server_config`, `.config_log` | `hours` を保存。 |
 | `POST /api/schedule/cooldown` | `.server_config` | `.server_config`, `.config_log` | `seconds` を保存。 |
 | `GET /api/dashboard` | `.build_history`, `.server_config`, `.alert_rules`, `.dashboard_layout` | なし | 集約のみ。 |
-| `GET /api/diagnostics` | `.github_token`, 出力ファイル, systemd, `.notify_config` | なし | 診断結果は保存しない。 |
+| `GET /api/diagnostics` | `.github_token`, 出力サイト, systemd, `.notify_config` | なし | 診断結果は保存しない。 |
 | `GET /api/rate-limit` | `.github_token` | なし | GitHub API 結果を返す。 |
-| `GET /api/disk-usage` | `.build_logs/`, 出力ファイル | なし | 集計のみ。 |
+| `GET /api/disk-usage` | `.build_logs/`, 出力サイト | なし | 集計のみ。 |
 | `GET /api/webhook-events` | `.webhook_events.json` | なし | ページングして返す。 |
 | `POST /api/webhook` | `.webhook_secret`, `.branch_config` | `.webhook_events.json`, `.build_state` または queue | 署名検証成功後のみイベント記録する。 |
 | `GET /api/webhook-config` | `.webhook_secret` | なし | secret 本体は返さない。 |
@@ -2548,7 +3391,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET /api/tag-rules` | `.tag_rules` | なし | rule 一覧を返す。 |
 | `POST /api/tag-rules` | `.tag_rules` | `.tag_rules`, `.config_log` | rule id を新規採番する。 |
 | `DELETE /api/tag-rules/{id}` | `.tag_rules` | `.tag_rules`, `.config_log` | 対象 rule のみ削除する。 |
-| `POST /api/verify-output` | `.build_history`, 出力ファイル | なし | checksum 比較のみ。 |
+| `POST /api/verify-output` | `.build_history`, 出力サイト | なし | checksum 比較のみ。 |
 | `GET /api/pipeline-config` | `.pipeline_config` | なし | 不在時は既定値。 |
 | `POST /api/pipeline-config` | `.pipeline_config` | `.pipeline_config`, `.config_log` | config 全体を置換する。 |
 | `GET /api/notes` | `.notes` | なし | 不在時は空文字。 |
@@ -2735,7 +3578,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `POST` | `/api/history/{id}/flag` | 要 | 指定ビルドに重要フラグを設定・解除する |
 | `POST` | `/api/history/{id}/tags` | 要 | 指定ビルドのタグを置換する |
 | `POST` | `/api/history/{id}/rollback` | 要 | 指定ビルド ID のスナップショットから SSH 転送を再実行する（→ §14b） |
-| `GET` | `/api/sysinfo` | 要 | 出力ファイルサイズ・更新日時・稼働時間を返す |
+| `GET` | `/api/sysinfo` | 要 | 出力サイトサイズ・更新日時・稼働時間を返す |
 | `GET` | `/api/health`        | 不要 | 死活監視用ヘルスチェック |
 | `GET` | `/api/schedule` | 要 | systemd timer の次回実行予定時刻を返す |
 | `POST` | `/api/schedule/interval` | 要 | systemd タイマーのポーリング間隔を動的変更する |
@@ -2759,7 +3602,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET` | `/api/stats?days=7` | 要 | ビルド統計（成功率・回数・平均間隔）を返す |
 | `GET` | `/api/stats/timeline?days=30` | 要 | 日別ビルド成功/失敗件数の時系列配列を返す |
 | `GET` | `/api/stats/build-duration?n=20` | 要 | 過去 N 件のビルド所要時間統計（平均・最小・最大・直近リスト）を返す |
-| `GET` | `/api/output-meta` | 要 | 出力ファイルのサイズ・見出し数・生成日時・前回比サイズ差分を返す |
+| `GET` | `/api/output-meta` | 要 | 出力サイトのサイズ・見出し数・生成日時・前回比サイズ差分を返す |
 | `GET` | `/api/repo-info` | 要 | リポジトリ設定（OWNER/REPO/BRANCH/TARGET_FILE）を返す |
 | `POST` | `/api/repo-config` | 要 | リポジトリ監視設定（OWNER / REPO / BRANCH / TARGET_FILE）を更新する |
 | `GET` | `/api/branch-config` | 要 | 現在有効なブランチターゲット設定を返す |
@@ -2767,9 +3610,9 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET` | `/api/backup` | 要 | 全設定（通知設定・サーバー設定）を JSON 形式でエクスポートする |
 | `POST` | `/api/restore` | 要 | JSON 形式の設定をインポートし全設定を上書き復元する |
 | `GET` | `/api/dashboard` | 要 | ステータス・システム情報・統計・スケジュールを一括返却する |
-| `GET` | `/api/diagnostics` | 要 | PAT・GitHub API・出力ファイル・systemd・Webhook の一括自己診断結果を返す |
+| `GET` | `/api/diagnostics` | 要 | PAT・GitHub API・出力サイト・systemd・Webhook の一括自己診断結果を返す |
 | `GET` | `/api/rate-limit` | 要 | GitHub API のレート制限残量・上限・リセット時刻を返す |
-| `GET` | `/api/disk-usage` | 要 | ビルドログ合計・出力ファイルのディスク使用量を返す |
+| `GET` | `/api/disk-usage` | 要 | ビルドログ合計・出力サイトのディスク使用量を返す |
 | `GET` | `/api/webhook-events?limit=50&offset=0` | 要 | 受信 Webhook イベント一覧を新しい順にページネーション付きで返す（→ `.webhook_events.json`） |
 | `POST` | `/api/webhook` | 不要（Secret 検証） | GitHub push Webhook を受信し、署名検証後にビルドをトリガーする（→ §22 Webhook 受信仕様） |
 | `GET` | `/api/webhook-config` | 要 | Webhook Secret 設定状態を返す |
@@ -2793,7 +3636,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | `GET` | `/api/tag-rules` | 要 | 自動タグ付けルール一覧を返す |
 | `POST` | `/api/tag-rules` | 要 | 自動タグ付けルールを追加する |
 | `DELETE` | `/api/tag-rules/{id}` | 要 | 自動タグ付けルールを削除する |
-| `POST` | `/api/verify-output` | 要 | 現在の出力ファイル checksum を検証する |
+| `POST` | `/api/verify-output` | 要 | 現在の出力サイト checksum を検証する |
 | `GET` | `/api/pipeline-config` | 要 | ビルドパイプライン設定を返す |
 | `POST` | `/api/pipeline-config` | 要 | ビルドパイプライン設定を置換する |
 | `GET` | `/api/notes` | 要 | 運用ノートを返す |
@@ -2841,7 +3684,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
   "last_sha": "abc123",
   "last_build_at": "2026-09-14T10:00:00Z",
   "last_build_status": "success",
-  "output_url": "https://example.com/Adlaire-db-spec.html",
+  "output_url": "https://example.com/",
   "running": false
 }
 ```
@@ -3027,7 +3870,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
   "owner": "fqwink",
   "repo": "Adlaire-Design-System",
   "branch": "main",
-  "target_file": "adlaire-db-spec.md"
+  "target_file": "docs"
 }
 ```
 
@@ -3169,7 +4012,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
     "last_sha": "abc123",
     "last_build_at": "2026-09-15T10:00:00Z",
     "last_build_status": "success",
-    "output_url": "https://example.com/Adlaire-db-spec.html",
+    "output_url": "https://example.com/",
     "running": false
   },
   "sysinfo": {
@@ -3303,8 +4146,8 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
   "branches": [
     {
       "branch": "main",
-      "src": "/opt/adlaire-builder/Adlaire-db-spec.md",
-      "out": "/opt/adlaire-builder/Adlaire-db-spec.html",
+      "src": "/opt/adlaire-builder/repo/docs",
+      "out": "/opt/adlaire-builder/dist/site",
       "deploy_targets": [
         { "host": "192.0.2.1", "user": "deploy", "dest_dir": "/var/www/html/" }
       ]
@@ -3323,8 +4166,8 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
   "branches": [
     {
       "branch": "main",
-      "src": "/opt/adlaire-builder/Adlaire-db-spec.md",
-      "out": "/opt/adlaire-builder/Adlaire-db-spec.html",
+      "src": "/opt/adlaire-builder/repo/docs",
+      "out": "/opt/adlaire-builder/dist/site",
       "deploy_targets": [
         { "host": "192.0.2.1", "user": "deploy", "dest_dir": "/var/www/html/" }
       ]
@@ -3367,7 +4210,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 `started_at` は `pipeline.sh` 実行開始時刻、`finished_at` は完了（または失敗）時刻。`duration_seconds` は整数（小数点以下切り捨て）。
 `commit_sha` / `commit_message` / `commit_author` / `commit_at` はコミット情報取得 API（§13）の結果を記録する。API 失敗時は `null`。
-`size_warn` は出力 HTML が `OUTPUT_SIZE_WARN_MB` 超過時 `true`、それ以外 `false`。`OUTPUT_SIZE_WARN_MB = 0` の場合は常に `false`。
+`size_warn` は出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` 超過時 `true`、それ以外 `false`。`OUTPUT_SIZE_WARN_MB = 0` の場合は常に `false`。
 
 **`GET /api/diagnostics` レスポンス例：**
 ```json
@@ -3474,7 +4317,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 ### スナップショット（14A）
 
-ビルド成功時に出力ファイルを `.snapshots/` へ自動保存する。保持世代数は `GET /api/config` の `snapshots_keep`（デフォルト `5`、`0` = 機能無効）で制御し、超過した古い世代は自動削除する。
+ビルド成功時に出力サイトを `.snapshots/` へ自動保存する。保持世代数は `GET /api/config` の `snapshots_keep`（デフォルト `5`、`0` = 機能無効）で制御し、超過した古い世代は自動削除する。
 
 **`GET /api/snapshots` レスポンス例：**
 ```json
@@ -3485,7 +4328,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 ```
 
 **`GET /api/snapshots/{id}/download`**
-バイナリレスポンス。`Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="Adlaire-db-spec.html"` を付与する。
+バイナリレスポンス。`Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="site"` を付与する。
 
 **`DELETE /api/snapshots/{id}` レスポンス例：**
 ```json
@@ -3769,9 +4612,9 @@ Content-Type: application/json
 
 ---
 
-### 出力ファイルチェックサム（15C）
+### 出力サイトチェックサム（15C）
 
-ビルド成功時に出力 HTML ファイルの SHA-256 ハッシュを算出し `.build_history` の該当エントリに `output_sha256` として記録する。
+ビルド成功時に出力サイト配下の全通常ファイルから manifest SHA-256 を算出し、`.build_history` の該当エントリに `output_sha256` として記録する。manifest は `relative_path + "\n" + file_sha256 + "\n"` を相対パス昇順で連結した文字列とし、その SHA-256 hex を `output_sha256` とする。
 
 **`GET /api/output-meta` レスポンス変更（`sha256` フィールド追加）：**
 ```json
@@ -3793,7 +4636,7 @@ Content-Type: application/json
 // 不一致時
 { "match": false, "expected": "e3b0c44298fc1c149afbf4c8996fb924...", "actual": "f4a2d5591c8f3a742f902e3b6f7c1c3d..." }
 ```
-`expected` は `.build_history` の最終成功エントリに記録された `output_sha256`。現在の出力ファイルが存在しない場合は `404` を返す。
+`expected` は `.build_history` の最終成功エントリに記録された `output_sha256`。現在の出力サイトが存在しない場合は `404` を返す。
 
 ---
 
@@ -3945,7 +4788,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 **`POST /api/repo-config` リクエスト / レスポンス：**
 ```json
 // リクエスト（変更するフィールドのみ指定可）
-{ "owner": "fqwink", "repo": "Adlaire-Design-System", "branch": "main", "target_file": "adlaire-db-spec.md" }
+{ "owner": "fqwink", "repo": "Adlaire-Design-System", "branch": "main", "target_file": "docs" }
 // レスポンス: 200
 { "message": "Repo config updated" }
 ```
@@ -4226,18 +5069,18 @@ export { AdlaireCI, AdlaireCIError };
 |-------|---------|---------|
 | ログイン | パスワード入力フォーム | 未ログイン時のみ |
 | パスワード変更 | 現在・新パスワード入力フォーム | `must_change: "prompt"` または `"forced"` 時（`"forced"` 時は他パネル非表示） |
-| ステータス | 最終ビルド時刻・SHA・成否・出力ファイルリンク・ダッシュボードウィジェット編集モード（表示するウィジェットをチェックボックスで選択・並び替え・保存） | ログイン済み |
+| ステータス | 最終ビルド時刻・SHA・成否・出力サイトリンク・ダッシュボードウィジェット編集モード（表示するウィジェットをチェックボックスで選択・並び替え・保存） | ログイン済み |
 | 手動実行 | ビルドトリガーボタン・SHA リセットを含む強制ビルドボタン・キャンセルボタン（実行中のみ有効）・実行結果表示・リアルタイムログ表示エリア（SSE ストリーミング）・キュー状態表示（待機中件数・クリアボタン） | ログイン済み |
 | ログビューア | 最新ビルドログ（n 行・キーワードフィルター・ログレベルフィルターボタン（INFO / WARNING / ERROR / DEBUG）・JSON エクスポートボタン・横断検索フォーム（期間指定）・検索結果一覧） | ログイン済み |
 | ビルド履歴 | 過去ビルド一覧（日時・SHA・成否・トリガー種別・所要時間・重要フラグ列・タグ列・ログ表示リンク・コメント入力欄）・フラグ付きのみ表示フィルター・タグフィルター・ページネーション UI・JSON エクスポートボタン | ログイン済み |
-| システム情報 | 出力ファイルサイズ・更新日時・稼働時間・ディスク使用量（ログ合計・出力ファイル）・PAT 即時検証ボタン・PAT 更新フォーム・PAT 有効期限表示（設定フォーム・期限切れ間近で警告表示）・GitHub API レート制限表示 | ログイン済み |
+| システム情報 | 出力サイトサイズ・更新日時・稼働時間・ディスク使用量（ログ合計・出力サイト）・PAT 即時検証ボタン・PAT 更新フォーム・PAT 有効期限表示（設定フォーム・期限切れ間近で警告表示）・GitHub API レート制限表示 | ログイン済み |
 | 通知設定     | Webhook 一覧（追加/削除/ラベル/有効無効切り替え/リトライ回数・間隔設定/シークレット入力欄）・通知条件設定（ビルド開始時・成功時・失敗時）・各 Webhook ペイロードテンプレート編集フォーム（変数一覧表示）・テスト送信ボタン・定期サマリー設定（間隔・時刻・曜日・即時送信ボタン）・送信履歴（試行回数・エラー内容列含む）・メール通知セクション（SMTP 設定フォーム・宛先リスト・通知条件・テスト送信ボタン） | ログイン済み |
 | 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・command_args 入力フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
 | アクセスログ | ログイン履歴（日時・成否）           | ログイン済み |
 | 統計         | ビルド回数・成功率・平均間隔・平均・最大ビルド時間・日別時系列データ（グラフ表示対応） | ログイン済み |
 | リポジトリ情報 | 監視対象リポジトリ・ブランチ・ファイルの確認・設定変更フォーム（OWNER / REPO / BRANCH / TARGET_FILE）・ポーリング間隔変更フォーム・ポーリング一時停止／再開ボタン・許可時間帯設定（from〜to、解除ボタン）・メンテナンスモード有効化フォーム（理由入力）・解除ボタン・現在の状態表示 | ログイン済み |
 | セッション管理 | 有効セッション一覧・全セッション強制無効化ボタン | ログイン済み |
-| システム診断   | PAT・GitHub API・出力ファイル・systemd・Webhook の診断項目一覧（ok / warn / error）・診断実行ボタン・アラートバッジ（`GET /api/dashboard` の `alerts` に基づき warn / error を表示）・出力整合性チェック項目（`POST /api/verify-output` 結果表示）・メンテナンスモード中はバナーを全パネル上部に表示 | ログイン済み |
+| システム診断   | PAT・GitHub API・出力サイト・systemd・Webhook の診断項目一覧（ok / warn / error）・診断実行ボタン・アラートバッジ（`GET /api/dashboard` の `alerts` に基づき warn / error を表示）・出力整合性チェック項目（`POST /api/verify-output` 結果表示）・メンテナンスモード中はバナーを全パネル上部に表示 | ログイン済み |
 | ビルド比較     | ビルド履歴から 2 件を選択・ログ並列表示・差分ハイライト（クライアントサイド処理） | ログイン済み |
 | API トークン管理 | 発行済みトークン一覧（ラベル・スコープ・作成日時・最終使用日時）・新規発行フォーム（ラベル入力・スコープ選択）・発行時のみトークン文字列を表示・失効ボタン | ログイン済み |
 | 運用ノート     | Markdown レンダリング表示・編集モード切替・保存ボタン・最終更新日時表示 | ログイン済み |

@@ -1,10 +1,10 @@
 # Build-Scripts
 
-Build-Scripts は、Adlaire DB 仕様書を HTML 化し、Go で実装する Adlaire CI の仕様と運用を管理するためのリポジトリです。
+Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実装する Adlaire CI の仕様と運用を管理するためのリポジトリです。
 
 ## 概要
 
-本リポジトリでは、Adlaire DB 仕様書 Markdown から単一 HTML を生成する Go 版ビルドスクリプトと、GitHub 上の対象 Markdown 変更を検出してビルドを実行する Go 版 CI ランナーの仕様を管理します。
+本リポジトリでは、Markdown ファイルまたは Markdown ディレクトリから静的 Web サイトを生成する Go 版ビルドスクリプトと、GitHub 上の対象 Markdown 変更を検出してビルドを実行する Go 版 CI ランナーの仕様を管理します。
 
 方針・ポリシー・実装状態の正本は `ADLAIRE_CI_SPEC.md`、実装詳細の正本は `ADLAIRE_CI_DETAIL_SPEC.md` です。
 
@@ -12,9 +12,9 @@ Build-Scripts は、Adlaire DB 仕様書を HTML 化し、Go で実装する Adl
 
 - `ADLAIRE_CI_SPEC.md`: Adlaire CI のマスター仕様書。
 - `ADLAIRE_CI_DETAIL_SPEC.md`: Adlaire CI の Part 3 詳細仕様。
-- `build_spec.go`: Adlaire DB 仕様書 Markdown を単一 HTML へ変換する Go 版ビルドスクリプト。
+- `build_spec.go`: Markdown を静的 Web サイトへ変換する Go 版ビルドスクリプト。初期テーマは `adlaire-default`。
 - `runner.go`: GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する Go 版 CI ランナー。
-- `DESIGN.md`: 生成 HTML のデザイン仕様を整理する補助文書。
+- `DESIGN.md`: 生成静的 Web サイトのデザイン仕様を整理する補助文書。
 - `DOCUMENT_INDEX.md`: 文書・実装ファイルの役割を整理する索引。
 - `AGENTS.md`: 本リポジトリにおけるエージェント作業ルール。
 
