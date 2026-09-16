@@ -17,7 +17,7 @@
 | 持つ内容 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
 | 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、systemd 導入手順、release asset 取得手順。 |
 
-`components/admin.go` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`admin/index.html` の UI 仕様は `ADLAIRE_CI_DETAIL_UI_SPEC.md` を正とし、`admin/adlaire-ci-sdk.js` の SDK 仕様は `ADLAIRE_CI_DETAIL_SDK_SPEC.md` を正とする。
+`admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`admin/index.html` の UI 仕様は `ADLAIRE_CI_DETAIL_UI_SPEC.md` を正とし、`admin/adlaire-ci-sdk.js` の SDK 仕様は `ADLAIRE_CI_DETAIL_SDK_SPEC.md` を正とする。
 
 ---
 
@@ -56,7 +56,7 @@ admin archive の検証は以下の順序に固定する。
 
 ## A3. Static Serving Contract
 
-`components/api.go` が管理 UI を配信する場合、`components/admin.go` は静的 file 解決と response header 決定だけを担当する。
+`api` が管理 UI を配信する場合、`admin` は静的 file 解決と response header 決定だけを担当する。
 
 | request path | file | Content-Type | Cache-Control |
 |--------------|------|--------------|---------------|
@@ -93,7 +93,7 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 ## A5. Acceptance Criteria
 
-`components/admin.go` の実装完了には、以下をすべて満たす。
+`admin` の実装完了には、以下をすべて満たす。
 
 | 観点 | 合格条件 |
 |------|----------|
