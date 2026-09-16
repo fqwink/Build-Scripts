@@ -30,7 +30,7 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 | コンポーネント | 状態 | 備考 |
 |---------------|------|------|
 | `build_spec.go` | 実装済み | Go 版 Markdown → 静的 Web サイトビルドスクリプト。Phase 1 の `gofmt` と `go test` 検証済み。 |
-| `runner.go` | 実装済み | Go 版 CI ランナー。Phase 2 初期 fixture R1〜R7 と主要 hardening の `gofmt` と `go test` 検証済み。 |
+| `runner.go` | 実装済み | Go 版 CI ランナー。Phase 2 完了判定パスの `gofmt` と `go test` 検証済み。 |
 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
@@ -333,7 +333,16 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 - `.snapshots/{build_id}/site` 保存と世代 pruning
 - `.notify_pending` の HTTP 再送と成功時削除
 - `.build_circuit_state` による circuit open skip と失敗回数記録
-- Phase 2 初期 fixture R1〜R7
+- `.pending_transfers` の起動時再試行と成功時削除
+- SSH 転送時の checksum 比較、未変更ファイル skip、転送後 checksum 検証
+- 複数 branch target の順次処理
+- `BUILD_COOLDOWN_SECONDS` による cooldown skip
+- `FORCE_BUILD_INTERVAL` による変更なし時の定期強制ビルド
+- GitHub commits API によるトリガー commit 情報の build log 記録
+- GitHub PAT 有効期限ヘッダーの 7 日以内 WARN ログ
+- `.notify_config` に基づく成功・失敗・転送失敗 Webhook 通知送信
+- `OUTPUT_SIZE_WARN_MB` による出力サイトサイズ警告
+- Phase 2 fixture R1〜R7 と完了判定パステスト
 
 **Go 版で仕様化済みの全体範囲：**
 
@@ -483,26 +492,26 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 
 | 状態 | 実装可否 | 担当領域 | 機能 | 概要 | 次アクション |
 |------|----------|----------|------|------|--------------|
-| 実装済み | 完了済み | 全領域 | （なし） | 現時点で、実装・検証完了として本表へ移動済みの項目はない。 | 実装完了時に対象項目の状態を `実装済み` へ変更し、検証結果と関連文書を整合する。 |
+| 実装済み | 完了済み | CI ランナー | Phase 2 完了判定パス | GitHub API polling、SHA 差分検出、ビルド起動、ログ、履歴、snapshot、lock、precheck、retry、rate limit、circuit breaker、通知、転送、cooldown、force interval、commit info、PAT 期限警告、出力サイズ警告を `runner.go` で実装済み。 | Go test で Phase 2 fixture、hardening、完了判定パスを検証済み。 |
 | 改訂予定 | 実装不可 | 全領域 | （なし） | 現時点で、将来計画から格上げ済みの仕様作成中項目はない。 | 格上げ時に元状態、格上げ日、優先度、詳細仕様作成先を概要へ記録する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドタイムアウト | Go 標準ライブラリ `context.WithTimeout` と `os/exec` で長時間ビルドを強制終了（→ §22 `GET /api/config` `build_timeout_seconds`） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | CI ランナー | ビルドタイムアウト | Go 標準ライブラリ `context.WithTimeout` と `os/exec` で長時間ビルドを強制終了する。API 経由の `build_timeout_seconds` 動的変更は管理 API 実装対象として残す（→ §22 `GET /api/config`）。 | Go test と runner 回帰検証で pipeline 起動経路を検証済み。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整（→ §22 `POST /api/schedule/interval`） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドログのファイル保存 | `os/exec` で起動したビルドプロセスの stdout/stderr を `.build_logs/{id}.json` に記録（→ §11 ファイル構成） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | CI ランナー | ビルドログのファイル保存 | `os/exec` で起動したビルドプロセスの stdout/stderr を `.build_logs/{id}.json` に記録（→ §11 ファイル構成）。 | Go test で build log 生成と pipeline stdout/stderr 記録を検証済み。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Webhook 受信 | 定期ポーリングと併用可能な即時検出方式。`POST /api/webhook` で GitHub push イベントを受信し即時ビルドをトリガーする（HMAC-SHA256 署名検証付き → §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ネットワーク断時の再試行 | GitHub API 失敗時に指数バックオフ（`API_RETRY_BASE_SECONDS × 2^n`、最大 `API_RETRY_MAX` 回）で再試行する（→ §12・§13）。 | Go test で fake GitHub 一時失敗からの retry 成功を検証済み。 |
-| 実装済み | 完了済み | CI ランナー | GitHub API レート制限自動待機 | `X-RateLimit-Remaining: 0` 検出時に `X-RateLimit-Reset` まで待機してから再試行する（→ §13）。 | Go test 対象の retry 経路と同じ GitHub API retry 実装で検証する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 転送後リモート整合性検証 | SSH 転送後に `sha256sum` でリモートファイルを検証し、不一致時はペンディングキューへ再投入する（→ §13・§14a） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | マルチブランチビルド | `BRANCH_TARGETS` リストで複数ブランチを順次ポーリング・ビルド・転送する（→ §12 設定値・§13 処理フロー） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | CI ランナー | GitHub API レート制限自動待機 | `X-RateLimit-Remaining: 0` 検出時に `X-RateLimit-Reset` まで待機してから再試行する（→ §13）。 | Go test 対象の retry 経路と同じ GitHub API retry 実装で検証済み。 |
+| 実装済み | 完了済み | CI ランナー | 転送後リモート整合性検証 | SSH 転送後に `sha256sum` でリモートファイルを検証し、不一致時はペンディングキューへ再投入する（→ §13・§14a）。 | Go test で転送失敗時 pending 化と pending 再試行成功を検証済み。 |
+| 実装済み | 完了済み | CI ランナー | マルチブランチビルド | `BRANCH_TARGETS` リストで複数ブランチを順次ポーリング・ビルド・転送する（→ §12 設定値・§13 処理フロー）。 | Go test で branch target 設定に基づく処理経路を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | ビルドログ世代管理 | `LOG_KEEP_N` 件を超えた `.build_logs/{id}.json` を古いものから自動削除する（→ §12・§13）。 | `go test ./...` で runner 回帰検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド出力の外部転送 | ビルド成功時に生成静的 Web サイトを SSH 経由（差分転送・複数ファイル対応）で静的コンテンツ配信サーバーへ自動転送する（→ §14a） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドクールダウン | 前回ビルド完了から `BUILD_COOLDOWN_SECONDS` 秒以内の起動はビルドをスキップする（Webhook 二重トリガー防止 → §12・§13） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | CI ランナー | ビルド出力の外部転送 | ビルド成功時に生成静的 Web サイトを SSH 経由（差分転送・複数ファイル対応）で静的コンテンツ配信サーバーへ自動転送する（→ §14a）。 | Go test で SSH command 差し替えによる pending / retry 経路を検証済み。 |
+| 実装済み | 完了済み | CI ランナー | ビルドクールダウン | 前回ビルド完了から `BUILD_COOLDOWN_SECONDS` 秒以内の起動はビルドをスキップする（Webhook 二重トリガー防止 → §12・§13）。 | Go test で cooldown 中の build skip を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | ビルド前の事前チェック | `pipeline.sh` 実行前にディスク空き容量・`adlaire-ci-build` 実行可否・`build_spec.go` 由来のビルドバイナリ配置を確認し、不足時は `failure_precheck` として記録する（→ §13）。 | Go test で fake binary 不在時の `failure_precheck` を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 定期強制ビルド | `FORCE_BUILD_INTERVAL`（時間単位）設定時、変更なしでも前回ビルドから経過時間超過で強制ビルドする。`POST /api/schedule/force-interval` で動的変更可（→ §12・§13） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド中重複スキップ | `.build_lock` に PID を記録し、起動時に実行中ビルドを検出したらスキップする（→ §11・§13） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub PAT 有効期限の事前警告 | GitHub API レスポンスの `GitHub-Authentication-Token-Expiration` ヘッダーを解析し、7 日以内の期限切れを WARN ログで通知する（→ §13） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | コミット情報のビルドログ記録 | ビルドトリガーとなったコミットの SHA・メッセージ・作者名・コミット日時を `.build_logs/{id}.json` に記録する（→ §13） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | CI ランナー | 定期強制ビルド | `FORCE_BUILD_INTERVAL`（時間単位）設定時、変更なしでも前回ビルドから経過時間超過で強制ビルドする。API 経由の動的変更は管理 API 実装対象として残す（→ §12・§13）。 | Go test で同一 SHA かつ force interval 超過時の build 実行を検証済み。 |
+| 実装済み | 完了済み | CI ランナー | ビルド中重複スキップ | `.build_lock` に PID を記録し、起動時に実行中ビルドを検出したらスキップする（→ §11・§13）。 | Go test で lock conflict 時の build skip を検証済み。 |
+| 実装済み | 完了済み | CI ランナー | GitHub PAT 有効期限の事前警告 | GitHub API レスポンスの `GitHub-Authentication-Token-Expiration` ヘッダーを解析し、7 日以内の期限切れを WARN ログで通知する（→ §13）。 | Go test で GitHub API response header 処理を検証済み。 |
+| 実装済み | 完了済み | CI ランナー | コミット情報のビルドログ記録 | ビルドトリガーとなったコミットの SHA・メッセージ・作者名・コミット日時を `.build_logs/{id}.json` に記録する（→ §13）。 | Go test で fake commits API からの commit info 記録を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | GitHub API 連続失敗によるサーキットブレーカー | 連続失敗が `API_CIRCUIT_BREAKER_THRESHOLD` 周回以上になった場合に `.build_circuit_state.open=true` とし、open 中はポーリングをスキップする（→ §11・§12・§13）。 | Go test で circuit open 時の polling skip を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 出力サイトサイズ警告閾値 | ビルド後の出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` を超えた場合に WARN ログを出力する。§8 変換レポートに `size_warn` フラグを追加（→ §8・§12・§13・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
+| 実装済み | 完了済み | CI ランナー | 出力サイトサイズ警告閾値 | ビルド後の出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` を超えた場合に WARN ログを出力する。§8 変換レポートに `size_warn` フラグを追加（→ §8・§12・§13・§22）。 | Go test で閾値超過時の `size_warn=true` と WARN 記録を検証済み。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | Webhook イベントログ | 受信した Webhook push イベントを `.webhook_events.json` に JSON Lines 形式で追記記録する。`delivery_id`・`event`・`ref`・`sha`・`build_triggered` を保存（→ §11・§22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の記録と統計 API | `.build_logs/{id}.json` に `started_at`・`finished_at`・`duration_seconds` を記録し、`GET /api/stats/build-duration` で過去 N 件の平均・最小・最大を提供する（→ §22） | `ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ビルドアーティファクト世代管理 | `HISTORY_KEEP_N` 世代分を `.snapshots/` に自動保持し超過分を削除する。`POST /api/history/{id}/rollback` による再転送は API 実装対象として残す（→ §14b）。 | Go test で build 成功時の `.snapshots/{id}/site` 作成を検証済み。 |
@@ -906,7 +915,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 | スクリプト | 状態 | 役割 |
 |-----------|------|------|
 | `build_spec.go` | 実装済み | Go 版ビルドスクリプト（Markdown → 静的 Web サイト変換）。Phase 1 の `gofmt` と `go test` 検証済み。 |
-| `runner.go` | 実装済み | Go 版 CI ランナー（変更検出・ビルド起動）。Phase 2 初期 fixture R1〜R7 の `gofmt` と `go test` 検証済み。 |
+| `runner.go` | 実装済み | Go 版 CI ランナー（変更検出・ビルド起動・通知・転送）。Phase 2 完了判定パスの `gofmt` と `go test` 検証済み。 |
 | `api_server.go` | 仕様化済み・未実装 | Go 版管理 API サーバー（常駐 HTTP サーバー） |
 | `adlaire-ci-sdk.js` | 仕様化済み・未実装 | JavaScript SDK（管理ツール用 API クライアント） |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI |

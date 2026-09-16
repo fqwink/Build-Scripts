@@ -174,6 +174,17 @@ type notifyPendingEntry struct {
 	LastError  string         `json:"last_error"`
 }
 
+type notifyConfigFile struct {
+	Webhooks []notifyWebhook `json:"webhooks"`
+}
+
+type notifyWebhook struct {
+	URL     string   `json:"url"`
+	Label   string   `json:"label"`
+	Enabled bool     `json:"enabled"`
+	On      []string `json:"on"`
+}
+
 type buildCircuitState struct {
 	Open                bool    `json:"open"`
 	ConsecutiveFailures int     `json:"consecutive_failures"`
@@ -193,6 +204,17 @@ type gitTreeResponse struct {
 type gitBlobResponse struct {
 	Content  string `json:"content"`
 	Encoding string `json:"encoding"`
+}
+
+type gitCommitResponse []struct {
+	SHA    string `json:"sha"`
+	Commit struct {
+		Message string `json:"message"`
+		Author  struct {
+			Name string `json:"name"`
+			Date string `json:"date"`
+		} `json:"author"`
+	} `json:"commit"`
 }
 
 func runRunner(args []string, stdout, stderr io.Writer) int {
@@ -295,6 +317,9 @@ func executeRunner(cfg RunnerConfig, stdout, stderr io.Writer) int {
 		logger.Error(err.Error())
 		return 1
 	}
+	if err := retryPendingTransfers(&cfg, logger); err != nil {
+		logger.Error("PENDING_TRANSFER_RETRY_FAILED: " + err.Error())
+	}
 	if err := retryNotifyPending(filepath.Join(cfg.StateDir, ".notify_pending"), logger); err != nil {
 		logger.Error("NOTIFY_PENDING_RETRY_FAILED: " + err.Error())
 	}
@@ -309,17 +334,16 @@ func executeRunner(cfg RunnerConfig, stdout, stderr io.Writer) int {
 		return code
 	}
 	defer release()
+	if circuitOpen(cfg.StateDir) {
+		logger.Error("CIRCUIT_OPEN: polling skipped")
+		return 1
+	}
+	if cooldownActive(cfg, logger) {
+		return 0
+	}
 	buildID := runnerBuildID(runnerNow().UTC(), 1)
 	if err := writeBuildState(cfg.StateDir, true, &buildID); err != nil {
 		logger.Error("STATE_START_FAILED: " + err.Error())
-		return 1
-	}
-	if circuitOpen(cfg.StateDir) {
-		logger.Error("CIRCUIT_OPEN: polling skipped")
-		finished := runnerNow().UTC().Format(time.RFC3339)
-		state := defaultBuildState()
-		state.LastFinishedAt = &finished
-		_ = runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_state"), state, 0600)
 		return 1
 	}
 	exit := 0
@@ -393,6 +417,49 @@ func validateRunnerConfig(cfg RunnerConfig) error {
 	return nil
 }
 
+func cooldownActive(cfg RunnerConfig, logger *slog.Logger) bool {
+	if cfg.BuildCooldownSeconds <= 0 {
+		return false
+	}
+	state, err := readBuildState(cfg.StateDir)
+	if err != nil || state.LastFinishedAt == nil || *state.LastFinishedAt == "" {
+		return false
+	}
+	last, err := time.Parse(time.RFC3339, *state.LastFinishedAt)
+	if err != nil {
+		return false
+	}
+	if runnerNow().Sub(last) < time.Duration(cfg.BuildCooldownSeconds)*time.Second {
+		logger.Info("COOLDOWN: skip")
+		return true
+	}
+	return false
+}
+
+func forceIntervalDue(cfg RunnerConfig) bool {
+	if cfg.ForceBuildIntervalHours <= 0 {
+		return false
+	}
+	state, err := readBuildState(cfg.StateDir)
+	if err != nil || state.LastFinishedAt == nil || *state.LastFinishedAt == "" {
+		return true
+	}
+	last, err := time.Parse(time.RFC3339, *state.LastFinishedAt)
+	if err != nil {
+		return true
+	}
+	return runnerNow().Sub(last) >= time.Duration(cfg.ForceBuildIntervalHours)*time.Hour
+}
+
+func readBuildState(stateDir string) (buildState, error) {
+	var state buildState
+	err := readJSONFile(filepath.Join(stateDir, ".build_state"), &state)
+	if errors.Is(err, os.ErrNotExist) {
+		return defaultBuildState(), nil
+	}
+	return state, err
+}
+
 func readRunnerToken(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -461,17 +528,18 @@ func pidRunning(pid int) bool {
 func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, buildID string, logger *slog.Logger) int {
 	started := runnerNow().UTC()
 	prevSHA, _ := readSHACache(target.SHAFile)
-	blobSHA, err := fetchTargetSHA(cfg, token, target.Branch, target.TargetFile)
+	blobSHA, err := fetchTargetSHA(cfg, logger, token, target.Branch, target.TargetFile)
 	if err != nil {
 		logFailure(cfg, target, buildID, started, nil, prevSHA, "failure_api", "github api failed", nil, nil, logger)
 		recordCircuitFailure(cfg, "github api failed")
 		return 3
 	}
-	if blobSHA == prevSHA {
+	forceBuild := forceIntervalDue(cfg)
+	if blobSHA == prevSHA && !forceBuild {
 		logger.Info(fmt.Sprintf("NO_CHANGE: branch=%s target=%s sha=%s", target.Branch, target.TargetFile, blobSHA))
 		return 0
 	}
-	content, err := fetchBlobContent(cfg, token, blobSHA)
+	content, err := fetchBlobContent(cfg, logger, token, blobSHA)
 	if err != nil {
 		logFailure(cfg, target, buildID, started, &blobSHA, prevSHA, "failure_decode", "blob decode failed", nil, nil, logger)
 		recordCircuitFailure(cfg, "blob decode failed")
@@ -487,8 +555,15 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		recordCircuitFailure(cfg, "precheck failed")
 		return 1
 	}
+	commit := fetchCommitInfo(cfg, logger, token, target.Branch, target.TargetFile)
 	pl := runPipeline(cfg, target, buildID)
 	rep, warns := parseRunnerReport(pl.Stdout)
+	if rep != nil && cfg.OutputSizeWarnMB > 0 {
+		if size, ok := outputSizeBytes(target.Out); ok && size > int64(cfg.OutputSizeWarnMB)*1024*1024 {
+			rep.SizeWarn = true
+			warns = append(warns, "OUTPUT_SIZE_WARN")
+		}
+	}
 	deploys := []deployLog{}
 	status := "success"
 	var errText *string
@@ -532,7 +607,7 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		StartedAt:       started.Format(time.RFC3339),
 		FinishedAt:      finished.Format(time.RFC3339),
 		DurationSeconds: int64(finished.Sub(started).Seconds()),
-		Commit:          commitInfo{},
+		Commit:          commit,
 		BlobSHA:         &blobSHA,
 		PreviousBlobSHA: prevSHA,
 		Pipeline:        pl,
@@ -550,6 +625,7 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		logger.Error("BUILD_HISTORY_WRITE_FAILED: " + err.Error())
 		return 1
 	}
+	sendBuildNotifications(cfg, blog, logger)
 	if exitCode == 0 {
 		resetCircuitState(cfg)
 	} else if strings.HasPrefix(status, "failure_") {
@@ -558,11 +634,11 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 	return exitCode
 }
 
-func fetchTargetSHA(cfg RunnerConfig, token, branch, targetFile string) (string, error) {
+func fetchTargetSHA(cfg RunnerConfig, logger *slog.Logger, token, branch, targetFile string) (string, error) {
 	owner, repo := runnerRepo()
 	url := fmt.Sprintf("%s/repos/%s/%s/git/trees/%s?recursive=1", strings.TrimRight(runnerGitHubAPIBase, "/"), owner, repo, branch)
 	var tree gitTreeResponse
-	if err := runnerGetJSON(cfg, token, url, &tree); err != nil {
+	if err := runnerGetJSON(cfg, logger, token, url, &tree); err != nil {
 		return "", err
 	}
 	for _, item := range tree.Tree {
@@ -573,15 +649,29 @@ func fetchTargetSHA(cfg RunnerConfig, token, branch, targetFile string) (string,
 	return "", errors.New("target not found")
 }
 
-func fetchBlobContent(cfg RunnerConfig, token, sha string) ([]byte, error) {
+func fetchBlobContent(cfg RunnerConfig, logger *slog.Logger, token, sha string) ([]byte, error) {
 	owner, repo := runnerRepo()
 	url := fmt.Sprintf("%s/repos/%s/%s/git/blobs/%s", strings.TrimRight(runnerGitHubAPIBase, "/"), owner, repo, sha)
 	var blob gitBlobResponse
-	if err := runnerGetJSON(cfg, token, url, &blob); err != nil {
+	if err := runnerGetJSON(cfg, logger, token, url, &blob); err != nil {
 		return nil, err
 	}
 	content := strings.ReplaceAll(blob.Content, "\n", "")
 	return base64.StdEncoding.DecodeString(content)
+}
+
+func fetchCommitInfo(cfg RunnerConfig, logger *slog.Logger, token, branch, targetFile string) commitInfo {
+	owner, repo := runnerRepo()
+	url := fmt.Sprintf("%s/repos/%s/%s/commits?path=%s&sha=%s&per_page=1", strings.TrimRight(runnerGitHubAPIBase, "/"), owner, repo, targetFile, branch)
+	var commits gitCommitResponse
+	if err := runnerGetJSON(cfg, logger, token, url, &commits); err != nil || len(commits) == 0 {
+		return commitInfo{}
+	}
+	msg := strings.SplitN(commits[0].Commit.Message, "\n", 2)[0]
+	sha := commits[0].SHA
+	author := commits[0].Commit.Author.Name
+	date := commits[0].Commit.Author.Date
+	return commitInfo{SHA: &sha, Message: &msg, Author: &author, Date: &date}
 }
 
 func runnerRepo() (string, string) {
@@ -596,7 +686,7 @@ func runnerRepo() (string, string) {
 	return owner, name
 }
 
-func runnerGetJSON(cfg RunnerConfig, token, url string, out any) error {
+func runnerGetJSON(cfg RunnerConfig, logger *slog.Logger, token, url string, out any) error {
 	client := &http.Client{Timeout: 30 * time.Second}
 	var lastErr error
 	for attempt := 0; attempt <= cfg.APIRetryMax; attempt++ {
@@ -612,6 +702,7 @@ func runnerGetJSON(cfg RunnerConfig, token, url string, out any) error {
 		if err == nil && resp != nil {
 			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				defer resp.Body.Close()
+				logPATExpiryWarning(resp, logger)
 				return json.NewDecoder(resp.Body).Decode(out)
 			}
 			lastErr = fmt.Errorf("github api status %d", resp.StatusCode)
@@ -631,6 +722,42 @@ func runnerGetJSON(cfg RunnerConfig, token, url string, out any) error {
 		runnerSleep(retryDelay(cfg, attempt, nil))
 	}
 	return lastErr
+}
+
+func logPATExpiryWarning(resp *http.Response, logger *slog.Logger) {
+	if resp == nil || logger == nil {
+		return
+	}
+	raw := strings.TrimSpace(resp.Header.Get("GitHub-Authentication-Token-Expiration"))
+	if raw == "" {
+		return
+	}
+	exp, ok := parseGitHubTokenExpiration(raw)
+	if !ok {
+		logger.Warn("PAT_EXPIRY_PARSE_FAILED: value=" + raw)
+		return
+	}
+	now := runnerNow().UTC()
+	remaining := exp.UTC().Sub(now)
+	if remaining < 0 {
+		logger.Warn("PAT_EXPIRY_WARN: expires_at=" + exp.UTC().Format(time.RFC3339) + " remaining_days=0")
+		return
+	}
+	if remaining <= 7*24*time.Hour {
+		days := int(remaining.Hours() / 24)
+		logger.Warn("PAT_EXPIRY_WARN: expires_at=" + exp.UTC().Format(time.RFC3339) + " remaining_days=" + strconv.Itoa(days))
+	}
+}
+
+func parseGitHubTokenExpiration(value string) (time.Time, bool) {
+	layouts := []string{time.RFC3339, time.RFC1123, "2006-01-02"}
+	for _, layout := range layouts {
+		parsed, err := time.Parse(layout, value)
+		if err == nil {
+			return parsed, true
+		}
+	}
+	return time.Time{}, false
 }
 
 func runnerRetryable(resp *http.Response) bool {
@@ -790,11 +917,14 @@ func trimLog(s string) string {
 }
 
 func executeDeploy(cfg RunnerConfig, branchIdx, deployIdx int, target BranchTarget, d DeployTarget) deployLog {
-	errStr := ""
 	dl := deployLog{Host: d.Host, User: d.User, DestDir: d.DestDir, Status: "success", TransferVerified: true}
-	cmd := exec.Command("ssh", d.User+"@"+d.Host, "mkdir -p "+d.DestDir)
-	if err := cmd.Run(); err != nil {
-		errStr = err.Error()
+	total, uploaded, skipped, bytesUploaded, err := deploySite(target.Out, d)
+	dl.FilesTotal = total
+	dl.FilesUploaded = uploaded
+	dl.FilesSkipped = skipped
+	dl.BytesUploaded = bytesUploaded
+	if err != nil {
+		errStr := err.Error()
 		dl.Status = "pending"
 		dl.TransferVerified = false
 		dl.Error = &errStr
@@ -805,6 +935,81 @@ func executeDeploy(cfg RunnerConfig, branchIdx, deployIdx int, target BranchTarg
 		})
 	}
 	return dl
+}
+
+func deploySite(out string, d DeployTarget) (int, int, int, int64, error) {
+	total, uploaded, skipped := 0, 0, 0
+	var bytesUploaded int64
+	err := filepath.WalkDir(out, func(path string, entry os.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		total++
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(out, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		localSHA, err := fileSHA256(path)
+		if err != nil {
+			return err
+		}
+		remotePath := remoteJoin(d.DestDir, rel)
+		if remoteSHA256(d, remotePath) == localSHA {
+			skipped++
+			return nil
+		}
+		if err := uploadFileSSH(d, path, remotePath); err != nil {
+			return err
+		}
+		if remoteSHA256(d, remotePath) != localSHA {
+			return errors.New("checksum mismatch")
+		}
+		uploaded++
+		bytesUploaded += info.Size()
+		return nil
+	})
+	return total, uploaded, skipped, bytesUploaded, err
+}
+
+func fileSHA256(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func remoteSHA256(d DeployTarget, remotePath string) string {
+	cmd := exec.Command("ssh", d.User+"@"+d.Host, "sha256sum", remotePath)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	fields := strings.Fields(string(out))
+	if len(fields) == 0 {
+		return ""
+	}
+	return fields[0]
+}
+
+func uploadFileSSH(d DeployTarget, localPath, remotePath string) error {
+	data, err := os.ReadFile(localPath)
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("ssh", d.User+"@"+d.Host, "mkdir", "-p", filepath.ToSlash(filepath.Dir(remotePath)), "&&", "tee", remotePath)
+	cmd.Stdin = bytes.NewReader(data)
+	return cmd.Run()
+}
+
+func remoteJoin(root, rel string) string {
+	return strings.TrimRight(root, "/") + "/" + strings.TrimLeft(rel, "/")
 }
 
 func writeSnapshot(cfg RunnerConfig, target BranchTarget, buildID string) (string, error) {
@@ -883,6 +1088,34 @@ func addPendingTransfer(path string, entry pendingTransfer) error {
 	return runnerAtomicWriteJSON(path, entries, 0600)
 }
 
+func retryPendingTransfers(cfg *RunnerConfig, logger *slog.Logger) error {
+	var entries []pendingTransfer
+	if err := readJSONArray(cfg.PendingFile, &entries); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		if err := backupCorruptJSON(cfg.PendingFile, logger); err != nil {
+			return err
+		}
+		return runnerAtomicWriteJSON(cfg.PendingFile, []pendingTransfer{}, 0600)
+	}
+	remaining := []pendingTransfer{}
+	for _, entry := range entries {
+		target := BranchTarget{Out: entry.Out}
+		deploy := DeployTarget{Host: entry.Host, User: entry.User, DestDir: entry.DestDir}
+		result := executeDeploy(*cfg, entry.BranchIdx, entry.DeployIdx, target, deploy)
+		if result.Status == "success" {
+			logger.Info("PENDING RETRY OK site -> " + entry.Host)
+			continue
+		}
+		entry.RetryCount++
+		entry.FailedAt = runnerNow().UTC().Format(time.RFC3339)
+		remaining = append(remaining, entry)
+		logger.Error("PENDING RETRY FAILED site: " + entry.Host)
+	}
+	return runnerAtomicWriteJSON(cfg.PendingFile, remaining, 0600)
+}
+
 func retryNotifyPending(path string, logger *slog.Logger) error {
 	var entries []notifyPendingEntry
 	if err := readJSONArray(path, &entries); err != nil {
@@ -914,6 +1147,73 @@ func retryNotifyPending(path string, logger *slog.Logger) error {
 	return runnerAtomicWriteJSON(path, remaining, 0600)
 }
 
+func sendBuildNotifications(cfg RunnerConfig, log buildLog, logger *slog.Logger) {
+	config, err := readNotifyConfig(filepath.Join(cfg.StateDir, ".notify_config"))
+	if err != nil || len(config.Webhooks) == 0 {
+		return
+	}
+	event := "failure"
+	if log.TargetStatus == "success" {
+		event = "success"
+	} else if log.TargetStatus == "success_deploy_pending" {
+		event = "deploy_failure"
+	}
+	payload := map[string]any{
+		"event": event, "build_id": log.ID, "status": log.TargetStatus,
+		"branch": log.Branch, "target_file": log.TargetFile,
+	}
+	for _, hook := range config.Webhooks {
+		if !hook.Enabled || hook.URL == "" || !hookHandlesEvent(hook, event) {
+			continue
+		}
+		if err := postNotify(hook.URL, payload); err != nil {
+			_ = addNotifyPending(filepath.Join(cfg.StateDir, ".notify_pending"), notifyPendingEntry{
+				Event: event, URL: hook.URL, Payload: payload,
+				QueuedAt: runnerNow().UTC().Format(time.RFC3339), RetryCount: 1, LastError: err.Error(),
+			})
+			logger.Error("NOTIFY_FAILED: url=" + hook.URL)
+		}
+	}
+}
+
+func readNotifyConfig(path string) (notifyConfigFile, error) {
+	var config notifyConfigFile
+	err := readJSONFile(path, &config)
+	if errors.Is(err, os.ErrNotExist) {
+		return config, nil
+	}
+	return config, err
+}
+
+func hookHandlesEvent(hook notifyWebhook, event string) bool {
+	for _, item := range hook.On {
+		if item == event || item == "*" {
+			return true
+		}
+	}
+	return false
+}
+
+func postNotify(url string, payload map[string]any) error {
+	body, _ := json.Marshal(payload)
+	resp, err := http.Post(url, "application/json", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("http status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func addNotifyPending(path string, entry notifyPendingEntry) error {
+	var entries []notifyPendingEntry
+	_ = readJSONArray(path, &entries)
+	entries = append(entries, entry)
+	return runnerAtomicWriteJSON(path, entries, 0600)
+}
+
 func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started time.Time, blobSHA *string, prevSHA, status, msg string, pl *pipelineLog, rep *runnerReport, logger *slog.Logger) {
 	if pl == nil {
 		pl = &pipelineLog{}
@@ -932,6 +1232,7 @@ func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started t
 	if err := appendHistory(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_HISTORY_WRITE_FAILED: " + err.Error())
 	}
+	sendBuildNotifications(cfg, blog, logger)
 }
 
 func circuitOpen(stateDir string) bool {
@@ -989,7 +1290,10 @@ func readSHACache(path string) (string, error) {
 
 func writeBuildState(stateDir string, running bool, buildID *string) error {
 	now := runnerNow().UTC().Format(time.RFC3339)
-	state := defaultBuildState()
+	state, err := readBuildState(stateDir)
+	if err != nil {
+		state = defaultBuildState()
+	}
 	state.Running = running
 	state.CurrentBuildID = buildID
 	state.LastStartedAt = &now
@@ -1066,6 +1370,22 @@ func outputManifestSHA(root string) (*string, error) {
 	return &out, nil
 }
 
+func outputSizeBytes(root string) (int64, bool) {
+	var size int64
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		size += info.Size()
+		return nil
+	})
+	return size, err == nil
+}
+
 func cleanupBuildLogs(dir string, keep int, logger *slog.Logger) {
 	if keep <= 0 {
 		return
@@ -1113,12 +1433,19 @@ func repairCorruptJSONArray(path string, logger *slog.Logger) error {
 	if err := readJSONFile(path, &raw); err == nil {
 		return nil
 	}
+	if err := backupCorruptJSON(path, logger); err != nil {
+		return err
+	}
+	return runnerAtomicWriteJSON(path, []any{}, 0600)
+}
+
+func backupCorruptJSON(path string, logger *slog.Logger) error {
 	bak := fmt.Sprintf("%s.corrupt.%s.bak", path, runnerNow().UTC().Format("20060102150405"))
 	if err := os.Rename(path, bak); err != nil {
 		return err
 	}
 	logger.Warn("STATE_CORRUPT_BACKUP: path=" + bak)
-	return runnerAtomicWriteJSON(path, []any{}, 0600)
+	return nil
 }
 
 func readJSONArray(path string, out any) error {
