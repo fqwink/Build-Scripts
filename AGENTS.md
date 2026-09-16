@@ -153,17 +153,31 @@ Go 実装の構文確認では、対象ファイルに対して `gofmt -l ...` �
 
 作業ブランチは一本化し、ドキュメント変更作業と実装変更作業の両方で同じ作業ブランチを使用する。
 
-同一目的、同一仕様領域、同一ファイル群に対する変更は、原則として 1 本の作業ブランチと 1 本の Pull Request にまとめる。
+同一目的、同一仕様領域、同一ファイル群に対する変更は、必ず 1 本の作業ブランチと 1 本の Pull Request にまとめる。
 
 同一目的の変更を複数の積み上げ Pull Request に分割してはならない。
 
-複数の Pull Request に分ける場合は、変更対象ファイル、責務、merge 順序が明確に分離でき、相互に同一ファイルを編集しない場合に限る。
+複数の Pull Request に分ける場合は、変更対象ファイル、責務、merge 順序が明確に分離でき、相互に同一ファイルを編集せず、片方だけが merge されても仕様矛盾、参照切れ、状態不一致、未定義の依存関係が発生しない場合に限る。
 
 既存の open Pull Request と同じファイルまたは同じ仕様領域を変更する必要がある場合は、新規 Pull Request を作成せず、既存 Pull Request へ変更を統合する。
 
-積み上げ Pull Request、同一ファイル編集の並行 Pull Request、または merge 順序依存の Pull Request が発生した場合は、最新 `origin/main` から一本化ブランチを作成し、必要な変更を 1 本の Pull Request に統合する。
+既存の open Pull Request と同じファイルまたは同じ仕様領域を変更する必要があるにもかかわらず、別 Pull Request を作成することを禁止する。
+
+積み上げ Pull Request、同一ファイル編集の並行 Pull Request、merge 順序依存の Pull Request、または GitHub 上で `DIRTY` / conflict 状態の Pull Request が発生した場合は、競合解消作業として扱う。競合解消作業では、最新 `origin/main` から一本化ブランチを作成するか、最も包括的な既存 Pull Request の branch を統合先とし、必要な変更を 1 本の Pull Request に統合する。
 
 一本化後、重複する既存 Pull Request は、統合先 Pull Request を明記したコメントを残して close する。
+
+競合防止のため、作業開始前と Pull Request 作成前に以下を必ず実行する。
+
+1. `git fetch origin`
+2. `gh pr list --state open --json number,title,headRefName,baseRefName,mergeStateStatus,url`
+3. `git diff --name-status origin/main...HEAD`
+
+上記確認で、同一ファイル、同一仕様領域、同一責務、または merge 順序依存の open Pull Request が見つかった場合は、新規 Pull Request を作成してはならない。既存 Pull Request への統合、または一本化 Pull Request への集約を先に完了する。
+
+Pull Request の `mergeStateStatus` が `DIRTY`、`UNKNOWN`、または確認不能の場合は、merge 可能と報告してはならない。`UNKNOWN` の場合は GitHub の再計算後に再確認し、最終的に `CLEAN` を確認する。
+
+競合解消時は、競合マーカーの除去だけで完了としてはならない。`git diff --check`、競合マーカー検索、変更対象文書の正本関係確認、open Pull Request 一覧確認を完了条件とする。
 
 `main` への反映は、Pull Request 経由で行う。
 
@@ -266,6 +280,8 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - `git diff --name-status origin/main...HEAD` で、変更対象が承認済み範囲内であることを確認する。
 - open Pull Request を確認し、同一ファイルまたは同一仕様領域を変更する Pull Request が存在しないことを確認する。
 - 同一ファイルまたは同一仕様領域の open Pull Request が存在する場合は、新規 Pull Request ではなく既存 Pull Request への統合、または最新 `origin/main` 起点の一本化 Pull Request を作成する。
+- open Pull Request の `mergeStateStatus` が `DIRTY` または `UNKNOWN` の場合は、競合状態または未確認状態として扱い、`CLEAN` を確認するまで完了報告しない。
+- 競合解消または PR 一本化を行った場合は、重複 PR が open のまま残っていないことを `gh pr list --state open` で確認する。
 - 文書変更では、`rg` で不要になった名称、矛盾参照、不要になったファイル名が残っていないか確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
