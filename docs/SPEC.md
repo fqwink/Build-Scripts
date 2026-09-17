@@ -76,6 +76,8 @@
 # 方針責務
 > 目的・設計思想・方向性の原則を定める。「なぜこう作るか」に答える。
 
+方針責務の節を参照する場合は、必ず `docs/SPEC.md` 方針責務 §番号 の形式で記載する。番号だけ、または `docs/SPEC.md §番号` だけで参照してはならない。
+
 ## 1. 目的
 
 `components/builder.go` は、任意の UTF-8 Markdown ファイルまたは Markdown ディレクトリを、静的配信可能な Web サイトへ変換する Go プログラムである。`docs/SPEC.md` 方針責務では、Go 実装を最初からの正本として定義する。
@@ -134,7 +136,7 @@ Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核と
 | `components/api.go` | Go 標準ライブラリ `net/http` を基本に、認証、session、状態ファイル CRUD、入力検証、API response を内製実装する。外部 web framework、router、ORM、database driver に依存しない。 |
 | `admin/adlaire-ci-sdk.js` | 単一 ES Module とし、browser 標準 API のみで API client、error handling、streaming、timeout を実装する。npm package、bundler、polyfill、framework に依存しない。 |
 | `admin/index.html` | HTML / CSS / Vanilla JavaScript だけで標準管理ツールを構成し、SDK 経由で通信する。React、Vue、Svelte、CSS framework、icon package、chart library に依存しない。 |
-| `components/mcp.go` | 将来計画の段階でも Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。 |
+| `components/mcp.go` | 将来計画コンポーネントとしての自律性方針を示す。将来計画の段階でも Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。本行は実装着手許可、詳細仕様成立、実ファイル作成許可を意味しない。 |
 
 本表はコンポーネント自律性の方針であり、関数単位の処理、入出力、状態、異常系、検証条件を定義するものではない。各コンポーネントの具体的な実装契約は、owner component 詳細本文責務を正本とする。
 
@@ -447,6 +449,10 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 # ポリシー責務
 > 遵守義務のある規則と制約を定める。「何をしなければならないか／してはならないか」に答える。
 
+ポリシー責務の節を参照する場合は、必ず `docs/SPEC.md` ポリシー責務 §番号 の形式で記載する。番号だけ、または `docs/SPEC.md §番号` だけで参照してはならない。
+
+方針責務とポリシー責務は、それぞれ独立した節番号体系を持つ。`§5`、`§6`、`§7` などの番号が重複して見える場合でも、責務名を省略して参照してはならない。責務名を伴わない節番号参照は、仕様判断に使用してはならない。
+
 ## 0. 詳細仕様記載ポリシー
 
 `docs/DETAIL_INDEX.md` の各仕様項目は、実装者が実装レベルで迷わない記載にしなければならない。
@@ -758,7 +764,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 - バニラ HTML / CSS / JavaScript のみで実装する。外部フレームワーク・外部ライブラリは使用しない（`docs/SPEC.md` ポリシー責務 §4 参照）
 - バックエンドとの通信はすべて SDK 経由とする。SDK を迂回した直接 API 呼び出しは行わない
-- カスタマイズを妨げる密結合な実装は避ける
+- カスタマイズを妨げる密結合な実装を禁止する。SDK 境界、DOM 境界、状態管理境界を満たさない UI 実装は完了扱いにしてはならない
 - DOM、form、初期ロード順、イベント処理順、成功/失敗表示、秘密情報消去条件は `docs/details/ui.md` 詳細本文責務を正本とする
 - UI は `localStorage`、`sessionStorage`、Cookie から token を復元してはならない
 - UI は API transport を直接生成してはならない。禁止対象の具体 API、例外条件、検証条件は `docs/details/ui.md` 詳細本文責務を正本とする
