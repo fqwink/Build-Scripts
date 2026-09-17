@@ -537,52 +537,64 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 本節は、§27 機能の参照先を一覧化するインデックスである。個別機能の入力、出力、状態、処理順序、異常系、endpoint、SDK method、UI DOM、fixture は下表の「主本文」に記載された owner component 詳細仕様を正とする。`docs/DETAIL_INDEX.md` は、下表に記載された主本文、owner component、collaborator component を置き換えない。
 
-| 節 | 機能 | owner | 主本文 | collaborator | `docs/DETAIL_INDEX.md` 側の扱い |
-|----|------|-------|--------|--------------|--------------------|
-| §27.1 | GitHub Commit Status API | `commitstatus` | `docs/details/commitstatus.md` §27.1 | `runner`、`statefile` | Commit Status payload と送信順の参照先だけを示す。runner の build 実行、commit SHA 確定、build id 採番、pipeline / deploy / snapshot / history の最終結果確定は `docs/details/runner.md` を正とする。 |
-| §27.2 | ドライラン実行モード | `runner` | `docs/details/runner.md` §27.2 | `statefile` | 状態ファイル非更新、ログ、history、deploy、通知の扱いを`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.3 | ビルド失敗時の自動リトライ | `runner` | `docs/details/runner.md` §27.3 | `statefile` | retry 対象、回数、backoff、SHA 更新禁止条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.4 | 出力サイトへのビルドメタ埋め込み | `builder` | `docs/details/builder.md` §27.4 | `runner`、`api`、`statefile` | HTML meta、REPORT、API 表示、状態反映の境界だけを確認する。 |
-| §27.5 | 設定バリデーション API | `api` | `docs/details/api.md` §27.5 | `sdk`、`ui`、`statefile` | validate の保存禁止、response、SDK/UI 対応を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.6 | API アクセスログ | `api` | `docs/details/api.md` §27.6 | `sdk`、`ui`、`statefile` | `.api_access_log` schema と一覧 API の主本文を`docs/DETAIL_INDEX.md` へ複製しない。 |
-| §27.7 | ビルドログのアーカイブ圧縮 | `archive` | `docs/details/archive.md` §27.7 | `runner`、`api`、`statefile` | gzip archive、cleanup、参照順の実体処理を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.8 | ビルドステータスファイル出力 | `runner` | `docs/details/runner.md` §27.8 | `api`、`statefile` | `.build_status.json` schema と更新タイミングを`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.9 | ビルドトリガー種別の記録 | `runner` | `docs/details/runner.md` §27.9 | `api`、`sdk`、`ui`、`statefile` | trigger 有効値、判定条件、UI 表示の同期確認だけを扱う。 |
-| §27.10 | 設定ファイル起動時整合性チェック | `runner` | `docs/details/runner.md` §27.10 | `statefile` | JSON 破損、退避、初期化、終了コードを`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.11 | ポーリング間隔の動的変更 | `api` | `docs/details/api.md` §27.11 | `runner`、`statefile` | systemd timer 反映の導入・検証手順は `docs/details/setup.md` §26 を確認する。 |
-| §27.12 | GitHub Webhook 受信 | `api` | `docs/details/api.md` §27.12 | `runner`、`statefile` | HMAC、event 記録、queue 投入、エラー応答を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.13 | Webhook イベントログ / 一覧取得 API | `api` | `docs/details/api.md` §27.13 | `sdk`、`ui`、`statefile` | webhook event schema、一覧 API、SDK/UI 対応を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.14 | ビルド所要時間の記録と統計 API | `runner` | `docs/details/runner.md` §27.14 | `api`、`statefile`、`archive` | duration 計測、統計値、archive 連携の境界だけを確認する。 |
-| §27.15 | ビルドアーティファクト管理 | `archive` | `docs/details/archive.md` §27.15 | `api`、`sdk`、`ui`、`runner`、`statefile` | snapshot 作成トリガーは `docs/details/runner.md` §14b を正とする。 |
-| §27.16 | ヘルスチェックエンドポイント | `api` | `docs/details/api.md` §27.16 | `statefile` | health response とエラー応答を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.17 | ビルドログ重大度フィルター | `api` | `docs/details/api.md` §27.17 | `sdk`、`ui`、`archive`、`statefile` | log query、検索結果、UI filter の同期確認だけを扱う。 |
-| §27.18 | ブランチ設定の動的変更 API | `api` | `docs/details/api.md` §27.18 | `runner`、`statefile` | `.branch_config`、GET/POST API、runner 反映条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.19 | 週次ビルドサマリー Webhook | `runner` | `docs/details/runner.md` §27.19 | `api`、`statefile` | 週次集計、通知 payload、手動送信 API の境界だけを確認する。 |
-| §27.20 | 設定変更の詳細 diff 記録 | `api` | `docs/details/api.md` §27.20 | `statefile` | `.config_log` diff 形式と mask 条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.21 | 複数ファイル監視 | `runner` | `docs/details/runner.md` §27.21 | `builder`、`api`、`statefile` | target_files、SHA 差分、build target、API 表示の同期確認だけを扱う。 |
-| §27.22 | ビルドパイプライン YAML 定義 | `runner` | `docs/details/runner.md` §27.22 | `api`、`statefile` | pipeline subset、step 実行順、timeout、env を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.23 | ローカルファイル監視モード | `runner` | `docs/details/runner.md` §27.23 | `statefile` | GitHub API 非使用条件と local snapshot 差分検出を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.24 | タグ付きコミットのみビルド | `runner` | `docs/details/runner.md` §27.24 | `api`、`statefile` | tag pattern、skip 条件、history/log 反映を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.25 | ビルドキャッシュ | `builder` | `docs/details/builder.md` §27.25 | `runner`、`statefile` | cache manifest、再利用条件、無効化条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.26 | 並列マルチターゲットビルド | `runner` | `docs/details/runner.md` §27.26 | `statefile` | worker 上限、target 別 status、ログ順序を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.27 | ビルド前後フック | `runner` | `docs/details/runner.md` §27.27 | `api`、`statefile` | hook schema、pre/post 実行、abort 条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.28 | 依存ファイルトラッキング | `builder` | `docs/details/builder.md` §27.28 | `runner`、`statefile` | dependency manifest、関連 target 判定、full build 条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.29 | リモートビルド対応 | `runner` | `docs/details/runner.md` §27.29 | `api`、`archive`、`statefile` | remote command、archive 取得、manifest 検証を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.30 | ビルド承認フロー | `api` | `docs/details/api.md` §27.30 | `runner`、`sdk`、`ui`、`statefile` | approval queue、承認/却下 API、通知、UI 操作の同期確認だけを扱う。 |
-| §27.31 | ブランチ別環境変数 | `runner` | `docs/details/runner.md` §27.31 | `api`、`statefile` | branch env schema、許可 key、secret mask、process env 注入を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.32 | ビルド通知連携 | `runner` | `docs/details/runner.md` §27.32 | `api`、`sdk`、`ui`、`statefile` | 通知 event、channel schema、retry、notify log の境界だけを確認する。 |
-| §27.33 | ビルド時間トレンド記録 | `runner` | `docs/details/runner.md` §27.33 | `api`、`statefile` | `.build_trends.json`、移動平均、中央値、p95 を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.34 | ビルド依存チェーン | `runner` | `docs/details/runner.md` §27.34 | `api`、`statefile` | DAG 検証、実行順、skip / failure status を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.35 | ビルド優先度キュー | `runner` | `docs/details/runner.md` §27.35 | `api`、`statefile` | queue priority、created_seq、FIFO を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.36 | 失敗原因の自動分類 | `runner` | `docs/details/runner.md` §27.36 | `api`、`statefile` | failure_category、evidence、分類優先順位を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.37 | ビルド実行環境の記録 | `runner` | `docs/details/runner.md` §27.37 | `statefile` | environment snapshot と secret 非含有条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.38 | ビルド所要時間の異常検知 | `runner` | `docs/details/runner.md` §27.38 | `api`、`statefile` | trend 基準、異常判定、通知 payload、設定値を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.42 | ビルドトリガー専用 API スコープ | `security` | `docs/details/security.md` §27.42 | `api`、`sdk`、`ui`、`statefile` | scope 判定、拒否条件、API/SDK/UI 表示を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.43 | API キー管理 | `security` | `docs/details/security.md` §27.43 | `api`、`sdk`、`ui`、`statefile` | API key の一回表示、hash 保存、scope、期限、失効、監査を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.44 | 監査ログ | `security` | `docs/details/security.md` §27.44 | `api`、`statefile` | `.audit_log` schema、対象操作、mask、検索 API、UI 表示を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.45 | セッションタイムアウト変更設定 | `security` | `docs/details/security.md` §27.45 | `api`、`sdk`、`ui`、`statefile` | timeout 範囲、保存、既存 session、新規 session 期限を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.46 | TOTP 二要素認証 | `security` | `docs/details/security.md` §27.46 | `api`、`sdk`、`ui`、`statefile` | TOTP、二段階 login、secret 保存、確認、無効化、UI 操作を`docs/DETAIL_INDEX.md` で再定義しない。 |
-| §27.47 | API レート制限 | `security` | `docs/details/security.md` §27.47 | `api`、`sdk`、`ui`、`statefile` | 固定窓制限、`429`、状態保存、設定 API、UI 表示を`docs/DETAIL_INDEX.md` で再定義しない。 |
+下表は、§27 機能の owner、主本文、collaborator だけを示す。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、fixture schema、横断処理順は本表で再定義しない。
+
+| 節 | 機能 | owner | 主本文 | collaborator |
+|----|------|-------|--------|--------------|
+| §27.1 | GitHub Commit Status API | `commitstatus` | `docs/details/commitstatus.md` §27.1 | `runner`、`statefile` |
+| §27.2 | ドライラン実行モード | `runner` | `docs/details/runner.md` §27.2 | `statefile` |
+| §27.3 | ビルド失敗時の自動リトライ | `runner` | `docs/details/runner.md` §27.3 | `statefile` |
+| §27.4 | 出力サイトへのビルドメタ埋め込み | `builder` | `docs/details/builder.md` §27.4 | `runner`、`api`、`statefile` |
+| §27.5 | 設定バリデーション API | `api` | `docs/details/api.md` §27.5 | `sdk`、`ui`、`statefile` |
+| §27.6 | API アクセスログ | `api` | `docs/details/api.md` §27.6 | `sdk`、`ui`、`statefile` |
+| §27.7 | ビルドログのアーカイブ圧縮 | `archive` | `docs/details/archive.md` §27.7 | `runner`、`api`、`statefile` |
+| §27.8 | ビルドステータスファイル出力 | `runner` | `docs/details/runner.md` §27.8 | `api`、`statefile` |
+| §27.9 | ビルドトリガー種別の記録 | `runner` | `docs/details/runner.md` §27.9 | `api`、`sdk`、`ui`、`statefile` |
+| §27.10 | 設定ファイル起動時整合性チェック | `runner` | `docs/details/runner.md` §27.10 | `statefile` |
+| §27.11 | ポーリング間隔の動的変更 | `api` | `docs/details/api.md` §27.11 | `runner`、`statefile` |
+| §27.12 | GitHub Webhook 受信 | `api` | `docs/details/api.md` §27.12 | `runner`、`statefile` |
+| §27.13 | Webhook イベントログ / 一覧取得 API | `api` | `docs/details/api.md` §27.13 | `sdk`、`ui`、`statefile` |
+| §27.14 | ビルド所要時間の記録と統計 API | `runner` | `docs/details/runner.md` §27.14 | `api`、`statefile`、`archive` |
+| §27.15 | ビルドアーティファクト管理 | `archive` | `docs/details/archive.md` §27.15 | `api`、`sdk`、`ui`、`runner`、`statefile` |
+| §27.16 | ヘルスチェックエンドポイント | `api` | `docs/details/api.md` §27.16 | `statefile` |
+| §27.17 | ビルドログ重大度フィルター | `api` | `docs/details/api.md` §27.17 | `sdk`、`ui`、`archive`、`statefile` |
+| §27.18 | ブランチ設定の動的変更 API | `api` | `docs/details/api.md` §27.18 | `runner`、`statefile` |
+| §27.19 | 週次ビルドサマリー Webhook | `runner` | `docs/details/runner.md` §27.19 | `api`、`statefile` |
+| §27.20 | 設定変更の詳細 diff 記録 | `api` | `docs/details/api.md` §27.20 | `statefile` |
+| §27.21 | 複数ファイル監視 | `runner` | `docs/details/runner.md` §27.21 | `builder`、`api`、`statefile` |
+| §27.22 | ビルドパイプライン YAML 定義 | `runner` | `docs/details/runner.md` §27.22 | `api`、`statefile` |
+| §27.23 | ローカルファイル監視モード | `runner` | `docs/details/runner.md` §27.23 | `statefile` |
+| §27.24 | タグ付きコミットのみビルド | `runner` | `docs/details/runner.md` §27.24 | `api`、`statefile` |
+| §27.25 | ビルドキャッシュ | `builder` | `docs/details/builder.md` §27.25 | `runner`、`statefile` |
+| §27.26 | 並列マルチターゲットビルド | `runner` | `docs/details/runner.md` §27.26 | `statefile` |
+| §27.27 | ビルド前後フック | `runner` | `docs/details/runner.md` §27.27 | `api`、`statefile` |
+| §27.28 | 依存ファイルトラッキング | `builder` | `docs/details/builder.md` §27.28 | `runner`、`statefile` |
+| §27.29 | リモートビルド対応 | `runner` | `docs/details/runner.md` §27.29 | `api`、`archive`、`statefile` |
+| §27.30 | ビルド承認フロー | `api` | `docs/details/api.md` §27.30 | `runner`、`sdk`、`ui`、`statefile` |
+| §27.31 | ブランチ別環境変数 | `runner` | `docs/details/runner.md` §27.31 | `api`、`statefile` |
+| §27.32 | ビルド通知連携 | `runner` | `docs/details/runner.md` §27.32 | `api`、`sdk`、`ui`、`statefile` |
+| §27.33 | ビルド時間トレンド記録 | `runner` | `docs/details/runner.md` §27.33 | `api`、`statefile` |
+| §27.34 | ビルド依存チェーン | `runner` | `docs/details/runner.md` §27.34 | `api`、`statefile` |
+| §27.35 | ビルド優先度キュー | `runner` | `docs/details/runner.md` §27.35 | `api`、`statefile` |
+| §27.36 | 失敗原因の自動分類 | `runner` | `docs/details/runner.md` §27.36 | `api`、`statefile` |
+| §27.37 | ビルド実行環境の記録 | `runner` | `docs/details/runner.md` §27.37 | `statefile` |
+| §27.38 | ビルド所要時間の異常検知 | `runner` | `docs/details/runner.md` §27.38 | `api`、`statefile` |
+| §27.42 | ビルドトリガー専用 API スコープ | `security` | `docs/details/security.md` §27.42 | `api`、`sdk`、`ui`、`statefile` |
+| §27.43 | API キー管理 | `security` | `docs/details/security.md` §27.43 | `api`、`sdk`、`ui`、`statefile` |
+| §27.44 | 監査ログ | `security` | `docs/details/security.md` §27.44 | `api`、`statefile` |
+| §27.45 | セッションタイムアウト変更設定 | `security` | `docs/details/security.md` §27.45 | `api`、`sdk`、`ui`、`statefile` |
+| §27.46 | TOTP 二要素認証 | `security` | `docs/details/security.md` §27.46 | `api`、`sdk`、`ui`、`statefile` |
+| §27.47 | API レート制限 | `security` | `docs/details/security.md` §27.47 | `api`、`sdk`、`ui`、`statefile` |
+
+補足確認は以下に限定する。下表は実装本文を追加せず、主本文を読む際の境界確認だけを示す。
+
+| 対象 | 補足確認 |
+|------|----------|
+| §27.1 | Commit Status payload と送信順は `commitstatus`、build 実行と最終結果確定は `runner` を正とする。 |
+| §27.11 | systemd timer 反映の導入・検証手順は `docs/details/setup.md` §26 を同時に確認する。 |
+| §27.15 | snapshot 作成トリガーは `docs/details/runner.md` §14b、artifact 操作は `archive` を正とする。 |
+| §27.17、§27.21、§27.30、§27.32 | API、SDK、UI、状態ファイルが連動するため、該当 collaborator の詳細仕様と `docs/ROADMAP.md` §6.3 を同時に確認する。 |
+| §27.42〜§27.47 | scope、token、audit、session、TOTP、rate limit は `security` を正とし、API / SDK / UI は呼び出し境界と表示だけを担当する。 |
 
 ### 6.3 / §27.38a 横断連動・Runner 拡張機能 実装補足契約
 
