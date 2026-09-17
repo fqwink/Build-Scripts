@@ -1648,8 +1648,6 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 
 ---
 
----
-
 ## 27. Builder owner 追加仕様化機能 詳細仕様
 
 ### 27.4 出力サイトへのビルドメタ埋め込み

@@ -4,13 +4,13 @@
 
 各 owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。本ファイルは個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、fixture assertion、setup 手順を持たない。
 
-方針、ポリシー、正本関係の上位判断は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否、§27 / §28 追加仕様化機能参照、横断補足契約の上位判断は `docs/ROADMAP.md` を正とする。
+方針、ポリシー、正本関係の上位判断は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否の上位判断は `docs/ROADMAP.md` を正とする。
 
 ---
 
 ## Detail Spec Governance
 
-本ファイルは、詳細仕様入口責務として、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。§27 / §28 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。個別 component の処理本文は owner component 別の `docs/details/*.md` を正とする。
+本ファイルは、詳細仕様入口責務として、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。個別 component の処理本文は owner component 別の `docs/details/*.md` を正とする。
 
 | 管理対象 | 正本 | 本ファイルでの扱い |
 |----------|------|--------------------|
@@ -543,7 +543,7 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 詳細仕様本文は、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を責務 component 別に定義する。
 
-本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。§27 / §28 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。
+本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。
 
 `mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、本ファイルおよび責務 component 別詳細仕様ファイルでは入出力、状態、起動手順、検証条件を定義しない。
 
@@ -643,9 +643,3 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | §24 | `docs/details/ui.md` |
 | §26 | `docs/details/setup.md` |
 | §27 / §28 追加仕様化機能 | `docs/ROADMAP.md` §6 と該当 owner component の `docs/details/*.md` |
-
-## 追加仕様化機能参照
-
-§27 / §28 追加仕様化機能の owner、主本文、collaborator、横断補足契約は `docs/ROADMAP.md` §6 を正とする。
-
-本ファイルは §0i の詳細節対応表を入口として保持し、§27 の個別参照索引、共通実装契約、横断連動表を重複定義しない。

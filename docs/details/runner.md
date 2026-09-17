@@ -1777,8 +1777,6 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 
 ---
 
----
-
 ## 27. Runner owner 追加仕様化機能 詳細仕様
 
 ### 27.1 GitHub Commit Status API
