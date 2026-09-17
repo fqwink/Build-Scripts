@@ -320,6 +320,98 @@ func TestAPIRepoAndBranchConfigEndpoints(t *testing.T) {
 	}
 }
 
+func TestAPIScheduleEndpoints(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/schedule", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("schedule code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var schedule map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &schedule)
+	if schedule["interval"] != "5min" || schedule["interval_seconds"].(float64) != 300 || schedule["paused"] != false {
+		t.Fatalf("unexpected schedule defaults: %#v", schedule)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/interval", token, map[string]int{"interval_seconds": 600})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("interval code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var cfg apiServerConfig
+	readTestJSON(t, filepath.Join(state, ".server_config"), &cfg)
+	if cfg.ScheduleIntervalSeconds != 600 {
+		t.Fatalf("interval was not saved: %#v", cfg)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/allowed-hours", token, map[string]any{"from": 9, "to": 18})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("allowed-hours code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	readTestJSON(t, filepath.Join(state, ".server_config"), &cfg)
+	if cfg.AllowedHours == nil || cfg.AllowedHours.From != 9 || cfg.AllowedHours.To != 18 {
+		t.Fatalf("allowed hours were not saved: %#v", cfg)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/pause", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("pause code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/pause", token, nil)
+	if resp.Code != http.StatusConflict {
+		t.Fatalf("pause conflict code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/schedule", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("schedule paused code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	decodeTestJSON(t, resp.Body.Bytes(), &schedule)
+	if schedule["paused"] != true || schedule["next_run_at"] != nil {
+		t.Fatalf("unexpected paused schedule: %#v", schedule)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/resume", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("resume code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/force-interval", token, map[string]int{"hours": 24})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("force interval code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/cooldown", token, map[string]int{"seconds": 120})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("cooldown code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/allowed-hours", token, map[string]any{"from": nil, "to": nil})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("clear allowed-hours code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	readTestJSON(t, filepath.Join(state, ".server_config"), &cfg)
+	if cfg.SchedulePaused || cfg.ForceBuildIntervalHours != 24 || cfg.BuildCooldownSeconds != 120 || cfg.AllowedHours != nil {
+		t.Fatalf("schedule values were not saved: %#v", cfg)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/interval", token, map[string]int{"interval_seconds": 1})
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("invalid interval code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/config", token, map[string]int{"schedule_interval_seconds": 900})
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("direct schedule config code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/config-log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("config log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var body map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	if body["total"].(float64) != 7 {
+		t.Fatalf("unexpected schedule config log: %#v", body)
+	}
+}
+
 func TestAPISessionPasswordAndStream(t *testing.T) {
 	state := newAPIState(t)
 	server := newTestAPI(t, state)
