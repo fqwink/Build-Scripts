@@ -1,0 +1,1271 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adlaire CI Admin</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --text: #1f2933;
+      --muted: #687385;
+      --line: #d8dde6;
+      --accent: #0f766e;
+      --accent-dark: #115e59;
+      --danger: #b42318;
+      --warn: #b45309;
+      --ok: #0f7a3b;
+      --focus: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      min-height: 34px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: var(--accent);
+      color: #ffffff;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #ffffff;
+      color: var(--accent-dark);
+    }
+
+    button.danger {
+      border-color: var(--danger);
+      background: var(--danger);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--text);
+      padding: 7px 9px;
+    }
+
+    textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    input[type="checkbox"] {
+      width: auto;
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    pre {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f9fafb;
+      padding: 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: #202a35;
+      color: #f9fafb;
+      padding: 16px;
+    }
+
+    .brand {
+      margin: 0 0 16px;
+      font-size: 18px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 6px;
+    }
+
+    .nav button {
+      width: 100%;
+      border-color: transparent;
+      background: transparent;
+      color: #e5e7eb;
+      text-align: left;
+    }
+
+    .nav button[aria-current="page"] {
+      background: #314154;
+      color: #ffffff;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .banner,
+    .message {
+      margin: 0 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      padding: 10px 12px;
+    }
+
+    .message.error {
+      border-color: #f3b6b0;
+      color: var(--danger);
+    }
+
+    .message.success {
+      border-color: #a7e0b8;
+      color: var(--ok);
+    }
+
+    .banner {
+      border-color: #f3d08c;
+      color: var(--warn);
+    }
+
+    .panel {
+      display: grid;
+      gap: 14px;
+      max-width: 1180px;
+      margin: 0 auto 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 18px;
+    }
+
+    .panel[hidden],
+    [hidden] {
+      display: none !important;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .output {
+      min-height: 42px;
+    }
+
+    .inline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .inline input[type="checkbox"] {
+      flex: 0 0 auto;
+    }
+
+    .empty {
+      color: var(--muted);
+    }
+
+    .token-once {
+      border-color: #9cc8ff;
+      background: #f0f7ff;
+      color: #174ea6;
+    }
+
+    @media (max-width: 820px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-root" class="shell" data-api-base-url="/api">
+    <aside class="sidebar">
+      <h1 class="brand">Adlaire CI</h1>
+      <nav id="nav-panels" class="nav" aria-label="管理パネル">
+        <button type="button" data-target-panel="panel-status" disabled>ステータス</button>
+        <button type="button" data-target-panel="panel-build" disabled>手動実行</button>
+        <button type="button" data-target-panel="panel-approvals" disabled>承認待ち</button>
+        <button type="button" data-target-panel="panel-logs" disabled>ログビューア</button>
+        <button type="button" data-target-panel="panel-history" disabled>ビルド履歴</button>
+        <button type="button" data-target-panel="panel-system" disabled>システム情報</button>
+        <button type="button" data-target-panel="panel-notify" disabled>通知設定</button>
+        <button type="button" data-target-panel="panel-config" disabled>設定</button>
+        <button type="button" data-target-panel="panel-security" disabled>セキュリティ</button>
+        <button type="button" data-target-panel="panel-access-log" disabled>アクセスログ</button>
+        <button type="button" data-target-panel="panel-audit-log" disabled>監査ログ</button>
+        <button type="button" data-target-panel="panel-stats" disabled>統計</button>
+        <button type="button" data-target-panel="panel-repo" disabled>リポジトリ情報</button>
+        <button type="button" data-target-panel="panel-sessions" disabled>セッション管理</button>
+        <button type="button" data-target-panel="panel-diagnostics" disabled>システム診断</button>
+        <button type="button" data-target-panel="panel-compare" disabled>ビルド比較</button>
+        <button type="button" data-target-panel="panel-tokens" disabled>API トークン管理</button>
+        <button type="button" data-target-panel="panel-notes" disabled>運用ノート</button>
+        <button type="button" data-target-panel="panel-snapshots" disabled>スナップショット</button>
+        <button type="button" data-target-panel="panel-maintenance" disabled>メンテナンス</button>
+        <button type="button" data-target-panel="panel-access-control" disabled>アクセス制御</button>
+        <button type="button" data-target-panel="panel-hooks" disabled>フック</button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <div id="global-banner" class="banner" hidden></div>
+      <div id="global-error" class="message error" role="alert" hidden></div>
+      <div id="global-success" class="message success" hidden></div>
+      <div id="maintenance-banner" class="banner" hidden></div>
+
+      <section id="panel-login" class="panel" data-panel="login">
+        <h2>ログイン</h2>
+        <div id="panel-login-error" class="message error" role="alert" hidden></div>
+        <div id="panel-login-success" class="message success" hidden></div>
+        <form id="form-login" class="grid">
+          <label for="field-password">Password<input id="field-password" name="password" type="password" autocomplete="current-password"></label>
+          <label for="field-login-totp-code" id="totp-login-wrap" hidden>TOTP code<input id="field-login-totp-code" name="totp_code" inputmode="numeric" autocomplete="one-time-code"></label>
+          <div class="actions">
+            <button id="btn-login" type="submit">ログイン</button>
+            <button id="btn-login-totp" type="button" hidden>TOTP 確認</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="panel-password" class="panel" data-panel="password" hidden>
+        <h2>パスワード変更</h2>
+        <div id="panel-password-error" class="message error" role="alert" hidden></div>
+        <div id="panel-password-success" class="message success" hidden></div>
+        <form id="form-password" class="grid">
+          <label for="field-current-password">Current password<input id="field-current-password" name="current_password" type="password"></label>
+          <label for="field-new-password">New password<input id="field-new-password" name="new_password" type="password"></label>
+          <div class="actions"><button id="btn-change-password" type="submit">変更保存</button></div>
+        </form>
+      </section>
+
+      <section id="panel-status" class="panel" data-panel="status" hidden>
+        <h2>ステータス</h2>
+        <div id="panel-status-error" class="message error" role="alert" hidden></div>
+        <div id="panel-status-success" class="message success" hidden></div>
+        <div class="actions">
+          <button id="btn-refresh-status" type="button">再読み込み</button>
+          <button id="btn-save-dashboard-layout" type="button">ウィジェット保存</button>
+          <button type="button" class="secondary" data-logout>ログアウト</button>
+        </div>
+        <fieldset>
+          <legend>Dashboard widgets</legend>
+          <label class="inline"><input type="checkbox" name="dashboard_widget" value="status" checked>status</label>
+          <label class="inline"><input type="checkbox" name="dashboard_widget" value="queue" checked>queue</label>
+          <label class="inline"><input type="checkbox" name="dashboard_widget" value="stats">stats</label>
+          <label class="inline"><input type="checkbox" name="dashboard_widget" value="alerts">alerts</label>
+        </fieldset>
+        <div id="build-queue-summary" class="output empty">queue なし</div>
+        <pre id="status-output" class="output"></pre>
+      </section>
+
+      <section id="panel-build" class="panel" data-panel="build" hidden>
+        <h2>手動実行</h2>
+        <div id="panel-build-error" class="message error" role="alert" hidden></div>
+        <div id="panel-build-success" class="message success" hidden></div>
+        <div class="actions">
+          <button id="btn-build" type="button">ビルド開始</button>
+          <button id="btn-build-force" type="button">強制ビルド</button>
+          <button id="btn-build-cancel" type="button">キャンセル</button>
+          <button id="btn-stream-close" type="button" class="secondary">Stream close</button>
+          <button id="btn-queue-clear" type="button" class="danger">Queue clear</button>
+        </div>
+        <pre id="build-log-stream" aria-live="polite"></pre>
+        <pre id="build-output" class="output"></pre>
+      </section>
+
+      <section id="panel-approvals" class="panel" data-panel="approvals" hidden>
+        <h2>承認待ち</h2>
+        <div id="panel-approvals-error" class="message error" role="alert" hidden></div>
+        <div id="panel-approvals-success" class="message success" hidden></div>
+        <div class="actions"><button id="btn-refresh-approvals" type="button">再取得</button></div>
+        <pre id="approvals-output" class="output"></pre>
+      </section>
+
+      <section id="panel-logs" class="panel" data-panel="logs" hidden>
+        <h2>ログビューア</h2>
+        <div id="panel-logs-error" class="message error" role="alert" hidden></div>
+        <div id="panel-logs-success" class="message success" hidden></div>
+        <form id="form-log-search" class="grid">
+          <label for="field-n">n<input id="field-n" name="n" inputmode="numeric" value="100"></label>
+          <label for="field-q">q<input id="field-q" name="q"></label>
+          <label for="field-from">from<input id="field-from" name="from"></label>
+          <label for="field-to">to<input id="field-to" name="to"></label>
+          <label for="field-level">level<select id="field-level" name="level"><option value=""></option><option>INFO</option><option>WARNING</option><option>ERROR</option><option>DEBUG</option></select></label>
+        </form>
+        <div class="actions">
+          <button id="btn-load-logs" type="button">最新ログ取得</button>
+          <button id="btn-search-logs" type="button">横断検索</button>
+          <button id="btn-export-logs" type="button">JSON export</button>
+          <button id="btn-cleanup-logs" type="button">cleanup</button>
+          <button id="btn-archive-logs" type="button">archive</button>
+        </div>
+        <pre id="logs-output" class="output"></pre>
+      </section>
+
+      <section id="panel-history" class="panel" data-panel="history" hidden>
+        <h2>ビルド履歴</h2>
+        <div id="panel-history-error" class="message error" role="alert" hidden></div>
+        <div id="panel-history-success" class="message success" hidden></div>
+        <form id="form-history-filter" class="grid">
+          <label for="field-page">page<input id="field-page" name="page" inputmode="numeric" value="1"></label>
+          <label for="field-per-page">per_page<input id="field-per-page" name="per_page" inputmode="numeric" value="20"></label>
+          <label for="field-trigger">trigger<input id="field-trigger" name="trigger"></label>
+          <label for="field-tag">tag<input id="field-tag" name="tag"></label>
+          <label class="inline" for="field-flagged"><input id="field-flagged" name="flagged" type="checkbox">flagged</label>
+        </form>
+        <div class="actions">
+          <button type="submit" form="form-history-filter">一覧取得</button>
+          <button id="btn-export-history" type="button">JSON export</button>
+        </div>
+        <pre id="history-output" class="output"></pre>
+      </section>
+
+      <section id="panel-system" class="panel" data-panel="system" hidden>
+        <h2>システム情報</h2>
+        <div id="panel-system-error" class="message error" role="alert" hidden></div>
+        <div id="panel-system-success" class="message success" hidden></div>
+        <form id="form-pat" class="grid">
+          <label for="field-token">token<input id="field-token" name="token" type="password"></label>
+          <label for="field-pat-expires-at">pat_expires_at<input id="field-pat-expires-at" name="pat_expires_at"></label>
+          <div class="actions">
+            <button id="btn-pat-verify" type="button">PAT 検証</button>
+            <button id="btn-pat-update" type="submit">PAT 更新</button>
+          </div>
+        </form>
+        <pre id="system-output" class="output"></pre>
+      </section>
+
+      <section id="panel-notify" class="panel" data-panel="notify" hidden>
+        <h2>通知設定</h2>
+        <div id="panel-notify-error" class="message error" role="alert" hidden></div>
+        <div id="panel-notify-success" class="message success" hidden></div>
+        <form id="form-notify" class="grid">
+          <label for="field-webhooks">webhooks<textarea id="field-webhooks" name="webhooks"></textarea></label>
+          <label for="field-channels">channels<textarea id="field-channels" name="channels"></textarea></label>
+          <label for="field-on">on<input id="field-on" name="on"></label>
+          <label for="field-summary">summary<input id="field-summary" name="summary"></label>
+          <label for="field-email">email<textarea id="field-email" name="email"></textarea></label>
+          <label for="field-secret">secret<input id="field-secret" name="secret" type="password"></label>
+          <label for="field-smtp-password">smtp_password<input id="field-smtp-password" name="smtp_password" type="password"></label>
+        </form>
+        <div class="actions">
+          <button id="btn-save-notify" type="button">通知設定保存</button>
+          <button id="btn-notify-test" type="button">Webhook test</button>
+          <button id="btn-weekly-summary" type="button">週次 summary 送信</button>
+          <button id="btn-save-webhook-secret" type="button">Webhook secret 保存</button>
+          <button id="btn-save-smtp" type="button">SMTP 保存</button>
+          <button id="btn-smtp-test" type="button">SMTP test</button>
+        </div>
+        <pre id="notify-output" class="output"></pre>
+      </section>
+
+      <section id="panel-config" class="panel" data-panel="config" hidden>
+        <h2>設定</h2>
+        <div id="panel-config-error" class="message error" role="alert" hidden></div>
+        <div id="panel-config-success" class="message success" hidden></div>
+        <form id="form-config" class="grid">
+          <label for="field-log-max-lines">log_max_lines<input id="field-log-max-lines" name="log_max_lines" inputmode="numeric"></label>
+          <label for="field-history-max-count">history_max_count<input id="field-history-max-count" name="history_max_count" inputmode="numeric"></label>
+          <label for="field-build-timeout-seconds">build_timeout_seconds<input id="field-build-timeout-seconds" name="build_timeout_seconds" inputmode="numeric"></label>
+          <label for="field-log-retention-days">log_retention_days<input id="field-log-retention-days" name="log_retention_days" inputmode="numeric"></label>
+          <label for="field-log-archive-after-days">log_archive_after_days<input id="field-log-archive-after-days" name="log_archive_after_days" inputmode="numeric"></label>
+          <label for="field-log-level">log_level<select id="field-log-level" name="log_level"><option>INFO</option><option>DEBUG</option></select></label>
+          <label for="field-queue-max-size">queue_max_size<input id="field-queue-max-size" name="queue_max_size" inputmode="numeric"></label>
+          <label for="field-snapshots-keep">snapshots_keep<input id="field-snapshots-keep" name="snapshots_keep" inputmode="numeric"></label>
+          <label for="field-build-retry-max">build_retry_max<input id="field-build-retry-max" name="build_retry_max" inputmode="numeric"></label>
+          <label for="field-build-retry-base-seconds">build_retry_base_seconds<input id="field-build-retry-base-seconds" name="build_retry_base_seconds" inputmode="numeric"></label>
+          <label class="inline" for="field-commit-status-enabled"><input id="field-commit-status-enabled" name="commit_status_enabled" type="checkbox">commit_status_enabled</label>
+          <label for="field-commit-status-context">commit_status_context<input id="field-commit-status-context" name="commit_status_context"></label>
+          <label for="field-commit-status-target-url">commit_status_target_url<input id="field-commit-status-target-url" name="commit_status_target_url"></label>
+          <label for="field-build-trend-keep-count">build_trend_keep_count<input id="field-build-trend-keep-count" name="build_trend_keep_count" inputmode="numeric"></label>
+          <label class="inline" for="field-duration-anomaly-enabled"><input id="field-duration-anomaly-enabled" name="duration_anomaly_enabled" type="checkbox">duration_anomaly_enabled</label>
+          <label for="field-duration-anomaly-min-samples">duration_anomaly_min_samples<input id="field-duration-anomaly-min-samples" name="duration_anomaly_min_samples" inputmode="numeric"></label>
+          <label for="field-duration-anomaly-avg-multiplier">duration_anomaly_avg_multiplier<input id="field-duration-anomaly-avg-multiplier" name="duration_anomaly_avg_multiplier" inputmode="numeric"></label>
+          <label for="field-duration-anomaly-p95-multiplier">duration_anomaly_p95_multiplier<input id="field-duration-anomaly-p95-multiplier" name="duration_anomaly_p95_multiplier" inputmode="numeric"></label>
+        </form>
+        <div class="actions">
+          <button id="btn-save-config" type="button">サーバー設定保存</button>
+          <button id="btn-validate-config" type="button">サーバー設定検証</button>
+          <button id="btn-set-log-level" type="button">log level 変更</button>
+        </div>
+        <pre id="config-output" class="output"></pre>
+      </section>
+
+      <section id="panel-security" class="panel" data-panel="security" hidden>
+        <h2>セキュリティ</h2>
+        <div id="panel-security-error" class="message error" role="alert" hidden></div>
+        <div id="panel-security-success" class="message success" hidden></div>
+        <form id="form-security" class="grid">
+          <label for="field-security-totp-code">totp_code<input id="field-security-totp-code" name="totp_code" inputmode="numeric"></label>
+          <label class="inline" for="field-api-rate-enabled"><input id="field-api-rate-enabled" name="api_rate_enabled" type="checkbox">api_rate_enabled</label>
+          <label for="field-api-rate-group">api_rate_group<input id="field-api-rate-group" name="api_rate_group"></label>
+          <label for="field-api-rate-window-seconds">api_rate_window_seconds<input id="field-api-rate-window-seconds" name="api_rate_window_seconds" inputmode="numeric"></label>
+          <label for="field-api-rate-max-requests">api_rate_max_requests<input id="field-api-rate-max-requests" name="api_rate_max_requests" inputmode="numeric"></label>
+          <label for="field-session-timeout-seconds">session_timeout_seconds<input id="field-session-timeout-seconds" name="session_timeout_seconds" inputmode="numeric"></label>
+        </form>
+        <div id="totp-secret-once" class="message token-once" hidden></div>
+        <div class="actions">
+          <button id="btn-load-security" type="button">取得</button>
+          <button id="btn-totp-setup" type="button">TOTP setup</button>
+          <button id="btn-totp-confirm" type="button">TOTP confirm</button>
+          <button id="btn-totp-disable" type="button">TOTP disable</button>
+          <button id="btn-save-api-rate-limit" type="button">API rate limit 保存</button>
+          <button id="btn-save-session-timeout" type="button">session timeout 保存</button>
+        </div>
+        <pre id="security-output" class="output"></pre>
+      </section>
+
+      <section id="panel-access-log" class="panel" data-panel="access-log" hidden>
+        <h2>アクセスログ</h2>
+        <div id="panel-access-log-error" class="message error" role="alert" hidden></div>
+        <div id="panel-access-log-success" class="message success" hidden></div>
+        <form id="form-api-access-log-filter" class="grid">
+          <label for="field-api-log-limit">limit<input id="field-api-log-limit" name="limit" inputmode="numeric" value="100"></label>
+          <label for="field-api-log-offset">offset<input id="field-api-log-offset" name="offset" inputmode="numeric" value="0"></label>
+          <label for="field-api-log-method">method<input id="field-api-log-method" name="method"></label>
+          <label for="field-api-log-path">path<input id="field-api-log-path" name="path"></label>
+          <label for="field-api-log-status">status<input id="field-api-log-status" name="status" inputmode="numeric"></label>
+        </form>
+        <div class="actions">
+          <button id="btn-load-access-log" type="button">ログイン履歴取得</button>
+          <button id="btn-load-api-access-log" type="button">API アクセスログ取得</button>
+        </div>
+        <pre id="access-log-output" class="output"></pre>
+      </section>
+
+      <section id="panel-audit-log" class="panel" data-panel="audit-log" hidden>
+        <h2>監査ログ</h2>
+        <div id="panel-audit-log-error" class="message error" role="alert" hidden></div>
+        <div id="panel-audit-log-success" class="message success" hidden></div>
+        <form id="form-audit-log-filter" class="grid">
+          <label for="field-audit-limit">limit<input id="field-audit-limit" name="limit" inputmode="numeric" value="100"></label>
+          <label for="field-audit-offset">offset<input id="field-audit-offset" name="offset" inputmode="numeric" value="0"></label>
+          <label for="field-audit-actor">actor<input id="field-audit-actor" name="actor"></label>
+          <label for="field-audit-action">action<input id="field-audit-action" name="action"></label>
+          <label for="field-audit-result">result<input id="field-audit-result" name="result"></label>
+        </form>
+        <div class="actions"><button id="btn-load-audit-log" type="button">監査ログ取得</button></div>
+        <pre id="audit-log-output" class="output"></pre>
+      </section>
+
+      <section id="panel-stats" class="panel" data-panel="stats" hidden>
+        <h2>統計</h2>
+        <div id="panel-stats-error" class="message error" role="alert" hidden></div>
+        <div id="panel-stats-success" class="message success" hidden></div>
+        <div class="actions"><button id="btn-load-stats" type="button">取得</button></div>
+        <pre id="stats-output" class="output"></pre>
+      </section>
+
+      <section id="panel-repo" class="panel" data-panel="repo" hidden>
+        <h2>リポジトリ情報</h2>
+        <div id="panel-repo-error" class="message error" role="alert" hidden></div>
+        <div id="panel-repo-success" class="message success" hidden></div>
+        <form id="form-repo" class="grid">
+          <label for="field-owner">owner<input id="field-owner" name="owner"></label>
+          <label for="field-repo">repo<input id="field-repo" name="repo"></label>
+          <label for="field-branch">branch<input id="field-branch" name="branch"></label>
+          <label for="field-target-file">target_file<input id="field-target-file" name="target_file"></label>
+          <label for="field-interval-seconds">interval_seconds<input id="field-interval-seconds" name="interval_seconds" inputmode="numeric"></label>
+          <label for="field-allowed-from">allowed_from<input id="field-allowed-from" name="allowed_from" inputmode="numeric"></label>
+          <label for="field-allowed-to">allowed_to<input id="field-allowed-to" name="allowed_to" inputmode="numeric"></label>
+          <label for="field-maintenance-reason">maintenance_reason<input id="field-maintenance-reason" name="maintenance_reason"></label>
+        </form>
+        <div class="actions">
+          <button id="btn-save-repo" type="button">repo 保存</button>
+          <button id="btn-save-branch-config" type="button">branch config 保存</button>
+          <button id="btn-pause-schedule" type="button">pause</button>
+          <button id="btn-resume-schedule" type="button">resume</button>
+          <button id="btn-enable-maintenance" type="button">maintenance 有効</button>
+          <button id="btn-disable-maintenance" type="button">maintenance 無効</button>
+        </div>
+        <pre id="repo-output" class="output"></pre>
+      </section>
+
+      <section id="panel-sessions" class="panel" data-panel="sessions" hidden>
+        <h2>セッション管理</h2>
+        <div id="panel-sessions-error" class="message error" role="alert" hidden></div>
+        <div id="panel-sessions-success" class="message success" hidden></div>
+        <div class="actions">
+          <button id="btn-load-sessions" type="button">取得</button>
+          <button id="btn-revoke-sessions" type="button" class="danger">全 revoke</button>
+        </div>
+        <pre id="sessions-output" class="output"></pre>
+      </section>
+
+      <section id="panel-diagnostics" class="panel" data-panel="diagnostics" hidden>
+        <h2>システム診断</h2>
+        <div id="panel-diagnostics-error" class="message error" role="alert" hidden></div>
+        <div id="panel-diagnostics-success" class="message success" hidden></div>
+        <div class="actions">
+          <button id="btn-run-diagnostics" type="button">診断実行</button>
+          <button id="btn-verify-output" type="button">出力 checksum 検証</button>
+        </div>
+        <pre id="diagnostics-output" class="output"></pre>
+      </section>
+
+      <section id="panel-compare" class="panel" data-panel="compare" hidden>
+        <h2>ビルド比較</h2>
+        <div id="panel-compare-error" class="message error" role="alert" hidden></div>
+        <div id="panel-compare-success" class="message success" hidden></div>
+        <form id="form-compare" class="grid">
+          <label for="field-left-build-id">left_build_id<input id="field-left-build-id" name="left_build_id"></label>
+          <label for="field-right-build-id">right_build_id<input id="field-right-build-id" name="right_build_id"></label>
+        </form>
+        <div class="actions"><button id="btn-compare-builds" type="button">比較</button></div>
+        <pre id="compare-output" class="output"></pre>
+      </section>
+
+      <section id="panel-tokens" class="panel" data-panel="tokens" hidden>
+        <h2>API トークン管理</h2>
+        <div id="panel-tokens-error" class="message error" role="alert" hidden></div>
+        <div id="panel-tokens-success" class="message success" hidden></div>
+        <form id="form-token" class="grid">
+          <label for="field-label">label<input id="field-label" name="label"></label>
+          <label for="field-scopes">scopes<input id="field-scopes" name="scopes" value="read"></label>
+          <label for="field-expires-at">expires_at<input id="field-expires-at" name="expires_at"></label>
+        </form>
+        <div id="issued-token-once" class="message token-once" hidden></div>
+        <div class="actions"><button id="btn-create-token" type="button">token 発行</button></div>
+        <pre id="tokens-output" class="output"></pre>
+      </section>
+
+      <section id="panel-notes" class="panel" data-panel="notes" hidden>
+        <h2>運用ノート</h2>
+        <div id="panel-notes-error" class="message error" role="alert" hidden></div>
+        <div id="panel-notes-success" class="message success" hidden></div>
+        <form id="form-notes"><label for="field-content">content<textarea id="field-content" name="content"></textarea></label></form>
+        <div class="actions"><button id="btn-save-notes" type="button">保存</button></div>
+        <pre id="notes-output" class="output"></pre>
+      </section>
+
+      <section id="panel-snapshots" class="panel" data-panel="snapshots" hidden>
+        <h2>スナップショット</h2>
+        <div id="panel-snapshots-error" class="message error" role="alert" hidden></div>
+        <div id="panel-snapshots-success" class="message success" hidden></div>
+        <div class="actions"><button id="btn-load-snapshots" type="button">一覧取得</button></div>
+        <pre id="snapshots-output" class="output"></pre>
+      </section>
+
+      <section id="panel-maintenance" class="panel" data-panel="maintenance" hidden>
+        <h2>メンテナンス</h2>
+        <div id="panel-maintenance-error" class="message error" role="alert" hidden></div>
+        <div id="panel-maintenance-success" class="message success" hidden></div>
+        <form id="form-maintenance"><label for="field-reason">reason<input id="field-reason" name="reason"></label></form>
+        <div class="actions">
+          <button id="btn-maintenance-enable" type="button">有効化</button>
+          <button id="btn-maintenance-disable" type="button">無効化</button>
+        </div>
+        <pre id="maintenance-output" class="output"></pre>
+      </section>
+
+      <section id="panel-access-control" class="panel" data-panel="access-control" hidden>
+        <h2>アクセス制御</h2>
+        <div id="panel-access-control-error" class="message error" role="alert" hidden></div>
+        <div id="panel-access-control-success" class="message success" hidden></div>
+        <form id="form-access-control"><label for="field-allow">allow<textarea id="field-allow" name="allow"></textarea></label></form>
+        <div class="actions"><button id="btn-save-access-control" type="button">保存</button></div>
+        <pre id="access-control-output" class="output"></pre>
+      </section>
+
+      <section id="panel-hooks" class="panel" data-panel="hooks" hidden>
+        <h2>フック</h2>
+        <div id="panel-hooks-error" class="message error" role="alert" hidden></div>
+        <div id="panel-hooks-success" class="message success" hidden></div>
+        <form id="form-hook" class="grid">
+          <label for="field-phase">phase<input id="field-phase" name="phase"></label>
+          <label for="field-command-args">command_args<textarea id="field-command-args" name="command_args"></textarea></label>
+          <label class="inline" for="field-abort-on-failure"><input id="field-abort-on-failure" name="abort_on_failure" type="checkbox" checked>abort_on_failure</label>
+        </form>
+        <div class="actions"><button id="btn-add-hook" type="button">hook 追加</button></div>
+        <pre id="hooks-output" class="output"></pre>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { AdlaireCI, AdlaireCIError } from "./adlaire-ci-sdk.js";
+
+    const requiredIds = [
+      "app-root", "nav-panels", "global-error", "global-success", "panel-login", "panel-password",
+      "panel-status", "panel-build", "panel-approvals", "panel-logs", "panel-history", "panel-system",
+      "panel-notify", "panel-config", "panel-security", "panel-access-log", "panel-audit-log",
+      "panel-stats", "panel-repo", "panel-sessions", "panel-diagnostics", "panel-compare",
+      "panel-tokens", "panel-notes", "panel-snapshots", "panel-maintenance", "panel-access-control",
+      "panel-hooks"
+    ];
+    const panels = requiredIds.filter((id) => id.startsWith("panel-"));
+    const state = {
+      client: null,
+      ticket: null,
+      loggedIn: false,
+      maintenance: false,
+      streamHandle: null,
+      last: new Map(),
+    };
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    function setMessage(id, text) {
+      const element = $(id);
+      if (!element) {
+        return;
+      }
+      element.textContent = text || "";
+      element.hidden = !text;
+    }
+
+    function panelName(panelId) {
+      return panelId.replace("panel-", "");
+    }
+
+    function panelError(panelId, text) {
+      setMessage(`${panelId}-error`, text);
+    }
+
+    function panelSuccess(panelId, text) {
+      setMessage(`${panelId}-success`, text);
+    }
+
+    function clearPanelMessages(panelId) {
+      panelError(panelId, "");
+      panelSuccess(panelId, "");
+    }
+
+    function clearGlobalMessages() {
+      setMessage("global-error", "");
+      setMessage("global-success", "");
+    }
+
+    function outputId(panelId) {
+      return `${panelName(panelId)}-output`;
+    }
+
+    function render(panelId, value, emptyText = "No data") {
+      const target = $(outputId(panelId));
+      if (!target) {
+        return;
+      }
+      if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
+        target.textContent = emptyText;
+        target.classList.add("empty");
+        return;
+      }
+      target.classList.remove("empty");
+      target.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      state.last.set(panelId, value);
+    }
+
+    function clearSecrets() {
+      document.querySelectorAll("input[type='password'], input[name='totp_code'], input[name='token'], input[name='secret'], input[name='smtp_password']").forEach((input) => {
+        input.value = "";
+      });
+      setMessage("issued-token-once", "");
+      setMessage("totp-secret-once", "");
+    }
+
+    function disableNav(disabled) {
+      document.querySelectorAll("#nav-panels button").forEach((button) => {
+        button.disabled = disabled;
+      });
+    }
+
+    function showPanel(panelId) {
+      clearSecrets();
+      panels.forEach((id) => {
+        $(id).hidden = id !== panelId;
+      });
+      document.querySelectorAll("#nav-panels button").forEach((button) => {
+        button.setAttribute("aria-current", button.dataset.targetPanel === panelId ? "page" : "false");
+      });
+      if (state.loggedIn) {
+        loadPanel(panelId);
+      }
+    }
+
+    function showLogin() {
+      state.loggedIn = false;
+      state.ticket = null;
+      state.streamHandle = null;
+      clearSecrets();
+      disableNav(true);
+      panels.forEach((id) => {
+        $(id).hidden = id !== "panel-login";
+      });
+      $("totp-login-wrap").hidden = true;
+      $("btn-login-totp").hidden = true;
+      $("btn-login").hidden = false;
+      $("field-password").focus();
+    }
+
+    function showApp() {
+      state.loggedIn = true;
+      disableNav(false);
+      showPanel("panel-status");
+    }
+
+    function formValue(formId, name) {
+      const form = $(formId);
+      if (!form) {
+        return "";
+      }
+      const field = form.elements[name];
+      if (!field) {
+        return "";
+      }
+      if (field.type === "checkbox") {
+        return field.checked;
+      }
+      return field.value;
+    }
+
+    function intValue(formId, name) {
+      const value = String(formValue(formId, name)).trim();
+      if (value === "") {
+        return undefined;
+      }
+      if (!/^[0-9]+$/.test(value)) {
+        throw new TypeError(`Invalid argument: ${name}`);
+      }
+      return Number.parseInt(value, 10);
+    }
+
+    function textValue(formId, name) {
+      return String(formValue(formId, name));
+    }
+
+    function trimmedValue(formId, name) {
+      return textValue(formId, name).trim();
+    }
+
+    function listValue(formId, name) {
+      return textValue(formId, name).split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
+    }
+
+    function commandArgs() {
+      return textValue("form-hook", "command_args").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+    }
+
+    function configFromForm() {
+      const names = [
+        "log_max_lines", "history_max_count", "build_timeout_seconds", "log_retention_days",
+        "log_archive_after_days", "queue_max_size", "snapshots_keep", "build_retry_max",
+        "build_retry_base_seconds", "build_trend_keep_count", "duration_anomaly_min_samples",
+        "duration_anomaly_avg_multiplier", "duration_anomaly_p95_multiplier"
+      ];
+      const config = {};
+      names.forEach((name) => {
+        const value = intValue("form-config", name);
+        if (value !== undefined) {
+          config[name] = value;
+        }
+      });
+      config.log_level = trimmedValue("form-config", "log_level");
+      config.commit_status_enabled = Boolean(formValue("form-config", "commit_status_enabled"));
+      config.duration_anomaly_enabled = Boolean(formValue("form-config", "duration_anomaly_enabled"));
+      const context = trimmedValue("form-config", "commit_status_context");
+      const targetUrl = trimmedValue("form-config", "commit_status_target_url");
+      if (context) {
+        config.commit_status_context = context;
+      }
+      if (targetUrl) {
+        config.commit_status_target_url = targetUrl;
+      }
+      return config;
+    }
+
+    function repoConfigFromForm() {
+      return {
+        owner: trimmedValue("form-repo", "owner"),
+        repo: trimmedValue("form-repo", "repo"),
+        branch: trimmedValue("form-repo", "branch"),
+        target_file: trimmedValue("form-repo", "target_file"),
+      };
+    }
+
+    function apiRatePolicyFromForm() {
+      return {
+        enabled: Boolean(formValue("form-security", "api_rate_enabled")),
+        group: trimmedValue("form-security", "api_rate_group"),
+        window_seconds: intValue("form-security", "api_rate_window_seconds"),
+        max_requests: intValue("form-security", "api_rate_max_requests"),
+      };
+    }
+
+    function notifyConfigFromForm() {
+      return {
+        webhooks: listValue("form-notify", "webhooks"),
+        channels: listValue("form-notify", "channels"),
+        on: listValue("form-notify", "on"),
+        summary: trimmedValue("form-notify", "summary"),
+        email: listValue("form-notify", "email"),
+      };
+    }
+
+    function renderMaintenance(value) {
+      const enabled = Boolean(value && value.enabled);
+      state.maintenance = enabled;
+      setMessage("maintenance-banner", enabled ? `Maintenance mode: ${value.reason || "enabled"}` : "");
+      applyDisabledRules();
+    }
+
+    function applyDisabledRules() {
+      const disabledIds = [
+        "btn-build", "btn-build-force", "btn-queue-clear", "btn-save-config", "btn-set-log-level",
+        "btn-save-repo", "btn-save-branch-config", "btn-enable-maintenance", "btn-save-access-control",
+        "btn-add-hook"
+      ];
+      disabledIds.forEach((id) => {
+        const button = $(id);
+        if (button) {
+          button.disabled = state.maintenance || Boolean(state.streamHandle && !state.streamHandle.closed);
+        }
+      });
+      const disableMaintenance = $("btn-disable-maintenance");
+      if (disableMaintenance) {
+        disableMaintenance.disabled = false;
+      }
+    }
+
+    function errorMessage(error) {
+      if (error instanceof AdlaireCIError) {
+        return error.message || `HTTP ${error.status}`;
+      }
+      if (error instanceof TypeError) {
+        return "Client error";
+      }
+      return "Client error";
+    }
+
+    function handleError(error, panelId) {
+      if (error instanceof AdlaireCIError && error.status === 401) {
+        showLogin();
+        panelError("panel-login", "Unauthorized");
+        return;
+      }
+      if (error instanceof AdlaireCIError && error.status === 503) {
+        state.maintenance = true;
+        setMessage("maintenance-banner", error.message || "Maintenance mode");
+        applyDisabledRules();
+      }
+      if (error instanceof TypeError) {
+        setMessage("global-error", "Client error");
+      } else {
+        panelError(panelId, errorMessage(error));
+      }
+    }
+
+    async function run(buttonId, panelId, action, successText, refreshers = []) {
+      const button = $(buttonId);
+      clearGlobalMessages();
+      clearPanelMessages(panelId);
+      if (button) {
+        button.disabled = true;
+      }
+      try {
+        const result = await action();
+        for (const refresh of refreshers) {
+          await refresh();
+        }
+        if (successText) {
+          panelSuccess(panelId, successText);
+        }
+        if (result !== undefined) {
+          render(panelId, result);
+        }
+      } catch (error) {
+        handleError(error, panelId);
+      } finally {
+        clearSecrets();
+        if (button) {
+          button.disabled = false;
+        }
+        applyDisabledRules();
+      }
+    }
+
+    async function loadPanel(panelId) {
+      clearPanelMessages(panelId);
+      try {
+        switch (panelId) {
+          case "panel-status":
+            await loadStatus();
+            break;
+          case "panel-build":
+            await loadBuild();
+            break;
+          case "panel-approvals":
+            render(panelId, await state.client.getApprovals(), "approvals なし");
+            break;
+          case "panel-logs":
+            render(panelId, await state.client.getLogs(100, ""), "ログなし");
+            break;
+          case "panel-history":
+            render(panelId, await state.client.getHistory({ page: 1, perPage: 20 }), "履歴なし");
+            break;
+          case "panel-system":
+            render(panelId, { sysinfo: await state.client.getSysinfo(), pat: await state.client.getPatStatus(), rate_limit: await state.client.getRateLimit(), disk: await state.client.getDiskUsage() });
+            break;
+          case "panel-notify":
+            render(panelId, { notify: await state.client.getNotifyConfig(), webhook: await state.client.getWebhookConfig(), smtp: await state.client.getSmtpConfig(), log: await state.client.getNotifyLog() });
+            break;
+          case "panel-config":
+            render(panelId, { config: await state.client.getConfig(), config_log: await state.client.getConfigLog(), access: await state.client.getAccessControl(), hooks: await state.client.getHooks(), alerts: await state.client.getAlertRules(), tags: await state.client.getTagRules(), pipeline: await state.client.getPipelineConfig() });
+            break;
+          case "panel-security":
+            render(panelId, { totp: await state.client.getTotpStatus(), rate_limit: await state.client.getApiRateLimit(), config: await state.client.getConfig() });
+            break;
+          case "panel-access-log":
+            render(panelId, { access_log: await state.client.getAccessLog(), api_access_log: await state.client.getApiAccessLog({ limit: 100, offset: 0 }) }, "ログなし");
+            break;
+          case "panel-audit-log":
+            render(panelId, await state.client.getAuditLog({ limit: 100, offset: 0 }), "log なし");
+            break;
+          case "panel-stats":
+            render(panelId, { stats: await state.client.getStats(7), timeline: await state.client.getStatsTimeline(30), duration: await state.client.getStatsBuildDuration(20) });
+            break;
+          case "panel-repo":
+            render(panelId, { repo: await state.client.getRepoInfo(), branch: await state.client.getBranchConfig(), schedule: await state.client.getSchedule(), maintenance: await state.client.getMaintenance() });
+            break;
+          case "panel-sessions":
+            render(panelId, await state.client.getSessions());
+            break;
+          case "panel-diagnostics":
+            render(panelId, await state.client.getDiagnostics(), "No diagnostics");
+            break;
+          case "panel-compare":
+            render(panelId, await state.client.getHistory({ page: 1, perPage: 100 }), "比較対象 2 件未満");
+            break;
+          case "panel-tokens":
+            render(panelId, await state.client.getTokens(), "token なし");
+            break;
+          case "panel-notes":
+            render(panelId, await state.client.getNotes(), "content 空");
+            break;
+          case "panel-snapshots":
+            render(panelId, await state.client.getSnapshots(), "snapshot なし");
+            break;
+          case "panel-maintenance":
+            {
+              const maintenance = await state.client.getMaintenance();
+              renderMaintenance(maintenance);
+              render(panelId, maintenance);
+            }
+            break;
+          case "panel-access-control":
+            render(panelId, await state.client.getAccessControl(), "制限なし");
+            break;
+          case "panel-hooks":
+            render(panelId, await state.client.getHooks(), "hook なし");
+            break;
+          default:
+            break;
+        }
+      } catch (error) {
+        handleError(error, panelId);
+      }
+    }
+
+    async function loadStatus() {
+      const dashboard = await state.client.getDashboard();
+      const layout = await state.client.getDashboardLayout();
+      const queue = await state.client.getQueue();
+      render("panel-status", { dashboard, layout, queue });
+      $("build-queue-summary").textContent = JSON.stringify(queue, null, 2);
+    }
+
+    async function loadBuild() {
+      const status = await state.client.getStatus();
+      const queue = await state.client.getQueue();
+      const maintenance = await state.client.getMaintenance();
+      renderMaintenance(maintenance);
+      render("panel-build", { status, queue, maintenance }, "queue なし");
+    }
+
+    function selectedWidgets() {
+      return Array.from(document.querySelectorAll("input[name='dashboard_widget']:checked")).map((input) => input.value);
+    }
+
+    function bind(id, event, handler) {
+      const element = $(id);
+      if (element) {
+        element.addEventListener(event, handler);
+      }
+    }
+
+    function bindOperations() {
+      bind("form-login", "submit", (event) => {
+        event.preventDefault();
+        const password = textValue("form-login", "password");
+        run("btn-login", "panel-login", async () => {
+          const result = await state.client.login(password);
+          if (result && result.totp_required === true) {
+            state.ticket = result.ticket || result.totp_ticket || "";
+            $("totp-login-wrap").hidden = false;
+            $("btn-login-totp").hidden = false;
+            $("btn-login").hidden = true;
+            return { totp_required: true };
+          }
+          showApp();
+          await state.client.getDashboard();
+          await state.client.getStatus();
+          await state.client.getQueue();
+          await state.client.getMaintenance().then(renderMaintenance);
+          await state.client.getDashboardLayout();
+          return result;
+        }, "");
+      });
+
+      bind("btn-login-totp", "click", () => {
+        run("btn-login-totp", "panel-login", async () => {
+          const result = await state.client.loginTotp(state.ticket, textValue("form-login", "totp_code"));
+          showApp();
+          await state.client.getDashboard();
+          await state.client.getStatus();
+          await state.client.getQueue();
+          await state.client.getMaintenance().then(renderMaintenance);
+          await state.client.getDashboardLayout();
+          return result;
+        }, "");
+      });
+
+      document.querySelectorAll("[data-logout]").forEach((button) => {
+        button.addEventListener("click", () => {
+          run(button.id, "panel-status", async () => {
+            await state.client.logout();
+            showLogin();
+          }, "");
+        });
+      });
+
+      bind("form-password", "submit", (event) => {
+        event.preventDefault();
+        run("btn-change-password", "panel-password", () => state.client.changePassword(textValue("form-password", "current_password"), textValue("form-password", "new_password")), "Password changed");
+      });
+
+      bind("btn-refresh-status", "click", () => run("btn-refresh-status", "panel-status", async () => state.client.getDashboard(), "最終更新時刻を表示", [loadStatus]));
+      bind("btn-save-dashboard-layout", "click", () => run("btn-save-dashboard-layout", "panel-status", () => state.client.setDashboardLayout(selectedWidgets()), "Dashboard layout updated", [loadStatus]));
+      bind("btn-build", "click", () => run("btn-build", "panel-build", () => state.client.triggerBuild(), "Build queued", [loadBuild]));
+      bind("btn-build-force", "click", () => run("btn-build-force", "panel-build", () => state.client.buildForce(), "Force build queued", [loadBuild]));
+      bind("btn-build-cancel", "click", () => run("btn-build-cancel", "panel-build", () => state.client.cancelBuild(), "Build cancelled", [loadBuild]));
+      bind("btn-stream-close", "click", () => {
+        if (state.streamHandle) {
+          state.streamHandle.close();
+          state.streamHandle = null;
+          $("build-log-stream").textContent += "\nclosed";
+          loadBuild();
+        } else {
+          run("btn-stream-close", "panel-build", async () => {
+            state.streamHandle = await state.client.streamBuild((line) => {
+              $("build-log-stream").textContent += `${line}\n`;
+            }, (summary) => {
+              $("build-log-stream").textContent += `end ${JSON.stringify(summary)}\n`;
+              state.streamHandle = null;
+              loadBuild();
+            });
+            return { streaming: true };
+          }, "Stream connected");
+        }
+      });
+      bind("btn-queue-clear", "click", () => {
+        if (confirm("Clear queued builds?")) {
+          run("btn-queue-clear", "panel-build", () => state.client.clearQueue(), "Queue cleared", [loadBuild]);
+        }
+      });
+
+      bind("btn-refresh-approvals", "click", () => run("btn-refresh-approvals", "panel-approvals", () => state.client.getApprovals(), "件数を表示"));
+      bind("btn-load-logs", "click", () => run("btn-load-logs", "panel-logs", () => state.client.getLogs(intValue("form-log-search", "n") || 100, textValue("form-log-search", "q")), ""));
+      bind("btn-search-logs", "click", () => run("btn-search-logs", "panel-logs", () => state.client.searchLogs(textValue("form-log-search", "q"), textValue("form-log-search", "from"), textValue("form-log-search", "to"), trimmedValue("form-log-search", "level") || undefined), "検索結果件数を表示"));
+      bind("btn-export-logs", "click", () => run("btn-export-logs", "panel-logs", () => state.client.exportLogs(), "export 完了表示"));
+      bind("btn-cleanup-logs", "click", () => run("btn-cleanup-logs", "panel-logs", () => state.client.cleanupLogs(), "削除件数を表示", [() => state.client.getLogs().then((v) => render("panel-logs", v)), () => state.client.getDiskUsage().then((v) => render("panel-system", v))]));
+      bind("btn-archive-logs", "click", () => run("btn-archive-logs", "panel-logs", () => state.client.archiveLogs(), "圧縮件数を表示", [() => state.client.getLogs().then((v) => render("panel-logs", v)), () => state.client.getDiskUsage().then((v) => render("panel-system", v))]));
+
+      bind("form-history-filter", "submit", (event) => {
+        event.preventDefault();
+        run(null, "panel-history", () => state.client.getHistory({
+        page: intValue("form-history-filter", "page") || 1,
+        perPage: intValue("form-history-filter", "per_page") || 20,
+        trigger: trimmedValue("form-history-filter", "trigger") || null,
+        tag: trimmedValue("form-history-filter", "tag") || null,
+        flagged: Boolean(formValue("form-history-filter", "flagged")),
+        }), "件数を表示");
+      });
+      bind("btn-export-history", "click", () => run("btn-export-history", "panel-history", () => state.client.exportHistory(), "export 完了表示"));
+      bind("btn-pat-verify", "click", () => run("btn-pat-verify", "panel-system", () => state.client.patVerify(), "検証結果を表示", [() => state.client.getPatStatus().then((v) => render("panel-system", v)), () => state.client.getDiagnostics().then((v) => render("panel-diagnostics", v))]));
+      bind("form-pat", "submit", (event) => {
+        event.preventDefault();
+        run("btn-pat-update", "panel-system", () => state.client.updatePat(textValue("form-pat", "token")), "PAT updated", [() => state.client.getPatStatus().then((v) => render("panel-system", v)), () => state.client.getDiagnostics().then((v) => render("panel-diagnostics", v))]);
+      });
+
+      bind("btn-save-notify", "click", () => run("btn-save-notify", "panel-notify", () => state.client.setNotifyConfig(notifyConfigFromForm()), "Notify config updated", [() => state.client.getNotifyConfig().then((v) => render("panel-notify", v))]));
+      bind("btn-notify-test", "click", () => run("btn-notify-test", "panel-notify", () => state.client.notifyTest(), "送信結果を表示", [() => state.client.getNotifyLog().then((v) => render("panel-notify", v))]));
+      bind("btn-weekly-summary", "click", () => run("btn-weekly-summary", "panel-notify", () => state.client.notifyWeeklySummary(), "success/failure 件数を表示", [() => state.client.getNotifyLog().then((v) => render("panel-notify", v))]));
+      bind("btn-save-webhook-secret", "click", () => run("btn-save-webhook-secret", "panel-notify", () => state.client.setWebhookConfig(textValue("form-notify", "secret")), "Webhook secret updated", [() => state.client.getWebhookConfig().then((v) => render("panel-notify", v))]));
+      bind("btn-save-smtp", "click", () => run("btn-save-smtp", "panel-notify", () => state.client.setSmtpConfig({ password: textValue("form-notify", "smtp_password"), recipients: listValue("form-notify", "email") }), "SMTP config updated", [() => state.client.getSmtpConfig().then((v) => render("panel-notify", v)), () => state.client.getNotifyConfig().then((v) => render("panel-notify", v))]));
+      bind("btn-smtp-test", "click", () => run("btn-smtp-test", "panel-notify", () => state.client.smtpTest(), "送信結果を表示", [() => state.client.getNotifyLog().then((v) => render("panel-notify", v))]));
+
+      bind("btn-save-config", "click", () => run("btn-save-config", "panel-config", () => state.client.setConfig(configFromForm()), "Config updated", [() => state.client.getConfig().then((v) => render("panel-config", v)), () => state.client.getConfigLog().then((v) => render("panel-config", v))]));
+      bind("btn-validate-config", "click", () => run("btn-validate-config", "panel-config", () => state.client.validateConfig(configFromForm()), "検証結果を表示"));
+      bind("btn-set-log-level", "click", () => run("btn-set-log-level", "panel-config", () => state.client.setLogLevel(trimmedValue("form-config", "log_level")), "Log level changed", [() => state.client.getConfig().then((v) => render("panel-config", v))]));
+
+      bind("btn-load-security", "click", () => loadPanel("panel-security"));
+      bind("btn-totp-setup", "click", () => run("btn-totp-setup", "panel-security", async () => {
+        const result = await state.client.setupTotp();
+        setMessage("totp-secret-once", result.secret || result.otpauth_uri || "TOTP setup ready");
+        return { otpauth_uri: result.otpauth_uri ? "available" : undefined };
+      }, "secret と otpauth URI を一回表示"));
+      bind("btn-totp-confirm", "click", () => run("btn-totp-confirm", "panel-security", () => state.client.confirmTotp(textValue("form-security", "totp_code")), "TOTP enabled", [() => state.client.getTotpStatus().then((v) => render("panel-security", v)), () => state.client.getAuditLog().then((v) => render("panel-audit-log", v))]));
+      bind("btn-totp-disable", "click", () => run("btn-totp-disable", "panel-security", () => state.client.disableTotp(textValue("form-security", "totp_code")), "TOTP disabled", [() => state.client.getTotpStatus().then((v) => render("panel-security", v)), () => state.client.getAuditLog().then((v) => render("panel-audit-log", v))]));
+      bind("btn-save-api-rate-limit", "click", () => run("btn-save-api-rate-limit", "panel-security", () => state.client.setApiRateLimit(apiRatePolicyFromForm()), "API rate limit updated", [() => state.client.getApiRateLimit().then((v) => render("panel-security", v)), () => state.client.getAuditLog().then((v) => render("panel-audit-log", v))]));
+      bind("btn-save-session-timeout", "click", () => run("btn-save-session-timeout", "panel-security", () => state.client.setConfig({ session_timeout_seconds: intValue("form-security", "session_timeout_seconds") }), "Session timeout updated", [() => state.client.getConfig().then((v) => render("panel-config", v)), () => state.client.getConfigLog().then((v) => render("panel-config", v))]));
+
+      bind("btn-load-access-log", "click", () => run("btn-load-access-log", "panel-access-log", () => state.client.getAccessLog(), "件数を表示"));
+      bind("btn-load-api-access-log", "click", () => run("btn-load-api-access-log", "panel-access-log", () => state.client.getApiAccessLog({
+        limit: intValue("form-api-access-log-filter", "limit") || 100,
+        offset: intValue("form-api-access-log-filter", "offset") || 0,
+        method: trimmedValue("form-api-access-log-filter", "method") || null,
+        path: trimmedValue("form-api-access-log-filter", "path") || null,
+        status: intValue("form-api-access-log-filter", "status") || null,
+      }), "件数を表示"));
+      bind("btn-load-audit-log", "click", () => run("btn-load-audit-log", "panel-audit-log", () => state.client.getAuditLog({
+        limit: intValue("form-audit-log-filter", "limit") || 100,
+        offset: intValue("form-audit-log-filter", "offset") || 0,
+        actor: trimmedValue("form-audit-log-filter", "actor") || null,
+        action: trimmedValue("form-audit-log-filter", "action") || null,
+        result: trimmedValue("form-audit-log-filter", "result") || null,
+      }), "件数を表示"));
+      bind("btn-load-stats", "click", () => run("btn-load-stats", "panel-stats", async () => ({ stats: await state.client.getStats(), timeline: await state.client.getStatsTimeline(), duration: await state.client.getStatsBuildDuration() }), "グラフと数値を更新"));
+      bind("btn-save-repo", "click", () => run("btn-save-repo", "panel-repo", () => state.client.setRepoConfig(repoConfigFromForm()), "Repo config updated", [() => state.client.getRepoInfo().then((v) => render("panel-repo", v)), () => state.client.getConfigLog().then((v) => render("panel-config", v))]));
+      bind("btn-save-branch-config", "click", () => run("btn-save-branch-config", "panel-repo", () => state.client.setBranchConfig([repoConfigFromForm()]), "Branch config updated", [() => state.client.getBranchConfig().then((v) => render("panel-repo", v)), () => state.client.getConfigLog().then((v) => render("panel-config", v))]));
+      bind("btn-pause-schedule", "click", () => run("btn-pause-schedule", "panel-repo", () => state.client.pauseSchedule(), "schedule 変更結果を表示", [() => state.client.getSchedule().then((v) => render("panel-repo", v)), () => state.client.getConfigLog().then((v) => render("panel-config", v))]));
+      bind("btn-resume-schedule", "click", () => run("btn-resume-schedule", "panel-repo", () => state.client.resumeSchedule(), "schedule 変更結果を表示", [() => state.client.getSchedule().then((v) => render("panel-repo", v)), () => state.client.getConfigLog().then((v) => render("panel-config", v))]));
+      bind("btn-enable-maintenance", "click", () => run("btn-enable-maintenance", "panel-repo", () => state.client.enableMaintenance(textValue("form-repo", "maintenance_reason")), "Maintenance mode enabled", [() => state.client.getMaintenance().then((v) => { renderMaintenance(v); render("panel-maintenance", v); }), () => state.client.getDashboard().then((v) => render("panel-status", v))]));
+      bind("btn-disable-maintenance", "click", () => run("btn-disable-maintenance", "panel-repo", () => state.client.disableMaintenance(), "Maintenance mode disabled", [() => state.client.getMaintenance().then((v) => { renderMaintenance(v); render("panel-maintenance", v); }), () => state.client.getDashboard().then((v) => render("panel-status", v))]));
+      bind("btn-load-sessions", "click", () => run("btn-load-sessions", "panel-sessions", () => state.client.getSessions(), "件数を表示"));
+      bind("btn-revoke-sessions", "click", () => {
+        if (confirm("Revoke all other sessions?")) {
+          run("btn-revoke-sessions", "panel-sessions", () => state.client.revokeAllSessions(), "revoke 件数を表示", [() => state.client.getSessions().then((v) => render("panel-sessions", v))]);
+        }
+      });
+      bind("btn-run-diagnostics", "click", () => run("btn-run-diagnostics", "panel-diagnostics", () => state.client.getDiagnostics(), "診断結果を表示"));
+      bind("btn-verify-output", "click", () => run("btn-verify-output", "panel-diagnostics", () => state.client.verifyOutput(), "match 結果を表示"));
+      bind("btn-compare-builds", "click", () => run("btn-compare-builds", "panel-compare", async () => ({ left: await state.client.getHistoryLog(textValue("form-compare", "left_build_id")), right: await state.client.getHistoryLog(textValue("form-compare", "right_build_id")) }), "比較完了"));
+      bind("btn-create-token", "click", () => run("btn-create-token", "panel-tokens", async () => {
+        const result = await state.client.createToken(trimmedValue("form-token", "label"), listValue("form-token", "scopes"), trimmedValue("form-token", "expires_at") || null);
+        if (result.token) {
+          setMessage("issued-token-once", result.token);
+        }
+        return { created: true };
+      }, "token 本体を 1 回だけ表示", [() => state.client.getTokens().then((v) => render("panel-tokens", v)), () => state.client.getAuditLog().then((v) => render("panel-audit-log", v))]));
+      bind("btn-save-notes", "click", () => run("btn-save-notes", "panel-notes", () => state.client.setNotes(textValue("form-notes", "content")), "Notes updated", [() => state.client.getNotes().then((v) => render("panel-notes", v))]));
+      bind("btn-load-snapshots", "click", () => run("btn-load-snapshots", "panel-snapshots", () => state.client.getSnapshots(), "件数を表示"));
+      bind("btn-maintenance-enable", "click", () => run("btn-maintenance-enable", "panel-maintenance", () => state.client.enableMaintenance(textValue("form-maintenance", "reason")), "Maintenance mode enabled", [() => state.client.getMaintenance().then((v) => { renderMaintenance(v); render("panel-maintenance", v); }), () => state.client.getDashboard().then((v) => render("panel-status", v))]));
+      bind("btn-maintenance-disable", "click", () => run("btn-maintenance-disable", "panel-maintenance", () => state.client.disableMaintenance(), "Maintenance mode disabled", [() => state.client.getMaintenance().then((v) => { renderMaintenance(v); render("panel-maintenance", v); }), () => state.client.getDashboard().then((v) => render("panel-status", v))]));
+      bind("btn-save-access-control", "click", () => run("btn-save-access-control", "panel-access-control", () => state.client.setAccessControl(listValue("form-access-control", "allow")), "Access control updated", [() => state.client.getAccessControl().then((v) => render("panel-access-control", v)), () => state.client.getConfigLog().then((v) => render("panel-config", v))]));
+      bind("btn-add-hook", "click", () => run("btn-add-hook", "panel-hooks", () => state.client.addHook(trimmedValue("form-hook", "phase"), commandArgs(), Boolean(formValue("form-hook", "abort_on_failure"))), "hook 件数を表示", [() => state.client.getHooks().then((v) => render("panel-hooks", v)), () => state.client.getConfigLog().then((v) => render("panel-config", v))]));
+    }
+
+    function bindNavigation() {
+      document.querySelectorAll("#nav-panels button").forEach((button) => {
+        button.addEventListener("click", () => {
+          clearGlobalMessages();
+          showPanel(button.dataset.targetPanel);
+        });
+      });
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest("input, textarea")) {
+          setMessage("issued-token-once", "");
+          setMessage("totp-secret-once", "");
+        }
+      });
+    }
+
+    function init() {
+      const missing = requiredIds.filter((id) => !$(id));
+      if (missing.length > 0) {
+        setMessage("global-error", "UI initialization failed");
+        return;
+      }
+      try {
+        const root = $("app-root");
+        const baseUrl = root.dataset.apiBaseUrl || "/api";
+        state.client = new AdlaireCI({ baseUrl });
+      } catch (_error) {
+        setMessage("global-error", "UI initialization failed");
+        return;
+      }
+      panels.forEach((id) => {
+        $(id).hidden = true;
+      });
+      $("panel-login").hidden = false;
+      clearGlobalMessages();
+      panels.forEach(clearPanelMessages);
+      bindNavigation();
+      bindOperations();
+      showLogin();
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

@@ -42,7 +42,7 @@ Adlaire CI は、最初から Go を前提として仕様策定します。
 
 `components/api.go` は実装中・検証未完了のコンポーネントです。
 
-`admin/adlaire-ci-sdk.js` は Phase 5 実装済みのコンポーネントです。`admin/index.html` は仕様化済み・未実装のコンポーネントです。`components/mcp.go` は将来計画のコンポーネントです。
+`admin/adlaire-ci-sdk.js` は Phase 5 実装済み、`admin/index.html` は Phase 6 実装済みのコンポーネントです。`components/mcp.go` は将来計画のコンポーネントです。
 
 ## リリース形式
 
