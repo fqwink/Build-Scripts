@@ -2960,6 +2960,17 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | lower secret key | `my_token` も secret 扱い。 |
 | mask failure | build 完了扱いにしない。 |
 
+**branch env 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 設定保存 | `.branch_config.branch_targets[].env` は key 検証、value 検証、ASCII 昇順保存、上限 100 key をすべて満たす。 |
+| 注入範囲 | builder、pipeline step、hook、command notification の process env に同一値を渡し、system env 同名 key より branch env を優先する。 |
+| secret mask | secret key の value は response、stdout、stderr、build log、history、notify log、pending、UI 表示、fixture effects に平文で残さない。 |
+| ログ保存 | `.build_logs/{id}.json.environment.env_keys` には key 名だけを保存し、value、length、hash、部分文字列を保存しない。 |
+| 失敗境界 | key 不正、value 不正、mask failure では build または保存を完了扱いにせず、失敗地点以降の状態更新を行わない。 |
+| 完了条件 | fixture は env 注入、system env 上書き、secret stdout mask、不正 key、lower secret key、mask failure をすべて固定する。 |
+
 ### 27.32 ビルド通知連携
 
 本機能の目的は、build lifecycle event を複数通知 channel へ同一契約で送信し、通知の成功、失敗、再試行、監査を固定仕様で扱えるようにすることである。
@@ -3047,6 +3058,18 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 | pending duplicate | 同一 event/channel/payload の pending は 1 件だけ。 |
 | retry exhausted | dropped log 追記後 pending から削除。 |
 
+**notification 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| channel 選択 | event、enabled、channel `on`、top-level `on`、`"*"` の優先順位が固定契約どおり一致する。 |
+| 送信順 | channel id 昇順で送信し、1 channel 失敗後も後続 channel を継続する。 |
+| retry 境界 | webhook 5xx / timeout だけを pending 化し、4xx、SMTP 未設定、command 非 0、command timeout は pending 化しない。 |
+| secret mask | GET response、backup、notify log、pending、command stdout/stderr、UI 表示に secret 平文を残さない。 |
+| 状態保存順 | `.notify_log` 追記後に `.notify_pending` を保存し、log 失敗時は pending 追加判定を行わない。 |
+| build 独立性 | 通知失敗、pending 保存失敗、retry exhausted は build status を反転しない。 |
+| 完了条件 | fixture は複数 channel 成功、webhook pending、disabled/no target no-op、secret mask、retry exhausted、pending duplicate をすべて固定する。 |
+
 ### 27.33 ビルド時間トレンド記録
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
@@ -3102,6 +3125,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | API n=10 | 最新 10 件を返す。 |
 | 同一 build id 再記録 | sample は 1 件のまま値が置換される。 |
 | p95 算出 | `ceil(count * 0.95) - 1` の値と一致する。 |
+
+**trend 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| sample 追加 | build 完了時に duration が有効な場合だけ sample を追加し、`finished_at` 昇順で保存する。 |
+| summary 再計算 | sample 追加、置換、prune、復旧後は summary を部分更新せず全再計算する。 |
+| 数値丸め | avg、median は小数第 3 位を四捨五入して小数第 2 位、p95 は `ceil(count * 0.95) - 1` を使う。 |
+| 同一 build id | 同じ `build_id` は append せず置換し、重複 sample を残さない。 |
+| 破損復旧 | `.build_trends.json` 破損時は backup 作成後、`.build_history` 有効行だけから再集計し、skip warning を固定する。 |
+| API 境界 | `n` は 1〜1000 だけ許可し、不正値では状態を変更しない。 |
+| 完了条件 | fixture は summary 更新、同一 build id 置換、保持件数 prune、破損復旧、API `n` 不正をすべて固定する。 |
 
 ### 27.34 ビルド依存チェーン
 
@@ -3160,6 +3195,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 同順位 job | config 出現順で実行される。 |
 | disabled 依存 | 保存時 `422`、状態差分なし。 |
 
+**chain 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 保存時検証 | job id、参照整合、disabled 依存、循環、件数上限を保存前に検証し、不合格時は状態差分を残さない。 |
+| 実行順 | topological order と同順位の config 出現順が一致し、全 job log / history に同一 `chain_run_id` を保存する。 |
+| skip 境界 | required dependency failure は後続 job を `skipped_dependency_failed` として history へ記録し、build log は作成しない。 |
+| optional 境界 | `required=false` の依存失敗は WARN とし、後続 job の実行可否を固定契約どおり判定する。 |
+| summary 保存 | 最終 job 後に `chain_summary` を保存し、保存失敗時は job 結果を維持したまま runner 終了コードを最低 `1` にする。 |
+| 再開境界 | runner 停止後は完了済み job だけを既存履歴として扱い、未実行 job は次回再判定する。 |
+| 完了条件 | fixture は DAG 実行、required skip、optional 継続、cycle 失敗、disabled 依存、summary 保存失敗をすべて固定する。 |
+
 ### 27.35 ビルド優先度キュー
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
@@ -3214,6 +3261,18 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 | 不正 priority | 状態差分なしで `422`。 |
 | created_seq 欠落 | 正規化保存後に順序判定し、正規化保存失敗なら build なし。 |
 | urgent queue full | `429`、既存 low entry も削除しない。 |
+
+**priority queue 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 採番 | queue 追加時に `.build_state.queued[].created_seq` 最大値 + 1 を保存し、priority 省略時は `"normal"` を保存する。 |
+| 表示順 | `GET /api/queue` は priority 数値昇順、created_seq 昇順、id 昇順で返す。 |
+| 取り出し順 | runner は表示順と同じ順序で 1 件だけ取り出す。 |
+| 旧 entry | `created_seq` 欠落 entry は runner 取り出し前に lock 内で正規化保存し、保存失敗時は build を開始しない。 |
+| clear | `DELETE /api/queue` は waiting entry 全件だけを削除し、実行中 build を停止しない。 |
+| queue full | priority が高くても既存 entry を削除せず `429` とする。 |
+| 完了条件 | fixture は urgent 優先、同一 priority FIFO、created_seq 正規化、不正 priority、queue full、clear をすべて固定する。 |
 
 ### 27.36 失敗原因の自動分類
 
@@ -3280,6 +3339,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | evidence 上限超過 | 最大 10 件で保存され、secret 平文を含まない。 |
 | 成功履歴 | `failure_category:null`。 |
 
+**failure classification 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 分類優先順位 | 複数カテゴリに該当する場合、分類値表の上から最初に該当した category を保存する。 |
+| 保存先一致 | `.build_logs/{id}.json.failure_category`、`failure_evidence[]`、`.build_history.failure_category` が同じ分類結果を参照する。 |
+| evidence 安全性 | `failure_evidence[].message` は最大 300 文字で、secret、token、path 全体、入力値連結を含めない。 |
+| 上限 | evidence は最大 10 件とし、分類に使った evidence を先頭に残す。 |
+| API filter | 未知 query は `422`、既存未知値は返却しつつ warnings を 1 回だけ返す。 |
+| 成功履歴 | success 系 history は `failure_category:null` とし、filter 時に failure と混在させない。 |
+| 完了条件 | fixture は timeout、deploy failure、config error、filter、unknown warning、evidence mask、上限超過をすべて固定する。 |
+
 ### 27.37 ビルド実行環境の記録
 
 owner component は `runner` とする。collaborator component は `statefile` とする。
@@ -3338,6 +3409,18 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | home 配下 state dir | basename だけ保存される。 |
 | environment write failure | pipeline を起動しない。 |
 
+**environment record 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 取得時点 | build id 採番直後、builder 起動前に environment snapshot を取得して保存する。 |
+| secret 非保存 | 環境変数 value、token、secret、PATH 全体、VCS revision を保存しない。 |
+| version 取得 | builder version は 2 秒 timeout、stdout 先頭行の最初の token だけを保存し、失敗時は `"unknown"`。 |
+| path 境界 | home 配下 state dir は basename だけ、それ以外は絶対 path を保存する。 |
+| 保存失敗 | environment 保存失敗時は build 本体を起動せず、`.build_status.json` に `failure_state_write` を保存する。 |
+| 継続可能失敗 | hostname、disk stat、builder version 取得不能は WARN または unknown/null とし、build を継続する。 |
+| 完了条件 | fixture は通常保存、builder version timeout、home path 短縮、secret 非保存、environment write failure をすべて固定する。 |
+
 ### 27.38 ビルド所要時間の異常検知
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
@@ -3393,3 +3476,15 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 通知失敗 | build success 維持、pending 追加。 |
 | failure build | trend sample 追加、anomaly 判定なし。 |
 | tag 重複 | `duration_anomaly` が 1 件だけ。 |
+
+**duration anomaly 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 判定順 | 今回 sample を `.build_trends.json` に追加する前の summary で判定し、判定後に trend を更新する。 |
+| 対象 status | `"success"` と `"success_deploy_pending"` だけを anomaly 判定対象とし、failure は trend sample 追加だけを行う。 |
+| 閾値 | avg 超過、p95 超過、両方超過を区別し、`threshold_source` を固定値で保存・通知する。 |
+| history 更新 | anomaly 時は WARN、`flagged=true`、`tags += ["duration_anomaly"]` を保存し、重複 tag を作らない。 |
+| 通知独立性 | duration_anomaly 通知失敗は build status を変更せず、notify retry 契約に従う。 |
+| 設定不正 | API は `422`、runner は既定値へ補正せず機能無効として扱う。 |
+| 完了条件 | fixture は sample 不足 no-op、avg 超過、p95 境界、通知失敗、failure build、tag 重複、設定不正をすべて固定する。 |

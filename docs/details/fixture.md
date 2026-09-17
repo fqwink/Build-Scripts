@@ -429,6 +429,47 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 §27.21〜§27.30 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。failure、noop、partial、security fixture では、SHA cache、build log、history、status、snapshot、dependency manifest、build cache、local watch state、approval queue、pending transfer、remote artifact tmp、public output の forbidden side effect を必ず列挙する。
 
+**§27.31〜§27.38 feature fixture 固定契約：**
+
+§27.31〜§27.38 の fixture は、`docs/details/runner.md` §27.31〜§27.38 実装完了固定契約に列挙された branch env、notification、trend、chain、priority queue、failure classification、environment record、duration anomaly の状態、log、API response、副作用、保存順、secret mask を固定する。各 fixture は `manifest.json.section` を対象 §27.x に固定し、`manifest.json.feature` を下表の feature 名と一致させる。
+
+| 節 | fixture 名 | 固定する確認 |
+|----|------------|--------------|
+| §27.31 | `success-branch-env-inject` | `.branch_config.branch_targets[].env` 正規化、ASCII 昇順保存、system env 上書き、builder / pipeline / hook / command notification への env 注入、`.build_logs/{id}.json.environment.env_keys` を固定する。 |
+| §27.31 | `security-branch-env-secret-mask` | `TOKEN` / `SECRET` / `PASSWORD` / `PAT` と lower case secret key の value が response、stdout、stderr、build log、history、notify log、pending、effects に残らないことを固定する。 |
+| §27.31 | `failure-branch-env-invalid-key` | 不正 key / value を API `422` または runner 終了コード `2`、`.branch_config` / build log / history / status 差分なしに固定する。 |
+| §27.31 | `failure-branch-env-mask-failure` | mask failure 時に build 完了扱いにせず、平文保存なし、失敗地点以降の write / command / notification 禁止を固定する。 |
+| §27.32 | `success-notify-multi-channel` | 複数 channel の event 判定、channel id 昇順送信、`.notify_log` JSON Lines、build status 不変を固定する。 |
+| §27.32 | `partial-notify-webhook-pending` | webhook 5xx / timeout の failure log、pending 追加、保存順、後続 channel 継続、build status 不変を固定する。 |
+| §27.32 | `noop-notify-disabled-event` | enabled=false または event 不一致時に外部送信 0 件、`.notify_log` / `.notify_pending` 差分なし、idempotency を固定する。 |
+| §27.32 | `security-notify-secret-mask` | webhook secret、SMTP password、command env secret が GET、backup、notify log、pending、command stdout/stderr、UI 表示に残らないことを固定する。 |
+| §27.33 | `success-trend-summary-update` | sample 追加、保持件数 prune、avg / median / p95 / anomaly_count 再計算、atomic write を固定する。 |
+| §27.33 | `success-trend-replace-build-id` | 同一 `build_id` sample 置換、重複なし、`finished_at` 昇順再整列、summary 全再計算を固定する。 |
+| §27.33 | `failure-trend-corrupt-rebuild` | `.build_trends.json` 破損 backup、`.build_history` 有効行からの再集計、skip warning、再集計不能時初期化を固定する。 |
+| §27.33 | `failure-trend-api-invalid-n` | `GET /api/stats/build-trends?n=` 不正値を `422`、状態差分なし、status / log 更新なしに固定する。 |
+| §27.34 | `success-chain-dag-order` | DAG 検証、topological order、同順位 config 出現順、同一 `chain_run_id`、chain summary を固定する。 |
+| §27.34 | `noop-chain-disabled-job` | disabled job 除外、実行 command なし、history / build log 未作成、enabled job への影響なしを固定する。 |
+| §27.34 | `failure-chain-cycle` | 循環依存を API `422`、保存差分なし、runner では chain 無効化して通常 build へ戻す境界を固定する。 |
+| §27.34 | `partial-chain-required-skip` | required dependency failure 後の `skipped_dependency_failed` history、build log 未作成、summary skipped count、後続 write 禁止を固定する。 |
+| §27.35 | `success-priority-urgent-first` | urgent / high / normal / low の取り出し順、同一 priority FIFO、`GET /api/queue` 表示順を固定する。 |
+| §27.35 | `success-priority-created-seq-normalize` | `created_seq` 欠落旧 entry の lock 内正規化保存、正規化後取り出し、正規化失敗時 build なしを固定する。 |
+| §27.35 | `failure-priority-invalid` | 不正 priority を API `422`、`.build_state` / history / log 差分なしに固定する。 |
+| §27.35 | `failure-priority-queue-full` | queue full 時 `429`、urgent でも既存 low entry を削除しないこと、write / command なしを固定する。 |
+| §27.36 | `success-failure-category-timeout` | pipeline timeout を `pipeline_timeout`、evidence source / code / message / at、build log / history 保存一致に固定する。 |
+| §27.36 | `success-failure-category-deploy` | SSH / checksum / pending transfer failure を `deploy_failure`、分類優先順位、API filter 結果に固定する。 |
+| §27.36 | `failure-failure-category-filter-invalid` | 未知 `failure_category` query を `422`、状態差分なし、既存未知値 warning と区別することを固定する。 |
+| §27.36 | `security-failure-evidence-mask` | evidence 最大 10 件、分類 evidence 先頭、secret / token / path 全体 / 入力値連結なし、成功履歴 `null` を固定する。 |
+| §27.37 | `success-environment-record` | build id 採番直後、builder 起動前の environment 保存、GOOS / GOARCH / Go version / hostname / state_dir / disk free / captured_at を固定する。 |
+| §27.37 | `success-environment-builder-version-timeout` | builder version 2 秒 timeout 時 `"unknown"`、stderr 非保存、build 継続を固定する。 |
+| §27.37 | `failure-environment-write` | environment 保存失敗時に pipeline / builder / deploy / notification を起動せず、`.build_status.json` `failure_state_write` と終了コード `1` を固定する。 |
+| §27.37 | `security-environment-secret-excluded` | 環境変数 value、token、secret、PATH 全体、VCS revision が build log、history、effects に保存されないことを固定する。 |
+| §27.38 | `success-duration-anomaly-avg` | trend 更新前 summary による avg 超過判定、WARN、`flagged=true`、tag 追加、notify payload `threshold_source` を固定する。 |
+| §27.38 | `noop-duration-anomaly-insufficient-samples` | sample 数不足、avg / p95 null、disabled 設定時に判定なし、通知なし、trend 更新だけ行う条件を固定する。 |
+| §27.38 | `partial-duration-anomaly-notify-failure` | anomaly 判定後の通知失敗、build success 維持、notify pending 追加、trend 保存、history flag 維持を固定する。 |
+| §27.38 | `failure-duration-anomaly-invalid-config` | API `422`、runner では既定値補正なしで機能無効、状態差分なし、通知なしを固定する。 |
+
+§27.31〜§27.38 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。failure、noop、partial、security fixture では、`.branch_config`、`.notify_config`、`.notify_log`、`.notify_pending`、`.build_trends.json`、`.build_chain_config`、`.build_state`、`.build_logs/{id}.json`、`.build_history`、`.build_status.json`、外部 command、通知、public output の forbidden side effect を必ず列挙する。
+
 **§27 fixture ファイルセット固定契約：**
 
 各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。実装者は fixture ごとに必要ファイルを推測してはならない。
