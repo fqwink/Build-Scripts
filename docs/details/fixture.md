@@ -920,6 +920,35 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 
 §28.16〜§28.20 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。browser runtime と parser precedence に関わる fixture では、`expected/site/assets/app.js` と `expected/effects.json` に handler 登録順、fallback 分岐、保護対象 token、external call 0 件を固定する。security fixture では external script、CDN、runtime network fetch、raw HTML、event handler、credential、secret が HTML、CSS、JS、search index、stdout、stderr、REPORT、manifest に残らないことを `expected/security.json` に固定する。
 
+**§28.21〜§28.25 feature fixture 固定契約：**
+
+§28.21〜§28.25 の fixture は、`docs/details/builder.md` §28.21〜§28.25 実装詳細固定契約に列挙された accessibility、lightbox、print QR、definition list、task list の HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x に固定し、`manifest.json.feature_slug` を §28 fixture カタログ固定契約の feature slug と一致させる。
+
+| feature slug | fixture | 固定する内容 |
+|--------------|---------|--------------|
+| `a11y` | `success-a11y-landmarks-labels` | `.skip-link`、`#main-content`、landmark role、TOC / search / icon button の `aria-label`、`:focus-visible`、REPORT `a11y_*` を固定する。 |
+| `a11y` | `success-a11y-skip-link-tab-order` | skip link が最初の focus target になり、main content へ移動し、既存 keyboard shortcut と衝突しない focus 順を `expected/site/assets/app.js` と HTML で固定する。 |
+| `a11y` | `failure-a11y-duplicate-id-strict` | 重複 id、空 label、focus 不能 skip target、keyboard trap を `BUILDER28_OUTPUT_VALIDATION_FAILED`、終了コード `1`、stdout 空、stderr 固定 error、公開出力維持にする。 |
+| `a11y` | `security-a11y-no-keyboard-trap` | theme toggle、section collapse、TOC active、hash target、lightbox、skip link を併用しても Tab / Shift+Tab が閉じ込められず、focus outline が text を隠さない。 |
+| `image-lightbox` | `success-lightbox-open-close` | trigger 数、page 1 個の dialog、open / close button、`aria-modal`、`aria-hidden`、opener focus return、REPORT `lightbox_images` を固定する。 |
+| `image-lightbox` | `success-lightbox-escape-backdrop` | Escape、backdrop click、close button、Enter / Space activation、dialog hidden state、body scroll への副作用なしを `expected/site/assets/app.js` で固定する。 |
+| `image-lightbox` | `failure-lightbox-alt-missing-strict` | strict で alt なし / 空 alt image を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、stdout 空、stderr 固定 error、公開出力維持にする。 |
+| `image-lightbox` | `security-lightbox-focus-trap` | Tab / Shift+Tab focus trap、external image no-fetch、escaped `data-lightbox-src`、external script / asset 不在を `expected/security.json` で固定する。 |
+| `print-qr` | `success-print-qr-url` | `http` / `https` URL から `.print-qr`、`.print-qr-svg`、viewBox、rect order、print CSS、REPORT `print_qr=true` を固定する。 |
+| `print-qr` | `noop-print-qr-empty-url` | URL 空値で QR SVG、print QR CSS、REPORT URL、search index text を出力せず、`print_qr=false`、`print_qr_url=""` にする。 |
+| `print-qr` | `failure-print-qr-url-too-long` | 512 byte 超過、scheme 不正、credential 付き URL、制御文字入り URL を `BUILDER28_INVALID_OPTION`、終了コード `2`、stdout 空、公開出力維持にする。 |
+| `print-qr` | `security-print-qr-svg-escape` | SVG 内 `script`、event handler、external href、foreignObject がなく、credential / secret 風 query が stdout、stderr、REPORT、manifest、search index に平文で残らない。 |
+| `definition-lists` | `success-definition-list-single` | 単一 term / definition を `dl.definition-list`、`dt`、`dd` へ変換し、inline escape、REPORT `definition_lists=1` / `definition_terms=1` を固定する。 |
+| `definition-lists` | `success-definition-list-multiple` | 複数 term、複数 definition、空行境界、paragraph 復帰、search index text order を固定する。 |
+| `definition-lists` | `noop-definition-list-empty-term` | 空 term、空 definition、blockquote 内、list item 内、disabled option では通常 paragraph / list として扱い、warning と REPORT count を増やさない。 |
+| `definition-lists` | `security-definition-list-inline-escape` | term / definition 内の raw HTML、quote、event handler、`javascript:` が escape され、link / badge / footnote / math inline 併用順が parser precedence と一致する。 |
+| `task-lists` | `success-task-list-unchecked` | `[ ]` marker を disabled unchecked checkbox、`.task-list-item`、`.task-list-checkbox`、aria label、REPORT item count へ変換する。 |
+| `task-lists` | `success-task-list-checked-nested` | `[x]` / `[X]` checked、nested list 階層維持、checked count、通常 list との混在を固定する。 |
+| `task-lists` | `noop-task-list-non-target` | `[-]`、`[o]`、`[]`、`[xx]`、文中 marker、disabled option では通常 list text として扱い、checkbox を出力しない。 |
+| `task-lists` | `security-task-list-disabled-aria` | checkbox が常に disabled、click で状態変更不可、aria label 非空、search index から checkbox label / marker text を除外する。 |
+
+§28.21〜§28.25 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。accessibility と lightbox の fixture は browser runtime fixture と同じ focus / keyboard / no-break 条件を再確認する。print QR、definition list、task list の security fixture は external call 0 件、外部 library 不使用、raw HTML 不在、credential / secret 非表示、search index 除外対象を `expected/security.json` に固定する。
+
 **§28 expected 比較方式固定契約：**
 
 expected 比較は、実装環境差分で揺れないように以下の正規化だけを許可する。下表にない正規化、部分一致、snapshot 差し替え、目視承認は合格条件にしてはならない。

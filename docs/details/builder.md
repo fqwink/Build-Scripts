@@ -2402,7 +2402,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | §28.18 | 脚注サポート | `[^id]`、`[^id]: text`。 | 本文 sup link、末尾 `.footnotes`。 | 定義収集 → 参照順に番号付け → backlink 生成 → 未参照定義は report。 | 未定義参照は warning、strict で終了コード `2`。 | 複数脚注、重複定義、未定義、backlink。 |
 | §28.19 | インライン数式レンダリング | `$...$`、`$$...$$`。 | `<span class="math-inline">`、`<div class="math-block">`。 | delimiter parse → HTML escape → CSS で等幅表示。 | KaTeX 等外部 renderer は使用しない。未閉鎖 delimiter は通常 text、strict で終了コード `2`。 | inline、block、escape、未閉鎖、code 内非変換。 |
 | §28.20 | ページ内ナビゲーション履歴 | hash navigation。 | JS history handler、focus 移動。 | anchor click 捕捉 → `history.pushState` → heading focus → back/forward で scroll 復元。 | JS 無効時は通常 anchor。存在しない hash は何もしない。 | click、back、forward、不在 hash、focus。 |
-| §28.21 | 読み上げ対応（アクセシビリティ） | 生成 HTML 全体。 | `aria-label`、`role`、skip link、focus outline。 | landmark 付与 → icon button label → search / TOC label → keyboard focus 順固定。 | 空 label、重複 id は warning、strict で終了コード `2`。 | landmark、button label、skip link、tab order、strict duplicate。 |
+| §28.21 | 読み上げ対応（アクセシビリティ） | 生成 HTML 全体。 | `aria-label`、`role`、skip link、focus outline。 | landmark 付与 → icon button label → search / TOC label → keyboard focus 順固定。 | 空 label、重複 id、keyboard trap は出力検証 failure。 | landmark、button label、skip link、tab order、duplicate id。 |
 | §28.22 | 画像ライトボックス | Markdown image。 | lightbox dialog HTML / JS。 | image に button wrapper → dialog 1 個生成 → click / Escape / backdrop close。 | alt なしは warning。外部画像も拡大対象だが fetch しない。 | open/close、Escape、focus trap、alt warning。 |
 | §28.23 | 印刷時 QR コード挿入 | `--print-qr-url <url>` または page canonical URL。 | print footer の QR 相当 SVG。 | URL validation → deterministic QR-lite matrix 生成 → print CSS だけで表示。 | 空 URL は非表示。外部 library 禁止。URL > 512 byte は終了コード `2`。 | URL あり、空 URL、長すぎ、print only。 |
 | §28.24 | 定義リストサポート | `term` 改行 `: definition`。 | `<dl><dt>term</dt><dd>definition</dd></dl>`。 | 連続定義行を group 化 → inline 変換 → list と paragraph 境界確定。 | term 空、definition 空は通常 paragraph。 | 単一、複数、paragraph 境界、inline escape。 |
@@ -2790,6 +2790,90 @@ hash target は生成済み heading id だけに固定する。TOC link、headin
 JS 無効時は通常 anchor として機能する。JS 実行時に `history.pushState`、focus、scroll、DOM query が例外になっても静的本文と TOC を壊してはならない。missing target は non-strict では no-op で warning を出さず、strict でも runtime missing hash を build failure にしてはならない。build 時に生成 HTML 内の hash link が存在しない heading id を指す場合だけ、strict で warning `BUILDER28_UNRESOLVED_REFERENCE` を終了コード `2` に昇格する。
 
 `hash_history_enabled` は boolean、`hash_history_targets` は対象 heading 数とする。search index には hash handler、focus label、back / forward UI text を含めない。
+
+**§28.21〜§28.25 実装詳細固定契約：**
+
+§28.21〜§28.25 は、生成 site のアクセシビリティ、画像操作、印刷出力、Markdown block / list 変換に影響するため、下表の処理単位、状態、出力を固定する。実装者は、本表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 asset を導入してはならない。
+
+| 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+|----|----------|------------------|--------------|
+| §28.21 | page accessibility audit | `a11y_landmarks`、`a11y_label_targets`、`a11y_duplicate_ids`、`a11y_focus_targets` を page ごとに保持する。 | skip link、landmark、aria label、focus order、duplicate id 検出、keyboard trap 不在が一致する。 |
+| §28.22 | image lightbox target set | `lightbox_targets`、`lightbox_dialog_id`、`lightbox_focus_order`、`lightbox_warnings` を page ごとに保持する。 | trigger、dialog 1 個、Escape / backdrop / close button、focus trap、alt warning、external no-fetch が一致する。 |
+| §28.23 | print QR payload | `print_qr_url`、`print_qr_matrix`、`print_qr_svg_nodes`、`print_qr_enabled` を run または page ごとに保持する。 | URL validation、print-only SVG、deterministic rect order、screen 非表示、external library 不使用が一致する。 |
+| §28.24 | definition list group | `definition_list_groups`、`definition_terms`、`definition_boundaries` を block ごとに保持する。 | paragraph 境界、`dl` / `dt` / `dd`、inline escape、empty no-op、search index text が一致する。 |
+| §28.25 | task list item | `task_list_items`、`task_list_checked`、`task_list_nested_depth` を list item ごとに保持する。 | disabled checkbox、checked 判定、nested list、aria label、通常 list 非変換が一致する。 |
+
+**§28.21 読み上げ対応詳細固定契約：**
+
+`--a11y-check` は boolean option である。`true` の場合だけ生成 HTML の accessibility audit と補助出力を有効にする。`false` の場合、audit warning / failure を出さず、`.skip-link`、追加 landmark role、追加 focus CSS、追加 label 補助を §28.21 理由では出力してはならない。
+
+有効時は page 先頭に `.skip-link` を 1 個出力し、href は main content の id `#main-content` に固定する。main content は `main` 要素または既存 main wrapper に `id="main-content"` を 1 個だけ持つ。既に同 id がある場合は再利用し、重複 id を作らない。重複 id が最終 HTML に存在する場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力維持とする。
+
+landmark は以下に固定する。
+
+| 対象 | 固定 |
+|------|------|
+| header | 既存 header がある場合だけ `role="banner"` を付与する。新規 header を作らない。 |
+| nav / TOC | TOC nav に `aria-label="Table of contents"` を付与する。 |
+| main | `id="main-content"` と `role="main"` を持つ。 |
+| search | search input がある場合は `aria-label="Search document"` を持つ。 |
+| icon / toggle button | visible text がない button は固定 `aria-label` を持つ。 |
+
+空 `aria-label`、空 button name、label なし input、focus 不能 skip target、keyboard trap、focus outline 非表示、focus / hover による layout 寸法変化は出力検証 failure とする。`:focus-visible` は既存 CSS の後ろ、§28 visual selector の固定順に従って出力する。`a11y_warnings` は non-fatal advisory 件数、`a11y_duplicate_ids` は検出した重複 id 件数、`a11y_missing_labels` は label 欠落件数とする。出力検証 failure では `[REPORT]` を出力しない。
+
+**§28.22 画像ライトボックス詳細固定契約：**
+
+`--image-lightbox` は boolean option である。`true` の場合だけ Markdown image 由来の image を lightbox 対象にする。`false` の場合、trigger、dialog、lightbox JS、`data-lightbox-src`、`.adlaire-lightbox-trigger`、`.adlaire-lightbox-dialog` を出力してはならない。
+
+lightbox 対象は、§28.10 の image src validation を通過し、alt text が trim 後 1 文字以上ある image に限定する。alt なし、空 alt、空白 alt は non-strict で warning `BUILDER28_UNRESOLVED_REFERENCE` とし、lightbox 対象から除外して通常 image として出力する。strict では終了コード `2`、公開出力維持とする。
+
+出力は page ごとに dialog 1 個だけとする。各 image の trigger は `button.adlaire-lightbox-trigger`、`type="button"`、`data-lightbox-src`、`aria-label="Open image"` を持つ。dialog は `.adlaire-lightbox-dialog`、`role="dialog"`、`aria-modal="true"`、`aria-hidden="true"` を持つ。dialog 内 image の src / alt は opener の escaped src / alt だけから設定し、build 時 fetch、runtime fetch、preload、外部 image 存在確認を行わない。
+
+JS 挙動は以下に固定する。
+
+| 操作 | 挙動 |
+|------|------|
+| trigger click / Enter / Space | dialog を開き、opener を保持し、dialog 内 close button へ focus する。 |
+| Escape | dialog を閉じ、opener が存在する場合だけ focus を戻す。 |
+| backdrop click | dialog 自体が click target の場合だけ閉じる。 |
+| close button | dialog を閉じ、opener が存在する場合だけ focus を戻す。 |
+| Tab / Shift+Tab | dialog 内 focusable 要素だけで循環する。focusable 要素がない場合は dialog 自体に focus する。 |
+
+focus trap が失敗する、Escape で閉じない、dialog が複数出力される、外部 script / asset を要求する、`data-lightbox-src` が attribute escape されない場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED` または `BUILDER28_ESCAPE_BLOCKED`、公開出力維持とする。`lightbox_images` は trigger 数、`lightbox_warnings` は alt なし等で対象外にした image 数とする。search index には alt text だけを含め、dialog label、button label、src を含めない。
+
+**§28.23 印刷時 QR コード詳細固定契約：**
+
+`--print-qr-url` は string option である。空値の場合は QR を出力せず、`print_qr=false`、`print_qr_url=""` とする。非空値は trim 後 1〜512 byte、scheme は `http` または `https` だけを許可する。credential 付き URL、fragment 以外に制御文字を含む URL、`javascript:`、`data:`、`file:`、相対 URL、512 byte 超過は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
+
+QR は外部 library を使わない deterministic QR-lite SVG とする。本仕様では完全な QR 規格実装を要求せず、URL を表す deterministic printable marker として扱う。SVG は `.print-qr-svg` を持ち、`viewBox="0 0 29 29"`、`role="img"`、`aria-label="Print URL"` を固定する。matrix は URL の UTF-8 byte から deterministic に生成し、rect は y 昇順、x 昇順で出力する。SVG 内に `script`、event handler、external href、foreignObject を含めてはならない。
+
+`.print-qr` は print 専用 block とし、screen では非表示、print では footer 相当領域に表示する。通常本文内に常時表示してはならない。`print_qr` は SVG を出力した場合 `true`、`print_qr_url` は JSON string とする。ただし credential、secret 風 query、token 風 query value は stdout、stderr、REPORT、manifest、search index に平文出力してはならない。search index には QR URL、SVG text、print label を含めない。
+
+**§28.24 定義リスト詳細固定契約：**
+
+`--definition-lists` は boolean option である。`true` の場合だけ definition list 変換を有効にする。`false` の場合、対象構文は通常 paragraph として処理し、`dl`、`dt`、`dd`、`.definition-list` を §28.24 理由で出力してはならない。
+
+definition list は以下の block だけを対象にする。
+
+| 入力 | 挙動 |
+|------|------|
+| term 行直後に `: definition` が 1 行以上続く | 1 group の `dl.definition-list` に変換する。 |
+| 複数 term が連続し、それぞれ definition を持つ | 同一 group に複数 `dt` / `dd` を出力する。 |
+| term が空、definition が空、`: ` の後ろが空白だけ | 通常 paragraph として扱い、warning を出さない。 |
+| code fence / code span / blockquote 内 | definition list にしない。 |
+| list item 内 | 通常 list の text として扱い、definition list にしない。 |
+
+term と definition は通常 inline 変換を適用し、HTML escape 後に `dt` / `dd` へ出力する。paragraph 境界は空行で確定し、空行をまたいで同一 definition list group にしてはならない。`definition_lists` は出力した `dl.definition-list` 数、`definition_terms` は出力した `dt` 数とする。search index には term と definition text を本文出現順で含めるが、`dl` / `dt` / `dd` label や UI text は含めない。escape 後に raw HTML、event handler、`javascript:` が実行可能形で残る場合は終了コード `1`、stderr `BUILDER28_ESCAPE_BLOCKED`、公開出力維持とする。
+
+**§28.25 タスクリスト詳細固定契約：**
+
+`--task-lists` は boolean option である。`true` の場合だけ task list marker を変換する。`false` の場合、`[ ]`、`[x]`、`[X]` は通常 list item text として処理し、`.task-list-item`、`.task-list-checkbox` を §28.25 理由で出力してはならない。
+
+task list marker は list item text の先頭だけを対象にする。許可 marker は `[ ]`、`[x]`、`[X]` である。`[-]`、`[o]`、`[]`、`[xx]`、文中の marker は通常 list item text として扱う。nested list では各 list item の階層を維持し、checkbox 追加により list nesting を変えてはならない。
+
+出力は list item に `.task-list-item` を付与し、先頭に `input.task-list-checkbox`、`type="checkbox"`、`disabled`、`aria-label="Task complete"` または `aria-label="Task incomplete"` を出力する。checked marker の `[x]` と `[X]` は `checked` attribute を持つ。checkbox は interactive control として有効化してはならない。`disabled` が欠落する、checkbox が click で状態変更できる、aria label が空、nested list 構造が崩れる場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力維持とする。
+
+`task_list_items` は出力した task list item 数、`task_list_checked` は checked checkbox 数とする。search index には task item text を含めるが、checkbox label、checked state label、marker text を含めない。
 
 **§28 実装完了条件：**
 
