@@ -400,47 +400,18 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 
 表の「責務 component」は参照先を探すための component 一覧である。owner component と collaborator component は、対象機能の詳細仕様節に記載された値を正とする。
 
-表の「詳細仕様節」が複数ある場合は、owner component の詳細仕様ファイルを主本文として読み、collaborator component の詳細仕様ファイルは schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認として読む。ファイル名を伴わない裸の節番号は、同じ行の「責務 component」から該当する owner component または collaborator component の詳細仕様ファイルへ解決する。`builder` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` の同番号節を合わせて確認する。`runner` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` の同番号節を合わせて確認する。`api` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_API_SPEC.md` の同番号節を合わせて確認する。`sdk` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 を合わせて確認する。`ui` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 を合わせて確認する。`statefile`、`security`、`archive`、`commitstatus`、`admin`、`fixture`、`setup` が責務 component に含まれる場合は、それぞれの責務 component 別詳細仕様ファイルを合わせて確認する。該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。
+表の「詳細仕様節」が複数ある場合は、owner component の詳細仕様ファイルを主本文として読み、collaborator component の詳細仕様ファイルは schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認として読む。ファイル名を伴わない裸の節番号は、同じ行の「責務 component」から該当する owner component または collaborator component の詳細仕様ファイルへ解決する。
 
 詳細節対応表は owner component を置き換える表ではない。受け入れ条件が複数 component にまたがる場合でも、主本文は owner component の詳細仕様ファイルを正とし、collaborator component の詳細仕様は schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認に限定する。collaborator component は、owner component の入力、出力、状態、endpoint、SDK method、UI 操作を追加定義しない。
 
+該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。§27.1〜§27.47 の owner、主本文、collaborator は §27.1〜§27.47 追加仕様化機能参照インデックスを確認する。
+
+### 0i.1 Builder / 静的 Web サイト出力
+
 | 機能 | 責務 component | 詳細仕様節 | 受け入れ条件 |
 |------|-------------------|------------|--------------|
-| ビルドタイムアウト | `runner` / `api` | §12、§13、§22.0e | `build_timeout_seconds` の既定値、設定 API、`context.WithTimeout` の中断処理、終了コード、ログが一致する。 |
-| ポーリング間隔の動的変更 | `api` | §22.0e、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26、§27.11 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
-| ビルドログのファイル保存 | `runner` | §11、§13、§15 | `.build_logs/{id}.json` の schema、stdout/stderr、変換レポート、duration、権限が一致する。 |
-| GitHub Webhook 受信 | `api` / `runner` | §22.0e、§22-W、§13、§27.12 | HMAC 検証、イベント記録、キュー投入またはビルドトリガー、エラー応答が一致する。 |
-| ネットワーク断時の再試行 | `runner` | §12、§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、失敗時ログが一致する。 |
-| GitHub API レート制限自動待機 | `runner` / `api` | §13、§22.0e | `X-RateLimit-Remaining` と `X-RateLimit-Reset` の扱い、待機、API 表示が一致する。 |
-| 転送後リモート整合性検証 | `runner` | §14a、§13 | SSH 転送後の SHA256 照合、不一致時の `.pending_transfers` 再投入、ログが一致する。 |
-| マルチブランチビルド | `runner` / `api` | §12、§13、§22.0e | `BRANCH_TARGETS` と `.branch_config` の優先順位、順次処理、API 更新が一致する。 |
-| ビルドログ世代管理 | `runner` | §12、§13、§15 | `LOG_KEEP_N` 超過時の削除順序、0 の扱い、削除ログが一致する。 |
-| ビルド出力の外部転送 | `runner` | §14a、§13 | SSH 差分転送、複数ファイル処理、失敗時 pending、通知が一致する。 |
-| ビルドクールダウン | `runner` | §12、§13 | `BUILD_COOLDOWN_SECONDS` 内の起動スキップ、Webhook 二重トリガー抑止、ログが一致する。 |
-| ビルド前の事前チェック | `runner` | §13、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | ディスク、`adlaire-ci-build`、pipeline 前提の確認、不足時の ERROR と通知が一致する。 |
-| 定期強制ビルド | `runner` / `api` | §12、§13、§22.0e | `FORCE_BUILD_INTERVAL`、変更なし時の強制ビルド、設定 API が一致する。 |
-| ビルド中重複スキップ | `runner` | §11、§13 | `.build_lock` の PID 判定、stale lock、競合時終了コードとログが一致する。 |
-| GitHub PAT 有効期限の事前警告 | `runner` / `api` | §13、§22.0e | `GitHub-Authentication-Token-Expiration` の解析、7 日以内 WARN、API 表示が一致する。 |
-| コミット情報のビルドログ記録 | `runner` | §13、§15 | SHA、message、author、date を build id と同じログへ記録する。 |
-| GitHub API 連続失敗によるサーキットブレーカー | `runner` / `api` | §11、§12、§13、§22.0e | 閾値、open/close 状態、API reset、通知、状態ファイルが一致する。 |
 | 出力サイトサイズ警告閾値 | `builder` / `runner` / `api` | §8、§12、§13、§22.0e | `OUTPUT_SIZE_WARN_MB`、`size_warn`、WARN ログ、API 表示が一致する。 |
-| 設定ファイル起動時整合性チェック | `runner` | §11、§12、§13、§22.0a、§22.0c、§27.10 | 対象 JSON ファイル、検証順序、破損退避、初期化値、ログ、通知、終了コード、fixture が一致する。 |
-| ビルドステータスファイル出力 | `runner` / `api` | §11、§13、§15、§22.0a、§22.0c、§22.0e、§27.8 | `.build_status.json` の schema、更新タイミング、status/target_status、pending 件数、circuit 状態、API 参照元が一致する。 |
-| ビルドトリガー種別の記録 | `runner` / `api` / `sdk` / `ui` | §13、§15、§22.0c、§22.0e、§23、§24、§27.9 | `trigger` の有効値、判定条件、`.build_logs`、`.build_history`、`.build_status.json`、履歴 filter、UI 表示が一致する。 |
-| GitHub Commit Status API | `runner` | §12、§13、§15、§22.0c、§27.1 | `commit_status_enabled`、context、target_url、pending/success/failure の送信条件、失敗時の扱い、build log 記録が一致する。 |
-| ドライラン実行モード | `runner` | §11、§12、§13、§15、§27.2 | `--dry-run` が状態ファイル、log、history、deploy、通知を変更せず、設定・GitHub・SHA 判定結果を固定 JSON で返す。 |
-| ビルド失敗時の自動リトライ | `runner` | §12、§13、§15、§22.0c、§27.3 | retry 対象エラー、最大回数、backoff、attempt log、最終 status、SHA 更新禁止条件が一致する。 |
 | 出力サイトへのビルドメタ埋め込み | `builder` / `runner` / `api` | §2、§5、§8、§13、§22.0e、§27.4 | CLI/env 入力、HTML meta、REPORT、build log、`GET /api/output-meta` の値が一致する。 |
-| 設定バリデーション API | `api` / `sdk` / `ui` | §22.0c、§22.0e、§23、§24、§27.5 | `POST /api/config/validate` が状態を変更せず、正規化後設定、warnings、errors を返す。 |
-| API アクセスログ | `api` / `sdk` / `ui` | §22.0a、§22.0c、§22.0e、§23、§24、§27.6 | `.api_access_log` の schema、追記対象、マスク条件、一覧 API、UI 表示が一致する。 |
-| ビルドログのアーカイブ圧縮 | `runner` / `api` / `sdk` / `ui` | §12、§13、§15、§22.0c、§22.0e、§23、§24、§27.7 | gzip 形式、archive 先、参照順、cleanup/archive API、disk usage 集計、UI 表示が一致する。 |
-| Webhook イベントログ | `api` | §11、§22.0e、§22-W、§27.13 | `.webhook_events.json` の JSON Lines schema と一覧 API が一致する。 |
-| ビルド所要時間の記録と統計 API | `runner` / `api` | §15、§22.0e、§27.14 | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
-| ビルドアーティファクト世代管理 | `runner` / `api` | §14b、§22.0e | `.snapshots/` の保持世代、削除、rollback API が一致する。 |
-| ビルドアーティファクト管理 | `api` / `ui` / `sdk` | §14b、§22.0e、§23、§24、§27.15 | 一覧、ダウンロード、削除、ロールバックの API、SDK、UI が一致する。 |
-| ヘルスチェックエンドポイント | `api` | §22.0e、§27.16 | `GET /api/health` の稼働秒数、最終ビルド、最終転送、エラー応答が一致する。 |
-| Webhook イベント一覧取得 API | `api` / `sdk` / `ui` | §22.0e、§23、§24、§27.13 | `GET /api/webhook-events` の query、response、SDK method、UI 表示が一致する。 |
-| ビルドログ重大度フィルター | `api` / `sdk` / `ui` | §22.0e、§23、§24、§27.17 | `level=warn\|error` の query、検索結果、UI filter が一致する。 |
 | 変換レポート出力 | `builder` / `runner` / `api` | §8、§13、§15、§22.0e | `[REPORT]` stdout、runner 取り込み、`.build_logs`、`GET /api/output-meta` が一致する。 |
 | シンタックスハイライト | `builder` | §7.8 | 対応言語、class 名、HTML escape、CSS 表示が一致する。 |
 | 本文内全文検索 | `builder` | §7.9 | `assets/search-index.json`、検索 UI、ヒット遷移、対象テキストが一致する。 |
@@ -459,22 +430,44 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 | 内部リンク整合性チェック | `builder` | §4.3、§8 | `[label](#anchor)` 検証、WARN、`broken_links` が一致する。 |
 | 見出し階層スキップ警告 | `builder` | §4.5、§8 | h1→h3 等の検出、WARN、`heading_skips` が一致する。 |
 | 読了時間推計と表示 | `builder` | §4.5、§5、§6、§8 | 対象文字数、200文字/分、切り上げ、header 表示、report が一致する。 |
-| Webhook 通知失敗リトライキュー | `runner` | §11、§13、§16 | `.notify_pending` の schema、再送順序、失敗時保持が一致する。 |
-| ブランチ設定の動的変更 API | `runner` / `api` | §11、§12、§22.0e、§27.18 | `.branch_config`、GET/POST API、runner 再起動不要条件が一致する。 |
-| 週次ビルドサマリー Webhook | `runner` / `api` | §12、§13、§16、§22.0e、§27.19 | 週次判定、集計対象、通知 payload、手動送信 API が一致する。 |
-| 設定変更の詳細 diff 記録 | `api` | §22.0a、§22.0e、§27.20 | `.config_log` の diff 文字列、対象 API、マスク条件が一致する。 |
 | テーブルのソート機能 | `builder` | §7.14 | クリック操作、昇順/降順、`aria-sort`、インジケーターが一致する。 |
 | キーボードショートカット | `builder` | §7.12 | `/`、`Escape`、`t` の対象、フォーカス条件、入力中の無効化が一致する。 |
+| ビルドキャッシュ | `builder` / `runner` | §5、§8、§11、§13、§27.25 | `.build_cache.json`、入力 manifest、再利用条件、無効化条件、report counters が一致する。 |
+| 依存ファイルトラッキング | `builder` / `runner` | §4.3、§5、§11、§13、§27.28 | `.dependency_manifest.json`、依存抽出、関連 target 判定、破損時 full build が一致する。 |
+
+### 0i.2 Runner / CI 実行
+
+| 機能 | 責務 component | 詳細仕様節 | 受け入れ条件 |
+|------|-------------------|------------|--------------|
+| ビルドタイムアウト | `runner` / `api` | §12、§13、§22.0e | `build_timeout_seconds` の既定値、設定 API、`context.WithTimeout` の中断処理、終了コード、ログが一致する。 |
+| ビルドログのファイル保存 | `runner` | §11、§13、§15 | `.build_logs/{id}.json` の schema、stdout/stderr、変換レポート、duration、権限が一致する。 |
+| ネットワーク断時の再試行 | `runner` | §12、§13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、失敗時ログが一致する。 |
+| GitHub API レート制限自動待機 | `runner` / `api` | §13、§22.0e | `X-RateLimit-Remaining` と `X-RateLimit-Reset` の扱い、待機、API 表示が一致する。 |
+| 転送後リモート整合性検証 | `runner` | §14a、§13 | SSH 転送後の SHA256 照合、不一致時の `.pending_transfers` 再投入、ログが一致する。 |
+| マルチブランチビルド | `runner` / `api` | §12、§13、§22.0e | `BRANCH_TARGETS` と `.branch_config` の優先順位、順次処理、API 更新が一致する。 |
+| ビルドログ世代管理 | `runner` | §12、§13、§15 | `LOG_KEEP_N` 超過時の削除順序、0 の扱い、削除ログが一致する。 |
+| ビルド出力の外部転送 | `runner` | §14a、§13 | SSH 差分転送、複数ファイル処理、失敗時 pending、通知が一致する。 |
+| ビルドクールダウン | `runner` | §12、§13 | `BUILD_COOLDOWN_SECONDS` 内の起動スキップ、Webhook 二重トリガー抑止、ログが一致する。 |
+| ビルド前の事前チェック | `runner` | §13、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | ディスク、`adlaire-ci-build`、pipeline 前提の確認、不足時の ERROR と通知が一致する。 |
+| 定期強制ビルド | `runner` / `api` | §12、§13、§22.0e | `FORCE_BUILD_INTERVAL`、変更なし時の強制ビルド、設定 API が一致する。 |
+| ビルド中重複スキップ | `runner` | §11、§13 | `.build_lock` の PID 判定、stale lock、競合時終了コードとログが一致する。 |
+| GitHub PAT 有効期限の事前警告 | `runner` / `api` | §13、§22.0e | `GitHub-Authentication-Token-Expiration` の解析、7 日以内 WARN、API 表示が一致する。 |
+| コミット情報のビルドログ記録 | `runner` | §13、§15 | SHA、message、author、date を build id と同じログへ記録する。 |
+| GitHub API 連続失敗によるサーキットブレーカー | `runner` / `api` | §11、§12、§13、§22.0e | 閾値、open/close 状態、API reset、通知、状態ファイルが一致する。 |
+| 設定ファイル起動時整合性チェック | `runner` | §11、§12、§13、§22.0a、§22.0c、§27.10 | 対象 JSON ファイル、検証順序、破損退避、初期化値、ログ、通知、終了コード、fixture が一致する。 |
+| ビルドステータスファイル出力 | `runner` / `api` | §11、§13、§15、§22.0a、§22.0c、§22.0e、§27.8 | `.build_status.json` の schema、更新タイミング、status/target_status、pending 件数、circuit 状態、API 参照元が一致する。 |
+| ビルドトリガー種別の記録 | `runner` / `api` / `sdk` / `ui` | §13、§15、§22.0c、§22.0e、§23、§24、§27.9 | `trigger` の有効値、判定条件、`.build_logs`、`.build_history`、`.build_status.json`、履歴 filter、UI 表示が一致する。 |
+| GitHub Commit Status API | `runner` | §12、§13、§15、§22.0c、§27.1 | `commit_status_enabled`、context、target_url、pending/success/failure の送信条件、失敗時の扱い、build log 記録が一致する。 |
+| ドライラン実行モード | `runner` | §11、§12、§13、§15、§27.2 | `--dry-run` が状態ファイル、log、history、deploy、通知を変更せず、設定・GitHub・SHA 判定結果を固定 JSON で返す。 |
+| ビルド失敗時の自動リトライ | `runner` | §12、§13、§15、§22.0c、§27.3 | retry 対象エラー、最大回数、backoff、attempt log、最終 status、SHA 更新禁止条件が一致する。 |
+| Webhook 通知失敗リトライキュー | `runner` | §11、§13、§16 | `.notify_pending` の schema、再送順序、失敗時保持が一致する。 |
 | 複数ファイル監視 | `runner` / `builder` / `api` | §11、§12、§13、§15、§27.21 | `target_files` の検証、対象別 SHA 差分、build target 決定、履歴・ログ・API 表示が一致する。 |
 | ビルドパイプライン YAML 定義 | `runner` / `api` | §12、§13、§15、§22.0e、§27.22 | `.pipeline.yml` の内製 subset parse、step 実行順、timeout、env、失敗時 status、API 保存が一致する。 |
 | ローカルファイル監視モード | `runner` | §11、§12、§13、§27.23 | GitHub API を呼ばず、local snapshot の SHA-256 差分だけで変更検出し、trigger と status が一致する。 |
 | タグ付きコミットのみビルド | `runner` / `api` | §12、§13、§15、§22.0e、§27.24 | tag pattern、GitHub tags API、skip 条件、build log/history、設定 API が一致する。 |
-| ビルドキャッシュ | `builder` / `runner` | §5、§8、§11、§13、§27.25 | `.build_cache.json`、入力 manifest、再利用条件、無効化条件、report counters が一致する。 |
 | 並列マルチターゲットビルド | `runner` | §12、§13、§14a、§15、§27.26 | worker 上限、target 別 status、pending transfer、最終 build status、ログ順序が一致する。 |
 | ビルド前後フック | `runner` / `api` | §13、§15、§22.0e、§27.27 | `.hooks` schema、pre/post 実行、abort 条件、hook log、API CRUD が一致する。 |
-| 依存ファイルトラッキング | `builder` / `runner` | §4.3、§5、§11、§13、§27.28 | `.dependency_manifest.json`、依存抽出、関連 target 判定、破損時 full build が一致する。 |
 | リモートビルド対応 | `runner` / `api` | §12、§13、§14a、§15、§27.29 | remote command、archive 取得、manifest 検証、状態記録、失敗時 rollback 不実行が一致する。 |
-| ビルド承認フロー | `runner` / `api` / `sdk` / `ui` | §11、§13、§15、§16、§22.0e、§27.30 | `.approval_queue`、承認/却下 API、通知、timeout、UI 操作、履歴 status が一致する。 |
 | ブランチ別環境変数 | `runner` / `api` | §12、§13、§15、§22.0e、§27.31 | branch env schema、許可 key、secret mask、process env 注入、API 保存が一致する。 |
 | ビルド通知連携 | `runner` / `api` / `sdk` / `ui` | §13、§15、§16、§22.0e、§27.32 | 通知 event、channel schema、送信順、retry、mask、notify log、API / UI 表示が一致する。 |
 | ビルド時間トレンド記録 | `runner` / `api` | §13、§15、§22.0e、§27.33 | `.build_trends.json`、移動平均、中央値、p95、API response、破損時復旧が一致する。 |
@@ -483,6 +476,32 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 | 失敗原因の自動分類 | `runner` / `api` | §13、§15、§22.0e、§27.36 | failure_category、evidence、分類優先順位、history / log / UI 表示が一致する。 |
 | ビルド実行環境の記録 | `runner` | §13、§15、§27.37 | build 開始時の environment snapshot、secret 非含有、log schema、検証 fixture が一致する。 |
 | ビルド所要時間の異常検知 | `runner` / `api` | §13、§15、§16、§22.0e、§27.38 | trend 基準、異常判定、WARN、history flag、通知 payload、設定値が一致する。 |
+
+### 0i.3 API / SDK / UI
+
+| 機能 | 責務 component | 詳細仕様節 | 受け入れ条件 |
+|------|-------------------|------------|--------------|
+| ポーリング間隔の動的変更 | `api` | §22.0e、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26、§27.11 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
+| GitHub Webhook 受信 | `api` / `runner` | §22.0e、§22-W、§13、§27.12 | HMAC 検証、イベント記録、キュー投入またはビルドトリガー、エラー応答が一致する。 |
+| 設定バリデーション API | `api` / `sdk` / `ui` | §22.0c、§22.0e、§23、§24、§27.5 | `POST /api/config/validate` が状態を変更せず、正規化後設定、warnings、errors を返す。 |
+| API アクセスログ | `api` / `sdk` / `ui` | §22.0a、§22.0c、§22.0e、§23、§24、§27.6 | `.api_access_log` の schema、追記対象、マスク条件、一覧 API、UI 表示が一致する。 |
+| Webhook イベントログ | `api` | §11、§22.0e、§22-W、§27.13 | `.webhook_events.json` の JSON Lines schema と一覧 API が一致する。 |
+| ヘルスチェックエンドポイント | `api` | §22.0e、§27.16 | `GET /api/health` の稼働秒数、最終ビルド、最終転送、エラー応答が一致する。 |
+| Webhook イベント一覧取得 API | `api` / `sdk` / `ui` | §22.0e、§23、§24、§27.13 | `GET /api/webhook-events` の query、response、SDK method、UI 表示が一致する。 |
+| ビルドログ重大度フィルター | `api` / `sdk` / `ui` | §22.0e、§23、§24、§27.17 | `level=warn\|error` の query、検索結果、UI filter が一致する。 |
+| ブランチ設定の動的変更 API | `runner` / `api` | §11、§12、§22.0e、§27.18 | `.branch_config`、GET/POST API、runner 再起動不要条件が一致する。 |
+| 週次ビルドサマリー Webhook | `runner` / `api` | §12、§13、§16、§22.0e、§27.19 | 週次判定、集計対象、通知 payload、手動送信 API が一致する。 |
+| 設定変更の詳細 diff 記録 | `api` | §22.0a、§22.0e、§27.20 | `.config_log` の diff 文字列、対象 API、マスク条件が一致する。 |
+| ビルド承認フロー | `runner` / `api` / `sdk` / `ui` | §11、§13、§15、§16、§22.0e、§27.30 | `.approval_queue`、承認/却下 API、通知、timeout、UI 操作、履歴 status が一致する。 |
+
+### 0i.4 Archive / Artifact / Security
+
+| 機能 | 責務 component | 詳細仕様節 | 受け入れ条件 |
+|------|-------------------|------------|--------------|
+| ビルドログのアーカイブ圧縮 | `runner` / `api` / `sdk` / `ui` | §12、§13、§15、§22.0c、§22.0e、§23、§24、§27.7 | gzip 形式、archive 先、参照順、cleanup/archive API、disk usage 集計、UI 表示が一致する。 |
+| ビルド所要時間の記録と統計 API | `runner` / `api` | §15、§22.0e、§27.14 | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
+| ビルドアーティファクト世代管理 | `runner` / `api` | §14b、§22.0e | `.snapshots/` の保持世代、削除、rollback API が一致する。 |
+| ビルドアーティファクト管理 | `api` / `ui` / `sdk` | §14b、§22.0e、§23、§24、§27.15 | 一覧、ダウンロード、削除、ロールバックの API、SDK、UI が一致する。 |
 | ビルドトリガー専用 API スコープ | `api` / `sdk` / `ui` | §22.0a、§22.0c、§22.0e、§23、§24、§27.42 | `trigger` scope token が build 起動系だけを許可し、その他 API を拒否する。 |
 | API キー管理 | `api` / `sdk` / `ui` | §22.0a、§22.0c、§22.0e、§23、§24、§27.43 | API key 本体の一回表示、hash 保存、scope、期限、失効、監査が一致する。 |
 | 監査ログ | `api` / `sdk` / `ui` | §22.0a、§22.0c、§22.0e、§23、§24、§27.44 | `.audit_log` schema、対象操作、mask、検索 API、UI 表示が一致する。 |
