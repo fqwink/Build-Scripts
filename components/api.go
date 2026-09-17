@@ -38,9 +38,20 @@ type APIServer struct {
 }
 
 type apiSession struct {
-	TokenHash string
-	CreatedAt string
-	ExpiresAt string
+	TokenHash  string
+	CreatedAt  string
+	ExpiresAt  string
+	LastUsedAt string
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(status int) {
+	r.status = status
+	r.ResponseWriter.WriteHeader(status)
 }
 
 type apiCredentials struct {
@@ -76,7 +87,37 @@ type apiCircuitState struct {
 }
 
 type apiServerConfig struct {
-	QueueMaxSize int `json:"queue_max_size"`
+	LogMaxLines           int     `json:"log_max_lines"`
+	HistoryMaxCount       int     `json:"history_max_count"`
+	BuildTimeoutSeconds   int     `json:"build_timeout_seconds"`
+	LogRetentionDays      int     `json:"log_retention_days"`
+	LogArchiveAfterDays   int     `json:"log_archive_after_days"`
+	LogLevel              string  `json:"log_level"`
+	PATExpiresAt          *string `json:"pat_expires_at"`
+	SnapshotsKeep         int     `json:"snapshots_keep"`
+	QueueMaxSize          int     `json:"queue_max_size"`
+	BuildRetryMax         int     `json:"build_retry_max"`
+	BuildRetryBaseSeconds int     `json:"build_retry_base_seconds"`
+	CommitStatusEnabled   bool    `json:"commit_status_enabled"`
+	CommitStatusContext   string  `json:"commit_status_context"`
+	CommitStatusTargetURL *string `json:"commit_status_target_url"`
+	BuildTrendKeepCount   int     `json:"build_trend_keep_count"`
+	SessionTimeoutSeconds int     `json:"session_timeout_seconds"`
+}
+
+type apiLogRecord struct {
+	At     string `json:"at"`
+	Method string `json:"method,omitempty"`
+	Path   string `json:"path,omitempty"`
+	Status int    `json:"status,omitempty"`
+	Action string `json:"action,omitempty"`
+	Result string `json:"result,omitempty"`
+}
+
+type apiConfigLogRecord struct {
+	At      string         `json:"at"`
+	Type    string         `json:"type"`
+	Changes map[string]any `json:"changes"`
 }
 
 type apiBuildStatus struct {
@@ -183,6 +224,14 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/login/totp", s.handleLoginTOTP)
 	mux.HandleFunc("/api/logout", s.withAuth(s.handleLogout))
 	mux.HandleFunc("/api/change-password", s.withAuth(s.handleChangePassword))
+	mux.HandleFunc("/api/health", s.handleHealth)
+	mux.HandleFunc("/api/sessions", s.withAuth(s.handleSessions))
+	mux.HandleFunc("/api/sessions/revoke-all", s.withAuth(s.handleRevokeSessions))
+	mux.HandleFunc("/api/config", s.withAuth(s.handleConfig))
+	mux.HandleFunc("/api/config/validate", s.withAuth(s.handleConfigValidate))
+	mux.HandleFunc("/api/access-log", s.withAuth(s.handleJSONLinesLog(".access_log", "log")))
+	mux.HandleFunc("/api/api-access-log", s.withAuth(s.handleJSONLinesLog(".api_access_log", "log")))
+	mux.HandleFunc("/api/config-log", s.withAuth(s.handleJSONLinesLog(".config_log", "log")))
 	mux.HandleFunc("/api/status", s.withAuth(s.handleStatus))
 	mux.HandleFunc("/api/build", s.withAuth(s.handleBuild(false)))
 	mux.HandleFunc("/api/build/force", s.withAuth(s.handleBuild(true)))
@@ -199,7 +248,13 @@ func (s *APIServer) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		mux.ServeHTTP(w, r)
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		mux.ServeHTTP(rec, r)
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".api_access_log"), apiLogRecord{
+				At: s.nowString(), Method: r.Method, Path: r.URL.Path, Status: rec.status,
+			})
+		}
 	})
 }
 
@@ -246,9 +301,13 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	expires := s.cfg.Now().UTC().Add(8 * time.Hour).Format(apiTimeLayout)
+	timeoutSeconds := 28800
+	if cfg, err := s.readMergedConfig(); err == nil {
+		timeoutSeconds = cfg.SessionTimeoutSeconds
+	}
+	expires := s.cfg.Now().UTC().Add(time.Duration(timeoutSeconds) * time.Second).Format(apiTimeLayout)
 	s.mu.Lock()
-	s.sessions[tokenHash(token)] = apiSession{TokenHash: tokenHash(token), CreatedAt: now, ExpiresAt: expires}
+	s.sessions[tokenHash(token)] = apiSession{TokenHash: tokenHash(token), CreatedAt: now, ExpiresAt: expires, LastUsedAt: now}
 	s.mu.Unlock()
 	mustChange := "none"
 	if cred.MustChange {
@@ -343,6 +402,131 @@ func (s *APIServer) handleChangePassword(w http.ResponseWriter, r *http.Request)
 	}
 	s.mu.Unlock()
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Password changed"})
+}
+
+func (s *APIServer) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	status := "ok"
+	items := []map[string]any{
+		{"name": "api", "status": "ok"},
+	}
+	if _, ok, err := readBuildStatus(filepath.Join(s.cfg.StateDir, ".build_status.json")); err != nil {
+		status = "degraded"
+		items = append(items, map[string]any{"name": "build_status", "status": "error"})
+	} else if !ok {
+		status = "degraded"
+		items = append(items, map[string]any{"name": "build_status", "status": "warn"})
+	} else {
+		items = append(items, map[string]any{"name": "build_status", "status": "ok"})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":     status,
+		"checked_at": s.nowString(),
+		"items":      items,
+	})
+}
+
+func (s *APIServer) handleSessions(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	current := tokenHash(bearerToken(r))
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sessions := []map[string]any{}
+	for key, session := range s.sessions {
+		sessions = append(sessions, map[string]any{
+			"created_at":   session.CreatedAt,
+			"expires_at":   session.ExpiresAt,
+			"last_used_at": session.LastUsedAt,
+			"current":      key == current,
+		})
+	}
+	sort.Slice(sessions, func(i, j int) bool {
+		return sessions[i]["created_at"].(string) > sessions[j]["created_at"].(string)
+	})
+	writeJSON(w, http.StatusOK, map[string]any{"sessions": sessions})
+}
+
+func (s *APIServer) handleRevokeSessions(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	current := tokenHash(bearerToken(r))
+	revoked := 0
+	s.mu.Lock()
+	for key := range s.sessions {
+		if key != current {
+			delete(s.sessions, key)
+			revoked++
+		}
+	}
+	s.mu.Unlock()
+	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".access_log"), apiLogRecord{At: s.nowString(), Action: "sessions_revoke_all", Result: "success"})
+	writeJSON(w, http.StatusOK, map[string]any{"message": "All other sessions revoked", "revoked_count": revoked})
+}
+
+func (s *APIServer) handleConfig(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		cfg, err := s.readMergedConfig()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeJSON(w, http.StatusOK, cfg)
+	case http.MethodPost:
+		var patch map[string]any
+		if !decodeBody(w, r, &patch, true) {
+			return
+		}
+		cfg, err := s.readMergedConfig()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		next, changed, ok := validateConfigPatch(w, cfg, patch)
+		if !ok {
+			return
+		}
+		if changed {
+			if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".server_config"), next, 0600); err != nil {
+				writeError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+			_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "server_config", Changes: patch})
+			writeJSON(w, http.StatusOK, map[string]any{"message": "Config updated", "config": next})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"message": "No changes", "config": next})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+func (s *APIServer) handleConfigValidate(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var patch map[string]any
+	if !decodeBody(w, r, &patch, true) {
+		return
+	}
+	cfg, err := s.readMergedConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	next, _, ok := validateConfigPatch(w, cfg, patch)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"valid": true, "config": next, "warnings": []string{}, "errors": []string{}})
 }
 
 func (s *APIServer) handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -685,6 +869,36 @@ func (s *APIServer) handleQueue(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *APIServer) handleJSONLinesLog(filename, key string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+			return
+		}
+		limit, ok := parseBoundedInt(w, r, "limit", 100, 1, 1000)
+		if !ok {
+			return
+		}
+		offset, ok := parseBoundedInt(w, r, "offset", 0, 0, 1_000_000)
+		if !ok {
+			return
+		}
+		records := readJSONLines(filepath.Join(s.cfg.StateDir, filename))
+		sort.Slice(records, func(i, j int) bool {
+			return fmt.Sprint(records[i]["at"]) > fmt.Sprint(records[j]["at"])
+		})
+		total := len(records)
+		start := offset
+		if start > total {
+			start = total
+		}
+		end := start + limit
+		if end > total {
+			end = total
+		}
+		writeJSON(w, http.StatusOK, map[string]any{key: records[start:end], "total": total})
+	}
+}
+
 func (s *APIServer) withAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := bearerToken(r)
@@ -692,6 +906,7 @@ func (s *APIServer) withAuth(next http.HandlerFunc) http.HandlerFunc {
 			writeError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
+		s.touchSession(token)
 		next(w, r)
 	}
 }
@@ -715,31 +930,71 @@ func (s *APIServer) validSession(token string) bool {
 		return false
 	}
 	expires, err := time.Parse(apiTimeLayout, session.ExpiresAt)
-	return err == nil && s.cfg.Now().UTC().Before(expires)
+	if err != nil || !s.cfg.Now().UTC().Before(expires) {
+		delete(s.sessions, tokenHash(token))
+		return false
+	}
+	return true
+}
+
+func (s *APIServer) touchSession(token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	key := tokenHash(token)
+	session, ok := s.sessions[key]
+	if !ok {
+		return
+	}
+	session.LastUsedAt = s.nowString()
+	s.sessions[key] = session
 }
 
 func (s *APIServer) queueMaxSize() int {
-	path := filepath.Join(s.cfg.StateDir, ".server_config")
-	data, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return defaultQueueMaxSize
-	}
+	cfg, err := s.readMergedConfig()
 	if err != nil {
 		return defaultQueueMaxSize
 	}
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return defaultQueueMaxSize
+	return cfg.QueueMaxSize
+}
+
+func (s *APIServer) readMergedConfig() (apiServerConfig, error) {
+	cfg := defaultServerConfig()
+	path := filepath.Join(s.cfg.StateDir, ".server_config")
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return cfg, nil
 	}
-	value, exists := raw["queue_max_size"]
-	if !exists {
-		return defaultQueueMaxSize
+	if err != nil {
+		return cfg, err
 	}
-	var size int
-	if err := json.Unmarshal(value, &size); err != nil || size < 0 {
-		return defaultQueueMaxSize
+	var patch map[string]json.RawMessage
+	if err := json.Unmarshal(data, &patch); err != nil {
+		return cfg, err
 	}
-	return size
+	var fileCfg apiServerConfig
+	if err := json.Unmarshal(data, &fileCfg); err != nil {
+		return cfg, err
+	}
+	fileCfg = normalizeServerConfig(fileCfg)
+	if _, ok := patch["log_retention_days"]; ok && fileCfg.LogRetentionDays == defaultServerConfig().LogRetentionDays {
+		var v int
+		if json.Unmarshal(patch["log_retention_days"], &v) == nil {
+			fileCfg.LogRetentionDays = v
+		}
+	}
+	if _, ok := patch["snapshots_keep"]; ok && fileCfg.SnapshotsKeep == defaultServerConfig().SnapshotsKeep {
+		var v int
+		if json.Unmarshal(patch["snapshots_keep"], &v) == nil {
+			fileCfg.SnapshotsKeep = v
+		}
+	}
+	if _, ok := patch["queue_max_size"]; ok && fileCfg.QueueMaxSize == defaultServerConfig().QueueMaxSize {
+		var v int
+		if json.Unmarshal(patch["queue_max_size"], &v) == nil {
+			fileCfg.QueueMaxSize = v
+		}
+	}
+	return fileCfg, nil
 }
 
 func (s *APIServer) nowString() string {
@@ -889,6 +1144,236 @@ func readBuildLog(path string) (apiBuildLog, error) {
 	var log apiBuildLog
 	err := readJSONFile(path, &log)
 	return log, err
+}
+
+func defaultServerConfig() apiServerConfig {
+	return apiServerConfig{
+		LogMaxLines: 500, HistoryMaxCount: 100, BuildTimeoutSeconds: 300,
+		LogRetentionDays: 30, LogArchiveAfterDays: 0, LogLevel: "INFO",
+		SnapshotsKeep: 5, QueueMaxSize: defaultQueueMaxSize,
+		BuildRetryMax: 0, BuildRetryBaseSeconds: 5,
+		CommitStatusEnabled: false, CommitStatusContext: "Adlaire CI",
+		BuildTrendKeepCount: 1000, SessionTimeoutSeconds: 28800,
+	}
+}
+
+func normalizeServerConfig(cfg apiServerConfig) apiServerConfig {
+	def := defaultServerConfig()
+	if cfg.LogMaxLines == 0 {
+		cfg.LogMaxLines = def.LogMaxLines
+	}
+	if cfg.HistoryMaxCount == 0 {
+		cfg.HistoryMaxCount = def.HistoryMaxCount
+	}
+	if cfg.BuildTimeoutSeconds == 0 {
+		cfg.BuildTimeoutSeconds = def.BuildTimeoutSeconds
+	}
+	if cfg.LogLevel == "" {
+		cfg.LogLevel = def.LogLevel
+	}
+	if cfg.SnapshotsKeep == 0 {
+		cfg.SnapshotsKeep = def.SnapshotsKeep
+	}
+	if cfg.QueueMaxSize == 0 {
+		cfg.QueueMaxSize = def.QueueMaxSize
+	}
+	if cfg.BuildRetryBaseSeconds == 0 {
+		cfg.BuildRetryBaseSeconds = def.BuildRetryBaseSeconds
+	}
+	if cfg.CommitStatusContext == "" {
+		cfg.CommitStatusContext = def.CommitStatusContext
+	}
+	if cfg.BuildTrendKeepCount == 0 {
+		cfg.BuildTrendKeepCount = def.BuildTrendKeepCount
+	}
+	if cfg.SessionTimeoutSeconds == 0 {
+		cfg.SessionTimeoutSeconds = def.SessionTimeoutSeconds
+	}
+	return cfg
+}
+
+func validateConfigPatch(w http.ResponseWriter, cfg apiServerConfig, patch map[string]any) (apiServerConfig, bool, bool) {
+	data, err := json.Marshal(patch)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return cfg, false, false
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return cfg, false, false
+	}
+	changed := false
+	for key, value := range raw {
+		switch key {
+		case "log_max_lines":
+			var v int
+			if !decodeIntField(w, key, value, 1, 10000, &v) {
+				return cfg, false, false
+			}
+			changed = changed || cfg.LogMaxLines != v
+			cfg.LogMaxLines = v
+		case "history_max_count":
+			var v int
+			if !decodeIntField(w, key, value, 1, 10000, &v) {
+				return cfg, false, false
+			}
+			changed = changed || cfg.HistoryMaxCount != v
+			cfg.HistoryMaxCount = v
+		case "build_timeout_seconds":
+			var v int
+			if !decodeIntField(w, key, value, 1, 86400, &v) {
+				return cfg, false, false
+			}
+			changed = changed || cfg.BuildTimeoutSeconds != v
+			cfg.BuildTimeoutSeconds = v
+		case "log_retention_days", "log_archive_after_days":
+			var v int
+			if !decodeIntField(w, key, value, 0, 3650, &v) {
+				return cfg, false, false
+			}
+			if key == "log_retention_days" {
+				changed = changed || cfg.LogRetentionDays != v
+				cfg.LogRetentionDays = v
+			} else {
+				changed = changed || cfg.LogArchiveAfterDays != v
+				cfg.LogArchiveAfterDays = v
+			}
+		case "log_level":
+			var v string
+			if json.Unmarshal(value, &v) != nil || (v != "INFO" && v != "DEBUG" && v != "WARNING" && v != "ERROR") {
+				writeValidation(w, key, "invalid value")
+				return cfg, false, false
+			}
+			changed = changed || cfg.LogLevel != v
+			cfg.LogLevel = v
+		case "pat_expires_at", "commit_status_target_url":
+			var v *string
+			if json.Unmarshal(value, &v) != nil {
+				writeValidation(w, key, "invalid value")
+				return cfg, false, false
+			}
+			if key == "pat_expires_at" {
+				changed = changed || stringPtrValue(cfg.PATExpiresAt) != stringPtrValue(v)
+				cfg.PATExpiresAt = v
+			} else {
+				changed = changed || stringPtrValue(cfg.CommitStatusTargetURL) != stringPtrValue(v)
+				cfg.CommitStatusTargetURL = v
+			}
+		case "snapshots_keep", "queue_max_size":
+			var v int
+			if !decodeIntField(w, key, value, 0, 100, &v) {
+				return cfg, false, false
+			}
+			if key == "snapshots_keep" {
+				changed = changed || cfg.SnapshotsKeep != v
+				cfg.SnapshotsKeep = v
+			} else {
+				changed = changed || cfg.QueueMaxSize != v
+				cfg.QueueMaxSize = v
+			}
+		case "build_retry_max":
+			var v int
+			if !decodeIntField(w, key, value, 0, 10, &v) {
+				return cfg, false, false
+			}
+			changed = changed || cfg.BuildRetryMax != v
+			cfg.BuildRetryMax = v
+		case "build_retry_base_seconds":
+			var v int
+			if !decodeIntField(w, key, value, 1, 3600, &v) {
+				return cfg, false, false
+			}
+			changed = changed || cfg.BuildRetryBaseSeconds != v
+			cfg.BuildRetryBaseSeconds = v
+		case "commit_status_enabled":
+			var v bool
+			if json.Unmarshal(value, &v) != nil {
+				writeValidation(w, key, "invalid value")
+				return cfg, false, false
+			}
+			changed = changed || cfg.CommitStatusEnabled != v
+			cfg.CommitStatusEnabled = v
+		case "commit_status_context":
+			var v string
+			if json.Unmarshal(value, &v) != nil || len(v) < 1 || len(v) > 100 {
+				writeValidation(w, key, "invalid value")
+				return cfg, false, false
+			}
+			changed = changed || cfg.CommitStatusContext != v
+			cfg.CommitStatusContext = v
+		case "build_trend_keep_count":
+			var v int
+			if !decodeIntField(w, key, value, 10, 10000, &v) {
+				return cfg, false, false
+			}
+			changed = changed || cfg.BuildTrendKeepCount != v
+			cfg.BuildTrendKeepCount = v
+		case "session_timeout_seconds":
+			var v int
+			if !decodeIntField(w, key, value, 300, 2592000, &v) {
+				return cfg, false, false
+			}
+			changed = changed || cfg.SessionTimeoutSeconds != v
+			cfg.SessionTimeoutSeconds = v
+		default:
+			writeValidation(w, key, "unknown key")
+			return cfg, false, false
+		}
+	}
+	return cfg, changed, true
+}
+
+func decodeIntField(w http.ResponseWriter, key string, raw json.RawMessage, min, max int, out *int) bool {
+	if err := json.Unmarshal(raw, out); err != nil || *out < min || *out > max {
+		writeValidation(w, key, "out of range")
+		return false
+	}
+	return true
+}
+
+func appendJSONLine(path string, value any) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.Write(data)
+	return err
+}
+
+func readJSONLines(path string) []map[string]any {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return []map[string]any{}
+	}
+	records := []map[string]any{}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var record map[string]any
+		if json.Unmarshal([]byte(line), &record) == nil {
+			records = append(records, record)
+		}
+	}
+	return records
+}
+
+func stringPtrValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func readJSONIfExists(path string, out any) error {
