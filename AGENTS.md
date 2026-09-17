@@ -146,7 +146,7 @@ Go 実装対象ファイルは以下とする。
 | `components/builder.go` | Markdown ファイルまたは Markdown ディレクトリを静的 Web サイトへ変換する Go 版ビルドスクリプト。 |
 | `components/runner.go` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する Go 版 CI ランナー。 |
 
-実装済みおよび将来計画の主なコンポーネントは以下とする。
+実装済みコンポーネントおよび将来追加予定 path は以下とする。
 
 | ファイル | 状態 |
 |---------|------|

@@ -196,13 +196,13 @@ Adlaire CI のリポジトリ内ソース構成は、責務ベースで整理す
 └── go.mod
 ```
 
-`main.go` は 1 ファイルとし、起動入口、サブコマンド判定、引数受け取り、対象コンポーネント呼び出しだけを担当する。`main.go` に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、MCP 処理の実装詳細を書いてはならない。
+`main.go` は 1 ファイルとし、起動入口、実行ファイル名判定、引数受け取り、現行 owner component 呼び出しだけを担当する。`main.go` に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、MCP 処理の実装詳細を書いてはならない。
 
 `components/` は、1 実装対象コンポーネント = 1 Go ファイルとする。現行の Go 実装ファイルは `builder.go`、`runner.go`、`api.go` だけとする。`admin` は Go コンポーネントではなく `admin/` 配下の静的配布物として扱う。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` は将来計画であり、MCP 専用詳細仕様が新設されるまで作成しない。
 
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
-標準構成は移行後の最終形を示す。仕様化済み・未実装または将来計画の path は、該当 owner component が実装対象になった PR で追加する。標準構成に含まれることだけを理由に、未実装ファイル、将来計画ファイル、空ディレクトリ、placeholder を作成してはならない。
+標準構成は移行後の最終形を示す。仕様化済み・未実装または将来計画の path は、将来追加予定 path として扱い、該当 owner component が実装対象になった PR で追加する。標準構成に含まれることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成してはならない。
 
 ## 4a. 詳細仕様方針
 
@@ -642,7 +642,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 ### 内製スクリプト一覧
 
-内製スクリプト、標準実装ファイル、実装状態、将来計画ファイルの一覧は `docs/ROADMAP.md` と `docs/DOCUMENT_INDEX.md` を正とする。
+内製スクリプト、標準実装ファイル、実装状態、将来追加予定 path の一覧は `docs/ROADMAP.md` と `docs/DOCUMENT_INDEX.md` を正とする。
 
 本節では、内製スクリプトを採用する方針だけを定義し、個別ファイルの状態表を重複定義しない。新規スクリプトを追加する場合は、先に `docs/ROADMAP.md` の状態分類、`docs/DOCUMENT_INDEX.md` の実装ファイル索引、該当する owner component 詳細仕様を整合させる。
 > 内製 Go コンポーネントは Go 標準ライブラリを基本とする。外部依存は許可リスト登録を必須とする。
