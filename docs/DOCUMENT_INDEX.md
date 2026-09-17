@@ -304,6 +304,6 @@
 
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
-標準ソース配置への移行は完了済みである。`components/builder.go` は Phase 1 実装済みであり、`components/runner.go` は Phase 2 完了判定パス実装済みである。Go toolchain による `gofmt` と `go test` の検証対象である。
+標準ソース配置への移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go` は Phase 1 実装済みであり、`components/runner.go` は Phase 2 完了判定パス実装済みである。Go toolchain による `gofmt` と `go test` の検証対象である。
 
-`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は現行実装実体として扱わない。標準配置への移行完了条件は `docs/DETAIL_INDEX.md` §0j を正とする。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は旧配置名であり、現行実装実体として扱わない。標準配置と現行実体の判断は、`docs/SPEC.md` Part 1 §4.3、`docs/DETAIL_INDEX.md` §0j、本ファイルの `Specified Components` を同時に確認する。
