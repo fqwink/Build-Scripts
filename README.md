@@ -32,7 +32,9 @@ Adlaire CI は、最初から Go を前提として仕様策定します。
 
 標準ソース配置は `ADLAIRE_CI_SPEC.md` Part 1 §4.3 と `ADLAIRE_CI_DETAIL_SPEC.md` §0j で定義し、`main.go` と `components/*.go` を正とします。
 
-`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は仕様化済み・未実装のコンポーネントです。`components/mcp.go` は将来計画のコンポーネントです。
+`components/api.go` は実装中・検証未完了のコンポーネントです。
+
+`admin/adlaire-ci-sdk.js`、`admin/index.html` は仕様化済み・未実装のコンポーネントです。`components/mcp.go` は将来計画のコンポーネントです。
 
 ## リリース形式
 
