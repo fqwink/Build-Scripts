@@ -33,53 +33,6 @@
 | デザイン補助 | `docs/DESIGN.md` | 生成静的 Web サイトの視覚仕様を確認する。 |
 | 実装所在 | `docs/DOCUMENT_INDEX.md` の `Specified Components` | 実装ファイル、テスト、fixture の所在と状態を確認する。 |
 
-## Specification Decision Rules
-
-仕様判断では、目的を先に確定し、目的に対応する正本だけを読む。
-
-| 判断ルール | 内容 |
-|------------|------|
-| 作業ルール優先 | 作業可否、承認、Git 操作、PR 作成は常に `AGENTS.md` を正とする。 |
-| 状態判断優先 | 実装済み、仕様化済み、将来計画、実装不可の判断は `docs/SPEC.md` を正とする。 |
-| 詳細本文優先 | 入出力、状態、処理順序、異常系、検証条件は owner component の `docs/details/*.md` を正とする。 |
-| 索引限定 | `docs/DOCUMENT_INDEX.md` は所在と役割の索引であり、仕様本文を定義しない。 |
-| 入口限定 | `README.md` は入口であり、詳細ルールや詳細仕様本文を重複定義しない。 |
-| 補助限定 | `docs/DESIGN.md` は視覚仕様の補助であり、機能仕様、運用仕様、API 仕様の正本ではない。 |
-
-## Specification Write Rules
-
-仕様構造を維持するため、記載先は以下の順で確定する。
-
-1. 書く内容が作業ルールか、仕様本文か、詳細仕様本文か、索引か、補助文書かを分類する。
-2. `Specification Write Location Matrix` で書く場所を確定する。
-3. 書いてはいけない場所に同じ意味の本文が残る場合は、重複として整理する。
-4. 参照だけで足りる場合は、本文を複製せず、正本への参照に留める。
-5. 実装状態、実装可否、ロードマップを動かす場合は、`docs/SPEC.md` の正本範囲として扱う。
-
-## Specification Change Rules
-
-仕様構造変更では、変更の種類ごとに確認対象を固定する。
-
-| 変更の種類 | 必ず確認する文書 | 確認内容 |
-|------------|------------------|----------|
-| ファイル名変更 | `docs/DOCUMENT_INDEX.md`、`README.md`、`AGENTS.md`、`docs/SPEC.md`、`docs/DETAIL_INDEX.md` | 旧ファイル名参照が残っていないこと。 |
-| 正本関係変更 | `AGENTS.md`、`docs/SPEC.md`、`docs/DOCUMENT_INDEX.md` | 作業ルール、仕様正本、索引の記載が矛盾しないこと。 |
-| 詳細仕様分割 | `docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md` | owner component、collaborator、参照表、本文配置が一致すること。 |
-| README 整理 | `README.md`、`docs/DOCUMENT_INDEX.md` | README が入口に留まり、詳細ルールを重複定義していないこと。 |
-| 実装所在整理 | `docs/DOCUMENT_INDEX.md`、`docs/DETAIL_INDEX.md` §0j | 実装ファイル、テスト、fixture の所在と状態が一致すること。 |
-
-## Specification Completion Rules
-
-仕様構造整理の完了報告では、以下を満たす。
-
-| 完了報告に含める内容 | 内容 |
-|----------------------|------|
-| 変更対象 | 変更した文書名を明記する。 |
-| 変更内容 | 追加、削除、移動、簡潔化、参照更新の内容を明記する。 |
-| 正本範囲 | 仕様本文を変えたのか、索引を変えたのか、入口を変えたのかを明記する。 |
-| 検証 | `git diff --check`、旧参照検索、変更範囲確認を明記する。 |
-| 未実施 | docs-only で実装検証を未実施にした場合は理由を明記する。 |
-
 ## Specification Structure
 
 仕様文書の構造は、作業ルール、入口、索引、正本、詳細入口、責務 component 別本文、補助文書に分ける。
@@ -112,6 +65,19 @@
 
 本表は文書選択の判断フローであり、各文書の正本範囲を拡張しない。
 
+## Specification Decision Rules
+
+仕様判断では、目的を先に確定し、目的に対応する正本だけを読む。
+
+| 判断ルール | 内容 |
+|------------|------|
+| 作業ルール優先 | 作業可否、承認、Git 操作、PR 作成は常に `AGENTS.md` を正とする。 |
+| 状態判断優先 | 実装済み、仕様化済み、将来計画、実装不可の判断は `docs/SPEC.md` を正とする。 |
+| 詳細本文優先 | 入出力、状態、処理順序、異常系、検証条件は owner component の `docs/details/*.md` を正とする。 |
+| 索引限定 | `docs/DOCUMENT_INDEX.md` は所在と役割の索引であり、仕様本文を定義しない。 |
+| 入口限定 | `README.md` は入口であり、詳細ルールや詳細仕様本文を重複定義しない。 |
+| 補助限定 | `docs/DESIGN.md` は視覚仕様の補助であり、機能仕様、運用仕様、API 仕様の正本ではない。 |
+
 ## Specification Write Location Matrix
 
 仕様、詳細仕様、索引、補助文書を改訂する場合は、下表に従って記載先を選ぶ。
@@ -128,6 +94,16 @@
 
 `README.md` は入口であり、詳細ルール、詳細仕様本文、実装状態表、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義しない。`docs/DOCUMENT_INDEX.md` は索引であり、仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義しない。
 
+## Specification Write Rules
+
+仕様構造を維持するため、記載先は以下の順で確定する。
+
+1. 書く内容が作業ルールか、仕様本文か、詳細仕様本文か、索引か、補助文書かを分類する。
+2. `Specification Write Location Matrix` で書く場所を確定する。
+3. 書いてはいけない場所に同じ意味の本文が残る場合は、重複として整理する。
+4. 参照だけで足りる場合は、本文を複製せず、正本への参照に留める。
+5. 実装状態、実装可否、ロードマップを動かす場合は、`docs/SPEC.md` の正本範囲として扱う。
+
 ## Specification Change Procedure
 
 仕様構造、文書配置、ファイル名、参照先、正本関係を変更する場合は、以下の順で作業する。
@@ -141,6 +117,18 @@
 7. `Specification Structure Completion Criteria` をすべて満たしてから完了扱いにする。
 
 上記手順は、仕様本文の意味、実装状態、ロードマップ状態を変更する許可ではない。仕様本文の意味を変更する場合は、変更内容に対応する正本文書のルールに従う。
+
+## Specification Change Rules
+
+仕様構造変更では、変更の種類ごとに確認対象を固定する。
+
+| 変更の種類 | 必ず確認する文書 | 確認内容 |
+|------------|------------------|----------|
+| ファイル名変更 | `docs/DOCUMENT_INDEX.md`、`README.md`、`AGENTS.md`、`docs/SPEC.md`、`docs/DETAIL_INDEX.md` | 旧ファイル名参照が残っていないこと。 |
+| 正本関係変更 | `AGENTS.md`、`docs/SPEC.md`、`docs/DOCUMENT_INDEX.md` | 作業ルール、仕様正本、索引の記載が矛盾しないこと。 |
+| 詳細仕様分割 | `docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md` | owner component、collaborator、参照表、本文配置が一致すること。 |
+| README 整理 | `README.md`、`docs/DOCUMENT_INDEX.md` | README が入口に留まり、詳細ルールを重複定義していないこと。 |
+| 実装所在整理 | `docs/DOCUMENT_INDEX.md`、`docs/DETAIL_INDEX.md` §0j | 実装ファイル、テスト、fixture の所在と状態が一致すること。 |
 
 ## Specification Structure Completion Criteria
 
@@ -158,6 +146,18 @@
 | PR 範囲 | 同一目的の文書構造変更が既存 PR に集約され、並行 PR と同一ファイル編集を発生させていない。 |
 
 上記のいずれかを満たせない場合は、完了報告せず、該当文書の正本範囲、記載先、参照先を再整備する。
+
+## Specification Completion Rules
+
+仕様構造整理の完了報告では、以下を満たす。
+
+| 完了報告に含める内容 | 内容 |
+|----------------------|------|
+| 変更対象 | 変更した文書名を明記する。 |
+| 変更内容 | 追加、削除、移動、簡潔化、参照更新の内容を明記する。 |
+| 正本範囲 | 仕様本文を変えたのか、索引を変えたのか、入口を変えたのかを明記する。 |
+| 検証 | `git diff --check`、旧参照検索、変更範囲確認を明記する。 |
+| 未実施 | docs-only で実装検証を未実施にした場合は理由を明記する。 |
 
 ## Repository Document Index
 
