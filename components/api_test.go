@@ -412,6 +412,68 @@ func TestAPIScheduleEndpoints(t *testing.T) {
 	}
 }
 
+func TestAPIAccessControlEndpoints(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/access-control", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("default access-control code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var cfg apiAccessControl
+	decodeTestJSON(t, resp.Body.Bytes(), &cfg)
+	if len(cfg.Allow) != 0 {
+		t.Fatalf("unexpected default access control: %#v", cfg)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/access-control", token, map[string]any{"allow": []string{" 192.0.2.0/24 ", "10.0.0.1", "10.0.0.1"}})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("set access-control code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	readTestJSON(t, filepath.Join(state, ".access_control"), &cfg)
+	expected := []string{"10.0.0.1", "192.0.2.0/24"}
+	if !stringSlicesEqual(cfg.Allow, expected) {
+		t.Fatalf("unexpected normalized allow list: %#v", cfg.Allow)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/access-control", token, map[string]any{"allow": []string{"192.0.2.0/24", "10.0.0.1"}})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("access-control no-op code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var body map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	if body["message"] != "No changes" {
+		t.Fatalf("expected no changes: %#v", body)
+	}
+
+	resp = apiRequestFrom(t, server, http.MethodGet, "/api/config", token, nil, "203.0.113.9:1234")
+	if resp.Code != http.StatusForbidden {
+		t.Fatalf("disallowed remote code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequestFrom(t, server, http.MethodGet, "/api/health", "", nil, "203.0.113.9:1234")
+	if resp.Code != http.StatusOK {
+		t.Fatalf("health must bypass access control: code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequestFrom(t, server, http.MethodGet, "/api/config", token, nil, "not-a-remote")
+	if resp.Code != http.StatusForbidden {
+		t.Fatalf("invalid remote must be forbidden: code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/access-control", token, map[string]any{"allow": []string{"2001:db8::1"}})
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ipv6 must fail: code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/config-log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("config log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	if body["total"].(float64) != 1 {
+		t.Fatalf("unexpected access-control config log: %#v", body)
+	}
+}
+
 func TestAPINotifyEndpoints(t *testing.T) {
 	state := newAPIState(t)
 	server := newTestAPI(t, state)
@@ -799,6 +861,11 @@ func login(t *testing.T, server *APIServer, password string) string {
 
 func apiRequest(t *testing.T, server *APIServer, method, path, token string, body any) *httptest.ResponseRecorder {
 	t.Helper()
+	return apiRequestFrom(t, server, method, path, token, body, "192.0.2.1:1234")
+}
+
+func apiRequestFrom(t *testing.T, server *APIServer, method, path, token string, body any, remoteAddr string) *httptest.ResponseRecorder {
+	t.Helper()
 	var reader *bytes.Reader
 	if body == nil {
 		reader = bytes.NewReader(nil)
@@ -816,6 +883,7 @@ func apiRequest(t *testing.T, server *APIServer, method, path, token string, bod
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
+	req.RemoteAddr = remoteAddr
 	rec := httptest.NewRecorder()
 	server.Handler().ServeHTTP(rec, req)
 	return rec

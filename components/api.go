@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -192,6 +193,10 @@ type apiNotifyEmail struct {
 	On      []string `json:"on"`
 }
 
+type apiAccessControl struct {
+	Allow []string `json:"allow"`
+}
+
 type apiServerConfig struct {
 	LogMaxLines             int              `json:"log_max_lines"`
 	HistoryMaxCount         int              `json:"history_max_count"`
@@ -340,6 +345,7 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/sessions/revoke-all", s.withAuth(s.handleRevokeSessions))
 	mux.HandleFunc("/api/config", s.withAuth(s.handleConfig))
 	mux.HandleFunc("/api/config/validate", s.withAuth(s.handleConfigValidate))
+	mux.HandleFunc("/api/access-control", s.withAuth(s.handleAccessControl))
 	mux.HandleFunc("/api/access-log", s.withAuth(s.handleJSONLinesLog(".access_log", "log")))
 	mux.HandleFunc("/api/api-access-log", s.withAuth(s.handleAPIAccessLog))
 	mux.HandleFunc("/api/config-log", s.withAuth(s.handleJSONLinesLog(".config_log", "log")))
@@ -383,7 +389,11 @@ func (s *APIServer) Handler() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-		mux.ServeHTTP(rec, r)
+		if strings.HasPrefix(r.URL.Path, "/api/") && !s.accessAllowed(r) {
+			writeError(rec, http.StatusForbidden, "Forbidden")
+		} else {
+			mux.ServeHTTP(rec, r)
+		}
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".api_access_log"), apiLogRecord{
 				At: s.nowString(), Method: r.Method, Path: r.URL.Path, Status: rec.status,
@@ -685,6 +695,50 @@ func (s *APIServer) handleConfigValidate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"valid": true, "config": next, "warnings": []string{}, "errors": []string{}})
+}
+
+func (s *APIServer) handleAccessControl(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		cfg, err := s.readAccessControl()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		writeJSON(w, http.StatusOK, cfg)
+	case http.MethodPost:
+		var body apiAccessControl
+		if !decodeBody(w, r, &body, true) {
+			return
+		}
+		next, ok := normalizeAccessControl(w, body)
+		if !ok {
+			return
+		}
+		current, err := s.readAccessControl()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		if stringSlicesEqual(current.Allow, next.Allow) {
+			writeJSON(w, http.StatusOK, map[string]any{"message": "No changes", "allow": next.Allow})
+			return
+		}
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".access_control"), next, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "access_control", Changes: map[string]any{"allow": next.Allow}}); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"message": "Access control updated", "allow": next.Allow})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
 }
 
 func (s *APIServer) handleRepoInfo(w http.ResponseWriter, r *http.Request) {
@@ -2150,6 +2204,22 @@ func (s *APIServer) readNotifyConfig() (apiNotifyConfig, error) {
 	return normalized, nil
 }
 
+func (s *APIServer) readAccessControl() (apiAccessControl, error) {
+	path := filepath.Join(s.cfg.StateDir, ".access_control")
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return apiAccessControl{Allow: []string{}}, nil
+	}
+	var cfg apiAccessControl
+	if err := readJSONFile(path, &cfg); err != nil {
+		return cfg, err
+	}
+	normalized, ok := normalizeAccessControl(nil, cfg)
+	if !ok {
+		return cfg, errors.New("invalid access control")
+	}
+	return normalized, nil
+}
+
 func (s *APIServer) nowString() string {
 	return s.cfg.Now().UTC().Format(apiTimeLayout)
 }
@@ -3026,6 +3096,101 @@ func notifyConfigsEqual(a, b apiNotifyConfig) bool {
 	aj, errA := json.Marshal(a)
 	bj, errB := json.Marshal(b)
 	return errA == nil && errB == nil && string(aj) == string(bj)
+}
+
+func normalizeAccessControl(w http.ResponseWriter, cfg apiAccessControl) (apiAccessControl, bool) {
+	if cfg.Allow == nil {
+		cfg.Allow = []string{}
+	}
+	if len(cfg.Allow) > 100 {
+		writeValidationIf(w, "allow", "too many")
+		return cfg, false
+	}
+	seen := map[string]bool{}
+	out := []string{}
+	for i, raw := range cfg.Allow {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			writeValidationIf(w, fmt.Sprintf("allow[%d]", i), "empty value")
+			return cfg, false
+		}
+		normalized, ok := normalizeIPv4OrCIDR(value)
+		if !ok {
+			writeValidationIf(w, fmt.Sprintf("allow[%d]", i), "invalid value")
+			return cfg, false
+		}
+		if !seen[normalized] {
+			out = append(out, normalized)
+			seen[normalized] = true
+		}
+	}
+	sort.Strings(out)
+	return apiAccessControl{Allow: out}, true
+}
+
+func normalizeIPv4OrCIDR(value string) (string, bool) {
+	if strings.Contains(value, "/") {
+		ip, network, err := net.ParseCIDR(value)
+		if err != nil || ip == nil || ip.To4() == nil || network == nil {
+			return "", false
+		}
+		ones, bits := network.Mask.Size()
+		if bits != 32 || ones < 0 || ones > 32 {
+			return "", false
+		}
+		network.IP = network.IP.To4()
+		return network.String(), true
+	}
+	ip := net.ParseIP(value)
+	if ip == nil || ip.To4() == nil {
+		return "", false
+	}
+	return ip.To4().String(), true
+}
+
+func (s *APIServer) accessAllowed(r *http.Request) bool {
+	if r.Method == http.MethodGet && r.URL.Path == "/api/health" {
+		return true
+	}
+	cfg, err := s.readAccessControl()
+	if err != nil || len(cfg.Allow) == 0 {
+		return err == nil
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(strings.TrimSpace(host))
+	if ip == nil || ip.To4() == nil {
+		return false
+	}
+	ip = ip.To4()
+	for _, entry := range cfg.Allow {
+		if strings.Contains(entry, "/") {
+			_, network, err := net.ParseCIDR(entry)
+			if err == nil && network.Contains(ip) {
+				return true
+			}
+			continue
+		}
+		allowed := net.ParseIP(entry)
+		if allowed != nil && allowed.To4() != nil && allowed.To4().Equal(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func notifyConfigChangeSummary(cfg apiNotifyConfig) map[string]any {
