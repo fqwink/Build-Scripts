@@ -1144,6 +1144,150 @@ func TestAPIPhase4RulePipelineNotesAndLayoutFixtures(t *testing.T) {
 	}
 }
 
+func TestAPICompletionEndpoints(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	appendLine(t, filepath.Join(state, ".audit_log"), `{"at":"2026-09-17T01:01:02Z","actor":"admin","action":"config_update","result":"success"}`)
+	resp := apiRequest(t, server, http.MethodGet, "/api/audit-log?action=config_update", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("audit-log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var logResp map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &logResp)
+	if logResp["total"].(float64) != 1 {
+		t.Fatalf("unexpected audit log: %#v", logResp)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/auth/totp-status", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("totp status code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var status map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &status)
+	if status["enabled"] != false {
+		t.Fatalf("unexpected initial totp status: %#v", status)
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/auth/totp-setup", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("totp setup code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var setup map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &setup)
+	secret, _ := setup["secret"].(string)
+	code := totpCode(secret, server.cfg.Now().UTC().Unix()/30)
+	resp = apiRequest(t, server, http.MethodPost, "/api/auth/totp-confirm", token, map[string]string{"code": code})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("totp confirm code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/login", "", map[string]string{"password": "admin"})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("totp login stage1 code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var loginResp map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &loginResp)
+	ticket, _ := loginResp["ticket"].(string)
+	if ticket == "" || loginResp["totp_required"] != true {
+		t.Fatalf("login did not require totp: %#v", loginResp)
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/sessions", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("sessions after totp ticket code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var sessionsAfterTicket map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &sessionsAfterTicket)
+	if len(sessionsAfterTicket["sessions"].([]any)) != 1 {
+		t.Fatalf("totp stage1 must not create a session: %#v", sessionsAfterTicket)
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/login/totp", "", map[string]string{"ticket": ticket, "code": code})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("totp login stage2 code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodDelete, "/api/auth/totp", token, map[string]string{"code": code})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("totp disable code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/log-level", token, map[string]string{"level": "debug"})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("log-level code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var cfg apiServerConfig
+	readTestJSON(t, filepath.Join(state, ".server_config"), &cfg)
+	if cfg.LogLevel != "DEBUG" {
+		t.Fatalf("log level was not saved: %#v", cfg)
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/api-rate-limit", token, map[string]any{"enabled": true, "groups": []any{}})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("api-rate-limit post code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/api-rate-limit", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("api-rate-limit get code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/pat-verify", token, nil)
+	if resp.Code != http.StatusNotImplemented {
+		t.Fatalf("pat verify without token code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	if err := os.WriteFile(filepath.Join(state, ".github_token"), []byte("ghp_exampletoken\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/pat-verify", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("pat verify code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/rate-limit", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("rate-limit code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	hook := map[string]any{"phase": "after_build", "command_args": []string{"/bin/echo", "ok"}, "abort_on_failure": false}
+	resp = apiRequest(t, server, http.MethodPost, "/api/hooks", token, hook)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("hook create code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var hookResp map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &hookResp)
+	created := hookResp["rule"].(map[string]any)
+	hookID, _ := created["id"].(string)
+	writeTestJSON(t, filepath.Join(state, ".build_logs", "b1_hook_"+hookID+".json"), map[string]any{"at": "2026-09-17T01:02:00Z", "result": "success"})
+	resp = apiRequest(t, server, http.MethodGet, "/api/hooks/"+hookID+"/log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("hook log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodDelete, "/api/hooks/"+hookID, token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("hook delete code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	siteDir := filepath.Join(state, "site")
+	if err := os.MkdirAll(siteDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(siteDir, "index.html"), []byte("<h1>Adlaire</h1>\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	meta, err := inspectOutput(siteDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(state, ".build_logs"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestJSON(t, filepath.Join(state, ".build_logs", "bverify.json"), apiBuildLog{ID: "bverify", StartedAt: "2026-09-17T01:01:01Z", FinishedAt: "2026-09-17T01:01:03Z", TargetStatus: "success", OutputSHA256: meta.SHA256})
+	resp = apiRequest(t, server, http.MethodPost, "/api/verify-output", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("verify-output code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var verify map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &verify)
+	if verify["match"] != true {
+		t.Fatalf("unexpected verify result: %#v", verify)
+	}
+}
+
 func newAPIState(t *testing.T) string {
 	t.Helper()
 	state := t.TempDir()

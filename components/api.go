@@ -5,7 +5,10 @@ import (
 	"compress/gzip"
 	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha1"
 	"crypto/sha256"
+	"encoding/base32"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -38,10 +41,12 @@ type APIConfig struct {
 }
 
 type APIServer struct {
-	cfg       APIConfig
-	startedAt time.Time
-	mu        sync.Mutex
-	sessions  map[string]apiSession
+	cfg          APIConfig
+	startedAt    time.Time
+	mu           sync.Mutex
+	sessions     map[string]apiSession
+	loginTickets map[string]apiLoginTicket
+	totpSetup    *apiPendingTOTP
 }
 
 type apiSession struct {
@@ -49,6 +54,16 @@ type apiSession struct {
 	CreatedAt  string
 	ExpiresAt  string
 	LastUsedAt string
+}
+
+type apiLoginTicket struct {
+	MustChange string
+	ExpiresAt  time.Time
+}
+
+type apiPendingTOTP struct {
+	SecretBase32 string
+	ExpiresAt    time.Time
 }
 
 type statusRecorder struct {
@@ -73,6 +88,13 @@ type apiCredentials struct {
 	UpdatedAt     string  `json:"updated_at"`
 	LastLoginAt   *string `json:"last_login_at"`
 	LastFailureAt *string `json:"last_failure_at"`
+}
+
+type apiTOTPSecret struct {
+	Enabled          bool    `json:"enabled"`
+	SecretBase32     *string `json:"secret_base32"`
+	ConfirmedAt      *string `json:"confirmed_at"`
+	LastAcceptedStep *int64  `json:"last_accepted_step"`
 }
 
 type apiBuildState struct {
@@ -220,6 +242,7 @@ type apiServerConfig struct {
 	ScheduleIntervalSeconds int              `json:"schedule_interval_seconds"`
 	SchedulePaused          bool             `json:"schedule_paused"`
 	AllowedHours            *apiAllowedHours `json:"allowed_hours"`
+	APIRateLimit            map[string]any   `json:"api_rate_limit,omitempty"`
 }
 
 type apiLogRecord struct {
@@ -288,6 +311,8 @@ type apiBuildLog struct {
 	Comment         *string        `json:"comment"`
 	Flagged         bool           `json:"flagged"`
 	Tags            []string       `json:"tags"`
+	OutputSHA256    string         `json:"output_sha256,omitempty"`
+	SHA256          string         `json:"sha256,omitempty"`
 }
 
 type apiPipelineLog struct {
@@ -311,7 +336,7 @@ func NewAPIServer(cfg APIConfig) (*APIServer, error) {
 	if err := validateCredentials(filepath.Join(cfg.StateDir, ".admin_credentials")); err != nil {
 		return nil, err
 	}
-	return &APIServer{cfg: cfg, startedAt: cfg.Now().UTC(), sessions: map[string]apiSession{}}, nil
+	return &APIServer{cfg: cfg, startedAt: cfg.Now().UTC(), sessions: map[string]apiSession{}, loginTickets: map[string]apiLoginTicket{}}, nil
 }
 
 func InitCredentials(stateDir, password string, now time.Time) error {
@@ -353,9 +378,16 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/health", s.handleHealth)
 	mux.HandleFunc("/api/sessions", s.withAuth(s.handleSessions))
 	mux.HandleFunc("/api/sessions/revoke-all", s.withAuth(s.handleRevokeSessions))
+	mux.HandleFunc("/api/auth/totp-status", s.withAuth(s.handleTOTPStatus))
+	mux.HandleFunc("/api/auth/totp-setup", s.withAuth(s.handleTOTPSetup))
+	mux.HandleFunc("/api/auth/totp-confirm", s.withAuth(s.handleTOTPConfirm))
+	mux.HandleFunc("/api/auth/totp", s.withAuth(s.handleTOTPDisable))
 	mux.HandleFunc("/api/config", s.withAuth(s.handleConfig))
 	mux.HandleFunc("/api/config/validate", s.withAuth(s.handleConfigValidate))
+	mux.HandleFunc("/api/log-level", s.withAuth(s.handleLogLevel))
+	mux.HandleFunc("/api/api-rate-limit", s.withAuth(s.handleAPIRateLimit))
 	mux.HandleFunc("/api/access-control", s.withAuth(s.handleAccessControl))
+	mux.HandleFunc("/api/audit-log", s.withAuth(s.handleAuditLog))
 	mux.HandleFunc("/api/access-log", s.withAuth(s.handleJSONLinesLog(".access_log", "log")))
 	mux.HandleFunc("/api/api-access-log", s.withAuth(s.handleAPIAccessLog))
 	mux.HandleFunc("/api/config-log", s.withAuth(s.handleJSONLinesLog(".config_log", "log")))
@@ -393,10 +425,12 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/history/export", s.withAuth(s.handleHistoryExport))
 	mux.HandleFunc("/api/history/", s.withAuth(s.handleHistoryPath))
 	mux.HandleFunc("/api/pat-status", s.withAuth(s.handlePATStatus))
+	mux.HandleFunc("/api/pat-verify", s.withAuth(s.handlePATVerify))
 	mux.HandleFunc("/api/pat-update", s.withAuth(s.handlePATUpdate))
 	mux.HandleFunc("/api/backup", s.withAuth(s.handleBackup))
 	mux.HandleFunc("/api/restore", s.withAuth(s.handleRestore))
 	mux.HandleFunc("/api/diagnostics", s.withAuth(s.handleDiagnostics))
+	mux.HandleFunc("/api/rate-limit", s.withAuth(s.handleRateLimit))
 	mux.HandleFunc("/api/disk-usage", s.withAuth(s.handleDiskUsage))
 	mux.HandleFunc("/api/webhook-events", s.withAuth(s.handleWebhookEvents))
 	mux.HandleFunc("/api/webhook-config", s.withAuth(s.handleWebhookConfig))
@@ -409,6 +443,9 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/alert-rules/", s.withAuth(s.handleRulePath(".alert_rules", "alert_rule")))
 	mux.HandleFunc("/api/tag-rules", s.withAuth(s.handleRuleFile(".tag_rules", "tag_rule")))
 	mux.HandleFunc("/api/tag-rules/", s.withAuth(s.handleRulePath(".tag_rules", "tag_rule")))
+	mux.HandleFunc("/api/hooks", s.withAuth(s.handleRuleFile(".hooks", "hook")))
+	mux.HandleFunc("/api/hooks/", s.withAuth(s.handleHookPath))
+	mux.HandleFunc("/api/verify-output", s.withAuth(s.handleVerifyOutput))
 	mux.HandleFunc("/api/pipeline-config", s.withAuth(s.handlePipelineConfig))
 	mux.HandleFunc("/api/notes", s.withAuth(s.handleNotes))
 	mux.HandleFunc("/api/dashboard-layout", s.withAuth(s.handleDashboardLayout))
@@ -482,6 +519,25 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
+	mustChange := "none"
+	if cred.MustChange {
+		mustChange = "prompt"
+	}
+	if totp, err := readTOTPSecret(filepath.Join(s.cfg.StateDir, ".totp_secret")); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	} else if totp.Enabled {
+		ticket, err := randomToken()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		s.mu.Lock()
+		s.loginTickets[tokenHash(ticket)] = apiLoginTicket{MustChange: mustChange, ExpiresAt: s.cfg.Now().UTC().Add(5 * time.Minute)}
+		s.mu.Unlock()
+		writeJSON(w, http.StatusOK, map[string]any{"must_change": mustChange, "totp_required": true, "ticket": ticket})
+		return
+	}
 	timeoutSeconds := 28800
 	if cfg, err := s.readMergedConfig(); err == nil {
 		timeoutSeconds = cfg.SessionTimeoutSeconds
@@ -490,10 +546,6 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	s.sessions[tokenHash(token)] = apiSession{TokenHash: tokenHash(token), CreatedAt: now, ExpiresAt: expires, LastUsedAt: now}
 	s.mu.Unlock()
-	mustChange := "none"
-	if cred.MustChange {
-		mustChange = "prompt"
-	}
 	writeJSON(w, http.StatusOK, map[string]any{"token": token, "must_change": mustChange})
 }
 
@@ -516,7 +568,37 @@ func (s *APIServer) handleLoginTOTP(w http.ResponseWriter, r *http.Request) {
 		writeValidation(w, "code", "required")
 		return
 	}
-	writeError(w, http.StatusUnauthorized, "Unauthorized")
+	ticketHash := tokenHash(req.Ticket)
+	s.mu.Lock()
+	ticket, ok := s.loginTickets[ticketHash]
+	if ok {
+		delete(s.loginTickets, ticketHash)
+	}
+	s.mu.Unlock()
+	if !ok || !s.cfg.Now().UTC().Before(ticket.ExpiresAt) {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	totp, err := readTOTPSecret(filepath.Join(s.cfg.StateDir, ".totp_secret"))
+	if err != nil || !totp.Enabled || totp.SecretBase32 == nil || !verifyTOTPCode(*totp.SecretBase32, req.Code, s.cfg.Now().UTC()) {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	token, err := randomToken()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	timeoutSeconds := 28800
+	if cfg, err := s.readMergedConfig(); err == nil {
+		timeoutSeconds = cfg.SessionTimeoutSeconds
+	}
+	now := s.nowString()
+	expires := s.cfg.Now().UTC().Add(time.Duration(timeoutSeconds) * time.Second).Format(apiTimeLayout)
+	s.mu.Lock()
+	s.sessions[tokenHash(token)] = apiSession{TokenHash: tokenHash(token), CreatedAt: now, ExpiresAt: expires, LastUsedAt: now}
+	s.mu.Unlock()
+	writeJSON(w, http.StatusOK, map[string]any{"token": token, "must_change": ticket.MustChange})
 }
 
 func (s *APIServer) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -673,6 +755,119 @@ func (s *APIServer) handleRevokeSessions(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, map[string]any{"message": "All other sessions revoked", "revoked_count": revoked})
 }
 
+func (s *APIServer) handleTOTPStatus(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	totp, err := readTOTPSecret(filepath.Join(s.cfg.StateDir, ".totp_secret"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	writeJSON(w, http.StatusOK, totpStatusPayload(totp))
+}
+
+func (s *APIServer) handleTOTPSetup(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	totp, err := readTOTPSecret(filepath.Join(s.cfg.StateDir, ".totp_secret"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	if totp.Enabled {
+		writeError(w, http.StatusConflict, "Conflict")
+		return
+	}
+	secret, err := randomBase32Secret()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	s.mu.Lock()
+	s.totpSetup = &apiPendingTOTP{SecretBase32: secret, ExpiresAt: s.cfg.Now().UTC().Add(10 * time.Minute)}
+	s.mu.Unlock()
+	uri := "otpauth://totp/Adlaire%20CI:admin?issuer=Adlaire%20CI&secret=" + secret + "&algorithm=SHA1&digits=6&period=30"
+	writeJSON(w, http.StatusOK, map[string]any{"secret": secret, "otpauth_uri": uri})
+}
+
+func (s *APIServer) handleTOTPConfirm(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var body struct {
+		Code string `json:"code"`
+	}
+	if !decodeBody(w, r, &body, true) {
+		return
+	}
+	if body.Code == "" {
+		writeValidation(w, "code", "required")
+		return
+	}
+	s.mu.Lock()
+	pending := s.totpSetup
+	s.mu.Unlock()
+	if pending == nil || !s.cfg.Now().UTC().Before(pending.ExpiresAt) {
+		writeError(w, http.StatusConflict, "Conflict")
+		return
+	}
+	if !verifyTOTPCode(pending.SecretBase32, body.Code, s.cfg.Now().UTC()) {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	now := s.nowString()
+	secret := pending.SecretBase32
+	totp := apiTOTPSecret{Enabled: true, SecretBase32: &secret, ConfirmedAt: &now}
+	if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".totp_secret"), totp, 0600); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	s.mu.Lock()
+	s.totpSetup = nil
+	s.mu.Unlock()
+	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": now, "action": "totp_enable", "result": "success"})
+	writeJSON(w, http.StatusOK, totpStatusPayload(totp))
+}
+
+func (s *APIServer) handleTOTPDisable(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodDelete) {
+		return
+	}
+	var body struct {
+		Code string `json:"code"`
+	}
+	if !decodeBody(w, r, &body, true) {
+		return
+	}
+	if body.Code == "" {
+		writeValidation(w, "code", "required")
+		return
+	}
+	path := filepath.Join(s.cfg.StateDir, ".totp_secret")
+	totp, err := readTOTPSecret(path)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	if !totp.Enabled || totp.SecretBase32 == nil {
+		writeError(w, http.StatusConflict, "Conflict")
+		return
+	}
+	if !verifyTOTPCode(*totp.SecretBase32, body.Code, s.cfg.Now().UTC()) {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	next := apiTOTPSecret{Enabled: false}
+	if err := atomicWriteJSON(path, next, 0600); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": s.nowString(), "action": "totp_disable", "result": "success"})
+	writeJSON(w, http.StatusOK, totpStatusPayload(next))
+}
+
 func (s *APIServer) handleConfig(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -732,6 +927,145 @@ func (s *APIServer) handleConfigValidate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"valid": true, "config": next, "warnings": []string{}, "errors": []string{}})
+}
+
+func (s *APIServer) handleLogLevel(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var body struct {
+		Level string `json:"level"`
+	}
+	if !decodeBody(w, r, &body, true) {
+		return
+	}
+	level := strings.ToUpper(strings.TrimSpace(body.Level))
+	if level != "INFO" && level != "DEBUG" && level != "WARNING" && level != "ERROR" {
+		writeValidation(w, "level", "invalid value")
+		return
+	}
+	cfg, err := s.readMergedConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if cfg.LogLevel == level {
+		writeJSON(w, http.StatusOK, map[string]any{"message": "No changes", "level": level})
+		return
+	}
+	cfg.LogLevel = level
+	if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".server_config"), cfg, 0600); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "log_level", Changes: map[string]any{"log_level": level}})
+	writeJSON(w, http.StatusOK, map[string]any{"message": "Log level updated", "level": level})
+}
+
+func (s *APIServer) handleAPIRateLimit(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		cfg, err := s.readMergedConfig()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		policy := cfg.APIRateLimit
+		if policy == nil {
+			policy = map[string]any{"enabled": false, "groups": []any{}}
+		}
+		state, _, _ := readOptionalJSONMap(filepath.Join(s.cfg.StateDir, ".api_rate_state"))
+		writeJSON(w, http.StatusOK, map[string]any{"policy": policy, "state_summary": state})
+	case http.MethodPost:
+		var body map[string]any
+		if !decodeBody(w, r, &body, true) {
+			return
+		}
+		if _, ok := body["enabled"].(bool); !ok {
+			writeValidation(w, "enabled", "required")
+			return
+		}
+		if groups, ok := body["groups"]; ok {
+			if _, ok := groups.([]any); !ok {
+				writeValidation(w, "groups", "invalid type")
+				return
+			}
+		} else {
+			body["groups"] = []any{}
+		}
+		cfg, err := s.readMergedConfig()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		cfg.APIRateLimit = body
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".server_config"), cfg, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".api_rate_state"), map[string]any{"windows": map[string]any{}}, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "api_rate_limit", Changes: map[string]any{"policy": body}})
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": s.nowString(), "action": "api_rate_limit_update", "result": "success"})
+		writeJSON(w, http.StatusOK, map[string]any{"policy": body, "state_summary": map[string]any{"windows": map[string]any{}}})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+func (s *APIServer) handleAuditLog(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	limit, ok := parseBoundedInt(w, r, "limit", 100, 1, 200)
+	if !ok {
+		return
+	}
+	offset, ok := parseBoundedInt(w, r, "offset", 0, 0, 1_000_000)
+	if !ok {
+		return
+	}
+	actor := strings.TrimSpace(r.URL.Query().Get("actor"))
+	action := strings.TrimSpace(r.URL.Query().Get("action"))
+	result := strings.TrimSpace(r.URL.Query().Get("result"))
+	for _, pair := range []struct{ field, value string }{{"actor", actor}, {"action", action}, {"result", result}} {
+		if len(pair.value) > 200 || containsControl(pair.value) {
+			writeValidation(w, pair.field, "invalid value")
+			return
+		}
+	}
+	records := readJSONLines(filepath.Join(s.cfg.StateDir, ".audit_log"))
+	filtered := []map[string]any{}
+	for _, record := range records {
+		if actor != "" && fmt.Sprint(record["actor"]) != actor {
+			continue
+		}
+		if action != "" && fmt.Sprint(record["action"]) != action {
+			continue
+		}
+		if result != "" && fmt.Sprint(record["result"]) != result {
+			continue
+		}
+		filtered = append(filtered, record)
+	}
+	sort.Slice(filtered, func(i, j int) bool {
+		return fmt.Sprint(filtered[i]["at"]) > fmt.Sprint(filtered[j]["at"])
+	})
+	total := len(filtered)
+	start := offset
+	if start > total {
+		start = total
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"log": filtered[start:end], "total": total})
 }
 
 func (s *APIServer) handleAccessControl(w http.ResponseWriter, r *http.Request) {
@@ -2087,6 +2421,22 @@ func (s *APIServer) handlePATStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"configured": err == nil, "mode": fileModeString(info)})
 }
 
+func (s *APIServer) handlePATVerify(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	token, err := readSecretText(filepath.Join(s.cfg.StateDir, ".github_token"))
+	if errors.Is(err, os.ErrNotExist) || strings.TrimSpace(token) == "" {
+		writeError(w, http.StatusNotImplemented, "Not configured")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"configured": true, "valid": true, "checked_at": s.nowString(), "remote_checked": false})
+}
+
 func (s *APIServer) handlePATUpdate(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodPost) {
 		return
@@ -2191,6 +2541,30 @@ func (s *APIServer) handleDiagnostics(w http.ResponseWriter, r *http.Request) {
 		{"name": "github_token", "status": statusFromExists(tokenErr)},
 		{"name": "output", "status": map[bool]string{true: "ok", false: "warn"}[meta.Exists]},
 	}})
+}
+
+func (s *APIServer) handleRateLimit(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	token, err := readSecretText(filepath.Join(s.cfg.StateDir, ".github_token"))
+	if errors.Is(err, os.ErrNotExist) || strings.TrimSpace(token) == "" {
+		writeError(w, http.StatusNotImplemented, "Not configured")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"checked_at":       s.nowString(),
+		"remote_checked":   false,
+		"limit":            nil,
+		"remaining":        nil,
+		"reset_at":         nil,
+		"resource":         "core",
+		"token_configured": true,
+	})
 }
 
 func (s *APIServer) handleDiskUsage(w http.ResponseWriter, r *http.Request) {
@@ -2570,6 +2944,69 @@ func (s *APIServer) handleRulePath(filename, logType string) http.HandlerFunc {
 		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: logType + "_delete", Changes: map[string]any{"id": id}})
 		writeJSON(w, http.StatusOK, map[string]string{"message": "Rule deleted"})
 	}
+}
+
+func (s *APIServer) handleHookPath(w http.ResponseWriter, r *http.Request) {
+	rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/hooks/"), "/")
+	id, suffix, hasSuffix := strings.Cut(rest, "/")
+	if !validSimpleID(id) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if hasSuffix && suffix == "log" {
+		if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+			return
+		}
+		runs := []map[string]any{}
+		root := filepath.Join(s.cfg.StateDir, ".build_logs")
+		_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), "_hook_"+id+".json") {
+				return nil
+			}
+			if value, ok, err := readOptionalJSONMap(path); err == nil && ok {
+				runs = append(runs, value)
+			}
+			return nil
+		})
+		sort.Slice(runs, func(i, j int) bool { return fmt.Sprint(runs[i]["at"]) > fmt.Sprint(runs[j]["at"]) })
+		if len(runs) > 20 {
+			runs = runs[:20]
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"id": id, "runs": runs})
+		return
+	}
+	if hasSuffix {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	s.handleRulePath(".hooks", "hook")(w, r)
+}
+
+func (s *APIServer) handleVerifyOutput(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	logs := s.readBuildLogsNewest()
+	if len(logs) == 0 {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	expected := firstNonEmpty(logs[0].OutputSHA256, logs[0].SHA256)
+	if expected == "" {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	meta, err := inspectOutput(s.outputDir())
+	if err == nil && !meta.Exists {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	actual := meta.SHA256
+	writeJSON(w, http.StatusOK, map[string]any{"match": expected == actual, "expected": expected, "actual": actual})
 }
 
 func (s *APIServer) handlePipelineConfig(w http.ResponseWriter, r *http.Request) {
@@ -3124,6 +3561,73 @@ func randomToken() (string, error) {
 		return "", err
 	}
 	return "acs_" + value, nil
+}
+
+func randomBase32Secret() (string, error) {
+	raw := make([]byte, 20)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(raw), nil
+}
+
+func readTOTPSecret(path string) (apiTOTPSecret, error) {
+	var secret apiTOTPSecret
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return secret, nil
+	}
+	if err != nil {
+		return secret, err
+	}
+	if len(bytes.TrimSpace(data)) == 0 {
+		return secret, nil
+	}
+	if err := json.Unmarshal(data, &secret); err != nil {
+		return secret, err
+	}
+	return secret, nil
+}
+
+func totpStatusPayload(secret apiTOTPSecret) map[string]any {
+	return map[string]any{"enabled": secret.Enabled, "confirmed_at": secret.ConfirmedAt}
+}
+
+func verifyTOTPCode(secretBase32, code string, at time.Time) bool {
+	code = strings.TrimSpace(code)
+	if len(code) != 6 {
+		return false
+	}
+	for _, r := range code {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	step := at.UTC().Unix() / 30
+	for _, offset := range []int64{-1, 0, 1} {
+		if totpCode(secretBase32, step+offset) == code {
+			return true
+		}
+	}
+	return false
+}
+
+func totpCode(secretBase32 string, step int64) string {
+	key, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ToUpper(strings.TrimSpace(secretBase32)))
+	if err != nil {
+		return ""
+	}
+	var counter [8]byte
+	binary.BigEndian.PutUint64(counter[:], uint64(step))
+	mac := hmac.New(sha1.New, key)
+	_, _ = mac.Write(counter[:])
+	sum := mac.Sum(nil)
+	offset := sum[len(sum)-1] & 0x0f
+	value := (int(sum[offset])&0x7f)<<24 |
+		(int(sum[offset+1])&0xff)<<16 |
+		(int(sum[offset+2])&0xff)<<8 |
+		(int(sum[offset+3]) & 0xff)
+	return fmt.Sprintf("%06d", value%1_000_000)
 }
 
 func readBuildState(path string) (apiBuildState, error) {
@@ -4204,6 +4708,14 @@ func readOptionalJSONMap(path string) (map[string]any, bool, error) {
 		return nil, true, err
 	}
 	return value, true, nil
+}
+
+func readSecretText(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
 }
 
 func maskSecrets(value map[string]any) map[string]any {

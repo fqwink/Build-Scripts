@@ -1,6 +1,6 @@
 # Adlaire CI — 仕様ドキュメント
 
-**対象コンポーネント：** `components/builder.go`（ビルドスクリプト、実装済み）/ `components/runner.go`（CI ランナー、実装済み）/ `components/api.go`（管理 API サーバー、実装中・検証未完了）/ `admin/adlaire-ci-sdk.js`（JavaScript SDK、実装済み）/ `admin/index.html`（標準管理ツール、実装済み）/ `components/mcp.go`（MCP サーバー、将来計画）
+**対象コンポーネント：** `components/builder.go`（ビルドスクリプト、実装済み）/ `components/runner.go`（CI ランナー、実装済み）/ `components/api.go`（管理 API サーバー、実装済み）/ `admin/adlaire-ci-sdk.js`（JavaScript SDK、実装済み）/ `admin/index.html`（標準管理ツール、実装済み）/ `components/mcp.go`（MCP サーバー、将来計画）
 **出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記） → Part 2 §2 参照
@@ -36,7 +36,7 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 |---------------|------|------|
 | `components/builder.go` | 実装済み | Go 版 Markdown → 静的 Web サイトビルドスクリプトとして Phase 1 の `gofmt` と `go test` 検証済み。 |
 | `components/runner.go` | 実装済み | Go 版 CI ランナーとして Phase 2 完了判定パスの `gofmt` と `go test` 検証済み。 |
-| `components/api.go` | 実装中・検証未完了 | Go 版管理 API サーバー。実装ファイルとテストは存在するが、実装状態表、詳細仕様、SDK/UI 連携、検証結果がすべて実装済みとして整合するまでは実装済みへ昇格しない。 |
+| `components/api.go` | 実装済み | Go 版管理 API サーバー。API 完全契約表の endpoint、認証、状態ファイル、管理操作、検証テストを実装済み。 |
 | `admin/adlaire-ci-sdk.js` | 実装済み | 管理ツール用 JavaScript SDK。Phase 5 の SDK class、method、HTTP error、token 破棄、query / body 生成を実装済み。 |
 | `admin/index.html` | 実装済み | 標準管理ツール UI。Phase 6 の DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去を実装済み。 |
 | `components/mcp.go` | 将来計画 | Go 版 MCP サーバー。将来計画として管理し、実装済みとは扱わない。 |
@@ -993,7 +993,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 |-----------|------|------|
 | `components/builder.go` | 実装済み | Go 版ビルドスクリプト（Markdown → 静的 Web サイト変換）として Phase 1 の `gofmt` と `go test` 検証済み。 |
 | `components/runner.go` | 実装済み | Go 版 CI ランナー（変更検出・ビルド起動・通知・転送）として Phase 2 完了判定パスの `gofmt` と `go test` 検証済み。 |
-| `components/api.go` | 実装中・検証未完了 | Go 版管理 API サーバー（常駐 HTTP サーバー） |
+| `components/api.go` | 実装済み | Go 版管理 API サーバー（常駐 HTTP サーバー） |
 | `admin/adlaire-ci-sdk.js` | 実装済み | JavaScript SDK（管理ツール用 API クライアント） |
 | `admin/index.html` | 実装済み | 標準管理ツール UI |
 | `components/mcp.go` | 将来計画 | Go 版 MCP サーバー（将来追加予定 → §13 将来計画 MCP サーバー実装） |
@@ -1071,7 +1071,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 ## 11. 管理ツール 認証ポリシー
 
-本節は、仕様化済み・未実装の管理 API サーバーおよび標準管理ツールに適用する。
+本節は、実装済みの管理 API サーバーおよび標準管理ツールに適用する。
 
 - **初期構成：シングルユーザー（`admin`）**
 - 初期パスワードは `admin` とする
@@ -1081,7 +1081,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 ## 12. 管理 API サーバー セキュリティポリシー
 
-本節は、実装中・検証未完了の `components/api.go` に適用する。
+本節は、実装済みの `components/api.go` に適用する。
 
 - `HOST` は `127.0.0.1` に固定し、外部へ直接公開しない
 - HTTPS は nginx 等のリバースプロキシでターミネートする。`components/api.go` 自体に TLS を実装しない
