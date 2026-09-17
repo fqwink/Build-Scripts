@@ -93,6 +93,33 @@ type apiMaintenanceState struct {
 	Since   *string `json:"since"`
 }
 
+type apiRepoConfig struct {
+	Owner      string `json:"owner"`
+	Repo       string `json:"repo"`
+	Branch     string `json:"branch"`
+	TargetFile string `json:"target_file"`
+	UpdatedAt  string `json:"updated_at,omitempty"`
+}
+
+type apiBranchConfigFile struct {
+	BranchTargets []apiBranchTarget `json:"branch_targets"`
+}
+
+type apiBranchTarget struct {
+	Branch        string            `json:"branch"`
+	TargetFile    string            `json:"target_file"`
+	SHAFile       string            `json:"sha_file"`
+	Src           string            `json:"src"`
+	Out           string            `json:"out"`
+	DeployTargets []apiDeployTarget `json:"deploy_targets"`
+}
+
+type apiDeployTarget struct {
+	Host    string `json:"host"`
+	User    string `json:"user"`
+	DestDir string `json:"dest_dir"`
+}
+
 type apiServerConfig struct {
 	LogMaxLines           int     `json:"log_max_lines"`
 	HistoryMaxCount       int     `json:"history_max_count"`
@@ -247,6 +274,9 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/output-meta", s.withAuth(s.handleOutputMeta))
 	mux.HandleFunc("/api/dashboard", s.withAuth(s.handleDashboard))
 	mux.HandleFunc("/api/notify-log", s.withAuth(s.handleJSONLinesLog(".notify_log", "log")))
+	mux.HandleFunc("/api/repo-info", s.withAuth(s.handleRepoInfo))
+	mux.HandleFunc("/api/repo-config", s.withAuth(s.handleRepoConfig))
+	mux.HandleFunc("/api/branch-config", s.withAuth(s.handleBranchConfig))
 	mux.HandleFunc("/api/build", s.withAuth(s.handleBuild(false)))
 	mux.HandleFunc("/api/build/force", s.withAuth(s.handleBuild(true)))
 	mux.HandleFunc("/api/build/cancel", s.withAuth(s.handleCancel))
@@ -568,6 +598,168 @@ func (s *APIServer) handleConfigValidate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"valid": true, "config": next, "warnings": []string{}, "errors": []string{}})
+}
+
+func (s *APIServer) handleRepoInfo(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	cfg, err := s.readRepoConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	writeJSON(w, http.StatusOK, cfg)
+}
+
+func (s *APIServer) handleRepoConfig(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var patch map[string]json.RawMessage
+	if !decodeBody(w, r, &patch, true) {
+		return
+	}
+	if len(patch) == 0 {
+		writeValidation(w, "body", "must include at least one field")
+		return
+	}
+	current, err := s.readRepoConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	next := current
+	changed := false
+	seen := false
+	for key, raw := range patch {
+		switch key {
+		case "owner":
+			value, ok := decodeTrimmedString(w, key, raw, 1, 100)
+			if !ok {
+				return
+			}
+			seen = true
+			changed = changed || next.Owner != value
+			next.Owner = value
+		case "repo":
+			value, ok := decodeTrimmedString(w, key, raw, 1, 100)
+			if !ok {
+				return
+			}
+			seen = true
+			changed = changed || next.Repo != value
+			next.Repo = value
+		case "branch":
+			value, ok := decodeTrimmedString(w, key, raw, 1, 128)
+			if !ok || !validateBranchName(w, value) {
+				return
+			}
+			seen = true
+			changed = changed || next.Branch != value
+			next.Branch = value
+		case "target_file":
+			value, ok := decodeTrimmedString(w, key, raw, 1, 500)
+			if !ok || !validateTargetFile(w, value) {
+				return
+			}
+			seen = true
+			changed = changed || next.TargetFile != value
+			next.TargetFile = value
+		default:
+			writeValidation(w, key, "unknown key")
+			return
+		}
+	}
+	if !seen {
+		writeValidation(w, "body", "must include at least one field")
+		return
+	}
+	if !changed {
+		writeJSON(w, http.StatusOK, map[string]string{"message": "No changes"})
+		return
+	}
+	next.UpdatedAt = s.nowString()
+	if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".repo_config"), next, 0600); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "repo_config", Changes: maskRepoConfigChanges(patch)}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Repo config updated"})
+}
+
+func (s *APIServer) handleBranchConfig(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		cfg, source, err := s.readBranchConfig()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"source": source, "branches": cfg.BranchTargets})
+	case http.MethodPost:
+		var body struct {
+			Branches      []apiBranchTarget `json:"branches"`
+			BranchTargets []apiBranchTarget `json:"branch_targets"`
+		}
+		if !decodeBody(w, r, &body, true) {
+			return
+		}
+		targets := body.Branches
+		if targets == nil {
+			targets = body.BranchTargets
+		}
+		if targets == nil {
+			writeValidation(w, "branches", "required")
+			return
+		}
+		if len(targets) == 0 {
+			if _, err := os.Stat(filepath.Join(s.cfg.StateDir, ".branch_config")); errors.Is(err, os.ErrNotExist) {
+				writeJSON(w, http.StatusOK, map[string]any{"message": "No changes", "branches_count": 0})
+				return
+			}
+			if err := removeIfExists(filepath.Join(s.cfg.StateDir, ".branch_config")); err != nil {
+				writeError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+			if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "branch_config", Changes: map[string]any{"branches_count": 0}}); err != nil {
+				writeError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"message": "Branch config updated", "branches_count": 0})
+			return
+		}
+		if !validateBranchTargets(w, targets) {
+			return
+		}
+		next := apiBranchConfigFile{BranchTargets: targets}
+		current, source, err := s.readBranchConfig()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		if source == "file" && branchTargetsEqual(current.BranchTargets, targets) {
+			writeJSON(w, http.StatusOK, map[string]any{"message": "No changes", "branches_count": len(targets)})
+			return
+		}
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".branch_config"), next, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "branch_config", Changes: map[string]any{"branches_count": len(targets)}}); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"message": "Branch config updated", "branches_count": len(targets)})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
 }
 
 func (s *APIServer) handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -1504,6 +1696,47 @@ func (s *APIServer) readMergedConfig() (apiServerConfig, error) {
 	return fileCfg, nil
 }
 
+func (s *APIServer) readRepoConfig() (apiRepoConfig, error) {
+	cfg := defaultRepoConfig()
+	path := filepath.Join(s.cfg.StateDir, ".repo_config")
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return cfg, nil
+	}
+	var fileCfg apiRepoConfig
+	if err := readJSONFile(path, &fileCfg); err != nil {
+		return cfg, err
+	}
+	if fileCfg.Owner != "" {
+		cfg.Owner = fileCfg.Owner
+	}
+	if fileCfg.Repo != "" {
+		cfg.Repo = fileCfg.Repo
+	}
+	if fileCfg.Branch != "" {
+		cfg.Branch = fileCfg.Branch
+	}
+	if fileCfg.TargetFile != "" {
+		cfg.TargetFile = fileCfg.TargetFile
+	}
+	cfg.UpdatedAt = fileCfg.UpdatedAt
+	return cfg, nil
+}
+
+func (s *APIServer) readBranchConfig() (apiBranchConfigFile, string, error) {
+	path := filepath.Join(s.cfg.StateDir, ".branch_config")
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return apiBranchConfigFile{BranchTargets: []apiBranchTarget{defaultBranchTarget(s.cfg.StateDir)}}, "default", nil
+	}
+	var cfg apiBranchConfigFile
+	if err := readJSONFile(path, &cfg); err != nil {
+		return cfg, "file", err
+	}
+	if cfg.BranchTargets == nil {
+		cfg.BranchTargets = []apiBranchTarget{}
+	}
+	return cfg, "file", nil
+}
+
 func (s *APIServer) nowString() string {
 	return s.cfg.Now().UTC().Format(apiTimeLayout)
 }
@@ -1816,6 +2049,33 @@ func defaultServerConfig() apiServerConfig {
 	}
 }
 
+func defaultRepoConfig() apiRepoConfig {
+	owner, repo := apiDefaultRepo()
+	return apiRepoConfig{Owner: owner, Repo: repo, Branch: "main", TargetFile: "docs"}
+}
+
+func apiDefaultRepo() (string, string) {
+	repo := os.Getenv("ADLAIRE_CI_REPOSITORY")
+	if repo == "" {
+		repo = "fqwink/Build-Scripts"
+	}
+	owner, name, ok := strings.Cut(repo, "/")
+	if !ok || owner == "" || name == "" {
+		return "fqwink", "Build-Scripts"
+	}
+	return owner, name
+}
+
+func defaultBranchTarget(stateDir string) apiBranchTarget {
+	return apiBranchTarget{
+		Branch:     "main",
+		TargetFile: "docs",
+		SHAFile:    filepath.Join(stateDir, ".last_sha"),
+		Src:        filepath.Join(stateDir, "repo", "docs"),
+		Out:        filepath.Join(stateDir, "dist", "site"),
+	}
+}
+
 func normalizeServerConfig(cfg apiServerConfig) apiServerConfig {
 	def := defaultServerConfig()
 	if cfg.LogMaxLines == 0 {
@@ -1989,6 +2249,116 @@ func decodeIntField(w http.ResponseWriter, key string, raw json.RawMessage, min,
 		return false
 	}
 	return true
+}
+
+func decodeTrimmedString(w http.ResponseWriter, key string, raw json.RawMessage, min, max int) (string, bool) {
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		writeValidation(w, key, "invalid value")
+		return "", false
+	}
+	value = strings.TrimSpace(value)
+	if len(value) < min || len(value) > max {
+		writeValidation(w, key, "out of range")
+		return "", false
+	}
+	return value, true
+}
+
+func validateBranchName(w http.ResponseWriter, value string) bool {
+	if strings.HasPrefix(value, "refs/heads/") || strings.Contains(value, "..") || strings.Contains(value, "~") || containsControl(value) {
+		writeValidation(w, "branch", "invalid value")
+		return false
+	}
+	return true
+}
+
+func validateTargetFile(w http.ResponseWriter, value string) bool {
+	if filepath.IsAbs(value) || strings.Contains(value, "..") || strings.HasPrefix(value, "/") || containsControl(value) {
+		writeValidation(w, "target_file", "invalid value")
+		return false
+	}
+	return true
+}
+
+func validateBranchTargets(w http.ResponseWriter, targets []apiBranchTarget) bool {
+	if len(targets) > 50 {
+		writeValidation(w, "branches", "must contain 50 items or less")
+		return false
+	}
+	for i, target := range targets {
+		field := fmt.Sprintf("branches[%d]", i)
+		if target.Branch == "" || len(target.Branch) > 128 || strings.HasPrefix(target.Branch, "refs/heads/") || strings.Contains(target.Branch, "..") || strings.Contains(target.Branch, "~") || containsControl(target.Branch) {
+			writeValidation(w, field+".branch", "invalid value")
+			return false
+		}
+		if target.TargetFile == "" || len(target.TargetFile) > 500 || filepath.IsAbs(target.TargetFile) || strings.Contains(target.TargetFile, "..") || containsControl(target.TargetFile) {
+			writeValidation(w, field+".target_file", "invalid value")
+			return false
+		}
+		for _, pair := range []struct {
+			name  string
+			value string
+		}{{"sha_file", target.SHAFile}, {"src", target.Src}, {"out", target.Out}} {
+			if pair.value == "" || !filepath.IsAbs(pair.value) || containsControl(pair.value) {
+				writeValidation(w, field+"."+pair.name, "invalid value")
+				return false
+			}
+		}
+		if len(target.DeployTargets) > 20 {
+			writeValidation(w, field+".deploy_targets", "must contain 20 items or less")
+			return false
+		}
+		for j, deploy := range target.DeployTargets {
+			deployField := fmt.Sprintf("%s.deploy_targets[%d]", field, j)
+			if deploy.Host == "" || len(deploy.Host) > 255 || containsControl(deploy.Host) {
+				writeValidation(w, deployField+".host", "invalid value")
+				return false
+			}
+			if deploy.User == "" || len(deploy.User) > 64 || containsControl(deploy.User) {
+				writeValidation(w, deployField+".user", "invalid value")
+				return false
+			}
+			if deploy.DestDir == "" || !filepath.IsAbs(deploy.DestDir) || containsControl(deploy.DestDir) {
+				writeValidation(w, deployField+".dest_dir", "invalid value")
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func containsControl(value string) bool {
+	for _, r := range value {
+		if r < 0x20 || r == 0x7f {
+			return true
+		}
+	}
+	return false
+}
+
+func branchTargetsEqual(a, b []apiBranchTarget) bool {
+	aj, errA := json.Marshal(a)
+	bj, errB := json.Marshal(b)
+	return errA == nil && errB == nil && string(aj) == string(bj)
+}
+
+func maskRepoConfigChanges(patch map[string]json.RawMessage) map[string]any {
+	changes := map[string]any{}
+	for key, raw := range patch {
+		var value any
+		if json.Unmarshal(raw, &value) == nil {
+			changes[key] = value
+		}
+	}
+	return changes
+}
+
+func removeIfExists(path string) error {
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
 }
 
 func appendJSONLine(path string, value any) error {
