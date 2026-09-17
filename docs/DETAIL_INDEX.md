@@ -90,6 +90,23 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 ---
 
+## 0b.0 詳細仕様カテゴリ
+
+本節は、実装者が対象機能から読むべき詳細仕様ファイルを特定するためのカテゴリ索引である。カテゴリは検索入口であり、owner component、実装状態、実装可否、ロードマップ状態を変更しない。
+
+| カテゴリ | 対象 component | 主な判断対象 | 読む詳細仕様 |
+|----------|----------------|--------------|--------------|
+| Build 系 | `builder` | Markdown 入力、静的 Web サイト出力、theme component、検索 index、変換 report。 | `docs/details/builder.md` |
+| CI / 運用系 | `runner`、`commitstatus`、`archive` | GitHub 監視、pipeline、deploy、snapshot、通知、Commit Status、archive / rollback / cleanup。 | `docs/details/runner.md`、`docs/details/commitstatus.md`、`docs/details/archive.md` |
+| 管理系 | `api`、`sdk`、`ui`、`admin` | 管理 API、JavaScript SDK、標準管理 UI、管理 UI 静的ファイル配布と配信境界。 | `docs/details/api.md`、`docs/details/sdk.md`、`docs/details/ui.md`、`docs/details/admin.md` |
+| 状態 / 安全系 | `statefile`、`security` | 状態ファイル、lock、atomic write、schema、token、scope、audit、session、TOTP、rate limit。 | `docs/details/statefile.md`、`docs/details/security.md` |
+| 配布 / 検証系 | `setup`、`fixture` | バイナリ配布、systemd、セットアップ、アップデート、fixture、fake、PR 証跡、acceptance checklist。 | `docs/details/setup.md`、`docs/details/fixture.md` |
+| 将来計画 | `mcp` | MCP サーバー。現時点では実装可能な詳細仕様を持たない。 | 詳細仕様なし |
+
+カテゴリをまたぐ機能では、§0b の責務 component 別参照表を優先して owner component を 1 件に確定する。カテゴリ名を component 名、ファイル名、責務境界として扱ってはならない。
+
+---
+
 ## 0b.1 責務 component 別 詳細仕様ファイル管理仕様
 
 本節は、責務 component 別に分割済みの詳細仕様ファイルを維持するための固定仕様である。責務境界の変更、仕様内容の移動、参照先更新を行う場合も、機能追加、実装状態変更、実装可否変更、ロードマップ変更、方針・ポリシー追加を含めてはならない。
