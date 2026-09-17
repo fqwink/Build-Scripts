@@ -2,6 +2,7 @@ package components
 
 import (
 	"bytes"
+	"compress/gzip"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -385,6 +386,9 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/maintenance/enable", s.withAuth(s.handleMaintenanceEnable))
 	mux.HandleFunc("/api/maintenance/disable", s.withAuth(s.handleMaintenanceDisable))
 	mux.HandleFunc("/api/queue", s.withAuth(s.handleQueue))
+	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		writeError(w, http.StatusNotFound, "Not found")
+	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -1256,6 +1260,7 @@ func (s *APIServer) statusPayload(w http.ResponseWriter) (map[string]any, bool) 
 			"circuit_open":            st.CircuitOpen,
 			"output_url":              nil,
 			"running":                 running,
+			"queued":                  state.Queued,
 		}, true
 	}
 	history := readHistory(filepath.Join(s.cfg.StateDir, ".build_history"))
@@ -1274,6 +1279,7 @@ func (s *APIServer) statusPayload(w http.ResponseWriter) (map[string]any, bool) 
 		"circuit_open":            circuit.Open,
 		"output_url":              nil,
 		"running":                 state.Running || lockExists(filepath.Join(s.cfg.StateDir, ".build_lock")),
+		"queued":                  state.Queued,
 	}
 	if latest != nil {
 		resp["last_sha"] = firstNonNil(latest.BlobSHA, latest.CommitSHA, latest.SHA)
@@ -1525,6 +1531,10 @@ func (s *APIServer) handleBuild(force bool) http.HandlerFunc {
 		if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
 			return
 		}
+		if maintenanceEnabled(filepath.Join(s.cfg.StateDir, ".maintenance")) {
+			writeError(w, http.StatusServiceUnavailable, "maintenance")
+			return
+		}
 		circuit, err := readCircuitState(filepath.Join(s.cfg.StateDir, ".build_circuit_state"))
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "State file is corrupted")
@@ -1534,17 +1544,17 @@ func (s *APIServer) handleBuild(force bool) http.HandlerFunc {
 			writeError(w, http.StatusConflict, "circuit_open")
 			return
 		}
-		if maintenanceEnabled(filepath.Join(s.cfg.StateDir, ".maintenance")) {
-			writeError(w, http.StatusServiceUnavailable, "maintenance")
-			return
-		}
 		statePath := filepath.Join(s.cfg.StateDir, ".build_state")
 		state, err := readBuildState(statePath)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "State file is corrupted")
 			return
 		}
-		if state.Running || lockExists(filepath.Join(s.cfg.StateDir, ".build_lock")) {
+		if !state.Running && lockExists(filepath.Join(s.cfg.StateDir, ".build_lock")) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
+		if state.Running {
 			maxSize := s.queueMaxSize()
 			if maxSize == 0 || len(state.Queued) >= maxSize {
 				writeError(w, http.StatusTooManyRequests, "queue_full")
@@ -1729,13 +1739,13 @@ func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
 	}
-	log, err := readBuildLog(filepath.Join(s.cfg.StateDir, ".build_logs", id+".json"))
+	log, err := readBuildLogByID(s.cfg.StateDir, id)
 	if errors.Is(err, os.ErrNotExist) {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal server error")
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
 		return
 	}
 	switch suffix {
@@ -2440,8 +2450,10 @@ func readHistory(path string) []apiHistoryRecord {
 			continue
 		}
 		var record apiHistoryRecord
-		if json.Unmarshal([]byte(line), &record) == nil {
+		if json.Unmarshal([]byte(line), &record) == nil && record.ID != "" && record.Status != "" {
 			records = append(records, record)
+		} else {
+			fmt.Fprintf(os.Stderr, "BUILD_HISTORY_SKIP_CORRUPT: path=%s\n", path)
 		}
 	}
 	sort.Slice(records, func(i, j int) bool {
@@ -2519,6 +2531,29 @@ func readBuildLog(path string) (apiBuildLog, error) {
 	var log apiBuildLog
 	err := readJSONFile(path, &log)
 	return log, err
+}
+
+func readBuildLogByID(stateDir, id string) (apiBuildLog, error) {
+	log, err := readBuildLog(filepath.Join(stateDir, ".build_logs", id+".json"))
+	if err == nil || !errors.Is(err, os.ErrNotExist) {
+		return log, err
+	}
+	archivePath := filepath.Join(stateDir, ".build_logs", "archive", id+".json.gz")
+	file, archiveErr := os.Open(archivePath)
+	if archiveErr != nil {
+		return apiBuildLog{}, archiveErr
+	}
+	defer file.Close()
+	reader, archiveErr := gzip.NewReader(file)
+	if archiveErr != nil {
+		return apiBuildLog{}, archiveErr
+	}
+	defer reader.Close()
+	var archived apiBuildLog
+	if archiveErr := json.NewDecoder(reader).Decode(&archived); archiveErr != nil {
+		return apiBuildLog{}, archiveErr
+	}
+	return archived, nil
 }
 
 func defaultServerConfig() apiServerConfig {
