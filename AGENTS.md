@@ -73,9 +73,7 @@ owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` は、各 component �
 
 `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱ってはならない。
 
-実装中・検証未完了コンポーネントである `components/api.go` は、`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` に基づいて更新する。
-
-実装済みコンポーネントである `admin/adlaire-ci-sdk.js` と `admin/index.html` は、`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` に基づいて更新する。
+実装済みコンポーネントである `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は、`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` に基づいて更新する。
 
 `components/mcp.go` は将来計画コンポーネントであり、実装状態、実装可否、ロードマップ状態は `docs/ADLAIRE_CI_SPEC.md` を正とする。`docs/ADLAIRE_CI_DETAIL_SPEC.md` の責務 component 対応表と該当する owner component 別詳細仕様に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
 
@@ -150,7 +148,7 @@ Go 実装対象ファイルは以下とする。
 
 | ファイル | 状態 |
 |---------|------|
-| `components/api.go` | 実装中・検証未完了 |
+| `components/api.go` | 実装済み |
 | `admin/adlaire-ci-sdk.js` | 実装済み |
 | `admin/index.html` | 実装済み |
 | `components/mcp.go` | 将来計画 |
