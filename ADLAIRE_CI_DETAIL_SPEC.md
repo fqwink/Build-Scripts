@@ -698,7 +698,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 |------|----------|
 | 実装対象判定 | `ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用機能を実装対象にしない。 |
 | owner 確定 | §0b と §0i で owner component を 1 件に確定し、主本文は owner の分割先詳細仕様ファイルで確認する。 |
-| collaborator 確認 | api / sdk / ui / statefile / security / archive / commitstatus などの collaborator がある場合は、該当分割先ファイルの参照節を schema、呼び出し境界、表示、security、setup、fixture、検証観点として読む。 |
+| collaborator 確認 | collaborator がある場合は、§27.1〜§27.47 の参照インデックスに列挙された component の分割先ファイルを schema、呼び出し境界、表示、security、setup、fixture、検証観点として読む。 |
 | 補完禁止 | 個別節または分割先詳細仕様に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存を実装判断で追加しない。追加が必要な場合は owner component の詳細仕様、関連 collaborator 詳細仕様、fixture catalog、必要な対応表を先に更新する。 |
 | 状態更新 | 状態ファイル更新は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c を正とし、lock、atomic write、JSON Lines、破損時処理を独自定義しない。 |
 | security | secret mask、token、session、scope、audit、rate limit は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` を正とし、平文保存・平文表示を行わない。 |
@@ -709,157 +709,56 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 §27 の PR 分割、dry-run 固定契約、fixture 完了条件の詳細は、owner 詳細仕様と `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §27-F を正とする。親ファイルに同じ fixture schema、expected/effects、個別機能本文を重複定義しない。
 
-### 27.1 GitHub Commit Status API
-
-本節の主本文は `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 を正とする。owner component は `commitstatus`、collaborator component は `runner`、`statefile` とする。runner の build 実行、commit SHA 確定、build id 採番、pipeline / deploy / snapshot / history の最終結果確定は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` を正とする。
-
-### 27.2 ドライラン実行モード
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.2 を正とする。owner component は `runner`、collaborator component は `statefile` とする。
-
-### 27.3 ビルド失敗時の自動リトライ
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.3 を正とする。owner component は `runner`、collaborator component は `statefile` とする。
-
-### 27.4 出力サイトへのビルドメタ埋め込み
-
-本節の主本文は `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.4 を正とする。owner component は `builder`、collaborator component は `runner`、`api`、`statefile` とする。
-
-### 27.5 設定バリデーション API
-
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.5 を正とする。owner component は `api`、collaborator component は `sdk`、`ui`、`statefile` とする。
-
-### 27.6 API アクセスログ
-
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.6 を正とする。owner component は `api`、collaborator component は `sdk`、`ui`、`statefile` とする。
-
-### 27.7 ビルドログのアーカイブ圧縮
-
-本節の主本文は `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7 を正とする。owner component は `archive`、collaborator component は `runner`、`api`、`statefile` とする。
-
-### 27.8 ビルドステータスファイル出力
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.8 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
-
-### 27.9 ビルドトリガー種別の記録
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.9 を正とする。owner component は `runner`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
-
-### 27.10 設定ファイル起動時整合性チェック
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.10 を正とする。owner component は `runner`、collaborator component は `statefile` とする。
-
-### 27.11 ポーリング間隔の動的変更
-
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.11 を正とする。owner component は `api`、collaborator component は `runner`、`statefile` とする。
-
-### 27.12 GitHub Webhook 受信
-
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.12 を正とする。owner component は `api`、collaborator component は `runner`、`statefile` とする。
-
-### 27.13 Webhook イベントログ / 一覧取得 API
-
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.13 を正とする。owner component は `api`、collaborator component は `sdk`、`ui`、`statefile` とする。
-
-### 27.14 ビルド所要時間の記録と統計 API
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.14 を正とする。owner component は `runner`、collaborator component は `api`、`statefile`、`archive` とする。
-
-### 27.15 ビルドアーティファクト管理
-
-本節の主本文は `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.15 を正とする。owner component は `archive`、collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §14b を正とする。
-
-### 27.16 ヘルスチェックエンドポイント
-
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.16 を正とする。owner component は `api`、collaborator component は `statefile` とする。
-
-### 27.17 ビルドログ重大度フィルター
-
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.17 を正とする。owner component は `api`、collaborator component は `sdk`、`ui`、`archive`、`statefile` とする。
-
-### 27.18 ブランチ設定の動的変更 API
-
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.18 を正とする。owner component は `api`、collaborator component は `runner`、`statefile` とする。
-
-### 27.19 週次ビルドサマリー Webhook
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.19 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
-
-### 27.20 設定変更の詳細 diff 記録
-
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.20 を正とする。owner component は `api`、collaborator component は `statefile` とする。
-
-### 27.21 複数ファイル監視
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.21 を正とする。owner component は `runner`、collaborator component は `builder`、`api`、`statefile` とする。
-
-### 27.22 ビルドパイプライン YAML 定義
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.22 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
-
-### 27.23 ローカルファイル監視モード
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.23 を正とする。owner component は `runner`、collaborator component は `statefile` とする。
-
-### 27.24 タグ付きコミットのみビルド
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.24 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
-
-### 27.25 ビルドキャッシュ
-
-本節の主本文は `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.25 を正とする。owner component は `builder`、collaborator component は `runner`、`statefile` とする。
-
-### 27.26 並列マルチターゲットビルド
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.26 を正とする。owner component は `runner`、collaborator component は `statefile` とする。
-
-### 27.27 ビルド前後フック
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.27 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
-
-### 27.28 依存ファイルトラッキング
-
-本節の主本文は `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.28 を正とする。owner component は `builder`、collaborator component は `runner`、`statefile` とする。
-
-### 27.29 リモートビルド対応
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.29 を正とする。owner component は `runner`、collaborator component は `api`、`archive`、`statefile` とする。
-
-### 27.30 ビルド承認フロー
-
-本節の主本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.30 を正とする。owner component は `api`、collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。
-
-### 27.31 ブランチ別環境変数
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.31 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
-
-### 27.32 ビルド通知連携
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.32 を正とする。owner component は `runner`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
-
-### 27.33 ビルド時間トレンド記録
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.33 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
-
-### 27.34 ビルド依存チェーン
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.34 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
-
-### 27.35 ビルド優先度キュー
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.35 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
-
-### 27.36 失敗原因の自動分類
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.36 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
-
-### 27.37 ビルド実行環境の記録
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.37 を正とする。owner component は `runner`、collaborator component は `statefile` とする。
-
-### 27.38 ビルド所要時間の異常検知
-
-本節の主本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.38 を正とする。owner component は `runner`、collaborator component は `api`、`statefile` とする。
+### 27.1〜27.47 追加仕様化機能 参照インデックス
+
+本節は、§27 機能の参照先を一覧化するインデックスである。個別機能の入力、出力、状態、処理順序、異常系、endpoint、SDK method、UI DOM、fixture は下表の「主本文」に記載された owner component 詳細仕様を正とする。親ファイルは、下表に記載された主本文、owner component、collaborator component を置き換えない。
+
+| 節 | 機能 | owner | 主本文 | collaborator | 親ファイル側の扱い |
+|----|------|-------|--------|--------------|--------------------|
+| §27.1 | GitHub Commit Status API | `commitstatus` | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | `runner`、`statefile` | Commit Status payload と送信順の参照先だけを示す。runner の build 実行、commit SHA 確定、build id 採番、pipeline / deploy / snapshot / history の最終結果確定は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` を正とする。 |
+| §27.2 | ドライラン実行モード | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.2 | `statefile` | 状態ファイル非更新、ログ、history、deploy、通知の扱いを親ファイルで再定義しない。 |
+| §27.3 | ビルド失敗時の自動リトライ | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.3 | `statefile` | retry 対象、回数、backoff、SHA 更新禁止条件を親ファイルで再定義しない。 |
+| §27.4 | 出力サイトへのビルドメタ埋め込み | `builder` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.4 | `runner`、`api`、`statefile` | HTML meta、REPORT、API 表示、状態反映の境界だけを確認する。 |
+| §27.5 | 設定バリデーション API | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.5 | `sdk`、`ui`、`statefile` | validate の保存禁止、response、SDK/UI 対応を親ファイルで再定義しない。 |
+| §27.6 | API アクセスログ | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.6 | `sdk`、`ui`、`statefile` | `.api_access_log` schema と一覧 API の主本文を親ファイルへ複製しない。 |
+| §27.7 | ビルドログのアーカイブ圧縮 | `archive` | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7 | `runner`、`api`、`statefile` | gzip archive、cleanup、参照順の実体処理を親ファイルで再定義しない。 |
+| §27.8 | ビルドステータスファイル出力 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.8 | `api`、`statefile` | `.build_status.json` schema と更新タイミングを親ファイルで再定義しない。 |
+| §27.9 | ビルドトリガー種別の記録 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.9 | `api`、`sdk`、`ui`、`statefile` | trigger 有効値、判定条件、UI 表示の同期確認だけを扱う。 |
+| §27.10 | 設定ファイル起動時整合性チェック | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.10 | `statefile` | JSON 破損、退避、初期化、終了コードを親ファイルで再定義しない。 |
+| §27.11 | ポーリング間隔の動的変更 | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.11 | `runner`、`statefile` | systemd timer 反映の導入・検証手順は `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 を確認する。 |
+| §27.12 | GitHub Webhook 受信 | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.12 | `runner`、`statefile` | HMAC、event 記録、queue 投入、エラー応答を親ファイルで再定義しない。 |
+| §27.13 | Webhook イベントログ / 一覧取得 API | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.13 | `sdk`、`ui`、`statefile` | webhook event schema、一覧 API、SDK/UI 対応を親ファイルで再定義しない。 |
+| §27.14 | ビルド所要時間の記録と統計 API | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.14 | `api`、`statefile`、`archive` | duration 計測、統計値、archive 連携の境界だけを確認する。 |
+| §27.15 | ビルドアーティファクト管理 | `archive` | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.15 | `api`、`sdk`、`ui`、`runner`、`statefile` | snapshot 作成トリガーは `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §14b を正とする。 |
+| §27.16 | ヘルスチェックエンドポイント | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.16 | `statefile` | health response とエラー応答を親ファイルで再定義しない。 |
+| §27.17 | ビルドログ重大度フィルター | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.17 | `sdk`、`ui`、`archive`、`statefile` | log query、検索結果、UI filter の同期確認だけを扱う。 |
+| §27.18 | ブランチ設定の動的変更 API | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.18 | `runner`、`statefile` | `.branch_config`、GET/POST API、runner 反映条件を親ファイルで再定義しない。 |
+| §27.19 | 週次ビルドサマリー Webhook | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.19 | `api`、`statefile` | 週次集計、通知 payload、手動送信 API の境界だけを確認する。 |
+| §27.20 | 設定変更の詳細 diff 記録 | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.20 | `statefile` | `.config_log` diff 形式と mask 条件を親ファイルで再定義しない。 |
+| §27.21 | 複数ファイル監視 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.21 | `builder`、`api`、`statefile` | target_files、SHA 差分、build target、API 表示の同期確認だけを扱う。 |
+| §27.22 | ビルドパイプライン YAML 定義 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.22 | `api`、`statefile` | pipeline subset、step 実行順、timeout、env を親ファイルで再定義しない。 |
+| §27.23 | ローカルファイル監視モード | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.23 | `statefile` | GitHub API 非使用条件と local snapshot 差分検出を親ファイルで再定義しない。 |
+| §27.24 | タグ付きコミットのみビルド | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.24 | `api`、`statefile` | tag pattern、skip 条件、history/log 反映を親ファイルで再定義しない。 |
+| §27.25 | ビルドキャッシュ | `builder` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.25 | `runner`、`statefile` | cache manifest、再利用条件、無効化条件を親ファイルで再定義しない。 |
+| §27.26 | 並列マルチターゲットビルド | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.26 | `statefile` | worker 上限、target 別 status、ログ順序を親ファイルで再定義しない。 |
+| §27.27 | ビルド前後フック | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.27 | `api`、`statefile` | hook schema、pre/post 実行、abort 条件を親ファイルで再定義しない。 |
+| §27.28 | 依存ファイルトラッキング | `builder` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.28 | `runner`、`statefile` | dependency manifest、関連 target 判定、full build 条件を親ファイルで再定義しない。 |
+| §27.29 | リモートビルド対応 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.29 | `api`、`archive`、`statefile` | remote command、archive 取得、manifest 検証を親ファイルで再定義しない。 |
+| §27.30 | ビルド承認フロー | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27.30 | `runner`、`sdk`、`ui`、`statefile` | approval queue、承認/却下 API、通知、UI 操作の同期確認だけを扱う。 |
+| §27.31 | ブランチ別環境変数 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.31 | `api`、`statefile` | branch env schema、許可 key、secret mask、process env 注入を親ファイルで再定義しない。 |
+| §27.32 | ビルド通知連携 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.32 | `api`、`sdk`、`ui`、`statefile` | 通知 event、channel schema、retry、notify log の境界だけを確認する。 |
+| §27.33 | ビルド時間トレンド記録 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.33 | `api`、`statefile` | `.build_trends.json`、移動平均、中央値、p95 を親ファイルで再定義しない。 |
+| §27.34 | ビルド依存チェーン | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.34 | `api`、`statefile` | DAG 検証、実行順、skip / failure status を親ファイルで再定義しない。 |
+| §27.35 | ビルド優先度キュー | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.35 | `api`、`statefile` | queue priority、created_seq、FIFO を親ファイルで再定義しない。 |
+| §27.36 | 失敗原因の自動分類 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.36 | `api`、`statefile` | failure_category、evidence、分類優先順位を親ファイルで再定義しない。 |
+| §27.37 | ビルド実行環境の記録 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.37 | `statefile` | environment snapshot と secret 非含有条件を親ファイルで再定義しない。 |
+| §27.38 | ビルド所要時間の異常検知 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.38 | `api`、`statefile` | trend 基準、異常判定、通知 payload、設定値を親ファイルで再定義しない。 |
+| §27.42 | ビルドトリガー専用 API スコープ | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42 | `api`、`sdk`、`ui`、`statefile` | scope 判定、拒否条件、API/SDK/UI 表示を親ファイルで再定義しない。 |
+| §27.43 | API キー管理 | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.43 | `api`、`sdk`、`ui`、`statefile` | API key の一回表示、hash 保存、scope、期限、失効、監査を親ファイルで再定義しない。 |
+| §27.44 | 監査ログ | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.44 | `api`、`statefile` | `.audit_log` schema、対象操作、mask、検索 API、UI 表示を親ファイルで再定義しない。 |
+| §27.45 | セッションタイムアウト変更設定 | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.45 | `api`、`sdk`、`ui`、`statefile` | timeout 範囲、保存、既存 session、新規 session 期限を親ファイルで再定義しない。 |
+| §27.46 | TOTP 二要素認証 | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.46 | `api`、`sdk`、`ui`、`statefile` | TOTP、二段階 login、secret 保存、確認、無効化、UI 操作を親ファイルで再定義しない。 |
+| §27.47 | API レート制限 | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.47 | `api`、`sdk`、`ui`、`statefile` | 固定窓制限、`429`、状態保存、設定 API、UI 表示を親ファイルで再定義しない。 |
 
 ### 27.38a 横断連動・Runner 拡張機能 実装補足契約
 
@@ -906,27 +805,3 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | multi-file write | 全入力検証 → 全対象 read → 全 write payload 生成 → `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0d の Write 順に atomic write → JSON Lines 追記 → response。途中失敗時は未処理ファイルを書かない。 |
 
 §27.21〜§27.38 の実装では、owner 詳細仕様にない状態ファイル、endpoint、SDK method、UI 操作、外部公開構成を追加してはならない。追加が必要な場合は、親ファイルではなく、該当 owner / collaborator の分割先詳細仕様を先に改訂する。
-
-### 27.42 ビルドトリガー専用 API スコープ
-
-本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42 を正とする。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
-
-### 27.43 API キー管理
-
-本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.43 を正とする。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
-
-### 27.44 監査ログ
-
-本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.44 を正とする。owner component は `security`、collaborator component は `api`、`statefile` とする。
-
-### 27.45 セッションタイムアウト変更設定
-
-本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.45 を正とする。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
-
-### 27.46 TOTP 二要素認証
-
-本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.46 を正とする。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
-
-### 27.47 API レート制限
-
-本節の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.47 を正とする。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
