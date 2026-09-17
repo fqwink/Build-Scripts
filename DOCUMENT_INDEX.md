@@ -85,21 +85,16 @@ fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklis
 
 ## Source Of Truth
 
-方針、ポリシー、実装状態、正本関係の判断では `ADLAIRE_CI_SPEC.md` を正とする。
+| 判断対象 | 正本 |
+|----------|------|
+| 作業ルール、承認、Git 運用、文書整合 | `AGENTS.md` |
+| 方針、ポリシー、実装状態、実装可否、ロードマップ、正本関係 | `ADLAIRE_CI_SPEC.md` |
+| 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約 | `ADLAIRE_CI_DETAIL_SPEC.md` |
+| 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` |
+| 生成静的 Web サイトのデザイン補助 | `DESIGN.md` |
+| 文書・実装ファイルの参照先と役割 | `DOCUMENT_INDEX.md` |
 
-実装の具体的詳細の判断では、入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md`、各 component の詳細本文は owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする。
-
-デザイン判断では、`ADLAIRE_CI_SPEC.md` と矛盾しない範囲で `DESIGN.md` を参照する。
-
-Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、または該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` と矛盾する場合は、仕様と実装の不整合として扱う。
-
-仕様を変更する場合は、先に該当する仕様書を更新し、その内容に基づいて実装ファイルを更新する。
-
-`DESIGN.md` はデザイン仕様の補助文書であり、Adlaire CI 全体の機能仕様・運用仕様の正本ではない。
-
-`DOCUMENT_INDEX.md` は索引であり、仕様・デザイン・実装判断の正本ではない。
-
-`AGENTS.md` と他ファイルが作業ルール上矛盾する場合は、`AGENTS.md` を正とする。
+`DOCUMENT_INDEX.md` は索引であり、仕様・デザイン・実装判断の正本ではない。仕様を変更する場合は、先に該当する正本仕様書を更新し、その内容に基づいて実装ファイルを更新する。
 
 ## Consistency Notes
 
@@ -108,7 +103,5 @@ Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_S
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
 現行配置では、`build_spec.go` は標準配置名 `components/builder.go` の現行実装実体として Phase 1 実装済みであり、`runner.go` は標準配置名 `components/runner.go` の現行実装実体として Phase 2 完了判定パス実装済みである。Go toolchain による `gofmt` と `go test` の検証を完了している。
-
-Go 版コンポーネントの実装状態は、`ADLAIRE_CI_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` は入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約として扱い、実装詳細本文と検証条件は owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を参照する。
 
 標準配置への移行完了後は、`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱わない。標準配置への移行完了条件は `ADLAIRE_CI_DETAIL_SPEC.md` §0j を正とする。
