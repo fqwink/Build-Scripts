@@ -1,10 +1,10 @@
 # Adlaire CI — Statefile 詳細仕様
 
-本ファイルは `docs/ADLAIRE_CI_DETAIL_SPEC.md` および `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` から分割した `statefile` owner component の詳細仕様である。
+本ファイルは `docs/DETAIL_INDEX.md` および `docs/details/api.md` から分割した `statefile` owner component の詳細仕様である。
 
-本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/ADLAIRE_CI_SPEC.md` を正とする。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/SPEC.md` を正とする。
 
-本ファイルを読む前に、`docs/ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、fixture、検証観点として参照する。
+本ファイルを読む前に、`docs/SPEC.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、fixture、検証観点として参照する。
 
 ---
 
@@ -288,7 +288,7 @@ SHA cache は target ごとの処理済み Git blob SHA を保存する JSON obj
 | `sha` key 不在または string 以外 | JSON 破損と同じ扱い。 | 更新しない。 |
 | 未知 key あり | 前回 SHA として `sha` だけを読む。 | build 成功時に `sha` だけの object で上書きする。 |
 
-SHA cache の更新タイミング、skip / failure 時の更新可否、複数 target 時の個別更新は `docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13 の SHA cache 読み書き契約を正とする。
+SHA cache の更新タイミング、skip / failure 時の更新可否、複数 target 時の個別更新は `docs/details/runner.md` §13 の SHA cache 読み書き契約を正とする。
 
 **`.repo_config` schema：**
 
@@ -816,4 +816,4 @@ BuildMeta object:
 | `output_sha256` | string/null | 必須 | SHA-256 hex または `null` | 直近成功成果物の manifest SHA-256。 |
 | `size_warn` | boolean | 必須 | boolean | 直近 report の size warning。 |
 
-`.build_status.json` の更新タイミング、各 `status` の選択条件、書き込み失敗時の runner 終了コードは `docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13 の build status 更新契約を正とする。
+`.build_status.json` の更新タイミング、各 `status` の選択条件、書き込み失敗時の runner 終了コードは `docs/details/runner.md` §13 の build status 更新契約を正とする。

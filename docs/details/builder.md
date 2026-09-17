@@ -1,10 +1,10 @@
 # Adlaire CI — Builder 詳細仕様
 
-本ファイルは `docs/ADLAIRE_CI_DETAIL_SPEC.md` から分割した `builder` owner component の詳細仕様である。
+本ファイルは `docs/DETAIL_INDEX.md` から分割した `builder` owner component の詳細仕様である。
 
-本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/ADLAIRE_CI_SPEC.md` を正とする。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/SPEC.md` を正とする。
 
-本ファイルを読む前に、`docs/ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
+本ファイルを読む前に、`docs/SPEC.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
 
 ---
 
@@ -24,7 +24,7 @@
 | 項目 | 内容 |
 |------|------|
 | Go バージョン | Go `1.22` 以上。 |
-| 外部依存 | なし。Go 標準ライブラリのみを使用する。外部依存が必要になった場合は実装せず、先に `docs/ADLAIRE_CI_SPEC.md` Part 1 §4.1 と Part 2 §4 に従って仕様改訂する。 |
+| 外部依存 | なし。Go 標準ライブラリのみを使用する。外部依存が必要になった場合は実装せず、先に `docs/SPEC.md` Part 1 §4.1 と Part 2 §4 に従って仕様改訂する。 |
 | 入力 | UTF-8 エンコードの Markdown ファイル、または Markdown ファイルを含むディレクトリ |
 | 出力 | 静的 Web サイトディレクトリ（HTML / CSS / JavaScript / search index） |
 

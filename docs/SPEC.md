@@ -16,13 +16,13 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 
 | 文書 | 正本範囲 | 記載する内容 | 記載しない内容 |
 |------|----------|--------------|----------------|
-| `docs/ADLAIRE_CI_SPEC.md` | 方針、ポリシー、実装状態、ロードマップ、リリース判断 | 目的、設計方針、禁止事項、成熟度、実装可否、仕様昇格手順 | 関数単位の処理、HTTP response schema、状態ファイル schema、具体的な実行手順 |
-| `docs/ADLAIRE_CI_DETAIL_SPEC.md` | 実装詳細の入口 | 詳細仕様の読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約 | 各 component の詳細な処理本文、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
-| `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` | owner component 別の実装詳細 | CLI、API、SDK、UI、状態ファイル、処理順序、異常系、セットアップ、受け入れ条件の本文 | 方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
+| `docs/SPEC.md` | 方針、ポリシー、実装状態、ロードマップ、リリース判断 | 目的、設計方針、禁止事項、成熟度、実装可否、仕様昇格手順 | 関数単位の処理、HTTP response schema、状態ファイル schema、具体的な実行手順 |
+| `docs/DETAIL_INDEX.md` | 実装詳細の入口 | 詳細仕様の読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約 | 各 component の詳細な処理本文、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
+| `docs/details/*.md` | owner component 別の実装詳細 | CLI、API、SDK、UI、状態ファイル、処理順序、異常系、セットアップ、受け入れ条件の本文 | 方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
 | `docs/DOCUMENT_INDEX.md` | 文書・実装ファイル索引 | ファイルの役割、正本関係、実装ファイルの所在 | 仕様本文、詳細仕様、実装状態の最終判断 |
 | `docs/DESIGN.md` | 生成静的 Web サイトのデザイン補助 | 見た目、レイアウト、デザイントークン参照 | CI、API、運用、実装可否の判断 |
 
-同じ内容を複数文書に重複定義してはならない。方針や実装可否は本ファイルを正とし、入口、読み順、共通固定値、対応表、横断補足契約は `docs/ADLAIRE_CI_DETAIL_SPEC.md`、入出力・状態・処理・検証の本文は owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする。
+同じ内容を複数文書に重複定義してはならない。方針や実装可否は本ファイルを正とし、入口、読み順、共通固定値、対応表、横断補足契約は `docs/DETAIL_INDEX.md`、入出力・状態・処理・検証の本文は owner component 別の `docs/details/*.md` を正とする。
 
 文書を整理する場合も、上表の正本範囲を越えてはならない。読み順、索引、参照先の整理は許可するが、詳細仕様本文、方針、実装状態、ロードマップ状態を別文書へ重複定義しない。
 
@@ -51,7 +51,7 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 |------|------|-----------|------------|
 | Part 1 | 方針 | **なぜ・何を** | 目的、設計思想、方向性の原則。変更頻度が低く、判断の拠り所となる指針 |
 | Part 2 | ポリシー | **しなければならない／してはならない** | 遵守義務のある規則・制約・禁止事項。セキュリティ要件・運用ルール・バージョン管理規則 |
-| Part 3 | 仕様 | **どのように** | 実装の具体的詳細。入口、対応表、共通固定値、横断補足契約は `docs/ADLAIRE_CI_DETAIL_SPEC.md`、要件・構成・API・アルゴリズム・設定値・手順の本文は owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする |
+| Part 3 | 仕様 | **どのように** | 実装の具体的詳細。入口、対応表、共通固定値、横断補足契約は `docs/DETAIL_INDEX.md`、要件・構成・API・アルゴリズム・設定値・手順の本文は owner component 別の `docs/details/*.md` を正とする |
 
 新しい記載内容は「この内容はどの責務の問いに答えるか」を基準に Part を決定する。
 
@@ -61,7 +61,7 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 2. Part 1 §4a〜§4f で、詳細仕様粒度、成熟度、着手ゲート、完了判定を確認する。
 3. Part 1 §12 と §13 で、対象機能が実装可か将来計画かを確認する。
 4. Part 2 で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
-5. `docs/ADLAIRE_CI_DETAIL_SPEC.md` で読み順、共通固定値、§0i.1〜§0i.4 の対応表、§0j のリポジトリ内ソース配置を確認し、該当する owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` で実装に必要な入出力、状態、異常系、検証条件、配置を確認する。
+5. `docs/DETAIL_INDEX.md` で読み順、共通固定値、§0i.1〜§0i.4 の対応表、§0j のリポジトリ内ソース配置を確認し、該当する owner component 別の `docs/details/*.md` で実装に必要な入出力、状態、異常系、検証条件、配置を確認する。
 
 ---
 
@@ -137,12 +137,12 @@ Adlaire CI は、`core`、`adlaire-ci-core`、`internal/core`、`common`、`base
 共通責務コンポーネントを追加する場合は、以下をすべて満たす。
 
 - 単一責務である。
-- 入力、出力、状態、異常系、検証条件が `docs/ADLAIRE_CI_DETAIL_SPEC.md` に仕様化されている。
+- 入力、出力、状態、異常系、検証条件が `docs/DETAIL_INDEX.md` に仕様化されている。
 - 利用元コンポーネントとの依存方向が明確である。
 - アプリケーション固有の判断、業務判断、UI 判断、API endpoint 判断、ビルド対象判断を含まない。
 - 何でも置き場として使用しない。
 - `core`、`common`、`base`、`foundation`、`utils` など中心性または汎用置き場を示す名称を使わない。
-- 追加時に `docs/DOCUMENT_INDEX.md`、本ファイルの実装状態表、Part 2 §4 の内製スクリプト一覧、`docs/ADLAIRE_CI_DETAIL_SPEC.md` の詳細仕様と受け入れ条件を整合する。
+- 追加時に `docs/DOCUMENT_INDEX.md`、本ファイルの実装状態表、Part 2 §4 の内製スクリプト一覧、`docs/DETAIL_INDEX.md` の詳細仕様と受け入れ条件を整合する。
 
 許可される共通責務コンポーネントの例は以下とする。
 
@@ -188,11 +188,23 @@ Adlaire CI のリポジトリ内ソース構成は、責務ベースで整理す
 │   └── runner/
 │
 ├── docs/
-│   ├── ADLAIRE_CI_SPEC.md
-│   ├── ADLAIRE_CI_DETAIL_SPEC.md
-│   ├── ADLAIRE_CI_DETAIL_*_SPEC.md
+│   ├── SPEC.md
+│   ├── DETAIL_INDEX.md
 │   ├── DOCUMENT_INDEX.md
 │   ├── DESIGN.md
+│   ├── details/
+│   │   ├── builder.md
+│   │   ├── runner.md
+│   │   ├── api.md
+│   │   ├── sdk.md
+│   │   ├── ui.md
+│   │   ├── admin.md
+│   │   ├── setup.md
+│   │   ├── statefile.md
+│   │   ├── security.md
+│   │   ├── archive.md
+│   │   ├── commitstatus.md
+│   │   └── fixture.md
 │   └── examples/
 │
 ├── README.md
@@ -212,7 +224,7 @@ Adlaire CI のリポジトリ内ソース構成は、責務ベースで整理す
 
 本仕様は、Adlaire CI を最初から Go 言語で設計・実装する前提で策定する。
 
-実装者は、`docs/ADLAIRE_CI_SPEC.md` と `docs/ADLAIRE_CI_DETAIL_SPEC.md` に記載された Go 仕様を正とする。過去の実装、試作、他言語スクリプト、既存ファイル名、既存 CLI、既存ログ、既存生成物、既存状態ファイルを前提にしてはならない。
+実装者は、`docs/SPEC.md` と `docs/DETAIL_INDEX.md` に記載された Go 仕様を正とする。過去の実装、試作、他言語スクリプト、既存ファイル名、既存 CLI、既存ログ、既存生成物、既存状態ファイルを前提にしてはならない。
 
 Go 実装の判断基準は以下とする。
 
@@ -223,7 +235,7 @@ Go 実装の判断基準は以下とする。
 
 ## 4a. 詳細仕様方針
 
-`docs/ADLAIRE_CI_DETAIL_SPEC.md` は、実装者が追加判断なしに実装へ着手できる粒度で記載する。
+`docs/DETAIL_INDEX.md` は、実装者が追加判断なしに実装へ着手できる粒度で記載する。
 
 詳細仕様は、抽象的な方針や目的の再掲ではなく、実装時に必要な具体値、処理順序、入出力、状態、失敗時の扱いを定義する。
 
@@ -253,7 +265,7 @@ Go 実装の判断基準は以下とする。
 
 Adlaire CI の実装順序、実装計画、実装 PR、完了判定は Phase 単位でのみ管理する。
 
-Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件が明確な実装単位である。Phase の一覧、順序、依存条件、完了条件は `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0g を正とする。
+Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件が明確な実装単位である。Phase の一覧、順序、依存条件、完了条件は `docs/DETAIL_INDEX.md` §0g を正とする。
 
 `P0`、`P1`、`P2〜P5` などの優先度ラベル、抽象段階、API 内部分類、fixture 分類を、実装単位、PR 単位、完了判定単位として扱ってはならない。
 
@@ -269,14 +281,14 @@ API の実装範囲は Phase 3 と Phase 4 に分けて扱う。Phase 3 は API 
 
 | 判定項目 | 着手条件 |
 |----------|----------|
-| 正本確認 | `docs/ADLAIRE_CI_SPEC.md` と `docs/ADLAIRE_CI_DETAIL_SPEC.md` の該当節を確認済みである。 |
+| 正本確認 | `docs/SPEC.md` と `docs/DETAIL_INDEX.md` の該当節を確認済みである。 |
 | 状態分類 | 対象が `仕様化済み・未実装` または `実装済み` に分類され、`未仕様化`、`将来計画`、`改訂予定` ではない。 |
-| 詳細節対応 | 対象機能が `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.1〜§0i.4 の詳細節対応表に含まれ、該当する詳細仕様節と受け入れ条件を確認済みである。 |
-| テンプレート充足 | 対象機能の詳細仕様が `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h の機能仕様テンプレートに必要な項目を満たしている。 |
+| 詳細節対応 | 対象機能が `docs/DETAIL_INDEX.md` §0i.1〜§0i.4 の詳細節対応表に含まれ、該当する詳細仕様節と受け入れ条件を確認済みである。 |
+| テンプレート充足 | 対象機能の詳細仕様が `docs/DETAIL_INDEX.md` §0h の機能仕様テンプレートに必要な項目を満たしている。 |
 | 責務境界 | 対象コンポーネント、呼び出し元、呼び出し先、状態ファイル、外部接続先が明確である。 |
 | 契約同期 | API、SDK、UI、状態ファイル、セットアップ、検証条件のうち関係する仕様が同時に整合している。 |
 | 禁止事項 | 外部依存、秘密情報、直接 API 呼び出し、互換処理、暗黙フォールバックなどの禁止事項が明確である。 |
-| 完了条件 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0f、§0g、§0h、§0i.1〜§0i.4、§0j および §26.7 の受け入れ条件で、実装完了、実装順序、配置を判定できる。 |
+| 完了条件 | `docs/DETAIL_INDEX.md` §0e、§0f、§0g、§0h、§0i.1〜§0i.4、§0j および §26.7 の受け入れ条件で、実装完了、実装順序、配置を判定できる。 |
 
 着手条件を満たさない場合、実装者はコードで補完せず、先に仕様改訂を行う。実装 PR では、着手前に参照した詳細仕様節を PR 本文へ明記する。
 
@@ -284,11 +296,11 @@ API の実装範囲は Phase 3 と Phase 4 に分けて扱う。Phase 3 は API 
 
 実装完了は、実装ファイルの作成やテスト成功だけでは成立しない。以下をすべて満たした場合にのみ `実装済み` と扱う。
 
-- 実装が `docs/ADLAIRE_CI_DETAIL_SPEC.md` の入力、出力、状態、処理順序、異常系、セキュリティ制約と一致している。
-- `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0e の完全実装検証マトリクスと §0f の仕様策定完了チェックを満たしている。
-- `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0g の初期実装 Phase 分割に従い、対象 Phase の依存条件、完了条件、PR 分割条件を満たしている。
-- 対象機能が `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h の機能仕様テンプレートを満たし、§0i.1〜§0i.4 の詳細節対応表に記載された受け入れ条件を満たしている。
-- セットアップまたは運用手順に影響する場合、`docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.7 の実装受け入れ条件を満たしている。
+- 実装が `docs/DETAIL_INDEX.md` の入力、出力、状態、処理順序、異常系、セキュリティ制約と一致している。
+- `docs/DETAIL_INDEX.md` §0e の完全実装検証マトリクスと §0f の仕様策定完了チェックを満たしている。
+- `docs/DETAIL_INDEX.md` §0g の初期実装 Phase 分割に従い、対象 Phase の依存条件、完了条件、PR 分割条件を満たしている。
+- 対象機能が `docs/DETAIL_INDEX.md` §0h の機能仕様テンプレートを満たし、§0i.1〜§0i.4 の詳細節対応表に記載された受け入れ条件を満たしている。
+- セットアップまたは運用手順に影響する場合、`docs/details/setup.md` §26.7 の実装受け入れ条件を満たしている。
 - API、SDK、UI のいずれかを変更した場合、§22、§23、§24 の対応関係が崩れていない。
 - 実装状態表、`docs/DOCUMENT_INDEX.md`、本ドキュメント、詳細仕様の更新要否を確認済みである。
 - 実装 PR 本文に、対象、実行コマンド、期待結果、実結果、判定を記録している。
@@ -377,7 +389,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 ## 12. 機能一覧
 
-本仕様が定義する全機能の一覧。各機能の仕様詳細は `docs/ADLAIRE_CI_DETAIL_SPEC.md` を参照。実装状態は、本ドキュメント冒頭の「実装状態」と本ファイル Part 2 §0a の仕様成熟度ポリシーに従って判定する。
+本仕様が定義する全機能の一覧。各機能の仕様詳細は `docs/DETAIL_INDEX.md` を参照。実装状態は、本ドキュメント冒頭の「実装状態」と本ファイル Part 2 §0a の仕様成熟度ポリシーに従って判定する。
 
 ### ビルド・CI ランナー（components/runner.go）
 
@@ -527,9 +539,9 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 ## 13. 拡張ポイント・将来計画
 
 本仕様に対する実装済み項目、実装中・検証未完了項目、仕様化済み・未実装項目、改訂予定項目、将来計画項目を統合管理するロードマップ。
-仕様化する際は `docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md` の対応表、該当 owner component の詳細仕様本文への追記を先行させる。
+仕様化する際は `docs/SPEC.md`、`docs/DETAIL_INDEX.md` の対応表、該当 owner component の詳細仕様本文への追記を先行させる。
 
-将来計画は、実装対象ではない。将来計画内の「検討」「予定」「候補」「推奨」は、実装可能な仕様を意味しない。将来計画を実装対象にする場合は、先に対象項目を `改訂予定` へ昇格し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` の対応表と該当 owner component の詳細仕様本文に実装可能な詳細仕様を追加したうえで `仕様化済み` とする。
+将来計画は、実装対象ではない。将来計画内の「検討」「予定」「候補」「推奨」は、実装可能な仕様を意味しない。将来計画を実装対象にする場合は、先に対象項目を `改訂予定` へ昇格し、`docs/DETAIL_INDEX.md` の対応表と該当 owner component の詳細仕様本文に実装可能な詳細仕様を追加したうえで `仕様化済み` とする。
 
 **担当領域：** `CI ランナー` / `管理ツール・API` / `MCP サーバー` / `ビルドスクリプト`
 
@@ -541,8 +553,8 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 |------|----------|------|--------------|
 | 実装済み | 完了済み | ソースコード実装と検証が完了した項目。 | 実装ファイル、検証結果、`docs/DOCUMENT_INDEX.md` を維持する。 |
 | 実装中・検証未完了 | 検証待ち | ソースコード実装に着手済みだが、必須検証が未完了の項目。 | 必須検証を実行し、不足が残る場合は `実装済み` へ移動しない。 |
-| 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` の対応表と該当 owner component の詳細仕様本文を作成し、仕様化条件を満たす。 |
-| 仕様化済み・未実装 | 実装可 | 正本仕様と詳細仕様があり、実装対象として扱える項目。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1〜§0i.4 と該当 owner component の詳細仕様本文を確認して実装する。 |
+| 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | `docs/DETAIL_INDEX.md` の対応表と該当 owner component の詳細仕様本文を作成し、仕様化条件を満たす。 |
+| 仕様化済み・未実装 | 実装可 | 正本仕様と詳細仕様があり、実装対象として扱える項目。 | `docs/DETAIL_INDEX.md` §0h・§0i.1〜§0i.4 と該当 owner component の詳細仕様本文を確認して実装する。 |
 | 将来計画 | 実装不可 | `components/mcp.go` など、将来構想として管理する項目。 | 本節 13.3 の手順で `改訂予定` へ昇格する。 |
 
 将来計画、改訂予定の項目は、実装着手可能な仕様ではない。実装対象にする場合は、先に 13.3 の手順で `仕様化済み・未実装` へ昇格させる。
@@ -560,9 +572,9 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 実装済み | 完了済み | CI ランナー | Phase 2 完了判定パス | GitHub API polling、SHA 差分検出、ビルド起動、ログ、履歴、snapshot、lock、precheck、retry、rate limit、circuit breaker、通知、転送、cooldown、force interval、commit info、PAT 期限警告、出力サイズ警告を `components/runner.go` で実装済み。 | Go test で Phase 2 fixture、hardening、完了判定パスを検証済み。 |
 | 改訂予定 | 実装不可 | 全領域 | （なし） | 現時点で、将来計画から格上げ済みの仕様作成中項目はない。 | 格上げ時に元状態、格上げ日、整理順序（実装単位ではない）、詳細仕様作成先を概要へ記録する。 |
 | 実装済み | 完了済み | CI ランナー | ビルドタイムアウト | Go 標準ライブラリ `context.WithTimeout` と `os/exec` で長時間ビルドを強制終了する。API 経由の `build_timeout_seconds` 動的変更は管理 API 実装対象として残す（→ §22 `GET /api/config`）。 | Go test と runner 回帰検証で pipeline 起動経路を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整（→ §22 `POST /api/schedule/interval`） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §27.11 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整（→ §22 `POST /api/schedule/interval`） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/api.md` §22.0e、`docs/details/setup.md` §26、`docs/details/api.md` §27.11 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ビルドログのファイル保存 | `os/exec` で起動したビルドプロセスの stdout/stderr を `.build_logs/{id}.json` に記録（→ §11 ファイル構成）。 | Go test で build log 生成と pipeline stdout/stderr 記録を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Webhook 受信 | 定期ポーリングと併用可能な即時検出方式。`POST /api/webhook` で GitHub push イベントを受信し即時ビルドをトリガーする（HMAC-SHA256 署名検証付き → §22） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22-W、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §27.12 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Webhook 受信 | 定期ポーリングと併用可能な即時検出方式。`POST /api/webhook` で GitHub push イベントを受信し即時ビルドをトリガーする（HMAC-SHA256 署名検証付き → §22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §13、`docs/details/api.md` §22.0e、`docs/details/api.md` §22-W、`docs/details/api.md` §27.12 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ネットワーク断時の再試行 | GitHub API 失敗時に指数バックオフ（`API_RETRY_BASE_SECONDS × 2^n`、最大 `API_RETRY_MAX` 回）で再試行する（→ §12・§13）。 | Go test で fake GitHub 一時失敗からの retry 成功を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | GitHub API レート制限自動待機 | `X-RateLimit-Remaining: 0` 検出時に `X-RateLimit-Reset` まで待機してから再試行する（→ §13）。 | Go test 対象の retry 経路と同じ GitHub API retry 実装で検証済み。 |
 | 実装済み | 完了済み | CI ランナー | 転送後リモート整合性検証 | SSH 転送後に `sha256sum` でリモートファイルを検証し、不一致時はペンディングキューへ再投入する（→ §13・§14a）。 | Go test で転送失敗時 pending 化と pending 再試行成功を検証済み。 |
@@ -577,84 +589,84 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 実装済み | 完了済み | CI ランナー | コミット情報のビルドログ記録 | ビルドトリガーとなったコミットの SHA・メッセージ・作者名・コミット日時を `.build_logs/{id}.json` に記録する（→ §13）。 | Go test で fake commits API からの commit info 記録を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | GitHub API 連続失敗によるサーキットブレーカー | 連続失敗が `API_CIRCUIT_BREAKER_THRESHOLD` 周回以上になった場合に `.build_circuit_state.open=true` とし、open 中はポーリングをスキップする（→ §11・§12・§13）。 | Go test で circuit open 時の polling skip を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | 出力サイトサイズ警告閾値 | ビルド後の出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` を超えた場合に WARN ログを出力する。§8 変換レポートに `size_warn` フラグを追加（→ §8・§12・§13・§22）。 | Go test で閾値超過時の `size_warn=true` と WARN 記録を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | Webhook イベントログ | 受信した Webhook push イベントを `.webhook_events.json` に JSON Lines 形式で追記記録する。`delivery_id`・`event`・`ref`・`sha`・`build_triggered` を保存（→ §11・§22） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22-W、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §27.13 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の記録と統計 API | `.build_logs/{id}.json` に `started_at`・`finished_at`・`duration_seconds` を記録し、`GET /api/stats/build-duration` で過去 N 件の平均・最小・最大を提供する（→ §22） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.4、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.14 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | Webhook イベントログ | 受信した Webhook push イベントを `.webhook_events.json` に JSON Lines 形式で追記記録する。`delivery_id`・`event`・`ref`・`sha`・`build_triggered` を保存（→ §11・§22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §11、`docs/details/api.md` §22.0e、`docs/details/api.md` §22-W、`docs/details/api.md` §27.13 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の記録と統計 API | `.build_logs/{id}.json` に `started_at`・`finished_at`・`duration_seconds` を記録し、`GET /api/stats/build-duration` で過去 N 件の平均・最小・最大を提供する（→ §22） | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.14 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ビルドアーティファクト世代管理 | `HISTORY_KEEP_N` 世代分を `.snapshots/` に自動保持し超過分を削除する。`POST /api/history/{id}/rollback` による再転送は API 実装対象として残す（→ §14b）。 | Go test で build 成功時の `.snapshots/{id}/site` 作成を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドアーティファクト管理 | スナップショット一覧・ダウンロード・削除・ロールバック（→ §14b・§22 `POST /api/history/{id}/rollback`） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.4、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §14b、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.15 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ヘルスチェックエンドポイント | `GET /api/health` を拡充。最終ビルド時刻・最終ビルド結果・最終転送結果・稼働秒数を返す（→ §22） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §27.16 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | Webhook イベント一覧取得 API | `.webhook_events.json` をページネーション付きで返す `GET /api/webhook-events` を追加する（→ §22） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §27.13 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドログ重大度フィルター | 既存の `GET /api/logs/search` に `level=warn\|error` パラメータを追加し、重大度別に絞り込む（→ §22） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §27.17 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 変換レポート出力 | ビルド完了後に変換統計（見出し数・テーブル数・コードブロック数・警告）を stdout 出力する。`components/runner.go` が取り込み `GET /api/output-meta` で参照可（→ §8・§22） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | シンタックスハイライト | コードブロックに言語別色分けを `assets/app.js` で適用する。対応言語：`python`・`bash`・`json`・`sql`・`ini`・`diff`（→ §7.8） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 本文内全文検索 | ビルド時に `assets/search-index.json` を生成し、`assets/app.js` の検索 UI と統合して本文ヒット箇所へジャンプ（→ §7.9） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | アンカーリンク自動検証 | 生成 HTML 内の `#anchor` リンクが実際の見出しスラグと一致するか検証し、不整合を `[WARN] BROKEN_LINK` として警告出力する（→ §4.3・§8） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | コードブロックの折りたたみ | 30 行超のコードブロックを初期折りたたみ。「全 N 行を表示」リンクで展開（→ §7.10） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 印刷スタイル（`@media print`） | サイドバー・ヘッダー・ボタン類を非表示、コードブロック展開、リンク URL 末尾表示（→ §6） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 静的 Web サイト出力 | Markdown ファイルまたは Markdown ディレクトリから `index.html`、ページ HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` を生成する（→ §5） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | テーマコンポーネント | 初期テーマ `adlaire-default` の header / sidebar / breadcrumb / toc / search / footer / codeblock / table / pagination を内製テンプレートとして提供する（→ §5） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 外部リンクの自動処理 | 外部リンク（`http://`・`https://`）に `target="_blank" rel="noopener noreferrer"` を付与し、内部リンクと区別する（→ §4.3） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 読み取り進捗バー | スクロール位置に応じた 3px プログレスバーをページ上端に固定表示する（→ §7.13） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | コードブロックのコピーボタン | コードブロック右上にワンクリックコピーボタンを配置する（→ §7.6） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 見出しアンカーリンクコピー | ホバーで表示される `.hn-link` ボタンクリックでアンカー URL をクリップボードにコピー（→ §3・§7.11） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | TOC 開閉状態の永続化 | TOC グループの展開／折りたたみ状態を `localStorage` に保存し、リロード後も復元する（→ §7.3） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 見出しスラグ重複解決 | 同一テキストの見出しが複数存在する場合に 2 番目以降のスラグへ `-2`・`-3` を付与して一意にする。TOC・アンカーコピー・全文検索と整合させる（→ §4.5） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 前後章ナビゲーションボタン | h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末尾に静的生成する（→ §4.5・§5・§7.15） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 内部リンク整合性チェック | `[label](#anchor)` 形式の内部リンクが実際のスラグと一致するか変換時に検証し、不一致を `[WARN]` で報告。§8 変換レポートの `broken_links` フィールドに件数を記録する（→ §4.3・§8） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 見出し階層スキップ警告 | h1→h3 のような見出しレベルの 2 段以上のスキップを `[WARN]` で報告。§8 変換レポートの `heading_skips` フィールドに件数を記録する（→ §4.5・§8） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 読了時間推計と表示 | 本文文字数（コードブロック・タグ除く）から読了時間（分、200文字/分・切り上げ）を算出し、固定ヘッダーに静的埋め込みする。§8 変換レポートの `reading_time` フィールドに記録する（→ §4.5・§5・§6・§8） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドアーティファクト管理 | スナップショット一覧・ダウンロード・削除・ロールバック（→ §14b・§22 `POST /api/history/{id}/rollback`） | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/runner.md` §14b、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/archive.md` §27.15 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ヘルスチェックエンドポイント | `GET /api/health` を拡充。最終ビルド時刻・最終ビルド結果・最終転送結果・稼働秒数を返す（→ §22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/api.md` §22.0e、`docs/details/api.md` §27.16 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | Webhook イベント一覧取得 API | `.webhook_events.json` をページネーション付きで返す `GET /api/webhook-events` を追加する（→ §22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/api.md` §27.13 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドログ重大度フィルター | 既存の `GET /api/logs/search` に `level=warn\|error` パラメータを追加し、重大度別に絞り込む（→ §22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/api.md` §27.17 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 変換レポート出力 | ビルド完了後に変換統計（見出し数・テーブル数・コードブロック数・警告）を stdout 出力する。`components/runner.go` が取り込み `GET /api/output-meta` で参照可（→ §8・§22） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | シンタックスハイライト | コードブロックに言語別色分けを `assets/app.js` で適用する。対応言語：`python`・`bash`・`json`・`sql`・`ini`・`diff`（→ §7.8） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 本文内全文検索 | ビルド時に `assets/search-index.json` を生成し、`assets/app.js` の検索 UI と統合して本文ヒット箇所へジャンプ（→ §7.9） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | アンカーリンク自動検証 | 生成 HTML 内の `#anchor` リンクが実際の見出しスラグと一致するか検証し、不整合を `[WARN] BROKEN_LINK` として警告出力する（→ §4.3・§8） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | コードブロックの折りたたみ | 30 行超のコードブロックを初期折りたたみ。「全 N 行を表示」リンクで展開（→ §7.10） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 印刷スタイル（`@media print`） | サイドバー・ヘッダー・ボタン類を非表示、コードブロック展開、リンク URL 末尾表示（→ §6） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 静的 Web サイト出力 | Markdown ファイルまたは Markdown ディレクトリから `index.html`、ページ HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` を生成する（→ §5） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | テーマコンポーネント | 初期テーマ `adlaire-default` の header / sidebar / breadcrumb / toc / search / footer / codeblock / table / pagination を内製テンプレートとして提供する（→ §5） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 外部リンクの自動処理 | 外部リンク（`http://`・`https://`）に `target="_blank" rel="noopener noreferrer"` を付与し、内部リンクと区別する（→ §4.3） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 読み取り進捗バー | スクロール位置に応じた 3px プログレスバーをページ上端に固定表示する（→ §7.13） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | コードブロックのコピーボタン | コードブロック右上にワンクリックコピーボタンを配置する（→ §7.6） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 見出しアンカーリンクコピー | ホバーで表示される `.hn-link` ボタンクリックでアンカー URL をクリップボードにコピー（→ §3・§7.11） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | TOC 開閉状態の永続化 | TOC グループの展開／折りたたみ状態を `localStorage` に保存し、リロード後も復元する（→ §7.3） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 見出しスラグ重複解決 | 同一テキストの見出しが複数存在する場合に 2 番目以降のスラグへ `-2`・`-3` を付与して一意にする。TOC・アンカーコピー・全文検索と整合させる（→ §4.5） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 前後章ナビゲーションボタン | h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末尾に静的生成する（→ §4.5・§5・§7.15） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 内部リンク整合性チェック | `[label](#anchor)` 形式の内部リンクが実際のスラグと一致するか変換時に検証し、不一致を `[WARN]` で報告。§8 変換レポートの `broken_links` フィールドに件数を記録する（→ §4.3・§8） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 見出し階層スキップ警告 | h1→h3 のような見出しレベルの 2 段以上のスキップを `[WARN]` で報告。§8 変換レポートの `heading_skips` フィールドに件数を記録する（→ §4.5・§8） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 読了時間推計と表示 | 本文文字数（コードブロック・タグ除く）から読了時間（分、200文字/分・切り上げ）を算出し、固定ヘッダーに静的埋め込みする。§8 変換レポートの `reading_time` フィールドに記録する（→ §4.5・§5・§6・§8） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | Webhook 通知失敗リトライキュー | `.notify_pending`（JSON）を起動時に再送し、HTTP 2xx 成功時に削除、失敗時に `retry_count` と `last_error` を更新して保持する（→ §11・§13）。 | Go test で fake HTTP endpoint への再送成功と queue 空化を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ設定の動的変更 API | `BRANCH_TARGETS` を外部 JSON（`.branch_config`）で管理し `GET /api/branch-config` / `POST /api/branch-config` で API 経由変更可能にする。`components/runner.go` 再起動不要（→ §11・§12・§22） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §27.18 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 週次ビルドサマリー Webhook | 指定曜日・時刻に過去 7 日間の成功率・平均ビルド時間・エラー件数をまとめた定期通知を送信する（→ §12・§13・§22） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §16、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.19 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定変更の詳細 diff 記録 | `.config_log` の各エントリに変更前後の値の diff 文字列を付加し `GET /api/config-log` レスポンスに含める（→ §22） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §27.20 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | テーブルのソート機能 | 列ヘッダークリックで昇順/降順ソートができるインタラクティブテーブル。`aria-sort` 属性と CSS `::after` でインジケーター表示（→ §7.14） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | キーボードショートカット | `/` で検索フォーカス・`Escape` で検索クリア・`t` でページ先頭へスクロール（→ §7.12） | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h・§0i.1 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 複数ファイル監視 | `target_files` で複数 Markdown ファイルまたは Markdown ディレクトリを監視し、変更対象ごとに build target を決定する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.21 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Commit Status API | ビルド開始時・成功時・失敗時・pending 時に GitHub Commit Status API へ `pending` / `success` / `failure` を送信し、対象 commit に Adlaire CI の結果を紐付ける。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドパイプライン YAML 定義 | 内製 YAML subset parser で `.pipeline.yml` を読み込み、build / test / deploy step を固定順で実行する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.22 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ドライラン実行モード | `adlaire-ci-runner --dry-run` で設定・状態・GitHub target・SHA 差分・起動可否を検証し、ビルド、deploy、通知、状態更新を行わず結果を出力する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.2 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドログのアーカイブ圧縮 | 保持期間を超えた `.build_logs/{id}.json` を `.build_logs/archive/{id}.json.gz` に gzip 圧縮し、通常ログ API は圧縮済みログも透過的に参照する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.4、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ローカルファイル監視モード | GitHub API を使わず、ローカル状態 snapshot の SHA-256 差分で対象 Markdown の変更を検出する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.23 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | タグ付きコミットのみビルド | 監視対象 commit に許可 tag pattern が付いている場合だけ build を実行する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.24 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドキャッシュ | 入力ファイル単位の SHA-256 manifest を `.build_cache.json` に保存し、未変更ページの変換結果を再利用する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.1、`docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §5、`docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §8、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.25 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド通知連携 | `components/runner.go` が `.notify_config.channels` に基づき Webhook / email / command 通知を同一通知イベント契約で送信する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §16、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.32 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド時間トレンド記録 | build ごとの所要時間を `.build_trends.json` に集計保存し、移動平均、中央値、p95、直近件数を API / UI から参照できるようにする。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.33 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド失敗時の自動リトライ | 一時的な GitHub API / network / pipeline timeout / deploy 検証失敗を対象に、設定回数まで同一 build id 内で再試行し、attempt ごとの結果を build log と history に記録する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.3 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 並列マルチターゲットビルド | branch target 内の複数 deploy target を bounded worker で並列処理し、target ごとの結果を build log に記録する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §14a、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.26 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド前後フック | `.hooks` の pre / post hook を shell 経由なしで実行し、abort 条件と hook log を固定仕様どおり扱う。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.27 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 依存ファイルトラッキング | Markdown 内の相対リンク・画像・include 対象を依存 manifest として記録し、関連 target だけを再ビルドする。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.1、`docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §4.3、`docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §5、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.28 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | リモートビルド対応 | SSH 経由で remote build command を実行し、成果物 archive と manifest を取得して既存 deploy / log 契約へ接続する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §14a、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.29 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドステータスファイル出力 | runner の現在状態、最終ビルド、最終 deploy、pending 件数、circuit 状態、最終 trigger を `.build_status.json` に JSON object として出力し、API / UI / MCP の read-only 参照元にする。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.8 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド承認フロー | approval_required な target を `.approval_queue` に保留し、API 承認後だけ build / deploy を継続する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §16、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.30 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ別環境変数 | branch target ごとに許可済み環境変数を build process へ注入し、secret を log に出さない。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.31 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド依存チェーン | `.build_chain_config` で job 間依存を定義し、依存成功後だけ後続 job を実行する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.34 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド優先度キュー | `.build_state.queued` に priority / created_seq を保存し、優先度順かつ同一優先度 FIFO で build queue を処理する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.35 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 失敗原因の自動分類 | stdout / stderr / exit code / runner error を固定分類ルールで解析し、failure_category と evidence を build log / history に記録する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.36 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド実行環境の記録 | build 開始時の OS、arch、Go version、binary version、disk usage、hostname を `.build_logs/{id}.json.environment` に記録する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.37 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドトリガー種別の記録 | `polling`、`force_interval`、`manual`、`webhook`、`retry_pending_transfer`、`startup_config_integrity`、`rollback`、`local_watch`、`approval` を `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に記録し、履歴 filter と状態表示で同じ値を使う。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.9、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.23、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.30 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の異常検知 | `.build_trends.json` の移動平均と p95 を基準に異常に遅い build を検出し、WARN、history flag、通知へ反映する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §16、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.38 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 設定ファイル起動時整合性チェック | runner 起動時に `.branch_config`、`.notify_config`、`.build_state`、`.pending_transfers`、`.notify_pending`、`.build_circuit_state` の JSON 整合性を検証し、破損・型不一致・必須 key 不足を規定どおり退避、初期化、通知、または停止する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.2、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §11、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §12、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.10 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ設定の動的変更 API | `BRANCH_TARGETS` を外部 JSON（`.branch_config`）で管理し `GET /api/branch-config` / `POST /api/branch-config` で API 経由変更可能にする。`components/runner.go` 再起動不要（→ §11・§12・§22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/api.md` §22.0e、`docs/details/api.md` §27.18 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 週次ビルドサマリー Webhook | 指定曜日・時刻に過去 7 日間の成功率・平均ビルド時間・エラー件数をまとめた定期通知を送信する（→ §12・§13・§22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.19 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定変更の詳細 diff 記録 | `.config_log` の各エントリに変更前後の値の diff 文字列を付加し `GET /api/config-log` レスポンスに含める（→ §22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/statefile.md` §22.0a、`docs/details/api.md` §22.0e、`docs/details/api.md` §27.20 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | テーブルのソート機能 | 列ヘッダークリックで昇順/降順ソートができるインタラクティブテーブル。`aria-sort` 属性と CSS `::after` でインジケーター表示（→ §7.14） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | キーボードショートカット | `/` で検索フォーカス・`Escape` で検索クリア・`t` でページ先頭へスクロール（→ §7.12） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 複数ファイル監視 | `target_files` で複数 Markdown ファイルまたは Markdown ディレクトリを監視し、変更対象ごとに build target を決定する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §27.21 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Commit Status API | ビルド開始時・成功時・失敗時・pending 時に GitHub Commit Status API へ `pending` / `success` / `failure` を送信し、対象 commit に Adlaire CI の結果を紐付ける。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/commitstatus.md` §27.1 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドパイプライン YAML 定義 | 内製 YAML subset parser で `.pipeline.yml` を読み込み、build / test / deploy step を固定順で実行する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.22 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ドライラン実行モード | `adlaire-ci-runner --dry-run` で設定・状態・GitHub target・SHA 差分・起動可否を検証し、ビルド、deploy、通知、状態更新を行わず結果を出力する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §27.2 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドログのアーカイブ圧縮 | 保持期間を超えた `.build_logs/{id}.json` を `.build_logs/archive/{id}.json.gz` に gzip 圧縮し、通常ログ API は圧縮済みログも透過的に参照する。 | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/archive.md` §27.7 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ローカルファイル監視モード | GitHub API を使わず、ローカル状態 snapshot の SHA-256 差分で対象 Markdown の変更を検出する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §27.23 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | タグ付きコミットのみビルド | 監視対象 commit に許可 tag pattern が付いている場合だけ build を実行する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.24 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドキャッシュ | 入力ファイル単位の SHA-256 manifest を `.build_cache.json` に保存し、未変更ページの変換結果を再利用する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §5、`docs/details/builder.md` §8、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/builder.md` §27.25 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド通知連携 | `components/runner.go` が `.notify_config.channels` に基づき Webhook / email / command 通知を同一通知イベント契約で送信する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.32 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド時間トレンド記録 | build ごとの所要時間を `.build_trends.json` に集計保存し、移動平均、中央値、p95、直近件数を API / UI から参照できるようにする。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.33 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド失敗時の自動リトライ | 一時的な GitHub API / network / pipeline timeout / deploy 検証失敗を対象に、設定回数まで同一 build id 内で再試行し、attempt ごとの結果を build log と history に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/runner.md` §27.3 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 並列マルチターゲットビルド | branch target 内の複数 deploy target を bounded worker で並列処理し、target ごとの結果を build log に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §14a、`docs/details/runner.md` §15、`docs/details/runner.md` §27.26 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド前後フック | `.hooks` の pre / post hook を shell 経由なしで実行し、abort 条件と hook log を固定仕様どおり扱う。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.27 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 依存ファイルトラッキング | Markdown 内の相対リンク・画像・include 対象を依存 manifest として記録し、関連 target だけを再ビルドする。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §4.3、`docs/details/builder.md` §5、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/builder.md` §27.28 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | リモートビルド対応 | SSH 経由で remote build command を実行し、成果物 archive と manifest を取得して既存 deploy / log 契約へ接続する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §14a、`docs/details/runner.md` §15、`docs/details/runner.md` §27.29 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドステータスファイル出力 | runner の現在状態、最終ビルド、最終 deploy、pending 件数、circuit 状態、最終 trigger を `.build_status.json` に JSON object として出力し、API / UI / MCP の read-only 参照元にする。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0a、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.8 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド承認フロー | approval_required な target を `.approval_queue` に保留し、API 承認後だけ build / deploy を継続する。 | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.30 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ別環境変数 | branch target ごとに許可済み環境変数を build process へ注入し、secret を log に出さない。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.31 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド依存チェーン | `.build_chain_config` で job 間依存を定義し、依存成功後だけ後続 job を実行する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.34 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド優先度キュー | `.build_state.queued` に priority / created_seq を保存し、優先度順かつ同一優先度 FIFO で build queue を処理する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.35 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 失敗原因の自動分類 | stdout / stderr / exit code / runner error を固定分類ルールで解析し、failure_category と evidence を build log / history に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.36 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド実行環境の記録 | build 開始時の OS、arch、Go version、binary version、disk usage、hostname を `.build_logs/{id}.json.environment` に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §27.37 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドトリガー種別の記録 | `polling`、`force_interval`、`manual`、`webhook`、`retry_pending_transfer`、`startup_config_integrity`、`rollback`、`local_watch`、`approval` を `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に記録し、履歴 filter と状態表示で同じ値を使う。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/runner.md` §27.9、`docs/details/runner.md` §27.23、`docs/details/runner.md` §27.30 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の異常検知 | `.build_trends.json` の移動平均と p95 を基準に異常に遅い build を検出し、WARN、history flag、通知へ反映する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.38 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 設定ファイル起動時整合性チェック | runner 起動時に `.branch_config`、`.notify_config`、`.build_state`、`.pending_transfers`、`.notify_pending`、`.build_circuit_state` の JSON 整合性を検証し、破損・型不一致・必須 key 不足を規定どおり退避、初期化、通知、または停止する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/statefile.md` §22.0a、`docs/details/statefile.md` §22.0c、`docs/details/runner.md` §27.10 に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | マルチユーザー対応 | 初期仕様の単一 admin 認証を、複数ユーザー・ユーザー別セッション・ユーザー別監査へ拡張する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 通知先の拡張 | 管理画面・API からメール・Slack・Discord 等の通知チャンネルを設定・追加できるようにする。`components/runner.go` 側のフック実装は → ビルド通知連携 | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | データストア切り替え | 大量ビルド履歴・ログ運用に備え、フラットファイルから SQLite 等への切り替えを検討する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 外部認証連携 | SSO・OAuth 等の外部認証基盤との連携を検討する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | TOTP 二要素認証 | RFC 6238 TOTP を Go 標準ライブラリだけで検証し、login を password verified / totp required / session issued の二段階に分離する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.4、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.46 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | TOTP 二要素認証 | RFC 6238 TOTP を Go 標準ライブラリだけで検証し、login を password verified / totp required / session issued の二段階に分離する。 | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/statefile.md` §22.0a、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/security.md` §27.46 に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 統計データの CSV エクスポート | `GET /api/stats/timeline` の日別データを CSV 形式でダウンロードできるエンドポイントを追加する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | キュー内個別エントリのキャンセル | `DELETE /api/queue/{id}` で特定エントリのみキャンセルする（初期仕様では全クリアのみ） | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定バリデーション API | `POST /api/config/validate` で `.server_config` 互換の設定差分を保存前に検証し、正規化後設定、警告、エラー位置を返す。状態ファイルは変更しない。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §27.5 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定バリデーション API | `POST /api/config/validate` で `.server_config` 互換の設定差分を保存前に検証し、正規化後設定、警告、エラー位置を返す。状態ファイルは変更しない。 | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/api.md` §27.5 に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | Prometheus メトリクスエンドポイント | `GET /api/metrics` で Prometheus 形式のメトリクス（ビルド数・成功率・ディスク使用量等）を返す | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | CLI 管理クライアント | Go 標準ライブラリのみで実装した `adlaire-ci-cli` で API を CUI 操作できるツール | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 設定の自動スナップショット | `POST /api/config` 変更時に自動で設定バックアップを世代保存する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ステータスバッジ生成 | `GET /api/badge` で最終ビルド結果を SVG バッジとして返す（README 埋め込み用） | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルド履歴の自動削除設定 | `history_retention_days` 設定でビルド履歴エントリを自動削除する（ログの `log_retention_days` に対応する履歴版） | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | セッションタイムアウト変更設定 | `.server_config.session_timeout_seconds` で session 有効期限を 5 分〜30 日の範囲で変更し、既存 session の扱いを固定する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.4、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.45 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドトリガー専用 API スコープ | API token scope に `trigger` を追加し、build 起動系だけを許可する最小権限 token を発行できるようにする。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.4、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 監査ログ | `.audit_log` に設定変更、認証、token、build trigger、承認、権限拒否を actor 付き JSON Lines で記録する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.4、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.44 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API レート制限 | `.api_rate_state` で actor / IP / endpoint group ごとの固定窓 rate limit を管理し、超過時 `429` を返す。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.4、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.47 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | セッションタイムアウト変更設定 | `.server_config.session_timeout_seconds` で session 有効期限を 5 分〜30 日の範囲で変更し、既存 session の扱いを固定する。 | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/security.md` §27.45 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドトリガー専用 API スコープ | API token scope に `trigger` を追加し、build 起動系だけを許可する最小権限 token を発行できるようにする。 | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/statefile.md` §22.0a、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/security.md` §27.42 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 監査ログ | `.audit_log` に設定変更、認証、token、build trigger、承認、権限拒否を actor 付き JSON Lines で記録する。 | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/statefile.md` §22.0a、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/security.md` §27.44 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API レート制限 | `.api_rate_state` で actor / IP / endpoint group ごとの固定窓 rate limit を管理し、超過時 `429` を返す。 | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/statefile.md` §22.0a、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/security.md` §27.47 に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ロールベースアクセス制御 | 複数ユーザー対応後に、管理者・オペレーター・閲覧者等の役割ごとに API 権限を分ける | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 成果物ダウンロード API | 生成静的 Web サイトを archive として API エンドポイント経由で直接ダウンロードできるようにする | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 設定スナップショット差分表示 | 保存済みスナップショット間の設定変更点を diff 形式で確認できる API | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 複数プロジェクト管理 | 単一インスタンスで複数リポジトリ／プロジェクトを切り替え管理する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API キー管理 | `.api_tokens` で API key の hash、scopes、expires_at、revoked_at を管理し、発行時だけ token 本体を返す。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.4、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.43 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API キー管理 | `.api_tokens` で API key の hash、scopes、expires_at、revoked_at を管理し、発行時だけ token 本体を返す。 | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/statefile.md` §22.0a、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/security.md` §27.43 に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルドログのリアルタイム配信 | 実行中ビルドのログを SSE / WebSocket でストリーミング配信するエンドポイント | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 設定のインポート／エクスポート | 設定全体を JSON でエクスポートし、別環境へそのままインポートする | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルド統計ダッシュボード | 成功率・平均ビルド時間・エラー分布等を可視化する管理画面を生成する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -666,7 +678,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 将来計画 | 実装不可 | 管理ツール・API | 通知チャンネル管理 | Slack / Discord / メール等の通知先を管理画面から追加・削除・テスト送信する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルドキューの手動並び替え | 管理画面からキュー内ジョブの実行順序を変更する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 設定テンプレート | よく使う設定パターンをテンプレートとして保存・再利用する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API アクセスログ | 認証後 API と Webhook の呼び出しを `.api_access_log` に JSON Lines で記録し、`GET /api/api-access-log` でページング参照する。認証ログ `.access_log` とは分離する。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §27.6 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API アクセスログ | 認証後 API と Webhook の呼び出しを `.api_access_log` に JSON Lines で記録し、`GET /api/api-access-log` でページング参照する。認証ログ `.access_log` とは分離する。 | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/statefile.md` §22.0a、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/api.md` §27.6 に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 管理者向けイベントフィード | ビルド完了・エラー・設定変更等のシステムイベントをリアルタイムで流す管理ページ | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルドキュー可視化 | キューに積まれたビルドの状態一覧を静的 HTML ステータスページとして出力する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | メンテナンスモード | 管理 API から即時にメンテナンスモードへ切り替え、ビルドキューを一時停止する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -698,7 +710,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 将来計画 | 実装不可 | ビルドスクリプト | ページ内ナビゲーション履歴 | ブラウザの戻る/進むに対応したハッシュベースの履歴管理を実装する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | `aria-label`・`role` 属性の付与対象、値、検証方法を詳細仕様で定義した上でスクリーンリーダー閲覧に対応する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | ビルドスクリプト | 画像ライトボックス | 画像クリックでモーダル拡大表示する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | `adlaire-ci-build` が build id、commit SHA、build at を受け取り、生成 HTML の `<head>` に固定 meta として埋め込む。`GET /api/output-meta` は同値を返す。 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.1、`docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §2、`docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §5、`docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §8、`docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §13、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.4 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | `adlaire-ci-build` が build id、commit SHA、build at を受け取り、生成 HTML の `<head>` に固定 meta として埋め込む。`GET /api/output-meta` は同値を返す。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §2、`docs/details/builder.md` §5、`docs/details/builder.md` §8、`docs/details/runner.md` §13、`docs/details/api.md` §22.0e、`docs/details/builder.md` §27.4 に従って実装する。 |
 | 将来計画 | 実装不可 | ビルドスクリプト | 印刷時 QR コード挿入 | `@media print` で元ページの URL を QR コードとしてフッターに埋め込む | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | ビルドスクリプト | 定義リストサポート | `term\n: definition` 記法を `<dl>/<dt>/<dd>` タグにレンダリングする | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | ビルドスクリプト | タスクリストサポート | `- [ ]` / `- [x]` 記法をチェックボックス付きリストとして描画する | 13.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -723,9 +735,9 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 統合ロードマップ表の `将来計画` の項目を実装対象にする場合は、以下の順で進める。
 
 1. 対象項目の `状態` を `改訂予定` に変更し、元状態、格上げ日、担当領域、整理順序（実装単位ではない）、ステータスを同じ行の概要または次アクションへ記録する。
-2. `docs/ADLAIRE_CI_SPEC.md` の該当する方針、ポリシー、実装状態、機能一覧を改訂する。
-3. `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.1〜§0i.4 の詳細節対応表に、対象機能、対象コンポーネント、詳細仕様節、受け入れ条件を追加する。
-4. 該当 owner component の詳細仕様本文に、§0h の機能仕様テンプレートを満たす目的、責務、入出力、状態、処理順序、異常系、セキュリティ、検証条件を追加する。MCP サーバー領域を昇格する場合は、MCP 専用詳細仕様を新設し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` の責務 component 対応表へ追加する。
+2. `docs/SPEC.md` の該当する方針、ポリシー、実装状態、機能一覧を改訂する。
+3. `docs/DETAIL_INDEX.md` §0i.1〜§0i.4 の詳細節対応表に、対象機能、対象コンポーネント、詳細仕様節、受け入れ条件を追加する。
+4. 該当 owner component の詳細仕様本文に、§0h の機能仕様テンプレートを満たす目的、責務、入出力、状態、処理順序、異常系、セキュリティ、検証条件を追加する。MCP サーバー領域を昇格する場合は、MCP 専用詳細仕様を新設し、`docs/DETAIL_INDEX.md` の責務 component 対応表へ追加する。
 5. `docs/DOCUMENT_INDEX.md` と `AGENTS.md` の更新要否を確認する。
 6. 仕様凍結条件を満たした後、対象項目の `状態` を `仕様化済み・未実装`、`実装可否` を `実装可` に変更する。
 7. 実装と検証が完了した後、対象項目の `状態` を `実装済み`、`実装可否` を `完了済み` に変更する。
@@ -739,7 +751,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ## 0. 詳細仕様記載ポリシー
 
-`docs/ADLAIRE_CI_DETAIL_SPEC.md` の各仕様項目は、実装者が実装レベルで迷わない記載にしなければならない。
+`docs/DETAIL_INDEX.md` の各仕様項目は、実装者が実装レベルで迷わない記載にしなければならない。
 
 機能、API、設定、状態ファイル、UI、SDK メソッド、運用手順を仕様化する場合は、該当する以下の項目を必ず明記する。
 
@@ -788,8 +800,8 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 | 対象 | 完了条件 |
 |------|----------|
-| マスター仕様 | 方針、ポリシー、実装状態、実装着手ゲート、完了判定が `docs/ADLAIRE_CI_SPEC.md` に明記されている。 |
-| 詳細仕様 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が `docs/ADLAIRE_CI_DETAIL_SPEC.md` に明記されている。 |
+| マスター仕様 | 方針、ポリシー、実装状態、実装着手ゲート、完了判定が `docs/SPEC.md` に明記されている。 |
+| 詳細仕様 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が `docs/DETAIL_INDEX.md` に明記されている。 |
 | API / SDK / UI | いずれかを変更した場合、endpoint、SDK method、UI 操作、エラー表示、再取得、秘密情報消去が同期している。 |
 | セットアップ | バイナリ名、配置パス、systemd unit、権限、初期化順、失敗時停止条件、アップデート rollback 方針が同期している。 |
 | 実装状態 | 仕様化済み・未実装、実装済み、将来計画の区分が矛盾していない。 |
@@ -827,9 +839,9 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 判定項目 | 条件 |
 |----------|------|
 | 成熟度 | 対象項目が `仕様化済み・未実装` である。 |
-| 詳細仕様 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` に入力、出力、状態、処理順序、異常系、検証条件が明記されている。 |
-| テンプレート | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0h の機能仕様テンプレートの必須項目を満たしている。 |
-| 対応表 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0i.1〜§0i.4 の詳細節対応表に対象機能が記載され、参照先の詳細仕様節と受け入れ条件が一致している。 |
+| 詳細仕様 | `docs/DETAIL_INDEX.md` に入力、出力、状態、処理順序、異常系、検証条件が明記されている。 |
+| テンプレート | `docs/DETAIL_INDEX.md` §0h の機能仕様テンプレートの必須項目を満たしている。 |
+| 対応表 | `docs/DETAIL_INDEX.md` §0i.1〜§0i.4 の詳細節対応表に対象機能が記載され、参照先の詳細仕様節と受け入れ条件が一致している。 |
 | 横断整合 | API、SDK、UI、状態ファイル、セットアップ、受け入れ条件が矛盾していない。 |
 | 未確定事項 | 実装判断に必要な未確定事項が残っていない。 |
 | 変更境界 | 実装 PR で変更してよい範囲と変更してはならない範囲が明確である。 |
@@ -840,26 +852,26 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 ## 0e. 初期実装スコープ確定ポリシー
 
-Go 版初期実装では、実装対象を本ファイルで `仕様化済み・未実装` と判定し、かつ `docs/ADLAIRE_CI_DETAIL_SPEC.md` の対応表と該当 owner component 別詳細仕様に具体的な実装詳細が存在する範囲に限定する。
+Go 版初期実装では、実装対象を本ファイルで `仕様化済み・未実装` と判定し、かつ `docs/DETAIL_INDEX.md` の対応表と該当 owner component 別詳細仕様に具体的な実装詳細が存在する範囲に限定する。
 
 初期実装の対象範囲は以下とする。
 
 | 対象 | 実装対象 | 境界 |
 |------|----------|------|
-| `components/builder.go` | 対象 | `docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9 に記載された CLI、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、検証条件。 |
-| `components/runner.go` | 対象 | `docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20 に記載された CI ランナー、状態ファイル、ビルド起動、転送、通知、ログ保存。 |
-| `components/api.go` | 対象 | `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§25 および `docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 に記載された管理 API、認証、状態ファイル、セットアップ。 |
-| `admin/adlaire-ci-sdk.js` | 対象 | `docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 に記載された API 呼び出し契約、戻り値、エラー処理。 |
-| `admin/index.html` | 対象 | `docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 に記載された標準管理ツール UI、操作、表示、秘密情報消去。 |
+| `components/builder.go` | 対象 | `docs/details/builder.md` §1〜§9 に記載された CLI、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、検証条件。 |
+| `components/runner.go` | 対象 | `docs/details/runner.md` §10〜§20 に記載された CI ランナー、状態ファイル、ビルド起動、転送、通知、ログ保存。 |
+| `components/api.go` | 対象 | `docs/details/api.md` §21〜§22、§25 および `docs/details/setup.md` §26 に記載された管理 API、認証、状態ファイル、セットアップ。 |
+| `admin/adlaire-ci-sdk.js` | 対象 | `docs/details/sdk.md` §23 に記載された API 呼び出し契約、戻り値、エラー処理。 |
+| `admin/index.html` | 対象 | `docs/details/ui.md` §24 に記載された標準管理ツール UI、操作、表示、秘密情報消去。 |
 | `components/mcp.go` | 対象外 | 将来計画。詳細仕様、起動手順、認証、ツール定義を別途仕様化するまで実装不可。 |
 
 初期実装 PR では、上表の対象外項目、将来計画、未仕様化項目、改訂予定項目を実装してはならない。
 
-初期実装中に対象範囲へ追加したい機能を発見した場合は、先に本節の表、`docs/ADLAIRE_CI_DETAIL_SPEC.md` の該当詳細仕様、`docs/DOCUMENT_INDEX.md` の状態表現を更新し、仕様凍結を再実施する。
+初期実装中に対象範囲へ追加したい機能を発見した場合は、先に本節の表、`docs/DETAIL_INDEX.md` の該当詳細仕様、`docs/DOCUMENT_INDEX.md` の状態表現を更新し、仕様凍結を再実施する。
 
-初期実装スコープの実装順序と PR 分割は、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0g の初期実装 Phase 分割に従う。
+初期実装スコープの実装順序と PR 分割は、`docs/DETAIL_INDEX.md` §0g の初期実装 Phase 分割に従う。
 
-初期実装スコープの完了判定は、対象コンポーネントごとに `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0f の仕様策定完了チェック、§0g の対象 Phase 完了条件、§0h の機能仕様テンプレート、§0i.1〜§0i.4 の詳細節対応表の受け入れ条件を満たしていることを条件とする。チェック、Phase 完了条件、テンプレート、対応表のいずれかを満たさない対象は、実装済みとして扱ってはならない。
+初期実装スコープの完了判定は、対象コンポーネントごとに `docs/DETAIL_INDEX.md` §0f の仕様策定完了チェック、§0g の対象 Phase 完了条件、§0h の機能仕様テンプレート、§0i.1〜§0i.4 の詳細節対応表の受け入れ条件を満たしていることを条件とする。チェック、Phase 完了条件、テンプレート、対応表のいずれかを満たさない対象は、実装済みとして扱ってはならない。
 
 ## 0f. Phase 実装単位ポリシー
 
@@ -867,7 +879,7 @@ Go 版初期実装では、実装対象を本ファイルで `仕様化済み・
 
 `P0`、`P1`、`P2〜P5` などの優先度ラベル、抽象段階、API 内部分類、fixture 分類を、実装単位、PR 単位、完了判定単位として使ってはならない。
 
-Phase は `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0g に定義された対象、実装範囲、依存条件、完了条件、検証条件に従わなければならない。
+Phase は `docs/DETAIL_INDEX.md` §0g に定義された対象、実装範囲、依存条件、完了条件、検証条件に従わなければならない。
 
 Phase の途中で未仕様化、将来計画、改訂予定の機能を追加してはならない。追加する場合は、先に状態分類、詳細仕様、検証条件、受け入れ条件を更新し、仕様凍結を再実施しなければならない。
 
@@ -889,7 +901,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 1. ヘッダーの `V.N` と `V.X.N` を具体値へ置換する。
 2. 具体値に対応する tag / GitHub Release の作成条件を満たしているか確認する。
-3. `README.md`、`docs/DOCUMENT_INDEX.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md` にバージョン表記がある場合は整合させる。
+3. `README.md`、`docs/DOCUMENT_INDEX.md`、`docs/DETAIL_INDEX.md` にバージョン表記がある場合は整合させる。
 4. 実数運用開始後は placeholder 表記へ戻さない。
 
 ### 仕様バージョン V.N
@@ -950,12 +962,12 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 | 設定項目 | 場所 | 変更方法 |
 |---------|------|---------|
-| 入出力パス | `adlaire-ci-build --src` / `--out`、または `DefaultBuildConfig` | `--src` は Markdown ファイルまたは Markdown ディレクトリ、`--out` は出力サイトディレクトリ。CLI 引数を優先し、既定値変更時は `docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §2 と整合させる |
+| 入出力パス | `adlaire-ci-build --src` / `--out`、または `DefaultBuildConfig` | `--src` は Markdown ファイルまたは Markdown ディレクトリ、`--out` は出力サイトディレクトリ。CLI 引数を優先し、既定値変更時は `docs/details/builder.md` §2 と整合させる |
 | テーマ | `adlaire-ci-build --theme`、または `DefaultBuildConfig.Theme` | 初期仕様では `adlaire-default` のみ許可。カスタムテーマ、外部テンプレート、テーマパッケージは将来計画とする |
 | デザイントークン値 | `adlaire-default` の `style.css` が定義する `:root { }` ブロック | ADS 準拠の範囲内で変更し、`docs/DESIGN.md` と整合させる |
-| ドキュメントタイトル | `PageData.Title` / `SiteData.Title` | `PageData.Title` が空の場合は `SiteData.Title` を使用する。`SiteData.Title` は空文字禁止。変更時は `docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §5 `PageData` / `SiteData` 契約に従う |
+| ドキュメントタイトル | `PageData.Title` / `SiteData.Title` | `PageData.Title` が空の場合は `SiteData.Title` を使用する。`SiteData.Title` は空文字禁止。変更時は `docs/details/builder.md` §5 `PageData` / `SiteData` 契約に従う |
 | ヘッダー表示名 | `<span id="doc-title">` に出力する表示タイトル | `PageData.Title` が空の場合は `SiteData.Title` を表示し、別名を持たせない |
-| バージョンバッジ | 安定版リリース情報を表示する場合の `PageData` 拡張 | `V.X.N` 形式。追加する場合は先に `docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §5 の `PageData` にフィールドを追加する |
+| バージョンバッジ | 安定版リリース情報を表示する場合の `PageData` 拡張 | `V.X.N` 形式。追加する場合は先に `docs/details/builder.md` §5 の `PageData` にフィールドを追加する |
 | TOC 対象見出しレベル | `buildTOC(headings []Heading)` | 初期仕様では h1〜h3 固定。変更する場合は §4.4、§6、§7.3〜§7.5 を同時に改訂する |
 
 ## 4. 外部ライブラリ・フレームワーク方針
@@ -1046,7 +1058,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 - SDK の対応言語追加は本ドキュメントへの記載を先行させる
 - バックエンド API の変更は SDK の更新を伴う
 - SDK は ES Module とし、`AdlaireCI` と `AdlaireCIError` を明示 export する
-- SDK の実行環境、timeout、error class、`streamBuild()` の `StreamHandle` 契約は `docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 を正とする
+- SDK の実行環境、timeout、error class、`streamBuild()` の `StreamHandle` 契約は `docs/details/sdk.md` §23 を正とする
 - SDK は自動 retry、戻り値補完、token 永続化、global 代入を行ってはならない
 
 ## 9. 標準管理ツール ポリシー
@@ -1056,7 +1068,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 - バニラ HTML / CSS / JavaScript のみで実装する。外部フレームワーク・外部ライブラリは使用しない（→ Part 2 §4）
 - バックエンドとの通信はすべて SDK 経由とする。SDK を迂回した直接 API 呼び出しは行わない
 - カスタマイズを妨げる密結合な実装は避ける
-- DOM id、`data-panel`、form field name、初期ロード順、イベント処理順、成功/失敗表示、秘密情報消去条件は `docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 を正とする
+- DOM id、`data-panel`、form field name、初期ロード順、イベント処理順、成功/失敗表示、秘密情報消去条件は `docs/details/ui.md` §24 を正とする
 - UI は `localStorage`、`sessionStorage`、Cookie から token を復元してはならない
 - `fetch()`、`XMLHttpRequest`、`EventSource`、`ReadableStream` reader を UI から直接生成してはならない
 
@@ -1077,7 +1089,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 - 初期パスワードは `admin` とする
 - 初回ログイン時はパスワード変更を促す通知を表示する
 - **5 回目のログイン時はパスワード変更を強制する**（変更完了まで管理画面の操作を制限する）
-- パスワードは平文保存禁止。ハッシュ化して保存する（§10 方針に基づきフラットファイル JSON 形式でファイル管理 → `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §25）
+- パスワードは平文保存禁止。ハッシュ化して保存する（§10 方針に基づきフラットファイル JSON 形式でファイル管理 → `docs/details/api.md` §25）
 
 ## 12. 管理 API サーバー セキュリティポリシー
 
@@ -1092,8 +1104,8 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 ## 詳細仕様
 
-Part 3 の実装詳細は、入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約については `docs/ADLAIRE_CI_DETAIL_SPEC.md`、各 owner component の詳細本文については `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする。
+Part 3 の実装詳細は、入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約については `docs/DETAIL_INDEX.md`、各 owner component の詳細本文については `docs/details/*.md` を正とする。
 
-`docs/ADLAIRE_CI_DETAIL_SPEC.md` には、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断を記載しない。
+`docs/DETAIL_INDEX.md` には、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断を記載しない。
 
-`docs/ADLAIRE_CI_DETAIL_SPEC.md` と owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` は、Part 1 §4a と Part 2 §0 に定める範囲に従い、実装者が迷わない入出力、状態、処理順序、異常系、検証条件だけを維持する。
+`docs/DETAIL_INDEX.md` と owner component 別の `docs/details/*.md` は、Part 1 §4a と Part 2 §0 に定める範囲に従い、実装者が迷わない入出力、状態、処理順序、異常系、検証条件だけを維持する。

@@ -7,7 +7,7 @@
 
 ---
 
-本ファイルは生成 HTML の視覚仕様を整理する補助文書である。Adlaire CI の機能仕様、運用仕様、API 仕様、実装状態、正本関係は `docs/ADLAIRE_CI_SPEC.md` と `docs/ADLAIRE_CI_DETAIL_SPEC.md` を正とする。
+本ファイルは生成 HTML の視覚仕様を整理する補助文書である。Adlaire CI の機能仕様、運用仕様、API 仕様、実装状態、正本関係は `docs/SPEC.md` と `docs/DETAIL_INDEX.md` を正とする。
 
 ## 1. デザイン方針
 
@@ -184,6 +184,6 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 adlaire-ci-build --src <source.md> --out Adlaire-db-spec.html
 ```
 
-入出力パス、既定値、終了コード、レポート出力は `docs/ADLAIRE_CI_DETAIL_SPEC.md` および `docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` の builder 詳細仕様を正とする。
+入出力パス、既定値、終了コード、レポート出力は `docs/DETAIL_INDEX.md` および `docs/details/builder.md` の builder 詳細仕様を正とする。
 
 CSS トークンの変更は Go 版 `components/builder.go` の HTML テンプレート内 `:root { }` ブロックに反映して再ビルドする。
