@@ -1,6 +1,7 @@
 # Adlaire CI — 仕様ドキュメント
 
-**仕様対象コンポーネント：** `components/builder.go` / `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html` / `components/mcp.go`
+**仕様対象コンポーネント：** `components/builder.go` / `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html`
+**将来計画コンポーネント：** `components/mcp.go`
 **出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記）。`docs/SPEC.md` ポリシー責務 §2 参照。
@@ -8,7 +9,7 @@
 
 ---
 
-> **Adlaire CI** とは、最初から Go を前提として仕様策定するビルド・CI・管理システムの総称である。仕様対象コンポーネントは `components/builder.go`、`components/runner.go`、`components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js` とする。`components/mcp.go` を含む各 component の実装状態、実装可否、将来計画状態は `docs/ROADMAP.md` の状態・計画責務を正本とする。
+> **Adlaire CI** とは、最初から Go を前提として仕様策定するビルド・CI・管理システムの総称である。仕様対象コンポーネントは `components/builder.go`、`components/runner.go`、`components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js` とする。`components/mcp.go` は将来計画コンポーネントであり、実装対象コンポーネントとして扱わない。各 component の実装状態、実装可否、将来計画状態は `docs/ROADMAP.md` の状態・計画責務を正本とする。
 
 ## 文書責務
 
@@ -21,6 +22,10 @@
 作業ルール上の矛盾は `AGENTS.md` を正とする。
 
 仕様、方針、ポリシー、正本関係、禁止事項、リリース判断、実装着手可否の矛盾は `docs/SPEC.md` を正とする。
+
+`docs/SPEC.md` は、なぜその運用が必要か、仕様として何を禁止するか、どの状態を完了扱いにしてはならないかを定義する。`AGENTS.md` は、承認、実行コマンド、Git 操作、PR 作成、検証手順をどう実行するかを定義する。
+
+完了扱いの可否、実装着手可否、仕様変更単位、禁止事項の判断で迷う場合は `docs/SPEC.md` を正とする。実行順序、コマンド、確認手順、PR 操作手順の判断で迷う場合は `AGENTS.md` を正とする。
 
 `docs/SPEC.md` は、Adlaire CI の方針責務・ポリシー責務の正本である。
 
@@ -77,7 +82,7 @@
 
 - 大規模 Markdown 仕様書、複数 Markdown ドキュメント、運用メモを、快適に閲覧できる静的 Web サイトへ変換する
 - `index.html`、ページ HTML、共通 CSS、共通 JavaScript、検索 index を出力ディレクトリへ生成する
-- 初期テーマ `adlaire-default` と固定テーマコンポーネントにより、一貫したデザイン言語を維持する
+- 初期テーマ `adlaire-default` と固定テーマコンポーネントにより、一貫したデザイン言語を固定する
 - Adlaire Design System（ADS）のトークンを採用し、テーマの見た目は ADS 準拠の範囲内で管理する
 
 ## 2. 開発方針
@@ -269,7 +274,7 @@ owner component 別の `docs/details/*.md` は、詳細本文責務として、�
 
 仕様化済み・未実装の項目であっても、実装予定として扱う場合は実装者が迷わない粒度まで詳細化する。実装時期、設計判断、具体値が未確定の内容は、実装可能な仕様として扱わず、未仕様化または将来計画として明示する。
 
-詳細仕様入口責務と詳細本文責務の組み合わせは、少なくとも以下の問いに答えられる状態を維持する。
+詳細仕様入口責務と詳細本文責務の組み合わせは、少なくとも以下の問いに答えられる状態を満たす。
 
 - どのコンポーネントが責務を持つか
 - どのファイル、API、関数、設定値、状態ファイルを使用するか
@@ -423,7 +428,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 - **実装技術**：HTML / CSS / JavaScript（バニラ）。外部フレームワーク不使用
 - **SDK 経由**：バックエンドとの通信はすべて SDK を介する
-- **カスタマイズ基盤**：標準管理ツールをベースとしたカスタマイズを前提とした設計とする。上書き・差し替えが容易な構造を維持する
+- **カスタマイズ基盤**：標準管理ツールをベースとしたカスタマイズを前提とした設計とする。上書き・差し替えが容易な構造を仕様条件として固定する
 
 ## 7. 機能インベントリ参照
 
@@ -534,7 +539,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 同一目的の仕様変更を複数に分割してはならない。分割済みの PR 間で同一ファイルまたは同一仕様領域を編集している場合は、最新の作業ブランチへ統合し、1 本の PR にまとめる。
 
-仕様 PR 作成前には、open PR 一覧、変更ファイル一覧、merge 状態を確認する。具体的な確認コマンドと Git 操作手順は `AGENTS.md` の Git 運用ルールを正本とする。
+仕様 PR 作成前には、open PR 一覧、変更ファイル一覧、merge 状態を確認する。`docs/SPEC.md` は、競合状態、未確認状態、重複状態を完了扱いにしてはならないことを定義する。具体的な確認コマンド、Git 操作順序、PR 操作手順は `AGENTS.md` の Git 運用ルールを正本とする。
 
 競合解消後は、競合マーカーが残っていないこと、`git diff --check` が成功すること、open PR が同一仕様領域で重複していないこと、統合先 PR の merge 状態が `CLEAN` であることを確認する。`UNKNOWN` は merge 可能として扱わない。
 
@@ -718,26 +723,26 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 ---
 
-## 5. CI ランナー セキュリティポリシー
+## 5. CI ランナー秘密情報・公開境界ポリシー
 
 - GitHub PAT（Personal Access Token）はスクリプト内にハードコードしてはならない
 - PAT は最小権限とし、書き込み権限を必要とする設計を標準としてはならない
 - PAT の保存先、permission、読み取り方法、失敗時の扱いは `docs/details/runner.md` 詳細本文責務と `docs/details/security.md` 詳細本文責務を正本とする
 - ランナーは外部公開エンドポイントを持たない。サーバーから GitHub API への送信のみで動作する
 
-## 6. CI ランナー 実行ポリシー
+## 6. CI ランナー実行境界ポリシー
 
 - 変更がない場合はビルドをスキップしなければならない
 - `adlaire-ci-runner` は oneshot 実行とし、多重実行を防止しなければならない
 - 成功、失敗、再試行、状態更新、ログ記録の具体条件は `docs/details/runner.md` 詳細本文責務と `docs/details/statefile.md` 詳細本文責務を正本とする
 
-## 7. CI ランナー ブランチポリシー
+## 7. CI ランナー branch target ポリシー
 
 - ランナーは 1 件以上のブランチターゲットを扱える方針とする
 - ブランチターゲットの fields、既定値、処理順序、並列可否、検出間隔は `docs/details/runner.md` 詳細本文責務と `docs/details/statefile.md` 詳細本文責務を正本とする
 - ブランチターゲットを変更する場合は、runner 詳細本文責務、statefile 詳細本文責務、setup 詳細本文責務を同時に整合しなければならない
 
-## 8. SDK ポリシー
+## 8. SDK 通信契約ポリシー
 
 この節は、`admin/adlaire-ci-sdk.js` に適用する。
 
@@ -747,7 +752,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 - SDK の module 形式、公開 API、error class、timeout、streaming 契約は `docs/details/sdk.md` 詳細本文責務を正本とする
 - SDK は自動 retry、戻り値補完、token 永続化、global 代入を行ってはならない
 
-## 9. 標準管理ツール ポリシー
+## 9. 標準管理ツール UI / SDK 境界ポリシー
 
 この節は、`admin/index.html` に適用する。
 
@@ -758,7 +763,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 - UI は `localStorage`、`sessionStorage`、Cookie から token を復元してはならない
 - UI は API transport を直接生成してはならない。禁止対象の具体 API、例外条件、検証条件は `docs/details/ui.md` 詳細本文責務を正本とする
 
-## 10. データ永続化ポリシー
+## 10. 状態ファイル永続化ポリシー
 
 - **初期方針：データベース不使用。** 状態はファイルで管理する。具体的な状態ファイル一覧、schema、権限、更新順序、破損時処理は `docs/details/statefile.md` 詳細本文責務を正本とする
 - RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、初期仕様ではいかなるデータベースも採用しない
@@ -766,7 +771,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 - **データ形式：JSON 形式**を標準とする
 - JSON schema、ファイル分割、ネスト制約、encoding、atomic write は `docs/details/statefile.md` 詳細本文責務を正本とする
 
-## 11. 管理ツール 認証ポリシー
+## 11. シングルユーザー認証ポリシー
 
 この節は、管理 API サーバーおよび標準管理ツールに適用する。
 
@@ -774,7 +779,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 - 初期認証、初回変更、強制変更、session、保存形式の具体条件は `docs/details/api.md` 詳細本文責務と `docs/details/security.md` 詳細本文責務を正本とする
 - パスワードは平文保存禁止とし、保存が必要な認証情報はハッシュ化または secret として扱う
 
-## 12. 管理 API サーバー セキュリティポリシー
+## 12. 管理 API 公開境界・session ポリシー
 
 この節は、`components/api.go` に適用する。
 
