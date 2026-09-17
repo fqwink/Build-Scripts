@@ -2,6 +2,7 @@ package components
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -137,7 +138,11 @@ func TestAPILogsHistoryAndCircuitReset(t *testing.T) {
 func TestAPICommonErrors(t *testing.T) {
 	state := newAPIState(t)
 	server := newTestAPI(t, state)
-	resp := apiRequest(t, server, http.MethodGet, "/api/status", "", nil)
+	resp := apiRequest(t, server, http.MethodGet, "/api/unknown", "", nil)
+	if resp.Code != http.StatusNotFound {
+		t.Fatalf("unknown code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/status", "", nil)
 	if resp.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthorized code=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -149,6 +154,175 @@ func TestAPICommonErrors(t *testing.T) {
 	resp = apiRequest(t, server, http.MethodGet, "/api/history?page=0", token, nil)
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("validation code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/status", token, map[string]string{"unexpected": "body"})
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("body-forbidden code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewBufferString("{"))
+	req.RemoteAddr = "192.0.2.1:1234"
+	resp = httptest.NewRecorder()
+	server.Handler().ServeHTTP(resp, req)
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("invalid json code=%d body=%s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestAPIPhase3StatusFixtures(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+	queueEntry := map[string]any{"id": "q20260917010101", "trigger": "manual"}
+
+	writeTestJSON(t, filepath.Join(state, ".build_state"), apiBuildState{Queued: []map[string]any{queueEntry}})
+	appendLine(t, filepath.Join(state, ".build_history"), `{"id":"b20260917010101","finished_at":"2026-09-17T01:01:03Z","status":"success","trigger":"manual","duration_seconds":2,"blob_sha":"blob-1"}`)
+	before := snapshotFiles(t, state, []string{".build_state", ".build_history", ".build_status.json"})
+	resp := apiRequest(t, server, http.MethodGet, "/api/status", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("fallback status code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var status map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &status)
+	if status["last_sha"] != "blob-1" || status["last_build_status"] != "success" || status["running"] != false || len(status["queued"].([]any)) != 1 {
+		t.Fatalf("unexpected fallback status: %#v", status)
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".build_state", ".build_history", ".build_status.json"}))
+
+	lastBlob := "blob-primary"
+	lastStatus := "success"
+	lastTrigger := "manual"
+	writeTestJSON(t, filepath.Join(state, ".build_status.json"), apiBuildStatus{
+		LastBlobSHA: &lastBlob, LastTargetStatus: &lastStatus, LastTrigger: &lastTrigger,
+		PendingTransfersCount: 2, NotifyPendingCount: 1, CircuitOpen: true,
+	})
+	if err := os.WriteFile(filepath.Join(state, ".build_lock"), []byte("locked"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	before = snapshotFiles(t, state, []string{".build_state", ".build_history", ".build_status.json", ".build_lock"})
+	resp = apiRequest(t, server, http.MethodGet, "/api/status", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("primary status code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	decodeTestJSON(t, resp.Body.Bytes(), &status)
+	if status["last_sha"] != "blob-primary" || status["pending_transfers_count"].(float64) != 2 || status["running"] != true || len(status["queued"].([]any)) != 1 {
+		t.Fatalf("unexpected primary status: %#v", status)
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".build_state", ".build_history", ".build_status.json", ".build_lock"}))
+
+	if err := os.WriteFile(filepath.Join(state, ".build_status.json"), []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	before = snapshotFiles(t, state, []string{".build_status.json"})
+	resp = apiRequest(t, server, http.MethodGet, "/api/status", token, nil)
+	if resp.Code != http.StatusInternalServerError {
+		t.Fatalf("corrupt status code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".build_status.json"}))
+}
+
+func TestAPIPhase3HistoryQueueAndLogFixtures(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	appendLine(t, filepath.Join(state, ".build_history"), `{"id":"b1","finished_at":"2026-09-17T01:01:03Z","status":"success","trigger":"manual","duration_seconds":2}`)
+	appendLine(t, filepath.Join(state, ".build_history"), ``)
+	appendLine(t, filepath.Join(state, ".build_history"), `{`)
+	appendLine(t, filepath.Join(state, ".build_history"), `{"id":"missing-status"}`)
+	appendLine(t, filepath.Join(state, ".build_history"), `{"id":"b2","finished_at":"2026-09-17T01:01:04Z","status":"failure","trigger":"manual","duration_seconds":3}`)
+	before := snapshotFiles(t, state, []string{".build_history"})
+	resp := apiRequest(t, server, http.MethodGet, "/api/history?page=1&per_page=10", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("history code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var history map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &history)
+	if history["total"].(float64) != 2 || history["pages"].(float64) != 1 || len(history["history"].([]any)) != 2 {
+		t.Fatalf("unexpected history: %#v", history)
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".build_history"}))
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/queue", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("missing queue code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var queue map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &queue)
+	if len(queue["queued"].([]any)) != 0 {
+		t.Fatalf("unexpected missing queue: %#v", queue)
+	}
+	if _, err := os.Stat(filepath.Join(state, ".build_state")); !os.IsNotExist(err) {
+		t.Fatalf("GET queue must not create .build_state, err=%v", err)
+	}
+	if err := os.WriteFile(filepath.Join(state, ".build_state"), []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/queue", token, nil)
+	if resp.Code != http.StatusInternalServerError {
+		t.Fatalf("corrupt queue code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	if err := os.MkdirAll(filepath.Join(state, ".build_logs", "archive"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeGzipJSON(t, filepath.Join(state, ".build_logs", "archive", "archived.json.gz"), apiBuildLog{
+		ID: "archived", StartedAt: "2026-09-17T01:01:01Z", FinishedAt: "2026-09-17T01:01:02Z",
+		TargetStatus: "success", Pipeline: apiPipelineLog{Stdout: "[INFO] archived"},
+	})
+	resp = apiRequest(t, server, http.MethodGet, "/api/history/archived/log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("archive log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(state, ".build_logs", "archived.json")); !os.IsNotExist(err) {
+		t.Fatalf("archive lookup must not restore normal log, err=%v", err)
+	}
+	if err := os.WriteFile(filepath.Join(state, ".build_logs", "broken.json"), []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/history/broken/log", token, nil)
+	if resp.Code != http.StatusInternalServerError {
+		t.Fatalf("broken log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/history/missing/log", token, nil)
+	if resp.Code != http.StatusNotFound {
+		t.Fatalf("missing log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestAPIPhase3BuildConflictFixtures(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	if err := os.WriteFile(filepath.Join(state, ".build_lock"), []byte("locked"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshotFiles(t, state, []string{".build_state", ".build_history", ".build_status.json", ".build_lock"})
+	resp := apiRequest(t, server, http.MethodPost, "/api/build", token, nil)
+	if resp.Code != http.StatusConflict {
+		t.Fatalf("lock conflict code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".build_state", ".build_history", ".build_status.json", ".build_lock"}))
+	if err := os.Remove(filepath.Join(state, ".build_lock")); err != nil {
+		t.Fatal(err)
+	}
+
+	writeTestJSON(t, filepath.Join(state, ".build_circuit_state"), apiCircuitState{Open: true, ConsecutiveFailures: 2})
+	before = snapshotFiles(t, state, []string{".build_state", ".build_history", ".build_status.json", ".build_circuit_state"})
+	resp = apiRequest(t, server, http.MethodPost, "/api/build", token, nil)
+	if resp.Code != http.StatusConflict {
+		t.Fatalf("circuit conflict code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".build_state", ".build_history", ".build_status.json", ".build_circuit_state"}))
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/circuit-breaker/reset", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("circuit reset code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var circuit apiCircuitState
+	readTestJSON(t, filepath.Join(state, ".build_circuit_state"), &circuit)
+	if circuit.Open || circuit.ConsecutiveFailures != 0 {
+		t.Fatalf("circuit reset state: %#v", circuit)
 	}
 }
 
@@ -920,6 +1094,70 @@ func appendLine(t *testing.T, path, line string) {
 	}
 	defer f.Close()
 	if _, err := f.WriteString(line + "\n"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type fileSnapshot struct {
+	exists bool
+	mode   os.FileMode
+	mtime  time.Time
+	data   string
+}
+
+func snapshotFiles(t *testing.T, root string, names []string) map[string]fileSnapshot {
+	t.Helper()
+	out := map[string]fileSnapshot{}
+	for _, name := range names {
+		path := filepath.Join(root, name)
+		info, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			out[name] = fileSnapshot{}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out[name] = fileSnapshot{exists: true, mode: info.Mode(), mtime: info.ModTime(), data: string(data)}
+	}
+	return out
+}
+
+func assertSnapshotEqual(t *testing.T, before, after map[string]fileSnapshot) {
+	t.Helper()
+	if len(before) != len(after) {
+		t.Fatalf("snapshot size changed: before=%#v after=%#v", before, after)
+	}
+	for name, want := range before {
+		got, ok := after[name]
+		if !ok {
+			t.Fatalf("snapshot missing path %s", name)
+		}
+		if want != got {
+			t.Fatalf("snapshot changed for %s\nbefore=%#v\nafter=%#v", name, want, got)
+		}
+	}
+}
+
+func writeGzipJSON(t *testing.T, path string, value any) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	writer := gzip.NewWriter(file)
+	if err := json.NewEncoder(writer).Encode(value); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
 }
