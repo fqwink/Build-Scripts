@@ -20,6 +20,22 @@
 
 仕様判断では、上位階層が下位階層を置き換えるのではなく、各階層の正本範囲だけを参照する。`docs/DOCUMENT_INDEX.md` は所在と役割の索引であり、仕様本文を定義しない。
 
+## Specification Decision Flow
+
+目的別の参照先は以下に固定する。迷った場合は、最初に本表で参照先を決め、参照先の正本範囲だけを確認する。
+
+| 目的 | 最初に読む文書 | 次に確認する文書 | 判断内容 |
+|------|----------------|------------------|----------|
+| 作業ルール、承認、Git 運用を確認したい | `AGENTS.md` | `docs/DOCUMENT_INDEX.md` | 作業開始可否、変更承認、PR 作成、文書整合の手順を判断する。 |
+| リポジトリ全体の文書構造を把握したい | `README.md` | `docs/DOCUMENT_INDEX.md` | どの文書が何を持つか、どの順番で読むかを判断する。 |
+| 方針、ポリシー、実装状態、実装可否を判断したい | `docs/SPEC.md` | `docs/DETAIL_INDEX.md` | 対象が実装済み、仕様化済み、将来計画、実装不可のどれかを判断する。 |
+| 詳細仕様本文を探したい | `docs/DETAIL_INDEX.md` | 対象 owner component の `docs/details/*.md` | 対象機能の owner component、参照節、受け入れ条件を判断する。 |
+| 実装ファイル、テスト、fixture の所在を確認したい | `docs/DOCUMENT_INDEX.md` | `docs/DETAIL_INDEX.md` §0j | 現行実装ファイル、未実装 path、標準配置の扱いを判断する。 |
+| component の入出力、状態、処理順序、異常系、検証条件を確認したい | 対象 owner component の `docs/details/*.md` | collaborator component の `docs/details/*.md` | 実装時に従う具体仕様と collaborator 境界を判断する。 |
+| 生成静的 Web サイトの見た目を確認したい | `docs/DESIGN.md` | `docs/details/builder.md` | レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を判断する。 |
+
+本表は文書選択の判断フローであり、各文書の正本範囲を拡張しない。
+
 ## Reading Order
 
 | 順序 | ファイル | 目的 |

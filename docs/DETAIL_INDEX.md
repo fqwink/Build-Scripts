@@ -67,6 +67,35 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 ---
 
+## 0b.0 詳細仕様選択フロー
+
+対象機能の詳細仕様を読む場合は、以下の順で参照先を確定する。
+
+1. §0b.0.1 のカテゴリ表で、対象機能が属する大まかな領域を特定する。
+2. §0b の詳細仕様参照表で、owner component を 1 件に確定する。
+3. owner component の `docs/details/*.md` を主本文として読む。
+4. §0b の参照表または owner component 本文に collaborator component が示されている場合だけ、該当する `docs/details/*.md` を読む。
+5. 状態ファイル、認証、fixture、setup、archive、Commit Status など横断参照が必要な場合は、owner component 本文から明示された参照先に限定して読む。
+
+カテゴリは入口であり、owner component ではない。カテゴリ名を理由に、複数 component の詳細本文を同格の主本文として扱ってはならない。
+
+## 0b.0.1 詳細仕様カテゴリ
+
+本節は、実装者が対象機能から読むべき詳細仕様ファイルを特定するためのカテゴリ索引である。カテゴリは検索入口であり、owner component、実装状態、実装可否、ロードマップ状態を変更しない。
+
+| カテゴリ | 対象 component | 主な判断対象 | 読む詳細仕様 |
+|----------|----------------|--------------|--------------|
+| Build 系 | `builder` | Markdown 入力、静的 Web サイト出力、theme component、検索 index、変換 report。 | `docs/details/builder.md` |
+| CI / 運用系 | `runner`、`commitstatus`、`archive` | GitHub 監視、pipeline、deploy、snapshot、通知、Commit Status、archive / rollback / cleanup。 | `docs/details/runner.md`、`docs/details/commitstatus.md`、`docs/details/archive.md` |
+| 管理系 | `api`、`sdk`、`ui`、`admin` | 管理 API、JavaScript SDK、標準管理 UI、管理 UI 静的ファイル配布と配信境界。 | `docs/details/api.md`、`docs/details/sdk.md`、`docs/details/ui.md`、`docs/details/admin.md` |
+| 状態 / 安全系 | `statefile`、`security` | 状態ファイル、lock、atomic write、schema、token、scope、audit、session、TOTP、rate limit。 | `docs/details/statefile.md`、`docs/details/security.md` |
+| 配布 / 検証系 | `setup`、`fixture` | バイナリ配布、systemd、セットアップ、アップデート、fixture、fake、PR 証跡、acceptance checklist。 | `docs/details/setup.md`、`docs/details/fixture.md` |
+| 将来計画 | `mcp` | MCP サーバー。現時点では実装可能な詳細仕様を持たない。 | 詳細仕様なし |
+
+カテゴリをまたぐ機能では、§0b の責務 component 別参照表を優先して owner component を 1 件に確定する。カテゴリ名を component 名、ファイル名、責務境界として扱ってはならない。
+
+---
+
 ## 0b. 詳細仕様参照表
 
 本節は、責務 component ごとに参照する詳細仕様節を示す。実装状態、実装可否、ロードマップ状態は `docs/SPEC.md` を確認する。
@@ -87,23 +116,6 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `mcp` | 詳細仕様なし | 将来計画。現時点では実装可能な入出力、状態、起動手順、ツール定義、検証条件を定義しない。 |
 
 上表の `詳細仕様節` は参照入口であり、主本文の owner component を変更しない。複数ファイルを参照する行では、対象機能の owner component のファイルを主本文とし、他ファイルは collaborator の境界、schema、fixture、security、setup、受け入れ条件を確認するために読む。参照先に同じ HTTP body、状態 schema、DOM id、SDK method、fixture assertion を重複定義してはならない。
-
----
-
-## 0b.0 詳細仕様カテゴリ
-
-本節は、実装者が対象機能から読むべき詳細仕様ファイルを特定するためのカテゴリ索引である。カテゴリは検索入口であり、owner component、実装状態、実装可否、ロードマップ状態を変更しない。
-
-| カテゴリ | 対象 component | 主な判断対象 | 読む詳細仕様 |
-|----------|----------------|--------------|--------------|
-| Build 系 | `builder` | Markdown 入力、静的 Web サイト出力、theme component、検索 index、変換 report。 | `docs/details/builder.md` |
-| CI / 運用系 | `runner`、`commitstatus`、`archive` | GitHub 監視、pipeline、deploy、snapshot、通知、Commit Status、archive / rollback / cleanup。 | `docs/details/runner.md`、`docs/details/commitstatus.md`、`docs/details/archive.md` |
-| 管理系 | `api`、`sdk`、`ui`、`admin` | 管理 API、JavaScript SDK、標準管理 UI、管理 UI 静的ファイル配布と配信境界。 | `docs/details/api.md`、`docs/details/sdk.md`、`docs/details/ui.md`、`docs/details/admin.md` |
-| 状態 / 安全系 | `statefile`、`security` | 状態ファイル、lock、atomic write、schema、token、scope、audit、session、TOTP、rate limit。 | `docs/details/statefile.md`、`docs/details/security.md` |
-| 配布 / 検証系 | `setup`、`fixture` | バイナリ配布、systemd、セットアップ、アップデート、fixture、fake、PR 証跡、acceptance checklist。 | `docs/details/setup.md`、`docs/details/fixture.md` |
-| 将来計画 | `mcp` | MCP サーバー。現時点では実装可能な詳細仕様を持たない。 | 詳細仕様なし |
-
-カテゴリをまたぐ機能では、§0b の責務 component 別参照表を優先して owner component を 1 件に確定する。カテゴリ名を component 名、ファイル名、責務境界として扱ってはならない。
 
 ---
 
