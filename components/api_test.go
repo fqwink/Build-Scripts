@@ -163,6 +163,88 @@ func TestAPISessionPasswordAndStream(t *testing.T) {
 	}
 }
 
+func TestAPIOperationConfigSessionsAndLogs(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+	second := login(t, server, "admin")
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/health", "", nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("health code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/config", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("config code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var cfg apiServerConfig
+	decodeTestJSON(t, resp.Body.Bytes(), &cfg)
+	if cfg.QueueMaxSize != 3 || cfg.LogMaxLines != 500 || cfg.SessionTimeoutSeconds != 28800 {
+		t.Fatalf("unexpected defaults: %#v", cfg)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/config/validate", token, map[string]any{"queue_max_size": 0, "log_level": "DEBUG"})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("validate code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(state, ".server_config")); !os.IsNotExist(err) {
+		t.Fatalf("validate must not write server config")
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/config", token, map[string]any{"queue_max_size": 0, "log_level": "DEBUG"})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("set config code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	readTestJSON(t, filepath.Join(state, ".server_config"), &cfg)
+	if cfg.QueueMaxSize != 0 || cfg.LogLevel != "DEBUG" {
+		t.Fatalf("config was not saved: %#v", cfg)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/sessions", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("sessions code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var sessions map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &sessions)
+	if len(sessions["sessions"].([]any)) != 2 {
+		t.Fatalf("unexpected sessions: %#v", sessions)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/sessions/revoke-all", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("revoke code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/status", second, nil)
+	if resp.Code != http.StatusUnauthorized {
+		t.Fatalf("second token must be revoked: code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/config-log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("config log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var configLog map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &configLog)
+	if len(configLog["log"].([]any)) != 1 {
+		t.Fatalf("unexpected config log: %#v", configLog)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/access-log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("access log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/api-access-log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("api access log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var apiAccess map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &apiAccess)
+	if apiAccess["total"].(float64) == 0 {
+		t.Fatalf("api access log should contain requests: %#v", apiAccess)
+	}
+}
+
 func newAPIState(t *testing.T) string {
 	t.Helper()
 	state := t.TempDir()
