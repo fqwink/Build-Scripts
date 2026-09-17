@@ -282,6 +282,59 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | §27.46 | `security-totp-setup-once`、`success-totp-confirm`、`failure-totp-code-reuse`、`success-totp-disable` | setup ticket、TOTP code、clock、secret state。 | secret 有効保存条件、ticket 一回使用、window、disable。 |
 | §27.47 | `security-rate-limit-login`、`success-rate-limit-window-reset`、`security-rate-limit-ip-actor`、`failure-rate-limit-state-save` | policy、rate state、RemoteAddr、actor。 | count、`429`、audit 成功条件、部分 count 更新なし。 |
 
+**§27.1〜§27.11 feature fixture 固定契約：**
+
+§27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 詳細仕様に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+
+| 節 | fixture | 固定する内容 |
+|----|---------|--------------|
+| §27.1 | `success-commit-status-pending-success` | fake GitHub server への `pending` → `success` 送信順、payload `state` / `context` / `description` / `target_url`、`.build_logs` の `pending_sent=true` / `final_sent=true`、`.build_history.commit_status_state="success"` を固定する。 |
+| §27.1 | `failure-commit-status-unavailable-sha` | commit SHA が取得できない場合に GitHub Status API 呼び出し 0 件、build 継続、`.build_logs.commit_status.error="commit sha unavailable"`、history の build status 非反転を固定する。 |
+| §27.1 | `failure-commit-status-api-error` | pending または final の fake GitHub failure で build 成否を反転せず、WARN、`pending_sent` / `final_sent`、送信しようとした state、secret mask、Authorization header 非保存を固定する。 |
+| §27.1 | `noop-commit-status-disabled` | `.server_config.commit_status_enabled=false` で GitHub Status API 呼び出し 0 件、`commit_status.enabled=false`、payload / token / status side effect なしを固定する。 |
+| §27.2 | `success-dry-run-changed` | SHA 差分あり target の stdout JSON、`would_build=true`、`reason="sha_changed"`、`would_call`、`would_write`、終了コード `0`、状態差分なしを固定する。 |
+| §27.2 | `noop-dry-run-unchanged` | SHA 差分なし、cooldown、circuit open の `would_build=false` と reason、stdout JSON 1 件、lock / log / history / status / notification / deploy 差分なしを固定する。 |
+| §27.2 | `failure-dry-run-github-error` | fake GitHub read 最終失敗で終了コード `3`、`reason="github_error"`、`errors[]`、pipeline / deploy / commit status 呼び出し 0 件、状態差分なしを固定する。 |
+| §27.2 | `security-dry-run-secret-mask` | state dir、env、GitHub response、error message に secret 風値があっても stdout、stderr、effects、expected に平文を残さず、`secrets_masked=true` を固定する。 |
+| §27.3 | `success-retry-after-rate-limit` | GitHub API 429 後の retry、attempts 2 件、backoff fake clock、最終 success、`retry_count=1`、SHA 更新は最終成功後だけを固定する。 |
+| §27.3 | `success-retry-after-timeout` | pipeline timeout または deploy network timeout 後の retry success、attempt schema、未成功 attempt による deploy / snapshot / SHA 副作用なしを固定する。 |
+| §27.3 | `failure-retry-limit-exceeded` | `1 + build_retry_max` 件の attempts、最終 failure、未実行 attempt 不作成、history failure、secret mask、終了コードを固定する。 |
+| §27.3 | `noop-retry-nonretryable` | pipeline exit code 非 0、checksum mismatch、validation failure 等の nonretryable 失敗で retry 0 件、pending transfer または failure 保存、SHA 更新なしを固定する。 |
+| §27.4 | `success-output-meta-html-report-api` | builder HTML meta、`[REPORT]`、build log、`GET /api/output-meta` response が同じ build id / sha / timestamp / title を返すことを固定する。 |
+| §27.4 | `success-output-meta-empty-values` | optional meta が空または null の場合の HTML 出力省略、REPORT 空値表現、API response の null / empty string 区別、secret 非表示を固定する。 |
+| §27.4 | `failure-output-meta-invalid-sha` | SHA 形式不正で終了コード `2` または API `422`、公開出力維持、REPORT なし、既存 output meta 非破壊を固定する。 |
+| §27.4 | `failure-output-meta-invalid-time` | timestamp parse 不能、範囲外、非 UTC 値で fixed error、公開出力維持、build log / API response に不正時刻を保存しないことを固定する。 |
+| §27.5 | `success-config-validate-valid` | `POST /api/config/validate` が状態を変更せず、正規化後 config、`valid=true`、warnings/errors 空、GET 副作用なしを固定する。 |
+| §27.5 | `success-config-validate-invalid` | 型不一致、範囲外、相互排他違反で `valid=false`、`errors[]`、HTTP status、状態差分なし、secret mask を固定する。 |
+| §27.5 | `failure-config-validate-unknown-key` | unknown root key / nested key を `422`、状態差分なし、`.config_log` 追記なし、response の key path 固定で返すことを固定する。 |
+| §27.5 | `security-config-validate-secret-mask` | PAT、SMTP password、webhook secret、API token 風値を request / response / logs / effects に平文で残さず、key 名だけを返すことを固定する。 |
+| §27.6 | `success-api-access-log-authenticated` | 認証済み request の `.api_access_log` JSON Lines 追記、actor、method、path、status、duration、request id、body 非保存を固定する。 |
+| §27.6 | `success-api-access-log-unauthorized` | 未認証 / 権限不足 request の log、actor null または固定匿名値、status `401` / `403`、Authorization header 非保存を固定する。 |
+| §27.6 | `failure-api-access-log-append` | access log append failure 時の HTTP response、対象 endpoint の状態変更有無、audit / server log、部分 JSON 行禁止を固定する。 |
+| §27.6 | `security-api-access-log-body-mask` | request body、query credential、Authorization header、session token、API token が access log、response、effects に保存されないことを固定する。 |
+| §27.7 | `success-log-archive` | 対象 `.build_logs/{id}.json` の gzip 作成、元 log 削除、archive からの API 参照、disk usage 反映、gzip path を固定する。 |
+| §27.7 | `noop-log-archive-empty` | archive 対象なし、実行中 build log、既存 archive の skip、件数 0、状態差分なしを固定する。 |
+| §27.7 | `failure-log-archive-gzip` | gzip write / JSON read failure で WARN、処理継続または fixed failure、元 log 維持、partial `.gz` 非公開を固定する。 |
+| §27.7 | `success-log-cleanup` | retention による通常 log / archive log 削除、`deleted_count` / `failed_count`、空 archive directory 削除試行、削除順を固定する。 |
+| §27.8 | `success-build-status-running` | build 開始前の `.build_status.json` atomic write、`status="running"`、`running=true`、`current_build_id`、pending 件数を固定する。 |
+| §27.8 | `success-build-status-final` | success / failure / skipped / deploy pending の finalizer、`running=false`、`current_build_id=null`、last fields 維持、API read 値を固定する。 |
+| §27.8 | `failure-build-status-write` | status write failure で runner 終了コード最低 `1`、ERROR log、build log / history 維持、部分 `.build_status.json` 非公開を固定する。 |
+| §27.8 | `failure-build-status-corrupt-api` | API が破損 `.build_status.json` を読んだ場合の `/api/status` / dashboard `500`、health degraded、自動修復なしを固定する。 |
+| §27.9 | `success-trigger-manual` | manual queue / force payload の trigger 保存、log / history / status / API filter / SDK / UI 表示の値一致を固定する。 |
+| §27.9 | `success-trigger-webhook` | 署名検証済み webhook queue entry の `trigger="webhook"`、target 限定、重複 delivery なし、history filter を固定する。 |
+| §27.9 | `success-trigger-approval` | approval queue entry 処理時の `trigger="approval"`、承認済み entry のみ処理、pending 以外は処理しないことを固定する。 |
+| §27.9 | `failure-trigger-filter-invalid` | unknown trigger query / queue trigger を `422` または処理中断にし、新規保存禁止、既存 unknown trigger の warning 表示を固定する。 |
+| §27.10 | `success-startup-integrity-clean` | 対象状態ファイルが正常な場合、backup / rewrite / notification / status warning なしで target 処理へ進むことを固定する。 |
+| §27.10 | `success-startup-integrity-recovered` | 破損、必須 key 不足、unknown key 正規化時の backup / 初期化 / atomic write / `.build_status.json.last_trigger` / config_corrupt 通知を固定する。 |
+| §27.10 | `failure-startup-integrity-unrecoverable` | permission / io error で自動復旧なし、終了コード `1` または `2`、`.build_state.running` 未変更、build log / history 非作成を固定する。 |
+| §27.10 | `security-startup-integrity-secret-mode` | secret file mode 補正、secret 平文非表示、backup byte 一致、dry-run で backup / rewrite なしを固定する。 |
+| §27.11 | `success-schedule-interval` | schedule interval 更新 request、`.server_config` 保存、fake systemd update、`.config_log`、再取得 response の一致を固定する。 |
+| §27.11 | `success-schedule-pause-resume` | pause / resume request、timer enable state、config 保存値、systemd fake 呼び出し順、UI / SDK response を固定する。 |
+| §27.11 | `failure-schedule-systemd-update` | `.server_config` 保存後の fake systemd failure、HTTP `500`、config log `systemd_update_failed`、未定義 rollback なしを固定する。 |
+| §27.11 | `noop-schedule-same-value` | 同一値更新時に systemd 呼び出しなしまたは fixed no-op、config 差分なし、config log の no-op 記録、response 再取得値を固定する。 |
+
+§27.1〜§27.11 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`notifications`、`status_api_calls` を持つ。未使用項目も空配列または `0` で明示する。dry-run、validation、noop、security fixture では、状態ファイル、lock、history、build log、archive、notification、deploy、commit status の forbidden side effect を必ず列挙する。
+
 **§27 fixture ファイルセット固定契約：**
 
 各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。実装者は fixture ごとに必要ファイルを推測してはならない。
