@@ -99,7 +99,7 @@
 | 生成静的 Web サイトのレイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様 | `docs/DESIGN.md` | `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
 | 初見向け概要、最小限の読む順番、主要ファイル案内 | `README.md` | `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
 
-`README.md` は入口であり、詳細ルール、詳細仕様本文、実装状態表、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義しない。`docs/DOCUMENT_INDEX.md` は索引であり、仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義しない。
+`README.md` は入口であり、詳細ルール、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義しない。`docs/DOCUMENT_INDEX.md` は索引であり、仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義しない。
 
 ## Specification Write Rules
 
@@ -144,7 +144,7 @@
 | 確認項目 | 完了条件 |
 |----------|----------|
 | 記載先 | 変更した内容が `Specification Write Location Matrix` の `書く場所` に一致している。 |
-| 重複禁止 | `README.md` に詳細ルール、詳細仕様本文、実装状態表、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義していない。 |
+| 重複禁止 | `README.md` に詳細ルール、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義していない。 |
 | 索引境界 | `docs/DOCUMENT_INDEX.md` に仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義していない。 |
 | 詳細入口境界 | `docs/DETAIL_INDEX.md` に方針、ポリシー、実装状態、実装可否、ロードマップ状態を定義していない。 |
 | 詳細本文境界 | `docs/details/*.md` に owner component 以外の主本文を混在させていない。 |
@@ -300,10 +300,10 @@
 
 ## Consistency Notes
 
-現時点では、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、owner component 別の `docs/details/*.md` に記載された一部コンポーネントや機能は仕様化済みだが、リポジトリ内に実装ファイルが存在しない。
+現時点では、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、owner component 別の `docs/details/*.md` に記載された一部機能は仕様化済みだが、リポジトリ内に実装コードが存在しない。
 
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
-標準ソース配置への移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go` は Phase 1 実装済みであり、`components/runner.go` は Phase 2 完了判定パス実装済みである。Go toolchain による `gofmt` と `go test` の検証対象である。
+標準ソース配置への移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は `docs/ROADMAP.md` の実装状態と本ファイルの `Specified Components` に従って実装済みとして扱う。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
 
 `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は旧配置名であり、現行実装実体として扱わない。標準配置と現行実体の判断は、`docs/SPEC.md` Part 1 §4.3、`docs/DETAIL_INDEX.md` §0j、本ファイルの `Specified Components` を同時に確認する。
