@@ -215,6 +215,8 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 対象項目を完了扱いにする場合は、責務 component ごとに下表の検証を満たす。実装ファイルが存在しても、本表の必須検証が未完了の場合は完了扱いにしない。
 
+本表の `builder`、`runner`、`api`、`sdk`、`ui`、`setup` は Phase の主対象 component である。`statefile`、`security`、`archive`、`commitstatus`、`admin`、`fixture` は、主対象 component の collaborator component として完了判定に参加する。collaborator component の検証が失敗する場合、主対象 component の実装も完了扱いにしてはならない。
+
 | 対象 | 必須検証 | 合格条件 |
 |------|----------|----------|
 | `builder` | CLI 正常系 | `adlaire-ci-build --src <valid.md-or-dir> --out <site-dir>` が終了コード `0` で終了し、静的 Web サイトと `[REPORT]` を生成する。 |
@@ -230,6 +232,12 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `sdk` | SDK 契約 | 全 method が §22.0e の endpoint のみを呼び、body なし endpoint に body を送らず、HTTP error を `AdlaireCIError` として返す。 |
 | `ui` | UI 契約 | 全操作が §24 の SDK method 経由で動作し、成功表示、失敗表示、disabled、再取得、秘密情報消去が一致する。 |
 | `setup` | systemd | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 の unit 名、`ExecStart`、配置パス、権限、起動確認コマンドが実際の導入手順と一致する。 |
+| `statefile` | 状態ファイル契約 | 状態ファイルの schema、lock、atomic write、JSON Lines、破損時処理、権限、秘密情報マスクが `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c と一致する。 |
+| `security` | 認証・認可・漏えい禁止 | scope、API key、audit、session、TOTP、rate limit、秘密情報非表示、失敗時副作用が `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 と一致する。 |
+| `archive` | artifact / log archive | gzip archive、snapshot、download、delete、rollback、cleanup の実体処理が `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7、§27.15 と一致し、API / SDK / UI の応答契約を上書きしない。 |
+| `commitstatus` | GitHub Commit Status | payload、送信順、失敗時非反転、保存値、secret mask が `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 と一致し、runner の build 実行判断を上書きしない。 |
+| `admin` | 静的配布境界 | admin 配布物、archive validation、HTTP 静的配信、setup 連携が `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` §0、A1〜A5 と一致し、UI / SDK の本文を重複定義しない。 |
+| `fixture` | fixture / fake / 証跡 | Phase 別 fixture、fake、assertion、expected / effects、PR 証跡が `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §0g.8-F、§22-F、§27-F と一致する。 |
 
 検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、期待結果、実結果を対応付けて記録する。検証不能な項目がある場合は、その項目を完了扱いにしてはならない。
 
@@ -262,6 +270,8 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 ## 0g. 初期実装 Phase 分割
 
 Go 版初期実装は、`ADLAIRE_CI_SPEC.md` §0e の対象範囲を一括実装せず、下表の Phase 順に進める。上位 Phase の完了判定を満たす前に、下位 Phase の実装 PR を開始してはならない。
+
+各 Phase の `対象` は、その Phase の owner component を示す。状態ファイル、security、archive、commitstatus、admin、fixture、setup が関わる場合も、それらは collaborator component として該当 Phase の完了条件に含める。collaborator component の詳細仕様に未充足がある場合は、owner component の実装で補完せず、先に該当する責務 component 別詳細仕様ファイルを改訂する。
 
 | Phase | 対象 | 実装範囲 | 依存条件 | 完了条件 |
 |-------|------|----------|----------|----------|
@@ -387,7 +397,9 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 
 表の「責務 component」は参照先を探すための component 一覧である。owner component と collaborator component は、対象機能の詳細仕様節に記載された値を正とする。
 
-表の「詳細仕様節」が複数ある場合は、すべての節を同時に満たす。`builder` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` の同番号節を合わせて確認する。`runner` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` の同番号節を合わせて確認する。`api` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_API_SPEC.md` の同番号節を合わせて確認する。`sdk` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 を合わせて確認する。`ui` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 を合わせて確認する。セットアップ、アップデート、バイナリ配布、systemd、リリース成果物検証に関わる機能では、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 を合わせて確認する。該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。
+表の「詳細仕様節」が複数ある場合は、すべての節を同時に満たす。ファイル名を伴わない裸の節番号は、同じ行の「責務 component」から該当する owner component または collaborator component の詳細仕様ファイルへ解決する。`builder` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` の同番号節を合わせて確認する。`runner` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` の同番号節を合わせて確認する。`api` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_API_SPEC.md` の同番号節を合わせて確認する。`sdk` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 を合わせて確認する。`ui` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 を合わせて確認する。`statefile`、`security`、`archive`、`commitstatus`、`admin`、`fixture`、`setup` が責務 component に含まれる場合は、それぞれの責務 component 別詳細仕様ファイルを合わせて確認する。該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。
+
+詳細節対応表は owner component を置き換える表ではない。受け入れ条件が複数 component にまたがる場合でも、主本文は owner component の詳細仕様ファイルを正とし、collaborator component の詳細仕様は schema、呼び出し境界、表示、security、setup、fixture、検証観点だけを補完する。
 
 | 機能 | 責務 component | 詳細仕様節 | 受け入れ条件 |
 |------|-------------------|------------|--------------|

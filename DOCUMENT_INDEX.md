@@ -49,6 +49,8 @@
 
 各詳細仕様ファイルの `持つ内容` と `持たない内容` が本文、`ADLAIRE_CI_DETAIL_SPEC.md` §0b、または本索引と矛盾する場合、その項目は実装判断に使わず、先に文書整合を行う。
 
+`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は、同じ owner component / collaborator component 境界で読む。Phase の主対象は owner component とし、statefile、security、archive、commitstatus、admin、fixture、setup は必要に応じて collaborator component として検証、schema、setup、security、fixture、配布境界を補完する。
+
 `COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。横断する固定値、読み順、対応表、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値・管理仕様として扱い、component として扱わない。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、責務 component 別詳細仕様ファイルへ分割しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。
