@@ -663,3 +663,40 @@ Phase 完了判定の PR 証跡テンプレート、必須記載項目、不足�
 受け入れ結果は、`docs/details/fixture.md` §0g.8-F の形式で実装 PR 本文または検証ログに記録する。失敗、未実行、環境都合で省略した項目がある場合、そのコンポーネントを完了扱いにしてはならない。
 
 ---
+
+### §26.8 Setup / Admin 配布実装完了ゲート
+
+セットアップ、アップデート、管理 API 導入、admin UI 配布は、§26.1〜§26.7 の本文に加えて下表を満たした場合だけ実装完了とする。本節は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
+
+| 段階 | 必須入力 | 成功確定条件 | 失敗時固定結果 | fixture 必須 |
+|------|----------|--------------|----------------|--------------|
+| 変数検証 | `VERSION`、`OS_ARCH`、`INSTALL_DIR`、`BIN_DIR`、`DOWNLOAD_DIR` | 空値なし、危険 path なし、`OS_ARCH=linux-amd64`。 | 終了コード `2`。directory、download、配置なし。 | `setup variable invalid` |
+| Release 取得 | asset URL、`SHA256SUMS` | 対象 asset と `SHA256SUMS` が HTTP 2xx、size > 0。 | 終了コード `1`。未検証 asset を配置しない。 | `setup download failure` |
+| checksum | asset、`SHA256SUMS` | 対象 filename が 1 行だけ存在し、SHA-256 が一致する。 | 終了コード `1`。binary、admin、systemd、state 差分なし。 | `setup checksum duplicate`、`update checksum before change` |
+| binary 配置 | 検証済み binary | symlink でない通常 file へ `0755` で配置し、`--version` が期待値を返す。 | systemd を変更しない。restart 前失敗なら旧 binary を保持する。 | `setup symlink target`、`setup success` |
+| secret / state 初期化 | PAT、初期 state | secret `0600`、`.last_sha` `0600`、LF 付き JSON、fsync 完了。 | systemd を変更しない。secret 値を出力しない。 | `setup pat empty`、`setup success` |
+| admin archive 展開 | `admin-ui.tar.gz` | `docs/details/admin.md` A1〜A2 を満たし、一時 directory 検証後に差し替える。 | 既存 `$INSTALL_DIR/admin` を変更しない。API service を起動 / restart しない。 | `api setup admin archive unsafe` |
+| systemd 配置 | unit file 内容 | unit 書込、mode、`daemon-reload`、enable/start/restart、`is-active` が成功する。 | enable/start/restart を成功扱いしない。journal 確認対象を出力する。 | `api setup health failure`、`update runner restart failure` |
+| rollback | 旧 binary / 旧 admin backup | 定義済み対象だけ 1 回復元し、対象 service を 1 回 restart する。 | 追加推測復旧を行わず、現在配置済み path と journal 確認対象を出力する。 | `update rollback failure` |
+| 最終確認 | 配置済み binary、state、service、admin UI | §26.3 / §26.3b / §26.5 の固定確認がすべて成功する。 | 成功報告しない。未確認項目を `未実行` として記録する。 | `setup success`、`update api absent` |
+
+**setup / update 実装者向け出力固定：**
+
+| 出力先 | 必須内容 | 禁止内容 |
+|--------|----------|----------|
+| stdout | 段階開始、段階成功、最終成功、配置 binary version。 | PAT、password、token、Webhook secret、SMTP password、Release URL credential。 |
+| stderr | 固定 error prefix、失敗段階、終了コード、確認すべき journal / path。 | secret 原文、checksum 対象 file の内容、環境変数全量 dump。 |
+| PR 検証記録 | 実行 command、exit code、重要 stdout/stderr、差分あり / なし、未実行理由。 | secret 原文、credential 付き URL、ローカル固有 token。 |
+
+**setup / update 差分確認固定：**
+
+| ケース | 必須差分確認 | 合格条件 |
+|--------|--------------|----------|
+| fresh setup success | `$BIN_DIR`、`$INSTALL_DIR`、systemd unit | 仕様で許可された binary、secret、state、unit だけが作成される。 |
+| fresh setup failure | `$BIN_DIR`、`$INSTALL_DIR`、systemd unit | 失敗段階より後の対象に差分がない。 |
+| API 導入 success | API binary、admin directory、API unit、credentials | runner timer と runner state は不要に変更されない。 |
+| API 導入 failure | admin backup、API binary、API unit | admin 展開失敗では既存 admin directory に差分がない。 |
+| update success | 対象 binary、admin UI、systemd restart 記録 | 既存 state、history、secret は保持される。 |
+| update failure | rollback 対象、journal 確認対象 | rollback 表で許可した対象以外に差分がない。 |
+
+`setup` 実装 PR は、上表の fixture、差分確認、secret 非表示確認、終了コード確認を記録する。いずれかが未実行の場合、対象段階を完了扱いにせず、未実行理由と再実行条件を記録する。

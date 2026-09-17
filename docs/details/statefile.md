@@ -817,3 +817,44 @@ BuildMeta object:
 | `size_warn` | boolean | 必須 | boolean | 直近 report の size warning。 |
 
 `.build_status.json` の更新タイミング、各 `status` の選択条件、書き込み失敗時の runner 終了コードは `docs/details/runner.md` §13 の build status 更新契約を正とする。
+
+### §22.0s 状態ファイル実装完了固定契約
+
+`statefile` owner component は、§22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。実装者は状態ファイルごとに別々の暗黙処理を追加せず、下表の共通契約を満たす。
+
+| 観点 | 入力 | 必須処理 | 成功時出力 | 失敗時出力 / 副作用 |
+|------|------|----------|------------|---------------------|
+| path 解決 | state dir、§22.0a の状態ファイル path | state dir 外へ出る path、absolute user input、`..`、symlink 経由の secret 参照を拒否する。 | 正規化済み target path。 | `500` または呼び出し元の固定 error。target を作成・変更しない。 |
+| schema 読取 | JSON object / JSON array / JSON Lines / text | §22.0c の key、型、nullable、列挙値、UTC 時刻形式を検証する。 | typed value。 | `ErrStateCorrupted` または行単位 skip。未知 key を削除して成功扱いにしない。 |
+| 初期値 | file 不在 | §22.0a の「不在時」または初期値を返す。 | 初期 typed value。 | read-only 呼び出しでは file を作成しない。write 呼び出しだけ更新手順で作成する。 |
+| atomic write | 更新後 JSON / text | `{name}.lock`、tmp、chmod、rename、file sync、parent sync、lock 削除を順に行う。 | target が完全な新内容へ置換される。 | target は旧内容を維持する。tmp と lock は best effort で削除し、呼び出し元へ `500` を返す。 |
+| lock timeout | 既存 `{name}.lock` | 100ms 間隔、最大 10 秒待つ。 | lock 取得後に更新継続。 | `409 {"error":"Conflict"}` または呼び出し元の conflict error。target を変更しない。 |
+| chmod | target file / directory | 秘密情報 `0600`、通常 file `0644`、directory `0755` を適用する。 | mode が固定値に一致する。 | chmod 失敗は成功扱いにしない。rename 前なら target 変更なし、rename 後なら ERROR ログへ記録する。 |
+| corrupt backup | §22.0a で退避指定された破損 file | `{name}.corrupt.{YYYYMMDDHHMMSS}.bak` へ同一 directory 内で rename する。 | backup file と再生成初期値。 | backup 失敗時は再生成せず `500`。secret 内容を log / response に含めない。 |
+| JSON Lines | JSON Lines file | 空行、JSON object 以外、必須 key 不足、型不一致行を除外する。 | 有効行だけの配列。 | 壊れた行は server log に固定 code、path、line number だけ記録する。response に壊れた行数を含めない。 |
+| 複数ファイル更新 | 複数 state 書込 endpoint | API detail の Write 列順に 1 file ずつ atomic write する。 | 全対象が順に更新される。 | 未処理 file は変更しない。更新済み file は自動 rollback しない。`.config_log` に失敗を記録する。 |
+
+**read / write 境界固定：**
+
+| 呼び出し種別 | 許可する処理 | 禁止する処理 |
+|--------------|--------------|--------------|
+| `GET` endpoint | 既存 target の読取、typed value 変換、JSON Lines の有効行抽出、fallback 値算出。 | file 作成、chmod、corrupt backup、旧形式保存、lock 待機、lock 削除、tmp 作成。 |
+| write endpoint | 入力 validation 後の atomic write、§22.0a で定義された初期値作成、定義済み corrupt backup。 | validation 前の状態変更、未定義 file 作成、未知 key 保存、secret 平文 log。 |
+| runner write | build lifecycle に必要な state 更新、`.build_lock` stale 判定後の lock 削除。 | API 専用 credentials / token / auth state の直接変更。 |
+| setup write | 初期配置に必要な `.github_token`、`.last_sha`、admin directory の配置。 | API runtime state、history、build log、session、token の生成。 |
+
+**状態ファイル fixture 合格ゲート：**
+
+| fixture | 初期状態 | 操作 | 合格条件 |
+|---------|----------|------|----------|
+| state read missing | target 不在 | 対応する read adapter 呼び出し | §22.0a の不在時戻り値を返し、filesystem 差分なし。 |
+| state corrupt object | JSON parse 不能または未知 key あり | read endpoint 呼び出し | `500 {"error":"State file is corrupted"}`。target 差分なし。 |
+| state corrupt regenerates | §22.0a で再生成指定済み file が破損 | write endpoint または再生成を伴う操作 | corrupt backup が 1 件作成され、初期値だけが保存される。 |
+| state lock timeout | `{name}.lock` が 10 秒以上残る | write endpoint 呼び出し | `409`、target/tmp 差分なし。 |
+| state chmod failure | chmod を fake failure | write endpoint 呼び出し | 成功扱いにせず、target 更新有無が atomic write 表の失敗時動作と一致する。 |
+| state fsync failure | file sync または parent sync を fake failure | write endpoint 呼び出し | `500`、ERROR log、secret 非表示。 |
+| json lines partial corrupt | 有効行と破損行が混在 | list endpoint 呼び出し | 有効行だけ返し、server log に line number、response body に破損詳細なし。 |
+| get no mutation | 破損なし state 一式 | 全 read-only endpoint 呼び出し | state dir の file list、mtime、mode、content が変化しない。 |
+| multi write partial failure | 2 file 目の write を fake failure | 複数ファイル更新 endpoint 呼び出し | 1 file 目は保持、2 file 目以降は未変更、`.config_log` に失敗記録。 |
+
+`statefile` は上表の fixture expected が用意され、成功系、validation failure、corrupt read、lock timeout、chmod failure、fsync failure、GET no mutation の差分が確認できるまで実装完了扱いにしてはならない。

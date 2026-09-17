@@ -103,3 +103,32 @@ setup が admin UI を配置する場合は、以下を満たす。
 | no mutation | UI / SDK file 内容、状態ファイル、credential、build log、snapshot を変更しない。 |
 | no secret exposure | `.admin_credentials`、`.github_token`、`.server_config`、`.build_logs`、`.snapshots` を静的配信しない。 |
 | setup integration | `docs/details/setup.md` §26 の配置・rollback 条件と矛盾しない。 |
+
+---
+
+## A6. Admin Fixture 固定契約
+
+`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。実装者は UI DOM、SDK method、API endpoint の詳細を本ファイルで再定義せず、admin 配布境界だけを確認する。
+
+| fixture | 入力 | 操作 | 合格条件 |
+|---------|------|------|----------|
+| admin archive success | `index.html`、`adlaire-ci-sdk.js`、任意の `style.css` / `app.js` を root 直下に含む archive | admin archive validation | 検証成功。展開後 file mode `0644`、directory mode `0755`。 |
+| admin archive missing required | `index.html` または `adlaire-ci-sdk.js` がない archive | admin archive validation | 検証失敗。既存 `$INSTALL_DIR/admin` 差分なし。 |
+| admin archive extra file | A1 未定義 file を含む archive | admin archive validation | 検証失敗。未定義 file を展開しない。 |
+| admin archive traversal | `../x`、absolute path、backslash、NUL byte を含む entry | admin archive validation | 検証失敗。既存 `$INSTALL_DIR/admin` 差分なし。 |
+| admin archive special entry | symlink、hardlink、device、FIFO、socket | admin archive validation | 検証失敗。参照先を読まない、作成しない。 |
+| admin serve index | `GET /`、`GET /admin/`、`HEAD /admin/index.html` | static serving | `index.html` を返し、`Content-Type: text/html; charset=utf-8`、`Cache-Control: no-store`。 |
+| admin serve assets | `GET /admin/adlaire-ci-sdk.js`、`GET /admin/style.css`、`GET /admin/app.js` | static serving | A3 の Content-Type と Cache-Control。任意 file 不在時は `404`。 |
+| admin serve method denied | `POST /admin/index.html` | static serving | `405`。request body を読まず、state 差分なし。 |
+| admin serve forbidden path | `/admin/../.github_token`、`/.admin_credentials`、`/admin/.server_config` | static serving | `404`。secret / state / log / snapshot の内容を返さない。 |
+| admin no mutation | 正常 admin directory と state dir | 全 admin request fixture 実行 | admin file、state file、credential、build log、snapshot の content / mode / mtime が変化しない。 |
+
+**Admin 実装完了ゲート：**
+
+| 観点 | 合格条件 |
+|------|----------|
+| archive validation | A2 と A6 の全 archive fixture が成功し、失敗時に既存 admin directory 差分がない。 |
+| static serving | A3 と A6 の全 request fixture が status、header、body 有無、method 制限に一致する。 |
+| secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
+| no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
+| setup integration | `docs/details/setup.md` §26.8 の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |
