@@ -85,6 +85,12 @@ owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` は、各 component の詳�
 
 仕様改訂では、既存仕様、`DOCUMENT_INDEX.md`、実装ファイルとの整合性を確認する。
 
+文書整理では、`README.md`、`DOCUMENT_INDEX.md`、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` の読み順と正本範囲を維持する。
+
+文書整理だけを目的とする作業では、機能仕様、実装状態、実装可否、ロードマップ状態を変更してはならない。状態変更が必要な場合は、変更対象、変更理由、影響範囲を別途提示し、承認を得る。
+
+`README.md` は初見向けの入口、`DOCUMENT_INDEX.md` は索引、`ADLAIRE_CI_SPEC.md` は方針・ポリシー・状態の正本、`ADLAIRE_CI_DETAIL_SPEC.md` は詳細仕様入口、owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` は詳細仕様本文として扱う。
+
 `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` に記載された一部コンポーネントや機能は、仕様化済みであっても未実装の場合がある。リポジトリ内に実装ファイルまたは実装コードが存在しない内容を、実装済み機能として扱ってはならない。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` または owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を改訂する場合は、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。

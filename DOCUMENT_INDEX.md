@@ -2,6 +2,18 @@
 
 このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。
 
+## Reading Order
+
+| 順序 | ファイル | 目的 |
+|------|----------|------|
+| 1 | `AGENTS.md` | 作業ルール、承認、Git 運用、文書整合ルールを確認する。 |
+| 2 | `DOCUMENT_INDEX.md` | 文書と実装ファイルの役割、正本関係、配置を確認する。 |
+| 3 | `ADLAIRE_CI_SPEC.md` | 方針、ポリシー、実装状態、実装可否、ロードマップを確認する。 |
+| 4 | `ADLAIRE_CI_DETAIL_SPEC.md` | 詳細仕様の入口、読み順、共通固定値、対応表、ソース配置を確認する。 |
+| 5 | `ADLAIRE_CI_DETAIL_*_SPEC.md` | 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
+
+上記の順序は、文書整理、仕様改訂、実装、検証、PR 作成のすべてで共通とする。`DOCUMENT_INDEX.md` は索引であり、仕様判断の正本ではない。
+
 ## Documents
 
 | ファイル | 役割 |
@@ -23,6 +35,18 @@
 | `DESIGN.md` | 生成静的 Web サイトのデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | `DOCUMENT_INDEX.md` | 本索引。リポジトリ内の文書・実装ファイルの役割と正本関係を示す。仕様正本ではない。 |
+
+## Document Classes
+
+| 分類 | 対象 | 役割 |
+|------|------|------|
+| ルールブック | `AGENTS.md` | 作業ルール、承認、Git 運用、文書整合の最上位ルール。 |
+| マスター仕様 | `ADLAIRE_CI_SPEC.md` | 方針、ポリシー、実装状態、実装可否、ロードマップ、正本関係。 |
+| 詳細仕様入口 | `ADLAIRE_CI_DETAIL_SPEC.md` | 詳細仕様の読み順、索引、共通固定値、対応表、ソース配置、横断補足契約。 |
+| 詳細仕様本文 | `ADLAIRE_CI_DETAIL_*_SPEC.md` | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
+| 補助文書 | `DESIGN.md` | 生成静的 Web サイトのデザイン補助。 |
+| 索引 | `DOCUMENT_INDEX.md` | 文書・実装ファイルの役割と所在。仕様本文を定義しない。 |
+| 実装 | `main.go`、`components/*.go`、`testdata/<component>/` | 仕様に基づく Go 実装、テスト、fixture。 |
 
 ## Detail Spec Management
 

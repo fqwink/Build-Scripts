@@ -8,6 +8,14 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 方針・ポリシー・実装状態・実装可否・ロードマップの正本は `ADLAIRE_CI_SPEC.md` です。詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md` を参照します。各 owner component の入出力、状態、処理順序、異常系、検証条件の本文は `ADLAIRE_CI_DETAIL_*_SPEC.md` を正本として扱います。
 
+## 読む順番
+
+1. `AGENTS.md`: 作業ルール、承認、Git 運用を確認する。
+2. `DOCUMENT_INDEX.md`: 文書と実装ファイルの役割、正本関係、配置を確認する。
+3. `ADLAIRE_CI_SPEC.md`: 方針、ポリシー、実装状態、実装可否、ロードマップを確認する。
+4. `ADLAIRE_CI_DETAIL_SPEC.md`: 詳細仕様の入口、読み順、共通固定値、対応表、ソース配置を確認する。
+5. `ADLAIRE_CI_DETAIL_*_SPEC.md`: 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。
+
 ## 主要ファイル
 
 - `ADLAIRE_CI_SPEC.md`: Adlaire CI のマスター仕様書。
