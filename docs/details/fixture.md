@@ -335,6 +335,51 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 §27.1〜§27.11 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`notifications`、`status_api_calls` を持つ。未使用項目も空配列または `0` で明示する。dry-run、validation、noop、security fixture では、状態ファイル、lock、history、build log、archive、notification、deploy、commit status の forbidden side effect を必ず列挙する。
 
+**§27.12〜§27.20 feature fixture 固定契約：**
+
+§27.12〜§27.20 の fixture は、Webhook、Webhook event log、duration stats、snapshot artifact、health、log severity search、branch config、weekly summary、config diff の運用 API / runner / archive 連動を固定する。各 fixture は、HTTP response だけでなく、状態ファイル差分、外部呼び出し、保存順、失敗時に発生してはならない副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+
+| 節 | fixture | 固定する内容 |
+|----|---------|--------------|
+| §27.12 | `success-webhook-push-queued` | raw body HMAC 検証、push payload parse、対象 branch 判定、`.webhook_events.json` `result="queued"`、`.build_state.queued[]` `trigger="webhook"`、response `202`、delivery id / queue id の一致を固定する。 |
+| §27.12 | `failure-webhook-invalid-signature` | secret 不在、署名 header 欠落、prefix 不正、hex 不正、署名不一致で `401`、event log / queue / build state / access log secret 値差分なしを固定する。 |
+| §27.12 | `noop-webhook-duplicate-delivery` | 同一 delivery id、branch、sha の pending queue entry がある場合に新規 queue 追加なし、event log `duplicate`、既存 queue id response、idempotency を固定する。 |
+| §27.12 | `failure-webhook-queue-full` | queue 上限時に event log `queue_full` を追記し、queue 差分なし、response `429`、secret / raw payload 非保存を固定する。 |
+| §27.13 | `success-webhook-events-page` | `.webhook_events.json` を timestamp 降順、同時刻 file 逆順で並べ、`limit` / `offset` 適用後の events、壊れていない行だけの `total`、secret 非表示を固定する。 |
+| §27.13 | `success-webhook-events-empty` | event file 不在または空で `events=[]`、`total=0`、read-only no-write、server log なしを固定する。 |
+| §27.13 | `partial-webhook-events-corrupt-line` | 破損 JSON Lines を response から除外し、固定 WARN code だけを server log に出し、破損行内容と secret を出さず、状態を修復しないことを固定する。 |
+| §27.13 | `failure-webhook-events-invalid-query` | `limit` / `offset` 範囲外、未知 query、非整数 query で `422`、状態差分なし、server log に query 値の secret 風値を残さないことを固定する。 |
+| §27.14 | `success-stats-summary` | build history と通常 / archive build log から成功数、失敗数、成功率、平均 interval、平均 / 最大 duration を固定丸めで返し、read-only no-write を固定する。 |
+| §27.14 | `success-stats-timeline` | `days` 範囲、UTC 日付 bucket、日付降順、0 件日除外、status 分類、状態差分なしを固定する。 |
+| §27.14 | `partial-stats-corrupt-log-skip` | 通常 log 破損、archive gzip 展開失敗、duration 欠落を除外し、WARN code、集計継続、破損内容非表示を固定する。 |
+| §27.14 | `failure-stats-invalid-query` | `days` / `n` 範囲外、未知 query、非整数で `422`、通常 log / archive log / history 差分なしを固定する。 |
+| §27.15 | `success-snapshot-list-download` | snapshot `meta.json` 読取、size 集計、tar.gz entry 順序、download header、安全 entry だけ含むこと、状態差分なしを固定する。 |
+| §27.15 | `success-snapshot-delete` | id validation、running check、snapshot directory 削除、`.config_log` 追記順、response、削除対象以外の snapshot 維持を固定する。 |
+| §27.15 | `success-snapshot-rollback` | rollback lock、new build id、`.build_state.running`、rollback build log / history、pending transfer、元 snapshot 非破壊、`.last_sha` 非更新を固定する。 |
+| §27.15 | `failure-snapshot-running-conflict` | running 中の delete / rollback で `409`、snapshot / history / log / pending / config log 差分なしを固定する。 |
+| §27.16 | `success-health-ok` | `.build_status.json` 正常時の HTTP `200`、`status="ok"`、checks 空、pending / notify count、uptime fake clock、read-only no-write を固定する。 |
+| §27.16 | `success-health-degraded` | pending transfer、missing status fallback、runner stale、notify pending read warning で `status="degraded"`、checks 順序、HTTP `200`、状態差分なしを固定する。 |
+| §27.16 | `failure-health-read-error` | response 生成不能または必須 read error の固定条件で `500` または `status="error"`、自動修復なし、状態差分なしを固定する。 |
+| §27.16 | `noop-health-readonly` | health を複数回呼んでも状態ファイル、access 対象外ファイル、log archive、notification が変わらないことを固定する。 |
+| §27.17 | `success-log-search-level` | `level` 正規化、stdout / stderr / warnings / error 分類、`line_number` 1 始まり、source、message、query filter を固定する。 |
+| §27.17 | `success-log-search-archive` | 通常 log と archive log を同一分類で検索し、通常 log 優先、archive gzip 展開順、状態差分なしを固定する。 |
+| §27.17 | `partial-log-search-corrupt-skip` | 破損 build log と gzip 展開失敗を除外し、固定 WARN code、検索継続、破損内容非表示を固定する。 |
+| §27.17 | `failure-log-search-invalid-level` | 不正 level、未知 query、date 範囲不正で `422`、read-only no-write、archive 展開呼び出し 0 件または固定中断位置を固定する。 |
+| §27.18 | `success-branch-config-get-default` | `.branch_config` 不在時の default 正規化、`source="default"`、secret 非表示、状態差分なしを固定する。 |
+| §27.18 | `success-branch-config-post` | request `branches` 検証、`branch_targets` 保存、sort、`.config_log` diff、response `branches_count`、runner が次回起動で読む状態を固定する。 |
+| §27.18 | `failure-branch-config-invalid-path` | 相対禁止 path、`..`、空 branch、deploy target 重複、上限超過で `422`、`.branch_config` / `.config_log` 差分なしを固定する。 |
+| §27.18 | `partial-branch-config-log-failure` | `.branch_config` 保存または削除成功後の `.config_log` 追記失敗で response `500`、保存済み状態を巻き戻さないことを固定する。 |
+| §27.19 | `success-weekly-summary-auto` | fake clock 条件一致、自動集計、対象 channel 抽出、通知 payload、`.notify_log`、`.build_state.weekly_summary_*` 更新順を固定する。 |
+| §27.19 | `success-weekly-summary-manual` | 手動 API の認証、集計、送信結果 `channel_results`、`.notify_log`、sent date 非更新、response payload を固定する。 |
+| §27.19 | `noop-weekly-summary-same-day` | 同日自動送信済みで通知 0 件、`.notify_log` / `.notify_pending` / `.build_state` 差分なし、idempotency を固定する。 |
+| §27.19 | `failure-weekly-summary-send` | 宛先なし `422` または送信失敗 `500`、sent date 非更新、retry 対象時だけ `.notify_pending` 追加、build status 非変更を固定する。 |
+| §27.20 | `success-config-diff-simple` | 単一 key 更新の normalized before / after、machine diff、`diff_text`、target、actor、保存後 config log 追記を固定する。 |
+| §27.20 | `success-config-diff-nested` | nested object の dot path diff、配列全体比較、key 昇順、JSON 値表現、複数行値 escape を固定する。 |
+| §27.20 | `noop-config-diff-same-value` | 正規化後同一値で対象状態ファイル、secret file、`.config_log` 差分なし、`No changes` response、idempotency を固定する。 |
+| §27.20 | `security-config-diff-secret-mask` | key path に password / token / secret / pat / smtp_password を含む値を before / after と `diff_text` で `"***"` にし、request body / header / cookie 非保存を固定する。 |
+
+§27.12〜§27.20 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。read-only、noop、invalid query、invalid signature、running conflict fixture では、対象状態ファイル、queue、history、build log、snapshot、notification、config log の forbidden side effect を必ず列挙する。
+
 **§27 fixture ファイルセット固定契約：**
 
 各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。実装者は fixture ごとに必要ファイルを推測してはならない。
@@ -456,10 +501,15 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
   "notifications": [],
   "downloads": [],
   "streams": [],
+  "status_api_calls": 0,
   "unchanged_paths": [],
   "deleted_paths": [],
   "created_paths": [],
+  "updated_paths": [],
   "write_order": [],
+  "forbidden_created_paths": [],
+  "forbidden_updated_paths": [],
+  "forbidden_deleted_paths": [],
   "forbidden_writes": [],
   "forbidden_calls": []
 }
@@ -472,10 +522,15 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 | `notifications` | array[object] | 必須 | 通知送信、pending 化、retry 対象。通知なしは空配列。 |
 | `downloads` | array[object] | 必須 | snapshot / artifact download の byte size、content type、中断有無。該当なしは空配列。 |
 | `streams` | array[object] | 必須 | SSE / fetch stream の event、close、error。該当なしは空配列。 |
+| `status_api_calls` | integer | 必須 | status API、health API、dashboard API など状態参照 API の期待呼び出し回数。該当なしは `0`。 |
 | `unchanged_paths` | array[string] | 必須 | 実行後に変更があってはならない状態ファイル、出力ファイル、log。 |
 | `deleted_paths` | array[string] | 必須 | 実行後に削除される path。削除なしは空配列。 |
 | `created_paths` | array[string] | 必須 | 実行後に新規作成される path。作成なしは空配列。 |
+| `updated_paths` | array[string] | 必須 | 実行後に既存内容が更新される path。更新なしは空配列。 |
 | `write_order` | array[string] | 必須 | 書き込み順。書き込みなしは空配列。複数状態更新 fixture では空配列禁止。 |
+| `forbidden_created_paths` | array[string] | 必須 | 作成されてはならない path。作成禁止なしは空配列。 |
+| `forbidden_updated_paths` | array[string] | 必須 | 更新されてはならない path。更新禁止なしは空配列。 |
+| `forbidden_deleted_paths` | array[string] | 必須 | 削除されてはならない path。削除禁止なしは空配列。 |
 | `forbidden_writes` | array[string] | 必須 | 書き込み禁止 path。read-only、dry-run、validation failure fixture では対象状態ファイルを必ず列挙する。 |
 | `forbidden_calls` | array[string] | 必須 | 呼び出し禁止の外部 API / command / notification。呼び出し禁止なしは空配列。 |
 

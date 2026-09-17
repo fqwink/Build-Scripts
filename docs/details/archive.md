@@ -137,6 +137,44 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は `
 | delete log 失敗 | snapshot 削除済みのまま `500`。削除は巻き戻さない。 |
 | rollback pending | pending entry には `rollback_from`、`snapshot_id`、deploy target を保存する。 |
 
+**artifact 実装完了固定契約：**
+
+| 操作 | 完了条件 | 失敗時副作用 |
+|------|----------|--------------|
+| snapshot save | `site.tar.gz` と `meta.json` を tmp directory に作成し、検証後に `.snapshots/{build_id}` へ rename する。`meta.json.output_sha256` が build history の値と一致する。 | tmp 作成中の失敗では公開 snapshot directory を作らない。既存 snapshot は変更しない。 |
+| snapshot list | `meta.json` が schema valid な snapshot だけを `saved_at` 降順、同時刻 id 降順で返す。 | 破損 snapshot は除外し、WARN `SNAPSHOT_META_CORRUPT`。修復しない。 |
+| download | tar.gz entry が root 外を参照せず、相対 path 辞書順で stream される。 | unsafe entry、secret file、symlink 検出時は stream 開始前なら `500`、開始後なら stream を中断し server log に固定 code を出す。状態は変更しない。 |
+| delete | 対象 snapshot directory だけを削除し、`.config_log` に target `snapshot_delete` を追記する。 | `.config_log` 失敗では snapshot は削除済みのまま `500`。他 snapshot は変更しない。 |
+| rollback success | 新規 build id、rollback build log、history、`.build_status.json` finalizer、deploy result が整合する。 | deploy 失敗時は rollback build を failure または success_deploy_pending として新規記録し、元 snapshot と `.last_sha` は変更しない。 |
+
+**snapshot `meta.json` schema 固定契約：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | 必須 | build id と同一。 |
+| `build_id` | string | 必須 | build id と同一。 |
+| `saved_at` | string | 必須 | UTC ISO 8601 秒精度。 |
+| `size_bytes` | integer | 必須 | snapshot 対象通常ファイル合計 bytes。 |
+| `file_count` | integer | 必須 | snapshot 対象通常ファイル数。 |
+| `output_sha256` | string/null | 必須 | build history の `output_sha256`。不明時 `null`。 |
+
+未知 key は read 時に無視せず `SNAPSHOT_META_CORRUPT` としてその snapshot を一覧から除外する。`size_bytes` と `file_count` は download 時にも再計算し、`meta.json` と不一致なら `500` とする。
+
+**rollback 状態更新順固定契約：**
+
+1. snapshot id を検証する。
+2. snapshot と `meta.json` を検証する。
+3. `.build_lock` を取得する。
+4. 新規 build id を採番する。
+5. `.build_state.running=true` と `.build_status.json.status="running"` を保存する。
+6. snapshot artifact を deploy target へ転送する。
+7. rollback build log と `.build_history` を追記する。
+8. pending transfer がある場合は `.pending_transfers` に rollback entry を保存する。
+9. `.build_status.json` finalizer と `.build_state.running=false` を保存する。
+10. `.build_lock` を解放する。
+
+手順 3 より前の失敗は状態差分なしとする。手順 3 以後の失敗は rollback build log に失敗地点、`rollback_from`、`snapshot_id` を残し、`.build_lock` 解放と finalizer を必ず試行する。finalizer 失敗時は response `500` とし、元 snapshot、元 build log、過去 history、`.last_sha` は変更しない。
+
 **sdk / ui 操作境界：**
 
 sdk は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。sdk は snapshot の存在、download 安全性、rollback 可否を状態ファイルから推測せず、API response / error をそのまま扱う。`404`、`409`、`422`、`500` は API の HTTP status と error body を保持した `AdlaireCIError` とする。ui は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は API が返す running / conflict 状態または status response の running 状態に基づく場合だけ disabled とする。ui は snapshot directory、tar.gz、rollback state を直接操作してはならない。

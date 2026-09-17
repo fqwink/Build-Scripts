@@ -2177,6 +2177,29 @@ Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`�
 | recent | `{build_id, finished_at, duration_seconds, status}` を返す。 |
 | archive 優先 | 同じ id が通常 log と archive にある場合、通常 log を採用する。 |
 
+**duration 記録・統計実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| started_at | build id 採番直後、`.build_status.json.status="running"` 保存前の UTC 秒精度時刻。 |
+| finished_at | finalizer が最終 status、deploy pending、rollback pending、failure を確定した時刻。 |
+| duration_seconds | `finished_at - started_at` を秒単位で切り捨てる。負値になる fake clock / clock drift は `0` に丸め、WARN `DURATION_CLOCK_DRIFT` を出す。 |
+| 保存順 | build log 最終更新 → `.build_history` 追記 → `.build_status.json` finalizer の順で同じ duration を保存する。 |
+| deploy pending | deploy pending でも build 処理自体の finished_at を保存し、pending retry の所要時間を合算しない。 |
+| rollback | rollback build log も duration を保存する。元 snapshot の duration は変更しない。 |
+| skip | `skipped_no_change`、`skipped_cooldown`、`circuit_open` で build log を作らない場合、duration を作らない。build log を作る skip fixture では `duration_seconds=0` を明示する。 |
+| read-only stats | `GET /api/stats`、`GET /api/stats/timeline`、`GET /api/stats/build-duration` は history、logs、archive、trend、status を変更しない。 |
+
+**統計 API 分類・丸め固定契約：**
+
+| API | 対象 | 計算 |
+|-----|------|------|
+| `GET /api/stats?days=N` | `.build_history` の `finished_at` または `build_at` が `now - N*24h <= t <= now` の行。 | `success` / `success_deploy_pending` を成功、`failure` / `cancelled` / `hook_error` / `failure_remote_build` を失敗、`skipped_*` を総数から除外する。 |
+| `GET /api/stats/timeline?days=N` | UTC 日付 bucket。 | 日付降順。build 0 件の日は返さない。 |
+| `GET /api/stats/build-duration?n=N` | 通常 log と archive log の duration あり完了 log。 | latest 判定後 N 件、avg は小数第 2 位、min / max は整数。 |
+
+`days` は 1〜366、既定値 7 とする。`n` は 1〜1000、既定値 20 とする。未知 query、非整数、範囲外は `422` とし、状態差分なしとする。破損 build log、破損 history 行、gzip 展開失敗は対象から除外し、固定 WARN code だけを出す。破損内容、secret 風値、stdout/stderr 本文は WARN に含めない。
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -2250,6 +2273,23 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 除外 | `skipped_*`、`approval_*`、duration 欠落の平均対象。 |
 | 最大 duration | payload に `max_duration_seconds`、`max_duration_build_id` を含める。対象なしは `null`。 |
 | 手動 response | 送信 payload と送信結果 `{sent:boolean, channel_results:[]}` を返す。 |
+
+**weekly summary 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 実行位置 | runner 起動時の startup integrity、pending transfer retry、maintenance 判定後、通常 GitHub polling / local watch 差分検出前に判定する。 |
+| channel 抽出 | `.notify_config.channels[]` の `enabled=true` かつ `on` に `weekly_summary` を含む channel を配列順に使う。legacy `webhooks` / root `on` だけがある場合は互換 channel として配列順に正規化する。 |
+| 自動宛先なし | WARN `WEEKLY_SUMMARY_NO_CHANNEL` を出し、`.notify_pending` と sent date を変更しない。build status は変更しない。 |
+| 手動宛先なし | API は `422 {"error":"No weekly summary channel configured"}`。`.notify_log`、`.notify_pending`、sent date を変更しない。 |
+| payload | `event`、`period_days`、`period_from`、`period_to`、`success_count`、`failure_count`、`success_rate`、`avg_duration_seconds`、`max_duration_seconds`、`max_duration_build_id` を含む。 |
+| success_rate | 分母が 0 の場合 `0`。それ以外は `success_count / (success_count + failure_count) * 100` を小数第 2 位で丸める。 |
+| avg_duration_seconds | 対象 duration がない場合 `null`。ある場合は秒の平均を小数第 2 位で丸める。 |
+| notify log | channel ごとに 1 record を追記し、payload hash、status、http_status、error_code を保存する。payload 本文全体は保存しない。 |
+| pending | retry 対象 channel の送信失敗だけ `.notify_pending` に追加する。retry 非対象 channel は `.notify_log` だけに失敗を残す。 |
+| secret mask | webhook secret、SMTP password、API token、session token、repository token、Authorization header は payload、notify log、pending、server log に保存しない。 |
+
+手動 weekly summary は build lock を取得しない。自動 weekly summary も通常 build の `.build_lock` を取得しない。ただし `.notify_log`、`.notify_pending`、`.build_state` の書き込みでは各状態ファイルの atomic write / lock 契約に従う。
 
 **検証条件：**
 
