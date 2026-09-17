@@ -4,6 +4,179 @@
 
 仕様・詳細仕様・補助文書・本索引は `docs/` 配下に集約する。ルールブック `AGENTS.md` と入口文書 `README.md` はリポジトリ root に置く。
 
+## Specification Governance
+
+仕様構造の管理は、文書の所在、正本範囲、記載先、変更手順、完了条件を分離して扱う。
+
+| 管理領域 | 確認する節 | 判断する内容 |
+|----------|------------|--------------|
+| 構造地図 | `Specification Structure Map` | 読みたい目的から参照先を選ぶための地図。 |
+| 階層定義 | `Specification Structure` | 文書階層、文書の位置付け、役割の定義。 |
+| 判断 | `Specification Decision Flow` | 目的ごとに最初に読む文書、次に確認する文書。 |
+| 記載先 | `Specification Write Location Matrix` | 何をどの文書に書き、どこに書かないか。 |
+| 変更手順 | `Specification Change Procedure` | 文書構造変更時の作業順序。 |
+| 完了条件 | `Specification Structure Completion Criteria` | 完了報告前に満たすべき確認項目。 |
+
+本節は、仕様構造を変更するための統制入口である。本節自体は仕様本文、詳細仕様本文、実装状態、実装可否、ロードマップを定義しない。
+
+## Specification Structure Map
+
+本節は、読みたい目的から参照先を選ぶための地図である。文書階層そのものの定義は `Specification Structure` を正とする。
+
+| 読みたいもの | 参照先 | 参照理由 |
+|--------------|--------|----------|
+| 作業してよい条件 | `AGENTS.md` | 承認、Git、PR、文書整合の最上位ルールを確認する。 |
+| 初見向け概要 | `README.md` | 最小限の入口と主要参照先を確認する。 |
+| 文書構造 | `docs/DOCUMENT_INDEX.md` | 文書の役割、所在、正本範囲、実装ファイル所在を確認する。 |
+| 方針・状態 | `docs/SPEC.md` | 方針、ポリシー、実装状態、実装可否、ロードマップを確認する。 |
+| 詳細仕様入口 | `docs/DETAIL_INDEX.md` | 詳細仕様の読み方、共通固定値、対応表、横断補足契約を確認する。 |
+| 詳細仕様本文 | `docs/details/*.md` | owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
+| デザイン補助 | `docs/DESIGN.md` | 生成静的 Web サイトの視覚仕様を確認する。 |
+| 実装所在 | `docs/DOCUMENT_INDEX.md` の `Specified Components` | 実装ファイル、テスト、fixture の所在と状態を確認する。 |
+
+## Specification Structure
+
+本節は、仕様文書の階層と位置付けを定義する。目的別の参照先選択は `Specification Structure Map` を入口とする。
+
+仕様文書の構造は、作業ルール、入口、索引、正本、詳細入口、責務 component 別本文、補助文書に分ける。
+
+| 階層 | ファイル | 位置付け | 主な用途 |
+|------|----------|----------|----------|
+| 作業ルール | `AGENTS.md` | 最上位ルールブック | 承認、Git 運用、仕様書管理、文書整合ルールを判断する。 |
+| 入口 | `README.md` | 初見向け入口 | リポジトリ概要、読む順番、主要ファイルを把握する。 |
+| 索引 | `docs/DOCUMENT_INDEX.md` | 文書・実装ファイル索引 | 文書配置、正本関係、実装ファイル所在を確認する。 |
+| マスター仕様 | `docs/SPEC.md` | 方針・ポリシー正本 | 実装状態、実装可否、ロードマップ、禁止事項を判断する。 |
+| 詳細仕様入口 | `docs/DETAIL_INDEX.md` | Part 3 詳細仕様セット入口 | 詳細仕様の読み方、共通固定値、対応表、横断補足契約を確認する。 |
+| 詳細仕様本文 | `docs/details/*.md` | owner component 別本文 | 対象 component の入出力、状態、処理順序、異常系、検証条件を実装単位で確認する。 |
+| 補助文書 | `docs/DESIGN.md` | 生成静的 Web サイトのデザイン補助 | レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を確認する。 |
+
+仕様判断では、上位階層が下位階層を置き換えるのではなく、各階層の正本範囲だけを参照する。`docs/DOCUMENT_INDEX.md` は所在と役割の索引であり、仕様本文を定義しない。
+
+## Specification Decision Flow
+
+目的別の参照先は以下に固定する。迷った場合は、最初に本表で参照先を決め、参照先の正本範囲だけを確認する。
+
+| 目的 | 最初に読む文書 | 次に確認する文書 | 判断内容 |
+|------|----------------|------------------|----------|
+| 作業ルール、承認、Git 運用を確認したい | `AGENTS.md` | `docs/DOCUMENT_INDEX.md` | 作業開始可否、変更承認、PR 作成、文書整合の手順を判断する。 |
+| リポジトリ全体の文書構造を把握したい | `README.md` | `docs/DOCUMENT_INDEX.md` | どの文書が何を持つか、どの順番で読むかを判断する。 |
+| 方針、ポリシー、実装状態、実装可否を判断したい | `docs/SPEC.md` | `docs/DETAIL_INDEX.md` | 対象が実装済み、仕様化済み、将来計画、実装不可のどれかを判断する。 |
+| 詳細仕様本文を探したい | `docs/DETAIL_INDEX.md` | 対象 owner component の `docs/details/*.md` | 対象機能の owner component、参照節、受け入れ条件を判断する。 |
+| 実装ファイル、テスト、fixture の所在を確認したい | `docs/DOCUMENT_INDEX.md` | `docs/DETAIL_INDEX.md` §0j | 現行実装ファイル、未実装 path、標準配置の扱いを判断する。 |
+| component の入出力、状態、処理順序、異常系、検証条件を確認したい | 対象 owner component の `docs/details/*.md` | collaborator component の `docs/details/*.md` | 実装時に従う具体仕様と collaborator 境界を判断する。 |
+| 生成静的 Web サイトの見た目を確認したい | `docs/DESIGN.md` | `docs/details/builder.md` | レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を判断する。 |
+
+本表は文書選択の判断フローであり、各文書の正本範囲を拡張しない。
+
+## Specification Decision Rules
+
+仕様判断では、目的を先に確定し、目的に対応する正本だけを読む。
+
+| 判断ルール | 内容 |
+|------------|------|
+| 作業ルール優先 | 作業可否、承認、Git 操作、PR 作成は常に `AGENTS.md` を正とする。 |
+| 状態判断優先 | 実装済み、仕様化済み、将来計画、実装不可の判断は `docs/SPEC.md` を正とする。 |
+| 詳細本文優先 | 入出力、状態、処理順序、異常系、検証条件は owner component の `docs/details/*.md` を正とする。 |
+| 索引限定 | `docs/DOCUMENT_INDEX.md` は所在と役割の索引であり、仕様本文を定義しない。 |
+| 入口限定 | `README.md` は入口であり、詳細ルールや詳細仕様本文を重複定義しない。 |
+| 補助限定 | `docs/DESIGN.md` は視覚仕様の補助であり、機能仕様、運用仕様、API 仕様の正本ではない。 |
+
+## Specification Write Location Matrix
+
+仕様、詳細仕様、索引、補助文書を改訂する場合は、下表に従って記載先を選ぶ。
+
+| 書く内容 | 書く場所 | 書いてはいけない場所 |
+|----------|----------|----------------------|
+| 作業ルール、承認条件、Git 運用、PR 作成、文書整合ルール | `AGENTS.md` | `README.md`、`docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
+| 方針、ポリシー、実装状態、実装可否、ロードマップ、リリース判断、正本関係 | `docs/SPEC.md` | `docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
+| 詳細仕様の入口、読み順、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約 | `docs/DETAIL_INDEX.md` | `docs/SPEC.md`、`docs/details/*.md`、`README.md` |
+| owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件 | owner component 別の `docs/details/*.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
+| 文書配置、読む順番、正本関係、実装ファイル所在、仕様構造の索引 | `docs/DOCUMENT_INDEX.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
+| 生成静的 Web サイトのレイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様 | `docs/DESIGN.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
+| 初見向け概要、最小限の読む順番、主要ファイル案内 | `README.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
+
+`README.md` は入口であり、詳細ルール、詳細仕様本文、実装状態表、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義しない。`docs/DOCUMENT_INDEX.md` は索引であり、仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義しない。
+
+## Specification Write Rules
+
+仕様構造を維持するため、記載先は以下の順で確定する。
+
+1. 書く内容が作業ルールか、仕様本文か、詳細仕様本文か、索引か、補助文書かを分類する。
+2. `Specification Write Location Matrix` で書く場所を確定する。
+3. 書いてはいけない場所に同じ意味の本文が残る場合は、重複として整理する。
+4. 参照だけで足りる場合は、本文を複製せず、正本への参照に留める。
+5. 実装状態、実装可否、ロードマップを動かす場合は、`docs/SPEC.md` の正本範囲として扱う。
+
+## Specification Change Procedure
+
+仕様構造、文書配置、ファイル名、参照先、正本関係を変更する場合は、以下の順で作業する。
+
+1. 変更目的を `Specification Decision Flow` で分類する。
+2. 記載先を `Specification Write Location Matrix` で確定する。
+3. 確定した正本文書だけを編集する。
+4. 文書名、節名、正本範囲、実装ファイル所在に影響がある場合は、必要な索引と参照だけを更新する。
+5. 旧ファイル名、旧節名、移動前参照、削除済み文書名が残っていないことを `rg` で確認する。
+6. 文書構造整理だけの作業では、実装ファイル、testdata、fixture を変更しない。
+7. `Specification Structure Completion Criteria` をすべて満たしてから完了扱いにする。
+
+上記手順は、仕様本文の意味、実装状態、ロードマップ状態を変更する許可ではない。仕様本文の意味を変更する場合は、変更内容に対応する正本文書のルールに従う。
+
+## Specification Change Rules
+
+仕様構造変更では、変更の種類ごとに確認対象を固定する。
+
+| 変更の種類 | 必ず確認する文書 | 確認内容 |
+|------------|------------------|----------|
+| ファイル名変更 | `docs/DOCUMENT_INDEX.md`、`README.md`、`AGENTS.md`、`docs/SPEC.md`、`docs/DETAIL_INDEX.md` | 旧ファイル名参照が残っていないこと。 |
+| 正本関係変更 | `AGENTS.md`、`docs/SPEC.md`、`docs/DOCUMENT_INDEX.md` | 作業ルール、仕様正本、索引の記載が矛盾しないこと。 |
+| 詳細仕様分割 | `docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md` | owner component、collaborator、参照表、本文配置が一致すること。 |
+| README 整理 | `README.md`、`docs/DOCUMENT_INDEX.md` | README が入口に留まり、詳細ルールを重複定義していないこと。 |
+| 実装所在整理 | `docs/DOCUMENT_INDEX.md`、`docs/DETAIL_INDEX.md` §0j | 実装ファイル、テスト、fixture の所在と状態が一致すること。 |
+
+## Specification Structure Completion Criteria
+
+仕様構造、文書配置、ファイル名、参照先、正本関係を変更する作業は、以下をすべて満たすまで完了扱いにしない。
+
+| 確認項目 | 完了条件 |
+|----------|----------|
+| 記載先 | 変更した内容が `Specification Write Location Matrix` の `書く場所` に一致している。 |
+| 重複禁止 | `README.md` に詳細ルール、詳細仕様本文、実装状態表、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義していない。 |
+| 索引境界 | `docs/DOCUMENT_INDEX.md` に仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義していない。 |
+| 詳細入口境界 | `docs/DETAIL_INDEX.md` に方針、ポリシー、実装状態、実装可否、ロードマップ状態を定義していない。 |
+| 詳細本文境界 | `docs/details/*.md` に owner component 以外の主本文を混在させていない。 |
+| 参照整合 | 旧ファイル名、旧節名、移動前参照、削除済み文書名が `rg` で残っていない。 |
+| 変更範囲 | 文書構造整理だけの作業で、実装ファイル、testdata、fixture を変更していない。 |
+| PR 範囲 | 同一目的の文書構造変更が既存 PR に集約され、並行 PR と同一ファイル編集を発生させていない。 |
+
+上記のいずれかを満たせない場合は、完了報告せず、該当文書の正本範囲、記載先、参照先を再整備する。
+
+## Specification Completion Rules
+
+仕様構造整理の完了報告では、以下を満たす。
+
+| 完了報告に含める内容 | 内容 |
+|----------------------|------|
+| 変更対象 | 変更した文書名を明記する。 |
+| 変更内容 | 追加、削除、移動、簡潔化、参照更新の内容を明記する。 |
+| 正本範囲 | 仕様本文を変えたのか、索引を変えたのか、入口を変えたのかを明記する。 |
+| 検証 | `git diff --check`、旧参照検索、変更範囲確認を明記する。 |
+| 未実施 | docs-only で実装検証を未実施にした場合は理由を明記する。 |
+
+## Repository Document Index
+
+本節以降は、リポジトリ内文書と実装ファイル所在の索引である。仕様判断の本文は各正本を参照する。
+
+| 索引領域 | 確認する節 | 判断する内容 |
+|----------|------------|--------------|
+| 読む順番 | `Reading Order` | 作業開始から詳細仕様本文までの確認順序。 |
+| 文書一覧 | `Documents` | 各文書の役割と所在。 |
+| 実装所在入口 | `Implementation File Index` | 実装ファイル所在の判断原則。 |
+| 詳細仕様管理 | `Detail Spec Management` | owner component 別詳細仕様ファイルの配置と状態。 |
+| 実装ファイル一覧 | `Specified Components` | 実装ファイル、テスト、fixture の所在と状態。 |
+| 正本関係 | `Source Of Truth` | 判断対象ごとの正本。 |
+| 整合ガード | `Consistency Guardrails` | 文書整合を壊さないための禁止事項。 |
+| 整合メモ | `Consistency Notes` | 現行状態に関する注意点。 |
+
 ## Reading Order
 
 | 順序 | ファイル | 目的 |
@@ -11,9 +184,9 @@
 | 1 | `AGENTS.md` | 作業ルール、承認、Git 運用、文書整合ルールを確認する。 |
 | 2 | `README.md` | 初見向けの概要、読む順番、主要ファイルを確認する。 |
 | 3 | `docs/DOCUMENT_INDEX.md` | 文書と実装ファイルの役割、正本関係、配置を確認する。 |
-| 4 | `docs/ADLAIRE_CI_SPEC.md` | 方針、ポリシー、実装状態、実装可否、ロードマップを確認する。 |
-| 5 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` | 詳細仕様の入口、読み順、共通固定値、対応表、ソース配置を確認する。 |
-| 6 | `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` | 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
+| 4 | `docs/SPEC.md` | 方針、ポリシー、実装状態、実装可否、ロードマップを確認する。 |
+| 5 | `docs/DETAIL_INDEX.md` | 詳細仕様の入口、読み順、共通固定値、対応表、ソース配置を確認する。 |
+| 6 | `docs/details/*.md` | 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
 
 上記の順序は、文書整理、仕様改訂、実装、検証、PR 作成のすべてで共通とする。`docs/DOCUMENT_INDEX.md` は索引であり、仕様判断の正本ではない。
 
@@ -21,78 +194,57 @@
 
 | ファイル | 役割 |
 |---------|------|
-| `README.md` | 初見向け入口。概要、読む順番、主要ファイル、現行実装状態の要約を示す。 |
-| `docs/ADLAIRE_CI_SPEC.md` | Adlaire CI の方針、ポリシー、実装状態、正本関係を定めるマスター仕様書正本。 |
-| `docs/ADLAIRE_CI_DETAIL_SPEC.md` | `docs/ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様の入口。索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約を持つ。 |
-| `docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | `admin` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` | `sdk` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` | `ui` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | `statefile` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner component の詳細仕様。 |
-| `docs/ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | `fixture` owner component の詳細仕様。 |
+| `README.md` | 初見向け入口。概要、読む順番、主要ファイルを示す。 |
+| `docs/SPEC.md` | 方針、ポリシー、実装状態、実装可否、ロードマップを示す。 |
+| `docs/DETAIL_INDEX.md` | 詳細仕様の入口、読み順、共通固定値、対応表、リポジトリ内ソース配置、横断補足契約を示す。 |
+| `docs/details/builder.md` | `builder` owner component の詳細仕様。 |
+| `docs/details/runner.md` | `runner` owner component の詳細仕様。 |
+| `docs/details/api.md` | `api` owner component の詳細仕様。 |
+| `docs/details/admin.md` | `admin` owner component の詳細仕様。 |
+| `docs/details/sdk.md` | `sdk` owner component の詳細仕様。 |
+| `docs/details/ui.md` | `ui` owner component の詳細仕様。 |
+| `docs/details/setup.md` | `setup` owner component の詳細仕様。 |
+| `docs/details/statefile.md` | `statefile` owner component の詳細仕様。 |
+| `docs/details/archive.md` | `archive` owner component の詳細仕様。 |
+| `docs/details/commitstatus.md` | `commitstatus` owner component の詳細仕様。 |
+| `docs/details/security.md` | `security` owner component の詳細仕様。 |
+| `docs/details/fixture.md` | `fixture` owner component の詳細仕様。 |
 | `docs/DESIGN.md` | 生成静的 Web サイトのデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
-| `docs/DOCUMENT_INDEX.md` | 本索引。リポジトリ内の文書・実装ファイルの役割と正本関係を示す。仕様正本ではない。 |
+| `docs/DOCUMENT_INDEX.md` | 本索引。文書・実装ファイルの役割と所在を示す。仕様本文を定義しない。 |
 
-## Document Classes
+## Implementation File Index
 
-| 分類 | 対象 | 役割 |
-|------|------|------|
-| ルールブック | `AGENTS.md` | 作業ルール、承認、Git 運用、文書整合の最上位ルール。 |
-| 入口 | `README.md` | 初見向け概要、読む順番、主要ファイル。 |
-| マスター仕様 | `docs/ADLAIRE_CI_SPEC.md` | 方針、ポリシー、実装状態、実装可否、ロードマップ、正本関係。 |
-| 詳細仕様入口 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` | 詳細仕様の読み順、索引、共通固定値、対応表、ソース配置、横断補足契約。 |
-| 詳細仕様本文 | `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
-| 補助文書 | `docs/DESIGN.md` | 生成静的 Web サイトのデザイン補助。 |
-| 索引 | `docs/DOCUMENT_INDEX.md` | 文書・実装ファイルの役割と所在。仕様本文を定義しない。 |
-| 実装 | `main.go`、`components/*.go`、`testdata/<component>/` | 仕様に基づく Go 実装、テスト、fixture。 |
+実装ファイルの所在と状態は、`Specified Components` を正とする。実装ファイルが存在することだけで、仕様化済み、実装可、完了済みとは判断しない。
 
 ## Detail Spec Management
 
-詳細仕様は、責務 component 別の分割済み詳細仕様ファイルとして管理する。
+詳細仕様は、責務 component 別の `docs/details/*.md` を本文として管理する。`docs/DETAIL_INDEX.md` は、詳細仕様本文を集約せず、入口、読み順、共通固定値、対応表、リポジトリ内ソース配置、横断補足契約だけを持つ。
 
-`docs/ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約を持つ。各 component の入出力、処理順序、状態、異常系、検証条件の本文は下表の owner component 別詳細仕様ファイルを正とする。
-
-fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件、実装 PR 完了証跡は `docs/ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を正とする。`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は完了判定の入口であり、`docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 は setup / release / Phase 判定の実行条件である。両ファイルは fixture 名、fake 動作、PR 証跡項目、差し戻し条件を重複定義しない。
+下表は、詳細仕様本文の配置先を示す索引である。各ファイルの責務境界、持つ内容、持たない内容、owner / collaborator の扱いは `docs/DETAIL_INDEX.md` §0b および §0b.1 を正とする。
 
 | ファイル | 状態 | 役割 |
 |----------|------|------|
-| `docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | 分割済み | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
-| `docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | 分割済み | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
-| `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` | 分割済み | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。API fixture は `docs/ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F。 |
-| `docs/ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | 分割済み | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 |
-| `docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` | 分割済み | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| `docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` | 分割済み | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
-| `docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | 分割済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
-| `docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | 分割済み | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
-| `docs/ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | 分割済み | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 |
-| `docs/ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | 分割済み | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
-| `docs/ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | 分割済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| `docs/ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | 分割済み | fixture manifest、assertion、fake、testdata、expected / effects、Phase 3 / Phase 4 API fixture、api / sdk / ui / statefile cross fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 |
+| `docs/details/builder.md` | 分割済み | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
+| `docs/details/runner.md` | 分割済み | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
+| `docs/details/api.md` | 分割済み | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。API fixture は `docs/details/fixture.md` §22-F。 |
+| `docs/details/admin.md` | 分割済み | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 |
+| `docs/details/sdk.md` | 分割済み | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
+| `docs/details/ui.md` | 分割済み | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
+| `docs/details/setup.md` | 分割済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
+| `docs/details/statefile.md` | 分割済み | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
+| `docs/details/archive.md` | 分割済み | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 |
+| `docs/details/commitstatus.md` | 分割済み | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
+| `docs/details/security.md` | 分割済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
+| `docs/details/fixture.md` | 分割済み | fixture manifest、assertion、fake、testdata、expected / effects、Phase 3 / Phase 4 API fixture、api / sdk / ui / statefile cross fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 |
 
-責務 component 別詳細仕様ファイルは、各ファイルの `## 0. 責務境界` を実装前に確認する。`owner component` は主本文を持つ component、`collaborator component` は呼び出し境界、schema、fixture、security、setup、表示、受け入れ条件を参照する component として扱う。collaborator 側の参照は、owner component の主本文を上書きしない。
-
-各詳細仕様ファイルの `持つ内容` と `持たない内容` が本文、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0b、または本索引と矛盾する場合、その項目は実装判断に使わず、先に文書整合を行う。
-
-`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は、同じ owner component / collaborator component 境界で読む。Phase の主対象は owner component とする。statefile、security、archive、commitstatus、admin、fixture、setup は、owner component の該当機能が状態ファイル、認証・監査、snapshot / log archive、commit status、admin 配布物、fixture、setup / update 手順を参照または変更する場合に collaborator component として検証対象、schema 参照、setup 参照、security 参照、fixture 参照、配布境界確認を提供する。collaborator component は owner component の入出力、状態、endpoint、SDK method、UI DOM、fixture を追加定義しない。
-
-実装者が詳細仕様を読む順序は、`docs/ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認し、owner component の分割先詳細仕様ファイルを主本文として読む順に固定する。collaborator component の分割先詳細仕様ファイルは、呼び出し境界、schema、表示、security、setup、fixture、検証観点として参照し、owner component の主本文を上書きしない。
-
-`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。横断する固定値、読み順、対応表、横断補足契約は `docs/ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値・管理仕様として扱い、component として扱わない。
-
-`docs/ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、責務 component 別詳細仕様ファイルへ分割しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと `docs/ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。§27.38a は個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema を定義しない。これらは owner component 別詳細仕様ファイルを正とし、§27.38a は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを補足する。
+詳細仕様を改訂する場合は、`docs/SPEC.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` の対応表から owner component を特定し、該当する `docs/details/*.md` を本文として更新する。`docs/DOCUMENT_INDEX.md` は配置と役割の索引に限定し、仕様本文、詳細仕様本文、実装状態の最終判断を定義しない。
 
 ## Specified Components
 
-`docs/ADLAIRE_CI_SPEC.md` と `docs/ADLAIRE_CI_DETAIL_SPEC.md` では、以下のコンポーネントも仕様化されている。
+`docs/SPEC.md` と `docs/DETAIL_INDEX.md` では、以下のコンポーネントも仕様化されている。
 
-リポジトリ内ソース配置の標準構成は、`docs/ADLAIRE_CI_SPEC.md` Part 1 §4.3 と `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0j を参照する。
+リポジトリ内ソース配置の標準構成は、`docs/SPEC.md` Part 1 §4.3 と `docs/DETAIL_INDEX.md` §0j を参照する。
 
 下表は、現行リポジトリに存在する実装ファイルと、実装不可の将来計画ファイルを示す。標準ソース配置への移行は完了済みであり、`main.go`、現存する `components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` を現行配置として扱う。
 
@@ -117,20 +269,34 @@ fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklis
 | 判断対象 | 正本 |
 |----------|------|
 | 作業ルール、承認、Git 運用、文書整合 | `AGENTS.md` |
-| 方針、ポリシー、実装状態、実装可否、ロードマップ、正本関係 | `docs/ADLAIRE_CI_SPEC.md` |
-| 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約 | `docs/ADLAIRE_CI_DETAIL_SPEC.md` |
-| 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` |
+| 方針、ポリシー、実装状態、実装可否、ロードマップ、正本関係 | `docs/SPEC.md` |
+| 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約 | `docs/DETAIL_INDEX.md` |
+| 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の `docs/details/*.md` |
 | 生成静的 Web サイトのデザイン補助 | `docs/DESIGN.md` |
 | 文書・実装ファイルの参照先と役割 | `docs/DOCUMENT_INDEX.md` |
+| 実装ファイル、テスト、fixture の所在 | `docs/DOCUMENT_INDEX.md` の Specified Components |
 
 `docs/DOCUMENT_INDEX.md` は索引であり、仕様・デザイン・実装判断の正本ではない。仕様を変更する場合は、先に該当する正本仕様書を更新し、その内容に基づいて実装ファイルを更新する。
 
+## Consistency Guardrails
+
+文書整合を保つため、以下を守る。
+
+| Guardrail | 内容 |
+|-----------|------|
+| 旧参照禁止 | リネーム済みファイル、移動済み節、削除済み文書名を残さない。 |
+| 二重正本禁止 | 同じ判断対象を複数文書で正本として定義しない。 |
+| README 肥大化禁止 | README に詳細仕様、詳細ルール、状態表、ロードマップを戻さない。 |
+| DETAIL 方針化禁止 | `docs/DETAIL_INDEX.md` と `docs/details/*.md` に方針、ポリシー、ロードマップ状態を持たせない。 |
+| 索引本文化禁止 | `docs/DOCUMENT_INDEX.md` に機能仕様、API 仕様、状態 schema、処理本文を持たせない。 |
+| 実装混入禁止 | 文書構造整理だけの PR で実装ファイル、testdata、fixture を変更しない。 |
+
 ## Consistency Notes
 
-現時点では、`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` に記載された一部コンポーネントや機能は仕様化済みだが、リポジトリ内に実装ファイルが存在しない。
+現時点では、`docs/SPEC.md`、`docs/DETAIL_INDEX.md`、owner component 別の `docs/details/*.md` に記載された一部コンポーネントや機能は仕様化済みだが、リポジトリ内に実装ファイルが存在しない。
 
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
 標準ソース配置への移行は完了済みである。`components/builder.go` は Phase 1 実装済みであり、`components/runner.go` は Phase 2 完了判定パス実装済みである。Go toolchain による `gofmt` と `go test` の検証対象である。
 
-`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は現行実装実体として扱わない。標準配置への移行完了条件は `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0j を正とする。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は現行実装実体として扱わない。標準配置への移行完了条件は `docs/DETAIL_INDEX.md` §0j を正とする。

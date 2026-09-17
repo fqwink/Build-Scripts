@@ -1,10 +1,10 @@
 # Adlaire CI — Archive 詳細仕様
 
-本ファイルは `docs/ADLAIRE_CI_DETAIL_SPEC.md` から分割した `archive` owner component の詳細仕様である。
+本ファイルは `docs/DETAIL_INDEX.md` から分割した `archive` owner component の詳細仕様である。
 
-本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/ADLAIRE_CI_SPEC.md` を正とする。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/SPEC.md` を正とする。
 
-本ファイルを読む前に、`docs/ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、fixture、検証観点として参照する。
+本ファイルを読む前に、`docs/SPEC.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、fixture、検証観点として参照する。
 
 ---
 
@@ -38,9 +38,9 @@ archive owner は、runner または `POST /api/logs/archive` から呼び出さ
 
 gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元ファイル mtime ではなく圧縮実行時刻でよい。圧縮前 JSON を読み込めないファイルは archive 対象外とし、WARN `LOG_ARCHIVE_SKIP_CORRUPT: id=<id>` を出す。実行中 build の `current_build_id` と一致する log は対象外とする。
 
-archive owner は、通常 log が存在しない場合に archive log を gzip 展開し、通常 `.build_logs/{id}.json` と同じ schema の JSON object として API へ返す。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` の endpoint、query、response body は `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e を正とし、本節は archive log の探索、展開、除外、件数返却だけを定義する。
+archive owner は、通常 log が存在しない場合に archive log を gzip 展開し、通常 `.build_logs/{id}.json` と同じ schema の JSON object として API へ返す。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` の endpoint、query、response body は `docs/details/api.md` §22.0e を正とし、本節は archive log の探索、展開、除外、件数返却だけを定義する。
 
-archive owner は、`POST /api/logs/cleanup` から呼び出された場合に、archive 済みファイルも `log_retention_days` の削除対象に含める。archive owner は `POST /api/logs/archive` へ `archived_count`、`POST /api/logs/cleanup` へ `deleted_count` と `failed_count` を返す。HTTP response body の形式は `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e を正とする。
+archive owner は、`POST /api/logs/cleanup` から呼び出された場合に、archive 済みファイルも `log_retention_days` の削除対象に含める。archive owner は `POST /api/logs/archive` へ `archived_count`、`POST /api/logs/cleanup` へ `deleted_count` と `failed_count` を返す。HTTP response body の形式は `docs/details/api.md` §22.0e を正とする。
 
 **archive / cleanup 固定契約：**
 
