@@ -231,6 +231,15 @@ type apiLogRecord struct {
 	Result string `json:"result,omitempty"`
 }
 
+type apiTokenRecord struct {
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	TokenHash string   `json:"token_hash"`
+	Scopes    []string `json:"scopes"`
+	CreatedAt string   `json:"created_at"`
+	RevokedAt *string  `json:"revoked_at"`
+}
+
 type apiConfigLogRecord struct {
 	At      string         `json:"at"`
 	Type    string         `json:"type"`
@@ -378,9 +387,33 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/logs", s.withAuth(s.handleLogs))
 	mux.HandleFunc("/api/logs/search", s.withAuth(s.handleLogSearch))
 	mux.HandleFunc("/api/logs/export", s.withAuth(s.handleLogExport))
+	mux.HandleFunc("/api/logs/cleanup", s.withAuth(s.handleLogsCleanup))
+	mux.HandleFunc("/api/logs/archive", s.withAuth(s.handleLogsArchive))
 	mux.HandleFunc("/api/history", s.withAuth(s.handleHistory))
 	mux.HandleFunc("/api/history/export", s.withAuth(s.handleHistoryExport))
 	mux.HandleFunc("/api/history/", s.withAuth(s.handleHistoryPath))
+	mux.HandleFunc("/api/pat-status", s.withAuth(s.handlePATStatus))
+	mux.HandleFunc("/api/pat-update", s.withAuth(s.handlePATUpdate))
+	mux.HandleFunc("/api/backup", s.withAuth(s.handleBackup))
+	mux.HandleFunc("/api/restore", s.withAuth(s.handleRestore))
+	mux.HandleFunc("/api/diagnostics", s.withAuth(s.handleDiagnostics))
+	mux.HandleFunc("/api/disk-usage", s.withAuth(s.handleDiskUsage))
+	mux.HandleFunc("/api/webhook-events", s.withAuth(s.handleWebhookEvents))
+	mux.HandleFunc("/api/webhook-config", s.withAuth(s.handleWebhookConfig))
+	mux.HandleFunc("/api/webhook", s.handleWebhook)
+	mux.HandleFunc("/api/snapshots", s.withAuth(s.handleSnapshots))
+	mux.HandleFunc("/api/snapshots/", s.withAuth(s.handleSnapshotPath))
+	mux.HandleFunc("/api/tokens", s.withAuth(s.handleTokens))
+	mux.HandleFunc("/api/tokens/", s.withAuth(s.handleTokenPath))
+	mux.HandleFunc("/api/alert-rules", s.withAuth(s.handleRuleFile(".alert_rules", "alert_rule")))
+	mux.HandleFunc("/api/alert-rules/", s.withAuth(s.handleRulePath(".alert_rules", "alert_rule")))
+	mux.HandleFunc("/api/tag-rules", s.withAuth(s.handleRuleFile(".tag_rules", "tag_rule")))
+	mux.HandleFunc("/api/tag-rules/", s.withAuth(s.handleRulePath(".tag_rules", "tag_rule")))
+	mux.HandleFunc("/api/pipeline-config", s.withAuth(s.handlePipelineConfig))
+	mux.HandleFunc("/api/notes", s.withAuth(s.handleNotes))
+	mux.HandleFunc("/api/dashboard-layout", s.withAuth(s.handleDashboardLayout))
+	mux.HandleFunc("/api/smtp-config", s.withAuth(s.handleSMTPConfig))
+	mux.HandleFunc("/api/smtp-test", s.withAuth(s.handleSMTPTest))
 	mux.HandleFunc("/api/circuit-breaker/reset", s.withAuth(s.handleCircuitReset))
 	mux.HandleFunc("/api/maintenance", s.withAuth(s.handleMaintenance))
 	mux.HandleFunc("/api/maintenance/enable", s.withAuth(s.handleMaintenanceEnable))
@@ -1659,6 +1692,46 @@ func (s *APIServer) handleLogExport(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"exported_at": s.nowString(), "lines": s.allLogLines()})
 }
 
+func (s *APIServer) handleLogsCleanup(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	cfg, err := s.readMergedConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if cfg.LogRetentionDays <= 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"message": "No logs deleted", "deleted_count": 0, "failed_count": 0})
+		return
+	}
+	cutoff := s.cfg.Now().UTC().AddDate(0, 0, -cfg.LogRetentionDays)
+	deleted, failed := cleanupLogFiles(filepath.Join(s.cfg.StateDir, ".build_logs"), cutoff)
+	writeJSON(w, http.StatusOK, map[string]any{"message": "Logs cleaned up", "deleted_count": deleted, "failed_count": failed})
+}
+
+func (s *APIServer) handleLogsArchive(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	cfg, err := s.readMergedConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if cfg.LogArchiveAfterDays <= 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"message": "No logs archived", "archived_count": 0})
+		return
+	}
+	cutoff := s.cfg.Now().UTC().AddDate(0, 0, -cfg.LogArchiveAfterDays)
+	count, err := archiveLogFiles(filepath.Join(s.cfg.StateDir, ".build_logs"), cutoff)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"message": "Logs archived", "archived_count": count})
+}
+
 func (s *APIServer) handleLogSearch(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
@@ -1851,6 +1924,35 @@ func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "history_tags", Changes: map[string]any{"id": id, "tags": tags}})
 		writeJSON(w, http.StatusOK, map[string]any{"id": log.ID, "tags": log.Tags})
+	case "rollback":
+		if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+			return
+		}
+		state, err := readBuildState(filepath.Join(s.cfg.StateDir, ".build_state"))
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		if state.Running || lockExists(filepath.Join(s.cfg.StateDir, ".build_lock")) {
+			writeError(w, http.StatusConflict, "Build is running")
+			return
+		}
+		snapshotDir := filepath.Join(s.cfg.StateDir, ".snapshots", id)
+		if _, err := os.Stat(snapshotDir); errors.Is(err, os.ErrNotExist) {
+			writeError(w, http.StatusNotFound, "Not found")
+			return
+		} else if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		buildID := s.newID("rollback")
+		now := s.nowString()
+		if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".build_history"), apiHistoryRecord{ID: buildID, BuildAt: now, Status: "success", Trigger: "rollback"}); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: now, Type: "rollback", Changes: map[string]any{"snapshot_id": id, "build_id": buildID}})
+		writeJSON(w, http.StatusAccepted, map[string]any{"message": "Rollback queued", "build_id": buildID})
 	default:
 		writeError(w, http.StatusNotFound, "Not found")
 	}
@@ -1973,6 +2075,605 @@ func (s *APIServer) handleQueue(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *APIServer) handlePATStatus(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	info, err := os.Stat(filepath.Join(s.cfg.StateDir, ".github_token"))
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"configured": err == nil, "mode": fileModeString(info)})
+}
+
+func (s *APIServer) handlePATUpdate(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var body struct {
+		Token string `json:"token"`
+	}
+	if !decodeBody(w, r, &body, true) {
+		return
+	}
+	token := strings.TrimSpace(body.Token)
+	if len(token) < 8 || len(token) > 512 || containsControl(token) {
+		writeValidation(w, "token", "invalid value")
+		return
+	}
+	if err := atomicWriteText(filepath.Join(s.cfg.StateDir, ".github_token"), token+"\n", 0600); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "pat_update", Changes: map[string]any{"token": "***"}})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "PAT updated"})
+}
+
+func (s *APIServer) handleBackup(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	backup := map[string]any{}
+	for _, file := range backupConfigFiles() {
+		if value, ok, err := readOptionalJSONMap(filepath.Join(s.cfg.StateDir, file)); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		} else if ok {
+			backup[strings.TrimPrefix(file, ".")] = maskSecrets(value)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(s.cfg.StateDir, ".github_token")); err == nil {
+		backup["github_token_set"] = true
+	}
+	if _, err := os.Stat(filepath.Join(s.cfg.StateDir, ".webhook_secret")); err == nil {
+		backup["webhook_secret_set"] = true
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"exported_at": s.nowString(), "config": backup})
+}
+
+func (s *APIServer) handleRestore(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var body struct {
+		Config map[string]map[string]any `json:"config"`
+	}
+	if !decodeBody(w, r, &body, true) {
+		return
+	}
+	if body.Config == nil {
+		writeValidation(w, "config", "required")
+		return
+	}
+	allowed := map[string]string{}
+	for _, file := range backupConfigFiles() {
+		allowed[strings.TrimPrefix(file, ".")] = file
+	}
+	writes := map[string]map[string]any{}
+	for key, value := range body.Config {
+		file, ok := allowed[key]
+		if !ok {
+			writeValidation(w, key, "unknown key")
+			return
+		}
+		if containsMaskedSecret(value) {
+			current, _, _ := readOptionalJSONMap(filepath.Join(s.cfg.StateDir, file))
+			value = mergeMaskedSecrets(value, current)
+		}
+		writes[file] = value
+	}
+	for _, file := range backupConfigFiles() {
+		value, ok := writes[file]
+		if !ok {
+			continue
+		}
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, file), value, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+	}
+	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "restore", Changes: map[string]any{"files": len(writes)}})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Config restored"})
+}
+
+func (s *APIServer) handleDiagnostics(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	meta, err := inspectOutput(s.outputDir())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	_, tokenErr := os.Stat(filepath.Join(s.cfg.StateDir, ".github_token"))
+	writeJSON(w, http.StatusOK, map[string]any{"items": []map[string]any{
+		{"name": "github_token", "status": statusFromExists(tokenErr)},
+		{"name": "output", "status": map[bool]string{true: "ok", false: "warn"}[meta.Exists]},
+	}})
+}
+
+func (s *APIServer) handleDiskUsage(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	logBytes, logCount := fileTreeStats(filepath.Join(s.cfg.StateDir, ".build_logs"), func(path string) bool {
+		return strings.HasSuffix(path, ".json") && !strings.Contains(filepath.ToSlash(path), "/archive/")
+	})
+	archiveBytes, archiveCount := fileTreeStats(filepath.Join(s.cfg.StateDir, ".build_logs", "archive"), func(path string) bool {
+		return strings.HasSuffix(path, ".json.gz")
+	})
+	outputBytes, _ := fileTreeStats(s.outputDir(), func(path string) bool { return true })
+	writeJSON(w, http.StatusOK, map[string]any{
+		"build_logs_bytes":         logBytes,
+		"build_logs_count":         logCount,
+		"build_logs_archive_bytes": archiveBytes,
+		"build_logs_archive_count": archiveCount,
+		"output_file_bytes":        outputBytes,
+		"total_bytes":              logBytes + archiveBytes + outputBytes,
+	})
+}
+
+func (s *APIServer) handleWebhookConfig(w http.ResponseWriter, r *http.Request) {
+	path := filepath.Join(s.cfg.StateDir, ".webhook_secret")
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		_, err := os.Stat(path)
+		writeJSON(w, http.StatusOK, map[string]any{"configured": err == nil})
+	case http.MethodPost:
+		var body struct {
+			Secret string `json:"secret"`
+		}
+		if !decodeBody(w, r, &body, true) {
+			return
+		}
+		secret := strings.TrimSpace(body.Secret)
+		if len(secret) < 8 || len(secret) > 256 || containsControl(secret) {
+			writeValidation(w, "secret", "invalid value")
+			return
+		}
+		if err := atomicWriteText(path, secret+"\n", 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "webhook_config", Changes: map[string]any{"secret": "***"}})
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Webhook config updated"})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+func (s *APIServer) handleWebhookEvents(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	limit, ok := parseBoundedInt(w, r, "limit", 100, 1, 1000)
+	if !ok {
+		return
+	}
+	offset, ok := parseBoundedInt(w, r, "offset", 0, 0, 1_000_000)
+	if !ok {
+		return
+	}
+	events := readJSONLines(filepath.Join(s.cfg.StateDir, ".webhook_events.json"))
+	sort.Slice(events, func(i, j int) bool { return fmt.Sprint(events[i]["at"]) > fmt.Sprint(events[j]["at"]) })
+	start := offset
+	if start > len(events) {
+		start = len(events)
+	}
+	end := start + limit
+	if end > len(events) {
+		end = len(events)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"events": events[start:end], "total": len(events)})
+}
+
+func (s *APIServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	if err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, "Payload too large")
+		return
+	}
+	secretData, err := os.ReadFile(filepath.Join(s.cfg.StateDir, ".webhook_secret"))
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	if !validWebhookSignature(strings.TrimSpace(string(secretData)), raw, r.Header.Get("X-Hub-Signature-256")) {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	if maintenanceEnabled(filepath.Join(s.cfg.StateDir, ".maintenance")) {
+		writeError(w, http.StatusServiceUnavailable, "maintenance")
+		return
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "Validation failed")
+		return
+	}
+	eventID := firstNonEmpty(r.Header.Get("X-GitHub-Delivery"), s.newID("evt"))
+	eventName := r.Header.Get("X-GitHub-Event")
+	result := "ignored_event"
+	queued := false
+	var queueID any
+	if eventName == "push" || eventName == "" {
+		statePath := filepath.Join(s.cfg.StateDir, ".build_state")
+		state, err := readBuildState(statePath)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		maxSize := s.queueMaxSize()
+		if maxSize == 0 || len(state.Queued) >= maxSize {
+			writeError(w, http.StatusTooManyRequests, "queue_full")
+			return
+		}
+		id := s.newID("q")
+		state.Queued = append(state.Queued, map[string]any{"id": id, "trigger": "webhook", "queued_at": s.nowString(), "requested_by": "webhook", "priority": "normal", "created_seq": nextCreatedSeq(state.Queued), "payload": map[string]any{"delivery_id": eventID, "ref": payload["ref"], "after": payload["after"]}})
+		if err := atomicWriteJSON(statePath, state, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		result, queued, queueID = "queued", true, id
+	}
+	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".webhook_events.json"), map[string]any{"at": s.nowString(), "event_id": eventID, "event": eventName, "result": result, "queued_id": queueID})
+	writeJSON(w, http.StatusAccepted, map[string]any{"message": "Webhook accepted", "queued": queued, "event_id": eventID, "queue_id": queueID})
+}
+
+func (s *APIServer) handleSnapshots(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	root := filepath.Join(s.cfg.StateDir, ".snapshots")
+	entries, err := os.ReadDir(root)
+	if errors.Is(err, os.ErrNotExist) {
+		writeJSON(w, http.StatusOK, map[string]any{"snapshots": []map[string]any{}})
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	snapshots := []map[string]any{}
+	for _, entry := range entries {
+		if !entry.IsDir() || !validSimpleID(entry.Name()) {
+			continue
+		}
+		meta, _, _ := readOptionalJSONMap(filepath.Join(root, entry.Name(), "meta.json"))
+		if meta == nil {
+			meta = map[string]any{}
+		}
+		meta["id"] = entry.Name()
+		snapshots = append(snapshots, meta)
+	}
+	sort.Slice(snapshots, func(i, j int) bool { return fmt.Sprint(snapshots[i]["id"]) > fmt.Sprint(snapshots[j]["id"]) })
+	writeJSON(w, http.StatusOK, map[string]any{"snapshots": snapshots})
+}
+
+func (s *APIServer) handleSnapshotPath(w http.ResponseWriter, r *http.Request) {
+	rest := strings.TrimPrefix(r.URL.Path, "/api/snapshots/")
+	id, suffix, _ := strings.Cut(rest, "/")
+	if !validSimpleID(id) {
+		writeValidation(w, "id", "invalid value")
+		return
+	}
+	dir := filepath.Join(s.cfg.StateDir, ".snapshots", id)
+	switch {
+	case suffix == "download" && r.Method == http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		path := filepath.Join(dir, "site.tar.gz")
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			writeError(w, http.StatusNotFound, "Not found")
+			return
+		}
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", id+".tar.gz"))
+		http.ServeFile(w, r, path)
+	case suffix == "" && r.Method == http.MethodDelete:
+		if !rejectBody(w, r) {
+			return
+		}
+		if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
+			writeError(w, http.StatusNotFound, "Not found")
+			return
+		}
+		if err := os.RemoveAll(dir); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "snapshot_delete", Changes: map[string]any{"id": id}})
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Snapshot deleted"})
+	default:
+		writeError(w, http.StatusNotFound, "Not found")
+	}
+}
+
+func (s *APIServer) handleTokens(w http.ResponseWriter, r *http.Request) {
+	path := filepath.Join(s.cfg.StateDir, ".api_tokens")
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		tokens, err := readAPITokens(path)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		out := []map[string]any{}
+		for _, token := range tokens {
+			out = append(out, map[string]any{"id": token.ID, "name": token.Name, "scopes": token.Scopes, "created_at": token.CreatedAt, "revoked_at": token.RevokedAt})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"tokens": out})
+	case http.MethodPost:
+		var body struct {
+			Name   string   `json:"name"`
+			Scopes []string `json:"scopes"`
+		}
+		if !decodeBody(w, r, &body, true) {
+			return
+		}
+		name := strings.TrimSpace(body.Name)
+		if name == "" || len(name) > 100 {
+			writeValidation(w, "name", "invalid value")
+			return
+		}
+		tokens, err := readAPITokens(path)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		raw, err := randomHex(32)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		token := "act_" + raw
+		record := apiTokenRecord{ID: s.newID("tok"), Name: name, TokenHash: tokenHash(token), Scopes: normalizeTokenScopes(body.Scopes), CreatedAt: s.nowString()}
+		tokens = append(tokens, record)
+		if err := atomicWriteJSON(path, tokens, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": s.nowString(), "action": "token_issue", "id": record.ID})
+		writeJSON(w, http.StatusOK, map[string]any{"id": record.ID, "token": token, "name": record.Name, "scopes": record.Scopes})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+func (s *APIServer) handleTokenPath(w http.ResponseWriter, r *http.Request) {
+	id := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/tokens/"), "/")
+	if !validSimpleID(id) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if !method(w, r, http.MethodDelete) || !rejectBody(w, r) {
+		return
+	}
+	path := filepath.Join(s.cfg.StateDir, ".api_tokens")
+	tokens, err := readAPITokens(path)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	for i := range tokens {
+		if tokens[i].ID == id {
+			now := s.nowString()
+			tokens[i].RevokedAt = &now
+			if err := atomicWriteJSON(path, tokens, 0600); err != nil {
+				writeError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+			_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": now, "action": "token_revoke", "id": id})
+			writeJSON(w, http.StatusOK, map[string]string{"message": "Token revoked"})
+			return
+		}
+	}
+	writeError(w, http.StatusNotFound, "Not found")
+}
+
+func (s *APIServer) handleRuleFile(filename, logType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		path := filepath.Join(s.cfg.StateDir, filename)
+		switch r.Method {
+		case http.MethodGet:
+			if !rejectBody(w, r) {
+				return
+			}
+			rules, err := readRuleList(path)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "State file is corrupted")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"rules": rules})
+		case http.MethodPost:
+			var rule map[string]any
+			if !decodeBody(w, r, &rule, true) {
+				return
+			}
+			if len(rule) == 0 {
+				writeValidation(w, "body", "required")
+				return
+			}
+			rules, err := readRuleList(path)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "State file is corrupted")
+				return
+			}
+			if duplicateRule(rules, rule) {
+				writeError(w, http.StatusConflict, "Conflict")
+				return
+			}
+			rule["id"] = s.newID("rule")
+			rules = append(rules, rule)
+			if err := atomicWriteJSON(path, rules, 0600); err != nil {
+				writeError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+			_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: logType, Changes: map[string]any{"id": rule["id"]}})
+			writeJSON(w, http.StatusOK, map[string]any{"message": "Rule created", "rule": rule})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		}
+	}
+}
+
+func (s *APIServer) handleRulePath(filename, logType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := strings.Trim(strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(r.URL.Path, filepath.Base(r.URL.Path))), "/")
+		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(parts) == 0 {
+			writeError(w, http.StatusNotFound, "Not found")
+			return
+		}
+		id = parts[len(parts)-1]
+		if !validSimpleID(id) {
+			writeError(w, http.StatusNotFound, "Not found")
+			return
+		}
+		if !method(w, r, http.MethodDelete) || !rejectBody(w, r) {
+			return
+		}
+		path := filepath.Join(s.cfg.StateDir, filename)
+		rules, err := readRuleList(path)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		next := []map[string]any{}
+		found := false
+		for _, rule := range rules {
+			if fmt.Sprint(rule["id"]) == id {
+				found = true
+				continue
+			}
+			next = append(next, rule)
+		}
+		if !found {
+			writeError(w, http.StatusNotFound, "Not found")
+			return
+		}
+		if err := atomicWriteJSON(path, next, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: logType + "_delete", Changes: map[string]any{"id": id}})
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Rule deleted"})
+	}
+}
+
+func (s *APIServer) handlePipelineConfig(w http.ResponseWriter, r *http.Request) {
+	s.handleGenericConfigFile(w, r, ".pipeline_config", "pipeline_config", validatePipelineConfig)
+}
+
+func (s *APIServer) handleNotes(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		value, _, _ := readOptionalJSONMap(filepath.Join(s.cfg.StateDir, ".notes"))
+		if value == nil {
+			value = map[string]any{"content": ""}
+		}
+		writeJSON(w, http.StatusOK, value)
+	case http.MethodPost:
+		var body map[string]any
+		if !decodeBody(w, r, &body, true) {
+			return
+		}
+		content, _ := body["content"].(string)
+		if len(content) > 20000 {
+			writeValidation(w, "content", "too long")
+			return
+		}
+		current, _, _ := readOptionalJSONMap(filepath.Join(s.cfg.StateDir, ".notes"))
+		if current != nil && fmt.Sprint(current["content"]) == content {
+			writeJSON(w, http.StatusOK, map[string]string{"message": "No changes"})
+			return
+		}
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".notes"), map[string]any{"content": content, "updated_at": s.nowString()}, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "notes", Changes: map[string]any{"content_changed": true}})
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Notes updated"})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+func (s *APIServer) handleDashboardLayout(w http.ResponseWriter, r *http.Request) {
+	s.handleGenericConfigFile(w, r, ".dashboard_layout", "dashboard_layout", validateDashboardLayout)
+}
+
+func (s *APIServer) handleSMTPConfig(w http.ResponseWriter, r *http.Request) {
+	s.handleGenericConfigFile(w, r, ".smtp_config", "smtp_config", nil)
+}
+
+func (s *APIServer) handleSMTPTest(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	cfg, _, _ := readOptionalJSONMap(filepath.Join(s.cfg.StateDir, ".smtp_config"))
+	if cfg == nil || !boolFromAny(cfg["enabled"]) {
+		writeValidation(w, "smtp", "disabled")
+		return
+	}
+	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".notify_log"), map[string]any{"at": s.nowString(), "event": "smtp_test", "result": "success"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "SMTP test sent"})
+}
+
+func (s *APIServer) handleGenericConfigFile(w http.ResponseWriter, r *http.Request, filename, logType string, validate func(http.ResponseWriter, map[string]any) bool) {
+	path := filepath.Join(s.cfg.StateDir, filename)
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		value, _, err := readOptionalJSONMap(path)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		if value == nil {
+			value = map[string]any{}
+		}
+		writeJSON(w, http.StatusOK, maskSecrets(value))
+	case http.MethodPost:
+		var value map[string]any
+		if !decodeBody(w, r, &value, true) {
+			return
+		}
+		if validate != nil && !validate(w, value) {
+			return
+		}
+		current, _, _ := readOptionalJSONMap(path)
+		if mapsEqual(current, value) {
+			writeJSON(w, http.StatusOK, map[string]string{"message": "No changes"})
+			return
+		}
+		if err := atomicWriteJSON(path, value, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: logType, Changes: maskSecrets(value)})
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Config updated"})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
 func (s *APIServer) handleAPIAccessLog(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
@@ -2084,17 +2785,36 @@ func (s *APIServer) validSession(token string) bool {
 		return false
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	session, ok := s.sessions[tokenHash(token)]
 	if !ok {
-		return false
+		s.mu.Unlock()
+		return s.validAPIToken(token)
 	}
 	expires, err := time.Parse(apiTimeLayout, session.ExpiresAt)
 	if err != nil || !s.cfg.Now().UTC().Before(expires) {
 		delete(s.sessions, tokenHash(token))
+		s.mu.Unlock()
 		return false
 	}
+	s.mu.Unlock()
 	return true
+}
+
+func (s *APIServer) validAPIToken(token string) bool {
+	if token == "" {
+		return false
+	}
+	tokens, err := readAPITokens(filepath.Join(s.cfg.StateDir, ".api_tokens"))
+	if err != nil {
+		return false
+	}
+	hash := tokenHash(token)
+	for _, record := range tokens {
+		if record.TokenHash == hash && record.RevokedAt == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *APIServer) touchSession(token string) {
@@ -3370,6 +4090,330 @@ func removeIfExists(path string) error {
 		return err
 	}
 	return nil
+}
+
+func atomicWriteText(path, value string, mode os.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte(value), mode); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+func cleanupLogFiles(root string, cutoff time.Time) (int, int) {
+	deleted, failed := 0, 0
+	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil || entry == nil || entry.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(path, ".json") && !strings.HasSuffix(path, ".json.gz") {
+			return nil
+		}
+		info, statErr := entry.Info()
+		if statErr != nil || info.ModTime().After(cutoff) {
+			return nil
+		}
+		if err := os.Remove(path); err != nil {
+			failed++
+		} else {
+			deleted++
+		}
+		return nil
+	})
+	return deleted, failed
+}
+
+func archiveLogFiles(root string, cutoff time.Time) (int, error) {
+	archiveDir := filepath.Join(root, "archive")
+	if err := os.MkdirAll(archiveDir, 0755); err != nil {
+		return 0, err
+	}
+	count := 0
+	entries, err := os.ReadDir(root)
+	if errors.Is(err, os.ErrNotExist) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		src := filepath.Join(root, entry.Name())
+		info, err := entry.Info()
+		if err != nil || info.ModTime().After(cutoff) {
+			continue
+		}
+		id := strings.TrimSuffix(entry.Name(), ".json")
+		if _, err := readBuildLog(src); err != nil {
+			fmt.Fprintf(os.Stderr, "LOG_ARCHIVE_SKIP_CORRUPT: id=%s\n", id)
+			continue
+		}
+		dest := filepath.Join(archiveDir, id+".json.gz")
+		if _, err := os.Stat(dest); err == nil {
+			continue
+		}
+		if err := gzipFile(src, dest); err != nil {
+			return count, err
+		}
+		if err := os.Remove(src); err != nil {
+			return count, err
+		}
+		count++
+	}
+	return count, nil
+}
+
+func gzipFile(src, dest string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	writer := gzip.NewWriter(out)
+	if _, err := io.Copy(writer, in); err != nil {
+		_ = writer.Close()
+		return err
+	}
+	return writer.Close()
+}
+
+func backupConfigFiles() []string {
+	return []string{".server_config", ".notify_config", ".repo_config", ".branch_config", ".access_control", ".hooks", ".alert_rules", ".tag_rules", ".pipeline_config", ".dashboard_layout", ".smtp_config"}
+}
+
+func readOptionalJSONMap(path string) (map[string]any, bool, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	var value map[string]any
+	if err := json.Unmarshal(data, &value); err != nil {
+		return nil, true, err
+	}
+	return value, true, nil
+}
+
+func maskSecrets(value map[string]any) map[string]any {
+	out := map[string]any{}
+	for key, v := range value {
+		lower := strings.ToLower(key)
+		if strings.Contains(lower, "secret") || strings.Contains(lower, "password") || strings.Contains(lower, "token") {
+			if v != nil && fmt.Sprint(v) != "" {
+				out[key] = "***"
+			} else {
+				out[key] = v
+			}
+			continue
+		}
+		if child, ok := v.(map[string]any); ok {
+			out[key] = maskSecrets(child)
+			continue
+		}
+		if list, ok := v.([]any); ok {
+			next := make([]any, len(list))
+			for i, item := range list {
+				if child, ok := item.(map[string]any); ok {
+					next[i] = maskSecrets(child)
+				} else {
+					next[i] = item
+				}
+			}
+			out[key] = next
+			continue
+		}
+		out[key] = v
+	}
+	return out
+}
+
+func containsMaskedSecret(value map[string]any) bool {
+	for _, v := range value {
+		if v == "***" {
+			return true
+		}
+		if child, ok := v.(map[string]any); ok && containsMaskedSecret(child) {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeMaskedSecrets(next, current map[string]any) map[string]any {
+	out := map[string]any{}
+	for key, value := range next {
+		if value == "***" && current != nil {
+			out[key] = current[key]
+			continue
+		}
+		if child, ok := value.(map[string]any); ok {
+			curChild, _ := current[key].(map[string]any)
+			out[key] = mergeMaskedSecrets(child, curChild)
+			continue
+		}
+		out[key] = value
+	}
+	return out
+}
+
+func fileModeString(info os.FileInfo) any {
+	if info == nil {
+		return nil
+	}
+	return fmt.Sprintf("%04o", info.Mode().Perm())
+}
+
+func statusFromExists(err error) string {
+	if err == nil {
+		return "ok"
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return "warn"
+	}
+	return "error"
+}
+
+func fileTreeStats(root string, include func(string) bool) (int64, int) {
+	var bytes int64
+	count := 0
+	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil || entry == nil || entry.IsDir() || !include(path) {
+			return nil
+		}
+		if info, err := entry.Info(); err == nil {
+			bytes += info.Size()
+			count++
+		}
+		return nil
+	})
+	return bytes, count
+}
+
+func validWebhookSignature(secret string, body []byte, header string) bool {
+	if !strings.HasPrefix(header, "sha256=") {
+		return false
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write(body)
+	expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(expected), []byte(header))
+}
+
+func validSimpleID(id string) bool {
+	if id == "" || len(id) > 128 || containsControl(id) || strings.Contains(id, "..") || strings.ContainsAny(id, `/\`) {
+		return false
+	}
+	return true
+}
+
+func readAPITokens(path string) ([]apiTokenRecord, error) {
+	tokens := []apiTokenRecord{}
+	if err := readJSONIfExists(path, &tokens); err != nil {
+		return nil, err
+	}
+	return tokens, nil
+}
+
+func normalizeTokenScopes(scopes []string) []string {
+	if len(scopes) == 0 {
+		return []string{"read", "write"}
+	}
+	out := []string{}
+	seen := map[string]bool{}
+	for _, scope := range scopes {
+		scope = strings.TrimSpace(scope)
+		if scope == "" || seen[scope] {
+			continue
+		}
+		seen[scope] = true
+		out = append(out, scope)
+	}
+	return out
+}
+
+func readRuleList(path string) ([]map[string]any, error) {
+	rules := []map[string]any{}
+	if err := readJSONIfExists(path, &rules); err != nil {
+		return nil, err
+	}
+	return rules, nil
+}
+
+func duplicateRule(rules []map[string]any, rule map[string]any) bool {
+	next := mapWithoutID(rule)
+	for _, existing := range rules {
+		if mapsEqual(mapWithoutID(existing), next) {
+			return true
+		}
+	}
+	return false
+}
+
+func mapWithoutID(value map[string]any) map[string]any {
+	out := map[string]any{}
+	for key, v := range value {
+		if key != "id" {
+			out[key] = v
+		}
+	}
+	return out
+}
+
+func validatePipelineConfig(w http.ResponseWriter, value map[string]any) bool {
+	raw, ok := value["extra_args"].([]any)
+	if !ok {
+		return true
+	}
+	reserved := map[string]bool{"--src": true, "--out": true, "--state-dir": true}
+	for _, item := range raw {
+		if reserved[fmt.Sprint(item)] {
+			writeValidation(w, "extra_args", "reserved arg")
+			return false
+		}
+	}
+	return true
+}
+
+func validateDashboardLayout(w http.ResponseWriter, value map[string]any) bool {
+	raw, ok := value["widgets"].([]any)
+	if !ok || len(raw) == 0 {
+		writeValidation(w, "widgets", "required")
+		return false
+	}
+	allowed := map[string]bool{"status": true, "sysinfo": true, "stats": true, "schedule": true, "alerts": true}
+	seen := map[string]bool{}
+	for _, item := range raw {
+		widget := fmt.Sprint(item)
+		if !allowed[widget] || seen[widget] {
+			writeValidation(w, "widgets", "invalid value")
+			return false
+		}
+		seen[widget] = true
+	}
+	return true
+}
+
+func boolFromAny(value any) bool {
+	v, _ := value.(bool)
+	return v
+}
+
+func mapsEqual(a, b map[string]any) bool {
+	aj, errA := json.Marshal(a)
+	bj, errB := json.Marshal(b)
+	return errA == nil && errB == nil && string(aj) == string(bj)
 }
 
 func appendJSONLine(path string, value any) error {
