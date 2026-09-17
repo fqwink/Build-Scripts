@@ -402,7 +402,7 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 
 表の「詳細仕様節」が複数ある場合は、owner component の詳細仕様ファイルを主本文として読み、collaborator component の詳細仕様ファイルは schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認として読む。ファイル名を伴わない裸の節番号は、同じ行の「責務 component」から該当する owner component または collaborator component の詳細仕様ファイルへ解決する。`builder` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` の同番号節を合わせて確認する。`runner` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` の同番号節を合わせて確認する。`api` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_API_SPEC.md` の同番号節を合わせて確認する。`sdk` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 を合わせて確認する。`ui` が責務 component に含まれる機能では、`ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 を合わせて確認する。`statefile`、`security`、`archive`、`commitstatus`、`admin`、`fixture`、`setup` が責務 component に含まれる場合は、それぞれの責務 component 別詳細仕様ファイルを合わせて確認する。該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。
 
-詳細節対応表は owner component を置き換える表ではない。受け入れ条件が複数 component にまたがる場合でも、主本文は owner component の詳細仕様ファイルを正とし、collaborator component の詳細仕様は schema、呼び出し境界、表示、security、setup、fixture、検証観点だけを補完する。
+詳細節対応表は owner component を置き換える表ではない。受け入れ条件が複数 component にまたがる場合でも、主本文は owner component の詳細仕様ファイルを正とし、collaborator component の詳細仕様は schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認に限定する。collaborator component は、owner component の入力、出力、状態、endpoint、SDK method、UI 操作を追加定義しない。
 
 | 機能 | 責務 component | 詳細仕様節 | 受け入れ条件 |
 |------|-------------------|------------|--------------|
