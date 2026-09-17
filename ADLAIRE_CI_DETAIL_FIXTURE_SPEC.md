@@ -73,8 +73,8 @@
 | 変更対象 | 対象 Phase、owner component、collaborator component、変更ファイル、追加 fixture / testdata path。 | 対象 Phase の成果物不足として未完了。 |
 | 固定契約 | 追加または固定した CLI、状態 schema、HTTP API、SDK method、DOM id、fake 動作、終了コード、error body。 | 後続 Phase が参照できないため未完了。 |
 | 検証 | 実行コマンド、fixture 名、期待結果、実結果、判定。 | 合否を再現できないため未完了。 |
-| 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定など実装していない範囲。 | 先取り実装または範囲不明として未完了。 |
-| 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用してはならない未固定 contract。 | 次 Phase 着手条件未充足として未完了。 |
+| 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定、未定義 endpoint / UI / 状態ファイルのうち今回実装しない範囲を PR 証跡に列挙する。 | 先取り実装または範囲不明として未完了。 |
+| 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用禁止の未固定 contract を PR 証跡に列挙する。 | 次 Phase 着手条件未充足として未完了。 |
 | secret 確認 | log、fixture、snapshot、UI 表示、PR 本文に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
 
 ## 22-F API Phase fixture / 実装順序契約
@@ -498,10 +498,10 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 |----------|----------|
 | wave | 対象 wave、対象 §27.x、先行 wave 完了 commit または PR 番号。 |
 | 実装対象 | 実装する機能名、owner component、collaborator component、変更ファイル、追加 fixture path。 |
-| 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイル。 |
+| 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイルを PR 証跡に列挙する。 |
 | fixture | §27 fixture カタログの fixture 名、manifest / effects / security の検証結果。 |
 | acceptance | §27 実装 PR acceptance checklist の各項目の pass / fail / 未実行。 |
-| 後続影響 | 後続 PR が利用許可済みの contract、利用してはならない未固定 contract。 |
+| 後続影響 | 後続 PR が利用許可済みの contract、利用禁止の未固定 contract を PR 証跡に列挙する。 |
 
 **§27 実装 PR 最終受け入れゲート：**
 
@@ -532,7 +532,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | secret 検証 | 禁止文字列、mask 対象、平文が残らないことを確認した出力範囲。 |
 | 部分失敗 | partial / failure fixture の失敗地点、完了済み副作用、禁止副作用。 |
 | 再実行 | idempotency / no-op fixture の 1 回目と 2 回目の差分。 |
-| 対象外確認 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加していないこと。 |
+| 対象外確認 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加していないことを、差分対象 file と fixture manifest の両方で確認する。 |
 
 **§27 差し戻し固定条件：**
 

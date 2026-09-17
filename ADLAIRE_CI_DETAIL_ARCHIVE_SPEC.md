@@ -139,7 +139,7 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は `
 
 **sdk / ui 操作境界：**
 
-sdk は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。sdk は snapshot の存在、download 安全性、rollback 可否を状態ファイルから推測せず、API response / error をそのまま扱う。ui は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は実行中 build がある場合 disabled とする。ui は snapshot directory、tar.gz、rollback state を直接操作してはならない。
+sdk は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。sdk は snapshot の存在、download 安全性、rollback 可否を状態ファイルから推測せず、API response / error をそのまま扱う。`404`、`409`、`422`、`500` は API の HTTP status と error body を保持した `AdlaireCIError` とする。ui は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は API が返す running / conflict 状態または status response の running 状態に基づく場合だけ disabled とする。ui は snapshot directory、tar.gz、rollback state を直接操作してはならない。
 
 **検証条件：**
 

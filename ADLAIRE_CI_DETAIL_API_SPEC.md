@@ -343,7 +343,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 ### 22.0e API 完全契約表
 
-本表は API 実装、SDK 実装、標準管理ツール実装の契約インデックスである。実装者は endpoint を追加、削除、名称変更、body 変更、response 変更する前に本表を先に更新する。下表に存在しない endpoint は実装対象外とする。SHA reset 専用 endpoint とサマリー送信専用 endpoint は定義しない。
+本表は API 実装、SDK 実装、標準管理ツール実装の契約インデックスである。endpoint を追加、削除、名称変更、body 変更、response 変更する場合は、本表、該当 endpoint 個別節、SDK method 表、UI 操作契約、fixture catalog を同じ仕様 PR で先に更新する。下表に存在しない endpoint は実装対象外とする。SHA reset 専用 endpoint とサマリー送信専用 endpoint は定義しない。
 
 `Request` が `none` の場合、request body を受け付けない。空 JSON object `{}` も送信してはならない。`Response` は成功時 body の schema 名または最小 object を示す。詳細 schema は §22.0c、各 endpoint の個別例、§23 SDK 仕様、§24 UI 仕様を正とする。
 
@@ -2597,7 +2597,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | §27.46 | TOTP/auth API。 | TOTP/auth methods。 | セキュリティ/login panel で one-time secret/ticket flow を扱う。 |
 | §27.47 | rate limit API。 | `getApiRateLimit()` / `setApiRateLimit()`。 | セキュリティ panel で policy と state summary を表示する。 |
 
-api / sdk / ui のいずれも、上表に存在しない補完 endpoint、補完 method、補完 UI 操作を追加してはならない。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
+api / sdk / ui のいずれも、上表に存在しない補完 endpoint、補完 method、補完 UI 操作を追加してはならない。補完追加が必要な場合は、本表、該当 endpoint 個別節、SDK method 表、UI 操作契約、fixture catalog を先に更新する。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
 
 ### 27.30 ビルド承認フロー
 owner component は `api` とする。collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。

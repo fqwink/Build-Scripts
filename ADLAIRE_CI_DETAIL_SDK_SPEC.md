@@ -199,7 +199,7 @@ export { AdlaireCI, AdlaireCIError };
 | token 保存 | セッショントークンはメモリ上の `this._token` のみに保持する。`localStorage`、`sessionStorage`、Cookie へ保存しない。 |
 | 秘密情報引数 | `updatePat(token)`、`setWebhookConfig(secret)`、SMTP password、`createToken()` の返却 token は console 出力しない。 |
 | query 生成 | `undefined`、`null`、空文字の任意 query は送信しない。ただし `q`、`from`、`to` は endpoint 仕様で空文字を有効値として定義している場合だけ、空文字を query value として送信する。 |
-| 戻り値補完禁止 | API response にない値を SDK が推測して追加しない。表示用加工は UI 側で行う。 |
+| 戻り値補完禁止 | 成功時は API response にない key を追加しない。失敗時は HTTP status、API error、details、responseBody 以外を推測しない。fallback 値は API response に含まれる値だけを返し、表示用加工は UI 側で行う。 |
 | retry | SDK は自動 retry を行わない。ユーザー操作による再実行、または UI の明示的な再取得のみを許可する。 |
 
 **SDK transport / error 固定契約：**
@@ -261,7 +261,7 @@ HTTP status と SDK error の対応は下表に固定する。
 
 **SDK P0 / P1 操作固定契約：**
 
-P0 / P1 実装では、下表の SDK method を最小運用範囲として固定する。SDK は API response を成功時に補完せず、失敗時はすべて `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
+P0 / P1 実装では、下表の SDK method を最小運用範囲として固定する。SDK は成功時 response を endpoint schema の範囲でそのまま返し、失敗時は HTTP status、API error、details、responseBody を保持した `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
 
 | SDK method | HTTP | 成功時 | 失敗時 | 追加禁止事項 |
 |------------|------|--------|--------|--------------|
@@ -293,7 +293,7 @@ P0 / P1 実装では、下表の SDK method を最小運用範囲として固定
 
 **SDK P2〜P5 操作固定契約：**
 
-P2〜P5 SDK は、§22.0e の endpoint 契約と §23 SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行ってよいが、API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
+P2〜P5 SDK は、§22.0e の endpoint 契約と §23 SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行う場合でも、検証対象は必須引数、型、範囲、path parameter 形式に限定する。API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
 
 | 機能群 | SDK method | 成功時 | 失敗時 | 追加禁止事項 |
 |--------|------------|--------|--------|--------------|
@@ -376,7 +376,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 
 **SDK 型定義表：**
 
-本表は SDK が返す object 型の正本である。`nullable` は `null` を許可することを示す。配列は未取得時でも `[]` を返し、`undefined` を返してはならない。API response に存在しないキーを SDK が補完してはならない。ただし `GET /api/config`、`GET /api/notify-config`、`GET /api/dashboard-layout` の既定値 merge は API 側の責務とする。
+本表は SDK が返す object 型の正本である。`nullable` は `null` を許可することを示す。配列は API response に `[]` として存在する場合だけ `[]` を返し、SDK が未取得配列を生成してはならない。API response に存在しないキーを SDK が補完してはならない。ただし `GET /api/config`、`GET /api/notify-config`、`GET /api/dashboard-layout` の既定値 merge は API 側の責務とする。
 
 | 型名 | 必須キー | nullable キー | 配列キー | 対応 API |
 |------|----------|---------------|----------|----------|

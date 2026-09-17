@@ -26,7 +26,7 @@
 5. collaborator component がある場合は、該当する `ADLAIRE_CI_DETAIL_*_SPEC.md` を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
 6. `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 のセットアップ・アップデート手順と `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
 
-詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルまたは本ファイルの対応表を改訂し、`ADLAIRE_CI_SPEC.md` の対象範囲と整合させる。
+詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを主本文として改訂し、本ファイルの対応表と `ADLAIRE_CI_SPEC.md` の対象範囲を整合させる。
 
 | 範囲 | 役割 |
 |------|------|
@@ -179,7 +179,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | セキュリティ | 秘密情報の保存禁止、マスク、ファイル権限、認証/認可、外部公開可否が明記されている。 |
 | 検証 | 構文確認、単体確認、手動 API 確認、生成物確認、ログ確認、失敗系確認のいずれを行うかが明記されている。 |
 
-上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイル、本ファイルの対応表、または `ADLAIRE_CI_SPEC.md` を改訂し、未充足項目を仕様として確定する。
+上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを改訂し、必要に応じて collaborator 詳細仕様、本ファイルの対応表、`ADLAIRE_CI_SPEC.md` を同じ仕様 PR で整合させ、未充足項目を仕様として確定する。
 
 実装後の完了条件は以下とする。
 
@@ -260,13 +260,13 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 上表の対象外である `mcp`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらは、Part 3 詳細仕様セット内に入出力、状態、起動手順、検証条件を定義しない。
 
-仕様策定完了チェックで未充足が見つかった場合は、実装を開始せず、以下の順で仕様を補完する。
+仕様策定完了チェックで未充足が見つかった場合は、実装を開始せず、以下の順で仕様を改訂する。
 
 1. 未充足項目が本ファイルの記載対象外である場合は、先に `ADLAIRE_CI_SPEC.md` を確認する。
 2. 未充足項目が入出力、状態ファイル、api、sdk、ui、処理順序、異常系、検証条件に関わる場合は、該当 owner component の詳細仕様ファイルまたは collaborator の詳細仕様ファイルを改訂する。
 3. ファイル名、正本関係、対象範囲が変わる場合は、`DOCUMENT_INDEX.md` の更新要否を確認する。
 4. 対象項目の詳細節、参照先、受け入れ条件が変わる場合は、§0i の詳細節対応表を更新する。
-5. 補完後、§0b、§0c、§0e、本節、§0g、§0h、§0i、§0j の条件を再確認する。
+5. 改訂後、§0b、§0c、§0e、本節、§0g、§0h、§0i、§0j の条件を再確認する。
 
 ---
 
@@ -390,7 +390,7 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 | 検証 | 必須テスト、手動確認、fixture、生成物確認、API 確認、異常系確認。 | 完了扱い不可。 |
 | 完了条件 | どの検証が成功したら実装完了と扱うか。関連文書の更新要否。 | 完了扱い不可。 |
 
-上表のいずれかが不足する対象項目は、実装者判断で補完してはならない。不足を見つけた場合は、実装 PR ではなく仕様改訂 PR として該当 owner component の詳細仕様ファイルまたは本ファイルの対応表を先に更新する。
+上表のいずれかが不足する対象項目は、実装者判断で補完してはならない。不足を見つけた場合は、実装 PR ではなく仕様改訂 PR として該当 owner component の詳細仕様ファイルを主本文として先に更新し、本ファイルの対応表は参照先変更がある場合だけ更新する。
 
 ---
 
@@ -699,7 +699,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | 実装対象判定 | `ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用機能を実装対象にしない。 |
 | owner 確定 | §0b と §0i で owner component を 1 件に確定し、主本文は owner の分割先詳細仕様ファイルで確認する。 |
 | collaborator 確認 | api / sdk / ui / statefile / security / archive / commitstatus などの collaborator がある場合は、該当分割先ファイルの参照節を schema、呼び出し境界、表示、security、setup、fixture、検証観点として読む。 |
-| 補完禁止 | 個別節または分割先詳細仕様に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存を実装判断で追加しない。 |
+| 補完禁止 | 個別節または分割先詳細仕様に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存を実装判断で追加しない。追加が必要な場合は owner component の詳細仕様、関連 collaborator 詳細仕様、fixture catalog、必要な対応表を先に更新する。 |
 | 状態更新 | 状態ファイル更新は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c を正とし、lock、atomic write、JSON Lines、破損時処理を独自定義しない。 |
 | security | secret mask、token、session、scope、audit、rate limit は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` を正とし、平文保存・平文表示を行わない。 |
 | fixture / PR 証跡 | fixture manifest、expected/effects、assertion、PR 証跡、受け入れゲートは `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §27-F を正とする。 |
