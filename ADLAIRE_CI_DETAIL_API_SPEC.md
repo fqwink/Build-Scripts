@@ -55,8 +55,8 @@ NotifyLogFile     = "/opt/adlaire-builder/.notify_log"        // Webhook 送信�
 WebhookSecretFile = "/opt/adlaire-builder/.webhook_secret"    // GitHub Webhook HMAC-SHA256 Secret（→ §22）
 SnapshotDir       = "/opt/adlaire-builder/.snapshots"         // スナップショット保存ディレクトリ（→ §14b）
 LogLevel          = "INFO"
-Owner             = "<GitHubオーナー名>"                       // 初期値。POST /api/repo-config で動的変更可能（.repo_config に保存）
-Repo              = "<リポジトリ名>"                           // 初期値。POST /api/repo-config で動的変更可能（.repo_config に保存）
+Owner             = "<GitHubオーナー名>"                       // 初期値。POST /api/repo-config の owner 更新成功時だけ .repo_config に保存
+Repo              = "<リポジトリ名>"                           // 初期値。POST /api/repo-config の repo 更新成功時だけ .repo_config に保存
 ```
 
 API service の systemd unit、配置、起動、更新、rollback は setup owner component の責務とし、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.3b、§26.4.2、§26.5 を正とする。
@@ -92,7 +92,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 項目 | 仕様 |
 |------|------|
 | Go バージョン | Go `1.22` 以上。HTTP 実装は Go 標準ライブラリ `net/http` を使用する。 |
-| bind | 既定値は `127.0.0.1:8765`。`--addr` で上書き可能。`--addr 0.0.0.0:<port>` を指定しても、`api` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
+| bind | 既定値は `127.0.0.1:8765`。`--addr <host:port>` が指定された場合は、起動中の listen address だけを置換する。`--addr 0.0.0.0:<port>` を指定しても、`api` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルはいずれも UTF-8 とする。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
 | リクエスト body 上限 | JSON body は 1 MiB を上限とする。超過時は `413 Payload Too Large` と `{"error": "Payload too large"}` を返す。 |
@@ -933,7 +933,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 `secret`：Webhook 署名シークレット。未設定時は `null`、設定済み時は `"***"`（マスク）を返す（→ 16E 参照）。
 
-`on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"deploy_failure"`（転送失敗時）| `"weekly_summary"`（定期サマリー送信時）| `"approval_required"`（承認待ち発生時）| `"duration_anomaly"`（所要時間異常時）| `"config_corrupt"`（設定破損復旧時）。複数指定可。
+`on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"deploy_failure"`（転送失敗時）| `"weekly_summary"`（定期サマリー送信時）| `"approval_required"`（承認待ち発生時）| `"duration_anomaly"`（所要時間異常時）| `"config_corrupt"`（設定破損復旧時）。複数指定は array 順を保持して保存する。
 
 `summary`：週次サマリー通知の設定。`interval` の有効値は `"weekly"` 固定。`hour` は 0〜23（UTC）。`day_of_week` は 0 = 日曜〜6 = 土曜。自動送信条件、二重送信防止、集計、送信順序、`.build_state` 更新は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.19 を正とする。
 
@@ -1885,7 +1885,7 @@ hooks fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 f
 
 ### メール通知（SMTP）（16B）
 
-Webhook に加えてメールでビルド結果を通知できる機能。SMTP 接続設定は `.smtp_config` に、パスワードは `.smtp_secret`（パーミッション 600）に分離して保存する。`GET /api/notify-config` のレスポンスに `email` セクションを追加する。
+Webhook に加えてメールでビルド結果を通知する機能。SMTP 接続設定は `.smtp_config` に、パスワードは `.smtp_secret`（パーミッション 600）に分離して保存する。`GET /api/notify-config` のレスポンスに `email` セクションを追加する。
 
 **`GET /api/smtp-config` レスポンス例：**
 ```json
@@ -1896,7 +1896,7 @@ Webhook に加えてメールでビルド結果を通知できる機能。SMTP �
 
 **`POST /api/smtp-config` リクエスト / レスポンス：**
 ```json
-// リクエスト（変更するフィールドのみ指定可。password フィールドは省略可能）
+// リクエスト（下記キーだけを受け付ける。password フィールドは省略可能）
 { "host": "smtp.example.com", "port": 587, "user": "notify@example.com", "password": "s3cr3t", "tls": true, "from": "notify@example.com", "to": ["ops@example.com"], "on": ["failure"], "enabled": true }
 // レスポンス: 200
 { "message": "SMTP config updated" }
@@ -2044,7 +2044,7 @@ queue fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 f
 
 **`POST /api/repo-config` リクエスト / レスポンス：**
 ```json
-// リクエスト（変更するフィールドのみ指定可）
+// リクエスト（owner、repo、branch、target_file だけを受け付ける）
 { "owner": "fqwink", "repo": "Adlaire-Design-System", "branch": "main", "target_file": "docs" }
 // レスポンス: 200
 { "message": "Repo config updated" }
@@ -2310,7 +2310,7 @@ queue entry は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.build_state` sch
 ### 27.13 Webhook イベントログ / 一覧取得 API
 owner component は `api` とする。collaborator component は `sdk`、`ui`、`statefile` とする。
 
-本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、sdk、ui からページング参照できるようにすることである。
+本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、sdk、ui のページング参照対象にすることである。
 
 `.webhook_events.json` の保存 schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.webhook_events.json` JSON Lines schema を正とする。保存時に request header 全体、署名値、secret、payload 全体を保存してはならない。
 
@@ -2342,7 +2342,7 @@ Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `g
 ### 27.16 ヘルスチェックエンドポイント
 owner component は `api` とする。collaborator component は `statefile` とする。
 
-本機能の目的は、認証不要の `GET /api/health` で、外部監視が Adlaire CI の最低限の稼働状態を確認できるようにすることである。
+本機能の目的は、認証不要の `GET /api/health` で、外部監視へ Adlaire CI の最低限の稼働状態を返すことである。
 
 **Response：**
 
@@ -2430,7 +2430,7 @@ SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信す
 ### 27.18 ブランチ設定の動的変更 API
 owner component は `api` とする。collaborator component は `runner`、`statefile` とする。
 
-本機能の目的は、監視対象 branch / target / deploy target を `.branch_config` で管理し、API 経由で変更できるようにすることである。
+本機能の目的は、監視対象 branch / target / deploy target を `.branch_config` で管理し、API 経由の変更対象を `.branch_config` に限定することである。
 
 **API：**
 

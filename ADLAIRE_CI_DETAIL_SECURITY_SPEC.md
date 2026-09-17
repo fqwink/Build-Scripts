@@ -166,7 +166,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 owner component は `security` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
 
-本機能の目的は、外部システムが最小権限で build を開始できる API token を発行できるようにすることである。
+本機能の目的は、外部システムによる build 開始操作を `trigger` scope の API token と build 開始 endpoint だけに限定することである。
 
 **scope：**
 
@@ -261,7 +261,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | `POST /api/tokens` | 管理 session または `admin` scope API token |
 | `DELETE /api/tokens/{id}` | 管理 session または `admin` scope API token |
 
-`admin` scope API token は新しい `admin` scope API token を発行できる。発行者 token と発行対象 token は別 record とし、親子関係は保存しない。
+`admin` scope API token は、`POST /api/tokens` の認証と scope 判定を通過した場合だけ新しい `admin` scope API token を発行する。発行者 token と発行対象 token は別 record とし、親子関係は保存しない。
 
 **正常系：**
 
@@ -325,7 +325,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 6. `.access_log` と `.audit_log` に失効成功を追記する。
 7. `{ "message": "Token revoked" }` を返す。
 
-認証に使用中の API token 自身を失効対象にできる。その場合、当該リクエストは成功し、次リクエストから `401` になる。
+認証に使用中の API token 自身を path `id` に指定した場合、その token を失効対象にする。当該リクエストは成功し、次リクエストから `401` になる。
 
 **token ID 採番・返却固定契約：**
 
@@ -472,7 +472,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 owner component は `security` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
 
-本機能の目的は、新規 session の有効期限を管理 API から変更可能にし、既存 session への影響を明確にすることである。
+本機能の目的は、新規 session の有効期限を管理 API から更新し、既存 session への影響を明確にすることである。
 
 **仕様：**
 
@@ -528,7 +528,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | replay 防止 | `.totp_secret.last_accepted_step` 以下の step は拒否する。 |
 | otpauth URI | `otpauth://totp/Adlaire%20CI:admin?secret={secret}&issuer=Adlaire%20CI&algorithm=SHA1&digits=6&period=30`。 |
 
-QR code 生成は初期実装対象外とする。UI は secret と otpauth URI を一回表示し、ユーザーが認証アプリへ手入力またはURI貼り付けできるようにする。
+QR code 生成は初期実装対象外とする。UI は secret と otpauth URI を一回表示し、ユーザーの認証アプリ登録手段は手入力または URI 貼り付けに限定する。
 
 **メモリ上状態：**
 

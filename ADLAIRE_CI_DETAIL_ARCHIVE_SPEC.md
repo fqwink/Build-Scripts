@@ -67,7 +67,7 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 
 ### 27.15 ビルドアーティファクト管理
 
-本機能の目的は、`.snapshots/` に保存された build artifact を api、sdk、ui から一覧、download、削除、rollback できるようにすることである。
+本機能の目的は、`.snapshots/` に保存された build artifact について、api は一覧、download、削除、rollback endpoint を公開し、sdk は対応 method を呼び出し、ui は対応操作を表示する境界を固定することである。
 
 owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は `runner` の §14b を正とする。
 
