@@ -1830,7 +1830,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | §28.3 | `--markdown-extensions <csv>`、`ADLAIRE_MARKDOWN_EXTENSIONS` | 空値。 | `admonitions`、`badges`、`markdown_extension_warnings` | `.adlaire-admonition`、`.adlaire-admonition-title`、`.adlaire-badge`、`data-adlaire-admonition` | badge color 不正、escape 後に危険属性が残る場合。 |
 | §28.4 | `--code-line-numbers`、fence option `line-numbers` | `false` | `code_line_number_blocks`、`code_line_number_lines` | `.code-lines`、`.line-no`、`data-line` | line number 生成後に copy 本文へ番号が混入する場合。 |
 | §28.5 | `--heading-numbering <none\|h2>`、`ADLAIRE_HEADING_NUMBERING` | `none` | `heading_numbering`、`numbered_headings` | `.heading-number` | 未知 mode。 |
-| §28.6 | `--section-collapse`、`ADLAIRE_SECTION_COLLAPSE` | `false` | `collapsible_sections`、`collapsed_sections_default` | `.adlaire-section-toggle`、`.adlaire-section-collapsed`、`aria-expanded`、`adlaire:section-state` | toggle target id 重複、section 範囲が閉じない場合。 |
+| §28.6 | `--section-collapse`、`ADLAIRE_SECTION_COLLAPSE` | `false` | `collapsible_sections`、`collapsed_sections_default` | `.adlaire-section-toggle`、`.adlaire-section-collapsed`、`aria-controls`、`aria-expanded`、`data-section-id`、`adlaire:section-state` | toggle target id 重複、section 範囲が閉じない場合。 |
 | §28.7 | `--toc-depth <min>:<max>`、`ADLAIRE_TOC_DEPTH` | `1:6` | `toc_min_depth`、`toc_max_depth`、`toc_items` | `.toc`、`.toc-link`。既存 TOC 構造を維持。 | 範囲外、整数以外、`min > max`。 |
 | §28.8 | `--updated-at-source <none\|git\|file>`、`ADLAIRE_UPDATED_AT_SOURCE` | `none` | `updated_at_source`、`updated_at`、`updated_at_fallback` | `.page-updated-at`、`datetime` attribute | git 取得失敗時に fallback 不能、未知 source。 |
 | §28.9 | fence info `diff`、`patch` | 該当 fence のみ有効。 | `diff_blocks`、`diff_insertions`、`diff_deletions` | `.tok-inserted`、`.tok-deleted`、`.tok-context`、`.tok-diff-header` | diff 行 escape 後に raw HTML が残る場合。 |
@@ -2532,6 +2532,89 @@ admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。se
 表示番号は `span.heading-number` として heading text の先頭に出力し、番号後ろに ASCII space 1 個を置く。heading id、slug、anchor href、collapse target、hash history target は採番前 text から決定し、採番により変化させてはならない。TOC 表示 text と search index 表示 text には番号を含めるが、search index の検索対象正規化 text には番号を含めない。
 
 `heading_numbering` は `"none"` または `"h2"` の JSON string、`numbered_headings` は `span.heading-number` を出力した heading 数とする。未知 mode は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
+
+**§28.6〜§28.10 実装詳細固定契約：**
+
+§28.6〜§28.10 は、生成 site の閲覧挙動、TOC、時刻表示、code 表示、画像出力に影響するため、下表の処理単位、状態、出力を固定する。実装者は、本表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key を導入してはならない。
+
+| 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+|----|----------|------------------|--------------|
+| §28.6 | heading section | `collapse_targets`、`section_ranges`、`section_state_key`、`default_expanded` を page ごとに保持する。 | h2 / h3 section 範囲、toggle、wrapper、ARIA、localStorage payload、print 展開が一致する。 |
+| §28.7 | TOC tree | `toc_min_depth`、`toc_max_depth`、`toc_links`、`toc_active_targets` を page ごとに保持する。 | TOC link だけを depth filter し、本文 heading、heading id、search index heading source を変更しない。 |
+| §28.8 | page timestamp | `updated_at_source`、`updated_at_value`、`updated_at_fallback` を page ごとに保持する。 | UTC RFC3339 秒精度の `datetime` と表示 text が一致し、取得不能時の fallback / failure が固定される。 |
+| §28.9 | code fence | `diff_blocks`、`diff_insertions`、`diff_deletions`、`diff_headers` を code block ごとに保持する。 | diff / patch fence だけに token class を付け、escape と copy text が維持される。 |
+| §28.10 | image token | `lazy_image_targets`、`image_path_warnings`、`image_src_kind` を image ごとに保持する。 | img src / alt escape、lazy 属性、base 外 path warning、外部 URL no-fetch が一致する。 |
+
+**§28.6 セクション折りたたみ詳細固定契約：**
+
+`--section-collapse` は boolean option である。`false` の場合、toggle、section wrapper、collapse JS state、`adlaire:section-state` の読み書きを出力しない。`true` の場合だけ h2 / h3 を対象にする。
+
+section 範囲は以下に固定する。
+
+| 対象 heading | section 範囲 |
+|--------------|--------------|
+| h2 | 対象 h2 の直後から、次の h2 の直前まで。次の h2 がない場合は page 末尾まで。 |
+| h3 | 対象 h3 の直後から、次の h2 または h3 の直前まで。次の h2 / h3 がない場合は親 h2 範囲末尾または page 末尾まで。 |
+| h1 / h4〜h6 | collapse 対象にしない。本文構造と id は変更しない。 |
+
+toggle は heading 内の先頭に `button.adlaire-section-toggle` として出力し、`type="button"`、`aria-controls="section-<slug>"`、`aria-expanded="true"`、`data-section-id="<page_key>#<slug>"`、固定 label text を持つ。section body wrapper は `id="section-<slug>"` を持つ。`<slug>` は §28 ID / slug / search index / JS state 決定性固定契約で確定した heading id と同じ値とする。wrapper id が既存 id と衝突する場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力維持とする。
+
+localStorage key は `adlaire:section-state` だけを使用する。値は JSON object string とし、object key は `<page_key>#<slug>`、value は boolean とする。`true` は展開、`false` は折りたたみを表す。保存時の object key は ASCII 昇順に並べる。未知 key、JSON parse 失敗、boolean 以外の値は無視する。`collapsed_sections_default` は既定で折りたたまれている section 数であり、初期仕様では常に `0` とする。
+
+print 時は全 section を展開状態で表示する。screen state は書き換えず、`@media print` または beforeprint / afterprint の一時処理だけで制御する。検索 hit または hash target が折りたたみ範囲内にある場合は、該当 section を一時展開し、localStorage の保存値は変更しない。
+
+`collapsible_sections` は出力した toggle 数、`collapsed_sections_default` は既定折りたたみ数とする。
+
+**§28.7 TOC 深さ制御詳細固定契約：**
+
+`--toc-depth` は `<min>:<max>` 形式だけを許可する。`min` と `max` は 1〜6 の整数、`min <= max` とする。空値、整数以外、範囲外、`min > max`、separator 不一致、余分な値は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
+
+TOC depth は TOC 出力だけに適用する。本文 heading、heading id、anchor、collapse target、hash history target、search index の heading source text を変更してはならない。§28.16 TOC active tracking が有効な場合、active tracking 対象は TOC に出力された link と同一集合にする。
+
+TOC link order は本文 heading 出現順に固定する。TOC link href は確定 heading id への `#<id>` とし、TOC 表示 text は §28.5 heading numbering が有効な場合は表示番号を含める。`toc_min_depth` と `toc_max_depth` は integer、`toc_items` は出力した TOC link 数とする。
+
+**§28.8 最終更新日詳細固定契約：**
+
+`--updated-at-source` の許可値は `none`、`git`、`file` だけである。未知値は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
+
+| source | timestamp 決定 | 出力 |
+|--------|----------------|------|
+| `none` | timestamp を取得しない。 | `.page-updated-at` を出力しない。`updated_at=""`、`updated_at_source="none"`、`updated_at_fallback=0`。 |
+| `git` | fake git timestamp があれば最優先、なければ対象 Markdown の git timestamp、取得不能なら file mtime fallback。 | `time.page-updated-at datetime="<UTC RFC3339>"` と表示 text を出力する。git から file へ fallback した場合は `updated_at_source="file"`、`updated_at_fallback=1`。 |
+| `file` | fake file mtime があれば最優先、なければ対象 Markdown の file mtime。 | `time.page-updated-at datetime="<UTC RFC3339>"` と表示 text を出力する。 |
+
+timestamp は UTC、RFC3339、秒精度、例 `2026-09-18T12:34:56Z` に固定する。表示 text は `Updated: 2026-09-18 12:34:56 UTC` に固定する。file mtime 取得不能、git 取得不能かつ file fallback 不能、timestamp parse 不能は終了コード `1`、stderr `BUILDER28_INTERNAL_IO`、公開出力維持とする。
+
+search index には updated-at の UI label と timestamp を含めない。`updated_at` は JSON string、`updated_at_fallback` は 0 以上の整数とする。
+
+**§28.9 diff ハイライト詳細固定契約：**
+
+diff highlight は fence language が `diff` または `patch` の場合だけ適用する。その他の code fence は、行頭 `+` / `-` / space を含んでも diff class を付けない。
+
+| 行条件 | class | count |
+|--------|-------|-------|
+| `+++` または `---` で始まる行 | `.tok-diff-header` | insertions / deletions に含めない。 |
+| `+` で始まり、`+++` ではない行 | `.tok-inserted` | `diff_insertions` に加算する。 |
+| `-` で始まり、`---` ではない行 | `.tok-deleted` | `diff_deletions` に加算する。 |
+| space で始まる行、または上記以外の行 | `.tok-context` | insertions / deletions に含めない。 |
+
+HTML text は class 付与前に escape する。copy text と search index には元の diff 記号と code text を含めるが、class 名、line number、UI label は含めない。§28.4 と併用する場合、line number node に diff class を付けず、code text 側だけに diff class を付ける。`diff_blocks` は diff / patch fence 数、`diff_insertions` と `diff_deletions` は該当行数とする。
+
+**§28.10 画像遅延読み込み詳細固定契約：**
+
+`--lazy-images` は boolean option である。`true` の場合だけ Markdown image 由来の `img` に `loading="lazy"` と `decoding="async"` を付与する。`false` の場合、既存 img 出力を変更しない。既に同名属性を持つ raw HTML は §28 parser の raw HTML escape 対象であり、§28.10 は raw HTML img を信頼して属性補完してはならない。
+
+image `src` は以下に分類する。
+
+| src 種別 | 挙動 |
+|----------|------|
+| base 内相対 path | path を `/` 区切り、先頭 `./` なしに正規化し、属性へ escape 済みで出力する。 |
+| base 外相対 path | non-strict では warning `BUILDER28_PATH_OUTSIDE_BASE` を stdout に出し、属性は元 text を escape 済みで出力する。strict では終了コード `2`、公開出力維持。 |
+| `http` / `https` URL | 属性へ escape 済みで出力する。build 時 fetch、存在確認、redirect 追跡を行わない。 |
+| `data:` URL | 属性へ escape 済みで出力する。内容 decode、MIME 判定、fetch を行わない。 |
+| その他 scheme | non-strict では warning `BUILDER28_INVALID_OPTION` とし、strict では終了コード `2`、公開出力維持。 |
+
+`alt` は必ず attribute escape する。`lazy_images` は `loading="lazy"` と `decoding="async"` を付与した img 数、`image_path_warnings` は warning 件数とする。search index には image alt text を含めるが、src、loading、decoding、warning text は含めない。
 
 **§28 実装完了条件：**
 

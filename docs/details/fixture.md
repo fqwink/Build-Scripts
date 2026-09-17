@@ -589,11 +589,11 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`success-extension-csv-normalization`、`failure-unknown-extension`、`failure-badge-invalid-text-strict`、`noop-badge-invalid-text-nonstrict`、`security-extension-escape`、`noop-extension-disabled` |
 | §28.4 | `code-line-numbers` | `success-line-numbers-fence`、`success-line-numbers-cli`、`success-line-numbers-diff-composition`、`noop-line-numbers-empty-code`、`noop-line-numbers-disabled`、`security-line-numbers-copy-clean` |
 | §28.5 | `heading-numbering` | `success-heading-numbering-h2-h3`、`success-heading-numbering-implicit-h2`、`success-heading-numbering-toc-search`、`failure-heading-numbering-unknown-mode`、`noop-heading-numbering-none`、`security-heading-slug-unchanged` |
-| §28.6 | `section-collapse` | `success-collapse-h2-h3`、`success-collapse-local-storage`、`noop-collapse-no-heading`、`security-collapse-duplicate-target-strict` |
-| §28.7 | `toc-depth` | `success-toc-depth-h2-h3`、`success-toc-depth-h1-h6`、`failure-toc-depth-invalid-range`、`security-toc-depth-active-sync` |
-| §28.8 | `updated-at` | `success-updated-at-git`、`success-updated-at-file`、`success-updated-at-fallback`、`failure-updated-at-unknown-source` |
-| §28.9 | `diff-highlight` | `success-diff-insert-delete-context`、`success-diff-header`、`noop-diff-non-diff-language`、`security-diff-escape` |
-| §28.10 | `lazy-images` | `success-lazy-relative-image`、`success-lazy-external-image-no-fetch`、`failure-lazy-base-outside-strict`、`security-lazy-alt-escape` |
+| §28.6 | `section-collapse` | `success-collapse-h2-h3`、`success-collapse-local-storage`、`success-collapse-print-search-hash`、`failure-collapse-duplicate-target`、`noop-collapse-no-heading`、`noop-collapse-disabled`、`security-collapse-state-parse-guard` |
+| §28.7 | `toc-depth` | `success-toc-depth-h2-h3`、`success-toc-depth-h1-h6`、`success-toc-depth-heading-numbering-sync`、`failure-toc-depth-invalid-range`、`failure-toc-depth-invalid-format`、`security-toc-depth-active-sync` |
+| §28.8 | `updated-at` | `success-updated-at-git`、`success-updated-at-file`、`success-updated-at-fallback`、`success-updated-at-none`、`failure-updated-at-unknown-source`、`failure-updated-at-unavailable`、`security-updated-at-no-search-index` |
+| §28.9 | `diff-highlight` | `success-diff-insert-delete-context`、`success-diff-header`、`success-diff-line-number-composition`、`noop-diff-non-diff-language`、`security-diff-escape`、`security-diff-copy-text-clean` |
+| §28.10 | `lazy-images` | `success-lazy-relative-image`、`success-lazy-external-image-no-fetch`、`success-lazy-data-uri-no-fetch`、`failure-lazy-base-outside-strict`、`noop-lazy-disabled`、`security-lazy-alt-escape`、`security-lazy-invalid-scheme-strict` |
 | §28.11 | `custom-meta` | `success-meta-og-twitter`、`success-meta-duplicate-last-wins`、`failure-meta-forbidden-key`、`security-meta-escape` |
 | §28.12 | `color-scheme` | `success-color-scheme-light`、`success-color-scheme-dark`、`success-color-scheme-auto`、`failure-color-scheme-unknown` |
 | §28.13 | `code-title` | `success-code-title-colon`、`success-code-title-key-value`、`noop-code-title-empty`、`security-code-title-escape` |
@@ -806,6 +806,48 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 
 §28.1〜§28.5 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。failure / security fixture では、`forbidden_updated_paths` と `forbidden_deleted_paths` に公開 `--out`、既存 `.dependency_manifest.json`、既存 `assets/search-index.json` を必ず含める。
 
+**§28.6〜§28.10 feature fixture 固定契約：**
+
+§28.6〜§28.10 の fixture は、`docs/details/builder.md` §28.6〜§28.10 実装詳細固定契約に列挙された UI 状態、TOC、timestamp、code token、image token、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x に固定し、`manifest.json.feature_slug` を §28 fixture カタログ固定契約の feature slug と一致させる。
+
+| feature slug | fixture | 固定する内容 |
+|--------------|---------|--------------|
+| `section-collapse` | `success-collapse-h2-h3` | h2 / h3 の section 範囲、`button.adlaire-section-toggle`、`aria-controls`、`aria-expanded`、`data-section-id`、`section-<slug>` wrapper、`collapsible_sections` を固定する。 |
+| `section-collapse` | `success-collapse-local-storage` | `adlaire:section-state` の `<page_key>#<slug>` key、boolean payload、ASCII key order、unknown key 無視、JSON parse failure fallback を `expected/site/assets/app.js` で確認する。 |
+| `section-collapse` | `success-collapse-print-search-hash` | print 全展開、検索 hit 一時展開、hash target 一時展開、localStorage 保存値非変更を HTML / CSS / JS expected で確認する。 |
+| `section-collapse` | `failure-collapse-duplicate-target` | `section-<slug>` wrapper id が既存 id と衝突した場合に `BUILDER28_OUTPUT_VALIDATION_FAILED`、終了コード `1`、公開出力維持になる。 |
+| `section-collapse` | `noop-collapse-no-heading` | h2 / h3 がない page では toggle、wrapper、JS state、REPORT count を増やさない。 |
+| `section-collapse` | `noop-collapse-disabled` | option 無効時に toggle、wrapper、collapse JS、localStorage key を出力せず、既存 heading HTML と一致する。 |
+| `section-collapse` | `security-collapse-state-parse-guard` | localStorage に JSON 破損、boolean 以外、未知 page / section key があっても例外化せず、静的 HTML、TOC、本文を壊さない。 |
+| `toc-depth` | `success-toc-depth-h2-h3` | `--toc-depth 2:3` で TOC link が h2 / h3 だけになり、本文 heading、heading id、search index heading source が変化しない。 |
+| `toc-depth` | `success-toc-depth-h1-h6` | `--toc-depth 1:6` で全 heading level の TOC link を本文出現順に出力する。 |
+| `toc-depth` | `success-toc-depth-heading-numbering-sync` | §28.5 と併用し、TOC 表示 text だけに numbering を含め、href と heading id が採番で変わらない。 |
+| `toc-depth` | `failure-toc-depth-invalid-range` | `0:6`、`1:7`、`4:2` を `BUILDER28_INVALID_OPTION`、終了コード `2`、stdout 空、公開出力維持にする。 |
+| `toc-depth` | `failure-toc-depth-invalid-format` | 空値、整数以外、separator 不一致、余分な値を `BUILDER28_INVALID_OPTION`、終了コード `2` にする。 |
+| `toc-depth` | `security-toc-depth-active-sync` | §28.16 有効時の active tracking 対象が TOC 出力 link と一致し、depth 外 heading を active 化しない。 |
+| `updated-at` | `success-updated-at-git` | fake git timestamp を UTC RFC3339 秒精度へ正規化し、`time.page-updated-at`、表示 text、`updated_at_source="git"`、`updated_at_fallback=0` を固定する。 |
+| `updated-at` | `success-updated-at-file` | fake file mtime を UTC RFC3339 秒精度へ正規化し、`updated_at_source="file"`、`updated_at_fallback=0` を固定する。 |
+| `updated-at` | `success-updated-at-fallback` | git 取得不能かつ file mtime 取得可能時に file へ fallback し、`updated_at_source="file"`、`updated_at_fallback=1` になる。 |
+| `updated-at` | `success-updated-at-none` | `none` で timestamp 取得なし、`.page-updated-at` 出力なし、`updated_at=""`、`updated_at_source="none"`、`updated_at_fallback=0` になる。 |
+| `updated-at` | `failure-updated-at-unknown-source` | 未知 source を `BUILDER28_INVALID_OPTION`、終了コード `2`、stdout 空、公開出力維持にする。 |
+| `updated-at` | `failure-updated-at-unavailable` | git / file timestamp とも取得不能、または timestamp parse 不能を `BUILDER28_INTERNAL_IO`、終了コード `1`、公開出力維持にする。 |
+| `updated-at` | `security-updated-at-no-search-index` | search index に `.page-updated-at` の label、timestamp、UI text が混入しない。 |
+| `diff-highlight` | `success-diff-insert-delete-context` | diff / patch fence の inserted、deleted、context 行へ `.tok-inserted`、`.tok-deleted`、`.tok-context` を付与し、REPORT count を固定する。 |
+| `diff-highlight` | `success-diff-header` | `+++` / `---` header 行を `.tok-diff-header` とし、insertions / deletions に加算しない。 |
+| `diff-highlight` | `success-diff-line-number-composition` | §28.4 と併用し、line number node に diff class が付かず、code text 側だけに diff class が付く。 |
+| `diff-highlight` | `noop-diff-non-diff-language` | 通常 code fence では行頭 `+` / `-` / space があっても diff class を付けない。 |
+| `diff-highlight` | `security-diff-escape` | diff 行内の raw HTML、event handler、`javascript:` URL が escape され、class 付与後も実行可能にならない。 |
+| `diff-highlight` | `security-diff-copy-text-clean` | copy text と search index に diff class、line number、UI label が混入せず、元の diff 記号と code text だけを含む。 |
+| `lazy-images` | `success-lazy-relative-image` | base 内相対 image path を正規化し、`loading="lazy"`、`decoding="async"`、escaped alt を出力する。 |
+| `lazy-images` | `success-lazy-external-image-no-fetch` | `http` / `https` URL に lazy 属性を付けるが、external call は 0 件である。 |
+| `lazy-images` | `success-lazy-data-uri-no-fetch` | `data:` URL に lazy 属性を付けるが、decode、MIME 判定、external call を行わない。 |
+| `lazy-images` | `failure-lazy-base-outside-strict` | strict で base 外相対 path を `BUILDER28_PATH_OUTSIDE_BASE`、終了コード `2`、公開出力維持にする。 |
+| `lazy-images` | `noop-lazy-disabled` | option 無効時に `loading`、`decoding` を追加せず、既存 img 出力と一致する。 |
+| `lazy-images` | `security-lazy-alt-escape` | alt、src、title 相当の attribute に raw HTML、quote、event handler が混入しても attribute escape される。 |
+| `lazy-images` | `security-lazy-invalid-scheme-strict` | `javascript:`、`file:`、その他未許可 scheme を strict で `BUILDER28_INVALID_OPTION`、終了コード `2`、公開出力維持にする。 |
+
+§28.6〜§28.10 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。browser runtime、visual layout、parser precedence と併用する fixture では、該当共通 fixture と同じ localStorage key、media query、parser 保護、external call 0 件を再確認する。
+
 **§28 expected 比較方式固定契約：**
 
 expected 比較は、実装環境差分で揺れないように以下の正規化だけを許可する。下表にない正規化、部分一致、snapshot 差し替え、目視承認は合格条件にしてはならない。
@@ -857,11 +899,11 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | §28.3 | admonition type 正規化、badge color validation、disabled 時互換、escape。 |
 | §28.4 | line number node、copy 対象除外、空 code、line count。 |
 | §28.5 | slug 不変、表示番号、TOC / search index 番号、unknown mode 拒否。 |
-| §28.6 | toggle target、localStorage key、print 展開、重複 target 検出。 |
-| §28.7 | min/max validation、TOC filter、active tracking 対象一致。 |
-| §28.8 | fake git、fake file mtime、fallback、RFC3339 UTC 秒精度。 |
-| §28.9 | inserted / deleted / context / header class、escape、copy 本文維持。 |
-| §28.10 | lazy 属性、外部 URL no-fetch、base 外 path warning、alt escape。 |
+| §28.6 | h2 / h3 section 範囲、`aria-controls`、`data-section-id`、`adlaire:section-state` payload、print / search / hash 一時展開、重複 target 検出。 |
+| §28.7 | min/max validation、invalid format、TOC filter、heading numbering 併用、active tracking 対象一致。 |
+| §28.8 | fake git、fake file mtime、fallback、none、取得不能 failure、RFC3339 UTC 秒精度、search index 除外。 |
+| §28.9 | inserted / deleted / context / header class、line number 併用、escape、copy text / search index 清浄性。 |
+| §28.10 | lazy 属性、外部 URL no-fetch、data URI no-fetch、base 外 path strict、disabled no-op、alt escape、invalid scheme strict。 |
 | §28.11 | meta head 内順序、禁止 key、重複 last wins、attribute escape。 |
 | §28.12 | light / dark / auto、toggle、localStorage、print light。 |
 | §28.13 | colon / key-value title、copy 除外、empty title no-op、escape。 |
