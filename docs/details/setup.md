@@ -2,9 +2,9 @@
 
 本ファイルは `docs/DETAIL_INDEX.md` から分割した `setup` owner component の詳細仕様である。
 
-本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/SPEC.md` を正とする。
+本ファイルに、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を記載してはならない。方針、ポリシー、正本関係は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否は `docs/ROADMAP.md` を正とする。
 
-本ファイルを読む前に、`docs/SPEC.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、fixture、検証観点として参照する。
+本ファイルを読む前に、`docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、fixture、検証観点として参照する。
 
 本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、Phase 完了判定 fixture 記録を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component の詳細仕様ファイルを正とする。
 

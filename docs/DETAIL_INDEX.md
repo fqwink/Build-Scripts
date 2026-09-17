@@ -1,10 +1,10 @@
 # Adlaire CI — 詳細仕様
 
-本ファイルは `docs/SPEC.md` の Part 3 詳細仕様の入口であり、読み順、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約を持つ。
+本ファイルは `docs/SPEC.md` の Part 3 詳細仕様の入口であり、読み順、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、横断補足契約を持つ。
 
 各 owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。本ファイルは個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、fixture assertion、setup 手順を持たない。
 
-方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断は `docs/SPEC.md` を正とする。
+方針、ポリシー、正本関係の上位判断は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否の上位判断は `docs/ROADMAP.md` を正とする。
 
 ---
 
@@ -43,7 +43,7 @@ owner component と collaborator component は、以下の境界で扱う。
 | collaborator component | 呼び出し境界、参照 schema、表示境界、security、setup、fixture、検証観点。 | owner component の入力、出力、状態、処理順序、異常系の主本文。 |
 | `docs/DETAIL_INDEX.md` | 読み方、共通固定値、対応表、横断補足契約。 | 個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema。 |
 
-owner component が確定できない場合は、実装判断で補完しない。先に `docs/SPEC.md` の状態分類と本ファイルの対応表を整合させる。
+owner component が確定できない場合は、実装判断で補完しない。先に `docs/ROADMAP.md` の状態分類と本ファイルの対応表を整合させる。
 
 ## Cross Reference Rules
 
@@ -80,7 +80,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 | 範囲 | 役割 |
 |------|------|
-| §0〜§0j | 詳細仕様の記載基準、実装前確認項目、共通固定値、検証、Phase、詳細節対応表、リポジトリ内ソース配置 |
+| §0〜§0j | 詳細仕様の記載基準、実装前確認項目、共通固定値、検証、詳細節対応表、リポジトリ内ソース配置 |
 | §1〜§9 | `docs/details/builder.md`。`builder` / `adlaire-ci-build` の詳細仕様 |
 | §10〜§20 | `docs/details/runner.md`。`runner` / `adlaire-ci-runner` の詳細仕様 |
 | §21〜§22 | `docs/details/api.md`。`api` / `adlaire-ci-api` の詳細仕様。§21a は管理 API サーバー制限を定義する。 |
@@ -148,7 +148,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 ## 0b. 詳細仕様参照表
 
-本節は、責務 component ごとに参照する詳細仕様節を示す。実装状態、実装可否、ロードマップ状態は `docs/SPEC.md` を確認する。
+本節は、責務 component ごとに参照する詳細仕様節を示す。実装状態、実装可否、ロードマップ状態は `docs/ROADMAP.md` を確認する。
 
 | 責務 component | 詳細仕様節 | 主な確認対象 |
 |--------------------|------------|--------------|
@@ -179,7 +179,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 | ファイル | 持つ内容 | 持たない内容 |
 |----------|----------|--------------|
-| `docs/DETAIL_INDEX.md` | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様。 | 各 component の詳細な処理本文、fixture / PR 証跡正本、状態 schema、API endpoint 詳細、SDK method 実装、UI DOM 詳細、setup / release 手順。 |
+| `docs/DETAIL_INDEX.md` | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様。 | 各 component の詳細な処理本文、fixture / PR 証跡正本、状態 schema、API endpoint 詳細、SDK method 実装、UI DOM 詳細、setup / release 手順。 |
 | `docs/details/builder.md` | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
 | `docs/details/runner.md` | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 | `docs/details/api.md` | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
@@ -345,114 +345,27 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 2. 未充足項目が入出力、状態ファイル、api、sdk、ui、処理順序、異常系、検証条件に関わる場合は、該当 owner component の詳細仕様ファイルまたは collaborator の詳細仕様ファイルを改訂する。
 3. ファイル名、正本関係、対象範囲が変わる場合は、`docs/DOCUMENT_INDEX.md` の更新要否を確認する。
 4. 対象項目の詳細節、参照先、受け入れ条件が変わる場合は、§0i の詳細節対応表を更新する。
-5. 改訂後、§0b、§0c、§0e、本節、§0g、§0h、§0i、§0j の条件を再確認する。
+5. 改訂後、§0b、§0c、§0e、本節、§0h、§0i、§0j、および `docs/ROADMAP.md` の Phase 条件を再確認する。
 
 ---
 
-## 0g. 初期実装 Phase 分割
 
-Go 版初期実装は、`docs/SPEC.md` §0e の対象範囲を一括実装せず、下表の Phase 順に進める。上位 Phase の完了判定を満たす前に、下位 Phase の実装 PR を開始してはならない。
+## 0g. Phase 詳細仕様参照
 
-実装単位、実装 PR 単位、完了判定単位は Phase のみとする。`P0`、`P1`、`P2〜P5` などの優先度ラベル、抽象段階、API 内部段階名を実装単位として使ってはならない。API の実装範囲は、Phase 3 を「API 基盤・認証・状態 read/write・運用基本操作」、Phase 4 を「API 拡張運用操作」として扱う。
+Phase の一覧、順序、対象 owner component、依存条件、完了条件、引き継ぎ契約、実装 PR 成果物チェックリストは `docs/ROADMAP.md` を正とする。
 
-各 Phase の `対象` は、その Phase の owner component を示す。状態ファイル、security、archive、commitstatus、admin、fixture、setup が関わる場合も、それらは collaborator component として該当 Phase の完了条件に含める。collaborator component の詳細仕様に未充足がある場合は、owner component の実装で補完せず、先に該当する責務 component 別詳細仕様ファイルを改訂する。
+本ファイルでは、Phase を詳細仕様へ接続する入口だけを持つ。Phase の状態、順序、完了条件、将来計画の昇格判断を重複定義しない。
 
-| Phase | 対象 | 実装範囲 | 依存条件 | 完了条件 |
-|-------|------|----------|----------|----------|
-| Phase 1 | `builder` | §2〜§9 の CLI、Markdown 変換、静的 Web サイト出力、テーマコンポーネント、生成物確認。 | なし。 | §0e の `builder` 必須検証と §0f の `builder` 完了判定を満たす。 |
-| Phase 2 | `runner` | §10〜§20 の CI ランナー、GitHub API 連携、SHA キャッシュ、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd / setup 参照境界。systemd unit 本文と配置手順は `docs/details/setup.md` §26 を正とする。 | Phase 1 が完了し、`adlaire-ci-build` の CLI 契約が固定されている。 | §0e の `runner` 必須検証と §0f の `runner` 完了判定を満たす。 |
-| Phase 3 | `api` | `docs/details/api.md` §21〜§22、§21a、§25 と `docs/details/setup.md` §26 のうち、認証、セッション、共通エラー、状態ファイル読み書き、ビルド操作、status、logs、history、queue、circuit breaker。 | Phase 2 が完了し、runner が書き込む状態ファイル schema が固定されている。 | API 基盤・認証・状態 read/write・運用基本操作の必須検証、§0e の `api` API 共通・状態ファイル検証、§0f の `api` 完了判定の該当範囲を満たす。 |
-| Phase 4 | `api` | `docs/details/api.md` §22.0e、§22.0f のうち、config、repo、branch、schedule、notify、snapshot、rollback、maintenance、access control、hooks、tokens 等の拡張運用操作。 | Phase 3 が完了し、API 共通処理と認証が固定されている。 | API 拡張運用操作の必須検証と §0e の `api` endpoint 契約を満たす。 |
-| Phase 5 | `sdk` | `docs/details/sdk.md` §23 の SDK class、method、戻り値、HTTP error、token 破棄、query / body 生成。 | Phase 3 と Phase 4 が完了し、`docs/details/api.md` §22.0e の endpoint 契約が固定されている。 | §0e の `sdk` 契約と §0f の `sdk` 完了判定を満たす。 |
-| Phase 6 | `ui` | `docs/details/ui.md` §24 の標準管理ツール UI、DOM id、panel、操作、SDK 呼び出し、成功表示、失敗表示、disabled、再取得、秘密情報消去。 | Phase 5 が完了し、SDK method 契約が固定されている。 | §0e の `ui` 契約と §0f の `ui` 完了判定を満たす。 |
+| Phase | owner component | 主な詳細仕様本文 | fixture / 証跡 |
+|-------|-----------------|------------------|----------------|
+| Phase 1 | `builder` | `docs/details/builder.md` §1〜§9、§8a | `docs/details/fixture.md` §0g.8-F |
+| Phase 2 | `runner` | `docs/details/runner.md` §10〜§20、§15a | `docs/details/fixture.md` §0g.8-F |
+| Phase 3 | `api` | `docs/details/api.md` §21〜§22、§21a、§25、§22.0f、`docs/details/setup.md` §26 | `docs/details/fixture.md` §0g.8-F、§22-F、§27-F |
+| Phase 4 | `api` | `docs/details/api.md` §22.0e、§22.0f | `docs/details/fixture.md` §0g.8-F、§22-F、§27-F |
+| Phase 5 | `sdk` | `docs/details/sdk.md` §23 | `docs/details/fixture.md` §0g.8-F |
+| Phase 6 | `ui` | `docs/details/ui.md` §24 | `docs/details/fixture.md` §0g.8-F |
 
-### 0g.1 Phase 1 完全仕様ゲート（`builder`）
-
-Phase 1 の実装詳細本文は `docs/details/builder.md` を正とする。親ファイルでは、Phase 1 の対象、依存条件、完了条件、後続 Phase への引き継ぎ確認だけを扱う。
-
-| 確認 | 参照先 |
-|------|--------|
-| CLI、Markdown 変換、静的 Web サイト出力、theme component、生成物確認 | `docs/details/builder.md` §1〜§9、§8a |
-| Phase 1 fixture、testdata、PR 証跡 | `docs/details/fixture.md` §0g.8-F |
-| release / setup 受け入れ条件 | `docs/details/setup.md` §26.7 |
-
-### 0g.2 Phase 2 完全仕様ゲート（`runner`）
-
-Phase 2 の実装詳細本文は `docs/details/runner.md` を正とする。親ファイルでは、Phase 2 が Phase 1 の `adlaire-ci-build` 契約に依存し、後続 API が読む runner 状態契約を固定することだけを扱う。
-
-| 確認 | 参照先 |
-|------|--------|
-| CI runner、GitHub API 連携、SHA cache、pipeline、deploy、snapshot、通知、systemd | `docs/details/runner.md` §10〜§20、§15a |
-| runner fixture、fake GitHub、fake ssh / notifier、PR 証跡 | `docs/details/fixture.md` §0g.8-F |
-| release / setup 受け入れ条件 | `docs/details/setup.md` §26.7 |
-
-### 0g.3 Phase 3 完全仕様ゲート（`api`）
-
-Phase 3 の実装詳細本文は `docs/details/api.md` と `docs/details/setup.md` を正とする。親ファイルでは、API 共通契約、認証、状態 read/write、運用基本 endpoint が Phase 4〜6 の前提になることだけを扱う。
-
-| 確認 | 参照先 |
-|------|--------|
-| API 共通処理、API server 制限、認証、運用基本 endpoint、状態 read/write | `docs/details/api.md` §21〜§22、§21a、§25、§22.0f |
-| 状態ファイル schema、lock、atomic write | `docs/details/statefile.md` §22.0a、§22.0c |
-| 管理 API 導入、systemd、release 受け入れ条件 | `docs/details/setup.md` §26 |
-
-### 0g.4 Phase 4 完全仕様ゲート（`api`）
-
-Phase 4 の実装詳細本文は `docs/details/api.md` を正とする。親ファイルでは、拡張運用 endpoint が SDK / UI の最終入力契約になることだけを扱う。
-
-| 確認 | 参照先 |
-|------|--------|
-| 拡張運用 endpoint、request / response、error、auth、secret mask | `docs/details/api.md` §22.0e、§22.0f |
-| security 連携 | `docs/details/security.md` §27.42〜§27.47 |
-| API fixture、endpoint 証跡 | `docs/details/fixture.md` §0g.8-F、§22-F、§27-F |
-
-### 0g.5 Phase 5 完全仕様ゲート（`sdk`）
-
-Phase 5 の実装詳細本文は `docs/details/sdk.md` を正とする。親ファイルでは、SDK が固定済み API endpoint だけを呼び、UI 表示判断を持たないことだけを扱う。
-
-| 確認 | 参照先 |
-|------|--------|
-| SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄 | `docs/details/sdk.md` §23 |
-| API endpoint 対応 | `docs/details/api.md` §22.0e |
-| SDK fixture、fake fetch / stream | `docs/details/fixture.md` §0g.8-F |
-
-### 0g.6 Phase 6 完全仕様ゲート（`ui`）
-
-Phase 6 の実装詳細本文は `docs/details/ui.md` を正とする。親ファイルでは、UI が SDK 経由だけで API と通信し、秘密情報を DOM に残さないことだけを扱う。
-
-| 確認 | 参照先 |
-|------|--------|
-| DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去 | `docs/details/ui.md` §24 |
-| SDK method 契約 | `docs/details/sdk.md` §23 |
-| UI fixture、fake SDK、直接 API 呼び出し禁止確認 | `docs/details/fixture.md` §0g.8-F |
-
-### 0g.7 Phase 間引き継ぎ契約
-
-各 Phase の完了時は、次 Phase が依存する契約を変更不可として扱う。後続 Phase で変更が必要になった場合は、後続 Phase の実装で吸収せず、契約を定義した owner 詳細仕様へ戻す。
-
-| 引き継ぎ元 | 引き継ぎ先 | 固定する契約 | 正本 |
-|------------|------------|--------------|------|
-| Phase 1 | Phase 2 | `adlaire-ci-build` CLI、終了コード、stdout / stderr、`[REPORT]`、出力サイト構造。 | `docs/details/builder.md` |
-| Phase 2 | Phase 3 | runner 状態ファイル schema、lock、history/log、pending queue、circuit breaker、snapshot、通知ログ。 | `docs/details/runner.md` / `docs/details/statefile.md` |
-| Phase 3 | Phase 4 | API 共通契約、認証、session、error body、validation、lock error、SSE 基本形式。 | `docs/details/api.md` |
-| Phase 4 | Phase 5 | 全 endpoint の method、path、query、request、response、error、認証要否。 | `docs/details/api.md` |
-| Phase 5 | Phase 6 | SDK method 名、引数、戻り値、error object、stream handle、token 破棄条件。 | `docs/details/sdk.md` |
-| Phase 6 | 初期実装完了 | UI 操作、表示状態、secret 消去、SDK 経由通信、実装完了検証結果。 | `docs/details/ui.md` |
-
-### 0g.8 Phase 別 実装 PR 成果物チェックリスト
-
-Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `docs/details/fixture.md` §0g.8-F を正とする。親ファイルでは、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、PR 証跡項目を重複定義しない。
-
-| Phase | 実装対象 | 成果物・fixture 正本 | 受け入れ条件 |
-|-------|----------|----------------------|--------------|
-| Phase 1 | `builder` | `docs/details/fixture.md` §0g.8-F | `docs/details/builder.md` と `docs/details/setup.md` §26.7 を満たす。 |
-| Phase 2 | `runner` | `docs/details/fixture.md` §0g.8-F | `docs/details/runner.md` と `docs/details/setup.md` §26.7 を満たす。 |
-| Phase 3 | `api` | `docs/details/fixture.md` §0g.8-F、§27-F | `docs/details/api.md` の API 基盤・認証・状態 read/write・運用基本操作と setup API 導入条件を満たす。 |
-| Phase 4 | `api` | `docs/details/fixture.md` §0g.8-F、§27-F | `docs/details/api.md` の API 拡張運用操作を満たす。 |
-| Phase 5 | `sdk` | `docs/details/fixture.md` §0g.8-F | `docs/details/sdk.md` §23 を満たす。 |
-| Phase 6 | `ui` | `docs/details/fixture.md` §0g.8-F | `docs/details/ui.md` §24 を満たす。 |
-
----
+実装者は、対象 Phase が `docs/ROADMAP.md` で実装対象になっていることを確認してから、上表の owner component 詳細仕様本文を読む。
 
 ## 0h. 機能仕様テンプレート
 
@@ -715,7 +628,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 | 確認 | 固定内容 |
 |------|----------|
-| 実装対象判定 | `docs/SPEC.md` で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用機能を実装対象にしない。 |
+| 実装対象判定 | `docs/ROADMAP.md` で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用機能を実装対象にしない。 |
 | owner 確定 | §0b と §0i で owner component を 1 件に確定し、主本文は owner の分割先詳細仕様ファイルで確認する。 |
 | collaborator 確認 | collaborator がある場合は、§27.1〜§27.47 の参照インデックスに列挙された component の分割先ファイルを schema、呼び出し境界、表示、security、setup、fixture、検証観点として読む。 |
 | 補完禁止 | 個別節または分割先詳細仕様に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存を実装判断で追加しない。追加が必要な場合は owner component の詳細仕様、関連 collaborator 詳細仕様、fixture catalog、必要な対応表を先に更新する。 |
