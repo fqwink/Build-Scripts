@@ -6,13 +6,13 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 本リポジトリでは、Markdown ファイルまたは Markdown ディレクトリから静的 Web サイトを生成する Go 版ビルドスクリプトと、GitHub 上の対象 Markdown 変更を検出してビルドを実行する Go 版 CI ランナーの仕様を管理します。
 
-方針・ポリシー・実装状態の正本は `ADLAIRE_CI_SPEC.md` です。実装詳細は、入口、索引、共通固定値、責務 component 対応表は `ADLAIRE_CI_DETAIL_SPEC.md`、各 owner component の詳細本文は `ADLAIRE_CI_DETAIL_*_SPEC.md` を正本として扱います。
+方針・ポリシー・実装状態・実装可否・ロードマップの正本は `ADLAIRE_CI_SPEC.md` です。詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md` を参照します。各 owner component の入出力、状態、処理順序、異常系、検証条件の本文は `ADLAIRE_CI_DETAIL_*_SPEC.md` を正本として扱います。
 
 ## 主要ファイル
 
 - `ADLAIRE_CI_SPEC.md`: Adlaire CI のマスター仕様書。
-- `ADLAIRE_CI_DETAIL_SPEC.md`: Adlaire CI の Part 3 詳細仕様の入口、索引、共通固定値、責務 component 対応表。
-- `ADLAIRE_CI_DETAIL_*_SPEC.md`: owner component 別の詳細仕様本文。
+- `ADLAIRE_CI_DETAIL_SPEC.md`: Adlaire CI の Part 3 詳細仕様の入口。読み順、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、§0i.1〜§0i.4 の詳細節対応表、§0j のリポジトリ内ソース配置、横断補足契約を持つ。
+- `ADLAIRE_CI_DETAIL_*_SPEC.md`: owner component 別の入出力、状態、処理順序、異常系、検証条件の詳細仕様本文。
 - `build_spec.go`: Markdown を静的 Web サイトへ変換する Go 版ビルドスクリプト。`components/builder.go` の現行実装実体として Phase 1 実装済み。
 - `build_spec_test.go`: `build_spec.go` の Phase 1 fixture テスト。
 - `go.mod`: Go module 定義。外部 module は追加しない。

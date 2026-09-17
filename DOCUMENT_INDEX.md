@@ -7,19 +7,19 @@
 | ファイル | 役割 |
 |---------|------|
 | `ADLAIRE_CI_SPEC.md` | Adlaire CI の方針、ポリシー、実装状態、正本関係を定めるマスター仕様書正本。 |
-| `ADLAIRE_CI_DETAIL_SPEC.md` | `ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様の入口。索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、§27.38a の横断補足契約を持つ。状態ファイル詳細は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md`、fixture 共通契約は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を正とする。方針、ポリシー、実装状態、ロードマップ状態、実装可否は記載しない。 |
-| `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner component の詳細仕様。Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能を扱う。状態 schema、API endpoint、SDK method、UI DOM、setup / release、fixture / PR 証跡正本は持たない。 |
-| `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner component の詳細仕様。GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能を扱う。API endpoint、SDK method、UI DOM、builder 変換処理、security 主本文、状態 schema、setup / release、fixture / PR 証跡正本は持たない。 |
-| `ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner component の詳細仕様。HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能を扱う。状態ファイル schema と更新手順は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md`、API fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F を正とし、SDK method、UI DOM、runner / builder 実体処理、security 主本文、setup / release、fixture / PR 証跡正本は持たない。 |
-| `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | `admin` owner component の詳細仕様。管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を扱う。UI DOM、SDK method、API endpoint、状態 schema、systemd 導入手順、release asset 取得手順、fixture / PR 証跡正本は持たない。 |
-| `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | `sdk` owner component の詳細仕様。SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄を扱う。API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release、fixture / PR 証跡正本は持たない。 |
-| `ADLAIRE_CI_DETAIL_UI_SPEC.md` | `ui` owner component の詳細仕様。DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を扱う。SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡正本は持たない。 |
-| `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner component の詳細仕様。バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証を扱う。runner / api / sdk / ui / admin の個別機能本文、状態 schema、API endpoint、SDK method、UI DOM、fixture / PR 証跡正本、外部依存追加は持たない。 |
-| `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | `statefile` owner component の詳細仕様。状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema を扱う。API endpoint の request / response、runner の業務処理、SDK method、UI 表示判断、setup / release 手順、fixture / PR 証跡正本、個別 component の業務判断は持たない。 |
-| `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner component の詳細仕様。build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理を扱う。runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method、UI DOM、状態 schema、setup / release 手順、fixture / PR 証跡正本は持たない。 |
-| `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner component の詳細仕様。GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件を扱う。runner build 実行判断、GitHub read、API endpoint、SDK method、UI DOM、状態 schema、setup / release、fixture / PR 証跡正本は持たない。 |
-| `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner component の詳細仕様。API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序を扱う。API endpoint 共通処理、SDK method、UI DOM、runner / builder 業務処理、状態 schema、setup / release、fixture / PR 証跡正本は持たない。 |
-| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | `fixture` owner component の詳細仕様。fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡を扱う。個別 component の通常処理本文、API endpoint、SDK method、UI DOM、状態 schema、setup / release 実行手順は持たない。 |
+| `ADLAIRE_CI_DETAIL_SPEC.md` | `ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様の入口。索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約を持つ。 |
+| `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | `admin` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | `sdk` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_UI_SPEC.md` | `ui` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | `statefile` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner component の詳細仕様。 |
+| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | `fixture` owner component の詳細仕様。 |
 | `DESIGN.md` | 生成静的 Web サイトのデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | `DOCUMENT_INDEX.md` | 本索引。リポジトリ内の文書・実装ファイルの役割と正本関係を示す。仕様正本ではない。 |
@@ -85,21 +85,16 @@ fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklis
 
 ## Source Of Truth
 
-方針、ポリシー、実装状態、正本関係の判断では `ADLAIRE_CI_SPEC.md` を正とする。
+| 判断対象 | 正本 |
+|----------|------|
+| 作業ルール、承認、Git 運用、文書整合 | `AGENTS.md` |
+| 方針、ポリシー、実装状態、実装可否、ロードマップ、正本関係 | `ADLAIRE_CI_SPEC.md` |
+| 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約 | `ADLAIRE_CI_DETAIL_SPEC.md` |
+| 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` |
+| 生成静的 Web サイトのデザイン補助 | `DESIGN.md` |
+| 文書・実装ファイルの参照先と役割 | `DOCUMENT_INDEX.md` |
 
-実装の具体的詳細の判断では、入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md`、各 component の詳細本文は owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする。
-
-デザイン判断では、`ADLAIRE_CI_SPEC.md` と矛盾しない範囲で `DESIGN.md` を参照する。
-
-Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、または該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` と矛盾する場合は、仕様と実装の不整合として扱う。
-
-仕様を変更する場合は、先に該当する仕様書を更新し、その内容に基づいて実装ファイルを更新する。
-
-`DESIGN.md` はデザイン仕様の補助文書であり、Adlaire CI 全体の機能仕様・運用仕様の正本ではない。
-
-`DOCUMENT_INDEX.md` は索引であり、仕様・デザイン・実装判断の正本ではない。
-
-`AGENTS.md` と他ファイルが作業ルール上矛盾する場合は、`AGENTS.md` を正とする。
+`DOCUMENT_INDEX.md` は索引であり、仕様・デザイン・実装判断の正本ではない。仕様を変更する場合は、先に該当する正本仕様書を更新し、その内容に基づいて実装ファイルを更新する。
 
 ## Consistency Notes
 
@@ -108,7 +103,5 @@ Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_S
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
 現行配置では、`build_spec.go` は標準配置名 `components/builder.go` の現行実装実体として Phase 1 実装済みであり、`runner.go` は標準配置名 `components/runner.go` の現行実装実体として Phase 2 完了判定パス実装済みである。Go toolchain による `gofmt` と `go test` の検証を完了している。
-
-Go 版コンポーネントの実装状態は、`ADLAIRE_CI_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` は入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約として扱い、実装詳細本文と検証条件は owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を参照する。
 
 標準配置への移行完了後は、`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱わない。標準配置への移行完了条件は `ADLAIRE_CI_DETAIL_SPEC.md` §0j を正とする。
