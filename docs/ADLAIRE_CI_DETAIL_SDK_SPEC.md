@@ -1,12 +1,12 @@
 # Adlaire CI — SDK 詳細仕様
 
-本ファイルは `ADLAIRE_CI_DETAIL_SPEC.md` から分割した `sdk` owner component の詳細仕様である。
+本ファイルは `docs/ADLAIRE_CI_DETAIL_SPEC.md` から分割した `sdk` owner component の詳細仕様である。
 
-本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/ADLAIRE_CI_SPEC.md` を正とする。
 
-本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
+本ファイルを読む前に、`docs/ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
 
-SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e を正とする。本ファイルは SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
+SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e を正とする。本ファイルは SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
 ---
 

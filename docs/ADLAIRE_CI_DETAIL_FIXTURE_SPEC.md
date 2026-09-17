@@ -1,10 +1,10 @@
 # Adlaire CI — Fixture 詳細仕様
 
-本ファイルは `ADLAIRE_CI_DETAIL_SPEC.md` から分割した fixture / fake / testdata / assertion / PR 証跡の詳細仕様である。
+本ファイルは `docs/ADLAIRE_CI_DETAIL_SPEC.md` から分割した fixture / fake / testdata / assertion / PR 証跡の詳細仕様である。
 
-本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/ADLAIRE_CI_SPEC.md` を正とする。
 
-本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
+本ファイルを読む前に、`docs/ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
 
 ---
 
@@ -30,7 +30,7 @@
 
 ## 0g.8-F Phase fixture / testdata / fake / PR 証跡契約
 
-本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件の正本である。`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は完了判定の入口を示すだけとし、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、PR 証跡項目、不足時の扱い、差し戻し条件は本ファイルを正とする。
+本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件の正本である。`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は完了判定の入口を示すだけとし、`docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、PR 証跡項目、不足時の扱い、差し戻し条件は本ファイルを正とする。
 
 実装 PR の完了証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる PR は、該当する全系統の証跡を PR 本文または検証ログに記録する。
 
@@ -42,7 +42,7 @@
 
 上表の証跡が不足する場合、対象機能は未完了として扱う。実装者は fixture が pass したことだけを完了証跡として扱ってはならない。
 
-Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。component 別詳細仕様ファイル、`ADLAIRE_CI_DETAIL_SPEC.md`、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` に同種の記録項目がある場合は、本ファイルの証跡分類、不足時の扱い、差し戻し条件を優先する。
+Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。component 別詳細仕様ファイル、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` に同種の記録項目がある場合は、本ファイルの証跡分類、不足時の扱い、差し戻し条件を優先する。
 
 **Phase fixture / testdata 配置固定契約：**
 
@@ -81,7 +81,7 @@ Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本
 
 ## 22-F Phase 3 / Phase 4 API fixture 契約
 
-本節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用の正本である。API endpoint の method、path、request、response、error、read / write 境界は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22 を正とし、本節では再定義しない。
+本節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用の正本である。API endpoint の method、path、request、response、error、read / write 境界は `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22 を正とし、本節では再定義しない。
 
 API 実装 PR は、§0g.8-F の PR 証跡固定契約に加えて、本節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
 
@@ -89,8 +89,8 @@ API 実装 PR は、§0g.8-F の PR 証跡固定契約に加えて、本節の P
 
 | Phase | 対象 | 完了条件 |
 |-------|------|----------|
-| Phase 3 | 認証、セッション、共通エラー、状態ファイル読み書き、`.access_log`、`.config_log`、ビルド操作、status、logs、history、queue、circuit breaker | `POST /api/login` から認証必須 API の共通処理、手動ビルド、強制ビルド、キャンセル、キュー、履歴、ログ取得までが `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0〜§22.0e と一致し、秘密情報がログとレスポンスに出ない。 |
-| Phase 4 | config、repo、branch、schedule、PAT、diagnostics、dashboard、notify、SMTP、webhook、snapshot、rollback、maintenance、access control、hooks、alert rules、tag rules、pipeline config、notes、dashboard layout、tokens | 拡張運用 API が schema どおり状態を保存し、secret mask、GET 副作用なし、rollback / maintenance / hook / token の副作用が fixture と一致し、SDK と UI の操作名が `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e と一致する。 |
+| Phase 3 | 認証、セッション、共通エラー、状態ファイル読み書き、`.access_log`、`.config_log`、ビルド操作、status、logs、history、queue、circuit breaker | `POST /api/login` から認証必須 API の共通処理、手動ビルド、強制ビルド、キャンセル、キュー、履歴、ログ取得までが `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0〜§22.0e と一致し、秘密情報がログとレスポンスに出ない。 |
+| Phase 4 | config、repo、branch、schedule、PAT、diagnostics、dashboard、notify、SMTP、webhook、snapshot、rollback、maintenance、access control、hooks、alert rules、tag rules、pipeline config、notes、dashboard layout、tokens | 拡張運用 API が schema どおり状態を保存し、secret mask、GET 副作用なし、rollback / maintenance / hook / token の副作用が fixture と一致し、SDK と UI の操作名が `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e と一致する。 |
 
 各 Phase の検証条件は以下とする。
 
@@ -120,7 +120,7 @@ Phase 3 実装は、下表の fixture をすべて満たした場合だけ完了
 
 **Phase 4 API fixture 固定：**
 
-Phase 4 実装は、下表の fixture をすべて満たした場合だけ完了扱いにする。fixture は既存 endpoint と既存状態ファイルだけを対象とし、`ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e にない endpoint、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a にない状態ファイル、`ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 にない UI 操作を追加してはならない。
+Phase 4 実装は、下表の fixture をすべて満たした場合だけ完了扱いにする。fixture は既存 endpoint と既存状態ファイルだけを対象とし、`docs/ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e にない endpoint、`docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a にない状態ファイル、`docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 にない UI 操作を追加してはならない。
 
 | Fixture | Phase | 入力状態 / Request | 期待 response | 状態ファイル副作用 |
 |---------|--------|--------------------|---------------|--------------------|
@@ -148,7 +148,7 @@ Phase 4 実装は、下表の fixture をすべて満たした場合だけ完了
 
 **API 機能別 fixture 固定契約：**
 
-下表は、API component の機能別 fixture 名、入力、期待結果を固定する。API endpoint の処理順序、request / response、状態ファイル read / write 境界は `ADLAIRE_CI_DETAIL_API_SPEC.md` を正とし、本表では fixture 本体だけを定義する。
+下表は、API component の機能別 fixture 名、入力、期待結果を固定する。API endpoint の処理順序、request / response、状態ファイル read / write 境界は `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` を正とし、本表では fixture 本体だけを定義する。
 
 | 機能 | fixture | 入力 | 期待結果 |
 |------|---------|------|----------|
@@ -201,7 +201,7 @@ Phase 4 実装は、下表の fixture をすべて満たした場合だけ完了
 
 **API / SDK / UI / 状態ファイル cross fixture 固定：**
 
-下表の fixture は、API endpoint、SDK method、UI 操作、状態ファイル副作用の横断整合を固定する。API endpoint の method、path、request、response、error、read / write 境界は `ADLAIRE_CI_DETAIL_API_SPEC.md`、SDK method と error 変換は `ADLAIRE_CI_DETAIL_SDK_SPEC.md`、UI DOM と表示状態は `ADLAIRE_CI_DETAIL_UI_SPEC.md`、状態ファイル schema と保存手順は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。
+下表の fixture は、API endpoint、SDK method、UI 操作、状態ファイル副作用の横断整合を固定する。API endpoint の method、path、request、response、error、read / write 境界は `docs/ADLAIRE_CI_DETAIL_API_SPEC.md`、SDK method と error 変換は `docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md`、UI DOM と表示状態は `docs/ADLAIRE_CI_DETAIL_UI_SPEC.md`、状態ファイル schema と保存手順は `docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。
 
 | fixture | 入力 | 必須確認 |
 |---------|------|----------|
