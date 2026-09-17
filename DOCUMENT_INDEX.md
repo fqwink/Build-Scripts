@@ -45,6 +45,10 @@
 | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | 分割済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
 | `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | 分割済み | fixture manifest、assertion、fake、testdata、API P0〜P5 fixture、api / sdk / ui / statefile cross fixture、受け入れ fixture 共通契約、PR 証跡テンプレート。 |
 
+責務 component 別詳細仕様ファイルは、各ファイルの `## 0. 責務境界` を実装前に確認する。`owner component` は主本文を持つ component、`collaborator component` は呼び出し境界、schema、fixture、security、setup、表示、受け入れ条件を参照する component として扱う。collaborator 側の参照は、owner component の主本文を上書きしない。
+
+各詳細仕様ファイルの `持つ内容` と `持たない内容` が本文、`ADLAIRE_CI_DETAIL_SPEC.md` §0b、または本索引と矛盾する場合、その項目は実装判断に使わず、先に文書整合を行う。
+
 `COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。横断する固定値、読み順、対応表、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値・管理仕様として扱い、component として扱わない。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、責務 component 別詳細仕様ファイルへ分割しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。

@@ -74,8 +74,8 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 |--------------------|------------|--------------|
 | `builder` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture、builder owner 追加機能。 |
 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | 設定、状態ファイル、GitHub API 読取、pipeline、転送、snapshot、通知、fixture、runner owner 追加機能、Commit Status 呼び出し境界、systemd / setup 参照境界。 |
-| `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、API server 制限、endpoint、状態ファイル read/write、認証連携、security 呼び出し境界、API owner 追加機能。 |
-| `admin` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A0〜A5 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
+| `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、API server 制限、endpoint、状態ファイル read/write 呼び出し境界、認証連携、security 呼び出し境界、API owner 追加機能。 |
+| `admin` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` §0、A1〜A5 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
 | `sdk` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
 | `ui` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
 | `setup` | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
@@ -84,6 +84,8 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `commitstatus` | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 |
 | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
 | `mcp` | 詳細仕様なし | 将来計画。現時点では実装可能な入出力、状態、起動手順、ツール定義、検証条件を定義しない。 |
+
+上表の `詳細仕様節` は参照入口であり、主本文の owner component を変更しない。複数ファイルを参照する行では、対象機能の owner component のファイルを主本文とし、他ファイルは collaborator の境界、schema、fixture、security、setup、受け入れ条件を確認するために読む。参照先に同じ HTTP body、状態 schema、DOM id、SDK method、fixture assertion を重複定義してはならない。
 
 ---
 
@@ -112,6 +114,17 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと §27.38a を同時に満たす。
 
 詳細仕様の配置単位は、owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには参照リンク、禁止事項、受け入れ観点だけを置く。主本文を複数ファイルへ重複定義してはならない。
+
+すべての責務 component 別詳細仕様ファイルは、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
+
+| 項目 | 必須内容 |
+|------|----------|
+| owner component | そのファイルが主本文として扱う component を 1 件だけ書く。 |
+| collaborator component | 呼び出し元、呼び出し先、schema 参照先、表示参照先、検証参照先を 0 件以上書く。owner component を含めてはならない。 |
+| 持つ内容 | そのファイルだけが主本文として定義する入出力、状態、処理、異常系、検証条件を書く。 |
+| 持たない内容 | 他 owner component へ委ねる処理、状態、API、SDK、UI、fixture、setup、security を書く。 |
+
+責務境界表の `持つ内容` と `持たない内容` が本文と矛盾する場合は、本文を実装判断に使ってはならない。先に責務境界表、本文、§0b の詳細仕様参照表、`DOCUMENT_INDEX.md` を同時に整合させる。
 
 責務 component 別詳細仕様ファイルの各節は、以下を満たす。
 
