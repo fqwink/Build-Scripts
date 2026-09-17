@@ -160,6 +160,39 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 生成手順は、state dir 検証 → 既存確認 → salt 生成 → hash 生成 → `{path}.tmp.{pid}` へ JSON + LF 書込 → mode `0600` → file sync → rename → parent directory sync の順に固定する。rename 後の sync に失敗した場合は `1` を返し、作成済みファイルは残る。実装者判断で初期 password を環境変数、対話入力、ランダム生成へ変更してはならない。
 
+**認証共通実装完了ゲート：**
+
+| 観点 | 合格条件 | 禁止事項 |
+|------|----------|----------|
+| one-time response | session token、login ticket、API token 本体、TOTP setup secret、otpauth URI は、該当成功 response 1 回だけに含める。 | `500`、`401`、`403`、`409`、`422`、`429` response、log、状態ファイル、fixture expected へ平文を残すこと。 |
+| memory-only state | session、login ticket、TOTP setup 仮 secret、login 失敗回数は process memory だけに保持し、再起動で破棄する。 | `.sessions` 等の未定義永続ファイル作成、ticket / session / 仮 secret の backup / restore 対象化。 |
+| token before log | token / ticket / secret を response に含める前に、必要な `.access_log`、`.audit_log`、`.api_access_log` の追記を完了する。 | log 追記失敗時に token / ticket / secret を response へ含めること。 |
+| hash-only storage | password、session token、login ticket、API token は保存時に hash 化し、平文を保存しない。 | hash 算出入力の平文、token 本体、ticket 本体、password 本体を expected / log に保存すること。 |
+| fixed error body | 認証失敗、権限不足、rate limit、validation failure は固定 error body だけを返す。 | password 不一致理由、token record 詳細、scope 一覧、TOTP step、rate limit key を response に出すこと。 |
+| no endpoint side effect | 認証、scope、rate limit、body validation のいずれかで失敗した場合、endpoint 固有処理を開始しない。 | 状態ファイル更新、外部 API / command 実行、通知送信、snapshot / archive / deploy 操作。 |
+| audit dependency | 必須 audit が定義された操作は、audit 追記成功まで完了 response を返さない。 | 必須 audit 失敗時に成功 response を返すこと、audit failure を audit に再帰記録すること。 |
+| secret scan | response、stdout、stderr、journal、`.access_log`、`.audit_log`、`.api_access_log`、`.config_log`、fixture expected に禁止値が存在しないことを検証する。 | 目視確認だけで secret 非表示を合格扱いにすること。 |
+
+**one-time response 固定契約：**
+
+| 値 | 返却 endpoint | 保存先 | 成功 response 以外の扱い |
+|----|---------------|--------|--------------------------|
+| session token | `POST /api/login`、`POST /api/login/totp` | memory に `sha256(token)`。 | response 前の log 失敗時は token を破棄し、`500`。 |
+| login ticket | TOTP 有効時の `POST /api/login` | memory に `sha256(ticket)`。 | log 失敗時は ticket を破棄し、`500`。期限切れ / 失敗後は再利用不可。 |
+| API token 本体 | `POST /api/tokens` | `.api_tokens.token_hash` のみ。 | `.api_tokens` 保存後の log 失敗時は record を残し、token 本体は返さず `500`。 |
+| TOTP setup secret | `POST /api/auth/totp-setup` | memory の仮 secret。confirm 成功後だけ `.totp_secret`。 | setup response 以外へ出さない。audit / access / server log / status response へ出さない。 |
+| otpauth URI | `POST /api/auth/totp-setup` | 永続保存しない。 | UI 一回表示以外へ出さない。fixture expected では secret 部分を `***` として扱う。 |
+
+**認証共通 fixture 合格ゲート：**
+
+| fixture | 合格条件 |
+|---------|----------|
+| `security-auth-one-time-response` | token、ticket、TOTP secret、otpauth URI が許可された 1 response だけに存在し、以後の GET / list / log / expected に存在しない。 |
+| `failure-auth-log-before-token` | `.access_log` または `.audit_log` 追記失敗時、token / ticket / secret を response せず、永続 state への平文保存もない。 |
+| `security-auth-memory-only` | API process restart 相当で session、ticket、setup 仮 secret、login 失敗回数が破棄され、未定義 state file が作成されない。 |
+| `security-init-credentials-atomic` | `--init-credentials` の成功、既存あり、相対 path、write failure、rand failure、rename 後 sync failure の stdout / stderr / exit code / file mode / partial file が固定値に一致する。 |
+| `security-auth-forbidden-plaintexts` | password、current_password、new_password、session token、API token、ticket、hash、salt、TOTP code、TOTP secret が全 log / response / expected に平文で存在しない。 |
+
 ---
 
 ### 27.42 ビルドトリガー専用 API スコープ
