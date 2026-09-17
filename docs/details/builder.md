@@ -1819,6 +1819,38 @@ owner component は `builder` とする。collaborator component は `runner`、
 | strict | `--strict` 有効時は、仕様で警告扱いとした構文不正、path 不正、未解決参照を終了コード `2` に昇格する。 |
 | fixture | `docs/details/fixture.md` §28-F の fixture 名、入力、期待出力、期待副作用を満たす。 |
 
+**§28 CLI / 設定 / REPORT / 出力識別子固定契約：**
+
+本表にない CLI option、環境変数、REPORT key、CSS class、DOM id、localStorage key、data attribute を §28 実装で追加してはならない。実装上追加が必要な場合は、先に本表を改訂する。
+
+| 節 | CLI option / 設定入力 | 既定値 | REPORT key | HTML / CSS / JS 固定識別子 | strict failure |
+|----|------------------------|--------|------------|-----------------------------|----------------|
+| §28.1 | `--changed-manifest <path>`、`ADLAIRE_CHANGED_MANIFEST` | 空値。空値なら full build。 | `incremental_enabled`、`incremental_changed_pages`、`incremental_reused_pages`、`incremental_reason` | `.dependency_manifest.json`、既存 HTML path。新規 DOM class なし。 | manifest path が base 外、絶対 path、JSON object 以外。 |
+| §28.2 | `--format <html\|pdf\|epub>`、`ADLAIRE_OUTPUT_FORMAT` | `html` | `output_format`、`output_format_supported` | `index.html`、`assets/style.css`、`assets/app.js`、`assets/search-index.json` | `pdf`、`epub`、未知値、複数指定。 |
+| §28.3 | `--markdown-extensions <csv>`、`ADLAIRE_MARKDOWN_EXTENSIONS` | 空値。 | `admonitions`、`badges`、`markdown_extension_warnings` | `.adlaire-admonition`、`.adlaire-admonition-title`、`.adlaire-badge`、`data-adlaire-admonition` | badge color 不正、escape 後に危険属性が残る場合。 |
+| §28.4 | `--code-line-numbers`、fence option `line-numbers` | `false` | `code_line_number_blocks`、`code_line_number_lines` | `.code-lines`、`.line-no`、`data-line` | line number 生成後に copy 本文へ番号が混入する場合。 |
+| §28.5 | `--heading-numbering <none\|h2>`、`ADLAIRE_HEADING_NUMBERING` | `none` | `heading_numbering`、`numbered_headings` | `.heading-number` | 未知 mode。 |
+| §28.6 | `--section-collapse`、`ADLAIRE_SECTION_COLLAPSE` | `false` | `collapsible_sections`、`collapsed_sections_default` | `.adlaire-section-toggle`、`.adlaire-section-collapsed`、`aria-expanded`、`adlaire:section-state` | toggle target id 重複、section 範囲が閉じない場合。 |
+| §28.7 | `--toc-depth <min>:<max>`、`ADLAIRE_TOC_DEPTH` | `1:6` | `toc_min_depth`、`toc_max_depth`、`toc_items` | `.toc`、`.toc-link`。既存 TOC 構造を維持。 | 範囲外、整数以外、`min > max`。 |
+| §28.8 | `--updated-at-source <none\|git\|file>`、`ADLAIRE_UPDATED_AT_SOURCE` | `none` | `updated_at_source`、`updated_at`、`updated_at_fallback` | `.page-updated-at`、`datetime` attribute | git 取得失敗時に fallback 不能、未知 source。 |
+| §28.9 | fence info `diff`、`patch` | 該当 fence のみ有効。 | `diff_blocks`、`diff_insertions`、`diff_deletions` | `.tok-inserted`、`.tok-deleted`、`.tok-context`、`.tok-diff-header` | diff 行 escape 後に raw HTML が残る場合。 |
+| §28.10 | `--lazy-images=<true\|false>`、`ADLAIRE_LAZY_IMAGES` | `true` | `lazy_images`、`image_path_warnings` | `loading="lazy"`、`decoding="async"` | base 外相対 path。 |
+| §28.11 | repeatable `--meta <key=value>`、`ADLAIRE_META_JSON` | 空値。 | `custom_meta_count`、`custom_meta_rejected` | `<meta name>`、`<meta property>`。新規 JS なし。 | 空 key、制御文字、`script`、`http-equiv`、raw `<` / `>`。 |
+| §28.12 | `--color-scheme <light\|dark\|auto>`、`ADLAIRE_COLOR_SCHEME` | `light` | `color_scheme`、`color_scheme_toggle` | `data-color-scheme`、`.theme-toggle`、`adlaire:color-scheme` | 未知 scheme。 |
+| §28.13 | fence info `lang:title=value`、`lang:path` | 空 title。 | `code_titles`、`code_title_warnings` | `.code-title`、`.code-block-header` | title escape 後に raw HTML が残る場合。 |
+| §28.14 | repeatable `--var <KEY=VALUE>`、`ADLAIRE_TEMPLATE_VARS_JSON` | 空値。 | `template_vars`、`template_vars_missing`、`template_vars_replaced` | `{{ KEY }}`。新規 DOM class なし。 | key 不正、未定義変数、code fence 内置換発生。 |
+| §28.15 | `--minify-html`、`ADLAIRE_MINIFY_HTML` | `false` | `minify_html`、`minify_bytes_before`、`minify_bytes_after`、`minify_bytes_saved` | 既存 HTML。新規 DOM class なし。 | 必須 marker 消失、空 HTML、pre/code 保持失敗。 |
+| §28.16 | `--toc-active=<true\|false>`、`ADLAIRE_TOC_ACTIVE` | `true` | `toc_active_tracking`、`toc_active_items` | `.is-active`、`aria-current="location"` | TOC depth 範囲外 heading を active 化する場合。 |
+| §28.17 | `--mermaid`、fence info `mermaid` | `false` | `mermaid_blocks`、`mermaid_rendered`、`mermaid_unsupported` | `.mermaid-source`、`.mermaid-diagram`、`.mermaid-node`、`.mermaid-edge` | 未対応構文、raw HTML 残存、外部 script 参照。 |
+| §28.18 | `--footnotes=<true\|false>`、`ADLAIRE_FOOTNOTES` | `true` | `footnotes`、`footnote_references`、`footnote_warnings` | `.footnotes`、`.footnote-ref`、`.footnote-backref` | 未定義参照、重複定義。 |
+| §28.19 | `--math`、`ADLAIRE_MATH` | `false` | `math_inline`、`math_block`、`math_warnings` | `.math-inline`、`.math-block` | 未閉鎖 delimiter、code 内変換発生。 |
+| §28.20 | `--hash-history=<true\|false>`、`ADLAIRE_HASH_HISTORY` | `true` | `hash_history_enabled`、`hash_history_targets` | `tabindex="-1"` on heading、`history.pushState` handler | 存在しない hash で例外が発生する場合。 |
+| §28.21 | `--a11y-check=<true\|false>`、`ADLAIRE_A11Y_CHECK` | `true` | `a11y_warnings`、`a11y_duplicate_ids`、`a11y_missing_labels` | `.skip-link`、`role`、`aria-label`、`:focus-visible` | 重複 id、空 label、keyboard trap。 |
+| §28.22 | `--image-lightbox`、`ADLAIRE_IMAGE_LIGHTBOX` | `false` | `lightbox_images`、`lightbox_warnings` | `.adlaire-lightbox-trigger`、`.adlaire-lightbox-dialog`、`data-lightbox-src` | alt なし、focus trap 失敗、Escape close 不能。 |
+| §28.23 | `--print-qr-url <url>`、`ADLAIRE_PRINT_QR_URL` | 空値。 | `print_qr`、`print_qr_url` | `.print-qr`、`.print-qr-svg`、`@media print` | URL > 512 byte、scheme 不正、SVG escape 不備。 |
+| §28.24 | `--definition-lists=<true\|false>`、`ADLAIRE_DEFINITION_LISTS` | `true` | `definition_lists`、`definition_terms` | `dl`、`dt`、`dd`、`.definition-list` | 空 term / definition を list 化した場合。 |
+| §28.25 | `--task-lists=<true\|false>`、`ADLAIRE_TASK_LISTS` | `true` | `task_list_items`、`task_list_checked` | `.task-list-item`、`.task-list-checkbox`、`aria-label` | checkbox が enabled、非対象 list を変換した場合。 |
+
 **§28 機能別詳細仕様：**
 
 | 節 | 機能 | 入力 | 出力 | 処理順序 | 異常系 | 検証条件 |
@@ -1830,11 +1862,11 @@ owner component は `builder` とする。collaborator component は `runner`、
 | §28.5 | 見出しの自動採番 | `--heading-numbering h2`、`none`。 | 見出し本文の表示番号、TOC 番号、search index 番号。 | heading tree 作成 → h2 以下を階層 count → 表示 prefix 生成 → slug は変更しない。 | h1 不在でも h2 から開始。番号は slug に含めない。 | h2/h3 階層、skip warning 併用、TOC 一致、anchor 不変。 |
 | §28.6 | セクション折りたたみ | `--section-collapse`、heading data。 | `.adlaire-section-toggle` と JS 状態。 | h2/h3 section 範囲算出 → toggle 生成 → localStorage に開閉保存。 | 見出しなしは無効。印刷時は全展開。 | h2 折りたたみ、復元、印刷展開、検索 hit 時自動展開。 |
 | §28.7 | TOC 深さ制御 | `--toc-depth <min>:<max>`。 | 指定範囲だけの TOC。本文 heading は不変。 | option parse → heading filter → TOC 生成 → active tracking も同範囲に限定。 | min/max 範囲外、min > max は終了コード `2`。 | h2-h3、h1-h6、範囲外除外、active tracking 一致。 |
-| §28.8 | 最終更新日の自動埋め込み | `--updated-at-source git|file|none`、fake clock / fake git fixture。 | footer の updated time、`[REPORT].updated_at_source`。 | source 判定 → git timestamp または file mtime 取得 → UTC 秒精度へ正規化 → footer 出力。 | git 取得失敗時は file mtime fallback、strict では終了コード `2`。 | git 値、file mtime、fallback、UTC 形式、footer escape。 |
+| §28.8 | 最終更新日の自動埋め込み | `--updated-at-source git\|file\|none`、fake clock / fake git fixture。 | footer の updated time、`[REPORT].updated_at_source`。 | source 判定 → git timestamp または file mtime 取得 → UTC 秒精度へ正規化 → footer 出力。 | git 取得失敗時は file mtime fallback、strict では終了コード `2`。 | git 値、file mtime、fallback、UTC 形式、footer escape。 |
 | §28.9 | diff ハイライト | fence info `diff` または `patch`。 | `.tok-inserted`、`.tok-deleted`、`.tok-context` class。 | code line 先頭 `+` / `-` / space を判定 → HTML escape → class 付与。 | `+++` / `---` header は header class。通常言語では適用しない。 | insert/delete/header/context、escape、copy 本文維持。 |
 | §28.10 | 画像の遅延読み込み | Markdown image、HTML img 相当出力。 | `<img loading="lazy" decoding="async">`。 | image token 解析 → src 正規化 → alt escape → lazy 属性付与。 | data URI、外部 URL は許可するが fetch しない。base 外相対 path は warning。 | 相対画像、外部画像、alt escape、base 外警告。 |
 | §28.11 | カスタムメタタグ注入 | `--meta key=value`、設定 meta map。 | `<meta name="..." content="...">` または `property="og:..."`。 | key validation → name/property 判定 → 重複解決 → head へ出力。 | `script`、`http-equiv`、空 key、制御文字は終了コード `2`。 | OGP、Twitter、重複、escape、禁止 key。 |
-| §28.12 | ダークモード対応 | `--color-scheme light|dark|auto`。 | CSS variables、`prefers-color-scheme` media、UI toggle。 | scheme 判定 → CSS 変数生成 → JS toggle は localStorage に保存。 | 未知 scheme は終了コード `2`。印刷は light。 | light/dark/auto、toggle 復元、print light、contrast class。 |
+| §28.12 | ダークモード対応 | `--color-scheme light\|dark\|auto`。 | CSS variables、`prefers-color-scheme` media、UI toggle。 | scheme 判定 → CSS 変数生成 → JS toggle は localStorage に保存。 | 未知 scheme は終了コード `2`。印刷は light。 | light/dark/auto、toggle 復元、print light、contrast class。 |
 | §28.13 | コードブロックのファイル名表示 | fence info `go:main.go`、`bash:title=deploy.sh`。 | `.code-title` 表示。 | info parse → language と title 分離 → title escape → code block header へ出力。 | path traversal 表示は禁止せず text 扱いだが HTML escape。空 title は非表示。 | colon 形式、title 形式、escape、copy 対象除外。 |
 | §28.14 | テンプレート変数展開 | `--var KEY=VALUE`、`{{ KEY }}`。 | 変数展開済み Markdown HTML、report counts。 | 変換前に text node だけ置換 → code fence 内は置換しない → 未定義変数を警告。 | key は `^[A-Z0-9_]{1,64}$`。未定義は strict で終了コード `2`。 | 置換、code 内非置換、未定義警告、escape。 |
 | §28.15 | HTML ミニファイ | `--minify-html`。 | 空白圧縮済み HTML。 | HTML 生成後 → safe minify → pre/code/textarea/script 相当領域は保持。 | minify 後の byte が 0、必須 marker 消失なら元 HTML を残し終了コード `1`。 | 通常圧縮、code 保持、必須 marker、出力縮小 report。 |

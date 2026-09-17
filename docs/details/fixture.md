@@ -564,10 +564,39 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 
 | 節 | fixture 配置単位 | 必須 fixture |
 |----|------------------|--------------|
-| §28.1 | `builder-extensions/incremental/` | `success-one-page-change`、`success-dependency-change`、`failure-manifest-corrupt-full-build`、`noop-unchanged-pages-kept` |
-| §28.2 | `builder-extensions/formats/` | `success-html`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format` |
-| §28.3 | `builder-extensions/markdown-extensions/` | `success-admonition`、`success-badge`、`failure-badge-invalid-text`、`security-extension-escape` |
-| §28.4〜§28.25 | `builder-extensions/<feature-slug>/` | 各機能につき `success-*`、`failure-*` または `noop-*`、`security-*` を最低 3 件以上作成する。 |
+| §28.1〜§28.25 | `builder-extensions/<feature-slug>/` | 下記 §28 fixture カタログ固定契約に列挙した fixture をすべて作成する。 |
+
+**§28 fixture カタログ固定契約：**
+
+下表の fixture 名は固定値である。実装 PR では、対象 §28.x の全 fixture を追加または更新し、`expected/stdout.txt` の `[REPORT]` key が `docs/details/builder.md` §28 の固定契約と一致することを証跡に含める。
+
+| 節 | feature slug | 必須 fixture |
+|----|--------------|--------------|
+| §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`failure-manifest-corrupt-full-build`、`noop-unchanged-pages-kept`、`security-incremental-base-escape` |
+| §28.2 | `formats` | `success-html`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format` |
+| §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`failure-badge-invalid-text`、`security-extension-escape`、`noop-extension-disabled` |
+| §28.4 | `code-line-numbers` | `success-line-numbers-fence`、`success-line-numbers-cli`、`noop-line-numbers-empty-code`、`security-line-numbers-copy-clean` |
+| §28.5 | `heading-numbering` | `success-heading-numbering-h2-h3`、`success-heading-numbering-toc-search`、`noop-heading-numbering-none`、`security-heading-slug-unchanged` |
+| §28.6 | `section-collapse` | `success-collapse-h2-h3`、`success-collapse-local-storage`、`noop-collapse-no-heading`、`security-collapse-duplicate-target-strict` |
+| §28.7 | `toc-depth` | `success-toc-depth-h2-h3`、`success-toc-depth-h1-h6`、`failure-toc-depth-invalid-range`、`security-toc-depth-active-sync` |
+| §28.8 | `updated-at` | `success-updated-at-git`、`success-updated-at-file`、`success-updated-at-fallback`、`failure-updated-at-unknown-source` |
+| §28.9 | `diff-highlight` | `success-diff-insert-delete-context`、`success-diff-header`、`noop-diff-non-diff-language`、`security-diff-escape` |
+| §28.10 | `lazy-images` | `success-lazy-relative-image`、`success-lazy-external-image-no-fetch`、`failure-lazy-base-outside-strict`、`security-lazy-alt-escape` |
+| §28.11 | `custom-meta` | `success-meta-og-twitter`、`success-meta-duplicate-last-wins`、`failure-meta-forbidden-key`、`security-meta-escape` |
+| §28.12 | `color-scheme` | `success-color-scheme-light`、`success-color-scheme-dark`、`success-color-scheme-auto`、`failure-color-scheme-unknown` |
+| §28.13 | `code-title` | `success-code-title-colon`、`success-code-title-key-value`、`noop-code-title-empty`、`security-code-title-escape` |
+| §28.14 | `template-vars` | `success-template-var-replace`、`noop-template-var-code-fence`、`failure-template-var-missing-strict`、`security-template-var-key-validation` |
+| §28.15 | `minify-html` | `success-minify-html`、`success-minify-preserve-code`、`failure-minify-marker-missing`、`noop-minify-disabled` |
+| §28.16 | `toc-active` | `success-toc-active-scroll`、`success-toc-active-fallback`、`noop-toc-active-disabled`、`security-toc-active-depth-sync` |
+| §28.17 | `mermaid` | `success-mermaid-graph-td`、`failure-mermaid-unsupported-strict`、`noop-mermaid-disabled`、`security-mermaid-no-external-script` |
+| §28.18 | `footnotes` | `success-footnotes-multiple`、`success-footnotes-backlink`、`failure-footnote-undefined-strict`、`security-footnote-escape` |
+| §28.19 | `math` | `success-math-inline-block`、`failure-math-unclosed-strict`、`noop-math-code-fence`、`security-math-escape` |
+| §28.20 | `hash-history` | `success-hash-history-click`、`success-hash-history-back-forward`、`noop-hash-history-disabled`、`security-hash-history-missing-target` |
+| §28.21 | `a11y` | `success-a11y-landmarks-labels`、`success-a11y-skip-link-tab-order`、`failure-a11y-duplicate-id-strict`、`security-a11y-no-keyboard-trap` |
+| §28.22 | `image-lightbox` | `success-lightbox-open-close`、`success-lightbox-escape-backdrop`、`failure-lightbox-alt-missing-strict`、`security-lightbox-focus-trap` |
+| §28.23 | `print-qr` | `success-print-qr-url`、`noop-print-qr-empty-url`、`failure-print-qr-url-too-long`、`security-print-qr-svg-escape` |
+| §28.24 | `definition-lists` | `success-definition-list-single`、`success-definition-list-multiple`、`noop-definition-list-empty-term`、`security-definition-list-inline-escape` |
+| §28.25 | `task-lists` | `success-task-list-unchecked`、`success-task-list-checked-nested`、`noop-task-list-non-target`、`security-task-list-disabled-aria` |
 
 **§28 fixture ファイルセット固定契約：**
 
