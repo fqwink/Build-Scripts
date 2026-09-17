@@ -2382,7 +2382,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 
 | 節 | 機能 | 入力 | 出力 | 処理順序 | 異常系 | 検証条件 |
 |----|------|------|------|----------|--------|----------|
-| §28.1 | 差分ビルド | `--changed-manifest <path>`、`.dependency_manifest.json`、入力 Markdown SHA。 | 変更対象 page の HTML、既存未変更 page の維持、`[REPORT].incremental_*`。 | manifest 読込 → 入力 SHA 比較 → dependency 逆引き → build 対象決定 → 対象だけ変換 → search index は全ページから再生成。 | manifest 破損は full build。未変更 page 不在は該当 page を build。strict 時の不正 path は終了コード `2`。 | 1 page 変更、依存画像変更、manifest 破損 full build、未変更 page 維持、search index 全体整合。 |
+| §28.1 | 差分ビルド | `--changed-manifest <path>`、`.dependency_manifest.json`、入力 Markdown SHA。 | 変更対象 page の HTML、既存未変更 page の維持、`[REPORT].incremental_*`。 | manifest 読込 → 入力 SHA 比較 → dependency 逆引き → build 対象決定 → 対象だけ変換 → search index は全ページから再生成。 | `--changed-manifest` 破損は終了コード `2`、`.dependency_manifest.json` 破損は full build。未変更 page 不在は該当 page を build。strict 時の不正 path は終了コード `2`。 | 1 page 変更、依存画像変更、manifest 破損 full build、未変更 page 維持、search index 全体整合。 |
 | §28.2 | 複数出力形式 | `--format html`、将来予約値 `pdf`、`epub`。 | `html` のみ実出力。`pdf`、`epub` は仕様化済み予約値として終了コード `2`。 | format parse → 対応可否判定 → `html` は既存 pipeline → 非対応 format は実行前停止。 | 複数 format 指定、未知 format、`pdf` / `epub` 指定は終了コード `2`。 | html 既存出力、pdf/epub 拒否、未知値拒否、出力差分なし。 |
 | §28.3 | Markdown 拡張記法サポート | admonition `> [!NOTE]`、badge `[badge:label:color]`。 | `.adlaire-admonition`、`.adlaire-badge` HTML と CSS。 | blockquote 解析 → 種別正規化 → content 変換 → badge inline 変換。 | 未知 admonition 種別は `note`。不正 badge は通常 text。HTML は escape。 | NOTE/WARN/TIP、badge 色、入れ子禁止、escape、report count。 |
 | §28.4 | コードブロック行番号表示 | `--code-line-numbers`、fence info `line-numbers`。 | `<span class="line-no">` 付き code block。 | fence option 判定 → 行番号 1 始まり付与 → copy 対象から番号を除外。 | 空 code は番号なし。折りたたみ、copy、highlight と競合しない。 | 3 行 code、空 code、copy 本文、fold 併用、CSS 表示。 |
@@ -2415,7 +2415,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | 節 | validation | HTML / asset 固定 | warning / error | REPORT count | fixture 必須確認 |
 |----|------------|-------------------|-----------------|--------------|------------------|
 | §28.1 | manifest path は base 内相対 path のみ。`.dependency_manifest.json` root は object、page key は正規化相対 path。 | 未変更 page は byte 単位で維持し、削除 source の stale HTML は成功置換時だけ削除し、search index は最終 page set 全体から再生成する。 | `--changed-manifest` 破損は終了コード `2`、`.dependency_manifest.json` 破損は warning なし full build。path 不正は `BUILDER28_PATH_OUTSIDE_BASE`。 | changed / reused は page 数。reason は sorted array。 | 未変更 HTML byte 維持、manifest 破損 full build、stale page 削除、search index 全体再生成、失敗時公開出力維持。 |
-| §28.2 | format は 1 値のみ。`html` 以外は予約または未知として拒否。 | `html` は既存 output layout だけを使う。`pdf` / `epub` file を作らない。 | 予約値は `BUILDER28_UNSUPPORTED_RESERVED`、未知値は `BUILDER28_INVALID_OPTION`。 | `output_format_supported=false` は拒否時も出力する。 | 予約値で既存出力が破壊されないこと。 |
+| §28.2 | format は 1 値のみ。`html` 以外は予約または未知として拒否。 | `html` は既存 output layout だけを使う。`pdf` / `epub` file を作らない。 | 予約値は `BUILDER28_UNSUPPORTED_RESERVED`、未知値は `BUILDER28_INVALID_OPTION`。fatal failure のため `[REPORT]` は出力しない。 | 成功時のみ `output_format="html"`、`output_format_supported=true`。 | 予約値で既存出力が破壊されないこと。 |
 | §28.3 | extension csv は `admonition`、`badge` のみ。空白 trim、重複は 1 件に正規化。 | admonition は `section`、title、body の順。badge は inline `span`。 | badge color 不正は non-strict で通常 text、strict で `BUILDER28_INVALID_OPTION`。 | admonitions / badges は出力 node 数。warnings は fallback 数。 | extension disabled 時に元 Markdown 由来出力が変わらないこと。 |
 | §28.4 | CLI 有効または fence option ありの場合だけ行番号を出す。 | code wrapper 内に line number column と code text column を分離する。 | copy text に line number が混入した場合は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | blocks は line number 付き block 数、lines は付与した行数。 | copy expected、空 code、fold / highlight 併用。 |
 | §28.5 | mode は `none` または `h2`。 | 表示 prefix は text node とし、anchor id / slug は不変。 | 未知 mode は `BUILDER28_INVALID_OPTION`。 | numbered_headings は prefix を出した heading 数。 | slug 不変、TOC / search index の表示番号一致。 |
@@ -2439,6 +2439,99 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | §28.23 | URL は空または 512 byte 以下。scheme は `http` / `https`。 | SVG は print footer 内だけに出力し、通常表示では非表示。 | URL 長すぎ / scheme 不正は `BUILDER28_INVALID_OPTION`。 | print_qr は SVG 出力 boolean。 | print only、SVG escape。 |
 | §28.24 | term と definition が両方非空の連続 block だけ変換。 | 1 group を 1 `dl.definition-list` とし、term ごとに `dt` / `dd` を出す。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | definition_lists は dl 数、definition_terms は dt 数。 | paragraph 境界、inline escape。 |
 | §28.25 | `[ ]`、`[x]`、`[X]` だけ task marker。 | checkbox は `disabled`、text は label 相当として出力する。 | enabled checkbox は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | items は task item 数、checked は checked 数。 | nested list、aria、通常 list 非変換。 |
+
+**§28.1〜§28.5 実装詳細固定契約：**
+
+§28.1〜§28.5 は、後続 §28.6〜§28.25 の入力基盤、出力基盤、検索基盤に影響するため、下表の処理単位、状態、出力を固定する。実装者は、本表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class を導入してはならない。
+
+| 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+|----|----------|------------------|--------------|
+| §28.1 | page set 全体 | `changed_pages`、`reused_pages`、`deleted_pages`、`dependency_impacted_pages`、`incremental_reason` を ASCII path 昇順で保持する。 | staging 内に最終 page set、asset、search index、manifest が揃った場合だけ公開出力へ置換する。 |
+| §28.2 | run 全体 | `output_format` を `html` に正規化する。予約値または未知値を検出した時点で Markdown 読込前に停止する。 | `html` の場合だけ既存 pipeline へ進める。`pdf` / `epub` / 未知値では出力を作成しない。 |
+| §28.3 | Markdown token | `admonition_blocks`、`badge_spans`、`extension_warnings` を入力出現順で保持する。 | すべての生成 HTML text / attribute が escape 済みで、危険属性が存在しない場合だけ出力する。 |
+| §28.4 | code block | `line_number_blocks`、`line_number_lines`、`copy_text` を block 出現順で保持する。 | 表示用 line number と code text が分離され、copy text に line number が含まれない場合だけ完了とする。 |
+| §28.5 | heading tree | `heading_numbering_mode`、`heading_counters`、`heading_display_number` を page ごとに保持する。 | heading id / slug を変更せず、本文 heading、TOC、search index の表示番号が一致した場合だけ完了とする。 |
+
+**§28.1 差分ビルド詳細固定契約：**
+
+`--changed-manifest` は、外部 CI や runner が渡す変更候補 manifest である。公開出力配下の `.dependency_manifest.json` は、前回 builder 成功時の依存 manifest である。実装者は、この 2 種類を混同してはならない。
+
+| 入力 | 必須 key / 型 | 不正時 |
+|------|---------------|--------|
+| `--changed-manifest` | JSON object。任意 key `changed`、`deleted`、`dependencies_changed` は string array。path は入力 base 内相対 path、`/` 区切り、先頭 `./` なし。 | path 不正、JSON 破損、array 以外、string 以外は終了コード `2`、stderr `BUILDER28_INVALID_OPTION` または `BUILDER28_PATH_OUTSIDE_BASE`、公開出力維持。 |
+| `.dependency_manifest.json` | §28 atomic write / manifest / search index 副作用固定契約の schema。 | 不在、JSON 破損、schema 不一致は warning なし full build。終了コードは成功時 `0`。 |
+| 入力 Markdown | byte SHA-256。 | 読込不能は終了コード `1`、stderr `BUILDER28_INTERNAL_IO`、公開出力維持。 |
+
+差分判定は、以下の順で固定する。
+
+1. 入力 base 配下の Markdown page set を ASCII 昇順で列挙する。
+2. `--changed-manifest` が指定された場合は検証し、`changed`、`deleted`、`dependencies_changed` を正規化する。
+3. 既存 `.dependency_manifest.json` を検証する。不正な場合は full build とし、`incremental_reason=["manifest-invalid"]` にする。
+4. manifest が有効な場合、入力 SHA、設定 hash、builder version、依存 asset SHA、`--changed-manifest.changed`、`--changed-manifest.dependencies_changed` を比較する。
+5. 入力 source が削除された page は `deleted_pages` として記録し、成功置換時だけ対応 HTML、search index entry、manifest entry を削除する。
+6. 既存 HTML がない page は changed 扱いにする。
+7. reuse page は既存 HTML byte を staging へ複写する。公開出力から直接提供し続けるだけで staging に含めない実装は禁止する。
+8. search index と manifest は、changed / reused を含む最終 page set 全体から再生成する。
+
+`[REPORT]` は成功時または strict warning 時だけ出力し、fatal failure では出力しない。`incremental_enabled` は `--changed-manifest` 指定または既存 `.dependency_manifest.json` 有効時に `true`、それ以外は `false` とする。`incremental_changed_pages`、`incremental_reused_pages` は 0 以上の整数、`incremental_reason` は compact JSON string array、ASCII 昇順、重複なしとする。
+
+**§28.2 複数出力形式詳細固定契約：**
+
+§28.2 の実装対象 format は `html` だけである。`pdf` と `epub` は予約値であり、予約値として認識したうえで拒否する。予約値を unknown として扱ってはならない。
+
+| 入力 | 結果 | stdout | stderr | exit | 副作用 |
+|------|------|--------|--------|------|--------|
+| 未指定 | `html` と同じ。 | 成功時 `[REPORT] output_format="html"`、`output_format_supported=true`。 | 空 | `0` | 既存 HTML pipeline を実行する。 |
+| `html` | HTML 出力。 | 成功時 `[REPORT] output_format="html"`、`output_format_supported=true`。 | 空 | `0` | `index.html`、`assets/style.css`、`assets/app.js`、`assets/search-index.json` だけを format 由来で作る。 |
+| `pdf` | 予約値拒否。 | 空 | `[ERROR] BUILDER28_UNSUPPORTED_RESERVED -:0 28.2 ...` | `2` | Markdown 読込、staging 作成、出力作成を行わない。 |
+| `epub` | 予約値拒否。 | 空 | `[ERROR] BUILDER28_UNSUPPORTED_RESERVED -:0 28.2 ...` | `2` | Markdown 読込、staging 作成、出力作成を行わない。 |
+| その他 | unknown 拒否。 | 空 | `[ERROR] BUILDER28_INVALID_OPTION -:0 28.2 ...` | `2` | Markdown 読込、staging 作成、出力作成を行わない。 |
+| 複数指定 | duplicate 拒否。 | 空 | `[ERROR] BUILDER28_INVALID_OPTION -:0 28.2 ...` | `2` | Markdown 読込、staging 作成、出力作成を行わない。 |
+
+`--format` は non-repeatable option とする。CLI、env、設定ファイルに同時指定された場合は §28 設定解決・終了コード固定契約の source 優先順位に従い、同一 source 内の重複だけを fatal validation とする。
+
+**§28.3 Markdown 拡張詳細固定契約：**
+
+`--markdown-extensions` は csv とし、許可値は `admonition`、`badge` だけである。値は comma 分割後に trim し、空要素は無視し、重複は 1 件へ正規化する。未知 extension は終了コード `2`、stderr `BUILDER28_INVALID_OPTION` とする。
+
+| 構文 | 入力条件 | 出力 | fallback |
+|------|----------|------|----------|
+| admonition | blockquote の先頭 inline text が `[!NOTE]`、`[!WARN]`、`[!TIP]` のいずれか。大小文字は uppercase 正規化する。 | `section.adlaire-admonition`、`data-adlaire-admonition="note|warn|tip"`、先頭に `div.adlaire-admonition-title`、以降に本文 block。 | 未知 type は `note` とし warning 1 件。入れ子 admonition は内側を通常 blockquote として扱う。 |
+| badge | code span 外、link label 外、HTML raw 外の `[badge:label:color]`。label は trim 後 1〜64 文字、color は `gray`、`blue`、`green`、`yellow`、`red`。 | `span.adlaire-badge`、`data-adlaire-badge-color="<color>"`、text は label。 | 不正 label / color は non-strict で元 text、strict で `BUILDER28_INVALID_OPTION`。 |
+
+admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。search index には admonition title を含めず、admonition body と badge label は含める。`admonitions` は出力した admonition 数、`badges` は出力した badge 数、`markdown_extension_warnings` は fallback 数とする。
+
+**§28.4 コードブロック行番号詳細固定契約：**
+
+行番号は、CLI `--code-line-numbers` が有効な場合は全 code fence に適用し、fence option `line-numbers` がある場合は該当 code fence にだけ適用する。両方が無効な場合は既存 code block 出力を変更しない。
+
+| 対象 | 固定 |
+|------|------|
+| wrapper | 行番号あり code block は `.code-lines` を持つ wrapper を 1 個持つ。 |
+| line number | 各 code line の表示番号は `span.line-no`、`data-line="<1-based>"` とする。 |
+| code text | code text は line number とは別 node に出力し、元の改行数を維持する。 |
+| empty code | 空 code block は `.code-lines` を付けず、`code_line_number_blocks` と `code_line_number_lines` に加算しない。 |
+| copy text | copy 用 text、search index、minify preserve 対象には line number text を含めない。 |
+| diff 併用 | §28.9 と併用する場合、line number wrapper の内側または同階層で diff class を維持し、line number に diff class を付けない。 |
+
+`code_line_number_blocks` は行番号を出力した code block 数、`code_line_number_lines` は出力した `span.line-no` 数とする。line number が copy text に混入した場合、終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED` とする。
+
+**§28.5 見出し自動採番詳細固定契約：**
+
+`--heading-numbering` の許可値は `none`、`h2` だけである。`none` は既定値で、本文 heading、TOC、search index の表示 text を変更しない。
+
+`h2` の採番規則は以下に固定する。
+
+| heading | 規則 |
+|---------|------|
+| h1 | 採番しない。counter を進めない。 |
+| h2 | page 内出現順に `1.`、`2.`、`3.` を付ける。 |
+| h3 | 直前の h2 配下で `1.1.`、`1.2.` の形式にする。h2 がまだない場合は `1.1.` から開始し、暗黙 h2 counter を `1` とする。 |
+| h4〜h6 | h3 までの直近 counter にぶら下げず、採番しない。本文 heading text は変更しない。 |
+
+表示番号は `span.heading-number` として heading text の先頭に出力し、番号後ろに ASCII space 1 個を置く。heading id、slug、anchor href、collapse target、hash history target は採番前 text から決定し、採番により変化させてはならない。TOC 表示 text と search index 表示 text には番号を含めるが、search index の検索対象正規化 text には番号を含めない。
+
+`heading_numbering` は `"none"` または `"h2"` の JSON string、`numbered_headings` は `span.heading-number` を出力した heading 数とする。未知 mode は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
 
 **§28 実装完了条件：**
 

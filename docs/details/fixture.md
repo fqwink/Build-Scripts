@@ -584,11 +584,11 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | §28 共通 | `parser-precedence` | `success-block-precedence-code-math-heading`、`success-inline-precedence-code-image-link`、`success-admonition-inline-composition`、`success-heading-inline-slug-source`、`success-list-definition-task-boundary`、`failure-unclosed-math-strict`、`noop-code-fence-protects-extensions`、`security-parser-raw-html-escaped` |
 | §28 共通 | `browser-runtime` | `success-runtime-init-order`、`success-section-collapse-storage-print`、`success-color-scheme-cycle-print`、`success-toc-active-observer-fallback`、`success-hash-history-focus-navigation`、`success-lightbox-focus-trap-close`、`success-keyboard-scope-skip-link`、`security-runtime-no-storage-leak` |
 | §28 共通 | `visual-layout` | `success-css-output-order`、`success-responsive-320-layout`、`success-print-layout`、`success-color-scheme-variables`、`success-minify-visual-preservation`、`success-component-overflow-boundaries`、`security-visual-no-external-assets`、`security-focus-visible-no-overlap` |
-| §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`failure-manifest-corrupt-full-build`、`success-stale-page-delete-on-success`、`noop-unchanged-pages-kept`、`security-incremental-base-escape` |
-| §28.2 | `formats` | `success-html`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format` |
-| §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`failure-badge-invalid-text`、`security-extension-escape`、`noop-extension-disabled` |
-| §28.4 | `code-line-numbers` | `success-line-numbers-fence`、`success-line-numbers-cli`、`noop-line-numbers-empty-code`、`security-line-numbers-copy-clean` |
-| §28.5 | `heading-numbering` | `success-heading-numbering-h2-h3`、`success-heading-numbering-toc-search`、`noop-heading-numbering-none`、`security-heading-slug-unchanged` |
+| §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`success-reuse-page-copied-to-staging`、`success-stale-page-delete-on-success`、`success-incremental-dependency-manifest-corrupt-full-build`、`failure-changed-manifest-corrupt`、`failure-changed-manifest-base-escape`、`noop-unchanged-pages-kept`、`security-incremental-no-public-write-on-failure` |
+| §28.2 | `formats` | `success-html-default`、`success-html-explicit`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format`、`security-format-no-reserved-output-files` |
+| §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`success-extension-csv-normalization`、`failure-unknown-extension`、`failure-badge-invalid-text-strict`、`noop-badge-invalid-text-nonstrict`、`security-extension-escape`、`noop-extension-disabled` |
+| §28.4 | `code-line-numbers` | `success-line-numbers-fence`、`success-line-numbers-cli`、`success-line-numbers-diff-composition`、`noop-line-numbers-empty-code`、`noop-line-numbers-disabled`、`security-line-numbers-copy-clean` |
+| §28.5 | `heading-numbering` | `success-heading-numbering-h2-h3`、`success-heading-numbering-implicit-h2`、`success-heading-numbering-toc-search`、`failure-heading-numbering-unknown-mode`、`noop-heading-numbering-none`、`security-heading-slug-unchanged` |
 | §28.6 | `section-collapse` | `success-collapse-h2-h3`、`success-collapse-local-storage`、`noop-collapse-no-heading`、`security-collapse-duplicate-target-strict` |
 | §28.7 | `toc-depth` | `success-toc-depth-h2-h3`、`success-toc-depth-h1-h6`、`failure-toc-depth-invalid-range`、`security-toc-depth-active-sync` |
 | §28.8 | `updated-at` | `success-updated-at-git`、`success-updated-at-file`、`success-updated-at-fallback`、`failure-updated-at-unknown-source` |
@@ -760,6 +760,51 @@ browser runtime fixture の `expected/site/assets/app.js` は、初期化関数�
 | `security-focus-visible-no-overlap` | theme toggle、skip link、TOC active、hash target、lightbox control、collapse toggle の focus / active style が可視で、hover / focus により寸法が変わらず、text を隠さない。 |
 
 visual layout fixture の `manifest.json` は、`viewport_width` を使う場合でも判定を画像 snapshot だけに依存させてはならない。`expected/site/assets/style.css`、`expected/site/*.html`、`expected/security.json`、必要に応じて `expected/visual.json` に、selector、media query、display、overflow、visibility、focus、禁止 asset を構造化して固定する。ブラウザ実行がない fixture でも、期待 HTML / CSS / security の組み合わせで合否判定できなければならない。
+
+**§28.1〜§28.5 feature fixture 固定契約：**
+
+§28.1〜§28.5 の fixture は、`docs/details/builder.md` §28.1〜§28.5 実装詳細固定契約に列挙された中間状態、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x に固定し、`manifest.json.feature_slug` を §28 fixture カタログ固定契約の feature slug と一致させる。
+
+| feature slug | fixture | 固定する内容 |
+|--------------|---------|--------------|
+| `incremental` | `success-one-page-change` | 複数 page のうち 1 page だけが changed となり、changed page は再生成、reused page は staging へ byte copy、search index と manifest は全 page から再生成される。 |
+| `incremental` | `success-dependency-change` | `dependencies_changed` に含まれる asset を参照する page だけが changed になり、参照しない page は reused になる。 |
+| `incremental` | `success-reuse-page-copied-to-staging` | reused page が公開出力から staging へ複写され、公開出力を直接参照したまま成功扱いにしないことを `expected/effects.json` で確認する。 |
+| `incremental` | `success-stale-page-delete-on-success` | 入力 source から消えた page の HTML、manifest entry、search index entry が成功置換時だけ削除される。 |
+| `incremental` | `success-incremental-dependency-manifest-corrupt-full-build` | 既存 `.dependency_manifest.json` の JSON 破損または schema 不一致を warning なし full build とし、終了コード `0`、`incremental_reason=["manifest-invalid"]` になる。 |
+| `incremental` | `failure-changed-manifest-corrupt` | `--changed-manifest` の JSON 破損で stdout 空、stderr `BUILDER28_INVALID_OPTION`、終了コード `2`、公開出力維持になる。 |
+| `incremental` | `failure-changed-manifest-base-escape` | `--changed-manifest` 内 path が base 外、絶対 path、または `..` escape を含む場合に `BUILDER28_PATH_OUTSIDE_BASE`、終了コード `2`、公開出力維持になる。 |
+| `incremental` | `noop-unchanged-pages-kept` | changed page が 0 件の場合でも search index と manifest を最終 page set から再生成し、HTML byte は既存と一致する。 |
+| `incremental` | `security-incremental-no-public-write-on-failure` | build 途中 failure、strict warning、changed manifest fatal failure のすべてで公開 `--out`、既存 manifest、既存 search index が変更されない。 |
+| `formats` | `success-html-default` | format 未指定で `html` として実行し、REPORT は `output_format="html"`、`output_format_supported=true` になる。 |
+| `formats` | `success-html-explicit` | `--format html`、env、設定 file のいずれでも HTML 出力だけを作り、format 由来の追加 file を作らない。 |
+| `formats` | `failure-pdf-reserved` | `pdf` を予約値として `BUILDER28_UNSUPPORTED_RESERVED` で拒否し、stdout 空、REPORT なし、staging なし、既存出力維持になる。 |
+| `formats` | `failure-epub-reserved` | `epub` を予約値として `BUILDER28_UNSUPPORTED_RESERVED` で拒否し、stdout 空、REPORT なし、staging なし、既存出力維持になる。 |
+| `formats` | `failure-unknown-format` | 未知 format を `BUILDER28_INVALID_OPTION` で拒否し、予約値用 error code を使わない。 |
+| `formats` | `failure-multiple-format` | 同一 source 内の複数 format 指定を `BUILDER28_INVALID_OPTION` で拒否する。source 優先順位による上書きとは区別する。 |
+| `formats` | `security-format-no-reserved-output-files` | `pdf`、`epub`、未知 format、複数指定のすべてで `.pdf`、`.epub`、追加 directory、追加 asset file が生成されない。 |
+| `markdown-extensions` | `success-admonition-note-warn-tip` | NOTE / WARN / TIP を `section.adlaire-admonition`、`data-adlaire-admonition`、`div.adlaire-admonition-title` として出力し、title text を固定する。 |
+| `markdown-extensions` | `success-badge-color` | `gray`、`blue`、`green`、`yellow`、`red` の badge を `span.adlaire-badge`、`data-adlaire-badge-color` として出力し、label を escape 済み text にする。 |
+| `markdown-extensions` | `success-extension-csv-normalization` | csv の trim、空要素無視、重複除去、許可値順序の正規化を確認する。 |
+| `markdown-extensions` | `failure-unknown-extension` | 未知 extension を `BUILDER28_INVALID_OPTION`、終了コード `2`、stdout 空、公開出力維持にする。 |
+| `markdown-extensions` | `failure-badge-invalid-text-strict` | strict で不正 badge label / color を `BUILDER28_INVALID_OPTION`、終了コード `2` にする。 |
+| `markdown-extensions` | `noop-badge-invalid-text-nonstrict` | non-strict で不正 badge を元 text のまま出力し、`markdown_extension_warnings` を加算する。 |
+| `markdown-extensions` | `security-extension-escape` | admonition body、badge label、attribute、raw HTML、危険 URL、event handler が escape される。 |
+| `markdown-extensions` | `noop-extension-disabled` | extension 未指定時に admonition / badge 構文を特別扱いせず、既存 Markdown 変換結果を維持する。 |
+| `code-line-numbers` | `success-line-numbers-fence` | fence option `line-numbers` のある code block だけに `.code-lines`、`.line-no`、`data-line` を出す。 |
+| `code-line-numbers` | `success-line-numbers-cli` | CLI 有効時に全 code fence へ line number を出し、`code_line_number_blocks` と `code_line_number_lines` が一致する。 |
+| `code-line-numbers` | `success-line-numbers-diff-composition` | §28.9 diff class と line number が同時に存在し、line number node に diff class が付かない。 |
+| `code-line-numbers` | `noop-line-numbers-empty-code` | 空 code block には line number を出さず、REPORT count に含めない。 |
+| `code-line-numbers` | `noop-line-numbers-disabled` | CLI 無効かつ fence option なしの code block は既存出力と一致する。 |
+| `code-line-numbers` | `security-line-numbers-copy-clean` | `expected/site/assets/search-index.json`、copy text fixture、minify 後 HTML のいずれにも line number text が混入しない。 |
+| `heading-numbering` | `success-heading-numbering-h2-h3` | h2 / h3 に `span.heading-number` を出し、`1.`、`1.1.` 形式、ASCII space 1 個、`numbered_headings` を固定する。 |
+| `heading-numbering` | `success-heading-numbering-implicit-h2` | h2 がない page の h3 で暗黙 h2 counter `1` を使い、`1.1.` から開始する。 |
+| `heading-numbering` | `success-heading-numbering-toc-search` | 本文 heading、TOC 表示 text、search index 表示 text に番号を含め、search index 検索対象正規化 text には番号を含めない。 |
+| `heading-numbering` | `failure-heading-numbering-unknown-mode` | 未知 mode を `BUILDER28_INVALID_OPTION`、終了コード `2`、stdout 空、公開出力維持にする。 |
+| `heading-numbering` | `noop-heading-numbering-none` | `none` で heading、TOC、search index 表示 text を変更せず、`numbered_headings=0` にする。 |
+| `heading-numbering` | `security-heading-slug-unchanged` | 採番有無で heading id、anchor href、collapse target、hash history target が byte 単位で一致する。 |
+
+§28.1〜§28.5 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。failure / security fixture では、`forbidden_updated_paths` と `forbidden_deleted_paths` に公開 `--out`、既存 `.dependency_manifest.json`、既存 `assets/search-index.json` を必ず含める。
 
 **§28 expected 比較方式固定契約：**
 
