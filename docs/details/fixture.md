@@ -569,6 +569,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | §28 共通 | `builder-extensions/atomicity/` | 下記 §28 fixture カタログ固定契約の `atomicity` fixture をすべて作成する。 |
 | §28 共通 | `builder-extensions/parser-precedence/` | 下記 §28 fixture カタログ固定契約の `parser-precedence` fixture をすべて作成する。 |
 | §28 共通 | `builder-extensions/browser-runtime/` | 下記 §28 fixture カタログ固定契約の `browser-runtime` fixture をすべて作成する。 |
+| §28 共通 | `builder-extensions/visual-layout/` | 下記 §28 fixture カタログ固定契約の `visual-layout` fixture をすべて作成する。 |
 | §28.1〜§28.25 | `builder-extensions/<feature-slug>/` | 下記 §28 fixture カタログ固定契約に列挙した fixture をすべて作成する。 |
 
 **§28 fixture カタログ固定契約：**
@@ -582,6 +583,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | §28 共通 | `atomicity` | `success-atomic-write-all-files`、`success-incremental-reuse-byte-identical`、`success-incremental-delete-stale-page`、`failure-strict-warning-no-replace`、`failure-write-error-no-partial-update`、`failure-changed-manifest-invalid-no-output`、`success-dependency-manifest-corrupt-full-build`、`security-atomic-no-stale-temp-promoted` |
 | §28 共通 | `parser-precedence` | `success-block-precedence-code-math-heading`、`success-inline-precedence-code-image-link`、`success-admonition-inline-composition`、`success-heading-inline-slug-source`、`success-list-definition-task-boundary`、`failure-unclosed-math-strict`、`noop-code-fence-protects-extensions`、`security-parser-raw-html-escaped` |
 | §28 共通 | `browser-runtime` | `success-runtime-init-order`、`success-section-collapse-storage-print`、`success-color-scheme-cycle-print`、`success-toc-active-observer-fallback`、`success-hash-history-focus-navigation`、`success-lightbox-focus-trap-close`、`success-keyboard-scope-skip-link`、`security-runtime-no-storage-leak` |
+| §28 共通 | `visual-layout` | `success-css-output-order`、`success-responsive-320-layout`、`success-print-layout`、`success-color-scheme-variables`、`success-minify-visual-preservation`、`success-component-overflow-boundaries`、`security-visual-no-external-assets`、`security-focus-visible-no-overlap` |
 | §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`failure-manifest-corrupt-full-build`、`success-stale-page-delete-on-success`、`noop-unchanged-pages-kept`、`security-incremental-base-escape` |
 | §28.2 | `formats` | `success-html`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format` |
 | §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`failure-badge-invalid-text`、`security-extension-escape`、`noop-extension-disabled` |
@@ -638,6 +640,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | stderr | fatal failure の `[ERROR]` code、対象 file、対象 section、strict 昇格有無を完全一致で確認する。warning 継続 case と strict warning case は空 file にする。 |
 | effects | 作成、更新、維持、削除禁止、既存出力維持、manifest 上書き有無、外部 call 0 件を JSON で確認する。 |
 | security | HTML escape、attribute escape、base 外 path、URL credential 非表示、secret 非表示、CDN / external library 不使用を確認する。 |
+| visual layout | CSS selector 順、custom property、media query、responsive overflow、print visibility、minify preserve、focus visibility、layout shift 禁止を確認する。 |
 | parser precedence | block token 優先順位、inline token 優先順位、code fence / code span 保護、曖昧構文、機能併用順を確認する。 |
 | browser runtime | JS 初期化順、event handler、focus、keyboard、localStorage、print、fallback、例外時 no-break を確認する。 |
 
@@ -740,6 +743,23 @@ parser precedence fixture の `expected/site/*.html` は、対象 token の tag�
 | `security-runtime-no-storage-leak` | cookie、sessionStorage、IndexedDB、runtime network fetch、external script、secret / credential の storage 書込が 0 件である。 |
 
 browser runtime fixture の `expected/site/assets/app.js` は、初期化関数名または固定 marker、localStorage key、event 名、guard、fallback 分岐、focus trap 分岐を文字列または構造で確認する。`expected/security.json` は、cookie、sessionStorage、IndexedDB、fetch、XMLHttpRequest、external script、secret / credential storage が存在しないことを固定する。ブラウザ実行がない fixture でも、期待 JS 構造と expected HTML / CSS / security を組み合わせて合否判定する。
+
+**§28 visual layout fixture 固定契約：**
+
+`builder-extensions/visual-layout/` は、§28 の CSS 出力順、responsive layout、print layout、color scheme 変数、minify 後の視覚維持、component overflow、外部 visual asset 禁止、focus 表示を固定する共通 fixture である。個別 §28 fixture は、本 fixture と異なる selector 順、media query 境界、print visibility、外部 asset 許可、focus 表示条件を期待値にしてはならない。
+
+| fixture | 固定する内容 |
+|---------|--------------|
+| `success-css-output-order` | `expected/site/assets/style.css` で、既存 base、color scheme、typography / block、code extension、navigation runtime UI、media UI、responsive、print の順序が固定どおりである。 |
+| `success-responsive-320-layout` | 幅 `320px` 相当の fixture metadata と expected CSS / HTML で、§28 UI が text overlap、text clipping、不可視 overflow を発生させず、table と code block だけが scroll wrapper 内で横 overflow を持つ。 |
+| `success-print-layout` | `@media print` で interactive controls を非表示、本文要素を表示、collapsed section を展開、color scheme を light 相当、QR を print 専用表示にする。 |
+| `success-color-scheme-variables` | `:root`、`[data-color-scheme="light"]`、`[data-color-scheme="dark"]`、`[data-color-scheme="auto"]`、print の custom property 名と既定値が固定どおりである。 |
+| `success-minify-visual-preservation` | minify 有効時も required selector、custom property、`@media (max-width: 768px)`、`@media print`、`pre` / `code` の空白保持 property が削除、改名、結合破壊されない。 |
+| `success-component-overflow-boundaries` | admonition、badge、definition list、task list、footnote、math、code title、line numbers、diff、lightbox、Mermaid、print QR が `docs/details/builder.md` §28 CSS / layout / print / visual 固定契約の境界どおりに出力される。 |
+| `security-visual-no-external-assets` | `@import`、remote `url()`、external font、CDN、追加 asset file、runtime CSS fetch、inline style が出力されない。 |
+| `security-focus-visible-no-overlap` | theme toggle、skip link、TOC active、hash target、lightbox control、collapse toggle の focus / active style が可視で、hover / focus により寸法が変わらず、text を隠さない。 |
+
+visual layout fixture の `manifest.json` は、`viewport_width` を使う場合でも判定を画像 snapshot だけに依存させてはならない。`expected/site/assets/style.css`、`expected/site/*.html`、`expected/security.json`、必要に応じて `expected/visual.json` に、selector、media query、display、overflow、visibility、focus、禁止 asset を構造化して固定する。ブラウザ実行がない fixture でも、期待 HTML / CSS / security の組み合わせで合否判定できなければならない。
 
 **§28 expected 比較方式固定契約：**
 

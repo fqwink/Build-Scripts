@@ -2092,6 +2092,54 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | print | print 用挙動は `@media print` 内で完結させる。通常画面の DOM を print 専用に書き換えない。 |
 | accessibility | click 操作を追加する要素には keyboard 操作と `aria-label` を同時に定義する。 |
 
+**§28 CSS / layout / print / visual 固定契約：**
+
+§28 の視覚出力は、既存 `assets/style.css` 内の静的 CSS と既存 `assets/app.js` 内の静的 JS だけで成立させる。§28 実装で inline style、外部 font、`@import`、remote `url()`、CDN、追加 asset file、画像取得、viewport 依存の実行時 CSS 生成を追加してはならない。
+
+`assets/style.css` へ §28 CSS を追加する場合は、下表の順序を固定する。minify 有効時も、下表の論理順、custom property 名、selector、`@media` 境界、`pre` / `code` の空白保持に必要な property を失ってはならない。
+
+| 順序 | 出力ブロック | 固定内容 |
+|------|--------------|----------|
+| 1 | 既存 base | §6 の既存変数、本文 layout、header、TOC、code、table、print の既存順序を維持する。 |
+| 2 | color scheme | `:root`、`[data-color-scheme="light"]`、`[data-color-scheme="dark"]`、`[data-color-scheme="auto"]` の §28 custom property を定義する。 |
+| 3 | typography / block | admonition、badge、definition list、task list、footnote、math の selector を定義する。 |
+| 4 | code extension | code title、line numbers、diff highlight の selector を定義する。 |
+| 5 | navigation runtime UI | section collapse、TOC active、hash focus、skip link、theme toggle の selector を定義する。 |
+| 6 | media UI | image lightbox、Mermaid placeholder / SVG wrapper、print QR の selector を定義する。 |
+| 7 | responsive | `@media (max-width: 768px)` に §28 追加 UI の折り返し、横幅、余白を定義する。 |
+| 8 | print | `@media print` に §28 追加 UI の印刷挙動を定義する。 |
+
+§28 で追加する selector は、§28 CLI / 設定 / REPORT / 出力識別子固定契約に列挙した class、id、data attribute だけを使用する。§28 selector は既存 `.ci`、`main`、`nav`、`pre`、`code`、`table` の基礎 layout を上書きしてはならない。必要な場合は §28 の追加 class を起点に scoped selector として定義する。
+
+§28 responsive layout は、幅 `320px` の viewport で本文、見出し、TOC、theme toggle、skip link、admonition、badge、definition list、task list、footnote、math、code title、line numbers、diff highlight、lightbox、print QR の text が重なり、切れ、親要素外へ不可視にはみ出す状態を禁止する。table と code block だけは既存 scroll wrapper 内の horizontal overflow を許可する。§28 実装は viewport width に比例する font size、負の `letter-spacing`、hover / focus で寸法が変わる border / padding / font weight を追加してはならない。
+
+§28 print layout は、`@media print` で以下を固定する。
+
+| 対象 | print 固定内容 |
+|------|----------------|
+| interactive controls | theme toggle、collapse toggle、lightbox trigger UI、TOC active indicator、skip link の画面専用装飾を非表示にする。本文、見出し、画像、code、table、footnote、definition list、task list は非表示にしない。 |
+| collapsed section | 印刷時は全 section を展開状態で出力する。screen state を書き換えず、`@media print` または print event の一時状態だけで処理する。 |
+| color scheme | 印刷時は light 相当の背景と文字色に固定し、dark background を印刷しない。 |
+| code / diff | `pre`、`code`、line number、diff line の text を欠落させない。line number は code text のコピー対象に含めない。 |
+| print QR | §28.23 が有効な場合だけ print 用 QR を表示する。screen 表示では QR を本文内の常時表示要素にしない。 |
+
+§28 visual component の layout は下表で固定する。
+
+| 対象 | layout 固定内容 |
+|------|----------------|
+| `.adlaire-admonition` | 本文幅内の block とし、他 card 内へ入れ子の card 表現を追加しない。title と body は縦積み、長い語は折り返す。 |
+| `.adlaire-badge` | inline 要素として扱い、行高を不自然に拡大しない。前後 text を押し潰さない。 |
+| `.code-title` | 対応する code block 直前にだけ表示し、code block と分離して floating 表示しない。 |
+| `.code-lines` / `.line-no` | line number column と code text column の対応を維持し、折り返し時も行番号と本文が逆転しない。 |
+| `.tok-inserted` / `.tok-deleted` / `.tok-context` | 背景色と text color の両方で状態を表し、色だけに依存しない記号または text を維持する。 |
+| `.math-inline` / `.math-block` | inline math は行内、block math は本文幅内 block とし、未対応記法を画像化しない。 |
+| `.adlaire-lightbox-dialog` | dialog 表示時は viewport 内に収め、画像は `max-inline-size: 100%`、`max-block-size: 100%` 相当で切らない。 |
+| `.mermaid-diagram` / `.mermaid-source` | SVG wrapper は deterministic viewBox を持ち、外部 script 読込なしで fallback text を保持する。 |
+| `.print-qr` / `.print-qr-svg` | print 専用 block とし、SVG は deterministic path / rect 順で出力する。 |
+| `.theme-toggle` / `.skip-link` / `.is-active` | focus outline は常に可視にし、focus / active 化で layout 寸法を変えない。 |
+
+§28 visual 受け入れでは、light / dark / auto / print の各状態で text contrast、focus indicator、active indicator、disabled state、warning state が expected CSS / HTML で確認できなければならない。画像 snapshot だけを合否根拠にしてはならない。
+
 **§28 ID / slug / search index / JS state 決定性固定契約：**
 
 §28 実装は、HTML id、anchor href、TOC、hash history、section collapse、TOC active tracking、search index、localStorage key / value を同じ入力から常に同じ値にする。現在時刻、実 git 状態、OS path separator、map iteration order、ブラウザ viewport、locale、乱数により値が変わってはならない。
