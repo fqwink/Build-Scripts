@@ -1870,7 +1870,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | 11 | search index 生成 | heading、本文 text、更新日時、採番表示、対象 page path を使って `assets/search-index.json` を生成する。HTML tag、line number、copy 除外要素は search text に含めない。 |
 | 12 | optional minify | §28.15 が有効な場合だけ HTML 生成後に minify する。`pre`、`code`、`textarea`、`script` 相当領域と必須 marker を保持する。 |
 | 13 | atomic write | 出力先の一時 file へ書き込み、成功後に rename する。失敗時は既存出力、manifest、search index を部分更新しない。 |
-| 14 | REPORT 出力 | すべての生成物 write が成功した後に `[REPORT]` を stdout へ出力する。失敗時は確定済み warning / error を stderr と `[REPORT]` へ出力する。 |
+| 14 | REPORT 出力 | すべての生成物 write が成功した後に `[REPORT]` を stdout へ 1 行だけ出力する。strict warning による終了コード `2` の場合だけ `[WARN]` と `[REPORT]` を stdout へ出力する。その他の終了コード `1` / `2` では stderr へ error を出し、`[REPORT]` は出力しない。 |
 
 **§28 設定解決・終了コード固定契約：**
 
@@ -1982,21 +1982,41 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 | `config_file_keys` | array | 設定ファイルから採用した正規化 key 名。ASCII 昇順。 |
 | `config_default_keys` | array | 既定値から採用した正規化 key 名。ASCII 昇順。 |
 | `config_overridden_keys` | array | 高順位 source または同一 repeatable source により上書きされた key 名。ASCII 昇順。 |
-| `config_rejected_keys` | array | validation で拒否した key 名。ASCII 昇順。終了コード `2` の場合も出力可能な範囲で出す。 |
+| `config_rejected_keys` | array | validation で拒否した key 名。ASCII 昇順。fatal validation で終了コード `2` となる場合は `[REPORT]` 自体を出力しないため、成功 run で non-fatal rejection が発生した場合だけ出力する。 |
 
 設定ファイルの読み込み、parse、validation、正規化、source 解決は、§28 実装パイプライン固定契約の順序 1〜2 の範囲で完了させる。設定解決で終了コード `2` が確定した場合、Markdown 読込、HTML / CSS / JS / search index / manifest 生成、atomic write を実行してはならない。
 
 **§28 REPORT 値型固定契約：**
 
-§28 の `[REPORT]` は JSON object 互換の key-value として扱える内容にする。boolean は `true` / `false`、integer は 10 進数、string は UTF-8、list は comma 区切りではなく JSON array 表現に固定する。key 未使用時は省略せず、機能が評価対象なら既定値を出力する。
+§28 の `[REPORT]` は、既存 §8 と同じ 1 行の `key=value` 形式を維持する。JSON object 全体を stdout に出力してはならない。§28 で追加する key は、既存固定順の末尾へ ASCII 昇順で追加する。既存 key の名前、順序、値表現を変更してはならない。
+
+§28 の値は `=` の右辺だけを JSON literal 互換にする。boolean は `true` / `false`、integer は 10 進数、string は JSON string、array は compact JSON array に固定する。compact JSON は空白なし、object なし、要素は JSON string のみとする。key 未使用時は省略せず、機能が評価対象なら既定値を出力する。
 
 | 値種別 | 例 | 固定 |
 |--------|----|------|
 | boolean | `incremental_enabled`、`minify_html`、`hash_history_enabled` | `true` または `false`。 |
 | integer | `lazy_images`、`toc_items`、`task_list_items` | 0 以上。負数は禁止。 |
-| string | `output_format`、`color_scheme`、`updated_at_source` | 許容値の文字列だけ。空値許可 key は個別表の既定値に従う。 |
-| timestamp | `updated_at` | UTC、RFC3339、秒精度。取得不能時は空文字。 |
-| array | `template_vars_missing`、`incremental_reason` | JSON array 表現。要素は escape 済み string。 |
+| string | `output_format`、`color_scheme`、`updated_at_source` | JSON string。例: `output_format="html"`。空値は `""`。 |
+| timestamp | `updated_at` | JSON string。UTC、RFC3339、秒精度。取得不能時は `""`。 |
+| array | `template_vars_missing`、`incremental_reason` | compact JSON array。例: `incremental_reason=["changed","dependency"]`。空配列は `[]`。 |
+
+**§28 stdout / stderr / REPORT 固定契約：**
+
+§28 実装は、既存 §8 の CLI 出力固定契約を拡張する。終了コードごとの stdout、stderr、`[REPORT]` 有無、副作用は下表に固定する。
+
+| ケース | stdout | stderr | `[REPORT]` | 終了コード | 副作用 |
+|--------|--------|--------|------------|------------|--------|
+| 成功、warning なし | 既存進捗行、`Done`、`[REPORT]`。 | 空 | あり | `0` | atomic write 完了後だけ公開用 `--out` を置換する。 |
+| 成功、non-strict warning あり | 既存進捗行、`Done`、`[WARN]`、`[REPORT]`。 | 空 | あり | `0` | warning 対象は fallback または無効化し、出力は完了させる。 |
+| strict warning | 既存進捗行、`[WARN]`、`[REPORT]`。`Done` は出力しない。 | 空 | あり | `2` | 一時出力を削除し、公開用 `--out` は置換しない。 |
+| CLI / env / config validation failure | 空 | `[ERROR] BUILDER28_INVALID_OPTION -:0 28 message` 形式を 1 行以上。 | なし | `2` | Markdown 読込、出力生成、atomic write を実行しない。 |
+| path / URL validation fatal failure | 空 | `[ERROR] BUILDER28_PATH_OUTSIDE_BASE file:line 28.x message` 形式を 1 行以上。 | なし | `2` | Markdown 読込後に検出した場合も公開用 `--out` は置換しない。 |
+| reserved feature failure | 空 | `[ERROR] BUILDER28_UNSUPPORTED_RESERVED -:0 28.x message` 形式を 1 行以上。 | なし | `2` | 出力生成、atomic write を実行しない。 |
+| 内部変換 / I/O failure | 失敗前までの既存進捗行。 | `[ERROR] BUILDER28_INTERNAL_IO file:line 28 message` または `[ERROR] BUILDER28_OUTPUT_VALIDATION_FAILED file:line 28.x message`。 | なし | `1` | 一時出力を削除し、公開用 `--out` は置換しない。 |
+
+`[WARN]` は stdout にだけ出力する。`[ERROR]` は stderr にだけ出力する。同一 run で stdout に `[WARN]`、stderr に `[ERROR]` を混在させてはならない。終了コード `1` / fatal `2` の場合は `[WARN]` を出力せず、原因を `[ERROR]` として stderr に集約する。
+
+§28 の `[REPORT]` 追加 key は、既存 §8 の固定順 `pages headings tables code_blocks warnings size_warn broken_links heading_skips reading_time theme build_id commit_sha build_at` の後ろへ追加する。追加 key は ASCII 昇順で並べる。fixture は 1 行完全一致で確認し、順序違い、key 省略、値型違い、空白入り compact JSON を不合格とする。
 
 **§28 CSS / JS 出力固定契約：**
 
@@ -2042,7 +2062,7 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 
 **§28 warning / error code 固定契約：**
 
-stderr の warning / error は 1 行 1 件とし、形式を `[WARN] CODE file:line section message` または `[ERROR] CODE file:line section message` に固定する。file が特定できない場合は `-`、line が特定できない場合は `0` とする。message に secret、URL credential、未escape HTML を含めてはならない。
+stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN] CODE file:line section message` または `[ERROR] CODE file:line section message` に固定する。`[WARN]` は stdout だけ、`[ERROR]` は stderr だけに出力する。file が特定できない場合は `-`、line が特定できない場合は `0` とする。message に secret、URL credential、未escape HTML を含めてはならない。
 
 | code | level | 対象 | strict |
 |------|-------|------|--------|
@@ -2155,7 +2175,7 @@ stderr の warning / error は 1 行 1 件とし、形式を `[WARN] CODE file:l
 | CLI / env | 対象 §28.x の CLI option、環境変数、既定値、拒否値を fixture で確認する。 | CLI のみ、env のみ、既定値のみなど片方だけの確認。 |
 | HTML / CSS / JS | 本節に定義された tag、attribute、class、data attribute、storage key、handler だけを出力する。 | 未定義 class、未定義 asset、未定義 handler、未定義 localStorage key の追加。 |
 | REPORT | 本節に定義された REPORT key、型、count 単位、既定値をすべて fixture で確認する。 | key 省略、型違い、件数算出根拠不明、warning count 不一致。 |
-| stderr | warning / error code、file、line、section、message の形式が固定契約と一致する。 | 独自 code、message 揺れ、secret / credential / raw HTML 混入。 |
+| stdout / stderr | warning / error code、file、line、section、message、出力先の形式が固定契約と一致する。 | 独自 code、message 揺れ、出力先違い、secret / credential / raw HTML 混入。 |
 | strict / non-strict | warning 昇格対象は non-strict と strict の両方を fixture で確認する。 | 片方だけの実装、片方だけの fixture、strict 時の副作用残存。 |
 | 既存出力互換 | 対象機能無効時、または対象入力なし時に既存 HTML / CSS / JS / search index / REPORT が変わらない。 | 対象外の既存 fixture 差分、未使用 CSS / JS の出力。 |
 | security | HTML escape、attribute escape、URL validation、base 外 path、外部依存不使用を確認する。 | raw HTML、credential、CDN、外部 script、runtime network fetch の残存。 |

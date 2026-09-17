@@ -610,8 +610,8 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | `input/adlaire-ci-build.json` | 条件付き | 設定ファイル fixture で使用する。未使用 fixture では存在させない。 |
 | `input/fakes.json` | 条件付き | fake git timestamp、fake file mtime、fake manifest、fake cache、fake clipboard など。実外部呼び出しは禁止。 |
 | `expected/site/` | 必須 | 期待 HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` のうち対象機能が変更する file。 |
-| `expected/stdout.txt` | 必須 | `[REPORT]` を含む stdout 完全一致。 |
-| `expected/stderr.txt` | 必須 | warning / error 完全一致。stderr なしは空 file。 |
+| `expected/stdout.txt` | 必須 | 進捗、`[WARN]`、`[REPORT]` を含む stdout 完全一致。fatal failure は空 file。 |
+| `expected/stderr.txt` | 必須 | fatal failure の `[ERROR]` 完全一致。stderr なしは空 file。 |
 | `expected/effects.json` | 必須 | 作成、更新、維持、削除禁止 path、外部 call 0 件、既存出力保護、strict 昇格条件。 |
 | `expected/security.json` | 条件付き | HTML escape、attribute escape、外部 library 不使用、secret / URL credential 非表示、base 外 path 拒否。 |
 
@@ -625,8 +625,8 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | CSS | 対象機能が追加する selector、custom property、`@media print`、focus style を確認する。未使用機能の selector が出ないことも確認する。 |
 | JS | 対象機能が追加する event handler、localStorage key、history handler、dialog handler、fallback 分岐の文字列または構造を確認する。外部 script 参照がないことを確認する。 |
 | search index | 採番表示、line number 除外、HTML tag 除外、対象 page path、updated time の有無を確認する。 |
-| stdout | `[REPORT]` の key、型、既定値、件数、warning count を完全一致で確認する。 |
-| stderr | warning / error の code、対象 file、対象 section、strict 昇格有無を完全一致で確認する。stderr なしは空 file を置く。 |
+| stdout | 既存進捗行、`[WARN]`、`[REPORT]` の有無、`[REPORT]` key 順、値型、既定値、件数、warning count を完全一致で確認する。fatal failure は空 file にする。 |
+| stderr | fatal failure の `[ERROR]` code、対象 file、対象 section、strict 昇格有無を完全一致で確認する。warning 継続 case と strict warning case は空 file にする。 |
 | effects | 作成、更新、維持、削除禁止、既存出力維持、manifest 上書き有無、外部 call 0 件を JSON で確認する。 |
 | security | HTML escape、attribute escape、base 外 path、URL credential 非表示、secret 非表示、CDN / external library 不使用を確認する。 |
 
@@ -640,13 +640,13 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | `success-config-file-values` | `input/adlaire-ci-build.json` の `builder_extensions` 値が採用され、`config_file_used=true`、`config_file_path="adlaire-ci-build.json"`、`config_file_keys` が ASCII 昇順で出る。 |
 | `success-config-env-over-file` | 同一 key が環境変数と設定ファイルに存在する場合、環境変数を採用し、設定ファイル source は `config_overridden_keys` に記録する。 |
 | `success-config-cli-over-env-over-file` | 同一 key が CLI、環境変数、設定ファイルに存在する場合、CLI を採用し、環境変数 / 設定ファイル source は `config_overridden_keys` に記録する。 |
-| `failure-config-json-corrupt` | 設定ファイルが JSON として parse できない場合、終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、出力作成なし、既存出力維持。 |
-| `failure-config-unknown-key` | root unknown key、`builder_extensions` unknown key のいずれも終了コード `2`、`config_rejected_keys` に key 名を記録する。 |
-| `failure-config-invalid-type` | boolean / string / array / object の型不一致、JSON object 値が string 以外、空 array 要素を終了コード `2` にする。 |
-| `failure-config-duplicate-nonrepeatable-cli` | repeatable ではない CLI option の重複指定を終了コード `2` にし、Markdown 読込前に停止する。 |
+| `failure-config-json-corrupt` | 設定ファイルが JSON として parse できない場合、終了コード `2`、stdout 空、stderr `BUILDER28_INVALID_OPTION`、出力作成なし、既存出力維持。 |
+| `failure-config-unknown-key` | root unknown key、`builder_extensions` unknown key のいずれも終了コード `2`、stdout 空、stderr に key 名だけを記録し、`[REPORT]` は出力しない。 |
+| `failure-config-invalid-type` | boolean / string / array / object の型不一致、JSON object 値が string 以外、空 array 要素を終了コード `2`、stdout 空にする。 |
+| `failure-config-duplicate-nonrepeatable-cli` | repeatable ではない CLI option の重複指定を終了コード `2`、stdout 空にし、Markdown 読込前に停止する。 |
 | `security-config-secret-not-echoed` | `meta` / `template_vars` / 環境変数値に secret 風文字列、credential 付き URL、raw HTML が含まれても、stderr、stdout、REPORT へ値を出さない。key 名だけを出す。 |
 
-設定解決 fixture の `expected/stdout.txt` は、`config_file_used`、`config_file_path`、`config_cli_keys`、`config_env_keys`、`config_file_keys`、`config_default_keys`、`config_overridden_keys`、`config_rejected_keys` を必ず含める。設定解決失敗 fixture の `expected/effects.json` は、HTML、CSS、JS、search index、manifest、設定ファイルが新規作成、更新、削除されないことを固定する。
+設定解決成功 fixture の `expected/stdout.txt` は、`config_file_used`、`config_file_path`、`config_cli_keys`、`config_env_keys`、`config_file_keys`、`config_default_keys`、`config_overridden_keys`、`config_rejected_keys` を必ず含める。設定解決失敗 fixture の `expected/stdout.txt` は空 file とし、`expected/stderr.txt` に `[ERROR] BUILDER28_INVALID_OPTION -:0 28 ...` を固定する。設定解決失敗 fixture の `expected/effects.json` は、HTML、CSS、JS、search index、manifest、設定ファイルが新規作成、更新、削除されないことを固定する。
 
 **§28 expected 比較方式固定契約：**
 
@@ -658,24 +658,24 @@ expected 比較は、実装環境差分で揺れないように以下の正規�
 | `expected/site/assets/style.css` | selector、property、値、media query の完全一致。 | 空行の連続を 1 行へ正規化可。 | selector の部分一致、未使用 selector の黙認。 |
 | `expected/site/assets/app.js` | 対象 handler、storage key、guard、fallback 分岐を含む文字列完全一致。 | 改行コードを LF に統一。 | minify 差分の黙認、外部 script 参照の黙認。 |
 | `expected/site/assets/search-index.json` | JSON parse 後の key、型、値完全一致。 | object key 順だけ無視可。array 順は固定。 | HTML tag 混入、line number 混入、未定義 key の黙認。 |
-| `expected/stdout.txt` | 行完全一致。 | 末尾改行 1 個を許可。 | `[REPORT]` key 省略、型違い、件数差分の黙認。 |
-| `expected/stderr.txt` | 行完全一致。 | 末尾改行 1 個を許可。 | warning code 差分、line 差分、message 差分の黙認。 |
+| `expected/stdout.txt` | 行完全一致。`[REPORT]` は 1 行 key=value 形式。§28 追加 key は既存 §8 key の後ろに ASCII 昇順で並べる。 | 末尾改行 1 個を許可。 | `[REPORT]` key 省略、型違い、件数差分、追加 key 順序違い、compact JSON 内空白の黙認。 |
+| `expected/stderr.txt` | 行完全一致。fatal failure 以外は空 file。 | 末尾改行 1 個を許可。 | error code 差分、line 差分、message 差分、stdout warning 混入の黙認。 |
 | `expected/effects.json` | JSON parse 後の key、型、値完全一致。 | object key 順だけ無視可。array 順は固定。 | 外部 call、削除、既存出力破壊の黙認。 |
 | `expected/security.json` | JSON parse 後の key、型、値完全一致。 | object key 順だけ無視可。array 順は固定。 | CDN、credential、raw HTML、secret 残存の黙認。 |
 
-**§28 stderr / REPORT fixture 固定契約：**
+**§28 stdout / stderr / REPORT fixture 固定契約：**
 
-stderr と `[REPORT]` は、同じ入力から常に同じ順序で出力する。順序は、入力 file path 昇順、line 昇順、section 昇順、code 昇順とする。
+stderr と `[REPORT]` は、同じ入力から常に同じ順序で出力する。順序は、入力 file path 昇順、line 昇順、section 昇順、code 昇順とする。fatal failure の場合、`[REPORT]` は出力せず、stdout は空 file とする。
 
 | 対象 | 固定内容 |
 |------|----------|
-| stderr warning | `[WARN] CODE file:line section message` の形式で完全一致。 |
-| stderr error | `[ERROR] CODE file:line section message` の形式で完全一致。 |
+| stdout warning | `[WARN] CODE file:line section message` の形式で完全一致。warning は stdout だけに出す。 |
+| stderr error | `[ERROR] CODE file:line section message` の形式で完全一致。error は stderr だけに出す。 |
 | message | 句点ありの日本語または ASCII 英文に統一し、secret、credential、raw HTML を含めない。 |
 | REPORT boolean | `true` / `false` 小文字。 |
 | REPORT integer | 0 以上の 10 進数。 |
-| REPORT string | double quote 付き JSON string。 |
-| REPORT array | JSON array。要素順は発生順ではなく sorted string 昇順。ただし page order を意味する配列は input path 昇順。 |
+| REPORT string | double quote 付き JSON string。§8 既存 key は既存形式を維持する。 |
+| REPORT array | compact JSON array。要素順は発生順ではなく sorted string 昇順。ただし page order を意味する配列は input path 昇順。 |
 
 **§28 既存出力互換 fixture 固定契約：**
 
