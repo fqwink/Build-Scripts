@@ -566,6 +566,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 |----|------------------|--------------|
 | §28 共通 | `builder-extensions/config-resolution/` | 下記 §28 fixture カタログ固定契約の `config-resolution` fixture をすべて作成する。 |
 | §28 共通 | `builder-extensions/determinism/` | 下記 §28 fixture カタログ固定契約の `determinism` fixture をすべて作成する。 |
+| §28 共通 | `builder-extensions/atomicity/` | 下記 §28 fixture カタログ固定契約の `atomicity` fixture をすべて作成する。 |
 | §28.1〜§28.25 | `builder-extensions/<feature-slug>/` | 下記 §28 fixture カタログ固定契約に列挙した fixture をすべて作成する。 |
 
 **§28 fixture カタログ固定契約：**
@@ -576,7 +577,8 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 |----|--------------|--------------|
 | §28 共通 | `config-resolution` | `success-config-defaults-only`、`success-config-file-values`、`success-config-env-over-file`、`success-config-cli-over-env-over-file`、`failure-config-json-corrupt`、`failure-config-unknown-key`、`failure-config-invalid-type`、`failure-config-duplicate-nonrepeatable-cli`、`security-config-secret-not-echoed` |
 | §28 共通 | `determinism` | `success-slug-duplicates`、`success-search-index-text-sources`、`success-local-storage-payload`、`success-hash-targets`、`security-deterministic-no-runtime-variance` |
-| §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`failure-manifest-corrupt-full-build`、`noop-unchanged-pages-kept`、`security-incremental-base-escape` |
+| §28 共通 | `atomicity` | `success-atomic-write-all-files`、`success-incremental-reuse-byte-identical`、`success-incremental-delete-stale-page`、`failure-strict-warning-no-replace`、`failure-write-error-no-partial-update`、`failure-changed-manifest-invalid-no-output`、`success-dependency-manifest-corrupt-full-build`、`security-atomic-no-stale-temp-promoted` |
+| §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`failure-manifest-corrupt-full-build`、`success-stale-page-delete-on-success`、`noop-unchanged-pages-kept`、`security-incremental-base-escape` |
 | §28.2 | `formats` | `success-html`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format` |
 | §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`failure-badge-invalid-text`、`security-extension-escape`、`noop-extension-disabled` |
 | §28.4 | `code-line-numbers` | `success-line-numbers-fence`、`success-line-numbers-cli`、`noop-line-numbers-empty-code`、`security-line-numbers-copy-clean` |
@@ -611,6 +613,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | `input/options.json` | 必須 | CLI option、env key、expected exit code、strict / non-strict。 |
 | `input/adlaire-ci-build.json` | 条件付き | 設定ファイル fixture で使用する。未使用 fixture では存在させない。 |
 | `input/fakes.json` | 条件付き | fake git timestamp、fake file mtime、fake manifest、fake cache、fake clipboard など。実外部呼び出しは禁止。 |
+| `input/existing-site/` | 条件付き | atomicity、incremental、failure fixture で既存公開出力を表す。成功 fixture では置換前状態、failure fixture では維持されるべき状態を置く。 |
 | `expected/site/` | 必須 | 期待 HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` のうち対象機能が変更する file。 |
 | `expected/stdout.txt` | 必須 | 進捗、`[WARN]`、`[REPORT]` を含む stdout 完全一致。fatal failure は空 file。 |
 | `expected/stderr.txt` | 必須 | fatal failure の `[ERROR]` 完全一致。stderr なしは空 file。 |
@@ -631,6 +634,23 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | stderr | fatal failure の `[ERROR]` code、対象 file、対象 section、strict 昇格有無を完全一致で確認する。warning 継続 case と strict warning case は空 file にする。 |
 | effects | 作成、更新、維持、削除禁止、既存出力維持、manifest 上書き有無、外部 call 0 件を JSON で確認する。 |
 | security | HTML escape、attribute escape、base 外 path、URL credential 非表示、secret 非表示、CDN / external library 不使用を確認する。 |
+
+`expected/effects.json` は、§28 fixture では以下の key を固定する。未使用 key も省略せず、空配列、空 object、または `false` で明示する。
+
+| key | 型 | 固定 |
+|-----|----|------|
+| `created_paths` | array | 新規作成される公開出力 path。ASCII 昇順。 |
+| `updated_paths` | array | 既存から内容が変わる公開出力 path。ASCII 昇順。 |
+| `preserved_paths` | array | failure または reuse により byte 単位で維持される path。ASCII 昇順。 |
+| `deleted_paths` | array | 成功時に削除される stale path。ASCII 昇順。failure fixture では空配列。 |
+| `forbidden_created_paths` | array | 作成してはならない path。tmp、未定義 asset、reserved format 出力を含める。 |
+| `forbidden_updated_paths` | array | 更新してはならない path。failure fixture では既存 HTML、manifest、search index、asset を含める。 |
+| `forbidden_deleted_paths` | array | 削除してはならない path。failure fixture では既存公開出力を含める。 |
+| `external_calls` | integer | 常に `0`。 |
+| `staging_cleaned` | boolean | staging directory が残らない場合 `true`。staging cleanup 失敗 fixture では `false` を許可し、その場合は終了コード `1` を期待する。 |
+| `public_output_replaced` | boolean | 成功 transaction で公開 `--out` が置換される場合だけ `true`。 |
+| `manifest_written` | boolean | 成功 transaction で `.dependency_manifest.json` が公開される場合だけ `true`。 |
+| `search_index_regenerated` | boolean | 成功 transaction で最終 page set から search index を再生成する場合だけ `true`。 |
 
 **§28 設定解決 fixture 固定契約：**
 
@@ -663,6 +683,23 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | `security-deterministic-no-runtime-variance` | 同一入力を fake clock、fake git、異なる OS path separator 相当入力、異なる map order 相当 config で実行しても、HTML、search index、stdout、stderr が同一になることを固定する。 |
 
 決定性 fixture の `expected/site/*.html` は、heading id、TOC href、collapse wrapper id、`aria-controls`、`data-section-id` を完全一致で確認する。`expected/site/assets/search-index.json` は page key、heading text、body text、除外 text の不在を JSON parse 後完全一致で確認する。`expected/site/assets/app.js` は localStorage key、payload schema、unknown value guard、parse failure guard、hash no-op guard を文字列または構造で確認する。
+
+**§28 atomicity fixture 固定契約：**
+
+`builder-extensions/atomicity/` は、§28 の出力副作用、公開置換、manifest、search index、stale 削除を固定する共通 fixture である。個別 §28 fixture は、本 fixture と異なる失敗時副作用、manifest 更新条件、search index 更新条件を期待値にしてはならない。
+
+| fixture | 固定する内容 |
+|---------|--------------|
+| `success-atomic-write-all-files` | HTML、CSS、JS、search index、`.dependency_manifest.json` が staging にそろってから公開 `--out` へ置換され、`expected/effects.json` の `public_output_replaced=true`、`manifest_written=true`、`search_index_regenerated=true` になる。 |
+| `success-incremental-reuse-byte-identical` | 未変更 page の既存 HTML が byte 単位で維持され、changed page、manifest、search index だけが成功 transaction として更新される。 |
+| `success-incremental-delete-stale-page` | 入力 source から削除された Markdown に対応する HTML、search index entry、manifest entry が成功時だけ削除される。 |
+| `failure-strict-warning-no-replace` | non-strict なら fallback 出力できる警告を strict で実行し、終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力、manifest、search index 維持を固定する。 |
+| `failure-write-error-no-partial-update` | staging 書き込みまたは validation 失敗を fake し、終了コード `1`、stderr `[ERROR] BUILDER28_INTERNAL_IO` または `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力、manifest、search index 維持を固定する。 |
+| `failure-changed-manifest-invalid-no-output` | `--changed-manifest` が base 外 path、絶対 path、URL scheme、JSON 破損のいずれかの場合、終了コード `2`、stdout 空、公開出力維持を固定する。 |
+| `success-dependency-manifest-corrupt-full-build` | 既存 `.dependency_manifest.json` が破損または schema 不一致の場合、warning なし full build とし、成功時だけ新 manifest と search index を公開する。 |
+| `security-atomic-no-stale-temp-promoted` | staging path、absolute path、host user path、tmp path が HTML、CSS、JS、search index、manifest、stdout、stderr、REPORT に混入しないことを固定する。 |
+
+atomicity fixture の `input/existing-site/` は、既存 HTML、既存 `assets/search-index.json`、既存 `.dependency_manifest.json`、stale HTML、既存 asset を含める。failure fixture の `expected/site/` は `input/existing-site/` と byte 単位で一致させる。success fixture の `expected/effects.json` は、`created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths` をすべて明示する。
 
 **§28 expected 比較方式固定契約：**
 

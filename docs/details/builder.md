@@ -1869,7 +1869,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | 10 | CSS / JS 合成 | 使われた機能に必要な CSS / JS だけを `assets/style.css`、`assets/app.js` に追加する。未使用機能の CSS / JS を出力してはならない。 |
 | 11 | search index 生成 | heading、本文 text、更新日時、採番表示、対象 page path を使って `assets/search-index.json` を生成する。HTML tag、line number、copy 除外要素は search text に含めない。 |
 | 12 | optional minify | §28.15 が有効な場合だけ HTML 生成後に minify する。`pre`、`code`、`textarea`、`script` 相当領域と必須 marker を保持する。 |
-| 13 | atomic write | 出力先の一時 file へ書き込み、成功後に rename する。失敗時は既存出力、manifest、search index を部分更新しない。 |
+| 13 | atomic write | `--out` と同じ親 directory に staging directory を作成し、HTML、CSS、JS、search index、manifest を staging 内へすべて書き込む。検証成功後だけ公開用 `--out` を置換する。失敗時は既存出力、manifest、search index を部分更新しない。 |
 | 14 | REPORT 出力 | すべての生成物 write が成功した後に `[REPORT]` を stdout へ 1 行だけ出力する。strict warning による終了コード `2` の場合だけ `[WARN]` と `[REPORT]` を stdout へ出力する。その他の終了コード `1` / `2` では stderr へ error を出し、`[REPORT]` は出力しない。 |
 
 **§28 設定解決・終了コード固定契約：**
@@ -2017,6 +2017,68 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 `[WARN]` は stdout にだけ出力する。`[ERROR]` は stderr にだけ出力する。同一 run で stdout に `[WARN]`、stderr に `[ERROR]` を混在させてはならない。終了コード `1` / fatal `2` の場合は `[WARN]` を出力せず、原因を `[ERROR]` として stderr に集約する。
 
 §28 の `[REPORT]` 追加 key は、既存 §8 の固定順 `pages headings tables code_blocks warnings size_warn broken_links heading_skips reading_time theme build_id commit_sha build_at` の後ろへ追加する。追加 key は ASCII 昇順で並べる。fixture は 1 行完全一致で確認し、順序違い、key 省略、値型違い、空白入り compact JSON を不合格とする。
+
+**§28 atomic write / manifest / search index 副作用固定契約：**
+
+§28 実装は、HTML、CSS、JS、search index、`.dependency_manifest.json` を 1 回の build transaction として扱う。実装者は、page 単位の成功、asset 単位の成功、manifest だけの成功、search index だけの成功を公開状態として残してはならない。
+
+| 項目 | 固定 |
+|------|------|
+| transaction 対象 | `*.html`、`assets/style.css`、`assets/app.js`、`assets/search-index.json`、`.dependency_manifest.json`。 |
+| staging directory | `--out` の親 directory 内に `.adlaire-ci-build-tmp-<pid>-<counter>` を作成する。`<pid>` は 10 進数、`<counter>` は同一 process 内 1 始まりの 10 進数。既存 path と衝突する場合は counter を増やす。 |
+| staging 外 write 禁止 | 成功判定前に公開用 `--out` 配下、既存 `.dependency_manifest.json`、既存 `assets/search-index.json`、入力 Markdown、設定ファイルを書き換えてはならない。 |
+| staging 内容 | 最終公開状態と同じ相対 path で HTML、CSS、JS、search index、manifest を配置する。staging 専用 path、絶対 path、host 固有 path を生成物内へ埋め込まない。 |
+| 生成順 | HTML page 全件、CSS、JS、search index、manifest、生成物 validation、公開置換、`[REPORT]` の順に固定する。 |
+| 成功置換 | staging 内の生成物 validation がすべて成功した場合だけ、既存 `--out` を置換する。置換後の公開 `--out` は staging と byte 単位で一致する。 |
+| stale 削除 | 入力 source set から消えた Markdown に対応する HTML は、成功置換時だけ公開出力から消える。失敗時は既存 stale HTML を維持する。 |
+| staging cleanup | 失敗時は staging directory を削除する。成功時は staging directory を公開用 `--out` へ rename するため、元の staging path を残さない。公開置換前の staging cleanup または staging 残存検査に失敗した場合は終了コード `1` とし、公開 `--out` は置換しない。 |
+| failure 副作用 | 終了コード `1`、fatal `2`、strict warning `2` では公開 `--out`、既存 manifest、既存 search index、既存 HTML、既存 asset を維持する。 |
+| non-strict warning 副作用 | 終了コード `0` の warning 継続は成功 transaction として扱い、fallback 後の HTML、manifest、search index を公開する。 |
+
+差分ビルドは、`--changed-manifest` と `.dependency_manifest.json` の両方を入力として判定する。どちらか片方だけを更新して成功扱いにしてはならない。
+
+| ケース | 固定挙動 |
+|--------|----------|
+| `--changed-manifest` 未指定 | full build。`incremental_enabled=false`、`incremental_reason=[]`。 |
+| `--changed-manifest` path 不正 | 終了コード `2`、stdout 空、stderr `BUILDER28_PATH_OUTSIDE_BASE`、公開出力維持。 |
+| `--changed-manifest` JSON 破損 | 終了コード `2`、stdout 空、stderr `BUILDER28_INVALID_OPTION`、公開出力維持。 |
+| `--changed-manifest` 空 changes | 既存 manifest が有効なら reuse 判定を行い、search index と manifest は最終 page set から再生成する。 |
+| `.dependency_manifest.json` 不在 | full build。成功時に新 manifest を公開する。 |
+| `.dependency_manifest.json` JSON 破損 | warning なし full build。成功時だけ新 manifest で置換する。失敗時は破損 manifest を維持する。 |
+| `.dependency_manifest.json` schema 不一致 | warning なし full build。成功時だけ新 manifest で置換する。 |
+| 未変更 page の既存 HTML 不在 | 対象 page は changed 扱いで再生成する。reuse count に含めない。 |
+| 入力 source 削除 | 対応 HTML、search index entry、manifest entry は成功置換時だけ削除する。失敗時は既存公開状態を維持する。 |
+| 依存 asset 変更 | 該当 asset を参照する page を changed 扱いにする。asset 参照を持たない page は reuse 判定対象にできる。 |
+| builder version / §28 設定差分 | 影響する全 page を changed 扱いにする。理由は `incremental_reason` に sorted string で記録する。 |
+
+`.dependency_manifest.json` は build 成功時だけ公開する。manifest は JSON object 固定で、object key 順は ASCII 昇順で出力する。timestamp、host path、absolute path、user name、temporary path、random value を含めてはならない。
+
+| manifest key | 型 | 固定 |
+|--------------|----|------|
+| `version` | integer | `1` 固定。未知 version は schema 不一致として full build。 |
+| `builder` | object | `name`、`spec_section`、`config_hash` を持つ。`name` は `adlaire-ci-build`、`spec_section` は `"28.1"`。 |
+| `pages` | object | key は入力 base からの Markdown 相対 path。値は page manifest object。key は ASCII 昇順。 |
+| `generated_outputs` | object | key は公開出力相対 path。値は生成元 page key または `asset` / `search-index` / `manifest`。 |
+
+page manifest object は以下に固定する。
+
+| key | 型 | 固定 |
+|-----|----|------|
+| `input_sha256` | string | 入力 Markdown byte の lowercase hex SHA-256。 |
+| `output_path` | string | 出力 HTML の `--out` からの相対 path。`/` 区切り。 |
+| `dependencies` | array | Markdown から参照された base 内 file path。ASCII 昇順。外部 URL は含めない。 |
+| `dependency_sha256` | object | key は `dependencies` の path。値は lowercase hex SHA-256。読めない依存は changed 扱いにし、成功 manifest には含めない。 |
+| `config_hash` | string | §28 正規化済み設定 object の lowercase hex SHA-256。secret 値、meta value、template var value は hash input に含めるが manifest には平文出力しない。 |
+
+search index は、reuse page を含む最終 page set 全体から毎回再生成する。reuse した既存 `assets/search-index.json` の部分流用、page 単位追記、削除 page entry の残存を禁止する。
+
+| search index 条件 | 固定 |
+|-------------------|------|
+| page order | 出力 HTML path の ASCII 昇順。 |
+| entry source | staging 内に存在する最終 HTML と変換時 token から作る。公開旧 HTML から読み戻して補完しない。 |
+| reused page | HTML byte は既存公開版を維持できるが、search index entry は最終 page set から再計算する。 |
+| deleted page | 成功時に entry を削除する。失敗時は既存 search index を維持する。 |
+| failure | staging の search index が生成済みでも公開 `assets/search-index.json` へ反映しない。 |
 
 **§28 CSS / JS 出力固定契約：**
 
@@ -2171,7 +2233,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 
 | 節 | validation | HTML / asset 固定 | warning / error | REPORT count | fixture 必須確認 |
 |----|------------|-------------------|-----------------|--------------|------------------|
-| §28.1 | manifest path は base 内相対 path のみ。manifest root は object、page key は正規化相対 path。 | 未変更 page は byte 単位で維持し、search index は全 page から再生成する。 | manifest JSON 破損は warning なし full build。path 不正は `BUILDER28_PATH_OUTSIDE_BASE`。 | changed / reused は page 数。reason は sorted array。 | 未変更 HTML byte 維持、manifest 破損 full build、search index 全体再生成。 |
+| §28.1 | manifest path は base 内相対 path のみ。`.dependency_manifest.json` root は object、page key は正規化相対 path。 | 未変更 page は byte 単位で維持し、削除 source の stale HTML は成功置換時だけ削除し、search index は最終 page set 全体から再生成する。 | `--changed-manifest` 破損は終了コード `2`、`.dependency_manifest.json` 破損は warning なし full build。path 不正は `BUILDER28_PATH_OUTSIDE_BASE`。 | changed / reused は page 数。reason は sorted array。 | 未変更 HTML byte 維持、manifest 破損 full build、stale page 削除、search index 全体再生成、失敗時公開出力維持。 |
 | §28.2 | format は 1 値のみ。`html` 以外は予約または未知として拒否。 | `html` は既存 output layout だけを使う。`pdf` / `epub` file を作らない。 | 予約値は `BUILDER28_UNSUPPORTED_RESERVED`、未知値は `BUILDER28_INVALID_OPTION`。 | `output_format_supported=false` は拒否時も出力する。 | 予約値で既存出力が破壊されないこと。 |
 | §28.3 | extension csv は `admonition`、`badge` のみ。空白 trim、重複は 1 件に正規化。 | admonition は `section`、title、body の順。badge は inline `span`。 | badge color 不正は non-strict で通常 text、strict で `BUILDER28_INVALID_OPTION`。 | admonitions / badges は出力 node 数。warnings は fallback 数。 | extension disabled 時に元 Markdown 由来出力が変わらないこと。 |
 | §28.4 | CLI 有効または fence option ありの場合だけ行番号を出す。 | code wrapper 内に line number column と code text column を分離する。 | copy text に line number が混入した場合は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | blocks は line number 付き block 数、lines は付与した行数。 | copy expected、空 code、fold / highlight 併用。 |
