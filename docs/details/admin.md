@@ -117,10 +117,13 @@ setup が admin UI を配置する場合は、以下を満たす。
 | admin archive extra file | A1 未定義 file を含む archive | admin archive validation | 検証失敗。未定義 file を展開しない。 |
 | admin archive traversal | `../x`、absolute path、backslash、NUL byte を含む entry | admin archive validation | 検証失敗。既存 `$INSTALL_DIR/admin` 差分なし。 |
 | admin archive special entry | symlink、hardlink、device、FIFO、socket | admin archive validation | 検証失敗。参照先を読まない、作成しない。 |
+| admin archive release layout | `admin-ui.tar.gz` の root 直下に A1 の file だけを含む archive | release asset validation | `admin/` directory wrapper、未定義 file、空 archive、重複必須 file を拒否し、配置前状態を保持する。 |
 | admin serve index | `GET /`、`GET /admin/`、`HEAD /admin/index.html` | static serving | `index.html` を返し、`Content-Type: text/html; charset=utf-8`、`Cache-Control: no-store`。 |
 | admin serve assets | `GET /admin/adlaire-ci-sdk.js`、`GET /admin/style.css`、`GET /admin/app.js` | static serving | A3 の Content-Type と Cache-Control。任意 file 不在時は `404`。 |
 | admin serve method denied | `POST /admin/index.html` | static serving | `405`。request body を読まず、state 差分なし。 |
 | admin serve forbidden path | `/admin/../.github_token`、`/.admin_credentials`、`/admin/.server_config` | static serving | `404`。secret / state / log / snapshot の内容を返さない。 |
+| admin serve no directory listing | `GET /admin`、`GET /admin/assets/`、`GET /admin/.build_logs/` | static serving | directory listing を返さず、定義済み redirect を行う場合も body に file 一覧を含めない。未定義 directory は `404`。 |
+| admin static serving security | secret、state、log、snapshot、backup、temporary path への direct request | static serving | status `404`、body は固定 error だけ、Content-Type は secret 内容から推測しない。 |
 | admin no mutation | 正常 admin directory と state dir | 全 admin request fixture 実行 | admin file、state file、credential、build log、snapshot の content / mode / mtime が変化しない。 |
 
 **Admin 実装完了ゲート：**
@@ -132,3 +135,4 @@ setup が admin UI を配置する場合は、以下を満たす。
 | secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
 | no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
 | setup integration | `docs/details/setup.md` §26.8 の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |
+| fixture integration | `docs/details/fixture.md` の `setup-admin-release-layout`、`setup-admin-archive-boundary`、`admin-static-serving-security`、`setup-secret-preservation` と fixture 名、expected file、禁止副作用が一致する。 |

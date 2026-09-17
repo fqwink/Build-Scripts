@@ -586,9 +586,9 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | `section` | string | 必須 | `27.1`〜`27.38`、`27.42`〜`27.47`。 |
 | `feature` | string | 必須 | lowercase snake_case。 |
 | `category` | string | 必須 | `success`、`failure`、`partial`、`noop`、`security`。fixture 名 prefix と一致する。 |
-| `owner_component` | string | 必須 | `builder`、`runner`、`api`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`security` のいずれか 1 件。 |
+| `owner_component` | string | 必須 | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`security` のいずれか 1 件。 |
 | `collaborator_components` | array[string] | 必須 | owner 以外の component。該当なしは空配列。 |
-| `components` | array[string] | 必須 | `owner_component` と `collaborator_components` を重複なしで含む配列。許容値は `builder`、`runner`、`api`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`security`。 |
+| `components` | array[string] | 必須 | `owner_component` と `collaborator_components` を重複なしで含む配列。許容値は `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`security`。 |
 | `references` | array[string] | 必須 | 参照仕様節。対象 §27.x と関連 §22 / §23 / §24 / §25 / §26 を含める。 |
 | `fake_clock` | string/null | 必須 | UTC ISO 8601 または `null`。時刻依存 fixture は `null` 禁止。 |
 | `not_applicable` | array[object] | 必須 | 該当しない必須候補ファイルと理由。空配列可。 |
@@ -623,6 +623,7 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 | `noop-*` | `response` または `stdout`、`no-write`、`idempotency`、`effects`。外部呼び出し 0 件を `expected/effects.json` に明記する。 |
 | `security-*` | `response` または `stdout` / `stderr`、`secret-mask`、`effects`。認証 / scope / rate limit / TOTP / token fixture では `state` も必須。 |
 | `components` に `api` を含む | `response`、`state`、`effects`。read-only API は `no-write` も必須。 |
+| `components` に `admin` を含む | `response` または `stdout` / `stderr`、`effects`、`secret-mask`。archive 検証 fixture では `state` ではなく admin directory の `unchanged_paths` / `updated_paths` を必須とする。 |
 | `components` に `sdk` を含む | `response`、`effects`。`401` fixture では token 破棄の期待値を `expected/state/` または `expected/effects.json` に含める。 |
 | `components` に `ui` を含む | `response`、`effects`、`secret-mask`。DOM 期待値または UI action 後の field 消去期待を含める。 |
 | `components` に `runner` を含む | `state`、`logs`、`effects`、`order`。dry-run は `no-write` を必須とする。 |
@@ -731,6 +732,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `builder` | CLI 入力、Markdown 入力、出力 site / HTML / REPORT、asset、cache、dependency、meta、終了コードを fixture で固定する。 | runner / API に渡す REPORT、meta、dependency manifest の key 名と nullable 条件を固定する。 | 出力 file の byte 比較または構造化 expected が存在し、既存出力保護と失敗時 no-write が検証済み。 | GitHub read、状態ファイル直接更新、通知送信。 |
 | `runner` | CLI、設定、lock、SHA cache、build log、history、status、queue、external call、notification、終了コードを fixture で固定する。 | builder output、statefile schema、commitstatus payload を仕様どおり消費し、未定義 key や未取得値を追加しない。 | 成功、失敗、skip、partial、dry-run の状態差分と write order が検証済み。 | API endpoint 追加、SDK method 追加、UI 操作追加。 |
 | `api` | method/path/query/body/header、auth/scope/rate limit、response、状態 read/write、access/audit/config log を fixture で固定する。 | SDK / UI が追加 key を生成せずに扱える response schema、HTTP status、error body を返す。 | read-only は no-write、write API は保存順、validation failure は forbidden_writes が検証済み。 | runner CLI 処理、UI DOM 操作、未定義状態ファイル作成。 |
+| `admin` | admin archive の file list、entry validation、配置 mode、static serving path/header/body、secret 非配信、no mutation を fixture で固定する。 | setup の admin UI 展開、api の static serving、ui / sdk の配布物境界を壊さない expected を提供する。 | unsafe archive、未定義 file、directory listing、secret path、method denied、no mutation が検証済み。 | UI / SDK 内容生成、API endpoint 実装、状態 schema 変更、systemd 操作。 |
 | `sdk` | method、args、query 生成、error 変換、token 破棄、binary / stream handling を fixture で固定する。 | UI が API 詳細を知らずに扱える戻り値と error をそのまま伝播する。 | API response に存在しない key を生成せず、`401` / `403` / `429` / network error が区別される。 | API response 推測補完、未定義 endpoint 呼び出し、状態ファイル直接操作。 |
 | `ui` | SDK method 呼び出し、DOM 表示、disabled/loading/error、secret field 消去、再取得順を fixture で固定する。 | SDK 戻り値だけを表示し、API / 状態ファイルの内部構造を再解釈しない。 | 直接 API 呼び出し、状態ファイル操作、secret DOM 残存がない。 | 直接 `fetch()`、状態ファイル操作、外部 command 実行。 |
 | `statefile` | schema、atomic write、JSON Lines、lock、破損時処理、保存順、no-write / forbidden write を fixture で固定する。 | runner / API / archive の保存対象ごとに `write_order`、`unchanged_paths`、`forbidden_writes` を固定する。 | read-only、dry-run、validation failure、partial failure の副作用境界が検証済み。 | component 固有の業務判断、UI 表示判断、API response 補完。 |
@@ -773,6 +775,20 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 
 `expected/ui_dom.json` は、panel id、error / success text、field error、hidden state、disabled state、one-time 表示領域の有無を構造化して固定する。DOM snapshot 文字列だけで合否判定してはならない。
 
+**§27 setup / admin / release 連動 fixture 固定契約：**
+
+§26 の setup、admin UI 配布、API service 導入、update、rollback を含む実装 PR は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は `docs/details/setup.md` §26.8 と `docs/details/admin.md` A1〜A6 の合格条件を同じ expected で検証する。
+
+| fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
+|------------|----------------|------------|---------------|----------|
+| `setup-admin-release-layout` | `setup`、`admin` | Release asset 一式、`SHA256SUMS`、`admin-ui.tar.gz`、fake download response。 | `expected/effects.json`、admin archive file list、`expected/security.json`。 | asset 名、checksum 対象、admin archive root layout、必須 file、任意 file、file mode、directory mode が固定値に一致する。 |
+| `setup-admin-archive-boundary` | `setup`、`admin` | unsafe archive、既存 `$INSTALL_DIR/admin`、既存 API binary、API service fake。 | `expected/effects.json.unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`expected/stderr.txt`。 | unsafe archive では admin directory、API binary、credentials、runner state を変更せず、API service start / restart を呼ばない。 |
+| `setup-systemd-rollback-boundary` | `setup`、`runner`、`api` | systemd fake、旧 binary backup、旧 admin backup、restart failure。 | `expected/effects.json.write_order`、`updated_paths`、`unchanged_paths`、`forbidden_writes`、`commands`。 | rollback は 1 回だけ実行し、失敗段階で許可された binary / admin UI だけを戻し、state、history、secret、runner timer を未定義に戻さない。 |
+| `admin-static-serving-security` | `admin`、`api` | static request、secret/state/log/snapshot path、method variation。 | `expected/response.json`、`expected/security.json`、`expected/effects.json`。 | A3 の status、header、body 有無、method 制限、no mutation、secret 非表示が一致する。 |
+| `setup-secret-preservation` | `setup`、`security` | 既存 secret files、update input、failure fake。 | `expected/security.json`、`expected/effects.json.unchanged_paths`、`forbidden_writes`。 | 明示対象外 secret の content / mode / mtime を保持し、stdout、stderr、journal、expected に secret 原文を残さない。 |
+
+上表の fixture は、`manifest.json.owner_component` を `setup` または `admin` のどちらかに固定し、もう片方を `collaborator_components` に含める。実装 PR が API service 起動、static serving、rollback、secret 保持を扱う場合は、`api`、`runner`、`security` を collaborator として追加し、`expected/effects.json` の `forbidden_calls` と `forbidden_writes` に禁止対象を明記する。
+
 **§27 PR 別必須記録固定契約：**
 
 各 §27 実装 PR は、本文に下表を記録する。記録がない PR は、コードと fixture が存在しても未完了とする。
@@ -798,7 +814,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | expected | `expected/response.json`、`expected/state/`、`expected/logs/`、`expected/effects.json`、`expected/security.json` が assertion と一致する。 | assertion に対応する expected file が不足。 | expected と manifest / effects / security が矛盾する。 |
 | side effect | `write_order`、`unchanged_paths`、`forbidden_writes`、`forbidden_calls` が対象機能の成功 / 失敗 / no-op / partial を説明できる。 | 禁止副作用または無変更保証が不足。 | 失敗時に未許可状態を書き換える、外部呼び出しを行う。 |
 | secret | secret 平文が expected、logs、effects、UI DOM、stdout/stderr に存在しない。 | secret 検証対象が不足。 | token、password、TOTP secret、PAT、Authorization header が平文で残る。 |
-| component | builder / runner / api / sdk / ui / statefile / archive / commitstatus / security / setup の該当責務が全て fixture に紐づく。 | owner / collaborator component の所在が不明。 | SDK / UI が API response を推測補完、または UI が直接 API / 状態ファイルを操作する。 |
+| component | builder / runner / api / admin / sdk / ui / statefile / archive / commitstatus / security / setup の該当責務が全て fixture に紐づく。 | owner / collaborator component の所在が不明。 | SDK / UI が API response を推測補完、または UI が直接 API / 状態ファイルを操作する。 |
 | repeatability | fake clock、fake external response、固定 path により、同じ fixture が同じ結果を再現する。 | idempotency / no-op の 2 回目期待値が不足。 | 現在時刻、実ネットワーク、実 OS 差分に依存する。 |
 
 **§27 実装 PR acceptance checklist：**
