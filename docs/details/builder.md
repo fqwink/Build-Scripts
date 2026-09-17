@@ -2348,7 +2348,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | `BUILDER28_INVALID_OPTION` | ERROR | unknown option、許容値外、複数指定禁止違反。 | 常に終了コード `2`。 |
 | `BUILDER28_PATH_OUTSIDE_BASE` | WARN | base 外 path、絶対 path、`..` 脱出。 | 終了コード `2`。 |
 | `BUILDER28_UNRESOLVED_REFERENCE` | WARN | 未定義 footnote、未定義 template var、存在しない hash target。 | 終了コード `2`。 |
-| `BUILDER28_UNSUPPORTED_RESERVED` | ERROR | `pdf`、`epub`、未対応 Mermaid 構文など予約・未対応機能。 | 常に終了コード `2`。 |
+| `BUILDER28_UNSUPPORTED_RESERVED` | WARN / ERROR | `pdf`、`epub`、未対応 Mermaid 構文など予約・未対応機能。予約値は ERROR、non-strict の未対応 Mermaid 構文は WARN。 | ERROR は常に終了コード `2`。WARN は strict で終了コード `2`。 |
 | `BUILDER28_ESCAPE_BLOCKED` | ERROR | escape 後にも危険 HTML、event handler、外部 script が残る場合。 | 常に終了コード `2`。 |
 | `BUILDER28_OUTPUT_VALIDATION_FAILED` | ERROR | minify 後 marker 消失、空 HTML、必須 asset 欠落。 | 常に終了コード `1`。 |
 | `BUILDER28_INTERNAL_IO` | ERROR | atomic write、rename、読み書き失敗。 | 常に終了コード `1`。 |
@@ -2705,6 +2705,91 @@ minify は以下だけを許可する。
 minify 後に byte 数が 0、doctype / html / head / body が消える、pre / code の内容が変わる、必須 selector / id / attribute が消える、search index 対象 text が変わる場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力維持とする。
 
 `minify_bytes_before` は minify 前 HTML byte 数、`minify_bytes_after` は minify 後 HTML byte 数、`minify_bytes_saved` は `before - after` とする。`after > before` の場合は `saved=0` とし、minify 後 HTML を採用してよいのは validation がすべて成功した場合だけとする。
+
+**§28.16〜§28.20 実装詳細固定契約：**
+
+§28.16〜§28.20 は、TOC runtime、diagram 変換、脚注、数式表示、hash navigation に影響するため、下表の処理単位、状態、出力を固定する。実装者は、本表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 script を導入してはならない。
+
+| 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+|----|----------|------------------|--------------|
+| §28.16 | TOC active target set | `toc_active_enabled`、`toc_active_targets`、`toc_active_current`、`toc_active_fallback_mode` を page ごとに保持する。 | TOC link 集合、`.is-active` 1 件化、`aria-current`、IntersectionObserver / scroll fallback、TOC depth 同期が一致する。 |
+| §28.17 | mermaid code block | `mermaid_source`、`mermaid_nodes`、`mermaid_edges`、`mermaid_unsupported` を block ごとに保持する。 | 対応構文、SVG node / edge、source fallback、escape、外部 script 不在、unsupported warning が一致する。 |
+| §28.18 | footnote registry | `footnote_definitions`、`footnote_references`、`footnote_order`、`footnote_warnings` を page ごとに保持する。 | 参照番号、本文 sup、末尾 footnotes、backlink、重複定義、未定義参照の strict / non-strict が一致する。 |
+| §28.19 | math token set | `math_inline_nodes`、`math_block_nodes`、`math_warnings`、`math_protected_ranges` を page ごとに保持する。 | inline / block math、code fence / code span 保護、escape、未閉鎖 delimiter の fallback / strict failure が一致する。 |
+| §28.20 | hash target set | `hash_history_enabled`、`hash_history_targets`、`hash_focus_targets`、`hash_missing_targets` を page ごとに保持する。 | heading target、`tabindex="-1"`、pushState、popstate、focus、missing hash no-op が一致する。 |
+
+**§28.16 TOC ハイライト追従詳細固定契約：**
+
+`--toc-active` は boolean option である。`true` の場合だけ `assets/app.js` に TOC active tracking を出力する。`false` の場合、`.is-active` 初期 class、`aria-current`、active tracking handler、IntersectionObserver 使用、scroll fallback を出力してはならない。
+
+監視対象は、§28.7 TOC depth 適用後に TOC へ出力された link と同一集合に固定する。TOC に存在しない heading、depth 外 heading、本文外 anchor、footnote backlink、code title anchor、collapse wrapper id、lightbox target を active 対象にしてはならない。`toc_active_items` は監視対象 TOC link 数、`toc_active_tracking` は boolean とする。
+
+active 更新は以下に固定する。
+
+| 状態 | 挙動 |
+|------|------|
+| 初期表示 | location hash が既存 heading id を指す場合は該当 TOC link だけを active にする。hash がない場合は本文上端に最も近い監視対象 heading を active にする。 |
+| scroll | IntersectionObserver が使用可能なら observer 結果から active heading を 1 件に決める。使用不能なら scroll position fallback で同じ候補集合から 1 件に決める。 |
+| depth 外 heading | active 候補にしない。直前の depth 内 heading を維持する。 |
+| active 変更 | 新 active link にだけ `.is-active` と `aria-current="location"` を付与し、旧 active link から両方を削除する。 |
+| TOC なし | handler を登録せず、REPORT は `toc_active_tracking=false`、`toc_active_items=0` とする。 |
+
+同時に active link が 2 件以上になる、`aria-current` と `.is-active` の対象が異なる、depth 外 heading を active にする、TOC link 以外を active にする場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力維持とする。JS 実行時に IntersectionObserver、scroll、DOM query が例外になっても静的本文と TOC を壊してはならない。
+
+**§28.17 Mermaid ダイアグラム詳細固定契約：**
+
+Mermaid 変換は `--mermaid=true` の場合だけ有効である。`--mermaid=false` の場合、info string `mermaid` の code fence は通常 code block として出力し、`.mermaid-source`、`.mermaid-diagram`、`.mermaid-node`、`.mermaid-edge`、SVG を出力してはならない。
+
+対応構文は `graph TD` だけに固定する。構文は以下だけを受け付ける。
+
+| 行 | 解釈 |
+|----|------|
+| `graph TD` | diagram 開始行。前後空白 trim 後に完全一致。 |
+| `A[Label]` | node 定義。id は `^[A-Za-z][A-Za-z0-9_-]{0,31}$`、label は 1〜64 文字。 |
+| `A --> B` | edge 定義。両端 id は既存または暗黙 node とする。 |
+| 空行 | 無視する。 |
+
+上記以外の行、`graph LR`、subgraph、classDef、click、HTML label、外部 link、script 相当構文は未対応とする。non-strict では stdout に `[WARN] BUILDER28_UNSUPPORTED_RESERVED file:line 28.17 ...` を出し、source fallback として `<pre class="mermaid-source">` だけを出力する。strict では終了コード `2`、公開出力維持とする。
+
+対応 diagram は `<figure class="mermaid-diagram">` に deterministic SVG を 1 個出力する。SVG は `role="img"`、`aria-label`、deterministic `viewBox` を持ち、node は `.mermaid-node`、edge は `.mermaid-edge` とする。SVG 内に `script`、`foreignObject`、event handler 属性、外部参照属性、runtime fetch、CDN、外部 `mermaid.js` を含めてはならない。source text は HTML escape し、search index には Mermaid source、SVG text、diagram UI label を含めない。
+
+`mermaid_blocks` は `mermaid` fence 数、`mermaid_rendered` は SVG 化した block 数、`mermaid_unsupported` は source fallback または strict failure 対象 block 数とする。外部 script 参照を検出した場合は終了コード `1`、stderr `BUILDER28_ESCAPE_BLOCKED`、公開出力維持とする。
+
+**§28.18 脚注詳細固定契約：**
+
+`--footnotes` は boolean option である。`true` の場合だけ footnote definition と reference を変換する。`false` の場合、`[^id]` と `[^id]: text` は既存 Markdown 処理の通常 text として扱い、`.footnotes`、`.footnote-ref`、`.footnote-backref` を出力してはならない。
+
+footnote id は `^[A-Za-z0-9_-]{1,64}$` に固定する。definition は block parser で `[^id]: text` として収集し、本文位置には出力しない。definition text は通常 inline 変換を適用するが、脚注 definition 内に別の footnote definition を入れ子にしてはならない。重複 definition は先勝ちとし、後続 definition は non-strict で warning `BUILDER28_UNRESOLVED_REFERENCE`、strict で終了コード `2` とする。
+
+reference は本文出現順で番号を割り当てる。同じ id を複数回参照した場合は、同じ番号を再利用し、各 reference に一意な backlink target を生成する。本文側は `sup.footnote-ref` を出力し、内部 link は footnote definition への `href="#fn-<n>"` を持つ。footnotes block は本文末尾、page navigation の前に 1 個だけ出力し、`section.footnotes`、`ol`、`li id="fn-<n>"`、`.footnote-backref` を持つ。
+
+未定義 reference は non-strict では元 text を escape 済み通常 text として残し、stdout に `[WARN] BUILDER28_UNRESOLVED_REFERENCE file:line 28.18 ...` を出す。strict では終了コード `2`、公開出力維持とする。未参照 definition は footnotes block に出力せず、non-strict で warning、strict で終了コード `2` とする。
+
+`footnotes` は出力した footnote definition 数、`footnote_references` は出力した reference 数、`footnote_warnings` は duplicate、undefined、unreferenced warning 数とする。search index には脚注本文を含めてよいが、reference 番号、backlink label、footnotes heading、UI label は含めない。
+
+**§28.19 インライン数式詳細固定契約：**
+
+`--math` は boolean option である。`true` の場合だけ math inline と math block を変換する。`false` の場合、`$...$` と `$$...$$` は通常 text として扱い、`.math-inline`、`.math-block` を出力してはならない。
+
+math inline は code span 外の `$content$` だけを対象とする。`content` は改行を含まず、先頭末尾が空白だけではなく、1〜256 文字とする。`$100`、`100$`、英数字に隣接した `$`、escaped `\$`、空 content は math inline にしない。math block は独立行 `$$` で開始し、次の独立行 `$$` で終了する。block content は 1〜4096 byte とし、内部は inline 変換しない。
+
+出力は inline が `span.math-inline`、block が `div.math-block` とする。内容は HTML escape 済み text とし、TeX / KaTeX / MathJax / SVG / canvas / image 変換を行わない。外部 renderer、CDN、runtime network fetch、追加 asset file を使用してはならない。
+
+code fence、code span、link destination、image src、raw HTML escape 対象では math 変換しない。未閉鎖 inline delimiter、未閉鎖 block delimiter、長さ超過は non-strict で通常 text fallback と warning `BUILDER28_UNRESOLVED_REFERENCE`、strict で終了コード `2`、公開出力維持とする。
+
+`math_inline` は出力した `span.math-inline` 数、`math_block` は出力した `div.math-block` 数、`math_warnings` は fallback warning 数とする。search index には math content の text を含めてよいが、delimiter、class 名、UI label は含めない。
+
+**§28.20 ページ内ナビゲーション履歴詳細固定契約：**
+
+`--hash-history` は boolean option である。`true` の場合だけ heading anchor click、TOC link click、back / forward navigation の history handler を `assets/app.js` に出力する。`false` の場合、history handler、pushState、popstate handler、heading focus 補助を出力してはならない。
+
+hash target は生成済み heading id だけに固定する。TOC link、heading anchor link、location hash は `#<heading-id>` の場合だけ処理する。footnote link、backlink、lightbox trigger、external URL、empty hash、存在しない id、heading 以外の id は handler 対象にしない。
+
+有効時は、全 heading target に `tabindex="-1"` を付与する。既に `tabindex` がある場合は上書きせず、focus 可能性だけを保持する。anchor click 時は default navigation を抑止し、`history.pushState` で hash を更新し、対象 heading へ focus し、scroll する。back / forward 時は `popstate` または `hashchange` で対象 heading を focus し、存在しない hash なら no-op とする。
+
+JS 無効時は通常 anchor として機能する。JS 実行時に `history.pushState`、focus、scroll、DOM query が例外になっても静的本文と TOC を壊してはならない。missing target は non-strict では no-op で warning を出さず、strict でも runtime missing hash を build failure にしてはならない。build 時に生成 HTML 内の hash link が存在しない heading id を指す場合だけ、strict で warning `BUILDER28_UNRESOLVED_REFERENCE` を終了コード `2` に昇格する。
+
+`hash_history_enabled` は boolean、`hash_history_targets` は対象 heading 数とする。search index には hash handler、focus label、back / forward UI text を含めない。
 
 **§28 実装完了条件：**
 

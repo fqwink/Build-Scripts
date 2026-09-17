@@ -891,6 +891,35 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 
 §28.11〜§28.15 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。security fixture では secret / credential が stdout、stderr、REPORT、manifest、HTML attribute、search index のいずれにも平文で残らないことを `expected/security.json` に固定する。
 
+**§28.16〜§28.20 feature fixture 固定契約：**
+
+§28.16〜§28.20 の fixture は、`docs/details/builder.md` §28.16〜§28.20 実装詳細固定契約に列挙された TOC active、Mermaid、footnote、math、hash history の HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x に固定し、`manifest.json.feature_slug` を §28 fixture カタログ固定契約の feature slug と一致させる。
+
+| feature slug | fixture | 固定する内容 |
+|--------------|---------|--------------|
+| `toc-active` | `success-toc-active-scroll` | TOC link 集合、初期 active、scroll 時の `.is-active` 1 件化、`aria-current="location"` の付与 / 削除、REPORT `toc_active_tracking=true`、`toc_active_items` を固定する。 |
+| `toc-active` | `success-toc-active-fallback` | IntersectionObserver が使えない前提で fallback scroll handler が同じ active 候補集合を使い、例外時 no-break になることを `expected/site/assets/app.js` で確認する。 |
+| `toc-active` | `noop-toc-active-disabled` | `--toc-active=false` で active handler、`.is-active` 初期 class、`aria-current`、未使用 JS branch を出力せず、既存 TOC HTML と一致する。 |
+| `toc-active` | `security-toc-active-depth-sync` | §28.7 と併用し、TOC depth 外 heading、footnote backlink、collapse wrapper、lightbox target を active 対象にしない。 |
+| `mermaid` | `success-mermaid-graph-td` | `graph TD`、node 定義、edge 定義を deterministic SVG へ変換し、`.mermaid-diagram`、`.mermaid-node`、`.mermaid-edge`、viewBox、REPORT rendered count を固定する。 |
+| `mermaid` | `failure-mermaid-unsupported-strict` | strict で未対応 Mermaid 構文を `BUILDER28_UNSUPPORTED_RESERVED`、終了コード `2`、stdout 空、stderr 固定 error、公開出力維持にする。 |
+| `mermaid` | `noop-mermaid-disabled` | `--mermaid=false` で `mermaid` fence を通常 code block として出力し、SVG、Mermaid class、external script、REPORT rendered count を増やさない。 |
+| `mermaid` | `security-mermaid-no-external-script` | SVG 内に `script`、`foreignObject`、event handler、external href、CDN、runtime fetch が存在しないことを `expected/security.json` で固定する。 |
+| `footnotes` | `success-footnotes-multiple` | 複数 definition / reference、同一 id 複数参照、参照順番号、`sup.footnote-ref`、末尾 `section.footnotes`、REPORT count を固定する。 |
+| `footnotes` | `success-footnotes-backlink` | 各 footnote item の `.footnote-backref`、本文 reference への backlink target、一意 id、search index から UI label を除外することを固定する。 |
+| `footnotes` | `failure-footnote-undefined-strict` | strict で未定義 reference、未参照 definition、重複 definition を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、stdout 空、stderr 固定 error、公開出力維持にする。 |
+| `footnotes` | `security-footnote-escape` | definition text、reference 周辺 text、id、backlink label の raw HTML、quote、event handler、`javascript:` が escape される。 |
+| `math` | `success-math-inline-block` | `$...$` と `$$...$$` を `span.math-inline` / `div.math-block` へ変換し、delimiter 除去、escape、REPORT inline / block count を固定する。 |
+| `math` | `failure-math-unclosed-strict` | strict で未閉鎖 inline delimiter、未閉鎖 block delimiter、長さ超過を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、公開出力維持にする。 |
+| `math` | `noop-math-code-fence` | code fence、code span、link destination、image src、escaped dollar、通貨表現では math 変換しない。 |
+| `math` | `security-math-escape` | math content 内 raw HTML、script 風 text、event handler 風 text が escape 済み text として残り、外部 renderer / SVG / canvas / image を出力しない。 |
+| `hash-history` | `success-hash-history-click` | heading / TOC link click、`history.pushState`、`tabindex="-1"`、focus、scroll、REPORT `hash_history_enabled=true` / target count を固定する。 |
+| `hash-history` | `success-hash-history-back-forward` | popstate / hashchange で back / forward 時に既存 heading target へ focus し、TOC active と衝突しない handler 順を固定する。 |
+| `hash-history` | `noop-hash-history-disabled` | `--hash-history=false` で pushState handler、popstate handler、tabindex 補助を出力せず、通常 anchor fallback だけを残す。 |
+| `hash-history` | `security-hash-history-missing-target` | 存在しない hash、heading 以外の id、external URL、footnote backlink、empty hash を no-op にし、runtime 例外、build 時公開出力破壊、search index 混入を発生させない。 |
+
+§28.16〜§28.20 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。browser runtime と parser precedence に関わる fixture では、`expected/site/assets/app.js` と `expected/effects.json` に handler 登録順、fallback 分岐、保護対象 token、external call 0 件を固定する。security fixture では external script、CDN、runtime network fetch、raw HTML、event handler、credential、secret が HTML、CSS、JS、search index、stdout、stderr、REPORT、manifest に残らないことを `expected/security.json` に固定する。
+
 **§28 expected 比較方式固定契約：**
 
 expected 比較は、実装環境差分で揺れないように以下の正規化だけを許可する。下表にない正規化、部分一致、snapshot 差し替え、目視承認は合格条件にしてはならない。
