@@ -564,6 +564,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 
 | 節 | fixture 配置単位 | 必須 fixture |
 |----|------------------|--------------|
+| §28 共通 | `builder-extensions/config-resolution/` | 下記 §28 fixture カタログ固定契約の `config-resolution` fixture をすべて作成する。 |
 | §28.1〜§28.25 | `builder-extensions/<feature-slug>/` | 下記 §28 fixture カタログ固定契約に列挙した fixture をすべて作成する。 |
 
 **§28 fixture カタログ固定契約：**
@@ -572,6 +573,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 
 | 節 | feature slug | 必須 fixture |
 |----|--------------|--------------|
+| §28 共通 | `config-resolution` | `success-config-defaults-only`、`success-config-file-values`、`success-config-env-over-file`、`success-config-cli-over-env-over-file`、`failure-config-json-corrupt`、`failure-config-unknown-key`、`failure-config-invalid-type`、`failure-config-duplicate-nonrepeatable-cli`、`security-config-secret-not-echoed` |
 | §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`failure-manifest-corrupt-full-build`、`noop-unchanged-pages-kept`、`security-incremental-base-escape` |
 | §28.2 | `formats` | `success-html`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format` |
 | §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`failure-badge-invalid-text`、`security-extension-escape`、`noop-extension-disabled` |
@@ -602,9 +604,10 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 
 | ファイル | 必須 | 内容 |
 |----------|------|------|
-| `manifest.json` | 必須 | fixture 名、対象 §28.x、feature slug、owner `builder`、collaborator、参照仕様節、strict 有無、fake clock、not_applicable 理由。 |
+| `manifest.json` | 必須 | fixture 名、対象 §28 共通または §28.x、feature slug、owner `builder`、collaborator、参照仕様節、strict 有無、fake clock、not_applicable 理由。 |
 | `input/source.md` または `input/site/` | 必須 | Markdown 入力。site fixture は複数 Markdown、asset、dependency を含める。 |
 | `input/options.json` | 必須 | CLI option、env key、expected exit code、strict / non-strict。 |
+| `input/adlaire-ci-build.json` | 条件付き | 設定ファイル fixture で使用する。未使用 fixture では存在させない。 |
 | `input/fakes.json` | 条件付き | fake git timestamp、fake file mtime、fake manifest、fake cache、fake clipboard など。実外部呼び出しは禁止。 |
 | `expected/site/` | 必須 | 期待 HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` のうち対象機能が変更する file。 |
 | `expected/stdout.txt` | 必須 | `[REPORT]` を含む stdout 完全一致。 |
@@ -626,6 +629,24 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | stderr | warning / error の code、対象 file、対象 section、strict 昇格有無を完全一致で確認する。stderr なしは空 file を置く。 |
 | effects | 作成、更新、維持、削除禁止、既存出力維持、manifest 上書き有無、外部 call 0 件を JSON で確認する。 |
 | security | HTML escape、attribute escape、base 外 path、URL credential 非表示、secret 非表示、CDN / external library 不使用を確認する。 |
+
+**§28 設定解決 fixture 固定契約：**
+
+`builder-extensions/config-resolution/` は §28 全機能の前提 fixture である。§28.1〜§28.25 の個別 fixture は、この共通 fixture と矛盾する CLI / env / config / default 解決をしてはならない。
+
+| fixture | 固定する内容 |
+|---------|--------------|
+| `success-config-defaults-only` | CLI、環境変数、`adlaire-ci-build.json` がない場合、§28 の全設定 key が既定値から採用され、`config_default_keys` に全 key、その他 source key に空 array が出る。 |
+| `success-config-file-values` | `input/adlaire-ci-build.json` の `builder_extensions` 値が採用され、`config_file_used=true`、`config_file_path="adlaire-ci-build.json"`、`config_file_keys` が ASCII 昇順で出る。 |
+| `success-config-env-over-file` | 同一 key が環境変数と設定ファイルに存在する場合、環境変数を採用し、設定ファイル source は `config_overridden_keys` に記録する。 |
+| `success-config-cli-over-env-over-file` | 同一 key が CLI、環境変数、設定ファイルに存在する場合、CLI を採用し、環境変数 / 設定ファイル source は `config_overridden_keys` に記録する。 |
+| `failure-config-json-corrupt` | 設定ファイルが JSON として parse できない場合、終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、出力作成なし、既存出力維持。 |
+| `failure-config-unknown-key` | root unknown key、`builder_extensions` unknown key のいずれも終了コード `2`、`config_rejected_keys` に key 名を記録する。 |
+| `failure-config-invalid-type` | boolean / string / array / object の型不一致、JSON object 値が string 以外、空 array 要素を終了コード `2` にする。 |
+| `failure-config-duplicate-nonrepeatable-cli` | repeatable ではない CLI option の重複指定を終了コード `2` にし、Markdown 読込前に停止する。 |
+| `security-config-secret-not-echoed` | `meta` / `template_vars` / 環境変数値に secret 風文字列、credential 付き URL、raw HTML が含まれても、stderr、stdout、REPORT へ値を出さない。key 名だけを出す。 |
+
+設定解決 fixture の `expected/stdout.txt` は、`config_file_used`、`config_file_path`、`config_cli_keys`、`config_env_keys`、`config_file_keys`、`config_default_keys`、`config_overridden_keys`、`config_rejected_keys` を必ず含める。設定解決失敗 fixture の `expected/effects.json` は、HTML、CSS、JS、search index、manifest、設定ファイルが新規作成、更新、削除されないことを固定する。
 
 **§28 expected 比較方式固定契約：**
 
@@ -716,7 +737,7 @@ stderr と `[REPORT]` は、同じ入力から常に同じ順序で出力する�
 | key | 型 | 固定内容 |
 |-----|----|----------|
 | `name` | string | fixture 名。§28 fixture カタログ固定契約の値と完全一致。 |
-| `section` | string | `28.1`〜`28.25` のいずれか。 |
+| `section` | string | `28-common`、または `28.1`〜`28.25` のいずれか。 |
 | `feature_slug` | string | §28 fixture カタログ固定契約の feature slug。 |
 | `owner` | string | 常に `builder`。 |
 | `collaborators` | array | `runner`、`statefile` など該当する補助 component。該当なしは空配列。 |

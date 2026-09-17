@@ -1886,6 +1886,106 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 終了コード `0` は、HTML、CSS、JS、search index、manifest、`[REPORT]` のうち対象 run で必要な出力がすべて成功した場合だけ返す。終了コード `1` は実装内部エラー、I/O エラー、atomic write 失敗、minify 後検証失敗に限定する。終了コード `2` は入力、設定、仕様上拒否する値、strict 昇格に限定する。
 
+**§28 設定ファイル / 入力解決固定契約：**
+
+§28 の設定ファイルは、入力 Markdown file の親 directory、または入力 Markdown directory 直下にある `adlaire-ci-build.json` だけを自動検出する。`--config` option、別名設定ファイル、複数設定ファイル、上位 directory 探索、home directory 探索、repository root 推定探索を追加してはならない。設定ファイルは任意であり、存在しない場合は既定値だけで続行する。設定ファイルを build 中に生成、更新、削除してはならない。
+
+入力解決は、1 つの正規化済み設定 object を作ってから後続 pipeline へ渡す。後続処理は CLI option、環境変数、設定ファイル、既定値を直接参照してはならない。
+
+| 順位 | source | 固定 |
+|------|--------|------|
+| 1 | CLI option | 同一設定 key に対する最優先 source。repeatable と明記された `--meta`、`--var` 以外の重複指定は `BUILDER28_INVALID_OPTION`、終了コード `2`。 |
+| 2 | 環境変数 | CLI が未指定の場合だけ採用する。空文字は未指定として扱う。空白だけの値は trim 後に空文字なら未指定とする。 |
+| 3 | 設定ファイル | CLI / 環境変数が未指定の場合だけ採用する。JSON root は object 固定。root key は `builder_extensions` だけを許可する。 |
+| 4 | 既定値 | 上位 source がすべて未指定の場合だけ採用する。既定値は §28 CLI / 設定 / REPORT / 出力識別子固定契約の既定値を正とする。 |
+
+`adlaire-ci-build.json` の root は以下の形だけを許可する。未知 root key、未知 `builder_extensions` key、JSON parse 不能、JSON root object 以外、`builder_extensions` object 以外、値型不一致は `BUILDER28_INVALID_OPTION`、終了コード `2` とし、出力を作成しない。
+
+```json
+{
+  "builder_extensions": {
+    "changed_manifest": "",
+    "format": "html",
+    "markdown_extensions": ["admonition", "badge"],
+    "code_line_numbers": false,
+    "heading_numbering": "none",
+    "section_collapse": false,
+    "toc_depth": "1:6",
+    "updated_at_source": "none",
+    "lazy_images": true,
+    "meta": {},
+    "color_scheme": "light",
+    "template_vars": {},
+    "minify_html": false,
+    "toc_active": true,
+    "mermaid": false,
+    "footnotes": true,
+    "math": false,
+    "hash_history": true,
+    "a11y_check": true,
+    "image_lightbox": false,
+    "print_qr_url": "",
+    "definition_lists": true,
+    "task_lists": true
+  }
+}
+```
+
+| config key | 型 | 対象 | 許容値 / validation |
+|------------|----|------|---------------------|
+| `changed_manifest` | string | §28.1 | 空文字、または入力 base 内の相対 path。絶対 path、`..` 脱出、URL scheme は拒否する。 |
+| `format` | string | §28.2 | `html`、`pdf`、`epub`。`pdf` / `epub` は予約値として拒否する。 |
+| `markdown_extensions` | array[string] | §28.3 | `admonition`、`badge`。重複は 1 件へ正規化する。未知値は拒否する。 |
+| `code_line_numbers` | boolean | §28.4 | `true` / `false`。 |
+| `heading_numbering` | string | §28.5 | `none`、`h2`。 |
+| `section_collapse` | boolean | §28.6 | `true` / `false`。 |
+| `toc_depth` | string | §28.7 | `1:6` 形式。min / max は 1〜6、min <= max。 |
+| `updated_at_source` | string | §28.8 | `none`、`git`、`file`。 |
+| `lazy_images` | boolean | §28.10 | `true` / `false`。 |
+| `meta` | object[string]string | §28.11 | key / value は `--meta` と同じ validation。object key は ASCII 昇順で処理する。 |
+| `color_scheme` | string | §28.12 | `light`、`dark`、`auto`。 |
+| `template_vars` | object[string]string | §28.14 | key / value は `--var` と同じ validation。object key は ASCII 昇順で処理する。 |
+| `minify_html` | boolean | §28.15 | `true` / `false`。 |
+| `toc_active` | boolean | §28.16 | `true` / `false`。 |
+| `mermaid` | boolean | §28.17 | `true` / `false`。 |
+| `footnotes` | boolean | §28.18 | `true` / `false`。 |
+| `math` | boolean | §28.19 | `true` / `false`。 |
+| `hash_history` | boolean | §28.20 | `true` / `false`。 |
+| `a11y_check` | boolean | §28.21 | `true` / `false`。 |
+| `image_lightbox` | boolean | §28.22 | `true` / `false`。 |
+| `print_qr_url` | string | §28.23 | 空文字、または 512 byte 以下の `http` / `https` URL。 |
+| `definition_lists` | boolean | §28.24 | `true` / `false`。 |
+| `task_lists` | boolean | §28.25 | `true` / `false`。 |
+
+環境変数の値 format は下表に固定する。ここにない環境変数を §28 の設定入力として読んではならない。
+
+| 値種別 | 対象環境変数 | format |
+|--------|--------------|--------|
+| boolean | `ADLAIRE_SECTION_COLLAPSE`、`ADLAIRE_LAZY_IMAGES`、`ADLAIRE_MINIFY_HTML`、`ADLAIRE_TOC_ACTIVE`、`ADLAIRE_FOOTNOTES`、`ADLAIRE_HASH_HISTORY`、`ADLAIRE_A11Y_CHECK`、`ADLAIRE_IMAGE_LIGHTBOX`、`ADLAIRE_DEFINITION_LISTS`、`ADLAIRE_TASK_LISTS` | `true`、`false`、`1`、`0` だけを許可する。大文字小文字は区別しない。 |
+| string enum | `ADLAIRE_OUTPUT_FORMAT`、`ADLAIRE_HEADING_NUMBERING`、`ADLAIRE_UPDATED_AT_SOURCE`、`ADLAIRE_COLOR_SCHEME` | trim 後の lowercase 値だけを許可する。未知値は拒否する。 |
+| csv | `ADLAIRE_MARKDOWN_EXTENSIONS` | comma 区切り。各要素は trim し、空要素、重複以外の未知値を拒否する。 |
+| range | `ADLAIRE_TOC_DEPTH` | `min:max`。前後空白は trim する。 |
+| base 内 path | `ADLAIRE_CHANGED_MANIFEST` | trim 後、空なら未指定。非空は §28.1 の path validation を適用する。 |
+| JSON object | `ADLAIRE_META_JSON`、`ADLAIRE_TEMPLATE_VARS_JSON` | JSON object だけを許可する。値は string のみ。secret 風 key / value でも stderr と REPORT に値を出してはならない。 |
+| URL string | `ADLAIRE_PRINT_QR_URL` | trim 後、空なら未指定。非空は §28.23 の URL validation を適用する。 |
+
+CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在する場合は、高順位 source だけを採用し、破棄した source を `[REPORT]` に記録する。同一 source 内の重複は、repeatable と明記された入力だけ許可する。`--meta`、`--var`、`meta`、`template_vars` は同一 key が重複した場合、最後の値を採用し、上書きされた key 名だけを `[REPORT].config_overridden_keys` に記録する。上書き前後の値は stderr、stdout、REPORT に出してはならない。
+
+設定解決の `[REPORT]` key は以下を必ず出力する。値は secret、credential、meta value、template var value を含めてはならない。
+
+| REPORT key | 型 | 固定 |
+|------------|----|------|
+| `config_file_used` | boolean | `adlaire-ci-build.json` を読み込んだ場合だけ `true`。 |
+| `config_file_path` | string | 読み込んだ設定ファイルの入力 base からの相対 path。未使用時は空文字。絶対 path は出力しない。 |
+| `config_cli_keys` | array | CLI から採用した正規化 key 名。ASCII 昇順。 |
+| `config_env_keys` | array | 環境変数から採用した正規化 key 名。ASCII 昇順。 |
+| `config_file_keys` | array | 設定ファイルから採用した正規化 key 名。ASCII 昇順。 |
+| `config_default_keys` | array | 既定値から採用した正規化 key 名。ASCII 昇順。 |
+| `config_overridden_keys` | array | 高順位 source または同一 repeatable source により上書きされた key 名。ASCII 昇順。 |
+| `config_rejected_keys` | array | validation で拒否した key 名。ASCII 昇順。終了コード `2` の場合も出力可能な範囲で出す。 |
+
+設定ファイルの読み込み、parse、validation、正規化、source 解決は、§28 実装パイプライン固定契約の順序 1〜2 の範囲で完了させる。設定解決で終了コード `2` が確定した場合、Markdown 読込、HTML / CSS / JS / search index / manifest 生成、atomic write を実行してはならない。
+
 **§28 REPORT 値型固定契約：**
 
 §28 の `[REPORT]` は JSON object 互換の key-value として扱える内容にする。boolean は `true` / `false`、integer は 10 進数、string は UTF-8、list は comma 区切りではなく JSON array 表現に固定する。key 未使用時は省略せず、機能が評価対象なら既定値を出力する。
