@@ -6,7 +6,7 @@
 
 本ファイルを読む前に、`docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
 
-`docs/DETAIL_INDEX.md` §27.38a は runner / builder / api / sdk / ui にまたがる横断補足契約であり、本ファイルへ移動しない。runner 拡張機能を実装する場合は、本ファイルの個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として `docs/DETAIL_INDEX.md` §27.38a を同時に確認する。§27.38a は本ファイルの個別節を上書きせず、§27.38a の内容を本ファイルへ重複定義してはならない。
+`docs/ROADMAP.md` §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約であり、本ファイルへ移動しない。runner 拡張機能を実装する場合は、本ファイルの個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として `docs/ROADMAP.md` §6.3 を同時に確認する。`docs/ROADMAP.md` §6.3 は本ファイルの個別節を上書きせず、`docs/ROADMAP.md` §6.3 の内容を本ファイルへ重複定義してはならない。
 
 ---
 

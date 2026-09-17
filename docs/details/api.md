@@ -6,7 +6,7 @@
 
 本ファイルを読む前に、`docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `api` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、security、表示、fixture、検証観点として参照する。
 
-`docs/DETAIL_INDEX.md` §27.38a は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、本ファイルへ移動しない。api 連動機能を実装する場合は、本ファイルの個別節を正本とし、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として `docs/DETAIL_INDEX.md` §27.38a を確認する。
+`docs/ROADMAP.md` §6.3 は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、本ファイルへ移動しない。api 連動機能を実装する場合は、本ファイルの個別節を正本とし、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として `docs/ROADMAP.md` §6.3 を確認する。
 
 `docs/details/security.md` §27.42〜§27.47 は security owner component の詳細仕様であり、本ファイルへ移動しない。api が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は `docs/details/security.md` を正とする。
 
@@ -663,7 +663,7 @@ no-op response は endpoint 固有の `No changes` が定義されている場�
 
 **api / sdk / ui / statefile 横断契約参照：**
 
-API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別詳細仕様ファイルを正とする。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は `docs/DETAIL_INDEX.md` §27.38a を同時に確認する。本ファイルでは横断連動表と横断処理順表を重複定義しない。
+API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別詳細仕様ファイルを正とする。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は `docs/ROADMAP.md` §6.3 を同時に確認する。本ファイルでは横断連動表と横断処理順表を重複定義しない。
 
 **横断 fixture 参照：**
 

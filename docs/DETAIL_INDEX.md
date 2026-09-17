@@ -65,13 +65,13 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 ## 詳細仕様の読み方
 
-詳細仕様を読む順番は、`README.md` と `docs/DOCUMENT_INDEX.md` の Reading Order と同じである。本ファイルから読み始めた場合でも、先に `AGENTS.md`、`docs/DOCUMENT_INDEX.md`、`docs/SPEC.md` を確認済みでなければならない。
+詳細仕様を読む順番は、`README.md` と `docs/DOCUMENT_INDEX.md` の Reading Order と同じである。本ファイルから読み始めた場合でも、先に `AGENTS.md`、`docs/DOCUMENT_INDEX.md`、`docs/SPEC.md`、`docs/ROADMAP.md` を確認済みでなければならない。
 
 実装者は、対象機能ごとに以下の順で読む。
 
-1. `docs/SPEC.md` の実装状態、Part 1 §12、§13 で、対象が実装対象であることを確認する。
+1. `docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で対象の実装状態、実装可否、Phase、将来計画該当有無を確認する。
 2. 本ファイル §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
-3. 本ファイル §0a〜§0h で、詳細仕様の記載基準、共通固定値、実装前確認項目、検証条件、Phase 順序を確認する。
+3. 本ファイル §0a〜§0h で、詳細仕様の記載基準、共通固定値、実装前確認項目、検証条件、Phase 詳細仕様参照を確認する。
 4. owner component の `docs/details/*.md` を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
 5. collaborator component がある場合は、該当する `docs/details/*.md` を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
 6. `docs/details/setup.md` §26 のセットアップ・アップデート手順と `docs/details/setup.md` §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
@@ -193,7 +193,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `docs/details/security.md` | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 | `docs/details/fixture.md` | fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
-`docs/DETAIL_INDEX.md` §27.38a は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.38a は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを補足し、個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema を定義しない。
+`docs/ROADMAP.md` §6.3 は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを補足し、個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema を定義しない。
 
 すべての責務 component 別詳細仕様ファイルは、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
 
@@ -220,7 +220,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 詳細仕様を読む順序は以下に固定する。
 
-1. `docs/SPEC.md` で実装対象、実装状態、実装可否を確認する。
+1. `docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で実装対象、実装状態、実装可否、Phase、将来計画該当有無を確認する。
 2. `docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。
 3. owner component の分割先詳細仕様ファイルを主本文として読む。
 4. collaborator component がある場合は、該当する分割先詳細仕様ファイルの参照節を呼び出し境界、schema、表示、security、setup、fixture、検証観点として読む。
@@ -398,7 +398,7 @@ Phase の一覧、順序、対象 owner component、依存条件、完了条件�
 
 詳細節対応表は owner component を置き換える表ではない。受け入れ条件が複数 component にまたがる場合でも、主本文は owner component の詳細仕様ファイルを正とし、collaborator component の詳細仕様は schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認に限定する。collaborator component は、owner component の入力、出力、状態、endpoint、SDK method、UI 操作を追加定義しない。
 
-該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。§27.1〜§27.47 の owner、主本文、collaborator は §27.1〜§27.47 追加仕様化機能参照インデックスを確認する。
+該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。§27.1〜§27.47 の owner、主本文、collaborator は `docs/ROADMAP.md` §6 の追加仕様化機能参照を確認する。
 
 ### 0i.1 Builder / 静的 Web サイト出力
 
@@ -590,150 +590,30 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | 標準移行前ファイル | `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は、対応する標準配置へ移動済みであり、同じ実装本文または同じ fixture が旧配置に残っていない。 |
 | testdata | 実装済みまたは仕様化済み・未実装の owner component ごとに `testdata/<component>/` を使用する。`testdata/mcp/` は MCP 専用詳細仕様が新設されるまで作成しない。 |
 | admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ `ui` と `sdk` の owner 詳細仕様に従う。`admin/style.css` と `admin/app.js` は、`docs/details/admin.md` A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
-| 将来計画 | `components/mcp.go` と MCP 用 fixture は、MCP 専用詳細仕様が新設され、`docs/SPEC.md` で `仕様化済み・未実装` へ昇格するまで作成しない。 |
+| 将来計画 | `components/mcp.go` と MCP 用 fixture は、MCP 専用詳細仕様が新設され、`docs/ROADMAP.md` で `仕様化済み・未実装` へ昇格するまで作成しない。 |
 
-標準配置を変更する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、`docs/DOCUMENT_INDEX.md` の Specified Components、`docs/SPEC.md` の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
+標準配置を変更する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、`docs/DOCUMENT_INDEX.md` の Specified Components、`docs/ROADMAP.md` の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
 
 ---
 
 ## 移動済み詳細仕様索引
 
-本節は、旧 Part 3 本文から責務 component 別詳細仕様ファイルへ移動済みの範囲を示す索引である。各範囲の主本文は下表の移動先を正とし、本ファイルでは本文を再定義しない。
+旧 Part 3 本文から責務 component 別詳細仕様ファイルへ移動済みの本文は、`docs/DOCUMENT_INDEX.md` の Detail Spec Management と本ファイル §0b、§0i を入口として確認する。
 
-`docs/DETAIL_INDEX.md` §27.38a は横断補足契約として本ファイルに残す。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルを主本文とし、§27.38a を横断同期確認として同時に確認する。
+本ファイルでは移動済み本文を再定義しない。実装者は、対象機能の owner component を §0b または §0i で特定し、該当する `docs/details/*.md` を主本文として読む。
 
-| 移動済み範囲 | owner component | 主本文 |
-|--------------|-----------------|--------|
-| §1〜§9、§8a | `builder` | `docs/details/builder.md` §1〜§9、§8a |
-| §10〜§20、§15a | `runner` | `docs/details/runner.md` §10〜§20、§15a |
-| §21〜§22、§21a | `api` | `docs/details/api.md` §21〜§22、§21a |
-| §23 | `sdk` | `docs/details/sdk.md` §23 |
-| §24 | `ui` | `docs/details/ui.md` §24 |
-| §25 | `api` | `docs/details/api.md` §25 |
-| §26 | `setup` | `docs/details/setup.md` §26 |
-| §27.1 | `commitstatus` | `docs/details/commitstatus.md` §27.1 |
-| §27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29〜§27.38 | `runner` | `docs/details/runner.md` §27 |
-| §27.4、§27.25、§27.28 | `builder` | `docs/details/builder.md` §27 |
-| §27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30 | `api` | `docs/details/api.md` §27 |
-| §27.7、§27.15 | `archive` | `docs/details/archive.md` §27 |
-| §27.42〜§27.47 | `security` | `docs/details/security.md` §27 |
+| 対象範囲 | 主な参照先 |
+|----------|------------|
+| §1〜§9、§8a | `docs/details/builder.md` |
+| §10〜§20、§15a | `docs/details/runner.md` |
+| §21〜§22、§21a、§25 | `docs/details/api.md` |
+| §23 | `docs/details/sdk.md` |
+| §24 | `docs/details/ui.md` |
+| §26 | `docs/details/setup.md` |
+| §27 追加仕様化機能 | `docs/ROADMAP.md` §6 と該当 owner component の `docs/details/*.md` |
 
-## 追加仕様化機能索引
+## 追加仕様化機能参照
 
-本節は、追加仕様化機能の詳細仕様参照である。各機能の主本文は、owner component の分割先詳細仕様ファイルを正とする。本節に定義された機能は、§0i と §27.0 を入口として、owner 詳細仕様の主本文と必要な collaborator 詳細仕様の確認項目を組み合わせて実装可否を判定する。
+§27 追加仕様化機能の owner、主本文、collaborator、横断補足契約は `docs/ROADMAP.md` §6 を正とする。
 
-### 追加仕様化機能 共通実装契約
-
-§27 の主本文は、owner component の分割先詳細仕様ファイルを正とする。親ファイルでは、§27 の実装時に共通して確認する参照順、越境禁止、PR 証跡の入口だけを定義する。
-
-| 確認 | 固定内容 |
-|------|----------|
-| 実装対象判定 | `docs/ROADMAP.md` で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用機能を実装対象にしない。 |
-| owner 確定 | §0b と §0i で owner component を 1 件に確定し、主本文は owner の分割先詳細仕様ファイルで確認する。 |
-| collaborator 確認 | collaborator がある場合は、§27.1〜§27.47 の参照インデックスに列挙された component の分割先ファイルを schema、呼び出し境界、表示、security、setup、fixture、検証観点として読む。 |
-| 補完禁止 | 個別節または分割先詳細仕様に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存を実装判断で追加しない。追加が必要な場合は owner component の詳細仕様、関連 collaborator 詳細仕様、fixture catalog、必要な対応表を先に更新する。 |
-| 状態更新 | 状態ファイル更新は `docs/details/statefile.md` §22.0a、§22.0c を正とし、lock、atomic write、JSON Lines、破損時処理を独自定義しない。 |
-| security | secret mask、token、session、scope、audit、rate limit は `docs/details/security.md` を正とし、平文保存・平文表示を行わない。 |
-| fixture / PR 証跡 | fixture manifest、expected/effects、assertion、PR 証跡、受け入れゲートは `docs/details/fixture.md` §27-F を正とする。 |
-| api / sdk / ui 同期 | API endpoint、SDK method、UI 操作が同一機能に関わる場合は、endpoint は `docs/details/api.md`、SDK method は `docs/details/sdk.md`、UI 操作は `docs/details/ui.md` をそれぞれ正本とし、名称、引数、response、error、表示、成功後再取得、失敗時固定が食い違わないことを確認する。 |
-
-§27 の機能を実装した PR は、対象節、owner 詳細仕様、collaborator 詳細仕様、fixture、secret mask、失敗時副作用、実装対象外を PR 本文に記録する。記録が不足する場合は、実装完了として扱わない。
-
-§27 の PR 分割、dry-run 固定契約、fixture 完了条件の詳細は、owner 詳細仕様と `docs/details/fixture.md` §27-F を正とする。親ファイルに同じ fixture schema、expected/effects、個別機能本文を重複定義しない。
-
-### 追加仕様化機能 参照索引
-
-本節は、§27 機能の参照先を一覧化するインデックスである。個別機能の入力、出力、状態、処理順序、異常系、endpoint、SDK method、UI DOM、fixture は下表の「主本文」に記載された owner component 詳細仕様を正とする。親ファイルは、下表に記載された主本文、owner component、collaborator component を置き換えない。
-
-| 節 | 機能 | owner | 主本文 | collaborator | 親ファイル側の扱い |
-|----|------|-------|--------|--------------|--------------------|
-| §27.1 | GitHub Commit Status API | `commitstatus` | `docs/details/commitstatus.md` §27.1 | `runner`、`statefile` | Commit Status payload と送信順の参照先だけを示す。runner の build 実行、commit SHA 確定、build id 採番、pipeline / deploy / snapshot / history の最終結果確定は `docs/details/runner.md` を正とする。 |
-| §27.2 | ドライラン実行モード | `runner` | `docs/details/runner.md` §27.2 | `statefile` | 状態ファイル非更新、ログ、history、deploy、通知の扱いを親ファイルで再定義しない。 |
-| §27.3 | ビルド失敗時の自動リトライ | `runner` | `docs/details/runner.md` §27.3 | `statefile` | retry 対象、回数、backoff、SHA 更新禁止条件を親ファイルで再定義しない。 |
-| §27.4 | 出力サイトへのビルドメタ埋め込み | `builder` | `docs/details/builder.md` §27.4 | `runner`、`api`、`statefile` | HTML meta、REPORT、API 表示、状態反映の境界だけを確認する。 |
-| §27.5 | 設定バリデーション API | `api` | `docs/details/api.md` §27.5 | `sdk`、`ui`、`statefile` | validate の保存禁止、response、SDK/UI 対応を親ファイルで再定義しない。 |
-| §27.6 | API アクセスログ | `api` | `docs/details/api.md` §27.6 | `sdk`、`ui`、`statefile` | `.api_access_log` schema と一覧 API の主本文を親ファイルへ複製しない。 |
-| §27.7 | ビルドログのアーカイブ圧縮 | `archive` | `docs/details/archive.md` §27.7 | `runner`、`api`、`statefile` | gzip archive、cleanup、参照順の実体処理を親ファイルで再定義しない。 |
-| §27.8 | ビルドステータスファイル出力 | `runner` | `docs/details/runner.md` §27.8 | `api`、`statefile` | `.build_status.json` schema と更新タイミングを親ファイルで再定義しない。 |
-| §27.9 | ビルドトリガー種別の記録 | `runner` | `docs/details/runner.md` §27.9 | `api`、`sdk`、`ui`、`statefile` | trigger 有効値、判定条件、UI 表示の同期確認だけを扱う。 |
-| §27.10 | 設定ファイル起動時整合性チェック | `runner` | `docs/details/runner.md` §27.10 | `statefile` | JSON 破損、退避、初期化、終了コードを親ファイルで再定義しない。 |
-| §27.11 | ポーリング間隔の動的変更 | `api` | `docs/details/api.md` §27.11 | `runner`、`statefile` | systemd timer 反映の導入・検証手順は `docs/details/setup.md` §26 を確認する。 |
-| §27.12 | GitHub Webhook 受信 | `api` | `docs/details/api.md` §27.12 | `runner`、`statefile` | HMAC、event 記録、queue 投入、エラー応答を親ファイルで再定義しない。 |
-| §27.13 | Webhook イベントログ / 一覧取得 API | `api` | `docs/details/api.md` §27.13 | `sdk`、`ui`、`statefile` | webhook event schema、一覧 API、SDK/UI 対応を親ファイルで再定義しない。 |
-| §27.14 | ビルド所要時間の記録と統計 API | `runner` | `docs/details/runner.md` §27.14 | `api`、`statefile`、`archive` | duration 計測、統計値、archive 連携の境界だけを確認する。 |
-| §27.15 | ビルドアーティファクト管理 | `archive` | `docs/details/archive.md` §27.15 | `api`、`sdk`、`ui`、`runner`、`statefile` | snapshot 作成トリガーは `docs/details/runner.md` §14b を正とする。 |
-| §27.16 | ヘルスチェックエンドポイント | `api` | `docs/details/api.md` §27.16 | `statefile` | health response とエラー応答を親ファイルで再定義しない。 |
-| §27.17 | ビルドログ重大度フィルター | `api` | `docs/details/api.md` §27.17 | `sdk`、`ui`、`archive`、`statefile` | log query、検索結果、UI filter の同期確認だけを扱う。 |
-| §27.18 | ブランチ設定の動的変更 API | `api` | `docs/details/api.md` §27.18 | `runner`、`statefile` | `.branch_config`、GET/POST API、runner 反映条件を親ファイルで再定義しない。 |
-| §27.19 | 週次ビルドサマリー Webhook | `runner` | `docs/details/runner.md` §27.19 | `api`、`statefile` | 週次集計、通知 payload、手動送信 API の境界だけを確認する。 |
-| §27.20 | 設定変更の詳細 diff 記録 | `api` | `docs/details/api.md` §27.20 | `statefile` | `.config_log` diff 形式と mask 条件を親ファイルで再定義しない。 |
-| §27.21 | 複数ファイル監視 | `runner` | `docs/details/runner.md` §27.21 | `builder`、`api`、`statefile` | target_files、SHA 差分、build target、API 表示の同期確認だけを扱う。 |
-| §27.22 | ビルドパイプライン YAML 定義 | `runner` | `docs/details/runner.md` §27.22 | `api`、`statefile` | pipeline subset、step 実行順、timeout、env を親ファイルで再定義しない。 |
-| §27.23 | ローカルファイル監視モード | `runner` | `docs/details/runner.md` §27.23 | `statefile` | GitHub API 非使用条件と local snapshot 差分検出を親ファイルで再定義しない。 |
-| §27.24 | タグ付きコミットのみビルド | `runner` | `docs/details/runner.md` §27.24 | `api`、`statefile` | tag pattern、skip 条件、history/log 反映を親ファイルで再定義しない。 |
-| §27.25 | ビルドキャッシュ | `builder` | `docs/details/builder.md` §27.25 | `runner`、`statefile` | cache manifest、再利用条件、無効化条件を親ファイルで再定義しない。 |
-| §27.26 | 並列マルチターゲットビルド | `runner` | `docs/details/runner.md` §27.26 | `statefile` | worker 上限、target 別 status、ログ順序を親ファイルで再定義しない。 |
-| §27.27 | ビルド前後フック | `runner` | `docs/details/runner.md` §27.27 | `api`、`statefile` | hook schema、pre/post 実行、abort 条件を親ファイルで再定義しない。 |
-| §27.28 | 依存ファイルトラッキング | `builder` | `docs/details/builder.md` §27.28 | `runner`、`statefile` | dependency manifest、関連 target 判定、full build 条件を親ファイルで再定義しない。 |
-| §27.29 | リモートビルド対応 | `runner` | `docs/details/runner.md` §27.29 | `api`、`archive`、`statefile` | remote command、archive 取得、manifest 検証を親ファイルで再定義しない。 |
-| §27.30 | ビルド承認フロー | `api` | `docs/details/api.md` §27.30 | `runner`、`sdk`、`ui`、`statefile` | approval queue、承認/却下 API、通知、UI 操作の同期確認だけを扱う。 |
-| §27.31 | ブランチ別環境変数 | `runner` | `docs/details/runner.md` §27.31 | `api`、`statefile` | branch env schema、許可 key、secret mask、process env 注入を親ファイルで再定義しない。 |
-| §27.32 | ビルド通知連携 | `runner` | `docs/details/runner.md` §27.32 | `api`、`sdk`、`ui`、`statefile` | 通知 event、channel schema、retry、notify log の境界だけを確認する。 |
-| §27.33 | ビルド時間トレンド記録 | `runner` | `docs/details/runner.md` §27.33 | `api`、`statefile` | `.build_trends.json`、移動平均、中央値、p95 を親ファイルで再定義しない。 |
-| §27.34 | ビルド依存チェーン | `runner` | `docs/details/runner.md` §27.34 | `api`、`statefile` | DAG 検証、実行順、skip / failure status を親ファイルで再定義しない。 |
-| §27.35 | ビルド優先度キュー | `runner` | `docs/details/runner.md` §27.35 | `api`、`statefile` | queue priority、created_seq、FIFO を親ファイルで再定義しない。 |
-| §27.36 | 失敗原因の自動分類 | `runner` | `docs/details/runner.md` §27.36 | `api`、`statefile` | failure_category、evidence、分類優先順位を親ファイルで再定義しない。 |
-| §27.37 | ビルド実行環境の記録 | `runner` | `docs/details/runner.md` §27.37 | `statefile` | environment snapshot と secret 非含有条件を親ファイルで再定義しない。 |
-| §27.38 | ビルド所要時間の異常検知 | `runner` | `docs/details/runner.md` §27.38 | `api`、`statefile` | trend 基準、異常判定、通知 payload、設定値を親ファイルで再定義しない。 |
-| §27.42 | ビルドトリガー専用 API スコープ | `security` | `docs/details/security.md` §27.42 | `api`、`sdk`、`ui`、`statefile` | scope 判定、拒否条件、API/SDK/UI 表示を親ファイルで再定義しない。 |
-| §27.43 | API キー管理 | `security` | `docs/details/security.md` §27.43 | `api`、`sdk`、`ui`、`statefile` | API key の一回表示、hash 保存、scope、期限、失効、監査を親ファイルで再定義しない。 |
-| §27.44 | 監査ログ | `security` | `docs/details/security.md` §27.44 | `api`、`statefile` | `.audit_log` schema、対象操作、mask、検索 API、UI 表示を親ファイルで再定義しない。 |
-| §27.45 | セッションタイムアウト変更設定 | `security` | `docs/details/security.md` §27.45 | `api`、`sdk`、`ui`、`statefile` | timeout 範囲、保存、既存 session、新規 session 期限を親ファイルで再定義しない。 |
-| §27.46 | TOTP 二要素認証 | `security` | `docs/details/security.md` §27.46 | `api`、`sdk`、`ui`、`statefile` | TOTP、二段階 login、secret 保存、確認、無効化、UI 操作を親ファイルで再定義しない。 |
-| §27.47 | API レート制限 | `security` | `docs/details/security.md` §27.47 | `api`、`sdk`、`ui`、`statefile` | 固定窓制限、`429`、状態保存、設定 API、UI 表示を親ファイルで再定義しない。 |
-
-### 27.38a 横断連動・Runner 拡張機能 実装補足契約
-
-本節は、責務 component 別詳細仕様へ分割しない。§27.21〜§27.38 および api / sdk / ui / statefile の横断連動は runner、builder、api、sdk、ui、statefile、archive にまたがるため、実装者は owner 詳細仕様を主本文とし、本節を横断確認として同時に確認する。
-
-本節の正本範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装完了時の横断受け入れ観点に限定する。本節は、個別機能の処理本文、入力、出力、状態 schema、fixture schema、endpoint 詳細、SDK method 詳細、UI DOM 詳細を持たない。これらは各 owner / collaborator の分割先詳細仕様ファイルを正とする。
-
-本節と owner component 別詳細仕様ファイルの内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI、fixture は owner component 別詳細仕様ファイルを正とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを本節で確認する。§27.38a を理由に、owner 詳細仕様に存在しない endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture を追加してはならない。
-
-| 確認 | 固定内容 |
-|------|----------|
-| runner 起点 | §27.21〜§27.38 の多くは runner の build 実行、queue、history、log、notification に影響するため、`docs/details/runner.md` の該当 §27 節を先に確認する。 |
-| builder 連携 | cache、dependency、output meta、生成物に関わる場合は `docs/details/builder.md` の該当 §27 節を同時に確認する。 |
-| API 連携 | 設定保存、queue、approval、history、stats、snapshot、rollback、hook、notify、search に関わる場合は `docs/details/api.md` の endpoint / state read-write 契約を同時に確認する。 |
-| SDK / UI 連携 | API を管理画面から操作する機能は、SDK method は `docs/details/sdk.md` §23、DOM / 表示条件は `docs/details/ui.md` §24 を正本として確認する。 |
-| statefile | 状態 schema、lock、atomic write、JSON Lines、破損時処理、保存順は `docs/details/statefile.md` を正とする。 |
-| archive | snapshot、artifact、download、delete、rollback、log archive は `docs/details/archive.md` を正とする。 |
-| fixture | §27.21〜§27.38 の受け入れ fixture、secret mask、effects、PR 証跡は `docs/details/fixture.md` §27-F を正とする。 |
-
-**api / sdk / ui / statefile 横断連動契約：**
-
-下表は横断確認表であり、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。下表の機能群は、各 owner component 別詳細仕様ファイルに定義済みの API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえる。API だけ、SDK だけ、UI だけを先行して仕様外の仮実装にしてはならない。UI が未実装の Phase では、UI 列は fixture の期待操作として固定し、実装完了扱いには含めない。
-
-| 機能群 | API | SDK | UI 操作 | 状態ファイル副作用 | 成功後再取得 | 失敗時固定 |
-|--------|-----|-----|---------|--------------------|--------------|------------|
-| login / session | `POST /api/login`, `POST /api/login/totp`, `POST /api/logout`, `GET /api/sessions`, `POST /api/sessions/revoke-all` | `login()`, `loginTotp()`, `logout()`, `getSessions()`, `revokeAllSessions()` | login、TOTP 確認、logout、session 一括失効。 | `.admin_credentials`、`.access_log`、`.audit_log`、memory session。token 本体は永続化しない。 | login 成功後は `getDashboard()` → `getStatus()` → `getQueue()`。session 失効後は `getSessions()`。 | `401` は SDK token / ticket / secret field を破棄し、UI は `panel-login` のみ表示する。 |
-| build control | `POST /api/build`, `POST /api/build/force`, `POST /api/build/cancel`, `GET /api/build/stream`, `GET /api/queue`, `DELETE /api/queue` | `triggerBuild()`, `buildForce()`, `cancelBuild()`, `streamBuild()`, `getQueue()`, `clearQueue()` | manual build、force build、cancel、stream 開始/停止、queue clear。 | `.build_state`、`.build_lock`、`.build_logs/{id}.json`、queue entry。force build 時だけ SHA cache 更新。 | `getStatus()` → `getQueue()`、stream end 後は `getLogs()` も実行。 | running は `409`、queue full は `429`、maintenance / circuit は `503` または仕様済み `409`。UI は同じ build request を自動再送しない。 |
-| logs / history | `GET /api/logs`, `GET /api/logs/search`, `GET /api/history`, `GET /api/history/{id}/log`, `POST /api/history/{id}/comment`, `POST /api/history/{id}/flag`, `POST /api/history/{id}/tags` | `getLogs()`, `searchLogs()`, `getHistory()`, `getHistoryLog()`, `setHistoryComment()`, `setHistoryFlag()`, `setHistoryTags()` | log 表示、検索、history 表示、comment / flag / tag 保存。 | read-only GET は副作用なし。comment / flag / tag は `.build_logs/{id}.json` と、owner 詳細仕様で履歴・設定ログ更新が定義された場合に限り `.build_history`、`.config_log`。 | 変更系は `getHistory()`、comment は `getHistoryComment(id)` も実行。 | `404` は選択解除または not found 表示。`422 details` は field error。壊れた JSON Lines は response に含めない。 |
-| config / repo / branch / schedule | `GET/POST /api/config`, `POST /api/config/validate`, `GET/POST /api/repo-config`, `GET/POST /api/branch-config`, `GET /api/schedule`, `POST /api/schedule/*` | `getConfig()`, `setConfig()`, `validateConfig()`, `setRepoConfig()`, `getBranchConfig()`, `setBranchConfig()`, `getSchedule()`, schedule 系 method | config 保存、validate、repo 保存、branch 保存、schedule 変更。 | `.server_config`、`.repo_config`、`.branch_config`、`.config_log`。validate は保存なし。systemd 反映失敗時も保存済み値は戻さない。 | 保存系は対象 GET → `getConfigLog()`。validate は再取得なし。 | `422` は書込前停止。systemd 失敗 `500` は保存済み値を再取得して表示する。no-op は状態ファイルと log を変更しない。 |
-| notify / SMTP / webhook | `GET/POST /api/notify-config`, `POST /api/notify-test`, `GET /api/notify-log`, `GET/POST /api/smtp-config`, `POST /api/smtp-test`, `GET/POST /api/webhook-config`, `GET /api/webhook-events`, `POST /api/notify/weekly-summary` | `getNotifyConfig()`, `setNotifyConfig()`, `notifyTest()`, `getNotifyLog()`, `getSmtpConfig()`, `setSmtpConfig()`, `smtpTest()`, `getWebhookConfig()`, `setWebhookConfig()`, `getWebhookEvents()`, `notifyWeeklySummary()` | notify 保存、test、SMTP 保存/test、webhook secret 保存、event 表示、weekly summary。 | `.notify_config`、`.smtp_config`、`.smtp_secret`、`.webhook_secret`、`.notify_log`、`.webhook_events.json`、`.config_log`。 | 保存系は対象 GET → `getConfigLog()`。test / summary は `getNotifyLog()`。 | secret は response / log / fixture へ平文出力しない。保存成功・失敗とも UI secret field を消去する。 |
-| snapshots / rollback / maintenance | `GET /api/snapshots`, `GET /api/snapshots/{id}/download`, `DELETE /api/snapshots/{id}`, `POST /api/history/{id}/rollback`, `GET /api/maintenance`, `POST /api/maintenance/enable`, `POST /api/maintenance/disable` | `getSnapshots()`, `downloadSnapshot()`, `deleteSnapshot()`, `rollbackHistory()`, `getMaintenance()`, `enableMaintenance()`, `disableMaintenance()` | snapshot list/download/delete、rollback、maintenance enable/disable。 | `.snapshots/`、`.build_history`、`.build_logs/{new_id}.json`、`.maintenance`、`.config_log`。download は副作用なし。 | delete は `getSnapshots()`。rollback は `getHistory()` → `getStatus()`。maintenance は `getMaintenance()`。 | delete / rollback は確認必須。running rollback は `409`。maintenance enabled 中は build / rollback / 設定変更系を disabled。 |
-| access / hooks / rules / pipeline / notes / layout | access、hooks、alert rules、tag rules、pipeline config、notes、dashboard layout の GET/POST/DELETE endpoint | 対応する §23 SDK method | 保存、追加、削除、notes 保存、dashboard layout 保存。 | `.access_control`、`.hooks`、`.alert_rules`、`.tag_rules`、`.pipeline_config`、`.notes`、`.dashboard_layout`、`.config_log`。 | 対象 GET → 変更系で config log 対象の場合は `getConfigLog()`。layout は `getDashboardLayout()` → `getDashboard()`。 | duplicate `409` は競合表示。validation `422` は field error。削除対象不在は `404`。 |
-| tokens / audit / access logs / rate limit | `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}`, `GET /api/audit-log`, `GET /api/access-log`, `GET /api/api-access-log`, `GET/POST /api/api-rate-limit` | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getAccessLog()`, `getApiAccessLog()`, `getApiRateLimit()`, `setApiRateLimit()` | token 発行/失効、audit / access log 表示、rate limit 保存。 | `.api_tokens`、`.audit_log`、`.access_log`、`.api_access_log`、`.api_rate_state`、`.server_config`、`.config_log`。token 本体は作成時 response のみ。 | token 操作は `getTokens()` → `getAuditLog()`。rate limit は `getApiRateLimit()`。 | token 本体は再取得不可。`403` は logout しない。`429` は rate limit 表示し、同一操作を自動 retry しない。 |
-
-**横断処理順契約：**
-
-| 処理種別 | 固定順序 |
-|----------|----------|
-| 認証必須 JSON API | method / path 判定 → body 禁止判定 → JSON parse → 認証 / scope → rate limit → endpoint 固有 validation → read → write 計画 → atomic write → JSON Lines 追記 → response。 |
-| read-only API | method / path 判定 → body 禁止判定 → 認証 / scope → query validation → read → 壊れた任意行除外 → response。read-only API は状態ファイルを書き換えない。 |
-| UI 変更操作 | panel error / success 消去 → UI 入力検証 → 対象操作 disabled → SDK 呼び出し → 成功後再取得 → success 表示 → secret 消去 → disabled 再評価。 |
-| UI 取得操作 | panel error 消去 → 対象操作 disabled → SDK 呼び出し → DOM 更新 → empty state 判定 → disabled 再評価。success 表示は行わない。 |
-| SDK request | 引数検証 → path / query / body 生成 → Authorization 付与 → timeout 設定 → fetch → status 判定 → response parse → token 変化適用 → return / throw。 |
-| multi-file write | 全入力検証 → 全対象 read → 全 write payload 生成 → `docs/details/api.md` §22.0d の Write 順に atomic write → JSON Lines 追記 → response。途中失敗時は未処理ファイルを書かない。 |
-
-§27.21〜§27.38 の実装では、owner 詳細仕様にない状態ファイル、endpoint、SDK method、UI 操作、外部公開構成を追加してはならない。追加が必要な場合は、親ファイルではなく、該当 owner / collaborator の分割先詳細仕様を先に改訂する。
+本ファイルは §0i の詳細節対応表を入口として保持し、§27 の個別参照索引、共通実装契約、横断連動表を重複定義しない。

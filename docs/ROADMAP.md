@@ -64,7 +64,7 @@ Go 版初期実装は、`docs/SPEC.md` §0e の対象範囲を一括実装せず
 
 ### 4.1.1 Phase 1 完全仕様ゲート（`builder`）
 
-Phase 1 の実装詳細本文は `docs/details/builder.md` を正とする。親ファイルでは、Phase 1 の対象、依存条件、完了条件、後続 Phase への引き継ぎ確認だけを扱う。
+Phase 1 の実装詳細本文は `docs/details/builder.md` を正とする。本ファイルでは、Phase 1 の対象、依存条件、完了条件、後続 Phase への引き継ぎ確認だけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -74,7 +74,7 @@ Phase 1 の実装詳細本文は `docs/details/builder.md` を正とする。親
 
 ### 4.1.2 Phase 2 完全仕様ゲート（`runner`）
 
-Phase 2 の実装詳細本文は `docs/details/runner.md` を正とする。親ファイルでは、Phase 2 が Phase 1 の `adlaire-ci-build` 契約に依存し、後続 API が読む runner 状態契約を固定することだけを扱う。
+Phase 2 の実装詳細本文は `docs/details/runner.md` を正とする。本ファイルでは、Phase 2 が Phase 1 の `adlaire-ci-build` 契約に依存し、後続 API が読む runner 状態契約を固定することだけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -84,7 +84,7 @@ Phase 2 の実装詳細本文は `docs/details/runner.md` を正とする。親�
 
 ### 4.1.3 Phase 3 完全仕様ゲート（`api`）
 
-Phase 3 の実装詳細本文は `docs/details/api.md` と `docs/details/setup.md` を正とする。親ファイルでは、API 共通契約、認証、状態 read/write、運用基本 endpoint が Phase 4〜6 の前提になることだけを扱う。
+Phase 3 の実装詳細本文は `docs/details/api.md` と `docs/details/setup.md` を正とする。本ファイルでは、API 共通契約、認証、状態 read/write、運用基本 endpoint が Phase 4〜6 の前提になることだけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -94,7 +94,7 @@ Phase 3 の実装詳細本文は `docs/details/api.md` と `docs/details/setup.m
 
 ### 4.1.4 Phase 4 完全仕様ゲート（`api`）
 
-Phase 4 の実装詳細本文は `docs/details/api.md` を正とする。親ファイルでは、拡張運用 endpoint が SDK / UI の最終入力契約になることだけを扱う。
+Phase 4 の実装詳細本文は `docs/details/api.md` を正とする。本ファイルでは、拡張運用 endpoint が SDK / UI の最終入力契約になることだけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -104,7 +104,7 @@ Phase 4 の実装詳細本文は `docs/details/api.md` を正とする。親フ�
 
 ### 4.1.5 Phase 5 完全仕様ゲート（`sdk`）
 
-Phase 5 の実装詳細本文は `docs/details/sdk.md` を正とする。親ファイルでは、SDK が固定済み API endpoint だけを呼び、UI 表示判断を持たないことだけを扱う。
+Phase 5 の実装詳細本文は `docs/details/sdk.md` を正とする。本ファイルでは、SDK が固定済み API endpoint だけを呼び、UI 表示判断を持たないことだけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -114,7 +114,7 @@ Phase 5 の実装詳細本文は `docs/details/sdk.md` を正とする。親フ�
 
 ### 4.1.6 Phase 6 完全仕様ゲート（`ui`）
 
-Phase 6 の実装詳細本文は `docs/details/ui.md` を正とする。親ファイルでは、UI が SDK 経由だけで API と通信し、秘密情報を DOM に残さないことだけを扱う。
+Phase 6 の実装詳細本文は `docs/details/ui.md` を正とする。本ファイルでは、UI が SDK 経由だけで API と通信し、秘密情報を DOM に残さないことだけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -137,7 +137,7 @@ Phase 6 の実装詳細本文は `docs/details/ui.md` を正とする。親フ�
 
 ### 4.1.8 Phase 別 実装 PR 成果物チェックリスト
 
-Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `docs/details/fixture.md` §0g.8-F を正とする。親ファイルでは、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、PR 証跡項目を重複定義しない。
+Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `docs/details/fixture.md` §0g.8-F を正とする。本ファイルでは、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、PR 証跡項目を重複定義しない。
 
 | Phase | 実装対象 | 成果物・fixture 正本 | 受け入れ条件 |
 |-------|----------|----------------------|--------------|
@@ -340,7 +340,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 実装済み | 完了済み | CI ランナー | ビルドタイムアウト | Go 標準ライブラリ `context.WithTimeout` と `os/exec` で長時間ビルドを強制終了する。API 経由の `build_timeout_seconds` 動的変更は管理 API 実装対象として残す（→ §22 `GET /api/config`）。 | Go test と runner 回帰検証で pipeline 起動経路を検証済み。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整（→ §22 `POST /api/schedule/interval`） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/api.md` §22.0e、`docs/details/setup.md` §26、`docs/details/api.md` §27.11 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ビルドログのファイル保存 | `os/exec` で起動したビルドプロセスの stdout/stderr を `.build_logs/{id}.json` に記録（→ §11 ファイル構成）。 | Go test で build log 生成と pipeline stdout/stderr 記録を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Webhook 受信 | 定期ポーリングと併用可能な即時検出方式。`POST /api/webhook` で GitHub push イベントを受信し即時ビルドをトリガーする（HMAC-SHA256 署名検証付き → §22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/api.md` §22.0e、`docs/details/api.md` §22-W、`docs/details/api.md` §27.12 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Webhook 受信 | 定期ポーリングと併用可能な即時検出方式。`POST /api/webhook` で GitHub push イベントを受信し即時ビルドをトリガーする（HMAC-SHA256 署名検証付き → §22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §13、`docs/details/api.md` §22.0e、`docs/details/api.md` §22-W、`docs/details/api.md` §27.12 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ネットワーク断時の再試行 | GitHub API 失敗時に指数バックオフ（`API_RETRY_BASE_SECONDS × 2^n`、最大 `API_RETRY_MAX` 回）で再試行する（→ §12・`docs/ROADMAP.md` §5.2）。 | Go test で fake GitHub 一時失敗からの retry 成功を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | GitHub API レート制限自動待機 | `X-RateLimit-Remaining: 0` 検出時に `X-RateLimit-Reset` まで待機してから再試行する（→ `docs/ROADMAP.md` §5.2）。 | Go test 対象の retry 経路と同じ GitHub API retry 実装で検証済み。 |
 | 実装済み | 完了済み | CI ランナー | 転送後リモート整合性検証 | SSH 転送後に `sha256sum` でリモートファイルを検証し、不一致時はペンディングキューへ再投入する（→ `docs/ROADMAP.md` §5.2・§14a）。 | Go test で転送失敗時 pending 化と pending 再試行成功を検証済み。 |
@@ -382,35 +382,35 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 実装済み | 完了済み | ビルドスクリプト | 読了時間推計と表示 | 本文文字数（コードブロック・タグ除く）から読了時間（分、200文字/分・切り上げ）を算出し、固定ヘッダーに静的埋め込みする。§8 変換レポートの `reading_time` フィールドに記録する（→ §4.5・§5・§6・§8） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | Webhook 通知失敗リトライキュー | `.notify_pending`（JSON）を起動時に再送し、HTTP 2xx 成功時に削除、失敗時に `retry_count` と `last_error` を更新して保持する（→ §11・`docs/ROADMAP.md` §5.2）。 | Go test で fake HTTP endpoint への再送成功と queue 空化を検証済み。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ設定の動的変更 API | `BRANCH_TARGETS` を外部 JSON（`.branch_config`）で管理し `GET /api/branch-config` / `POST /api/branch-config` で API 経由変更可能にする。`components/runner.go` 再起動不要（→ §11・§12・§22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/api.md` §22.0e、`docs/details/api.md` §27.18 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 週次ビルドサマリー Webhook | 指定曜日・時刻に過去 7 日間の成功率・平均ビルド時間・エラー件数をまとめた定期通知を送信する（→ §12・`docs/ROADMAP.md` §5.2・§22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.19 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 週次ビルドサマリー Webhook | 指定曜日・時刻に過去 7 日間の成功率・平均ビルド時間・エラー件数をまとめた定期通知を送信する（→ §12・`docs/ROADMAP.md` §5.2・§22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.19 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定変更の詳細 diff 記録 | `.config_log` の各エントリに変更前後の値の diff 文字列を付加し `GET /api/config-log` レスポンスに含める（→ §22） | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/statefile.md` §22.0a、`docs/details/api.md` §22.0e、`docs/details/api.md` §27.20 に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | テーブルのソート機能 | 列ヘッダークリックで昇順/降順ソートができるインタラクティブテーブル。`aria-sort` 属性と CSS `::after` でインジケーター表示（→ §7.14） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | キーボードショートカット | `/` で検索フォーカス・`Escape` で検索クリア・`t` でページ先頭へスクロール（→ §7.12） | `docs/DETAIL_INDEX.md` §0h・§0i.1 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 複数ファイル監視 | `target_files` で複数 Markdown ファイルまたは Markdown ディレクトリを監視し、変更対象ごとに build target を決定する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/runner.md` §27.21 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Commit Status API | ビルド開始時・成功時・失敗時・pending 時に GitHub Commit Status API へ `pending` / `success` / `failure` を送信し、対象 commit に Adlaire CI の結果を紐付ける。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/commitstatus.md` §27.1 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドパイプライン YAML 定義 | 内製 YAML subset parser で `.pipeline.yml` を読み込み、build / test / deploy step を固定順で実行する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.22 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ドライラン実行モード | `adlaire-ci-runner --dry-run` で設定・状態・GitHub target・SHA 差分・起動可否を検証し、ビルド、deploy、通知、状態更新を行わず結果を出力する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/runner.md` §27.2 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドログのアーカイブ圧縮 | 保持期間を超えた `.build_logs/{id}.json` を `.build_logs/archive/{id}.json.gz` に gzip 圧縮し、通常ログ API は圧縮済みログも透過的に参照する。 | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/archive.md` §27.7 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ローカルファイル監視モード | GitHub API を使わず、ローカル状態 snapshot の SHA-256 差分で対象 Markdown の変更を検出する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §27.23 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | タグ付きコミットのみビルド | 監視対象 commit に許可 tag pattern が付いている場合だけ build を実行する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.24 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドキャッシュ | 入力ファイル単位の SHA-256 manifest を `.build_cache.json` に保存し、未変更ページの変換結果を再利用する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §5、`docs/details/builder.md` §8、`docs/details/runner.md` §11、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/builder.md` §27.25 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド通知連携 | `components/runner.go` が `.notify_config.channels` に基づき Webhook / email / command 通知を同一通知イベント契約で送信する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.32 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド時間トレンド記録 | build ごとの所要時間を `.build_trends.json` に集計保存し、移動平均、中央値、p95、直近件数を API / UI から参照できるようにする。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.33 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド失敗時の自動リトライ | 一時的な GitHub API / network / pipeline timeout / deploy 検証失敗を対象に、設定回数まで同一 build id 内で再試行し、attempt ごとの結果を build log と history に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/runner.md` §27.3 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 並列マルチターゲットビルド | branch target 内の複数 deploy target を bounded worker で並列処理し、target ごとの結果を build log に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §14a、`docs/details/runner.md` §15、`docs/details/runner.md` §27.26 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド前後フック | `.hooks` の pre / post hook を shell 経由なしで実行し、abort 条件と hook log を固定仕様どおり扱う。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.27 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 依存ファイルトラッキング | Markdown 内の相対リンク・画像・include 対象を依存 manifest として記録し、関連 target だけを再ビルドする。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §4.3、`docs/details/builder.md` §5、`docs/details/runner.md` §11、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/builder.md` §27.28 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | リモートビルド対応 | SSH 経由で remote build command を実行し、成果物 archive と manifest を取得して既存 deploy / log 契約へ接続する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §14a、`docs/details/runner.md` §15、`docs/details/runner.md` §27.29 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドステータスファイル出力 | runner の現在状態、最終ビルド、最終 deploy、pending 件数、circuit 状態、最終 trigger を `.build_status.json` に JSON object として出力し、API / UI / MCP の read-only 参照元にする。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0a、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.8 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド承認フロー | approval_required な target を `.approval_queue` に保留し、API 承認後だけ build / deploy を継続する。 | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §11、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.30 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ別環境変数 | branch target ごとに許可済み環境変数を build process へ注入し、secret を log に出さない。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.31 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド依存チェーン | `.build_chain_config` で job 間依存を定義し、依存成功後だけ後続 job を実行する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.34 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド優先度キュー | `.build_state.queued` に priority / created_seq を保存し、優先度順かつ同一優先度 FIFO で build queue を処理する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.35 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 失敗原因の自動分類 | stdout / stderr / exit code / runner error を固定分類ルールで解析し、failure_category と evidence を build log / history に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.36 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド実行環境の記録 | build 開始時の OS、arch、Go version、binary version、disk usage、hostname を `.build_logs/{id}.json.environment` に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/runner.md` §27.37 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドトリガー種別の記録 | `polling`、`force_interval`、`manual`、`webhook`、`retry_pending_transfer`、`startup_config_integrity`、`rollback`、`local_watch`、`approval` を `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に記録し、履歴 filter と状態表示で同じ値を使う。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/runner.md` §27.9、`docs/details/runner.md` §27.23、`docs/details/runner.md` §27.30 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の異常検知 | `.build_trends.json` の移動平均と p95 を基準に異常に遅い build を検出し、WARN、history flag、通知へ反映する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/runner.md` §15、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.38 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | 設定ファイル起動時整合性チェック | runner 起動時に `.branch_config`、`.notify_config`、`.build_state`、`.pending_transfers`、`.notify_pending`、`.build_circuit_state` の JSON 整合性を検証し、破損・型不一致・必須 key 不足を規定どおり退避、初期化、通知、または停止する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/statefile.md` §22.0a、`docs/details/statefile.md` §22.0c、`docs/details/runner.md` §27.10 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 複数ファイル監視 | `target_files` で複数 Markdown ファイルまたは Markdown ディレクトリを監視し、変更対象ごとに build target を決定する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §27.21 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | GitHub Commit Status API | ビルド開始時・成功時・失敗時・pending 時に GitHub Commit Status API へ `pending` / `success` / `failure` を送信し、対象 commit に Adlaire CI の結果を紐付ける。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/commitstatus.md` §27.1 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドパイプライン YAML 定義 | 内製 YAML subset parser で `.pipeline.yml` を読み込み、build / test / deploy step を固定順で実行する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.22 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ドライラン実行モード | `adlaire-ci-runner --dry-run` で設定・状態・GitHub target・SHA 差分・起動可否を検証し、ビルド、deploy、通知、状態更新を行わず結果を出力する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §27.2 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドログのアーカイブ圧縮 | 保持期間を超えた `.build_logs/{id}.json` を `.build_logs/archive/{id}.json.gz` に gzip 圧縮し、通常ログ API は圧縮済みログも透過的に参照する。 | `docs/DETAIL_INDEX.md` §0i.4、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/archive.md` §27.7 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ローカルファイル監視モード | GitHub API を使わず、ローカル状態 snapshot の SHA-256 差分で対象 Markdown の変更を検出する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §27.23 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | タグ付きコミットのみビルド | 監視対象 commit に許可 tag pattern が付いている場合だけ build を実行する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.24 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドキャッシュ | 入力ファイル単位の SHA-256 manifest を `.build_cache.json` に保存し、未変更ページの変換結果を再利用する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §5、`docs/details/builder.md` §8、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/builder.md` §27.25 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド通知連携 | `components/runner.go` が `.notify_config.channels` に基づき Webhook / email / command 通知を同一通知イベント契約で送信する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.32 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド時間トレンド記録 | build ごとの所要時間を `.build_trends.json` に集計保存し、移動平均、中央値、p95、直近件数を API / UI から参照できるようにする。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.33 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド失敗時の自動リトライ | 一時的な GitHub API / network / pipeline timeout / deploy 検証失敗を対象に、設定回数まで同一 build id 内で再試行し、attempt ごとの結果を build log と history に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/runner.md` §27.3 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 並列マルチターゲットビルド | branch target 内の複数 deploy target を bounded worker で並列処理し、target ごとの結果を build log に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §14a、`docs/details/runner.md` §15、`docs/details/runner.md` §27.26 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド前後フック | `.hooks` の pre / post hook を shell 経由なしで実行し、abort 条件と hook log を固定仕様どおり扱う。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.27 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 依存ファイルトラッキング | Markdown 内の相対リンク・画像・include 対象を依存 manifest として記録し、関連 target だけを再ビルドする。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §4.3、`docs/details/builder.md` §5、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/builder.md` §27.28 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | リモートビルド対応 | SSH 経由で remote build command を実行し、成果物 archive と manifest を取得して既存 deploy / log 契約へ接続する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §14a、`docs/details/runner.md` §15、`docs/details/runner.md` §27.29 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドステータスファイル出力 | runner の現在状態、最終ビルド、最終 deploy、pending 件数、circuit 状態、最終 trigger を `.build_status.json` に JSON object として出力し、API / UI / MCP の read-only 参照元にする。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0a、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.8 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド承認フロー | approval_required な target を `.approval_queue` に保留し、API 承認後だけ build / deploy を継続する。 | `docs/DETAIL_INDEX.md` §0i.3、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.30 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ別環境変数 | branch target ごとに許可済み環境変数を build process へ注入し、secret を log に出さない。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.31 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド依存チェーン | `.build_chain_config` で job 間依存を定義し、依存成功後だけ後続 job を実行する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.34 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド優先度キュー | `.build_state.queued` に priority / created_seq を保存し、優先度順かつ同一優先度 FIFO で build queue を処理する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §13、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.35 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 失敗原因の自動分類 | stdout / stderr / exit code / runner error を固定分類ルールで解析し、failure_category と evidence を build log / history に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.36 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド実行環境の記録 | build 開始時の OS、arch、Go version、binary version、disk usage、hostname を `.build_logs/{id}.json.environment` に記録する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §27.37 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドトリガー種別の記録 | `polling`、`force_interval`、`manual`、`webhook`、`retry_pending_transfer`、`startup_config_integrity`、`rollback`、`local_watch`、`approval` を `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に記録し、履歴 filter と状態表示で同じ値を使う。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/statefile.md` §22.0c、`docs/details/api.md` §22.0e、`docs/details/sdk.md` §23、`docs/details/ui.md` §24、`docs/details/runner.md` §27.9、`docs/details/runner.md` §27.23、`docs/details/runner.md` §27.30 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の異常検知 | `.build_trends.json` の移動平均と p95 を基準に異常に遅い build を検出し、WARN、history flag、通知へ反映する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §13、`docs/details/runner.md` §15、`docs/details/runner.md` §16、`docs/details/api.md` §22.0e、`docs/details/runner.md` §27.38 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | 設定ファイル起動時整合性チェック | runner 起動時に `.branch_config`、`.notify_config`、`.build_state`、`.pending_transfers`、`.notify_pending`、`.build_circuit_state` の JSON 整合性を検証し、破損・型不一致・必須 key 不足を規定どおり退避、初期化、通知、または停止する。 | `docs/DETAIL_INDEX.md` §0i.2、`docs/details/runner.md` §11、`docs/details/runner.md` §12、`docs/details/runner.md` §13、`docs/details/statefile.md` §22.0a、`docs/details/statefile.md` §22.0c、`docs/details/runner.md` §27.10 に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | マルチユーザー対応 | 初期仕様の単一 admin 認証を、複数ユーザー・ユーザー別セッション・ユーザー別監査へ拡張する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 通知先の拡張 | 管理画面・API からメール・Slack・Discord 等の通知チャンネルを設定・追加できるようにする。`components/runner.go` 側のフック実装は → ビルド通知連携 | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | データストア切り替え | 大量ビルド履歴・ログ運用に備え、フラットファイルから SQLite 等への切り替えを検討する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -476,7 +476,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 将来計画 | 実装不可 | ビルドスクリプト | ページ内ナビゲーション履歴 | ブラウザの戻る/進むに対応したハッシュベースの履歴管理を実装する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | `aria-label`・`role` 属性の付与対象、値、検証方法を詳細仕様で定義した上でスクリーンリーダー閲覧に対応する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | ビルドスクリプト | 画像ライトボックス | 画像クリックでモーダル拡大表示する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | `adlaire-ci-build` が build id、commit SHA、build at を受け取り、生成 HTML の `<head>` に固定 meta として埋め込む。`GET /api/output-meta` は同値を返す。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §2、`docs/details/builder.md` §5、`docs/details/builder.md` §8、`docs/details/runner.md` `docs/ROADMAP.md` §5.2、`docs/details/api.md` §22.0e、`docs/details/builder.md` §27.4 に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | `adlaire-ci-build` が build id、commit SHA、build at を受け取り、生成 HTML の `<head>` に固定 meta として埋め込む。`GET /api/output-meta` は同値を返す。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §2、`docs/details/builder.md` §5、`docs/details/builder.md` §8、`docs/details/runner.md` §13、`docs/details/api.md` §22.0e、`docs/details/builder.md` §27.4 に従って実装する。 |
 | 将来計画 | 実装不可 | ビルドスクリプト | 印刷時 QR コード挿入 | `@media print` で元ページの URL を QR コードとしてフッターに埋め込む | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | ビルドスクリプト | 定義リストサポート | `term\n: definition` 記法を `<dl>/<dt>/<dd>` タグにレンダリングする | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | ビルドスクリプト | タスクリストサポート | `- [ ]` / `- [x]` 記法をチェックボックス付きリストとして描画する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -509,3 +509,123 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 7. 実装と検証が完了した後、対象項目の `状態` を `実装済み`、`実装可否` を `完了済み` に変更する。
 
 上記手順を完了していない項目は、実装者判断で実装してはならない。
+
+## 6. 追加仕様化機能実装参照
+
+本節は、追加仕様化機能の実装状態、実装可否、owner、主本文、collaborator を確認するための参照である。各機能の主本文は、owner component の分割先詳細仕様ファイルを正とする。本節に定義された機能は、`docs/DETAIL_INDEX.md` §0i と owner 詳細仕様を入口として、owner 詳細仕様の主本文と必要な collaborator 詳細仕様の確認項目を組み合わせて実装可否を判定する。
+
+### 6.1 追加仕様化機能 共通実装契約
+
+§27 の主本文は、owner component の分割先詳細仕様ファイルを正とする。本節では、§27 の実装時に共通して確認する参照順、越境禁止、PR 証跡の入口だけを示す。
+
+| 確認 | 固定内容 |
+|------|----------|
+| 実装対象判定 | `docs/ROADMAP.md` で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用機能を実装対象にしない。 |
+| owner 確定 | §0b と §0i で owner component を 1 件に確定し、主本文は owner の分割先詳細仕様ファイルで確認する。 |
+| collaborator 確認 | collaborator がある場合は、§27.1〜§27.47 の参照インデックスに列挙された component の分割先ファイルを schema、呼び出し境界、表示、security、setup、fixture、検証観点として読む。 |
+| 補完禁止 | 個別節または分割先詳細仕様に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存を実装判断で追加しない。追加が必要な場合は owner component の詳細仕様、関連 collaborator 詳細仕様、fixture catalog、必要な対応表を先に更新する。 |
+| 状態更新 | 状態ファイル更新は `docs/details/statefile.md` §22.0a、§22.0c を正とし、lock、atomic write、JSON Lines、破損時処理を独自定義しない。 |
+| security | secret mask、token、session、scope、audit、rate limit は `docs/details/security.md` を正とし、平文保存・平文表示を行わない。 |
+| fixture / PR 証跡 | fixture manifest、expected/effects、assertion、PR 証跡、受け入れゲートは `docs/details/fixture.md` §27-F を正とする。 |
+| api / sdk / ui 同期 | API endpoint、SDK method、UI 操作が同一機能に関わる場合は、endpoint は `docs/details/api.md`、SDK method は `docs/details/sdk.md`、UI 操作は `docs/details/ui.md` をそれぞれ正本とし、名称、引数、response、error、表示、成功後再取得、失敗時固定が食い違わないことを確認する。 |
+
+§27 の機能を実装した PR は、対象節、owner 詳細仕様、collaborator 詳細仕様、fixture、secret mask、失敗時副作用、実装対象外を PR 本文に記録する。記録が不足する場合は、実装完了として扱わない。
+
+§27 の PR 分割、dry-run 固定契約、fixture 完了条件の詳細は、owner 詳細仕様と `docs/details/fixture.md` §27-F を正とする。`docs/DETAIL_INDEX.md` に同じ fixture schema、expected/effects、個別機能本文を重複定義しない。
+
+### 6.2 追加仕様化機能 参照索引
+
+本節は、§27 機能の参照先を一覧化するインデックスである。個別機能の入力、出力、状態、処理順序、異常系、endpoint、SDK method、UI DOM、fixture は下表の「主本文」に記載された owner component 詳細仕様を正とする。`docs/DETAIL_INDEX.md` は、下表に記載された主本文、owner component、collaborator component を置き換えない。
+
+| 節 | 機能 | owner | 主本文 | collaborator | `docs/DETAIL_INDEX.md` 側の扱い |
+|----|------|-------|--------|--------------|--------------------|
+| §27.1 | GitHub Commit Status API | `commitstatus` | `docs/details/commitstatus.md` §27.1 | `runner`、`statefile` | Commit Status payload と送信順の参照先だけを示す。runner の build 実行、commit SHA 確定、build id 採番、pipeline / deploy / snapshot / history の最終結果確定は `docs/details/runner.md` を正とする。 |
+| §27.2 | ドライラン実行モード | `runner` | `docs/details/runner.md` §27.2 | `statefile` | 状態ファイル非更新、ログ、history、deploy、通知の扱いを`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.3 | ビルド失敗時の自動リトライ | `runner` | `docs/details/runner.md` §27.3 | `statefile` | retry 対象、回数、backoff、SHA 更新禁止条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.4 | 出力サイトへのビルドメタ埋め込み | `builder` | `docs/details/builder.md` §27.4 | `runner`、`api`、`statefile` | HTML meta、REPORT、API 表示、状態反映の境界だけを確認する。 |
+| §27.5 | 設定バリデーション API | `api` | `docs/details/api.md` §27.5 | `sdk`、`ui`、`statefile` | validate の保存禁止、response、SDK/UI 対応を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.6 | API アクセスログ | `api` | `docs/details/api.md` §27.6 | `sdk`、`ui`、`statefile` | `.api_access_log` schema と一覧 API の主本文を`docs/DETAIL_INDEX.md` へ複製しない。 |
+| §27.7 | ビルドログのアーカイブ圧縮 | `archive` | `docs/details/archive.md` §27.7 | `runner`、`api`、`statefile` | gzip archive、cleanup、参照順の実体処理を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.8 | ビルドステータスファイル出力 | `runner` | `docs/details/runner.md` §27.8 | `api`、`statefile` | `.build_status.json` schema と更新タイミングを`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.9 | ビルドトリガー種別の記録 | `runner` | `docs/details/runner.md` §27.9 | `api`、`sdk`、`ui`、`statefile` | trigger 有効値、判定条件、UI 表示の同期確認だけを扱う。 |
+| §27.10 | 設定ファイル起動時整合性チェック | `runner` | `docs/details/runner.md` §27.10 | `statefile` | JSON 破損、退避、初期化、終了コードを`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.11 | ポーリング間隔の動的変更 | `api` | `docs/details/api.md` §27.11 | `runner`、`statefile` | systemd timer 反映の導入・検証手順は `docs/details/setup.md` §26 を確認する。 |
+| §27.12 | GitHub Webhook 受信 | `api` | `docs/details/api.md` §27.12 | `runner`、`statefile` | HMAC、event 記録、queue 投入、エラー応答を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.13 | Webhook イベントログ / 一覧取得 API | `api` | `docs/details/api.md` §27.13 | `sdk`、`ui`、`statefile` | webhook event schema、一覧 API、SDK/UI 対応を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.14 | ビルド所要時間の記録と統計 API | `runner` | `docs/details/runner.md` §27.14 | `api`、`statefile`、`archive` | duration 計測、統計値、archive 連携の境界だけを確認する。 |
+| §27.15 | ビルドアーティファクト管理 | `archive` | `docs/details/archive.md` §27.15 | `api`、`sdk`、`ui`、`runner`、`statefile` | snapshot 作成トリガーは `docs/details/runner.md` §14b を正とする。 |
+| §27.16 | ヘルスチェックエンドポイント | `api` | `docs/details/api.md` §27.16 | `statefile` | health response とエラー応答を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.17 | ビルドログ重大度フィルター | `api` | `docs/details/api.md` §27.17 | `sdk`、`ui`、`archive`、`statefile` | log query、検索結果、UI filter の同期確認だけを扱う。 |
+| §27.18 | ブランチ設定の動的変更 API | `api` | `docs/details/api.md` §27.18 | `runner`、`statefile` | `.branch_config`、GET/POST API、runner 反映条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.19 | 週次ビルドサマリー Webhook | `runner` | `docs/details/runner.md` §27.19 | `api`、`statefile` | 週次集計、通知 payload、手動送信 API の境界だけを確認する。 |
+| §27.20 | 設定変更の詳細 diff 記録 | `api` | `docs/details/api.md` §27.20 | `statefile` | `.config_log` diff 形式と mask 条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.21 | 複数ファイル監視 | `runner` | `docs/details/runner.md` §27.21 | `builder`、`api`、`statefile` | target_files、SHA 差分、build target、API 表示の同期確認だけを扱う。 |
+| §27.22 | ビルドパイプライン YAML 定義 | `runner` | `docs/details/runner.md` §27.22 | `api`、`statefile` | pipeline subset、step 実行順、timeout、env を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.23 | ローカルファイル監視モード | `runner` | `docs/details/runner.md` §27.23 | `statefile` | GitHub API 非使用条件と local snapshot 差分検出を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.24 | タグ付きコミットのみビルド | `runner` | `docs/details/runner.md` §27.24 | `api`、`statefile` | tag pattern、skip 条件、history/log 反映を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.25 | ビルドキャッシュ | `builder` | `docs/details/builder.md` §27.25 | `runner`、`statefile` | cache manifest、再利用条件、無効化条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.26 | 並列マルチターゲットビルド | `runner` | `docs/details/runner.md` §27.26 | `statefile` | worker 上限、target 別 status、ログ順序を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.27 | ビルド前後フック | `runner` | `docs/details/runner.md` §27.27 | `api`、`statefile` | hook schema、pre/post 実行、abort 条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.28 | 依存ファイルトラッキング | `builder` | `docs/details/builder.md` §27.28 | `runner`、`statefile` | dependency manifest、関連 target 判定、full build 条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.29 | リモートビルド対応 | `runner` | `docs/details/runner.md` §27.29 | `api`、`archive`、`statefile` | remote command、archive 取得、manifest 検証を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.30 | ビルド承認フロー | `api` | `docs/details/api.md` §27.30 | `runner`、`sdk`、`ui`、`statefile` | approval queue、承認/却下 API、通知、UI 操作の同期確認だけを扱う。 |
+| §27.31 | ブランチ別環境変数 | `runner` | `docs/details/runner.md` §27.31 | `api`、`statefile` | branch env schema、許可 key、secret mask、process env 注入を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.32 | ビルド通知連携 | `runner` | `docs/details/runner.md` §27.32 | `api`、`sdk`、`ui`、`statefile` | 通知 event、channel schema、retry、notify log の境界だけを確認する。 |
+| §27.33 | ビルド時間トレンド記録 | `runner` | `docs/details/runner.md` §27.33 | `api`、`statefile` | `.build_trends.json`、移動平均、中央値、p95 を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.34 | ビルド依存チェーン | `runner` | `docs/details/runner.md` §27.34 | `api`、`statefile` | DAG 検証、実行順、skip / failure status を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.35 | ビルド優先度キュー | `runner` | `docs/details/runner.md` §27.35 | `api`、`statefile` | queue priority、created_seq、FIFO を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.36 | 失敗原因の自動分類 | `runner` | `docs/details/runner.md` §27.36 | `api`、`statefile` | failure_category、evidence、分類優先順位を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.37 | ビルド実行環境の記録 | `runner` | `docs/details/runner.md` §27.37 | `statefile` | environment snapshot と secret 非含有条件を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.38 | ビルド所要時間の異常検知 | `runner` | `docs/details/runner.md` §27.38 | `api`、`statefile` | trend 基準、異常判定、通知 payload、設定値を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.42 | ビルドトリガー専用 API スコープ | `security` | `docs/details/security.md` §27.42 | `api`、`sdk`、`ui`、`statefile` | scope 判定、拒否条件、API/SDK/UI 表示を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.43 | API キー管理 | `security` | `docs/details/security.md` §27.43 | `api`、`sdk`、`ui`、`statefile` | API key の一回表示、hash 保存、scope、期限、失効、監査を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.44 | 監査ログ | `security` | `docs/details/security.md` §27.44 | `api`、`statefile` | `.audit_log` schema、対象操作、mask、検索 API、UI 表示を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.45 | セッションタイムアウト変更設定 | `security` | `docs/details/security.md` §27.45 | `api`、`sdk`、`ui`、`statefile` | timeout 範囲、保存、既存 session、新規 session 期限を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.46 | TOTP 二要素認証 | `security` | `docs/details/security.md` §27.46 | `api`、`sdk`、`ui`、`statefile` | TOTP、二段階 login、secret 保存、確認、無効化、UI 操作を`docs/DETAIL_INDEX.md` で再定義しない。 |
+| §27.47 | API レート制限 | `security` | `docs/details/security.md` §27.47 | `api`、`sdk`、`ui`、`statefile` | 固定窓制限、`429`、状態保存、設定 API、UI 表示を`docs/DETAIL_INDEX.md` で再定義しない。 |
+
+### 6.3 / §27.38a 横断連動・Runner 拡張機能 実装補足契約
+
+本節は、責務 component 別詳細仕様へ分割せず、追加仕様化機能の横断補足契約として扱う。§27.21〜§27.38 および api / sdk / ui / statefile の横断連動は runner、builder、api、sdk、ui、statefile、archive にまたがるため、実装者は owner 詳細仕様を主本文とし、本節を横断確認として同時に確認する。
+
+本節の正本範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装完了時の横断受け入れ観点に限定する。本節は、個別機能の処理本文、入力、出力、状態 schema、fixture schema、endpoint 詳細、SDK method 詳細、UI DOM 詳細を持たない。これらは各 owner / collaborator の分割先詳細仕様ファイルを正とする。
+
+本節と owner component 別詳細仕様ファイルの内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI、fixture は owner component 別詳細仕様ファイルを正とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを本節で確認する。§27.38a を理由に、owner 詳細仕様に存在しない endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture を追加してはならない。
+
+| 確認 | 固定内容 |
+|------|----------|
+| runner 起点 | §27.21〜§27.38 の多くは runner の build 実行、queue、history、log、notification に影響するため、`docs/details/runner.md` の該当 §27 節を先に確認する。 |
+| builder 連携 | cache、dependency、output meta、生成物に関わる場合は `docs/details/builder.md` の該当 §27 節を同時に確認する。 |
+| API 連携 | 設定保存、queue、approval、history、stats、snapshot、rollback、hook、notify、search に関わる場合は `docs/details/api.md` の endpoint / state read-write 契約を同時に確認する。 |
+| SDK / UI 連携 | API を管理画面から操作する機能は、SDK method は `docs/details/sdk.md` §23、DOM / 表示条件は `docs/details/ui.md` §24 を正本として確認する。 |
+| statefile | 状態 schema、lock、atomic write、JSON Lines、破損時処理、保存順は `docs/details/statefile.md` を正とする。 |
+| archive | snapshot、artifact、download、delete、rollback、log archive は `docs/details/archive.md` を正とする。 |
+| fixture | §27.21〜§27.38 の受け入れ fixture、secret mask、effects、PR 証跡は `docs/details/fixture.md` §27-F を正とする。 |
+
+**api / sdk / ui / statefile 横断連動契約：**
+
+下表は横断確認表であり、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。下表の機能群は、各 owner component 別詳細仕様ファイルに定義済みの API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえる。API だけ、SDK だけ、UI だけを先行して仕様外の仮実装にしてはならない。UI が未実装の Phase では、UI 列は fixture の期待操作として固定し、実装完了扱いには含めない。
+
+| 機能群 | API | SDK | UI 操作 | 状態ファイル副作用 | 成功後再取得 | 失敗時固定 |
+|--------|-----|-----|---------|--------------------|--------------|------------|
+| login / session | `POST /api/login`, `POST /api/login/totp`, `POST /api/logout`, `GET /api/sessions`, `POST /api/sessions/revoke-all` | `login()`, `loginTotp()`, `logout()`, `getSessions()`, `revokeAllSessions()` | login、TOTP 確認、logout、session 一括失効。 | `.admin_credentials`、`.access_log`、`.audit_log`、memory session。token 本体は永続化しない。 | login 成功後は `getDashboard()` → `getStatus()` → `getQueue()`。session 失効後は `getSessions()`。 | `401` は SDK token / ticket / secret field を破棄し、UI は `panel-login` のみ表示する。 |
+| build control | `POST /api/build`, `POST /api/build/force`, `POST /api/build/cancel`, `GET /api/build/stream`, `GET /api/queue`, `DELETE /api/queue` | `triggerBuild()`, `buildForce()`, `cancelBuild()`, `streamBuild()`, `getQueue()`, `clearQueue()` | manual build、force build、cancel、stream 開始/停止、queue clear。 | `.build_state`、`.build_lock`、`.build_logs/{id}.json`、queue entry。force build 時だけ SHA cache 更新。 | `getStatus()` → `getQueue()`、stream end 後は `getLogs()` も実行。 | running は `409`、queue full は `429`、maintenance / circuit は `503` または仕様済み `409`。UI は同じ build request を自動再送しない。 |
+| logs / history | `GET /api/logs`, `GET /api/logs/search`, `GET /api/history`, `GET /api/history/{id}/log`, `POST /api/history/{id}/comment`, `POST /api/history/{id}/flag`, `POST /api/history/{id}/tags` | `getLogs()`, `searchLogs()`, `getHistory()`, `getHistoryLog()`, `setHistoryComment()`, `setHistoryFlag()`, `setHistoryTags()` | log 表示、検索、history 表示、comment / flag / tag 保存。 | read-only GET は副作用なし。comment / flag / tag は `.build_logs/{id}.json` と、owner 詳細仕様で履歴・設定ログ更新が定義された場合に限り `.build_history`、`.config_log`。 | 変更系は `getHistory()`、comment は `getHistoryComment(id)` も実行。 | `404` は選択解除または not found 表示。`422 details` は field error。壊れた JSON Lines は response に含めない。 |
+| config / repo / branch / schedule | `GET/POST /api/config`, `POST /api/config/validate`, `GET/POST /api/repo-config`, `GET/POST /api/branch-config`, `GET /api/schedule`, `POST /api/schedule/*` | `getConfig()`, `setConfig()`, `validateConfig()`, `setRepoConfig()`, `getBranchConfig()`, `setBranchConfig()`, `getSchedule()`, schedule 系 method | config 保存、validate、repo 保存、branch 保存、schedule 変更。 | `.server_config`、`.repo_config`、`.branch_config`、`.config_log`。validate は保存なし。systemd 反映失敗時も保存済み値は戻さない。 | 保存系は対象 GET → `getConfigLog()`。validate は再取得なし。 | `422` は書込前停止。systemd 失敗 `500` は保存済み値を再取得して表示する。no-op は状態ファイルと log を変更しない。 |
+| notify / SMTP / webhook | `GET/POST /api/notify-config`, `POST /api/notify-test`, `GET /api/notify-log`, `GET/POST /api/smtp-config`, `POST /api/smtp-test`, `GET/POST /api/webhook-config`, `GET /api/webhook-events`, `POST /api/notify/weekly-summary` | `getNotifyConfig()`, `setNotifyConfig()`, `notifyTest()`, `getNotifyLog()`, `getSmtpConfig()`, `setSmtpConfig()`, `smtpTest()`, `getWebhookConfig()`, `setWebhookConfig()`, `getWebhookEvents()`, `notifyWeeklySummary()` | notify 保存、test、SMTP 保存/test、webhook secret 保存、event 表示、weekly summary。 | `.notify_config`、`.smtp_config`、`.smtp_secret`、`.webhook_secret`、`.notify_log`、`.webhook_events.json`、`.config_log`。 | 保存系は対象 GET → `getConfigLog()`。test / summary は `getNotifyLog()`。 | secret は response / log / fixture へ平文出力しない。保存成功・失敗とも UI secret field を消去する。 |
+| snapshots / rollback / maintenance | `GET /api/snapshots`, `GET /api/snapshots/{id}/download`, `DELETE /api/snapshots/{id}`, `POST /api/history/{id}/rollback`, `GET /api/maintenance`, `POST /api/maintenance/enable`, `POST /api/maintenance/disable` | `getSnapshots()`, `downloadSnapshot()`, `deleteSnapshot()`, `rollbackHistory()`, `getMaintenance()`, `enableMaintenance()`, `disableMaintenance()` | snapshot list/download/delete、rollback、maintenance enable/disable。 | `.snapshots/`、`.build_history`、`.build_logs/{new_id}.json`、`.maintenance`、`.config_log`。download は副作用なし。 | delete は `getSnapshots()`。rollback は `getHistory()` → `getStatus()`。maintenance は `getMaintenance()`。 | delete / rollback は確認必須。running rollback は `409`。maintenance enabled 中は build / rollback / 設定変更系を disabled。 |
+| access / hooks / rules / pipeline / notes / layout | access、hooks、alert rules、tag rules、pipeline config、notes、dashboard layout の GET/POST/DELETE endpoint | 対応する §23 SDK method | 保存、追加、削除、notes 保存、dashboard layout 保存。 | `.access_control`、`.hooks`、`.alert_rules`、`.tag_rules`、`.pipeline_config`、`.notes`、`.dashboard_layout`、`.config_log`。 | 対象 GET → 変更系で config log 対象の場合は `getConfigLog()`。layout は `getDashboardLayout()` → `getDashboard()`。 | duplicate `409` は競合表示。validation `422` は field error。削除対象不在は `404`。 |
+| tokens / audit / access logs / rate limit | `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}`, `GET /api/audit-log`, `GET /api/access-log`, `GET /api/api-access-log`, `GET/POST /api/api-rate-limit` | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getAccessLog()`, `getApiAccessLog()`, `getApiRateLimit()`, `setApiRateLimit()` | token 発行/失効、audit / access log 表示、rate limit 保存。 | `.api_tokens`、`.audit_log`、`.access_log`、`.api_access_log`、`.api_rate_state`、`.server_config`、`.config_log`。token 本体は作成時 response のみ。 | token 操作は `getTokens()` → `getAuditLog()`。rate limit は `getApiRateLimit()`。 | token 本体は再取得不可。`403` は logout しない。`429` は rate limit 表示し、同一操作を自動 retry しない。 |
+
+**横断処理順契約：**
+
+| 処理種別 | 固定順序 |
+|----------|----------|
+| 認証必須 JSON API | method / path 判定 → body 禁止判定 → JSON parse → 認証 / scope → rate limit → endpoint 固有 validation → read → write 計画 → atomic write → JSON Lines 追記 → response。 |
+| read-only API | method / path 判定 → body 禁止判定 → 認証 / scope → query validation → read → 壊れた任意行除外 → response。read-only API は状態ファイルを書き換えない。 |
+| UI 変更操作 | panel error / success 消去 → UI 入力検証 → 対象操作 disabled → SDK 呼び出し → 成功後再取得 → success 表示 → secret 消去 → disabled 再評価。 |
+| UI 取得操作 | panel error 消去 → 対象操作 disabled → SDK 呼び出し → DOM 更新 → empty state 判定 → disabled 再評価。success 表示は行わない。 |
+| SDK request | 引数検証 → path / query / body 生成 → Authorization 付与 → timeout 設定 → fetch → status 判定 → response parse → token 変化適用 → return / throw。 |
+| multi-file write | 全入力検証 → 全対象 read → 全 write payload 生成 → `docs/details/api.md` §22.0d の Write 順に atomic write → JSON Lines 追記 → response。途中失敗時は未処理ファイルを書かない。 |
+
+§27.21〜§27.38 の実装では、owner 詳細仕様にない状態ファイル、endpoint、SDK method、UI 操作、外部公開構成を追加してはならない。追加が必要な場合は、`docs/DETAIL_INDEX.md` ではなく、該当 owner / collaborator の分割先詳細仕様を先に改訂する。
