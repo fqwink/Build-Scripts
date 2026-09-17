@@ -73,16 +73,16 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 | 責務 component | 詳細仕様節 | 主な確認対象 |
 |--------------------|------------|--------------|
-| `builder` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、出力サイト、HTML / CSS / JavaScript、変換 report、fixture、builder owner 追加機能。 |
-| `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | 設定、状態ファイル、GitHub API 読取、pipeline、転送、snapshot、通知、fixture、runner owner 追加機能、Commit Status 呼び出し境界、systemd / setup 参照境界。 |
-| `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | API 共通処理、API server 制限、endpoint、状態ファイル read/write 呼び出し境界、認証連携、security 呼び出し境界、API owner 追加機能。 |
+| `builder` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、変換 report、builder fixture、builder owner 追加機能。 |
+| `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能、Commit Status 呼び出し境界、systemd / setup 参照境界。 |
+| `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | HTTP 共通契約、API server 制限、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、security 呼び出し境界、api owner 追加機能。 |
 | `admin` | `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` §0、A1〜A5 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
-| `sdk` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 | SDK class、method、HTTP 対応、error、stream、token 破棄。 |
+| `sdk` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 | SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
 | `ui` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
 | `setup` | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
 | `statefile` | `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a、§22.0c | 状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
 | `archive` | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7、§27.15 | build log archive、snapshot、download、delete、rollback、cleanup。 |
-| `commitstatus` | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 |
+| `commitstatus` | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
 | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
 | `mcp` | 詳細仕様なし | 将来計画。現時点では実装可能な入出力、状態、起動手順、ツール定義、検証条件を定義しない。 |
 
@@ -99,18 +99,18 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | ファイル | 持つ内容 | 持たない内容 |
 |----------|----------|--------------|
 | `ADLAIRE_CI_DETAIL_SPEC.md` | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様。 | 各 component の詳細な処理本文、fixture 詳細、状態ファイル schema 詳細、個別 endpoint 詳細、個別 UI 操作詳細。 |
-| `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture。 | runner / api / sdk / ui の実行責務。 |
-| `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner の GitHub 監視、状態ファイル更新、pipeline、deploy、snapshot、通知、runner fixture。 | API endpoint の認証・応答本文、SDK method、UI DOM 詳細。 |
-| `ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner の HTTP 共通契約、endpoint、状態ファイル read/write、認証連携。 | SDK 内部実装、UI DOM 詳細、runner の build 実行責務、fixture 詳細。 |
-| `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 | UI DOM 詳細、SDK method 実装、API endpoint 実装、systemd 導入手順。 |
-| `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | `sdk` owner の SDK class、method、HTTP 対応、error、stream、token 破棄。 | API endpoint の状態ファイル更新責務、UI DOM 詳細。 |
-| `ADLAIRE_CI_DETAIL_UI_SPEC.md` | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 | SDK method 実装、API endpoint 実装、状態ファイル直接操作。 |
-| `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 | runner / api / sdk / ui の個別機能本文。 |
-| `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 | API endpoint の request / response、runner の業務処理、UI 表示判断。 |
-| `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 | runner の build 実行、API 共通 request / response、SDK method 実装、UI DOM 詳細。 |
-| `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細。 |
-| `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理。 |
-| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture manifest、assertion、fake、testdata、API P0〜P5 fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、実装 PR 完了証跡。 | 個別 component の通常処理本文。 |
+| `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
+| `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| `ADLAIRE_CI_DETAIL_API_SPEC.md` | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、release asset 取得手順、fixture / PR 証跡正本。 |
+| `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
+| `ADLAIRE_CI_DETAIL_UI_SPEC.md` | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
+| `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 | runner / api / sdk / ui / admin の個別機能本文、状態 schema、API endpoint、SDK method、UI DOM、fixture / PR 証跡正本、外部依存追加。 |
+| `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / release 手順、fixture / PR 証跡正本、個別 component の業務判断。 |
+| `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner の build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理。 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルを正本とし、§27.38a は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点の確認として読む。
 
