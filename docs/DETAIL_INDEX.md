@@ -1,24 +1,26 @@
 # Adlaire CI — 詳細仕様
 
-本ファイルは `docs/SPEC.md` の Part 3 詳細仕様の入口であり、読み順、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、横断補足契約を持つ。
+本ファイルは `docs/SPEC.md` の Part 3 詳細仕様の入口であり、読み順、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置を持つ。
 
 各 owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。本ファイルは個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、fixture assertion、setup 手順を持たない。
 
-方針、ポリシー、正本関係の上位判断は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否の上位判断は `docs/ROADMAP.md` を正とする。
+方針、ポリシー、正本関係の上位判断は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否、§27 追加仕様化機能参照、横断補足契約の上位判断は `docs/ROADMAP.md` を正とする。
 
 ---
 
 ## Detail Spec Governance
 
-本ファイルは、Part 3 詳細仕様セットの入口、共通固定値、対応表、横断補足契約を管理する。個別 component の処理本文は owner component 別の `docs/details/*.md` を正とする。
+本ファイルは、Part 3 詳細仕様セットの入口、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。§27 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。個別 component の処理本文は owner component 別の `docs/details/*.md` を正とする。
 
 | 管理対象 | 正本 | 本ファイルでの扱い |
 |----------|------|--------------------|
 | 詳細仕様の読み方 | `docs/DETAIL_INDEX.md` | 実装者が詳細仕様本文へ到達するための順序を定義する。 |
 | 共通固定値 | `docs/DETAIL_INDEX.md` | component 間で共有する固定値だけを定義する。 |
 | 詳細節対応表 | `docs/DETAIL_INDEX.md` | 対象機能、詳細仕様節、受け入れ条件の入口を示す。 |
+| 実装状態、実装可否、Phase、将来計画 | `docs/ROADMAP.md` | 本ファイルでは定義せず、対象機能の実装可否を確認する。 |
+| §27 追加仕様化機能参照 | `docs/ROADMAP.md` §6 | owner、主本文、collaborator、横断補足契約を確認する。 |
 | owner component 本文 | `docs/details/*.md` | 本ファイルでは本文を複製せず、参照先だけを示す。 |
-| 方針、ポリシー、状態判断 | `docs/SPEC.md` | 本ファイルでは定義しない。 |
+| 方針、ポリシー、正本関係 | `docs/SPEC.md` | 本ファイルでは定義しない。 |
 
 ## Detail Spec Selection Rules
 
@@ -41,7 +43,7 @@ owner component と collaborator component は、以下の境界で扱う。
 |------|----------|--------------|
 | owner component | 対象機能の入力、出力、状態、処理順序、異常系、検証条件の主本文。 | 他 component の主処理本文、他 component の状態 schema、他 component の UI DOM 詳細。 |
 | collaborator component | 呼び出し境界、参照 schema、表示境界、security、setup、fixture、検証観点。 | owner component の入力、出力、状態、処理順序、異常系の主本文。 |
-| `docs/DETAIL_INDEX.md` | 読み方、共通固定値、対応表、横断補足契約。 | 個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema。 |
+| `docs/DETAIL_INDEX.md` | 読み方、共通固定値、対応表、リポジトリ内ソース配置。 | 個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、§27 追加仕様化機能参照、横断補足契約。 |
 
 owner component が確定できない場合は、実装判断で補完しない。先に `docs/ROADMAP.md` の状態分類と本ファイルの対応表を整合させる。
 
@@ -233,7 +235,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | 完了条件 | 判定 |
 |----------|------|
 | 旧ファイル内の移動対象本文が対応する分割先に移動している。 | 必須 |
-| `docs/DETAIL_INDEX.md` には入口、索引、共通固定値、対応表、管理仕様、横断補足契約だけが残っている。 | 必須 |
+| `docs/DETAIL_INDEX.md` には入口、索引、共通固定値、対応表、管理仕様、リポジトリ内ソース配置だけが残っている。 | 必須 |
 | `docs/SPEC.md`、`docs/DOCUMENT_INDEX.md`、各分割先ファイル間の参照が矛盾していない。 | 必須 |
 | `rg` で旧節名、旧ファイル名、移動前参照の取り残しを確認している。 | 必須 |
 | 実装ファイル、fixture、testdata の内容を分割作業だけで変更していない。 | 必須 |
@@ -511,7 +513,7 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 Part 3 詳細仕様セットは、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を責務 component 別に定義する。
 
-本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置、横断補足契約だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。
+本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。§27 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。
 
 `mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、本ファイルおよび責務 component 別詳細仕様ファイルでは入出力、状態、起動手順、検証条件を定義しない。
 
