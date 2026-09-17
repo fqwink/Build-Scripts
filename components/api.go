@@ -32,9 +32,10 @@ type APIConfig struct {
 }
 
 type APIServer struct {
-	cfg      APIConfig
-	mu       sync.Mutex
-	sessions map[string]apiSession
+	cfg       APIConfig
+	startedAt time.Time
+	mu        sync.Mutex
+	sessions  map[string]apiSession
 }
 
 type apiSession struct {
@@ -185,7 +186,7 @@ func NewAPIServer(cfg APIConfig) (*APIServer, error) {
 	if err := validateCredentials(filepath.Join(cfg.StateDir, ".admin_credentials")); err != nil {
 		return nil, err
 	}
-	return &APIServer{cfg: cfg, sessions: map[string]apiSession{}}, nil
+	return &APIServer{cfg: cfg, startedAt: cfg.Now().UTC(), sessions: map[string]apiSession{}}, nil
 }
 
 func InitCredentials(stateDir, password string, now time.Time) error {
@@ -233,6 +234,13 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/api-access-log", s.withAuth(s.handleJSONLinesLog(".api_access_log", "log")))
 	mux.HandleFunc("/api/config-log", s.withAuth(s.handleJSONLinesLog(".config_log", "log")))
 	mux.HandleFunc("/api/status", s.withAuth(s.handleStatus))
+	mux.HandleFunc("/api/sysinfo", s.withAuth(s.handleSysinfo))
+	mux.HandleFunc("/api/stats", s.withAuth(s.handleStats))
+	mux.HandleFunc("/api/stats/timeline", s.withAuth(s.handleStatsTimeline))
+	mux.HandleFunc("/api/stats/build-duration", s.withAuth(s.handleStatsBuildDuration))
+	mux.HandleFunc("/api/output-meta", s.withAuth(s.handleOutputMeta))
+	mux.HandleFunc("/api/dashboard", s.withAuth(s.handleDashboard))
+	mux.HandleFunc("/api/notify-log", s.withAuth(s.handleJSONLinesLog(".notify_log", "log")))
 	mux.HandleFunc("/api/build", s.withAuth(s.handleBuild(false)))
 	mux.HandleFunc("/api/build/force", s.withAuth(s.handleBuild(true)))
 	mux.HandleFunc("/api/build/cancel", s.withAuth(s.handleCancel))
@@ -533,27 +541,35 @@ func (s *APIServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
+	resp, ok := s.statusPayload(w)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (s *APIServer) statusPayload(w http.ResponseWriter) (map[string]any, bool) {
 	state, err := readBuildState(filepath.Join(s.cfg.StateDir, ".build_state"))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "State file is corrupted")
-		return
+		return nil, false
 	}
 	circuit, err := readCircuitState(filepath.Join(s.cfg.StateDir, ".build_circuit_state"))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "State file is corrupted")
-		return
+		return nil, false
 	}
 	statusPath := filepath.Join(s.cfg.StateDir, ".build_status.json")
 	if st, ok, err := readBuildStatus(statusPath); err != nil {
 		writeError(w, http.StatusInternalServerError, "State file is corrupted")
-		return
+		return nil, false
 	} else if ok {
 		running := st.Running || state.Running || lockExists(filepath.Join(s.cfg.StateDir, ".build_lock"))
 		lastSHA := st.LastBlobSHA
 		if lastSHA == nil {
 			lastSHA = st.LastCommitSHA
 		}
-		writeJSON(w, http.StatusOK, map[string]any{
+		return map[string]any{
 			"last_sha":                lastSHA,
 			"last_build_at":           coalesceString(st.LastFinishedAt, st.LastStartedAt),
 			"last_build_status":       stringOr(st.LastTargetStatus, "none"),
@@ -564,8 +580,7 @@ func (s *APIServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 			"circuit_open":            st.CircuitOpen,
 			"output_url":              nil,
 			"running":                 running,
-		})
-		return
+		}, true
 	}
 	history := readHistory(filepath.Join(s.cfg.StateDir, ".build_history"))
 	var latest *apiHistoryRecord
@@ -592,7 +607,241 @@ func (s *APIServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 			resp["last_trigger"] = latest.Trigger
 		}
 	}
+	return resp, true
+}
+
+func (s *APIServer) handleSysinfo(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	meta, err := inspectOutput(s.outputDir())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	uptime := int64(s.cfg.Now().UTC().Sub(s.startedAt).Seconds())
+	if uptime < 0 {
+		uptime = 0
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"uptime_seconds":    uptime,
+		"state_dir":         s.cfg.StateDir,
+		"output_exists":     meta.Exists,
+		"output_size_bytes": meta.SizeBytes,
+		"output_mtime":      meta.MTime,
+	})
+}
+
+func (s *APIServer) handleStats(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	days, ok := parseBoundedInt(w, r, "days", 7, 1, 366)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, s.statsSummary(days))
+}
+
+func (s *APIServer) handleStatsTimeline(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	days, ok := parseBoundedInt(w, r, "days", 30, 1, 366)
+	if !ok {
+		return
+	}
+	records := s.historyWithinDays(days)
+	type bucket struct {
+		Date    string `json:"date"`
+		Success int    `json:"success"`
+		Failure int    `json:"failure"`
+		Total   int    `json:"total"`
+	}
+	byDate := map[string]*bucket{}
+	for _, record := range records {
+		at := historyRecordTime(record)
+		if at.IsZero() {
+			continue
+		}
+		date := at.Format("2006-01-02")
+		if byDate[date] == nil {
+			byDate[date] = &bucket{Date: date}
+		}
+		byDate[date].Total++
+		switch statusCategory(record.Status) {
+		case "success":
+			byDate[date].Success++
+		case "failure":
+			byDate[date].Failure++
+		}
+	}
+	keys := make([]string, 0, len(byDate))
+	for date := range byDate {
+		keys = append(keys, date)
+	}
+	sort.Strings(keys)
+	timeline := []bucket{}
+	for _, date := range keys {
+		timeline = append(timeline, *byDate[date])
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"days": days, "timeline": timeline})
+}
+
+func (s *APIServer) handleStatsBuildDuration(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	n, ok := parseBoundedInt(w, r, "n", 10, 1, 1000)
+	if !ok {
+		return
+	}
+	durations := []int64{}
+	recent := []map[string]any{}
+	for _, log := range s.readBuildLogsNewest() {
+		if log.DurationSeconds <= 0 {
+			continue
+		}
+		if len(durations) >= n {
+			break
+		}
+		durations = append(durations, log.DurationSeconds)
+		recent = append(recent, map[string]any{
+			"id":               log.ID,
+			"build_at":         firstNonEmpty(log.FinishedAt, log.StartedAt),
+			"duration_seconds": log.DurationSeconds,
+			"status":           log.TargetStatus,
+		})
+	}
+	var sum, min, max int64
+	for i, duration := range durations {
+		sum += duration
+		if i == 0 || duration < min {
+			min = duration
+		}
+		if duration > max {
+			max = duration
+		}
+	}
+	avg := 0.0
+	if len(durations) > 0 {
+		avg = float64(sum) / float64(len(durations))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"n": n, "count": len(durations), "avg_seconds": avg,
+		"min_seconds": min, "max_seconds": max, "recent": recent,
+	})
+}
+
+func (s *APIServer) handleOutputMeta(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	meta, err := inspectOutput(s.outputDir())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if !meta.Exists {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	logs := s.readBuildLogsNewest()
+	var latest *apiBuildLog
+	if len(logs) > 0 {
+		latest = &logs[0]
+	}
+	resp := map[string]any{
+		"size_bytes":        meta.SizeBytes,
+		"mtime":             meta.MTime,
+		"sha256":            meta.SHA256,
+		"heading_count":     nil,
+		"tables_count":      nil,
+		"code_blocks_count": nil,
+		"size_diff_bytes":   nil,
+		"size_warn":         false,
+		"build_warnings":    []string{},
+		"build_id":          "",
+		"commit_sha":        nil,
+		"build_at":          "",
+	}
+	if latest != nil {
+		resp["build_warnings"] = latest.Warnings
+		resp["build_id"] = latest.ID
+		resp["commit_sha"] = firstCommitSHA(latest.Commit)
+		resp["build_at"] = firstNonEmpty(latest.FinishedAt, latest.StartedAt)
+	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (s *APIServer) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	status, ok := s.statusPayload(w)
+	if !ok {
+		return
+	}
+	meta, err := inspectOutput(s.outputDir())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	uptime := int64(s.cfg.Now().UTC().Sub(s.startedAt).Seconds())
+	if uptime < 0 {
+		uptime = 0
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status": status,
+		"sysinfo": map[string]any{
+			"uptime_seconds":    uptime,
+			"output_exists":     meta.Exists,
+			"output_size_bytes": meta.SizeBytes,
+			"output_mtime":      meta.MTime,
+		},
+		"stats":    s.statsSummary(7),
+		"schedule": map[string]any{"enabled": false, "next_run_at": nil},
+		"alerts":   map[string]any{"notify_pending_count": status["notify_pending_count"], "circuit_open": status["circuit_open"]},
+	})
+}
+
+func (s *APIServer) statsSummary(days int) map[string]any {
+	records := s.historyWithinDays(days)
+	success := 0
+	failure := 0
+	for _, record := range records {
+		switch statusCategory(record.Status) {
+		case "success":
+			success++
+		case "failure":
+			failure++
+		}
+	}
+	latestStatus := "none"
+	if len(records) > 0 {
+		latestStatus = records[0].Status
+	}
+	return map[string]any{
+		"days": days, "total": len(records), "success": success,
+		"failure": failure, "latest_status": latestStatus,
+	}
+}
+
+func (s *APIServer) historyWithinDays(days int) []apiHistoryRecord {
+	records := readHistory(filepath.Join(s.cfg.StateDir, ".build_history"))
+	since := s.cfg.Now().UTC().AddDate(0, 0, -days)
+	out := []apiHistoryRecord{}
+	for _, record := range records {
+		at := historyRecordTime(record)
+		if at.IsZero() || !at.Before(since) {
+			out = append(out, record)
+		}
+	}
+	return out
+}
+
+func (s *APIServer) outputDir() string {
+	return filepath.Join(s.cfg.StateDir, "site")
 }
 
 func (s *APIServer) handleBuild(force bool) http.HandlerFunc {
@@ -1025,6 +1274,88 @@ func (s *APIServer) readBuildLogsNewest() []apiBuildLog {
 		return firstNonEmpty(logs[i].FinishedAt, logs[i].StartedAt, logs[i].ID) > firstNonEmpty(logs[j].FinishedAt, logs[j].StartedAt, logs[j].ID)
 	})
 	return logs
+}
+
+type outputInspection struct {
+	Exists    bool
+	SizeBytes int64
+	MTime     any
+	SHA256    string
+}
+
+func inspectOutput(root string) (outputInspection, error) {
+	info, err := os.Stat(root)
+	if errors.Is(err, os.ErrNotExist) {
+		return outputInspection{Exists: false, MTime: nil}, nil
+	}
+	if err != nil {
+		return outputInspection{}, err
+	}
+	files := []string{}
+	if !info.IsDir() {
+		files = append(files, root)
+	} else if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		files = append(files, path)
+		return nil
+	}); err != nil {
+		return outputInspection{}, err
+	}
+	sort.Strings(files)
+	var total int64
+	var latest time.Time
+	manifest := sha256.New()
+	for _, path := range files {
+		info, err := os.Stat(path)
+		if err != nil {
+			return outputInspection{}, err
+		}
+		total += info.Size()
+		if info.ModTime().After(latest) {
+			latest = info.ModTime()
+		}
+		rel := filepath.Base(path)
+		if info.IsDir() {
+			continue
+		}
+		if r, err := filepath.Rel(root, path); err == nil {
+			rel = filepath.ToSlash(r)
+		}
+		fileHash, err := fileSHA256(path)
+		if err != nil {
+			return outputInspection{}, err
+		}
+		_, _ = io.WriteString(manifest, rel)
+		_, _ = io.WriteString(manifest, "\n")
+		_, _ = io.WriteString(manifest, fileHash)
+		_, _ = io.WriteString(manifest, "\n")
+	}
+	var mtime any
+	if !latest.IsZero() {
+		mtime = latest.UTC().Format(apiTimeLayout)
+	}
+	return outputInspection{
+		Exists: true, SizeBytes: total, MTime: mtime,
+		SHA256: hex.EncodeToString(manifest.Sum(nil)),
+	}, nil
+}
+
+func fileSHA256(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func (s *APIServer) allLogLines() []string {
@@ -1542,6 +1873,30 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func historyRecordTime(record apiHistoryRecord) time.Time {
+	for _, value := range []string{record.FinishedAt, record.StartedAt, record.BuildAt, record.ID} {
+		if value == "" {
+			continue
+		}
+		if t, err := time.Parse(apiTimeLayout, value); err == nil {
+			return t.UTC()
+		}
+	}
+	return time.Time{}
+}
+
+func statusCategory(status string) string {
+	normalized := strings.ToLower(strings.TrimSpace(status))
+	switch {
+	case normalized == "success" || normalized == "succeeded" || normalized == "passed":
+		return "success"
+	case normalized == "failure" || normalized == "failed" || normalized == "error" || strings.Contains(normalized, "fail"):
+		return "failure"
+	default:
+		return "other"
+	}
 }
 
 func splitLines(value string) []string {

@@ -245,6 +245,102 @@ func TestAPIOperationConfigSessionsAndLogs(t *testing.T) {
 	}
 }
 
+func TestAPIReadOnlyAggregateEndpoints(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	siteDir := filepath.Join(state, "site")
+	if err := os.MkdirAll(siteDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(siteDir, "index.html"), []byte("<h1>Adlaire</h1>\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(state, ".build_logs"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestJSON(t, filepath.Join(state, ".build_logs", "b20260917010101.json"), apiBuildLog{
+		ID: "b20260917010101", StartedAt: "2026-09-17T01:01:01Z", FinishedAt: "2026-09-17T01:01:06Z",
+		TargetStatus: "success", Commit: map[string]any{"sha": "abc123"}, Warnings: []string{"[WARNING] slow"}, DurationSeconds: 5,
+	})
+	appendLine(t, filepath.Join(state, ".build_history"), `{"id":"b20260917010101","finished_at":"2026-09-17T01:01:06Z","status":"success","trigger":"manual","duration_seconds":5}`)
+	appendLine(t, filepath.Join(state, ".build_history"), `{"id":"b20260916010101","finished_at":"2026-09-16T01:01:06Z","status":"failure","trigger":"manual","duration_seconds":7}`)
+	appendLine(t, filepath.Join(state, ".notify_log"), `{"at":"2026-09-17T01:01:07Z","type":"build","result":"sent"}`)
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/sysinfo", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("sysinfo code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var sysinfo map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &sysinfo)
+	if sysinfo["output_exists"] != true || sysinfo["output_size_bytes"].(float64) == 0 {
+		t.Fatalf("unexpected sysinfo: %#v", sysinfo)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/stats?days=7", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("stats code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var stats map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &stats)
+	if stats["total"].(float64) != 2 || stats["success"].(float64) != 1 || stats["failure"].(float64) != 1 {
+		t.Fatalf("unexpected stats: %#v", stats)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/stats/timeline?days=7", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("timeline code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var timeline map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &timeline)
+	if len(timeline["timeline"].([]any)) != 2 {
+		t.Fatalf("unexpected timeline: %#v", timeline)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/stats/build-duration?n=1", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("duration code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var duration map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &duration)
+	if duration["count"].(float64) != 1 || duration["avg_seconds"].(float64) != 5 {
+		t.Fatalf("unexpected duration: %#v", duration)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/output-meta", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("output-meta code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var outputMeta map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &outputMeta)
+	if outputMeta["sha256"] == "" || outputMeta["build_id"] != "b20260917010101" || outputMeta["commit_sha"] != "abc123" {
+		t.Fatalf("unexpected output meta: %#v", outputMeta)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/dashboard", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("dashboard code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var dashboard map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &dashboard)
+	for _, key := range []string{"status", "sysinfo", "stats", "schedule", "alerts"} {
+		if dashboard[key] == nil {
+			t.Fatalf("missing dashboard key %q: %#v", key, dashboard)
+		}
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/notify-log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("notify-log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var notify map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &notify)
+	if notify["total"].(float64) != 1 || len(notify["log"].([]any)) != 1 {
+		t.Fatalf("unexpected notify log: %#v", notify)
+	}
+}
+
 func newAPIState(t *testing.T) string {
 	t.Helper()
 	state := t.TempDir()
