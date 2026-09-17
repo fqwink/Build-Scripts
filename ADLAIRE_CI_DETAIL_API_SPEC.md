@@ -18,8 +18,8 @@
 |------|------|
 | owner component | `api` |
 | collaborator component | `statefile`、`sdk`、`ui`、`security`、`archive`、`runner` |
-| 持つ内容 | HTTP 共通契約、endpoint、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 |
-| 持たない内容 | SDK 内部実装、UI DOM 詳細、runner の build 実行責務、admin 静的配信、security 主本文、fixture 詳細。 |
+| 持つ内容 | `api` owner が主本文として定義する HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 |
+| 持たない内容 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 
 ---
 
