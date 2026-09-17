@@ -2044,3 +2044,35 @@ stderr の warning / error は 1 行 1 件とし、形式を `[WARN] CODE file:l
 **§28 実装完了条件：**
 
 各機能は、該当 §28.x の入力、出力、処理順序、異常系、検証条件、`docs/DETAIL_INDEX.md` §0i.1、`docs/details/fixture.md` §28-F を満たすまで実装完了として扱わない。複数の §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。
+
+**§28 実装完了ゲート固定契約：**
+
+§28 機能を実装完了として報告するには、下表のゲートをすべて満たす。1 件でも未達がある場合は、実装途中、仕様不足、または検証不足として扱い、実装完了と報告してはならない。
+
+| ゲート | 合格条件 | 未完了扱い |
+|--------|----------|------------|
+| 対象節明示 | 実装 PR に対象 §28.x を列挙し、対象外 §28.x も列挙する。 | 対象外機能が不明、または複数機能の混入範囲が不明。 |
+| CLI / env | 対象 §28.x の CLI option、環境変数、既定値、拒否値を fixture で確認する。 | CLI のみ、env のみ、既定値のみなど片方だけの確認。 |
+| HTML / CSS / JS | 本節に定義された tag、attribute、class、data attribute、storage key、handler だけを出力する。 | 未定義 class、未定義 asset、未定義 handler、未定義 localStorage key の追加。 |
+| REPORT | 本節に定義された REPORT key、型、count 単位、既定値をすべて fixture で確認する。 | key 省略、型違い、件数算出根拠不明、warning count 不一致。 |
+| stderr | warning / error code、file、line、section、message の形式が固定契約と一致する。 | 独自 code、message 揺れ、secret / credential / raw HTML 混入。 |
+| strict / non-strict | warning 昇格対象は non-strict と strict の両方を fixture で確認する。 | 片方だけの実装、片方だけの fixture、strict 時の副作用残存。 |
+| 既存出力互換 | 対象機能無効時、または対象入力なし時に既存 HTML / CSS / JS / search index / REPORT が変わらない。 | 対象外の既存 fixture 差分、未使用 CSS / JS の出力。 |
+| security | HTML escape、attribute escape、URL validation、base 外 path、外部依存不使用を確認する。 | raw HTML、credential、CDN、外部 script、runtime network fetch の残存。 |
+| atomicity | 失敗時に既存出力、manifest、search index を部分更新しない。 | 失敗 fixture で file 更新、削除、manifest 上書きが残る。 |
+| fixture 完備 | `docs/details/fixture.md` §28-F の fixture catalog、manifest schema、expected 比較、最低確認項目を満たす。 | fixture 名不足、manifest key 不足、expected 不足、比較除外理由なし。 |
+
+**§28 実装完了報告禁止条件：**
+
+以下のいずれかに該当する場合は、コードが動作して見えても実装完了として報告してはならない。
+
+| 条件 | 理由 |
+|------|------|
+| 対象 §28.x にない CLI option、Markdown 記法、CSS class、JS 挙動を追加した。 | 先取り実装であり、仕様範囲外。 |
+| `docs/details/fixture.md` §28-F にない fixture 名または fixture 構成で検証した。 | fixture 正本から外れている。 |
+| strict / non-strict の片方だけを実装した。 | 異常系の固定挙動が未完成。 |
+| REPORT key が仕様表と一致しない。 | runner / API / PR 証跡が同じ結果を読めない。 |
+| HTML / CSS / JS の expected 差分を目視または snapshot だけで合格扱いした。 | 再現性ある合否判定ではない。 |
+| 外部 library、CDN、runtime network fetch、npm package、Python 実装を追加した。 | §28 共通固定契約違反。 |
+| 失敗時に既存出力または manifest が更新された。 | atomicity 違反。 |
+| PR 本文に対象機能、fixture、REPORT、strict / non-strict、既存互換、対象外機能が列挙されていない。 | 実装証跡不足。 |

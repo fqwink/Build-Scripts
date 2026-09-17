@@ -729,3 +729,33 @@ stderr と `[REPORT]` は、同じ入力から常に同じ順序で出力する�
 **§28 PR 証跡固定契約：**
 
 実装 PR 本文には、対象 §28.x、追加 fixture 名、変更した HTML / CSS / JS / REPORT key、strict / non-strict 結果、外部依存なし確認、既存出力互換確認、未実装の §28 機能を列挙する。対象外の §28 機能を先取り実装した場合、または `docs/details/builder.md` §28 に存在しない Markdown 記法、CLI option、CSS class、JS 挙動を追加した場合は未完了として扱う。
+
+**§28 PR 受け入れゲート固定契約：**
+
+§28 実装 PR は、下表を PR 本文または検証ログで確認できる場合だけ受け入れ可能とする。確認できない項目は、実装漏れではなく証跡不足として未完了扱いにする。
+
+| ゲート | PR 証跡 | 不足時の扱い |
+|--------|---------|--------------|
+| 対象範囲 | 対象 §28.x と対象外 §28.x の一覧。 | 先取り実装または範囲不明として未完了。 |
+| fixture catalog | 追加 / 更新した fixture 名の一覧と §28 fixture catalog との対応。 | fixture 不足として未完了。 |
+| manifest schema | 各 fixture の `manifest.json` が必須 key を満たす確認。 | fixture schema 不足として未完了。 |
+| expected files | HTML、CSS、JS、search index、stdout、stderr、effects、security の該当 expected 更新。 | expected 不足として未完了。 |
+| strict / non-strict | strict と non-strict の終了コード、stdout、stderr、effects の差分。 | 異常系未固定として未完了。 |
+| REPORT | 追加 / 更新した REPORT key、型、count 単位、既定値。 | runner / API 連携不能として未完了。 |
+| compatibility | 対象機能無効時または対象入力なし時の既存出力互換確認。 | 既存出力破壊リスクとして未完了。 |
+| security | external call 0 件、CDN / external library 不使用、secret / credential / raw HTML 不在。 | security 不足として未完了。 |
+| atomicity | failure fixture で既存出力、manifest、search index が維持される確認。 | 部分更新リスクとして未完了。 |
+| not run | 未実施確認がある場合の理由と影響範囲。 | 検証不足として未完了。 |
+
+**§28 fixture 不足時の固定扱い：**
+
+§28 実装中に fixture 不足を発見した場合、実装判断で対象 fixture を省略してはならない。fixture が不足している機能は、実装済みではなく `仕様化済み・未実装` のまま扱う。
+
+| 不足 | 扱い |
+|------|------|
+| fixture catalog の必須 fixture がない。 | 実装未完了。 |
+| strict / non-strict の片方がない。 | 異常系未完了。 |
+| expected/security.json が必要なのにない。 | security 検証未完了。 |
+| expected/effects.json に既存出力維持がない。 | atomicity 検証未完了。 |
+| REPORT key の型または件数が expected にない。 | REPORT 検証未完了。 |
+| 比較除外が `not_applicable` に理由付きで記載されていない。 | fixture schema 不備。 |
