@@ -535,6 +535,8 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 標準配置への移行完了前は、`components/builder.go` の現行実装実体を `build_spec.go`、`components/runner.go` の現行実装実体を `runner.go` として扱う。詳細仕様内で `components/builder.go` または `components/runner.go` から生成すると記載するバイナリは、移行完了前に限り、それぞれ `build_spec.go` または `runner.go` から生成する同等バイナリとして扱う。
 
+本節の tree は標準配置の最終形を示す。現時点で `将来計画` または `仕様化済み・未実装` の path は、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来計画ファイル、空ディレクトリ、placeholder を作成してはならない。
+
 ```text
 .
 ├── main.go
@@ -593,6 +595,19 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | `docs/examples/` | `-` | 利用例、設定例、サンプル構成を配置する。 |
 
 `main.go` は 1 ファイルとし、実装詳細を含めない。`components/` 配下は 1 コンポーネント = 1 Go ファイルとし、各ファイルは上表の責務を実装する。
+
+標準配置への移行完了条件は以下に固定する。
+
+| 対象 | 移行完了条件 |
+|------|--------------|
+| `main.go` | repository root に 1 ファイルだけ存在し、サブコマンド判定、引数受け取り、owner component 呼び出しだけを持つ。Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive、commitstatus、MCP の実装詳細を含まない。 |
+| `components/*.go` | 実装対象 owner component ごとに 1 Go ファイルだけ存在する。`builder` は `components/builder.go`、`runner` は `components/runner.go`、`api` は `components/api.go`、`admin` は `components/admin.go`、`statefile` は `components/statefile.go`、`archive` は `components/archive.go`、`commitstatus` は `components/commitstatus.go` とする。 |
+| 標準移行前ファイル | `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は、対応する標準配置へ移動済みであり、同じ実装本文または同じ fixture が旧配置に残っていない。 |
+| testdata | 実装済みまたは仕様化済み・未実装の owner component ごとに `testdata/<component>/` を使用する。`testdata/mcp/` は MCP 専用詳細仕様が新設されるまで作成しない。 |
+| admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ `ui` と `sdk` の owner 詳細仕様に従う。`admin/style.css` と `admin/app.js` は、`ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
+| 将来計画 | `components/mcp.go` と MCP 用 fixture は、MCP 専用詳細仕様が新設され、`ADLAIRE_CI_SPEC.md` で `仕様化済み・未実装` へ昇格するまで作成しない。 |
+
+標準配置へ移行する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、`DOCUMENT_INDEX.md` の Specified Components、`ADLAIRE_CI_SPEC.md` の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
 
 ---
 

@@ -63,6 +63,8 @@
 
 下表は、現行リポジトリに存在する実装ファイルと、標準配置で仕様化済みの未実装ファイルを示す。`components/` 標準配置への移行前は、現行ファイルを実装実体として扱う。`components/builder.go` と `components/runner.go` は標準配置名であり、現行実装実体はそれぞれ `build_spec.go` と `runner.go` である。
 
+標準配置図に含まれる未実装 path は、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来計画ファイル、空ディレクトリ、placeholder を作成しない。
+
 | パス | component | 状態 | 役割 |
 |------|-----------|------|------|
 | `build_spec.go` | `builder` | 実装済み | Go 版静的 Web サイトビルドスクリプト。`adlaire-ci-build` バイナリとして実行する。標準配置名 `components/builder.go` の現行実装実体。 |
@@ -104,3 +106,5 @@ Go 版実装ファイルの挙動が `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_S
 現行配置では、`build_spec.go` は標準配置名 `components/builder.go` の現行実装実体として Phase 1 実装済みであり、`runner.go` は標準配置名 `components/runner.go` の現行実装実体として Phase 2 完了判定パス実装済みである。Go toolchain による `gofmt` と `go test` の検証を完了している。
 
 Go 版コンポーネントの実装状態は、`ADLAIRE_CI_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` は入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約として扱い、実装詳細本文と検証条件は owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を参照する。
+
+標準配置への移行完了後は、`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱わない。標準配置への移行完了条件は `ADLAIRE_CI_DETAIL_SPEC.md` §0j を正とする。
