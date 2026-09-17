@@ -658,30 +658,8 @@ Phase 別受け入れ条件のいずれかが未実行、失敗、または環�
 | DOM assertion | UI の DOM id、panel、表示文言、disabled / loading / success / error 条件が変更された場合のみ更新する。 | SDK method 対応表と DOM assertion が一致すること。 |
 | error expected | HTTP status、exit code、`AdlaireCIError.code`、stderr prefix が変更された場合のみ更新する。 | 正常系 fixture と異常系 fixture の両方で期待値が固定されていること。 |
 
-Phase 完了判定テンプレートは以下とする。実装 PR 本文では、対象 Phase ごとに本テンプレートの項目を埋める。各項目は空欄のまま提出してはならない。対象外がある場合は `対象外: <理由>` と記載し、未定義機能、将来計画、別 Phase の項目を実装対象として扱わない。
+Phase 完了判定の PR 証跡テンプレート、必須記載項目、不足時の扱いは `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §0g.8-F を正とする。本節は setup / release / Phase 判定で必要な実行条件、未実行検証の代替条件、fixture 期待値更新条件だけを定義し、PR 証跡項目を重複定義しない。
 
-```text
-## Phase 完了判定
-
-- 対象 Phase: Phase 番号と対象節を記載する。
-- owner component: 主本文として実装した component 名を 1 件記載する。
-- collaborator component: 参照した component 名を列挙する。存在しない場合は `なし` と記載する。
-- 実装対象ファイル: 作成、編集、削除、リネームした実装ファイルと test ファイルを列挙する。
-- 追加 fixture / testdata: 追加または更新した fixture path と expected path を列挙する。
-- 固定契約: 仕様本文、schema、endpoint、SDK method、DOM id、状態ファイル、error body、終了コードのうち確定した契約を列挙する。
-- 実装対象外: 同一 Phase 内で今回実装しない節、後続 Phase、将来計画、未定義 endpoint / UI / 状態ファイルを列挙する。
-- 後続 Phase への影響: 後続 Phase が利用可能な contract と、利用禁止の未固定 contract を列挙する。
-
-| 対象 | コマンド / 確認 | 期待結果 | 実結果 | 判定 |
-|------|------------------|----------|--------|------|
-| 仕様整合 | 対象 owner component の詳細仕様節と collaborator 詳細仕様節を確認する。 | 実装対象、対象外、fixture、検証条件が一致する。 | 確認した節、差分有無、不一致がある場合の解消 commit を記載する。 | PASS / FAIL / 未実行 |
-| fixture | 対象 Phase の fixture / expected / fake transcript を実行または確認する。 | 必須 fixture が全件 PASS。 | 実行 fixture、PASS 件数、FAIL 件数、未実行件数を記載する。 | PASS / FAIL / 未実行 |
-| 構文 / 実行 | 対象言語の構文確認、単体 test、生成物確認を実行する。 | 対象 Phase の完了条件を満たす。 | 実行 command、終了コード、主要出力、未実行理由を記載する。 | PASS / FAIL / 未実行 |
-| 対象外確認 | 未定義 endpoint / UI / 状態ファイル、将来計画、別 Phase の差分を確認する。 | 対象外項目を追加していない。 | 確認した diff / search 条件と対象外項目の有無を記載する。 | PASS / FAIL / 未実行 |
-```
-
-`判定` が `FAIL` または `未実行` の行を含む場合、その Phase は完了扱いにしてはならない。環境制約により確認できない項目がある場合も `未実行` とし、完了扱いにするには代替検証を仕様化してから再実行する。
-
-受け入れ結果は、実装 PR 本文に `対象 / コマンド / 期待結果 / 実結果 / 判定` の形式で記録する。失敗、未実行、環境都合で省略した項目がある場合、そのコンポーネントを完了扱いにしてはならない。
+受け入れ結果は、`ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §0g.8-F の形式で実装 PR 本文または検証ログに記録する。失敗、未実行、環境都合で省略した項目がある場合、そのコンポーネントを完了扱いにしてはならない。
 
 ---

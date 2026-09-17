@@ -30,7 +30,7 @@
 
 `ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約を持つ。各 component の入出力、処理順序、状態、異常系、検証条件の本文は下表の owner component 別詳細仕様ファイルを正とする。
 
-fixture、fake、testdata、expected / effects、PR 証跡、実装 PR 完了証跡は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は完了判定の入口であり、fixture 名、fake 動作、PR 証跡項目を重複定義しない。
+fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件、実装 PR 完了証跡は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は完了判定の入口であり、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 は setup / release / Phase 判定の実行条件である。両ファイルは fixture 名、fake 動作、PR 証跡項目、差し戻し条件を重複定義しない。
 
 | ファイル | 状態 | 役割 |
 |----------|------|------|
