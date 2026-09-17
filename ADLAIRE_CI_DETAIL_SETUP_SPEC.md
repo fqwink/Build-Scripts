@@ -16,8 +16,8 @@
 |------|------|
 | owner component | `setup` |
 | collaborator component | `runner`、`api`、`statefile`、`admin` |
-| 持つ内容 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
-| 持たない内容 | runner / api / sdk / ui / admin の個別機能本文、状態 schema の暗黙変更、外部依存追加。 |
+| 持つ内容 | `setup` owner が主本文として定義するバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
+| 持たない内容 | runner / api / sdk / ui / admin の個別機能本文、状態 schema、API endpoint、SDK method、UI DOM、fixture / PR 証跡正本、外部依存追加。 |
 
 ---
 
