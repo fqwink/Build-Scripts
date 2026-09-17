@@ -21,9 +21,9 @@
 
 | ファイル | 役割 |
 |---------|------|
-| `README.md` | 初見向け入口。概要、読む順番、主要ファイル、現行実装状態の要約を示す。 |
-| `docs/SPEC.md` | Adlaire CI の方針、ポリシー、実装状態、正本関係を定めるマスター仕様書正本。 |
-| `docs/DETAIL_INDEX.md` | `docs/SPEC.md` の Part 3 詳細仕様の入口。索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約を持つ。 |
+| `README.md` | 初見向け入口。概要、読む順番、主要ファイルを示す。 |
+| `docs/SPEC.md` | 方針、ポリシー、実装状態、実装可否、ロードマップを示す。 |
+| `docs/DETAIL_INDEX.md` | 詳細仕様の入口、読み順、共通固定値、対応表、リポジトリ内ソース配置、横断補足契約を示す。 |
 | `docs/details/builder.md` | `builder` owner component の詳細仕様。 |
 | `docs/details/runner.md` | `runner` owner component の詳細仕様。 |
 | `docs/details/api.md` | `api` owner component の詳細仕様。 |
@@ -38,20 +38,7 @@
 | `docs/details/fixture.md` | `fixture` owner component の詳細仕様。 |
 | `docs/DESIGN.md` | 生成静的 Web サイトのデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
-| `docs/DOCUMENT_INDEX.md` | 本索引。リポジトリ内の文書・実装ファイルの役割と正本関係を示す。仕様正本ではない。 |
-
-## Document Classes
-
-| 分類 | 対象 | 役割 |
-|------|------|------|
-| ルールブック | `AGENTS.md` | 作業ルール、承認、Git 運用、文書整合の最上位ルール。 |
-| 入口 | `README.md` | 初見向け概要、読む順番、主要ファイル。 |
-| マスター仕様 | `docs/SPEC.md` | 方針、ポリシー、実装状態、実装可否、ロードマップ、正本関係。 |
-| 詳細仕様入口 | `docs/DETAIL_INDEX.md` | 詳細仕様の読み順、索引、共通固定値、対応表、ソース配置、横断補足契約。 |
-| 詳細仕様本文 | `docs/details/*.md` | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
-| 補助文書 | `docs/DESIGN.md` | 生成静的 Web サイトのデザイン補助。 |
-| 索引 | `docs/DOCUMENT_INDEX.md` | 文書・実装ファイルの役割と所在。仕様本文を定義しない。 |
-| 実装 | `main.go`、`components/*.go`、`testdata/<component>/` | 仕様に基づく Go 実装、テスト、fixture。 |
+| `docs/DOCUMENT_INDEX.md` | 本索引。文書・実装ファイルの役割と所在を示す。仕様本文を定義しない。 |
 
 ## Detail Spec Management
 
@@ -110,6 +97,7 @@
 | 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の `docs/details/*.md` |
 | 生成静的 Web サイトのデザイン補助 | `docs/DESIGN.md` |
 | 文書・実装ファイルの参照先と役割 | `docs/DOCUMENT_INDEX.md` |
+| 実装ファイル、テスト、fixture の所在 | `docs/DOCUMENT_INDEX.md` の Specified Components |
 
 `docs/DOCUMENT_INDEX.md` は索引であり、仕様・デザイン・実装判断の正本ではない。仕様を変更する場合は、先に該当する正本仕様書を更新し、その内容に基づいて実装ファイルを更新する。
 

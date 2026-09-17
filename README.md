@@ -21,8 +21,8 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 - `docs/SPEC.md`: Adlaire CI のマスター仕様書。
 - `docs/DETAIL_INDEX.md`: Adlaire CI の Part 3 詳細仕様の入口。読み順、共通固定値、対応表、リポジトリ内ソース配置、横断補足契約を持つ。
 - `docs/details/*.md`: owner component 別の入出力、状態、処理順序、異常系、検証条件の詳細仕様本文。
+- `docs/DOCUMENT_INDEX.md`: 文書・実装ファイルの役割と所在を示す索引。
 - `docs/DESIGN.md`: 生成静的 Web サイトのデザイン仕様を整理する補助文書。
-- `docs/DOCUMENT_INDEX.md`: 文書・実装ファイルの役割を整理する索引。
 - `AGENTS.md`: 本リポジトリにおけるエージェント作業ルール。
 
 ## 実装ファイル
