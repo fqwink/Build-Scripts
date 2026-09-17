@@ -6,6 +6,8 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
+本ファイルは詳細仕様本文を集約する場所ではない。個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、fixture assertion、setup 手順を追記する場合は、該当する owner component 別詳細仕様ファイルを更新し、本ファイルは索引または参照先だけを更新する。
+
 ---
 
 # Part 3 — 仕様
@@ -16,6 +18,8 @@
 ## 詳細仕様の読み方
 
 本ファイルは、実装者が実装時に最初に参照する詳細仕様入口だけを扱う。方針、ポリシー、成熟度定義、ロードマップ状態、実装可否、PR 分割判断は `ADLAIRE_CI_SPEC.md` を正とし、本ファイルで再定義しない。
+
+詳細仕様を読む順番は、`README.md` と `docs/DOCUMENT_INDEX.md` の Reading Order と同じである。本ファイルから読み始めた場合でも、先に `AGENTS.md`、`docs/DOCUMENT_INDEX.md`、`ADLAIRE_CI_SPEC.md` を確認済みでなければならない。
 
 実装者は、対象機能ごとに以下の順で読む。
 
@@ -564,12 +568,13 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 │   └── mcp/
 │
 ├── docs/
+│   ├── ADLAIRE_CI_SPEC.md
+│   ├── ADLAIRE_CI_DETAIL_SPEC.md
+│   ├── ADLAIRE_CI_DETAIL_*_SPEC.md
+│   ├── DOCUMENT_INDEX.md
+│   ├── DESIGN.md
 │   └── examples/
 │
-├── ADLAIRE_CI_SPEC.md
-├── ADLAIRE_CI_DETAIL_SPEC.md
-├── DOCUMENT_INDEX.md
-├── DESIGN.md
 ├── README.md
 ├── AGENTS.md
 └── go.mod

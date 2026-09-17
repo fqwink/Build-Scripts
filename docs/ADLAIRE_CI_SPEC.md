@@ -16,13 +16,15 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 
 | 文書 | 正本範囲 | 記載する内容 | 記載しない内容 |
 |------|----------|--------------|----------------|
-| `ADLAIRE_CI_SPEC.md` | 方針、ポリシー、実装状態、ロードマップ、リリース判断 | 目的、設計方針、禁止事項、成熟度、実装可否、仕様昇格手順 | 関数単位の処理、HTTP response schema、状態ファイル schema、具体的な実行手順 |
-| `ADLAIRE_CI_DETAIL_SPEC.md` | 実装詳細の入口 | 詳細仕様の読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約 | 各 component の詳細な処理本文、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
-| `ADLAIRE_CI_DETAIL_*_SPEC.md` | owner component 別の実装詳細 | CLI、API、SDK、UI、状態ファイル、処理順序、異常系、セットアップ、受け入れ条件の本文 | 方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
-| `DOCUMENT_INDEX.md` | 文書・実装ファイル索引 | ファイルの役割、正本関係、実装ファイルの所在 | 仕様本文、詳細仕様、実装状態の最終判断 |
-| `DESIGN.md` | 生成静的 Web サイトのデザイン補助 | 見た目、レイアウト、デザイントークン参照 | CI、API、運用、実装可否の判断 |
+| `docs/ADLAIRE_CI_SPEC.md` | 方針、ポリシー、実装状態、ロードマップ、リリース判断 | 目的、設計方針、禁止事項、成熟度、実装可否、仕様昇格手順 | 関数単位の処理、HTTP response schema、状態ファイル schema、具体的な実行手順 |
+| `docs/ADLAIRE_CI_DETAIL_SPEC.md` | 実装詳細の入口 | 詳細仕様の読み方、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約 | 各 component の詳細な処理本文、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
+| `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` | owner component 別の実装詳細 | CLI、API、SDK、UI、状態ファイル、処理順序、異常系、セットアップ、受け入れ条件の本文 | 方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断 |
+| `docs/DOCUMENT_INDEX.md` | 文書・実装ファイル索引 | ファイルの役割、正本関係、実装ファイルの所在 | 仕様本文、詳細仕様、実装状態の最終判断 |
+| `docs/DESIGN.md` | 生成静的 Web サイトのデザイン補助 | 見た目、レイアウト、デザイントークン参照 | CI、API、運用、実装可否の判断 |
 
 同じ内容を複数文書に重複定義してはならない。方針や実装可否は本ファイルを正とし、入口、読み順、共通固定値、対応表、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md`、入出力・状態・処理・検証の本文は owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする。
+
+文書を整理する場合も、上表の正本範囲を越えてはならない。読み順、索引、参照先の整理は許可するが、詳細仕様本文、方針、実装状態、ロードマップ状態を別文書へ重複定義しない。
 
 ## 実装状態
 
@@ -199,12 +201,13 @@ Adlaire CI のリポジトリ内ソース構成は、責務ベースで整理す
 │   └── mcp/
 │
 ├── docs/
+│   ├── ADLAIRE_CI_SPEC.md
+│   ├── ADLAIRE_CI_DETAIL_SPEC.md
+│   ├── ADLAIRE_CI_DETAIL_*_SPEC.md
+│   ├── DOCUMENT_INDEX.md
+│   ├── DESIGN.md
 │   └── examples/
 │
-├── ADLAIRE_CI_SPEC.md
-├── ADLAIRE_CI_DETAIL_SPEC.md
-├── DOCUMENT_INDEX.md
-├── DESIGN.md
 ├── README.md
 ├── AGENTS.md
 └── go.mod
