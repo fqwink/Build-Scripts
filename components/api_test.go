@@ -412,6 +412,129 @@ func TestAPIScheduleEndpoints(t *testing.T) {
 	}
 }
 
+func TestAPINotifyEndpoints(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	requests := 0
+	signatures := []string{}
+	events := []string{}
+	webhook := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		signatures = append(signatures, r.Header.Get("X-Adlaire-Signature"))
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("webhook body decode failed: %v", err)
+		}
+		if event, _ := body["event"].(string); event != "" {
+			events = append(events, event)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer webhook.Close()
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/notify-config", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("default notify config code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var cfg apiNotifyConfig
+	decodeTestJSON(t, resp.Body.Bytes(), &cfg)
+	if len(cfg.Webhooks) != 0 || len(cfg.Channels) != 0 || cfg.Summary.Interval != "weekly" || cfg.Summary.Hour != 9 || cfg.Summary.DayOfWeek != 1 {
+		t.Fatalf("unexpected default notify config: %#v", cfg)
+	}
+
+	secret := "notify-secret"
+	notifyCfg := apiNotifyConfig{
+		Webhooks: []apiNotifyWebhook{{
+			URL:                  webhook.URL,
+			Label:                "main",
+			Enabled:              true,
+			On:                   []string{"failure", "weekly_summary"},
+			RetryCount:           2,
+			RetryIntervalSeconds: 30,
+			Secret:               &secret,
+		}},
+		On:      []string{"failure", "weekly_summary"},
+		Summary: apiNotifySummary{Enabled: true, Interval: "weekly", Hour: 9, DayOfWeek: 1},
+		Email:   apiNotifyEmail{Enabled: false, To: []string{}, On: []string{}},
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/notify-config", token, notifyCfg)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("set notify config code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	readTestJSON(t, filepath.Join(state, ".notify_config"), &cfg)
+	if len(cfg.Webhooks) != 1 || cfg.Webhooks[0].Secret == nil || *cfg.Webhooks[0].Secret != secret {
+		t.Fatalf("notify config was not saved with secret: %#v", cfg)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/notify-config", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("masked notify config code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	decodeTestJSON(t, resp.Body.Bytes(), &cfg)
+	if cfg.Webhooks[0].Secret == nil || *cfg.Webhooks[0].Secret != "***" {
+		t.Fatalf("secret must be masked: %#v", cfg.Webhooks[0].Secret)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/notify-test", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("notify test code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	if requests != 1 || events[0] != "test" || signatures[0] == "" {
+		t.Fatalf("test webhook not delivered correctly: requests=%d events=%#v signatures=%#v", requests, events, signatures)
+	}
+
+	appendLine(t, filepath.Join(state, ".build_history"), `{"id":"b20260917010001","finished_at":"2026-09-17T01:00:06Z","status":"success","trigger":"manual","duration_seconds":5}`)
+	appendLine(t, filepath.Join(state, ".build_history"), `{"id":"b20260916010101","finished_at":"2026-09-16T01:01:06Z","status":"failure","trigger":"manual","duration_seconds":7}`)
+	appendLine(t, filepath.Join(state, ".build_history"), `{"id":"b20260901010101","finished_at":"2026-09-01T01:01:06Z","status":"failure","trigger":"manual","duration_seconds":9}`)
+	resp = apiRequest(t, server, http.MethodPost, "/api/notify/weekly-summary", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("weekly summary code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var summary map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &summary)
+	if summary["success_count"].(float64) != 1 || summary["failure_count"].(float64) != 1 || summary["success_rate"].(float64) != 50 {
+		t.Fatalf("unexpected weekly summary: %#v", summary)
+	}
+	if requests != 2 || events[1] != "weekly_summary" {
+		t.Fatalf("weekly webhook not delivered: requests=%d events=%#v", requests, events)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/notify-log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("notify log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var notifyLog map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &notifyLog)
+	if notifyLog["total"].(float64) != 2 {
+		t.Fatalf("unexpected notify log: %#v", notifyLog)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/notify-config", token, map[string]any{
+		"webhooks": []map[string]any{{
+			"url":                    webhook.URL,
+			"on":                     []string{"failure"},
+			"retry_count":            1,
+			"retry_interval_seconds": 10,
+		}},
+		"summary": map[string]any{"interval": "weekly"},
+	})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("notify config omitted enabled code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	readTestJSON(t, filepath.Join(state, ".notify_config"), &cfg)
+	if len(cfg.Webhooks) != 1 || !cfg.Webhooks[0].Enabled {
+		t.Fatalf("omitted enabled must default true: %#v", cfg.Webhooks)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/notify-config", token, map[string]any{"webhooks": []map[string]any{{"url": "ftp://example.com", "enabled": true}}, "summary": map[string]any{"interval": "weekly"}})
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("invalid notify config must fail: code=%d body=%s", resp.Code, resp.Body.String())
+	}
+}
+
 func TestAPISessionPasswordAndStream(t *testing.T) {
 	state := newAPIState(t)
 	server := newTestAPI(t, state)
