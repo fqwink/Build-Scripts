@@ -22,7 +22,7 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 ## 実装ファイル
 
-標準ソース配置は `docs/DOCUMENT_INDEX.md` の Specified Components、実装状態と Phase は `docs/ROADMAP.md` を参照します。
+標準ディレクトリ構成は `docs/DOCUMENT_INDEX.md` の Specified Components、実装状態と Phase は `docs/ROADMAP.md` を参照します。
 
 ## リリース形式
 

@@ -71,13 +71,13 @@
 
 `docs/ROADMAP.md` は、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約を定めるロードマップ正本である。
 
-`docs/DETAIL_INDEX.md` は、`docs/SPEC.md` の Part 3 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様を持つ詳細仕様入口正本である。
+`docs/DETAIL_INDEX.md` は、詳細仕様入口責務として、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様を持つ詳細仕様入口正本である。
 
 owner component 別の `docs/details/*.md` は、各 component の詳細仕様本文に関する正本である。
 
-標準ソース配置は `main.go` と `components/*.go`、および `admin/` 配下の管理 UI ファイルとする。
+標準ディレクトリ構成上の実装配置は `main.go` と `components/*.go`、および `admin/` 配下の管理 UI ファイルとする。
 
-標準ソース配置への実装移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の管理 UI 静的ファイル、`testdata/<component>/` とする。
+標準ディレクトリ構成への実装移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の管理 UI 静的ファイル、`testdata/<component>/` とする。
 
 `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱ってはならない。
 
@@ -91,7 +91,7 @@ owner component 別の `docs/details/*.md` は、各 component の詳細仕様�
 
 仕様改訂では、既存仕様、`docs/DOCUMENT_INDEX.md`、実装ファイルとの整合性を確認する。
 
-文書整理では、`README.md`、`docs/DOCUMENT_INDEX.md`、`docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、owner component 別の `docs/details/*.md` の読み順と正本範囲を維持する。
+文書整理では、`README.md`、`docs/DOCUMENT_INDEX.md`、`docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、owner component 別の `docs/details/*.md` の読み順と正本範囲を崩してはならない。
 
 文書整理だけを目的とする作業では、機能仕様、実装状態、実装可否、ロードマップ状態を変更してはならない。状態変更が必要な場合は、変更対象、変更理由、影響範囲を別途提示し、承認を得る。
 
@@ -105,7 +105,7 @@ owner component 別の `docs/details/*.md` は、各 component の詳細仕様�
 
 未確定の内容を実装可能な詳細仕様として扱ってはならない。実装判断に必要な具体値、条件、処理が未確定の場合は、`docs/ROADMAP.md` の状態分類を確認し、`docs/DETAIL_INDEX.md` または owner component 別の `docs/details/*.md` へ推測で具体値を記載してはならない。
 
-仕様項目の成熟度と実装可否は、`docs/SPEC.md` Part 1 §4b および Part 2 §0a の仕様成熟度方針・仕様成熟度ポリシーに従って判定する。
+仕様項目の成熟度と実装可否は、`docs/SPEC.md` 方針責務 §4.5 の仕様成熟度方針、および `docs/SPEC.md` ポリシー責務 §0a の仕様成熟度ポリシーに従って判定する。
 
 作業開始時には、対象機能・対象コンポーネントについて `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、該当する owner component 別の `docs/details/*.md` の該当節と実ファイルの存在を確認する。
 
@@ -344,7 +344,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 ## 6. 文書整合ルール
 
-`docs/DOCUMENT_INDEX.md` は、リポジトリ内の文書・実装ファイルの役割を示す索引として維持する。
+`docs/DOCUMENT_INDEX.md` は、リポジトリ内の文書・実装ファイルの役割を示す索引として崩してはならない。
 
 ファイル名、正本関係、実装コンポーネントの追加・削除・リネームが発生した場合は、`docs/DOCUMENT_INDEX.md` の更新要否を確認する。
 
