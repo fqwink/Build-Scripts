@@ -97,6 +97,32 @@ func TestAPILogsHistoryAndCircuitReset(t *testing.T) {
 		t.Fatalf("unexpected history: %#v", history)
 	}
 
+	resp = apiRequest(t, server, http.MethodPost, "/api/history/b20260917010101/comment", token, map[string]string{"comment": "reviewed"})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("comment code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/history/b20260917010101/flag", token, map[string]bool{"flagged": true})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("flag code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/history/b20260917010101/tags", token, map[string][]string{"tags": []string{"release", "manual"}})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("tags code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var updated apiBuildLog
+	readTestJSON(t, filepath.Join(state, ".build_logs", "b20260917010101.json"), &updated)
+	if updated.Comment == nil || *updated.Comment != "reviewed" || !updated.Flagged || len(updated.Tags) != 2 {
+		t.Fatalf("history log was not updated: %#v", updated)
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/history?trigger=manual&tag=release&flagged=true", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("filtered history code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	decodeTestJSON(t, resp.Body.Bytes(), &history)
+	if history["total"].(float64) != 1 {
+		t.Fatalf("unexpected filtered history: %#v", history)
+	}
+
 	resp = apiRequest(t, server, http.MethodPost, "/api/circuit-breaker/reset", token, nil)
 	if resp.Code != http.StatusOK {
 		t.Fatalf("circuit code=%d body=%s", resp.Code, resp.Body.String())
@@ -242,6 +268,14 @@ func TestAPIOperationConfigSessionsAndLogs(t *testing.T) {
 	decodeTestJSON(t, resp.Body.Bytes(), &apiAccess)
 	if apiAccess["total"].(float64) == 0 {
 		t.Fatalf("api access log should contain requests: %#v", apiAccess)
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/api-access-log?method=GET&path=/api/config&status=200", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("filtered api access log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	decodeTestJSON(t, resp.Body.Bytes(), &apiAccess)
+	if apiAccess["total"].(float64) == 0 {
+		t.Fatalf("filtered api access log should contain config requests: %#v", apiAccess)
 	}
 }
 
