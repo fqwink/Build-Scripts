@@ -529,9 +529,7 @@ Part 3 詳細仕様セットは、`builder`、`runner`、`api`、`admin`、`sdk`
 
 Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
-本節は、移行後の標準配置を定義する。標準配置への実装移行が完了するまでは、現行リポジトリに `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` が残る場合がある。実装移行 PR では、本節の配置へそろえ、移行後に旧配置を残してはならない。
-
-標準配置への移行完了前は、`components/builder.go` の現行実装実体を `build_spec.go`、`components/runner.go` の現行実装実体を `runner.go` として扱う。詳細仕様内で `components/builder.go` または `components/runner.go` から生成すると記載するバイナリは、移行完了前に限り、それぞれ `build_spec.go` または `runner.go` から生成する同等バイナリとして扱う。
+本節は、移行後の標準配置を定義する。標準配置への実装移行は完了済みであり、旧配置の `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱わない。
 
 本節の tree は標準配置の最終形を示す。現時点で `将来計画` または `仕様化済み・未実装` の path は、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来計画ファイル、空ディレクトリ、placeholder を作成してはならない。
 
@@ -605,7 +603,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ `ui` と `sdk` の owner 詳細仕様に従う。`admin/style.css` と `admin/app.js` は、`ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
 | 将来計画 | `components/mcp.go` と MCP 用 fixture は、MCP 専用詳細仕様が新設され、`ADLAIRE_CI_SPEC.md` で `仕様化済み・未実装` へ昇格するまで作成しない。 |
 
-標準配置へ移行する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、`DOCUMENT_INDEX.md` の Specified Components、`ADLAIRE_CI_SPEC.md` の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
+標準配置を変更する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、`DOCUMENT_INDEX.md` の Specified Components、`ADLAIRE_CI_SPEC.md` の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
 
 ---
 

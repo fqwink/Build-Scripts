@@ -1,7 +1,7 @@
 # Adlaire-db-spec デザイン仕様
 
 **対象ファイル：** `Adlaire-db-spec.html`  
-**ビルドスクリプト：** `build_spec.go` から生成する `adlaire-ci-build`
+**ビルドスクリプト：** `components/builder.go` から生成する `adlaire-ci-build`
 **デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)  
 **最終更新：** 2026-09-14
 
@@ -184,6 +184,6 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 adlaire-ci-build --src <source.md> --out Adlaire-db-spec.html
 ```
 
-入出力パス、既定値、終了コード、レポート出力は `ADLAIRE_CI_DETAIL_SPEC.md` の `build_spec.go` 詳細仕様を正とする。
+入出力パス、既定値、終了コード、レポート出力は `ADLAIRE_CI_DETAIL_SPEC.md` および `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` の builder 詳細仕様を正とする。
 
-CSS トークンの変更は Go 版 `build_spec.go` の HTML テンプレート内 `:root { }` ブロックに反映して再ビルドする。
+CSS トークンの変更は Go 版 `components/builder.go` の HTML テンプレート内 `:root { }` ブロックに反映して再ビルドする。

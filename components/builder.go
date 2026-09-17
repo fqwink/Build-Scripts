@@ -1,4 +1,4 @@
-package main
+package components
 
 import (
 	"bytes"
@@ -113,14 +113,7 @@ type siteFile struct {
 	Data []byte
 }
 
-func main() {
-	if strings.Contains(filepath.Base(os.Args[0]), "adlaire-ci-runner") {
-		os.Exit(runRunner(os.Args[1:], os.Stdout, os.Stderr))
-	}
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
-}
-
-func run(args []string, stdout, stderr io.Writer) int {
+func RunBuild(args []string, stdout, stderr io.Writer) int {
 	cfg, handled, err := parseArgs(args, stdout)
 	if err != nil {
 		var ee exitError
@@ -364,7 +357,7 @@ func renderPages(baseDir string, inputs []PageInput, isSingle bool) ([]PageData,
 	var rep report
 	var warnings []string
 	for _, in := range inputs {
-		lines := splitLines(in.RawText)
+		lines := builderSplitLines(in.RawText)
 		headings, slugByLine, headingSkips := collectHeadings(lines)
 		ctx := &RenderContext{
 			FootnoteDefs:     collectFootnotes(lines),
@@ -413,7 +406,7 @@ func renderPages(baseDir string, inputs []PageInput, isSingle bool) ([]PageData,
 	return pages, rep, warnings, nil
 }
 
-func splitLines(text string) []string {
+func builderSplitLines(text string) []string {
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	text = strings.ReplaceAll(text, "\r", "\n")
 	return strings.Split(text, "\n")

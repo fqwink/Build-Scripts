@@ -1,4 +1,4 @@
-package main
+package components
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 
 func TestRunnerFixtureR1CLI(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	if code := runRunner([]string{"--help"}, &stdout, &stderr); code != 0 {
+	if code := RunRunner([]string{"--help"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("help exit=%d", code)
 	}
 	if strings.TrimSpace(stdout.String()) != "Usage: adlaire-ci-runner [--state-dir path] [--once] [--version] [--help]" || stderr.Len() != 0 {
@@ -25,7 +25,7 @@ func TestRunnerFixtureR1CLI(t *testing.T) {
 	}
 	stdout.Reset()
 	stderr.Reset()
-	if code := runRunner([]string{"--state-dir", "relative"}, &stdout, &stderr); code != 2 {
+	if code := RunRunner([]string{"--state-dir", "relative"}, &stdout, &stderr); code != 2 {
 		t.Fatalf("relative exit=%d stderr=%s", code, stderr.String())
 	}
 	if !strings.Contains(stderr.String(), "state directory must be absolute: relative") {
@@ -33,7 +33,7 @@ func TestRunnerFixtureR1CLI(t *testing.T) {
 	}
 	stdout.Reset()
 	stderr.Reset()
-	if code := runRunner([]string{"--unknown"}, &stdout, &stderr); code != 2 {
+	if code := RunRunner([]string{"--unknown"}, &stdout, &stderr); code != 2 {
 		t.Fatalf("unknown exit=%d", code)
 	}
 	if !strings.Contains(stderr.String(), "unknown option: --unknown") {
@@ -46,7 +46,7 @@ func TestRunnerFixtureR2NoChange(t *testing.T) {
 	server := fakeGitHub(t, "docs", "blob-1", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		code := runRunner([]string{"--state-dir", state}, &stdout, &stderr)
+		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
 		if code != 0 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
@@ -68,7 +68,7 @@ func TestRunnerFixtureR3BuildSuccessNoDeploy(t *testing.T) {
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		code := runRunner([]string{"--state-dir", state}, &stdout, &stderr)
+		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
 		if code != 0 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
@@ -105,7 +105,7 @@ func TestRunnerFixtureR4PipelineFailure(t *testing.T) {
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		code := runRunner([]string{"--state-dir", state}, &stdout, &stderr)
+		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
 		if code != 1 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
@@ -145,7 +145,7 @@ func TestRunnerHardeningRetriesGitHubAPI(t *testing.T) {
 	defer func() { runnerSleep = oldSleep }()
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
 		if hits != 2 {
@@ -161,7 +161,7 @@ func TestRunnerHardeningPrecheckFailure(t *testing.T) {
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
 		log := onlyBuildLog(t, state)
@@ -179,14 +179,14 @@ func TestRunnerHardeningNotifyPendingRetry(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer hook.Close()
-	writeJSON(t, filepath.Join(state, ".notify_pending"), []notifyPendingEntry{{
+	writeRunnerTestJSON(t, filepath.Join(state, ".notify_pending"), []notifyPendingEntry{{
 		Event: "success", URL: hook.URL, Payload: map[string]any{"ok": true},
 		QueuedAt: "2026-09-16T00:00:00Z", RetryCount: 1,
 	}})
 	server := fakeGitHub(t, "docs", "blob-1", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
 		if received != 1 {
@@ -202,11 +202,11 @@ func TestRunnerHardeningCircuitOpenSkipsPolling(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
 	now := "2026-09-16T00:00:00Z"
 	msg := "github api failed"
-	writeJSON(t, filepath.Join(state, ".build_circuit_state"), buildCircuitState{Open: true, ConsecutiveFailures: 3, OpenedAt: &now, LastFailureAt: &now, LastError: &msg})
+	writeRunnerTestJSON(t, filepath.Join(state, ".build_circuit_state"), buildCircuitState{Open: true, ConsecutiveFailures: 3, OpenedAt: &now, LastFailureAt: &now, LastError: &msg})
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
 		if _, err := os.Stat(filepath.Join(state, ".build_history")); !os.IsNotExist(err) {
@@ -228,18 +228,18 @@ func TestRunnerCompletionPendingTransferRetrySuccess(t *testing.T) {
 	if err := os.WriteFile(file, []byte("<html></html>"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	sha, err := fileSHA256(file)
+	sha, err := runnerFileSHA256(file)
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeJSON(t, filepath.Join(state, ".pending_transfers"), []pendingTransfer{{Out: out, Host: "host", User: "deploy", DestDir: "/var/www/html", RetryCount: 1}})
+	writeRunnerTestJSON(t, filepath.Join(state, ".pending_transfers"), []pendingTransfer{{Out: out, Host: "host", User: "deploy", DestDir: "/var/www/html", RetryCount: 1}})
 	fakeBin := t.TempDir()
 	writeExecutable(t, filepath.Join(fakeBin, "ssh"), "#!/bin/sh\nif [ \"$2\" = \"sha256sum\" ]; then printf '"+sha+"  file\\n'; exit 0; fi\ncat >/dev/null\nexit 0\n")
 	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	server := fakeGitHub(t, "docs", "blob-1", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
 		if strings.TrimSpace(readFile(t, filepath.Join(state, ".pending_transfers"))) != "[]" {
@@ -254,7 +254,7 @@ func TestRunnerCompletionDeployUploadsAndVerifies(t *testing.T) {
 	if err := os.WriteFile(file, []byte("<html></html>"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	sha, err := fileSHA256(file)
+	sha, err := runnerFileSHA256(file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,11 +281,11 @@ func TestRunnerCompletionCommitInfoAndNotification(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer hook.Close()
-	writeJSON(t, filepath.Join(state, ".notify_config"), notifyConfigFile{Webhooks: []notifyWebhook{{URL: hook.URL, Enabled: true, On: []string{"success"}}}})
+	writeRunnerTestJSON(t, filepath.Join(state, ".notify_config"), notifyConfigFile{Webhooks: []notifyWebhook{{URL: hook.URL, Enabled: true, On: []string{"success"}}}})
 	server := fakeGitHubWithCommit(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
 		log := onlyBuildLog(t, state)
@@ -302,7 +302,7 @@ func TestRunnerCompletionCooldownSkips(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
 	now := time.Date(2026, 9, 16, 1, 2, 3, 0, time.UTC)
 	nowText := now.Format(time.RFC3339)
-	writeJSON(t, filepath.Join(state, ".build_state"), buildState{Queued: []map[string]any{}, LastFinishedAt: &nowText})
+	writeRunnerTestJSON(t, filepath.Join(state, ".build_state"), buildState{Queued: []map[string]any{}, LastFinishedAt: &nowText})
 	oldNow := runnerNow
 	runnerNow = func() time.Time { return now.Add(10 * time.Second) }
 	defer func() { runnerNow = oldNow }()
@@ -314,7 +314,7 @@ func TestRunnerCompletionCooldownSkips(t *testing.T) {
 	defer server.Close()
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
 		if hits != 0 {
@@ -327,7 +327,7 @@ func TestRunnerCompletionForceIntervalBuildsSameSHA(t *testing.T) {
 	state := newRunnerState(t, "same-blob", nil)
 	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
 	old := time.Date(2026, 9, 15, 1, 0, 0, 0, time.UTC).Format(time.RFC3339)
-	writeJSON(t, filepath.Join(state, ".build_state"), buildState{Queued: []map[string]any{}, LastFinishedAt: &old})
+	writeRunnerTestJSON(t, filepath.Join(state, ".build_state"), buildState{Queued: []map[string]any{}, LastFinishedAt: &old})
 	server := fakeGitHub(t, "docs", "same-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		cfg := defaultRunnerConfig(state)
@@ -394,7 +394,7 @@ func TestRunnerFixtureR5DeployPending(t *testing.T) {
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		code := runRunner([]string{"--state-dir", state}, &stdout, &stderr)
+		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
 		if code != 1 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
@@ -420,7 +420,7 @@ func TestRunnerFixtureR6LockConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+	if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit=%d", code)
 	}
 	if _, err := os.Stat(filepath.Join(state, ".build_history")); !os.IsNotExist(err) {
@@ -443,7 +443,7 @@ func TestRunnerFixtureR7CorruptNotifyPending(t *testing.T) {
 	server := fakeGitHub(t, "docs", "blob-1", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		if code := runRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
 		if _, err := os.Stat(filepath.Join(state, ".notify_pending.corrupt.20260916010203.bak")); err != nil {
@@ -472,7 +472,7 @@ func newRunnerState(t *testing.T, sha string, deploy []DeployTarget) string {
 		Src: filepath.Join(state, "repo", "docs"), Out: filepath.Join(state, "dist", "site"),
 		DeployTargets: deploy,
 	}
-	writeJSON(t, filepath.Join(state, ".branch_config"), branchConfigFile{BranchTargets: []BranchTarget{target}})
+	writeRunnerTestJSON(t, filepath.Join(state, ".branch_config"), branchConfigFile{BranchTargets: []BranchTarget{target}})
 	return state
 }
 
@@ -554,7 +554,7 @@ func onlyBuildLog(t *testing.T, state string) buildLog {
 	return log
 }
 
-func writeJSON(t *testing.T, path string, v any) {
+func writeRunnerTestJSON(t *testing.T, path string, v any) {
 	t.Helper()
 	data, err := json.Marshal(v)
 	if err != nil {

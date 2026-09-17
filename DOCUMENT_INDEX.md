@@ -65,19 +65,20 @@ fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklis
 
 リポジトリ内ソース配置の標準構成は、`ADLAIRE_CI_SPEC.md` Part 1 §4.3 と `ADLAIRE_CI_DETAIL_SPEC.md` §0j を参照する。
 
-下表は、現行リポジトリに存在する実装ファイルと、標準配置で仕様化済みの未実装ファイルを示す。`components/` 標準配置への移行前は、現行ファイルを実装実体として扱う。`components/builder.go` と `components/runner.go` は標準配置名であり、現行実装実体はそれぞれ `build_spec.go` と `runner.go` である。
+下表は、現行リポジトリに存在する実装ファイルと、標準配置で仕様化済みの未実装ファイルを示す。標準ソース配置への移行は完了済みであり、`main.go`、`components/*.go`、`testdata/<component>/` を現行配置として扱う。
 
 標準配置図に含まれる未実装 path は、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来計画ファイル、空ディレクトリ、placeholder を作成しない。
 
 | パス | component | 状態 | 役割 |
 |------|-----------|------|------|
-| `build_spec.go` | `builder` | 実装済み | Go 版静的 Web サイトビルドスクリプト。`adlaire-ci-build` バイナリとして実行する。標準配置名 `components/builder.go` の現行実装実体。 |
-| `build_spec_test.go` | `builder` | 実装済み | `build_spec.go` の Phase 1 fixture テスト。標準移行後のテスト配置は実装 PR で決定する。 |
+| `main.go` | `-` | 実装済み | 起動入口。実行ファイル名に応じて `builder` または `runner` component を呼び出す。 |
+| `components/builder.go` | `builder` | 実装済み | Go 版静的 Web サイトビルドスクリプト。`adlaire-ci-build` バイナリとして実行する。 |
+| `components/builder_test.go` | `builder` | 実装済み | `components/builder.go` の Phase 1 fixture テスト。 |
 | `go.mod` | `-` | 実装済み | Go module 定義。外部 module は追加しない。 |
-| `testdata/build_spec/` | `builder` | 実装済み | Phase 1 の受け入れ fixture 入力。標準移行後の配置は `testdata/builder/`。 |
-| `runner.go` | `runner` | 実装済み | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。Phase 2 完了判定パスを対象とする。標準配置名 `components/runner.go` の現行実装実体。 |
-| `runner_test.go` | `runner` | 実装済み | `runner.go` の Phase 2 fixture、hardening、完了判定パステスト。標準移行後のテスト配置は実装 PR で決定する。 |
-| `components/api.go` | `api` | 仕様化済み・未実装 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
+| `testdata/builder/` | `builder` | 実装済み | Phase 1 の受け入れ fixture 入力。 |
+| `components/runner.go` | `runner` | 実装済み | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。Phase 2 完了判定パスを対象とする。 |
+| `components/runner_test.go` | `runner` | 実装済み | `components/runner.go` の Phase 2 fixture、hardening、完了判定パステスト。 |
+| `components/api.go` | `api` | 実装中・検証未完了 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。実装済み判定は `ADLAIRE_CI_SPEC.md` の実装状態表を正とする。 |
 | `components/admin.go` | `admin` | 仕様化済み・未実装 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を提供する。 |
 | `admin/adlaire-ci-sdk.js` | `sdk` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
 | `admin/index.html` | `ui` | 仕様化済み・未実装 | 標準管理ツール UI。SDK 経由で API と通信する。 |
@@ -102,6 +103,6 @@ fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklis
 
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
-現行配置では、`build_spec.go` は標準配置名 `components/builder.go` の現行実装実体として Phase 1 実装済みであり、`runner.go` は標準配置名 `components/runner.go` の現行実装実体として Phase 2 完了判定パス実装済みである。Go toolchain による `gofmt` と `go test` の検証を完了している。
+標準ソース配置への移行は完了済みである。`components/builder.go` は Phase 1 実装済みであり、`components/runner.go` は Phase 2 完了判定パス実装済みである。Go toolchain による `gofmt` と `go test` の検証対象である。
 
-標準配置への移行完了後は、`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱わない。標準配置への移行完了条件は `ADLAIRE_CI_DETAIL_SPEC.md` §0j を正とする。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は現行実装実体として扱わない。標準配置への移行完了条件は `ADLAIRE_CI_DETAIL_SPEC.md` §0j を正とする。
