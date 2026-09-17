@@ -227,6 +227,7 @@ Phase 4 実装は、下表の fixture をすべて満たした場合だけ完了
 | §27.12〜§27.20 | `webhook/`、`stats/`、`snapshot/`、`health/`、`branch-config/`、`summary/`、`config-log/` 相当の機能別単位。 | 署名、payload、query、snapshot 入力、破損行、期待 paging、期待 rollback。 | 署名検証省略、破損行の黙殺仕様未確認。 |
 | §27.21〜§27.38 | `runner-extensions/` 配下の機能別単位。 | target、pipeline、cache、queue、hook、remote、approval、notification、trend の正常/異常/部分失敗。 | 実行完了順依存、外部 shell 展開、未定義状態ファイル。 |
 | §27.42〜§27.47 | `security/` 配下の scope、token、audit、session、totp、rate-limit 単位。 | route 判定、body 未評価、token hash、audit failure、window reset、secret mask。 | token 本体保存、Authorization header 保存、監査なし権限拒否。 |
+| §28.1〜§28.25 | `builder-extensions/` 配下の機能別単位。 | Markdown 入力、CLI option、期待 HTML / CSS / JS / REPORT、strict / non-strict の終了コード。 | 外部 library、CDN、実 network、環境依存 timestamp、画像 snapshot だけの合否判定。 |
 
 fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*` のいずれかで始める。fixture 名に実行時刻、乱数、環境依存 path、実 token 値を含めてはならない。期待時刻は固定値を使い、現在時刻依存の検証では fake clock を fixture 入力に含める。
 
@@ -554,3 +555,34 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | download / stream 中断 | サーバー側状態を成功/失敗へ変更しない。access log は endpoint 固有節で中断 status 記録が定義されている場合だけ追記し、history と build log は変更しない。 |
 | 再実行 no-op | 同一入力で差分がない保存 API は、個別節の no-op response を返し、状態、config log、audit log、notify log に新規差分を作らない。 |
 | 破損 JSON Lines | read API は破損行を除外し、破損内容を response に出さない。write API は既存破損行を修復、削除、並べ替えしない。 |
+
+## 28-F §28 builder 拡張 fixture / PR 証跡詳細契約
+
+本節は、`docs/details/builder.md` §28.1〜§28.25 の fixture、fake、expected、effects、PR 証跡の正本である。各 §28 機能は、Markdown 入力、CLI option、期待 HTML、期待 CSS / JS、`[REPORT]`、終了コード、strict / non-strict の差分を fixture で固定する。外部 library、CDN、実 network、現在時刻、実 git repository、実画像取得、画像 snapshot だけの合否判定を fixture の前提にしてはならない。
+
+**§28 fixture 配置固定契約：**
+
+| 節 | fixture 配置単位 | 必須 fixture |
+|----|------------------|--------------|
+| §28.1 | `builder-extensions/incremental/` | `success-one-page-change`、`success-dependency-change`、`failure-manifest-corrupt-full-build`、`noop-unchanged-pages-kept` |
+| §28.2 | `builder-extensions/formats/` | `success-html`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format` |
+| §28.3 | `builder-extensions/markdown-extensions/` | `success-admonition`、`success-badge`、`failure-badge-invalid-text`、`security-extension-escape` |
+| §28.4〜§28.25 | `builder-extensions/<feature-slug>/` | 各機能につき `success-*`、`failure-*` または `noop-*`、`security-*` を最低 3 件以上作成する。 |
+
+**§28 fixture ファイルセット固定契約：**
+
+| ファイル | 必須 | 内容 |
+|----------|------|------|
+| `manifest.json` | 必須 | fixture 名、対象 §28.x、feature slug、owner `builder`、collaborator、参照仕様節、strict 有無、fake clock、not_applicable 理由。 |
+| `input/source.md` または `input/site/` | 必須 | Markdown 入力。site fixture は複数 Markdown、asset、dependency を含める。 |
+| `input/options.json` | 必須 | CLI option、env key、expected exit code、strict / non-strict。 |
+| `input/fakes.json` | 条件付き | fake git timestamp、fake file mtime、fake manifest、fake cache、fake clipboard など。実外部呼び出しは禁止。 |
+| `expected/site/` | 必須 | 期待 HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json` のうち対象機能が変更する file。 |
+| `expected/stdout.txt` | 必須 | `[REPORT]` を含む stdout 完全一致。 |
+| `expected/stderr.txt` | 必須 | warning / error 完全一致。stderr なしは空 file。 |
+| `expected/effects.json` | 必須 | 作成、更新、維持、削除禁止 path、外部 call 0 件、既存出力保護、strict 昇格条件。 |
+| `expected/security.json` | 条件付き | HTML escape、attribute escape、外部 library 不使用、secret / URL credential 非表示、base 外 path 拒否。 |
+
+**§28 PR 証跡固定契約：**
+
+実装 PR 本文には、対象 §28.x、追加 fixture 名、変更した HTML / CSS / JS / REPORT key、strict / non-strict 結果、外部依存なし確認、既存出力互換確認、未実装の §28 機能を列挙する。対象外の §28 機能を先取り実装した場合、または `docs/details/builder.md` §28 に存在しない Markdown 記法、CLI option、CSS class、JS 挙動を追加した場合は未完了として扱う。

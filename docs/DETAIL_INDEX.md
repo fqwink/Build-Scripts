@@ -4,13 +4,13 @@
 
 各 owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。本ファイルは個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、fixture assertion、setup 手順を持たない。
 
-方針、ポリシー、正本関係の上位判断は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否、§27 追加仕様化機能参照、横断補足契約の上位判断は `docs/ROADMAP.md` を正とする。
+方針、ポリシー、正本関係の上位判断は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否、§27 / §28 追加仕様化機能参照、横断補足契約の上位判断は `docs/ROADMAP.md` を正とする。
 
 ---
 
 ## Detail Spec Governance
 
-本ファイルは、Part 3 詳細仕様セットの入口、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。§27 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。個別 component の処理本文は owner component 別の `docs/details/*.md` を正とする。
+本ファイルは、Part 3 詳細仕様セットの入口、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。§27 / §28 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。個別 component の処理本文は owner component 別の `docs/details/*.md` を正とする。
 
 | 管理対象 | 正本 | 本ファイルでの扱い |
 |----------|------|--------------------|
@@ -18,7 +18,7 @@
 | 共通固定値 | `docs/DETAIL_INDEX.md` | component 間で共有する固定値だけを定義する。 |
 | 詳細節対応表 | `docs/DETAIL_INDEX.md` | 対象機能、詳細仕様節、受け入れ条件の入口を示す。 |
 | 実装状態、実装可否、Phase、将来計画 | `docs/ROADMAP.md` | 本ファイルでは定義せず、対象機能の実装可否を確認する。 |
-| §27 追加仕様化機能参照 | `docs/ROADMAP.md` §6 | owner、主本文、collaborator、横断補足契約を確認する。 |
+| §27 / §28 追加仕様化機能参照 | `docs/ROADMAP.md` §6 | owner、主本文、collaborator、横断補足契約を確認する。 |
 | owner component 本文 | `docs/details/*.md` | 本ファイルでは本文を複製せず、参照先だけを示す。 |
 | 方針、ポリシー、正本関係 | `docs/SPEC.md` | 本ファイルでは定義しない。 |
 
@@ -43,7 +43,7 @@ owner component と collaborator component は、以下の境界で扱う。
 |------|----------|--------------|
 | owner component | 対象機能の入力、出力、状態、処理順序、異常系、検証条件の主本文。 | 他 component の主処理本文、他 component の状態 schema、他 component の UI DOM 詳細。 |
 | collaborator component | 呼び出し境界、参照 schema、表示境界、security、setup、fixture、検証観点。 | owner component の入力、出力、状態、処理順序、異常系の主本文。 |
-| `docs/DETAIL_INDEX.md` | 読み方、共通固定値、対応表、リポジトリ内ソース配置。 | 個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、§27 追加仕様化機能参照、横断補足契約。 |
+| `docs/DETAIL_INDEX.md` | 読み方、共通固定値、対応表、リポジトリ内ソース配置。 | 個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、§27 / §28 追加仕様化機能参照、横断補足契約。 |
 
 owner component が確定できない場合は、実装判断で補完しない。先に `docs/ROADMAP.md` の状態分類と本ファイルの対応表を整合させる。
 
@@ -401,7 +401,7 @@ Phase の一覧、順序、対象 owner component、依存条件、完了条件�
 
 詳細節対応表は owner component を置き換える表ではない。受け入れ条件が複数 component にまたがる場合でも、主本文は owner component の詳細仕様ファイルを正とし、collaborator component の詳細仕様は schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認に限定する。collaborator component は、owner component の入力、出力、状態、endpoint、SDK method、UI 操作を追加定義しない。
 
-該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。§27.1〜§27.47 の owner、主本文、collaborator は `docs/ROADMAP.md` §6 の追加仕様化機能参照を確認する。
+該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。§27.1〜§27.47 および §28.1〜§28.25 の owner、主本文、collaborator は `docs/ROADMAP.md` §6 の追加仕様化機能参照を確認する。
 
 ### 0i.1 Builder / 静的 Web サイト出力
 
@@ -431,6 +431,31 @@ Phase の一覧、順序、対象 owner component、依存条件、完了条件�
 | キーボードショートカット | `builder` | §7.12 | `/`、`Escape`、`t` の対象、フォーカス条件、入力中の無効化が一致する。 |
 | ビルドキャッシュ | `builder` / `runner` | §5、§8、§11、§13、§27.25 | `.build_cache.json`、入力 manifest、再利用条件、無効化条件、report counters が一致する。 |
 | 依存ファイルトラッキング | `builder` / `runner` | §4.3、§5、§11、§13、§27.28 | `.dependency_manifest.json`、依存抽出、関連 target 判定、破損時 full build が一致する。 |
+| 差分ビルド | `builder` / `runner` | §28.1 | changed manifest、dependency 逆引き、未変更 page 維持、search index 再生成が一致する。 |
+| 複数出力形式 | `builder` | §28.2 | `html` のみ実出力し、予約 format は実行前に終了コード `2` で拒否する。 |
+| Markdown 拡張記法サポート | `builder` | §28.3 | admonition、badge、escape、report count が一致する。 |
+| コードブロック行番号表示 | `builder` | §28.4 | 行番号、copy 対象除外、fold / highlight 併用が一致する。 |
+| 見出しの自動採番 | `builder` | §28.5 | 表示番号、TOC 番号、slug 不変、search index が一致する。 |
+| セクション折りたたみ | `builder` | §28.6 | section 範囲、toggle、localStorage、印刷時展開が一致する。 |
+| TOC 深さ制御 | `builder` | §28.7 | heading filter、active tracking、範囲 validation が一致する。 |
+| 最終更新日の自動埋め込み | `builder` | §28.8 | git/file timestamp、UTC 秒精度、footer、report が一致する。 |
+| diff ハイライト | `builder` | §28.9 | diff fence の inserted/deleted/header/context class と copy 本文が一致する。 |
+| 画像の遅延読み込み | `builder` | §28.10 | `loading="lazy"`、`decoding="async"`、path warning、alt escape が一致する。 |
+| カスタムメタタグ注入 | `builder` | §28.11 | meta validation、name/property、禁止 key、escape が一致する。 |
+| ダークモード対応 | `builder` | §28.12 | `light` / `dark` / `auto`、CSS variables、toggle、print light が一致する。 |
+| コードブロックのファイル名表示 | `builder` | §28.13 | fence info parsing、title escape、copy 対象除外が一致する。 |
+| テンプレート変数展開 | `builder` | §28.14 | 変数 validation、code fence 内非置換、未定義時 warning/strict が一致する。 |
+| HTML ミニファイ | `builder` | §28.15 | safe minify、pre/code 保持、必須 marker 検証、report が一致する。 |
+| TOC ハイライト追従 | `builder` | §28.16 | `.is-active`、`aria-current`、fallback、TOC depth 連動が一致する。 |
+| Mermaid ダイアグラム描画 | `builder` | §28.17 | 内製対応範囲、unsupported warning、外部 script 不使用が一致する。 |
+| 脚注サポート | `builder` | §28.18 | 参照番号、footnotes、backlink、未定義時 warning/strict が一致する。 |
+| インライン数式レンダリング | `builder` | §28.19 | inline/block math、escape、未閉鎖 delimiter、code 内非変換が一致する。 |
+| ページ内ナビゲーション履歴 | `builder` | §28.20 | hash pushState、back/forward、focus 移動、JS 無効時 fallback が一致する。 |
+| 読み上げ対応（アクセシビリティ） | `builder` | §28.21 | landmark、aria-label、skip link、focus 順、重複 id 検出が一致する。 |
+| 画像ライトボックス | `builder` | §28.22 | dialog、Escape、backdrop close、focus trap、alt warning が一致する。 |
+| 印刷時 QR コード挿入 | `builder` | §28.23 | URL validation、print-only SVG、長さ制限、外部 library 不使用が一致する。 |
+| 定義リストサポート | `builder` | §28.24 | `<dl>/<dt>/<dd>` 出力、paragraph 境界、inline escape が一致する。 |
+| タスクリストサポート | `builder` | §28.25 | disabled checkbox、checked 判定、nested list、aria が一致する。 |
 
 ### 0i.2 Runner / CI 実行
 
@@ -514,7 +539,7 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 Part 3 詳細仕様セットは、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を責務 component 別に定義する。
 
-本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。§27 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。
+本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。§27 / §28 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。
 
 `mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、本ファイルおよび責務 component 別詳細仕様ファイルでは入出力、状態、起動手順、検証条件を定義しない。
 
@@ -613,10 +638,10 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | §23 | `docs/details/sdk.md` |
 | §24 | `docs/details/ui.md` |
 | §26 | `docs/details/setup.md` |
-| §27 追加仕様化機能 | `docs/ROADMAP.md` §6 と該当 owner component の `docs/details/*.md` |
+| §27 / §28 追加仕様化機能 | `docs/ROADMAP.md` §6 と該当 owner component の `docs/details/*.md` |
 
 ## 追加仕様化機能参照
 
-§27 追加仕様化機能の owner、主本文、collaborator、横断補足契約は `docs/ROADMAP.md` §6 を正とする。
+§27 / §28 追加仕様化機能の owner、主本文、collaborator、横断補足契約は `docs/ROADMAP.md` §6 を正とする。
 
 本ファイルは §0i の詳細節対応表を入口として保持し、§27 の個別参照索引、共通実装契約、横断連動表を重複定義しない。

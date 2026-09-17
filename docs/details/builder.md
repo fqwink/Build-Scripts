@@ -1799,3 +1799,56 @@ owner component は `builder` とする。collaborator component は `runner`、
 | manifest 破損 | full build、manifest 再作成。 |
 | base 外参照 | broken dependency として記録。 |
 | failure build | 既存 manifest を上書きしない。 |
+
+## 28. Builder owner 将来計画昇格機能 詳細仕様
+
+本節は、`docs/ROADMAP.md` §5.2.2 のビルドスクリプト将来計画を、builder owner の仕様化済み・未実装機能として固定する。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。
+
+本節の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
+
+**§28 共通固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 設定入力 | CLI option を最優先とし、同名の `ADLAIRE_*` 環境変数、設定ファイル、既定値の順で採用する。既存 CLI と競合する option 名を追加しない。 |
+| 既定値 | 既存出力互換を優先し、明示的に有効化する機能は既定 `false` または空値とする。ただしアクセシビリティ、画像 lazy load、既存 Markdown 記法の安全な標準化は既定有効にできる。 |
+| 出力 | HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json`、`[REPORT]` のいずれかに固定して出力する。未定義 file を作成しない。 |
+| HTML safety | Markdown 由来の値、設定値、ファイル名、meta 値、tooltip 値、ARIA 値は HTML escape または attribute escape を行う。 |
+| path safety | 入力 Markdown base dir 外を参照する path、絶対 path、URL scheme 偽装、`..` による脱出は警告または終了コード `2` とする。 |
+| report | 機能ごとの成功件数、警告件数、無効化理由、異常件数を `[REPORT]` に追加する。既存 key の意味を変更しない。 |
+| strict | `--strict` 有効時は、仕様で警告扱いとした構文不正、path 不正、未解決参照を終了コード `2` に昇格する。 |
+| fixture | `docs/details/fixture.md` §28-F の fixture 名、入力、期待出力、期待副作用を満たす。 |
+
+**§28 機能別詳細仕様：**
+
+| 節 | 機能 | 入力 | 出力 | 処理順序 | 異常系 | 検証条件 |
+|----|------|------|------|----------|--------|----------|
+| §28.1 | 差分ビルド | `--changed-manifest <path>`、`.dependency_manifest.json`、入力 Markdown SHA。 | 変更対象 page の HTML、既存未変更 page の維持、`[REPORT].incremental_*`。 | manifest 読込 → 入力 SHA 比較 → dependency 逆引き → build 対象決定 → 対象だけ変換 → search index は全ページから再生成。 | manifest 破損は full build。未変更 page 不在は該当 page を build。strict 時の不正 path は終了コード `2`。 | 1 page 変更、依存画像変更、manifest 破損 full build、未変更 page 維持、search index 全体整合。 |
+| §28.2 | 複数出力形式 | `--format html`、将来予約値 `pdf`、`epub`。 | `html` のみ実出力。`pdf`、`epub` は仕様化済み予約値として終了コード `2`。 | format parse → 対応可否判定 → `html` は既存 pipeline → 非対応 format は実行前停止。 | 複数 format 指定、未知 format、`pdf` / `epub` 指定は終了コード `2`。 | html 既存出力、pdf/epub 拒否、未知値拒否、出力差分なし。 |
+| §28.3 | Markdown 拡張記法サポート | admonition `> [!NOTE]`、badge `[badge:label:color]`。 | `.adlaire-admonition`、`.adlaire-badge` HTML と CSS。 | blockquote 解析 → 種別正規化 → content 変換 → badge inline 変換。 | 未知 admonition 種別は `note`。不正 badge は通常 text。HTML は escape。 | NOTE/WARN/TIP、badge 色、入れ子禁止、escape、report count。 |
+| §28.4 | コードブロック行番号表示 | `--code-line-numbers`、fence info `line-numbers`。 | `<span class="line-no">` 付き code block。 | fence option 判定 → 行番号 1 始まり付与 → copy 対象から番号を除外。 | 空 code は番号なし。折りたたみ、copy、highlight と競合しない。 | 3 行 code、空 code、copy 本文、fold 併用、CSS 表示。 |
+| §28.5 | 見出しの自動採番 | `--heading-numbering h2`、`none`。 | 見出し本文の表示番号、TOC 番号、search index 番号。 | heading tree 作成 → h2 以下を階層 count → 表示 prefix 生成 → slug は変更しない。 | h1 不在でも h2 から開始。番号は slug に含めない。 | h2/h3 階層、skip warning 併用、TOC 一致、anchor 不変。 |
+| §28.6 | セクション折りたたみ | `--section-collapse`、heading data。 | `.adlaire-section-toggle` と JS 状態。 | h2/h3 section 範囲算出 → toggle 生成 → localStorage に開閉保存。 | 見出しなしは無効。印刷時は全展開。 | h2 折りたたみ、復元、印刷展開、検索 hit 時自動展開。 |
+| §28.7 | TOC 深さ制御 | `--toc-depth <min>:<max>`。 | 指定範囲だけの TOC。本文 heading は不変。 | option parse → heading filter → TOC 生成 → active tracking も同範囲に限定。 | min/max 範囲外、min > max は終了コード `2`。 | h2-h3、h1-h6、範囲外除外、active tracking 一致。 |
+| §28.8 | 最終更新日の自動埋め込み | `--updated-at-source git|file|none`、fake clock / fake git fixture。 | footer の updated time、`[REPORT].updated_at_source`。 | source 判定 → git timestamp または file mtime 取得 → UTC 秒精度へ正規化 → footer 出力。 | git 取得失敗時は file mtime fallback、strict では終了コード `2`。 | git 値、file mtime、fallback、UTC 形式、footer escape。 |
+| §28.9 | diff ハイライト | fence info `diff` または `patch`。 | `.tok-inserted`、`.tok-deleted`、`.tok-context` class。 | code line 先頭 `+` / `-` / space を判定 → HTML escape → class 付与。 | `+++` / `---` header は header class。通常言語では適用しない。 | insert/delete/header/context、escape、copy 本文維持。 |
+| §28.10 | 画像の遅延読み込み | Markdown image、HTML img 相当出力。 | `<img loading="lazy" decoding="async">`。 | image token 解析 → src 正規化 → alt escape → lazy 属性付与。 | data URI、外部 URL は許可するが fetch しない。base 外相対 path は warning。 | 相対画像、外部画像、alt escape、base 外警告。 |
+| §28.11 | カスタムメタタグ注入 | `--meta key=value`、設定 meta map。 | `<meta name="..." content="...">` または `property="og:..."`。 | key validation → name/property 判定 → 重複解決 → head へ出力。 | `script`、`http-equiv`、空 key、制御文字は終了コード `2`。 | OGP、Twitter、重複、escape、禁止 key。 |
+| §28.12 | ダークモード対応 | `--color-scheme light|dark|auto`。 | CSS variables、`prefers-color-scheme` media、UI toggle。 | scheme 判定 → CSS 変数生成 → JS toggle は localStorage に保存。 | 未知 scheme は終了コード `2`。印刷は light。 | light/dark/auto、toggle 復元、print light、contrast class。 |
+| §28.13 | コードブロックのファイル名表示 | fence info `go:main.go`、`bash:title=deploy.sh`。 | `.code-title` 表示。 | info parse → language と title 分離 → title escape → code block header へ出力。 | path traversal 表示は禁止せず text 扱いだが HTML escape。空 title は非表示。 | colon 形式、title 形式、escape、copy 対象除外。 |
+| §28.14 | テンプレート変数展開 | `--var KEY=VALUE`、`{{ KEY }}`。 | 変数展開済み Markdown HTML、report counts。 | 変換前に text node だけ置換 → code fence 内は置換しない → 未定義変数を警告。 | key は `^[A-Z0-9_]{1,64}$`。未定義は strict で終了コード `2`。 | 置換、code 内非置換、未定義警告、escape。 |
+| §28.15 | HTML ミニファイ | `--minify-html`。 | 空白圧縮済み HTML。 | HTML 生成後 → safe minify → pre/code/textarea/script 相当領域は保持。 | minify 後の byte が 0、必須 marker 消失なら元 HTML を残し終了コード `1`。 | 通常圧縮、code 保持、必須 marker、出力縮小 report。 |
+| §28.16 | TOC ハイライト追従 | heading anchor と scroll event。 | `.is-active` class、`aria-current="location"`。 | IntersectionObserver 使用 → fallback scroll 計算 → active item 更新。 | JS 無効時は静的 TOC のまま。TOC depth と同期。 | scroll active、fallback、depth 連動、aria-current。 |
+| §28.17 | Mermaid ダイアグラム描画 | fence info `mermaid`。 | `<pre class="mermaid-source">` と内製簡易 SVG 対応分だけ。 | Mermaid text を保存 → 対応構文 `graph TD` の node/edge だけ SVG 化 → unsupported は source 表示。 | 外部 mermaid.js は使用禁止。未対応構文は warning、strict で終了コード `2`。 | graph TD、unsupported warning、escape、外部 script なし。 |
+| §28.18 | 脚注サポート | `[^id]`、`[^id]: text`。 | 本文 sup link、末尾 `.footnotes`。 | 定義収集 → 参照順に番号付け → backlink 生成 → 未参照定義は report。 | 未定義参照は warning、strict で終了コード `2`。 | 複数脚注、重複定義、未定義、backlink。 |
+| §28.19 | インライン数式レンダリング | `$...$`、`$$...$$`。 | `<span class="math-inline">`、`<div class="math-block">`。 | delimiter parse → HTML escape → CSS で等幅表示。 | KaTeX 等外部 renderer は使用しない。未閉鎖 delimiter は通常 text、strict で終了コード `2`。 | inline、block、escape、未閉鎖、code 内非変換。 |
+| §28.20 | ページ内ナビゲーション履歴 | hash navigation。 | JS history handler、focus 移動。 | anchor click 捕捉 → `history.pushState` → heading focus → back/forward で scroll 復元。 | JS 無効時は通常 anchor。存在しない hash は何もしない。 | click、back、forward、不在 hash、focus。 |
+| §28.21 | 読み上げ対応（アクセシビリティ） | 生成 HTML 全体。 | `aria-label`、`role`、skip link、focus outline。 | landmark 付与 → icon button label → search / TOC label → keyboard focus 順固定。 | 空 label、重複 id は warning、strict で終了コード `2`。 | landmark、button label、skip link、tab order、strict duplicate。 |
+| §28.22 | 画像ライトボックス | Markdown image。 | lightbox dialog HTML / JS。 | image に button wrapper → dialog 1 個生成 → click / Escape / backdrop close。 | alt なしは warning。外部画像も拡大対象だが fetch しない。 | open/close、Escape、focus trap、alt warning。 |
+| §28.23 | 印刷時 QR コード挿入 | `--print-qr-url <url>` または page canonical URL。 | print footer の QR 相当 SVG。 | URL validation → deterministic QR-lite matrix 生成 → print CSS だけで表示。 | 空 URL は非表示。外部 library 禁止。URL > 512 byte は終了コード `2`。 | URL あり、空 URL、長すぎ、print only。 |
+| §28.24 | 定義リストサポート | `term` 改行 `: definition`。 | `<dl><dt>term</dt><dd>definition</dd></dl>`。 | 連続定義行を group 化 → inline 変換 → list と paragraph 境界確定。 | term 空、definition 空は通常 paragraph。 | 単一、複数、paragraph 境界、inline escape。 |
+| §28.25 | タスクリストサポート | `- [ ] item`、`- [x] item`。 | disabled checkbox 付き list item。 | list parse → checked 判定 → input disabled aria-label → item inline 変換。 | `[X]` は checked。その他は通常 list。 | unchecked、checked、nested、aria、通常 list 非変換。 |
+
+**§28 実装完了条件：**
+
+各機能は、該当 §28.x の入力、出力、処理順序、異常系、検証条件、`docs/DETAIL_INDEX.md` §0i.1、`docs/details/fixture.md` §28-F を満たすまで実装完了として扱わない。複数の §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。
