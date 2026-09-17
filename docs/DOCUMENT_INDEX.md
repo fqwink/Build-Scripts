@@ -10,7 +10,8 @@
 
 | 管理領域 | 確認する節 | 判断する内容 |
 |----------|------------|--------------|
-| 構造 | `Specification Structure` | 文書階層、文書の位置付け、役割の大枠。 |
+| 構造地図 | `Specification Structure Map` | 読みたい目的から参照先を選ぶための地図。 |
+| 階層定義 | `Specification Structure` | 文書階層、文書の位置付け、役割の定義。 |
 | 判断 | `Specification Decision Flow` | 目的ごとに最初に読む文書、次に確認する文書。 |
 | 記載先 | `Specification Write Location Matrix` | 何をどの文書に書き、どこに書かないか。 |
 | 変更手順 | `Specification Change Procedure` | 文書構造変更時の作業順序。 |
@@ -20,7 +21,7 @@
 
 ## Specification Structure Map
 
-仕様構造は、作業ルール、入口、索引、マスター仕様、詳細仕様入口、詳細仕様本文、補助文書、実装ファイル所在に分けて読む。
+本節は、読みたい目的から参照先を選ぶための地図である。文書階層そのものの定義は `Specification Structure` を正とする。
 
 | 読みたいもの | 参照先 | 参照理由 |
 |--------------|--------|----------|
@@ -34,6 +35,8 @@
 | 実装所在 | `docs/DOCUMENT_INDEX.md` の `Specified Components` | 実装ファイル、テスト、fixture の所在と状態を確認する。 |
 
 ## Specification Structure
+
+本節は、仕様文書の階層と位置付けを定義する。目的別の参照先選択は `Specification Structure Map` を入口とする。
 
 仕様文書の構造は、作業ルール、入口、索引、正本、詳細入口、責務 component 別本文、補助文書に分ける。
 
