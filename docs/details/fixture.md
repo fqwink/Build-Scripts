@@ -741,6 +741,19 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 
 component 責務を別 PR へ分割する場合でも、分割先 PR が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を PR 本文に明記する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
 
+**§27 runner / statefile 連動 fixture 固定契約：**
+
+§27.21〜§27.38 の runner owner 機能は、対象機能の個別 fixture に加えて、状態更新を伴う場合に下表の連動 fixture を必要数作成する。fixture は runner の業務判断と statefile の保存境界を分離して検証する。
+
+| fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
+|------------|----------------|------------|---------------|----------|
+| `runner-state-write-order` | `runner`、`statefile` | build lifecycle、queue、history、status、log、対象 §27 状態。 | `expected/effects.json.write_order`、`expected/state/`、`expected/logs/`。 | 個別節の保存順と一致し、並列処理でも永続保存順が固定される。 |
+| `runner-state-partial-failure` | `runner`、`statefile` | N 番目の state write / JSON Lines append / fsync fake failure。 | `expected/effects.json.updated_paths`、`unchanged_paths`、`forbidden_writes`。 | 失敗地点前の成功済み状態は保持し、失敗地点以降は変更しない。未定義 rollback を行わない。 |
+| `runner-state-noop-idempotency` | `runner`、`statefile` | 同一入力の 1 回目 / 2 回目、disabled、skip、duplicate、sample 不足。 | `expected/effects.json`、2 回目の `unchanged_paths`。 | 2 回目または no-op で不要な log / history / status / notify / audit 差分を作らない。 |
+| `runner-state-dry-run-no-write` | `runner`、`statefile` | dry-run option、変更あり target、外部 call fake。 | `expected/effects.json.forbidden_writes`、`forbidden_calls`、`commands`。 | dry-run は状態ファイル、lock、external write、notification を一切変更しない。 |
+| `runner-state-corrupt-boundary` | `runner`、`statefile` | 破損 `.build_state`、`.build_status.json`、`.build_history`、対象 §27 状態。 | `expected/response.json` または runner exit code、`expected/effects.json`。 | §22.0a の退避 / 再生成 / 停止条件に従い、破損内容を response / log / expected に出さない。 |
+| `runner-state-secret-mask` | `runner`、`statefile` | PAT、branch env secret、hook output secret、remote credential、notification secret。 | `expected/security.json`、`expected/logs/`、`expected/effects.json`。 | secret 平文、prefix、suffix、長さ、hash が stdout / stderr / state / log / fixture expected に残らない。 |
+
 **§27 API / SDK / UI 連動 fixture 固定契約：**
 
 §27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する実装 PR は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は owner component の主本文を置き換えず、API response、SDK method、UI 表示の接続点を固定する。

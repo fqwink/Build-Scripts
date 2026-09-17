@@ -843,6 +843,20 @@ BuildMeta object:
 | runner write | build lifecycle に必要な state 更新、`.build_lock` stale 判定後の lock 削除。 | API 専用 credentials / token / auth state の直接変更。 |
 | setup write | 初期配置に必要な `.github_token`、`.last_sha`、admin directory の配置。 | API runtime state、history、build log、session、token の生成。 |
 
+**runner 連動状態更新固定ゲート：**
+
+runner / archive / commitstatus / security / api が同じ実装 PR で状態更新を組み合わせる場合でも、statefile owner の契約は下表で固定する。呼び出し元 component は業務判断を持ち、statefile は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当する。
+
+| ゲート | statefile 側の固定処理 | 呼び出し元が渡す値 | 失敗時境界 |
+|--------|------------------------|-------------------|------------|
+| schema precheck | 保存前に §22.0c の key、型、nullable、enum、UTC 時刻、配列要素 schema を検証する。 | 保存済みとして確定した typed value。 | schema 不一致は target 変更なしで `ErrStateCorrupted` または validation error を返す。 |
+| unknown key rejection | 既存 file と新規 value の両方で未知 key を拒否する。例外は本節に明記済みの旧形式正規化だけ。 | 表示用 key、SDK 用 key、fixture 用 key を含まない object。 | 未知 key を削除して保存しない。既存未知 key も暗黙修復しない。 |
+| write order evidence | 複数 file 更新では呼び出し元が決めた順に 1 file ずつ atomic write し、fixture の `write_order` と一致させる。 | 順序付き write plan。 | 失敗地点以降は実行しない。成功済み file は statefile が rollback しない。 |
+| JSON Lines append | append 対象は 1 行 1 JSON object とし、末尾 newline を固定する。 | 1 record の typed value。 | append 失敗は対象操作へ返し、既存行の rewrite、sort、修復をしない。 |
+| no mutation read | read-only adapter は fallback 値を返すだけで、file 作成、chmod、backup、lock 削除、旧形式保存を行わない。 | 読取対象 path と fallback 条件。 | 読取失敗は typed error を返し、filesystem 差分なし。 |
+| corrupt handling | §22.0a に再生成指定がある file だけ backup → 初期値再生成を許可する。 | 破損判定結果と対象 path。 | backup 失敗時は再生成しない。再生成指定がない file は変更しない。 |
+| secret path | secret を含む file は `0600`、通常 state は `0644`、directory は `0755` に固定する。 | secret file 判定。 | chmod 失敗を成功扱いにせず、secret 内容を log / response / fixture expected に出さない。 |
+
 **状態ファイル fixture 合格ゲート：**
 
 | fixture | 初期状態 | 操作 | 合格条件 |

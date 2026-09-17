@@ -3488,3 +3488,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 通知独立性 | duration_anomaly 通知失敗は build status を変更せず、notify retry 契約に従う。 |
 | 設定不正 | API は `422`、runner は既定値へ補正せず機能無効として扱う。 |
 | 完了条件 | fixture は sample 不足 no-op、avg 超過、p95 境界、通知失敗、failure build、tag 重複、設定不正をすべて固定する。 |
+
+**§27.21〜§27.38 runner / statefile 連動実装完了ゲート：**
+
+§27.21〜§27.38 の runner owner 機能は、個別節の完了条件に加えて下表を満たした場合だけ実装完了とする。本ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は `docs/details/statefile.md` §22.0c、fixture 本文は `docs/details/fixture.md` §27-F を正とする。
+
+| ゲート | 合格条件 | 禁止事項 |
+|--------|----------|----------|
+| state target | 個別 §27 節に列挙された状態ファイル、`docs/details/statefile.md` §22.0a / §22.0c の schema、`docs/ROADMAP.md` §6 の collaborator だけを使用する。 | 未定義状態ファイル、未知 key、空 placeholder file、component 固有でない汎用 state file を追加する。 |
+| write order | build lifecycle は lock → build_state running → build log → history → build_status → queue / pending / notify / trend 等の個別副作用の順を fixture で固定する。個別節が別順を明記する場合はその順を優先する。 | 並列処理の完了順をそのまま永続保存順にする、fixture に `write_order` を持たない複数書込を完了扱いにする。 |
+| partial failure | 失敗地点より後の write / external call / notification は実行しない。失敗地点より前に成功済みの状態は個別節が rollback を明記しない限り戻さない。 | 保存済み build log / history / status を実装者判断で削除、巻き戻し、再分類する。 |
+| no-op / skip | 変更なし、cooldown、tag 不一致、disabled、sample 不足、queue duplicate 等は個別節の no-op / skip response と副作用ゼロまたは指定最小副作用で固定する。 | no-op で config log、audit、notify、build log、history、SHA cache を暗黙更新する。 |
+| dry-run | dry-run は設定検証、対象判定、差分判定、実行可否の出力だけを行い、状態ファイル、lock、log、history、cache、notification、external write を作成・更新しない。 | dry-run 結果を後続実行用 cache として保存する。 |
+| secret mask | PAT、Webhook secret、SMTP password、branch env secret、hook output secret、remote credential は読込直後に mask 登録し、stdout / stderr / build log / history / status / pending / fixture expected に平文を残さない。 | mask 登録前にログ保存する、secret 長・hash・prefix・suffix を保存する。 |
+| schema strictness | runner が保存する object は `docs/details/statefile.md` §22.0c の key だけを持ち、nullable、UTC 時刻、列挙値、配列順を満たす。 | SDK / UI 用の表示名、計算済み label、未定義 fallback key を state に保存する。 |
+| fixture evidence | 対象 §27 機能の fixture は success、failure、partial、no-op、idempotency、secret mask、corrupt state のうち該当するケースを持つ。 | 正常系だけの fixture で runner / statefile 連動を完了扱いにする。 |
