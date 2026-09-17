@@ -8,6 +8,56 @@
 
 ---
 
+## Detail Spec Governance
+
+本ファイルは、Part 3 詳細仕様セットの入口、共通固定値、対応表、横断補足契約を管理する。個別 component の処理本文は owner component 別の `docs/details/*.md` を正とする。
+
+| 管理対象 | 正本 | 本ファイルでの扱い |
+|----------|------|--------------------|
+| 詳細仕様の読み方 | `docs/DETAIL_INDEX.md` | 実装者が詳細仕様本文へ到達するための順序を定義する。 |
+| 共通固定値 | `docs/DETAIL_INDEX.md` | component 間で共有する固定値だけを定義する。 |
+| 詳細節対応表 | `docs/DETAIL_INDEX.md` | 対象機能、詳細仕様節、受け入れ条件の入口を示す。 |
+| owner component 本文 | `docs/details/*.md` | 本ファイルでは本文を複製せず、参照先だけを示す。 |
+| 方針、ポリシー、状態判断 | `docs/SPEC.md` | 本ファイルでは定義しない。 |
+
+## Detail Spec Selection Rules
+
+詳細仕様を選ぶ場合は、以下の規則に従う。
+
+| 規則 | 内容 |
+|------|------|
+| カテゴリは入口 | §0b.0.1 のカテゴリは探すための入口であり、owner component ではない。 |
+| owner は 1 件 | 実装本文として読む owner component は、対象機能ごとに 1 件だけ確定する。 |
+| collaborator は補助 | collaborator component は schema、表示、security、setup、fixture、検証観点の確認に限定する。 |
+| 状態は statefile | 状態ファイル、lock、atomic write、schema は `docs/details/statefile.md` を読む。 |
+| security は security | 認証、scope、token、audit、session、TOTP、rate limit は `docs/details/security.md` を読む。 |
+| fixture は fixture | fixture、fake、PR 証跡、acceptance checklist は `docs/details/fixture.md` を読む。 |
+
+## Owner / Collaborator Rules
+
+owner component と collaborator component は、以下の境界で扱う。
+
+| 区分 | 持つ内容 | 持たない内容 |
+|------|----------|--------------|
+| owner component | 対象機能の入力、出力、状態、処理順序、異常系、検証条件の主本文。 | 他 component の主処理本文、他 component の状態 schema、他 component の UI DOM 詳細。 |
+| collaborator component | 呼び出し境界、参照 schema、表示境界、security、setup、fixture、検証観点。 | owner component の入力、出力、状態、処理順序、異常系の主本文。 |
+| `docs/DETAIL_INDEX.md` | 読み方、共通固定値、対応表、横断補足契約。 | 個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema。 |
+
+owner component が確定できない場合は、実装判断で補完しない。先に `docs/SPEC.md` の状態分類と本ファイルの対応表を整合させる。
+
+## Cross Reference Rules
+
+詳細仕様間の参照は、本文の重複ではなく境界確認として扱う。
+
+| 参照種別 | 許可する内容 | 禁止する内容 |
+|----------|--------------|--------------|
+| API 参照 | request / response の利用境界、HTTP status の確認。 | endpoint 本文を SDK、UI、runner 側へ重複定義すること。 |
+| SDK 参照 | UI から呼ぶ method、error handling、token 破棄の確認。 | SDK method 本文を UI 側へ重複定義すること。 |
+| UI 参照 | DOM id、panel、表示状態の確認。 | UI DOM 詳細を API、SDK、runner 側へ重複定義すること。 |
+| statefile 参照 | lock、atomic write、schema、破損時処理の確認。 | 状態 schema を各 component 側へ重複定義すること。 |
+| security 参照 | token、scope、audit、session、rate limit の確認。 | 認証・認可方針を各 component 側で独自定義すること。 |
+| fixture 参照 | fake、expected、effects、PR 証跡の確認。 | fixture assertion を各 component 本文へ重複定義すること。 |
+
 # Part 3 — 仕様
 > Part 3 詳細仕様セットとして、実装の具体的詳細を定める。「どのように動作・実装するか」に答える。
 

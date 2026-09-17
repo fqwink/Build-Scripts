@@ -4,6 +4,82 @@
 
 仕様・詳細仕様・補助文書・本索引は `docs/` 配下に集約する。ルールブック `AGENTS.md` と入口文書 `README.md` はリポジトリ root に置く。
 
+## Specification Governance
+
+仕様構造の管理は、文書の所在、正本範囲、記載先、変更手順、完了条件を分離して扱う。
+
+| 管理領域 | 確認する節 | 判断する内容 |
+|----------|------------|--------------|
+| 構造 | `Specification Structure` | 文書階層、文書の位置付け、役割の大枠。 |
+| 判断 | `Specification Decision Flow` | 目的ごとに最初に読む文書、次に確認する文書。 |
+| 記載先 | `Specification Write Location Matrix` | 何をどの文書に書き、どこに書かないか。 |
+| 変更手順 | `Specification Change Procedure` | 文書構造変更時の作業順序。 |
+| 完了条件 | `Specification Structure Completion Criteria` | 完了報告前に満たすべき確認項目。 |
+
+本節は、仕様構造を変更するための統制入口である。本節自体は仕様本文、詳細仕様本文、実装状態、実装可否、ロードマップを定義しない。
+
+## Specification Structure Map
+
+仕様構造は、作業ルール、入口、索引、マスター仕様、詳細仕様入口、詳細仕様本文、補助文書、実装ファイル所在に分けて読む。
+
+| 読みたいもの | 参照先 | 参照理由 |
+|--------------|--------|----------|
+| 作業してよい条件 | `AGENTS.md` | 承認、Git、PR、文書整合の最上位ルールを確認する。 |
+| 初見向け概要 | `README.md` | 最小限の入口と主要参照先を確認する。 |
+| 文書構造 | `docs/DOCUMENT_INDEX.md` | 文書の役割、所在、正本範囲、実装ファイル所在を確認する。 |
+| 方針・状態 | `docs/SPEC.md` | 方針、ポリシー、実装状態、実装可否、ロードマップを確認する。 |
+| 詳細仕様入口 | `docs/DETAIL_INDEX.md` | 詳細仕様の読み方、共通固定値、対応表、横断補足契約を確認する。 |
+| 詳細仕様本文 | `docs/details/*.md` | owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
+| デザイン補助 | `docs/DESIGN.md` | 生成静的 Web サイトの視覚仕様を確認する。 |
+| 実装所在 | `docs/DOCUMENT_INDEX.md` の `Specified Components` | 実装ファイル、テスト、fixture の所在と状態を確認する。 |
+
+## Specification Decision Rules
+
+仕様判断では、目的を先に確定し、目的に対応する正本だけを読む。
+
+| 判断ルール | 内容 |
+|------------|------|
+| 作業ルール優先 | 作業可否、承認、Git 操作、PR 作成は常に `AGENTS.md` を正とする。 |
+| 状態判断優先 | 実装済み、仕様化済み、将来計画、実装不可の判断は `docs/SPEC.md` を正とする。 |
+| 詳細本文優先 | 入出力、状態、処理順序、異常系、検証条件は owner component の `docs/details/*.md` を正とする。 |
+| 索引限定 | `docs/DOCUMENT_INDEX.md` は所在と役割の索引であり、仕様本文を定義しない。 |
+| 入口限定 | `README.md` は入口であり、詳細ルールや詳細仕様本文を重複定義しない。 |
+| 補助限定 | `docs/DESIGN.md` は視覚仕様の補助であり、機能仕様、運用仕様、API 仕様の正本ではない。 |
+
+## Specification Write Rules
+
+仕様構造を維持するため、記載先は以下の順で確定する。
+
+1. 書く内容が作業ルールか、仕様本文か、詳細仕様本文か、索引か、補助文書かを分類する。
+2. `Specification Write Location Matrix` で書く場所を確定する。
+3. 書いてはいけない場所に同じ意味の本文が残る場合は、重複として整理する。
+4. 参照だけで足りる場合は、本文を複製せず、正本への参照に留める。
+5. 実装状態、実装可否、ロードマップを動かす場合は、`docs/SPEC.md` の正本範囲として扱う。
+
+## Specification Change Rules
+
+仕様構造変更では、変更の種類ごとに確認対象を固定する。
+
+| 変更の種類 | 必ず確認する文書 | 確認内容 |
+|------------|------------------|----------|
+| ファイル名変更 | `docs/DOCUMENT_INDEX.md`、`README.md`、`AGENTS.md`、`docs/SPEC.md`、`docs/DETAIL_INDEX.md` | 旧ファイル名参照が残っていないこと。 |
+| 正本関係変更 | `AGENTS.md`、`docs/SPEC.md`、`docs/DOCUMENT_INDEX.md` | 作業ルール、仕様正本、索引の記載が矛盾しないこと。 |
+| 詳細仕様分割 | `docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md` | owner component、collaborator、参照表、本文配置が一致すること。 |
+| README 整理 | `README.md`、`docs/DOCUMENT_INDEX.md` | README が入口に留まり、詳細ルールを重複定義していないこと。 |
+| 実装所在整理 | `docs/DOCUMENT_INDEX.md`、`docs/DETAIL_INDEX.md` §0j | 実装ファイル、テスト、fixture の所在と状態が一致すること。 |
+
+## Specification Completion Rules
+
+仕様構造整理の完了報告では、以下を満たす。
+
+| 完了報告に含める内容 | 内容 |
+|----------------------|------|
+| 変更対象 | 変更した文書名を明記する。 |
+| 変更内容 | 追加、削除、移動、簡潔化、参照更新の内容を明記する。 |
+| 正本範囲 | 仕様本文を変えたのか、索引を変えたのか、入口を変えたのかを明記する。 |
+| 検証 | `git diff --check`、旧参照検索、変更範囲確認を明記する。 |
+| 未実施 | docs-only で実装検証を未実施にした場合は理由を明記する。 |
+
 ## Specification Structure
 
 仕様文書の構造は、作業ルール、入口、索引、正本、詳細入口、責務 component 別本文、補助文書に分ける。
@@ -83,6 +159,10 @@
 
 上記のいずれかを満たせない場合は、完了報告せず、該当文書の正本範囲、記載先、参照先を再整備する。
 
+## Repository Document Index
+
+本節以降は、リポジトリ内文書と実装ファイル所在の索引である。仕様判断の本文は各正本を参照する。
+
 ## Reading Order
 
 | 順序 | ファイル | 目的 |
@@ -118,6 +198,10 @@
 | `docs/DESIGN.md` | 生成静的 Web サイトのデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | `docs/DOCUMENT_INDEX.md` | 本索引。文書・実装ファイルの役割と所在を示す。仕様本文を定義しない。 |
+
+## Implementation File Index
+
+実装ファイルの所在と状態は、`Specified Components` を正とする。実装ファイルが存在することだけで、仕様化済み、実装可、完了済みとは判断しない。
 
 ## Detail Spec Management
 
@@ -179,6 +263,19 @@
 | 実装ファイル、テスト、fixture の所在 | `docs/DOCUMENT_INDEX.md` の Specified Components |
 
 `docs/DOCUMENT_INDEX.md` は索引であり、仕様・デザイン・実装判断の正本ではない。仕様を変更する場合は、先に該当する正本仕様書を更新し、その内容に基づいて実装ファイルを更新する。
+
+## Consistency Guardrails
+
+文書整合を保つため、以下を守る。
+
+| Guardrail | 内容 |
+|-----------|------|
+| 旧参照禁止 | リネーム済みファイル、移動済み節、削除済み文書名を残さない。 |
+| 二重正本禁止 | 同じ判断対象を複数文書で正本として定義しない。 |
+| README 肥大化禁止 | README に詳細仕様、詳細ルール、状態表、ロードマップを戻さない。 |
+| DETAIL 方針化禁止 | `docs/DETAIL_INDEX.md` と `docs/details/*.md` に方針、ポリシー、ロードマップ状態を持たせない。 |
+| 索引本文化禁止 | `docs/DOCUMENT_INDEX.md` に機能仕様、API 仕様、状態 schema、処理本文を持たせない。 |
+| 実装混入禁止 | 文書構造整理だけの PR で実装ファイル、testdata、fixture を変更しない。 |
 
 ## Consistency Notes
 
