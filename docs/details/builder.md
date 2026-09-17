@@ -2146,6 +2146,87 @@ localStorage は下表の key と payload だけを許可する。payload は JS
 | `definition_list` | §28.24 | term 行直後に `: definition` が 1 行以上続く。 | `dl.definition-list`、`dt`、`dd`。 | term / definition 空は paragraph。 |
 | `task_item` | §28.25 | list item の先頭が `[ ]`、`[x]`、`[X]`。 | disabled checkbox と list text。 | その他 bracket は通常 list。 |
 
+**§28 Markdown parser 優先順位固定契約：**
+
+§28 の Markdown parser は、入力 Markdown を LF 改行へ正規化した後、行単位 block parser と text 単位 inline parser を分けて処理する。block parser は inline parser を呼ぶが、inline parser は block parser を呼んではならない。実装者は、機能ごとの都合で別順序の parser、正規表現置換の後処理、HTML 生成後の再 parse を追加してはならない。
+
+block parser は下表の順序で 1 行目から判定する。先に一致した token を採用し、同じ行を後続 token として再判定してはならない。
+
+| 優先 | token | 固定判定 | 後続処理 |
+|------|-------|----------|----------|
+| 1 | `code_fence` 継続中 | fence 開始後、閉じ fence までの全行。 | inline、template var、admonition、footnote、math、definition、task list を適用しない。 |
+| 2 | `math_block` 継続中 | 独立行 `$$` 開始後、独立行 `$$` まで。 | 中身は text として escape し、inline 変換しない。 |
+| 3 | `code_fence` 開始 | 行頭 0〜3 space 後に `` ``` `` または `~~~` があり、marker 後に info string が続く行。 | fence marker、language、options、title を確定する。 |
+| 4 | `math_block` 開始 | trim 後が `$$` と完全一致する行。 | 次の独立行 `$$` まで math block とする。 |
+| 5 | `heading` | 行頭 0〜3 space 後に `#` 1〜6 個、後続 space、本文 1 文字以上。 | inline parser で heading text を処理する。 |
+| 6 | `footnote_def` | 行頭 0〜3 space 後に `[^id]:` がある行。 | 定義本文は inline parser で処理し、本文位置には出力しない。 |
+| 7 | `blockquote` / admonition | 行頭 0〜3 space 後に `>`。最初の非空引用行が `[!TYPE]` なら admonition。 | admonition body は block parser を再帰せず、paragraph/list/code fence 相当だけを許可する。 |
+| 8 | list / `task_item` | 行頭 0〜3 space 後に `- `、`* `、`+ `。直後が `[ ] `、`[x] `、`[X] ` なら task item。 | list item text に inline parser を適用する。 |
+| 9 | `definition_list` | 現在行が term 候補で、直後の 1 行以上が行頭 0〜3 space 後に `: `。 | term と definition に inline parser を適用する。 |
+| 10 | table / existing block | §1〜§9 の既存 table、horizontal rule、paragraph 等。 | §28 token と競合しない範囲で既存処理を維持する。 |
+| 11 | paragraph | 上記に一致しない連続行。 | inline parser を適用する。 |
+
+inline parser は、code span を最優先の保護領域として切り出し、保護領域の外側だけを下表の順序で処理する。inline parser の出力を再度 inline parser に通してはならない。
+
+| 優先 | token | 固定判定 | 後続処理 |
+|------|-------|----------|----------|
+| 1 | code span | backtick 1 個以上で囲まれた範囲。開始 backtick と同じ長さの閉じ backtickだけを閉じ記号とする。 | badge、footnote、math、link、image、template var を適用しない。 |
+| 2 | image | `![alt](src)`。 | `src` validation、alt escape、lazy / lightbox 適用。 |
+| 3 | link | `[text](href)`。 | href validation、text inline 変換。ただし text 内の image は認めない。 |
+| 4 | `footnote_ref` | `[^id]`。 | id validation、参照番号付与。 |
+| 5 | `badge_inline` | `[badge:label:color]`。 | label / color validation。 |
+| 6 | `math_inline` | `$` 1 個で囲まれ、前後が空白または句読点または行端の範囲。 | 中身を escape し、他 inline token は適用しない。 |
+| 7 | emphasis / existing inline | §1〜§9 の既存 inline 強調、code 以外の変換。 | §28 token と競合しない範囲で既存処理を維持する。 |
+| 8 | text | 上記に一致しない text。 | text escape だけを行う。 |
+
+**§28 Markdown 構文文法固定契約：**
+
+§28 で追加する構文の具体的な grammar は下表に固定する。下表にない省略形、別名、大小文字差分吸収、属性追加、HTML comment 指示、front matter 指示を追加してはならない。
+
+| 対象 | grammar | 正規化 | 不正時 |
+|------|---------|--------|--------|
+| admonition | blockquote の最初の非空行が `> [!TYPE]`。TYPE は ASCII letter 1〜16 文字。 | TYPE は lowercase。`note`、`warn`、`tip` 以外は `note`。 | marker 行は title として出さず、body が空でも空 section を出す。 |
+| badge | `[badge:label:color]`。label は `]` と改行を含まない 1〜64 文字。color は `gray`、`blue`、`green`、`yellow`、`red`。 | label は前後空白 trim。color は lowercase。 | non-strict は元 text、strict は `BUILDER28_INVALID_OPTION`。 |
+| fence info | `language`、`language line-numbers`、`language:title=value`、`language:path`、`diff`、`patch`、`mermaid`。 | language は lowercase。title は前後空白 trim。 | 未知 option は code block として出力し、warning count に含める。 |
+| code title | `language:title=value` または `language:path`。`path` は `/`、`.`、`-`、`_` を含められる text。 | `title=` 形式を優先する。colon 以降を title text とする。 | 空 title は title なし。 |
+| diff fence | info string が `diff` または `patch` と完全一致。 | なし。 | 他 language の `+` / `-` 行は diff highlight しない。 |
+| mermaid fence | info string が `mermaid` と完全一致。 | なし。 | `--mermaid=false` なら通常 code block。 |
+| footnote id | `[^id]`、`[^id]: text`。id は ASCII letter / digit / `_` / `-`、1〜64 文字。 | id は大小文字を区別する。 | id 不正は通常 text。 |
+| math inline | `$content$`。content は改行を含まず、先頭末尾が空白だけでない。 | delimiter は出力しない。 | 未閉鎖は通常 text、strict は `BUILDER28_UNRESOLVED_REFERENCE`。 |
+| math block | 独立行 `$$` で開始し、独立行 `$$` で終了する。 | delimiter 行は出力しない。 | 未閉鎖は通常 paragraph、strict は `BUILDER28_UNRESOLVED_REFERENCE`。 |
+| definition list | term 行の直後に 1 行以上の `: definition`。term と definition は trim 後 non-empty。 | 連続する definition は同じ `dl` に含める。 | 空 term / 空 definition は paragraph。 |
+| task list | list marker 後の `[ ] `、`[x] `、`[X] `。 | `[X]` は checked に正規化。 | `[o]`、`[-]`、`[]` は通常 list text。 |
+
+**§28 曖昧構文・機能併用固定契約：**
+
+複数の §28 機能が同じ入力へ適用できる場合は、下表の結果に固定する。実装者は、読みやすさ、既存 Markdown 処理、ブラウザ表示の都合で別解釈を選んではならない。
+
+| 入力条件 | 固定解釈 |
+|----------|----------|
+| code fence 内の `[badge:a:red]`、`[^n]`、`$x$`、`{{ KEY }}` | すべて code text。§28 inline / template var を適用しない。 |
+| code span 内の `[badge:a:red]`、`[^n]`、`$x$` | すべて code text。 |
+| admonition body 内の badge / footnote / math | admonition body の inline text として変換する。 |
+| admonition body 内の fenced code | code fence として扱い、admonition body 内でも inline 変換しない。 |
+| heading 内の badge / footnote / math | 表示 HTML には変換を適用する。slug source text は変換前 inline text から UI text を除外して作る。 |
+| definition term 内の footnote / badge / math | inline 変換を適用する。term が変換後に空なら definition list にしない。 |
+| task list item 内の badge / footnote / math | checkbox marker を除いた item text に inline 変換を適用する。 |
+| `![alt](src)` と `[badge:...]` が重なる text | image を優先し、image alt 内では badge 変換しない。 |
+| `[text](href)` 内の `$x$` | link text 内で math inline を適用する。href には math 変換しない。 |
+| `[badge:a:red](href)` | link を優先し、link text 内で badge を変換する。 |
+| `[^id]:` が blockquote 内にある | footnote definition ではなく blockquote text。admonition body 内でも同じ。 |
+| `: definition` が list item 内にある | definition list ではなく list item text。 |
+| `$` を含む通貨表現 `100$`、`$100` | math_inline にしない。 |
+| 未閉鎖 fence の中に heading や footnote がある | すべて code text。未閉鎖 fence warning のみ出す。 |
+
+§28 の機能併用時の変換順は、次に固定する。
+
+1. `--var` / `ADLAIRE_TEMPLATE_VARS_JSON` / 設定ファイルの template vars を code fence 外 text へ適用する。
+2. block parser で code fence、math block、heading、footnote definition、blockquote、list、definition list、paragraph を確定する。
+3. block token から admonition、section collapse、heading numbering、TOC depth、diff、Mermaid、definition list、task list を変換する。
+4. inline parser で code span、image、link、footnote reference、badge、math inline、既存 inline、text を変換する。
+5. text node、attribute、URL、SVG を escape / validation する。
+6. page shell、CSS、JS、search index、minify、atomic write の順で後続処理する。
+
 **§28 HTML 属性順・escape 固定契約：**
 
 生成 HTML は、fixture 比較を安定させるため属性順を固定する。属性順は `id`、`class`、`data-*`、`role`、`aria-*`、`href`、`src`、`alt`、`title`、`datetime`、`loading`、`decoding`、その他の順とする。同じ分類内は ASCII 昇順とする。

@@ -567,6 +567,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | §28 共通 | `builder-extensions/config-resolution/` | 下記 §28 fixture カタログ固定契約の `config-resolution` fixture をすべて作成する。 |
 | §28 共通 | `builder-extensions/determinism/` | 下記 §28 fixture カタログ固定契約の `determinism` fixture をすべて作成する。 |
 | §28 共通 | `builder-extensions/atomicity/` | 下記 §28 fixture カタログ固定契約の `atomicity` fixture をすべて作成する。 |
+| §28 共通 | `builder-extensions/parser-precedence/` | 下記 §28 fixture カタログ固定契約の `parser-precedence` fixture をすべて作成する。 |
 | §28.1〜§28.25 | `builder-extensions/<feature-slug>/` | 下記 §28 fixture カタログ固定契約に列挙した fixture をすべて作成する。 |
 
 **§28 fixture カタログ固定契約：**
@@ -578,6 +579,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | §28 共通 | `config-resolution` | `success-config-defaults-only`、`success-config-file-values`、`success-config-env-over-file`、`success-config-cli-over-env-over-file`、`failure-config-json-corrupt`、`failure-config-unknown-key`、`failure-config-invalid-type`、`failure-config-duplicate-nonrepeatable-cli`、`security-config-secret-not-echoed` |
 | §28 共通 | `determinism` | `success-slug-duplicates`、`success-search-index-text-sources`、`success-local-storage-payload`、`success-hash-targets`、`security-deterministic-no-runtime-variance` |
 | §28 共通 | `atomicity` | `success-atomic-write-all-files`、`success-incremental-reuse-byte-identical`、`success-incremental-delete-stale-page`、`failure-strict-warning-no-replace`、`failure-write-error-no-partial-update`、`failure-changed-manifest-invalid-no-output`、`success-dependency-manifest-corrupt-full-build`、`security-atomic-no-stale-temp-promoted` |
+| §28 共通 | `parser-precedence` | `success-block-precedence-code-math-heading`、`success-inline-precedence-code-image-link`、`success-admonition-inline-composition`、`success-heading-inline-slug-source`、`success-list-definition-task-boundary`、`failure-unclosed-math-strict`、`noop-code-fence-protects-extensions`、`security-parser-raw-html-escaped` |
 | §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`failure-manifest-corrupt-full-build`、`success-stale-page-delete-on-success`、`noop-unchanged-pages-kept`、`security-incremental-base-escape` |
 | §28.2 | `formats` | `success-html`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format` |
 | §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`failure-badge-invalid-text`、`security-extension-escape`、`noop-extension-disabled` |
@@ -634,6 +636,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | stderr | fatal failure の `[ERROR]` code、対象 file、対象 section、strict 昇格有無を完全一致で確認する。warning 継続 case と strict warning case は空 file にする。 |
 | effects | 作成、更新、維持、削除禁止、既存出力維持、manifest 上書き有無、外部 call 0 件を JSON で確認する。 |
 | security | HTML escape、attribute escape、base 外 path、URL credential 非表示、secret 非表示、CDN / external library 不使用を確認する。 |
+| parser precedence | block token 優先順位、inline token 優先順位、code fence / code span 保護、曖昧構文、機能併用順を確認する。 |
 
 `expected/effects.json` は、§28 fixture では以下の key を固定する。未使用 key も省略せず、空配列、空 object、または `false` で明示する。
 
@@ -700,6 +703,23 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | `security-atomic-no-stale-temp-promoted` | staging path、absolute path、host user path、tmp path が HTML、CSS、JS、search index、manifest、stdout、stderr、REPORT に混入しないことを固定する。 |
 
 atomicity fixture の `input/existing-site/` は、既存 HTML、既存 `assets/search-index.json`、既存 `.dependency_manifest.json`、stale HTML、既存 asset を含める。failure fixture の `expected/site/` は `input/existing-site/` と byte 単位で一致させる。success fixture の `expected/effects.json` は、`created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths` をすべて明示する。
+
+**§28 parser precedence fixture 固定契約：**
+
+`builder-extensions/parser-precedence/` は、§28 の Markdown parser 優先順位、構文 grammar、曖昧構文、機能併用順を固定する共通 fixture である。個別 §28 fixture は、本 fixture と異なる token 解釈、別順序の inline 変換、code fence / code span 内変換を期待値にしてはならない。
+
+| fixture | 固定する内容 |
+|---------|--------------|
+| `success-block-precedence-code-math-heading` | code fence 継続中の heading / footnote / badge / math が code text のまま残り、math block と heading の判定順が `docs/details/builder.md` §28 Markdown parser 優先順位固定契約と一致する。 |
+| `success-inline-precedence-code-image-link` | code span 内の badge / footnote / math が変換されず、image が link より優先され、link text 内の badge / math だけが inline 変換される。 |
+| `success-admonition-inline-composition` | admonition body 内の badge、footnote、math、fenced code の併用で、body inline 変換と fenced code 保護が両立する。 |
+| `success-heading-inline-slug-source` | heading 内の badge、footnote、math 表示変換と、slug source text から UI text を除外する規則が同時に成立する。 |
+| `success-list-definition-task-boundary` | task list、通常 list、definition list、list 内 `: definition` の境界が固定どおりに分かれる。 |
+| `failure-unclosed-math-strict` | 未閉鎖 math inline / math block が non-strict では通常 text、strict では終了コード `2` と `BUILDER28_UNRESOLVED_REFERENCE` になる。 |
+| `noop-code-fence-protects-extensions` | code fence 内の template var、badge、footnote、math、definition marker、task marker が一切変換されない。 |
+| `security-parser-raw-html-escaped` | raw HTML、event handler、`javascript:` URL、HTML comment 指示が parser 段階で実行可能要素にならず、expected HTML と security.json で escape を確認する。 |
+
+parser precedence fixture の `expected/site/*.html` は、対象 token の tag、text node、未変換 text、変換済み node、属性順を完全一致で確認する。`expected/stdout.txt` は warning の有無、warning code、line、section を完全一致で確認する。`expected/security.json` は raw HTML、script、event handler、credential URL、CDN、外部 library が出力に存在しないことを固定する。
 
 **§28 expected 比較方式固定契約：**
 
