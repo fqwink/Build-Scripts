@@ -37,7 +37,7 @@ runner は `.server_config.commit_status_enabled == true` の場合、commitstat
 
 | key | 値 |
 |-----|----|
-| `state` | 開始時 `"pending"`、成功時 `"success"`、失敗時 `"failure"`、設定/状態書込など CI 自体の異常時 `"error"`。 |
+| `state` | 開始時 `"pending"`、成功時 `"success"`、失敗時 `"failure"`、GitHub API 認証失敗、commit status 設定不正、状態ファイル読込失敗、状態ファイル書込失敗、payload 生成不能のいずれかの CI 自体の異常時 `"error"`。 |
 | `context` | `.server_config.commit_status_context`。既定値 `"Adlaire CI"`。 |
 | `description` | 140 文字以内。開始時 `Build started`、成功時 `Build succeeded`、失敗時 `Build failed: <target_status>`、pending deploy 時 `Build succeeded with deploy pending`。 |
 | `target_url` | `.server_config.commit_status_target_url` が `null` でなければ送信する。 |

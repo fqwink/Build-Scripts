@@ -2359,7 +2359,7 @@ owner component は `api` とする。collaborator component は `statefile` と
 }
 ```
 
-`status` は `"ok"`、`"degraded"`、`"error"` のいずれかとする。必須状態ファイル破損がある場合は `degraded`、API process が応答できるが重大な read error がある場合は `error` とする。HTTP status は、API 自体が response を生成できる限り `200` とし、JSON 生成不能などの場合だけ `500` とする。
+`status` は `"ok"`、`"degraded"`、`"error"` のいずれかとする。必須状態ファイル破損がある場合は `degraded`、API process が応答できるが重大な read error がある場合は `error` とする。HTTP status は、API 自体が response を生成できる限り `200` とする。response object 構築失敗、JSON encode 失敗、response 書き込み開始前の header 生成失敗の場合だけ `500` とする。
 
 **読み取り元：**
 

@@ -370,7 +370,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 owner component は `security` とする。collaborator component は `api`、`statefile` とする。
 
 
-本機能の目的は、認証、権限拒否、token、設定、build trigger などの重要操作を追跡できる JSON Lines 監査ログとして保存することである。
+本機能の目的は、認証、権限拒否、token 作成・失効、設定変更、build trigger、session revoke、TOTP enable / disable、rate limit 設定変更を追跡できる JSON Lines 監査ログとして保存することである。
 
 **対象 action：**
 

@@ -198,7 +198,7 @@ Channel object:
 | `label` | string | `""` | 0〜64 文字 | 管理画面表示名。 |
 | `enabled` | boolean | `true` | boolean | `false` の channel へは送信しない。 |
 | `on` | string[] | `[]` | top-level `on` と同じ、または `"*"` | 空配列の場合は top-level `on` に従う。 |
-| `config` | object | `{}` | type 別 schema | webhook url、email to、command_args 等。 |
+| `config` | object | `{}` | type 別 schema | webhook `url`、email `to`、command `command_args`。 |
 | `retry_count` | integer | `2` | 0〜10 | retry 対象失敗時の追加試行回数。 |
 | `retry_interval_seconds` | integer | `30` | 1〜3600 | 再試行間隔。 |
 
@@ -607,7 +607,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 |------|----|------|--------|------|
 | `at` | string | 必須 | ISO 8601 | response 送信直前の日時。 |
 | `request_id` | string | 必須 | `req{YYYYMMDDHHmmss}-NNN` | API 呼び出し識別子。 |
-| `method` | string | 必須 | HTTP method | `GET` / `POST` / `DELETE` 等。 |
+| `method` | string | 必須 | HTTP method | `GET` / `POST` / `PUT` / `PATCH` / `DELETE`。 |
 | `path` | string | 必須 | `/api/...` | query を含まない path。 |
 | `query` | object | 必須 | JSON object | 許可済み query key と値。秘密値は禁止。 |
 | `status` | integer | 必須 | HTTP status code | response status。 |
