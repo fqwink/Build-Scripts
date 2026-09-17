@@ -544,28 +544,15 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 ├── components/
 │   ├── builder.go
 │   ├── runner.go
-│   ├── api.go
-│   ├── admin.go
-│   ├── statefile.go
-│   ├── archive.go
-│   ├── commitstatus.go
-│   └── mcp.go
+│   └── api.go
 │
 ├── admin/
 │   ├── index.html
-│   ├── adlaire-ci-sdk.js
-│   ├── style.css
-│   └── app.js
+│   └── adlaire-ci-sdk.js
 │
 ├── testdata/
 │   ├── builder/
-│   ├── runner/
-│   ├── api/
-│   ├── admin/
-│   ├── statefile/
-│   ├── archive/
-│   ├── commitstatus/
-│   └── mcp/
+│   └── runner/
 │
 ├── docs/
 │   ├── ADLAIRE_CI_SPEC.md
@@ -586,11 +573,8 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | `components/builder.go` | `builder` | Markdown / Markdown ディレクトリを静的 Web サイトへ変換する。 |
 | `components/runner.go` | `runner` | GitHub polling、変更検出、ビルド起動、履歴、ログ、deploy を実行する。 |
 | `components/api.go` | `api` | 管理 API サーバー、認証、状態ファイル操作を提供する。 |
-| `components/admin.go` | `admin` | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を扱う。詳細は `docs/ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` を正とする。 |
-| `components/statefile.go` | `statefile` | `.build_history`、`.build_logs`、`.server_config` など状態ファイルの読み書きを扱う。詳細は `docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。 |
-| `components/archive.go` | `archive` | ビルドログ圧縮、snapshot、配布アーカイブを扱う。 |
-| `components/commitstatus.go` | `commitstatus` | GitHub Commit Status API 送信を扱う。 |
-| `components/mcp.go` | `mcp` | 将来計画。現時点では実装可能な詳細仕様を持たず、MCP 専用詳細仕様が新設されるまで実装対象ではない。 |
+| `admin/index.html` | `ui` | 標準管理ツール UI を提供する。 |
+| `admin/adlaire-ci-sdk.js` | `sdk` | 管理 API 通信用 SDK を提供する。 |
 | `admin/` | `ui` / `sdk` | 標準管理 UI の静的ファイルを配置する。 |
 | `testdata/` | `fixture` | コンポーネント別 fixture を配置する。 |
 | `docs/examples/` | `-` | 利用例、設定例、サンプル構成を配置する。 |
@@ -602,7 +586,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | 対象 | 移行完了条件 |
 |------|--------------|
 | `main.go` | repository root に 1 ファイルだけ存在し、サブコマンド判定、引数受け取り、owner component 呼び出しだけを持つ。Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive、commitstatus、MCP の実装詳細を含まない。 |
-| `components/*.go` | 実装対象 owner component ごとに 1 Go ファイルだけ存在する。`builder` は `components/builder.go`、`runner` は `components/runner.go`、`api` は `components/api.go`、`admin` は `components/admin.go`、`statefile` は `components/statefile.go`、`archive` は `components/archive.go`、`commitstatus` は `components/commitstatus.go` とする。 |
+| `components/*.go` | 実装対象 owner component ごとに 1 Go ファイルだけ存在する。現行 Go 実装は `builder` の `components/builder.go`、`runner` の `components/runner.go`、`api` の `components/api.go` とする。`admin` は `admin/` 配下の静的配布物であり、Go ファイルを持たない。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルとして追加する場合は、追加対象 Phase または追加実装 PR で仕様状態と索引を更新してから作成する。 |
 | 標準移行前ファイル | `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は、対応する標準配置へ移動済みであり、同じ実装本文または同じ fixture が旧配置に残っていない。 |
 | testdata | 実装済みまたは仕様化済み・未実装の owner component ごとに `testdata/<component>/` を使用する。`testdata/mcp/` は MCP 専用詳細仕様が新設されるまで作成しない。 |
 | admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ `ui` と `sdk` の owner 詳細仕様に従う。`admin/style.css` と `admin/app.js` は、`docs/ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
