@@ -6,28 +6,20 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 本リポジトリでは、Markdown ファイルまたは Markdown ディレクトリから静的 Web サイトを生成する Go 版ビルドスクリプトと、GitHub 上の対象 Markdown 変更を検出してビルドを実行する Go 版 CI ランナーの仕様を管理します。
 
-方針・ポリシー・実装状態・実装可否・ロードマップの正本は `docs/SPEC.md` です。詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約は `docs/DETAIL_INDEX.md` を参照します。各 owner component の入出力、状態、処理順序、異常系、検証条件の本文は `docs/details/*.md` を正本として扱います。
+文書構造、読む順番、正本関係、実装ファイルの所在は `docs/DOCUMENT_INDEX.md` を参照します。
 
-## 読む順番
+## 最初に読む文書
 
 1. `AGENTS.md`: 作業ルール、承認、Git 運用を確認する。
-2. `docs/DOCUMENT_INDEX.md`: 文書と実装ファイルの役割、正本関係、配置を確認する。
-3. `docs/SPEC.md`: 方針、ポリシー、実装状態、実装可否、ロードマップを確認する。
-4. `docs/DETAIL_INDEX.md`: 詳細仕様の入口、読み順、共通固定値、対応表、ソース配置を確認する。
-5. `docs/details/*.md`: 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。
+2. `docs/DOCUMENT_INDEX.md`: 文書構造、読む順番、正本関係、実装ファイル所在を確認する。
 
-## 主要ファイル
+## 仕様正本
 
-- `docs/SPEC.md`: Adlaire CI のマスター仕様書。
-- `docs/DETAIL_INDEX.md`: Adlaire CI の Part 3 詳細仕様の入口。読み順、共通固定値、対応表、リポジトリ内ソース配置、横断補足契約を持つ。
-- `docs/details/*.md`: owner component 別の入出力、状態、処理順序、異常系、検証条件の詳細仕様本文。
-- `docs/DOCUMENT_INDEX.md`: 文書・実装ファイルの役割と所在を示す索引。
-- `docs/DESIGN.md`: 生成静的 Web サイトのデザイン仕様を整理する補助文書。
-- `AGENTS.md`: 本リポジトリにおけるエージェント作業ルール。
+仕様判断では、`docs/DOCUMENT_INDEX.md` の Reading Order と Source Of Truth に従って正本を確認します。README は入口であり、仕様本文、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証 matrix を定義しません。
 
 ## 実装ファイル
 
-標準ソース配置と実装状態は `docs/DOCUMENT_INDEX.md` の Specified Components を参照します。実装判断では、`docs/SPEC.md` の実装状態と `docs/DETAIL_INDEX.md` のリポジトリ内ソース配置を同時に確認します。
+標準ソース配置と実装状態は `docs/DOCUMENT_INDEX.md` の Specified Components を参照します。
 
 ## リリース形式
 
@@ -35,4 +27,4 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 ## 注意
 
-作業ルールは `AGENTS.md` を正とします。仕様や挙動を変更する場合は、`docs/DOCUMENT_INDEX.md` の Reading Order と Source Of Truth に従って正本を確認します。
+作業ルールは `AGENTS.md` を正とします。
