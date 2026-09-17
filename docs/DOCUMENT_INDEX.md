@@ -36,6 +36,22 @@
 
 本表は文書選択の判断フローであり、各文書の正本範囲を拡張しない。
 
+## Specification Write Location Matrix
+
+仕様、詳細仕様、索引、補助文書を改訂する場合は、下表に従って記載先を選ぶ。
+
+| 書く内容 | 書く場所 | 書いてはいけない場所 |
+|----------|----------|----------------------|
+| 作業ルール、承認条件、Git 運用、PR 作成、文書整合ルール | `AGENTS.md` | `README.md`、`docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
+| 方針、ポリシー、実装状態、実装可否、ロードマップ、リリース判断、正本関係 | `docs/SPEC.md` | `docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
+| 詳細仕様の入口、読み順、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約 | `docs/DETAIL_INDEX.md` | `docs/SPEC.md`、`docs/details/*.md`、`README.md` |
+| owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件 | owner component 別の `docs/details/*.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
+| 文書配置、読む順番、正本関係、実装ファイル所在、仕様構造の索引 | `docs/DOCUMENT_INDEX.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
+| 生成静的 Web サイトのレイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様 | `docs/DESIGN.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
+| 初見向け概要、最小限の読む順番、主要ファイル案内 | `README.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
+
+`README.md` は入口であり、詳細ルール、詳細仕様本文、実装状態表、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義しない。`docs/DOCUMENT_INDEX.md` は索引であり、仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義しない。
+
 ## Reading Order
 
 | 順序 | ファイル | 目的 |
