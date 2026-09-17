@@ -282,6 +282,53 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | §27.46 | `security-totp-setup-once`、`success-totp-confirm`、`failure-totp-code-reuse`、`success-totp-disable` | setup ticket、TOTP code、clock、secret state。 | secret 有効保存条件、ticket 一回使用、window、disable。 |
 | §27.47 | `security-rate-limit-login`、`success-rate-limit-window-reset`、`security-rate-limit-ip-actor`、`failure-rate-limit-state-save` | policy、rate state、RemoteAddr、actor。 | count、`429`、audit 成功条件、部分 count 更新なし。 |
 
+**§27.42〜§27.47 security fixture 固定契約：**
+
+§27.42〜§27.47 の fixture は、`docs/details/security.md` §27.42〜§27.47 の認証、scope、token、audit、session、TOTP、rate limit の処理順、状態保存順、漏えい禁止、副作用境界を固定する。各 fixture は `manifest.json.owner_component` を `security`、`manifest.json.section` を対象 §27.x、`manifest.json.feature` を下表の feature 名に固定する。`components` には、HTTP request / response を検証する場合は `api`、SDK error 変換を検証する場合は `sdk`、UI 表示 / field 消去を検証する場合は `ui`、状態ファイルを検証する場合は `statefile` を含める。
+
+| 節 | feature | fixture 名 | 固定する確認 |
+|----|---------|------------|--------------|
+| §27.42 | `api_token_scope` | `security-scope-trigger-allowed` | `trigger` scope token、`POST /api/build` / `POST /api/build/force` の許可、body parse 前 scope 判定、audit actor、build trigger actor、Authorization 非保存を固定する。 |
+| §27.42 | `api_token_scope` | `security-scope-read-denied` | `trigger` scope token で read endpoint を呼んだ場合の `403`、endpoint 固有処理なし、body validation なし、permission_denied audit、token 本体非保存を固定する。 |
+| §27.42 | `api_token_scope` | `security-scope-path-param` | `DELETE /api/tokens/{id}` など path parameter 付き endpoint を正規化 path pattern で判定し、query string を scope 判定に使わないことを固定する。 |
+| §27.42 | `api_token_scope` | `failure-scope-audit-failure` | scope 不足時の audit 追記失敗で `500`、対象 endpoint 未実行、request body 未評価、`.api_tokens` / endpoint 状態差分なしを固定する。 |
+| §27.42 | `api_token_scope` | `security-scope-multi-scope` | 複数 scope token はいずれか 1 scope が endpoint group に一致した場合だけ許可し、未知 scope / 空 scopes は token record 破損 `500` とすることを固定する。 |
+| §27.42 | `api_token_scope` | `noop-scope-health-webhook-exempt` | `GET /api/health` と `POST /api/webhook` は API token scope 判定対象外とし、未定義 route は認証 / rate limit / body parse 前に `404` / `405` を返すことを固定する。 |
+| §27.43 | `api_key_management` | `security-token-create-once` | token 本体生成、hash 保存、token response 一回表示、`.api_tokens` 保存 → access log → audit log → response の順序を固定する。 |
+| §27.43 | `api_key_management` | `security-token-list-mask` | `GET /api/tokens` が token 本体、token hash、Authorization header を返さず、`created_at` 降順 / id 昇順で返すことを固定する。 |
+| §27.43 | `api_key_management` | `success-token-revoke` | `DELETE /api/tokens/{id}` の id 検証、`revoked_at` 保存、自己失効、access / audit 追記、以後 `401` を固定する。 |
+| §27.43 | `api_key_management` | `failure-token-expired-auth` | 期限切れ token の `401`、`last_used_at` 未更新、access / audit `token_expired`、endpoint 固有処理なしを固定する。 |
+| §27.43 | `api_key_management` | `failure-token-record-corrupt` | `.api_tokens` の未知 key、必須 key 不足、hash 形式不正、未知 scope、空 scopes で token 認証 / 一覧 / 作成 / 失効を `500` にし、自動再生成しないことを固定する。 |
+| §27.43 | `api_key_management` | `partial-token-create-audit-failure` | token record 保存後の access log または audit log 追記失敗で `500`、作成済み token record 維持、token 本体を response に含めないことを固定する。 |
+| §27.44 | `audit_log` | `success-audit-operation` | password change、token create、config update、build trigger など対象 action の actor / target / result / request_id / timestamp を固定する。 |
+| §27.44 | `audit_log` | `success-audit-denied` | permission denied と rate limit denied の `actor_type`、`actor_id`、`target_type:"endpoint"`、`target_id:{METHOD path}`、`result:"denied"` を固定する。 |
+| §27.44 | `audit_log` | `failure-audit-append` | 必須 audit 追記失敗で対象操作を `500` とし、保存済み状態の巻き戻し有無を操作種別別保存順どおり固定する。 |
+| §27.44 | `audit_log` | `security-audit-secret-mask` | request body、query 全体、header、cookie、secret、password、token、hash、salt、TOTP secret が `.audit_log`、response、server log に残らないことを固定する。 |
+| §27.44 | `audit_log` | `success-audit-pagination-filter` | `GET /api/audit-log` の `limit`、`offset`、`actor`、`action`、`result`、timestamp 降順、壊れた行除外、取得操作自体を audit しないことを固定する。 |
+| §27.44 | `audit_log` | `failure-audit-invalid-filter` | 未知 action、未知 result、200 bytes 超過 actor を `422`、状態差分なし、壊れた行の有無と独立判定に固定する。 |
+| §27.45 | `session_timeout` | `success-session-active` | login 成功時の `issued_at + session_timeout_seconds`、UTC ISO 8601 秒精度、sliding update、既存 session token 非表示を固定する。 |
+| §27.45 | `session_timeout` | `failure-session-expired` | timeout session の `401`、endpoint 固有処理なし、session token 非保存、access / audit の結果を固定する。 |
+| §27.45 | `session_timeout` | `success-session-timeout-update` | `.server_config.session_timeout_seconds` 300〜2592000、config log diff、audit `config_update`、新規 session だけへの適用を固定する。 |
+| §27.45 | `session_timeout` | `success-session-revoke-all` | `POST /api/sessions/revoke-all` が既存 session を全失効し、実行中 request の response、audit、以後の `401` を固定する。 |
+| §27.45 | `session_timeout` | `noop-session-timeout-same-value` | 同値更新は `200`、`.server_config` 再保存可、`.config_log` / `.audit_log` 追記なし、既存 session 変更なしを固定する。 |
+| §27.45 | `session_timeout` | `failure-session-timeout-invalid` | 範囲外、型不一致、不正 JSON を `422` / `400`、`.server_config` / `.sessions` / `.config_log` / `.audit_log` 差分なしに固定する。 |
+| §27.46 | `totp` | `security-totp-setup-once` | setup 仮 secret はメモリだけに保持し、response と UI 一回表示以外へ secret / otpauth URI を残さず、TOTP 有効時 setup `409` を固定する。 |
+| §27.46 | `totp` | `success-totp-confirm` | 仮 secret と code 検証、`.totp_secret` 保存、仮 secret 削除、audit 追記、status response の secret 非表示を固定する。 |
+| §27.46 | `totp` | `failure-totp-code-reuse` | `last_accepted_step` 以下の code replay を `401`、ticket 削除、secret / ticket 非保存、状態差分境界を固定する。 |
+| §27.46 | `totp` | `success-totp-disable` | code 検証後に `.totp_secret` を無効値保存、未使用 ticket / 仮 secret 削除、既存 session 維持、audit を固定する。 |
+| §27.46 | `totp` | `failure-totp-ticket-invalid` | ticket 不在、期限切れ、hash 不一致、削除済み ticket をすべて `401 {"error":"Unauthorized"}`、詳細非表示、ticket 巻き戻しなしに固定する。 |
+| §27.46 | `totp` | `partial-totp-audit-failure` | confirm / disable の audit 失敗時 `500`、保存済み `.totp_secret` や仮 secret 削除は巻き戻さず、secret 平文を返さないことを固定する。 |
+| §27.47 | `api_rate_limit` | `security-rate-limit-login` | login group の認証前 IP key 判定、11 回目 `429`、count 非増加、permission_denied audit、request body 非保存を固定する。 |
+| §27.47 | `api_rate_limit` | `success-rate-limit-window-reset` | `now >= window_start + window_seconds` で window reset、count 初期化、`reset_at`、state_summary 並び順を固定する。 |
+| §27.47 | `api_rate_limit` | `security-rate-limit-ip-actor` | session / API token の actor key と IP key を同一 lock 内で判定 / 更新し、片方だけの count 更新を残さないことを固定する。 |
+| §27.47 | `api_rate_limit` | `failure-rate-limit-state-save` | `.api_rate_state` 保存失敗で endpoint 固有処理なし、部分 count 更新なし、`500`、audit 追記なしを固定する。 |
+| §27.47 | `api_rate_limit` | `noop-rate-limit-disabled` | `.server_config.api_rate_limit.enabled=false` では `.api_rate_state` を読まず、count / audit 差分なしで対象 endpoint へ進むことを固定する。 |
+| §27.47 | `api_rate_limit` | `partial-rate-limit-policy-update` | policy 保存 → windows 空保存 → config log → audit の順序、同値 no-op、audit 失敗時の保存済み状態維持を固定する。 |
+
+§27.42〜§27.47 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。security fixture では、`.admin_credentials`、`.sessions`、`.api_tokens`、`.audit_log`、`.api_access_log`、`.server_config`、`.totp_secret`、`.api_rate_state`、対象 endpoint 状態ファイル、request body、Authorization header、session token、API token、token hash、password hash、salt、TOTP secret、ticket、otpauth URI の forbidden side effect と forbidden leak を必ず列挙する。
+
+§27.42〜§27.47 の `expected/security.json` は、少なくとも `forbidden_plaintexts`、`forbidden_headers`、`forbidden_state_values`、`allowed_one_time_response_fields`、`hash_only_fields`、`scope_decisions`、`rate_limit_decisions`、`audit_required` を持つ。token 本体、TOTP secret、ticket、Authorization header、session token、API token は `allowed_one_time_response_fields` に明示された fixture の該当 response 以外では出現禁止とする。hash 値を検証する場合も、hash 算出入力の平文を expected file へ保存してはならない。
+
 **§27.1〜§27.11 feature fixture 固定契約：**
 
 §27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 詳細仕様に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
