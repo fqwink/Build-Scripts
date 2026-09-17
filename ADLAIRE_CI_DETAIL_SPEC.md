@@ -513,39 +513,13 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `AD
 
 ## 0. システム概要
 
-Adlaire CI は Go 版コンポーネントと JavaScript/HTML 管理ツールで構成する。
+Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツールで構成する。
 
-Part 3 詳細仕様セットは、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を責務 component 別に定義する。`mcp` の入出力、状態、起動手順、検証条件は定義しない。
+Part 3 詳細仕様セットは、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を責務 component 別に定義する。
 
-**`builder`（ビルドスクリプト）**
-GitHub リポジトリ上またはローカル上の Markdown ファイルまたは Markdown ディレクトリを静的 Web サイトに変換してローカルディレクトリへ出力する。標準実行バイナリ名は `adlaire-ci-build` とする。
+本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置、横断補足契約だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を正とする。
 
-**`runner`（CI ランナー）**
-GitHub の Git Trees API / Git Blobs API を使用し、対象ファイルの blob SHA 変更を検出する。変更があった場合のみ Markdown 本文を書き出し、`adlaire-ci-build` を起動し、成功時に SHA キャッシュを更新する。systemd タイマーで定期実行する oneshot 設計。
-
-SSH 転送、ペンディングキュー、スナップショット、Webhook 通知、マルチブランチ、ビルドログ保存、サーキットブレーカーは `runner` の対象機能である。
-
-**`api`（管理 API サーバー）**
-Go 標準ライブラリ `net/http` を使用する常駐 HTTP サーバー。管理ツールからの API リクエストを受け付け、認証・状態取得・手動ビルドトリガーを処理する。`adlaire-ci-api.service` として systemd に登録し、`runner` とは独立して常駐する。
-
-**Go 版実行フロー：**
-```
-systemd timer
-  └─ adlaire-ci-runner（components/runner.go, oneshot）
-       ├─ 変更なし → スキップ
-       └─ 変更あり → adlaire-ci-build（components/builder.go）→ 静的 Web サイト生成
-```
-
-**管理 API を含む想定フロー：**
-```
-adlaire-ci-runner
-  └─ SSH 転送 / スナップショット / Webhook 通知 / ビルドログ保存
-
-adlaire-ci-api.service（常駐）
-  └─ adlaire-ci-api（components/api.go）→ SDK → 管理ツール
-```
-
-Go 標準ライブラリと GitHub PAT（`contents: read`）を基本要件とする。TLS 終端に nginx 等のリバースプロキシを使う場合でも、Adlaire CI 本体は HTTP サーバーとして実装する。
+`mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、本ファイルおよび責務 component 別詳細仕様ファイルでは入出力、状態、起動手順、検証条件を定義しない。
 
 ---
 
@@ -633,77 +607,27 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 ---
 
-## 1. Builder 詳細仕様（分割済み）
+## 1〜26. 分割済み詳細仕様インデックス
 
-`builder` owner component の詳細仕様本文は `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` を正とする。
+本節は、旧 Part 3 本文から責務 component 別詳細仕様ファイルへ移動済みの範囲を示す索引である。各範囲の主本文は下表の移動先を正とし、本ファイルでは本文を再定義しない。
 
-| 移動済み範囲 | 移動先 |
-|--------------|--------|
-| §1〜§9 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9 |
-| §8a | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §8a |
-| §27.4 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.4 |
-| §27.25 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.25 |
-| §27.28 | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27.28 |
+`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は横断補足契約として本ファイルに残す。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルを主本文とし、§27.38a を横断同期確認として同時に確認する。
 
-### — CI ランナー —
-
-## 10. Runner 詳細仕様（分割済み）
-
-`runner` owner component の詳細仕様本文は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` を正とする。
-
-| 移動済み範囲 | 移動先 |
-|--------------|--------|
-| §10〜§20 | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20 |
-| §15a | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §15a |
-| runner owner の §27 個別節（§27.1 を除く） | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27 |
-
-`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は横断補足契約として本ファイルに残す。
-
-§27.21〜§27.38 の runner 拡張機能を実装する場合は、`ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` の個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として本ファイル §27.38a を同時に確認する。
-
-### — 管理ツール —
-
-## 21. API 詳細仕様（分割済み）
-
-`api` owner component の詳細仕様本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` を正とする。
-
-| 移動済み範囲 | 移動先 |
-|--------------|--------|
-| §21〜§22 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a |
-| §25 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §25 |
-| api owner の §27 個別節 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27 |
-
-`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は横断補足契約として本ファイルに残す。
-
-§27.21〜§27.38 に関わる api / sdk / ui 連動条件は、各 owner component の分割先詳細仕様ファイルを正本とし、本ファイル §27.38a は横断同期確認として同時に確認する。§27.38a の内容を api / sdk / ui の分割先へ重複定義してはならない。
-
-## 23. SDK 詳細仕様（分割済み）
-
-`sdk` owner component の詳細仕様本文は `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 を正とする。
-
-| 移動済み範囲 | 移動先 |
-|--------------|--------|
-| §23 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 |
-
-## 24. UI 詳細仕様（分割済み）
-
-`ui` owner component の詳細仕様本文は `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 を正とする。
-
-| 移動済み範囲 | 移動先 |
-|--------------|--------|
-| §24 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 |
-
-## 25. API 認証詳細仕様（分割済み）
-
-`api` owner component の認証詳細仕様本文は `ADLAIRE_CI_DETAIL_API_SPEC.md` §25 を正とする。
-
-## 26. Setup 詳細仕様（分割済み）
-
-`setup` owner component の詳細仕様本文は `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 を正とする。
-
-| 移動済み範囲 | 移動先 |
-|--------------|--------|
-| §26 | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 |
+| 移動済み範囲 | owner component | 主本文 |
+|--------------|-----------------|--------|
+| §1〜§9、§8a | `builder` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §1〜§9、§8a |
+| §10〜§20、§15a | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §10〜§20、§15a |
+| §21〜§22、§21a | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §21〜§22、§21a |
+| §23 | `sdk` | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 |
+| §24 | `ui` | `ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 |
+| §25 | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §25 |
+| §26 | `setup` | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 |
+| §27.1 | `commitstatus` | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 |
+| §27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29〜§27.38 | `runner` | `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27 |
+| §27.4、§27.25、§27.28 | `builder` | `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` §27 |
+| §27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30 | `api` | `ADLAIRE_CI_DETAIL_API_SPEC.md` §27 |
+| §27.7、§27.15 | `archive` | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27 |
+| §27.42〜§27.47 | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27 |
 
 ## 27. 追加仕様化機能 詳細仕様
 
