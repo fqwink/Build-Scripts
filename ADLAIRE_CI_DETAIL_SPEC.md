@@ -22,8 +22,9 @@
 1. `ADLAIRE_CI_SPEC.md` の実装状態、Part 1 §12、§13 で、対象が実装対象であることを確認する。
 2. 本ファイル §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
 3. 本ファイル §0a〜§0h で、詳細仕様の記載基準、共通固定値、実装前確認項目、検証条件、Phase 順序を確認する。
-4. owner component の `ADLAIRE_CI_DETAIL_*_SPEC.md` を読み、owner component、collaborator component、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
-5. `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 のセットアップ・アップデート手順と `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
+4. owner component の `ADLAIRE_CI_DETAIL_*_SPEC.md` を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
+5. collaborator component がある場合は、該当する `ADLAIRE_CI_DETAIL_*_SPEC.md` を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
+6. `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 のセットアップ・アップデート手順と `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
 
 詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルまたは本ファイルの対応表を改訂し、`ADLAIRE_CI_SPEC.md` の対象範囲と整合させる。
 
@@ -141,9 +142,9 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 実装者が詳細仕様を読む順序は以下に固定する。
 
 1. `ADLAIRE_CI_SPEC.md` で実装対象、実装状態、実装可否を確認する。
-2. `ADLAIRE_CI_DETAIL_SPEC.md` で共通固定値、責務 component、詳細節対応表を確認する。
-3. owner component の分割先詳細仕様ファイルを読む。
-4. collaborator component がある場合は、該当する分割先詳細仕様ファイルの参照節を読む。
+2. `ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。
+3. owner component の分割先詳細仕様ファイルを主本文として読む。
+4. collaborator component がある場合は、該当する分割先詳細仕様ファイルの参照節を呼び出し境界、schema、表示、security、setup、fixture、検証観点として読む。
 5. 状態ファイルの読み書き、lock、atomic write、schema を扱う場合は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を読む。
 6. 認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` を読む。
 7. fixture、fake、PR 証跡が必要な場合は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を読む。

@@ -51,6 +51,8 @@
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は、同じ owner component / collaborator component 境界で読む。Phase の主対象は owner component とし、statefile、security、archive、commitstatus、admin、fixture、setup は必要に応じて collaborator component として検証、schema、setup、security、fixture、配布境界を補完する。
 
+実装者が詳細仕様を読む順序は、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認し、owner component の分割先詳細仕様ファイルを主本文として読む順に固定する。collaborator component の分割先詳細仕様ファイルは、呼び出し境界、schema、表示、security、setup、fixture、検証観点として参照し、owner component の主本文を上書きしない。
+
 `COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。横断する固定値、読み順、対応表、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値・管理仕様として扱い、component として扱わない。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、責務 component 別詳細仕様ファイルへ分割しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。§27.38a は個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema を定義しない。これらは owner component 別詳細仕様ファイルを正とし、§27.38a は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを補足する。
