@@ -69,7 +69,7 @@ owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` は、各 component �
 
 標準ソース配置は `main.go` と `components/*.go`、および `admin/` 配下の管理 UI ファイルとする。
 
-標準ソース配置への実装移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`testdata/<component>/` とする。
+標準ソース配置への実装移行は完了済みである。現行実装実体は `main.go`、現存する `components/*.go`、`admin/` 配下の管理 UI 静的ファイル、`testdata/<component>/` とする。
 
 `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱ってはならない。
 

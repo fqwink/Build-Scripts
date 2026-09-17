@@ -38,7 +38,7 @@ Adlaire CI は、最初から Go を前提として仕様策定します。
 
 標準ソース配置への移行は完了済みです。`components/builder.go` は Phase 1 実装済み、`components/runner.go` は Phase 2 完了判定パス実装済みです。いずれも `gofmt` と `go test` による検証対象です。
 
-標準ソース配置は `docs/ADLAIRE_CI_SPEC.md` Part 1 §4.3 と `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0j で定義し、`main.go` と `components/*.go` を正とします。
+標準ソース配置は `docs/ADLAIRE_CI_SPEC.md` Part 1 §4.3 と `docs/ADLAIRE_CI_DETAIL_SPEC.md` §0j で定義し、`main.go`、現存する `components/*.go`、`admin/` 配下の静的 UI ファイルを正とします。
 
 `components/api.go` は実装中・検証未完了のコンポーネントです。
 

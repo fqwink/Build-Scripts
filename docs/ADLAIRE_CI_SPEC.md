@@ -30,7 +30,7 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 
 本ドキュメントでは、仕様化済みの内容と実装済みの内容を区別して扱う。
 
-下表のコンポーネント名は、Part 1 §4.3 の標準ソース配置に基づく。標準ソース配置への実装移行は完了済みであり、`main.go`、`components/*.go`、`testdata/<component>/` を現行配置として扱う。
+下表のコンポーネント名は、Part 1 §4.3 の標準ソース配置に基づく。標準ソース配置への実装移行は完了済みであり、`main.go`、現存する `components/*.go`、`admin/` 配下の管理 UI 静的ファイル、`testdata/<component>/` を現行配置として扱う。
 
 | コンポーネント | 状態 | 備考 |
 |---------------|------|------|
@@ -177,28 +177,15 @@ Adlaire CI のリポジトリ内ソース構成は、責務ベースで整理す
 ├── components/
 │   ├── builder.go
 │   ├── runner.go
-│   ├── api.go
-│   ├── admin.go
-│   ├── statefile.go
-│   ├── archive.go
-│   ├── commitstatus.go
-│   └── mcp.go
+│   └── api.go
 │
 ├── admin/
 │   ├── index.html
-│   ├── adlaire-ci-sdk.js
-│   ├── style.css
-│   └── app.js
+│   └── adlaire-ci-sdk.js
 │
 ├── testdata/
 │   ├── builder/
-│   ├── runner/
-│   ├── api/
-│   ├── admin/
-│   ├── statefile/
-│   ├── archive/
-│   ├── commitstatus/
-│   └── mcp/
+│   └── runner/
 │
 ├── docs/
 │   ├── ADLAIRE_CI_SPEC.md
@@ -215,7 +202,7 @@ Adlaire CI のリポジトリ内ソース構成は、責務ベースで整理す
 
 `main.go` は 1 ファイルとし、起動入口、サブコマンド判定、引数受け取り、対象コンポーネント呼び出しだけを担当する。`main.go` に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、MCP 処理の実装詳細を書いてはならない。
 
-`components/` は、1 コンポーネント = 1 Go ファイルとする。ファイル名は責務名を表し、`builder.go`、`runner.go`、`api.go`、`admin.go`、`statefile.go`、`archive.go`、`commitstatus.go`、`mcp.go` を標準コンポーネントとする。
+`components/` は、1 実装対象コンポーネント = 1 Go ファイルとする。現行の Go 実装ファイルは `builder.go`、`runner.go`、`api.go` だけとする。`admin` は Go コンポーネントではなく `admin/` 配下の静的配布物として扱う。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` は将来計画であり、MCP 専用詳細仕様が新設されるまで作成しない。
 
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
