@@ -3050,21 +3050,21 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 項目 | 仕様 |
 |------|------|
 | 採番元 | `.build_state.queued[].created_seq` の最大値。存在しない場合は `0`。次 entry は最大 + 1。 |
-| 旧 entry | `created_seq` 欠落 entry は GET 表示時だけ末尾扱いとし、runner 取り出し前に `.build_state` lock 内で created_seq を補完保存する。 |
+| 旧 entry | `created_seq` 欠落 entry は GET 表示時だけ末尾扱いとし、runner 取り出し前に `.build_state` lock 内で `created_seq` を正規化保存する。正規化値は採番元の規則だけで決定し、entry 内容、priority、id、時刻から推測しない。 |
 | priority 省略 | API / webhook / approval の queue 追加時は `"normal"` を保存する。 |
 | 表示順 | priority 数値昇順、created_seq 昇順、同値なら id 昇順。 |
 | 取り出し順 | 表示順と同一。 |
 | clear | priority に関係なく waiting entry 全件を削除する。 |
 | queue full | priority が高くても既存 entry を押し出さない。 |
 
-runner が旧 entry の `created_seq` 補完保存に失敗した場合、build を開始せず終了コード `1` とする。補完前の推測順で build を開始してはならない。
+runner が旧 entry の `created_seq` 正規化保存に失敗した場合、build を開始せず終了コード `1` とする。正規化前の推測順で build を開始してはならない。
 
 **異常系：**
 
 | 条件 | 処理 |
 |------|------|
 | priority 不正 | API は `422`。 |
-| created_seq 欠落の旧 entry | GET 表示時は末尾扱いにする。runner 取り出し前または queue 更新時に `.build_state` lock 内で補完保存する。補完失敗時は build を開始しない。 |
+| created_seq 欠落の旧 entry | GET 表示時は末尾扱いにする。runner 取り出し前または queue 更新時に `.build_state` lock 内で正規化保存する。正規化保存失敗時は build を開始しない。 |
 | queue full | `429`。priority による上書き削除はしない。 |
 
 **検証条件：**
@@ -3074,7 +3074,7 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | urgent 後投入 | normal より先に処理。 |
 | 同一 priority | FIFO。 |
 | 不正 priority | 状態差分なしで `422`。 |
-| created_seq 欠落 | 補完後に順序判定し、補完失敗なら build なし。 |
+| created_seq 欠落 | 正規化保存後に順序判定し、正規化保存失敗なら build なし。 |
 | urgent queue full | `429`、既存 low entry も削除しない。 |
 
 ### 27.36 失敗原因の自動分類
