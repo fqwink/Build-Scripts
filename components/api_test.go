@@ -1066,14 +1066,14 @@ func TestAPIPhase4BackupWebhookSnapshotAndTokenFixtures(t *testing.T) {
 		t.Fatalf("snapshot dir should be deleted, err=%v", err)
 	}
 
-	resp = apiRequest(t, server, http.MethodPost, "/api/tokens", token, map[string]any{"name": "automation", "scopes": []string{"read"}})
-	if resp.Code != http.StatusOK {
+	resp = apiRequest(t, server, http.MethodPost, "/api/tokens", token, map[string]any{"label": "automation", "scopes": []string{"read"}})
+	if resp.Code != http.StatusCreated {
 		t.Fatalf("token issue code=%d body=%s", resp.Code, resp.Body.String())
 	}
 	var issued map[string]any
 	decodeTestJSON(t, resp.Body.Bytes(), &issued)
 	rawToken, _ := issued["token"].(string)
-	if rawToken == "" {
+	if rawToken == "" || issued["label"] != "automation" || issued["created_at"] == "" {
 		t.Fatalf("missing issued token: %#v", issued)
 	}
 	resp = apiRequest(t, server, http.MethodGet, "/api/tokens", token, nil)
@@ -1098,8 +1098,13 @@ func TestAPIPhase4RulePipelineNotesAndLayoutFixtures(t *testing.T) {
 
 	rule := map[string]any{"name": "failures", "status": "failure"}
 	resp := apiRequest(t, server, http.MethodPost, "/api/alert-rules", token, rule)
-	if resp.Code != http.StatusOK {
+	if resp.Code != http.StatusCreated {
 		t.Fatalf("alert rule code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var createdRule map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &createdRule)
+	if createdRule["id"] == "" || createdRule["rule"] != nil || createdRule["name"] != "failures" {
+		t.Fatalf("alert rule response must be the rule record: %#v", createdRule)
 	}
 	before := snapshotFiles(t, state, []string{".alert_rules", ".config_log"})
 	resp = apiRequest(t, server, http.MethodPost, "/api/alert-rules", token, rule)
@@ -1245,13 +1250,15 @@ func TestAPICompletionEndpoints(t *testing.T) {
 
 	hook := map[string]any{"phase": "after_build", "command_args": []string{"/bin/echo", "ok"}, "abort_on_failure": false}
 	resp = apiRequest(t, server, http.MethodPost, "/api/hooks", token, hook)
-	if resp.Code != http.StatusOK {
+	if resp.Code != http.StatusCreated {
 		t.Fatalf("hook create code=%d body=%s", resp.Code, resp.Body.String())
 	}
 	var hookResp map[string]any
 	decodeTestJSON(t, resp.Body.Bytes(), &hookResp)
-	created := hookResp["rule"].(map[string]any)
-	hookID, _ := created["id"].(string)
+	hookID, _ := hookResp["id"].(string)
+	if hookID == "" || hookResp["phase"] != "after_build" || hookResp["enabled"] != true || hookResp["timeout_seconds"].(float64) != 300 {
+		t.Fatalf("hook response must be the hook record: %#v", hookResp)
+	}
 	writeTestJSON(t, filepath.Join(state, ".build_logs", "b1_hook_"+hookID+".json"), map[string]any{"at": "2026-09-17T01:02:00Z", "result": "success"})
 	resp = apiRequest(t, server, http.MethodGet, "/api/hooks/"+hookID+"/log", token, nil)
 	if resp.Code != http.StatusOK {
@@ -1260,6 +1267,16 @@ func TestAPICompletionEndpoints(t *testing.T) {
 	resp = apiRequest(t, server, http.MethodDelete, "/api/hooks/"+hookID, token, nil)
 	if resp.Code != http.StatusOK {
 		t.Fatalf("hook delete code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/tag-rules", token, map[string]any{"condition": map[string]any{"status": "failure"}, "tags": []string{"failure"}})
+	if resp.Code != http.StatusCreated {
+		t.Fatalf("tag rule create code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var tagRule map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &tagRule)
+	if tagRule["id"] == "" || tagRule["condition"] == nil || tagRule["rule"] != nil {
+		t.Fatalf("tag rule response must be the tag rule record: %#v", tagRule)
 	}
 
 	siteDir := filepath.Join(state, "site")
