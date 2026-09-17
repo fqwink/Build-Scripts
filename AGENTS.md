@@ -10,7 +10,7 @@
 
 `AGENTS.md` を確認しただけで、作業判断に必要な確認を完了したと扱ってはならない。
 
-本リポジトリの仕様判断は、方針、ポリシー、正本関係、禁止事項、リリース判断は `docs/SPEC.md`、実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順は `docs/ROADMAP.md`、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約は `docs/DETAIL_INDEX.md`、各 owner component の詳細本文は `docs/details/*.md` を正本として行う。
+本リポジトリの仕様判断は、方針、ポリシー、正本関係、禁止事項、リリース判断は `docs/SPEC.md`、実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約は `docs/ROADMAP.md`、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様は `docs/DETAIL_INDEX.md`、各 owner component の詳細本文は `docs/details/*.md` を正本として行う。
 
 `docs/DESIGN.md` は、生成静的 Web サイトのデザイン仕様を整理する補助文書である。機能仕様、運用仕様、API 仕様、CI 仕様の正本ではない。
 
@@ -63,9 +63,9 @@
 
 `docs/SPEC.md` は、Adlaire CI の方針、ポリシー、正本関係、禁止事項、リリース判断を定めるマスター仕様書正本である。
 
-`docs/ROADMAP.md` は、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順を定めるロードマップ正本である。
+`docs/ROADMAP.md` は、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約を定めるロードマップ正本である。
 
-`docs/DETAIL_INDEX.md` は、`docs/SPEC.md` の Part 3 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約を持つ正本である。
+`docs/DETAIL_INDEX.md` は、`docs/SPEC.md` の Part 3 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様を持つ詳細仕様入口正本である。
 
 owner component 別の `docs/details/*.md` は、各 component の詳細仕様本文に関する正本である。
 
@@ -79,9 +79,9 @@ owner component 別の `docs/details/*.md` は、各 component の詳細仕様�
 
 `components/mcp.go` は将来計画コンポーネントであり、実装状態、実装可否、ロードマップ状態は `docs/ROADMAP.md` を正とする。`docs/DETAIL_INDEX.md` の責務 component 対応表と該当する owner component 別詳細仕様に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
 
-`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、詳細仕様ファイルとして作成してはならない。横断する固定値、読み順、対応表、横断補足契約は `docs/DETAIL_INDEX.md` の入口・索引・共通固定値・管理仕様として扱い、component として扱わない。
+`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、詳細仕様ファイルとして作成してはならない。横断する固定値、読み順、対応表は `docs/DETAIL_INDEX.md` の入口・索引・共通固定値・管理仕様として扱う。§27 追加仕様化機能の横断補足契約は `docs/ROADMAP.md` §6 を正とする。いずれも component として扱わない。
 
-`docs/DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。`docs/SPEC.md` と矛盾する場合は、`docs/SPEC.md` を優先する。
+`docs/DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。機能仕様、実装状態、実装可否、API 仕様、状態 schema、builder 処理本文は定義しない。方針は `docs/SPEC.md`、状態判断は `docs/ROADMAP.md`、builder の視覚実装詳細は `docs/details/builder.md` を優先する。
 
 仕様改訂では、既存仕様、`docs/DOCUMENT_INDEX.md`、実装ファイルとの整合性を確認する。
 
@@ -89,7 +89,7 @@ owner component 別の `docs/details/*.md` は、各 component の詳細仕様�
 
 文書整理だけを目的とする作業では、機能仕様、実装状態、実装可否、ロードマップ状態を変更してはならない。状態変更が必要な場合は、変更対象、変更理由、影響範囲を別途提示し、承認を得る。
 
-`README.md` は初見向けの入口、`docs/DOCUMENT_INDEX.md` は索引、`docs/SPEC.md` は方針・ポリシーの正本、`docs/ROADMAP.md` は状態・Phase・将来計画の正本、`docs/DETAIL_INDEX.md` は詳細仕様入口、owner component 別の `docs/details/*.md` は詳細仕様本文として扱う。
+`README.md` は初見向けの入口、`docs/DOCUMENT_INDEX.md` は索引、`docs/SPEC.md` は方針・ポリシーの正本、`docs/ROADMAP.md` は状態・Phase・将来計画・§27 追加仕様化機能参照・横断補足契約の正本、`docs/DETAIL_INDEX.md` は詳細仕様入口、owner component 別の `docs/details/*.md` は詳細仕様本文として扱う。
 
 `docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、owner component 別の `docs/details/*.md` に記載された一部コンポーネントや機能は、仕様化済みであっても未実装の場合がある。リポジトリ内に実装ファイルまたは実装コードが存在しない内容を、実装済み機能として扱ってはならない。
 
