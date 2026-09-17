@@ -1910,6 +1910,75 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | print | print 用挙動は `@media print` 内で完結させる。通常画面の DOM を print 専用に書き換えない。 |
 | accessibility | click 操作を追加する要素には keyboard 操作と `aria-label` を同時に定義する。 |
 
+**§28 Markdown token / HTML node 変換固定契約：**
+
+§28 実装は、Markdown を文字列置換だけで直接 HTML 化してはならない。以下の token 種別を内部表現として扱い、token 単位で変換する。token 名、判定順、fallback は固定値とする。
+
+| token | 対象 § | 判定 | HTML node 生成 | fallback |
+|-------|--------|------|----------------|----------|
+| `heading` | §28.5、§28.6、§28.7、§28.16、§28.20 | 行頭 `#` 1〜6 個、後続 space あり。 | slug は既存 slug 生成規則を使い、採番や表示 prefix を slug に混ぜない。 | 不正 heading は paragraph。 |
+| `blockquote` | §28.3 | `> [!TYPE]` で始まる blockquote。 | `section.adlaire-admonition` を生成し、`data-adlaire-admonition` に正規化 type を入れる。 | 未知 type は `note`。 |
+| `badge_inline` | §28.3 | `[badge:label:color]`。label は 1〜64 文字、color は `gray`、`blue`、`green`、`yellow`、`red`。 | `span.adlaire-badge`。label は text node。 | 不正構文は元 text。 |
+| `code_fence` | §28.4、§28.9、§28.13、§28.17、§28.19 | fence 開始行と終了行がある block。 | language、option、title を分離して code block node を生成する。 | 未閉鎖 fence は paragraph とせず code block として終端まで扱い warning。 |
+| `image` | §28.10、§28.22 | Markdown image または既存 image token。 | `img` に `src`、`alt`、必要な lazy / lightbox 属性を付与する。 | src 不正は image を出力せず warning。 |
+| `footnote_def` | §28.18 | `[^id]: text`。id は 1〜64 文字。 | footnote 定義 table に登録し、本文位置には出力しない。 | 重複定義は先勝ち、後続は warning。 |
+| `footnote_ref` | §28.18 | `[^id]`。 | 参照順に番号を割り当て `sup.footnote-ref` を生成する。 | 未定義は non-strict で text、strict で終了コード `2`。 |
+| `math_inline` | §28.19 | code span 外の `$...$`。 | `span.math-inline`。中身は escape 済み text。 | 未閉鎖は通常 text、strict で終了コード `2`。 |
+| `math_block` | §28.19 | 独立行の `$$` で囲まれた block。 | `div.math-block`。中身は escape 済み text。 | 未閉鎖は通常 text、strict で終了コード `2`。 |
+| `definition_list` | §28.24 | term 行直後に `: definition` が 1 行以上続く。 | `dl.definition-list`、`dt`、`dd`。 | term / definition 空は paragraph。 |
+| `task_item` | §28.25 | list item の先頭が `[ ]`、`[x]`、`[X]`。 | disabled checkbox と list text。 | その他 bracket は通常 list。 |
+
+**§28 HTML 属性順・escape 固定契約：**
+
+生成 HTML は、fixture 比較を安定させるため属性順を固定する。属性順は `id`、`class`、`data-*`、`role`、`aria-*`、`href`、`src`、`alt`、`title`、`datetime`、`loading`、`decoding`、その他の順とする。同じ分類内は ASCII 昇順とする。
+
+| 対象 | 固定内容 |
+|------|----------|
+| text node | `&`、`<`、`>` を escape する。quote は text node では escape しなくてよい。 |
+| attribute | `&`、`<`、`>`、`"`、制御文字を escape または除去する。single quote は `&#39;` に統一する。 |
+| URL | scheme、base 外 path、credential を検証してから attribute escape する。`javascript:`、`data:text/html`、credential 付き URL は warning または終了コード `2`。 |
+| raw HTML | Markdown 由来 raw HTML は実行可能要素として扱わず text として escape する。 |
+| SVG | §28.17、§28.23 の内製 SVG は許可するが、`script`、event handler 属性、外部参照属性を出力しない。 |
+
+**§28 warning / error code 固定契約：**
+
+stderr の warning / error は 1 行 1 件とし、形式を `[WARN] CODE file:line section message` または `[ERROR] CODE file:line section message` に固定する。file が特定できない場合は `-`、line が特定できない場合は `0` とする。message に secret、URL credential、未escape HTML を含めてはならない。
+
+| code | level | 対象 | strict |
+|------|-------|------|--------|
+| `BUILDER28_INVALID_OPTION` | ERROR | unknown option、許容値外、複数指定禁止違反。 | 常に終了コード `2`。 |
+| `BUILDER28_PATH_OUTSIDE_BASE` | WARN | base 外 path、絶対 path、`..` 脱出。 | 終了コード `2`。 |
+| `BUILDER28_UNRESOLVED_REFERENCE` | WARN | 未定義 footnote、未定義 template var、存在しない hash target。 | 終了コード `2`。 |
+| `BUILDER28_UNSUPPORTED_RESERVED` | ERROR | `pdf`、`epub`、未対応 Mermaid 構文など予約・未対応機能。 | 常に終了コード `2`。 |
+| `BUILDER28_ESCAPE_BLOCKED` | ERROR | escape 後にも危険 HTML、event handler、外部 script が残る場合。 | 常に終了コード `2`。 |
+| `BUILDER28_OUTPUT_VALIDATION_FAILED` | ERROR | minify 後 marker 消失、空 HTML、必須 asset 欠落。 | 常に終了コード `1`。 |
+| `BUILDER28_INTERNAL_IO` | ERROR | atomic write、rename、読み書き失敗。 | 常に終了コード `1`。 |
+
+**§28 report count 固定契約：**
+
+件数は、出力された最終 HTML / CSS / JS / search index を基準に数える。入力に存在しても fallback、無効化、strict 停止により出力されない対象は、成功件数に含めず warning / rejected / unsupported 系 key に含める。
+
+| 対象 | count 単位 |
+|------|------------|
+| page | 出力 HTML file 1 件を 1 とする。 |
+| block | 変換後に HTML block node として出力された単位を 1 とする。 |
+| inline | 変換後に HTML inline node として出力された単位を 1 とする。 |
+| warning | stderr に出力された `[WARN]` 1 行を 1 とする。 |
+| rejected | 設定 validation または security validation で拒否した入力 1 件を 1 とする。 |
+| fallback | non-strict で通常 text、非表示、source 表示へ落とした対象 1 件を 1 とする。 |
+
+**§28 既存出力互換・先取り実装禁止固定契約：**
+
+§28 実装 PR は、対象機能を有効化しない既存 fixture の HTML、CSS、JS、search index、REPORT が変化しないことを示す。既定有効の機能は、本節で既定有効と明記された §28.10、§28.16、§28.18、§28.20、§28.21、§28.24、§28.25 に限定する。
+
+| 禁止例 | 理由 |
+|--------|------|
+| §28.3 実装 PR で未仕様の Markdown 記法を追加する。 | §28 表にない入力仕様の先取り。 |
+| §28.17 実装 PR で外部 `mermaid.js` を読み込む。 | 外部依存禁止と内製 SVG 範囲違反。 |
+| §28.22 実装 PR で新規 asset file を追加する。 | §28 CSS / JS 出力固定契約違反。 |
+| §28.2 実装 PR で `pdf` を実出力する。 | 予約 format は拒否が仕様。 |
+| warning code を PR 内で独自追加する。 | stderr / fixture 比較が不安定になる。 |
+
 **§28 機能別詳細仕様：**
 
 | 節 | 機能 | 入力 | 出力 | 処理順序 | 異常系 | 検証条件 |

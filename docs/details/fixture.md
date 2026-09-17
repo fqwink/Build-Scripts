@@ -627,6 +627,46 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | effects | 作成、更新、維持、削除禁止、既存出力維持、manifest 上書き有無、外部 call 0 件を JSON で確認する。 |
 | security | HTML escape、attribute escape、base 外 path、URL credential 非表示、secret 非表示、CDN / external library 不使用を確認する。 |
 
+**§28 expected 比較方式固定契約：**
+
+expected 比較は、実装環境差分で揺れないように以下の正規化だけを許可する。下表にない正規化、部分一致、snapshot 差し替え、目視承認は合格条件にしてはならない。
+
+| ファイル | 比較方式 | 許可する正規化 | 禁止 |
+|----------|----------|----------------|------|
+| `expected/site/*.html` | DOM 構造、tag、属性順、text node の完全一致。 | 改行コードを LF に統一。末尾改行 1 個を許可。 | 属性順の無視、class subset 比較、画像 snapshot だけの比較。 |
+| `expected/site/assets/style.css` | selector、property、値、media query の完全一致。 | 空行の連続を 1 行へ正規化可。 | selector の部分一致、未使用 selector の黙認。 |
+| `expected/site/assets/app.js` | 対象 handler、storage key、guard、fallback 分岐を含む文字列完全一致。 | 改行コードを LF に統一。 | minify 差分の黙認、外部 script 参照の黙認。 |
+| `expected/site/assets/search-index.json` | JSON parse 後の key、型、値完全一致。 | object key 順だけ無視可。array 順は固定。 | HTML tag 混入、line number 混入、未定義 key の黙認。 |
+| `expected/stdout.txt` | 行完全一致。 | 末尾改行 1 個を許可。 | `[REPORT]` key 省略、型違い、件数差分の黙認。 |
+| `expected/stderr.txt` | 行完全一致。 | 末尾改行 1 個を許可。 | warning code 差分、line 差分、message 差分の黙認。 |
+| `expected/effects.json` | JSON parse 後の key、型、値完全一致。 | object key 順だけ無視可。array 順は固定。 | 外部 call、削除、既存出力破壊の黙認。 |
+| `expected/security.json` | JSON parse 後の key、型、値完全一致。 | object key 順だけ無視可。array 順は固定。 | CDN、credential、raw HTML、secret 残存の黙認。 |
+
+**§28 stderr / REPORT fixture 固定契約：**
+
+stderr と `[REPORT]` は、同じ入力から常に同じ順序で出力する。順序は、入力 file path 昇順、line 昇順、section 昇順、code 昇順とする。
+
+| 対象 | 固定内容 |
+|------|----------|
+| stderr warning | `[WARN] CODE file:line section message` の形式で完全一致。 |
+| stderr error | `[ERROR] CODE file:line section message` の形式で完全一致。 |
+| message | 句点ありの日本語または ASCII 英文に統一し、secret、credential、raw HTML を含めない。 |
+| REPORT boolean | `true` / `false` 小文字。 |
+| REPORT integer | 0 以上の 10 進数。 |
+| REPORT string | double quote 付き JSON string。 |
+| REPORT array | JSON array。要素順は発生順ではなく sorted string 昇順。ただし page order を意味する配列は input path 昇順。 |
+
+**§28 既存出力互換 fixture 固定契約：**
+
+§28 実装 PR では、対象機能の fixture だけでなく、機能を無効化した互換 fixture を 1 件以上含める。既定有効機能は、有効化前後ではなく「機能対象入力なし」の互換 fixture を含める。
+
+| 機能種別 | 互換 fixture |
+|----------|--------------|
+| 明示有効化機能 | option 未指定時に既存 HTML / CSS / JS / search index / REPORT が変わらない fixture。 |
+| 既定有効機能 | 対象 Markdown 記法や対象 DOM が存在しない入力で既存出力が変わらない fixture。 |
+| reserved feature | 予約値指定時に出力が作られず、既存出力も破壊しない fixture。 |
+| security failure | strict / non-strict の差分と、拒否対象が出力に残らない fixture。 |
+
 **§28 strict / non-strict fixture 固定契約：**
 
 | ケース | non-strict fixture | strict fixture | 固定する差分 |
