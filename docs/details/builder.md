@@ -2,9 +2,9 @@
 
 本ファイルは `docs/DETAIL_INDEX.md` から分割した `builder` owner component の詳細仕様である。
 
-本ファイルに、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を記載してはならない。方針、ポリシー、正本関係は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否は `docs/ROADMAP.md` を正とする。
+本ファイルに、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を記載してはならない。方針、ポリシー、正本関係は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否は `docs/ROADMAP.md` を正とする。
 
-本ファイルを読む前に、`docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
+本ファイルを読む前に、`docs/SPEC.md` 方針責務・ポリシー責務で方針とポリシーを確認し、`docs/ROADMAP.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
 
 ---
 
@@ -1828,9 +1828,9 @@ owner component は `builder` とする。collaborator component は `runner`、
 | base 外参照 | broken dependency として記録。 |
 | failure build | 既存 manifest を上書きしない。 |
 
-## 28. Builder owner 将来計画昇格機能 詳細仕様
+## 28. Builder owner 追加仕様化機能 詳細仕様
 
-本節は、`docs/ROADMAP.md` §5.2.2 のビルドスクリプト将来計画を、builder owner の仕様化済み・未実装機能として固定する。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。
+本節は、`docs/ROADMAP.md` §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。実装状態、実装可否、Phase、将来計画からの昇格判断は `docs/ROADMAP.md` 状態・計画責務を正本とし、本節では定義しない。
 
 本節の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
 

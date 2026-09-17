@@ -26,7 +26,7 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 ## リリース形式
 
-標準リリース形式は Go 実行バイナリです。詳細は `docs/SPEC.md` のリリース方針と `docs/details/setup.md` のセットアップ詳細を参照します。
+標準リリース形式は Go 実行バイナリです。詳細は `docs/SPEC.md` ポリシー責務 §2 のリリース方針と `docs/details/setup.md` のセットアップ詳細を参照します。
 
 ## 注意
 

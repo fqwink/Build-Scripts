@@ -28,7 +28,7 @@
 | 作業してよい条件 | `AGENTS.md` | 承認、Git、PR、文書整合の最上位ルールを確認する。 |
 | 初見向け概要 | `README.md` | 最小限の入口と主要参照先を確認する。 |
 | 文書構造 | `docs/DOCUMENT_INDEX.md` | 文書の役割、所在、正本範囲、実装ファイル所在を確認する。 |
-| 方針・ポリシー | `docs/SPEC.md` | 方針、ポリシー、正本関係、禁止事項、リリース判断を確認する。 |
+| 方針・ポリシー | `docs/SPEC.md` 方針責務・ポリシー責務 | 方針、ポリシー、正本関係、禁止事項、リリース判断を確認する。 |
 | 状態・計画 | `docs/ROADMAP.md` | 実装状態、実装可否、Phase、機能インベントリ、将来計画、追加仕様化機能参照、横断補足契約を確認する。 |
 | 詳細仕様入口 | `docs/DETAIL_INDEX.md` | 詳細仕様の読み方、共通固定値、対応表、ソース配置を確認する。 |
 | 詳細仕様本文 | `docs/details/*.md` | owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
@@ -46,7 +46,7 @@
 | 作業ルール | `AGENTS.md` | 最上位ルールブック | 承認、Git 運用、仕様書管理、文書整合ルールを判断する。 |
 | 入口 | `README.md` | 初見向け入口 | リポジトリ概要、読む順番、主要ファイルを把握する。 |
 | 索引 | `docs/DOCUMENT_INDEX.md` | 文書・実装ファイル索引 | 文書配置、正本関係、実装ファイル所在を確認する。 |
-| マスター仕様 | `docs/SPEC.md` | 方針・ポリシー正本 | 方針、ポリシー、正本関係、禁止事項、リリース判断を確認する。 |
+| マスター仕様 | `docs/SPEC.md` | 方針責務・ポリシー責務正本 | 方針、ポリシー、正本関係、禁止事項、リリース判断を確認する。 |
 | ロードマップ | `docs/ROADMAP.md` | 状態・計画正本 | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を判断する。 |
 | 詳細仕様入口 | `docs/DETAIL_INDEX.md` | 詳細仕様入口責務 | 詳細仕様の読み方、共通固定値、対応表、ソース配置を確認する。 |
 | 詳細仕様本文 | `docs/details/*.md` | owner component 別本文 | 対象 component の入出力、状態、処理順序、異常系、検証条件を実装単位で確認する。 |
@@ -62,7 +62,7 @@
 |------|----------------|------------------|----------|
 | 作業ルール、承認、Git 運用を確認したい | `AGENTS.md` | `docs/DOCUMENT_INDEX.md` | 作業開始可否、変更承認、PR 作成、文書整合の手順を判断する。 |
 | リポジトリ全体の文書構造を把握したい | `README.md` | `docs/DOCUMENT_INDEX.md` | どの文書が何を持つか、どの順番で読むかを判断する。 |
-| 方針、ポリシー、禁止事項を判断したい | `docs/SPEC.md` | `docs/ROADMAP.md` | 対象領域に適用する原則と制約を判断する。 |
+| 方針、ポリシー、禁止事項を判断したい | `docs/SPEC.md` 方針責務・ポリシー責務 | `docs/ROADMAP.md` | 対象領域に適用する原則と制約を判断する。 |
 | 実装状態、実装可否、Phase、将来計画を判断したい | `docs/ROADMAP.md` | `docs/DETAIL_INDEX.md` | 対象が未仕様化、将来計画、改訂予定、仕様化済み・未実装、実装中・検証未完了、実装済みのどれかを判断する。 |
 | 詳細仕様本文を探したい | `docs/DETAIL_INDEX.md` | 対象 owner component の `docs/details/*.md` | 対象機能の owner component、参照節、受け入れ条件を判断する。 |
 | 実装ファイル、テスト、fixture の所在を確認したい | `docs/DOCUMENT_INDEX.md` | `docs/DETAIL_INDEX.md` §0j | 現行実装ファイル、将来追加予定 path、標準配置の扱いを判断する。 |
@@ -91,7 +91,7 @@
 | 書く内容 | 書く場所 | 書いてはいけない場所 |
 |----------|----------|----------------------|
 | 作業ルール、承認条件、Git 運用、PR 作成、文書整合ルール | `AGENTS.md` | `README.md`、`docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
-| 方針、ポリシー、禁止事項、リリース判断、正本関係 | `docs/SPEC.md` | `docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
+| 方針、ポリシー、禁止事項、リリース判断、正本関係 | `docs/SPEC.md` 方針責務・ポリシー責務 | `docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
 | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約 | `docs/ROADMAP.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
 | 詳細仕様の入口、読み順、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置 | `docs/DETAIL_INDEX.md` | `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/details/*.md`、`README.md` |
 | owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件 | owner component 別の `docs/details/*.md` | `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
@@ -188,7 +188,7 @@
 | 1 | `AGENTS.md` | 作業ルール、承認、Git 運用、文書整合ルールを確認する。 |
 | 2 | `README.md` | 初見向けの概要、読む順番、主要ファイルを確認する。 |
 | 3 | `docs/DOCUMENT_INDEX.md` | 文書と実装ファイルの役割、正本関係、配置を確認する。 |
-| 4 | `docs/SPEC.md` | 方針、ポリシー、禁止事項、リリース判断を確認する。 |
+| 4 | `docs/SPEC.md` 方針責務・ポリシー責務 | 方針、ポリシー、禁止事項、リリース判断を確認する。 |
 | 5 | `docs/ROADMAP.md` | 実装状態、実装可否、Phase、将来計画、§27 追加仕様化機能参照、横断補足契約を確認する。 |
 | 6 | `docs/DETAIL_INDEX.md` | 詳細仕様の入口、読み順、共通固定値、対応表、ソース配置を確認する。 |
 | 7 | `docs/details/*.md` | 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
@@ -200,7 +200,7 @@
 | ファイル | 役割 |
 |---------|------|
 | `README.md` | 初見向け入口。概要、読む順番、主要ファイルを示す。 |
-| `docs/SPEC.md` | 方針、ポリシー、正本関係、禁止事項、リリース判断を示す。 |
+| `docs/SPEC.md` | 方針責務・ポリシー責務として、方針、ポリシー、正本関係、禁止事項、リリース判断を示す。 |
 | `docs/ROADMAP.md` | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を示す。 |
 | `docs/DETAIL_INDEX.md` | 詳細仕様の入口、読み順、共通固定値、対応表、リポジトリ内ソース配置を示す。 |
 | `docs/details/builder.md` | `builder` owner component の詳細仕様。 |
@@ -275,7 +275,7 @@
 | 判断対象 | 正本 |
 |----------|------|
 | 作業ルール、承認、Git 運用、文書整合 | `AGENTS.md` |
-| 方針、ポリシー、正本関係、禁止事項、リリース判断 | `docs/SPEC.md` |
+| 方針、ポリシー、正本関係、禁止事項、リリース判断 | `docs/SPEC.md` 方針責務・ポリシー責務 |
 | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約 | `docs/ROADMAP.md` |
 | 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置 | `docs/DETAIL_INDEX.md` |
 | 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の `docs/details/*.md` |

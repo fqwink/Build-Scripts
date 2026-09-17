@@ -2,9 +2,9 @@
 
 本ファイルは `docs/DETAIL_INDEX.md` から分割した fixture / fake / testdata / assertion / PR 証跡の詳細仕様である。
 
-本ファイルに、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を記載してはならない。方針、ポリシー、正本関係は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否は `docs/ROADMAP.md` を正とする。
+本ファイルに、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を記載してはならない。方針、ポリシー、正本関係は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否は `docs/ROADMAP.md` を正とする。
 
-本ファイルを読む前に、`docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
+本ファイルを読む前に、`docs/SPEC.md` 方針責務・ポリシー責務で方針とポリシーを確認し、`docs/ROADMAP.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
 
 ---
 
@@ -700,7 +700,7 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 | idempotency fixture で 1 回目と 2 回目の期待差分を分離していない。 | 再実行検証不足。 |
 | partial fixture で失敗地点より後の `forbidden_writes` / `forbidden_calls` を列挙していない。 | 部分失敗境界不足。 |
 
-上表に 1 件でも該当する場合、対象機能は実装済みとして扱わない。fixture が多くても、期待副作用、禁止副作用、secret mask、保存順、再実行差分が明示されていなければ、バグ修正ゼロ化の検証を満たさない。
+上表に 1 件でも該当する場合、対象機能を実装完了として報告してはならない。fixture が多くても、期待副作用、禁止副作用、secret mask、保存順、再実行差分が明示されていなければ、バグ修正ゼロ化の検証を満たさない。
 
 **§27 fixture 相互整合固定契約：**
 
@@ -1375,7 +1375,7 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 **§28 fixture 不足時の固定扱い：**
 
-§28 実装中に fixture 不足を発見した場合、実装判断で対象 fixture を省略してはならない。fixture が不足している機能は、実装済みではなく `仕様化済み・未実装` のまま扱う。
+§28 実装中に fixture 不足を発見した場合、実装判断で対象 fixture を省略してはならない。fixture が不足している機能は実装済みとして報告してはならない。状態分類は `docs/ROADMAP.md` 状態・計画責務を正本とする。
 
 | 不足 | 扱い |
 |------|------|

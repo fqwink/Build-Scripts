@@ -7,11 +7,11 @@
 
 ---
 
-本ファイルは生成 HTML の視覚仕様を整理する補助文書である。Adlaire CI の方針、ポリシー、正本関係は `docs/SPEC.md`、実装状態、実装可否、Phase、将来計画は `docs/ROADMAP.md`、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は `docs/details/builder.md` を正とする。
+本ファイルは生成 HTML の視覚仕様を整理する補助文書である。Adlaire CI の方針、ポリシー、正本関係は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は `docs/ROADMAP.md`、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は `docs/details/builder.md` を正とする。
 
 本ファイルは、機能仕様、運用仕様、API 仕様、状態 schema、実装状態、ロードマップ状態を定義しない。
 
-## 1. デザイン方針
+## 1. デザイン補助仕様
 
 docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
 
