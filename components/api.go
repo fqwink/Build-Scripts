@@ -120,23 +120,33 @@ type apiDeployTarget struct {
 	DestDir string `json:"dest_dir"`
 }
 
+type apiAllowedHours struct {
+	From int `json:"from"`
+	To   int `json:"to"`
+}
+
 type apiServerConfig struct {
-	LogMaxLines           int     `json:"log_max_lines"`
-	HistoryMaxCount       int     `json:"history_max_count"`
-	BuildTimeoutSeconds   int     `json:"build_timeout_seconds"`
-	LogRetentionDays      int     `json:"log_retention_days"`
-	LogArchiveAfterDays   int     `json:"log_archive_after_days"`
-	LogLevel              string  `json:"log_level"`
-	PATExpiresAt          *string `json:"pat_expires_at"`
-	SnapshotsKeep         int     `json:"snapshots_keep"`
-	QueueMaxSize          int     `json:"queue_max_size"`
-	BuildRetryMax         int     `json:"build_retry_max"`
-	BuildRetryBaseSeconds int     `json:"build_retry_base_seconds"`
-	CommitStatusEnabled   bool    `json:"commit_status_enabled"`
-	CommitStatusContext   string  `json:"commit_status_context"`
-	CommitStatusTargetURL *string `json:"commit_status_target_url"`
-	BuildTrendKeepCount   int     `json:"build_trend_keep_count"`
-	SessionTimeoutSeconds int     `json:"session_timeout_seconds"`
+	LogMaxLines             int              `json:"log_max_lines"`
+	HistoryMaxCount         int              `json:"history_max_count"`
+	BuildTimeoutSeconds     int              `json:"build_timeout_seconds"`
+	LogRetentionDays        int              `json:"log_retention_days"`
+	LogArchiveAfterDays     int              `json:"log_archive_after_days"`
+	LogLevel                string           `json:"log_level"`
+	PATExpiresAt            *string          `json:"pat_expires_at"`
+	SnapshotsKeep           int              `json:"snapshots_keep"`
+	QueueMaxSize            int              `json:"queue_max_size"`
+	BuildRetryMax           int              `json:"build_retry_max"`
+	BuildRetryBaseSeconds   int              `json:"build_retry_base_seconds"`
+	CommitStatusEnabled     bool             `json:"commit_status_enabled"`
+	CommitStatusContext     string           `json:"commit_status_context"`
+	CommitStatusTargetURL   *string          `json:"commit_status_target_url"`
+	BuildTrendKeepCount     int              `json:"build_trend_keep_count"`
+	SessionTimeoutSeconds   int              `json:"session_timeout_seconds"`
+	ForceBuildIntervalHours int              `json:"force_build_interval_hours"`
+	BuildCooldownSeconds    int              `json:"build_cooldown_seconds"`
+	ScheduleIntervalSeconds int              `json:"schedule_interval_seconds"`
+	SchedulePaused          bool             `json:"schedule_paused"`
+	AllowedHours            *apiAllowedHours `json:"allowed_hours"`
 }
 
 type apiLogRecord struct {
@@ -277,6 +287,13 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/repo-info", s.withAuth(s.handleRepoInfo))
 	mux.HandleFunc("/api/repo-config", s.withAuth(s.handleRepoConfig))
 	mux.HandleFunc("/api/branch-config", s.withAuth(s.handleBranchConfig))
+	mux.HandleFunc("/api/schedule", s.withAuth(s.handleSchedule))
+	mux.HandleFunc("/api/schedule/interval", s.withAuth(s.handleScheduleInterval))
+	mux.HandleFunc("/api/schedule/pause", s.withAuth(s.handleSchedulePause))
+	mux.HandleFunc("/api/schedule/resume", s.withAuth(s.handleScheduleResume))
+	mux.HandleFunc("/api/schedule/allowed-hours", s.withAuth(s.handleScheduleAllowedHours))
+	mux.HandleFunc("/api/schedule/force-interval", s.withAuth(s.handleScheduleForceInterval))
+	mux.HandleFunc("/api/schedule/cooldown", s.withAuth(s.handleScheduleCooldown))
 	mux.HandleFunc("/api/build", s.withAuth(s.handleBuild(false)))
 	mux.HandleFunc("/api/build/force", s.withAuth(s.handleBuild(true)))
 	mux.HandleFunc("/api/build/cancel", s.withAuth(s.handleCancel))
@@ -760,6 +777,173 @@ func (s *APIServer) handleBranchConfig(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
+}
+
+func (s *APIServer) handleSchedule(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	cfg, err := s.readMergedConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, schedulePayload(cfg))
+}
+
+func (s *APIServer) handleScheduleInterval(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var body struct {
+		IntervalSeconds int `json:"interval_seconds"`
+	}
+	if !decodeBody(w, r, &body, true) {
+		return
+	}
+	if body.IntervalSeconds < 30 || body.IntervalSeconds > 86400 {
+		writeValidation(w, "interval_seconds", "out of range")
+		return
+	}
+	if !s.updateScheduleConfig(w, "schedule_interval", map[string]any{"interval_seconds": body.IntervalSeconds}, func(cfg *apiServerConfig) (bool, map[string]any) {
+		changed := cfg.ScheduleIntervalSeconds != body.IntervalSeconds
+		cfg.ScheduleIntervalSeconds = body.IntervalSeconds
+		return changed, map[string]any{"message": "Interval updated", "interval_seconds": body.IntervalSeconds}
+	}) {
+		return
+	}
+}
+
+func (s *APIServer) handleSchedulePause(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	if !s.updateScheduleConfig(w, "schedule_pause", map[string]any{"schedule_paused": true}, func(cfg *apiServerConfig) (bool, map[string]any) {
+		if cfg.SchedulePaused {
+			writeError(w, http.StatusConflict, "Schedule already paused")
+			return false, nil
+		}
+		cfg.SchedulePaused = true
+		return true, map[string]any{"message": "Schedule paused"}
+	}) {
+		return
+	}
+}
+
+func (s *APIServer) handleScheduleResume(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	if !s.updateScheduleConfig(w, "schedule_resume", map[string]any{"schedule_paused": false}, func(cfg *apiServerConfig) (bool, map[string]any) {
+		if !cfg.SchedulePaused {
+			writeError(w, http.StatusConflict, "Schedule already running")
+			return false, nil
+		}
+		cfg.SchedulePaused = false
+		return true, map[string]any{"message": "Schedule resumed"}
+	}) {
+		return
+	}
+}
+
+func (s *APIServer) handleScheduleAllowedHours(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var body struct {
+		From *int `json:"from"`
+		To   *int `json:"to"`
+	}
+	if !decodeBody(w, r, &body, true) {
+		return
+	}
+	var next *apiAllowedHours
+	if body.From != nil || body.To != nil {
+		if body.From == nil || body.To == nil || *body.From < 0 || *body.From > 23 || *body.To < 0 || *body.To > 23 || *body.From == *body.To {
+			writeValidation(w, "allowed_hours", "invalid value")
+			return
+		}
+		next = &apiAllowedHours{From: *body.From, To: *body.To}
+	}
+	if !s.updateScheduleConfig(w, "schedule_allowed_hours", map[string]any{"allowed_hours": next}, func(cfg *apiServerConfig) (bool, map[string]any) {
+		changed := !allowedHoursEqual(cfg.AllowedHours, next)
+		cfg.AllowedHours = next
+		return changed, map[string]any{"message": "Allowed hours updated", "allowed_hours": next}
+	}) {
+		return
+	}
+}
+
+func (s *APIServer) handleScheduleForceInterval(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var body struct {
+		Hours int `json:"hours"`
+	}
+	if !decodeBody(w, r, &body, true) {
+		return
+	}
+	if body.Hours < 0 || body.Hours > 8760 {
+		writeValidation(w, "hours", "out of range")
+		return
+	}
+	if !s.updateScheduleConfig(w, "schedule_force_interval", map[string]any{"hours": body.Hours}, func(cfg *apiServerConfig) (bool, map[string]any) {
+		changed := cfg.ForceBuildIntervalHours != body.Hours
+		cfg.ForceBuildIntervalHours = body.Hours
+		return changed, map[string]any{"message": "Force build interval updated", "hours": body.Hours}
+	}) {
+		return
+	}
+}
+
+func (s *APIServer) handleScheduleCooldown(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var body struct {
+		Seconds int `json:"seconds"`
+	}
+	if !decodeBody(w, r, &body, true) {
+		return
+	}
+	if body.Seconds < 0 || body.Seconds > 86400 {
+		writeValidation(w, "seconds", "out of range")
+		return
+	}
+	if !s.updateScheduleConfig(w, "schedule_cooldown", map[string]any{"seconds": body.Seconds}, func(cfg *apiServerConfig) (bool, map[string]any) {
+		changed := cfg.BuildCooldownSeconds != body.Seconds
+		cfg.BuildCooldownSeconds = body.Seconds
+		return changed, map[string]any{"message": "Build cooldown updated", "seconds": body.Seconds}
+	}) {
+		return
+	}
+}
+
+func (s *APIServer) updateScheduleConfig(w http.ResponseWriter, logType string, changes map[string]any, update func(*apiServerConfig) (bool, map[string]any)) bool {
+	cfg, err := s.readMergedConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return false
+	}
+	changed, resp := update(&cfg)
+	if resp == nil {
+		return false
+	}
+	if !changed {
+		writeJSON(w, http.StatusOK, map[string]any{"message": "No changes"})
+		return true
+	}
+	if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".server_config"), cfg, 0600); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return false
+	}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: logType, Changes: changes}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return false
+	}
+	writeJSON(w, http.StatusOK, resp)
+	return true
 }
 
 func (s *APIServer) handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -2046,6 +2230,7 @@ func defaultServerConfig() apiServerConfig {
 		BuildRetryMax: 0, BuildRetryBaseSeconds: 5,
 		CommitStatusEnabled: false, CommitStatusContext: "Adlaire CI",
 		BuildTrendKeepCount: 1000, SessionTimeoutSeconds: 28800,
+		ScheduleIntervalSeconds: 300,
 	}
 }
 
@@ -2107,6 +2292,9 @@ func normalizeServerConfig(cfg apiServerConfig) apiServerConfig {
 	}
 	if cfg.SessionTimeoutSeconds == 0 {
 		cfg.SessionTimeoutSeconds = def.SessionTimeoutSeconds
+	}
+	if cfg.ScheduleIntervalSeconds == 0 {
+		cfg.ScheduleIntervalSeconds = def.ScheduleIntervalSeconds
 	}
 	return cfg
 }
@@ -2341,6 +2529,35 @@ func branchTargetsEqual(a, b []apiBranchTarget) bool {
 	aj, errA := json.Marshal(a)
 	bj, errB := json.Marshal(b)
 	return errA == nil && errB == nil && string(aj) == string(bj)
+}
+
+func schedulePayload(cfg apiServerConfig) map[string]any {
+	return map[string]any{
+		"next_run_at":                nil,
+		"interval":                   formatInterval(cfg.ScheduleIntervalSeconds),
+		"interval_seconds":           cfg.ScheduleIntervalSeconds,
+		"paused":                     cfg.SchedulePaused,
+		"allowed_hours":              cfg.AllowedHours,
+		"force_build_interval_hours": cfg.ForceBuildIntervalHours,
+		"build_cooldown_seconds":     cfg.BuildCooldownSeconds,
+	}
+}
+
+func formatInterval(seconds int) string {
+	if seconds%3600 == 0 {
+		return fmt.Sprintf("%dh", seconds/3600)
+	}
+	if seconds%60 == 0 {
+		return fmt.Sprintf("%dmin", seconds/60)
+	}
+	return fmt.Sprintf("%ds", seconds)
+}
+
+func allowedHoursEqual(a, b *apiAllowedHours) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.From == b.From && a.To == b.To
 }
 
 func maskRepoConfigChanges(patch map[string]json.RawMessage) map[string]any {
