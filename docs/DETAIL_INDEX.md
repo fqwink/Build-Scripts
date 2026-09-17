@@ -157,7 +157,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `builder` | `docs/details/builder.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、変換 report、builder fixture、builder owner 追加機能。 |
 | `runner` | `docs/details/runner.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`docs/details/commitstatus.md` §27.1、`docs/details/setup.md` §26 | GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能、Commit Status 呼び出し境界、systemd / setup 参照境界。 |
 | `api` | `docs/details/api.md` §21〜§22、§21a、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`docs/details/security.md` §27.42〜§27.47、`docs/details/statefile.md` §22.0a、§22.0c | HTTP 共通契約、API server 制限、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、security 呼び出し境界、api owner 追加機能。 |
-| `admin` | `docs/details/admin.md` §0、A1〜A5 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
+| `admin` | `docs/details/admin.md` §0、A1〜A6、`docs/details/setup.md` §26.8、`docs/details/fixture.md` §27 setup / admin / release 連動 fixture 固定契約 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界、setup / admin / release 連動 fixture。 |
 | `sdk` | `docs/details/sdk.md` §23 | SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
 | `ui` | `docs/details/ui.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
 | `setup` | `docs/details/setup.md` §26 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
@@ -321,7 +321,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `security` | 認証・認可・漏えい禁止 | scope、API key、audit、session、TOTP、rate limit、秘密情報非表示、失敗時副作用が `docs/details/security.md` §27.42〜§27.47 と一致する。 |
 | `archive` | artifact / log archive | gzip archive、snapshot、download、delete、rollback、cleanup の実体処理が `docs/details/archive.md` §27.7、§27.15 と一致し、API / SDK / UI の応答契約を上書きしない。 |
 | `commitstatus` | GitHub Commit Status | payload、送信順、失敗時非反転、保存値、secret mask、検証条件が `docs/details/commitstatus.md` §27.1 と一致し、runner の build 実行判断を上書きしない。 |
-| `admin` | 静的配布境界 | admin 配布物、archive validation、HTTP 静的配信、setup 連携が `docs/details/admin.md` §0、A1〜A5 と一致し、UI / SDK の本文を重複定義しない。 |
+| `admin` | 静的配布境界 | admin 配布物、archive validation、HTTP 静的配信、setup 連携、fixture integration が `docs/details/admin.md` §0、A1〜A6、`docs/details/setup.md` §26.8、`docs/details/fixture.md` §27 setup / admin / release 連動 fixture 固定契約と一致し、UI / SDK の本文を重複定義しない。 |
 | `fixture` | fixture / fake / 証跡 | Phase 別 fixture、fake、assertion、expected / effects、PR 証跡、acceptance checklist、差し戻し条件が `docs/details/fixture.md` §0g.8-F、§22-F、§27-F と一致する。 |
 
 検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、fixture 名、期待結果、実結果、状態差分、外部副作用、secret 確認、対象外確認を対応付けて記録する。記録形式、必須項目、不足時の扱いは `docs/details/fixture.md` の PR 証跡契約を正とする。検証不能な項目がある場合は、その項目を完了扱いにしてはならない。

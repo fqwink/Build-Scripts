@@ -687,11 +687,11 @@ Phase 完了判定の PR 証跡テンプレート、必須記載項目、不足�
 
 | fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
 |------------|----------------|------------|---------------|----------|
-| `setup-admin-release-layout` | `setup`、`admin` | Release asset 一式、`SHA256SUMS`、`admin-ui.tar.gz`。 | `expected/effects.json`、`expected/security.json`、admin archive file list。 | 対象 asset 名、checksum、admin archive root layout、file mode、directory mode が §26.2a と `docs/details/admin.md` A1〜A2 に一致する。 |
-| `setup-admin-archive-boundary` | `setup`、`admin` | unsafe archive、既存 `$INSTALL_DIR/admin`、API service fake。 | `expected/effects.json.unchanged_paths`、`forbidden_writes`、`forbidden_calls`。 | archive 検証失敗時に既存 admin UI、API binary、credentials、runner state を変更せず、API service start / restart を呼ばない。 |
-| `setup-systemd-rollback-boundary` | `setup`、`api`、`runner` | systemd fake、旧 binary backup、旧 admin backup、restart failure。 | `expected/effects.json.write_order`、`updated_paths`、`unchanged_paths`、`forbidden_writes`。 | rollback 対象は失敗段階で定義済みの binary / admin UI だけで、state、history、secret、runner timer を未定義に巻き戻さない。 |
+| `setup-admin-release-layout` | `setup`、`admin` | Release asset 一式、`SHA256SUMS`、`admin-ui.tar.gz`、fake download response。 | `expected/effects.json`、admin archive file list、`expected/security.json`。 | 対象 asset 名、checksum、admin archive root layout、必須 file、任意 file、file mode、directory mode が §26.2a と `docs/details/admin.md` A1〜A2 に一致する。 |
+| `setup-admin-archive-boundary` | `setup`、`admin` | unsafe archive、既存 `$INSTALL_DIR/admin`、既存 API binary、API service fake。 | `expected/effects.json.unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`expected/stderr.txt`。 | archive 検証失敗時に既存 admin UI、API binary、credentials、runner state を変更せず、API service start / restart を呼ばない。 |
+| `setup-systemd-rollback-boundary` | `setup`、`runner`、`api` | systemd fake、旧 binary backup、旧 admin backup、restart failure。 | `expected/effects.json.write_order`、`updated_paths`、`unchanged_paths`、`forbidden_writes`、`commands`。 | rollback 対象は失敗段階で定義済みの binary / admin UI だけで、state、history、secret、runner timer を未定義に巻き戻さない。 |
 | `admin-static-serving-security` | `admin`、`api` | static request、secret/state/log/snapshot path、method variation。 | `expected/response.json`、`expected/security.json`、`expected/effects.json`。 | A3 の status、header、body 有無に一致し、secret / state / log / snapshot / directory listing を返さず、request body を読まない。 |
-| `setup-secret-preservation` | `setup`、`security` | 既存 secret files、update input、失敗 fake。 | `expected/security.json`、`expected/effects.json.unchanged_paths`。 | 明示対象外の secret content / mode / mtime を保持し、stdout、stderr、journal、fixture expected に secret 原文を残さない。 |
+| `setup-secret-preservation` | `setup`、`security` | 既存 secret files、update input、failure fake。 | `expected/security.json`、`expected/effects.json.unchanged_paths`、`forbidden_writes`。 | 明示対象外の secret content / mode / mtime を保持し、stdout、stderr、journal、fixture expected に secret 原文を残さない。 |
 
 **setup / update 実装者向け出力固定：**
 

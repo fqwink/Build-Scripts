@@ -135,4 +135,4 @@ setup が admin UI を配置する場合は、以下を満たす。
 | secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
 | no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
 | setup integration | `docs/details/setup.md` §26.8 の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |
-| fixture integration | `docs/details/fixture.md` の `setup-admin-release-layout`、`setup-admin-archive-boundary`、`admin-static-serving-security`、`setup-secret-preservation` と fixture 名、expected file、禁止副作用が一致する。 |
+| fixture integration | `docs/details/fixture.md` の `setup-admin-release-layout`、`setup-admin-archive-boundary`、`setup-systemd-rollback-boundary`、`admin-static-serving-security`、`setup-secret-preservation` と fixture 名、expected file、禁止副作用が一致する。 |
