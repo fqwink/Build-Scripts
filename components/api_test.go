@@ -215,6 +215,111 @@ func TestAPIMaintenanceEndpoints(t *testing.T) {
 	}
 }
 
+func TestAPIRepoAndBranchConfigEndpoints(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/repo-info", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("repo-info code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var repo apiRepoConfig
+	decodeTestJSON(t, resp.Body.Bytes(), &repo)
+	if repo.Owner == "" || repo.Repo == "" || repo.Branch != "main" || repo.TargetFile != "docs" {
+		t.Fatalf("unexpected repo defaults: %#v", repo)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/repo-config", token, map[string]string{
+		"owner": " fqwink ", "repo": "Build-Scripts", "branch": "release", "target_file": "docs",
+	})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("repo-config code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	readTestJSON(t, filepath.Join(state, ".repo_config"), &repo)
+	if repo.Owner != "fqwink" || repo.Repo != "Build-Scripts" || repo.Branch != "release" || repo.UpdatedAt == "" {
+		t.Fatalf("repo config was not saved: %#v", repo)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/repo-config", token, map[string]string{"branch": "release"})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("repo-config no-op code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var body map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	if body["message"] != "No changes" {
+		t.Fatalf("unexpected repo no-op: %#v", body)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/repo-config", token, map[string]string{"target_file": "../secret"})
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("repo invalid code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/branch-config", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("branch-config get code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var branchResp map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &branchResp)
+	if branchResp["source"] != "default" || len(branchResp["branches"].([]any)) != 1 {
+		t.Fatalf("unexpected branch defaults: %#v", branchResp)
+	}
+
+	targets := []apiBranchTarget{{
+		Branch:     "release",
+		TargetFile: "docs",
+		SHAFile:    filepath.Join(state, ".last_sha.release"),
+		Src:        filepath.Join(state, "repo", "release", "docs"),
+		Out:        filepath.Join(state, "dist", "release"),
+		DeployTargets: []apiDeployTarget{{
+			Host: "192.0.2.1", User: "deploy", DestDir: "/var/www/html/",
+		}},
+	}}
+	resp = apiRequest(t, server, http.MethodPost, "/api/branch-config", token, map[string]any{"branches": targets})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("branch-config post code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var stored apiBranchConfigFile
+	readTestJSON(t, filepath.Join(state, ".branch_config"), &stored)
+	if len(stored.BranchTargets) != 1 || stored.BranchTargets[0].Branch != "release" {
+		t.Fatalf("branch config was not saved: %#v", stored)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/branch-config", token, map[string]any{"branches": targets})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("branch-config no-op code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	if body["message"] != "No changes" {
+		t.Fatalf("unexpected branch no-op: %#v", body)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/branch-config", token, map[string]any{"branches": []apiBranchTarget{}})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("branch-config clear code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(state, ".branch_config")); !os.IsNotExist(err) {
+		t.Fatalf("branch config should be removed, err=%v", err)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/branch-config", token, map[string]any{"branches": []apiBranchTarget{{
+		Branch: "bad", TargetFile: "../docs", SHAFile: filepath.Join(state, ".sha"), Src: filepath.Join(state, "src"), Out: filepath.Join(state, "out"),
+	}}})
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("branch invalid code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/config-log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("config log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	if body["total"].(float64) != 3 {
+		t.Fatalf("unexpected config log: %#v", body)
+	}
+}
+
 func TestAPISessionPasswordAndStream(t *testing.T) {
 	state := newAPIState(t)
 	server := newTestAPI(t, state)
