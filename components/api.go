@@ -1,6 +1,8 @@
 package components
 
 import (
+	"bytes"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -8,7 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -123,6 +127,69 @@ type apiDeployTarget struct {
 type apiAllowedHours struct {
 	From int `json:"from"`
 	To   int `json:"to"`
+}
+
+type apiNotifyConfig struct {
+	Webhooks []apiNotifyWebhook `json:"webhooks"`
+	Channels []apiNotifyChannel `json:"channels"`
+	On       []string           `json:"on"`
+	Summary  apiNotifySummary   `json:"summary"`
+	Email    apiNotifyEmail     `json:"email"`
+}
+
+type apiNotifyWebhook struct {
+	URL                  string   `json:"url"`
+	Label                string   `json:"label"`
+	Enabled              bool     `json:"enabled"`
+	On                   []string `json:"on"`
+	PayloadTemplate      *string  `json:"payload_template"`
+	RetryCount           int      `json:"retry_count"`
+	RetryIntervalSeconds int      `json:"retry_interval_seconds"`
+	Secret               *string  `json:"secret"`
+}
+
+func (w *apiNotifyWebhook) UnmarshalJSON(data []byte) error {
+	type alias apiNotifyWebhook
+	next := alias{Enabled: true}
+	if err := json.Unmarshal(data, &next); err != nil {
+		return err
+	}
+	*w = apiNotifyWebhook(next)
+	return nil
+}
+
+type apiNotifyChannel struct {
+	ID                   string         `json:"id"`
+	Type                 string         `json:"type"`
+	Label                string         `json:"label"`
+	Enabled              bool           `json:"enabled"`
+	On                   []string       `json:"on"`
+	Config               map[string]any `json:"config"`
+	RetryCount           int            `json:"retry_count"`
+	RetryIntervalSeconds int            `json:"retry_interval_seconds"`
+}
+
+func (c *apiNotifyChannel) UnmarshalJSON(data []byte) error {
+	type alias apiNotifyChannel
+	next := alias{Enabled: true}
+	if err := json.Unmarshal(data, &next); err != nil {
+		return err
+	}
+	*c = apiNotifyChannel(next)
+	return nil
+}
+
+type apiNotifySummary struct {
+	Enabled   bool   `json:"enabled"`
+	Interval  string `json:"interval"`
+	Hour      int    `json:"hour"`
+	DayOfWeek int    `json:"day_of_week"`
+}
+
+type apiNotifyEmail struct {
+	Enabled bool     `json:"enabled"`
+	To      []string `json:"to"`
+	On      []string `json:"on"`
 }
 
 type apiServerConfig struct {
@@ -283,7 +350,10 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/stats/build-duration", s.withAuth(s.handleStatsBuildDuration))
 	mux.HandleFunc("/api/output-meta", s.withAuth(s.handleOutputMeta))
 	mux.HandleFunc("/api/dashboard", s.withAuth(s.handleDashboard))
+	mux.HandleFunc("/api/notify-config", s.withAuth(s.handleNotifyConfig))
 	mux.HandleFunc("/api/notify-log", s.withAuth(s.handleJSONLinesLog(".notify_log", "log")))
+	mux.HandleFunc("/api/notify-test", s.withAuth(s.handleNotifyTest))
+	mux.HandleFunc("/api/notify/weekly-summary", s.withAuth(s.handleNotifyWeeklySummary))
 	mux.HandleFunc("/api/repo-info", s.withAuth(s.handleRepoInfo))
 	mux.HandleFunc("/api/repo-config", s.withAuth(s.handleRepoConfig))
 	mux.HandleFunc("/api/branch-config", s.withAuth(s.handleBranchConfig))
@@ -777,6 +847,149 @@ func (s *APIServer) handleBranchConfig(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
+}
+
+func (s *APIServer) handleNotifyConfig(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		cfg, err := s.readNotifyConfig()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		writeJSON(w, http.StatusOK, maskNotifyConfig(cfg))
+	case http.MethodPost:
+		var cfg apiNotifyConfig
+		if !decodeBody(w, r, &cfg, true) {
+			return
+		}
+		next, ok := normalizeNotifyConfig(w, cfg)
+		if !ok {
+			return
+		}
+		current, err := s.readNotifyConfig()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		if notifyConfigsEqual(current, next) {
+			writeJSON(w, http.StatusOK, map[string]string{"message": "No changes"})
+			return
+		}
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".notify_config"), next, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "notify_config", Changes: notifyConfigChangeSummary(next)}); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Notify config updated"})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+func (s *APIServer) handleNotifyTest(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	cfg, err := s.readNotifyConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	targets := notifyWebhookTargets(cfg, "failure")
+	if len(targets) == 0 {
+		writeValidation(w, "webhook", "not configured")
+		return
+	}
+	target := targets[0]
+	payload := map[string]any{"event": "test", "sent_at": s.nowString()}
+	status, sendErr := sendWebhook(target.URL, target.Secret, payload)
+	result := "success"
+	errText := any(nil)
+	if sendErr != nil {
+		result = "failure"
+		errText = "Webhook delivery failed"
+	}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".notify_log"), map[string]any{
+		"at":          s.nowString(),
+		"event":       "test",
+		"result":      result,
+		"http_status": status,
+		"attempt":     1,
+		"error":       errText,
+	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if sendErr != nil {
+		writeError(w, http.StatusUnprocessableEntity, "Webhook delivery failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Test notification sent", "webhook_url": target.URL})
+}
+
+func (s *APIServer) handleNotifyWeeklySummary(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	cfg, err := s.readNotifyConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	targets := notifyWebhookTargets(cfg, "weekly_summary")
+	if len(targets) == 0 {
+		writeValidation(w, "webhook", "not configured")
+		return
+	}
+	summary := s.weeklySummary()
+	payload := map[string]any{
+		"event":                "weekly_summary",
+		"period_days":          7,
+		"success_count":        summary["success_count"],
+		"failure_count":        summary["failure_count"],
+		"success_rate":         summary["success_rate"],
+		"avg_duration_seconds": summary["avg_duration_seconds"],
+	}
+	status, sendErr := sendWebhook(targets[0].URL, targets[0].Secret, payload)
+	result := "success"
+	errText := any(nil)
+	if sendErr != nil {
+		result = "failure"
+		errText = "Webhook delivery failed"
+	}
+	logRecord := map[string]any{
+		"at":          s.nowString(),
+		"event":       "weekly_summary",
+		"result":      result,
+		"http_status": status,
+		"attempt":     1,
+		"error":       errText,
+	}
+	for key, value := range summary {
+		logRecord[key] = value
+	}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".notify_log"), logRecord); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if sendErr != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message":       "Weekly summary sent",
+		"period":        summary["period"],
+		"success_count": summary["success_count"],
+		"failure_count": summary["failure_count"],
+		"success_rate":  summary["success_rate"],
+	})
 }
 
 func (s *APIServer) handleSchedule(w http.ResponseWriter, r *http.Request) {
@@ -1921,6 +2134,22 @@ func (s *APIServer) readBranchConfig() (apiBranchConfigFile, string, error) {
 	return cfg, "file", nil
 }
 
+func (s *APIServer) readNotifyConfig() (apiNotifyConfig, error) {
+	path := filepath.Join(s.cfg.StateDir, ".notify_config")
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return defaultNotifyConfig(), nil
+	}
+	var cfg apiNotifyConfig
+	if err := readJSONFile(path, &cfg); err != nil {
+		return cfg, err
+	}
+	normalized, ok := normalizeNotifyConfig(nil, cfg)
+	if !ok {
+		return cfg, errors.New("invalid notify config")
+	}
+	return normalized, nil
+}
+
 func (s *APIServer) nowString() string {
 	return s.cfg.Now().UTC().Format(apiTimeLayout)
 }
@@ -2261,6 +2490,169 @@ func defaultBranchTarget(stateDir string) apiBranchTarget {
 	}
 }
 
+func defaultNotifyConfig() apiNotifyConfig {
+	return apiNotifyConfig{
+		Webhooks: []apiNotifyWebhook{},
+		Channels: []apiNotifyChannel{},
+		On:       []string{},
+		Summary:  apiNotifySummary{Enabled: false, Interval: "weekly", Hour: 9, DayOfWeek: 1},
+		Email:    apiNotifyEmail{Enabled: false, To: []string{}, On: []string{}},
+	}
+}
+
+func normalizeNotifyConfig(w http.ResponseWriter, cfg apiNotifyConfig) (apiNotifyConfig, bool) {
+	if cfg.Webhooks == nil {
+		cfg.Webhooks = []apiNotifyWebhook{}
+	}
+	if cfg.Channels == nil {
+		cfg.Channels = []apiNotifyChannel{}
+	}
+	if cfg.On == nil {
+		cfg.On = []string{}
+	}
+	on, ok := normalizeNotifyEvents(w, "on", cfg.On, false)
+	if !ok {
+		return cfg, false
+	}
+	cfg.On = on
+	if cfg.Summary.Interval == "" {
+		cfg.Summary.Interval = "weekly"
+	}
+	if cfg.Summary.Interval != "weekly" {
+		writeValidationIf(w, "summary.interval", "must be weekly")
+		return cfg, false
+	}
+	if cfg.Summary.Hour < 0 || cfg.Summary.Hour > 23 {
+		writeValidationIf(w, "summary.hour", "out of range")
+		return cfg, false
+	}
+	if cfg.Summary.DayOfWeek < 0 || cfg.Summary.DayOfWeek > 6 {
+		writeValidationIf(w, "summary.day_of_week", "out of range")
+		return cfg, false
+	}
+	for i := range cfg.Webhooks {
+		webhook := &cfg.Webhooks[i]
+		webhook.URL = strings.TrimSpace(webhook.URL)
+		if !validateHTTPURL(webhook.URL) {
+			writeValidationIf(w, fmt.Sprintf("webhooks[%d].url", i), "invalid url")
+			return cfg, false
+		}
+		webhook.Label = strings.TrimSpace(webhook.Label)
+		if len(webhook.Label) > 64 {
+			writeValidationIf(w, fmt.Sprintf("webhooks[%d].label", i), "too long")
+			return cfg, false
+		}
+		events, ok := normalizeNotifyEvents(w, fmt.Sprintf("webhooks[%d].on", i), webhook.On, true)
+		if !ok {
+			return cfg, false
+		}
+		webhook.On = events
+		if webhook.PayloadTemplate != nil && len(*webhook.PayloadTemplate) > 10000 {
+			writeValidationIf(w, fmt.Sprintf("webhooks[%d].payload_template", i), "too long")
+			return cfg, false
+		}
+		if webhook.RetryCount < 0 || webhook.RetryCount > 10 {
+			writeValidationIf(w, fmt.Sprintf("webhooks[%d].retry_count", i), "out of range")
+			return cfg, false
+		}
+		if webhook.RetryIntervalSeconds == 0 {
+			webhook.RetryIntervalSeconds = 30
+		}
+		if webhook.RetryIntervalSeconds < 1 || webhook.RetryIntervalSeconds > 3600 {
+			writeValidationIf(w, fmt.Sprintf("webhooks[%d].retry_interval_seconds", i), "out of range")
+			return cfg, false
+		}
+		if webhook.Secret != nil {
+			secret := strings.TrimSpace(*webhook.Secret)
+			if secret == "" || len(secret) > 256 {
+				writeValidationIf(w, fmt.Sprintf("webhooks[%d].secret", i), "invalid value")
+				return cfg, false
+			}
+			webhook.Secret = &secret
+		}
+	}
+	seenChannels := map[string]bool{}
+	for i := range cfg.Channels {
+		channel := &cfg.Channels[i]
+		channel.ID = strings.TrimSpace(channel.ID)
+		if channel.ID == "" {
+			channel.ID = fmt.Sprintf("n%03d", i+1)
+		}
+		if !validNotifyChannelID(channel.ID) || seenChannels[channel.ID] {
+			writeValidationIf(w, fmt.Sprintf("channels[%d].id", i), "invalid value")
+			return cfg, false
+		}
+		seenChannels[channel.ID] = true
+		channel.Type = strings.TrimSpace(channel.Type)
+		if channel.Type != "webhook" && channel.Type != "email" && channel.Type != "command" {
+			writeValidationIf(w, fmt.Sprintf("channels[%d].type", i), "invalid value")
+			return cfg, false
+		}
+		channel.Label = strings.TrimSpace(channel.Label)
+		if len(channel.Label) > 64 {
+			writeValidationIf(w, fmt.Sprintf("channels[%d].label", i), "too long")
+			return cfg, false
+		}
+		events, ok := normalizeNotifyEvents(w, fmt.Sprintf("channels[%d].on", i), channel.On, true)
+		if !ok {
+			return cfg, false
+		}
+		channel.On = events
+		if channel.Config == nil {
+			channel.Config = map[string]any{}
+		}
+		if channel.Type == "webhook" {
+			rawURL, _ := channel.Config["url"].(string)
+			rawURL = strings.TrimSpace(rawURL)
+			if !validateHTTPURL(rawURL) {
+				writeValidationIf(w, fmt.Sprintf("channels[%d].config.url", i), "invalid url")
+				return cfg, false
+			}
+			channel.Config["url"] = rawURL
+		}
+		if channel.RetryCount < 0 || channel.RetryCount > 10 {
+			writeValidationIf(w, fmt.Sprintf("channels[%d].retry_count", i), "out of range")
+			return cfg, false
+		}
+		if channel.RetryIntervalSeconds == 0 {
+			channel.RetryIntervalSeconds = 30
+		}
+		if channel.RetryIntervalSeconds < 1 || channel.RetryIntervalSeconds > 3600 {
+			writeValidationIf(w, fmt.Sprintf("channels[%d].retry_interval_seconds", i), "out of range")
+			return cfg, false
+		}
+	}
+	if cfg.Email.To == nil {
+		cfg.Email.To = []string{}
+	}
+	if len(cfg.Email.To) > 50 {
+		writeValidationIf(w, "email.to", "too many")
+		return cfg, false
+	}
+	if cfg.Email.On == nil {
+		cfg.Email.On = []string{}
+	}
+	emailOn, ok := normalizeNotifyEmailEvents(w, cfg.Email.On)
+	if !ok {
+		return cfg, false
+	}
+	cfg.Email.On = emailOn
+	for i, addr := range cfg.Email.To {
+		cfg.Email.To[i] = strings.TrimSpace(addr)
+		if cfg.Email.To[i] == "" || !strings.Contains(cfg.Email.To[i], "@") {
+			writeValidationIf(w, fmt.Sprintf("email.to[%d]", i), "invalid email")
+			return cfg, false
+		}
+	}
+	return cfg, true
+}
+
+func writeValidationIf(w http.ResponseWriter, field, message string) {
+	if w != nil {
+		writeValidation(w, field, message)
+	}
+}
+
 func normalizeServerConfig(cfg apiServerConfig) apiServerConfig {
 	def := defaultServerConfig()
 	if cfg.LogMaxLines == 0 {
@@ -2558,6 +2950,208 @@ func allowedHoursEqual(a, b *apiAllowedHours) bool {
 		return a == nil && b == nil
 	}
 	return a.From == b.From && a.To == b.To
+}
+
+func normalizeNotifyEvents(w http.ResponseWriter, field string, values []string, allowWildcard bool) ([]string, bool) {
+	allowed := map[string]bool{
+		"start": true, "success": true, "failure": true, "deploy_failure": true,
+		"weekly_summary": true, "approval_required": true, "duration_anomaly": true, "config_corrupt": true,
+	}
+	if allowWildcard {
+		allowed["*"] = true
+	}
+	out := []string{}
+	seen := map[string]bool{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if !allowed[value] {
+			writeValidationIf(w, field, "invalid event")
+			return nil, false
+		}
+		if !seen[value] {
+			out = append(out, value)
+			seen[value] = true
+		}
+	}
+	return out, true
+}
+
+func normalizeNotifyEmailEvents(w http.ResponseWriter, values []string) ([]string, bool) {
+	allowed := map[string]bool{"start": true, "success": true, "failure": true, "duration_anomaly": true}
+	out := []string{}
+	seen := map[string]bool{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if !allowed[value] {
+			writeValidationIf(w, "email.on", "invalid event")
+			return nil, false
+		}
+		if !seen[value] {
+			out = append(out, value)
+			seen[value] = true
+		}
+	}
+	return out, true
+}
+
+func validateHTTPURL(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
+}
+
+func validNotifyChannelID(id string) bool {
+	if len(id) < 1 || len(id) > 64 {
+		return false
+	}
+	for _, r := range id {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func maskNotifyConfig(cfg apiNotifyConfig) apiNotifyConfig {
+	for i := range cfg.Webhooks {
+		if cfg.Webhooks[i].Secret != nil {
+			masked := "***"
+			cfg.Webhooks[i].Secret = &masked
+		}
+	}
+	return cfg
+}
+
+func notifyConfigsEqual(a, b apiNotifyConfig) bool {
+	aj, errA := json.Marshal(a)
+	bj, errB := json.Marshal(b)
+	return errA == nil && errB == nil && string(aj) == string(bj)
+}
+
+func notifyConfigChangeSummary(cfg apiNotifyConfig) map[string]any {
+	return map[string]any{
+		"webhooks_count": len(cfg.Webhooks),
+		"channels_count": len(cfg.Channels),
+		"on":             cfg.On,
+		"summary":        cfg.Summary,
+		"email_enabled":  cfg.Email.Enabled,
+	}
+}
+
+type apiNotifyTarget struct {
+	URL    string
+	Secret *string
+}
+
+func notifyWebhookTargets(cfg apiNotifyConfig, event string) []apiNotifyTarget {
+	targets := []apiNotifyTarget{}
+	for _, channel := range cfg.Channels {
+		if channel.Type != "webhook" || !channel.Enabled || !notifyEventEnabled(event, cfg.On, channel.On) {
+			continue
+		}
+		rawURL, _ := channel.Config["url"].(string)
+		if rawURL != "" {
+			targets = append(targets, apiNotifyTarget{URL: rawURL})
+		}
+	}
+	if len(cfg.Channels) > 0 {
+		return targets
+	}
+	for _, webhook := range cfg.Webhooks {
+		if !webhook.Enabled || !notifyEventEnabled(event, cfg.On, webhook.On) {
+			continue
+		}
+		targets = append(targets, apiNotifyTarget{URL: webhook.URL, Secret: webhook.Secret})
+	}
+	return targets
+}
+
+func notifyEventEnabled(event string, defaults, specific []string) bool {
+	values := specific
+	if len(values) == 0 {
+		values = defaults
+	}
+	for _, value := range values {
+		if value == "*" || value == event {
+			return true
+		}
+	}
+	return false
+}
+
+func sendWebhook(rawURL string, secret *string, payload map[string]any) (int, error) {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return 0, err
+	}
+	req, err := http.NewRequest(http.MethodPost, rawURL, bytes.NewReader(body))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if secret != nil {
+		mac := hmac.New(sha256.New, []byte(*secret))
+		_, _ = mac.Write(body)
+		req.Header.Set("X-Adlaire-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
+	}
+	client := http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return resp.StatusCode, fmt.Errorf("webhook returned %d", resp.StatusCode)
+	}
+	return resp.StatusCode, nil
+}
+
+func (s *APIServer) weeklySummary() map[string]any {
+	now := s.cfg.Now().UTC()
+	from := now.AddDate(0, 0, -7)
+	successCount := 0
+	failureCount := 0
+	durationCount := 0
+	var durationTotal int64
+	for _, record := range readHistory(filepath.Join(s.cfg.StateDir, ".build_history")) {
+		at := firstNonEmpty(record.FinishedAt, record.StartedAt, record.BuildAt)
+		if at == "" {
+			continue
+		}
+		parsed, err := time.Parse(apiTimeLayout, at)
+		if err != nil || parsed.Before(from) || parsed.After(now) {
+			continue
+		}
+		switch record.Status {
+		case "success":
+			successCount++
+		case "failure", "cancelled", "hook_error":
+			failureCount++
+		default:
+			continue
+		}
+		if record.DurationSeconds != 0 {
+			durationTotal += record.DurationSeconds
+			durationCount++
+		}
+	}
+	total := successCount + failureCount
+	successRate := 0.0
+	if total > 0 {
+		successRate = math.Round((float64(successCount)/float64(total))*10000) / 100
+	}
+	var avgDuration any
+	if durationCount > 0 {
+		avgDuration = math.Round(float64(durationTotal)/float64(durationCount)*100) / 100
+	}
+	return map[string]any{
+		"period":               from.Format("2006-01-02") + "/" + now.Format("2006-01-02"),
+		"success_count":        successCount,
+		"failure_count":        failureCount,
+		"success_rate":         successRate,
+		"avg_duration_seconds": avgDuration,
+	}
 }
 
 func maskRepoConfigChanges(patch map[string]json.RawMessage) map[string]any {
