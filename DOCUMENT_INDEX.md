@@ -51,7 +51,7 @@ fixture、fake、testdata、expected / effects、PR 証跡、実装 PR 完了証
 
 各詳細仕様ファイルの `持つ内容` と `持たない内容` が本文、`ADLAIRE_CI_DETAIL_SPEC.md` §0b、または本索引と矛盾する場合、その項目は実装判断に使わず、先に文書整合を行う。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は、同じ owner component / collaborator component 境界で読む。Phase の主対象は owner component とし、statefile、security、archive、commitstatus、admin、fixture、setup は必要に応じて collaborator component として検証、schema、setup、security、fixture、配布境界を補完する。
+`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は、同じ owner component / collaborator component 境界で読む。Phase の主対象は owner component とする。statefile、security、archive、commitstatus、admin、fixture、setup は、owner component の該当機能が状態ファイル、認証・監査、snapshot / log archive、commit status、admin 配布物、fixture、setup / update 手順を参照または変更する場合に collaborator component として検証、schema、setup、security、fixture、配布境界を補完する。
 
 実装者が詳細仕様を読む順序は、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認し、owner component の分割先詳細仕様ファイルを主本文として読む順に固定する。collaborator component の分割先詳細仕様ファイルは、呼び出し境界、schema、表示、security、setup、fixture、検証観点として参照し、owner component の主本文を上書きしない。
 

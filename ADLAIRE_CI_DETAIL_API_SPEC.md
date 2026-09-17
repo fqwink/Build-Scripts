@@ -2241,7 +2241,7 @@ owner component は `api` とする。collaborator component は `runner`、`sta
 | 対象 event | `push` のみ |
 | Secret | `.webhook_secret` |
 | 成功 response | `{ "message": "Webhook accepted", "queued": true, "event_id": "..." }` |
-| 状態 | `.webhook_events.json` へ追記し、必要に応じて `.build_state.queued` へ `trigger="webhook"` entry を追加する。 |
+| 状態 | `.webhook_events.json` へ追記する。対象 push の after SHA が対象 branch の直近成功 SHA と異なり、maintenance が無効で、queue 上限に空きがあり、同一 delivery id の queued / running entry が存在しない場合だけ `.build_state.queued` へ `trigger="webhook"` entry を追加する。 |
 
 **署名検証：**
 

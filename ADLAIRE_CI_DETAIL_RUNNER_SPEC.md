@@ -2771,7 +2771,7 @@ runner は `approval_required=true` の target に対して、approval queue 以
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
-本機能の目的は、branch target ごとに build process へ注入する環境変数を定義し、branch や deploy 先ごとの差分を安全に扱うことである。
+本機能の目的は、branch target ごとに build process へ注入する環境変数を定義し、branch や deploy 先ごとの差分を、保存前検証、注入対象固定、secret mask、log 保存禁止値によって扱うことである。
 
 **入力 / 状態：**
 
