@@ -175,6 +175,8 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 本節は、責務 component 別に分割済みの詳細仕様ファイルを崩さないための固定仕様である。責務境界の変更、仕様内容の移動、参照先更新を行う場合も、機能追加、実装状態変更、実装可否変更、ロードマップ変更、方針・ポリシー追加を含めてはならない。
 
+責務 component 別詳細仕様ファイルは、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を本文として持たない。方針、ポリシー、正本関係は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否は `docs/ROADMAP.md` 状態・計画責務を参照する。各 `docs/details/*.md` の冒頭では、本節への参照と自ファイルの owner / collaborator 境界だけを示し、上位判断の共通説明を重複記載しない。
+
 詳細仕様本文の配置単位は owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには呼び出し境界、schema、表示、security、setup、fixture、検証観点だけを置く。
 
 詳細仕様ファイルは以下に固定する。`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。
