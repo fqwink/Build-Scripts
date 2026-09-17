@@ -331,7 +331,7 @@ Phase 5 の実装詳細本文は `ADLAIRE_CI_DETAIL_SDK_SPEC.md` を正とする
 
 | 確認 | 参照先 |
 |------|--------|
-| SDK class、method、HTTP 対応、error、stream、token 破棄 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 |
+| SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` §23 |
 | API endpoint 対応 | `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e |
 | SDK fixture、fake fetch / stream | `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §0g.8-F |
 
