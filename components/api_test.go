@@ -1,0 +1,262 @@
+package components
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
+
+func TestAPILoginStatusAndQueue(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	writeTestJSON(t, filepath.Join(state, ".build_state"), apiBuildState{
+		Running: true,
+		Queued:  []map[string]any{},
+	})
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/status", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("status code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var status map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &status)
+	if status["running"] != true || status["last_build_status"] != "none" {
+		t.Fatalf("unexpected status: %#v", status)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/build", token, nil)
+	if resp.Code != http.StatusAccepted {
+		t.Fatalf("build code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var build map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &build)
+	if build["message"] != "Build queued" || build["queued"] != true {
+		t.Fatalf("unexpected build response: %#v", build)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/queue", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("queue code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var queue map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &queue)
+	if len(queue["queued"].([]any)) != 1 || queue["max_size"].(float64) != 3 {
+		t.Fatalf("unexpected queue: %#v", queue)
+	}
+
+	resp = apiRequest(t, server, http.MethodDelete, "/api/queue", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("clear code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var clear map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &clear)
+	if clear["cleared_count"].(float64) != 1 {
+		t.Fatalf("unexpected clear: %#v", clear)
+	}
+}
+
+func TestAPILogsHistoryAndCircuitReset(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	if err := os.MkdirAll(filepath.Join(state, ".build_logs"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestJSON(t, filepath.Join(state, ".build_logs", "b20260917010101.json"), apiBuildLog{
+		ID: "b20260917010101", StartedAt: "2026-09-17T01:01:01Z", FinishedAt: "2026-09-17T01:01:03Z",
+		TargetStatus: "success", Pipeline: apiPipelineLog{Stdout: "[INFO] start\n[INFO] done", Stderr: ""}, Warnings: []string{"[WARNING] slow"},
+	})
+	appendLine(t, filepath.Join(state, ".build_history"), `{"id":"b20260917010101","finished_at":"2026-09-17T01:01:03Z","status":"success","trigger":"manual","duration_seconds":2}`)
+	writeTestJSON(t, filepath.Join(state, ".build_circuit_state"), apiCircuitState{Open: true, ConsecutiveFailures: 3})
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/logs?n=2", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("logs code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var logs map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &logs)
+	if len(logs["lines"].([]any)) != 2 {
+		t.Fatalf("unexpected logs: %#v", logs)
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/history", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("history code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var history map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &history)
+	if history["total"].(float64) != 1 || history["pages"].(float64) != 1 {
+		t.Fatalf("unexpected history: %#v", history)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/circuit-breaker/reset", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("circuit code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var circuit apiCircuitState
+	readTestJSON(t, filepath.Join(state, ".build_circuit_state"), &circuit)
+	if circuit.Open || circuit.ConsecutiveFailures != 0 {
+		t.Fatalf("circuit was not reset: %#v", circuit)
+	}
+}
+
+func TestAPICommonErrors(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	resp := apiRequest(t, server, http.MethodGet, "/api/status", "", nil)
+	if resp.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthorized code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	token := login(t, server, "admin")
+	resp = apiRequest(t, server, http.MethodPost, "/api/status", token, nil)
+	if resp.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("method code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/history?page=0", token, nil)
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("validation code=%d body=%s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestAPISessionPasswordAndStream(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	if err := os.MkdirAll(filepath.Join(state, ".build_logs"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestJSON(t, filepath.Join(state, ".build_logs", "b20260917010101.json"), apiBuildLog{
+		ID: "b20260917010101", StartedAt: "2026-09-17T01:01:01Z", FinishedAt: "2026-09-17T01:01:03Z",
+		TargetStatus: "success", Pipeline: apiPipelineLog{Stdout: "[INFO] streamed", Stderr: ""},
+	})
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/build/stream", token, nil)
+	if resp.Code != http.StatusOK || resp.Header().Get("Content-Type") != "text/event-stream" {
+		t.Fatalf("stream code=%d content-type=%q body=%s", resp.Code, resp.Header().Get("Content-Type"), resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/change-password", token, map[string]string{
+		"current_password": "admin",
+		"new_password":     "changed-password",
+	})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("change-password code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	_ = login(t, server, "changed-password")
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/logout", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("logout code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/status", token, nil)
+	if resp.Code != http.StatusUnauthorized {
+		t.Fatalf("post-logout code=%d body=%s", resp.Code, resp.Body.String())
+	}
+}
+
+func newAPIState(t *testing.T) string {
+	t.Helper()
+	state := t.TempDir()
+	now := time.Date(2026, 9, 17, 1, 0, 0, 0, time.UTC)
+	if err := InitCredentials(state, "admin", now); err != nil {
+		t.Fatal(err)
+	}
+	return state
+}
+
+func newTestAPI(t *testing.T, state string) *APIServer {
+	t.Helper()
+	server, err := NewAPIServer(APIConfig{
+		StateDir: state,
+		Now: func() time.Time {
+			return time.Date(2026, 9, 17, 1, 1, 1, 0, time.UTC)
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return server
+}
+
+func login(t *testing.T, server *APIServer, password string) string {
+	t.Helper()
+	resp := apiRequest(t, server, http.MethodPost, "/api/login", "", map[string]string{"password": password})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("login code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var body map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	token, ok := body["token"].(string)
+	if !ok || token == "" {
+		t.Fatalf("missing token: %#v", body)
+	}
+	return token
+}
+
+func apiRequest(t *testing.T, server *APIServer, method, path, token string, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	var reader *bytes.Reader
+	if body == nil {
+		reader = bytes.NewReader(nil)
+	} else {
+		data, err := json.Marshal(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		reader = bytes.NewReader(data)
+	}
+	req := httptest.NewRequest(method, path, reader)
+	if body == nil {
+		req.Body = http.NoBody
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	rec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rec, req)
+	return rec
+}
+
+func writeTestJSON(t *testing.T, path string, value any) {
+	t.Helper()
+	if err := atomicWriteJSON(path, value, 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func readTestJSON(t *testing.T, path string, out any) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decodeTestJSON(t, data, out)
+}
+
+func decodeTestJSON(t *testing.T, data []byte, out any) {
+	t.Helper()
+	if err := json.Unmarshal(data, out); err != nil {
+		t.Fatalf("decode %s: %v", string(data), err)
+	}
+}
+
+func appendLine(t *testing.T, path, line string) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(line + "\n"); err != nil {
+		t.Fatal(err)
+	}
+}
