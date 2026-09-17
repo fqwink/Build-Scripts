@@ -2128,6 +2128,58 @@ localStorage は下表の key と payload だけを許可する。payload は JS
 | `adlaire:section-state` | §28.6 | JSON object。key は `{page_key}#{slug}`、value は `true` なら展開、`false` なら折りたたみ。object key は保存時に ASCII 昇順へ並べる。 |
 | `adlaire:color-scheme` | §28.12 | `light`、`dark`、`auto` のいずれかの string。未知値は無視し、設定値または既定値へ戻す。 |
 
+**§28 browser runtime 固定契約：**
+
+§28 のブラウザ JS は、静的 HTML を補助する progressive enhancement として実装する。JS が無効、JS 初期化失敗、localStorage 使用不可、IntersectionObserver 使用不可、History API 使用不可、dialog API 使用不可のいずれの場合でも、本文、TOC、anchor、画像、検索 index file の存在を壊してはならない。実装者は runtime 状態を理由に HTML を再生成、外部通信、追加 asset 取得、cookie / sessionStorage / IndexedDB 書込を行ってはならない。
+
+runtime 初期化順は下表に固定する。途中で例外が発生した場合は、その機能だけを無効化し、後続機能の初期化を継続する。例外内容を UI、stdout、stderr、REPORT、localStorage に出力してはならない。
+
+| 順序 | 初期化対象 | 固定内容 |
+|------|------------|----------|
+| 1 | static guard | `document.querySelector`、`addEventListener`、`classList` が存在しない場合、§28 JS 初期化を終了する。 |
+| 2 | storage guard | localStorage read / write wrapper を作成する。例外時は memory fallback を使わず、保存と復元だけを無効化する。 |
+| 3 | color scheme | `data-color-scheme`、設定値、保存値を解決し、root attribute と toggle state を同期する。 |
+| 4 | section collapse | heading toggle、wrapper、`aria-expanded`、`adlaire-section-collapsed`、保存値を同期する。 |
+| 5 | hash history | heading link click、hashchange、popstate、focus 移動を登録する。 |
+| 6 | TOC active | IntersectionObserver があれば使用し、なければ scroll fallback を登録する。 |
+| 7 | lightbox | trigger、dialog、focus trap、Escape / backdrop close を登録する。 |
+| 8 | accessibility guard | skip link、keyboard 操作、focus-visible 補助、aria current / aria expanded の最終整合を確認する。 |
+
+browser runtime の機能別挙動は下表に固定する。
+
+| 対象 | 固定挙動 |
+|------|----------|
+| section collapse 初期状態 | `--section-collapse=false` では toggle と wrapper を生成しない。`true` では h2 / h3 section を既定展開にする。保存値がある場合だけ保存値を優先する。 |
+| section collapse toggle | click または `Enter` / `Space` で対象 section を反転する。`aria-expanded=true` は展開、`false` は折りたたみ。wrapper class `adlaire-section-collapsed` は折りたたみ時だけ付与する。 |
+| section collapse 保存 | `adlaire:section-state` に `{page_key}#{slug}` ごとの boolean を保存する。保存失敗時も DOM 状態は維持する。 |
+| search hit 展開 | search hit または hash target が折りたたみ section 内にある場合、対象 section を一時展開する。一時展開だけでは localStorage を更新しない。 |
+| print 展開 | `beforeprint` で全 section を展開表示にし、`afterprint` で印刷前状態へ戻す。`beforeprint` / `afterprint` がない環境では CSS `@media print` で全展開表示にする。 |
+| color scheme 初期状態 | CLI / config の `color_scheme` を既定値とし、保存値が `light` / `dark` / `auto` の場合だけ保存値を優先する。未知保存値は削除せず無視する。 |
+| color scheme toggle | toggle 操作は `light → dark → auto → light` の順で循環する。root `data-color-scheme`、toggle `aria-label`、localStorage を同一値へ同期する。 |
+| color scheme print | print 表示は常に light 相当とし、localStorage の値を変更しない。 |
+| TOC active | active link は常に 0 件または 1 件。active link だけに `.is-active` と `aria-current="location"` を付与し、他 link からは両方を除去する。 |
+| TOC active fallback | IntersectionObserver がない場合は scroll position から、viewport top 以下で最も近い対象 heading を active とする。scroll event は requestAnimationFrame 相当で集約する。 |
+| hash click | heading / TOC link click 時、target heading が存在する場合だけ `history.pushState` を呼び、target heading に一時 `tabindex="-1"` を付与して focus する。 |
+| hash missing | target heading が存在しない hash は no-op。例外、warning、storage 更新、URL 書換を行わない。 |
+| back / forward | `popstate` / `hashchange` では URL hash の heading へ scroll / focus し、存在しない場合は no-op。 |
+| lightbox open | trigger click または `Enter` / `Space` で page 内 1 個の dialog を開き、trigger を opener として保持し、最初の close button または dialog 自体へ focus する。 |
+| lightbox close | Escape、backdrop click、close button で閉じる。閉じた後は opener が存在する場合だけ opener へ focus を戻す。 |
+| lightbox focus trap | dialog open 中は `Tab` / `Shift+Tab` を dialog 内 focusable 要素に循環させる。focusable 要素がない場合は dialog 自体へ focus する。 |
+| keyboard scope | §28 で追加する keyboard handler は対象 UI に focus がある場合だけ有効にする。既存 §7.12 の `/`、`Escape`、`t` を上書きしない。 |
+| skip link | `.skip-link` は main content へ移動する。target が存在しない場合は表示だけ残し、click は通常 anchor 動作に任せる。 |
+| JS exception | 個別 handler 内の例外は握りつぶし、その handler の処理だけを中止する。DOM を rollback せず、他 handler を削除しない。 |
+
+browser runtime が出力または変更してよい DOM state は下表に限定する。下表にない class、attribute、storage key、event side effect を追加する場合は、先に本節を改訂する。
+
+| 対象 | 変更可能 state |
+|------|----------------|
+| section collapse | `.adlaire-section-collapsed`、`aria-expanded`、`hidden` 相当の表示状態、`adlaire:section-state`。 |
+| color scheme | root `data-color-scheme`、`.theme-toggle` の `aria-label`、`adlaire:color-scheme`。 |
+| TOC active | `.is-active`、`aria-current="location"`。 |
+| hash focus | heading の一時 `tabindex="-1"`、focus。 |
+| lightbox | `.adlaire-lightbox-dialog` の open / hidden state、focus、`aria-modal`、`aria-hidden`。 |
+| accessibility | `.skip-link` focus、`:focus-visible` CSS による表示。 |
+
 **§28 Markdown token / HTML node 変換固定契約：**
 
 §28 実装は、Markdown を文字列置換だけで直接 HTML 化してはならない。以下の token 種別を内部表現として扱い、token 単位で変換する。token 名、判定順、fallback は固定値とする。
