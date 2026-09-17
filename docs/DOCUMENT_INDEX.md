@@ -109,7 +109,7 @@ fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklis
 | `components/runner_test.go` | `runner` | 実装済み | `components/runner.go` の Phase 2 fixture、hardening、完了判定パステスト。 |
 | `components/api.go` | `api` | 実装中・検証未完了 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。実装済み判定は `docs/ADLAIRE_CI_SPEC.md` の実装状態表を正とする。 |
 | `components/admin.go` | `admin` | 仕様化済み・未実装 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を提供する。 |
-| `admin/adlaire-ci-sdk.js` | `sdk` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
+| `admin/adlaire-ci-sdk.js` | `sdk` | 実装済み | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
 | `admin/index.html` | `ui` | 仕様化済み・未実装 | 標準管理ツール UI。SDK 経由で API と通信する。 |
 | `components/mcp.go` | `mcp` | 将来計画 | MCP サーバー。現時点では実装可能な詳細仕様を持たず、MCP 専用詳細仕様が新設されるまで実装対象ではない。 |
 

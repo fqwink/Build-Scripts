@@ -1,6 +1,6 @@
 # Adlaire CI — 仕様ドキュメント
 
-**対象コンポーネント：** `components/builder.go`（ビルドスクリプト、実装済み）/ `components/runner.go`（CI ランナー、実装済み）/ `components/api.go`（管理 API サーバー、実装中・検証未完了）/ `admin/adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `components/mcp.go`（MCP サーバー、将来計画）
+**対象コンポーネント：** `components/builder.go`（ビルドスクリプト、実装済み）/ `components/runner.go`（CI ランナー、実装済み）/ `components/api.go`（管理 API サーバー、実装中・検証未完了）/ `admin/adlaire-ci-sdk.js`（JavaScript SDK、実装済み）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `components/mcp.go`（MCP サーバー、将来計画）
 **出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記） → Part 2 §2 参照
@@ -37,7 +37,7 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 | `components/builder.go` | 実装済み | Go 版 Markdown → 静的 Web サイトビルドスクリプトとして Phase 1 の `gofmt` と `go test` 検証済み。 |
 | `components/runner.go` | 実装済み | Go 版 CI ランナーとして Phase 2 完了判定パスの `gofmt` と `go test` 検証済み。 |
 | `components/api.go` | 実装中・検証未完了 | Go 版管理 API サーバー。実装ファイルとテストは存在するが、実装状態表、詳細仕様、SDK/UI 連携、検証結果がすべて実装済みとして整合するまでは実装済みへ昇格しない。 |
-| `admin/adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
+| `admin/adlaire-ci-sdk.js` | 実装済み | 管理ツール用 JavaScript SDK。Phase 5 の SDK class、method、HTTP error、token 破棄、query / body 生成を実装済み。 |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
 | `components/mcp.go` | 将来計画 | Go 版 MCP サーバー。将来計画として管理し、実装済みとは扱わない。 |
 
@@ -1007,7 +1007,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 | `components/builder.go` | 実装済み | Go 版ビルドスクリプト（Markdown → 静的 Web サイト変換）として Phase 1 の `gofmt` と `go test` 検証済み。 |
 | `components/runner.go` | 実装済み | Go 版 CI ランナー（変更検出・ビルド起動・通知・転送）として Phase 2 完了判定パスの `gofmt` と `go test` 検証済み。 |
 | `components/api.go` | 実装中・検証未完了 | Go 版管理 API サーバー（常駐 HTTP サーバー） |
-| `admin/adlaire-ci-sdk.js` | 仕様化済み・未実装 | JavaScript SDK（管理ツール用 API クライアント） |
+| `admin/adlaire-ci-sdk.js` | 実装済み | JavaScript SDK（管理ツール用 API クライアント） |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI |
 | `components/mcp.go` | 将来計画 | Go 版 MCP サーバー（将来追加予定 → §13 将来計画 MCP サーバー実装） |
 
@@ -1053,7 +1053,7 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 ## 8. SDK ポリシー
 
-本節は、仕様化済み・未実装の `admin/adlaire-ci-sdk.js` に適用する。
+本節は、実装済みの `admin/adlaire-ci-sdk.js` に適用する。
 
 - SDK は内製とし、外部ライブラリに依存しない（→ Part 2 §4）
 - SDK の対応言語追加は本ドキュメントへの記載を先行させる
