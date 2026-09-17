@@ -507,7 +507,7 @@ Go 版初期実装では、実装対象を `docs/ROADMAP.md` で `仕様化済�
 
 初期実装 PR では、上表の対象外項目、将来計画、未仕様化項目、改訂予定項目を実装してはならない。
 
-初期実装中に対象範囲へ追加したい機能を発見した場合は、先に `docs/ROADMAP.md` の状態表現、本節の表、`docs/DETAIL_INDEX.md` の該当詳細仕様、`docs/DOCUMENT_INDEX.md` の索引を更新し、仕様凍結を再実施する。
+初期実装中に対象範囲へ追加したい機能を発見した場合は、先に `docs/ROADMAP.md` の状態分類と実装状態、本節の表、`docs/DETAIL_INDEX.md` の該当詳細仕様、`docs/DOCUMENT_INDEX.md` の索引を更新し、仕様凍結を再実施する。
 
 初期実装スコープの実装順序と PR 分割は、`docs/ROADMAP.md` §4 の Phase 実装計画に従う。
 

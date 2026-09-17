@@ -122,7 +122,7 @@ owner component 別の `docs/details/*.md` は、各 component の詳細仕様�
 
 実装中に仕様不足、未定義の入出力、未定義の状態ファイル、未定義の異常系、未定義の検証条件を発見した場合は、実装判断で補完せず、先に仕様を改訂する。
 
-実装済みとして扱うには、コード変更、仕様との差分確認、必要な構文確認、実行確認または生成物確認、`docs/DOCUMENT_INDEX.md`・実装状態表・関連仕様の更新要否確認を完了していなければならない。
+実装済みとして扱うには、コード変更、仕様との差分確認、必要な構文確認、実行確認または生成物確認、`docs/DOCUMENT_INDEX.md`・`docs/ROADMAP.md` の実装状態・関連仕様の更新要否確認を完了していなければならない。
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。
 
@@ -346,4 +346,4 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 `docs/DESIGN.md` を改訂した場合は、`components/builder.go` 内の HTML / CSS / JavaScript / theme component テンプレートとの整合性を確認する。
 
-仕様化済み項目を実装した場合は、`docs/ROADMAP.md` 内の状態表現、`docs/DOCUMENT_INDEX.md` の Specified Components、`docs/DETAIL_INDEX.md` の対応表、owner component 別の `docs/details/*.md` の検証条件、実装ファイルの存在を整合させる。
+仕様化済み項目を実装した場合は、`docs/ROADMAP.md` の状態分類と実装状態、`docs/DOCUMENT_INDEX.md` の Specified Components、`docs/DETAIL_INDEX.md` の対応表、owner component 別の `docs/details/*.md` の検証条件、実装ファイルの存在を整合させる。
