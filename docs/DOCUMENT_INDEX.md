@@ -63,7 +63,7 @@
 | 作業ルール、承認、Git 運用を確認したい | `AGENTS.md` | `docs/DOCUMENT_INDEX.md` | 作業開始可否、変更承認、PR 作成、文書整合の手順を判断する。 |
 | リポジトリ全体の文書構造を把握したい | `README.md` | `docs/DOCUMENT_INDEX.md` | どの文書が何を持つか、どの順番で読むかを判断する。 |
 | 方針、ポリシー、禁止事項を判断したい | `docs/SPEC.md` | `docs/ROADMAP.md` | 対象領域に適用する原則と制約を判断する。 |
-| 実装状態、実装可否、Phase、将来計画を判断したい | `docs/ROADMAP.md` | `docs/DETAIL_INDEX.md` | 対象が実装済み、仕様化済み、将来計画、実装不可のどれかを判断する。 |
+| 実装状態、実装可否、Phase、将来計画を判断したい | `docs/ROADMAP.md` | `docs/DETAIL_INDEX.md` | 対象が未仕様化、将来計画、改訂予定、仕様化済み・未実装、実装中・検証未完了、実装済みのどれかを判断する。 |
 | 詳細仕様本文を探したい | `docs/DETAIL_INDEX.md` | 対象 owner component の `docs/details/*.md` | 対象機能の owner component、参照節、受け入れ条件を判断する。 |
 | 実装ファイル、テスト、fixture の所在を確認したい | `docs/DOCUMENT_INDEX.md` | `docs/DETAIL_INDEX.md` §0j | 現行実装ファイル、未実装 path、標準配置の扱いを判断する。 |
 | component の入出力、状態、処理順序、異常系、検証条件を確認したい | 対象 owner component の `docs/details/*.md` | collaborator component の `docs/details/*.md` | 実装時に従う具体仕様と collaborator 境界を判断する。 |
@@ -78,7 +78,7 @@
 | 判断ルール | 内容 |
 |------------|------|
 | 作業ルール優先 | 作業可否、承認、Git 操作、PR 作成は常に `AGENTS.md` を正とする。 |
-| 状態判断優先 | 実装済み、仕様化済み、将来計画、実装不可の判断は `docs/ROADMAP.md` を正とする。 |
+| 状態判断優先 | 未仕様化、将来計画、改訂予定、仕様化済み・未実装、実装中・検証未完了、実装済みの判断は `docs/ROADMAP.md` を正とする。 |
 | 詳細本文優先 | 入出力、状態、処理順序、異常系、検証条件は owner component の `docs/details/*.md` を正とする。 |
 | 索引限定 | `docs/DOCUMENT_INDEX.md` は所在と役割の索引であり、仕様本文を定義しない。 |
 | 入口限定 | `README.md` は入口であり、詳細ルールや詳細仕様本文を重複定義しない。 |
