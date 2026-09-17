@@ -19,30 +19,15 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 ## 主要ファイル
 
 - `docs/SPEC.md`: Adlaire CI のマスター仕様書。
-- `docs/DETAIL_INDEX.md`: Adlaire CI の Part 3 詳細仕様の入口。読み順、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、§0i.1〜§0i.4 の詳細節対応表、§0j のリポジトリ内ソース配置、横断補足契約を持つ。
+- `docs/DETAIL_INDEX.md`: Adlaire CI の Part 3 詳細仕様の入口。読み順、共通固定値、対応表、リポジトリ内ソース配置、横断補足契約を持つ。
 - `docs/details/*.md`: owner component 別の入出力、状態、処理順序、異常系、検証条件の詳細仕様本文。
-- `main.go`: 起動入口。実行ファイル名に応じて builder / runner component を呼び出す。
-- `components/builder.go`: Markdown を静的 Web サイトへ変換する Go 版ビルドスクリプト。Phase 1 実装済み。
-- `components/builder_test.go`: `components/builder.go` の Phase 1 fixture テスト。
-- `go.mod`: Go module 定義。外部 module は追加しない。
-- `testdata/builder/`: Phase 1 受け入れ fixture。
-- `components/runner.go`: GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する Go 版 CI ランナー。Phase 2 完了判定パス実装済み。
-- `components/runner_test.go`: `components/runner.go` の Phase 2 fixture、hardening、完了判定パステスト。
 - `docs/DESIGN.md`: 生成静的 Web サイトのデザイン仕様を整理する補助文書。
 - `docs/DOCUMENT_INDEX.md`: 文書・実装ファイルの役割を整理する索引。
 - `AGENTS.md`: 本リポジトリにおけるエージェント作業ルール。
 
-## 仕様化済みコンポーネント
+## 実装ファイル
 
-Adlaire CI は、最初から Go を前提として仕様策定します。
-
-標準ソース配置への移行は完了済みです。`components/builder.go` は Phase 1 実装済み、`components/runner.go` は Phase 2 完了判定パス実装済みです。いずれも `gofmt` と `go test` による検証対象です。
-
-標準ソース配置は `docs/SPEC.md` Part 1 §4.3 と `docs/DETAIL_INDEX.md` §0j で定義し、`main.go`、現存する `components/*.go`、`admin/` 配下の静的 UI ファイルを正とします。
-
-`components/api.go` は実装済みのコンポーネントです。
-
-`admin/adlaire-ci-sdk.js` は Phase 5 実装済み、`admin/index.html` は Phase 6 実装済みのコンポーネントです。`components/mcp.go` は将来計画のコンポーネントです。
+標準ソース配置と実装状態は `docs/DOCUMENT_INDEX.md` の Specified Components を参照します。実装判断では、`docs/SPEC.md` の実装状態と `docs/DETAIL_INDEX.md` のリポジトリ内ソース配置を同時に確認します。
 
 ## リリース形式
 
