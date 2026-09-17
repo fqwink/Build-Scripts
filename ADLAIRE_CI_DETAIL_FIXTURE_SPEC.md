@@ -30,6 +30,18 @@
 
 ## 0g.8-F Phase fixture / testdata / fake / PR 証跡契約
 
+本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、PR 証跡の正本である。`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は完了判定の入口を示すだけとし、fixture 名、expected / effects、fake 動作、PR 証跡項目は本ファイルを正とする。
+
+実装 PR の完了証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる PR は、該当する全系統の証跡を PR 本文または検証ログに記録する。
+
+| 系統 | 対象 | 正本節 | 必須証跡 |
+|------|------|--------|----------|
+| Phase 実装 | Phase 1〜Phase 6 の初期実装。 | §0g.8-F | 対象 Phase、owner component、collaborator component、変更ファイル、fixture / testdata path、fake、実行コマンド、期待結果、実結果、後続 Phase へ引き継ぐ contract。 |
+| API 実装 | API P0〜P5、SDK / UI / statefile と同期する API 実装。 | §22-F | 優先度、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認。 |
+| §27 実装 | §27.1〜§27.47 の追加仕様化機能。 | §27-F | 対象 §27.x、関連 §22 / §23 / §24 / §25 / §26、owner / collaborator component、fixture 名、状態差分、外部副作用、partial failure、再実行、対象外確認。 |
+
+上表の証跡が不足する場合、対象機能は未完了として扱う。実装者は fixture が pass したことだけを完了証跡として扱ってはならない。
+
 **Phase fixture / testdata 配置固定契約：**
 
 | Phase | 必須配置 | 必須内容 | 禁止事項 |
@@ -54,6 +66,8 @@
 
 **実装 PR 証跡固定契約：**
 
+本契約は Phase 実装の PR 証跡に適用する。API 実装は §22-F、§27 実装は §27-F の acceptance checklist も同時に満たす。
+
 | 証跡 | 必須記載 | 不足時の扱い |
 |------|----------|--------------|
 | 変更対象 | 対象 Phase、owner component、collaborator component、変更ファイル、追加 fixture / testdata path。 | 対象 Phase の成果物不足として未完了。 |
@@ -66,6 +80,8 @@
 ## 22-F API Phase fixture / 実装順序契約
 
 本節は、API P0〜P5 の実装順序、必須検証、fixture 名、入力状態、期待 response、期待副作用の正本である。API endpoint の method、path、request、response、error、read / write 境界は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22 を正とし、本節では再定義しない。
+
+API 実装 PR は、§0g.8-F の PR 証跡固定契約に加えて、本節の優先度、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
 
 対象項目の実装時は、下表の順に進める。上位の完了条件を満たす前に下位へ進んではならない。同一優先度内では、API、SDK、UI、状態ファイル、検証手順を同じ Pull Request で同期する。
 

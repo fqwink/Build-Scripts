@@ -110,7 +110,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 | runner の build 実行、API 共通 request / response、SDK method 実装、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細。 |
 | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理。 |
-| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture manifest、assertion、fake、testdata、API P0〜P5 fixture、受け入れ fixture 共通契約、PR 証跡テンプレート。 | 個別 component の通常処理本文。 |
+| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture manifest、assertion、fake、testdata、API P0〜P5 fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、実装 PR 完了証跡。 | 個別 component の通常処理本文。 |
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルを正本とし、§27.38a は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点の確認として読む。
 
@@ -218,6 +218,8 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 本表の `builder`、`runner`、`api`、`sdk`、`ui`、`setup` は Phase の主対象 component である。`statefile`、`security`、`archive`、`commitstatus`、`admin`、`fixture` は、主対象 component の collaborator component として完了判定に参加する。collaborator component の検証が失敗する場合、主対象 component の実装も完了扱いにしてはならない。
 
+実装完了判定は、機能実装、fixture / testdata、fake、検証結果、PR 証跡を 1 組として扱う。コードが仕様どおりに見える場合でも、`ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §0g.8-F、§22-F、§27-F に定義された対象 fixture、expected / effects、実行コマンド、実結果、secret 確認、対象外確認が不足する場合は完了扱いにしない。
+
 | 対象 | 必須検証 | 合格条件 |
 |------|----------|----------|
 | `builder` | CLI 正常系 | `adlaire-ci-build --src <valid.md-or-dir> --out <site-dir>` が終了コード `0` で終了し、静的 Web サイトと `[REPORT]` を生成する。 |
@@ -240,7 +242,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `admin` | 静的配布境界 | admin 配布物、archive validation、HTTP 静的配信、setup 連携が `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` §0、A1〜A5 と一致し、UI / SDK の本文を重複定義しない。 |
 | `fixture` | fixture / fake / 証跡 | Phase 別 fixture、fake、assertion、expected / effects、PR 証跡が `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §0g.8-F、§22-F、§27-F と一致する。 |
 
-検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、期待結果、実結果を対応付けて記録する。検証不能な項目がある場合は、その項目を完了扱いにしてはならない。
+検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、fixture 名、期待結果、実結果、状態差分、外部副作用、secret 確認、対象外確認を対応付けて記録する。記録形式、必須項目、不足時の扱いは `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` の PR 証跡契約を正とする。検証不能な項目がある場合は、その項目を完了扱いにしてはならない。
 
 ---
 
@@ -358,7 +360,7 @@ Phase 6 の実装詳細本文は `ADLAIRE_CI_DETAIL_UI_SPEC.md` を正とする�
 
 ### 0g.8 Phase 別 実装 PR 成果物チェックリスト
 
-Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §0g.8-F を正とする。親ファイルでは、Phase ごとの成果物参照先だけを保持する。
+Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §0g.8-F を正とする。親ファイルでは、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、PR 証跡項目を重複定義しない。
 
 | Phase | 実装対象 | 成果物・fixture 正本 | 受け入れ条件 |
 |-------|----------|----------------------|--------------|

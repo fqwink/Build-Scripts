@@ -19,7 +19,7 @@
 | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | `archive` owner component の詳細仕様。build log archive、snapshot、download、delete、rollback、cleanup を扱う。 |
 | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | `commitstatus` owner component の詳細仕様。GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask を扱う。 |
 | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner component の詳細仕様。API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序を扱う。 |
-| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture / fake / testdata / assertion / PR 証跡の詳細仕様。Phase 別 fixture 配置、API P0〜P5 fixture、api / sdk / ui / statefile cross fixture、§27 fixture カタログ、manifest、expected/effects、受け入れゲートを扱う。 |
+| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture / fake / testdata / assertion / PR 証跡の詳細仕様。Phase 別 fixture 配置、API P0〜P5 fixture、api / sdk / ui / statefile cross fixture、§27 fixture カタログ、manifest、expected/effects、受け入れゲート、実装 PR 完了証跡を扱う。 |
 | `DESIGN.md` | 生成静的 Web サイトのデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
 | `AGENTS.md` | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | `DOCUMENT_INDEX.md` | 本索引。リポジトリ内の文書・実装ファイルの役割と正本関係を示す。仕様正本ではない。 |
@@ -29,6 +29,8 @@
 詳細仕様は、責務 component 別の分割済み詳細仕様ファイルとして管理する。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約を持つ。各 component の入出力、処理順序、状態、異常系、検証条件の本文は下表の owner component 別詳細仕様ファイルを正とする。
+
+fixture、fake、testdata、expected / effects、PR 証跡、実装 PR 完了証跡は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は完了判定の入口であり、fixture 名、fake 動作、PR 証跡項目を重複定義しない。
 
 | ファイル | 状態 | 役割 |
 |----------|------|------|
@@ -43,7 +45,7 @@
 | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | 分割済み | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 |
 | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | 分割済み | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 |
 | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | 分割済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | 分割済み | fixture manifest、assertion、fake、testdata、API P0〜P5 fixture、api / sdk / ui / statefile cross fixture、受け入れ fixture 共通契約、PR 証跡テンプレート。 |
+| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | 分割済み | fixture manifest、assertion、fake、testdata、API P0〜P5 fixture、api / sdk / ui / statefile cross fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、実装 PR 完了証跡。 |
 
 責務 component 別詳細仕様ファイルは、各ファイルの `## 0. 責務境界` を実装前に確認する。`owner component` は主本文を持つ component、`collaborator component` は呼び出し境界、schema、fixture、security、setup、表示、受け入れ条件を参照する component として扱う。collaborator 側の参照は、owner component の主本文を上書きしない。
 
