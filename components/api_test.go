@@ -3,11 +3,15 @@ package components
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -994,6 +998,152 @@ func TestAPIReadOnlyAggregateEndpoints(t *testing.T) {
 	}
 }
 
+func TestAPIPhase4BackupWebhookSnapshotAndTokenFixtures(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	secret := "phase4-webhook-secret"
+	resp := apiRequest(t, server, http.MethodPost, "/api/webhook-config", token, map[string]string{"secret": secret})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("webhook config code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/backup", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("backup code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var backup map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &backup)
+	if body := resp.Body.String(); strings.Contains(body, secret) {
+		t.Fatalf("backup leaked secret: %s", body)
+	}
+	if backup["config"] == nil {
+		t.Fatalf("backup missing config: %#v", backup)
+	}
+
+	before := snapshotFiles(t, state, []string{".webhook_events.json", ".build_state", ".build_history"})
+	resp = signedWebhookRequest(t, server, secret, []byte(`{"ref":"refs/heads/main","after":"abc123"}`), "delivery-1", "sha256=bad")
+	if resp.Code != http.StatusUnauthorized {
+		t.Fatalf("invalid webhook code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".webhook_events.json", ".build_state", ".build_history"}))
+	resp = signedWebhookRequest(t, server, secret, []byte(`{"ref":"refs/heads/main","after":"abc123"}`), "delivery-1", "")
+	if resp.Code != http.StatusAccepted {
+		t.Fatalf("signed webhook code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var webhookResp map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &webhookResp)
+	if webhookResp["queued"] != true || webhookResp["queue_id"] == nil {
+		t.Fatalf("unexpected webhook response: %#v", webhookResp)
+	}
+	var buildState apiBuildState
+	readTestJSON(t, filepath.Join(state, ".build_state"), &buildState)
+	if len(buildState.Queued) != 1 || buildState.Queued[0]["trigger"] != "webhook" {
+		t.Fatalf("webhook did not queue build: %#v", buildState)
+	}
+
+	snapshotDir := filepath.Join(state, ".snapshots", "snap1")
+	if err := os.MkdirAll(snapshotDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(snapshotDir, "site.tar.gz"), []byte("archive"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	writeTestJSON(t, filepath.Join(snapshotDir, "meta.json"), map[string]any{"saved_at": "2026-09-17T01:01:01Z", "size_bytes": 7})
+	resp = apiRequest(t, server, http.MethodGet, "/api/snapshots", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("snapshots code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/snapshots/snap1/download", token, nil)
+	if resp.Code != http.StatusOK || resp.Header().Get("Content-Type") != "application/octet-stream" {
+		t.Fatalf("download code=%d type=%q body=%s", resp.Code, resp.Header().Get("Content-Type"), resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodDelete, "/api/snapshots/snap1", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("snapshot delete code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	if _, err := os.Stat(snapshotDir); !os.IsNotExist(err) {
+		t.Fatalf("snapshot dir should be deleted, err=%v", err)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/tokens", token, map[string]any{"name": "automation", "scopes": []string{"read"}})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("token issue code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var issued map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &issued)
+	rawToken, _ := issued["token"].(string)
+	if rawToken == "" {
+		t.Fatalf("missing issued token: %#v", issued)
+	}
+	resp = apiRequest(t, server, http.MethodGet, "/api/tokens", token, nil)
+	if resp.Code != http.StatusOK || strings.Contains(resp.Body.String(), rawToken) {
+		t.Fatalf("token list leaked raw token: code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var stored []apiTokenRecord
+	readTestJSON(t, filepath.Join(state, ".api_tokens"), &stored)
+	if len(stored) != 1 || stored[0].TokenHash == "" || strings.Contains(stored[0].TokenHash, rawToken) {
+		t.Fatalf("token hash not stored safely: %#v", stored)
+	}
+	resp = apiRequest(t, server, http.MethodDelete, "/api/tokens/missing", token, nil)
+	if resp.Code != http.StatusNotFound {
+		t.Fatalf("missing token revoke code=%d body=%s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestAPIPhase4RulePipelineNotesAndLayoutFixtures(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	rule := map[string]any{"name": "failures", "status": "failure"}
+	resp := apiRequest(t, server, http.MethodPost, "/api/alert-rules", token, rule)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("alert rule code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	before := snapshotFiles(t, state, []string{".alert_rules", ".config_log"})
+	resp = apiRequest(t, server, http.MethodPost, "/api/alert-rules", token, rule)
+	if resp.Code != http.StatusConflict {
+		t.Fatalf("duplicate alert rule code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".alert_rules", ".config_log"}))
+
+	before = snapshotFiles(t, state, []string{".pipeline_config"})
+	resp = apiRequest(t, server, http.MethodPost, "/api/pipeline-config", token, map[string]any{"extra_args": []string{"--src"}})
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("reserved pipeline arg code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".pipeline_config"}))
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/notes", token, map[string]string{"content": "release note"})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("notes code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	before = snapshotFiles(t, state, []string{".notes", ".config_log"})
+	resp = apiRequest(t, server, http.MethodPost, "/api/notes", token, map[string]string{"content": "release note"})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("notes no-op code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var body map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	if body["message"] != "No changes" {
+		t.Fatalf("unexpected notes no-op: %#v", body)
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".notes", ".config_log"}))
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/dashboard-layout", token, map[string]any{"widgets": []string{"status", "status"}})
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("dashboard duplicate code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/smtp-test", token, nil)
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("smtp disabled code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(state, ".notify_log")); !os.IsNotExist(err) {
+		t.Fatalf("smtp disabled must not write notify log, err=%v", err)
+	}
+}
+
 func newAPIState(t *testing.T) string {
 	t.Helper()
 	state := t.TempDir()
@@ -1058,6 +1208,23 @@ func apiRequestFrom(t *testing.T, server *APIServer, method, path, token string,
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	req.RemoteAddr = remoteAddr
+	rec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rec, req)
+	return rec
+}
+
+func signedWebhookRequest(t *testing.T, server *APIServer, secret string, body []byte, deliveryID, signature string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/api/webhook", bytes.NewReader(body))
+	req.RemoteAddr = "192.0.2.1:1234"
+	req.Header.Set("X-GitHub-Event", "push")
+	req.Header.Set("X-GitHub-Delivery", deliveryID)
+	if signature == "" {
+		mac := hmac.New(sha256.New, []byte(secret))
+		_, _ = mac.Write(body)
+		signature = "sha256=" + hex.EncodeToString(mac.Sum(nil))
+	}
+	req.Header.Set("X-Hub-Signature-256", signature)
 	rec := httptest.NewRecorder()
 	server.Handler().ServeHTTP(rec, req)
 	return rec
