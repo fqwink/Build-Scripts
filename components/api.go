@@ -87,6 +87,12 @@ type apiCircuitState struct {
 	LastError           *string `json:"last_error"`
 }
 
+type apiMaintenanceState struct {
+	Enabled bool    `json:"enabled"`
+	Reason  *string `json:"reason"`
+	Since   *string `json:"since"`
+}
+
 type apiServerConfig struct {
 	LogMaxLines           int     `json:"log_max_lines"`
 	HistoryMaxCount       int     `json:"history_max_count"`
@@ -252,6 +258,9 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/history/export", s.withAuth(s.handleHistoryExport))
 	mux.HandleFunc("/api/history/", s.withAuth(s.handleHistoryPath))
 	mux.HandleFunc("/api/circuit-breaker/reset", s.withAuth(s.handleCircuitReset))
+	mux.HandleFunc("/api/maintenance", s.withAuth(s.handleMaintenance))
+	mux.HandleFunc("/api/maintenance/enable", s.withAuth(s.handleMaintenanceEnable))
+	mux.HandleFunc("/api/maintenance/disable", s.withAuth(s.handleMaintenanceDisable))
 	mux.HandleFunc("/api/queue", s.withAuth(s.handleQueue))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
@@ -1206,6 +1215,82 @@ func (s *APIServer) handleCircuitReset(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"message": "Circuit breaker reset", "open": false, "consecutive_failures": 0})
 }
 
+func (s *APIServer) handleMaintenance(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	state, err := readMaintenanceState(filepath.Join(s.cfg.StateDir, ".maintenance"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	writeJSON(w, http.StatusOK, state)
+}
+
+func (s *APIServer) handleMaintenanceEnable(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) {
+		return
+	}
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	if !decodeBody(w, r, &body, true) {
+		return
+	}
+	reason := strings.TrimSpace(body.Reason)
+	if reason == "" || len(reason) > 500 {
+		writeValidation(w, "reason", "must be 1 to 500 characters")
+		return
+	}
+	path := filepath.Join(s.cfg.StateDir, ".maintenance")
+	current, err := readMaintenanceState(path)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	if current.Enabled && stringPtrValue(current.Reason) == reason {
+		writeJSON(w, http.StatusOK, map[string]any{"message": "No changes", "since": current.Since})
+		return
+	}
+	since := s.nowString()
+	next := apiMaintenanceState{Enabled: true, Reason: &reason, Since: &since}
+	if err := atomicWriteJSON(path, next, 0600); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "maintenance", Changes: map[string]any{"enabled": true, "reason": reason}}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"message": "Maintenance enabled", "since": since})
+}
+
+func (s *APIServer) handleMaintenanceDisable(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	path := filepath.Join(s.cfg.StateDir, ".maintenance")
+	current, err := readMaintenanceState(path)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	if !current.Enabled {
+		writeJSON(w, http.StatusOK, map[string]any{"message": "No changes"})
+		return
+	}
+	next := apiMaintenanceState{Enabled: false}
+	if err := atomicWriteJSON(path, next, 0600); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "maintenance", Changes: map[string]any{"enabled": false}}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"message": "Maintenance disabled"})
+}
+
 func (s *APIServer) handleQueue(w http.ResponseWriter, r *http.Request) {
 	statePath := filepath.Join(s.cfg.StateDir, ".build_state")
 	state, err := readBuildState(statePath)
@@ -1608,6 +1693,11 @@ func readBuildState(path string) (apiBuildState, error) {
 
 func readCircuitState(path string) (apiCircuitState, error) {
 	var state apiCircuitState
+	return state, readJSONIfExists(path, &state)
+}
+
+func readMaintenanceState(path string) (apiMaintenanceState, error) {
+	var state apiMaintenanceState
 	return state, readJSONIfExists(path, &state)
 }
 
@@ -2081,10 +2171,8 @@ func lockExists(path string) bool {
 }
 
 func maintenanceEnabled(path string) bool {
-	var value struct {
-		Enabled bool `json:"enabled"`
-	}
-	return readJSONIfExists(path, &value) == nil && value.Enabled
+	state, err := readMaintenanceState(path)
+	return err == nil && state.Enabled
 }
 
 func isLowerHex(value string, length int) bool {

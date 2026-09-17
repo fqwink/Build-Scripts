@@ -152,6 +152,69 @@ func TestAPICommonErrors(t *testing.T) {
 	}
 }
 
+func TestAPIMaintenanceEndpoints(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/maintenance", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("maintenance code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var maintenance apiMaintenanceState
+	decodeTestJSON(t, resp.Body.Bytes(), &maintenance)
+	if maintenance.Enabled || maintenance.Reason != nil || maintenance.Since != nil {
+		t.Fatalf("unexpected default maintenance: %#v", maintenance)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/maintenance/enable", token, map[string]string{"reason": "  deploy window  "})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("enable code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	readTestJSON(t, filepath.Join(state, ".maintenance"), &maintenance)
+	if !maintenance.Enabled || stringPtrValue(maintenance.Reason) != "deploy window" || maintenance.Since == nil {
+		t.Fatalf("maintenance was not enabled: %#v", maintenance)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/build", token, nil)
+	if resp.Code != http.StatusServiceUnavailable {
+		t.Fatalf("build during maintenance code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/maintenance/enable", token, map[string]string{"reason": "deploy window"})
+	if resp.Code != http.StatusOK {
+		t.Fatalf("enable no-op code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var body map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	if body["message"] != "No changes" {
+		t.Fatalf("unexpected enable no-op: %#v", body)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/maintenance/disable", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("disable code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	readTestJSON(t, filepath.Join(state, ".maintenance"), &maintenance)
+	if maintenance.Enabled || maintenance.Reason != nil || maintenance.Since != nil {
+		t.Fatalf("maintenance was not disabled: %#v", maintenance)
+	}
+
+	resp = apiRequest(t, server, http.MethodPost, "/api/build", token, nil)
+	if resp.Code != http.StatusAccepted {
+		t.Fatalf("build after maintenance code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/config-log", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("config log code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	if body["total"].(float64) != 2 {
+		t.Fatalf("unexpected config log: %#v", body)
+	}
+}
+
 func TestAPISessionPasswordAndStream(t *testing.T) {
 	state := newAPIState(t)
 	server := newTestAPI(t, state)
