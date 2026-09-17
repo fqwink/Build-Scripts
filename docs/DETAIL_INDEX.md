@@ -262,14 +262,15 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを改訂し、必要に応じて collaborator 詳細仕様、本ファイルの対応表、`docs/SPEC.md` を同じ仕様 PR で整合させ、未充足項目を仕様として確定する。
 
-実装後の完了条件は以下とする。
+実装後の完了判定は以下を入口として確認する。本節は完了条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は `docs/ROADMAP.md`、fixture、fake、PR 証跡、acceptance checklist、差し戻し条件は `docs/details/fixture.md`、setup / release 実行条件は `docs/details/setup.md` を正とする。
 
 1. 実装した機能が、該当 owner component の詳細仕様ファイルと本ファイルの対応表に記載された入力、出力、状態、異常系、検証条件と一致する。
 2. 対象機能が owner component の詳細仕様本文で §0h の機能仕様テンプレートを満たし、§0i の詳細節対応表の受け入れ条件を満たしている。
-3. 実装対象外に残す機能が PR 本文に明記されている。
-4. `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`AGENTS.md` のファイル名参照が矛盾していない。
-5. 実装ファイルを変更した場合、構文確認または実行確認の結果が記録できる。
-6. 仕様外の挙動、暗黙の既定値、未記載の状態ファイル、未記載のエラー応答が存在しない。
+3. `docs/details/fixture.md` が要求する fixture、fake、expected / effects、PR 証跡、対象外確認を満たしている。
+4. 実装対象外に残す機能が PR 本文に明記されている。
+5. `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`AGENTS.md` のファイル名参照が矛盾していない。
+6. 実装ファイルを変更した場合、構文確認または実行確認の結果が記録できる。
+7. 仕様外の挙動、暗黙の既定値、未記載の状態ファイル、未記載のエラー応答が存在しない。
 
 ---
 
