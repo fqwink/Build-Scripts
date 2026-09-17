@@ -574,7 +574,7 @@ systemctl status adlaire-ci-api
 |----|------|------|------|---------------------------|--------------|--------------|
 | §22.0 | API 共通 | HTTP method/path/header/body、remote addr。 | 固定 status、固定 error body、security header。 | `.api_access_log` 以外は endpoint 契約に従う。 | path/method/body/JSON/auth/scope/validation 失敗時は endpoint 固有処理を開始しない。 | unknown path、method mismatch、body 禁止、JSON 不正、401、403、422、500 mask。 |
 | §22.0a〜§22.0c | 状態ファイル / schema | state dir、JSON / JSON Lines / text state。 | typed adapter result、固定初期値、破損時 error。 | atomic write、lock、chmod、fsync、corrupt backup。 | read-only API は状態を修復しない。write 失敗は target を部分更新しない。 | corrupt JSON、unknown key、nullable 違反、lock timeout、chmod failure、GET no write。 |
-| §22.0d〜§22.0e | endpoint 契約 | endpoint ごとの request/query/body/path。 | endpoint ごとの response、sdk / ui 対応。 | Read / Write 列に明記された状態だけ扱う。 | 個別 status と共通 error 優先順位に従う。未定義 endpoint を追加しない。 | P0/P1、P2〜P5、pagination、SSE、binary、no-op、partial failure。 |
+| §22.0d〜§22.0e | endpoint 契約 | endpoint ごとの request/query/body/path。 | endpoint ごとの response、sdk / ui 対応。 | Read / Write 列に明記された状態だけ扱う。 | 個別 status と共通 error 優先順位に従う。未定義 endpoint を追加しない。 | Phase 3 / Phase 4、pagination、SSE、binary、no-op、partial failure。 |
 | §23 | SDK | public method 引数、token、fake fetch response。 | Promise return、`AdlaireCIError`、`StreamHandle`、Blob。 | token は memory のみ。DOM / state file / storage を変更しない。 | `401` だけ token 破棄。`403`、`429`、`500`、network、timeout は token 維持。 | request shape、error shape、timeout、invalid JSON、invalid SSE、body 禁止、401 purge。 |
 | §24 | 標準管理 UI | DOM event、form value、SDK return/error。 | DOM 表示、disabled/loading、success/error、secret 消去。 | SDK method だけを呼ぶ。直接 API、状態ファイル、systemd を触らない。 | API 成功前に確定表示しない。失敗時は secret を消し、非 secret 入力は保持する。 | login/TOTP、manual build、stream、refresh failure、secret clearing、disabled priority、direct fetch absence。 |
 | §25 | 認証 | password、TOTP code、session token、API token。 | session token、ticket、auth error、access/audit log。 | `.admin_credentials`、`.totp_secret`、memory session/ticket、logs。 | token/ticket は必要ログ成功まで返さない。hash/salt/secret/token 本体を保存しない。 | init、login success/failure、lock、change password、session restart、TOTP replay、audit failure。 |
@@ -610,8 +610,8 @@ Phase 別の実装受け入れ条件は以下とする。
 |-------|----------|----------|
 | Phase 1 | §0g.1、§8a、§26.7 build script | `adlaire-ci-build` の CLI、出力構造、report、fixture、冪等性が固定され、Phase 2 が追加判断なしに呼び出せる。 |
 | Phase 2 | §0g.2、§15a、§26.7 runner | runner 状態ファイル、履歴、ログ、pending queue、snapshot、通知、lock、終了コードが固定され、Phase 3 が状態ファイルを追加判断なしに読める。 |
-| Phase 3 | §0g.3、§22.0f P0/P1、§25、§26.7 API | API 共通契約、認証、session、P0/P1 endpoint、error body、状態ファイル read/write が固定される。 |
-| Phase 4 | §0g.4、§22.0f P2〜P5、§22.0e | 全 endpoint 契約が SDK 実装に渡せる粒度で固定され、P0/P1 の互換を壊していない。 |
+| Phase 3 | §0g.3、§22.0f、§25、§26.7 API | API 共通契約、認証、session、運用基本 endpoint、error body、状態ファイル read/write が固定される。 |
+| Phase 4 | §0g.4、§22.0f、§22.0e | 全 endpoint 契約が SDK 実装に渡せる粒度で固定され、Phase 3 の互換を壊していない。 |
 | Phase 5 | §0g.5、§23、§26.7 SDK | 全 SDK method が固定済み endpoint 契約に一致し、Phase 6 が UI 実装に使える error / stream / return 契約を持つ。 |
 | Phase 6 | §0g.6、§24、§26.7 UI/security | 全 UI 操作が SDK 経由で成立し、成功/失敗/disabled/loading/secret 消去が仕様どおりである。 |
 
@@ -621,8 +621,8 @@ Phase 別の実装検証記録は以下の単位で行う。
 |-------|----------|--------------|
 | Phase 1 | CLI 引数、fixture A〜D、生成物一覧、`[REPORT]`、冪等性、strict / non-strict の結果。 | `builder` を完了扱いにせず、Phase 2 着手禁止。 |
 | Phase 2 | secret 不足、lock、GitHub fake、pipeline fake、deploy fake、snapshot、notify、状態ファイル schema の結果。 | `runner` を完了扱いにせず、Phase 3 着手禁止。 |
-| Phase 3 | P0 / P1 endpoint、認証、session、error body、SSE、状態 read/write、systemd service の結果。 | API P0 / P1 を完了扱いにせず、Phase 4 着手禁止。 |
-| Phase 4 | P2〜P5 endpoint、secret mask、rollback、maintenance、hook、token、P0 / P1 互換確認の結果。 | endpoint 契約を固定扱いにせず、Phase 5 着手禁止。 |
+| Phase 3 | 運用基本 endpoint、認証、session、error body、SSE、状態 read/write、systemd service の結果。 | Phase 3 API を完了扱いにせず、Phase 4 着手禁止。 |
+| Phase 4 | 拡張運用 endpoint、secret mask、rollback、maintenance、hook、token、Phase 3 互換確認の結果。 | endpoint 契約を固定扱いにせず、Phase 5 着手禁止。 |
 | Phase 5 | method 対応表、fake fetch、HTTP error、timeout、stream、`401` token 破棄、body 禁止の結果。 | SDK 契約を固定扱いにせず、Phase 6 着手禁止。 |
 | Phase 6 | DOM id、panel、SDK 呼び出し、success/error/loading/disabled、stream、secret 消去、直接 API 呼び出し不存在の結果。 | 初期実装完了扱いにせず、未充足 UI 仕様を解消する。 |
 
@@ -634,8 +634,8 @@ Phase 別受け入れ条件のいずれかが未実行、失敗、または環�
 |-------|--------------|-----------|------------|
 | Phase 1 | 使用した `testdata/builder/...` path、入力 Markdown、テーマ設定、asset 入力。 | fake filesystem を使った場合のみ、注入した失敗と対象 path。 | 生成物一覧、期待 HTML / CSS / JS / search index、stdout / stderr、終了コード、冪等性結果。 |
 | Phase 2 | 使用した `testdata/runner/r*` path、初期 `state/`、GitHub 応答、pipeline / deploy / notify fixture。 | fake GitHub server、fake ssh executable、fake notifier、fake filesystem の呼び出し記録。 | `.last_sha`、queue、snapshot、通知結果、retry / circuit breaker、状態ファイル更新有無。 |
-| Phase 3 | 使用した `testdata/api/p0-p1/...` path、request、初期 `state/`。 | API handler への request 記録、SSE frame 記録、状態 read/write 記録。 | HTTP status、response body、error body、SSE event、状態ファイル更新後 expected。 |
-| Phase 4 | 使用した `testdata/api/p2-p5/...` path、request、secret mask fixture。 | hook / notify / token / maintenance の fake 呼び出し記録。 | HTTP status、response body、mask 後 payload、token 再取得不可結果、P0 / P1 回帰結果。 |
+| Phase 3 | 使用した `testdata/api/phase3/...` path、request、初期 `state/`。 | API handler への request 記録、SSE frame 記録、状態 read/write 記録。 | HTTP status、response body、error body、SSE event、状態ファイル更新後 expected。 |
+| Phase 4 | 使用した `testdata/api/phase4/...` path、request、secret mask fixture。 | hook / notify / token / maintenance の fake 呼び出し記録。 | HTTP status、response body、mask 後 payload、token 再取得不可結果、Phase 3 回帰結果。 |
 | Phase 5 | 使用した `testdata/sdk/...` path、fake fetch transcript、stream chunk。 | fake fetch の method、URL、headers、body 有無、abort / timeout 記録。 | SDK return、`AdlaireCIError`、stream event、token 破棄、body 禁止 endpoint の request 不成立。 |
 | Phase 6 | 使用した `testdata/ui/...` path、初期 DOM、操作手順。 | fake SDK の method、引数、呼び出し順、stream unsubscribe 記録。 | DOM assertion、success / error / loading / disabled、secret 消去、直接 `fetch()` 不存在。 |
 

@@ -334,9 +334,9 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | destructive cancel | 確認 dialog cancel | SDK method 呼び出し 0 回、表示差分なし。 |
 | secret clearing | token 発行、TOTP setup、PAT 更新、Webhook secret 保存 | 次 user action または遷移で秘密情報 field と一回表示が消える。 |
 
-**UI P0 / P1 操作固定契約：**
+**UI Phase 3 操作固定契約：**
 
-P0 / P1 UI は、ビルド状態確認、手動ビルド、強制ビルド、キャンセル、SSE ログ表示、履歴、ログ、キュー、circuit breaker reset だけを最小運用操作として固定する。UI は SDK response に存在しない状態を推測せず、API / SDK の error status と message に基づいて表示を分岐する。
+Phase 3 UI は、ビルド状態確認、手動ビルド、強制ビルド、キャンセル、SSE ログ表示、履歴、ログ、キュー、circuit breaker reset だけを最小運用操作として固定する。UI は SDK response に存在しない状態を推測せず、API / SDK の error status と message に基づいて表示を分岐する。
 
 | 操作 | 使用 SDK method | 成功時表示 | 成功後再取得 | 失敗時表示 / disabled |
 |------|-----------------|------------|--------------|------------------------|
@@ -351,7 +351,7 @@ P0 / P1 UI は、ビルド状態確認、手動ビルド、強制ビルド、キ
 | キュー取得 | `getQueue()` | queue 件数、max size、各 entry を API 順序で表示する。 | なし | `500` は queue panel error。 |
 | circuit reset | `resetCircuitBreaker()` | `Circuit breaker reset` を表示する。 | `getStatus()`, `getQueue()` | `500` は circuit error。成功後に build を自動開始しない。 |
 
-P0 / P1 UI の disabled 条件は以下に固定する。
+Phase 3 UI の disabled 条件は以下に固定する。
 
 | 条件 | disabled 対象 | 解除条件 |
 |------|---------------|----------|
@@ -362,23 +362,23 @@ P0 / P1 UI の disabled 条件は以下に固定する。
 | `503` maintenance / circuit | build、force build、cancel 以外の状態変更操作。circuit reset は有効。 | maintenance disabled または circuit reset 成功後の再取得。 |
 | `401` | 全 authenticated 操作 | login 成功後。 |
 
-**UI P0 / P1 fixture 固定：**
+**UI Phase 3 fixture 固定：**
 
 | fixture | fake SDK 入力 | 合格条件 |
 |---------|---------------|----------|
-| ui p1 initial status error | `getStatus()` が `AdlaireCIError(status=500,message="State file is corrupted")` | status panel error に固定 message を表示し、build button を成功扱いにしない。 |
-| ui p1 manual build conflict | `triggerBuild()` が `409 Conflict` | error 表示、`getStatus()` と `getQueue()` をこの順で再取得、同じ build request を再送しない。 |
-| ui p1 queue full | `triggerBuild()` が `429 queue_full` | build button を 10 秒 disabled、password や secret field は変更しない。 |
-| ui p1 stream success | `streamBuild()` が log 2 件と end 1 件を返す | log 行 2 件を append、end 後に status、queue、logs を順に再取得、stream indicator を消す。 |
-| ui p1 stream user close | ユーザーが `StreamHandle.close()` を押す | error 表示なし、closed 表示、status/queue 再取得あり。 |
-| ui p1 history validation | `getHistory()` が `422 details` を返す | 該当 filter field に message を紐付け、history rows を前回表示のまま維持する。 |
-| ui p1 log not found | `getHistoryLog(id)` が `404 Not found` | detail panel に not found を表示し、履歴一覧は再取得しない。 |
-| ui p1 circuit reset | `resetCircuitBreaker()` 成功 | circuit 表示を閉じ、status/queue を再取得し、build を自動開始しない。 |
-| ui p1 unauthorized | 任意操作が `401` | token/ticket/secret field を消去し、`panel-login` だけ表示する。 |
+| ui phase3 initial status error | `getStatus()` が `AdlaireCIError(status=500,message="State file is corrupted")` | status panel error に固定 message を表示し、build button を成功扱いにしない。 |
+| ui phase3 manual build conflict | `triggerBuild()` が `409 Conflict` | error 表示、`getStatus()` と `getQueue()` をこの順で再取得、同じ build request を再送しない。 |
+| ui phase3 queue full | `triggerBuild()` が `429 queue_full` | build button を 10 秒 disabled、password や secret field は変更しない。 |
+| ui phase3 stream success | `streamBuild()` が log 2 件と end 1 件を返す | log 行 2 件を append、end 後に status、queue、logs を順に再取得、stream indicator を消す。 |
+| ui phase3 stream user close | ユーザーが `StreamHandle.close()` を押す | error 表示なし、closed 表示、status/queue 再取得あり。 |
+| ui phase3 history validation | `getHistory()` が `422 details` を返す | 該当 filter field に message を紐付け、history rows を前回表示のまま維持する。 |
+| ui phase3 log not found | `getHistoryLog(id)` が `404 Not found` | detail panel に not found を表示し、履歴一覧は再取得しない。 |
+| ui phase3 circuit reset | `resetCircuitBreaker()` 成功 | circuit 表示を閉じ、status/queue を再取得し、build を自動開始しない。 |
+| ui phase3 unauthorized | 任意操作が `401` | token/ticket/secret field を消去し、`panel-login` だけ表示する。 |
 
-**UI P2〜P5 操作固定契約：**
+**UI Phase 4 操作固定契約：**
 
-P2〜P5 UI は、§24 UI 操作契約表の SDK method だけを呼び出す。UI は API / SDK response の補完、状態ファイル直接操作、未定義 endpoint 呼び出し、保存成功前の確定表示を行ってはならない。
+Phase 4 UI は、§24 UI 操作契約表の SDK method だけを呼び出す。UI は API / SDK response の補完、状態ファイル直接操作、未定義 endpoint 呼び出し、保存成功前の確定表示を行ってはならない。
 
 | 機能群 | 主操作 | 成功時表示 | 成功後再取得 | 失敗時表示 / disabled |
 |--------|--------|------------|--------------|------------------------|
@@ -391,7 +391,7 @@ P2〜P5 UI は、§24 UI 操作契約表の SDK method だけを呼び出す。U
 | alert / tag / pipeline / notes / layout | rule 追加/削除、pipeline 保存、notes 保存、dashboard layout 保存 | 固定成功文言を表示する。 | 対象 GET。dashboard layout 保存後は `getDashboard()`、設定ログ対象操作後は `getConfigLog()`。 | duplicate `409` は競合表示。validation `422` は field error。no-op は成功表示のみ。 |
 | tokens / sessions / audit | token 発行/失効、session revoke、audit/API access log 表示 | token 発行時は token 本体を一回表示する。失効/revoke は固定成功文言。 | token 操作は `getTokens()`, `getAuditLog()`。session revoke は `getSessions()`。 | token 本体は次 user action、panel 遷移、logout、`401` で消去する。`403` は logout しない。 |
 
-P2〜P5 UI の秘密情報消去条件は以下に固定する。
+Phase 4 UI の秘密情報消去条件は以下に固定する。
 
 | 対象 field / 表示 | 消去タイミング |
 |-------------------|----------------|
@@ -400,14 +400,14 @@ P2〜P5 UI の秘密情報消去条件は以下に固定する。
 | TOTP secret / ticket / code | confirm 成功、confirm 失敗、panel 遷移、logout、`401`。 |
 | password / current_password / new_password | login / change 成功、login / change 失敗、logout、`401`。 |
 
-**UI P2〜P5 fixture 固定：**
+**UI Phase 4 fixture 固定：**
 
 | fixture | fake SDK 入力 | 合格条件 |
 |---------|---------------|----------|
-| ui p2 config validation | `setConfig()` が `422 details` | 該当 field に error、panel error summary 1 行、入力値保持、`getConfig()` を呼ばない。 |
-| ui p2 schedule save failure | `setScheduleInterval()` が `500` | panel error 表示後に `getSchedule()` を 1 回呼び、保存済み値を表示する。 |
-| ui p3 secret save failure | `setWebhookConfig()` または `setSmtpConfig()` が `500` | secret field を消去し、secret 平文を error 表示しない。 |
-| ui p3 notify test | `notifyTest()` 成功 | 結果表示後に `getNotifyLog()` を呼び、通知設定を自動保存しない。 |
+| ui phase4 config validation | `setConfig()` が `422 details` | 該当 field に error、panel error summary 1 行、入力値保持、`getConfig()` を呼ばない。 |
+| ui phase4 schedule save failure | `setScheduleInterval()` が `500` | panel error 表示後に `getSchedule()` を 1 回呼び、保存済み値を表示する。 |
+| ui phase4 secret save failure | `setWebhookConfig()` または `setSmtpConfig()` が `500` | secret field を消去し、secret 平文を error 表示しない。 |
+| ui phase4 notify test | `notifyTest()` 成功 | 結果表示後に `getNotifyLog()` を呼び、通知設定を自動保存しない。 |
 | ui p4 snapshot delete cancel | delete 確認 dialog cancel | SDK method 呼び出し 0 回、success / error 表示差分なし。 |
 | ui p4 rollback conflict | `rollbackHistory()` が `409 Build is running` | error 表示、`getStatus()` を呼ぶ、rollback request を再送しない。 |
 | ui p4 maintenance enabled | `getMaintenance()` が enabled | maintenance banner 表示、build / rollback / 設定変更系 disabled、disable maintenance は enabled。 |

@@ -671,7 +671,7 @@ api / sdk / ui / statefile にまたがる横断 fixture の fixture 名、入�
 
 ### 22.0f API 実装順序・fixture 参照
 
-API の P0〜P5 実装順序、必須検証、fixture 名、入力状態、期待 response、期待副作用は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F を正とする。
+API の Phase 3 / Phase 4 実装順序、必須検証、fixture 名、入力状態、期待 response、期待副作用は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F を正とする。
 
 本ファイルでは、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、PR 証跡、実装優先度別の完了判定は本ファイルに重複定義しない。
 
