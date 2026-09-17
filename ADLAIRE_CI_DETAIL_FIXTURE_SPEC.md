@@ -74,7 +74,7 @@
 | 固定契約 | 追加または固定した CLI、状態 schema、HTTP API、SDK method、DOM id、fake 動作、終了コード、error body。 | 後続 Phase が参照できないため未完了。 |
 | 検証 | 実行コマンド、fixture 名、期待結果、実結果、判定。 | 合否を再現できないため未完了。 |
 | 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定など実装していない範囲。 | 先取り実装または範囲不明として未完了。 |
-| 後続 Phase への影響 | 後続 Phase が利用してよい contract と、利用してはならない未固定 contract。 | 次 Phase 着手条件未充足として未完了。 |
+| 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用してはならない未固定 contract。 | 次 Phase 着手条件未充足として未完了。 |
 | secret 確認 | log、fixture、snapshot、UI 表示、PR 本文に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
 
 ## 22-F API Phase fixture / 実装順序契約
@@ -137,7 +137,7 @@ P2〜P5 実装は、下表の fixture をすべて満たした場合だけ完了
 | B5 PAT update secret mask | P2 | `POST /api/pat-update` に token を送る。 | `{message:"PAT updated"}`。 | secret file は mode `600`。response、`.config_log`、`.audit_log`、server log に token 平文を出さない。 |
 | B6 dashboard read-only | P2 | `.dashboard_layout`、`.build_state`、`.build_status.json`、`.alert_rules` を置き `GET /api/dashboard`。 | widget 順に dashboard object を返す。 | GET は対象状態ファイルを作成、修復、更新しない。 |
 | C1 notify config mask | P3 | Webhook secret と SMTP password を含む通知設定保存後、GET / backup / log を確認する。 | secret は `"***"` または `*_set:true` だけを返す。 | secret 平文を状態表示、履歴、通知ログ、backup に残さない。 |
-| C2 webhook receive signed | P3 | 正常署名の GitHub push payload を `POST /api/webhook`。 | `202` と queued 結果。 | `.webhook_events.json` 追記後、必要時 `.build_state.queued` へ `trigger:"webhook"` を追加する。 |
+| C2 webhook receive signed | P3 | 正常署名の GitHub push payload を `POST /api/webhook`。 | `202` と queued 結果。 | `.webhook_events.json` 追記後、queue 投入条件を満たす場合だけ `.build_state.queued` へ `trigger:"webhook"` を追加する。 |
 | C3 webhook invalid signature | P3 | 署名なし、不正 prefix、不一致署名。 | `401 {"error":"Unauthorized"}`。 | event log、queue、history を変更しない。 |
 | C4 SMTP test disabled | P3 | SMTP disabled で `POST /api/smtp-test`。 | endpoint 固有の `422`。 | `.notify_log` へ成功扱いを残さず、secret を出力しない。 |
 | D1 snapshot delete | P4 | 存在する snapshot id で `DELETE /api/snapshots/{id}`。 | `{message:"Snapshot deleted"}`。 | 対象 snapshot だけ削除し、`.config_log` または監査対象 log に削除を記録する。 |
@@ -501,7 +501,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイル。 |
 | fixture | §27 fixture カタログの fixture 名、manifest / effects / security の検証結果。 |
 | acceptance | §27 実装 PR acceptance checklist の各項目の pass / fail / 未実行。 |
-| 後続影響 | 後続 PR が利用してよい contract、利用してはならない未固定 contract。 |
+| 後続影響 | 後続 PR が利用許可済みの contract、利用してはならない未固定 contract。 |
 
 **§27 実装 PR 最終受け入れゲート：**
 
@@ -557,6 +557,6 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | log 追記後の audit 失敗 | 個別節で必須 audit と定義された操作は `500`。任意 audit の場合は対象操作成功を維持し、WARN を保存する。 |
 | 外部 API 送信成功後の状態保存失敗 | 外部送信の再送を自動実行しない。状態保存失敗を `500` または runner failure として記録し、再実行時は個別節の重複防止 key で判定する。 |
 | 通知送信失敗 | build / config / security の主結果を反転しない。`.notify_pending` または個別節の失敗記録だけを更新する。 |
-| download / stream 中断 | サーバー側状態を成功/失敗へ変更しない。access log は中断 status を記録してよいが、history と build log は変更しない。 |
+| download / stream 中断 | サーバー側状態を成功/失敗へ変更しない。access log は endpoint 固有節で中断 status 記録が定義されている場合だけ追記し、history と build log は変更しない。 |
 | 再実行 no-op | 同一入力で差分がない保存 API は、個別節の no-op response を返し、状態、config log、audit log、notify log に新規差分を作らない。 |
 | 破損 JSON Lines | read API は破損行を除外し、破損内容を response に出さない。write API は既存破損行を修復、削除、並べ替えしない。 |

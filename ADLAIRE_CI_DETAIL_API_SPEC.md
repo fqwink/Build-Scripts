@@ -553,7 +553,7 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | secret update | `POST /api/pat-update`, `POST /api/webhook-config`, `POST /api/smtp-config` password あり | secret 入力検証 → secret ファイル atomic write mode `0600` → `.config_log` へ `"***"` で記録 | secret 本体を response に含めない。 | secret 書込失敗は `500`。ログ、response、stdout へ平文を出さない。 |
 | build command | `POST /api/build`, `POST /api/build/force`, `POST /api/history/{id}/rollback` | 認証 → maintenance → circuit → running / queue 判定 → `.build_state` 更新 | `202` と開始または queue 結果を返す。 | running 競合は `409` または `429`。状態更新失敗は `500`。 |
 | destructive delete | `DELETE /api/queue`, `DELETE /api/snapshots/{id}`, `DELETE /api/hooks/{id}`, `DELETE /api/alert-rules/{id}`, `DELETE /api/tag-rules/{id}`, `DELETE /api/tokens/{id}` | path / auth 検証 → 対象存在確認 → 削除または失効 → 対象 endpoint の契約に従い `.config_log` または `.audit_log` 追記 | `{message}` と件数がある場合は件数を返す。 | 対象不在は `404`。部分削除は禁止し、失敗時は `500`。 |
-| external check | `POST /api/pat-verify`, `GET /api/rate-limit`, `GET /api/diagnostics`, `POST /api/smtp-test`, `POST /api/notify-test` | 設定読込 → timeout 付き外部確認 → 結果 response → 必要時 log 追記 | 確認結果を保存しない。ただし test 送信 log は仕様どおり追記する。 | 未設定は `501` または endpoint 固有 `422`。timeout は `500`。 |
+| external check | `POST /api/pat-verify`, `GET /api/rate-limit`, `GET /api/diagnostics`, `POST /api/smtp-test`, `POST /api/notify-test` | 設定読込 → timeout 付き外部確認 → 結果 response → endpoint 固有節で定義された log 追記 | 確認結果を保存しない。ただし test 送信 log は仕様どおり追記する。 | 未設定は `501` または endpoint 固有 `422`。timeout は `500`。 |
 | binary response | `GET /api/snapshots/{id}/download` | path 検証 → snapshot 存在確認 → archive stream | `Content-Type` と `Content-Disposition` を付与する。 | 不在は `404`。読込失敗は `500`。 |
 | stream response | `GET /api/build/stream` | 認証 → 最新 / 実行中 log 特定 → SSE header → frame 送信 | `log` frame 後、必ず `end` frame を送って close する。 | log 不在は `404`。送信中断時は状態ファイルを更新しない。 |
 
@@ -619,10 +619,10 @@ API response は、§22.0e の Response 列、§22.0c の schema、§23 の SDK 
 | `POST /api/repo-config` | 指定 key の正規化後値が既存値と一致 | `.repo_config`、`.config_log` を変更しない。 | `.repo_config` → `.config_log`。 |
 | `POST /api/branch-config` | 正規化後 `branch_targets` が既存値と一致 | `.branch_config`、`.config_log` を変更しない。 | `.branch_config` 作成/置換/削除 → `.config_log`。 |
 | `POST /api/notify-config` | secret mask 適用後の比較で既存値と一致 | `.notify_config`、`.config_log` を変更しない。 | `.notify_config` → `.config_log`。 |
-| `POST /api/smtp-config` | config と password 更新有無が既存値と一致 | `.smtp_config`、`.smtp_secret`、`.config_log` を変更しない。 | `.smtp_config` → 必要時 `.smtp_secret` → `.config_log`。 |
+| `POST /api/smtp-config` | config と password 更新有無が既存値と一致 | `.smtp_config`、`.smtp_secret`、`.config_log` を変更しない。 | `.smtp_config` → password 更新がある場合だけ `.smtp_secret` → `.config_log`。 |
 | `POST /api/dashboard-layout` | widgets 配列が既存値と一致 | `.dashboard_layout`、`.config_log` を変更しない。 | `.dashboard_layout` → `.config_log`。 |
 
-no-op response は endpoint 固有の `No changes` が定義されている場合はその文言を返す。定義がない endpoint は通常成功文言を返してよいが、状態ファイル、JSON Lines、監査ログ、通知ログに差分を作ってはならない。部分更新では未指定 key を保持し、`null` が削除を意味する key は個別節に明記された key だけとする。
+no-op response は endpoint 固有の `No changes` が定義されている場合はその文言を返す。定義がない endpoint は通常成功文言を返す。no-op では、状態ファイル、JSON Lines、監査ログ、通知ログに差分を作ってはならない。部分更新では未指定 key を保持し、`null` が削除を意味する key は個別節に明記された key だけとする。
 
 **削除 / 失効 response：**
 
@@ -1916,7 +1916,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 | 処理 | 仕様 |
 |------|------|
-| 更新 | `.smtp_config` → 必要時 `.smtp_secret` → `.config_log` の順に書く。途中失敗時は未処理ファイルを書かない。 |
+| 更新 | `.smtp_config` → password 更新がある場合だけ `.smtp_secret` → `.config_log` の順に書く。途中失敗時は未処理ファイルを書かない。 |
 | 削除 | `password:null` は `.smtp_secret` 削除。削除対象が不在なら no-op。 |
 | GET | `.smtp_secret` の存在だけを `password_set` で返し、password 本体は返さない。 |
 | 送信 timeout | 接続、TLS、送信全体を合計 30 秒で timeout する。 |
@@ -2579,7 +2579,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | §27.25 | `GET/POST /api/config` の cache key と builder report。 | `getConfig()` / `setConfig()`。 | 設定 panel と build result 表示で cache counts を表示する。 |
 | §27.26 | `GET/POST /api/config` の `deploy_parallelism` と status/history。 | `getConfig()` / `setConfig()`。 | 設定 panel で parallelism を表示 / 保存し、結果は履歴/logで表示する。 |
 | §27.27 | hooks API。 | hook methods。 | フック panel で command_args を 1 行 1 引数として表示 / 保存する。 |
-| §27.28 | endpoint 追加なし。manifest は runner/builder 内部状態。 | SDK method 追加なし。 | UI 操作追加なし。build result で依存情報を表示してよい。 |
+| §27.28 | endpoint 追加なし。manifest は runner/builder 内部状態。 | SDK method 追加なし。 | UI 操作追加なし。依存情報を表示する場合は、既存 build result 表示の範囲だけを使用する。 |
 | §27.29 | remote build config は config / pipeline 系 API に含める。 | `getConfig()` / `setConfig()` または pipeline method。 | 設定 panel で remote build 設定を表示 / 保存する。 |
 | §27.30 | approvals API。 | approval methods。 | 承認待ち panel で approve / reject を操作する。 |
 | §27.31 | branch config または config API に含める。 | branch/config method。 | リポジトリ情報 panel で branch env を表示 / 保存する。 |
