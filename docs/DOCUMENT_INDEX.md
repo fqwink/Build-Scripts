@@ -57,36 +57,36 @@
 
 詳細仕様は、責務 component 別の分割済み詳細仕様ファイルとして管理する。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約を持つ。各 component の入出力、処理順序、状態、異常系、検証条件の本文は下表の owner component 別詳細仕様ファイルを正とする。
+`docs/ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約を持つ。各 component の入出力、処理順序、状態、異常系、検証条件の本文は下表の owner component 別詳細仕様ファイルを正とする。
 
-fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件、実装 PR 完了証跡は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は完了判定の入口であり、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 は setup / release / Phase 判定の実行条件である。両ファイルは fixture 名、fake 動作、PR 証跡項目、差し戻し条件を重複定義しない。
+fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件、実装 PR 完了証跡は `docs/ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` を正とする。`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は完了判定の入口であり、`docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 は setup / release / Phase 判定の実行条件である。両ファイルは fixture 名、fake 動作、PR 証跡項目、差し戻し条件を重複定義しない。
 
 | ファイル | 状態 | 役割 |
 |----------|------|------|
-| `ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | 分割済み | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
-| `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | 分割済み | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
-| `ADLAIRE_CI_DETAIL_API_SPEC.md` | 分割済み | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。API fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F。 |
-| `ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | 分割済み | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 |
-| `ADLAIRE_CI_DETAIL_SDK_SPEC.md` | 分割済み | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| `ADLAIRE_CI_DETAIL_UI_SPEC.md` | 分割済み | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
-| `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | 分割済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
-| `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | 分割済み | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
-| `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | 分割済み | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 |
-| `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | 分割済み | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
-| `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | 分割済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | 分割済み | fixture manifest、assertion、fake、testdata、expected / effects、Phase 3 / Phase 4 API fixture、api / sdk / ui / statefile cross fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 |
+| `docs/ADLAIRE_CI_DETAIL_BUILDER_SPEC.md` | 分割済み | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
+| `docs/ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` | 分割済み | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
+| `docs/ADLAIRE_CI_DETAIL_API_SPEC.md` | 分割済み | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。API fixture は `docs/ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F。 |
+| `docs/ADLAIRE_CI_DETAIL_ADMIN_SPEC.md` | 分割済み | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 |
+| `docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` | 分割済み | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
+| `docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` | 分割済み | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
+| `docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` | 分割済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
+| `docs/ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` | 分割済み | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
+| `docs/ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` | 分割済み | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 |
+| `docs/ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` | 分割済み | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
+| `docs/ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | 分割済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
+| `docs/ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | 分割済み | fixture manifest、assertion、fake、testdata、expected / effects、Phase 3 / Phase 4 API fixture、api / sdk / ui / statefile cross fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 |
 
 責務 component 別詳細仕様ファイルは、各ファイルの `## 0. 責務境界` を実装前に確認する。`owner component` は主本文を持つ component、`collaborator component` は呼び出し境界、schema、fixture、security、setup、表示、受け入れ条件を参照する component として扱う。collaborator 側の参照は、owner component の主本文を上書きしない。
 
-各詳細仕様ファイルの `持つ内容` と `持たない内容` が本文、`ADLAIRE_CI_DETAIL_SPEC.md` §0b、または本索引と矛盾する場合、その項目は実装判断に使わず、先に文書整合を行う。
+各詳細仕様ファイルの `持つ内容` と `持たない内容` が本文、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0b、または本索引と矛盾する場合、その項目は実装判断に使わず、先に文書整合を行う。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は、同じ owner component / collaborator component 境界で読む。Phase の主対象は owner component とする。statefile、security、archive、commitstatus、admin、fixture、setup は、owner component の該当機能が状態ファイル、認証・監査、snapshot / log archive、commit status、admin 配布物、fixture、setup / update 手順を参照または変更する場合に collaborator component として検証対象、schema 参照、setup 参照、security 参照、fixture 参照、配布境界確認を提供する。collaborator component は owner component の入出力、状態、endpoint、SDK method、UI DOM、fixture を追加定義しない。
+`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は、同じ owner component / collaborator component 境界で読む。Phase の主対象は owner component とする。statefile、security、archive、commitstatus、admin、fixture、setup は、owner component の該当機能が状態ファイル、認証・監査、snapshot / log archive、commit status、admin 配布物、fixture、setup / update 手順を参照または変更する場合に collaborator component として検証対象、schema 参照、setup 参照、security 参照、fixture 参照、配布境界確認を提供する。collaborator component は owner component の入出力、状態、endpoint、SDK method、UI DOM、fixture を追加定義しない。
 
-実装者が詳細仕様を読む順序は、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認し、owner component の分割先詳細仕様ファイルを主本文として読む順に固定する。collaborator component の分割先詳細仕様ファイルは、呼び出し境界、schema、表示、security、setup、fixture、検証観点として参照し、owner component の主本文を上書きしない。
+実装者が詳細仕様を読む順序は、`docs/ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認し、owner component の分割先詳細仕様ファイルを主本文として読む順に固定する。collaborator component の分割先詳細仕様ファイルは、呼び出し境界、schema、表示、security、setup、fixture、検証観点として参照し、owner component の主本文を上書きしない。
 
-`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。横断する固定値、読み順、対応表、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値・管理仕様として扱い、component として扱わない。
+`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。横断する固定値、読み順、対応表、横断補足契約は `docs/ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値・管理仕様として扱い、component として扱わない。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、責務 component 別詳細仕様ファイルへ分割しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。§27.38a は個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema を定義しない。これらは owner component 別詳細仕様ファイルを正とし、§27.38a は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを補足する。
+`docs/ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、責務 component 別詳細仕様ファイルへ分割しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと `docs/ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。§27.38a は個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema を定義しない。これらは owner component 別詳細仕様ファイルを正とし、§27.38a は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを補足する。
 
 ## Specified Components
 

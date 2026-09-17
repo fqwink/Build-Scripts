@@ -1,10 +1,10 @@
 # Adlaire CI — Admin 詳細仕様
 
-本ファイルは `ADLAIRE_CI_DETAIL_SPEC.md` から分割した `admin` owner component の詳細仕様である。
+本ファイルは `docs/ADLAIRE_CI_DETAIL_SPEC.md` から分割した `admin` owner component の詳細仕様である。
 
-本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
+本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/ADLAIRE_CI_SPEC.md` を正とする。
 
-本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `admin` owner component の主本文であり、collaborator component の仕様は呼び出し境界、配布境界、検証観点として参照する。
+本ファイルを読む前に、`docs/ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `admin` owner component の主本文であり、collaborator component の仕様は呼び出し境界、配布境界、検証観点として参照する。
 
 ---
 
@@ -17,7 +17,7 @@
 | 持つ内容 | `admin` owner が主本文として定義する管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
 | 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、release asset 取得手順、fixture / PR 証跡正本。 |
 
-`admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の仕様は `ADLAIRE_CI_DETAIL_UI_SPEC.md` を正とし、`sdk` の仕様は `ADLAIRE_CI_DETAIL_SDK_SPEC.md` を正とする。
+`admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の仕様は `docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` を正とし、`sdk` の仕様は `docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` を正とする。
 
 ---
 
@@ -27,10 +27,10 @@
 
 | 配布元 path | 配置先 path | 必須 | 内容の正本 |
 |-------------|-------------|------|------------|
-| `admin/index.html` | `$INSTALL_DIR/admin/index.html` | 必須 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` |
-| `admin/adlaire-ci-sdk.js` | `$INSTALL_DIR/admin/adlaire-ci-sdk.js` | 必須 | `ADLAIRE_CI_DETAIL_SDK_SPEC.md` |
-| `admin/style.css` | `$INSTALL_DIR/admin/style.css` | 任意 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` |
-| `admin/app.js` | `$INSTALL_DIR/admin/app.js` | 任意 | `ADLAIRE_CI_DETAIL_UI_SPEC.md` |
+| `admin/index.html` | `$INSTALL_DIR/admin/index.html` | 必須 | `docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` |
+| `admin/adlaire-ci-sdk.js` | `$INSTALL_DIR/admin/adlaire-ci-sdk.js` | 必須 | `docs/ADLAIRE_CI_DETAIL_SDK_SPEC.md` |
+| `admin/style.css` | `$INSTALL_DIR/admin/style.css` | 任意 | `docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` |
+| `admin/app.js` | `$INSTALL_DIR/admin/app.js` | 任意 | `docs/ADLAIRE_CI_DETAIL_UI_SPEC.md` |
 
 配布物に上表以外のファイルを含める場合は、先に本表へ path、必須区分、内容の正本を追加する。未記載ファイルを暗黙に配布してはならない。
 
@@ -75,7 +75,7 @@ admin archive の検証は以下の順序に固定する。
 
 ## A4. Setup Boundary
 
-`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` は、release asset 取得、checksum 検証、systemd、配置順序、rollback を扱う。
+`docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` は、release asset 取得、checksum 検証、systemd、配置順序、rollback を扱う。
 
 本ファイルは、setup が扱う `admin-ui.tar.gz` の中身、展開後の必須 file、静的配信 path、拒否すべき archive entry を定義する。
 
@@ -102,4 +102,4 @@ setup が admin UI を配置する場合は、以下を満たす。
 | serving | A3 の path、Content-Type、Cache-Control、method、404 / 405 が一致する。 |
 | no mutation | UI / SDK file 内容、状態ファイル、credential、build log、snapshot を変更しない。 |
 | no secret exposure | `.admin_credentials`、`.github_token`、`.server_config`、`.build_logs`、`.snapshots` を静的配信しない。 |
-| setup integration | `ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 の配置・rollback 条件と矛盾しない。 |
+| setup integration | `docs/ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 の配置・rollback 条件と矛盾しない。 |
