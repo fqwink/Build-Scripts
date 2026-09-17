@@ -10,15 +10,15 @@
 
 `AGENTS.md` を確認しただけで、作業判断に必要な確認を完了したと扱ってはならない。
 
-本リポジトリの仕様判断は、方針、ポリシー、実装状態、ロードマップは `ADLAIRE_CI_SPEC.md`、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md`、各 owner component の詳細本文は `ADLAIRE_CI_DETAIL_*_SPEC.md` を正本として行う。
+本リポジトリの仕様判断は、方針、ポリシー、実装状態、ロードマップは `docs/ADLAIRE_CI_SPEC.md`、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約は `docs/ADLAIRE_CI_DETAIL_SPEC.md`、各 owner component の詳細本文は `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` を正本として行う。
 
-`DESIGN.md` は、生成静的 Web サイトのデザイン仕様を整理する補助文書である。機能仕様、運用仕様、API 仕様、CI 仕様の正本ではない。
+`docs/DESIGN.md` は、生成静的 Web サイトのデザイン仕様を整理する補助文書である。機能仕様、運用仕様、API 仕様、CI 仕様の正本ではない。
 
-`DOCUMENT_INDEX.md` は、文書・実装ファイルの役割を整理する索引である。仕様正本ではない。
+`docs/DOCUMENT_INDEX.md` は、文書・実装ファイルの役割を整理する索引である。仕様正本ではない。
 
 `AGENTS.md` と他ファイルが作業ルール上矛盾する場合は、`AGENTS.md` を正とする。
 
-`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、または該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` と実装ファイルが仕様上矛盾する場合は、仕様と実装の不整合として扱う。仕様を変更する場合は、先に該当する仕様書を改訂し、その内容に基づいて実装を更新する。
+`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、または該当する owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` と実装ファイルが仕様上矛盾する場合は、仕様と実装の不整合として扱う。仕様を変更する場合は、先に該当する仕様書を改訂し、その内容に基づいて実装を更新する。
 
 ---
 
@@ -55,17 +55,17 @@
 
 検証、読取、検索、差分確認など、リポジトリ状態を変更しない調査は、承認済み作業の判断材料として実行してよい。
 
-承認済み変更の整合に直接必要な `DOCUMENT_INDEX.md` 等の更新は、最初に提示した影響範囲に含まれている場合に限り、追加承認なしで行ってよい。
+承認済み変更の整合に直接必要な `docs/DOCUMENT_INDEX.md` 等の更新は、最初に提示した影響範囲に含まれている場合に限り、追加承認なしで行ってよい。
 
 ---
 
 ## 2. 仕様書管理ルール
 
-`ADLAIRE_CI_SPEC.md` は、Adlaire CI の方針、ポリシー、実装状態、正本関係を定めるマスター仕様書正本である。
+`docs/ADLAIRE_CI_SPEC.md` は、Adlaire CI の方針、ポリシー、実装状態、正本関係を定めるマスター仕様書正本である。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、`ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約を持つ正本である。
+`docs/ADLAIRE_CI_DETAIL_SPEC.md` は、`docs/ADLAIRE_CI_SPEC.md` の Part 3 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様、横断補足契約を持つ正本である。
 
-owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` は、各 component の詳細仕様本文に関する正本である。
+owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` は、各 component の詳細仕様本文に関する正本である。
 
 標準ソース配置は `main.go` と `components/*.go`、および `admin/` 配下の管理 UI ファイルとする。
 
@@ -73,35 +73,35 @@ owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` は、各 component の詳�
 
 `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱ってはならない。
 
-実装中・検証未完了コンポーネントである `components/api.go` は、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` に基づいて更新する。
+実装中・検証未完了コンポーネントである `components/api.go` は、`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` に基づいて更新する。
 
-仕様化済み・未実装コンポーネントである `admin/adlaire-ci-sdk.js`、`admin/index.html` は、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` に基づいて更新する。
+仕様化済み・未実装コンポーネントである `admin/adlaire-ci-sdk.js`、`admin/index.html` は、`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` に基づいて更新する。
 
-`components/mcp.go` は将来計画コンポーネントであり、実装状態、実装可否、ロードマップ状態は `ADLAIRE_CI_SPEC.md` を正とする。`ADLAIRE_CI_DETAIL_SPEC.md` の責務 component 対応表と該当する owner component 別詳細仕様に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
+`components/mcp.go` は将来計画コンポーネントであり、実装状態、実装可否、ロードマップ状態は `docs/ADLAIRE_CI_SPEC.md` を正とする。`docs/ADLAIRE_CI_DETAIL_SPEC.md` の責務 component 対応表と該当する owner component 別詳細仕様に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
 
-`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、詳細仕様ファイルとして作成してはならない。横断する固定値、読み順、対応表、横断補足契約は `ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値・管理仕様として扱い、component として扱わない。
+`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、詳細仕様ファイルとして作成してはならない。横断する固定値、読み順、対応表、横断補足契約は `docs/ADLAIRE_CI_DETAIL_SPEC.md` の入口・索引・共通固定値・管理仕様として扱い、component として扱わない。
 
-`DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。`ADLAIRE_CI_SPEC.md` と矛盾する場合は、`ADLAIRE_CI_SPEC.md` を優先する。
+`docs/DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。`docs/ADLAIRE_CI_SPEC.md` と矛盾する場合は、`docs/ADLAIRE_CI_SPEC.md` を優先する。
 
-仕様改訂では、既存仕様、`DOCUMENT_INDEX.md`、実装ファイルとの整合性を確認する。
+仕様改訂では、既存仕様、`docs/DOCUMENT_INDEX.md`、実装ファイルとの整合性を確認する。
 
-文書整理では、`README.md`、`DOCUMENT_INDEX.md`、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` の読み順と正本範囲を維持する。
+文書整理では、`README.md`、`docs/DOCUMENT_INDEX.md`、`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` の読み順と正本範囲を維持する。
 
 文書整理だけを目的とする作業では、機能仕様、実装状態、実装可否、ロードマップ状態を変更してはならない。状態変更が必要な場合は、変更対象、変更理由、影響範囲を別途提示し、承認を得る。
 
-`README.md` は初見向けの入口、`DOCUMENT_INDEX.md` は索引、`ADLAIRE_CI_SPEC.md` は方針・ポリシー・状態の正本、`ADLAIRE_CI_DETAIL_SPEC.md` は詳細仕様入口、owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` は詳細仕様本文として扱う。
+`README.md` は初見向けの入口、`docs/DOCUMENT_INDEX.md` は索引、`docs/ADLAIRE_CI_SPEC.md` は方針・ポリシー・状態の正本、`docs/ADLAIRE_CI_DETAIL_SPEC.md` は詳細仕様入口、owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` は詳細仕様本文として扱う。
 
-`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` に記載された一部コンポーネントや機能は、仕様化済みであっても未実装の場合がある。リポジトリ内に実装ファイルまたは実装コードが存在しない内容を、実装済み機能として扱ってはならない。
+`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` に記載された一部コンポーネントや機能は、仕様化済みであっても未実装の場合がある。リポジトリ内に実装ファイルまたは実装コードが存在しない内容を、実装済み機能として扱ってはならない。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` または owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を改訂する場合は、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
+`docs/ADLAIRE_CI_DETAIL_SPEC.md` または owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` を改訂する場合は、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断を記載してはならない。これらは `docs/ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` と owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` には、実装者が実装時に必要とする対象コンポーネント、入出力、設定値、データ構造、処理順序、異常系、状態管理、セキュリティ制約、検証条件だけを記載する。
+`docs/ADLAIRE_CI_DETAIL_SPEC.md` と owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` には、実装者が実装時に必要とする対象コンポーネント、入出力、設定値、データ構造、処理順序、異常系、状態管理、セキュリティ制約、検証条件だけを記載する。
 
-未確定の内容を実装可能な詳細仕様として扱ってはならない。実装判断に必要な具体値、条件、処理が未確定の場合は、`ADLAIRE_CI_SPEC.md` の状態分類を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` または owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` へ推測で具体値を記載してはならない。
+未確定の内容を実装可能な詳細仕様として扱ってはならない。実装判断に必要な具体値、条件、処理が未確定の場合は、`docs/ADLAIRE_CI_SPEC.md` の状態分類を確認し、`docs/ADLAIRE_CI_DETAIL_SPEC.md` または owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` へ推測で具体値を記載してはならない。
 
-仕様項目の成熟度と実装可否は、`ADLAIRE_CI_SPEC.md` Part 1 §4b および Part 2 §0a の仕様成熟度方針・仕様成熟度ポリシーに従って判定する。
+仕様項目の成熟度と実装可否は、`docs/ADLAIRE_CI_SPEC.md` Part 1 §4b および Part 2 §0a の仕様成熟度方針・仕様成熟度ポリシーに従って判定する。
 
-作業開始時には、対象機能・対象コンポーネントについて `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` の該当節と実ファイルの存在を確認する。
+作業開始時には、対象機能・対象コンポーネントについて `docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` の該当節と実ファイルの存在を確認する。
 
 実ファイルの存在確認には `rg --files` を使用する。
 
@@ -122,11 +122,11 @@ owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` は、各 component の詳�
 
 実装中に仕様不足、未定義の入出力、未定義の状態ファイル、未定義の異常系、未定義の検証条件を発見した場合は、実装判断で補完せず、先に仕様を改訂する。
 
-実装済みとして扱うには、コード変更、仕様との差分確認、必要な構文確認、実行確認または生成物確認、`DOCUMENT_INDEX.md`・実装状態表・関連仕様の更新要否確認を完了していなければならない。
+実装済みとして扱うには、コード変更、仕様との差分確認、必要な構文確認、実行確認または生成物確認、`docs/DOCUMENT_INDEX.md`・実装状態表・関連仕様の更新要否確認を完了していなければならない。
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。
 
-未実装項目を実装する場合は、`DOCUMENT_INDEX.md` の Specified Components と本ファイルの実装管理ルールの更新要否を確認する。
+未実装項目を実装する場合は、`docs/DOCUMENT_INDEX.md` の Specified Components と本ファイルの実装管理ルールの更新要否を確認する。
 
 仕様の記載と実ファイルの存在が矛盾する場合は、先に仕様・索引・ルールブックの整合を取る。
 
@@ -155,7 +155,7 @@ Go 実装対象ファイルは以下とする。
 | `admin/index.html` | 仕様化済み・未実装 |
 | `components/mcp.go` | 将来計画 |
 
-未実装コンポーネントを追加する場合は、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md`、`DOCUMENT_INDEX.md`、本ファイルを必要に応じて整合させる。
+未実装コンポーネントを追加する場合は、`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md`、`docs/DOCUMENT_INDEX.md`、本ファイルを必要に応じて整合させる。
 
 実装変更後は、変更範囲に応じて構文確認、実行確認、生成物確認を行う。
 
@@ -252,7 +252,7 @@ GitHub 設定を変更した後は、GitHub API で再取得し、`AGENTS.md` �
 
 自動化に関わる設定が未設定または標準値と異なる場合は、変更対象、変更内容、影響範囲を提示し、ユーザーから `承認` を得たうえで標準値へ設定する。
 
-自動化に関わる設定には、少なくとも `delete_branch_on_merge=true` を含める。その他の自動化設定が `ADLAIRE_CI_SPEC.md` または本ルールブックで標準化された場合も同様に扱う。
+自動化に関わる設定には、少なくとも `delete_branch_on_merge=true` を含める。その他の自動化設定が `docs/ADLAIRE_CI_SPEC.md` または本ルールブックで標準化された場合も同様に扱う。
 
 `delete_branch_on_merge=true` は、remote branch 自動削除の必須設定とする。
 
@@ -307,7 +307,7 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
 - 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。
 - 実装変更では、必要に応じて対象スクリプトの実行確認または生成物確認を行う。
-- 仕様変更では、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md`、`DOCUMENT_INDEX.md`、`DESIGN.md`、実装ファイルの整合を確認する。
+- 仕様変更では、`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md`、`docs/DOCUMENT_INDEX.md`、`docs/DESIGN.md`、実装ファイルの整合を確認する。
 
 Pull Request 本文には、少なくとも以下を記載する。
 
@@ -330,7 +330,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 例外として外部ライブラリを採用する場合は、採用理由、対象範囲、影響範囲、代替困難性、保守方針を明示する。
 
-例外採用は、`ADLAIRE_CI_SPEC.md` または承認済み変更範囲に明記された場合のみ有効とする。
+例外採用は、`docs/ADLAIRE_CI_SPEC.md` または承認済み変更範囲に明記された場合のみ有効とする。
 
 外部依存を追加、削除、更新、置換する作業は変更作業として扱い、事前承認を必須とする。
 
@@ -338,12 +338,12 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 ## 6. 文書整合ルール
 
-`DOCUMENT_INDEX.md` は、リポジトリ内の文書・実装ファイルの役割を示す索引として維持する。
+`docs/DOCUMENT_INDEX.md` は、リポジトリ内の文書・実装ファイルの役割を示す索引として維持する。
 
-ファイル名、正本関係、実装コンポーネントの追加・削除・リネームが発生した場合は、`DOCUMENT_INDEX.md` の更新要否を確認する。
+ファイル名、正本関係、実装コンポーネントの追加・削除・リネームが発生した場合は、`docs/DOCUMENT_INDEX.md` の更新要否を確認する。
 
-`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、または owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を改訂した場合は、`DESIGN.md`、`DOCUMENT_INDEX.md`、実装ファイルへの影響を確認する。
+`docs/ADLAIRE_CI_SPEC.md`、`docs/ADLAIRE_CI_DETAIL_SPEC.md`、または owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` を改訂した場合は、`docs/DESIGN.md`、`docs/DOCUMENT_INDEX.md`、実装ファイルへの影響を確認する。
 
-`DESIGN.md` を改訂した場合は、`components/builder.go` 内の HTML / CSS / JavaScript / theme component テンプレートとの整合性を確認する。
+`docs/DESIGN.md` を改訂した場合は、`components/builder.go` 内の HTML / CSS / JavaScript / theme component テンプレートとの整合性を確認する。
 
-仕様化済み項目を実装した場合は、`ADLAIRE_CI_SPEC.md` 内の状態表現、`DOCUMENT_INDEX.md` の Specified Components、`ADLAIRE_CI_DETAIL_SPEC.md` の対応表、owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` の検証条件、実装ファイルの存在を整合させる。
+仕様化済み項目を実装した場合は、`docs/ADLAIRE_CI_SPEC.md` 内の状態表現、`docs/DOCUMENT_INDEX.md` の Specified Components、`docs/ADLAIRE_CI_DETAIL_SPEC.md` の対応表、owner component 別の `docs/ADLAIRE_CI_DETAIL_*_SPEC.md` の検証条件、実装ファイルの存在を整合させる。
