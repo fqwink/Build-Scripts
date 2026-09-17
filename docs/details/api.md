@@ -2285,6 +2285,19 @@ queue entry は `docs/details/statefile.md` §22.0c `.build_state` schema の qu
 | event id | `wh{YYYYMMDDHHmmss}`、衝突時 `-001`。 |
 | secret | signature、secret、raw payload は event log、access log、audit log に保存しない。 |
 
+**Webhook 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 署名前処理 | raw body は署名検証用 byte slice として保持し、JSON parse、文字コード変換、空白整形、改行変換を署名前に行わない。 |
+| body size | 受信 byte 数が 1 MiB を超える場合も、secret が存在し signature header が形式妥当なら署名検証を先に行い、検証成功後に `413` とする。署名不正時は `401` を優先する。 |
+| 保存順 | queue 追加が必要な場合は `.build_state` lock 取得 → queue 追加 atomic write → `.webhook_events.json` 追記 → response の順とする。 |
+| queue 追加後の event log 失敗 | queue entry は巻き戻さず、response に `event_log_failed:true` を含める。server log には固定 code だけを出し、payload 内容は出さない。 |
+| event id 採番 | fake clock の UTC 秒を使う。既存 event id と衝突する場合だけ `-001` から 3 桁連番を付ける。 |
+| duplicate 判定 | `X-GitHub-Delivery`、branch、after SHA が一致する queued / running entry だけを duplicate とする。delivery id だけ一致して branch または sha が異なる場合は `409 {"error":"Conflicting delivery"}` とし、queue を変更しない。 |
+| 対象 branch | `.branch_config` が存在する場合は `branch_targets[].branch`、不在時は default branch 設定と照合する。照合できない branch は `ignored_branch` として event log だけ残す。 |
+| maintenance | maintenance 有効時は署名、JSON、branch 検証後、event log / queue 追記前に `503` とし、状態を変更しない。 |
+
 **異常系：**
 
 | 条件 | 応答 / 処理 |
@@ -2314,6 +2327,25 @@ owner component は `api` とする。collaborator component は `sdk`、`ui`、
 
 `.webhook_events.json` の保存 schema は `docs/details/statefile.md` §22.0c `.webhook_events.json` JSON Lines schema を正とする。保存時に request header 全体、署名値、secret、payload 全体を保存してはならない。
 
+**WebhookEventRecord 固定契約：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | 必須 | §27.12 の event id。 |
+| `timestamp` | string | 必須 | UTC ISO 8601 秒精度。 |
+| `delivery_id` | string | 必須 | `X-GitHub-Delivery`。空、NUL、改行は禁止。 |
+| `event` | string | 必須 | `push` または受信した GitHub event 名。 |
+| `ref` | string/null | 必須 | payload の `ref`。欠落時は `null`。 |
+| `branch` | string/null | 必須 | `refs/heads/{branch}` から抽出した branch。抽出不能時 `null`。 |
+| `sha` | string/null | 必須 | payload `after`。形式不正時は保存しないため `null` は ignored_event / ignored_branch のみ許可。 |
+| `repository` | string/null | 必須 | `owner/name`。抽出不能時 `null`。 |
+| `result` | string | 必須 | `queued`、`duplicate`、`ignored_event`、`ignored_branch`、`queue_full`、`maintenance`、`validation_error` のいずれか。 |
+| `build_triggered` | boolean | 必須 | queue entry を新規追加した場合だけ `true`。 |
+| `queued_id` | string/null | 必須 | 新規または既存 queue id。queue に関係しない結果では `null`。 |
+| `error_code` | string/null | 必須 | error 分類。secret、payload 断片、signature を含めない。 |
+
+未知 key は保存しない。API response では上表の key だけを返す。
+
 **一覧 API：**
 
 `GET /api/webhook-events` は `limit` と `offset` query を受け付ける。`limit` は 1〜1000、既定値 50。`offset` は 0 以上、既定値 0。新しい順で返す。壊れた行は無視し、server log に `WEBHOOK_EVENT_LOG_SKIP_CORRUPT` を出す。
@@ -2328,6 +2360,16 @@ Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `g
 | total | 壊れた行を除外した総件数。 |
 | offset | filter 後、並び替え後に適用する。 |
 | 壊れた行 | 内容を response、server log に含めない。固定コードだけ出す。 |
+
+**Webhook events API 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| query | 許可 query は `limit` と `offset` だけ。未知 query は `422`。 |
+| read-only | `.webhook_events.json` の破損行、未知 key、古い schema を API 取得時に修復しない。 |
+| SDK | SDK は `limit` と `offset` を number として受け取り、未指定時は API default に委ねず `limit=50&offset=0` を送る。 |
+| UI | UI は delivery id、event、branch、sha、result、queued id を表示し、payload raw body、signature、secret、Authorization header を表示しない。 |
+| server log | corrupt line skip は `WEBHOOK_EVENT_LOG_SKIP_CORRUPT` の固定 code と file path だけを出す。行本文は出さない。 |
 
 **検証条件：**
 
@@ -2377,6 +2419,19 @@ owner component は `api` とする。collaborator component は `statefile` と
 
 `checks[]` は上表の順で返す。`status` は checks が空なら `"ok"`、read error または stale があれば `"degraded"`、response 生成不能だけ `"error"` とする。
 
+**health 実装完了固定契約：**
+
+| 条件 | HTTP status | `status` | `checks` | 副作用 |
+|------|-------------|----------|----------|--------|
+| 全参照成功 | `200` | `ok` | `[]` | 状態差分なし。 |
+| `.build_status.json` 不在 | `200` | `ok` または `degraded` | `build_status_missing` | fallback 算出のみ。作成しない。 |
+| `.build_status.json` 破損 | `200` | `degraded` | `build_status_corrupt` | 修復、backup、削除を行わない。 |
+| `.pending_transfers` 読取失敗 | `200` | `degraded` | `pending_transfers_read_error` | pending を初期化しない。 |
+| `.notify_pending` 読取失敗 | `200` | `degraded` | `notify_pending_read_error` | notify pending を初期化しない。 |
+| JSON encode 不能 | `500` | response なし | response なし | 書き込み済み header がなければ `500`。状態差分なし。 |
+
+`GET /api/health` は認証、access control、maintenance、rate limit、session timeout の拒否対象にしない。ただし path / method 判定は通常どおり行い、`POST /api/health` は `405` とする。
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -2411,6 +2466,18 @@ owner component は `api` とする。collaborator component は `sdk`、`ui`、
 | 上記以外 | `INFO` |
 
 検索結果は `{build_id, level, source, line_number, message}` とし、`source` は `"stdout"`、`"stderr"`、`"warnings"`、`"error"` のいずれかとする。`line_number` は 1 始まり、配列項目は配列内 index + 1 とする。
+
+**ログ検索実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| query | 許可 query は `q`、`from`、`to`、`level`、`limit`、`offset` だけ。未知 query は `422`。 |
+| 日付 | `from` / `to` は `YYYY-MM-DD`。UTC 日付として扱い、`from` は 00:00:00 以上、`to` は 23:59:59 以下を含む。`from > to` は `422`。 |
+| q | 部分一致。大文字小文字は区別しない。空文字は全件。NUL、改行を含む q は `422`。 |
+| 並び順 | build log の `finished_at` 降順、同時刻は build id 降順、同一 log 内は source 順 `stdout` → `stderr` → `warnings` → `error`、line_number 昇順。 |
+| archive | 同一 build id が通常 log と archive にある場合は通常 log を優先し、二重に返さない。 |
+| 破損 log | 破損通常 log または gzip 展開失敗は除外し、固定 WARN code だけを server log に出す。本文は出さない。 |
+| read-only | 検索 API は log、archive、history、status、config を変更しない。 |
 
 **SDK / UI：**
 
@@ -2449,6 +2516,17 @@ owner component は `api` とする。collaborator component は `runner`、`sta
 | target_files | 存在する場合は §27.21 の正規化を適用する。 |
 | 保存順 | branch 名昇順、同一 branch 内 deploy target id 昇順で保存する。 |
 | 削除 | POST empty で `.branch_config` を削除した後、`.config_log` に default 復帰を記録する。 |
+
+**branch config 保存・失敗時固定契約：**
+
+| 操作 | 保存順 | 失敗時 |
+|------|--------|--------|
+| GET default | default branch target を response へ正規化する。 | 状態ファイルを作成しない。default 算出不能なら `500`。 |
+| POST valid | request 検証 → 正規化 → `.branch_config` atomic write → `.config_log` 追記 → response。 | write 失敗は `500`、`.config_log` なし。`.config_log` 失敗は `500`、保存済み `.branch_config` は巻き戻さない。 |
+| POST empty | `.branch_config` 存在確認 → 削除 → `.config_log` 追記 → response。 | 削除失敗は `500`。`.config_log` 失敗は `500`、削除済み状態は巻き戻さない。 |
+| POST no-op | 正規化後の `branch_targets` が既存値と一致する。 | `.branch_config` と `.config_log` を変更せず `{ "message":"No changes","branches_count":N }` を返す。 |
+
+`.config_log` の diff target は `branch_config` とする。deploy target の `host`、`user`、`dest_dir` は secret として扱わないが、値に token / password / secret 風 key が含まれる object を追加した場合は §27.20 の mask 規則を適用する。
 
 **検証：**
 
@@ -2513,6 +2591,29 @@ owner component は `api` とする。collaborator component は `statefile` と
 | `POST /api/smtp-config` | `smtp_config` |
 | `POST /api/pipeline-config` | `pipeline_config` |
 | その他 `.config_log` 対象 | method と path から `/api/` prefix を除き、`/` と `-` を `_` に置換した固定名。 |
+
+**config diff 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| actor | 管理 session は `"admin"`、API token は token id、未認証で許可される設定変更 API は存在しない。 |
+| request id | access log の request id と同じ値を `request_id` として保存する。取得不能時は `null`。 |
+| endpoint | `endpoint` は HTTP method と path template を保存する。path param の実値が secret 風値でも path template だけを保存する。 |
+| status | 設定保存成功後に config log 追記まで成功した場合は `result="success"`。保存成功後に config log 追記失敗した場合は `result="config_log_failed"` を server log に出し、response は `500`。 |
+| rollback 禁止 | `.config_log` 追記失敗時に保存済み設定を巻き戻さない。巻き戻さないことを fixture で固定する。 |
+| no-op | diff が空の場合は `.config_log`、対象状態ファイル、secret file、audit log を変更しない。 |
+| secret | secret 平文は diff、diff_text、server log、access log、audit log、response に出さない。 |
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| 単一 key | key 昇順 diff、diff_text、target、actor、request_id が保存される。 |
+| nested object | dot path で差分が保存される。 |
+| array | 正規化後の配列全体が JSON 値として diff に入る。 |
+| no-op | 状態差分なし、`.config_log` 追記なし。 |
+| secret | before / after と diff_text が `"***"` になる。 |
+| config log failure | 対象設定は保存済み、response は `500`、未定義 rollback なし。 |
 
 diff 生成は状態保存前に memory 上で完了させる。diff 生成に失敗した場合は状態ファイルを書かない。`.config_log` 追記に失敗した場合は保存済み状態を巻き戻さず、response は `500` とする。
 
@@ -2603,6 +2704,20 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 api / sdk / ui のいずれも、上表に存在しない endpoint、method、UI 操作を追加してはならない。追加が必要な場合は、本表、該当 endpoint 個別節、SDK method 表、UI 操作契約、fixture catalog を先に更新する。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
 
+**§27 api / sdk / ui 連動実装完了ゲート：**
+
+§27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する機能は、下表の全条件を満たした場合だけ実装完了とする。owner component が `api` ではない機能でも、API response を SDK / UI が利用する場合は本ゲートを満たす。
+
+| ゲート | API 側の合格条件 | SDK / UI への固定契約 | 禁止事項 |
+|--------|------------------|------------------------|----------|
+| endpoint 対応 | §22.0e、個別 §27 節、本表の API 列が同じ method / path / query / body / response を示す。 | SDK method と UI 操作は本表の SDK / UI 列だけを使用する。 | 表にない endpoint、method、UI 操作を実装都合で追加すること。 |
+| request 正規化 | path parameter、query、body key、nullable、既定値を API 側で検証し、不正値は `422` とする。 | SDK は指定値を表どおり送信し、UI は入力正規化だけを行う。 | SDK が未知 key を削除する、UI が API 既定値を保存前に補完すること。 |
+| response 透過 | 成功 response は個別節の key だけを返し、array 順、nullable、mask 値を固定する。 | SDK は response を補完・再計算せず返し、UI は API 順序で表示する。 | SDK / UI が存在しない key、集計値、状態名、token list を合成すること。 |
+| error 伝播 | `401` / `403` / `409` / `422` / `429` / `500` の status と error body を固定する。 | SDK は `AdlaireCIError` として保持し、UI は status 別表示と仕様上の再取得だけを行う。 | 自動 retry、自動 refresh、自動 logout、同一変更 API の再送を仕様外で行うこと。 |
+| side effect | validation 失敗、認可失敗、rate limit、no-op、partial failure の write / call / log 差分を個別節または fixture で固定する。 | SDK / UI は副作用完了を推測せず、成功後再取得で確認する。 | read-only、dry-run、validation failure、`403`、`429` で状態を書き換えること。 |
+| secret / one-time | token、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header は response・log・state の許可箇所以外へ出さない。 | SDK は内部保存せず、UI は専用一回表示領域だけに出し、次 user action / panel 遷移 / logout / `401` で消去する。 | token 本体の再表示、token list への合成、secret の error message / DOM / expected への残存。 |
+| fixture 証跡 | `docs/details/fixture.md` §27-F の API / SDK / UI 連動 fixture で request、response、error、side effect、secret、refresh order を確認する。 | PR 本文に対象 fixture、未実装対象、未定義 endpoint / UI / 状態ファイル不追加を記録する。 | fixture なし、または実装挙動に合わせて期待値を弱めること。 |
+
 ### 27.30 ビルド承認フロー
 owner component は `api` とする。collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。
 
@@ -2678,6 +2793,19 @@ sdk は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 | reject | `.approval_queue` lock → 最新 pending 確認 → rejected record append → `.build_history` append → response | history append 失敗時は `500`。rejected record は巻き戻さない。 |
 
 approve / reject API は body を受け付けない。reject reason は初期実装では固定 `"rejected"` とする。
+
+**approval API 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| list corrupt line | `.approval_queue` の破損行は response から除外し、server log に固定 code `APPROVAL_QUEUE_CORRUPT_LINE` と file path だけを出す。行本文、token、payload は出さない。 |
+| approve queue id | approve で作成する queue id は `q{YYYYMMDDHHmmss}`、同秒衝突時は `-001` から 3 桁連番。approval id とは別 id とする。 |
+| approve partial failure | queue append 成功後に approved record append が失敗した場合、queue entry は残し、response `500`、server log `APPROVAL_APPROVED_RECORD_FAILED` を出す。次回 list では approval は pending のまま見える。 |
+| reject partial failure | rejected record append 成功後に history append が失敗した場合、rejected は残し、response `500`、server log `APPROVAL_REJECT_HISTORY_FAILED` を出す。 |
+| audit | list は read audit 対象外、approve / reject は audit 対象。audit 失敗時は `docs/details/security.md` §27.44 に従い、保存済み状態を勝手に巻き戻さない。 |
+| body 禁止 | `Content-Length > 0` または JSON body がある approve / reject は `422` とし、状態差分なし。 |
+| secret | approval payload、queue payload、history、audit、server log、SDK error、UI 表示に Authorization header、session token、API token、repository token を保存しない。 |
+| SDK/UI | SDK は `409` / `429` / `500` を `AdlaireCIError` として保持する。UI は API response にない状態を推測せず、approve / reject 後に `getApprovals()` と `getQueue()` を再取得する。 |
 
 approval fixture は `docs/details/fixture.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルでは approval fixture 本体を重複定義しない。
 

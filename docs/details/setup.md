@@ -538,9 +538,12 @@ systemctl status adlaire-ci-api
 | setup symlink target | `$BIN_DIR/adlaire-ci-build` が symlink | 終了コード `1`、symlink 参照先を上書きしない。 |
 | setup pat empty | PAT 入力が空 | 終了コード `2`、`.github_token` 作成なし、systemd 変更なし。 |
 | setup success | 正常 asset、正常 PAT、fresh 環境 | binary mode `755`、`.github_token`/`.last_sha` mode `600`、timer active、固定確認すべて成功。 |
+| setup admin release layout | `admin-ui.tar.gz` と API binary を含む正常 Release | `admin-ui.tar.gz` は `docs/details/admin.md` A1 の root layout と一致し、API binary と admin UI の version が同一 `VERSION`。 |
 | api setup credentials existing | `.admin_credentials` 既存で API 導入 | `--init-credentials` を再実行せず既存 credentials を保持し、API service 起動確認まで進む。 |
 | api setup admin archive unsafe | `admin-ui.tar.gz` に `../x` または symlink entry | 終了コード `1`、既存 admin UI 維持、API service start なし。 |
+| api setup admin archive extra file | `admin-ui.tar.gz` に A1 未定義 file、重複必須 file、`admin/` wrapper directory | 終了コード `1`、archive 展開なし、既存 admin UI 維持、API service start なし。 |
 | api setup health failure | API service active だが `/api/health` が非 200 | セットアップ失敗扱い、runner timer は停止しない、journal 確認対象を出力。 |
+| setup secret preservation | `.github_token`、`.admin_credentials`、`.webhook_secret`、`.smtp_secret` が既存の状態で update | 明示対象外の secret は content / mode / mtime を保持し、stdout/stderr/journal に secret 原文を出さない。 |
 | update api absent | `adlaire-ci-api` 未導入環境で update | build / runner asset だけ取得・検証・配置し、API asset と admin UI を取得しない。 |
 | update checksum before change | update 対象 asset の checksum 不一致 | 既存 binary、admin UI、systemd、state に差分なし。 |
 | update runner restart failure | runner restart fake failure | build / runner 旧版復元を 1 回だけ実行し、API restart と admin UI 更新へ進まない。 |
@@ -663,3 +666,50 @@ Phase 完了判定の PR 証跡テンプレート、必須記載項目、不足�
 受け入れ結果は、`docs/details/fixture.md` §0g.8-F の形式で実装 PR 本文または検証ログに記録する。失敗、未実行、環境都合で省略した項目がある場合、そのコンポーネントを完了扱いにしてはならない。
 
 ---
+
+### §26.8 Setup / Admin 配布実装完了ゲート
+
+セットアップ、アップデート、管理 API 導入、admin UI 配布は、§26.1〜§26.7 の本文に加えて下表を満たした場合だけ実装完了とする。本節は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
+
+| 段階 | 必須入力 | 成功確定条件 | 失敗時固定結果 | fixture 必須 |
+|------|----------|--------------|----------------|--------------|
+| 変数検証 | `VERSION`、`OS_ARCH`、`INSTALL_DIR`、`BIN_DIR`、`DOWNLOAD_DIR` | 空値なし、危険 path なし、`OS_ARCH=linux-amd64`。 | 終了コード `2`。directory、download、配置なし。 | `setup variable invalid` |
+| Release 取得 | asset URL、`SHA256SUMS` | 対象 asset と `SHA256SUMS` が HTTP 2xx、size > 0。 | 終了コード `1`。未検証 asset を配置しない。 | `setup download failure` |
+| checksum | asset、`SHA256SUMS` | 対象 filename が 1 行だけ存在し、SHA-256 が一致する。 | 終了コード `1`。binary、admin、systemd、state 差分なし。 | `setup checksum duplicate`、`update checksum before change` |
+| binary 配置 | 検証済み binary | symlink でない通常 file へ `0755` で配置し、`--version` が期待値を返す。 | systemd を変更しない。restart 前失敗なら旧 binary を保持する。 | `setup symlink target`、`setup success` |
+| secret / state 初期化 | PAT、初期 state | secret `0600`、`.last_sha` `0600`、LF 付き JSON、fsync 完了。 | systemd を変更しない。secret 値を出力しない。 | `setup pat empty`、`setup success` |
+| admin archive 展開 | `admin-ui.tar.gz` | `docs/details/admin.md` A1〜A2 を満たし、一時 directory 検証後に差し替える。 | 既存 `$INSTALL_DIR/admin` を変更しない。API service を起動 / restart しない。 | `api setup admin archive unsafe` |
+| systemd 配置 | unit file 内容 | unit 書込、mode、`daemon-reload`、enable/start/restart、`is-active` が成功する。 | enable/start/restart を成功扱いしない。journal 確認対象を出力する。 | `api setup health failure`、`update runner restart failure` |
+| rollback | 旧 binary / 旧 admin backup | 定義済み対象だけ 1 回復元し、対象 service を 1 回 restart する。 | 追加推測復旧を行わず、現在配置済み path と journal 確認対象を出力する。 | `update rollback failure` |
+| 最終確認 | 配置済み binary、state、service、admin UI | §26.3 / §26.3b / §26.5 の固定確認がすべて成功する。 | 成功報告しない。未確認項目を `未実行` として記録する。 | `setup success`、`update api absent` |
+
+**setup / admin / release 連動 fixture 固定：**
+
+| fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
+|------------|----------------|------------|---------------|----------|
+| `setup-admin-release-layout` | `setup`、`admin` | Release asset 一式、`SHA256SUMS`、`admin-ui.tar.gz`、fake download response。 | `expected/effects.json`、admin archive file list、`expected/security.json`。 | 対象 asset 名、checksum、admin archive root layout、必須 file、任意 file、file mode、directory mode が §26.2a と `docs/details/admin.md` A1〜A2 に一致する。 |
+| `setup-admin-archive-boundary` | `setup`、`admin` | unsafe archive、既存 `$INSTALL_DIR/admin`、既存 API binary、API service fake。 | `expected/effects.json.unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`expected/stderr.txt`。 | archive 検証失敗時に既存 admin UI、API binary、credentials、runner state を変更せず、API service start / restart を呼ばない。 |
+| `setup-systemd-rollback-boundary` | `setup`、`runner`、`api` | systemd fake、旧 binary backup、旧 admin backup、restart failure。 | `expected/effects.json.write_order`、`updated_paths`、`unchanged_paths`、`forbidden_writes`、`commands`。 | rollback 対象は失敗段階で定義済みの binary / admin UI だけで、state、history、secret、runner timer を未定義に巻き戻さない。 |
+| `admin-static-serving-security` | `admin`、`api` | static request、secret/state/log/snapshot path、method variation。 | `expected/response.json`、`expected/security.json`、`expected/effects.json`。 | A3 の status、header、body 有無に一致し、secret / state / log / snapshot / directory listing を返さず、request body を読まない。 |
+| `setup-secret-preservation` | `setup`、`security` | 既存 secret files、update input、failure fake。 | `expected/security.json`、`expected/effects.json.unchanged_paths`、`forbidden_writes`。 | 明示対象外の secret content / mode / mtime を保持し、stdout、stderr、journal、fixture expected に secret 原文を残さない。 |
+
+**setup / update 実装者向け出力固定：**
+
+| 出力先 | 必須内容 | 禁止内容 |
+|--------|----------|----------|
+| stdout | 段階開始、段階成功、最終成功、配置 binary version。 | PAT、password、token、Webhook secret、SMTP password、Release URL credential。 |
+| stderr | 固定 error prefix、失敗段階、終了コード、確認すべき journal / path。 | secret 原文、checksum 対象 file の内容、環境変数全量 dump。 |
+| PR 検証記録 | 実行 command、exit code、重要 stdout/stderr、差分あり / なし、未実行理由。 | secret 原文、credential 付き URL、ローカル固有 token。 |
+
+**setup / update 差分確認固定：**
+
+| ケース | 必須差分確認 | 合格条件 |
+|--------|--------------|----------|
+| fresh setup success | `$BIN_DIR`、`$INSTALL_DIR`、systemd unit | 仕様で許可された binary、secret、state、unit だけが作成される。 |
+| fresh setup failure | `$BIN_DIR`、`$INSTALL_DIR`、systemd unit | 失敗段階より後の対象に差分がない。 |
+| API 導入 success | API binary、admin directory、API unit、credentials | runner timer と runner state は不要に変更されない。 |
+| API 導入 failure | admin backup、API binary、API unit | admin 展開失敗では既存 admin directory に差分がない。 |
+| update success | 対象 binary、admin UI、systemd restart 記録 | 既存 state、history、secret は保持される。 |
+| update failure | rollback 対象、journal 確認対象 | rollback 表で許可した対象以外に差分がない。 |
+
+`setup` 実装 PR は、上表の fixture、差分確認、secret 非表示確認、終了コード確認を記録する。いずれかが未実行の場合、対象段階を完了扱いにせず、未実行理由と再実行条件を記録する。

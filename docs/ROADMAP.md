@@ -14,7 +14,7 @@
 | Phase | Phase 順序、対象 owner component、依存条件、完了条件、引き継ぎ契約。 | 各 component の関数、endpoint、schema、DOM、fixture 本文。 |
 | 機能インベントリ | 機能の分類、実装可否、詳細仕様参照先。 | API request / response の完全表、SDK method の完全実装条件。 |
 | 将来計画 | 実装不可の構想、昇格条件、実装禁止条件。 | 実装可能な詳細仕様としての具体値。 |
-| 追加仕様化機能参照・横断補足契約 | §27 追加仕様化機能の owner、主本文、collaborator、横断受け入れ観点。 | 各機能の endpoint、状態 schema、SDK method、UI DOM、fixture 本文。 |
+| 追加仕様化機能参照・横断補足契約 | §27 / §28 追加仕様化機能の owner、主本文、collaborator、横断受け入れ観点。 | 各機能の endpoint、状態 schema、SDK method、UI DOM、fixture 本文。 |
 
 ## 2. 状態分類
 
@@ -455,32 +455,32 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 将来計画 | 実装不可 | 管理ツール・API | API レスポンスキャッシュ制御 | 頻繁に参照される統計・ログ API のキャッシュ TTL を設定から変更する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | スナップショット間サイト差分 API | 2 つのスナップショット ID を指定し、出力サイトの追加/削除行数・変更率を返す `GET /api/snapshots/{id1}/diff/{id2}` を追加する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | Webhook 送信履歴の手動再送 API | `GET /api/notify-log` の各エントリに対して `POST /api/notify-log/{id}/retry` で同一ペイロードを即時再送できる手動リトライ API。`.notify_pending` 自動再試行とは別に特定通知だけ個別再送できる運用機能 | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | 差分ビルド | 変更箇所のみ処理し、大規模 MD の変換を高速化する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | 複数出力形式 | HTML に加えて PDF・ePub 等の出力形式をサポートする | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | Markdown 拡張記法サポート | アドモニション（`> [!NOTE]`）・カラーバッジ等の独自拡張記法に対応する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | コードブロック行番号表示 | コードブロック左端に行番号を表示するオプションを追加する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | 見出しの自動採番 | h2 以下の見出しに `1.1`・`1.2` 等の番号を自動付与するオプション | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | セクション折りたたみ | 見出しクリックでコンテンツを折りたたむ機能（デフォルト展開） | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | TOC 深さ制御 | TOC に含める見出しレベルを設定で指定する（例：h2–h3 のみ） | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | 最終更新日の自動埋め込み | ソースの git コミットタイムスタンプをフッターに自動出力する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | diff ハイライト | `+`/`-` で始まる行を git diff スタイルで緑/赤に色分けするコードブロックオプション | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | 画像の遅延読み込み | `<img>` に `loading="lazy"` を付与し、初期表示を高速化する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | カスタムメタタグ注入 | OGP / Twitter Card 等のメタタグをビルド設定から生成・埋め込む | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | ダークモード対応 | `prefers-color-scheme` に応じたライト／ダーク切り替えを実装する（現在はライト固定） | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | コードブロックのファイル名表示 | ` ```go:filename.go ` や ` ```言語名:filename.ext ` 記法でコードブロック上部にファイル名ラベルを表示する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | テンプレート変数展開 | ビルド設定に定義した変数を `{{ VERSION }}` 等の記法で Markdown 本文中に展開する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | HTML ミニファイ | 生成 HTML のホワイトスペース・コメントを除去してファイルサイズを削減する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | TOC ハイライト追従 | スクロール位置に応じてサイドバー TOC の現在セクションを自動ハイライトする | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | Mermaid ダイアグラム描画 | ` ```mermaid ` コードブロックをフローチャート・シーケンス図として SVG 描画する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | 脚注サポート | `[^1]` 記法の脚注をページ末尾に自動レンダリングする | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | インライン数式レンダリング | `$...$` / `$$...$$` 記法の数式を KaTeX 等で描画する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | ページ内ナビゲーション履歴 | ブラウザの戻る/進むに対応したハッシュベースの履歴管理を実装する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | `aria-label`・`role` 属性の付与対象、値、検証方法を詳細仕様で定義した上でスクリーンリーダー閲覧に対応する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | 画像ライトボックス | 画像クリックでモーダル拡大表示する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 差分ビルド | 変更箇所のみ処理し、大規模 MD の変換を高速化する。changed manifest、dependency 逆引き、未変更 page 維持、search index 再生成を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.1、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 複数出力形式 | `--format` を仕様化し、初期実装では `html` のみ実出力、`pdf` / `epub` は予約値として実行前に拒否する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.2、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | Markdown 拡張記法サポート | admonition と badge の内製変換、escape、report count を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.3、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | コードブロック行番号表示 | code fence 単位の行番号、copy 対象除外、fold / highlight 併用を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.4、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 見出しの自動採番 | h2 以下の表示番号、TOC 番号、slug 不変、search index 連動を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.5、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | セクション折りたたみ | section 範囲、toggle、localStorage、印刷時全展開、検索 hit 時展開を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.6、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | TOC 深さ制御 | `--toc-depth`、heading filter、active tracking、範囲 validation を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.7、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 最終更新日の自動埋め込み | git / file timestamp、UTC 秒精度、footer、report を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.8、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | diff ハイライト | `diff` / `patch` fence の inserted/deleted/header/context class と copy 本文維持を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.9、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 画像の遅延読み込み | image 出力の `loading="lazy"`、`decoding="async"`、path warning、alt escape を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.10、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | カスタムメタタグ注入 | `--meta` の validation、name/property、禁止 key、attribute escape を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.11、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ダークモード対応 | `light` / `dark` / `auto`、CSS variables、toggle、print light を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.12、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | コードブロックのファイル名表示 | fence info parsing、title escape、copy 対象除外を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.13、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | テンプレート変数展開 | `--var`、key validation、code fence 内非置換、未定義時 warning/strict を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.14、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | HTML ミニファイ | safe minify、pre/code 保持、必須 marker 検証、report を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.15、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | TOC ハイライト追従 | `.is-active`、`aria-current`、IntersectionObserver / fallback、TOC depth 連動を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.16、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | Mermaid ダイアグラム描画 | 外部 script なしの内製対応範囲、unsupported warning、strict 時終了条件を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.17、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 脚注サポート | `[^id]`、footnotes、backlink、未定義時 warning/strict を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.18、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | インライン数式レンダリング | `$...$` / `$$...$$` の内製表示、escape、未閉鎖 delimiter、code 内非変換を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.19、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ページ内ナビゲーション履歴 | hash pushState、back/forward、focus 移動、JS 無効時 fallback を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.20、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | landmark、aria-label、skip link、focus 順、重複 id 検出を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.21、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 画像ライトボックス | dialog、Escape、backdrop close、focus trap、alt warning を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.22、`docs/details/fixture.md` §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | `adlaire-ci-build` が build id、commit SHA、build at を受け取り、生成 HTML の `<head>` に固定 meta として埋め込む。`GET /api/output-meta` は同値を返す。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §2、`docs/details/builder.md` §5、`docs/details/builder.md` §8、`docs/details/runner.md` §13、`docs/details/api.md` §22.0e、`docs/details/builder.md` §27.4 に従って実装する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | 印刷時 QR コード挿入 | `@media print` で元ページの URL を QR コードとしてフッターに埋め込む | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | 定義リストサポート | `term\n: definition` 記法を `<dl>/<dt>/<dd>` タグにレンダリングする | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | ビルドスクリプト | タスクリストサポート | `- [ ]` / `- [x]` 記法をチェックボックス付きリストとして描画する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 印刷時 QR コード挿入 | print-only SVG、URL validation、長さ制限、外部 library 不使用を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.23、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 定義リストサポート | `term` / `: definition` から `<dl>/<dt>/<dd>` への変換、paragraph 境界、inline escape を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.24、`docs/details/fixture.md` §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | タスクリストサポート | disabled checkbox、checked 判定、nested list、aria を固定する。 | `docs/DETAIL_INDEX.md` §0i.1、`docs/details/builder.md` §28.25、`docs/details/fixture.md` §28-F に従って実装する。 |
 | 将来計画 | 実装不可 | MCP サーバー | MCP サーバー実装 | `components/mcp.go` を将来追加コンポーネントとして追加。MCP プロトコル（JSON-RPC over stdio）で Claude Desktop 等の AI クライアントから直接接続可能にする。内部では `components/api.go` REST API に Go 標準ライブラリ `net/http` でローカル接続するラッパー設計（`encoding/json` + `os.Stdin` / `os.Stdout` + `net/http`、ゼロ外部依存）。認証は `.mcp_token` に専用 API トークンを保存し、スコープ（`read` のみ / `trigger` 許可）をトークン単位で選択可能。Claude Desktop の `mcpServers` 設定に `/usr/local/bin/adlaire-ci-mcp` を指定して接続する | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
 | 将来計画 | 実装不可 | MCP サーバー | MCP ツール・リソース公開 | MCP サーバーが公開するツール：`get_status`（ビルド状態・CB 状態・PAT 残日数）/ `get_history(n)`（直近 N 件）/ `search_logs(query, level?, from?, to?)`（ログ全文検索）/ `get_build_log(id)`（個別ビルドログ）/ `trigger_build(force?)`（ビルドトリガー、`trigger` スコープ必須）/ `reset_circuit_breaker`（CB リセット、`trigger` スコープ必須）。リソース：`adlaire://status` / `adlaire://history` / `adlaire://logs/{id}` / `adlaire://config`（→ MCP サーバー実装） | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
 | 将来計画 | 実装不可 | MCP サーバー | AI 支援ビルドエラー分析 | ビルド失敗時、AI クライアント（Claude Desktop 等）が `get_build_log` / `search_logs` ツールを自律的に呼び出してエラーログを取得し、原因推定と修正提案を生成できる設計。AI 側が pull するため `components/runner.go` のゼロ依存を完全維持。将来的には Webhook 通知をトリガーに AI が自動分析を開始する構成も検討可（→ MCP サーバー実装） | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
@@ -517,28 +517,28 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ### 6.1 追加仕様化機能 共通実装契約
 
-§27 の主本文は、owner component の分割先詳細仕様ファイルを正とする。本節では、§27 の実装時に共通して確認する参照順、越境禁止、PR 証跡の入口だけを示す。
+§27 / §28 の主本文は、owner component の分割先詳細仕様ファイルを正とする。本節では、§27 / §28 の実装時に共通して確認する参照順、越境禁止、PR 証跡の入口だけを示す。
 
 | 確認 | 固定内容 |
 |------|----------|
 | 実装対象判定 | `docs/ROADMAP.md` で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用詳細仕様がない状態の MCP 機能を実装対象にしない。 |
 | owner 確定 | §0b と §0i で owner component を 1 件に確定し、主本文は owner の分割先詳細仕様ファイルで確認する。 |
-| collaborator 確認 | collaborator がある場合は、§27.1〜§27.47 の参照インデックスに列挙された component の分割先ファイルを schema、呼び出し境界、表示、security、setup、fixture、検証観点として読む。 |
+| collaborator 確認 | collaborator がある場合は、§27.1〜§27.47 または §28.1〜§28.25 の参照インデックスに列挙された component の分割先ファイルを schema、呼び出し境界、表示、security、setup、fixture、検証観点として読む。 |
 | 補完禁止 | 個別節または分割先詳細仕様に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存を実装判断で追加しない。追加が必要な場合は owner component の詳細仕様、関連 collaborator 詳細仕様、fixture catalog、必要な対応表を先に更新する。 |
 | 状態更新 | 状態ファイル更新は `docs/details/statefile.md` §22.0a、§22.0c を正とし、lock、atomic write、JSON Lines、破損時処理を独自定義しない。 |
 | security | secret mask、token、session、scope、audit、rate limit は `docs/details/security.md` を正とし、平文保存・平文表示を行わない。 |
-| fixture / PR 証跡 | fixture manifest、expected/effects、assertion、PR 証跡、受け入れゲートは `docs/details/fixture.md` §27-F を正とする。 |
+| fixture / PR 証跡 | §27 の fixture manifest、expected/effects、assertion、PR 証跡、受け入れゲートは `docs/details/fixture.md` §27-F、§28 の builder 拡張 fixture は `docs/details/fixture.md` §28-F を正とする。 |
 | api / sdk / ui 同期 | API endpoint、SDK method、UI 操作が同一機能に関わる場合は、endpoint は `docs/details/api.md`、SDK method は `docs/details/sdk.md`、UI 操作は `docs/details/ui.md` をそれぞれ正本とし、名称、引数、response、error、表示、成功後再取得、失敗時固定が食い違わないことを確認する。 |
 
-§27 の機能を実装した PR は、対象節、owner 詳細仕様、collaborator 詳細仕様、fixture、secret mask、失敗時副作用、実装対象外を PR 本文に記録する。記録が不足する場合は、実装完了として扱わない。
+§27 / §28 の機能を実装した PR は、対象節、owner 詳細仕様、collaborator 詳細仕様、fixture、secret mask、失敗時副作用、実装対象外を PR 本文に記録する。記録が不足する場合は、実装完了として扱わない。
 
-§27 の PR 分割、dry-run 固定契約、fixture 完了条件の詳細は、owner 詳細仕様と `docs/details/fixture.md` §27-F を正とする。`docs/DETAIL_INDEX.md` に同じ fixture schema、expected/effects、個別機能本文を重複定義しない。
+§27 の PR 分割、dry-run 固定契約、fixture 完了条件の詳細は、owner 詳細仕様と `docs/details/fixture.md` §27-F を正とする。§28 の builder 拡張 fixture 完了条件は、`docs/details/builder.md` §28 と `docs/details/fixture.md` §28-F を正とする。`docs/DETAIL_INDEX.md` に同じ fixture schema、expected/effects、個別機能本文を重複定義しない。
 
 ### 6.2 追加仕様化機能 参照索引
 
-本節は、§27 機能の参照先を一覧化するインデックスである。個別機能の入力、出力、状態、処理順序、異常系、endpoint、SDK method、UI DOM、fixture は下表の「主本文」に記載された owner component 詳細仕様を正とする。`docs/DETAIL_INDEX.md` は、下表に記載された主本文、owner component、collaborator component を置き換えない。
+本節は、§27 / §28 機能の参照先を一覧化するインデックスである。個別機能の入力、出力、状態、処理順序、異常系、endpoint、SDK method、UI DOM、fixture は下表の「主本文」に記載された owner component 詳細仕様を正とする。`docs/DETAIL_INDEX.md` は、下表に記載された主本文、owner component、collaborator component を置き換えない。
 
-下表は、§27 機能の owner、主本文、collaborator だけを示す。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、fixture schema、横断処理順は本表で再定義しない。
+下表は、§27 / §28 機能の owner、主本文、collaborator だけを示す。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、fixture schema、横断処理順は本表で再定義しない。
 
 | 節 | 機能 | owner | 主本文 | collaborator |
 |----|------|-------|--------|--------------|
@@ -586,6 +586,31 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | §27.45 | セッションタイムアウト変更設定 | `security` | `docs/details/security.md` §27.45 | `api`、`sdk`、`ui`、`statefile` |
 | §27.46 | TOTP 二要素認証 | `security` | `docs/details/security.md` §27.46 | `api`、`sdk`、`ui`、`statefile` |
 | §27.47 | API レート制限 | `security` | `docs/details/security.md` §27.47 | `api`、`sdk`、`ui`、`statefile` |
+| §28.1 | 差分ビルド | `builder` | `docs/details/builder.md` §28.1 | `runner`、`statefile` |
+| §28.2 | 複数出力形式 | `builder` | `docs/details/builder.md` §28.2 | なし |
+| §28.3 | Markdown 拡張記法サポート | `builder` | `docs/details/builder.md` §28.3 | なし |
+| §28.4 | コードブロック行番号表示 | `builder` | `docs/details/builder.md` §28.4 | なし |
+| §28.5 | 見出しの自動採番 | `builder` | `docs/details/builder.md` §28.5 | なし |
+| §28.6 | セクション折りたたみ | `builder` | `docs/details/builder.md` §28.6 | なし |
+| §28.7 | TOC 深さ制御 | `builder` | `docs/details/builder.md` §28.7 | なし |
+| §28.8 | 最終更新日の自動埋め込み | `builder` | `docs/details/builder.md` §28.8 | なし |
+| §28.9 | diff ハイライト | `builder` | `docs/details/builder.md` §28.9 | なし |
+| §28.10 | 画像の遅延読み込み | `builder` | `docs/details/builder.md` §28.10 | なし |
+| §28.11 | カスタムメタタグ注入 | `builder` | `docs/details/builder.md` §28.11 | なし |
+| §28.12 | ダークモード対応 | `builder` | `docs/details/builder.md` §28.12 | なし |
+| §28.13 | コードブロックのファイル名表示 | `builder` | `docs/details/builder.md` §28.13 | なし |
+| §28.14 | テンプレート変数展開 | `builder` | `docs/details/builder.md` §28.14 | なし |
+| §28.15 | HTML ミニファイ | `builder` | `docs/details/builder.md` §28.15 | なし |
+| §28.16 | TOC ハイライト追従 | `builder` | `docs/details/builder.md` §28.16 | なし |
+| §28.17 | Mermaid ダイアグラム描画 | `builder` | `docs/details/builder.md` §28.17 | なし |
+| §28.18 | 脚注サポート | `builder` | `docs/details/builder.md` §28.18 | なし |
+| §28.19 | インライン数式レンダリング | `builder` | `docs/details/builder.md` §28.19 | なし |
+| §28.20 | ページ内ナビゲーション履歴 | `builder` | `docs/details/builder.md` §28.20 | なし |
+| §28.21 | 読み上げ対応（アクセシビリティ） | `builder` | `docs/details/builder.md` §28.21 | なし |
+| §28.22 | 画像ライトボックス | `builder` | `docs/details/builder.md` §28.22 | なし |
+| §28.23 | 印刷時 QR コード挿入 | `builder` | `docs/details/builder.md` §28.23 | なし |
+| §28.24 | 定義リストサポート | `builder` | `docs/details/builder.md` §28.24 | なし |
+| §28.25 | タスクリストサポート | `builder` | `docs/details/builder.md` §28.25 | なし |
 
 補足確認は以下に限定する。下表は実装本文を追加せず、主本文を読む際の境界確認だけを示す。
 

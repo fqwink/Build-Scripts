@@ -2177,6 +2177,29 @@ Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`�
 | recent | `{build_id, finished_at, duration_seconds, status}` を返す。 |
 | archive 優先 | 同じ id が通常 log と archive にある場合、通常 log を採用する。 |
 
+**duration 記録・統計実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| started_at | build id 採番直後、`.build_status.json.status="running"` 保存前の UTC 秒精度時刻。 |
+| finished_at | finalizer が最終 status、deploy pending、rollback pending、failure を確定した時刻。 |
+| duration_seconds | `finished_at - started_at` を秒単位で切り捨てる。負値になる fake clock / clock drift は `0` に丸め、WARN `DURATION_CLOCK_DRIFT` を出す。 |
+| 保存順 | build log 最終更新 → `.build_history` 追記 → `.build_status.json` finalizer の順で同じ duration を保存する。 |
+| deploy pending | deploy pending でも build 処理自体の finished_at を保存し、pending retry の所要時間を合算しない。 |
+| rollback | rollback build log も duration を保存する。元 snapshot の duration は変更しない。 |
+| skip | `skipped_no_change`、`skipped_cooldown`、`circuit_open` で build log を作らない場合、duration を作らない。build log を作る skip fixture では `duration_seconds=0` を明示する。 |
+| read-only stats | `GET /api/stats`、`GET /api/stats/timeline`、`GET /api/stats/build-duration` は history、logs、archive、trend、status を変更しない。 |
+
+**統計 API 分類・丸め固定契約：**
+
+| API | 対象 | 計算 |
+|-----|------|------|
+| `GET /api/stats?days=N` | `.build_history` の `finished_at` または `build_at` が `now - N*24h <= t <= now` の行。 | `success` / `success_deploy_pending` を成功、`failure` / `cancelled` / `hook_error` / `failure_remote_build` を失敗、`skipped_*` を総数から除外する。 |
+| `GET /api/stats/timeline?days=N` | UTC 日付 bucket。 | 日付降順。build 0 件の日は返さない。 |
+| `GET /api/stats/build-duration?n=N` | 通常 log と archive log の duration あり完了 log。 | latest 判定後 N 件、avg は小数第 2 位、min / max は整数。 |
+
+`days` は 1〜366、既定値 7 とする。`n` は 1〜1000、既定値 20 とする。未知 query、非整数、範囲外は `422` とし、状態差分なしとする。破損 build log、破損 history 行、gzip 展開失敗は対象から除外し、固定 WARN code だけを出す。破損内容、secret 風値、stdout/stderr 本文は WARN に含めない。
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -2251,6 +2274,23 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 最大 duration | payload に `max_duration_seconds`、`max_duration_build_id` を含める。対象なしは `null`。 |
 | 手動 response | 送信 payload と送信結果 `{sent:boolean, channel_results:[]}` を返す。 |
 
+**weekly summary 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 実行位置 | runner 起動時の startup integrity、pending transfer retry、maintenance 判定後、通常 GitHub polling / local watch 差分検出前に判定する。 |
+| channel 抽出 | `.notify_config.channels[]` の `enabled=true` かつ `on` に `weekly_summary` を含む channel を配列順に使う。legacy `webhooks` / root `on` だけがある場合は互換 channel として配列順に正規化する。 |
+| 自動宛先なし | WARN `WEEKLY_SUMMARY_NO_CHANNEL` を出し、`.notify_pending` と sent date を変更しない。build status は変更しない。 |
+| 手動宛先なし | API は `422 {"error":"No weekly summary channel configured"}`。`.notify_log`、`.notify_pending`、sent date を変更しない。 |
+| payload | `event`、`period_days`、`period_from`、`period_to`、`success_count`、`failure_count`、`success_rate`、`avg_duration_seconds`、`max_duration_seconds`、`max_duration_build_id` を含む。 |
+| success_rate | 分母が 0 の場合 `0`。それ以外は `success_count / (success_count + failure_count) * 100` を小数第 2 位で丸める。 |
+| avg_duration_seconds | 対象 duration がない場合 `null`。ある場合は秒の平均を小数第 2 位で丸める。 |
+| notify log | channel ごとに 1 record を追記し、payload hash、status、http_status、error_code を保存する。payload 本文全体は保存しない。 |
+| pending | retry 対象 channel の送信失敗だけ `.notify_pending` に追加する。retry 非対象 channel は `.notify_log` だけに失敗を残す。 |
+| secret mask | webhook secret、SMTP password、API token、session token、repository token、Authorization header は payload、notify log、pending、server log に保存しない。 |
+
+手動 weekly summary は build lock を取得しない。自動 weekly summary も通常 build の `.build_lock` を取得しない。ただし `.notify_log`、`.notify_pending`、`.build_state` の書き込みでは各状態ファイルの atomic write / lock 契約に従う。
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -2302,6 +2342,19 @@ owner component は `runner` とする。collaborator component は `builder`、
 | force build | force 条件では `changed_targets` が空でも build を実行し、`changed_targets=[]` を build log に保存する。SHA cache は build 成功時に全 target 分を更新する。 |
 | 部分失敗 | 1 target でも SHA 取得に最終失敗した場合、build は開始せず、成功取得済み target の SHA cache も更新しない。 |
 | 環境変数 | `ADLAIRE_CHANGED_TARGETS` は JSON array string。要素順は正規化済み target path の辞書順。secret は含めない。 |
+
+**multi-file 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 差分検出単位 | target path ごとに before SHA、after SHA、source `github` / `local`、result `changed` / `unchanged` / `missing` / `error` を memory 上で確定してから build 可否を決める。 |
+| build id | 1 runner 起動で複数 target が変更されても build id は 1 件だけ採番する。target ごとに build id を分けない。 |
+| builder 入力 | builder へ渡す `--src` は branch target の `src` 1 件だけとし、target_files を複数 `--src` に展開しない。変更 target list は `ADLAIRE_CHANGED_TARGETS` だけで渡す。 |
+| SHA 更新順 | build success finalizer 後に、changed target と force build 対象 target の SHA cache を target path 辞書順で更新する。 |
+| 部分更新禁止 | build failure、deploy failure before success、pipeline failure、hook pre abort、SHA 部分取得失敗では target SHA cache を 1 件も更新しない。 |
+| log | `.build_logs/{id}.json.changed_targets[]` は target path 辞書順で保存し、`before_sha` が不明な場合は `null`、`after_sha` が missing の場合は `null` とする。 |
+| status | target が missing の場合は build を開始せず `failure_target_missing` とし、missing target を build log に保存する。 |
+| dry-run | `--dry-run` では SHA cache、build log、history、status、snapshot、deploy、notification を変更せず、stdout JSON に target 判定だけを出す。 |
 
 **異常系：**
 
@@ -2395,6 +2448,19 @@ runner は build 開始後、builder command または pipeline step command を
 | block scalar `|` / `>` | parse error。 |
 | inline comment | quoted string 外の `#` は、行頭 comment 以外 parse error。 |
 
+**pipeline 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| source 優先順位 | `.pipeline.yml` が存在する場合は常に file を優先し、`.pipeline_config.inline_yaml` は読まない。file 不在時だけ inline YAML を読む。 |
+| no pipeline | file と inline YAML がない場合は legacy builder command を使う。legacy path でも `.pipeline_config.extra_args` と `.pipeline_config.env` は適用する。 |
+| pre-build failure | YAML parse、schema validation、禁止引数、command 解決失敗は build 本体、deploy、snapshot、SHA cache 更新を開始せず、build log に `failure_pipeline_config` を残す。 |
+| step log | `pipeline_steps[]` は定義順で保存し、未実行 step は `status:"not_run"`、`exit_code:null`、`stdout:""`、`stderr:""` として保存する。 |
+| stdout/stderr | 各 step の stdout/stderr は最大 64 KiB まで保存し、超過時は末尾を切り詰めて `truncated=true` を保存する。 |
+| required failure | required step が failure / timeout の場合、以降の step は実行しない。ただし未実行 step は `not_run` として保存する。 |
+| optional failure | optional failure は build status を反転しないが、`warnings[]` と `[WARN]` に固定 code を残す。 |
+| secret | env 値、command args 内 secret 風値、stdout/stderr 内 secret 値は保存前に mask する。mask 不能なら build を失敗させ、平文を保存しない。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -2452,6 +2518,18 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | state 更新 | build 成功時に今回 scan 結果へ置換する。skip、failure、dry-run では更新しない。 |
 | dry-run | `.local_watch_state.json` を作成・更新せず、差分結果だけ stdout JSON に含める。 |
 
+**local watch 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| GitHub 呼び出し禁止 | `watch_mode="local"` では GitHub Trees / Blobs / Commits / Tags / Rate Limit API、Commit Status API、PAT verify を 1 件も呼ばない。 |
+| scan 順 | directory walk 結果は保存前に相対 path 辞書順へ sort する。filesystem の列挙順に依存しない。 |
+| symlink | symlink file / directory は走査対象外とし、WARN `LOCAL_WATCH_SYMLINK_SKIPPED` を出す。 |
+| state 破損 | `.local_watch_state.json` 破損は full build 扱いにするが、build 成功まで既存破損 file を上書きしない。 |
+| out 除外 | `out` が `src` 配下の場合も、`out` 配下は必ず除外する。`out` が `src` 外の場合は除外 path として追加しない。 |
+| 削除検知 | 削除だけの差分でも build を実行し、成功時に削除済み path を state から取り除く。 |
+| trigger | local 差分 build の build log / history / status の `trigger` は必ず `local_watch` とする。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -2506,6 +2584,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | skip 副作用 | tag 不一致 skip では `.build_status.json` だけ更新し、`.build_logs/{id}.json`、`.build_history`、SHA cache、snapshot、deploy、notify は更新しない。 |
 | local mode | `watch_mode="local"` かつ `tag_filter.enabled=true` は設定不整合として終了コード `2`。 |
 
+**tag filter 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 判定位置 | SHA 差分検出後、build id 採番前、pipeline / hook / builder 起動前に判定する。 |
+| tag API | 対象 commit SHA に到達する tag だけを評価する。branch の最新 tag や repository 全 tag を無条件一致として扱わない。 |
+| patterns 空 | `enabled=true` かつ `patterns=[]` の場合、tag が 1 件以上あれば一致とする。 |
+| matched_tags | build 実行時だけ build log に保存する。skip 時は `.build_status.json.skip_reason="tag_filter_unmatched"` に一致しなかった理由を保存する。 |
+| cache | tag 不一致、tag API failure、pattern 不正、local mode conflict では `.last_sha`、`.sha_cache/*`、`.build_history` を更新しない。 |
+| retry | tags API の `429` / timeout / 5xx は retry 対象、`404` / validation failure は nonretryable とする。 |
+| secret | tag 名は secret として扱わない。ただし API error body、Authorization header、repository token は log に保存しない。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -2558,6 +2648,18 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | 成功 target | 失敗 target があっても成功 target は pending に入れない。 |
 | status | 1 件以上 pending があれば `success_deploy_pending`、全件成功なら `success`。 |
 | 保存順 | `.build_logs/{id}.json.target_results` → `.pending_transfers` → `.build_history` → `.build_status.json`。 |
+
+**parallel deploy 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| worker 入力 | deploy target queue は設定順で作成し、各 target に固定 `target_id` を割り当てる。target id 未定義時は `branch_index-target_index` 形式を使う。 |
+| timeout | target ごとの timeout は既存 deploy timeout を使う。timeout target は `status:"failure"`、`error_code:"deploy_timeout"` とする。 |
+| result 保存 | `started_at` / `finished_at` は target 単位で UTC 秒精度。未開始 target は作らない。 |
+| pending entry | 失敗 target の pending entry には build id、branch、target id、dest path、checksum、attempt=0 を保存する。 |
+| 全失敗 | build 本体が成功している限り、全 deploy target 失敗でも status は `success_deploy_pending` とし、SHA cache は build success 契約に従って更新できる。 |
+| notify | deploy failure 通知は target_results と pending 保存後に送信する。通知失敗は build status を反転しない。 |
+| panic 相当 | worker 内部 error は該当 target failure として扱い、他 worker を cancel しない。 |
 
 **異常系：**
 
@@ -2612,6 +2714,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | hook log | 1 実行 1 JSON object とし、`hook_id`、`build_id`、`phase`、`status`、`started_at`、`finished_at`、`duration_seconds`、`stdout`、`stderr`、`exit_code`、`timed_out`、`truncated` を保存する。 |
 | log 保存失敗 | pre hook の log 保存失敗は build を開始せず failure。post hook の log 保存失敗は build status を維持し runner 終了コードを最低 `1`。 |
 | shell 禁止 | `command_args` を `exec.Command` 相当で実行し、shell 展開、変数展開、glob 展開を行わない。 |
+
+**hook 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| pre 実行位置 | build id 採番、status running 保存後、builder / pipeline / remote build 起動前に実行する。 |
+| post 実行位置 | build / deploy / snapshot / history の最終 status 確定後、notification 送信前に実行する。 |
+| abort | pre hook abort では builder、pipeline、remote build、deploy、snapshot、SHA cache 更新を行わない。history には `hook_error` を追記する。 |
+| post failure | post hook failure は build status を反転しないが、hook log、build log warning、runner 終了コード最低 `1` を固定する。 |
+| output limit | stdout/stderr は各 64 KiB まで保存し、超過時 `truncated=true`。secret mask は切り詰め前に適用する。 |
+| process kill | timeout 時は process group 全体を kill し、kill 失敗は ERROR とする。shell は使わない。 |
+| disabled hook | `enabled=false` の hook は実行せず、hook log も作らない。build log に skipped hook id だけを保存する。 |
 
 **異常系：**
 
@@ -2668,6 +2782,18 @@ owner component は `runner` とする。collaborator component は `api`、`arc
 | 検証順 | tar.gz 展開前 entry 検査 → 一時展開 → manifest parse → file 存在 / size / sha256 検証 → deploy へ渡す。 |
 | secret | remote command stdout/stderr は保存前に mask する。SSH 秘密鍵 path や token 値は log に保存しない。 |
 | cleanup | 成功・失敗に関係なく、検証後に一時展開先の削除を試みる。削除失敗は WARN。 |
+
+**remote build 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| local builder 禁止 | `remote_build.enabled=true` の build では local builder / legacy pipeline build step を実行しない。pre/post hook は通常契約どおり実行する。 |
+| remote command | SSH 先 command は argv 配列として実行し、shell 文字列、glob、環境変数展開を行わない。 |
+| artifact fetch | remote command 成功後だけ artifact を取得する。remote command 失敗時は artifact が存在しても取得しない。 |
+| deploy 境界 | artifact 検証成功後だけ既存 deploy / snapshot / history 処理へ渡す。検証前に公開 output や snapshot を置換しない。 |
+| log | `.build_logs/{id}.json.remote_build` に host、user、work_dir basename、command name、exit_code、duration_seconds、artifact_size、manifest_file_count、status を保存する。credential、secret、SSH key path は保存しない。 |
+| cleanup failure | `.remote_artifacts/{build_id}` 削除失敗は WARN とし、build 成否を反転しない。cleanup 対象 path は state dir 配下だけに限定する。 |
+| retry | SSH 接続、remote timeout、artifact fetch timeout は retry 対象。manifest mismatch、unsafe archive、schema error は nonretryable とする。 |
 
 **異常系：**
 
@@ -2747,6 +2873,18 @@ API endpoint、approve / reject の request / response、sdk / ui 操作境界�
 
 runner は `approval_required=true` の target に対して、approval queue 以外の経路で build を開始してはならない。manual force、webhook、force interval、local watch のいずれであっても、対象 target が approval_required の場合は pending 作成を優先し、承認済み queue entry になるまで pipeline を起動しない。
 
+**approval 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| pending record | `id`、`created_at`、`expires_at`、`branch`、`target`、`sha`、`status:"pending"`、`requested_trigger`、`requested_by`、`reason` を必須 key とする。 |
+| approved queue | approve API が作る queue entry には pending record の branch、target、sha、requested_trigger、approval_id をコピーし、runner は queue entry の値だけを使って build する。 |
+| force build | force build でも `approval_required=true` なら pending 作成だけを行い、SHA reset や pipeline 起動は approval 後まで行わない。 |
+| webhook | webhook 由来でも `approval_required=true` なら webhook queue を直接 build せず、approval pending へ変換する。delivery id は pending payload に残す。 |
+| timeout | timeout 判定は UTC fake clock で行い、`expires_at <= now` を expired とする。expired 後に approve された場合は API 側で `409`。 |
+| audit | pending 作成、approve、reject、expire は audit 対象とする。audit 失敗時の API 挙動は `docs/details/security.md` §27.44 を正とする。 |
+| secret | approval payload、notify payload、history、audit には token、Authorization header、repository secret を保存しない。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -2821,6 +2959,17 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 不正 key | 保存不可、状態差分なし。 |
 | lower secret key | `my_token` も secret 扱い。 |
 | mask failure | build 完了扱いにしない。 |
+
+**branch env 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 設定保存 | `.branch_config.branch_targets[].env` は key 検証、value 検証、ASCII 昇順保存、上限 100 key をすべて満たす。 |
+| 注入範囲 | builder、pipeline step、hook、command notification の process env に同一値を渡し、system env 同名 key より branch env を優先する。 |
+| secret mask | secret key の value は response、stdout、stderr、build log、history、notify log、pending、UI 表示、fixture effects に平文で残さない。 |
+| ログ保存 | `.build_logs/{id}.json.environment.env_keys` には key 名だけを保存し、value、length、hash、部分文字列を保存しない。 |
+| 失敗境界 | key 不正、value 不正、mask failure では build または保存を完了扱いにせず、失敗地点以降の状態更新を行わない。 |
+| 完了条件 | fixture は env 注入、system env 上書き、secret stdout mask、不正 key、lower secret key、mask failure をすべて固定する。 |
 
 ### 27.32 ビルド通知連携
 
@@ -2909,6 +3058,18 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 | pending duplicate | 同一 event/channel/payload の pending は 1 件だけ。 |
 | retry exhausted | dropped log 追記後 pending から削除。 |
 
+**notification 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| channel 選択 | event、enabled、channel `on`、top-level `on`、`"*"` の優先順位が固定契約どおり一致する。 |
+| 送信順 | channel id 昇順で送信し、1 channel 失敗後も後続 channel を継続する。 |
+| retry 境界 | webhook 5xx / timeout だけを pending 化し、4xx、SMTP 未設定、command 非 0、command timeout は pending 化しない。 |
+| secret mask | GET response、backup、notify log、pending、command stdout/stderr、UI 表示に secret 平文を残さない。 |
+| 状態保存順 | `.notify_log` 追記後に `.notify_pending` を保存し、log 失敗時は pending 追加判定を行わない。 |
+| build 独立性 | 通知失敗、pending 保存失敗、retry exhausted は build status を反転しない。 |
+| 完了条件 | fixture は複数 channel 成功、webhook pending、disabled/no target no-op、secret mask、retry exhausted、pending duplicate をすべて固定する。 |
+
 ### 27.33 ビルド時間トレンド記録
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
@@ -2964,6 +3125,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | API n=10 | 最新 10 件を返す。 |
 | 同一 build id 再記録 | sample は 1 件のまま値が置換される。 |
 | p95 算出 | `ceil(count * 0.95) - 1` の値と一致する。 |
+
+**trend 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| sample 追加 | build 完了時に duration が有効な場合だけ sample を追加し、`finished_at` 昇順で保存する。 |
+| summary 再計算 | sample 追加、置換、prune、復旧後は summary を部分更新せず全再計算する。 |
+| 数値丸め | avg、median は小数第 3 位を四捨五入して小数第 2 位、p95 は `ceil(count * 0.95) - 1` を使う。 |
+| 同一 build id | 同じ `build_id` は append せず置換し、重複 sample を残さない。 |
+| 破損復旧 | `.build_trends.json` 破損時は backup 作成後、`.build_history` 有効行だけから再集計し、skip warning を固定する。 |
+| API 境界 | `n` は 1〜1000 だけ許可し、不正値では状態を変更しない。 |
+| 完了条件 | fixture は summary 更新、同一 build id 置換、保持件数 prune、破損復旧、API `n` 不正をすべて固定する。 |
 
 ### 27.34 ビルド依存チェーン
 
@@ -3022,6 +3195,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 同順位 job | config 出現順で実行される。 |
 | disabled 依存 | 保存時 `422`、状態差分なし。 |
 
+**chain 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 保存時検証 | job id、参照整合、disabled 依存、循環、件数上限を保存前に検証し、不合格時は状態差分を残さない。 |
+| 実行順 | topological order と同順位の config 出現順が一致し、全 job log / history に同一 `chain_run_id` を保存する。 |
+| skip 境界 | required dependency failure は後続 job を `skipped_dependency_failed` として history へ記録し、build log は作成しない。 |
+| optional 境界 | `required=false` の依存失敗は WARN とし、後続 job の実行可否を固定契約どおり判定する。 |
+| summary 保存 | 最終 job 後に `chain_summary` を保存し、保存失敗時は job 結果を維持したまま runner 終了コードを最低 `1` にする。 |
+| 再開境界 | runner 停止後は完了済み job だけを既存履歴として扱い、未実行 job は次回再判定する。 |
+| 完了条件 | fixture は DAG 実行、required skip、optional 継続、cycle 失敗、disabled 依存、summary 保存失敗をすべて固定する。 |
+
 ### 27.35 ビルド優先度キュー
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
@@ -3076,6 +3261,18 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 | 不正 priority | 状態差分なしで `422`。 |
 | created_seq 欠落 | 正規化保存後に順序判定し、正規化保存失敗なら build なし。 |
 | urgent queue full | `429`、既存 low entry も削除しない。 |
+
+**priority queue 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 採番 | queue 追加時に `.build_state.queued[].created_seq` 最大値 + 1 を保存し、priority 省略時は `"normal"` を保存する。 |
+| 表示順 | `GET /api/queue` は priority 数値昇順、created_seq 昇順、id 昇順で返す。 |
+| 取り出し順 | runner は表示順と同じ順序で 1 件だけ取り出す。 |
+| 旧 entry | `created_seq` 欠落 entry は runner 取り出し前に lock 内で正規化保存し、保存失敗時は build を開始しない。 |
+| clear | `DELETE /api/queue` は waiting entry 全件だけを削除し、実行中 build を停止しない。 |
+| queue full | priority が高くても既存 entry を削除せず `429` とする。 |
+| 完了条件 | fixture は urgent 優先、同一 priority FIFO、created_seq 正規化、不正 priority、queue full、clear をすべて固定する。 |
 
 ### 27.36 失敗原因の自動分類
 
@@ -3142,6 +3339,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | evidence 上限超過 | 最大 10 件で保存され、secret 平文を含まない。 |
 | 成功履歴 | `failure_category:null`。 |
 
+**failure classification 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 分類優先順位 | 複数カテゴリに該当する場合、分類値表の上から最初に該当した category を保存する。 |
+| 保存先一致 | `.build_logs/{id}.json.failure_category`、`failure_evidence[]`、`.build_history.failure_category` が同じ分類結果を参照する。 |
+| evidence 安全性 | `failure_evidence[].message` は最大 300 文字で、secret、token、path 全体、入力値連結を含めない。 |
+| 上限 | evidence は最大 10 件とし、分類に使った evidence を先頭に残す。 |
+| API filter | 未知 query は `422`、既存未知値は返却しつつ warnings を 1 回だけ返す。 |
+| 成功履歴 | success 系 history は `failure_category:null` とし、filter 時に failure と混在させない。 |
+| 完了条件 | fixture は timeout、deploy failure、config error、filter、unknown warning、evidence mask、上限超過をすべて固定する。 |
+
 ### 27.37 ビルド実行環境の記録
 
 owner component は `runner` とする。collaborator component は `statefile` とする。
@@ -3200,6 +3409,18 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | home 配下 state dir | basename だけ保存される。 |
 | environment write failure | pipeline を起動しない。 |
 
+**environment record 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 取得時点 | build id 採番直後、builder 起動前に environment snapshot を取得して保存する。 |
+| secret 非保存 | 環境変数 value、token、secret、PATH 全体、VCS revision を保存しない。 |
+| version 取得 | builder version は 2 秒 timeout、stdout 先頭行の最初の token だけを保存し、失敗時は `"unknown"`。 |
+| path 境界 | home 配下 state dir は basename だけ、それ以外は絶対 path を保存する。 |
+| 保存失敗 | environment 保存失敗時は build 本体を起動せず、`.build_status.json` に `failure_state_write` を保存する。 |
+| 継続可能失敗 | hostname、disk stat、builder version 取得不能は WARN または unknown/null とし、build を継続する。 |
+| 完了条件 | fixture は通常保存、builder version timeout、home path 短縮、secret 非保存、environment write failure をすべて固定する。 |
+
 ### 27.38 ビルド所要時間の異常検知
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
@@ -3255,3 +3476,30 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 通知失敗 | build success 維持、pending 追加。 |
 | failure build | trend sample 追加、anomaly 判定なし。 |
 | tag 重複 | `duration_anomaly` が 1 件だけ。 |
+
+**duration anomaly 実装完了固定契約：**
+
+| 項目 | 合格条件 |
+|------|----------|
+| 判定順 | 今回 sample を `.build_trends.json` に追加する前の summary で判定し、判定後に trend を更新する。 |
+| 対象 status | `"success"` と `"success_deploy_pending"` だけを anomaly 判定対象とし、failure は trend sample 追加だけを行う。 |
+| 閾値 | avg 超過、p95 超過、両方超過を区別し、`threshold_source` を固定値で保存・通知する。 |
+| history 更新 | anomaly 時は WARN、`flagged=true`、`tags += ["duration_anomaly"]` を保存し、重複 tag を作らない。 |
+| 通知独立性 | duration_anomaly 通知失敗は build status を変更せず、notify retry 契約に従う。 |
+| 設定不正 | API は `422`、runner は既定値へ補正せず機能無効として扱う。 |
+| 完了条件 | fixture は sample 不足 no-op、avg 超過、p95 境界、通知失敗、failure build、tag 重複、設定不正をすべて固定する。 |
+
+**§27.21〜§27.38 runner / statefile 連動実装完了ゲート：**
+
+§27.21〜§27.38 の runner owner 機能は、個別節の完了条件に加えて下表を満たした場合だけ実装完了とする。本ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は `docs/details/statefile.md` §22.0c、fixture 本文は `docs/details/fixture.md` §27-F を正とする。
+
+| ゲート | 合格条件 | 禁止事項 |
+|--------|----------|----------|
+| state target | 個別 §27 節に列挙された状態ファイル、`docs/details/statefile.md` §22.0a / §22.0c の schema、`docs/ROADMAP.md` §6 の collaborator だけを使用する。 | 未定義状態ファイル、未知 key、空 placeholder file、component 固有でない汎用 state file を追加する。 |
+| write order | build lifecycle は lock → build_state running → build log → history → build_status → queue / pending / notify / trend 等の個別副作用の順を fixture で固定する。個別節が別順を明記する場合はその順を優先する。 | 並列処理の完了順をそのまま永続保存順にする、fixture に `write_order` を持たない複数書込を完了扱いにする。 |
+| partial failure | 失敗地点より後の write / external call / notification は実行しない。失敗地点より前に成功済みの状態は個別節が rollback を明記しない限り戻さない。 | 保存済み build log / history / status を実装者判断で削除、巻き戻し、再分類する。 |
+| no-op / skip | 変更なし、cooldown、tag 不一致、disabled、sample 不足、queue duplicate 等は個別節の no-op / skip response と副作用ゼロまたは指定最小副作用で固定する。 | no-op で config log、audit、notify、build log、history、SHA cache を暗黙更新する。 |
+| dry-run | dry-run は設定検証、対象判定、差分判定、実行可否の出力だけを行い、状態ファイル、lock、log、history、cache、notification、external write を作成・更新しない。 | dry-run 結果を後続実行用 cache として保存する。 |
+| secret mask | PAT、Webhook secret、SMTP password、branch env secret、hook output secret、remote credential は読込直後に mask 登録し、stdout / stderr / build log / history / status / pending / fixture expected に平文を残さない。 | mask 登録前にログ保存する、secret 長・hash・prefix・suffix を保存する。 |
+| schema strictness | runner が保存する object は `docs/details/statefile.md` §22.0c の key だけを持ち、nullable、UTC 時刻、列挙値、配列順を満たす。 | SDK / UI 用の表示名、計算済み label、未定義 fallback key を state に保存する。 |
+| fixture evidence | 対象 §27 機能の fixture は success、failure、partial、no-op、idempotency、secret mask、corrupt state のうち該当するケースを持つ。 | 正常系だけの fixture で runner / statefile 連動を完了扱いにする。 |

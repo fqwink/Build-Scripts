@@ -234,15 +234,15 @@
 | `docs/details/builder.md` | 分割済み | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
 | `docs/details/runner.md` | 分割済み | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
 | `docs/details/api.md` | 分割済み | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。API fixture は `docs/details/fixture.md` §22-F。 |
-| `docs/details/admin.md` | 分割済み | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 |
+| `docs/details/admin.md` | 分割済み | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界、A6 fixture 固定契約、setup/admin/release 連動 fixture 参照。 |
 | `docs/details/sdk.md` | 分割済み | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
 | `docs/details/ui.md` | 分割済み | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
-| `docs/details/setup.md` | 分割済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
+| `docs/details/setup.md` | 分割済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、admin 配布・rollback・secret 保持の連動 fixture。 |
 | `docs/details/statefile.md` | 分割済み | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
 | `docs/details/archive.md` | 分割済み | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 |
 | `docs/details/commitstatus.md` | 分割済み | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
 | `docs/details/security.md` | 分割済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| `docs/details/fixture.md` | 分割済み | fixture manifest、assertion、fake、testdata、expected / effects、Phase 3 / Phase 4 API fixture、api / sdk / ui / statefile cross fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 |
+| `docs/details/fixture.md` | 分割済み | fixture manifest、assertion、fake、testdata、expected / effects、Phase 3 / Phase 4 API fixture、api / sdk / ui / statefile cross fixture、setup/admin/release 連動 fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 |
 
 詳細仕様を改訂する場合は、`docs/ROADMAP.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` の対応表から owner component を特定し、該当する `docs/details/*.md` を本文として更新する。`docs/DOCUMENT_INDEX.md` は配置と役割の索引に限定し、仕様本文、詳細仕様本文、実装状態の最終判断を定義しない。
 
