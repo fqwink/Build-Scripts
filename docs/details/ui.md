@@ -505,6 +505,19 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 | one-time display | 発行 token、TOTP secret、otpauth URI は専用領域に 1 回だけ表示し、次 user action、copy、panel 遷移、logout、`401` で消去する。 |
 | fixture evidence | `docs/details/fixture.md` §27-F の UI 関連 fixture で、SDK only、refresh order、disabled priority、secret clearing、one-time display、no speculative state が確認される。 |
 
+**§27.21〜§27.47 UI 連動 fixture 必須証跡：**
+
+UI 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固定する。UI は API / SDK の正本値を表示する補助層であり、状態確定、補完、保存、再試行を独自判断で行わない。
+
+| 証跡 | 固定する内容 | 合格条件 | 禁止事項 |
+|------|--------------|----------|----------|
+| SDK only call trace | user action ごとの SDK method 名、引数、呼び出し順。 | 上表の使用 SDK method だけを呼ぶ。直接 `fetch()`、`XMLHttpRequest`、`EventSource`、状態ファイル操作が 0 件。 | API endpoint を UI から直接呼ぶ、SDK にない method を仮実装する。 |
+| refresh order | 成功後再取得、`409` / `429` / `500` 後の再取得、再取得失敗時表示。 | 表の左から順に await し、途中失敗時は変更成功を維持して panel error に固定文言を表示する。 | 再取得失敗を理由に同じ変更 API を再送する。 |
+| disabled priority | maintenance、SSE 接続中、送信中、`429`、validation error の優先順位。 | §24 の UI error / disabled 優先順位固定に従い、上位条件が残る限り下位解除で有効化しない。 | `429` timer 終了で maintenance disabled を無視して button を有効化する。 |
+| one-time / secret clearing | password、PAT、Webhook secret、SMTP password、発行 token、TOTP secret、otpauth URI、ticket、TOTP code。 | 成功、失敗、panel 遷移、logout、`401`、revoke all、次 user action で対象値が DOM から消える。 | token / secret を一覧、hidden field、data attribute、error message、clipboard 履歴表示へ残す。 |
+| no speculative display | status、queue、approval、token、rate limit、trend、failure category、environment、TOTP 状態。 | API / SDK response に存在する値だけを表示し、未知値は panel error または空状態で表現する。 | UI 時刻だけで expired を確定、avg / p95 / anomaly / rate limit count を再計算する。 |
+| field error mapping | `422 details` の `field` と panel error summary。 | 該当 field が存在する場合は field error と panel summary、存在しない場合は panel error へ表示する。入力値は保持し secret だけ消去する。 | `422` 後に対象 GET を呼んで入力値を上書きする。 |
+
 **UI 設定値契約：**
 
 | 設定値 | 取得元 | 既定値 | 仕様 |

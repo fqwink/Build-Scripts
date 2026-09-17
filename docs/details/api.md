@@ -2704,6 +2704,20 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 api / sdk / ui のいずれも、上表に存在しない endpoint、method、UI 操作を追加してはならない。追加が必要な場合は、本表、該当 endpoint 個別節、SDK method 表、UI 操作契約、fixture catalog を先に更新する。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
 
+**§27 api / sdk / ui 連動実装完了ゲート：**
+
+§27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する機能は、下表の全条件を満たした場合だけ実装完了とする。owner component が `api` ではない機能でも、API response を SDK / UI が利用する場合は本ゲートを満たす。
+
+| ゲート | API 側の合格条件 | SDK / UI への固定契約 | 禁止事項 |
+|--------|------------------|------------------------|----------|
+| endpoint 対応 | §22.0e、個別 §27 節、本表の API 列が同じ method / path / query / body / response を示す。 | SDK method と UI 操作は本表の SDK / UI 列だけを使用する。 | 表にない endpoint、method、UI 操作を実装都合で追加すること。 |
+| request 正規化 | path parameter、query、body key、nullable、既定値を API 側で検証し、不正値は `422` とする。 | SDK は指定値を表どおり送信し、UI は入力正規化だけを行う。 | SDK が未知 key を削除する、UI が API 既定値を保存前に補完すること。 |
+| response 透過 | 成功 response は個別節の key だけを返し、array 順、nullable、mask 値を固定する。 | SDK は response を補完・再計算せず返し、UI は API 順序で表示する。 | SDK / UI が存在しない key、集計値、状態名、token list を合成すること。 |
+| error 伝播 | `401` / `403` / `409` / `422` / `429` / `500` の status と error body を固定する。 | SDK は `AdlaireCIError` として保持し、UI は status 別表示と仕様上の再取得だけを行う。 | 自動 retry、自動 refresh、自動 logout、同一変更 API の再送を仕様外で行うこと。 |
+| side effect | validation 失敗、認可失敗、rate limit、no-op、partial failure の write / call / log 差分を個別節または fixture で固定する。 | SDK / UI は副作用完了を推測せず、成功後再取得で確認する。 | read-only、dry-run、validation failure、`403`、`429` で状態を書き換えること。 |
+| secret / one-time | token、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header は response・log・state の許可箇所以外へ出さない。 | SDK は内部保存せず、UI は専用一回表示領域だけに出し、次 user action / panel 遷移 / logout / `401` で消去する。 | token 本体の再表示、token list への合成、secret の error message / DOM / expected への残存。 |
+| fixture 証跡 | `docs/details/fixture.md` §27-F の API / SDK / UI 連動 fixture で request、response、error、side effect、secret、refresh order を確認する。 | PR 本文に対象 fixture、未実装対象、未定義 endpoint / UI / 状態ファイル不追加を記録する。 | fixture なし、または実装挙動に合わせて期待値を弱めること。 |
+
 ### 27.30 ビルド承認フロー
 owner component は `api` とする。collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。
 

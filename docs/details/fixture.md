@@ -741,6 +741,25 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 
 component 責務を別 PR へ分割する場合でも、分割先 PR が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を PR 本文に明記する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
 
+**§27 API / SDK / UI 連動 fixture 固定契約：**
+
+§27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する実装 PR は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は owner component の主本文を置き換えず、API response、SDK method、UI 表示の接続点を固定する。
+
+| fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
+|------------|----------------|------------|---------------|----------|
+| `api-sdk-ui-request-trace` | `api`、`sdk`、`ui` | UI user action、SDK fake fetch trace、API request fixture。 | `expected/effects.json.external_calls`、`expected/sdk_trace.json`、`expected/ui_trace.json`。 | UI → SDK → API の method / path / query / body が §22.0e、§23、§24 と一致する。 |
+| `api-sdk-ui-error-propagation` | `api`、`sdk`、`ui` | `401`、`403`、`409`、`422 details`、`429`、`500` の fake response。 | `expected/response.json`、`expected/sdk_error.json`、`expected/ui_dom.json`。 | status、message、details、token 破棄条件、panel error、field error、disabled が固定どおり。 |
+| `api-sdk-ui-refresh-order` | `api`、`sdk`、`ui` | 変更 API 成功、成功後再取得 1 件目成功、2 件目失敗。 | `expected/ui_trace.json`、`expected/effects.json.status_api_calls`。 | 再取得順を守り、変更成功は維持し、再取得失敗だけ panel error に表示する。変更 API を再送しない。 |
+| `api-sdk-ui-secret-one-time` | `security`、`sdk`、`ui` | token 発行、TOTP setup、secret 保存失敗、panel 遷移、logout、`401`。 | `expected/security.json`、`expected/ui_dom.json`、`expected/sdk_trace.json`。 | token / TOTP secret / otpauth URI は専用領域に 1 回だけ表示し、消去条件後に DOM / SDK property / log へ残らない。 |
+| `api-sdk-ui-no-speculation` | `api`、`sdk`、`ui` | 不足 key、未知 widget、unknown category、破損行除外済み response。 | `expected/ui_dom.json`、`expected/sdk_return.json`。 | SDK は key を補完せず、UI は API 値だけ表示し、未知値は固定 error / warning / 空状態で扱う。 |
+| `api-sdk-ui-side-effect-boundary` | `api`、`sdk`、`ui`、`statefile` | validation failure、認可失敗、rate limit、no-op、partial failure。 | `expected/effects.json`、`expected/state/`、`expected/logs/`。 | 禁止 write / call が 0 件で、保存済み主状態、config log、audit、notify、UI 表示が個別節の部分失敗契約と一致する。 |
+
+`expected/sdk_trace.json` は、少なくとも `calls` array を持つ。各要素は `method`、`args`、`request_method`、`path`、`query`、`body_present`、`body`、`authorization_present`、`result` を持つ。`authorization_present=true` の場合でも token 値は保存せず、`authorization_value` key を作成してはならない。
+
+`expected/ui_trace.json` は、少なくとも `actions`、`sdk_calls`、`refresh_order`、`disabled_transitions`、`cleared_fields` を持つ。`sdk_calls` は SDK method 名と引数だけを記録し、API endpoint URL、Authorization header、secret 平文を保存してはならない。
+
+`expected/ui_dom.json` は、panel id、error / success text、field error、hidden state、disabled state、one-time 表示領域の有無を構造化して固定する。DOM snapshot 文字列だけで合否判定してはならない。
+
 **§27 PR 別必須記録固定契約：**
 
 各 §27 実装 PR は、本文に下表を記録する。記録がない PR は、コードと fixture が存在しても未完了とする。

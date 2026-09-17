@@ -402,6 +402,19 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | binary / stream | snapshot download は `Blob`、SSE は `StreamHandle` とし、JSON response と混同しない。 |
 | fixture evidence | `docs/details/fixture.md` §27-F の SDK / UI 関連 fixture で、request shape、error shape、secret leak、token mutation、no retry、no response補完が確認される。 |
 
+**§27.21〜§27.47 SDK 連動 fixture 必須証跡：**
+
+SDK 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固定する。下表の証跡がない場合、SDK method が存在していても実装完了としない。
+
+| 証跡 | 固定する内容 | 合格条件 | 禁止事項 |
+|------|--------------|----------|----------|
+| request trace | `method`、`path`、query key 順、body key、body なし endpoint。 | §22.0e と §23 SDK 引数変換契約に完全一致する。 | body なし endpoint へ `{}` を送る、query 未指定時に `?` を付ける。 |
+| response passthrough | API success body、binary body、SSE frame。 | SDK は存在 key を削除せず、存在しない key を追加しない。binary は `Blob`、SSE は `StreamHandle`。 | UI 用 label、集計値、既定値、token list、rate limit reset を SDK が合成する。 |
+| error object | `401`、`403`、`409`、`422 details`、`429`、`500`、network、timeout、protocol error。 | すべて `AdlaireCIError` になり、`status`、`message`、`details`、`responseBody` が固定される。 | `403` で token を破棄する、`409` / `429` を自動 retry する。 |
+| token mutation | login / logout / `401` / `403` / token create。 | login 成功だけ `_token` を設定し、logout と `401` だけ破棄する。createToken の token 本体は保存しない。 | `localStorage`、`sessionStorage`、Cookie、console、token list への保存。 |
+| secret leak | PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header。 | SDK property、throw message、console、加工済み response に平文が残らない。 | `responseBody` を UI 用に文字列加工して secret を露出する。 |
+| no side-effect helper | 自動 refresh、自動 retry、自動 logout、自動 queue fetch。 | 仕様で明記された `logout()` finally と `401` token 破棄以外の副作用を行わない。 | approve 後に `getQueue()` を SDK が自動実行するなど UI 責務を代行する。 |
+
 **SDK 型定義表：**
 
 本表は SDK が返す object 型の正本である。`nullable` は `null` を許可することを示す。配列は API response に `[]` として存在する場合だけ `[]` を返し、SDK が未取得配列を生成してはならない。API response に存在しないキーを SDK が補完してはならない。ただし `GET /api/config`、`GET /api/notify-config`、`GET /api/dashboard-layout` の既定値 merge は API 側の責務とする。
