@@ -65,7 +65,7 @@
 | 方針、ポリシー、禁止事項を判断したい | `docs/SPEC.md` | `docs/ROADMAP.md` | 対象領域に適用する原則と制約を判断する。 |
 | 実装状態、実装可否、Phase、将来計画を判断したい | `docs/ROADMAP.md` | `docs/DETAIL_INDEX.md` | 対象が未仕様化、将来計画、改訂予定、仕様化済み・未実装、実装中・検証未完了、実装済みのどれかを判断する。 |
 | 詳細仕様本文を探したい | `docs/DETAIL_INDEX.md` | 対象 owner component の `docs/details/*.md` | 対象機能の owner component、参照節、受け入れ条件を判断する。 |
-| 実装ファイル、テスト、fixture の所在を確認したい | `docs/DOCUMENT_INDEX.md` | `docs/DETAIL_INDEX.md` §0j | 現行実装ファイル、未実装 path、標準配置の扱いを判断する。 |
+| 実装ファイル、テスト、fixture の所在を確認したい | `docs/DOCUMENT_INDEX.md` | `docs/DETAIL_INDEX.md` §0j | 現行実装ファイル、将来追加予定 path、標準配置の扱いを判断する。 |
 | component の入出力、状態、処理順序、異常系、検証条件を確認したい | 対象 owner component の `docs/details/*.md` | collaborator component の `docs/details/*.md` | 実装時に従う具体仕様と collaborator 境界を判断する。 |
 | 生成静的 Web サイトの見た目を確認したい | `docs/DESIGN.md` | `docs/details/builder.md` | レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を判断する。 |
 
@@ -254,7 +254,7 @@
 
 下表は、現行リポジトリに存在する実装ファイルと、将来追加予定 path を区別して示す。標準ソース配置への移行は完了済みであり、`main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` を現行配置として扱う。
 
-標準配置図に含まれる未実装 path は、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来計画ファイル、空ディレクトリ、placeholder を作成しない。
+標準配置図に含まれる未作成 path は、将来追加予定 path として扱い、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成しない。
 
 | パス | component | 状態 | 役割 |
 |------|-----------|------|------|
