@@ -380,6 +380,55 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 §27.12〜§27.20 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。read-only、noop、invalid query、invalid signature、running conflict fixture では、対象状態ファイル、queue、history、build log、snapshot、notification、config log の forbidden side effect を必ず列挙する。
 
+**§27.21〜§27.30 feature fixture 固定契約：**
+
+§27.21〜§27.30 の fixture は、runner 拡張、builder cache / dependency、remote artifact、approval API の実装完了を固定する。各 fixture は、実行順、保存順、成功時だけ更新する状態、失敗時に絶対変更してはならない状態、外部 API / command / SSH / notification の呼び出し、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+
+| 節 | fixture | 固定する内容 |
+|----|---------|--------------|
+| §27.21 | `success-multi-file-one-change` | target_files 正規化、1 target changed、build id 1 件、`ADLAIRE_CHANGED_TARGETS`、changed target だけの SHA cache 更新、build log `changed_targets[]` を固定する。 |
+| §27.21 | `success-multi-file-many-change` | 複数 target の辞書順、build 1 回、全 changed target の before / after SHA、force build 時の全 target SHA 更新を固定する。 |
+| §27.21 | `noop-multi-file-all-skip` | 全 target unchanged で build / deploy / snapshot / history / notify なし、`.build_status.json` skip、SHA cache 差分なし、idempotency を固定する。 |
+| §27.21 | `failure-multi-file-path-traversal` | target path の絶対 path、`..`、NUL、改行で validation failure、build なし、SHA cache / history / log 差分なしを固定する。 |
+| §27.22 | `success-yaml-pipeline-file-priority` | `.pipeline.yml` 優先、inline YAML 未読、step 定義順実行、step log 定義順保存、legacy builder 追加引数非適用を固定する。 |
+| §27.22 | `success-yaml-pipeline-inline` | file 不在時の inline YAML 採用、env merge、optional failure 継続、REPORT / build log / status success を固定する。 |
+| §27.22 | `failure-yaml-pipeline-parse` | 禁止 YAML 構文で build 本体、deploy、snapshot、SHA cache 更新を開始せず、`failure_pipeline_config`、未実行 step `not_run` を固定する。 |
+| §27.22 | `security-yaml-pipeline-secret-mask` | step env / branch env / stdout / stderr / command args の secret 風値が log、notify、effects、response に平文で残らないことを固定する。 |
+| §27.23 | `success-local-watch-change` | GitHub API 0 件、local scan 辞書順、changed file 差分、trigger `local_watch`、build success 後の `.local_watch_state.json` 置換を固定する。 |
+| §27.23 | `noop-local-watch-no-change` | GitHub API / PAT verify 0 件、build なし、state 差分なし、status `skipped_no_change`、idempotency を固定する。 |
+| §27.23 | `failure-local-watch-state-corrupt` | state 破損で full build 扱い、build 成功時だけ state 再作成、build failure 時は破損 state 維持を固定する。 |
+| §27.23 | `failure-local-watch-tag-filter-conflict` | `watch_mode="local"` と tag filter enabled の併用で終了コード `2`、GitHub API 0 件、build / state 更新なしを固定する。 |
+| §27.24 | `success-tag-filter-match` | tag refs API、pattern match、matched_tags 最大 100 件、build 実行、build log 保存、SHA cache 更新条件を固定する。 |
+| §27.24 | `noop-tag-filter-unmatched` | tag 不一致で build id / build log / history / deploy / snapshot / notify なし、`.build_status.json.skip_reason` と SHA cache 未更新を固定する。 |
+| §27.24 | `failure-tag-filter-api` | tags API retry と最終失敗、build なし、終了コード `3`、SHA cache / history / snapshot 差分なしを固定する。 |
+| §27.24 | `failure-tag-filter-pattern` | 不正 pattern で API `422` または runner 終了コード `2`、tag API / build / SHA cache 更新なしを固定する。 |
+| §27.25 | `success-build-cache-hit` | cache key 一致、dependency SHA 一致、通常変換 byte 等価、cache_hits REPORT、公開出力 staging → rename を固定する。 |
+| §27.25 | `success-build-cache-miss` | miss 時の通常変換、cache entry tmp write → rename、cache_misses REPORT、secret / absolute path 非保存を固定する。 |
+| §27.25 | `partial-build-cache-byte-mismatch` | cache entry byte mismatch を hit 破棄 / miss にし、WARN、build success、破損 cache 削除試行、公開出力保護を固定する。 |
+| §27.25 | `failure-build-cache-save` | cache write failure でも build success、REPORT `cache_write_failures`、公開出力 success、既存 cache index / page 維持を固定する。 |
+| §27.26 | `success-parallel-targets-all` | worker 上限、target ごとの started / finished、target_results 設定順、pending なし、status success を固定する。 |
+| §27.26 | `partial-parallel-targets-some-fail` | 一部 target failure、成功 target pending なし、失敗 target だけ pending、status `success_deploy_pending`、notify 順を固定する。 |
+| §27.26 | `failure-parallel-targets-all-fail` | 全 target failure でも build 本体 success の場合 `success_deploy_pending`、pending 全件、SHA cache 更新可否を仕様どおり固定する。 |
+| §27.26 | `success-parallel-targets-order-stable` | 完了順が入れ替わる fake result でも target_results / pending / history が設定順で保存されることを固定する。 |
+| §27.27 | `success-hook-pre-post` | pre → build → post の順、hook log、build log warning なし、通知前実行、secret mask を固定する。 |
+| §27.27 | `failure-hook-pre-abort` | pre abort で builder / pipeline / remote / deploy / snapshot / SHA cache 更新なし、history `hook_error`、hook log 保存を固定する。 |
+| §27.27 | `partial-hook-post-fail` | build status 維持、post hook failure log、runner 終了コード最低 `1`、notification 順序、secret mask を固定する。 |
+| §27.27 | `security-hook-shell-denied` | shell metachar が展開されず argv として渡ること、glob / env 展開 0 件、stdout/stderr secret mask を固定する。 |
+| §27.28 | `success-dependency-manifest` | link / image / HTML img / include 抽出、dep path 正規化、manifest tmp → rename、REPORT counts、runner 逆引きを固定する。 |
+| §27.28 | `success-dependency-missing` | missing dependency の WARN、non-strict 継続、strict 終了コード `2`、broken_dependencies、manifest 保存条件を固定する。 |
+| §27.28 | `failure-dependency-build-keeps-old` | build failure / strict failure で既存 `.dependency_manifest.json` 維持、tmp 非公開、公開出力保護を固定する。 |
+| §27.28 | `security-dependency-path-normalize` | base 外、credential URL、query token、absolute path を manifest に保存せず、WARN / broken reason / secret mask を固定する。 |
+| §27.29 | `success-remote-build-artifact` | local builder 0 件、remote command、artifact fetch、unsafe entry 検査、manifest 検証、deploy 連携、cleanup を固定する。 |
+| §27.29 | `failure-remote-build-auth` | SSH auth failure の retry、最終 `failure_remote_build`、artifact fetch / deploy / snapshot / SHA cache 更新なし、secret 非保存を固定する。 |
+| §27.29 | `failure-remote-build-checksum` | manifest checksum mismatch で deploy なし、公開 output / snapshot 保護、remote log mask、cleanup を固定する。 |
+| §27.29 | `security-remote-build-unsafe-archive` | tar.gz の `..`、absolute path、symlink、device を拒否し、一時展開外書き込み 0 件、deploy なしを固定する。 |
+| §27.30 | `success-approval-approve` | pending list、approve body 禁止、queue id 採番、`trigger="approval"` queue 追加、approved record、再取得 response を固定する。 |
+| §27.30 | `noop-approval-reject` | reject で queue 追加なし、rejected record、history `approval_rejected`、runner build なし、UI / SDK 再取得を固定する。 |
+| §27.30 | `noop-approval-expire` | fake clock timeout、expired record、history `approval_expired`、queue 追加なし、期限後 approve `409` を固定する。 |
+| §27.30 | `failure-approval-double-approve` | approved / rejected / expired への二重 approve で `409`、queue / approval / history 差分なし、audit / secret mask を固定する。 |
+
+§27.21〜§27.30 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。failure、noop、partial、security fixture では、SHA cache、build log、history、status、snapshot、dependency manifest、build cache、local watch state、approval queue、pending transfer、remote artifact tmp、public output の forbidden side effect を必ず列挙する。
+
 **§27 fixture ファイルセット固定契約：**
 
 各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。実装者は fixture ごとに必要ファイルを推測してはならない。

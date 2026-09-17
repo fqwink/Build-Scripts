@@ -2343,6 +2343,19 @@ owner component は `runner` とする。collaborator component は `builder`、
 | 部分失敗 | 1 target でも SHA 取得に最終失敗した場合、build は開始せず、成功取得済み target の SHA cache も更新しない。 |
 | 環境変数 | `ADLAIRE_CHANGED_TARGETS` は JSON array string。要素順は正規化済み target path の辞書順。secret は含めない。 |
 
+**multi-file 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 差分検出単位 | target path ごとに before SHA、after SHA、source `github` / `local`、result `changed` / `unchanged` / `missing` / `error` を memory 上で確定してから build 可否を決める。 |
+| build id | 1 runner 起動で複数 target が変更されても build id は 1 件だけ採番する。target ごとに build id を分けない。 |
+| builder 入力 | builder へ渡す `--src` は branch target の `src` 1 件だけとし、target_files を複数 `--src` に展開しない。変更 target list は `ADLAIRE_CHANGED_TARGETS` だけで渡す。 |
+| SHA 更新順 | build success finalizer 後に、changed target と force build 対象 target の SHA cache を target path 辞書順で更新する。 |
+| 部分更新禁止 | build failure、deploy failure before success、pipeline failure、hook pre abort、SHA 部分取得失敗では target SHA cache を 1 件も更新しない。 |
+| log | `.build_logs/{id}.json.changed_targets[]` は target path 辞書順で保存し、`before_sha` が不明な場合は `null`、`after_sha` が missing の場合は `null` とする。 |
+| status | target が missing の場合は build を開始せず `failure_target_missing` とし、missing target を build log に保存する。 |
+| dry-run | `--dry-run` では SHA cache、build log、history、status、snapshot、deploy、notification を変更せず、stdout JSON に target 判定だけを出す。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -2435,6 +2448,19 @@ runner は build 開始後、builder command または pipeline step command を
 | block scalar `|` / `>` | parse error。 |
 | inline comment | quoted string 外の `#` は、行頭 comment 以外 parse error。 |
 
+**pipeline 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| source 優先順位 | `.pipeline.yml` が存在する場合は常に file を優先し、`.pipeline_config.inline_yaml` は読まない。file 不在時だけ inline YAML を読む。 |
+| no pipeline | file と inline YAML がない場合は legacy builder command を使う。legacy path でも `.pipeline_config.extra_args` と `.pipeline_config.env` は適用する。 |
+| pre-build failure | YAML parse、schema validation、禁止引数、command 解決失敗は build 本体、deploy、snapshot、SHA cache 更新を開始せず、build log に `failure_pipeline_config` を残す。 |
+| step log | `pipeline_steps[]` は定義順で保存し、未実行 step は `status:"not_run"`、`exit_code:null`、`stdout:""`、`stderr:""` として保存する。 |
+| stdout/stderr | 各 step の stdout/stderr は最大 64 KiB まで保存し、超過時は末尾を切り詰めて `truncated=true` を保存する。 |
+| required failure | required step が failure / timeout の場合、以降の step は実行しない。ただし未実行 step は `not_run` として保存する。 |
+| optional failure | optional failure は build status を反転しないが、`warnings[]` と `[WARN]` に固定 code を残す。 |
+| secret | env 値、command args 内 secret 風値、stdout/stderr 内 secret 値は保存前に mask する。mask 不能なら build を失敗させ、平文を保存しない。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -2492,6 +2518,18 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | state 更新 | build 成功時に今回 scan 結果へ置換する。skip、failure、dry-run では更新しない。 |
 | dry-run | `.local_watch_state.json` を作成・更新せず、差分結果だけ stdout JSON に含める。 |
 
+**local watch 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| GitHub 呼び出し禁止 | `watch_mode="local"` では GitHub Trees / Blobs / Commits / Tags / Rate Limit API、Commit Status API、PAT verify を 1 件も呼ばない。 |
+| scan 順 | directory walk 結果は保存前に相対 path 辞書順へ sort する。filesystem の列挙順に依存しない。 |
+| symlink | symlink file / directory は走査対象外とし、WARN `LOCAL_WATCH_SYMLINK_SKIPPED` を出す。 |
+| state 破損 | `.local_watch_state.json` 破損は full build 扱いにするが、build 成功まで既存破損 file を上書きしない。 |
+| out 除外 | `out` が `src` 配下の場合も、`out` 配下は必ず除外する。`out` が `src` 外の場合は除外 path として追加しない。 |
+| 削除検知 | 削除だけの差分でも build を実行し、成功時に削除済み path を state から取り除く。 |
+| trigger | local 差分 build の build log / history / status の `trigger` は必ず `local_watch` とする。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -2546,6 +2584,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | skip 副作用 | tag 不一致 skip では `.build_status.json` だけ更新し、`.build_logs/{id}.json`、`.build_history`、SHA cache、snapshot、deploy、notify は更新しない。 |
 | local mode | `watch_mode="local"` かつ `tag_filter.enabled=true` は設定不整合として終了コード `2`。 |
 
+**tag filter 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 判定位置 | SHA 差分検出後、build id 採番前、pipeline / hook / builder 起動前に判定する。 |
+| tag API | 対象 commit SHA に到達する tag だけを評価する。branch の最新 tag や repository 全 tag を無条件一致として扱わない。 |
+| patterns 空 | `enabled=true` かつ `patterns=[]` の場合、tag が 1 件以上あれば一致とする。 |
+| matched_tags | build 実行時だけ build log に保存する。skip 時は `.build_status.json.skip_reason="tag_filter_unmatched"` に一致しなかった理由を保存する。 |
+| cache | tag 不一致、tag API failure、pattern 不正、local mode conflict では `.last_sha`、`.sha_cache/*`、`.build_history` を更新しない。 |
+| retry | tags API の `429` / timeout / 5xx は retry 対象、`404` / validation failure は nonretryable とする。 |
+| secret | tag 名は secret として扱わない。ただし API error body、Authorization header、repository token は log に保存しない。 |
+
 **異常系：**
 
 | 条件 | 処理 |
@@ -2598,6 +2648,18 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | 成功 target | 失敗 target があっても成功 target は pending に入れない。 |
 | status | 1 件以上 pending があれば `success_deploy_pending`、全件成功なら `success`。 |
 | 保存順 | `.build_logs/{id}.json.target_results` → `.pending_transfers` → `.build_history` → `.build_status.json`。 |
+
+**parallel deploy 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| worker 入力 | deploy target queue は設定順で作成し、各 target に固定 `target_id` を割り当てる。target id 未定義時は `branch_index-target_index` 形式を使う。 |
+| timeout | target ごとの timeout は既存 deploy timeout を使う。timeout target は `status:"failure"`、`error_code:"deploy_timeout"` とする。 |
+| result 保存 | `started_at` / `finished_at` は target 単位で UTC 秒精度。未開始 target は作らない。 |
+| pending entry | 失敗 target の pending entry には build id、branch、target id、dest path、checksum、attempt=0 を保存する。 |
+| 全失敗 | build 本体が成功している限り、全 deploy target 失敗でも status は `success_deploy_pending` とし、SHA cache は build success 契約に従って更新できる。 |
+| notify | deploy failure 通知は target_results と pending 保存後に送信する。通知失敗は build status を反転しない。 |
+| panic 相当 | worker 内部 error は該当 target failure として扱い、他 worker を cancel しない。 |
 
 **異常系：**
 
@@ -2652,6 +2714,18 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | hook log | 1 実行 1 JSON object とし、`hook_id`、`build_id`、`phase`、`status`、`started_at`、`finished_at`、`duration_seconds`、`stdout`、`stderr`、`exit_code`、`timed_out`、`truncated` を保存する。 |
 | log 保存失敗 | pre hook の log 保存失敗は build を開始せず failure。post hook の log 保存失敗は build status を維持し runner 終了コードを最低 `1`。 |
 | shell 禁止 | `command_args` を `exec.Command` 相当で実行し、shell 展開、変数展開、glob 展開を行わない。 |
+
+**hook 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| pre 実行位置 | build id 採番、status running 保存後、builder / pipeline / remote build 起動前に実行する。 |
+| post 実行位置 | build / deploy / snapshot / history の最終 status 確定後、notification 送信前に実行する。 |
+| abort | pre hook abort では builder、pipeline、remote build、deploy、snapshot、SHA cache 更新を行わない。history には `hook_error` を追記する。 |
+| post failure | post hook failure は build status を反転しないが、hook log、build log warning、runner 終了コード最低 `1` を固定する。 |
+| output limit | stdout/stderr は各 64 KiB まで保存し、超過時 `truncated=true`。secret mask は切り詰め前に適用する。 |
+| process kill | timeout 時は process group 全体を kill し、kill 失敗は ERROR とする。shell は使わない。 |
+| disabled hook | `enabled=false` の hook は実行せず、hook log も作らない。build log に skipped hook id だけを保存する。 |
 
 **異常系：**
 
@@ -2708,6 +2782,18 @@ owner component は `runner` とする。collaborator component は `api`、`arc
 | 検証順 | tar.gz 展開前 entry 検査 → 一時展開 → manifest parse → file 存在 / size / sha256 検証 → deploy へ渡す。 |
 | secret | remote command stdout/stderr は保存前に mask する。SSH 秘密鍵 path や token 値は log に保存しない。 |
 | cleanup | 成功・失敗に関係なく、検証後に一時展開先の削除を試みる。削除失敗は WARN。 |
+
+**remote build 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| local builder 禁止 | `remote_build.enabled=true` の build では local builder / legacy pipeline build step を実行しない。pre/post hook は通常契約どおり実行する。 |
+| remote command | SSH 先 command は argv 配列として実行し、shell 文字列、glob、環境変数展開を行わない。 |
+| artifact fetch | remote command 成功後だけ artifact を取得する。remote command 失敗時は artifact が存在しても取得しない。 |
+| deploy 境界 | artifact 検証成功後だけ既存 deploy / snapshot / history 処理へ渡す。検証前に公開 output や snapshot を置換しない。 |
+| log | `.build_logs/{id}.json.remote_build` に host、user、work_dir basename、command name、exit_code、duration_seconds、artifact_size、manifest_file_count、status を保存する。credential、secret、SSH key path は保存しない。 |
+| cleanup failure | `.remote_artifacts/{build_id}` 削除失敗は WARN とし、build 成否を反転しない。cleanup 対象 path は state dir 配下だけに限定する。 |
+| retry | SSH 接続、remote timeout、artifact fetch timeout は retry 対象。manifest mismatch、unsafe archive、schema error は nonretryable とする。 |
 
 **異常系：**
 
@@ -2786,6 +2872,18 @@ API endpoint、approve / reject の request / response、sdk / ui 操作境界�
 | approved queue 実行 | `.build_state` lock → `trigger:"approval"` entry を 1 件取り出し → build / deploy 実行 → history / status finalizer | queue entry が不正な場合は `failure_decode` として記録し、次 entry は次回起動まで処理しない。 |
 
 runner は `approval_required=true` の target に対して、approval queue 以外の経路で build を開始してはならない。manual force、webhook、force interval、local watch のいずれであっても、対象 target が approval_required の場合は pending 作成を優先し、承認済み queue entry になるまで pipeline を起動しない。
+
+**approval 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| pending record | `id`、`created_at`、`expires_at`、`branch`、`target`、`sha`、`status:"pending"`、`requested_trigger`、`requested_by`、`reason` を必須 key とする。 |
+| approved queue | approve API が作る queue entry には pending record の branch、target、sha、requested_trigger、approval_id をコピーし、runner は queue entry の値だけを使って build する。 |
+| force build | force build でも `approval_required=true` なら pending 作成だけを行い、SHA reset や pipeline 起動は approval 後まで行わない。 |
+| webhook | webhook 由来でも `approval_required=true` なら webhook queue を直接 build せず、approval pending へ変換する。delivery id は pending payload に残す。 |
+| timeout | timeout 判定は UTC fake clock で行い、`expires_at <= now` を expired とする。expired 後に approve された場合は API 側で `409`。 |
+| audit | pending 作成、approve、reject、expire は audit 対象とする。audit 失敗時の API 挙動は `docs/details/security.md` §27.44 を正とする。 |
+| secret | approval payload、notify payload、history、audit には token、Authorization header、repository secret を保存しない。 |
 
 **異常系：**
 

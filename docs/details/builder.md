@@ -1738,6 +1738,20 @@ owner component は `builder` とする。collaborator component は `runner`、
 | cache 書き込み失敗 | build は成功扱い、WARN と report に記録。 |
 | cache 破損 | 該当 entry 削除を試み、miss。 |
 
+**cache 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| cache 有効条件 | `--cache-dir` が指定され、`.server_config.build_cache_enabled=true` 相当の runner 設定から有効化された場合だけ使用する。CLI 単体では `--cache-dir` 指定が有効化条件になる。 |
+| cache root | `--cache-dir` 配下だけを読み書きする。`--out`、入力 root、state dir の他状態ファイルへ cache entry を作らない。 |
+| atomic save | `.build_cache.json.tmp.{pid}` と `pages/{cache_key}.json.tmp.{pid}` に書き、fsync 相当後に rename する。途中失敗では既存 cache index / page を変更しない。 |
+| hit 出力 | cache hit でも最終 HTML、assets、search index、manifest は通常 build と同じ staging → rename 契約で出力する。cache fragment を公開出力へ直接コピーしない。 |
+| byte 一致 | cache hit 出力は同一入力を通常変換した場合の HTML fragment と byte 等価でなければならない。違う場合は hit を破棄し miss とする。 |
+| dependency 連動 | `.dependency_manifest.json` が存在し、該当 page の dependency SHA が一致する場合だけ hit を許可する。dependency manifest 破損時は全 entry miss。 |
+| report | `[REPORT] cache_hits=N`、`cache_misses=N`、`cache_write_failures=N`、`cache_disabled_reason=<json|null>` を必ず出力する。 |
+| failure | build failure、strict failure、output validation failure では cache index / page を新規保存しない。既存 cache は維持する。 |
+| secret | cache entry は Markdown 変換結果だけを保存し、environment、token、secret、absolute input path、user home path を保存しない。 |
+
 **検証条件：**
 
 | ケース | 期待結果 |
@@ -1789,6 +1803,20 @@ owner component は `builder` とする。collaborator component は `runner`、
 | dependency 不在 | builder は WARN、strict なら終了コード `2`。 |
 | manifest 破損 | runner は full build。成功時に再作成。 |
 | base 外参照 | WARN、strict なら終了コード `2`。 |
+
+**dependency tracking 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| 抽出順 | Markdown link → image → raw HTML `<img src>` → include の順に抽出し、保存時は dep path 辞書順へ正規化する。 |
+| path 解決 | page の所在 directory を基準に正規化し、base dir 外へ出る path は `broken_dependencies[]` に `reason:"base_escape"` として記録する。 |
+| 対象外 | `http:`、`https:`、`mailto:`、`tel:`、`data:`、fragment-only、absolute path、空 path、NUL / 改行を含む path は dependency として保存しない。 |
+| missing | 参照先不在は `broken_dependencies[]` に `reason:"missing"` として保存する。non-strict では WARN、strict では終了コード `2`。 |
+| manifest save | build 成功、output validation 成功、cache save 判定後に `.dependency_manifest.json.tmp.{pid}` へ書き、rename で置換する。 |
+| failure 保護 | build failure、strict failure、manifest 生成 failure では既存 `.dependency_manifest.json` を維持する。 |
+| runner 逆引き | runner は dependency path の SHA 差分がある場合、その dependency を持つ page key を changed target に追加する。manifest 破損時は full build。 |
+| report | `[REPORT] dependencies_tracked=N`、`broken_dependencies=N`、`dependency_manifest_updated=true|false` を出力する。 |
+| secret | dependency manifest に absolute path、home path、credential URL、query credential を保存しない。URL query に token 風値がある場合は dependency 対象外として WARN を出す。 |
 
 **検証条件：**
 

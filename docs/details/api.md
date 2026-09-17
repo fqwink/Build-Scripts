@@ -2780,6 +2780,19 @@ sdk は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 
 approve / reject API は body を受け付けない。reject reason は初期実装では固定 `"rejected"` とする。
 
+**approval API 実装完了固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| list corrupt line | `.approval_queue` の破損行は response から除外し、server log に固定 code `APPROVAL_QUEUE_CORRUPT_LINE` と file path だけを出す。行本文、token、payload は出さない。 |
+| approve queue id | approve で作成する queue id は `q{YYYYMMDDHHmmss}`、同秒衝突時は `-001` から 3 桁連番。approval id とは別 id とする。 |
+| approve partial failure | queue append 成功後に approved record append が失敗した場合、queue entry は残し、response `500`、server log `APPROVAL_APPROVED_RECORD_FAILED` を出す。次回 list では approval は pending のまま見える。 |
+| reject partial failure | rejected record append 成功後に history append が失敗した場合、rejected は残し、response `500`、server log `APPROVAL_REJECT_HISTORY_FAILED` を出す。 |
+| audit | list は read audit 対象外、approve / reject は audit 対象。audit 失敗時は `docs/details/security.md` §27.44 に従い、保存済み状態を勝手に巻き戻さない。 |
+| body 禁止 | `Content-Length > 0` または JSON body がある approve / reject は `422` とし、状態差分なし。 |
+| secret | approval payload、queue payload、history、audit、server log、SDK error、UI 表示に Authorization header、session token、API token、repository token を保存しない。 |
+| SDK/UI | SDK は `409` / `429` / `500` を `AdlaireCIError` として保持する。UI は API response にない状態を推測せず、approve / reject 後に `getApprovals()` と `getQueue()` を再取得する。 |
+
 approval fixture は `docs/details/fixture.md` §22-F の API 機能別 fixture 固定契約を正とする。本ファイルでは approval fixture 本体を重複定義しない。
 
 ### 27.42 ビルドトリガー専用 API スコープ
