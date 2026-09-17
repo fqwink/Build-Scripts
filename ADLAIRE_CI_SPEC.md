@@ -1,6 +1,6 @@
 # Adlaire CI — 仕様ドキュメント
 
-**対象コンポーネント：** `components/builder.go`（ビルドスクリプト、標準配置名。現行実体は `build_spec.go`、実装済み）/ `components/runner.go`（CI ランナー、標準配置名。現行実体は `runner.go`、実装済み）/ `components/api.go`（管理 API サーバー、仕様化済み・未実装）/ `admin/adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `components/mcp.go`（MCP サーバー、将来計画）
+**対象コンポーネント：** `components/builder.go`（ビルドスクリプト、実装済み）/ `components/runner.go`（CI ランナー、実装済み）/ `components/api.go`（管理 API サーバー、仕様化済み・未実装）/ `admin/adlaire-ci-sdk.js`（JavaScript SDK、仕様化済み・未実装）/ `admin/index.html`（標準管理ツール、仕様化済み・未実装）/ `components/mcp.go`（MCP サーバー、将来計画）
 **出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記） → Part 2 §2 参照
@@ -28,15 +28,13 @@ Adlaire CI の仕様判断では、次の責務分担を固定する。
 
 本ドキュメントでは、仕様化済みの内容と実装済みの内容を区別して扱う。
 
-下表のコンポーネント名は、Part 1 §4.3 の標準ソース配置に基づく。標準配置への実装移行が完了するまでは、現行リポジトリに `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` が残る場合がある。この場合でも新規仕様、改訂仕様、移行後の実装先は標準ソース配置を正とし、現行ファイルは移行前の実装実体として扱う。
-
-`components/builder.go` と `components/runner.go` の `実装済み` は、標準配置名に対応する現行実装実体が存在し、検証済みであることを示す。標準配置への移行が完了するまで、`components/builder.go` 本体および `components/runner.go` 本体がリポジトリに存在することを意味しない。
+下表のコンポーネント名は、Part 1 §4.3 の標準ソース配置に基づく。標準ソース配置への実装移行は完了済みであり、`main.go`、`components/*.go`、`testdata/<component>/` を現行配置として扱う。
 
 | コンポーネント | 状態 | 備考 |
 |---------------|------|------|
-| `components/builder.go` | 実装済み | 標準配置名。現行実装実体は `build_spec.go`。Go 版 Markdown → 静的 Web サイトビルドスクリプトとして Phase 1 の `gofmt` と `go test` 検証済み。 |
-| `components/runner.go` | 実装済み | 標準配置名。現行実装実体は `runner.go`。Go 版 CI ランナーとして Phase 2 完了判定パスの `gofmt` と `go test` 検証済み。 |
-| `components/api.go` | 仕様化済み・未実装 | Go 版管理 API サーバー。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
+| `components/builder.go` | 実装済み | Go 版 Markdown → 静的 Web サイトビルドスクリプトとして Phase 1 の `gofmt` と `go test` 検証済み。 |
+| `components/runner.go` | 実装済み | Go 版 CI ランナーとして Phase 2 完了判定パスの `gofmt` と `go test` 検証済み。 |
+| `components/api.go` | 仕様化済み・未実装 | Go 版管理 API サーバー。仕様は本ドキュメントに定義するが、実装済み状態へは昇格していない。 |
 | `admin/adlaire-ci-sdk.js` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI。仕様は本ドキュメントに定義するが、リポジトリには実装ファイルが存在しない。 |
 | `components/mcp.go` | 将来計画 | Go 版 MCP サーバー。将来計画として管理し、実装済みとは扱わない。 |
@@ -358,7 +356,7 @@ GitHub API（Git Blobs API）を定期的にポーリングし、対象ファイ
 
 Adlaire CI の状態確認・操作を行う管理インターフェース。ヘッドレスアーキテクチャにより、フロントエンドとバックエンドを明確に分離する。
 
-本節以降の管理ツール・管理 API・SDK に関する記載は、仕様化済み・未実装の内容である。リポジトリに `components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js` が存在しない限り、実装済み機能として扱わない。
+本節以降の管理ツール・管理 API・SDK に関する記載は、仕様化済み・未実装の内容である。対象ファイルの存在、実装状態表、詳細仕様、検証結果が実装済みとして整合するまでは、実装済み機能として扱わない。
 
 ## 9. ヘッドレスアーキテクチャ方針
 
@@ -569,7 +567,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 | 状態 | 実装可否 | 担当領域 | 機能 | 概要 | 次アクション |
 |------|----------|----------|------|------|--------------|
-| 実装済み | 完了済み | CI ランナー | Phase 2 完了判定パス | GitHub API polling、SHA 差分検出、ビルド起動、ログ、履歴、snapshot、lock、precheck、retry、rate limit、circuit breaker、通知、転送、cooldown、force interval、commit info、PAT 期限警告、出力サイズ警告を標準配置名 `components/runner.go` に対応する現行実装実体 `runner.go` で実装済み。 | Go test で Phase 2 fixture、hardening、完了判定パスを検証済み。 |
+| 実装済み | 完了済み | CI ランナー | Phase 2 完了判定パス | GitHub API polling、SHA 差分検出、ビルド起動、ログ、履歴、snapshot、lock、precheck、retry、rate limit、circuit breaker、通知、転送、cooldown、force interval、commit info、PAT 期限警告、出力サイズ警告を `components/runner.go` で実装済み。 | Go test で Phase 2 fixture、hardening、完了判定パスを検証済み。 |
 | 改訂予定 | 実装不可 | 全領域 | （なし） | 現時点で、将来計画から格上げ済みの仕様作成中項目はない。 | 格上げ時に元状態、格上げ日、整理順序（実装単位ではない）、詳細仕様作成先を概要へ記録する。 |
 | 実装済み | 完了済み | CI ランナー | ビルドタイムアウト | Go 標準ライブラリ `context.WithTimeout` と `os/exec` で長時間ビルドを強制終了する。API 経由の `build_timeout_seconds` 動的変更は管理 API 実装対象として残す（→ §22 `GET /api/config`）。 | Go test と runner 回帰検証で pipeline 起動経路を検証済み。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ポーリング間隔の動的変更 | systemd タイマーの `OnUnitActiveSec` を変更して間隔を調整（→ §22 `POST /api/schedule/interval`） | `ADLAIRE_CI_DETAIL_SPEC.md` §0i.3、`ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26、`ADLAIRE_CI_DETAIL_API_SPEC.md` §27.11 に従って実装する。 |
@@ -1003,8 +1001,8 @@ Part 1 §4.1 のゼロ依存・フルインハウス原則を正とする。開�
 
 | スクリプト | 状態 | 役割 |
 |-----------|------|------|
-| `components/builder.go` | 実装済み | 標準配置名。現行実装実体は `build_spec.go`。Go 版ビルドスクリプト（Markdown → 静的 Web サイト変換）として Phase 1 の `gofmt` と `go test` 検証済み。 |
-| `components/runner.go` | 実装済み | 標準配置名。現行実装実体は `runner.go`。Go 版 CI ランナー（変更検出・ビルド起動・通知・転送）として Phase 2 完了判定パスの `gofmt` と `go test` 検証済み。 |
+| `components/builder.go` | 実装済み | Go 版ビルドスクリプト（Markdown → 静的 Web サイト変換）として Phase 1 の `gofmt` と `go test` 検証済み。 |
+| `components/runner.go` | 実装済み | Go 版 CI ランナー（変更検出・ビルド起動・通知・転送）として Phase 2 完了判定パスの `gofmt` と `go test` 検証済み。 |
 | `components/api.go` | 仕様化済み・未実装 | Go 版管理 API サーバー（常駐 HTTP サーバー） |
 | `admin/adlaire-ci-sdk.js` | 仕様化済み・未実装 | JavaScript SDK（管理ツール用 API クライアント） |
 | `admin/index.html` | 仕様化済み・未実装 | 標準管理ツール UI |

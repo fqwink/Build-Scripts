@@ -1,4 +1,4 @@
-package main
+package components
 
 import (
 	"bytes"
@@ -217,7 +217,7 @@ type gitCommitResponse []struct {
 	} `json:"commit"`
 }
 
-func runRunner(args []string, stdout, stderr io.Writer) int {
+func RunRunner(args []string, stdout, stderr io.Writer) int {
 	cfg, handled, err := parseRunnerArgs(args, stdout)
 	if err != nil {
 		var ee exitError
@@ -353,7 +353,7 @@ func executeRunner(cfg RunnerConfig, stdout, stderr io.Writer) int {
 		}
 	}
 	finished := runnerNow().UTC().Format(time.RFC3339)
-	state := defaultBuildState()
+	state := runnerDefaultBuildState()
 	state.LastFinishedAt = &finished
 	if err := runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_state"), state, 0600); err != nil {
 		logger.Error("STATE_FINISH_FAILED: " + err.Error())
@@ -421,7 +421,7 @@ func cooldownActive(cfg RunnerConfig, logger *slog.Logger) bool {
 	if cfg.BuildCooldownSeconds <= 0 {
 		return false
 	}
-	state, err := readBuildState(cfg.StateDir)
+	state, err := runnerReadBuildState(cfg.StateDir)
 	if err != nil || state.LastFinishedAt == nil || *state.LastFinishedAt == "" {
 		return false
 	}
@@ -440,7 +440,7 @@ func forceIntervalDue(cfg RunnerConfig) bool {
 	if cfg.ForceBuildIntervalHours <= 0 {
 		return false
 	}
-	state, err := readBuildState(cfg.StateDir)
+	state, err := runnerReadBuildState(cfg.StateDir)
 	if err != nil || state.LastFinishedAt == nil || *state.LastFinishedAt == "" {
 		return true
 	}
@@ -451,11 +451,11 @@ func forceIntervalDue(cfg RunnerConfig) bool {
 	return runnerNow().Sub(last) >= time.Duration(cfg.ForceBuildIntervalHours)*time.Hour
 }
 
-func readBuildState(stateDir string) (buildState, error) {
+func runnerReadBuildState(stateDir string) (buildState, error) {
 	var state buildState
-	err := readJSONFile(filepath.Join(stateDir, ".build_state"), &state)
+	err := runnerReadJSONFile(filepath.Join(stateDir, ".build_state"), &state)
 	if errors.Is(err, os.ErrNotExist) {
-		return defaultBuildState(), nil
+		return runnerDefaultBuildState(), nil
 	}
 	return state, err
 }
@@ -954,7 +954,7 @@ func deploySite(out string, d DeployTarget) (int, int, int, int64, error) {
 			return err
 		}
 		rel = filepath.ToSlash(rel)
-		localSHA, err := fileSHA256(path)
+		localSHA, err := runnerFileSHA256(path)
 		if err != nil {
 			return err
 		}
@@ -976,7 +976,7 @@ func deploySite(out string, d DeployTarget) (int, int, int, int64, error) {
 	return total, uploaded, skipped, bytesUploaded, err
 }
 
-func fileSHA256(path string) (string, error) {
+func runnerFileSHA256(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -1178,7 +1178,7 @@ func sendBuildNotifications(cfg RunnerConfig, log buildLog, logger *slog.Logger)
 
 func readNotifyConfig(path string) (notifyConfigFile, error) {
 	var config notifyConfigFile
-	err := readJSONFile(path, &config)
+	err := runnerReadJSONFile(path, &config)
 	if errors.Is(err, os.ErrNotExist) {
 		return config, nil
 	}
@@ -1236,7 +1236,7 @@ func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started t
 }
 
 func circuitOpen(stateDir string) bool {
-	state, err := readCircuitState(stateDir)
+	state, err := runnerReadCircuitState(stateDir)
 	return err == nil && state.Open
 }
 
@@ -1244,7 +1244,7 @@ func recordCircuitFailure(cfg RunnerConfig, msg string) {
 	if cfg.APICircuitBreakerThreshold <= 0 {
 		return
 	}
-	state, _ := readCircuitState(cfg.StateDir)
+	state, _ := runnerReadCircuitState(cfg.StateDir)
 	now := runnerNow().UTC().Format(time.RFC3339)
 	state.ConsecutiveFailures++
 	state.LastFailureAt = &now
@@ -1261,9 +1261,9 @@ func resetCircuitState(cfg RunnerConfig) {
 	_ = runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_circuit_state"), state, 0600)
 }
 
-func readCircuitState(stateDir string) (buildCircuitState, error) {
+func runnerReadCircuitState(stateDir string) (buildCircuitState, error) {
 	var state buildCircuitState
-	err := readJSONFile(filepath.Join(stateDir, ".build_circuit_state"), &state)
+	err := runnerReadJSONFile(filepath.Join(stateDir, ".build_circuit_state"), &state)
 	if errors.Is(err, os.ErrNotExist) {
 		return buildCircuitState{}, nil
 	}
@@ -1279,7 +1279,7 @@ func derefString(s *string, fallback string) string {
 
 func readSHACache(path string) (string, error) {
 	var cache shaCache
-	if err := readJSONFile(path, &cache); err != nil {
+	if err := runnerReadJSONFile(path, &cache); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return "", nil
 		}
@@ -1290,9 +1290,9 @@ func readSHACache(path string) (string, error) {
 
 func writeBuildState(stateDir string, running bool, buildID *string) error {
 	now := runnerNow().UTC().Format(time.RFC3339)
-	state, err := readBuildState(stateDir)
+	state, err := runnerReadBuildState(stateDir)
 	if err != nil {
-		state = defaultBuildState()
+		state = runnerDefaultBuildState()
 	}
 	state.Running = running
 	state.CurrentBuildID = buildID
@@ -1300,7 +1300,7 @@ func writeBuildState(stateDir string, running bool, buildID *string) error {
 	return runnerAtomicWriteJSON(filepath.Join(stateDir, ".build_state"), state, 0600)
 }
 
-func defaultBuildState() buildState {
+func runnerDefaultBuildState() buildState {
 	return buildState{Queued: []map[string]any{}}
 }
 
@@ -1430,7 +1430,7 @@ func repairCorruptJSONArray(path string, logger *slog.Logger) error {
 		return nil
 	}
 	var raw []json.RawMessage
-	if err := readJSONFile(path, &raw); err == nil {
+	if err := runnerReadJSONFile(path, &raw); err == nil {
 		return nil
 	}
 	if err := backupCorruptJSON(path, logger); err != nil {
@@ -1449,10 +1449,10 @@ func backupCorruptJSON(path string, logger *slog.Logger) error {
 }
 
 func readJSONArray(path string, out any) error {
-	return readJSONFile(path, out)
+	return runnerReadJSONFile(path, out)
 }
 
-func readJSONFile(path string, out any) error {
+func runnerReadJSONFile(path string, out any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err

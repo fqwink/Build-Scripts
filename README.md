@@ -13,12 +13,13 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 - `ADLAIRE_CI_SPEC.md`: Adlaire CI のマスター仕様書。
 - `ADLAIRE_CI_DETAIL_SPEC.md`: Adlaire CI の Part 3 詳細仕様の入口。読み順、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、§0i.1〜§0i.4 の詳細節対応表、§0j のリポジトリ内ソース配置、横断補足契約を持つ。
 - `ADLAIRE_CI_DETAIL_*_SPEC.md`: owner component 別の入出力、状態、処理順序、異常系、検証条件の詳細仕様本文。
-- `build_spec.go`: Markdown を静的 Web サイトへ変換する Go 版ビルドスクリプト。`components/builder.go` の現行実装実体として Phase 1 実装済み。
-- `build_spec_test.go`: `build_spec.go` の Phase 1 fixture テスト。
+- `main.go`: 起動入口。実行ファイル名に応じて builder / runner component を呼び出す。
+- `components/builder.go`: Markdown を静的 Web サイトへ変換する Go 版ビルドスクリプト。Phase 1 実装済み。
+- `components/builder_test.go`: `components/builder.go` の Phase 1 fixture テスト。
 - `go.mod`: Go module 定義。外部 module は追加しない。
-- `testdata/build_spec/`: Phase 1 受け入れ fixture。
-- `runner.go`: GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する Go 版 CI ランナー。`components/runner.go` の現行実装実体として Phase 2 完了判定パス実装済み。
-- `runner_test.go`: `runner.go` の Phase 2 fixture、hardening、完了判定パステスト。
+- `testdata/builder/`: Phase 1 受け入れ fixture。
+- `components/runner.go`: GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する Go 版 CI ランナー。Phase 2 完了判定パス実装済み。
+- `components/runner_test.go`: `components/runner.go` の Phase 2 fixture、hardening、完了判定パステスト。
 - `DESIGN.md`: 生成静的 Web サイトのデザイン仕様を整理する補助文書。
 - `DOCUMENT_INDEX.md`: 文書・実装ファイルの役割を整理する索引。
 - `AGENTS.md`: 本リポジトリにおけるエージェント作業ルール。
@@ -27,9 +28,9 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 Adlaire CI は、最初から Go を前提として仕様策定します。
 
-現行配置では、`build_spec.go` は標準配置名 `components/builder.go` の現行実装実体として Phase 1 実装済みです。`runner.go` は標準配置名 `components/runner.go` の現行実装実体として Phase 2 完了判定パス実装済みです。いずれも `gofmt` と `go test` による検証を完了しています。
+標準ソース配置への移行は完了済みです。`components/builder.go` は Phase 1 実装済み、`components/runner.go` は Phase 2 完了判定パス実装済みです。いずれも `gofmt` と `go test` による検証対象です。
 
-標準ソース配置は `ADLAIRE_CI_SPEC.md` Part 1 §4.3 と `ADLAIRE_CI_DETAIL_SPEC.md` §0j で定義し、移行後は `main.go` と `components/*.go` を正とします。標準配置への移行が完了するまで、`components/builder.go` と `components/runner.go` は標準配置名として扱います。
+標準ソース配置は `ADLAIRE_CI_SPEC.md` Part 1 §4.3 と `ADLAIRE_CI_DETAIL_SPEC.md` §0j で定義し、`main.go` と `components/*.go` を正とします。
 
 `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は仕様化済み・未実装のコンポーネントです。`components/mcp.go` は将来計画のコンポーネントです。
 

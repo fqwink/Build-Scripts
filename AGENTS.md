@@ -69,9 +69,9 @@ owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` は、各 component の詳�
 
 標準ソース配置は `main.go` と `components/*.go`、および `admin/` 配下の管理 UI ファイルとする。
 
-標準ソース配置への実装移行が完了するまでは、現行リポジトリに存在する `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を移行前の実装実体として扱う。
+標準ソース配置への実装移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`testdata/<component>/` とする。
 
-標準移行後の実装先は、`build_spec.go` が `components/builder.go`、`runner.go` が `components/runner.go` である。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱ってはならない。
 
 仕様化済み・未実装コンポーネントである `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は、`ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、該当する owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` に基づいて更新する。
 
@@ -129,12 +129,13 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 ## 3. 実装管理ルール
 
-標準移行前の Go 実装対象ファイルは以下とする。
+Go 実装対象ファイルは以下とする。
 
 | ファイル | 役割 |
 |---------|------|
-| `build_spec.go` | Markdown ファイルまたは Markdown ディレクトリを静的 Web サイトへ変換する Go 版ビルドスクリプト。標準移行後は `components/builder.go`。 |
-| `runner.go` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する Go 版 CI ランナー。標準移行後は `components/runner.go`。 |
+| `main.go` | 起動入口。実行ファイル名に応じて対象 component を呼び出す。 |
+| `components/builder.go` | Markdown ファイルまたは Markdown ディレクトリを静的 Web サイトへ変換する Go 版ビルドスクリプト。 |
+| `components/runner.go` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する Go 版 CI ランナー。 |
 
 仕様化済み・未実装および将来計画の主なコンポーネントは以下とする。
 
@@ -334,6 +335,6 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 `ADLAIRE_CI_SPEC.md`、`ADLAIRE_CI_DETAIL_SPEC.md`、または owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` を改訂した場合は、`DESIGN.md`、`DOCUMENT_INDEX.md`、実装ファイルへの影響を確認する。
 
-`DESIGN.md` を改訂した場合は、標準移行前は `build_spec.go`、標準移行後は `components/builder.go` 内の HTML / CSS / JavaScript / theme component テンプレートとの整合性を確認する。
+`DESIGN.md` を改訂した場合は、`components/builder.go` 内の HTML / CSS / JavaScript / theme component テンプレートとの整合性を確認する。
 
 仕様化済み項目を実装した場合は、`ADLAIRE_CI_SPEC.md` 内の状態表現、`DOCUMENT_INDEX.md` の Specified Components、`ADLAIRE_CI_DETAIL_SPEC.md` の対応表、owner component 別の `ADLAIRE_CI_DETAIL_*_SPEC.md` の検証条件、実装ファイルの存在を整合させる。

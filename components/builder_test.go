@@ -1,4 +1,4 @@
-package main
+package components
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 func TestFixtureSingle(t *testing.T) {
 	out := t.TempDir()
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"--src", "testdata/build_spec/single/source.md", "--out", out, "--title", "Fixture Site"}, &stdout, &stderr)
+	code := RunBuild([]string{"--src", "../testdata/builder/single/source.md", "--out", out, "--title", "Fixture Site"}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
 	}
@@ -47,7 +47,7 @@ func TestFixtureSingle(t *testing.T) {
 func TestFixtureDirectory(t *testing.T) {
 	out := t.TempDir()
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"--src", "testdata/build_spec/site/docs", "--out", out, "--title", "Docs"}, &stdout, &stderr)
+	code := RunBuild([]string{"--src", "../testdata/builder/site/docs", "--out", out, "--title", "Docs"}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
 	}
@@ -81,12 +81,12 @@ func TestFixtureErrors(t *testing.T) {
 	}{
 		{[]string{"--theme", "unknown"}, "unknown theme: unknown"},
 		{[]string{"--src", "/path/not-found.md"}, "source not found: /path/not-found.md"},
-		{[]string{"--src", "testdata/build_spec/empty-dir"}, "no markdown files found:"},
+		{[]string{"--src", "../testdata/builder/empty-dir"}, "no markdown files found:"},
 		{[]string{"--title", ""}, "title must not be empty"},
 	}
 	for _, tc := range cases {
 		var stdout, stderr bytes.Buffer
-		code := run(tc.args, &stdout, &stderr)
+		code := RunBuild(tc.args, &stdout, &stderr)
 		if code != 2 {
 			t.Fatalf("%v exit=%d stderr=%s", tc.args, code, stderr.String())
 		}
@@ -103,12 +103,12 @@ func TestFixtureIdempotency(t *testing.T) {
 	out1 := t.TempDir()
 	out2 := t.TempDir()
 	var stdout1, stderr1, stdout2, stderr2 bytes.Buffer
-	args1 := []string{"--src", "testdata/build_spec/single/source.md", "--out", out1, "--title", "Fixture Site"}
-	args2 := []string{"--src", "testdata/build_spec/single/source.md", "--out", out2, "--title", "Fixture Site"}
-	if code := run(args1, &stdout1, &stderr1); code != 0 {
+	args1 := []string{"--src", "../testdata/builder/single/source.md", "--out", out1, "--title", "Fixture Site"}
+	args2 := []string{"--src", "../testdata/builder/single/source.md", "--out", out2, "--title", "Fixture Site"}
+	if code := RunBuild(args1, &stdout1, &stderr1); code != 0 {
 		t.Fatalf("first exit=%d stderr=%s", code, stderr1.String())
 	}
-	if code := run(args2, &stdout2, &stderr2); code != 0 {
+	if code := RunBuild(args2, &stdout2, &stderr2); code != 0 {
 		t.Fatalf("second exit=%d stderr=%s", code, stderr2.String())
 	}
 	for _, rel := range []string{"index.html", "assets/style.css", "assets/app.js", "assets/search-index.json"} {
