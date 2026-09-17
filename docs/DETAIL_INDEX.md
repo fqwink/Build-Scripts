@@ -405,6 +405,8 @@ Phase の一覧、順序、対象 owner component、依存条件、完了条件�
 
 ### 0i.1 Builder / 静的 Web サイト出力
 
+§28.1〜§28.25 を実装する場合は、個別行の受け入れ条件に加えて、`docs/details/builder.md` §28 の共通固定契約、CLI / 設定 / REPORT / 出力識別子固定契約、実装パイプライン固定契約、設定解決・終了コード固定契約、REPORT 値型固定契約、CSS / JS 出力固定契約、および `docs/details/fixture.md` §28-F を必ず読む。
+
 | 機能 | 責務 component | 詳細仕様節 | 受け入れ条件 |
 |------|-------------------|------------|--------------|
 | 出力サイトサイズ警告閾値 | `builder` / `runner` / `api` | §8、§12、§13、§22.0e | `OUTPUT_SIZE_WARN_MB`、`size_warn`、WARN ログ、API 表示が一致する。 |

@@ -612,6 +612,48 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | `expected/effects.json` | 必須 | 作成、更新、維持、削除禁止 path、外部 call 0 件、既存出力保護、strict 昇格条件。 |
 | `expected/security.json` | 条件付き | HTML escape、attribute escape、外部 library 不使用、secret / URL credential 非表示、base 外 path 拒否。 |
 
+**§28 fixture 判定粒度固定契約：**
+
+§28 fixture は、目視確認、画像 snapshot、現在時刻、実 git repository、実 network、ブラウザ環境だけに依存して合否判定してはならない。期待値は file 内容、stdout、stderr、終了コード、副作用、禁止出力のいずれかで固定する。
+
+| 判定対象 | 固定内容 |
+|----------|----------|
+| HTML | 対象機能が生成する tag、attribute、class、data attribute、aria attribute、escape 済み text を完全一致または正規化済み比較で確認する。 |
+| CSS | 対象機能が追加する selector、custom property、`@media print`、focus style を確認する。未使用機能の selector が出ないことも確認する。 |
+| JS | 対象機能が追加する event handler、localStorage key、history handler、dialog handler、fallback 分岐の文字列または構造を確認する。外部 script 参照がないことを確認する。 |
+| search index | 採番表示、line number 除外、HTML tag 除外、対象 page path、updated time の有無を確認する。 |
+| stdout | `[REPORT]` の key、型、既定値、件数、warning count を完全一致で確認する。 |
+| stderr | warning / error の code、対象 file、対象 section、strict 昇格有無を完全一致で確認する。stderr なしは空 file を置く。 |
+| effects | 作成、更新、維持、削除禁止、既存出力維持、manifest 上書き有無、外部 call 0 件を JSON で確認する。 |
+| security | HTML escape、attribute escape、base 外 path、URL credential 非表示、secret 非表示、CDN / external library 不使用を確認する。 |
+
+**§28 strict / non-strict fixture 固定契約：**
+
+| ケース | non-strict fixture | strict fixture | 固定する差分 |
+|--------|--------------------|----------------|--------------|
+| warning で継続できる構文不正 | 終了コード `0`、warning count 増加、fallback 出力あり。 | 終了コード `2`、出力なし。 | stdout / stderr / effects。 |
+| base 外 path | 対象参照を無効化し warning。 | 終了コード `2`。 | 参照先 file が作成されないこと。 |
+| 未定義参照 | 通常 text または非表示 fallback。 | 終了コード `2`。 | HTML fallback と strict 停止。 |
+| reserved feature | 終了コード `2`。 | 終了コード `2`。 | strict 差分なし。 |
+| 内部エラー fixture | 終了コード `1`。 | 終了コード `1`。 | 既存出力維持。 |
+
+**§28 fixture manifest 固定 schema：**
+
+`manifest.json` は以下の key を必須とする。未使用 key も省略せず、空配列または空文字で明示する。
+
+| key | 型 | 固定内容 |
+|-----|----|----------|
+| `name` | string | fixture 名。§28 fixture カタログ固定契約の値と完全一致。 |
+| `section` | string | `28.1`〜`28.25` のいずれか。 |
+| `feature_slug` | string | §28 fixture カタログ固定契約の feature slug。 |
+| `owner` | string | 常に `builder`。 |
+| `collaborators` | array | `runner`、`statefile` など該当する補助 component。該当なしは空配列。 |
+| `spec_refs` | array | `docs/details/builder.md §28.x` と `docs/details/fixture.md §28-F` を含める。 |
+| `strict` | boolean | strict mode fixture なら `true`。 |
+| `expected_exit_code` | integer | `0`、`1`、`2` のいずれか。 |
+| `fakes` | object | fake clock、fake git、fake mtime、fake manifest、fake clipboard。不要なら空 object。 |
+| `not_applicable` | array | 比較対象外にする file や観点。理由なしの除外は禁止。 |
+
 **§28 PR 証跡固定契約：**
 
 実装 PR 本文には、対象 §28.x、追加 fixture 名、変更した HTML / CSS / JS / REPORT key、strict / non-strict 結果、外部依存なし確認、既存出力互換確認、未実装の §28 機能を列挙する。対象外の §28 機能を先取り実装した場合、または `docs/details/builder.md` §28 に存在しない Markdown 記法、CLI option、CSS class、JS 挙動を追加した場合は未完了として扱う。

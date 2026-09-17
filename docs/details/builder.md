@@ -1851,6 +1851,65 @@ owner component は `builder` とする。collaborator component は `runner`、
 | §28.24 | `--definition-lists=<true\|false>`、`ADLAIRE_DEFINITION_LISTS` | `true` | `definition_lists`、`definition_terms` | `dl`、`dt`、`dd`、`.definition-list` | 空 term / definition を list 化した場合。 |
 | §28.25 | `--task-lists=<true\|false>`、`ADLAIRE_TASK_LISTS` | `true` | `task_list_items`、`task_list_checked` | `.task-list-item`、`.task-list-checkbox`、`aria-label` | checkbox が enabled、非対象 list を変換した場合。 |
 
+**§28 実装パイプライン固定契約：**
+
+§28 機能は、下表の順序で処理する。実装者は機能ごとに独自の前処理、後処理、escape、report 生成順を追加してはならない。順序変更が必要な場合は、本表を先に改訂する。
+
+| 順序 | 処理 | 固定内容 |
+|------|------|----------|
+| 1 | 入力解決 | CLI option、環境変数、設定ファイル、既定値の順で値を確定する。同じ設定が複数 source に存在する場合は、採用 source と破棄 source を `[REPORT]` に記録する。 |
+| 2 | 設定 validation | unknown option、型不一致、許容値外、base 外 path、禁止 key を検出する。build 出力を作成する前に終了可否を確定する。 |
+| 3 | 入力 Markdown 読込 | 入力 file の byte を読み、UTF-8 として扱う。読込時点で HTML escape しない。 |
+| 4 | pre-parse 拡張 | §28.14 の template var だけを code fence 外 text に適用する。その他の §28 機能は Markdown token 化後に処理する。 |
+| 5 | Markdown token 化 | heading、paragraph、list、blockquote、fence、inline、image、link、definition、footnote token を生成する。token 生成時に raw HTML を実行可能要素として扱わない。 |
+| 6 | block 変換 | admonition、code line number、heading numbering、section collapse、TOC depth、diff highlight、Mermaid、definition list、task list を token から HTML node へ変換する。 |
+| 7 | inline 変換 | badge、footnote reference、math inline、code title、image 属性、link anchor を HTML node へ変換する。 |
+| 8 | HTML escape | text node は HTML escape、attribute 値は attribute escape、URL 値は path / scheme validation 後に attribute escape する。 |
+| 9 | page shell 合成 | head meta、body、TOC、footer、updated time、print QR、lightbox dialog、skip link を 1 page shell に合成する。 |
+| 10 | CSS / JS 合成 | 使われた機能に必要な CSS / JS だけを `assets/style.css`、`assets/app.js` に追加する。未使用機能の CSS / JS を出力してはならない。 |
+| 11 | search index 生成 | heading、本文 text、更新日時、採番表示、対象 page path を使って `assets/search-index.json` を生成する。HTML tag、line number、copy 除外要素は search text に含めない。 |
+| 12 | optional minify | §28.15 が有効な場合だけ HTML 生成後に minify する。`pre`、`code`、`textarea`、`script` 相当領域と必須 marker を保持する。 |
+| 13 | atomic write | 出力先の一時 file へ書き込み、成功後に rename する。失敗時は既存出力、manifest、search index を部分更新しない。 |
+| 14 | REPORT 出力 | すべての生成物 write が成功した後に `[REPORT]` を stdout へ出力する。失敗時は確定済み warning / error を stderr と `[REPORT]` へ出力する。 |
+
+**§28 設定解決・終了コード固定契約：**
+
+| 条件 | non-strict | strict | 副作用 |
+|------|------------|--------|--------|
+| unknown option | 終了コード `2` | 終了コード `2` | 出力なし。 |
+| 許容値外 | 終了コード `2` | 終了コード `2` | 出力なし。 |
+| 警告扱いの構文不正 | warning 記録、変換可能部分だけ出力。 | 終了コード `2` | strict 時は出力なし。 |
+| base 外 path | warning 記録、対象参照を無効化。 | 終了コード `2` | strict 時は出力なし。 |
+| 未解決参照 | warning 記録、通常 text または非表示 fallback。 | 終了コード `2` | strict 時は出力なし。 |
+| 内部変換失敗 | 終了コード `1` | 終了コード `1` | 既存出力を維持する。 |
+| reserved feature | 終了コード `2` | 終了コード `2` | 出力なし。 |
+
+終了コード `0` は、HTML、CSS、JS、search index、manifest、`[REPORT]` のうち対象 run で必要な出力がすべて成功した場合だけ返す。終了コード `1` は実装内部エラー、I/O エラー、atomic write 失敗、minify 後検証失敗に限定する。終了コード `2` は入力、設定、仕様上拒否する値、strict 昇格に限定する。
+
+**§28 REPORT 値型固定契約：**
+
+§28 の `[REPORT]` は JSON object 互換の key-value として扱える内容にする。boolean は `true` / `false`、integer は 10 進数、string は UTF-8、list は comma 区切りではなく JSON array 表現に固定する。key 未使用時は省略せず、機能が評価対象なら既定値を出力する。
+
+| 値種別 | 例 | 固定 |
+|--------|----|------|
+| boolean | `incremental_enabled`、`minify_html`、`hash_history_enabled` | `true` または `false`。 |
+| integer | `lazy_images`、`toc_items`、`task_list_items` | 0 以上。負数は禁止。 |
+| string | `output_format`、`color_scheme`、`updated_at_source` | 許容値の文字列だけ。空値許可 key は個別表の既定値に従う。 |
+| timestamp | `updated_at` | UTC、RFC3339、秒精度。取得不能時は空文字。 |
+| array | `template_vars_missing`、`incremental_reason` | JSON array 表現。要素は escape 済み string。 |
+
+**§28 CSS / JS 出力固定契約：**
+
+CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力する。§28 実装で新規 asset file、inline external script、CDN、runtime import、dynamic network fetch を追加してはならない。
+
+| 対象 | 固定内容 |
+|------|----------|
+| CSS class | §28 CLI / 設定 / REPORT / 出力識別子固定契約に列挙した class だけを追加する。命名は `adlaire-` prefix または既存 class とし、第三者 library 名を使わない。 |
+| JS state | localStorage key は本節に列挙した `adlaire:*` key だけを使う。保存値は JSON string、boolean、または許容値 string に限定する。 |
+| JS failure | JS 実行時例外が起きても静的 HTML の閲覧、TOC、本文、検索 index file の存在を壊してはならない。 |
+| print | print 用挙動は `@media print` 内で完結させる。通常画面の DOM を print 専用に書き換えない。 |
+| accessibility | click 操作を追加する要素には keyboard 操作と `aria-label` を同時に定義する。 |
+
 **§28 機能別詳細仕様：**
 
 | 節 | 機能 | 入力 | 出力 | 処理順序 | 異常系 | 検証条件 |
