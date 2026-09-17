@@ -31,8 +31,8 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 ## リリース形式
 
-Adlaire CI の標準リリース形式は、GitHub Releases に添付する OS/arch 別の Go 実行バイナリです。初期標準は Linux x86_64 とし、`adlaire-ci-build`、`adlaire-ci-runner`、管理 API 導入後の `adlaire-ci-api` を SHA-256 checksum 検証後に `/usr/local/bin/` へ配置します。
+標準リリース形式は Go 実行バイナリです。詳細は `docs/SPEC.md` のリリース方針と `docs/details/setup.md` のセットアップ詳細を参照します。
 
 ## 注意
 
-仕様や挙動を変更する場合は、先に `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、または該当する owner component 別の `docs/details/*.md` を改訂し、その内容に基づいて実装ファイルと関連文書を整合させます。
+作業ルールは `AGENTS.md` を正とします。仕様や挙動を変更する場合は、`docs/DOCUMENT_INDEX.md` の Reading Order と Source Of Truth に従って正本を確認します。
