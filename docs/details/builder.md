@@ -2616,6 +2616,96 @@ image `src` は以下に分類する。
 
 `alt` は必ず attribute escape する。`lazy_images` は `loading="lazy"` と `decoding="async"` を付与した img 数、`image_path_warnings` は warning 件数とする。search index には image alt text を含めるが、src、loading、decoding、warning text は含めない。
 
+**§28.11〜§28.15 実装詳細固定契約：**
+
+§28.11〜§28.15 は、head 出力、theme 状態、code block 表示、Markdown 前処理、最終 HTML byte に影響するため、下表の処理単位、状態、出力を固定する。実装者は、本表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key を導入してはならない。
+
+| 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+|----|----------|------------------|--------------|
+| §28.11 | head meta set | `custom_meta_entries`、`custom_meta_rejected`、`custom_meta_order` を page ごとに保持する。 | key validation、重複解決、head 内順序、attribute escape、禁止 key 拒否が一致する。 |
+| §28.12 | page theme | `color_scheme`、`color_scheme_toggle`、`color_scheme_variables`、`color_scheme_storage_key` を page ごとに保持する。 | root attribute、CSS variables、toggle、localStorage、print light、fallback が一致する。 |
+| §28.13 | code fence title | `code_title_value`、`code_title_source`、`code_title_warnings` を code block ごとに保持する。 | language / title 分離、title escape、copy / search 除外、empty title no-op が一致する。 |
+| §28.14 | template variable map | `template_vars`、`template_vars_missing`、`template_vars_replaced` を run 全体で保持する。 | key validation、置換対象、code fence / code span 保護、missing var の strict / non-strict が一致する。 |
+| §28.15 | final HTML byte stream | `minify_bytes_before`、`minify_bytes_after`、`minify_bytes_saved`、`minify_preserved_ranges` を page ごとに保持する。 | safe minify、保持対象、validation、failure no-replace、REPORT byte count が一致する。 |
+
+**§28.11 カスタムメタタグ詳細固定契約：**
+
+`--meta` は repeatable option とし、1 指定につき `key=value` を 1 件受け付ける。設定ファイルでは `meta` object、環境変数 `ADLAIRE_META_JSON` では JSON object を受け付ける。値は UTF-8 string だけを許可する。object 以外、string 以外、空 key、空 value、制御文字、raw `<` / `>` を含む key は終了コード `2`、stderr `BUILDER28_INVALID_OPTION` とする。
+
+meta key は以下に固定する。
+
+| key 形式 | 出力 |
+|----------|------|
+| `name:<name>` | `<meta name="<name>" content="<value>">` |
+| `property:og:<name>` | `<meta property="og:<name>" content="<value>">` |
+| `property:twitter:<name>` | `<meta property="twitter:<name>" content="<value>">` |
+| bare key | `<meta name="<key>" content="<value>">` |
+
+`script`、`http-equiv`、`charset`、`refresh`、`set-cookie`、`content-security-policy` は禁止 key とする。bare key は `^[A-Za-z][A-Za-z0-9:_-]{0,63}$`、`name:<name>` の `<name>` も同じ規則、`property:og:*` と `property:twitter:*` の suffix は `^[A-Za-z][A-Za-z0-9:_-]{0,63}$` とする。
+
+同一正規化 key が複数 source または同一 source に存在する場合は last wins とする。出力順は、最終採用 key を正規化 key の ASCII 昇順に並べる。head 内では既存 charset / viewport / title / description の後、stylesheet / script の前に出力する。value は attribute escape し、secret 風 value や credential 付き URL を stdout、stderr、REPORT に出力してはならない。
+
+`custom_meta_count` は採用して出力した meta 数、`custom_meta_rejected` は validation で拒否した meta key 数とする。fatal validation では `[REPORT]` を出力しない。
+
+**§28.12 ダークモード詳細固定契約：**
+
+`--color-scheme` の許可値は `light`、`dark`、`auto` だけである。未知値は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
+
+HTML root は `data-color-scheme="<light|dark|auto>"` を持つ。CSS は `:root` に共通 custom property を定義し、`[data-color-scheme="light"]`、`[data-color-scheme="dark"]`、`[data-color-scheme="auto"]` に scheme 固有値を定義する。`auto` は `@media (prefers-color-scheme: dark)` を使って dark 変数へ切り替える。外部 theme file、外部 font、runtime CSS fetch を追加してはならない。
+
+theme toggle は `button.theme-toggle`、`type="button"`、`aria-label`、現在値を示す `data-color-scheme-toggle` を持つ。toggle 順は `light → dark → auto → light` に固定する。localStorage key は `adlaire:color-scheme` だけを使用し、保存値は `light`、`dark`、`auto` のいずれかの string とする。未知値、空値、storage 例外、JSON ではない値は無視し、設定値または既定値へ戻す。
+
+print は常に light 相当とし、dark background を印刷しない。`color_scheme` は JSON string、`color_scheme_toggle` は toggle を出力した場合 `true` とする。
+
+**§28.13 コードブロックタイトル詳細固定契約：**
+
+code title は fenced code の info string からだけ決定する。許可形式は以下とする。
+
+| 形式 | 解釈 |
+|------|------|
+| ```` ```go:main.go ```` | language は `go`、title は `main.go`。 |
+| ```` ```bash:title=deploy.sh ```` | language は `bash`、title は `deploy.sh`。 |
+| ```` ```title=README.md ```` | language は空、title は `README.md`。 |
+
+title は trim 後 1〜128 文字を有効とする。空 title、空白だけ、`title=` の値なし、`lang:` の値なしは no-op とし、warning は出さない。title は text 扱いであり、path traversal 風文字列、absolute path 風文字列、URL 風文字列でも表示禁止にはしない。ただし HTML escape 後に raw `<` / `>`、event handler 属性、`javascript:` URL が実行可能形で残る場合は終了コード `1`、stderr `BUILDER28_ESCAPE_BLOCKED`、公開出力維持とする。
+
+出力は `.code-block-header` の中に `.code-title` を 1 個置き、対応する code block の直前にだけ表示する。copy text、search index、line number count、diff count には title text を含めない。`code_titles` は title を出力した code block 数、`code_title_warnings` は不正な title 指定を non-fatal no-op した件数とする。空 title、空白 title、`title=`、`lang:` の値なしは仕様上の no-op であり、`code_title_warnings` に加算しない。
+
+**§28.14 テンプレート変数詳細固定契約：**
+
+template var key は `^[A-Z0-9_]{1,64}$` に固定する。CLI `--var KEY=VALUE` は repeatable、設定ファイルは `template_vars` object、環境変数 `ADLAIRE_TEMPLATE_VARS_JSON` は JSON object とする。値は UTF-8 string だけを許可する。key 不正、object 以外、string 以外は終了コード `2`、stderr `BUILDER28_INVALID_OPTION` とする。
+
+置換対象は Markdown parse 前の通常 text だけである。code fence、code span、raw HTML escape 対象、link destination、image src、front matter 相当の非本文領域では置換しない。置換構文は `{{ KEY }}` だけを許可し、`{{KEY}}`、`{{ key }}`、`{{ KEY | filter }}` は通常 text として扱う。
+
+未定義変数は non-strict では元 text のまま残し、stdout に `[WARN] BUILDER28_UNRESOLVED_REFERENCE file:line 28.14 ...` を出す。strict では終了コード `2`、stdout に warning と `[REPORT]` を出し、公開出力を置換しない。置換後 text は通常 Markdown 処理へ渡し、HTML escape は後続 parser で行う。
+
+`template_vars` は定義済み key 数、`template_vars_missing` は missing key の compact JSON string array、ASCII 昇順、重複なし、`template_vars_replaced` は置換回数とする。secret 風 value と credential 付き URL value は stdout、stderr、REPORT、manifest へ平文出力しない。
+
+**§28.15 HTML ミニファイ詳細固定契約：**
+
+minify は HTML 生成、§28 全 HTML 変換、CSS / JS 参照確定後、atomic write の staging validation 前に実行する。`--minify-html=false` の場合は HTML byte を変更せず、`minify_html=false`、`minify_bytes_before=0`、`minify_bytes_after=0`、`minify_bytes_saved=0` とする。
+
+minify は以下だけを許可する。
+
+| 対象 | 許可する変換 |
+|------|--------------|
+| tag 間 whitespace | 連続 whitespace を 1 つへ縮約、または安全に削除する。 |
+| comment | HTML comment を削除する。ただし必須 marker が定義された場合は保持する。 |
+| attribute | quote、escape、属性順は変更しない。 |
+
+以下は保持対象であり、byte 内容を変更してはならない。
+
+| 保持対象 | 固定 |
+|----------|------|
+| `pre` / `code` | 内部 whitespace、改行、escape 済み text を保持する。 |
+| `textarea` / `script` / `style` 相当 | 存在する場合は内部 byte を保持する。§28 では新規 inline script / style を追加しない。 |
+| URL / data attribute / aria attribute | 値、quote、escape を保持する。 |
+| doctype / html / head / body | 必須構造を保持する。 |
+
+minify 後に byte 数が 0、doctype / html / head / body が消える、pre / code の内容が変わる、必須 selector / id / attribute が消える、search index 対象 text が変わる場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力維持とする。
+
+`minify_bytes_before` は minify 前 HTML byte 数、`minify_bytes_after` は minify 後 HTML byte 数、`minify_bytes_saved` は `before - after` とする。`after > before` の場合は `saved=0` とし、minify 後 HTML を採用してよいのは validation がすべて成功した場合だけとする。
+
 **§28 実装完了条件：**
 
 各機能は、該当 §28.x の入力、出力、処理順序、異常系、検証条件、`docs/DETAIL_INDEX.md` §0i.1、`docs/details/fixture.md` §28-F を満たすまで実装完了として扱わない。複数の §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。

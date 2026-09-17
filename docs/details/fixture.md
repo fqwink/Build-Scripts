@@ -594,11 +594,11 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | §28.8 | `updated-at` | `success-updated-at-git`、`success-updated-at-file`、`success-updated-at-fallback`、`success-updated-at-none`、`failure-updated-at-unknown-source`、`failure-updated-at-unavailable`、`security-updated-at-no-search-index` |
 | §28.9 | `diff-highlight` | `success-diff-insert-delete-context`、`success-diff-header`、`success-diff-line-number-composition`、`noop-diff-non-diff-language`、`security-diff-escape`、`security-diff-copy-text-clean` |
 | §28.10 | `lazy-images` | `success-lazy-relative-image`、`success-lazy-external-image-no-fetch`、`success-lazy-data-uri-no-fetch`、`failure-lazy-base-outside-strict`、`noop-lazy-disabled`、`security-lazy-alt-escape`、`security-lazy-invalid-scheme-strict` |
-| §28.11 | `custom-meta` | `success-meta-og-twitter`、`success-meta-duplicate-last-wins`、`failure-meta-forbidden-key`、`security-meta-escape` |
-| §28.12 | `color-scheme` | `success-color-scheme-light`、`success-color-scheme-dark`、`success-color-scheme-auto`、`failure-color-scheme-unknown` |
-| §28.13 | `code-title` | `success-code-title-colon`、`success-code-title-key-value`、`noop-code-title-empty`、`security-code-title-escape` |
-| §28.14 | `template-vars` | `success-template-var-replace`、`noop-template-var-code-fence`、`failure-template-var-missing-strict`、`security-template-var-key-validation` |
-| §28.15 | `minify-html` | `success-minify-html`、`success-minify-preserve-code`、`failure-minify-marker-missing`、`noop-minify-disabled` |
+| §28.11 | `custom-meta` | `success-meta-name-property-order`、`success-meta-og-twitter`、`success-meta-duplicate-last-wins`、`failure-meta-forbidden-key`、`failure-meta-invalid-type`、`security-meta-escape`、`security-meta-secret-not-reported` |
+| §28.12 | `color-scheme` | `success-color-scheme-light`、`success-color-scheme-dark`、`success-color-scheme-auto`、`success-color-scheme-toggle-storage`、`success-color-scheme-print-light`、`failure-color-scheme-unknown`、`security-color-scheme-storage-guard` |
+| §28.13 | `code-title` | `success-code-title-colon`、`success-code-title-key-value`、`success-code-title-title-only`、`noop-code-title-empty`、`security-code-title-escape`、`security-code-title-copy-search-excluded` |
+| §28.14 | `template-vars` | `success-template-var-replace`、`success-template-var-multiple-sources`、`noop-template-var-code-fence-span`、`noop-template-var-invalid-syntax`、`failure-template-var-missing-strict`、`failure-template-var-key-validation`、`security-template-var-secret-not-reported` |
+| §28.15 | `minify-html` | `success-minify-html`、`success-minify-preserve-code`、`success-minify-attribute-order`、`failure-minify-structure-broken`、`failure-minify-marker-missing`、`noop-minify-disabled`、`security-minify-no-script-style-inline` |
 | §28.16 | `toc-active` | `success-toc-active-scroll`、`success-toc-active-fallback`、`noop-toc-active-disabled`、`security-toc-active-depth-sync` |
 | §28.17 | `mermaid` | `success-mermaid-graph-td`、`failure-mermaid-unsupported-strict`、`noop-mermaid-disabled`、`security-mermaid-no-external-script` |
 | §28.18 | `footnotes` | `success-footnotes-multiple`、`success-footnotes-backlink`、`failure-footnote-undefined-strict`、`security-footnote-escape` |
@@ -848,6 +848,49 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 
 §28.6〜§28.10 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。browser runtime、visual layout、parser precedence と併用する fixture では、該当共通 fixture と同じ localStorage key、media query、parser 保護、external call 0 件を再確認する。
 
+**§28.11〜§28.15 feature fixture 固定契約：**
+
+§28.11〜§28.15 の fixture は、`docs/details/builder.md` §28.11〜§28.15 実装詳細固定契約に列挙された head meta、theme state、code title、template var、minify byte、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x に固定し、`manifest.json.feature_slug` を §28 fixture カタログ固定契約の feature slug と一致させる。
+
+| feature slug | fixture | 固定する内容 |
+|--------------|---------|--------------|
+| `custom-meta` | `success-meta-name-property-order` | `name:*`、bare key、`property:og:*`、`property:twitter:*` の正規化、ASCII key order、head 内の既存 meta 後 / stylesheet 前の出力順を固定する。 |
+| `custom-meta` | `success-meta-og-twitter` | OGP と Twitter meta を `property` attribute で出力し、`content` attribute を escape 済みで固定する。 |
+| `custom-meta` | `success-meta-duplicate-last-wins` | CLI、env、config、同一 source 内重複の last wins と、`custom_meta_count` / `custom_meta_rejected` を固定する。 |
+| `custom-meta` | `failure-meta-forbidden-key` | `script`、`http-equiv`、`charset`、`refresh`、`set-cookie`、`content-security-policy` を `BUILDER28_INVALID_OPTION`、終了コード `2`、stdout 空にする。 |
+| `custom-meta` | `failure-meta-invalid-type` | `ADLAIRE_META_JSON` または config meta が object 以外、value string 以外、空 key、制御文字 key の場合に `BUILDER28_INVALID_OPTION` になる。 |
+| `custom-meta` | `security-meta-escape` | meta key / value の quote、raw HTML、event handler、credential URL を attribute escape し、実行可能 HTML を出力しない。 |
+| `custom-meta` | `security-meta-secret-not-reported` | secret 風 value と credential 付き URL value が stdout、stderr、REPORT、manifest に平文出力されない。 |
+| `color-scheme` | `success-color-scheme-light` | `data-color-scheme="light"`、light CSS variables、toggle、REPORT `color_scheme="light"` を固定する。 |
+| `color-scheme` | `success-color-scheme-dark` | `data-color-scheme="dark"`、dark CSS variables、toggle、REPORT `color_scheme="dark"` を固定する。 |
+| `color-scheme` | `success-color-scheme-auto` | `data-color-scheme="auto"`、`@media (prefers-color-scheme: dark)`、auto CSS variables を固定する。 |
+| `color-scheme` | `success-color-scheme-toggle-storage` | `light → dark → auto → light` の toggle、`adlaire:color-scheme` 保存値、unknown value fallback、storage 例外 no-break を `expected/site/assets/app.js` で確認する。 |
+| `color-scheme` | `success-color-scheme-print-light` | `@media print` で light 相当の背景 / 文字色になり、dark background を印刷しない。 |
+| `color-scheme` | `failure-color-scheme-unknown` | 未知 scheme を `BUILDER28_INVALID_OPTION`、終了コード `2`、stdout 空、公開出力維持にする。 |
+| `color-scheme` | `security-color-scheme-storage-guard` | localStorage 値が unknown、空、JSON 風、長大文字列でも例外化せず、静的 HTML 表示を壊さない。 |
+| `code-title` | `success-code-title-colon` | `go:main.go` 形式で language と title を分離し、`.code-block-header` 内 `.code-title` を出力する。 |
+| `code-title` | `success-code-title-key-value` | `bash:title=deploy.sh` 形式で title を出力し、language は `bash` として code block に残す。 |
+| `code-title` | `success-code-title-title-only` | `title=README.md` 形式で language 空、title ありの code block を固定する。 |
+| `code-title` | `noop-code-title-empty` | 空 title、空白 title、`title=`、`lang:` の値なしを no-op にし、warning と REPORT count を増やさない。 |
+| `code-title` | `security-code-title-escape` | title 内 raw HTML、quote、event handler、`javascript:` URL が escape される。 |
+| `code-title` | `security-code-title-copy-search-excluded` | copy text、search index、line number count、diff count に code title text が混入しない。 |
+| `template-vars` | `success-template-var-replace` | `{{ KEY }}` を Markdown parse 前に通常 text だけ置換し、置換後 text が Markdown 処理へ渡る。 |
+| `template-vars` | `success-template-var-multiple-sources` | CLI、env、config の source 優先順位、repeatable CLI、key count、replacement count、missing array を固定する。 |
+| `template-vars` | `noop-template-var-code-fence-span` | code fence と code span 内の `{{ KEY }}` が置換されない。 |
+| `template-vars` | `noop-template-var-invalid-syntax` | `{{KEY}}`、`{{ key }}`、`{{ KEY | filter }}` が通常 text として残る。 |
+| `template-vars` | `failure-template-var-missing-strict` | strict で未定義 var を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、公開出力維持にする。 |
+| `template-vars` | `failure-template-var-key-validation` | key 不正、object 以外、value string 以外を `BUILDER28_INVALID_OPTION`、終了コード `2` にする。 |
+| `template-vars` | `security-template-var-secret-not-reported` | secret 風 value と credential URL value が stdout、stderr、REPORT、manifest に平文出力されない。 |
+| `minify-html` | `success-minify-html` | tag 間 whitespace と HTML comment の安全な削減、byte before / after / saved の REPORT を固定する。 |
+| `minify-html` | `success-minify-preserve-code` | `pre` / `code` 内 whitespace、改行、escape 済み text が byte 単位で保持される。 |
+| `minify-html` | `success-minify-attribute-order` | attribute order、quote、escape、URL、data / aria attribute が minify 前後で保持される。 |
+| `minify-html` | `failure-minify-structure-broken` | minify 後に doctype / html / head / body、必須 id / class / attribute、search index 対象 text が壊れる場合に `BUILDER28_OUTPUT_VALIDATION_FAILED`、終了コード `1` になる。 |
+| `minify-html` | `failure-minify-marker-missing` | 必須 marker が定義されている fixture で marker 消失を `BUILDER28_OUTPUT_VALIDATION_FAILED`、終了コード `1`、公開出力維持にする。 |
+| `minify-html` | `noop-minify-disabled` | minify 無効時に HTML byte を変更せず、minify REPORT byte count を 0 にする。 |
+| `minify-html` | `security-minify-no-script-style-inline` | minify 実装が新規 inline script / style を追加せず、既存 script / style 相当領域の内部 byte を変更しない。 |
+
+§28.11〜§28.15 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。security fixture では secret / credential が stdout、stderr、REPORT、manifest、HTML attribute、search index のいずれにも平文で残らないことを `expected/security.json` に固定する。
+
 **§28 expected 比較方式固定契約：**
 
 expected 比較は、実装環境差分で揺れないように以下の正規化だけを許可する。下表にない正規化、部分一致、snapshot 差し替え、目視承認は合格条件にしてはならない。
@@ -904,11 +947,11 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | §28.8 | fake git、fake file mtime、fallback、none、取得不能 failure、RFC3339 UTC 秒精度、search index 除外。 |
 | §28.9 | inserted / deleted / context / header class、line number 併用、escape、copy text / search index 清浄性。 |
 | §28.10 | lazy 属性、外部 URL no-fetch、data URI no-fetch、base 外 path strict、disabled no-op、alt escape、invalid scheme strict。 |
-| §28.11 | meta head 内順序、禁止 key、重複 last wins、attribute escape。 |
-| §28.12 | light / dark / auto、toggle、localStorage、print light。 |
-| §28.13 | colon / key-value title、copy 除外、empty title no-op、escape。 |
-| §28.14 | key validation、code fence 非置換、missing var、replacement count。 |
-| §28.15 | byte count、pre/code 保持、marker validation、disabled 互換。 |
+| §28.11 | name / property key 正規化、head 内順序、重複 last wins、禁止 key、型 validation、attribute escape、secret 非表示。 |
+| §28.12 | light / dark / auto、CSS variables、toggle cycle、`adlaire:color-scheme`、storage guard、print light、unknown scheme 拒否。 |
+| §28.13 | colon / key-value / title-only title、copy / search 除外、empty title no-op、escape。 |
+| §28.14 | key validation、source 優先順位、code fence / span 非置換、invalid syntax no-op、missing var strict、secret 非表示、replacement count。 |
+| §28.15 | byte count、pre/code 保持、attribute order 保持、structure validation、marker validation、disabled 互換、inline script / style 非追加。 |
 | §28.16 | active link 1 件化、aria-current、fallback scroll、depth sync。 |
 | §28.17 | graph TD SVG、unsupported source fallback、external script 不在。 |
 | §28.18 | reference order、backlink、duplicate definition warning、undefined strict。 |
