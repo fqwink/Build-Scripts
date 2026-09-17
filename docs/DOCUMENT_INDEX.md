@@ -52,6 +52,20 @@
 
 `README.md` は入口であり、詳細ルール、詳細仕様本文、実装状態表、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義しない。`docs/DOCUMENT_INDEX.md` は索引であり、仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義しない。
 
+## Specification Change Procedure
+
+仕様構造、文書配置、ファイル名、参照先、正本関係を変更する場合は、以下の順で作業する。
+
+1. 変更目的を `Specification Decision Flow` で分類する。
+2. 記載先を `Specification Write Location Matrix` で確定する。
+3. 確定した正本文書だけを編集する。
+4. 文書名、節名、正本範囲、実装ファイル所在に影響がある場合は、必要な索引と参照だけを更新する。
+5. 旧ファイル名、旧節名、移動前参照、削除済み文書名が残っていないことを `rg` で確認する。
+6. 文書構造整理だけの作業では、実装ファイル、testdata、fixture を変更しない。
+7. `Specification Structure Completion Criteria` をすべて満たしてから完了扱いにする。
+
+上記手順は、仕様本文の意味、実装状態、ロードマップ状態を変更する許可ではない。仕様本文の意味を変更する場合は、変更内容に対応する正本文書のルールに従う。
+
 ## Specification Structure Completion Criteria
 
 仕様構造、文書配置、ファイル名、参照先、正本関係を変更する作業は、以下をすべて満たすまで完了扱いにしない。
