@@ -29,8 +29,8 @@
 | 初見向け概要 | `README.md` | 最小限の入口と主要参照先を確認する。 |
 | 文書構造 | `docs/DOCUMENT_INDEX.md` | 文書の役割、所在、正本範囲、実装ファイル所在を確認する。 |
 | 方針・ポリシー | `docs/SPEC.md` | 方針、ポリシー、正本関係、禁止事項、リリース判断を確認する。 |
-| 状態・計画 | `docs/ROADMAP.md` | 実装状態、実装可否、Phase、機能インベントリ、将来計画を確認する。 |
-| 詳細仕様入口 | `docs/DETAIL_INDEX.md` | 詳細仕様の読み方、共通固定値、対応表、横断補足契約を確認する。 |
+| 状態・計画 | `docs/ROADMAP.md` | 実装状態、実装可否、Phase、機能インベントリ、将来計画、追加仕様化機能参照、横断補足契約を確認する。 |
+| 詳細仕様入口 | `docs/DETAIL_INDEX.md` | 詳細仕様の読み方、共通固定値、対応表、ソース配置を確認する。 |
 | 詳細仕様本文 | `docs/details/*.md` | owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
 | デザイン補助 | `docs/DESIGN.md` | 生成静的 Web サイトの視覚仕様を確認する。 |
 | 実装所在 | `docs/DOCUMENT_INDEX.md` の `Specified Components` | 実装ファイル、テスト、fixture の所在と状態を確認する。 |
@@ -47,8 +47,8 @@
 | 入口 | `README.md` | 初見向け入口 | リポジトリ概要、読む順番、主要ファイルを把握する。 |
 | 索引 | `docs/DOCUMENT_INDEX.md` | 文書・実装ファイル索引 | 文書配置、正本関係、実装ファイル所在を確認する。 |
 | マスター仕様 | `docs/SPEC.md` | 方針・ポリシー正本 | 方針、ポリシー、正本関係、禁止事項、リリース判断を確認する。 |
-| ロードマップ | `docs/ROADMAP.md` | 状態・計画正本 | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順を判断する。 |
-| 詳細仕様入口 | `docs/DETAIL_INDEX.md` | Part 3 詳細仕様セット入口 | 詳細仕様の読み方、共通固定値、対応表、横断補足契約を確認する。 |
+| ロードマップ | `docs/ROADMAP.md` | 状態・計画正本 | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を判断する。 |
+| 詳細仕様入口 | `docs/DETAIL_INDEX.md` | Part 3 詳細仕様セット入口 | 詳細仕様の読み方、共通固定値、対応表、ソース配置を確認する。 |
 | 詳細仕様本文 | `docs/details/*.md` | owner component 別本文 | 対象 component の入出力、状態、処理順序、異常系、検証条件を実装単位で確認する。 |
 | 補助文書 | `docs/DESIGN.md` | 生成静的 Web サイトのデザイン補助 | レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を確認する。 |
 
@@ -92,8 +92,8 @@
 |----------|----------|----------------------|
 | 作業ルール、承認条件、Git 運用、PR 作成、文書整合ルール | `AGENTS.md` | `README.md`、`docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
 | 方針、ポリシー、禁止事項、リリース判断、正本関係 | `docs/SPEC.md` | `docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
-| 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順 | `docs/ROADMAP.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
-| 詳細仕様の入口、読み順、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、横断補足契約 | `docs/DETAIL_INDEX.md` | `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/details/*.md`、`README.md` |
+| 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約 | `docs/ROADMAP.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
+| 詳細仕様の入口、読み順、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置 | `docs/DETAIL_INDEX.md` | `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/details/*.md`、`README.md` |
 | owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件 | owner component 別の `docs/details/*.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`README.md` |
 | 文書配置、読む順番、正本関係、実装ファイル所在、仕様構造の索引 | `docs/DOCUMENT_INDEX.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
 | 生成静的 Web サイトのレイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様 | `docs/DESIGN.md` | `docs/SPEC.md`、`docs/DETAIL_INDEX.md`、`docs/details/*.md` |
@@ -201,8 +201,8 @@
 |---------|------|
 | `README.md` | 初見向け入口。概要、読む順番、主要ファイルを示す。 |
 | `docs/SPEC.md` | 方針、ポリシー、正本関係、禁止事項、リリース判断を示す。 |
-| `docs/ROADMAP.md` | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順を示す。 |
-| `docs/DETAIL_INDEX.md` | 詳細仕様の入口、読み順、共通固定値、対応表、リポジトリ内ソース配置、横断補足契約を示す。 |
+| `docs/ROADMAP.md` | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を示す。 |
+| `docs/DETAIL_INDEX.md` | 詳細仕様の入口、読み順、共通固定値、対応表、リポジトリ内ソース配置を示す。 |
 | `docs/details/builder.md` | `builder` owner component の詳細仕様。 |
 | `docs/details/runner.md` | `runner` owner component の詳細仕様。 |
 | `docs/details/api.md` | `api` owner component の詳細仕様。 |
@@ -225,7 +225,7 @@
 
 ## Detail Spec Management
 
-詳細仕様は、責務 component 別の `docs/details/*.md` を本文として管理する。`docs/DETAIL_INDEX.md` は、詳細仕様本文を集約せず、入口、読み順、共通固定値、対応表、リポジトリ内ソース配置、横断補足契約だけを持つ。
+詳細仕様は、責務 component 別の `docs/details/*.md` を本文として管理する。`docs/DETAIL_INDEX.md` は、詳細仕様本文を集約せず、入口、読み順、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。§27 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。
 
 下表は、詳細仕様本文の配置先を示す索引である。各ファイルの責務境界、持つ内容、持たない内容、owner / collaborator の扱いは `docs/DETAIL_INDEX.md` §0b および §0b.1 を正とする。
 
@@ -276,8 +276,8 @@
 |----------|------|
 | 作業ルール、承認、Git 運用、文書整合 | `AGENTS.md` |
 | 方針、ポリシー、正本関係、禁止事項、リリース判断 | `docs/SPEC.md` |
-| 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順 | `docs/ROADMAP.md` |
-| 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、横断補足契約 | `docs/DETAIL_INDEX.md` |
+| 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約 | `docs/ROADMAP.md` |
+| 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置 | `docs/DETAIL_INDEX.md` |
 | 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の `docs/details/*.md` |
 | 生成静的 Web サイトのデザイン補助 | `docs/DESIGN.md` |
 | 文書・実装ファイルの参照先と役割 | `docs/DOCUMENT_INDEX.md` |

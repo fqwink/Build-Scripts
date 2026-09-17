@@ -2,7 +2,7 @@
 
 本ファイルは、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順を管理するロードマップ正本である。
 
-方針、ポリシー、正本関係、禁止事項、リリース判断は `docs/SPEC.md` を正とする。詳細仕様の入口、owner component 対応表、共通固定値、横断補足契約は `docs/DETAIL_INDEX.md` を正とする。owner component 別の入出力、状態、処理順序、異常系、検証条件は `docs/details/*.md` を正とする。
+方針、ポリシー、正本関係、禁止事項、リリース判断は `docs/SPEC.md` を正とする。詳細仕様の入口、owner component 対応表、共通固定値、リポジトリ内ソース配置は `docs/DETAIL_INDEX.md` を正とする。owner component 別の入出力、状態、処理順序、異常系、検証条件は `docs/details/*.md` を正とする。
 
 本ファイルは状態と計画を扱う。HTTP response schema、状態ファイル schema、SDK method の実装詳細、UI DOM、fixture assertion、具体的な処理順序は定義しない。
 
