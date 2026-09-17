@@ -111,7 +111,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理。 |
 | `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` | fixture manifest、assertion、fake、testdata、API P0〜P5 fixture、受け入れ fixture 共通契約、PR 証跡テンプレート。 | 個別 component の通常処理本文。 |
 
-`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルと §27.38a を同時に満たす。
+`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルを正本とし、§27.38a は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点の確認として読む。
 
 詳細仕様の配置単位は、owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには参照リンク、禁止事項、受け入れ観点だけを置く。主本文を複数ファイルへ重複定義してはならない。
 
@@ -637,7 +637,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は横断補足契約として本ファイルに残す。
 
-§27.21〜§27.38 の runner 拡張機能を実装する場合は、`ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` の個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture は本ファイル §27.38a を同時に確認する。
+§27.21〜§27.38 の runner 拡張機能を実装する場合は、`ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` の個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として本ファイル §27.38a を同時に確認する。
 
 ### — 管理ツール —
 
@@ -653,7 +653,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は横断補足契約として本ファイルに残す。
 
-§27.21〜§27.38 に関わる api / sdk / ui 連動条件は、各 owner component の分割先詳細仕様ファイルと本ファイル §27.38a を同時に満たす。§27.38a の内容を api / sdk / ui の分割先へ重複定義してはならない。
+§27.21〜§27.38 に関わる api / sdk / ui 連動条件は、各 owner component の分割先詳細仕様ファイルを正本とし、本ファイル §27.38a は横断同期確認として同時に確認する。§27.38a の内容を api / sdk / ui の分割先へ重複定義してはならない。
 
 ## 23. SDK 詳細仕様（分割済み）
 
@@ -862,7 +862,9 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 本節は、責務 component 別詳細仕様へ分割しない。§27.21〜§27.38 および api / sdk / ui / statefile の横断連動は runner、builder、api、sdk、ui、statefile、archive にまたがるため、実装者は owner 詳細仕様と本節の横断確認を同時に満たす。
 
-本節は、個別機能の処理本文、fixture schema、endpoint 詳細、UI DOM 詳細を持たない。これらは各 owner / collaborator の分割先詳細仕様ファイルを正とする。
+本節の正本範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装完了時の横断受け入れ観点に限定する。本節は、個別機能の処理本文、入力、出力、状態 schema、fixture schema、endpoint 詳細、SDK method 詳細、UI DOM 詳細を持たない。これらは各 owner / collaborator の分割先詳細仕様ファイルを正とする。
+
+本節と owner component 別詳細仕様ファイルの内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI、fixture は owner component 別詳細仕様ファイルを正とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを本節で確認する。§27.38a を理由に、owner 詳細仕様に存在しない endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture を追加してはならない。
 
 | 確認 | 固定内容 |
 |------|----------|
@@ -876,7 +878,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 **api / sdk / ui / statefile 横断連動契約：**
 
-下表の機能群は、API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえる。API だけ、SDK だけ、UI だけを先行して仕様外の仮実装にしてはならない。UI が未実装の Phase では、UI 列は fixture の期待操作として固定し、実装完了扱いには含めない。
+下表は横断確認表であり、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。下表の機能群は、各 owner component 別詳細仕様ファイルに定義済みの API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえる。API だけ、SDK だけ、UI だけを先行して仕様外の仮実装にしてはならない。UI が未実装の Phase では、UI 列は fixture の期待操作として固定し、実装完了扱いには含めない。
 
 | 機能群 | API | SDK | UI 操作 | 状態ファイル副作用 | 成功後再取得 | 失敗時固定 |
 |--------|-----|-----|---------|--------------------|--------------|------------|
