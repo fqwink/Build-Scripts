@@ -2,9 +2,9 @@
 
 本ファイルは `docs/DETAIL_INDEX.md` および `docs/details/api.md` から分割した `statefile` owner component の詳細仕様である。
 
-本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/SPEC.md` を正とする。
+本ファイルに、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を記載してはならない。方針、ポリシー、正本関係は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否は `docs/ROADMAP.md` を正とする。
 
-本ファイルを読む前に、`docs/SPEC.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、fixture、検証観点として参照する。
+本ファイルを読む前に、`docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、fixture、検証観点として参照する。
 
 ---
 

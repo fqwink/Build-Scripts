@@ -1,13 +1,15 @@
-# Adlaire-db-spec デザイン仕様
+# Adlaire CI 生成 HTML デザイン仕様
 
-**対象ファイル：** `Adlaire-db-spec.html`  
-**ビルドスクリプト：** `components/builder.go` から生成する `adlaire-ci-build`
-**デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)  
+**対象出力：** `adlaire-ci-build` が生成する静的 Web サイト HTML
+**ビルドコンポーネント：** `components/builder.go` から生成する `adlaire-ci-build`
+**デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)
 **最終更新：** 2026-09-14
 
 ---
 
-本ファイルは生成 HTML の視覚仕様を整理する補助文書である。Adlaire CI の機能仕様、運用仕様、API 仕様、実装状態、正本関係は `docs/SPEC.md` と `docs/DETAIL_INDEX.md` を正とする。
+本ファイルは生成 HTML の視覚仕様を整理する補助文書である。Adlaire CI の方針、ポリシー、正本関係は `docs/SPEC.md`、実装状態、実装可否、Phase、将来計画は `docs/ROADMAP.md`、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は `docs/details/builder.md` を正とする。
+
+本ファイルは、機能仕様、運用仕様、API 仕様、状態 schema、実装状態、ロードマップ状態を定義しない。
 
 ## 1. デザイン方針
 
@@ -181,7 +183,7 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 ## 8. ビルド方法
 
 ```bash
-adlaire-ci-build --src <source.md> --out Adlaire-db-spec.html
+adlaire-ci-build --src <source.md> --out site/
 ```
 
 入出力パス、既定値、終了コード、レポート出力は `docs/DETAIL_INDEX.md` および `docs/details/builder.md` の builder 詳細仕様を正とする。

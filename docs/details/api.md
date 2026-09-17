@@ -2,11 +2,11 @@
 
 本ファイルは `docs/DETAIL_INDEX.md` から分割した `api` owner component の詳細仕様である。
 
-本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/SPEC.md` を正とする。
+本ファイルに、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を記載してはならない。方針、ポリシー、正本関係は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否は `docs/ROADMAP.md` を正とする。
 
-本ファイルを読む前に、`docs/SPEC.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `api` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、security、表示、fixture、検証観点として参照する。
+本ファイルを読む前に、`docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で実装状態と実装可否を確認し、`docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `api` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、security、表示、fixture、検証観点として参照する。
 
-`docs/DETAIL_INDEX.md` §27.38a は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、本ファイルへ移動しない。api 連動機能を実装する場合は、本ファイルの個別節を正本とし、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として `docs/DETAIL_INDEX.md` §27.38a を確認する。
+`docs/ROADMAP.md` §6.3 は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、本ファイルへ移動しない。api 連動機能を実装する場合は、本ファイルの個別節を正本とし、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として `docs/ROADMAP.md` §6.3 を確認する。
 
 `docs/details/security.md` §27.42〜§27.47 は security owner component の詳細仕様であり、本ファイルへ移動しない。api が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は `docs/details/security.md` を正とする。
 
@@ -663,7 +663,7 @@ no-op response は endpoint 固有の `No changes` が定義されている場�
 
 **api / sdk / ui / statefile 横断契約参照：**
 
-API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別詳細仕様ファイルを正とする。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は `docs/DETAIL_INDEX.md` §27.38a を同時に確認する。本ファイルでは横断連動表と横断処理順表を重複定義しない。
+API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別詳細仕様ファイルを正とする。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は `docs/ROADMAP.md` §6.3 を同時に確認する。本ファイルでは横断連動表と横断処理順表を重複定義しない。
 
 **横断 fixture 参照：**
 
@@ -2537,9 +2537,11 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | diff failure | 状態差分なしで `500`。 |
 | target name | endpoint から固定 target 名が生成される。 |
 
-**§27.21〜§27.38 / §27.42〜§27.47 機能別実装完全性固定契約：**
+**§27.21〜§27.38 / §27.42〜§27.47 api 連動境界確認表：**
 
-§27.21〜§27.38、§27.42〜§27.47 の各機能は、owner component の個別節を主本文とし、下表を横断受け入れ確認として満たした場合だけ実装完了とする。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。§27.38a は §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
+§27.21〜§27.38、§27.42〜§27.47 の各機能は、owner component の個別節を主本文とする。下表は api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認するための表であり、runner / builder / security / fixture の主本文を置き換えない。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。`docs/ROADMAP.md` §6.3 は §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
+
+実装完了判定では、対象機能の owner component 詳細仕様、`docs/ROADMAP.md` の実装状態、`docs/details/fixture.md` §27-F の fixture / PR 証跡、必要な collaborator 詳細仕様を同時に満たす。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|
@@ -2568,7 +2570,9 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | §27.46 | TOTP | setup secret、ticket、TOTP code。 | `.totp_secret`、ticket/session response、audit/access log。 | secret / ticket はメモリと 1 回 response に限定し、成功時だけ永続状態を更新する。 | code 不一致 / replay は token を返さない。audit 失敗時も secret 平文を出さない。 | setup、login、replay、secret one-time、ticket reuse、disable、window、全角 code。 |
 | §27.47 | API rate limit | rate policy、remote addr、actor key。 | `.api_rate_state`、`429`、state summary。 | key 群を同一 lock で判定 / 更新する。 | 上限超過では count を増やさず endpoint 固有処理を行わない。audit 失敗時は `500`。 | under limit、over IP、over token、disabled、policy update、audit failure、window reset。 |
 
-**§27.21〜§27.38 / §27.42〜§27.47 api / sdk / ui 連動固定契約：**
+**§27.21〜§27.38 / §27.42〜§27.47 api / sdk / ui 連動参照表：**
+
+下表は api、sdk、ui の接続点をそろえるための参照表である。各 API endpoint の詳細は本ファイルの個別節、SDK method の詳細は `docs/details/sdk.md` §23、UI 操作の詳細は `docs/details/ui.md` §24、fixture と PR 証跡は `docs/details/fixture.md` §27-F を正とする。本表だけを根拠に endpoint、method、DOM、状態ファイル、fixture を追加してはならない。
 
 | 節 | API | SDK | UI |
 |----|-----|-----|----|
