@@ -4,7 +4,7 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `security` owner component の主本文であり、collaborator component の仕様は呼び出し境界、endpoint、SDK、UI、状態 schema、fixture、検証観点として参照する。
 
 ---
 
@@ -14,8 +14,8 @@
 |------|------|
 | owner component | `security` |
 | collaborator component | `api`、`sdk`、`ui`、`statefile` |
-| 持つ内容 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| 持たない内容 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理。 |
+| 持つ内容 | `security` owner が主本文として定義する API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
+| 持たない内容 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 
 ---
 
@@ -40,7 +40,7 @@
 
 | 節 | 機能 | 判定入口 | 成功時副作用 | 失敗時副作用 | 漏えい禁止値 | 必須 fixture |
 |----|------|----------|--------------|--------------|--------------|--------------|
-| §27.42 | API token scope | route / method 確定後、body parse 前。 | 許可 endpoint だけ処理し、必要時 audit に actor を残す。 | 権限不足は対象処理を実行せず `403`。audit 失敗時は `500`。 | token 本体、Authorization header。 | trigger allowed、read denied、multi scope、path param、body 未評価、audit failure。 |
+| §27.42 | API token scope | route / method 確定後、body parse 前。 | 許可 endpoint だけ処理し、§27.44 の監査対象 event に該当する場合は audit に actor を残す。 | 権限不足は対象処理を実行せず `403`。audit 失敗時は `500`。 | token 本体、Authorization header。 | trigger allowed、read denied、multi scope、path param、body 未評価、audit failure。 |
 | §27.43 | API key 管理 | admin session または admin scope。 | token hash だけ保存し、作成時だけ token 本体を返す。 | validation 失敗は保存差分なし。失効済み token は再有効化しない。 | token 本体、token hash の不要露出。 | create、list mask、revoke、expired、duplicate label、admin token create。 |
 | §27.44 | 監査ログ | security / config / operation event 確定時。 | 1 event 1 JSON Lines で追記し、actor / target / result を保存する。 | 必須 audit 失敗は対象処理を `500` にする。任意 audit は個別節優先。 | secret、password、token、TOTP secret、raw request body。 | success、denied、failure、mask、append failure、pagination。 |
 | §27.45 | session timeout | login、authenticated request、timeout config API。 | session の last_seen / expires_at を固定規則で更新する。 | timeout session は `401`、対象 endpoint は実行しない。 | session token。 | active、expired、sliding update、config update、revoke all、clock boundary。 |
@@ -166,7 +166,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 owner component は `security` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
 
-本機能の目的は、外部システムが最小権限で build を開始できる API token を発行できるようにすることである。
+本機能の目的は、外部システムによる build 開始操作を `trigger` scope の API token と build 開始 endpoint だけに限定することである。
 
 **scope：**
 
@@ -261,7 +261,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | `POST /api/tokens` | 管理 session または `admin` scope API token |
 | `DELETE /api/tokens/{id}` | 管理 session または `admin` scope API token |
 
-`admin` scope API token で新しい `admin` scope API token を発行してよい。発行者 token と発行対象 token は別 record とし、親子関係は保存しない。
+`admin` scope API token は、`POST /api/tokens` の認証と scope 判定を通過した場合だけ新しい `admin` scope API token を発行する。発行者 token と発行対象 token は別 record とし、親子関係は保存しない。
 
 **正常系：**
 
@@ -325,7 +325,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 6. `.access_log` と `.audit_log` に失効成功を追記する。
 7. `{ "message": "Token revoked" }` を返す。
 
-認証に使用中の API token 自身を失効してよい。その場合、当該リクエストは成功し、次リクエストから `401` になる。
+認証に使用中の API token 自身を path `id` に指定した場合、その token を失効対象にする。当該リクエストは成功し、次リクエストから `401` になる。
 
 **token ID 採番・返却固定契約：**
 
@@ -370,7 +370,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 owner component は `security` とする。collaborator component は `api`、`statefile` とする。
 
 
-本機能の目的は、認証、権限拒否、token、設定、build trigger などの重要操作を追跡できる JSON Lines 監査ログとして保存することである。
+本機能の目的は、認証、権限拒否、token 作成・失効、設定変更、build trigger、session revoke、TOTP enable / disable、rate limit 設定変更を追跡できる JSON Lines 監査ログとして保存することである。
 
 **対象 action：**
 
@@ -472,7 +472,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 owner component は `security` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
 
-本機能の目的は、新規 session の有効期限を管理 API から変更可能にし、既存 session への影響を明確にすることである。
+本機能の目的は、新規 session の有効期限を管理 API から更新し、既存 session への影響を明確にすることである。
 
 **仕様：**
 
@@ -528,7 +528,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | replay 防止 | `.totp_secret.last_accepted_step` 以下の step は拒否する。 |
 | otpauth URI | `otpauth://totp/Adlaire%20CI:admin?secret={secret}&issuer=Adlaire%20CI&algorithm=SHA1&digits=6&period=30`。 |
 
-QR code 生成は初期実装対象外とする。UI は secret と otpauth URI を一回表示し、ユーザーが認証アプリへ手入力またはURI貼り付けできるようにする。
+QR code 生成は初期実装対象外とする。UI は secret と otpauth URI を一回表示し、ユーザーの認証アプリ登録手段は手入力または URI 貼り付けに限定する。
 
 **メモリ上状態：**
 
@@ -672,7 +672,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | `count` | integer | 現在 count。 |
 | `reset_at` | string | `window_start + window_seconds`。 |
 
-`state_summary` は `reset_at` 降順、同時刻は `key` 昇順で最大 100 件返す。期限切れ window は response 算出前に `.api_rate_state` から削除してよい。
+`state_summary` は `reset_at` 降順、同時刻は `key` 昇順で最大 100 件返す。期限切れ window は response 算出前に `.api_rate_state` から削除する。
 
 **正常系：**
 

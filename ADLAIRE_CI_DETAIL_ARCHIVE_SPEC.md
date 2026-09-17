@@ -4,7 +4,7 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、fixture、検証観点として参照する。
 
 ---
 
@@ -14,8 +14,8 @@
 |------|------|
 | owner component | `archive` |
 | collaborator component | `runner`、`api`、`sdk`、`ui`、`statefile` |
-| 持つ内容 | build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理。 |
-| 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態ファイル schema 定義。 |
+| 持つ内容 | `archive` owner が主本文として定義する build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理。 |
+| 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 
 archive owner は、保存済み build log と snapshot artifact を安全に圧縮、展開、列挙、削除、転送する実体処理だけを担当する。api は HTTP endpoint の request / response と archive owner 呼び出し境界、sdk は API method 呼び出し、ui は操作表示だけを担当する。runner の build 実行、build id 採番、通常 snapshot 作成タイミング、history / status finalizer は runner owner の詳細仕様を正とし、本ファイルへ重複定義しない。
 
@@ -67,7 +67,7 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 
 ### 27.15 ビルドアーティファクト管理
 
-本機能の目的は、`.snapshots/` に保存された build artifact を api、sdk、ui から一覧、download、削除、rollback できるようにすることである。
+本機能の目的は、`.snapshots/` に保存された build artifact について、api は一覧、download、削除、rollback endpoint を公開し、sdk は対応 method を呼び出し、ui は対応操作を表示する境界を固定することである。
 
 owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は `runner` の §14b を正とする。
 
@@ -105,7 +105,7 @@ archive owner は snapshot の保存形式、一覧読取、download tar.gz 生�
 | entry 種別 | 通常ファイルと directory だけを含める。symlink、hardlink、device、socket、fifo は含めない。 |
 | header | `Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="{id}.tar.gz"`。 |
 | 順序 | directory、file とも相対 path 辞書順。 |
-| mtime | snapshot 内 file の mtime を使用してよい。存在しない場合は build log の `finished_at`。 |
+| mtime | snapshot 内 file の mtime を使用する。snapshot 内 file から mtime を取得できない場合は build log の `finished_at` を使用する。 |
 | secret 除外 | `.github_token`、`.admin_credentials`、`.api_tokens`、`.smtp_secret`、`.webhook_secret`、runner 状態ファイル名は検出時点で `500` とし、download を中止する。 |
 
 **Rollback 仕様：**
@@ -139,7 +139,7 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は `
 
 **sdk / ui 操作境界：**
 
-sdk は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。sdk は snapshot の存在、download 安全性、rollback 可否を状態ファイルから推測せず、API response / error をそのまま扱う。ui は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は実行中 build がある場合 disabled とする。ui は snapshot directory、tar.gz、rollback state を直接操作してはならない。
+sdk は `getSnapshots()`、`downloadSnapshot(id)`、`deleteSnapshot(id)`、`rollbackHistory(id)` を提供する。sdk は snapshot の存在、download 安全性、rollback 可否を状態ファイルから推測せず、API response / error をそのまま扱う。`404`、`409`、`422`、`500` は API の HTTP status と error body を保持した `AdlaireCIError` とする。ui は snapshot 一覧に id、saved_at、size_bytes、download、delete、rollback 操作を表示する。delete と rollback は API が返す running / conflict 状態または status response の running 状態に基づく場合だけ disabled とする。ui は snapshot directory、tar.gz、rollback state を直接操作してはならない。
 
 **検証条件：**
 

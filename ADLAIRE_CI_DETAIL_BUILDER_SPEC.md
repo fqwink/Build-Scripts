@@ -4,7 +4,7 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
 
 ---
 
@@ -14,8 +14,8 @@
 |------|------|
 | owner component | `builder` |
 | collaborator component | `runner`、`api`、`statefile` |
-| 持つ内容 | Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
-| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method、UI DOM、release / systemd 導入手順。 |
+| 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
+| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
 
 ---
 
@@ -540,7 +540,7 @@ type ConvertResult struct {
 | `- [x] done` | `<ul class="ml"><li class="ml-task"><input type="checkbox" disabled checked>done</li></ul>` |
 | `term` + 次行 `: desc` | `<dl class="mdl"><dt>term</dt><dd>desc</dd></dl>` |
 
-上表の属性順、class 名、button 文言、`checked` 属性の位置は固定する。テストでは空白の連続を 1 つへ正規化して比較してよいが、タグ名、属性名、属性値、親子構造は完全一致させる。
+上表の属性順、class 名、button 文言、`checked` 属性の位置は固定する。テスト比較では、タグ間および text node 内の連続空白を 1 つの ASCII space へ正規化してから比較する。タグ名、属性名、属性値、親子構造は完全一致させる。
 
 **脚注セクションの末尾出力：**
 `convert()` 末尾で `ctx.FootnoteOrder` が非空の場合、`<section class="fn-section">` 内に参照順番号付きの脚注リスト（`<ol class="fn-list">`）を出力する。各脚注には本文への戻りリンク（`<a class="fn-back">↩</a>`）を付与する。
@@ -1563,7 +1563,7 @@ adlaire-ci-build --src testdata/builder/site/docs --out /tmp/adlaire-ci-fixture-
 **期待結果：**
 
 - `<script>` は実行可能 tag にならず、`&lt;script&gt;alert(1)&lt;/script&gt;` として出力される。
-- テーブル不足セルは空 `<td></td>` で補完される。
+- テーブル不足セルは、欠落 cell の個数分だけ空 `<td></td>` を出力する。
 - テーブル超過セルは最後のセルに `3 | 4` として連結される。
 - 7 レベル以上の list nesting は 6 レベルへ丸められ、`[WARN] LIST_NESTING_CLAMPED` が出る。
 
@@ -1625,7 +1625,7 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 | §14b | snapshot | build output、history keep、snapshot keep。 | `.snapshots/{build_id}`、snapshot manifest。 | build / deploy 成功後に atomic save し、世代 prune する。 | snapshot 保存失敗は WARN とし、build success を反転しない。 | snapshot save/prune、snapshot failure remains success。 |
 | §15 | logs/history | stdout/stderr、report、warnings、duration、target status。 | `.build_logs/{id}.json`、`.build_history`。 | build log 成功後だけ history を追記する。 | log write failure では history / SHA / deploy / snapshot を行わない。 | build log write failure、history append failure、report parse。 |
 | §16〜§18 | systemd / GitHub / setup | unit file、PAT、binary path、timer。 | service/timer 設定、導入済み状態。 | setup 手順で明示された file / unit だけ作成する。 | PAT 不正、checksum 不一致、unit 失敗で後続手順を開始しない。 | setup success、checksum mismatch、service failure。 |
-| §19〜§20 | 既知制限反映 | API / runner 制限事項。 | 実装対象外の明示。 | 制限を回避する隠れ機能を追加しない。 | 未定義 endpoint、外部認証、HTTPS listener、worker pool を実装しない。 | 実装 PR 証跡で対象外確認。 |
+| §19〜§20 | 既知制限反映 | API / runner 制限事項。 | 実装対象外の明示。 | 制限を回避する隠れ機能を追加しない。 | 未定義 endpoint、外部認証、HTTPS listener、worker pool を実装しない。 | 実装 PR 本文で、対象外の節、未定義 endpoint、外部認証、HTTPS listener、worker pool が差分に含まれないことを列挙する。 |
 
 **§8〜§20 中核機能 横断受け入れ固定契約：**
 

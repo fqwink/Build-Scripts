@@ -4,7 +4,7 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
 
 ---
 
@@ -14,8 +14,8 @@
 |------|------|
 | owner component | `fixture` |
 | collaborator component | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`security`、`setup` |
-| 持つ内容 | fixture manifest、assertion、fake、testdata、受け入れ fixture 共通契約、PR 証跡テンプレート。 |
-| 持たない内容 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細。 |
+| 持つ内容 | `fixture` owner が主本文として定義する fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件。 |
+| 持たない内容 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
 ---
 
@@ -29,6 +29,20 @@
 | §27-F-PR | §27 実装 PR 証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
 
 ## 0g.8-F Phase fixture / testdata / fake / PR 証跡契約
+
+本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件の正本である。`ADLAIRE_CI_DETAIL_SPEC.md` §0e、§0g、§0i は完了判定の入口を示すだけとし、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、PR 証跡項目、不足時の扱い、差し戻し条件は本ファイルを正とする。
+
+実装 PR の完了証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる PR は、該当する全系統の証跡を PR 本文または検証ログに記録する。
+
+| 系統 | 対象 | 正本節 | 必須証跡 |
+|------|------|--------|----------|
+| Phase 実装 | Phase 1〜Phase 6 の初期実装。 | §0g.8-F | 対象 Phase、owner component、collaborator component、変更ファイル、fixture / testdata path、fake、実行コマンド、期待結果、実結果、後続 Phase へ引き継ぐ contract。 |
+| API 実装 | API P0〜P5、SDK / UI / statefile と同期する API 実装。 | §22-F | 優先度、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認。 |
+| §27 実装 | §27.1〜§27.47 の追加仕様化機能。 | §27-F | 対象 §27.x、関連 §22 / §23 / §24 / §25 / §26、owner / collaborator component、fixture 名、状態差分、外部副作用、partial failure、再実行、対象外確認。 |
+
+上表の証跡が不足する場合、対象機能は未完了として扱う。実装者は fixture が pass したことだけを完了証跡として扱ってはならない。
+
+Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。component 別詳細仕様ファイル、`ADLAIRE_CI_DETAIL_SPEC.md`、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` に同種の記録項目がある場合は、本ファイルの証跡分類、不足時の扱い、差し戻し条件を優先する。
 
 **Phase fixture / testdata 配置固定契約：**
 
@@ -54,18 +68,22 @@
 
 **実装 PR 証跡固定契約：**
 
+本契約は Phase 実装の PR 証跡に適用する。API 実装は §22-F、§27 実装は §27-F の acceptance checklist も同時に満たす。
+
 | 証跡 | 必須記載 | 不足時の扱い |
 |------|----------|--------------|
 | 変更対象 | 対象 Phase、owner component、collaborator component、変更ファイル、追加 fixture / testdata path。 | 対象 Phase の成果物不足として未完了。 |
 | 固定契約 | 追加または固定した CLI、状態 schema、HTTP API、SDK method、DOM id、fake 動作、終了コード、error body。 | 後続 Phase が参照できないため未完了。 |
 | 検証 | 実行コマンド、fixture 名、期待結果、実結果、判定。 | 合否を再現できないため未完了。 |
-| 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定など実装していない範囲。 | 先取り実装または範囲不明として未完了。 |
-| 後続 Phase への影響 | 後続 Phase が利用してよい contract と、利用してはならない未固定 contract。 | 次 Phase 着手条件未充足として未完了。 |
+| 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定、未定義 endpoint / UI / 状態ファイルのうち今回実装しない範囲を PR 証跡に列挙する。 | 先取り実装または範囲不明として未完了。 |
+| 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用禁止の未固定 contract を PR 証跡に列挙する。 | 次 Phase 着手条件未充足として未完了。 |
 | secret 確認 | log、fixture、snapshot、UI 表示、PR 本文に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
 
 ## 22-F API Phase fixture / 実装順序契約
 
 本節は、API P0〜P5 の実装順序、必須検証、fixture 名、入力状態、期待 response、期待副作用の正本である。API endpoint の method、path、request、response、error、read / write 境界は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22 を正とし、本節では再定義しない。
+
+API 実装 PR は、§0g.8-F の PR 証跡固定契約に加えて、本節の優先度、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
 
 対象項目の実装時は、下表の順に進める。上位の完了条件を満たす前に下位へ進んではならない。同一優先度内では、API、SDK、UI、状態ファイル、検証手順を同じ Pull Request で同期する。
 
@@ -121,7 +139,7 @@ P2〜P5 実装は、下表の fixture をすべて満たした場合だけ完了
 | B5 PAT update secret mask | P2 | `POST /api/pat-update` に token を送る。 | `{message:"PAT updated"}`。 | secret file は mode `600`。response、`.config_log`、`.audit_log`、server log に token 平文を出さない。 |
 | B6 dashboard read-only | P2 | `.dashboard_layout`、`.build_state`、`.build_status.json`、`.alert_rules` を置き `GET /api/dashboard`。 | widget 順に dashboard object を返す。 | GET は対象状態ファイルを作成、修復、更新しない。 |
 | C1 notify config mask | P3 | Webhook secret と SMTP password を含む通知設定保存後、GET / backup / log を確認する。 | secret は `"***"` または `*_set:true` だけを返す。 | secret 平文を状態表示、履歴、通知ログ、backup に残さない。 |
-| C2 webhook receive signed | P3 | 正常署名の GitHub push payload を `POST /api/webhook`。 | `202` と queued 結果。 | `.webhook_events.json` 追記後、必要時 `.build_state.queued` へ `trigger:"webhook"` を追加する。 |
+| C2 webhook receive signed | P3 | 正常署名の GitHub push payload を `POST /api/webhook`。 | `202` と queued 結果。 | `.webhook_events.json` 追記後、queue 投入条件を満たす場合だけ `.build_state.queued` へ `trigger:"webhook"` を追加する。 |
 | C3 webhook invalid signature | P3 | 署名なし、不正 prefix、不一致署名。 | `401 {"error":"Unauthorized"}`。 | event log、queue、history を変更しない。 |
 | C4 SMTP test disabled | P3 | SMTP disabled で `POST /api/smtp-test`。 | endpoint 固有の `422`。 | `.notify_log` へ成功扱いを残さず、secret を出力しない。 |
 | D1 snapshot delete | P4 | 存在する snapshot id で `DELETE /api/snapshots/{id}`。 | `{message:"Snapshot deleted"}`。 | 対象 snapshot だけ削除し、`.config_log` または監査対象 log に削除を記録する。 |
@@ -403,8 +421,8 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 
 | key | 型 | 必須 | 仕様 |
 |-----|----|------|------|
-| `external_calls` | array[object] | 必須 | GitHub、SMTP、webhook、SSH、remote build など process 外呼び出し。呼び出しなしは空配列。 |
-| `commands` | array[object] | 必須 | pipeline、hook、systemd、archive、setup/update など local command 実行。実行なしは空配列。 |
+| `external_calls` | array[object] | 必須 | GitHub API、SMTP、webhook、SSH、remote build の process 外呼び出し。呼び出しなしは空配列。 |
+| `commands` | array[object] | 必須 | pipeline、hook、systemd、archive、setup、update の local command 実行。実行なしは空配列。 |
 | `notifications` | array[object] | 必須 | 通知送信、pending 化、retry 対象。通知なしは空配列。 |
 | `downloads` | array[object] | 必須 | snapshot / artifact download の byte size、content type、中断有無。該当なしは空配列。 |
 | `streams` | array[object] | 必須 | SSE / fetch stream の event、close、error。該当なしは空配列。 |
@@ -462,9 +480,9 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | component | owner 時の必須検証責務 | collaborator 時の必須検証責務 | 完了判定 | 禁止越境 |
 |-----------|------------------------|-------------------------------|----------|----------|
 | `builder` | CLI 入力、Markdown 入力、出力 site / HTML / REPORT、asset、cache、dependency、meta、終了コードを fixture で固定する。 | runner / API に渡す REPORT、meta、dependency manifest の key 名と nullable 条件を固定する。 | 出力 file の byte 比較または構造化 expected が存在し、既存出力保護と失敗時 no-write が検証済み。 | GitHub read、状態ファイル直接更新、通知送信。 |
-| `runner` | CLI、設定、lock、SHA cache、build log、history、status、queue、external call、notification、終了コードを fixture で固定する。 | builder output、statefile schema、commitstatus payload を仕様どおり消費し、補完しない。 | 成功、失敗、skip、partial、dry-run の状態差分と write order が検証済み。 | API endpoint 追加、SDK method 追加、UI 操作追加。 |
-| `api` | method/path/query/body/header、auth/scope/rate limit、response、状態 read/write、access/audit/config log を fixture で固定する。 | SDK / UI が補完しなくても扱える response schema、HTTP status、error body を返す。 | read-only は no-write、write API は保存順、validation failure は forbidden_writes が検証済み。 | runner CLI 処理、UI DOM 操作、未定義状態ファイル作成。 |
-| `sdk` | method、args、query 生成、error 変換、token 破棄、binary / stream handling を fixture で固定する。 | UI が API 詳細を知らずに扱える戻り値と error をそのまま伝播する。 | API response の補完がなく、`401` / `403` / `429` / network error が区別される。 | API response 推測補完、未定義 endpoint 呼び出し、状態ファイル直接操作。 |
+| `runner` | CLI、設定、lock、SHA cache、build log、history、status、queue、external call、notification、終了コードを fixture で固定する。 | builder output、statefile schema、commitstatus payload を仕様どおり消費し、未定義 key や未取得値を追加しない。 | 成功、失敗、skip、partial、dry-run の状態差分と write order が検証済み。 | API endpoint 追加、SDK method 追加、UI 操作追加。 |
+| `api` | method/path/query/body/header、auth/scope/rate limit、response、状態 read/write、access/audit/config log を fixture で固定する。 | SDK / UI が追加 key を生成せずに扱える response schema、HTTP status、error body を返す。 | read-only は no-write、write API は保存順、validation failure は forbidden_writes が検証済み。 | runner CLI 処理、UI DOM 操作、未定義状態ファイル作成。 |
+| `sdk` | method、args、query 生成、error 変換、token 破棄、binary / stream handling を fixture で固定する。 | UI が API 詳細を知らずに扱える戻り値と error をそのまま伝播する。 | API response に存在しない key を生成せず、`401` / `403` / `429` / network error が区別される。 | API response 推測補完、未定義 endpoint 呼び出し、状態ファイル直接操作。 |
 | `ui` | SDK method 呼び出し、DOM 表示、disabled/loading/error、secret field 消去、再取得順を fixture で固定する。 | SDK 戻り値だけを表示し、API / 状態ファイルの内部構造を再解釈しない。 | 直接 API 呼び出し、状態ファイル操作、secret DOM 残存がない。 | 直接 `fetch()`、状態ファイル操作、外部 command 実行。 |
 | `statefile` | schema、atomic write、JSON Lines、lock、破損時処理、保存順、no-write / forbidden write を fixture で固定する。 | runner / API / archive の保存対象ごとに `write_order`、`unchanged_paths`、`forbidden_writes` を固定する。 | read-only、dry-run、validation failure、partial failure の副作用境界が検証済み。 | component 固有の業務判断、UI 表示判断、API response 補完。 |
 | `archive` | log archive、snapshot、download、delete、rollback の保存 / 取得 / 削除境界を fixture で固定する。 | API download / rollback response と runner history への影響を statefile 契約に合わせる。 | 元 log 保持、archive 破損時挙動、安全でない entry 拒否、rollback 失敗時 no-write が検証済み。 | build 成否の反転、元 build log の改変、未検証 archive 展開。 |
@@ -482,10 +500,10 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 |----------|----------|
 | wave | 対象 wave、対象 §27.x、先行 wave 完了 commit または PR 番号。 |
 | 実装対象 | 実装する機能名、owner component、collaborator component、変更ファイル、追加 fixture path。 |
-| 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイル。 |
+| 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイルを PR 証跡に列挙する。 |
 | fixture | §27 fixture カタログの fixture 名、manifest / effects / security の検証結果。 |
 | acceptance | §27 実装 PR acceptance checklist の各項目の pass / fail / 未実行。 |
-| 後続影響 | 後続 PR が利用してよい contract、利用してはならない未固定 contract。 |
+| 後続影響 | 後続 PR が利用許可済みの contract、利用禁止の未固定 contract を PR 証跡に列挙する。 |
 
 **§27 実装 PR 最終受け入れゲート：**
 
@@ -516,7 +534,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | secret 検証 | 禁止文字列、mask 対象、平文が残らないことを確認した出力範囲。 |
 | 部分失敗 | partial / failure fixture の失敗地点、完了済み副作用、禁止副作用。 |
 | 再実行 | idempotency / no-op fixture の 1 回目と 2 回目の差分。 |
-| 対象外確認 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加していないこと。 |
+| 対象外確認 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加していないことを、差分対象 file と fixture manifest の両方で確認する。 |
 
 **§27 差し戻し固定条件：**
 
@@ -541,6 +559,6 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | log 追記後の audit 失敗 | 個別節で必須 audit と定義された操作は `500`。任意 audit の場合は対象操作成功を維持し、WARN を保存する。 |
 | 外部 API 送信成功後の状態保存失敗 | 外部送信の再送を自動実行しない。状態保存失敗を `500` または runner failure として記録し、再実行時は個別節の重複防止 key で判定する。 |
 | 通知送信失敗 | build / config / security の主結果を反転しない。`.notify_pending` または個別節の失敗記録だけを更新する。 |
-| download / stream 中断 | サーバー側状態を成功/失敗へ変更しない。access log は中断 status を記録してよいが、history と build log は変更しない。 |
+| download / stream 中断 | サーバー側状態を成功/失敗へ変更しない。access log は endpoint 固有節で中断 status 記録が定義されている場合だけ追記し、history と build log は変更しない。 |
 | 再実行 no-op | 同一入力で差分がない保存 API は、個別節の no-op response を返し、状態、config log、audit log、notify log に新規差分を作らない。 |
 | 破損 JSON Lines | read API は破損行を除外し、破損内容を response に出さない。write API は既存破損行を修復、削除、並べ替えしない。 |

@@ -4,7 +4,7 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、fixture、検証観点として参照する。
 
 本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、Phase 完了判定 fixture 記録を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component の詳細仕様ファイルを正とする。
 
@@ -16,8 +16,8 @@
 |------|------|
 | owner component | `setup` |
 | collaborator component | `runner`、`api`、`statefile`、`admin` |
-| 持つ内容 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
-| 持たない内容 | runner / api / sdk / ui / admin の個別機能本文、状態 schema の暗黙変更、外部依存追加。 |
+| 持つ内容 | `setup` owner が主本文として定義するバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
+| 持たない内容 | runner / api / sdk / ui / admin の個別機能本文、状態 schema、API endpoint、SDK method、UI DOM、fixture / PR 証跡正本、外部依存追加。 |
 
 ---
 
@@ -72,10 +72,10 @@ Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は 
 |------|------|------|----------|------------------|
 | Release asset resolver | `VERSION`、`OS_ARCH`、取得対象成果物名、GitHub Release URL | `DOWNLOAD_DIR` 内の取得済みファイル | `VERSION` / `OS_ARCH` 空、HTTP status 非 2xx、取得ファイル 0 byte | 取得済みファイルを配置せず終了 |
 | checksum verifier | `SHA256SUMS`、取得済み成果物 | 検証済み成果物一覧 | `SHA256SUMS` 不在、対象行不在、SHA-256 不一致 | バイナリ配置を実行せず終了 |
-| binary installer | 検証済みバイナリ、`BIN_DIR` | `adlaire-ci-build`、`adlaire-ci-runner`、必要時 `adlaire-ci-api` | 入力バイナリ不在、実行権限付与失敗、`install` 失敗 | systemd 変更を実行せず終了 |
+| binary installer | 検証済みバイナリ、`BIN_DIR` | `adlaire-ci-build`、`adlaire-ci-runner`、API 導入対象の実装では `adlaire-ci-api` | 入力バイナリ不在、実行権限付与失敗、`install` 失敗 | systemd 変更を実行せず終了 |
 | secret initializer | PAT 入力、`INSTALL_DIR` | `.github_token` mode `0600` | PAT 空、書き込み失敗、mode 補正失敗 | systemd 変更を実行せず終了 |
-| state initializer | `INSTALL_DIR` | `.last_sha`、必要時 `.build_logs/`、`.snapshots/` | 書き込み失敗、mode 補正失敗 | systemd 変更を実行せず終了 |
-| systemd unit writer | unit 内容、`SERVICE_USER`、`INSTALL_DIR`、`BIN_DIR` | `/etc/systemd/system/adlaire-ci.service`、`adlaire-ci.timer`、必要時 `adlaire-ci-api.service` | unit 書き込み失敗、`systemctl daemon-reload` 失敗 | enable/start を実行せず終了 |
+| state initializer | `INSTALL_DIR` | `.last_sha`、build log 保存対象の実装では `.build_logs/`、snapshot 保存対象の実装では `.snapshots/` | 書き込み失敗、mode 補正失敗 | systemd 変更を実行せず終了 |
+| systemd unit writer | unit 内容、`SERVICE_USER`、`INSTALL_DIR`、`BIN_DIR` | `/etc/systemd/system/adlaire-ci.service`、`adlaire-ci.timer`、API 導入対象の実装では `adlaire-ci-api.service` | unit 書き込み失敗、`systemctl daemon-reload` 失敗 | enable/start を実行せず終了 |
 | service activator | systemd unit 名 | active な timer / service | `enable --now` 失敗、`is-active` 非 `active` | 直前の journal 確認コマンドを出力して終了 |
 | admin UI installer | `admin-ui.tar.gz`、`INSTALL_DIR` | `$INSTALL_DIR/admin/index.html`、`$INSTALL_DIR/admin/adlaire-ci-sdk.js` | archive 不在、checksum 不一致、展開後必須ファイル不在 | API service 起動を実行せず終了 |
 | rollback executor | `BACKUP_DIR`、`BIN_DIR`、再起動対象 unit | 旧バイナリ復元済み状態 | 旧バイナリ不在、復元失敗、復元後 restart 失敗 | 自動復旧を継続せず journal 確認対象を出力 |
@@ -122,11 +122,11 @@ Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は 
 
 **setup / update 失敗時の状態保持契約：**
 
-| 失敗箇所 | 保持するもの | 変更してよいもの | 禁止事項 |
+| 失敗箇所 | 保持するもの | 変更対象 | 禁止事項 |
 |----------|--------------|------------------|----------|
 | download / checksum | 既存 binary、既存 systemd、既存 state、既存 admin UI | `DOWNLOAD_DIR` 内の取得済みファイル | 未検証 asset の配置、service restart。 |
 | binary 配置前 | 既存 binary、既存 service 稼働状態 | `DOWNLOAD_DIR` | systemd unit 書換、state 書換。 |
-| binary 配置後 / restart 前 | 配置済み新 binary または rollback 対象旧 binary | rollback executor が対象 binary だけ復元してよい。 | state、history、secret、admin UI の巻き戻し。 |
+| binary 配置後 / restart 前 | 配置済み新 binary または rollback 対象旧 binary | rollback executor が対象 binary だけを復元する。 | state、history、secret、admin UI の巻き戻し。 |
 | runner restart 失敗 | `.github_token`、`.last_sha`、history、snapshot、admin UI | build / runner binary の旧版復元、runner restart 1 回 | API credentials や admin UI の変更。 |
 | API setup 失敗 | runner binary、runner timer、runner state | API binary、admin 一時展開 directory | runner timer 停止、`.github_token` 変更。 |
 | admin UI 差し替え失敗 | 旧 admin UI、API binary、runner state | admin 一時 directory / backup directory | API restart、credentials 変更。 |
@@ -148,9 +148,9 @@ Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は 
 | service 起動 / 再起動 | 対象 unit だけ | `systemctl is-active` が `active`。api は health check も成功。 | rollback 表に従い、追加推測復旧を行わない。 |
 | 最終確認 | なし | §26.3、§26.3b、§26.5 の確認項目がすべて成功。 | 成功報告しない。確認失敗箇所と journal 確認対象を出力する。 |
 
-setup / update 実装は、各段階の開始と成功を stderr または stdout に固定文言で 1 行ずつ出してよいが、PAT、password、session token、API token、Webhook secret、SMTP password、Release URL の credential 部分は出力してはならない。secret file が既に存在する場合は、個別手順で上書きを明記している場合を除き、既存値を保持する。特に `.github_token`、`.admin_credentials`、`.webhook_secret`、`.smtp_secret` は、アップデートで自動上書きしない。
+setup / update 実装は、各段階の開始と成功を stderr または stdout に固定文言で 1 行ずつ出力する。PAT、password、session token、API token、Webhook secret、SMTP password、Release URL の credential 部分は出力してはならない。secret file が既に存在する場合は、個別手順で上書きを明記している場合を除き、既存値を保持する。特に `.github_token`、`.admin_credentials`、`.webhook_secret`、`.smtp_secret` は、アップデートで自動上書きしない。
 
-`systemctl daemon-reload` 成功だけではセットアップ成功と扱わない。`enable --now`、`restart`、`is-active`、API 導入時の `/api/health` 確認まで完了して初めて成功とする。確認コマンドが利用環境に存在しない場合は、同等確認を実装 PR の検証で実施し、未確認のまま成功扱いにしない。
+`systemctl daemon-reload` 成功だけではセットアップ成功と扱わない。`enable --now`、`restart`、`is-active`、API 導入時の `/api/health` 確認まで完了して初めて成功とする。確認コマンドが利用環境に存在しない場合は、Go `net/http` client または systemd D-Bus / `systemctl show` で同じ確認項目を検証し、実装 PR 証跡に代替コマンド、期待値、実測値を記録する。未確認のまま成功扱いにしない。
 
 ### §26.3 Go 版初回セットアップ手順
 
@@ -416,7 +416,7 @@ rollback は 1 回だけ実行する。rollback 自体が失敗した場合は�
 | local API | 確認しない。 | `GET /api/health` が HTTP `200` JSON object を返す。 |
 | state preservation | `.github_token`、`.last_sha`、`.build_state`、`.build_history` の mtime と内容が更新対象操作と無関係に変わっていない。 | 左記に加え `.admin_credentials` が存在する場合は mode `600` と内容が保持される。 |
 
-確認失敗時はアップデート失敗として扱う。binary 配置や restart が成功していても、確認失敗を成功報告してはならない。local API 確認で `curl` がない場合は Go 実装 PR の検証で `net/http` client による同等確認を行い、未確認のまま合格扱いにしない。
+確認失敗時はアップデート失敗として扱う。binary 配置や restart が成功していても、確認失敗を成功報告してはならない。local API 確認で `curl` がない場合は Go 実装 PR の検証で `net/http` client による `GET /api/health`、HTTP status、JSON object、`status` key の確認を行い、実装 PR 証跡に request URL、HTTP status、確認した JSON key を記録する。未確認のまま合格扱いにしない。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
@@ -568,7 +568,7 @@ systemctl status adlaire-ci-api
 
 **§22〜§26 api / sdk / ui / 認証 / セットアップ 実装完全性固定契約：**
 
-§22〜§26 のコンポーネントは、各節の本文、endpoint 表、SDK method 表、UI 操作契約、fixture に加えて下表を満たした場合だけ実装完了とする。下表は既存機能の詳細実装を固めるものであり、未定義 endpoint、未定義 UI、未定義認証方式、将来計画機能を追加する根拠にしてはならない。
+§22〜§26 のコンポーネントは、owner component の各節本文、endpoint 表、SDK method 表、UI 操作契約、fixture を主本文とし、下表を横断受け入れ確認として満たした場合だけ実装完了とする。下表は既存機能の詳細実装を確認する表であり、未定義 endpoint、未定義 UI、未定義認証方式、将来計画機能を追加する根拠にしてはならない。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|
@@ -658,27 +658,8 @@ Phase 別受け入れ条件のいずれかが未実行、失敗、または環�
 | DOM assertion | UI の DOM id、panel、表示文言、disabled / loading / success / error 条件が変更された場合のみ更新する。 | SDK method 対応表と DOM assertion が一致すること。 |
 | error expected | HTTP status、exit code、`AdlaireCIError.code`、stderr prefix が変更された場合のみ更新する。 | 正常系 fixture と異常系 fixture の両方で期待値が固定されていること。 |
 
-Phase 完了判定テンプレートは以下とする。実装 PR 本文では、対象 Phase ごとに本テンプレートの項目を埋める。
+Phase 完了判定の PR 証跡テンプレート、必須記載項目、不足時の扱いは `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §0g.8-F を正とする。本節は setup / release / Phase 判定で必要な実行条件、未実行検証の代替条件、fixture 期待値更新条件だけを定義し、PR 証跡項目を重複定義しない。
 
-```text
-## Phase 完了判定
-
-- 対象 Phase:
-- owner component:
-- collaborator component:
-- 実装対象ファイル:
-- 追加 fixture / testdata:
-- 固定契約:
-- 実装対象外:
-- 後続 Phase への影響:
-
-| 対象 | コマンド / 確認 | 期待結果 | 実結果 | 判定 |
-|------|------------------|----------|--------|------|
-| <対象> | <実行内容> | <仕様上の期待結果> | <実際の結果> | PASS / FAIL / 未実行 |
-```
-
-`判定` が `FAIL` または `未実行` の行を含む場合、その Phase は完了扱いにしてはならない。環境制約により確認できない項目がある場合も `未実行` とし、完了扱いにするには代替検証を仕様化してから再実行する。
-
-受け入れ結果は、実装 PR 本文に `対象 / コマンド / 期待結果 / 実結果 / 判定` の形式で記録する。失敗、未実行、環境都合で省略した項目がある場合、そのコンポーネントを完了扱いにしてはならない。
+受け入れ結果は、`ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §0g.8-F の形式で実装 PR 本文または検証ログに記録する。失敗、未実行、環境都合で省略した項目がある場合、そのコンポーネントを完了扱いにしてはならない。
 
 ---

@@ -4,7 +4,7 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `admin` owner component の主本文であり、collaborator component の仕様は呼び出し境界、配布境界、検証観点として参照する。
 
 ---
 
@@ -14,8 +14,8 @@
 |------|------|
 | owner component | `admin` |
 | collaborator component | `api`、`ui`、`sdk`、`setup` |
-| 持つ内容 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
-| 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、systemd 導入手順、release asset 取得手順。 |
+| 持つ内容 | `admin` owner が主本文として定義する管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
+| 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、release asset 取得手順、fixture / PR 証跡正本。 |
 
 `admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の仕様は `ADLAIRE_CI_DETAIL_UI_SPEC.md` を正とし、`sdk` の仕様は `ADLAIRE_CI_DETAIL_SDK_SPEC.md` を正とする。
 
@@ -67,7 +67,7 @@ admin archive の検証は以下の順序に固定する。
 | `/admin/style.css` | `$INSTALL_DIR/admin/style.css` | `text/css; charset=utf-8` | `no-cache` |
 | `/admin/app.js` | `$INSTALL_DIR/admin/app.js` | `text/javascript; charset=utf-8` | `no-cache` |
 
-未定義 path、directory listing、path traversal、hidden file、状態ファイル、secret file へのアクセスは `404` とする。認証前に配信してよい file は上表の静的 file だけとし、API response、状態ファイル、credential、build log、snapshot を静的配信してはならない。
+未定義 path、directory listing、path traversal、hidden file、状態ファイル、secret file へのアクセスは `404` とする。認証前に配信する file は上表の静的 file だけとし、API response、状態ファイル、credential、build log、snapshot を静的配信してはならない。
 
 静的配信処理は request body を読まない。`GET` と `HEAD` 以外の method は `405` を返す。
 

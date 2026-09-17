@@ -4,7 +4,7 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `commitstatus` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
 
 ---
 
@@ -14,8 +14,8 @@
 |------|------|
 | owner component | `commitstatus` |
 | collaborator component | `runner`、`statefile` |
-| 持つ内容 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
-| 持たない内容 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細。 |
+| 持つ内容 | `commitstatus` owner が主本文として定義する GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
+| 持たない内容 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 
 ---
 
@@ -37,7 +37,7 @@ runner は `.server_config.commit_status_enabled == true` の場合、commitstat
 
 | key | 値 |
 |-----|----|
-| `state` | 開始時 `"pending"`、成功時 `"success"`、失敗時 `"failure"`、設定/状態書込など CI 自体の異常時 `"error"`。 |
+| `state` | 開始時 `"pending"`、成功時 `"success"`、失敗時 `"failure"`、GitHub API 認証失敗、commit status 設定不正、状態ファイル読込失敗、状態ファイル書込失敗、payload 生成不能のいずれかの CI 自体の異常時 `"error"`。 |
 | `context` | `.server_config.commit_status_context`。既定値 `"Adlaire CI"`。 |
 | `description` | 140 文字以内。開始時 `Build started`、成功時 `Build succeeded`、失敗時 `Build failed: <target_status>`、pending deploy 時 `Build succeeded with deploy pending`。 |
 | `target_url` | `.server_config.commit_status_target_url` が `null` でなければ送信する。 |

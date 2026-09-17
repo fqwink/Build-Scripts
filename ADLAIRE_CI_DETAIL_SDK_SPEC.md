@@ -4,7 +4,7 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
 
 SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e を正とする。本ファイルは SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
@@ -16,8 +16,8 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 |------|------|
 | owner component | `sdk` |
 | collaborator component | `api`、`ui`、`security` |
-| 持つ内容 | SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| 持たない内容 | API endpoint の状態ファイル更新責務、UI DOM 詳細、状態ファイル直接操作、admin 静的配信。 |
+| 持つ内容 | `sdk` owner が主本文として定義する SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
+| 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
 
 ---
 
@@ -198,8 +198,8 @@ export { AdlaireCI, AdlaireCIError };
 | body なし endpoint | §22.0e の `Request` が `none` の場合、SDK は `fetch` に `body` を設定しない。`{}` も送信しない。 |
 | token 保存 | セッショントークンはメモリ上の `this._token` のみに保持する。`localStorage`、`sessionStorage`、Cookie へ保存しない。 |
 | 秘密情報引数 | `updatePat(token)`、`setWebhookConfig(secret)`、SMTP password、`createToken()` の返却 token は console 出力しない。 |
-| query 生成 | `undefined`、`null`、空文字の任意 query は送信しない。ただし仕様上 `""` が意味を持つ `q`、`from`、`to` は空文字を送ってよい。 |
-| 戻り値補完禁止 | API response にない値を SDK が推測して追加しない。表示用加工は UI 側で行う。 |
+| query 生成 | `undefined`、`null`、空文字の任意 query は送信しない。ただし `q`、`from`、`to` は endpoint 仕様で空文字を有効値として定義している場合だけ、空文字を query value として送信する。 |
+| 戻り値補完禁止 | 成功時は API response にない key を追加しない。失敗時は HTTP status、API error、details、responseBody 以外を推測しない。fallback 値は API response に含まれる値だけを返し、表示用加工は UI 側で行う。 |
 | retry | SDK は自動 retry を行わない。ユーザー操作による再実行、または UI の明示的な再取得のみを許可する。 |
 
 **SDK transport / error 固定契約：**
@@ -211,7 +211,7 @@ SDK の内部 request helper は、すべての public method で下表の処理
 | 1 | 引数検証 | 必須引数、型、空配列、数値範囲を検証する。失敗時は `TypeError` を投げ、`fetch()` を呼ばない。 |
 | 2 | URL 生成 | `baseUrl + path + query` を生成する。query key は method 契約表の順序で追加する。 |
 | 3 | body 生成 | `Request=none` では `body` と `Content-Type` を設定しない。JSON body ありの場合だけ `JSON.stringify()` する。 |
-| 4 | header 生成 | `Accept`、必要時 `Content-Type`、必要時 `Authorization` を付与する。token が空の場合は `Authorization` header を付けない。 |
+| 4 | header 生成 | `Accept` を常に付与する。JSON body を送信する場合だけ `Content-Type` を付与する。token が空でない場合だけ `Authorization` を付与し、token が空の場合は `Authorization` header を付けない。 |
 | 5 | timeout 設定 | 通常 request は `AbortController` で 30 秒 timeout。`streamBuild()` は接続確立まで 30 秒。 |
 | 6 | `fetch()` 実行 | network error、abort、CORS 等の失敗はすべて `AdlaireCIError(status=0,message="Network error")`、timeout だけ `"Request timeout"` とする。 |
 | 7 | response parse | 成功 / 失敗に関わらず JSON error body がある場合は parse する。parse 不能 error body は `responseBody` に text を保持し、`message` は HTTP status 固定文言とする。 |
@@ -231,14 +231,14 @@ HTTP status と SDK error の対応は下表に固定する。
 | invalid success JSON | `0` | `Invalid JSON response` | `null` | 維持 |
 | invalid SSE frame | `0` | `Invalid SSE frame` | `null` | 維持 |
 
-`429` は SDK で自動待機、自動再送、自動 refresh を行わない。binary response は `downloadSnapshot(id)` の `2xx` のみ `Blob` とし、`4xx` / `5xx` では可能な限り JSON error として parse して `AdlaireCIError` を投げる。`streamBuild()` は接続後の `close()` をユーザー停止として扱い、`AdlaireCIError` を投げない。接続後に network error または invalid frame が発生した場合は `StreamHandle.closed=true` にし、呼び出し側へ stream error として通知できる状態にする。
+`429` は SDK で自動待機、自動再送、自動 refresh を行わない。binary response は `downloadSnapshot(id)` の `2xx` のみ `Blob` とする。`4xx` / `5xx` では `Content-Type` が `application/json` または `+json` で終わる場合だけ JSON error として parse し、parse 成功時は response の `error` / `details` を保持した `AdlaireCIError` を投げる。JSON parse 不能、JSON 以外の error body、空 body の場合は body text を `responseBody` に保持し、`message` は `HTTP {status}` とする。`streamBuild()` は接続後の `close()` をユーザー停止として扱い、`AdlaireCIError` を投げない。接続後に network error または invalid frame が発生した場合は `StreamHandle.closed=true`、`StreamHandle.error` に `AdlaireCIError(status=0,message="Network error")` または `AdlaireCIError(status=0,message="Invalid SSE frame")` を保存する。
 
 **SDK メソッド実装固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
 | public method 定義順 | class 内の public method は §23 の一覧順に定義する。追加 public method を末尾に置くことは禁止し、先に §22.0e と本一覧を更新する。 |
-| private helper | private helper は `_request`, `_json`, `_query`, `_requireToken`, `_validateId`, `_clearTokenOn401` の範囲で定義してよい。helper を export しない。 |
+| private helper | private helper は `_request`, `_json`, `_query`, `_requireToken`, `_validateId`, `_clearTokenOn401` だけを定義する。helper を export しない。 |
 | TypeError 文言 | SDK 側引数検証の `TypeError.message` は `"Invalid argument: <name>"` に固定する。複数不正がある場合は最初に検出した引数だけを返す。 |
 | path parameter | `id` を path に入れる method は、SDK 側で `encodeURIComponent(id)` を必ず行う。`/`、`.`、`..`、空文字は送信前に `TypeError`。 |
 | query parameter | query key は §23 SDK 引数変換契約の表記順で生成する。任意 query が未指定の場合、`?` 自体を付けない。 |
@@ -261,14 +261,14 @@ HTTP status と SDK error の対応は下表に固定する。
 
 **SDK P0 / P1 操作固定契約：**
 
-P0 / P1 実装では、下表の SDK method を最小運用範囲として固定する。SDK は API response を成功時に補完せず、失敗時はすべて `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
+P0 / P1 実装では、下表の SDK method を最小運用範囲として固定する。SDK は成功時 response を endpoint schema の範囲でそのまま返し、失敗時は HTTP status、API error、details、responseBody を保持した `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
 
 | SDK method | HTTP | 成功時 | 失敗時 | 追加禁止事項 |
 |------------|------|--------|--------|--------------|
 | `login(password)` | `POST /api/login` | `token` がある場合だけ `this._token` へ保存する。`totp_required:true` の場合は token を保存せず response を返す。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | password を console、error、responseBody 加工結果へ出さない。 |
 | `logout()` | `POST /api/logout` | response に関わらず `finally` で token を破棄する。 | network error、`401`、`500` でも token 破棄後に error を投げる。 | logout 失敗を理由に token を保持しない。 |
 | `getStatus()` | `GET /api/status` | `StatusObject` をそのまま返す。 | `500 State file is corrupted` / `State file read failed` を message として保持する。 | `.build_status.json` 不在時の fallback 値を SDK が推測しない。 |
-| `triggerBuild()` | `POST /api/build` | `{message, build_id?, queued?}` を返す。 | `409`、`429`、`503` を UI が分岐できる `status` 付き error にする。 | running / queue / circuit を SDK 側で事前判定しない。 |
+| `triggerBuild()` | `POST /api/build` | `{message, build_id?, queued?}` を返す。 | `409`、`429`、`503` は `AdlaireCIError.status` に HTTP status を保持し、`message` は API response の `error` を保持する。 | running / queue / circuit を SDK 側で事前判定しない。 |
 | `buildForce()` | `POST /api/build/force` | `{message, build_id?, queued?}` を返す。 | `409`、`429`、`503` を `AdlaireCIError`。 | force 可否を SDK 側で状態推測しない。 |
 | `cancelBuild()` | `POST /api/build/cancel` | `{message}` を返す。 | running なしの `409` を `AdlaireCIError(status=409)`。 | cancel 後に SDK が自動 `getStatus()` を呼ばない。 |
 | `getLogs(n,q)` | `GET /api/logs` | `{lines}` を返す。`lines` は API 順序を保持する。 | `500` は固定 error message を保持する。 | line を結合、trim、level 分類しない。 |
@@ -293,7 +293,7 @@ P0 / P1 実装では、下表の SDK method を最小運用範囲として固定
 
 **SDK P2〜P5 操作固定契約：**
 
-P2〜P5 SDK は、§22.0e の endpoint 契約と §23 SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行ってよいが、API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
+P2〜P5 SDK は、§22.0e の endpoint 契約と §23 SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行う場合でも、検証対象は必須引数、型、範囲、path parameter 形式に限定する。API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
 
 | 機能群 | SDK method | 成功時 | 失敗時 | 追加禁止事項 |
 |--------|------------|--------|--------|--------------|
@@ -376,7 +376,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 
 **SDK 型定義表：**
 
-本表は SDK が返す object 型の正本である。`nullable` は `null` を許可することを示す。配列は未取得時でも `[]` を返し、`undefined` を返してはならない。API response に存在しないキーを SDK が補完してはならない。ただし `GET /api/config`、`GET /api/notify-config`、`GET /api/dashboard-layout` の既定値 merge は API 側の責務とする。
+本表は SDK が返す object 型の正本である。`nullable` は `null` を許可することを示す。配列は API response に `[]` として存在する場合だけ `[]` を返し、SDK が未取得配列を生成してはならない。API response に存在しないキーを SDK が補完してはならない。ただし `GET /api/config`、`GET /api/notify-config`、`GET /api/dashboard-layout` の既定値 merge は API 側の責務とする。
 
 | 型名 | 必須キー | nullable キー | 配列キー | 対応 API |
 |------|----------|---------------|----------|----------|

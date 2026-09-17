@@ -4,9 +4,9 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `api` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、security、表示、fixture、検証観点として参照する。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、本ファイルへ移動しない。api 連動機能を実装する場合は、本ファイルの個別節と合わせて `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を確認する。
+`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約であり、本ファイルへ移動しない。api 連動機能を実装する場合は、本ファイルの個別節を正本とし、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を確認する。
 
 `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 は security owner component の詳細仕様であり、本ファイルへ移動しない。api が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` を正とする。
 
@@ -18,8 +18,8 @@
 |------|------|
 | owner component | `api` |
 | collaborator component | `statefile`、`sdk`、`ui`、`security`、`archive`、`runner` |
-| 持つ内容 | HTTP 共通契約、endpoint、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 |
-| 持たない内容 | SDK 内部実装、UI DOM 詳細、runner の build 実行責務、admin 静的配信、security 主本文、fixture 詳細。 |
+| 持つ内容 | `api` owner が主本文として定義する HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 |
+| 持たない内容 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 
 ---
 
@@ -55,8 +55,8 @@ NotifyLogFile     = "/opt/adlaire-builder/.notify_log"        // Webhook 送信�
 WebhookSecretFile = "/opt/adlaire-builder/.webhook_secret"    // GitHub Webhook HMAC-SHA256 Secret（→ §22）
 SnapshotDir       = "/opt/adlaire-builder/.snapshots"         // スナップショット保存ディレクトリ（→ §14b）
 LogLevel          = "INFO"
-Owner             = "<GitHubオーナー名>"                       // 初期値。POST /api/repo-config で動的変更可能（.repo_config に保存）
-Repo              = "<リポジトリ名>"                           // 初期値。POST /api/repo-config で動的変更可能（.repo_config に保存）
+Owner             = "<GitHubオーナー名>"                       // 初期値。POST /api/repo-config の owner 更新成功時だけ .repo_config に保存
+Repo              = "<リポジトリ名>"                           // 初期値。POST /api/repo-config の repo 更新成功時だけ .repo_config に保存
 ```
 
 API service の systemd unit、配置、起動、更新、rollback は setup owner component の責務とし、`ADLAIRE_CI_DETAIL_SETUP_SPEC.md` §26.3b、§26.4.2、§26.5 を正とする。
@@ -92,7 +92,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 項目 | 仕様 |
 |------|------|
 | Go バージョン | Go `1.22` 以上。HTTP 実装は Go 標準ライブラリ `net/http` を使用する。 |
-| bind | 既定値は `127.0.0.1:8765`。`--addr` で上書き可能。`--addr 0.0.0.0:<port>` を指定しても、`api` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
+| bind | 既定値は `127.0.0.1:8765`。`--addr <host:port>` が指定された場合は、起動中の listen address だけを置換する。`--addr 0.0.0.0:<port>` を指定しても、`api` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルはいずれも UTF-8 とする。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
 | リクエスト body 上限 | JSON body は 1 MiB を上限とする。超過時は `413 Payload Too Large` と `{"error": "Payload too large"}` を返す。 |
@@ -343,7 +343,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 ### 22.0e API 完全契約表
 
-本表は API 実装、SDK 実装、標準管理ツール実装の契約インデックスである。実装者は endpoint を追加、削除、名称変更、body 変更、response 変更する前に本表を先に更新する。下表に存在しない endpoint は実装対象外とする。SHA reset 専用 endpoint とサマリー送信専用 endpoint は定義しない。
+本表は API 実装、SDK 実装、標準管理ツール実装の契約インデックスである。endpoint を追加、削除、名称変更、body 変更、response 変更する場合は、本表、該当 endpoint 個別節、SDK method 表、UI 操作契約、fixture catalog を同じ仕様 PR で先に更新する。下表に存在しない endpoint は実装対象外とする。SHA reset 専用 endpoint とサマリー送信専用 endpoint は定義しない。
 
 `Request` が `none` の場合、request body を受け付けない。空 JSON object `{}` も送信してはならない。`Response` は成功時 body の schema 名または最小 object を示す。詳細 schema は §22.0c、各 endpoint の個別例、§23 SDK 仕様、§24 UI 仕様を正とする。
 
@@ -468,7 +468,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | API | 処理順序 | 成功時副作用 | 失敗時副作用 |
 |-----|----------|--------------|--------------|
 | `GET /api/backup` | 対象設定 file 読込 → 不在 file に既定値適用 → secret mask → response。 | 状態ファイルを更新しない。 | 読込不能な必須 file は `500`。任意 file 不在は既定値で返す。 |
-| `POST /api/restore` | request 検証 → secret mask `"***"` の既存値補完 → 全対象 payload 生成 → §22.0d の順に atomic write → `.config_log` 追記 → response。 | 設定系状態 file だけを置換する。履歴、ログ、snapshot、session、token 本体は復元しない。 | 検証失敗は差分なし。途中 write 失敗は未処理 file を書かず `500`。処理済み file は戻さない。 |
+| `POST /api/restore` | request 検証 → secret mask `"***"` の既存 secret 再利用判定 → 全対象 payload 生成 → §22.0d の順に atomic write → `.config_log` 追記 → response。 | 設定系状態 file だけを置換する。履歴、ログ、snapshot、session、token 本体は復元しない。 | 検証失敗は差分なし。途中 write 失敗は未処理 file を書かず `500`。処理済み file は戻さない。 |
 
 backup response に secret 原文を含めてはならない。`password`、`token`、`secret`、`smtp_password`、`webhook_secret`、`.github_token`、`.smtp_secret`、`.api_tokens` の hash 元値は `"***"` または `*_set:boolean` で表現する。`POST /api/restore` で `"***"` を受け取った secret は既存値保持を意味し、既存値がない場合は未設定として扱う。
 
@@ -553,7 +553,7 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | secret update | `POST /api/pat-update`, `POST /api/webhook-config`, `POST /api/smtp-config` password あり | secret 入力検証 → secret ファイル atomic write mode `0600` → `.config_log` へ `"***"` で記録 | secret 本体を response に含めない。 | secret 書込失敗は `500`。ログ、response、stdout へ平文を出さない。 |
 | build command | `POST /api/build`, `POST /api/build/force`, `POST /api/history/{id}/rollback` | 認証 → maintenance → circuit → running / queue 判定 → `.build_state` 更新 | `202` と開始または queue 結果を返す。 | running 競合は `409` または `429`。状態更新失敗は `500`。 |
 | destructive delete | `DELETE /api/queue`, `DELETE /api/snapshots/{id}`, `DELETE /api/hooks/{id}`, `DELETE /api/alert-rules/{id}`, `DELETE /api/tag-rules/{id}`, `DELETE /api/tokens/{id}` | path / auth 検証 → 対象存在確認 → 削除または失効 → 対象 endpoint の契約に従い `.config_log` または `.audit_log` 追記 | `{message}` と件数がある場合は件数を返す。 | 対象不在は `404`。部分削除は禁止し、失敗時は `500`。 |
-| external check | `POST /api/pat-verify`, `GET /api/rate-limit`, `GET /api/diagnostics`, `POST /api/smtp-test`, `POST /api/notify-test` | 設定読込 → timeout 付き外部確認 → 結果 response → 必要時 log 追記 | 確認結果を保存しない。ただし test 送信 log は仕様どおり追記する。 | 未設定は `501` または endpoint 固有 `422`。timeout は `500`。 |
+| external check | `POST /api/pat-verify`, `GET /api/rate-limit`, `GET /api/diagnostics`, `POST /api/smtp-test`, `POST /api/notify-test` | 設定読込 → timeout 付き外部確認 → 結果 response → endpoint 固有節で定義された log 追記 | 確認結果を保存しない。ただし test 送信 log は仕様どおり追記する。 | 未設定は `501` または endpoint 固有 `422`。timeout は `500`。 |
 | binary response | `GET /api/snapshots/{id}/download` | path 検証 → snapshot 存在確認 → archive stream | `Content-Type` と `Content-Disposition` を付与する。 | 不在は `404`。読込失敗は `500`。 |
 | stream response | `GET /api/build/stream` | 認証 → 最新 / 実行中 log 特定 → SSE header → frame 送信 | `log` frame 後、必ず `end` frame を送って close する。 | log 不在は `404`。送信中断時は状態ファイルを更新しない。 |
 
@@ -619,10 +619,10 @@ API response は、§22.0e の Response 列、§22.0c の schema、§23 の SDK 
 | `POST /api/repo-config` | 指定 key の正規化後値が既存値と一致 | `.repo_config`、`.config_log` を変更しない。 | `.repo_config` → `.config_log`。 |
 | `POST /api/branch-config` | 正規化後 `branch_targets` が既存値と一致 | `.branch_config`、`.config_log` を変更しない。 | `.branch_config` 作成/置換/削除 → `.config_log`。 |
 | `POST /api/notify-config` | secret mask 適用後の比較で既存値と一致 | `.notify_config`、`.config_log` を変更しない。 | `.notify_config` → `.config_log`。 |
-| `POST /api/smtp-config` | config と password 更新有無が既存値と一致 | `.smtp_config`、`.smtp_secret`、`.config_log` を変更しない。 | `.smtp_config` → 必要時 `.smtp_secret` → `.config_log`。 |
+| `POST /api/smtp-config` | config と password 更新有無が既存値と一致 | `.smtp_config`、`.smtp_secret`、`.config_log` を変更しない。 | `.smtp_config` → password 更新がある場合だけ `.smtp_secret` → `.config_log`。 |
 | `POST /api/dashboard-layout` | widgets 配列が既存値と一致 | `.dashboard_layout`、`.config_log` を変更しない。 | `.dashboard_layout` → `.config_log`。 |
 
-no-op response は endpoint 固有の `No changes` が定義されている場合はその文言を返す。定義がない endpoint は通常成功文言を返してよいが、状態ファイル、JSON Lines、監査ログ、通知ログに差分を作ってはならない。部分更新では未指定 key を保持し、`null` が削除を意味する key は個別節に明記された key だけとする。
+no-op response は endpoint 固有の `No changes` が定義されている場合はその文言を返す。定義がない endpoint は通常成功文言を返す。no-op では、状態ファイル、JSON Lines、監査ログ、通知ログに差分を作ってはならない。部分更新では未指定 key を保持し、`null` が削除を意味する key は個別節に明記された key だけとする。
 
 **削除 / 失効 response：**
 
@@ -663,7 +663,7 @@ no-op response は endpoint 固有の `No changes` が定義されている場�
 
 **api / sdk / ui / statefile 横断契約参照：**
 
-API endpoint、SDK method、UI 操作、状態ファイル副作用、成功後再取得、失敗時固定、横断処理順は `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a の api / sdk / ui / statefile 横断連動契約と横断処理順契約を正とする。本ファイルでは横断連動表と横断処理順表を重複定義しない。
+API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別詳細仕様ファイルを正とする。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。本ファイルでは横断連動表と横断処理順表を重複定義しない。
 
 **横断 fixture 参照：**
 
@@ -933,7 +933,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 `secret`：Webhook 署名シークレット。未設定時は `null`、設定済み時は `"***"`（マスク）を返す（→ 16E 参照）。
 
-`on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"deploy_failure"`（転送失敗時）| `"weekly_summary"`（定期サマリー送信時）| `"approval_required"`（承認待ち発生時）| `"duration_anomaly"`（所要時間異常時）| `"config_corrupt"`（設定破損復旧時）。複数指定可。
+`on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"deploy_failure"`（転送失敗時）| `"weekly_summary"`（定期サマリー送信時）| `"approval_required"`（承認待ち発生時）| `"duration_anomaly"`（所要時間異常時）| `"config_corrupt"`（設定破損復旧時）。複数指定は array 順を保持して保存する。
 
 `summary`：週次サマリー通知の設定。`interval` の有効値は `"weekly"` 固定。`hour` は 0〜23（UTC）。`day_of_week` は 0 = 日曜〜6 = 土曜。自動送信条件、二重送信防止、集計、送信順序、`.build_state` 更新は `ADLAIRE_CI_DETAIL_RUNNER_SPEC.md` §27.19 を正とする。
 
@@ -1885,7 +1885,7 @@ hooks fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 f
 
 ### メール通知（SMTP）（16B）
 
-Webhook に加えてメールでビルド結果を通知できる機能。SMTP 接続設定は `.smtp_config` に、パスワードは `.smtp_secret`（パーミッション 600）に分離して保存する。`GET /api/notify-config` のレスポンスに `email` セクションを追加する。
+Webhook に加えてメールでビルド結果を通知する機能。SMTP 接続設定は `.smtp_config` に、パスワードは `.smtp_secret`（パーミッション 600）に分離して保存する。`GET /api/notify-config` のレスポンスに `email` セクションを追加する。
 
 **`GET /api/smtp-config` レスポンス例：**
 ```json
@@ -1896,7 +1896,7 @@ Webhook に加えてメールでビルド結果を通知できる機能。SMTP �
 
 **`POST /api/smtp-config` リクエスト / レスポンス：**
 ```json
-// リクエスト（変更するフィールドのみ指定可。password フィールドは省略可能）
+// リクエスト（下記キーだけを受け付ける。password フィールドは省略可能）
 { "host": "smtp.example.com", "port": 587, "user": "notify@example.com", "password": "s3cr3t", "tls": true, "from": "notify@example.com", "to": ["ops@example.com"], "on": ["failure"], "enabled": true }
 // レスポンス: 200
 { "message": "SMTP config updated" }
@@ -1916,7 +1916,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 | 処理 | 仕様 |
 |------|------|
-| 更新 | `.smtp_config` → 必要時 `.smtp_secret` → `.config_log` の順に書く。途中失敗時は未処理ファイルを書かない。 |
+| 更新 | `.smtp_config` → password 更新がある場合だけ `.smtp_secret` → `.config_log` の順に書く。途中失敗時は未処理ファイルを書かない。 |
 | 削除 | `password:null` は `.smtp_secret` 削除。削除対象が不在なら no-op。 |
 | GET | `.smtp_secret` の存在だけを `password_set` で返し、password 本体は返さない。 |
 | 送信 timeout | 接続、TLS、送信全体を合計 30 秒で timeout する。 |
@@ -2044,7 +2044,7 @@ queue fixture は `ADLAIRE_CI_DETAIL_FIXTURE_SPEC.md` §22-F の API 機能別 f
 
 **`POST /api/repo-config` リクエスト / レスポンス：**
 ```json
-// リクエスト（変更するフィールドのみ指定可）
+// リクエスト（owner、repo、branch、target_file だけを受け付ける）
 { "owner": "fqwink", "repo": "Adlaire-Design-System", "branch": "main", "target_file": "docs" }
 // レスポンス: 200
 { "message": "Repo config updated" }
@@ -2241,7 +2241,7 @@ owner component は `api` とする。collaborator component は `runner`、`sta
 | 対象 event | `push` のみ |
 | Secret | `.webhook_secret` |
 | 成功 response | `{ "message": "Webhook accepted", "queued": true, "event_id": "..." }` |
-| 状態 | `.webhook_events.json` へ追記し、必要に応じて `.build_state.queued` へ `trigger="webhook"` entry を追加する。 |
+| 状態 | `.webhook_events.json` へ追記する。対象 push の after SHA が対象 branch の直近成功 SHA と異なり、maintenance が無効で、queue 上限に空きがあり、同一 delivery id の queued / running entry が存在しない場合だけ `.build_state.queued` へ `trigger="webhook"` entry を追加する。 |
 
 **署名検証：**
 
@@ -2310,7 +2310,7 @@ queue entry は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.build_state` sch
 ### 27.13 Webhook イベントログ / 一覧取得 API
 owner component は `api` とする。collaborator component は `sdk`、`ui`、`statefile` とする。
 
-本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、sdk、ui からページング参照できるようにすることである。
+本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、sdk、ui のページング参照対象にすることである。
 
 `.webhook_events.json` の保存 schema は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0c `.webhook_events.json` JSON Lines schema を正とする。保存時に request header 全体、署名値、secret、payload 全体を保存してはならない。
 
@@ -2342,7 +2342,7 @@ Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `g
 ### 27.16 ヘルスチェックエンドポイント
 owner component は `api` とする。collaborator component は `statefile` とする。
 
-本機能の目的は、認証不要の `GET /api/health` で、外部監視が Adlaire CI の最低限の稼働状態を確認できるようにすることである。
+本機能の目的は、認証不要の `GET /api/health` で、外部監視へ Adlaire CI の最低限の稼働状態を返すことである。
 
 **Response：**
 
@@ -2359,7 +2359,7 @@ owner component は `api` とする。collaborator component は `statefile` と
 }
 ```
 
-`status` は `"ok"`、`"degraded"`、`"error"` のいずれかとする。必須状態ファイル破損がある場合は `degraded`、API process が応答できるが重大な read error がある場合は `error` とする。HTTP status は、API 自体が response を生成できる限り `200` とし、JSON 生成不能などの場合だけ `500` とする。
+`status` は `"ok"`、`"degraded"`、`"error"` のいずれかとする。必須状態ファイル破損がある場合は `degraded`、API process が応答できるが重大な read error がある場合は `error` とする。HTTP status は、API 自体が response を生成できる限り `200` とする。response object 構築失敗、JSON encode 失敗、response 書き込み開始前の header 生成失敗の場合だけ `500` とする。
 
 **読み取り元：**
 
@@ -2430,7 +2430,7 @@ SDK `searchLogs(q,from,to,level)` は `level` 指定時だけ query に送信す
 ### 27.18 ブランチ設定の動的変更 API
 owner component は `api` とする。collaborator component は `runner`、`statefile` とする。
 
-本機能の目的は、監視対象 branch / target / deploy target を `.branch_config` で管理し、API 経由で変更できるようにすることである。
+本機能の目的は、監視対象 branch / target / deploy target を `.branch_config` で管理し、API 経由の変更対象を `.branch_config` に限定することである。
 
 **API：**
 
@@ -2539,7 +2539,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 **§27.21〜§27.38 / §27.42〜§27.47 機能別実装完全性固定契約：**
 
-§27.21〜§27.38、§27.42〜§27.47 の各機能は、個別節の本文に加えて下表を満たした場合だけ実装完了とする。§27.38a は §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
+§27.21〜§27.38、§27.42〜§27.47 の各機能は、owner component の個別節を主本文とし、下表を横断受け入れ確認として満たした場合だけ実装完了とする。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。§27.38a は §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|
@@ -2579,7 +2579,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | §27.25 | `GET/POST /api/config` の cache key と builder report。 | `getConfig()` / `setConfig()`。 | 設定 panel と build result 表示で cache counts を表示する。 |
 | §27.26 | `GET/POST /api/config` の `deploy_parallelism` と status/history。 | `getConfig()` / `setConfig()`。 | 設定 panel で parallelism を表示 / 保存し、結果は履歴/logで表示する。 |
 | §27.27 | hooks API。 | hook methods。 | フック panel で command_args を 1 行 1 引数として表示 / 保存する。 |
-| §27.28 | endpoint 追加なし。manifest は runner/builder 内部状態。 | SDK method 追加なし。 | UI 操作追加なし。build result で依存情報を表示してよい。 |
+| §27.28 | endpoint 追加なし。manifest は runner/builder 内部状態。 | SDK method 追加なし。 | UI 操作追加なし。依存情報を表示する場合は、既存 build result 表示の範囲だけを使用する。 |
 | §27.29 | remote build config は config / pipeline 系 API に含める。 | `getConfig()` / `setConfig()` または pipeline method。 | 設定 panel で remote build 設定を表示 / 保存する。 |
 | §27.30 | approvals API。 | approval methods。 | 承認待ち panel で approve / reject を操作する。 |
 | §27.31 | branch config または config API に含める。 | branch/config method。 | リポジトリ情報 panel で branch env を表示 / 保存する。 |
@@ -2597,7 +2597,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | §27.46 | TOTP/auth API。 | TOTP/auth methods。 | セキュリティ/login panel で one-time secret/ticket flow を扱う。 |
 | §27.47 | rate limit API。 | `getApiRateLimit()` / `setApiRateLimit()`。 | セキュリティ panel で policy と state summary を表示する。 |
 
-api / sdk / ui のいずれも、上表に存在しない補完 endpoint、補完 method、補完 UI 操作を追加してはならない。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
+api / sdk / ui のいずれも、上表に存在しない endpoint、method、UI 操作を追加してはならない。追加が必要な場合は、本表、該当 endpoint 個別節、SDK method 表、UI 操作契約、fixture catalog を先に更新する。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
 
 ### 27.30 ビルド承認フロー
 owner component は `api` とする。collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。

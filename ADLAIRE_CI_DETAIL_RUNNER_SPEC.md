@@ -4,9 +4,9 @@
 
 本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `ADLAIRE_CI_SPEC.md` を正とする。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` は、詳細仕様の入口、索引、共通固定値、責務 component 対応表を持つ。本ファイルを読む前に、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j を確認する。
+本ファイルを読む前に、`ADLAIRE_CI_SPEC.md` で実装状態と実装可否を確認し、`ADLAIRE_CI_DETAIL_SPEC.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。本ファイルは `runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
 
-`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は runner / builder / api / sdk / ui にまたがる横断補足契約であり、本ファイルへ移動しない。runner 拡張機能を実装する場合は、本ファイルの個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture は `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。§27.38a の内容を本ファイルへ重複定義してはならない。
+`ADLAIRE_CI_DETAIL_SPEC.md` §27.38a は runner / builder / api / sdk / ui にまたがる横断補足契約であり、本ファイルへ移動しない。runner 拡張機能を実装する場合は、本ファイルの個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として `ADLAIRE_CI_DETAIL_SPEC.md` §27.38a を同時に確認する。§27.38a は本ファイルの個別節を上書きせず、§27.38a の内容を本ファイルへ重複定義してはならない。
 
 ---
 
@@ -16,8 +16,8 @@
 |------|------|
 | owner component | `runner` |
 | collaborator component | `builder`、`statefile`、`commitstatus`、`api`、`archive` |
-| 持つ内容 | GitHub 監視、設定読取、状態ファイル更新、pipeline、deploy、snapshot、通知、runner fixture、runner owner 追加機能。 |
-| 持たない内容 | API endpoint の認証・応答本文、SDK method、UI DOM、admin 静的配信、security 主本文。 |
+| 持つ内容 | `runner` owner が主本文として定義する GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
+| 持たない内容 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 
 ---
 
@@ -447,7 +447,7 @@ SHA cache の更新は、pipeline 成功後、deploy 前に行う。複数 targe
 
 **状態ファイル権限契約：**
 
-runner が新規作成する状態ファイルは JSON object / array、SHA cache、lock、pending、log、history を問わず原則 `0600` とする。directory は `0700` とする。既存ファイルの mode が広い場合、secret を含む `.github_token`、`.notify_config`、`.notify_pending`、`.pending_transfers` は停止条件とし、それ以外の runner 状態ファイルは WARN `STATE_FILE_INSECURE_MODE: path={path} mode={mode}` を出して `0600` へ chmod する。chmod 失敗時は終了コード `2` とする。
+runner が新規作成する状態ファイルは、JSON object、JSON array、SHA cache、lock file、pending transfer file、build log、build history の分類に関係なく `0600` とする。directory は `0700` とする。既存ファイルの mode が広い場合、secret を含む `.github_token`、`.notify_config`、`.notify_pending`、`.pending_transfers` は停止条件とし、それ以外の runner 状態ファイルは WARN `STATE_FILE_INSECURE_MODE: path={path} mode={mode}` を出して `0600` へ chmod する。chmod 失敗時は終了コード `2` とする。
 
 **設定ファイル起動時整合性チェック：**
 
@@ -618,7 +618,7 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 
 | 失敗段階 | `target_status` | 保存必須 | 保存禁止 | finalizer | 終了コード |
 |----------|-----------------|----------|----------|-----------|------------|
-| lock 実行中 PID | `lock_skipped` | `.build_status.json` に `lock_skipped` を保存してよい。 | `.build_state`、`.build_logs/`、`.build_history`、`sha_file`、deploy、snapshot。 | lock を削除しない。 | `0` |
+| lock 実行中 PID | `lock_skipped` | lock が有効な実行中 PID を指す場合に限り、`.build_status.json` に `lock_skipped` を保存する。 | `.build_state`、`.build_logs/`、`.build_history`、`sha_file`、deploy、snapshot。 | lock を削除しない。 | `0` |
 | startup config permission error | `config_error` | `.build_status.json` に `config_error`、ERROR log。 | `.build_state.running=true`、`.build_logs/`、`.build_history`、`sha_file`、deploy、snapshot。 | lock 作成済みなら削除する。 | `2` |
 | status start write failure | `failure_state_write` | ERROR log。 | `.build_state.running=true`、`.build_logs/`、`.build_history`、`sha_file`、deploy、snapshot。 | lock 作成済みなら削除する。 | `1` |
 | state start write failure | `failure_state_write` | `.build_status.json` に `failure`、ERROR log。 | `.build_logs/`、`.build_history`、`sha_file`、deploy、snapshot。 | lock を削除する。 | `1` |
@@ -714,7 +714,7 @@ queue entry の `trigger` は `"manual"`、`"webhook"`、`"approval"` のみ許�
 | build 成功・deploy pending | `success_deploy_pending` | 実行 trigger | `pending_transfers_count` を更新する。 |
 | build 失敗 | `failure` | 実行 trigger | `last_error` に固定エラー文言を保存する。 |
 | circuit open skip | `circuit_open` | `polling` | GitHub API 呼び出し前に保存する。 |
-| startup config 復旧あり | `config_recovered` | `startup_config_integrity` | build log / history は作成しない。復旧後に通常 build へ進む場合、次の `running` 更新で上書きしてよい。 |
+| startup config 復旧あり | `config_recovered` | `startup_config_integrity` | build log / history は作成しない。復旧後に通常 build へ進む場合、次の `running` 更新で上書きする。 |
 | startup config 停止 | `config_error` | `startup_config_integrity` | `.build_state.running=true` へ進まない。 |
 | pending transfer retry のみ | `success` または `failure` | `retry_pending_transfer` | build が発生しない場合でも pending 件数を更新する。 |
 
@@ -747,7 +747,7 @@ force interval の直近成功 build は `.build_history` のうち同じ `branc
 
 runner は lock 取得後、正常終了、失敗終了、panic 相当の recover、context timeout のいずれでも finalizer を実行する。finalizer は次の順序に固定する。
 
-1. 未保存の `.build_logs/{id}.json` がある場合は、可能な範囲の最終形を保存する。
+1. 未保存の `.build_logs/{id}.json` がある場合は、取得済みで schema を満たす値だけを使って最終形を保存する。未取得値を推測して補完してはならない。
 2. `.build_history` へ追記対象の build がある場合は 1 行だけ追記する。同じ `id` が既に存在する場合は追記せず、ERROR ログ `BUILD_HISTORY_DUPLICATE: id={id}` を出す。
 3. `.build_status.json` を最終状態へ更新する。
 4. `.build_state.running=false`、`current_build_id=null`、`last_finished_at={now}` を保存する。
@@ -760,11 +760,11 @@ finalizer 中に複数失敗が発生した場合、終了コードは最も重�
 
 `.build_logs/{id}.json` は atomic write で 1 build id につき 1 file だけ作成する。既に同名 file が存在する場合は上書きせず、次の suffix 付き build id を採番し直す。`.build_history` は JSON Lines とし、追記前に既存 file の末尾が LF で終わることを確認する。LF がない場合は 1 個だけ LF を追加してから新規行を追記する。
 
-`.build_history` の 1 行は `.build_logs/{id}.json` の要約であり、少なくとも `id`、`status`、`trigger`、`branch`、`target_file`、`started_at`、`finished_at`、`duration_seconds`、`commit_sha`、`blob_sha`、`warnings`、`error` を含む。history へ保存する `status` は `target_status` と同じ値を使用する。JSON Lines の壊れた既存行は読み取り時に無視してよいが、追記時に既存 file 全体を書き換えてはならない。
+`.build_history` の 1 行は `.build_logs/{id}.json` の要約であり、少なくとも `id`、`status`、`trigger`、`branch`、`target_file`、`started_at`、`finished_at`、`duration_seconds`、`commit_sha`、`blob_sha`、`warnings`、`error` を含む。history へ保存する `status` は `target_status` と同じ値を使用する。JSON Lines の壊れた既存行は読み取り対象から除外するが、追記時に既存 file 全体を書き換えてはならない。
 
 **サーキットブレーカー更新契約：**
 
-`.build_circuit_state.open=true` の場合、runner は GitHub API、pipeline、deploy、snapshot を実行せず、`.build_status.json` に `status="circuit_open"` を保存して終了コード `0` で終了する。pending transfer retry と notify pending retry は circuit open 中でも先に実行してよい。
+`.build_circuit_state.open=true` の場合、runner は GitHub API、pipeline、deploy、snapshot を実行せず、`.build_status.json` に `status="circuit_open"` を保存して終了コード `0` で終了する。pending transfer retry と notify pending retry は circuit open 判定前の再試行処理として実行する。
 
 連続失敗数を増やす対象は `failure_build`、`failure_precheck`、`failure_decode`、`failure_state_write`、`success_deploy_pending` とする。`failure_api`、`skipped_no_change`、`skipped_cooldown`、`lock_skipped`、通知失敗だけの成功 build は連続失敗数を増やさない。いずれかの target が `success` になった場合だけ、`consecutive_failures` は 0 に戻す。
 
@@ -782,7 +782,7 @@ runner は以下のいずれかに該当する場合、`sha_file` を更新し�
 | `[REPORT]` 不在かつ pipeline 非 0 | 成功確認できない。 |
 | status / log / history の必須保存失敗 | 実行結果を追跡できない。 |
 
-pipeline が終了コード `0` で `[REPORT]` が不在の場合、SHA は更新してよい。ただし `.build_logs/{id}.json.report=null`、`warnings` に `REPORT_MISSING` を追加し、`.build_history.warnings` に 1 を加算する。
+pipeline が終了コード `0` で `[REPORT]` が不在の場合、SHA を更新する。ただし `.build_logs/{id}.json.report=null`、`warnings` に `REPORT_MISSING` を追加し、`.build_history.warnings` に 1 を加算する。
 
 **状態ファイル破損時の処理：**
 
@@ -802,7 +802,7 @@ runner 起動（systemd タイマーから呼び出し）
     │
     ├─ [設定ファイル起動時整合性チェック]
     │   ├─ .branch_config / .notify_config / .build_state / .build_circuit_state / .pending_transfers / .notify_pending を固定順序で検証
-    │   ├─ 復旧可能な破損 → corrupt backup、初期化または default fallback、必要時 config_corrupt 通知
+    │   ├─ 復旧可能な破損 → corrupt backup、初期化または default fallback、§27.10 の通知条件を満たす場合は config_corrupt 通知
     │   ├─ unknown key のみ → backup せず正規化書き戻し
     │   └─ permission error / IO error → .build_state.running=true にせず終了
     │
@@ -1052,7 +1052,7 @@ stdin パイプ経由で SSH 転送する。
 ssh <user>@<host> 'mkdir -p <dest_dir>/<relative-dir> && tee <dest_dir>/<relative-path>'
 ```
 
-runner は local file を開き、SSH process の stdin へ `io.Copy` で送る。リモート側 stdout は破棄してよいが、stderr は失敗理由として `.build_logs/{id}.json.error` と ERROR ログへ記録する。
+runner は local file を開き、SSH process の stdin へ `io.Copy` で送る。リモート側 stdout は使用せず破棄し、stderr は失敗理由として `.build_logs/{id}.json.error` と ERROR ログへ記録する。
 
 SSH command は local shell 文字列を組み立てず、`exec.CommandContext` の argv として分離して起動する。directory 作成は `exec.CommandContext(ctx, "ssh", user+"@"+host, "mkdir", "-p", "--", remoteDir)`、file 転送は `exec.CommandContext(ctx, "ssh", user+"@"+host, "tee", "--", remotePath)` の 2 段階に分ける。`dest_dir`、relative path、host、user を `/bin/sh -c` 用の 1 文字列へ連結して渡してはならない。host と user は `^[A-Za-z0-9._-]+$` に一致する値だけ許可する。
 
@@ -1164,10 +1164,10 @@ snapshot 保存は `{StateDir}/.snapshots/{build_id}.tmp.{pid}` へ copy した�
 
 | 対象 | 扱い |
 |------|------|
-| 通常ファイル | output site 配下の相対 path を保持して copy する。file mode は実行 bit を含めて保持してよいが、setuid / setgid bit は落とす。 |
+| 通常ファイル | output site 配下の相対 path を保持して copy する。file mode は実行 bit だけを保持し、setuid / setgid bit は落とす。 |
 | directory | 必要な directory だけ作成し、mode は最大 `0755` とする。 |
 | symlink | file / directory を問わず保存しない。WARN `SNAPSHOT_SKIP_SYMLINK: path={path}` を出す。 |
-| hidden file | output site 配下の通常ファイルであれば保存してよい。ただし `.git` directory 配下は除外する。 |
+| hidden file | output site 配下の通常ファイルで、かつ `.git` directory 配下ではない場合だけ保存対象に含める。 |
 | path traversal | snapshot 内相対 path に `..`、絶対 path、空 segment、NUL を含む場合は snapshot 保存失敗とする。 |
 | runner 状態ファイル | `.github_token`、`.build_lock`、`.pending_transfers`、`.notify_pending`、`.build_state`、`.build_status.json`、`.admin_credentials`、`.api_tokens` は保存禁止。 |
 | tmp directory | `{build_id}.tmp.{pid}` は成功時に残してはならない。失敗時も削除を 1 回試行し、失敗時は WARN `SNAPSHOT_TMP_CLEANUP_FAILED`。 |
@@ -1961,7 +1961,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 |------|------|
 | `.build_status.json` 書き込み失敗 | ERROR ログ `BUILD_STATUS_WRITE_FAILED: path={path} error={reason}` を出し、runner 終了コードを最低 `1` にする。build 成功後に発生した場合も終了コードは `1` とする。 |
 | `.build_status.json` 破損を API が検出 | `GET /api/status` と `GET /api/dashboard` は `500` を返す。`GET /api/health` は `status="degraded"` を返し、破損を `checks[]` に含める。 |
-| `.build_status.json` 不在 | API は `.build_state`、`.build_history`、`.build_lock` から後方互換値を算出して返してよい。ただしファイル作成はしない。 |
+| `.build_status.json` 不在 | API は `.build_state`、`.build_history`、`.build_lock` から後方互換値を算出して返す。ただしファイル作成はしない。 |
 | pending 件数読取失敗 | 件数を `null` にせず `0` として返してはならない。status 書き込み時はエラー扱いにし、`last_error` に固定文言を保存する。 |
 
 **セキュリティ：**
@@ -2771,7 +2771,7 @@ runner は `approval_required=true` の target に対して、approval queue 以
 
 owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
 
-本機能の目的は、branch target ごとに build process へ注入する環境変数を定義し、branch や deploy 先ごとの差分を安全に扱うことである。
+本機能の目的は、branch target ごとに build process へ注入する環境変数を定義し、branch や deploy 先ごとの差分を、保存前検証、注入対象固定、secret mask、log 保存禁止値によって扱うことである。
 
 **入力 / 状態：**
 
@@ -2855,7 +2855,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 | 項目 | 仕様 |
 |------|------|
 | notify id | `.notify_log` は `ntfy{YYYYMMDDHHmmss}`、pending は `np{YYYYMMDDHHmmss}`、衝突時 `-001`。 |
-| payload 共通 key | `event`、`build_id`、`status`、`branch`、`trigger`、`created_at` を可能な範囲で含める。存在しない値は `null`。 |
+| payload 共通 key | `event`、`build_id`、`status`、`branch`、`trigger`、`created_at` を含める。取得できない値は `null`。 |
 | channel 順 | channel id 昇順。送信失敗しても次 channel を継続する。 |
 | timeout | webhook と command は 30 秒。SMTP は 60 秒。timeout は retry 対象か個別表に従う。 |
 | pending payload | mask 後 payload だけを保存し、secret は retry 送信直前に状態ファイルから再読込する。 |
@@ -3050,21 +3050,21 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 項目 | 仕様 |
 |------|------|
 | 採番元 | `.build_state.queued[].created_seq` の最大値。存在しない場合は `0`。次 entry は最大 + 1。 |
-| 旧 entry | `created_seq` 欠落 entry は GET 表示時だけ末尾扱いとし、runner 取り出し前に `.build_state` lock 内で created_seq を補完保存する。 |
+| 旧 entry | `created_seq` 欠落 entry は GET 表示時だけ末尾扱いとし、runner 取り出し前に `.build_state` lock 内で `created_seq` を正規化保存する。正規化値は採番元の規則だけで決定し、entry 内容、priority、id、時刻から推測しない。 |
 | priority 省略 | API / webhook / approval の queue 追加時は `"normal"` を保存する。 |
 | 表示順 | priority 数値昇順、created_seq 昇順、同値なら id 昇順。 |
 | 取り出し順 | 表示順と同一。 |
 | clear | priority に関係なく waiting entry 全件を削除する。 |
 | queue full | priority が高くても既存 entry を押し出さない。 |
 
-runner が旧 entry の `created_seq` 補完保存に失敗した場合、build を開始せず終了コード `1` とする。補完前の推測順で build を開始してはならない。
+runner が旧 entry の `created_seq` 正規化保存に失敗した場合、build を開始せず終了コード `1` とする。正規化前の推測順で build を開始してはならない。
 
 **異常系：**
 
 | 条件 | 処理 |
 |------|------|
 | priority 不正 | API は `422`。 |
-| created_seq 欠落の旧 entry | GET 表示時は末尾扱いにする。runner 取り出し前または queue 更新時に `.build_state` lock 内で補完保存する。補完失敗時は build を開始しない。 |
+| created_seq 欠落の旧 entry | GET 表示時は末尾扱いにする。runner 取り出し前または queue 更新時に `.build_state` lock 内で正規化保存する。正規化保存失敗時は build を開始しない。 |
 | queue full | `429`。priority による上書き削除はしない。 |
 
 **検証条件：**
@@ -3074,7 +3074,7 @@ runner が旧 entry の `created_seq` 補完保存に失敗した場合、build 
 | urgent 後投入 | normal より先に処理。 |
 | 同一 priority | FIFO。 |
 | 不正 priority | 状態差分なしで `422`。 |
-| created_seq 欠落 | 補完後に順序判定し、補完失敗なら build なし。 |
+| created_seq 欠落 | 正規化保存後に順序判定し、正規化保存失敗なら build なし。 |
 | urgent queue full | `429`、既存 low entry も削除しない。 |
 
 ### 27.36 失敗原因の自動分類
@@ -3178,7 +3178,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | `builder_version` | `adlaire-ci-build --version` を最大 2 秒で実行し、stdout 先頭行の最初の空白区切り token を保存する。stderr は保存しない。 |
 | `runner_version` | Go build info の main version が空の場合は `"unknown"`。VCS revision は保存しない。 |
 | `hostname` | 255 文字を超える場合は 255 文字で切り詰める。取得失敗時は `"unknown"`。 |
-| `state_dir` | `--state-dir` が home directory 配下の場合は basename だけ保存する。それ以外は絶対 path を保存してよい。 |
+| `state_dir` | `--state-dir` が home directory 配下の場合は basename だけ保存する。それ以外は絶対 path を保存する。 |
 | 保存失敗 | environment 保存失敗は build を開始せず、`.build_status.json` に `failure_state_write` を保存し、終了コード `1`。 |
 
 **異常系：**
