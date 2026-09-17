@@ -571,7 +571,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 | パス | component | 役割 |
 |------|-----------|------|
-| `main.go` | `-` | 起動入口。サブコマンド判定、引数受け取り、責務 component 呼び出しを行う。 |
+| `main.go` | `-` | 起動入口。現時点では実行ファイル名判定、引数受け取り、`builder` / `runner` 呼び出しを行う。 |
 | `components/builder.go` | `builder` | Markdown / Markdown ディレクトリを静的 Web サイトへ変換する。 |
 | `components/runner.go` | `runner` | GitHub polling、変更検出、ビルド起動、履歴、ログ、deploy を実行する。 |
 | `components/api.go` | `api` | 管理 API サーバー、認証、状態ファイル操作を提供する。 |
@@ -587,12 +587,12 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 | 対象 | 移行完了条件 |
 |------|--------------|
-| `main.go` | repository root に 1 ファイルだけ存在し、サブコマンド判定、引数受け取り、owner component 呼び出しだけを持つ。Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive、commitstatus、MCP の実装詳細を含まない。 |
+| `main.go` | repository root に 1 ファイルだけ存在し、実行ファイル名判定、引数受け取り、現行 owner component 呼び出しだけを持つ。Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive、commitstatus、MCP の実装詳細を含まない。 |
 | `components/*.go` | 実装対象 owner component ごとに 1 Go ファイルだけ存在する。現行 Go 実装は `builder` の `components/builder.go`、`runner` の `components/runner.go`、`api` の `components/api.go` とする。`admin` は `admin/` 配下の静的配布物であり、Go ファイルを持たない。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルとして追加する場合は、追加対象 Phase または追加実装 PR で仕様状態と索引を更新してから作成する。 |
 | 標準移行前ファイル | `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は、対応する標準配置へ移動済みであり、同じ実装本文または同じ fixture が旧配置に残っていない。 |
 | testdata | 実装済みまたは仕様化済み・未実装の owner component ごとに `testdata/<component>/` を使用する。`testdata/mcp/` は MCP 専用詳細仕様が新設されるまで作成しない。 |
 | admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ `ui` と `sdk` の owner 詳細仕様に従う。`admin/style.css` と `admin/app.js` は、`docs/details/admin.md` A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
-| 将来計画 | `components/mcp.go` と MCP 用 fixture は、MCP 専用詳細仕様が新設され、`docs/ROADMAP.md` で `仕様化済み・未実装` へ昇格するまで作成しない。 |
+| 将来追加予定 path | `components/mcp.go` と MCP 用 fixture は未作成の将来追加予定 path であり、MCP 専用詳細仕様が新設され、`docs/ROADMAP.md` で `仕様化済み・未実装` へ昇格するまで作成しない。 |
 
 標準配置を変更する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、`docs/DOCUMENT_INDEX.md` の Specified Components、`docs/ROADMAP.md` の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
 

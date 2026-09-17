@@ -252,13 +252,13 @@
 
 リポジトリ内ソース配置の標準構成は、`docs/SPEC.md` Part 1 §4.3 と `docs/DETAIL_INDEX.md` §0j を参照する。
 
-下表は、現行リポジトリに存在する実装ファイルと、実装不可の将来計画ファイルを示す。標準ソース配置への移行は完了済みであり、`main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` を現行配置として扱う。
+下表は、現行リポジトリに存在する実装ファイルと、将来追加予定 path を区別して示す。標準ソース配置への移行は完了済みであり、`main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` を現行配置として扱う。
 
 標準配置図に含まれる未実装 path は、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来計画ファイル、空ディレクトリ、placeholder を作成しない。
 
 | パス | component | 状態 | 役割 |
 |------|-----------|------|------|
-| `main.go` | `-` | 実装済み | 起動入口。実行ファイル名に応じて `builder` または `runner` component を呼び出す。 |
+| `main.go` | `-` | 実装済み | 起動入口。現時点では実行ファイル名に応じて `builder` または `runner` component を呼び出す。 |
 | `components/builder.go` | `builder` | 実装済み | Go 版静的 Web サイトビルドスクリプト。`adlaire-ci-build` バイナリとして実行する。 |
 | `components/builder_test.go` | `builder` | 実装済み | `components/builder.go` の Phase 1 fixture テスト。 |
 | `go.mod` | `-` | 実装済み | Go module 定義。外部 module は追加しない。 |
@@ -268,7 +268,7 @@
 | `components/api.go` | `api` | 実装済み | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
 | `admin/adlaire-ci-sdk.js` | `sdk` | 実装済み | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
 | `admin/index.html` | `ui` | 実装済み | 標準管理ツール UI。SDK 経由で API と通信する。 |
-| `components/mcp.go` | `mcp` | 将来計画 | MCP サーバー。現時点では実装可能な詳細仕様を持たず、MCP 専用詳細仕様が新設されるまで実装対象ではない。 |
+| `components/mcp.go` | `mcp` | 将来追加予定 path | MCP サーバー。現時点では未作成であり、実装可能な詳細仕様を持たず、MCP 専用詳細仕様が新設されるまで実装対象ではない。 |
 
 ## Source Of Truth
 

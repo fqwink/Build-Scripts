@@ -142,7 +142,7 @@ Go 実装対象ファイルは以下とする。
 
 | ファイル | 役割 |
 |---------|------|
-| `main.go` | 起動入口。実行ファイル名に応じて対象 component を呼び出す。 |
+| `main.go` | 起動入口。現時点では実行ファイル名に応じて `builder` または `runner` component を呼び出す。 |
 | `components/builder.go` | Markdown ファイルまたは Markdown ディレクトリを静的 Web サイトへ変換する Go 版ビルドスクリプト。 |
 | `components/runner.go` | GitHub API で対象 Markdown の変更を検出し、ビルドパイプラインを実行する Go 版 CI ランナー。 |
 
@@ -153,7 +153,7 @@ Go 実装対象ファイルは以下とする。
 | `components/api.go` | 実装済み |
 | `admin/adlaire-ci-sdk.js` | 実装済み |
 | `admin/index.html` | 実装済み |
-| `components/mcp.go` | 将来計画 |
+| `components/mcp.go` | 将来追加予定 path（未作成） |
 
 未実装コンポーネントを追加する場合は、`docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、該当する owner component 別の `docs/details/*.md`、`docs/DOCUMENT_INDEX.md`、本ファイルを必要に応じて整合させる。
 
