@@ -402,9 +402,13 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | §27.14 | `success-stats-timeline` | `days` 範囲、UTC 日付 bucket、日付降順、0 件日除外、status 分類、状態差分なしを固定する。 |
 | §27.14 | `partial-stats-corrupt-log-skip` | 通常 log 破損、archive gzip 展開失敗、duration 欠落を除外し、WARN code、集計継続、破損内容非表示を固定する。 |
 | §27.14 | `failure-stats-invalid-query` | `days` / `n` 範囲外、未知 query、非整数で `422`、通常 log / archive log / history 差分なしを固定する。 |
-| §27.15 | `success-snapshot-list-download` | snapshot `meta.json` 読取、size 集計、tar.gz entry 順序、download header、安全 entry だけ含むこと、状態差分なしを固定する。 |
+| §27.15 | `success-snapshot-list-download` | snapshot `meta.json` 読取、size 集計、tar.gz entry 順序、entry mtime、download header、安全 entry だけ含むこと、状態差分なしを固定する。 |
+| §27.15 | `failure-snapshot-download-unsafe-entry` | unsafe path、symlink、secret file、meta mismatch のいずれかで stream 開始前 `500`、binary header なし、状態差分なし、固定 server log を固定する。 |
+| §27.15 | `partial-snapshot-download-stream-failure` | stream 開始後 read error で stream 中断、JSON error 追加なし、状態差分なし、`SNAPSHOT_STREAM_FAILED` を固定する。 |
 | §27.15 | `success-snapshot-delete` | id validation、running check、snapshot directory 削除、`.config_log` 追記順、response、削除対象以外の snapshot 維持を固定する。 |
+| §27.15 | `failure-snapshot-delete-log-failure` | snapshot 削除後の `.config_log` failure で response `500`、削除済み snapshot を巻き戻さず、history / build log / pending unchanged を固定する。 |
 | §27.15 | `success-snapshot-rollback` | rollback lock、new build id、`.build_state.running`、rollback build log / history、pending transfer、元 snapshot 非破壊、`.last_sha` 非更新を固定する。 |
+| §27.15 | `failure-snapshot-rollback-deploy` | deploy failure 時の rollback build log / history / finalizer、lock 解放、元 snapshot / 元 build log / `.last_sha` unchanged を固定する。 |
 | §27.15 | `failure-snapshot-running-conflict` | running 中の delete / rollback で `409`、snapshot / history / log / pending / config log 差分なしを固定する。 |
 | §27.16 | `success-health-ok` | `.build_status.json` 正常時の HTTP `200`、`status="ok"`、checks 空、pending / notify count、uptime fake clock、read-only no-write を固定する。 |
 | §27.16 | `success-health-degraded` | pending transfer、missing status fallback、runner stale、notify pending read warning で `status="degraded"`、checks 順序、HTTP `200`、状態差分なしを固定する。 |
@@ -427,7 +431,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | §27.20 | `noop-config-diff-same-value` | 正規化後同一値で対象状態ファイル、secret file、`.config_log` 差分なし、`No changes` response、idempotency を固定する。 |
 | §27.20 | `security-config-diff-secret-mask` | key path に password / token / secret / pat / smtp_password を含む値を before / after と `diff_text` で `"***"` にし、request body / header / cookie 非保存を固定する。 |
 
-§27.12〜§27.20 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。read-only、noop、invalid query、invalid signature、running conflict fixture では、対象状態ファイル、queue、history、build log、snapshot、notification、config log の forbidden side effect を必ず列挙する。
+§27.12〜§27.20 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。read-only、noop、invalid query、invalid signature、running conflict fixture では、対象状態ファイル、queue、history、build log、snapshot、notification、config log の forbidden side effect を必ず列挙する。§27.15 の download fixture では `downloads[]` に `content_type`、`content_disposition`、`entry_order`、`stream_started`、`stream_interrupted`、`error_after_stream_start` を固定し、delete / rollback fixture では `write_order` と `unchanged_paths` に元 snapshot、元 build log、`.last_sha`、対象外 history / pending を必ず列挙する。
 
 **§27.21〜§27.30 feature fixture 固定契約：**
 

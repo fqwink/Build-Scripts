@@ -53,6 +53,28 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 | 削除失敗 | 処理継続し、処理結果に `failed_count` を含める。 |
 | 処理結果 | archive は `archived_count`、cleanup は `deleted_count` と `failed_count` を API へ返す。 |
 
+**archive / cleanup 実装完了ゲート：**
+
+| 観点 | 入力 | 合格条件 | 禁止事項 |
+|------|------|----------|----------|
+| 対象列挙 | `.build_logs/*.json`、`.build_state.current_build_id`、`.server_config.log_archive_after_days` | 対象候補を file 名辞書順で走査し、`finished_at` が閾値より古く、実行中 build でない log だけを対象にする。 | file mtime だけで archive 対象にすること、`.build_logs/archive/` 配下を再対象化すること。 |
+| JSON 検証 | 通常 build log JSON | JSON object、`id`、`finished_at`、file 名 id 一致、UTC ISO 8601 秒精度を確認する。 | 破損 log の修復、未知 key の削除保存、対象外 log の削除。 |
+| gzip 作成 | 対象 `.build_logs/{id}.json` | `.build_logs/archive/{id}.json.gz.tmp.{pid}` へ gzip 出力し、close 後に `.json.gz` へ rename する。 | 未完了 gzip を公開 path に置くこと、既存 `.json.gz` の上書き。 |
+| 元 log 削除 | gzip 作成成功済み対象 | gzip を展開して JSON parse と id 一致を再確認した後、元 `.json` だけ削除する。 | gzip 検証前の元 log 削除、archive 失敗時の元 log 削除。 |
+| archive 読取 | 通常 log 不在、archive log あり | gzip 展開後、通常 log と同じ schema の JSON object として返す。 | 展開済み JSON を通常 log として再保存すること。 |
+| cleanup | 通常 log、archive log | retention 対象の通常 log、archive log を固定順で削除し、失敗を `failed_count` へ計上する。 | 一部失敗時の処理中断、失敗対象の自動 chmod / rename 修復。 |
+| secret / log | WARN / ERROR 出力 | 固定 code、id、path basename、HTTP status 相当だけを出す。 | build log 本文、token、Authorization header、credential 付き URL、gzip 内容の出力。 |
+
+**archive fixture expected 固定契約：**
+
+| fixture | 必須 expected |
+|---------|---------------|
+| `success-log-archive` | `expected/effects.json` に created `.json.gz`、deleted `.json`、unchanged 実行中 log、external_calls `[]`、commands `[]`、write_order を固定する。 |
+| `noop-log-archive-empty` | `archived_count=0`、created / updated / deleted paths なし、WARN なし、idempotency を固定する。 |
+| `failure-log-archive-gzip` | gzip write / close / rename failure で元 `.json` 維持、tmp cleanup、`archived_count=0`、WARN / ERROR 固定 code を固定する。 |
+| `success-log-cleanup` | 通常 log 削除、archive log 削除、空 archive directory 削除試行、`deleted_count` / `failed_count`、削除対象外 unchanged を固定する。 |
+| `partial-log-cleanup-delete-failure` | 削除失敗対象を残し、後続対象を継続し、`failed_count` と unchanged failed path を固定する。 |
+
 検証条件:
 
 | ケース | 期待結果 |
@@ -108,6 +130,18 @@ archive owner は snapshot の保存形式、一覧読取、download tar.gz 生�
 | mtime | snapshot 内 file の mtime を使用する。snapshot 内 file から mtime を取得できない場合は build log の `finished_at` を使用する。 |
 | secret 除外 | `.github_token`、`.admin_credentials`、`.api_tokens`、`.smtp_secret`、`.webhook_secret`、runner 状態ファイル名は検出時点で `500` とし、download を中止する。 |
 
+**download stream 固定契約：**
+
+download は stream 開始前に snapshot directory 全体を走査し、entry path、entry 種別、secret 禁止名、`meta.json` schema、`size_bytes`、`file_count` を検証する。stream 開始前検証に失敗した場合は `500` JSON error を返し、binary header を送信しない。stream 開始後に read error が発生した場合は stream を中断し、server log に `SNAPSHOT_STREAM_FAILED: id={id} entry={path}` を出す。stream 開始後は JSON error body を追加送信してはならない。状態ファイル、snapshot directory、history、build log、config log は変更しない。
+
+| ケース | HTTP / stream | 状態差分 | 必須 log |
+|--------|---------------|----------|----------|
+| 事前検証成功 | `200`、binary tar.gz。 | なし。 | なし。 |
+| unsafe entry | `500 {"error":"Snapshot download failed"}`。binary header なし。 | なし。 | `SNAPSHOT_UNSAFE_ENTRY: id={id} entry={path}` |
+| secret file 検出 | `500 {"error":"Snapshot download failed"}`。binary header なし。 | なし。 | `SNAPSHOT_SECRET_ENTRY: id={id} entry={path}` |
+| meta 不一致 | `500 {"error":"Snapshot metadata mismatch"}`。binary header なし。 | なし。 | `SNAPSHOT_META_MISMATCH: id={id}` |
+| stream 中 read error | stream 中断。JSON body 追加なし。 | なし。 | `SNAPSHOT_STREAM_FAILED: id={id} entry={path}` |
+
 **Rollback 仕様：**
 
 rollback は新しい build id を採番し、`.build_history.trigger="rollback"`、`rollback_from=<元id>` を保存する。元 snapshot は変更しない。rollback 中に別 build が running の場合は `409` とする。転送失敗時は rollback build log を `failure` とし、元 snapshot は削除しない。
@@ -136,6 +170,19 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は `
 | delete 順 | id validation → running check → snapshot directory 確認 → delete → `.config_log` 追記 → response。 |
 | delete log 失敗 | snapshot 削除済みのまま `500`。削除は巻き戻さない。 |
 | rollback pending | pending entry には `rollback_from`、`snapshot_id`、deploy target を保存する。 |
+
+**snapshot delete 副作用固定契約：**
+
+delete は destructive endpoint であるため、成功条件と失敗時副作用を下表に固定する。
+
+| 段階 | 成功条件 | 失敗時副作用 |
+|------|----------|--------------|
+| id validation | build id 形式、path separator なし、URL decode 後も安全。 | `422`。snapshot、config log、history、build log、pending、state 差分なし。 |
+| running check | `.build_state.running=false`。 | `409`。snapshot、config log、history、build log、pending 差分なし。 |
+| 存在確認 | `.snapshots/{id}/meta.json` が schema valid。 | `404` または `500`。差分なし。 |
+| delete | 対象 snapshot directory だけ削除成功。 | `500`。対象 snapshot が残る。config log 追記なし。 |
+| config log | `.config_log` に `target="snapshot_delete"`、`target_id={id}` を追記。 | snapshot は削除済みのまま `500`。他 snapshot、history、build log、pending は変更しない。 |
+| response | `{ "message":"Snapshot deleted" }`。 | 成功 response を返さない。 |
 
 **artifact 実装完了固定契約：**
 
@@ -174,6 +221,31 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は `
 10. `.build_lock` を解放する。
 
 手順 3 より前の失敗は状態差分なしとする。手順 3 以後の失敗は rollback build log に失敗地点、`rollback_from`、`snapshot_id` を残し、`.build_lock` 解放と finalizer を必ず試行する。finalizer 失敗時は response `500` とし、元 snapshot、元 build log、過去 history、`.last_sha` は変更しない。
+
+**rollback 実装完了ゲート：**
+
+| 観点 | 合格条件 |
+|------|----------|
+| lock / running | `.build_lock` 取得前の validation failure は no-write。lock 取得後は `.build_state.running=true`、finalizer で `false`、lock 解放を必ず試行する。 |
+| id / trigger | 新規 build id を採番し、rollback 元 id を build log / history / pending transfer に `rollback_from` と `snapshot_id` で保存する。 |
+| deploy | snapshot artifact だけを deploy target へ転送し、builder、GitHub read、Commit Status、SHA cache 更新、通常 snapshot 作成を行わない。 |
+| success | rollback build log、history、`.build_status.json` finalizer が成功し、元 snapshot、元 build log、過去 history、`.last_sha` が unchanged。 |
+| deploy failure | rollback build log / history は failure または success_deploy_pending として新規保存し、元 snapshot、`.last_sha`、元 build log は unchanged。 |
+| pending | `.pending_transfers` entry に `trigger="rollback"`、`rollback_from`、`snapshot_id`、deploy target、retry_count を保存する。 |
+| finalizer failure | response `500`、server log 固定 code、元 snapshot / 元 log / `.last_sha` unchanged。lock 解放は best effort。 |
+
+**archive / snapshot fixture 合格ゲート：**
+
+| fixture | 合格条件 |
+|---------|----------|
+| `success-snapshot-list-download` | `meta.json` schema、一覧 sort、download header、tar entry 順序、entry mtime、read-only no-write、secret absence が expected と一致する。 |
+| `failure-snapshot-download-unsafe-entry` | unsafe path、symlink、secret file、meta mismatch のいずれかで stream 開始前 `500`、binary header なし、状態差分なし。 |
+| `partial-snapshot-download-stream-failure` | stream 開始後 read error で stream 中断、JSON 追加なし、状態差分なし、固定 server log。 |
+| `success-snapshot-delete` | delete 順、`.config_log`、deleted path、unchanged 他 snapshot / history / log / pending が expected と一致する。 |
+| `failure-snapshot-delete-log-failure` | snapshot 削除済み、`.config_log` 失敗、response `500`、他 snapshot / history / log / pending unchanged。 |
+| `success-snapshot-rollback` | rollback 状態更新順、new build id、history/log/status/pending、元 snapshot / `.last_sha` unchanged が expected と一致する。 |
+| `failure-snapshot-rollback-deploy` | rollback failure の新規 log/history、finalizer、lock 解放、元 snapshot / `.last_sha` unchanged が expected と一致する。 |
+| `failure-snapshot-running-conflict` | delete / rollback で `409`、snapshot / history / log / pending / config log 差分なし。 |
 
 **sdk / ui 操作境界：**
 
