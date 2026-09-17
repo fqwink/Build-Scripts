@@ -24,7 +24,7 @@
 | 範囲 | 内容 |
 |------|------|
 | §0g.8-F | Phase fixture / testdata 配置、fake 実装、実装 PR 証跡。 |
-| §22-F | API Phase 3 / Phase 4 の必須検証、API fixture、API / SDK / UI / 状態ファイル cross fixture 固定。 |
+| §22-F | Phase 3 / Phase 4 API の必須検証、API fixture、API / SDK / UI / 状態ファイル cross fixture 固定。 |
 | §27-F | §27 fixture 配置、fixture カタログ、manifest、assertion、expected/effects、相互整合、component 別検証責務。 |
 | §27-F-PR | §27 実装 PR 証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
 
@@ -79,9 +79,9 @@ Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本
 | 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用禁止の未固定 contract を PR 証跡に列挙する。 | 次 Phase 着手条件未充足として未完了。 |
 | secret 確認 | log、fixture、snapshot、UI 表示、PR 本文に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
 
-## 22-F API Phase fixture / 実装順序契約
+## 22-F Phase 3 / Phase 4 API fixture 契約
 
-本節は、API Phase 3 / Phase 4 の必須検証、fixture 名、入力状態、期待 response、期待副作用の正本である。API endpoint の method、path、request、response、error、read / write 境界は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22 を正とし、本節では再定義しない。
+本節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用の正本である。API endpoint の method、path、request、response、error、read / write 境界は `ADLAIRE_CI_DETAIL_API_SPEC.md` §22 を正とし、本節では再定義しない。
 
 API 実装 PR は、§0g.8-F の PR 証跡固定契約に加えて、本節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
 
@@ -99,7 +99,7 @@ API 実装 PR は、§0g.8-F の PR 証跡固定契約に加えて、本節の P
 | Phase 3 | 認証成功、認証失敗、期限切れ session、`401` 時 SDK token 破棄、`.access_log` 追記、秘密情報マスク、手動 build、force build、running 中の queue、cancel、history/log 取得、`409`、`429`、`503` を確認する。 |
 | Phase 4 | config/repo/branch/schedule の保存、`.config_log` 追記、GET 系 API の無副作用、Webhook test、weekly summary、SMTP test、webhook secret 保存、secret mask、snapshot list/download/delete、rollback、maintenance enable/disable、access control block、hook success/failure、rule 追加/削除、pipeline config 保存、notes 保存、dashboard layout 保存、token 発行/失効、token 本体が再取得不可であることを確認する。 |
 
-**API Phase 3 fixture 固定：**
+**Phase 3 API fixture 固定：**
 
 Phase 3 実装は、下表の fixture をすべて満たした場合だけ完了扱いにする。fixture は実装言語の test case 名または subtest 名へそのまま写せる粒度とし、期待 HTTP status、期待 body、状態ファイル副作用を同時に確認する。
 
@@ -118,7 +118,7 @@ Phase 3 実装は、下表の fixture をすべて満たした場合だけ完了
 | A11 write lock timeout | `.build_state.lock` を保持した状態で `.build_state` 更新 endpoint を呼ぶ。 | 10 秒経過後 `409 {"error":"Conflict"}`。 | tmp file を残さず、target を変更しない。 |
 | A12 GET side-effect zero | `GET /api/status`、`GET /api/history`、`GET /api/logs`、`GET /api/queue` を連続実行する。 | 各 endpoint は入力状態に応じた正常 response または固定 error response。 | request 前後で対象状態ファイル一覧、mtime、mode、内容が一致する。 |
 
-**API Phase 4 fixture 固定：**
+**Phase 4 API fixture 固定：**
 
 Phase 4 実装は、下表の fixture をすべて満たした場合だけ完了扱いにする。fixture は既存 endpoint と既存状態ファイルだけを対象とし、`ADLAIRE_CI_DETAIL_API_SPEC.md` §22.0e にない endpoint、`ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` §22.0a にない状態ファイル、`ADLAIRE_CI_DETAIL_UI_SPEC.md` §24 にない UI 操作を追加してはならない。
 

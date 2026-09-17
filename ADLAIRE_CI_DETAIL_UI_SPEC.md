@@ -334,7 +334,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | destructive cancel | 確認 dialog cancel | SDK method 呼び出し 0 回、表示差分なし。 |
 | secret clearing | token 発行、TOTP setup、PAT 更新、Webhook secret 保存 | 次 user action または遷移で秘密情報 field と一回表示が消える。 |
 
-**UI Phase 3 操作固定契約：**
+**Phase 3 UI 操作固定契約：**
 
 Phase 3 UI は、ビルド状態確認、手動ビルド、強制ビルド、キャンセル、SSE ログ表示、履歴、ログ、キュー、circuit breaker reset だけを最小運用操作として固定する。UI は SDK response に存在しない状態を推測せず、API / SDK の error status と message に基づいて表示を分岐する。
 
@@ -362,7 +362,7 @@ Phase 3 UI の disabled 条件は以下に固定する。
 | `503` maintenance / circuit | build、force build、cancel 以外の状態変更操作。circuit reset は有効。 | maintenance disabled または circuit reset 成功後の再取得。 |
 | `401` | 全 authenticated 操作 | login 成功後。 |
 
-**UI Phase 3 fixture 固定：**
+**Phase 3 UI fixture 固定：**
 
 | fixture | fake SDK 入力 | 合格条件 |
 |---------|---------------|----------|
@@ -376,7 +376,7 @@ Phase 3 UI の disabled 条件は以下に固定する。
 | ui phase3 circuit reset | `resetCircuitBreaker()` 成功 | circuit 表示を閉じ、status/queue を再取得し、build を自動開始しない。 |
 | ui phase3 unauthorized | 任意操作が `401` | token/ticket/secret field を消去し、`panel-login` だけ表示する。 |
 
-**UI Phase 4 操作固定契約：**
+**Phase 4 UI 操作固定契約：**
 
 Phase 4 UI は、§24 UI 操作契約表の SDK method だけを呼び出す。UI は API / SDK response の補完、状態ファイル直接操作、未定義 endpoint 呼び出し、保存成功前の確定表示を行ってはならない。
 
@@ -400,7 +400,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 | TOTP secret / ticket / code | confirm 成功、confirm 失敗、panel 遷移、logout、`401`。 |
 | password / current_password / new_password | login / change 成功、login / change 失敗、logout、`401`。 |
 
-**UI Phase 4 fixture 固定：**
+**Phase 4 UI fixture 固定：**
 
 | fixture | fake SDK 入力 | 合格条件 |
 |---------|---------------|----------|

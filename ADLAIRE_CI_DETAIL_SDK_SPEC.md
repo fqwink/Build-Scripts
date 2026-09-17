@@ -259,7 +259,7 @@ HTTP status と SDK error の対応は下表に固定する。
 | stream | log frame、end frame、invalid frame、client close | callback、closed、error が仕様どおり。EventSource を使用しない。 |
 | binary | `downloadSnapshot(id)` | `Blob` を返し、JSON parse を試みない。 |
 
-**SDK Phase 3 操作固定契約：**
+**Phase 3 SDK 操作固定契約：**
 
 Phase 3 実装では、下表の SDK method を最小運用範囲として固定する。SDK は成功時 response を endpoint schema の範囲でそのまま返し、失敗時は HTTP status、API error、details、responseBody を保持した `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
 
@@ -278,7 +278,7 @@ Phase 3 実装では、下表の SDK method を最小運用範囲として固定
 | `resetCircuitBreaker()` | `POST /api/circuit-breaker/reset` | `{message,open,consecutive_failures}` を返す。 | 破損状態 `500` を `AdlaireCIError`。 | reset 成功後に SDK が自動 build を開始しない。 |
 | `streamBuild(onLine,onEnd)` | `GET /api/build/stream` | `StreamHandle` を返し、`log` frame を `onLine`、`end` frame を `onEnd` へ渡す。 | 接続前 `401`、`404`、timeout、invalid frame を `AdlaireCIError`。 | `EventSource`、自動 reconnect、log 永続化を行わない。 |
 
-**SDK Phase 3 fixture 固定：**
+**Phase 3 SDK fixture 固定：**
 
 | fixture | fake fetch 入力 | 合格条件 |
 |---------|-----------------|----------|
@@ -291,7 +291,7 @@ Phase 3 実装では、下表の SDK method を最小運用範囲として固定
 | sdk phase3 stream invalid | `data:` 行が JSON parse 不能 | `AdlaireCIError(status=0,message="Invalid SSE frame")`、`closed=true`。 |
 | sdk phase3 unauthorized | 任意 Phase 3 endpoint が `401` | `this._token=null`、次 request に Authorization header を付けない。 |
 
-**SDK Phase 4 操作固定契約：**
+**Phase 4 SDK 操作固定契約：**
 
 Phase 4 SDK は、§22.0e の endpoint 契約と §23 SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行う場合でも、検証対象は必須引数、型、範囲、path parameter 形式に限定する。API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
 
@@ -306,7 +306,7 @@ Phase 4 SDK は、§22.0e の endpoint 契約と §23 SDK 引数変換契約だ�
 | alert / tag / pipeline / notes / dashboard layout | `getAlertRules()`, `addAlertRule()`, `deleteAlertRule()`, `getTagRules()`, `addTagRule()`, `deleteTagRule()`, `getPipelineConfig()`, `setPipelineConfig()`, `getNotes()`, `setNotes()`, `getDashboardLayout()`, `setDashboardLayout()` | API response の rules / config / notes / widgets をそのまま返す。 | duplicate `409`、validation `422`、read failure `500` を保持する。 | rule 重複排除、widget 補完、notes trim を行わない。 |
 | tokens / sessions / audit | `getTokens()`, `createToken()`, `revokeToken()`, `getSessions()`, `revokeAllSessions()`, `getAuditLog()`, `getApiAccessLog()` | `createToken()` の token 本体は response として 1 回だけ返す。 | `403`、`404`、`422`、`429` を status 付きで保持する。 | token 本体を保存しない。token list に作成時 token を合成しない。 |
 
-**SDK Phase 4 fixture 固定：**
+**Phase 4 SDK fixture 固定：**
 
 | fixture | fake fetch 入力 | 合格条件 |
 |---------|-----------------|----------|
