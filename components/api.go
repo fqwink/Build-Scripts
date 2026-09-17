@@ -439,11 +439,11 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/snapshots/", s.withAuth(s.handleSnapshotPath))
 	mux.HandleFunc("/api/tokens", s.withAuth(s.handleTokens))
 	mux.HandleFunc("/api/tokens/", s.withAuth(s.handleTokenPath))
-	mux.HandleFunc("/api/alert-rules", s.withAuth(s.handleRuleFile(".alert_rules", "alert_rule")))
+	mux.HandleFunc("/api/alert-rules", s.withAuth(s.handleRuleFile(".alert_rules", "alert_rule", http.StatusCreated)))
 	mux.HandleFunc("/api/alert-rules/", s.withAuth(s.handleRulePath(".alert_rules", "alert_rule")))
-	mux.HandleFunc("/api/tag-rules", s.withAuth(s.handleRuleFile(".tag_rules", "tag_rule")))
+	mux.HandleFunc("/api/tag-rules", s.withAuth(s.handleRuleFile(".tag_rules", "tag_rule", http.StatusCreated)))
 	mux.HandleFunc("/api/tag-rules/", s.withAuth(s.handleRulePath(".tag_rules", "tag_rule")))
-	mux.HandleFunc("/api/hooks", s.withAuth(s.handleRuleFile(".hooks", "hook")))
+	mux.HandleFunc("/api/hooks", s.withAuth(s.handleRuleFile(".hooks", "hook", http.StatusCreated)))
 	mux.HandleFunc("/api/hooks/", s.withAuth(s.handleHookPath))
 	mux.HandleFunc("/api/verify-output", s.withAuth(s.handleVerifyOutput))
 	mux.HandleFunc("/api/pipeline-config", s.withAuth(s.handlePipelineConfig))
@@ -2790,15 +2790,19 @@ func (s *APIServer) handleTokens(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"tokens": out})
 	case http.MethodPost:
 		var body struct {
+			Label  string   `json:"label"`
 			Name   string   `json:"name"`
 			Scopes []string `json:"scopes"`
 		}
 		if !decodeBody(w, r, &body, true) {
 			return
 		}
-		name := strings.TrimSpace(body.Name)
-		if name == "" || len(name) > 100 {
-			writeValidation(w, "name", "invalid value")
+		label := strings.TrimSpace(body.Label)
+		if label == "" {
+			label = strings.TrimSpace(body.Name)
+		}
+		if label == "" || len(label) > 100 {
+			writeValidation(w, "label", "invalid value")
 			return
 		}
 		tokens, err := readAPITokens(path)
@@ -2812,14 +2816,22 @@ func (s *APIServer) handleTokens(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		token := "act_" + raw
-		record := apiTokenRecord{ID: s.newID("tok"), Name: name, TokenHash: tokenHash(token), Scopes: normalizeTokenScopes(body.Scopes), CreatedAt: s.nowString()}
+		record := apiTokenRecord{ID: s.newID("tok"), Name: label, TokenHash: tokenHash(token), Scopes: normalizeTokenScopes(body.Scopes), CreatedAt: s.nowString()}
 		tokens = append(tokens, record)
 		if err := atomicWriteJSON(path, tokens, 0600); err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
 		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": s.nowString(), "action": "token_issue", "id": record.ID})
-		writeJSON(w, http.StatusOK, map[string]any{"id": record.ID, "token": token, "name": record.Name, "scopes": record.Scopes})
+		writeJSON(w, http.StatusCreated, map[string]any{
+			"id":         record.ID,
+			"token":      token,
+			"label":      record.Name,
+			"name":       record.Name,
+			"scopes":     record.Scopes,
+			"created_at": record.CreatedAt,
+			"expires_at": nil,
+		})
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
@@ -2856,7 +2868,7 @@ func (s *APIServer) handleTokenPath(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotFound, "Not found")
 }
 
-func (s *APIServer) handleRuleFile(filename, logType string) http.HandlerFunc {
+func (s *APIServer) handleRuleFile(filename, logType string, createStatus int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := filepath.Join(s.cfg.StateDir, filename)
 		switch r.Method {
@@ -2889,13 +2901,21 @@ func (s *APIServer) handleRuleFile(filename, logType string) http.HandlerFunc {
 				return
 			}
 			rule["id"] = s.newID("rule")
+			if logType == "hook" {
+				if _, ok := rule["enabled"]; !ok {
+					rule["enabled"] = true
+				}
+				if _, ok := rule["timeout_seconds"]; !ok {
+					rule["timeout_seconds"] = 300
+				}
+			}
 			rules = append(rules, rule)
 			if err := atomicWriteJSON(path, rules, 0600); err != nil {
 				writeError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
 			_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: logType, Changes: map[string]any{"id": rule["id"]}})
-			writeJSON(w, http.StatusOK, map[string]any{"message": "Rule created", "rule": rule})
+			writeJSON(w, createStatus, rule)
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		}
