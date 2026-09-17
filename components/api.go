@@ -231,7 +231,7 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/config", s.withAuth(s.handleConfig))
 	mux.HandleFunc("/api/config/validate", s.withAuth(s.handleConfigValidate))
 	mux.HandleFunc("/api/access-log", s.withAuth(s.handleJSONLinesLog(".access_log", "log")))
-	mux.HandleFunc("/api/api-access-log", s.withAuth(s.handleJSONLinesLog(".api_access_log", "log")))
+	mux.HandleFunc("/api/api-access-log", s.withAuth(s.handleAPIAccessLog))
 	mux.HandleFunc("/api/config-log", s.withAuth(s.handleJSONLinesLog(".config_log", "log")))
 	mux.HandleFunc("/api/status", s.withAuth(s.handleStatus))
 	mux.HandleFunc("/api/sysinfo", s.withAuth(s.handleSysinfo))
@@ -420,7 +420,11 @@ func (s *APIServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 	items := []map[string]any{
 		{"name": "api", "status": "ok"},
 	}
-	if _, ok, err := readBuildStatus(filepath.Join(s.cfg.StateDir, ".build_status.json")); err != nil {
+	lastBuildAt := any(nil)
+	lastBuildStatus := "none"
+	lastDeployStatus := any(nil)
+	pendingTransfersCount := 0
+	if st, ok, err := readBuildStatus(filepath.Join(s.cfg.StateDir, ".build_status.json")); err != nil {
 		status = "degraded"
 		items = append(items, map[string]any{"name": "build_status", "status": "error"})
 	} else if !ok {
@@ -428,11 +432,31 @@ func (s *APIServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 		items = append(items, map[string]any{"name": "build_status", "status": "warn"})
 	} else {
 		items = append(items, map[string]any{"name": "build_status", "status": "ok"})
+		lastBuildAt = coalesceString(st.LastFinishedAt, st.LastStartedAt)
+		lastBuildStatus = stringOr(st.LastTargetStatus, "none")
+		lastDeployStatus = st.LastDeployStatus
+		pendingTransfersCount = st.PendingTransfersCount
+	}
+	if lastBuildAt == nil {
+		history := readHistory(filepath.Join(s.cfg.StateDir, ".build_history"))
+		if len(history) > 0 {
+			lastBuildAt = firstNonEmpty(history[0].FinishedAt, history[0].StartedAt, history[0].BuildAt)
+			lastBuildStatus = history[0].Status
+		}
+	}
+	uptime := int64(s.cfg.Now().UTC().Sub(s.startedAt).Seconds())
+	if uptime < 0 {
+		uptime = 0
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":     status,
-		"checked_at": s.nowString(),
-		"items":      items,
+		"status":                  status,
+		"checked_at":              s.nowString(),
+		"uptime_seconds":          uptime,
+		"last_build_at":           lastBuildAt,
+		"last_build_status":       lastBuildStatus,
+		"last_deploy_status":      lastDeployStatus,
+		"pending_transfers_count": pendingTransfersCount,
+		"items":                   items,
 	})
 }
 
@@ -1019,6 +1043,10 @@ func (s *APIServer) handleHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	history := readHistory(filepath.Join(s.cfg.StateDir, ".build_history"))
+	history = filterHistory(w, r, history)
+	if history == nil {
+		return
+	}
 	total := len(history)
 	pages := 0
 	if total > 0 {
@@ -1043,9 +1071,6 @@ func (s *APIServer) handleHistoryExport(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
-	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
-		return
-	}
 	rest := strings.TrimPrefix(r.URL.Path, "/api/history/")
 	id, suffix, ok := strings.Cut(rest, "/")
 	if !ok || id == "" {
@@ -1063,6 +1088,9 @@ func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
 	}
 	switch suffix {
 	case "log":
+		if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+			return
+		}
 		lines := append(splitLines(log.Pipeline.Stdout), splitLines(log.Pipeline.Stderr)...)
 		lines = append(lines, log.Warnings...)
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -1071,7 +1099,96 @@ func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
 			"flagged": log.Flagged, "tags": log.Tags, "lines": lines,
 		})
 	case "comment":
-		writeJSON(w, http.StatusOK, map[string]any{"id": log.ID, "comment": log.Comment})
+		switch r.Method {
+		case http.MethodGet:
+			if !rejectBody(w, r) {
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"id": log.ID, "comment": log.Comment})
+		case http.MethodPost:
+			var body struct {
+				Comment *string `json:"comment"`
+			}
+			if !decodeBody(w, r, &body, true) {
+				return
+			}
+			if body.Comment == nil {
+				writeValidation(w, "comment", "required")
+				return
+			}
+			comment := strings.TrimSpace(*body.Comment)
+			if len(comment) > 2000 {
+				writeValidation(w, "comment", "must be 2000 characters or less")
+				return
+			}
+			if comment == "" {
+				log.Comment = nil
+			} else {
+				log.Comment = &comment
+			}
+			if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".build_logs", id+".json"), log, 0600); err != nil {
+				writeError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+			_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "history_comment", Changes: map[string]any{"id": id}})
+			writeJSON(w, http.StatusOK, map[string]any{"id": log.ID, "comment": log.Comment})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		}
+	case "flag":
+		if !method(w, r, http.MethodPost) {
+			return
+		}
+		var body struct {
+			Flagged *bool `json:"flagged"`
+		}
+		if !decodeBody(w, r, &body, true) {
+			return
+		}
+		if body.Flagged == nil {
+			writeValidation(w, "flagged", "required")
+			return
+		}
+		log.Flagged = *body.Flagged
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".build_logs", id+".json"), log, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := updateHistoryRecord(filepath.Join(s.cfg.StateDir, ".build_history"), id, func(record *apiHistoryRecord) {
+			record.Flagged = *body.Flagged
+		}); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "history_flag", Changes: map[string]any{"id": id, "flagged": *body.Flagged}})
+		writeJSON(w, http.StatusOK, map[string]any{"id": log.ID, "flagged": log.Flagged})
+	case "tags":
+		if !method(w, r, http.MethodPost) {
+			return
+		}
+		var body struct {
+			Tags []string `json:"tags"`
+		}
+		if !decodeBody(w, r, &body, true) {
+			return
+		}
+		tags, ok := normalizeTags(w, body.Tags)
+		if !ok {
+			return
+		}
+		log.Tags = tags
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".build_logs", id+".json"), log, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := updateHistoryRecord(filepath.Join(s.cfg.StateDir, ".build_history"), id, func(record *apiHistoryRecord) {
+			record.Tags = tags
+		}); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "history_tags", Changes: map[string]any{"id": id, "tags": tags}})
+		writeJSON(w, http.StatusOK, map[string]any{"id": log.ID, "tags": log.Tags})
 	default:
 		writeError(w, http.StatusNotFound, "Not found")
 	}
@@ -1116,6 +1233,62 @@ func (s *APIServer) handleQueue(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
+}
+
+func (s *APIServer) handleAPIAccessLog(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	limit, ok := parseBoundedInt(w, r, "limit", 100, 1, 1000)
+	if !ok {
+		return
+	}
+	offset, ok := parseBoundedInt(w, r, "offset", 0, 0, 1_000_000)
+	if !ok {
+		return
+	}
+	methodFilter := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("method")))
+	if methodFilter != "" && !validHTTPMethod(methodFilter) {
+		writeValidation(w, "method", "invalid value")
+		return
+	}
+	pathFilter := r.URL.Query().Get("path")
+	statusFilter := 0
+	if raw := r.URL.Query().Get("status"); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil || value < 100 || value > 599 {
+			writeValidation(w, "status", "out of range")
+			return
+		}
+		statusFilter = value
+	}
+	records := readJSONLines(filepath.Join(s.cfg.StateDir, ".api_access_log"))
+	filtered := []map[string]any{}
+	for _, record := range records {
+		if methodFilter != "" && strings.ToUpper(fmt.Sprint(record["method"])) != methodFilter {
+			continue
+		}
+		if pathFilter != "" && !strings.HasPrefix(fmt.Sprint(record["path"]), pathFilter) {
+			continue
+		}
+		if statusFilter != 0 && intFromAny(record["status"]) != statusFilter {
+			continue
+		}
+		filtered = append(filtered, record)
+	}
+	sort.Slice(filtered, func(i, j int) bool {
+		return fmt.Sprint(filtered[i]["at"]) > fmt.Sprint(filtered[j]["at"])
+	})
+	total := len(filtered)
+	start := offset
+	if start > total {
+		start = total
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"log": filtered[start:end], "total": total})
 }
 
 func (s *APIServer) handleJSONLinesLog(filename, key string) http.HandlerFunc {
@@ -1471,6 +1644,71 @@ func readHistory(path string) []apiHistoryRecord {
 	return records
 }
 
+func filterHistory(w http.ResponseWriter, r *http.Request, records []apiHistoryRecord) []apiHistoryRecord {
+	trigger := strings.TrimSpace(r.URL.Query().Get("trigger"))
+	tag := strings.TrimSpace(r.URL.Query().Get("tag"))
+	flaggedRaw := strings.TrimSpace(r.URL.Query().Get("flagged"))
+	var flagged *bool
+	if flaggedRaw != "" {
+		switch strings.ToLower(flaggedRaw) {
+		case "true":
+			value := true
+			flagged = &value
+		case "false":
+			value := false
+			flagged = &value
+		default:
+			writeValidation(w, "flagged", "invalid value")
+			return nil
+		}
+	}
+	out := []apiHistoryRecord{}
+	for _, record := range records {
+		if trigger != "" && record.Trigger != trigger {
+			continue
+		}
+		if tag != "" && !containsString(record.Tags, tag) {
+			continue
+		}
+		if flagged != nil && record.Flagged != *flagged {
+			continue
+		}
+		out = append(out, record)
+	}
+	return out
+}
+
+func updateHistoryRecord(path, id string, update func(*apiHistoryRecord)) error {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	records := []apiHistoryRecord{}
+	found := false
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var record apiHistoryRecord
+		if json.Unmarshal([]byte(line), &record) != nil {
+			continue
+		}
+		if record.ID == id {
+			update(&record)
+			found = true
+		}
+		records = append(records, record)
+	}
+	if !found {
+		return nil
+	}
+	return atomicWriteHistory(path, records, 0600)
+}
+
 func readBuildLog(path string) (apiBuildLog, error) {
 	var log apiBuildLog
 	err := readJSONFile(path, &log)
@@ -1681,6 +1919,26 @@ func appendJSONLine(path string, value any) error {
 	return err
 }
 
+func atomicWriteHistory(path string, records []apiHistoryRecord, mode os.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	var b strings.Builder
+	for _, item := range records {
+		data, err := json.Marshal(item)
+		if err != nil {
+			return err
+		}
+		b.Write(data)
+		b.WriteByte('\n')
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte(b.String()), mode); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
 func readJSONLines(path string) []map[string]any {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -1873,6 +2131,63 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func normalizeTags(w http.ResponseWriter, values []string) ([]string, bool) {
+	if len(values) > 20 {
+		writeValidation(w, "tags", "must contain 20 items or less")
+		return nil, false
+	}
+	seen := map[string]bool{}
+	tags := []string{}
+	for _, value := range values {
+		tag := strings.TrimSpace(value)
+		if tag == "" || len(tag) > 40 {
+			writeValidation(w, "tags", "invalid tag")
+			return nil, false
+		}
+		if seen[tag] {
+			continue
+		}
+		seen[tag] = true
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	return tags, true
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+func intFromAny(value any) int {
+	switch v := value.(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case float64:
+		return int(v)
+	case json.Number:
+		i, _ := v.Int64()
+		return int(i)
+	default:
+		return 0
+	}
+}
+
+func validHTTPMethod(value string) bool {
+	switch value {
+	case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodHead, http.MethodOptions:
+		return true
+	default:
+		return false
+	}
 }
 
 func historyRecordTime(record apiHistoryRecord) time.Time {
