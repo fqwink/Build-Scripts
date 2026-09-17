@@ -83,7 +83,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `archive` | `ADLAIRE_CI_DETAIL_ARCHIVE_SPEC.md` §27.7、§27.15 | build log archive、snapshot、download、delete、rollback、cleanup。 |
 | `commitstatus` | `ADLAIRE_CI_DETAIL_COMMITSTATUS_SPEC.md` §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask。 |
 | `security` | `ADLAIRE_CI_DETAIL_SECURITY_SPEC.md` §27.42〜§27.47 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| `mcp` | 詳細仕様なし | 本ファイルでは実装可能な入出力、状態、起動手順、検証条件を定義しない。 |
+| `mcp` | 詳細仕様なし | 将来計画。現時点では実装可能な入出力、状態、起動手順、ツール定義、検証条件を定義しない。 |
 
 ---
 
@@ -562,7 +562,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | `components/statefile.go` | `statefile` | `.build_history`、`.build_logs`、`.server_config` など状態ファイルの読み書きを扱う。詳細は `ADLAIRE_CI_DETAIL_STATEFILE_SPEC.md` を正とする。 |
 | `components/archive.go` | `archive` | ビルドログ圧縮、snapshot、配布アーカイブを扱う。 |
 | `components/commitstatus.go` | `commitstatus` | GitHub Commit Status API 送信を扱う。 |
-| `components/mcp.go` | `mcp` | MCP 接続を扱う。 |
+| `components/mcp.go` | `mcp` | 将来計画。現時点では実装可能な詳細仕様を持たず、MCP 専用詳細仕様が新設されるまで実装対象ではない。 |
 | `admin/` | `ui` / `sdk` | 標準管理 UI の静的ファイルを配置する。 |
 | `testdata/` | `fixture` | コンポーネント別 fixture を配置する。 |
 | `docs/examples/` | `-` | 利用例、設定例、サンプル構成を配置する。 |

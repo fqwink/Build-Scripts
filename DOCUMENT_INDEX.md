@@ -69,7 +69,7 @@
 | `components/admin.go` | `admin` | 仕様化済み・未実装 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界を提供する。 |
 | `admin/adlaire-ci-sdk.js` | `sdk` | 仕様化済み・未実装 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
 | `admin/index.html` | `ui` | 仕様化済み・未実装 | 標準管理ツール UI。SDK 経由で API と通信する。 |
-| `components/mcp.go` | `mcp` | 将来計画 | MCP サーバー。将来追加コンポーネントとして追加予定。 |
+| `components/mcp.go` | `mcp` | 将来計画 | MCP サーバー。現時点では実装可能な詳細仕様を持たず、MCP 専用詳細仕様が新設されるまで実装対象ではない。 |
 
 ## Source Of Truth
 
