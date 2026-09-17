@@ -2,21 +2,27 @@
 
 ## 0. 絶対原則
 
-`AGENTS.md` は、本リポジトリにおける最上位ルールブックである。
+`AGENTS.md` と `docs/SPEC.md` は、本リポジトリにおける最上位文書である。
 
-このリポジトリで作業するすべてのエージェントは、調査、設計、仕様改訂、実装、検証、Git 操作、Pull Request 作成、レビュー対応を含む全作業において、最初に本ファイルを必ず読む。
+`AGENTS.md` は、作業ルール、承認、Git 操作、Pull Request 作成、レビュー対応、検証手順、エージェント実行手順の最上位ルールブックである。
 
-本ファイルの読了を完了するまで、調査、設計、仕様改訂、実装、検証、ファイル作成、編集、移動、削除、リネーム、整形、生成物更新、Git 操作、Pull Request 作成、レビュー対応を含む、リポジトリに関するすべての作業を開始してはならない。
+`docs/SPEC.md` は、仕様、方針、ポリシー、正本関係、禁止事項、リリース判断、実装着手可否の最上位仕様書である。
 
-`AGENTS.md` を確認しただけで、作業判断に必要な確認を完了したと扱ってはならない。
+このリポジトリで作業するすべてのエージェントは、調査、設計、仕様改訂、実装、検証、Git 操作、Pull Request 作成、レビュー対応を含む全作業において、最初に `AGENTS.md` と `docs/SPEC.md` の両方を必ず読む。
 
-本リポジトリの仕様判断は、方針、ポリシー、正本関係、禁止事項、リリース判断は `docs/SPEC.md`、実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約は `docs/ROADMAP.md`、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様は `docs/DETAIL_INDEX.md`、各 owner component の詳細本文は `docs/details/*.md` を正本として行う。
+`AGENTS.md` と `docs/SPEC.md` の読了を完了するまで、調査、設計、仕様改訂、実装、検証、ファイル作成、編集、移動、削除、リネーム、整形、生成物更新、Git 操作、Pull Request 作成、レビュー対応を含む、リポジトリに関するすべての作業を開始してはならない。
+
+`AGENTS.md` または `docs/SPEC.md` の片方だけを確認した状態で、作業判断に必要な確認を完了したと扱ってはならない。
+
+本リポジトリの仕様判断は、方針、ポリシー、正本関係、禁止事項、リリース判断は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約は `docs/ROADMAP.md`、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様は `docs/DETAIL_INDEX.md`、各 owner component の詳細本文は `docs/details/*.md` を正本として行う。
 
 `docs/DESIGN.md` は、生成静的 Web サイトのデザイン仕様を整理する補助文書である。機能仕様、運用仕様、API 仕様、CI 仕様の正本ではない。
 
 `docs/DOCUMENT_INDEX.md` は、文書・実装ファイルの役割を整理する索引である。仕様正本ではない。
 
 `AGENTS.md` と他ファイルが作業ルール上矛盾する場合は、`AGENTS.md` を正とする。
+
+`docs/SPEC.md` 方針責務・ポリシー責務と他ファイルが仕様、方針、ポリシー、正本関係、禁止事項、リリース判断、実装着手可否で矛盾する場合は、`docs/SPEC.md` 方針責務・ポリシー責務を正とする。
 
 `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、または該当する owner component 別の `docs/details/*.md` と実装ファイルが仕様上矛盾する場合は、仕様と実装の不整合として扱う。仕様を変更する場合は、先に該当する仕様書を改訂し、その内容に基づいて実装を更新する。
 
@@ -61,17 +67,17 @@
 
 ## 2. 仕様書管理ルール
 
-`docs/SPEC.md` は、Adlaire CI の方針、ポリシー、正本関係、禁止事項、リリース判断を定めるマスター仕様書正本である。
+`docs/SPEC.md` 方針責務・ポリシー責務は、Adlaire CI の方針、ポリシー、正本関係、禁止事項、リリース判断を定めるマスター仕様書正本である。
 
 `docs/ROADMAP.md` は、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約を定めるロードマップ正本である。
 
-`docs/DETAIL_INDEX.md` は、`docs/SPEC.md` の Part 3 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様を持つ詳細仕様入口正本である。
+`docs/DETAIL_INDEX.md` は、詳細仕様入口責務として、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様を持つ詳細仕様入口正本である。
 
 owner component 別の `docs/details/*.md` は、各 component の詳細仕様本文に関する正本である。
 
-標準ソース配置は `main.go` と `components/*.go`、および `admin/` 配下の管理 UI ファイルとする。
+標準ディレクトリ構成上の実装配置は `main.go` と `components/*.go`、および `admin/` 配下の管理 UI ファイルとする。
 
-標準ソース配置への実装移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の管理 UI 静的ファイル、`testdata/<component>/` とする。
+標準ディレクトリ構成への実装移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の管理 UI 静的ファイル、`testdata/<component>/` とする。
 
 `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱ってはならない。
 
@@ -81,15 +87,15 @@ owner component 別の `docs/details/*.md` は、各 component の詳細仕様�
 
 `COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、詳細仕様ファイルとして作成してはならない。横断する固定値、読み順、対応表は `docs/DETAIL_INDEX.md` の入口・索引・共通固定値・管理仕様として扱う。§27 追加仕様化機能の横断補足契約は `docs/ROADMAP.md` §6 を正とする。いずれも component として扱わない。
 
-`docs/DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。機能仕様、実装状態、実装可否、API 仕様、状態 schema、builder 処理本文は定義しない。方針は `docs/SPEC.md`、状態判断は `docs/ROADMAP.md`、builder の視覚実装詳細は `docs/details/builder.md` を優先する。
+`docs/DESIGN.md` は、出力 HTML のデザイン仕様を整理する補助文書である。機能仕様、実装状態、実装可否、API 仕様、状態 schema、builder 処理本文は定義しない。方針は `docs/SPEC.md` 方針責務・ポリシー責務、状態判断は `docs/ROADMAP.md`、builder の視覚実装詳細は `docs/details/builder.md` を優先する。
 
 仕様改訂では、既存仕様、`docs/DOCUMENT_INDEX.md`、実装ファイルとの整合性を確認する。
 
-文書整理では、`README.md`、`docs/DOCUMENT_INDEX.md`、`docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、owner component 別の `docs/details/*.md` の読み順と正本範囲を維持する。
+文書整理では、`README.md`、`docs/DOCUMENT_INDEX.md`、`docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、owner component 別の `docs/details/*.md` の読み順と正本範囲を崩してはならない。
 
 文書整理だけを目的とする作業では、機能仕様、実装状態、実装可否、ロードマップ状態を変更してはならない。状態変更が必要な場合は、変更対象、変更理由、影響範囲を別途提示し、承認を得る。
 
-`README.md` は初見向けの入口、`docs/DOCUMENT_INDEX.md` は索引、`docs/SPEC.md` は方針・ポリシーの正本、`docs/ROADMAP.md` は状態・Phase・将来計画・§27 追加仕様化機能参照・横断補足契約の正本、`docs/DETAIL_INDEX.md` は詳細仕様入口、owner component 別の `docs/details/*.md` は詳細仕様本文として扱う。
+`README.md` は初見向けの入口、`docs/DOCUMENT_INDEX.md` は索引、`docs/SPEC.md` 方針責務・ポリシー責務は方針・ポリシーの正本、`docs/ROADMAP.md` は状態・Phase・将来計画・§27 追加仕様化機能参照・横断補足契約の正本、`docs/DETAIL_INDEX.md` は詳細仕様入口、owner component 別の `docs/details/*.md` は詳細仕様本文として扱う。
 
 `docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、owner component 別の `docs/details/*.md` に記載された一部コンポーネントや機能は、仕様化済みであっても未実装の場合がある。リポジトリ内に実装ファイルまたは実装コードが存在しない内容を、実装済み機能として扱ってはならない。
 
@@ -99,7 +105,7 @@ owner component 別の `docs/details/*.md` は、各 component の詳細仕様�
 
 未確定の内容を実装可能な詳細仕様として扱ってはならない。実装判断に必要な具体値、条件、処理が未確定の場合は、`docs/ROADMAP.md` の状態分類を確認し、`docs/DETAIL_INDEX.md` または owner component 別の `docs/details/*.md` へ推測で具体値を記載してはならない。
 
-仕様項目の成熟度と実装可否は、`docs/SPEC.md` Part 1 §4b および Part 2 §0a の仕様成熟度方針・仕様成熟度ポリシーに従って判定する。
+仕様項目の成熟度と実装可否は、`docs/SPEC.md` 方針責務 §4.5 の仕様成熟度方針、および `docs/SPEC.md` ポリシー責務 §0a の仕様成熟度ポリシーに従って判定する。
 
 作業開始時には、対象機能・対象コンポーネントについて `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、該当する owner component 別の `docs/details/*.md` の該当節と実ファイルの存在を確認する。
 
@@ -338,7 +344,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 ## 6. 文書整合ルール
 
-`docs/DOCUMENT_INDEX.md` は、リポジトリ内の文書・実装ファイルの役割を示す索引として維持する。
+`docs/DOCUMENT_INDEX.md` は、リポジトリ内の文書・実装ファイルの役割を示す索引として崩してはならない。
 
 ファイル名、正本関係、実装コンポーネントの追加・削除・リネームが発生した場合は、`docs/DOCUMENT_INDEX.md` の更新要否を確認する。
 

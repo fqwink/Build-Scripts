@@ -1,16 +1,16 @@
 # Adlaire CI — 詳細仕様
 
-本ファイルは `docs/SPEC.md` の Part 3 詳細仕様の入口であり、読み順、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置を持つ。
+本ファイルは詳細仕様入口責務の正本であり、読み順、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置を持つ。
 
 各 owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。本ファイルは個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、fixture assertion、setup 手順を持たない。
 
-方針、ポリシー、正本関係の上位判断は `docs/SPEC.md`、実装状態、ロードマップ状態、実装可否、§27 / §28 追加仕様化機能参照、横断補足契約の上位判断は `docs/ROADMAP.md` を正とする。
+方針、ポリシー、正本関係の上位判断は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否、§27 / §28 追加仕様化機能参照、横断補足契約の上位判断は `docs/ROADMAP.md` を正とする。
 
 ---
 
 ## Detail Spec Governance
 
-本ファイルは、Part 3 詳細仕様セットの入口、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。§27 / §28 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。個別 component の処理本文は owner component 別の `docs/details/*.md` を正とする。
+本ファイルは、詳細仕様入口責務として、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。§27 / §28 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。個別 component の処理本文は owner component 別の `docs/details/*.md` を正とする。
 
 | 管理対象 | 正本 | 本ファイルでの扱い |
 |----------|------|--------------------|
@@ -20,7 +20,7 @@
 | 実装状態、実装可否、Phase、将来計画 | `docs/ROADMAP.md` | 本ファイルでは定義せず、対象機能の実装可否を確認する。 |
 | §27 / §28 追加仕様化機能参照 | `docs/ROADMAP.md` §6 | owner、主本文、collaborator、横断補足契約を確認する。 |
 | owner component 本文 | `docs/details/*.md` | 本ファイルでは本文を複製せず、参照先だけを示す。 |
-| 方針、ポリシー、正本関係 | `docs/SPEC.md` | 本ファイルでは定義しない。 |
+| 方針、ポリシー、正本関係 | `docs/SPEC.md` 方針責務・ポリシー責務 | 本ファイルでは定義しない。 |
 
 ## Detail Spec Selection Rules
 
@@ -60,8 +60,8 @@ owner component が確定できない場合は、実装判断で補完しない�
 | security 参照 | token、scope、audit、session、rate limit の確認。 | 認証・認可方針を各 component 側で独自定義すること。 |
 | fixture 参照 | fake、expected、effects、PR 証跡の確認。 | fixture assertion を各 component 本文へ重複定義すること。 |
 
-# Part 3 — 仕様
-> Part 3 詳細仕様セットとして、実装の具体的詳細を定める。「どのように動作・実装するか」に答える。
+# 詳細仕様入口責務
+> 実装の具体的詳細へ到達するための入口を定める。「どこから詳細仕様を読むか」に答える。
 
 ---
 
@@ -71,14 +71,14 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 実装者は、対象機能ごとに以下の順で読む。
 
-1. `docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で対象の実装状態、実装可否、Phase、将来計画該当有無を確認する。
+1. `docs/SPEC.md` 方針責務・ポリシー責務で方針とポリシーを確認し、`docs/ROADMAP.md` で対象の実装状態、実装可否、Phase、将来計画該当有無を確認する。
 2. 本ファイル §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
 3. 本ファイル §0a〜§0h で、詳細仕様の記載基準、共通固定値、実装前確認項目、検証条件、Phase 詳細仕様参照を確認する。
 4. owner component の `docs/details/*.md` を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
 5. collaborator component がある場合は、該当する `docs/details/*.md` を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
 6. `docs/details/setup.md` §26 のセットアップ・アップデート手順と `docs/details/setup.md` §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
 
-詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを主本文として改訂し、本ファイルの対応表と `docs/SPEC.md` の対象範囲を整合させる。
+詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを主本文として改訂し、本ファイルの対応表と `docs/SPEC.md` 方針責務・ポリシー責務の対象範囲を整合させる。
 
 | 範囲 | 役割 |
 |------|------|
@@ -96,7 +96,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 ## 0a. 詳細仕様の記載基準
 
-Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を行わずに実装できる粒度で記載する。
+詳細仕様項目は、実装者が追加の設計判断や推測を行わずに実装できる粒度で記載する。
 
 仕様項目を追加または改訂する場合は、対象範囲に応じて以下を明記する。
 
@@ -113,7 +113,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | セキュリティ | 認証、認可、秘密情報の保存禁止、権限、外部公開可否 |
 | 検証 | 構文確認、実行確認、API 確認、生成物確認、整合性確認 |
 
-未確定の内容は、実装可能な詳細仕様として記載してはならない。未確定の場合は、本ファイルまたは責務 component 別詳細仕様ファイルへ推測で具体値を記載せず、方針とポリシーは `docs/SPEC.md`、実装状態、実装可否、Phase、将来計画は `docs/ROADMAP.md` で確認する。
+未確定の内容は、実装可能な詳細仕様として記載してはならない。未確定の場合は、本ファイルまたは責務 component 別詳細仕様ファイルへ推測で具体値を記載せず、方針とポリシーは `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は `docs/ROADMAP.md` で確認する。
 
 対象範囲の内容は、実装ファイルが存在しなくても、本節の基準に従って責務 component 別詳細仕様ファイルへ実装可能な粒度まで具体化する。
 
@@ -173,7 +173,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 ## 0b.1 責務 component 別 詳細仕様ファイル管理仕様
 
-本節は、責務 component 別に分割済みの詳細仕様ファイルを維持するための固定仕様である。責務境界の変更、仕様内容の移動、参照先更新を行う場合も、機能追加、実装状態変更、実装可否変更、ロードマップ変更、方針・ポリシー追加を含めてはならない。
+本節は、責務 component 別に分割済みの詳細仕様ファイルを崩さないための固定仕様である。責務境界の変更、仕様内容の移動、参照先更新を行う場合も、機能追加、実装状態変更、実装可否変更、ロードマップ変更、方針・ポリシー追加を含めてはならない。
 
 詳細仕様本文の配置単位は owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには呼び出し境界、schema、表示、security、setup、fixture、検証観点だけを置く。
 
@@ -212,7 +212,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 | 項目 | 必須条件 |
 |------|----------|
-| 節番号 | 既存の節番号を維持する。番号の再採番は行わない。 |
+| 節番号 | 既存の節番号を崩さない。番号の再採番は行わない。 |
 | 参照 | 入口ファイルと owner component ファイルの参照先が一意に追跡できるよう、`docs/DETAIL_INDEX.md` の対応表を更新する。 |
 | owner | 各機能節に owner component を 1 件だけ明記する。 |
 | collaborator | collaborator component は 0 件以上を明記し、owner component を含めない。 |
@@ -222,7 +222,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 詳細仕様を読む順序は以下に固定する。
 
-1. `docs/SPEC.md` で方針とポリシーを確認し、`docs/ROADMAP.md` で実装対象、実装状態、実装可否、Phase、将来計画該当有無を確認する。
+1. `docs/SPEC.md` 方針責務・ポリシー責務で方針とポリシーを確認し、`docs/ROADMAP.md` で実装対象、実装状態、実装可否、Phase、将来計画該当有無を確認する。
 2. `docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。
 3. owner component の分割先詳細仕様ファイルを主本文として読む。
 4. collaborator component がある場合は、該当する分割先詳細仕様ファイルの参照節を呼び出し境界、schema、表示、security、setup、fixture、検証観点として読む。
@@ -260,7 +260,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | セキュリティ | 秘密情報の保存禁止、マスク、ファイル権限、認証/認可、外部公開可否が明記されている。 |
 | 検証 | 構文確認、単体確認、手動 API 確認、生成物確認、ログ確認、失敗系確認のいずれを行うかが明記されている。 |
 
-上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを改訂し、必要に応じて collaborator 詳細仕様、本ファイルの対応表、`docs/SPEC.md` を同じ仕様 PR で整合させ、未充足項目を仕様として確定する。
+上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを改訂し、必要に応じて collaborator 詳細仕様、本ファイルの対応表、`docs/SPEC.md` 方針責務・ポリシー責務を同じ仕様 PR で整合させ、未充足項目を仕様として確定する。
 
 実装後の完了判定は以下を入口として確認する。本節は完了条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は `docs/ROADMAP.md`、fixture、fake、PR 証跡、acceptance checklist、差し戻し条件は `docs/details/fixture.md`、setup / release 実行条件は `docs/details/setup.md` を正とする。
 
@@ -340,11 +340,11 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `sdk` | `docs/details/sdk.md` §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が `docs/details/api.md` §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が `docs/details/api.md` §22.0e と `docs/details/sdk.md` §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
 | `ui` | `docs/details/ui.md` §24 に画面構成、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去が定義されている。 | SDK を介さず API を直接呼ぶこと、未定義の画面・操作・保存先を追加すること、秘密情報を DOM に残すこと。 | 全 UI 操作が `docs/details/ui.md` §24 の表示条件と `docs/details/sdk.md` §23 の SDK method を満たし、秘密情報 field が指定条件で消去される。 |
 
-上表の対象外である `mcp`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらは、Part 3 詳細仕様セット内に入出力、状態、起動手順、検証条件を定義しない。
+上表の対象外である `mcp`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらは、詳細仕様入口責務および owner component 詳細本文責務に入出力、状態、起動手順、検証条件を定義しない。
 
 仕様策定完了チェックで未充足が見つかった場合は、実装を開始せず、以下の順で仕様を改訂する。
 
-1. 未充足項目が本ファイルの記載対象外である場合は、先に `docs/SPEC.md` を確認する。
+1. 未充足項目が本ファイルの記載対象外である場合は、先に `docs/SPEC.md` 方針責務・ポリシー責務を確認する。
 2. 未充足項目が入出力、状態ファイル、api、sdk、ui、処理順序、異常系、検証条件に関わる場合は、該当 owner component の詳細仕様ファイルまたは collaborator の詳細仕様ファイルを改訂する。
 3. ファイル名、正本関係、対象範囲が変わる場合は、`docs/DOCUMENT_INDEX.md` の更新要否を確認する。
 4. 対象項目の詳細節、参照先、受け入れ条件が変わる場合は、§0i の詳細節対応表を更新する。
@@ -539,7 +539,7 @@ Phase の一覧、順序、対象 owner component、依存条件、完了条件�
 
 Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツールで構成する。
 
-Part 3 詳細仕様セットは、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を責務 component 別に定義する。
+詳細仕様本文は、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を責務 component 別に定義する。
 
 本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。§27 / §28 追加仕様化機能参照と横断補足契約は `docs/ROADMAP.md` §6 を正とする。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。
 
@@ -628,7 +628,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 ## 移動済み詳細仕様索引
 
-旧 Part 3 本文から責務 component 別詳細仕様ファイルへ移動済みの本文は、`docs/DOCUMENT_INDEX.md` の Detail Spec Management と本ファイル §0b、§0i を入口として確認する。
+責務 component 別詳細仕様ファイルへ移動済みの本文は、`docs/DOCUMENT_INDEX.md` の Detail Spec Management と本ファイル §0b、§0i を入口として確認する。
 
 本ファイルでは移動済み本文を再定義しない。実装者は、対象機能の owner component を §0b または §0i で特定し、該当する `docs/details/*.md` を主本文として読む。
 
