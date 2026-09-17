@@ -67,7 +67,7 @@ admin archive の検証は以下の順序に固定する。
 | `/admin/style.css` | `$INSTALL_DIR/admin/style.css` | `text/css; charset=utf-8` | `no-cache` |
 | `/admin/app.js` | `$INSTALL_DIR/admin/app.js` | `text/javascript; charset=utf-8` | `no-cache` |
 
-未定義 path、directory listing、path traversal、hidden file、状態ファイル、secret file へのアクセスは `404` とする。認証前に配信してよい file は上表の静的 file だけとし、API response、状態ファイル、credential、build log、snapshot を静的配信してはならない。
+未定義 path、directory listing、path traversal、hidden file、状態ファイル、secret file へのアクセスは `404` とする。認証前に配信する file は上表の静的 file だけとし、API response、状態ファイル、credential、build log、snapshot を静的配信してはならない。
 
 静的配信処理は request body を読まない。`GET` と `HEAD` 以外の method は `405` を返す。
 

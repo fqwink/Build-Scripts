@@ -105,7 +105,7 @@ archive owner は snapshot の保存形式、一覧読取、download tar.gz 生�
 | entry 種別 | 通常ファイルと directory だけを含める。symlink、hardlink、device、socket、fifo は含めない。 |
 | header | `Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="{id}.tar.gz"`。 |
 | 順序 | directory、file とも相対 path 辞書順。 |
-| mtime | snapshot 内 file の mtime を使用してよい。存在しない場合は build log の `finished_at`。 |
+| mtime | snapshot 内 file の mtime を使用する。snapshot 内 file から mtime を取得できない場合は build log の `finished_at` を使用する。 |
 | secret 除外 | `.github_token`、`.admin_credentials`、`.api_tokens`、`.smtp_secret`、`.webhook_secret`、runner 状態ファイル名は検出時点で `500` とし、download を中止する。 |
 
 **Rollback 仕様：**

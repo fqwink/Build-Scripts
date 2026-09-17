@@ -40,7 +40,7 @@
 
 | 節 | 機能 | 判定入口 | 成功時副作用 | 失敗時副作用 | 漏えい禁止値 | 必須 fixture |
 |----|------|----------|--------------|--------------|--------------|--------------|
-| §27.42 | API token scope | route / method 確定後、body parse 前。 | 許可 endpoint だけ処理し、必要時 audit に actor を残す。 | 権限不足は対象処理を実行せず `403`。audit 失敗時は `500`。 | token 本体、Authorization header。 | trigger allowed、read denied、multi scope、path param、body 未評価、audit failure。 |
+| §27.42 | API token scope | route / method 確定後、body parse 前。 | 許可 endpoint だけ処理し、§27.44 の監査対象 event に該当する場合は audit に actor を残す。 | 権限不足は対象処理を実行せず `403`。audit 失敗時は `500`。 | token 本体、Authorization header。 | trigger allowed、read denied、multi scope、path param、body 未評価、audit failure。 |
 | §27.43 | API key 管理 | admin session または admin scope。 | token hash だけ保存し、作成時だけ token 本体を返す。 | validation 失敗は保存差分なし。失効済み token は再有効化しない。 | token 本体、token hash の不要露出。 | create、list mask、revoke、expired、duplicate label、admin token create。 |
 | §27.44 | 監査ログ | security / config / operation event 確定時。 | 1 event 1 JSON Lines で追記し、actor / target / result を保存する。 | 必須 audit 失敗は対象処理を `500` にする。任意 audit は個別節優先。 | secret、password、token、TOTP secret、raw request body。 | success、denied、failure、mask、append failure、pagination。 |
 | §27.45 | session timeout | login、authenticated request、timeout config API。 | session の last_seen / expires_at を固定規則で更新する。 | timeout session は `401`、対象 endpoint は実行しない。 | session token。 | active、expired、sliding update、config update、revoke all、clock boundary。 |
@@ -261,7 +261,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | `POST /api/tokens` | 管理 session または `admin` scope API token |
 | `DELETE /api/tokens/{id}` | 管理 session または `admin` scope API token |
 
-`admin` scope API token で新しい `admin` scope API token を発行してよい。発行者 token と発行対象 token は別 record とし、親子関係は保存しない。
+`admin` scope API token は新しい `admin` scope API token を発行できる。発行者 token と発行対象 token は別 record とし、親子関係は保存しない。
 
 **正常系：**
 
@@ -325,7 +325,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 6. `.access_log` と `.audit_log` に失効成功を追記する。
 7. `{ "message": "Token revoked" }` を返す。
 
-認証に使用中の API token 自身を失効してよい。その場合、当該リクエストは成功し、次リクエストから `401` になる。
+認証に使用中の API token 自身を失効対象にできる。その場合、当該リクエストは成功し、次リクエストから `401` になる。
 
 **token ID 採番・返却固定契約：**
 
@@ -672,7 +672,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | `count` | integer | 現在 count。 |
 | `reset_at` | string | `window_start + window_seconds`。 |
 
-`state_summary` は `reset_at` 降順、同時刻は `key` 昇順で最大 100 件返す。期限切れ window は response 算出前に `.api_rate_state` から削除してよい。
+`state_summary` は `reset_at` 降順、同時刻は `key` 昇順で最大 100 件返す。期限切れ window は response 算出前に `.api_rate_state` から削除する。
 
 **正常系：**
 
