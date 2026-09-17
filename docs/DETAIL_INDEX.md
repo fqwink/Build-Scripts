@@ -1,12 +1,10 @@
 # Adlaire CI — 詳細仕様
 
-本ファイルは `docs/SPEC.md` の Part 3 詳細仕様の入口であり、索引、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約を持つ正本である。
+本ファイルは `docs/SPEC.md` の Part 3 詳細仕様の入口であり、読み順、共通固定値、実装前確認項目、検証マトリクス、Phase、詳細節対応表、リポジトリ内ソース配置、横断補足契約を持つ。
 
-各 owner component の具体的な入出力、状態、処理順序、異常系、セキュリティ制約、検証条件の本文は、責務 component 別の `docs/details/*.md` を正本とする。
+各 owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。本ファイルは個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、fixture assertion、setup 手順を持たない。
 
-本ファイルに、方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断を記載してはならない。これらは `docs/SPEC.md` を正とする。
-
-本ファイルは詳細仕様本文を集約する場所ではない。個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、fixture assertion、setup 手順を追記する場合は、該当する owner component 別詳細仕様ファイルを更新し、本ファイルは索引または参照先だけを更新する。
+方針、ポリシー、実装状態、正本関係、ロードマップ状態、実装可否の上位判断は `docs/SPEC.md` を正とする。
 
 ---
 
@@ -16,8 +14,6 @@
 ---
 
 ## 詳細仕様の読み方
-
-本ファイルは、実装者が実装時に最初に参照する詳細仕様入口だけを扱う。方針、ポリシー、成熟度定義、ロードマップ状態、実装可否、PR 分割判断は `docs/SPEC.md` を正とし、本ファイルで再定義しない。
 
 詳細仕様を読む順番は、`README.md` と `docs/DOCUMENT_INDEX.md` の Reading Order と同じである。本ファイルから読み始めた場合でも、先に `AGENTS.md`、`docs/DOCUMENT_INDEX.md`、`docs/SPEC.md` を確認済みでなければならない。
 
@@ -44,7 +40,7 @@
 | §26 | `docs/details/setup.md`。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
 | `admin` | `docs/details/admin.md`。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
 
-責務 component 別詳細仕様ファイルの管理は、§0b.1 に従う。`docs/DETAIL_INDEX.md` は入口、索引、共通固定値、責務 component 対応表、横断補足契約だけを持つ。責務 component 別詳細仕様ファイルは、それぞれの owner component と collaborator component の詳細仕様だけを持つ。
+責務 component 別詳細仕様ファイルの管理は、§0b.1 に従う。
 
 ## 0a. 詳細仕様の記載基準
 
@@ -98,6 +94,8 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 
 本節は、責務 component 別に分割済みの詳細仕様ファイルを維持するための固定仕様である。責務境界の変更、仕様内容の移動、参照先更新を行う場合も、機能追加、実装状態変更、実装可否変更、ロードマップ変更、方針・ポリシー追加を含めてはならない。
 
+詳細仕様本文の配置単位は owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには呼び出し境界、schema、表示、security、setup、fixture、検証観点だけを置く。
+
 詳細仕様ファイルは以下に固定する。`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。
 
 | ファイル | 持つ内容 | 持たない内容 |
@@ -116,9 +114,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | `docs/details/security.md` | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 | `docs/details/fixture.md` | fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
-`docs/DETAIL_INDEX.md` §27.38a は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.21〜§27.38 または api / sdk / ui / statefile の横断連動を実装する場合は、owner component の分割先詳細仕様ファイルを正本とし、§27.38a は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点の確認として読む。
-
-詳細仕様の配置単位は、owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには参照リンク、禁止事項、受け入れ観点だけを置く。主本文を複数ファイルへ重複定義してはならない。
+`docs/DETAIL_INDEX.md` §27.38a は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約であり、責務 component 別の分割先へ移動しない。§27.38a は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを補足し、個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema を定義しない。
 
 すべての責務 component 別詳細仕様ファイルは、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
 
@@ -143,7 +139,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 | 横断事項 | 横断する固定値は `docs/DETAIL_INDEX.md` に置く。横断共通基盤を component として扱わない。 |
 | 索引 | `docs/DOCUMENT_INDEX.md` に、分割後ファイルの役割と正本範囲を反映する。 |
 
-実装者が詳細仕様を読む順序は以下に固定する。
+詳細仕様を読む順序は以下に固定する。
 
 1. `docs/SPEC.md` で実装対象、実装状態、実装可否を確認する。
 2. `docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。
@@ -153,7 +149,7 @@ Part 3 の詳細仕様項目は、実装者が追加の設計判断や推測を�
 6. 認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は `docs/details/security.md` を読む。
 7. fixture、fake、PR 証跡が必要な場合は `docs/details/fixture.md` を読む。
 
-詳細仕様ファイルの責務整理、節移動、参照先更新は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
+責務整理、節移動、参照先更新は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
 
 | 完了条件 | 判定 |
 |----------|------|
