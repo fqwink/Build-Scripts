@@ -565,6 +565,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | 節 | fixture 配置単位 | 必須 fixture |
 |----|------------------|--------------|
 | §28 共通 | `builder-extensions/config-resolution/` | 下記 §28 fixture カタログ固定契約の `config-resolution` fixture をすべて作成する。 |
+| §28 共通 | `builder-extensions/determinism/` | 下記 §28 fixture カタログ固定契約の `determinism` fixture をすべて作成する。 |
 | §28.1〜§28.25 | `builder-extensions/<feature-slug>/` | 下記 §28 fixture カタログ固定契約に列挙した fixture をすべて作成する。 |
 
 **§28 fixture カタログ固定契約：**
@@ -574,6 +575,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | 節 | feature slug | 必須 fixture |
 |----|--------------|--------------|
 | §28 共通 | `config-resolution` | `success-config-defaults-only`、`success-config-file-values`、`success-config-env-over-file`、`success-config-cli-over-env-over-file`、`failure-config-json-corrupt`、`failure-config-unknown-key`、`failure-config-invalid-type`、`failure-config-duplicate-nonrepeatable-cli`、`security-config-secret-not-echoed` |
+| §28 共通 | `determinism` | `success-slug-duplicates`、`success-search-index-text-sources`、`success-local-storage-payload`、`success-hash-targets`、`security-deterministic-no-runtime-variance` |
 | §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`failure-manifest-corrupt-full-build`、`noop-unchanged-pages-kept`、`security-incremental-base-escape` |
 | §28.2 | `formats` | `success-html`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format` |
 | §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`failure-badge-invalid-text`、`security-extension-escape`、`noop-extension-disabled` |
@@ -624,7 +626,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | HTML | 対象機能が生成する tag、attribute、class、data attribute、aria attribute、escape 済み text を完全一致または正規化済み比較で確認する。 |
 | CSS | 対象機能が追加する selector、custom property、`@media print`、focus style を確認する。未使用機能の selector が出ないことも確認する。 |
 | JS | 対象機能が追加する event handler、localStorage key、history handler、dialog handler、fallback 分岐の文字列または構造を確認する。外部 script 参照がないことを確認する。 |
-| search index | 採番表示、line number 除外、HTML tag 除外、対象 page path、updated time の有無を確認する。 |
+| search index | 採番表示、line number 除外、HTML tag 除外、対象 page path、updated time の有無、UI text 除外を確認する。 |
 | stdout | 既存進捗行、`[WARN]`、`[REPORT]` の有無、`[REPORT]` key 順、値型、既定値、件数、warning count を完全一致で確認する。fatal failure は空 file にする。 |
 | stderr | fatal failure の `[ERROR]` code、対象 file、対象 section、strict 昇格有無を完全一致で確認する。warning 継続 case と strict warning case は空 file にする。 |
 | effects | 作成、更新、維持、削除禁止、既存出力維持、manifest 上書き有無、外部 call 0 件を JSON で確認する。 |
@@ -648,6 +650,20 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 
 設定解決成功 fixture の `expected/stdout.txt` は、`config_file_used`、`config_file_path`、`config_cli_keys`、`config_env_keys`、`config_file_keys`、`config_default_keys`、`config_overridden_keys`、`config_rejected_keys` を必ず含める。設定解決失敗 fixture の `expected/stdout.txt` は空 file とし、`expected/stderr.txt` に `[ERROR] BUILDER28_INVALID_OPTION -:0 28 ...` を固定する。設定解決失敗 fixture の `expected/effects.json` は、HTML、CSS、JS、search index、manifest、設定ファイルが新規作成、更新、削除されないことを固定する。
 
+**§28 決定性 fixture 固定契約：**
+
+`builder-extensions/determinism/` は、§28 の HTML identity、slug、search index、hash、localStorage の共通 fixture である。個別 §28 fixture は、本 fixture と異なる slug、id、search text、storage key、hash target を期待値にしてはならない。
+
+| fixture | 固定する内容 |
+|---------|--------------|
+| `success-slug-duplicates` | ASCII、非 ASCII、記号、空 heading、同名 heading、`foo` と `foo-2` の衝突を含む入力で、heading id、TOC href、section wrapper id、hash target が `docs/details/builder.md` §28 の slug 規則と一致する。 |
+| `success-search-index-text-sources` | 採番 heading、paragraph、list、code、admonition、badge、image alt、footnote、definition list、task list を含む入力で、search index に含める text と除外する UI text が完全一致する。 |
+| `success-local-storage-payload` | section collapse と color scheme を有効にし、`adlaire:section-state`、`adlaire:color-scheme` の key、payload、未知値無視、JSON parse failure fallback を `expected/site/assets/app.js` と `expected/effects.json` で固定する。 |
+| `success-hash-targets` | hash history と TOC active tracking を有効にし、heading id だけを target にすること、TOC depth 外 heading を active 化しないこと、存在しない hash を no-op にすることを固定する。 |
+| `security-deterministic-no-runtime-variance` | 同一入力を fake clock、fake git、異なる OS path separator 相当入力、異なる map order 相当 config で実行しても、HTML、search index、stdout、stderr が同一になることを固定する。 |
+
+決定性 fixture の `expected/site/*.html` は、heading id、TOC href、collapse wrapper id、`aria-controls`、`data-section-id` を完全一致で確認する。`expected/site/assets/search-index.json` は page key、heading text、body text、除外 text の不在を JSON parse 後完全一致で確認する。`expected/site/assets/app.js` は localStorage key、payload schema、unknown value guard、parse failure guard、hash no-op guard を文字列または構造で確認する。
+
 **§28 expected 比較方式固定契約：**
 
 expected 比較は、実装環境差分で揺れないように以下の正規化だけを許可する。下表にない正規化、部分一致、snapshot 差し替え、目視承認は合格条件にしてはならない。
@@ -665,7 +681,7 @@ expected 比較は、実装環境差分で揺れないように以下の正規�
 
 **§28 stdout / stderr / REPORT fixture 固定契約：**
 
-stderr と `[REPORT]` は、同じ入力から常に同じ順序で出力する。順序は、入力 file path 昇順、line 昇順、section 昇順、code 昇順とする。fatal failure の場合、`[REPORT]` は出力せず、stdout は空 file とする。
+stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力する。順序は、入力 file path 昇順、line 昇順、section 昇順、code 昇順とする。fatal failure の場合、`[REPORT]` は出力せず、stdout は空 file とする。
 
 | 対象 | 固定内容 |
 |------|----------|

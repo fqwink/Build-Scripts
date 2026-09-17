@@ -2030,6 +2030,42 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | print | print 用挙動は `@media print` 内で完結させる。通常画面の DOM を print 専用に書き換えない。 |
 | accessibility | click 操作を追加する要素には keyboard 操作と `aria-label` を同時に定義する。 |
 
+**§28 ID / slug / search index / JS state 決定性固定契約：**
+
+§28 実装は、HTML id、anchor href、TOC、hash history、section collapse、TOC active tracking、search index、localStorage key / value を同じ入力から常に同じ値にする。現在時刻、実 git 状態、OS path separator、map iteration order、ブラウザ viewport、locale、乱数により値が変わってはならない。
+
+| 対象 | 固定 |
+|------|------|
+| page path | 入力 base からの相対 pathを `/` 区切り、先頭 `./` なし、末尾 slash なしに正規化する。site index は `index.md` を `index.html` に対応させる。 |
+| page key | JS state と search index で使う page key は出力 HTML path と同じ相対 path にする。例: `guide/setup.html`。 |
+| heading source text | heading token の inline text から抽出する。§28.5 の採番 prefix、§28.6 の toggle label、§28.13 の code title、footnote backlink、UI icon label は含めない。 |
+| slug base | heading source text を trim し、`strings.ToLower` 相当で小文字化する。Unicode 正規化は行わない。letter / digit は保持し、それ以外の連続 rune は `-` 1 個に置換する。先頭末尾の `-` は削除する。空になった場合は `section` とする。 |
+| duplicate slug | 同一 page 内で既存 slug と衝突する場合、base に `-2`、`-3` の順で suffix を付け、未使用になるまで増やす。base 自体が `foo-2` の場合も同じ規則で `foo-2-2` から試す。 |
+| heading id | heading の `id` は確定 slug だけにする。採番、TOC depth、active tracking、collapse、hash history により id を変更しない。 |
+| TOC href | TOC link は `href="#{slug}"` に固定する。TOC depth で非表示になった heading でも本文 heading id は維持する。 |
+| section collapse target | collapse wrapper id は `section-{slug}`、toggle の `aria-controls` は同じ値、toggle の `data-section-id` は `{page_key}#{slug}` に固定する。 |
+| hash history target | hash history は heading id だけを対象にし、`section-{slug}`、footnote id、code block id、dialog id を target にしない。 |
+| active tracking target | TOC active tracking は TOC に出力された link だけを監視する。TOC depth 外 heading を active 化しない。 |
+
+search index は、§28 機能の表示要素を下表のとおり含める。実装者は検索体験向上を理由に未定義 text を追加してはならない。
+
+| 要素 | search index への扱い |
+|------|----------------------|
+| heading | §28.5 の採番 prefix を含む表示 text を heading entry と本文 search text に含める。slug は採番前の確定 slug を使う。 |
+| paragraph / list / table / definition list / task list text | HTML tag を除いた text node を document order で含める。task checkbox の記号、disabled 属性、aria-label は含めない。 |
+| code block | code 本文だけを含める。§28.4 の line number、§28.13 の code title、copy button text、fold UI text は含めない。 |
+| admonition / badge | admonition title と body text、badge label は含める。CSS class、data attribute、badge color は含めない。 |
+| image | alt text だけを含める。src、title、lightbox UI label、lazy 属性は含めない。 |
+| footnote | footnote 本文は含める。footnote reference number、backlink label は含めない。 |
+| math / Mermaid / print QR / lightbox / theme toggle / skip link | 表示用 UI text、SVG text、toggle label、dialog label、QR URL は含めない。 |
+
+localStorage は下表の key と payload だけを許可する。payload は JSON.stringify 相当の compact JSON 文字列、または許容値 string に固定する。保存失敗、JSON parse 失敗、未知 key、未知 page key、未知 slug は無視し、HTML 表示と search index を壊してはならない。
+
+| key | owner | payload |
+|-----|-------|---------|
+| `adlaire:section-state` | §28.6 | JSON object。key は `{page_key}#{slug}`、value は `true` なら展開、`false` なら折りたたみ。object key は保存時に ASCII 昇順へ並べる。 |
+| `adlaire:color-scheme` | §28.12 | `light`、`dark`、`auto` のいずれかの string。未知値は無視し、設定値または既定値へ戻す。 |
+
 **§28 Markdown token / HTML node 変換固定契約：**
 
 §28 実装は、Markdown を文字列置換だけで直接 HTML 化してはならない。以下の token 種別を内部表現として扱い、token 単位で変換する。token 名、判定順、fallback は固定値とする。
@@ -2083,7 +2119,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | page | 出力 HTML file 1 件を 1 とする。 |
 | block | 変換後に HTML block node として出力された単位を 1 とする。 |
 | inline | 変換後に HTML inline node として出力された単位を 1 とする。 |
-| warning | stderr に出力された `[WARN]` 1 行を 1 とする。 |
+| warning | stdout に出力された `[WARN]` 1 行を 1 とする。 |
 | rejected | 設定 validation または security validation で拒否した入力 1 件を 1 とする。 |
 | fallback | non-strict で通常 text、非表示、source 表示へ落とした対象 1 件を 1 とする。 |
 
