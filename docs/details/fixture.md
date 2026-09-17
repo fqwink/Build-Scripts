@@ -667,6 +667,38 @@ stderr と `[REPORT]` は、同じ入力から常に同じ順序で出力する�
 | reserved feature | 予約値指定時に出力が作られず、既存出力も破壊しない fixture。 |
 | security failure | strict / non-strict の差分と、拒否対象が出力に残らない fixture。 |
 
+**§28 機能別 fixture 最低確認項目固定契約：**
+
+各 §28 fixture は、`docs/details/builder.md` §28 個別固定補足契約の validation、HTML / asset 固定、warning / error、REPORT count を最低 1 件以上の expected で確認する。下表の項目を fixture から省略してはならない。
+
+| 節 | 最低確認項目 |
+|----|--------------|
+| §28.1 | changed / reused page count、未変更 HTML byte 維持、manifest path validation、search index 全体再生成。 |
+| §28.2 | `html` 成功、`pdf` / `epub` 拒否、unknown format 拒否、出力破壊なし。 |
+| §28.3 | admonition type 正規化、badge color validation、disabled 時互換、escape。 |
+| §28.4 | line number node、copy 対象除外、空 code、line count。 |
+| §28.5 | slug 不変、表示番号、TOC / search index 番号、unknown mode 拒否。 |
+| §28.6 | toggle target、localStorage key、print 展開、重複 target 検出。 |
+| §28.7 | min/max validation、TOC filter、active tracking 対象一致。 |
+| §28.8 | fake git、fake file mtime、fallback、RFC3339 UTC 秒精度。 |
+| §28.9 | inserted / deleted / context / header class、escape、copy 本文維持。 |
+| §28.10 | lazy 属性、外部 URL no-fetch、base 外 path warning、alt escape。 |
+| §28.11 | meta head 内順序、禁止 key、重複 last wins、attribute escape。 |
+| §28.12 | light / dark / auto、toggle、localStorage、print light。 |
+| §28.13 | colon / key-value title、copy 除外、empty title no-op、escape。 |
+| §28.14 | key validation、code fence 非置換、missing var、replacement count。 |
+| §28.15 | byte count、pre/code 保持、marker validation、disabled 互換。 |
+| §28.16 | active link 1 件化、aria-current、fallback scroll、depth sync。 |
+| §28.17 | graph TD SVG、unsupported source fallback、external script 不在。 |
+| §28.18 | reference order、backlink、duplicate definition warning、undefined strict。 |
+| §28.19 | inline / block math、code 内非変換、unclosed delimiter、escape。 |
+| §28.20 | pushState、focus、back / forward、missing target no-op。 |
+| §28.21 | skip link、landmark、button label、duplicate id strict、keyboard trap 不在。 |
+| §28.22 | trigger count、dialog 1 個、Escape / backdrop close、focus trap、alt warning。 |
+| §28.23 | URL validation、512 byte 制限、print-only SVG、通常表示非表示。 |
+| §28.24 | dl / dt / dd 構造、paragraph 境界、empty term no-op、inline escape。 |
+| §28.25 | checked / unchecked、disabled checkbox、nested list、aria、通常 list 非変換。 |
+
 **§28 strict / non-strict fixture 固定契約：**
 
 | ケース | non-strict fixture | strict fixture | 固定する差分 |

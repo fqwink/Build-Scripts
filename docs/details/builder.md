@@ -2009,6 +2009,38 @@ stderr の warning / error は 1 行 1 件とし、形式を `[WARN] CODE file:l
 | §28.24 | 定義リストサポート | `term` 改行 `: definition`。 | `<dl><dt>term</dt><dd>definition</dd></dl>`。 | 連続定義行を group 化 → inline 変換 → list と paragraph 境界確定。 | term 空、definition 空は通常 paragraph。 | 単一、複数、paragraph 境界、inline escape。 |
 | §28.25 | タスクリストサポート | `- [ ] item`、`- [x] item`。 | disabled checkbox 付き list item。 | list parse → checked 判定 → input disabled aria-label → item inline 変換。 | `[X]` は checked。その他は通常 list。 | unchecked、checked、nested、aria、通常 list 非変換。 |
 
+**§28 個別固定補足契約：**
+
+下表は、§28.1〜§28.25 の機能別詳細仕様を実装時の固定値へ落とす補足契約である。個別行の仕様と本表が矛盾する場合は、本表ではなく個別行を修正してから実装する。
+
+| 節 | validation | HTML / asset 固定 | warning / error | REPORT count | fixture 必須確認 |
+|----|------------|-------------------|-----------------|--------------|------------------|
+| §28.1 | manifest path は base 内相対 path のみ。manifest root は object、page key は正規化相対 path。 | 未変更 page は byte 単位で維持し、search index は全 page から再生成する。 | manifest JSON 破損は warning なし full build。path 不正は `BUILDER28_PATH_OUTSIDE_BASE`。 | changed / reused は page 数。reason は sorted array。 | 未変更 HTML byte 維持、manifest 破損 full build、search index 全体再生成。 |
+| §28.2 | format は 1 値のみ。`html` 以外は予約または未知として拒否。 | `html` は既存 output layout だけを使う。`pdf` / `epub` file を作らない。 | 予約値は `BUILDER28_UNSUPPORTED_RESERVED`、未知値は `BUILDER28_INVALID_OPTION`。 | `output_format_supported=false` は拒否時も出力する。 | 予約値で既存出力が破壊されないこと。 |
+| §28.3 | extension csv は `admonition`、`badge` のみ。空白 trim、重複は 1 件に正規化。 | admonition は `section`、title、body の順。badge は inline `span`。 | badge color 不正は non-strict で通常 text、strict で `BUILDER28_INVALID_OPTION`。 | admonitions / badges は出力 node 数。warnings は fallback 数。 | extension disabled 時に元 Markdown 由来出力が変わらないこと。 |
+| §28.4 | CLI 有効または fence option ありの場合だけ行番号を出す。 | code wrapper 内に line number column と code text column を分離する。 | copy text に line number が混入した場合は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | blocks は line number 付き block 数、lines は付与した行数。 | copy expected、空 code、fold / highlight 併用。 |
+| §28.5 | mode は `none` または `h2`。 | 表示 prefix は text node とし、anchor id / slug は不変。 | 未知 mode は `BUILDER28_INVALID_OPTION`。 | numbered_headings は prefix を出した heading 数。 | slug 不変、TOC / search index の表示番号一致。 |
+| §28.6 | collapse 対象は h2 / h3 のみ。target id は heading slug から作る。 | toggle button は heading 内の先頭に置き、section body を wrapper 化する。 | target id 重複は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | collapsible_sections は toggle 生成数。 | localStorage 復元、print 全展開、検索 hit 自動展開。 |
+| §28.7 | min / max は 1〜6。min <= max。 | TOC node だけ filter し、本文 heading は変更しない。 | 範囲不正は `BUILDER28_INVALID_OPTION`。 | toc_items は出力された TOC link 数。 | h1-h6 filter、active tracking 同期。 |
+| §28.8 | source は `none`、`git`、`file`。fake 値があれば実 git / mtime より優先。 | `time.page-updated-at` に `datetime` と表示 text を出す。 | git 失敗かつ fallback 不能は `BUILDER28_INTERNAL_IO`。 | fallback は git から file へ落ちた回数。 | fake git、fake mtime、UTC 秒精度。 |
+| §28.9 | fence language が `diff` / `patch` の場合だけ適用。 | line ごとに inserted / deleted / context / header class を 1 つ付与する。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | insertions / deletions は該当 line 数。 | `+++` / `---` header と通常 `+` / `-` の区別。 |
+| §28.10 | lazy option は boolean。src は URL または base 内 path。 | 既存 img に `loading`、`decoding` を追加し、alt 順序を保つ。 | base 外 path は `BUILDER28_PATH_OUTSIDE_BASE`。 | lazy_images は属性を付与した img 数。 | 外部 URL no-fetch、alt escape。 |
+| §28.11 | key は `name:*`、`property:og:*`、`property:twitter:*`、または bare name。 | meta は head 内で既存 meta の後、stylesheet より前に出力する。 | 禁止 key は `BUILDER28_INVALID_OPTION`、escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | custom_meta_count は採用 meta 数、rejected は拒否数。 | 重複 last wins、head 内順序。 |
+| §28.12 | scheme は `light`、`dark`、`auto`。 | root に `data-color-scheme`、CSS variables、toggle button を出す。 | 未知 scheme は `BUILDER28_INVALID_OPTION`。 | color_scheme_toggle は toggle 出力 boolean。 | print light、localStorage 復元。 |
+| §28.13 | title は colon 形式または `title=` 形式。空 title は無効。 | `.code-block-header` 内に `.code-title` を置き、copy 対象から除外する。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | code_titles は title 出力 block 数。 | path 風 title の text 扱い、copy 除外。 |
+| §28.14 | key は `^[A-Z0-9_]{1,64}$`、値は UTF-8 string。 | code fence / code span 内は置換しない。置換後 text は通常 Markdown 処理へ渡す。 | 未定義は `BUILDER28_UNRESOLVED_REFERENCE`。key 不正は `BUILDER28_INVALID_OPTION`。 | replaced は置換回数、missing は sorted array。 | code 内非置換、未定義 strict 停止。 |
+| §28.15 | minify は HTML 完成後のみ。 | minify 後も必須 marker、doctype、head、body、pre/code 内容を保持する。 | marker 消失、空 HTML は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | bytes_* は byte 数、saved は before - after。 | pre/code 保持、disabled 互換。 |
+| §28.16 | TOC がある page のみ有効。 | active class と `aria-current` は同一 link にだけ付与する。 | depth 外 active は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | toc_active_items は監視対象 link 数。 | fallback scroll、depth sync。 |
+| §28.17 | 対応構文は `graph TD` の node / edge だけ。 | 対応時は内製 SVG、未対応時は `.mermaid-source` を出す。 | 未対応は `BUILDER28_UNSUPPORTED_RESERVED`。外部 script は `BUILDER28_ESCAPE_BLOCKED`。 | rendered / unsupported は block 数。 | external script 不在、source fallback。 |
+| §28.18 | id は 1〜64 文字、重複定義は先勝ち。 | footnotes block は本文末尾、backref は各 footnote の末尾。 | 未定義参照は `BUILDER28_UNRESOLVED_REFERENCE`。 | footnotes は定義出力数、references は参照数。 | 番号順、backlink、重複定義 warning。 |
+| §28.19 | code span / code fence 内は math 変換しない。 | inline は `span`、block は `div`。外部 renderer は使わない。 | 未閉鎖 delimiter は `BUILDER28_UNRESOLVED_REFERENCE`。 | inline / block は出力 node 数。 | 未閉鎖 fallback、escape。 |
+| §28.20 | hash target は生成済み heading id のみ。 | click handler は heading focus と history push を同時に行う。 | missing target は non-strict no-op、strict で `BUILDER28_UNRESOLVED_REFERENCE`。 | hash_history_targets は対象 anchor 数。 | back / forward、missing target no-op。 |
+| §28.21 | id 重複、空 label、keyboard trap を検査する。 | skip link、landmark、button label、focus outline を出す。 | a11y 不備は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | a11y_* は検出件数。 | tab order、duplicate id strict。 |
+| §28.22 | lightbox 対象は alt を持つ image。 | dialog は page 1 個、trigger は image ごと、focus trap を JS で管理する。 | alt なしは `BUILDER28_UNRESOLVED_REFERENCE`。 | lightbox_images は trigger 数。 | Escape / backdrop / focus trap。 |
+| §28.23 | URL は空または 512 byte 以下。scheme は `http` / `https`。 | SVG は print footer 内だけに出力し、通常表示では非表示。 | URL 長すぎ / scheme 不正は `BUILDER28_INVALID_OPTION`。 | print_qr は SVG 出力 boolean。 | print only、SVG escape。 |
+| §28.24 | term と definition が両方非空の連続 block だけ変換。 | 1 group を 1 `dl.definition-list` とし、term ごとに `dt` / `dd` を出す。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | definition_lists は dl 数、definition_terms は dt 数。 | paragraph 境界、inline escape。 |
+| §28.25 | `[ ]`、`[x]`、`[X]` だけ task marker。 | checkbox は `disabled`、text は label 相当として出力する。 | enabled checkbox は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | items は task item 数、checked は checked 数。 | nested list、aria、通常 list 非変換。 |
+
 **§28 実装完了条件：**
 
 各機能は、該当 §28.x の入力、出力、処理順序、異常系、検証条件、`docs/DETAIL_INDEX.md` §0i.1、`docs/details/fixture.md` §28-F を満たすまで実装完了として扱わない。複数の §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。
