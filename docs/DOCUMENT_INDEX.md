@@ -166,6 +166,17 @@
 
 本節以降は、リポジトリ内文書と実装ファイル所在の索引である。仕様判断の本文は各正本を参照する。
 
+| 索引領域 | 確認する節 | 判断する内容 |
+|----------|------------|--------------|
+| 読む順番 | `Reading Order` | 作業開始から詳細仕様本文までの確認順序。 |
+| 文書一覧 | `Documents` | 各文書の役割と所在。 |
+| 実装所在入口 | `Implementation File Index` | 実装ファイル所在の判断原則。 |
+| 詳細仕様管理 | `Detail Spec Management` | owner component 別詳細仕様ファイルの配置と状態。 |
+| 実装ファイル一覧 | `Specified Components` | 実装ファイル、テスト、fixture の所在と状態。 |
+| 正本関係 | `Source Of Truth` | 判断対象ごとの正本。 |
+| 整合ガード | `Consistency Guardrails` | 文書整合を壊さないための禁止事項。 |
+| 整合メモ | `Consistency Notes` | 現行状態に関する注意点。 |
+
 ## Reading Order
 
 | 順序 | ファイル | 目的 |
