@@ -1744,7 +1744,7 @@ runner が起動時に必要ファイル不足または権限不備を検出し�
 
 ## 19. 管理 API サーバー制限参照
 
-管理 API サーバーの HTTP listener、認証、session、rate limit、TLS 非対応、外部認証非対応、worker pool 非採用の制限は api owner component の責務とし、[`docs/details/api.md`](api.md) §21a および [`docs/details/security.md`](security.md) §27.42〜[`docs/details/runner.md`](runner.md) §27.47 を正とする。
+管理 API サーバーの HTTP listener、認証、session、rate limit、TLS 非対応、外部認証非対応、worker pool 非採用の制限は api owner component の責務とし、[`docs/details/api.md`](api.md) §21a および [`docs/details/security.md`](security.md) §27.42〜§27.47 を正とする。
 
 runner owner component は、管理 API サーバーの起動、listener、session、認証、HTTP response、rate limit を実装してはならない。
 

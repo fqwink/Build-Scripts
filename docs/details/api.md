@@ -94,7 +94,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルはいずれも UTF-8 とする。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
 | リクエスト body 上限 | JSON body は 1 MiB を上限とする。超過時は `413 Payload Too Large` と `{"error": "Payload too large"}` を返す。 |
-| request body 禁止 | §22.0e で `Request` が `none` の endpoint に body がある場合は `400 Bad Request` と `{"error": "Request body is not allowed"}` を返す。 |
+| request body 禁止 | [`docs/details/api.md`](api.md) §22.0e で `Request` が `none` の endpoint に body がある場合は `400 Bad Request` と `{"error": "Request body is not allowed"}` を返す。 |
 | 成功レスポンス | 各エンドポイント例に記載した JSON オブジェクトを返す。空レスポンスは使用しない。 |
 | エラーレスポンス | エラー時は `{"error":"<message>"}` を返す。入力検証失敗時のみ `details` を配列 `[{ "field": "<field>", "message": "<reason>" }]` とし、複数エラーがある場合はリクエスト JSON の出現順、query、path parameter の順で並べる。入力検証以外の補足は `details` を使わず、`error` を実装者向けではない固定文言にする。 |
 | 未知のパス | 定義されていない `/api/...` は `404 Not Found` と `{"error": "Not found"}` を返す。 |
@@ -115,7 +115,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | セキュリティヘッダー | すべての API レスポンスに `Cache-Control: no-store`、`X-Content-Type-Options: nosniff` を付与する。SSE は `Cache-Control: no-store` と `X-Accel-Buffering: no` を付与する。 |
 | 判定順 | path 解決 → method 検証 → body 可否/サイズ検証 → JSON parse → 認証 → 権限 → 入力検証 → 状態競合 → 処理実行の順に判定する。 |
 
-エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、§22、§23、§24 の対応関係を同時に確認する。
+エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、[`docs/details/api.md`](api.md) §22、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 の対応関係を同時に確認する。
 
 **API 共通エラー固定文言：**
 
@@ -149,7 +149,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 5 | scope、rate limit、権限を判定する。 | `403` / `429` | endpoint 固有の状態書込、外部呼び出し、コマンド実行を行わない。rate limit 状態更新と監査ログは §27.47 に限定する。 |
 | 6 | query、path parameter、body schema、enum、範囲を検証する。 | `422` | 状態ファイルを変更しない。外部 API、systemd、runner、hook、通知を呼び出さない。 |
 | 7 | endpoint 固有の read adapter を呼び、状態競合を判定する。 | `409` / `500` | write lock を取得していても target を変更しない。tmp file があれば削除する。 |
-| 8 | endpoint 固有処理を実行し、必要な状態ファイルを §22.0d の Write 列順に更新する。 | endpoint 固有 | 途中失敗時の巻き戻しは、endpoint 固有節または §26 rollback 節に明記された範囲だけ行う。 |
+| 8 | endpoint 固有処理を実行し、必要な状態ファイルを [`docs/details/api.md`](api.md) §22.0d の Write 列順に更新する。 | endpoint 固有 | 途中失敗時の巻き戻しは、endpoint 固有節または [`docs/details/setup.md`](setup.md) §26 rollback 節に明記された範囲だけ行う。 |
 | 9 | `.config_log`、`.audit_log`、`.access_log`、`.api_access_log` を仕様順に追記する。 | `500` | response を成功扱いにしない。既に確定済みの endpoint 状態は自動推測で再変更しない。 |
 | 10 | response body と header を確定する。 | - | response 生成時に追加の状態読取、状態書込、外部呼び出しを行わない。 |
 
@@ -198,7 +198,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | `GET /api/api-access-log` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
 | `GET /api/webhook-events` | `limit` | `50` | 1〜1000 | §27.13 を優先する。 |
 | `GET /api/webhook-events` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
-| `GET /api/audit-log` | `limit` | `100` | 1〜200 | §27.44 を優先する。 |
+| `GET /api/audit-log` | `limit` | `100` | 1〜200 | [`docs/details/security.md`](security.md) §27.44 を優先する。 |
 | `GET /api/audit-log` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
 | `GET /api/stats` | `days` | `7` | 1〜366 | 整数文字列だけ許可する。 |
 | `GET /api/stats/timeline` | `days` | `30` | 1〜366 | 整数文字列だけ許可する。 |
@@ -223,7 +223,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 
 ### 22.0c 主要状態ファイル schema
 
-主要状態ファイル schema は [`docs/details/statefile.md`](statefile.md) §22.0c を正とする。本ファイルでは API endpoint と状態ファイルの read / write 対応を §22.0d 以降で定義する。
+主要状態ファイル schema は [`docs/details/statefile.md`](statefile.md) §22.0c を正とする。本ファイルでは API endpoint と状態ファイルの read / write 対応を [`docs/details/api.md`](api.md) §22.0d 以降で定義する。
 
 ### 22.0d API と状態ファイル対応表
 
@@ -343,7 +343,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 本表は API 実装、SDK 実装、標準管理ツール実装の契約インデックスである。endpoint を追加、削除、名称変更、body 変更、response 変更する場合は、本表、該当 endpoint 個別節、SDK method 表、UI 操作契約、fixture catalog を同じ仕様 PR で先に更新する。下表に存在しない endpoint は実装対象外とする。SHA reset 専用 endpoint とサマリー送信専用 endpoint は定義しない。
 
-`Request` が `none` の場合、request body を受け付けない。空 JSON object `{}` も送信してはならない。`Response` は成功時 body の schema 名または最小 object を示す。詳細 schema は §22.0c、各 endpoint の個別例、§23 SDK 仕様、§24 UI 仕様を正とする。
+`Request` が `none` の場合、request body を受け付けない。空 JSON object `{}` も送信してはならない。`Response` は成功時 body の schema 名または最小 object を示す。詳細 schema は [`docs/details/statefile.md`](statefile.md) §22.0c、各 endpoint の個別例、[`docs/details/sdk.md`](sdk.md) §23 SDK 仕様、[`docs/details/ui.md`](ui.md) §24 UI 仕様を正とする。
 
 `{message}` は `{"message": string}` を意味する。`{message,...}` 形式の response では `message` を必須キーとし、その他のキーも表記どおり必須とする。`?` が付いたキーだけを任意キーとする。成功時に空 body、`null` body、HTTP 204 は使用しない。
 
@@ -511,7 +511,7 @@ backup / restore fixture は [`docs/details/fixture.md`](fixture.md) §22-F の 
 | 機能 | Endpoint | 読取元 | 算出方法 | 空状態 / 不足時 |
 |------|----------|--------|----------|-----------------|
 | 現在状態 | `GET /api/status` | `.build_status.json`, `.build_history`, `.build_state`, `.build_lock` | `.build_status.json` から `last_sha`、`last_build_at`、`last_build_status`、`last_trigger`、pending 件数、circuit 状態を返す。不在時のみ `.build_history` の最新行と `.build_state` から算出する。`last_sha` は `.build_status.json.last_blob_sha` があればその値、なければ `last_commit_sha`、両方なければ `null` とする。 | 履歴なしは `last_sha:null`, `last_build_at:null`, `last_build_status:"none"`, `last_trigger:null`, `output_url:null`。 |
-| 手動ビルド開始 | `POST /api/build` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | §22.0e の競合優先順位に従い、開始または queue 追加を行う。SHA cache は変更しない。 | queue 無効または満杯は `429 {"error":"queue_full"}`。 |
+| 手動ビルド開始 | `POST /api/build` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | [`docs/details/api.md`](api.md) §22.0e の競合優先順位に従い、開始または queue 追加を行う。SHA cache は変更しない。 | queue 無効または満杯は `429 {"error":"queue_full"}`。 |
 | 強制ビルド開始 | `POST /api/build/force` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state`, SHA cache | 開始可能な場合のみ SHA cache を空 SHA に更新し、同一状態更新内で build を開始する。queue 追加時は queue entry の `payload.force=true` を保存する。 | queue 無効または満杯は `429 {"error":"queue_full"}`。 |
 | ログ一覧 | `GET /api/logs` | `.build_logs/` | 最新 build log の `stdout`、`stderr`、`warnings` を時系列順に連結し、`n` 件に丸める。`q` が空でない場合は部分一致行だけを返す。 | ログなしは `{"lines":[]}`。 |
 | ログ検索 | `GET /api/logs/search` | `.build_logs/` | 全 build log を新しい順に読み、`q`、`from`、`to`、`level` で絞り込む。`level` は行内の `[INFO]`、`[WARNING]`、`[ERROR]`、`[DEBUG]` に一致させる。 | 一致なしは `results:[]`。 |
@@ -520,8 +520,8 @@ backup / restore fixture は [`docs/details/fixture.md`](fixture.md) §22-F の 
 | ダッシュボード | `GET /api/dashboard` | `.build_status.json`, `.build_history`, `.server_config`, `.alert_rules`, `.dashboard_layout`, `.build_state`, `.build_lock`, 出力サイト, process start time | `status`、`sysinfo`、`stats(days=7)`、`schedule`、`alerts` を同一リクエスト時点で算出し、widget 順序は `.dashboard_layout.widgets` を使用する。 | `.dashboard_layout` 不在は既定 widget 順。alerts なしは `[]`。 |
 | 診断 | `GET /api/diagnostics` | `.github_token`, 出力サイト, systemd, `.notify_config`, `.webhook_secret` | PAT、GitHub API、出力サイト、systemd、Webhook 設定を個別 item として返す。診断結果は保存しない。 | 各項目は `ok`、`warn`、`error` のいずれかを返す。 |
 | キュー | `GET /api/queue` | `.build_state`, `.server_config` | `.build_state.queued` と `.server_config.queue_max_size` を返す。 | `.build_state` 不在は初期値で `queued:[]`。 |
-| バックアップ | `GET /api/backup` | §22.0d の backup 対象状態ファイル | 設定状態だけを export し、secret 値は `"***"` または boolean にマスクする。履歴、ログ、snapshot、session は含めない。 | 不在の任意設定ファイルは初期値で返す。 |
-| リストア | `POST /api/restore` | request body | 対象 state schema をすべて検証してから §22.0d の write 順に保存する。secret が `"***"` の場合は既存 secret を保持する。 | 検証失敗は書き込み前に `422`。途中失敗は未処理ファイルを書かない。 |
+| バックアップ | `GET /api/backup` | [`docs/details/api.md`](api.md) §22.0d の backup 対象状態ファイル | 設定状態だけを export し、secret 値は `"***"` または boolean にマスクする。履歴、ログ、snapshot、session は含めない。 | 不在の任意設定ファイルは初期値で返す。 |
+| リストア | `POST /api/restore` | request body | 対象 state schema をすべて検証してから [`docs/details/api.md`](api.md) §22.0d の write 順に保存する。secret が `"***"` の場合は既存 secret を保持する。 | 検証失敗は書き込み前に `422`。途中失敗は未処理ファイルを書かない。 |
 
 ### 22.0e.2 API ID 採番契約
 
@@ -574,7 +574,7 @@ JSON Lines の壊れた行は、空行、JSON parse 失敗、JSON object 以外�
 
 ### 22.0e.4 API レスポンス正規化契約
 
-API response は、§22.0e の Response 列、§22.0c の schema、§23 の SDK 型定義表に一致させる。実装者は endpoint ごとに以下の正規化を行う。
+API response は、[`docs/details/api.md`](api.md) §22.0e の Response 列、[`docs/details/statefile.md`](statefile.md) §22.0c の schema、[`docs/details/sdk.md`](sdk.md) §23 の SDK 型定義表に一致させる。実装者は endpoint ごとに以下の正規化を行う。
 
 | 対象 | 仕様 |
 |------|------|
@@ -1608,7 +1608,7 @@ Secret は `.webhook_secret` を正とする。secret 不在、header 不在、p
 | `POST /api/maintenance/enable` | `reason` 必須、1〜500 文字、前後空白除去後空は禁止 | `enabled:true`、`reason`、`since=now` | 既に同一 reason で enabled の場合は状態を変更せず `{ "message":"No changes","since":"<existing since>" }` | 検証失敗 `422`、保存失敗 `500` |
 | `POST /api/maintenance/disable` | body 禁止 | `enabled:false`、`reason:null`、`since:null` | 既に disabled の場合は状態を変更せず `{ "message":"No changes" }` | 保存失敗 `500` |
 
-メンテナンス判定は §22.0e の共通判定順に従い、`POST /api/build`、`POST /api/build/force`、署名検証済み `POST /api/webhook`、`POST /api/history/{id}/rollback` を拒否対象とする。設定参照系 GET、認証、ログ参照、メンテナンス解除は拒否しない。
+メンテナンス判定は [`docs/details/api.md`](api.md) §22.0e の共通判定順に従い、`POST /api/build`、`POST /api/build/force`、署名検証済み `POST /api/webhook`、`POST /api/history/{id}/rollback` を拒否対象とする。設定参照系 GET、認証、ログ参照、メンテナンス解除は拒否しない。
 
 **メンテナンス判定・副作用固定契約：**
 

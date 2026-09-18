@@ -144,7 +144,7 @@ Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は 
 | admin UI 展開 | admin 一時 directory、成功時のみ `$INSTALL_DIR/admin` | archive 安全検査、必須ファイル確認、差し替えがすべて成功する。 | 既存 admin UI を維持する。API restart を行わない。 |
 | systemd unit 配置 | 対象 unit file だけ | unit 書込、mode、`systemctl daemon-reload` が成功する。 | enable / restart / start を行わない。 |
 | service 起動 / 再起動 | 対象 unit だけ | `systemctl is-active` が `active`。api は health check も成功。 | rollback 表に従い、追加推測復旧を行わない。 |
-| 最終確認 | なし | §26.3、§26.3b、§26.5 の確認項目がすべて成功。 | 成功報告しない。確認失敗箇所と journal 確認対象を出力する。 |
+| 最終確認 | なし | [`docs/details/setup.md`](setup.md) §26.3、§26.3b、§26.5 の確認項目がすべて成功。 | 成功報告しない。確認失敗箇所と journal 確認対象を出力する。 |
 
 setup / update 実装は、各段階の開始と成功を stderr または stdout に固定文言で 1 行ずつ出力する。PAT、password、session token、API token、Webhook secret、SMTP password、Release URL の credential 部分は出力してはならない。secret file が既に存在する場合は、個別手順で上書きを明記している場合を除き、既存値を保持する。特に `.github_token`、`.admin_credentials`、`.webhook_secret`、`.smtp_secret` は、アップデートで自動上書きしない。
 
@@ -228,10 +228,10 @@ Go 版初回セットアップでは以下を実行しない。
 
 | 対象 | 理由 |
 |------|------|
-| `/usr/local/bin/adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"` | 初回セットアップ対象は runner と build バイナリに限定し、API 認証情報生成は §26.3b で実行する。 |
-| `systemctl enable --now adlaire-ci-api` | API service は §26.3b の API バイナリ配置、認証情報生成、unit 配置がすべて成功した後にのみ起動する。 |
-| `.build_logs/` 作成 | runner 初期導入ではビルド実行時に必要な状態だけを初期化し、api が参照する履歴ディレクトリは §26.3b で作成する。 |
-| `.snapshots/` 作成 | snapshot 参照・rollback API と組み合わせて使うため、§26.3b の管理 API 導入時に作成する。 |
+| `/usr/local/bin/adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"` | 初回セットアップ対象は runner と build バイナリに限定し、API 認証情報生成は [`docs/details/setup.md`](setup.md) §26.3b で実行する。 |
+| `systemctl enable --now adlaire-ci-api` | API service は [`docs/details/setup.md`](setup.md) §26.3b の API バイナリ配置、認証情報生成、unit 配置がすべて成功した後にのみ起動する。 |
+| `.build_logs/` 作成 | runner 初期導入ではビルド実行時に必要な状態だけを初期化し、api が参照する履歴ディレクトリは [`docs/details/setup.md`](setup.md) §26.3b で作成する。 |
+| `.snapshots/` 作成 | snapshot 参照・rollback API と組み合わせて使うため、[`docs/details/setup.md`](setup.md) §26.3b の管理 API 導入時に作成する。 |
 
 ### §26.3b 管理 API 導入後の追加セットアップ手順
 
@@ -506,11 +506,11 @@ systemctl status adlaire-ci-api
 | Go test | `go test ./...` | Go module が存在する場合に成功する。Go module が存在しない場合は、その理由を実装完了報告に明記する。 |
 | build script | `adlaire-ci-build --src <sample.md> --out <tmp.html>` | exit code `0`、HTML 出力あり、`[REPORT]` の `status` が `success`。 |
 | runner | `adlaire-ci-runner --state-dir <tmp-state>` | 必須 secret 未設定時の exit code / ERROR log が §12 と一致し、`.build_lock` が残らない。 |
-| API | `POST /api/login`、`GET /api/status`、未知 path、body 禁止 endpoint、JSON 不正、認証なし | §22.0 / §22.0e の status code と body に一致する。 |
-| SDK | browser runtime で `login()`、`getStatus()`、`streamBuild()`、HTTP error、timeout を確認する。 | `AdlaireCIError`、`StreamHandle`、token 破棄、timeout が §23 と一致する。 |
-| UI | login、manual build、SSE 表示、config 保存、token 発行、logout を確認する。 | §24 の DOM id、disabled、成功表示、失敗表示、再取得、秘密情報消去に一致する。 |
-| setup | §26.3 または §26.3b の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
-| update | §26.5 の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 条件が仕様どおり。 |
+| API | `POST /api/login`、`GET /api/status`、未知 path、body 禁止 endpoint、JSON 不正、認証なし | [`docs/details/api.md`](api.md) §22.0 / §22.0e の status code と body に一致する。 |
+| SDK | browser runtime で `login()`、`getStatus()`、`streamBuild()`、HTTP error、timeout を確認する。 | `AdlaireCIError`、`StreamHandle`、token 破棄、timeout が [`docs/details/sdk.md`](sdk.md) §23 と一致する。 |
+| UI | login、manual build、SSE 表示、config 保存、token 発行、logout を確認する。 | [`docs/details/ui.md`](ui.md) §24 の DOM id、disabled、成功表示、失敗表示、再取得、秘密情報消去に一致する。 |
+| setup | [`docs/details/setup.md`](setup.md) §26.3 または §26.3b の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
+| update | [`docs/details/setup.md`](setup.md) §26.5 の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 条件が仕様どおり。 |
 | security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示を確認する。 | PAT、Webhook Secret、SMTP password、session token、API token 本体が平文で出ない。 |
 
 **認証 / セットアップ fixture 固定：**
@@ -597,8 +597,8 @@ systemctl status adlaire-ci-api
 
 | 段階 | 確認 | 合格条件 |
 |------|------|----------|
-| 実装前 | endpoint / SDK / UI 対応 | §22.0e の API、§23 の SDK method、§24 の UI 操作が同一機能でそろっている。欠落時は先に仕様改訂する。 |
-| 実装前 | state schema | 使用する状態ファイルが §22.0a / §22.0c にあり、型、初期値、破損時処理、更新責務が定義済み。 |
+| 実装前 | endpoint / SDK / UI 対応 | [`docs/details/api.md`](api.md) §22.0e の API、[`docs/details/sdk.md`](sdk.md) §23 の SDK method、[`docs/details/ui.md`](ui.md) §24 の UI 操作が同一機能でそろっている。欠落時は先に仕様改訂する。 |
+| 実装前 | state schema | 使用する状態ファイルが [`docs/details/statefile.md`](statefile.md) §22.0a / §22.0c にあり、型、初期値、破損時処理、更新責務が定義済み。 |
 | 実装前 | secret handling | secret 値の保存先、mask、response 禁止、log 禁止、UI 消去条件が定義済み。 |
 | 実装後 | common error | unknown path、method mismatch、body 禁止、JSON 不正、401、403、422、500 が固定 body と一致する。 |
 | 実装後 | state side effect | 成功、validation failure、conflict、write failure、log failure の状態差分が fixture expected と一致する。 |

@@ -307,10 +307,10 @@ owner component が確定できない場合は、実装判断で補完しない�
 | `runner` | 状態更新 | 成功、ビルド失敗、GitHub API 失敗、転送失敗、lock 競合、JSON 破損で §13 と §22.0a の更新順序・未更新条件が一致する。 |
 | `runner` | 冪等性 | 同一 SHA 再実行、pending retry 再実行、通知 pending 再実行、stale lock 復旧で二重履歴・二重 snapshot・状態破壊が発生しない。 |
 | `api` | API 共通 | 未知 path、未対応 method、body 禁止、JSON 不正、body 上限、認証なし、権限不足、入力検証失敗、ロック競合が §22.0 の status と body を返す。 |
-| `api` | 状態ファイル | 全 write API が §22.0a / §22.0d の対象ファイルだけを atomic write し、秘密情報を平文出力しない。 |
-| `api` | endpoint 契約 | §22.0e の全 endpoint について Request、Response、Success、Errors、Read、Write、SDK、UI の対応が実装と一致する。 |
-| `sdk` | SDK 契約 | 全 method が §22.0e の endpoint のみを呼び、query / body 生成、body なし endpoint の body 禁止、HTTP error の `AdlaireCIError` 変換が §23 と一致する。 |
-| `ui` | UI 契約 | 全操作が §24 の SDK method 経由で動作し、成功表示、失敗表示、disabled、再取得、秘密情報消去が一致する。 |
+| `api` | 状態ファイル | 全 write API が [`docs/details/statefile.md`](details/statefile.md) §22.0a / [`docs/details/api.md`](details/api.md) §22.0d の対象ファイルだけを atomic write し、秘密情報を平文出力しない。 |
+| `api` | endpoint 契約 | [`docs/details/api.md`](details/api.md) §22.0e の全 endpoint について Request、Response、Success、Errors、Read、Write、SDK、UI の対応が実装と一致する。 |
+| `sdk` | SDK 契約 | 全 method が [`docs/details/api.md`](details/api.md) §22.0e の endpoint のみを呼び、query / body 生成、body なし endpoint の body 禁止、HTTP error の `AdlaireCIError` 変換が [`docs/details/sdk.md`](details/sdk.md) §23 と一致する。 |
+| `ui` | UI 契約 | 全操作が [`docs/details/ui.md`](details/ui.md) §24 の SDK method 経由で動作し、成功表示、失敗表示、disabled、再取得、秘密情報消去が一致する。 |
 | `setup` | systemd | [`docs/details/setup.md`](details/setup.md) §26 の unit 名、`ExecStart`、配置パス、権限、起動確認コマンドが実際の導入手順と一致する。 |
 | `statefile` | 状態ファイル契約 | 状態ファイルの schema、lock、atomic write、JSON Lines、破損時処理、権限、秘密情報マスクが [`docs/details/statefile.md`](details/statefile.md) §22.0a、§22.0c と一致する。 |
 | `security` | 認証・認可・漏えい禁止 | scope、API key、audit、session、TOTP、rate limit、秘密情報非表示、失敗時副作用が [`docs/details/security.md`](details/security.md) §27.42〜§27.47 と一致する。 |
@@ -330,7 +330,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 | 対象 | 実装着手条件 | 実装禁止条件 | 完了判定 |
 |------|--------------|--------------|----------|
 | `builder` | §2〜§8 に CLI option、入力 Markdown、出力サイトディレクトリ、終了コード、stderr、HTML 構造、テーマコンポーネント、JS/CSS、生成物確認が定義されている。 | §4〜§7 にない Markdown 記法、CSS class、JavaScript 機能、外部 asset、theme を追加すること。 | §0e の `builder` 必須検証をすべて満たし、生成サイトが §5〜§7 と一致する。 |
-| `runner` | §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd / setup 参照境界が定義されている。systemd unit 本文とセットアップ手順は [`docs/details/setup.md`](details/setup.md) §26 を正とする。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。systemd unit file の生成、配置、更新、enable、restart を runner に追加すること。 | §0e の `runner` 必須検証をすべて満たし、状態ファイル更新順序が §13、§22.0a、§22.0d と一致する。 |
+| `runner` | [`docs/details/runner.md`](details/runner.md) §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd / setup 参照境界が定義されている。systemd unit 本文とセットアップ手順は [`docs/details/setup.md`](details/setup.md) §26 を正とする。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。systemd unit file の生成、配置、更新、enable、restart を runner に追加すること。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0e の `runner` 必須検証をすべて満たし、状態ファイル更新順序が [`docs/details/runner.md`](details/runner.md) §13、[`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/api.md`](details/api.md) §22.0d と一致する。 |
 | `api` | [`docs/details/api.md`](details/api.md) §21〜§22、§21a、§25 と [`docs/details/setup.md`](details/setup.md) §26 に API 共通契約、API server 制限、endpoint、状態ファイル schema、認証、認可、systemd、セットアップが定義されている。 | [`docs/details/api.md`](details/api.md) §22.0e にない endpoint、method、status code、response body、状態ファイル write を追加すること。 | [`docs/details/api.md`](details/api.md) §22.0e の全 endpoint が Request、Response、Errors、Read、Write、SDK、UI の対応表と一致する。 |
 | `sdk` | [`docs/details/sdk.md`](details/sdk.md) §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が [`docs/details/api.md`](details/api.md) §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が [`docs/details/api.md`](details/api.md) §22.0e と [`docs/details/sdk.md`](details/sdk.md) §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
 | `ui` | [`docs/details/ui.md`](details/ui.md) §24 に画面構成、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去が定義されている。 | SDK を介さず API を直接呼ぶこと、未定義の画面・操作・保存先を追加すること、秘密情報を DOM に残すこと。 | 全 UI 操作が [`docs/details/ui.md`](details/ui.md) §24 の表示条件と [`docs/details/sdk.md`](details/sdk.md) §23 の SDK method を満たし、秘密情報 field が指定条件で消去される。 |

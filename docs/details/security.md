@@ -64,7 +64,7 @@
 
 ## 認証共通詳細
 
-本節は、password 認証、session、login ticket、認証ログ、`--init-credentials` の security owner 詳細仕様である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md`](api.md) §22.0e および §25 を正とする。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を正とする。
+本節は、password 認証、session、login ticket、認証ログ、`--init-credentials` の security owner 詳細仕様である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md`](api.md) §22.0e および [`docs/details/security.md`](security.md) §25 を正とする。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を正とする。
 
 **password hash 固定契約：**
 
@@ -221,7 +221,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | `config` | `POST /api/schedule/interval`, `POST /api/schedule/pause`, `POST /api/schedule/resume`, `POST /api/schedule/allowed-hours`, `POST /api/schedule/force-interval`, `POST /api/schedule/cooldown`, `POST /api/notify-config`, `POST /api/config/validate`, `POST /api/config`, `POST /api/log-level`, `POST /api/pat-update`, `POST /api/repo-config`, `POST /api/branch-config`, `POST /api/restore`, `POST /api/webhook-config`, `DELETE /api/snapshots/{id}`, `POST /api/maintenance/enable`, `POST /api/maintenance/disable`, `POST /api/access-control`, `POST /api/hooks`, `DELETE /api/hooks/{id}`, `POST /api/alert-rules`, `DELETE /api/alert-rules/{id}`, `POST /api/tag-rules`, `DELETE /api/tag-rules/{id}`, `POST /api/pipeline-config`, `POST /api/build-chain-config`, `POST /api/notes`, `POST /api/smtp-config`, `POST /api/dashboard-layout`, `POST /api/history/{id}/comment`, `POST /api/history/{id}/flag`, `POST /api/history/{id}/tags`, `POST /api/logs/cleanup`, `POST /api/logs/archive` |
 | `admin` | `GET /api/access-log`, `GET /api/api-access-log`, `GET /api/audit-log`, `GET /api/api-rate-limit`, `POST /api/api-rate-limit`, `GET /api/sessions`, `POST /api/sessions/revoke-all`, `GET /api/auth/totp-status`, `POST /api/auth/totp-setup`, `POST /api/auth/totp-confirm`, `DELETE /api/auth/totp`, `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}` |
 
-管理 session は上表に関係なく全 endpoint を許可する。API token が複数 scope を持つ場合は、いずれか 1 つの scope が endpoint に一致すれば許可する。`POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password` は API token scope 判定の対象外とし、API token では使用できない。`POST /api/webhook` は GitHub Webhook secret 検証専用であり、API token では使用できない。上表に存在しない endpoint は §22.0e と本表へ追加されるまで API token では許可してはならない。
+管理 session は上表に関係なく全 endpoint を許可する。API token が複数 scope を持つ場合は、いずれか 1 つの scope が endpoint に一致すれば許可する。`POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password` は API token scope 判定の対象外とし、API token では使用できない。`POST /api/webhook` は GitHub Webhook secret 検証専用であり、API token では使用できない。上表に存在しない endpoint は [`docs/details/api.md`](api.md) §22.0e と本表へ追加されるまで API token では許可してはならない。
 
 **正常系：**
 
@@ -316,7 +316,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | `expires_at` | string/null | 必須 | `null` または UTC ISO 8601。 |
 | `revoked_at` | string/null | 必須 | 失効時に UTC ISO 8601 を保存する。 |
 
-`.api_tokens` に未知 key、必須 key 不足、型不一致、未知 scope、空 scopes、hash 形式不正、時刻形式不正がある場合は破損として扱い、token 認証、一覧、作成、失効をすべて `500 {"error":"Internal server error"}` で拒否する。ただし旧 `scope` 文字列から `scopes:[scope]` への正規化は §22.0c の例外に従う。破損内容、hash、token 本体は response、`.access_log`、`.audit_log`、journal に出力しない。
+`.api_tokens` に未知 key、必須 key 不足、型不一致、未知 scope、空 scopes、hash 形式不正、時刻形式不正がある場合は破損として扱い、token 認証、一覧、作成、失効をすべて `500 {"error":"Internal server error"}` で拒否する。ただし旧 `scope` 文字列から `scopes:[scope]` への正規化は [`docs/details/statefile.md`](statefile.md) §22.0c の例外に従う。破損内容、hash、token 本体は response、`.access_log`、`.audit_log`、journal に出力しない。
 
 **API token 認証時の副作用境界：**
 
