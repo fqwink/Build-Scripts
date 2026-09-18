@@ -198,7 +198,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 | [`docs/details/security.md`](details/security.md) | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 | [`docs/details/fixture.md`](details/fixture.md) | fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
-[`docs/ROADMAP.md`](ROADMAP.md) §6.3 は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを補足し、個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema を定義しない。
+[`docs/ROADMAP.md`](ROADMAP.md) §6.3 は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを扱い、個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema は各 owner component 詳細仕様を正とする。
 
 すべての責務 component 別詳細仕様ファイルは、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
 
