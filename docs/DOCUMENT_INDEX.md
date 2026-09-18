@@ -2,7 +2,7 @@
 
 このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。
 
-仕様・詳細仕様・補助文書・本索引は `docs/` 配下に集約する。ルールブック [`AGENTS.md`](../AGENTS.md) と入口文書 [`README.md`](../README.md) はリポジトリ root に置く。
+仕様・詳細仕様・デザイン正本・本索引は `docs/` 配下に集約する。ルールブック [`AGENTS.md`](../AGENTS.md) と入口文書 [`README.md`](../README.md) はリポジトリ root に置く。
 
 ## 仕様構造管理
 
@@ -32,14 +32,14 @@
 | 状態・計画 | [`docs/ROADMAP.md`](ROADMAP.md) | 実装状態、実装可否、Phase、機能インベントリ、将来計画、追加仕様化機能参照、横断補足契約を確認する。 |
 | 詳細仕様入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 詳細仕様の読み方、共通固定値、対応表、ソース配置を確認する。 |
 | 詳細仕様本文 | [`docs/details/*.md`](details/) | owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
-| デザイン補助 | [`docs/DESIGN.md`](DESIGN.md) | 生成静的 Web サイトの視覚仕様を確認する。 |
+| デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | 生成静的 Web サイトのデザイン方針と視覚仕様を確認する。 |
 | 実装所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の `仕様化済みコンポーネント` | 実装ファイル、テスト、fixture の所在と状態を確認する。 |
 
 ## 仕様構造
 
 本節は、仕様文書の階層と位置付けを定義する。目的別の参照先選択は `仕様構造マップ` を入口とする。
 
-仕様文書の構造は、作業ルール、入口、索引、正本、詳細入口、責務 component 別本文、補助文書に分ける。
+仕様文書の構造は、作業ルール、入口、索引、方針・ポリシー正本、デザイン正本、状態・計画正本、詳細入口、責務 component 別本文に分ける。
 
 | 階層 | ファイル | 位置付け | 主な用途 |
 |------|----------|----------|----------|
@@ -50,7 +50,7 @@
 | ロードマップ | [`docs/ROADMAP.md`](ROADMAP.md) | 状態・計画正本 | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を判断する。 |
 | 詳細仕様入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 詳細仕様入口責務 | 詳細仕様の読み方、共通固定値、対応表、ソース配置を確認する。 |
 | 詳細仕様本文 | [`docs/details/*.md`](details/) | owner component 別本文 | 対象 component の入出力、状態、処理順序、異常系、検証条件を実装単位で確認する。 |
-| 補助文書 | [`docs/DESIGN.md`](DESIGN.md) | 生成静的 Web サイトのデザイン補助 | レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を確認する。 |
+| デザイン正本 | [`docs/DESIGN.md`](DESIGN.md) | デザイン責務正本 | 生成静的 Web サイトのデザイン方針、レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を判断する。 |
 
 仕様判断では、上位階層が下位階層を置き換えるのではなく、各階層の正本範囲だけを参照する。[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は所在と役割の索引であり、仕様本文を定義しない。
 
@@ -82,11 +82,11 @@
 | 詳細本文優先 | 入出力、状態、処理順序、異常系、検証条件は owner component の [`docs/details/*.md`](details/) を正とする。 |
 | 索引限定 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は所在と役割の索引であり、仕様本文を定義しない。 |
 | 入口限定 | [`README.md`](../README.md) は入口であり、詳細ルールや詳細仕様本文を重複定義しない。 |
-| 補助限定 | [`docs/DESIGN.md`](DESIGN.md) は視覚仕様の補助であり、機能仕様、運用仕様、API 仕様の正本ではない。 |
+| デザイン責務限定 | [`docs/DESIGN.md`](DESIGN.md) は生成静的 Web サイトのデザイン関係の正本であり、機能仕様、運用仕様、API 仕様の正本ではない。 |
 
 ## 仕様記載先マトリクス
 
-仕様、詳細仕様、索引、補助文書を改訂する場合は、下表に従って記載先を選ぶ。
+仕様、詳細仕様、デザイン正本、索引を改訂する場合は、下表に従って記載先を選ぶ。
 
 | 書く内容 | 書く場所 | 書いてはいけない場所 |
 |----------|----------|----------------------|
@@ -105,7 +105,7 @@
 
 仕様構造を崩さないため、記載先は以下の順で確定する。
 
-1. 書く内容が作業ルールか、仕様本文か、詳細仕様本文か、索引か、補助文書かを分類する。
+1. 書く内容が作業ルールか、仕様本文か、詳細仕様本文か、デザイン本文か、索引かを分類する。
 2. `仕様記載先マトリクス` で書く場所を確定する。
 3. 書いてはいけない場所に同じ意味の本文が残る場合は、重複として整理する。
 4. 参照だけで足りる場合は、本文を複製せず、正本への参照に留める。
@@ -215,7 +215,7 @@
 | [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` owner component の詳細仕様。 |
 | [`docs/details/security.md`](details/security.md) | `security` owner component の詳細仕様。 |
 | [`docs/details/fixture.md`](details/fixture.md) | `fixture` owner component の詳細仕様。 |
-| [`docs/DESIGN.md`](DESIGN.md) | 生成静的 Web サイトのデザイン仕様。レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を整理する。 |
+| [`docs/DESIGN.md`](DESIGN.md) | 生成静的 Web サイトのデザイン関係の正本。デザイン方針、レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を示す。 |
 | [`AGENTS.md`](../AGENTS.md) | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | 本索引。文書・実装ファイルの役割と所在を示す。仕様本文を定義しない。 |
 
@@ -279,7 +279,7 @@
 | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
 | 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の [`docs/details/*.md`](details/) |
-| 生成静的 Web サイトのデザイン補助 | [`docs/DESIGN.md`](DESIGN.md) |
+| 生成静的 Web サイトのデザイン関係 | [`docs/DESIGN.md`](DESIGN.md) |
 | 文書・実装ファイルの参照先と役割 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) |
 | 実装ファイル、テスト、fixture の所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「仕様化済みコンポーネント」 |
 

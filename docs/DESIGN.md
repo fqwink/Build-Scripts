@@ -7,13 +7,20 @@
 
 ---
 
-本ファイルは生成 HTML の視覚仕様を整理する補助文書である。Adlaire CI の方針、ポリシー、正本関係は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md)、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は [`docs/details/builder.md`](details/builder.md) を参照する。
+本ファイルは、生成 HTML のデザイン関係を定義するデザイン責務の正本である。生成 HTML のデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンの判断は本ファイルを正本とする。
 
 本ファイルは、機能仕様、運用仕様、API 仕様、状態 schema、実装状態、ロードマップ状態を定義しない。
 
-## 1. デザイン補助仕様
+Adlaire CI 全体の方針、ポリシー、正本関係は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md)、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は [`docs/details/builder.md`](details/builder.md) を参照する。
 
-生成 HTML のデザイン方針は [`docs/SPEC.md`](SPEC.md) §3 を参照する。本ファイルは、その方針を実装するための視覚 token、layout、component、interaction の具体値だけを定義する。
+## 1. デザイン方針
+
+docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
+
+- ヘッダーのみアクセントカラーを使う。コンテンツ・サイドバーは中性色ベース
+- CSS カスタムプロパティは [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/`）定義の `--adlaire-*` トークンのみ使用
+- **ライトモード固定**（`prefers-color-scheme` 非対応、ダークモードなし）
+- 外部フォント不使用。システムフォントスタックで日本語環境の可読性を確保
 
 ---
 

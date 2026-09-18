@@ -3,8 +3,8 @@
 **仕様対象コンポーネント：** `components/builder.go` / `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html`
 **将来計画コンポーネント：** `components/mcp.go`
 **出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
-**スクリプトバージョン：** v3（Adlaire Design System ブルートークン正式採用）
-**仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記）。[`docs/SPEC.md`](SPEC.md) ポリシー責務 §2 参照。
+**スクリプトバージョン：** v3
+**仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記）。[`docs/SPEC.md`](SPEC.md) ポリシー責務 §1 参照。
 **最終更新：** 2026-09-15
 
 ---
@@ -29,9 +29,9 @@
 
 [`docs/SPEC.md`](SPEC.md) は、Adlaire CI の方針責務・ポリシー責務の正本である。
 
-[`docs/SPEC.md`](SPEC.md) は、目的、設計方針、禁止事項、成熟度、実装着手可否、仕様判断の原則を扱う。
+[`docs/SPEC.md`](SPEC.md) は、目的、設計方針、禁止事項、成熟度、実装着手可否、仕様判断の原則を扱う。ただし、生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) を正本とする。
 
-方針またはポリシーに該当する内容は、必ず [`docs/SPEC.md`](SPEC.md) に記載する。方針またはポリシーに該当する内容を、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md)、実装ファイル、fixture、PR 本文へ移してはならない。
+方針またはポリシーに該当する内容は、必ず [`docs/SPEC.md`](SPEC.md) に記載する。ただし、生成 HTML のデザイン関係は例外として [`docs/DESIGN.md`](DESIGN.md) に記載する。これら以外の方針またはポリシーに該当する内容を、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md)、実装ファイル、fixture、PR 本文へ移してはならない。
 
 [`docs/SPEC.md`](SPEC.md) の `技術方針` 表と `ディレクトリ構成` tree は、Adlaire CI の方針責務本文である。削除、他文書への移動、参照だけへの置き換えを禁止する。これらは実装詳細、状態一覧、索引本文として扱わない。
 
@@ -56,12 +56,13 @@
 | 状態・計画責務 | [`docs/ROADMAP.md`](ROADMAP.md) | **いつ・どれを** | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順。 |
 | 詳細仕様入口責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | **どこから読むか** | 詳細仕様の入口、読み順、共通固定値、詳細節対応表、リポジトリ内ソース配置。 |
 | owner component 詳細本文責務 | [`docs/details/*.md`](details/) | **どのように実装するか** | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
+| デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | **どう見せるか** | 生成 HTML のデザイン関係。 |
 | 文書・実装ファイル所在の索引責務 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | **どこにあるか** | 文書、実装ファイル、生成物、将来追加予定 path の所在。 |
 | 利用入口責務 | [`README.md`](../README.md) | **どう始めるか** | 利用者向け入口、概要、参照先。 |
 
 新しい記載内容は「この内容はどの責務の問いに答えるか」を基準に、責務を持つ正本を決定する。
 
-判断対象が方針またはポリシーである場合、責務を持つ正本は必ず [`docs/SPEC.md`](SPEC.md) とする。判断対象が実装詳細、実装状態、文書所在、利用入口、検証証跡のいずれかである場合だけ、該当責務の正本を参照する。
+判断対象が方針またはポリシーである場合、責務を持つ正本は必ず [`docs/SPEC.md`](SPEC.md) とする。ただし、判断対象が生成 HTML のデザイン関係である場合、責務を持つ正本は [`docs/DESIGN.md`](DESIGN.md) とする。判断対象が実装詳細、実装状態、文書所在、利用入口、検証証跡のいずれかである場合だけ、該当責務の正本を参照する。
 
 実装者は、実装前に以下の参照順序方針に従う。
 
@@ -82,10 +83,8 @@
 
 `components/builder.go` は、任意の UTF-8 Markdown ファイルまたは Markdown ディレクトリを、静的配信可能な Web サイトへ変換する Go プログラムである。[`docs/SPEC.md`](SPEC.md) 方針責務では、Go 実装を最初からの正本として定義する。
 
-- 大規模 Markdown 仕様書、複数 Markdown ドキュメント、運用メモを、快適に閲覧できる静的 Web サイトへ変換する
+- 大規模 Markdown 仕様書、複数 Markdown ドキュメント、運用メモを、静的 Web サイトへ変換する
 - `index.html`、ページ HTML、共通 CSS、共通 JavaScript、検索 index を出力ディレクトリへ生成する
-- 初期テーマ `adlaire-default` と固定テーマコンポーネントにより、一貫したデザイン言語を固定する
-- Adlaire Design System（ADS）のトークンを採用し、テーマの見た目は ADS 準拠の範囲内で管理する
 
 ## 2. 開発方針
 
@@ -94,15 +93,6 @@
 - **責務正本群が判断基準**：実装の追加・変更は、変更対象の責務を持つ正本への反映を先行させる
 - **仕様から実装への順序**：実装は、[`docs/SPEC.md`](SPEC.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 詳細本文責務の内容に基づいて修正する
 - **責務正本との乖離は不整合**：乖離が生じた場合も、責務を持つ正本を先に改訂し、その正本に基づいて実装を修正する
-
-## 3. デザイン方針
-
-docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
-
-- ヘッダーのみアクセントカラーを使う。コンテンツ・サイドバーは中性色ベース
-- CSS カスタムプロパティは [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/`）定義の `--adlaire-*` トークンのみ使用
-- **ライトモード固定**（`prefers-color-scheme` 非対応、ダークモードなし）
-- 外部フォント不使用。システムフォントスタックで日本語環境の可読性を確保
 
 ## 4. 技術方針
 
@@ -131,7 +121,7 @@ Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核と
 
 | コンポーネント | 自律性の条件 |
 |----------------|--------------|
-| `components/builder.go` | Go 標準ライブラリだけで Markdown 解析、HTML/CSS/JS/search index 生成、テーマコンポーネント出力、検証レポート出力を行う。外部 Markdown parser、template engine、syntax highlight library、search library に依存しない。 |
+| `components/builder.go` | Go 標準ライブラリだけで Markdown 解析、HTML/CSS/JS/search index 生成、検証レポート出力を行う。外部 Markdown parser、template engine、syntax highlight library、search library に依存しない。 |
 | `components/runner.go` | Go 標準ライブラリと OS 標準コマンドだけで GitHub API polling、SHA 比較、ビルド起動、ログ、通知、SSH 転送、snapshot、lock、retry を処理する。外部 CI サービス、job queue、scheduler library に依存しない。 |
 | `components/api.go` | Go 標準ライブラリ `net/http` を基本に、認証、session、状態ファイル CRUD、入力検証、API response を内製実装する。外部 web framework、router、ORM、database driver に依存しない。 |
 | `admin/adlaire-ci-sdk.js` | 単一 ES Module とし、browser 標準 API のみで API client、error handling、streaming、timeout を実装する。npm package、bundler、polyfill、framework に依存しない。 |
@@ -194,9 +184,9 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 リンク化する参照は、表示文言に責務名、ファイル名、節番号、または対象名を含める。例として、状態・計画責務を参照する場合は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様入口責務を参照する場合は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 詳細本文責務を参照する場合は [`docs/details/*.md`](details/)、文書・実装ファイル所在の索引責務を参照する場合は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、利用入口責務を参照する場合は [`README.md`](../README.md) のように記載する。リンク化できない生成物、PR 本文、外部ツール出力で参照を記録する場合でも、参照先ファイル名と節番号を省略してはならない。
 
-方針とポリシーは [`docs/SPEC.md`](SPEC.md) だけに記載する。詳細仕様、ロードマップ、索引、README、実装ファイル、fixture、PR 本文は、方針またはポリシーを本文として定義、補足、緩和、例外化、再解釈してはならない。
+方針とポリシーは [`docs/SPEC.md`](SPEC.md) だけに記載する。ただし、生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) だけに記載する。詳細仕様、ロードマップ、索引、README、実装ファイル、fixture、PR 本文は、方針またはポリシーを本文として定義、補足、緩和、例外化、再解釈してはならない。
 
-方針またはポリシーに該当する記載を [`docs/SPEC.md`](SPEC.md) から削除し、他文書への参照だけに置き換えてはならない。方針またはポリシーを整理する場合は、[`docs/SPEC.md`](SPEC.md) 内で責務名、適用範囲、禁止事項、参照先を明示して整える。
+方針またはポリシーに該当する記載を [`docs/SPEC.md`](SPEC.md) から削除し、他文書への参照だけに置き換えてはならない。ただし、生成 HTML のデザイン関係は [`docs/SPEC.md`](SPEC.md) に本文を置かず、[`docs/DESIGN.md`](DESIGN.md) に記載する。方針またはポリシーを整理する場合は、[`docs/SPEC.md`](SPEC.md) 内で責務名、適用範囲、禁止事項、参照先を明示して整える。
 
 [`docs/SPEC.md`](SPEC.md) の `技術方針` 表と `ディレクトリ構成` tree は、方針責務本文である。これらを実装詳細、状態一覧、索引本文とみなして削除、他文書へ移動、または参照だけへ置き換えてはならない。
 
@@ -208,7 +198,7 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 owner component は対象機能の詳細本文を持つ。collaborator component は、境界、接続、入力受け渡し、出力受け渡し、検証観点として参照される。collaborator component は、owner component の本文を置き換えたり、同じ判断対象を別正本として再定義したりしてはならない。
 
-fixture、expected、fake、検証証跡、完了判定は検証責務として扱い、[`docs/details/fixture.md`](details/fixture.md) を正本とする。実装状態、実装可否、Phase、将来計画は状態責務として扱い、[`docs/ROADMAP.md`](ROADMAP.md) を正本とする。詳細仕様の入口、対応表、共通固定値、リポジトリ内ソース配置は詳細仕様入口責務として扱い、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) を正本とする。文書配置と実装ファイル所在は、文書・実装ファイル所在の索引責務として扱い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
+fixture、expected、fake、検証証跡、完了判定は検証責務として扱い、[`docs/details/fixture.md`](details/fixture.md) を正本とする。実装状態、実装可否、Phase、将来計画は状態責務として扱い、[`docs/ROADMAP.md`](ROADMAP.md) を正本とする。詳細仕様の入口、対応表、共通固定値、リポジトリ内ソース配置は詳細仕様入口責務として扱い、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) を正本とする。生成 HTML のデザイン関係はデザイン責務として扱い、[`docs/DESIGN.md`](DESIGN.md) を正本とする。文書配置と実装ファイル所在は、文書・実装ファイル所在の索引責務として扱い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
 
 本原則は、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の記載整理より上位の方針である。これらの文書を整理する場合は、本原則に従い、重複本文を増やさず、責務と参照先を明示する。
 
@@ -601,15 +591,7 @@ Phase の途中で未仕様化、将来計画、改訂予定の機能を追加�
 
 API の内部説明や fixture 名に既存の段階名が残る場合でも、それらは検証分類としてのみ扱い、実装順序、実装 PR、完了判定の正本にしてはならない。
 
-## 1. デザイントークン準拠
-
-> ⚠️ **準拠義務：** `--adlaire-*` トークンの値は [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/` ディレクトリ）で定義された値に準拠すること。
-
-- スクリプト側での独自トークンの追加・変更は行わない
-- ライトモード固定のため、ダークモード用トークンブロックは不要
-- トークン値の変更は ADS 側のアップデートに追従する形でのみ実施する
-
-## 2. バージョン管理
+## 1. バージョン管理
 
 正式リリース前は、ヘッダーの `仕様バージョン: V.N` と `リリースバージョン: V.X.N` を暫定表記として扱う。暫定表記は、バージョン体系そのものを示す placeholder であり、実在する release tag、GitHub Release、実装済みバージョンを意味しない。
 
@@ -679,10 +661,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 | 設定面 | 責務参照 | 変更時の扱い |
 |---------|------|---------|
 | 入出力 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 | CLI、設定値、入出力 path、優先順位を同時に整合する。 |
-| テーマ | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 / [`docs/DESIGN.md`](DESIGN.md) | テーマ名、許可範囲、出力 CSS、ADS 準拠を同時に整合する。 |
-| デザイントークン | [`docs/DESIGN.md`](DESIGN.md) / [`docs/details/builder.md`](details/builder.md) 詳細本文責務 | ADS 準拠範囲と生成物への反映条件を同時に整合する。 |
-| ページ表示情報 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 | title、version 表示、見出し、TOC 生成の契約を同時に整合する。 |
-| 将来拡張 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 未実装のテーマ拡張、表示拡張、設定拡張は状態分類を先に確定する。 |
+| 将来拡張 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 未実装の設定拡張は状態分類を先に確定する。 |
 
 ## 4. 外部ライブラリ・フレームワーク方針
 
