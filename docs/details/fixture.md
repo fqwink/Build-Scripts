@@ -2,7 +2,7 @@
 
 本ファイルは [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) から分割した fixture / fake / testdata / assertion / PR 証跡の詳細仕様である。
 
-上位判断、実装状態、実装可否、読取順は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 を正とする。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
+本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
 
 ---
 

@@ -2,7 +2,7 @@
 
 本ファイルは [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) から分割した `setup` owner component の詳細仕様である。
 
-上位判断、実装状態、実装可否、読取順は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 を正とする。本ファイルは `setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、fixture、検証観点として参照する。
+本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、fixture、検証観点として参照する。
 
 本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、Phase 完了判定 fixture 記録を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component の詳細仕様ファイルを正とする。
 
