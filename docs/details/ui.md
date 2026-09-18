@@ -1,10 +1,10 @@
 # Adlaire CI — UI 詳細仕様
 
-本ファイルは `docs/DETAIL_INDEX.md` から分割した `ui` owner component の詳細仕様である。
+本ファイルは [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) から分割した `ui` owner component の詳細仕様である。
 
-上位判断、実装状態、実装可否、読取順は `docs/DETAIL_INDEX.md` §0b.1 を正とする。本ファイルは `ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、fixture、検証観点として参照する。
+上位判断、実装状態、実装可否、読取順は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 を正とする。本ファイルは `ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、fixture、検証観点として参照する。
 
-UI が呼び出す SDK method、戻り値、error、stream、token 破棄は `docs/details/sdk.md` §23 を正とする。本ファイルは UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
+UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md`](sdk.md) §23 を正とする。本ファイルは UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
 ---
 
@@ -472,7 +472,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 
 **§27.21〜§27.47 UI 連動実装完了固定契約：**
 
-§27.21〜§27.47 の追加仕様化機能を UI で実装完了と扱うには、§24 の DOM / section / form field 命名契約、UI 操作契約表、UI 共通動作契約、UI 操作完全性検証契約、UI error / disabled 優先順位固定、`docs/details/sdk.md` §23 の SDK 連動実装完了固定契約、`docs/details/fixture.md` §27-F を同時に満たす。UI は SDK response に存在しない key を補完せず、状態ファイルを直接読まず、API endpoint を直接呼ばず、成功前に確定表示を行わない。
+§27.21〜§27.47 の追加仕様化機能を UI で実装完了と扱うには、§24 の DOM / section / form field 命名契約、UI 操作契約表、UI 共通動作契約、UI 操作完全性検証契約、UI error / disabled 優先順位固定、[`docs/details/sdk.md`](sdk.md) §23 の SDK 連動実装完了固定契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。UI は SDK response に存在しない key を補完せず、状態ファイルを直接読まず、API endpoint を直接呼ばず、成功前に確定表示を行わない。
 
 | 対象 | UI 表示 / 操作 | 使用 SDK method | 成功後再取得 | 固定する完了条件 |
 |------|----------------|-----------------|--------------|------------------|
@@ -501,7 +501,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 | secret clearing | password、PAT、Webhook secret、SMTP password、発行 token、TOTP secret、ticket、TOTP code は成功、失敗、panel 遷移、logout、`401`、revoke all で消去される。 |
 | error discipline | `401` は login へ戻す。`403` は logout しない。`409` は仕様上の再取得だけ行う。`422` は field error。`429` は同一操作だけ 10 秒 disabled。 |
 | one-time display | 発行 token、TOTP secret、otpauth URI は専用領域に 1 回だけ表示し、次 user action、copy、panel 遷移、logout、`401` で消去する。 |
-| fixture evidence | `docs/details/fixture.md` §27-F の UI 関連 fixture で、SDK only、refresh order、disabled priority、secret clearing、one-time display、no speculative state が確認される。 |
+| fixture evidence | [`docs/details/fixture.md`](fixture.md) §27-F の UI 関連 fixture で、SDK only、refresh order、disabled priority、secret clearing、one-time display、no speculative state が確認される。 |
 
 **§27.21〜§27.47 UI 連動 fixture 必須証跡：**
 

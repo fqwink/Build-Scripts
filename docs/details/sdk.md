@@ -1,10 +1,10 @@
 # Adlaire CI — SDK 詳細仕様
 
-本ファイルは `docs/DETAIL_INDEX.md` から分割した `sdk` owner component の詳細仕様である。
+本ファイルは [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) から分割した `sdk` owner component の詳細仕様である。
 
-上位判断、実装状態、実装可否、読取順は `docs/DETAIL_INDEX.md` §0b.1 を正とする。本ファイルは `sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
+上位判断、実装状態、実装可否、読取順は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 を正とする。本ファイルは `sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
 
-SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は `docs/details/api.md` §22.0e を正とする。本ファイルは SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
+SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md`](api.md) §22.0e を正とする。本ファイルは SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
 ---
 
@@ -374,7 +374,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 
 **§27.21〜§27.47 SDK 連動実装完了固定契約：**
 
-§27.21〜§27.47 の追加仕様化機能を SDK で実装完了と扱うには、対象 owner component の詳細仕様、`docs/details/api.md` §27 の連動参照表、§23 SDK 引数変換契約、SDK method 完全性検証契約、`docs/details/fixture.md` §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
+§27.21〜§27.47 の追加仕様化機能を SDK で実装完了と扱うには、対象 owner component の詳細仕様、[`docs/details/api.md`](api.md) §27 の連動参照表、§23 SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
 
 | 対象 | SDK method | request 固定 | success 固定 | error 固定 | 禁止事項 |
 |------|------------|--------------|---------------|------------|----------|
@@ -398,7 +398,7 @@ SDK 実装完了時は、§22.0e の SDK 列に記載された method 名と `Ad
 | security handling | token、password、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header を SDK property、console、error message に保存しない。 |
 | error stability | `401` / `403` / `409` / `422` / `429` / `500` / network / timeout が固定 `AdlaireCIError` になり、自動 retry、自動 refresh、自動 logout は仕様に記載された場合だけ行う。 |
 | binary / stream | snapshot download は `Blob`、SSE は `StreamHandle` とし、JSON response と混同しない。 |
-| fixture evidence | `docs/details/fixture.md` §27-F の SDK / UI 関連 fixture で、request shape、error shape、secret leak、token mutation、no retry、no response補完が確認される。 |
+| fixture evidence | [`docs/details/fixture.md`](fixture.md) §27-F の SDK / UI 関連 fixture で、request shape、error shape、secret leak、token mutation、no retry、no response補完が確認される。 |
 
 **§27.21〜§27.47 SDK 連動 fixture 必須証跡：**
 

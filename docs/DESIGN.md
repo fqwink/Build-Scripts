@@ -7,7 +7,7 @@
 
 ---
 
-本ファイルは生成 HTML の視覚仕様を整理する補助文書である。Adlaire CI の方針、ポリシー、正本関係は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は `docs/ROADMAP.md`、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は `docs/details/builder.md` を正とする。
+本ファイルは生成 HTML の視覚仕様を整理する補助文書である。Adlaire CI の方針、ポリシー、正本関係は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md)、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は [`docs/details/builder.md`](details/builder.md) を正とする。
 
 本ファイルは、機能仕様、運用仕様、API 仕様、状態 schema、実装状態、ロードマップ状態を定義しない。
 
@@ -186,6 +186,6 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 adlaire-ci-build --src <source.md> --out site/
 ```
 
-入出力パス、既定値、終了コード、レポート出力は `docs/DETAIL_INDEX.md` および `docs/details/builder.md` の builder 詳細仕様を正とする。
+入出力パス、既定値、終了コード、レポート出力は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) および [`docs/details/builder.md`](details/builder.md) の builder 詳細仕様を正とする。
 
 CSS トークンの変更は Go 版 `components/builder.go` の HTML テンプレート内 `:root { }` ブロックに反映して再ビルドする。

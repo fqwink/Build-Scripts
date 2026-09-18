@@ -1,8 +1,8 @@
 # Adlaire CI — Commit Status 詳細仕様
 
-本ファイルは `docs/DETAIL_INDEX.md` および `docs/details/runner.md` から分割した `commitstatus` owner component の詳細仕様である。
+本ファイルは [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) および [`docs/details/runner.md`](runner.md) から分割した `commitstatus` owner component の詳細仕様である。
 
-上位判断、実装状態、実装可否、読取順は `docs/DETAIL_INDEX.md` §0b.1 を正とする。本ファイルは `commitstatus` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
+上位判断、実装状態、実装可否、読取順は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 を正とする。本ファイルは `commitstatus` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
 
 ---
 
@@ -89,7 +89,7 @@ Commit Status 送信失敗は build 成否を反転させない。送信失敗�
 
 **Commit Status 保存固定契約：**
 
-`.build_logs/{id}.json.commit_status` は `docs/details/statefile.md` §22.0c の CommitStatus object に定義された key だけを保存する。`pending_sent`、`pending_error`、`final_sent` など未定義 key を保存してはならない。pending / final の送信順、HTTP request、response、失敗有無は fixture の `expected/effects.json` と server WARN log で検証し、build log schema へ未定義 key を追加しない。
+`.build_logs/{id}.json.commit_status` は [`docs/details/statefile.md`](statefile.md) §22.0c の CommitStatus object に定義された key だけを保存する。`pending_sent`、`pending_error`、`final_sent` など未定義 key を保存してはならない。pending / final の送信順、HTTP request、response、失敗有無は fixture の `expected/effects.json` と server WARN log で検証し、build log schema へ未定義 key を追加しない。
 
 | ケース | `enabled` | `state` | `sent_at` | `http_status` | `error` |
 |--------|-----------|---------|-----------|---------------|---------|

@@ -2,25 +2,25 @@
 
 本ファイルは詳細仕様入口責務の正本であり、読み順、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置を持つ。
 
-各 owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。本ファイルは個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、fixture assertion、setup 手順を持たない。
+各 owner component の入出力、状態、処理順序、異常系、セキュリティ制約、検証条件の本文は、責務 component 別の [`docs/details/*.md`](details/) を正とする。本ファイルは個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、fixture assertion、setup 手順を持たない。
 
-方針、ポリシー、正本関係の上位判断は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否の上位判断は `docs/ROADMAP.md` を正とする。
+方針、ポリシー、正本関係の上位判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否の上位判断は [`docs/ROADMAP.md`](ROADMAP.md) を正とする。
 
 ---
 
 ## Detail Spec Governance
 
-本ファイルは、詳細仕様入口責務として、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。個別 component の処理本文は owner component 別の `docs/details/*.md` を正とする。
+本ファイルは、詳細仕様入口責務として、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。個別 component の処理本文は owner component 別の [`docs/details/*.md`](details/) を正とする。
 
 | 管理対象 | 正本 | 本ファイルでの扱い |
 |----------|------|--------------------|
-| 詳細仕様の読み方 | `docs/DETAIL_INDEX.md` | 実装者が詳細仕様本文へ到達するための順序を定義する。 |
-| 共通固定値 | `docs/DETAIL_INDEX.md` | component 間で共有する固定値だけを定義する。 |
-| 詳細節対応表 | `docs/DETAIL_INDEX.md` | 対象機能、詳細仕様節、受け入れ条件の入口を示す。 |
-| 実装状態、実装可否、Phase、将来計画 | `docs/ROADMAP.md` | 本ファイルでは定義せず、対象機能の実装可否を確認する。 |
-| §27 / §28 追加仕様化機能参照 | `docs/ROADMAP.md` §6 | owner、主本文、collaborator、横断補足契約を確認する。 |
-| owner component 本文 | `docs/details/*.md` | 本ファイルでは本文を複製せず、参照先だけを示す。 |
-| 方針、ポリシー、正本関係 | `docs/SPEC.md` 方針責務・ポリシー責務 | 本ファイルでは定義しない。 |
+| 詳細仕様の読み方 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 実装者が詳細仕様本文へ到達するための順序を定義する。 |
+| 共通固定値 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | component 間で共有する固定値だけを定義する。 |
+| 詳細節対応表 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 対象機能、詳細仕様節、受け入れ条件の入口を示す。 |
+| 実装状態、実装可否、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) | 本ファイルでは定義せず、対象機能の実装可否を確認する。 |
+| §27 / §28 追加仕様化機能参照 | [`docs/ROADMAP.md`](ROADMAP.md) §6 | owner、主本文、collaborator、横断補足契約を確認する。 |
+| owner component 本文 | [`docs/details/*.md`](details/) | 本ファイルでは本文を複製せず、参照先だけを示す。 |
+| 方針、ポリシー、正本関係 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 本ファイルでは定義しない。 |
 
 ## Detail Spec Selection Rules
 
@@ -31,9 +31,9 @@
 | カテゴリは入口 | §0b.0.1 のカテゴリは探すための入口であり、owner component ではない。 |
 | owner は 1 件 | 実装本文として読む owner component は、対象機能ごとに 1 件だけ確定する。 |
 | collaborator は補助 | collaborator component は schema、表示、security、setup、fixture、検証観点の確認に限定する。 |
-| 状態は statefile | 状態ファイル、lock、atomic write、schema は `docs/details/statefile.md` を読む。 |
-| security は security | 認証、scope、token、audit、session、TOTP、rate limit は `docs/details/security.md` を読む。 |
-| fixture は fixture | fixture、fake、PR 証跡、acceptance checklist は `docs/details/fixture.md` を読む。 |
+| 状態は statefile | 状態ファイル、lock、atomic write、schema は [`docs/details/statefile.md`](details/statefile.md) を読む。 |
+| security は security | 認証、scope、token、audit、session、TOTP、rate limit は [`docs/details/security.md`](details/security.md) を読む。 |
+| fixture は fixture | fixture、fake、PR 証跡、acceptance checklist は [`docs/details/fixture.md`](details/fixture.md) を読む。 |
 
 ## Owner / Collaborator Rules
 
@@ -43,9 +43,9 @@ owner component と collaborator component は、以下の境界で扱う。
 |------|----------|--------------|
 | owner component | 対象機能の入力、出力、状態、処理順序、異常系、検証条件の主本文。 | 他 component の主処理本文、他 component の状態 schema、他 component の UI DOM 詳細。 |
 | collaborator component | 呼び出し境界、参照 schema、表示境界、security、setup、fixture、検証観点。 | owner component の入力、出力、状態、処理順序、異常系の主本文。 |
-| `docs/DETAIL_INDEX.md` | 読み方、共通固定値、対応表、リポジトリ内ソース配置。 | 個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、§27 / §28 追加仕様化機能参照、横断補足契約。 |
+| [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 読み方、共通固定値、対応表、リポジトリ内ソース配置。 | 個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、§27 / §28 追加仕様化機能参照、横断補足契約。 |
 
-owner component が確定できない場合は、実装判断で補完しない。先に `docs/ROADMAP.md` の状態分類と本ファイルの対応表を整合させる。
+owner component が確定できない場合は、実装判断で補完しない。先に [`docs/ROADMAP.md`](ROADMAP.md) の状態分類と本ファイルの対応表を整合させる。
 
 ## Cross Reference Rules
 
@@ -67,30 +67,30 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 ## 詳細仕様の読み方
 
-詳細仕様を読む順番は、`README.md` と `docs/DOCUMENT_INDEX.md` の Reading Order と同じである。本ファイルから読み始めた場合でも、先に `AGENTS.md`、`docs/DOCUMENT_INDEX.md`、`docs/SPEC.md`、`docs/ROADMAP.md` を確認済みでなければならない。
+詳細仕様を読む順番は、[`README.md`](../README.md) と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の Reading Order と同じである。本ファイルから読み始めた場合でも、先に [`AGENTS.md`](../AGENTS.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/ROADMAP.md`](ROADMAP.md) を確認済みでなければならない。
 
 実装者は、対象機能ごとに以下の順で読む。
 
-1. `docs/SPEC.md` 方針責務・ポリシー責務で方針とポリシーを確認し、`docs/ROADMAP.md` で対象の実装状態、実装可否、Phase、将来計画該当有無を確認する。
+1. [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務で方針とポリシーを確認し、[`docs/ROADMAP.md`](ROADMAP.md) で対象の実装状態、実装可否、Phase、将来計画該当有無を確認する。
 2. 本ファイル §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
 3. 本ファイル §0a〜§0h で、詳細仕様の記載基準、共通固定値、実装前確認項目、検証条件、Phase 詳細仕様参照を確認する。
-4. owner component の `docs/details/*.md` を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
-5. collaborator component がある場合は、該当する `docs/details/*.md` を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
-6. `docs/details/setup.md` §26 のセットアップ・アップデート手順と `docs/details/setup.md` §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
+4. owner component の [`docs/details/*.md`](details/) を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
+5. collaborator component がある場合は、該当する [`docs/details/*.md`](details/) を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
+6. [`docs/details/setup.md`](details/setup.md) §26 のセットアップ・アップデート手順と [`docs/details/setup.md`](details/setup.md) §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
 
-詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを主本文として改訂し、本ファイルの対応表と `docs/SPEC.md` 方針責務・ポリシー責務の対象範囲を整合させる。
+詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを主本文として改訂し、本ファイルの対応表と [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務の対象範囲を整合させる。
 
 | 範囲 | 役割 |
 |------|------|
 | §0〜§0j | 詳細仕様の記載基準、実装前確認項目、共通固定値、検証、詳細節対応表、リポジトリ内ソース配置 |
-| §1〜§9 | `docs/details/builder.md`。`builder` / `adlaire-ci-build` の詳細仕様 |
-| §10〜§20 | `docs/details/runner.md`。`runner` / `adlaire-ci-runner` の詳細仕様 |
-| §21〜§22 | `docs/details/api.md`。`api` / `adlaire-ci-api` の詳細仕様。§21a は管理 API サーバー制限を定義する。 |
-| §23 | `docs/details/sdk.md`。`sdk` の詳細仕様 |
-| §24 | `docs/details/ui.md`。`ui` の詳細仕様 |
-| §25 | `docs/details/api.md`。認証の実装仕様 |
-| §26 | `docs/details/setup.md`。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
-| `admin` | `docs/details/admin.md`。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
+| §1〜§9 | [`docs/details/builder.md`](details/builder.md)。`builder` / `adlaire-ci-build` の詳細仕様 |
+| §10〜§20 | [`docs/details/runner.md`](details/runner.md)。`runner` / `adlaire-ci-runner` の詳細仕様 |
+| §21〜§22 | [`docs/details/api.md`](details/api.md)。`api` / `adlaire-ci-api` の詳細仕様。§21a は管理 API サーバー制限を定義する。 |
+| §23 | [`docs/details/sdk.md`](details/sdk.md)。`sdk` の詳細仕様 |
+| §24 | [`docs/details/ui.md`](details/ui.md)。`ui` の詳細仕様 |
+| §25 | [`docs/details/api.md`](details/api.md)。認証の実装仕様 |
+| §26 | [`docs/details/setup.md`](details/setup.md)。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
+| `admin` | [`docs/details/admin.md`](details/admin.md)。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
 
 責務 component 別詳細仕様ファイルの管理は、§0b.1 に従う。
 
@@ -113,7 +113,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 | セキュリティ | 認証、認可、秘密情報の保存禁止、権限、外部公開可否 |
 | 検証 | 構文確認、実行確認、API 確認、生成物確認、整合性確認 |
 
-未確定の内容は、実装可能な詳細仕様として記載してはならない。未確定の場合は、本ファイルまたは責務 component 別詳細仕様ファイルへ推測で具体値を記載せず、方針とポリシーは `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は `docs/ROADMAP.md` で確認する。
+未確定の内容は、実装可能な詳細仕様として記載してはならない。未確定の場合は、本ファイルまたは責務 component 別詳細仕様ファイルへ推測で具体値を記載せず、方針とポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) で確認する。
 
 対象範囲の内容は、実装ファイルが存在しなくても、本節の基準に従って責務 component 別詳細仕様ファイルへ実装可能な粒度まで具体化する。
 
@@ -125,8 +125,8 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 1. §0b.0.1 のカテゴリ表で、対象機能が属する大まかな領域を特定する。
 2. §0b の詳細仕様参照表で、owner component を 1 件に確定する。
-3. owner component の `docs/details/*.md` を主本文として読む。
-4. §0b の参照表または owner component 本文に collaborator component が示されている場合だけ、該当する `docs/details/*.md` を読む。
+3. owner component の [`docs/details/*.md`](details/) を主本文として読む。
+4. §0b の参照表または owner component 本文に collaborator component が示されている場合だけ、該当する [`docs/details/*.md`](details/) を読む。
 5. 状態ファイル、認証、fixture、setup、archive、Commit Status など横断参照が必要な場合は、owner component 本文から明示された参照先に限定して読む。
 
 カテゴリは入口であり、owner component ではない。カテゴリ名を理由に、複数 component の詳細本文を同格の主本文として扱ってはならない。
@@ -137,11 +137,11 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 | カテゴリ | 対象 component | 主な判断対象 | 読む詳細仕様 |
 |----------|----------------|--------------|--------------|
-| Build 系 | `builder` | Markdown 入力、静的 Web サイト出力、theme component、検索 index、変換 report。 | `docs/details/builder.md` |
-| CI / 運用系 | `runner`、`commitstatus`、`archive` | GitHub 監視、pipeline、deploy、snapshot、通知、Commit Status、archive / rollback / cleanup。 | `docs/details/runner.md`、`docs/details/commitstatus.md`、`docs/details/archive.md` |
-| 管理系 | `api`、`sdk`、`ui`、`admin` | 管理 API、JavaScript SDK、標準管理 UI、管理 UI 静的ファイル配布と配信境界。 | `docs/details/api.md`、`docs/details/sdk.md`、`docs/details/ui.md`、`docs/details/admin.md` |
-| 状態 / 安全系 | `statefile`、`security` | 状態ファイル、lock、atomic write、schema、token、scope、audit、session、TOTP、rate limit。 | `docs/details/statefile.md`、`docs/details/security.md` |
-| 配布 / 検証系 | `setup`、`fixture` | バイナリ配布、systemd、セットアップ、アップデート、fixture、fake、PR 証跡、acceptance checklist。 | `docs/details/setup.md`、`docs/details/fixture.md` |
+| Build 系 | `builder` | Markdown 入力、静的 Web サイト出力、theme component、検索 index、変換 report。 | [`docs/details/builder.md`](details/builder.md) |
+| CI / 運用系 | `runner`、`commitstatus`、`archive` | GitHub 監視、pipeline、deploy、snapshot、通知、Commit Status、archive / rollback / cleanup。 | [`docs/details/runner.md`](details/runner.md)、[`docs/details/commitstatus.md`](details/commitstatus.md)、[`docs/details/archive.md`](details/archive.md) |
+| 管理系 | `api`、`sdk`、`ui`、`admin` | 管理 API、JavaScript SDK、標準管理 UI、管理 UI 静的ファイル配布と配信境界。 | [`docs/details/api.md`](details/api.md)、[`docs/details/sdk.md`](details/sdk.md)、[`docs/details/ui.md`](details/ui.md)、[`docs/details/admin.md`](details/admin.md) |
+| 状態 / 安全系 | `statefile`、`security` | 状態ファイル、lock、atomic write、schema、token、scope、audit、session、TOTP、rate limit。 | [`docs/details/statefile.md`](details/statefile.md)、[`docs/details/security.md`](details/security.md) |
+| 配布 / 検証系 | `setup`、`fixture` | バイナリ配布、systemd、セットアップ、アップデート、fixture、fake、PR 証跡、acceptance checklist。 | [`docs/details/setup.md`](details/setup.md)、[`docs/details/fixture.md`](details/fixture.md) |
 | 将来計画 | `mcp` | MCP サーバー。現時点では実装可能な詳細仕様を持たない。 | 詳細仕様なし |
 
 カテゴリをまたぐ機能では、§0b の責務 component 別参照表を優先して owner component を 1 件に確定する。カテゴリ名を component 名、ファイル名、責務境界として扱ってはならない。
@@ -150,21 +150,21 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 ## 0b. 詳細仕様参照表
 
-本節は、責務 component ごとに参照する詳細仕様節を示す。実装状態、実装可否、ロードマップ状態は `docs/ROADMAP.md` を確認する。
+本節は、責務 component ごとに参照する詳細仕様節を示す。実装状態、実装可否、ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) を確認する。
 
 | 責務 component | 詳細仕様節 | 主な確認対象 |
 |--------------------|------------|--------------|
-| `builder` | `docs/details/builder.md` §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、変換 report、builder fixture、builder owner 追加機能。 |
-| `runner` | `docs/details/runner.md` §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、`docs/details/commitstatus.md` §27.1、`docs/details/setup.md` §26 | GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能、Commit Status 呼び出し境界、systemd / setup 参照境界。 |
-| `api` | `docs/details/api.md` §21〜§22、§21a、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、`docs/details/security.md` §27.42〜§27.47、`docs/details/statefile.md` §22.0a、§22.0c | HTTP 共通契約、API server 制限、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、security 呼び出し境界、api owner 追加機能。 |
-| `admin` | `docs/details/admin.md` §0、A1〜A6、`docs/details/setup.md` §26.8、`docs/details/fixture.md` §27 setup / admin / release 連動 fixture 固定契約 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界、setup / admin / release 連動 fixture。 |
-| `sdk` | `docs/details/sdk.md` §23 | SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| `ui` | `docs/details/ui.md` §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
-| `setup` | `docs/details/setup.md` §26 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
-| `statefile` | `docs/details/statefile.md` §22.0a、§22.0c | 状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
-| `archive` | `docs/details/archive.md` §27.7、§27.15 | build log archive、snapshot、download、delete、rollback、cleanup。 |
-| `commitstatus` | `docs/details/commitstatus.md` §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
-| `security` | `docs/details/security.md` §27.42〜§27.47 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
+| `builder` | [`docs/details/builder.md`](details/builder.md) §1〜§9、§8a、§27.4、§27.25、§27.28 | CLI、入力 Markdown、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、変換 report、builder fixture、builder owner 追加機能。 |
+| `runner` | [`docs/details/runner.md`](details/runner.md) §10〜§20、§15a、§27.2〜§27.3、§27.8〜§27.10、§27.14、§27.19、§27.21〜§27.24、§27.26〜§27.27、§27.29、§27.31〜§27.38、[`docs/details/commitstatus.md`](details/commitstatus.md) §27.1、[`docs/details/setup.md`](details/setup.md) §26 | GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能、Commit Status 呼び出し境界、systemd / setup 参照境界。 |
+| `api` | [`docs/details/api.md`](details/api.md) §21〜§22、§21a、§25、§27.5〜§27.6、§27.11〜§27.13、§27.16〜§27.18、§27.20、§27.30、§27.42〜§27.47、[`docs/details/security.md`](details/security.md) §27.42〜§27.47、[`docs/details/statefile.md`](details/statefile.md) §22.0a、§22.0c | HTTP 共通契約、API server 制限、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、security 呼び出し境界、api owner 追加機能。 |
+| `admin` | [`docs/details/admin.md`](details/admin.md) §0、A1〜A6、[`docs/details/setup.md`](details/setup.md) §26.8、[`docs/details/fixture.md`](details/fixture.md) §27 setup / admin / release 連動 fixture 固定契約 | 管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界、setup / admin / release 連動 fixture。 |
+| `sdk` | [`docs/details/sdk.md`](details/sdk.md) §23 | SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
+| `ui` | [`docs/details/ui.md`](details/ui.md) §24 | 画面構成、DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去。 |
+| `setup` | [`docs/details/setup.md`](details/setup.md) §26 | バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
+| `statefile` | [`docs/details/statefile.md`](details/statefile.md) §22.0a、§22.0c | 状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
+| `archive` | [`docs/details/archive.md`](details/archive.md) §27.7、§27.15 | build log archive、snapshot、download、delete、rollback、cleanup。 |
+| `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
+| `security` | [`docs/details/security.md`](details/security.md) §27.42〜§27.47 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
 | `mcp` | 詳細仕様なし | 将来計画。現時点では実装可能な入出力、状態、起動手順、ツール定義、検証条件を定義しない。 |
 
 上表の `詳細仕様節` は参照入口であり、主本文の owner component を変更しない。複数ファイルを参照する行では、対象機能の owner component のファイルを主本文とし、他ファイルは collaborator の境界、schema、fixture、security、setup、受け入れ条件を確認するために読む。参照先に同じ HTTP body、状態 schema、DOM id、SDK method、fixture assertion を重複定義してはならない。
@@ -175,7 +175,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 本節は、責務 component 別に分割済みの詳細仕様ファイルを崩さないための固定仕様である。責務境界の変更、仕様内容の移動、参照先更新を行う場合も、機能追加、実装状態変更、実装可否変更、ロードマップ変更、方針・ポリシー追加を含めてはならない。
 
-責務 component 別詳細仕様ファイルは、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を本文として持たない。方針、ポリシー、正本関係は `docs/SPEC.md` 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否は `docs/ROADMAP.md` 状態・計画責務を参照する。各 `docs/details/*.md` の冒頭では、本節への参照と自ファイルの owner / collaborator 境界だけを示し、上位判断の共通説明を重複記載しない。
+責務 component 別詳細仕様ファイルは、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を本文として持たない。方針、ポリシー、正本関係は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。各 [`docs/details/*.md`](details/) の冒頭では、本節への参照と自ファイルの owner / collaborator 境界だけを示し、上位判断の共通説明を重複記載しない。
 
 詳細仕様本文の配置単位は owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには呼び出し境界、schema、表示、security、setup、fixture、検証観点だけを置く。
 
@@ -183,21 +183,21 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 | ファイル | 持つ内容 | 持たない内容 |
 |----------|----------|--------------|
-| `docs/DETAIL_INDEX.md` | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様。 | 各 component の詳細な処理本文、fixture / PR 証跡正本、状態 schema、API endpoint 詳細、SDK method 実装、UI DOM 詳細、setup / release 手順。 |
-| `docs/details/builder.md` | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
-| `docs/details/runner.md` | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
-| `docs/details/api.md` | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
-| `docs/details/admin.md` | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、release asset 取得手順、fixture / PR 証跡正本。 |
-| `docs/details/sdk.md` | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
-| `docs/details/ui.md` | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
-| `docs/details/setup.md` | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 | runner / api / sdk / ui / admin の個別機能本文、状態 schema、API endpoint、SDK method、UI DOM、fixture / PR 証跡正本、外部依存追加。 |
-| `docs/details/statefile.md` | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / release 手順、fixture / PR 証跡正本、個別 component の業務判断。 |
-| `docs/details/archive.md` | `archive` owner の build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理。 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
-| `docs/details/commitstatus.md` | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
-| `docs/details/security.md` | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
-| `docs/details/fixture.md` | fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
+| [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様。 | 各 component の詳細な処理本文、fixture / PR 証跡正本、状態 schema、API endpoint 詳細、SDK method 実装、UI DOM 詳細、setup / release 手順。 |
+| [`docs/details/builder.md`](details/builder.md) | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
+| [`docs/details/runner.md`](details/runner.md) | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| [`docs/details/api.md`](details/api.md) | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| [`docs/details/admin.md`](details/admin.md) | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界。 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、release asset 取得手順、fixture / PR 証跡正本。 |
+| [`docs/details/sdk.md`](details/sdk.md) | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
+| [`docs/details/ui.md`](details/ui.md) | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
+| [`docs/details/setup.md`](details/setup.md) | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 | runner / api / sdk / ui / admin の個別機能本文、状態 schema、API endpoint、SDK method、UI DOM、fixture / PR 証跡正本、外部依存追加。 |
+| [`docs/details/statefile.md`](details/statefile.md) | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / release 手順、fixture / PR 証跡正本、個別 component の業務判断。 |
+| [`docs/details/archive.md`](details/archive.md) | `archive` owner の build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理。 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| [`docs/details/security.md`](details/security.md) | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| [`docs/details/fixture.md`](details/fixture.md) | fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
-`docs/ROADMAP.md` §6.3 は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを補足し、個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema を定義しない。
+[`docs/ROADMAP.md`](ROADMAP.md) §6.3 は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを補足し、個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema を定義しない。
 
 すべての責務 component 別詳細仕様ファイルは、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
 
@@ -208,37 +208,37 @@ owner component が確定できない場合は、実装判断で補完しない�
 | 持つ内容 | そのファイルだけが主本文として定義する入出力、状態、処理、異常系、検証条件を書く。 |
 | 持たない内容 | 他 owner component へ委ねる処理、状態、API、SDK、UI、fixture、setup、security を書く。 |
 
-責務境界表の `持つ内容` と `持たない内容` が本文と矛盾する場合は、本文を実装判断に使ってはならない。先に責務境界表、本文、§0b の詳細仕様参照表、`docs/DOCUMENT_INDEX.md` を同時に整合させる。
+責務境界表の `持つ内容` と `持たない内容` が本文と矛盾する場合は、本文を実装判断に使ってはならない。先に責務境界表、本文、§0b の詳細仕様参照表、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を同時に整合させる。
 
 責務 component 別詳細仕様ファイルの各節は、以下を満たす。
 
 | 項目 | 必須条件 |
 |------|----------|
 | 節番号 | 既存の節番号を崩さない。番号の再採番は行わない。 |
-| 参照 | 入口ファイルと owner component ファイルの参照先が一意に追跡できるよう、`docs/DETAIL_INDEX.md` の対応表を更新する。 |
+| 参照 | 入口ファイルと owner component ファイルの参照先が一意に追跡できるよう、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) の対応表を更新する。 |
 | owner | 各機能節に owner component を 1 件だけ明記する。 |
 | collaborator | collaborator component は 0 件以上を明記し、owner component を含めない。 |
 | 重複禁止 | 同じ入力、出力、状態 schema、HTTP body、DOM id、fixture assertion を複数ファイルで重複定義しない。 |
-| 横断事項 | 横断する固定値は `docs/DETAIL_INDEX.md` に置く。横断共通基盤を component として扱わない。 |
-| 索引 | `docs/DOCUMENT_INDEX.md` に、分割後ファイルの役割と正本範囲を反映する。 |
+| 横断事項 | 横断する固定値は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に置く。横断共通基盤を component として扱わない。 |
+| 索引 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) に、分割後ファイルの役割と正本範囲を反映する。 |
 
 詳細仕様を読む順序は以下に固定する。
 
-1. `docs/SPEC.md` 方針責務・ポリシー責務で方針とポリシーを確認し、`docs/ROADMAP.md` で実装対象、実装状態、実装可否、Phase、将来計画該当有無を確認する。
-2. `docs/DETAIL_INDEX.md` §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。
+1. [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務で方針とポリシーを確認し、[`docs/ROADMAP.md`](ROADMAP.md) で実装対象、実装状態、実装可否、Phase、将来計画該当有無を確認する。
+2. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。
 3. owner component の分割先詳細仕様ファイルを主本文として読む。
 4. collaborator component がある場合は、該当する分割先詳細仕様ファイルの参照節を呼び出し境界、schema、表示、security、setup、fixture、検証観点として読む。
-5. 状態ファイルの読み書き、lock、atomic write、schema を扱う場合は `docs/details/statefile.md` を読む。
-6. 認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は `docs/details/security.md` を読む。
-7. fixture、fake、PR 証跡が必要な場合は `docs/details/fixture.md` を読む。
+5. 状態ファイルの読み書き、lock、atomic write、schema を扱う場合は [`docs/details/statefile.md`](details/statefile.md) を読む。
+6. 認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は [`docs/details/security.md`](details/security.md) を読む。
+7. fixture、fake、PR 証跡が必要な場合は [`docs/details/fixture.md`](details/fixture.md) を読む。
 
 責務整理、節移動、参照先更新は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
 
 | 完了条件 | 判定 |
 |----------|------|
 | 旧ファイル内の移動対象本文が対応する分割先に移動している。 | 必須 |
-| `docs/DETAIL_INDEX.md` には入口、索引、共通固定値、対応表、管理仕様、リポジトリ内ソース配置だけが残っている。 | 必須 |
-| `docs/SPEC.md`、`docs/DOCUMENT_INDEX.md`、各分割先ファイル間の参照が矛盾していない。 | 必須 |
+| [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) には入口、索引、共通固定値、対応表、管理仕様、リポジトリ内ソース配置だけが残っている。 | 必須 |
+| [`docs/SPEC.md`](SPEC.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、各分割先ファイル間の参照が矛盾していない。 | 必須 |
 | `rg` で旧節名、旧ファイル名、移動前参照の取り残しを確認している。 | 必須 |
 | 実装ファイル、fixture、testdata の内容を分割作業だけで変更していない。 | 必須 |
 
@@ -262,15 +262,15 @@ owner component が確定できない場合は、実装判断で補完しない�
 | セキュリティ | 秘密情報の保存禁止、マスク、ファイル権限、認証/認可、外部公開可否が明記されている。 |
 | 検証 | 構文確認、単体確認、手動 API 確認、生成物確認、ログ確認、失敗系確認のいずれを行うかが明記されている。 |
 
-上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを改訂し、必要に応じて collaborator 詳細仕様、本ファイルの対応表、`docs/SPEC.md` 方針責務・ポリシー責務を同じ仕様 PR で整合させ、未充足項目を仕様として確定する。
+上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを改訂し、必要に応じて collaborator 詳細仕様、本ファイルの対応表、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を同じ仕様 PR で整合させ、未充足項目を仕様として確定する。
 
-実装後の完了判定は以下を入口として確認する。本節は完了条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は `docs/ROADMAP.md`、fixture、fake、PR 証跡、acceptance checklist、差し戻し条件は `docs/details/fixture.md`、setup / release 実行条件は `docs/details/setup.md` を正とする。
+実装後の完了判定は以下を入口として確認する。本節は完了条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md)、fixture、fake、PR 証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を正とする。
 
 1. 実装した機能が、該当 owner component の詳細仕様ファイルと本ファイルの対応表に記載された入力、出力、状態、異常系、検証条件と一致する。
 2. 対象機能が owner component の詳細仕様本文で §0h の機能仕様テンプレートを満たし、§0i の詳細節対応表の受け入れ条件を満たしている。
-3. `docs/details/fixture.md` が要求する fixture、fake、expected / effects、PR 証跡、対象外確認を満たしている。
+3. [`docs/details/fixture.md`](details/fixture.md) が要求する fixture、fake、expected / effects、PR 証跡、対象外確認を満たしている。
 4. 実装対象外に残す機能が PR 本文に明記されている。
-5. `docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`AGENTS.md` のファイル名参照が矛盾していない。
+5. [`docs/SPEC.md`](SPEC.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`AGENTS.md`](../AGENTS.md) のファイル名参照が矛盾していない。
 6. 実装ファイルを変更した場合、構文確認または実行確認の結果が記録できる。
 7. 仕様外の挙動、暗黙の既定値、未記載の状態ファイル、未記載のエラー応答が存在しない。
 
@@ -287,9 +287,9 @@ owner component が確定できない場合は、実装判断で補完しない�
 | 改行 | 新規に書き出す text / JSON Lines ファイルは LF 固定。CRLF 入力は読み込み時に LF として扱う。 |
 | 時刻 | 状態ファイル、API、ログの機械処理用時刻は UTC の ISO 8601 形式（例: `2026-09-16T09:00:00Z`）で保存する。ローカル時刻への変換は UI 表示に限定し、状態ファイル、API response、ログには保存しない。 |
 | JSON | JSON object の未知キーは保存しない。読み込み時に未知キーを見つけた場合は無視し、次回保存時に除去する。 |
-| atomic write | 状態ファイル更新手順は `docs/details/statefile.md` §22.0a を正とする。各 component は同節の手順を使用し、独自更新手順を持たない。 |
-| 権限 | 状態ファイル、秘密情報ファイル、ディレクトリの権限は `docs/details/statefile.md` §22.0a を正とする。 |
-| ロック | 状態ファイル lock の作成、待機、解除、競合時応答は `docs/details/statefile.md` §22.0a を正とする。 |
+| atomic write | 状態ファイル更新手順は [`docs/details/statefile.md`](details/statefile.md) §22.0a を正とする。各 component は同節の手順を使用し、独自更新手順を持たない。 |
+| 権限 | 状態ファイル、秘密情報ファイル、ディレクトリの権限は [`docs/details/statefile.md`](details/statefile.md) §22.0a を正とする。 |
+| ロック | 状態ファイル lock の作成、待機、解除、競合時応答は [`docs/details/statefile.md`](details/statefile.md) §22.0a を正とする。 |
 | ログ秘密情報 | PAT、Webhook Secret、SMTP password、session token、API token は stdout、stderr、JSON log、API response、UI 表示へ平文出力しない。表示が必要な場合は `"***"` とする。 |
 | 終了コード | CLI / runner は `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` ロック競合を標準とする。個別節に明記がある場合もこの意味から外してはならない。 |
 | 禁止事項 | 仕様にない環境変数、状態ファイル、HTTP endpoint、CLI option、外部依存を実装者判断で追加してはならない。必要な場合は先に該当 owner component の詳細仕様ファイルまたは本ファイルの対応表を改訂する。 |
@@ -302,7 +302,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 本表の `builder`、`runner`、`api`、`sdk`、`ui`、`setup` は Phase の主対象 component である。`statefile`、`security`、`archive`、`commitstatus`、`admin`、`fixture` は、主対象 component の collaborator component として完了判定に参加する。collaborator component の検証が失敗する場合、主対象 component の実装も完了扱いにしてはならない。
 
-実装完了判定は、機能実装、fixture / testdata、fake、検証結果、PR 証跡を 1 組として扱う。本ファイルは完了判定の入口と参照順だけを示し、fixture 名、expected / effects、fake 動作、PR 証跡項目、acceptance checklist、差し戻し条件は `docs/details/fixture.md` §0g.8-F、§22-F、§27-F を正とする。コードが仕様どおりに見える場合でも、同ファイルに定義された対象 fixture、expected / effects、実行コマンド、実結果、secret 確認、対象外確認が不足する場合は完了扱いにしない。
+実装完了判定は、機能実装、fixture / testdata、fake、検証結果、PR 証跡を 1 組として扱う。本ファイルは完了判定の入口と参照順だけを示し、fixture 名、expected / effects、fake 動作、PR 証跡項目、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、§22-F、§27-F を正とする。コードが仕様どおりに見える場合でも、同ファイルに定義された対象 fixture、expected / effects、実行コマンド、実結果、secret 確認、対象外確認が不足する場合は完了扱いにしない。
 
 | 対象 | 必須検証 | 合格条件 |
 |------|----------|----------|
@@ -318,15 +318,15 @@ owner component が確定できない場合は、実装判断で補完しない�
 | `api` | endpoint 契約 | §22.0e の全 endpoint について Request、Response、Success、Errors、Read、Write、SDK、UI の対応が実装と一致する。 |
 | `sdk` | SDK 契約 | 全 method が §22.0e の endpoint のみを呼び、query / body 生成、body なし endpoint の body 禁止、HTTP error の `AdlaireCIError` 変換が §23 と一致する。 |
 | `ui` | UI 契約 | 全操作が §24 の SDK method 経由で動作し、成功表示、失敗表示、disabled、再取得、秘密情報消去が一致する。 |
-| `setup` | systemd | `docs/details/setup.md` §26 の unit 名、`ExecStart`、配置パス、権限、起動確認コマンドが実際の導入手順と一致する。 |
-| `statefile` | 状態ファイル契約 | 状態ファイルの schema、lock、atomic write、JSON Lines、破損時処理、権限、秘密情報マスクが `docs/details/statefile.md` §22.0a、§22.0c と一致する。 |
-| `security` | 認証・認可・漏えい禁止 | scope、API key、audit、session、TOTP、rate limit、秘密情報非表示、失敗時副作用が `docs/details/security.md` §27.42〜§27.47 と一致する。 |
-| `archive` | artifact / log archive | gzip archive、snapshot、download、delete、rollback、cleanup の実体処理が `docs/details/archive.md` §27.7、§27.15 と一致し、API / SDK / UI の応答契約を上書きしない。 |
-| `commitstatus` | GitHub Commit Status | payload、送信順、失敗時非反転、保存値、secret mask、検証条件が `docs/details/commitstatus.md` §27.1 と一致し、runner の build 実行判断を上書きしない。 |
-| `admin` | 静的配布境界 | admin 配布物、archive validation、HTTP 静的配信、setup 連携、fixture integration が `docs/details/admin.md` §0、A1〜A6、`docs/details/setup.md` §26.8、`docs/details/fixture.md` §27 setup / admin / release 連動 fixture 固定契約と一致し、UI / SDK の本文を重複定義しない。 |
-| `fixture` | fixture / fake / 証跡 | Phase 別 fixture、fake、assertion、expected / effects、PR 証跡、acceptance checklist、差し戻し条件が `docs/details/fixture.md` §0g.8-F、§22-F、§27-F と一致する。 |
+| `setup` | systemd | [`docs/details/setup.md`](details/setup.md) §26 の unit 名、`ExecStart`、配置パス、権限、起動確認コマンドが実際の導入手順と一致する。 |
+| `statefile` | 状態ファイル契約 | 状態ファイルの schema、lock、atomic write、JSON Lines、破損時処理、権限、秘密情報マスクが [`docs/details/statefile.md`](details/statefile.md) §22.0a、§22.0c と一致する。 |
+| `security` | 認証・認可・漏えい禁止 | scope、API key、audit、session、TOTP、rate limit、秘密情報非表示、失敗時副作用が [`docs/details/security.md`](details/security.md) §27.42〜§27.47 と一致する。 |
+| `archive` | artifact / log archive | gzip archive、snapshot、download、delete、rollback、cleanup の実体処理が [`docs/details/archive.md`](details/archive.md) §27.7、§27.15 と一致し、API / SDK / UI の応答契約を上書きしない。 |
+| `commitstatus` | GitHub Commit Status | payload、送信順、失敗時非反転、保存値、secret mask、検証条件が [`docs/details/commitstatus.md`](details/commitstatus.md) §27.1 と一致し、runner の build 実行判断を上書きしない。 |
+| `admin` | 静的配布境界 | admin 配布物、archive validation、HTTP 静的配信、setup 連携、fixture integration が [`docs/details/admin.md`](details/admin.md) §0、A1〜A6、[`docs/details/setup.md`](details/setup.md) §26.8、[`docs/details/fixture.md`](details/fixture.md) §27 setup / admin / release 連動 fixture 固定契約と一致し、UI / SDK の本文を重複定義しない。 |
+| `fixture` | fixture / fake / 証跡 | Phase 別 fixture、fake、assertion、expected / effects、PR 証跡、acceptance checklist、差し戻し条件が [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、§22-F、§27-F と一致する。 |
 
-検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、fixture 名、期待結果、実結果、状態差分、外部副作用、secret 確認、対象外確認を対応付けて記録する。記録形式、必須項目、不足時の扱いは `docs/details/fixture.md` の PR 証跡契約を正とする。検証不能な項目がある場合は、その項目を完了扱いにしてはならない。
+検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、fixture 名、期待結果、実結果、状態差分、外部副作用、secret 確認、対象外確認を対応付けて記録する。記録形式、必須項目、不足時の扱いは [`docs/details/fixture.md`](details/fixture.md) の PR 証跡契約を正とする。検証不能な項目がある場合は、その項目を完了扱いにしてはならない。
 
 ---
 
@@ -337,40 +337,40 @@ owner component が確定できない場合は、実装判断で補完しない�
 | 対象 | 実装着手条件 | 実装禁止条件 | 完了判定 |
 |------|--------------|--------------|----------|
 | `builder` | §2〜§8 に CLI option、入力 Markdown、出力サイトディレクトリ、終了コード、stderr、HTML 構造、テーマコンポーネント、JS/CSS、生成物確認が定義されている。 | §4〜§7 にない Markdown 記法、CSS class、JavaScript 機能、外部 asset、theme を追加すること。 | §0e の `builder` 必須検証をすべて満たし、生成サイトが §5〜§7 と一致する。 |
-| `runner` | §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd / setup 参照境界が定義されている。systemd unit 本文とセットアップ手順は `docs/details/setup.md` §26 を正とする。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。systemd unit file の生成、配置、更新、enable、restart を runner に追加すること。 | §0e の `runner` 必須検証をすべて満たし、状態ファイル更新順序が §13、§22.0a、§22.0d と一致する。 |
-| `api` | `docs/details/api.md` §21〜§22、§21a、§25 と `docs/details/setup.md` §26 に API 共通契約、API server 制限、endpoint、状態ファイル schema、認証、認可、systemd、セットアップが定義されている。 | `docs/details/api.md` §22.0e にない endpoint、method、status code、response body、状態ファイル write を追加すること。 | `docs/details/api.md` §22.0e の全 endpoint が Request、Response、Errors、Read、Write、SDK、UI の対応表と一致する。 |
-| `sdk` | `docs/details/sdk.md` §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が `docs/details/api.md` §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が `docs/details/api.md` §22.0e と `docs/details/sdk.md` §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
-| `ui` | `docs/details/ui.md` §24 に画面構成、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去が定義されている。 | SDK を介さず API を直接呼ぶこと、未定義の画面・操作・保存先を追加すること、秘密情報を DOM に残すこと。 | 全 UI 操作が `docs/details/ui.md` §24 の表示条件と `docs/details/sdk.md` §23 の SDK method を満たし、秘密情報 field が指定条件で消去される。 |
+| `runner` | §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd / setup 参照境界が定義されている。systemd unit 本文とセットアップ手順は [`docs/details/setup.md`](details/setup.md) §26 を正とする。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。systemd unit file の生成、配置、更新、enable、restart を runner に追加すること。 | §0e の `runner` 必須検証をすべて満たし、状態ファイル更新順序が §13、§22.0a、§22.0d と一致する。 |
+| `api` | [`docs/details/api.md`](details/api.md) §21〜§22、§21a、§25 と [`docs/details/setup.md`](details/setup.md) §26 に API 共通契約、API server 制限、endpoint、状態ファイル schema、認証、認可、systemd、セットアップが定義されている。 | [`docs/details/api.md`](details/api.md) §22.0e にない endpoint、method、status code、response body、状態ファイル write を追加すること。 | [`docs/details/api.md`](details/api.md) §22.0e の全 endpoint が Request、Response、Errors、Read、Write、SDK、UI の対応表と一致する。 |
+| `sdk` | [`docs/details/sdk.md`](details/sdk.md) §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が [`docs/details/api.md`](details/api.md) §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が [`docs/details/api.md`](details/api.md) §22.0e と [`docs/details/sdk.md`](details/sdk.md) §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
+| `ui` | [`docs/details/ui.md`](details/ui.md) §24 に画面構成、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去が定義されている。 | SDK を介さず API を直接呼ぶこと、未定義の画面・操作・保存先を追加すること、秘密情報を DOM に残すこと。 | 全 UI 操作が [`docs/details/ui.md`](details/ui.md) §24 の表示条件と [`docs/details/sdk.md`](details/sdk.md) §23 の SDK method を満たし、秘密情報 field が指定条件で消去される。 |
 
 上表の対象外である `mcp`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらは、詳細仕様入口責務および owner component 詳細本文責務に入出力、状態、起動手順、検証条件を定義しない。
 
 仕様策定完了チェックで未充足が見つかった場合は、実装を開始せず、以下の順で仕様を改訂する。
 
-1. 未充足項目が本ファイルの記載対象外である場合は、先に `docs/SPEC.md` 方針責務・ポリシー責務を確認する。
+1. 未充足項目が本ファイルの記載対象外である場合は、先に [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を確認する。
 2. 未充足項目が入出力、状態ファイル、api、sdk、ui、処理順序、異常系、検証条件に関わる場合は、該当 owner component の詳細仕様ファイルまたは collaborator の詳細仕様ファイルを改訂する。
-3. ファイル名、正本関係、対象範囲が変わる場合は、`docs/DOCUMENT_INDEX.md` の更新要否を確認する。
+3. ファイル名、正本関係、対象範囲が変わる場合は、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の更新要否を確認する。
 4. 対象項目の詳細節、参照先、受け入れ条件が変わる場合は、§0i の詳細節対応表を更新する。
-5. 改訂後、§0b、§0c、§0e、本節、§0h、§0i、§0j、および `docs/ROADMAP.md` の Phase 条件を再確認する。
+5. 改訂後、§0b、§0c、§0e、本節、§0h、§0i、§0j、および [`docs/ROADMAP.md`](ROADMAP.md) の Phase 条件を再確認する。
 
 ---
 
 
 ## 0g. Phase 詳細仕様参照
 
-Phase の一覧、順序、対象 owner component、依存条件、完了条件、引き継ぎ契約、実装 PR 成果物チェックリストは `docs/ROADMAP.md` を正とする。
+Phase の一覧、順序、対象 owner component、依存条件、完了条件、引き継ぎ契約、実装 PR 成果物チェックリストは [`docs/ROADMAP.md`](ROADMAP.md) を正とする。
 
 本ファイルでは、Phase を詳細仕様へ接続する入口だけを持つ。Phase の状態、順序、完了条件、将来計画の昇格判断を重複定義しない。
 
 | Phase | owner component | 主な詳細仕様本文 | fixture / 証跡 |
 |-------|-----------------|------------------|----------------|
-| Phase 1 | `builder` | `docs/details/builder.md` §1〜§9、§8a | `docs/details/fixture.md` §0g.8-F |
-| Phase 2 | `runner` | `docs/details/runner.md` §10〜§20、§15a | `docs/details/fixture.md` §0g.8-F |
-| Phase 3 | `api` | `docs/details/api.md` §21〜§22、§21a、§25、§22.0f、`docs/details/setup.md` §26 | `docs/details/fixture.md` §0g.8-F、§22-F、§27-F |
-| Phase 4 | `api` | `docs/details/api.md` §22.0e、§22.0f | `docs/details/fixture.md` §0g.8-F、§22-F、§27-F |
-| Phase 5 | `sdk` | `docs/details/sdk.md` §23 | `docs/details/fixture.md` §0g.8-F |
-| Phase 6 | `ui` | `docs/details/ui.md` §24 | `docs/details/fixture.md` §0g.8-F |
+| Phase 1 | `builder` | [`docs/details/builder.md`](details/builder.md) §1〜§9、§8a | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F |
+| Phase 2 | `runner` | [`docs/details/runner.md`](details/runner.md) §10〜§20、§15a | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F |
+| Phase 3 | `api` | [`docs/details/api.md`](details/api.md) §21〜§22、§21a、§25、§22.0f、[`docs/details/setup.md`](details/setup.md) §26 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、§22-F、§27-F |
+| Phase 4 | `api` | [`docs/details/api.md`](details/api.md) §22.0e、§22.0f | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、§22-F、§27-F |
+| Phase 5 | `sdk` | [`docs/details/sdk.md`](details/sdk.md) §23 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F |
+| Phase 6 | `ui` | [`docs/details/ui.md`](details/ui.md) §24 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F |
 
-実装者は、対象 Phase が `docs/ROADMAP.md` で実装対象になっていることを確認してから、上表の owner component 詳細仕様本文を読む。
+実装者は、対象 Phase が [`docs/ROADMAP.md`](ROADMAP.md) で実装対象になっていることを確認してから、上表の owner component 詳細仕様本文を読む。
 
 ## 0h. 機能仕様テンプレート
 
@@ -403,11 +403,11 @@ Phase の一覧、順序、対象 owner component、依存条件、完了条件�
 
 詳細節対応表は owner component を置き換える表ではない。受け入れ条件が複数 component にまたがる場合でも、主本文は owner component の詳細仕様ファイルを正とし、collaborator component の詳細仕様は schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認に限定する。collaborator component は、owner component の入力、出力、状態、endpoint、SDK method、UI 操作を追加定義しない。
 
-該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。§27.1〜§27.47 および §28.1〜§28.25 の owner、主本文、collaborator は `docs/ROADMAP.md` §6 の追加仕様化機能参照を確認する。
+該当節に §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。§27.1〜§27.47 および §28.1〜§28.25 の owner、主本文、collaborator は [`docs/ROADMAP.md`](ROADMAP.md) §6 の追加仕様化機能参照を確認する。
 
 ### 0i.1 Builder / 静的 Web サイト出力
 
-§28.1〜§28.25 を実装する場合は、個別行の受け入れ条件に加えて、`docs/details/builder.md` §28 の共通固定契約、CLI / 設定 / REPORT / 出力識別子固定契約、実装パイプライン固定契約、設定解決・終了コード固定契約、設定ファイル / 入力解決固定契約、REPORT 値型固定契約、stdout / stderr / REPORT 固定契約、atomic write / manifest / search index 副作用固定契約、ID / slug / search index / JS state 決定性固定契約、CSS / JS 出力固定契約、CSS / layout / print / visual 固定契約、browser runtime 固定契約、Markdown token / HTML node 変換固定契約、Markdown parser 優先順位固定契約、Markdown 構文文法固定契約、曖昧構文・機能併用固定契約、warning / error code 固定契約、既存出力互換・先取り実装禁止固定契約、個別固定補足契約、実装完了ゲート固定契約、および `docs/details/fixture.md` §28-F を必ず読む。
+§28.1〜§28.25 を実装する場合は、個別行の受け入れ条件に加えて、[`docs/details/builder.md`](details/builder.md) §28 の共通固定契約、CLI / 設定 / REPORT / 出力識別子固定契約、実装パイプライン固定契約、設定解決・終了コード固定契約、設定ファイル / 入力解決固定契約、REPORT 値型固定契約、stdout / stderr / REPORT 固定契約、atomic write / manifest / search index 副作用固定契約、ID / slug / search index / JS state 決定性固定契約、CSS / JS 出力固定契約、CSS / layout / print / visual 固定契約、browser runtime 固定契約、Markdown token / HTML node 変換固定契約、Markdown parser 優先順位固定契約、Markdown 構文文法固定契約、曖昧構文・機能併用固定契約、warning / error code 固定契約、既存出力互換・先取り実装禁止固定契約、個別固定補足契約、実装完了ゲート固定契約、および [`docs/details/fixture.md`](details/fixture.md) §28-F を必ず読む。
 
 | 機能 | 責務 component | 詳細仕様節 | 受け入れ条件 |
 |------|-------------------|------------|--------------|
@@ -474,7 +474,7 @@ Phase の一覧、順序、対象 owner component、依存条件、完了条件�
 | ビルドログ世代管理 | `runner` | §12、§13、§15 | `LOG_KEEP_N` 超過時の削除順序、0 の扱い、削除ログが一致する。 |
 | ビルド出力の外部転送 | `runner` | §14a、§13 | SSH 差分転送、複数ファイル処理、失敗時 pending、通知が一致する。 |
 | ビルドクールダウン | `runner` | §12、§13 | `BUILD_COOLDOWN_SECONDS` 内の起動スキップ、Webhook 二重トリガー抑止、ログが一致する。 |
-| ビルド前の事前チェック | `runner` | §13、`docs/details/setup.md` §26 | ディスク、`adlaire-ci-build`、pipeline 前提の確認、不足時の ERROR と通知が一致する。 |
+| ビルド前の事前チェック | `runner` | §13、[`docs/details/setup.md`](details/setup.md) §26 | ディスク、`adlaire-ci-build`、pipeline 前提の確認、不足時の ERROR と通知が一致する。 |
 | 定期強制ビルド | `runner` / `api` | §12、§13、§22.0e | `FORCE_BUILD_INTERVAL`、変更なし時の強制ビルド、設定 API が一致する。 |
 | ビルド中重複スキップ | `runner` | §11、§13 | `.build_lock` の PID 判定、stale lock、競合時終了コードとログが一致する。 |
 | GitHub PAT 有効期限の事前警告 | `runner` / `api` | §13、§22.0e | `GitHub-Authentication-Token-Expiration` の解析、7 日以内 WARN、API 表示が一致する。 |
@@ -507,7 +507,7 @@ Phase の一覧、順序、対象 owner component、依存条件、完了条件�
 
 | 機能 | 責務 component | 詳細仕様節 | 受け入れ条件 |
 |------|-------------------|------------|--------------|
-| ポーリング間隔の動的変更 | `api` | §22.0e、`docs/details/setup.md` §26、§27.11 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
+| ポーリング間隔の動的変更 | `api` | §22.0e、[`docs/details/setup.md`](details/setup.md) §26、§27.11 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
 | GitHub Webhook 受信 | `api` / `runner` | §22.0e、§22-W、§13、§27.12 | HMAC 検証、イベント記録、キュー投入またはビルドトリガー、エラー応答が一致する。 |
 | 設定バリデーション API | `api` / `sdk` / `ui` | §22.0c、§22.0e、§23、§24、§27.5 | `POST /api/config/validate` が状態を変更せず、正規化後設定、warnings、errors を返す。 |
 | API アクセスログ | `api` / `sdk` / `ui` | §22.0a、§22.0c、§22.0e、§23、§24、§27.6 | `.api_access_log` の schema、追記対象、マスク条件、一覧 API、UI 表示が一致する。 |
@@ -543,7 +543,7 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 詳細仕様本文は、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を責務 component 別に定義する。
 
-本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の `docs/details/*.md` を正とする。
+本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の [`docs/details/*.md`](details/) を正とする。
 
 `mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、本ファイルおよび責務 component 別詳細仕様ファイルでは入出力、状態、起動手順、検証条件を定義しない。
 
@@ -621,25 +621,25 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | `components/*.go` | 実装対象 owner component ごとに 1 Go ファイルだけ存在する。現行 Go 実装は `builder` の `components/builder.go`、`runner` の `components/runner.go`、`api` の `components/api.go` とする。`admin` は `admin/` 配下の静的配布物であり、Go ファイルを持たない。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルとして追加する場合は、追加対象 Phase または追加実装 PR で仕様状態と索引を更新してから作成する。 |
 | 標準移行前ファイル | `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は、対応する標準配置へ移動済みであり、同じ実装本文または同じ fixture が旧配置に残っていない。 |
 | testdata | 実装済みまたは仕様化済み・未実装の owner component ごとに `testdata/<component>/` を使用する。`testdata/mcp/` は MCP 専用詳細仕様が新設されるまで作成しない。 |
-| admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ `ui` と `sdk` の owner 詳細仕様に従う。`admin/style.css` と `admin/app.js` は、`docs/details/admin.md` A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
-| 将来追加予定 path | `components/mcp.go` と MCP 用 fixture は未作成の将来追加予定 path であり、MCP 専用詳細仕様が新設され、`docs/ROADMAP.md` で `仕様化済み・未実装` へ昇格するまで作成しない。 |
+| admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ `ui` と `sdk` の owner 詳細仕様に従う。`admin/style.css` と `admin/app.js` は、[`docs/details/admin.md`](details/admin.md) A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
+| 将来追加予定 path | `components/mcp.go` と MCP 用 fixture は未作成の将来追加予定 path であり、MCP 専用詳細仕様が新設され、[`docs/ROADMAP.md`](ROADMAP.md) で `仕様化済み・未実装` へ昇格するまで作成しない。 |
 
-標準配置を変更する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、`docs/DOCUMENT_INDEX.md` の Specified Components、`docs/ROADMAP.md` の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
+標準配置を変更する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の Specified Components、[`docs/ROADMAP.md`](ROADMAP.md) の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
 
 ---
 
 ## 移動済み詳細仕様索引
 
-責務 component 別詳細仕様ファイルへ移動済みの本文は、`docs/DOCUMENT_INDEX.md` の Detail Spec Management と本ファイル §0b、§0i を入口として確認する。
+責務 component 別詳細仕様ファイルへ移動済みの本文は、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の Detail Spec Management と本ファイル §0b、§0i を入口として確認する。
 
-本ファイルでは移動済み本文を再定義しない。実装者は、対象機能の owner component を §0b または §0i で特定し、該当する `docs/details/*.md` を主本文として読む。
+本ファイルでは移動済み本文を再定義しない。実装者は、対象機能の owner component を §0b または §0i で特定し、該当する [`docs/details/*.md`](details/) を主本文として読む。
 
 | 対象範囲 | 主な参照先 |
 |----------|------------|
-| §1〜§9、§8a | `docs/details/builder.md` |
-| §10〜§20、§15a | `docs/details/runner.md` |
-| §21〜§22、§21a、§25 | `docs/details/api.md` |
-| §23 | `docs/details/sdk.md` |
-| §24 | `docs/details/ui.md` |
-| §26 | `docs/details/setup.md` |
-| §27 / §28 追加仕様化機能 | `docs/ROADMAP.md` §6 と該当 owner component の `docs/details/*.md` |
+| §1〜§9、§8a | [`docs/details/builder.md`](details/builder.md) |
+| §10〜§20、§15a | [`docs/details/runner.md`](details/runner.md) |
+| §21〜§22、§21a、§25 | [`docs/details/api.md`](details/api.md) |
+| §23 | [`docs/details/sdk.md`](details/sdk.md) |
+| §24 | [`docs/details/ui.md`](details/ui.md) |
+| §26 | [`docs/details/setup.md`](details/setup.md) |
+| §27 / §28 追加仕様化機能 | [`docs/ROADMAP.md`](ROADMAP.md) §6 と該当 owner component の [`docs/details/*.md`](details/) |

@@ -1,8 +1,8 @@
 # Adlaire CI — Builder 詳細仕様
 
-本ファイルは `docs/DETAIL_INDEX.md` から分割した `builder` owner component の詳細仕様である。
+本ファイルは [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) から分割した `builder` owner component の詳細仕様である。
 
-上位判断、実装状態、実装可否、読取順は `docs/DETAIL_INDEX.md` §0b.1 を正とする。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
+上位判断、実装状態、実装可否、読取順は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 を正とする。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
 
 ---
 
@@ -22,7 +22,7 @@
 | 項目 | 内容 |
 |------|------|
 | Go バージョン | Go `1.22` 以上。 |
-| 外部依存 | なし。Go 標準ライブラリのみを使用する。外部依存が必要になった場合は実装せず、先に `docs/SPEC.md` 方針責務 §4.1 と `docs/SPEC.md` ポリシー責務 §4 に従って仕様改訂する。 |
+| 外部依存 | なし。Go 標準ライブラリのみを使用する。外部依存が必要になった場合は実装せず、先に [`docs/SPEC.md`](../SPEC.md) 方針責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §4 に従って仕様改訂する。 |
 | 入力 | UTF-8 エンコードの Markdown ファイル、または Markdown ファイルを含むディレクトリ |
 | 出力 | 静的 Web サイトディレクトリ（HTML / CSS / JavaScript / search index） |
 
@@ -1826,7 +1826,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 ## 28. Builder owner 追加仕様化機能 詳細仕様
 
-本節は、`docs/ROADMAP.md` §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。実装状態、実装可否、Phase、将来計画からの昇格判断は `docs/ROADMAP.md` 状態・計画責務を正本とし、本節では定義しない。
+本節は、[`docs/ROADMAP.md`](../ROADMAP.md) §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。実装状態、実装可否、Phase、将来計画からの昇格判断は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を正本とし、本節では定義しない。
 
 本節の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
 
@@ -1841,7 +1841,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | path safety | 入力 Markdown base dir 外を参照する path、絶対 path、URL scheme 偽装、`..` による脱出は警告または終了コード `2` とする。 |
 | report | 機能ごとの成功件数、警告件数、無効化理由、異常件数を `[REPORT]` に追加する。既存 key の意味を変更しない。 |
 | strict | `--strict` 有効時は、仕様で警告扱いとした構文不正、path 不正、未解決参照を終了コード `2` に昇格する。 |
-| fixture | `docs/details/fixture.md` §28-F の fixture 名、入力、期待出力、期待副作用を満たす。 |
+| fixture | [`docs/details/fixture.md`](fixture.md) §28-F の fixture 名、入力、期待出力、期待副作用を満たす。 |
 
 **§28 CLI / 設定 / REPORT / 出力識別子固定契約：**
 
@@ -2901,7 +2901,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 
 **§28 実装完了条件：**
 
-各機能は、該当 §28.x の入力、出力、処理順序、異常系、検証条件、`docs/DETAIL_INDEX.md` §0i.1、`docs/details/fixture.md` §28-F を満たすまで実装完了として扱わない。複数の §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。
+各機能は、該当 §28.x の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0i.1、[`docs/details/fixture.md`](fixture.md) §28-F を満たすまで実装完了として扱わない。複数の §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。
 
 **§28 実装完了ゲート固定契約：**
 
@@ -2918,7 +2918,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | 既存出力互換 | 対象機能無効時、または対象入力なし時に既存 HTML / CSS / JS / search index / REPORT が変わらない。 | 対象外の既存 fixture 差分、未使用 CSS / JS の出力。 |
 | security | HTML escape、attribute escape、URL validation、base 外 path、外部依存不使用を確認する。 | raw HTML、credential、CDN、外部 script、runtime network fetch の残存。 |
 | atomicity | 失敗時に既存出力、manifest、search index を部分更新しない。 | 失敗 fixture で file 更新、削除、manifest 上書きが残る。 |
-| fixture 完備 | `docs/details/fixture.md` §28-F の fixture catalog、manifest schema、expected 比較、最低確認項目を満たす。 | fixture 名不足、manifest key 不足、expected 不足、比較除外理由なし。 |
+| fixture 完備 | [`docs/details/fixture.md`](fixture.md) §28-F の fixture catalog、manifest schema、expected 比較、最低確認項目を満たす。 | fixture 名不足、manifest key 不足、expected 不足、比較除外理由なし。 |
 
 **§28 実装完了報告禁止条件：**
 
@@ -2927,7 +2927,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | 条件 | 理由 |
 |------|------|
 | 対象 §28.x にない CLI option、Markdown 記法、CSS class、JS 挙動を追加した。 | 先取り実装であり、仕様範囲外。 |
-| `docs/details/fixture.md` §28-F にない fixture 名または fixture 構成で検証した。 | fixture 正本から外れている。 |
+| [`docs/details/fixture.md`](fixture.md) §28-F にない fixture 名または fixture 構成で検証した。 | fixture 正本から外れている。 |
 | strict / non-strict の片方だけを実装した。 | 異常系の固定挙動が未完成。 |
 | REPORT key が仕様表と一致しない。 | runner / API / PR 証跡が同じ結果を読めない。 |
 | HTML / CSS / JS の expected 差分を目視または snapshot だけで合格扱いした。 | 再現性ある合否判定ではない。 |

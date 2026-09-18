@@ -1,8 +1,8 @@
 # Adlaire CI — Security 詳細仕様
 
-本ファイルは `docs/DETAIL_INDEX.md` および `docs/details/api.md` から分割した `security` owner component の詳細仕様である。
+本ファイルは [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) および [`docs/details/api.md`](api.md) から分割した `security` owner component の詳細仕様である。
 
-上位判断、実装状態、実装可否、読取順は `docs/DETAIL_INDEX.md` §0b.1 を正とする。本ファイルは `security` owner component の主本文であり、collaborator component の仕様は呼び出し境界、endpoint、SDK、UI、状態 schema、fixture、検証観点として参照する。
+上位判断、実装状態、実装可否、読取順は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 を正とする。本ファイルは `security` owner component の主本文であり、collaborator component の仕様は呼び出し境界、endpoint、SDK、UI、状態 schema、fixture、検証観点として参照する。
 
 ---
 
@@ -64,7 +64,7 @@
 
 ## 認証共通詳細
 
-本節は、password 認証、session、login ticket、認証ログ、`--init-credentials` の security owner 詳細仕様である。HTTP endpoint の method、path、request、response、status は `docs/details/api.md` §22.0e および §25 を正とする。`.admin_credentials` schema は `docs/details/statefile.md` §22.0c を正とする。
+本節は、password 認証、session、login ticket、認証ログ、`--init-credentials` の security owner 詳細仕様である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md`](api.md) §22.0e および §25 を正とする。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を正とする。
 
 **password hash 固定契約：**
 
