@@ -1,27 +1,27 @@
-# Build-Scripts Document Index
+# Build-Scripts — 文書索引
 
 このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。
 
 仕様・詳細仕様・補助文書・本索引は `docs/` 配下に集約する。ルールブック [`AGENTS.md`](../AGENTS.md) と入口文書 [`README.md`](../README.md) はリポジトリ root に置く。
 
-## Specification Governance
+## 仕様構造管理
 
 仕様構造の管理は、文書の所在、正本範囲、記載先、変更手順、完了条件を分離して扱う。
 
 | 管理領域 | 確認する節 | 判断する内容 |
 |----------|------------|--------------|
-| 構造地図 | `Specification Structure Map` | 読みたい目的から参照先を選ぶための地図。 |
-| 階層定義 | `Specification Structure` | 文書階層、文書の位置付け、役割の定義。 |
-| 判断 | `Specification Decision Flow` | 目的ごとに最初に読む文書、次に確認する文書。 |
-| 記載先 | `Specification Write Location Matrix` | 何をどの文書に書き、どこに書かないか。 |
-| 変更手順 | `Specification Change Procedure` | 文書構造変更時の作業順序。 |
-| 完了条件 | `Specification Structure Completion Criteria` | 完了報告前に満たすべき確認項目。 |
+| 構造地図 | `仕様構造マップ` | 読みたい目的から参照先を選ぶための地図。 |
+| 階層定義 | `仕様構造` | 文書階層、文書の位置付け、役割の定義。 |
+| 判断 | `仕様判断フロー` | 目的ごとに最初に読む文書、次に確認する文書。 |
+| 記載先 | `仕様記載先マトリクス` | 何をどの文書に書き、どこに書かないか。 |
+| 変更手順 | `仕様変更手順` | 文書構造変更時の作業順序。 |
+| 完了条件 | `仕様構造完了条件` | 完了報告前に満たすべき確認項目。 |
 
 本節は、仕様構造を変更するための統制入口である。本節自体は仕様本文、詳細仕様本文、実装状態、実装可否、ロードマップを定義しない。
 
-## Specification Structure Map
+## 仕様構造マップ
 
-本節は、読みたい目的から参照先を選ぶための地図である。文書階層そのものの定義は `Specification Structure` を正とする。
+本節は、読みたい目的から参照先を選ぶための地図である。文書階層そのものの定義は `仕様構造` を正とする。
 
 | 読みたいもの | 参照先 | 参照理由 |
 |--------------|--------|----------|
@@ -33,11 +33,11 @@
 | 詳細仕様入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 詳細仕様の読み方、共通固定値、対応表、ソース配置を確認する。 |
 | 詳細仕様本文 | [`docs/details/*.md`](details/) | owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
 | デザイン補助 | [`docs/DESIGN.md`](DESIGN.md) | 生成静的 Web サイトの視覚仕様を確認する。 |
-| 実装所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の `Specified Components` | 実装ファイル、テスト、fixture の所在と状態を確認する。 |
+| 実装所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の `仕様化済みコンポーネント` | 実装ファイル、テスト、fixture の所在と状態を確認する。 |
 
-## Specification Structure
+## 仕様構造
 
-本節は、仕様文書の階層と位置付けを定義する。目的別の参照先選択は `Specification Structure Map` を入口とする。
+本節は、仕様文書の階層と位置付けを定義する。目的別の参照先選択は `仕様構造マップ` を入口とする。
 
 仕様文書の構造は、作業ルール、入口、索引、正本、詳細入口、責務 component 別本文、補助文書に分ける。
 
@@ -54,7 +54,7 @@
 
 仕様判断では、上位階層が下位階層を置き換えるのではなく、各階層の正本範囲だけを参照する。[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は所在と役割の索引であり、仕様本文を定義しない。
 
-## Specification Decision Flow
+## 仕様判断フロー
 
 目的別の参照先は以下に固定する。迷った場合は、最初に本表で参照先を決め、参照先の正本範囲だけを確認する。
 
@@ -71,7 +71,7 @@
 
 本表は文書選択の判断フローであり、各文書の正本範囲を拡張しない。
 
-## Specification Decision Rules
+## 仕様判断ルール
 
 仕様判断では、目的を先に確定し、目的に対応する正本だけを読む。
 
@@ -84,7 +84,7 @@
 | 入口限定 | [`README.md`](../README.md) は入口であり、詳細ルールや詳細仕様本文を重複定義しない。 |
 | 補助限定 | [`docs/DESIGN.md`](DESIGN.md) は視覚仕様の補助であり、機能仕様、運用仕様、API 仕様の正本ではない。 |
 
-## Specification Write Location Matrix
+## 仕様記載先マトリクス
 
 仕様、詳細仕様、索引、補助文書を改訂する場合は、下表に従って記載先を選ぶ。
 
@@ -101,31 +101,31 @@
 
 [`README.md`](../README.md) は入口であり、詳細ルール、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義しない。[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は索引であり、仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義しない。
 
-## Specification Write Rules
+## 仕様記載ルール
 
 仕様構造を崩さないため、記載先は以下の順で確定する。
 
 1. 書く内容が作業ルールか、仕様本文か、詳細仕様本文か、索引か、補助文書かを分類する。
-2. `Specification Write Location Matrix` で書く場所を確定する。
+2. `仕様記載先マトリクス` で書く場所を確定する。
 3. 書いてはいけない場所に同じ意味の本文が残る場合は、重複として整理する。
 4. 参照だけで足りる場合は、本文を複製せず、正本への参照に留める。
 5. 実装状態、実装可否、Phase、将来計画を動かす場合は、[`docs/ROADMAP.md`](ROADMAP.md) の正本範囲として扱う。
 
-## Specification Change Procedure
+## 仕様変更手順
 
 仕様構造、文書配置、ファイル名、参照先、正本関係を変更する場合は、以下の順で作業する。
 
-1. 変更目的を `Specification Decision Flow` で分類する。
-2. 記載先を `Specification Write Location Matrix` で確定する。
+1. 変更目的を `仕様判断フロー` で分類する。
+2. 記載先を `仕様記載先マトリクス` で確定する。
 3. 確定した正本文書だけを編集する。
 4. 文書名、節名、正本範囲、実装ファイル所在に影響がある場合は、必要な索引と参照だけを更新する。
 5. 旧ファイル名、旧節名、移動前参照、削除済み文書名が残っていないことを `rg` で確認する。
 6. 文書構造整理だけの作業では、実装ファイル、testdata、fixture を変更しない。
-7. `Specification Structure Completion Criteria` をすべて満たしてから完了扱いにする。
+7. `仕様構造完了条件` をすべて満たしてから完了扱いにする。
 
 上記手順は、仕様本文の意味、実装状態、ロードマップ状態を変更する許可ではない。仕様本文の意味を変更する場合は、変更内容に対応する正本文書のルールに従う。
 
-## Specification Change Rules
+## 仕様変更ルール
 
 仕様構造変更では、変更の種類ごとに確認対象を固定する。
 
@@ -137,13 +137,13 @@
 | README 整理 | [`README.md`](../README.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | README が入口に留まり、詳細ルールを重複定義していないこと。 |
 | 実装所在整理 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j | 実装ファイル、テスト、fixture の所在と状態が一致すること。 |
 
-## Specification Structure Completion Criteria
+## 仕様構造完了条件
 
 仕様構造、文書配置、ファイル名、参照先、正本関係を変更する作業は、以下をすべて満たすまで完了扱いにしない。
 
 | 確認項目 | 完了条件 |
 |----------|----------|
-| 記載先 | 変更した内容が `Specification Write Location Matrix` の `書く場所` に一致している。 |
+| 記載先 | 変更した内容が `仕様記載先マトリクス` の `書く場所` に一致している。 |
 | 重複禁止 | [`README.md`](../README.md) に詳細ルール、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証 matrix を重複定義していない。 |
 | 索引境界 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) に仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義していない。 |
 | 詳細入口境界 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に方針、ポリシー、実装状態、実装可否、ロードマップ状態を定義していない。 |
@@ -154,7 +154,7 @@
 
 上記のいずれかを満たせない場合は、完了報告せず、該当文書の正本範囲、記載先、参照先を再整備する。
 
-## Specification Completion Rules
+## 仕様完了報告ルール
 
 仕様構造整理の完了報告では、以下を満たす。
 
@@ -166,22 +166,22 @@
 | 検証 | `git diff --check`、旧参照検索、変更範囲確認を明記する。 |
 | 未実施 | docs-only で実装検証を未実施にした場合は理由を明記する。 |
 
-## Repository Document Index
+## リポジトリ文書索引
 
 本節以降は、リポジトリ内文書と実装ファイル所在の索引である。仕様判断の本文は各正本を参照する。
 
 | 索引領域 | 確認する節 | 判断する内容 |
 |----------|------------|--------------|
-| 読む順番 | `Reading Order` | 作業開始から詳細仕様本文までの確認順序。 |
-| 文書一覧 | `Documents` | 各文書の役割と所在。 |
-| 実装所在入口 | `Implementation File Index` | 実装ファイル所在の判断原則。 |
-| 詳細仕様管理 | `Detail Spec Management` | owner component 別詳細仕様ファイルの配置と状態。 |
-| 実装ファイル一覧 | `Specified Components` | 実装ファイル、テスト、fixture の所在と状態。 |
-| 正本関係 | `Source Of Truth` | 判断対象ごとの正本。 |
-| 整合ガード | `Consistency Guardrails` | 文書整合を壊さないための禁止事項。 |
-| 整合メモ | `Consistency Notes` | 現行状態に関する注意点。 |
+| 読む順番 | `読む順番` | 作業開始から詳細仕様本文までの確認順序。 |
+| 文書一覧 | `文書一覧` | 各文書の役割と所在。 |
+| 実装所在入口 | `実装ファイル索引` | 実装ファイル所在の判断原則。 |
+| 詳細仕様管理 | `詳細仕様管理` | owner component 別詳細仕様ファイルの配置と状態。 |
+| 実装ファイル一覧 | `仕様化済みコンポーネント` | 実装ファイル、テスト、fixture の所在と状態。 |
+| 正本関係 | `正本関係` | 判断対象ごとの正本。 |
+| 整合ガード | `整合ガードレール` | 文書整合を壊さないための禁止事項。 |
+| 整合メモ | `整合メモ` | 現行状態に関する注意点。 |
 
-## Reading Order
+## 読む順番
 
 | 順序 | ファイル | 目的 |
 |------|----------|------|
@@ -195,7 +195,7 @@
 
 上記の順序は、文書整理、仕様改訂、実装、検証、PR 作成のすべてで共通とする。[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は索引であり、仕様判断の正本ではない。
 
-## Documents
+## 文書一覧
 
 | ファイル | 役割 |
 |---------|------|
@@ -219,11 +219,11 @@
 | [`AGENTS.md`](../AGENTS.md) | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | 本索引。文書・実装ファイルの役割と所在を示す。仕様本文を定義しない。 |
 
-## Implementation File Index
+## 実装ファイル索引
 
-実装ファイルの所在と状態は、`Specified Components` を正とする。実装ファイルが存在することだけで、仕様化済み、実装可、完了済みとは判断しない。
+実装ファイルの所在と状態は、`仕様化済みコンポーネント` を正とする。実装ファイルが存在することだけで、仕様化済み、実装可、完了済みとは判断しない。
 
-## Detail Spec Management
+## 詳細仕様管理
 
 詳細仕様は、責務 component 別の [`docs/details/*.md`](details/) を本文として管理する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) は、詳細仕様本文を集約せず、入口、読み順、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。§27 追加仕様化機能参照と横断補足契約は [`docs/ROADMAP.md`](ROADMAP.md) §6 を正とする。
 
@@ -246,7 +246,7 @@
 
 詳細仕様を改訂する場合は、[`docs/ROADMAP.md`](ROADMAP.md) で実装状態と実装可否を確認し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) の対応表から owner component を特定し、該当する [`docs/details/*.md`](details/) を本文として更新する。[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は配置と役割の索引に限定し、仕様本文、詳細仕様本文、実装状態の最終判断を定義しない。
 
-## Specified Components
+## 仕様化済みコンポーネント
 
 [`docs/ROADMAP.md`](ROADMAP.md) と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) では、以下のコンポーネントも仕様化されている。
 
@@ -270,7 +270,7 @@
 | `admin/index.html` | `ui` | 実装済み | 標準管理ツール UI。SDK 経由で API と通信する。 |
 | `components/mcp.go` | `mcp` | 将来追加予定 path | MCP サーバー。現時点では未作成であり、実装可能な詳細仕様を持たず、MCP 専用詳細仕様が新設されるまで実装対象ではない。 |
 
-## Source Of Truth
+## 正本関係
 
 | 判断対象 | 正本 |
 |----------|------|
@@ -281,11 +281,11 @@
 | 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の [`docs/details/*.md`](details/) |
 | 生成静的 Web サイトのデザイン補助 | [`docs/DESIGN.md`](DESIGN.md) |
 | 文書・実装ファイルの参照先と役割 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) |
-| 実装ファイル、テスト、fixture の所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の Specified Components |
+| 実装ファイル、テスト、fixture の所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「仕様化済みコンポーネント」 |
 
 [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は索引であり、仕様・デザイン・実装判断の正本ではない。仕様を変更する場合は、先に該当する正本仕様書を更新し、その内容に基づいて実装ファイルを更新する。
 
-## Consistency Guardrails
+## 整合ガードレール
 
 文書整合を保つため、以下を守る。
 
@@ -298,12 +298,12 @@
 | 索引本文化禁止 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) に機能仕様、API 仕様、状態 schema、処理本文を持たせない。 |
 | 実装混入禁止 | 文書構造整理だけの PR で実装ファイル、testdata、fixture を変更しない。 |
 
-## Consistency Notes
+## 整合メモ
 
 現時点では、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/) に記載された一部機能は仕様化済みだが、リポジトリ内に実装コードが存在しない。
 
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
-標準ディレクトリ構成への移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は [`docs/ROADMAP.md`](ROADMAP.md) の実装状態と本ファイルの `Specified Components` に従って実装済みとして扱う。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
+標準ディレクトリ構成への移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は [`docs/ROADMAP.md`](ROADMAP.md) の実装状態と本ファイルの `仕様化済みコンポーネント` に従って実装済みとして扱う。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
 
-`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は旧配置名であり、現行実装実体として扱わない。標準配置と現行実体の判断は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j、本ファイルの `Specified Components` を同時に確認する。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は旧配置名であり、現行実装実体として扱わない。標準配置と現行実体の判断は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j、本ファイルの `仕様化済みコンポーネント` を同時に確認する。

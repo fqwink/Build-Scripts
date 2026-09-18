@@ -18,11 +18,11 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 ## 仕様正本
 
-仕様判断では、[`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) の Reading Order と Source Of Truth に従って正本を確認します。README は入口であり、仕様本文、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証 matrix を定義しません。
+仕様判断では、[`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) の「読む順番」と「正本関係」に従って正本を確認します。README は入口であり、仕様本文、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証 matrix を定義しません。
 
 ## 実装ファイル
 
-標準ディレクトリ構成は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) の Specified Components、実装状態と Phase は [`docs/ROADMAP.md`](docs/ROADMAP.md) を参照します。
+標準ディレクトリ構成は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) の「仕様化済みコンポーネント」、実装状態と Phase は [`docs/ROADMAP.md`](docs/ROADMAP.md) を参照します。
 
 ## リリース形式
 

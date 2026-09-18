@@ -8,7 +8,7 @@
 
 ---
 
-## Detail Spec Governance
+## 詳細仕様管理
 
 本ファイルは、詳細仕様入口責務として、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。個別 component の処理本文は owner component 別の [`docs/details/*.md`](details/) を正とする。
 
@@ -22,7 +22,7 @@
 | owner component 本文 | [`docs/details/*.md`](details/) | 本ファイルでは本文を複製せず、参照先だけを示す。 |
 | 方針、ポリシー、正本関係 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 本ファイルでは定義しない。 |
 
-## Detail Spec Selection Rules
+## 詳細仕様選択ルール
 
 詳細仕様を選ぶ場合は、以下の規則に従う。
 
@@ -35,7 +35,7 @@
 | security は security | 認証、scope、token、audit、session、TOTP、rate limit は [`docs/details/security.md`](details/security.md) を読む。 |
 | fixture は fixture | fixture、fake、PR 証跡、acceptance checklist は [`docs/details/fixture.md`](details/fixture.md) を読む。 |
 
-## Owner / Collaborator Rules
+## Owner / Collaborator 境界ルール
 
 owner component と collaborator component は、以下の境界で扱う。
 
@@ -47,7 +47,7 @@ owner component と collaborator component は、以下の境界で扱う。
 
 owner component が確定できない場合は、実装判断で補完しない。先に [`docs/ROADMAP.md`](ROADMAP.md) の状態分類と本ファイルの対応表を整合させる。
 
-## Cross Reference Rules
+## 相互参照ルール
 
 詳細仕様間の参照は、本文の重複ではなく境界確認として扱う。
 
@@ -67,7 +67,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 ## 詳細仕様の読み方
 
-詳細仕様を読む順番は、[`README.md`](../README.md) と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の Reading Order と同じである。本ファイルから読み始めた場合でも、先に [`AGENTS.md`](../AGENTS.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/ROADMAP.md`](ROADMAP.md) を確認済みでなければならない。
+詳細仕様を読む順番は、[`README.md`](../README.md) と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「読む順番」と同じである。本ファイルから読み始めた場合でも、先に [`AGENTS.md`](../AGENTS.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/ROADMAP.md`](ROADMAP.md) を確認済みでなければならない。
 
 実装者は、対象機能ごとに以下の順で読む。
 
@@ -624,13 +624,13 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ `ui` と `sdk` の owner 詳細仕様に従う。`admin/style.css` と `admin/app.js` は、[`docs/details/admin.md`](details/admin.md) A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
 | 将来追加予定 path | `components/mcp.go` と MCP 用 fixture は未作成の将来追加予定 path であり、MCP 専用詳細仕様が新設され、[`docs/ROADMAP.md`](ROADMAP.md) で `仕様化済み・未実装` へ昇格するまで作成しない。 |
 
-標準配置を変更する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の Specified Components、[`docs/ROADMAP.md`](ROADMAP.md) の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
+標準配置を変更する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「仕様化済みコンポーネント」、[`docs/ROADMAP.md`](ROADMAP.md) の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
 
 ---
 
 ## 移動済み詳細仕様索引
 
-責務 component 別詳細仕様ファイルへ移動済みの本文は、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の Detail Spec Management と本ファイル §0b、§0i を入口として確認する。
+責務 component 別詳細仕様ファイルへ移動済みの本文は、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「詳細仕様管理」と本ファイル §0b、§0i を入口として確認する。
 
 本ファイルでは移動済み本文を再定義しない。実装者は、対象機能の owner component を §0b または §0i で特定し、該当する [`docs/details/*.md`](details/) を主本文として読む。
 
