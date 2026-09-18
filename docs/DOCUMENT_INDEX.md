@@ -132,7 +132,7 @@
 | 変更の種類 | 必ず確認する文書 | 確認内容 |
 |------------|------------------|----------|
 | ファイル名変更 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md)、[`AGENTS.md`](../AGENTS.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 旧ファイル名参照が残っていないこと。 |
-| 正本関係変更 | [`AGENTS.md`](../AGENTS.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | 作業ルール、仕様正本、索引の記載が矛盾しないこと。 |
+| 正本関係変更 | [`AGENTS.md`](../AGENTS.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | 作業ルール、仕様正本、デザイン正本、索引の記載が矛盾しないこと。 |
 | 詳細仕様分割 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | owner component、collaborator、参照表、本文配置が一致すること。 |
 | README 整理 | [`README.md`](../README.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | README が入口に留まり、詳細ルールを重複定義していないこと。 |
 | 実装所在整理 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j | 実装ファイル、テスト、fixture の所在と状態が一致すること。 |

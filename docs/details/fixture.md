@@ -884,8 +884,8 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | §28 共通 | `determinism` | `success-slug-duplicates`、`success-search-index-text-sources`、`success-local-storage-payload`、`success-hash-targets`、`security-deterministic-no-runtime-variance` |
 | §28 共通 | `atomicity` | `success-atomic-write-all-files`、`success-incremental-reuse-byte-identical`、`success-incremental-delete-stale-page`、`failure-strict-warning-no-replace`、`failure-write-error-no-partial-update`、`failure-changed-manifest-invalid-no-output`、`success-dependency-manifest-corrupt-full-build`、`security-atomic-no-stale-temp-promoted` |
 | §28 共通 | `parser-precedence` | `success-block-precedence-code-math-heading`、`success-inline-precedence-code-image-link`、`success-admonition-inline-composition`、`success-heading-inline-slug-source`、`success-list-definition-task-boundary`、`failure-unclosed-math-strict`、`noop-code-fence-protects-extensions`、`security-parser-raw-html-escaped` |
-| §28 共通 | `browser-runtime` | `success-runtime-init-order`、`success-section-collapse-storage-print`、`success-color-scheme-cycle-print`、`success-toc-active-observer-fallback`、`success-hash-history-focus-navigation`、`success-lightbox-focus-trap-close`、`success-keyboard-scope-skip-link`、`security-runtime-no-storage-leak` |
-| §28 共通 | `visual-layout` | `success-css-output-order`、`success-responsive-320-layout`、`success-print-layout`、`success-color-scheme-variables`、`success-minify-visual-preservation`、`success-component-overflow-boundaries`、`security-visual-no-external-assets`、`security-focus-visible-no-overlap` |
+| §28 共通 | `browser-runtime` | `success-runtime-init-order`、`success-section-collapse-storage-print`、`success-light-mode-print`、`success-toc-active-observer-fallback`、`success-hash-history-focus-navigation`、`success-lightbox-focus-trap-close`、`success-keyboard-scope-skip-link`、`security-runtime-no-storage-leak` |
+| §28 共通 | `visual-layout` | `success-css-output-order`、`success-responsive-320-layout`、`success-print-layout`、`success-light-mode-variables`、`success-minify-visual-preservation`、`success-component-overflow-boundaries`、`security-visual-no-external-assets`、`security-focus-visible-no-overlap` |
 | §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`success-reuse-page-copied-to-staging`、`success-stale-page-delete-on-success`、`success-incremental-dependency-manifest-corrupt-full-build`、`failure-changed-manifest-corrupt`、`failure-changed-manifest-base-escape`、`noop-unchanged-pages-kept`、`security-incremental-no-public-write-on-failure` |
 | §28.2 | `formats` | `success-html-default`、`success-html-explicit`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format`、`security-format-no-reserved-output-files` |
 | §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`success-extension-csv-normalization`、`failure-unknown-extension`、`failure-badge-invalid-text-strict`、`noop-badge-invalid-text-nonstrict`、`security-extension-escape`、`noop-extension-disabled` |
@@ -897,7 +897,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 | §28.9 | `diff-highlight` | `success-diff-insert-delete-context`、`success-diff-header`、`success-diff-line-number-composition`、`noop-diff-non-diff-language`、`security-diff-escape`、`security-diff-copy-text-clean` |
 | §28.10 | `lazy-images` | `success-lazy-relative-image`、`success-lazy-external-image-no-fetch`、`success-lazy-data-uri-no-fetch`、`failure-lazy-base-outside-strict`、`noop-lazy-disabled`、`security-lazy-alt-escape`、`security-lazy-invalid-scheme-strict` |
 | §28.11 | `custom-meta` | `success-meta-name-property-order`、`success-meta-og-twitter`、`success-meta-duplicate-last-wins`、`failure-meta-forbidden-key`、`failure-meta-invalid-type`、`security-meta-escape`、`security-meta-secret-not-reported` |
-| §28.12 | `color-scheme` | `success-color-scheme-light`、`success-color-scheme-dark`、`success-color-scheme-auto`、`success-color-scheme-toggle-storage`、`success-color-scheme-print-light`、`failure-color-scheme-unknown`、`security-color-scheme-storage-guard` |
+| §28.12 | `light-mode-fixed` | `success-light-mode-fixed`、`success-light-mode-print`、`security-light-mode-no-theme-toggle`、`security-light-mode-no-storage`、`failure-light-mode-dark-output` |
 | §28.13 | `code-title` | `success-code-title-colon`、`success-code-title-key-value`、`success-code-title-title-only`、`noop-code-title-empty`、`security-code-title-escape`、`security-code-title-copy-search-excluded` |
 | §28.14 | `template-vars` | `success-template-var-replace`、`success-template-var-multiple-sources`、`noop-template-var-code-fence-span`、`noop-template-var-invalid-syntax`、`failure-template-var-missing-strict`、`failure-template-var-key-validation`、`security-template-var-secret-not-reported` |
 | §28.15 | `minify-html` | `success-minify-html`、`success-minify-preserve-code`、`success-minify-attribute-order`、`failure-minify-structure-broken`、`failure-minify-marker-missing`、`noop-minify-disabled`、`security-minify-no-script-style-inline` |
@@ -989,7 +989,7 @@ component 責務を別 PR へ分割する場合でも、分割先 PR が満た�
 |---------|--------------|
 | `success-slug-duplicates` | ASCII、非 ASCII、記号、空 heading、同名 heading、`foo` と `foo-2` の衝突を含む入力で、heading id、TOC href、section wrapper id、hash target が [`docs/details/builder.md`](builder.md) §28 の slug 規則と一致する。 |
 | `success-search-index-text-sources` | 採番 heading、paragraph、list、code、admonition、badge、image alt、footnote、definition list、task list を含む入力で、search index に含める text と除外する UI text が完全一致する。 |
-| `success-local-storage-payload` | section collapse と color scheme を有効にし、`adlaire:section-state`、`adlaire:color-scheme` の key、payload、未知値無視、JSON parse failure fallback を `expected/site/assets/app.js` と `expected/effects.json` で固定する。 |
+| `success-local-storage-payload` | section collapse を有効にし、`adlaire:section-state` の key、payload、未知値無視、JSON parse failure fallback を `expected/site/assets/app.js` と `expected/effects.json` で固定する。color scheme 用 localStorage key は存在しないことを固定する。 |
 | `success-hash-targets` | hash history と TOC active tracking を有効にし、heading id だけを target にすること、TOC depth 外 heading を active 化しないこと、存在しない hash を no-op にすることを固定する。 |
 | `security-deterministic-no-runtime-variance` | 同一入力を fake clock、fake git、異なる OS path separator 相当入力、異なる map order 相当 config で実行しても、HTML、search index、stdout、stderr が同一になることを固定する。 |
 
@@ -1035,9 +1035,9 @@ parser precedence fixture の `expected/site/*.html` は、対象 token の tag�
 
 | fixture | 固定する内容 |
 |---------|--------------|
-| `success-runtime-init-order` | `assets/app.js` 内で static guard、storage guard、color scheme、section collapse、hash history、TOC active、lightbox、accessibility guard の初期化順が固定どおりである。 |
+| `success-runtime-init-order` | `assets/app.js` 内で static guard、storage guard、section collapse、hash history、TOC active、lightbox、accessibility guard の初期化順が固定どおりである。 |
 | `success-section-collapse-storage-print` | section collapse の既定展開、保存値復元、toggle、`aria-expanded`、`adlaire-section-collapsed`、search hit 一時展開、beforeprint / afterprint 復元が一致する。 |
-| `success-color-scheme-cycle-print` | `light → dark → auto → light` の toggle、root `data-color-scheme`、toggle `aria-label`、`adlaire:color-scheme`、print light が一致する。 |
+| `success-light-mode-print` | light 固定の CSS variables、theme toggle 不在、color scheme 永続化不在、print light が一致する。 |
 | `success-toc-active-observer-fallback` | IntersectionObserver 使用時と fallback scroll 時の active link 1 件化、`.is-active`、`aria-current="location"`、TOC depth 外除外が一致する。 |
 | `success-hash-history-focus-navigation` | heading / TOC click、`history.pushState`、`tabindex="-1"`、focus、back / forward、missing hash no-op が一致する。 |
 | `success-lightbox-focus-trap-close` | trigger click、`Enter` / `Space`、dialog open、Escape、backdrop、close button、opener focus return、Tab / Shift+Tab focus trap が一致する。 |
@@ -1048,18 +1048,18 @@ browser runtime fixture の `expected/site/assets/app.js` は、初期化関数�
 
 **§28 visual layout fixture 固定契約：**
 
-`builder-extensions/visual-layout/` は、§28 の CSS 出力順、responsive layout、print layout、color scheme 変数、minify 後の視覚維持、component overflow、外部 visual asset 禁止、focus 表示を固定する共通 fixture である。個別 §28 fixture は、本 fixture と異なる selector 順、media query 境界、print visibility、外部 asset 許可、focus 表示条件を期待値にしてはならない。
+`builder-extensions/visual-layout/` は、§28 の CSS 出力順、responsive layout、print layout、light 固定変数、minify 後の視覚維持、component overflow、外部 visual asset 禁止、focus 表示を固定する共通 fixture である。個別 §28 fixture は、本 fixture と異なる selector 順、media query 境界、print visibility、外部 asset 許可、focus 表示条件を期待値にしてはならない。
 
 | fixture | 固定する内容 |
 |---------|--------------|
-| `success-css-output-order` | `expected/site/assets/style.css` で、既存 base、color scheme、typography / block、code extension、navigation runtime UI、media UI、responsive、print の順序が固定どおりである。 |
+| `success-css-output-order` | `expected/site/assets/style.css` で、既存 base、light visual baseline、typography / block、code extension、navigation runtime UI、media UI、responsive、print の順序が固定どおりである。 |
 | `success-responsive-320-layout` | 幅 `320px` 相当の fixture metadata と expected CSS / HTML で、§28 UI が text overlap、text clipping、不可視 overflow を発生させず、table と code block だけが scroll wrapper 内で横 overflow を持つ。 |
-| `success-print-layout` | `@media print` で interactive controls を非表示、本文要素を表示、collapsed section を展開、color scheme を light 相当、QR を print 専用表示にする。 |
-| `success-color-scheme-variables` | `:root`、`[data-color-scheme="light"]`、`[data-color-scheme="dark"]`、`[data-color-scheme="auto"]`、print の custom property 名と既定値が固定どおりである。 |
+| `success-print-layout` | `@media print` で interactive controls を非表示、本文要素を表示、collapsed section を展開、light 固定表示、QR を print 専用表示にする。 |
+| `success-light-mode-variables` | `:root` と print の custom property 名と既定値が固定どおりであり、dark / auto selector が存在しない。 |
 | `success-minify-visual-preservation` | minify 有効時も required selector、custom property、`@media (max-width: 768px)`、`@media print`、`pre` / `code` の空白保持 property が削除、改名、結合破壊されない。 |
 | `success-component-overflow-boundaries` | admonition、badge、definition list、task list、footnote、math、code title、line numbers、diff、lightbox、Mermaid、print QR が [`docs/details/builder.md`](builder.md) §28 CSS / layout / print / visual 固定契約の境界どおりに出力される。 |
 | `security-visual-no-external-assets` | `@import`、remote `url()`、external font、CDN、追加 asset file、runtime CSS fetch、inline style が出力されない。 |
-| `security-focus-visible-no-overlap` | theme toggle、skip link、TOC active、hash target、lightbox control、collapse toggle の focus / active style が可視で、hover / focus により寸法が変わらず、text を隠さない。 |
+| `security-focus-visible-no-overlap` | skip link、TOC active、hash target、lightbox control、collapse toggle の focus / active style が可視で、hover / focus により寸法が変わらず、text を隠さない。 |
 
 visual layout fixture の `manifest.json` は、`viewport_width` を使う場合でも判定を画像 snapshot だけに依存させてはならない。`expected/site/assets/style.css`、`expected/site/*.html`、`expected/security.json`、必要に応じて `expected/visual.json` に、selector、media query、display、overflow、visibility、focus、禁止 asset を構造化して固定する。ブラウザ実行がない fixture でも、期待 HTML / CSS / security の組み合わせで合否判定できなければならない。
 
@@ -1163,13 +1163,11 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `custom-meta` | `failure-meta-invalid-type` | `ADLAIRE_META_JSON` または config meta が object 以外、value string 以外、空 key、制御文字 key の場合に `BUILDER28_INVALID_OPTION` になる。 |
 | `custom-meta` | `security-meta-escape` | meta key / value の quote、raw HTML、event handler、credential URL を attribute escape し、実行可能 HTML を出力しない。 |
 | `custom-meta` | `security-meta-secret-not-reported` | secret 風 value と credential 付き URL value が stdout、stderr、REPORT、manifest に平文出力されない。 |
-| `color-scheme` | `success-color-scheme-light` | `data-color-scheme="light"`、light CSS variables、toggle、REPORT `color_scheme="light"` を固定する。 |
-| `color-scheme` | `success-color-scheme-dark` | `data-color-scheme="dark"`、dark CSS variables、toggle、REPORT `color_scheme="dark"` を固定する。 |
-| `color-scheme` | `success-color-scheme-auto` | `data-color-scheme="auto"`、`@media (prefers-color-scheme: dark)`、auto CSS variables を固定する。 |
-| `color-scheme` | `success-color-scheme-toggle-storage` | `light → dark → auto → light` の toggle、`adlaire:color-scheme` 保存値、unknown value fallback、storage 例外 no-break を `expected/site/assets/app.js` で確認する。 |
-| `color-scheme` | `success-color-scheme-print-light` | `@media print` で light 相当の背景 / 文字色になり、dark background を印刷しない。 |
-| `color-scheme` | `failure-color-scheme-unknown` | 未知 scheme を `BUILDER28_INVALID_OPTION`、終了コード `2`、stdout 空、公開出力維持にする。 |
-| `color-scheme` | `security-color-scheme-storage-guard` | localStorage 値が unknown、空、JSON 風、長大文字列でも例外化せず、静的 HTML 表示を壊さない。 |
+| `light-mode-fixed` | `success-light-mode-fixed` | `:root` の light CSS variables、REPORT `color_scheme_fixed=true`、dark / auto selector 不在を固定する。 |
+| `light-mode-fixed` | `success-light-mode-print` | `@media print` で light 固定の背景 / 文字色になり、dark background を印刷しない。 |
+| `light-mode-fixed` | `security-light-mode-no-theme-toggle` | `.theme-toggle`、`data-color-scheme-toggle`、theme toggle label が HTML / CSS / JS に存在しない。 |
+| `light-mode-fixed` | `security-light-mode-no-storage` | `adlaire:color-scheme`、`ADLAIRE_COLOR_SCHEME`、`color_scheme` 入力処理が存在しない。 |
+| `light-mode-fixed` | `failure-light-mode-dark-output` | dark / auto selector、`prefers-color-scheme`、color scheme 永続化が出力された場合は `BUILDER28_OUTPUT_VALIDATION_FAILED`、終了コード `1`、公開出力維持にする。 |
 | `code-title` | `success-code-title-colon` | `go:main.go` 形式で language と title を分離し、`.code-block-header` 内 `.code-title` を出力する。 |
 | `code-title` | `success-code-title-key-value` | `bash:title=deploy.sh` 形式で title を出力し、language は `bash` として code block に残す。 |
 | `code-title` | `success-code-title-title-only` | `title=README.md` 形式で language 空、title ありの code block を固定する。 |
@@ -1231,7 +1229,7 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `a11y` | `success-a11y-landmarks-labels` | `.skip-link`、`#main-content`、landmark role、TOC / search / icon button の `aria-label`、`:focus-visible`、REPORT `a11y_*` を固定する。 |
 | `a11y` | `success-a11y-skip-link-tab-order` | skip link が最初の focus target になり、main content へ移動し、既存 keyboard shortcut と衝突しない focus 順を `expected/site/assets/app.js` と HTML で固定する。 |
 | `a11y` | `failure-a11y-duplicate-id-strict` | 重複 id、空 label、focus 不能 skip target、keyboard trap を `BUILDER28_OUTPUT_VALIDATION_FAILED`、終了コード `1`、stdout 空、stderr 固定 error、公開出力維持にする。 |
-| `a11y` | `security-a11y-no-keyboard-trap` | theme toggle、section collapse、TOC active、hash target、lightbox、skip link を併用しても Tab / Shift+Tab が閉じ込められず、focus outline が text を隠さない。 |
+| `a11y` | `security-a11y-no-keyboard-trap` | section collapse、TOC active、hash target、lightbox、skip link を併用しても Tab / Shift+Tab が閉じ込められず、focus outline が text を隠さない。 |
 | `image-lightbox` | `success-lightbox-open-close` | trigger 数、page 1 個の dialog、open / close button、`aria-modal`、`aria-hidden`、opener focus return、REPORT `lightbox_images` を固定する。 |
 | `image-lightbox` | `success-lightbox-escape-backdrop` | Escape、backdrop click、close button、Enter / Space activation、dialog hidden state、body scroll への副作用なしを `expected/site/assets/app.js` で固定する。 |
 | `image-lightbox` | `failure-lightbox-alt-missing-strict` | strict で alt なし / 空 alt image を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、stdout 空、stderr 固定 error、公開出力維持にする。 |
@@ -1308,7 +1306,7 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | §28.9 | inserted / deleted / context / header class、line number 併用、escape、copy text / search index 清浄性。 |
 | §28.10 | lazy 属性、外部 URL no-fetch、data URI no-fetch、base 外 path strict、disabled no-op、alt escape、invalid scheme strict。 |
 | §28.11 | name / property key 正規化、head 内順序、重複 last wins、禁止 key、型 validation、attribute escape、secret 非表示。 |
-| §28.12 | light / dark / auto、CSS variables、toggle cycle、`adlaire:color-scheme`、storage guard、print light、unknown scheme 拒否。 |
+| §28.12 | light 固定、dark / auto selector 不在、theme toggle 不在、`adlaire:color-scheme` 不在、print light、禁止出力拒否。 |
 | §28.13 | colon / key-value / title-only title、copy / search 除外、empty title no-op、escape。 |
 | §28.14 | key validation、source 優先順位、code fence / span 非置換、invalid syntax no-op、missing var strict、secret 非表示、replacement count。 |
 | §28.15 | byte count、pre/code 保持、attribute order 保持、structure validation、marker validation、disabled 互換、inline script / style 非追加。 |

@@ -2,7 +2,7 @@
 
 本ファイルは、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を管理するロードマップ正本である。
 
-方針、ポリシー、正本関係、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を正とする。詳細仕様の入口、owner component 対応表、共通固定値、リポジトリ内ソース配置は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) を正とする。owner component 別の入出力、状態、処理順序、異常系、検証条件は [`docs/details/*.md`](details/) を正とする。
+方針、ポリシー、正本関係、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を正とする。生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を正とする。詳細仕様の入口、owner component 対応表、共通固定値、リポジトリ内ソース配置は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) を正とする。owner component 別の入出力、状態、処理順序、異常系、検証条件は [`docs/details/*.md`](details/) を正とする。
 
 本ファイルは状態と計画を扱う。HTTP response schema、状態ファイル schema、SDK method の実装詳細、UI DOM、fixture assertion、具体的な処理順序は定義しない。
 
@@ -466,7 +466,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | diff ハイライト | `diff` / `patch` fence の inserted/deleted/header/context class と copy 本文維持を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.9、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 画像の遅延読み込み | image 出力の `loading="lazy"`、`decoding="async"`、path warning、alt escape を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.10、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | カスタムメタタグ注入 | `--meta` の validation、name/property、禁止 key、attribute escape を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.11、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ダークモード対応 | `light` / `dark` / `auto`、CSS variables、toggle、print light を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.12、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ライトモード固定 | DESIGN 正本に従い、生成 HTML を light 固定にし、dark / auto / theme toggle / color scheme 永続化を出力しない。 | [`docs/DESIGN.md`](DESIGN.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.12、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | コードブロックのファイル名表示 | fence info parsing、title escape、copy 対象除外を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.13、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | テンプレート変数展開 | `--var`、key validation、code fence 内非置換、未定義時 warning/strict を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.14、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | HTML ミニファイ | safe minify、pre/code 保持、必須 marker 検証、report を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.15、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
@@ -597,7 +597,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | §28.9 | diff ハイライト | `builder` | [`docs/details/builder.md`](details/builder.md) §28.9 | なし |
 | §28.10 | 画像の遅延読み込み | `builder` | [`docs/details/builder.md`](details/builder.md) §28.10 | なし |
 | §28.11 | カスタムメタタグ注入 | `builder` | [`docs/details/builder.md`](details/builder.md) §28.11 | なし |
-| §28.12 | ダークモード対応 | `builder` | [`docs/details/builder.md`](details/builder.md) §28.12 | なし |
+| §28.12 | ライトモード固定 | `builder` | [`docs/details/builder.md`](details/builder.md) §28.12 | [`docs/DESIGN.md`](DESIGN.md) |
 | §28.13 | コードブロックのファイル名表示 | `builder` | [`docs/details/builder.md`](details/builder.md) §28.13 | なし |
 | §28.14 | テンプレート変数展開 | `builder` | [`docs/details/builder.md`](details/builder.md) §28.14 | なし |
 | §28.15 | HTML ミニファイ | `builder` | [`docs/details/builder.md`](details/builder.md) §28.15 | なし |

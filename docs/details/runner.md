@@ -264,7 +264,7 @@ type DeployTarget struct {
 | `--state-dir <path>` | 任意 | `/opt/adlaire-builder` | 状態ファイル、repo、dist、admin の基準ディレクトリ。相対パスは禁止。 |
 | `--once` | 任意 | `true` | 1 回だけ実行して終了する。Go 版 runner は oneshot 固定のため、指定してもしなくても同じ挙動とする。 |
 | `--dry-run` | 任意 | `false` | 設定、状態、GitHub target、SHA 差分、起動可否だけを検証し、ビルド、deploy、通知、状態ファイル更新を行わず終了する。 |
-| `--version` | 任意 | なし | バイナリ名、仕様名、Go build 情報を 1 行で標準出力へ表示して終了する。 |
+| `--version` | 任意 | なし | バイナリ名、バージョン識別子、Go build 情報を 1 行で標準出力へ表示して終了する。 |
 | `--help` | 任意 | なし | 引数一覧を標準出力へ表示して終了する。 |
 
 未知引数、値欠落、相対 `--state-dir` は終了コード `2` とし、ビルド処理を開始しない。

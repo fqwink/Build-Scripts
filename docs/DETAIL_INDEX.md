@@ -67,7 +67,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 ## 詳細仕様の読み方
 
-詳細仕様を読む順番は、[`README.md`](../README.md) と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「読む順番」と同じである。本ファイルから読み始めた場合でも、先に [`AGENTS.md`](../AGENTS.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/ROADMAP.md`](ROADMAP.md) を確認済みでなければならない。
+詳細仕様を読む順番は、[`README.md`](../README.md) と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「読む順番」と同じである。本ファイルから読み始めた場合でも、先に [`AGENTS.md`](../AGENTS.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md) を確認済みでなければならない。
 
 実装者は、対象機能ごとに以下の順で読む。
 
@@ -446,7 +446,7 @@ Phase の一覧、順序、対象 owner component、依存条件、完了条件�
 | diff ハイライト | `builder` | §28.9 | diff fence の inserted/deleted/header/context class と copy 本文が一致する。 |
 | 画像の遅延読み込み | `builder` | §28.10 | `loading="lazy"`、`decoding="async"`、path warning、alt escape が一致する。 |
 | カスタムメタタグ注入 | `builder` | §28.11 | meta validation、name/property、禁止 key、escape が一致する。 |
-| ダークモード対応 | `builder` | §28.12 | `light` / `dark` / `auto`、CSS variables、toggle、print light が一致する。 |
+| ライトモード固定 | `builder` | §28.12 | 生成 HTML が light 固定で、dark / auto / theme toggle / color scheme 永続化を出力しない。 |
 | コードブロックのファイル名表示 | `builder` | §28.13 | fence info parsing、title escape、copy 対象除外が一致する。 |
 | テンプレート変数展開 | `builder` | §28.14 | 変数 validation、code fence 内非置換、未定義時 warning/strict が一致する。 |
 | HTML ミニファイ | `builder` | §28.15 | safe minify、pre/code 保持、必須 marker 検証、report が一致する。 |

@@ -67,7 +67,7 @@ var DefaultBuildConfig = BuildConfig{
 | `--build-id <id>` | 任意 | 空文字 | 出力 HTML の `<head>` に `adlaire-build-id` として埋め込む。空文字の場合も空 content の meta を出力する。 |
 | `--commit-sha <sha>` | 任意 | 空文字 | 出力 HTML の `<head>` に `adlaire-commit-sha` として埋め込む。空文字の場合も空 content の meta を出力する。 |
 | `--build-at <iso8601>` | 任意 | 空文字 | 出力 HTML の `<head>` に `adlaire-build-at` として埋め込む。値がある場合は UTC ISO 8601 のみ許可する。 |
-| `--version` | 任意 | なし | バイナリ名、仕様名、Go build 情報を 1 行で標準出力へ表示して終了する。 |
+| `--version` | 任意 | なし | バイナリ名、バージョン識別子、Go build 情報を 1 行で標準出力へ表示して終了する。 |
 | `--help` | 任意 | なし | 引数一覧を標準出力へ表示して終了する。 |
 
 **CLI 引数の異常系：**
@@ -1860,7 +1860,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | §28.9 | fence info `diff`、`patch` | 該当 fence のみ有効。 | `diff_blocks`、`diff_insertions`、`diff_deletions` | `.tok-inserted`、`.tok-deleted`、`.tok-context`、`.tok-diff-header` | diff 行 escape 後に raw HTML が残る場合。 |
 | §28.10 | `--lazy-images=<true\|false>`、`ADLAIRE_LAZY_IMAGES` | `true` | `lazy_images`、`image_path_warnings` | `loading="lazy"`、`decoding="async"` | base 外相対 path。 |
 | §28.11 | repeatable `--meta <key=value>`、`ADLAIRE_META_JSON` | 空値。 | `custom_meta_count`、`custom_meta_rejected` | `<meta name>`、`<meta property>`。新規 JS なし。 | 空 key、制御文字、`script`、`http-equiv`、raw `<` / `>`。 |
-| §28.12 | `--color-scheme <light\|dark\|auto>`、`ADLAIRE_COLOR_SCHEME` | `light` | `color_scheme`、`color_scheme_toggle` | `data-color-scheme`、`.theme-toggle`、`adlaire:color-scheme` | 未知 scheme。 |
+| §28.12 | なし | light 固定 | `color_scheme_fixed` | なし | dark / auto / theme toggle / color scheme 永続化が出力された場合。 |
 | §28.13 | fence info `lang:title=value`、`lang:path` | 空 title。 | `code_titles`、`code_title_warnings` | `.code-title`、`.code-block-header` | title escape 後に raw HTML が残る場合。 |
 | §28.14 | repeatable `--var <KEY=VALUE>`、`ADLAIRE_TEMPLATE_VARS_JSON` | 空値。 | `template_vars`、`template_vars_missing`、`template_vars_replaced` | `{{ KEY }}`。新規 DOM class なし。 | key 不正、未定義変数、code fence 内置換発生。 |
 | §28.15 | `--minify-html`、`ADLAIRE_MINIFY_HTML` | `false` | `minify_html`、`minify_bytes_before`、`minify_bytes_after`、`minify_bytes_saved` | 既存 HTML。新規 DOM class なし。 | 必須 marker 消失、空 HTML、pre/code 保持失敗。 |
@@ -1938,7 +1938,7 @@ owner component は `builder` とする。collaborator component は `runner`、
     "updated_at_source": "none",
     "lazy_images": true,
     "meta": {},
-    "color_scheme": "light",
+    "color_scheme_fixed": true,
     "template_vars": {},
     "minify_html": false,
     "toc_active": true,
@@ -1967,7 +1967,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | `updated_at_source` | string | §28.8 | `none`、`git`、`file`。 |
 | `lazy_images` | boolean | §28.10 | `true` / `false`。 |
 | `meta` | object[string]string | §28.11 | key / value は `--meta` と同じ validation。object key は ASCII 昇順で処理する。 |
-| `color_scheme` | string | §28.12 | `light`、`dark`、`auto`。 |
+| `color_scheme_fixed` | boolean | §28.12 | `true` 固定。 |
 | `template_vars` | object[string]string | §28.14 | key / value は `--var` と同じ validation。object key は ASCII 昇順で処理する。 |
 | `minify_html` | boolean | §28.15 | `true` / `false`。 |
 | `toc_active` | boolean | §28.16 | `true` / `false`。 |
@@ -1986,7 +1986,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | 値種別 | 対象環境変数 | format |
 |--------|--------------|--------|
 | boolean | `ADLAIRE_SECTION_COLLAPSE`、`ADLAIRE_LAZY_IMAGES`、`ADLAIRE_MINIFY_HTML`、`ADLAIRE_TOC_ACTIVE`、`ADLAIRE_FOOTNOTES`、`ADLAIRE_HASH_HISTORY`、`ADLAIRE_A11Y_CHECK`、`ADLAIRE_IMAGE_LIGHTBOX`、`ADLAIRE_DEFINITION_LISTS`、`ADLAIRE_TASK_LISTS` | `true`、`false`、`1`、`0` だけを許可する。大文字小文字は区別しない。 |
-| string enum | `ADLAIRE_OUTPUT_FORMAT`、`ADLAIRE_HEADING_NUMBERING`、`ADLAIRE_UPDATED_AT_SOURCE`、`ADLAIRE_COLOR_SCHEME` | trim 後の lowercase 値だけを許可する。未知値は拒否する。 |
+| string enum | `ADLAIRE_OUTPUT_FORMAT`、`ADLAIRE_HEADING_NUMBERING`、`ADLAIRE_UPDATED_AT_SOURCE` | trim 後の lowercase 値だけを許可する。未知値は拒否する。 |
 | csv | `ADLAIRE_MARKDOWN_EXTENSIONS` | comma 区切り。各要素は trim し、空要素、重複以外の未知値を拒否する。 |
 | range | `ADLAIRE_TOC_DEPTH` | `min:max`。前後空白は trim する。 |
 | base 内 path | `ADLAIRE_CHANGED_MANIFEST` | trim 後、空なら未指定。非空は §28.1 の path validation を適用する。 |
@@ -2020,7 +2020,7 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 |--------|----|------|
 | boolean | `incremental_enabled`、`minify_html`、`hash_history_enabled` | `true` または `false`。 |
 | integer | `lazy_images`、`toc_items`、`task_list_items` | 0 以上。負数は禁止。 |
-| string | `output_format`、`color_scheme`、`updated_at_source` | JSON string。例: `output_format="html"`。空値は `""`。 |
+| string | `output_format`、`updated_at_source` | JSON string。例: `output_format="html"`。空値は `""`。 |
 | timestamp | `updated_at` | JSON string。UTC、RFC3339、秒精度。取得不能時は `""`。 |
 | array | `template_vars_missing`、`incremental_reason` | compact JSON array。例: `incremental_reason=["changed","dependency"]`。空配列は `[]`。 |
 
@@ -2125,25 +2125,25 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | 順序 | 出力ブロック | 固定内容 |
 |------|--------------|----------|
 | 1 | 既存 base | §6 の既存変数、本文 layout、header、TOC、code、table、print の既存順序を維持する。 |
-| 2 | color scheme | `:root`、`[data-color-scheme="light"]`、`[data-color-scheme="dark"]`、`[data-color-scheme="auto"]` の §28 custom property を定義する。 |
+| 2 | light visual baseline | `:root` の light 固定 custom property を定義する。dark / auto selector を出力しない。 |
 | 3 | typography / block | admonition、badge、definition list、task list、footnote、math の selector を定義する。 |
 | 4 | code extension | code title、line numbers、diff highlight の selector を定義する。 |
-| 5 | navigation runtime UI | section collapse、TOC active、hash focus、skip link、theme toggle の selector を定義する。 |
+| 5 | navigation runtime UI | section collapse、TOC active、hash focus、skip link の selector を定義する。theme toggle selector を出力しない。 |
 | 6 | media UI | image lightbox、Mermaid placeholder / SVG wrapper、print QR の selector を定義する。 |
 | 7 | responsive | `@media (max-width: 768px)` に §28 追加 UI の折り返し、横幅、余白を定義する。 |
 | 8 | print | `@media print` に §28 追加 UI の印刷挙動を定義する。 |
 
 §28 で追加する selector は、§28 CLI / 設定 / REPORT / 出力識別子固定契約に列挙した class、id、data attribute だけを使用する。§28 selector は既存 `.ci`、`main`、`nav`、`pre`、`code`、`table` の基礎 layout を上書きしてはならない。必要な場合は §28 の追加 class を起点に scoped selector として定義する。
 
-§28 responsive layout は、幅 `320px` の viewport で本文、見出し、TOC、theme toggle、skip link、admonition、badge、definition list、task list、footnote、math、code title、line numbers、diff highlight、lightbox、print QR の text が重なり、切れ、親要素外へ不可視にはみ出す状態を禁止する。table と code block だけは既存 scroll wrapper 内の horizontal overflow を許可する。§28 実装は viewport width に比例する font size、負の `letter-spacing`、hover / focus で寸法が変わる border / padding / font weight を追加してはならない。
+§28 responsive layout は、幅 `320px` の viewport で本文、見出し、TOC、skip link、admonition、badge、definition list、task list、footnote、math、code title、line numbers、diff highlight、lightbox、print QR の text が重なり、切れ、親要素外へ不可視にはみ出す状態を禁止する。table と code block だけは既存 scroll wrapper 内の horizontal overflow を許可する。§28 実装は viewport width に比例する font size、負の `letter-spacing`、hover / focus で寸法が変わる border / padding / font weight を追加してはならない。
 
 §28 print layout は、`@media print` で以下を固定する。
 
 | 対象 | print 固定内容 |
 |------|----------------|
-| interactive controls | theme toggle、collapse toggle、lightbox trigger UI、TOC active indicator、skip link の画面専用装飾を非表示にする。本文、見出し、画像、code、table、footnote、definition list、task list は非表示にしない。 |
+| interactive controls | collapse toggle、lightbox trigger UI、TOC active indicator、skip link の画面専用装飾を非表示にする。本文、見出し、画像、code、table、footnote、definition list、task list は非表示にしない。 |
 | collapsed section | 印刷時は全 section を展開状態で出力する。screen state を書き換えず、`@media print` または print event の一時状態だけで処理する。 |
-| color scheme | 印刷時は light 相当の背景と文字色に固定し、dark background を印刷しない。 |
+| light visual baseline | 印刷時も light 固定の背景と文字色を維持する。dark background は出力しない。 |
 | code / diff | `pre`、`code`、line number、diff line の text を欠落させない。line number は code text のコピー対象に含めない。 |
 | print QR | §28.23 が有効な場合だけ print 用 QR を表示する。screen 表示では QR を本文内の常時表示要素にしない。 |
 
@@ -2160,9 +2160,9 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | `.adlaire-lightbox-dialog` | dialog 表示時は viewport 内に収め、画像は `max-inline-size: 100%`、`max-block-size: 100%` 相当で切らない。 |
 | `.mermaid-diagram` / `.mermaid-source` | SVG wrapper は deterministic viewBox を持ち、外部 script 読込なしで fallback text を保持する。 |
 | `.print-qr` / `.print-qr-svg` | print 専用 block とし、SVG は deterministic path / rect 順で出力する。 |
-| `.theme-toggle` / `.skip-link` / `.is-active` | focus outline は常に可視にし、focus / active 化で layout 寸法を変えない。 |
+| `.skip-link` / `.is-active` | focus outline は常に可視にし、focus / active 化で layout 寸法を変えない。 |
 
-§28 visual 受け入れでは、light / dark / auto / print の各状態で text contrast、focus indicator、active indicator、disabled state、warning state が expected CSS / HTML で確認できなければならない。画像 snapshot だけを合否根拠にしてはならない。
+§28 visual 受け入れでは、light / print の各状態で text contrast、focus indicator、active indicator、disabled state、warning state が expected CSS / HTML で確認できなければならない。dark / auto 状態を定義してはならない。画像 snapshot だけを合否根拠にしてはならない。
 
 **§28 ID / slug / search index / JS state 決定性固定契約：**
 
@@ -2191,14 +2191,13 @@ search index は、§28 機能の表示要素を下表のとおり含める。�
 | admonition / badge | admonition title と body text、badge label は含める。CSS class、data attribute、badge color は含めない。 |
 | image | alt text だけを含める。src、title、lightbox UI label、lazy 属性は含めない。 |
 | footnote | footnote 本文は含める。footnote reference number、backlink label は含めない。 |
-| math / Mermaid / print QR / lightbox / theme toggle / skip link | 表示用 UI text、SVG text、toggle label、dialog label、QR URL は含めない。 |
+| math / Mermaid / print QR / lightbox / skip link | 表示用 UI text、SVG text、dialog label、QR URL は含めない。 |
 
 localStorage は下表の key と payload だけを許可する。payload は JSON.stringify 相当の compact JSON 文字列、または許容値 string に固定する。保存失敗、JSON parse 失敗、未知 key、未知 page key、未知 slug は無視し、HTML 表示と search index を壊してはならない。
 
 | key | owner | payload |
 |-----|-------|---------|
 | `adlaire:section-state` | §28.6 | JSON object。key は `{page_key}#{slug}`、value は `true` なら展開、`false` なら折りたたみ。object key は保存時に ASCII 昇順へ並べる。 |
-| `adlaire:color-scheme` | §28.12 | `light`、`dark`、`auto` のいずれかの string。未知値は無視し、設定値または既定値へ戻す。 |
 
 **§28 browser runtime 固定契約：**
 
@@ -2210,12 +2209,11 @@ runtime 初期化順は下表に固定する。途中で例外が発生した場
 |------|------------|----------|
 | 1 | static guard | `document.querySelector`、`addEventListener`、`classList` が存在しない場合、§28 JS 初期化を終了する。 |
 | 2 | storage guard | localStorage read / write wrapper を作成する。例外時は memory fallback を使わず、保存と復元だけを無効化する。 |
-| 3 | color scheme | `data-color-scheme`、設定値、保存値を解決し、root attribute と toggle state を同期する。 |
-| 4 | section collapse | heading toggle、wrapper、`aria-expanded`、`adlaire-section-collapsed`、保存値を同期する。 |
-| 5 | hash history | heading link click、hashchange、popstate、focus 移動を登録する。 |
-| 6 | TOC active | IntersectionObserver があれば使用し、なければ scroll fallback を登録する。 |
-| 7 | lightbox | trigger、dialog、focus trap、Escape / backdrop close を登録する。 |
-| 8 | accessibility guard | skip link、keyboard 操作、focus-visible 補助、aria current / aria expanded の最終整合を確認する。 |
+| 3 | section collapse | heading toggle、wrapper、`aria-expanded`、`adlaire-section-collapsed`、保存値を同期する。 |
+| 4 | hash history | heading link click、hashchange、popstate、focus 移動を登録する。 |
+| 5 | TOC active | IntersectionObserver があれば使用し、なければ scroll fallback を登録する。 |
+| 6 | lightbox | trigger、dialog、focus trap、Escape / backdrop close を登録する。 |
+| 7 | accessibility guard | skip link、keyboard 操作、focus-visible 補助、aria current / aria expanded の最終整合を確認する。 |
 
 browser runtime の機能別挙動は下表に固定する。
 
@@ -2226,9 +2224,7 @@ browser runtime の機能別挙動は下表に固定する。
 | section collapse 保存 | `adlaire:section-state` に `{page_key}#{slug}` ごとの boolean を保存する。保存失敗時も DOM 状態は維持する。 |
 | search hit 展開 | search hit または hash target が折りたたみ section 内にある場合、対象 section を一時展開する。一時展開だけでは localStorage を更新しない。 |
 | print 展開 | `beforeprint` で全 section を展開表示にし、`afterprint` で印刷前状態へ戻す。`beforeprint` / `afterprint` がない環境では CSS `@media print` で全展開表示にする。 |
-| color scheme 初期状態 | CLI / config の `color_scheme` を既定値とし、保存値が `light` / `dark` / `auto` の場合だけ保存値を優先する。未知保存値は削除せず無視する。 |
-| color scheme toggle | toggle 操作は `light → dark → auto → light` の順で循環する。root `data-color-scheme`、toggle `aria-label`、localStorage を同一値へ同期する。 |
-| color scheme print | print 表示は常に light 相当とし、localStorage の値を変更しない。 |
+| light visual baseline | CLI、config、localStorage による color scheme 変更を受け付けない。生成 HTML は常に light 固定とし、`data-color-scheme`、`.theme-toggle`、`adlaire:color-scheme` を出力しない。 |
 | TOC active | active link は常に 0 件または 1 件。active link だけに `.is-active` と `aria-current="location"` を付与し、他 link からは両方を除去する。 |
 | TOC active fallback | IntersectionObserver がない場合は scroll position から、viewport top 以下で最も近い対象 heading を active とする。scroll event は requestAnimationFrame 相当で集約する。 |
 | hash click | heading / TOC link click 時、target heading が存在する場合だけ `history.pushState` を呼び、target heading に一時 `tabindex="-1"` を付与して focus する。 |
@@ -2246,7 +2242,6 @@ browser runtime が出力または変更してよい DOM state は下表に限�
 | 対象 | 変更可能 state |
 |------|----------------|
 | section collapse | `.adlaire-section-collapsed`、`aria-expanded`、`hidden` 相当の表示状態、`adlaire:section-state`。 |
-| color scheme | root `data-color-scheme`、`.theme-toggle` の `aria-label`、`adlaire:color-scheme`。 |
 | TOC active | `.is-active`、`aria-current="location"`。 |
 | hash focus | heading の一時 `tabindex="-1"`、focus。 |
 | lightbox | `.adlaire-lightbox-dialog` の open / hidden state、focus、`aria-modal`、`aria-hidden`。 |
@@ -2417,7 +2412,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | §28.9 | diff ハイライト | fence info `diff` または `patch`。 | `.tok-inserted`、`.tok-deleted`、`.tok-context` class。 | code line 先頭 `+` / `-` / space を判定 → HTML escape → class 付与。 | `+++` / `---` header は header class。通常言語では適用しない。 | insert/delete/header/context、escape、copy 本文維持。 |
 | §28.10 | 画像の遅延読み込み | Markdown image、HTML img 相当出力。 | `<img loading="lazy" decoding="async">`。 | image token 解析 → src 正規化 → alt escape → lazy 属性付与。 | data URI、外部 URL は許可するが fetch しない。base 外相対 path は warning。 | 相対画像、外部画像、alt escape、base 外警告。 |
 | §28.11 | カスタムメタタグ注入 | `--meta key=value`、設定 meta map。 | `<meta name="..." content="...">` または `property="og:..."`。 | key validation → name/property 判定 → 重複解決 → head へ出力。 | `script`、`http-equiv`、空 key、制御文字は終了コード `2`。 | OGP、Twitter、重複、escape、禁止 key。 |
-| §28.12 | ダークモード対応 | `--color-scheme light\|dark\|auto`。 | CSS variables、`prefers-color-scheme` media、UI toggle。 | scheme 判定 → CSS 変数生成 → JS toggle は localStorage に保存。 | 未知 scheme は終了コード `2`。印刷は light。 | light/dark/auto、toggle 復元、print light、contrast class。 |
+| §28.12 | ライトモード固定 | なし。 | light 固定 CSS variables。 | `:root` の light 固定変数だけを出力し、dark / auto / theme toggle / color scheme 永続化を出力しない。 | dark / auto / theme toggle / color scheme 永続化が出力された場合は検証失敗。 | light 固定、print light、禁止識別子不在。 |
 | §28.13 | コードブロックのファイル名表示 | fence info `go:main.go`、`bash:title=deploy.sh`。 | `.code-title` 表示。 | info parse → language と title 分離 → title escape → code block header へ出力。 | path traversal 表示は禁止せず text 扱いだが HTML escape。空 title は非表示。 | colon 形式、title 形式、escape、copy 対象除外。 |
 | §28.14 | テンプレート変数展開 | `--var KEY=VALUE`、`{{ KEY }}`。 | 変数展開済み Markdown HTML、report counts。 | 変換前に text node だけ置換 → code fence 内は置換しない → 未定義変数を警告。 | key は `^[A-Z0-9_]{1,64}$`。未定義は strict で終了コード `2`。 | 置換、code 内非置換、未定義警告、escape。 |
 | §28.15 | HTML ミニファイ | `--minify-html`。 | 空白圧縮済み HTML。 | HTML 生成後 → safe minify → pre/code/textarea/script 相当領域は保持。 | minify 後の byte が 0、必須 marker 消失なら元 HTML を残し終了コード `1`。 | 通常圧縮、code 保持、必須 marker、出力縮小 report。 |
@@ -2449,7 +2444,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | §28.9 | fence language が `diff` / `patch` の場合だけ適用。 | line ごとに inserted / deleted / context / header class を 1 つ付与する。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | insertions / deletions は該当 line 数。 | `+++` / `---` header と通常 `+` / `-` の区別。 |
 | §28.10 | lazy option は boolean。src は URL または base 内 path。 | 既存 img に `loading`、`decoding` を追加し、alt 順序を保つ。 | base 外 path は `BUILDER28_PATH_OUTSIDE_BASE`。 | lazy_images は属性を付与した img 数。 | 外部 URL no-fetch、alt escape。 |
 | §28.11 | key は `name:*`、`property:og:*`、`property:twitter:*`、または bare name。 | meta は head 内で既存 meta の後、stylesheet より前に出力する。 | 禁止 key は `BUILDER28_INVALID_OPTION`、escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | custom_meta_count は採用 meta 数、rejected は拒否数。 | 重複 last wins、head 内順序。 |
-| §28.12 | scheme は `light`、`dark`、`auto`。 | root に `data-color-scheme`、CSS variables、toggle button を出す。 | 未知 scheme は `BUILDER28_INVALID_OPTION`。 | color_scheme_toggle は toggle 出力 boolean。 | print light、localStorage 復元。 |
+| §28.12 | scheme 入力は定義しない。 | `:root` に light 固定 CSS variables だけを出す。 | dark / auto / theme toggle / color scheme 永続化の出力は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | color_scheme_fixed は `true` 固定。 | print light、禁止識別子不在。 |
 | §28.13 | title は colon 形式または `title=` 形式。空 title は無効。 | `.code-block-header` 内に `.code-title` を置き、copy 対象から除外する。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | code_titles は title 出力 block 数。 | path 風 title の text 扱い、copy 除外。 |
 | §28.14 | key は `^[A-Z0-9_]{1,64}$`、値は UTF-8 string。 | code fence / code span 内は置換しない。置換後 text は通常 Markdown 処理へ渡す。 | 未定義は `BUILDER28_UNRESOLVED_REFERENCE`。key 不正は `BUILDER28_INVALID_OPTION`。 | replaced は置換回数、missing は sorted array。 | code 内非置換、未定義 strict 停止。 |
 | §28.15 | minify は HTML 完成後のみ。 | minify 後も必須 marker、doctype、head、body、pre/code 内容を保持する。 | marker 消失、空 HTML は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | bytes_* は byte 数、saved は before - after。 | pre/code 保持、disabled 互換。 |
@@ -2647,7 +2642,7 @@ image `src` は以下に分類する。
 | 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | §28.11 | head meta set | `custom_meta_entries`、`custom_meta_rejected`、`custom_meta_order` を page ごとに保持する。 | key validation、重複解決、head 内順序、attribute escape、禁止 key 拒否が一致する。 |
-| §28.12 | page theme | `color_scheme`、`color_scheme_toggle`、`color_scheme_variables`、`color_scheme_storage_key` を page ごとに保持する。 | root attribute、CSS variables、toggle、localStorage、print light、fallback が一致する。 |
+| §28.12 | light visual baseline | `color_scheme_fixed`、`light_css_variables` を page ごとに保持する。 | light 固定 CSS variables、print light、禁止識別子不在が一致する。 |
 | §28.13 | code fence title | `code_title_value`、`code_title_source`、`code_title_warnings` を code block ごとに保持する。 | language / title 分離、title escape、copy / search 除外、empty title no-op が一致する。 |
 | §28.14 | template variable map | `template_vars`、`template_vars_missing`、`template_vars_replaced` を run 全体で保持する。 | key validation、置換対象、code fence / code span 保護、missing var の strict / non-strict が一致する。 |
 | §28.15 | final HTML byte stream | `minify_bytes_before`、`minify_bytes_after`、`minify_bytes_saved`、`minify_preserved_ranges` を page ごとに保持する。 | safe minify、保持対象、validation、failure no-replace、REPORT byte count が一致する。 |
@@ -2671,15 +2666,15 @@ meta key は以下に固定する。
 
 `custom_meta_count` は採用して出力した meta 数、`custom_meta_rejected` は validation で拒否した meta key 数とする。fatal validation では `[REPORT]` を出力しない。
 
-**§28.12 ダークモード詳細固定契約：**
+**§28.12 ライトモード固定詳細契約：**
 
-`--color-scheme` の許可値は `light`、`dark`、`auto` だけである。未知値は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
+生成 HTML は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務に従い、ライトモード固定とする。`--color-scheme`、`ADLAIRE_COLOR_SCHEME`、設定ファイルの `color_scheme` は定義しない。実装者は dark / auto 表示、theme toggle、color scheme 永続化を追加してはならない。
 
-HTML root は `data-color-scheme="<light|dark|auto>"` を持つ。CSS は `:root` に共通 custom property を定義し、`[data-color-scheme="light"]`、`[data-color-scheme="dark"]`、`[data-color-scheme="auto"]` に scheme 固有値を定義する。`auto` は `@media (prefers-color-scheme: dark)` を使って dark 変数へ切り替える。外部 theme file、外部 font、runtime CSS fetch を追加してはならない。
+HTML root は color scheme 用の `data-color-scheme` を持たない。CSS は `:root` に light 固定 custom property を定義する。`[data-color-scheme="light"]`、`[data-color-scheme="dark"]`、`[data-color-scheme="auto"]`、`@media (prefers-color-scheme: dark)`、`.theme-toggle`、`adlaire:color-scheme` を出力してはならない。外部 theme file、外部 font、runtime CSS fetch を追加してはならない。
 
-theme toggle は `button.theme-toggle`、`type="button"`、`aria-label`、現在値を示す `data-color-scheme-toggle` を持つ。toggle 順は `light → dark → auto → light` に固定する。localStorage key は `adlaire:color-scheme` だけを使用し、保存値は `light`、`dark`、`auto` のいずれかの string とする。未知値、空値、storage 例外、JSON ではない値は無視し、設定値または既定値へ戻す。
+browser runtime は color scheme を読まない、保存しない、復元しない。localStorage は `adlaire:section-state` だけを許可し、`adlaire:color-scheme` を読み書きしてはならない。
 
-print は常に light 相当とし、dark background を印刷しない。`color_scheme` は JSON string、`color_scheme_toggle` は toggle を出力した場合 `true` とする。
+print は常に light 固定とする。`color_scheme_fixed` は JSON boolean `true` 固定、`color_scheme_toggle` は出力してはならない。
 
 **§28.13 コードブロックタイトル詳細固定契約：**
 
