@@ -77,7 +77,7 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 標準ディレクトリ構成上の実装配置は `main.go` と `components/*.go`、および `admin/` 配下の管理 UI ファイルとする。
 
-標準ディレクトリ構成への実装移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の管理 UI 静的ファイル、`testdata/<component>/` とする。
+現行実装実体は、標準ディレクトリ構成上の `main.go`、`components/*.go`、`admin/` 配下の管理 UI 静的ファイル、`testdata/<component>/` とする。
 
 `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱ってはならない。
 

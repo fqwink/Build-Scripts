@@ -163,7 +163,7 @@
 | 変更対象 | 変更した文書名を明記する。 |
 | 変更内容 | 追加、削除、移動、簡潔化、参照更新の内容を明記する。 |
 | 正本範囲 | 仕様本文を変えたのか、索引を変えたのか、入口を変えたのかを明記する。 |
-| 検証 | `git diff --check`、旧参照検索、変更範囲確認を明記する。 |
+| 検証 | `git diff --check`、廃止参照検索、変更範囲確認を明記する。 |
 | 未実施 | docs-only で実装検証を未実施にした場合は理由を明記する。 |
 
 ## リポジトリ文書索引
@@ -253,7 +253,7 @@
 
 リポジトリ内ソース配置は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j を参照する。
 
-下表は、現行リポジトリに存在する実装ファイルと、将来追加予定 path を区別して示す。標準ディレクトリ構成への移行は完了済みであり、`main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` を現行配置として扱う。
+下表は、現行リポジトリに存在する実装ファイルと、将来追加予定 path を区別して示す。`main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` を現行配置として扱う。
 
 標準配置図に含まれる未作成 path は、将来追加予定 path として扱い、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成しない。
 
@@ -305,6 +305,6 @@
 
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
-標準ディレクトリ構成への移行は完了済みである。現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は [`docs/ROADMAP.md`](ROADMAP.md) の実装状態と本ファイルの `仕様化済みコンポーネント` に従って実装済みとして扱う。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
+現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は [`docs/ROADMAP.md`](ROADMAP.md) の実装状態と本ファイルの `仕様化済みコンポーネント` に従って実装済みとして扱う。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
 
-`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は旧配置名であり、現行実装実体として扱わない。標準配置と現行実体の判断は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j、本ファイルの `仕様化済みコンポーネント` を同時に確認する。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置であり、現行実装実体として扱わない。標準配置と現行実体の判断は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j、本ファイルの `仕様化済みコンポーネント` を同時に確認する。

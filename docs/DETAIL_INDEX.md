@@ -546,7 +546,7 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
-本節は、移行後の標準配置を定義する。標準配置への実装移行は完了済みであり、旧配置の `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱わない。
+本節は、現行の標準配置を定義する。標準外配置の `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱わない。
 
 本節の tree は標準配置の最終形を示す。現時点で `将来計画` または `仕様化済み・未実装` の path は、将来追加予定 path として扱い、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成してはならない。
 
@@ -606,9 +606,9 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 `main.go` は 1 ファイルとし、実装詳細を含めない。`components/` 配下は 1 コンポーネント = 1 Go ファイルとし、各ファイルは上表の責務を実装する。
 
-標準配置への移行完了条件は以下に固定する。
+標準配置の成立条件は以下に固定する。
 
-| 対象 | 移行完了条件 |
+| 対象 | 成立条件 |
 |------|--------------|
 | `main.go` | repository root に 1 ファイルだけ存在し、実行ファイル名判定、引数受け取り、現行 owner component 呼び出しだけを持つ。Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive、commitstatus、MCP の実装詳細を含まない。 |
 | `components/*.go` | 実装対象 owner component ごとに 1 Go ファイルだけ存在する。現行 Go 実装は `builder` の `components/builder.go`、`runner` の `components/runner.go`、`api` の `components/api.go` とする。`admin` は `admin/` 配下の静的配布物であり、Go ファイルを持たない。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルとして追加する場合は、追加対象 Phase または追加実装 PR で仕様状態と索引を更新してから作成する。 |
