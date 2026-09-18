@@ -105,7 +105,7 @@ var DefaultBuildConfig = BuildConfig{
 | 条件 | stdout |
 |------|--------|
 | `--help` | `Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--version] [--help]` |
-| `--version` | `adlaire-ci-build ADLAIRE_CI_SPEC go=<runtime.Version()>` |
+| `--version` | `adlaire-ci-build v3 go=<runtime.Version()>` |
 
 `--help` と `--version` の stdout は 1 行固定とし、末尾に改行 1 つを付ける。`--help` または `--version` を指定した場合、`--src` の存在確認、`--theme` 検証、出力ディレクトリ作成は行わない。
 
@@ -1330,7 +1330,7 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 | ケース | stdout | stderr | 終了コード | 副作用 |
 |--------|--------|--------|------------|--------|
 | `--help` | `Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--version] [--help]` + LF | 空 | `0` | 入力読込、出力作成なし。 |
-| `--version` | `adlaire-ci-build ADLAIRE_CI_SPEC go={version}` + LF | 空 | `0` | 入力読込、出力作成なし。 |
+| `--version` | `adlaire-ci-build v3 go={version}` + LF | 空 | `0` | 入力読込、出力作成なし。 |
 | 引数不正 | 空 | 固定エラー 1 行 + LF | `2` | 入力読込、出力作成なし。 |
 | 入力不存在 | 空 | `source not found: {path}` + LF | `2` | 出力作成なし。 |
 | UTF-8 不正 | 空 | `source is not valid UTF-8: {path}` + LF | `2` | 出力作成なし。 |

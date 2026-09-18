@@ -200,7 +200,7 @@ owner component は対象機能の詳細本文を持つ。collaborator component
 
 fixture、expected、fake、検証証跡、完了判定は検証責務として扱い、[`docs/details/fixture.md`](details/fixture.md) を正本とする。実装状態、実装可否、Phase、将来計画は状態責務として扱い、[`docs/ROADMAP.md`](ROADMAP.md) を正本とする。詳細仕様の入口、対応表、共通固定値、リポジトリ内ソース配置は詳細仕様入口責務として扱い、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) を正本とする。生成 HTML のデザイン関係はデザイン責務として扱い、[`docs/DESIGN.md`](DESIGN.md) を正本とする。文書配置と実装ファイル所在は、文書・実装ファイル所在の索引責務として扱い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
 
-本原則は、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の記載整理より上位の方針である。これらの文書を整理する場合は、本原則に従い、重複本文を増やさず、責務と参照先を明示する。
+本原則は、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の記載整理より上位の方針である。これらの文書を整理する場合は、本原則に従い、重複本文を増やさず、責務と参照先を明示する。
 
 本原則への違反が残る状態では、仕様整合完了、仕様 PR 完了、実装着手、実装済み判定を行ってはならない。
 
@@ -455,7 +455,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 方針、ポリシー、実装状態、Phase、将来計画、詳細仕様本文、fixture、expected、fake、検証証跡、文書索引を同じ本文内で重複正本化してはならない。
 
-方針とポリシーは [`docs/SPEC.md`](SPEC.md) だけに記載しなければならない。[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md)、実装ファイル、fixture、PR 本文へ方針またはポリシーを本文として記載してはならない。
+方針とポリシーは [`docs/SPEC.md`](SPEC.md) だけに記載しなければならない。ただし、生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) だけに記載しなければならない。[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md)、実装ファイル、fixture、PR 本文へ方針またはポリシーを本文として記載してはならない。
 
 詳細仕様は実装詳細だけを記載しなければならない。ロードマップは状態、実装可否、Phase、将来計画だけを記載しなければならない。索引は文書と実装ファイルの所在だけを記載しなければならない。README は利用入口だけを記載しなければならない。
 

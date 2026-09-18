@@ -171,8 +171,8 @@ setup / update 実装は、各段階の開始と成功を stderr または stdou
 
 | 確認 | コマンド | 合格条件 |
 |------|----------|----------|
-| build binary | `$BIN_DIR/adlaire-ci-build --version` | exit `0`、stdout が `adlaire-ci-build ADLAIRE_CI_SPEC` を含む。 |
-| runner binary | `$BIN_DIR/adlaire-ci-runner --version` | exit `0`、stdout が `adlaire-ci-runner ADLAIRE_CI_SPEC` を含む。 |
+| build binary | `$BIN_DIR/adlaire-ci-build --version` | exit `0`、stdout が `adlaire-ci-build v3` を含む。 |
+| runner binary | `$BIN_DIR/adlaire-ci-runner --version` | exit `0`、stdout が `adlaire-ci-runner v3` を含む。 |
 | PAT file | `stat -c '%a' "$INSTALL_DIR/.github_token"` | `600`。 |
 | SHA cache | `cat "$INSTALL_DIR/.last_sha"` | `{"sha":""}` + LF。 |
 | timer | `systemctl is-active adlaire-ci.timer` | `active`。 |
@@ -256,7 +256,7 @@ Go 版初回セットアップでは以下を実行しない。
 
 | 確認 | コマンド | 合格条件 |
 |------|----------|----------|
-| API binary | `$BIN_DIR/adlaire-ci-api --version` | exit `0`、stdout が `adlaire-ci-api ADLAIRE_CI_SPEC` を含む。 |
+| API binary | `$BIN_DIR/adlaire-ci-api --version` | exit `0`、stdout が `adlaire-ci-api v3` を含む。 |
 | credentials | `stat -c '%a' "$INSTALL_DIR/.admin_credentials"` | `600`。 |
 | admin UI | `test -f "$INSTALL_DIR/admin/index.html"` / `test -f "$INSTALL_DIR/admin/adlaire-ci-sdk.js"` | 両方成功。 |
 | API service | `systemctl is-active adlaire-ci-api` | `active`。 |

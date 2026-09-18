@@ -13,9 +13,9 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 1. [`AGENTS.md`](AGENTS.md): 作業ルール、承認、Git 運用を確認する。
 2. [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md): 文書構造、読む順番、正本関係、実装ファイル所在を確認する。
 3. [`docs/SPEC.md`](docs/SPEC.md): 方針、ポリシー、禁止事項を確認する。
-4. [`docs/ROADMAP.md`](docs/ROADMAP.md): 実装状態、Phase、将来計画を確認する。
-5. [`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md): 詳細仕様入口と owner component 対応表を確認する。
-6. [`docs/DESIGN.md`](docs/DESIGN.md): 生成 HTML のデザイン関係を確認する。
+4. [`docs/DESIGN.md`](docs/DESIGN.md): 生成 HTML のデザイン関係を確認する。
+5. [`docs/ROADMAP.md`](docs/ROADMAP.md): 実装状態、Phase、将来計画を確認する。
+6. [`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md): 詳細仕様入口と owner component 対応表を確認する。
 
 ## 仕様正本
 

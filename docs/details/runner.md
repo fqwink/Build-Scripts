@@ -311,7 +311,7 @@ runner は CLI、`.server_config`、`.branch_config`、既定値を読み込ん�
 | 条件 | stdout |
 |------|--------|
 | `--help` | `Usage: adlaire-ci-runner [--state-dir path] [--once] [--dry-run] [--version] [--help]` |
-| `--version` | `adlaire-ci-runner ADLAIRE_CI_SPEC go=<runtime.Version()>` |
+| `--version` | `adlaire-ci-runner v3 go=<runtime.Version()>` |
 
 **CLI 異常系：**
 
@@ -856,7 +856,7 @@ runner 起動（systemd タイマーから呼び出し）
     │   ├─ [事前チェック] pipeline.sh 実行前に以下を確認し、不足時は ERROR ログ＋deploy_failure Webhook 通知、このエントリをスキップ
     │   │   ├─ ディスク空き容量 ≥ max(出力サイト推定サイズ × 3, 64MiB)。取得は `syscall.Statfs(outDir)` を使用する
     │   │   ├─ `adlaire-ci-build` が存在し実行可能であること（`os.Stat` と mode bit）
-    │   │   └─ `/usr/local/bin/adlaire-ci-build --version` が終了コード 0 で、stdout に `adlaire-ci-build` と `ADLAIRE_CI_SPEC` を含むこと
+    │   │   └─ `/usr/local/bin/adlaire-ci-build --version` が終了コード 0 で、stdout に `adlaire-ci-build` と `v3` を含むこと
     │   │
     │   ├─ pipeline.sh 実行（bash {src の親ディレクトリ}/.ci/pipeline.sh）
     │   │   ├─ 成功（exit 0）：INFO ログ

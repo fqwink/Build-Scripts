@@ -189,9 +189,10 @@
 | 2 | [`README.md`](../README.md) | 初見向けの概要、読む順番、主要ファイルを確認する。 |
 | 3 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | 文書と実装ファイルの役割、正本関係、配置を確認する。 |
 | 4 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針、ポリシー、禁止事項、リリース判断を確認する。 |
-| 5 | [`docs/ROADMAP.md`](ROADMAP.md) | 実装状態、実装可否、Phase、将来計画、§27 追加仕様化機能参照、横断補足契約を確認する。 |
-| 6 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 詳細仕様の入口、読み順、共通固定値、対応表、ソース配置を確認する。 |
-| 7 | [`docs/details/*.md`](details/) | 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
+| 5 | [`docs/DESIGN.md`](DESIGN.md) | 生成 HTML のデザイン関係を確認する。 |
+| 6 | [`docs/ROADMAP.md`](ROADMAP.md) | 実装状態、実装可否、Phase、将来計画、§27 追加仕様化機能参照、横断補足契約を確認する。 |
+| 7 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 詳細仕様の入口、読み順、共通固定値、対応表、ソース配置を確認する。 |
+| 8 | [`docs/details/*.md`](details/) | 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
 
 上記の順序は、文書整理、仕様改訂、実装、検証、PR 作成のすべてで共通とする。[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は索引であり、仕様判断の正本ではない。
 
