@@ -13,12 +13,7 @@
 
 ## 1. デザイン補助仕様
 
-docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
-
-- ヘッダーのみアクセントカラーを使う。コンテンツ・サイドバーは中性色ベース
-- CSS カスタムプロパティは [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/`）定義の `--adlaire-*` トークンのみ使用
-- **ライトモード固定**（`prefers-color-scheme` 非対応、ダークモードなし）
-- 外部フォント不使用。システムフォントスタックで日本語環境の可読性を確保
+生成 HTML のデザイン方針は [`docs/SPEC.md`](SPEC.md) §3 を正とする。本ファイルは、その方針を実装するための視覚 token、layout、component、interaction の具体値だけを定義する。
 
 ---
 
