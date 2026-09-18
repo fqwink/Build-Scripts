@@ -1,6 +1,6 @@
 # Adlaire CI — UI 詳細仕様
 
-本ファイルは [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) から分割した `ui` owner component の詳細仕様である。
+本ファイルは `ui` owner component の詳細仕様正本である。
 
 本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、fixture、検証観点として参照する。
 

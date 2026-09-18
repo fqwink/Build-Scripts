@@ -284,7 +284,7 @@
 | 文書・実装ファイルの参照先と役割 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) |
 | 実装ファイル、テスト、fixture の所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「仕様化済みコンポーネント」 |
 
-[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は索引であり、仕様・デザイン・実装判断の正本ではない。仕様を変更する場合は、先に該当する正本仕様書を更新し、その内容に基づいて実装ファイルを更新する。
+[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は索引であり、仕様本文、デザイン本文、実装可否判断の正本ではない。仕様を変更する場合は、先に該当する正本仕様書を更新し、その内容に基づいて実装ファイルを更新する。
 
 ## 整合ガードレール
 

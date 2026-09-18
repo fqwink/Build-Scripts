@@ -216,30 +216,22 @@ owner component が確定できない場合は、実装判断で補完しない�
 | 項目 | 必須条件 |
 |------|----------|
 | 節番号 | 既存の節番号を崩さない。番号の再採番は行わない。 |
-| 参照 | 入口ファイルと owner component ファイルの参照先が一意に追跡できるよう、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) の対応表を更新する。 |
+| 参照 | 入口ファイルと owner component ファイルの参照先が一意に追跡できるよう、本ファイルの対応表を更新する。 |
 | owner | 各機能節に owner component を 1 件だけ明記する。 |
 | collaborator | collaborator component は 0 件以上を明記し、owner component を含めない。 |
 | 重複禁止 | 同じ入力、出力、状態 schema、HTTP body、DOM id、fixture assertion を複数ファイルで重複定義しない。 |
 | 横断事項 | 横断する固定値は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に置く。横断共通基盤を component として扱わない。 |
-| 索引 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) に、分割後ファイルの役割と正本範囲を反映する。 |
+| 索引 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) に、責務 component 別詳細仕様ファイルの役割と正本範囲を反映する。 |
 
-詳細仕様を読む順序は以下に固定する。
-
-1. [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務で方針とポリシーを確認し、[`docs/ROADMAP.md`](ROADMAP.md) で実装対象、実装状態、実装可否、Phase、将来計画該当有無を確認する。
-2. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0〜§0j で共通固定値、責務 component、詳細節対応表、リポジトリ内ソース配置を確認する。
-3. owner component の分割先詳細仕様ファイルを主本文として読む。
-4. collaborator component がある場合は、該当する分割先詳細仕様ファイルの参照節を呼び出し境界、schema、表示、security、setup、fixture、検証観点として読む。
-5. 状態ファイルの読み書き、lock、atomic write、schema を扱う場合は [`docs/details/statefile.md`](details/statefile.md) を読む。
-6. 認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は [`docs/details/security.md`](details/security.md) を読む。
-7. fixture、fake、PR 証跡が必要な場合は [`docs/details/fixture.md`](details/fixture.md) を読む。
+詳細仕様を読む順序は、本ファイルの「詳細仕様の読み方」に固定する。各責務 component 別詳細仕様ファイルは、owner component の主本文として読み、collaborator component は呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は [`docs/details/security.md`](details/security.md)、fixture、fake、PR 証跡が必要な場合は [`docs/details/fixture.md`](details/fixture.md) を確認する。
 
 責務整理、節移動、参照先更新は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
 
 | 完了条件 | 判定 |
 |----------|------|
-| 旧ファイル内の移動対象本文が対応する分割先に移動している。 | 必須 |
+| 旧ファイル内の移動対象本文が対応する責務 component 別詳細仕様ファイルに移動している。 | 必須 |
 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) には入口、索引、共通固定値、対応表、管理仕様、リポジトリ内ソース配置だけが残っている。 | 必須 |
-| [`docs/SPEC.md`](SPEC.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、各分割先ファイル間の参照が矛盾していない。 | 必須 |
+| [`docs/SPEC.md`](SPEC.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、各責務 component 別詳細仕様ファイル間の参照が矛盾していない。 | 必須 |
 | `rg` で旧節名、旧ファイル名、移動前参照の取り残しを確認している。 | 必須 |
 | 実装ファイル、fixture、testdata の内容を分割作業だけで変更していない。 | 必須 |
 

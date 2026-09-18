@@ -1,6 +1,6 @@
 # Adlaire CI — Statefile 詳細仕様
 
-本ファイルは [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) および [`docs/details/api.md`](api.md) から分割した `statefile` owner component の詳細仕様である。
+本ファイルは `statefile` owner component の詳細仕様正本である。
 
 本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、fixture、検証観点として参照する。
 

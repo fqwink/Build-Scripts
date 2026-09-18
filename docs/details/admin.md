@@ -1,6 +1,6 @@
 # Adlaire CI — Admin 詳細仕様
 
-本ファイルは [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) から分割した `admin` owner component の詳細仕様である。
+本ファイルは `admin` owner component の詳細仕様正本である。
 
 本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `admin` owner component の主本文であり、collaborator component の仕様は呼び出し境界、配布境界、検証観点として参照する。
 
