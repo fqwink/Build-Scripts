@@ -2668,13 +2668,25 @@ meta key は以下に固定する。
 
 **§28.12 ライトモード固定詳細契約：**
 
-生成 HTML は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務に従い、ライトモード固定とする。`--color-scheme`、`ADLAIRE_COLOR_SCHEME`、設定ファイルの `color_scheme` は定義しない。実装者は dark / auto 表示、theme toggle、color scheme 永続化を追加してはならない。
+生成 HTML は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務に従い、ライトモード固定とする。可変 color scheme は仕様対象外であり、実装者は dark / auto 表示、theme toggle、color scheme 永続化を追加してはならない。
 
-HTML root は color scheme 用の `data-color-scheme` を持たない。CSS は `:root` に light 固定 custom property を定義する。`[data-color-scheme="light"]`、`[data-color-scheme="dark"]`、`[data-color-scheme="auto"]`、`@media (prefers-color-scheme: dark)`、`.theme-toggle`、`adlaire:color-scheme` を出力してはならない。外部 theme file、外部 font、runtime CSS fetch を追加してはならない。
+可変 color scheme の禁止識別子は以下に固定する。以下の識別子は CLI、環境変数、設定ファイル、HTML、CSS、JavaScript、localStorage、REPORT のいずれにも有効機能として定義してはならない。
 
-browser runtime は color scheme を読まない、保存しない、復元しない。localStorage は `adlaire:section-state` だけを許可し、`adlaire:color-scheme` を読み書きしてはならない。
+| 分類 | 禁止識別子 |
+|------|------------|
+| CLI option | `--color-scheme` |
+| 環境変数 | `ADLAIRE_COLOR_SCHEME` |
+| 設定ファイル key | `color_scheme` |
+| HTML attribute | `data-color-scheme`、`data-color-scheme-toggle` |
+| CSS selector / media query | `[data-color-scheme="light"]`、`[data-color-scheme="dark"]`、`[data-color-scheme="auto"]`、`.theme-toggle`、`@media (prefers-color-scheme: dark)` |
+| JavaScript / storage | `adlaire:color-scheme` |
+| REPORT key | `color_scheme_toggle` |
 
-print は常に light 固定とする。`color_scheme_fixed` は JSON boolean `true` 固定、`color_scheme_toggle` は出力してはならない。
+HTML root は color scheme 用の属性を持たない。CSS は `:root` に light 固定 custom property を定義する。外部 theme file、外部 font、runtime CSS fetch を追加してはならない。
+
+browser runtime は color scheme を読まない、保存しない、復元しない。localStorage は `adlaire:section-state` だけを許可する。
+
+print は常に light 固定とする。REPORT の `color_scheme_fixed` は JSON boolean `true` 固定とする。
 
 **§28.13 コードブロックタイトル詳細固定契約：**
 

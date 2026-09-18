@@ -1165,9 +1165,9 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `custom-meta` | `security-meta-secret-not-reported` | secret 風 value と credential 付き URL value が stdout、stderr、REPORT、manifest に平文出力されない。 |
 | `light-mode-fixed` | `success-light-mode-fixed` | `:root` の light CSS variables、REPORT `color_scheme_fixed=true`、dark / auto selector 不在を固定する。 |
 | `light-mode-fixed` | `success-light-mode-print` | `@media print` で light 固定の背景 / 文字色になり、dark background を印刷しない。 |
-| `light-mode-fixed` | `security-light-mode-no-theme-toggle` | `.theme-toggle`、`data-color-scheme-toggle`、theme toggle label が HTML / CSS / JS に存在しない。 |
-| `light-mode-fixed` | `security-light-mode-no-storage` | `adlaire:color-scheme`、`ADLAIRE_COLOR_SCHEME`、`color_scheme` 入力処理が存在しない。 |
-| `light-mode-fixed` | `failure-light-mode-dark-output` | dark / auto selector、`prefers-color-scheme`、color scheme 永続化が出力された場合は `BUILDER28_OUTPUT_VALIDATION_FAILED`、終了コード `1`、公開出力維持にする。 |
+| `light-mode-fixed` | `security-light-mode-no-theme-toggle` | [`docs/details/builder.md`](builder.md) §28.12 の theme toggle 禁止識別子が HTML / CSS / JS に存在しない。 |
+| `light-mode-fixed` | `security-light-mode-no-storage` | [`docs/details/builder.md`](builder.md) §28.12 の入力、storage、REPORT 禁止識別子が存在しない。 |
+| `light-mode-fixed` | `failure-light-mode-dark-output` | [`docs/details/builder.md`](builder.md) §28.12 の dark / auto / 永続化禁止識別子が出力された場合は `BUILDER28_OUTPUT_VALIDATION_FAILED`、終了コード `1`、公開出力維持にする。 |
 | `code-title` | `success-code-title-colon` | `go:main.go` 形式で language と title を分離し、`.code-block-header` 内 `.code-title` を出力する。 |
 | `code-title` | `success-code-title-key-value` | `bash:title=deploy.sh` 形式で title を出力し、language は `bash` として code block に残す。 |
 | `code-title` | `success-code-title-title-only` | `title=README.md` 形式で language 空、title ありの code block を固定する。 |
@@ -1306,7 +1306,7 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | §28.9 | inserted / deleted / context / header class、line number 併用、escape、copy text / search index 清浄性。 |
 | §28.10 | lazy 属性、外部 URL no-fetch、data URI no-fetch、base 外 path strict、disabled no-op、alt escape、invalid scheme strict。 |
 | §28.11 | name / property key 正規化、head 内順序、重複 last wins、禁止 key、型 validation、attribute escape、secret 非表示。 |
-| §28.12 | light 固定、dark / auto selector 不在、theme toggle 不在、`adlaire:color-scheme` 不在、print light、禁止出力拒否。 |
+| §28.12 | light 固定、[`docs/details/builder.md`](builder.md) §28.12 の禁止識別子不在、print light、禁止出力拒否。 |
 | §28.13 | colon / key-value / title-only title、copy / search 除外、empty title no-op、escape。 |
 | §28.14 | key validation、source 優先順位、code fence / span 非置換、invalid syntax no-op、missing var strict、secret 非表示、replacement count。 |
 | §28.15 | byte count、pre/code 保持、attribute order 保持、structure validation、marker validation、disabled 互換、inline script / style 非追加。 |

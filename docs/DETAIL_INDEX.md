@@ -72,11 +72,12 @@ owner component が確定できない場合は、実装判断で補完しない�
 実装者は、対象機能ごとに以下の順で読む。
 
 1. [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務で方針とポリシーを確認し、[`docs/ROADMAP.md`](ROADMAP.md) で対象の実装状態、実装可否、Phase、将来計画該当有無を確認する。
-2. 本ファイル §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
-3. 本ファイル §0a〜§0h で、詳細仕様の記載基準、共通固定値、実装前確認項目、検証条件、Phase 詳細仕様参照を確認する。
-4. owner component の [`docs/details/*.md`](details/) を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
-5. collaborator component がある場合は、該当する [`docs/details/*.md`](details/) を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
-6. [`docs/details/setup.md`](details/setup.md) §26 のセットアップ・アップデート手順と [`docs/details/setup.md`](details/setup.md) §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
+2. 生成 HTML のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
+3. 本ファイル §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
+4. 本ファイル §0a〜§0h で、詳細仕様の記載基準、共通固定値、実装前確認項目、検証条件、Phase 詳細仕様参照を確認する。
+5. owner component の [`docs/details/*.md`](details/) を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
+6. collaborator component がある場合は、該当する [`docs/details/*.md`](details/) を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
+7. [`docs/details/setup.md`](details/setup.md) §26 のセットアップ・アップデート手順と [`docs/details/setup.md`](details/setup.md) §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
 
 詳細仕様節に §0h の必須項目が不足している場合は、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを主本文として改訂し、本ファイルの対応表と [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務の対象範囲を整合させる。
 
