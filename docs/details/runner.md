@@ -163,7 +163,7 @@
 /var/www/html/           # SSH 転送先
 ```
 
-### systemd
+### systemd 配置参照
 
 以下は runner が起動される運用上の配置である。unit 本文、配置、enable、restart、更新、rollback は [`docs/details/setup.md`](setup.md) §26 を正とする。
 

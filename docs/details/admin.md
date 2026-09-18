@@ -19,7 +19,7 @@
 
 ---
 
-## A1. Admin Static File Boundary
+## A1. 管理 UI 静的ファイル境界
 
 標準管理 UI の配布物は、次の path に固定する。
 
@@ -36,7 +36,7 @@
 
 ---
 
-## A2. Admin Archive Validation
+## A2. 管理 UI Archive 検証
 
 admin archive の検証は以下の順序に固定する。
 
@@ -52,7 +52,7 @@ admin archive の検証は以下の順序に固定する。
 
 ---
 
-## A3. Static Serving Contract
+## A3. 静的配信契約
 
 `api` が管理 UI を配信する場合、`admin` は静的 file 解決と response header 決定だけを担当する。
 
@@ -71,7 +71,7 @@ admin archive の検証は以下の順序に固定する。
 
 ---
 
-## A4. Setup Boundary
+## A4. Setup 連携境界
 
 [`docs/details/setup.md`](setup.md) は、release asset 取得、checksum 検証、systemd、配置順序、rollback を扱う。
 
@@ -89,7 +89,7 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 ---
 
-## A5. Acceptance Criteria
+## A5. 受け入れ条件
 
 `admin` の実装完了には、以下をすべて満たす。
 
