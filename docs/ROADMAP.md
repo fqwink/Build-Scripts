@@ -322,15 +322,15 @@ Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化
 | 実装中・検証未完了 | 検証待ち | ソースコード実装に着手済みだが、必須検証が未完了の項目。 | 必須検証を実行し、不足が残る場合は `実装済み` へ移動しない。 |
 | 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) の対応表と該当 owner component の詳細仕様本文を作成し、仕様化条件を満たす。 |
 | 仕様化済み・未実装 | 実装可 | 正本仕様と詳細仕様があり、実装対象として扱える項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0h・§0i.1〜§0i.4 と該当 owner component の詳細仕様本文を確認して実装する。 |
-| 将来計画 | 実装不可 | `components/mcp.go` など、将来構想として管理する項目。 | 本節 5.2.3 の手順で `改訂予定` へ昇格する。 |
+| 将来計画 | 実装不可 | `components/mcp.go` など、将来構想として管理する項目。 | 本節 [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格する。 |
 
-将来計画、改訂予定の項目は、実装着手可能な仕様ではない。実装対象にする場合は、先に 5.2.3 の手順で `仕様化済み・未実装` へ昇格させる。
+将来計画、改訂予定の項目は、実装着手可能な仕様ではない。実装対象にする場合は、先に [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `仕様化済み・未実装` へ昇格させる。
 
 ---
 
 ### 5.2.2 統合ロードマップ表
 
-本表は、[`docs/ROADMAP.md`](ROADMAP.md) §5.2 の全項目を状態別に統合した唯一の一覧である。項目を追加、削除、昇格、実装完了する場合は、本表の `状態`、`実装可否`、`次アクション` を同時に更新する。
+本表は、§5.2 の全項目を状態別に統合した唯一の一覧である。項目を追加、削除、昇格、実装完了する場合は、本表の `状態`、`実装可否`、`次アクション` を同時に更新する。
 
 MCP サーバー領域の行は、現時点ではすべて将来構想例であり、実装契約、API 契約、状態ファイル契約、起動手順、検証条件を定義しない。`components/mcp.go`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、MCP 専用詳細仕様を新設し、`改訂予定` を経て `仕様化済み・未実装` へ昇格するまで実装してはならない。
 
@@ -355,7 +355,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 実装済み | 完了済み | CI ランナー | GitHub PAT 有効期限の事前警告 | GitHub API レスポンスの `GitHub-Authentication-Token-Expiration` ヘッダーを解析し、7 日以内の期限切れを WARN ログで通知する。 | Go test で GitHub API response header 処理を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | コミット情報のビルドログ記録 | ビルドトリガーとなったコミットの SHA・メッセージ・作者名・コミット日時を `.build_logs/{id}.json` に記録する。 | Go test で fake commits API からの commit info 記録を検証済み。 |
 | 実装済み | 完了済み | CI ランナー | GitHub API 連続失敗によるサーキットブレーカー | 連続失敗が `API_CIRCUIT_BREAKER_THRESHOLD` 周回以上になった場合に `.build_circuit_state.open=true` とし、open 中はポーリングをスキップする。 | Go test で circuit open 時の polling skip を検証済み。 |
-| 実装済み | 完了済み | CI ランナー | 出力サイトサイズ警告閾値 | ビルド後の出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` を超えた場合に WARN ログを出力する。§8 変換レポートに `size_warn` フラグを追加。 | Go test で閾値超過時の `size_warn=true` と WARN 記録を検証済み。 |
+| 実装済み | 完了済み | CI ランナー | 出力サイトサイズ警告閾値 | ビルド後の出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` を超えた場合に WARN ログを出力する。[`docs/details/builder.md`](details/builder.md) §8 変換レポートに `size_warn` フラグを追加。 | Go test で閾値超過時の `size_warn=true` と WARN 記録を検証済み。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | Webhook イベントログ | 受信した Webhook push イベントを `.webhook_events.json` に JSON Lines 形式で追記記録する。`delivery_id`・`event`・`ref`・`sha`・`build_triggered` を保存 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.3、[`docs/details/runner.md`](details/runner.md) §11、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/api.md`](details/api.md) §22-W、[`docs/details/api.md`](details/api.md) §27.13 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の記録と統計 API | `.build_logs/{id}.json` に `started_at`・`finished_at`・`duration_seconds` を記録し、`GET /api/stats/build-duration` で過去 N 件の平均・最小・最大を提供する | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.4、[`docs/details/runner.md`](details/runner.md) §15、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/runner.md`](details/runner.md) §27.14 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | ビルドアーティファクト世代管理 | `HISTORY_KEEP_N` 世代分を `.snapshots/` に自動保持し超過分を削除する。`POST /api/history/{id}/rollback` による再転送は API 実装対象として残す。 | Go test で build 成功時の `.snapshots/{id}/site` 作成を検証済み。 |
@@ -378,9 +378,9 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 実装済み | 完了済み | ビルドスクリプト | TOC 開閉状態の永続化 | TOC グループの展開／折りたたみ状態を `localStorage` に保存し、リロード後も復元する | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0h・§0i.1 に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | 見出しスラグ重複解決 | 同一テキストの見出しが複数存在する場合に 2 番目以降のスラグへ `-2`・`-3` を付与して一意にする。TOC・アンカーコピー・全文検索と整合させる | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0h・§0i.1 に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | 前後章ナビゲーションボタン | h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末尾に静的生成する | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 内部リンク整合性チェック | `[label](#anchor)` 形式の内部リンクが実際のスラグと一致するか変換時に検証し、不一致を `[WARN]` で報告。§8 変換レポートの `broken_links` フィールドに件数を記録する | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 見出し階層スキップ警告 | h1→h3 のような見出しレベルの 2 段以上のスキップを `[WARN]` で報告。§8 変換レポートの `heading_skips` フィールドに件数を記録する | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0h・§0i.1 に従って実装する。 |
-| 実装済み | 完了済み | ビルドスクリプト | 読了時間推計と表示 | 本文文字数（コードブロック・タグ除く）から読了時間（分、200文字/分・切り上げ）を算出し、固定ヘッダーに静的埋め込みする。§8 変換レポートの `reading_time` フィールドに記録する | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 内部リンク整合性チェック | `[label](#anchor)` 形式の内部リンクが実際のスラグと一致するか変換時に検証し、不一致を `[WARN]` で報告。[`docs/details/builder.md`](details/builder.md) §8 変換レポートの `broken_links` フィールドに件数を記録する | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 見出し階層スキップ警告 | h1→h3 のような見出しレベルの 2 段以上のスキップを `[WARN]` で報告。[`docs/details/builder.md`](details/builder.md) §8 変換レポートの `heading_skips` フィールドに件数を記録する | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0h・§0i.1 に従って実装する。 |
+| 実装済み | 完了済み | ビルドスクリプト | 読了時間推計と表示 | 本文文字数（コードブロック・タグ除く）から読了時間（分、200文字/分・切り上げ）を算出し、固定ヘッダーに静的埋め込みする。[`docs/details/builder.md`](details/builder.md) §8 変換レポートの `reading_time` フィールドに記録する | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0h・§0i.1 に従って実装する。 |
 | 実装済み | 完了済み | CI ランナー | Webhook 通知失敗リトライキュー | `.notify_pending`（JSON）を起動時に再送し、HTTP 2xx 成功時に削除、失敗時に `retry_count` と `last_error` を更新して保持する。 | Go test で fake HTTP endpoint への再送成功と queue 空化を検証済み。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ブランチ設定の動的変更 API | `BRANCH_TARGETS` を外部 JSON（`.branch_config`）で管理し `GET /api/branch-config` / `POST /api/branch-config` で API 経由変更可能にする。`components/runner.go` 再起動不要 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.3、[`docs/details/runner.md`](details/runner.md) §11、[`docs/details/runner.md`](details/runner.md) §12、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/api.md`](details/api.md) §27.18 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | 週次ビルドサマリー Webhook | 指定曜日・時刻に過去 7 日間の成功率・平均ビルド時間・エラー件数をまとめた定期通知を送信する | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.3、[`docs/details/runner.md`](details/runner.md) §12、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/runner.md`](details/runner.md) §16、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/runner.md`](details/runner.md) §27.19 に従って実装する。 |
@@ -412,49 +412,49 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドトリガー種別の記録 | `polling`、`force_interval`、`manual`、`webhook`、`retry_pending_transfer`、`startup_config_integrity`、`rollback`、`local_watch`、`approval` を `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に記録し、履歴 filter と状態表示で同じ値を使う。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.2、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/runner.md`](details/runner.md) §15、[`docs/details/statefile.md`](details/statefile.md) §22.0c、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/runner.md`](details/runner.md) §27.9、[`docs/details/runner.md`](details/runner.md) §27.23、[`docs/details/runner.md`](details/runner.md) §27.30 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の異常検知 | `.build_trends.json` の移動平均と p95 を基準に異常に遅い build を検出し、WARN、history flag、通知へ反映する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.2、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/runner.md`](details/runner.md) §15、[`docs/details/runner.md`](details/runner.md) §16、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/runner.md`](details/runner.md) §27.38 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | 設定ファイル起動時整合性チェック | runner 起動時に `.branch_config`、`.notify_config`、`.build_state`、`.pending_transfers`、`.notify_pending`、`.build_circuit_state` の JSON 整合性を検証し、破損・型不一致・必須 key 不足を規定どおり退避、初期化、通知、または停止する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.2、[`docs/details/runner.md`](details/runner.md) §11、[`docs/details/runner.md`](details/runner.md) §12、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/statefile.md`](details/statefile.md) §22.0c、[`docs/details/runner.md`](details/runner.md) §27.10 に従って実装する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | マルチユーザー対応 | 初期仕様の単一 admin 認証を、複数ユーザー・ユーザー別セッション・ユーザー別監査へ拡張する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 通知先の拡張 | 管理画面・API からメール・Slack・Discord 等の通知チャンネルを設定・追加できるようにする。`components/runner.go` 側のフック実装は → ビルド通知連携 | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | データストア切り替え | 大量ビルド履歴・ログ運用に備え、フラットファイルから SQLite 等への切り替えを検討する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 外部認証連携 | SSO・OAuth 等の外部認証基盤との連携を検討する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | マルチユーザー対応 | 初期仕様の単一 admin 認証を、複数ユーザー・ユーザー別セッション・ユーザー別監査へ拡張する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 通知先の拡張 | 管理画面・API からメール・Slack・Discord 等の通知チャンネルを設定・追加できるようにする。`components/runner.go` 側のフック実装は [`docs/ROADMAP.md`](ROADMAP.md) §5.2.2 の「ビルド通知連携」 | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | データストア切り替え | 大量ビルド履歴・ログ運用に備え、フラットファイルから SQLite 等への切り替えを検討する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 外部認証連携 | SSO・OAuth 等の外部認証基盤との連携を検討する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | TOTP 二要素認証 | RFC 6238 TOTP を Go 標準ライブラリだけで検証し、login を password verified / totp required / session issued の二段階に分離する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.4、[`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/security.md`](details/security.md) §27.46 に従って実装する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 統計データの CSV エクスポート | `GET /api/stats/timeline` の日別データを CSV 形式でダウンロードできるエンドポイントを追加する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | キュー内個別エントリのキャンセル | `DELETE /api/queue/{id}` で特定エントリのみキャンセルする（初期仕様では全クリアのみ） | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 統計データの CSV エクスポート | `GET /api/stats/timeline` の日別データを CSV 形式でダウンロードできるエンドポイントを追加する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | キュー内個別エントリのキャンセル | `DELETE /api/queue/{id}` で特定エントリのみキャンセルする（初期仕様では全クリアのみ） | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定バリデーション API | `POST /api/config/validate` で `.server_config` 互換の設定差分を保存前に検証し、正規化後設定、警告、エラー位置を返す。状態ファイルは変更しない。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.3、[`docs/details/statefile.md`](details/statefile.md) §22.0c、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/api.md`](details/api.md) §27.5 に従って実装する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | Prometheus メトリクスエンドポイント | `GET /api/metrics` で Prometheus 形式のメトリクス（ビルド数・成功率・ディスク使用量等）を返す | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | CLI 管理クライアント | Go 標準ライブラリのみで実装した `adlaire-ci-cli` で API を CUI 操作できるツール | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 設定の自動スナップショット | `POST /api/config` 変更時に自動で設定バックアップを世代保存する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | ステータスバッジ生成 | `GET /api/badge` で最終ビルド結果を SVG バッジとして返す（README 埋め込み用） | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | ビルド履歴の自動削除設定 | `history_retention_days` 設定でビルド履歴エントリを自動削除する（ログの `log_retention_days` に対応する履歴版） | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | Prometheus メトリクスエンドポイント | `GET /api/metrics` で Prometheus 形式のメトリクス（ビルド数・成功率・ディスク使用量等）を返す | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | CLI 管理クライアント | Go 標準ライブラリのみで実装した `adlaire-ci-cli` で API を CUI 操作できるツール | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 設定の自動スナップショット | `POST /api/config` 変更時に自動で設定バックアップを世代保存する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | ステータスバッジ生成 | `GET /api/badge` で最終ビルド結果を SVG バッジとして返す（README 埋め込み用） | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | ビルド履歴の自動削除設定 | `history_retention_days` 設定でビルド履歴エントリを自動削除する（ログの `log_retention_days` に対応する履歴版） | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | セッションタイムアウト変更設定 | `.server_config.session_timeout_seconds` で session 有効期限を 5 分〜30 日の範囲で変更し、既存 session の扱いを固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.4、[`docs/details/statefile.md`](details/statefile.md) §22.0c、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/security.md`](details/security.md) §27.45 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドトリガー専用 API スコープ | API token scope に `trigger` を追加し、build 起動系だけを許可する最小権限 token を発行できるようにする。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.4、[`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/security.md`](details/security.md) §27.42 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | 監査ログ | `.audit_log` に設定変更、認証、token、build trigger、承認、権限拒否を actor 付き JSON Lines で記録する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.4、[`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/security.md`](details/security.md) §27.44 に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | API レート制限 | `.api_rate_state` で actor / IP / endpoint group ごとの固定窓 rate limit を管理し、超過時 `429` を返す。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.4、[`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/security.md`](details/security.md) §27.47 に従って実装する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | ロールベースアクセス制御 | 複数ユーザー対応後に、管理者・オペレーター・閲覧者等の役割ごとに API 権限を分ける | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 成果物ダウンロード API | 生成静的 Web サイトを archive として API エンドポイント経由で直接ダウンロードできるようにする | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 設定スナップショット差分表示 | 保存済みスナップショット間の設定変更点を diff 形式で確認できる API | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 複数プロジェクト管理 | 単一インスタンスで複数リポジトリ／プロジェクトを切り替え管理する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | ロールベースアクセス制御 | 複数ユーザー対応後に、管理者・オペレーター・閲覧者等の役割ごとに API 権限を分ける | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 成果物ダウンロード API | 生成静的 Web サイトを archive として API エンドポイント経由で直接ダウンロードできるようにする | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 設定スナップショット差分表示 | 保存済みスナップショット間の設定変更点を diff 形式で確認できる API | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 複数プロジェクト管理 | 単一インスタンスで複数リポジトリ／プロジェクトを切り替え管理する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | API キー管理 | `.api_tokens` で API key の hash、scopes、expires_at、revoked_at を管理し、発行時だけ token 本体を返す。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.4、[`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/security.md`](details/security.md) §27.43 に従って実装する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | ビルドログのリアルタイム配信 | 実行中ビルドのログを SSE / WebSocket でストリーミング配信するエンドポイント | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 設定のインポート／エクスポート | 設定全体を JSON でエクスポートし、別環境へそのままインポートする | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | ビルド統計ダッシュボード | 成功率・平均ビルド時間・エラー分布等を可視化する管理画面を生成する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | ユーザー管理 API | 複数ユーザー対応後に、管理者アカウントの追加・削除・パスワード変更を API で操作する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | IP アドレス制限 | 管理 API へのアクセスを許可 IP レンジに限定するフィルタリング | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | API バージョニング | `/api/v1/` 等のバージョンプレフィックスで API 世代を明示する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | Webhook 署名検証 | 受信 Webhook の HMAC 署名を検証し、なりすましリクエストを拒否する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | API ドキュメント自動生成 | OpenAPI / Swagger 仕様を自動生成し、インタラクティブなドキュメントとして提供する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 通知チャンネル管理 | Slack / Discord / メール等の通知先を管理画面から追加・削除・テスト送信する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | ビルドキューの手動並び替え | 管理画面からキュー内ジョブの実行順序を変更する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 設定テンプレート | よく使う設定パターンをテンプレートとして保存・再利用する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | ビルドログのリアルタイム配信 | 実行中ビルドのログを SSE / WebSocket でストリーミング配信するエンドポイント | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 設定のインポート／エクスポート | 設定全体を JSON でエクスポートし、別環境へそのままインポートする | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | ビルド統計ダッシュボード | 成功率・平均ビルド時間・エラー分布等を可視化する管理画面を生成する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | ユーザー管理 API | 複数ユーザー対応後に、管理者アカウントの追加・削除・パスワード変更を API で操作する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | IP アドレス制限 | 管理 API へのアクセスを許可 IP レンジに限定するフィルタリング | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | API バージョニング | `/api/v1/` 等のバージョンプレフィックスで API 世代を明示する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | Webhook 署名検証 | 受信 Webhook の HMAC 署名を検証し、なりすましリクエストを拒否する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | API ドキュメント自動生成 | OpenAPI / Swagger 仕様を自動生成し、インタラクティブなドキュメントとして提供する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 通知チャンネル管理 | Slack / Discord / メール等の通知先を管理画面から追加・削除・テスト送信する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | ビルドキューの手動並び替え | 管理画面からキュー内ジョブの実行順序を変更する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 設定テンプレート | よく使う設定パターンをテンプレートとして保存・再利用する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | API アクセスログ | 認証後 API と Webhook の呼び出しを `.api_access_log` に JSON Lines で記録し、`GET /api/api-access-log` でページング参照する。認証ログ `.access_log` とは分離する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.3、[`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/statefile.md`](details/statefile.md) §22.0c、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/api.md`](details/api.md) §27.6 に従って実装する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 管理者向けイベントフィード | ビルド完了・エラー・設定変更等のシステムイベントをリアルタイムで流す管理ページ | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | ビルドキュー可視化 | キューに積まれたビルドの状態一覧を静的 HTML ステータスページとして出力する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | メンテナンスモード | 管理 API から即時にメンテナンスモードへ切り替え、ビルドキューを一時停止する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | 読み取り専用共有リンク | ビルドステータス・統計を外部に公開する期限付き読み取り専用リンクを発行する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | アラート閾値設定 | ビルド失敗率・所要時間等が設定閾値を超えた際に自動アラートを発火する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | バックアップ／リストア | 設定・ビルド履歴・ログ等の全データをアーカイブ化してリストアできる機能 | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | API レスポンスキャッシュ制御 | 頻繁に参照される統計・ログ API のキャッシュ TTL を設定から変更する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | スナップショット間サイト差分 API | 2 つのスナップショット ID を指定し、出力サイトの追加/削除行数・変更率を返す `GET /api/snapshots/{id1}/diff/{id2}` を追加する | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 将来計画 | 実装不可 | 管理ツール・API | Webhook 送信履歴の手動再送 API | `GET /api/notify-log` の各エントリに対して `POST /api/notify-log/{id}/retry` で同一ペイロードを即時再送できる手動リトライ API。`.notify_pending` 自動再試行とは別に特定通知だけ個別再送できる運用機能 | 5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 管理者向けイベントフィード | ビルド完了・エラー・設定変更等のシステムイベントをリアルタイムで流す管理ページ | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | ビルドキュー可視化 | キューに積まれたビルドの状態一覧を静的 HTML ステータスページとして出力する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | メンテナンスモード | 管理 API から即時にメンテナンスモードへ切り替え、ビルドキューを一時停止する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | 読み取り専用共有リンク | ビルドステータス・統計を外部に公開する期限付き読み取り専用リンクを発行する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | アラート閾値設定 | ビルド失敗率・所要時間等が設定閾値を超えた際に自動アラートを発火する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | バックアップ／リストア | 設定・ビルド履歴・ログ等の全データをアーカイブ化してリストアできる機能 | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | API レスポンスキャッシュ制御 | 頻繁に参照される統計・ログ API のキャッシュ TTL を設定から変更する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | スナップショット間サイト差分 API | 2 つのスナップショット ID を指定し、出力サイトの追加/削除行数・変更率を返す `GET /api/snapshots/{id1}/diff/{id2}` を追加する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
+| 将来計画 | 実装不可 | 管理ツール・API | Webhook 送信履歴の手動再送 API | `GET /api/notify-log` の各エントリに対して `POST /api/notify-log/{id}/retry` で同一ペイロードを即時再送できる手動リトライ API。`.notify_pending` 自動再試行とは別に特定通知だけ個別再送できる運用機能 | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 差分ビルド | 変更箇所のみ処理し、大規模 MD の変換を高速化する。changed manifest、dependency 逆引き、未変更 page 維持、search index 再生成を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.1、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 複数出力形式 | `--format` を仕様化し、初期実装では `html` のみ実出力、`pdf` / `epub` は予約値として実行前に拒否する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.2、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | Markdown 拡張記法サポート | admonition と badge の内製変換、escape、report count を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.3、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
@@ -481,21 +481,21 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 印刷時 QR コード挿入 | print-only SVG、URL validation、長さ制限、外部 library 不使用を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.23、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 定義リストサポート | `term` / `: definition` から `<dl>/<dt>/<dd>` への変換、paragraph 境界、inline escape を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.24、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | タスクリストサポート | disabled checkbox、checked 判定、nested list、aria を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i.1、[`docs/details/builder.md`](details/builder.md) §28.25、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP サーバー実装 | `components/mcp.go` を将来追加コンポーネントとして追加。MCP プロトコル（JSON-RPC over stdio）で Claude Desktop 等の AI クライアントから直接接続可能にする。内部では `components/api.go` REST API に Go 標準ライブラリ `net/http` でローカル接続するラッパー設計（`encoding/json` + `os.Stdin` / `os.Stdout` + `net/http`、ゼロ外部依存）。認証は `.mcp_token` に専用 API トークンを保存し、スコープ（`read` のみ / `trigger` 許可）をトークン単位で選択可能。Claude Desktop の `mcpServers` 設定に `/usr/local/bin/adlaire-ci-mcp` を指定して接続する | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP ツール・リソース公開 | MCP サーバーが公開するツール：`get_status`（ビルド状態・CB 状態・PAT 残日数）/ `get_history(n)`（直近 N 件）/ `search_logs(query, level?, from?, to?)`（ログ全文検索）/ `get_build_log(id)`（個別ビルドログ）/ `trigger_build(force?)`（ビルドトリガー、`trigger` スコープ必須）/ `reset_circuit_breaker`（CB リセット、`trigger` スコープ必須）。リソース：`adlaire://status` / `adlaire://history` / `adlaire://logs/{id}` / `adlaire://config` | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | AI 支援ビルドエラー分析 | ビルド失敗時、AI クライアント（Claude Desktop 等）が `get_build_log` / `search_logs` ツールを自律的に呼び出してエラーログを取得し、原因推定と修正提案を生成できる設計。AI 側が pull するため `components/runner.go` のゼロ依存を完全維持。将来的には Webhook 通知をトリガーに AI が自動分析を開始する構成も検討可 | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP Prompts 定義 | よく使う分析シナリオを MCP Prompts として定義し、Claude Desktop 等のプロンプトメニューから即時呼び出し可能にする。例：「先週のビルド失敗率をまとめて」「最後のエラーの原因を分析して」「PAT 有効期限が近いか確認して」。`get_history` / `search_logs` ツールと組み合わせて定型分析を 1 クリックで実行できる | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP Sampling によるビルドログ自動分析 | MCP Sampling 機能を使い、ビルド失敗時に `components/mcp.go` が AI クライアントへ sampling リクエストを送って原因推定テキストを生成し `.build_logs/{id}.json` の `ai_analysis` フィールドへ自動記録する。`components/runner.go` は MCP サーバーへソケット通知を送るだけで Anthropic API キーは `components/mcp.go` も保持しない | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP Notifications（イベントプッシュ） | ビルド完了・失敗・CB 開放等のシステムイベントを MCP Notifications として接続中の AI クライアントへリアルタイムプッシュする。`components/runner.go` が `components/api.go` 経由でイベントをキューに積み `components/mcp.go` が接続クライアントへ転送する設計 | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP HTTP SSE transport 対応 | 初期仕様の stdio transport に加えて HTTP + SSE transport をサポートし、リモートマシンや複数クライアントからの同時接続を可能にする。Go 標準ライブラリ `net/http` で実装しゼロ依存を維持。`components/api.go` と同一プロセス統合か独立ポート起動かを設定で選択可能 | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP ツールスコープ細分化 | 初期仕様の `read` / `trigger` 2 スコープを `read`（参照のみ）/ `trigger`（ビルド起動）/ `admin`（設定変更・CB リセット・ブランチ設定変更）の 3 スコープに細分化する。`.mcp_token` の各トークンにスコープを紐付け、ツール呼び出し時にスコープ検証を行う | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP ツール呼び出し監査ログ | MCP 経由で呼び出されたツールの履歴（呼び出し日時・ツール名・引数サマリー・成否）を `.mcp_access_log` に記録する。`GET /api/mcp-access-log` で参照可能にし、AI クライアントがどの操作をいつ実行したかを追跡できる | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP リソース購読（Resource Subscriptions） | クライアントが `adlaire://status` 等のリソースを subscribe し、状態変化時に `notifications/resources/updated` を自動受信できる MCP 標準機能。MCP Notifications（イベント起点プッシュ）とは異なりリソース変更起点のプッシュで、クライアントがポーリングなしに最新状態を保持できる | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP クライアント情報ログ | initialize リクエストの `clientInfo`（クライアント名・バージョン）を `.mcp_access_log` の接続エントリとして記録する。Claude Desktop / Cursor / 自作クライアント等どのツールから接続されたかを追跡し、監査と動作確認に利用する | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP ツール実行統計 | ツールごとの呼び出し回数・平均応答時間（ms）・エラー率を `.mcp_stats` に蓄積する。`GET /api/mcp-stats` で参照可能にし、どのツールが頻用されているか・ボトルネックがどこかを可視化する | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP ツール実行タイムアウト設定 | `.mcp_config` にツールごとのタイムアウト秒数を設定可能にする（例：`search_logs: 10`、`trigger_build: 30`）。タイムアウト超過時は JSON-RPC エラーを返し、MCP サーバーが無応答になる事態を防ぐ | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP 設定 CRUD ツール | `get_config(section?)` / `set_config(key, value)` ツールを `admin` スコープで公開する。AI クライアントから直接 `.server_config` / `.notify_config` 等を読み書きでき、チャット上で「ポーリング間隔を 30 秒に変更して」と指示するだけで設定変更が完結する（`components/runner.go` 再起動不要）。`admin` スコープの定義は MCP ツールスコープ細分化で扱う | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
-| 将来計画 | 実装不可 | MCP サーバー | MCP Elicitation による副作用操作の確認 | MCP Elicitation に対応し、`trigger_build(force=true)` / `reset_circuit_breaker` 等の副作用操作の実行前に AI クライアントへ確認プロンプトを送信して明示的な承認を得てから実行する。JSON-RPC メッセージの追加のみで実装しゼロ依存を維持。意図しない操作の誤実行を防ぐ安全機構 | 5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP サーバー実装 | `components/mcp.go` を将来追加コンポーネントとして追加。MCP プロトコル（JSON-RPC over stdio）で Claude Desktop 等の AI クライアントから直接接続可能にする。内部では `components/api.go` REST API に Go 標準ライブラリ `net/http` でローカル接続するラッパー設計（`encoding/json` + `os.Stdin` / `os.Stdout` + `net/http`、ゼロ外部依存）。認証は `.mcp_token` に専用 API トークンを保存し、スコープ（`read` のみ / `trigger` 許可）をトークン単位で選択可能。Claude Desktop の `mcpServers` 設定に `/usr/local/bin/adlaire-ci-mcp` を指定して接続する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP ツール・リソース公開 | MCP サーバーが公開するツール：`get_status`（ビルド状態・CB 状態・PAT 残日数）/ `get_history(n)`（直近 N 件）/ `search_logs(query, level?, from?, to?)`（ログ全文検索）/ `get_build_log(id)`（個別ビルドログ）/ `trigger_build(force?)`（ビルドトリガー、`trigger` スコープ必須）/ `reset_circuit_breaker`（CB リセット、`trigger` スコープ必須）。リソース：`adlaire://status` / `adlaire://history` / `adlaire://logs/{id}` / `adlaire://config` | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | AI 支援ビルドエラー分析 | ビルド失敗時、AI クライアント（Claude Desktop 等）が `get_build_log` / `search_logs` ツールを自律的に呼び出してエラーログを取得し、原因推定と修正提案を生成できる設計。AI 側が pull するため `components/runner.go` のゼロ依存を完全維持。将来的には Webhook 通知をトリガーに AI が自動分析を開始する構成も検討可 | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP Prompts 定義 | よく使う分析シナリオを MCP Prompts として定義し、Claude Desktop 等のプロンプトメニューから即時呼び出し可能にする。例：「先週のビルド失敗率をまとめて」「最後のエラーの原因を分析して」「PAT 有効期限が近いか確認して」。`get_history` / `search_logs` ツールと組み合わせて定型分析を 1 クリックで実行できる | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP Sampling によるビルドログ自動分析 | MCP Sampling 機能を使い、ビルド失敗時に `components/mcp.go` が AI クライアントへ sampling リクエストを送って原因推定テキストを生成し `.build_logs/{id}.json` の `ai_analysis` フィールドへ自動記録する。`components/runner.go` は MCP サーバーへソケット通知を送るだけで Anthropic API キーは `components/mcp.go` も保持しない | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP Notifications（イベントプッシュ） | ビルド完了・失敗・CB 開放等のシステムイベントを MCP Notifications として接続中の AI クライアントへリアルタイムプッシュする。`components/runner.go` が `components/api.go` 経由でイベントをキューに積み `components/mcp.go` が接続クライアントへ転送する設計 | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP HTTP SSE transport 対応 | 初期仕様の stdio transport に加えて HTTP + SSE transport をサポートし、リモートマシンや複数クライアントからの同時接続を可能にする。Go 標準ライブラリ `net/http` で実装しゼロ依存を維持。`components/api.go` と同一プロセス統合か独立ポート起動かを設定で選択可能 | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP ツールスコープ細分化 | 初期仕様の `read` / `trigger` 2 スコープを `read`（参照のみ）/ `trigger`（ビルド起動）/ `admin`（設定変更・CB リセット・ブランチ設定変更）の 3 スコープに細分化する。`.mcp_token` の各トークンにスコープを紐付け、ツール呼び出し時にスコープ検証を行う | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP ツール呼び出し監査ログ | MCP 経由で呼び出されたツールの履歴（呼び出し日時・ツール名・引数サマリー・成否）を `.mcp_access_log` に記録する。`GET /api/mcp-access-log` で参照可能にし、AI クライアントがどの操作をいつ実行したかを追跡できる | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP リソース購読（Resource Subscriptions） | クライアントが `adlaire://status` 等のリソースを subscribe し、状態変化時に `notifications/resources/updated` を自動受信できる MCP 標準機能。MCP Notifications（イベント起点プッシュ）とは異なりリソース変更起点のプッシュで、クライアントがポーリングなしに最新状態を保持できる | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP クライアント情報ログ | initialize リクエストの `clientInfo`（クライアント名・バージョン）を `.mcp_access_log` の接続エントリとして記録する。Claude Desktop / Cursor / 自作クライアント等どのツールから接続されたかを追跡し、監査と動作確認に利用する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP ツール実行統計 | ツールごとの呼び出し回数・平均応答時間（ms）・エラー率を `.mcp_stats` に蓄積する。`GET /api/mcp-stats` で参照可能にし、どのツールが頻用されているか・ボトルネックがどこかを可視化する | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP ツール実行タイムアウト設定 | `.mcp_config` にツールごとのタイムアウト秒数を設定可能にする（例：`search_logs: 10`、`trigger_build: 30`）。タイムアウト超過時は JSON-RPC エラーを返し、MCP サーバーが無応答になる事態を防ぐ | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP 設定 CRUD ツール | `get_config(section?)` / `set_config(key, value)` ツールを `admin` スコープで公開する。AI クライアントから直接 `.server_config` / `.notify_config` 等を読み書きでき、チャット上で「ポーリング間隔を 30 秒に変更して」と指示するだけで設定変更が完結する（`components/runner.go` 再起動不要）。`admin` スコープの定義は MCP ツールスコープ細分化で扱う | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
+| 将来計画 | 実装不可 | MCP サーバー | MCP Elicitation による副作用操作の確認 | MCP Elicitation に対応し、`trigger_build(force=true)` / `reset_circuit_breaker` 等の副作用操作の実行前に AI クライアントへ確認プロンプトを送信して明示的な承認を得てから実行する。JSON-RPC メッセージの追加のみで実装しゼロ依存を維持。意図しない操作の誤実行を防ぐ安全機構 | [`docs/ROADMAP.md`](ROADMAP.md) §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
 
 ### 5.2.3 状態変更・昇格手順
 
@@ -624,7 +624,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ### 6.3 / §27.38a 横断連動・Runner 拡張機能 実装補足契約
 
-本節は、追加仕様化機能の横断補足契約である。§27.21〜§27.38 および api / sdk / ui / statefile の横断連動では、実装者は owner 詳細仕様を主本文とし、本節を横断確認として同時に確認する。
+本節は、追加仕様化機能の横断補足契約である。[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 および api / sdk / ui / statefile の横断連動では、実装者は owner 詳細仕様を主本文とし、本節を横断確認として同時に確認する。
 
 本節の正本範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装完了時の横断受け入れ観点に限定する。個別機能本文は各 owner / collaborator の詳細仕様ファイルを正とする。
 
@@ -632,13 +632,13 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 | 確認 | 固定内容 |
 |------|----------|
-| runner 起点 | §27.21〜§27.38 の多くは runner の build 実行、queue、history、log、notification に影響するため、[`docs/details/runner.md`](details/runner.md) の該当 §27 節を先に確認する。 |
-| builder 連携 | cache、dependency、output meta、生成物に関わる場合は [`docs/details/builder.md`](details/builder.md) の該当 §27 節を同時に確認する。 |
+| runner 起点 | [`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 の多くは runner の build 実行、queue、history、log、notification に影響するため、[`docs/details/runner.md`](details/runner.md) の該当 §27 節を先に確認する。 |
+| builder 連携 | cache、dependency、output meta、生成物に関わる場合は [`docs/details/builder.md`](details/builder.md) の該当 [`docs/details/builder.md`](details/builder.md) §27 節を同時に確認する。 |
 | API 連携 | 設定保存、queue、approval、history、stats、snapshot、rollback、hook、notify、search に関わる場合は [`docs/details/api.md`](details/api.md) の endpoint / state read-write 契約を同時に確認する。 |
 | SDK / UI 連携 | API を管理画面から操作する機能は、SDK method は [`docs/details/sdk.md`](details/sdk.md) §23、DOM / 表示条件は [`docs/details/ui.md`](details/ui.md) §24 を正本として確認する。 |
 | statefile | 状態 schema、lock、atomic write、JSON Lines、破損時処理、保存順は [`docs/details/statefile.md`](details/statefile.md) を正とする。 |
 | archive | snapshot、artifact、download、delete、rollback、log archive は [`docs/details/archive.md`](details/archive.md) を正とする。 |
-| fixture | §27.21〜§27.38 の受け入れ fixture、secret mask、effects、PR 証跡は [`docs/details/fixture.md`](details/fixture.md) §27-F を正とする。 |
+| fixture | [`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 の受け入れ fixture、secret mask、effects、PR 証跡は [`docs/details/fixture.md`](details/fixture.md) §27-F を正とする。 |
 
 **api / sdk / ui / statefile 横断連動契約：**
 
@@ -652,7 +652,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | config / repo / branch / schedule | `GET/POST /api/config`, `POST /api/config/validate`, `GET/POST /api/repo-config`, `GET/POST /api/branch-config`, `GET /api/schedule`, `POST /api/schedule/*` | `getConfig()`, `setConfig()`, `validateConfig()`, `setRepoConfig()`, `getBranchConfig()`, `setBranchConfig()`, `getSchedule()`, schedule 系 method | config 保存、validate、repo 保存、branch 保存、schedule 変更。 | `.server_config`、`.repo_config`、`.branch_config`、`.config_log`。validate は保存なし。systemd 反映失敗時も保存済み値は戻さない。 | 保存系は対象 GET → `getConfigLog()`。validate は再取得なし。 | `422` は書込前停止。systemd 失敗 `500` は保存済み値を再取得して表示する。no-op は状態ファイルと log を変更しない。 |
 | notify / SMTP / webhook | `GET/POST /api/notify-config`, `POST /api/notify-test`, `GET /api/notify-log`, `GET/POST /api/smtp-config`, `POST /api/smtp-test`, `GET/POST /api/webhook-config`, `GET /api/webhook-events`, `POST /api/notify/weekly-summary` | `getNotifyConfig()`, `setNotifyConfig()`, `notifyTest()`, `getNotifyLog()`, `getSmtpConfig()`, `setSmtpConfig()`, `smtpTest()`, `getWebhookConfig()`, `setWebhookConfig()`, `getWebhookEvents()`, `notifyWeeklySummary()` | notify 保存、test、SMTP 保存/test、webhook secret 保存、event 表示、weekly summary。 | `.notify_config`、`.smtp_config`、`.smtp_secret`、`.webhook_secret`、`.notify_log`、`.webhook_events.json`、`.config_log`。 | 保存系は対象 GET → `getConfigLog()`。test / summary は `getNotifyLog()`。 | secret は response / log / fixture へ平文出力しない。保存成功・失敗とも UI secret field を消去する。 |
 | snapshots / rollback / maintenance | `GET /api/snapshots`, `GET /api/snapshots/{id}/download`, `DELETE /api/snapshots/{id}`, `POST /api/history/{id}/rollback`, `GET /api/maintenance`, `POST /api/maintenance/enable`, `POST /api/maintenance/disable` | `getSnapshots()`, `downloadSnapshot()`, `deleteSnapshot()`, `rollbackHistory()`, `getMaintenance()`, `enableMaintenance()`, `disableMaintenance()` | snapshot list/download/delete、rollback、maintenance enable/disable。 | `.snapshots/`、`.build_history`、`.build_logs/{new_id}.json`、`.maintenance`、`.config_log`。download は副作用なし。 | delete は `getSnapshots()`。rollback は `getHistory()` → `getStatus()`。maintenance は `getMaintenance()`。 | delete / rollback は確認必須。running rollback は `409`。maintenance enabled 中は build / rollback / 設定変更系を disabled。 |
-| access / hooks / rules / pipeline / notes / layout | access、hooks、alert rules、tag rules、pipeline config、notes、dashboard layout の GET/POST/DELETE endpoint | 対応する §23 SDK method | 保存、追加、削除、notes 保存、dashboard layout 保存。 | `.access_control`、`.hooks`、`.alert_rules`、`.tag_rules`、`.pipeline_config`、`.notes`、`.dashboard_layout`、`.config_log`。 | 対象 GET → 変更系で config log 対象の場合は `getConfigLog()`。layout は `getDashboardLayout()` → `getDashboard()`。 | duplicate `409` は競合表示。validation `422` は field error。削除対象不在は `404`。 |
+| access / hooks / rules / pipeline / notes / layout | access、hooks、alert rules、tag rules、pipeline config、notes、dashboard layout の GET/POST/DELETE endpoint | 対応する [`docs/details/sdk.md`](details/sdk.md) §23 SDK method | 保存、追加、削除、notes 保存、dashboard layout 保存。 | `.access_control`、`.hooks`、`.alert_rules`、`.tag_rules`、`.pipeline_config`、`.notes`、`.dashboard_layout`、`.config_log`。 | 対象 GET → 変更系で config log 対象の場合は `getConfigLog()`。layout は `getDashboardLayout()` → `getDashboard()`。 | duplicate `409` は競合表示。validation `422` は field error。削除対象不在は `404`。 |
 | tokens / audit / access logs / rate limit | `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}`, `GET /api/audit-log`, `GET /api/access-log`, `GET /api/api-access-log`, `GET/POST /api/api-rate-limit` | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getAccessLog()`, `getApiAccessLog()`, `getApiRateLimit()`, `setApiRateLimit()` | token 発行/失効、audit / access log 表示、rate limit 保存。 | `.api_tokens`、`.audit_log`、`.access_log`、`.api_access_log`、`.api_rate_state`、`.server_config`、`.config_log`。token 本体は作成時 response のみ。 | token 操作は `getTokens()` → `getAuditLog()`。rate limit は `getApiRateLimit()`。 | token 本体は再取得不可。`403` は logout しない。`429` は rate limit 表示し、同一操作を自動 retry しない。 |
 
 **横断処理順契約：**
@@ -666,4 +666,4 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | SDK request | 引数検証 → path / query / body 生成 → Authorization 付与 → timeout 設定 → fetch → status 判定 → response parse → token 変化適用 → return / throw。 |
 | multi-file write | 全入力検証 → 全対象 read → 全 write payload 生成 → [`docs/details/api.md`](details/api.md) §22.0d の Write 順に atomic write → JSON Lines 追記 → response。途中失敗時は未処理ファイルを書かない。 |
 
-§27.21〜§27.38 の実装では、owner 詳細仕様にない状態ファイル、endpoint、SDK method、UI 操作、外部公開構成を追加してはならない。追加が必要な場合は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) ではなく、該当 owner / collaborator の詳細仕様を先に改訂する。
+[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 の実装では、owner 詳細仕様にない状態ファイル、endpoint、SDK method、UI 操作、外部公開構成を追加してはならない。追加が必要な場合は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) ではなく、該当 owner / collaborator の詳細仕様を先に改訂する。

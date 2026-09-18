@@ -143,7 +143,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 | 管理系 | `api`、`sdk`、`ui`、`admin` | 管理 API、JavaScript SDK、標準管理 UI、管理 UI 静的ファイル配布と配信境界。 | [`docs/details/api.md`](details/api.md)、[`docs/details/sdk.md`](details/sdk.md)、[`docs/details/ui.md`](details/ui.md)、[`docs/details/admin.md`](details/admin.md) |
 | 状態 / 安全系 | `statefile`、`security` | 状態ファイル、lock、atomic write、schema、token、scope、audit、session、TOTP、rate limit。 | [`docs/details/statefile.md`](details/statefile.md)、[`docs/details/security.md`](details/security.md) |
 | 配布 / 検証系 | `setup`、`fixture` | バイナリ配布、systemd、セットアップ、アップデート、fixture、fake、PR 証跡、acceptance checklist。 | [`docs/details/setup.md`](details/setup.md)、[`docs/details/fixture.md`](details/fixture.md) |
-| 将来計画 | `mcp` | MCP サーバー。現時点では実装可能な詳細仕様を持たない。 | 詳細仕様なし |
+| 将来計画 | `mcp` | MCP サーバー。現時点では実装可能な詳細仕様を持たない。 | 未定義。将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) §5.2.2 を確認する。 |
 
 カテゴリをまたぐ機能では、§0b の責務 component 別参照表を優先して owner component を 1 件に確定する。カテゴリ名を component 名、ファイル名、責務境界として扱ってはならない。
 
@@ -166,7 +166,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 | `archive` | [`docs/details/archive.md`](details/archive.md) §27.7、§27.15 | build log archive、snapshot、download、delete、rollback、cleanup。 |
 | `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
 | `security` | [`docs/details/security.md`](details/security.md) §27.42〜§27.47 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| `mcp` | 詳細仕様なし | 将来計画。現時点では実装可能な入出力、状態、起動手順、ツール定義、検証条件を定義しない。 |
+| `mcp` | 未定義。将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) §5.2.2 を確認する。 | 将来計画。現時点では実装可能な入出力、状態、起動手順、ツール定義、検証条件を定義しない。 |
 
 上表の `詳細仕様節` は参照入口であり、主本文の owner component を変更しない。複数ファイルを参照する行では、対象機能の owner component のファイルを主本文とし、他ファイルは collaborator の境界、schema、fixture、security、setup、受け入れ条件を確認するために読む。参照先に同じ HTTP body、状態 schema、DOM id、SDK method、fixture assertion を重複定義してはならない。
 
