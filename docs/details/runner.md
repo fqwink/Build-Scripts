@@ -330,17 +330,17 @@ runner は CLI、`.server_config`、`.branch_config`、既定値を読み込ん�
 PENDING_FILE           = "/opt/adlaire-builder/.pending_transfers"   # SSH 転送ペンディングキュー（JSON）
 API_RETRY_MAX          = 5    # GitHub API 失敗時の最大再試行回数（指数バックオフ）
 API_RETRY_BASE_SECONDS = 1    # バックオフ基底秒数（1→2→4→8→16 秒。0 = リトライ無効）
-server_config.build_cooldown_seconds = 60   # 前回ビルド完了から次ビルドまでの最小間隔（秒。0 = 無効）→ §13
-HISTORY_KEEP_N         = 10   # スナップショット保持世代数（0 = 無制限）→ §14b
-server_config.force_build_interval_hours = 0 # 強制再ビルド間隔（時間。0 = 無効）→ §13
-LOG_KEEP_N             = 50   # ビルドログ保持件数（0 = 無制限）→ §13
-API_CIRCUIT_BREAKER_THRESHOLD = 3    # 全ブランチ連続失敗の許容周回数（0 = 無効）→ §13
-OUTPUT_SIZE_WARN_MB           = 5    # 出力サイト合計サイズ警告閾値（MB。0 = 無効）→ §13・§8
-WEEKLY_SUMMARY_ENABLED        = true # 週次サマリー Webhook の有効/無効 → §13
-WEEKLY_SUMMARY_DAY            = 0    # 送信曜日（0=月曜〜6=日曜） → §13
-WEEKLY_SUMMARY_HOUR           = 9    # 送信時刻（0〜23、ローカル時刻） → §13
+server_config.build_cooldown_seconds = 60   # 前回ビルド完了から次ビルドまでの最小間隔（秒。0 = 無効）
+HISTORY_KEEP_N         = 10   # スナップショット保持世代数（0 = 無制限）
+server_config.force_build_interval_hours = 0 # 強制再ビルド間隔（時間。0 = 無効）
+LOG_KEEP_N             = 50   # ビルドログ保持件数（0 = 無制限）
+API_CIRCUIT_BREAKER_THRESHOLD = 3    # 全ブランチ連続失敗の許容周回数（0 = 無効）
+OUTPUT_SIZE_WARN_MB           = 5    # 出力サイト合計サイズ警告閾値（MB。0 = 無効）
+WEEKLY_SUMMARY_ENABLED        = true # 週次サマリー Webhook の有効/無効
+WEEKLY_SUMMARY_DAY            = 0    # 送信曜日（0=月曜〜6=日曜）
+WEEKLY_SUMMARY_HOUR           = 9    # 送信時刻（0〜23、ローカル時刻）
 
-# ブランチターゲット設定（→ §14a）
+# ブランチターゲット設定
 # 複数エントリを定義した場合はリスト順に順次処理する（並列処理は対象外）
 BRANCH_TARGETS = [
     {
@@ -804,7 +804,7 @@ runner 起動（systemd タイマーから呼び出し）
     │   ├─ unknown key のみ → backup せず正規化書き戻し
     │   └─ permission error / IO error → .build_state.running=true にせず終了
     │
-    ├─ [ペンディングキュー再試行] PENDING_FILE が存在する場合（→ §14a）
+    ├─ [ペンディングキュー再試行] PENDING_FILE が存在する場合
     │   └─ ペンディングエントリごとに SSH 転送を再試行
     │       ├─ 成功 → エントリを PENDING_FILE から削除
     │       └─ 失敗 → ERROR ログ、エントリを保持（次回起動時に再試行）
@@ -871,11 +871,11 @@ runner 起動（systemd タイマーから呼び出し）
     │   │           → 送信失敗の場合：ERROR ログ、.notify_pending へキューイング（success と同一形式）
     │   │
     │   └─ sha_file を新 SHA で更新（`{"sha": "<new_sha>"}` を JSON 書き込み）
-    │        └─ SSH サイト転送（deploy_targets リストの各エントリへ転送 → §14a）
+    │        └─ SSH サイト転送（deploy_targets リストの各エントリへ転送）
     │             ├─ [転送後整合性検証] ssh user@host "sha256sum /dest/<relative-path>" でリモート SHA を取得
     │             │   ├─ 全ファイルのローカル sha256 と一致 → 転送成功
     │             │   └─ 不一致またはコマンド失敗 → ERROR ログ、ペンディングキューへ再投入（§14a）
-    │             └─ 整合性検証成功後 → スナップショット保存（→ §14b）
+    │             └─ 整合性検証成功後 → スナップショット保存
     │
     │        [出力サイズチェック] OUTPUT_SIZE_WARN_MB > 0 の場合
     │        出力サイト配下の通常ファイル合計サイズを取得し、閾値と比較：
@@ -1017,7 +1017,7 @@ runner は stdout / stderr の CRLF を LF に正規化して保存する。NUL 
 
 ### 設定値
 
-`BRANCH_TARGETS` 各エントリの `deploy_targets` リスト内で管理する（→ §12）。
+`BRANCH_TARGETS` 各エントリの `deploy_targets` リスト内で管理する。
 
 | フィールド | 説明 | 例 |
 |-----------|------|-----|
@@ -1075,7 +1075,7 @@ SSH command は local shell 文字列を組み立てず、`exec.CommandContext` 
 ]
 ```
 
-- `runner` 起動時（`BRANCH_TARGETS` 処理前）に `PENDING_FILE` を読み込み、エントリごとに再試行する（→ §13 処理フロー）
+- `runner` 起動時（`BRANCH_TARGETS` 処理前）に `PENDING_FILE` を読み込み、エントリごとに再試行する
 - 再試行成功時にエントリを削除する。失敗時は `retry_count` をインクリメントして保持する
 - SSH 転送失敗 Webhook 通知（`deploy_failure` イベント）を送信する（on: `["deploy_failure"]` 設定時）
 - 同一 `out`、`host`、`user`、`dest_dir` の pending エントリが既に存在する場合は新規追記せず、既存エントリの `retry_count` を +1 し、`failed_at` を最新時刻へ更新する
@@ -1175,9 +1175,9 @@ snapshot copy 中に読み取り失敗、書き込み失敗、path 検証失敗�
 
 ### ロールバック
 
-`POST /api/history/{id}/rollback`（→ §22）で指定ビルド ID のスナップショットから SSH 転送を再実行する。
+`POST /api/history/{id}/rollback` で指定ビルド ID のスナップショットから SSH 転送を再実行する。
 
-- ロールバック API は `api` の実装を前提とする。`api` が実装されるまでは、API 経由のロールバックはとして扱う
+- ロールバック API は `api` の実装を前提とする。`api` が実装されるまでは、API 経由のロールバックは未実装として扱う
 - `.snapshots/{id}/` が存在しない場合は `404` を返す
 - 転送成功時は `.build_history` に rollback エントリを追記する
 
@@ -1718,7 +1718,7 @@ runner が journal へ出力する内容は §15 のログ仕様を正とする�
 | PAT スコープ | `contents: read`（読み取り専用）のみ |
 | PAT の種類 | Fine-grained PAT（特定リポジトリのみ許可）を使用する。 |
 | Webhook 設定（ポーリング方式） | **不要**（デフォルト。`BRANCH_TARGETS` によるポーリングのみ使用する場合） |
-| Webhook 設定（受信方式） | GitHub リポジトリ設定 → Webhooks → Add webhook で `POST /api/webhook` の URL・Secret を設定する（→ §22）。イベントは `push` のみ選択する。**外部公開エンドポイントが必要**（リバースプロキシ経由） |
+| Webhook 設定（受信方式） | GitHub リポジトリ設定 → Webhooks → Add webhook で `POST /api/webhook` の URL・Secret を設定する。イベントは `push` のみ選択する。**外部公開エンドポイントが必要**（リバースプロキシ経由） |
 
 ---
 

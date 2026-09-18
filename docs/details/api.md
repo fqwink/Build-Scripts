@@ -50,8 +50,8 @@ NotifyConfigFile  = "/opt/adlaire-builder/.notify_config"     // Webhook 通知�
 ServerConfigFile  = "/opt/adlaire-builder/.server_config"     // サーバー設定
 AccessLogFile     = "/opt/adlaire-builder/.access_log"        // ログイン履歴
 NotifyLogFile     = "/opt/adlaire-builder/.notify_log"        // Webhook 送信履歴
-WebhookSecretFile = "/opt/adlaire-builder/.webhook_secret"    // GitHub Webhook HMAC-SHA256 Secret（→ §22）
-SnapshotDir       = "/opt/adlaire-builder/.snapshots"         // スナップショット保存ディレクトリ（→ §14b）
+WebhookSecretFile = "/opt/adlaire-builder/.webhook_secret"    // GitHub Webhook HMAC-SHA256 Secret
+SnapshotDir       = "/opt/adlaire-builder/.snapshots"         // スナップショット保存ディレクトリ
 LogLevel          = "INFO"
 Owner             = "<GitHubオーナー名>"                       // 初期値。POST /api/repo-config の owner 更新成功時だけ .repo_config に保存
 Repo              = "<リポジトリ名>"                           // 初期値。POST /api/repo-config の repo 更新成功時だけ .repo_config に保存
@@ -466,7 +466,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 | API | 処理順序 | 成功時副作用 | 失敗時副作用 |
 |-----|----------|--------------|--------------|
 | `GET /api/backup` | 対象設定 file 読込 → 不在 file に既定値適用 → secret mask → response。 | 状態ファイルを更新しない。 | 読込不能な必須 file は `500`。任意 file 不在は既定値で返す。 |
-| `POST /api/restore` | request 検証 → secret mask `"***"` の既存 secret 再利用判定 → 全対象 payload 生成 → §22.0d の順に atomic write → `.config_log` 追記 → response。 | 設定系状態 file だけを置換する。履歴、ログ、snapshot、session、token 本体は復元しない。 | 検証失敗は差分なし。途中 write 失敗は未処理 file を書かず `500`。処理済み file は戻さない。 |
+| `POST /api/restore` | request 検証 → secret mask `"***"` の既存 secret 再利用判定 → 全対象 payload 生成 → 定義済み Write 順に atomic write → `.config_log` 追記 → response。 | 設定系状態 file だけを置換する。履歴、ログ、snapshot、session、token 本体は復元しない。 | 検証失敗は差分なし。途中 write 失敗は未処理 file を書かず `500`。処理済み file は戻さない。 |
 
 backup response に secret 原文を含めてはならない。`password`、`token`、`secret`、`smtp_password`、`webhook_secret`、`.github_token`、`.smtp_secret`、`.api_tokens` の hash 元値は `"***"` または `*_set:boolean` で表現する。`POST /api/restore` で `"***"` を受け取った secret は既存値保持を意味し、既存値がない場合は未設定として扱う。
 
@@ -547,7 +547,7 @@ API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定
 | read-only list | `GET /api/history`, `GET /api/notify-log`, `GET /api/config-log`, `GET /api/webhook-events` | query 検証 → 対象ファイル読込 → 壊れた行を除外 → sort / paging → response 生成 | `total` がある endpoint は除外後件数を返す。 | query 不正は `422`。ファイル読込不能は `500`。 |
 | read-only aggregate | `GET /api/status`, `GET /api/dashboard`, `GET /api/health`, `GET /api/output-meta` | 必要ファイルを read-only で読込 → 不在時初期値適用 → 算出 → response 生成 | GET の副作用なし。`.build_status.json` 破損時も API が自動修復しない。 | 必須ファイル破損は endpoint 固有の `500`。任意ファイル不在は初期値。 |
 | single-file update | `POST /api/config`, `POST /api/repo-config`, `POST /api/maintenance/*`, `POST /api/access-control`, `POST /api/dashboard-layout` | body 検証 → 現在値読込 → 差分生成 → atomic write → `.config_log` 追記 | 更新後値または `{message}` を返す。 | body 検証失敗は書込前に `422`。`.config_log` 失敗時は対象更新済みのまま `500`。 |
-| multi-file update | `POST /api/restore`, `POST /api/smtp-config`, `POST /api/history/{id}/tags` | 全入力検証 → 全対象読込 → 書込計画生成 → §22.0d の Write 順に atomic write | 全対象の更新完了後に response を返す。 | 検証失敗は書込なし `422`。途中失敗は未処理ファイルを書かず `500`。 |
+| multi-file update | `POST /api/restore`, `POST /api/smtp-config`, `POST /api/history/{id}/tags` | 全入力検証 → 全対象読込 → 書込計画生成 → 定義済み Write 順に atomic write | 全対象の更新完了後に response を返す。 | 検証失敗は書込なし `422`。途中失敗は未処理ファイルを書かず `500`。 |
 | secret update | `POST /api/pat-update`, `POST /api/webhook-config`, `POST /api/smtp-config` password あり | secret 入力検証 → secret ファイル atomic write mode `0600` → `.config_log` へ `"***"` で記録 | secret 本体を response に含めない。 | secret 書込失敗は `500`。ログ、response、stdout へ平文を出さない。 |
 | build command | `POST /api/build`, `POST /api/build/force`, `POST /api/history/{id}/rollback` | 認証 → maintenance → circuit → running / queue 判定 → `.build_state` 更新 | `202` と開始または queue 結果を返す。 | running 競合は `409` または `429`。状態更新失敗は `500`。 |
 | destructive delete | `DELETE /api/queue`, `DELETE /api/snapshots/{id}`, `DELETE /api/hooks/{id}`, `DELETE /api/alert-rules/{id}`, `DELETE /api/tag-rules/{id}`, `DELETE /api/tokens/{id}` | path / auth 検証 → 対象存在確認 → 削除または失効 → 対象 endpoint の契約に従い `.config_log` または `.audit_log` 追記 | `{message}` と件数がある場合は件数を返す。 | 対象不在は `404`。部分削除は禁止し、失敗時は `500`。 |
@@ -697,7 +697,7 @@ API の Phase 3 / Phase 4 必須検証、fixture 名、入力状態、期待 res
 | `POST` | `/api/history/{id}/comment` | 要 | 指定ビルドにコメントを付与・更新する |
 | `POST` | `/api/history/{id}/flag` | 要 | 指定ビルドに重要フラグを設定・解除する |
 | `POST` | `/api/history/{id}/tags` | 要 | 指定ビルドのタグを置換する |
-| `POST` | `/api/history/{id}/rollback` | 要 | 指定ビルド ID のスナップショットから SSH 転送を再実行する（→ §14b） |
+| `POST` | `/api/history/{id}/rollback` | 要 | 指定ビルド ID のスナップショットから SSH 転送を再実行する |
 | `GET` | `/api/sysinfo` | 要 | 出力サイトサイズ・更新日時・稼働時間を返す |
 | `GET` | `/api/health`        | 不要 | 死活監視用ヘルスチェック |
 | `GET` | `/api/schedule` | 要 | systemd timer の次回実行予定時刻を返す |
@@ -734,8 +734,8 @@ API の Phase 3 / Phase 4 必須検証、fixture 名、入力状態、期待 res
 | `GET` | `/api/diagnostics` | 要 | PAT・GitHub API・出力サイト・systemd・Webhook の一括自己診断結果を返す |
 | `GET` | `/api/rate-limit` | 要 | GitHub API のレート制限残量・上限・リセット時刻を返す |
 | `GET` | `/api/disk-usage` | 要 | ビルドログ合計・出力サイトのディスク使用量を返す |
-| `GET` | `/api/webhook-events?limit=50&offset=0` | 要 | 受信 Webhook イベント一覧を新しい順にページネーション付きで返す（→ `.webhook_events.json`） |
-| `POST` | `/api/webhook` | 不要（Secret 検証） | GitHub push Webhook を受信し、署名検証後に build queue へ投入する（→ §22 Webhook 受信仕様 / §27.12） |
+| `GET` | `/api/webhook-events?limit=50&offset=0` | 要 | 受信 Webhook イベント一覧を新しい順にページネーション付きで返す |
+| `POST` | `/api/webhook` | 不要（Secret 検証） | GitHub push Webhook を受信し、署名検証後に build queue へ投入する |
 | `GET` | `/api/webhook-config` | 要 | Webhook Secret 設定状態を返す |
 | `POST` | `/api/webhook-config` | 要 | Webhook Secret を設定する |
 | `POST` | `/api/circuit-breaker/reset` | 要 | サーキットブレーカーをリセットする（`open: false`・`consecutive_failures: 0` に戻しポーリングを再開） |
@@ -929,7 +929,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 }
 ```
 
-`secret`：Webhook 署名シークレット。未設定時は `null`、設定済み時は `"***"`（マスク）を返す（→ 16E 参照）。
+`secret`：Webhook 署名シークレット。未設定時は `null`、設定済み時は `"***"`（マスク）を返す。
 
 `on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"deploy_failure"`（転送失敗時）| `"weekly_summary"`（定期サマリー送信時）| `"approval_required"`（承認待ち発生時）| `"duration_anomaly"`（所要時間異常時）| `"config_corrupt"`（設定破損復旧時）。複数指定は array 順を保持して保存する。
 
@@ -1986,7 +1986,7 @@ queue entry schema と trigger 別 payload schema は [`docs/details/statefile.m
 | API queue 追加 | `.build_state` lock → 最新 state 読込 → running / max_size / 重複確認 → id と created_seq 採番 → atomic write → response | write 失敗は `500`。queue 追加なし。 |
 | webhook queue 追加 | event 検証 → `.webhook_events.json` 追記 → `.build_state` lock → queue append → response | event 追記前の失敗は queue なし。queue 追加失敗は event result を `error` にできる場合だけ追記し、response は `500`。 |
 | approval approve queue 追加 | `.approval_queue` lock → pending 確認 → `.build_state` lock → queue append → approval status `approved` 追記 → response | queue full は `429`、approval は pending のまま。approval status 追記失敗時は `500`、queue 追加済み entry は巻き戻さない。 |
-| runner 取り出し | `.build_state` lock → §27.35 の順で 1 件選択 → selected entry 削除 → `running=true` と `current_build_id` 設定 → atomic write | write 失敗は build 開始なし、lock を解放し終了コード `1`。 |
+| runner 取り出し | `.build_state` lock → 優先度キュー順で 1 件選択 → selected entry 削除 → `running=true` と `current_build_id` 設定 → atomic write | write 失敗は build 開始なし、lock を解放し終了コード `1`。 |
 | queue clear | `.build_state` lock → `queued=[]` → atomic write → `.config_log` 追記 → response | `.config_log` 失敗時は `500`。cleared queue は巻き戻さない。 |
 
 重複判定は `trigger` と `payload` の正規化 JSON が一致する waiting entry を対象とする。重複時は新規 entry を追加せず `200 {"message":"Already queued","queued":true,"queue_id":"<existing>"}` を返す。`force=true` の manual entry は `force=false` と別 entry として扱う。

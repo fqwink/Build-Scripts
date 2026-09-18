@@ -802,10 +802,10 @@ type SearchIndexEntry struct {
   <link rel="stylesheet" href="{relativeRoot}assets/style.css">
 </head>
 <body>
-  <div id="progress-bar"></div>   <!-- 読み取り進捗バー（ページ上端固定、高さ 3px、幅 = スクロール率 % → §7.13） -->
+  <div id="progress-bar"></div>   <!-- 読み取り進捗バー（ページ上端固定、高さ 3px、幅 = スクロール率 %） -->
   <header id="hdr">        <!-- 固定ヘッダー（高さ 52px、背景 --adlaire-surface-accent） -->
     <span id="doc-title">{PageData.Title}</span>
-    <span id="reading-time">約 {PageData.ReadingTimeMinutes} 分</span>  <!-- 読了時間（ビルド時に静的埋め込み → §4.5・§6） -->
+    <span id="reading-time">約 {PageData.ReadingTimeMinutes} 分</span>  <!-- 読了時間（ビルド時に静的埋め込み） -->
   </header>
   <div id="lay">           <!-- フレックスコンテナ -->
     <nav id="sb">          <!-- サイドバー（幅 260px、固定） -->
@@ -1056,7 +1056,7 @@ ADS 採用により、ダークモードおよびテーマトグルボタンは�
 - 親グループが折りたたまれている場合は自動展開し `aria-expanded="true"` を設定
 - 検索中でない場合は対応 TOC リンクを `scrollIntoView` で可視範囲にスクロール
 
-**進捗バー連動：** `scroll` イベントリスナー（`passive: true`）を同一リスナーで共有し、スクロールのたびに読み取り進捗バーの幅を更新する（→ §7.13）。
+**進捗バー連動：** `scroll` イベントリスナー（`passive: true`）を同一リスナーで共有し、スクロールのたびに読み取り進捗バーの幅を更新する。
 
 ### 7.6 コピーボタン
 
@@ -1180,7 +1180,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 
 ### 7.13 読み取り進捗バー
 
-ページ上端に高さ 3px の進捗バー（`<div id="progress-bar">`）を固定表示する（→ §5 HTML 出力構造）。
+ページ上端に高さ 3px の進捗バー（`<div id="progress-bar">`）を固定表示する。
 
 **幅の計算：**
 ```js
@@ -1236,7 +1236,7 @@ document.getElementById('progress-bar').style.width = pct + '%';
 
 ### 7.15 前後章ナビゲーションボタン
 
-h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末尾に静的生成する（→ §4.5・§5・§6 CSS）。
+h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末尾に静的生成する。
 
 **生成方法：** `injectChapterNavigation(bodyHTML string, headings []Heading) string` として実装する。`convert()` が `ConvertResult.HTML` を返した後、呼び出し元が h2 見出しの `Slug` と `Text` を `headings` から抽出し、各 h2 章の末尾（次の h2 の直前、または文書末）に `<nav class="ch-nav">` を挿入する。
 
@@ -1406,7 +1406,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 }
 ```
 
-> **フィールド名の対応：** stdout の `[REPORT]` 行は `tables=` / `code_blocks=` の短縮キーを使用するが、`.build_logs/{id}.json` への保存時および `GET /api/output-meta` レスポンスでは `tables_count` / `code_blocks_count` に変換する（→ §22）。
+> **フィールド名の対応：** stdout の `[REPORT]` 行は `tables=` / `code_blocks=` の短縮キーを使用するが、`.build_logs/{id}.json` への保存時および `GET /api/output-meta` レスポンスでは `tables_count` / `code_blocks_count` に変換する。
 
 **再実行時の注意：** スラグ重複カウンタ、脚注参照順、脚注定義は `adlaire-ci-build` の 1 実行内で初期化する。通常の `/usr/local/bin/adlaire-ci-build` 実行では複数回実行しても出力は同一になる。Go 版では変換状態をパッケージグローバル変数として共有せず、変換処理ごとに専用の状態構造体を生成する。
 
