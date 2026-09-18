@@ -46,7 +46,7 @@
 
 ## 4. Phase 実装計画
 
-## 4.1 初期実装 Phase 分割
+## 4.1 初期実装 Phase 単位
 
 Go 版初期実装は、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0e の対象範囲を一括実装せず、下表の Phase 順に進める。上位 Phase の完了判定を満たす前に、下位 Phase の実装 PR を開始してはならない。
 
@@ -513,11 +513,11 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ## 6. 追加仕様化機能実装参照
 
-本節は、追加仕様化機能の実装状態、実装可否、owner、主本文、collaborator を確認するための参照である。各機能の主本文は、owner component 詳細仕様ファイルを正とする。本節に定義された機能は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i と owner 詳細仕様を入口として、owner 詳細仕様の主本文と必要な collaborator 詳細仕様の確認項目を組み合わせて実装可否を判定する。
+本節は、追加仕様化機能の実装状態、実装可否、owner、主本文、collaborator を確認するための参照索引である。各機能の主本文は、owner component 詳細仕様ファイルを正とする。実装者は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0i と本節で参照先を特定し、owner 詳細仕様と必要な collaborator 詳細仕様を確認して実装可否を判定する。
 
 ### 6.1 追加仕様化機能 共通実装契約
 
-§27 / §28 の主本文は、owner component 詳細仕様ファイルを正とする。本節では、§27 / §28 の実装時に共通して確認する参照順、越境禁止、PR 証跡の入口だけを示す。
+§27 / §28 の主本文は、owner component 詳細仕様ファイルを正とする。本節では、実装時に共通して確認する参照順、越境禁止、PR 証跡の入口だけを示す。
 
 | 確認 | 固定内容 |
 |------|----------|
@@ -532,11 +532,11 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 §27 / §28 の機能を実装した PR は、対象節、owner 詳細仕様、collaborator 詳細仕様、fixture、secret mask、失敗時副作用、実装対象外を PR 本文に記録する。記録が不足する場合は、実装完了として扱わない。
 
-§27 の PR 分割、dry-run 固定契約、fixture 完了条件の詳細は、owner 詳細仕様と [`docs/details/fixture.md`](details/fixture.md) §27-F を正とする。§28 の builder 拡張 fixture 完了条件は、[`docs/details/builder.md`](details/builder.md) §28 と [`docs/details/fixture.md`](details/fixture.md) §28-F を正とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に同じ fixture schema、expected/effects、個別機能本文を重複定義しない。
+§27 の PR 責務分離、dry-run 固定契約、fixture 完了条件の詳細は、owner 詳細仕様と [`docs/details/fixture.md`](details/fixture.md) §27-F を正とする。§28 の builder 拡張 fixture 完了条件は、[`docs/details/builder.md`](details/builder.md) §28 と [`docs/details/fixture.md`](details/fixture.md) §28-F を正とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に同じ fixture schema、expected/effects、個別機能本文を重複定義しない。
 
 ### 6.2 追加仕様化機能 参照索引
 
-本節は、§27 / §28 機能の参照先を一覧化するインデックスである。個別機能の入力、出力、状態、処理順序、異常系、endpoint、SDK method、UI DOM、fixture は下表の「主本文」に記載された owner component 詳細仕様を正とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) は、下表に記載された主本文、owner component、collaborator component を置き換えない。
+本節は、§27 / §28 機能の参照先を一覧化するインデックスである。個別機能本文は、下表の「主本文」に記載された owner component 詳細仕様を正とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) は、下表に記載された主本文、owner component、collaborator component を置き換えない。
 
 下表は、§27 / §28 機能の owner、主本文、collaborator だけを示す。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、fixture schema、横断処理順は本表で再定義しない。
 
@@ -624,9 +624,9 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ### 6.3 / §27.38a 横断連動・Runner 拡張機能 実装補足契約
 
-本節は、追加仕様化機能の横断補足契約として扱う。§27.21〜§27.38 および api / sdk / ui / statefile の横断連動は runner、builder、api、sdk、ui、statefile、archive にまたがるため、実装者は owner 詳細仕様を主本文とし、本節を横断確認として同時に確認する。
+本節は、追加仕様化機能の横断補足契約である。§27.21〜§27.38 および api / sdk / ui / statefile の横断連動では、実装者は owner 詳細仕様を主本文とし、本節を横断確認として同時に確認する。
 
-本節の正本範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装完了時の横断受け入れ観点に限定する。本節は、個別機能の処理本文、入力、出力、状態 schema、fixture schema、endpoint 詳細、SDK method 詳細、UI DOM 詳細を持たない。これらは各 owner / collaborator の詳細仕様ファイルを正とする。
+本節の正本範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装完了時の横断受け入れ観点に限定する。個別機能本文は各 owner / collaborator の詳細仕様ファイルを正とする。
 
 本節と owner component 別詳細仕様ファイルの内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI、fixture は owner component 別詳細仕様ファイルを正とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを本節で確認する。本節を理由に、owner 詳細仕様に存在しない endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture を追加してはならない。
 

@@ -119,7 +119,7 @@
 2. 記載先を `仕様記載先マトリクス` で確定する。
 3. 確定した正本文書だけを編集する。
 4. 文書名、節名、正本範囲、実装ファイル所在に影響がある場合は、必要な索引と参照だけを更新する。
-5. 旧ファイル名、旧節名、移動前参照、削除済み文書名が残っていないことを `rg` で確認する。
+5. 廃止済みファイル名、廃止済み節名、不要参照、削除済み文書名が残っていないことを `rg` で確認する。
 6. 文書構造整理だけの作業では、実装ファイル、testdata、fixture を変更しない。
 7. `仕様構造完了条件` をすべて満たしてから完了扱いにする。
 
@@ -131,9 +131,9 @@
 
 | 変更の種類 | 必ず確認する文書 | 確認内容 |
 |------------|------------------|----------|
-| ファイル名変更 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md)、[`AGENTS.md`](../AGENTS.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 旧ファイル名参照が残っていないこと。 |
+| ファイル名変更 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md)、[`AGENTS.md`](../AGENTS.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 廃止済みファイル名参照が残っていないこと。 |
 | 正本関係変更 | [`AGENTS.md`](../AGENTS.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | 作業ルール、仕様正本、デザイン正本、索引の記載が矛盾しないこと。 |
-| 詳細仕様分割 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | owner component、collaborator、参照表、本文配置が一致すること。 |
+| 詳細仕様責務整理 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | owner component、collaborator、参照表、本文配置が一致すること。 |
 | README 整理 | [`README.md`](../README.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | README が入口に留まり、詳細ルールを重複定義していないこと。 |
 | 実装所在整理 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j | 実装ファイル、テスト、fixture の所在と状態が一致すること。 |
 
@@ -148,7 +148,7 @@
 | 索引境界 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) に仕様本文、詳細仕様本文、実装可否、ロードマップ状態を定義していない。 |
 | 詳細入口境界 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に方針、ポリシー、実装状態、実装可否、ロードマップ状態を定義していない。 |
 | 詳細本文境界 | [`docs/details/*.md`](details/) に owner component 以外の主本文を混在させていない。 |
-| 参照整合 | 旧ファイル名、旧節名、移動前参照、削除済み文書名が `rg` で残っていない。 |
+| 参照整合 | 廃止済みファイル名、廃止済み節名、不要参照、削除済み文書名が `rg` で残っていない。 |
 | 変更範囲 | 文書構造整理だけの作業で、実装ファイル、testdata、fixture を変更していない。 |
 | PR 範囲 | 同一目的の文書構造変更が既存 PR に集約され、並行 PR と同一ファイル編集を発生させていない。 |
 
@@ -232,18 +232,18 @@
 
 | ファイル | 状態 | 役割 |
 |----------|------|------|
-| [`docs/details/builder.md`](details/builder.md) | 分割済み | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
-| [`docs/details/runner.md`](details/runner.md) | 分割済み | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
-| [`docs/details/api.md`](details/api.md) | 分割済み | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。API fixture は [`docs/details/fixture.md`](details/fixture.md) §22-F。 |
-| [`docs/details/admin.md`](details/admin.md) | 分割済み | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界、A6 fixture 固定契約、setup/admin/release 連動 fixture 参照。 |
-| [`docs/details/sdk.md`](details/sdk.md) | 分割済み | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| [`docs/details/ui.md`](details/ui.md) | 分割済み | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
-| [`docs/details/setup.md`](details/setup.md) | 分割済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、admin 配布・rollback・secret 保持の連動 fixture。 |
-| [`docs/details/statefile.md`](details/statefile.md) | 分割済み | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
-| [`docs/details/archive.md`](details/archive.md) | 分割済み | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 |
-| [`docs/details/commitstatus.md`](details/commitstatus.md) | 分割済み | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
-| [`docs/details/security.md`](details/security.md) | 分割済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| [`docs/details/fixture.md`](details/fixture.md) | 分割済み | fixture manifest、assertion、fake、testdata、expected / effects、Phase 3 / Phase 4 API fixture、api / sdk / ui / statefile cross fixture、setup/admin/release 連動 fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 |
+| [`docs/details/builder.md`](details/builder.md) | 責務化済み | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
+| [`docs/details/runner.md`](details/runner.md) | 責務化済み | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
+| [`docs/details/api.md`](details/api.md) | 責務化済み | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。API fixture は [`docs/details/fixture.md`](details/fixture.md) §22-F。 |
+| [`docs/details/admin.md`](details/admin.md) | 責務化済み | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界、A6 fixture 固定契約、setup/admin/release 連動 fixture 参照。 |
+| [`docs/details/sdk.md`](details/sdk.md) | 責務化済み | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
+| [`docs/details/ui.md`](details/ui.md) | 責務化済み | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
+| [`docs/details/setup.md`](details/setup.md) | 責務化済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、admin 配布・rollback・secret 保持の連動 fixture。 |
+| [`docs/details/statefile.md`](details/statefile.md) | 責務化済み | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
+| [`docs/details/archive.md`](details/archive.md) | 責務化済み | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 |
+| [`docs/details/commitstatus.md`](details/commitstatus.md) | 責務化済み | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
+| [`docs/details/security.md`](details/security.md) | 責務化済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
+| [`docs/details/fixture.md`](details/fixture.md) | 責務化済み | fixture manifest、assertion、fake、testdata、expected / effects、Phase 3 / Phase 4 API fixture、api / sdk / ui / statefile cross fixture、setup/admin/release 連動 fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 |
 
 詳細仕様を改訂する場合は、[`docs/ROADMAP.md`](ROADMAP.md) で実装状態と実装可否を確認し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) の対応表から owner component を特定し、該当する [`docs/details/*.md`](details/) を本文として更新する。[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は配置と役割の索引に限定し、仕様本文、詳細仕様本文、実装状態の最終判断を定義しない。
 
@@ -292,7 +292,7 @@
 
 | Guardrail | 内容 |
 |-----------|------|
-| 旧参照禁止 | リネーム済みファイル、移動済み節、削除済み文書名を残さない。 |
+| 廃止参照禁止 | リネーム済みファイル、廃止済み節、削除済み文書名を残さない。 |
 | 二重正本禁止 | 同じ判断対象を複数文書で正本として定義しない。 |
 | README 肥大化禁止 | README に詳細仕様、詳細ルール、状態表、ロードマップを戻さない。 |
 | DETAIL 方針化禁止 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) と [`docs/details/*.md`](details/) に方針、ポリシー、ロードマップ状態の正本本文を持たせない。 |

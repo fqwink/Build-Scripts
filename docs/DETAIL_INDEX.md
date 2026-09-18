@@ -41,9 +41,9 @@ owner component と collaborator component は、以下の境界で扱う。
 
 | 区分 | 持つ内容 | 持たない内容 |
 |------|----------|--------------|
-| owner component | 対象機能の入力、出力、状態、処理順序、異常系、検証条件の主本文。 | 他 component の主処理本文、他 component の状態 schema、他 component の UI DOM 詳細。 |
-| collaborator component | 呼び出し境界、参照 schema、表示境界、security、setup、fixture、検証観点。 | owner component の入力、出力、状態、処理順序、異常系の主本文。 |
-| [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 読み方、共通固定値、対応表、リポジトリ内ソース配置。 | 個別 component の処理本文、endpoint 詳細、SDK method、UI DOM、状態 schema、§27 / §28 追加仕様化機能参照、横断補足契約。 |
+| owner component | 対象機能の入力、出力、状態、処理順序、異常系、検証条件の主本文。 | 他 component の主処理本文、状態 schema、UI DOM 詳細。 |
+| collaborator component | 呼び出し境界、参照 schema、表示境界、security、setup、fixture、検証観点。 | owner component の主本文。 |
+| [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 読み方、共通固定値、対応表、リポジトリ内ソース配置。 | 個別 component の処理本文、§27 / §28 参照索引、横断補足契約。 |
 
 owner component が確定できない場合は、実装判断で補完しない。先に [`docs/ROADMAP.md`](ROADMAP.md) の状態分類と本ファイルの対応表を整合させる。
 
@@ -174,7 +174,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 ## 0b.1 責務 component 別 詳細仕様ファイル管理仕様
 
-本節は、責務 component 別に分割済みの詳細仕様ファイルを崩さないための入口管理仕様である。責務境界の変更、仕様内容の移動、参照先更新を行う場合も、機能追加、実装状態変更、実装可否変更、ロードマップ変更、方針・ポリシー追加を含めてはならない。
+本節は、責務 component 別詳細仕様ファイルの境界を維持するための入口管理仕様である。責務境界の変更、仕様内容の配置変更、参照先更新を行う場合も、機能追加、実装状態変更、実装可否変更、ロードマップ変更、方針・ポリシー追加を含めてはならない。
 
 責務 component 別詳細仕様ファイルは、方針、ポリシー、正本関係、実装状態、ロードマップ状態、実装可否の上位判断を本文として持たない。方針、ポリシー、正本関係の確認先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否の確認先は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務とする。各 [`docs/details/*.md`](details/) の冒頭では、本節への参照と自ファイルの owner / collaborator 境界だけを示し、上位判断の共通説明を重複記載しない。
 
@@ -198,16 +198,16 @@ owner component が確定できない場合は、実装判断で補完しない�
 | [`docs/details/security.md`](details/security.md) | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 | [`docs/details/fixture.md`](details/fixture.md) | fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
-[`docs/ROADMAP.md`](ROADMAP.md) §6.3 は、runner、builder、api、sdk、ui、statefile、archive にまたがる横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを扱い、個別機能の入出力、状態 schema、endpoint、SDK method、UI DOM、fixture schema は各 owner component 詳細仕様を正とする。
+[`docs/ROADMAP.md`](ROADMAP.md) §6.3 は横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを扱い、個別機能本文は各 owner component 詳細仕様を正とする。
 
 すべての責務 component 別詳細仕様ファイルは、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
 
 | 項目 | 必須内容 |
 |------|----------|
 | owner component | そのファイルが主本文として扱う component を 1 件だけ書く。 |
-| collaborator component | 呼び出し元、呼び出し先、schema 参照先、表示参照先、検証参照先を 0 件以上書く。owner component を含めてはならない。 |
-| 持つ内容 | そのファイルだけが主本文として定義する入出力、状態、処理、異常系、検証条件を書く。 |
-| 持たない内容 | 他 owner component へ委ねる処理、状態、API、SDK、UI、fixture、setup、security を書く。 |
+| collaborator component | 呼び出し元、呼び出し先、schema、表示、検証の参照先を 0 件以上書く。owner component を含めてはならない。 |
+| 持つ内容 | そのファイルだけが主本文として定義する内容を書く。 |
+| 持たない内容 | 他 owner component へ委ねる内容を書く。 |
 
 責務境界表の `持つ内容` と `持たない内容` が本文と矛盾する場合は、本文を実装判断に使ってはならない。先に責務境界表、本文、§0b の詳細仕様参照表、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を同時に整合させる。
 
@@ -225,15 +225,15 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 詳細仕様を読む順序は、本ファイルの「詳細仕様の読み方」に固定する。各責務 component 別詳細仕様ファイルは、owner component の主本文として読み、collaborator component は呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は [`docs/details/security.md`](details/security.md)、fixture、fake、PR 証跡が必要な場合は [`docs/details/fixture.md`](details/fixture.md) を確認する。
 
-責務整理、節移動、参照先更新は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
+責務整理、本文配置変更、参照先更新は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
 
 | 完了条件 | 判定 |
 |----------|------|
-| 旧ファイル内の移動対象本文が対応する責務 component 別詳細仕様ファイルに移動している。 | 必須 |
+| 各本文が対応する責務 component 別詳細仕様ファイルにだけ存在している。 | 必須 |
 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) には入口、索引、共通固定値、対応表、管理仕様、リポジトリ内ソース配置だけが残っている。 | 必須 |
 | [`docs/SPEC.md`](SPEC.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、各責務 component 別詳細仕様ファイル間の参照が矛盾していない。 | 必須 |
-| `rg` で旧節名、旧ファイル名、移動前参照の取り残しを確認している。 | 必須 |
-| 実装ファイル、fixture、testdata の内容を分割作業だけで変更していない。 | 必須 |
+| `rg` で廃止済み節名、廃止済みファイル名、不要参照の取り残しを確認している。 | 必須 |
+| 実装ファイル、fixture、testdata の内容を文書配置整理だけで変更していない。 | 必須 |
 
 ---
 
@@ -612,20 +612,20 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 |------|--------------|
 | `main.go` | repository root に 1 ファイルだけ存在し、実行ファイル名判定、引数受け取り、現行 owner component 呼び出しだけを持つ。Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive、commitstatus、MCP の実装詳細を含まない。 |
 | `components/*.go` | 実装対象 owner component ごとに 1 Go ファイルだけ存在する。現行 Go 実装は `builder` の `components/builder.go`、`runner` の `components/runner.go`、`api` の `components/api.go` とする。`admin` は `admin/` 配下の静的配布物であり、Go ファイルを持たない。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルとして追加する場合は、追加対象 Phase または追加実装 PR で仕様状態と索引を更新してから作成する。 |
-| 標準移行前ファイル | `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は、対応する標準配置へ移動済みであり、同じ実装本文または同じ fixture が旧配置に残っていない。 |
+| 標準外配置禁止 | `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を標準配置として扱わない。同じ実装本文または同じ fixture を標準配置外に併存させない。 |
 | testdata | 実装済みまたは仕様化済み・未実装の owner component ごとに `testdata/<component>/` を使用する。`testdata/mcp/` は MCP 専用詳細仕様が新設されるまで作成しない。 |
 | admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ `ui` と `sdk` の owner 詳細仕様に従う。`admin/style.css` と `admin/app.js` は、[`docs/details/admin.md`](details/admin.md) A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
 | 将来追加予定 path | `components/mcp.go` と MCP 用 fixture は未作成の将来追加予定 path であり、MCP 専用詳細仕様が新設され、[`docs/ROADMAP.md`](ROADMAP.md) で `仕様化済み・未実装` へ昇格するまで作成しない。 |
 
-標準配置を変更する PR は、旧配置名と標準配置名の両方が同じ実装実体として併存していないこと、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「仕様化済みコンポーネント」、[`docs/ROADMAP.md`](ROADMAP.md) の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
+標準配置を変更する PR は、標準外配置と標準配置の両方が同じ実装実体として併存していないこと、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「仕様化済みコンポーネント」、[`docs/ROADMAP.md`](ROADMAP.md) の実装状態、該当 owner component の詳細仕様、testdata 参照が同じ配置を指すことを確認する。
 
 ---
 
-## 移動済み詳細仕様索引
+## 責務 component 別詳細仕様索引
 
-責務 component 別詳細仕様ファイルへ移動済みの本文は、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「詳細仕様管理」と本ファイル §0b、§0i を入口として確認する。
+責務 component 別詳細仕様ファイルの本文は、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の「詳細仕様管理」と本ファイル §0b、§0i を入口として確認する。
 
-本ファイルでは移動済み本文を再定義しない。実装者は、対象機能の owner component を §0b または §0i で特定し、該当する [`docs/details/*.md`](details/) を主本文として読む。
+本ファイルでは詳細仕様本文を再定義しない。実装者は、対象機能の owner component を §0b または §0i で特定し、該当する [`docs/details/*.md`](details/) を主本文として読む。
 
 | 対象範囲 | 主な参照先 |
 |----------|------------|
