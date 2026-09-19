@@ -15,11 +15,11 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 3. [`docs/SPEC.md`](docs/SPEC.md) 方針責務・ポリシー責務: 方針、ポリシー、禁止事項を確認する。
 4. [`docs/DESIGN.md`](docs/DESIGN.md) デザイン責務: 生成 HTML のデザイン関係を確認する。
 5. [`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務: 実装状態、Phase、将来計画を確認する。
-6. [`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md) 詳細仕様入口責務: 詳細仕様入口と owner component 対応表を確認する。
+6. [`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md) 詳細仕様入口責務: 詳細仕様入口と owner component 参照表を確認する。
 
 ## 参照先
 
-仕様判断の本文は、対象に応じて [`docs/SPEC.md`](docs/SPEC.md)、[`docs/ROADMAP.md`](docs/ROADMAP.md)、[`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md)、[`docs/details/*.md`](docs/details/) を参照します。README は入口であり、仕様本文、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証 matrix を定義しません。
+仕様判断の本文は、対象に応じて [`docs/SPEC.md`](docs/SPEC.md)、[`docs/ROADMAP.md`](docs/ROADMAP.md)、[`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](docs/details/) 詳細本文責務を参照します。README は入口であり、仕様本文、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証 matrix を定義しません。
 
 ## 実装ファイル
 
