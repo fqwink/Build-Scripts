@@ -1,10 +1,10 @@
 # Adlaire CI — UI 詳細仕様
 
-本ファイルは `docs/DETAIL_INDEX.md` から分割した `ui` owner component の詳細仕様である。
+本ファイルは `ui` owner component の詳細仕様正本である。
 
-上位判断、実装状態、実装可否、読取順は `docs/DETAIL_INDEX.md` §0b.1 を正とする。本ファイルは `ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、fixture、検証観点として参照する。
+本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、fixture、検証観点として参照する。
 
-UI が呼び出す SDK method、戻り値、error、stream、token 破棄は `docs/details/sdk.md` §23 を正とする。本ファイルは UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
+UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md`](sdk.md) §23 を正とする。本ファイルは UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
 ---
 
@@ -226,7 +226,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 2. `window.AdlaireCI` 等の global 参照を使わず、`./adlaire-ci-sdk.js` から `AdlaireCI` と `AdlaireCIError` を ES Module import する。
 3. `AdlaireCI` を `new AdlaireCI({baseUrl})` で 1 回だけ生成する。`baseUrl` は同一 origin の `/api` を既定値とし、外部 origin は標準仕様では許可しない。
 4. すべての panel を `hidden=true` にし、`panel-login` だけを表示する。
-5. form submit と button click の event listener を登録する。登録対象は §24 の DOM / section / form field 命名契約表の id に限定する。
+5. form submit と button click の event listener を登録する。登録対象は [`docs/details/ui.md`](ui.md) §24 の DOM / section / form field 命名契約表の id に限定する。
 6. `localStorage`、`sessionStorage`、Cookie から token を読み込まない。
 7. `global-error`、`global-success`、各 panel error/success を空にする。
 8. login password field へ focus する。
@@ -239,7 +239,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 2. UI 側入力検証を行う。失敗時は SDK method を呼ばない。
 3. 対象 button と同一操作グループを disabled にする。
 4. SDK method を呼ぶ。
-5. 成功時は成功メッセージを表示し、§24 UI 操作契約表の成功後再取得を左から順に実行する。
+5. 成功時は成功メッセージを表示し、[`docs/details/ui.md`](ui.md) §24 UI 操作契約表の成功後再取得を左から順に実行する。
 6. 失敗時は `AdlaireCIError` として表示する。`TypeError` は UI 実装エラーとして `global-error` に `Client error` を表示する。
 7. 秘密情報 field を消去する。
 8. disabled を解除する。ただし `401`、`503`、SSE 接続中、メンテナンス中、または仕様上 disabled 条件が継続する場合は解除しない。
@@ -248,7 +248,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 **UI 操作完全性検証契約：**
 
-標準管理ツールの実装完了時は、§24 の DOM / section / form field 命名契約表と UI 操作契約表を照合し、下表を満たす。
+標準管理ツールの実装完了時は、[`docs/details/ui.md`](ui.md) §24 の DOM / section / form field 命名契約表と UI 操作契約表を照合し、下表を満たす。
 
 | 検証項目 | 合格条件 |
 |----------|----------|
@@ -257,7 +257,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | SDK only | UI 操作契約表の SDK method 以外を UI から呼び出していない。直接 `fetch()`、`XMLHttpRequest`、`EventSource` を使用していない。 |
 | success refresh | 成功後再取得列に複数 method がある場合、左から順に await し、途中失敗時は残りを中止して error 表示する。 |
 | disabled restore | 操作失敗時も、継続条件がない限り disabled を解除する。`401`、`503`、SSE 接続中、メンテナンス中は解除しない。 |
-| secret clearing | §24 の秘密情報 field が、成功、失敗、画面遷移、`401`、logout、revoke all の全経路で空になる。 |
+| secret clearing | [`docs/details/ui.md`](ui.md) §24 の秘密情報 field が、成功、失敗、画面遷移、`401`、logout、revoke all の全経路で空になる。 |
 | empty state | UI パネル初期取得契約の空状態表示が、各 panel 内に 1 行で表示される。 |
 | global error | 初期化失敗、SDK constructor 失敗、想定外 `TypeError` は `global-error` に固定文言 `Client error` または `UI initialization failed` を表示する。 |
 
@@ -294,7 +294,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | `failed` | SDK method が `AdlaireCIError` を投げる | panel error と field error を表示する。secret field を消去する。 | `idle` / `unauthorized` |
 | `unauthorized` | `401` | token / ticket / secret field を消去し、全 panel を hidden、`panel-login` だけ表示する。 | `idle` |
 
-同一 panel に複数操作がある場合でも、`sending` による disabled は同一操作グループに限定する。ただし §24 の disabled 優先順位で maintenance、forced password change、SSE 接続中、`401` が上位条件として残る場合は、その上位条件に従う。UI は `sending` または `refreshing` の間、同じ SDK method を再実行してはならない。
+同一 panel に複数操作がある場合でも、`sending` による disabled は同一操作グループに限定する。ただし [`docs/details/ui.md`](ui.md) §24 の disabled 優先順位で maintenance、forced password change、SSE 接続中、`401` が上位条件として残る場合は、その上位条件に従う。UI は `sending` または `refreshing` の間、同じ SDK method を再実行してはならない。
 
 秘密情報 field は、`blocked` のうち確認 dialog cancel を除き、`succeeded`、`refresh_failed`、`failed`、`unauthorized`、panel 遷移、logout、revoke all のいずれでも空にする。API 成功前に入力欄以外の確定表示、一覧更新、badge 更新、設定値反映を行ってはならない。入力中の form 値は、secret を除き、`failed` と `refresh_failed` では保持する。
 
@@ -376,7 +376,7 @@ Phase 3 UI の disabled 条件は以下に固定する。
 
 **Phase 4 UI 操作固定契約：**
 
-Phase 4 UI は、§24 UI 操作契約表の SDK method だけを呼び出す。UI は API / SDK response の補完、状態ファイル直接操作、未定義 endpoint 呼び出し、保存成功前の確定表示を行ってはならない。
+Phase 4 UI は、[`docs/details/ui.md`](ui.md) §24 UI 操作契約表の SDK method だけを呼び出す。UI は API / SDK response の補完、状態ファイル直接操作、未定義 endpoint 呼び出し、保存成功前の確定表示を行ってはならない。
 
 | 機能群 | 主操作 | 成功時表示 | 成功後再取得 | 失敗時表示 / disabled |
 |--------|--------|------------|--------------|------------------------|
@@ -472,7 +472,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 
 **§27.21〜§27.47 UI 連動実装完了固定契約：**
 
-§27.21〜§27.47 の追加仕様化機能を UI で実装完了と扱うには、§24 の DOM / section / form field 命名契約、UI 操作契約表、UI 共通動作契約、UI 操作完全性検証契約、UI error / disabled 優先順位固定、`docs/details/sdk.md` §23 の SDK 連動実装完了固定契約、`docs/details/fixture.md` §27-F を同時に満たす。UI は SDK response に存在しない key を補完せず、状態ファイルを直接読まず、API endpoint を直接呼ばず、成功前に確定表示を行わない。
+[`docs/details/ui.md`](ui.md) §27.21〜§27.47 の追加仕様化機能を UI で実装完了と扱うには、[`docs/details/ui.md`](ui.md) §24 の DOM / section / form field 命名契約、UI 操作契約表、UI 共通動作契約、UI 操作完全性検証契約、UI error / disabled 優先順位固定、[`docs/details/sdk.md`](sdk.md) §23 の SDK 連動実装完了固定契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。UI は SDK response に存在しない key を補完せず、状態ファイルを直接読まず、API endpoint を直接呼ばず、成功前に確定表示を行わない。
 
 | 対象 | UI 表示 / 操作 | 使用 SDK method | 成功後再取得 | 固定する完了条件 |
 |------|----------------|-----------------|--------------|------------------|
@@ -501,7 +501,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 | secret clearing | password、PAT、Webhook secret、SMTP password、発行 token、TOTP secret、ticket、TOTP code は成功、失敗、panel 遷移、logout、`401`、revoke all で消去される。 |
 | error discipline | `401` は login へ戻す。`403` は logout しない。`409` は仕様上の再取得だけ行う。`422` は field error。`429` は同一操作だけ 10 秒 disabled。 |
 | one-time display | 発行 token、TOTP secret、otpauth URI は専用領域に 1 回だけ表示し、次 user action、copy、panel 遷移、logout、`401` で消去する。 |
-| fixture evidence | `docs/details/fixture.md` §27-F の UI 関連 fixture で、SDK only、refresh order、disabled priority、secret clearing、one-time display、no speculative state が確認される。 |
+| fixture evidence | [`docs/details/fixture.md`](fixture.md) §27-F の UI 関連 fixture で、SDK only、refresh order、disabled priority、secret clearing、one-time display、no speculative state が確認される。 |
 
 **§27.21〜§27.47 UI 連動 fixture 必須証跡：**
 
@@ -511,7 +511,7 @@ UI 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固�
 |------|--------------|----------|----------|
 | SDK only call trace | user action ごとの SDK method 名、引数、呼び出し順。 | 上表の使用 SDK method だけを呼ぶ。直接 `fetch()`、`XMLHttpRequest`、`EventSource`、状態ファイル操作が 0 件。 | API endpoint を UI から直接呼ぶ、SDK にない method を仮実装する。 |
 | refresh order | 成功後再取得、`409` / `429` / `500` 後の再取得、再取得失敗時表示。 | 表の左から順に await し、途中失敗時は変更成功を維持して panel error に固定文言を表示する。 | 再取得失敗を理由に同じ変更 API を再送する。 |
-| disabled priority | maintenance、SSE 接続中、送信中、`429`、validation error の優先順位。 | §24 の UI error / disabled 優先順位固定に従い、上位条件が残る限り下位解除で有効化しない。 | `429` timer 終了で maintenance disabled を無視して button を有効化する。 |
+| disabled priority | maintenance、SSE 接続中、送信中、`429`、validation error の優先順位。 | [`docs/details/ui.md`](ui.md) §24 の UI error / disabled 優先順位固定に従い、上位条件が残る限り下位解除で有効化しない。 | `429` timer 終了で maintenance disabled を無視して button を有効化する。 |
 | one-time / secret clearing | password、PAT、Webhook secret、SMTP password、発行 token、TOTP secret、otpauth URI、ticket、TOTP code。 | 成功、失敗、panel 遷移、logout、`401`、revoke all、次 user action で対象値が DOM から消える。 | token / secret を一覧、hidden field、data attribute、error message、clipboard 履歴表示へ残す。 |
 | no speculative display | status、queue、approval、token、rate limit、trend、failure category、environment、TOTP 状態。 | API / SDK response に存在する値だけを表示し、未知値は panel error または空状態で表現する。 | UI 時刻だけで expired を確定、avg / p95 / anomaly / rate limit count を再計算する。 |
 | field error mapping | `422 details` の `field` と panel error summary。 | 該当 field が存在する場合は field error と panel summary、存在しない場合は panel error へ表示する。入力値は保持し secret だけ消去する。 | `422` 後に対象 GET を呼んで入力値を上書きする。 |
