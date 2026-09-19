@@ -591,7 +591,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ [`docs/details/ui.md`](details/ui.md) と [`docs/details/sdk.md`](details/sdk.md) の owner component 別詳細本文責務に従う。`admin/style.css` と `admin/app.js` は、[`docs/details/admin.md`](details/admin.md) A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
 | 将来追加予定 path | `components/mcp.go` と MCP 用 fixture は未作成の将来追加予定 path であり、MCP 専用詳細仕様が新設され、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で `仕様化済み・未実装` へ昇格するまで作成しない。 |
 
-標準配置を変更する PR は、標準外配置と標準配置の両方が同じ実装実体として併存していないこと、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の「仕様化済みコンポーネント」、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の実装状態、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、testdata 参照が同じ配置を指すことを確認する。
+標準配置を変更する PR は、標準外配置と標準配置の両方が同じ実装実体として併存していないこと、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の「実装ファイル一覧」、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の実装状態、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、testdata 参照が同じ配置を指すことを確認する。
 
 ---
 

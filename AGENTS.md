@@ -132,7 +132,7 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。
 
-未実装項目を実装する場合は、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「仕様化済みコンポーネント」と本ファイルの実装管理ルールの更新要否を確認する。
+未実装項目を実装する場合は、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「実装ファイル一覧」と本ファイルの実装管理ルールの更新要否を確認する。
 
 仕様の記載と実ファイルの存在が矛盾する場合は、先に仕様・索引・ルールブックの整合を取る。
 
@@ -352,4 +352,4 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 [docs/DESIGN.md](docs/DESIGN.md) を改訂した場合は、`components/builder.go` 内の HTML / CSS / JavaScript / theme component テンプレートとの整合性を確認する。
 
-仕様化済み項目を実装した場合は、[docs/ROADMAP.md](docs/ROADMAP.md) の状態分類と実装状態、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「仕様化済みコンポーネント」、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の対応表、owner component 別の [docs/details/*.md](docs/details/) の検証条件、実装ファイルの存在を整合させる。
+仕様化済み項目を実装した場合は、[docs/ROADMAP.md](docs/ROADMAP.md) の状態分類と実装状態、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「実装ファイル一覧」、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の対応表、owner component 別の [docs/details/*.md](docs/details/) の検証条件、実装ファイルの存在を整合させる。
