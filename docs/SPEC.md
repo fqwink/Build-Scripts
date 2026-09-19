@@ -257,7 +257,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 `main.go` は 1 ファイルとし、起動入口、実行ファイル名判定、引数受け取り、対象 owner component 呼び出しだけを担当する。`main.go` に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、MCP 処理の実装詳細を書いてはならない。
 
-`components/` は、1 実装対象コンポーネント = 1 Go ファイルとする。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、実装状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。`admin` は Go コンポーネントではなく `admin/` 配下の静的配布物として扱う。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の状態、実装可否、追加条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と該当 owner component の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
+`components/` は、1 実装対象コンポーネント = 1 Go ファイルとする。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、実装状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。`admin` は Go コンポーネントではなく `admin/` 配下の静的配布物として扱う。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の状態、実装可否、追加条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
 
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
@@ -574,7 +574,7 @@ Go 版初期実装では、実装対象を [`docs/ROADMAP.md`](ROADMAP.md) 状�
 
 初期実装 PR では、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で対象外、将来計画、未仕様化、改訂予定に分類された項目を実装してはならない。
 
-初期実装中に対象範囲へ追加したい機能を発見した場合は、先に [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、該当 owner component の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を更新し、仕様凍結を再実施する。
+初期実装中に対象範囲へ追加したい機能を発見した場合は、先に [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を更新し、仕様凍結を再実施する。
 
 初期実装スコープの実装順序と PR 分割は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4 の Phase 実装計画に従う。
 

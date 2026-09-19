@@ -6,7 +6,7 @@
 
 [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約である。api 連動機能を実装する場合は、本ファイルの個別節を参照し、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として同節を確認する。
 
-[`docs/details/security.md`](security.md) §27.42〜§27.47 は security owner component 詳細本文責務である。api が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) を参照する。
+[`docs/details/security.md`](security.md) §27.42〜§27.47 は security 領域の詳細本文責務である。api が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) 詳細本文責務を参照する。
 
 ---
 
@@ -2811,34 +2811,34 @@ approval fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機�
 
 本節の主本文は [`docs/details/security.md`](security.md) §27.42 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、route / method 確定、endpoint dispatch、HTTP status、request / response body、状態ファイル read/write 呼び出し境界だけを担当する。scope 判定順、許可 endpoint group、permission denied audit、body parse 前判定、漏えい禁止値は security owner の主本文を基準とし、本ファイルへ重複定義しない。
+API 側は、route / method 確定、endpoint dispatch、HTTP status、request / response body、状態ファイル read/write 呼び出し境界だけを担当する。scope 判定順、許可 endpoint group、permission denied audit、body parse 前判定、漏えい禁止値は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
 
 ### 27.43 API キー管理
 
 本節の主本文は [`docs/details/security.md`](security.md) §27.43 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、token API の route、HTTP method、request validation の入口、response schema、`.api_tokens` read/write 呼び出し境界だけを担当する。token 生成、hash 保存、scope 検証、作成時 1 回だけ token 本体を返す契約、認証成功時の `last_used_at` 更新、token 漏えい禁止は security owner の主本文を基準とし、本ファイルへ重複定義しない。
+API 側は、token API の route、HTTP method、request validation の入口、response schema、`.api_tokens` read/write 呼び出し境界だけを担当する。token 生成、hash 保存、scope 検証、作成時 1 回だけ token 本体を返す契約、認証成功時の `last_used_at` 更新、token 漏えい禁止は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
 
 ### 27.44 監査ログ
 
 本節の主本文は [`docs/details/security.md`](security.md) §27.44 を参照する。owner component は `security`、collaborator component は `api`、`statefile` とする。
 
-API 側は、audit log API の route、query parameter、response schema、`.audit_log` read 呼び出し境界だけを担当する。audit record schema、action / actor / target / result、必須 audit 失敗時の `500`、secret / token / request body 保存禁止、壊れた行の扱いは security owner の主本文を基準とし、本ファイルへ重複定義しない。
+API 側は、audit log API の route、query parameter、response schema、`.audit_log` read 呼び出し境界だけを担当する。audit record schema、action / actor / target / result、必須 audit 失敗時の `500`、secret / token / request body 保存禁止、壊れた行の扱いは [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
 
 ### 27.45 セッションタイムアウト変更設定
 
 本節の主本文は [`docs/details/security.md`](security.md) §27.45 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、session timeout config API の route、request body、response body、`.server_config.session_timeout_seconds` read/write 呼び出し境界だけを担当する。session の作成、期限判定、sliding update、期限切れ時 `401`、既存 session への反映条件、監査順序は security owner の主本文を基準とし、本ファイルへ重複定義しない。
+API 側は、session timeout config API の route、request body、response body、`.server_config.session_timeout_seconds` read/write 呼び出し境界だけを担当する。session の作成、期限判定、sliding update、期限切れ時 `401`、既存 session への反映条件、監査順序は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
 
 ### 27.46 TOTP 二要素認証
 
 本節の主本文は [`docs/details/security.md`](security.md) §27.46 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、auth / TOTP API の route、request body、response body、`.totp_secret` read/write 呼び出し境界だけを担当する。TOTP secret 生成、setup 仮 secret、login ticket、code 検証、secret の一回表示、ticket 再利用禁止、TOTP 漏えい禁止、監査順序は security owner の主本文を基準とし、本ファイルへ重複定義しない。
+API 側は、auth / TOTP API の route、request body、response body、`.totp_secret` read/write 呼び出し境界だけを担当する。TOTP secret 生成、setup 仮 secret、login ticket、code 検証、secret の一回表示、ticket 再利用禁止、TOTP 漏えい禁止、監査順序は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
 
 ### 27.47 API レート制限
 
 本節の主本文は [`docs/details/security.md`](security.md) §27.47 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、rate limit config API の route、request body、response body、`.server_config.api_rate_limit` と `.api_rate_state` の read/write 呼び出し境界だけを担当する。endpoint group 判定、window / count 更新、`429` 時に count を増やさない契約、actor key / IP key の同一 lock 更新、rate limit audit は security owner の主本文を基準とし、本ファイルへ重複定義しない。
+API 側は、rate limit config API の route、request body、response body、`.server_config.api_rate_limit` と `.api_rate_state` の read/write 呼び出し境界だけを担当する。endpoint group 判定、window / count 更新、`429` 時に count を増やさない契約、actor key / IP key の同一 lock 更新、rate limit audit は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。

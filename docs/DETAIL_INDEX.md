@@ -73,7 +73,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 2. 生成 HTML のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
 3. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
 4. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0a〜§0h で、詳細仕様の記載基準、共通固定値、実装前確認項目、検証条件、Phase 詳細仕様参照を確認する。
-5. owner component の [`docs/details/*.md`](details/) を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
+5. owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
 6. collaborator component がある場合は、該当する [`docs/details/*.md`](details/) を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
 7. [`docs/details/setup.md`](details/setup.md) §26 のセットアップ・アップデート手順と [`docs/details/setup.md`](details/setup.md) §26.7 の受け入れ条件に影響がある場合は、実装 PR の検証対象に含める。
 
@@ -91,7 +91,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 | [`docs/details/setup.md`](details/setup.md) §26 | [`docs/details/setup.md`](details/setup.md)。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
 | `admin` | [`docs/details/admin.md`](details/admin.md)。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
 
-責務 component 別詳細仕様ファイルの管理は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。
+owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファイルの管理は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。
 
 ## 0a. 詳細仕様の記載基準
 
@@ -112,9 +112,9 @@ owner component が確定できない場合は、実装判断で補完しない�
 | セキュリティ | 認証、認可、秘密情報の保存禁止、権限、外部公開可否 |
 | 検証 | 構文確認、実行確認、API 確認、生成物確認、整合性確認 |
 
-未確定の内容は、実装可能な詳細仕様として記載しない。未確定の場合は、本ファイルまたは責務 component 別詳細仕様ファイルへ推測で具体値を記載せず、方針とポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+未確定の内容は、実装可能な詳細仕様として記載しない。未確定の場合は、本ファイルまたは owner component 別の [`docs/details/*.md`](details/) 詳細本文責務へ推測で具体値を記載せず、方針とポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
-対象範囲の内容は、実装ファイルが存在しなくても、本節の基準に従って責務 component 別詳細仕様ファイルへ実装可能な粒度まで具体化する。
+対象範囲の内容は、実装ファイルが存在しなくても、本節の基準に従って owner component 別の [`docs/details/*.md`](details/) 詳細本文責務へ実装可能な粒度まで具体化する。
 
 ---
 
@@ -124,7 +124,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 1. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.0.1 のカテゴリ表で、対象機能が属する大まかな領域を特定する。
 2. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b の詳細仕様参照表で、owner component を 1 件に確定する。
-3. owner component の [`docs/details/*.md`](details/) を主本文として読む。
+3. owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を主本文として読む。
 4. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b の参照表または owner component 本文に collaborator component が示されている場合だけ、該当する [`docs/details/*.md`](details/) を読む。
 5. 状態ファイル、認証、fixture、setup、archive、Commit Status など横断参照が必要な場合は、owner component 本文から明示された参照先に限定して読む。
 
@@ -172,17 +172,17 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 ## 0b.1 責務 component 別 詳細仕様ファイル管理仕様
 
-本節は、責務 component 別詳細仕様ファイルの境界を維持するための入口管理仕様である。責務境界の変更、仕様内容の配置変更、参照先更新では、方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態・実装可否・ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
+本節は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の境界を維持するための入口管理仕様である。責務境界の変更、仕様内容の配置変更、参照先更新では、方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態・実装可否・ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
 
-責務 component 別詳細仕様ファイルは、owner component の主本文を持つ。方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。各 [`docs/details/*.md`](details/) の冒頭では、本節への参照と自ファイルの owner / collaborator 境界だけを示す。
+owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は、owner component の主本文を持つ。方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。各 [`docs/details/*.md`](details/) の冒頭では、本節への参照と自ファイルの owner / collaborator 境界だけを示す。
 
 詳細仕様本文の配置単位は owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには呼び出し境界、schema、表示、security、setup、fixture、検証観点だけを置く。
 
-詳細仕様ファイルは以下に固定する。`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。
+owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファイルは以下に固定する。`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。
 
 | ファイル | 持つ内容 | 持たない内容 |
 |----------|----------|--------------|
-| [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様。 | 各 component の詳細な処理本文、fixture / PR 証跡正本、状態 schema、API endpoint 詳細、SDK method 実装、UI DOM 詳細、setup / release 手順。 |
+| [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様の入口、読み方、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、owner component 別詳細本文責務の管理仕様。 | 各 component の詳細な処理本文、fixture / PR 証跡正本、状態 schema、API endpoint 詳細、SDK method 実装、UI DOM 詳細、setup / release 手順。 |
 | [`docs/details/builder.md`](details/builder.md) | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
 | [`docs/details/runner.md`](details/runner.md) | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 | [`docs/details/api.md`](details/api.md) | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
@@ -198,7 +198,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.3 は横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを扱い、個別機能本文は各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
-すべての責務 component 別詳細仕様ファイルは、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
+すべての owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファイルは、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
 
 | 項目 | 必須内容 |
 |------|----------|
@@ -209,7 +209,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 責務境界表の `持つ内容` と `持たない内容` が本文と矛盾する場合は、本文を実装判断に使ってはならない。先に責務境界表、本文、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b の詳細仕様参照表、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を同時に整合させる。
 
-責務 component 別詳細仕様ファイルの各節は、以下を満たす。
+owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファイルの各節は、以下を満たす。
 
 | 項目 | 必須条件 |
 |------|----------|
@@ -219,17 +219,17 @@ owner component が確定できない場合は、実装判断で補完しない�
 | collaborator | collaborator component は 0 件以上を明記し、owner component を含めない。 |
 | 重複禁止 | 同じ入力、出力、状態 schema、HTTP body、DOM id、fixture assertion を複数ファイルで重複定義しない。 |
 | 横断事項 | 横断する固定値は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に置く。横断共通基盤を component として扱わない。 |
-| 索引 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務に、責務 component 別詳細仕様ファイルの役割と正本範囲を反映する。 |
+| 索引 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務に、owner component 別詳細本文責務ファイルの役割と正本範囲を反映する。 |
 
-詳細仕様を読む順序は、本ファイルの「詳細仕様の読み方」に固定する。各責務 component 別詳細仕様ファイルは、owner component の主本文として読み、collaborator component は呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は [`docs/details/security.md`](details/security.md)、fixture、fake、PR 証跡が必要な場合は [`docs/details/fixture.md`](details/fixture.md) を確認する。
+詳細仕様を読む順序は、本ファイルの「詳細仕様の読み方」に固定する。各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファイルは、owner component の主本文として読み、collaborator component は呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は [`docs/details/security.md`](details/security.md)、fixture、fake、PR 証跡が必要な場合は [`docs/details/fixture.md`](details/fixture.md) を確認する。
 
 責務整理、本文配置変更、参照先更新は、以下の完了条件をすべて満たすまで完了扱いにしてはならない。
 
 | 完了条件 | 判定 |
 |----------|------|
-| 各本文が対応する責務 component 別詳細仕様ファイルにだけ存在している。 | 必須 |
+| 各本文が対応する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファイルにだけ存在している。 | 必須 |
 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務には入口、索引、共通固定値、対応表、管理仕様、リポジトリ内ソース配置だけが残っている。 | 必須 |
-| [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、各責務 component 別詳細仕様ファイル間の参照が矛盾していない。 | 必須 |
+| [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファイル間の参照が矛盾していない。 | 必須 |
 | `rg` で廃止済み節名、廃止済みファイル名、不要参照の取り残しを確認している。 | 必須 |
 | 実装ファイル、fixture、testdata の内容を文書配置整理だけで変更していない。 | 必須 |
 
@@ -536,7 +536,7 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の [`docs/details/*.md`](details/) を参照する。
 
-`mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、本ファイルおよび責務 component 別詳細仕様ファイルでは入出力、状態、起動手順、検証条件を定義しない。
+`mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、本ファイルおよび owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファイルでは入出力、状態、起動手順、検証条件を定義しない。
 
 ---
 
@@ -621,7 +621,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 ## 責務 component 別詳細仕様索引
 
-責務 component 別詳細仕様ファイルの本文は、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の「詳細仕様管理」と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i を入口として確認する。
+owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファイルの本文は、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の「詳細仕様管理」と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i を入口として確認する。
 
 本ファイルでは詳細仕様本文を再定義しない。実装者は、対象機能の owner component を [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b または [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i で特定し、該当する [`docs/details/*.md`](details/) を主本文として読む。
 
@@ -633,4 +633,4 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | [`docs/details/sdk.md`](details/sdk.md) §23 | [`docs/details/sdk.md`](details/sdk.md) |
 | [`docs/details/ui.md`](details/ui.md) §24 | [`docs/details/ui.md`](details/ui.md) |
 | [`docs/details/setup.md`](details/setup.md) §26 | [`docs/details/setup.md`](details/setup.md) |
-| [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 と該当 owner component の [`docs/details/*.md`](details/) |
+| [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 |
