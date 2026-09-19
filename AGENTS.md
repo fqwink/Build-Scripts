@@ -203,7 +203,7 @@ Go 実装の構文確認では、対象ファイルに対して `gofmt -l ...` �
 
 Pull Request の `mergeStateStatus` が `DIRTY`、`UNKNOWN`、または確認不能の場合は、merge 可能と報告してはならない。`UNKNOWN` の場合は GitHub の再計算後に再確認し、最終的に `CLEAN` を確認する。
 
-競合解消時は、競合マーカーの除去だけで完了としてはならない。`git diff --check`、競合マーカー検索、変更対象文書の正本参照先確認、open Pull Request 一覧確認を完了条件とする。
+競合解消時は、競合マーカーの除去だけで完了としてはならない。`git diff --check`、競合マーカー検索、変更対象文書の正本参照先確認、open Pull Request 一覧確認を確認条件とする。
 
 `main` への反映は、Pull Request 経由で行う。
 
@@ -306,7 +306,7 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - `git diff --name-status origin/main...HEAD` で、変更対象が承認済み範囲内であることを確認する。
 - open Pull Request を確認し、同一ファイルまたは同一仕様領域を変更する Pull Request が存在しないことを確認する。
 - 同一ファイルまたは同一仕様領域の open Pull Request が存在する場合は、新規 Pull Request ではなく既存 Pull Request への統合、または最新 `origin/main` 起点の一本化 Pull Request を作成する。
-- open Pull Request の `mergeStateStatus` が `DIRTY` または `UNKNOWN` の場合は、競合状態または未確認状態として扱い、`CLEAN` を確認するまで完了報告しない。
+- open Pull Request の `mergeStateStatus` が `DIRTY` または `UNKNOWN` の場合は、競合状態または未確認状態として扱い、`CLEAN` を確認するまで報告しない。
 - 競合解消または PR 一本化を行った場合は、重複 PR が open のまま残っていないことを `gh pr list --state open` で確認する。
 - 文書変更では、`rg` で不要になった名称、矛盾参照、不要になったファイル名が残っていないか確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
