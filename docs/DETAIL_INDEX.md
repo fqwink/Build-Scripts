@@ -253,7 +253,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファ�
 | セキュリティ | 秘密情報の保存禁止、マスク、ファイル権限、認証/認可、外部公開可否が明記されている。 |
 | 検証 | 構文確認、単体確認、手動 API 確認、生成物確認、ログ確認、失敗系確認のいずれを行うかが明記されている。 |
 
-上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を改訂し、必要に応じて collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務、本ファイルの対応表、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を同じ仕様 PR で整合させ、未充足項目を仕様として確定する。
+上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を改訂し、必要に応じて collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務、本ファイルの対応表、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を同じ仕様変更範囲で整合させ、未充足項目を仕様として確定する。
 
 実装後の完了判定は以下を入口として確認する。本節は完了条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、PR 証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を参照する。
 
@@ -317,7 +317,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務ファ�
 | `admin` | 静的配布境界 | admin 配布物、archive validation、HTTP 静的配信、setup 連携、fixture integration が [`docs/details/admin.md`](details/admin.md) §0、A1〜A6、[`docs/details/setup.md`](details/setup.md) §26.8、[`docs/details/fixture.md`](details/fixture.md) §27-F setup / admin / release 連動 fixture 固定契約と一致し、UI / SDK の本文を重複定義しない。 |
 | `fixture` | fixture / fake / 証跡 | Phase 別 fixture、fake、assertion、expected / effects、PR 証跡、acceptance checklist、差し戻し条件が [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) §22-F、[`docs/details/fixture.md`](details/fixture.md) §27-F と一致する。 |
 
-検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、fixture 名、期待結果、実結果、状態差分、外部副作用、secret 確認、対象外確認を対応付けて記録する。記録形式、必須項目、不足時の扱いは [`docs/details/fixture.md`](details/fixture.md) の PR 証跡契約を参照する。検証不能な項目がある場合は、その項目を完了扱いにしてはならない。
+検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、fixture 名、期待結果、実結果、状態差分、外部副作用、secret 確認、対象外確認を対応付けて記録する。記録形式、必須項目、不足時の扱いは [`docs/details/fixture.md`](details/fixture.md) の fixture 証跡責務を参照する。検証不能な項目がある場合は、その項目を完了扱いにしてはならない。
 
 ---
 

@@ -40,7 +40,7 @@
 
 上表の証跡が不足する場合、対象機能は未完了として扱う。実装者は fixture が pass したことだけを完了証跡として扱ってはならない。
 
-Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。owner component 別の [`docs/details/*.md`](./) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合は、本ファイルの証跡分類、不足時の扱い、差し戻し条件を優先する。
+Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。owner component 別の [`docs/details/*.md`](./) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、本ファイルは fixture 証跡責務として証跡分類、不足時の扱い、差し戻し条件だけを固定する。
 
 **Phase fixture / testdata 配置固定契約：**
 
