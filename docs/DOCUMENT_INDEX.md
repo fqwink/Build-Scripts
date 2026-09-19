@@ -42,7 +42,7 @@
 | 読む順番 | [読む順番](#読む順番) | 作業開始から詳細仕様本文までの確認順序。 |
 | 文書一覧 | [文書一覧](#文書一覧) | 各文書の役割と所在。 |
 | 実装所在入口 | [実装ファイル索引](#実装ファイル索引) | 実装ファイル所在の判断原則。 |
-| 詳細仕様管理 | [詳細仕様管理](#詳細仕様管理) | owner component 別詳細仕様ファイルの配置と状態。 |
+| 詳細仕様管理 | [詳細仕様管理](#詳細仕様管理) | owner component 別詳細本文責務の配置と状態。 |
 | 実装ファイル一覧 | [仕様化済みコンポーネント](#仕様化済みコンポーネント) | 実装ファイル、テスト、fixture の所在と状態。 |
 | 正本参照先 | [正本参照先](#正本参照先) | 判断対象ごとの正本参照先。 |
 | 整合確認先 | [整合確認先](#整合確認先) | 文書整合で確認する正本への参照。 |
@@ -71,18 +71,18 @@
 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針、ポリシー、正本参照先、禁止事項、リリース判断を示す。 |
 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を示す。 |
 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様の入口、読み順、共通固定値、対応表、リポジトリ内ソース配置を示す。 |
-| [`docs/details/builder.md`](details/builder.md) | `builder` owner component の詳細仕様。 |
-| [`docs/details/runner.md`](details/runner.md) | `runner` owner component の詳細仕様。 |
-| [`docs/details/api.md`](details/api.md) | `api` owner component の詳細仕様。 |
-| [`docs/details/admin.md`](details/admin.md) | `admin` owner component の詳細仕様。 |
-| [`docs/details/sdk.md`](details/sdk.md) | `sdk` owner component の詳細仕様。 |
-| [`docs/details/ui.md`](details/ui.md) | `ui` owner component の詳細仕様。 |
-| [`docs/details/setup.md`](details/setup.md) | `setup` owner component の詳細仕様。 |
-| [`docs/details/statefile.md`](details/statefile.md) | `statefile` owner component の詳細仕様。 |
-| [`docs/details/archive.md`](details/archive.md) | `archive` owner component の詳細仕様。 |
-| [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` owner component の詳細仕様。 |
-| [`docs/details/security.md`](details/security.md) | `security` owner component の詳細仕様。 |
-| [`docs/details/fixture.md`](details/fixture.md) | `fixture` owner component の詳細仕様。 |
+| [`docs/details/builder.md`](details/builder.md) | `builder` owner component の詳細本文責務。 |
+| [`docs/details/runner.md`](details/runner.md) | `runner` owner component の詳細本文責務。 |
+| [`docs/details/api.md`](details/api.md) | `api` owner component の詳細本文責務。 |
+| [`docs/details/admin.md`](details/admin.md) | `admin` owner component の詳細本文責務。 |
+| [`docs/details/sdk.md`](details/sdk.md) | `sdk` owner component の詳細本文責務。 |
+| [`docs/details/ui.md`](details/ui.md) | `ui` owner component の詳細本文責務。 |
+| [`docs/details/setup.md`](details/setup.md) | `setup` owner component の詳細本文責務。 |
+| [`docs/details/statefile.md`](details/statefile.md) | `statefile` owner component の詳細本文責務。 |
+| [`docs/details/archive.md`](details/archive.md) | `archive` owner component の詳細本文責務。 |
+| [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` owner component の詳細本文責務。 |
+| [`docs/details/security.md`](details/security.md) | `security` owner component の詳細本文責務。 |
+| [`docs/details/fixture.md`](details/fixture.md) | `fixture` owner component の詳細本文責務。 |
 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン関係の正本。デザイン方針、レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を示す。 |
 | [`AGENTS.md`](../AGENTS.md) | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | 本索引。文書・実装ファイルの役割と所在を示す。仕様本文を定義しない。 |

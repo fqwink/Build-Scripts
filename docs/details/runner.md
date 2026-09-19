@@ -1705,7 +1705,7 @@ systemd unit 本文、配置先、起動手順、更新手順は setup owner com
 
 runner owner component は、`adlaire-ci-runner --state-dir /opt/adlaire-builder` として oneshot 実行された場合の処理、終了コード、状態ファイル更新、ログ出力だけを定義する。
 
-runner 実装は systemd unit file を生成、配置、更新、enable、restart してはならない。systemd 操作が必要な機能は `setup` または `api` owner component の詳細仕様で定義する。
+runner 実装は systemd unit file を生成、配置、更新、enable、restart してはならない。systemd 操作が必要な機能は [`docs/details/setup.md`](setup.md) または [`docs/details/api.md`](api.md) の owner component 詳細本文責務で定義する。
 
 runner が journal へ出力する内容は [`docs/details/runner.md`](runner.md) §15 のログ仕様を参照する。`systemctl`、`journalctl` の操作手順は本ファイルでは定義しない。
 

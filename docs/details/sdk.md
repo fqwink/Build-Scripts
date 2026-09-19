@@ -374,7 +374,7 @@ SDK 実装完了時は、[`docs/details/api.md`](api.md) §22.0e の SDK 列に�
 
 **§27.21〜§27.47 SDK 連動実装完了固定契約：**
 
-[`docs/details/sdk.md`](sdk.md) §27.21〜§27.47 の追加仕様化機能を SDK で実装完了と扱うには、対象 owner component の詳細仕様、[`docs/details/api.md`](api.md) §27 の連動参照表、[`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
+[`docs/details/sdk.md`](sdk.md) §27.21〜§27.47 の追加仕様化機能を SDK で実装完了と扱うには、対象 owner component 別の [`docs/details/*.md`](./) 詳細本文責務、[`docs/details/api.md`](api.md) §27 の連動参照表、[`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
 
 | 対象 | SDK method | request 固定 | success 固定 | error 固定 | 禁止事項 |
 |------|------------|--------------|---------------|------------|----------|

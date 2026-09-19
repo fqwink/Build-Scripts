@@ -6,7 +6,7 @@
 
 [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約である。api 連動機能を実装する場合は、本ファイルの個別節を参照し、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として同節を確認する。
 
-[`docs/details/security.md`](security.md) §27.42〜§27.47 は security owner component の詳細仕様である。api が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) を参照する。
+[`docs/details/security.md`](security.md) §27.42〜§27.47 は security owner component 詳細本文責務である。api が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) を参照する。
 
 ---
 
@@ -661,7 +661,7 @@ no-op response は endpoint 固有の `No changes` が定義されている場�
 
 **api / sdk / ui / statefile 横断契約参照：**
 
-API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別詳細仕様ファイルを参照する。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を同時に確認する。本ファイルでは横断連動表と横断処理順表を重複定義しない。
+API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別の [`docs/details/*.md`](./) 詳細本文責務を参照する。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を同時に確認する。本ファイルでは横断連動表と横断処理順表を重複定義しない。
 
 **横断 fixture 参照：**
 
@@ -2640,7 +2640,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 §27.21〜§27.38、§27.42〜§27.47 の各機能は、owner component の個別節を主本文とする。下表は api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認するための表であり、runner / builder / security / fixture の主本文を置き換えない。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
 
-実装完了判定では、対象機能の owner component 詳細仕様、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の実装状態、[`docs/details/fixture.md`](fixture.md) §27-F の fixture / PR 証跡、必要な collaborator 詳細仕様を同時に満たす。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
+実装完了判定では、対象機能の owner component 別の [`docs/details/*.md`](./) 詳細本文責務、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の実装状態、[`docs/details/fixture.md`](fixture.md) §27-F の fixture / PR 証跡、必要な collaborator component 別の [`docs/details/*.md`](./) 詳細本文責務を同時に満たす。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|
