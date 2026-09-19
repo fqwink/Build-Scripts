@@ -1009,7 +1009,7 @@ runner は stdout / stderr の CRLF を LF に正規化して保存する。NUL 
 
 ## 14a. SSH サイト転送
 
-本節は、Go 版 CI ランナーの SSH 転送標準仕様である。
+本節は、runner owner の SSH 転送詳細本文責務である。
 
 `runner` は、`pipeline.sh` 成功後に、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節は runner owner の SSH 転送詳細本文責務として扱う。
 
@@ -1130,7 +1130,7 @@ remote `sha256sum` 出力は 1 行目の先頭 field だけを採用し、hex 64
 
 ## 14b. スナップショット管理
 
-本節は、Go 版 CI ランナーのスナップショット標準仕様である。
+本節は、runner owner のスナップショット管理詳細本文責務である。
 
 `runner` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節は runner owner のスナップショット保存、世代管理、ロールバック連携詳細本文責務として扱う。
 

@@ -21,7 +21,7 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 
 ## 24. 標準管理ツール 仕様
 
-本節は、`admin/index.html` に関する仕様である。
+本節は、ui owner の `admin/index.html` 詳細本文責務である。
 
 **ファイル構成：**
 ```

@@ -21,7 +21,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 
 ## 23. JavaScript SDK 仕様
 
-本節は、`sdk` に関する仕様である。
+本節は、sdk owner の JavaScript SDK 詳細本文責務である。
 
 **ファイル：** `admin/adlaire-ci-sdk.js`（単一ファイル、外部依存なし）
 **モジュール形式：** ES Module（`import` / `export`）
