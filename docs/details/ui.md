@@ -248,7 +248,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 **UI 操作完全性検証契約：**
 
-標準管理ツールの実装完了時は、[`docs/details/ui.md`](ui.md) §24 の DOM / section / form field 命名契約表と UI 操作契約表を照合し、下表を満たす。
+標準管理ツールの詳細実装確認では、[`docs/details/ui.md`](ui.md) §24 の DOM / section / form field 命名契約表と UI 操作契約表を照合し、下表を満たす。
 
 | 検証項目 | 合格条件 |
 |----------|----------|
@@ -470,11 +470,11 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 | ui token issued clear | `createToken()` が token 本体を返す。 | `issued-token-once` に 1 回表示し、次 user action で消去。`getTokens()` の一覧に token 本体を表示しない。 |
 | ui disabled priority | maintenance enabled 中に `429` が発生し 10 秒経過。 | maintenance が継続する限り build / rollback / 設定変更系は disabled のまま。 |
 
-**§27.21〜§27.47 UI 連動実装完了固定契約：**
+**§27.21〜§27.47 UI 連動実装確認固定契約：**
 
-[`docs/details/ui.md`](ui.md) §27.21〜§27.47 の追加仕様化機能を UI で実装完了と扱うには、[`docs/details/ui.md`](ui.md) §24 の DOM / section / form field 命名契約、UI 操作契約表、UI 共通動作契約、UI 操作完全性検証契約、UI error / disabled 優先順位固定、[`docs/details/sdk.md`](sdk.md) §23 の SDK 連動実装完了固定契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。UI は SDK response に存在しない key を補完せず、状態ファイルを直接読まず、API endpoint を直接呼ばず、成功前に確定表示を行わない。
+[`docs/details/ui.md`](ui.md) §27.21〜§27.47 の追加仕様化機能で UI の詳細実装確認を満たすには、[`docs/details/ui.md`](ui.md) §24 の DOM / section / form field 命名契約、UI 操作契約表、UI 共通動作契約、UI 操作完全性検証契約、UI error / disabled 優先順位固定、[`docs/details/sdk.md`](sdk.md) §23 の SDK 連動実装確認固定契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。UI は SDK response に存在しない key を補完せず、状態ファイルを直接読まず、API endpoint を直接呼ばず、成功前に確定表示を行わない。
 
-| 対象 | UI 表示 / 操作 | 使用 SDK method | 成功後再取得 | 固定する完了条件 |
+| 対象 | UI 表示 / 操作 | 使用 SDK method | 成功後再取得 | 固定する確認条件 |
 |------|----------------|-----------------|--------------|------------------|
 | §27.21 branch target / env | リポジトリ情報 panel に target files と branch env を表示 / 保存する。secret env value は入力欄以外へ表示しない。 | `getBranchConfig()`, `setBranchConfig(branches)`, `getConfig()` | `getBranchConfig()`, `getConfigLog()` | API 配列順を保持し、env key / target path を UI が正規化しない。保存失敗時は secret を消去し、その他入力値を保持する。 |
 | §27.22 pipeline | 設定 panel の pipeline config を表示 / 保存する。reserved arg や inline YAML を UI が削除・整形しない。 | `getPipelineConfig()`, `setPipelineConfig(config)` | `getPipelineConfig()`, `getConfigLog()` | `422 details` は該当 field error、成功前に画面上の確定 config を更新しない。 |

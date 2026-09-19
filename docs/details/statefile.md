@@ -816,7 +816,7 @@ BuildMeta object:
 
 `.build_status.json` の更新タイミング、各 `status` の選択条件、書き込み失敗時の runner 終了コードは [`docs/details/runner.md`](runner.md) §13 の build status 更新契約を参照する。
 
-### §22.0s 状態ファイル実装完了固定契約
+### §22.0s 状態ファイル実装確認固定契約
 
 `statefile` owner component は、§22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。実装者は状態ファイルごとに別々の暗黙処理を追加せず、下表の共通契約を満たす。
 
@@ -869,4 +869,4 @@ runner / archive / commitstatus / security / api が同じ実装 PR で状態更
 | get no mutation | 破損なし state 一式 | 全 read-only endpoint 呼び出し | state dir の file list、mtime、mode、content が変化しない。 |
 | multi write partial failure | 2 file 目の write を fake failure | 複数ファイル更新 endpoint 呼び出し | 1 file 目は保持、2 file 目以降は未変更、`.config_log` に失敗記録。 |
 
-`statefile` は上表の fixture expected が用意され、成功系、validation failure、corrupt read、lock timeout、chmod failure、fsync failure、GET no mutation の差分が確認できるまで実装完了扱いにしてはならない。
+`statefile` は上表の fixture expected が用意され、成功系、validation failure、corrupt read、lock timeout、chmod failure、fsync failure、GET no mutation の差分が確認できるまで詳細実装確認を満たした扱いにしてはならない。

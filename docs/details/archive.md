@@ -51,7 +51,7 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 | 削除失敗 | 処理継続し、処理結果に `failed_count` を含める。 |
 | 処理結果 | archive は `archived_count`、cleanup は `deleted_count` と `failed_count` を API へ返す。 |
 
-**archive / cleanup 実装完了ゲート：**
+**archive / cleanup 実装確認ゲート：**
 
 | 観点 | 入力 | 合格条件 | 禁止事項 |
 |------|------|----------|----------|
@@ -182,9 +182,9 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | config log | `.config_log` に `target="snapshot_delete"`、`target_id={id}` を追記。 | snapshot は削除済みのまま `500`。他 snapshot、history、build log、pending は変更しない。 |
 | response | `{ "message":"Snapshot deleted" }`。 | 成功 response を返さない。 |
 
-**artifact 実装完了固定契約：**
+**artifact 実装確認固定契約：**
 
-| 操作 | 完了条件 | 失敗時副作用 |
+| 操作 | 確認条件 | 失敗時副作用 |
 |------|----------|--------------|
 | snapshot save | `site.tar.gz` と `meta.json` を tmp directory に作成し、検証後に `.snapshots/{build_id}` へ rename する。`meta.json.output_sha256` が build history の値と一致する。 | tmp 作成中の失敗では公開 snapshot directory を作らない。既存 snapshot は変更しない。 |
 | snapshot list | `meta.json` が schema valid な snapshot だけを `saved_at` 降順、同時刻 id 降順で返す。 | 破損 snapshot は除外し、WARN `SNAPSHOT_META_CORRUPT`。修復しない。 |
@@ -220,7 +220,7 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 
 手順 3 より前の失敗は状態差分なしとする。手順 3 以後の失敗は rollback build log に失敗地点、`rollback_from`、`snapshot_id` を残し、`.build_lock` 解放と finalizer を必ず試行する。finalizer 失敗時は response `500` とし、元 snapshot、元 build log、過去 history、`.last_sha` は変更しない。
 
-**rollback 実装完了ゲート：**
+**rollback 実装確認ゲート：**
 
 | 観点 | 合格条件 |
 |------|----------|

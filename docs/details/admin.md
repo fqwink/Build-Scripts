@@ -91,7 +91,7 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 ## A5. 受け入れ条件
 
-`admin` の実装完了には、以下をすべて満たす。
+`admin` の詳細実装確認では、以下をすべて満たす。
 
 | 観点 | 合格条件 |
 |------|----------|
@@ -124,7 +124,7 @@ setup が admin UI を配置する場合は、以下を満たす。
 | admin static serving security | secret、state、log、snapshot、backup、temporary path への direct request | static serving | status `404`、body は固定 error だけ、Content-Type は secret 内容から推測しない。 |
 | admin no mutation | 正常 admin directory と state dir | 全 admin request fixture 実行 | admin file、state file、credential、build log、snapshot の content / mode / mtime が変化しない。 |
 
-**Admin 実装完了ゲート：**
+**Admin 実装確認ゲート：**
 
 | 観点 | 合格条件 |
 |------|----------|

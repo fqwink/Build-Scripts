@@ -671,7 +671,7 @@ api / sdk / ui / statefile にまたがる横断 fixture の fixture 名、入�
 
 API の Phase 3 / Phase 4 必須検証、fixture 名、入力状態、期待 response、期待副作用は [`docs/details/fixture.md`](fixture.md) §22-F を参照する。
 
-本ファイルでは、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、PR 証跡、Phase 別の完了判定は本ファイルに重複定義しない。
+本ファイルでは、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、PR 証跡、Phase 別の判定責務は本ファイルに重複定義しない。
 
 | メソッド | パス | 認証 | 説明 |
 |---------|------|------|------|
@@ -2283,7 +2283,7 @@ queue entry は [`docs/details/statefile.md`](statefile.md) §22.0c `.build_stat
 | event id | `wh{YYYYMMDDHHmmss}`、衝突時 `-001`。 |
 | secret | signature、secret、raw payload は event log、access log、audit log に保存しない。 |
 
-**Webhook 実装完了固定契約：**
+**Webhook 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2359,7 +2359,7 @@ Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `g
 | offset | filter 後、並び替え後に適用する。 |
 | 壊れた行 | 内容を response、server log に含めない。固定コードだけ出す。 |
 
-**Webhook events API 実装完了固定契約：**
+**Webhook events API 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2417,7 +2417,7 @@ owner component は `api` とする。collaborator component は `statefile` と
 
 `checks[]` は上表の順で返す。`status` は checks が空なら `"ok"`、read error または stale があれば `"degraded"`、response 生成不能だけ `"error"` とする。
 
-**health 実装完了固定契約：**
+**health 実装確認固定契約：**
 
 | 条件 | HTTP status | `status` | `checks` | 副作用 |
 |------|-------------|----------|----------|--------|
@@ -2465,7 +2465,7 @@ owner component は `api` とする。collaborator component は `sdk`、`ui`、
 
 検索結果は `{build_id, level, source, line_number, message}` とし、`source` は `"stdout"`、`"stderr"`、`"warnings"`、`"error"` のいずれかとする。`line_number` は 1 始まり、配列項目は配列内 index + 1 とする。
 
-**ログ検索実装完了固定契約：**
+**ログ検索実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2590,7 +2590,7 @@ owner component は `api` とする。collaborator component は `statefile` と
 | `POST /api/pipeline-config` | `pipeline_config` |
 | その他 `.config_log` 対象 | method と path から `/api/` prefix を除き、`/` と `-` を `_` に置換した固定名。 |
 
-**config diff 実装完了固定契約：**
+**config diff 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2621,7 +2621,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 |------|------|
 | config log 追記失敗 | 対象状態ファイルの更新を失敗扱いにし、`500` を返す。 |
 | diff 生成失敗 | 状態ファイルを書かず `500`。 |
-| secret マスク漏れ検出 | 実装不合格。該当 API は完了扱いにしない。 |
+| secret マスク漏れ検出 | 実装不合格。該当 API は詳細実装確認を満たした扱いにしない。 |
 
 **検証条件：**
 
@@ -2640,7 +2640,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 §27.21〜§27.38、§27.42〜§27.47 の各機能は、owner component の個別節を主本文とする。下表は api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認するための表であり、runner / builder / security / fixture の主本文を置き換えない。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
 
-実装完了判定では、対象機能の owner component 別の [`docs/details/*.md`](./) 詳細本文責務、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の実装状態、[`docs/details/fixture.md`](fixture.md) §27-F の fixture / PR 証跡、必要な collaborator component 別の [`docs/details/*.md`](./) 詳細本文責務を同時に満たす。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
+詳細実装確認では、対象機能の owner component 別の [`docs/details/*.md`](./) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) §27-F の fixture、必要な collaborator component 別の [`docs/details/*.md`](./) 詳細本文責務を同時に参照する。実装状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を正本とする。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|
@@ -2702,9 +2702,9 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 api / sdk / ui のいずれも、上表に存在しない endpoint、method、UI 操作を追加してはならない。追加が必要な場合は、本表、該当 endpoint 個別節、SDK method 表、UI 操作契約、fixture catalog を先に更新する。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
 
-**§27 api / sdk / ui 連動実装完了ゲート：**
+**§27 api / sdk / ui 連動実装確認ゲート：**
 
-§27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する機能は、下表の全条件を満たした場合だけ実装完了とする。owner component が `api` ではない機能でも、API response を SDK / UI が利用する場合は本ゲートを満たす。
+§27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する機能の詳細実装確認では、下表の全条件を満たす。owner component が `api` ではない機能でも、API response を SDK / UI が利用する場合は本ゲートを満たす。
 
 | ゲート | API 側の合格条件 | SDK / UI への固定契約 | 禁止事項 |
 |--------|------------------|------------------------|----------|
@@ -2792,7 +2792,7 @@ sdk は `getApprovals()`、`approveBuild(id)`、`rejectBuild(id)` を提供す�
 
 approve / reject API は body を受け付けない。reject reason は初期実装では固定 `"rejected"` とする。
 
-**approval API 実装完了固定契約：**
+**approval API 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
