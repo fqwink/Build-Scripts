@@ -65,7 +65,7 @@
 | 方針、ポリシー、禁止事項を判断したい | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | [`docs/ROADMAP.md`](ROADMAP.md) | 対象領域に適用する原則と制約を判断する。 |
 | 実装状態、実装可否、Phase、将来計画を判断したい | [`docs/ROADMAP.md`](ROADMAP.md) | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 対象が未仕様化、将来計画、改訂予定、仕様化済み・未実装、実装中・検証未完了、実装済みのどれかを判断する。 |
 | 詳細仕様本文を探したい | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 対象 owner component の [`docs/details/*.md`](details/) | 対象機能の owner component、参照節、受け入れ条件を判断する。 |
-| 実装ファイル、テスト、fixture の所在を確認したい | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j | 現行実装ファイル、将来追加予定 path、標準配置の扱いを判断する。 |
+| 実装ファイル、テスト、fixture の所在を確認したい | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j | 現行実装ファイル、将来追加予定 path、標準配置の扱いを判断する。 |
 | component の入出力、状態、処理順序、異常系、検証条件を確認したい | 対象 owner component の [`docs/details/*.md`](details/) | collaborator component の [`docs/details/*.md`](details/) | 実装時に従う具体仕様と collaborator 境界を判断する。 |
 | 生成静的 Web サイトの見た目を確認したい | [`docs/DESIGN.md`](DESIGN.md) | [`docs/details/builder.md`](details/builder.md) | レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を判断する。 |
 
@@ -135,7 +135,7 @@
 | 正本関係変更 | [`AGENTS.md`](../AGENTS.md)、[`docs/SPEC.md`](SPEC.md)、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | 作業ルール、仕様正本、デザイン正本、索引の記載が矛盾しないこと。 |
 | 詳細仕様責務整理 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | owner component、collaborator、参照表、本文配置が一致すること。 |
 | README 整理 | [`README.md`](../README.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | README が入口に留まり、詳細ルールを重複定義していないこと。 |
-| 実装所在整理 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j | 実装ファイル、テスト、fixture の所在と状態が一致すること。 |
+| 実装所在整理 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j | 実装ファイル、テスト、fixture の所在と状態が一致すること。 |
 
 ## 仕様構造完了条件
 
@@ -190,7 +190,7 @@
 | 3 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | 文書と実装ファイルの役割、正本関係、配置を確認する。 |
 | 4 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針、ポリシー、禁止事項、リリース判断を確認する。 |
 | 5 | [`docs/DESIGN.md`](DESIGN.md) | 生成 HTML のデザイン関係を確認する。 |
-| 6 | [`docs/ROADMAP.md`](ROADMAP.md) | 実装状態、実装可否、Phase、将来計画、§27 追加仕様化機能参照、横断補足契約を確認する。 |
+| 6 | [`docs/ROADMAP.md`](ROADMAP.md) | 実装状態、実装可否、Phase、将来計画、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能参照、横断補足契約を確認する。 |
 | 7 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | 詳細仕様の入口、読み順、共通固定値、対応表、ソース配置を確認する。 |
 | 8 | [`docs/details/*.md`](details/) | 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
 
@@ -226,9 +226,9 @@
 
 ## 詳細仕様管理
 
-詳細仕様は、責務 component 別の [`docs/details/*.md`](details/) を本文として管理する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) は、詳細仕様本文を集約せず、入口、読み順、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。§27 追加仕様化機能参照と横断補足契約は [`docs/ROADMAP.md`](ROADMAP.md) §6 を正とする。
+詳細仕様は、責務 component 別の [`docs/details/*.md`](details/) を本文として管理する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) は、詳細仕様本文を集約せず、入口、読み順、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能参照と横断補足契約を正とする。
 
-下表は、詳細仕様本文の配置先を示す索引である。各ファイルの責務境界、持つ内容、持たない内容、owner / collaborator の扱いは [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0b および §0b.1 を正とする。
+下表は、詳細仕様本文の配置先を示す索引である。各ファイルの責務境界、持つ内容、持たない内容、owner / collaborator の扱いは [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b および [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 を正とする。
 
 | ファイル | 状態 | 役割 |
 |----------|------|------|
@@ -251,7 +251,7 @@
 
 [`docs/ROADMAP.md`](ROADMAP.md) と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) では、以下のコンポーネントも仕様化されている。
 
-リポジトリ内ソース配置は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j を参照する。
+リポジトリ内ソース配置は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j を参照する。
 
 下表は、現行リポジトリに存在する実装ファイルと、将来追加予定 path を区別して示す。`main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` を現行配置として扱う。
 
@@ -307,4 +307,4 @@
 
 現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は [`docs/ROADMAP.md`](ROADMAP.md) の実装状態と本ファイルの `仕様化済みコンポーネント` に従って実装済みとして扱う。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
 
-`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置であり、現行実装実体として扱わない。標準配置と現行実体の判断は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) §0j、本ファイルの `仕様化済みコンポーネント` を同時に確認する。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置であり、現行実装実体として扱わない。標準配置と現行実体の判断は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、本ファイルの `仕様化済みコンポーネント` を同時に確認する。

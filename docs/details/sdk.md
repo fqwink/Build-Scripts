@@ -2,7 +2,7 @@
 
 本ファイルは `sdk` owner component の詳細仕様正本である。
 
-本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
+本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
 
 SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md`](api.md) §22.0e を正とする。本ファイルは SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 

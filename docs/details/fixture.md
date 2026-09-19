@@ -2,7 +2,7 @@
 
 本ファイルは `fixture` owner component の詳細仕様正本である。
 
-本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
+本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
 
 ---
 
@@ -28,7 +28,7 @@
 
 ## 0g.8-F Phase fixture / testdata / fake / PR 証跡契約
 
-本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件の正本である。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0e、§0g、§0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、PR 証跡項目、不足時の扱い、差し戻し条件は本ファイルを正とする。
+本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件の正本である。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0g、§0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、PR 証跡項目、不足時の扱い、差し戻し条件は本ファイルを正とする。
 
 実装 PR の完了証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる PR は、該当する全系統の証跡を PR 本文または検証ログに記録する。
 

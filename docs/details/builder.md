@@ -2,7 +2,7 @@
 
 本ファイルは `builder` owner component の詳細仕様正本である。
 
-本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
+本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
 
 ---
 
@@ -1826,7 +1826,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 ## 28. Builder owner 追加仕様化機能 詳細仕様
 
-本節は、[`docs/ROADMAP.md`](../ROADMAP.md) §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。実装状態、実装可否、Phase、将来計画からの昇格判断は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を正本とし、本節では定義しない。
+本節は、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。実装状態、実装可否、Phase、将来計画からの昇格判断は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を正本とし、本節では定義しない。
 
 本節の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
 
@@ -2908,7 +2908,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 
 **[`docs/details/builder.md`](builder.md) §28 実装完了条件：**
 
-各機能は、該当 [`docs/details/builder.md`](builder.md) §28.x の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0i.1、[`docs/details/fixture.md`](fixture.md) §28-F を満たすまで実装完了として扱わない。複数の [`docs/details/builder.md`](builder.md) §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。
+各機能は、該当 [`docs/details/builder.md`](builder.md) §28.x の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/fixture.md`](fixture.md) §28-F を満たすまで実装完了として扱わない。複数の [`docs/details/builder.md`](builder.md) §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。
 
 **[`docs/details/builder.md`](builder.md) §28 実装完了ゲート固定契約：**
 

@@ -2,9 +2,9 @@
 
 本ファイルは `runner` owner component の詳細仕様正本である。
 
-本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
+本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
 
-[`docs/ROADMAP.md`](../ROADMAP.md) §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、本ファイルの個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として同節を確認する。同節は本ファイルの個別節を上書きせず、同節の内容を本ファイルへ重複定義してはならない。
+[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、本ファイルの個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として同節を確認する。同節は本ファイルの個別節を上書きせず、同節の内容を本ファイルへ重複定義してはならない。
 
 ---
 
@@ -3491,7 +3491,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 | ゲート | 合格条件 | 禁止事項 |
 |--------|----------|----------|
-| state target | 個別 [`docs/details/runner.md`](runner.md) §27 節に列挙された状態ファイル、[`docs/details/statefile.md`](statefile.md) §22.0a / [`docs/details/statefile.md`](statefile.md) §22.0c の schema、[`docs/ROADMAP.md`](../ROADMAP.md) §6 の collaborator だけを使用する。 | 未定義状態ファイル、未知 key、空 placeholder file、component 固有でない汎用 state file を追加する。 |
+| state target | 個別 [`docs/details/runner.md`](runner.md) §27 節に列挙された状態ファイル、[`docs/details/statefile.md`](statefile.md) §22.0a / [`docs/details/statefile.md`](statefile.md) §22.0c の schema、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6 の collaborator だけを使用する。 | 未定義状態ファイル、未知 key、空 placeholder file、component 固有でない汎用 state file を追加する。 |
 | write order | build lifecycle は lock → build_state running → build log → history → build_status → queue / pending / notify / trend 等の個別副作用の順を fixture で固定する。個別節が別順を明記する場合はその順を優先する。 | 並列処理の完了順をそのまま永続保存順にする、fixture に `write_order` を持たない複数書込を完了扱いにする。 |
 | partial failure | 失敗地点より後の write / external call / notification は実行しない。失敗地点より前に成功済みの状態は個別節が rollback を明記しない限り戻さない。 | 保存済み build log / history / status を実装者判断で削除、巻き戻し、再分類する。 |
 | no-op / skip | 変更なし、cooldown、tag 不一致、disabled、sample 不足、queue duplicate 等は個別節の no-op / skip response と副作用ゼロまたは指定最小副作用で固定する。 | no-op で config log、audit、notify、build log、history、SHA cache を暗黙更新する。 |
