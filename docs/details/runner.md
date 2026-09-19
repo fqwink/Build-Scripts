@@ -1,10 +1,10 @@
 # Adlaire CI — Runner 詳細仕様
 
-本ファイルは `runner` owner component の詳細仕様正本である。
+本ファイルは `runner` owner component の詳細本文責務の正本である。
 
 本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
 
-[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、本ファイルの個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として同節を確認する。同節は本ファイルの個別節を上書きせず、同節の内容を本ファイルへ重複定義してはならない。
+[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、本ファイルの個別節を参照し、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として同節を確認する。同節は本ファイルの個別節を上書きせず、同節の内容を本ファイルへ重複定義してはならない。
 
 ---
 
@@ -165,7 +165,7 @@
 
 ### systemd 配置参照
 
-以下は runner が起動される運用上の配置である。unit 本文、配置、enable、restart、更新、rollback は [`docs/details/setup.md`](setup.md) §26 を正とする。
+以下は runner が起動される運用上の配置である。unit 本文、配置、enable、restart、更新、rollback は [`docs/details/setup.md`](setup.md) §26 を参照する。
 
 ```
 /etc/systemd/system/
@@ -187,7 +187,7 @@
 
 ## 12. 設定値（`runner`）
 
-`runner` は本節の設定値を正とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
+`runner` は本節の設定値を基準とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
 
 **関連型：**
 
@@ -417,11 +417,11 @@ token は `strings.TrimSpace` 後の値だけを HTTP Authorization header に�
 
 **runner 状態ファイル参照契約：**
 
-状態ファイルの path、形式、初期値、schema、破損時の扱い、atomic write、adapter、読取 priority は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を正とする。本ファイルでは、runner がどの処理段階で状態を読むか、いつ更新するか、失敗時に後続処理を止めるかだけを定義する。
+状態ファイルの path、形式、初期値、schema、破損時の扱い、atomic write、adapter、読取 priority は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を参照する。本ファイルでは、runner がどの処理段階で状態を読むか、いつ更新するか、失敗時に後続処理を止めるかだけを定義する。
 
 runner 実装は [`docs/details/statefile.md`](statefile.md) に未定義の状態ファイル、永続 key、queue entry key、notification entry key、pending transfer entry key を追加してはならない。
 
-`.branch_config` が存在しない場合は [`docs/details/runner.md`](runner.md) §12 の `BRANCH_TARGETS` 既定値を使用する。存在する場合の schema、空配列の扱い、永続 key、API 表示名との境界は [`docs/details/statefile.md`](statefile.md) §22.0c の `.branch_config` schema を正とする。
+`.branch_config` が存在しない場合は [`docs/details/runner.md`](runner.md) §12 の `BRANCH_TARGETS` 既定値を使用する。存在する場合の schema、空配列の扱い、永続 key、API 表示名との境界は [`docs/details/statefile.md`](statefile.md) §22.0c の `.branch_config` schema を参照する。
 
 runner は起動時の設定正規化で `.branch_config` を 1 回だけ読み、正規化後の `RunnerConfig.BranchTargets` を当該起動中の唯一の branch target 情報として使用する。同一 runner 起動中に `.branch_config` を再読込してはならない。API による `.branch_config` 更新、削除、default 復帰は、既に実行中の runner には反映せず、次回 runner 起動から反映する。
 
@@ -697,7 +697,7 @@ queue entry の `trigger` は `"manual"`、`"webhook"`、`"approval"` のみ許�
 
 **`.build_status.json` 更新契約：**
 
-`.build_status.json` の schema、許容値、初期値、api / ui / mcp の読取 priority は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を正とする。本ファイルでは runner が `.build_status.json` を更新するタイミングと、更新失敗時の runner 挙動だけを定義する。
+`.build_status.json` の schema、許容値、初期値、api / ui / mcp の読取 priority は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を参照する。本ファイルでは runner が `.build_status.json` を更新するタイミングと、更新失敗時の runner 挙動だけを定義する。
 
 `.build_status.json` の更新タイミングは次に固定する。
 
@@ -1227,7 +1227,7 @@ stdout は Go 標準ライブラリ `log/slog` で出力し、systemd が journa
 
 **`.build_logs/{id}.json` schema 参照：**
 
-`.build_logs/{id}.json` の保存 key、型、必須条件、Report object、Attempt object、CommitStatus object、BuildMeta object は [`docs/details/statefile.md`](statefile.md) §22.0c の `.build_logs/{id}.json` schema を正とする。
+`.build_logs/{id}.json` の保存 key、型、必須条件、Report object、Attempt object、CommitStatus object、BuildMeta object は [`docs/details/statefile.md`](statefile.md) §22.0c の `.build_logs/{id}.json` schema を参照する。
 
 runner owner component は、build log の生成タイミング、stdout / stderr 取り込み、`[REPORT]` 変換、WARN 取り込み、secret mask、最終状態保存、書き込み失敗時の後続停止だけを担当する。schema key の追加、削除、型変更、未知 key 保存は本ファイルで行ってはならない。
 
@@ -1262,7 +1262,7 @@ runner owner component は、build log の生成タイミング、stdout / stder
 
 **`.build_history` JSON Lines 追記契約：**
 
-`.build_history` の保存 key、型、必須条件、許容値は [`docs/details/statefile.md`](statefile.md) §22.0c の `.build_history` JSON Lines schema を正とする。
+`.build_history` の保存 key、型、必須条件、許容値は [`docs/details/statefile.md`](statefile.md) §22.0c の `.build_history` JSON Lines schema を参照する。
 
 runner は build 結果確定後、`.build_history` へ 1 build につき 1 行だけ追記する。`status` は runner の最終結果、`trigger` は [`docs/details/runner.md`](runner.md) §13 の有効値、`output_sha256` は出力サイト全体 manifest の SHA-256 hex とする。manifest 生成に失敗した場合のみ `output_sha256:null` を許可する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
 
@@ -1701,13 +1701,13 @@ adlaire-ci-runner --state-dir <state> --dry-run
 
 ## 16. systemd タイマー参照
 
-systemd unit 本文、配置先、起動手順、更新手順は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.4.1、[`docs/details/setup.md`](setup.md) §26.5 を正とする。
+systemd unit 本文、配置先、起動手順、更新手順は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.4.1、[`docs/details/setup.md`](setup.md) §26.5 を参照する。
 
 runner owner component は、`adlaire-ci-runner --state-dir /opt/adlaire-builder` として oneshot 実行された場合の処理、終了コード、状態ファイル更新、ログ出力だけを定義する。
 
 runner 実装は systemd unit file を生成、配置、更新、enable、restart してはならない。systemd 操作が必要な機能は `setup` または `api` owner component の詳細仕様で定義する。
 
-runner が journal へ出力する内容は [`docs/details/runner.md`](runner.md) §15 のログ仕様を正とする。`systemctl`、`journalctl` の操作手順は本ファイルでは定義しない。
+runner が journal へ出力する内容は [`docs/details/runner.md`](runner.md) §15 のログ仕様を参照する。`systemctl`、`journalctl` の操作手順は本ファイルでは定義しない。
 
 ---
 
@@ -1724,7 +1724,7 @@ runner が journal へ出力する内容は [`docs/details/runner.md`](runner.md
 
 ## 18. 初回セットアップ手順参照
 
-初回セットアップ、Release asset 取得、checksum 検証、バイナリ配置、secret 初期化、状態ファイル初期化、systemd unit 書き込み、service 起動、管理 API 導入、管理 UI 配置は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.1〜§26.4 を正とする。
+初回セットアップ、Release asset 取得、checksum 検証、バイナリ配置、secret 初期化、状態ファイル初期化、systemd unit 書き込み、service 起動、管理 API 導入、管理 UI 配置は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.1〜§26.4 を参照する。
 
 runner owner component は、セットアップ済み環境で `/usr/local/bin/adlaire-ci-runner` が起動された後の処理だけを定義する。
 
@@ -1736,7 +1736,7 @@ runner 実装は以下を行ってはならない。
 | Release asset 取得、checksum 検証、バイナリ配置 | setup owner component の責務。 |
 | `.github_token` の新規生成または対話入力 | setup owner component の secret initializer の責務。 |
 | `.admin_credentials` 初期化、API service 配置、管理 UI 配置 | api / admin / setup owner component の責務。 |
-| systemd unit file の配置、enable、restart | setup owner component の責務。ただし API endpoint が systemd timer を変更する機能は [`docs/details/api.md`](api.md) の該当節を正とする。 |
+| systemd unit file の配置、enable、restart | setup owner component の責務。ただし API endpoint が systemd timer を変更する機能は [`docs/details/api.md`](api.md) の該当節を参照する。 |
 
 runner が起動時に必要ファイル不足または権限不備を検出した場合は、[`docs/details/runner.md`](runner.md) §13、[`docs/details/runner.md`](runner.md) §15a、[`docs/details/runner.md`](runner.md) §20 の異常系に従い、セットアップ手順を自動実行せずに失敗として記録する。
 
@@ -1744,7 +1744,7 @@ runner が起動時に必要ファイル不足または権限不備を検出し�
 
 ## 19. 管理 API サーバー制限参照
 
-管理 API サーバーの HTTP listener、認証、session、rate limit、TLS 非対応、外部認証非対応、worker pool 非採用の制限は api owner component の責務とし、[`docs/details/api.md`](api.md) §21a および [`docs/details/security.md`](security.md) §27.42〜§27.47 を正とする。
+管理 API サーバーの HTTP listener、認証、session、rate limit、TLS 非対応、外部認証非対応、worker pool 非採用の制限は api owner component の責務とし、[`docs/details/api.md`](api.md) §21a および [`docs/details/security.md`](security.md) §27.42〜§27.47 を参照する。
 
 runner owner component は、管理 API サーバーの起動、listener、session、認証、HTTP response、rate limit を実装してはならない。
 
@@ -1781,9 +1781,9 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 
 ### 27.1 GitHub Commit Status API
 
-本節の主本文は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を正とする。owner component は `commitstatus`、collaborator component は `runner`、`statefile` とする。
+本節の主本文は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を参照する。owner component は `commitstatus`、collaborator component は `runner`、`statefile` とする。
 
-runner は、commit SHA 確定、build id 採番、build 開始前の pending 送信呼び出し、pipeline / deploy / snapshot / history の最終結果確定後の final 送信呼び出しだけを担当する。GitHub Commit Status API payload、送信順、送信失敗時の非反転、保存値、secret mask、検証条件は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を正とし、本ファイルへ重複定義してはならない。
+runner は、commit SHA 確定、build id 採番、build 開始前の pending 送信呼び出し、pipeline / deploy / snapshot / history の最終結果確定後の final 送信呼び出しだけを担当する。GitHub Commit Status API payload、送信順、送信失敗時の非反転、保存値、secret mask、検証条件は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を基準とし、本ファイルへ重複定義してはならない。
 
 ### 27.2 ドライラン実行モード
 
@@ -2398,7 +2398,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 **`.pipeline_config` 適用固定契約：**
 
-`.pipeline_config` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を正とする。API による保存、request / response、HTTP status は [`docs/details/api.md`](api.md) §15D を正とする。
+`.pipeline_config` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。API による保存、request / response、HTTP status は [`docs/details/api.md`](api.md) §15D を参照する。
 
 runner は build 開始後、builder command または pipeline step command を組み立てる直前に `.pipeline_config` を 1 回だけ読む。同一 build 中に `.pipeline_config` を再読込してはならない。
 
@@ -2816,7 +2816,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 本機能の目的は、`approval_required` な target を通常 build として即時実行せず、人間承認後の queue entry だけを build / deploy 実行対象にすることである。
 
-API endpoint、approve / reject の request / response、sdk / ui 操作境界は [`docs/details/api.md`](api.md) §27.30 を正とする。`.approval_queue` record schema は [`docs/details/statefile.md`](statefile.md) §22.0c を正とする。
+API endpoint、approve / reject の request / response、sdk / ui 操作境界は [`docs/details/api.md`](api.md) §27.30 を参照する。`.approval_queue` record schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
 
 **入力 / 状態：**
 
@@ -2878,7 +2878,7 @@ runner は `approval_required=true` の target に対して、approval queue 以
 | force build | force build でも `approval_required=true` なら pending 作成だけを行い、SHA reset や pipeline 起動は approval 後まで行わない。 |
 | webhook | webhook 由来でも `approval_required=true` なら webhook queue を直接 build せず、approval pending へ変換する。delivery id は pending payload に残す。 |
 | timeout | timeout 判定は UTC fake clock で行い、`expires_at <= now` を expired とする。expired 後に approve された場合は API 側で `409`。 |
-| audit | pending 作成、approve、reject、expire は audit 対象とする。audit 失敗時の API 挙動は [`docs/details/security.md`](security.md) §27.44 を正とする。 |
+| audit | pending 作成、approve、reject、expire は audit 対象とする。audit 失敗時の API 挙動は [`docs/details/security.md`](security.md) §27.44 を参照する。 |
 | secret | approval payload、notify payload、history、audit には token、Authorization header、repository secret を保存しない。 |
 
 **異常系：**
@@ -3013,7 +3013,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 | channel id | 未指定時は `n` + 6 桁連番。重複 id は `422`。 |
 | event 判定 | channel `on` が空の場合は top-level `on` を使用する。channel `on` に `"*"` があれば全 event 対象。 |
 | webhook config | `config.url` 必須。`http` / `https` のみ許可。userinfo、fragment、空 host は `422`。 |
-| email config | `.smtp_config` / `.smtp_secret` を正とする。channel `config.to` がある場合は `.smtp_config.to` より優先して送信先に使う。 |
+| email config | `.smtp_config` / `.smtp_secret` を基準とする。channel `config.to` がある場合は `.smtp_config.to` より優先して送信先に使う。 |
 | command config | `config.command_args` 必須。shell 経由は禁止。stdout/stderr は `.notify_log` に secret mask 後で保存する。 |
 | secret mask | `secret`、`password`、`token`、`smtp_password`、Webhook secret、SMTP password は GET、backup、log、pending、UI 表示で `"***"`。 |
 
@@ -3487,7 +3487,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 **[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 runner / statefile 連動実装完了ゲート：**
 
-[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 の runner owner 機能は、個別節の完了条件に加えて下表を満たした場合だけ実装完了とする。本ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は [`docs/details/statefile.md`](statefile.md) §22.0c、fixture 本文は [`docs/details/fixture.md`](fixture.md) §27-F を正とする。
+[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 の runner owner 機能は、個別節の完了条件に加えて下表を満たした場合だけ実装完了とする。本ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は [`docs/details/statefile.md`](statefile.md) §22.0c、fixture 本文は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。
 
 | ゲート | 合格条件 | 禁止事項 |
 |--------|----------|----------|

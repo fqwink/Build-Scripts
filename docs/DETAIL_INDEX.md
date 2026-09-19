@@ -196,7 +196,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 | [`docs/details/security.md`](details/security.md) | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 | [`docs/details/fixture.md`](details/fixture.md) | fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.3 は横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを扱い、個別機能本文は各 owner component 詳細仕様を正とする。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.3 は横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを扱い、個別機能本文は各 owner component 詳細仕様を参照する。
 
 すべての責務 component 別詳細仕様ファイルは、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
 
@@ -255,7 +255,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 上記ゲートのいずれかが未充足の場合、実装判断で補完してはならない。先に該当 owner component の詳細仕様ファイルを改訂し、必要に応じて collaborator 詳細仕様、本ファイルの対応表、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を同じ仕様 PR で整合させ、未充足項目を仕様として確定する。
 
-実装後の完了判定は以下を入口として確認する。本節は完了条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、PR 証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を正とする。
+実装後の完了判定は以下を入口として確認する。本節は完了条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、PR 証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を参照する。
 
 1. 実装した機能が、該当 owner component の詳細仕様ファイルと本ファイルの対応表に記載された入力、出力、状態、異常系、検証条件と一致する。
 2. 対象機能が owner component の詳細仕様本文で [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i の詳細節対応表の受け入れ条件を満たしている。
@@ -278,9 +278,9 @@ owner component が確定できない場合は、実装判断で補完しない�
 | 改行 | 新規に書き出す text / JSON Lines ファイルは LF 固定。CRLF 入力は読み込み時に LF として扱う。 |
 | 時刻 | 状態ファイル、API、ログの機械処理用時刻は UTC の ISO 8601 形式（例: `2026-09-16T09:00:00Z`）で保存する。ローカル時刻への変換は UI 表示に限定し、状態ファイル、API response、ログには保存しない。 |
 | JSON | JSON object の未知キーは保存しない。読み込み時に未知キーを見つけた場合は無視し、次回保存時に除去する。 |
-| atomic write | 状態ファイル更新手順は [`docs/details/statefile.md`](details/statefile.md) §22.0a を正とする。各 component は同節の手順を使用し、独自更新手順を持たない。 |
-| 権限 | 状態ファイル、秘密情報ファイル、ディレクトリの権限は [`docs/details/statefile.md`](details/statefile.md) §22.0a を正とする。 |
-| ロック | 状態ファイル lock の作成、待機、解除、競合時応答は [`docs/details/statefile.md`](details/statefile.md) §22.0a を正とする。 |
+| atomic write | 状態ファイル更新手順は [`docs/details/statefile.md`](details/statefile.md) §22.0a を参照する。各 component は同節の手順を使用し、独自更新手順を持たない。 |
+| 権限 | 状態ファイル、秘密情報ファイル、ディレクトリの権限は [`docs/details/statefile.md`](details/statefile.md) §22.0a を参照する。 |
+| ロック | 状態ファイル lock の作成、待機、解除、競合時応答は [`docs/details/statefile.md`](details/statefile.md) §22.0a を参照する。 |
 | ログ秘密情報 | PAT、Webhook Secret、SMTP password、session token、API token は stdout、stderr、JSON log、API response、UI 表示へ平文出力しない。表示が必要な場合は `"***"` とする。 |
 | 終了コード | CLI / runner は `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` ロック競合を標準とする。個別節に明記がある場合もこの意味から外してはならない。 |
 | 禁止事項 | 仕様にない環境変数、状態ファイル、HTTP endpoint、CLI option、外部依存を実装者判断で追加してはならない。必要な場合は先に該当 owner component の詳細仕様ファイルまたは本ファイルの対応表を改訂する。 |
@@ -293,7 +293,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 本表の `builder`、`runner`、`api`、`sdk`、`ui`、`setup` は Phase の主対象 component である。`statefile`、`security`、`archive`、`commitstatus`、`admin`、`fixture` は、主対象 component の collaborator component として完了判定に参加する。collaborator component の検証が失敗する場合、主対象 component の実装も完了扱いにしてはならない。
 
-実装完了判定は、機能実装、fixture / testdata、fake、検証結果、PR 証跡を 1 組として扱う。本ファイルは完了判定の入口と参照順だけを示し、fixture 名、expected / effects、fake 動作、PR 証跡項目、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) §22-F、[`docs/details/fixture.md`](details/fixture.md) §27-F を正とする。コードが仕様どおりに見える場合でも、同ファイルに定義された対象 fixture、expected / effects、実行コマンド、実結果、secret 確認、対象外確認が不足する場合は完了扱いにしない。
+実装完了判定は、機能実装、fixture / testdata、fake、検証結果、PR 証跡を 1 組として扱う。本ファイルは完了判定の入口と参照順だけを示し、fixture 名、expected / effects、fake 動作、PR 証跡項目、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) §22-F、[`docs/details/fixture.md`](details/fixture.md) §27-F を参照する。コードが仕様どおりに見える場合でも、同ファイルに定義された対象 fixture、expected / effects、実行コマンド、実結果、secret 確認、対象外確認が不足する場合は完了扱いにしない。
 
 | 対象 | 必須検証 | 合格条件 |
 |------|----------|----------|
@@ -317,7 +317,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 | `admin` | 静的配布境界 | admin 配布物、archive validation、HTTP 静的配信、setup 連携、fixture integration が [`docs/details/admin.md`](details/admin.md) §0、A1〜A6、[`docs/details/setup.md`](details/setup.md) §26.8、[`docs/details/fixture.md`](details/fixture.md) §27-F setup / admin / release 連動 fixture 固定契約と一致し、UI / SDK の本文を重複定義しない。 |
 | `fixture` | fixture / fake / 証跡 | Phase 別 fixture、fake、assertion、expected / effects、PR 証跡、acceptance checklist、差し戻し条件が [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) §22-F、[`docs/details/fixture.md`](details/fixture.md) §27-F と一致する。 |
 
-検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、fixture 名、期待結果、実結果、状態差分、外部副作用、secret 確認、対象外確認を対応付けて記録する。記録形式、必須項目、不足時の扱いは [`docs/details/fixture.md`](details/fixture.md) の PR 証跡契約を正とする。検証不能な項目がある場合は、その項目を完了扱いにしてはならない。
+検証結果は、実装 PR の本文または実装完了報告に、対象、実行コマンド、fixture 名、期待結果、実結果、状態差分、外部副作用、secret 確認、対象外確認を対応付けて記録する。記録形式、必須項目、不足時の扱いは [`docs/details/fixture.md`](details/fixture.md) の PR 証跡契約を参照する。検証不能な項目がある場合は、その項目を完了扱いにしてはならない。
 
 ---
 
@@ -328,7 +328,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 | 対象 | 実装着手条件 | 実装禁止条件 | 完了判定 |
 |------|--------------|--------------|----------|
 | `builder` | [`docs/details/builder.md`](details/builder.md) §2〜§8 に CLI option、入力 Markdown、出力サイトディレクトリ、終了コード、stderr、HTML 構造、テーマコンポーネント、JS/CSS、生成物確認が定義されている。 | [`docs/details/builder.md`](details/builder.md) §4〜§7 にない Markdown 記法、CSS class、JavaScript 機能、外部 asset、theme を追加すること。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e の `builder` 必須検証をすべて満たし、生成サイトが [`docs/details/builder.md`](details/builder.md) §5〜§7 と一致する。 |
-| `runner` | [`docs/details/runner.md`](details/runner.md) §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd / setup 参照境界が定義されている。systemd unit 本文とセットアップ手順は [`docs/details/setup.md`](details/setup.md) §26 を正とする。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。systemd unit file の生成、配置、更新、enable、restart を runner に追加すること。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e の `runner` 必須検証をすべて満たし、状態ファイル更新順序が [`docs/details/runner.md`](details/runner.md) §13、[`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/api.md`](details/api.md) §22.0d と一致する。 |
+| `runner` | [`docs/details/runner.md`](details/runner.md) §10〜§20 に設定値、状態ファイル、GitHub API、SHA 比較、pipeline 起動、SSH 転送、snapshot、通知、ログ、systemd / setup 参照境界が定義されている。systemd unit 本文とセットアップ手順は [`docs/details/setup.md`](details/setup.md) §26 を参照する。 | 未定義の環境変数、状態ファイル、queue 挙動、通知チャンネル、pipeline 形式を追加すること。systemd unit file の生成、配置、更新、enable、restart を runner に追加すること。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e の `runner` 必須検証をすべて満たし、状態ファイル更新順序が [`docs/details/runner.md`](details/runner.md) §13、[`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/api.md`](details/api.md) §22.0d と一致する。 |
 | `api` | [`docs/details/api.md`](details/api.md) §21〜§22、[`docs/details/api.md`](details/api.md) §21a、[`docs/details/api.md`](details/api.md) §25 と [`docs/details/setup.md`](details/setup.md) §26 に API 共通契約、API server 制限、endpoint、状態ファイル schema、認証、認可、systemd、セットアップが定義されている。 | [`docs/details/api.md`](details/api.md) §22.0e にない endpoint、method、status code、response body、状態ファイル write を追加すること。 | [`docs/details/api.md`](details/api.md) §22.0e の全 endpoint が Request、Response、Errors、Read、Write、SDK、UI の対応表と一致する。 |
 | `sdk` | [`docs/details/sdk.md`](details/sdk.md) §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が [`docs/details/api.md`](details/api.md) §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が [`docs/details/api.md`](details/api.md) §22.0e と [`docs/details/sdk.md`](details/sdk.md) §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
 | `ui` | [`docs/details/ui.md`](details/ui.md) §24 に画面構成、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去が定義されている。 | SDK を介さず API を直接呼ぶこと、未定義の画面・操作・保存先を追加すること、秘密情報を DOM に残すこと。 | 全 UI 操作が [`docs/details/ui.md`](details/ui.md) §24 の表示条件と [`docs/details/sdk.md`](details/sdk.md) §23 の SDK method を満たし、秘密情報 field が指定条件で消去される。 |
@@ -348,7 +348,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 
 ## 0g. Phase 詳細仕様参照
 
-Phase の一覧、順序、対象 owner component、依存条件、完了条件、引き継ぎ契約、実装 PR 成果物チェックリストは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正とする。
+Phase の一覧、順序、対象 owner component、依存条件、完了条件、引き継ぎ契約、実装 PR 成果物チェックリストは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 本ファイルでは、Phase を詳細仕様へ接続する入口だけを持つ。Phase の状態、順序、完了条件、将来計画の昇格判断を重複定義しない。
 
@@ -388,11 +388,11 @@ Phase の一覧、順序、対象 owner component、依存条件、完了条件�
 
 本節は、対象機能から該当する詳細仕様へ移動するための対応表である。実装者は対象機能を実装する前に、下表の「詳細仕様節」と「受け入れ条件」を確認する。
 
-表の「責務 component」は参照先を探すための component 一覧である。owner component と collaborator component は、対象機能の詳細仕様節に記載された値を正とする。
+表の「責務 component」は参照先を探すための component 一覧である。owner component と collaborator component は、対象機能の詳細仕様節に記載された値を参照する。
 
 表の「詳細仕様節」が複数ある場合は、owner component の詳細仕様ファイルを主本文として読み、collaborator component の詳細仕様ファイルは schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認として読む。詳細仕様節には、参照先ファイル名と節番号を併記する。裸の節番号だけで参照先を解決してはならない。
 
-詳細節対応表は owner component を置き換える表ではない。受け入れ条件が複数 component にまたがる場合でも、主本文は owner component の詳細仕様ファイルを正とし、collaborator component の詳細仕様は schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認に限定する。collaborator component は、owner component の入力、出力、状態、endpoint、SDK method、UI 操作を追加定義しない。
+詳細節対応表は owner component を置き換える表ではない。受け入れ条件が複数 component にまたがる場合でも、主本文は owner component の詳細仕様ファイルを基準とし、collaborator component の詳細仕様は schema、呼び出し境界、表示、security、setup、fixture、検証観点の確認に限定する。collaborator component は、owner component の入力、出力、状態、endpoint、SDK method、UI 操作を追加定義しない。
 
 該当節に [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の必須項目が不足している場合は、その項目を実装せず、先に詳細仕様を改訂する。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能参照で、owner、主本文、collaborator を確認する。
 
@@ -534,7 +534,7 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 詳細仕様本文は、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を責務 component 別に定義する。
 
-本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の [`docs/details/*.md`](details/) を正とする。
+本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、責務 component 別の [`docs/details/*.md`](details/) を参照する。
 
 `mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、本ファイルおよび責務 component 別詳細仕様ファイルでは入出力、状態、起動手順、検証条件を定義しない。
 

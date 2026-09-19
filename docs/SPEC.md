@@ -17,11 +17,11 @@
 
 [`AGENTS.md`](../AGENTS.md) は、作業ルール、承認、Git 操作、Pull Request 作成、レビュー対応、検証手順、エージェント実行手順の最上位ルールブックである。
 
-[`docs/SPEC.md`](SPEC.md) は、仕様、方針、ポリシー、正本関係、禁止事項、リリース判断、実装着手可否の最上位仕様書である。
+[`docs/SPEC.md`](SPEC.md) は、仕様、方針、ポリシー、正本参照先、禁止事項、リリース判断、実装着手可否の最上位仕様書である。
 
 作業ルール上の矛盾は [`AGENTS.md`](../AGENTS.md) を正とする。
 
-仕様、方針、ポリシー、正本関係、禁止事項、リリース判断、実装着手可否の矛盾は [`docs/SPEC.md`](SPEC.md) を正とする。
+仕様、方針、ポリシー、正本参照先、禁止事項、リリース判断、実装着手可否の矛盾は [`docs/SPEC.md`](SPEC.md) を正とする。
 
 [`docs/SPEC.md`](SPEC.md) は、なぜその運用が必要か、仕様として何を禁止するか、どの状態を完了扱いにしてはならないかを定義する。[`AGENTS.md`](../AGENTS.md) は、承認、実行コマンド、Git 操作、PR 作成、検証手順をどう実行するかを定義する。
 
@@ -179,7 +179,7 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 責務ベース明示的原則とは、方針、ポリシー、実装状態、実装可否、Phase、将来計画、詳細仕様本文、fixture、expected、fake、検証証跡、文書索引を、それぞれ異なる責務として明示的に分離し、同一判断対象を複数文書で正本化しない原則である。
 
-正本関係は、必ず責務名とファイル名で示す。文書を章構成、便宜分類、または他文書の従属章として扱ってはならない。[`docs/SPEC.md`](SPEC.md) 内部の見出しも責務名で示し、`Part` 名称で扱ってはならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/details/*.md`](details/)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) を [`docs/SPEC.md`](SPEC.md) の章として扱ってはならない。
+正本参照先は、必ず責務名とファイル名で示す。文書を章構成、便宜分類、または他文書の従属章として扱ってはならない。[`docs/SPEC.md`](SPEC.md) 内部の見出しも責務名で示し、`Part` 名称で扱ってはならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/details/*.md`](details/)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) を [`docs/SPEC.md`](SPEC.md) の章として扱ってはならない。
 
 参照はリンク化を必須とする。文書間参照、節参照、表参照、責務正本参照、実装ファイル参照、fixture 参照を書く場合は、Markdown link を用いて参照先へ移動できる形にする。単なるファイル名、裸の節番号、裸の見出し名、または `参照` という文字だけで参照先を示した扱いにしてはならない。
 
@@ -517,7 +517,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 詳細仕様入口責務 | 対象機能の読み順、対応表、参照先、受け入れ条件入口が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に明記されている。 |
 | owner component 詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。 |
 | 横断契約 | API、SDK、UI、状態ファイル、認証、セットアップの対応関係が該当する詳細本文責務で同期している。 |
-| 索引責務 | ファイル名、正本関係、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |
+| 索引責務 | ファイル名、正本参照先、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |
 
 仕様 PR は、未確定事項を「推奨」「検討」「適切に」等の表現だけで残してはならない。未確定事項を残す場合は、実装不可の `未仕様化` または `将来計画` として明示する。
 

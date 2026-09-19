@@ -1,6 +1,6 @@
 # Adlaire CI — Archive 詳細仕様
 
-本ファイルは `archive` owner component の詳細仕様正本である。
+本ファイルは `archive` owner component の詳細本文責務の正本である。
 
 本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、fixture、検証観点として参照する。
 
@@ -15,7 +15,7 @@
 | 持つ内容 | `archive` owner が主本文として定義する build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理。 |
 | 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
 
-archive owner は、保存済み build log と snapshot artifact を安全に圧縮、展開、列挙、削除、転送する実体処理だけを担当する。api は HTTP endpoint の request / response と archive owner 呼び出し境界、sdk は API method 呼び出し、ui は操作表示だけを担当する。runner の build 実行、build id 採番、通常 snapshot 作成タイミング、history / status finalizer は runner owner の詳細仕様を正とし、本ファイルへ重複定義しない。
+archive owner は、保存済み build log と snapshot artifact を安全に圧縮、展開、列挙、削除、転送する実体処理だけを担当する。api は HTTP endpoint の request / response と archive owner 呼び出し境界、sdk は API method 呼び出し、ui は操作表示だけを担当する。runner の build 実行、build id 採番、通常 snapshot 作成タイミング、history / status finalizer は runner owner の詳細仕様を基準とし、本ファイルへ重複定義しない。
 
 ---
 
@@ -36,9 +36,9 @@ archive owner は、runner または `POST /api/logs/archive` から呼び出さ
 
 gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元ファイル mtime ではなく圧縮実行時刻でよい。圧縮前 JSON を読み込めないファイルは archive 対象外とし、WARN `LOG_ARCHIVE_SKIP_CORRUPT: id=<id>` を出す。実行中 build の `current_build_id` と一致する log は対象外とする。
 
-archive owner は、通常 log が存在しない場合に archive log を gzip 展開し、通常 `.build_logs/{id}.json` と同じ schema の JSON object として API へ返す。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` の endpoint、query、response body は [`docs/details/api.md`](api.md) §22.0e を正とし、本節は archive log の探索、展開、除外、件数返却だけを定義する。
+archive owner は、通常 log が存在しない場合に archive log を gzip 展開し、通常 `.build_logs/{id}.json` と同じ schema の JSON object として API へ返す。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` の endpoint、query、response body は [`docs/details/api.md`](api.md) §22.0e を基準とし、本節は archive log の探索、展開、除外、件数返却だけを定義する。
 
-archive owner は、`POST /api/logs/cleanup` から呼び出された場合に、archive 済みファイルも `log_retention_days` の削除対象に含める。archive owner は `POST /api/logs/archive` へ `archived_count`、`POST /api/logs/cleanup` へ `deleted_count` と `failed_count` を返す。HTTP response body の形式は [`docs/details/api.md`](api.md) §22.0e を正とする。
+archive owner は、`POST /api/logs/cleanup` から呼び出された場合に、archive 済みファイルも `log_retention_days` の削除対象に含める。archive owner は `POST /api/logs/archive` へ `archived_count`、`POST /api/logs/cleanup` へ `deleted_count` と `failed_count` を返す。HTTP response body の形式は [`docs/details/api.md`](api.md) §22.0e を参照する。
 
 **archive / cleanup 固定契約：**
 
@@ -89,9 +89,9 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 
 本機能の目的は、`.snapshots/` に保存された build artifact について、api は一覧、download、削除、rollback endpoint を公開し、sdk は対応 method を呼び出し、ui は対応操作を表示する境界を固定することである。
 
-owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は `runner` の §14b を正とする。
+owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は `runner` の §14b を参照する。
 
-archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api は下表 endpoint の request / response と archive owner 呼び出し境界だけを担当する。sdk は API method 呼び出し、ui は操作表示と disabled 判定だけを担当する。runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は runner owner を正とし、本節へ重複定義しない。
+archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api は下表 endpoint の request / response と archive owner 呼び出し境界だけを担当する。sdk は API method 呼び出し、ui は操作表示と disabled 判定だけを担当する。runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は runner owner を基準とし、本節へ重複定義しない。
 
 **API 呼び出し境界：**
 

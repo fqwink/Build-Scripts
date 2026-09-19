@@ -1,10 +1,10 @@
 # Adlaire CI — UI 詳細仕様
 
-本ファイルは `ui` owner component の詳細仕様正本である。
+本ファイルは `ui` owner component の詳細本文責務の正本である。
 
 本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、fixture、検証観点として参照する。
 
-UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md`](sdk.md) §23 を正とする。本ファイルは UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
+UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md`](sdk.md) §23 を参照する。本ファイルは UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
 ---
 
@@ -420,7 +420,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 | dashboard widget | `getDashboardLayout().widgets`、`getDashboard()` | layout の `widgets` 順。未知 widget は表示せず、panel error に `Unknown dashboard widget` を 1 行表示する。 | UI が widget を自動追加、並び替え、既定復元してはならない。 |
 | build history | `getHistory()` | API response の `history` 配列順。 | UI 独自 sort、欠落 duration の算出、status 名の言い換えは禁止。 |
 | build compare | `getHistory({page:1,perPage:100})`、選択後 `getHistoryLog(left)`, `getHistoryLog(right)` | 左選択、右選択の順。ログ行は各 response の行順。 | API にない diff 結果を保存しない。比較結果は DOM 上の一時表示だけとする。 |
-| approvals | `getApprovals()` | API response の `approvals` 配列順。`pending` 以外は操作 button disabled。 | 期限切れ判定を UI 時刻だけで確定しない。API status を正とする。 |
+| approvals | `getApprovals()` | API response の `approvals` 配列順。`pending` 以外は操作 button disabled。 | 期限切れ判定を UI 時刻だけで確定しない。API status を基準とする。 |
 | tokens | `getTokens()`、`createToken()` | 一覧は API 配列順。発行直後 token は `issued-token-once` だけへ表示する。 | `GET /api/tokens` の record に token 本体を合成しない。 |
 | notes | `getNotes()` | `content` を editor へそのまま入れる。表示 preview は HTML escape 後の簡易 Markdown 表示に限定する。 | UI が保存前に trim、整形、Markdown 拡張を行わない。 |
 | hooks / rules | `getHooks()`、`getAlertRules()`、`getTagRules()` | API 配列順。 | UI 側で重複排除、無効化推測、command 文字列結合を行わない。 |
@@ -478,7 +478,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 |------|----------------|-----------------|--------------|------------------|
 | §27.21 branch target / env | リポジトリ情報 panel に target files と branch env を表示 / 保存する。secret env value は入力欄以外へ表示しない。 | `getBranchConfig()`, `setBranchConfig(branches)`, `getConfig()` | `getBranchConfig()`, `getConfigLog()` | API 配列順を保持し、env key / target path を UI が正規化しない。保存失敗時は secret を消去し、その他入力値を保持する。 |
 | §27.22 pipeline | 設定 panel の pipeline config を表示 / 保存する。reserved arg や inline YAML を UI が削除・整形しない。 | `getPipelineConfig()`, `setPipelineConfig(config)` | `getPipelineConfig()`, `getConfigLog()` | `422 details` は該当 field error、成功前に画面上の確定 config を更新しない。 |
-| §27.23〜§27.26 local watch / tag / cache / parallel | 設定、履歴、status、build result 表示に API response の watch / tag / cache / target result を表示する。 | `getConfig()`, `setConfig(config)`, `getStatus()`, `getHistory()`, `getHistoryLog(id)` | 操作ごとの表に従う。 | UI は変更検出、tag match、cache hit、parallel result を再計算しない。API response の順序と status を正とする。 |
+| §27.23〜§27.26 local watch / tag / cache / parallel | 設定、履歴、status、build result 表示に API response の watch / tag / cache / target result を表示する。 | `getConfig()`, `setConfig(config)`, `getStatus()`, `getHistory()`, `getHistoryLog(id)` | 操作ごとの表に従う。 | UI は変更検出、tag match、cache hit、parallel result を再計算しない。API response の順序と status を基準とする。 |
 | §27.27 hook | フック panel で `command_args` を 1 行 1 引数として表示 / 保存する。 | `getHooks()`, `addHook()`, `deleteHook(id)`, `getHookLog(id)` | `getHooks()`, `getConfigLog()` | 空行だけ除外し、shell 文字列化、quote 展開、環境変数展開を行わない。失敗時は command 入力を保持する。 |
 | §27.30 approval | 承認待ち panel に approval record を API 順で表示し、pending だけ approve / reject を有効にする。 | `getApprovals()`, `approveBuild(id)`, `rejectBuild(id)`, `getQueue()` | `getApprovals()`, `getQueue()` | UI 時刻だけで expired 判定を確定しない。`409` 後は一覧再取得だけ行い、同じ approve / reject を再送しない。 |
 | §27.32 notification | 通知設定 panel に channel / notify log / SMTP / webhook を表示 / 保存する。secret は入力欄と mask 表示だけに限定する。 | notify / SMTP / webhook methods | 対象 GET と `getNotifyLog()` / `getConfigLog()` | secret 保存成功・失敗の両方で secret field を消去し、error に secret 平文を表示しない。test は設定を自動保存しない。 |

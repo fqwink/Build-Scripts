@@ -1,6 +1,6 @@
 # Adlaire CI — Admin 詳細仕様
 
-本ファイルは `admin` owner component の詳細仕様正本である。
+本ファイルは `admin` owner component の詳細本文責務の正本である。
 
 本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `admin` owner component の主本文であり、collaborator component の仕様は呼び出し境界、配布境界、検証観点として参照する。
 
@@ -15,7 +15,7 @@
 | 持つ内容 | `admin` owner が主本文として定義する管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
 | 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、release asset 取得手順、fixture / PR 証跡正本。 |
 
-`admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の仕様は [`docs/details/ui.md`](ui.md) を正とし、`sdk` の仕様は [`docs/details/sdk.md`](sdk.md) を正とする。
+`admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の仕様は [`docs/details/ui.md`](ui.md) を基準とし、`sdk` の仕様は [`docs/details/sdk.md`](sdk.md) を参照する。
 
 ---
 

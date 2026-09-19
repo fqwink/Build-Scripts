@@ -31,4 +31,4 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 ## 注意
 
-作業ルールは [`AGENTS.md`](AGENTS.md) を正とします。
+作業ルールは [`AGENTS.md`](AGENTS.md) を基準とします。

@@ -1,6 +1,6 @@
 # Adlaire CI — Statefile 詳細仕様
 
-本ファイルは `statefile` owner component の詳細仕様正本である。
+本ファイルは `statefile` owner component の詳細本文責務の正本である。
 
 本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、fixture、検証観点として参照する。
 
@@ -127,7 +127,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 
 | Endpoint | 読取順 | 正常時 response 算出 | 不在時 | 破損時 / 読込不能時 |
 |----------|--------|----------------------|--------|---------------------|
-| `GET /api/status` | `readBuildStatus()` → 不在時だけ `readBuildHistory()`、`readBuildState()`、`readBuildLock()`、`readPendingTransfers()`、`readCircuitState()` | `.build_status.json` がある場合は同ファイルを正とし、`running` だけ `.build_lock` が valid running の場合に `true` へ上書きする。 | `.build_status.json` 不在時は fallback で `status`、`last_*`、`running`、`pending_transfers_count`、`circuit_*` を算出する。履歴なしは `status:"none"`。 | `.build_status.json` 破損は `500 {"error":"State file is corrupted"}`。fallback 中の必須読取破損も `500`。 |
+| `GET /api/status` | `readBuildStatus()` → 不在時だけ `readBuildHistory()`、`readBuildState()`、`readBuildLock()`、`readPendingTransfers()`、`readCircuitState()` | `.build_status.json` がある場合は同ファイルを基準とし、`running` だけ `.build_lock` が valid running の場合に `true` へ上書きする。 | `.build_status.json` 不在時は fallback で `status`、`last_*`、`running`、`pending_transfers_count`、`circuit_*` を算出する。履歴なしは `status:"none"`。 | `.build_status.json` 破損は `500 {"error":"State file is corrupted"}`。fallback 中の必須読取破損も `500`。 |
 | `GET /api/health` | `readBuildStatus()`、`readBuildLock()`、出力サイト確認 | API process、出力サイト、直近 build 状態を `ok` / `warn` / `error` で返す。 | `.build_status.json` 不在は `status:"degraded"`。 | `.build_status.json` 破損は例外的に `200` とし、`status:"degraded"`、該当 item を `error` にする。 |
 | `GET /api/history` | `readBuildHistory()` | 有効行だけを新しい順に sort し、query filter 後に paging する。 | `total:0`、`pages:0`、`history:[]`。 | 行単位破損は除外し、`BUILD_HISTORY_SKIP_CORRUPT` を server log へ記録する。ファイル読込不能は `500 {"error":"State file read failed"}`。 |
 | `GET /api/history/{id}/log` | `readBuildLog(id)` | 対象 ID の log object を返す。 | 通常ログと archive の両方が不在なら `404 {"error":"Not found"}`。 | 対象 ID の log 破損は `500 {"error":"State file is corrupted"}`。 |
@@ -185,7 +185,7 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 | `channels` | object[] | `[]` | 下記 Channel object | 統一通知 channel 一覧。`channels` が存在する場合、runner は `channels` を優先し、`webhooks` / `email` は互換表示用として扱う。 |
 | `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"deploy_failure"`, `"weekly_summary"`, `"approval_required"`, `"duration_anomaly"`, `"config_corrupt"` | 通知イベント。重複は除去する。 |
 | `summary` | object | 下記 Summary object | 下記 | 定期サマリー設定。 |
-| `email` | object | 下記 Email object | 下記 | メール通知設定。SMTP 詳細は `.smtp_config` / `.smtp_secret` を正とする。 |
+| `email` | object | 下記 Email object | 下記 | メール通知設定。SMTP 詳細は `.smtp_config` / `.smtp_secret` を基準とする。 |
 
 Channel object:
 
@@ -286,7 +286,7 @@ SHA cache は target ごとの処理済み Git blob SHA を保存する JSON obj
 | `sha` key 不在または string 以外 | JSON 破損と同じ扱い。 | 更新しない。 |
 | 未知 key あり | 前回 SHA として `sha` だけを読む。 | build 成功時に `sha` だけの object で上書きする。 |
 
-SHA cache の更新タイミング、skip / failure 時の更新可否、複数 target 時の個別更新は [`docs/details/runner.md`](runner.md) §13 の SHA cache 読み書き契約を正とする。
+SHA cache の更新タイミング、skip / failure 時の更新可否、複数 target 時の個別更新は [`docs/details/runner.md`](runner.md) §13 の SHA cache 読み書き契約を参照する。
 
 **`.repo_config` schema：**
 
@@ -814,7 +814,7 @@ BuildMeta object:
 | `output_sha256` | string/null | 必須 | SHA-256 hex または `null` | 直近成功成果物の manifest SHA-256。 |
 | `size_warn` | boolean | 必須 | boolean | 直近 report の size warning。 |
 
-`.build_status.json` の更新タイミング、各 `status` の選択条件、書き込み失敗時の runner 終了コードは [`docs/details/runner.md`](runner.md) §13 の build status 更新契約を正とする。
+`.build_status.json` の更新タイミング、各 `status` の選択条件、書き込み失敗時の runner 終了コードは [`docs/details/runner.md`](runner.md) §13 の build status 更新契約を参照する。
 
 ### §22.0s 状態ファイル実装完了固定契約
 

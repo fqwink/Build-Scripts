@@ -1,10 +1,10 @@
 # Adlaire CI — Setup 詳細仕様
 
-本ファイルは `setup` owner component の詳細仕様正本である。
+本ファイルは `setup` owner component の詳細本文責務の正本である。
 
 本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、fixture、検証観点として参照する。
 
-本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、Phase 完了判定 fixture 記録を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component の詳細仕様ファイルを正とする。
+本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、Phase 完了判定 fixture 記録を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component の詳細仕様ファイルを参照する。
 
 ---
 
@@ -102,7 +102,7 @@ Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は 
 | 6. checksum 検証 | 対象 asset、対象 SHA-256 | 実ファイル digest が一致する。 | 終了コード `1`。asset を配置しない。 |
 | 7. 実行権限付与前確認 | 検証済み binary asset | 通常ファイルであり、directory / symlink ではない。 | 終了コード `1`。配置しない。 |
 
-`admin-ui.tar.gz` は checksum 検証後に一時展開ディレクトリへ展開する。配布物の中身、必須 file、拒否する archive entry は [`docs/details/admin.md`](admin.md) A1〜A2 を正とする。検証に失敗した場合は、既存 `$INSTALL_DIR/admin` を変更しない。
+`admin-ui.tar.gz` は checksum 検証後に一時展開ディレクトリへ展開する。配布物の中身、必須 file、拒否する archive entry は [`docs/details/admin.md`](admin.md) A1〜A2 を参照する。検証に失敗した場合は、既存 `$INSTALL_DIR/admin` を変更しない。
 
 **配置・権限固定契約：**
 
@@ -659,7 +659,7 @@ Phase 別受け入れ条件のいずれかが未実行、失敗、または環�
 | DOM assertion | UI の DOM id、panel、表示文言、disabled / loading / success / error 条件が変更された場合のみ更新する。 | SDK method 対応表と DOM assertion が一致すること。 |
 | error expected | HTTP status、exit code、`AdlaireCIError.code`、stderr prefix が変更された場合のみ更新する。 | 正常系 fixture と異常系 fixture の両方で期待値が固定されていること。 |
 
-Phase 完了判定の PR 証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を正とする。本節は setup / release / Phase 判定で必要な実行条件、未実行検証の代替条件、fixture 期待値更新条件だけを定義し、PR 証跡項目を重複定義しない。
+Phase 完了判定の PR 証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節は setup / release / Phase 判定で必要な実行条件、未実行検証の代替条件、fixture 期待値更新条件だけを定義し、PR 証跡項目を重複定義しない。
 
 受け入れ結果は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の形式で実装 PR 本文または検証ログに記録する。失敗、未実行、環境都合で省略した項目がある場合、そのコンポーネントを完了扱いにしてはならない。
 

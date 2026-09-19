@@ -6,7 +6,7 @@
 
 [AGENTS.md](AGENTS.md) は、作業ルール、承認、Git 操作、Pull Request 作成、レビュー対応、検証手順、エージェント実行手順の最上位ルールブックである。
 
-[docs/SPEC.md](docs/SPEC.md) は、仕様、方針、ポリシー、正本関係、禁止事項、リリース判断、実装着手可否の最上位仕様書である。
+[docs/SPEC.md](docs/SPEC.md) は、仕様、方針、ポリシー、正本参照先、禁止事項、リリース判断、実装着手可否の最上位仕様書である。
 
 このリポジトリで作業するすべてのエージェントは、調査、設計、仕様改訂、実装、検証、Git 操作、Pull Request 作成、レビュー対応を含む全作業において、最初に [AGENTS.md](AGENTS.md) と [docs/SPEC.md](docs/SPEC.md) の両方を必ず読む。
 
@@ -14,15 +14,15 @@
 
 [AGENTS.md](AGENTS.md) または [docs/SPEC.md](docs/SPEC.md) の片方だけを確認した状態で、作業判断に必要な確認を完了したと扱ってはならない。
 
-本リポジトリの仕様判断は、方針、ポリシー、正本関係、禁止事項、リリース判断は [docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務、実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md)、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、各 owner component の詳細本文は [docs/details/*.md](docs/details/) を正本として行う。
+本リポジトリの仕様判断は、方針、ポリシー、正本参照先、禁止事項、リリース判断は [docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務、実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md)、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、責務 component 別詳細仕様ファイル管理仕様は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、各 owner component の詳細本文は [docs/details/*.md](docs/details/) を正本として行う。
 
 [docs/DESIGN.md](docs/DESIGN.md) は、生成静的 Web サイトのデザイン関係の正本である。機能仕様、運用仕様、API 仕様、CI 仕様、実装状態、ロードマップ状態の正本ではない。
 
-[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) は、文書・実装ファイルの役割を整理する索引である。仕様正本ではない。
+[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) は、文書・実装ファイルの役割を整理する索引である。仕様本文の正本ではない。
 
 [AGENTS.md](AGENTS.md) と他ファイルが作業ルール上矛盾する場合は、[AGENTS.md](AGENTS.md) を正とする。
 
-[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務と他ファイルが仕様、方針、ポリシー、正本関係、禁止事項、リリース判断、実装着手可否で矛盾する場合は、[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務を正とする。ただし、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務を正とする。
+[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務と他ファイルが仕様、方針、ポリシー、正本参照先、禁止事項、リリース判断、実装着手可否で矛盾する場合は、[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務を正とする。ただし、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務を正とする。
 
 [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、または該当する owner component 別の [docs/details/*.md](docs/details/) と実装ファイルが仕様上矛盾する場合は、仕様と実装の不整合として扱う。仕様を変更する場合は、先に該当する仕様書を改訂し、その内容に基づいて実装を更新する。
 
@@ -67,7 +67,7 @@
 
 ## 2. 仕様書管理ルール
 
-[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務は、Adlaire CI の方針、ポリシー、正本関係、禁止事項、リリース判断を定めるマスター仕様書正本である。
+[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務は、Adlaire CI の方針、ポリシー、正本参照先、禁止事項、リリース判断を定めるマスター仕様書正本である。
 
 [docs/ROADMAP.md](docs/ROADMAP.md) は、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約を定めるロードマップ正本である。
 
@@ -203,7 +203,7 @@ Go 実装の構文確認では、対象ファイルに対して `gofmt -l ...` �
 
 Pull Request の `mergeStateStatus` が `DIRTY`、`UNKNOWN`、または確認不能の場合は、merge 可能と報告してはならない。`UNKNOWN` の場合は GitHub の再計算後に再確認し、最終的に `CLEAN` を確認する。
 
-競合解消時は、競合マーカーの除去だけで完了としてはならない。`git diff --check`、競合マーカー検索、変更対象文書の正本関係確認、open Pull Request 一覧確認を完了条件とする。
+競合解消時は、競合マーカーの除去だけで完了としてはならない。`git diff --check`、競合マーカー検索、変更対象文書の正本参照先確認、open Pull Request 一覧確認を完了条件とする。
 
 `main` への反映は、Pull Request 経由で行う。
 
@@ -346,7 +346,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) は、リポジトリ内の文書・実装ファイルの役割を示す索引として崩してはならない。
 
-ファイル名、正本関係、実装コンポーネントの追加・削除・リネームが発生した場合は、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の更新要否を確認する。
+ファイル名、正本参照先、実装コンポーネントの追加・削除・リネームが発生した場合は、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の更新要否を確認する。
 
 [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、または owner component 別の [docs/details/*.md](docs/details/) を改訂した場合は、[docs/DESIGN.md](docs/DESIGN.md)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、実装ファイルへの影響を確認する。
 
