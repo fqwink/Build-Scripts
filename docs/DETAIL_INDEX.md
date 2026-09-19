@@ -258,7 +258,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 実装後の完了判定は以下を入口として確認する。本節は完了条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、PR 証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を参照する。
 
 1. 実装した機能が、該当 owner component の詳細仕様ファイルと本ファイルの対応表に記載された入力、出力、状態、異常系、検証条件と一致する。
-2. 対象機能が owner component の詳細仕様本文で [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i の詳細節対応表の受け入れ条件を満たしている。
+2. 対象機能が owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i の詳細節対応表の受け入れ条件を満たしている。
 3. [`docs/details/fixture.md`](details/fixture.md) が要求する fixture、fake、expected / effects、PR 証跡、対象外確認を満たしている。
 4. 実装対象外に残す機能が PR 本文に明記されている。
 5. [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、[`AGENTS.md`](../AGENTS.md) のファイル名参照が矛盾していない。
@@ -333,7 +333,7 @@ owner component が確定できない場合は、実装判断で補完しない�
 | `sdk` | [`docs/details/sdk.md`](details/sdk.md) §23 に SDK class、method、引数、戻り値、HTTP endpoint 対応、error object、token 破棄条件が定義されている。 | SDK が [`docs/details/api.md`](details/api.md) §22.0e にない endpoint を呼ぶこと、body 禁止 endpoint に body を送ること、独自 error 形式を返すこと。 | 全 method が [`docs/details/api.md`](details/api.md) §22.0e と [`docs/details/sdk.md`](details/sdk.md) §23 の対応どおりに動作し、HTTP error を `AdlaireCIError` として扱う。 |
 | `ui` | [`docs/details/ui.md`](details/ui.md) §24 に画面構成、panel、操作、成功表示、失敗表示、disabled、再取得、秘密情報消去が定義されている。 | SDK を介さず API を直接呼ぶこと、未定義の画面・操作・保存先を追加すること、秘密情報を DOM に残すこと。 | 全 UI 操作が [`docs/details/ui.md`](details/ui.md) §24 の表示条件と [`docs/details/sdk.md`](details/sdk.md) §23 の SDK method を満たし、秘密情報 field が指定条件で消去される。 |
 
-上表の対象外である `mcp`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらは、詳細仕様入口責務および owner component 詳細本文責務に入出力、状態、起動手順、検証条件を定義しない。
+上表の対象外である `mcp`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、初期実装では実装しない。これらは、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務および owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に入出力、状態、起動手順、検証条件を定義しない。
 
 仕様策定完了チェックで未充足が見つかった場合は、実装を開始せず、以下の順で仕様を改訂する。
 

@@ -306,9 +306,9 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 ## 5.2 拡張ポイント・将来計画
 
 Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化済み・未実装項目、改訂予定項目、将来計画項目を統合管理する。
-仕様化する際は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表、該当 owner component の詳細仕様本文への追記を先行させる。
+仕様化する際は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表、該当 owner component の [`docs/details/*.md`](details/) 詳細本文責務への追記を先行させる。
 
-将来計画は、実装対象ではない。将来計画内の「検討」「予定」「候補」「推奨」は、実装可能な仕様を意味しない。将来計画を実装対象にする場合は、先に対象項目を `改訂予定` へ昇格し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表と該当 owner component の詳細仕様本文に実装可能な詳細仕様を追加したうえで `仕様化済み` とする。
+将来計画は、実装対象ではない。将来計画内の「検討」「予定」「候補」「推奨」は、実装可能な仕様を意味しない。将来計画を実装対象にする場合は、先に対象項目を `改訂予定` へ昇格し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表と該当 owner component の [`docs/details/*.md`](details/) 詳細本文責務に実装可能な詳細仕様を追加したうえで `仕様化済み` とする。
 
 **担当領域：** `CI ランナー` / `管理ツール・API` / `MCP サーバー` / `ビルドスクリプト`
 
@@ -320,8 +320,8 @@ Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化
 |------|----------|------|--------------|
 | 実装済み | 完了済み | ソースコード実装と検証が完了した項目。 | 実装ファイル、検証結果、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の整合を崩してはならない。 |
 | 実装中・検証未完了 | 検証待ち | ソースコード実装に着手済みだが、必須検証が未完了の項目。 | 必須検証を実行し、不足が残る場合は `実装済み` へ移動しない。 |
-| 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表と該当 owner component の詳細仕様本文を作成し、仕様化条件を満たす。 |
-| 仕様化済み・未実装 | 実装可 | 正本仕様と詳細仕様があり、実装対象として扱える項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 と該当 owner component の詳細仕様本文を確認して実装する。 |
+| 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表と該当 owner component の [`docs/details/*.md`](details/) 詳細本文責務を作成し、仕様化条件を満たす。 |
+| 仕様化済み・未実装 | 実装可 | 正本仕様と詳細仕様があり、実装対象として扱える項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 と該当 owner component の [`docs/details/*.md`](details/) 詳細本文責務を確認して実装する。 |
 | 将来計画 | 実装不可 | `components/mcp.go` など、将来構想として管理する項目。 | 本節 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格する。 |
 
 将来計画、改訂予定の項目は、実装着手可能な仕様ではない。実装対象にする場合は、先に [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `仕様化済み・未実装` へ昇格させる。
@@ -504,7 +504,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 1. 対象項目の `状態` を `改訂予定` に変更し、元状態、格上げ日、担当領域、整理順序（実装単位ではない）、ステータスを同じ行の概要または次アクションへ記録する。
 2. [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務の該当節と、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 の実装状態、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.1 の機能一覧を改訂する。
 3. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 の詳細節対応表に、対象機能、対象コンポーネント、詳細仕様節、受け入れ条件を追加する。
-4. 該当 owner component の詳細仕様本文に、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たす目的、責務、入出力、状態、処理順序、異常系、セキュリティ、検証条件を追加する。MCP サーバー領域を昇格する場合は、MCP 専用詳細仕様を新設し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の責務 component 対応表へ追加する。
+4. 該当 owner component の [`docs/details/*.md`](details/) 詳細本文責務に、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たす目的、責務、入出力、状態、処理順序、異常系、セキュリティ、検証条件を追加する。MCP サーバー領域を昇格する場合は、MCP 専用詳細仕様を新設し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の責務 component 対応表へ追加する。
 5. [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務と [`AGENTS.md`](../AGENTS.md) の更新要否を確認する。
 6. 仕様凍結条件を満たした後、対象項目の `状態` を `仕様化済み・未実装`、`実装可否` を `実装可` に変更する。
 7. 実装と検証が完了した後、対象項目の `状態` を `実装済み`、`実装可否` を `完了済み` に変更する。
