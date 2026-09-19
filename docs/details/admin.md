@@ -23,14 +23,14 @@
 
 標準管理 UI の配布物は、次の path に固定する。
 
-| 配布元 path | 配置先 path | 必須 | 内容の正本 |
+| 配布元 path | 配置先 path | 必須 | 内容の参照先 |
 |-------------|-------------|------|------------|
 | `admin/index.html` | `$INSTALL_DIR/admin/index.html` | 必須 | [`docs/details/ui.md`](ui.md) |
 | `admin/adlaire-ci-sdk.js` | `$INSTALL_DIR/admin/adlaire-ci-sdk.js` | 必須 | [`docs/details/sdk.md`](sdk.md) |
 | `admin/style.css` | `$INSTALL_DIR/admin/style.css` | 任意 | [`docs/details/ui.md`](ui.md) |
 | `admin/app.js` | `$INSTALL_DIR/admin/app.js` | 任意 | [`docs/details/ui.md`](ui.md) |
 
-配布物に上表以外のファイルを含める場合は、先に本表へ path、必須区分、内容の正本を追加する。未記載ファイルを暗黙に配布してはならない。
+配布物に上表以外のファイルを含める場合は、先に本表へ path、必須区分、内容の参照先を追加する。未記載ファイルを暗黙に配布してはならない。
 
 `admin-ui.tar.gz` の archive root は `admin/` directory を含めず、展開直後の root 直下に `index.html` と `adlaire-ci-sdk.js` が存在する形式とする。setup は検証済み archive を `$INSTALL_DIR/admin/` へ配置する。
 
@@ -106,7 +106,7 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 ## A6. Admin Fixture 固定契約
 
-`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。実装者は UI DOM、SDK method、API endpoint の詳細を本ファイルで再定義せず、admin 配布境界だけを確認する。
+`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。本ファイルでは UI DOM、SDK method、API endpoint の詳細を再定義せず、admin 配布境界だけを確認する。
 
 | fixture | 入力 | 操作 | 合格条件 |
 |---------|------|------|----------|

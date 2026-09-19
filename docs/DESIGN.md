@@ -3,7 +3,7 @@
 **対象出力：** `adlaire-ci-build` が生成する静的 Web サイト HTML
 **ビルドコンポーネント：** `components/builder.go` から生成する `adlaire-ci-build`
 **デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)
-**最終更新：** 2026-09-14
+**更新履歴：** 日付本文を正本化しない。デザイン変更の時系列は Git 履歴と Pull Request を正とする。
 
 ---
 

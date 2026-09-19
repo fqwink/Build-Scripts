@@ -38,9 +38,9 @@
 | API 実装 | Phase 3 / Phase 4 の API、SDK / UI / statefile と同期する API 実装。 | §22-F | Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認。 |
 | §27 実装 | §27.1〜§27.47 の追加仕様化機能。 | §27-F | 対象 §27.x、関連 §22 / §23 / §24 / §25 / §26、owner / collaborator component、fixture 名、状態差分、外部副作用、partial failure、再実行、対象外確認。 |
 
-上表の証跡が不足する場合、対象機能は未完了として扱う。実装者は fixture が pass したことだけを完了証跡として扱ってはならない。
+上表の証跡が不足する場合、対象機能は未完了として扱う。fixture の pass だけでは完了証跡を満たさない。
 
-Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。owner component 別の [`docs/details/*.md`](./) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、本ファイルは fixture 証跡責務として証跡分類、不足時の扱い、差し戻し条件だけを固定する。
+Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、本ファイルは fixture 証跡責務として証跡分類、不足時の扱い、差し戻し条件だけを固定する。
 
 **Phase fixture / testdata 配置固定契約：**
 
@@ -79,7 +79,7 @@ Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本
 
 ## 22-F Phase 3 / Phase 4 API fixture 契約
 
-本節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用の正本である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) §22 を基準とし、本節では再定義しない。
+本節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) §22 を基準とし、本節では再定義しない。
 
 API 実装 PR は、§0g.8-F の PR 証跡固定契約に加えて、本節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
 
@@ -334,7 +334,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 **§27.1〜§27.11 feature fixture 固定契約：**
 
-§27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 別の [`docs/details/*.md`](./) 詳細本文責務に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+§27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
 
 | 節 | fixture | 固定する内容 |
 |----|---------|--------------|
@@ -528,7 +528,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 **§27 fixture ファイルセット固定契約：**
 
-各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。実装者は fixture ごとに必要ファイルを推測してはならない。
+各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。fixture ごとの必要ファイルは推測せず、`manifest.json` の定義で確定する。
 
 | ファイル | 必須 | 内容 | 禁止事項 |
 |----------|------|------|----------|
@@ -860,7 +860,7 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 
 ## 28-F §28 builder 拡張 fixture / PR 証跡詳細契約
 
-本節は、[`docs/details/builder.md`](builder.md) §28.1〜§28.25 の fixture、fake、expected、effects、PR 証跡の正本である。各 §28 機能は、Markdown 入力、CLI option、期待 HTML、期待 CSS / JS、`[REPORT]`、終了コード、strict / non-strict の差分を fixture で固定する。外部 library、CDN、実 network、現在時刻、実 git repository、実画像取得、画像 snapshot だけの合否判定を fixture の前提にしてはならない。
+本節は、[`docs/details/builder.md`](builder.md) §28.1〜§28.25 の fixture、fake、expected、effects、PR 証跡を扱う fixture 証跡責務である。各 §28 機能は、Markdown 入力、CLI option、期待 HTML、期待 CSS / JS、`[REPORT]`、終了コード、strict / non-strict の差分を fixture で固定する。外部 library、CDN、実 network、現在時刻、実 git repository、実画像取得、画像 snapshot だけの合否判定を fixture の前提にしてはならない。
 
 **§28 fixture 配置固定契約：**
 
@@ -1061,7 +1061,7 @@ browser runtime fixture の `expected/site/assets/app.js` は、初期化関数�
 | `security-visual-no-external-assets` | `@import`、remote `url()`、external font、CDN、追加 asset file、runtime CSS fetch、inline style が出力されない。 |
 | `security-focus-visible-no-overlap` | skip link、TOC active、hash target、lightbox control、collapse toggle の focus / active style が可視で、hover / focus により寸法が変わらず、text を隠さない。 |
 
-visual layout fixture の `manifest.json` は、`viewport_width` を使う場合でも判定を画像 snapshot だけに依存させてはならない。`expected/site/assets/style.css`、`expected/site/*.html`、`expected/security.json`、必要に応じて `expected/visual.json` に、selector、media query、display、overflow、visibility、focus、禁止 asset を構造化して固定する。ブラウザ実行がない fixture でも、期待 HTML / CSS / security の組み合わせで合否判定できなければならない。
+visual layout fixture の `manifest.json` は、`viewport_width` を使う場合でも判定を画像 snapshot だけに依存させてはならない。visual layout fixture は `expected/site/assets/style.css`、`expected/site/*.html`、`expected/security.json`、`expected/visual.json` を必須とし、selector、media query、display、overflow、visibility、focus、禁止 asset を構造化して固定する。ブラウザ実行がない fixture でも、期待 HTML / CSS / security / visual の組み合わせで合否判定できなければならない。
 
 **§28.1〜§28.5 feature fixture 固定契約：**
 
