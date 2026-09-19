@@ -620,14 +620,14 @@ Phase 別の実装検証記録は以下の単位で行う。
 
 | Phase | 必須記録 | 失敗時の扱い |
 |-------|----------|--------------|
-| Phase 1 | CLI 引数、fixture A〜D、生成物一覧、`[REPORT]`、冪等性、strict / non-strict の結果。 | `builder` を完了扱いにせず、Phase 2 着手禁止。 |
-| Phase 2 | secret 不足、lock、GitHub fake、pipeline fake、deploy fake、snapshot、notify、状態ファイル schema の結果。 | `runner` を完了扱いにせず、Phase 3 着手禁止。 |
-| Phase 3 | 運用基本 endpoint、認証、session、error body、SSE、状態 read/write、systemd service の結果。 | Phase 3 API を完了扱いにせず、Phase 4 着手禁止。 |
-| Phase 4 | 拡張運用 endpoint、secret mask、rollback、maintenance、hook、token、Phase 3 互換確認の結果。 | endpoint 契約を固定扱いにせず、Phase 5 着手禁止。 |
-| Phase 5 | method 対応表、fake fetch、HTTP error、timeout、stream、`401` token 破棄、body 禁止の結果。 | SDK 契約を固定扱いにせず、Phase 6 着手禁止。 |
+| Phase 1 | CLI 引数、fixture A〜D、生成物一覧、`[REPORT]`、冪等性、strict / non-strict の結果。 | `builder` を完了扱いにしない。 |
+| Phase 2 | secret 不足、lock、GitHub fake、pipeline fake、deploy fake、snapshot、notify、状態ファイル schema の結果。 | `runner` を完了扱いにしない。 |
+| Phase 3 | 運用基本 endpoint、認証、session、error body、SSE、状態 read/write、systemd service の結果。 | Phase 3 API を完了扱いにしない。 |
+| Phase 4 | 拡張運用 endpoint、secret mask、rollback、maintenance、hook、token、Phase 3 互換確認の結果。 | endpoint 契約を固定扱いにしない。 |
+| Phase 5 | method 対応表、fake fetch、HTTP error、timeout、stream、`401` token 破棄、body 禁止の結果。 | SDK 契約を固定扱いにしない。 |
 | Phase 6 | DOM id、panel、SDK 呼び出し、success/error/loading/disabled、stream、secret 消去、直接 API 呼び出し不存在の結果。 | 初期実装完了扱いにせず、未充足 UI 仕様を解消する。 |
 
-Phase 別受け入れ条件のいずれかが未実行、失敗、または環境都合で省略された場合、その Phase を完了扱いにしてはならない。後続 Phase の実装 PR を開始する前に、先行 Phase の未充足条件を仕様または実装で解消する。
+Phase 別受け入れ条件のいずれかが未実行、失敗、または環境都合で省略された場合、その Phase を完了扱いにしてはならない。Phase 順序と後続 Phase の実装 PR 着手条件は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。
 
 **Phase 完了判定 fixture 記録固定：**
 

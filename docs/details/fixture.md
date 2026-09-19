@@ -83,7 +83,7 @@ Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本
 
 API 実装 PR は、§0g.8-F の PR 証跡固定契約に加えて、本節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
 
-対象項目の実装時は、Phase 3 を完了してから Phase 4 へ進める。同一 Phase 内では、API、SDK、UI、状態ファイル、検証手順を同じ Pull Request で同期する。
+Phase 順序、実装 PR 単位、完了判定単位は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。本節は、Phase 3 / Phase 4 の API fixture 証跡として記録する項目だけを固定する。
 
 | Phase | 対象 | 完了条件 |
 |-------|------|----------|
