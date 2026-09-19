@@ -17,7 +17,7 @@
 | owner component | `api` |
 | collaborator component | `statefile`、`sdk`、`ui`、`security`、`archive`、`runner` |
 | 持つ内容 | `api` owner が主本文として定義する HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 |
-| 持たない内容 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| 持たない内容 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡責務。 |
 
 ---
 
@@ -2640,7 +2640,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 §27.21〜§27.38、§27.42〜§27.47 の各機能は、owner component の個別節を主本文とする。下表は api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認するための表であり、runner / builder / security / fixture の主本文を置き換えない。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
 
-詳細実装確認では、対象機能の owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) §27-F の fixture、必要な collaborator component 別の [`docs/details/*.md`](../details/) 詳細本文責務を同時に参照する。実装状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を正本とする。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
+詳細実装確認では、対象機能の owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) §27-F の fixture、必要な collaborator component 別の [`docs/details/*.md`](../details/) 詳細本文責務を同時に参照する。実装状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|

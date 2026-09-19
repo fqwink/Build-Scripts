@@ -13,7 +13,7 @@
 | owner component | `builder` |
 | collaborator component | `runner`、`api`、`statefile` |
 | 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
-| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
+| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture / PR 証跡責務。 |
 
 ---
 
@@ -2934,7 +2934,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | 条件 | 理由 |
 |------|------|
 | 対象 [`docs/details/builder.md`](builder.md) §28.x にない CLI option、Markdown 記法、CSS class、JS 挙動を追加した。 | 先取り実装であり、仕様範囲外。 |
-| [`docs/details/fixture.md`](fixture.md) §28-F にない fixture 名または fixture 構成で検証した。 | fixture 正本から外れている。 |
+| [`docs/details/fixture.md`](fixture.md) §28-F にない fixture 名または fixture 構成で検証した。 | fixture 証跡責務から外れている。 |
 | strict / non-strict の片方だけを実装した。 | 異常系の固定挙動が未完成。 |
 | REPORT key が仕様表と一致しない。 | runner / API / PR 証跡が同じ結果を読めない。 |
 | HTML / CSS / JS の expected 差分を目視または snapshot だけで合格扱いした。 | 再現性ある合否判定ではない。 |

@@ -127,7 +127,7 @@ Phase 6 の実装詳細本文は [`docs/details/ui.md`](details/ui.md) を参照
 
 各 Phase の完了時は、次 Phase が依存する契約を変更不可として扱う。後続 Phase で変更が必要になった場合は、後続 Phase の実装で吸収せず、契約を定義した owner component 別の [`docs/details/*.md`](details/) 詳細本文責務へ戻す。
 
-| 引き継ぎ元 | 引き継ぎ先 | 固定する契約 | 正本 |
+| 引き継ぎ元 | 引き継ぎ先 | 固定する契約 | 参照先 |
 |------------|------------|--------------|------|
 | Phase 1 | Phase 2 | `adlaire-ci-build` CLI、終了コード、stdout / stderr、`[REPORT]`、出力サイト構造。 | [`docs/details/builder.md`](details/builder.md) |
 | Phase 2 | Phase 3 | runner 状態ファイル schema、lock、history/log、pending queue、circuit breaker、snapshot、通知ログ。 | [`docs/details/runner.md`](details/runner.md) / [`docs/details/statefile.md`](details/statefile.md) |
@@ -140,7 +140,7 @@ Phase 6 の実装詳細本文は [`docs/details/ui.md`](details/ui.md) を参照
 
 Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は [`docs/details/fixture.md`](details/fixture.md) §0g.8-F を参照する。本ファイルでは、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、PR 証跡項目を重複定義しない。
 
-| Phase | 実装対象 | 成果物・fixture 正本 | 受け入れ条件 |
+| Phase | 実装対象 | 成果物・fixture 参照先 | 受け入れ条件 |
 |-------|----------|----------------------|--------------|
 | Phase 1 | `builder` | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F | [`docs/details/builder.md`](details/builder.md) と [`docs/details/setup.md`](details/setup.md) §26.7 を満たす。 |
 | Phase 2 | `runner` | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F | [`docs/details/runner.md`](details/runner.md) と [`docs/details/setup.md`](details/setup.md) §26.7 を満たす。 |
@@ -326,7 +326,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 下表の `概要` は、状態・計画責務としての状態要約である。関数、処理順序、endpoint、状態 schema、fixture、UI DOM、SDK method の本文は定義しない。実装済み行は、実装済み状態と検証済み証跡の要約だけを示し、実装詳細本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
-下表の `確認先 / 次アクション` は、状態に応じた確認先または次作業だけを示す。実装済み行では検証済み証跡の要約を示し、fixture の入力、expected、fake、assertion 本文は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。未実装行では実装前に読む責務正本を示し、詳細本文を再定義しない。
+下表の `確認先 / 次アクション` は、状態に応じた確認先または次作業だけを示す。実装済み行では検証済み証跡の要約を示し、fixture の入力、expected、fake、assertion 本文は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。未実装行では実装前に読む責務文書を示し、詳細本文を再定義しない。
 
 | 状態 | 実装可否 | 担当領域 | 機能 | 概要 | 確認先 / 次アクション |
 |------|----------|----------|------|------|--------------|
@@ -522,7 +522,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 状態更新 | 状態ファイル更新は [`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/statefile.md`](details/statefile.md) §22.0c を基準とし、lock、atomic write、JSON Lines、破損時処理を独自定義しない。 |
 | security | secret mask、token、session、scope、audit、rate limit は [`docs/details/security.md`](details/security.md) を基準とし、平文保存・平文表示を行わない。 |
 | fixture / PR 証跡 | 追加仕様化機能の fixture manifest、expected/effects、assertion、PR 証跡、受け入れゲートは [`docs/details/fixture.md`](details/fixture.md) §27-F、builder 拡張 fixture は [`docs/details/fixture.md`](details/fixture.md) §28-F を参照する。 |
-| api / sdk / ui 同期 | API endpoint、SDK method、UI 操作が同一機能に関わる場合は、endpoint は [`docs/details/api.md`](details/api.md)、SDK method は [`docs/details/sdk.md`](details/sdk.md)、UI 操作は [`docs/details/ui.md`](details/ui.md) をそれぞれ正本とし、名称、引数、response、error、表示、成功後再取得、失敗時固定が食い違わないことを確認する。 |
+| api / sdk / ui 同期 | API endpoint、SDK method、UI 操作が同一機能に関わる場合は、endpoint は [`docs/details/api.md`](details/api.md)、SDK method は [`docs/details/sdk.md`](details/sdk.md)、UI 操作は [`docs/details/ui.md`](details/ui.md) をそれぞれ詳細本文責務として参照し、名称、引数、response、error、表示、成功後再取得、失敗時固定が食い違わないことを確認する。 |
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能を実装した PR は、対象節、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture、secret mask、失敗時副作用、実装対象外を PR 本文に記録する。記録が不足する場合は、実装済みとして扱わない。
 
@@ -620,7 +620,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 本節は、追加仕様化機能の横断補足契約である。[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 および api / sdk / ui / statefile の横断連動では、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を主本文とし、本節は横断確認として参照する。
 
-本節の正本範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装確認時の横断受け入れ観点に限定する。個別機能本文は各 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+本節の責務範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装確認時の横断受け入れ観点に限定する。個別機能本文は各 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 本節と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI、fixture は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を基準とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを本節で確認する。本節を理由に、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に存在しない endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture を追加してはならない。
 
