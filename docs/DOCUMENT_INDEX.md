@@ -18,7 +18,7 @@
 | 詳細仕様入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様の読み方、共通固定値、対応表、ソース配置を確認する。 |
 | 詳細仕様本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
 | デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン方針と視覚仕様を確認する。 |
-| 実装所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [仕様化済みコンポーネント](#仕様化済みコンポーネント) | 実装ファイル、テスト、fixture の所在と状態を確認する。 |
+| 実装所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [実装ファイル一覧](#実装ファイル一覧) | 実装ファイル、テスト、fixture の所在を確認する。 |
 
 ## 目的別参照先
 
@@ -43,7 +43,7 @@
 | 文書一覧 | [文書一覧](#文書一覧) | 各文書の役割と所在。 |
 | 実装所在入口 | [実装ファイル索引](#実装ファイル索引) | 実装ファイル所在の判断原則。 |
 | 詳細仕様管理 | [詳細仕様管理](#詳細仕様管理) | owner component 別詳細本文責務の配置と状態。 |
-| 実装ファイル一覧 | [仕様化済みコンポーネント](#仕様化済みコンポーネント) | 実装ファイル、テスト、fixture の所在と状態。 |
+| 実装ファイル一覧 | [実装ファイル一覧](#実装ファイル一覧) | 実装ファイル、テスト、fixture の所在。 |
 | 正本参照先 | [正本参照先](#正本参照先) | 判断対象ごとの正本参照先。 |
 | 整合確認先 | [整合確認先](#整合確認先) | 文書整合で確認する正本への参照。 |
 | 整合メモ | [整合メモ](#整合メモ) | 現行状態に関する注意点。 |
@@ -89,7 +89,7 @@
 
 ## 実装ファイル索引
 
-実装ファイルの所在と状態は [仕様化済みコンポーネント](#仕様化済みコンポーネント) を参照する。実装ファイルが存在することだけで、仕様化済み、実装可、完了済みとは判断しない。
+実装ファイルの所在は [実装ファイル一覧](#実装ファイル一覧) を参照する。実装状態と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。実装ファイルが存在することだけで、仕様化済み、実装可、完了済みとは判断しない。
 
 ## 詳細仕様管理
 
@@ -114,9 +114,11 @@
 
 詳細仕様本文の配置先は上表のとおりである。実装状態と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、owner component の特定は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を参照する。
 
-## 仕様化済みコンポーネント
+<a id="仕様化済みコンポーネント"></a>
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、以下のコンポーネントも仕様化されている。
+## 実装ファイル一覧
+
+本節は、現行リポジトリに存在する実装ファイル、テスト、fixture、および将来追加予定 path の所在を示す索引である。実装状態と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 リポジトリ内ソース配置は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j を参照する。
 
@@ -124,20 +126,20 @@
 
 標準配置図に含まれる未作成 path は、将来追加予定 path として扱い、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成しない。
 
-| パス | component | 状態 | 役割 |
-|------|-----------|------|------|
-| `main.go` | `-` | 実装済み | 起動入口。現時点では実行ファイル名に応じて `builder` または `runner` component を呼び出す。 |
-| `components/builder.go` | `builder` | 実装済み | Go 版静的 Web サイトビルドスクリプト。`adlaire-ci-build` バイナリとして実行する。 |
-| `components/builder_test.go` | `builder` | 実装済み | `components/builder.go` の Phase 1 fixture テスト。 |
-| `go.mod` | `-` | 実装済み | Go module 定義。外部 module は追加しない。 |
-| `testdata/builder/` | `builder` | 実装済み | Phase 1 の受け入れ fixture 入力。 |
-| `components/runner.go` | `runner` | 実装済み | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。Phase 2 完了判定パスを対象とする。 |
-| `components/runner_test.go` | `runner` | 実装済み | `components/runner.go` の Phase 2 fixture、hardening、完了判定パステスト。 |
-| `components/api.go` | `api` | 実装済み | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
-| `components/api_test.go` | `api` | 実装済み | `components/api.go` の API endpoint、認証、状態ファイル、管理操作の検証テスト。 |
-| `admin/adlaire-ci-sdk.js` | `sdk` | 実装済み | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
-| `admin/index.html` | `ui` | 実装済み | 標準管理ツール UI。SDK 経由で API と通信する。 |
-| `components/mcp.go` | `mcp` | 将来追加予定 path | MCP サーバー。現時点では未作成であり、実装可能な詳細仕様を持たず、MCP 専用詳細仕様が新設されるまで実装対象ではない。 |
+| パス | component | 所在区分 | 役割 |
+|------|-----------|----------|------|
+| `main.go` | `-` | 現行実体 | 起動入口。現時点では実行ファイル名に応じて `builder` または `runner` component を呼び出す。 |
+| `components/builder.go` | `builder` | 現行実体 | Go 版静的 Web サイトビルドスクリプト。`adlaire-ci-build` バイナリとして実行する。 |
+| `components/builder_test.go` | `builder` | 現行実体 | `components/builder.go` の Phase 1 fixture テスト。 |
+| `go.mod` | `-` | 現行実体 | Go module 定義。外部 module は追加しない。 |
+| `testdata/builder/` | `builder` | 現行実体 | Phase 1 の受け入れ fixture 入力。 |
+| `components/runner.go` | `runner` | 現行実体 | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。Phase 2 完了判定パスを対象とする。 |
+| `components/runner_test.go` | `runner` | 現行実体 | `components/runner.go` の Phase 2 fixture、hardening、完了判定パステスト。 |
+| `components/api.go` | `api` | 現行実体 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
+| `components/api_test.go` | `api` | 現行実体 | `components/api.go` の API endpoint、認証、状態ファイル、管理操作の検証テスト。 |
+| `admin/adlaire-ci-sdk.js` | `sdk` | 現行実体 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
+| `admin/index.html` | `ui` | 現行実体 | 標準管理ツール UI。SDK 経由で API と通信する。 |
+| `components/mcp.go` | `mcp` | 将来追加予定 | MCP サーバー。現時点では未作成であり、実装可能な詳細仕様を持たず、MCP 専用詳細仕様が新設されるまで実装対象ではない。 |
 
 ## 正本参照先
 
@@ -150,7 +152,7 @@
 | 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 |
 | 生成静的 Web サイトのデザイン関係 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 |
 | 文書・実装ファイルの参照先と役割 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 |
-| 実装ファイル、テスト、fixture の所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [仕様化済みコンポーネント](#仕様化済みコンポーネント) |
+| 実装ファイル、テスト、fixture の所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [実装ファイル一覧](#実装ファイル一覧) |
 
 [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務は索引であり、仕様本文、デザイン本文、実装可否判断の正本ではない。
 
@@ -164,6 +166,6 @@
 
 仕様化済みだが未実装の内容は、実装済み機能として扱わない。
 
-現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の実装状態と本ファイルの [仕様化済みコンポーネント](#仕様化済みコンポーネント) に従って実装済みとして扱う。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
+現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の実装状態と本ファイルの [実装ファイル一覧](#実装ファイル一覧) に従って、現行実装実体として所在を確認する。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
 
-`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置であり、現行実装実体として扱わない。標準配置と現行実体の判断は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、本ファイルの [仕様化済みコンポーネント](#仕様化済みコンポーネント) を同時に確認する。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置であり、現行実装実体として扱わない。標準配置と現行実体の判断は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、本ファイルの [実装ファイル一覧](#実装ファイル一覧) を同時に確認する。
