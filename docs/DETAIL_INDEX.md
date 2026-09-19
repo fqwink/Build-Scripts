@@ -20,43 +20,17 @@
 | owner component 本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 本ファイルでは本文を複製せず、参照先だけを示す。 |
 | 方針、ポリシー、正本参照先 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 確認先だけを示す。 |
 
-## 詳細仕様選択入口
+## 入口要約
 
-詳細仕様を選ぶ場合は、以下の入口から owner component を特定する。責務ベース明示的原則は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を参照する。
+本節は、詳細仕様本文へ進む前の入口要約である。責務分離、重複禁止、リンク化の原則は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を参照する。
 
-| 入口 | 内容 |
-|------|------|
-| カテゴリは入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.0.1 のカテゴリは探すための入口であり、owner component ではない。 |
-| owner は 1 件 | 実装本文として読む owner component は、対象機能ごとに 1 件だけ確定する。 |
-| collaborator は補助 | collaborator component は schema、表示、security、setup、fixture、検証観点の確認に限定する。 |
-| 状態は statefile | 状態ファイル、lock、atomic write、schema は [`docs/details/statefile.md`](details/statefile.md) を読む。 |
-| security は security | 認証、scope、token、audit、session、TOTP、rate limit は [`docs/details/security.md`](details/security.md) を読む。 |
-| fixture は fixture | fixture、fake、PR 証跡、acceptance checklist は [`docs/details/fixture.md`](details/fixture.md) を読む。 |
-
-## Owner / Collaborator 境界入口
-
-owner component と collaborator component の入口上の区分は以下とする。詳細な責務分離原則は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を参照する。
-
-| 区分 | 持つ内容 | 持たない内容 |
-|------|----------|--------------|
-| owner component | 対象機能の入力、出力、状態、処理順序、異常系、検証条件の主本文。 | 他 component の主処理本文、状態 schema、UI DOM 詳細。 |
-| collaborator component | 呼び出し境界、参照 schema、表示境界、security、setup、fixture、検証観点。 | owner component の主本文。 |
-| [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 読み方、共通固定値、対応表、リポジトリ内ソース配置。 | 個別 component の処理本文、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能参照索引、横断補足契約。 |
-
-owner component が確定できない場合は、実装判断で補完しない。先に [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の状態分類と本ファイルの対応表を整合させる。
-
-## 相互参照入口
-
-詳細仕様間の参照は、本文の重複ではなく境界確認として扱う。参照のリンク化と重複禁止の原則は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を参照する。
-
-| 参照種別 | 確認する内容 | 重複させない内容 |
-|----------|--------------|--------------|
-| API 参照 | request / response の利用境界、HTTP status の確認。 | endpoint 本文を SDK、UI、runner 側へ重複定義すること。 |
-| SDK 参照 | UI から呼ぶ method、error handling、token 破棄の確認。 | SDK method 本文を UI 側へ重複定義すること。 |
-| UI 参照 | DOM id、panel、表示状態の確認。 | UI DOM 詳細を API、SDK、runner 側へ重複定義すること。 |
-| statefile 参照 | lock、atomic write、schema、破損時処理の確認。 | 状態 schema を各 component 側へ重複定義すること。 |
-| security 参照 | token、scope、audit、session、rate limit の確認。 | 認証・認可本文を各 component 側で独自定義すること。 |
-| fixture 参照 | fake、expected、effects、PR 証跡の確認。 | fixture assertion を各 component 本文へ重複定義すること。 |
+| 確認対象 | 入口 |
+|----------|------|
+| owner component の特定 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.0 と §0b を参照する。 |
+| owner / collaborator 境界 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 を参照する。 |
+| 詳細仕様間の相互参照 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
+| 状態分類、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。 |
+| 方針、ポリシー、禁止事項 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を参照する。 |
 
 ## 詳細仕様入口責務
 > 実装の具体的詳細へ到達するための入口を定める。「どこから詳細仕様を読むか」に答える。

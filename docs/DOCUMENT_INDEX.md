@@ -97,20 +97,20 @@
 
 下表は、詳細仕様本文の配置先を示す索引である。各ファイルの責務境界、持つ内容、持たない内容、owner / collaborator の扱いは [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b および [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 を参照する。
 
-| ファイル | 状態 | 役割 |
-|----------|------|------|
-| [`docs/details/builder.md`](details/builder.md) | 責務化済み | `builder` owner の Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
-| [`docs/details/runner.md`](details/runner.md) | 責務化済み | `runner` owner の GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
-| [`docs/details/api.md`](details/api.md) | 責務化済み | `api` owner の HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。API fixture は [`docs/details/fixture.md`](details/fixture.md) §22-F。 |
-| [`docs/details/admin.md`](details/admin.md) | 責務化済み | `admin` owner の管理 UI 静的ファイル配布物構成、配置、検証、HTTP 静的配信境界、A6 fixture 固定契約、setup/admin/release 連動 fixture 参照。 |
-| [`docs/details/sdk.md`](details/sdk.md) | 責務化済み | `sdk` owner の SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| [`docs/details/ui.md`](details/ui.md) | 責務化済み | `ui` owner の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
-| [`docs/details/setup.md`](details/setup.md) | 責務化済み | `setup` owner のバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、admin 配布・rollback・secret 保持の連動 fixture。 |
-| [`docs/details/statefile.md`](details/statefile.md) | 責務化済み | `statefile` owner の状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
-| [`docs/details/archive.md`](details/archive.md) | 責務化済み | `archive` owner の build log archive、snapshot、download、delete、rollback、cleanup。 |
-| [`docs/details/commitstatus.md`](details/commitstatus.md) | 責務化済み | `commitstatus` owner の GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
-| [`docs/details/security.md`](details/security.md) | 責務化済み | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| [`docs/details/fixture.md`](details/fixture.md) | 責務化済み | fixture manifest、assertion、fake、testdata、expected / effects、Phase 3 / Phase 4 API fixture、api / sdk / ui / statefile cross fixture、setup/admin/release 連動 fixture、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件、実装 PR 完了証跡。 |
+| ファイル | owner component |
+|----------|-----------------|
+| [`docs/details/builder.md`](details/builder.md) | `builder` |
+| [`docs/details/runner.md`](details/runner.md) | `runner` |
+| [`docs/details/api.md`](details/api.md) | `api` |
+| [`docs/details/admin.md`](details/admin.md) | `admin` |
+| [`docs/details/sdk.md`](details/sdk.md) | `sdk` |
+| [`docs/details/ui.md`](details/ui.md) | `ui` |
+| [`docs/details/setup.md`](details/setup.md) | `setup` |
+| [`docs/details/statefile.md`](details/statefile.md) | `statefile` |
+| [`docs/details/archive.md`](details/archive.md) | `archive` |
+| [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` |
+| [`docs/details/security.md`](details/security.md) | `security` |
+| [`docs/details/fixture.md`](details/fixture.md) | `fixture` |
 
 詳細仕様本文の配置先は上表のとおりである。実装状態と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、owner component の特定は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を参照する。
 
