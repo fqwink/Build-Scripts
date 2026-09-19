@@ -45,7 +45,7 @@ admin archive の検証は以下の順序に固定する。
 3. entry path に空文字、`.`、`..`、絶対 path、backslash、NUL byte を含まないことを確認する。
 4. symlink、hardlink、device file、FIFO、socket を拒否する。
 5. `index.html` と `adlaire-ci-sdk.js` が root 直下に 1 件ずつ存在することを確認する。
-6. 任意 file が存在する場合は、A1 の表に定義された path だけであることを確認する。
+6. 任意 file が存在する場合は、[`docs/details/admin.md`](admin.md) A1 の表に定義された path だけであることを確認する。
 7. 通常 file の展開後 mode を `0644`、directory mode を `0755` に固定する。
 
 いずれかの検証に失敗した場合は、既存 `$INSTALL_DIR/admin/` を変更しない。
@@ -73,17 +73,17 @@ admin archive の検証は以下の順序に固定する。
 
 ## A4. Setup 連携境界
 
-[`docs/details/setup.md`](setup.md) は、release asset 取得、checksum 検証、systemd、配置順序、rollback を扱う。
+[`docs/details/setup.md`](setup.md) は、release asset 取得、checksum 検証、systemd、配置順序、rollback を扱う。setup 手順本文、release asset 取得手順、rollback 手順は [`docs/details/setup.md`](setup.md) 詳細本文責務を参照し、本節では再定義しない。
 
-本ファイルは、setup が扱う `admin-ui.tar.gz` の中身、展開後の必須 file、静的配信 path、拒否すべき archive entry を定義する。
+本ファイルは、`admin` owner の配布境界として、setup が扱う `admin-ui.tar.gz` の中身、展開後の必須 file、静的配信 path、拒否すべき archive entry を定義する。
 
 setup が admin UI を配置する場合は、以下を満たす。
 
 | 確認 | 合格条件 |
 |------|----------|
-| archive 内容 | A1 の配布物だけを含む。 |
+| archive 内容 | [`docs/details/admin.md`](admin.md) A1 の配布物だけを含む。 |
 | 必須 file | `index.html` と `adlaire-ci-sdk.js` が root 直下に存在する。 |
-| path 安全性 | A2 の拒否条件に該当しない。 |
+| path 安全性 | [`docs/details/admin.md`](admin.md) A2 の拒否条件に該当しない。 |
 | 配置結果 | `$INSTALL_DIR/admin/index.html` と `$INSTALL_DIR/admin/adlaire-ci-sdk.js` が通常 file として存在する。 |
 | 失敗時 | 既存 `$INSTALL_DIR/admin/` を変更しない。 |
 
@@ -95,9 +95,9 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 | 観点 | 合格条件 |
 |------|----------|
-| file boundary | A1 の必須 file を検証し、未定義 file を暗黙配布しない。 |
-| archive safety | A2 の危険 entry をすべて拒否する。 |
-| serving | A3 の path、Content-Type、Cache-Control、method、404 / 405 が一致する。 |
+| file boundary | [`docs/details/admin.md`](admin.md) A1 の必須 file を検証し、未定義 file を暗黙配布しない。 |
+| archive safety | [`docs/details/admin.md`](admin.md) A2 の危険 entry をすべて拒否する。 |
+| serving | [`docs/details/admin.md`](admin.md) A3 の path、Content-Type、Cache-Control、method、404 / 405 が一致する。 |
 | no mutation | UI / SDK file 内容、状態ファイル、credential、build log、snapshot を変更しない。 |
 | no secret exposure | `.admin_credentials`、`.github_token`、`.server_config`、`.build_logs`、`.snapshots` を静的配信しない。 |
 | setup integration | [`docs/details/setup.md`](setup.md) §26 の配置・rollback 条件と矛盾しない。 |
@@ -112,12 +112,12 @@ setup が admin UI を配置する場合は、以下を満たす。
 |---------|------|------|----------|
 | admin archive success | `index.html`、`adlaire-ci-sdk.js`、任意の `style.css` / `app.js` を root 直下に含む archive | admin archive validation | 検証成功。展開後 file mode `0644`、directory mode `0755`。 |
 | admin archive missing required | `index.html` または `adlaire-ci-sdk.js` がない archive | admin archive validation | 検証失敗。既存 `$INSTALL_DIR/admin` 差分なし。 |
-| admin archive extra file | A1 未定義 file を含む archive | admin archive validation | 検証失敗。未定義 file を展開しない。 |
+| admin archive extra file | [`docs/details/admin.md`](admin.md) A1 未定義 file を含む archive | admin archive validation | 検証失敗。未定義 file を展開しない。 |
 | admin archive traversal | `../x`、absolute path、backslash、NUL byte を含む entry | admin archive validation | 検証失敗。既存 `$INSTALL_DIR/admin` 差分なし。 |
 | admin archive special entry | symlink、hardlink、device、FIFO、socket | admin archive validation | 検証失敗。参照先を読まない、作成しない。 |
-| admin archive release layout | `admin-ui.tar.gz` の root 直下に A1 の file だけを含む archive | release asset validation | `admin/` directory wrapper、未定義 file、空 archive、重複必須 file を拒否し、配置前状態を保持する。 |
+| admin archive release layout | `admin-ui.tar.gz` の root 直下に [`docs/details/admin.md`](admin.md) A1 の file だけを含む archive | release asset validation | `admin/` directory wrapper、未定義 file、空 archive、重複必須 file を拒否し、配置前状態を保持する。 |
 | admin serve index | `GET /`、`GET /admin/`、`HEAD /admin/index.html` | static serving | `index.html` を返し、`Content-Type: text/html; charset=utf-8`、`Cache-Control: no-store`。 |
-| admin serve assets | `GET /admin/adlaire-ci-sdk.js`、`GET /admin/style.css`、`GET /admin/app.js` | static serving | A3 の Content-Type と Cache-Control。任意 file 不在時は `404`。 |
+| admin serve assets | `GET /admin/adlaire-ci-sdk.js`、`GET /admin/style.css`、`GET /admin/app.js` | static serving | [`docs/details/admin.md`](admin.md) A3 の Content-Type と Cache-Control。任意 file 不在時は `404`。 |
 | admin serve method denied | `POST /admin/index.html` | static serving | `405`。request body を読まず、state 差分なし。 |
 | admin serve forbidden path | `/admin/../.github_token`、`/.admin_credentials`、`/admin/.server_config` | static serving | `404`。secret / state / log / snapshot の内容を返さない。 |
 | admin serve no directory listing | `GET /admin`、`GET /admin/assets/`、`GET /admin/.build_logs/` | static serving | directory listing を返さず、定義済み redirect を行う場合も body に file 一覧を含めない。未定義 directory は `404`。 |
@@ -128,8 +128,8 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 | 観点 | 合格条件 |
 |------|----------|
-| archive validation | A2 と A6 の全 archive fixture が成功し、失敗時に既存 admin directory 差分がない。 |
-| static serving | A3 と A6 の全 request fixture が status、header、body 有無、method 制限に一致する。 |
+| archive validation | [`docs/details/admin.md`](admin.md) A2 と [`docs/details/admin.md`](admin.md) A6 の全 archive fixture が成功し、失敗時に既存 admin directory 差分がない。 |
+| static serving | [`docs/details/admin.md`](admin.md) A3 と [`docs/details/admin.md`](admin.md) A6 の全 request fixture が status、header、body 有無、method 制限に一致する。 |
 | secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
 | no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
 | setup integration | [`docs/details/setup.md`](setup.md) §26.8 の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |
