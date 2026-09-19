@@ -71,7 +71,7 @@
 3. [`docs/SPEC.md`](SPEC.md) 方針責務 §4.1〜§4.10 で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、詳細仕様粒度、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
 4. [`docs/SPEC.md`](SPEC.md) のポリシー責務で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
 5. 生成 HTML のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
-6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で読み順、共通固定値、§0i.1〜§0i.4 の対応表、§0j のリポジトリ内ソース配置を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件、配置を確認する。
+6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で読み順、共通固定値、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 の対応表、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j のリポジトリ内ソース配置を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件、配置を確認する。
 
 ---
 
@@ -322,7 +322,7 @@ Phase は、対象 owner component、実装範囲、依存条件、完了条件�
 | 責務境界 | 対象コンポーネント、呼び出し元、呼び出し先、状態ファイル、外部接続先が明確である。 |
 | 契約同期 | API、SDK、UI、状態ファイル、セットアップ、検証条件のうち関係する仕様が同時に整合している。 |
 | 禁止事項 | 外部依存、秘密情報、直接 API 呼び出し、互換処理、暗黙フォールバックなどの禁止事項が明確である。 |
-| 完了条件 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0f、§0h、§0i.1〜§0i.4、§0j および [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 の受け入れ条件で、実装完了、実装順序、配置を判定できる。 |
+| 完了条件 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0f、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j および [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 の受け入れ条件で、実装完了、実装順序、配置を判定できる。 |
 
 着手条件を満たさない場合、実装者はコードで補完せず、先に仕様改訂を行う。実装 PR では、着手前に参照した詳細仕様節を PR 本文へ明記する。
 
@@ -333,9 +333,9 @@ Phase は、対象 owner component、実装範囲、依存条件、完了条件�
 本節は実装済み判定の方針を定める。仕様成熟度、仕様 PR 完了、仕様凍結、初期実装スコープ、Phase 実装単位の具体的な必須条件は、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f を正本とする。
 
 - 実装が owner component 詳細本文責務の入力、出力、状態、処理順序、異常系、セキュリティ制約と一致している。
-- [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e の完全実装検証マトリクスと §0f の仕様策定完了チェックを満たしている。
+- [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e の完全実装検証マトリクスと [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0f の仕様策定完了チェックを満たしている。
 - [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4 の Phase 実装計画に従い、対象 Phase の依存条件、完了条件、PR 分割条件を満たしている。
-- 対象機能が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、§0i.1〜§0i.4 の詳細節対応表に記載された受け入れ条件を満たしている。
+- 対象機能が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 の詳細節対応表に記載された受け入れ条件を満たしている。
 - セットアップまたは運用手順に影響する場合、[`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 の実装受け入れ条件を満たしている。
 - API、SDK、UI のいずれかを変更した場合、[`docs/details/api.md`](details/api.md) 詳細本文責務 §22、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23、[`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 の対応関係が崩れていない。
 - [`docs/ROADMAP.md`](ROADMAP.md) の実装状態、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/SPEC.md`](SPEC.md)、詳細仕様の更新要否を確認済みである。
@@ -578,7 +578,7 @@ Go 版初期実装では、実装対象を [`docs/ROADMAP.md`](ROADMAP.md) 状�
 
 初期実装スコープの実装順序と PR 分割は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4 の Phase 実装計画に従う。
 
-初期実装スコープの完了判定は、対象コンポーネントごとに [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4 の対象 Phase 完了条件、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0f の仕様策定完了チェック、§0h の機能仕様テンプレート、§0i.1〜§0i.4 の詳細節対応表の受け入れ条件を満たしていることを条件とする。チェック、Phase 完了条件、テンプレート、対応表のいずれかを満たさない対象は、実装済みとして扱ってはならない。
+初期実装スコープの完了判定は、対象コンポーネントごとに [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4 の対象 Phase 完了条件、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0f の仕様策定完了チェック、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレート、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 の詳細節対応表の受け入れ条件を満たしていることを条件とする。チェック、Phase 完了条件、テンプレート、対応表のいずれかを満たさない対象は、実装済みとして扱ってはならない。
 
 ## 0f. Phase 実装単位ポリシー
 
