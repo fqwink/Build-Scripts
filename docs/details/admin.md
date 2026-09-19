@@ -106,7 +106,7 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 ## A6. Admin Fixture 固定契約
 
-`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。実装者は UI DOM、SDK method、API endpoint の詳細を本ファイルで再定義せず、admin 配布境界だけを確認する。
+`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。本ファイルでは UI DOM、SDK method、API endpoint の詳細を再定義せず、admin 配布境界だけを確認する。
 
 | fixture | 入力 | 操作 | 合格条件 |
 |---------|------|------|----------|

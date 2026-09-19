@@ -38,9 +38,9 @@
 | API 実装 | Phase 3 / Phase 4 の API、SDK / UI / statefile と同期する API 実装。 | §22-F | Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認。 |
 | §27 実装 | §27.1〜§27.47 の追加仕様化機能。 | §27-F | 対象 §27.x、関連 §22 / §23 / §24 / §25 / §26、owner / collaborator component、fixture 名、状態差分、外部副作用、partial failure、再実行、対象外確認。 |
 
-上表の証跡が不足する場合、対象機能は未完了として扱う。実装者は fixture が pass したことだけを完了証跡として扱ってはならない。
+上表の証跡が不足する場合、対象機能は未完了として扱う。fixture の pass だけでは完了証跡を満たさない。
 
-Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。owner component 別の [`docs/details/*.md`](./) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、本ファイルは fixture 証跡責務として証跡分類、不足時の扱い、差し戻し条件だけを固定する。
+Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、本ファイルは fixture 証跡責務として証跡分類、不足時の扱い、差し戻し条件だけを固定する。
 
 **Phase fixture / testdata 配置固定契約：**
 
@@ -334,7 +334,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 **§27.1〜§27.11 feature fixture 固定契約：**
 
-§27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 別の [`docs/details/*.md`](./) 詳細本文責務に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+§27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
 
 | 節 | fixture | 固定する内容 |
 |----|---------|--------------|
@@ -528,7 +528,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 **§27 fixture ファイルセット固定契約：**
 
-各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。実装者は fixture ごとに必要ファイルを推測してはならない。
+各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。fixture ごとの必要ファイルは推測せず、`manifest.json` の定義で確定する。
 
 | ファイル | 必須 | 内容 | 禁止事項 |
 |----------|------|------|----------|

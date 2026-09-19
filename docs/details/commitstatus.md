@@ -40,7 +40,7 @@ runner は `.server_config.commit_status_enabled == true` の場合、commitstat
 | `description` | 140 文字以内。開始時 `Build started`、成功時 `Build succeeded`、失敗時 `Build failed: <target_status>`、pending deploy 時 `Build succeeded with deploy pending`。 |
 | `target_url` | `.server_config.commit_status_target_url` が `null` でなければ送信する。 |
 
-GitHub request は以下に固定する。実装者は retry、GraphQL API、Check Runs API、任意 header、任意 payload key を追加してはならない。
+GitHub request は以下に固定する。retry、GraphQL API、Check Runs API、任意 header、任意 payload key は本詳細仕様の対象外とする。
 
 | 項目 | 固定値 |
 |------|--------|
