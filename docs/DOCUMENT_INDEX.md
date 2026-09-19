@@ -130,11 +130,11 @@
 |------|-----------|----------|------|
 | `main.go` | `-` | 現行実体 | 起動入口。現時点では実行ファイル名に応じて `builder` または `runner` component を呼び出す。 |
 | `components/builder.go` | `builder` | 現行実体 | Go 版静的 Web サイトビルドスクリプト。`adlaire-ci-build` バイナリとして実行する。 |
-| `components/builder_test.go` | `builder` | 現行実体 | `components/builder.go` の Phase 1 fixture テスト。 |
+| `components/builder_test.go` | `builder` | 現行実体 | `components/builder.go` の Go 検証ファイル。 |
 | `go.mod` | `-` | 現行実体 | Go module 定義。外部 module は追加しない。 |
-| `testdata/builder/` | `builder` | 現行実体 | Phase 1 の受け入れ fixture 入力。 |
-| `components/runner.go` | `runner` | 現行実体 | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。Phase 2 完了判定パスを対象とする。 |
-| `components/runner_test.go` | `runner` | 現行実体 | `components/runner.go` の Phase 2 fixture、hardening、完了判定パステスト。 |
+| `testdata/builder/` | `builder` | 現行実体 | builder 用 fixture 入力。 |
+| `components/runner.go` | `runner` | 現行実体 | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。 |
+| `components/runner_test.go` | `runner` | 現行実体 | `components/runner.go` の Go 検証ファイル。 |
 | `components/api.go` | `api` | 現行実体 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
 | `components/api_test.go` | `api` | 現行実体 | `components/api.go` の API endpoint、認証、状態ファイル、管理操作の検証テスト。 |
 | `admin/adlaire-ci-sdk.js` | `sdk` | 現行実体 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
@@ -162,10 +162,8 @@
 
 ## 整合メモ
 
-現時点では、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に記載された一部機能は仕様化済みだが、リポジトリ内に実装コードが存在しない。
+本節は所在の補足である。実装状態、実装可否、Phase、将来計画の判断は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
-仕様化済みだが未実装の内容は、実装済み機能として扱わない。
+現行実装実体の所在は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。個別ファイルの現行実装状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、本ファイルの所在は [実装ファイル一覧](#実装ファイル一覧) を確認する。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
 
-現行実装実体は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。`components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の実装状態と本ファイルの [実装ファイル一覧](#実装ファイル一覧) に従って、現行実装実体として所在を確認する。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
-
-`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置であり、現行実装実体として扱わない。標準配置と現行実体の判断は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、本ファイルの [実装ファイル一覧](#実装ファイル一覧) を同時に確認する。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置である。標準配置と現行実体の所在確認は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、本ファイルの [実装ファイル一覧](#実装ファイル一覧) を同時に確認する。
