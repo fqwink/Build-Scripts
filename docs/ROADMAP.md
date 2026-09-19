@@ -13,19 +13,19 @@
 | 実装状態 | component ごとの `未仕様化`、`将来計画`、`改訂予定`、`仕様化済み・未実装`、`実装中・検証未完了`、`実装済み` の分類。 | 実装コード本文は実装ファイル、詳細仕様本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
 | Phase | Phase 順序、対象 owner component、依存条件、判定条件、引き継ぎ契約。 | 各 component の関数、endpoint、schema、DOM、fixture 本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
 | 機能インベントリ | 機能の分類、実装可否、詳細仕様参照先。 | API request / response、SDK method、UI DOM、状態 schema は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
-| 将来計画 | 実装不可の構想、昇格条件、実装禁止条件。 | 実装可能な具体値は、昇格後に owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
+| 将来計画 | 実装不可の構想と昇格入口。 | 実装可能な具体値は、昇格後に owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
 | 追加仕様化機能参照・横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能 owner、主本文、collaborator、横断受け入れ観点。 | 各機能の endpoint、状態 schema、SDK method、UI DOM、fixture 本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
 
 ## 2. 状態分類
 
 | 状態 | 実装可否 | 意味 | 実装者の扱い |
 |------|----------|------|--------------|
-| 実装済み | 完了済み | ソースコード実装と必須検証が完了した項目。 | 仕様、実装、検証、索引の整合を崩してはならない。 |
-| 実装中・検証未完了 | 検証待ち | 実装に着手済みだが、必須検証または証跡が未完了の項目。 | 未完了項目を明記し、実装済みとして扱わない。 |
-| 仕様化済み・未実装 | 実装可 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に実装可能な詳細が揃っている項目。 | Phase と詳細仕様に従って実装できる。 |
-| 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | 詳細仕様が完了するまで実装しない。 |
-| 将来計画 | 実装不可 | 構想として保持するが、実装契約がない項目。 | 実装対象にしない。 |
-| 未仕様化 | 実装不可 | 本ロードマップと詳細仕様に存在しない項目。 | 推測で実装しない。 |
+| 実装済み | 完了済み | ソースコード実装と必須検証が完了した項目。 | 関連する実装ファイル、検証結果、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。 |
+| 実装中・検証未完了 | 検証待ち | 実装に着手済みだが、必須検証または証跡が未完了の項目。 | 未完了の確認対象を本ロードマップまたは PR 証跡で確認する。 |
+| 仕様化済み・未実装 | 実装可 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に実装可能な詳細が揃っている項目。 | Phase と詳細仕様参照先を確認する。 |
+| 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | 詳細仕様の作成先と不足項目を確認する。 |
+| 将来計画 | 実装不可 | 構想として保持するが、実装契約がない項目。 | 昇格手順は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 を確認する。 |
+| 未仕様化 | 実装不可 | 本ロードマップと詳細仕様に存在しない項目。 | 状態分類の最終判断は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a を確認する。 |
 
 ## 3. 実装状態
 
@@ -42,17 +42,17 @@
 | `admin/index.html` | 実装済み | 標準管理ツール UI。Phase 6 の DOM id、panel、SDK 呼び出し、表示状態、秘密情報消去を実装済み。 |
 | `components/mcp.go` | 将来計画 | Go 版 MCP サーバー。将来計画として管理し、実装済みとは扱わない。 |
 
-仕様化済み・未実装、または将来計画の項目を、実装済み機能として扱ってはならない。
+実装済み判定の最終条件は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.8 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a を参照する。
 
 ## 4. Phase 実装計画
 
 ## 4.1 初期実装 Phase 単位
 
-Go 版初期実装は、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0e の対象範囲を一括実装せず、下表の Phase 順に進める。上位 Phase の判定条件を満たす前に、下位 Phase の実装 PR を開始してはならない。
+Go 版初期実装の対象範囲と Phase 単位の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0e と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。本節は Phase 順、対象、依存条件、判定条件を管理する。
 
-実装単位、実装 PR 単位、判定単位は Phase のみとする。優先度ラベル、抽象段階、API 内部段階名を実装単位として使ってはならない。禁止される表現と扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。API の実装範囲は、Phase 3 を「API 基盤・認証・状態 read/write・運用基本操作」、Phase 4 を「API 拡張運用操作」として扱う。
+実装単位、実装 PR 単位、判定単位に関する禁止事項は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。API の実装範囲は、Phase 3 を「API 基盤・認証・状態 read/write・運用基本操作」、Phase 4 を「API 拡張運用操作」として管理する。
 
-各 Phase の `対象` は、その Phase の owner component を示す。状態ファイル、security、archive、commitstatus、admin、fixture、setup が関わる場合も、それらは collaborator component として該当 Phase の判定条件に含める。collaborator component の詳細本文責務に未充足がある場合は、owner component の実装で補完せず、先に該当する owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を改訂する。
+各 Phase の `対象` は、その Phase の owner component を示す。状態ファイル、security、archive、commitstatus、admin、fixture、setup が関わる場合も、それらは collaborator component として該当 Phase の判定条件に含める。collaborator component の詳細本文責務に未充足がある場合の扱いは [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
 
 | Phase | 対象 | 実装範囲 | 依存条件 | 判定条件 |
 |-------|------|----------|----------|----------|
@@ -314,17 +314,7 @@ Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化
 
 ### 5.2.1 統合ロードマップの読み方
 
-本章の項目は、単一の統合ロードマップ表で管理する。実装可否は `状態` 列で判断し、担当領域や機能名だけで実装対象と判断してはならない。
-
-| 状態 | 実装可否 | 意味 | 次アクション |
-|------|----------|------|--------------|
-| 実装済み | 完了済み | ソースコード実装と検証が完了した項目。 | 実装ファイル、検証結果、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の整合を崩してはならない。 |
-| 実装中・検証未完了 | 検証待ち | ソースコード実装に着手済みだが、必須検証が未完了の項目。 | 必須検証を実行し、不足が残る場合は `実装済み` へ移動しない。 |
-| 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を作成し、仕様化条件を満たす。 |
-| 仕様化済み・未実装 | 実装可 | 正本仕様と詳細仕様があり、実装対象として扱える項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を確認して実装する。 |
-| 将来計画 | 実装不可 | `components/mcp.go` など、将来構想として管理する項目。 | 本節 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格する。 |
-
-将来計画、改訂予定の項目は、実装着手可能な仕様ではない。実装対象にする場合は、先に [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `仕様化済み・未実装` へ昇格させる。
+本章の項目は、単一の統合ロードマップ表で管理する。状態分類と実装可否の定義は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 を参照する。実装着手可否の最終判断は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
 
 ---
 
@@ -517,7 +507,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ## 6. 追加仕様化機能実装参照
 
-本節は、追加仕様化機能の実装状態、実装可否、owner、主本文、collaborator を確認するための参照索引である。各機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。実装者は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 で参照先を特定し、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と必要な collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を確認して実装可否を判定する。
+本節は、追加仕様化機能の実装状態、実装可否、owner、主本文、collaborator を確認するための参照索引である。各機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。参照先の特定は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 で行う。実装着手可否の最終判断は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
 
 ### 6.1 追加仕様化機能 共通実装契約
 
@@ -628,7 +618,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ### 6.3 横断連動・Runner 拡張機能 実装補足契約
 
-本節は、追加仕様化機能の横断補足契約である。[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 および api / sdk / ui / statefile の横断連動では、実装者は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を主本文とし、本節を横断確認として同時に確認する。
+本節は、追加仕様化機能の横断補足契約である。[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 および api / sdk / ui / statefile の横断連動では、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を主本文とし、本節は横断確認として参照する。
 
 本節の正本範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装確認時の横断受け入れ観点に限定する。個別機能本文は各 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
