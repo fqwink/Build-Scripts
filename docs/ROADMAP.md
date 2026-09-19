@@ -50,7 +50,7 @@
 
 Go 版初期実装は、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0e の対象範囲を一括実装せず、下表の Phase 順に進める。上位 Phase の判定条件を満たす前に、下位 Phase の実装 PR を開始してはならない。
 
-実装単位、実装 PR 単位、判定単位は Phase のみとする。`P0`、`P1`、`P2〜P5` などの優先度ラベル、抽象段階、API 内部段階名を実装単位として使ってはならない。API の実装範囲は、Phase 3 を「API 基盤・認証・状態 read/write・運用基本操作」、Phase 4 を「API 拡張運用操作」として扱う。
+実装単位、実装 PR 単位、判定単位は Phase のみとする。優先度ラベル、抽象段階、API 内部段階名を実装単位として使ってはならない。禁止される表現と扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。API の実装範囲は、Phase 3 を「API 基盤・認証・状態 read/write・運用基本操作」、Phase 4 を「API 拡張運用操作」として扱う。
 
 各 Phase の `対象` は、その Phase の owner component を示す。状態ファイル、security、archive、commitstatus、admin、fixture、setup が関わる場合も、それらは collaborator component として該当 Phase の判定条件に含める。collaborator component の詳細本文責務に未充足がある場合は、owner component の実装で補完せず、先に該当する owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を改訂する。
 

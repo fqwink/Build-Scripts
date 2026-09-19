@@ -19,7 +19,7 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 ## 参照先
 
-仕様判断の本文は、対象に応じて [`docs/SPEC.md`](docs/SPEC.md)、[`docs/ROADMAP.md`](docs/ROADMAP.md)、[`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](docs/details/) 詳細本文責務を参照します。README は入口であり、仕様本文、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証 matrix を定義しません。
+仕様判断の本文は、対象に応じて [`docs/SPEC.md`](docs/SPEC.md)、[`docs/ROADMAP.md`](docs/ROADMAP.md)、[`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](docs/details/) 詳細本文責務を参照します。README は入口であり、仕様本文、詳細仕様本文、実装状態、ロードマップ、API 仕様、状態 schema、検証マトリクスを定義しません。
 
 ## 実装ファイル
 

@@ -114,8 +114,6 @@
 
 詳細仕様本文の配置先は上表のとおりである。実装状態と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、owner component の特定は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を参照する。
 
-<a id="仕様化済みコンポーネント"></a>
-
 ## 実装ファイル一覧
 
 本節は、現行リポジトリに存在する実装ファイル、テスト、fixture、および将来追加予定 path の所在を示す索引である。実装状態と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
