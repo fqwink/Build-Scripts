@@ -567,42 +567,33 @@ systemctl status adlaire-ci-api
 | queue disabled | `queue_max_size=0`、build running 中に `POST /api/build` | `429 {"error":"queue_full"}`、`.build_state.queued` は空。 |
 | dashboard duplicate widget | widgets に重複 id を指定 | `422`、`.dashboard_layout` 差分なし。 |
 
-**§22〜§26 api / sdk / ui / 認証 / セットアップ 実装完全性固定契約：**
+**§22〜§26 関連責務参照：**
 
-§22〜§26 のコンポーネントは、owner component の各節本文、endpoint 表、SDK method 表、UI 操作契約、fixture を主本文とし、下表を横断受け入れ確認として満たした場合だけ実装完了とする。下表は既存機能の詳細実装を確認する表であり、未定義 endpoint、未定義 UI、未定義認証方式、将来計画機能を追加する根拠にしてはならない。
+§22〜§26 にまたがる API、状態ファイル、SDK、UI、認証、setup / update の整合は、各 owner component 別の詳細本文責務と fixture 証跡責務を同時に参照する。本節は setup / release / update の実行条件だけを扱い、API endpoint、SDK method、UI 操作、認証方式、状態 schema、fixture 名、PR 証跡項目を重複定義しない。
 
-| 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
-|----|------|------|------|---------------------------|--------------|--------------|
-| §22.0 | API 共通 | HTTP method/path/header/body、remote addr。 | 固定 status、固定 error body、security header。 | `.api_access_log` 以外は endpoint 契約に従う。 | path/method/body/JSON/auth/scope/validation 失敗時は endpoint 固有処理を開始しない。 | unknown path、method mismatch、body 禁止、JSON 不正、401、403、422、500 mask。 |
-| §22.0a〜§22.0c | 状態ファイル / schema | state dir、JSON / JSON Lines / text state。 | typed adapter result、固定初期値、破損時 error。 | atomic write、lock、chmod、fsync、corrupt backup。 | read-only API は状態を修復しない。write 失敗は target を部分更新しない。 | corrupt JSON、unknown key、nullable 違反、lock timeout、chmod failure、GET no write。 |
-| §22.0d〜§22.0e | endpoint 契約 | endpoint ごとの request/query/body/path。 | endpoint ごとの response、sdk / ui 対応。 | Read / Write 列に明記された状態だけ扱う。 | 個別 status と共通 error 優先順位に従う。未定義 endpoint を追加しない。 | Phase 3 / Phase 4、pagination、SSE、binary、no-op、partial failure。 |
-| §23 | SDK | public method 引数、token、fake fetch response。 | Promise return、`AdlaireCIError`、`StreamHandle`、Blob。 | token は memory のみ。DOM / state file / storage を変更しない。 | `401` だけ token 破棄。`403`、`429`、`500`、network、timeout は token 維持。 | request shape、error shape、timeout、invalid JSON、invalid SSE、body 禁止、401 purge。 |
-| §24 | 標準管理 UI | DOM event、form value、SDK return/error。 | DOM 表示、disabled/loading、success/error、secret 消去。 | SDK method だけを呼ぶ。直接 API、状態ファイル、systemd を触らない。 | API 成功前に確定表示しない。失敗時は secret を消し、非 secret 入力は保持する。 | login/TOTP、manual build、stream、refresh failure、secret clearing、disabled priority、direct fetch absence。 |
-| §25 | 認証 | password、TOTP code、session token、API token。 | session token、ticket、auth error、access/audit log。 | `.admin_credentials`、`.totp_secret`、memory session/ticket、logs。 | token/ticket は必要ログ成功まで返さない。hash/salt/secret/token 本体を保存しない。 | init、login success/failure、lock、change password、session restart、TOTP replay、audit failure。 |
-| §26 | setup/update | release asset、checksum、INSTALL_DIR、BIN_DIR、systemd。 | binary 配置、admin UI、unit、service active、health。 | 検証済み asset だけ配置。secret/state/systemd は段階順に変更する。 | checksum/download/unsafe archive/restart 失敗で後続段階に進まない。rollback は定義範囲だけ 1 回。 | setup invalid、download failure、checksum duplicate、symlink target、API setup、update rollback、health failure。 |
+| 対象 | 主本文 | setup 側の確認範囲 |
+|------|--------|--------------------|
+| API endpoint / response / read-write 境界 | [`docs/details/api.md`](api.md) §22 | API service の配置、起動、health check、systemd 連携だけを確認する。 |
+| 状態ファイル schema / atomic write / 破損時処理 | [`docs/details/statefile.md`](statefile.md) §22.0a、§22.0c | setup が初期作成または保持する path、権限、既存 state / secret 保護だけを確認する。 |
+| SDK method / transport / error | [`docs/details/sdk.md`](sdk.md) §23 | admin UI 配布時に SDK 静的ファイルを配置することだけを確認する。 |
+| UI DOM / 操作 / 表示状態 | [`docs/details/ui.md`](ui.md) §24 | admin UI 配布物と静的配信境界だけを確認する。 |
+| 認証 / session / token / TOTP / audit | [`docs/details/security.md`](security.md) §25、§27.42〜§27.47 | secret / credential file の配置、保持、権限、漏えい防止だけを確認する。 |
+| fixture / fake / expected / PR 証跡 | [`docs/details/fixture.md`](fixture.md) §0g.8-F、§22-F、§27-F | setup / release / update に関わる証跡の記録先だけを確認する。 |
 
-**§22〜§26 横断失敗時副作用固定契約：**
+**setup / update 失敗時副作用固定契約：**
 
 | ケース | 固定結果 |
 |--------|----------|
-| API validation failure | 状態ファイル、外部 API、systemd、runner、hook、通知を変更しない。`.api_access_log` だけ通常記録対象とする。 |
-| API write success / log failure | 個別節が巻き戻しを明記していない限り、保存済み状態は巻き戻さず `500` を返す。 |
-| SDK network / timeout | `AdlaireCIError(status=0)` とし、自動 retry、自動 refresh、token 破棄を行わない。 |
-| UI refresh failure after success | 操作成功は保持し、再取得失敗だけ panel error に表示する。同じ変更 API を自動再実行しない。 |
-| auth log failure before token response | session token、login ticket、API token 本体を response しない。 |
-| setup partial failure | 既存 binary、state、secret、admin UI、systemd を、表で許可した対象以外は変更しない。 |
+| setup partial failure | 既存 binary、state、secret、admin UI、systemd を、§26 で許可した対象以外は変更しない。 |
 | update rollback failure | 追加推測復旧を行わず、失敗箇所、退避先、現在配置済みファイル、journal 確認対象を報告する。 |
+| checksum / download / unsafe archive failure | binary、admin UI、systemd、state、secret を変更せず、失敗箇所と再実行条件を記録する。 |
 
-**§22〜§26 実装前・実装後確認固定契約：**
+**setup / update 実装前・実装後確認固定契約：**
 
 | 段階 | 確認 | 合格条件 |
 |------|------|----------|
-| 実装前 | endpoint / SDK / UI 対応 | [`docs/details/api.md`](api.md) §22.0e の API、[`docs/details/sdk.md`](sdk.md) §23 の SDK method、[`docs/details/ui.md`](ui.md) §24 の UI 操作が同一機能でそろっている。欠落時は先に仕様改訂する。 |
-| 実装前 | state schema | 使用する状態ファイルが [`docs/details/statefile.md`](statefile.md) §22.0a / §22.0c にあり、型、初期値、破損時処理、更新責務が定義済み。 |
-| 実装前 | secret handling | secret 値の保存先、mask、response 禁止、log 禁止、UI 消去条件が定義済み。 |
-| 実装後 | common error | unknown path、method mismatch、body 禁止、JSON 不正、401、403、422、500 が固定 body と一致する。 |
-| 実装後 | state side effect | 成功、validation failure、conflict、write failure、log failure の状態差分が fixture expected と一致する。 |
-| 実装後 | client behavior | SDK error、UI disabled、success/error、refresh、secret 消去、direct fetch 不在が固定契約どおり。 |
+| 実装前 | setup / update 対象 | 配置対象 binary、admin UI asset、systemd unit、state / secret 保持対象、rollback 対象が §26 に定義済み。 |
+| 実装前 | secret handling | setup / update が触る secret file の保存先、権限、保持条件、log 禁止が定義済み。 |
 | 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が §26 fixture と一致する。 |
 
 Phase 順序、実装 PR 単位、実装着手条件、完了判定単位は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。
