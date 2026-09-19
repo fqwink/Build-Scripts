@@ -4,7 +4,7 @@
 
 本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、fixture、検証観点として参照する。
 
-本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証、Phase 完了判定 fixture 記録を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component 別の [`docs/details/*.md`](./) 詳細本文責務を参照する。
+本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component 別の [`docs/details/*.md`](./) 詳細本文責務を参照する。Phase 順序、実装状態、完了判定は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、fixture、fake、expected / effects、PR 証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---
 
@@ -605,50 +605,17 @@ systemctl status adlaire-ci-api
 | 実装後 | client behavior | SDK error、UI disabled、success/error、refresh、secret 消去、direct fetch 不在が固定契約どおり。 |
 | 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が §26 fixture と一致する。 |
 
-Phase 別の実装受け入れ条件は以下とする。
+Phase 順序、実装 PR 単位、実装着手条件、完了判定単位は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。
 
-| Phase | 必須確認 | 合格条件 |
-|-------|----------|----------|
-| Phase 1 | §0g.1、§8a、§26.7 build script | `adlaire-ci-build` の CLI、出力構造、report、fixture、冪等性が固定され、Phase 2 が追加判断なしに呼び出せる。 |
-| Phase 2 | §0g.2、§15a、§26.7 runner | runner 状態ファイル、履歴、ログ、pending queue、snapshot、通知、lock、終了コードが固定され、Phase 3 が状態ファイルを追加判断なしに読める。 |
-| Phase 3 | §0g.3、§22.0f、§25、§26.7 API | API 共通契約、認証、session、運用基本 endpoint、error body、状態ファイル read/write が固定される。 |
-| Phase 4 | §0g.4、§22.0f、§22.0e | 全 endpoint 契約が SDK 実装に渡せる粒度で固定され、Phase 3 の互換を壊していない。 |
-| Phase 5 | §0g.5、§23、§26.7 SDK | 全 SDK method が固定済み endpoint 契約に一致し、Phase 6 が UI 実装に使える error / stream / return 契約を持つ。 |
-| Phase 6 | §0g.6、§24、§26.7 UI/security | 全 UI 操作が SDK 経由で成立し、成功/失敗/disabled/loading/secret 消去が仕様どおりである。 |
+Phase 別の fixture、fake、expected / effects、PR 証跡、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節では Phase 別の受け入れ条件、検証記録、fixture 証跡項目を重複定義しない。
 
-Phase 別の実装検証記録は以下の単位で行う。
-
-| Phase | 必須記録 | 失敗時の扱い |
-|-------|----------|--------------|
-| Phase 1 | CLI 引数、fixture A〜D、生成物一覧、`[REPORT]`、冪等性、strict / non-strict の結果。 | `builder` を完了扱いにしない。 |
-| Phase 2 | secret 不足、lock、GitHub fake、pipeline fake、deploy fake、snapshot、notify、状態ファイル schema の結果。 | `runner` を完了扱いにしない。 |
-| Phase 3 | 運用基本 endpoint、認証、session、error body、SSE、状態 read/write、systemd service の結果。 | Phase 3 API を完了扱いにしない。 |
-| Phase 4 | 拡張運用 endpoint、secret mask、rollback、maintenance、hook、token、Phase 3 互換確認の結果。 | endpoint 契約を固定扱いにしない。 |
-| Phase 5 | method 対応表、fake fetch、HTTP error、timeout、stream、`401` token 破棄、body 禁止の結果。 | SDK 契約を固定扱いにしない。 |
-| Phase 6 | DOM id、panel、SDK 呼び出し、success/error/loading/disabled、stream、secret 消去、直接 API 呼び出し不存在の結果。 | 初期実装完了扱いにせず、未充足 UI 仕様を解消する。 |
-
-Phase 別受け入れ条件のいずれかが未実行、失敗、または環境都合で省略された場合、その Phase を完了扱いにしてはならない。Phase 順序と後続 Phase の実装 PR 着手条件は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。
-
-**Phase 完了判定 fixture 記録固定：**
-
-| Phase | fixture 記録 | fake 記録 | 期待値記録 |
-|-------|--------------|-----------|------------|
-| Phase 1 | 使用した `testdata/builder/...` path、入力 Markdown、テーマ設定、asset 入力。 | fake filesystem を使った場合のみ、注入した失敗と対象 path。 | 生成物一覧、期待 HTML / CSS / JS / search index、stdout / stderr、終了コード、冪等性結果。 |
-| Phase 2 | 使用した `testdata/runner/r*` path、初期 `state/`、GitHub 応答、pipeline / deploy / notify fixture。 | fake GitHub server、fake ssh executable、fake notifier、fake filesystem の呼び出し記録。 | `.last_sha`、queue、snapshot、通知結果、retry / circuit breaker、状態ファイル更新有無。 |
-| Phase 3 | 使用した `testdata/api/phase3/...` path、request、初期 `state/`。 | API handler への request 記録、SSE frame 記録、状態 read/write 記録。 | HTTP status、response body、error body、SSE event、状態ファイル更新後 expected。 |
-| Phase 4 | 使用した `testdata/api/phase4/...` path、request、secret mask fixture。 | hook / notify / token / maintenance の fake 呼び出し記録。 | HTTP status、response body、mask 後 payload、token 再取得不可結果、Phase 3 回帰結果。 |
-| Phase 5 | 使用した `testdata/sdk/...` path、fake fetch transcript、stream chunk。 | fake fetch の method、URL、headers、body 有無、abort / timeout 記録。 | SDK return、`AdlaireCIError`、stream event、token 破棄、body 禁止 endpoint の request 不成立。 |
-| Phase 6 | 使用した `testdata/ui/...` path、初期 DOM、操作手順。 | fake SDK の method、引数、呼び出し順、stream unsubscribe 記録。 | DOM assertion、success / error / loading / disabled、secret 消去、直接 `fetch()` 不存在。 |
-
-**未実行検証の代替条件：**
+**setup / release 未実行検証の代替条件：**
 
 | 未実行対象 | 代替として認める確認 | 完了扱い |
 |------------|----------------------|----------|
-| 実 GitHub API、実 SSH、実通知先 | §0g.8 の fake GitHub server、fake ssh executable、fake notifier の fixture 検証。 | 認める。実外部接続は Phase 完了条件に含めない。 |
 | systemd 実起動 | service file の内容確認、起動 command / user / working directory / environment の静的確認、API handler の Go test。 | 実 target host での起動確認が仕様化された Phase では `未実行`。仕様化されていない場合は静的確認で可。 |
-| browser 実機操作 | Vanilla JS が動作する browser runtime または同等 DOM 環境での fake SDK / DOM assertion。 | 認める。ただし直接 `fetch()` 不存在、secret 消去、loading / disabled は必須。 |
-| `go test` または `gofmt -l` が実行不能 | 実行不能理由、未実行 command、再実行条件の記録。 | 認めない。該当 Phase は `未実行` を含むため完了扱い不可。 |
-| fixture expected の欠落 | 欠落 path、期待値を定義できない理由の記録。 | 認めない。fixture expected を追加するまで完了扱い不可。 |
+| `go test` または `gofmt -l` が実行不能 | 実行不能理由、未実行 command、再実行条件の記録。 | 認めない。setup / update に必要な検証が未実行の場合は完了扱い不可。 |
+| release asset checksum 検証不能 | 対象 asset、取得元、期待 checksum、検証不能理由、再実行条件を記録する。 | 認めない。checksum 検証完了まで setup / update 完了扱い不可。 |
 
 **fixture 期待値更新固定：**
 
@@ -659,9 +626,9 @@ Phase 別受け入れ条件のいずれかが未実行、失敗、または環�
 | DOM assertion | UI の DOM id、panel、表示文言、disabled / loading / success / error 条件が変更された場合のみ更新する。 | SDK method 対応表と DOM assertion が一致すること。 |
 | error expected | HTTP status、exit code、`AdlaireCIError.code`、stderr prefix が変更された場合のみ更新する。 | 正常系 fixture と異常系 fixture の両方で期待値が固定されていること。 |
 
-Phase 完了判定の PR 証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節は setup / release / Phase 判定で必要な実行条件、未実行検証の代替条件、fixture 期待値更新条件だけを定義し、PR 証跡項目を重複定義しない。
+Phase 完了判定の PR 証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義し、PR 証跡項目を重複定義しない。
 
-受け入れ結果は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の形式で実装 PR 本文または検証ログに記録する。失敗、未実行、環境都合で省略した項目がある場合、そのコンポーネントを完了扱いにしてはならない。
+setup / release / update に関わる受け入れ結果は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の形式で実装 PR 本文または検証ログに記録する。失敗、未実行、環境都合で省略した項目がある場合、setup / release / update を完了扱いにしてはならない。
 
 ---
 
