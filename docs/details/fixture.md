@@ -1061,7 +1061,7 @@ browser runtime fixture の `expected/site/assets/app.js` は、初期化関数�
 | `security-visual-no-external-assets` | `@import`、remote `url()`、external font、CDN、追加 asset file、runtime CSS fetch、inline style が出力されない。 |
 | `security-focus-visible-no-overlap` | skip link、TOC active、hash target、lightbox control、collapse toggle の focus / active style が可視で、hover / focus により寸法が変わらず、text を隠さない。 |
 
-visual layout fixture の `manifest.json` は、`viewport_width` を使う場合でも判定を画像 snapshot だけに依存させてはならない。`expected/site/assets/style.css`、`expected/site/*.html`、`expected/security.json`、必要に応じて `expected/visual.json` に、selector、media query、display、overflow、visibility、focus、禁止 asset を構造化して固定する。ブラウザ実行がない fixture でも、期待 HTML / CSS / security の組み合わせで合否判定できなければならない。
+visual layout fixture の `manifest.json` は、`viewport_width` を使う場合でも判定を画像 snapshot だけに依存させてはならない。visual layout fixture は `expected/site/assets/style.css`、`expected/site/*.html`、`expected/security.json`、`expected/visual.json` を必須とし、selector、media query、display、overflow、visibility、focus、禁止 asset を構造化して固定する。ブラウザ実行がない fixture でも、期待 HTML / CSS / security / visual の組み合わせで合否判定できなければならない。
 
 **§28.1〜§28.5 feature fixture 固定契約：**
 
