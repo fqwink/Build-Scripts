@@ -1,8 +1,8 @@
 # Adlaire CI — Builder 詳細仕様
 
-本ファイルは `builder` owner component の詳細仕様正本である。
+本ファイルは `builder` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
+本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
 
 ---
 
@@ -509,7 +509,7 @@ type ConvertResult struct {
 **テーブル変換の詳細：**
 セパレーター行（`:---:`、`---` などで構成された行）のインデックスを自動検出し、セパレーター行より前の行をヘッダー（`<th>`）、それ以降を本文（`<td>`）として出力する。セパレーター行自体は出力しない。
 
-テーブル列数はヘッダー行のセル数を正とする。本文行のセル数が不足する場合は空文字セルを補い、超過する場合は超過分を最後のセルへ ` | ` で連結する。ヘッダー行が存在しない、またはセパレーター行だけの場合はテーブルとして扱わず、段落として出力する。
+テーブル列数はヘッダー行のセル数を基準とする。本文行のセル数が不足する場合は空文字セルを補い、超過する場合は超過分を最後のセルへ ` | ` で連結する。ヘッダー行が存在しない、またはセパレーター行だけの場合はテーブルとして扱わず、段落として出力する。
 
 **引用ネストの詳細：**
 `>` で始まる連続行をまとめて収集し、`renderBlockquote(lines []string, ctx *RenderContext) string` が再帰的にネストを処理する。1 レベル分の `>` を剥いた後、内側行を先頭から走査し、`>` で始まる連続する行は `renderBlockquote()` を再帰呼び出し、それ以外の行は `inline(text, ctx)` でレンダリングして結合する。これにより、単一行・複数行・混在ネスト（同一ブロック内で `>` 行と `>>` 行が混在する場合）をすべて正しく処理する。例：`>> text` → `<blockquote class="mbq"><blockquote class="mbq">text</blockquote></blockquote>`。
@@ -1608,9 +1608,9 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 - stderr は空。
 - `/tmp/adlaire-ci-fixture-strict/index.html` は `previous output` のままで置換されない。
 
-**[`docs/details/builder.md`](builder.md) §8〜[`docs/details/builder.md`](builder.md) §20 builder / runner 中核機能別実装完全性固定契約：**
+**[`docs/details/builder.md`](builder.md) §8〜[`docs/details/builder.md`](builder.md) §20 builder / runner 中核機能別実装確認固定契約：**
 
-[`docs/details/builder.md`](builder.md) §8〜[`docs/details/builder.md`](builder.md) §20 の中核機能は、各節の本文と fixture に加えて下表を満たした場合だけ実装完了とする。下表は既存機能の実装時チェックリストであり、将来機能、MCP、外部公開構成、上位方針は扱わない。
+[`docs/details/builder.md`](builder.md) §8〜[`docs/details/builder.md`](builder.md) §20 の中核機能は、各節の本文と fixture に加えて下表を満たす。下表は既存機能の詳細実装確認表であり、将来機能、MCP、外部公開構成、上位方針は扱わない。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|
@@ -1634,7 +1634,7 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 | no silent success | write failure、history failure、state finalizer failure、checksum mismatch、pipeline timeout を成功扱いにしない。 |
 | no secret leak | PAT、SSH secret、token、env secret を stdout、stderr、journal、build log、history、snapshot に平文保存しない。 |
 | reproducibility | 同一入力、同一 CLI、同一 fake 外部応答では、時刻・build id を除き同じ状態差分になる。 |
-| fixture completeness | [`docs/details/builder.md`](builder.md) §8a と [`docs/details/builder.md`](builder.md) §15a の対象 fixture を未実行または FAIL のまま該当コンポーネント完了扱いにしない。 |
+| fixture completeness | [`docs/details/builder.md`](builder.md) §8a と [`docs/details/builder.md`](builder.md) §15a の対象 fixture を未実行または FAIL のまま該当コンポーネントの詳細実装確認を満たした扱いにしない。 |
 | downstream handoff | runner が生成する `.build_status.json`、`.build_history`、`.build_logs/{id}.json` は [`docs/details/builder.md`](builder.md) §22 の API adapter が追加判断なしに読める schema とする。 |
 
 ---
@@ -1734,7 +1734,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | cache 書き込み失敗 | build は成功扱い、WARN と report に記録。 |
 | cache 破損 | 該当 entry 削除を試み、miss。 |
 
-**cache 実装完了固定契約：**
+**cache 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -1800,7 +1800,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | manifest 破損 | runner は full build。成功時に再作成。 |
 | base 外参照 | WARN、strict なら終了コード `2`。 |
 
-**dependency tracking 実装完了固定契約：**
+**dependency tracking 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -1826,7 +1826,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 ## 28. Builder owner 追加仕様化機能 詳細仕様
 
-本節は、[`docs/ROADMAP.md`](../ROADMAP.md) §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。実装状態、実装可否、Phase、将来計画からの昇格判断は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を正本とし、本節では定義しない。
+本節は、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。実装状態、実装可否、Phase、将来計画からの昇格判断は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、本節では定義しない。
 
 本節の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
 
@@ -1921,7 +1921,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | 1 | CLI option | 同一設定 key に対する最優先 source。repeatable と明記された `--meta`、`--var` 以外の重複指定は `BUILDER28_INVALID_OPTION`、終了コード `2`。 |
 | 2 | 環境変数 | CLI が未指定の場合だけ採用する。空文字は未指定として扱う。空白だけの値は trim 後に空文字なら未指定とする。 |
 | 3 | 設定ファイル | CLI / 環境変数が未指定の場合だけ採用する。JSON root は object 固定。root key は `builder_extensions` だけを許可する。 |
-| 4 | 既定値 | 上位 source がすべて未指定の場合だけ採用する。既定値は [`docs/details/builder.md`](builder.md) §28 CLI / 設定 / REPORT / 出力識別子固定契約の既定値を正とする。 |
+| 4 | 既定値 | 上位 source がすべて未指定の場合だけ採用する。既定値は [`docs/details/builder.md`](builder.md) §28 CLI / 設定 / REPORT / 出力識別子固定契約の既定値を参照する。 |
 
 `adlaire-ci-build.json` の root は以下の形だけを許可する。未知 root key、未知 `builder_extensions` key、JSON parse 不能、JSON root object 以外、`builder_extensions` object 以外、値型不一致は `BUILDER28_INVALID_OPTION`、終了コード `2` とし、出力を作成しない。
 
@@ -2906,15 +2906,15 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 
 `task_list_items` は出力した task list item 数、`task_list_checked` は checked checkbox 数とする。search index には task item text を含めるが、checkbox label、checked state label、marker text を含めない。
 
-**[`docs/details/builder.md`](builder.md) §28 実装完了条件：**
+**[`docs/details/builder.md`](builder.md) §28 詳細実装確認条件：**
 
-各機能は、該当 [`docs/details/builder.md`](builder.md) §28.x の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0i.1、[`docs/details/fixture.md`](fixture.md) §28-F を満たすまで実装完了として扱わない。複数の [`docs/details/builder.md`](builder.md) §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。
+各機能は、該当 [`docs/details/builder.md`](builder.md) §28.x の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/fixture.md`](fixture.md) §28-F を満たすまで詳細実装確認を満たした扱いにしない。複数の [`docs/details/builder.md`](builder.md) §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。
 
-**[`docs/details/builder.md`](builder.md) §28 実装完了ゲート固定契約：**
+**[`docs/details/builder.md`](builder.md) §28 詳細実装確認ゲート固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28 機能を実装完了として報告するには、下表のゲートをすべて満たす。1 件でも未達がある場合は、実装途中、仕様不足、または検証不足として扱い、実装完了と報告してはならない。
+[`docs/details/builder.md`](builder.md) §28 機能の詳細実装確認では、下表のゲートをすべて満たす。1 件でも未達がある場合は、詳細実装未充足、仕様不足、または検証不足として扱う。
 
-| ゲート | 合格条件 | 未完了扱い |
+| ゲート | 合格条件 | 未充足時の扱い |
 |--------|----------|------------|
 | 対象節明示 | 実装 PR に対象 [`docs/details/builder.md`](builder.md) §28.x を列挙し、対象外 [`docs/details/builder.md`](builder.md) §28.x も列挙する。 | 対象外機能が不明、または複数機能の混入範囲が不明。 |
 | CLI / env | 対象 [`docs/details/builder.md`](builder.md) §28.x の CLI option、環境変数、既定値、拒否値を fixture で確認する。 | CLI のみ、env のみ、既定値のみなど片方だけの確認。 |
@@ -2927,9 +2927,9 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | atomicity | 失敗時に既存出力、manifest、search index を部分更新しない。 | 失敗 fixture で file 更新、削除、manifest 上書きが残る。 |
 | fixture 完備 | [`docs/details/fixture.md`](fixture.md) §28-F の fixture catalog、manifest schema、expected 比較、最低確認項目を満たす。 | fixture 名不足、manifest key 不足、expected 不足、比較除外理由なし。 |
 
-**[`docs/details/builder.md`](builder.md) §28 実装完了報告禁止条件：**
+**[`docs/details/builder.md`](builder.md) §28 詳細実装未充足条件：**
 
-以下のいずれかに該当する場合は、コードが動作して見えても実装完了として報告してはならない。
+以下のいずれかに該当する場合は、コードが動作して見えても詳細実装確認を満たした扱いにしない。
 
 | 条件 | 理由 |
 |------|------|

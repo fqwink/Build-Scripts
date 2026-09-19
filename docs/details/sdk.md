@@ -1,10 +1,10 @@
 # Adlaire CI — SDK 詳細仕様
 
-本ファイルは `sdk` owner component の詳細仕様正本である。
+本ファイルは `sdk` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
+本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
 
-SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md`](api.md) §22.0e を正とする。本ファイルは SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
+SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md`](api.md) §22.0e を参照する。本ファイルは SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
 ---
 
@@ -361,7 +361,7 @@ path に入る `id` は `encodeURIComponent` したうえで 1 segment として
 
 **SDK method 完全性検証契約：**
 
-SDK 実装完了時は、[`docs/details/api.md`](api.md) §22.0e の SDK 列に記載された method 名と `AdlaireCI.prototype` の public method 名が一致しなければならない。constructor、private method、helper 関数、`AdlaireCIError` は比較対象外とする。
+SDK 詳細実装確認では、[`docs/details/api.md`](api.md) §22.0e の SDK 列に記載された method 名と `AdlaireCI.prototype` の public method 名が一致しなければならない。constructor、private method、helper 関数、`AdlaireCIError` は比較対象外とする。
 
 | 検証項目 | 合格条件 |
 |----------|----------|
@@ -372,9 +372,9 @@ SDK 実装完了時は、[`docs/details/api.md`](api.md) §22.0e の SDK 列に�
 | error handling | 4xx / 5xx、network error、timeout、empty JSON、invalid SSE frame が `AdlaireCIError` になる。 |
 | token handling | `login()` 成功で token を保持し、`logout()` と `401` で token を破棄する。 |
 
-**§27.21〜§27.47 SDK 連動実装完了固定契約：**
+**§27.21〜§27.47 SDK 連動実装確認固定契約：**
 
-[`docs/details/sdk.md`](sdk.md) §27.21〜§27.47 の追加仕様化機能を SDK で実装完了と扱うには、対象 owner component の詳細仕様、[`docs/details/api.md`](api.md) §27 の連動参照表、[`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
+[`docs/details/sdk.md`](sdk.md) §27.21〜§27.47 の追加仕様化機能で SDK の詳細実装確認を満たすには、対象 owner component 別の [`docs/details/*.md`](./) 詳細本文責務、[`docs/details/api.md`](api.md) §27 の連動参照表、[`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
 
 | 対象 | SDK method | request 固定 | success 固定 | error 固定 | 禁止事項 |
 |------|------------|--------------|---------------|------------|----------|
@@ -402,7 +402,7 @@ SDK 実装完了時は、[`docs/details/api.md`](api.md) §22.0e の SDK 列に�
 
 **§27.21〜§27.47 SDK 連動 fixture 必須証跡：**
 
-SDK 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固定する。下表の証跡がない場合、SDK method が存在していても実装完了としない。
+SDK 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固定する。下表の証跡がない場合、SDK method が存在していても詳細実装確認を満たした扱いにしない。
 
 | 証跡 | 固定する内容 | 合格条件 | 禁止事項 |
 |------|--------------|----------|----------|

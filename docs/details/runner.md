@@ -1,10 +1,10 @@
 # Adlaire CI — Runner 詳細仕様
 
-本ファイルは `runner` owner component の詳細仕様正本である。
+本ファイルは `runner` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
+本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
 
-[`docs/ROADMAP.md`](../ROADMAP.md) §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、本ファイルの個別節を正本とし、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として同節を確認する。同節は本ファイルの個別節を上書きせず、同節の内容を本ファイルへ重複定義してはならない。
+[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、本ファイルの個別節を参照し、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として同節を確認する。同節は本ファイルの個別節を上書きせず、同節の内容を本ファイルへ重複定義してはならない。
 
 ---
 
@@ -165,7 +165,7 @@
 
 ### systemd 配置参照
 
-以下は runner が起動される運用上の配置である。unit 本文、配置、enable、restart、更新、rollback は [`docs/details/setup.md`](setup.md) §26 を正とする。
+以下は runner が起動される運用上の配置である。unit 本文、配置、enable、restart、更新、rollback は [`docs/details/setup.md`](setup.md) §26 を参照する。
 
 ```
 /etc/systemd/system/
@@ -187,7 +187,7 @@
 
 ## 12. 設定値（`runner`）
 
-`runner` は本節の設定値を正とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
+`runner` は本節の設定値を基準とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
 
 **関連型：**
 
@@ -417,11 +417,11 @@ token は `strings.TrimSpace` 後の値だけを HTTP Authorization header に�
 
 **runner 状態ファイル参照契約：**
 
-状態ファイルの path、形式、初期値、schema、破損時の扱い、atomic write、adapter、読取 priority は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を正とする。本ファイルでは、runner がどの処理段階で状態を読むか、いつ更新するか、失敗時に後続処理を止めるかだけを定義する。
+状態ファイルの path、形式、初期値、schema、破損時の扱い、atomic write、adapter、読取 priority は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を参照する。本ファイルでは、runner がどの処理段階で状態を読むか、いつ更新するか、失敗時に後続処理を止めるかだけを定義する。
 
 runner 実装は [`docs/details/statefile.md`](statefile.md) に未定義の状態ファイル、永続 key、queue entry key、notification entry key、pending transfer entry key を追加してはならない。
 
-`.branch_config` が存在しない場合は [`docs/details/runner.md`](runner.md) §12 の `BRANCH_TARGETS` 既定値を使用する。存在する場合の schema、空配列の扱い、永続 key、API 表示名との境界は [`docs/details/statefile.md`](statefile.md) §22.0c の `.branch_config` schema を正とする。
+`.branch_config` が存在しない場合は [`docs/details/runner.md`](runner.md) §12 の `BRANCH_TARGETS` 既定値を使用する。存在する場合の schema、空配列の扱い、永続 key、API 表示名との境界は [`docs/details/statefile.md`](statefile.md) §22.0c の `.branch_config` schema を参照する。
 
 runner は起動時の設定正規化で `.branch_config` を 1 回だけ読み、正規化後の `RunnerConfig.BranchTargets` を当該起動中の唯一の branch target 情報として使用する。同一 runner 起動中に `.branch_config` を再読込してはならない。API による `.branch_config` 更新、削除、default 復帰は、既に実行中の runner には反映せず、次回 runner 起動から反映する。
 
@@ -550,7 +550,7 @@ schema 検証では次を必須とする。
 | `config-startup/permission-error` | 対象ファイルが読み込み不可。 | 自動退避なし、終了コード `2`、`.build_state.running` 未変更。 |
 | `config-startup/help-version-skip` | `--help` または `--version`。 | 対象ファイルを読まず、変更しない。 |
 
-完了条件は、上記 fixture を Go test で検証し、[`docs/ROADMAP.md`](../ROADMAP.md) の実装状態、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) の実装ファイル索引、PR 本文の検証結果が一致していることとする。
+確認条件は、上記 fixture を Go test で検証できることとする。実装状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、実装ファイル索引は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照する。
 
 **build id 契約：**
 
@@ -697,7 +697,7 @@ queue entry の `trigger` は `"manual"`、`"webhook"`、`"approval"` のみ許�
 
 **`.build_status.json` 更新契約：**
 
-`.build_status.json` の schema、許容値、初期値、api / ui / mcp の読取 priority は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を正とする。本ファイルでは runner が `.build_status.json` を更新するタイミングと、更新失敗時の runner 挙動だけを定義する。
+`.build_status.json` の schema、許容値、初期値、api / ui / mcp の読取 priority は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を参照する。本ファイルでは runner が `.build_status.json` を更新するタイミングと、更新失敗時の runner 挙動だけを定義する。
 
 `.build_status.json` の更新タイミングは次に固定する。
 
@@ -1227,7 +1227,7 @@ stdout は Go 標準ライブラリ `log/slog` で出力し、systemd が journa
 
 **`.build_logs/{id}.json` schema 参照：**
 
-`.build_logs/{id}.json` の保存 key、型、必須条件、Report object、Attempt object、CommitStatus object、BuildMeta object は [`docs/details/statefile.md`](statefile.md) §22.0c の `.build_logs/{id}.json` schema を正とする。
+`.build_logs/{id}.json` の保存 key、型、必須条件、Report object、Attempt object、CommitStatus object、BuildMeta object は [`docs/details/statefile.md`](statefile.md) §22.0c の `.build_logs/{id}.json` schema を参照する。
 
 runner owner component は、build log の生成タイミング、stdout / stderr 取り込み、`[REPORT]` 変換、WARN 取り込み、secret mask、最終状態保存、書き込み失敗時の後続停止だけを担当する。schema key の追加、削除、型変更、未知 key 保存は本ファイルで行ってはならない。
 
@@ -1262,7 +1262,7 @@ runner owner component は、build log の生成タイミング、stdout / stder
 
 **`.build_history` JSON Lines 追記契約：**
 
-`.build_history` の保存 key、型、必須条件、許容値は [`docs/details/statefile.md`](statefile.md) §22.0c の `.build_history` JSON Lines schema を正とする。
+`.build_history` の保存 key、型、必須条件、許容値は [`docs/details/statefile.md`](statefile.md) §22.0c の `.build_history` JSON Lines schema を参照する。
 
 runner は build 結果確定後、`.build_history` へ 1 build につき 1 行だけ追記する。`status` は runner の最終結果、`trigger` は [`docs/details/runner.md`](runner.md) §13 の有効値、`output_sha256` は出力サイト全体 manifest の SHA-256 hex とする。manifest 生成に失敗した場合のみ `output_sha256:null` を許可する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
 
@@ -1701,13 +1701,13 @@ adlaire-ci-runner --state-dir <state> --dry-run
 
 ## 16. systemd タイマー参照
 
-systemd unit 本文、配置先、起動手順、更新手順は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.4.1、[`docs/details/setup.md`](setup.md) §26.5 を正とする。
+systemd unit 本文、配置先、起動手順、更新手順は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.4.1、[`docs/details/setup.md`](setup.md) §26.5 を参照する。
 
 runner owner component は、`adlaire-ci-runner --state-dir /opt/adlaire-builder` として oneshot 実行された場合の処理、終了コード、状態ファイル更新、ログ出力だけを定義する。
 
-runner 実装は systemd unit file を生成、配置、更新、enable、restart してはならない。systemd 操作が必要な機能は `setup` または `api` owner component の詳細仕様で定義する。
+runner 実装は systemd unit file を生成、配置、更新、enable、restart してはならない。systemd 操作が必要な機能は [`docs/details/setup.md`](setup.md) または [`docs/details/api.md`](api.md) の owner component 別詳細本文責務で定義する。
 
-runner が journal へ出力する内容は [`docs/details/runner.md`](runner.md) §15 のログ仕様を正とする。`systemctl`、`journalctl` の操作手順は本ファイルでは定義しない。
+runner が journal へ出力する内容は [`docs/details/runner.md`](runner.md) §15 のログ仕様を参照する。`systemctl`、`journalctl` の操作手順は本ファイルでは定義しない。
 
 ---
 
@@ -1724,7 +1724,7 @@ runner が journal へ出力する内容は [`docs/details/runner.md`](runner.md
 
 ## 18. 初回セットアップ手順参照
 
-初回セットアップ、Release asset 取得、checksum 検証、バイナリ配置、secret 初期化、状態ファイル初期化、systemd unit 書き込み、service 起動、管理 API 導入、管理 UI 配置は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.1〜§26.4 を正とする。
+初回セットアップ、Release asset 取得、checksum 検証、バイナリ配置、secret 初期化、状態ファイル初期化、systemd unit 書き込み、service 起動、管理 API 導入、管理 UI 配置は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.1〜§26.4 を参照する。
 
 runner owner component は、セットアップ済み環境で `/usr/local/bin/adlaire-ci-runner` が起動された後の処理だけを定義する。
 
@@ -1736,7 +1736,7 @@ runner 実装は以下を行ってはならない。
 | Release asset 取得、checksum 検証、バイナリ配置 | setup owner component の責務。 |
 | `.github_token` の新規生成または対話入力 | setup owner component の secret initializer の責務。 |
 | `.admin_credentials` 初期化、API service 配置、管理 UI 配置 | api / admin / setup owner component の責務。 |
-| systemd unit file の配置、enable、restart | setup owner component の責務。ただし API endpoint が systemd timer を変更する機能は [`docs/details/api.md`](api.md) の該当節を正とする。 |
+| systemd unit file の配置、enable、restart | setup owner component の責務。ただし API endpoint が systemd timer を変更する機能は [`docs/details/api.md`](api.md) の該当節を参照する。 |
 
 runner が起動時に必要ファイル不足または権限不備を検出した場合は、[`docs/details/runner.md`](runner.md) §13、[`docs/details/runner.md`](runner.md) §15a、[`docs/details/runner.md`](runner.md) §20 の異常系に従い、セットアップ手順を自動実行せずに失敗として記録する。
 
@@ -1744,7 +1744,7 @@ runner が起動時に必要ファイル不足または権限不備を検出し�
 
 ## 19. 管理 API サーバー制限参照
 
-管理 API サーバーの HTTP listener、認証、session、rate limit、TLS 非対応、外部認証非対応、worker pool 非採用の制限は api owner component の責務とし、[`docs/details/api.md`](api.md) §21a および [`docs/details/security.md`](security.md) §27.42〜§27.47 を正とする。
+管理 API サーバーの HTTP listener、認証、session、rate limit、TLS 非対応、外部認証非対応、worker pool 非採用の制限は api owner component の責務とし、[`docs/details/api.md`](api.md) §21a および [`docs/details/security.md`](security.md) §27.42〜§27.47 を参照する。
 
 runner owner component は、管理 API サーバーの起動、listener、session、認証、HTTP response、rate limit を実装してはならない。
 
@@ -1781,9 +1781,9 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 
 ### 27.1 GitHub Commit Status API
 
-本節の主本文は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を正とする。owner component は `commitstatus`、collaborator component は `runner`、`statefile` とする。
+本節の主本文は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を参照する。owner component は `commitstatus`、collaborator component は `runner`、`statefile` とする。
 
-runner は、commit SHA 確定、build id 採番、build 開始前の pending 送信呼び出し、pipeline / deploy / snapshot / history の最終結果確定後の final 送信呼び出しだけを担当する。GitHub Commit Status API payload、送信順、送信失敗時の非反転、保存値、secret mask、検証条件は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を正とし、本ファイルへ重複定義してはならない。
+runner は、commit SHA 確定、build id 採番、build 開始前の pending 送信呼び出し、pipeline / deploy / snapshot / history の最終結果確定後の final 送信呼び出しだけを担当する。GitHub Commit Status API payload、送信順、送信失敗時の非反転、保存値、secret mask、検証条件は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を基準とし、本ファイルへ重複定義してはならない。
 
 ### 27.2 ドライラン実行モード
 
@@ -2173,7 +2173,7 @@ Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`�
 | recent | `{build_id, finished_at, duration_seconds, status}` を返す。 |
 | archive 優先 | 同じ id が通常 log と archive にある場合、通常 log を採用する。 |
 
-**duration 記録・統計実装完了固定契約：**
+**duration 記録・統計実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2270,7 +2270,7 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 最大 duration | payload に `max_duration_seconds`、`max_duration_build_id` を含める。対象なしは `null`。 |
 | 手動 response | 送信 payload と送信結果 `{sent:boolean, channel_results:[]}` を返す。 |
 
-**weekly summary 実装完了固定契約：**
+**weekly summary 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2339,7 +2339,7 @@ owner component は `runner` とする。collaborator component は `builder`、
 | 部分失敗 | 1 target でも SHA 取得に最終失敗した場合、build は開始せず、成功取得済み target の SHA cache も更新しない。 |
 | 環境変数 | `ADLAIRE_CHANGED_TARGETS` は JSON array string。要素順は正規化済み target path の辞書順。secret は含めない。 |
 
-**multi-file 実装完了固定契約：**
+**multi-file 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2398,7 +2398,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 **`.pipeline_config` 適用固定契約：**
 
-`.pipeline_config` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を正とする。API による保存、request / response、HTTP status は [`docs/details/api.md`](api.md) §15D を正とする。
+`.pipeline_config` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。API による保存、request / response、HTTP status は [`docs/details/api.md`](api.md) §15D を参照する。
 
 runner は build 開始後、builder command または pipeline step command を組み立てる直前に `.pipeline_config` を 1 回だけ読む。同一 build 中に `.pipeline_config` を再読込してはならない。
 
@@ -2444,7 +2444,7 @@ runner は build 開始後、builder command または pipeline step command を
 | block scalar `|` / `>` | parse error。 |
 | inline comment | quoted string 外の `#` は、行頭 comment 以外 parse error。 |
 
-**pipeline 実装完了固定契約：**
+**pipeline 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2514,7 +2514,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | state 更新 | build 成功時に今回 scan 結果へ置換する。skip、failure、dry-run では更新しない。 |
 | dry-run | `.local_watch_state.json` を作成・更新せず、差分結果だけ stdout JSON に含める。 |
 
-**local watch 実装完了固定契約：**
+**local watch 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2580,7 +2580,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | skip 副作用 | tag 不一致 skip では `.build_status.json` だけ更新し、`.build_logs/{id}.json`、`.build_history`、SHA cache、snapshot、deploy、notify は更新しない。 |
 | local mode | `watch_mode="local"` かつ `tag_filter.enabled=true` は設定不整合として終了コード `2`。 |
 
-**tag filter 実装完了固定契約：**
+**tag filter 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2645,7 +2645,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | status | 1 件以上 pending があれば `success_deploy_pending`、全件成功なら `success`。 |
 | 保存順 | `.build_logs/{id}.json.target_results` → `.pending_transfers` → `.build_history` → `.build_status.json`。 |
 
-**parallel deploy 実装完了固定契約：**
+**parallel deploy 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2711,7 +2711,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | log 保存失敗 | pre hook の log 保存失敗は build を開始せず failure。post hook の log 保存失敗は build status を維持し runner 終了コードを最低 `1`。 |
 | shell 禁止 | `command_args` を `exec.Command` 相当で実行し、shell 展開、変数展開、glob 展開を行わない。 |
 
-**hook 実装完了固定契約：**
+**hook 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2779,7 +2779,7 @@ owner component は `runner` とする。collaborator component は `api`、`arc
 | secret | remote command stdout/stderr は保存前に mask する。SSH 秘密鍵 path や token 値は log に保存しない。 |
 | cleanup | 成功・失敗に関係なく、検証後に一時展開先の削除を試みる。削除失敗は WARN。 |
 
-**remote build 実装完了固定契約：**
+**remote build 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2816,7 +2816,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 本機能の目的は、`approval_required` な target を通常 build として即時実行せず、人間承認後の queue entry だけを build / deploy 実行対象にすることである。
 
-API endpoint、approve / reject の request / response、sdk / ui 操作境界は [`docs/details/api.md`](api.md) §27.30 を正とする。`.approval_queue` record schema は [`docs/details/statefile.md`](statefile.md) §22.0c を正とする。
+API endpoint、approve / reject の request / response、sdk / ui 操作境界は [`docs/details/api.md`](api.md) §27.30 を参照する。`.approval_queue` record schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
 
 **入力 / 状態：**
 
@@ -2869,7 +2869,7 @@ API endpoint、approve / reject の request / response、sdk / ui 操作境界�
 
 runner は `approval_required=true` の target に対して、approval queue 以外の経路で build を開始してはならない。manual force、webhook、force interval、local watch のいずれであっても、対象 target が approval_required の場合は pending 作成を優先し、承認済み queue entry になるまで pipeline を起動しない。
 
-**approval 実装完了固定契約：**
+**approval 実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -2878,7 +2878,7 @@ runner は `approval_required=true` の target に対して、approval queue 以
 | force build | force build でも `approval_required=true` なら pending 作成だけを行い、SHA reset や pipeline 起動は approval 後まで行わない。 |
 | webhook | webhook 由来でも `approval_required=true` なら webhook queue を直接 build せず、approval pending へ変換する。delivery id は pending payload に残す。 |
 | timeout | timeout 判定は UTC fake clock で行い、`expires_at <= now` を expired とする。expired 後に approve された場合は API 側で `409`。 |
-| audit | pending 作成、approve、reject、expire は audit 対象とする。audit 失敗時の API 挙動は [`docs/details/security.md`](security.md) §27.44 を正とする。 |
+| audit | pending 作成、approve、reject、expire は audit 対象とする。audit 失敗時の API 挙動は [`docs/details/security.md`](security.md) §27.44 を参照する。 |
 | secret | approval payload、notify payload、history、audit には token、Authorization header、repository secret を保存しない。 |
 
 **異常系：**
@@ -2943,7 +2943,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 |------|------|
 | key 不正 | API は `422`、runner は終了コード `2`。 |
 | value 上限超過 | `422`。 |
-| secret mask 漏れ | 実装不合格。該当 build は完了扱いにしない。 |
+| secret mask 漏れ | 実装不合格。該当 build は成功扱いにしない。 |
 
 **検証条件：**
 
@@ -2954,9 +2954,9 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | secret stdout 出力 | log では `"***"` に置換。 |
 | 不正 key | 保存不可、状態差分なし。 |
 | lower secret key | `my_token` も secret 扱い。 |
-| mask failure | build 完了扱いにしない。 |
+| mask failure | build 成功扱いにしない。 |
 
-**branch env 実装完了固定契約：**
+**branch env 実装確認固定契約：**
 
 | 項目 | 合格条件 |
 |------|----------|
@@ -2964,8 +2964,8 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 注入範囲 | builder、pipeline step、hook、command notification の process env に同一値を渡し、system env 同名 key より branch env を優先する。 |
 | secret mask | secret key の value は response、stdout、stderr、build log、history、notify log、pending、UI 表示、fixture effects に平文で残さない。 |
 | ログ保存 | `.build_logs/{id}.json.environment.env_keys` には key 名だけを保存し、value、length、hash、部分文字列を保存しない。 |
-| 失敗境界 | key 不正、value 不正、mask failure では build または保存を完了扱いにせず、失敗地点以降の状態更新を行わない。 |
-| 完了条件 | fixture は env 注入、system env 上書き、secret stdout mask、不正 key、lower secret key、mask failure をすべて固定する。 |
+| 失敗境界 | key 不正、value 不正、mask failure では build または保存を成功扱いにせず、失敗地点以降の状態更新を行わない。 |
+| 確認条件 | fixture は env 注入、system env 上書き、secret stdout mask、不正 key、lower secret key、mask failure をすべて固定する。 |
 
 ### 27.32 ビルド通知連携
 
@@ -3013,7 +3013,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 | channel id | 未指定時は `n` + 6 桁連番。重複 id は `422`。 |
 | event 判定 | channel `on` が空の場合は top-level `on` を使用する。channel `on` に `"*"` があれば全 event 対象。 |
 | webhook config | `config.url` 必須。`http` / `https` のみ許可。userinfo、fragment、空 host は `422`。 |
-| email config | `.smtp_config` / `.smtp_secret` を正とする。channel `config.to` がある場合は `.smtp_config.to` より優先して送信先に使う。 |
+| email config | `.smtp_config` / `.smtp_secret` を基準とする。channel `config.to` がある場合は `.smtp_config.to` より優先して送信先に使う。 |
 | command config | `config.command_args` 必須。shell 経由は禁止。stdout/stderr は `.notify_log` に secret mask 後で保存する。 |
 | secret mask | `secret`、`password`、`token`、`smtp_password`、Webhook secret、SMTP password は GET、backup、log、pending、UI 表示で `"***"`。 |
 
@@ -3054,7 +3054,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 | pending duplicate | 同一 event/channel/payload の pending は 1 件だけ。 |
 | retry exhausted | dropped log 追記後 pending から削除。 |
 
-**notification 実装完了固定契約：**
+**notification 実装確認固定契約：**
 
 | 項目 | 合格条件 |
 |------|----------|
@@ -3064,7 +3064,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 | secret mask | GET response、backup、notify log、pending、command stdout/stderr、UI 表示に secret 平文を残さない。 |
 | 状態保存順 | `.notify_log` 追記後に `.notify_pending` を保存し、log 失敗時は pending 追加判定を行わない。 |
 | build 独立性 | 通知失敗、pending 保存失敗、retry exhausted は build status を反転しない。 |
-| 完了条件 | fixture は複数 channel 成功、webhook pending、disabled/no target no-op、secret mask、retry exhausted、pending duplicate をすべて固定する。 |
+| 確認条件 | fixture は複数 channel 成功、webhook pending、disabled/no target no-op、secret mask、retry exhausted、pending duplicate をすべて固定する。 |
 
 ### 27.33 ビルド時間トレンド記録
 
@@ -3122,7 +3122,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 同一 build id 再記録 | sample は 1 件のまま値が置換される。 |
 | p95 算出 | `ceil(count * 0.95) - 1` の値と一致する。 |
 
-**trend 実装完了固定契約：**
+**trend 実装確認固定契約：**
 
 | 項目 | 合格条件 |
 |------|----------|
@@ -3132,7 +3132,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 同一 build id | 同じ `build_id` は append せず置換し、重複 sample を残さない。 |
 | 破損復旧 | `.build_trends.json` 破損時は backup 作成後、`.build_history` 有効行だけから再集計し、skip warning を固定する。 |
 | API 境界 | `n` は 1〜1000 だけ許可し、不正値では状態を変更しない。 |
-| 完了条件 | fixture は summary 更新、同一 build id 置換、保持件数 prune、破損復旧、API `n` 不正をすべて固定する。 |
+| 確認条件 | fixture は summary 更新、同一 build id 置換、保持件数 prune、破損復旧、API `n` 不正をすべて固定する。 |
 
 ### 27.34 ビルド依存チェーン
 
@@ -3191,7 +3191,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 同順位 job | config 出現順で実行される。 |
 | disabled 依存 | 保存時 `422`、状態差分なし。 |
 
-**chain 実装完了固定契約：**
+**chain 実装確認固定契約：**
 
 | 項目 | 合格条件 |
 |------|----------|
@@ -3201,7 +3201,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | optional 境界 | `required=false` の依存失敗は WARN とし、後続 job の実行可否を固定契約どおり判定する。 |
 | summary 保存 | 最終 job 後に `chain_summary` を保存し、保存失敗時は job 結果を維持したまま runner 終了コードを最低 `1` にする。 |
 | 再開境界 | runner 停止後は完了済み job だけを既存履歴として扱い、未実行 job は次回再判定する。 |
-| 完了条件 | fixture は DAG 実行、required skip、optional 継続、cycle 失敗、disabled 依存、summary 保存失敗をすべて固定する。 |
+| 確認条件 | fixture は DAG 実行、required skip、optional 継続、cycle 失敗、disabled 依存、summary 保存失敗をすべて固定する。 |
 
 ### 27.35 ビルド優先度キュー
 
@@ -3258,7 +3258,7 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 | created_seq 欠落 | 正規化保存後に順序判定し、正規化保存失敗なら build なし。 |
 | urgent queue full | `429`、既存 low entry も削除しない。 |
 
-**priority queue 実装完了固定契約：**
+**priority queue 実装確認固定契約：**
 
 | 項目 | 合格条件 |
 |------|----------|
@@ -3268,7 +3268,7 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 | 旧 entry | `created_seq` 欠落 entry は runner 取り出し前に lock 内で正規化保存し、保存失敗時は build を開始しない。 |
 | clear | `DELETE /api/queue` は waiting entry 全件だけを削除し、実行中 build を停止しない。 |
 | queue full | priority が高くても既存 entry を削除せず `429` とする。 |
-| 完了条件 | fixture は urgent 優先、同一 priority FIFO、created_seq 正規化、不正 priority、queue full、clear をすべて固定する。 |
+| 確認条件 | fixture は urgent 優先、同一 priority FIFO、created_seq 正規化、不正 priority、queue full、clear をすべて固定する。 |
 
 ### 27.36 失敗原因の自動分類
 
@@ -3335,7 +3335,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | evidence 上限超過 | 最大 10 件で保存され、secret 平文を含まない。 |
 | 成功履歴 | `failure_category:null`。 |
 
-**failure classification 実装完了固定契約：**
+**failure classification 実装確認固定契約：**
 
 | 項目 | 合格条件 |
 |------|----------|
@@ -3345,7 +3345,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 上限 | evidence は最大 10 件とし、分類に使った evidence を先頭に残す。 |
 | API filter | 未知 query は `422`、既存未知値は返却しつつ warnings を 1 回だけ返す。 |
 | 成功履歴 | success 系 history は `failure_category:null` とし、filter 時に failure と混在させない。 |
-| 完了条件 | fixture は timeout、deploy failure、config error、filter、unknown warning、evidence mask、上限超過をすべて固定する。 |
+| 確認条件 | fixture は timeout、deploy failure、config error、filter、unknown warning、evidence mask、上限超過をすべて固定する。 |
 
 ### 27.37 ビルド実行環境の記録
 
@@ -3405,7 +3405,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | home 配下 state dir | basename だけ保存される。 |
 | environment write failure | pipeline を起動しない。 |
 
-**environment record 実装完了固定契約：**
+**environment record 実装確認固定契約：**
 
 | 項目 | 合格条件 |
 |------|----------|
@@ -3415,7 +3415,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 | path 境界 | home 配下 state dir は basename だけ、それ以外は絶対 path を保存する。 |
 | 保存失敗 | environment 保存失敗時は build 本体を起動せず、`.build_status.json` に `failure_state_write` を保存する。 |
 | 継続可能失敗 | hostname、disk stat、builder version 取得不能は WARN または unknown/null とし、build を継続する。 |
-| 完了条件 | fixture は通常保存、builder version timeout、home path 短縮、secret 非保存、environment write failure をすべて固定する。 |
+| 確認条件 | fixture は通常保存、builder version timeout、home path 短縮、secret 非保存、environment write failure をすべて固定する。 |
 
 ### 27.38 ビルド所要時間の異常検知
 
@@ -3473,7 +3473,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | failure build | trend sample 追加、anomaly 判定なし。 |
 | tag 重複 | `duration_anomaly` が 1 件だけ。 |
 
-**duration anomaly 実装完了固定契約：**
+**duration anomaly 実装確認固定契約：**
 
 | 項目 | 合格条件 |
 |------|----------|
@@ -3483,19 +3483,19 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | history 更新 | anomaly 時は WARN、`flagged=true`、`tags += ["duration_anomaly"]` を保存し、重複 tag を作らない。 |
 | 通知独立性 | duration_anomaly 通知失敗は build status を変更せず、notify retry 契約に従う。 |
 | 設定不正 | API は `422`、runner は既定値へ補正せず機能無効として扱う。 |
-| 完了条件 | fixture は sample 不足 no-op、avg 超過、p95 境界、通知失敗、failure build、tag 重複、設定不正をすべて固定する。 |
+| 確認条件 | fixture は sample 不足 no-op、avg 超過、p95 境界、通知失敗、failure build、tag 重複、設定不正をすべて固定する。 |
 
-**[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 runner / statefile 連動実装完了ゲート：**
+**[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 runner / statefile 連動実装確認ゲート：**
 
-[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 の runner owner 機能は、個別節の完了条件に加えて下表を満たした場合だけ実装完了とする。本ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は [`docs/details/statefile.md`](statefile.md) §22.0c、fixture 本文は [`docs/details/fixture.md`](fixture.md) §27-F を正とする。
+[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 の runner owner 機能は、個別節の確認条件に加えて下表を満たす。本ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は [`docs/details/statefile.md`](statefile.md) §22.0c、fixture 本文は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。
 
 | ゲート | 合格条件 | 禁止事項 |
 |--------|----------|----------|
-| state target | 個別 [`docs/details/runner.md`](runner.md) §27 節に列挙された状態ファイル、[`docs/details/statefile.md`](statefile.md) §22.0a / [`docs/details/statefile.md`](statefile.md) §22.0c の schema、[`docs/ROADMAP.md`](../ROADMAP.md) §6 の collaborator だけを使用する。 | 未定義状態ファイル、未知 key、空 placeholder file、component 固有でない汎用 state file を追加する。 |
-| write order | build lifecycle は lock → build_state running → build log → history → build_status → queue / pending / notify / trend 等の個別副作用の順を fixture で固定する。個別節が別順を明記する場合はその順を優先する。 | 並列処理の完了順をそのまま永続保存順にする、fixture に `write_order` を持たない複数書込を完了扱いにする。 |
+| state target | 個別 [`docs/details/runner.md`](runner.md) §27 節に列挙された状態ファイル、[`docs/details/statefile.md`](statefile.md) §22.0a / [`docs/details/statefile.md`](statefile.md) §22.0c の schema、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6 の collaborator だけを使用する。 | 未定義状態ファイル、未知 key、空 placeholder file、component 固有でない汎用 state file を追加する。 |
+| write order | build lifecycle は lock → build_state running → build log → history → build_status → queue / pending / notify / trend 等の個別副作用の順を fixture で固定する。個別節が別順を明記する場合はその順を優先する。 | 並列処理の完了順をそのまま永続保存順にする、fixture に `write_order` を持たない複数書込を確認済み扱いにする。 |
 | partial failure | 失敗地点より後の write / external call / notification は実行しない。失敗地点より前に成功済みの状態は個別節が rollback を明記しない限り戻さない。 | 保存済み build log / history / status を実装者判断で削除、巻き戻し、再分類する。 |
 | no-op / skip | 変更なし、cooldown、tag 不一致、disabled、sample 不足、queue duplicate 等は個別節の no-op / skip response と副作用ゼロまたは指定最小副作用で固定する。 | no-op で config log、audit、notify、build log、history、SHA cache を暗黙更新する。 |
 | dry-run | dry-run は設定検証、対象判定、差分判定、実行可否の出力だけを行い、状態ファイル、lock、log、history、cache、notification、external write を作成・更新しない。 | dry-run 結果を後続実行用 cache として保存する。 |
 | secret mask | PAT、Webhook secret、SMTP password、branch env secret、hook output secret、remote credential は読込直後に mask 登録し、stdout / stderr / build log / history / status / pending / fixture expected に平文を残さない。 | mask 登録前にログ保存する、secret 長・hash・prefix・suffix を保存する。 |
 | schema strictness | runner が保存する object は [`docs/details/statefile.md`](statefile.md) §22.0c の key だけを持ち、nullable、UTC 時刻、列挙値、配列順を満たす。 | SDK / UI 用の表示名、計算済み label、未定義 fallback key を state に保存する。 |
-| fixture evidence | 対象 [`docs/details/runner.md`](runner.md) §27 機能の fixture は success、failure、partial、no-op、idempotency、secret mask、corrupt state のうち該当するケースを持つ。 | 正常系だけの fixture で runner / statefile 連動を完了扱いにする。 |
+| fixture evidence | 対象 [`docs/details/runner.md`](runner.md) §27 機能の fixture は success、failure、partial、no-op、idempotency、secret mask、corrupt state のうち該当するケースを持つ。 | 正常系だけの fixture で runner / statefile 連動を確認済み扱いにする。 |

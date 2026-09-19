@@ -1,8 +1,8 @@
 # Adlaire CI — Security 詳細仕様
 
-本ファイルは `security` owner component の詳細仕様正本である。
+本ファイルは `security` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細仕様ファイル管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) §0b.1 に従う。本ファイルは `security` owner component の主本文であり、collaborator component の仕様は呼び出し境界、endpoint、SDK、UI、状態 schema、fixture、検証観点として参照する。
+本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `security` owner component の主本文であり、collaborator component の仕様は呼び出し境界、endpoint、SDK、UI、状態 schema、fixture、検証観点として参照する。
 
 ---
 
@@ -32,9 +32,9 @@
 
 ## 横断固定契約
 
-**§27.42〜§27.47 認証・監査・制限機能 実装完全性固定契約：**
+**§27.42〜§27.47 認証・監査・制限機能 実装確認固定契約：**
 
-§27.42〜§27.47 は、API token、監査、session、TOTP、rate limit に関する安全機能である。各機能は個別節に加えて下表を満たした場合だけ実装完了とする。
+§27.42〜§27.47 は、API token、監査、session、TOTP、rate limit に関する安全機能である。各機能の詳細実装確認では、個別節に加えて下表を満たす。
 
 | 節 | 機能 | 判定入口 | 成功時副作用 | 失敗時副作用 | 漏えい禁止値 | 必須 fixture |
 |----|------|----------|--------------|--------------|--------------|--------------|
@@ -64,7 +64,7 @@
 
 ## 認証共通詳細
 
-本節は、password 認証、session、login ticket、認証ログ、`--init-credentials` の security owner 詳細仕様である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md`](api.md) §22.0e および [`docs/details/security.md`](security.md) §25 を正とする。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を正とする。
+本節は、password 認証、session、login ticket、認証ログ、`--init-credentials` の [`docs/details/security.md`](security.md) 詳細本文責務である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md`](api.md) §22.0e および [`docs/details/security.md`](security.md) §25 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
 
 **password hash 固定契約：**
 
@@ -158,7 +158,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 生成手順は、state dir 検証 → 既存確認 → salt 生成 → hash 生成 → `{path}.tmp.{pid}` へ JSON + LF 書込 → mode `0600` → file sync → rename → parent directory sync の順に固定する。rename 後の sync に失敗した場合は `1` を返し、作成済みファイルは残る。実装者判断で初期 password を環境変数、対話入力、ランダム生成へ変更してはならない。
 
-**認証共通実装完了ゲート：**
+**認証共通実装確認ゲート：**
 
 | 観点 | 合格条件 | 禁止事項 |
 |------|----------|----------|
