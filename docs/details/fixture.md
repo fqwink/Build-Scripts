@@ -40,7 +40,7 @@
 
 上表の証跡が不足する場合、対象機能は未完了として扱う。実装者は fixture が pass したことだけを完了証跡として扱ってはならない。
 
-Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。component 別詳細仕様ファイル、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md)、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合は、本ファイルの証跡分類、不足時の扱い、差し戻し条件を優先する。
+Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。component 別詳細仕様ファイル、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合は、本ファイルの証跡分類、不足時の扱い、差し戻し条件を優先する。
 
 **Phase fixture / testdata 配置固定契約：**
 
@@ -773,7 +773,7 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 
 `expected/ui_dom.json` は、panel id、error / success text、field error、hidden state、disabled state、one-time 表示領域の有無を構造化して固定する。DOM snapshot 文字列だけで合否判定してはならない。
 
-**§27 setup / admin / release 連動 fixture 固定契約：**
+**§27-F setup / admin / release 連動 fixture 固定契約：**
 
 §26 の setup、admin UI 配布、API service 導入、update、rollback を含む実装 PR は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は [`docs/details/setup.md`](setup.md) §26.8 と [`docs/details/admin.md`](admin.md) A1〜A6 の合格条件を同じ expected で検証する。
 

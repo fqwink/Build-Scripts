@@ -2,7 +2,7 @@
 
 本ファイルは、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を管理するロードマップ正本である。
 
-方針、ポリシー、正本関係、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を正とする。生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を正とする。詳細仕様の入口、owner component 対応表、共通固定値、リポジトリ内ソース配置は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) を正とする。owner component 別の入出力、状態、処理順序、異常系、検証条件は [`docs/details/*.md`](details/) を正とする。
+方針、ポリシー、正本関係、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を正とする。生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を正とする。詳細仕様の入口、owner component 対応表、共通固定値、リポジトリ内ソース配置は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を正とする。owner component 別の入出力、状態、処理順序、異常系、検証条件は [`docs/details/*.md`](details/) を正とする。
 
 本ファイルは状態と計画を扱う。HTTP response schema、状態ファイル schema、SDK method の実装詳細、UI DOM、fixture assertion、具体的な処理順序は定義しない。
 
@@ -22,7 +22,7 @@
 |------|----------|------|--------------|
 | 実装済み | 完了済み | ソースコード実装と必須検証が完了した項目。 | 仕様、実装、検証、索引の整合を崩してはならない。 |
 | 実装中・検証未完了 | 検証待ち | 実装に着手済みだが、必須検証または証跡が未完了の項目。 | 未完了項目を明記し、実装済みとして扱わない。 |
-| 仕様化済み・未実装 | 実装可 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) と owner component 詳細仕様に実装可能な詳細が揃っている項目。 | Phase と詳細仕様に従って実装できる。 |
+| 仕様化済み・未実装 | 実装可 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務と owner component 詳細仕様に実装可能な詳細が揃っている項目。 | Phase と詳細仕様に従って実装できる。 |
 | 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | 詳細仕様が完了するまで実装しない。 |
 | 将来計画 | 実装不可 | 構想として保持するが、実装契約がない項目。 | 実装対象にしない。 |
 | 未仕様化 | 実装不可 | 本ロードマップと詳細仕様に存在しない項目。 | 推測で実装しない。 |
@@ -156,7 +156,7 @@ Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は [`d
 
 ## 5.1 機能一覧
 
-本ロードマップが管理する機能インベントリである。各機能の仕様詳細は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) と owner component 別の [`docs/details/*.md`](details/) を参照する。実装状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3、および [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a の仕様成熟度ポリシーに従って判定する。
+本ロードマップが管理する機能インベントリである。各機能の仕様詳細は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務と owner component 別の [`docs/details/*.md`](details/) を参照する。実装状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3、および [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a の仕様成熟度ポリシーに従って判定する。
 
 ### ビルド・CI ランナー（components/runner.go）
 
@@ -306,9 +306,9 @@ ES Module・外部依存なし。全メソッドは `Promise` を返す。`strea
 ## 5.2 拡張ポイント・将来計画
 
 Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化済み・未実装項目、改訂予定項目、将来計画項目を統合管理する。
-仕様化する際は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) の対応表、該当 owner component の詳細仕様本文への追記を先行させる。
+仕様化する際は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表、該当 owner component の詳細仕様本文への追記を先行させる。
 
-将来計画は、実装対象ではない。将来計画内の「検討」「予定」「候補」「推奨」は、実装可能な仕様を意味しない。将来計画を実装対象にする場合は、先に対象項目を `改訂予定` へ昇格し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) の対応表と該当 owner component の詳細仕様本文に実装可能な詳細仕様を追加したうえで `仕様化済み` とする。
+将来計画は、実装対象ではない。将来計画内の「検討」「予定」「候補」「推奨」は、実装可能な仕様を意味しない。将来計画を実装対象にする場合は、先に対象項目を `改訂予定` へ昇格し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表と該当 owner component の詳細仕様本文に実装可能な詳細仕様を追加したうえで `仕様化済み` とする。
 
 **担当領域：** `CI ランナー` / `管理ツール・API` / `MCP サーバー` / `ビルドスクリプト`
 
@@ -318,9 +318,9 @@ Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化
 
 | 状態 | 実装可否 | 意味 | 次アクション |
 |------|----------|------|--------------|
-| 実装済み | 完了済み | ソースコード実装と検証が完了した項目。 | 実装ファイル、検証結果、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の整合を崩してはならない。 |
+| 実装済み | 完了済み | ソースコード実装と検証が完了した項目。 | 実装ファイル、検証結果、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の整合を崩してはならない。 |
 | 実装中・検証未完了 | 検証待ち | ソースコード実装に着手済みだが、必須検証が未完了の項目。 | 必須検証を実行し、不足が残る場合は `実装済み` へ移動しない。 |
-| 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) の対応表と該当 owner component の詳細仕様本文を作成し、仕様化条件を満たす。 |
+| 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表と該当 owner component の詳細仕様本文を作成し、仕様化条件を満たす。 |
 | 仕様化済み・未実装 | 実装可 | 正本仕様と詳細仕様があり、実装対象として扱える項目。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 と該当 owner component の詳細仕様本文を確認して実装する。 |
 | 将来計画 | 実装不可 | `components/mcp.go` など、将来構想として管理する項目。 | 本節 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格する。 |
 
@@ -466,7 +466,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | diff ハイライト | `diff` / `patch` fence の inserted/deleted/header/context class と copy 本文維持を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) §28.9、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 画像の遅延読み込み | image 出力の `loading="lazy"`、`decoding="async"`、path warning、alt escape を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) §28.10、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | カスタムメタタグ注入 | `--meta` の validation、name/property、禁止 key、attribute escape を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) §28.11、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ライトモード固定 | DESIGN 正本に従い、生成 HTML を light 固定にし、dark / auto / theme toggle / color scheme 永続化を出力しない。 | [`docs/DESIGN.md`](DESIGN.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) §28.12、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ライトモード固定 | DESIGN 正本に従い、生成 HTML を light 固定にし、dark / auto / theme toggle / color scheme 永続化を出力しない。 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) §28.12、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | コードブロックのファイル名表示 | fence info parsing、title escape、copy 対象除外を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) §28.13、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | テンプレート変数展開 | `--var`、key validation、code fence 内非置換、未定義時 warning/strict を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) §28.14、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | HTML ミニファイ | safe minify、pre/code 保持、必須 marker 検証、report を固定する。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) §28.15、[`docs/details/fixture.md`](details/fixture.md) §28-F に従って実装する。 |
@@ -504,8 +504,8 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 1. 対象項目の `状態` を `改訂予定` に変更し、元状態、格上げ日、担当領域、整理順序（実装単位ではない）、ステータスを同じ行の概要または次アクションへ記録する。
 2. [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務の該当節と、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 の実装状態、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.1 の機能一覧を改訂する。
 3. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 の詳細節対応表に、対象機能、対象コンポーネント、詳細仕様節、受け入れ条件を追加する。
-4. 該当 owner component の詳細仕様本文に、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たす目的、責務、入出力、状態、処理順序、異常系、セキュリティ、検証条件を追加する。MCP サーバー領域を昇格する場合は、MCP 専用詳細仕様を新設し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) の責務 component 対応表へ追加する。
-5. [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) と [`AGENTS.md`](../AGENTS.md) の更新要否を確認する。
+4. 該当 owner component の詳細仕様本文に、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たす目的、責務、入出力、状態、処理順序、異常系、セキュリティ、検証条件を追加する。MCP サーバー領域を昇格する場合は、MCP 専用詳細仕様を新設し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の責務 component 対応表へ追加する。
+5. [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務と [`AGENTS.md`](../AGENTS.md) の更新要否を確認する。
 6. 仕様凍結条件を満たした後、対象項目の `状態` を `仕様化済み・未実装`、`実装可否` を `実装可` に変更する。
 7. 実装と検証が完了した後、対象項目の `状態` を `実装済み`、`実装可否` を `完了済み` に変更する。
 
@@ -521,7 +521,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 | 確認 | 固定内容 |
 |------|----------|
-| 実装対象判定 | [`docs/ROADMAP.md`](ROADMAP.md) で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用詳細仕様がない状態の MCP 機能を実装対象にしない。 |
+| 実装対象判定 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用詳細仕様がない状態の MCP 機能を実装対象にしない。 |
 | owner 確定 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i で owner component を 1 件に確定し、主本文は owner component 詳細仕様ファイルで確認する。 |
 | collaborator 確認 | collaborator がある場合は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能参照索引に列挙された component の詳細仕様ファイルを schema、呼び出し境界、表示、security、setup、fixture、検証観点として読む。 |
 | 補完禁止 | 個別節または owner component 詳細仕様に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存を実装判断で追加しない。追加が必要な場合は owner component の詳細仕様、関連 collaborator 詳細仕様、fixture catalog、必要な対応表を先に更新する。 |
@@ -532,11 +532,11 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能を実装した PR は、対象節、owner 詳細仕様、collaborator 詳細仕様、fixture、secret mask、失敗時副作用、実装対象外を PR 本文に記録する。記録が不足する場合は、実装完了として扱わない。
 
-追加仕様化機能の PR 責務分離、dry-run 固定契約、fixture 完了条件の詳細は、owner 詳細仕様と [`docs/details/fixture.md`](details/fixture.md) §27-F を正とする。builder 拡張 fixture 完了条件は、[`docs/details/builder.md`](details/builder.md) §28 と [`docs/details/fixture.md`](details/fixture.md) §28-F を正とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に同じ fixture schema、expected/effects、個別機能本文を重複定義しない。
+追加仕様化機能の PR 責務分離、dry-run 固定契約、fixture 完了条件の詳細は、owner 詳細仕様と [`docs/details/fixture.md`](details/fixture.md) §27-F を正とする。builder 拡張 fixture 完了条件は、[`docs/details/builder.md`](details/builder.md) §28 と [`docs/details/fixture.md`](details/fixture.md) §28-F を正とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に同じ fixture schema、expected/effects、個別機能本文を重複定義しない。
 
 ### 6.2 追加仕様化機能 参照索引
 
-本節は、追加仕様化機能の参照先を一覧化するインデックスである。個別機能本文は、下表の「主本文」に記載された owner component 詳細仕様を正とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) は、下表に記載された主本文、owner component、collaborator component を置き換えない。
+本節は、追加仕様化機能の参照先を一覧化するインデックスである。個別機能本文は、下表の「主本文」に記載された owner component 詳細仕様を正とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、下表に記載された主本文、owner component、collaborator component を置き換えない。
 
 下表は、追加仕様化機能の owner、主本文、collaborator だけを示す。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、fixture schema、横断処理順は本表で再定義しない。
 
@@ -597,7 +597,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | [`docs/details/builder.md`](details/builder.md) §28.9 | diff ハイライト | `builder` | [`docs/details/builder.md`](details/builder.md) §28.9 | なし |
 | [`docs/details/builder.md`](details/builder.md) §28.10 | 画像の遅延読み込み | `builder` | [`docs/details/builder.md`](details/builder.md) §28.10 | なし |
 | [`docs/details/builder.md`](details/builder.md) §28.11 | カスタムメタタグ注入 | `builder` | [`docs/details/builder.md`](details/builder.md) §28.11 | なし |
-| [`docs/details/builder.md`](details/builder.md) §28.12 | ライトモード固定 | `builder` | [`docs/details/builder.md`](details/builder.md) §28.12 | [`docs/DESIGN.md`](DESIGN.md) |
+| [`docs/details/builder.md`](details/builder.md) §28.12 | ライトモード固定 | `builder` | [`docs/details/builder.md`](details/builder.md) §28.12 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 |
 | [`docs/details/builder.md`](details/builder.md) §28.13 | コードブロックのファイル名表示 | `builder` | [`docs/details/builder.md`](details/builder.md) §28.13 | なし |
 | [`docs/details/builder.md`](details/builder.md) §28.14 | テンプレート変数展開 | `builder` | [`docs/details/builder.md`](details/builder.md) §28.14 | なし |
 | [`docs/details/builder.md`](details/builder.md) §28.15 | HTML ミニファイ | `builder` | [`docs/details/builder.md`](details/builder.md) §28.15 | なし |
@@ -666,4 +666,4 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | SDK request | 引数検証 → path / query / body 生成 → Authorization 付与 → timeout 設定 → fetch → status 判定 → response parse → token 変化適用 → return / throw。 |
 | multi-file write | 全入力検証 → 全対象 read → 全 write payload 生成 → [`docs/details/api.md`](details/api.md) §22.0d の Write 順に atomic write → JSON Lines 追記 → response。途中失敗時は未処理ファイルを書かない。 |
 
-[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 の実装では、owner 詳細仕様にない状態ファイル、endpoint、SDK method、UI 操作、外部公開構成を追加してはならない。追加が必要な場合は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) ではなく、該当 owner / collaborator の詳細仕様を先に改訂する。
+[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 の実装では、owner 詳細仕様にない状態ファイル、endpoint、SDK method、UI 操作、外部公開構成を追加してはならない。追加が必要な場合は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務ではなく、該当 owner / collaborator の詳細仕様を先に改訂する。

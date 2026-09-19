@@ -2640,7 +2640,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 §27.21〜§27.38、§27.42〜§27.47 の各機能は、owner component の個別節を主本文とする。下表は api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認するための表であり、runner / builder / security / fixture の主本文を置き換えない。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
 
-実装完了判定では、対象機能の owner component 詳細仕様、[`docs/ROADMAP.md`](../ROADMAP.md) の実装状態、[`docs/details/fixture.md`](fixture.md) §27-F の fixture / PR 証跡、必要な collaborator 詳細仕様を同時に満たす。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
+実装完了判定では、対象機能の owner component 詳細仕様、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の実装状態、[`docs/details/fixture.md`](fixture.md) §27-F の fixture / PR 証跡、必要な collaborator 詳細仕様を同時に満たす。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|

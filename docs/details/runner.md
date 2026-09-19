@@ -550,7 +550,7 @@ schema 検証では次を必須とする。
 | `config-startup/permission-error` | 対象ファイルが読み込み不可。 | 自動退避なし、終了コード `2`、`.build_state.running` 未変更。 |
 | `config-startup/help-version-skip` | `--help` または `--version`。 | 対象ファイルを読まず、変更しない。 |
 
-完了条件は、上記 fixture を Go test で検証し、[`docs/ROADMAP.md`](../ROADMAP.md) の実装状態、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) の実装ファイル索引、PR 本文の検証結果が一致していることとする。
+完了条件は、上記 fixture を Go test で検証し、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の実装状態、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の実装ファイル索引、PR 本文の検証結果が一致していることとする。
 
 **build id 契約：**
 
