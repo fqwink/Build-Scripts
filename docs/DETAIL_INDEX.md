@@ -269,18 +269,18 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 | 対象 | 詳細本文参照 | fixture / 証跡参照 |
 |------|--------------|--------------------|
-| `builder` | [`docs/details/builder.md`](details/builder.md) §2〜§8、§28 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、§28-F |
-| `runner` | [`docs/details/runner.md`](details/runner.md) §10〜§20、§27.1〜§27.38 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、§27-F |
-| `api` | [`docs/details/api.md`](details/api.md) §21〜§22、§25、§27 | [`docs/details/fixture.md`](details/fixture.md) §22-F、§27-F |
-| `sdk` | [`docs/details/sdk.md`](details/sdk.md) §23 | [`docs/details/fixture.md`](details/fixture.md) §22-F、§27-F |
-| `ui` | [`docs/details/ui.md`](details/ui.md) §24 | [`docs/details/fixture.md`](details/fixture.md) §22-F、§27-F |
-| `setup` | [`docs/details/setup.md`](details/setup.md) §26 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、§27-F |
-| `statefile` | [`docs/details/statefile.md`](details/statefile.md) §22.0a、§22.0c | [`docs/details/fixture.md`](details/fixture.md) §22-F、§27-F |
+| `builder` | [`docs/details/builder.md`](details/builder.md) §2〜§8、[`docs/details/builder.md`](details/builder.md) §28 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) §28-F |
+| `runner` | [`docs/details/runner.md`](details/runner.md) §10〜§20、[`docs/details/runner.md`](details/runner.md) §27.1〜§27.38 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) §27-F |
+| `api` | [`docs/details/api.md`](details/api.md) §21〜§22、[`docs/details/api.md`](details/api.md) §25、[`docs/details/api.md`](details/api.md) §27 | [`docs/details/fixture.md`](details/fixture.md) §22-F、[`docs/details/fixture.md`](details/fixture.md) §27-F |
+| `sdk` | [`docs/details/sdk.md`](details/sdk.md) §23 | [`docs/details/fixture.md`](details/fixture.md) §22-F、[`docs/details/fixture.md`](details/fixture.md) §27-F |
+| `ui` | [`docs/details/ui.md`](details/ui.md) §24 | [`docs/details/fixture.md`](details/fixture.md) §22-F、[`docs/details/fixture.md`](details/fixture.md) §27-F |
+| `setup` | [`docs/details/setup.md`](details/setup.md) §26 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) §27-F |
+| `statefile` | [`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/statefile.md`](details/statefile.md) §22.0c | [`docs/details/fixture.md`](details/fixture.md) §22-F、[`docs/details/fixture.md`](details/fixture.md) §27-F |
 | `security` | [`docs/details/security.md`](details/security.md) §27.42〜§27.47 | [`docs/details/fixture.md`](details/fixture.md) §27-F |
-| `archive` | [`docs/details/archive.md`](details/archive.md) §27.7、§27.15 | [`docs/details/fixture.md`](details/fixture.md) §27-F |
+| `archive` | [`docs/details/archive.md`](details/archive.md) §27.7、[`docs/details/archive.md`](details/archive.md) §27.15 | [`docs/details/fixture.md`](details/fixture.md) §27-F |
 | `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) §27.1 | [`docs/details/fixture.md`](details/fixture.md) §27-F |
 | `admin` | [`docs/details/admin.md`](details/admin.md) §0、A1〜A6 | [`docs/details/fixture.md`](details/fixture.md) §27-F |
-| `fixture` | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、§22-F、§27-F、§28-F | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、§22-F、§27-F、§28-F |
+| `fixture` | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) §22-F、[`docs/details/fixture.md`](details/fixture.md) §27-F、[`docs/details/fixture.md`](details/fixture.md) §28-F | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) §22-F、[`docs/details/fixture.md`](details/fixture.md) §27-F、[`docs/details/fixture.md`](details/fixture.md) §28-F |
 
 実装状態、実装可否、Phase 判定条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。確認済み扱いの可否と仕様変更判定条件は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f を参照する。
 
@@ -292,11 +292,11 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 | 対象 | 実装前に確認する詳細本文 | 確認する入口 |
 |------|--------------------------|--------------|
-| `builder` | [`docs/details/builder.md`](details/builder.md) §2〜§8、§28 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0i.1 |
-| `runner` | [`docs/details/runner.md`](details/runner.md) §10〜§20、§27.1〜§27.38 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0i.2 |
-| `api` | [`docs/details/api.md`](details/api.md) §21〜§22、§25、§27 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0i.3 |
-| `sdk` | [`docs/details/sdk.md`](details/sdk.md) §23 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0i.3 |
-| `ui` | [`docs/details/ui.md`](details/ui.md) §24 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0i.3 |
+| `builder` | [`docs/details/builder.md`](details/builder.md) §2〜§8、[`docs/details/builder.md`](details/builder.md) §28 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1 |
+| `runner` | [`docs/details/runner.md`](details/runner.md) §10〜§20、[`docs/details/runner.md`](details/runner.md) §27.1〜§27.38 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.2 |
+| `api` | [`docs/details/api.md`](details/api.md) §21〜§22、[`docs/details/api.md`](details/api.md) §25、[`docs/details/api.md`](details/api.md) §27 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.3 |
+| `sdk` | [`docs/details/sdk.md`](details/sdk.md) §23 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.3 |
+| `ui` | [`docs/details/ui.md`](details/ui.md) §24 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.3 |
 
 上表の対象外である `mcp`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で将来計画として確認する。これらは、現時点の [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務および owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に入出力、状態、起動手順、検証条件を持たない。
 
