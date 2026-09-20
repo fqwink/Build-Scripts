@@ -503,7 +503,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 6. 仕様凍結条件を満たした後、対象項目の `状態` を `仕様化済み・未実装`、`実装可否` を `実装可` に変更する。
 7. 実装と検証が完了した後、対象項目の `状態` を `実装済み`、`実装可否` を `完了済み` に変更する。
 
-上記手順を完了していない項目は、実装者判断で実装してはならない。
+上記手順を完了していない項目の実装着手可否は、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
 
 ## 6. 追加仕様化機能実装参照
 
@@ -511,14 +511,14 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ### 6.1 追加仕様化機能 共通実装契約
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 に列挙する追加仕様化機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。本節では、実装時に共通して確認する参照順、越境禁止、PR 証跡の入口だけを示す。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 に列挙する追加仕様化機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。本節では、実装時に共通して確認する参照順、越境確認、PR 証跡の入口だけを示す。
 
 | 確認 | 固定内容 |
 |------|----------|
-| 実装対象判定 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で実装状態と実装可否を確認し、将来計画、実装不可、未仕様化、MCP 専用詳細仕様がない状態の MCP 機能を実装対象にしない。 |
+| 実装対象判定 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で実装状態と実装可否を確認する。将来計画、実装不可、未仕様化、MCP 専用詳細仕様がない状態の MCP 機能の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。 |
 | owner 確定 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i で owner component を 1 件に確定し、主本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で確認する。 |
 | collaborator 確認 | collaborator がある場合は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能参照索引に列挙された collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を schema、呼び出し境界、表示、security、setup、fixture、検証観点として読む。 |
-| 補完禁止 | 個別節または owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に存在しない endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存を実装判断で追加しない。追加が必要な場合は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、関連 collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture catalog、必要な対応表を先に更新する。 |
+| 補完確認 | endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存が、個別節または owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に存在することを確認する。存在しない項目の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §4、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、関連 collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture catalog、必要な対応表を参照する。 |
 | 状態更新 | 状態ファイル更新は [`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/statefile.md`](details/statefile.md) §22.0c を基準とし、lock、atomic write、JSON Lines、破損時処理を独自定義しない。 |
 | security | secret mask、token、session、scope、audit、rate limit は [`docs/details/security.md`](details/security.md) を基準とし、平文保存・平文表示を行わない。 |
 | fixture / PR 証跡 | 追加仕様化機能の fixture manifest、expected/effects、assertion、PR 証跡、受け入れゲートは [`docs/details/fixture.md`](details/fixture.md) §27-F、builder 拡張 fixture は [`docs/details/fixture.md`](details/fixture.md) §28-F を参照する。 |
@@ -622,7 +622,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 本節の責務範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装確認時の横断受け入れ観点に限定する。個別機能本文は各 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
-本節と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI、fixture は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を基準とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを本節で確認する。本節を理由に、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に存在しない endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture を追加してはならない。
+本節と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI、fixture は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を基準とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを本節で確認する。本節にだけ存在する endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 | 確認 | 固定内容 |
 |------|----------|
@@ -636,7 +636,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 **api / sdk / ui / statefile 横断連動契約：**
 
-下表は横断確認表であり、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。下表の機能群は、各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に定義済みの API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえる。API だけ、SDK だけ、UI だけを先行して仕様外の仮実装にしてはならない。UI が未実装の Phase では、UI 列は fixture の期待操作として固定し、実装済み扱いには含めない。
+下表は横断確認表であり、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。下表の機能群は、各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に定義済みの API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえるための確認対象である。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と §3 を参照する。
 
 | 機能群 | API | SDK | UI 操作 | 状態ファイル副作用 | 成功後再取得 | 失敗時固定 |
 |--------|-----|-----|---------|--------------------|--------------|------------|
@@ -660,4 +660,4 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | SDK request | 引数検証 → path / query / body 生成 → Authorization 付与 → timeout 設定 → fetch → status 判定 → response parse → token 変化適用 → return / throw。 |
 | multi-file write | 全入力検証 → 全対象 read → 全 write payload 生成 → [`docs/details/api.md`](details/api.md) §22.0d の Write 順に atomic write → JSON Lines 追記 → response。途中失敗時は未処理ファイルを書かない。 |
 
-[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 の実装では、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務にない状態ファイル、endpoint、SDK method、UI 操作、外部公開構成を追加してはならない。追加が必要な場合は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務ではなく、該当 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を先に改訂する。
+[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 の実装確認では、状態ファイル、endpoint、SDK method、UI 操作、外部公開構成が owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に存在することを確認する。存在しない項目の追加可否と改訂先は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、該当 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
