@@ -15,7 +15,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | owner component | `sdk` |
 | collaborator component | `api`、`ui`、`security` |
 | 持つ内容 | `sdk` owner が主本文として定義する SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / 実装検証証跡責務。 |
+| 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture 証跡責務。 |
 
 ---
 

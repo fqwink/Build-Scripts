@@ -13,7 +13,7 @@
 | owner component | `statefile` |
 | collaborator component | `runner`、`api`、`archive`、`security` |
 | 持つ内容 | `statefile` owner が主本文として定義する状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
-| 持たない内容 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / release 手順、fixture / 実装検証証跡責務、個別 component の業務判断。 |
+| 持たない内容 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / release 手順、fixture 証跡責務、個別 component の業務判断。 |
 
 ---
 
