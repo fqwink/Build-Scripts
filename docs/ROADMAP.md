@@ -636,7 +636,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 **api / sdk / ui / statefile 横断連動契約：**
 
-下表は横断確認表であり、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。下表の機能群は、各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に定義済みの API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえるための確認対象である。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と §3 を参照する。
+下表は横断確認表であり、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。下表の機能群は、各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に定義済みの API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえるための確認対象である。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 を参照する。
 
 | 機能群 | API | SDK | UI 操作 | 状態ファイル副作用 | 成功後再取得 | 失敗時固定 |
 |--------|-----|-----|---------|--------------------|--------------|------------|

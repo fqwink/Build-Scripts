@@ -108,7 +108,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 
 **状態読取 adapter 固定契約：**
 
-本節は、statefile owner component が提供する状態読取 adapter 名、読取対象、正常戻り値、不在時、破損時 / 読込不能時の固定契約である。API endpoint ごとの読取順、response 算出、HTTP status は [`docs/details/api.md`](api.md) §22.0c.1 と §22.0d 以降を参照する。各 component は同じ状態ファイルを endpoint ごとに別ロジックで直接 parse してはならない。
+本節は、statefile owner component が提供する状態読取 adapter 名、読取対象、正常戻り値、不在時、破損時 / 読込不能時の固定契約である。API endpoint ごとの読取順、response 算出、HTTP status は [`docs/details/api.md`](api.md) §22.0c.1 と [`docs/details/api.md`](api.md) §22.0d 以降を参照する。各 component は同じ状態ファイルを endpoint ごとに別ロジックで直接 parse してはならない。
 
 | Adapter | 読取対象 | 正常戻り値 | 不在時 | 破損時 / 読込不能時 |
 |---------|----------|------------|--------|---------------------|
@@ -123,7 +123,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 
 read-only 呼び出しでは、上表の adapter を使用し、状態ファイルの作成、削除、退避、chmod、正規化、再生成、破損行の除去書き戻しを行ってはならない。API endpoint 固有の適用条件は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。`{name}.lock` を検出しても、`.build_lock` 以外の lock file は待機条件やエラー条件にせず、rename 済み target をそのまま読む。write 呼び出しは §22.0a の状態ファイル更新手順に従う。
 
-`ErrStateCorrupted` は JSON parse 失敗、schema_version 不一致、必須 key 不足、型不一致、列挙値不一致、UTC 時刻形式不一致のいずれかで返す。`ErrStateReadFailed` は permission denied、通常ファイルではない path、gzip 読込失敗、I/O error で返す。API の公開応答は [`docs/details/api.md`](api.md) §22.0c.1 と §22.0d 以降を参照する。statefile adapter の error は、path、Go error、ファイル内容を呼び出し元へ公開する response 値として含めない。
+`ErrStateCorrupted` は JSON parse 失敗、schema_version 不一致、必須 key 不足、型不一致、列挙値不一致、UTC 時刻形式不一致のいずれかで返す。`ErrStateReadFailed` は permission denied、通常ファイルではない path、gzip 読込失敗、I/O error で返す。API の公開応答は [`docs/details/api.md`](api.md) §22.0c.1 と [`docs/details/api.md`](api.md) §22.0d 以降を参照する。statefile adapter の error は、path、Go error、ファイル内容を呼び出し元へ公開する response 値として含めない。
 
 JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 key 不足、型不一致の行を壊れた行として除外する。除外後に sort、filter、paging、`total`、`pages` を算出する。壊れた行の存在は呼び出し元の公開値に含めず、server log に固定コード、path、1 始まりの line number だけを記録する。
 
@@ -804,17 +804,17 @@ BuildMeta object:
 
 ### §22.0s 状態ファイル実装確認固定契約
 
-`statefile` owner component は、§22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。状態ファイルごとの暗黙処理は追加せず、下表の共通契約を満たす。
+`statefile` owner component は、[`docs/details/statefile.md`](statefile.md) §22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。状態ファイルごとの暗黙処理は追加せず、下表の共通契約を満たす。
 
 | 観点 | 入力 | 必須処理 | 成功時出力 | 失敗時出力 / 副作用 |
 |------|------|----------|------------|---------------------|
-| path 解決 | state dir、§22.0a の状態ファイル path | state dir 外へ出る path、absolute user input、`..`、symlink 経由の secret 参照を拒否する。 | 正規化済み target path。 | 呼び出し元へ path failure を返す。target を作成・変更しない。 |
-| schema 読取 | JSON object / JSON array / JSON Lines / text | §22.0c の key、型、nullable、列挙値、UTC 時刻形式を検証する。 | typed value。 | `ErrStateCorrupted` または行単位 skip。未知 key を削除して成功扱いにしない。 |
-| 初期値 | file 不在 | §22.0a の「不在時」または初期値を返す。 | 初期 typed value。 | read-only 呼び出しでは file を作成しない。write 呼び出しだけ更新手順で作成する。 |
+| path 解決 | state dir、[`docs/details/statefile.md`](statefile.md) §22.0a の状態ファイル path | state dir 外へ出る path、absolute user input、`..`、symlink 経由の secret 参照を拒否する。 | 正規化済み target path。 | 呼び出し元へ path failure を返す。target を作成・変更しない。 |
+| schema 読取 | JSON object / JSON array / JSON Lines / text | [`docs/details/statefile.md`](statefile.md) §22.0c の key、型、nullable、列挙値、UTC 時刻形式を検証する。 | typed value。 | `ErrStateCorrupted` または行単位 skip。未知 key を削除して成功扱いにしない。 |
+| 初期値 | file 不在 | [`docs/details/statefile.md`](statefile.md) §22.0a の「不在時」または初期値を返す。 | 初期 typed value。 | read-only 呼び出しでは file を作成しない。write 呼び出しだけ更新手順で作成する。 |
 | atomic write | 更新後 JSON / text | `{name}.lock`、tmp、chmod、rename、file sync、parent sync、lock 削除を順に行う。 | target が完全な新内容へ置換される。 | target は旧内容を維持する。tmp と lock は best effort で削除し、呼び出し元へ write failure を返す。 |
 | lock timeout | 既存 `{name}.lock` | 100ms 間隔、最大 10 秒待つ。 | lock 取得後に更新継続。 | 呼び出し元へ conflict failure を返す。target を変更しない。 |
 | chmod | target file / directory | 秘密情報 `0600`、通常 file `0644`、directory `0755` を適用する。 | mode が固定値に一致する。 | chmod 失敗は成功扱いにしない。rename 前なら target 変更なし、rename 後なら ERROR ログへ記録する。 |
-| corrupt backup | §22.0a で退避指定された破損 file | `{name}.corrupt.{YYYYMMDDHHMMSS}.bak` へ同一 directory 内で rename する。 | backup file と再生成初期値。 | backup 失敗時は再生成せず backup failure を返す。secret 内容を log / 呼び出し元の公開値に含めない。 |
+| corrupt backup | [`docs/details/statefile.md`](statefile.md) §22.0a で退避指定された破損 file | `{name}.corrupt.{YYYYMMDDHHMMSS}.bak` へ同一 directory 内で rename する。 | backup file と再生成初期値。 | backup 失敗時は再生成せず backup failure を返す。secret 内容を log / 呼び出し元の公開値に含めない。 |
 | JSON Lines | JSON Lines file | 空行、JSON object 以外、必須 key 不足、型不一致行を除外する。 | 有効行だけの配列。 | 壊れた行は server log に固定 code、path、line number だけ記録する。呼び出し元の公開値に壊れた行数を含めない。 |
 | 複数ファイル更新 | 複数 state 書込 caller | 呼び出し元が定義する Write 列順に 1 file ずつ atomic write する。API 固有の順序は [`docs/details/api.md`](api.md) §22.0d 以降を参照する。 | 全対象が順に更新される。 | 未処理 file は変更しない。更新済み file は自動 rollback しない。`.config_log` に失敗を記録する。 |
 
@@ -823,7 +823,7 @@ BuildMeta object:
 | 呼び出し種別 | 許可する処理 | 禁止する処理 |
 |--------------|--------------|--------------|
 | read-only caller | 既存 target の読取、typed value 変換、JSON Lines の有効行抽出、fallback 値算出。 | file 作成、chmod、corrupt backup、旧形式保存、lock 待機、lock 削除、tmp 作成。 |
-| write caller | 入力 validation 後の atomic write、§22.0a で定義された初期値作成、定義済み corrupt backup。 | validation 前の状態変更、未定義 file 作成、未知 key 保存、secret 平文 log。 |
+| write caller | 入力 validation 後の atomic write、[`docs/details/statefile.md`](statefile.md) §22.0a で定義された初期値作成、定義済み corrupt backup。 | validation 前の状態変更、未定義 file 作成、未知 key 保存、secret 平文 log。 |
 | runner write | build lifecycle に必要な state 更新、`.build_lock` stale 判定後の lock 削除。 | API 専用 credentials / token / auth state の直接変更。 |
 | setup write | 初期配置に必要な `.github_token`、`.last_sha`、admin directory の配置。 | API runtime state、history、build log、session、token の生成。 |
 

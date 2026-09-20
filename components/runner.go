@@ -243,7 +243,7 @@ func parseRunnerArgs(args []string, stdout io.Writer) (RunnerConfig, bool, error
 			fmt.Fprintln(stdout, "Usage: adlaire-ci-runner [--state-dir path] [--once] [--version] [--help]")
 			return cfg, true, nil
 		case "--version":
-			fmt.Fprintf(stdout, "adlaire-ci-runner ADLAIRE_CI_SPEC go=%s\n", runtime.Version())
+			fmt.Fprintf(stdout, "adlaire-ci-runner v3 go=%s\n", runtime.Version())
 			return cfg, true, nil
 		case "--once":
 			continue
@@ -821,7 +821,7 @@ func precheckRunnerTarget(target BranchTarget) error {
 	if err != nil {
 		return err
 	}
-	if !strings.Contains(string(out), "adlaire-ci-build") || !strings.Contains(string(out), "ADLAIRE_CI_SPEC") {
+	if !strings.Contains(string(out), "adlaire-ci-build") || !strings.Contains(string(out), "v3") {
 		return fmt.Errorf("build binary version mismatch: %s", buildBin)
 	}
 	return nil

@@ -154,7 +154,7 @@ func parseArgs(args []string, stdout io.Writer) (BuildConfig, bool, error) {
 			return cfg, true, nil
 		}
 		if arg == "--version" {
-			fmt.Fprintf(stdout, "adlaire-ci-build ADLAIRE_CI_SPEC go=%s\n", runtime.Version())
+			fmt.Fprintf(stdout, "adlaire-ci-build v3 go=%s\n", runtime.Version())
 			return cfg, true, nil
 		}
 		if arg == "--strict" {

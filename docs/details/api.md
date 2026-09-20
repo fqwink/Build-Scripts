@@ -57,7 +57,7 @@ Owner             = "<GitHubオーナー名>"                       // 初期値
 Repo              = "<リポジトリ名>"                           // 初期値。POST /api/repo-config の repo 更新成功時だけ .repo_config に保存
 ```
 
-API service の systemd unit、配置、起動、更新、rollback は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.3b、§26.4.2、§26.5 を参照する。
+API service の systemd unit、配置、起動、更新、rollback は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.3b、[`docs/details/setup.md`](setup.md) §26.4.2、[`docs/details/setup.md`](setup.md) §26.5 を参照する。
 
 `api` は `adlaire-ci-api --addr 127.0.0.1:8765 --state-dir /opt/adlaire-builder` として起動された後の HTTP listener、request / response、状態ファイル read/write 呼び出し境界だけを定義する。
 
@@ -475,7 +475,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 **archive / snapshot / rollback 処理参照：**
 
-`POST /api/logs/cleanup`、`POST /api/logs/archive`、`GET /api/snapshots`、`GET /api/snapshots/{id}/download`、`DELETE /api/snapshots/{id}`、`POST /api/history/{id}/rollback` の保存、圧縮、削除、download 安全性、rollback 実体処理は [`docs/details/archive.md`](archive.md) §27.7 および §27.15 を参照する。本ファイルでは API endpoint、request / response、HTTP status、read / write 境界だけを定義する。
+`POST /api/logs/cleanup`、`POST /api/logs/archive`、`GET /api/snapshots`、`GET /api/snapshots/{id}/download`、`DELETE /api/snapshots/{id}`、`POST /api/history/{id}/rollback` の保存、圧縮、削除、download 安全性、rollback 実体処理は [`docs/details/archive.md`](archive.md) §27.7 および [`docs/details/archive.md`](archive.md) §27.15 を参照する。本ファイルでは API endpoint、request / response、HTTP status、read / write 境界だけを定義する。
 
 **backup / restore API 副作用固定契約：**
 
@@ -556,7 +556,7 @@ API が新規 ID を生成する機能は、下表の形式に従う。既存 ID
 
 ### 22.0e.3 API Endpoint 種別別実装契約
 
-API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定順を必ず適用する。共通判定後の endpoint 種別別処理は下表に従う。
+API handler は endpoint ごとの個別処理へ入る前に、[`docs/details/api.md`](api.md) §22.0 の判定順を必ず適用する。共通判定後の endpoint 種別別処理は下表に従う。
 
 | 種別 | 対象 endpoint | 処理順序 | 成功時 | 失敗時 |
 |------|---------------|----------|--------|--------|
@@ -928,7 +928,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 既に一時停止中に `pause`、または稼働中に `resume` を呼び出した場合は `409 Conflict` を返す。
 
-> **責務分担：** build lifecycle 通知、pending retry、自動 weekly summary の送信責務は [`docs/details/runner.md`](runner.md) §27.32 および §27.19 を参照する。本節では通知 API の request / response、設定 read/write、履歴参照、手動送信 endpoint 境界だけを定義する。
+> **責務分担：** build lifecycle 通知、pending retry、自動 weekly summary の送信責務は [`docs/details/runner.md`](runner.md) §27.32 および [`docs/details/runner.md`](runner.md) §27.19 を参照する。本節では通知 API の request / response、設定 read/write、履歴参照、手動送信 endpoint 境界だけを定義する。
 
 **`GET /api/notify-config` レスポンス例：**
 ```json
@@ -1989,7 +1989,7 @@ SMTP fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能�
 
 **queue 処理固定契約：**
 
-queue 追加は `.build_state` の atomic write で行い、id は §22.0e.2 の queue id とする。queue entry は FIFO を標準とし、§27.35 の優先度キューが有効な場合だけ priority を使用する。`DELETE /api/queue` は `.build_state.queued` だけを空配列にし、実行中 build、lock、history、log を変更しない。
+queue 追加は `.build_state` の atomic write で行い、id は [`docs/details/api.md`](api.md) §22.0e.2 の queue id とする。queue entry は FIFO を標準とし、[`docs/details/runner.md`](runner.md) §27.35 の優先度キューが有効な場合だけ priority を使用する。`DELETE /api/queue` は `.build_state.queued` だけを空配列にし、実行中 build、lock、history、log を変更しない。
 
 `queue_max_size=0` の場合、実行中に受けた queue 対応 API は `429 {"error":"queue_full"}` を返す。`.build_state.queued` の件数が `queue_max_size` 以上の場合も同じ body とする。
 
@@ -2084,17 +2084,17 @@ queue fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能�
 
 ## 25. 認証 実装仕様
 
-認証、session、password hash、login ticket、TOTP 連携、認証ログ、漏えい禁止、`--init-credentials` 生成手順の主本文は [`docs/details/security.md`](security.md) の認証共通詳細および §27.45〜§27.46 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
+認証、session、password hash、login ticket、TOTP 連携、認証ログ、漏えい禁止、`--init-credentials` 生成手順の主本文は [`docs/details/security.md`](security.md) の認証共通詳細および [`docs/details/security.md`](security.md) §27.45〜§27.46 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
 
 本ファイルでは、認証関連 API の endpoint、request / response、HTTP status、状態ファイル read / write 境界だけを定義する。
 
 | API / CLI | API 側の担当 | 主本文 |
 |-----------|--------------|--------|
-| `POST /api/login` | route、body parse、response body、HTTP status、`.admin_credentials` / `.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、§27.46 |
-| `POST /api/login/totp` | route、body parse、response body、HTTP status、`.totp_secret` / `.admin_credentials` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、§27.46 |
+| `POST /api/login` | route、body parse、response body、HTTP status、`.admin_credentials` / `.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、[`docs/details/security.md`](security.md) §27.46 |
+| `POST /api/login/totp` | route、body parse、response body、HTTP status、`.totp_secret` / `.admin_credentials` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、[`docs/details/security.md`](security.md) §27.46 |
 | `POST /api/logout` | route、body 禁止、response body、HTTP status。 | [`docs/details/security.md`](security.md) 認証共通詳細 |
 | `POST /api/change-password` | route、body parse、response body、HTTP status、`.admin_credentials` write 呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細 |
-| `GET /api/sessions` / `POST /api/sessions/revoke-all` | route、response body、HTTP status、memory session 操作呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、§27.45 |
+| `GET /api/sessions` / `POST /api/sessions/revoke-all` | route、response body、HTTP status、memory session 操作呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、[`docs/details/security.md`](security.md) §27.45 |
 | `--init-credentials` | CLI option dispatch、stdout / stderr / exit code を security 契約どおり返す。 | [`docs/details/security.md`](security.md) 認証共通詳細、[`docs/details/statefile.md`](statefile.md) §22.0c |
 | `GET /api/auth/totp-status` / `POST /api/auth/totp-setup` / `POST /api/auth/totp-confirm` / `DELETE /api/auth/totp` | route、body parse、response body、HTTP status、`.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) §27.46 |
 
@@ -2652,9 +2652,9 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | diff failure | 状態差分なしで `500`。 |
 | target name | endpoint から固定 target 名が生成される。 |
 
-**§27.21〜§27.38 / §27.42〜§27.47 api 連動境界確認表：**
+**[`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 api 連動境界確認表：**
 
-§27.21〜§27.38、§27.42〜§27.47 の各機能は、owner component の個別節を主本文とする。下表は api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認するための表であり、runner / builder / security / fixture の主本文を置き換えない。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
+[`docs/details/runner.md`](runner.md) §27.21〜§27.38、[`docs/details/security.md`](security.md) §27.42〜§27.47 の各機能は、owner component の個別節を主本文とする。下表は api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認するための表であり、runner / builder / security / fixture の主本文を置き換えない。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は [`docs/details/runner.md`](runner.md) §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
 
 詳細実装確認では、対象機能の owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) §27-F の fixture、必要な collaborator component 別の [`docs/details/*.md`](../details/) 詳細本文責務を同時に参照する。実装状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
 
@@ -2685,7 +2685,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | §27.46 | TOTP | setup secret、ticket、TOTP code。 | `.totp_secret`、ticket/session response、audit/access log。 | secret / ticket はメモリと 1 回 response に限定し、成功時だけ永続状態を更新する。 | code 不一致 / replay は token を返さない。audit 失敗時も secret 平文を出さない。 | setup、login、replay、secret one-time、ticket reuse、disable、window、全角 code。 |
 | §27.47 | API rate limit | rate policy、remote addr、actor key。 | `.api_rate_state`、`429`、state summary。 | key 群を同一 lock で判定 / 更新する。 | 上限超過では count を増やさず endpoint 固有処理を行わない。audit 失敗時は `500`。 | under limit、over IP、over token、disabled、policy update、audit failure、window reset。 |
 
-**§27.21〜§27.38 / §27.42〜§27.47 api / sdk / ui 連動参照表：**
+**[`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 api / sdk / ui 連動参照表：**
 
 下表は api、sdk、ui の接続点をそろえるための参照表である。各 API endpoint の詳細は本ファイルの個別節、SDK method の詳細は [`docs/details/sdk.md`](sdk.md) §23、UI 操作の詳細は [`docs/details/ui.md`](ui.md) §24、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。本表だけを根拠に endpoint、method、DOM、状態ファイル、fixture を追加してはならない。
 
@@ -2718,9 +2718,9 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 api / sdk / ui のいずれも、上表に存在しない endpoint、method、UI 操作を追加してはならない。追加が必要な場合は、本表、該当 endpoint 個別節、SDK method 表、UI 操作契約、fixture catalog を先に更新する。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
 
-**§27 api / sdk / ui 連動実装確認ゲート：**
+**[`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 api / sdk / ui 連動実装確認ゲート：**
 
-§27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する機能の詳細実装確認では、下表の全条件を満たす。owner component が `api` ではない機能でも、API response を SDK / UI が利用する場合は本ゲートを満たす。
+[`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 のうち API、SDK、UI が連動する機能の詳細実装確認では、下表の全条件を満たす。owner component が `api` ではない機能でも、API response を SDK / UI が利用する場合は本ゲートを満たす。
 
 | ゲート | API 側の合格条件 | SDK / UI への固定契約 | 禁止事項 |
 |--------|------------------|------------------------|----------|

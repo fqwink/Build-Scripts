@@ -26,7 +26,7 @@
 
 | 確認対象 | 入口 |
 |----------|------|
-| owner component の特定 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.0 と §0b を参照する。 |
+| owner component の特定 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.0 と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b を参照する。 |
 | owner / collaborator 境界 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 を参照する。 |
 | 詳細仕様間の相互参照 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
 | 状態分類、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。 |

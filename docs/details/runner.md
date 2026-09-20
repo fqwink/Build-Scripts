@@ -679,7 +679,7 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 
 **ビルドトリガー種別契約：**
 
-`trigger` は runner が処理を開始した原因を表す固定文字列であり、runner は `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に同じ値を保存する。API response、SDK 型、UI 表示での扱いは [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。実装者判断で `auto`、`force`、`scheduled` など別名を追加してはならない。
+`trigger` は runner が処理を開始した原因を表す固定文字列であり、runner は `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に同じ値を保存する。API response、SDK 型、UI 表示での扱いは [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。実装者判断で `auto`、`force`、`scheduled` など別名を追加してはならない。
 
 | `trigger` | 発生条件 | build log | history | status |
 |-----------|----------|-----------|---------|--------|
@@ -1956,8 +1956,8 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 条件 | 処理 |
 |------|------|
 | `.build_status.json` 書き込み失敗 | ERROR ログ `BUILD_STATUS_WRITE_FAILED: path={path} error={reason}` を出し、runner 終了コードを最低 `1` にする。build 成功後に発生した場合も終了コードは `1` とする。 |
-| `.build_status.json` 破損を API が検出 | API の HTTP status と response は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。runner は破損 status file を自動修復しない。 |
-| `.build_status.json` 不在 | API の後方互換算出は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。runner は API 読取のために status file を作成しない。 |
+| `.build_status.json` 破損を API が検出 | API の HTTP status と response は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。runner は破損 status file を自動修復しない。 |
+| `.build_status.json` 不在 | API の後方互換算出は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。runner は API 読取のために status file を作成しない。 |
 | pending 件数読取失敗 | 件数を `null` にせず `0` として返してはならない。status 書き込み時はエラー扱いにし、`last_error` に固定文言を保存する。 |
 
 **セキュリティ：**
@@ -1968,9 +1968,9 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 | 項目 | 仕様 |
 |------|------|
-| `running=true` 不一致 | `.build_lock` が存在しないのに `running=true` の場合、runner は自動修復しない。API の degradation 表現は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
-| pending 件数 | `.pending_transfers` と `.notify_pending` は読めた場合だけ件数算出対象にする。読取失敗時の API 表現は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
-| history 不一致 | `.build_status.json.last_build_id` と最新 history id が異なる場合、runner は status file を書き換えない。API の優先順位と warning は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
+| `running=true` 不一致 | `.build_lock` が存在しないのに `running=true` の場合、runner は自動修復しない。API の degradation 表現は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。 |
+| pending 件数 | `.pending_transfers` と `.notify_pending` は読めた場合だけ件数算出対象にする。読取失敗時の API 表現は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。 |
+| history 不一致 | `.build_status.json.last_build_id` と最新 history id が異なる場合、runner は status file を書き換えない。API の優先順位と warning は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 | finalizer | finalizer は既存 `last_build_id`、`last_finished_at` を消さず、`running=false` と `current_build_id=null` だけを最低更新する。 |
 
 **検証条件：**
@@ -1982,8 +1982,8 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 変更なし | build log / history を作らず、`.build_status.json` は `skipped_no_change` を保持する。 |
 | 起動時整合性復旧 | `last_trigger="startup_config_integrity"`、復旧内容が `last_error` または warning として確認できる。 |
 | 書込失敗 | runner 終了コードが最低 `1`、ERROR ログが出る。 |
-| API read | API の読取順は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。runner は `.build_status.json` を保存入力として提供する。 |
-| running stale | runner は stale 状態を自動修復しない。API の degradation 表現は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
+| API read | API の読取順は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。runner は `.build_status.json` を保存入力として提供する。 |
+| running stale | runner は stale 状態を自動修復しない。API の degradation 表現は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 | finalizer | `last_build_id` を消さない。 |
 
 ### 27.9 ビルドトリガー種別の記録
@@ -2006,7 +2006,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 | `local_watch` | `watch_mode="local"` の local SHA 差分により build する。 | GitHub API を呼ばない。 |
 | `approval` | `POST /api/approvals/{id}/approve` 由来の queue entry を処理する。 | 承認済み entry のみ。 |
 
-runner は上表以外の値を保存してはならない。API の返却、SDK 型、UI 表示で許可される trigger 値は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。特に `"auto"`、`"force"`、`"scheduled"`、`"timer"` は runner 保存値として使用禁止とする。
+runner は上表以外の値を保存してはならない。API の返却、SDK 型、UI 表示で許可される trigger 値は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。特に `"auto"`、`"force"`、`"scheduled"`、`"timer"` は runner 保存値として使用禁止とする。
 
 **保存先：**
 
@@ -2016,7 +2016,7 @@ runner は上表以外の値を保存してはならない。API の返却、SDK
 | `.build_history.trigger` | build history を追記する全処理で必須。 |
 | `.build_status.json.last_trigger` | build、skip、復旧、rollback の最終 trigger を保存する。 |
 | Queue entry `trigger` | `"manual"`、`"webhook"`、`"approval"` のみ許可する。 |
-| API response / SDK / UI 連携 | API response の field、SDK 型、UI 表示は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。runner は同じ trigger 値を保存する。 |
+| API response / SDK / UI 連携 | API response の field、SDK 型、UI 表示は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。runner は同じ trigger 値を保存する。 |
 
 **判定順序：**
 
@@ -2033,15 +2033,15 @@ runner は上表以外の値を保存してはならない。API の返却、SDK
 
 **api / sdk / ui 参照：**
 
-`GET /api/history` の `trigger` query、HTTP status、response warning、SDK `getHistory({trigger})`、UI filter 表示は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。本ファイルでは runner が保存する trigger 値、保存先、判定順序だけを定義する。
+`GET /api/history` の `trigger` query、HTTP status、response warning、SDK `getHistory({trigger})`、UI filter 表示は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。本ファイルでは runner が保存する trigger 値、保存先、判定順序だけを定義する。
 
 **異常系：**
 
 | 条件 | 処理 |
 |------|------|
 | queue entry の trigger が不正 | queue entry を処理せず ERROR ログ `INVALID_TRIGGER: id={id} trigger={value}` を出す。HTTP API 由来の validation は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
-| 既存 history に未知 trigger がある | runner は新規保存で未知値を禁止する。API の返却と warning は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
-| build log と history の trigger 不一致 | runner は不一致を状態不整合として扱う。API の HTTP status と server log は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
+| 既存 history に未知 trigger がある | runner は新規保存で未知値を禁止する。API の返却と warning は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。 |
+| build log と history の trigger 不一致 | runner は不一致を状態不整合として扱う。API の HTTP status と server log は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 
 **trigger 保存・queue 固定契約：**
 
@@ -2050,7 +2050,7 @@ runner は上表以外の値を保存してはならない。API の返却、SDK
 | queue 取り出し | queue entry の trigger は取り出し時に validation し、不正なら entry を削除せず処理を中断する。 |
 | rollback | rollback API は queue を経由しない場合でも build log / history に `rollback` を保存する。 |
 | startup | `startup_config_integrity` は build id を採番しない。 |
-| unknown 既存値 | runner は新規保存で未知値を作らない。既存値の API response と UI warning は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e、[`docs/details/ui.md`](ui.md) §24 を参照する。 |
+| unknown 既存値 | runner は新規保存で未知値を作らない。既存値の API response と UI warning は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、[`docs/details/ui.md`](ui.md) §24 を参照する。 |
 
 **検証条件：**
 
@@ -2063,7 +2063,7 @@ runner は上表以外の値を保存してはならない。API の返却、SDK
 | filter | history trigger filter の API 挙動は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は filter 対象となる `trigger` を保存する。 |
 | 不正 trigger | queue 作成または history filter の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は不正 queue entry を処理しない。 |
 | startup trigger | build log / history を作らない。 |
-| mismatch | API の HTTP status は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。runner は不一致を状態不整合として扱う。 |
+| mismatch | API の HTTP status は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。runner は不一致を状態不整合として扱う。 |
 
 ### 27.10 設定ファイル起動時整合性チェック
 
@@ -2184,7 +2184,7 @@ API response の `BuildDurationStats` 表現、空配列、`null` 表現は [`do
 | deploy pending | deploy pending でも build 処理自体の finished_at を保存し、pending retry の所要時間を合算しない。 |
 | rollback | rollback build log も duration を保存する。元 snapshot の duration は変更しない。 |
 | skip | `skipped_no_change`、`skipped_cooldown`、`circuit_open` で build log を作らない場合、duration を作らない。build log を作る skip fixture では `duration_seconds=0` を明示する。 |
-| read-only stats | stats 系 API が読む history、logs、archive、trend、status は runner 側で read-only 入力として提供される。API の no-write 境界は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
+| read-only stats | stats 系 API が読む history、logs、archive、trend、status は runner 側で read-only 入力として提供される。API の no-write 境界は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 
 **統計入力分類・丸め固定契約：**
 
