@@ -24,13 +24,13 @@
 | §0g.8-F | Phase fixture / testdata 配置、fake 実装、実装検証証跡。 |
 | §22-F | Phase 3 / Phase 4 API の必須検証、API fixture、API / SDK / UI / 状態ファイル cross fixture 固定。 |
 | §27-F | §27 fixture 配置、fixture カタログ、manifest、assertion、expected/effects、相互整合、component 別検証責務。 |
-| §27-F-PR | §27 実装検証証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
+| §27-F-EVIDENCE | §27 実装検証証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
 
 ## 0g.8-F Phase fixture / testdata / fake / 実装検証証跡契約
 
 本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、実装検証証跡、acceptance checklist、差し戻し条件を扱う fixture 証跡責務である。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0g、§0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、実装検証証跡項目、不足時の扱い、差し戻し条件は本ファイルを参照する。
 
-実装検証証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる変更は、該当する全系統の証跡を Pull Request 本文または検証ログに記録する。Pull Request 作成、merge、branch 操作、レビュー対応の作業ルールは [`AGENTS.md`](../../AGENTS.md) を参照し、本ファイルでは定義しない。
+実装検証証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる変更は、該当する全系統の証跡を実装検証証跡として記録する。Pull Request 作成、merge、branch 操作、レビュー対応の作業ルールは [`AGENTS.md`](../../AGENTS.md) を参照し、本ファイルでは定義しない。
 
 | 系統 | 対象 | 責務節 | 必須証跡 |
 |------|------|--------|----------|
@@ -75,7 +75,7 @@ Phase、API、§27 のいずれの実装検証証跡でも、記録形式は本�
 | 検証 | 実行コマンド、fixture 名、期待結果、実結果、判定。 | 合否を再現できないため未完了。 |
 | 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定、未定義 endpoint / UI / 状態ファイルのうち今回実装しない範囲を実装検証証跡に列挙する。 | 先取り実装または範囲不明として未完了。 |
 | 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用禁止の未固定 contract を実装検証証跡に列挙する。 | 次 Phase 着手条件未充足として未完了。 |
-| secret 確認 | log、fixture、snapshot、UI 表示、Pull Request 本文に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
+| secret 確認 | log、fixture、snapshot、UI 表示、実装検証証跡に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
 
 ## 22-F Phase 3 / Phase 4 API fixture 契約
 
@@ -787,13 +787,13 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 
 上表の fixture は、`manifest.json.owner_component` を `setup` または `admin` のどちらかに固定し、もう片方を `collaborator_components` に含める。実装変更が API service 起動、static serving、rollback、secret 保持を扱う場合は、`api`、`runner`、`security` を collaborator として追加し、`expected/effects.json` の `forbidden_calls` と `forbidden_writes` に禁止対象を明記する。
 
-**§27 PR 別必須記録固定契約：**
+**§27 実装検証証跡 必須記録固定契約：**
 
-各 §27 実装変更は、Pull Request 本文または検証ログに下表を記録する。記録がない変更は、コードと fixture が存在しても未完了とする。
+各 §27 実装変更は、実装検証証跡に下表を記録する。記録がない変更は、コードと fixture が存在しても未完了とする。
 
 | 記録項目 | 必須内容 |
 |----------|----------|
-| wave | 対象 wave、対象 §27.x、先行 wave 完了 commit または PR 番号。 |
+| wave | 対象 wave、対象 §27.x、先行 wave 完了 commit または変更識別子。 |
 | 実装対象 | 実装する機能名、owner component、collaborator component、変更ファイル、追加 fixture path。 |
 | 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイルを実装検証証跡に列挙する。 |
 | fixture | §27 fixture カタログの fixture 名、manifest / effects / security の検証結果。 |
@@ -817,7 +817,7 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 
 **§27 実装 acceptance checklist：**
 
-Pull Request 本文または検証ログには、下表の項目を記録する。記録がない項目は未検証として扱い、対象機能を完了扱いにしてはならない。
+実装検証証跡には、下表の項目を記録する。記録がない項目は未検証として扱い、対象機能を完了扱いにしてはならない。
 
 | 項目 | 記録内容 |
 |------|----------|
@@ -833,7 +833,7 @@ Pull Request 本文または検証ログには、下表の項目を記録する�
 
 **§27 差し戻し固定条件：**
 
-次のいずれかに該当する PR は、fixture が pass していても差し戻しとする。
+次のいずれかに該当する変更は、fixture が pass していても差し戻しとする。
 
 | 条件 | 理由 |
 |------|------|
@@ -1350,11 +1350,11 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 **§28 実装検証証跡固定契約：**
 
-Pull Request 本文または検証ログには、対象 §28.x、追加 fixture 名、変更した HTML / CSS / JS / REPORT key、strict / non-strict 結果、外部依存なし確認、既存出力互換確認、未実装の §28 機能を列挙する。対象外の §28 機能を先取り実装した場合、または [`docs/details/builder.md`](builder.md) §28 に存在しない Markdown 記法、CLI option、CSS class、JS 挙動を追加した場合は未完了として扱う。
+実装検証証跡には、対象 §28.x、追加 fixture 名、変更した HTML / CSS / JS / REPORT key、strict / non-strict 結果、外部依存なし確認、既存出力互換確認、未実装の §28 機能を列挙する。対象外の §28 機能を先取り実装した場合、または [`docs/details/builder.md`](builder.md) §28 に存在しない Markdown 記法、CLI option、CSS class、JS 挙動を追加した場合は未完了として扱う。
 
 **§28 実装受け入れゲート固定契約：**
 
-§28 実装変更は、下表を Pull Request 本文または検証ログで確認できる場合だけ受け入れ可能とする。確認できない項目は、実装漏れではなく証跡不足として未完了扱いにする。
+§28 実装変更は、下表を実装検証証跡で確認できる場合だけ受け入れ可能とする。確認できない項目は、実装漏れではなく証跡不足として未完了扱いにする。
 
 | ゲート | 実装検証証跡 | 不足時の扱い |
 |--------|---------|--------------|

@@ -234,7 +234,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 1. 実装した機能が、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と本ファイルの対応表に記載された入力、出力、状態、異常系、検証条件と一致する。
 2. 対象機能が owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i の詳細節対応表の受け入れ条件を満たしている。
 3. [`docs/details/fixture.md`](details/fixture.md) が要求する fixture、fake、expected / effects、実装検証証跡、対象外確認を満たしている。
-4. 実装対象外に残す機能が Pull Request 本文または検証ログに明記されている。
+4. 実装対象外に残す機能が [`docs/details/fixture.md`](details/fixture.md) の実装検証証跡に明記されている。
 5. [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、[`AGENTS.md`](../AGENTS.md) のファイル名参照が矛盾していない。
 6. 実装ファイルを変更した場合、構文確認または実行確認の結果が記録できる。
 7. 仕様外の挙動、暗黙の既定値、未記載の状態ファイル、未記載のエラー応答が存在しない。
@@ -513,7 +513,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 本節は、現行の標準配置を定義する。標準外配置の `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱わない。
 
-本節の tree は標準配置の最終形を示す。現時点で `将来計画` または `仕様化済み・未実装` の path は、将来追加予定 path として扱い、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれる未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder の作成可否は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+本節の tree は標準配置の最終形を示す。現時点で `将来計画` または `仕様化済み・未実装` の path は、将来追加予定 path として扱い、該当 owner component が実装対象になった変更で追加する。標準配置図に含まれる未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder の作成可否は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 ```text
 .

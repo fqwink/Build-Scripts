@@ -617,9 +617,9 @@ Phase 別の fixture、fake、expected / effects、実装検証証跡、不足�
 | DOM assertion | setup / release / update が admin UI 静的ファイルの配置と到達確認を変更した場合のみ、setup 側の検証入口として更新する。UI DOM、panel、表示文言、disabled / loading / success / error 条件の具体契約は [`docs/details/ui.md`](ui.md) §24 と [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。 | setup 側は admin UI 配布物の存在と到達確認だけを固定し、DOM assertion の具体値は UI 詳細本文責務と一致すること。 |
 | error expected | setup / release / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果が変更された場合のみ更新する。HTTP status、API error body、`AdlaireCIError.code` の具体契約は [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。 | setup / release / update の正常系 fixture と異常系 fixture の両方で setup 責務の期待値が固定され、API / SDK / UI の期待値は各 owner component の詳細本文責務と一致すること。 |
 
-Phase 判定の 実装検証証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義し、実装検証証跡項目を重複定義しない。
+Phase 判定の実装検証証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義し、実装検証証跡項目を重複定義しない。
 
-setup / release / update に関わる受け入れ結果は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の形式で Pull Request 本文または検証ログに記録する。失敗、未実行、環境都合で省略した項目がある場合、setup / release / update を確認済み扱いにしてはならない。
+setup / release / update に関わる受け入れ結果は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の形式で実装検証証跡に記録する。失敗、未実行、環境都合で省略した項目がある場合、setup / release / update を確認済み扱いにしてはならない。
 
 ---
 
@@ -655,7 +655,7 @@ setup / release / update に関わる受け入れ結果は、[`docs/details/fixt
 |--------|----------|----------|
 | stdout | 段階開始、段階成功、最終成功、配置 binary version。 | PAT、password、token、Webhook secret、SMTP password、Release URL credential。 |
 | stderr | 固定 error prefix、失敗段階、終了コード、確認すべき journal / path。 | secret 原文、checksum 対象 file の内容、環境変数全量 dump。 |
-| PR 検証記録 | 実行 command、exit code、重要 stdout/stderr、差分あり / なし、未実行理由。 | secret 原文、credential 付き URL、ローカル固有 token。 |
+| 実装検証証跡 | 実行 command、exit code、重要 stdout/stderr、差分あり / なし、未実行理由。 | secret 原文、credential 付き URL、ローカル固有 token。 |
 
 **setup / update 差分確認固定：**
 

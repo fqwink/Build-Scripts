@@ -2730,7 +2730,7 @@ api / sdk / ui のいずれも、上表に存在しない endpoint、method、UI
 | error 伝播 | `401` / `403` / `409` / `422` / `429` / `500` の status と error body を固定する。 | SDK は `AdlaireCIError` として保持し、UI は status 別表示と仕様上の再取得だけを行う。 | 自動 retry、自動 refresh、自動 logout、同一変更 API の再送を仕様外で行うこと。 |
 | side effect | validation 失敗、認可失敗、rate limit、no-op、partial failure の write / call / log 差分を個別節または fixture で固定する。 | SDK / UI は副作用完了を推測せず、成功後再取得で確認する。 | read-only、dry-run、validation failure、`403`、`429` で状態を書き換えること。 |
 | secret / one-time | token、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header は response・log・state の許可箇所以外へ出さない。 | SDK は内部保存せず、UI は専用一回表示領域だけに出し、次 user action / panel 遷移 / logout / `401` で消去する。 | token 本体の再表示、token list への合成、secret の error message / DOM / expected への残存。 |
-| fixture 証跡 | [`docs/details/fixture.md`](fixture.md) §27-F の API / SDK / UI 連動 fixture で request、response、error、side effect、secret、refresh order を確認する。 | Pull Request 本文または検証ログに対象 fixture、未実装対象、未定義 endpoint / UI / 状態ファイル不追加を記録する。 | fixture なし、または実装挙動に合わせて期待値を弱めること。 |
+| fixture 証跡 | [`docs/details/fixture.md`](fixture.md) §27-F の API / SDK / UI 連動 fixture で request、response、error、side effect、secret、refresh order を確認する。 | [`docs/details/fixture.md`](fixture.md) の実装検証証跡に対象 fixture、未実装対象、未定義 endpoint / UI / 状態ファイル不追加を記録する。 | fixture なし、または実装挙動に合わせて期待値を弱めること。 |
 
 ### 27.30 ビルド承認フロー
 owner component は `api` とする。collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。
