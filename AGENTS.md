@@ -85,7 +85,7 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 `components/mcp.go` は将来計画コンポーネントであり、実装状態、実装可否、ロードマップ状態は [docs/ROADMAP.md](docs/ROADMAP.md) を正とする。[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の owner component 参照表と該当する owner component 別の [docs/details/*.md](docs/details/) 詳細本文責務に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
 
-`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、owner component 別の詳細本文責務として作成してはならない。横断する固定値、読み順、対応表は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の入口・索引・共通固定値・入口管理責務として扱う。§27 追加仕様化機能の横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md) §6 を正とする。いずれも component として扱わない。
+`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、owner component 別の詳細本文責務として作成してはならない。横断する固定値、読み順、対応表は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の入口・索引・共通固定値・詳細仕様入口責務として扱う。§27 追加仕様化機能の横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md) §6 を正とする。いずれも component として扱わない。
 
 [docs/DESIGN.md](docs/DESIGN.md) は、出力 HTML のデザイン関係の正本である。機能仕様、実装状態、実装可否、API 仕様、状態 schema、builder 処理本文は定義しない。生成 HTML のデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンは [docs/DESIGN.md](docs/DESIGN.md) を正とする。
 

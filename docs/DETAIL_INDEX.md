@@ -144,9 +144,9 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の管�
 
 ---
 
-## 0b.1 owner component 別 詳細本文責務管理責務
+## 0b.1 owner component 別 詳細本文境界管理責務
 
-本節は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の境界を維持するための入口管理責務である。責務境界の変更、詳細本文配置変更、参照先更新では、方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態・実装可否・ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
+本節は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の境界を維持するための詳細本文境界管理責務である。責務境界の変更、詳細本文配置変更、参照先更新では、方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態・実装可否・ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
 
 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は、owner component の主本文を持つ。方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の冒頭では、本節への参照と自ファイルの owner / collaborator 境界だけを示す。
 
@@ -202,7 +202,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 | 確認条件 | 確認先 |
 |----------|------|
 | 各本文が対応する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務にだけ存在している。 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 |
-| [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務には入口、索引、共通固定値、対応表、入口管理責務、リポジトリ内ソース配置だけが残っている。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 |
+| [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務には入口、索引、共通固定値、対応表、詳細本文境界管理責務、リポジトリ内ソース配置だけが残っている。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 |
 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務間の参照が矛盾していない。 | 該当責務文書 |
 | 廃止済み節名、廃止済みファイル名、不要参照の取り残し。 | `rg` による検索証跡 |
 | 実装ファイル、fixture、testdata の内容を文書配置整理だけで変更していない。 | `git diff --name-status` |
