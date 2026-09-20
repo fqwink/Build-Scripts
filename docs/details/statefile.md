@@ -31,7 +31,7 @@
 | パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
 |------|------|--------|----------|--------------|
 | `.admin_credentials` | JSON object | `--init-credentials` で生成 | `api` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
-| `.totp_secret` | JSON object | `{"enabled":false,"secret_base32":null,"confirmed_at":null,"last_accepted_step":null}` | `api` | 読み込み不能時は TOTP 有効 login を `500` で拒否する。破損時は退避するが自動再生成で認証を弱めてはならない。 |
+| `.totp_secret` | JSON object | `{"enabled":false,"secret_base32":null,"confirmed_at":null,"last_accepted_step":null}` | `api` | 読み込み不能時は TOTP 有効 login caller へ認証失敗を返す。破損時は退避するが自動再生成で認証を弱めてはならない。 |
 | `.audit_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。追記不能時は対象操作を失敗扱いにする。 |
 | `.api_rate_state` | JSON object | `{"windows":{}}` | `api` | `.api_rate_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 window で再生成する。 |
 | `.server_config` | JSON object | `{}` | `api` | `.server_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、空 object で再生成する。 |
@@ -41,7 +41,7 @@
 | `.pending_transfers` | JSON array | `[]` | `runner` | `.pending_transfers.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`[]` で再生成する。 |
 | `.build_history` | JSON Lines | 空ファイル | `runner` | 読み込み可能な行のみ使用し、壊れた行は ERROR ログへ記録して無視する。 |
 | `.build_logs/{id}.json` | JSON object | ビルドごとに新規作成 | `runner` | 対象 ID の read adapter は `ErrStateCorrupted` を返し、既存ファイルは上書きしない。 |
-| `.build_lock` | text | 不在 | `runner` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は `409` 相当の実行中として扱う。形式不正または PID 判定不能の場合は上書きせず `409` を返す。 |
+| `.build_lock` | text | 不在 | `runner` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は stale lock として削除し、存在する場合は実行中 conflict として扱う。形式不正または PID 判定不能の場合は上書きせず conflict failure を返す。 |
 | `.last_sha` / `BranchTarget.SHAFile` | JSON object | `{"sha":""}` | `runner` | JSON 破損、object 以外、`sha` key 不在、`sha` 型不一致は当該 target の decode failure とし、成功時まで更新しない。 |
 | `.branch_config` | JSON object | 不在 | `runner` / `api` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、再生成せず `BRANCH_TARGETS` デフォルトへフォールバックする。 |
 | `.build_state` | JSON object | `{"running":false,"current_build_id":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `runner` / `api` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
@@ -58,18 +58,18 @@
 | `.config_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.access_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.api_access_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。秘密情報は記録しない。 |
-| `.webhook_secret` | text | 不在 | `api` | 読み込み不能時は Webhook 受信を `501` で拒否する。 |
+| `.webhook_secret` | text | 不在 | `api` | 読み込み不能時は Webhook caller へ secret read failure を返す。 |
 | `.webhook_events.json` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.access_control` | JSON object | `{"allow":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.hooks` | JSON object | `{"hooks":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.maintenance` | JSON object | `{"enabled":false,"reason":null,"since":null}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.api_tokens` | JSON object | `{"tokens":[]}` | `api` | `500` を返し、自動再生成しない。token 管理情報の消失による意図しない再許可を防ぐため、破損ファイルは上書きしない。 |
+| `.api_tokens` | JSON object | `{"tokens":[]}` | `api` | token caller へ破損失敗を返し、自動再生成しない。token 管理情報の消失による意図しない再許可を防ぐため、破損ファイルは上書きしない。 |
 | `.alert_rules` | JSON object | `{"rules":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.tag_rules` | JSON object | `{"rules":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.pipeline_config` | JSON object | `{"extra_args":[],"env":{}}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.notes` | UTF-8 text | 空文字列 | `api` | 読み込み不能時は `500` を返し、自動上書きしない。 |
+| `.notes` | UTF-8 text | 空文字列 | `api` | 読み込み不能時は read failure を返し、自動上書きしない。 |
 | `.smtp_config` | JSON object | SMTP 未設定値 | `api` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.smtp_secret` | text | 不在 | `api` | 読み込み不能時は SMTP 送信を `422` で拒否する。 |
+| `.smtp_secret` | text | 不在 | `api` | 読み込み不能時は SMTP caller へ secret read failure を返す。 |
 | `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 
 `.build_logs/archive/` は gzip 圧縮済み build log の保存先ディレクトリである。初期値は空ディレクトリとし、`runner` または `POST /api/logs/archive` が archive 書き込み前に存在確認し、不在の場合だけ作成する。圧縮済みファイル名は `{id}.json.gz` 固定とし、通常 `.build_logs/{id}.json` と同じ build id を表す。
@@ -101,7 +101,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 | 配列 | `[]` を既定値とする key は read adapter の戻り値で空配列を返す。 | 保存呼び出しは配列 key を省略せず、空の場合も `[]` を明示する。 | 型不一致は caller 固有の validation error または状態ファイル破損扱い。 |
 | 数値 | 整数 key は JSON number の整数だけ許可する。小数、指数表記由来の非整数、文字列数値は拒否する。 | 整数は JSON number として保存する。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
 | 時刻 | UTC ISO 8601 秒精度 `Z` だけ許可する。 | 保存前に UTC 秒精度へ丸める。ミリ秒、local timezone、offset 付き文字列を保存しない。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
-| mode | 秘密情報ファイルは `0600`、通常 JSON / JSON Lines は `0644`、directory は `0755` を標準とする。 | chmod 失敗時は成功扱いにしない。 | chmod 失敗は `500`。target を更新した後の chmod 失敗は ERROR ログに残す。 |
+| mode | 秘密情報ファイルは `0600`、通常 JSON / JSON Lines は `0644`、directory は `0755` を標準とする。 | chmod 失敗時は成功扱いにしない。 | chmod 失敗は chmod failure を返す。target を更新した後の chmod 失敗は ERROR ログに残す。 |
 | 改行 | text / JSON / JSON Lines は LF で保存する。JSON object / array ファイルは末尾 LF 1 個を付ける。 | CRLF、BOM、末尾余分空白を新規保存しない。 | 入力 text が CRLF を含む場合の扱いは個別機能節に従う。 |
 
 旧 schema からの正規化は、本ファイルに「旧 key」「変換後 key」「削除する key」「保存するか読み取り時だけか」を明記した場合だけ実装する。明記がない旧形式は破損扱いとし、黙って推測変換してはならない。
@@ -119,7 +119,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 | `readLatestBuildLogs(n,q)` | `.build_logs/`、`.build_logs/archive/` | `[]LogLine` | 空配列を返す。 | 個別ログ破損は除外し、`LOG_SKIP_CORRUPT` を server log へ記録する。ディレクトリ読込不能は `ErrStateReadFailed`。 |
 | `readPendingTransfers()` | `.pending_transfers` | `[]PendingTransfer` | 空配列を返す。 | `ErrStateCorrupted` または `ErrStateReadFailed`。 |
 | `readCircuitState()` | `.build_circuit_state` | `BuildCircuitState` | §22.0a の初期値を返す。 | `ErrStateCorrupted` または `ErrStateReadFailed`。 |
-| `readBuildLock()` | `.build_lock` | `BuildLockState` | `running=false` を返す。 | 形式不正、PID 判定不能、OS 判定失敗は `running=true, stale=false, valid=false` として返し、build command は `409`。 |
+| `readBuildLock()` | `.build_lock` | `BuildLockState` | `running=false` を返す。 | 形式不正、PID 判定不能、OS 判定失敗は `running=true, stale=false, valid=false` として返し、呼び出し元は conflict failure として扱う。 |
 
 read-only 呼び出しでは、上表の adapter を使用し、状態ファイルの作成、削除、退避、chmod、正規化、再生成、破損行の除去書き戻しを行ってはならない。API endpoint 固有の適用条件は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。`{name}.lock` を検出しても、`.build_lock` 以外の lock file は待機条件やエラー条件にせず、rename 済み target をそのまま読む。write 呼び出しは §22.0a の状態ファイル更新手順に従う。
 
@@ -248,7 +248,7 @@ Email object:
 | `deploy_targets[].user` | string | 必須 | 1〜64 文字 | SSH user。 |
 | `deploy_targets[].dest_dir` | string | 必須 | 絶対パス | 転送先ディレクトリ。 |
 
-`.branch_config` が不在の場合、`GET /api/branch-config` は `source: "default"` と `BRANCH_TARGETS` の定数値を返す。`.branch_config` が存在する場合、`source: "file"` とファイル内容を返す。API request / response の表示名として `branches` を使う場合でも、永続ファイルへ保存する key は必ず `branch_targets` とする。API は `branches: []` または `branch_targets: []` を `.branch_config` の空配列保存として扱ってはならない。`POST /api/branch-config` で空配列を受け取った場合は `.branch_config` を削除し、default 復帰として扱う。
+`.branch_config` の永続 key は `branch_targets` に固定する。API の表示名、default 復帰、空配列入力時の挙動は [`docs/details/api.md`](api.md) §22.0e および [`docs/details/api.md`](api.md) §27.18 を参照する。statefile は `branches` を永続 key として保存してはならない。
 
 **`.last_sha` / `BranchTarget.SHAFile` schema：**
 
@@ -284,7 +284,7 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 | `target_file` | string | スクリプト定数 `TARGET_FILE` | 相対パス、`..` 禁止 | 単一ターゲット用監視ファイル。 |
 | `updated_at` | string | 更新時刻 | ISO 8601 | 最終更新日時。 |
 
-`POST /api/repo-config` は指定されたキーのみ更新する。未指定キーは既存値を保持する。全キーが未指定の場合は `422` を返す。
+repo config caller は指定されたキーのみ更新する。未指定キーは既存値を保持する。全キーが未指定の場合は validation failure を返す。
 
 **`.totp_secret` schema：**
 
@@ -300,7 +300,7 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `enabled` | boolean | 必須 | boolean | TOTP 有効状態。 |
-| `secret_base32` | string/null | 必須 | RFC 4648 base32、padding なし、16〜64 文字、または `null` | TOTP secret。API response、log、backup へ平文出力しない。 |
+| `secret_base32` | string/null | 必須 | RFC 4648 base32、padding なし、16〜64 文字、または `null` | TOTP secret。呼び出し元の公開値、log、backup へ平文出力しない。 |
 | `confirmed_at` | string/null | 必須 | ISO 8601 または `null` | TOTP 有効化完了日時。 |
 | `last_accepted_step` | integer/null | 必須 | Unix time 30 秒 step または `null` | 同一 code 再利用防止。 |
 
@@ -324,13 +324,13 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 | `password_hash` | string | 必須 | 64 文字 lowercase hex | password 本体は保存しない。 |
 | `salt` | string | 必須 | 64 文字 lowercase hex | 32 bytes salt。 |
 | `algorithm` | string | 必須 | `"sha256_iter_v1"` 固定 | 他 algorithm は初期実装で拒否する。 |
-| `iterations` | integer | 必須 | `260000` 固定 | 値が異なる場合は認証を `500` で拒否する。 |
+| `iterations` | integer | 必須 | `260000` 固定 | 値が異なる場合は認証 caller へ破損失敗を返す。 |
 | `must_change` | boolean | 必須 | boolean | 初期生成時 `true`、パスワード変更後 `false`。 |
 | `login_count` | integer | 必須 | 0 以上 | session token 発行成功時だけ +1。TOTP ticket 発行時は増やさない。 |
 | `last_login_at` | string/null | 必須 | UTC ISO 8601 または `null` | session token 発行成功時だけ更新する。 |
 | `updated_at` | string | 必須 | UTC ISO 8601 | password hash 更新時刻。 |
 
-`.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致もすべて credentials 破損とする。API 起動時検証で credentials 破損を検出した場合は、§22.0a に従って ERROR ログを出し、HTTP サーバーを起動しない。HTTP サーバー稼働中の読込時検証で credentials 破損を検出した場合、`POST /api/login` と `POST /api/change-password` は `500 {"error":"Internal server error"}` を返す。API response、`.access_log`、`.audit_log`、journal に破損内容、hash、salt を出してはならない。
+`.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致もすべて credentials 破損とする。API 起動時検証、login / password change の公開応答、認証ログ、監査ログ、漏えい禁止値は [`docs/details/security.md`](security.md) 認証共通詳細および [`docs/details/api.md`](api.md) §27.45〜§27.46 を参照する。statefile は破損内容、hash、salt を呼び出し元の公開値として返してはならない。
 
 **`.audit_log` schema：**
 
@@ -405,13 +405,13 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 |------|------|
 | token id 採番 | `tok` + 6 桁連番とする。既存最大番号が `tok000123` の場合、次は `tok000124` とする。連番抽出不能な id は衝突確認対象には含めるが、最大番号算出には使わない。 |
 | token 本体 | `crypto/rand` 32 bytes を `encoding/base64.RawURLEncoding` で文字列化し、先頭に `act_` を付ける。保存前 hash は prefix を含む token 全体に対して `sha256` を計算する。 |
-| `label` | 1〜64 文字。前後空白は保存前に除去する。除去後が空文字なら `422`。 |
+| `label` | 1〜64 文字。前後空白は保存前に除去する。除去後が空文字なら validation failure。 |
 | `scopes` | 1〜5 件。重複は除去し、保存値は `read`, `trigger`, `operate`, `config`, `admin` の順に正規化する。 |
-| `expires_at` | `null` または現在時刻より後の UTC ISO 8601。過去または現在時刻は `422`。 |
+| `expires_at` | `null` または現在時刻より後の UTC ISO 8601。過去または現在時刻は validation failure。 |
 | 一覧順 | `GET /api/tokens` は `created_at` 降順、同時刻は `id` 昇順で返す。 |
 | 失効済み表示 | `GET /api/tokens` は失効済み token も返す。token 本体と `token_hash` は返さない。 |
 | 認証時更新 | 有効 token 認証成功時だけ `last_used_at` を現在時刻へ更新する。期限切れ、失効済み、hash 不一致では更新しない。 |
-| 破損行相当 | `.api_tokens.tokens` 内の個別 record が schema 不正の場合、認証と一覧は `500` を返し、自動補正しない。旧 `scope` から `scopes` への正規化だけは例外として許可する。 |
+| 破損行相当 | `.api_tokens.tokens` 内の個別 record が schema 不正の場合、認証と一覧 caller へ破損失敗を返し、自動補正しない。旧 `scope` から `scopes` への正規化だけは例外として許可する。 |
 
 **`.maintenance` schema：**
 
@@ -429,7 +429,7 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 |------|----|------|--------|------|
 | `allow` | string[] | 必須 | IPv4 address または CIDR、0〜100 件 | 空配列は制限なし。保存時は入力順を保持し、重複は除去する。 |
 
-`allow` の各要素は前後空白を除去してから検証する。空文字、IPv6、hostname、URL、CIDR prefix が 0〜32 以外、parse 不能な値は `422` とし、既存 `.access_control` を変更しない。
+`allow` の各要素は前後空白を除去してから検証する。空文字、IPv6、hostname、URL、CIDR prefix が 0〜32 以外、parse 不能な値は validation failure とし、既存 `.access_control` を変更しない。
 
 **`.hooks` schema：**
 
@@ -444,7 +444,7 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 | `timeout_seconds` | integer | 必須 | 1〜3600 | hook 単体の timeout。未指定作成時は `300`。 |
 | `created_at` | string | 必須 | UTC ISO 8601 | hook 作成日時。 |
 
-`command_args[0]` は 1〜256 文字、`command_args[1:]` の各要素は 1〜500 文字とし、NUL、改行、CR を禁止する。`command_args[0]` は絶対 path または PATH 解決可能なコマンド名に限定する。`phase` と `command_args` が既存 enabled hook と完全一致する場合、`POST /api/hooks` は `409 {"error":"Conflict"}` を返す。
+`command_args[0]` は 1〜256 文字、`command_args[1:]` の各要素は 1〜500 文字とし、NUL、改行、CR を禁止する。`command_args[0]` は絶対 path または PATH 解決可能なコマンド名に限定する。`phase` と `command_args` が既存 enabled hook と完全一致する場合の重複時の扱いは [`docs/details/api.md`](api.md) §22.0e を参照する。
 
 **`.alert_rules` schema：**
 
@@ -467,7 +467,7 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 | `condition` | string | 必須 | §15B の条件式 grammar | 評価条件。 |
 | `tags` | string[] | 必須 | 1〜20 件、各 1〜50 文字 | 付与するタグ。重複は除去する。 |
 
-`condition` は `変数 空白 演算子 空白 値` の 1 条件だけを許可する。`&&`、`||`、括弧、関数呼び出し、正規表現、算術式は `422` とする。
+`condition` は `変数 空白 演算子 空白 値` の 1 条件だけを許可する。`&&`、`||`、括弧、関数呼び出し、正規表現、算術式は validation failure とする。
 
 **`.pipeline_config` schema：**
 
@@ -535,7 +535,7 @@ Queue entry schema:
 | `created_seq` | integer | 必須 | 1 以上 | 既存最大 + 1。 |
 | `payload` | object | 必須 | trigger ごとの固定 payload | 不要時は `{}`。 |
 
-Queue entry `payload` は trigger ごとに以下を許可する。未知 key は API 追加時 `422`、runner 読込時は queue entry 破損として当該 entry を処理せず ERROR ログに記録する。
+Queue entry `payload` は trigger ごとに以下を許可する。未知 key は API 追加時 validation failure、runner 読込時は queue entry 破損として当該 entry を処理せず ERROR ログに記録する。
 
 | trigger | payload |
 |---------|---------|
@@ -744,7 +744,7 @@ BuildMeta object:
 
 **`.build_status.json` schema：**
 
-`.build_status.json` は runner の現在状態と直近結果を 1 ファイルで読むための要約である。API / UI / MCP は現在状態を表示する場合、`.build_status.json` を第一参照元とし、存在しない場合のみ `.build_state`、`.build_history`、`.build_lock` から後方互換の値を算出する。
+`.build_status.json` は runner の現在状態と直近結果を 1 ファイルで読むための要約 schema である。API endpoint ごとの読取順と後方互換値の算出は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。UI 表示は [`docs/details/ui.md`](ui.md) §24 を参照する。MCP は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の将来計画を参照する。
 
 ```json
 {
@@ -808,14 +808,14 @@ BuildMeta object:
 
 | 観点 | 入力 | 必須処理 | 成功時出力 | 失敗時出力 / 副作用 |
 |------|------|----------|------------|---------------------|
-| path 解決 | state dir、§22.0a の状態ファイル path | state dir 外へ出る path、absolute user input、`..`、symlink 経由の secret 参照を拒否する。 | 正規化済み target path。 | `500` または呼び出し元の固定 error。target を作成・変更しない。 |
+| path 解決 | state dir、§22.0a の状態ファイル path | state dir 外へ出る path、absolute user input、`..`、symlink 経由の secret 参照を拒否する。 | 正規化済み target path。 | 呼び出し元へ path failure を返す。target を作成・変更しない。 |
 | schema 読取 | JSON object / JSON array / JSON Lines / text | §22.0c の key、型、nullable、列挙値、UTC 時刻形式を検証する。 | typed value。 | `ErrStateCorrupted` または行単位 skip。未知 key を削除して成功扱いにしない。 |
 | 初期値 | file 不在 | §22.0a の「不在時」または初期値を返す。 | 初期 typed value。 | read-only 呼び出しでは file を作成しない。write 呼び出しだけ更新手順で作成する。 |
-| atomic write | 更新後 JSON / text | `{name}.lock`、tmp、chmod、rename、file sync、parent sync、lock 削除を順に行う。 | target が完全な新内容へ置換される。 | target は旧内容を維持する。tmp と lock は best effort で削除し、呼び出し元へ `500` を返す。 |
-| lock timeout | 既存 `{name}.lock` | 100ms 間隔、最大 10 秒待つ。 | lock 取得後に更新継続。 | `409 {"error":"Conflict"}` または呼び出し元の conflict error。target を変更しない。 |
+| atomic write | 更新後 JSON / text | `{name}.lock`、tmp、chmod、rename、file sync、parent sync、lock 削除を順に行う。 | target が完全な新内容へ置換される。 | target は旧内容を維持する。tmp と lock は best effort で削除し、呼び出し元へ write failure を返す。 |
+| lock timeout | 既存 `{name}.lock` | 100ms 間隔、最大 10 秒待つ。 | lock 取得後に更新継続。 | 呼び出し元へ conflict failure を返す。target を変更しない。 |
 | chmod | target file / directory | 秘密情報 `0600`、通常 file `0644`、directory `0755` を適用する。 | mode が固定値に一致する。 | chmod 失敗は成功扱いにしない。rename 前なら target 変更なし、rename 後なら ERROR ログへ記録する。 |
-| corrupt backup | §22.0a で退避指定された破損 file | `{name}.corrupt.{YYYYMMDDHHMMSS}.bak` へ同一 directory 内で rename する。 | backup file と再生成初期値。 | backup 失敗時は再生成せず `500`。secret 内容を log / response に含めない。 |
-| JSON Lines | JSON Lines file | 空行、JSON object 以外、必須 key 不足、型不一致行を除外する。 | 有効行だけの配列。 | 壊れた行は server log に固定 code、path、line number だけ記録する。response に壊れた行数を含めない。 |
+| corrupt backup | §22.0a で退避指定された破損 file | `{name}.corrupt.{YYYYMMDDHHMMSS}.bak` へ同一 directory 内で rename する。 | backup file と再生成初期値。 | backup 失敗時は再生成せず backup failure を返す。secret 内容を log / 呼び出し元の公開値に含めない。 |
+| JSON Lines | JSON Lines file | 空行、JSON object 以外、必須 key 不足、型不一致行を除外する。 | 有効行だけの配列。 | 壊れた行は server log に固定 code、path、line number だけ記録する。呼び出し元の公開値に壊れた行数を含めない。 |
 | 複数ファイル更新 | 複数 state 書込 caller | 呼び出し元が定義する Write 列順に 1 file ずつ atomic write する。API 固有の順序は [`docs/details/api.md`](api.md) §22.0d 以降を参照する。 | 全対象が順に更新される。 | 未処理 file は変更しない。更新済み file は自動 rollback しない。`.config_log` に失敗を記録する。 |
 
 **read / write 境界固定：**
@@ -839,7 +839,7 @@ runner / archive / commitstatus / security / api が同じ実装 PR で状態更
 | JSON Lines append | append 対象は 1 行 1 JSON object とし、末尾 newline を固定する。 | 1 record の typed value。 | append 失敗は対象操作へ返し、既存行の rewrite、sort、修復をしない。 |
 | no mutation read | read-only adapter は fallback 値を返すだけで、file 作成、chmod、backup、lock 削除、旧形式保存を行わない。 | 読取対象 path と fallback 条件。 | 読取失敗は typed error を返し、filesystem 差分なし。 |
 | corrupt handling | §22.0a に再生成指定がある file だけ backup → 初期値再生成を許可する。 | 破損判定結果と対象 path。 | backup 失敗時は再生成しない。再生成指定がない file は変更しない。 |
-| secret path | secret を含む file は `0600`、通常 state は `0644`、directory は `0755` に固定する。 | secret file 判定。 | chmod 失敗を成功扱いにせず、secret 内容を log / response / fixture expected に出さない。 |
+| secret path | secret を含む file は `0600`、通常 state は `0644`、directory は `0755` に固定する。 | secret file 判定。 | chmod 失敗を成功扱いにせず、secret 内容を log / 呼び出し元の公開値 / fixture expected に出さない。 |
 
 **状態ファイル fixture 合格ゲート：**
 
@@ -848,9 +848,9 @@ runner / archive / commitstatus / security / api が同じ実装 PR で状態更
 | state read missing | target 不在 | 対応する read adapter 呼び出し | §22.0a の不在時戻り値を返し、filesystem 差分なし。 |
 | state corrupt object | JSON parse 不能または未知 key あり | read adapter 呼び出し | `ErrStateCorrupted`。target 差分なし。API の公開応答は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。 |
 | state corrupt regenerates | §22.0a で再生成指定済み file が破損 | write caller または再生成を伴う操作 | corrupt backup が 1 件作成され、初期値だけが保存される。 |
-| state lock timeout | `{name}.lock` が 10 秒以上残る | write caller 呼び出し | `409`、target/tmp 差分なし。 |
+| state lock timeout | `{name}.lock` が 10 秒以上残る | write caller 呼び出し | conflict failure、target/tmp 差分なし。 |
 | state chmod failure | chmod を fake failure | write caller 呼び出し | 成功扱いにせず、target 更新有無が atomic write 表の失敗時動作と一致する。 |
-| state fsync failure | file sync または parent sync を fake failure | write caller 呼び出し | `500`、ERROR log、secret 非表示。 |
+| state fsync failure | file sync または parent sync を fake failure | write caller 呼び出し | write failure、ERROR log、secret 非表示。 |
 | json lines partial corrupt | 有効行と破損行が混在 | list caller 呼び出し | 有効行だけ返し、server log に line number、呼び出し元の公開値に破損詳細なし。 |
 | read no mutation | 破損なし state 一式 | 全 read-only caller 呼び出し | state dir の file list、mtime、mode、content が変化しない。 |
 | multi write partial failure | 2 file 目の write を fake failure | 複数ファイル更新 caller 呼び出し | 1 file 目は保持、2 file 目以降は未変更、`.config_log` に失敗記録。 |
