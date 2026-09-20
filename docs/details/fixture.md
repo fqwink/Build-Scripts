@@ -30,7 +30,7 @@
 
 本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、実装検証証跡、acceptance checklist、差し戻し条件を扱う fixture 証跡責務である。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0g、§0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、実装検証証跡項目、不足時の扱い、差し戻し条件は本ファイルを参照する。
 
-実装検証証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる変更は、該当する全系統の証跡を実装検証証跡として記録する。Pull Request 作成、merge、branch 操作、レビュー対応の作業ルールは [`AGENTS.md`](../../AGENTS.md) を参照し、本ファイルでは定義しない。
+実装検証証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる変更は、該当する全系統の証跡を実装検証証跡として記録する。
 
 | 系統 | 対象 | 責務節 | 必須証跡 |
 |------|------|--------|----------|
@@ -739,7 +739,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `security` | token hash、session、TOTP、scope、audit、rate limit、secret mask、forbidden call/write を fixture で固定する。 | API / SDK / UI / runner の secret 表示、認証失敗、副作用境界を検証する。 | 認証失敗、権限拒否、rate limit、audit failure の副作用境界が検証済み。 | 業務処理代行、認可前状態更新、secret 平文保存。 |
 | `setup` | binary 配置、service 更新、rollback、secret 既存値保持、stdout/stderr mask、終了コードを fixture で固定する。 | runner / API の初期状態と既存 secret を壊さないことを effects で固定する。 | 部分失敗時の復元対象と復元禁止対象が `expected/effects.json` に明記済み。 | runtime 機能追加、状態 schema 暗黙変更、外部依存追加。 |
 
-component 責務を複数変更へ分ける場合でも、各変更が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を実装検証証跡に明記する。Pull Request の分割可否と作業ルールは [`AGENTS.md`](../../AGENTS.md) を参照する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
+component 責務を複数変更へ分ける場合でも、各変更が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を実装検証証跡に明記する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
 
 **§27 runner / statefile 連動 fixture 固定契約：**
 
