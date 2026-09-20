@@ -336,16 +336,16 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 
 | 項目 | 必須内容 | 入口判定 |
 |------|----------|----------------|
-| 目的 | 何を解決する機能か、どの利用者または運用者のための機能か。 | 実装不可。 |
-| owner / collaborator component | owner component と collaborator component を明記し、複数 component が関わる場合は責務境界を分けて書く。 | 実装不可。 |
-| 入力 | CLI 引数、HTTP request、設定値、状態ファイル、環境変数、Markdown 入力、UI 操作などの入力元、型、必須/任意、既定値。 | 実装不可。 |
-| 出力 | 生成ファイル、HTTP response、stdout/stderr、ログ、通知、UI 表示、終了コード。 | 実装不可。 |
-| 状態 | 読み書きする状態ファイル、ディレクトリ、メモリ状態、ロック、更新責務、初期値、破損時の扱い。 | 状態を持つ実装は禁止。 |
-| 正常系 | 処理順序、分岐条件、成功条件、保存順序、外部コマンド呼び出し条件。 | 実装不可。 |
-| 異常系 | エラー条件、継続/中断、HTTP status、終了コード、ログレベル、通知、リトライ有無。 | 実装不可。 |
+| 目的 | 何を解決する機能か、どの利用者または運用者のための機能か。 | 不足時は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。 |
+| owner / collaborator component | owner component と collaborator component を明記し、複数 component が関わる場合は責務境界を分けて書く。 | 不足時は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a と [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 を参照する。 |
+| 入力 | CLI 引数、HTTP request、設定値、状態ファイル、環境変数、Markdown 入力、UI 操作などの入力元、型、必須/任意、既定値。 | 不足時は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。 |
+| 出力 | 生成ファイル、HTTP response、stdout/stderr、ログ、通知、UI 表示、終了コード。 | 不足時は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。 |
+| 状態 | 読み書きする状態ファイル、ディレクトリ、メモリ状態、ロック、更新責務、初期値、破損時の扱い。 | 不足時は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。 |
+| 正常系 | 処理順序、分岐条件、成功条件、保存順序、外部コマンド呼び出し条件。 | 不足時は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。 |
+| 異常系 | エラー条件、継続/中断、HTTP status、終了コード、ログレベル、通知、リトライ有無。 | 不足時は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。 |
 | セキュリティ | 秘密情報、認証、認可、ファイル権限、外部公開可否、ログ出力制約。 | セキュリティ影響の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §5、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §11、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §12 を参照する。 |
-| 検証 | 必須テスト、手動確認、fixture、生成物確認、API 確認、異常系確認。 | 確認済み扱い不可。 |
-| 判定条件 | どの検証が成功したら確認済みと扱うか。関連文書の更新要否。 | 確認済み扱い不可。 |
+| 検証 | 必須テスト、手動確認、fixture、生成物確認、API 確認、異常系確認。 | 不足時は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。 |
+| 判定条件 | どの検証が成功したら確認済みと扱うか。関連文書の更新要否。 | 不足時は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。 |
 
 上表のいずれかが不足する対象項目の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。本ファイルでは、不足している入口項目と参照先変更の有無だけを確認する。
 
