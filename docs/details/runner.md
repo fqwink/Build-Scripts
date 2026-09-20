@@ -679,7 +679,7 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 
 **ビルドトリガー種別契約：**
 
-`trigger` は runner が処理を開始した原因を表す固定文字列であり、`.build_logs/{id}.json`、`.build_history`、`.build_status.json`、API response、SDK 型、UI 表示で同じ値を使用する。実装者判断で `auto`、`force`、`scheduled` など別名を追加してはならない。
+`trigger` は runner が処理を開始した原因を表す固定文字列であり、runner は `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に同じ値を保存する。API response、SDK 型、UI 表示での扱いは [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。実装者判断で `auto`、`force`、`scheduled` など別名を追加してはならない。
 
 | `trigger` | 発生条件 | build log | history | status |
 |-----------|----------|-----------|---------|--------|
@@ -1956,8 +1956,8 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 条件 | 処理 |
 |------|------|
 | `.build_status.json` 書き込み失敗 | ERROR ログ `BUILD_STATUS_WRITE_FAILED: path={path} error={reason}` を出し、runner 終了コードを最低 `1` にする。build 成功後に発生した場合も終了コードは `1` とする。 |
-| `.build_status.json` 破損を API が検出 | `GET /api/status` と `GET /api/dashboard` は `500` を返す。`GET /api/health` は `status="degraded"` を返し、破損を `checks[]` に含める。 |
-| `.build_status.json` 不在 | API は `.build_state`、`.build_history`、`.build_lock` から後方互換値を算出して返す。ただしファイル作成はしない。 |
+| `.build_status.json` 破損を API が検出 | API の HTTP status と response は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。runner は破損 status file を自動修復しない。 |
+| `.build_status.json` 不在 | API の後方互換算出は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。runner は API 読取のために status file を作成しない。 |
 | pending 件数読取失敗 | 件数を `null` にせず `0` として返してはならない。status 書き込み時はエラー扱いにし、`last_error` に固定文言を保存する。 |
 
 **セキュリティ：**
@@ -1968,9 +1968,9 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 | 項目 | 仕様 |
 |------|------|
-| `running=true` 不一致 | `.build_lock` が存在しないのに `running=true` の場合、API は `degraded` として返し、自動修復しない。 |
-| pending 件数 | `.pending_transfers` と `.notify_pending` は読めた場合だけ件数を返す。読取失敗は `checks[]` に記録する。 |
-| history 不一致 | `.build_status.json.last_build_id` と最新 history id が異なる場合、API は status file を優先し、warnings に `history_status_mismatch` を含める。 |
+| `running=true` 不一致 | `.build_lock` が存在しないのに `running=true` の場合、runner は自動修復しない。API の degradation 表現は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
+| pending 件数 | `.pending_transfers` と `.notify_pending` は読めた場合だけ件数算出対象にする。読取失敗時の API 表現は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
+| history 不一致 | `.build_status.json.last_build_id` と最新 history id が異なる場合、runner は status file を書き換えない。API の優先順位と warning は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
 | finalizer | finalizer は既存 `last_build_id`、`last_finished_at` を消さず、`running=false` と `current_build_id=null` だけを最低更新する。 |
 
 **検証条件：**
@@ -1982,8 +1982,8 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 変更なし | build log / history を作らず、`.build_status.json` は `skipped_no_change` を保持する。 |
 | 起動時整合性復旧 | `last_trigger="startup_config_integrity"`、復旧内容が `last_error` または warning として確認できる。 |
 | 書込失敗 | runner 終了コードが最低 `1`、ERROR ログが出る。 |
-| API read | `GET /api/status`、`GET /api/dashboard` が `.build_status.json` を第一参照元にする。 |
-| running stale | API が自動修復せず degraded を返す。 |
+| API read | API の読取順は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。runner は `.build_status.json` を保存入力として提供する。 |
+| running stale | runner は stale 状態を自動修復しない。API の degradation 表現は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
 | finalizer | `last_build_id` を消さない。 |
 
 ### 27.9 ビルドトリガー種別の記録
@@ -2006,7 +2006,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 | `local_watch` | `watch_mode="local"` の local SHA 差分により build する。 | GitHub API を呼ばない。 |
 | `approval` | `POST /api/approvals/{id}/approve` 由来の queue entry を処理する。 | 承認済み entry のみ。 |
 
-上表以外の値を保存、返却、表示してはならない。特に `"auto"`、`"force"`、`"scheduled"`、`"timer"` は使用禁止とする。
+runner は上表以外の値を保存してはならない。API の返却、SDK 型、UI 表示で許可される trigger 値は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。特に `"auto"`、`"force"`、`"scheduled"`、`"timer"` は runner 保存値として使用禁止とする。
 
 **保存先：**
 
@@ -2016,7 +2016,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 | `.build_history.trigger` | build history を追記する全処理で必須。 |
 | `.build_status.json.last_trigger` | build、skip、復旧、rollback の最終 trigger を保存する。 |
 | Queue entry `trigger` | `"manual"`、`"webhook"`、`"approval"` のみ許可する。 |
-| API response | `StatusObject.last_trigger`、`HistoryRecord.trigger`、`DashboardObject.status.last_trigger` で同じ値を返す。 |
+| API response / SDK / UI 連携 | API response の field、SDK 型、UI 表示は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。runner は同じ trigger 値を保存する。 |
 
 **判定順序：**
 
@@ -2031,17 +2031,17 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 
 複数条件が同時に成立した場合は、上記順序で最初に該当した trigger を採用する。1 回の runner 起動で複数 branch target を処理する場合、target ごとに同じ trigger を保存する。ただし queue entry が target を指定する場合は、対象 target のみにその trigger を適用する。
 
-**api / sdk / ui：**
+**api / sdk / ui 参照：**
 
-`GET /api/history` の `trigger` query は上表の値だけを受け付ける。不正値は `422` を返す。SDK `getHistory({trigger})` は値を変換せず送信する。ui は filter の選択肢を上表の 9 件に固定し、未知 trigger を受け取った場合は `Unknown` へ丸めず、該当行に `invalid trigger` エラーを表示する。
+`GET /api/history` の `trigger` query、HTTP status、response warning、SDK `getHistory({trigger})`、UI filter 表示は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。本ファイルでは runner が保存する trigger 値、保存先、判定順序だけを定義する。
 
 **異常系：**
 
 | 条件 | 処理 |
 |------|------|
-| queue entry の trigger が不正 | queue entry を処理せず ERROR ログ `INVALID_TRIGGER: id={id} trigger={value}`、HTTP API 由来なら queue 作成時に `422`。 |
-| 既存 history に未知 trigger がある | API はその行を返すが、`warnings[]` に `unknown_trigger` を含める。新規保存では未知値を禁止する。 |
-| build log と history の trigger 不一致 | API は `500` を返し、server log に `TRIGGER_MISMATCH: id={id}` を出す。 |
+| queue entry の trigger が不正 | queue entry を処理せず ERROR ログ `INVALID_TRIGGER: id={id} trigger={value}` を出す。HTTP API 由来の validation は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
+| 既存 history に未知 trigger がある | runner は新規保存で未知値を禁止する。API の返却と warning は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
+| build log と history の trigger 不一致 | runner は不一致を状態不整合として扱う。API の HTTP status と server log は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
 
 **trigger 保存・queue 固定契約：**
 
@@ -2050,7 +2050,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 | queue 取り出し | queue entry の trigger は取り出し時に validation し、不正なら entry を削除せず処理を中断する。 |
 | rollback | rollback API は queue を経由しない場合でも build log / history に `rollback` を保存する。 |
 | startup | `startup_config_integrity` は build id を採番しない。 |
-| unknown 既存値 | API response に既存値をそのまま返し、UI が検出できるよう warnings を付ける。 |
+| unknown 既存値 | runner は新規保存で未知値を作らない。既存値の API response と UI warning は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e、[`docs/details/ui.md`](ui.md) §24 を参照する。 |
 
 **検証条件：**
 
@@ -2060,10 +2060,10 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 | manual force | queue は `manual`、payload は `force=true`、保存 trigger は `manual`。 |
 | webhook | 署名検証成功時だけ `webhook` が保存される。 |
 | force interval | SHA 差分なしで `force_interval` が保存される。 |
-| filter | `GET /api/history?trigger=manual` が manual のみ返す。 |
-| 不正 trigger | queue 作成または history filter が `422`。 |
+| filter | history trigger filter の API 挙動は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は filter 対象となる `trigger` を保存する。 |
+| 不正 trigger | queue 作成または history filter の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は不正 queue entry を処理しない。 |
 | startup trigger | build log / history を作らない。 |
-| mismatch | API は `500`。 |
+| mismatch | API の HTTP status は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。runner は不一致を状態不整合として扱う。 |
 
 ### 27.10 設定ファイル起動時整合性チェック
 
@@ -2146,9 +2146,9 @@ backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単�
 | backup byte | 破損元と backup が byte 単位一致。 |
 | unknown only | backup なしで正規化。 |
 
-### 27.14 ビルド所要時間の記録と統計 API
+### 27.14 ビルド所要時間の記録と統計入力
 
-本機能の目的は、build ごとの開始・終了・所要時間を構造化ログへ保存し、統計 API で直近 N 件の平均、最小、最大を返すことである。
+本機能の目的は、build ごとの開始・終了・所要時間を構造化ログへ保存し、統計 API が参照する duration 入力を確定することである。統計 API の endpoint、query、response、HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。
 
 owner component は `runner` とする。collaborator component は `api`、`statefile`、`archive` とする。
 
@@ -2158,11 +2158,11 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 `.build_history.duration_seconds` は `.build_logs/{id}.json.duration_seconds` と同じ値にする。失敗、deploy pending、rollback でも記録する。変更なし skip で build log を作らない場合は記録しない。
 
-**統計 API：**
+**統計読取連携：**
 
-`GET /api/stats/build-duration?n=N` は `.build_logs/` と `.build_logs/archive/` を読み、完了済み build log の `duration_seconds` が `null` でない最新 N 件を集計する。`N` は 1〜1000、既定値 20 とする。
+duration stats の API endpoint、query、response、HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner owner は、API が読む `.build_logs/` と `.build_logs/archive/` の `duration_seconds`、`finished_at`、`status` を保存する責務を持つ。
 
-Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`、`min_seconds`、`max_seconds` を `null`、`recent` を `[]` とする。
+API response の `BuildDurationStats` 表現、空配列、`null` 表現は [`docs/details/api.md`](api.md) §22.0e を参照する。
 
 **duration stats 固定契約：**
 
@@ -2184,17 +2184,17 @@ Response は `BuildDurationStats` とし、`count=0` の場合は `avg_seconds`�
 | deploy pending | deploy pending でも build 処理自体の finished_at を保存し、pending retry の所要時間を合算しない。 |
 | rollback | rollback build log も duration を保存する。元 snapshot の duration は変更しない。 |
 | skip | `skipped_no_change`、`skipped_cooldown`、`circuit_open` で build log を作らない場合、duration を作らない。build log を作る skip fixture では `duration_seconds=0` を明示する。 |
-| read-only stats | `GET /api/stats`、`GET /api/stats/timeline`、`GET /api/stats/build-duration` は history、logs、archive、trend、status を変更しない。 |
+| read-only stats | stats 系 API が読む history、logs、archive、trend、status は runner 側で read-only 入力として提供される。API の no-write 境界は [`docs/details/api.md`](api.md) §22.0c.1 / §22.0e を参照する。 |
 
-**統計 API 分類・丸め固定契約：**
+**統計入力分類・丸め固定契約：**
 
-| API | 対象 | 計算 |
+| 参照元 | 対象 | 計算 |
 |-----|------|------|
-| `GET /api/stats?days=N` | `.build_history` の `finished_at` または `build_at` が `now - N*24h <= t <= now` の行。 | `success` / `success_deploy_pending` を成功、`failure` / `cancelled` / `hook_error` / `failure_remote_build` を失敗、`skipped_*` を総数から除外する。 |
-| `GET /api/stats/timeline?days=N` | UTC 日付 bucket。 | 日付降順。build 0 件の日は返さない。 |
-| `GET /api/stats/build-duration?n=N` | 通常 log と archive log の duration あり完了 log。 | latest 判定後 N 件、avg は小数第 2 位、min / max は整数。 |
+| `.build_history` | `finished_at` または `build_at` が API 指定範囲内の行。 | `success` / `success_deploy_pending` を成功、`failure` / `cancelled` / `hook_error` / `failure_remote_build` を失敗、`skipped_*` を総数から除外する。 |
+| `.build_history` UTC 日付 bucket | API 指定範囲内の UTC 日付 bucket。 | 日付降順。build 0 件の日は返却対象に含めない。 |
+| `.build_logs/` / `.build_logs/archive/` | duration あり完了 log。 | latest 判定後 API 指定件数、avg は小数第 2 位、min / max は整数。 |
 
-`days` は 1〜366、既定値 7 とする。`n` は 1〜1000、既定値 20 とする。未知 query、非整数、範囲外は `422` とし、状態差分なしとする。破損 build log、破損 history 行、gzip 展開失敗は対象から除外し、固定 WARN code だけを出す。破損内容、secret 風値、stdout/stderr 本文は WARN に含めない。
+`days`、`n`、未知 query、非整数、範囲外の HTTP status と response は [`docs/details/api.md`](api.md) §22.0e を参照する。破損 build log、破損 history 行、gzip 展開失敗は統計対象から除外し、固定 WARN code だけを出す。破損内容、secret 風値、stdout/stderr 本文は WARN に含めない。
 
 **異常系：**
 
@@ -2277,7 +2277,7 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 実行位置 | runner 起動時の startup integrity、pending transfer retry、maintenance 判定後、通常 GitHub polling / local watch 差分検出前に判定する。 |
 | channel 抽出 | `.notify_config.channels[]` の `enabled=true` かつ `on` に `weekly_summary` を含む channel を配列順に使う。legacy `webhooks` / root `on` だけがある場合は互換 channel として配列順に正規化する。 |
 | 自動宛先なし | WARN `WEEKLY_SUMMARY_NO_CHANNEL` を出し、`.notify_pending` と sent date を変更しない。build status は変更しない。 |
-| 手動宛先なし | API は `422 {"error":"No weekly summary channel configured"}`。`.notify_log`、`.notify_pending`、sent date を変更しない。 |
+| 手動宛先なし | API の HTTP status と response body は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は `.notify_log`、`.notify_pending`、sent date を変更しない。 |
 | payload | `event`、`period_days`、`period_from`、`period_to`、`success_count`、`failure_count`、`success_rate`、`avg_duration_seconds`、`max_duration_seconds`、`max_duration_build_id` を含む。 |
 | success_rate | 分母が 0 の場合 `0`。それ以外は `success_count / (success_count + failure_count) * 100` を小数第 2 位で丸める。 |
 | avg_duration_seconds | 対象 duration がない場合 `null`。ある場合は秒の平均を小数第 2 位で丸める。 |
@@ -2293,8 +2293,8 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 |--------|----------|
 | 条件一致 | Webhook 送信、`.notify_log` 追記、sent date 更新。 |
 | 同日二重起動 | 2 回目は送信しない。 |
-| 宛先なし | 自動送信は WARN、手動 API は `422`。 |
-| 手動送信 | payload を返し、sent date は変更しない。 |
+| 宛先なし | 自動送信は WARN。手動 API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
+| 手動送信 | 手動送信時も sent date は変更しない。API response は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 | 送信失敗 | sent date を更新せず、retry 対象なら `.notify_pending` に追加。 |
 | deploy pending | 成功として数える。 |
 | skipped | 集計から除外する。 |
@@ -2368,7 +2368,7 @@ owner component は `runner` とする。collaborator component は `builder`、
 | 1 件変更 | `changed_targets` が 1 件、該当 SHA cache だけ更新。 |
 | 複数変更 | 辞書順で記録、build は 1 回だけ実行。 |
 | 変更なし | build なし、status `skipped_no_change`。 |
-| 不正 path | API は `422`、runner は終了コード `2`。 |
+| 不正 path | API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は終了コード `2`。 |
 | force build | 変更なしでも build 実行、成功時に全 SHA cache 更新。 |
 | SHA 部分失敗 | build なし、SHA cache 差分なし。 |
 
@@ -2597,7 +2597,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 条件 | 処理 |
 |------|------|
 | GitHub tags API 失敗 | retry 対象。最終失敗時は build なし、終了コード `3`。 |
-| pattern 不正 | API は `422`、runner は終了コード `2`。 |
+| pattern 不正 | API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は終了コード `2`。 |
 | tag 数が 1000 超 | 先頭 1000 件だけ評価し、WARN を記録する。 |
 
 **検証条件：**
@@ -2661,7 +2661,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 
 | 条件 | 処理 |
 |------|------|
-| parallelism 不正 | API は `422`、runner は終了コード `2`。 |
+| parallelism 不正 | API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は終了コード `2`。 |
 | worker panic 相当の内部エラー | 該当 target failure、他 target は継続。 |
 | 全 target 失敗 | status `success_deploy_pending`、pending に全件追加。 |
 
@@ -2729,7 +2729,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 |------|------|
 | pre hook 失敗かつ `abort_on_failure=true` | build 本体を実行せず status `hook_error`。 |
 | pre hook 失敗かつ `abort_on_failure=false` | WARN、build 継続。 |
-| command 不正 | API は `422`、runner は該当 hook failure。 |
+| command 不正 | API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は該当 hook failure。 |
 | timeout | process kill、exit_code `null`、status `timeout`。 |
 
 **検証条件：**
@@ -2920,7 +2920,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 **正常系：**
 
-1. API は env key/value を検証して `.branch_config` に保存する。
+1. API の env key/value 検証と `.branch_config` 保存は [`docs/details/api.md`](api.md) §22.0e を参照する。
 2. runner は build process の environment に branch env を追加する。
 3. 同名 key が system env に存在する場合、branch env を優先する。
 4. build log には env key 一覧だけを保存し、value は保存しない。
@@ -2941,7 +2941,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 | 条件 | 処理 |
 |------|------|
-| key 不正 | API は `422`、runner は終了コード `2`。 |
+| key 不正 | API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は終了コード `2`。 |
 | value 上限超過 | `422`。 |
 | secret mask 漏れ | 実装不合格。該当 build は成功扱いにしない。 |
 
@@ -3077,7 +3077,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 項目 | 仕様 |
 |------|------|
 | 状態 | `.build_trends.json` |
-| API | `GET /api/stats/build-trends?n=N` |
+| API 参照 | `GET /api/stats/build-trends?n=N` の endpoint、query、response、HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 | sample | `{build_id, finished_at, branch, trigger, duration_seconds, status, anomaly}` |
 | 保持件数 | `.server_config.build_trend_keep_count`。既定値 1000、許容値 10〜10000。 |
 
@@ -3086,7 +3086,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 1. build 完了時、`duration_seconds != null` の場合だけ sample を追加する。
 2. `finished_at` 昇順で保存し、保持件数超過分は古い順に削除する。
 3. summary に `count`、`avg_seconds`、`median_seconds`、`p95_seconds`、`anomaly_count` を保存する。
-4. API は `n` の最新 sample と summary を返す。`n` は 1〜1000、既定値 100。
+4. API response と `n` の範囲は [`docs/details/api.md`](api.md) §22.0e を参照する。
 
 **統計算出固定契約：**
 
@@ -3098,7 +3098,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | `p95_seconds` | duration 昇順配列の `ceil(count * 0.95) - 1` 番目を採用する。`count=0` の場合は `null`。 |
 | `anomaly_count` | `sample.anomaly == true` の件数。 |
 | 同一 build id | 既存 sample と同じ `build_id` を追加する場合は append せず既存 sample を置換し、`finished_at` 昇順に再整列する。 |
-| API response | `{ "samples": TrendSample[], "summary": TrendSummary, "warnings": string[] }` を返す。warnings がない場合は空配列。 |
+| API response 参照 | response field、`warnings` の空配列表現、HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は `.build_trends.json` の sample と summary を保存する。 |
 
 `.build_trends.json` は sample 置換または追加後に summary を再計算して atomic write する。summary だけの部分更新は禁止する。
 
@@ -3108,7 +3108,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 |------|------|
 | `.build_trends.json` 破損 | `.build_trends.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避後、`.build_history` の有効行から再集計する。 |
 | 再集計不能 | 初期値で作成し、WARN を出す。 |
-| `n` 不正 | API は `422`。 |
+| `n` 不正 | API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 | `.build_history` に duration 欠落 | 当該行は再集計対象外とし、warnings に `trend_sample_skipped` を 1 回だけ含める。 |
 
 **検証条件：**
@@ -3175,7 +3175,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 | 条件 | 処理 |
 |------|------|
-| 循環依存 | API は `422`、runner は chain 無効化して通常 build。 |
+| 循環依存 | API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は chain 無効化して通常 build。 |
 | 依存 job 不在 | `422`。 |
 | job 実行中に runner 停止 | 完了済み job だけ history に残し、未実行 job は次回再判定。 |
 | chain summary 保存失敗 | job 結果は維持し、ERROR ログを出して runner 終了コードを最低 `1` にする。 |
@@ -3223,7 +3223,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 1. queue 追加時に priority と created_seq を保存する。
 2. runner は priority 数値昇順、同一 priority では created_seq 昇順で 1 件だけ処理する。
-3. `GET /api/queue` は並び替え後の queue を返す。
+3. `GET /api/queue` の response は [`docs/details/api.md`](api.md) §22.0e を参照する。runner が読む queue は priority / created_seq / id 順で固定する。
 4. `DELETE /api/queue` は waiting entry 全件を削除し、実行中 build は停止しない。
 
 **priority / created_seq 固定契約：**
@@ -3244,7 +3244,7 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 
 | 条件 | 処理 |
 |------|------|
-| priority 不正 | API は `422`。 |
+| priority 不正 | API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 | created_seq 欠落の旧 entry | GET 表示時は末尾扱いにする。runner 取り出し前または queue 更新時に `.build_state` lock 内で正規化保存する。正規化保存失敗時は build を開始しない。 |
 | queue full | `429`。priority による上書き削除はしない。 |
 
@@ -3263,7 +3263,7 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 | 項目 | 合格条件 |
 |------|----------|
 | 採番 | queue 追加時に `.build_state.queued[].created_seq` 最大値 + 1 を保存し、priority 省略時は `"normal"` を保存する。 |
-| 表示順 | `GET /api/queue` は priority 数値昇順、created_seq 昇順、id 昇順で返す。 |
+| 表示順 | runner が読む queue 順は priority 数値昇順、created_seq 昇順、id 昇順とする。`GET /api/queue` response は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 | 取り出し順 | runner は表示順と同じ順序で 1 件だけ取り出す。 |
 | 旧 entry | `created_seq` 欠落 entry は runner 取り出し前に lock 内で正規化保存し、保存失敗時は build を開始しない。 |
 | clear | `DELETE /api/queue` は waiting entry 全件だけを削除し、実行中 build を停止しない。 |
@@ -3294,7 +3294,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 1. failure 確定時に分類優先順位で category を決定する。
 2. `.build_logs/{id}.json.failure_category` と `failure_evidence[]` を保存する。
 3. `.build_history.failure_category` に同じ値を保存する。
-4. api / ui は category で filter できる。未知 query は `422`。
+4. category filter の API / UI 挙動と未知 query の HTTP status は [`docs/details/api.md`](api.md) §22.0e と [`docs/details/ui.md`](ui.md) §24 を参照する。
 
 **`failure_evidence[]` schema：**
 
@@ -3322,7 +3322,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 |------|------|
 | 複数カテゴリ該当 | 表の上から最初に該当した category を採用する。 |
 | evidence 抽出不能 | category は保存し、evidence は空配列。 |
-| 既存 history に未知 category | API は返すが warnings に `unknown_failure_category`。 |
+| 既存 history に未知 category | runner は新規保存で未知 category を作らない。API warning は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 
 **検証条件：**
 
@@ -3459,7 +3459,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | trend 破損 | [`docs/details/runner.md`](runner.md) §27.33 の復旧後、復旧できた場合だけ判定する。 |
 | avg / p95 が null | 判定しない。 |
 | 通知失敗 | build status は変更せず notify retry 契約に従う。 |
-| 設定値不正 | API は `422`、runner は既定値ではなく機能無効として扱う。 |
+| 設定値不正 | API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は既定値ではなく機能無効として扱う。 |
 | trend 保存失敗 | anomaly 判定結果と history は維持し、runner 終了コードを最低 `1` にする。 |
 
 **検証条件：**
@@ -3482,7 +3482,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | 閾値 | avg 超過、p95 超過、両方超過を区別し、`threshold_source` を固定値で保存・通知する。 |
 | history 更新 | anomaly 時は WARN、`flagged=true`、`tags += ["duration_anomaly"]` を保存し、重複 tag を作らない。 |
 | 通知独立性 | duration_anomaly 通知失敗は build status を変更せず、notify retry 契約に従う。 |
-| 設定不正 | API は `422`、runner は既定値へ補正せず機能無効として扱う。 |
+| 設定不正 | API の HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。runner は既定値へ補正せず機能無効として扱う。 |
 | 確認条件 | fixture は sample 不足 no-op、avg 超過、p95 境界、通知失敗、failure build、tag 重複、設定不正をすべて固定する。 |
 
 **[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 runner / statefile 連動実装確認ゲート：**
