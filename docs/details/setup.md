@@ -612,7 +612,7 @@ Phase 別の fixture、fake、expected / effects、PR 証跡、不足時の扱�
 
 | 更新対象 | 更新条件 | 必須確認 |
 |----------|----------|----------|
-| `expected/` 内の生成物 | 仕様本文の出力契約、schema、error body、DOM id、SDK return のいずれかが変更された場合のみ更新する。 | 仕様本文の該当節と fixture expected が同じ値を示すこと。 |
+| `expected/` 内の生成物 | 該当する owner component 別の詳細本文責務の出力契約、schema、error body、DOM id、SDK return のいずれかが変更された場合のみ更新する。 | 該当する owner component 別の詳細本文責務の節と fixture expected が同じ値を示すこと。 |
 | fake transcript | 外部依存の呼び出し method、path、payload、retry、timeout の仕様が変更された場合のみ更新する。 | secret / token / password 原文が transcript に存在しないこと。 |
 | DOM assertion | UI の DOM id、panel、表示文言、disabled / loading / success / error 条件が変更された場合のみ更新する。 | SDK method 対応表と DOM assertion が一致すること。 |
 | error expected | HTTP status、exit code、`AdlaireCIError.code`、stderr prefix が変更された場合のみ更新する。 | 正常系 fixture と異常系 fixture の両方で期待値が固定されていること。 |
