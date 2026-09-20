@@ -821,7 +821,7 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 
 | 項目 | 記録内容 |
 |------|----------|
-| 対象仕様 | 実装した §27.x、関連 §22 / §23 / §24 / §25 / §26、owner component、collaborator component。 |
+| 対象責務参照 | 実装した §27.x、関連 §22 / §23 / §24 / §25 / §26、owner component、collaborator component。 |
 | 対象 fixture | 作成または更新した fixture 名一覧。fixture 名は §27 fixture カタログ固定契約と一致させる。 |
 | 実行結果 | fixture ごとの pass / fail、実行コマンド、終了コード。 |
 | 状態差分 | 作成、更新、削除、変更禁止の path。`expected/effects.json` と一致させる。 |
