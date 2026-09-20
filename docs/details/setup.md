@@ -214,7 +214,7 @@ printf '%s\n' '{"sha":""}' > "$INSTALL_DIR/.last_sha"
 chmod 600 "$INSTALL_DIR/.last_sha"
 
 # ── 6. systemd サービスファイル配置 ───────────────────
-# §26.4.1 のファイル内容を /etc/systemd/system/ に配置した上で:
+# runner systemd unit の内容を /etc/systemd/system/ に配置した上で:
 systemctl daemon-reload
 
 # ── 7. タイマー有効化・起動 ───────────────────────────
@@ -292,7 +292,7 @@ test -f "$INSTALL_DIR/admin/adlaire-ci-sdk.js"
 chmod 600 "$INSTALL_DIR/.admin_credentials"
 
 # ── 6. 管理 API systemd サービス配置 ─────────────────
-# §26.4.2 のファイル内容を /etc/systemd/system/adlaire-ci-api.service に配置した上で:
+# 管理 API systemd unit の内容を /etc/systemd/system/adlaire-ci-api.service に配置した上で:
 systemctl daemon-reload
 
 # ── 7. サービス有効化・起動 ───────────────────────────
@@ -509,7 +509,7 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 | API | API service の起動、local health check、admin UI から到達可能な endpoint 境界を確認する。 | API endpoint、request / response、HTTP status、body は [`docs/details/api.md`](api.md) §22.0 / [`docs/details/api.md`](api.md) §22.0e を参照する。 |
 | SDK | admin UI 配布物に SDK 静的ファイルが含まれ、browser runtime から読み込めることを確認する。 | SDK method、transport、error、stream、timeout は [`docs/details/sdk.md`](sdk.md) §23 を参照する。 |
 | UI | admin UI 配布物が静的配信され、ログイン画面と主要 panel へ到達できることを確認する。 | UI DOM、disabled、成功表示、失敗表示、再取得、秘密情報消去は [`docs/details/ui.md`](ui.md) §24 を参照する。 |
-| setup | [`docs/details/setup.md`](setup.md) §26.3 または §26.3b の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
+| setup | [`docs/details/setup.md`](setup.md) §26.3 または [`docs/details/setup.md`](setup.md) §26.3b の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
 | update | [`docs/details/setup.md`](setup.md) §26.5 の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 条件が仕様どおり。 |
 | security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示の漏えい有無を確認する。 | 漏えい禁止対象と security 処理本文は [`docs/details/security.md`](security.md) §25、[`docs/details/security.md`](security.md) §27.42〜§27.47 を参照する。setup 側は配置・保持・権限・log 出力を確認する。 |
 

@@ -2243,7 +2243,7 @@ browser runtime が出力または変更してよい DOM state は下表に限�
 
 [`docs/details/builder.md`](builder.md) §28 実装は、Markdown を文字列置換だけで直接 HTML 化してはならない。以下の token 種別を内部表現として扱い、token 単位で変換する。token 名、判定順、fallback は固定値とする。
 
-| token | 対象 § | 判定 | HTML node 生成 | fallback |
+| token | 対象詳細節 | 判定 | HTML node 生成 | fallback |
 |-------|--------|------|----------------|----------|
 | `heading` | [`docs/details/builder.md`](builder.md) §28.5、[`docs/details/builder.md`](builder.md) §28.6、[`docs/details/builder.md`](builder.md) §28.7、[`docs/details/builder.md`](builder.md) §28.16、[`docs/details/builder.md`](builder.md) §28.20 | 行頭 `#` 1〜6 個、後続 space あり。 | slug は既存 slug 生成規則を使い、採番や表示 prefix を slug に混ぜない。 | 不正 heading は paragraph。 |
 | `blockquote` | [`docs/details/builder.md`](builder.md) §28.3 | `> [!TYPE]` で始まる blockquote。 | `section.adlaire-admonition` を生成し、`data-adlaire-admonition` に正規化 type を入れる。 | 未知 type は `note`。 |
