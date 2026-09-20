@@ -140,7 +140,7 @@ Phase 6 の実装詳細本文は [`docs/details/ui.md`](details/ui.md) を参照
 
 Phase fixture / testdata 配置、fake 実装、実装 PR 証跡の詳細は [`docs/details/fixture.md`](details/fixture.md) §0g.8-F を参照する。本ファイルでは、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、PR 証跡項目を重複定義しない。
 
-| Phase | 実装対象 | 成果物・fixture 参照先 | 受け入れ条件 |
+| Phase | 実装対象 | 成果物・fixture 確認先 | 受け入れ条件 |
 |-------|----------|----------------------|--------------|
 | Phase 1 | `builder` | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F | [`docs/details/builder.md`](details/builder.md) と [`docs/details/setup.md`](details/setup.md) §26.7 を満たす。 |
 | Phase 2 | `runner` | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F | [`docs/details/runner.md`](details/runner.md) と [`docs/details/setup.md`](details/setup.md) §26.7 を満たす。 |
