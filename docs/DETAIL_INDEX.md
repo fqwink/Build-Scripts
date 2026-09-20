@@ -144,7 +144,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の管�
 
 ---
 
-## 0b.1 owner component 別 詳細本文責務管理仕様
+## 0b.1 owner component 別 詳細本文責務管理責務
 
 本節は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の境界を維持するための入口管理責務である。責務境界の変更、仕様内容の配置変更、参照先更新では、方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態・実装可否・ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
 
