@@ -13,7 +13,7 @@
 | owner component | `security` |
 | collaborator component | `api`、`sdk`、`ui`、`statefile` |
 | 持つ内容 | `security` owner が主本文として定義する API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| 持たない内容 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡責務。 |
+| 持たない内容 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / 実装検証証跡責務。 |
 
 ---
 

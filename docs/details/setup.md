@@ -4,7 +4,7 @@
 
 本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、fixture、検証観点として参照する。
 
-本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。Phase 順序、実装状態、実装可否の判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、fixture、fake、expected / effects、PR 証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
+本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。Phase 順序、実装状態、実装可否の判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、fixture、fake、expected / effects、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---
 
@@ -15,7 +15,7 @@
 | owner component | `setup` |
 | collaborator component | `runner`、`api`、`statefile`、`admin` |
 | 持つ内容 | `setup` owner が主本文として定義するバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
-| 持たない内容 | runner / api / sdk / ui / admin の個別機能本文、状態 schema、API endpoint、SDK method、UI DOM、fixture / PR 証跡責務、外部依存追加。 |
+| 持たない内容 | runner / api / sdk / ui / admin の個別機能本文、状態 schema、API endpoint、SDK method、UI DOM、fixture / 実装検証証跡責務、外部依存追加。 |
 
 ---
 
@@ -148,7 +148,7 @@ Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は 
 
 setup / update 実装は、各段階の開始と成功を stderr または stdout に固定文言で 1 行ずつ出力する。PAT、password、session token、API token、Webhook secret、SMTP password、Release URL の credential 部分は出力してはならない。secret file が既に存在する場合は、個別手順で上書きを明記している場合を除き、既存値を保持する。特に `.github_token`、`.admin_credentials`、`.webhook_secret`、`.smtp_secret` は、アップデートで自動上書きしない。
 
-`systemctl daemon-reload` 成功だけではセットアップ成功と扱わない。`enable --now`、`restart`、`is-active`、API 導入時の `/api/health` 確認まで完了して初めて成功とする。確認コマンドが利用環境に存在しない場合は、Go `net/http` client または systemd D-Bus / `systemctl show` で同じ確認項目を検証し、実装 PR 証跡に代替コマンド、期待値、実測値を記録する。未確認のまま成功扱いにしない。
+`systemctl daemon-reload` 成功だけではセットアップ成功と扱わない。`enable --now`、`restart`、`is-active`、API 導入時の `/api/health` 確認まで完了して初めて成功とする。確認コマンドが利用環境に存在しない場合は、Go `net/http` client または systemd D-Bus / `systemctl show` で同じ確認項目を検証し、実装検証証跡に代替コマンド、期待値、実測値を記録する。未確認のまま成功扱いにしない。
 
 ### §26.3 Go 版初回セットアップ手順
 
@@ -262,7 +262,7 @@ Go 版初回セットアップでは以下を実行しない。
 | API service | `systemctl is-active adlaire-ci-api` | `active`。 |
 | local health | `curl -fsS http://127.0.0.1:8765/api/health` | local health endpoint の response 契約は [`docs/details/api.md`](api.md) §22.0e を参照し、setup 側は local API 到達と応答取得を確認する。 |
 
-`curl` が利用できない環境では、Go 実装 PR の検証で `net/http` client または同等のローカル HTTP 確認を行う。HTTP status、response body、必須 key の具体契約は [`docs/details/api.md`](api.md) §22.0e を参照し、未確認のまま API 導入確認を満たした扱いにしてはならない。
+`curl` が利用できない環境では、Go 実装変更の検証で `net/http` client または同等のローカル HTTP 確認を行う。HTTP status、response body、必須 key の具体契約は [`docs/details/api.md`](api.md) §22.0e を参照し、未確認のまま API 導入確認を満たした扱いにしてはならない。
 
 ```bash
 # ── 1. 拡張用ディレクトリ作成 ─────────────────────────
@@ -414,7 +414,7 @@ rollback は 1 回だけ実行する。rollback 自体が失敗した場合は�
 | local API | 確認しない。 | `GET /api/health` の endpoint 契約は [`docs/details/api.md`](api.md) §22.0e を参照し、API service が local health check に応答する。 |
 | state preservation | `.github_token`、`.last_sha`、`.build_state`、`.build_history` の mtime と内容が更新対象操作と無関係に変わっていない。 | 左記に加え `.admin_credentials` が存在する場合は mode `600` と内容が保持される。 |
 
-確認失敗時はアップデート失敗として扱う。binary 配置や restart が成功していても、確認失敗を成功報告してはならない。local API 確認で `curl` がない場合は Go 実装 PR の検証で `net/http` client による `GET /api/health` 相当の確認を行う。HTTP status、JSON object、`status` key の具体契約は [`docs/details/api.md`](api.md) §22.0e を参照し、実装 PR 証跡形式は [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。未確認のまま合格扱いにしない。
+確認失敗時はアップデート失敗として扱う。binary 配置や restart が成功していても、確認失敗を成功報告してはならない。local API 確認で `curl` がない場合は Go 実装変更の検証で `net/http` client による `GET /api/health` 相当の確認を行う。HTTP status、JSON object、`status` key の具体契約は [`docs/details/api.md`](api.md) §22.0e を参照し、実装検証証跡形式は [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。未確認のまま合格扱いにしない。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
@@ -569,7 +569,7 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 
 **関連責務参照：**
 
-[`docs/details/api.md`](api.md) §22、[`docs/details/statefile.md`](statefile.md) §22.0a / §22.0c、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24、[`docs/details/security.md`](security.md) §25 / §27.42〜§27.47、[`docs/details/setup.md`](setup.md) §26 にまたがる API、状態ファイル、SDK、UI、認証、setup / update の整合は、各 owner component 別の詳細本文責務と fixture 証跡責務を同時に参照する。本節は setup / release / update の実行条件だけを扱い、API endpoint、SDK method、UI 操作、認証方式、状態 schema、fixture 名、PR 証跡項目を重複定義しない。
+[`docs/details/api.md`](api.md) §22、[`docs/details/statefile.md`](statefile.md) §22.0a / §22.0c、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24、[`docs/details/security.md`](security.md) §25 / §27.42〜§27.47、[`docs/details/setup.md`](setup.md) §26 にまたがる API、状態ファイル、SDK、UI、認証、setup / update の整合は、各 owner component 別の詳細本文責務と fixture 証跡責務を同時に参照する。本節は setup / release / update の実行条件だけを扱い、API endpoint、SDK method、UI 操作、認証方式、状態 schema、fixture 名、実装検証証跡項目を重複定義しない。
 
 | 対象 | 主本文 | setup 側の確認範囲 |
 |------|--------|--------------------|
@@ -578,7 +578,7 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 | SDK method / transport / error | [`docs/details/sdk.md`](sdk.md) §23 | admin UI 配布時に SDK 静的ファイルを配置することだけを確認する。 |
 | UI DOM / 操作 / 表示状態 | [`docs/details/ui.md`](ui.md) §24 | admin UI 配布物と静的配信境界だけを確認する。 |
 | 認証 / session / token / TOTP / audit | [`docs/details/security.md`](security.md) §25、§27.42〜§27.47 | secret / credential file の配置、保持、権限、漏えい防止だけを確認する。 |
-| fixture / fake / expected / PR 証跡 | [`docs/details/fixture.md`](fixture.md) §0g.8-F、§22-F、§27-F | setup / release / update に関わる証跡の記録先だけを確認する。 |
+| fixture / fake / expected / 実装検証証跡 | [`docs/details/fixture.md`](fixture.md) §0g.8-F、§22-F、§27-F | setup / release / update に関わる証跡の記録先だけを確認する。 |
 
 **setup / update 失敗時副作用固定契約：**
 
@@ -596,9 +596,9 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 | 実装前 | secret handling | setup / update が触る secret file の保存先、権限、保持条件、log 禁止が定義済み。 |
 | 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が [`docs/details/setup.md`](setup.md) §26 の fixture と一致する。 |
 
-Phase 順序、実装 PR 単位、実装着手条件、判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。
+Phase 順序、実装変更単位、実装着手条件、判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。
 
-Phase 別の fixture、fake、expected / effects、PR 証跡、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節では Phase 別の受け入れ条件、検証記録、fixture 証跡項目を重複定義しない。
+Phase 別の fixture、fake、expected / effects、実装検証証跡、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節では Phase 別の受け入れ条件、検証記録、fixture 証跡項目を重複定義しない。
 
 **setup / release 未実行検証の代替条件：**
 
@@ -617,9 +617,9 @@ Phase 別の fixture、fake、expected / effects、PR 証跡、不足時の扱�
 | DOM assertion | setup / release / update が admin UI 静的ファイルの配置と到達確認を変更した場合のみ、setup 側の検証入口として更新する。UI DOM、panel、表示文言、disabled / loading / success / error 条件の具体契約は [`docs/details/ui.md`](ui.md) §24 と [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。 | setup 側は admin UI 配布物の存在と到達確認だけを固定し、DOM assertion の具体値は UI 詳細本文責務と一致すること。 |
 | error expected | setup / release / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果が変更された場合のみ更新する。HTTP status、API error body、`AdlaireCIError.code` の具体契約は [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。 | setup / release / update の正常系 fixture と異常系 fixture の両方で setup 責務の期待値が固定され、API / SDK / UI の期待値は各 owner component の詳細本文責務と一致すること。 |
 
-Phase 判定の PR 証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義し、PR 証跡項目を重複定義しない。
+Phase 判定の 実装検証証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義し、実装検証証跡項目を重複定義しない。
 
-setup / release / update に関わる受け入れ結果は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の形式で実装 PR 本文または検証ログに記録する。失敗、未実行、環境都合で省略した項目がある場合、setup / release / update を確認済み扱いにしてはならない。
+setup / release / update に関わる受け入れ結果は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の形式で Pull Request 本文または検証ログに記録する。失敗、未実行、環境都合で省略した項目がある場合、setup / release / update を確認済み扱いにしてはならない。
 
 ---
 
@@ -668,4 +668,4 @@ setup / release / update に関わる受け入れ結果は、[`docs/details/fixt
 | update success | 対象 binary、admin UI、systemd restart 記録 | 既存 state、history、secret は保持される。 |
 | update failure | rollback 対象、journal 確認対象 | rollback 表で許可した対象以外に差分がない。 |
 
-`setup` 実装 PR は、上表の fixture、差分確認、secret 非表示確認、終了コード確認を記録する。いずれかが未実行の場合、対象段階を確認済み扱いにせず、未実行理由と再実行条件を記録する。
+`setup` 実装変更は、上表の fixture、差分確認、secret 非表示確認、終了コード確認を記録する。いずれかが未実行の場合、対象段階を確認済み扱いにせず、未実行理由と再実行条件を記録する。

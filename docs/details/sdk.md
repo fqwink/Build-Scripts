@@ -15,7 +15,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | owner component | `sdk` |
 | collaborator component | `api`、`ui`、`security` |
 | 持つ内容 | `sdk` owner が主本文として定義する SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡責務。 |
+| 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / 実装検証証跡責務。 |
 
 ---
 
@@ -402,7 +402,7 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) §22.0e の SDK �
 
 **§27.21〜§27.47 SDK 連動 fixture 必須証跡：**
 
-SDK 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固定する。下表の証跡がない場合、SDK method が存在していても詳細実装確認を満たした扱いにしない。
+SDK 実装変更は、対象 §27 機能ごとに下表の証跡を fixture で固定する。下表の証跡がない場合、SDK method が存在していても詳細実装確認を満たした扱いにしない。
 
 | 証跡 | 固定する内容 | 合格条件 | 禁止事項 |
 |------|--------------|----------|----------|

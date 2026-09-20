@@ -13,7 +13,7 @@
 | owner component | `builder` |
 | collaborator component | `runner`、`api`、`statefile` |
 | 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
-| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture / PR 証跡責務。 |
+| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture / 実装検証証跡責務。 |
 
 ---
 
@@ -1414,7 +1414,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 ## 8a. `builder` 受け入れ fixture
 
-`builder` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装 PR で `testdata/builder/` 配下へ追加する。仕様 PR では fixture の期待値を本節で固定する。
+`builder` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装変更で `testdata/builder/` 配下へ追加する。仕様変更では fixture の期待値を本節で固定する。
 
 ### Fixture A: 単一 Markdown 入力
 
@@ -1623,7 +1623,7 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 | [`docs/details/builder.md`](builder.md) §14b | snapshot | build output、history keep、snapshot keep。 | `.snapshots/{build_id}`、snapshot manifest。 | build / deploy 成功後に atomic save し、世代 prune する。 | snapshot 保存失敗は WARN とし、build success を反転しない。 | snapshot save/prune、snapshot failure remains success。 |
 | [`docs/details/builder.md`](builder.md) §15 | logs/history | stdout/stderr、report、warnings、duration、target status。 | `.build_logs/{id}.json`、`.build_history`。 | build log 成功後だけ history を追記する。 | log write failure では history / SHA / deploy / snapshot を行わない。 | build log write failure、history append failure、report parse。 |
 | [`docs/details/builder.md`](builder.md) §16〜[`docs/details/builder.md`](builder.md) §18 | systemd / GitHub / setup | unit file、PAT、binary path、timer。 | service/timer 設定、導入済み状態。 | setup 手順で明示された file / unit だけ作成する。 | PAT 不正、checksum 不一致、unit 失敗で後続手順を開始しない。 | setup success、checksum mismatch、service failure。 |
-| [`docs/details/builder.md`](builder.md) §19〜[`docs/details/builder.md`](builder.md) §20 | 既知制限反映 | API / runner 制限事項。 | 実装対象外の明示。 | 制限を回避する隠れ機能を追加しない。 | 未定義 endpoint、外部認証、HTTPS listener、worker pool を実装しない。 | 実装 PR 本文で、対象外の節、未定義 endpoint、外部認証、HTTPS listener、worker pool が差分に含まれないことを列挙する。 |
+| [`docs/details/builder.md`](builder.md) §19〜[`docs/details/builder.md`](builder.md) §20 | 既知制限反映 | API / runner 制限事項。 | 実装対象外の明示。 | 制限を回避する隠れ機能を追加しない。 | 未定義 endpoint、外部認証、HTTPS listener、worker pool を実装しない。 | Pull Request 本文で、対象外の節、未定義 endpoint、外部認証、HTTPS listener、worker pool が差分に含まれないことを列挙する。 |
 
 **[`docs/details/builder.md`](builder.md) §8〜[`docs/details/builder.md`](builder.md) §20 中核機能 横断受け入れ固定契約：**
 
@@ -2387,14 +2387,14 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 
 **[`docs/details/builder.md`](builder.md) §28 既存出力互換・先取り実装禁止固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28 実装 PR は、対象機能を有効化しない既存 fixture の HTML、CSS、JS、search index、REPORT が変化しないことを示す。既定有効の機能は、本節で既定有効と明記された [`docs/details/builder.md`](builder.md) §28.10、[`docs/details/builder.md`](builder.md) §28.16、[`docs/details/builder.md`](builder.md) §28.18、[`docs/details/builder.md`](builder.md) §28.20、[`docs/details/builder.md`](builder.md) §28.21、[`docs/details/builder.md`](builder.md) §28.24、[`docs/details/builder.md`](builder.md) §28.25 に限定する。
+[`docs/details/builder.md`](builder.md) §28 実装変更は、対象機能を有効化しない既存 fixture の HTML、CSS、JS、search index、REPORT が変化しないことを示す。既定有効の機能は、本節で既定有効と明記された [`docs/details/builder.md`](builder.md) §28.10、[`docs/details/builder.md`](builder.md) §28.16、[`docs/details/builder.md`](builder.md) §28.18、[`docs/details/builder.md`](builder.md) §28.20、[`docs/details/builder.md`](builder.md) §28.21、[`docs/details/builder.md`](builder.md) §28.24、[`docs/details/builder.md`](builder.md) §28.25 に限定する。
 
 | 禁止例 | 理由 |
 |--------|------|
-| [`docs/details/builder.md`](builder.md) §28.3 実装 PR で未仕様の Markdown 記法を追加する。 | [`docs/details/builder.md`](builder.md) §28 表にない入力仕様の先取り。 |
-| [`docs/details/builder.md`](builder.md) §28.17 実装 PR で外部 `mermaid.js` を読み込む。 | 外部依存禁止と内製 SVG 範囲違反。 |
-| [`docs/details/builder.md`](builder.md) §28.22 実装 PR で新規 asset file を追加する。 | [`docs/details/builder.md`](builder.md) §28 CSS / JS 出力固定契約違反。 |
-| [`docs/details/builder.md`](builder.md) §28.2 実装 PR で `pdf` を実出力する。 | 予約 format は拒否が仕様。 |
+| [`docs/details/builder.md`](builder.md) §28.3 実装変更で未仕様の Markdown 記法を追加する。 | [`docs/details/builder.md`](builder.md) §28 表にない入力仕様の先取り。 |
+| [`docs/details/builder.md`](builder.md) §28.17 実装変更で外部 `mermaid.js` を読み込む。 | 外部依存禁止と内製 SVG 範囲違反。 |
+| [`docs/details/builder.md`](builder.md) §28.22 実装変更で新規 asset file を追加する。 | [`docs/details/builder.md`](builder.md) §28 CSS / JS 出力固定契約違反。 |
+| [`docs/details/builder.md`](builder.md) §28.2 実装変更で `pdf` を実出力する。 | 予約 format は拒否が仕様。 |
 | warning code を PR 内で独自追加する。 | stderr / fixture 比較が不安定になる。 |
 
 **[`docs/details/builder.md`](builder.md) §28 機能別詳細仕様：**
@@ -2908,7 +2908,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 
 **[`docs/details/builder.md`](builder.md) §28 詳細実装確認条件：**
 
-各機能は、該当 [`docs/details/builder.md`](builder.md) §28.x の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/fixture.md`](fixture.md) §28-F を満たすまで詳細実装確認を満たした扱いにしない。複数の [`docs/details/builder.md`](builder.md) §28 機能を同一 PR で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を PR 本文に列挙する。
+各機能は、該当 [`docs/details/builder.md`](builder.md) §28.x の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/fixture.md`](fixture.md) §28-F を満たすまで詳細実装確認を満たした扱いにしない。複数の [`docs/details/builder.md`](builder.md) §28 機能を同一変更で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を Pull Request 本文または検証ログに列挙する。
 
 **[`docs/details/builder.md`](builder.md) §28 詳細実装確認ゲート固定契約：**
 
@@ -2916,7 +2916,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 
 | ゲート | 合格条件 | 未充足時の扱い |
 |--------|----------|------------|
-| 対象節明示 | 実装 PR に対象 [`docs/details/builder.md`](builder.md) §28.x を列挙し、対象外 [`docs/details/builder.md`](builder.md) §28.x も列挙する。 | 対象外機能が不明、または複数機能の混入範囲が不明。 |
+| 対象節明示 | 実装検証証跡に対象 [`docs/details/builder.md`](builder.md) §28.x を列挙し、対象外 [`docs/details/builder.md`](builder.md) §28.x も列挙する。 | 対象外機能が不明、または複数機能の混入範囲が不明。 |
 | CLI / env | 対象 [`docs/details/builder.md`](builder.md) §28.x の CLI option、環境変数、既定値、拒否値を fixture で確認する。 | CLI のみ、env のみ、既定値のみなど片方だけの確認。 |
 | HTML / CSS / JS | 本節に定義された tag、attribute、class、data attribute、storage key、handler だけを出力する。 | 未定義 class、未定義 asset、未定義 handler、未定義 localStorage key の追加。 |
 | REPORT | 本節に定義された REPORT key、型、count 単位、既定値をすべて fixture で確認する。 | key 省略、型違い、件数算出根拠不明、warning count 不一致。 |
@@ -2936,8 +2936,8 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | 対象 [`docs/details/builder.md`](builder.md) §28.x にない CLI option、Markdown 記法、CSS class、JS 挙動を追加した。 | 先取り実装であり、仕様範囲外。 |
 | [`docs/details/fixture.md`](fixture.md) §28-F にない fixture 名または fixture 構成で検証した。 | fixture 証跡責務から外れている。 |
 | strict / non-strict の片方だけを実装した。 | 異常系の固定挙動が未完成。 |
-| REPORT key が仕様表と一致しない。 | runner / API / PR 証跡が同じ結果を読めない。 |
+| REPORT key が仕様表と一致しない。 | runner / API / 実装検証証跡が同じ結果を読めない。 |
 | HTML / CSS / JS の expected 差分を目視または snapshot だけで合格扱いした。 | 再現性ある合否判定ではない。 |
 | 外部 library、CDN、runtime network fetch、npm package、Python 実装を追加した。 | [`docs/details/builder.md`](builder.md) §28 共通固定契約違反。 |
 | 失敗時に既存出力または manifest が更新された。 | atomicity 違反。 |
-| PR 本文に対象機能、fixture、REPORT、strict / non-strict、既存互換、対象外機能が列挙されていない。 | 実装証跡不足。 |
+| Pull Request 本文または検証ログに対象機能、fixture、REPORT、strict / non-strict、既存互換、対象外機能が列挙されていない。 | 実装証跡不足。 |

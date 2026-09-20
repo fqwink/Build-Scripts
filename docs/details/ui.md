@@ -15,7 +15,7 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | owner component | `ui` |
 | collaborator component | `sdk`、`api`、`security` |
 | 持つ内容 | `ui` owner が主本文として定義する DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
-| 持たない内容 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡責務。 |
+| 持たない内容 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / 実装検証証跡責務。 |
 
 ---
 
@@ -505,7 +505,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 
 **§27.21〜§27.47 UI 連動 fixture 必須証跡：**
 
-UI 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固定する。UI は API / SDK の返却値を表示する補助層であり、状態確定、補完、保存、再試行を独自判断で行わない。
+UI 実装変更は、対象 §27 機能ごとに下表の証跡を fixture で固定する。UI は API / SDK の返却値を表示する補助層であり、状態確定、補完、保存、再試行を独自判断で行わない。
 
 | 証跡 | 固定する内容 | 合格条件 | 禁止事項 |
 |------|--------------|----------|----------|

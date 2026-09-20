@@ -13,7 +13,7 @@
 | owner component | `archive` |
 | collaborator component | `runner`、`api`、`sdk`、`ui`、`statefile` |
 | 持つ内容 | `archive` owner が主本文として定義する build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理。 |
-| 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡責務。 |
+| 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 手順、fixture / 実装検証証跡責務。 |
 
 archive owner は、保存済み build log と snapshot artifact を安全に圧縮、展開、列挙、削除、転送する実体処理だけを担当する。api の HTTP endpoint、request / response、HTTP status、sdk の API method、ui の操作表示は、それぞれ [`docs/details/api.md`](api.md)、[`docs/details/sdk.md`](sdk.md)、[`docs/details/ui.md`](ui.md) を参照する。runner の build 実行、build id 採番、通常 snapshot 作成タイミング、history / status finalizer は runner owner の詳細仕様を基準とし、本ファイルへ重複定義しない。
 

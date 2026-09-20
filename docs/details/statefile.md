@@ -13,7 +13,7 @@
 | owner component | `statefile` |
 | collaborator component | `runner`、`api`、`archive`、`security` |
 | 持つ内容 | `statefile` owner が主本文として定義する状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
-| 持たない内容 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / release 手順、fixture / PR 証跡責務、個別 component の業務判断。 |
+| 持たない内容 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / release 手順、fixture / 実装検証証跡責務、個別 component の業務判断。 |
 
 ---
 
@@ -829,7 +829,7 @@ BuildMeta object:
 
 **runner 連動状態更新固定ゲート：**
 
-runner / archive / commitstatus / security / api が同じ実装 PR で状態更新を組み合わせる場合でも、statefile owner の契約は下表で固定する。呼び出し元 component は業務判断を持ち、statefile は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当する。
+runner / archive / commitstatus / security / api が同じ実装変更で状態更新を組み合わせる場合でも、statefile owner の契約は下表で固定する。呼び出し元 component は業務判断を持ち、statefile は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当する。
 
 | ゲート | statefile 側の固定処理 | 呼び出し元が渡す値 | 失敗時境界 |
 |--------|------------------------|-------------------|------------|

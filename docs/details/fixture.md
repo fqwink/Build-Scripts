@@ -2,7 +2,7 @@
 
 本ファイルは `fixture` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
+本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、実装検証証跡、検証観点として参照する。
 
 ---
 
@@ -12,7 +12,7 @@
 |------|------|
 | owner component | `fixture` |
 | collaborator component | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`security`、`setup` |
-| 持つ内容 | `fixture` owner が主本文として定義する fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件。 |
+| 持つ内容 | `fixture` owner が主本文として定義する fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、実装検証証跡テンプレート、acceptance checklist、差し戻し条件。 |
 | 持たない内容 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
 ---
@@ -21,16 +21,16 @@
 
 | 範囲 | 内容 |
 |------|------|
-| §0g.8-F | Phase fixture / testdata 配置、fake 実装、実装 PR 証跡。 |
+| §0g.8-F | Phase fixture / testdata 配置、fake 実装、実装検証証跡。 |
 | §22-F | Phase 3 / Phase 4 API の必須検証、API fixture、API / SDK / UI / 状態ファイル cross fixture 固定。 |
 | §27-F | §27 fixture 配置、fixture カタログ、manifest、assertion、expected/effects、相互整合、component 別検証責務。 |
-| §27-F-PR | §27 実装 PR 証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
+| §27-F-PR | §27 実装検証証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
 
-## 0g.8-F Phase fixture / testdata / fake / PR 証跡契約
+## 0g.8-F Phase fixture / testdata / fake / 実装検証証跡契約
 
-本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件を扱う fixture 証跡責務である。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0g、§0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、PR 証跡項目、不足時の扱い、差し戻し条件は本ファイルを参照する。
+本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、実装検証証跡、acceptance checklist、差し戻し条件を扱う fixture 証跡責務である。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0g、§0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、実装検証証跡項目、不足時の扱い、差し戻し条件は本ファイルを参照する。
 
-実装 PR の完了証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる PR は、該当する全系統の証跡を PR 本文または検証ログに記録する。
+実装検証証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる変更は、該当する全系統の証跡を Pull Request 本文または検証ログに記録する。Pull Request 作成、merge、branch 操作、レビュー対応の作業ルールは [`AGENTS.md`](../../AGENTS.md) を参照し、本ファイルでは定義しない。
 
 | 系統 | 対象 | 責務節 | 必須証跡 |
 |------|------|--------|----------|
@@ -40,7 +40,7 @@
 
 上表の証跡が不足する場合、対象機能は未完了として扱う。fixture の pass だけでは完了証跡を満たさない。
 
-Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、本ファイルは fixture 証跡責務として証跡分類、不足時の扱い、差し戻し条件だけを固定する。
+Phase、API、§27 のいずれの実装検証証跡でも、記録形式は本ファイルの表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、本ファイルは fixture 証跡責務として証跡分類、不足時の扱い、差し戻し条件だけを固定する。
 
 **Phase fixture / testdata 配置固定契約：**
 
@@ -64,26 +64,26 @@ Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本
 | fake fetch | Phase 5 | `status`、`headers`、`body`、network error、timeout、abort、stream chunk を fixture どおり返す。実 network は使用しない。 | method、URL、query、headers、body 有無、abort 発生有無、呼び出し順。token 値は `***` に置換する。 |
 | fake SDK | Phase 6 | SDK method ごとに固定 return、固定 throw、固定 stream event を返す。UI からの直接 API 呼び出しは受け付けない。 | method 名、引数、呼び出し順、throw した error code、stream unsubscribe 実行有無。 |
 
-**実装 PR 証跡固定契約：**
+**実装検証証跡固定契約：**
 
-本契約は Phase 実装の PR 証跡に適用する。API 実装は §22-F、§27 実装は §27-F の acceptance checklist も同時に満たす。
+本契約は Phase 実装の検証証跡に適用する。API 実装は §22-F、§27 実装は §27-F の acceptance checklist も同時に満たす。
 
 | 証跡 | 必須記載 | 不足時の扱い |
 |------|----------|--------------|
 | 変更対象 | 対象 Phase、owner component、collaborator component、変更ファイル、追加 fixture / testdata path。 | 対象 Phase の成果物不足として未完了。 |
 | 固定契約 | 追加または固定した CLI、状態 schema、HTTP API、SDK method、DOM id、fake 動作、終了コード、error body。 | 後続 Phase が参照できないため未完了。 |
 | 検証 | 実行コマンド、fixture 名、期待結果、実結果、判定。 | 合否を再現できないため未完了。 |
-| 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定、未定義 endpoint / UI / 状態ファイルのうち今回実装しない範囲を PR 証跡に列挙する。 | 先取り実装または範囲不明として未完了。 |
-| 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用禁止の未固定 contract を PR 証跡に列挙する。 | 次 Phase 着手条件未充足として未完了。 |
-| secret 確認 | log、fixture、snapshot、UI 表示、PR 本文に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
+| 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定、未定義 endpoint / UI / 状態ファイルのうち今回実装しない範囲を実装検証証跡に列挙する。 | 先取り実装または範囲不明として未完了。 |
+| 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用禁止の未固定 contract を実装検証証跡に列挙する。 | 次 Phase 着手条件未充足として未完了。 |
+| secret 確認 | log、fixture、snapshot、UI 表示、Pull Request 本文に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
 
 ## 22-F Phase 3 / Phase 4 API fixture 契約
 
 本節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) §22 を基準とし、本節では再定義しない。
 
-API 実装 PR は、§0g.8-F の PR 証跡固定契約に加えて、本節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
+API 実装の検証証跡は、§0g.8-F の実装検証証跡固定契約に加えて、本節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
 
-Phase 順序、実装 PR 単位、完了判定単位は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。本節は、Phase 3 / Phase 4 の API fixture 証跡として記録する項目だけを固定する。
+Phase 順序、実装変更単位、完了判定単位は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。本節は、Phase 3 / Phase 4 の API fixture 証跡として記録する項目だけを固定する。
 
 | Phase | 対象 | 完了条件 |
 |-------|------|----------|
@@ -212,7 +212,7 @@ Phase 4 実装は、下表の fixture をすべて満たした場合だけ完了
 | cross binary snapshot | `downloadSnapshot(id)` が binary success。 | API は binary header、SDK は `Blob`、UI は download 開始表示。JSON parse、success JSON body、状態ファイル更新なし。 |
 | cross destructive cancel | 削除 / rollback 確認 dialog を cancel。 | SDK method 呼び出し 0 回、状態ファイル副作用なし、success / error 表示差分なし。 |
 
-## 27-F §27 fixture / PR 証跡詳細契約
+## 27-F §27 fixture / 実装検証証跡詳細契約
 
 **§27 fixture 配置・命名固定契約：**
 
@@ -231,7 +231,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 **§27 fixture カタログ固定契約：**
 
-§27 の実装 PR は、対象機能について下表の fixture を作成する。複数節を同一 PR で実装する場合は、各節の fixture を省略せず作成する。fixture は入力、期待 response、期待 stdout/stderr、期待状態差分、期待 log/history/audit/notify、secret 非表示確認のうち該当するものを含める。
+§27 の実装変更は、対象機能について下表の fixture を作成する。複数節を同一変更で実装する場合は、各節の fixture を省略せず作成する。fixture は入力、期待 response、期待 stdout/stderr、期待状態差分、期待 log/history/audit/notify、secret 非表示確認のうち該当するものを含める。
 
 | 節 | fixture 名 | 入力 fixture | 期待出力 / 期待副作用 |
 |----|------------|--------------|------------------------|
@@ -334,7 +334,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 **§27.1〜§27.11 feature fixture 固定契約：**
 
-§27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+§27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装検証証跡に対象 fixture と実行結果を列挙する。
 
 | 節 | fixture | 固定する内容 |
 |----|---------|--------------|
@@ -389,7 +389,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 **§27.12〜§27.20 feature fixture 固定契約：**
 
-§27.12〜§27.20 の fixture は、Webhook、Webhook event log、duration stats、snapshot artifact、health、log severity search、branch config、weekly summary、config diff の運用 API / runner / archive 連動を固定する。各 fixture は、HTTP response だけでなく、状態ファイル差分、外部呼び出し、保存順、失敗時に発生してはならない副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+§27.12〜§27.20 の fixture は、Webhook、Webhook event log、duration stats、snapshot artifact、health、log severity search、branch config、weekly summary、config diff の運用 API / runner / archive 連動を固定する。各 fixture は、HTTP response だけでなく、状態ファイル差分、外部呼び出し、保存順、失敗時に発生してはならない副作用、secret mask を expected に固定し、実装検証証跡に対象 fixture と実行結果を列挙する。
 
 | 節 | fixture | 固定する内容 |
 |----|---------|--------------|
@@ -438,7 +438,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 **§27.21〜§27.30 feature fixture 固定契約：**
 
-§27.21〜§27.30 の fixture は、runner 拡張、builder cache / dependency、remote artifact、approval API の詳細実装確認を固定する。各 fixture は、実行順、保存順、成功時だけ更新する状態、失敗時に絶対変更してはならない状態、外部 API / command / SSH / notification の呼び出し、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+§27.21〜§27.30 の fixture は、runner 拡張、builder cache / dependency、remote artifact、approval API の詳細実装確認を固定する。各 fixture は、実行順、保存順、成功時だけ更新する状態、失敗時に絶対変更してはならない状態、外部 API / command / SSH / notification の呼び出し、secret mask を expected に固定し、実装検証証跡に対象 fixture と実行結果を列挙する。
 
 | 節 | fixture | 固定する内容 |
 |----|---------|--------------|
@@ -607,7 +607,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | idempotency | 同一 fixture を 2 回適用した場合、2 回目の差分が no-op 仕様と一致する。 |
 | no-write | read-only / dry-run fixture で状態、logs、effects の差分がない。 |
 
-上表のうち `manifest.json.assertions` に含まれる判定が 1 つでも失敗した場合、その fixture は失敗とする。対象機能の必須 fixture が 1 件でも存在しない、または skip された場合、その機能の実装 PR は未完了とする。
+上表のうち `manifest.json.assertions` に含まれる判定が 1 つでも失敗した場合、その fixture は失敗とする。対象機能の必須 fixture が 1 件でも存在しない、または skip された場合、その機能の実装変更は未完了とする。
 
 **§27 fixture assertion 選択固定契約：**
 
@@ -702,7 +702,7 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 
 **§27 fixture 相互整合固定契約：**
 
-fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾してはならない。下表の不整合が 1 件でもある場合、その fixture は失敗とし、対象機能の実装 PR は未完了とする。
+fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾してはならない。下表の不整合が 1 件でもある場合、その fixture は失敗とし、対象機能の実装変更は未完了とする。
 
 | 整合対象 | 固定条件 | 不整合時の扱い |
 |----------|----------|----------------|
@@ -723,7 +723,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 
 **§27 component 別検証責務固定契約：**
 
-実装 PR は、対象 component ごとに下表の責務を満たす。複数 component を含む機能では、owner component と collaborator component を fixture manifest に分けて記録し、各 component の責務をすべて満たすまで完了扱いにしてはならない。
+実装変更は、対象 component ごとに下表の責務を満たす。複数 component を含む機能では、owner component と collaborator component を fixture manifest に分けて記録し、各 component の責務をすべて満たすまで完了扱いにしてはならない。
 
 | component | owner 時の必須検証責務 | collaborator 時の必須検証責務 | 完了判定 | 禁止越境 |
 |-----------|------------------------|-------------------------------|----------|----------|
@@ -739,7 +739,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `security` | token hash、session、TOTP、scope、audit、rate limit、secret mask、forbidden call/write を fixture で固定する。 | API / SDK / UI / runner の secret 表示、認証失敗、副作用境界を検証する。 | 認証失敗、権限拒否、rate limit、audit failure の副作用境界が検証済み。 | 業務処理代行、認可前状態更新、secret 平文保存。 |
 | `setup` | binary 配置、service 更新、rollback、secret 既存値保持、stdout/stderr mask、終了コードを fixture で固定する。 | runner / API の初期状態と既存 secret を壊さないことを effects で固定する。 | 部分失敗時の復元対象と復元禁止対象が `expected/effects.json` に明記済み。 | runtime 機能追加、状態 schema 暗黙変更、外部依存追加。 |
 
-component 責務を別 PR へ分ける場合でも、各 PR が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を PR 本文に明記する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
+component 責務を複数変更へ分ける場合でも、各変更が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を実装検証証跡に明記する。Pull Request の分割可否と作業ルールは [`AGENTS.md`](../../AGENTS.md) を参照する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
 
 **§27 runner / statefile 連動 fixture 固定契約：**
 
@@ -756,7 +756,7 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 
 **§27 API / SDK / UI 連動 fixture 固定契約：**
 
-§27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する実装 PR は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は owner component の主本文を置き換えず、API response、SDK method、UI 表示の接続点を固定する。
+§27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する実装変更は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は owner component の主本文を置き換えず、API response、SDK method、UI 表示の接続点を固定する。
 
 | fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
 |------------|----------------|------------|---------------|----------|
@@ -775,7 +775,7 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 
 **§27-F setup / admin / release 連動 fixture 固定契約：**
 
-§26 の setup、admin UI 配布、API service 導入、update、rollback を含む実装 PR は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は [`docs/details/setup.md`](setup.md) §26.8 と [`docs/details/admin.md`](admin.md) A1〜A6 の合格条件を同じ expected で検証する。
+§26 の setup、admin UI 配布、API service 導入、update、rollback を含む実装変更は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は [`docs/details/setup.md`](setup.md) §26.8 と [`docs/details/admin.md`](admin.md) A1〜A6 の合格条件を同じ expected で検証する。
 
 | fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
 |------------|----------------|------------|---------------|----------|
@@ -785,28 +785,28 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | `admin-static-serving-security` | `admin`、`api` | static request、secret/state/log/snapshot path、method variation。 | `expected/response.json`、`expected/security.json`、`expected/effects.json`。 | A3 の status、header、body 有無、method 制限、no mutation、secret 非表示が一致する。 |
 | `setup-secret-preservation` | `setup`、`security` | 既存 secret files、update input、failure fake。 | `expected/security.json`、`expected/effects.json.unchanged_paths`、`forbidden_writes`。 | 明示対象外 secret の content / mode / mtime を保持し、stdout、stderr、journal、expected に secret 原文を残さない。 |
 
-上表の fixture は、`manifest.json.owner_component` を `setup` または `admin` のどちらかに固定し、もう片方を `collaborator_components` に含める。実装 PR が API service 起動、static serving、rollback、secret 保持を扱う場合は、`api`、`runner`、`security` を collaborator として追加し、`expected/effects.json` の `forbidden_calls` と `forbidden_writes` に禁止対象を明記する。
+上表の fixture は、`manifest.json.owner_component` を `setup` または `admin` のどちらかに固定し、もう片方を `collaborator_components` に含める。実装変更が API service 起動、static serving、rollback、secret 保持を扱う場合は、`api`、`runner`、`security` を collaborator として追加し、`expected/effects.json` の `forbidden_calls` と `forbidden_writes` に禁止対象を明記する。
 
 **§27 PR 別必須記録固定契約：**
 
-各 §27 実装 PR は、本文に下表を記録する。記録がない PR は、コードと fixture が存在しても未完了とする。
+各 §27 実装変更は、Pull Request 本文または検証ログに下表を記録する。記録がない変更は、コードと fixture が存在しても未完了とする。
 
 | 記録項目 | 必須内容 |
 |----------|----------|
 | wave | 対象 wave、対象 §27.x、先行 wave 完了 commit または PR 番号。 |
 | 実装対象 | 実装する機能名、owner component、collaborator component、変更ファイル、追加 fixture path。 |
-| 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイルを PR 証跡に列挙する。 |
+| 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイルを実装検証証跡に列挙する。 |
 | fixture | §27 fixture カタログの fixture 名、manifest / effects / security の検証結果。 |
-| acceptance | §27 実装 PR acceptance checklist の各項目の pass / fail / 未実行。 |
-| 後続影響 | 後続 PR が利用許可済みの contract、利用禁止の未固定 contract を PR 証跡に列挙する。 |
+| acceptance | §27 実装 acceptance checklist の各項目の pass / fail / 未実行。 |
+| 後続影響 | 後続変更が利用許可済みの contract、利用禁止の未固定 contract を実装検証証跡に列挙する。 |
 
-**§27 実装 PR 最終受け入れゲート：**
+**§27 実装最終受け入れゲート：**
 
-§27 の機能実装 PR は、下表の全 gate を満たした場合だけ「完了」と判定する。1 件でも未達がある場合は「未完了」、仕様逸脱または secret 漏えいリスクがある場合は「差し戻し」とする。
+§27 の機能実装は、下表の全 gate を満たした場合だけ「完了」と判定する。1 件でも未達がある場合は「未完了」、仕様逸脱または secret 漏えいリスクがある場合は「差し戻し」とする。
 
 | gate | 完了条件 | 未完了条件 | 差し戻し条件 |
 |------|----------|------------|--------------|
-| scope | 実装対象が §27 fixture カタログ固定契約に存在する機能だけである。 | 実装対象節の記載が PR 本文にない。 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加している。 |
+| scope | 実装対象が §27 fixture カタログ固定契約に存在する機能だけである。 | 実装対象節の記載が実装検証証跡にない。 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加している。 |
 | fixture | 対象 §27.x の必須 fixture がすべて存在し、skip されていない。 | 必須 fixture が不足、または fixture 名が不一致。 | fixture が実装挙動に合わせて期待値を緩めている。 |
 | manifest | 全 fixture の `manifest.json` が schema、assertion 選択、owner / collaborator component 責務を満たす。 | assertion、references、owner_component、collaborator_components、components、fake_clock のいずれかが不足。 | unknown key、実 secret、実環境 path、乱数依存を含む。 |
 | expected | `expected/response.json`、`expected/state/`、`expected/logs/`、`expected/effects.json`、`expected/security.json` が assertion と一致する。 | assertion に対応する expected file が不足。 | expected と manifest / effects / security が矛盾する。 |
@@ -815,9 +815,9 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | component | builder / runner / api / admin / sdk / ui / statefile / archive / commitstatus / security / setup の該当責務が全て fixture に紐づく。 | owner / collaborator component の所在が不明。 | SDK / UI が API response を推測補完、または UI が直接 API / 状態ファイルを操作する。 |
 | repeatability | fake clock、fake external response、固定 path により、同じ fixture が同じ結果を再現する。 | idempotency / no-op の 2 回目期待値が不足。 | 現在時刻、実ネットワーク、実 OS 差分に依存する。 |
 
-**§27 実装 PR acceptance checklist：**
+**§27 実装 acceptance checklist：**
 
-実装 PR 本文または検証ログには、下表の項目を記録する。記録がない項目は未検証として扱い、対象機能を完了扱いにしてはならない。
+Pull Request 本文または検証ログには、下表の項目を記録する。記録がない項目は未検証として扱い、対象機能を完了扱いにしてはならない。
 
 | 項目 | 記録内容 |
 |------|----------|
@@ -858,9 +858,9 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | 再実行 no-op | 同一入力で差分がない保存 API は、個別節の no-op response を返し、状態、config log、audit log、notify log に新規差分を作らない。 |
 | 破損 JSON Lines | read API は破損行を除外し、破損内容を response に出さない。write API は既存破損行を修復、削除、並べ替えしない。 |
 
-## 28-F §28 builder 拡張 fixture / PR 証跡詳細契約
+## 28-F §28 builder 拡張 fixture / 実装検証証跡詳細契約
 
-本節は、[`docs/details/builder.md`](builder.md) §28.1〜§28.25 の fixture、fake、expected、effects、PR 証跡を扱う fixture 証跡責務である。各 §28 機能は、Markdown 入力、CLI option、期待 HTML、期待 CSS / JS、`[REPORT]`、終了コード、strict / non-strict の差分を fixture で固定する。外部 library、CDN、実 network、現在時刻、実 git repository、実画像取得、画像 snapshot だけの合否判定を fixture の前提にしてはならない。
+本節は、[`docs/details/builder.md`](builder.md) §28.1〜§28.25 の fixture、fake、expected、effects、実装検証証跡を扱う fixture 証跡責務である。各 §28 機能は、Markdown 入力、CLI option、期待 HTML、期待 CSS / JS、`[REPORT]`、終了コード、strict / non-strict の差分を fixture で固定する。外部 library、CDN、実 network、現在時刻、実 git repository、実画像取得、画像 snapshot だけの合否判定を fixture の前提にしてはならない。
 
 **§28 fixture 配置固定契約：**
 
@@ -876,7 +876,7 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 
 **§28 fixture カタログ固定契約：**
 
-下表の fixture 名は固定値である。実装 PR では、対象 §28.x の全 fixture を追加または更新し、`expected/stdout.txt` の `[REPORT]` key が [`docs/details/builder.md`](builder.md) §28 の固定契約と一致することを証跡に含める。
+下表の fixture 名は固定値である。実装変更では、対象 §28.x の全 fixture を追加または更新し、`expected/stdout.txt` の `[REPORT]` key が [`docs/details/builder.md`](builder.md) §28 の固定契約と一致することを証跡に含める。
 
 | 節 | feature slug | 必須 fixture |
 |----|--------------|--------------|
@@ -1280,7 +1280,7 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 **§28 既存出力互換 fixture 固定契約：**
 
-§28 実装 PR では、対象機能の fixture だけでなく、機能を無効化した互換 fixture を 1 件以上含める。既定有効機能は、有効化前後ではなく「機能対象入力なし」の互換 fixture を含める。
+§28 実装変更では、対象機能の fixture だけでなく、機能を無効化した互換 fixture を 1 件以上含める。既定有効機能は、有効化前後ではなく「機能対象入力なし」の互換 fixture を含める。
 
 | 機能種別 | 互換 fixture |
 |----------|--------------|
@@ -1342,21 +1342,21 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | `feature_slug` | string | §28 fixture カタログ固定契約の feature slug。 |
 | `owner` | string | 常に `builder`。 |
 | `collaborators` | array | `runner`、`statefile` など該当する補助 component。該当なしは空配列。 |
-| `spec_refs` | array | `docs/details/builder.md §28.x` と `docs/details/fixture.md §28-F` を含める。 |
+| `spec_refs` | array | [`docs/details/builder.md`](builder.md) §28.x と [`docs/details/fixture.md`](fixture.md) §28-F を含める。 |
 | `strict` | boolean | strict mode fixture なら `true`。 |
 | `expected_exit_code` | integer | `0`、`1`、`2` のいずれか。 |
 | `fakes` | object | fake clock、fake git、fake mtime、fake manifest、fake clipboard。不要なら空 object。 |
 | `not_applicable` | array | 比較対象外にする file や観点。理由なしの除外は禁止。 |
 
-**§28 PR 証跡固定契約：**
+**§28 実装検証証跡固定契約：**
 
-実装 PR 本文には、対象 §28.x、追加 fixture 名、変更した HTML / CSS / JS / REPORT key、strict / non-strict 結果、外部依存なし確認、既存出力互換確認、未実装の §28 機能を列挙する。対象外の §28 機能を先取り実装した場合、または [`docs/details/builder.md`](builder.md) §28 に存在しない Markdown 記法、CLI option、CSS class、JS 挙動を追加した場合は未完了として扱う。
+Pull Request 本文または検証ログには、対象 §28.x、追加 fixture 名、変更した HTML / CSS / JS / REPORT key、strict / non-strict 結果、外部依存なし確認、既存出力互換確認、未実装の §28 機能を列挙する。対象外の §28 機能を先取り実装した場合、または [`docs/details/builder.md`](builder.md) §28 に存在しない Markdown 記法、CLI option、CSS class、JS 挙動を追加した場合は未完了として扱う。
 
-**§28 PR 受け入れゲート固定契約：**
+**§28 実装受け入れゲート固定契約：**
 
-§28 実装 PR は、下表を PR 本文または検証ログで確認できる場合だけ受け入れ可能とする。確認できない項目は、実装漏れではなく証跡不足として未完了扱いにする。
+§28 実装変更は、下表を Pull Request 本文または検証ログで確認できる場合だけ受け入れ可能とする。確認できない項目は、実装漏れではなく証跡不足として未完了扱いにする。
 
-| ゲート | PR 証跡 | 不足時の扱い |
+| ゲート | 実装検証証跡 | 不足時の扱い |
 |--------|---------|--------------|
 | 対象範囲 | 対象 §28.x と対象外 §28.x の一覧。 | 先取り実装または範囲不明として未完了。 |
 | fixture catalog | 追加 / 更新した fixture 名の一覧と §28 fixture catalog との対応。 | fixture 不足として未完了。 |
