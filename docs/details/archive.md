@@ -89,7 +89,7 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 
 本機能の目的は、`.snapshots/` に保存された build artifact について、archive owner が一覧読取、download tar.gz 生成、削除、rollback 転送の実体処理を固定することである。API endpoint、SDK method、UI 操作表示の境界は [`docs/details/api.md`](api.md)、[`docs/details/sdk.md`](sdk.md)、[`docs/details/ui.md`](ui.md) を参照する。
 
-owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は `runner` の §14b を参照する。
+owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は [`docs/details/runner.md`](runner.md) §14b を参照する。
 
 archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api の request / response と archive owner 呼び出し境界は [`docs/details/api.md`](api.md)、sdk の API method 呼び出しは [`docs/details/sdk.md`](sdk.md)、ui の操作表示と disabled 判定は [`docs/details/ui.md`](ui.md) を参照する。runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は runner owner を基準とし、本節へ重複定義しない。
 

@@ -142,11 +142,11 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 | 段階 | 処理 | 失敗時 status | 失敗時副作用 |
 |------|------|---------------|--------------|
-| 1 | path 解決。未知 path を判定する。 | `404` | 状態ファイル、外部 API、監査ログ、設定ログを変更しない。`.api_access_log` だけ §27.6 に従って記録する。 |
+| 1 | path 解決。未知 path を判定する。 | `404` | 状態ファイル、外部 API、監査ログ、設定ログを変更しない。`.api_access_log` だけ [`docs/details/api.md`](api.md) §27.6 に従って記録する。 |
 | 2 | method 検証。path が存在し method が不一致か判定する。 | `405` | endpoint 固有処理を開始しない。`.api_access_log` 以外を変更しない。 |
 | 3 | body 禁止、body size、JSON parse を検証する。`Request=none` endpoint では JSON parse を行わない。 | `400` / `413` | 認証、状態読取、状態書込、外部呼び出しを行わない。 |
 | 4 | access control、maintenance、認証不要 endpoint 判定、Bearer/session/API token 認証を実行する。 | `401` / `403` / `503` | 認証失敗時は endpoint 状態を読まない。認証処理で定義された session/ticket 更新とログ追記だけを許可する。 |
-| 5 | scope、rate limit、権限を判定する。 | `403` / `429` | endpoint 固有の状態書込、外部呼び出し、コマンド実行を行わない。rate limit 状態更新と監査ログは §27.47 に限定する。 |
+| 5 | scope、rate limit、権限を判定する。 | `403` / `429` | endpoint 固有の状態書込、外部呼び出し、コマンド実行を行わない。rate limit 状態更新と監査ログは [`docs/details/security.md`](security.md) §27.47 に限定する。 |
 | 6 | query、path parameter、body schema、enum、範囲を検証する。 | `422` | 状態ファイルを変更しない。外部 API、systemd、runner、hook、通知を呼び出さない。 |
 | 7 | endpoint 固有の read adapter を呼び、状態競合を判定する。 | `409` / `500` | write lock を取得していても target を変更しない。tmp file があれば削除する。 |
 | 8 | endpoint 固有処理を実行し、必要な状態ファイルを [`docs/details/api.md`](api.md) §22.0d の Write 列順に更新する。 | endpoint 固有 | 途中失敗時の巻き戻しは、endpoint 固有節または [`docs/details/setup.md`](setup.md) §26 rollback 節に明記された範囲だけ行う。 |
@@ -157,7 +157,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ### 22.0a 状態ファイル共通仕様
 
-状態ファイルのパス、形式、初期値、更新責務、破損時の扱い、更新手順、schema 厳格化、状態読取 adapter は [`docs/details/statefile.md`](statefile.md) §22.0a を参照する。`api` は同節の adapter と更新手順を利用し、endpoint 固有の request / response / validation は本ファイル §22.0b 以降を参照する。
+状態ファイルのパス、形式、初期値、更新責務、破損時の扱い、更新手順、schema 厳格化、状態読取 adapter は [`docs/details/statefile.md`](statefile.md) §22.0a を参照する。`api` は同節の adapter と更新手順を利用し、endpoint 固有の request / response / validation は [`docs/details/api.md`](api.md) §22.0b 以降を参照する。
 
 ### 22.0b 入力検証共通仕様
 
@@ -194,9 +194,9 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | `GET /api/logs/search` | `q` | `""` | 0〜500 文字 | 空文字は全件検索ではなく level/from/to のみ検索として扱う。 |
 | `GET /api/logs/search` | `from`, `to` | `""` | 空文字または `YYYY-MM-DD` | `from > to` は `422`。 |
 | `GET /api/logs/search` | `level` | `""` | `info`, `warn`, `warning`, `error`, `debug`, 空文字 | 大文字小文字は区別しない。 |
-| `GET /api/api-access-log` | `limit` | `100` | 1〜1000 | §27.6 を優先する。 |
+| `GET /api/api-access-log` | `limit` | `100` | 1〜1000 | [`docs/details/api.md`](api.md) §27.6 を優先する。 |
 | `GET /api/api-access-log` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
-| `GET /api/webhook-events` | `limit` | `50` | 1〜1000 | §27.13 を優先する。 |
+| `GET /api/webhook-events` | `limit` | `50` | 1〜1000 | [`docs/details/api.md`](api.md) §27.13 を優先する。 |
 | `GET /api/webhook-events` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
 | `GET /api/audit-log` | `limit` | `100` | 1〜200 | [`docs/details/security.md`](security.md) §27.44 を優先する。 |
 | `GET /api/audit-log` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
@@ -1681,7 +1681,7 @@ Secret は `.webhook_secret` を基準とする。secret 不在、header 不在�
 | private / public | private address に限定しない。入力が IPv4 または IPv4 CIDR として妥当なら保存可能。 |
 | 保存順 | `.access_control` atomic write → `.config_log` 追記 → response。 |
 | `.config_log` 失敗 | `500`。保存済み `.access_control` は巻き戻さない。 |
-| 破損時 | §22.0a に従い初期値で再生成し、制限なしとして扱う。 |
+| 破損時 | [`docs/details/statefile.md`](statefile.md) §22.0a に従い初期値で再生成し、制限なしとして扱う。 |
 
 アクセス制御 fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能別 fixture 固定契約を参照する。
 

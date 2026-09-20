@@ -21,10 +21,10 @@
 
 | 範囲 | 内容 |
 |------|------|
-| §0g.8-F | Phase fixture / testdata 配置、fake 実装、実装検証証跡。 |
-| §22-F | Phase 3 / Phase 4 API の必須検証、API fixture、API / SDK / UI / 状態ファイル cross fixture 固定。 |
-| §27-F | §27 fixture 配置、fixture カタログ、manifest、assertion、expected/effects、相互整合、component 別検証責務。 |
-| §27-F-EVIDENCE | §27 実装検証証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
+| [`docs/details/fixture.md`](fixture.md) §0g.8-F | Phase fixture / testdata 配置、fake 実装、実装検証証跡。 |
+| [`docs/details/fixture.md`](fixture.md) §22-F | Phase 3 / Phase 4 API の必須検証、API fixture、API / SDK / UI / 状態ファイル cross fixture 固定。 |
+| [`docs/details/fixture.md`](fixture.md) §27-F | [`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 fixture 配置、fixture カタログ、manifest、assertion、expected/effects、相互整合、component 別検証責務。 |
+| [`docs/details/fixture.md`](fixture.md) §27-F-EVIDENCE | [`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 実装検証証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
 
 ## 0g.8-F Phase fixture / testdata / fake / 実装検証証跡契約
 
@@ -34,8 +34,8 @@
 
 | 系統 | 対象 | 責務節 | 必須証跡 |
 |------|------|--------|----------|
-| Phase 実装 | Phase 1〜Phase 6 の初期実装。 | §0g.8-F | 対象 Phase、owner component、collaborator component、変更ファイル、fixture / testdata path、fake、実行コマンド、期待結果、実結果、後続 Phase へ引き継ぐ contract。 |
-| API 実装 | Phase 3 / Phase 4 の API、SDK / UI / statefile と同期する API 実装。 | §22-F | Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認。 |
+| Phase 実装 | Phase 1〜Phase 6 の初期実装。 | [`docs/details/fixture.md`](fixture.md) §0g.8-F | 対象 Phase、owner component、collaborator component、変更ファイル、fixture / testdata path、fake、実行コマンド、期待結果、実結果、後続 Phase へ引き継ぐ contract。 |
+| API 実装 | Phase 3 / Phase 4 の API、SDK / UI / statefile と同期する API 実装。 | [`docs/details/fixture.md`](fixture.md) §22-F | Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認。 |
 | [`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 実装 | 追加仕様化機能。 | [`docs/details/fixture.md`](fixture.md) §27-F | 対象 [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x、関連 [`docs/details/api.md`](api.md) §22 / [`docs/details/sdk.md`](sdk.md) §23 / [`docs/details/ui.md`](ui.md) §24 / [`docs/details/security.md`](security.md) §25 / [`docs/details/setup.md`](setup.md) §26、owner / collaborator component、fixture 名、状態差分、外部副作用、partial failure、再実行、対象外確認。 |
 
 上表の証跡が不足する場合、対象機能は未完了として扱う。fixture の pass だけでは完了証跡を満たさない。
@@ -330,20 +330,20 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 §27.42〜§27.47 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。security fixture では、`.admin_credentials`、`.sessions`、`.api_tokens`、`.audit_log`、`.access_log`、`.api_access_log`、`.server_config`、`.totp_secret`、`.api_rate_state`、対象 endpoint 状態ファイル、request body、Authorization header、session token、API token、token hash、password hash、salt、TOTP secret、ticket、otpauth URI の forbidden side effect と forbidden leak を必ず列挙する。認証共通 fixture では、process restart 後に残ってはならない memory-only 値、未定義永続 state file、token 返却前 log failure 時の forbidden response field を必ず列挙する。
 
-§27.42〜§27.47 の `expected/security.json` は、少なくとも `forbidden_plaintexts`、`forbidden_headers`、`forbidden_state_values`、`allowed_one_time_response_fields`、`hash_only_fields`、`memory_only_values`、`one_time_response_assertions`、`scope_decisions`、`rate_limit_decisions`、`audit_required` を持つ。token 本体、TOTP secret、ticket、otpauth URI、Authorization header、session token、API token は `allowed_one_time_response_fields` に明示された fixture の該当 response 以外では出現禁止とする。hash 値を検証する場合も、hash 算出入力の平文を expected file へ保存してはならない。`memory_only_values` には session、login ticket、TOTP setup 仮 secret、login 失敗回数を列挙し、restart 後に消えていることを expected に固定する。
+[`docs/details/security.md`](security.md) §27.42〜§27.47 の `expected/security.json` は、少なくとも `forbidden_plaintexts`、`forbidden_headers`、`forbidden_state_values`、`allowed_one_time_response_fields`、`hash_only_fields`、`memory_only_values`、`one_time_response_assertions`、`scope_decisions`、`rate_limit_decisions`、`audit_required` を持つ。token 本体、TOTP secret、ticket、otpauth URI、Authorization header、session token、API token は `allowed_one_time_response_fields` に明示された fixture の該当 response 以外では出現禁止とする。hash 値を検証する場合も、hash 算出入力の平文を expected file へ保存してはならない。`memory_only_values` には session、login ticket、TOTP setup 仮 secret、login 失敗回数を列挙し、restart 後に消えていることを expected に固定する。
 
-**§27.1〜§27.11 feature fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) §27.1〜§27.11 feature fixture 固定契約：**
 
-§27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装検証証跡に対象 fixture と実行結果を列挙する。
+[`docs/details/fixture.md`](fixture.md) §27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装検証証跡に対象 fixture と実行結果を列挙する。
 
 | 節 | fixture | 固定する内容 |
 |----|---------|--------------|
-| §27.1 | `success-commit-status-pending-success` | fake GitHub server への `pending` → `success` 送信順、payload `state` / `context` / `description` / `target_url`、HTTP `201` success、`.build_logs.commit_status` の §22.0c schema keys、`.build_history.commit_status_state="success"` を固定する。 |
-| §27.1 | `failure-commit-status-unavailable-sha` | commit SHA が取得できない場合に GitHub Status API 呼び出し 0 件、build 継続、`.build_logs.commit_status.state=null`、`error="commit sha unavailable"`、history の build status 非反転と `commit_status_state=null` を固定する。 |
-| §27.1 | `failure-commit-status-api-error` | final の fake GitHub failure で build 成否を反転せず、WARN、送信しようとした state、fixed error reason、HTTP status、secret mask、Authorization header 非保存を固定する。 |
-| §27.1 | `noop-commit-status-disabled` | `.server_config.commit_status_enabled=false` で GitHub Status API 呼び出し 0 件、`commit_status.enabled=false`、`state=null`、`error=null`、payload / token / status side effect なしを固定する。 |
-| §27.1 | `failure-commit-status-pending-error-final-success` | pending の fake GitHub failure 後も build を継続し、final success を 1 回送信し、build log は final summary だけを保存し、pending failure は WARN と `expected/effects.json.external_calls` で固定する。 |
-| §27.1 | `failure-commit-status-invalid-payload` | invalid owner / repo / context / target_url / token unavailable のいずれかで GitHub 呼び出し 0 件、`state="error"`、固定 error reason、secret 非表示、build result 非反転を固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `success-commit-status-pending-success` | fake GitHub server への `pending` → `success` 送信順、payload `state` / `context` / `description` / `target_url`、HTTP `201` success、`.build_logs.commit_status` の [`docs/details/statefile.md`](statefile.md) §22.0c schema keys、`.build_history.commit_status_state="success"` を固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `failure-commit-status-unavailable-sha` | commit SHA が取得できない場合に GitHub Status API 呼び出し 0 件、build 継続、`.build_logs.commit_status.state=null`、`error="commit sha unavailable"`、history の build status 非反転と `commit_status_state=null` を固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `failure-commit-status-api-error` | final の fake GitHub failure で build 成否を反転せず、WARN、送信しようとした state、fixed error reason、HTTP status、secret mask、Authorization header 非保存を固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `noop-commit-status-disabled` | `.server_config.commit_status_enabled=false` で GitHub Status API 呼び出し 0 件、`commit_status.enabled=false`、`state=null`、`error=null`、payload / token / status side effect なしを固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `failure-commit-status-pending-error-final-success` | pending の fake GitHub failure 後も build を継続し、final success を 1 回送信し、build log は final summary だけを保存し、pending failure は WARN と `expected/effects.json.external_calls` で固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `failure-commit-status-invalid-payload` | invalid owner / repo / context / target_url / token unavailable のいずれかで GitHub 呼び出し 0 件、`state="error"`、固定 error reason、secret 非表示、build result 非反転を固定する。 |
 | §27.2 | `success-dry-run-changed` | SHA 差分あり target の stdout JSON、`would_build=true`、`reason="sha_changed"`、`would_call`、`would_write`、終了コード `0`、状態差分なしを固定する。 |
 | §27.2 | `noop-dry-run-unchanged` | SHA 差分なし、cooldown、circuit open の `would_build=false` と reason、stdout JSON 1 件、lock / log / history / status / notification / deploy 差分なしを固定する。 |
 | §27.2 | `failure-dry-run-github-error` | fake GitHub read 最終失敗で終了コード `3`、`reason="github_error"`、`errors[]`、pipeline / deploy / commit status 呼び出し 0 件、状態差分なしを固定する。 |
@@ -580,7 +580,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 | key | 型 | 必須 | 許容値 |
 |-----|----|------|--------|
-| `name` | string | 必須 | §27 fixture カタログ固定契約に記載された fixture 名。 |
+| `name` | string | 必須 | [`docs/details/fixture.md`](fixture.md) §27 fixture カタログ固定契約に記載された fixture 名。 |
 | `section` | string | 必須 | `27.1`〜`27.38`、`27.42`〜`27.47`。 |
 | `feature` | string | 必須 | lowercase snake_case。 |
 | `category` | string | 必須 | `success`、`failure`、`partial`、`noop`、`security`。fixture 名 prefix と一致する。 |
@@ -687,9 +687,9 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 
 | 不足 | 未完了理由 |
 |------|------------|
-| fixture 名が §27 fixture カタログに存在しない。 | カタログ外 fixture のため未完了。 |
+| fixture 名が [`docs/details/fixture.md`](fixture.md) §27 fixture カタログに存在しない。 | カタログ外 fixture のため未完了。 |
 | 必須 fixture が存在しない。 | 機能の正常 / 異常 / no-op / security / partial coverage 不足。 |
-| `manifest.json.assertions` が §27 fixture assertion 選択固定契約を満たさない。 | 合否判定不足。 |
+| `manifest.json.assertions` が [`docs/details/fixture.md`](fixture.md) §27 fixture assertion 選択固定契約を満たさない。 | 合否判定不足。 |
 | `expected/effects.json` が存在しない、または必須 key が欠落する。 | 副作用検証不足。 |
 | `unchanged_paths` または `forbidden_writes` が空で、fixture が failure / noop / read-only / dry-run / validation error のいずれかである。 | 無変更保証不足。 |
 | 外部 API / command / notification を扱う fixture で `forbidden_calls` が空、かつ禁止対象なしの理由が `manifest.json.not_applicable` にない。 | 外部副作用境界不足。 |
@@ -708,7 +708,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 |----------|----------|----------------|
 | `manifest.json.name` と directory 名 | directory 名は `manifest.json.name` と完全一致する。 | fixture 名不一致として失敗。 |
 | `manifest.json.category` と fixture 名 prefix | `success-*` は `success`、`failure-*` は `failure`、`partial-*` は `partial`、`noop-*` は `noop`、`security-*` は `security` とする。 | 分類不一致として失敗。 |
-| `manifest.json.section` と fixture カタログ | section と fixture 名の組み合わせは §27 fixture カタログ固定契約に存在する組み合わせだけ許可する。 | カタログ外として失敗。 |
+| `manifest.json.section` と fixture カタログ | section と fixture 名の組み合わせは [`docs/details/fixture.md`](fixture.md) §27 fixture カタログ固定契約に存在する組み合わせだけ許可する。 | カタログ外として失敗。 |
 | `manifest.json.owner_component` と `components` | `owner_component` は `components` に必ず含める。 | owner 責務不一致として失敗。 |
 | `manifest.json.collaborator_components` と `components` | `collaborator_components` は `components` にすべて含め、`owner_component` を含めてはならない。 | collaborator 責務不一致として失敗。 |
 | `manifest.json.components` と入力ファイル | `runner` / `builder` を含む場合は `input/cli.json`、`api` / `sdk` / `ui` を含む場合は `input/request.json` を置く。該当しない場合は `not_applicable` に理由を置く。 | 入力責務不一致として失敗。 |
@@ -795,18 +795,18 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 |----------|----------|
 | wave | 対象 wave、対象 [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x、先行 wave 完了 commit または変更識別子。 |
 | 実装対象 | 実装する機能名、owner component、collaborator component、変更ファイル、追加 fixture path。 |
-| 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイルを実装検証証跡に列挙する。 |
-| fixture | §27 fixture カタログの fixture 名、manifest / effects / security の検証結果。 |
-| acceptance | §27 実装 acceptance checklist の各項目の pass / fail / 未実行。 |
+| 実装対象外 | 同じ wave 内で今回実装しない [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイルを実装検証証跡に列挙する。 |
+| fixture | [`docs/details/fixture.md`](fixture.md) §27 fixture カタログの fixture 名、manifest / effects / security の検証結果。 |
+| acceptance | [`docs/details/fixture.md`](fixture.md) §27 実装 acceptance checklist の各項目の pass / fail / 未実行。 |
 | 後続影響 | 後続変更が利用許可済みの contract、利用禁止の未固定 contract を実装検証証跡に列挙する。 |
 
 **§27 実装最終受け入れゲート：**
 
-§27 の機能実装は、下表の全 gate を満たした場合だけ「完了」と判定する。1 件でも未達がある場合は「未完了」、仕様逸脱または secret 漏えいリスクがある場合は「差し戻し」とする。
+[`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 の機能実装は、下表の全 gate を満たした場合だけ「完了」と判定する。1 件でも未達がある場合は「未完了」、仕様逸脱または secret 漏えいリスクがある場合は「差し戻し」とする。
 
 | gate | 完了条件 | 未完了条件 | 差し戻し条件 |
 |------|----------|------------|--------------|
-| scope | 実装対象が §27 fixture カタログ固定契約に存在する機能だけである。 | 実装対象節の記載が実装検証証跡にない。 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加している。 |
+| scope | 実装対象が [`docs/details/fixture.md`](fixture.md) §27 fixture カタログ固定契約に存在する機能だけである。 | 実装対象節の記載が実装検証証跡にない。 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加している。 |
 | fixture | 対象 [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x の必須 fixture がすべて存在し、skip されていない。 | 必須 fixture が不足、または fixture 名が不一致。 | fixture が実装挙動に合わせて期待値を緩めている。 |
 | manifest | 全 fixture の `manifest.json` が schema、assertion 選択、owner / collaborator component 責務を満たす。 | assertion、references、owner_component、collaborator_components、components、fake_clock のいずれかが不足。 | unknown key、実 secret、実環境 path、乱数依存を含む。 |
 | expected | `expected/response.json`、`expected/state/`、`expected/logs/`、`expected/effects.json`、`expected/security.json` が assertion と一致する。 | assertion に対応する expected file が不足。 | expected と manifest / effects / security が矛盾する。 |
@@ -822,7 +822,7 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 | 項目 | 記録内容 |
 |------|----------|
 | 対象責務参照 | 実装した [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x、関連 [`docs/details/api.md`](api.md) §22 / [`docs/details/sdk.md`](sdk.md) §23 / [`docs/details/ui.md`](ui.md) §24 / [`docs/details/security.md`](security.md) §25 / [`docs/details/setup.md`](setup.md) §26、owner component、collaborator component。 |
-| 対象 fixture | 作成または更新した fixture 名一覧。fixture 名は §27 fixture カタログ固定契約と一致させる。 |
+| 対象 fixture | 作成または更新した fixture 名一覧。fixture 名は [`docs/details/fixture.md`](fixture.md) §27 fixture カタログ固定契約と一致させる。 |
 | 実行結果 | fixture ごとの pass / fail、実行コマンド、終了コード。 |
 | 状態差分 | 作成、更新、削除、変更禁止の path。`expected/effects.json` と一致させる。 |
 | 外部副作用 | GitHub、SSH、SMTP、webhook、systemd、hook、remote build、notification の呼び出し回数と順序。 |
