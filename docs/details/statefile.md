@@ -91,12 +91,12 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 
 **状態ファイル schema 厳格化契約：**
 
-状態ファイルの読込、正規化、保存は以下に固定する。§22.0c または個別機能節で例外を明記していない限り、実装者判断で旧形式、未知 key、null、欠落配列を成功扱いにしてはならない。
+状態ファイルの読込、正規化、保存は以下に固定する。[`docs/details/statefile.md`](statefile.md) §22.0c または個別機能節で例外を明記していない限り、実装者判断で旧形式、未知 key、null、欠落配列を成功扱いにしてはならない。
 
 | 対象 | 読込時 | 保存時 | 失敗時 |
 |------|--------|--------|--------|
-| 未知 key | JSON object に schema 未定義 key がある場合は破損扱いとする。例外は §22.0c で明記した旧形式正規化だけ。 | 未知 key を保存しない。既存未知 key を黙って削除して保存しない。 | read adapter は `ErrStateCorrupted` を返す。write 呼び出しは target を変更しない。 |
-| 必須 key 不足 | 個別節に「欠落時に適用する既定値」と「保存するか読み取り時だけか」が明記されていない場合は破損扱いとする。 | 必須 key はすべて明示保存する。 | 初期値再生成が §22.0a 表で指定されたファイルだけ再生成する。 |
+| 未知 key | JSON object に schema 未定義 key がある場合は破損扱いとする。例外は [`docs/details/statefile.md`](statefile.md) §22.0c で明記した旧形式正規化だけ。 | 未知 key を保存しない。既存未知 key を黙って削除して保存しない。 | read adapter は `ErrStateCorrupted` を返す。write 呼び出しは target を変更しない。 |
+| 必須 key 不足 | 個別節に「欠落時に適用する既定値」と「保存するか読み取り時だけか」が明記されていない場合は破損扱いとする。 | 必須 key はすべて明示保存する。 | 初期値再生成が [`docs/details/statefile.md`](statefile.md) §22.0a 表で指定されたファイルだけ再生成する。 |
 | `null` | 型欄が `string/null`、`object/null`、`integer/null` 等で明示した key だけ許可する。 | nullable でない key に `null` を保存しない。 | validation error または破損扱い。 |
 | 配列 | `[]` を既定値とする key は read adapter の戻り値で空配列を返す。 | 保存呼び出しは配列 key を省略せず、空の場合も `[]` を明示する。 | 型不一致は caller 固有の validation error または状態ファイル破損扱い。 |
 | 数値 | 整数 key は JSON number の整数だけ許可する。小数、指数表記由来の非整数、文字列数値は拒否する。 | 整数は JSON number として保存する。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
@@ -113,15 +113,15 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 | Adapter | 読取対象 | 正常戻り値 | 不在時 | 破損時 / 読込不能時 |
 |---------|----------|------------|--------|---------------------|
 | `readBuildStatus()` | `.build_status.json` | `BuildStatus` | `(nil, false, nil)` を返し、fallback 判定へ渡す。 | `(nil, true, ErrStateCorrupted)` または `ErrStateReadFailed`。 |
-| `readBuildState()` | `.build_state` | `BuildState` | §22.0a の初期値を返す。 | `ErrStateCorrupted` または `ErrStateReadFailed`。 |
+| `readBuildState()` | `.build_state` | `BuildState` | [`docs/details/statefile.md`](statefile.md) §22.0a の初期値を返す。 | `ErrStateCorrupted` または `ErrStateReadFailed`。 |
 | `readBuildHistory()` | `.build_history` | `[]BuildHistoryEntry` | 空配列を返す。 | 行単位破損は除外し、ファイル読込不能だけ `ErrStateReadFailed`。 |
 | `readBuildLog(id)` | `.build_logs/{id}.json`、`.build_logs/archive/{id}.json.gz` | `BuildLog` | 通常ログ不在時は archive を読む。両方不在は `ErrNotFound`。 | 対象 ID の通常ログまたは archive が破損している場合は `ErrStateCorrupted`。 |
 | `readLatestBuildLogs(n,q)` | `.build_logs/`、`.build_logs/archive/` | `[]LogLine` | 空配列を返す。 | 個別ログ破損は除外し、`LOG_SKIP_CORRUPT` を server log へ記録する。ディレクトリ読込不能は `ErrStateReadFailed`。 |
 | `readPendingTransfers()` | `.pending_transfers` | `[]PendingTransfer` | 空配列を返す。 | `ErrStateCorrupted` または `ErrStateReadFailed`。 |
-| `readCircuitState()` | `.build_circuit_state` | `BuildCircuitState` | §22.0a の初期値を返す。 | `ErrStateCorrupted` または `ErrStateReadFailed`。 |
+| `readCircuitState()` | `.build_circuit_state` | `BuildCircuitState` | [`docs/details/statefile.md`](statefile.md) §22.0a の初期値を返す。 | `ErrStateCorrupted` または `ErrStateReadFailed`。 |
 | `readBuildLock()` | `.build_lock` | `BuildLockState` | `running=false` を返す。 | 形式不正、PID 判定不能、OS 判定失敗は `running=true, stale=false, valid=false` として返し、呼び出し元は conflict failure として扱う。 |
 
-read-only 呼び出しでは、上表の adapter を使用し、状態ファイルの作成、削除、退避、chmod、正規化、再生成、破損行の除去書き戻しを行ってはならない。API endpoint 固有の適用条件は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。`{name}.lock` を検出しても、`.build_lock` 以外の lock file は待機条件やエラー条件にせず、rename 済み target をそのまま読む。write 呼び出しは §22.0a の状態ファイル更新手順に従う。
+read-only 呼び出しでは、上表の adapter を使用し、状態ファイルの作成、削除、退避、chmod、正規化、再生成、破損行の除去書き戻しを行ってはならない。API endpoint 固有の適用条件は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。`{name}.lock` を検出しても、`.build_lock` 以外の lock file は待機条件やエラー条件にせず、rename 済み target をそのまま読む。write 呼び出しは [`docs/details/statefile.md`](statefile.md) §22.0a の状態ファイル更新手順に従う。
 
 `ErrStateCorrupted` は JSON parse 失敗、schema_version 不一致、必須 key 不足、型不一致、列挙値不一致、UTC 時刻形式不一致のいずれかで返す。`ErrStateReadFailed` は permission denied、通常ファイルではない path、gzip 読込失敗、I/O error で返す。API の公開応答は [`docs/details/api.md`](api.md) §22.0c.1 と [`docs/details/api.md`](api.md) §22.0d 以降を参照する。statefile adapter の error は、path、Go error、ファイル内容を呼び出し元へ公開する response 値として含めない。
 
@@ -152,14 +152,14 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 | `commit_status_target_url` | string/null | `null` | `http://` または `https://` の URL、または `null` | `GET/POST /api/config` | Commit Status の `target_url`。`null` の場合は送信 payload から省略する。 |
 | `log_archive_after_days` | integer | `0` | 0〜3650 | `GET/POST /api/config`, `POST /api/logs/archive` | `0` は archive 無効。指定日数より古い通常 build log を gzip 圧縮する。 |
 | `build_trend_keep_count` | integer | `1000` | 10〜10000 | `GET/POST /api/config` | `.build_trends.json` に保持する trend sample 件数。 |
-| `duration_anomaly` | object | `{"enabled":false,"min_samples":20,"avg_multiplier":2.0,"p95_multiplier":1.5}` | §27.38 | `GET/POST /api/config` | build 所要時間異常検知の設定。 |
+| `duration_anomaly` | object | `{"enabled":false,"min_samples":20,"avg_multiplier":2.0,"p95_multiplier":1.5}` | [`docs/details/runner.md`](runner.md) §27.38 | `GET/POST /api/config` | build 所要時間異常検知の設定。 |
 | `force_build_interval_hours` | integer | `0` | 0〜8760 | `POST /api/schedule/force-interval`, `GET /api/schedule` | `0` は強制再ビルド無効。 |
 | `build_cooldown_seconds` | integer | `0` | 0〜86400 | `POST /api/schedule/cooldown`, `GET /api/schedule` | `0` はクールダウン無効。 |
 | `schedule_interval_seconds` | integer | `300` | 30〜86400 | `POST /api/schedule/interval`, `GET /api/schedule` | systemd timer 更新値。 |
 | `schedule_paused` | boolean | `false` | `true` / `false` | `POST /api/schedule/pause`, `POST /api/schedule/resume`, `GET /api/schedule` | 自動ポーリング停止状態。 |
 | `allowed_hours` | object/null | `null` | `{"from":0〜23,"to":0〜23}` または `null` | `POST /api/schedule/allowed-hours`, `GET /api/schedule` | UTC の自動ビルド許可時間帯。 |
 | `session_timeout_seconds` | integer | `28800` | 300〜2592000 | `GET/POST /api/config` | 新規 session の有効期限秒数。既存 session の `expires_at` は変更しない。 |
-| `api_rate_limit` | object | `{"enabled":true,"groups":{"login":{"window_seconds":60,"max_requests":10},"read":{"window_seconds":60,"max_requests":600},"trigger":{"window_seconds":60,"max_requests":60},"operate":{"window_seconds":60,"max_requests":120},"config":{"window_seconds":60,"max_requests":60},"admin":{"window_seconds":60,"max_requests":60}}}` | §27.47 | `GET /api/api-rate-limit`, `POST /api/api-rate-limit`, `GET/POST /api/config` | API rate limit の endpoint group 別固定窓設定。 |
+| `api_rate_limit` | object | `{"enabled":true,"groups":{"login":{"window_seconds":60,"max_requests":10},"read":{"window_seconds":60,"max_requests":600},"trigger":{"window_seconds":60,"max_requests":60},"operate":{"window_seconds":60,"max_requests":120},"config":{"window_seconds":60,"max_requests":60},"admin":{"window_seconds":60,"max_requests":60}}}` | [`docs/details/security.md`](security.md) §27.47 | `GET /api/api-rate-limit`, `POST /api/api-rate-limit`, `GET/POST /api/config` | API rate limit の endpoint group 別固定窓設定。 |
 
 `.server_config` の `POST /api/config` では `force_build_interval_hours`、`build_cooldown_seconds`、`schedule_interval_seconds`、`schedule_paused`、`allowed_hours` を直接更新してはならない。これらは専用スケジュール API からのみ更新する。
 
@@ -330,7 +330,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | `last_login_at` | string/null | 必須 | UTC ISO 8601 または `null` | session token 発行成功時だけ更新する。 |
 | `updated_at` | string | 必須 | UTC ISO 8601 | password hash 更新時刻。 |
 
-`.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致もすべて credentials 破損とする。API 起動時検証、login / password change の公開応答、認証ログ、監査ログ、漏えい禁止値は [`docs/details/security.md`](security.md) 認証共通詳細および [`docs/details/api.md`](api.md) §27.45〜§27.46 を参照する。statefile は破損内容、hash、salt を呼び出し元の公開値として返してはならない。
+`.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致もすべて credentials 破損とする。API 起動時検証、login / password change の公開応答、認証ログ、監査ログ、漏えい禁止値は [`docs/details/security.md`](security.md) 認証共通詳細および [`docs/details/security.md`](security.md) §27.45〜§27.46 を参照する。statefile は破損内容、hash、salt を呼び出し元の公開値として返してはならない。
 
 **`.audit_log` schema：**
 
@@ -340,8 +340,8 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | `request_id` | string | 必須 | 16 byte hex | API request 単位の識別子。 |
 | `actor_type` | string | 必須 | `"admin"` / `"api_token"` / `"system"` / `"anonymous"` | 操作者種別。 |
 | `actor_id` | string/null | 必須 | `"admin"`、token id、`"system"`、または `null` | 操作者。secret 本体は保存しない。 |
-| `action` | string | 必須 | §27.44 | 操作種別。 |
-| `target_type` | string | 必須 | §27.44 | 対象種別。 |
+| `action` | string | 必須 | [`docs/details/security.md`](security.md) §27.44 | 操作種別。 |
+| `target_type` | string | 必須 | [`docs/details/security.md`](security.md) §27.44 | 対象種別。 |
 | `target_id` | string/null | 必須 | 対象 id または `null` | 対象識別子。 |
 | `result` | string | 必須 | `"success"` / `"failure"` / `"denied"` | 結果。 |
 | `remote_addr` | string/null | 必須 | IP 文字列または `null` | 接続元。 |
@@ -436,7 +436,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `hooks` | object[] | 必須 | 0〜50 件 | 登録済み hook。 |
-| `id` | string | 必須 | §22.0e.2 の hook id | hook 識別子。 |
+| `id` | string | 必須 | [`docs/details/api.md`](api.md) §22.0e.2 の hook id | hook 識別子。 |
 | `phase` | string | 必須 | `"pre"` / `"post"` | 実行 phase。 |
 | `command_args` | string[] | 必須 | 1〜20 件 | shell を介さず `exec.CommandContext` に渡す引数配列。 |
 | `enabled` | boolean | 必須 | boolean | `false` の hook は実行しない。 |
@@ -451,7 +451,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `rules` | object[] | 必須 | 0〜100 件 | dashboard alert rule。 |
-| `id` | string | 必須 | §22.0e.2 の alert rule id | rule 識別子。 |
+| `id` | string | 必須 | [`docs/details/api.md`](api.md) §22.0e.2 の alert rule id | rule 識別子。 |
 | `metric` | string | 必須 | `success_rate_7d`, `avg_duration_seconds`, `last_build_age_hours`, `disk_usage_bytes` | 評価対象。 |
 | `operator` | string | 必須 | `lt`, `gt`, `lte`, `gte` | 比較演算子。 |
 | `threshold` | number | 必須 | 0 以上 | 比較値。 |
@@ -463,8 +463,8 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `rules` | object[] | 必須 | 0〜100 件 | 自動タグ付け rule。 |
-| `id` | string | 必須 | §22.0e.2 の tag rule id | rule 識別子。 |
-| `condition` | string | 必須 | §15B の条件式 grammar | 評価条件。 |
+| `id` | string | 必須 | [`docs/details/api.md`](api.md) §22.0e.2 の tag rule id | rule 識別子。 |
+| `condition` | string | 必須 | [`docs/details/runner.md`](runner.md) §15B の条件式 grammar | 評価条件。 |
 | `tags` | string[] | 必須 | 1〜20 件、各 1〜50 文字 | 付与するタグ。重複は除去する。 |
 
 `condition` は `変数 空白 演算子 空白 値` の 1 条件だけを許可する。`&&`、`||`、括弧、関数呼び出し、正規表現、算術式は validation failure とする。
@@ -482,7 +482,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
-| `widgets` | string[] | 必須 | §16D の widget id、1〜9 件 | 表示 widget 順序。重複禁止。 |
+| `widgets` | string[] | 必須 | [`docs/details/ui.md`](ui.md) §16D の widget id、1〜9 件 | 表示 widget 順序。重複禁止。 |
 
 **`.smtp_config` schema：**
 
@@ -527,11 +527,11 @@ Queue entry schema:
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
-| `id` | string | 必須 | §22.0e.2 の queue id | queue id。 |
+| `id` | string | 必須 | [`docs/details/api.md`](api.md) §22.0e.2 の queue id | queue id。 |
 | `trigger` | string | 必須 | `"manual"`, `"webhook"`, `"approval"` | 起動種別。 |
 | `queued_at` | string | 必須 | UTC ISO 8601 | queue 追加日時。 |
 | `requested_by` | string | 必須 | `"admin"`, `"webhook"`, `"approval"`, API token id | queue 追加元。 |
-| `priority` | string | 必須 | §27.35 の値 | 優先度。未指定作成時は `"normal"`。 |
+| `priority` | string | 必須 | [`docs/details/runner.md`](runner.md) §27.35 の値 | 優先度。未指定作成時は `"normal"`。 |
 | `created_seq` | integer | 必須 | 1 以上 | 既存最大 + 1。 |
 | `payload` | object | 必須 | trigger ごとの固定 payload | 不要時は `{}`。 |
 
@@ -833,21 +833,21 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 
 | ゲート | statefile 側の固定処理 | 呼び出し元が渡す値 | 失敗時境界 |
 |--------|------------------------|-------------------|------------|
-| schema precheck | 保存前に §22.0c の key、型、nullable、enum、UTC 時刻、配列要素 schema を検証する。 | 保存済みとして確定した typed value。 | schema 不一致は target 変更なしで `ErrStateCorrupted` または validation error を返す。 |
+| schema precheck | 保存前に [`docs/details/statefile.md`](statefile.md) §22.0c の key、型、nullable、enum、UTC 時刻、配列要素 schema を検証する。 | 保存済みとして確定した typed value。 | schema 不一致は target 変更なしで `ErrStateCorrupted` または validation error を返す。 |
 | unknown key rejection | 既存 file と新規 value の両方で未知 key を拒否する。例外は本節に明記済みの旧形式正規化だけ。 | 表示用 key、SDK 用 key、fixture 用 key を含まない object。 | 未知 key を削除して保存しない。既存未知 key も暗黙修復しない。 |
 | write order evidence | 複数 file 更新では呼び出し元が決めた順に 1 file ずつ atomic write し、fixture の `write_order` と一致させる。 | 順序付き write plan。 | 失敗地点以降は実行しない。成功済み file は statefile が rollback しない。 |
 | JSON Lines append | append 対象は 1 行 1 JSON object とし、末尾 newline を固定する。 | 1 record の typed value。 | append 失敗は対象操作へ返し、既存行の rewrite、sort、修復をしない。 |
 | no mutation read | read-only adapter は fallback 値を返すだけで、file 作成、chmod、backup、lock 削除、旧形式保存を行わない。 | 読取対象 path と fallback 条件。 | 読取失敗は typed error を返し、filesystem 差分なし。 |
-| corrupt handling | §22.0a に再生成指定がある file だけ backup → 初期値再生成を許可する。 | 破損判定結果と対象 path。 | backup 失敗時は再生成しない。再生成指定がない file は変更しない。 |
+| corrupt handling | [`docs/details/statefile.md`](statefile.md) §22.0a に再生成指定がある file だけ backup → 初期値再生成を許可する。 | 破損判定結果と対象 path。 | backup 失敗時は再生成しない。再生成指定がない file は変更しない。 |
 | secret path | secret を含む file は `0600`、通常 state は `0644`、directory は `0755` に固定する。 | secret file 判定。 | chmod 失敗を成功扱いにせず、secret 内容を log / 呼び出し元の公開値 / fixture expected に出さない。 |
 
 **状態ファイル fixture 合格ゲート：**
 
 | fixture | 初期状態 | 操作 | 合格条件 |
 |---------|----------|------|----------|
-| state read missing | target 不在 | 対応する read adapter 呼び出し | §22.0a の不在時戻り値を返し、filesystem 差分なし。 |
+| state read missing | target 不在 | 対応する read adapter 呼び出し | [`docs/details/statefile.md`](statefile.md) §22.0a の不在時戻り値を返し、filesystem 差分なし。 |
 | state corrupt object | JSON parse 不能または未知 key あり | read adapter 呼び出し | `ErrStateCorrupted`。target 差分なし。API の公開応答は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。 |
-| state corrupt regenerates | §22.0a で再生成指定済み file が破損 | write caller または再生成を伴う操作 | corrupt backup が 1 件作成され、初期値だけが保存される。 |
+| state corrupt regenerates | [`docs/details/statefile.md`](statefile.md) §22.0a で再生成指定済み file が破損 | write caller または再生成を伴う操作 | corrupt backup が 1 件作成され、初期値だけが保存される。 |
 | state lock timeout | `{name}.lock` が 10 秒以上残る | write caller 呼び出し | conflict failure、target/tmp 差分なし。 |
 | state chmod failure | chmod を fake failure | write caller 呼び出し | 成功扱いにせず、target 更新有無が atomic write 表の失敗時動作と一致する。 |
 | state fsync failure | file sync または parent sync を fake failure | write caller 呼び出し | write failure、ERROR log、secret 非表示。 |
