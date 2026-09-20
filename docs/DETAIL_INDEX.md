@@ -140,7 +140,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文境界管理�
 | `security` | [`docs/details/security.md`](details/security.md) §27.42〜§27.47 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
 | `mcp` | 未定義。将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 を確認する。 | 将来計画。現時点では実装可能な入出力、状態、起動手順、ツール定義、検証条件を定義しない。 |
 
-上表の `詳細仕様節` は参照入口であり、主本文の owner component を変更しない。複数ファイルを参照する行では、対象機能の owner component のファイルを主本文とし、他ファイルは collaborator の境界、schema、fixture、security、setup、受け入れ条件を確認するために読む。参照先に同じ HTTP body、状態 schema、DOM id、SDK method、fixture assertion を重複定義してはならない。
+上表の `詳細仕様節` は参照入口であり、主本文の owner component を変更しない。複数ファイルを参照する行では、対象機能の owner component のファイルを主本文とし、他ファイルは collaborator の境界、schema、fixture、security、setup、受け入れ条件を確認するために読む。同じ HTTP body、状態 schema、DOM id、SDK method、fixture assertion の重複定義禁止は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を参照する。
 
 ---
 
@@ -152,7 +152,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は、o
 
 詳細仕様本文の配置単位は owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには呼び出し境界、schema、表示、security、setup、fixture、検証観点だけを置く。
 
-owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は以下に固定する。`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは作成しない。
+owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は以下に固定する。`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルの作成禁止は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2 と [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を参照する。
 
 | ファイル | 持つ内容 | 持たない内容 |
 |----------|----------|--------------|
@@ -513,7 +513,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 本節は、現行の標準配置を定義する。標準外配置の `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱わない。
 
-本節の tree は標準配置の最終形を示す。現時点で `将来計画` または `仕様化済み・未実装` の path は、将来追加予定 path として扱い、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成してはならない。
+本節の tree は標準配置の最終形を示す。現時点で `将来計画` または `仕様化済み・未実装` の path は、将来追加予定 path として扱い、該当 owner component が実装対象になった PR で追加する。標準配置図に含まれる未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder の作成可否は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 ```text
 .
