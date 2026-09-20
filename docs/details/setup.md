@@ -260,9 +260,9 @@ Go 版初回セットアップでは以下を実行しない。
 | credentials | `stat -c '%a' "$INSTALL_DIR/.admin_credentials"` | `600`。 |
 | admin UI | `test -f "$INSTALL_DIR/admin/index.html"` / `test -f "$INSTALL_DIR/admin/adlaire-ci-sdk.js"` | 両方成功。 |
 | API service | `systemctl is-active adlaire-ci-api` | `active`。 |
-| local health | `curl -fsS http://127.0.0.1:8765/api/health` | HTTP `200`、JSON object。 |
+| local health | `curl -fsS http://127.0.0.1:8765/api/health` | local health endpoint の response 契約は [`docs/details/api.md`](api.md) §22.0e を参照し、setup 側は local API 到達と応答取得を確認する。 |
 
-`curl` が利用できない環境では、Go 実装 PR の検証で `net/http` client または同等のローカル HTTP 確認を行う。未確認のまま API 導入確認を満たした扱いにしてはならない。
+`curl` が利用できない環境では、Go 実装 PR の検証で `net/http` client または同等のローカル HTTP 確認を行う。HTTP status、response body、必須 key の具体契約は [`docs/details/api.md`](api.md) §22.0e を参照し、未確認のまま API 導入確認を満たした扱いにしてはならない。
 
 ```bash
 # ── 1. 拡張用ディレクトリ作成 ─────────────────────────
@@ -355,7 +355,7 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
-`User` / `WorkingDirectory` / `ExecStart` のパスは §26.2 の設定変数に合わせて変更する。
+`User` / `WorkingDirectory` / `ExecStart` のパスは [`docs/details/setup.md`](setup.md) §26.2 の設定変数に合わせて変更する。
 
 systemd unit は上記キー以外を初期標準で追加しない。`Environment=`、`EnvironmentFile=`、`ExecStartPre=`、`ExecStartPost=` を追加する場合は、先に本節へ対象変数、secret 扱い、失敗時挙動を定義する。API service は `127.0.0.1:8765` bind を標準とし、外部公開 bind は本ファイルで未定義のため設定しない。
 
@@ -411,10 +411,10 @@ rollback は 1 回だけ実行する。rollback 自体が失敗した場合は�
 | binary version | `adlaire-ci-build --version`、`adlaire-ci-runner --version` が `NEW_VERSION` を含む。 | 左記に加え `adlaire-ci-api --version` が `NEW_VERSION` を含む。 |
 | service | `systemctl is-active adlaire-ci.timer` が `active`。 | 左記に加え `systemctl is-active adlaire-ci-api` が `active`。 |
 | admin UI | 確認しない。 | `$INSTALL_DIR/admin/index.html` と `$INSTALL_DIR/admin/adlaire-ci-sdk.js` が存在する。 |
-| local API | 確認しない。 | `GET /api/health` が HTTP `200` JSON object を返す。 |
+| local API | 確認しない。 | `GET /api/health` の endpoint 契約は [`docs/details/api.md`](api.md) §22.0e を参照し、API service が local health check に応答する。 |
 | state preservation | `.github_token`、`.last_sha`、`.build_state`、`.build_history` の mtime と内容が更新対象操作と無関係に変わっていない。 | 左記に加え `.admin_credentials` が存在する場合は mode `600` と内容が保持される。 |
 
-確認失敗時はアップデート失敗として扱う。binary 配置や restart が成功していても、確認失敗を成功報告してはならない。local API 確認で `curl` がない場合は Go 実装 PR の検証で `net/http` client による `GET /api/health`、HTTP status、JSON object、`status` key の確認を行い、実装 PR 証跡に request URL、HTTP status、確認した JSON key を記録する。未確認のまま合格扱いにしない。
+確認失敗時はアップデート失敗として扱う。binary 配置や restart が成功していても、確認失敗を成功報告してはならない。local API 確認で `curl` がない場合は Go 実装 PR の検証で `net/http` client による `GET /api/health` 相当の確認を行う。HTTP status、JSON object、`status` key の具体契約は [`docs/details/api.md`](api.md) §22.0e を参照し、実装 PR 証跡形式は [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。未確認のまま合格扱いにしない。
 
 ```bash
 # ── 変数設定 ──────────────────────────────────────────
@@ -505,13 +505,13 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 | Go 共通 | `gofmt -l <実装対象Goファイル>` | 実装対象 Go ファイルが存在する場合、出力が空。未作成ファイルはコマンド対象に含めない。 |
 | Go test | `go test ./...` | Go module が存在する場合に成功する。Go module が存在しない場合は、その理由を実装確認結果に明記する。 |
 | build script | `adlaire-ci-build --src <sample.md> --out <tmp.html>` | exit code `0`、HTML 出力あり、`[REPORT]` の `status` が `success`。 |
-| runner | `adlaire-ci-runner --state-dir <tmp-state>` | 必須 secret 未設定時の exit code / ERROR log が §12 と一致し、`.build_lock` が残らない。 |
-| API | `POST /api/login`、`GET /api/status`、未知 path、body 禁止 endpoint、JSON 不正、認証なし | [`docs/details/api.md`](api.md) §22.0 / §22.0e の status code と body に一致する。 |
-| SDK | browser runtime で `login()`、`getStatus()`、`streamBuild()`、HTTP error、timeout を確認する。 | `AdlaireCIError`、`StreamHandle`、token 破棄、timeout が [`docs/details/sdk.md`](sdk.md) §23 と一致する。 |
-| UI | login、manual build、SSE 表示、config 保存、token 発行、logout を確認する。 | [`docs/details/ui.md`](ui.md) §24 の DOM id、disabled、成功表示、失敗表示、再取得、秘密情報消去に一致する。 |
+| runner | `adlaire-ci-runner --state-dir <tmp-state>` | 必須 secret 未設定時の exit code / ERROR log が [`docs/details/runner.md`](runner.md) §12 と一致し、`.build_lock` が残らない。 |
+| API | API service の起動、local health check、admin UI から到達可能な endpoint 境界を確認する。 | API endpoint、request / response、HTTP status、body は [`docs/details/api.md`](api.md) §22.0 / §22.0e を参照する。 |
+| SDK | admin UI 配布物に SDK 静的ファイルが含まれ、browser runtime から読み込めることを確認する。 | SDK method、transport、error、stream、timeout は [`docs/details/sdk.md`](sdk.md) §23 を参照する。 |
+| UI | admin UI 配布物が静的配信され、ログイン画面と主要 panel へ到達できることを確認する。 | UI DOM、disabled、成功表示、失敗表示、再取得、秘密情報消去は [`docs/details/ui.md`](ui.md) §24 を参照する。 |
 | setup | [`docs/details/setup.md`](setup.md) §26.3 または §26.3b の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
 | update | [`docs/details/setup.md`](setup.md) §26.5 の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 条件が仕様どおり。 |
-| security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示を確認する。 | PAT、Webhook Secret、SMTP password、session token、API token 本体が平文で出ない。 |
+| security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示の漏えい有無を確認する。 | 漏えい禁止対象と security 処理本文は [`docs/details/security.md`](security.md) §25、§27.42〜§27.47 を参照する。setup 側は配置・保持・権限・log 出力を確認する。 |
 
 **認証 / セットアップ fixture 固定：**
 
@@ -520,9 +520,9 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 | credentials init success | 空 state dir で `adlaire-ci-api --init-credentials --state-dir <abs>` | `.admin_credentials` mode `600`、schema 全 key、`must_change=true`、stdout 固定文言。 |
 | credentials init existing | `.admin_credentials` 既存 | exit `2`、stderr `credentials already exist`、既存ファイル差分なし。 |
 | login success | 初期 password `admin` | `must_change:"prompt"`、TOTP 無効時 token 発行、hash/salt 非表示、`.access_log` 成功行。 |
-| login failure lock | password 連続 10 回失敗 | 10 回目後、10 分間 `429 {"error":"Too many attempts"}`、password 詳細非表示。 |
+| login failure lock | password 連続 10 回失敗 | lockout 期間、HTTP status、error body は [`docs/details/security.md`](security.md) §25 と [`docs/details/api.md`](api.md) §22.0e を参照する。setup 側は password 詳細非表示と secret 非保存を確認する。 |
 | change password | current 正、新 password 有効 | `.admin_credentials` の salt/hash 更新、`must_change=false`、現 session 以外破棄。 |
-| session restart | token 発行後に API process restart | 旧 token は `401`、session file は存在しない。 |
+| session restart | token 発行後に API process restart | restart 後の認証失敗表現は [`docs/details/security.md`](security.md) §25 と [`docs/details/api.md`](api.md) §22.0e を参照する。setup 側は session file が存在しないことを確認する。 |
 | setup checksum mismatch | Release asset と `SHA256SUMS` 不一致 | バイナリ配置なし、systemd 変更なし、終了コード `1`。 |
 | update restart failure | 新バイナリ配置後に service restart 失敗 | 旧バイナリ復元を 1 回だけ行い、state/history/secret は巻き戻さない。 |
 
@@ -531,7 +531,7 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 | fixture | 入力 | 合格条件 |
 |---------|------|----------|
 | setup variable invalid | `INSTALL_DIR=/`、`BIN_DIR=/`、または `OS_ARCH=darwin-arm64` | 終了コード `2`、download / directory 作成 / 配置なし。 |
-| setup download failure | build binary 取得が HTTP `404` | 終了コード `1`、runner binary 取得済みでも配置なし、systemd 変更なし。 |
+| setup download failure | build binary 取得が失敗 | 終了コード `1`、runner binary 取得済みでも配置なし、systemd 変更なし。HTTP status の具体値は fake / fixture 側で固定する。 |
 | setup checksum duplicate | `SHA256SUMS` に同一 asset 行が 2 件 | 終了コード `1`、checksum failure、配置なし。 |
 | setup symlink target | `$BIN_DIR/adlaire-ci-build` が symlink | 終了コード `1`、symlink 参照先を上書きしない。 |
 | setup pat empty | PAT 入力が空 | 終了コード `2`、`.github_token` 作成なし、systemd 変更なし。 |
@@ -554,22 +554,22 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 | fixture | 入力 | 合格条件 |
 |---------|------|----------|
 | snapshot save and prune | `snapshots_keep=2` で build success を 3 回実行 | 最新 2 世代だけ残り、各 snapshot に `site.tar.gz` と `meta.json` が存在する。 |
-| snapshot rollback running | `.build_state.running=true` で `POST /api/history/{id}/rollback` | `409 {"error":"Build is running"}`、queue 追加なし、history 追記なし。 |
-| maintenance enable no-op | 同一 reason で enable を 2 回実行 | 2 回目は `No changes`、`.config_log` 追記なし。 |
-| access-control deny | allow に接続元以外を設定して API 呼び出し | 認証前に `403 {"error":"Forbidden"}`、password/token 検証なし。 |
+| snapshot rollback running | `.build_state.running=true` で `POST /api/history/{id}/rollback` | HTTP status / error body は [`docs/details/api.md`](api.md) §22.0e を参照する。queue 追加なし、history 追記なし。 |
+| maintenance enable no-op | 同一 reason で enable を 2 回実行 | API response は [`docs/details/api.md`](api.md) §22.0e を参照する。`.config_log` 追記なし。 |
+| access-control deny | allow に接続元以外を設定して API 呼び出し | HTTP status / error body は [`docs/details/api.md`](api.md) §22.0e と [`docs/details/security.md`](security.md) §27.42〜§27.47 を参照する。password/token 検証なし。 |
 | hook pre abort | `pre` hook が exit `1`、`abort_on_failure=true` | pipeline 未実行、build status `hook_error`、hook log 保存。 |
-| alert duplicate | 同一 alert rule を 2 回作成 | 2 回目は `409 {"error":"Conflict"}`、`.alert_rules` 差分なし。 |
+| alert duplicate | 同一 alert rule を 2 回作成 | HTTP status / error body は [`docs/details/api.md`](api.md) §22.0e を参照する。`.alert_rules` 差分なし。 |
 | tag rule invalid | 破損 condition を含む `.tag_rules` で build | build failure、ERROR log `TAG_RULE_INVALID`、SHA cache 更新なし。 |
-| verify-output no history | 成功履歴なしで `POST /api/verify-output` | `404 {"error":"Not Found"}`、状態ファイル変更なし。 |
-| pipeline config reserved arg | `extra_args:["--src","x"]` | `422`、`.pipeline_config` 差分なし。 |
-| notes no-op | 同一 content を 2 回保存 | 2 回目は `No changes`、`.config_log` 追記なし。 |
-| smtp secret mask | password 付き `POST /api/smtp-config` 後に GET / backup / log 確認 | password 本体は返らず、mask または `password_set:true` だけ表示。 |
-| queue disabled | `queue_max_size=0`、build running 中に `POST /api/build` | `429 {"error":"queue_full"}`、`.build_state.queued` は空。 |
-| dashboard duplicate widget | widgets に重複 id を指定 | `422`、`.dashboard_layout` 差分なし。 |
+| verify-output no history | 成功履歴なしで `POST /api/verify-output` | HTTP status / error body は [`docs/details/api.md`](api.md) §22.0e を参照する。状態ファイル変更なし。 |
+| pipeline config reserved arg | `extra_args:["--src","x"]` | HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。`.pipeline_config` 差分なし。 |
+| notes no-op | 同一 content を 2 回保存 | API response は [`docs/details/api.md`](api.md) §22.0e を参照する。`.config_log` 追記なし。 |
+| smtp secret mask | password 付き `POST /api/smtp-config` 後に GET / backup / log 確認 | password 本体は返らず、mask / secret 表示契約は [`docs/details/api.md`](api.md) §22.0e と [`docs/details/security.md`](security.md) §25 を参照する。 |
+| queue disabled | `queue_max_size=0`、build running 中に `POST /api/build` | HTTP status / error body は [`docs/details/api.md`](api.md) §22.0e を参照する。`.build_state.queued` は空。 |
+| dashboard duplicate widget | widgets に重複 id を指定 | HTTP status は [`docs/details/api.md`](api.md) §22.0e を参照する。`.dashboard_layout` 差分なし。 |
 
-**§22〜§26 関連責務参照：**
+**関連責務参照：**
 
-§22〜§26 にまたがる API、状態ファイル、SDK、UI、認証、setup / update の整合は、各 owner component 別の詳細本文責務と fixture 証跡責務を同時に参照する。本節は setup / release / update の実行条件だけを扱い、API endpoint、SDK method、UI 操作、認証方式、状態 schema、fixture 名、PR 証跡項目を重複定義しない。
+[`docs/details/api.md`](api.md) §22、[`docs/details/statefile.md`](statefile.md) §22.0a / §22.0c、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24、[`docs/details/security.md`](security.md) §25 / §27.42〜§27.47、[`docs/details/setup.md`](setup.md) §26 にまたがる API、状態ファイル、SDK、UI、認証、setup / update の整合は、各 owner component 別の詳細本文責務と fixture 証跡責務を同時に参照する。本節は setup / release / update の実行条件だけを扱い、API endpoint、SDK method、UI 操作、認証方式、状態 schema、fixture 名、PR 証跡項目を重複定義しない。
 
 | 対象 | 主本文 | setup 側の確認範囲 |
 |------|--------|--------------------|
@@ -584,7 +584,7 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 
 | ケース | 固定結果 |
 |--------|----------|
-| setup partial failure | 既存 binary、state、secret、admin UI、systemd を、§26 で許可した対象以外は変更しない。 |
+| setup partial failure | 既存 binary、state、secret、admin UI、systemd を、[`docs/details/setup.md`](setup.md) §26 で許可した対象以外は変更しない。 |
 | update rollback failure | 追加推測復旧を行わず、失敗箇所、退避先、現在配置済みファイル、journal 確認対象を報告する。 |
 | checksum / download / unsafe archive failure | binary、admin UI、systemd、state、secret を変更せず、失敗箇所と再実行条件を記録する。 |
 
@@ -592,9 +592,9 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 
 | 段階 | 確認 | 合格条件 |
 |------|------|----------|
-| 実装前 | setup / update 対象 | 配置対象 binary、admin UI asset、systemd unit、state / secret 保持対象、rollback 対象が §26 に定義済み。 |
+| 実装前 | setup / update 対象 | 配置対象 binary、admin UI asset、systemd unit、state / secret 保持対象、rollback 対象が [`docs/details/setup.md`](setup.md) §26 に定義済み。 |
 | 実装前 | secret handling | setup / update が触る secret file の保存先、権限、保持条件、log 禁止が定義済み。 |
-| 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が §26 fixture と一致する。 |
+| 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が [`docs/details/setup.md`](setup.md) §26 の fixture と一致する。 |
 
 Phase 順序、実装 PR 単位、実装着手条件、判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。
 
@@ -612,10 +612,10 @@ Phase 別の fixture、fake、expected / effects、PR 証跡、不足時の扱�
 
 | 更新対象 | 更新条件 | 必須確認 |
 |----------|----------|----------|
-| `expected/` 内の生成物 | 該当する owner component 別の詳細本文責務の出力契約、schema、error body、DOM id、SDK return のいずれかが変更された場合のみ更新する。 | 該当する owner component 別の詳細本文責務の節と fixture expected が同じ値を示すこと。 |
-| fake transcript | 外部依存の呼び出し method、path、payload、retry、timeout の仕様が変更された場合のみ更新する。 | secret / token / password 原文が transcript に存在しないこと。 |
-| DOM assertion | UI の DOM id、panel、表示文言、disabled / loading / success / error 条件が変更された場合のみ更新する。 | SDK method 対応表と DOM assertion が一致すること。 |
-| error expected | HTTP status、exit code、`AdlaireCIError.code`、stderr prefix が変更された場合のみ更新する。 | 正常系 fixture と異常系 fixture の両方で期待値が固定されていること。 |
+| `expected/` 内の生成物 | setup / release / update の配置、起動、保持、rollback、終了コード、標準出力、標準エラー、systemd、ファイル権限に関わる期待値が変更された場合のみ更新する。API response、UI DOM、SDK return、状態 schema の期待値更新条件は、それぞれの owner component 別詳細本文責務と [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。 | setup / release / update の期待値と本節の setup 責務が一致し、他 owner component の expected は該当する詳細本文責務と一致すること。 |
+| fake transcript | setup / release / update が直接実行する Release asset 取得、checksum 検証、systemd、権限確認、file 配置、rollback の呼び出し仕様が変更された場合のみ更新する。API / SDK / UI / security の fake 更新条件は該当する owner component 別詳細本文責務と [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。 | secret / token / password 原文が transcript に存在しないこと。 |
+| DOM assertion | setup / release / update が admin UI 静的ファイルの配置と到達確認を変更した場合のみ、setup 側の検証入口として更新する。UI DOM、panel、表示文言、disabled / loading / success / error 条件の具体契約は [`docs/details/ui.md`](ui.md) §24 と [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。 | setup 側は admin UI 配布物の存在と到達確認だけを固定し、DOM assertion の具体値は UI 詳細本文責務と一致すること。 |
+| error expected | setup / release / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果が変更された場合のみ更新する。HTTP status、API error body、`AdlaireCIError.code` の具体契約は [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。 | setup / release / update の正常系 fixture と異常系 fixture の両方で setup 責務の期待値が固定され、API / SDK / UI の期待値は各 owner component の詳細本文責務と一致すること。 |
 
 Phase 判定の PR 証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義し、PR 証跡項目を重複定義しない。
 
@@ -625,7 +625,7 @@ setup / release / update に関わる受け入れ結果は、[`docs/details/fixt
 
 ### §26.8 Setup / Admin 配布実装確認ゲート
 
-セットアップ、アップデート、管理 API 導入、admin UI 配布の詳細実装確認では、§26.1〜§26.7 の本文に加えて下表を満たす。本節は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
+セットアップ、アップデート、管理 API 導入、admin UI 配布の詳細実装確認では、[`docs/details/setup.md`](setup.md) §26.1〜§26.7 の本文に加えて下表を満たす。本節は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
 
 | 段階 | 必須入力 | 成功確定条件 | 失敗時固定結果 | fixture 必須 |
 |------|----------|--------------|----------------|--------------|
@@ -637,13 +637,13 @@ setup / release / update に関わる受け入れ結果は、[`docs/details/fixt
 | admin archive 展開 | `admin-ui.tar.gz` | [`docs/details/admin.md`](admin.md) A1〜A2 を満たし、一時 directory 検証後に差し替える。 | 既存 `$INSTALL_DIR/admin` を変更しない。API service を起動 / restart しない。 | `api setup admin archive unsafe` |
 | systemd 配置 | unit file 内容 | unit 書込、mode、`daemon-reload`、enable/start/restart、`is-active` が成功する。 | enable/start/restart を成功扱いしない。journal 確認対象を出力する。 | `api setup health failure`、`update runner restart failure` |
 | rollback | 旧 binary / 旧 admin backup | 定義済み対象だけ 1 回復元し、対象 service を 1 回 restart する。 | 追加推測復旧を行わず、現在配置済み path と journal 確認対象を出力する。 | `update rollback failure` |
-| 最終確認 | 配置済み binary、state、service、admin UI | §26.3 / §26.3b / §26.5 の固定確認がすべて成功する。 | 成功報告しない。未確認項目を `未実行` として記録する。 | `setup success`、`update api absent` |
+| 最終確認 | 配置済み binary、state、service、admin UI | [`docs/details/setup.md`](setup.md) §26.3 / §26.3b / §26.5 の固定確認がすべて成功する。 | 成功報告しない。未確認項目を `未実行` として記録する。 | `setup success`、`update api absent` |
 
 **setup / admin / release 連動 fixture 固定：**
 
 | fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
 |------------|----------------|------------|---------------|----------|
-| `setup-admin-release-layout` | `setup`、`admin` | Release asset 一式、`SHA256SUMS`、`admin-ui.tar.gz`、fake download response。 | `expected/effects.json`、admin archive file list、`expected/security.json`。 | 対象 asset 名、checksum、admin archive root layout、必須 file、任意 file、file mode、directory mode が §26.2a と [`docs/details/admin.md`](admin.md) A1〜A2 に一致する。 |
+| `setup-admin-release-layout` | `setup`、`admin` | Release asset 一式、`SHA256SUMS`、`admin-ui.tar.gz`、fake download response。 | `expected/effects.json`、admin archive file list、`expected/security.json`。 | 対象 asset 名、checksum、admin archive root layout、必須 file、任意 file、file mode、directory mode が [`docs/details/setup.md`](setup.md) §26.2a と [`docs/details/admin.md`](admin.md) A1〜A2 に一致する。 |
 | `setup-admin-archive-boundary` | `setup`、`admin` | unsafe archive、既存 `$INSTALL_DIR/admin`、既存 API binary、API service fake。 | `expected/effects.json.unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`expected/stderr.txt`。 | archive 検証失敗時に既存 admin UI、API binary、credentials、runner state を変更せず、API service start / restart を呼ばない。 |
 | `setup-systemd-rollback-boundary` | `setup`、`runner`、`api` | systemd fake、旧 binary backup、旧 admin backup、restart failure。 | `expected/effects.json.write_order`、`updated_paths`、`unchanged_paths`、`forbidden_writes`、`commands`。 | rollback 対象は失敗段階で定義済みの binary / admin UI だけで、state、history、secret、runner timer を未定義に巻き戻さない。 |
 | `admin-static-serving-security` | `admin`、`api` | static request、secret/state/log/snapshot path、method variation。 | `expected/response.json`、`expected/security.json`、`expected/effects.json`。 | A3 の status、header、body 有無に一致し、secret / state / log / snapshot / directory listing を返さず、request body を読まない。 |
