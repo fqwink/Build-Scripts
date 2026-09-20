@@ -2,7 +2,7 @@
 
 本ファイルは `statefile` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、fixture、検証観点として参照する。
+本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、fixture、検証観点として参照する。
 
 ---
 
@@ -13,7 +13,7 @@
 | owner component | `statefile` |
 | collaborator component | `runner`、`api`、`archive`、`security` |
 | 持つ内容 | `statefile` owner が主本文として定義する状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
-| 持たない内容 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / release 手順、fixture / PR 証跡正本、個別 component の業務判断。 |
+| 持たない内容 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / release 手順、fixture / PR 証跡責務、個別 component の業務判断。 |
 
 ---
 
@@ -251,7 +251,7 @@ Email object:
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
-| `branch_targets` | object[] | 必須 | 0〜50 件 | 永続ファイルの正本 key。空配列は `.branch_config` 削除と同義。 |
+| `branch_targets` | object[] | 必須 | 0〜50 件 | 永続ファイルの保存 key。空配列は `.branch_config` 削除と同義。 |
 | `branch` | string | 必須 | 1〜128 文字、`refs/heads/` は含めない | GitHub branch 名。 |
 | `target_file` | string | 必須 | 相対パス、`..` 禁止 | GitHub リポジトリ内の監視対象ファイル。 |
 | `sha_file` | string | 必須 | 絶対パス | 対象 branch/file の SHA キャッシュ。 |
@@ -818,7 +818,7 @@ BuildMeta object:
 
 ### §22.0s 状態ファイル実装確認固定契約
 
-`statefile` owner component は、§22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。実装者は状態ファイルごとに別々の暗黙処理を追加せず、下表の共通契約を満たす。
+`statefile` owner component は、§22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。状態ファイルごとの暗黙処理は追加せず、下表の共通契約を満たす。
 
 | 観点 | 入力 | 必須処理 | 成功時出力 | 失敗時出力 / 副作用 |
 |------|------|----------|------------|---------------------|

@@ -2,7 +2,7 @@
 
 本ファイルは `runner` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
+本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
 
 [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、本ファイルの個別節を参照し、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として同節を確認する。同節は本ファイルの個別節を上書きせず、同節の内容を本ファイルへ重複定義してはならない。
 
@@ -15,7 +15,7 @@
 | owner component | `runner` |
 | collaborator component | `builder`、`statefile`、`commitstatus`、`api`、`archive` |
 | 持つ内容 | `runner` owner が主本文として定義する GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
-| 持たない内容 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| 持たない内容 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡責務。 |
 
 ---
 
@@ -1009,9 +1009,9 @@ runner は stdout / stderr の CRLF を LF に正規化して保存する。NUL 
 
 ## 14a. SSH サイト転送
 
-本節は、Go 版 CI ランナーの SSH 転送標準仕様である。
+本節は、runner owner の SSH 転送詳細本文責務である。
 
-`runner` は、`pipeline.sh` 成功後に、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節を SSH 転送の正本仕様とする。
+`runner` は、`pipeline.sh` 成功後に、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節は runner owner の SSH 転送詳細本文責務として扱う。
 
 `runner` は `pipeline.sh` 成功後に、出力サイトディレクトリ配下の全ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。SSH コマンドは `ssh` バイナリを `exec.CommandContext` で直接起動し、`/bin/sh -c` を使わない。
 
@@ -1130,9 +1130,9 @@ remote `sha256sum` 出力は 1 行目の先頭 field だけを採用し、hex 64
 
 ## 14b. スナップショット管理
 
-本節は、Go 版 CI ランナーのスナップショット標準仕様である。
+本節は、runner owner のスナップショット管理詳細本文責務である。
 
-`runner` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節をスナップショット保存、世代管理、ロールバック連携の正本仕様とする。
+`runner` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節は runner owner のスナップショット保存、世代管理、ロールバック連携詳細本文責務として扱う。
 
 `runner` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット世代削除を行わず、無制限保持とする。
 

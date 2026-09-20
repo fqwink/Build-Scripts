@@ -2,7 +2,7 @@
 
 本ファイルは `security` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `security` owner component の主本文であり、collaborator component の仕様は呼び出し境界、endpoint、SDK、UI、状態 schema、fixture、検証観点として参照する。
+本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `security` owner component の主本文であり、collaborator component の仕様は呼び出し境界、endpoint、SDK、UI、状態 schema、fixture、検証観点として参照する。
 
 ---
 
@@ -13,7 +13,7 @@
 | owner component | `security` |
 | collaborator component | `api`、`sdk`、`ui`、`statefile` |
 | 持つ内容 | `security` owner が主本文として定義する API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| 持たない内容 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| 持たない内容 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture / PR 証跡責務。 |
 
 ---
 

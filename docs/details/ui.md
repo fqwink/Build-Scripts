@@ -2,7 +2,7 @@
 
 本ファイルは `ui` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、fixture、検証観点として参照する。
+本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、fixture、検証観点として参照する。
 
 UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md`](sdk.md) §23 を参照する。本ファイルは UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
@@ -15,13 +15,13 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | owner component | `ui` |
 | collaborator component | `sdk`、`api`、`security` |
 | 持つ内容 | `ui` owner が主本文として定義する DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
-| 持たない内容 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡正本。 |
+| 持たない内容 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡責務。 |
 
 ---
 
 ## 24. 標準管理ツール 仕様
 
-本節は、`admin/index.html` に関する仕様である。
+本節は、ui owner の `admin/index.html` 詳細本文責務である。
 
 **ファイル構成：**
 ```
@@ -224,7 +224,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 1. `app-root`、`nav-panels`、`global-error`、`global-success`、各 `panel-*` の存在を検査する。欠落時は `global-error` に `UI initialization failed` を表示し、以降の API 呼び出しを行わない。
 2. `window.AdlaireCI` 等の global 参照を使わず、`./adlaire-ci-sdk.js` から `AdlaireCI` と `AdlaireCIError` を ES Module import する。
-3. `AdlaireCI` を `new AdlaireCI({baseUrl})` で 1 回だけ生成する。`baseUrl` は同一 origin の `/api` を既定値とし、外部 origin は標準仕様では許可しない。
+3. `AdlaireCI` を `new AdlaireCI({baseUrl})` で 1 回だけ生成する。`baseUrl` は同一 origin の `/api` を既定値とし、外部 origin は ui 詳細本文責務では許可しない。
 4. すべての panel を `hidden=true` にし、`panel-login` だけを表示する。
 5. form submit と button click の event listener を登録する。登録対象は [`docs/details/ui.md`](ui.md) §24 の DOM / section / form field 命名契約表の id に限定する。
 6. `localStorage`、`sessionStorage`、Cookie から token を読み込まない。
@@ -505,7 +505,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 
 **§27.21〜§27.47 UI 連動 fixture 必須証跡：**
 
-UI 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固定する。UI は API / SDK の正本値を表示する補助層であり、状態確定、補完、保存、再試行を独自判断で行わない。
+UI 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固定する。UI は API / SDK の返却値を表示する補助層であり、状態確定、補完、保存、再試行を独自判断で行わない。
 
 | 証跡 | 固定する内容 | 合格条件 | 禁止事項 |
 |------|--------------|----------|----------|
@@ -520,7 +520,7 @@ UI 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固�
 
 | 設定値 | 取得元 | 既定値 | 仕様 |
 |--------|--------|--------|------|
-| SDK `baseUrl` | `index.html` 内の `data-api-base-url` 属性 | `/api` | 空文字の場合は `/api` を使用する。外部 origin の URL は標準仕様では使用しない。 |
+| SDK `baseUrl` | `index.html` 内の `data-api-base-url` 属性 | `/api` | 空文字の場合は `/api` を使用する。外部 origin の URL は ui 詳細本文責務では使用しない。 |
 | 初期表示 panel | 固定値 | `panel-login` | token 永続化を行わないため、画面読み込み直後は常にログイン panel を表示する。 |
 | theme token | `:root` CSS custom property | §6 の値 | JavaScript は theme token を変更しない。UI 操作で theme 切替を実装しない。 |
 | panel 表示制御 | `hidden` 属性 | 全 panel hidden、`panel-login` のみ表示 | DOM 削除ではなく `hidden` で切り替える。 |

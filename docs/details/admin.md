@@ -2,7 +2,7 @@
 
 本ファイルは `admin` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `admin` owner component の主本文であり、collaborator component の仕様は呼び出し境界、配布境界、検証観点として参照する。
+本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `admin` owner component の主本文であり、collaborator component の仕様は呼び出し境界、配布境界、検証観点として参照する。
 
 ---
 
@@ -13,7 +13,7 @@
 | owner component | `admin` |
 | collaborator component | `api`、`ui`、`sdk`、`setup` |
 | 持つ内容 | `admin` owner が主本文として定義する管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
-| 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、release asset 取得手順、fixture / PR 証跡正本。 |
+| 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、release asset 取得手順、fixture / PR 証跡責務。 |
 
 `admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の仕様は [`docs/details/ui.md`](ui.md) を基準とし、`sdk` の仕様は [`docs/details/sdk.md`](sdk.md) を参照する。
 
@@ -23,14 +23,14 @@
 
 標準管理 UI の配布物は、次の path に固定する。
 
-| 配布元 path | 配置先 path | 必須 | 内容の正本 |
+| 配布元 path | 配置先 path | 必須 | 内容確認先 |
 |-------------|-------------|------|------------|
 | `admin/index.html` | `$INSTALL_DIR/admin/index.html` | 必須 | [`docs/details/ui.md`](ui.md) |
 | `admin/adlaire-ci-sdk.js` | `$INSTALL_DIR/admin/adlaire-ci-sdk.js` | 必須 | [`docs/details/sdk.md`](sdk.md) |
 | `admin/style.css` | `$INSTALL_DIR/admin/style.css` | 任意 | [`docs/details/ui.md`](ui.md) |
 | `admin/app.js` | `$INSTALL_DIR/admin/app.js` | 任意 | [`docs/details/ui.md`](ui.md) |
 
-配布物に上表以外のファイルを含める場合は、先に本表へ path、必須区分、内容の正本を追加する。未記載ファイルを暗黙に配布してはならない。
+配布物に上表以外のファイルを含める場合は、先に本表へ path、必須区分、内容確認先を追加する。未記載ファイルを暗黙に配布してはならない。
 
 `admin-ui.tar.gz` の archive root は `admin/` directory を含めず、展開直後の root 直下に `index.html` と `adlaire-ci-sdk.js` が存在する形式とする。setup は検証済み archive を `$INSTALL_DIR/admin/` へ配置する。
 
@@ -106,7 +106,7 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 ## A6. Admin Fixture 固定契約
 
-`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。実装者は UI DOM、SDK method、API endpoint の詳細を本ファイルで再定義せず、admin 配布境界だけを確認する。
+`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。本ファイルでは UI DOM、SDK method、API endpoint の詳細を再定義せず、admin 配布境界だけを確認する。
 
 | fixture | 入力 | 操作 | 合格条件 |
 |---------|------|------|----------|

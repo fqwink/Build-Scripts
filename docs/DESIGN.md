@@ -3,7 +3,7 @@
 **対象出力：** `adlaire-ci-build` が生成する静的 Web サイト HTML
 **ビルドコンポーネント：** `components/builder.go` から生成する `adlaire-ci-build`
 **デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)
-**最終更新：** 2026-09-14
+**更新履歴：** 日付本文を正本化しない。デザイン変更の時系列は Git 履歴と Pull Request を正とする。
 
 ---
 
@@ -11,7 +11,7 @@
 
 本ファイルは、機能仕様、運用仕様、API 仕様、状態 schema、実装状態、ロードマップ状態を定義しない。
 
-Adlaire CI 全体の方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md)、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は [`docs/details/builder.md`](details/builder.md) を参照する。
+Adlaire CI 全体の方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
 
 ## 1. デザイン方針
 
@@ -182,12 +182,8 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 ---
 
-## 8. ビルド方法
+## 8. 生成側参照
 
-```bash
-adlaire-ci-build --src <source.md> --out site/
-```
-
-入出力パス、既定値、終了コード、レポート出力は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) および [`docs/details/builder.md`](details/builder.md) の builder 詳細仕様を参照する。
+ビルド実行方法、入出力パス、既定値、終了コード、レポート出力は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務および [`docs/details/builder.md`](details/builder.md) builder 詳細本文責務を参照する。
 
 CSS トークンの変更は Go 版 `components/builder.go` の HTML テンプレート内 `:root { }` ブロックに反映して再ビルドする。

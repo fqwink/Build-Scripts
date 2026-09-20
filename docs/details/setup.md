@@ -2,9 +2,9 @@
 
 本ファイルは `setup` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、fixture、検証観点として参照する。
+本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、fixture、検証観点として参照する。
 
-本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component 別の [`docs/details/*.md`](./) 詳細本文責務を参照する。Phase 順序、実装状態、実装可否の判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、fixture、fake、expected / effects、PR 証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
+本ファイルは、バイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。Phase 順序、実装状態、実装可否の判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、fixture、fake、expected / effects、PR 証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---
 
@@ -15,7 +15,7 @@
 | owner component | `setup` |
 | collaborator component | `runner`、`api`、`statefile`、`admin` |
 | 持つ内容 | `setup` owner が主本文として定義するバイナリ配布、配置、systemd、セットアップ、アップデート、リリース成果物検証。 |
-| 持たない内容 | runner / api / sdk / ui / admin の個別機能本文、状態 schema、API endpoint、SDK method、UI DOM、fixture / PR 証跡正本、外部依存追加。 |
+| 持たない内容 | runner / api / sdk / ui / admin の個別機能本文、状態 schema、API endpoint、SDK method、UI DOM、fixture / PR 証跡責務、外部依存追加。 |
 
 ---
 
@@ -612,7 +612,7 @@ Phase 別の fixture、fake、expected / effects、PR 証跡、不足時の扱�
 
 | 更新対象 | 更新条件 | 必須確認 |
 |----------|----------|----------|
-| `expected/` 内の生成物 | 仕様本文の出力契約、schema、error body、DOM id、SDK return のいずれかが変更された場合のみ更新する。 | 仕様本文の該当節と fixture expected が同じ値を示すこと。 |
+| `expected/` 内の生成物 | 該当する owner component 別の詳細本文責務の出力契約、schema、error body、DOM id、SDK return のいずれかが変更された場合のみ更新する。 | 該当する owner component 別の詳細本文責務の節と fixture expected が同じ値を示すこと。 |
 | fake transcript | 外部依存の呼び出し method、path、payload、retry、timeout の仕様が変更された場合のみ更新する。 | secret / token / password 原文が transcript に存在しないこと。 |
 | DOM assertion | UI の DOM id、panel、表示文言、disabled / loading / success / error 条件が変更された場合のみ更新する。 | SDK method 対応表と DOM assertion が一致すること。 |
 | error expected | HTTP status、exit code、`AdlaireCIError.code`、stderr prefix が変更された場合のみ更新する。 | 正常系 fixture と異常系 fixture の両方で期待値が固定されていること。 |

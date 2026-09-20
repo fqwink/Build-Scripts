@@ -3,9 +3,9 @@
 **仕様対象コンポーネント：** `components/builder.go` / `components/runner.go` / `components/api.go` / `admin/adlaire-ci-sdk.js` / `admin/index.html`
 **将来計画コンポーネント：** `components/mcp.go`
 **出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
-**スクリプトバージョン：** v3
+**仕様世代：** Go 初期仕様
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記）。[`docs/SPEC.md`](SPEC.md) ポリシー責務 §1 参照。
-**最終更新：** 2026-09-15
+**更新履歴：** 日付本文を正本化しない。仕様変更の時系列は Git 履歴と Pull Request を正とする。
 
 ---
 
@@ -546,7 +546,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 ## 0d. 仕様凍結ポリシー
 
-実装着手可能な仕様として扱うには、対象仕様を一時的に凍結する。
+実装着手可能な仕様として扱うには、対象項目を一時的に凍結する。
 
 仕様凍結は、以下をすべて満たす状態をいう。
 

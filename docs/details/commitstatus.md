@@ -2,7 +2,7 @@
 
 本ファイルは `commitstatus` owner component の詳細本文責務の正本である。
 
-本ファイルの詳細本文責務管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `commitstatus` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
+本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `commitstatus` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
 
 ---
 
@@ -13,7 +13,7 @@
 | owner component | `commitstatus` |
 | collaborator component | `runner`、`statefile` |
 | 持つ内容 | `commitstatus` owner が主本文として定義する GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
-| 持たない内容 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡正本。 |
+| 持たない内容 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細、状態 schema、setup / release 手順、fixture / PR 証跡責務。 |
 
 ---
 
@@ -40,7 +40,7 @@ runner は `.server_config.commit_status_enabled == true` の場合、commitstat
 | `description` | 140 文字以内。開始時 `Build started`、成功時 `Build succeeded`、失敗時 `Build failed: <target_status>`、pending deploy 時 `Build succeeded with deploy pending`。 |
 | `target_url` | `.server_config.commit_status_target_url` が `null` でなければ送信する。 |
 
-GitHub request は以下に固定する。実装者は retry、GraphQL API、Check Runs API、任意 header、任意 payload key を追加してはならない。
+GitHub request は以下に固定する。retry、GraphQL API、Check Runs API、任意 header、任意 payload key は本詳細仕様の対象外とする。
 
 | 項目 | 固定値 |
 |------|--------|
