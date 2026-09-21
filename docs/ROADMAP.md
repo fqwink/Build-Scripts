@@ -1,6 +1,6 @@
 # Adlaire CI — Roadmap
 
-本ファイルは、Adlaire CI の状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を管理するロードマップ正本である。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、Adlaire CI の状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を管理するロードマップ正本である。
 
 方針、ポリシー、正本参照先、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務、詳細仕様参照入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の詳細本文は [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
@@ -8,7 +8,7 @@ HTTP response schema、状態ファイル schema、SDK method の実装詳細、
 
 ## 1. ロードマップ責務
 
-| 管理対象 | 本ファイルで扱う内容 | 詳細参照先 |
+| 管理対象 | 状態・計画責務で扱う内容 | 詳細参照先 |
 |----------|----------------------|--------------|
 | 状態分類 | component ごとの `未仕様化`、`将来計画`、`改訂予定`、`仕様化済み・未実装`、`実装中・検証未完了`、`実装済み` の分類。 | 詳細仕様本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
 | Phase | Phase 順序、対象 owner component、依存条件、判定条件、引き継ぎ契約。 | 関数、endpoint、schema、DOM、fixture 本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
@@ -29,7 +29,7 @@ HTTP response schema、状態ファイル schema、SDK method の実装詳細、
 
 ## 3. コンポーネント状態分類
 
-本章では、仕様化済みの内容と実装済みの内容を区別して扱う。
+コンポーネント状態分類では、仕様化済みの内容と実装済みの内容を区別して扱う。
 
 下表のコンポーネント名は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成に基づく。`main.go`、`components/*.go`、`admin/` 配下の管理 UI 静的ファイル、`testdata/<component>/` を現行配置として扱う。
 
@@ -65,7 +65,7 @@ Go 版初期実装の対象範囲と Phase 単位の扱いは [`docs/SPEC.md`](S
 
 ### 4.1.1 Phase 1 完全仕様ゲート（`builder`）
 
-Phase 1 の実装詳細本文は [`docs/details/builder.md`](details/builder.md) を参照する。本章では、Phase 1 の対象、依存条件、判定条件、後続 Phase への引き継ぎ確認だけを扱う。
+Phase 1 の実装詳細本文は [`docs/details/builder.md`](details/builder.md) を参照する。Phase 1 完全仕様ゲートでは、Phase 1 の対象、依存条件、判定条件、後続 Phase への引き継ぎ確認だけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -75,7 +75,7 @@ Phase 1 の実装詳細本文は [`docs/details/builder.md`](details/builder.md)
 
 ### 4.1.2 Phase 2 完全仕様ゲート（`runner`）
 
-Phase 2 の実装詳細本文は [`docs/details/runner.md`](details/runner.md) を参照する。本章では、Phase 2 が Phase 1 の `adlaire-ci-build` 契約に依存し、後続 API が読む runner 状態契約を固定することだけを扱う。
+Phase 2 の実装詳細本文は [`docs/details/runner.md`](details/runner.md) を参照する。Phase 2 完全仕様ゲートでは、Phase 2 が Phase 1 の `adlaire-ci-build` 契約に依存し、後続 API が読む runner 状態契約を固定することだけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -85,7 +85,7 @@ Phase 2 の実装詳細本文は [`docs/details/runner.md`](details/runner.md) �
 
 ### 4.1.3 Phase 3 完全仕様ゲート（`api`）
 
-Phase 3 の実装詳細本文は [`docs/details/api.md`](details/api.md) と [`docs/details/setup.md`](details/setup.md) を参照する。本章では、API 共通契約、認証、状態 read/write、運用基本 endpoint が Phase 4〜6 の前提になることだけを扱う。
+Phase 3 の実装詳細本文は [`docs/details/api.md`](details/api.md) と [`docs/details/setup.md`](details/setup.md) を参照する。Phase 3 完全仕様ゲートでは、API 共通契約、認証、状態 read/write、運用基本 endpoint が Phase 4〜6 の前提になることだけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -95,7 +95,7 @@ Phase 3 の実装詳細本文は [`docs/details/api.md`](details/api.md) と [`d
 
 ### 4.1.4 Phase 4 完全仕様ゲート（`api`）
 
-Phase 4 の実装詳細本文は [`docs/details/api.md`](details/api.md) を参照する。本章では、拡張運用 endpoint が SDK / UI の最終入力契約になることだけを扱う。
+Phase 4 の実装詳細本文は [`docs/details/api.md`](details/api.md) を参照する。Phase 4 完全仕様ゲートでは、拡張運用 endpoint が SDK / UI の最終入力契約になることだけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -105,7 +105,7 @@ Phase 4 の実装詳細本文は [`docs/details/api.md`](details/api.md) を参�
 
 ### 4.1.5 Phase 5 完全仕様ゲート（`sdk`）
 
-Phase 5 の実装詳細本文は [`docs/details/sdk.md`](details/sdk.md) を参照する。本章では、SDK が固定済み API endpoint だけを呼び、UI 表示判断を持たないことだけを扱う。
+Phase 5 の実装詳細本文は [`docs/details/sdk.md`](details/sdk.md) を参照する。Phase 5 完全仕様ゲートでは、SDK が固定済み API endpoint だけを呼び、UI 表示判断を持たないことだけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -115,7 +115,7 @@ Phase 5 の実装詳細本文は [`docs/details/sdk.md`](details/sdk.md) を参�
 
 ### 4.1.6 Phase 6 完全仕様ゲート（`ui`）
 
-Phase 6 の実装詳細本文は [`docs/details/ui.md`](details/ui.md) を参照する。本章では、UI が SDK 経由だけで API と通信し、秘密情報を DOM に残さないことだけを扱う。
+Phase 6 の実装詳細本文は [`docs/details/ui.md`](details/ui.md) を参照する。Phase 6 完全仕様ゲートでは、UI が SDK 経由だけで API と通信し、秘密情報を DOM に残さないことだけを扱う。
 
 | 確認 | 参照先 |
 |------|--------|
@@ -138,7 +138,7 @@ Phase 6 の実装詳細本文は [`docs/details/ui.md`](details/ui.md) を参照
 
 ### 4.1.8 Phase 別 実装成果物チェックリスト
 
-Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [`docs/details/fixture.md`](details/fixture.md) §0g.8-F を参照する。本章では、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、実装検証証跡項目を重複定義しない。
+Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [`docs/details/fixture.md`](details/fixture.md) §0g.8-F を参照する。Phase 別実装成果物チェックリストでは、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、実装検証証跡項目を重複定義しない。
 
 | Phase | 実装対象 | 成果物・fixture 確認先 | 受け入れ条件 |
 |-------|----------|----------------------|--------------|
@@ -314,7 +314,7 @@ Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化
 
 ### 5.2.1 統合ロードマップ参照入口
 
-本章の項目は、単一の統合ロードマップ表で管理する。状態分類と実装可否の定義は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 を参照する。実装着手可否の判定は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
+拡張ポイント・将来計画の項目は、単一の統合ロードマップ表で管理する。状態分類と実装可否の定義は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 を参照する。実装着手可否の判定は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
 
 ---
 

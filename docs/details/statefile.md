@@ -1,8 +1,8 @@
 # Adlaire CI — Statefile 詳細仕様
 
-本ファイルは `statefile` owner component の詳細本文責務の正本である。
+`statefile` owner component の詳細本文責務は、[`docs/details/statefile.md`](statefile.md) を正本とする。
 
-本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、fixture、検証観点として参照する。
+詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、fixture、検証観点として参照する。
 
 ---
 
@@ -26,7 +26,7 @@
 
 ### 22.0a 状態ファイル共通仕様
 
-`api` および拡張後 `runner` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に本節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
+`api` および拡張後 `runner` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に該当節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
 
 | パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
 |------|------|--------|----------|--------------|
@@ -104,11 +104,11 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 | mode | 秘密情報ファイルは `0600`、通常 JSON / JSON Lines は `0644`、directory は `0755` を標準とする。 | chmod 失敗時は成功扱いにしない。 | chmod 失敗は chmod failure を返す。target を更新した後の chmod 失敗は ERROR ログに残す。 |
 | 改行 | text / JSON / JSON Lines は LF で保存する。JSON object / array ファイルは末尾 LF 1 個を付ける。 | CRLF、BOM、末尾余分空白を新規保存しない。 | 入力 text が CRLF を含む場合の扱いは個別機能節に従う。 |
 
-旧 schema からの正規化は、本ファイルに「旧 key」「変換後 key」「削除する key」「保存するか読み取り時だけか」を明記した場合だけ実装する。明記がない旧形式は破損扱いとし、黙って推測変換してはならない。
+旧 schema からの正規化は、[`docs/details/statefile.md`](statefile.md) 詳細本文責務に「旧 key」「変換後 key」「削除する key」「保存するか読み取り時だけか」を明記した場合だけ実装する。明記がない旧形式は破損扱いとし、黙って推測変換してはならない。
 
 **状態読取 adapter 固定契約：**
 
-本節は、statefile owner component が提供する状態読取 adapter 名、読取対象、正常戻り値、不在時、破損時 / 読込不能時の固定契約である。API endpoint ごとの読取順、response 算出、HTTP status は [`docs/details/api.md`](api.md) §22.0c.1 と [`docs/details/api.md`](api.md) §22.0d 以降を参照する。各 component は同じ状態ファイルを endpoint ごとに別ロジックで直接 parse してはならない。
+該当節は、statefile owner component が提供する状態読取 adapter 名、読取対象、正常戻り値、不在時、破損時 / 読込不能時の固定契約である。API endpoint ごとの読取順、response 算出、HTTP status は [`docs/details/api.md`](api.md) §22.0c.1 と [`docs/details/api.md`](api.md) §22.0d 以降を参照する。各 component は同じ状態ファイルを endpoint ごとに別ロジックで直接 parse してはならない。
 
 | Adapter | 読取対象 | 正常戻り値 | 不在時 | 破損時 / 読込不能時 |
 |---------|----------|------------|--------|---------------------|
@@ -131,7 +131,7 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 
 ### 22.0c 主要状態ファイル schema
 
-本節の schema は、API 実装、SDK 型、標準管理ツール表示、バックアップ/リストアの基準である。ここに定義したキー以外を保存してはならない。追加キーを追加する場合は、型、既定値、読み書き API、既存データの扱いを本節へ追記してから実装する。
+該当節の schema は、API 実装、SDK 型、標準管理ツール表示、バックアップ/リストアの基準である。ここに定義したキー以外を保存してはならない。追加キーを追加する場合は、型、既定値、読み書き API、既存データの扱いを該当節へ追記してから実装する。
 
 **`.server_config` schema：**
 
@@ -834,7 +834,7 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | ゲート | statefile 側の固定処理 | 呼び出し元が渡す値 | 失敗時境界 |
 |--------|------------------------|-------------------|------------|
 | schema precheck | 保存前に [`docs/details/statefile.md`](statefile.md) §22.0c の key、型、nullable、enum、UTC 時刻、配列要素 schema を検証する。 | 保存済みとして確定した typed value。 | schema 不一致は target 変更なしで `ErrStateCorrupted` または validation error を返す。 |
-| unknown key rejection | 既存 file と新規 value の両方で未知 key を拒否する。例外は本節に明記済みの旧形式正規化だけ。 | 表示用 key、SDK 用 key、fixture 用 key を含まない object。 | 未知 key を削除して保存しない。既存未知 key も暗黙修復しない。 |
+| unknown key rejection | 既存 file と新規 value の両方で未知 key を拒否する。例外は該当節に明記済みの旧形式正規化だけ。 | 表示用 key、SDK 用 key、fixture 用 key を含まない object。 | 未知 key を削除して保存しない。既存未知 key も暗黙修復しない。 |
 | write order evidence | 複数 file 更新では呼び出し元が決めた順に 1 file ずつ atomic write し、fixture の `write_order` と一致させる。 | 順序付き write plan。 | 失敗地点以降は実行しない。成功済み file は statefile が rollback しない。 |
 | JSON Lines append | append 対象は 1 行 1 JSON object とし、末尾 newline を固定する。 | 1 record の typed value。 | append 失敗は対象操作へ返し、既存行の rewrite、sort、修復をしない。 |
 | no mutation read | read-only adapter は fallback 値を返すだけで、file 作成、chmod、backup、lock 削除、旧形式保存を行わない。 | 読取対象 path と fallback 条件。 | 読取失敗は typed error を返し、filesystem 差分なし。 |

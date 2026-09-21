@@ -1,8 +1,8 @@
 # Adlaire CI — Fixture 詳細仕様
 
-本ファイルは `fixture` owner component の詳細本文責務の正本である。
+`fixture` owner component の詳細本文責務は、[`docs/details/fixture.md`](fixture.md) を正本とする。
 
-本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、実装検証証跡、検証観点として参照する。
+詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、実装検証証跡、検証観点として参照する。
 
 ---
 
@@ -28,7 +28,7 @@
 
 ## 0g.8-F Phase fixture / testdata / fake / 実装検証証跡契約
 
-本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、実装検証証跡、acceptance checklist、差し戻し条件を扱う fixture 証跡責務である。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0e、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0g、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、実装検証証跡項目、不足時の扱い、差し戻し条件は本ファイルを参照する。
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、実装完了判定に必要な fixture、fake、testdata、expected / effects、実装検証証跡、acceptance checklist、差し戻し条件を扱う。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0e、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0g、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、実装検証証跡項目、不足時の扱い、差し戻し条件は [`docs/details/fixture.md`](fixture.md) を参照する。
 
 実装検証証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる変更は、該当する全系統の証跡を実装検証証跡として記録する。
 
@@ -40,7 +40,7 @@
 
 上表の証跡が不足する場合、対象機能は未完了として扱う。fixture の pass だけでは完了証跡を満たさない。
 
-Phase、API、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 のいずれの実装検証証跡でも、記録形式は本ファイルの表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、本ファイルは fixture 証跡責務として証跡分類、不足時の扱い、差し戻し条件だけを固定する。
+Phase、API、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 のいずれの実装検証証跡でも、記録形式は [`docs/details/fixture.md`](fixture.md) の表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は証跡分類、不足時の扱い、差し戻し条件だけを固定する。
 
 **Phase fixture / testdata 配置固定契約：**
 
@@ -79,11 +79,11 @@ Phase、API、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/securi
 
 ## 22-F Phase 3 / Phase 4 API fixture 契約
 
-本節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) §22 を基準とし、fixture 証跡責務では再定義しない。
+該当節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) §22 を基準とし、fixture 証跡責務では再定義しない。
 
-API 実装の検証証跡は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の実装検証証跡固定契約に加えて、本節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
+API 実装の検証証跡は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の実装検証証跡固定契約に加えて、該当節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
 
-Phase 順序、実装変更単位、完了判定単位は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。本節は、Phase 3 / Phase 4 の API fixture 証跡として記録する項目だけを固定する。
+Phase 順序、実装変更単位、完了判定単位は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。該当節は、Phase 3 / Phase 4 の API fixture 証跡として記録する項目だけを固定する。
 
 | Phase | 対象 | 完了条件 |
 |-------|------|----------|
@@ -860,7 +860,7 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 
 ## 28-F fixture 証跡責務 / builder 拡張実装検証証跡詳細契約
 
-本節は、[`docs/details/builder.md`](builder.md) §28.1〜§28.25 の fixture、fake、expected、effects、実装検証証跡を扱う fixture 証跡責務である。各 [`docs/details/builder.md`](builder.md) §28 機能は、Markdown 入力、CLI option、期待 HTML、期待 CSS / JS、`[REPORT]`、終了コード、strict / non-strict の差分を fixture で固定する。外部 library、CDN、実 network、現在時刻、実 git repository、実画像取得、画像 snapshot だけの合否判定を fixture の前提にしてはならない。
+該当節は、[`docs/details/builder.md`](builder.md) §28.1〜§28.25 の fixture、fake、expected、effects、実装検証証跡を扱う fixture 証跡責務である。各 [`docs/details/builder.md`](builder.md) §28 機能は、Markdown 入力、CLI option、期待 HTML、期待 CSS / JS、`[REPORT]`、終了コード、strict / non-strict の差分を fixture で固定する。外部 library、CDN、実 network、現在時刻、実 git repository、実画像取得、画像 snapshot だけの合否判定を fixture の前提にしてはならない。
 
 **[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F 配置固定契約：**
 

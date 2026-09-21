@@ -1,6 +1,6 @@
 # Adlaire CI — 詳細仕様入口
 
-本ファイルは詳細仕様入口責務の正本であり、実装者が owner component 別詳細本文責務へ到達するための入口、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置だけを扱う。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、実装者が owner component 別詳細本文責務へ到達するための入口、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置だけを扱う。
 
 方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態分類、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、各 owner component の入出力、状態、処理順序、異常系、検証条件は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
@@ -10,7 +10,7 @@
 
 詳細仕様入口責務は、管理対象と正本外の確認先を示す。
 
-| 管理対象 | 参照先 | 本ファイルでの扱い |
+| 管理対象 | 参照先 | 詳細仕様入口責務での扱い |
 |----------|------|--------------------|
 | 詳細仕様参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 実装者が詳細仕様本文へ到達するための入口を定義する。 |
 | 共通固定値 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | component 間で共有する固定値だけを定義する。 |
@@ -490,9 +490,9 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 詳細仕様本文は、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を owner component 別に定義する。
 
-本ファイルは詳細仕様参照入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は詳細仕様参照入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
-`mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、本ファイルおよび owner component 別の [`docs/details/*.md`](details/) 詳細本文責務では入出力、状態、起動手順、検証条件を定義しない。
+`mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務および owner component 別の [`docs/details/*.md`](details/) 詳細本文責務では入出力、状態、起動手順、検証条件を定義しない。
 
 ---
 

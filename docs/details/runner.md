@@ -1,10 +1,10 @@
 # Adlaire CI — Runner 詳細仕様
 
-本ファイルは `runner` owner component の詳細本文責務の正本である。
+`runner` owner component の詳細本文責務は、[`docs/details/runner.md`](runner.md) を正本とする。
 
-本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
+詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
 
-[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、本ファイルの個別節を参照し、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として同節を確認する。同節は本ファイルの個別節を上書きせず、同節の内容を本ファイルへ重複定義してはならない。
+[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、[`docs/details/runner.md`](runner.md) 詳細本文責務の個別節を参照し、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として同節を確認する。同節は [`docs/details/runner.md`](runner.md) 詳細本文責務の個別節を上書きせず、同節の内容を [`docs/details/runner.md`](runner.md) へ重複定義してはならない。
 
 ---
 
@@ -34,11 +34,11 @@
 
 ## 10a. CI ランナー 実装対象
 
-本節は、`runner` として実装する CI ランナー機能を定義する。
+該当節は、`runner` として実装する CI ランナー機能を定義する。
 
 `runner` は `adlaire-ci-runner` バイナリとして実行する。起動形式は systemd timer から呼び出される oneshot 実行とし、1 回の起動で対象ブランチ設定を読み込み、変更検出、ビルド起動、ログ保存、通知、転送、後処理を完了して終了する。
 
-実装時は、対象項目ごとに [`docs/details/runner.md`](runner.md) §0c の実装前確認項目を満たしていることを確認する。未充足の項目が 1 つでもある場合は、実装を開始せず、先に本ファイルの該当節を改訂する。
+実装時は、対象項目ごとに [`docs/details/runner.md`](runner.md) §0c の実装前確認項目を満たしていることを確認する。未充足の項目が 1 つでもある場合は、実装を開始せず、先に [`docs/details/runner.md`](runner.md) の該当節を改訂する。
 
 | 項目 | 関連節 | 実装内容 |
 |------|--------|------------|
@@ -72,7 +72,7 @@
 
 ## 11. CI ランナー ファイル構成
 
-本節のファイル構成は、Go 版 CI ランナーで使用するファイル、管理 API / sdk / ui 側のファイル、出力先、systemd ファイルを分離して示す。
+該当節のファイル構成は、Go 版 CI ランナーで使用するファイル、管理 API / sdk / ui 側のファイル、出力先、systemd ファイルを分離して示す。
 
 ### Go 版 CI ランナーで使用するファイル
 
@@ -187,7 +187,7 @@
 
 ## 12. 設定値（`runner`）
 
-`runner` は本節の設定値を基準とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は本節のキー名・型・既定値に従う。
+`runner` は該当節の設定値を基準とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は該当節のキー名・型・既定値に従う。
 
 **関連型：**
 
@@ -253,7 +253,7 @@ type DeployTarget struct {
 
 1. CLI 引数
 2. `.server_config` / `.branch_config` など状態ファイルの保存値
-3. 本節の既定値
+3. 該当節の既定値
 
 同一キーが複数の入力経路に存在する場合は、上位の値だけを採用する。採用しなかった値を混合してはならない。未知キーは WARN ログ `CONFIG_UNKNOWN_KEY: key={key}` を出して無視する。
 
@@ -560,7 +560,7 @@ runner が生成する build id は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` �
 
 ## 13. 処理フロー
 
-本節の処理フローは、`runner` の標準フローである。
+該当節の処理フローは、`runner` の標準フローである。
 
 **状態更新順序の規範：**
 
@@ -1009,9 +1009,9 @@ runner は stdout / stderr の CRLF を LF に正規化して保存する。NUL 
 
 ## 14a. SSH サイト転送
 
-本節は、runner owner の SSH 転送詳細本文責務である。
+該当節は、runner owner の SSH 転送詳細本文責務である。
 
-`runner` は、`pipeline.sh` 成功後に、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する。本節は runner owner の SSH 転送詳細本文責務として扱う。
+`runner` は、`pipeline.sh` 成功後に、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する。該当節は runner owner の SSH 転送詳細本文責務として扱う。
 
 `runner` は `pipeline.sh` 成功後に、出力サイトディレクトリ配下の全ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。SSH コマンドは `ssh` バイナリを `exec.CommandContext` で直接起動し、`/bin/sh -c` を使わない。
 
@@ -1130,9 +1130,9 @@ remote `sha256sum` 出力は 1 行目の先頭 field だけを採用し、hex 64
 
 ## 14b. スナップショット管理
 
-本節は、runner owner のスナップショット管理詳細本文責務である。
+該当節は、runner owner のスナップショット管理詳細本文責務である。
 
-`runner` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。本節は runner owner のスナップショット保存、世代管理、ロールバック連携詳細本文責務として扱う。
+`runner` は、SSH 転送成功後に `.snapshots/` ディレクトリへ成果物を保存する。該当節は runner owner のスナップショット保存、世代管理、ロールバック連携詳細本文責務として扱う。
 
 `runner` は SSH 転送成功後に、ビルド成果物を `.snapshots/` ディレクトリへアーカイブする。`HISTORY_KEEP_N = 0` の場合はスナップショット世代削除を行わず、無制限保持とする。
 
@@ -1194,7 +1194,7 @@ snapshot copy 中に読み取り失敗、書き込み失敗、path 検証失敗�
 
 ## 15. ログ
 
-本節は、`runner` の stdout ログと構造化ビルドログを定義する。
+該当節は、`runner` の stdout ログと構造化ビルドログを定義する。
 
 ### stdout ログ
 
@@ -1229,7 +1229,7 @@ stdout は Go 標準ライブラリ `log/slog` で出力し、systemd が journa
 
 `.build_logs/{id}.json` の保存 key、型、必須条件、Report object、Attempt object、CommitStatus object、BuildMeta object は [`docs/details/statefile.md`](statefile.md) §22.0c の `.build_logs/{id}.json` schema を参照する。
 
-runner owner component は、build log の生成タイミング、stdout / stderr 取り込み、`[REPORT]` 変換、WARN 取り込み、secret mask、最終状態保存、書き込み失敗時の後続停止だけを担当する。schema key の追加、削除、型変更、未知 key 保存は本ファイルで行ってはならない。
+runner owner component は、build log の生成タイミング、stdout / stderr 取り込み、`[REPORT]` 変換、WARN 取り込み、secret mask、最終状態保存、書き込み失敗時の後続停止だけを担当する。schema key の追加、削除、型変更、未知 key 保存は [`docs/details/runner.md`](runner.md) で行ってはならない。
 
 **ビルドログ最終形契約：**
 
@@ -1285,7 +1285,7 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 
 ## 15a. `runner` 受け入れ fixture
 
-`runner` の初期実装は、本節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
+`runner` の初期実装は、該当節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
 
 ### Fixture R1: CLI 異常系
 
@@ -1781,9 +1781,9 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 
 ### 27.1 GitHub Commit Status API
 
-本節の主本文は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を参照する。owner component は `commitstatus`、collaborator component は `runner`、`statefile` とする。
+該当節の主本文は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を参照する。owner component は `commitstatus`、collaborator component は `runner`、`statefile` とする。
 
-runner は、commit SHA 確定、build id 採番、build 開始前の pending 送信呼び出し、pipeline / deploy / snapshot / history の最終結果確定後の final 送信呼び出しだけを担当する。GitHub Commit Status API payload、送信順、送信失敗時の非反転、保存値、secret mask、検証条件は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を基準とし、本ファイルへ重複定義してはならない。
+runner は、commit SHA 確定、build id 採番、build 開始前の pending 送信呼び出し、pipeline / deploy / snapshot / history の最終結果確定後の final 送信呼び出しだけを担当する。GitHub Commit Status API payload、送信順、送信失敗時の非反転、保存値、secret mask、検証条件は [`docs/details/commitstatus.md`](commitstatus.md) §27.1 を基準とし、[`docs/details/runner.md`](runner.md) へ重複定義してはならない。
 
 ### 27.2 ドライラン実行モード
 

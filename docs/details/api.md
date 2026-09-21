@@ -1,12 +1,12 @@
 # Adlaire CI — API 詳細仕様
 
-本ファイルは `api` owner component の詳細本文責務の正本である。
+`api` owner component の詳細本文責務は、[`docs/details/api.md`](api.md) を正本とする。
 
-本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `api` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、security、表示、fixture、検証観点として参照する。
+詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`api` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、security、表示、fixture、検証観点として参照する。
 
-[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約である。api 連動機能を実装する場合は、本ファイルの個別節を参照し、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として同節を確認する。
+[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約である。api 連動機能を実装する場合は、[`docs/details/api.md`](api.md) 詳細本文責務の個別節を参照し、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として同節を確認する。
 
-[`docs/details/security.md`](security.md) §27.42〜§27.47 は security 領域の詳細本文責務である。api が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) 詳細本文責務を参照する。
+[`docs/details/security.md`](security.md) §27.42〜§27.47 は security 領域の詳細本文責務である。api が security 機能に関わる場合、[`docs/details/api.md`](api.md) 詳細本文責務は endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) 詳細本文責務を参照する。
 
 ---
 
@@ -63,7 +63,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ## 21a. 管理 API サーバー制限
 
-本節は `api` の実行時制限を定義する。runner、setup、admin、sdk、ui は本節の制限を上書きしてはならない。
+該当節は `api` の実行時制限を定義する。runner、setup、admin、sdk、ui は該当節の制限を上書きしてはならない。
 
 | 制限 | 詳細 | 実装時の禁止事項 |
 |------|------|------------------|
@@ -73,7 +73,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 独自接続数制限なし | Go 標準ライブラリ `net/http` の標準 server で処理する。API rate limit は [`docs/details/security.md`](security.md) §27.47 の固定窓で行う。 | 独自 worker pool、connection pool、接続数上限、外部 queue を追加しない。 |
 | runner 起動責務なし | api は HTTP endpoint の request / response と状態 read/write 呼び出し境界を担当する。 | runner の通常 polling loop、GitHub read、pipeline 実行、build log 確定処理を api 本文へ移動しない。 |
 
-セッション、API token、TOTP、rate limit、audit log の security 主本文は [`docs/details/security.md`](security.md) §27.42〜§27.47 を基準とし、本節は API server の実行時境界だけを定義する。
+セッション、API token、TOTP、rate limit、audit log の security 主本文は [`docs/details/security.md`](security.md) §27.42〜§27.47 を基準とし、該当節は API server の実行時境界だけを定義する。
 
 ---
 
@@ -85,7 +85,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ### 22.0 API 共通契約
 
-本節は、`api` owner の API 共通契約を定義する。実装時は、エンドポイント固有契約より先に以下の共通契約を満たす。
+該当節は、`api` owner の API 共通契約を定義する。実装時は、エンドポイント固有契約より先に以下の共通契約を満たす。
 
 | 項目 | 仕様 |
 |------|------|
@@ -111,7 +111,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 秘密情報 | PAT、Webhook Secret、セッショントークン、API トークンはログ、バックアップ、GET レスポンスへ平文出力しない。設定済み表示は `"***"` または boolean で返す。 |
 | 並列更新 | 同一状態ファイルを更新する API は、ファイル単位のロックを取得してから読み込み、検証、書き込みを行う。ロック取得待ちは最大 10 秒とし、超過時は `409 Conflict` を返す。 |
 | 監査ログ | 設定変更 API は、変更前後の値を `.config_log` に追記する。ただし秘密情報の値は変更前後とも `"***"` にマスクする。 |
-| CORS | 既定では CORS ヘッダーを付与しない。標準管理ツールは同一 origin から配信する。`OPTIONS` preflight は定義しない。CORS を有効化する拡張は本ファイルで未定義とし、実装してはならない。 |
+| CORS | 既定では CORS ヘッダーを付与しない。標準管理ツールは同一 origin から配信する。`OPTIONS` preflight は定義しない。CORS を有効化する拡張は [`docs/details/api.md`](api.md) 詳細本文責務で未定義とし、実装してはならない。 |
 | セキュリティヘッダー | すべての API レスポンスに `Cache-Control: no-store`、`X-Content-Type-Options: nosniff` を付与する。SSE は `Cache-Control: no-store` と `X-Accel-Buffering: no` を付与する。 |
 | 判定順 | path 解決 → method 検証 → body 可否/サイズ検証 → JSON parse → 認証 → 権限 → 入力検証 → 状態競合 → 処理実行の順に判定する。 |
 
@@ -227,7 +227,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 
 ### 22.0c.1 API 状態読取優先順
 
-本節は、API endpoint ごとの状態読取順、response 算出、不在時 response、破損時 response を定義する。状態ファイルの schema、adapter 戻り値、atomic write、破損退避は [`docs/details/statefile.md`](statefile.md) §22.0a と [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
+該当節は、API endpoint ごとの状態読取順、response 算出、不在時 response、破損時 response を定義する。状態ファイルの schema、adapter 戻り値、atomic write、破損退避は [`docs/details/statefile.md`](statefile.md) §22.0a と [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
 
 | Endpoint | 読取順 | 正常時 response 算出 | 不在時 | 破損時 / 読込不能時 |
 |----------|--------|----------------------|--------|---------------------|
@@ -1530,7 +1530,7 @@ snapshot の保存、世代削除、download、delete、rollback 実体処理は
 
 `POST /api/webhook` は GitHub からの push event を受信し、HMAC-SHA256 署名検証後に build queue へ投入する。認証ヘッダー（`Authorization: Bearer`）は不要とし、Webhook 署名検証を認証代替として扱う。
 
-本節は Webhook 受信 endpoint の概要と必須 header だけを定義する。署名検証、status code、response、event log、queue 投入、重複判定、異常系、検証条件は [`docs/details/api.md`](api.md) §27.12 を参照する。本節へ `POST /api/webhook` の response 例、event log schema、queue entry schema を重複定義してはならない。
+該当節は Webhook 受信 endpoint の概要と必須 header だけを定義する。署名検証、status code、response、event log、queue 投入、重複判定、異常系、検証条件は [`docs/details/api.md`](api.md) §27.12 を参照する。該当節へ `POST /api/webhook` の response 例、event log schema、queue entry schema を重複定義してはならない。
 
 **`POST /api/webhook` リクエストヘッダー：**
 ```
@@ -1689,7 +1689,7 @@ Secret は `.webhook_secret` を基準とする。secret 不在、header 不在�
 
 ### ビルドフック（14E）
 
-本節は hooks API の request / response、`.hooks` 保存、`.config_log` 追記、hook log 参照境界だけを定義する。pre / post hook の実行順、timeout、process kill、hook log 保存、secret mask、pre abort、post failure、build status への影響は [`docs/details/runner.md`](runner.md) §27.27 を参照する。
+該当節は hooks API の request / response、`.hooks` 保存、`.config_log` 追記、hook log 参照境界だけを定義する。pre / post hook の実行順、timeout、process kill、hook log 保存、secret mask、pre abort、post failure、build status への影響は [`docs/details/runner.md`](runner.md) §27.27 を参照する。
 
 **`GET /api/hooks` レスポンス例：**
 ```json
@@ -1855,7 +1855,7 @@ hooks fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能�
 
 ### ビルドパイプライン設定（15D）
 
-本節は、`GET /api/pipeline-config` と `POST /api/pipeline-config` の request / response、`.pipeline_config` read/write 境界だけを定義する。runner による `.pipeline_config` 読込タイミング、`extra_args` / `env` 適用、読込不能または schema 不正時の build 停止条件は [`docs/details/runner.md`](runner.md) §27.22 を参照する。
+該当節は、`GET /api/pipeline-config` と `POST /api/pipeline-config` の request / response、`.pipeline_config` read/write 境界だけを定義する。runner による `.pipeline_config` 読込タイミング、`extra_args` / `env` 適用、読込不能または schema 不正時の build 停止条件は [`docs/details/runner.md`](runner.md) §27.22 を参照する。
 
 **`GET /api/pipeline-config` レスポンス例：**
 ```json
@@ -2687,7 +2687,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 **[`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 api / sdk / ui 連動参照表：**
 
-下表は api、sdk、ui の接続点をそろえるための参照表である。各 API endpoint の詳細は本ファイルの個別節、SDK method の詳細は [`docs/details/sdk.md`](sdk.md) §23、UI 操作の詳細は [`docs/details/ui.md`](ui.md) §24、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。本表だけを根拠に endpoint、method、DOM、状態ファイル、fixture を追加してはならない。
+下表は api、sdk、ui の接続点をそろえるための参照表である。各 API endpoint の詳細は [`docs/details/api.md`](api.md) 詳細本文責務の個別節、SDK method の詳細は [`docs/details/sdk.md`](sdk.md) §23、UI 操作の詳細は [`docs/details/ui.md`](ui.md) §24、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。本表だけを根拠に endpoint、method、DOM、状態ファイル、fixture を追加してはならない。
 
 | 節 | API | SDK | UI |
 |----|-----|-----|----|
@@ -2735,7 +2735,7 @@ api / sdk / ui のいずれも、上表に存在しない endpoint、method、UI
 ### 27.30 ビルド承認フロー
 owner component は `api` とする。collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。
 
-本節は、ビルド承認フローにおける API endpoint、request / response、状態ファイル read/write 呼び出し境界だけを定義する。`approval_required` 検出、pending 作成、approval request 通知、timeout 処理、承認済み queue entry の実行は [`docs/details/runner.md`](runner.md) §27.30 を参照する。
+該当節は、ビルド承認フローにおける API endpoint、request / response、状態ファイル read/write 呼び出し境界だけを定義する。`approval_required` 検出、pending 作成、approval request 通知、timeout 処理、承認済み queue entry の実行は [`docs/details/runner.md`](runner.md) §27.30 を参照する。
 
 **入力 / 状態：**
 
@@ -2825,36 +2825,36 @@ approval fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機�
 
 ### 27.42 ビルドトリガー専用 API スコープ
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.42 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.42 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、route / method 確定、endpoint dispatch、HTTP status、request / response body、状態ファイル read/write 呼び出し境界だけを担当する。scope 判定順、許可 endpoint group、permission denied audit、body parse 前判定、漏えい禁止値は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、route / method 確定、endpoint dispatch、HTTP status、request / response body、状態ファイル read/write 呼び出し境界だけを担当する。scope 判定順、許可 endpoint group、permission denied audit、body parse 前判定、漏えい禁止値は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。
 
 ### 27.43 API キー管理
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.43 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.43 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、token API の route、HTTP method、request validation の入口、response schema、`.api_tokens` read/write 呼び出し境界だけを担当する。token 生成、hash 保存、scope 検証、作成時 1 回だけ token 本体を返す契約、認証成功時の `last_used_at` 更新、token 漏えい禁止は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、token API の route、HTTP method、request validation の入口、response schema、`.api_tokens` read/write 呼び出し境界だけを担当する。token 生成、hash 保存、scope 検証、作成時 1 回だけ token 本体を返す契約、認証成功時の `last_used_at` 更新、token 漏えい禁止は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。
 
 ### 27.44 監査ログ
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.44 を参照する。owner component は `security`、collaborator component は `api`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.44 を参照する。owner component は `security`、collaborator component は `api`、`statefile` とする。
 
-API 側は、audit log API の route、query parameter、response schema、`.audit_log` read 呼び出し境界だけを担当する。audit record schema、action / actor / target / result、必須 audit 失敗時の `500`、secret / token / request body 保存禁止、壊れた行の扱いは [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、audit log API の route、query parameter、response schema、`.audit_log` read 呼び出し境界だけを担当する。audit record schema、action / actor / target / result、必須 audit 失敗時の `500`、secret / token / request body 保存禁止、壊れた行の扱いは [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。
 
 ### 27.45 セッションタイムアウト変更設定
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.45 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.45 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、session timeout config API の route、request body、response body、`.server_config.session_timeout_seconds` read/write 呼び出し境界だけを担当する。session の作成、期限判定、sliding update、期限切れ時 `401`、既存 session への反映条件、監査順序は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、session timeout config API の route、request body、response body、`.server_config.session_timeout_seconds` read/write 呼び出し境界だけを担当する。session の作成、期限判定、sliding update、期限切れ時 `401`、既存 session への反映条件、監査順序は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。
 
 ### 27.46 TOTP 二要素認証
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.46 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.46 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、auth / TOTP API の route、request body、response body、`.totp_secret` read/write 呼び出し境界だけを担当する。TOTP secret 生成、setup 仮 secret、login ticket、code 検証、secret の一回表示、ticket 再利用禁止、TOTP 漏えい禁止、監査順序は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、auth / TOTP API の route、request body、response body、`.totp_secret` read/write 呼び出し境界だけを担当する。TOTP secret 生成、setup 仮 secret、login ticket、code 検証、secret の一回表示、ticket 再利用禁止、TOTP 漏えい禁止、監査順序は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。
 
 ### 27.47 API レート制限
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.47 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.47 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、rate limit config API の route、request body、response body、`.server_config.api_rate_limit` と `.api_rate_state` の read/write 呼び出し境界だけを担当する。endpoint group 判定、window / count 更新、`429` 時に count を増やさない契約、actor key / IP key の同一 lock 更新、rate limit audit は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、rate limit config API の route、request body、response body、`.server_config.api_rate_limit` と `.api_rate_state` の read/write 呼び出し境界だけを担当する。endpoint group 判定、window / count 更新、`429` 時に count を増やさない契約、actor key / IP key の同一 lock 更新、rate limit audit は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。

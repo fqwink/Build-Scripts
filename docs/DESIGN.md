@@ -7,9 +7,9 @@
 
 ---
 
-本ファイルは、生成 HTML のデザイン関係を定義するデザイン責務の正本である。生成 HTML のデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンの判断は本ファイルを参照する。
+[`docs/DESIGN.md`](DESIGN.md) デザイン責務は、生成 HTML のデザイン関係を定義する正本である。生成 HTML のデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンの判断は [`docs/DESIGN.md`](DESIGN.md) を参照する。
 
-本ファイルは、機能仕様、運用仕様、API 仕様、状態 schema、状態分類、ロードマップ状態を定義しない。
+[`docs/DESIGN.md`](DESIGN.md) デザイン責務は、機能仕様、運用仕様、API 仕様、状態 schema、状態分類、ロードマップ状態を定義しない。
 
 Adlaire CI 全体の方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態分類、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
 
