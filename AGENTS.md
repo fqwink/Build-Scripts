@@ -107,7 +107,7 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 仕様項目の成熟度と実装可否は、[docs/SPEC.md](docs/SPEC.md) 方針責務 §4.5 の仕様成熟度方針、および [docs/SPEC.md](docs/SPEC.md) ポリシー責務 §0a の仕様成熟度ポリシーに従って判定する。
 
-作業開始時には、対象機能・対象コンポーネントについて [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/) の該当節と実ファイルの存在を確認する。
+作業開始時には、対象機能・対象コンポーネントについて [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、対象 owner component 別の [docs/details/*.md](docs/details/) の対象節と実ファイルの存在を確認する。
 
 実ファイルの存在確認には `rg --files` を使用する。
 
@@ -199,7 +199,7 @@ Go 実装の構文確認では、対象ファイルに対して `gofmt -l ...` �
 2. `gh pr list --state open --json number,title,headRefName,baseRefName,mergeStateStatus,url`
 3. `git diff --name-status origin/main...HEAD`
 
-上記確認で、同一ファイル、同一仕様領域、同一責務、または merge 順序依存の open Pull Request が見つかった場合は、新規 Pull Request を作成してはならない。既存 Pull Request への統合、または一本化 Pull Request への集約を先に完了する。
+この競合防止確認で、同一ファイル、同一仕様領域、同一責務、または merge 順序依存の open Pull Request が見つかった場合は、新規 Pull Request を作成してはならない。既存 Pull Request への統合、または一本化 Pull Request への集約を先に完了する。
 
 Pull Request の `mergeStateStatus` が `DIRTY`、`UNKNOWN`、または確認不能の場合は、merge 可能と報告してはならない。`UNKNOWN` の場合は GitHub の再計算後に再確認し、最終的に `CLEAN` を確認する。
 
@@ -230,7 +230,7 @@ Build-Scripts の標準 GitHub リポジトリ設定は以下とする。
 - secret scanning: `enabled`
 - secret scanning push protection: `enabled`
 - Dependabot security updates: `disabled`
-- main branch protection: 設定対象（下記の初期標準を適用）
+- main branch protection: 設定対象（この節の初期標準を適用）
 
 GitHub 設定の初期適用方針は以下とする。
 
@@ -284,7 +284,7 @@ Pull Request merge 後のローカル同期は、以下の手順を標準とす�
 4. merge 済み Pull Request の head branch と同名の local branch を `git branch -d <branch>` で削除する
 5. `git status --short --branch` で `main` と `origin/main` が一致し、作業ツリーが clean であることを確認する
 
-上記手順で fast-forward できない場合、merge 対象やローカル変更の状態を確認し、勝手に履歴を書き換えてはならない。
+このローカル同期手順で fast-forward できない場合、merge 対象やローカル変更の状態を確認し、勝手に履歴を書き換えてはならない。
 
 `main`、merge 未完了の作業ブランチ、merge 状態を確認できないブランチ、Pull Request と対応しないブランチは削除してはならない。
 

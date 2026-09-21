@@ -329,7 +329,7 @@ type RenderContext struct {
 | `~~text~~` | `<del>text</del>` |
 | `![alt](url)` | `<img src="url" alt="alt" style="max-width:100%">` |
 | `[label](url)`（`url` が `http://` または `https://` で始まる場合） | `<a href="url" target="_blank" rel="noopener noreferrer">label</a>` |
-| `[label](url)`（上記以外 — 内部リンク・アンカー） | `<a href="url">label</a>` |
+| `[label](url)`（前述以外 — 内部リンク・アンカー） | `<a href="url">label</a>` |
 | `[^id]` | `<sup><a href="#fn-id" id="fnref-id" class="fn-ref">[N]</a></sup>`（N は参照順の番号） |
 
 **処理順の注意：** 画像記法（`![alt](url)`）はリンク記法（`[label](url)`）より先にマッチングする。リンク記法はマッチング後に `url` が `http://` または `https://` で始まるかを判定し、外部リンクと内部リンクを区別する。脚注参照（`[^id]`）はリンク置換後に適用する。
@@ -368,7 +368,7 @@ type RenderContext struct {
 | `*__text__*` | `<em><strong>text</strong></em>` |
 | `_**text**_` | `<em><strong>text</strong></em>` |
 
-上表以外のネストした強調・削除・リンクの組み合わせは追加変換しない。未対応ネストは、先にマッチした外側または内側の単一記法だけを変換し、残った Markdown 記号は `esc()` 済みテキストとして出力する。実装者判断で CommonMark 全互換のネスト処理を追加してはならない。
+同節の表以外のネストした強調・削除・リンクの組み合わせは追加変換しない。未対応ネストは、先にマッチした外側または内側の単一記法だけを変換し、残った Markdown 記号は `esc()` 済みテキストとして出力する。実装者判断で CommonMark 全互換のネスト処理を追加してはならない。
 
 ---
 
@@ -493,7 +493,7 @@ type ConvertResult struct {
 7. リスト項目（`- * +` または `1.` 形式、`[ ]`/`[x]` プレフィックスでタスクリスト）
 8. 空行（バッファのフラッシュトリガー）
 9. 脚注定義行（`[^id]:` で始まる行、`ctx.FootnoteDefs` 収集済みのためスキップ）
-10. 段落（上記以外の非空行、連続行を 1 つの `<p>` にまとめる）。先読みループは次のいずれかに該当する行で停止する：`#`（見出し）、`|`（テーブル）、`` ` ``×3以上（フェンス）、`~`×3以上（フェンス）、`>`（引用）、リストマーカー（`[-*+]` または `\d+[.)]`）、`: `（定義リストマーカー）、水平線（`---+`・`***+`・`___+`）
+10. 段落（前述以外の非空行、連続行を 1 つの `<p>` にまとめる）。先読みループは次のいずれかに該当する行で停止する：`#`（見出し）、`|`（テーブル）、`` ` ``×3以上（フェンス）、`~`×3以上（フェンス）、`>`（引用）、リストマーカー（`[-*+]` または `\d+[.)]`）、`: `（定義リストマーカー）、水平線（`---+`・`***+`・`___+`）
 
 **Markdown passthrough 禁止契約：**
 
@@ -538,7 +538,7 @@ type ConvertResult struct {
 | `- [x] done` | `<ul class="ml"><li class="ml-task"><input type="checkbox" disabled checked>done</li></ul>` |
 | `term` + 次行 `: desc` | `<dl class="mdl"><dt>term</dt><dd>desc</dd></dl>` |
 
-上表の属性順、class 名、button 文言、`checked` 属性の位置は固定する。テスト比較では、タグ間および text node 内の連続空白を 1 つの ASCII space へ正規化してから比較する。タグ名、属性名、属性値、親子構造は完全一致させる。
+同節の表の属性順、class 名、button 文言、`checked` 属性の位置は固定する。テスト比較では、タグ間および text node 内の連続空白を 1 つの ASCII space へ正規化してから比較する。タグ名、属性名、属性値、親子構造は完全一致させる。
 
 **脚注セクションの末尾出力：**
 `convert()` 末尾で `ctx.FootnoteOrder` が非空の場合、`<section class="fn-section">` 内に参照順番号付きの脚注リスト（`<ol class="fn-list">`）を出力する。各脚注には本文への戻りリンク（`<a class="fn-back">↩</a>`）を付与する。
@@ -712,7 +712,7 @@ type SearchIndexEntry struct {
 | `ReadingTimeMinutes` | `int` | 1 以上。0 以下の場合は `1` として表示する。 |
 | `GeneratedAtUTC` | `string` | UTC ISO 8601。空の場合は生成日時 meta を出力しない。 |
 
-`assembleSite()` は上記フィールドを結合してファイルを書き出すだけとし、Markdown 変換、slug 生成、TOC 生成、検索インデックス抽出、警告集計を行ってはならない。
+`assembleSite()` は前述フィールドを結合してファイルを書き出すだけとし、Markdown 変換、slug 生成、TOC 生成、検索インデックス抽出、警告集計を行ってはならない。
 
 **出力ディレクトリ構造：**
 
@@ -751,7 +751,7 @@ type SearchIndexEntry struct {
 | `pages/example.html` | `"../"` |
 | `pages/dir-example.html` | `"../"` |
 
-初期仕様ではページ HTML を `pages/` 直下に平坦化するため、`relativeRoot` は上表の 2 種類のみとする。`pages/dir/page.html` のような階層出力を追加する場合は、先に本表、リンク解決、検索 index URL、breadcrumb 仕様を改訂する。
+初期仕様ではページ HTML を `pages/` 直下に平坦化するため、`relativeRoot` は同節の表の 2 種類のみとする。`pages/dir/page.html` のような階層出力を追加する場合は、先にこの表、リンク解決、検索 index URL、breadcrumb 仕様を改訂する。
 
 **出力更新手順：**
 
@@ -858,7 +858,7 @@ type SearchIndexEntry struct {
 | `.ci` | 各 HTML 1 個 | content width | 変更禁止 |
 | `#btt` | 各 HTML 1 個 | top button JS | 変更禁止 |
 
-実装は上表のセレクターを追加、削除、リネームしてはならない。UI 改善で新しいセレクターが必要な場合は、先に本表へ追加し、[`docs/details/builder.md`](builder.md) §6 と [`docs/details/builder.md`](builder.md) §7 の CSS / JavaScript 契約を同時に更新する。
+実装は同節の表のセレクターを追加、削除、リネームしてはならない。UI 改善で新しいセレクターが必要な場合は、先にこの表へ追加し、[`docs/details/builder.md`](builder.md) §6 と [`docs/details/builder.md`](builder.md) §7 の CSS / JavaScript 契約を同時に更新する。
 
 **サイト合成の禁止条件：**
 - `PageData.BodyHTML`、`PageData.TocHTML` はすでに HTML として生成済みのため、`assembleSite()` 内で再エスケープしない。
@@ -1414,7 +1414,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 ## 8a. `builder` 受け入れ fixture
 
-`builder` の初期実装は、該当節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装変更で `testdata/builder/` 配下へ追加する。仕様変更では fixture の期待値を該当節で固定する。
+`builder` の初期実装は、この節の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装変更で `testdata/builder/` 配下へ追加する。仕様変更では fixture の期待値をこの節で固定する。
 
 ### Fixture A: 単一 Markdown 入力
 
@@ -1593,7 +1593,7 @@ adlaire-ci-build --src testdata/builder/site/docs --out /tmp/adlaire-ci-fixture-
 echo unclosed
 ~~~
 
-上記 fixture では実ファイル上の fence を閉じずに EOF とする。
+前述 fixture では実ファイル上の fence を閉じずに EOF とする。
 
 **実行：**
 
@@ -1610,7 +1610,7 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 
 **[`docs/details/builder.md`](builder.md) §8〜[`docs/details/builder.md`](builder.md) §8a builder 中核機能別実装確認固定契約：**
 
-[`docs/details/builder.md`](builder.md) §8〜[`docs/details/builder.md`](builder.md) §8a の中核機能は、各節の本文と fixture に加えて下表を満たす。下表は builder owner の詳細実装確認表であり、runner、setup、api、sdk、ui、statefile、archive、commitstatus、security、将来機能、MCP、外部公開構成、上位方針は扱わない。runner の起動、設定、処理フロー、pipeline、deploy、snapshot、log、systemd、GitHub、setup、既知制限は [`docs/details/runner.md`](runner.md) §10〜§20、setup / release 手順は [`docs/details/setup.md`](setup.md) §26 を参照する。
+[`docs/details/builder.md`](builder.md) §8〜[`docs/details/builder.md`](builder.md) §8a の中核機能は、各節の本文と fixture に加えて同節の表を満たす。同節の表は builder owner の詳細実装確認表であり、runner、setup、api、sdk、ui、statefile、archive、commitstatus、security、将来機能、MCP、外部公開構成、上位方針は扱わない。runner の起動、設定、処理フロー、pipeline、deploy、snapshot、log、systemd、GitHub、setup、既知制限は [`docs/details/runner.md`](runner.md) §10〜§20、setup / release 手順は [`docs/details/setup.md`](setup.md) §26 を参照する。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|
@@ -1818,9 +1818,9 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 ## 28. Builder owner 追加仕様化機能 詳細仕様
 
-該当節は、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。状態判断は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
+この節は、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。状態判断は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
 
-該当節の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
+この節の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
 
 **[`docs/details/builder.md`](builder.md) §28 共通固定契約：**
 
@@ -1837,7 +1837,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 **[`docs/details/builder.md`](builder.md) §28 CLI / 設定 / REPORT / 出力識別子固定契約：**
 
-本表にない CLI option、環境変数、REPORT key、CSS class、DOM id、localStorage key、data attribute を [`docs/details/builder.md`](builder.md) §28 実装で追加してはならない。実装上追加が必要な場合は、先に本表を改訂する。
+この表にない CLI option、環境変数、REPORT key、CSS class、DOM id、localStorage key、data attribute を [`docs/details/builder.md`](builder.md) §28 実装で追加してはならない。実装上追加が必要な場合は、先にこの表を改訂する。
 
 | 節 | CLI option / 設定入力 | 既定値 | REPORT key | HTML / CSS / JS 固定識別子 | strict failure |
 |----|------------------------|--------|------------|-----------------------------|----------------|
@@ -1869,7 +1869,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 **[`docs/details/builder.md`](builder.md) §28 実装パイプライン固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28 機能は、下表の順序で処理する。機能ごとの独自の前処理、後処理、escape、report 生成順は追加しない。順序変更が必要な場合は、本表を先に改訂する。
+[`docs/details/builder.md`](builder.md) §28 機能は、同節の表の順序で処理する。機能ごとの独自の前処理、後処理、escape、report 生成順は追加しない。順序変更が必要な場合は、この表を先に改訂する。
 
 | 順序 | 処理 | 固定内容 |
 |------|------|----------|
@@ -1973,7 +1973,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | `definition_lists` | boolean | [`docs/details/builder.md`](builder.md) §28.24 | `true` / `false`。 |
 | `task_lists` | boolean | [`docs/details/builder.md`](builder.md) §28.25 | `true` / `false`。 |
 
-環境変数の値 format は下表に固定する。ここにない環境変数を [`docs/details/builder.md`](builder.md) §28 の設定入力として読んではならない。
+環境変数の値 format は同節の表に固定する。ここにない環境変数を [`docs/details/builder.md`](builder.md) §28 の設定入力として読んではならない。
 
 | 値種別 | 対象環境変数 | format |
 |--------|--------------|--------|
@@ -2018,7 +2018,7 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 
 **[`docs/details/builder.md`](builder.md) §28 stdout / stderr / REPORT 固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28 実装は、既存 [`docs/details/builder.md`](builder.md) §8 の CLI 出力固定契約を拡張する。終了コードごとの stdout、stderr、`[REPORT]` 有無、副作用は下表に固定する。
+[`docs/details/builder.md`](builder.md) §28 実装は、既存 [`docs/details/builder.md`](builder.md) §8 の CLI 出力固定契約を拡張する。終了コードごとの stdout、stderr、`[REPORT]` 有無、副作用は同節の表に固定する。
 
 | ケース | stdout | stderr | `[REPORT]` | 終了コード | 副作用 |
 |--------|--------|--------|------------|------------|--------|
@@ -2103,7 +2103,7 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | 対象 | 固定内容 |
 |------|----------|
 | CSS class | [`docs/details/builder.md`](builder.md) §28 CLI / 設定 / REPORT / 出力識別子固定契約に列挙した class だけを追加する。命名は `adlaire-` prefix または既存 class とし、第三者 library 名を使わない。 |
-| JS state | localStorage key は該当節に列挙した `adlaire:*` key だけを使う。保存値は JSON string、boolean、または許容値 string に限定する。 |
+| JS state | localStorage key はこの節に列挙した `adlaire:*` key だけを使う。保存値は JSON string、boolean、または許容値 string に限定する。 |
 | JS failure | JS 実行時例外が起きても静的 HTML の閲覧、TOC、本文、検索 index file の存在を壊してはならない。 |
 | print | print 用挙動は `@media print` 内で完結させる。通常画面の DOM を print 専用に書き換えない。 |
 | accessibility | click 操作を追加する要素には keyboard 操作と `aria-label` を同時に定義する。 |
@@ -2112,7 +2112,7 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 
 [`docs/details/builder.md`](builder.md) §28 の視覚出力は、既存 `assets/style.css` 内の静的 CSS と既存 `assets/app.js` 内の静的 JS だけで成立させる。[`docs/details/builder.md`](builder.md) §28 実装で inline style、外部 font、`@import`、remote `url()`、CDN、追加 asset file、画像取得、viewport 依存の実行時 CSS 生成を追加してはならない。
 
-`assets/style.css` へ [`docs/details/builder.md`](builder.md) §28 CSS を追加する場合は、下表の順序を固定する。minify 有効時も、下表の論理順、custom property 名、selector、`@media` 境界、`pre` / `code` の空白保持に必要な property を失ってはならない。
+`assets/style.css` へ [`docs/details/builder.md`](builder.md) §28 CSS を追加する場合は、同節の表の順序を固定する。minify 有効時も、同節の表の論理順、custom property 名、selector、`@media` 境界、`pre` / `code` の空白保持に必要な property を失ってはならない。
 
 | 順序 | 出力ブロック | 固定内容 |
 |------|--------------|----------|
@@ -2139,7 +2139,7 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | code / diff | `pre`、`code`、line number、diff line の text を欠落させない。line number は code text のコピー対象に含めない。 |
 | print QR | [`docs/details/builder.md`](builder.md) §28.23 が有効な場合だけ print 用 QR を表示する。screen 表示では QR を本文内の常時表示要素にしない。 |
 
-[`docs/details/builder.md`](builder.md) §28 visual component の layout は下表で固定する。
+[`docs/details/builder.md`](builder.md) §28 visual component の layout は同節の表で固定する。
 
 | 対象 | layout 固定内容 |
 |------|----------------|
@@ -2173,7 +2173,7 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | hash history target | hash history は heading id だけを対象にし、`section-{slug}`、footnote id、code block id、dialog id を target にしない。 |
 | active tracking target | TOC active tracking は TOC に出力された link だけを監視する。TOC depth 外 heading を active 化しない。 |
 
-search index は、[`docs/details/builder.md`](builder.md) §28 機能の表示要素を下表のとおり含める。検索体験向上を理由にした未定義 text の追加は行わない。
+search index は、[`docs/details/builder.md`](builder.md) §28 機能の表示要素を同節の表のとおり含める。検索体験向上を理由にした未定義 text の追加は行わない。
 
 | 要素 | search index への扱い |
 |------|----------------------|
@@ -2185,7 +2185,7 @@ search index は、[`docs/details/builder.md`](builder.md) §28 機能の表示�
 | footnote | footnote 本文は含める。footnote reference number、backlink label は含めない。 |
 | math / Mermaid / print QR / lightbox / skip link | 表示用 UI text、SVG text、dialog label、QR URL は含めない。 |
 
-localStorage は下表の key と payload だけを許可する。payload は JSON.stringify 相当の compact JSON 文字列、または許容値 string に固定する。保存失敗、JSON parse 失敗、未知 key、未知 page key、未知 slug は無視し、HTML 表示と search index を壊してはならない。
+localStorage は同節の表の key と payload だけを許可する。payload は JSON.stringify 相当の compact JSON 文字列、または許容値 string に固定する。保存失敗、JSON parse 失敗、未知 key、未知 page key、未知 slug は無視し、HTML 表示と search index を壊してはならない。
 
 | key | owner | payload |
 |-----|-------|---------|
@@ -2195,7 +2195,7 @@ localStorage は下表の key と payload だけを許可する。payload は JS
 
 [`docs/details/builder.md`](builder.md) §28 のブラウザ JS は、静的 HTML を補助する progressive enhancement として実装する。JS が無効、JS 初期化失敗、localStorage 使用不可、IntersectionObserver 使用不可、History API 使用不可、dialog API 使用不可のいずれの場合でも、本文、TOC、anchor、画像、検索 index file の存在を壊してはならない。runtime 状態を理由にした HTML 再生成、外部通信、追加 asset 取得、cookie / sessionStorage / IndexedDB 書込は行わない。
 
-runtime 初期化順は下表に固定する。途中で例外が発生した場合は、その機能だけを無効化し、後続機能の初期化を継続する。例外内容を UI、stdout、stderr、REPORT、localStorage に出力してはならない。
+runtime 初期化順は同節の表に固定する。途中で例外が発生した場合は、その機能だけを無効化し、後続機能の初期化を継続する。例外内容を UI、stdout、stderr、REPORT、localStorage に出力してはならない。
 
 | 順序 | 初期化対象 | 固定内容 |
 |------|------------|----------|
@@ -2207,7 +2207,7 @@ runtime 初期化順は下表に固定する。途中で例外が発生した場
 | 6 | lightbox | trigger、dialog、focus trap、Escape / backdrop close を登録する。 |
 | 7 | accessibility guard | skip link、keyboard 操作、focus-visible 補助、aria current / aria expanded の最終整合を確認する。 |
 
-browser runtime の機能別挙動は下表に固定する。
+browser runtime の機能別挙動は同節の表に固定する。
 
 | 対象 | 固定挙動 |
 |------|----------|
@@ -2229,7 +2229,7 @@ browser runtime の機能別挙動は下表に固定する。
 | skip link | `.skip-link` は main content へ移動する。target が存在しない場合は表示だけ残し、click は通常 anchor 動作に任せる。 |
 | JS exception | 個別 handler 内の例外は握りつぶし、その handler の処理だけを中止する。DOM を rollback せず、他 handler を削除しない。 |
 
-browser runtime が出力または変更してよい DOM state は下表に限定する。下表にない class、attribute、storage key、event side effect を追加する場合は、先に該当節を改訂する。
+browser runtime が出力または変更してよい DOM state は同節の表に限定する。同節の表にない class、attribute、storage key、event side effect を追加する場合は、先にこの節を改訂する。
 
 | 対象 | 変更可能 state |
 |------|----------------|
@@ -2261,7 +2261,7 @@ browser runtime が出力または変更してよい DOM state は下表に限�
 
 [`docs/details/builder.md`](builder.md) §28 の Markdown parser は、入力 Markdown を LF 改行へ正規化した後、行単位 block parser と text 単位 inline parser を分けて処理する。block parser は inline parser を呼ぶが、inline parser は block parser を呼んではならない。機能ごとの都合による別順序の parser、正規表現置換の後処理、HTML 生成後の再 parse は追加しない。
 
-block parser は下表の順序で 1 行目から判定する。先に一致した token を採用し、同じ行を後続 token として再判定してはならない。
+block parser は同節の表の順序で 1 行目から判定する。先に一致した token を採用し、同じ行を後続 token として再判定してはならない。
 
 | 優先 | token | 固定判定 | 後続処理 |
 |------|-------|----------|----------|
@@ -2275,9 +2275,9 @@ block parser は下表の順序で 1 行目から判定する。先に一致し�
 | 8 | list / `task_item` | 行頭 0〜3 space 後に `- `、`* `、`+ `。直後が `[ ] `、`[x] `、`[X] ` なら task item。 | list item text に inline parser を適用する。 |
 | 9 | `definition_list` | 現在行が term 候補で、直後の 1 行以上が行頭 0〜3 space 後に `: `。 | term と definition に inline parser を適用する。 |
 | 10 | table / existing block | [`docs/details/builder.md`](builder.md) §1〜[`docs/details/builder.md`](builder.md) §9 の既存 table、horizontal rule、paragraph 等。 | [`docs/details/builder.md`](builder.md) §28 token と競合しない範囲で既存処理を維持する。 |
-| 11 | paragraph | 上記に一致しない連続行。 | inline parser を適用する。 |
+| 11 | paragraph | 前述に一致しない連続行。 | inline parser を適用する。 |
 
-inline parser は、code span を最優先の保護領域として切り出し、保護領域の外側だけを下表の順序で処理する。inline parser の出力を再度 inline parser に通してはならない。
+inline parser は、code span を最優先の保護領域として切り出し、保護領域の外側だけを同節の表の順序で処理する。inline parser の出力を再度 inline parser に通してはならない。
 
 | 優先 | token | 固定判定 | 後続処理 |
 |------|-------|----------|----------|
@@ -2288,11 +2288,11 @@ inline parser は、code span を最優先の保護領域として切り出し�
 | 5 | `badge_inline` | `[badge:label:color]`。 | label / color validation。 |
 | 6 | `math_inline` | `$` 1 個で囲まれ、前後が空白または句読点または行端の範囲。 | 中身を escape し、他 inline token は適用しない。 |
 | 7 | emphasis / existing inline | [`docs/details/builder.md`](builder.md) §1〜[`docs/details/builder.md`](builder.md) §9 の既存 inline 強調、code 以外の変換。 | [`docs/details/builder.md`](builder.md) §28 token と競合しない範囲で既存処理を維持する。 |
-| 8 | text | 上記に一致しない text。 | text escape だけを行う。 |
+| 8 | text | 前述に一致しない text。 | text escape だけを行う。 |
 
 **[`docs/details/builder.md`](builder.md) §28 Markdown 構文文法固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28 で追加する構文の具体的な grammar は下表に固定する。下表にない省略形、別名、大小文字差分吸収、属性追加、HTML comment 指示、front matter 指示を追加してはならない。
+[`docs/details/builder.md`](builder.md) §28 で追加する構文の具体的な grammar は同節の表に固定する。同節の表にない省略形、別名、大小文字差分吸収、属性追加、HTML comment 指示、front matter 指示を追加してはならない。
 
 | 対象 | grammar | 正規化 | 不正時 |
 |------|---------|--------|--------|
@@ -2310,7 +2310,7 @@ inline parser は、code span を最優先の保護領域として切り出し�
 
 **[`docs/details/builder.md`](builder.md) §28 曖昧構文・機能併用固定契約：**
 
-複数の [`docs/details/builder.md`](builder.md) §28 機能が同じ入力へ適用できる場合は、下表の結果に固定する。読みやすさ、既存 Markdown 処理、ブラウザ表示の都合による別解釈は選択しない。
+複数の [`docs/details/builder.md`](builder.md) §28 機能が同じ入力へ適用できる場合は、同節の表の結果に固定する。読みやすさ、既存 Markdown 処理、ブラウザ表示の都合による別解釈は選択しない。
 
 | 入力条件 | 固定解釈 |
 |----------|----------|
@@ -2379,7 +2379,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 
 **[`docs/details/builder.md`](builder.md) §28 既存出力互換・先取り実装禁止固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28 実装変更は、対象機能を有効化しない既存 fixture の HTML、CSS、JS、search index、REPORT が変化しないことを示す。既定有効の機能は、該当節で既定有効と明記された [`docs/details/builder.md`](builder.md) §28.10、[`docs/details/builder.md`](builder.md) §28.16、[`docs/details/builder.md`](builder.md) §28.18、[`docs/details/builder.md`](builder.md) §28.20、[`docs/details/builder.md`](builder.md) §28.21、[`docs/details/builder.md`](builder.md) §28.24、[`docs/details/builder.md`](builder.md) §28.25 に限定する。
+[`docs/details/builder.md`](builder.md) §28 実装変更は、対象機能を有効化しない既存 fixture の HTML、CSS、JS、search index、REPORT が変化しないことを示す。既定有効の機能は、この節で既定有効と明記された [`docs/details/builder.md`](builder.md) §28.10、[`docs/details/builder.md`](builder.md) §28.16、[`docs/details/builder.md`](builder.md) §28.18、[`docs/details/builder.md`](builder.md) §28.20、[`docs/details/builder.md`](builder.md) §28.21、[`docs/details/builder.md`](builder.md) §28.24、[`docs/details/builder.md`](builder.md) §28.25 に限定する。
 
 | 禁止例 | 理由 |
 |--------|------|
@@ -2421,7 +2421,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 
 **[`docs/details/builder.md`](builder.md) §28 個別固定補足契約：**
 
-下表は、[`docs/details/builder.md`](builder.md) §28.1〜[`docs/details/builder.md`](builder.md) §28.25 の機能別詳細仕様を実装時の固定値へ落とす補足契約である。個別行の仕様と本表が矛盾する場合は、本表ではなく個別行を修正してから実装する。
+同節の表は、[`docs/details/builder.md`](builder.md) §28.1〜[`docs/details/builder.md`](builder.md) §28.25 の機能別詳細仕様を実装時の固定値へ落とす補足契約である。個別行の仕様とこの表が矛盾する場合は、この表ではなく個別行を修正してから実装する。
 
 | 節 | validation | HTML / asset 固定 | warning / error | REPORT count | fixture 必須確認 |
 |----|------------|-------------------|-----------------|--------------|------------------|
@@ -2453,7 +2453,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 
 **[`docs/details/builder.md`](builder.md) §28.1〜[`docs/details/builder.md`](builder.md) §28.5 実装詳細固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28.1〜[`docs/details/builder.md`](builder.md) §28.5 は、後続 [`docs/details/builder.md`](builder.md) §28.6〜[`docs/details/builder.md`](builder.md) §28.25 の入力基盤、出力基盤、検索基盤に影響するため、下表の処理単位、状態、出力を固定する。本表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class は導入しない。
+[`docs/details/builder.md`](builder.md) §28.1〜[`docs/details/builder.md`](builder.md) §28.5 は、後続 [`docs/details/builder.md`](builder.md) §28.6〜[`docs/details/builder.md`](builder.md) §28.25 の入力基盤、出力基盤、検索基盤に影響するため、同節の表の処理単位、状態、出力を固定する。この表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class は導入しない。
 
 | 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
@@ -2546,7 +2546,7 @@ admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。se
 
 **[`docs/details/builder.md`](builder.md) §28.6〜[`docs/details/builder.md`](builder.md) §28.10 実装詳細固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28.6〜[`docs/details/builder.md`](builder.md) §28.10 は、生成 site の閲覧挙動、TOC、時刻表示、code 表示、画像出力に影響するため、下表の処理単位、状態、出力を固定する。本表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key は導入しない。
+[`docs/details/builder.md`](builder.md) §28.6〜[`docs/details/builder.md`](builder.md) §28.10 は、生成 site の閲覧挙動、TOC、時刻表示、code 表示、画像出力に影響するため、同節の表の処理単位、状態、出力を固定する。この表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key は導入しない。
 
 | 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
@@ -2607,7 +2607,7 @@ diff highlight は fence language が `diff` または `patch` の場合だけ�
 | `+++` または `---` で始まる行 | `.tok-diff-header` | insertions / deletions に含めない。 |
 | `+` で始まり、`+++` ではない行 | `.tok-inserted` | `diff_insertions` に加算する。 |
 | `-` で始まり、`---` ではない行 | `.tok-deleted` | `diff_deletions` に加算する。 |
-| space で始まる行、または上記以外の行 | `.tok-context` | insertions / deletions に含めない。 |
+| space で始まる行、または前述以外の行 | `.tok-context` | insertions / deletions に含めない。 |
 
 HTML text は class 付与前に escape する。copy text と search index には元の diff 記号と code text を含めるが、class 名、line number、UI label は含めない。[`docs/details/builder.md`](builder.md) §28.4 と併用する場合、line number node に diff class を付けず、code text 側だけに diff class を付ける。`diff_blocks` は diff / patch fence 数、`diff_insertions` と `diff_deletions` は該当行数とする。
 
@@ -2629,7 +2629,7 @@ image `src` は以下に分類する。
 
 **[`docs/details/builder.md`](builder.md) §28.11〜[`docs/details/builder.md`](builder.md) §28.15 実装詳細固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28.11〜[`docs/details/builder.md`](builder.md) §28.15 は、head 出力、theme 状態、code block 表示、Markdown 前処理、最終 HTML byte に影響するため、下表の処理単位、状態、出力を固定する。本表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key は導入しない。
+[`docs/details/builder.md`](builder.md) §28.11〜[`docs/details/builder.md`](builder.md) §28.15 は、head 出力、theme 状態、code block 表示、Markdown 前処理、最終 HTML byte に影響するため、同節の表の処理単位、状態、出力を固定する。この表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key は導入しない。
 
 | 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
@@ -2731,7 +2731,7 @@ minify 後に byte 数が 0、doctype / html / head / body が消える、pre / 
 
 **[`docs/details/builder.md`](builder.md) §28.16〜[`docs/details/builder.md`](builder.md) §28.20 実装詳細固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28.16〜[`docs/details/builder.md`](builder.md) §28.20 は、TOC runtime、diagram 変換、脚注、数式表示、hash navigation に影響するため、下表の処理単位、状態、出力を固定する。本表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 script は導入しない。
+[`docs/details/builder.md`](builder.md) §28.16〜[`docs/details/builder.md`](builder.md) §28.20 は、TOC runtime、diagram 変換、脚注、数式表示、hash navigation に影響するため、同節の表の処理単位、状態、出力を固定する。この表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 script は導入しない。
 
 | 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
@@ -2772,7 +2772,7 @@ Mermaid 変換は `--mermaid=true` の場合だけ有効である。`--mermaid=f
 | `A --> B` | edge 定義。両端 id は既存または暗黙 node とする。 |
 | 空行 | 無視する。 |
 
-上記以外の行、`graph LR`、subgraph、classDef、click、HTML label、外部 link、script 相当構文は未対応とする。non-strict では stdout に `[WARN] BUILDER28_UNSUPPORTED_RESERVED file:line 28.17 ...` を出し、source fallback として `<pre class="mermaid-source">` だけを出力する。strict では終了コード `2`、公開出力維持とする。
+前述以外の行、`graph LR`、subgraph、classDef、click、HTML label、外部 link、script 相当構文は未対応とする。non-strict では stdout に `[WARN] BUILDER28_UNSUPPORTED_RESERVED file:line 28.17 ...` を出し、source fallback として `<pre class="mermaid-source">` だけを出力する。strict では終了コード `2`、公開出力維持とする。
 
 対応 diagram は `<figure class="mermaid-diagram">` に deterministic SVG を 1 個出力する。SVG は `role="img"`、`aria-label`、deterministic `viewBox` を持ち、node は `.mermaid-node`、edge は `.mermaid-edge` とする。SVG 内に `script`、`foreignObject`、event handler 属性、外部参照属性、runtime fetch、CDN、外部 `mermaid.js` を含めてはならない。source text は HTML escape し、search index には Mermaid source、SVG text、diagram UI label を含めない。
 
@@ -2816,7 +2816,7 @@ JS 無効時は通常 anchor として機能する。JS 実行時に `history.pu
 
 **[`docs/details/builder.md`](builder.md) §28.21〜[`docs/details/builder.md`](builder.md) §28.25 実装詳細固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28.21〜[`docs/details/builder.md`](builder.md) §28.25 は、生成 site のアクセシビリティ、画像操作、印刷出力、Markdown block / list 変換に影響するため、下表の処理単位、状態、出力を固定する。本表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 asset は導入しない。
+[`docs/details/builder.md`](builder.md) §28.21〜[`docs/details/builder.md`](builder.md) §28.25 は、生成 site のアクセシビリティ、画像操作、印刷出力、Markdown block / list 変換に影響するため、同節の表の処理単位、状態、出力を固定する。この表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 asset は導入しない。
 
 | 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
@@ -2904,14 +2904,14 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 
 **[`docs/details/builder.md`](builder.md) §28 詳細実装確認ゲート固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28 機能の詳細実装確認では、下表のゲートをすべて満たす。1 件でも未達がある場合は、詳細実装未充足、仕様不足、または検証不足として扱う。
+[`docs/details/builder.md`](builder.md) §28 機能の詳細実装確認では、同節の表のゲートをすべて満たす。1 件でも未達がある場合は、詳細実装未充足、仕様不足、または検証不足として扱う。
 
 | ゲート | 合格条件 | 未充足時の扱い |
 |--------|----------|------------|
 | 対象節明示 | 実装検証証跡に対象 [`docs/details/builder.md`](builder.md) §28.x を列挙し、対象外 [`docs/details/builder.md`](builder.md) §28.x も列挙する。 | 対象外機能が不明、または複数機能の混入範囲が不明。 |
 | CLI / env | 対象 [`docs/details/builder.md`](builder.md) §28.x の CLI option、環境変数、既定値、拒否値を fixture で確認する。 | CLI のみ、env のみ、既定値のみなど片方だけの確認。 |
-| HTML / CSS / JS | 該当節に定義された tag、attribute、class、data attribute、storage key、handler だけを出力する。 | 未定義 class、未定義 asset、未定義 handler、未定義 localStorage key の追加。 |
-| REPORT | 該当節に定義された REPORT key、型、count 単位、既定値をすべて fixture で確認する。 | key 省略、型違い、件数算出根拠不明、warning count 不一致。 |
+| HTML / CSS / JS | この節に定義された tag、attribute、class、data attribute、storage key、handler だけを出力する。 | 未定義 class、未定義 asset、未定義 handler、未定義 localStorage key の追加。 |
+| REPORT | この節に定義された REPORT key、型、count 単位、既定値をすべて fixture で確認する。 | key 省略、型違い、件数算出根拠不明、warning count 不一致。 |
 | stdout / stderr | warning / error code、file、line、section、message、出力先の形式が固定契約と一致する。 | 独自 code、message 揺れ、出力先違い、secret / credential / raw HTML 混入。 |
 | strict / non-strict | warning 昇格対象は non-strict と strict の両方を fixture で確認する。 | 片方だけの実装、片方だけの fixture、strict 時の副作用残存。 |
 | 既存出力互換 | 対象機能無効時、または対象入力なし時に既存 HTML / CSS / JS / search index / REPORT が変わらない。 | 対象外の既存 fixture 差分、未使用 CSS / JS の出力。 |

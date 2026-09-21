@@ -26,7 +26,7 @@
 
 ### 22.0a 状態ファイル共通仕様
 
-`api` および拡張後 `runner` が読み書きする状態ファイルは、下表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に該当節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
+`api` および拡張後 `runner` が読み書きする状態ファイルは、同節の表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先にこの節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
 
 | パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
 |------|------|--------|----------|--------------|
@@ -108,7 +108,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 
 **状態読取 adapter 固定契約：**
 
-該当節は、statefile owner component が提供する状態読取 adapter 名、読取対象、正常戻り値、不在時、破損時 / 読込不能時の固定契約である。API endpoint ごとの読取順、response 算出、HTTP status は [`docs/details/api.md`](api.md) §22.0c.1 と [`docs/details/api.md`](api.md) §22.0d 以降を参照する。各 component は同じ状態ファイルを endpoint ごとに別ロジックで直接 parse してはならない。
+この節は、statefile owner component が提供する状態読取 adapter 名、読取対象、正常戻り値、不在時、破損時 / 読込不能時の固定契約である。API endpoint ごとの読取順、response 算出、HTTP status は [`docs/details/api.md`](api.md) §22.0c.1 と [`docs/details/api.md`](api.md) §22.0d 以降を参照する。各 component は同じ状態ファイルを endpoint ごとに別ロジックで直接 parse してはならない。
 
 | Adapter | 読取対象 | 正常戻り値 | 不在時 | 破損時 / 読込不能時 |
 |---------|----------|------------|--------|---------------------|
@@ -121,7 +121,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 | `readCircuitState()` | `.build_circuit_state` | `BuildCircuitState` | [`docs/details/statefile.md`](statefile.md) §22.0a の初期値を返す。 | `ErrStateCorrupted` または `ErrStateReadFailed`。 |
 | `readBuildLock()` | `.build_lock` | `BuildLockState` | `running=false` を返す。 | 形式不正、PID 判定不能、OS 判定失敗は `running=true, stale=false, valid=false` として返し、呼び出し元は conflict failure として扱う。 |
 
-read-only 呼び出しでは、上表の adapter を使用し、状態ファイルの作成、削除、退避、chmod、正規化、再生成、破損行の除去書き戻しを行ってはならない。API endpoint 固有の適用条件は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。`{name}.lock` を検出しても、`.build_lock` 以外の lock file は待機条件やエラー条件にせず、rename 済み target をそのまま読む。write 呼び出しは [`docs/details/statefile.md`](statefile.md) §22.0a の状態ファイル更新手順に従う。
+read-only 呼び出しでは、同節の表の adapter を使用し、状態ファイルの作成、削除、退避、chmod、正規化、再生成、破損行の除去書き戻しを行ってはならない。API endpoint 固有の適用条件は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。`{name}.lock` を検出しても、`.build_lock` 以外の lock file は待機条件やエラー条件にせず、rename 済み target をそのまま読む。write 呼び出しは [`docs/details/statefile.md`](statefile.md) §22.0a の状態ファイル更新手順に従う。
 
 `ErrStateCorrupted` は JSON parse 失敗、schema_version 不一致、必須 key 不足、型不一致、列挙値不一致、UTC 時刻形式不一致のいずれかで返す。`ErrStateReadFailed` は permission denied、通常ファイルではない path、gzip 読込失敗、I/O error で返す。API の公開応答は [`docs/details/api.md`](api.md) §22.0c.1 と [`docs/details/api.md`](api.md) §22.0d 以降を参照する。statefile adapter の error は、path、Go error、ファイル内容を呼び出し元へ公開する response 値として含めない。
 
@@ -131,7 +131,7 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 
 ### 22.0c 主要状態ファイル schema
 
-該当節の schema は、API 実装、SDK 型、標準管理ツール表示、バックアップ/リストアの基準である。ここに定義したキー以外を保存してはならない。追加キーを追加する場合は、型、既定値、読み書き API、既存データの扱いを該当節へ追記してから実装する。
+この節の schema は、API 実装、SDK 型、標準管理ツール表示、バックアップ/リストアの基準である。ここに定義したキー以外を保存してはならない。追加キーを追加する場合は、型、既定値、読み書き API、既存データの扱いをこの節へ追記してから実装する。
 
 **`.server_config` schema：**
 
@@ -167,11 +167,11 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 
 | キー | 型 | 既定値 | 許容値 | 説明 |
 |------|----|--------|--------|------|
-| `webhooks` | object[] | `[]` | 下記 Webhook object | 互換通知先一覧。`channels` が空の場合、runner は `webhooks` を webhook channel として扱う。 |
-| `channels` | object[] | `[]` | 下記 Channel object | 統一通知 channel 一覧。`channels` が存在する場合、runner は `channels` を優先し、`webhooks` / `email` は互換表示用として扱う。 |
+| `webhooks` | object[] | `[]` | 次の Webhook object | 互換通知先一覧。`channels` が空の場合、runner は `webhooks` を webhook channel として扱う。 |
+| `channels` | object[] | `[]` | 次の Channel object | 統一通知 channel 一覧。`channels` が存在する場合、runner は `channels` を優先し、`webhooks` / `email` は互換表示用として扱う。 |
 | `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"deploy_failure"`, `"weekly_summary"`, `"approval_required"`, `"duration_anomaly"`, `"config_corrupt"` | 通知イベント。重複は除去する。 |
-| `summary` | object | 下記 Summary object | 下記 | 定期サマリー設定。 |
-| `email` | object | 下記 Email object | 下記 | メール通知設定。SMTP 詳細は `.smtp_config` / `.smtp_secret` を基準とする。 |
+| `summary` | object | 次の Summary object | 次の | 定期サマリー設定。 |
+| `email` | object | 次の Email object | 次の | メール通知設定。SMTP 詳細は `.smtp_config` / `.smtp_secret` を基準とする。 |
 
 Channel object:
 
@@ -474,7 +474,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `extra_args` | string[] | 必須 | 0〜50 件 | `builder` に渡す追加 CLI 引数。 |
-| `env` | object | 必須 | key/value は下記 | builder process に追加する環境変数。 |
+| `env` | object | 必須 | key/value は次の | builder process に追加する環境変数。 |
 
 `extra_args` は空文字、NUL、改行、CR を禁止し、`--src`、`--out`、`--build-id`、`--commit-sha`、`--build-at`、`--version`、`--help` を指定してはならない。`env` key は `^[A-Z_][A-Z0-9_]{0,63}$`、value は 0〜1000 文字とし、`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN` は上書き禁止とする。
 
@@ -678,7 +678,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 | `stdout` | string[] | 必須 | 0 件以上 | `pipeline.sh` stdout 行。 |
 | `stderr` | string[] | 必須 | 0 件以上 | `pipeline.sh` stderr 行。 |
 | `warnings` | string[] | 必須 | 0 件以上 | `[WARN]` 行または runner warning。 |
-| `report` | object/null | 必須 | 下記 Report object または `null` | `[REPORT]` の解析結果。 |
+| `report` | object/null | 必須 | 次の Report object または `null` | `[REPORT]` の解析結果。 |
 | `output_size_bytes` | integer/null | 必須 | 0 以上または `null` | 成果物サイズ。 |
 | `output_sha256` | string/null | 任意 | SHA-256 hex または `null` | 成果物チェックサム。 |
 | `size_warn` | boolean | 必須 | boolean | サイズ警告。 |
@@ -804,7 +804,7 @@ BuildMeta object:
 
 ### §22.0s 状態ファイル実装確認固定契約
 
-`statefile` owner component は、[`docs/details/statefile.md`](statefile.md) §22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。状態ファイルごとの暗黙処理は追加せず、下表の共通契約を満たす。
+`statefile` owner component は、[`docs/details/statefile.md`](statefile.md) §22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。状態ファイルごとの暗黙処理は追加せず、同節の表の共通契約を満たす。
 
 | 観点 | 入力 | 必須処理 | 成功時出力 | 失敗時出力 / 副作用 |
 |------|------|----------|------------|---------------------|
@@ -829,12 +829,12 @@ BuildMeta object:
 
 **runner 連動状態更新固定ゲート：**
 
-runner / archive / commitstatus / security / api が同じ実装変更で状態更新を組み合わせる場合でも、statefile owner の契約は下表で固定する。呼び出し元 component は業務判断を持ち、statefile は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当する。
+runner / archive / commitstatus / security / api が同じ実装変更で状態更新を組み合わせる場合でも、statefile owner の契約は同節の表で固定する。呼び出し元 component は業務判断を持ち、statefile は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当する。
 
 | ゲート | statefile 側の固定処理 | 呼び出し元が渡す値 | 失敗時境界 |
 |--------|------------------------|-------------------|------------|
 | schema precheck | 保存前に [`docs/details/statefile.md`](statefile.md) §22.0c の key、型、nullable、enum、UTC 時刻、配列要素 schema を検証する。 | 保存済みとして確定した typed value。 | schema 不一致は target 変更なしで `ErrStateCorrupted` または validation error を返す。 |
-| unknown key rejection | 既存 file と新規 value の両方で未知 key を拒否する。例外は該当節に明記済みの旧形式正規化だけ。 | 表示用 key、SDK 用 key、fixture 用 key を含まない object。 | 未知 key を削除して保存しない。既存未知 key も暗黙修復しない。 |
+| unknown key rejection | 既存 file と新規 value の両方で未知 key を拒否する。例外はこの節に明記済みの旧形式正規化だけ。 | 表示用 key、SDK 用 key、fixture 用 key を含まない object。 | 未知 key を削除して保存しない。既存未知 key も暗黙修復しない。 |
 | write order evidence | 複数 file 更新では呼び出し元が決めた順に 1 file ずつ atomic write し、fixture の `write_order` と一致させる。 | 順序付き write plan。 | 失敗地点以降は実行しない。成功済み file は statefile が rollback しない。 |
 | JSON Lines append | append 対象は 1 行 1 JSON object とし、末尾 newline を固定する。 | 1 record の typed value。 | append 失敗は対象操作へ返し、既存行の rewrite、sort、修復をしない。 |
 | no mutation read | read-only adapter は fallback 値を返すだけで、file 作成、chmod、backup、lock 削除、旧形式保存を行わない。 | 読取対象 path と fallback 条件。 | 読取失敗は typed error を返し、filesystem 差分なし。 |
@@ -855,4 +855,4 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | read no mutation | 破損なし state 一式 | 全 read-only caller 呼び出し | state dir の file list、mtime、mode、content が変化しない。 |
 | multi write partial failure | 2 file 目の write を fake failure | 複数ファイル更新 caller 呼び出し | 1 file 目は保持、2 file 目以降は未変更、`.config_log` に失敗記録。 |
 
-`statefile` は上表の fixture expected が用意され、成功系、validation failure、corrupt read、lock timeout、chmod failure、fsync failure、read no mutation の差分が確認できるまで詳細実装確認を満たした扱いにしてはならない。
+`statefile` は同節の表の fixture expected が用意され、成功系、validation failure、corrupt read、lock timeout、chmod failure、fsync failure、read no mutation の差分が確認できるまで詳細実装確認を満たした扱いにしてはならない。

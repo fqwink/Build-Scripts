@@ -36,7 +36,7 @@ archive owner は、runner または `POST /api/logs/archive` から呼び出さ
 
 gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元ファイル mtime ではなく圧縮実行時刻でよい。圧縮前 JSON を読み込めないファイルは archive 対象外とし、WARN `LOG_ARCHIVE_SKIP_CORRUPT: id=<id>` を出す。実行中 build の `current_build_id` と一致する log は対象外とする。
 
-archive owner は、通常 log が存在しない場合に archive log を gzip 展開し、通常 `.build_logs/{id}.json` と同じ schema の JSON object として呼び出し元へ渡す。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` の endpoint、query、response body は [`docs/details/api.md`](api.md) §22.0e を基準とし、該当節は archive log の探索、展開、除外、件数返却だけを定義する。
+archive owner は、通常 log が存在しない場合に archive log を gzip 展開し、通常 `.build_logs/{id}.json` と同じ schema の JSON object として呼び出し元へ渡す。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` の endpoint、query、response body は [`docs/details/api.md`](api.md) §22.0e を基準とし、この節は archive log の探索、展開、除外、件数返却だけを定義する。
 
 archive owner は、`POST /api/logs/cleanup` から呼び出された場合に、archive 済みファイルも `log_retention_days` の削除対象に含める。archive owner の処理結果は `archived_count`、`deleted_count`、`failed_count` を持つ。HTTP response body の形式は [`docs/details/api.md`](api.md) §22.0e を参照する。
 
@@ -91,7 +91,7 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 
 owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は [`docs/details/runner.md`](runner.md) §14b を参照する。
 
-archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api の request / response と archive owner 呼び出し境界は [`docs/details/api.md`](api.md)、sdk の API method 呼び出しは [`docs/details/sdk.md`](sdk.md)、ui の操作表示と disabled 判定は [`docs/details/ui.md`](ui.md) を参照する。runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は runner owner を基準とし、該当節へ重複定義しない。
+archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api の request / response と archive owner 呼び出し境界は [`docs/details/api.md`](api.md)、sdk の API method 呼び出しは [`docs/details/sdk.md`](sdk.md)、ui の操作表示と disabled 判定は [`docs/details/ui.md`](ui.md) を参照する。runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は runner owner を基準とし、この節へ重複定義しない。
 
 **API 呼び出し境界参照：**
 
@@ -171,7 +171,7 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は�
 
 **snapshot delete 副作用固定契約：**
 
-delete は destructive endpoint であるため、成功条件と失敗時副作用を下表に固定する。
+delete は destructive endpoint であるため、成功条件と失敗時副作用を同節の表に固定する。
 
 | 段階 | 成功条件 | 失敗時副作用 |
 |------|----------|--------------|
