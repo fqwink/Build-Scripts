@@ -171,7 +171,7 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は�
 
 **snapshot delete 副作用固定契約：**
 
-delete は destructive endpoint であるため、成功条件と失敗時副作用を同節の表に固定する。
+delete は destructive endpoint であるため、成功条件と失敗時副作用をこの固定表に固定する。
 
 | 段階 | 成功条件 | 失敗時副作用 |
 |------|----------|--------------|

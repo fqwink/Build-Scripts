@@ -158,7 +158,7 @@ Adlaire CI は、`core`、`adlaire-ci-core`、`internal/core`、`common`、`base
 | `event_log` | 構造化イベントログの形式、出力、読み取り。 |
 | `github_client` | GitHub REST API 呼び出し、rate limit、retry 境界。 |
 
-[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2 の共通責務コンポーネント命名候補表は、共通責務コンポーネントを追加する場合の命名・責務明示ポリシーである。同表に含まれる名称だけを理由に、実装ファイル、package、directory、状態項目、placeholder を作成してはならない。追加可否、状態分類、所在は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
+[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2 の共通責務コンポーネント命名候補表は、共通責務コンポーネントを追加する場合の命名・責務明示ポリシーである。[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2 の共通責務コンポーネント命名候補表に含まれる名称だけを理由に、実装ファイル、package、directory、状態項目、placeholder を作成してはならない。追加可否、状態分類、所在は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
 
 禁止される設計は以下とする。
 

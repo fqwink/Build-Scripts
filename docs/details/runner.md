@@ -4,7 +4,7 @@
 
 詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
 
-[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、[`docs/details/runner.md`](runner.md) 詳細本文責務の個別節を参照し、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として同節を確認する。同節は [`docs/details/runner.md`](runner.md) 詳細本文責務の個別節を上書きせず、同節の内容を [`docs/details/runner.md`](runner.md) へ重複定義してはならない。
+[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、[`docs/details/runner.md`](runner.md) 詳細本文責務の個別節を参照し、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を確認する。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は [`docs/details/runner.md`](runner.md) 詳細本文責務の個別節を上書きせず、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 の内容を [`docs/details/runner.md`](runner.md) へ重複定義してはならない。
 
 ---
 
@@ -304,7 +304,7 @@ runner は CLI、`.server_config`、`.branch_config`、既定値を読み込ん�
 | `{StateDir}/.build_logs` | 不在なら `0700` で作成する。 | 作成失敗時は終了コード `2`。 |
 | `{StateDir}/.snapshots` | 不在なら `0700` で作成する。ただし snapshot 無効時も directory 作成は許可する。 | 作成失敗時は終了コード `2`。 |
 
-前述 directory 作成は dry-run では実行しない。dry-run では作成予定を [`docs/details/runner.md`](runner.md) §27.2 の stdout JSON `warnings[]` に `code="DRY_RUN_WOULD_CREATE_DIR"` として出し、`would_write` に `"state_dir"` を追加してはならない。ただし既存 path が file の場合は dry-run でも終了コード `2` とし、stdout JSON `errors[]` に原因を出す。
+対象 directory 作成は dry-run では実行しない。dry-run では作成予定を [`docs/details/runner.md`](runner.md) §27.2 の stdout JSON `warnings[]` に `code="DRY_RUN_WOULD_CREATE_DIR"` として出し、`would_write` に `"state_dir"` を追加してはならない。ただし既存 path が file の場合は dry-run でも終了コード `2` とし、stdout JSON `errors[]` に原因を出す。
 
 **固定出力：**
 
@@ -467,7 +467,7 @@ runner が新規作成する状態ファイルは、JSON object、JSON array、S
 1. CLI 引数を検証し、`--help` または `--version` の場合は本チェックを実行しない。
 2. `StateDir` が絶対パスかつ既存ディレクトリであることを確認する。
 3. `.build_lock` を取得する。実行中 PID がある場合は本チェックを実行せず終了コード `0` で終了する。
-4. 本チェックを同節の表の順序で実行する。
+4. 本チェックをこの固定表の順序で実行する。
 5. 本チェックが復旧可能な問題のみで完了した場合は、`.github_token` 読み込み、pending retry、cooldown、target 処理へ進む。
 6. 本チェックが停止条件に該当した場合は、`.build_state.running` を `true` にせず、`.build_logs/{id}.json` と `.build_history` を作成せず、`.build_lock` を削除して終了する。
 
@@ -550,7 +550,7 @@ schema 検証では次を必須とする。
 | `config-startup/permission-error` | 対象ファイルが読み込み不可。 | 自動退避なし、終了コード `2`、`.build_state.running` 未変更。 |
 | `config-startup/help-version-skip` | `--help` または `--version`。 | 対象ファイルを読まず、変更しない。 |
 
-確認条件は、前述 fixture を Go test で検証できることとする。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、実装ファイル一覧は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照する。
+確認条件は、対象 fixture を Go test で検証できることとする。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、実装ファイル一覧は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照する。
 
 **build id 契約：**
 
@@ -632,7 +632,7 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 | status finalizer write failure | 実行結果に従う | `.build_logs/{id}.json`、`.build_history`、`.build_state.running=false`、ERROR log。 | 部分 `.build_status.json`。 | 継続する。 | 最低 `1` |
 | build_state finalizer write failure | 実行結果に従う | `.build_logs/{id}.json`、`.build_history`、`.build_status.json`、ERROR log。 | 正常終了扱い。 | lock 削除を試みる。 | `1` |
 
-同節の表の保存必須に含まれる状態ファイルは、保存失敗時に `failure_state_write` へ分類する。ただし status finalizer と build_state finalizer は、既に確定した target の log / history を取り消さない。保存禁止に含まれる処理を実行した場合は仕様違反とし、実装変更の fixture で失敗として扱う。
+この固定表の保存必須に含まれる状態ファイルは、保存失敗時に `failure_state_write` へ分類する。ただし status finalizer と build_state finalizer は、既に確定した target の log / history を取り消さない。保存禁止に含まれる処理を実行した場合は仕様違反とし、実装変更の fixture で失敗として扱う。
 
 **複数 target 継続 / 中断固定契約：**
 
@@ -652,7 +652,7 @@ runner は `BRANCH_TARGETS` の各 entry について、最終的に次のいず
 
 **runner 機能単位契約：**
 
-`runner` は、同節の表の機能単位で状態を更新する。各機能単位は、Write 列にない状態ファイルを更新してはならない。
+`runner` は、この固定表の機能単位で状態を更新する。各機能単位は、Write 列にない状態ファイルを更新してはならない。
 
 | 機能単位 | Read | Write | 成功条件 | 失敗時更新 |
 |----------|------|-------|----------|------------|
@@ -944,7 +944,7 @@ set -euo pipefail
 | working directory | `{srcParent}` |
 | timeout | `.server_config.build_timeout_seconds` が存在すればその値、なければ `300` 秒。 |
 | stdout/stderr | それぞれ最大 1 MiB までメモリに保持し、超過分は末尾 1 MiB を保存する。超過時は `stdout_truncated` / `stderr_truncated` を `true` にする。 |
-| 環境変数 | 親 process の環境を引き継ぎ、同節の表の値で上書きする。 |
+| 環境変数 | 親 process の環境を引き継ぎ、この固定表の値で上書きする。 |
 
 | 環境変数 | 値 |
 |----------|----|
@@ -1486,7 +1486,7 @@ adlaire-ci-runner --state-dir <state> --dry-run
 **期待結果：**
 
 - 終了コード `0`。
-- 前述 directory を作成しない。
+- 対象 directory を作成しない。
 - stdout は [`docs/details/runner.md`](runner.md) §27.2 の dry-run JSON 1 件だけを出し、`warnings[]` に `code="DRY_RUN_WOULD_CREATE_DIR"` を対象 directory ごとに出す。
 - `.github_token`、`.build_lock`、GitHub API、pipeline、deploy、通知を実行しない。
 
@@ -1853,7 +1853,7 @@ dry-run の stdout は JSON object 1 件と末尾改行に固定する。
 
 dry-run は、破損 state の backup、初期値作成、lock 作成、通知、GitHub Commit Status、deploy、archive、cleanup、quarantine、状態正規化を実行しない。stdout 以外の状態差分が発生した場合は実装不合格とする。
 
-終了コードは同節の表に固定する。`--help` / `--version` と同時指定された場合は `--help` / `--version` を優先し、dry-run JSON を出力しない。
+終了コードはこの固定表に固定する。`--help` / `--version` と同時指定された場合は `--help` / `--version` を優先し、dry-run JSON を出力しない。
 
 | 終了コード | 条件 | stdout / stderr | 副作用 |
 |------------|------|-----------------|--------|
@@ -2006,7 +2006,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 | `local_watch` | `watch_mode="local"` の local SHA 差分により build する。 | GitHub API を呼ばない。 |
 | `approval` | `POST /api/approvals/{id}/approve` 由来の queue entry を処理する。 | 承認済み entry のみ。 |
 
-runner は同節の表以外の値を保存してはならない。API の返却、SDK 型、UI 表示で許可される trigger 値は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。特に `"auto"`、`"force"`、`"scheduled"`、`"timer"` は runner 保存値として使用禁止とする。
+runner はこの固定表以外の値を保存してはならない。API の返却、SDK 型、UI 表示で許可される trigger 値は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。特に `"auto"`、`"force"`、`"scheduled"`、`"timer"` は runner 保存値として使用禁止とする。
 
 **保存先：**
 
@@ -2029,7 +2029,7 @@ runner は同節の表以外の値を保存してはならない。API の返却
 7. SHA 差分がなく force interval 条件を満たす場合は `force_interval` とする。
 8. rollback API が作成する処理は `rollback` とする。
 
-複数条件が同時に成立した場合は、前述順序で最初に該当した trigger を採用する。1 回の runner 起動で複数 branch target を処理する場合、target ごとに同じ trigger を保存する。ただし queue entry が target を指定する場合は、対象 target のみにその trigger を適用する。
+複数条件が同時に成立した場合は、定義済み順序で最初に該当した trigger を採用する。1 回の runner 起動で複数 branch target を処理する場合、target ごとに同じ trigger を保存する。ただし queue entry が target を指定する場合は、対象 target のみにその trigger を適用する。
 
 **api / sdk / ui 参照：**
 
@@ -2089,7 +2089,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 3. `--dry-run` の場合は検証だけ行い、backup、初期化、正規化、通知、状態更新を行わない。
 4. `StateDir` が絶対パスかつ既存ディレクトリであることを確認する。
 5. `.build_lock` を取得する。
-6. 同節の表の順序で対象ファイルを検証する。
+6. この固定表の順序で対象ファイルを検証する。
 7. 復旧可能な問題は backup、初期化、正規化を行う。
 8. 復旧結果に応じて `.build_status.json.last_trigger="startup_config_integrity"` を保存する。
 9. 復旧通知条件を満たす場合は `config_corrupt` 通知を 1 回だけ送信する。
@@ -3287,7 +3287,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | `hook_error` | pre hook abort または hook timeout。 |
 | `config_error` | 設定 parse、validation、必須値不足。 |
 | `resource_error` | disk 不足、binary 不在、権限エラー。 |
-| `unknown` | 前述に該当しない failure。 |
+| `unknown` | 前記分類に該当しない failure。 |
 
 **正常系：**
 
@@ -3487,7 +3487,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 **[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 runner / statefile 連動実装確認ゲート：**
 
-[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 の runner owner 機能は、個別節の確認条件に加えて同節の表を満たす。本ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は [`docs/details/statefile.md`](statefile.md) §22.0c、fixture 本文は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。
+[`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 の runner owner 機能は、個別節の確認条件に加えてこの固定表を満たす。本ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は [`docs/details/statefile.md`](statefile.md) §22.0c、fixture 本文は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。
 
 | ゲート | 合格条件 | 禁止条件 |
 |--------|----------|----------|

@@ -26,7 +26,7 @@
 
 ### 22.0a 状態ファイル共通仕様
 
-`api` および拡張後 `runner` が読み書きする状態ファイルは、同節の表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先にこの節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
+`api` および拡張後 `runner` が読み書きする状態ファイルは、この固定表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先にこの節へパス、形式、初期値、更新責務、破損時の扱いを追記する。
 
 | パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
 |------|------|--------|----------|--------------|
@@ -121,7 +121,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 | `readCircuitState()` | `.build_circuit_state` | `BuildCircuitState` | [`docs/details/statefile.md`](statefile.md) §22.0a の初期値を返す。 | `ErrStateCorrupted` または `ErrStateReadFailed`。 |
 | `readBuildLock()` | `.build_lock` | `BuildLockState` | `running=false` を返す。 | 形式不正、PID 判定不能、OS 判定失敗は `running=true, stale=false, valid=false` として返し、呼び出し元は conflict failure として扱う。 |
 
-read-only 呼び出しでは、同節の表の adapter を使用し、状態ファイルの作成、削除、退避、chmod、正規化、再生成、破損行の除去書き戻しを行ってはならない。API endpoint 固有の適用条件は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。`{name}.lock` を検出しても、`.build_lock` 以外の lock file は待機条件やエラー条件にせず、rename 済み target をそのまま読む。write 呼び出しは [`docs/details/statefile.md`](statefile.md) §22.0a の状態ファイル更新手順に従う。
+read-only 呼び出しでは、この固定表の adapter を使用し、状態ファイルの作成、削除、退避、chmod、正規化、再生成、破損行の除去書き戻しを行ってはならない。API endpoint 固有の適用条件は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。`{name}.lock` を検出しても、`.build_lock` 以外の lock file は待機条件やエラー条件にせず、rename 済み target をそのまま読む。write 呼び出しは [`docs/details/statefile.md`](statefile.md) §22.0a の状態ファイル更新手順に従う。
 
 `ErrStateCorrupted` は JSON parse 失敗、schema_version 不一致、必須 key 不足、型不一致、列挙値不一致、UTC 時刻形式不一致のいずれかで返す。`ErrStateReadFailed` は permission denied、通常ファイルではない path、gzip 読込失敗、I/O error で返す。API の公開応答は [`docs/details/api.md`](api.md) §22.0c.1 と [`docs/details/api.md`](api.md) §22.0d 以降を参照する。statefile adapter の error は、path、Go error、ファイル内容を呼び出し元へ公開する response 値として含めない。
 
@@ -804,7 +804,7 @@ BuildMeta object:
 
 ### §22.0s 状態ファイル実装確認固定契約
 
-`statefile` owner component は、[`docs/details/statefile.md`](statefile.md) §22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。状態ファイルごとの暗黙処理は追加せず、同節の表の共通契約を満たす。
+`statefile` owner component は、[`docs/details/statefile.md`](statefile.md) §22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。状態ファイルごとの暗黙処理は追加せず、この固定表の共通契約を満たす。
 
 | 観点 | 入力 | 必須処理 | 成功時出力 | 失敗時出力 / 副作用 |
 |------|------|----------|------------|---------------------|
@@ -829,7 +829,7 @@ BuildMeta object:
 
 **runner 連動状態更新固定ゲート：**
 
-runner / archive / commitstatus / security / api が同じ実装変更で状態更新を組み合わせる場合でも、statefile owner の契約は同節の表で固定する。呼び出し元 component は業務判断を持ち、statefile は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当する。
+runner / archive / commitstatus / security / api が同じ実装変更で状態更新を組み合わせる場合でも、statefile owner の契約はこの固定表で固定する。呼び出し元 component は業務判断を持ち、statefile は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当する。
 
 | ゲート | statefile 側の固定処理 | 呼び出し元が渡す値 | 失敗時境界 |
 |--------|------------------------|-------------------|------------|
@@ -855,4 +855,4 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | read no mutation | 破損なし state 一式 | 全 read-only caller 呼び出し | state dir の file list、mtime、mode、content が変化しない。 |
 | multi write partial failure | 2 file 目の write を fake failure | 複数ファイル更新 caller 呼び出し | 1 file 目は保持、2 file 目以降は未変更、`.config_log` に失敗記録。 |
 
-`statefile` は同節の表の fixture expected が用意され、成功系、validation failure、corrupt read、lock timeout、chmod failure、fsync failure、read no mutation の差分が確認できるまで詳細実装確認を満たした扱いにしてはならない。
+`statefile` はこの固定表の fixture expected が用意され、成功系、validation failure、corrupt read、lock timeout、chmod failure、fsync failure、read no mutation の差分が確認できるまで詳細実装確認を満たした扱いにしてはならない。

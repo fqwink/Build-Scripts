@@ -320,7 +320,7 @@ Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化
 
 ### 5.2.2 統合ロードマップ表
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 の統合ロードマップ表は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2 の全項目を状態別に統合した唯一の一覧である。項目を追加、削除、昇格、実装済みにする場合は、同表の `状態`、`実装可否`、`次アクション` を同時に更新する。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 の統合ロードマップ表は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2 の全項目を状態別に統合した唯一の一覧である。項目を追加、削除、昇格、実装済みにする場合は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 の統合ロードマップ表の `状態`、`実装可否`、`次アクション` を同時に更新する。
 
 MCP サーバー領域の行は、現時点ではすべて将来構想例であり、実装契約、API 契約、状態ファイル契約、起動手順、検証条件を定義しない。`components/mcp.go`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、MCP 専用詳細仕様を新設し、`改訂予定` を経て `仕様化済み・未実装` へ昇格するまで実装してはならない。
 
@@ -636,7 +636,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 **api / sdk / ui / statefile 横断連動契約：**
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.4 の横断確認表は、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。同表の機能群は、各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に定義済みの API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえるための確認対象である。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 を参照する。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.4 の横断確認表は、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.4 の横断確認表に含まれる機能群は、各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に定義済みの API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえるための確認対象である。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 を参照する。
 
 | 機能群 | API | SDK | UI 操作 | 状態ファイル副作用 | 成功後再取得 | 失敗時固定 |
 |--------|-----|-----|---------|--------------------|--------------|------------|

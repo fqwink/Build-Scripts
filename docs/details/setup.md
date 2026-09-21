@@ -60,7 +60,7 @@
 | `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | [`docs/details/admin.md`](admin.md) A1 の管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | Release 添付ファイルの SHA-256 checksum 一覧。 |
 
-Release asset 名は同節の表の文字列と完全一致させる。`$OS_ARCH` は `linux-amd64` だけを初期標準とし、未知 OS/arch を指定した場合は取得前に `unsupported OS_ARCH: {OS_ARCH}` を stderr へ出力して終了コード `2` とする。`SHA256SUMS` は `"{sha256}  {filename}"` 形式の LF 区切り text とし、対象 filename が 1 回だけ出現することを必須とする。対象行が 0 件または 2 件以上の場合は checksum 検証失敗とする。
+Release asset 名はこの固定表の文字列と完全一致させる。`$OS_ARCH` は `linux-amd64` だけを初期標準とし、未知 OS/arch を指定した場合は取得前に `unsupported OS_ARCH: {OS_ARCH}` を stderr へ出力して終了コード `2` とする。`SHA256SUMS` は `"{sha256}  {filename}"` 形式の LF 区切り text とし、対象 filename が 1 回だけ出現することを必須とする。対象行が 0 件または 2 件以上の場合は checksum 検証失敗とする。
 
 ### §26.2b セットアップ・アップデート機能単位
 
@@ -90,7 +90,7 @@ Release asset 名は同節の表の文字列と完全一致させる。`$OS_ARCH
 
 **Release asset 取得・検証固定契約：**
 
-セットアップ、管理 API 導入、アップデートはいずれも同節の表の順序で Release asset を扱う。順序を入れ替えてはならない。取得済みファイルは checksum 検証が成功するまで配置対象として扱わない。
+セットアップ、管理 API 導入、アップデートはいずれもこの固定表の順序で Release asset を扱う。順序を入れ替えてはならない。取得済みファイルは checksum 検証が成功するまで配置対象として扱わない。
 
 | 手順 | 入力 | 成功条件 | 失敗時 |
 |------|------|----------|--------|
@@ -132,7 +132,7 @@ Release asset 名は同節の表の文字列と完全一致させる。`$OS_ARCH
 
 **セットアップ / アップデート副作用固定契約：**
 
-セットアップ、管理 API 導入、アップデートは、同節の表の副作用境界を超えてはならない。実装者判断で部分成功を成功報告したり、secret、state、systemd、admin UI をまとめて巻き戻したりしてはならない。
+セットアップ、管理 API 導入、アップデートは、この固定表の副作用境界を超えてはならない。実装者判断で部分成功を成功報告したり、secret、state、systemd、admin UI をまとめて巻き戻したりしてはならない。
 
 | 段階 | 変更可能対象 | 成功確定条件 | 失敗時固定動作 |
 |------|--------------|--------------|----------------|
@@ -270,7 +270,7 @@ mkdir -p "$INSTALL_DIR/.build_logs"
 mkdir -p "$INSTALL_DIR/.snapshots"
 mkdir -p "$INSTALL_DIR/admin"
 
-# ── 2. Release バイナリ取得・checksum 検証 ────────────
+# ── 2. 管理 API Release asset 取得・checksum 検証 ─────
 mkdir -p "$DOWNLOAD_DIR"
 cd "$DOWNLOAD_DIR"
 curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/adlaire-ci-api-$OS_ARCH"
@@ -357,7 +357,7 @@ WantedBy=multi-user.target
 
 `User` / `WorkingDirectory` / `ExecStart` のパスは [`docs/details/setup.md`](setup.md) §26.2 の設定変数に合わせて変更する。
 
-systemd unit は前述キー以外を初期標準で追加しない。`Environment=`、`EnvironmentFile=`、`ExecStartPre=`、`ExecStartPost=` を追加する場合は、先にこの節へ対象変数、secret 扱い、失敗時挙動を定義する。API service は `127.0.0.1:8765` bind を標準とし、外部公開 bind は [`docs/details/setup.md`](setup.md) 詳細本文責務で未定義のため設定しない。
+systemd unit はこの節で定義した systemd unit key 以外を初期標準で追加しない。`Environment=`、`EnvironmentFile=`、`ExecStartPre=`、`ExecStartPost=` を追加する場合は、先にこの節へ対象変数、secret 扱い、失敗時挙動を定義する。API service は `127.0.0.1:8765` bind を標準とし、外部公開 bind は [`docs/details/setup.md`](setup.md) 詳細本文責務で未定義のため設定しない。
 
 ### §26.5 アップデート手順
 
@@ -498,7 +498,7 @@ systemctl status adlaire-ci-api
 
 ### §26.7 実装受け入れ条件
 
-setup / release / update の詳細実装確認では、同節の表の受け入れ条件をすべて満たす。実装対象外のコンポーネントは「未実装」として明記し、確認済み扱いにしない。
+setup / release / update の詳細実装確認では、この固定表の受け入れ条件をすべて満たす。実装対象外のコンポーネントは「未実装」として明記し、確認済み扱いにしない。
 
 | 対象 | 必須コマンド / 確認 | 合格条件 |
 |------|---------------------|----------|
@@ -625,7 +625,7 @@ setup / release / update に関わる受け入れ結果は、[`docs/details/fixt
 
 ### §26.8 Setup / Admin 配布実装確認ゲート
 
-セットアップ、アップデート、管理 API 導入、admin UI 配布の詳細実装確認では、[`docs/details/setup.md`](setup.md) §26.1〜§26.7 の本文に加えて同節の表を満たす。この節は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
+セットアップ、アップデート、管理 API 導入、admin UI 配布の詳細実装確認では、[`docs/details/setup.md`](setup.md) §26.1〜§26.7 の本文に加えてこの固定表を満たす。この節は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
 
 | 段階 | 必須入力 | 成功確定条件 | 失敗時固定結果 | fixture 必須 |
 |------|----------|--------------|----------------|--------------|
@@ -668,4 +668,4 @@ setup / release / update に関わる受け入れ結果は、[`docs/details/fixt
 | update success | 対象 binary、admin UI、systemd restart 記録 | 既存 state、history、secret は保持される。 |
 | update failure | rollback 対象、journal 確認対象 | rollback 表で許可した対象以外に差分がない。 |
 
-`setup` 実装変更は、同節の表の fixture、差分確認、secret 非表示確認、終了コード確認を記録する。いずれかが未実行の場合、対象段階を確認済み扱いにせず、未実行理由と再実行条件を記録する。
+`setup` 実装変更は、この固定表の fixture、差分確認、secret 非表示確認、終了コード確認を記録する。いずれかが未実行の場合、対象段階を確認済み扱いにせず、未実行理由と再実行条件を記録する。

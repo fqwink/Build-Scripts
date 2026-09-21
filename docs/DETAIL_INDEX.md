@@ -159,7 +159,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は以�
 | [`docs/details/security.md`](details/security.md) | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture 証跡責務。 |
 | [`docs/details/fixture.md`](details/fixture.md) | fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、実装検証証跡テンプレート、acceptance checklist、差し戻し条件、実装検証証跡。 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.3 は横断補足契約である。同節は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを扱い、個別機能本文は各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.3 は横断補足契約である。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.3 は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを扱い、個別機能本文は各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 すべての owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
 
@@ -241,7 +241,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 | 改行 | 新規に書き出す text / JSON Lines ファイルは LF 固定。CRLF 入力は読み込み時に LF として扱う。 |
 | 時刻 | 状態ファイル、API、ログの機械処理用時刻は UTC の ISO 8601 形式（例: `2026-09-16T09:00:00Z`）で保存する。ローカル時刻への変換は UI 表示に限定し、状態ファイル、API response、ログには保存しない。 |
 | JSON | JSON object の未知キーは保存しない。読み込み時に未知キーを見つけた場合は無視し、次回保存時に除去する。 |
-| atomic write | 状態ファイル更新手順は [`docs/details/statefile.md`](details/statefile.md) §22.0a を参照する。各 component は同節の手順を使用し、独自更新手順を持たない。 |
+| atomic write | 状態ファイル更新手順は [`docs/details/statefile.md`](details/statefile.md) §22.0a を参照する。各 component は [`docs/details/statefile.md`](details/statefile.md) §22.0a の手順を使用し、独自更新手順を持たない。 |
 | 権限 | 状態ファイル、秘密情報ファイル、ディレクトリの権限は [`docs/details/statefile.md`](details/statefile.md) §22.0a を参照する。 |
 | ロック | 状態ファイル lock の作成、待機、解除、競合時応答は [`docs/details/statefile.md`](details/statefile.md) §22.0a を参照する。 |
 | ログ秘密情報 | PAT、Webhook Secret、SMTP password、session token、API token は stdout、stderr、JSON log、API response、UI 表示へ平文出力しない。表示が必要な場合は `"***"` とする。 |
@@ -319,7 +319,7 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 
 ## 0h. 機能仕様テンプレート
 
-対象項目を追加または改訂する場合は、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の節に [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレート表の項目をすべて含める。既存節に含める場合も、実装者が同表の項目を本文から一意に読み取れる状態にする。
+対象項目を追加または改訂する場合は、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の節に [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレート表の項目をすべて含める。既存節に含める場合も、実装者が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレート表の項目を本文から一意に読み取れる状態にする。
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレート表の `入口判定` は、詳細仕様入口責務として不足項目を検出するための要約である。実装着手可否、確認済み扱い、禁止事項の判定は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a および [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f を参照する。
 
