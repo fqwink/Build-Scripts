@@ -218,7 +218,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 上記ゲートのいずれかが未充足の場合の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。本ファイルでは、不足している入口項目と更新すべき対応表を特定する。
 
-実装後の判定は、以下を入口として確認する。本節は判定条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、実装検証証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を正本として参照する。
+実装後の判定は、以下を入口として確認する。本節は判定条件の全本文を再定義しない。Phase、状態分類、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、実装検証証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を正本として参照する。
 
 1. 実装した機能が、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と本ファイルの対応表に記載された入力、出力、状態、異常系、検証条件と一致する。
 2. 対象機能が owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i の詳細節対応表の受け入れ条件を満たしている。
@@ -500,9 +500,7 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
-本節は、現行の標準配置を定義する。標準外配置の `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を現行実装実体として扱わない。
-
-本節の tree は標準配置の最終形を示す。現時点で `将来計画` または `仕様化済み・未実装` の path は、将来追加予定 path として扱い、該当 owner component が実装対象になった変更で追加する。標準配置図に含まれる未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder の作成可否は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+本節は、標準配置 tree、配置ごとの責務、標準配置の成立条件を定義する。標準外配置の禁止、将来追加予定 path、未作成 path の作成可否は、本節の成立条件表、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を同時に確認する。
 
 ```text
 .
@@ -573,7 +571,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 | admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ [`docs/details/ui.md`](details/ui.md) と [`docs/details/sdk.md`](details/sdk.md) の owner component 別詳細本文責務に従う。`admin/style.css` と `admin/app.js` は、[`docs/details/admin.md`](details/admin.md) A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
 | 将来追加予定 path | `components/mcp.go` と MCP 用 fixture は未作成の将来追加予定 path であり、MCP 専用詳細仕様が新設され、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で `仕様化済み・未実装` へ昇格するまで作成しない。 |
 
-標準配置を変更する場合は、標準外配置と標準配置の両方が同じ実装実体として併存していないこと、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の「実装ファイル一覧」、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の実装状態、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、testdata 参照が同じ配置を指すことを確認する。
+標準配置を変更する場合は、標準外配置と標準配置の両方が同じ実装実体として併存していないこと、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の「実装ファイル一覧」、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の状態分類、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、testdata 参照が同じ配置を指すことを確認する。
 
 ---
 

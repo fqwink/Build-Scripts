@@ -42,7 +42,7 @@
 | 参照順序 | [参照順序](#参照順序) | 作業開始から詳細仕様本文までの確認先。 |
 | 文書一覧 | [文書一覧](#文書一覧) | 各文書の役割と所在。 |
 | 実装所在入口 | [実装ファイル索引](#実装ファイル索引) | 実装ファイル所在の判断原則。 |
-| 詳細仕様管理 | [詳細仕様管理](#詳細仕様管理) | owner component 別詳細本文責務の配置と状態。 |
+| 詳細仕様管理 | [詳細仕様管理](#詳細仕様管理) | owner component 別詳細本文責務の配置。 |
 | 実装ファイル一覧 | [実装ファイル一覧](#実装ファイル一覧) | 実装ファイル、テスト、fixture の所在。 |
 | 正本参照先 | [正本参照先](#正本参照先) | 判断対象ごとの正本参照先。 |
 | 整合確認先 | [整合確認先](#整合確認先) | 文書整合で確認する正本への参照。 |
@@ -89,7 +89,7 @@
 
 ## 実装ファイル索引
 
-実装ファイルの所在は [実装ファイル一覧](#実装ファイル一覧) を参照する。実装状態と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。実装ファイルが存在することだけで、仕様化済み、実装可、完了済みとは判断しない。
+実装ファイルの所在は [実装ファイル一覧](#実装ファイル一覧) を参照する。状態分類と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。実装ファイルが存在することだけで、仕様化済み、実装可、完了済みとは判断しない。
 
 ## 詳細仕様管理
 
@@ -112,11 +112,9 @@
 | [`docs/details/security.md`](details/security.md) | `security` |
 | [`docs/details/fixture.md`](details/fixture.md) | `fixture` |
 
-詳細仕様本文の配置先は上表のとおりである。実装状態と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、owner component の特定は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を参照する。
-
 ## 実装ファイル一覧
 
-本節は、現行リポジトリに存在する実装ファイル、テスト、fixture、および将来追加予定 path の所在を示す索引である。実装状態と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+本節は、現行リポジトリに存在する実装ファイル、テスト、fixture、および将来追加予定 path の所在を示す索引である。状態分類と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 リポジトリ内ソース配置は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j を参照する。
 
@@ -160,8 +158,6 @@
 
 ## 整合メモ
 
-本節は所在の補足である。状態分類、実装可否、Phase、将来計画の判断は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
-
-現行実装実体の所在は `main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` である。個別ファイルの現行実装状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、本ファイルの所在は [実装ファイル一覧](#実装ファイル一覧) を確認する。Go toolchain による `gofmt` と `go test` の検証対象は Go ファイルとする。
+本節は所在の補足である。状態分類、実装可否、Phase、将来計画の判断は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、現行実装実体の所在は [実装ファイル一覧](#実装ファイル一覧) を参照する。
 
 `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置である。標準配置と現行実体の所在確認は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、本ファイルの [実装ファイル一覧](#実装ファイル一覧) を同時に確認する。

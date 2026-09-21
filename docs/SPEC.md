@@ -62,7 +62,7 @@
 
 新しい記載内容は「この内容はどの責務の問いに答えるか」を基準に、責務を持つ正本を決定する。
 
-判断対象が方針またはポリシーである場合、責務を持つ正本は必ず [`docs/SPEC.md`](SPEC.md) とする。ただし、判断対象が生成 HTML のデザイン関係である場合、責務を持つ正本は [`docs/DESIGN.md`](DESIGN.md) とする。判断対象が実装詳細、実装状態、文書所在、利用入口、検証証跡のいずれかである場合だけ、該当責務の正本を参照する。
+判断対象が方針またはポリシーである場合、責務を持つ正本は必ず [`docs/SPEC.md`](SPEC.md) とする。ただし、判断対象が生成 HTML のデザイン関係である場合、責務を持つ正本は [`docs/DESIGN.md`](DESIGN.md) とする。判断対象が実装詳細、状態分類、文書所在、利用入口、検証証跡のいずれかである場合だけ、該当責務の正本を参照する。
 
 実装者は、実装前に以下の参照順序方針に従う。
 
@@ -158,7 +158,7 @@ Adlaire CI は、`core`、`adlaire-ci-core`、`internal/core`、`common`、`base
 | `event_log` | 構造化イベントログの形式、出力、読み取り。 |
 | `github_client` | GitHub REST API 呼び出し、rate limit、retry 境界。 |
 
-本表は、共通責務コンポーネントを追加する場合の命名・責務明示ポリシーである。本表に含まれる名称だけを理由に、実装ファイル、package、directory、状態項目、placeholder を作成してはならない。追加可否、実装状態、所在は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
+本表は、共通責務コンポーネントを追加する場合の命名・責務明示ポリシーである。本表に含まれる名称だけを理由に、実装ファイル、package、directory、状態項目、placeholder を作成してはならない。追加可否、状態分類、所在は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
 
 禁止される設計は以下とする。
 
@@ -257,7 +257,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 `main.go` は 1 ファイルとし、起動入口、実行ファイル名判定、引数受け取り、対象 owner component 呼び出しだけを担当する。`main.go` に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、MCP 処理の実装詳細を書いてはならない。
 
-`components/` は、1 実装対象コンポーネント = 1 Go ファイルとする。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、実装状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。`admin` は Go コンポーネントではなく `admin/` 配下の静的配布物として扱う。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の状態、実装可否、追加条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
+`components/` は、1 実装対象コンポーネント = 1 Go ファイルとする。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、状態分類は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。`admin` は Go コンポーネントではなく `admin/` 配下の静的配布物として扱う。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の状態、実装可否、追加条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
 
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
@@ -338,7 +338,7 @@ Phase は、対象 owner component、実装範囲、依存条件、完了条件�
 - 対象機能が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 の詳細節対応表に記載された受け入れ条件を満たしている。
 - セットアップまたは運用手順に影響する場合、[`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 の実装受け入れ条件を満たしている。
 - API、SDK、UI のいずれかを変更した場合、[`docs/details/api.md`](details/api.md) 詳細本文責務 §22、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23、[`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 の対応関係が崩れていない。
-- [`docs/ROADMAP.md`](ROADMAP.md) の実装状態、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/SPEC.md`](SPEC.md)、詳細仕様の更新要否を確認済みである。
+- [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の状態分類、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、[`docs/SPEC.md`](SPEC.md)、詳細仕様の更新要否を確認済みである。
 - 実装 PR 本文に、対象、実行コマンド、期待結果、実結果、判定を記録している。
 
 検証不能な項目、未実行の項目、環境都合で省略した項目が残る場合、そのコンポーネントを `実装済み` として扱ってはならない。
@@ -502,7 +502,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 実装着手は、対象項目が `仕様化済み・未実装` の状態に到達している場合に限る。
 
-実装完了は、コード変更だけでは成立しない。仕様との差分確認、構文確認、実行確認または生成物確認、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)・[`docs/ROADMAP.md`](ROADMAP.md) の実装状態・関連仕様の更新要否確認を完了した場合にのみ `実装済み` と扱う。
+実装完了は、コード変更だけでは成立しない。仕様との差分確認、構文確認、実行確認または生成物確認、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の状態分類と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否確認を完了した場合にのみ `実装済み` と扱う。
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。いずれか一方だけを変更して完了扱いにしてはならない。
 
@@ -695,7 +695,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 ### 内製実装管理ポリシー
 
-内製スクリプト、標準実装ファイル、実装状態、将来追加予定 path の一覧は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
+内製スクリプト、標準実装ファイル、状態分類、将来追加予定 path の一覧は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
 
 本節では、内製実装を採用するポリシーだけを定義し、個別ファイルの状態表を重複定義しない。新規スクリプトを追加する場合は、先に [`docs/ROADMAP.md`](ROADMAP.md) の状態分類、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の実装ファイル索引、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を整合させる。
 > 内製 Go コンポーネントは Go 標準ライブラリを基本とする。外部依存は許可リスト登録を必須とする。
