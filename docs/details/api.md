@@ -223,7 +223,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 
 ### 22.0c 主要状態ファイル schema
 
-主要状態ファイル schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。本ファイルでは API endpoint と状態ファイルの read / write 対応を [`docs/details/api.md`](api.md) §22.0d 以降で定義する。
+主要状態ファイル schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。`api` 詳細では API endpoint と状態ファイルの read / write 対応を [`docs/details/api.md`](api.md) §22.0d 以降で定義する。
 
 ### 22.0c.1 API 状態読取優先順
 
@@ -475,7 +475,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 **archive / snapshot / rollback 処理参照：**
 
-`POST /api/logs/cleanup`、`POST /api/logs/archive`、`GET /api/snapshots`、`GET /api/snapshots/{id}/download`、`DELETE /api/snapshots/{id}`、`POST /api/history/{id}/rollback` の保存、圧縮、削除、download 安全性、rollback 実体処理は [`docs/details/archive.md`](archive.md) §27.7 および [`docs/details/archive.md`](archive.md) §27.15 を参照する。本ファイルでは API endpoint、request / response、HTTP status、read / write 境界だけを定義する。
+`POST /api/logs/cleanup`、`POST /api/logs/archive`、`GET /api/snapshots`、`GET /api/snapshots/{id}/download`、`DELETE /api/snapshots/{id}`、`POST /api/history/{id}/rollback` の保存、圧縮、削除、download 安全性、rollback 実体処理は [`docs/details/archive.md`](archive.md) §27.7 および [`docs/details/archive.md`](archive.md) §27.15 を参照する。`api` 詳細では API endpoint、request / response、HTTP status、read / write 境界だけを定義する。
 
 **backup / restore API 副作用固定契約：**
 
@@ -677,7 +677,7 @@ no-op response は endpoint 固有の `No changes` が定義されている場�
 
 **api / sdk / ui / statefile 横断契約参照：**
 
-API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を同時に確認する。本ファイルでは横断連動表と横断処理順表を重複定義しない。
+API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を同時に確認する。`api` 詳細では横断連動表と横断処理順表を重複定義しない。
 
 **横断 fixture 参照：**
 
@@ -687,7 +687,7 @@ api / sdk / ui / statefile にまたがる横断 fixture の fixture 名、入�
 
 API の Phase 3 / Phase 4 必須検証、fixture 名、入力状態、期待 response、期待副作用は [`docs/details/fixture.md`](fixture.md) §22-F を参照する。
 
-本ファイルでは、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、実装検証証跡、Phase 別の判定責務は本ファイルに重複定義しない。
+`api` 詳細では、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、実装検証証跡、Phase 別の判定責務は `api` 詳細に重複定義しない。
 
 | メソッド | パス | 認証 | 説明 |
 |---------|------|------|------|
@@ -928,7 +928,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 既に一時停止中に `pause`、または稼働中に `resume` を呼び出した場合は `409 Conflict` を返す。
 
-> **責務分担：** build lifecycle 通知、pending retry、自動 weekly summary の送信責務は [`docs/details/runner.md`](runner.md) §27.32 および [`docs/details/runner.md`](runner.md) §27.19 を参照する。本節では通知 API の request / response、設定 read/write、履歴参照、手動送信 endpoint 境界だけを定義する。
+> **責務分担：** build lifecycle 通知、pending retry、自動 weekly summary の送信責務は [`docs/details/runner.md`](runner.md) §27.32 および [`docs/details/runner.md`](runner.md) §27.19 を参照する。`api` 詳細では通知 API の request / response、設定 read/write、履歴参照、手動送信 endpoint 境界だけを定義する。
 
 **`GET /api/notify-config` レスポンス例：**
 ```json
@@ -1497,7 +1497,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 ### スナップショット（14A）
 
-snapshot の保存、世代削除、download、delete、rollback 実体処理は [`docs/details/archive.md`](archive.md) §27.15 を参照する。本節では API request / response と HTTP 境界だけを定義する。
+snapshot の保存、世代削除、download、delete、rollback 実体処理は [`docs/details/archive.md`](archive.md) §27.15 を参照する。`api` 詳細では API request / response と HTTP 境界だけを定義する。
 
 **`GET /api/snapshots` レスポンス例：**
 ```json
@@ -2086,7 +2086,7 @@ queue fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能�
 
 認証、session、password hash、login ticket、TOTP 連携、認証ログ、漏えい禁止、`--init-credentials` 生成手順の主本文は [`docs/details/security.md`](security.md) の認証共通詳細および [`docs/details/security.md`](security.md) §27.45〜§27.46 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
 
-本ファイルでは、認証関連 API の endpoint、request / response、HTTP status、状態ファイル read / write 境界だけを定義する。
+`api` 詳細では、認証関連 API の endpoint、request / response、HTTP status、状態ファイル read / write 境界だけを定義する。
 
 | API / CLI | API 側の担当 | 主本文 |
 |-----------|--------------|--------|
@@ -2548,7 +2548,7 @@ owner component は `api` とする。collaborator component は `runner`、`sta
 
 **runner 取り込み：**
 
-runner による `.branch_config` の読込、`RunnerConfig.BranchTargets` への正規化、起動中の反映タイミングは [`docs/details/runner.md`](runner.md) §12〜§13 の runner 設定正規化契約を参照する。本節では API endpoint、request / response、保存、削除、検証条件だけを定義する。
+runner による `.branch_config` の読込、`RunnerConfig.BranchTargets` への正規化、起動中の反映タイミングは [`docs/details/runner.md`](runner.md) §12〜§13 の runner 設定正規化契約を参照する。`api` 詳細では API endpoint、request / response、保存、削除、検証条件だけを定義する。
 
 **検証条件：**
 

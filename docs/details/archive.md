@@ -247,7 +247,7 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 
 **sdk / ui 操作境界参照：**
 
-SDK method、error 変換、HTTP status の扱いは [`docs/details/sdk.md`](sdk.md) §23 を参照する。UI 表示、disabled 判定、操作後再取得、直接操作禁止は [`docs/details/ui.md`](ui.md) §24 を参照する。本ファイルでは snapshot 一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理だけを定義する。
+SDK method、error 変換、HTTP status の扱いは [`docs/details/sdk.md`](sdk.md) §23 を参照する。UI 表示、disabled 判定、操作後再取得、直接操作禁止は [`docs/details/ui.md`](ui.md) §24 を参照する。`archive` 詳細では snapshot 一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理だけを定義する。
 
 **検証条件：**
 

@@ -417,7 +417,7 @@ token は `strings.TrimSpace` 後の値だけを HTTP Authorization header に�
 
 **runner 状態ファイル参照契約：**
 
-状態ファイルの path、形式、初期値、schema、破損時の扱い、atomic write、adapter は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を参照する。本ファイルでは、runner がどの処理段階で状態を読むか、いつ更新するか、失敗時に後続処理を止めるかだけを定義する。API endpoint ごとの状態読取順と response 算出は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。
+状態ファイルの path、形式、初期値、schema、破損時の扱い、atomic write、adapter は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を参照する。`runner` 詳細では、runner がどの処理段階で状態を読むか、いつ更新するか、失敗時に後続処理を止めるかだけを定義する。API endpoint ごとの状態読取順と response 算出は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。
 
 runner 実装は [`docs/details/statefile.md`](statefile.md) に未定義の状態ファイル、永続 key、queue entry key、notification entry key、pending transfer entry key を追加してはならない。
 
@@ -697,7 +697,7 @@ queue entry の `trigger` は `"manual"`、`"webhook"`、`"approval"` のみ許�
 
 **`.build_status.json` 更新契約：**
 
-`.build_status.json` の schema、許容値、初期値は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を参照する。API endpoint の読取順と response 算出は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。本ファイルでは runner が `.build_status.json` を更新するタイミングと、更新失敗時の runner 挙動だけを定義する。
+`.build_status.json` の schema、許容値、初期値は [`docs/details/statefile.md`](statefile.md) §22.0a、[`docs/details/statefile.md`](statefile.md) §22.0c を参照する。API endpoint の読取順と response 算出は [`docs/details/api.md`](api.md) §22.0c.1 を参照する。`runner` 詳細では runner が `.build_status.json` を更新するタイミングと、更新失敗時の runner 挙動だけを定義する。
 
 `.build_status.json` の更新タイミングは次に固定する。
 
@@ -1707,7 +1707,7 @@ runner owner component は、`adlaire-ci-runner --state-dir /opt/adlaire-builder
 
 runner 実装は systemd unit file を生成、配置、更新、enable、restart してはならない。systemd 操作が必要な機能は [`docs/details/setup.md`](setup.md) または [`docs/details/api.md`](api.md) の owner component 別詳細本文責務で定義する。
 
-runner が journal へ出力する内容は [`docs/details/runner.md`](runner.md) §15 のログ仕様を参照する。`systemctl`、`journalctl` の操作手順は本ファイルでは定義しない。
+runner が journal へ出力する内容は [`docs/details/runner.md`](runner.md) §15 のログ仕様を参照する。`systemctl`、`journalctl` の操作手順は `runner` 詳細では定義しない。
 
 ---
 
@@ -1759,7 +1759,7 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 | 制限 | 詳細 |
 |------|------|
 | ポーリング遅延 | 変更検出は systemd timer の実行間隔に依存する。即時反応が必要な場合は `POST /api/webhook` を併用する。 |
-| `pipeline.sh` 起動 | ビルド起動は `src` と同じディレクトリ配下の `.ci/pipeline.sh` を標準とする。YAML 形式のパイプライン定義は本ファイルでは定義しない。 |
+| `pipeline.sh` 起動 | ビルド起動は `src` と同じディレクトリ配下の `.ci/pipeline.sh` を標準とする。YAML 形式のパイプライン定義は `runner` 詳細では定義しない。 |
 | `BRANCH_TARGETS` 直列処理 | 複数エントリはリスト順に順次処理する。並列処理は行わない。1 件の処理が失敗しても、失敗をログと `.build_logs/{id}.json` に記録した上で次エントリへ進む。 |
 | GitHub API リトライ | GitHub API 失敗時は `API_RETRY_MAX` 回まで指数バックオフで再試行する。全試行失敗時は ERROR ログを記録し、当該ターゲットのビルドをスキップする。SHA は更新しない。 |
 | ビルド失敗時の扱い | `pipeline.sh` が非 0 で終了した場合は ERROR ログを出し、SHA を更新しない。次回実行では同じ blob SHA を再検出して再度ビルド対象になる。 |
@@ -2033,7 +2033,7 @@ runner は上表以外の値を保存してはならない。API の返却、SDK
 
 **api / sdk / ui 参照：**
 
-`GET /api/history` の `trigger` query、HTTP status、response warning、SDK `getHistory({trigger})`、UI filter 表示は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。本ファイルでは runner が保存する trigger 値、保存先、判定順序だけを定義する。
+`GET /api/history` の `trigger` query、HTTP status、response warning、SDK `getHistory({trigger})`、UI filter 表示は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 を参照する。`runner` 詳細では runner が保存する trigger 値、保存先、判定順序だけを定義する。
 
 **異常系：**
 

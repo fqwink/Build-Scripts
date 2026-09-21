@@ -73,7 +73,7 @@ admin archive の検証は以下の順序に固定する。
 
 ## A4. Setup 連携境界
 
-[`docs/details/setup.md`](setup.md) は、release asset 取得、checksum 検証、systemd、配置順序、rollback を扱う。setup 手順本文、release asset 取得手順、rollback 手順は [`docs/details/setup.md`](setup.md) 詳細本文責務を参照し、本節では再定義しない。
+[`docs/details/setup.md`](setup.md) は、release asset 取得、checksum 検証、systemd、配置順序、rollback を扱う。setup 手順本文、release asset 取得手順、rollback 手順は [`docs/details/setup.md`](setup.md) 詳細本文責務を参照し、`admin` 詳細では再定義しない。
 
 本ファイルは、`admin` owner の配布境界として、setup が扱う `admin-ui.tar.gz` の中身、展開後の必須 file、静的配信 path、拒否すべき archive entry を定義する。
 
@@ -106,7 +106,7 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 ## A6. Admin Fixture 固定契約
 
-`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。本ファイルでは UI DOM、SDK method、API endpoint の詳細を再定義せず、admin 配布境界だけを確認する。
+`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。`admin` 詳細では UI DOM、SDK method、API endpoint の詳細を再定義せず、admin 配布境界だけを確認する。
 
 | fixture | 入力 | 操作 | 合格条件 |
 |---------|------|------|----------|

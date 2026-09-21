@@ -598,7 +598,7 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 
 Phase 順序、実装変更単位、実装着手条件、判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。
 
-Phase 別の fixture、fake、expected / effects、実装検証証跡、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。本節では Phase 別の受け入れ条件、検証記録、fixture 証跡項目を重複定義しない。
+Phase 別の fixture、fake、expected / effects、実装検証証跡、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。`setup` 詳細では Phase 別の受け入れ条件、検証記録、fixture 証跡項目を重複定義しない。
 
 **setup / release 未実行検証の代替条件：**
 

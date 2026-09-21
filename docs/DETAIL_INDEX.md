@@ -1,14 +1,14 @@
 # Adlaire CI — 詳細仕様入口
 
-本ファイルは詳細仕様入口責務の正本であり、実装者が owner component 別詳細本文責務へ到達するための入口、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置を持つ。
+本ファイルは詳細仕様入口責務の正本であり、実装者が owner component 別詳細本文責務へ到達するための入口、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置だけを扱う。
 
-本ファイルは入口、対応表、共通固定値、配置だけを扱う。方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態分類、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、各 owner component の入出力、状態、処理順序、異常系、検証条件は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態分類、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、各 owner component の入出力、状態、処理順序、異常系、検証条件は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 ---
 
 ## 詳細仕様管理
 
-本ファイルは、詳細仕様入口責務として、詳細仕様本文への入口、共通固定値、対応表、リポジトリ内ソース配置を管理する。
+本節は、詳細仕様入口責務の管理対象と正本外の確認先を示す。
 
 | 管理対象 | 参照先 | 本ファイルでの扱い |
 |----------|------|--------------------|
@@ -17,7 +17,7 @@
 | 詳細節対応表 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象機能、詳細仕様節、受け入れ条件の入口を示す。 |
 | 状態分類、実装可否、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 確認先だけを示す。 |
 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能参照 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 | 確認先だけを示す。 |
-| owner component 本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 本ファイルでは本文を複製せず、参照先だけを示す。 |
+| owner component 本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 参照先だけを示す。 |
 | 方針、ポリシー、正本参照先 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 確認先だけを示す。 |
 
 ## 詳細仕様入口責務
@@ -40,7 +40,7 @@
 7. collaborator component がある場合は、該当する [`docs/details/*.md`](details/) 詳細本文責務を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
 8. [`docs/details/setup.md`](details/setup.md) §26 のセットアップ・アップデート手順と [`docs/details/setup.md`](details/setup.md) §26.7 の受け入れ条件に影響がある場合は、実装変更の検証対象に含める。
 
-詳細仕様節に [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の項目不足がある場合の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。本ファイルでは、不足を検出した参照入口と対応表の更新要否だけを扱う。
+詳細仕様節に [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の項目不足がある場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。本入口では、不足を検出した参照入口と対応表の更新要否だけを扱う。
 
 | 範囲 | 役割 |
 |------|------|
@@ -75,7 +75,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文境界管理�
 | セキュリティ | 認証、認可、秘密情報の保存禁止、権限、外部公開可否 |
 | 検証 | 構文確認、実行確認、API 確認、生成物確認、整合性確認 |
 
-未確定内容、実装可能性、推測補完の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a を参照する。本ファイルでは、未確定項目の検出先と参照先だけを示す。
+未確定内容、実装可能性、推測補完の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a を参照する。本入口では、未確定項目の検出先と参照先だけを示す。
 
 対象範囲の具体化先は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務とする。
 
@@ -170,9 +170,9 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は以�
 | 持つ内容 | そのファイルだけが主本文として定義する内容を書く。 |
 | 持たない内容 | 他 owner component へ委ねる内容を書く。 |
 
-責務境界表の `持つ内容` と `持たない内容` が本文と矛盾する場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 の判断に従う。本ファイルでは、責務境界表、本文、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b の詳細仕様参照表、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の確認先を示す。
+責務境界表の `持つ内容` と `持たない内容` が本文と矛盾する場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 の判断に従う。本入口では、責務境界表、本文、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b の詳細仕様参照表、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の確認先を示す。
 
-owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各節について、本ファイルでは以下を入口確認項目として扱う。
+owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各節について、本入口では以下を入口確認項目として扱う。
 
 | 項目 | 入口確認 |
 |------|----------|
@@ -216,7 +216,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 | セキュリティ | 秘密情報の保存禁止、マスク、ファイル権限、認証/認可、外部公開可否が明記されている。 |
 | 検証 | 構文確認、単体確認、手動 API 確認、生成物確認、ログ確認、失敗系確認のいずれを行うかが明記されている。 |
 
-上記ゲートのいずれかが未充足の場合の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。本ファイルでは、不足している入口項目と更新すべき対応表を特定する。
+上記ゲートのいずれかが未充足の場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。本入口では、不足している入口項目と更新すべき対応表を特定する。
 
 実装後の判定は、以下を入口として確認する。本節は判定条件の全本文を再定義しない。Phase、状態分類、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、実装検証証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を正本として参照する。
 
@@ -304,7 +304,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 Phase の一覧、順序、対象 owner component、依存条件、判定条件、引き継ぎ契約、実装成果物チェックリストは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
-本ファイルでは、Phase を詳細仕様へ接続する入口だけを持つ。Phase の状態、順序、判定条件、将来計画の昇格判断を重複定義しない。
+本入口は、Phase を詳細仕様へ接続する入口だけを持つ。Phase の状態、順序、判定条件、将来計画の昇格判断を重複定義しない。
 
 | Phase | owner component | 主な詳細仕様本文 | fixture / 証跡 |
 |-------|-----------------|------------------|----------------|
@@ -336,7 +336,7 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 | 検証 | 必須テスト、手動確認、fixture、生成物確認、API 確認、異常系確認。 | 不足時は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。 |
 | 判定条件 | どの検証が成功したら確認済みと扱うか。関連文書の更新要否。 | 不足時は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。 |
 
-上表のいずれかが不足する対象項目の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。本ファイルでは、不足している入口項目と参照先変更の有無だけを確認する。
+上表のいずれかが不足する対象項目の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。本入口では、不足している入口項目と参照先変更の有無だけを確認する。
 
 ---
 
@@ -579,7 +579,7 @@ Adlaire CI の標準リポジトリ内ソース配置は以下とする。
 
 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の本文は、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の「詳細仕様管理」と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i を入口として確認する。
 
-本ファイルでは詳細仕様本文を再定義しない。対象機能の owner component は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b または [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i で特定し、該当する [`docs/details/*.md`](details/) 詳細本文責務を主本文とする。
+本入口は詳細仕様本文を再定義しない。対象機能の owner component は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b または [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i で特定し、該当する [`docs/details/*.md`](details/) 詳細本文責務を主本文とする。
 
 | 対象範囲 | 主な参照先 |
 |----------|------------|

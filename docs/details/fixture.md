@@ -79,7 +79,7 @@ Phase、API、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/securi
 
 ## 22-F Phase 3 / Phase 4 API fixture 契約
 
-本節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) §22 を基準とし、本節では再定義しない。
+本節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) §22 を基準とし、fixture 証跡責務では再定義しない。
 
 API 実装の検証証跡は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の実装検証証跡固定契約に加えて、本節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
 
@@ -216,7 +216,7 @@ Phase 4 実装は、下表の fixture をすべて満たした場合だけ完了
 
 **fixture 証跡責務 §27-F 配置・命名固定契約：**
 
-§27 の fixture は、実装者が実行順や期待値を推測しないように、下表の単位で配置する。実装ファイル名やテストフレームワークは本節では固定しないが、fixture の入力、期待出力、期待副作用は機能単位で分離する。
+§27 の fixture は、実装者が実行順や期待値を推測しないように、下表の単位で配置する。実装ファイル名やテストフレームワークは fixture 証跡責務では固定しないが、fixture の入力、期待出力、期待副作用は機能単位で分離する。
 
 | 機能範囲 | fixture 配置単位 | 必須内容 | 禁止事項 |
 |----------|------------------|----------|----------|
