@@ -95,7 +95,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文境界管理�
 
 ## 0b.0.1 詳細仕様カテゴリ
 
-本節は、実装者が対象機能から読むべき owner component 別の詳細本文責務を特定するためのカテゴリ索引である。カテゴリは検索入口であり、owner component、実装状態、実装可否、ロードマップ状態を変更しない。
+本節は、実装者が対象機能から読むべき owner component 別の詳細本文責務を特定するためのカテゴリ索引である。カテゴリは検索入口であり、owner component、状態分類、実装可否、ロードマップ状態を変更しない。
 
 | カテゴリ | 対象 component | 主な判断対象 | 読む詳細仕様 |
 |----------|----------------|--------------|--------------|
@@ -112,7 +112,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文境界管理�
 
 ## 0b. 詳細仕様参照表
 
-本節は、owner component ごとに参照する詳細仕様節を示す。実装状態、実装可否、ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
+本節は、owner component ごとに参照する詳細仕様節を示す。状態分類、実装可否、ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
 
 | owner component | 詳細仕様節 | 主な確認対象 |
 |--------------------|------------|--------------|
@@ -135,9 +135,9 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文境界管理�
 
 ## 0b.1 owner component 別 詳細本文境界管理責務
 
-本節は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の境界を維持するための詳細本文境界管理責務である。責務境界の変更、詳細本文配置変更、参照先更新では、方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態・実装可否・ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
+本節は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の境界を維持するための詳細本文境界管理責務である。責務境界の変更、詳細本文配置変更、参照先更新では、方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態分類・実装可否・ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
 
-owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は、owner component の主本文を持つ。方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、ロードマップ状態、実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の冒頭では、本節への参照と自ファイルの owner / collaborator 境界だけを示す。
+owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は、owner component の主本文を持つ。方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態分類、ロードマップ状態、実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の冒頭では、本節への参照と自ファイルの owner / collaborator 境界だけを示す。
 
 詳細仕様本文の配置単位は owner component を第一基準とする。複数 component が関わる機能は、owner component のファイルに主本文を置き、collaborator component のファイルには呼び出し境界、schema、表示、security、setup、fixture、検証観点だけを置く。
 
@@ -321,7 +321,7 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 
 対象項目を追加または改訂する場合は、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の節に以下の項目をすべて含める。既存節に含める場合も、実装者が下表の項目を本文から一意に読み取れる状態にする。
 
-下表の `入口判定` は、詳細仕様入口責務として不足項目を検出するための要約である。実装着手可否、確認済み扱い、禁止事項の最終判断は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a および [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f を参照する。
+下表の `入口判定` は、詳細仕様入口責務として不足項目を検出するための要約である。実装着手可否、確認済み扱い、禁止事項の判定は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a および [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f を参照する。
 
 | 項目 | 必須内容 | 入口判定 |
 |------|----------|----------------|
@@ -490,7 +490,7 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 詳細仕様本文は、`builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`setup`、`statefile`、`archive`、`commitstatus`、`security`、`fixture` の実装詳細を owner component 別に定義する。
 
-本ファイルは詳細仕様の入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+本ファイルは詳細仕様参照入口、索引、共通固定値、対応表、リポジトリ内ソース配置だけを持つ。各 component の入出力、状態、処理順序、異常系、検証条件の本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 `mcp` は将来計画であり、MCP 専用詳細仕様が新設されるまで、本ファイルおよび owner component 別の [`docs/details/*.md`](details/) 詳細本文責務では入出力、状態、起動手順、検証条件を定義しない。
 

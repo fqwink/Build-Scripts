@@ -9,7 +9,7 @@
 
 ---
 
-> **Adlaire CI** とは、最初から Go を前提として仕様策定するビルド・CI・管理システムの総称である。仕様対象コンポーネントは `components/builder.go`、`components/runner.go`、`components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js` とする。`components/mcp.go` は将来計画コンポーネントであり、実装対象コンポーネントとして扱わない。各 component の実装状態、実装可否、将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) の状態・計画責務を正本とする。
+> **Adlaire CI** とは、最初から Go を前提として仕様策定するビルド・CI・管理システムの総称である。仕様対象コンポーネントは `components/builder.go`、`components/runner.go`、`components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js` とする。`components/mcp.go` は将来計画コンポーネントであり、実装対象コンポーネントとして扱わない。各 component の状態分類、実装可否、将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) の状態・計画責務を正本とする。
 
 ## 文書責務
 
@@ -37,7 +37,7 @@
 
 [`docs/SPEC.md`](SPEC.md) は、関数単位の処理、HTTP response schema、状態ファイル schema、SDK method、UI DOM、fixture assertion、具体的な実行手順を定義しない。これらの本文は、責務ベース明示的原則、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に従って、責務を持つ正本へ分離する。
 
-文書を整理する場合も、[`docs/SPEC.md`](SPEC.md) の正本範囲を越えてはならない。[`docs/SPEC.md`](SPEC.md) は、詳細仕様本文、実装状態、ロードマップ状態、文書所在を重複定義しない。
+文書を整理する場合も、[`docs/SPEC.md`](SPEC.md) の正本範囲を越えてはならない。[`docs/SPEC.md`](SPEC.md) は、詳細仕様本文、状態分類、ロードマップ状態、文書所在を重複定義しない。
 
 ## 状態参照方針
 
@@ -53,8 +53,8 @@
 |------|------|-----------|------------|
 | 方針責務 | [`docs/SPEC.md`](SPEC.md) | **なぜ・何を** | 目的、設計思想、方向性の原則。変更頻度が低く、判断の拠り所となる指針。 |
 | ポリシー責務 | [`docs/SPEC.md`](SPEC.md) | **しなければならない／してはならない** | 遵守義務のある規則、制約、禁止事項、セキュリティ要件、運用ルール、バージョン管理規則。 |
-| 状態・計画責務 | [`docs/ROADMAP.md`](ROADMAP.md) | **いつ・どれを** | 実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順。 |
-| 詳細仕様入口責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | **どこから読むか** | 詳細仕様の入口、読み順、共通固定値、詳細節対応表、リポジトリ内ソース配置。 |
+| 状態・計画責務 | [`docs/ROADMAP.md`](ROADMAP.md) | **いつ・どれを** | 状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順。 |
+| 詳細仕様入口責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | **どこから読むか** | 詳細仕様参照入口、共通固定値、詳細節対応表、リポジトリ内ソース配置。 |
 | owner component 別詳細本文責務 | [`docs/details/*.md`](details/) | **どのように実装するか** | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
 | デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | **どう見せるか** | 生成 HTML のデザイン関係。 |
 | 文書・実装ファイル所在の索引責務 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | **どこにあるか** | 文書、実装ファイル、生成物、将来追加予定 path の所在。 |
@@ -71,7 +71,7 @@
 3. [`docs/SPEC.md`](SPEC.md) 方針責務 §4.1〜§4.10 で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、詳細仕様粒度、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
 4. [`docs/SPEC.md`](SPEC.md) のポリシー責務で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
 5. 生成 HTML のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
-6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で読み順、共通固定値、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 の対応表、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j のリポジトリ内ソース配置を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件、配置を確認する。
+6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1〜§0i.4 の対応表、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j のリポジトリ内ソース配置を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件、配置を確認する。
 
 ---
 
@@ -177,7 +177,7 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 本原則は [`docs/SPEC.md`](SPEC.md) 全体に適用する。[`docs/SPEC.md`](SPEC.md) 内の各記載は、方針責務、ポリシー責務、状態・計画責務の参照、詳細仕様入口責務の参照、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の参照、文書・実装ファイル所在の索引責務の参照、利用入口責務の参照のいずれかとして読めなければならない。
 
-責務ベース明示的原則とは、方針、ポリシー、実装状態、実装可否、Phase、将来計画、詳細仕様本文、fixture、expected、fake、検証証跡、文書索引を、それぞれ異なる責務として明示的に分離し、同一判断対象を複数文書で正本化しない原則である。
+責務ベース明示的原則とは、方針、ポリシー、状態分類、実装可否、Phase、将来計画、詳細仕様本文、fixture、expected、fake、検証証跡、文書索引を、それぞれ異なる責務として明示的に分離し、同一判断対象を複数文書で正本化しない原則である。
 
 正本参照先は、必ず責務名とファイル名で示す。文書を章構成、便宜分類、または他文書の従属章として扱ってはならない。[`docs/SPEC.md`](SPEC.md) 内部の見出しも責務名で示し、`Part` 名称で扱ってはならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/details/*.md`](details/)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) を [`docs/SPEC.md`](SPEC.md) の章として扱ってはならない。
 
@@ -199,7 +199,7 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 owner component は対象機能の詳細本文を持つ。collaborator component は、境界、接続、入力受け渡し、出力受け渡し、検証観点として参照される。collaborator component は、owner component の本文を置き換えたり、同じ判断対象を別正本として再定義したりしてはならない。
 
-fixture、expected、fake、検証証跡、完了判定は検証責務として扱い、[`docs/details/fixture.md`](details/fixture.md) を正本とする。実装状態、実装可否、Phase、将来計画は状態責務として扱い、[`docs/ROADMAP.md`](ROADMAP.md) を正本とする。詳細仕様の入口、対応表、共通固定値、リポジトリ内ソース配置は詳細仕様入口責務として扱い、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) を正本とする。生成 HTML のデザイン関係はデザイン責務として扱い、[`docs/DESIGN.md`](DESIGN.md) を正本とする。文書配置と実装ファイル所在は、文書・実装ファイル所在の索引責務として扱い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
+fixture、expected、fake、検証証跡、完了判定は検証責務として扱い、[`docs/details/fixture.md`](details/fixture.md) を正本とする。状態分類、実装可否、Phase、将来計画は状態責務として扱い、[`docs/ROADMAP.md`](ROADMAP.md) を正本とする。詳細仕様参照入口、対応表、共通固定値、リポジトリ内ソース配置は詳細仕様入口責務として扱い、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) を正本とする。生成 HTML のデザイン関係はデザイン責務として扱い、[`docs/DESIGN.md`](DESIGN.md) を正本とする。文書配置と実装ファイル所在は、文書・実装ファイル所在の索引責務として扱い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
 
 本原則は、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の記載整理より上位の方針である。これらの文書を整理する場合は、本原則に従い、重複本文を増やさず、責務と参照先を明示する。
 
@@ -364,7 +364,7 @@ Phase は、対象 owner component、実装範囲、依存条件、完了条件�
 
 [`docs/SPEC.md`](SPEC.md) 方針責務は、Adlaire CI を最初から Go 言語で設計・実装する前提で策定する。
 
-実装者は、方針、ポリシー、Go 前提、禁止事項を [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態と標準配置の状態判断を [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、詳細仕様の入口とソース配置を [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、各 component の入出力、状態、処理順序、異常系、検証条件を owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に従って判断する。過去の実装、試作、他言語スクリプト、既存ファイル名、既存 CLI、既存ログ、既存生成物、既存状態ファイルを前提にしてはならない。
+実装者は、方針、ポリシー、Go 前提、禁止事項を [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態分類と標準配置の状態判断を [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、詳細仕様参照入口とソース配置を [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、各 component の入出力、状態、処理順序、異常系、検証条件を owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に従って判断する。過去の実装、試作、他言語スクリプト、既存ファイル名、既存 CLI、既存ログ、既存生成物、既存状態ファイルを前提にしてはならない。
 
 Go 実装の判断基準は以下とする。
 
@@ -400,7 +400,7 @@ Adlaire CI は GitHub Actions の workflow、hosted runner、Marketplace action�
 
 Adlaire CI の状態確認・操作を行う管理インターフェース。ヘッドレスアーキテクチャにより、フロントエンドとバックエンドを明確に分離する。
 
-この節以降の管理ツール・管理 API・SDK に関する記載は、実装状態を固定しない機能方針である。対象ファイルの存在、実装状態、実装可否、分類、検証結果は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
+この節以降の管理ツール・管理 API・SDK に関する記載は、状態分類を固定しない機能方針である。対象ファイルの存在、状態分類、実装可否、検証結果は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
 
 ### 6.2 ヘッドレスアーキテクチャ方針
 
@@ -454,7 +454,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 詳細仕様、状態管理、fixture、索引、入口文書を記載または整理する場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a の責務ベース明示的原則に従わなければならない。
 
-方針、ポリシー、実装状態、Phase、将来計画、詳細仕様本文、fixture、expected、fake、検証証跡、文書索引を同じ本文内で重複正本化してはならない。
+方針、ポリシー、状態分類、Phase、将来計画、詳細仕様本文、fixture、expected、fake、検証証跡、文書索引を同じ本文内で重複正本化してはならない。
 
 方針とポリシーは [`docs/SPEC.md`](SPEC.md) だけに記載しなければならない。ただし、生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) だけに記載しなければならない。[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md)、実装ファイル、fixture、PR 本文へ方針またはポリシーを本文として記載してはならない。
 
@@ -513,8 +513,8 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 対象 | 完了条件 |
 |------|----------|
 | 方針責務・ポリシー責務 | 方針、ポリシー、実装着手ゲート、完了判定が [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務に明記されている。 |
-| 状態・計画責務 | 実装状態、実装可否、Phase、将来計画、昇格条件が [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に明記されている。 |
-| 詳細仕様入口責務 | 対象機能の読み順、対応表、参照先、受け入れ条件入口が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に明記されている。 |
+| 状態・計画責務 | 状態分類、実装可否、Phase、将来計画、昇格条件が [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に明記されている。 |
+| 詳細仕様入口責務 | 対象機能の詳細仕様参照入口、対応表、参照先、受け入れ条件入口が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に明記されている。 |
 | owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。 |
 | 横断契約 | API、SDK、UI、状態ファイル、認証、セットアップの対応関係が該当する詳細本文責務で同期している。 |
 | 索引責務 | ファイル名、正本参照先、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |

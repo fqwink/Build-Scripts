@@ -146,7 +146,7 @@
 | 作業ルール、承認、Git 運用、文書整合 | [`AGENTS.md`](../AGENTS.md) |
 | 方針、ポリシー、正本参照先、禁止事項、リリース判断 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 |
 | 状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 |
-| 詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 |
+| 詳細仕様参照入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 |
 | 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 |
 | 生成静的 Web サイトのデザイン関係 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 |
 | 文書・実装ファイルの参照先と役割 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 |
