@@ -35,7 +35,7 @@
 
 ## リポジトリ文書索引
 
-本節以降は、リポジトリ内文書と実装ファイル所在の索引である。仕様判断の本文は各正本を参照する。
+以降は、リポジトリ内文書と実装ファイル所在の索引である。仕様判断の本文は各正本を参照する。
 
 | 索引領域 | 確認する節 | 判断する内容 |
 |----------|------------|--------------|
@@ -107,7 +107,7 @@
 
 ## 実装ファイル一覧
 
-本節は、現行リポジトリに存在する実装ファイル、テスト、fixture、および将来追加予定 path の所在を示す索引である。状態分類と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+実装ファイル一覧は、現行リポジトリに存在する実装ファイル、テスト、fixture、および将来追加予定 path の所在を示す索引である。状態分類と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 リポジトリ内ソース配置は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j を参照する。
 
@@ -115,7 +115,7 @@
 
 標準配置図に含まれる未作成 path は、将来追加予定 path として扱い、該当 owner component が実装対象になった変更で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成しない。
 
-`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置である。標準配置と現行実体の所在確認は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、本節を同時に確認する。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置である。標準配置と現行実体の所在確認は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、実装ファイル一覧を同時に確認する。
 
 | パス | component | 所在区分 | 役割 |
 |------|-----------|----------|------|

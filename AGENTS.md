@@ -132,7 +132,7 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。
 
-未実装項目を実装する場合は、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「実装ファイル一覧」と本ファイルの実装管理ルールの更新要否を確認する。
+未実装項目を実装する場合は、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「実装ファイル一覧」と [AGENTS.md](AGENTS.md) の実装管理ルールの更新要否を確認する。
 
 仕様の記載と実ファイルの存在が矛盾する場合は、先に仕様・索引・ルールブックの整合を取る。
 
@@ -161,7 +161,7 @@ Go 実装対象ファイルは以下とする。
 | `admin/index.html` | 実装済み |
 | `components/mcp.go` | 将来追加予定 path（未作成） |
 
-未実装コンポーネントを追加する場合は、[docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、本ファイルの更新要否を確認し、該当する場合は同一変更で整合させる。
+未実装コンポーネントを追加する場合は、[docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、[AGENTS.md](AGENTS.md) の更新要否を確認し、該当する場合は同一変更で整合させる。
 
 実装変更後は、変更範囲に応じて構文確認、実行確認、生成物確認を行う。
 
@@ -237,7 +237,7 @@ GitHub 設定の初期適用方針は以下とする。
 - `delete_branch_on_merge=true` は即時設定対象とする。
 - `main` branch protection は、初期標準として Pull Request 必須、force push 禁止、branch deletion 禁止を設定する。
 - `main` branch protection の required approvals は初期値 `0` とする。
-- required approvals を `1` へ引き上げる場合は、運用安定後の別変更として、変更対象、現在値、推奨値、影響範囲を提示して承認を得る。
+- required approvals を `1` へ引き上げる場合は、運用安定後の別変更として、変更対象、現在値、標準値、影響範囲を提示して承認を得る。
 
 GitHub 設定を確認する場合は、少なくとも以下を確認する。
 
@@ -249,7 +249,7 @@ GitHub 設定を変更する前には、以下を必ず提示する。
 
 - 変更対象
 - 現在値
-- 推奨値
+- 標準値
 - 影響範囲
 
 GitHub 設定を変更した後は、GitHub API で再取得し、[AGENTS.md](AGENTS.md) の標準設定との差分がないかを確認して報告する。

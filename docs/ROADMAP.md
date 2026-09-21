@@ -48,7 +48,7 @@ HTTP response schema、状態ファイル schema、SDK method の実装詳細、
 
 ## 4.1 初期実装 Phase 単位
 
-Go 版初期実装の対象範囲と Phase 単位の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0e と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。本節は Phase 順、対象、依存条件、判定条件を管理する。
+Go 版初期実装の対象範囲と Phase 単位の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0e と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。Phase 実装計画は Phase 順、対象、依存条件、判定条件を管理する。
 
 実装単位、実装変更単位、判定単位に関する禁止事項は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。API の実装範囲は、Phase 3 を「API 基盤・認証・状態 read/write・運用基本操作」、Phase 4 を「API 拡張運用操作」として管理する。
 
@@ -507,11 +507,11 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ## 6. 追加仕様化機能実装参照
 
-本節は、追加仕様化機能の状態、実装可否、owner、主本文、collaborator を確認するための参照索引である。各機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。参照先の特定は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 で行う。
+追加仕様化機能実装参照は、追加仕様化機能の状態、実装可否、owner、主本文、collaborator を確認するための参照索引である。各機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。参照先の特定は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 で行う。
 
 ### 6.1 追加仕様化機能 共通実装契約
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 に列挙する追加仕様化機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。本節は、実装時に共通して確認する参照順、越境確認、実装検証証跡の入口だけを示す。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 に列挙する追加仕様化機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。追加仕様化機能共通実装契約は、実装時に共通して確認する参照順、越境確認、実装検証証跡の入口だけを示す。
 
 | 確認 | 固定内容 |
 |------|----------|
@@ -530,7 +530,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ### 6.2 追加仕様化機能 参照索引
 
-本節は、追加仕様化機能の参照先を一覧化するインデックスである。個別機能本文は、下表の「主本文」に記載された owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、下表に記載された主本文、owner component、collaborator component を置き換えない。
+追加仕様化機能参照索引は、追加仕様化機能の参照先を一覧化するインデックスである。個別機能本文は、下表の「主本文」に記載された owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、下表に記載された主本文、owner component、collaborator component を置き換えない。
 
 下表は、追加仕様化機能の owner、主本文、collaborator だけを示す。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、fixture schema、横断処理順は本表で再定義しない。
 
@@ -618,11 +618,11 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ### 6.3 横断連動・Runner 拡張機能 実装補足契約
 
-本節は、追加仕様化機能の横断補足契約である。[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 および api / sdk / ui / statefile の横断連動では、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を主本文とし、本節は横断確認として参照する。
+横断連動・Runner 拡張機能実装補足契約は、追加仕様化機能の横断補足契約である。[`docs/details/runner.md`](details/runner.md) §27.21〜§27.38 および api / sdk / ui / statefile の横断連動では、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を主本文とし、横断補足契約は横断確認として参照する。
 
-本節の責務範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装確認時の横断受け入れ観点に限定する。個別機能本文は各 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+横断補足契約の責務範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装確認時の横断受け入れ観点に限定する。個別機能本文は各 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
-本節と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI、fixture は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を基準とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを本節で確認する。本節にだけ存在する endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+横断補足契約と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI、fixture は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を基準とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを横断補足契約で確認する。横断補足契約にだけ存在する endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 | 確認 | 固定内容 |
 |------|----------|
