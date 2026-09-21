@@ -2,7 +2,7 @@
 
 本ファイルは、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を管理するロードマップ正本である。
 
-方針、ポリシー、正本参照先、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を参照する。生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を参照する。詳細仕様の入口、owner component 参照表、共通固定値、リポジトリ内ソース配置は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を参照する。owner component 別の入出力、状態、処理順序、異常系、検証条件は [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+方針、ポリシー、正本参照先、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を参照する。生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を参照する。詳細仕様の入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の詳細本文は [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 本ファイルは状態と計画を扱う。HTTP response schema、状態ファイル schema、SDK method の実装詳細、UI DOM、fixture assertion、具体的な処理順序は定義しない。
 
@@ -10,11 +10,11 @@
 
 | 管理対象 | 本ファイルで扱う内容 | 詳細参照先 |
 |----------|----------------------|--------------|
-| 実装状態 | component ごとの `未仕様化`、`将来計画`、`改訂予定`、`仕様化済み・未実装`、`実装中・検証未完了`、`実装済み` の分類。 | 実装コード本文は実装ファイル、詳細仕様本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
-| Phase | Phase 順序、対象 owner component、依存条件、判定条件、引き継ぎ契約。 | 各 component の関数、endpoint、schema、DOM、fixture 本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
-| 機能インベントリ | 機能の分類、実装可否、詳細仕様参照先。 | API request / response、SDK method、UI DOM、状態 schema は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
+| 実装状態 | component ごとの `未仕様化`、`将来計画`、`改訂予定`、`仕様化済み・未実装`、`実装中・検証未完了`、`実装済み` の分類。 | 詳細仕様本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
+| Phase | Phase 順序、対象 owner component、依存条件、判定条件、引き継ぎ契約。 | 関数、endpoint、schema、DOM、fixture 本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
+| 機能インベントリ | 機能の分類、実装可否、詳細仕様参照先。 | 実装詳細は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
 | 将来計画 | 実装不可の構想と昇格入口。 | 実装可能な具体値は、昇格後に owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
-| 追加仕様化機能参照・横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能 owner、主本文、collaborator、横断受け入れ観点。 | 各機能の endpoint、状態 schema、SDK method、UI DOM、fixture 本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
+| 追加仕様化機能参照・横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能 owner、主本文、collaborator、横断受け入れ観点。 | 個別機能本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
 
 ## 2. 状態分類
 

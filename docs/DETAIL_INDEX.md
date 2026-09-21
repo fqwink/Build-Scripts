@@ -1,6 +1,6 @@
 # Adlaire CI — 詳細仕様入口
 
-本ファイルは詳細仕様入口責務の正本であり、実装者が owner component 別詳細本文責務へ到達するための読み順、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置を持つ。
+本ファイルは詳細仕様入口責務の正本であり、実装者が owner component 別詳細本文責務へ到達するための入口、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置を持つ。
 
 本ファイルは入口、対応表、共通固定値、配置だけを扱う。方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装状態、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、各 owner component の入出力、状態、処理順序、異常系、検証条件は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
@@ -8,11 +8,11 @@
 
 ## 詳細仕様管理
 
-本ファイルは、詳細仕様入口責務として、読み順、共通固定値、対応表、リポジトリ内ソース配置を管理する。
+本ファイルは、詳細仕様入口責務として、詳細仕様本文への入口、共通固定値、対応表、リポジトリ内ソース配置を管理する。
 
 | 管理対象 | 参照先 | 本ファイルでの扱い |
 |----------|------|--------------------|
-| 詳細仕様の読み方 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 実装者が詳細仕様本文へ到達するための順序を定義する。 |
+| 詳細仕様の読み方 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 実装者が詳細仕様本文へ到達するための入口を定義する。 |
 | 共通固定値 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | component 間で共有する固定値だけを定義する。 |
 | 詳細節対応表 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象機能、詳細仕様節、受け入れ条件の入口を示す。 |
 | 実装状態、実装可否、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 確認先だけを示す。 |
@@ -27,7 +27,7 @@
 
 ## 詳細仕様の読み方
 
-詳細仕様を読む前に、[`AGENTS.md`](../AGENTS.md) と [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を必ず確認する。リポジトリ内の文書所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、実装状態と Phase は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を確認する。
+詳細仕様を読む前に、[`AGENTS.md`](../AGENTS.md) と [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を必ず確認する。文書所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
 
 対象機能ごとの参照順は以下とする。
 
