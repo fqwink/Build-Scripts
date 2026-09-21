@@ -1,12 +1,12 @@
 # Adlaire CI — API 詳細仕様
 
-本ファイルは `api` owner component の詳細本文責務の正本である。
+`api` owner component の詳細本文責務は、[`docs/details/api.md`](api.md) を正本とする。
 
-本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `api` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、security、表示、fixture、検証観点として参照する。
+詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`api` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、security、表示、fixture、検証観点として参照する。
 
-[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約である。api 連動機能を実装する場合は、本ファイルの個別節を参照し、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として同節を確認する。
+[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui / statefile / archive にまたがる横断補足契約である。api 連動機能を実装する場合は、[`docs/details/api.md`](api.md) 詳細本文責務の個別節を参照し、横断処理順、成功後再取得、失敗時固定、api / sdk / ui / statefile 同期確認として同節を確認する。
 
-[`docs/details/security.md`](security.md) §27.42〜§27.47 は security 領域の詳細本文責務である。api が security 機能に関わる場合、本ファイルは endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) 詳細本文責務を参照する。
+[`docs/details/security.md`](security.md) §27.42〜§27.47 は security 領域の詳細本文責務である。api が security 機能に関わる場合、[`docs/details/api.md`](api.md) 詳細本文責務は endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) 詳細本文責務を参照する。
 
 ---
 
@@ -17,7 +17,7 @@
 | owner component | `api` |
 | collaborator component | `statefile`、`sdk`、`ui`、`security`、`archive`、`runner` |
 | 持つ内容 | `api` owner が主本文として定義する HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 |
-| 持たない内容 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture / PR 証跡責務。 |
+| 持たない内容 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture 証跡責務。 |
 
 ---
 
@@ -57,15 +57,15 @@ Owner             = "<GitHubオーナー名>"                       // 初期値
 Repo              = "<リポジトリ名>"                           // 初期値。POST /api/repo-config の repo 更新成功時だけ .repo_config に保存
 ```
 
-API service の systemd unit、配置、起動、更新、rollback は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.3b、§26.4.2、§26.5 を参照する。
+API service の systemd unit、配置、起動、更新、rollback は setup owner component の責務とし、[`docs/details/setup.md`](setup.md) §26.3b、[`docs/details/setup.md`](setup.md) §26.4.2、[`docs/details/setup.md`](setup.md) §26.5 を参照する。
 
 `api` は `adlaire-ci-api --addr 127.0.0.1:8765 --state-dir /opt/adlaire-builder` として起動された後の HTTP listener、request / response、状態ファイル read/write 呼び出し境界だけを定義する。
 
 ## 21a. 管理 API サーバー制限
 
-本節は `api` の実行時制限を定義する。runner、setup、admin、sdk、ui は本節の制限を上書きしてはならない。
+該当節は `api` の実行時制限を定義する。runner、setup、admin、sdk、ui は該当節の制限を上書きしてはならない。
 
-| 制限 | 詳細 | 実装時の禁止事項 |
+| 制限 | 詳細 | 実装時の禁止条件 |
 |------|------|------------------|
 | session はインメモリ管理 | 再起動で全 session を消去する。永続 session store は持たない。 | session を状態ファイル、cookie store、外部 DB、外部 cache に保存しない。 |
 | HTTPS listener 非対応 | `api` は HTTP listener のみ起動する。標準 bind は `127.0.0.1:8765` とする。 | TLS listener、証明書読み込み、HTTPS redirect、外部公開 bind を実装しない。 |
@@ -73,7 +73,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 独自接続数制限なし | Go 標準ライブラリ `net/http` の標準 server で処理する。API rate limit は [`docs/details/security.md`](security.md) §27.47 の固定窓で行う。 | 独自 worker pool、connection pool、接続数上限、外部 queue を追加しない。 |
 | runner 起動責務なし | api は HTTP endpoint の request / response と状態 read/write 呼び出し境界を担当する。 | runner の通常 polling loop、GitHub read、pipeline 実行、build log 確定処理を api 本文へ移動しない。 |
 
-セッション、API token、TOTP、rate limit、audit log の security 主本文は [`docs/details/security.md`](security.md) §27.42〜§27.47 を基準とし、本節は API server の実行時境界だけを定義する。
+セッション、API token、TOTP、rate limit、audit log の security 主本文は [`docs/details/security.md`](security.md) §27.42〜§27.47 を基準とし、該当節は API server の実行時境界だけを定義する。
 
 ---
 
@@ -85,7 +85,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ### 22.0 API 共通契約
 
-本節は、`api` owner の API 共通契約を定義する。実装時は、エンドポイント固有契約より先に以下の共通契約を満たす。
+該当節は、`api` owner の API 共通契約を定義する。実装時は、エンドポイント固有契約より先に以下の共通契約を満たす。
 
 | 項目 | 仕様 |
 |------|------|
@@ -111,7 +111,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 秘密情報 | PAT、Webhook Secret、セッショントークン、API トークンはログ、バックアップ、GET レスポンスへ平文出力しない。設定済み表示は `"***"` または boolean で返す。 |
 | 並列更新 | 同一状態ファイルを更新する API は、ファイル単位のロックを取得してから読み込み、検証、書き込みを行う。ロック取得待ちは最大 10 秒とし、超過時は `409 Conflict` を返す。 |
 | 監査ログ | 設定変更 API は、変更前後の値を `.config_log` に追記する。ただし秘密情報の値は変更前後とも `"***"` にマスクする。 |
-| CORS | 既定では CORS ヘッダーを付与しない。標準管理ツールは同一 origin から配信する。`OPTIONS` preflight は定義しない。CORS を有効化する拡張は本ファイルで未定義とし、実装してはならない。 |
+| CORS | 既定では CORS ヘッダーを付与しない。標準管理ツールは同一 origin から配信する。`OPTIONS` preflight は定義しない。CORS を有効化する拡張は [`docs/details/api.md`](api.md) 詳細本文責務で未定義とし、実装してはならない。 |
 | セキュリティヘッダー | すべての API レスポンスに `Cache-Control: no-store`、`X-Content-Type-Options: nosniff` を付与する。SSE は `Cache-Control: no-store` と `X-Accel-Buffering: no` を付与する。 |
 | 判定順 | path 解決 → method 検証 → body 可否/サイズ検証 → JSON parse → 認証 → 権限 → 入力検証 → 状態競合 → 処理実行の順に判定する。 |
 
@@ -142,11 +142,11 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 | 段階 | 処理 | 失敗時 status | 失敗時副作用 |
 |------|------|---------------|--------------|
-| 1 | path 解決。未知 path を判定する。 | `404` | 状態ファイル、外部 API、監査ログ、設定ログを変更しない。`.api_access_log` だけ §27.6 に従って記録する。 |
+| 1 | path 解決。未知 path を判定する。 | `404` | 状態ファイル、外部 API、監査ログ、設定ログを変更しない。`.api_access_log` だけ [`docs/details/api.md`](api.md) §27.6 に従って記録する。 |
 | 2 | method 検証。path が存在し method が不一致か判定する。 | `405` | endpoint 固有処理を開始しない。`.api_access_log` 以外を変更しない。 |
 | 3 | body 禁止、body size、JSON parse を検証する。`Request=none` endpoint では JSON parse を行わない。 | `400` / `413` | 認証、状態読取、状態書込、外部呼び出しを行わない。 |
 | 4 | access control、maintenance、認証不要 endpoint 判定、Bearer/session/API token 認証を実行する。 | `401` / `403` / `503` | 認証失敗時は endpoint 状態を読まない。認証処理で定義された session/ticket 更新とログ追記だけを許可する。 |
-| 5 | scope、rate limit、権限を判定する。 | `403` / `429` | endpoint 固有の状態書込、外部呼び出し、コマンド実行を行わない。rate limit 状態更新と監査ログは §27.47 に限定する。 |
+| 5 | scope、rate limit、権限を判定する。 | `403` / `429` | endpoint 固有の状態書込、外部呼び出し、コマンド実行を行わない。rate limit 状態更新と監査ログは [`docs/details/security.md`](security.md) §27.47 に限定する。 |
 | 6 | query、path parameter、body schema、enum、範囲を検証する。 | `422` | 状態ファイルを変更しない。外部 API、systemd、runner、hook、通知を呼び出さない。 |
 | 7 | endpoint 固有の read adapter を呼び、状態競合を判定する。 | `409` / `500` | write lock を取得していても target を変更しない。tmp file があれば削除する。 |
 | 8 | endpoint 固有処理を実行し、必要な状態ファイルを [`docs/details/api.md`](api.md) §22.0d の Write 列順に更新する。 | endpoint 固有 | 途中失敗時の巻き戻しは、endpoint 固有節または [`docs/details/setup.md`](setup.md) §26 rollback 節に明記された範囲だけ行う。 |
@@ -157,7 +157,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ### 22.0a 状態ファイル共通仕様
 
-状態ファイルのパス、形式、初期値、更新責務、破損時の扱い、更新手順、schema 厳格化、状態読取 adapter、状態読取 priority は [`docs/details/statefile.md`](statefile.md) §22.0a を参照する。`api` は同節の adapter と更新手順を利用し、endpoint 固有の request / response / validation は本ファイル §22.0b 以降を参照する。
+状態ファイルのパス、形式、初期値、更新責務、破損時の扱い、更新手順、schema 厳格化、状態読取 adapter は [`docs/details/statefile.md`](statefile.md) §22.0a を参照する。`api` は同節の adapter と更新手順を利用し、endpoint 固有の request / response / validation は [`docs/details/api.md`](api.md) §22.0b 以降を参照する。
 
 ### 22.0b 入力検証共通仕様
 
@@ -184,7 +184,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 
 **endpoint 別 query 検証上書き：**
 
-共通検証値と endpoint 個別節の値が異なる場合は、下表を優先する。下表にない query は §22.0b の共通検証を使用する。
+共通検証値と endpoint 個別節の値が異なる場合は、下表を優先する。下表にない query は [`docs/details/api.md`](api.md) §22.0b の共通検証を使用する。
 
 | Endpoint | query | 既定値 | 許容値 | 補足 |
 |----------|-------|--------|--------|------|
@@ -194,9 +194,9 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 | `GET /api/logs/search` | `q` | `""` | 0〜500 文字 | 空文字は全件検索ではなく level/from/to のみ検索として扱う。 |
 | `GET /api/logs/search` | `from`, `to` | `""` | 空文字または `YYYY-MM-DD` | `from > to` は `422`。 |
 | `GET /api/logs/search` | `level` | `""` | `info`, `warn`, `warning`, `error`, `debug`, 空文字 | 大文字小文字は区別しない。 |
-| `GET /api/api-access-log` | `limit` | `100` | 1〜1000 | §27.6 を優先する。 |
+| `GET /api/api-access-log` | `limit` | `100` | 1〜1000 | [`docs/details/api.md`](api.md) §27.6 を優先する。 |
 | `GET /api/api-access-log` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
-| `GET /api/webhook-events` | `limit` | `50` | 1〜1000 | §27.13 を優先する。 |
+| `GET /api/webhook-events` | `limit` | `50` | 1〜1000 | [`docs/details/api.md`](api.md) §27.13 を優先する。 |
 | `GET /api/webhook-events` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
 | `GET /api/audit-log` | `limit` | `100` | 1〜200 | [`docs/details/security.md`](security.md) §27.44 を優先する。 |
 | `GET /api/audit-log` | `offset` | `0` | 0 以上 | 整数文字列だけ許可する。 |
@@ -223,7 +223,23 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 
 ### 22.0c 主要状態ファイル schema
 
-主要状態ファイル schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。本ファイルでは API endpoint と状態ファイルの read / write 対応を [`docs/details/api.md`](api.md) §22.0d 以降で定義する。
+主要状態ファイル schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。`api` 詳細では API endpoint と状態ファイルの read / write 対応を [`docs/details/api.md`](api.md) §22.0d 以降で定義する。
+
+### 22.0c.1 API 状態読取優先順
+
+該当節は、API endpoint ごとの状態読取順、response 算出、不在時 response、破損時 response を定義する。状態ファイルの schema、adapter 戻り値、atomic write、破損退避は [`docs/details/statefile.md`](statefile.md) §22.0a と [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
+
+| Endpoint | 読取順 | 正常時 response 算出 | 不在時 | 破損時 / 読込不能時 |
+|----------|--------|----------------------|--------|---------------------|
+| `GET /api/status` | `readBuildStatus()` → 不在時だけ `readBuildHistory()`、`readBuildState()`、`readBuildLock()`、`readPendingTransfers()`、`readCircuitState()` | `.build_status.json` がある場合は同ファイルを基準とし、`running` だけ `.build_lock` が valid running の場合に `true` へ上書きする。 | `.build_status.json` 不在時は fallback で `status`、`last_*`、`running`、`pending_transfers_count`、`circuit_*` を算出する。履歴なしは `status:"none"`。 | `.build_status.json` 破損は `500 {"error":"State file is corrupted"}`。fallback 中の必須読取破損も `500`。 |
+| `GET /api/health` | `readBuildStatus()`、`readBuildLock()`、出力サイト確認 | API process、出力サイト、直近 build 状態を `ok` / `warn` / `error` で返す。 | `.build_status.json` 不在は `status:"degraded"`。 | `.build_status.json` 破損は例外的に `200` とし、`status:"degraded"`、該当 item を `error` にする。 |
+| `GET /api/history` | `readBuildHistory()` | 有効行だけを新しい順に sort し、query filter 後に paging する。 | `total:0`、`pages:0`、`history:[]`。 | 行単位破損は除外し、`BUILD_HISTORY_SKIP_CORRUPT` を server log へ記録する。ファイル読込不能は `500 {"error":"State file read failed"}`。 |
+| `GET /api/history/{id}/log` | `readBuildLog(id)` | 対象 ID の log object を返す。 | 通常ログと archive の両方が不在なら `404 {"error":"Not found"}`。 | 対象 ID の log 破損は `500 {"error":"State file is corrupted"}`。 |
+| `GET /api/logs` | `readLatestBuildLogs(n,q)` | 最新 log line を時系列順へ正規化し、`q` 指定時は部分一致で絞り込む。 | `{"lines":[]}`。 | 個別 log 破損は除外する。ディレクトリ読込不能は `500 {"error":"State file read failed"}`。 |
+| `GET /api/queue` | `readBuildState()`、queue 上限算出時に `.server_config` | `queued`、`running`、`queue_max_size` を返す。 | `.build_state` 不在は `queued:[]`、`running:false`。`.server_config` 不在は既定 queue 上限。 | `.build_state` 破損は `500 {"error":"State file is corrupted"}`。 |
+| `POST /api/build` / `POST /api/build/force` | `readCircuitState()` → `readBuildLock()` → `readBuildState()` | circuit closed かつ lock 非実行なら `.build_state` を更新し、build 開始または queue 追加を返す。 | `.build_state` / `.build_circuit_state` 不在は初期値。 | circuit / state 破損は `500`。`.build_lock` が valid running、形式不正、PID 判定不能の場合は `409 {"error":"Conflict"}`。 |
+| `POST /api/cancel` | `readBuildLock()`、`readBuildState()` | 実行中 build を cancel request 状態へ更新する。 | lock 不在かつ running false は `409 {"error":"Conflict"}`。 | `.build_state` 破損は `500`。`.build_lock` 形式不正または PID 判定不能は `409`。 |
+| `POST /api/circuit-breaker/reset` | `readCircuitState()` | `open:false`、`consecutive_failures:0`、`opened_at:null`、`last_error:null` を atomic write する。 | 不在は初期値から reset 後値を書き込む。 | 読取破損は `500 {"error":"State file is corrupted"}` とし、上書きしない。 |
 
 ### 22.0d API と状態ファイル対応表
 
@@ -459,7 +475,7 @@ API 実装では、下表の read/write 以外の状態ファイルを操作し�
 
 **archive / snapshot / rollback 処理参照：**
 
-`POST /api/logs/cleanup`、`POST /api/logs/archive`、`GET /api/snapshots`、`GET /api/snapshots/{id}/download`、`DELETE /api/snapshots/{id}`、`POST /api/history/{id}/rollback` の保存、圧縮、削除、download 安全性、rollback 実体処理は [`docs/details/archive.md`](archive.md) §27.7 および §27.15 を参照する。本ファイルでは API endpoint、request / response、HTTP status、read / write 境界だけを定義する。
+`POST /api/logs/cleanup`、`POST /api/logs/archive`、`GET /api/snapshots`、`GET /api/snapshots/{id}/download`、`DELETE /api/snapshots/{id}`、`POST /api/history/{id}/rollback` の保存、圧縮、削除、download 安全性、rollback 実体処理は [`docs/details/archive.md`](archive.md) §27.7 および [`docs/details/archive.md`](archive.md) §27.15 を参照する。`api` 詳細では API endpoint、request / response、HTTP status、read / write 境界だけを定義する。
 
 **backup / restore API 副作用固定契約：**
 
@@ -540,7 +556,7 @@ API が新規 ID を生成する機能は、下表の形式に従う。既存 ID
 
 ### 22.0e.3 API Endpoint 種別別実装契約
 
-API handler は endpoint ごとの個別処理へ入る前に、§22.0 の判定順を必ず適用する。共通判定後の endpoint 種別別処理は下表に従う。
+API handler は endpoint ごとの個別処理へ入る前に、[`docs/details/api.md`](api.md) §22.0 の判定順を必ず適用する。共通判定後の endpoint 種別別処理は下表に従う。
 
 | 種別 | 対象 endpoint | 処理順序 | 成功時 | 失敗時 |
 |------|---------------|----------|--------|--------|
@@ -661,7 +677,7 @@ no-op response は endpoint 固有の `No changes` が定義されている場�
 
 **api / sdk / ui / statefile 横断契約参照：**
 
-API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を同時に確認する。本ファイルでは横断連動表と横断処理順表を重複定義しない。
+API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を同時に確認する。`api` 詳細では横断連動表と横断処理順表を重複定義しない。
 
 **横断 fixture 参照：**
 
@@ -671,7 +687,7 @@ api / sdk / ui / statefile にまたがる横断 fixture の fixture 名、入�
 
 API の Phase 3 / Phase 4 必須検証、fixture 名、入力状態、期待 response、期待副作用は [`docs/details/fixture.md`](fixture.md) §22-F を参照する。
 
-本ファイルでは、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、PR 証跡、Phase 別の判定責務は本ファイルに重複定義しない。
+`api` 詳細では、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、実装検証証跡、Phase 別の判定責務は `api` 詳細に重複定義しない。
 
 | メソッド | パス | 認証 | 説明 |
 |---------|------|------|------|
@@ -861,7 +877,7 @@ API の Phase 3 / Phase 4 必須検証、fixture 名、入力状態、期待 res
 }
 ```
 
-`page` は 1 始まり。`per_page` の最大値は 100。`trigger` は §13 の固定値のみ許可する。`tag` はタグ検証と同じ文字列制約を適用する。`flagged` は `"true"` または `"false"` のみ許可する。未知 query、範囲外の `page` / `per_page`、不正な `trigger` / `tag` / `flagged` は `422` とする。範囲外ページを指定した場合は `history: []` を返す。
+`page` は 1 始まり。`per_page` の最大値は 100。`trigger` は [`docs/details/runner.md`](runner.md) §13 の固定値のみ許可する。`tag` はタグ検証と同じ文字列制約を適用する。`flagged` は `"true"` または `"false"` のみ許可する。未知 query、範囲外の `page` / `per_page`、不正な `trigger` / `tag` / `flagged` は `422` とする。範囲外ページを指定した場合は `history: []` を返す。
 
 `id` はビルド実行時に生成するユニーク識別子（形式：`b{YYYYMMDDHHmmss}`）。`.build_logs/{id}.json` に対応するログファイルが保存される。
 
@@ -912,7 +928,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 既に一時停止中に `pause`、または稼働中に `resume` を呼び出した場合は `409 Conflict` を返す。
 
-> **責務分担：** build lifecycle 通知、pending retry、自動 weekly summary の送信責務は [`docs/details/runner.md`](runner.md) §27.32 および §27.19 を参照する。本節では通知 API の request / response、設定 read/write、履歴参照、手動送信 endpoint 境界だけを定義する。
+> **責務分担：** build lifecycle 通知、pending retry、自動 weekly summary の送信責務は [`docs/details/runner.md`](runner.md) §27.32 および [`docs/details/runner.md`](runner.md) §27.19 を参照する。`api` 詳細では通知 API の request / response、設定 read/write、履歴参照、手動送信 endpoint 境界だけを定義する。
 
 **`GET /api/notify-config` レスポンス例：**
 ```json
@@ -1481,7 +1497,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 ### スナップショット（14A）
 
-snapshot の保存、世代削除、download、delete、rollback 実体処理は [`docs/details/archive.md`](archive.md) §27.15 を参照する。本節では API request / response と HTTP 境界だけを定義する。
+snapshot の保存、世代削除、download、delete、rollback 実体処理は [`docs/details/archive.md`](archive.md) §27.15 を参照する。`api` 詳細では API request / response と HTTP 境界だけを定義する。
 
 **`GET /api/snapshots` レスポンス例：**
 ```json
@@ -1514,7 +1530,7 @@ snapshot の保存、世代削除、download、delete、rollback 実体処理は
 
 `POST /api/webhook` は GitHub からの push event を受信し、HMAC-SHA256 署名検証後に build queue へ投入する。認証ヘッダー（`Authorization: Bearer`）は不要とし、Webhook 署名検証を認証代替として扱う。
 
-本節は Webhook 受信 endpoint の概要と必須 header だけを定義する。署名検証、status code、response、event log、queue 投入、重複判定、異常系、検証条件は [`docs/details/api.md`](api.md) §27.12 を参照する。本節へ `POST /api/webhook` の response 例、event log schema、queue entry schema を重複定義してはならない。
+該当節は Webhook 受信 endpoint の概要と必須 header だけを定義する。署名検証、status code、response、event log、queue 投入、重複判定、異常系、検証条件は [`docs/details/api.md`](api.md) §27.12 を参照する。該当節へ `POST /api/webhook` の response 例、event log schema、queue entry schema を重複定義してはならない。
 
 **`POST /api/webhook` リクエストヘッダー：**
 ```
@@ -1524,7 +1540,7 @@ X-Hub-Signature-256: sha256=<hmac_hex>
 Content-Type: application/json
 ```
 
-Secret は `.webhook_secret` を基準とする。secret 不在、header 不在、prefix 不正、hex 不正、署名不一致はいずれも §27.12 の固定契約どおり `401` とし、event log と queue を変更しない。
+Secret は `.webhook_secret` を基準とする。secret 不在、header 不在、prefix 不正、hex 不正、署名不一致はいずれも [`docs/details/runner.md`](runner.md) §27.12 の固定契約どおり `401` とし、event log と queue を変更しない。
 
 **Webhook Secret 設定 API：**
 
@@ -1665,7 +1681,7 @@ Secret は `.webhook_secret` を基準とする。secret 不在、header 不在�
 | private / public | private address に限定しない。入力が IPv4 または IPv4 CIDR として妥当なら保存可能。 |
 | 保存順 | `.access_control` atomic write → `.config_log` 追記 → response。 |
 | `.config_log` 失敗 | `500`。保存済み `.access_control` は巻き戻さない。 |
-| 破損時 | §22.0a に従い初期値で再生成し、制限なしとして扱う。 |
+| 破損時 | [`docs/details/statefile.md`](statefile.md) §22.0a に従い初期値で再生成し、制限なしとして扱う。 |
 
 アクセス制御 fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能別 fixture 固定契約を参照する。
 
@@ -1673,7 +1689,7 @@ Secret は `.webhook_secret` を基準とする。secret 不在、header 不在�
 
 ### ビルドフック（14E）
 
-本節は hooks API の request / response、`.hooks` 保存、`.config_log` 追記、hook log 参照境界だけを定義する。pre / post hook の実行順、timeout、process kill、hook log 保存、secret mask、pre abort、post failure、build status への影響は [`docs/details/runner.md`](runner.md) §27.27 を参照する。
+該当節は hooks API の request / response、`.hooks` 保存、`.config_log` 追記、hook log 参照境界だけを定義する。pre / post hook の実行順、timeout、process kill、hook log 保存、secret mask、pre abort、post failure、build status への影響は [`docs/details/runner.md`](runner.md) §27.27 を参照する。
 
 **`GET /api/hooks` レスポンス例：**
 ```json
@@ -1839,7 +1855,7 @@ hooks fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能�
 
 ### ビルドパイプライン設定（15D）
 
-本節は、`GET /api/pipeline-config` と `POST /api/pipeline-config` の request / response、`.pipeline_config` read/write 境界だけを定義する。runner による `.pipeline_config` 読込タイミング、`extra_args` / `env` 適用、読込不能または schema 不正時の build 停止条件は [`docs/details/runner.md`](runner.md) §27.22 を参照する。
+該当節は、`GET /api/pipeline-config` と `POST /api/pipeline-config` の request / response、`.pipeline_config` read/write 境界だけを定義する。runner による `.pipeline_config` 読込タイミング、`extra_args` / `env` 適用、読込不能または schema 不正時の build 停止条件は [`docs/details/runner.md`](runner.md) §27.22 を参照する。
 
 **`GET /api/pipeline-config` レスポンス例：**
 ```json
@@ -1973,7 +1989,7 @@ SMTP fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能�
 
 **queue 処理固定契約：**
 
-queue 追加は `.build_state` の atomic write で行い、id は §22.0e.2 の queue id とする。queue entry は FIFO を標準とし、§27.35 の優先度キューが有効な場合だけ priority を使用する。`DELETE /api/queue` は `.build_state.queued` だけを空配列にし、実行中 build、lock、history、log を変更しない。
+queue 追加は `.build_state` の atomic write で行い、id は [`docs/details/api.md`](api.md) §22.0e.2 の queue id とする。queue entry は FIFO を標準とし、[`docs/details/runner.md`](runner.md) §27.35 の優先度キューが有効な場合だけ priority を使用する。`DELETE /api/queue` は `.build_state.queued` だけを空配列にし、実行中 build、lock、history、log を変更しない。
 
 `queue_max_size=0` の場合、実行中に受けた queue 対応 API は `429 {"error":"queue_full"}` を返す。`.build_state.queued` の件数が `queue_max_size` 以上の場合も同じ body とする。
 
@@ -2068,17 +2084,17 @@ queue fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能�
 
 ## 25. 認証 実装仕様
 
-認証、session、password hash、login ticket、TOTP 連携、認証ログ、漏えい禁止、`--init-credentials` 生成手順の主本文は [`docs/details/security.md`](security.md) の認証共通詳細および §27.45〜§27.46 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
+認証、session、password hash、login ticket、TOTP 連携、認証ログ、漏えい禁止、`--init-credentials` 生成手順の主本文は [`docs/details/security.md`](security.md) の認証共通詳細および [`docs/details/security.md`](security.md) §27.45〜§27.46 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
 
-本ファイルでは、認証関連 API の endpoint、request / response、HTTP status、状態ファイル read / write 境界だけを定義する。
+`api` 詳細では、認証関連 API の endpoint、request / response、HTTP status、状態ファイル read / write 境界だけを定義する。
 
 | API / CLI | API 側の担当 | 主本文 |
 |-----------|--------------|--------|
-| `POST /api/login` | route、body parse、response body、HTTP status、`.admin_credentials` / `.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、§27.46 |
-| `POST /api/login/totp` | route、body parse、response body、HTTP status、`.totp_secret` / `.admin_credentials` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、§27.46 |
+| `POST /api/login` | route、body parse、response body、HTTP status、`.admin_credentials` / `.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、[`docs/details/security.md`](security.md) §27.46 |
+| `POST /api/login/totp` | route、body parse、response body、HTTP status、`.totp_secret` / `.admin_credentials` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、[`docs/details/security.md`](security.md) §27.46 |
 | `POST /api/logout` | route、body 禁止、response body、HTTP status。 | [`docs/details/security.md`](security.md) 認証共通詳細 |
 | `POST /api/change-password` | route、body parse、response body、HTTP status、`.admin_credentials` write 呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細 |
-| `GET /api/sessions` / `POST /api/sessions/revoke-all` | route、response body、HTTP status、memory session 操作呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、§27.45 |
+| `GET /api/sessions` / `POST /api/sessions/revoke-all` | route、response body、HTTP status、memory session 操作呼び出し境界。 | [`docs/details/security.md`](security.md) 認証共通詳細、[`docs/details/security.md`](security.md) §27.45 |
 | `--init-credentials` | CLI option dispatch、stdout / stderr / exit code を security 契約どおり返す。 | [`docs/details/security.md`](security.md) 認証共通詳細、[`docs/details/statefile.md`](statefile.md) §22.0c |
 | `GET /api/auth/totp-status` / `POST /api/auth/totp-setup` / `POST /api/auth/totp-confirm` / `DELETE /api/auth/totp` | route、body parse、response body、HTTP status、`.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) §27.46 |
 
@@ -2329,7 +2345,7 @@ owner component は `api` とする。collaborator component は `sdk`、`ui`、
 
 | key | 型 | 必須 | 仕様 |
 |-----|----|------|------|
-| `id` | string | 必須 | §27.12 の event id。 |
+| `id` | string | 必須 | [`docs/details/runner.md`](runner.md) §27.12 の event id。 |
 | `timestamp` | string | 必須 | UTC ISO 8601 秒精度。 |
 | `delivery_id` | string | 必須 | `X-GitHub-Delivery`。空、NUL、改行は禁止。 |
 | `event` | string | 必須 | `push` または受信した GitHub event 名。 |
@@ -2511,7 +2527,7 @@ owner component は `api` とする。collaborator component は `runner`、`sta
 |------|------|
 | branch 重複 | 同一 `branch` の重複は `422`。 |
 | deploy target id | branch 内で一意。重複は `422`。 |
-| target_files | 存在する場合は §27.21 の正規化を適用する。 |
+| target_files | 存在する場合は [`docs/details/runner.md`](runner.md) §27.21 の正規化を適用する。 |
 | 保存順 | branch 名昇順、同一 branch 内 deploy target id 昇順で保存する。 |
 | 削除 | POST empty で `.branch_config` を削除した後、`.config_log` に default 復帰を記録する。 |
 
@@ -2524,7 +2540,7 @@ owner component は `api` とする。collaborator component は `runner`、`sta
 | POST empty | `.branch_config` 存在確認 → 削除 → `.config_log` 追記 → response。 | 削除失敗は `500`。`.config_log` 失敗は `500`、削除済み状態は巻き戻さない。 |
 | POST no-op | 正規化後の `branch_targets` が既存値と一致する。 | `.branch_config` と `.config_log` を変更せず `{ "message":"No changes","branches_count":N }` を返す。 |
 
-`.config_log` の diff target は `branch_config` とする。deploy target の `host`、`user`、`dest_dir` は secret として扱わないが、値に token / password / secret 風 key が含まれる object を追加した場合は §27.20 の mask 規則を適用する。
+`.config_log` の diff target は `branch_config` とする。deploy target の `host`、`user`、`dest_dir` は secret として扱わないが、値に token / password / secret 風 key が含まれる object を追加した場合は [`docs/details/runner.md`](runner.md) §27.20 の mask 規則を適用する。
 
 **検証：**
 
@@ -2532,7 +2548,7 @@ owner component は `api` とする。collaborator component は `runner`、`sta
 
 **runner 取り込み：**
 
-runner による `.branch_config` の読込、`RunnerConfig.BranchTargets` への正規化、起動中の反映タイミングは [`docs/details/runner.md`](runner.md) §12〜§13 の runner 設定正規化契約を参照する。本節では API endpoint、request / response、保存、削除、検証条件だけを定義する。
+runner による `.branch_config` の読込、`RunnerConfig.BranchTargets` への正規化、起動中の反映タイミングは [`docs/details/runner.md`](runner.md) §12〜§13 の runner 設定正規化契約を参照する。`api` 詳細では API endpoint、request / response、保存、削除、検証条件だけを定義する。
 
 **検証条件：**
 
@@ -2636,90 +2652,90 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | diff failure | 状態差分なしで `500`。 |
 | target name | endpoint から固定 target 名が生成される。 |
 
-**§27.21〜§27.38 / §27.42〜§27.47 api 連動境界確認表：**
+**[`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 api 連動境界確認表：**
 
-§27.21〜§27.38、§27.42〜§27.47 の各機能は、owner component の個別節を主本文とする。下表は api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認するための表であり、runner / builder / security / fixture の主本文を置き換えない。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
+[`docs/details/runner.md`](runner.md) §27.21〜§27.38、[`docs/details/security.md`](security.md) §27.42〜§27.47 の各機能は、owner component の個別節を主本文とする。下表は api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認するための表であり、runner / builder / security / fixture の主本文を置き換えない。下表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は [`docs/details/runner.md`](runner.md) §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
 
-詳細実装確認では、対象機能の owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) §27-F の fixture、必要な collaborator component 別の [`docs/details/*.md`](../details/) 詳細本文責務を同時に参照する。実装状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
+詳細実装確認では、対象機能の owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) §27-F の fixture、必要な collaborator component 別の [`docs/details/*.md`](../details/) 詳細本文責務を同時に参照する。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|
-| §27.21 | 複数ファイル監視 | `.branch_config.branch_targets[].target_files`、GitHub content SHA または local SHA。 | `changed_targets[]`、target 単位 SHA cache、build log。 | 成功時だけ該当 target SHA cache を更新する。 | SHA 部分失敗では build を開始せず、成功取得済み cache も更新しない。 | 1 件変更、複数変更、変更なし、不正 path、force build、SHA 部分失敗。 |
-| §27.22 | pipeline YAML | `.pipeline.yml` または `.pipeline_config.inline_yaml`。 | `pipeline_steps[]`、step stdout/stderr、build status。 | step を定義順に実行し、build 終了時に定義順で保存する。 | parse / command 不正では build を開始しない。required step 失敗で後続 required step を実行しない。 | 成功、required 失敗、optional 失敗、禁止 YAML、secret mask、timeout。 |
-| §27.23 | local watch | `.server_config.watch_mode`、local `src` 配下 Markdown。 | `.local_watch_state.json`、trigger `local_watch`。 | local mode では GitHub API / PAT を呼ばず、成功時だけ state を置換する。 | file read 失敗は build なし。dry-run は state を作成 / 更新しない。 | 初回、変更なし、1 file 変更、token 不在、file 削除、out 除外。 |
-| §27.24 | tag filter | `.server_config.tag_filter`、GitHub tags refs。 | `matched_tags[]`、skip status。 | tag 一致時だけ build。tag 不一致 skip は `.build_status.json` だけ更新する。 | tags API 最終失敗は build なし。local mode 併用は終了コード `2`。 | tag 一致、不一致、patterns 空、API 失敗、prefix pattern、local mode 併用。 |
-| §27.25 | build cache | `--cache-dir`、cache 設定、input / deps SHA。 | cache entry、page cache、`[REPORT]` cache counts。 | hit 時は変換結果を再利用し、miss 成功時だけ entry を書く。 | cache read/write 失敗は build を成功可能にし、WARN / report に残す。 | 2 回目 hit、1 file miss、theme 変更、cache 破損、entry 不一致、write failure。 |
-| §27.26 | parallel deploy | `.server_config.deploy_parallelism`、deploy targets。 | `target_results[]`、`.pending_transfers`。 | target ごとに並列転送し、result は設定順で保存する。 | worker 内部失敗は該当 target failure。他 target は継続する。 | 3 target/2 worker、1 target 失敗、parallelism 1、result order、pending duplicate。 |
-| §27.27 | build hooks | `.hooks`、pre/post hook command_args。 | hook log、build log hook result。 | pre は build 前、post は build 後に id 昇順で実行する。 | pre abort で build 本体を開始しない。post 失敗は build status を変更しない。 | pre success、pre abort、post failure、timeout、delete hook、secret mask。 |
-| §27.28 | dependency tracking | builder dependency manifest、Markdown link / asset reference。 | `.dependency_manifest.json`、affected target 判定。 | build 成功時だけ manifest を更新する。 | manifest 破損は full build 扱い。dry-run は更新しない。 | direct dep、shared asset、deleted dep、manifest corrupt、dry-run no write。 |
-| §27.29 | remote build | remote build 設定、ssh target、artifact path。 | remote artifact metadata、build log remote section。 | remote command と artifact fetch を行い、検証成功時だけ deploy / history へ進む。 | remote timeout / checksum mismatch は failure とし、secret / command credential を保存しない。 | remote success、timeout、checksum mismatch、artifact missing、secret mask。 |
-| §27.30 | approval API | approval 一覧取得、approve/reject API。 | `.approval_queue`、`.build_state.queued[]`、`.build_history`。 | pending entry だけ approve/reject できる。 | entry 不在は `404`、pending 以外は `409`、queue full は `429`。 | list、approve、reject、duplicate approve、queue full。 |
-| §27.31 | branch env | branch env 設定、pipeline / hook env。 | merged env、masked log。 | runner env → branch env → step/hook env の順で上書きする。 | env key 不正は保存不可 / runner 設定エラー。secret はログに出さない。 | merge order、invalid key、secret stdout、branch missing、override。 |
-| §27.32 | build notification | notify config、build event、channel 設定。 | notify payload、`.notify_log`、`.notify_pending`。 | event ごとに payload を生成し、送信結果を記録する。 | retry 対象失敗は pending。secret は payload/log に含めない。 | success notify、failure notify、webhook 5xx、command timeout、disabled、secret mask。 |
-| §27.33 | build trends | build duration samples、history/log。 | `.build_trends.json`、trend stats response。 | build 完了時に sample を追加し、上限件数で trim する。 | trend 保存失敗は build 成否を反転しない。破損時は再集計契約に従う。 | sample append、trim、median/p95、corrupt rebuild、save failure。 |
-| §27.34 | build chain | chain config、upstream build result。 | chain execution log、queued child build。 | chain 条件一致時だけ次 build を queue する。 | chain config 破損は chain 無効として通常 build は継続する。 | chain success、condition mismatch、loop detect、queue full、config corrupt。 |
-| §27.35 | priority queue | queue request、priority、created_seq。 | sorted queue、queue API response。 | queue 保存時に priority / created_seq を固定する。 | queue full は `429`、既存 queue を変更しない。 | high priority、same priority FIFO、queue full、clear queue、invalid priority。 |
-| §27.36 | failure classification | build failure evidence、logs/status。 | `failure_category`、`failure_evidence[]`、API filter。 | finalizer で分類し、log/history/status に保存する。 | 分類不能でも build 結果は保持し、category `unknown` とする。 | pipeline timeout、api failure、deploy failure、unknown、filter。 |
-| §27.37 | execution environment | runner host/runtime info、builder version。 | environment record、build log/status。 | build 開始時に取得し、log に保存する。 | 取得失敗は `unknown` を保存し build は継続する。secret / env 全量は保存しない。 | normal、hostname unavailable、builder version timeout、secret env absent。 |
-| §27.38 | duration anomaly | duration samples、anomaly config。 | anomaly flag、alert / notify、stats。 | build 完了時に閾値判定し、該当時だけ alert/notify を作る。 | samples 不足では判定しない。通知失敗は build 成否を反転しない。 | normal、avg anomaly、p95 anomaly、insufficient samples、notify failure。 |
-| §27.42 | trigger API scope | API token scopes、endpoint group。 | allow/deny decision、audit。 | scope 一致時だけ endpoint 実行。 | scope 不足は `403`、endpoint 固有処理なし。 | read allowed、trigger denied、admin allowed、health no scope、audit deny。 |
-| §27.43 | API key management | token label/scopes/expires_at。 | `.api_tokens` record、token 本体 1 回 response。 | token 作成 / 失効 / 認証成功時に状態と audit を更新する。 | audit 失敗時は token 本体を返さない。token 破損 state は自動再生成しない。 | create、revoke、expired auth、scope auth、audit failure、secret non-persistence。 |
-| §27.44 | audit log | 認証、権限、設定、token、build trigger event。 | `.audit_log` JSON Lines、audit API response。 | 監査対象操作の成否確定後に追記する。 | 追記失敗は対象操作を `500` 扱い。ただし保存済み状態は個別契約どおり戻さない。 | password change、permission denied、secret input、corrupt line、filter、append failure。 |
-| §27.45 | session timeout | `.server_config.session_timeout_seconds`。 | 新規 session `expires_at`。 | session 発行直前の設定で期限を計算する。 | 範囲外は `422`。既存 session の期限は変更しない。 | 300 秒、既存 session 維持、範囲外、key 不在、TOTP login、秒精度。 |
-| §27.46 | TOTP | setup secret、ticket、TOTP code。 | `.totp_secret`、ticket/session response、audit/access log。 | secret / ticket はメモリと 1 回 response に限定し、成功時だけ永続状態を更新する。 | code 不一致 / replay は token を返さない。audit 失敗時も secret 平文を出さない。 | setup、login、replay、secret one-time、ticket reuse、disable、window、全角 code。 |
-| §27.47 | API rate limit | rate policy、remote addr、actor key。 | `.api_rate_state`、`429`、state summary。 | key 群を同一 lock で判定 / 更新する。 | 上限超過では count を増やさず endpoint 固有処理を行わない。audit 失敗時は `500`。 | under limit、over IP、over token、disabled、policy update、audit failure、window reset。 |
+| [`docs/details/runner.md`](runner.md) §27.21 | 複数ファイル監視 | `.branch_config.branch_targets[].target_files`、GitHub content SHA または local SHA。 | `changed_targets[]`、target 単位 SHA cache、build log。 | 成功時だけ該当 target SHA cache を更新する。 | SHA 部分失敗では build を開始せず、成功取得済み cache も更新しない。 | 1 件変更、複数変更、変更なし、不正 path、force build、SHA 部分失敗。 |
+| [`docs/details/runner.md`](runner.md) §27.22 | pipeline YAML | `.pipeline.yml` または `.pipeline_config.inline_yaml`。 | `pipeline_steps[]`、step stdout/stderr、build status。 | step を定義順に実行し、build 終了時に定義順で保存する。 | parse / command 不正では build を開始しない。required step 失敗で後続 required step を実行しない。 | 成功、required 失敗、optional 失敗、禁止 YAML、secret mask、timeout。 |
+| [`docs/details/runner.md`](runner.md) §27.23 | local watch | `.server_config.watch_mode`、local `src` 配下 Markdown。 | `.local_watch_state.json`、trigger `local_watch`。 | local mode では GitHub API / PAT を呼ばず、成功時だけ state を置換する。 | file read 失敗は build なし。dry-run は state を作成 / 更新しない。 | 初回、変更なし、1 file 変更、token 不在、file 削除、out 除外。 |
+| [`docs/details/runner.md`](runner.md) §27.24 | tag filter | `.server_config.tag_filter`、GitHub tags refs。 | `matched_tags[]`、skip status。 | tag 一致時だけ build。tag 不一致 skip は `.build_status.json` だけ更新する。 | tags API 最終失敗は build なし。local mode 併用は終了コード `2`。 | tag 一致、不一致、patterns 空、API 失敗、prefix pattern、local mode 併用。 |
+| [`docs/details/builder.md`](builder.md) §27.25 | build cache | `--cache-dir`、cache 設定、input / deps SHA。 | cache entry、page cache、`[REPORT]` cache counts。 | hit 時は変換結果を再利用し、miss 成功時だけ entry を書く。 | cache read/write 失敗は build を成功可能にし、WARN / report に残す。 | 2 回目 hit、1 file miss、theme 変更、cache 破損、entry 不一致、write failure。 |
+| [`docs/details/runner.md`](runner.md) §27.26 | parallel deploy | `.server_config.deploy_parallelism`、deploy targets。 | `target_results[]`、`.pending_transfers`。 | target ごとに並列転送し、result は設定順で保存する。 | worker 内部失敗は該当 target failure。他 target は継続する。 | 3 target/2 worker、1 target 失敗、parallelism 1、result order、pending duplicate。 |
+| [`docs/details/runner.md`](runner.md) §27.27 | build hooks | `.hooks`、pre/post hook command_args。 | hook log、build log hook result。 | pre は build 前、post は build 後に id 昇順で実行する。 | pre abort で build 本体を開始しない。post 失敗は build status を変更しない。 | pre success、pre abort、post failure、timeout、delete hook、secret mask。 |
+| [`docs/details/builder.md`](builder.md) §27.28 | dependency tracking | builder dependency manifest、Markdown link / asset reference。 | `.dependency_manifest.json`、affected target 判定。 | build 成功時だけ manifest を更新する。 | manifest 破損は full build 扱い。dry-run は更新しない。 | direct dep、shared asset、deleted dep、manifest corrupt、dry-run no write。 |
+| [`docs/details/runner.md`](runner.md) §27.29 | remote build | remote build 設定、ssh target、artifact path。 | remote artifact metadata、build log remote section。 | remote command と artifact fetch を行い、検証成功時だけ deploy / history へ進む。 | remote timeout / checksum mismatch は failure とし、secret / command credential を保存しない。 | remote success、timeout、checksum mismatch、artifact missing、secret mask。 |
+| [`docs/details/api.md`](api.md) §27.30 | approval API | approval 一覧取得、approve/reject API。 | `.approval_queue`、`.build_state.queued[]`、`.build_history`。 | pending entry だけ approve/reject できる。 | entry 不在は `404`、pending 以外は `409`、queue full は `429`。 | list、approve、reject、duplicate approve、queue full。 |
+| [`docs/details/runner.md`](runner.md) §27.31 | branch env | branch env 設定、pipeline / hook env。 | merged env、masked log。 | runner env → branch env → step/hook env の順で上書きする。 | env key 不正は保存不可 / runner 設定エラー。secret はログに出さない。 | merge order、invalid key、secret stdout、branch missing、override。 |
+| [`docs/details/runner.md`](runner.md) §27.32 | build notification | notify config、build event、channel 設定。 | notify payload、`.notify_log`、`.notify_pending`。 | event ごとに payload を生成し、送信結果を記録する。 | retry 対象失敗は pending。secret は payload/log に含めない。 | success notify、failure notify、webhook 5xx、command timeout、disabled、secret mask。 |
+| [`docs/details/runner.md`](runner.md) §27.33 | build trends | build duration samples、history/log。 | `.build_trends.json`、trend stats response。 | build 完了時に sample を追加し、上限件数で trim する。 | trend 保存失敗は build 成否を反転しない。破損時は再集計契約に従う。 | sample append、trim、median/p95、corrupt rebuild、save failure。 |
+| [`docs/details/runner.md`](runner.md) §27.34 | build chain | chain config、upstream build result。 | chain execution log、queued child build。 | chain 条件一致時だけ次 build を queue する。 | chain config 破損は chain 無効として通常 build は継続する。 | chain success、condition mismatch、loop detect、queue full、config corrupt。 |
+| [`docs/details/runner.md`](runner.md) §27.35 | priority queue | queue request、priority、created_seq。 | sorted queue、queue API response。 | queue 保存時に priority / created_seq を固定する。 | queue full は `429`、既存 queue を変更しない。 | high priority、same priority FIFO、queue full、clear queue、invalid priority。 |
+| [`docs/details/runner.md`](runner.md) §27.36 | failure classification | build failure evidence、logs/status。 | `failure_category`、`failure_evidence[]`、API filter。 | finalizer で分類し、log/history/status に保存する。 | 分類不能でも build 結果は保持し、category `unknown` とする。 | pipeline timeout、api failure、deploy failure、unknown、filter。 |
+| [`docs/details/runner.md`](runner.md) §27.37 | execution environment | runner host/runtime info、builder version。 | environment record、build log/status。 | build 開始時に取得し、log に保存する。 | 取得失敗は `unknown` を保存し build は継続する。secret / env 全量は保存しない。 | normal、hostname unavailable、builder version timeout、secret env absent。 |
+| [`docs/details/runner.md`](runner.md) §27.38 | duration anomaly | duration samples、anomaly config。 | anomaly flag、alert / notify、stats。 | build 完了時に閾値判定し、該当時だけ alert/notify を作る。 | samples 不足では判定しない。通知失敗は build 成否を反転しない。 | normal、avg anomaly、p95 anomaly、insufficient samples、notify failure。 |
+| [`docs/details/security.md`](security.md) §27.42 | trigger API scope | API token scopes、endpoint group。 | allow/deny decision、audit。 | scope 一致時だけ endpoint 実行。 | scope 不足は `403`、endpoint 固有処理なし。 | read allowed、trigger denied、admin allowed、health no scope、audit deny。 |
+| [`docs/details/security.md`](security.md) §27.43 | API key management | token label/scopes/expires_at。 | `.api_tokens` record、token 本体 1 回 response。 | token 作成 / 失効 / 認証成功時に状態と audit を更新する。 | audit 失敗時は token 本体を返さない。token 破損 state は自動再生成しない。 | create、revoke、expired auth、scope auth、audit failure、secret non-persistence。 |
+| [`docs/details/security.md`](security.md) §27.44 | audit log | 認証、権限、設定、token、build trigger event。 | `.audit_log` JSON Lines、audit API response。 | 監査対象操作の成否確定後に追記する。 | 追記失敗は対象操作を `500` 扱い。ただし保存済み状態は個別契約どおり戻さない。 | password change、permission denied、secret input、corrupt line、filter、append failure。 |
+| [`docs/details/security.md`](security.md) §27.45 | session timeout | `.server_config.session_timeout_seconds`。 | 新規 session `expires_at`。 | session 発行直前の設定で期限を計算する。 | 範囲外は `422`。既存 session の期限は変更しない。 | 300 秒、既存 session 維持、範囲外、key 不在、TOTP login、秒精度。 |
+| [`docs/details/security.md`](security.md) §27.46 | TOTP | setup secret、ticket、TOTP code。 | `.totp_secret`、ticket/session response、audit/access log。 | secret / ticket はメモリと 1 回 response に限定し、成功時だけ永続状態を更新する。 | code 不一致 / replay は token を返さない。audit 失敗時も secret 平文を出さない。 | setup、login、replay、secret one-time、ticket reuse、disable、window、全角 code。 |
+| [`docs/details/security.md`](security.md) §27.47 | API rate limit | rate policy、remote addr、actor key。 | `.api_rate_state`、`429`、state summary。 | key 群を同一 lock で判定 / 更新する。 | 上限超過では count を増やさず endpoint 固有処理を行わない。audit 失敗時は `500`。 | under limit、over IP、over token、disabled、policy update、audit failure、window reset。 |
 
-**§27.21〜§27.38 / §27.42〜§27.47 api / sdk / ui 連動参照表：**
+**[`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 api / sdk / ui 連動参照表：**
 
-下表は api、sdk、ui の接続点をそろえるための参照表である。各 API endpoint の詳細は本ファイルの個別節、SDK method の詳細は [`docs/details/sdk.md`](sdk.md) §23、UI 操作の詳細は [`docs/details/ui.md`](ui.md) §24、fixture と PR 証跡は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。本表だけを根拠に endpoint、method、DOM、状態ファイル、fixture を追加してはならない。
+下表は api、sdk、ui の接続点をそろえるための参照表である。各 API endpoint の詳細は [`docs/details/api.md`](api.md) 詳細本文責務の個別節、SDK method の詳細は [`docs/details/sdk.md`](sdk.md) §23、UI 操作の詳細は [`docs/details/ui.md`](ui.md) §24、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。本表だけを根拠に endpoint、method、DOM、状態ファイル、fixture を追加してはならない。
 
 | 節 | API | SDK | UI |
 |----|-----|-----|----|
-| §27.21 | branch config API と status/history/log に反映する。 | `getBranchConfig()` / `setBranchConfig()` は `target_files` を削除しない。 | リポジトリ情報 panel で複数 target を表示 / 保存する。 |
-| §27.22 | pipeline config API。 | `getPipelineConfig()` / `setPipelineConfig()`。 | 設定 panel で pipeline config を表示 / 保存し、shell 文字列へ変換しない。 |
-| §27.23 | `GET/POST /api/config` の `watch_mode`。 | `getConfig()` / `setConfig()`。 | 設定 panel で `github` / `local` を選択する。 |
-| §27.24 | `GET/POST /api/config` の `tag_filter`。 | `getConfig()` / `setConfig()`。 | 設定 panel で tag filter を表示 / 保存する。 |
-| §27.25 | `GET/POST /api/config` の cache key と builder report。 | `getConfig()` / `setConfig()`。 | 設定 panel と build result 表示で cache counts を表示する。 |
-| §27.26 | `GET/POST /api/config` の `deploy_parallelism` と status/history。 | `getConfig()` / `setConfig()`。 | 設定 panel で parallelism を表示 / 保存し、結果は履歴/logで表示する。 |
-| §27.27 | hooks API。 | hook methods。 | フック panel で command_args を 1 行 1 引数として表示 / 保存する。 |
-| §27.28 | endpoint 追加なし。manifest は runner/builder 内部状態。 | SDK method 追加なし。 | UI 操作追加なし。依存情報を表示する場合は、既存 build result 表示の範囲だけを使用する。 |
-| §27.29 | remote build config は config / pipeline 系 API に含める。 | `getConfig()` / `setConfig()` または pipeline method。 | 設定 panel で remote build 設定を表示 / 保存する。 |
-| §27.30 | approvals API。 | approval methods。 | 承認待ち panel で approve / reject を操作する。 |
-| §27.31 | branch config または config API に含める。 | branch/config method。 | リポジトリ情報 panel で branch env を表示 / 保存する。 |
-| §27.32 | notify config / notify log API。 | notify methods。 | 通知設定 panel で channel、payload、履歴を表示する。 |
-| §27.33 | stats/build trends API。 | `getBuildTrends()`。 | 統計 panel で trend を表示する。 |
-| §27.34 | build chain config API。 | `getBuildChainConfig()` / `setBuildChainConfig()`。 | 設定またはリポジトリ情報 panel で chain を表示 / 保存する。 |
-| §27.35 | queue API。 | `getQueue()` / `clearQueue()` と build trigger methods。 | 手動実行 panel で priority 反映後 queue を表示する。 |
-| §27.36 | history/stats API の filter と response に含める。 | history / stats methods は category を保持する。 | 履歴 panel で failure category filter を表示する。 |
-| §27.37 | output meta / status / history log に含める。 | `getOutputMeta()` / `getStatus()` / `getHistoryLog()`。 | システム情報または履歴 detail に表示する。 |
-| §27.38 | config / stats / dashboard alerts に含める。 | config / stats / dashboard methods。 | 統計 panel と dashboard alert で anomaly を表示する。 |
-| §27.42 | endpoint ごとの scope 判定。 | sdk は token scope を推測せず API error を返す。 | ui は `403` を権限不足として表示し、logout しない。 |
-| §27.43 | token API。 | token methods。 | API token 管理 panel で発行 token を 1 回だけ表示する。 |
-| §27.44 | audit log API。 | `getAuditLog()`。 | 監査ログ panel で filter 表示し、secret は表示しない。 |
-| §27.45 | config API。 | `setConfig({session_timeout_seconds})`。 | セキュリティ panel で session timeout を表示 / 保存する。 |
-| §27.46 | TOTP/auth API。 | TOTP/auth methods。 | セキュリティ/login panel で one-time secret/ticket flow を扱う。 |
-| §27.47 | rate limit API。 | `getApiRateLimit()` / `setApiRateLimit()`。 | セキュリティ panel で policy と state summary を表示する。 |
+| [`docs/details/runner.md`](runner.md) §27.21 | branch config API と status/history/log に反映する。 | `getBranchConfig()` / `setBranchConfig()` は `target_files` を削除しない。 | リポジトリ情報 panel で複数 target を表示 / 保存する。 |
+| [`docs/details/runner.md`](runner.md) §27.22 | pipeline config API。 | `getPipelineConfig()` / `setPipelineConfig()`。 | 設定 panel で pipeline config を表示 / 保存し、shell 文字列へ変換しない。 |
+| [`docs/details/runner.md`](runner.md) §27.23 | `GET/POST /api/config` の `watch_mode`。 | `getConfig()` / `setConfig()`。 | 設定 panel で `github` / `local` を選択する。 |
+| [`docs/details/runner.md`](runner.md) §27.24 | `GET/POST /api/config` の `tag_filter`。 | `getConfig()` / `setConfig()`。 | 設定 panel で tag filter を表示 / 保存する。 |
+| [`docs/details/builder.md`](builder.md) §27.25 | `GET/POST /api/config` の cache key と builder report。 | `getConfig()` / `setConfig()`。 | 設定 panel と build result 表示で cache counts を表示する。 |
+| [`docs/details/runner.md`](runner.md) §27.26 | `GET/POST /api/config` の `deploy_parallelism` と status/history。 | `getConfig()` / `setConfig()`。 | 設定 panel で parallelism を表示 / 保存し、結果は履歴/logで表示する。 |
+| [`docs/details/runner.md`](runner.md) §27.27 | hooks API。 | hook methods。 | フック panel で command_args を 1 行 1 引数として表示 / 保存する。 |
+| [`docs/details/builder.md`](builder.md) §27.28 | endpoint 追加なし。manifest は runner/builder 内部状態。 | SDK method 追加なし。 | UI 操作追加なし。依存情報を表示する場合は、既存 build result 表示の範囲だけを使用する。 |
+| [`docs/details/runner.md`](runner.md) §27.29 | remote build config は config / pipeline 系 API に含める。 | `getConfig()` / `setConfig()` または pipeline method。 | 設定 panel で remote build 設定を表示 / 保存する。 |
+| [`docs/details/api.md`](api.md) §27.30 | approvals API。 | approval methods。 | 承認待ち panel で approve / reject を操作する。 |
+| [`docs/details/runner.md`](runner.md) §27.31 | branch config または config API に含める。 | branch/config method。 | リポジトリ情報 panel で branch env を表示 / 保存する。 |
+| [`docs/details/runner.md`](runner.md) §27.32 | notify config / notify log API。 | notify methods。 | 通知設定 panel で channel、payload、履歴を表示する。 |
+| [`docs/details/runner.md`](runner.md) §27.33 | stats/build trends API。 | `getBuildTrends()`。 | 統計 panel で trend を表示する。 |
+| [`docs/details/runner.md`](runner.md) §27.34 | build chain config API。 | `getBuildChainConfig()` / `setBuildChainConfig()`。 | 設定またはリポジトリ情報 panel で chain を表示 / 保存する。 |
+| [`docs/details/runner.md`](runner.md) §27.35 | queue API。 | `getQueue()` / `clearQueue()` と build trigger methods。 | 手動実行 panel で priority 反映後 queue を表示する。 |
+| [`docs/details/runner.md`](runner.md) §27.36 | history/stats API の filter と response に含める。 | history / stats methods は category を保持する。 | 履歴 panel で failure category filter を表示する。 |
+| [`docs/details/runner.md`](runner.md) §27.37 | output meta / status / history log に含める。 | `getOutputMeta()` / `getStatus()` / `getHistoryLog()`。 | システム情報または履歴 detail に表示する。 |
+| [`docs/details/runner.md`](runner.md) §27.38 | config / stats / dashboard alerts に含める。 | config / stats / dashboard methods。 | 統計 panel と dashboard alert で anomaly を表示する。 |
+| [`docs/details/security.md`](security.md) §27.42 | endpoint ごとの scope 判定。 | sdk は token scope を推測せず API error を返す。 | ui は `403` を権限不足として表示し、logout しない。 |
+| [`docs/details/security.md`](security.md) §27.43 | token API。 | token methods。 | API token 管理 panel で発行 token を 1 回だけ表示する。 |
+| [`docs/details/security.md`](security.md) §27.44 | audit log API。 | `getAuditLog()`。 | 監査ログ panel で filter 表示し、secret は表示しない。 |
+| [`docs/details/security.md`](security.md) §27.45 | config API。 | `setConfig({session_timeout_seconds})`。 | セキュリティ panel で session timeout を表示 / 保存する。 |
+| [`docs/details/security.md`](security.md) §27.46 | TOTP/auth API。 | TOTP/auth methods。 | セキュリティ/login panel で one-time secret/ticket flow を扱う。 |
+| [`docs/details/security.md`](security.md) §27.47 | rate limit API。 | `getApiRateLimit()` / `setApiRateLimit()`。 | セキュリティ panel で policy と state summary を表示する。 |
 
 api / sdk / ui のいずれも、上表に存在しない endpoint、method、UI 操作を追加してはならない。追加が必要な場合は、本表、該当 endpoint 個別節、SDK method 表、UI 操作契約、fixture catalog を先に更新する。個別節が endpoint 追加なしとする機能は、runner / builder の内部挙動または既存 response field の範囲で実装する。
 
-**§27 api / sdk / ui 連動実装確認ゲート：**
+**[`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 api / sdk / ui 連動実装確認ゲート：**
 
-§27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する機能の詳細実装確認では、下表の全条件を満たす。owner component が `api` ではない機能でも、API response を SDK / UI が利用する場合は本ゲートを満たす。
+[`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 のうち API、SDK、UI が連動する機能の詳細実装確認では、下表の全条件を満たす。owner component が `api` ではない機能でも、API response を SDK / UI が利用する場合は本ゲートを満たす。
 
-| ゲート | API 側の合格条件 | SDK / UI への固定契約 | 禁止事項 |
+| ゲート | API 側の合格条件 | SDK / UI への固定契約 | 禁止条件 |
 |--------|------------------|------------------------|----------|
-| endpoint 対応 | §22.0e、個別 §27 節、本表の API 列が同じ method / path / query / body / response を示す。 | SDK method と UI 操作は本表の SDK / UI 列だけを使用する。 | 表にない endpoint、method、UI 操作を実装都合で追加すること。 |
+| endpoint 対応 | [`docs/details/api.md`](api.md) §22.0e、個別 [`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 節、本表の API 列が同じ method / path / query / body / response を示す。 | SDK method と UI 操作は本表の SDK / UI 列だけを使用する。 | 表にない endpoint、method、UI 操作を実装都合で追加すること。 |
 | request 正規化 | path parameter、query、body key、nullable、既定値を API 側で検証し、不正値は `422` とする。 | SDK は指定値を表どおり送信し、UI は入力正規化だけを行う。 | SDK が未知 key を削除する、UI が API 既定値を保存前に補完すること。 |
 | response 透過 | 成功 response は個別節の key だけを返し、array 順、nullable、mask 値を固定する。 | SDK は response を補完・再計算せず返し、UI は API 順序で表示する。 | SDK / UI が存在しない key、集計値、状態名、token list を合成すること。 |
 | error 伝播 | `401` / `403` / `409` / `422` / `429` / `500` の status と error body を固定する。 | SDK は `AdlaireCIError` として保持し、UI は status 別表示と仕様上の再取得だけを行う。 | 自動 retry、自動 refresh、自動 logout、同一変更 API の再送を仕様外で行うこと。 |
 | side effect | validation 失敗、認可失敗、rate limit、no-op、partial failure の write / call / log 差分を個別節または fixture で固定する。 | SDK / UI は副作用完了を推測せず、成功後再取得で確認する。 | read-only、dry-run、validation failure、`403`、`429` で状態を書き換えること。 |
 | secret / one-time | token、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header は response・log・state の許可箇所以外へ出さない。 | SDK は内部保存せず、UI は専用一回表示領域だけに出し、次 user action / panel 遷移 / logout / `401` で消去する。 | token 本体の再表示、token list への合成、secret の error message / DOM / expected への残存。 |
-| fixture 証跡 | [`docs/details/fixture.md`](fixture.md) §27-F の API / SDK / UI 連動 fixture で request、response、error、side effect、secret、refresh order を確認する。 | PR 本文に対象 fixture、未実装対象、未定義 endpoint / UI / 状態ファイル不追加を記録する。 | fixture なし、または実装挙動に合わせて期待値を弱めること。 |
+| fixture 証跡 | [`docs/details/fixture.md`](fixture.md) §27-F の API / SDK / UI 連動 fixture で request、response、error、side effect、secret、refresh order を確認する。 | [`docs/details/fixture.md`](fixture.md) の実装検証証跡に対象 fixture、未実装対象、未定義 endpoint / UI / 状態ファイル不追加を記録する。 | fixture なし、または実装挙動に合わせて期待値を弱めること。 |
 
 ### 27.30 ビルド承認フロー
 owner component は `api` とする。collaborator component は `runner`、`sdk`、`ui`、`statefile` とする。
 
-本節は、ビルド承認フローにおける API endpoint、request / response、状態ファイル read/write 呼び出し境界だけを定義する。`approval_required` 検出、pending 作成、approval request 通知、timeout 処理、承認済み queue entry の実行は [`docs/details/runner.md`](runner.md) §27.30 を参照する。
+該当節は、ビルド承認フローにおける API endpoint、request / response、状態ファイル read/write 呼び出し境界だけを定義する。`approval_required` 検出、pending 作成、approval request 通知、timeout 処理、承認済み queue entry の実行は [`docs/details/runner.md`](runner.md) §27.30 を参照する。
 
 **入力 / 状態：**
 
@@ -2809,36 +2825,36 @@ approval fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機�
 
 ### 27.42 ビルドトリガー専用 API スコープ
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.42 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.42 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、route / method 確定、endpoint dispatch、HTTP status、request / response body、状態ファイル read/write 呼び出し境界だけを担当する。scope 判定順、許可 endpoint group、permission denied audit、body parse 前判定、漏えい禁止値は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、route / method 確定、endpoint dispatch、HTTP status、request / response body、状態ファイル read/write 呼び出し境界だけを担当する。scope 判定順、許可 endpoint group、permission denied audit、body parse 前判定、漏えい禁止値は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。
 
 ### 27.43 API キー管理
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.43 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.43 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、token API の route、HTTP method、request validation の入口、response schema、`.api_tokens` read/write 呼び出し境界だけを担当する。token 生成、hash 保存、scope 検証、作成時 1 回だけ token 本体を返す契約、認証成功時の `last_used_at` 更新、token 漏えい禁止は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、token API の route、HTTP method、request validation の入口、response schema、`.api_tokens` read/write 呼び出し境界だけを担当する。token 生成、hash 保存、scope 検証、作成時 1 回だけ token 本体を返す契約、認証成功時の `last_used_at` 更新、token 漏えい禁止は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。
 
 ### 27.44 監査ログ
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.44 を参照する。owner component は `security`、collaborator component は `api`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.44 を参照する。owner component は `security`、collaborator component は `api`、`statefile` とする。
 
-API 側は、audit log API の route、query parameter、response schema、`.audit_log` read 呼び出し境界だけを担当する。audit record schema、action / actor / target / result、必須 audit 失敗時の `500`、secret / token / request body 保存禁止、壊れた行の扱いは [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、audit log API の route、query parameter、response schema、`.audit_log` read 呼び出し境界だけを担当する。audit record schema、action / actor / target / result、必須 audit 失敗時の `500`、secret / token / request body 保存禁止、壊れた行の扱いは [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。
 
 ### 27.45 セッションタイムアウト変更設定
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.45 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.45 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、session timeout config API の route、request body、response body、`.server_config.session_timeout_seconds` read/write 呼び出し境界だけを担当する。session の作成、期限判定、sliding update、期限切れ時 `401`、既存 session への反映条件、監査順序は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、session timeout config API の route、request body、response body、`.server_config.session_timeout_seconds` read/write 呼び出し境界だけを担当する。session の作成、期限判定、sliding update、期限切れ時 `401`、既存 session への反映条件、監査順序は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。
 
 ### 27.46 TOTP 二要素認証
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.46 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.46 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、auth / TOTP API の route、request body、response body、`.totp_secret` read/write 呼び出し境界だけを担当する。TOTP secret 生成、setup 仮 secret、login ticket、code 検証、secret の一回表示、ticket 再利用禁止、TOTP 漏えい禁止、監査順序は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、auth / TOTP API の route、request body、response body、`.totp_secret` read/write 呼び出し境界だけを担当する。TOTP secret 生成、setup 仮 secret、login ticket、code 検証、secret の一回表示、ticket 再利用禁止、TOTP 漏えい禁止、監査順序は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。
 
 ### 27.47 API レート制限
 
-本節の主本文は [`docs/details/security.md`](security.md) §27.47 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+該当節の主本文は [`docs/details/security.md`](security.md) §27.47 を参照する。owner component は `security`、collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
 
-API 側は、rate limit config API の route、request body、response body、`.server_config.api_rate_limit` と `.api_rate_state` の read/write 呼び出し境界だけを担当する。endpoint group 判定、window / count 更新、`429` 時に count を増やさない契約、actor key / IP key の同一 lock 更新、rate limit audit は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、本ファイルへ重複定義しない。
+API 側は、rate limit config API の route、request body、response body、`.server_config.api_rate_limit` と `.api_rate_state` の read/write 呼び出し境界だけを担当する。endpoint group 判定、window / count 更新、`429` 時に count を増やさない契約、actor key / IP key の同一 lock 更新、rate limit audit は [`docs/details/security.md`](security.md) 詳細本文責務を基準とし、[`docs/details/api.md`](api.md) へ重複定義しない。

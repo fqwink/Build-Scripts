@@ -459,7 +459,7 @@ func newRunnerState(t *testing.T, sha string, deploy []DeployTarget) string {
 	t.Helper()
 	state := t.TempDir()
 	buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
-	writeExecutable(t, buildBin, "#!/bin/sh\nprintf 'adlaire-ci-build ADLAIRE_CI_SPEC go=fake\\n'\n")
+	writeExecutable(t, buildBin, "#!/bin/sh\nprintf 'adlaire-ci-build v3 go=fake\\n'\n")
 	t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
 	if err := os.WriteFile(filepath.Join(state, ".github_token"), []byte("token\n"), 0600); err != nil {
 		t.Fatal(err)

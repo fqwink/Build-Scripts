@@ -1,10 +1,10 @@
 # Adlaire CI — SDK 詳細仕様
 
-本ファイルは `sdk` owner component の詳細本文責務の正本である。
+`sdk` owner component の詳細本文責務は、[`docs/details/sdk.md`](sdk.md) を正本とする。
 
-本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
+詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
 
-SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md`](api.md) §22.0e を参照する。本ファイルは SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
+SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md`](api.md) §22.0e を参照する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務は SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
 ---
 
@@ -15,13 +15,13 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | owner component | `sdk` |
 | collaborator component | `api`、`ui`、`security` |
 | 持つ内容 | `sdk` owner が主本文として定義する SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture / PR 証跡責務。 |
+| 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture 証跡責務。 |
 
 ---
 
 ## 23. JavaScript SDK 仕様
 
-本節は、sdk owner の JavaScript SDK 詳細本文責務である。
+該当節は、sdk owner の JavaScript SDK 詳細本文責務である。
 
 **ファイル：** `admin/adlaire-ci-sdk.js`（単一ファイル、外部依存なし）
 **モジュール形式：** ES Module（`import` / `export`）
@@ -261,7 +261,7 @@ HTTP status と SDK error の対応は下表に固定する。
 
 Phase 3 実装では、下表の SDK method を最小運用範囲として固定する。SDK は成功時 response を endpoint schema の範囲でそのまま返し、失敗時は HTTP status、API error、details、responseBody を保持した `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
 
-| SDK method | HTTP | 成功時 | 失敗時 | 追加禁止事項 |
+| SDK method | HTTP | 成功時 | 失敗時 | 追加禁止条件 |
 |------------|------|--------|--------|--------------|
 | `login(password)` | `POST /api/login` | `token` がある場合だけ `this._token` へ保存する。`totp_required:true` の場合は token を保存せず response を返す。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | password を console、error、responseBody 加工結果へ出さない。 |
 | `logout()` | `POST /api/logout` | response に関わらず `finally` で token を破棄する。 | network error、`401`、`500` でも token 破棄後に error を投げる。 | logout 失敗を理由に token を保持しない。 |
@@ -293,7 +293,7 @@ Phase 3 実装では、下表の SDK method を最小運用範囲として固定
 
 Phase 4 SDK は、[`docs/details/api.md`](api.md) §22.0e の endpoint 契約と [`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行う場合でも、検証対象は必須引数、型、範囲、path parameter 形式に限定する。API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
 
-| 機能群 | SDK method | 成功時 | 失敗時 | 追加禁止事項 |
+| 機能群 | SDK method | 成功時 | 失敗時 | 追加禁止条件 |
 |--------|------------|--------|--------|--------------|
 | config / repo / branch | `getConfig()`, `setConfig(config)`, `validateConfig(config)`, `setRepoConfig(config)`, `getBranchConfig()`, `setBranchConfig(branches)` | API response をそのまま返す。`set*` は success message と count / config を保持する。 | `422 details` は `AdlaireCIError.details` に保持する。`500` は固定 message。 | SDK 側で未知 key を削除しない。既定値 merge しない。 |
 | schedule | `setScheduleInterval()`, `pauseSchedule()`, `resumeSchedule()`, `setAllowedHours()`, `clearAllowedHours()`, `setForceInterval()`, `setBuildCooldown()` | response の interval / hours / seconds / allowed_hours をそのまま返す。 | systemd 更新失敗の `500` を `AdlaireCIError` にする。 | timer 状態を SDK が推測しない。 |
@@ -376,23 +376,23 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) §22.0e の SDK �
 
 [`docs/details/sdk.md`](sdk.md) §27.21〜§27.47 の追加仕様化機能で SDK の詳細実装確認を満たすには、対象 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/api.md`](api.md) §27 の連動参照表、[`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
 
-| 対象 | SDK method | request 固定 | success 固定 | error 固定 | 禁止事項 |
+| 対象 | SDK method | request 固定 | success 固定 | error 固定 | 禁止条件 |
 |------|------------|--------------|---------------|------------|----------|
-| §27.21 branch target / env | `getBranchConfig()`, `setBranchConfig(branches)`, `getConfig()`, `setConfig(config)` | `branches` または `config` を指定 key のまま送信する。`target_files`、`env`、secret 風 key を削除しない。 | API response の branch 配列、`source`、件数をそのまま返す。 | validation `422` details を保持する。 | target path 正規化、env key 並び替え、secret mask 判定を SDK が行わない。 |
-| §27.22 / §27.27 pipeline / hook | `getPipelineConfig()`, `setPipelineConfig(config)`, `getHooks()`, `addHook()`, `deleteHook(id)`, `getHookLog(id)` | pipeline config はそのまま送る。hook `commandArgs` は配列のまま送る。 | config / hook / log response をそのまま返す。 | `409`、`422`、`500` を `AdlaireCIError` として保持する。 | shell 文字列結合、quote 展開、reserved arg 除去、env 補完を行わない。 |
-| §27.23〜§27.26 local watch / tag / cache / parallel | `getConfig()`, `setConfig(config)`, `getStatus()`, `getHistory()`, `getHistoryLog(id)` | config と query を表どおり送る。 | status / history / log に含まれる追加 key を削除しない。 | `422` details、`500` message を保持する。 | local watch 可否、tag match、cache hit、parallel result を SDK が再判定しない。 |
-| §27.30 approval | `getApprovals()`, `approveBuild(id)`, `rejectBuild(id)`, `getQueue()` | `id` は path parameter 契約で encode し、approve / reject に body を送らない。 | approve は `{message,queued}`、reject は `{message}`、list は API 配列順で返す。 | `409` / `429` / `500` を保持し、自動再送しない。 | expired / rejected / approved を SDK が書き換えない。approve 後に SDK が自動 queue 取得しない。 |
-| §27.32 notification | `getNotifyConfig()`, `setNotifyConfig(config)`, `getNotifyLog()`, `notifyTest()`, `notifyWeeklySummary()`, `getSmtpConfig()`, `setSmtpConfig(config)`, `smtpTest()` | config は unknown key を削除せず API へ送る。password 未指定時だけ `setSmtpConfig()` は password key を送らない。 | API が返した mask 値、log、pending 状態をそのまま返す。 | 未設定 `422` / `501`、送信失敗 `500` を保持する。 | secret 平文を console、error message、responseBody 加工結果、SDK field に保存しない。 |
-| §27.33 / §27.38 trend / anomaly | `getBuildTrends(n)`, `getStatsBuildDuration(n)`, `getDashboard()`, `getConfig()`, `setConfig(config)` | `n` は number として query へ送る。config はそのまま送る。 | summary、samples、warnings、anomaly flag を API 値のまま返す。 | invalid `n` / config `422` を保持する。 | avg / median / p95 / anomaly を SDK が再計算しない。 |
-| §27.34 / §27.35 chain / queue | `getBuildChainConfig()`, `setBuildChainConfig(chains)`, `getQueue()`, `clearQueue()`, `triggerBuild()`, `buildForce()` | chains は配列のまま送る。queue clear は body を送らない。 | queue priority / created_seq / chain config を API 順序のまま返す。 | queue full `429`、conflict `409`、validation `422` を保持する。 | priority 並び替え、queue 重複排除、chain DAG 検証を SDK が行わない。 |
-| §27.36 / §27.37 failure category / environment | `getHistory()`, `getHistoryLog(id)`, `getOutputMeta()`, `getStatus()` | filter query は指定された値だけ送る。 | `failure_category`、`failure_evidence`、environment object を削除しない。 | 未知 filter `422` を保持する。 | category 分類、environment fallback、secret mask 判定を SDK が行わない。 |
-| §27.42〜§27.47 security | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getSessions()`, `revokeAllSessions()`, `getTotpStatus()`, `setupTotp()`, `confirmTotp(code)`, `disableTotp(code)`, `getApiRateLimit()`, `setApiRateLimit(policy)` | token / TOTP / rate limit request は [`docs/details/sdk.md`](sdk.md) §23 引数変換契約どおり送る。 | token 本体、TOTP secret、otpauth URI は response として返すだけで SDK 内部に保存しない。 | `401` は token 破棄、`403` は token 維持、`429` は自動待機なし、`500` は message 保持。 | scope 推測、rate limit 待機、token list への token 合成、TOTP code 再送、audit 補完を行わない。 |
+| [`docs/details/runner.md`](runner.md) §27.21 / [`docs/details/runner.md`](runner.md) §27.31 branch target / env | `getBranchConfig()`, `setBranchConfig(branches)`, `getConfig()`, `setConfig(config)` | `branches` または `config` を指定 key のまま送信する。`target_files`、`env`、secret 風 key を削除しない。 | API response の branch 配列、`source`、件数をそのまま返す。 | validation `422` details を保持する。 | target path 正規化、env key 並び替え、secret mask 判定を SDK が行わない。 |
+| [`docs/details/runner.md`](runner.md) §27.22 / [`docs/details/runner.md`](runner.md) §27.27 pipeline / hook | `getPipelineConfig()`, `setPipelineConfig(config)`, `getHooks()`, `addHook()`, `deleteHook(id)`, `getHookLog(id)` | pipeline config はそのまま送る。hook `commandArgs` は配列のまま送る。 | config / hook / log response をそのまま返す。 | `409`、`422`、`500` を `AdlaireCIError` として保持する。 | shell 文字列結合、quote 展開、reserved arg 除去、env 補完を行わない。 |
+| [`docs/details/runner.md`](runner.md) §27.23〜§27.26 local watch / tag / cache / parallel | `getConfig()`, `setConfig(config)`, `getStatus()`, `getHistory()`, `getHistoryLog(id)` | config と query を表どおり送る。 | status / history / log に含まれる追加 key を削除しない。 | `422` details、`500` message を保持する。 | local watch 可否、tag match、cache hit、parallel result を SDK が再判定しない。 |
+| [`docs/details/api.md`](api.md) §27.30 / [`docs/details/runner.md`](runner.md) §27.30 approval | `getApprovals()`, `approveBuild(id)`, `rejectBuild(id)`, `getQueue()` | `id` は path parameter 契約で encode し、approve / reject に body を送らない。 | approve は `{message,queued}`、reject は `{message}`、list は API 配列順で返す。 | `409` / `429` / `500` を保持し、自動再送しない。 | expired / rejected / approved を SDK が書き換えない。approve 後に SDK が自動 queue 取得しない。 |
+| [`docs/details/runner.md`](runner.md) §27.32 notification | `getNotifyConfig()`, `setNotifyConfig(config)`, `getNotifyLog()`, `notifyTest()`, `notifyWeeklySummary()`, `getSmtpConfig()`, `setSmtpConfig(config)`, `smtpTest()` | config は unknown key を削除せず API へ送る。password 未指定時だけ `setSmtpConfig()` は password key を送らない。 | API が返した mask 値、log、pending 状態をそのまま返す。 | 未設定 `422` / `501`、送信失敗 `500` を保持する。 | secret 平文を console、error message、responseBody 加工結果、SDK field に保存しない。 |
+| [`docs/details/runner.md`](runner.md) §27.33 / [`docs/details/runner.md`](runner.md) §27.38 trend / anomaly | `getBuildTrends(n)`, `getStatsBuildDuration(n)`, `getDashboard()`, `getConfig()`, `setConfig(config)` | `n` は number として query へ送る。config はそのまま送る。 | summary、samples、warnings、anomaly flag を API 値のまま返す。 | invalid `n` / config `422` を保持する。 | avg / median / p95 / anomaly を SDK が再計算しない。 |
+| [`docs/details/runner.md`](runner.md) §27.34 / [`docs/details/runner.md`](runner.md) §27.35 chain / queue | `getBuildChainConfig()`, `setBuildChainConfig(chains)`, `getQueue()`, `clearQueue()`, `triggerBuild()`, `buildForce()` | chains は配列のまま送る。queue clear は body を送らない。 | queue priority / created_seq / chain config を API 順序のまま返す。 | queue full `429`、conflict `409`、validation `422` を保持する。 | priority 並び替え、queue 重複排除、chain DAG 検証を SDK が行わない。 |
+| [`docs/details/runner.md`](runner.md) §27.36 / [`docs/details/runner.md`](runner.md) §27.37 failure category / environment | `getHistory()`, `getHistoryLog(id)`, `getOutputMeta()`, `getStatus()` | filter query は指定された値だけ送る。 | `failure_category`、`failure_evidence`、environment object を削除しない。 | 未知 filter `422` を保持する。 | category 分類、environment fallback、secret mask 判定を SDK が行わない。 |
+| [`docs/details/security.md`](security.md) §27.42〜§27.47 security | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getSessions()`, `revokeAllSessions()`, `getTotpStatus()`, `setupTotp()`, `confirmTotp(code)`, `disableTotp(code)`, `getApiRateLimit()`, `setApiRateLimit(policy)` | token / TOTP / rate limit request は [`docs/details/sdk.md`](sdk.md) §23 引数変換契約どおり送る。 | token 本体、TOTP secret、otpauth URI は response として返すだけで SDK 内部に保存しない。 | `401` は token 破棄、`403` は token 維持、`429` は自動待機なし、`500` は message 保持。 | scope 推測、rate limit 待機、token list への token 合成、TOTP code 再送、audit 補完を行わない。 |
 
 **§27.21〜§27.47 SDK 合格ゲート：**
 
 | ゲート | 合格条件 |
 |--------|----------|
-| method coverage | §27.21〜§27.47 の api / sdk / ui 連動参照表で SDK method が記載された項目について、該当 public method が存在する。 |
+| method coverage | [`docs/details/sdk.md`](sdk.md) §27.21〜§27.47 の api / sdk / ui 連動参照表で SDK method が記載された項目について、該当 public method が存在する。 |
 | request exactness | fake fetch fixture で method、path、query key 順、body key 順、body なし endpoint が [`docs/details/sdk.md`](sdk.md) §23 と一致する。 |
 | response passthrough | 成功 response に存在する追加 key を削除せず、存在しない key を追加しない。 |
 | security handling | token、password、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header を SDK property、console、error message に保存しない。 |
@@ -402,9 +402,9 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) §22.0e の SDK �
 
 **§27.21〜§27.47 SDK 連動 fixture 必須証跡：**
 
-SDK 実装 PR は、対象 §27 機能ごとに下表の証跡を fixture で固定する。下表の証跡がない場合、SDK method が存在していても詳細実装確認を満たした扱いにしない。
+SDK 実装変更は、対象 [`docs/details/sdk.md`](sdk.md) §27 機能ごとに下表の証跡を fixture で固定する。下表の証跡がない場合、SDK method が存在していても詳細実装確認を満たした扱いにしない。
 
-| 証跡 | 固定する内容 | 合格条件 | 禁止事項 |
+| 証跡 | 固定する内容 | 合格条件 | 禁止条件 |
 |------|--------------|----------|----------|
 | request trace | `method`、`path`、query key 順、body key、body なし endpoint。 | [`docs/details/api.md`](api.md) §22.0e と [`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約に完全一致する。 | body なし endpoint へ `{}` を送る、query 未指定時に `?` を付ける。 |
 | response passthrough | API success body、binary body、SSE frame。 | SDK は存在 key を削除せず、存在しない key を追加しない。binary は `Blob`、SSE は `StreamHandle`。 | UI 用 label、集計値、既定値、token list、rate limit reset を SDK が合成する。 |

@@ -1,8 +1,8 @@
 # Adlaire CI — Fixture 詳細仕様
 
-本ファイルは `fixture` owner component の詳細本文責務の正本である。
+`fixture` owner component の詳細本文責務は、[`docs/details/fixture.md`](fixture.md) を正本とする。
 
-本ファイルの詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。本ファイルは `fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、PR 証跡、検証観点として参照する。
+詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、実装検証証跡、検証観点として参照する。
 
 ---
 
@@ -12,7 +12,7 @@
 |------|------|
 | owner component | `fixture` |
 | collaborator component | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`security`、`setup` |
-| 持つ内容 | `fixture` owner が主本文として定義する fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、PR 証跡テンプレート、acceptance checklist、差し戻し条件。 |
+| 持つ内容 | `fixture` owner が主本文として定義する fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、実装検証証跡テンプレート、acceptance checklist、差し戻し条件。 |
 | 持たない内容 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
 ---
@@ -21,30 +21,30 @@
 
 | 範囲 | 内容 |
 |------|------|
-| §0g.8-F | Phase fixture / testdata 配置、fake 実装、実装 PR 証跡。 |
-| §22-F | Phase 3 / Phase 4 API の必須検証、API fixture、API / SDK / UI / 状態ファイル cross fixture 固定。 |
-| §27-F | §27 fixture 配置、fixture カタログ、manifest、assertion、expected/effects、相互整合、component 別検証責務。 |
-| §27-F-PR | §27 実装 PR 証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
+| [`docs/details/fixture.md`](fixture.md) §0g.8-F | Phase fixture / testdata 配置、fake 実装、実装検証証跡。 |
+| [`docs/details/fixture.md`](fixture.md) §22-F | Phase 3 / Phase 4 API の必須検証、API fixture、API / SDK / UI / 状態ファイル cross fixture 固定。 |
+| [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F | [`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 の fixture 配置、fixture カタログ、manifest、assertion、expected/effects、相互整合、component 別検証責務。 |
+| [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F-EVIDENCE | [`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 の実装検証証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
 
-## 0g.8-F Phase fixture / testdata / fake / PR 証跡契約
+## 0g.8-F Phase fixture / testdata / fake / 実装検証証跡契約
 
-本ファイルは、実装完了判定に必要な fixture、fake、testdata、expected / effects、PR 証跡、acceptance checklist、差し戻し条件を扱う fixture 証跡責務である。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0e、§0g、§0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、PR 証跡項目、不足時の扱い、差し戻し条件は本ファイルを参照する。
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、実装完了判定に必要な fixture、fake、testdata、expected / effects、実装検証証跡、acceptance checklist、差し戻し条件を扱う。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0e、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0g、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、実装検証証跡項目、不足時の扱い、差し戻し条件は [`docs/details/fixture.md`](fixture.md) を参照する。
 
-実装 PR の完了証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる PR は、該当する全系統の証跡を PR 本文または検証ログに記録する。
+実装検証証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる変更は、該当する全系統の証跡を実装検証証跡として記録する。
 
 | 系統 | 対象 | 責務節 | 必須証跡 |
 |------|------|--------|----------|
-| Phase 実装 | Phase 1〜Phase 6 の初期実装。 | §0g.8-F | 対象 Phase、owner component、collaborator component、変更ファイル、fixture / testdata path、fake、実行コマンド、期待結果、実結果、後続 Phase へ引き継ぐ contract。 |
-| API 実装 | Phase 3 / Phase 4 の API、SDK / UI / statefile と同期する API 実装。 | §22-F | Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認。 |
-| §27 実装 | §27.1〜§27.47 の追加仕様化機能。 | §27-F | 対象 §27.x、関連 §22 / §23 / §24 / §25 / §26、owner / collaborator component、fixture 名、状態差分、外部副作用、partial failure、再実行、対象外確認。 |
+| Phase 実装 | Phase 1〜Phase 6 の初期実装。 | [`docs/details/fixture.md`](fixture.md) §0g.8-F | 対象 Phase、owner component、collaborator component、変更ファイル、fixture / testdata path、fake、実行コマンド、期待結果、実結果、後続 Phase へ引き継ぐ contract。 |
+| API 実装 | Phase 3 / Phase 4 の API、SDK / UI / statefile と同期する API 実装。 | [`docs/details/fixture.md`](fixture.md) §22-F | Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認。 |
+| [`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 の追加仕様化機能 | runner / security 詳細本文責務。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F | 対象 [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x、関連 [`docs/details/api.md`](api.md) §22 / [`docs/details/sdk.md`](sdk.md) §23 / [`docs/details/ui.md`](ui.md) §24 / [`docs/details/security.md`](security.md) §25 / [`docs/details/setup.md`](setup.md) §26、owner / collaborator component、fixture 名、状態差分、外部副作用、partial failure、再実行、対象外確認。 |
 
 上表の証跡が不足する場合、対象機能は未完了として扱う。fixture の pass だけでは完了証跡を満たさない。
 
-Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本ファイルの表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、本ファイルは fixture 証跡責務として証跡分類、不足時の扱い、差し戻し条件だけを固定する。
+Phase、API、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 のいずれの実装検証証跡でも、記録形式は [`docs/details/fixture.md`](fixture.md) の表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は証跡分類、不足時の扱い、差し戻し条件だけを固定する。
 
 **Phase fixture / testdata 配置固定契約：**
 
-| Phase | 必須配置 | 必須内容 | 禁止事項 |
+| Phase | 必須配置 | 必須内容 | 禁止条件 |
 |-------|----------|----------|----------|
 | Phase 1 | `testdata/builder/single/`、`testdata/builder/site/`、`testdata/builder/empty-dir/`、`testdata/builder/strict/`、`testdata/builder/safe/`、各 fixture の `expected/`。 | 入力 Markdown、テーマ設定、asset 入力、期待 HTML / CSS / JS / search index、期待 stdout / stderr、期待終了コード。 | 実行環境ごとに変わる絶対 path、timestamp、乱数、外部 URL 取得結果を期待値へ含めてはならない。 |
 | Phase 2 | `testdata/runner/r1/`〜`testdata/runner/r20/`、各 fixture の `state/`、`github/`、`pipeline/`、`ssh/`、`notify/`、`expected/`。 | GitHub fake response、状態ファイル初期値、lock 状態、pipeline fake 結果、deploy fake 結果、通知 fake 結果、期待 `.last_sha`、期待 queue / snapshot。 | 実 GitHub API、実 SSH、実通知先、実 remote branch 状態に依存して合否を決めてはならない。 |
@@ -64,26 +64,26 @@ Phase、API、§27 のいずれの実装 PR でも、証跡の記録形式は本
 | fake fetch | Phase 5 | `status`、`headers`、`body`、network error、timeout、abort、stream chunk を fixture どおり返す。実 network は使用しない。 | method、URL、query、headers、body 有無、abort 発生有無、呼び出し順。token 値は `***` に置換する。 |
 | fake SDK | Phase 6 | SDK method ごとに固定 return、固定 throw、固定 stream event を返す。UI からの直接 API 呼び出しは受け付けない。 | method 名、引数、呼び出し順、throw した error code、stream unsubscribe 実行有無。 |
 
-**実装 PR 証跡固定契約：**
+**実装検証証跡固定契約：**
 
-本契約は Phase 実装の PR 証跡に適用する。API 実装は §22-F、§27 実装は §27-F の acceptance checklist も同時に満たす。
+本契約は Phase 実装の検証証跡に適用する。API 実装は [`docs/details/fixture.md`](fixture.md) §22-F、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 の追加仕様化機能実装は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の acceptance checklist も同時に満たす。
 
 | 証跡 | 必須記載 | 不足時の扱い |
 |------|----------|--------------|
 | 変更対象 | 対象 Phase、owner component、collaborator component、変更ファイル、追加 fixture / testdata path。 | 対象 Phase の成果物不足として未完了。 |
 | 固定契約 | 追加または固定した CLI、状態 schema、HTTP API、SDK method、DOM id、fake 動作、終了コード、error body。 | 後続 Phase が参照できないため未完了。 |
 | 検証 | 実行コマンド、fixture 名、期待結果、実結果、判定。 | 合否を再現できないため未完了。 |
-| 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定、未定義 endpoint / UI / 状態ファイルのうち今回実装しない範囲を PR 証跡に列挙する。 | 先取り実装または範囲不明として未完了。 |
-| 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用禁止の未固定 contract を PR 証跡に列挙する。 | 次 Phase 着手条件未充足として未完了。 |
-| secret 確認 | log、fixture、snapshot、UI 表示、PR 本文に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
+| 未実装対象 | 対象 Phase 外の機能、将来計画、MCP、外部公開設定、未定義 endpoint / UI / 状態ファイルのうち今回実装しない範囲を実装検証証跡に列挙する。 | 先取り実装または範囲不明として未完了。 |
+| 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用禁止の未固定 contract を実装検証証跡に列挙する。 | 次 Phase 着手条件未充足として未完了。 |
+| secret 確認 | log、fixture、snapshot、UI 表示、実装検証証跡に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
 
 ## 22-F Phase 3 / Phase 4 API fixture 契約
 
-本節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) §22 を基準とし、本節では再定義しない。
+該当節は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) §22 を基準とし、fixture 証跡責務では再定義しない。
 
-API 実装 PR は、§0g.8-F の PR 証跡固定契約に加えて、本節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
+API 実装の検証証跡は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の実装検証証跡固定契約に加えて、該当節の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
 
-Phase 順序、実装 PR 単位、完了判定単位は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。本節は、Phase 3 / Phase 4 の API fixture 証跡として記録する項目だけを固定する。
+Phase 順序、実装変更単位、完了判定単位は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。該当節は、Phase 3 / Phase 4 の API fixture 証跡として記録する項目だけを固定する。
 
 | Phase | 対象 | 完了条件 |
 |-------|------|----------|
@@ -212,26 +212,26 @@ Phase 4 実装は、下表の fixture をすべて満たした場合だけ完了
 | cross binary snapshot | `downloadSnapshot(id)` が binary success。 | API は binary header、SDK は `Blob`、UI は download 開始表示。JSON parse、success JSON body、状態ファイル更新なし。 |
 | cross destructive cancel | 削除 / rollback 確認 dialog を cancel。 | SDK method 呼び出し 0 回、状態ファイル副作用なし、success / error 表示差分なし。 |
 
-## 27-F §27 fixture / PR 証跡詳細契約
+## 27-F fixture 証跡責務 / runner・security 実装検証証跡詳細契約
 
-**§27 fixture 配置・命名固定契約：**
+**fixture 証跡責務 §27-F 配置・命名固定契約：**
 
-§27 の fixture は、実装者が実行順や期待値を推測しないように、下表の単位で配置する。実装ファイル名やテストフレームワークは本節では固定しないが、fixture の入力、期待出力、期待副作用は機能単位で分離する。
+§27 の fixture は、実装者が実行順や期待値を推測しないように、下表の単位で配置する。実装ファイル名やテストフレームワークは fixture 証跡責務では固定しないが、fixture の入力、期待出力、期待副作用は機能単位で分離する。
 
-| 機能範囲 | fixture 配置単位 | 必須内容 | 禁止事項 |
+| 機能範囲 | fixture 配置単位 | 必須内容 | 禁止条件 |
 |----------|------------------|----------|----------|
 | §27.1〜§27.4 | `status/`、`dry-run/`、`retry/`、`output-meta/` 相当の機能別単位。 | runner 入力、GitHub fake response、builder 入力、期待 log/history/status/report。 | 実際の GitHub API、実時刻依存の期待値、secret 平文。 |
 | §27.5〜§27.11 | `config/`、`access-log/`、`archive/`、`schedule/` 相当の API 機能別単位。 | HTTP request、初期状態、期待 response、期待状態差分、期待 log。 | API response だけの検証、状態差分未確認。 |
 | §27.12〜§27.20 | `webhook/`、`stats/`、`snapshot/`、`health/`、`branch-config/`、`summary/`、`config-log/` 相当の機能別単位。 | 署名、payload、query、snapshot 入力、破損行、期待 paging、期待 rollback。 | 署名検証省略、破損行の黙殺仕様未確認。 |
 | §27.21〜§27.38 | `runner-extensions/` 配下の機能別単位。 | target、pipeline、cache、queue、hook、remote、approval、notification、trend の正常/異常/部分失敗。 | 実行完了順依存、外部 shell 展開、未定義状態ファイル。 |
 | §27.42〜§27.47 | `security/` 配下の scope、token、audit、session、totp、rate-limit 単位。 | route 判定、body 未評価、token hash、audit failure、window reset、secret mask。 | token 本体保存、Authorization header 保存、監査なし権限拒否。 |
-| §28.1〜§28.25 | `builder-extensions/` 配下の機能別単位。 | Markdown 入力、CLI option、期待 HTML / CSS / JS / REPORT、strict / non-strict の終了コード。 | 外部 library、CDN、実 network、環境依存 timestamp、画像 snapshot だけの合否判定。 |
+| [`docs/details/builder.md`](builder.md) §28.1〜§28.25 | `builder-extensions/` 配下の機能別単位。 | Markdown 入力、CLI option、期待 HTML / CSS / JS / REPORT、strict / non-strict の終了コード。 | 外部 library、CDN、実 network、環境依存 timestamp、画像 snapshot だけの合否判定。 |
 
 fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*` のいずれかで始める。fixture 名に実行時刻、乱数、環境依存 path、実 token 値を含めてはならない。期待時刻は固定値を使い、現在時刻依存の検証では fake clock を fixture 入力に含める。
 
-**§27 fixture カタログ固定契約：**
+**fixture 証跡責務 §27-F カタログ固定契約：**
 
-§27 の実装 PR は、対象機能について下表の fixture を作成する。複数節を同一 PR で実装する場合は、各節の fixture を省略せず作成する。fixture は入力、期待 response、期待 stdout/stderr、期待状態差分、期待 log/history/audit/notify、secret 非表示確認のうち該当するものを含める。
+§27 の実装変更は、対象機能について下表の fixture を作成する。複数節を同一変更で実装する場合は、各節の fixture を省略せず作成する。fixture は入力、期待 response、期待 stdout/stderr、期待状態差分、期待 log/history/audit/notify、secret 非表示確認のうち該当するものを含める。
 
 | 節 | fixture 名 | 入力 fixture | 期待出力 / 期待副作用 |
 |----|------------|--------------|------------------------|
@@ -280,9 +280,9 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | §27.46 | `security-totp-setup-once`、`success-totp-confirm`、`failure-totp-code-reuse`、`success-totp-disable` | setup ticket、TOTP code、clock、secret state。 | secret 有効保存条件、ticket 一回使用、window、disable。 |
 | §27.47 | `security-rate-limit-login`、`success-rate-limit-window-reset`、`security-rate-limit-ip-actor`、`failure-rate-limit-state-save` | policy、rate state、RemoteAddr、actor。 | count、`429`、audit 成功条件、部分 count 更新なし。 |
 
-**§27.42〜§27.47 security fixture 固定契約：**
+**security 詳細本文責務 §27.42〜§27.47 fixture 固定契約：**
 
-§27.42〜§27.47 の fixture は、[`docs/details/security.md`](security.md) §27.42〜§27.47 の認証、scope、token、audit、session、TOTP、rate limit の処理順、状態保存順、漏えい禁止、副作用境界を固定する。各 fixture は `manifest.json.owner_component` を `security`、`manifest.json.section` を対象 §27.x、`manifest.json.feature` を下表の feature 名に固定する。`components` には、HTTP request / response を検証する場合は `api`、SDK error 変換を検証する場合は `sdk`、UI 表示 / field 消去を検証する場合は `ui`、状態ファイルを検証する場合は `statefile` を含める。
+[`docs/details/security.md`](security.md) §27.42〜§27.47 の fixture は、[`docs/details/security.md`](security.md) §27.42〜§27.47 の認証、scope、token、audit、session、TOTP、rate limit の処理順、状態保存順、漏えい禁止、副作用境界を固定する。各 fixture は `manifest.json.owner_component` を `security`、`manifest.json.section` を対象 [`docs/details/security.md`](security.md) §27.x、`manifest.json.feature` を下表の feature 名に固定する。`components` には、HTTP request / response を検証する場合は `api`、SDK error 変換を検証する場合は `sdk`、UI 表示 / field 消去を検証する場合は `ui`、状態ファイルを検証する場合は `statefile` を含める。
 
 | 節 | feature | fixture 名 | 固定する確認 |
 |----|---------|------------|--------------|
@@ -330,20 +330,20 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 §27.42〜§27.47 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。security fixture では、`.admin_credentials`、`.sessions`、`.api_tokens`、`.audit_log`、`.access_log`、`.api_access_log`、`.server_config`、`.totp_secret`、`.api_rate_state`、対象 endpoint 状態ファイル、request body、Authorization header、session token、API token、token hash、password hash、salt、TOTP secret、ticket、otpauth URI の forbidden side effect と forbidden leak を必ず列挙する。認証共通 fixture では、process restart 後に残ってはならない memory-only 値、未定義永続 state file、token 返却前 log failure 時の forbidden response field を必ず列挙する。
 
-§27.42〜§27.47 の `expected/security.json` は、少なくとも `forbidden_plaintexts`、`forbidden_headers`、`forbidden_state_values`、`allowed_one_time_response_fields`、`hash_only_fields`、`memory_only_values`、`one_time_response_assertions`、`scope_decisions`、`rate_limit_decisions`、`audit_required` を持つ。token 本体、TOTP secret、ticket、otpauth URI、Authorization header、session token、API token は `allowed_one_time_response_fields` に明示された fixture の該当 response 以外では出現禁止とする。hash 値を検証する場合も、hash 算出入力の平文を expected file へ保存してはならない。`memory_only_values` には session、login ticket、TOTP setup 仮 secret、login 失敗回数を列挙し、restart 後に消えていることを expected に固定する。
+[`docs/details/security.md`](security.md) §27.42〜§27.47 の `expected/security.json` は、少なくとも `forbidden_plaintexts`、`forbidden_headers`、`forbidden_state_values`、`allowed_one_time_response_fields`、`hash_only_fields`、`memory_only_values`、`one_time_response_assertions`、`scope_decisions`、`rate_limit_decisions`、`audit_required` を持つ。token 本体、TOTP secret、ticket、otpauth URI、Authorization header、session token、API token は `allowed_one_time_response_fields` に明示された fixture の該当 response 以外では出現禁止とする。hash 値を検証する場合も、hash 算出入力の平文を expected file へ保存してはならない。`memory_only_values` には session、login ticket、TOTP setup 仮 secret、login 失敗回数を列挙し、restart 後に消えていることを expected に固定する。
 
-**§27.1〜§27.11 feature fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) §27.1〜§27.11 feature fixture 固定契約：**
 
-§27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+[`docs/details/fixture.md`](fixture.md) §27.1〜§27.11 の fixture は、Commit Status、dry-run、retry、output meta、config validation、access log、archive、build status、trigger、startup integrity、schedule の基盤挙動を固定する。各 fixture は、owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務に定義された入力、状態、出力、外部呼び出し、副作用、secret mask を expected に固定し、実装検証証跡に対象 fixture と実行結果を列挙する。
 
 | 節 | fixture | 固定する内容 |
 |----|---------|--------------|
-| §27.1 | `success-commit-status-pending-success` | fake GitHub server への `pending` → `success` 送信順、payload `state` / `context` / `description` / `target_url`、HTTP `201` success、`.build_logs.commit_status` の §22.0c schema keys、`.build_history.commit_status_state="success"` を固定する。 |
-| §27.1 | `failure-commit-status-unavailable-sha` | commit SHA が取得できない場合に GitHub Status API 呼び出し 0 件、build 継続、`.build_logs.commit_status.state=null`、`error="commit sha unavailable"`、history の build status 非反転と `commit_status_state=null` を固定する。 |
-| §27.1 | `failure-commit-status-api-error` | final の fake GitHub failure で build 成否を反転せず、WARN、送信しようとした state、fixed error reason、HTTP status、secret mask、Authorization header 非保存を固定する。 |
-| §27.1 | `noop-commit-status-disabled` | `.server_config.commit_status_enabled=false` で GitHub Status API 呼び出し 0 件、`commit_status.enabled=false`、`state=null`、`error=null`、payload / token / status side effect なしを固定する。 |
-| §27.1 | `failure-commit-status-pending-error-final-success` | pending の fake GitHub failure 後も build を継続し、final success を 1 回送信し、build log は final summary だけを保存し、pending failure は WARN と `expected/effects.json.external_calls` で固定する。 |
-| §27.1 | `failure-commit-status-invalid-payload` | invalid owner / repo / context / target_url / token unavailable のいずれかで GitHub 呼び出し 0 件、`state="error"`、固定 error reason、secret 非表示、build result 非反転を固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `success-commit-status-pending-success` | fake GitHub server への `pending` → `success` 送信順、payload `state` / `context` / `description` / `target_url`、HTTP `201` success、`.build_logs.commit_status` の [`docs/details/statefile.md`](statefile.md) §22.0c schema keys、`.build_history.commit_status_state="success"` を固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `failure-commit-status-unavailable-sha` | commit SHA が取得できない場合に GitHub Status API 呼び出し 0 件、build 継続、`.build_logs.commit_status.state=null`、`error="commit sha unavailable"`、history の build status 非反転と `commit_status_state=null` を固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `failure-commit-status-api-error` | final の fake GitHub failure で build 成否を反転せず、WARN、送信しようとした state、fixed error reason、HTTP status、secret mask、Authorization header 非保存を固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `noop-commit-status-disabled` | `.server_config.commit_status_enabled=false` で GitHub Status API 呼び出し 0 件、`commit_status.enabled=false`、`state=null`、`error=null`、payload / token / status side effect なしを固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `failure-commit-status-pending-error-final-success` | pending の fake GitHub failure 後も build を継続し、final success を 1 回送信し、build log は final summary だけを保存し、pending failure は WARN と `expected/effects.json.external_calls` で固定する。 |
+| [`docs/details/commitstatus.md`](commitstatus.md) §27.1 | `failure-commit-status-invalid-payload` | invalid owner / repo / context / target_url / token unavailable のいずれかで GitHub 呼び出し 0 件、`state="error"`、固定 error reason、secret 非表示、build result 非反転を固定する。 |
 | §27.2 | `success-dry-run-changed` | SHA 差分あり target の stdout JSON、`would_build=true`、`reason="sha_changed"`、`would_call`、`would_write`、終了コード `0`、状態差分なしを固定する。 |
 | §27.2 | `noop-dry-run-unchanged` | SHA 差分なし、cooldown、circuit open の `would_build=false` と reason、stdout JSON 1 件、lock / log / history / status / notification / deploy 差分なしを固定する。 |
 | §27.2 | `failure-dry-run-github-error` | fake GitHub read 最終失敗で終了コード `3`、`reason="github_error"`、`errors[]`、pipeline / deploy / commit status 呼び出し 0 件、状態差分なしを固定する。 |
@@ -387,9 +387,9 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 §27.1〜§27.11 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`notifications`、`status_api_calls` を持つ。未使用項目も空配列または `0` で明示する。dry-run、validation、noop、security fixture では、状態ファイル、lock、history、build log、archive、notification、deploy、commit status の forbidden side effect を必ず列挙する。
 
-**§27.12〜§27.20 feature fixture 固定契約：**
+**追加仕様化機能 §27.12〜§27.20 fixture 固定契約：**
 
-§27.12〜§27.20 の fixture は、Webhook、Webhook event log、duration stats、snapshot artifact、health、log severity search、branch config、weekly summary、config diff の運用 API / runner / archive 連動を固定する。各 fixture は、HTTP response だけでなく、状態ファイル差分、外部呼び出し、保存順、失敗時に発生してはならない副作用、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+§27.12〜§27.20 の fixture は、Webhook、Webhook event log、duration stats、snapshot artifact、health、log severity search、branch config、weekly summary、config diff の運用 API / runner / archive 連動を固定する。各 fixture は、HTTP response だけでなく、状態ファイル差分、外部呼び出し、保存順、失敗時に発生してはならない副作用、secret mask を expected に固定し、実装検証証跡に対象 fixture と実行結果を列挙する。
 
 | 節 | fixture | 固定する内容 |
 |----|---------|--------------|
@@ -436,9 +436,9 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 §27.12〜§27.20 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。read-only、noop、invalid query、invalid signature、running conflict fixture では、対象状態ファイル、queue、history、build log、snapshot、notification、config log の forbidden side effect を必ず列挙する。§27.15 の download fixture では `downloads[]` に `content_type`、`content_disposition`、`entry_order`、`stream_started`、`stream_interrupted`、`error_after_stream_start` を固定し、delete / rollback fixture では `write_order` と `unchanged_paths` に元 snapshot、元 build log、`.last_sha`、対象外 history / pending を必ず列挙する。
 
-**§27.21〜§27.30 feature fixture 固定契約：**
+**追加仕様化機能 §27.21〜§27.30 fixture 固定契約：**
 
-§27.21〜§27.30 の fixture は、runner 拡張、builder cache / dependency、remote artifact、approval API の詳細実装確認を固定する。各 fixture は、実行順、保存順、成功時だけ更新する状態、失敗時に絶対変更してはならない状態、外部 API / command / SSH / notification の呼び出し、secret mask を expected に固定し、実装 PR 本文に対象 fixture と実行結果を列挙する。
+§27.21〜§27.30 の fixture は、runner 拡張、builder cache / dependency、remote artifact、approval API の詳細実装確認を固定する。各 fixture は、実行順、保存順、成功時だけ更新する状態、失敗時に絶対変更してはならない状態、外部 API / command / SSH / notification の呼び出し、secret mask を expected に固定し、実装検証証跡に対象 fixture と実行結果を列挙する。
 
 | 節 | fixture | 固定する内容 |
 |----|---------|--------------|
@@ -485,9 +485,9 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 §27.21〜§27.30 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。failure、noop、partial、security fixture では、SHA cache、build log、history、status、snapshot、dependency manifest、build cache、local watch state、approval queue、pending transfer、remote artifact tmp、public output の forbidden side effect を必ず列挙する。
 
-**§27.31〜§27.38 feature fixture 固定契約：**
+**runner 詳細本文責務 §27.31〜§27.38 fixture 固定契約：**
 
-§27.31〜§27.38 の fixture は、[`docs/details/runner.md`](runner.md) §27.31〜§27.38 実装確認固定契約に列挙された branch env、notification、trend、chain、priority queue、failure classification、environment record、duration anomaly の状態、log、API response、副作用、保存順、secret mask を固定する。各 fixture は `manifest.json.section` を対象 §27.x に固定し、`manifest.json.feature` を下表の feature 名と一致させる。
+[`docs/details/runner.md`](runner.md) §27.31〜§27.38 の fixture は、[`docs/details/runner.md`](runner.md) §27.31〜§27.38 実装確認固定契約に列挙された branch env、notification、trend、chain、priority queue、failure classification、environment record、duration anomaly の状態、log、API response、副作用、保存順、secret mask を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/runner.md`](runner.md) §27.x に固定し、`manifest.json.feature` を下表の feature 名と一致させる。
 
 | 節 | fixture 名 | 固定する確認 |
 |----|------------|--------------|
@@ -526,11 +526,11 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 §27.31〜§27.38 の `expected/effects.json` は、少なくとも `external_calls`、`commands`、`notifications`、`downloads`、`streams`、`created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`forbidden_writes`、`forbidden_calls`、`write_order`、`status_api_calls` を持つ。failure、noop、partial、security fixture では、`.branch_config`、`.notify_config`、`.notify_log`、`.notify_pending`、`.build_trends.json`、`.build_chain_config`、`.build_state`、`.build_logs/{id}.json`、`.build_history`、`.build_status.json`、外部 command、通知、public output の forbidden side effect を必ず列挙する。
 
-**§27 fixture ファイルセット固定契約：**
+**fixture 証跡責務 §27-F ファイルセット固定契約：**
 
 各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。fixture ごとの必要ファイルは推測せず、`manifest.json` の定義で確定する。
 
-| ファイル | 必須 | 内容 | 禁止事項 |
+| ファイル | 必須 | 内容 | 禁止条件 |
 |----------|------|------|----------|
 | `manifest.json` | 必須 | fixture 名、対象節、機能名、分類、fake clock、owner component、collaborator component、参照仕様節、not_applicable 理由。 | 実行環境依存 path、乱数、実 secret。 |
 | `input/request.json` | API / SDK / UI fixture で必須 | HTTP method、path、query、headers、body、SDK method、SDK args、UI action。 | Authorization header の実 token、secret 平文。 |
@@ -548,7 +548,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 `expected/state/` は、fixture が検証対象とする状態ファイルだけを含める。変更してはならない状態ファイルは `expected/effects.json` の `unchanged_paths` に列挙する。削除されるべきファイルは `expected/effects.json` の `deleted_paths` に列挙し、空 directory の存在可否も明記する。
 
-**§27 fixture manifest schema 固定契約：**
+**fixture 証跡責務 §27-F manifest schema 固定契約：**
 
 `manifest.json` は次の schema に従う。未知 key は禁止する。
 
@@ -580,20 +580,20 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 | key | 型 | 必須 | 許容値 |
 |-----|----|------|--------|
-| `name` | string | 必須 | §27 fixture カタログ固定契約に記載された fixture 名。 |
+| `name` | string | 必須 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F カタログ固定契約に記載された fixture 名。 |
 | `section` | string | 必須 | `27.1`〜`27.38`、`27.42`〜`27.47`。 |
 | `feature` | string | 必須 | lowercase snake_case。 |
 | `category` | string | 必須 | `success`、`failure`、`partial`、`noop`、`security`。fixture 名 prefix と一致する。 |
 | `owner_component` | string | 必須 | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`security` のいずれか 1 件。 |
 | `collaborator_components` | array[string] | 必須 | owner 以外の component。該当なしは空配列。 |
 | `components` | array[string] | 必須 | `owner_component` と `collaborator_components` を重複なしで含む配列。許容値は `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`security`。 |
-| `references` | array[string] | 必須 | 参照仕様節。対象 §27.x と関連 §22 / §23 / §24 / §25 / §26 を含める。 |
+| `references` | array[string] | 必須 | 参照仕様節。対象 [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x と関連 [`docs/details/api.md`](api.md) §22 / [`docs/details/sdk.md`](sdk.md) §23 / [`docs/details/ui.md`](ui.md) §24 / [`docs/details/security.md`](security.md) §25 / [`docs/details/setup.md`](setup.md) §26 を含める。 |
 | `fake_clock` | string/null | 必須 | UTC ISO 8601 または `null`。時刻依存 fixture は `null` 禁止。 |
 | `not_applicable` | array[object] | 必須 | 該当しない必須候補ファイルと理由。空配列可。 |
 | `missing_state` | array[string] | 必須 | 実行前に存在しないことを期待する状態ファイル。空配列可。 |
 | `assertions` | array[string] | 必須 | `response`、`stdout`、`stderr`、`state`、`logs`、`effects`、`secret-mask`、`order`、`idempotency`、`no-write` の 1 件以上。 |
 
-**§27 fixture 合否判定固定契約：**
+**fixture 証跡責務 §27-F 合否判定固定契約：**
 
 | 判定 | 合格条件 |
 |------|----------|
@@ -607,9 +607,9 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | idempotency | 同一 fixture を 2 回適用した場合、2 回目の差分が no-op 仕様と一致する。 |
 | no-write | read-only / dry-run fixture で状態、logs、effects の差分がない。 |
 
-上表のうち `manifest.json.assertions` に含まれる判定が 1 つでも失敗した場合、その fixture は失敗とする。対象機能の必須 fixture が 1 件でも存在しない、または skip された場合、その機能の実装 PR は未完了とする。
+上表のうち `manifest.json.assertions` に含まれる判定が 1 つでも失敗した場合、その fixture は失敗とする。対象機能の必須 fixture が 1 件でも存在しない、または skip された場合、その機能の実装変更は未完了とする。
 
-**§27 fixture assertion 選択固定契約：**
+**fixture 証跡責務 §27-F assertion 選択固定契約：**
 
 fixture の `manifest.json.assertions` は、実装者が任意に減らしてはならない。fixture 名 prefix、owner component、collaborator component に応じて、下表の assertion を必ず含める。個別節で追加検証が必要な場合は、下表へ追加してから fixture を作成する。
 
@@ -628,7 +628,7 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 | `components` に `builder` を含む | `stdout` または `state`、`effects`。出力ファイル byte 比較または `state-diff.json` を必須とする。 |
 | 外部 API / command / 通知を扱う | `effects`、`secret-mask`。呼び出し回数、順序、payload、mask 済み値を必須とする。 |
 
-**§27 expected/effects.json schema 固定契約：**
+**fixture 証跡責務 §27-F expected/effects.json schema 固定契約：**
 
 `expected/effects.json` は次の schema に従う。未知 key は禁止する。
 
@@ -683,16 +683,16 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 
 `external_calls[]`、`commands[]`、`notifications[]` は `order` を持つ。並列処理 fixture で完了順が非決定の場合でも、期待保存順は `write_order` に固定する。secret を含む payload は、fixture 内でも平文を保存せず `"***"` を使う。
 
-**§27 fixture 不足時 未完了判定固定契約：**
+**fixture 証跡責務 §27-F 不足時 未完了判定固定契約：**
 
 | 不足 | 未完了理由 |
 |------|------------|
-| fixture 名が §27 fixture カタログに存在しない。 | カタログ外 fixture のため未完了。 |
+| fixture 名が [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F カタログに存在しない。 | カタログ外 fixture のため未完了。 |
 | 必須 fixture が存在しない。 | 機能の正常 / 異常 / no-op / security / partial coverage 不足。 |
-| `manifest.json.assertions` が §27 fixture assertion 選択固定契約を満たさない。 | 合否判定不足。 |
+| `manifest.json.assertions` が [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F assertion 選択固定契約を満たさない。 | 合否判定不足。 |
 | `expected/effects.json` が存在しない、または必須 key が欠落する。 | 副作用検証不足。 |
 | `unchanged_paths` または `forbidden_writes` が空で、fixture が failure / noop / read-only / dry-run / validation error のいずれかである。 | 無変更保証不足。 |
-| 外部 API / command / notification を扱う fixture で `forbidden_calls` が空、かつ禁止対象なしの理由が `manifest.json.not_applicable` にない。 | 外部副作用境界不足。 |
+| 外部 API / command / notification を扱う fixture で `forbidden_calls` が空、かつ禁止副作用なしの理由が `manifest.json.not_applicable` にない。 | 外部副作用境界不足。 |
 | secret fixture で `expected/security.json` が存在しない。 | secret mask 検証不足。 |
 | JSON Lines を扱う fixture で末尾改行、行順、破損行保持/除外条件を期待値に含めていない。 | log / audit / history 検証不足。 |
 | idempotency fixture で 1 回目と 2 回目の期待差分を分離していない。 | 再実行検証不足。 |
@@ -700,15 +700,15 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 
 上表に 1 件でも該当する場合、対象機能を実装完了として報告してはならない。fixture が多くても、期待副作用、禁止副作用、secret mask、保存順、再実行差分が明示されていなければ、バグ修正ゼロ化の検証を満たさない。
 
-**§27 fixture 相互整合固定契約：**
+**fixture 証跡責務 §27-F 相互整合固定契約：**
 
-fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾してはならない。下表の不整合が 1 件でもある場合、その fixture は失敗とし、対象機能の実装 PR は未完了とする。
+fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾してはならない。下表の不整合が 1 件でもある場合、その fixture は失敗とし、対象機能の実装変更は未完了とする。
 
 | 整合対象 | 固定条件 | 不整合時の扱い |
 |----------|----------|----------------|
 | `manifest.json.name` と directory 名 | directory 名は `manifest.json.name` と完全一致する。 | fixture 名不一致として失敗。 |
 | `manifest.json.category` と fixture 名 prefix | `success-*` は `success`、`failure-*` は `failure`、`partial-*` は `partial`、`noop-*` は `noop`、`security-*` は `security` とする。 | 分類不一致として失敗。 |
-| `manifest.json.section` と fixture カタログ | section と fixture 名の組み合わせは §27 fixture カタログ固定契約に存在する組み合わせだけ許可する。 | カタログ外として失敗。 |
+| `manifest.json.section` と fixture カタログ | section と fixture 名の組み合わせは [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F カタログ固定契約に存在する組み合わせだけ許可する。 | カタログ外として失敗。 |
 | `manifest.json.owner_component` と `components` | `owner_component` は `components` に必ず含める。 | owner 責務不一致として失敗。 |
 | `manifest.json.collaborator_components` と `components` | `collaborator_components` は `components` にすべて含め、`owner_component` を含めてはならない。 | collaborator 責務不一致として失敗。 |
 | `manifest.json.components` と入力ファイル | `runner` / `builder` を含む場合は `input/cli.json`、`api` / `sdk` / `ui` を含む場合は `input/request.json` を置く。該当しない場合は `not_applicable` に理由を置く。 | 入力責務不一致として失敗。 |
@@ -716,14 +716,14 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `expected/effects.json.write_order` と `expected/state/` | `write_order` に列挙された path は `expected/state/` または `expected/logs/` に期待値を持つ。 | 保存順だけの空検証として失敗。 |
 | `expected/effects.json.unchanged_paths` と `created_paths` / `deleted_paths` | 同一 path を `unchanged_paths` と `created_paths` または `deleted_paths` に同時に含めない。 | 副作用矛盾として失敗。 |
 | `expected/effects.json.forbidden_writes` と `write_order` | 同一 path を `forbidden_writes` と `write_order` に同時に含めない。 | 禁止書込矛盾として失敗。 |
-| `expected/effects.json.forbidden_calls` と `external_calls` / `commands` / `notifications` | 禁止対象と同じ call target を実行期待に含めない。 | 禁止呼び出し矛盾として失敗。 |
+| `expected/effects.json.forbidden_calls` と `external_calls` / `commands` / `notifications` | 禁止副作用と同じ call target を実行期待に含めない。 | 禁止呼び出し矛盾として失敗。 |
 | `expected/security.json` と期待値全体 | `expected/security.json.forbidden_values` に含まれる文字列は、fixture directory 内の `input/` を除く全 expected file に出現してはならない。 | secret mask 不足として失敗。 |
 | `input/fakes.json` と `expected/effects.json` | fake response を消費する外部 call / command は `expected/effects.json` に同数、同順で記録する。未消費 fake がある場合は `manifest.json.not_applicable` に理由を置く。 | fake / effect 不一致として失敗。 |
 | `missing_state` と `input/state/` | `manifest.json.missing_state` に列挙した path は `input/state/` に存在してはならない。 | 初期状態矛盾として失敗。 |
 
-**§27 component 別検証責務固定契約：**
+**fixture 証跡責務 §27-F component 別検証責務固定契約：**
 
-実装 PR は、対象 component ごとに下表の責務を満たす。複数 component を含む機能では、owner component と collaborator component を fixture manifest に分けて記録し、各 component の責務をすべて満たすまで完了扱いにしてはならない。
+実装変更は、対象 component ごとに下表の責務を満たす。複数 component を含む機能では、owner component と collaborator component を fixture manifest に分けて記録し、各 component の責務をすべて満たすまで完了扱いにしてはならない。
 
 | component | owner 時の必須検証責務 | collaborator 時の必須検証責務 | 完了判定 | 禁止越境 |
 |-----------|------------------------|-------------------------------|----------|----------|
@@ -737,30 +737,30 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `archive` | log archive、snapshot、download、delete、rollback の保存 / 取得 / 削除境界を fixture で固定する。 | API download / rollback response と runner history への影響を statefile 契約に合わせる。 | 元 log 保持、archive 破損時挙動、安全でない entry 拒否、rollback 失敗時 no-write が検証済み。 | build 成否の反転、元 build log の改変、未検証 archive 展開。 |
 | `commitstatus` | GitHub Commit Status payload、pending / final 送信順、失敗時非反転、secret mask を fixture で固定する。 | runner の build 結果を受け取り、build 成否を変更せず送信結果だけを返す。 | pending 失敗、final 失敗、commit SHA なし、無効時呼び出し 0 が検証済み。 | build 実行判断、dry-run での GitHub write、status 失敗による build 成否反転。 |
 | `security` | token hash、session、TOTP、scope、audit、rate limit、secret mask、forbidden call/write を fixture で固定する。 | API / SDK / UI / runner の secret 表示、認証失敗、副作用境界を検証する。 | 認証失敗、権限拒否、rate limit、audit failure の副作用境界が検証済み。 | 業務処理代行、認可前状態更新、secret 平文保存。 |
-| `setup` | binary 配置、service 更新、rollback、secret 既存値保持、stdout/stderr mask、終了コードを fixture で固定する。 | runner / API の初期状態と既存 secret を壊さないことを effects で固定する。 | 部分失敗時の復元対象と復元禁止対象が `expected/effects.json` に明記済み。 | runtime 機能追加、状態 schema 暗黙変更、外部依存追加。 |
+| `setup` | binary 配置、service 更新、rollback、secret 既存値保持、stdout/stderr mask、終了コードを fixture で固定する。 | runner / API の初期状態と既存 secret を壊さないことを effects で固定する。 | 部分失敗時の復元対象と復元禁止副作用が `expected/effects.json` に明記済み。 | runtime 機能追加、状態 schema 暗黙変更、外部依存追加。 |
 
-component 責務を別 PR へ分ける場合でも、各 PR が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を PR 本文に明記する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
+component 責務を複数変更へ分ける場合でも、各変更が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を実装検証証跡に明記する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
 
-**§27 runner / statefile 連動 fixture 固定契約：**
+**runner / statefile 連動 fixture 固定契約：**
 
 §27.21〜§27.38 の runner owner 機能は、対象機能の個別 fixture に加えて、状態更新を伴う場合に下表の連動 fixture を必要数作成する。fixture は runner の業務判断と statefile の保存境界を分離して検証する。
 
 | fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
 |------------|----------------|------------|---------------|----------|
-| `runner-state-write-order` | `runner`、`statefile` | build lifecycle、queue、history、status、log、対象 §27 状態。 | `expected/effects.json.write_order`、`expected/state/`、`expected/logs/`。 | 個別節の保存順と一致し、並列処理でも永続保存順が固定される。 |
+| `runner-state-write-order` | `runner`、`statefile` | build lifecycle、queue、history、status、log、対象 [`docs/details/runner.md`](runner.md) §27 状態。 | `expected/effects.json.write_order`、`expected/state/`、`expected/logs/`。 | 個別節の保存順と一致し、並列処理でも永続保存順が固定される。 |
 | `runner-state-partial-failure` | `runner`、`statefile` | N 番目の state write / JSON Lines append / fsync fake failure。 | `expected/effects.json.updated_paths`、`unchanged_paths`、`forbidden_writes`。 | 失敗地点前の成功済み状態は保持し、失敗地点以降は変更しない。未定義 rollback を行わない。 |
 | `runner-state-noop-idempotency` | `runner`、`statefile` | 同一入力の 1 回目 / 2 回目、disabled、skip、duplicate、sample 不足。 | `expected/effects.json`、2 回目の `unchanged_paths`。 | 2 回目または no-op で不要な log / history / status / notify / audit 差分を作らない。 |
 | `runner-state-dry-run-no-write` | `runner`、`statefile` | dry-run option、変更あり target、外部 call fake。 | `expected/effects.json.forbidden_writes`、`forbidden_calls`、`commands`。 | dry-run は状態ファイル、lock、external write、notification を一切変更しない。 |
-| `runner-state-corrupt-boundary` | `runner`、`statefile` | 破損 `.build_state`、`.build_status.json`、`.build_history`、対象 §27 状態。 | `expected/response.json` または runner exit code、`expected/effects.json`。 | §22.0a の退避 / 再生成 / 停止条件に従い、破損内容を response / log / expected に出さない。 |
+| `runner-state-corrupt-boundary` | `runner`、`statefile` | 破損 `.build_state`、`.build_status.json`、`.build_history`、対象 [`docs/details/runner.md`](runner.md) §27 状態。 | `expected/response.json` または runner exit code、`expected/effects.json`。 | [`docs/details/statefile.md`](statefile.md) §22.0a の退避 / 再生成 / 停止条件に従い、破損内容を response / log / expected に出さない。 |
 | `runner-state-secret-mask` | `runner`、`statefile` | PAT、branch env secret、hook output secret、remote credential、notification secret。 | `expected/security.json`、`expected/logs/`、`expected/effects.json`。 | secret 平文、prefix、suffix、長さ、hash が stdout / stderr / state / log / fixture expected に残らない。 |
 
-**§27 API / SDK / UI 連動 fixture 固定契約：**
+**API / SDK / UI 連動 fixture 固定契約：**
 
-§27.21〜§27.38 / §27.42〜§27.47 のうち API、SDK、UI が連動する実装 PR は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は owner component の主本文を置き換えず、API response、SDK method、UI 表示の接続点を固定する。
+[`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 のうち API、SDK、UI が連動する実装変更は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は owner component の主本文を置き換えず、API response、SDK method、UI 表示の接続点を固定する。
 
 | fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
 |------------|----------------|------------|---------------|----------|
-| `api-sdk-ui-request-trace` | `api`、`sdk`、`ui` | UI user action、SDK fake fetch trace、API request fixture。 | `expected/effects.json.external_calls`、`expected/sdk_trace.json`、`expected/ui_trace.json`。 | UI → SDK → API の method / path / query / body が §22.0e、§23、§24 と一致する。 |
+| `api-sdk-ui-request-trace` | `api`、`sdk`、`ui` | UI user action、SDK fake fetch trace、API request fixture。 | `expected/effects.json.external_calls`、`expected/sdk_trace.json`、`expected/ui_trace.json`。 | UI → SDK → API の method / path / query / body が [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 と一致する。 |
 | `api-sdk-ui-error-propagation` | `api`、`sdk`、`ui` | `401`、`403`、`409`、`422 details`、`429`、`500` の fake response。 | `expected/response.json`、`expected/sdk_error.json`、`expected/ui_dom.json`。 | status、message、details、token 破棄条件、panel error、field error、disabled が固定どおり。 |
 | `api-sdk-ui-refresh-order` | `api`、`sdk`、`ui` | 変更 API 成功、成功後再取得 1 件目成功、2 件目失敗。 | `expected/ui_trace.json`、`expected/effects.json.status_api_calls`。 | 再取得順を守り、変更成功は維持し、再取得失敗だけ panel error に表示する。変更 API を再送しない。 |
 | `api-sdk-ui-secret-one-time` | `security`、`sdk`、`ui` | token 発行、TOTP setup、secret 保存失敗、panel 遷移、logout、`401`。 | `expected/security.json`、`expected/ui_dom.json`、`expected/sdk_trace.json`。 | token / TOTP secret / otpauth URI は専用領域に 1 回だけ表示し、消去条件後に DOM / SDK property / log へ残らない。 |
@@ -773,9 +773,9 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 
 `expected/ui_dom.json` は、panel id、error / success text、field error、hidden state、disabled state、one-time 表示領域の有無を構造化して固定する。DOM snapshot 文字列だけで合否判定してはならない。
 
-**§27-F setup / admin / release 連動 fixture 固定契約：**
+**fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約：**
 
-§26 の setup、admin UI 配布、API service 導入、update、rollback を含む実装 PR は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は [`docs/details/setup.md`](setup.md) §26.8 と [`docs/details/admin.md`](admin.md) A1〜A6 の合格条件を同じ expected で検証する。
+§26 の setup、admin UI 配布、API service 導入、update、rollback を含む実装変更は、対象機能の owner fixture に加えて下表の連動 fixture を必要数作成する。fixture は [`docs/details/setup.md`](setup.md) §26.8 と [`docs/details/admin.md`](admin.md) A1〜A6 の合格条件を同じ expected で検証する。
 
 | fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
 |------------|----------------|------------|---------------|----------|
@@ -785,29 +785,29 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | `admin-static-serving-security` | `admin`、`api` | static request、secret/state/log/snapshot path、method variation。 | `expected/response.json`、`expected/security.json`、`expected/effects.json`。 | A3 の status、header、body 有無、method 制限、no mutation、secret 非表示が一致する。 |
 | `setup-secret-preservation` | `setup`、`security` | 既存 secret files、update input、failure fake。 | `expected/security.json`、`expected/effects.json.unchanged_paths`、`forbidden_writes`。 | 明示対象外 secret の content / mode / mtime を保持し、stdout、stderr、journal、expected に secret 原文を残さない。 |
 
-上表の fixture は、`manifest.json.owner_component` を `setup` または `admin` のどちらかに固定し、もう片方を `collaborator_components` に含める。実装 PR が API service 起動、static serving、rollback、secret 保持を扱う場合は、`api`、`runner`、`security` を collaborator として追加し、`expected/effects.json` の `forbidden_calls` と `forbidden_writes` に禁止対象を明記する。
+上表の fixture は、`manifest.json.owner_component` を `setup` または `admin` のどちらかに固定し、もう片方を `collaborator_components` に含める。実装変更が API service 起動、static serving、rollback、secret 保持を扱う場合は、`api`、`runner`、`security` を collaborator として追加し、`expected/effects.json` の `forbidden_calls` と `forbidden_writes` に禁止副作用を明記する。
 
-**§27 PR 別必須記録固定契約：**
+**runner / security 実装検証証跡 必須記録固定契約：**
 
-各 §27 実装 PR は、本文に下表を記録する。記録がない PR は、コードと fixture が存在しても未完了とする。
+各 [`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 の実装変更は、実装検証証跡に下表を記録する。記録がない変更は、コードと fixture が存在しても未完了とする。
 
 | 記録項目 | 必須内容 |
 |----------|----------|
-| wave | 対象 wave、対象 §27.x、先行 wave 完了 commit または PR 番号。 |
+| wave | 対象 wave、対象 [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x、先行 wave 完了 commit または変更識別子。 |
 | 実装対象 | 実装する機能名、owner component、collaborator component、変更ファイル、追加 fixture path。 |
-| 実装対象外 | 同じ wave 内で今回実装しない §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイルを PR 証跡に列挙する。 |
-| fixture | §27 fixture カタログの fixture 名、manifest / effects / security の検証結果。 |
-| acceptance | §27 実装 PR acceptance checklist の各項目の pass / fail / 未実行。 |
-| 後続影響 | 後続 PR が利用許可済みの contract、利用禁止の未固定 contract を PR 証跡に列挙する。 |
+| 実装対象外 | 同じ wave 内で今回実装しない [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x、後続 wave、MCP、外部公開構成、未定義 endpoint / UI / 状態ファイルを実装検証証跡に列挙する。 |
+| fixture | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F カタログの fixture 名、manifest / effects / security の検証結果。 |
+| acceptance | [`docs/details/fixture.md`](fixture.md) runner / security 実装 acceptance checklist の各項目の pass / fail / 未実行。 |
+| 後続影響 | 後続変更が利用許可済みの contract、利用禁止の未固定 contract を実装検証証跡に列挙する。 |
 
-**§27 実装 PR 最終受け入れゲート：**
+**runner / security 実装最終受け入れゲート：**
 
-§27 の機能実装 PR は、下表の全 gate を満たした場合だけ「完了」と判定する。1 件でも未達がある場合は「未完了」、仕様逸脱または secret 漏えいリスクがある場合は「差し戻し」とする。
+[`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 の機能実装は、下表の全 gate を満たした場合だけ「完了」と判定する。1 件でも未達がある場合は「未完了」、仕様逸脱または secret 漏えいリスクがある場合は「差し戻し」とする。
 
 | gate | 完了条件 | 未完了条件 | 差し戻し条件 |
 |------|----------|------------|--------------|
-| scope | 実装対象が §27 fixture カタログ固定契約に存在する機能だけである。 | 実装対象節の記載が PR 本文にない。 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加している。 |
-| fixture | 対象 §27.x の必須 fixture がすべて存在し、skip されていない。 | 必須 fixture が不足、または fixture 名が不一致。 | fixture が実装挙動に合わせて期待値を緩めている。 |
+| scope | 実装対象が [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F カタログ固定契約に存在する機能だけである。 | 実装対象節の記載が実装検証証跡にない。 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加している。 |
+| fixture | 対象 [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x の必須 fixture がすべて存在し、skip されていない。 | 必須 fixture が不足、または fixture 名が不一致。 | fixture が実装挙動に合わせて期待値を緩めている。 |
 | manifest | 全 fixture の `manifest.json` が schema、assertion 選択、owner / collaborator component 責務を満たす。 | assertion、references、owner_component、collaborator_components、components、fake_clock のいずれかが不足。 | unknown key、実 secret、実環境 path、乱数依存を含む。 |
 | expected | `expected/response.json`、`expected/state/`、`expected/logs/`、`expected/effects.json`、`expected/security.json` が assertion と一致する。 | assertion に対応する expected file が不足。 | expected と manifest / effects / security が矛盾する。 |
 | side effect | `write_order`、`unchanged_paths`、`forbidden_writes`、`forbidden_calls` が対象機能の成功 / 失敗 / no-op / partial を説明できる。 | 禁止副作用または無変更保証が不足。 | 失敗時に未許可状態を書き換える、外部呼び出しを行う。 |
@@ -815,14 +815,14 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | component | builder / runner / api / admin / sdk / ui / statefile / archive / commitstatus / security / setup の該当責務が全て fixture に紐づく。 | owner / collaborator component の所在が不明。 | SDK / UI が API response を推測補完、または UI が直接 API / 状態ファイルを操作する。 |
 | repeatability | fake clock、fake external response、固定 path により、同じ fixture が同じ結果を再現する。 | idempotency / no-op の 2 回目期待値が不足。 | 現在時刻、実ネットワーク、実 OS 差分に依存する。 |
 
-**§27 実装 PR acceptance checklist：**
+**runner / security 実装 acceptance checklist：**
 
-実装 PR 本文または検証ログには、下表の項目を記録する。記録がない項目は未検証として扱い、対象機能を完了扱いにしてはならない。
+実装検証証跡には、下表の項目を記録する。記録がない項目は未検証として扱い、対象機能を完了扱いにしてはならない。
 
 | 項目 | 記録内容 |
 |------|----------|
-| 対象責務参照 | 実装した §27.x、関連 §22 / §23 / §24 / §25 / §26、owner component、collaborator component。 |
-| 対象 fixture | 作成または更新した fixture 名一覧。fixture 名は §27 fixture カタログ固定契約と一致させる。 |
+| 対象責務参照 | 実装した [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x、関連 [`docs/details/api.md`](api.md) §22 / [`docs/details/sdk.md`](sdk.md) §23 / [`docs/details/ui.md`](ui.md) §24 / [`docs/details/security.md`](security.md) §25 / [`docs/details/setup.md`](setup.md) §26、owner component、collaborator component。 |
+| 対象 fixture | 作成または更新した fixture 名一覧。fixture 名は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F カタログ固定契約と一致させる。 |
 | 実行結果 | fixture ごとの pass / fail、実行コマンド、終了コード。 |
 | 状態差分 | 作成、更新、削除、変更禁止の path。`expected/effects.json` と一致させる。 |
 | 外部副作用 | GitHub、SSH、SMTP、webhook、systemd、hook、remote build、notification の呼び出し回数と順序。 |
@@ -831,9 +831,9 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | 再実行 | idempotency / no-op fixture の 1 回目と 2 回目の差分。 |
 | 対象外確認 | 未定義 endpoint、未定義 UI、未定義状態ファイル、MCP、外部公開構成を追加していないことを、差分対象 file と fixture manifest の両方で確認する。 |
 
-**§27 差し戻し固定条件：**
+**runner / security 差し戻し固定条件：**
 
-次のいずれかに該当する PR は、fixture が pass していても差し戻しとする。
+次のいずれかに該当する変更は、fixture が pass していても差し戻しとする。
 
 | 条件 | 理由 |
 |------|------|
@@ -845,7 +845,7 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | SDK が API response を補完し、UI が SDK を迂回し、runner / builder が未定義状態ファイルを作成する。 | component 責務違反。 |
 | 実ネットワーク、実時刻、実ユーザー環境、実 secret に依存する fixture だけで合格している。 | 再現性不足。 |
 
-**§27 部分失敗・再実行固定契約：**
+**runner / security 部分失敗・再実行固定契約：**
 
 | ケース | 固定挙動 |
 |--------|----------|
@@ -858,65 +858,65 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | 再実行 no-op | 同一入力で差分がない保存 API は、個別節の no-op response を返し、状態、config log、audit log、notify log に新規差分を作らない。 |
 | 破損 JSON Lines | read API は破損行を除外し、破損内容を response に出さない。write API は既存破損行を修復、削除、並べ替えしない。 |
 
-## 28-F §28 builder 拡張 fixture / PR 証跡詳細契約
+## 28-F fixture 証跡責務 / builder 拡張実装検証証跡詳細契約
 
-本節は、[`docs/details/builder.md`](builder.md) §28.1〜§28.25 の fixture、fake、expected、effects、PR 証跡を扱う fixture 証跡責務である。各 §28 機能は、Markdown 入力、CLI option、期待 HTML、期待 CSS / JS、`[REPORT]`、終了コード、strict / non-strict の差分を fixture で固定する。外部 library、CDN、実 network、現在時刻、実 git repository、実画像取得、画像 snapshot だけの合否判定を fixture の前提にしてはならない。
+該当節は、[`docs/details/builder.md`](builder.md) §28.1〜§28.25 の fixture、fake、expected、effects、実装検証証跡を扱う fixture 証跡責務である。各 [`docs/details/builder.md`](builder.md) §28 機能は、Markdown 入力、CLI option、期待 HTML、期待 CSS / JS、`[REPORT]`、終了コード、strict / non-strict の差分を fixture で固定する。外部 library、CDN、実 network、現在時刻、実 git repository、実画像取得、画像 snapshot だけの合否判定を fixture の前提にしてはならない。
 
-**§28 fixture 配置固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F 配置固定契約：**
 
 | 節 | fixture 配置単位 | 必須 fixture |
 |----|------------------|--------------|
-| §28 共通 | `builder-extensions/config-resolution/` | 下記 §28 fixture カタログ固定契約の `config-resolution` fixture をすべて作成する。 |
-| §28 共通 | `builder-extensions/determinism/` | 下記 §28 fixture カタログ固定契約の `determinism` fixture をすべて作成する。 |
-| §28 共通 | `builder-extensions/atomicity/` | 下記 §28 fixture カタログ固定契約の `atomicity` fixture をすべて作成する。 |
-| §28 共通 | `builder-extensions/parser-precedence/` | 下記 §28 fixture カタログ固定契約の `parser-precedence` fixture をすべて作成する。 |
-| §28 共通 | `builder-extensions/browser-runtime/` | 下記 §28 fixture カタログ固定契約の `browser-runtime` fixture をすべて作成する。 |
-| §28 共通 | `builder-extensions/visual-layout/` | 下記 §28 fixture カタログ固定契約の `visual-layout` fixture をすべて作成する。 |
-| §28.1〜§28.25 | `builder-extensions/<feature-slug>/` | 下記 §28 fixture カタログ固定契約に列挙した fixture をすべて作成する。 |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `builder-extensions/config-resolution/` | 下記 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の `config-resolution` fixture をすべて作成する。 |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `builder-extensions/determinism/` | 下記 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の `determinism` fixture をすべて作成する。 |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `builder-extensions/atomicity/` | 下記 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の `atomicity` fixture をすべて作成する。 |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `builder-extensions/parser-precedence/` | 下記 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の `parser-precedence` fixture をすべて作成する。 |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `builder-extensions/browser-runtime/` | 下記 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の `browser-runtime` fixture をすべて作成する。 |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `builder-extensions/visual-layout/` | 下記 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の `visual-layout` fixture をすべて作成する。 |
+| [`docs/details/builder.md`](builder.md) §28.1〜§28.25 | `builder-extensions/<feature-slug>/` | 下記 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約に列挙した fixture をすべて作成する。 |
 
-**§28 fixture カタログ固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約：**
 
-下表の fixture 名は固定値である。実装 PR では、対象 §28.x の全 fixture を追加または更新し、`expected/stdout.txt` の `[REPORT]` key が [`docs/details/builder.md`](builder.md) §28 の固定契約と一致することを証跡に含める。
+下表の fixture 名は固定値である。実装変更では、対象 [`docs/details/builder.md`](builder.md) §28.x の全 fixture を追加または更新し、`expected/stdout.txt` の `[REPORT]` key が [`docs/details/builder.md`](builder.md) §28 の固定契約と一致することを証跡に含める。
 
 | 節 | feature slug | 必須 fixture |
 |----|--------------|--------------|
-| §28 共通 | `config-resolution` | `success-config-defaults-only`、`success-config-file-values`、`success-config-env-over-file`、`success-config-cli-over-env-over-file`、`failure-config-json-corrupt`、`failure-config-unknown-key`、`failure-config-invalid-type`、`failure-config-duplicate-nonrepeatable-cli`、`security-config-secret-not-echoed` |
-| §28 共通 | `determinism` | `success-slug-duplicates`、`success-search-index-text-sources`、`success-local-storage-payload`、`success-hash-targets`、`security-deterministic-no-runtime-variance` |
-| §28 共通 | `atomicity` | `success-atomic-write-all-files`、`success-incremental-reuse-byte-identical`、`success-incremental-delete-stale-page`、`failure-strict-warning-no-replace`、`failure-write-error-no-partial-update`、`failure-changed-manifest-invalid-no-output`、`success-dependency-manifest-corrupt-full-build`、`security-atomic-no-stale-temp-promoted` |
-| §28 共通 | `parser-precedence` | `success-block-precedence-code-math-heading`、`success-inline-precedence-code-image-link`、`success-admonition-inline-composition`、`success-heading-inline-slug-source`、`success-list-definition-task-boundary`、`failure-unclosed-math-strict`、`noop-code-fence-protects-extensions`、`security-parser-raw-html-escaped` |
-| §28 共通 | `browser-runtime` | `success-runtime-init-order`、`success-section-collapse-storage-print`、`success-light-mode-print`、`success-toc-active-observer-fallback`、`success-hash-history-focus-navigation`、`success-lightbox-focus-trap-close`、`success-keyboard-scope-skip-link`、`security-runtime-no-storage-leak` |
-| §28 共通 | `visual-layout` | `success-css-output-order`、`success-responsive-320-layout`、`success-print-layout`、`success-light-mode-variables`、`success-minify-visual-preservation`、`success-component-overflow-boundaries`、`security-visual-no-external-assets`、`security-focus-visible-no-overlap` |
-| §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`success-reuse-page-copied-to-staging`、`success-stale-page-delete-on-success`、`success-incremental-dependency-manifest-corrupt-full-build`、`failure-changed-manifest-corrupt`、`failure-changed-manifest-base-escape`、`noop-unchanged-pages-kept`、`security-incremental-no-public-write-on-failure` |
-| §28.2 | `formats` | `success-html-default`、`success-html-explicit`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format`、`security-format-no-reserved-output-files` |
-| §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`success-extension-csv-normalization`、`failure-unknown-extension`、`failure-badge-invalid-text-strict`、`noop-badge-invalid-text-nonstrict`、`security-extension-escape`、`noop-extension-disabled` |
-| §28.4 | `code-line-numbers` | `success-line-numbers-fence`、`success-line-numbers-cli`、`success-line-numbers-diff-composition`、`noop-line-numbers-empty-code`、`noop-line-numbers-disabled`、`security-line-numbers-copy-clean` |
-| §28.5 | `heading-numbering` | `success-heading-numbering-h2-h3`、`success-heading-numbering-implicit-h2`、`success-heading-numbering-toc-search`、`failure-heading-numbering-unknown-mode`、`noop-heading-numbering-none`、`security-heading-slug-unchanged` |
-| §28.6 | `section-collapse` | `success-collapse-h2-h3`、`success-collapse-local-storage`、`success-collapse-print-search-hash`、`failure-collapse-duplicate-target`、`noop-collapse-no-heading`、`noop-collapse-disabled`、`security-collapse-state-parse-guard` |
-| §28.7 | `toc-depth` | `success-toc-depth-h2-h3`、`success-toc-depth-h1-h6`、`success-toc-depth-heading-numbering-sync`、`failure-toc-depth-invalid-range`、`failure-toc-depth-invalid-format`、`security-toc-depth-active-sync` |
-| §28.8 | `updated-at` | `success-updated-at-git`、`success-updated-at-file`、`success-updated-at-fallback`、`success-updated-at-none`、`failure-updated-at-unknown-source`、`failure-updated-at-unavailable`、`security-updated-at-no-search-index` |
-| §28.9 | `diff-highlight` | `success-diff-insert-delete-context`、`success-diff-header`、`success-diff-line-number-composition`、`noop-diff-non-diff-language`、`security-diff-escape`、`security-diff-copy-text-clean` |
-| §28.10 | `lazy-images` | `success-lazy-relative-image`、`success-lazy-external-image-no-fetch`、`success-lazy-data-uri-no-fetch`、`failure-lazy-base-outside-strict`、`noop-lazy-disabled`、`security-lazy-alt-escape`、`security-lazy-invalid-scheme-strict` |
-| §28.11 | `custom-meta` | `success-meta-name-property-order`、`success-meta-og-twitter`、`success-meta-duplicate-last-wins`、`failure-meta-forbidden-key`、`failure-meta-invalid-type`、`security-meta-escape`、`security-meta-secret-not-reported` |
-| §28.12 | `light-mode-fixed` | `success-light-mode-fixed`、`success-light-mode-print`、`security-light-mode-no-theme-toggle`、`security-light-mode-no-storage`、`failure-light-mode-dark-output` |
-| §28.13 | `code-title` | `success-code-title-colon`、`success-code-title-key-value`、`success-code-title-title-only`、`noop-code-title-empty`、`security-code-title-escape`、`security-code-title-copy-search-excluded` |
-| §28.14 | `template-vars` | `success-template-var-replace`、`success-template-var-multiple-sources`、`noop-template-var-code-fence-span`、`noop-template-var-invalid-syntax`、`failure-template-var-missing-strict`、`failure-template-var-key-validation`、`security-template-var-secret-not-reported` |
-| §28.15 | `minify-html` | `success-minify-html`、`success-minify-preserve-code`、`success-minify-attribute-order`、`failure-minify-structure-broken`、`failure-minify-marker-missing`、`noop-minify-disabled`、`security-minify-no-script-style-inline` |
-| §28.16 | `toc-active` | `success-toc-active-scroll`、`success-toc-active-fallback`、`noop-toc-active-disabled`、`security-toc-active-depth-sync` |
-| §28.17 | `mermaid` | `success-mermaid-graph-td`、`failure-mermaid-unsupported-strict`、`noop-mermaid-disabled`、`security-mermaid-no-external-script` |
-| §28.18 | `footnotes` | `success-footnotes-multiple`、`success-footnotes-backlink`、`failure-footnote-undefined-strict`、`security-footnote-escape` |
-| §28.19 | `math` | `success-math-inline-block`、`failure-math-unclosed-strict`、`noop-math-code-fence`、`security-math-escape` |
-| §28.20 | `hash-history` | `success-hash-history-click`、`success-hash-history-back-forward`、`noop-hash-history-disabled`、`security-hash-history-missing-target` |
-| §28.21 | `a11y` | `success-a11y-landmarks-labels`、`success-a11y-skip-link-tab-order`、`failure-a11y-duplicate-id-strict`、`security-a11y-no-keyboard-trap` |
-| §28.22 | `image-lightbox` | `success-lightbox-open-close`、`success-lightbox-escape-backdrop`、`failure-lightbox-alt-missing-strict`、`security-lightbox-focus-trap` |
-| §28.23 | `print-qr` | `success-print-qr-url`、`noop-print-qr-empty-url`、`failure-print-qr-url-too-long`、`security-print-qr-svg-escape` |
-| §28.24 | `definition-lists` | `success-definition-list-single`、`success-definition-list-multiple`、`noop-definition-list-empty-term`、`security-definition-list-inline-escape` |
-| §28.25 | `task-lists` | `success-task-list-unchecked`、`success-task-list-checked-nested`、`noop-task-list-non-target`、`security-task-list-disabled-aria` |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `config-resolution` | `success-config-defaults-only`、`success-config-file-values`、`success-config-env-over-file`、`success-config-cli-over-env-over-file`、`failure-config-json-corrupt`、`failure-config-unknown-key`、`failure-config-invalid-type`、`failure-config-duplicate-nonrepeatable-cli`、`security-config-secret-not-echoed` |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `determinism` | `success-slug-duplicates`、`success-search-index-text-sources`、`success-local-storage-payload`、`success-hash-targets`、`security-deterministic-no-runtime-variance` |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `atomicity` | `success-atomic-write-all-files`、`success-incremental-reuse-byte-identical`、`success-incremental-delete-stale-page`、`failure-strict-warning-no-replace`、`failure-write-error-no-partial-update`、`failure-changed-manifest-invalid-no-output`、`success-dependency-manifest-corrupt-full-build`、`security-atomic-no-stale-temp-promoted` |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `parser-precedence` | `success-block-precedence-code-math-heading`、`success-inline-precedence-code-image-link`、`success-admonition-inline-composition`、`success-heading-inline-slug-source`、`success-list-definition-task-boundary`、`failure-unclosed-math-strict`、`noop-code-fence-protects-extensions`、`security-parser-raw-html-escaped` |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `browser-runtime` | `success-runtime-init-order`、`success-section-collapse-storage-print`、`success-light-mode-print`、`success-toc-active-observer-fallback`、`success-hash-history-focus-navigation`、`success-lightbox-focus-trap-close`、`success-keyboard-scope-skip-link`、`security-runtime-no-storage-leak` |
+| [`docs/details/builder.md`](builder.md) §28 共通 | `visual-layout` | `success-css-output-order`、`success-responsive-320-layout`、`success-print-layout`、`success-light-mode-variables`、`success-minify-visual-preservation`、`success-component-overflow-boundaries`、`security-visual-no-external-assets`、`security-focus-visible-no-overlap` |
+| [`docs/details/builder.md`](builder.md) §28.1 | `incremental` | `success-one-page-change`、`success-dependency-change`、`success-reuse-page-copied-to-staging`、`success-stale-page-delete-on-success`、`success-incremental-dependency-manifest-corrupt-full-build`、`failure-changed-manifest-corrupt`、`failure-changed-manifest-base-escape`、`noop-unchanged-pages-kept`、`security-incremental-no-public-write-on-failure` |
+| [`docs/details/builder.md`](builder.md) §28.2 | `formats` | `success-html-default`、`success-html-explicit`、`failure-pdf-reserved`、`failure-epub-reserved`、`failure-unknown-format`、`failure-multiple-format`、`security-format-no-reserved-output-files` |
+| [`docs/details/builder.md`](builder.md) §28.3 | `markdown-extensions` | `success-admonition-note-warn-tip`、`success-badge-color`、`success-extension-csv-normalization`、`failure-unknown-extension`、`failure-badge-invalid-text-strict`、`noop-badge-invalid-text-nonstrict`、`security-extension-escape`、`noop-extension-disabled` |
+| [`docs/details/builder.md`](builder.md) §28.4 | `code-line-numbers` | `success-line-numbers-fence`、`success-line-numbers-cli`、`success-line-numbers-diff-composition`、`noop-line-numbers-empty-code`、`noop-line-numbers-disabled`、`security-line-numbers-copy-clean` |
+| [`docs/details/builder.md`](builder.md) §28.5 | `heading-numbering` | `success-heading-numbering-h2-h3`、`success-heading-numbering-implicit-h2`、`success-heading-numbering-toc-search`、`failure-heading-numbering-unknown-mode`、`noop-heading-numbering-none`、`security-heading-slug-unchanged` |
+| [`docs/details/builder.md`](builder.md) §28.6 | `section-collapse` | `success-collapse-h2-h3`、`success-collapse-local-storage`、`success-collapse-print-search-hash`、`failure-collapse-duplicate-target`、`noop-collapse-no-heading`、`noop-collapse-disabled`、`security-collapse-state-parse-guard` |
+| [`docs/details/builder.md`](builder.md) §28.7 | `toc-depth` | `success-toc-depth-h2-h3`、`success-toc-depth-h1-h6`、`success-toc-depth-heading-numbering-sync`、`failure-toc-depth-invalid-range`、`failure-toc-depth-invalid-format`、`security-toc-depth-active-sync` |
+| [`docs/details/builder.md`](builder.md) §28.8 | `updated-at` | `success-updated-at-git`、`success-updated-at-file`、`success-updated-at-fallback`、`success-updated-at-none`、`failure-updated-at-unknown-source`、`failure-updated-at-unavailable`、`security-updated-at-no-search-index` |
+| [`docs/details/builder.md`](builder.md) §28.9 | `diff-highlight` | `success-diff-insert-delete-context`、`success-diff-header`、`success-diff-line-number-composition`、`noop-diff-non-diff-language`、`security-diff-escape`、`security-diff-copy-text-clean` |
+| [`docs/details/builder.md`](builder.md) §28.10 | `lazy-images` | `success-lazy-relative-image`、`success-lazy-external-image-no-fetch`、`success-lazy-data-uri-no-fetch`、`failure-lazy-base-outside-strict`、`noop-lazy-disabled`、`security-lazy-alt-escape`、`security-lazy-invalid-scheme-strict` |
+| [`docs/details/builder.md`](builder.md) §28.11 | `custom-meta` | `success-meta-name-property-order`、`success-meta-og-twitter`、`success-meta-duplicate-last-wins`、`failure-meta-forbidden-key`、`failure-meta-invalid-type`、`security-meta-escape`、`security-meta-secret-not-reported` |
+| [`docs/details/builder.md`](builder.md) §28.12 | `light-mode-fixed` | `success-light-mode-fixed`、`success-light-mode-print`、`security-light-mode-no-theme-toggle`、`security-light-mode-no-storage`、`failure-light-mode-dark-output` |
+| [`docs/details/builder.md`](builder.md) §28.13 | `code-title` | `success-code-title-colon`、`success-code-title-key-value`、`success-code-title-title-only`、`noop-code-title-empty`、`security-code-title-escape`、`security-code-title-copy-search-excluded` |
+| [`docs/details/builder.md`](builder.md) §28.14 | `template-vars` | `success-template-var-replace`、`success-template-var-multiple-sources`、`noop-template-var-code-fence-span`、`noop-template-var-invalid-syntax`、`failure-template-var-missing-strict`、`failure-template-var-key-validation`、`security-template-var-secret-not-reported` |
+| [`docs/details/builder.md`](builder.md) §28.15 | `minify-html` | `success-minify-html`、`success-minify-preserve-code`、`success-minify-attribute-order`、`failure-minify-structure-broken`、`failure-minify-marker-missing`、`noop-minify-disabled`、`security-minify-no-script-style-inline` |
+| [`docs/details/builder.md`](builder.md) §28.16 | `toc-active` | `success-toc-active-scroll`、`success-toc-active-fallback`、`noop-toc-active-disabled`、`security-toc-active-depth-sync` |
+| [`docs/details/builder.md`](builder.md) §28.17 | `mermaid` | `success-mermaid-graph-td`、`failure-mermaid-unsupported-strict`、`noop-mermaid-disabled`、`security-mermaid-no-external-script` |
+| [`docs/details/builder.md`](builder.md) §28.18 | `footnotes` | `success-footnotes-multiple`、`success-footnotes-backlink`、`failure-footnote-undefined-strict`、`security-footnote-escape` |
+| [`docs/details/builder.md`](builder.md) §28.19 | `math` | `success-math-inline-block`、`failure-math-unclosed-strict`、`noop-math-code-fence`、`security-math-escape` |
+| [`docs/details/builder.md`](builder.md) §28.20 | `hash-history` | `success-hash-history-click`、`success-hash-history-back-forward`、`noop-hash-history-disabled`、`security-hash-history-missing-target` |
+| [`docs/details/builder.md`](builder.md) §28.21 | `a11y` | `success-a11y-landmarks-labels`、`success-a11y-skip-link-tab-order`、`failure-a11y-duplicate-id-strict`、`security-a11y-no-keyboard-trap` |
+| [`docs/details/builder.md`](builder.md) §28.22 | `image-lightbox` | `success-lightbox-open-close`、`success-lightbox-escape-backdrop`、`failure-lightbox-alt-missing-strict`、`security-lightbox-focus-trap` |
+| [`docs/details/builder.md`](builder.md) §28.23 | `print-qr` | `success-print-qr-url`、`noop-print-qr-empty-url`、`failure-print-qr-url-too-long`、`security-print-qr-svg-escape` |
+| [`docs/details/builder.md`](builder.md) §28.24 | `definition-lists` | `success-definition-list-single`、`success-definition-list-multiple`、`noop-definition-list-empty-term`、`security-definition-list-inline-escape` |
+| [`docs/details/builder.md`](builder.md) §28.25 | `task-lists` | `success-task-list-unchecked`、`success-task-list-checked-nested`、`noop-task-list-non-target`、`security-task-list-disabled-aria` |
 
-**§28 fixture ファイルセット固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F ファイルセット固定契約：**
 
 | ファイル | 必須 | 内容 |
 |----------|------|------|
-| `manifest.json` | 必須 | fixture 名、対象 §28 共通または §28.x、feature slug、owner `builder`、collaborator、参照仕様節、strict 有無、fake clock、not_applicable 理由。 |
+| `manifest.json` | 必須 | fixture 名、対象 [`docs/details/builder.md`](builder.md) §28 共通または [`docs/details/builder.md`](builder.md) §28.x、feature slug、owner `builder`、collaborator、参照仕様節、strict 有無、fake clock、not_applicable 理由。 |
 | `input/source.md` または `input/site/` | 必須 | Markdown 入力。site fixture は複数 Markdown、asset、dependency を含める。 |
 | `input/options.json` | 必須 | CLI option、env key、expected exit code、strict / non-strict。 |
 | `input/adlaire-ci-build.json` | 条件付き | 設定ファイル fixture で使用する。未使用 fixture では存在させない。 |
@@ -928,9 +928,9 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | `expected/effects.json` | 必須 | 作成、更新、維持、削除禁止 path、外部 call 0 件、既存出力保護、strict 昇格条件。 |
 | `expected/security.json` | 条件付き | HTML escape、attribute escape、外部 library 不使用、secret / URL credential 非表示、base 外 path 拒否。 |
 
-**§28 fixture 判定粒度固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F 判定粒度固定契約：**
 
-§28 fixture は、目視確認、画像 snapshot、現在時刻、実 git repository、実 network、ブラウザ環境だけに依存して合否判定してはならない。期待値は file 内容、stdout、stderr、終了コード、副作用、禁止出力のいずれかで固定する。
+[`docs/details/builder.md`](builder.md) §28 の fixture は、目視確認、画像 snapshot、現在時刻、実 git repository、実 network、ブラウザ環境だけに依存して合否判定してはならない。期待値は file 内容、stdout、stderr、終了コード、副作用、禁止出力のいずれかで固定する。
 
 | 判定対象 | 固定内容 |
 |----------|----------|
@@ -946,7 +946,7 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | parser precedence | block token 優先順位、inline token 優先順位、code fence / code span 保護、曖昧構文、機能併用順を確認する。 |
 | browser runtime | JS 初期化順、event handler、focus、keyboard、localStorage、print、fallback、例外時 no-break を確認する。 |
 
-`expected/effects.json` は、§28 fixture では以下の key を固定する。未使用 key も省略せず、空配列、空 object、または `false` で明示する。
+`expected/effects.json` は、[`docs/details/builder.md`](builder.md) §28 の fixture では以下の key を固定する。未使用 key も省略せず、空配列、空 object、または `false` で明示する。
 
 | key | 型 | 固定 |
 |-----|----|------|
@@ -963,13 +963,13 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 | `manifest_written` | boolean | 成功 transaction で `.dependency_manifest.json` が公開される場合だけ `true`。 |
 | `search_index_regenerated` | boolean | 成功 transaction で最終 page set から search index を再生成する場合だけ `true`。 |
 
-**§28 設定解決 fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F 設定解決固定契約：**
 
-`builder-extensions/config-resolution/` は §28 全機能の前提 fixture である。§28.1〜§28.25 の個別 fixture は、この共通 fixture と矛盾する CLI / env / config / default 解決をしてはならない。
+`builder-extensions/config-resolution/` は [`docs/details/builder.md`](builder.md) §28 全機能の前提 fixture である。[`docs/details/builder.md`](builder.md) §28.1〜§28.25 の個別 fixture は、この共通 fixture と矛盾する CLI / env / config / default 解決をしてはならない。
 
 | fixture | 固定する内容 |
 |---------|--------------|
-| `success-config-defaults-only` | CLI、環境変数、`adlaire-ci-build.json` がない場合、§28 の全設定 key が既定値から採用され、`config_default_keys` に全 key、その他 source key に空 array が出る。 |
+| `success-config-defaults-only` | CLI、環境変数、`adlaire-ci-build.json` がない場合、[`docs/details/builder.md`](builder.md) §28 の全設定 key が既定値から採用され、`config_default_keys` に全 key、その他 source key に空 array が出る。 |
 | `success-config-file-values` | `input/adlaire-ci-build.json` の `builder_extensions` 値が採用され、`config_file_used=true`、`config_file_path="adlaire-ci-build.json"`、`config_file_keys` が ASCII 昇順で出る。 |
 | `success-config-env-over-file` | 同一 key が環境変数と設定ファイルに存在する場合、環境変数を採用し、設定ファイル source は `config_overridden_keys` に記録する。 |
 | `success-config-cli-over-env-over-file` | 同一 key が CLI、環境変数、設定ファイルに存在する場合、CLI を採用し、環境変数 / 設定ファイル source は `config_overridden_keys` に記録する。 |
@@ -981,9 +981,9 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 
 設定解決成功 fixture の `expected/stdout.txt` は、`config_file_used`、`config_file_path`、`config_cli_keys`、`config_env_keys`、`config_file_keys`、`config_default_keys`、`config_overridden_keys`、`config_rejected_keys` を必ず含める。設定解決失敗 fixture の `expected/stdout.txt` は空 file とし、`expected/stderr.txt` に `[ERROR] BUILDER28_INVALID_OPTION -:0 28 ...` を固定する。設定解決失敗 fixture の `expected/effects.json` は、HTML、CSS、JS、search index、manifest、設定ファイルが新規作成、更新、削除されないことを固定する。
 
-**§28 決定性 fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F 決定性固定契約：**
 
-`builder-extensions/determinism/` は、§28 の HTML identity、slug、search index、hash、localStorage の共通 fixture である。個別 §28 fixture は、本 fixture と異なる slug、id、search text、storage key、hash target を期待値にしてはならない。
+`builder-extensions/determinism/` は、[`docs/details/builder.md`](builder.md) §28 の HTML identity、slug、search index、hash、localStorage の共通 fixture である。個別 [`docs/details/builder.md`](builder.md) §28 の fixture は、本 fixture と異なる slug、id、search text、storage key、hash target を期待値にしてはならない。
 
 | fixture | 固定する内容 |
 |---------|--------------|
@@ -995,9 +995,9 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 
 決定性 fixture の `expected/site/*.html` は、heading id、TOC href、collapse wrapper id、`aria-controls`、`data-section-id` を完全一致で確認する。`expected/site/assets/search-index.json` は page key、heading text、body text、除外 text の不在を JSON parse 後完全一致で確認する。`expected/site/assets/app.js` は localStorage key、payload schema、unknown value guard、parse failure guard、hash no-op guard を文字列または構造で確認する。
 
-**§28 atomicity fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F atomicity 固定契約：**
 
-`builder-extensions/atomicity/` は、§28 の出力副作用、公開置換、manifest、search index、stale 削除を固定する共通 fixture である。個別 §28 fixture は、本 fixture と異なる失敗時副作用、manifest 更新条件、search index 更新条件を期待値にしてはならない。
+`builder-extensions/atomicity/` は、[`docs/details/builder.md`](builder.md) §28 の出力副作用、公開置換、manifest、search index、stale 削除を固定する共通 fixture である。個別 [`docs/details/builder.md`](builder.md) §28 の fixture は、本 fixture と異なる失敗時副作用、manifest 更新条件、search index 更新条件を期待値にしてはならない。
 
 | fixture | 固定する内容 |
 |---------|--------------|
@@ -1012,9 +1012,9 @@ component 責務を別 PR へ分ける場合でも、各 PR が満たすべき o
 
 atomicity fixture の `input/existing-site/` は、既存 HTML、既存 `assets/search-index.json`、既存 `.dependency_manifest.json`、stale HTML、既存 asset を含める。failure fixture の `expected/site/` は `input/existing-site/` と byte 単位で一致させる。success fixture の `expected/effects.json` は、`created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths` をすべて明示する。
 
-**§28 parser precedence fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F parser precedence 固定契約：**
 
-`builder-extensions/parser-precedence/` は、§28 の Markdown parser 優先順位、構文 grammar、曖昧構文、機能併用順を固定する共通 fixture である。個別 §28 fixture は、本 fixture と異なる token 解釈、別順序の inline 変換、code fence / code span 内変換を期待値にしてはならない。
+`builder-extensions/parser-precedence/` は、[`docs/details/builder.md`](builder.md) §28 の Markdown parser 優先順位、構文 grammar、曖昧構文、機能併用順を固定する共通 fixture である。個別 [`docs/details/builder.md`](builder.md) §28 の fixture は、本 fixture と異なる token 解釈、別順序の inline 変換、code fence / code span 内変換を期待値にしてはならない。
 
 | fixture | 固定する内容 |
 |---------|--------------|
@@ -1029,9 +1029,9 @@ atomicity fixture の `input/existing-site/` は、既存 HTML、既存 `assets/
 
 parser precedence fixture の `expected/site/*.html` は、対象 token の tag、text node、未変換 text、変換済み node、属性順を完全一致で確認する。`expected/stdout.txt` は warning の有無、warning code、line、section を完全一致で確認する。`expected/security.json` は raw HTML、script、event handler、credential URL、CDN、外部 library が出力に存在しないことを固定する。
 
-**§28 browser runtime fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F browser runtime 固定契約：**
 
-`builder-extensions/browser-runtime/` は、§28 のブラウザ JS 初期化順、状態復元、event handler、focus、keyboard、print、fallback を固定する共通 fixture である。個別 §28 fixture は、本 fixture と異なる localStorage key、focus 移動、keyboard scope、lightbox close 条件、TOC active 条件を期待値にしてはならない。
+`builder-extensions/browser-runtime/` は、[`docs/details/builder.md`](builder.md) §28 のブラウザ JS 初期化順、状態復元、event handler、focus、keyboard、print、fallback を固定する共通 fixture である。個別 [`docs/details/builder.md`](builder.md) §28 の fixture は、本 fixture と異なる localStorage key、focus 移動、keyboard scope、lightbox close 条件、TOC active 条件を期待値にしてはならない。
 
 | fixture | 固定する内容 |
 |---------|--------------|
@@ -1041,19 +1041,19 @@ parser precedence fixture の `expected/site/*.html` は、対象 token の tag�
 | `success-toc-active-observer-fallback` | IntersectionObserver 使用時と fallback scroll 時の active link 1 件化、`.is-active`、`aria-current="location"`、TOC depth 外除外が一致する。 |
 | `success-hash-history-focus-navigation` | heading / TOC click、`history.pushState`、`tabindex="-1"`、focus、back / forward、missing hash no-op が一致する。 |
 | `success-lightbox-focus-trap-close` | trigger click、`Enter` / `Space`、dialog open、Escape、backdrop、close button、opener focus return、Tab / Shift+Tab focus trap が一致する。 |
-| `success-keyboard-scope-skip-link` | §28 keyboard handler が対象 UI focus 中だけ有効で、既存 §7.12 shortcut を上書きせず、skip link が main content へ移動する。 |
+| `success-keyboard-scope-skip-link` | [`docs/details/builder.md`](builder.md) §28 keyboard handler が対象 UI focus 中だけ有効で、[`docs/details/builder.md`](builder.md) §7.12 shortcut を上書きせず、skip link が main content へ移動する。 |
 | `security-runtime-no-storage-leak` | cookie、sessionStorage、IndexedDB、runtime network fetch、external script、secret / credential の storage 書込が 0 件である。 |
 
 browser runtime fixture の `expected/site/assets/app.js` は、初期化関数名または固定 marker、localStorage key、event 名、guard、fallback 分岐、focus trap 分岐を文字列または構造で確認する。`expected/security.json` は、cookie、sessionStorage、IndexedDB、fetch、XMLHttpRequest、external script、secret / credential storage が存在しないことを固定する。ブラウザ実行がない fixture でも、期待 JS 構造と expected HTML / CSS / security を組み合わせて合否判定する。
 
-**§28 visual layout fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F visual layout 固定契約：**
 
-`builder-extensions/visual-layout/` は、§28 の CSS 出力順、responsive layout、print layout、light 固定変数、minify 後の視覚維持、component overflow、外部 visual asset 禁止、focus 表示を固定する共通 fixture である。個別 §28 fixture は、本 fixture と異なる selector 順、media query 境界、print visibility、外部 asset 許可、focus 表示条件を期待値にしてはならない。
+`builder-extensions/visual-layout/` は、[`docs/details/builder.md`](builder.md) §28 の CSS 出力順、responsive layout、print layout、light 固定変数、minify 後の視覚維持、component overflow、外部 visual asset 禁止、focus 表示を固定する共通 fixture である。個別 [`docs/details/builder.md`](builder.md) §28 の fixture は、本 fixture と異なる selector 順、media query 境界、print visibility、外部 asset 許可、focus 表示条件を期待値にしてはならない。
 
 | fixture | 固定する内容 |
 |---------|--------------|
 | `success-css-output-order` | `expected/site/assets/style.css` で、既存 base、light visual baseline、typography / block、code extension、navigation runtime UI、media UI、responsive、print の順序が固定どおりである。 |
-| `success-responsive-320-layout` | 幅 `320px` 相当の fixture metadata と expected CSS / HTML で、§28 UI が text overlap、text clipping、不可視 overflow を発生させず、table と code block だけが scroll wrapper 内で横 overflow を持つ。 |
+| `success-responsive-320-layout` | 幅 `320px` 相当の fixture metadata と expected CSS / HTML で、[`docs/details/builder.md`](builder.md) §28 UI が text overlap、text clipping、不可視 overflow を発生させず、table と code block だけが scroll wrapper 内で横 overflow を持つ。 |
 | `success-print-layout` | `@media print` で interactive controls を非表示、本文要素を表示、collapsed section を展開、light 固定表示、QR を print 専用表示にする。 |
 | `success-light-mode-variables` | `:root` と print の custom property 名と既定値が固定どおりであり、dark / auto selector が存在しない。 |
 | `success-minify-visual-preservation` | minify 有効時も required selector、custom property、`@media (max-width: 768px)`、`@media print`、`pre` / `code` の空白保持 property が削除、改名、結合破壊されない。 |
@@ -1063,9 +1063,9 @@ browser runtime fixture の `expected/site/assets/app.js` は、初期化関数�
 
 visual layout fixture の `manifest.json` は、`viewport_width` を使う場合でも判定を画像 snapshot だけに依存させてはならない。visual layout fixture は `expected/site/assets/style.css`、`expected/site/*.html`、`expected/security.json`、`expected/visual.json` を必須とし、selector、media query、display、overflow、visibility、focus、禁止 asset を構造化して固定する。ブラウザ実行がない fixture でも、期待 HTML / CSS / security / visual の組み合わせで合否判定できなければならない。
 
-**§28.1〜§28.5 feature fixture 固定契約：**
+**builder 詳細本文責務 §28.1〜§28.5 fixture 固定契約：**
 
-§28.1〜§28.5 の fixture は、[`docs/details/builder.md`](builder.md) §28.1〜§28.5 実装詳細固定契約に列挙された中間状態、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x に固定し、`manifest.json.feature_slug` を §28 fixture カタログ固定契約の feature slug と一致させる。
+[`docs/details/builder.md`](builder.md) §28.1〜§28.5 の fixture は、[`docs/details/builder.md`](builder.md) §28.1〜§28.5 実装詳細固定契約に列挙された中間状態、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/builder.md`](builder.md) §28.x に固定し、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。
 
 | feature slug | fixture | 固定する内容 |
 |--------------|---------|--------------|
@@ -1095,7 +1095,7 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `markdown-extensions` | `noop-extension-disabled` | extension 未指定時に admonition / badge 構文を特別扱いせず、既存 Markdown 変換結果を維持する。 |
 | `code-line-numbers` | `success-line-numbers-fence` | fence option `line-numbers` のある code block だけに `.code-lines`、`.line-no`、`data-line` を出す。 |
 | `code-line-numbers` | `success-line-numbers-cli` | CLI 有効時に全 code fence へ line number を出し、`code_line_number_blocks` と `code_line_number_lines` が一致する。 |
-| `code-line-numbers` | `success-line-numbers-diff-composition` | §28.9 diff class と line number が同時に存在し、line number node に diff class が付かない。 |
+| `code-line-numbers` | `success-line-numbers-diff-composition` | [`docs/details/builder.md`](builder.md) §28.9 diff class と line number が同時に存在し、line number node に diff class が付かない。 |
 | `code-line-numbers` | `noop-line-numbers-empty-code` | 空 code block には line number を出さず、REPORT count に含めない。 |
 | `code-line-numbers` | `noop-line-numbers-disabled` | CLI 無効かつ fence option なしの code block は既存出力と一致する。 |
 | `code-line-numbers` | `security-line-numbers-copy-clean` | `expected/site/assets/search-index.json`、copy text fixture、minify 後 HTML のいずれにも line number text が混入しない。 |
@@ -1106,11 +1106,11 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `heading-numbering` | `noop-heading-numbering-none` | `none` で heading、TOC、search index 表示 text を変更せず、`numbered_headings=0` にする。 |
 | `heading-numbering` | `security-heading-slug-unchanged` | 採番有無で heading id、anchor href、collapse target、hash history target が byte 単位で一致する。 |
 
-§28.1〜§28.5 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。failure / security fixture では、`forbidden_updated_paths` と `forbidden_deleted_paths` に公開 `--out`、既存 `.dependency_manifest.json`、既存 `assets/search-index.json` を必ず含める。
+[`docs/details/builder.md`](builder.md) §28.1〜§28.5 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。failure / security fixture では、`forbidden_updated_paths` と `forbidden_deleted_paths` に公開 `--out`、既存 `.dependency_manifest.json`、既存 `assets/search-index.json` を必ず含める。
 
-**§28.6〜§28.10 feature fixture 固定契約：**
+**builder 詳細本文責務 §28.6〜§28.10 fixture 固定契約：**
 
-§28.6〜§28.10 の fixture は、[`docs/details/builder.md`](builder.md) §28.6〜§28.10 実装詳細固定契約に列挙された UI 状態、TOC、timestamp、code token、image token、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x に固定し、`manifest.json.feature_slug` を §28 fixture カタログ固定契約の feature slug と一致させる。
+[`docs/details/builder.md`](builder.md) §28.6〜§28.10 の fixture は、[`docs/details/builder.md`](builder.md) §28.6〜§28.10 実装詳細固定契約に列挙された UI 状態、TOC、timestamp、code token、image token、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/builder.md`](builder.md) §28.x に固定し、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。
 
 | feature slug | fixture | 固定する内容 |
 |--------------|---------|--------------|
@@ -1123,10 +1123,10 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `section-collapse` | `security-collapse-state-parse-guard` | localStorage に JSON 破損、boolean 以外、未知 page / section key があっても例外化せず、静的 HTML、TOC、本文を壊さない。 |
 | `toc-depth` | `success-toc-depth-h2-h3` | `--toc-depth 2:3` で TOC link が h2 / h3 だけになり、本文 heading、heading id、search index heading source が変化しない。 |
 | `toc-depth` | `success-toc-depth-h1-h6` | `--toc-depth 1:6` で全 heading level の TOC link を本文出現順に出力する。 |
-| `toc-depth` | `success-toc-depth-heading-numbering-sync` | §28.5 と併用し、TOC 表示 text だけに numbering を含め、href と heading id が採番で変わらない。 |
+| `toc-depth` | `success-toc-depth-heading-numbering-sync` | [`docs/details/builder.md`](builder.md) §28.5 と併用し、TOC 表示 text だけに numbering を含め、href と heading id が採番で変わらない。 |
 | `toc-depth` | `failure-toc-depth-invalid-range` | `0:6`、`1:7`、`4:2` を `BUILDER28_INVALID_OPTION`、終了コード `2`、stdout 空、公開出力維持にする。 |
 | `toc-depth` | `failure-toc-depth-invalid-format` | 空値、整数以外、separator 不一致、余分な値を `BUILDER28_INVALID_OPTION`、終了コード `2` にする。 |
-| `toc-depth` | `security-toc-depth-active-sync` | §28.16 有効時の active tracking 対象が TOC 出力 link と一致し、depth 外 heading を active 化しない。 |
+| `toc-depth` | `security-toc-depth-active-sync` | [`docs/details/builder.md`](builder.md) §28.16 有効時の active tracking 対象が TOC 出力 link と一致し、depth 外 heading を active 化しない。 |
 | `updated-at` | `success-updated-at-git` | fake git timestamp を UTC RFC3339 秒精度へ正規化し、`time.page-updated-at`、表示 text、`updated_at_source="git"`、`updated_at_fallback=0` を固定する。 |
 | `updated-at` | `success-updated-at-file` | fake file mtime を UTC RFC3339 秒精度へ正規化し、`updated_at_source="file"`、`updated_at_fallback=0` を固定する。 |
 | `updated-at` | `success-updated-at-fallback` | git 取得不能かつ file mtime 取得可能時に file へ fallback し、`updated_at_source="file"`、`updated_at_fallback=1` になる。 |
@@ -1136,7 +1136,7 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `updated-at` | `security-updated-at-no-search-index` | search index に `.page-updated-at` の label、timestamp、UI text が混入しない。 |
 | `diff-highlight` | `success-diff-insert-delete-context` | diff / patch fence の inserted、deleted、context 行へ `.tok-inserted`、`.tok-deleted`、`.tok-context` を付与し、REPORT count を固定する。 |
 | `diff-highlight` | `success-diff-header` | `+++` / `---` header 行を `.tok-diff-header` とし、insertions / deletions に加算しない。 |
-| `diff-highlight` | `success-diff-line-number-composition` | §28.4 と併用し、line number node に diff class が付かず、code text 側だけに diff class が付く。 |
+| `diff-highlight` | `success-diff-line-number-composition` | [`docs/details/builder.md`](builder.md) §28.4 と併用し、line number node に diff class が付かず、code text 側だけに diff class が付く。 |
 | `diff-highlight` | `noop-diff-non-diff-language` | 通常 code fence では行頭 `+` / `-` / space があっても diff class を付けない。 |
 | `diff-highlight` | `security-diff-escape` | diff 行内の raw HTML、event handler、`javascript:` URL が escape され、class 付与後も実行可能にならない。 |
 | `diff-highlight` | `security-diff-copy-text-clean` | copy text と search index に diff class、line number、UI label が混入せず、元の diff 記号と code text だけを含む。 |
@@ -1148,11 +1148,11 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `lazy-images` | `security-lazy-alt-escape` | alt、src、title 相当の attribute に raw HTML、quote、event handler が混入しても attribute escape される。 |
 | `lazy-images` | `security-lazy-invalid-scheme-strict` | `javascript:`、`file:`、その他未許可 scheme を strict で `BUILDER28_INVALID_OPTION`、終了コード `2`、公開出力維持にする。 |
 
-§28.6〜§28.10 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。browser runtime、visual layout、parser precedence と併用する fixture では、該当共通 fixture と同じ localStorage key、media query、parser 保護、external call 0 件を再確認する。
+[`docs/details/builder.md`](builder.md) §28.6〜§28.10 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。browser runtime、visual layout、parser precedence と併用する fixture では、該当共通 fixture と同じ localStorage key、media query、parser 保護、external call 0 件を再確認する。
 
-**§28.11〜§28.15 feature fixture 固定契約：**
+**builder 詳細本文責務 §28.11〜§28.15 fixture 固定契約：**
 
-§28.11〜§28.15 の fixture は、[`docs/details/builder.md`](builder.md) §28.11〜§28.15 実装詳細固定契約に列挙された head meta、theme state、code title、template var、minify byte、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x に固定し、`manifest.json.feature_slug` を §28 fixture カタログ固定契約の feature slug と一致させる。
+[`docs/details/builder.md`](builder.md) §28.11〜§28.15 の fixture は、[`docs/details/builder.md`](builder.md) §28.11〜§28.15 実装詳細固定契約に列挙された head meta、theme state、code title、template var、minify byte、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/builder.md`](builder.md) §28.x に固定し、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。
 
 | feature slug | fixture | 固定する内容 |
 |--------------|---------|--------------|
@@ -1189,18 +1189,18 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `minify-html` | `noop-minify-disabled` | minify 無効時に HTML byte を変更せず、minify REPORT byte count を 0 にする。 |
 | `minify-html` | `security-minify-no-script-style-inline` | minify 実装が新規 inline script / style を追加せず、既存 script / style 相当領域の内部 byte を変更しない。 |
 
-§28.11〜§28.15 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。security fixture では secret / credential が stdout、stderr、REPORT、manifest、HTML attribute、search index のいずれにも平文で残らないことを `expected/security.json` に固定する。
+[`docs/details/builder.md`](builder.md) §28.11〜§28.15 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。security fixture では secret / credential が stdout、stderr、REPORT、manifest、HTML attribute、search index のいずれにも平文で残らないことを `expected/security.json` に固定する。
 
-**§28.16〜§28.20 feature fixture 固定契約：**
+**builder 詳細本文責務 §28.16〜§28.20 fixture 固定契約：**
 
-§28.16〜§28.20 の fixture は、[`docs/details/builder.md`](builder.md) §28.16〜§28.20 実装詳細固定契約に列挙された TOC active、Mermaid、footnote、math、hash history の HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x に固定し、`manifest.json.feature_slug` を §28 fixture カタログ固定契約の feature slug と一致させる。
+[`docs/details/builder.md`](builder.md) §28.16〜§28.20 の fixture は、[`docs/details/builder.md`](builder.md) §28.16〜§28.20 実装詳細固定契約に列挙された TOC active、Mermaid、footnote、math、hash history の HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/builder.md`](builder.md) §28.x に固定し、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。
 
 | feature slug | fixture | 固定する内容 |
 |--------------|---------|--------------|
 | `toc-active` | `success-toc-active-scroll` | TOC link 集合、初期 active、scroll 時の `.is-active` 1 件化、`aria-current="location"` の付与 / 削除、REPORT `toc_active_tracking=true`、`toc_active_items` を固定する。 |
 | `toc-active` | `success-toc-active-fallback` | IntersectionObserver が使えない前提で fallback scroll handler が同じ active 候補集合を使い、例外時 no-break になることを `expected/site/assets/app.js` で確認する。 |
 | `toc-active` | `noop-toc-active-disabled` | `--toc-active=false` で active handler、`.is-active` 初期 class、`aria-current`、未使用 JS branch を出力せず、既存 TOC HTML と一致する。 |
-| `toc-active` | `security-toc-active-depth-sync` | §28.7 と併用し、TOC depth 外 heading、footnote backlink、collapse wrapper、lightbox target を active 対象にしない。 |
+| `toc-active` | `security-toc-active-depth-sync` | [`docs/details/builder.md`](builder.md) §28.7 と併用し、TOC depth 外 heading、footnote backlink、collapse wrapper、lightbox target を active 対象にしない。 |
 | `mermaid` | `success-mermaid-graph-td` | `graph TD`、node 定義、edge 定義を deterministic SVG へ変換し、`.mermaid-diagram`、`.mermaid-node`、`.mermaid-edge`、viewBox、REPORT rendered count を固定する。 |
 | `mermaid` | `failure-mermaid-unsupported-strict` | strict で未対応 Mermaid 構文を `BUILDER28_UNSUPPORTED_RESERVED`、終了コード `2`、stdout 空、stderr 固定 error、公開出力維持にする。 |
 | `mermaid` | `noop-mermaid-disabled` | `--mermaid=false` で `mermaid` fence を通常 code block として出力し、SVG、Mermaid class、external script、REPORT rendered count を増やさない。 |
@@ -1218,11 +1218,11 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `hash-history` | `noop-hash-history-disabled` | `--hash-history=false` で pushState handler、popstate handler、tabindex 補助を出力せず、通常 anchor fallback だけを残す。 |
 | `hash-history` | `security-hash-history-missing-target` | 存在しない hash、heading 以外の id、external URL、footnote backlink、empty hash を no-op にし、runtime 例外、build 時公開出力破壊、search index 混入を発生させない。 |
 
-§28.16〜§28.20 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。browser runtime と parser precedence に関わる fixture では、`expected/site/assets/app.js` と `expected/effects.json` に handler 登録順、fallback 分岐、保護対象 token、external call 0 件を固定する。security fixture では external script、CDN、runtime network fetch、raw HTML、event handler、credential、secret が HTML、CSS、JS、search index、stdout、stderr、REPORT、manifest に残らないことを `expected/security.json` に固定する。
+[`docs/details/builder.md`](builder.md) §28.16〜§28.20 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。browser runtime と parser precedence に関わる fixture では、`expected/site/assets/app.js` と `expected/effects.json` に handler 登録順、fallback 分岐、保護対象 token、external call 0 件を固定する。security fixture では external script、CDN、runtime network fetch、raw HTML、event handler、credential、secret が HTML、CSS、JS、search index、stdout、stderr、REPORT、manifest に残らないことを `expected/security.json` に固定する。
 
-**§28.21〜§28.25 feature fixture 固定契約：**
+**builder 詳細本文責務 §28.21〜§28.25 fixture 固定契約：**
 
-§28.21〜§28.25 の fixture は、[`docs/details/builder.md`](builder.md) §28.21〜§28.25 実装詳細固定契約に列挙された accessibility、lightbox、print QR、definition list、task list の HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x に固定し、`manifest.json.feature_slug` を §28 fixture カタログ固定契約の feature slug と一致させる。
+[`docs/details/builder.md`](builder.md) §28.21〜§28.25 の fixture は、[`docs/details/builder.md`](builder.md) §28.21〜§28.25 実装詳細固定契約に列挙された accessibility、lightbox、print QR、definition list、task list の HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/builder.md`](builder.md) §28.x に固定し、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。
 
 | feature slug | fixture | 固定する内容 |
 |--------------|---------|--------------|
@@ -1247,9 +1247,9 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `task-lists` | `noop-task-list-non-target` | `[-]`、`[o]`、`[]`、`[xx]`、文中 marker、disabled option では通常 list text として扱い、checkbox を出力しない。 |
 | `task-lists` | `security-task-list-disabled-aria` | checkbox が常に disabled、click で状態変更不可、aria label 非空、search index から checkbox label / marker text を除外する。 |
 
-§28.21〜§28.25 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。accessibility と lightbox の fixture は browser runtime fixture と同じ focus / keyboard / no-break 条件を再確認する。print QR、definition list、task list の security fixture は external call 0 件、外部 library 不使用、raw HTML 不在、credential / secret 非表示、search index 除外対象を `expected/security.json` に固定する。
+[`docs/details/builder.md`](builder.md) §28.21〜§28.25 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。accessibility と lightbox の fixture は browser runtime fixture と同じ focus / keyboard / no-break 条件を再確認する。print QR、definition list、task list の security fixture は external call 0 件、外部 library 不使用、raw HTML 不在、credential / secret 非表示、search index 除外対象を `expected/security.json` に固定する。
 
-**§28 expected 比較方式固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F expected 比較方式固定契約：**
 
 expected 比較は、実装環境差分で揺れないように以下の正規化だけを許可する。下表にない正規化、部分一致、snapshot 差し替え、目視承認は合格条件にしてはならない。
 
@@ -1259,12 +1259,12 @@ expected 比較は、実装環境差分で揺れないように以下の正規�
 | `expected/site/assets/style.css` | selector、property、値、media query の完全一致。 | 空行の連続を 1 行へ正規化可。 | selector の部分一致、未使用 selector の黙認。 |
 | `expected/site/assets/app.js` | 対象 handler、storage key、guard、fallback 分岐を含む文字列完全一致。 | 改行コードを LF に統一。 | minify 差分の黙認、外部 script 参照の黙認。 |
 | `expected/site/assets/search-index.json` | JSON parse 後の key、型、値完全一致。 | object key 順だけ無視可。array 順は固定。 | HTML tag 混入、line number 混入、未定義 key の黙認。 |
-| `expected/stdout.txt` | 行完全一致。`[REPORT]` は 1 行 key=value 形式。§28 追加 key は既存 §8 key の後ろに ASCII 昇順で並べる。 | 末尾改行 1 個を許可。 | `[REPORT]` key 省略、型違い、件数差分、追加 key 順序違い、compact JSON 内空白の黙認。 |
+| `expected/stdout.txt` | 行完全一致。`[REPORT]` は 1 行 key=value 形式。[`docs/details/builder.md`](builder.md) §28 追加 key は既存 [`docs/details/builder.md`](builder.md) §8 key の後ろに ASCII 昇順で並べる。 | 末尾改行 1 個を許可。 | `[REPORT]` key 省略、型違い、件数差分、追加 key 順序違い、compact JSON 内空白の黙認。 |
 | `expected/stderr.txt` | 行完全一致。fatal failure 以外は空 file。 | 末尾改行 1 個を許可。 | error code 差分、line 差分、message 差分、stdout warning 混入の黙認。 |
 | `expected/effects.json` | JSON parse 後の key、型、値完全一致。 | object key 順だけ無視可。array 順は固定。 | 外部 call、削除、既存出力破壊の黙認。 |
 | `expected/security.json` | JSON parse 後の key、型、値完全一致。 | object key 順だけ無視可。array 順は固定。 | CDN、credential、raw HTML、secret 残存の黙認。 |
 
-**§28 stdout / stderr / REPORT fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F stdout / stderr / REPORT 固定契約：**
 
 stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力する。順序は、入力 file path 昇順、line 昇順、section 昇順、code 昇順とする。fatal failure の場合、`[REPORT]` は出力せず、stdout は空 file とする。
 
@@ -1275,12 +1275,12 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | message | 句点ありの日本語または ASCII 英文に統一し、secret、credential、raw HTML を含めない。 |
 | REPORT boolean | `true` / `false` 小文字。 |
 | REPORT integer | 0 以上の 10 進数。 |
-| REPORT string | double quote 付き JSON string。§8 既存 key は既存形式を維持する。 |
+| REPORT string | double quote 付き JSON string。[`docs/details/builder.md`](builder.md) §8 既存 key は既存形式を維持する。 |
 | REPORT array | compact JSON array。要素順は発生順ではなく sorted string 昇順。ただし page order を意味する配列は input path 昇順。 |
 
-**§28 既存出力互換 fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F 既存出力互換固定契約：**
 
-§28 実装 PR では、対象機能の fixture だけでなく、機能を無効化した互換 fixture を 1 件以上含める。既定有効機能は、有効化前後ではなく「機能対象入力なし」の互換 fixture を含める。
+[`docs/details/builder.md`](builder.md) §28 の実装変更では、対象機能の fixture だけでなく、機能を無効化した互換 fixture を 1 件以上含める。既定有効機能は、有効化前後ではなく「機能対象入力なし」の互換 fixture を含める。
 
 | 機能種別 | 互換 fixture |
 |----------|--------------|
@@ -1289,39 +1289,39 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | reserved feature | 予約値指定時に出力が作られず、既存出力も破壊しない fixture。 |
 | security failure | strict / non-strict の差分と、拒否対象が出力に残らない fixture。 |
 
-**§28 機能別 fixture 最低確認項目固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F 機能別最低確認項目固定契約：**
 
-各 §28 fixture は、[`docs/details/builder.md`](builder.md) §28 個別固定補足契約の validation、HTML / asset 固定、warning / error、REPORT count を最低 1 件以上の expected で確認する。下表の項目を fixture から省略してはならない。
+各 [`docs/details/builder.md`](builder.md) §28 の fixture は、[`docs/details/builder.md`](builder.md) §28 個別固定補足契約の validation、HTML / asset 固定、warning / error、REPORT count を最低 1 件以上の expected で確認する。下表の項目を fixture から省略してはならない。
 
 | 節 | 最低確認項目 |
 |----|--------------|
-| §28.1 | changed / reused page count、未変更 HTML byte 維持、manifest path validation、search index 全体再生成。 |
-| §28.2 | `html` 成功、`pdf` / `epub` 拒否、unknown format 拒否、出力破壊なし。 |
-| §28.3 | admonition type 正規化、badge color validation、disabled 時互換、escape。 |
-| §28.4 | line number node、copy 対象除外、空 code、line count。 |
-| §28.5 | slug 不変、表示番号、TOC / search index 番号、unknown mode 拒否。 |
-| §28.6 | h2 / h3 section 範囲、`aria-controls`、`data-section-id`、`adlaire:section-state` payload、print / search / hash 一時展開、重複 target 検出。 |
-| §28.7 | min/max validation、invalid format、TOC filter、heading numbering 併用、active tracking 対象一致。 |
-| §28.8 | fake git、fake file mtime、fallback、none、取得不能 failure、RFC3339 UTC 秒精度、search index 除外。 |
-| §28.9 | inserted / deleted / context / header class、line number 併用、escape、copy text / search index 清浄性。 |
-| §28.10 | lazy 属性、外部 URL no-fetch、data URI no-fetch、base 外 path strict、disabled no-op、alt escape、invalid scheme strict。 |
-| §28.11 | name / property key 正規化、head 内順序、重複 last wins、禁止 key、型 validation、attribute escape、secret 非表示。 |
-| §28.12 | light 固定、[`docs/details/builder.md`](builder.md) §28.12 の禁止識別子不在、print light、禁止出力拒否。 |
-| §28.13 | colon / key-value / title-only title、copy / search 除外、empty title no-op、escape。 |
-| §28.14 | key validation、source 優先順位、code fence / span 非置換、invalid syntax no-op、missing var strict、secret 非表示、replacement count。 |
-| §28.15 | byte count、pre/code 保持、attribute order 保持、structure validation、marker validation、disabled 互換、inline script / style 非追加。 |
-| §28.16 | active link 1 件化、aria-current、fallback scroll、depth sync。 |
-| §28.17 | graph TD SVG、unsupported source fallback、external script 不在。 |
-| §28.18 | reference order、backlink、duplicate definition warning、undefined strict。 |
-| §28.19 | inline / block math、code 内非変換、unclosed delimiter、escape。 |
-| §28.20 | pushState、focus、back / forward、missing target no-op。 |
-| §28.21 | skip link、landmark、button label、duplicate id strict、keyboard trap 不在。 |
-| §28.22 | trigger count、dialog 1 個、Escape / backdrop close、focus trap、alt warning。 |
-| §28.23 | URL validation、512 byte 制限、print-only SVG、通常表示非表示。 |
-| §28.24 | dl / dt / dd 構造、paragraph 境界、empty term no-op、inline escape。 |
-| §28.25 | checked / unchecked、disabled checkbox、nested list、aria、通常 list 非変換。 |
+| [`docs/details/builder.md`](builder.md) §28.1 | changed / reused page count、未変更 HTML byte 維持、manifest path validation、search index 全体再生成。 |
+| [`docs/details/builder.md`](builder.md) §28.2 | `html` 成功、`pdf` / `epub` 拒否、unknown format 拒否、出力破壊なし。 |
+| [`docs/details/builder.md`](builder.md) §28.3 | admonition type 正規化、badge color validation、disabled 時互換、escape。 |
+| [`docs/details/builder.md`](builder.md) §28.4 | line number node、copy 対象除外、空 code、line count。 |
+| [`docs/details/builder.md`](builder.md) §28.5 | slug 不変、表示番号、TOC / search index 番号、unknown mode 拒否。 |
+| [`docs/details/builder.md`](builder.md) §28.6 | h2 / h3 section 範囲、`aria-controls`、`data-section-id`、`adlaire:section-state` payload、print / search / hash 一時展開、重複 target 検出。 |
+| [`docs/details/builder.md`](builder.md) §28.7 | min/max validation、invalid format、TOC filter、heading numbering 併用、active tracking 対象一致。 |
+| [`docs/details/builder.md`](builder.md) §28.8 | fake git、fake file mtime、fallback、none、取得不能 failure、RFC3339 UTC 秒精度、search index 除外。 |
+| [`docs/details/builder.md`](builder.md) §28.9 | inserted / deleted / context / header class、line number 併用、escape、copy text / search index 清浄性。 |
+| [`docs/details/builder.md`](builder.md) §28.10 | lazy 属性、外部 URL no-fetch、data URI no-fetch、base 外 path strict、disabled no-op、alt escape、invalid scheme strict。 |
+| [`docs/details/builder.md`](builder.md) §28.11 | name / property key 正規化、head 内順序、重複 last wins、禁止 key、型 validation、attribute escape、secret 非表示。 |
+| [`docs/details/builder.md`](builder.md) §28.12 | light 固定、[`docs/details/builder.md`](builder.md) §28.12 の禁止識別子不在、print light、禁止出力拒否。 |
+| [`docs/details/builder.md`](builder.md) §28.13 | colon / key-value / title-only title、copy / search 除外、empty title no-op、escape。 |
+| [`docs/details/builder.md`](builder.md) §28.14 | key validation、source 優先順位、code fence / span 非置換、invalid syntax no-op、missing var strict、secret 非表示、replacement count。 |
+| [`docs/details/builder.md`](builder.md) §28.15 | byte count、pre/code 保持、attribute order 保持、structure validation、marker validation、disabled 互換、inline script / style 非追加。 |
+| [`docs/details/builder.md`](builder.md) §28.16 | active link 1 件化、aria-current、fallback scroll、depth sync。 |
+| [`docs/details/builder.md`](builder.md) §28.17 | graph TD SVG、unsupported source fallback、external script 不在。 |
+| [`docs/details/builder.md`](builder.md) §28.18 | reference order、backlink、duplicate definition warning、undefined strict。 |
+| [`docs/details/builder.md`](builder.md) §28.19 | inline / block math、code 内非変換、unclosed delimiter、escape。 |
+| [`docs/details/builder.md`](builder.md) §28.20 | pushState、focus、back / forward、missing target no-op。 |
+| [`docs/details/builder.md`](builder.md) §28.21 | skip link、landmark、button label、duplicate id strict、keyboard trap 不在。 |
+| [`docs/details/builder.md`](builder.md) §28.22 | trigger count、dialog 1 個、Escape / backdrop close、focus trap、alt warning。 |
+| [`docs/details/builder.md`](builder.md) §28.23 | URL validation、512 byte 制限、print-only SVG、通常表示非表示。 |
+| [`docs/details/builder.md`](builder.md) §28.24 | dl / dt / dd 構造、paragraph 境界、empty term no-op、inline escape。 |
+| [`docs/details/builder.md`](builder.md) §28.25 | checked / unchecked、disabled checkbox、nested list、aria、通常 list 非変換。 |
 
-**§28 strict / non-strict fixture 固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F strict / non-strict 固定契約：**
 
 | ケース | non-strict fixture | strict fixture | 固定する差分 |
 |--------|--------------------|----------------|--------------|
@@ -1331,35 +1331,35 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | reserved feature | 終了コード `2`。 | 終了コード `2`。 | strict 差分なし。 |
 | 内部エラー fixture | 終了コード `1`。 | 終了コード `1`。 | 既存出力維持。 |
 
-**§28 fixture manifest 固定 schema：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F manifest 固定 schema：**
 
 `manifest.json` は以下の key を必須とする。未使用 key も省略せず、空配列または空文字で明示する。
 
 | key | 型 | 固定内容 |
 |-----|----|----------|
-| `name` | string | fixture 名。§28 fixture カタログ固定契約の値と完全一致。 |
+| `name` | string | fixture 名。[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の値と完全一致。 |
 | `section` | string | `28-common`、または `28.1`〜`28.25` のいずれか。 |
-| `feature_slug` | string | §28 fixture カタログ固定契約の feature slug。 |
+| `feature_slug` | string | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug。 |
 | `owner` | string | 常に `builder`。 |
 | `collaborators` | array | `runner`、`statefile` など該当する補助 component。該当なしは空配列。 |
-| `spec_refs` | array | `docs/details/builder.md §28.x` と `docs/details/fixture.md §28-F` を含める。 |
+| `spec_refs` | array | [`docs/details/builder.md`](builder.md) §28.x と [`docs/details/fixture.md`](fixture.md) §28-F を含める。 |
 | `strict` | boolean | strict mode fixture なら `true`。 |
 | `expected_exit_code` | integer | `0`、`1`、`2` のいずれか。 |
 | `fakes` | object | fake clock、fake git、fake mtime、fake manifest、fake clipboard。不要なら空 object。 |
 | `not_applicable` | array | 比較対象外にする file や観点。理由なしの除外は禁止。 |
 
-**§28 PR 証跡固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F builder 拡張実装検証証跡固定契約：**
 
-実装 PR 本文には、対象 §28.x、追加 fixture 名、変更した HTML / CSS / JS / REPORT key、strict / non-strict 結果、外部依存なし確認、既存出力互換確認、未実装の §28 機能を列挙する。対象外の §28 機能を先取り実装した場合、または [`docs/details/builder.md`](builder.md) §28 に存在しない Markdown 記法、CLI option、CSS class、JS 挙動を追加した場合は未完了として扱う。
+実装検証証跡には、対象 [`docs/details/builder.md`](builder.md) §28.x、追加 fixture 名、変更した HTML / CSS / JS / REPORT key、strict / non-strict 結果、外部依存なし確認、既存出力互換確認、未実装の [`docs/details/builder.md`](builder.md) §28 機能を列挙する。対象外の [`docs/details/builder.md`](builder.md) §28 機能を先取り実装した場合、または [`docs/details/builder.md`](builder.md) §28 に存在しない Markdown 記法、CLI option、CSS class、JS 挙動を追加した場合は未完了として扱う。
 
-**§28 PR 受け入れゲート固定契約：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F builder 拡張実装受け入れゲート固定契約：**
 
-§28 実装 PR は、下表を PR 本文または検証ログで確認できる場合だけ受け入れ可能とする。確認できない項目は、実装漏れではなく証跡不足として未完了扱いにする。
+[`docs/details/builder.md`](builder.md) §28 の実装変更は、下表を実装検証証跡で確認できる場合だけ受け入れ可能とする。確認できない項目は、実装漏れではなく証跡不足として未完了扱いにする。
 
-| ゲート | PR 証跡 | 不足時の扱い |
+| ゲート | 実装検証証跡 | 不足時の扱い |
 |--------|---------|--------------|
-| 対象範囲 | 対象 §28.x と対象外 §28.x の一覧。 | 先取り実装または範囲不明として未完了。 |
-| fixture catalog | 追加 / 更新した fixture 名の一覧と §28 fixture catalog との対応。 | fixture 不足として未完了。 |
+| 対象範囲 | 対象 [`docs/details/builder.md`](builder.md) §28.x と対象外 [`docs/details/builder.md`](builder.md) §28.x の一覧。 | 先取り実装または範囲不明として未完了。 |
+| fixture catalog | 追加 / 更新した fixture 名の一覧と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F catalog との対応。 | fixture 不足として未完了。 |
 | manifest schema | 各 fixture の `manifest.json` が必須 key を満たす確認。 | fixture schema 不足として未完了。 |
 | expected files | HTML、CSS、JS、search index、stdout、stderr、effects、security の該当 expected 更新。 | expected 不足として未完了。 |
 | strict / non-strict | strict と non-strict の終了コード、stdout、stderr、effects の差分。 | 異常系未固定として未完了。 |
@@ -1369,9 +1369,9 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | atomicity | failure fixture で既存出力、manifest、search index が維持される確認。 | 部分更新リスクとして未完了。 |
 | not run | 未実施確認がある場合の理由と影響範囲。 | 検証不足として未完了。 |
 
-**§28 fixture 不足時の固定扱い：**
+**[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F 不足時の固定扱い：**
 
-§28 実装中に fixture 不足を発見した場合、実装判断で対象 fixture を省略してはならない。fixture が不足している機能は実装済みとして報告してはならない。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。
+[`docs/details/builder.md`](builder.md) §28 の実装中に fixture 不足を発見した場合、実装判断で対象 fixture を省略してはならない。fixture が不足している機能は実装済みとして報告してはならない。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。
 
 | 不足 | 扱い |
 |------|------|

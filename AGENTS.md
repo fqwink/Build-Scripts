@@ -14,9 +14,9 @@
 
 [AGENTS.md](AGENTS.md) または [docs/SPEC.md](docs/SPEC.md) の片方だけを確認した状態で、作業判断に必要な確認を完了したと扱ってはならない。
 
-本リポジトリの仕様判断は、方針、ポリシー、正本参照先、禁止事項、リリース判断は [docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務、実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md)、詳細仕様の入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、owner component 別詳細本文境界管理責務は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、owner component 別の詳細本文は [docs/details/*.md](docs/details/) 詳細本文責務を正本として行う。
+本リポジトリの仕様判断は、方針、ポリシー、正本参照先、禁止事項、リリース判断は [docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務、状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務、詳細仕様参照入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、owner component 別詳細本文境界管理責務は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、owner component 別の詳細本文は [docs/details/*.md](docs/details/) 詳細本文責務を正本として行う。
 
-[docs/DESIGN.md](docs/DESIGN.md) は、生成静的 Web サイトのデザイン関係の正本である。機能仕様、運用仕様、API 仕様、CI 仕様、実装状態、ロードマップ状態の正本ではない。
+[docs/DESIGN.md](docs/DESIGN.md) は、生成静的 Web サイトのデザイン関係の正本である。機能仕様、運用仕様、API 仕様、CI 仕様、状態分類、ロードマップ状態の正本ではない。
 
 [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) は、文書・実装ファイルの役割を整理する索引である。仕様本文の正本ではない。
 
@@ -69,7 +69,7 @@
 
 [docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務は、Adlaire CI の方針、ポリシー、正本参照先、禁止事項、リリース判断を定めるマスター仕様書正本である。
 
-[docs/ROADMAP.md](docs/ROADMAP.md) は、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、§27 追加仕様化機能参照、横断補足契約を定めるロードマップ正本である。
+[docs/ROADMAP.md](docs/ROADMAP.md) は、Adlaire CI の状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を定めるロードマップ正本である。
 
 [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) は、詳細仕様入口責務として、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、owner component 別詳細本文境界管理責務を持つ詳細仕様入口正本である。
 
@@ -83,23 +83,23 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 実装済みコンポーネントである `components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` は、[docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/) に基づいて更新する。
 
-`components/mcp.go` は将来計画コンポーネントであり、実装状態、実装可否、ロードマップ状態は [docs/ROADMAP.md](docs/ROADMAP.md) を正とする。[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の owner component 参照表と該当する owner component 別の [docs/details/*.md](docs/details/) 詳細本文責務に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
+`components/mcp.go` は将来計画コンポーネントであり、状態分類、実装可否、ロードマップ状態は [docs/ROADMAP.md](docs/ROADMAP.md) を正とする。[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の owner component 参照表と該当する owner component 別の [docs/details/*.md](docs/details/) 詳細本文責務に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
 
-`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、owner component 別の詳細本文責務として作成してはならない。横断する固定値、読み順、対応表は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の入口・索引・共通固定値・詳細仕様入口責務として扱う。§27 追加仕様化機能の横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md) §6 を正とする。いずれも component として扱わない。
+`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、owner component 別の詳細本文責務として作成してはならない。横断する固定値、詳細仕様参照入口、対応表は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の入口・索引・共通固定値・詳細仕様入口責務として扱う。追加仕様化機能の横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務 §6 を正とする。いずれも component として扱わない。
 
-[docs/DESIGN.md](docs/DESIGN.md) は、出力 HTML のデザイン関係の正本である。機能仕様、実装状態、実装可否、API 仕様、状態 schema、builder 処理本文は定義しない。生成 HTML のデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンは [docs/DESIGN.md](docs/DESIGN.md) を正とする。
+[docs/DESIGN.md](docs/DESIGN.md) は、出力 HTML のデザイン関係の正本である。機能仕様、状態分類、実装可否、API 仕様、状態 schema、builder 処理本文は定義しない。生成 HTML のデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンは [docs/DESIGN.md](docs/DESIGN.md) を正とする。
 
 仕様改訂では、既存仕様、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、実装ファイルとの整合性を確認する。
 
-文書整理では、[README.md](README.md)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、[docs/SPEC.md](docs/SPEC.md)、[docs/DESIGN.md](docs/DESIGN.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、owner component 別の [docs/details/*.md](docs/details/) の読み順と正本範囲を崩してはならない。
+文書整理では、[README.md](README.md)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、[docs/SPEC.md](docs/SPEC.md)、[docs/DESIGN.md](docs/DESIGN.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、owner component 別の [docs/details/*.md](docs/details/) の詳細仕様参照入口と正本範囲を崩してはならない。
 
-文書整理だけを目的とする作業では、機能仕様、実装状態、実装可否、ロードマップ状態を変更してはならない。状態変更が必要な場合は、変更対象、変更理由、影響範囲を別途提示し、承認を得る。
+文書整理だけを目的とする作業では、機能仕様、状態分類、実装可否、ロードマップ状態を変更してはならない。状態変更が必要な場合は、変更対象、変更理由、影響範囲を別途提示し、承認を得る。
 
 [README.md](README.md) は初見向けの入口、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) は索引、[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務は方針・ポリシーの正本、[docs/DESIGN.md](docs/DESIGN.md) は生成 HTML のデザイン関係の正本、[docs/ROADMAP.md](docs/ROADMAP.md) は状態・Phase・将来計画・§27 追加仕様化機能参照・横断補足契約の正本、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) は詳細仕様入口、owner component 別の [docs/details/*.md](docs/details/) は詳細本文責務として扱う。
 
 [docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、owner component 別の [docs/details/*.md](docs/details/) に記載された一部コンポーネントや機能は、仕様化済みであっても未実装の場合がある。リポジトリ内に実装ファイルまたは実装コードが存在しない内容を、実装済み機能として扱ってはならない。
 
-[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) または owner component 別の [docs/details/*.md](docs/details/) を改訂する場合は、方針、ポリシー、実装状態、実装可否、ロードマップ状態、PR 分割判断を記載してはならない。これらは [docs/SPEC.md](docs/SPEC.md) または [docs/ROADMAP.md](docs/ROADMAP.md) の該当正本範囲を正とする。
+[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) または owner component 別の [docs/details/*.md](docs/details/) を改訂する場合は、方針、ポリシー、状態分類、実装可否、ロードマップ状態、PR 分割判断を記載してはならない。これらは [docs/SPEC.md](docs/SPEC.md) または [docs/ROADMAP.md](docs/ROADMAP.md) の該当正本範囲を正とする。
 
 [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) と owner component 別の [docs/details/*.md](docs/details/) には、実装者が実装時に必要とする対象コンポーネント、入出力、設定値、データ構造、処理順序、異常系、状態管理、セキュリティ制約、検証条件だけを記載する。
 
@@ -128,11 +128,11 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 実装中に仕様不足、未定義の入出力、未定義の状態ファイル、未定義の異常系、未定義の検証条件を発見した場合は、実装判断で補完せず、先に仕様を改訂する。
 
-実装済みとして扱うには、コード変更、仕様との差分確認、必要な構文確認、実行確認または生成物確認、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)・[docs/ROADMAP.md](docs/ROADMAP.md) の実装状態・関連仕様の更新要否確認を完了していなければならない。
+実装済みとして扱うには、コード変更、仕様との差分確認、必要な構文確認、実行確認または生成物確認、[docs/ROADMAP.md](docs/ROADMAP.md) の状態分類と [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の実装ファイル所在の更新要否確認を完了していなければならない。
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。
 
-未実装項目を実装する場合は、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「実装ファイル一覧」と本ファイルの実装管理ルールの更新要否を確認する。
+未実装項目を実装する場合は、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「実装ファイル一覧」と [AGENTS.md](AGENTS.md) の実装管理ルールの更新要否を確認する。
 
 仕様の記載と実ファイルの存在が矛盾する場合は、先に仕様・索引・ルールブックの整合を取る。
 
@@ -161,7 +161,7 @@ Go 実装対象ファイルは以下とする。
 | `admin/index.html` | 実装済み |
 | `components/mcp.go` | 将来追加予定 path（未作成） |
 
-未実装コンポーネントを追加する場合は、[docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、本ファイルを必要に応じて整合させる。
+未実装コンポーネントを追加する場合は、[docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、[AGENTS.md](AGENTS.md) の更新要否を確認し、該当する場合は同一変更で整合させる。
 
 実装変更後は、変更範囲に応じて構文確認、実行確認、生成物確認を行う。
 
@@ -237,7 +237,7 @@ GitHub 設定の初期適用方針は以下とする。
 - `delete_branch_on_merge=true` は即時設定対象とする。
 - `main` branch protection は、初期標準として Pull Request 必須、force push 禁止、branch deletion 禁止を設定する。
 - `main` branch protection の required approvals は初期値 `0` とする。
-- 運用が安定した後、必要に応じて required approvals を `1` へ引き上げる。
+- required approvals を `1` へ引き上げる場合は、運用安定後の別変更として、変更対象、現在値、標準値、影響範囲を提示して承認を得る。
 
 GitHub 設定を確認する場合は、少なくとも以下を確認する。
 
@@ -249,7 +249,7 @@ GitHub 設定を変更する前には、以下を必ず提示する。
 
 - 変更対象
 - 現在値
-- 推奨値
+- 標準値
 - 影響範囲
 
 GitHub 設定を変更した後は、GitHub API で再取得し、[AGENTS.md](AGENTS.md) の標準設定との差分がないかを確認して報告する。
@@ -312,7 +312,7 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
 - 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。
-- 実装変更では、必要に応じて対象スクリプトの実行確認または生成物確認を行う。
+- 実装変更では、変更した実装が実行可能な場合は対象スクリプトの実行確認または生成物確認を行う。実行不能な場合は理由を Pull Request 本文に記録する。
 - 仕様変更では、[docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、[docs/DESIGN.md](docs/DESIGN.md)、実装ファイルの整合を確認する。
 
 Pull Request 本文には、少なくとも以下を記載する。
@@ -326,11 +326,11 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 ## 5. 外部依存ルール
 
-外部フレームワークおよび外部ライブラリは、原則として採用しない。
+外部フレームワークは採用しない。外部ライブラリは例外承認済みの場合だけ採用できる。
 
-機能実現は、Go 標準ライブラリ、Vanilla JavaScript、内製実装、例外承認済み外部ライブラリの順で検討する。
+機能実現は、Go 標準ライブラリ、Vanilla JavaScript、内製実装を標準とし、例外承認済み外部ライブラリは許可範囲内でのみ使用する。
 
-外部依存は最小限に抑え、可能な範囲で内製化を重視する。
+外部依存を追加する場合は、許可範囲、採用理由、代替困難性、保守方針を明記し、承認済み範囲外へ広げてはならない。
 
 ただし、開発コスト、実装難易度、安全性、保守性、暗号・認証等の専門性を考慮し、外部ライブラリの採用を例外として許可する場合がある。
 
@@ -352,4 +352,4 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 [docs/DESIGN.md](docs/DESIGN.md) を改訂した場合は、`components/builder.go` 内の HTML / CSS / JavaScript / theme component テンプレートとの整合性を確認する。
 
-仕様化済み項目を実装した場合は、[docs/ROADMAP.md](docs/ROADMAP.md) の状態分類と実装状態、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「実装ファイル一覧」、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の対応表、owner component 別の [docs/details/*.md](docs/details/) の検証条件、実装ファイルの存在を整合させる。
+仕様化済み項目を実装した場合は、[docs/ROADMAP.md](docs/ROADMAP.md) の状態分類、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「実装ファイル一覧」、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の対応表、owner component 別の [docs/details/*.md](docs/details/) の検証条件、実装ファイルの存在を整合させる。
