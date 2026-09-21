@@ -1818,7 +1818,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 ## 28. Builder owner 追加仕様化機能 詳細仕様
 
-本節は、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。実装状態、実装可否、Phase、将来計画からの昇格判断は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、本節では定義しない。
+本節は、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。状態判断は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、本節では定義しない。
 
 本節の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
 

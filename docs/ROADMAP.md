@@ -1,6 +1,6 @@
 # Adlaire CI — Roadmap
 
-本ファイルは、Adlaire CI の実装状態、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を管理するロードマップ正本である。
+本ファイルは、Adlaire CI の状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を管理するロードマップ正本である。
 
 方針、ポリシー、正本参照先、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を参照する。生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を参照する。詳細仕様の入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の詳細本文は [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
@@ -312,9 +312,9 @@ Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化
 
 **担当領域：** `CI ランナー` / `管理ツール・API` / `MCP サーバー` / `ビルドスクリプト`
 
-### 5.2.1 統合ロードマップの読み方
+### 5.2.1 統合ロードマップ参照入口
 
-本章の項目は、単一の統合ロードマップ表で管理する。状態分類と実装可否の定義は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 を参照する。実装着手可否の最終判断は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
+本章の項目は、単一の統合ロードマップ表で管理する。状態分類と実装可否の定義は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 を参照する。実装着手可否の判定は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
 
 ---
 
@@ -507,7 +507,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ## 6. 追加仕様化機能実装参照
 
-本節は、追加仕様化機能の実装状態、実装可否、owner、主本文、collaborator を確認するための参照索引である。各機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。参照先の特定は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 で行う。実装着手可否の最終判断は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
+本節は、追加仕様化機能の状態、実装可否、owner、主本文、collaborator を確認するための参照索引である。各機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。参照先の特定は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 で行う。
 
 ### 6.1 追加仕様化機能 共通実装契約
 
