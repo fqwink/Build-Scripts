@@ -270,7 +270,7 @@ Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま�
 
 **エラー：** 戻り値エラーは持たない。入力が UTF-8 不正になる可能性は [`docs/details/builder.md`](builder.md) §2 の入力ファイル読み込み段階で排除する。
 
-**禁止事項：**
+**禁止条件：**
 - package 変数、グローバル map、呼び出し間で残る状態を使用しない。
 - 重複時の `-2` 付与を `slugify` 内で行わない。
 - URL encode は行わない。`id` と `href` には本関数の戻り値または一意化後 slug をそのまま使用する。
@@ -860,7 +860,7 @@ type SearchIndexEntry struct {
 
 実装は上表のセレクターを追加、削除、リネームしてはならない。UI 改善で新しいセレクターが必要な場合は、先に本表へ追加し、[`docs/details/builder.md`](builder.md) §6 と [`docs/details/builder.md`](builder.md) §7 の CSS / JavaScript 契約を同時に更新する。
 
-**サイト合成の禁止事項：**
+**サイト合成の禁止条件：**
 - `PageData.BodyHTML`、`PageData.TocHTML` はすでに HTML として生成済みのため、`assembleSite()` 内で再エスケープしない。
 - `assets/search-index.json` は `encoding/json` の出力だけを受け付け、文字列連結で JSON を自作しない。
 - `<header id="hdr">`、`<nav id="sb">`、`<main id="ct">`、`<div class="ci">` の id / class を変更しない。

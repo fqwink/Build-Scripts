@@ -120,7 +120,7 @@ Release asset 名は上表の文字列と完全一致させる。`$OS_ARCH` は 
 
 **setup / update 失敗時の状態保持契約：**
 
-| 失敗箇所 | 保持するもの | 変更対象 | 禁止事項 |
+| 失敗箇所 | 保持するもの | 変更対象 | 禁止条件 |
 |----------|--------------|------------------|----------|
 | download / checksum | 既存 binary、既存 systemd、既存 state、既存 admin UI | `DOWNLOAD_DIR` 内の取得済みファイル | 未検証 asset の配置、service restart。 |
 | binary 配置前 | 既存 binary、既存 service 稼働状態 | `DOWNLOAD_DIR` | systemd unit 書換、state 書換。 |
@@ -378,7 +378,7 @@ rollback 後も service が active にならない場合は、自動復旧を継
 
 **アップデート rollback 固定契約：**
 
-| 失敗箇所 | rollback 対象 | rollback 後に実行する確認 | 禁止事項 |
+| 失敗箇所 | rollback 対象 | rollback 後に実行する確認 | 禁止条件 |
 |----------|---------------|----------------------------|----------|
 | checksum 検証前 | なし | 旧 service active 確認のみ | 取得済み未検証ファイルを配置しない。 |
 | build / runner 配置失敗 | 配置に成功した新バイナリだけ旧版へ戻す。 | `adlaire-ci-build --version`、`adlaire-ci-runner --version` | systemd restart しない。 |
@@ -511,7 +511,7 @@ setup / release / update の詳細実装確認では、下表の受け入れ条�
 | UI | admin UI 配布物が静的配信され、ログイン画面と主要 panel へ到達できることを確認する。 | UI DOM、disabled、成功表示、失敗表示、再取得、秘密情報消去は [`docs/details/ui.md`](ui.md) §24 を参照する。 |
 | setup | [`docs/details/setup.md`](setup.md) §26.3 または [`docs/details/setup.md`](setup.md) §26.3b の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
 | update | [`docs/details/setup.md`](setup.md) §26.5 の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 条件が仕様どおり。 |
-| security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示の漏えい有無を確認する。 | 漏えい禁止対象と security 処理本文は [`docs/details/security.md`](security.md) §25、[`docs/details/security.md`](security.md) §27.42〜§27.47 を参照する。setup 側は配置・保持・権限・log 出力を確認する。 |
+| security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示の漏えい有無を確認する。 | 漏えいしてはならない出力範囲と security 処理本文は [`docs/details/security.md`](security.md) §25、[`docs/details/security.md`](security.md) §27.42〜§27.47 を参照する。setup 側は配置・保持・権限・log 出力を確認する。 |
 
 **認証 / セットアップ fixture 固定：**
 

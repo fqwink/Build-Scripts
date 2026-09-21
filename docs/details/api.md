@@ -65,7 +65,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 該当節は `api` の実行時制限を定義する。runner、setup、admin、sdk、ui は該当節の制限を上書きしてはならない。
 
-| 制限 | 詳細 | 実装時の禁止事項 |
+| 制限 | 詳細 | 実装時の禁止条件 |
 |------|------|------------------|
 | session はインメモリ管理 | 再起動で全 session を消去する。永続 session store は持たない。 | session を状態ファイル、cookie store、外部 DB、外部 cache に保存しない。 |
 | HTTPS listener 非対応 | `api` は HTTP listener のみ起動する。標準 bind は `127.0.0.1:8765` とする。 | TLS listener、証明書読み込み、HTTPS redirect、外部公開 bind を実装しない。 |
@@ -2722,7 +2722,7 @@ api / sdk / ui のいずれも、上表に存在しない endpoint、method、UI
 
 [`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 のうち API、SDK、UI が連動する機能の詳細実装確認では、下表の全条件を満たす。owner component が `api` ではない機能でも、API response を SDK / UI が利用する場合は本ゲートを満たす。
 
-| ゲート | API 側の合格条件 | SDK / UI への固定契約 | 禁止事項 |
+| ゲート | API 側の合格条件 | SDK / UI への固定契約 | 禁止条件 |
 |--------|------------------|------------------------|----------|
 | endpoint 対応 | [`docs/details/api.md`](api.md) §22.0e、個別 [`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 節、本表の API 列が同じ method / path / query / body / response を示す。 | SDK method と UI 操作は本表の SDK / UI 列だけを使用する。 | 表にない endpoint、method、UI 操作を実装都合で追加すること。 |
 | request 正規化 | path parameter、query、body key、nullable、既定値を API 側で検証し、不正値は `422` とする。 | SDK は指定値を表どおり送信し、UI は入力正規化だけを行う。 | SDK が未知 key を削除する、UI が API 既定値を保存前に補完すること。 |

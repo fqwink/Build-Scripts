@@ -1730,7 +1730,7 @@ runner owner component は、セットアップ済み環境で `/usr/local/bin/a
 
 runner 実装は以下を行ってはならない。
 
-| 禁止事項 | 理由 |
+| 禁止条件 | 理由 |
 |----------|------|
 | OS user 作成、directory 作成、chown / chmod の初期設定 | setup owner component の責務。 |
 | Release asset 取得、checksum 検証、バイナリ配置 | setup owner component の責務。 |
@@ -2112,7 +2112,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 
 backup 名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。UTC 秒単位で衝突する場合は `{original}.corrupt.{YYYYMMDDHHMMSS}.{n}.bak` とし、`n` は `2` から始める。
 
-**状態更新禁止事項：**
+**状態更新禁止条件：**
 
 本チェックだけで `.build_logs/{id}.json` と `.build_history` を作成してはならない。`startup_config_integrity` は `.build_status.json` の `last_trigger` にだけ記録する。ただし、本チェック後に通常 build が発生する場合、通常 build の log / history は実際の build trigger を保存する。
 
@@ -3489,7 +3489,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 [`docs/details/runner.md`](runner.md) §27.21〜[`docs/details/runner.md`](runner.md) §27.38 の runner owner 機能は、個別節の確認条件に加えて下表を満たす。本ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は [`docs/details/statefile.md`](statefile.md) §22.0c、fixture 本文は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。
 
-| ゲート | 合格条件 | 禁止事項 |
+| ゲート | 合格条件 | 禁止条件 |
 |--------|----------|----------|
 | state target | 個別 [`docs/details/runner.md`](runner.md) §27 節に列挙された状態ファイル、[`docs/details/statefile.md`](statefile.md) §22.0a / [`docs/details/statefile.md`](statefile.md) §22.0c の schema、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6 の collaborator だけを使用する。 | 未定義状態ファイル、未知 key、空 placeholder file、component 固有でない汎用 state file を追加する。 |
 | write order | build lifecycle は lock → build_state running → build log → history → build_status → queue / pending / notify / trend 等の個別副作用の順を fixture で固定する。個別節が別順を明記する場合はその順を優先する。 | 並列処理の完了順をそのまま永続保存順にする、fixture に `write_order` を持たない複数書込を確認済み扱いにする。 |

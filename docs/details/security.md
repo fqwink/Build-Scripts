@@ -160,7 +160,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 **認証共通実装確認ゲート：**
 
-| 観点 | 合格条件 | 禁止事項 |
+| 観点 | 合格条件 | 禁止条件 |
 |------|----------|----------|
 | one-time response | session token、login ticket、API token 本体、TOTP setup secret、otpauth URI は、該当成功 response 1 回だけに含める。 | `500`、`401`、`403`、`409`、`422`、`429` response、log、状態ファイル、fixture expected へ平文を残すこと。 |
 | memory-only state | session、login ticket、TOTP setup 仮 secret、login 失敗回数は process memory だけに保持し、再起動で破棄する。 | `.sessions` 等の未定義永続ファイル作成、ticket / session / 仮 secret の backup / restore 対象化。 |

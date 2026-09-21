@@ -53,7 +53,7 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 
 **archive / cleanup 実装確認ゲート：**
 
-| 観点 | 入力 | 合格条件 | 禁止事項 |
+| 観点 | 入力 | 合格条件 | 禁止条件 |
 |------|------|----------|----------|
 | 対象列挙 | `.build_logs/*.json`、`.build_state.current_build_id`、`.server_config.log_archive_after_days` | 対象候補を file 名辞書順で走査し、`finished_at` が閾値より古く、実行中 build でない log だけを対象にする。 | file mtime だけで archive 対象にすること、`.build_logs/archive/` 配下を再対象化すること。 |
 | JSON 検証 | 通常 build log JSON | JSON object、`id`、`finished_at`、file 名 id 一致、UTC ISO 8601 秒精度を確認する。 | 破損 log の修復、未知 key の削除保存、対象外 log の削除。 |
@@ -146,7 +146,7 @@ rollback は新しい build id を採番し、`.build_history.trigger="rollback"
 
 rollback は snapshot 内の成果物を deploy target へ再転送する操作であり、以下を行ってはならない。
 
-| 禁止対象 | 理由 |
+| 禁止副作用 | 理由 |
 |----------|------|
 | `.last_sha` 更新 | rollback は監視対象 SHA の処理完了ではない。 |
 | `.server_config`、`.branch_config`、`.notify_config` の復元 | 設定 rollback ではない。 |

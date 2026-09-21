@@ -261,7 +261,7 @@ HTTP status と SDK error の対応は下表に固定する。
 
 Phase 3 実装では、下表の SDK method を最小運用範囲として固定する。SDK は成功時 response を endpoint schema の範囲でそのまま返し、失敗時は HTTP status、API error、details、responseBody を保持した `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
 
-| SDK method | HTTP | 成功時 | 失敗時 | 追加禁止事項 |
+| SDK method | HTTP | 成功時 | 失敗時 | 追加禁止条件 |
 |------------|------|--------|--------|--------------|
 | `login(password)` | `POST /api/login` | `token` がある場合だけ `this._token` へ保存する。`totp_required:true` の場合は token を保存せず response を返す。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | password を console、error、responseBody 加工結果へ出さない。 |
 | `logout()` | `POST /api/logout` | response に関わらず `finally` で token を破棄する。 | network error、`401`、`500` でも token 破棄後に error を投げる。 | logout 失敗を理由に token を保持しない。 |
@@ -293,7 +293,7 @@ Phase 3 実装では、下表の SDK method を最小運用範囲として固定
 
 Phase 4 SDK は、[`docs/details/api.md`](api.md) §22.0e の endpoint 契約と [`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行う場合でも、検証対象は必須引数、型、範囲、path parameter 形式に限定する。API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
 
-| 機能群 | SDK method | 成功時 | 失敗時 | 追加禁止事項 |
+| 機能群 | SDK method | 成功時 | 失敗時 | 追加禁止条件 |
 |--------|------------|--------|--------|--------------|
 | config / repo / branch | `getConfig()`, `setConfig(config)`, `validateConfig(config)`, `setRepoConfig(config)`, `getBranchConfig()`, `setBranchConfig(branches)` | API response をそのまま返す。`set*` は success message と count / config を保持する。 | `422 details` は `AdlaireCIError.details` に保持する。`500` は固定 message。 | SDK 側で未知 key を削除しない。既定値 merge しない。 |
 | schedule | `setScheduleInterval()`, `pauseSchedule()`, `resumeSchedule()`, `setAllowedHours()`, `clearAllowedHours()`, `setForceInterval()`, `setBuildCooldown()` | response の interval / hours / seconds / allowed_hours をそのまま返す。 | systemd 更新失敗の `500` を `AdlaireCIError` にする。 | timer 状態を SDK が推測しない。 |
@@ -376,7 +376,7 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) §22.0e の SDK �
 
 [`docs/details/sdk.md`](sdk.md) §27.21〜§27.47 の追加仕様化機能で SDK の詳細実装確認を満たすには、対象 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/api.md`](api.md) §27 の連動参照表、[`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md`](fixture.md) §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
 
-| 対象 | SDK method | request 固定 | success 固定 | error 固定 | 禁止事項 |
+| 対象 | SDK method | request 固定 | success 固定 | error 固定 | 禁止条件 |
 |------|------------|--------------|---------------|------------|----------|
 | [`docs/details/runner.md`](runner.md) §27.21 / [`docs/details/runner.md`](runner.md) §27.31 branch target / env | `getBranchConfig()`, `setBranchConfig(branches)`, `getConfig()`, `setConfig(config)` | `branches` または `config` を指定 key のまま送信する。`target_files`、`env`、secret 風 key を削除しない。 | API response の branch 配列、`source`、件数をそのまま返す。 | validation `422` details を保持する。 | target path 正規化、env key 並び替え、secret mask 判定を SDK が行わない。 |
 | [`docs/details/runner.md`](runner.md) §27.22 / [`docs/details/runner.md`](runner.md) §27.27 pipeline / hook | `getPipelineConfig()`, `setPipelineConfig(config)`, `getHooks()`, `addHook()`, `deleteHook(id)`, `getHookLog(id)` | pipeline config はそのまま送る。hook `commandArgs` は配列のまま送る。 | config / hook / log response をそのまま返す。 | `409`、`422`、`500` を `AdlaireCIError` として保持する。 | shell 文字列結合、quote 展開、reserved arg 除去、env 補完を行わない。 |
@@ -404,7 +404,7 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) §22.0e の SDK �
 
 SDK 実装変更は、対象 [`docs/details/sdk.md`](sdk.md) §27 機能ごとに下表の証跡を fixture で固定する。下表の証跡がない場合、SDK method が存在していても詳細実装確認を満たした扱いにしない。
 
-| 証跡 | 固定する内容 | 合格条件 | 禁止事項 |
+| 証跡 | 固定する内容 | 合格条件 | 禁止条件 |
 |------|--------------|----------|----------|
 | request trace | `method`、`path`、query key 順、body key、body なし endpoint。 | [`docs/details/api.md`](api.md) §22.0e と [`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約に完全一致する。 | body なし endpoint へ `{}` を送る、query 未指定時に `?` を付ける。 |
 | response passthrough | API success body、binary body、SSE frame。 | SDK は存在 key を削除せず、存在しない key を追加しない。binary は `Blob`、SSE は `StreamHandle`。 | UI 用 label、集計値、既定値、token list、rate limit reset を SDK が合成する。 |

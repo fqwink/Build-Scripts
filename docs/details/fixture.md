@@ -44,7 +44,7 @@ Phase、API、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/securi
 
 **Phase fixture / testdata 配置固定契約：**
 
-| Phase | 必須配置 | 必須内容 | 禁止事項 |
+| Phase | 必須配置 | 必須内容 | 禁止条件 |
 |-------|----------|----------|----------|
 | Phase 1 | `testdata/builder/single/`、`testdata/builder/site/`、`testdata/builder/empty-dir/`、`testdata/builder/strict/`、`testdata/builder/safe/`、各 fixture の `expected/`。 | 入力 Markdown、テーマ設定、asset 入力、期待 HTML / CSS / JS / search index、期待 stdout / stderr、期待終了コード。 | 実行環境ごとに変わる絶対 path、timestamp、乱数、外部 URL 取得結果を期待値へ含めてはならない。 |
 | Phase 2 | `testdata/runner/r1/`〜`testdata/runner/r20/`、各 fixture の `state/`、`github/`、`pipeline/`、`ssh/`、`notify/`、`expected/`。 | GitHub fake response、状態ファイル初期値、lock 状態、pipeline fake 結果、deploy fake 結果、通知 fake 結果、期待 `.last_sha`、期待 queue / snapshot。 | 実 GitHub API、実 SSH、実通知先、実 remote branch 状態に依存して合否を決めてはならない。 |
@@ -218,7 +218,7 @@ Phase 4 実装は、下表の fixture をすべて満たした場合だけ完了
 
 §27 の fixture は、実装者が実行順や期待値を推測しないように、下表の単位で配置する。実装ファイル名やテストフレームワークは fixture 証跡責務では固定しないが、fixture の入力、期待出力、期待副作用は機能単位で分離する。
 
-| 機能範囲 | fixture 配置単位 | 必須内容 | 禁止事項 |
+| 機能範囲 | fixture 配置単位 | 必須内容 | 禁止条件 |
 |----------|------------------|----------|----------|
 | §27.1〜§27.4 | `status/`、`dry-run/`、`retry/`、`output-meta/` 相当の機能別単位。 | runner 入力、GitHub fake response、builder 入力、期待 log/history/status/report。 | 実際の GitHub API、実時刻依存の期待値、secret 平文。 |
 | §27.5〜§27.11 | `config/`、`access-log/`、`archive/`、`schedule/` 相当の API 機能別単位。 | HTTP request、初期状態、期待 response、期待状態差分、期待 log。 | API response だけの検証、状態差分未確認。 |
@@ -530,7 +530,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 
 各 fixture は、下表のファイルセットを持つ。該当しない入出力は `not-applicable.txt` を置くのではなく、`manifest.json` の `not_applicable` 配列に理由付きで記録する。fixture ごとの必要ファイルは推測せず、`manifest.json` の定義で確定する。
 
-| ファイル | 必須 | 内容 | 禁止事項 |
+| ファイル | 必須 | 内容 | 禁止条件 |
 |----------|------|------|----------|
 | `manifest.json` | 必須 | fixture 名、対象節、機能名、分類、fake clock、owner component、collaborator component、参照仕様節、not_applicable 理由。 | 実行環境依存 path、乱数、実 secret。 |
 | `input/request.json` | API / SDK / UI fixture で必須 | HTTP method、path、query、headers、body、SDK method、SDK args、UI action。 | Authorization header の実 token、secret 平文。 |
@@ -692,7 +692,7 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 | `manifest.json.assertions` が [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F assertion 選択固定契約を満たさない。 | 合否判定不足。 |
 | `expected/effects.json` が存在しない、または必須 key が欠落する。 | 副作用検証不足。 |
 | `unchanged_paths` または `forbidden_writes` が空で、fixture が failure / noop / read-only / dry-run / validation error のいずれかである。 | 無変更保証不足。 |
-| 外部 API / command / notification を扱う fixture で `forbidden_calls` が空、かつ禁止対象なしの理由が `manifest.json.not_applicable` にない。 | 外部副作用境界不足。 |
+| 外部 API / command / notification を扱う fixture で `forbidden_calls` が空、かつ禁止副作用なしの理由が `manifest.json.not_applicable` にない。 | 外部副作用境界不足。 |
 | secret fixture で `expected/security.json` が存在しない。 | secret mask 検証不足。 |
 | JSON Lines を扱う fixture で末尾改行、行順、破損行保持/除外条件を期待値に含めていない。 | log / audit / history 検証不足。 |
 | idempotency fixture で 1 回目と 2 回目の期待差分を分離していない。 | 再実行検証不足。 |
@@ -716,7 +716,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `expected/effects.json.write_order` と `expected/state/` | `write_order` に列挙された path は `expected/state/` または `expected/logs/` に期待値を持つ。 | 保存順だけの空検証として失敗。 |
 | `expected/effects.json.unchanged_paths` と `created_paths` / `deleted_paths` | 同一 path を `unchanged_paths` と `created_paths` または `deleted_paths` に同時に含めない。 | 副作用矛盾として失敗。 |
 | `expected/effects.json.forbidden_writes` と `write_order` | 同一 path を `forbidden_writes` と `write_order` に同時に含めない。 | 禁止書込矛盾として失敗。 |
-| `expected/effects.json.forbidden_calls` と `external_calls` / `commands` / `notifications` | 禁止対象と同じ call target を実行期待に含めない。 | 禁止呼び出し矛盾として失敗。 |
+| `expected/effects.json.forbidden_calls` と `external_calls` / `commands` / `notifications` | 禁止副作用と同じ call target を実行期待に含めない。 | 禁止呼び出し矛盾として失敗。 |
 | `expected/security.json` と期待値全体 | `expected/security.json.forbidden_values` に含まれる文字列は、fixture directory 内の `input/` を除く全 expected file に出現してはならない。 | secret mask 不足として失敗。 |
 | `input/fakes.json` と `expected/effects.json` | fake response を消費する外部 call / command は `expected/effects.json` に同数、同順で記録する。未消費 fake がある場合は `manifest.json.not_applicable` に理由を置く。 | fake / effect 不一致として失敗。 |
 | `missing_state` と `input/state/` | `manifest.json.missing_state` に列挙した path は `input/state/` に存在してはならない。 | 初期状態矛盾として失敗。 |
@@ -737,7 +737,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `archive` | log archive、snapshot、download、delete、rollback の保存 / 取得 / 削除境界を fixture で固定する。 | API download / rollback response と runner history への影響を statefile 契約に合わせる。 | 元 log 保持、archive 破損時挙動、安全でない entry 拒否、rollback 失敗時 no-write が検証済み。 | build 成否の反転、元 build log の改変、未検証 archive 展開。 |
 | `commitstatus` | GitHub Commit Status payload、pending / final 送信順、失敗時非反転、secret mask を fixture で固定する。 | runner の build 結果を受け取り、build 成否を変更せず送信結果だけを返す。 | pending 失敗、final 失敗、commit SHA なし、無効時呼び出し 0 が検証済み。 | build 実行判断、dry-run での GitHub write、status 失敗による build 成否反転。 |
 | `security` | token hash、session、TOTP、scope、audit、rate limit、secret mask、forbidden call/write を fixture で固定する。 | API / SDK / UI / runner の secret 表示、認証失敗、副作用境界を検証する。 | 認証失敗、権限拒否、rate limit、audit failure の副作用境界が検証済み。 | 業務処理代行、認可前状態更新、secret 平文保存。 |
-| `setup` | binary 配置、service 更新、rollback、secret 既存値保持、stdout/stderr mask、終了コードを fixture で固定する。 | runner / API の初期状態と既存 secret を壊さないことを effects で固定する。 | 部分失敗時の復元対象と復元禁止対象が `expected/effects.json` に明記済み。 | runtime 機能追加、状態 schema 暗黙変更、外部依存追加。 |
+| `setup` | binary 配置、service 更新、rollback、secret 既存値保持、stdout/stderr mask、終了コードを fixture で固定する。 | runner / API の初期状態と既存 secret を壊さないことを effects で固定する。 | 部分失敗時の復元対象と復元禁止副作用が `expected/effects.json` に明記済み。 | runtime 機能追加、状態 schema 暗黙変更、外部依存追加。 |
 
 component 責務を複数変更へ分ける場合でも、各変更が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を実装検証証跡に明記する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
 
@@ -785,7 +785,7 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 | `admin-static-serving-security` | `admin`、`api` | static request、secret/state/log/snapshot path、method variation。 | `expected/response.json`、`expected/security.json`、`expected/effects.json`。 | A3 の status、header、body 有無、method 制限、no mutation、secret 非表示が一致する。 |
 | `setup-secret-preservation` | `setup`、`security` | 既存 secret files、update input、failure fake。 | `expected/security.json`、`expected/effects.json.unchanged_paths`、`forbidden_writes`。 | 明示対象外 secret の content / mode / mtime を保持し、stdout、stderr、journal、expected に secret 原文を残さない。 |
 
-上表の fixture は、`manifest.json.owner_component` を `setup` または `admin` のどちらかに固定し、もう片方を `collaborator_components` に含める。実装変更が API service 起動、static serving、rollback、secret 保持を扱う場合は、`api`、`runner`、`security` を collaborator として追加し、`expected/effects.json` の `forbidden_calls` と `forbidden_writes` に禁止対象を明記する。
+上表の fixture は、`manifest.json.owner_component` を `setup` または `admin` のどちらかに固定し、もう片方を `collaborator_components` に含める。実装変更が API service 起動、static serving、rollback、secret 保持を扱う場合は、`api`、`runner`、`security` を collaborator として追加し、`expected/effects.json` の `forbidden_calls` と `forbidden_writes` に禁止副作用を明記する。
 
 **runner / security 実装検証証跡 必須記録固定契約：**
 
