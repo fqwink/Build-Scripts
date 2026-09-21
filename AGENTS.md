@@ -161,7 +161,7 @@ Go 実装対象ファイルは以下とする。
 | `admin/index.html` | 実装済み |
 | `components/mcp.go` | 将来追加予定 path（未作成） |
 
-未実装コンポーネントを追加する場合は、[docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、本ファイルを必要に応じて整合させる。
+未実装コンポーネントを追加する場合は、[docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、本ファイルの更新要否を確認し、該当する場合は同一変更で整合させる。
 
 実装変更後は、変更範囲に応じて構文確認、実行確認、生成物確認を行う。
 
@@ -237,7 +237,7 @@ GitHub 設定の初期適用方針は以下とする。
 - `delete_branch_on_merge=true` は即時設定対象とする。
 - `main` branch protection は、初期標準として Pull Request 必須、force push 禁止、branch deletion 禁止を設定する。
 - `main` branch protection の required approvals は初期値 `0` とする。
-- 運用が安定した後、必要に応じて required approvals を `1` へ引き上げる。
+- required approvals を `1` へ引き上げる場合は、運用安定後の別変更として、変更対象、現在値、推奨値、影響範囲を提示して承認を得る。
 
 GitHub 設定を確認する場合は、少なくとも以下を確認する。
 
@@ -312,7 +312,7 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
 - 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。
-- 実装変更では、必要に応じて対象スクリプトの実行確認または生成物確認を行う。
+- 実装変更では、変更した実装が実行可能な場合は対象スクリプトの実行確認または生成物確認を行う。実行不能な場合は理由を Pull Request 本文に記録する。
 - 仕様変更では、[docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、[docs/DESIGN.md](docs/DESIGN.md)、実装ファイルの整合を確認する。
 
 Pull Request 本文には、少なくとも以下を記載する。
@@ -326,11 +326,11 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 ## 5. 外部依存ルール
 
-外部フレームワークおよび外部ライブラリは、原則として採用しない。
+外部フレームワークは採用しない。外部ライブラリは例外承認済みの場合だけ採用できる。
 
-機能実現は、Go 標準ライブラリ、Vanilla JavaScript、内製実装、例外承認済み外部ライブラリの順で検討する。
+機能実現は、Go 標準ライブラリ、Vanilla JavaScript、内製実装を標準とし、例外承認済み外部ライブラリは許可範囲内でのみ使用する。
 
-外部依存は最小限に抑え、可能な範囲で内製化を重視する。
+外部依存を追加する場合は、許可範囲、採用理由、代替困難性、保守方針を明記し、承認済み範囲外へ広げてはならない。
 
 ただし、開発コスト、実装難易度、安全性、保守性、暗号・認証等の専門性を考慮し、外部ライブラリの採用を例外として許可する場合がある。
 
