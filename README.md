@@ -11,8 +11,8 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 ## 最初に読む文書
 
 1. [`AGENTS.md`](AGENTS.md): 作業ルール、承認、Git 運用を確認する。
-2. [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務: 文書構造、読む順番、正本参照先、実装ファイル所在を確認する。
-3. [`docs/SPEC.md`](docs/SPEC.md) 方針責務・ポリシー責務: 方針、ポリシー、禁止事項を確認する。
+2. [`docs/SPEC.md`](docs/SPEC.md) 方針責務・ポリシー責務: 仕様、方針、ポリシー、禁止事項、実装着手可否を確認する。
+3. [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務: 文書構造、正本参照先、実装ファイル所在を確認する。
 4. [`docs/DESIGN.md`](docs/DESIGN.md) デザイン責務: 生成 HTML のデザイン関係を確認する。
 5. [`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務: 実装状態、Phase、将来計画を確認する。
 6. [`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md) 詳細仕様入口責務: 詳細仕様入口と owner component 参照表を確認する。
