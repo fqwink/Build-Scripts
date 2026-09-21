@@ -2,7 +2,7 @@
 
 本ファイルは、Adlaire CI の状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を管理するロードマップ正本である。
 
-方針、ポリシー、正本参照先、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を参照する。生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を参照する。詳細仕様の入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の詳細本文は [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+方針、ポリシー、正本参照先、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を参照する。生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を参照する。詳細仕様参照入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の詳細本文は [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 本ファイルは状態と計画を扱う。HTTP response schema、状態ファイル schema、SDK method の実装詳細、UI DOM、fixture assertion、具体的な処理順序は定義しない。
 

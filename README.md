@@ -20,7 +20,7 @@ README は利用入口責務であり、仕様本文、詳細仕様本文、実�
 
 ## 実装ファイル
 
-標準ディレクトリ構成は [`docs/SPEC.md`](docs/SPEC.md) 方針責務 §4.3、実装ファイル所在は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、実装状態と Phase は [`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務を参照します。
+標準ディレクトリ構成は [`docs/SPEC.md`](docs/SPEC.md) 方針責務 §4.3、実装ファイル所在は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、状態分類と Phase は [`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務を参照します。
 
 ## リリース形式
 
