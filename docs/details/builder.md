@@ -2712,7 +2712,7 @@ minify は以下だけを許可する。
 
 | 対象 | 許可する変換 |
 |------|--------------|
-| tag 間 whitespace | 連続 whitespace を 1 つへ縮約、または安全に削除する。 |
+| tag 間 whitespace | adjacent tag 間の連続 whitespace は 1 space へ縮約する。text node 内 whitespace は変更しない。 |
 | comment | HTML comment を削除する。ただし必須 marker が定義された場合は保持する。 |
 | attribute | quote、escape、属性順は変更しない。 |
 

@@ -184,7 +184,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 | 横断事項 | 横断する固定値は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で確認し、横断共通基盤の扱いは [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2 を参照する。 |
 | 索引 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務に、owner component 別詳細本文責務の役割と責務範囲を反映する。 |
 
-詳細仕様を読む順序は、本ファイルの「詳細仕様の読み方」に固定する。各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は、owner component の主本文として読み、collaborator component は呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。認証、scope、token、audit、session、TOTP、rate limit、漏えい禁止を扱う場合は [`docs/details/security.md`](details/security.md)、fixture、fake、実装検証証跡が必要な場合は [`docs/details/fixture.md`](details/fixture.md) を確認する。
+詳細仕様本文へ進む入口順序は、本ファイルの「詳細仕様の読み方」に固定する。owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は owner component の主本文として読む。collaborator component は、owner component 本文または本ファイルの参照表で明示された呼び出し境界、schema、表示、security、setup、fixture、検証観点に限定して確認する。
 
 責務整理、本文配置変更、参照先更新の整合確認では、以下を入口確認項目として扱う。
 
@@ -218,13 +218,13 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 上記ゲートのいずれかが未充足の場合の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。本ファイルでは、不足している入口項目と更新すべき対応表を特定する。
 
-実装後の判定は以下を入口として確認する。本節は判定条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、実装検証証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を参照する。
+実装後の判定は、以下を入口として確認する。本節は判定条件の全本文を再定義しない。Phase、実装状態、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、実装検証証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を正本として参照する。
 
 1. 実装した機能が、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と本ファイルの対応表に記載された入力、出力、状態、異常系、検証条件と一致する。
 2. 対象機能が owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i の詳細節対応表の受け入れ条件を満たしている。
 3. [`docs/details/fixture.md`](details/fixture.md) が要求する fixture、fake、expected / effects、実装検証証跡、対象外確認を満たしている。
 4. 実装対象外に残す機能が [`docs/details/fixture.md`](details/fixture.md) の実装検証証跡に明記されている。
-5. [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、[`AGENTS.md`](../AGENTS.md) のファイル名参照が矛盾していない。
+5. [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、[`AGENTS.md`](../AGENTS.md) の参照リンクとファイル名が矛盾していない。
 6. 実装ファイルを変更した場合、構文確認または実行確認の結果が記録できる。
 7. 仕様外の挙動、暗黙の既定値、未記載の状態ファイル、未記載のエラー応答が存在しない。
 

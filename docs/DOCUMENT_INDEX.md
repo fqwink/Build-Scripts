@@ -17,7 +17,7 @@
 | 状態・計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 実装状態、実装可否、Phase、機能インベントリ、将来計画、追加仕様化機能参照、横断補足契約を確認する。 |
 | 詳細仕様入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様の読み方、共通固定値、対応表、ソース配置を確認する。 |
 | 詳細仕様本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
-| デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン方針と視覚仕様を確認する。 |
+| デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン関係を確認する。 |
 | 実装所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [実装ファイル一覧](#実装ファイル一覧) | 実装ファイル、テスト、fixture の所在を確認する。 |
 
 ## 目的別参照先
@@ -31,7 +31,7 @@
 | 詳細仕様本文を探したい | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 対象機能の owner component、参照節、受け入れ条件を判断する。 |
 | 実装ファイル、テスト、fixture の所在を確認したい | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j | 現行実装ファイル、将来追加予定 path、標準配置の扱いを判断する。 |
 | component の入出力、状態、処理順序、異常系、検証条件を確認したい | 対象 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 実装時に従う具体仕様と collaborator 境界を判断する。 |
-| 生成静的 Web サイトの見た目を確認したい | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | [`docs/details/builder.md`](details/builder.md) | レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を判断する。 |
+| 生成静的 Web サイトの見た目を確認したい | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | [`docs/details/builder.md`](details/builder.md) | 生成 HTML のデザイン関係を判断する。 |
 
 ## リポジトリ文書索引
 
@@ -83,7 +83,7 @@
 | [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` owner component の詳細本文責務。 |
 | [`docs/details/security.md`](details/security.md) | `security` owner component の詳細本文責務。 |
 | [`docs/details/fixture.md`](details/fixture.md) | `fixture` owner component の詳細本文責務。 |
-| [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン関係の正本。デザイン方針、レイアウト、色、タイポグラフィ、TOC、コードブロック等の視覚仕様を示す。 |
+| [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン関係の正本。 |
 | [`AGENTS.md`](../AGENTS.md) | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | 本索引。文書・実装ファイルの役割と所在を示す。仕様本文を定義しない。 |
 
