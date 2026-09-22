@@ -38,7 +38,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | API 実装 | Phase 3 / Phase 4 の API、SDK / UI / statefile と同期する API 実装。 | [`docs/details/fixture.md`](fixture.md) §22-F | Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認。 |
 | [`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 の追加仕様化機能 | runner / security 詳細本文責務。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F | 対象 [`docs/details/runner.md`](runner.md) §27.x / [`docs/details/security.md`](security.md) §27.x、関連 [`docs/details/api.md`](api.md) §22 / [`docs/details/sdk.md`](sdk.md) §23 / [`docs/details/ui.md`](ui.md) §24 / [`docs/details/security.md`](security.md) §25 / [`docs/details/setup.md`](setup.md) §26、owner / collaborator component、fixture 名、状態差分、外部副作用、partial failure、再実行、対象外確認。 |
 
-[`docs/details/fixture.md`](fixture.md) §0g.8-F の固定表の証跡が不足する場合、対象機能は未完了として扱う。fixture の pass だけでは完了証跡を満たさない。
+**不足時共通扱い：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務で必須とする fixture、manifest、expected、effects、security、実装検証証跡、対象外確認のいずれかが不足する場合、対象機能は未完了として扱う。fixture の pass だけでは完了証跡を満たさない。各節の不足時表は、この不足時共通扱いに対する対象別の具体条件である。
 
 Phase、API、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/security.md`](security.md) §27 のいずれの実装検証証跡でも、記録形式は [`docs/details/fixture.md`](fixture.md) の表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) に同種の記録項目がある場合でも、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は証跡分類、不足時の扱い、差し戻し条件だけを固定する。
 
@@ -81,7 +83,7 @@ Phase、API、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/securi
 
 [`docs/details/fixture.md`](fixture.md) §22-F は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) §22 を正本とする。
 
-API 実装の検証証跡は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の実装検証証跡固定契約に加えて、[`docs/details/fixture.md`](fixture.md) §22-F の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。これらの記録が不足する場合、API 実装は完了扱いにしない。
+API 実装の検証証跡は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の不足時共通扱いに加えて、[`docs/details/fixture.md`](fixture.md) §22-F の Phase、endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、状態副作用、secret mask、GET 副作用なし確認を記録する。
 
 Phase 順序、実装変更単位、完了判定単位は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。[`docs/details/fixture.md`](fixture.md) §22-F は、Phase 3 / Phase 4 の API fixture 証跡として記録する項目だけを固定する。
 
@@ -99,7 +101,7 @@ Phase 順序、実装変更単位、完了判定単位は [`docs/ROADMAP.md`](..
 
 **Phase 3 API fixture 固定：**
 
-Phase 3 実装は、[`docs/details/fixture.md`](fixture.md) §22-F の固定表の fixture をすべて満たした場合だけ完了扱いにする。fixture は実装言語の test case 名または subtest 名へそのまま写せる粒度とし、期待 HTTP status、期待 body、状態ファイル副作用を同時に確認する。
+Phase 3 実装の完了判定は [`docs/details/fixture.md`](fixture.md) §0g.8-F の不足時共通扱いと [`docs/details/fixture.md`](fixture.md) §22-F の固定表に従う。fixture は実装言語の test case 名または subtest 名へそのまま写せる粒度とし、期待 HTTP status、期待 body、状態ファイル副作用を同時に確認する。
 
 | Fixture | 入力状態 / Request | 期待 response | 状態ファイル副作用 |
 |---------|--------------------|---------------|--------------------|
@@ -118,7 +120,7 @@ Phase 3 実装は、[`docs/details/fixture.md`](fixture.md) §22-F の固定表�
 
 **Phase 4 API fixture 固定：**
 
-Phase 4 実装は、[`docs/details/fixture.md`](fixture.md) §22-F の固定表の fixture をすべて満たした場合だけ完了扱いにする。fixture は既存 endpoint と既存状態ファイルだけを対象とし、[`docs/details/api.md`](api.md) §22.0e にない endpoint、[`docs/details/statefile.md`](statefile.md) §22.0a にない状態ファイル、[`docs/details/ui.md`](ui.md) §24 にない UI 操作を追加してはならない。
+Phase 4 実装の完了判定は [`docs/details/fixture.md`](fixture.md) §0g.8-F の不足時共通扱いと [`docs/details/fixture.md`](fixture.md) §22-F の固定表に従う。fixture は既存 endpoint と既存状態ファイルだけを対象とし、[`docs/details/api.md`](api.md) §22.0e にない endpoint、[`docs/details/statefile.md`](statefile.md) §22.0a にない状態ファイル、[`docs/details/ui.md`](ui.md) §24 にない UI 操作を追加してはならない。
 
 | Fixture | Phase | 入力状態 / Request | 期待 response | 状態ファイル副作用 |
 |---------|--------|--------------------|---------------|--------------------|
@@ -698,7 +700,7 @@ fixture の `manifest.json.assertions` は、実装者が任意に減らして�
 | idempotency fixture で 1 回目と 2 回目の期待差分を分離していない。 | 再実行検証不足。 |
 | partial fixture で失敗地点より後の `forbidden_writes` / `forbidden_calls` を列挙していない。 | 部分失敗境界不足。 |
 
-[`docs/details/fixture.md`](fixture.md) §27-F の固定表に 1 件でも該当する場合、対象機能を実装完了として報告してはならない。fixture が多くても、期待副作用、禁止副作用、secret mask、保存順、再実行差分が明示されていなければ、バグ修正ゼロ化の検証を満たさない。
+[`docs/details/fixture.md`](fixture.md) §27-F の不足は [`docs/details/fixture.md`](fixture.md) §0g.8-F の不足時共通扱いに従う。fixture が多くても、期待副作用、禁止副作用、secret mask、保存順、再実行差分が明示されていなければ、バグ修正ゼロ化の検証を満たさない。
 
 **fixture 証跡責務 §27-F 相互整合固定契約：**
 
@@ -723,7 +725,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 
 **fixture 証跡責務 §27-F component 別検証責務固定契約：**
 
-実装変更は、対象 component ごとに [`docs/details/fixture.md`](fixture.md) §27-F の固定表の責務を満たす。複数 component を含む機能では、owner component と collaborator component を fixture manifest に分けて記録し、各 component の責務をすべて満たすまで完了扱いにしてはならない。
+実装変更は、対象 component ごとに [`docs/details/fixture.md`](fixture.md) §27-F の固定表の責務を満たす。複数 component を含む機能では、owner component と collaborator component を fixture manifest に分けて記録する。不足時は [`docs/details/fixture.md`](fixture.md) §0g.8-F の不足時共通扱いに従う。
 
 | component | owner 時の必須検証責務 | collaborator 時の必須検証責務 | 完了判定 | 禁止越境 |
 |-----------|------------------------|-------------------------------|----------|----------|
@@ -739,7 +741,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `security` | token hash、session、TOTP、scope、audit、rate limit、secret mask、forbidden call/write を fixture で固定する。 | API / SDK / UI / runner の secret 表示、認証失敗、副作用境界を検証する。 | 認証失敗、権限拒否、rate limit、audit failure の副作用境界が検証済み。 | 業務処理代行、認可前状態更新、secret 平文保存。 |
 | `setup` | binary 配置、service 更新、rollback、secret 既存値保持、stdout/stderr mask、終了コードを fixture で固定する。 | runner / API の初期状態と既存 secret を壊さないことを effects で固定する。 | 部分失敗時の復元対象と復元禁止副作用が `expected/effects.json` に明記済み。 | runtime 機能追加、状態 schema 暗黙変更、外部依存追加。 |
 
-component 責務を複数変更へ分ける場合でも、各変更が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を実装検証証跡に明記する。責務の所在が不明な場合は、その機能を実装完了扱いにしてはならない。
+component 責務を複数変更へ分ける場合でも、各変更が満たすべき owner component、collaborator component、fixture 名、期待ファイル、禁止副作用を実装検証証跡に明記する。責務の所在が不明な場合は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の不足時共通扱いに従う。
 
 **runner / statefile 連動 fixture 固定契約：**
 
@@ -817,7 +819,7 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 
 **runner / security 実装 acceptance checklist：**
 
-実装検証証跡には、[`docs/details/fixture.md`](fixture.md) §27-F の固定表の項目を記録する。記録がない項目は未検証として扱い、対象機能を完了扱いにしてはならない。
+実装検証証跡には、[`docs/details/fixture.md`](fixture.md) §27-F の固定表の項目を記録する。不足時は [`docs/details/fixture.md`](fixture.md) §0g.8-F の不足時共通扱いに従う。
 
 | 項目 | 記録内容 |
 |------|----------|
@@ -1354,7 +1356,7 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 **[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F builder 拡張実装受け入れゲート固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28 の実装変更は、[`docs/details/fixture.md`](fixture.md) §28-F の固定表を実装検証証跡で確認できる場合だけ受け入れ可能とする。確認できない項目は、実装漏れではなく証跡不足として未完了扱いにする。
+[`docs/details/builder.md`](builder.md) §28 の実装変更は、[`docs/details/fixture.md`](fixture.md) §28-F の固定表を実装検証証跡で確認できる場合だけ受け入れ可能とする。不足時は [`docs/details/fixture.md`](fixture.md) §0g.8-F の不足時共通扱いに従う。
 
 | ゲート | 実装検証証跡 | 不足時の扱い |
 |--------|---------|--------------|
@@ -1371,7 +1373,7 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 **[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F 不足時の固定扱い：**
 
-[`docs/details/builder.md`](builder.md) §28 の実装中に fixture 不足を発見した場合、実装判断で対象 fixture を省略してはならない。fixture が不足している機能は実装済みとして報告してはならない。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。
+[`docs/details/builder.md`](builder.md) §28 の実装中に fixture 不足を発見した場合、実装判断で対象 fixture を省略してはならない。不足時は [`docs/details/fixture.md`](fixture.md) §0g.8-F の不足時共通扱いに従う。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。
 
 | 不足 | 扱い |
 |------|------|
