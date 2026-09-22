@@ -16,11 +16,11 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 ## 参照先
 
-README は利用入口責務であり、仕様本文、詳細仕様本文、状態分類、ロードマップ、API 仕様、状態 schema、検証マトリクスを定義しません。対象別の正本参照先は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務で確認します。
+README は利用入口責務であり、仕様本文、詳細仕様本文、状態分類、ロードマップ、API 仕様、状態 schema、検証マトリクスの正本ではありません。対象別の正本参照先は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務で確認します。
 
 ## 実装ファイル
 
-標準ディレクトリ構成は [`docs/SPEC.md`](docs/SPEC.md) 方針責務 §4.3、実装ファイル所在は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、状態分類と Phase は [`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務を参照します。
+標準ディレクトリ構成は [`docs/SPEC.md`](docs/SPEC.md) 方針責務 §4.3、実装ファイル所在は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、状態分類と Phase は [`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務で確認します。
 
 ## リリース形式
 

@@ -40,7 +40,7 @@ runner は `.server_config.commit_status_enabled == true` の場合、commitstat
 | `description` | 140 文字以内。開始時 `Build started`、成功時 `Build succeeded`、失敗時 `Build failed: <target_status>`、pending deploy 時 `Build succeeded with deploy pending`。 |
 | `target_url` | `.server_config.commit_status_target_url` が `null` でなければ送信する。 |
 
-GitHub request は以下に固定する。retry、GraphQL API、Check Runs API、任意 header、任意 payload key は本詳細仕様の対象外とする。
+GitHub request は以下に固定する。retry、GraphQL API、Check Runs API、任意 header、任意 payload key は [`docs/details/commitstatus.md`](commitstatus.md) 詳細本文責務の対象外とする。
 
 | 項目 | 固定値 |
 |------|--------|
@@ -114,7 +114,7 @@ Commit Status 送信失敗は build 成否を反転させない。送信失敗�
 | HTTP `5xx` | `"github status server error"` | `COMMIT_STATUS_FAILED: status={status} error=github status server error` |
 | HTTP `201` 以外 | `"github status unexpected response"` | `COMMIT_STATUS_FAILED: status={status} error=github status unexpected response` |
 | network / DNS / timeout | `"github status network error"` | `COMMIT_STATUS_FAILED: status=0 error=github status network error` |
-| invalid owner / repo / context / target_url | 上表の固定 validation error | `COMMIT_STATUS_FAILED: status=0 error={reason}` |
+| invalid owner / repo / context / target_url | [`docs/details/commitstatus.md`](commitstatus.md) §27.1 の固定表の固定 validation error | `COMMIT_STATUS_FAILED: status=0 error={reason}` |
 | state write failure | `"commit status state write failed"` | `COMMIT_STATUS_FAILED: status=0 error=commit status state write failed` |
 
 GitHub response body 全体、Authorization header、GitHub token、credential 付き URL は build log、history、server log、fixture expected に保存しない。HTTP status、固定 error reason、request path、payload state/context/description/target_url だけを保存・検証対象にする。

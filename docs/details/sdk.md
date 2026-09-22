@@ -21,7 +21,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 
 ## 23. JavaScript SDK 仕様
 
-該当節は、sdk owner の JavaScript SDK 詳細本文責務である。
+[`docs/details/sdk.md`](sdk.md) §23 は、sdk owner の JavaScript SDK 詳細本文責務である。
 
 **ファイル：** `admin/adlaire-ci-sdk.js`（単一ファイル、外部依存なし）
 **モジュール形式：** ES Module（`import` / `export`）
@@ -202,7 +202,7 @@ export { AdlaireCI, AdlaireCIError };
 
 **SDK transport / error 固定契約：**
 
-SDK の内部 request helper は、すべての public method で下表の処理順に固定する。public method ごとに個別 fetch 処理を複製してはならない。
+SDK の内部 request helper は、すべての public method で [`docs/details/sdk.md`](sdk.md) §23 の固定表の処理順に固定する。public method ごとに個別 fetch 処理を複製してはならない。
 
 | 順序 | 処理 | 固定仕様 |
 |------|------|----------|
@@ -216,7 +216,7 @@ SDK の内部 request helper は、すべての public method で下表の処理
 | 8 | token 変化 | `401` の場合だけ `this._token = null`。`403`、`429`、`500`、network error、timeout では token を破棄しない。 |
 | 9 | return / throw | `2xx` は endpoint の型で返す。`4xx` / `5xx` は `AdlaireCIError` を投げる。 |
 
-HTTP status と SDK error の対応は下表に固定する。
+HTTP status と SDK error の対応は [`docs/details/sdk.md`](sdk.md) §23 の固定表に固定する。
 
 | 条件 | `AdlaireCIError.status` | `message` | `details` | token |
 |------|-------------------------|-----------|-----------|-------|
@@ -259,7 +259,7 @@ HTTP status と SDK error の対応は下表に固定する。
 
 **Phase 3 SDK 操作固定契約：**
 
-Phase 3 実装では、下表の SDK method を最小運用範囲として固定する。SDK は成功時 response を endpoint schema の範囲でそのまま返し、失敗時は HTTP status、API error、details、responseBody を保持した `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
+Phase 3 実装では、[`docs/details/sdk.md`](sdk.md) §23 の固定表の SDK method を最小運用範囲として固定する。SDK は成功時 response を endpoint schema の範囲でそのまま返し、失敗時は HTTP status、API error、details、responseBody を保持した `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
 
 | SDK method | HTTP | 成功時 | 失敗時 | 追加禁止条件 |
 |------------|------|--------|--------|--------------|
@@ -319,7 +319,7 @@ Phase 4 SDK は、[`docs/details/api.md`](api.md) §22.0e の endpoint 契約と
 
 **SDK 引数変換契約：**
 
-SDK method は、下表の通りに引数を path、query、body へ変換する。下表にない引数、既定値、body key を追加してはならない。
+SDK method は、[`docs/details/sdk.md`](sdk.md) §23 の固定表の通りに引数を path、query、body へ変換する。[`docs/details/sdk.md`](sdk.md) §23 の固定表にない引数、既定値、body key を追加してはならない。
 
 | SDK method | 引数 | 変換先 | 送信値 |
 |------------|------|--------|--------|
@@ -402,7 +402,7 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) §22.0e の SDK �
 
 **§27.21〜§27.47 SDK 連動 fixture 必須証跡：**
 
-SDK 実装変更は、対象 [`docs/details/sdk.md`](sdk.md) §27 機能ごとに下表の証跡を fixture で固定する。下表の証跡がない場合、SDK method が存在していても詳細実装確認を満たした扱いにしない。
+SDK 実装変更は、対象 [`docs/details/sdk.md`](sdk.md) §27 機能ごとに [`docs/details/sdk.md`](sdk.md) §23 の固定表の証跡を fixture で固定する。[`docs/details/sdk.md`](sdk.md) §23 の固定表の証跡がない場合、SDK method が存在していても詳細実装確認を満たした扱いにしない。
 
 | 証跡 | 固定する内容 | 合格条件 | 禁止条件 |
 |------|--------------|----------|----------|
@@ -415,7 +415,7 @@ SDK 実装変更は、対象 [`docs/details/sdk.md`](sdk.md) §27 機能ごと�
 
 **SDK 型定義表：**
 
-本表は sdk owner が返す object 型の詳細本文責務である。`nullable` は `null` を許可することを示す。配列は API response に `[]` として存在する場合だけ `[]` を返し、SDK が未取得配列を生成してはならない。API response に存在しないキーを SDK が補完してはならない。ただし `GET /api/config`、`GET /api/notify-config`、`GET /api/dashboard-layout` の既定値 merge は API 側の責務とする。
+[`docs/details/sdk.md`](sdk.md) §23 の object 型表は sdk owner が返す object 型の詳細本文責務である。`nullable` は `null` を許可することを示す。配列は API response に `[]` として存在する場合だけ `[]` を返し、SDK が未取得配列を生成してはならない。API response に存在しないキーを SDK が補完してはならない。ただし `GET /api/config`、`GET /api/notify-config`、`GET /api/dashboard-layout` の既定値 merge は API 側の責務とする。
 
 | 型名 | 必須キー | nullable キー | 配列キー | 対応 API |
 |------|----------|---------------|----------|----------|

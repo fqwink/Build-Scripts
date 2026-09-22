@@ -14,7 +14,7 @@
 
 [AGENTS.md](AGENTS.md) または [docs/SPEC.md](docs/SPEC.md) の片方だけを確認した状態で、作業判断に必要な確認を完了したと扱ってはならない。
 
-本リポジトリの仕様判断は、方針、ポリシー、正本参照先、禁止事項、リリース判断は [docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務、状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務、詳細仕様参照入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、owner component 別詳細本文境界管理責務は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、owner component 別の詳細本文は [docs/details/*.md](docs/details/) 詳細本文責務を正本として行う。
+本リポジトリの仕様判断は、方針、ポリシー、正本参照先、禁止事項、リリース判断は [docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務、状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務、詳細仕様参照入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、owner component 別詳細本文責務の境界管理は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の詳細本文は [docs/details/*.md](docs/details/) 詳細本文責務を正本として行う。
 
 [docs/DESIGN.md](docs/DESIGN.md) は、生成静的 Web サイトのデザイン関係の正本である。機能仕様、運用仕様、API 仕様、CI 仕様、状態分類、ロードマップ状態の正本ではない。
 
@@ -71,7 +71,7 @@
 
 [docs/ROADMAP.md](docs/ROADMAP.md) は、Adlaire CI の状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を定めるロードマップ正本である。
 
-[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) は、詳細仕様入口責務として、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、owner component 別詳細本文境界管理責務を持つ詳細仕様入口正本である。
+[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) は、詳細仕様入口責務として、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置、owner component 別詳細本文責務の境界管理を持つ詳細仕様入口正本である。
 
 owner component 別の [docs/details/*.md](docs/details/) は、各 component の詳細本文責務に関する正本である。
 
@@ -85,7 +85,7 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 `components/mcp.go` は将来計画コンポーネントであり、状態分類、実装可否、ロードマップ状態は [docs/ROADMAP.md](docs/ROADMAP.md) を正とする。[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の owner component 参照表と該当する owner component 別の [docs/details/*.md](docs/details/) 詳細本文責務に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
 
-`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、owner component 別の詳細本文責務として作成してはならない。横断する固定値、詳細仕様参照入口、対応表は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の入口・索引・共通固定値・詳細仕様入口責務として扱う。追加仕様化機能の横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務 §6 を正とする。いずれも component として扱わない。
+`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、owner component 別の詳細本文責務として作成してはならない。横断する固定値、詳細仕様参照入口、対応表は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) 詳細仕様入口責務として扱う。追加仕様化機能の横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務 §6 を正とする。いずれも component として扱わない。
 
 [docs/DESIGN.md](docs/DESIGN.md) は、出力 HTML のデザイン関係の正本である。機能仕様、状態分類、実装可否、API 仕様、状態 schema、builder 処理本文は定義しない。生成 HTML のデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンは [docs/DESIGN.md](docs/DESIGN.md) を正とする。
 
@@ -95,7 +95,7 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 文書整理だけを目的とする作業では、機能仕様、状態分類、実装可否、ロードマップ状態を変更してはならない。状態変更が必要な場合は、変更対象、変更理由、影響範囲を別途提示し、承認を得る。
 
-[README.md](README.md) は初見向けの入口、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) は索引、[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務は方針・ポリシーの正本、[docs/DESIGN.md](docs/DESIGN.md) は生成 HTML のデザイン関係の正本、[docs/ROADMAP.md](docs/ROADMAP.md) は状態・Phase・将来計画・§27 追加仕様化機能参照・横断補足契約の正本、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) は詳細仕様入口、owner component 別の [docs/details/*.md](docs/details/) は詳細本文責務として扱う。
+[README.md](README.md) は初見向けの入口、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) は索引、[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務は方針・ポリシーの正本、[docs/DESIGN.md](docs/DESIGN.md) は生成 HTML のデザイン関係の正本、[docs/ROADMAP.md](docs/ROADMAP.md) は状態・Phase・将来計画・追加仕様化機能参照・横断補足契約の正本、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) は詳細仕様入口、owner component 別の [docs/details/*.md](docs/details/) は詳細本文責務として扱う。
 
 [docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、owner component 別の [docs/details/*.md](docs/details/) に記載された一部コンポーネントや機能は、仕様化済みであっても未実装の場合がある。リポジトリ内に実装ファイルまたは実装コードが存在しない内容を、実装済み機能として扱ってはならない。
 
@@ -107,7 +107,7 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 仕様項目の成熟度と実装可否は、[docs/SPEC.md](docs/SPEC.md) 方針責務 §4.5 の仕様成熟度方針、および [docs/SPEC.md](docs/SPEC.md) ポリシー責務 §0a の仕様成熟度ポリシーに従って判定する。
 
-作業開始時には、対象機能・対象コンポーネントについて [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/) の該当節と実ファイルの存在を確認する。
+作業開始時には、対象機能・対象コンポーネントについて [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、対象 owner component 別の [docs/details/*.md](docs/details/) の対象節と実ファイルの存在を確認する。
 
 実ファイルの存在確認には `rg --files` を使用する。
 
@@ -199,7 +199,7 @@ Go 実装の構文確認では、対象ファイルに対して `gofmt -l ...` �
 2. `gh pr list --state open --json number,title,headRefName,baseRefName,mergeStateStatus,url`
 3. `git diff --name-status origin/main...HEAD`
 
-上記確認で、同一ファイル、同一仕様領域、同一責務、または merge 順序依存の open Pull Request が見つかった場合は、新規 Pull Request を作成してはならない。既存 Pull Request への統合、または一本化 Pull Request への集約を先に完了する。
+この競合防止確認で、同一ファイル、同一仕様領域、同一責務、または merge 順序依存の open Pull Request が見つかった場合は、新規 Pull Request を作成してはならない。既存 Pull Request への統合、または一本化 Pull Request への集約を先に完了する。
 
 Pull Request の `mergeStateStatus` が `DIRTY`、`UNKNOWN`、または確認不能の場合は、merge 可能と報告してはならない。`UNKNOWN` の場合は GitHub の再計算後に再確認し、最終的に `CLEAN` を確認する。
 
@@ -230,7 +230,7 @@ Build-Scripts の標準 GitHub リポジトリ設定は以下とする。
 - secret scanning: `enabled`
 - secret scanning push protection: `enabled`
 - Dependabot security updates: `disabled`
-- main branch protection: 設定対象（下記の初期標準を適用）
+- main branch protection: 設定対象（この節の初期標準を適用）
 
 GitHub 設定の初期適用方針は以下とする。
 
@@ -284,7 +284,7 @@ Pull Request merge 後のローカル同期は、以下の手順を標準とす�
 4. merge 済み Pull Request の head branch と同名の local branch を `git branch -d <branch>` で削除する
 5. `git status --short --branch` で `main` と `origin/main` が一致し、作業ツリーが clean であることを確認する
 
-上記手順で fast-forward できない場合、merge 対象やローカル変更の状態を確認し、勝手に履歴を書き換えてはならない。
+このローカル同期手順で fast-forward できない場合、merge 対象やローカル変更の状態を確認し、勝手に履歴を書き換えてはならない。
 
 `main`、merge 未完了の作業ブランチ、merge 状態を確認できないブランチ、Pull Request と対応しないブランチは削除してはならない。
 
