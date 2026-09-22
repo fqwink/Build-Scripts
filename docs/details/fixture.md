@@ -2,7 +2,7 @@
 
 `fixture` owner component の詳細本文責務は、[`docs/details/fixture.md`](fixture.md) を正本とする。
 
-詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、実装検証証跡、検証観点として参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、実装検証証跡、検証観点として参照する。
 
 ---
 

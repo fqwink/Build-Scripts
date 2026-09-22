@@ -2,7 +2,7 @@
 
 `archive` owner component の詳細本文責務は、[`docs/details/archive.md`](archive.md) を正本とする。
 
-詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、fixture、検証観点として参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、fixture、検証観点として参照する。
 
 ---
 

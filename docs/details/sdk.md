@@ -2,7 +2,7 @@
 
 `sdk` owner component の詳細本文責務は、[`docs/details/sdk.md`](sdk.md) を正本とする。
 
-詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、fixture、検証観点として参照する。
 
 SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md`](api.md) §22.0e を参照する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務は SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
