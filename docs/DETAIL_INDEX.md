@@ -159,7 +159,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は以�
 | [`docs/details/security.md`](details/security.md) | `security` owner の API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture 証跡責務。 |
 | [`docs/details/fixture.md`](details/fixture.md) | fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、実装検証証跡テンプレート、acceptance checklist、差し戻し条件、実装検証証跡。 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.3 は横断補足契約である。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.3 は横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを扱い、個別機能本文は各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.3 は横断補足契約であり、横断処理順、同期禁止、成功後再取得、失敗時固定、横断受け入れ観点だけを扱う。個別機能本文は各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 すべての owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は、冒頭に `## 0. 責務境界` を置き、以下の 4 項目を同じ意味で持つ。
 
@@ -498,51 +498,7 @@ Adlaire CI は Go 版コンポーネントと JavaScript / HTML 管理ツール�
 
 ## 0j. リポジトリ内ソース配置
 
-Adlaire CI の標準リポジトリ内ソース配置は以下とする。
-
-リポジトリ内ソース配置は、標準配置 tree、配置ごとの責務、標準配置の成立条件を定義する。標準外配置の禁止、将来追加予定 path、未作成 path の作成可否は、リポジトリ内ソース配置の成立条件表、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を同時に確認する。
-
-```text
-.
-├── main.go
-│
-├── components/
-│   ├── builder.go
-│   ├── runner.go
-│   └── api.go
-│
-├── admin/
-│   ├── index.html
-│   └── adlaire-ci-sdk.js
-│
-├── testdata/
-│   ├── builder/
-│   └── runner/
-│
-├── docs/
-│   ├── SPEC.md
-│   ├── DETAIL_INDEX.md
-│   ├── DOCUMENT_INDEX.md
-│   ├── DESIGN.md
-│   ├── details/
-│   │   ├── builder.md
-│   │   ├── runner.md
-│   │   ├── api.md
-│   │   ├── sdk.md
-│   │   ├── ui.md
-│   │   ├── admin.md
-│   │   ├── setup.md
-│   │   ├── statefile.md
-│   │   ├── security.md
-│   │   ├── archive.md
-│   │   ├── commitstatus.md
-│   │   └── fixture.md
-│   └── examples/
-│
-├── README.md
-├── AGENTS.md
-└── go.mod
-```
+Adlaire CI の標準ディレクトリ構成 tree は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 を正本とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j は、同 tree の配置ごとの責務、標準配置の成立条件、標準外配置の禁止、将来追加予定 path、未作成 path の作成可否を定義する。
 
 | パス | component | 役割 |
 |------|-----------|------|

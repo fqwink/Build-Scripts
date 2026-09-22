@@ -2659,7 +2659,7 @@ meta key は以下に固定する。
 
 **[`docs/details/builder.md`](builder.md) §28.12 ライトモード固定詳細契約：**
 
-生成 HTML は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務に従い、ライトモード固定とする。可変 color scheme は仕様対象外であり、dark / auto 表示、theme toggle、color scheme 永続化は追加しない。
+生成 HTML は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務に従い、ライトモード固定とする。[`docs/details/builder.md`](builder.md) §7.1 の廃止方針に従い、可変 color scheme を追加しない。
 
 可変 color scheme の禁止識別子は以下に固定する。以下の識別子は CLI、環境変数、設定ファイル、HTML、CSS、JavaScript、localStorage、REPORT のいずれにも有効機能として定義してはならない。
 

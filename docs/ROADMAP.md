@@ -530,9 +530,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ### 6.2 追加仕様化機能 参照索引
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能参照索引は、追加仕様化機能の参照先を一覧化するインデックスである。個別機能本文は、同索引の「主本文」に記載された owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、同索引に記載された主本文、owner component、collaborator component を置き換えない。
-
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能参照索引は、追加仕様化機能の owner、主本文、collaborator だけを示す。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、fixture schema、横断処理順は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能参照索引は、追加仕様化機能の owner、主本文、collaborator を一覧化するインデックスである。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、fixture schema、横断処理順は、同索引の「主本文」に記載された owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、同索引に記載された主本文、owner component、collaborator component を置き換えない。
 
 | 節 | 機能 | owner | 主本文 | collaborator |
 |----|------|-------|--------|--------------|

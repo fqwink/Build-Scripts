@@ -58,7 +58,7 @@
 | 7 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様参照入口、共通固定値、対応表、ソース配置を確認する。 |
 | 8 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
 
-[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の文書一覧表は参照先索引である。作業開始前の最上位確認は [`AGENTS.md`](../AGENTS.md) と [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務の両方を先に読むことを必須とする。[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務は索引であり、仕様本文の正本ではない。
+文書一覧表は参照先索引である。作業開始前の最上位確認は [`AGENTS.md`](../AGENTS.md) と [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務の両方を先に読むことを必須とする。
 
 ## 文書一覧
 
@@ -82,13 +82,11 @@
 | [`docs/details/fixture.md`](details/fixture.md) | `fixture` owner component の詳細本文責務。 |
 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン関係の正本。 |
 | [`AGENTS.md`](../AGENTS.md) | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
-| [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | 文書・実装ファイル所在の索引。文書・実装ファイルの役割と所在を示す。仕様本文の正本ではない。 |
+| [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | 文書・実装ファイルの役割と所在を示す。 |
 
 ## 詳細仕様管理
 
-詳細仕様本文の所在は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、詳細仕様参照入口、共通固定値、対応表、リポジトリ内ソース配置を示す。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 は、追加仕様化機能参照と横断補足契約を示す。
-
-[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の詳細仕様管理表は、詳細仕様本文の配置先を示す索引である。各ファイルの責務境界、持つ内容、持たない内容、owner / collaborator の扱いは [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b および [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 を参照する。
+詳細仕様管理表は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の配置先を示す索引である。詳細仕様参照入口、共通固定値、対応表、リポジトリ内ソース配置は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、追加仕様化機能参照と横断補足契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6、各ファイルの責務境界と owner / collaborator の扱いは [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b および [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 を参照する。
 
 | ファイル | owner component |
 |----------|-----------------|
@@ -145,4 +143,4 @@
 | 文書・実装ファイルの参照先と役割 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 |
 | 実装ファイル、テスト、fixture の所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [実装ファイル一覧](#実装ファイル一覧) |
 
-[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務は索引であり、仕様本文、デザイン本文、実装可否本文の正本ではない。文書整合の禁止事項、責務分離、参照リンク化、重複禁止は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a、作業ルール、承認、Git 操作、PR 作成、検証手順は [`AGENTS.md`](../AGENTS.md) を参照する。
+文書整合の禁止事項、責務分離、参照リンク化、重複禁止は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a、作業ルール、承認、Git 操作、PR 作成、検証手順は [`AGENTS.md`](../AGENTS.md) を参照する。

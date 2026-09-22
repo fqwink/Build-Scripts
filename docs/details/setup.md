@@ -269,15 +269,16 @@ Go 版初回セットアップでは以下を実行しない。
 mkdir -p "$INSTALL_DIR/.build_logs"
 mkdir -p "$INSTALL_DIR/.snapshots"
 mkdir -p "$INSTALL_DIR/admin"
+CHECKSUM_ASSET="SHA256SUMS"
 
 # ── 2. 管理 API Release asset 取得・checksum 検証 ─────
 mkdir -p "$DOWNLOAD_DIR"
 cd "$DOWNLOAD_DIR"
 curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/adlaire-ci-api-$OS_ARCH"
 curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/admin-ui.tar.gz"
-curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/SHA256SUMS"
-grep "  adlaire-ci-api-$OS_ARCH$" SHA256SUMS | sha256sum -c -
-grep "  admin-ui.tar.gz$" SHA256SUMS | sha256sum -c -
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$VERSION/$CHECKSUM_ASSET"
+grep "  adlaire-ci-api-$OS_ARCH$" "$CHECKSUM_ASSET" | sha256sum -c -
+grep "  admin-ui.tar.gz$" "$CHECKSUM_ASSET" | sha256sum -c -
 
 # ── 3. Go 版 API バイナリ配置 ─────────────────────────
 install -m 0755 "adlaire-ci-api-$OS_ARCH" "$BIN_DIR/adlaire-ci-api"
@@ -425,6 +426,10 @@ DOWNLOAD_DIR="/tmp/adlaire-ci-release-$NEW_VERSION"
 BACKUP_DIR="/tmp/adlaire-ci-bin-backup-${NEW_VERSION}"
 ADMIN_BACKUP_DIR="/tmp/adlaire-ci-admin-backup-${NEW_VERSION}"
 ADMIN_TMP_DIR="/tmp/adlaire-ci-admin-new-${NEW_VERSION}"
+BUILD_ASSET="adlaire-ci-build-$OS_ARCH"
+RUNNER_ASSET="adlaire-ci-runner-$OS_ARCH"
+API_ASSET="adlaire-ci-api-$OS_ARCH"
+ADMIN_ASSET="admin-ui.tar.gz"
 
 # ── 1. 既存バイナリ退避 ──────────────────────────────
 mkdir -p "$BACKUP_DIR"
@@ -434,18 +439,18 @@ if [ -d "/opt/adlaire-builder/admin" ]; then
   cp -a "/opt/adlaire-builder/admin" "$ADMIN_BACKUP_DIR"
 fi
 
-# ── 2. Release バイナリ取得・checksum 検証 ────────────
+# ── 2. 更新対象 Release asset 取得・checksum 検証 ─────
 mkdir -p "$DOWNLOAD_DIR"
 cd "$DOWNLOAD_DIR"
-curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/adlaire-ci-build-$OS_ARCH"
-curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/adlaire-ci-runner-$OS_ARCH"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/$BUILD_ASSET"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/$RUNNER_ASSET"
 curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/SHA256SUMS"
-grep "  adlaire-ci-build-$OS_ARCH$" SHA256SUMS | sha256sum -c -
-grep "  adlaire-ci-runner-$OS_ARCH$" SHA256SUMS | sha256sum -c -
+grep "  $BUILD_ASSET$" SHA256SUMS | sha256sum -c -
+grep "  $RUNNER_ASSET$" SHA256SUMS | sha256sum -c -
 
 # ── 3. Go 版バイナリ更新 ──────────────────────────────
-install -m 0755 "adlaire-ci-build-$OS_ARCH"  "$BIN_DIR/adlaire-ci-build"
-install -m 0755 "adlaire-ci-runner-$OS_ARCH" "$BIN_DIR/adlaire-ci-runner"
+install -m 0755 "$BUILD_ASSET"  "$BIN_DIR/adlaire-ci-build"
+install -m 0755 "$RUNNER_ASSET" "$BIN_DIR/adlaire-ci-runner"
 
 # ── 4. runner サービス再起動 ─────────────────────────
 systemctl restart adlaire-ci.timer
@@ -457,13 +462,13 @@ systemctl status adlaire-ci.timer
 管理 API 導入後は、追加で `adlaire-ci-api` を再起動する。
 
 ```bash
-curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/adlaire-ci-api-$OS_ARCH"
-curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/admin-ui.tar.gz"
-grep "  adlaire-ci-api-$OS_ARCH$" SHA256SUMS | sha256sum -c -
-grep "  admin-ui.tar.gz$" SHA256SUMS | sha256sum -c -
-install -m 0755 "adlaire-ci-api-$OS_ARCH" "$BIN_DIR/adlaire-ci-api"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/$API_ASSET"
+curl -fLO "https://github.com/<owner>/<repo>/releases/download/$NEW_VERSION/$ADMIN_ASSET"
+grep "  $API_ASSET$" SHA256SUMS | sha256sum -c -
+grep "  $ADMIN_ASSET$" SHA256SUMS | sha256sum -c -
+install -m 0755 "$API_ASSET" "$BIN_DIR/adlaire-ci-api"
 mkdir -p "$ADMIN_TMP_DIR"
-tar -xzf admin-ui.tar.gz -C "$ADMIN_TMP_DIR"
+tar -xzf "$ADMIN_ASSET" -C "$ADMIN_TMP_DIR"
 test -f "$ADMIN_TMP_DIR/index.html"
 test -f "$ADMIN_TMP_DIR/adlaire-ci-sdk.js"
 if [ -d "/opt/adlaire-builder/admin" ]; then

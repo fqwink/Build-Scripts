@@ -501,7 +501,7 @@ backup response に secret 原文を含めてはならない。`password`、`tok
 
 restore の `.config_log` は対象 file ごとの差分を 1 record にまとめ、secret はすべて `"***"` とする。backup / restore の response、server log、fixture expected に secret 平文を含めてはならない。
 
-backup / restore fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能別 fixture 固定契約を参照する。
+backup / restore fixture は [`docs/details/api.md`](api.md) §22.0f の API fixture 参照に従う。
 
 **ビルド操作の競合優先順位：**
 
@@ -1564,6 +1564,8 @@ Secret は `.webhook_secret` を基準とする。secret 不在、header 不在�
 
 ### スケジュール強制再ビルド仕様（22-S）
 
+cooldown 共通参照は [`docs/details/runner.md`](runner.md) §13 の cooldown / force build 判定契約とする。
+
 **`POST /api/schedule/force-interval` リクエスト / レスポンス：**
 ```json
 // リクエスト
@@ -1574,7 +1576,7 @@ Secret は `.webhook_secret` を基準とする。secret 不在、header 不在�
 { "message": "Force build interval updated", "hours": 24 }
 ```
 
-- `.server_config.force_build_interval_hours` を保存する。runner による読込タイミングと判定適用は [`docs/details/runner.md`](runner.md) §13 の cooldown / force build 判定契約を参照する。
+- `.server_config.force_build_interval_hours` を保存する。runner による読込タイミングと判定適用は本節の cooldown 共通参照を使用する。
 - `hours` は 0 以上の整数。0 で機能無効化
 
 **`POST /api/schedule/cooldown` リクエスト / レスポンス：**
@@ -1587,7 +1589,7 @@ Secret は `.webhook_secret` を基準とする。secret 不在、header 不在�
 { "message": "Build cooldown updated", "seconds": 120 }
 ```
 
-- `.server_config.build_cooldown_seconds` を保存する。runner による読込タイミングと判定適用は [`docs/details/runner.md`](runner.md) §13 の cooldown / force build 判定契約を参照する。
+- `.server_config.build_cooldown_seconds` を保存する。runner による読込タイミングと判定適用は本節の cooldown 共通参照を使用する。
 - `seconds` は 0 以上の整数。0 で機能無効化
 
 ---
@@ -1636,7 +1638,7 @@ Secret は `.webhook_secret` を基準とする。secret 不在、header 不在�
 
 `POST /api/maintenance/enable` と `POST /api/maintenance/disable` の保存順は、`.maintenance` atomic write → `.config_log` 追記 → response とする。`.config_log` 追記失敗時は `500` を返し、保存済み `.maintenance` は巻き戻さない。同一状態 no-op では `.maintenance`、`.config_log`、`.audit_log` を変更しない。
 
-メンテナンス fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能別 fixture 固定契約を参照する。
+メンテナンス fixture は [`docs/details/api.md`](api.md) §22.0f の API fixture 参照に従う。
 
 ---
 
@@ -1681,7 +1683,7 @@ Secret は `.webhook_secret` を基準とする。secret 不在、header 不在�
 | `.config_log` 失敗 | `500`。保存済み `.access_control` は巻き戻さない。 |
 | 破損時 | [`docs/details/statefile.md`](statefile.md) §22.0a に従い初期値で再生成し、制限なしとして扱う。 |
 
-アクセス制御 fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能別 fixture 固定契約を参照する。
+アクセス制御 fixture は [`docs/details/api.md`](api.md) §22.0f の API fixture 参照に従う。
 
 ---
 
@@ -1733,7 +1735,7 @@ Secret は `.webhook_secret` を基準とする。secret 不在、header 不在�
 
 hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙動は [`docs/details/runner.md`](runner.md) §27.27 を参照する。`GET /api/hooks/{id}/log` は保存済み hook log を読み取り、response の `runs[]` へ `build_id`、`ran_at`、`exit_code`、`output` を返す。`output` は保存済み `stdout + stderr` をこの順で連結した表示用互換値とし、保存時点で secret mask 済みの値だけを返す。
 
-hooks fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能別 fixture 固定契約を参照する。
+hooks fixture は [`docs/details/api.md`](api.md) §22.0f の API fixture 参照に従う。
 
 ---
 
@@ -1949,7 +1951,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 `POST /api/smtp-test` は `.smtp_config` と `.smtp_secret` を読み、送信成功 / 失敗のどちらも `.notify_log` へ追記してから response を返す。`.notify_log` 追記失敗時は `500` を返す。SMTP password、認証失敗時の server response に含まれる credential 断片、接続 URL の userinfo は `message` と log に含めず固定文言へ置換する。
 
-SMTP fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能別 fixture 固定契約を参照する。
+SMTP fixture は [`docs/details/api.md`](api.md) §22.0f の API fixture 参照に従う。
 
 **`GET /api/notify-config` への追加（`email` セクション）：**
 ```json
@@ -2005,7 +2007,7 @@ queue entry schema と trigger 別 payload schema は [`docs/details/statefile.m
 
 重複判定は `trigger` と `payload` の正規化 JSON が一致する waiting entry を対象とする。重複時は新規 entry を追加せず `200 {"message":"Already queued","queued":true,"queue_id":"<existing>"}` を返す。`force=true` の manual entry は `force=false` と別 entry として扱う。
 
-queue fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能別 fixture 固定契約を参照する。
+queue fixture は [`docs/details/api.md`](api.md) §22.0f の API fixture 参照に従う。
 
 ---
 
@@ -2096,7 +2098,7 @@ queue fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能�
 | `--init-credentials` | CLI option dispatch、stdout / stderr / exit code を security 契約どおり返す。 | [`docs/details/security.md`](security.md) 認証共通詳細、[`docs/details/statefile.md`](statefile.md) §22.0c |
 | `GET /api/auth/totp-status` / `POST /api/auth/totp-setup` / `POST /api/auth/totp-confirm` / `DELETE /api/auth/totp` | route、body parse、response body、HTTP status、`.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) §27.46 |
 
-認証 fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能別 fixture 固定契約を参照する。
+認証 fixture は [`docs/details/api.md`](api.md) §22.0f の API fixture 参照に従う。
 
 ---
 
@@ -2819,7 +2821,7 @@ approve / reject API は body を受け付けない。reject reason は初期実
 | secret | approval payload、queue payload、history、audit、server log、SDK error、UI 表示に Authorization header、session token、API token、repository token を保存しない。 |
 | SDK/UI | SDK は `409` / `429` / `500` を `AdlaireCIError` として保持する。UI は API response にない状態を推測せず、approve / reject 後に `getApprovals()` と `getQueue()` を再取得する。 |
 
-approval fixture は [`docs/details/fixture.md`](fixture.md) §22-F の API 機能別 fixture 固定契約を参照する。
+approval fixture は [`docs/details/api.md`](api.md) §22.0f の API fixture 参照に従う。
 
 ### 27.42 ビルドトリガー専用 API スコープ
 
