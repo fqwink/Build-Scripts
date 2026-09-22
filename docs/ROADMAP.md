@@ -2,9 +2,9 @@
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、Adlaire CI の状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を管理するロードマップ正本である。
 
-方針、ポリシー、正本参照先、禁止事項、リリース判断は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務、詳細仕様参照入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の詳細本文は [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+責務外の本文は再掲しない。方針・ポリシーは [`docs/SPEC.md`](SPEC.md)、デザインは [`docs/DESIGN.md`](DESIGN.md)、詳細仕様入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、詳細本文は [`docs/details/*.md`](details/) を参照する。
 
-HTTP response schema、状態ファイル schema、SDK method の実装詳細、UI DOM、fixture assertion、具体的な処理順序の正本ではない。
+実装詳細、schema、SDK / UI / fixture の本文は状態・計画責務に置かない。
 
 **状態・計画責務 共通参照先：**
 

@@ -15,7 +15,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | 持つ内容 | `archive` owner が主本文として定義する build log archive / cleanup の実体処理、snapshot 保存形式、download tar.gz 生成安全性、snapshot delete 実体処理、rollback 転送実体処理。 |
 | 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、API 共通 request / response、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 手順、fixture 証跡責務。 |
 
-archive owner は、保存済み build log と snapshot artifact を安全に圧縮、展開、列挙、削除、転送する実体処理だけを担当する。api の HTTP endpoint、request / response、HTTP status、sdk の API method、ui の操作表示は、それぞれ [`docs/details/api.md`](api.md)、[`docs/details/sdk.md`](sdk.md)、[`docs/details/ui.md`](ui.md) を参照する。runner の build 実行、build id 採番、通常 snapshot 作成タイミング、history / status finalizer は [`docs/details/runner.md`](runner.md) 詳細本文責務を正本とする。
+archive owner は、保存済み build log と snapshot artifact の圧縮、展開、列挙、削除、転送の実体処理だけを担当する。API / SDK / UI / runner 境界は collaborator component の詳細本文責務を参照する。
 
 ---
 
@@ -250,10 +250,6 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | `success-snapshot-rollback` | rollback 状態更新順、new build id、history/log/status/pending、元 snapshot / `.last_sha` unchanged が expected と一致する。 |
 | `failure-snapshot-rollback-deploy` | rollback failure の新規 log/history、finalizer、lock 解放、元 snapshot / `.last_sha` unchanged が expected と一致する。 |
 | `failure-snapshot-running-conflict` | delete / rollback conflict、snapshot / history / log / pending / config log 差分なし。HTTP status は §27.15 共通参照先に従う。 |
-
-**sdk / ui 操作境界参照：**
-
-SDK method、error 変換、HTTP status、UI 表示、disabled 判定、操作後再取得、直接操作禁止は [`docs/details/archive.md`](archive.md) §27.15 API / SDK / UI 共通参照先に従う。`archive` 詳細では snapshot 一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理だけを定義する。
 
 **検証条件：**
 

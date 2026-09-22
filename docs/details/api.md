@@ -2807,7 +2807,7 @@ approve / reject API は body を受け付けない。reject reason は初期実
 | secret | approval payload、queue payload、history、audit、server log、SDK error、UI 表示に Authorization header、session token、API token、repository token を保存しない。 |
 | SDK/UI | SDK は `409` / `429` / `500` を `AdlaireCIError` として保持する。UI は API response にない状態を推測せず、approve / reject 後に `getApprovals()` と `getQueue()` を再取得する。 |
 
-### 27.42 ビルドトリガー専用 API スコープ
+### 27.42 security owner 機能 API 側境界
 
 [`docs/details/api.md`](api.md) §27.42〜§27.47 は、security owner 機能に対する api 側境界だけを示す。owner component、security 主本文、漏えい禁止、認証・認可・監査・rate limit の判定本文は [`docs/details/security.md`](security.md) §27.42〜§27.47 を正本とする。
 
@@ -2824,22 +2824,22 @@ approve / reject API は body を受け付けない。reject reason は初期実
 
 [`docs/details/api.md`](api.md) §27.42 の api 側境界本文は上表を正とし、security 主本文は [`docs/details/security.md`](security.md) §27.42 を参照する。
 
-### 27.43 API キー管理
+### 27.43 API キー管理 API 側境界
 
 [`docs/details/api.md`](api.md) §27.43 の api 側境界本文は §27.42 の security owner 機能の API 側共通境界表を正とし、security 主本文は [`docs/details/security.md`](security.md) §27.43 を参照する。
 
-### 27.44 監査ログ
+### 27.44 監査ログ API 側境界
 
 [`docs/details/api.md`](api.md) §27.44 の api 側境界本文は §27.42 の security owner 機能の API 側共通境界表を正とし、security 主本文は [`docs/details/security.md`](security.md) §27.44 を参照する。
 
-### 27.45 セッションタイムアウト変更設定
+### 27.45 セッションタイムアウト変更設定 API 側境界
 
 [`docs/details/api.md`](api.md) §27.45 の api 側境界本文は §27.42 の security owner 機能の API 側共通境界表を正とし、security 主本文は [`docs/details/security.md`](security.md) §27.45 を参照する。
 
-### 27.46 TOTP 二要素認証
+### 27.46 TOTP 二要素認証 API 側境界
 
 [`docs/details/api.md`](api.md) §27.46 の api 側境界本文は §27.42 の security owner 機能の API 側共通境界表を正とし、security 主本文は [`docs/details/security.md`](security.md) §27.46 を参照する。
 
-### 27.47 API レート制限
+### 27.47 API レート制限 API 側境界
 
 [`docs/details/api.md`](api.md) §27.47 の api 側境界本文は §27.42 の security owner 機能の API 側共通境界表を正とし、security 主本文は [`docs/details/security.md`](security.md) §27.47 を参照する。

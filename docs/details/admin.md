@@ -73,7 +73,7 @@ admin archive の検証は以下の順序に固定する。
 
 ## A4. Setup 連携境界
 
-[`docs/details/setup.md`](setup.md) は、release asset 取得、checksum 検証、systemd、配置順序、rollback を扱う。setup 手順本文、release asset 取得手順、rollback 手順は [`docs/details/setup.md`](setup.md) 詳細本文責務を正本とする。
+setup 手順本文、release asset 取得手順、rollback 手順は [`docs/details/setup.md`](setup.md) 詳細本文責務を参照する。
 
 [`docs/details/admin.md`](admin.md) 詳細本文責務は、`admin` owner の配布境界として、setup が扱う `admin-ui.tar.gz` の中身、展開後の必須 file、静的配信 path、拒否すべき archive entry を定義する。
 
