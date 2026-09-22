@@ -1,8 +1,10 @@
 # Build-Scripts — 文書索引
 
-このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。責務分離と重複禁止の方針は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を正本とする。
+このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。仕様本文、方針本文、状態本文、詳細本文、デザイン本文を持たない。責務分離と重複禁止の方針は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を正本とする。
 
 仕様・詳細仕様・デザイン正本・[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務は `docs/` 配下に集約する。ルールブック [`AGENTS.md`](../AGENTS.md) と入口文書 [`README.md`](../README.md) はリポジトリ root に置く。
+
+索引内で方針、状態、詳細本文、デザイン本文に触れる場合は、対象文書の内容を再掲せず、責務名付きリンクで参照する。
 
 ## 索引責務の使い方
 
@@ -10,15 +12,15 @@
 
 | 読みたいもの | 参照先 | 参照理由 |
 |--------------|--------|----------|
-| 作業してよい条件 | [`AGENTS.md`](../AGENTS.md) | 承認、Git、PR、文書整合の最上位ルールを確認する。 |
-| 初見向け概要 | [`README.md`](../README.md) | 最小限の入口と主要参照先を確認する。 |
-| 文書構造 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | 文書の役割、所在、実装ファイル所在を確認する。 |
-| 方針・ポリシー | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針、ポリシー、正本参照先、禁止事項、リリース判断を確認する。 |
-| 状態・計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 状態分類、実装可否、Phase、機能インベントリ、将来計画、追加仕様化機能参照、横断補足契約を確認する。 |
-| 詳細仕様入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様参照入口、共通固定値、対応表、ソース配置を確認する。 |
-| 詳細仕様本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
-| デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン関係を確認する。 |
-| 実装所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [実装ファイル一覧](#実装ファイル一覧) | 実装ファイル、テスト、fixture の所在を確認する。 |
+| 作業してよい条件 | [`AGENTS.md`](../AGENTS.md) | 作業ルール正本。 |
+| 初見向け概要 | [`README.md`](../README.md) | 利用入口。 |
+| 文書構造 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | 文書・実装所在の索引。 |
+| 方針・ポリシー | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針・ポリシー正本。 |
+| 状態・計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 状態・計画正本。 |
+| 詳細仕様入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様入口。 |
+| 詳細仕様本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | owner component 別詳細本文。 |
+| デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン正本。 |
+| 実装所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [実装ファイル一覧](#実装ファイル一覧) | 実装ファイル、テスト、fixture の所在。 |
 
 ## 目的別参照先
 

@@ -1,24 +1,26 @@
 # Adlaire CI — 詳細仕様入口
 
-[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、実装者が owner component 別詳細本文責務へ到達するための入口、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置だけを扱う。責務分離と重複禁止の方針は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を正本とする。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、実装者が owner component 別詳細本文責務へ到達するための入口、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置だけを扱う。方針、ポリシー、状態分類、実装可否、Phase、将来計画、owner component 本文、デザイン本文を持たない。責務分離と重複禁止の方針は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を正本とする。
 
 方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態分類、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、各 owner component の入出力、状態、処理順序、異常系、検証条件は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+
+以降、詳細仕様入口責務で責務外の内容に触れる場合は、対象文書の内容を再掲せず、責務名付きリンクで参照する。
 
 ---
 
 ## 詳細仕様管理
 
-詳細仕様入口責務は、管理対象と責務を持つ正本への確認入口だけを示す。方針、ポリシー、状態分類、実装可否、Phase、将来計画、owner component 本文は本文化せず、下表の正本へリンクする。
+詳細仕様入口責務は、管理対象と責務を持つ正本への確認入口だけを示す。責務外本文は、上部の境界宣言に従って下表の正本へリンクする。
 
 | 管理対象 | 参照先 | 詳細仕様入口責務での扱い |
 |----------|------|--------------------|
-| 詳細仕様参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 実装者が詳細仕様本文へ到達するための入口を示す。 |
-| 共通固定値 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | component 間で共有する固定値だけを示す。 |
-| 詳細節対応表 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象機能、詳細仕様節、受け入れ条件の入口を示す。 |
+| 詳細仕様参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様本文への入口。 |
+| 共通固定値 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | component 間で共有する固定値。 |
+| 詳細節対応表 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象機能、詳細仕様節、受け入れ条件の入口。 |
 | 状態分類、実装可否、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 状態正本への入口。 |
 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能参照 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 | 追加仕様化機能参照への入口。 |
 | owner component 本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 詳細本文への入口。 |
-| 方針、ポリシー、正本参照先 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針正本への入口。 |
+| 方針、ポリシー、正本参照先 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針・ポリシー正本への入口。 |
 
 ## 詳細仕様入口責務
 > 実装の具体的詳細へ到達するための入口を定める。「どこから詳細仕様を読むか」に答える。

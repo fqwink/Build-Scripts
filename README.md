@@ -20,11 +20,11 @@ README は利用入口責務です。対象別の正本参照先は [`docs/DOCUM
 
 ## 実装ファイル
 
-標準ディレクトリ構成は [`docs/SPEC.md`](docs/SPEC.md) 方針責務 §4.3、実装ファイル所在は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、状態分類と Phase は [`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務で確認します。
+実装ファイル所在は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務で確認します。
 
 ## リリース形式
 
-標準リリース形式は Go 実行バイナリです。詳細は [`docs/SPEC.md`](docs/SPEC.md) ポリシー責務 §1 のリリース方針と [`docs/details/setup.md`](docs/details/setup.md) 詳細本文責務 §26 のセットアップ詳細を参照します。
+リリース形式の正本は [`docs/SPEC.md`](docs/SPEC.md) ポリシー責務 §1、セットアップ詳細は [`docs/details/setup.md`](docs/details/setup.md) §26 を参照します。
 
 ## 注意
 

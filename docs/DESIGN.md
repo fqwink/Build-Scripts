@@ -9,9 +9,7 @@
 
 [`docs/DESIGN.md`](DESIGN.md) デザイン責務は、生成 HTML のデザイン関係を定義する正本である。生成 HTML のデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンの確認先は [`docs/DESIGN.md`](DESIGN.md) デザイン責務とする。
 
-[`docs/DESIGN.md`](DESIGN.md) デザイン責務は、機能仕様、運用仕様、API 仕様、状態 schema、状態分類、ロードマップ状態の正本ではない。
-
-Adlaire CI 全体の方針、ポリシー、正本参照先は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態分類、実装可否、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、builder の入出力、HTML / CSS / JavaScript 生成、theme component、検証条件は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
+デザイン外の正本参照先は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照する。
 
 ## 1. デザイン方針
 
@@ -184,6 +182,6 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 ## 8. 生成側参照
 
-ビルド実行方法、入出力パス、既定値、終了コード、レポート出力は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務および [`docs/details/builder.md`](details/builder.md) builder 詳細本文責務を参照する。
+ビルド実行方法、入出力パス、既定値、終了コード、レポート出力は [`docs/details/builder.md`](details/builder.md) builder 詳細本文責務を参照する。
 
 CSS トークンの変更は Go 版 `components/builder.go` の HTML テンプレート内 `:root { }` ブロックに反映して再ビルドする。
