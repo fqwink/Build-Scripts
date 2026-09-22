@@ -511,9 +511,9 @@ systemctl status adlaire-ci-api
 
 setup / release / update の詳細実装確認では、[`docs/details/setup.md`](setup.md) §26.7 実装受け入れ条件 の固定表の受け入れ条件をすべて満たす。実装対象外のコンポーネントは「未実装」として明記し、確認済み扱いにしない。
 
-**§26.7 関連 component 共通参照先：**
+#### §26.7 関連 component 共通参照先
 
-[`docs/details/setup.md`](setup.md) §26.7 で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md`](api.md) §22.0 / §22.0e、SDK 契約は [`docs/details/sdk.md`](sdk.md) §23、UI 契約は [`docs/details/ui.md`](ui.md) §24、security 契約は [`docs/details/security.md`](security.md) §25 / §27.42〜§27.47 を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。
+[`docs/details/setup.md`](setup.md) §26.7 で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md` §22.0](api.md) / [`docs/details/api.md` §22.0e](api.md)、SDK 契約は [`docs/details/sdk.md` §23](sdk.md)、UI 契約は [`docs/details/ui.md` §24](ui.md)、security 契約は [`docs/details/security.md` §25](security.md) / [`docs/details/security.md` §27.42〜§27.47](security.md) を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。
 
 | 対象 | 必須コマンド / 確認 | 合格条件 |
 |------|---------------------|----------|
@@ -656,13 +656,7 @@ setup / release / update に関わる受け入れ結果は、[`docs/details/fixt
 
 **setup / admin / release 連動 fixture 固定：**
 
-| fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
-|------------|----------------|------------|---------------|----------|
-| `setup-admin-release-layout` | `setup`、`admin` | Release asset 一式、`SHA256SUMS`、`admin-ui.tar.gz`、fake download response。 | `expected/effects.json`、admin archive file list、`expected/security.json`。 | 対象 asset 名、checksum、admin archive root layout、必須 file、任意 file、file mode、directory mode が [`docs/details/setup.md`](setup.md) §26.2a と [`docs/details/admin.md`](admin.md) A1〜A2 に一致する。 |
-| `setup-admin-archive-boundary` | `setup`、`admin` | unsafe archive、既存 `$INSTALL_DIR/admin`、既存 API binary、API service fake。 | `expected/effects.json.unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`expected/stderr.txt`。 | archive 検証失敗時に既存 admin UI、API binary、credentials、runner state を変更せず、API service start / restart を呼ばない。 |
-| `setup-systemd-rollback-boundary` | `setup`、`runner`、`api` | systemd fake、旧 binary backup、旧 admin backup、restart failure。 | `expected/effects.json.write_order`、`updated_paths`、`unchanged_paths`、`forbidden_writes`、`commands`。 | rollback 対象は失敗段階で定義済みの binary / admin UI だけで、state、history、secret、runner timer を未定義に巻き戻さない。 |
-| `admin-static-serving-security` | `admin`、`api` | static request、secret/state/log/snapshot path、method variation。 | `expected/response.json`、`expected/security.json`、`expected/effects.json`。 | A3 の status、header、body 有無に一致し、secret / state / log / snapshot / directory listing を返さず、request body を読まない。 |
-| `setup-secret-preservation` | `setup`、`security` | 既存 secret files、update input、failure fake。 | `expected/security.json`、`expected/effects.json.unchanged_paths`、`forbidden_writes`。 | 明示対象外の secret content / mode / mtime を保持し、stdout、stderr、journal、fixture expected に secret 原文を残さない。 |
+setup / admin / release 連動 fixture の fixture 群、対象 component、必須 input、必須 expected、合格条件は、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の [fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約](fixture.md#fixture-証跡責務-27-f-setup--admin--release-連動-fixture-固定契約) を正本とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存の実装受け入れ条件だけを扱う。
 
 **setup / update 実装者向け出力固定：**
 

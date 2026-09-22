@@ -1777,7 +1777,7 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 
 ## 27. Runner owner 追加仕様化機能 詳細仕様
 
-**runner §27 API / SDK / UI 共通参照先：**
+#### runner §27 API / SDK / UI 共通参照先
 
 runner §27 の各機能で API endpoint、HTTP status、request / response、warning、SDK method、UI 表示、filter、error body を述べる場合、API 契約は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、SDK 契約は [`docs/details/sdk.md`](sdk.md) §23、UI 契約は [`docs/details/ui.md`](ui.md) §24 を共通参照先とする。runner 詳細本文では、runner が保存する値、処理順、状態差分、失敗時副作用だけを定義する。
 
@@ -2039,7 +2039,7 @@ runner は [`docs/details/runner.md`](runner.md) §27.9 の固定表以外の値
 
 **api / sdk / ui 参照：**
 
-`GET /api/history` の `trigger` query、HTTP status、response warning、SDK `getHistory({trigger})`、UI filter 表示は runner §27 API / SDK / UI 共通参照先を参照する。`runner` 詳細では runner が保存する trigger 値、保存先、判定順序だけを定義する。
+`GET /api/history` の `trigger` query、HTTP status、response warning、SDK `getHistory({trigger})`、UI filter 表示は [runner §27 API / SDK / UI 共通参照先](#runner-27-api--sdk--ui-共通参照先) を参照する。`runner` 詳細では runner が保存する trigger 値、保存先、判定順序だけを定義する。
 
 **異常系：**
 

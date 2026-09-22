@@ -4,7 +4,7 @@
 
 方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態・計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、詳細本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
-以降、詳細仕様入口責務で責務外の内容に触れる場合は、対象文書の内容を再掲せず、責務名付きリンクで参照する。
+以降、詳細仕様入口責務で責務外の内容に触れる場合は、対象文書の内容を再掲せず、責務名付きリンクで参照する。責務外本文の不足、未確定、矛盾、改訂要否に触れる場合も、判定本文を持たず、参照入口、対応表、更新要否だけを示す。
 
 ---
 
@@ -42,7 +42,7 @@
 7. collaborator component がある場合は、該当する [`docs/details/*.md`](details/) 詳細本文責務を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
 8. [`docs/details/setup.md`](details/setup.md) §26 のセットアップ・アップデート手順と [`docs/details/setup.md`](details/setup.md) §26.7 の受け入れ条件に影響がある場合は、実装変更の検証対象に含める。
 
-詳細仕様節に [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の項目不足がある場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。詳細仕様入口責務では、不足を検出した参照入口と対応表の更新要否だけを扱う。
+詳細仕様節に [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の項目不足がある場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。不足を検出した参照入口と対応表の更新要否だけを扱う。
 
 | 範囲 | 役割 |
 |------|------|
@@ -77,7 +77,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文の owner / c
 | セキュリティ | 認証、認可、秘密情報の保存禁止、権限、外部公開可否 |
 | 検証 | 構文確認、実行確認、API 確認、生成物確認、整合性確認 |
 
-未確定内容、実装可能性、推測補完の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a を参照する。詳細仕様入口責務では、未確定項目の検出先と参照先だけを示す。
+未確定内容、実装可能性、推測補完の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a を参照する。未確定項目の検出先と参照先だけを示す。
 
 対象範囲の具体化先は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務とする。
 
@@ -172,9 +172,9 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務は以�
 | 持つ内容 | そのファイルだけが主本文として定義する内容を書く。 |
 | 持たない内容 | 他 owner component へ委ねる内容を書く。 |
 
-責務境界表の `持つ内容` と `持たない内容` が本文と矛盾する場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 の判定を参照する。詳細仕様入口責務では、責務境界表、本文、§0b の詳細仕様参照表、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の確認先を示す。
+責務境界表の `持つ内容` と `持たない内容` が本文と矛盾する場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 の判定を参照する。責務境界表、本文、§0b の詳細仕様参照表、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の確認先を示す。
 
-owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各節について、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では以下を入口確認項目として扱う。
+owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各節について、以下を入口確認項目として扱う。
 
 | 項目 | 入口確認 |
 |------|----------|
@@ -218,7 +218,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 | セキュリティ | 秘密情報の保存禁止、マスク、ファイル権限、認証/認可、外部公開可否が明記されている。 |
 | 検証 | 構文確認、単体確認、手動 API 確認、生成物確認、ログ確認、失敗系確認のいずれを行うかが明記されている。 |
 
-[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0c の実装前確認ゲートのいずれかが未充足の場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、不足している入口項目と更新すべき対応表を特定する。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0c の実装前確認ゲートのいずれかが未充足の場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。不足している入口項目と更新すべき対応表を特定する。
 
 実装後の判定は、以下を入口として確認する。実装前確認項目は判定条件本文を持たない。Phase、状態分類、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、実装検証証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を参照する。
 
@@ -291,7 +291,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0f の仕様策定完了チェック表の対象外である `mcp`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で将来計画として確認する。これらは、現時点の [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務および owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に入出力、状態、起動手順、検証条件を持たない。
 
-仕様策定完了チェックで未充足が見つかった場合の実装着手可否は、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f を参照する。詳細仕様入口責務では、改訂先の確認順を以下に示す。
+仕様策定完了チェックで未充足が見つかった場合の実装着手可否は、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f を参照する。改訂先の確認順を以下に示す。
 
 1. 未充足項目が詳細仕様入口責務の記載対象外である場合は、先に [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務を確認する。
 2. 未充足項目が入出力、状態ファイル、api、sdk、ui、処理順序、異常系、検証条件に関わる場合は、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務または collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を改訂する。
@@ -338,7 +338,7 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 | 検証 | 必須テスト、手動確認、fixture、生成物確認、API 確認、異常系確認。 | 不足時は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。 |
 | 判定条件 | どの検証が成功したら確認済みと扱うか。関連文書の更新要否。 | 不足時は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。 |
 
-§0h の機能仕様テンプレート表のいずれかが不足する対象項目の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。詳細仕様入口責務では、不足している入口項目と参照先変更の有無だけを確認する。
+§0h の機能仕様テンプレート表のいずれかが不足する対象項目の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。不足している入口項目と参照先変更の有無だけを確認する。
 
 ---
 

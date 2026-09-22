@@ -6,7 +6,7 @@
 
 実装詳細、schema、SDK / UI / fixture の本文は状態・計画責務に置かない。
 
-**状態・計画責務 共通参照先：**
+### 状態・計画責務 共通参照先
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で実装詳細、HTTP endpoint、schema、DOM、SDK method、fixture、検証証跡に触れる場合、実装詳細は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture / expected / fake / 実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、文書・実装ファイル所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を共通参照先とする。状態・計画責務では状態、実装可否、Phase、将来計画、昇格入口だけを本文として扱う。
 
@@ -14,18 +14,18 @@
 
 | 管理対象 | 状態・計画責務で扱う内容 | 詳細参照先 |
 |----------|----------------------|--------------|
-| 状態分類 | component ごとの `未仕様化`、`将来計画`、`改訂予定`、`仕様化済み・未実装`、`実装中・検証未完了`、`実装済み` の分類。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先。 |
-| Phase | Phase 順序、対象 owner component、依存条件、判定条件、引き継ぎ契約。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先。 |
-| 機能インベントリ | 機能の分類、実装可否、詳細仕様参照先。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先。 |
-| 将来計画 | 実装不可の構想と昇格入口。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先。 |
-| 追加仕様化機能参照・横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能 owner、主本文、collaborator、横断受け入れ観点。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先。 |
+| 状態分類 | component ごとの `未仕様化`、`将来計画`、`改訂予定`、`仕様化済み・未実装`、`実装中・検証未完了`、`実装済み` の分類。 | [状態・計画責務 共通参照先](#状態計画責務-共通参照先)。 |
+| Phase | Phase 順序、対象 owner component、依存条件、判定条件、引き継ぎ契約。 | [状態・計画責務 共通参照先](#状態計画責務-共通参照先)。 |
+| 機能インベントリ | 機能の分類、実装可否、詳細仕様参照先。 | [状態・計画責務 共通参照先](#状態計画責務-共通参照先)。 |
+| 将来計画 | 実装不可の構想と昇格入口。 | [状態・計画責務 共通参照先](#状態計画責務-共通参照先)。 |
+| 追加仕様化機能参照・横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能 owner、主本文、collaborator、横断受け入れ観点。 | [状態・計画責務 共通参照先](#状態計画責務-共通参照先)。 |
 
 ## 2. 状態分類
 
 | 状態 | 実装可否 | 意味 | 実装者の扱い |
 |------|----------|------|--------------|
 | 実装済み | 完了済み | ソースコード実装と必須検証が完了した項目。 | 関連する実装ファイル、検証結果、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。 |
-| 実装中・検証未完了 | 検証待ち | 実装に着手済みだが、必須検証または証跡が未完了の項目。 | 未完了の確認対象は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先を参照する。 |
+| 実装中・検証未完了 | 検証待ち | 実装に着手済みだが、必須検証または証跡が未完了の項目。 | 未完了の確認対象は [状態・計画責務 共通参照先](#状態計画責務-共通参照先) を参照する。 |
 | 仕様化済み・未実装 | 実装可 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に実装可能な詳細が揃っている項目。 | Phase と詳細仕様参照先を確認する。 |
 | 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | 詳細仕様の作成先と不足項目を確認する。 |
 | 将来計画 | 実装不可 | 構想として保持するが、実装契約がない項目。 | 昇格手順は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 を確認する。 |
@@ -77,7 +77,7 @@ Phase 1 完全仕様ゲートでは、Phase 1 の対象、依存条件、判定�
 |------|--------|
 | CLI、Markdown 変換、静的 Web サイト出力、theme component、生成物確認 | [`docs/details/builder.md`](details/builder.md) §1〜§9、[`docs/details/builder.md`](details/builder.md) §8a |
 | Phase 1 fixture、testdata、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F |
-| release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) §26.7 |
+| Phase 1 release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) §26.7 |
 
 ### 4.1.2 Phase 2 完全仕様ゲート（`runner`）
 
@@ -87,7 +87,7 @@ Phase 2 完全仕様ゲートでは、Phase 2 が Phase 1 の `adlaire-ci-build`
 |------|--------|
 | CI runner、GitHub API 連携、SHA cache、pipeline、deploy、snapshot、通知、systemd | [`docs/details/runner.md`](details/runner.md) §10〜§20、[`docs/details/runner.md`](details/runner.md) §15a |
 | runner fixture、fake GitHub、fake ssh / notifier、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) §0g.8-F |
-| release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) §26.7 |
+| Phase 2 release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) §26.7 |
 
 ### 4.1.3 Phase 3 完全仕様ゲート（`api`）
 
