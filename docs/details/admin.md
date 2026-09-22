@@ -30,7 +30,7 @@
 | `admin/style.css` | `$INSTALL_DIR/admin/style.css` | 任意 | [`docs/details/ui.md`](ui.md) |
 | `admin/app.js` | `$INSTALL_DIR/admin/app.js` | 任意 | [`docs/details/ui.md`](ui.md) |
 
-配布物にこの固定表以外のファイルを含める場合は、先にこの表へ path、必須区分、内容確認先を追加する。未記載ファイルを暗黙に配布してはならない。
+配布物に [`docs/details/admin.md`](admin.md) §A1 の配布物固定表以外のファイルを含める場合は、先に [`docs/details/admin.md`](admin.md) §A1 の配布物固定表へ path、必須区分、内容確認先を追加する。未記載ファイルを暗黙に配布してはならない。
 
 `admin-ui.tar.gz` の archive root は `admin/` directory を含めず、展開直後の root 直下に `index.html` と `adlaire-ci-sdk.js` が存在する形式とする。setup は検証済み archive を `$INSTALL_DIR/admin/` へ配置する。
 
@@ -65,7 +65,7 @@ admin archive の検証は以下の順序に固定する。
 | `/admin/style.css` | `$INSTALL_DIR/admin/style.css` | `text/css; charset=utf-8` | `no-cache` |
 | `/admin/app.js` | `$INSTALL_DIR/admin/app.js` | `text/javascript; charset=utf-8` | `no-cache` |
 
-未定義 path、directory listing、path traversal、hidden file、状態ファイル、secret file へのアクセスは `404` とする。認証前に配信する file はこの固定表の静的 file だけとし、API response、状態ファイル、credential、build log、snapshot を静的配信してはならない。
+未定義 path、directory listing、path traversal、hidden file、状態ファイル、secret file へのアクセスは `404` とする。認証前に配信する file は [`docs/details/admin.md`](admin.md) §A3 の固定表の静的 file だけとし、API response、状態ファイル、credential、build log、snapshot を静的配信してはならない。
 
 静的配信処理は request body を読まない。`GET` と `HEAD` 以外の method は `405` を返す。
 
@@ -73,7 +73,7 @@ admin archive の検証は以下の順序に固定する。
 
 ## A4. Setup 連携境界
 
-[`docs/details/setup.md`](setup.md) は、release asset 取得、checksum 検証、systemd、配置順序、rollback を扱う。setup 手順本文、release asset 取得手順、rollback 手順は [`docs/details/setup.md`](setup.md) 詳細本文責務を参照し、`admin` 詳細では再定義しない。
+[`docs/details/setup.md`](setup.md) は、release asset 取得、checksum 検証、systemd、配置順序、rollback を扱う。setup 手順本文、release asset 取得手順、rollback 手順は [`docs/details/setup.md`](setup.md) 詳細本文責務を正本とする。
 
 [`docs/details/admin.md`](admin.md) 詳細本文責務は、`admin` owner の配布境界として、setup が扱う `admin-ui.tar.gz` の中身、展開後の必須 file、静的配信 path、拒否すべき archive entry を定義する。
 

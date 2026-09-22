@@ -34,7 +34,7 @@
 
 **[`docs/details/security.md`](security.md) §27.42〜§27.47 認証・監査・制限機能 実装確認固定契約：**
 
-[`docs/details/security.md`](security.md) §27.42〜§27.47 は、API token、監査、session、TOTP、rate limit に関する安全機能である。各機能の詳細実装確認では、個別節に加えてこの固定表を満たす。
+[`docs/details/security.md`](security.md) §27.42〜§27.47 は、API token、監査、session、TOTP、rate limit に関する安全機能である。各機能の詳細実装確認では、個別節に加えて [`docs/details/security.md`](security.md) §27.42〜§27.47 認証・監査・制限機能 実装確認固定表を満たす。
 
 | 節 | 機能 | 判定入口 | 成功時副作用 | 失敗時副作用 | 漏えい禁止値 | 必須 fixture |
 |----|------|----------|--------------|--------------|--------------|--------------|
@@ -58,13 +58,13 @@
 | 7 | endpoint 固有 validation を行う。 | 失敗時は対象状態、外部 API、外部 command を変更しない。 |
 | 8 | endpoint 固有処理を実行する。 | 成功時だけ個別節の保存順で状態、access log、audit log を確定する。 |
 
-この固定表の順序を変更してはならない。個別節が別順序を明記する場合は、セキュリティ上の漏えいを増やさない範囲で個別節を優先する。順序変更が必要な場合は、先にこの表と該当個別節を同時に改訂する。
+[`docs/details/security.md`](security.md) §27.42〜§27.47 認証・監査・制限機能 実装確認固定表の順序を変更してはならない。個別節が別順序を明記する場合は、セキュリティ上の漏えいを増やさない範囲で個別節を優先する。順序変更が必要な場合は、先に [`docs/details/security.md`](security.md) §27.42〜§27.47 認証・監査・制限機能 実装確認固定表と該当個別節を同時に改訂する。
 
 ---
 
 ## 認証共通詳細
 
-この節は、password 認証、session、login ticket、認証ログ、`--init-credentials` の [`docs/details/security.md`](security.md) 詳細本文責務である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md`](api.md) §22.0e および [`docs/details/security.md`](security.md) §25 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
+[`docs/details/security.md`](security.md) §認証共通詳細は、password 認証、session、login ticket、認証ログ、`--init-credentials` の [`docs/details/security.md`](security.md) 詳細本文責務である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md`](api.md) §22.0e および [`docs/details/security.md`](security.md) §25 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
 
 **password hash 固定契約：**
 
@@ -130,7 +130,7 @@
 | logout | `200` | 変更なし | 対象 session 削除 | `logout` を追記 | `logout` を追記 | token 本体と token hash は保存しない。 |
 | password 変更成功 | `200` | 新 salt / hash、`must_change:false`、`updated_at` 更新 | 現 session 以外削除 | `password_change` を追記 | `password_change` を追記 | 新旧 password、hash、salt は保存しない。 |
 
-この固定表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、個別節で別指定がない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
+[`docs/details/security.md`](security.md) §認証共通詳細の固定表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、個別節で別指定がない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
 
 **認証副作用順序固定契約：**
 
@@ -221,7 +221,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | `config` | `POST /api/schedule/interval`, `POST /api/schedule/pause`, `POST /api/schedule/resume`, `POST /api/schedule/allowed-hours`, `POST /api/schedule/force-interval`, `POST /api/schedule/cooldown`, `POST /api/notify-config`, `POST /api/config/validate`, `POST /api/config`, `POST /api/log-level`, `POST /api/pat-update`, `POST /api/repo-config`, `POST /api/branch-config`, `POST /api/restore`, `POST /api/webhook-config`, `DELETE /api/snapshots/{id}`, `POST /api/maintenance/enable`, `POST /api/maintenance/disable`, `POST /api/access-control`, `POST /api/hooks`, `DELETE /api/hooks/{id}`, `POST /api/alert-rules`, `DELETE /api/alert-rules/{id}`, `POST /api/tag-rules`, `DELETE /api/tag-rules/{id}`, `POST /api/pipeline-config`, `POST /api/build-chain-config`, `POST /api/notes`, `POST /api/smtp-config`, `POST /api/dashboard-layout`, `POST /api/history/{id}/comment`, `POST /api/history/{id}/flag`, `POST /api/history/{id}/tags`, `POST /api/logs/cleanup`, `POST /api/logs/archive` |
 | `admin` | `GET /api/access-log`, `GET /api/api-access-log`, `GET /api/audit-log`, `GET /api/api-rate-limit`, `POST /api/api-rate-limit`, `GET /api/sessions`, `POST /api/sessions/revoke-all`, `GET /api/auth/totp-status`, `POST /api/auth/totp-setup`, `POST /api/auth/totp-confirm`, `DELETE /api/auth/totp`, `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}` |
 
-管理 session はこの固定表に関係なく全 endpoint を許可する。API token が複数 scope を持つ場合は、いずれか 1 つの scope が endpoint に一致すれば許可する。`POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password` は API token scope 判定の対象外とし、API token では使用できない。`POST /api/webhook` は GitHub Webhook secret 検証専用であり、API token では使用できない。この固定表に存在しない endpoint は [`docs/details/api.md`](api.md) §22.0e とこの表へ追加されるまで API token では許可してはならない。
+管理 session は [`docs/details/security.md`](security.md) §27.42 の scope 固定表に関係なく全 endpoint を許可する。API token が複数 scope を持つ場合は、いずれか 1 つの scope が endpoint に一致すれば許可する。`POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password` は API token scope 判定の対象外とし、API token では使用できない。`POST /api/webhook` は GitHub Webhook secret 検証専用であり、API token では使用できない。[`docs/details/security.md`](security.md) §27.42 の scope 固定表に存在しない endpoint は [`docs/details/api.md`](api.md) §22.0e と [`docs/details/security.md`](security.md) §27.42 の scope 固定表へ追加されるまで API token では許可してはならない。
 
 **正常系：**
 
@@ -328,7 +328,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | scope 不足 | `403` | `last_used_at` 更新なし | `permission_denied` を追記 | `permission_denied` を追記 | 対象 endpoint は実行しない。 |
 | 認証成功 | endpoint 固有 | `last_used_at` を現在時刻へ更新 | `token_auth` を追記 | `token_auth` を追記 | endpoint 実行前に更新する。 |
 
-この固定表で `.api_tokens` 保存後に `.access_log` または `.audit_log` 追記へ失敗した場合、対象 API は `500` とし、endpoint 固有処理へ進まない。`last_used_at` 更新済み record は巻き戻さない。
+[`docs/details/security.md`](security.md) §27.43 の固定表で `.api_tokens` 保存後に `.access_log` または `.audit_log` 追記へ失敗した場合、対象 API は `500` とし、endpoint 固有処理へ進まない。`last_used_at` 更新済み record は巻き戻さない。
 
 **処理順：**
 

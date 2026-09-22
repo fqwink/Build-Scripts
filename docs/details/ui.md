@@ -21,7 +21,7 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 
 ## 24. 標準管理ツール 仕様
 
-この節は、ui owner の `admin/index.html` 詳細本文責務である。
+[`docs/details/ui.md`](ui.md) §24 は、ui owner の `admin/index.html` 詳細本文責務である。
 
 **ファイル構成：**
 ```
@@ -32,7 +32,7 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 
 **DOM / section / form field 命名契約：**
 
-標準管理ツールは、この固定表の DOM id、`data-panel`、form field name を使用する。表にない主要パネル id、主要 form name、主要 button id を追加してはならない。表示・非表示は `hidden` 属性で制御し、DOM 要素の生成順はこの表の順序とする。
+標準管理ツールは、[`docs/details/ui.md`](ui.md) §24 の DOM 固定表の DOM id、`data-panel`、form field name を使用する。表にない主要パネル id、主要 form name、主要 button id を追加してはならない。表示・非表示は `hidden` 属性で制御し、DOM 要素の生成順は [`docs/details/ui.md`](ui.md) §24 の DOM 固定表の順序とする。
 
 | パネル | section id | data-panel | 主フォーム id | 主要 field name | 主要 button id |
 |--------|------------|------------|---------------|-----------------|----------------|
@@ -94,7 +94,7 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 
 **UI パネル初期取得契約：**
 
-各パネルを表示する時は、この固定表の SDK method を上から順に呼び出す。表示済み panel へ再遷移した場合も、ユーザー操作で表示した時点で同じ順序で再取得する。空配列はエラーではなく空状態として表示する。
+各パネルを表示する時は、[`docs/details/ui.md`](ui.md) §24 の固定表の SDK method を上から順に呼び出す。表示済み panel へ再遷移した場合も、ユーザー操作で表示した時点で同じ順序で再取得する。空配列はエラーではなく空状態として表示する。
 
 | パネル | 初期取得 SDK method | 空状態表示 |
 |--------|---------------------|------------|
@@ -128,7 +128,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 **UI 操作契約表：**
 
-標準管理ツールは、この固定表の SDK method 以外を直接呼び出してはならない。ファイル操作、`fetch()` の直接呼び出し、`systemctl` 実行、`runner` 直接起動は禁止する。成功時表示は対象パネル内に 1 行で表示し、失敗時表示は `AdlaireCIError.message` と `details` を同じパネル内に表示する。
+標準管理ツールは、[`docs/details/ui.md`](ui.md) §24 の固定表の SDK method 以外を直接呼び出してはならない。ファイル操作、`fetch()` の直接呼び出し、`systemctl` 実行、`runner` 直接起動は禁止する。成功時表示は対象パネル内に 1 行で表示し、失敗時表示は `AdlaireCIError.message` と `details` を同じパネル内に表示する。
 
 | パネル | 操作 | SDK method | 成功時表示 | 成功後再取得 | disabled 条件 |
 |--------|------|------------|------------|--------------|---------------|
@@ -248,7 +248,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 **UI 操作完全性検証契約：**
 
-標準管理ツールの詳細実装確認では、[`docs/details/ui.md`](ui.md) §24 の DOM / section / form field 命名契約表と UI 操作契約表を照合し、この固定表を満たす。
+標準管理ツールの詳細実装確認では、[`docs/details/ui.md`](ui.md) §24 の DOM / section / form field 命名契約表と UI 操作契約表を照合し、[`docs/details/ui.md`](ui.md) §24 の固定表を満たす。
 
 | 検証項目 | 合格条件 |
 |----------|----------|
@@ -280,7 +280,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 **UI 操作状態固定契約：**
 
-標準管理ツールは、同一操作の多重実行、API 成功前の確定表示、秘密情報の残存を防ぐため、各操作をこの固定表の状態で管理する。
+標準管理ツールは、同一操作の多重実行、API 成功前の確定表示、秘密情報の残存を防ぐため、各操作を [`docs/details/ui.md`](ui.md) §24 の固定表の状態で管理する。
 
 | 状態 | 開始条件 | UI 表示 | 許可される遷移 |
 |------|----------|---------|----------------|
@@ -495,7 +495,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 
 | ゲート | 合格条件 |
 |--------|----------|
-| SDK only | この固定表の全操作が `AdlaireCI` public method だけを呼び、直接 `fetch()` / `XMLHttpRequest` / `EventSource` / 状態ファイル操作を行わない。 |
+| SDK only | [`docs/details/ui.md`](ui.md) §24 の固定表の全操作が `AdlaireCI` public method だけを呼び、直接 `fetch()` / `XMLHttpRequest` / `EventSource` / 状態ファイル操作を行わない。 |
 | refresh order | 成功後再取得は表の左から順に await し、途中失敗時は変更成功を維持したまま再取得失敗だけを panel error に表示する。 |
 | no speculative state | UI が status、queue、approval、token、rate limit、trend、failure category、environment、TOTP 状態を API response なしに確定しない。 |
 | secret clearing | password、PAT、Webhook secret、SMTP password、発行 token、TOTP secret、ticket、TOTP code は成功、失敗、panel 遷移、logout、`401`、revoke all で消去される。 |
@@ -505,11 +505,11 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 
 **§27.21〜§27.47 UI 連動 fixture 必須証跡：**
 
-UI 実装変更は、対象 [`docs/details/ui.md`](ui.md) §27 機能ごとにこの固定表の証跡を fixture で固定する。UI は API / SDK の返却値を表示する補助層であり、状態確定、補完、保存、再試行を独自判断で行わない。
+UI 実装変更は、対象 [`docs/details/ui.md`](ui.md) §27 機能ごとに [`docs/details/ui.md`](ui.md) §24 の固定表の証跡を fixture で固定する。UI は API / SDK の返却値を表示する補助層であり、状態確定、補完、保存、再試行を独自判断で行わない。
 
 | 証跡 | 固定する内容 | 合格条件 | 禁止条件 |
 |------|--------------|----------|----------|
-| SDK only call trace | user action ごとの SDK method 名、引数、呼び出し順。 | この固定表の使用 SDK method だけを呼ぶ。直接 `fetch()`、`XMLHttpRequest`、`EventSource`、状態ファイル操作が 0 件。 | API endpoint を UI から直接呼ぶ、SDK にない method を仮実装する。 |
+| SDK only call trace | user action ごとの SDK method 名、引数、呼び出し順。 | [`docs/details/ui.md`](ui.md) §24 の固定表の使用 SDK method だけを呼ぶ。直接 `fetch()`、`XMLHttpRequest`、`EventSource`、状態ファイル操作が 0 件。 | API endpoint を UI から直接呼ぶ、SDK にない method を仮実装する。 |
 | refresh order | 成功後再取得、`409` / `429` / `500` 後の再取得、再取得失敗時表示。 | 表の左から順に await し、途中失敗時は変更成功を維持して panel error に固定文言を表示する。 | 再取得失敗を理由に同じ変更 API を再送する。 |
 | disabled priority | maintenance、SSE 接続中、送信中、`429`、validation error の優先順位。 | [`docs/details/ui.md`](ui.md) §24 の UI error / disabled 優先順位固定に従い、上位条件が残る限り下位解除で有効化しない。 | `429` timer 終了で maintenance disabled を無視して button を有効化する。 |
 | one-time / secret clearing | password、PAT、Webhook secret、SMTP password、発行 token、TOTP secret、otpauth URI、ticket、TOTP code。 | 成功、失敗、panel 遷移、logout、`401`、revoke all、次 user action で対象値が DOM から消える。 | token / secret を一覧、hidden field、data attribute、error message、clipboard 履歴表示へ残す。 |
