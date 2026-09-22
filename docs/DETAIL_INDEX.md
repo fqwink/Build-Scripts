@@ -306,7 +306,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 Phase の一覧、順序、対象 owner component、依存条件、判定条件、引き継ぎ契約、実装成果物チェックリストは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
-[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0g は、Phase を詳細仕様へ接続する入口だけを持つ。Phase の状態、順序、判定条件、将来計画の昇格判定は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0g は、Phase を詳細仕様へ接続する入口だけを持つ。Phase の状態、順序、判定条件、将来計画の昇格判定は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 | Phase | owner component | 主な詳細仕様本文 | fixture / 証跡 |
 |-------|-----------------|------------------|----------------|

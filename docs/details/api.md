@@ -673,7 +673,7 @@ no-op response は endpoint 固有の `No changes` が定義されている場�
 
 **api / sdk / ui / statefile 横断契約参照：**
 
-API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を同時に確認する。横断連動表と横断処理順表は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を正本とする。
+API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。成功後再取得、失敗時固定、横断処理順、api / sdk / ui / statefile の同期確認は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を参照する。
 
 **横断 fixture 参照：**
 
@@ -683,7 +683,7 @@ api / sdk / ui / statefile にまたがる横断 fixture の fixture 名、入�
 
 API の Phase 3 / Phase 4 必須検証、fixture 名、入力状態、期待 response、期待副作用は [`docs/details/fixture.md`](fixture.md) §22-F を参照する。個別 API 節では fixture 名、fixture manifest、testdata 配置、期待副作用、実装検証証跡を再定義しない。個別 API 節で fixture 確認が必要な場合は、[`docs/details/api.md`](api.md) §22.0f へのリンク参照だけを置く。
 
-`api` 詳細では、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、実装検証証跡、Phase 別の判定責務は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務と [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を正本とする。
+`api` 詳細では、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、実装検証証跡は [`docs/details/fixture.md`](fixture.md)、Phase 別の判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) を参照する。
 
 | メソッド | パス | 認証 | 説明 |
 |---------|------|------|------|

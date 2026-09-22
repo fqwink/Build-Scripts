@@ -584,7 +584,7 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md`]
 
 **関連責務参照：**
 
-API、状態ファイル、SDK、UI、認証、setup / update の整合は、[`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先と下表の主本文を同時に参照する。[`docs/details/setup.md`](setup.md) §26.8 は setup / release / update の実行条件だけを扱う。API endpoint、SDK method、UI 操作、認証方式、状態 schema、fixture 名、実装検証証跡項目は、それぞれ責務を持つ詳細本文責務または fixture 証跡責務を正本とする。
+API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主本文を参照する。[`docs/details/setup.md`](setup.md) §26.8 は setup / release / update の実行条件だけを扱う。
 
 | 対象 | 主本文 | setup 側の確認範囲 |
 |------|--------|--------------------|
@@ -613,7 +613,7 @@ API、状態ファイル、SDK、UI、認証、setup / update の整合は、[`d
 
 Phase 順序、実装変更単位、実装着手条件、判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。
 
-Phase 別の fixture、fake、expected / effects、実装検証証跡、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。Phase 別の受け入れ条件、検証記録、fixture 証跡項目は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を正本とする。
+Phase 別の fixture、fake、expected / effects、実装検証証跡、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。
 
 **setup / release 未実行検証の代替条件：**
 
@@ -632,7 +632,7 @@ Phase 別の fixture、fake、expected / effects、実装検証証跡、不足�
 | DOM assertion | setup / release / update が admin UI 静的ファイルの配置と到達確認を変更した場合のみ、setup 側の検証入口として更新する。UI DOM、panel、表示文言、disabled / loading / success / error 条件の具体契約は [`docs/details/ui.md`](ui.md) §24 と [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。 | setup 側は admin UI 配布物の存在と到達確認だけを固定し、DOM assertion の具体値は UI 詳細本文責務と一致すること。 |
 | error expected | setup / release / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果が変更された場合のみ更新する。HTTP status、API error body、`AdlaireCIError.code` の具体契約は [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。 | setup / release / update の正常系 fixture と異常系 fixture の両方で setup 責務の期待値が固定され、API / SDK / UI の期待値は各 owner component の詳細本文責務と一致すること。 |
 
-Phase 判定の実装検証証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。[`docs/details/setup.md`](setup.md) §26.8 は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義する。実装検証証跡項目は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を正本とする。
+Phase 判定の実装検証証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) §0g.8-F を参照する。[`docs/details/setup.md`](setup.md) §26.8 は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義する。
 
 setup / release / update に関わる受け入れ結果は、[`docs/details/fixture.md`](fixture.md) §0g.8-F の形式で実装検証証跡に記録する。失敗、未実行、環境都合で省略した項目がある場合、setup / release / update を確認済み扱いにしてはならない。
 

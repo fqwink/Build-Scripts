@@ -89,26 +89,26 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 
 ### 27.15 ビルドアーティファクト管理
 
-本機能の目的は、`.snapshots/` に保存された build artifact について、archive owner が一覧読取、download tar.gz 生成、削除、rollback 転送の実体処理を固定することである。API endpoint、SDK method、UI 操作表示の境界は [`docs/details/archive.md`](archive.md) §27.15 API / SDK / UI 共通参照先に従う。
+本機能の目的は、`.snapshots/` に保存された build artifact について、archive owner が一覧読取、download tar.gz 生成、削除、rollback 転送の実体処理を固定することである。API endpoint、SDK method、UI 操作表示の境界は [`docs/details/archive.md`](archive.md) §27.15 API / SDK / UI 共通参照先を参照する。
 
 owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は [`docs/details/runner.md`](runner.md) §14b を参照する。
 
-archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api / sdk / ui の境界は [`docs/details/archive.md`](archive.md) §27.15 API / SDK / UI 共通参照先に従う。runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は [`docs/details/runner.md`](runner.md) 詳細本文責務を正本とする。
+archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api / sdk / ui の境界は [`docs/details/archive.md`](archive.md) §27.15 API / SDK / UI 共通参照先、runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は [`docs/details/runner.md`](runner.md) 詳細本文責務を参照する。
 
 **§27.15 API / SDK / UI 共通参照先：**
 
-以降の §27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md`](api.md) §22.0e、SDK method、error 変換、HTTP status の扱いは [`docs/details/sdk.md`](sdk.md) §23、UI 表示、disabled 判定、操作後再取得、直接操作禁止は [`docs/details/ui.md`](ui.md) §24 を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。
+以降の §27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md`](api.md) §22.0e、SDK method、error 変換、HTTP status の扱いは [`docs/details/sdk.md`](sdk.md) §23、UI 表示、disabled 判定、操作後再取得、直接操作禁止は [`docs/details/ui.md`](ui.md) §24 を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。各表の失敗時 HTTP status、JSON error、SDK error、UI 表示は、表内で個別に明記しない限り §27.15 API / SDK / UI 共通参照先に従う。
 
 **API 呼び出し境界参照：**
 
 | API | 処理 |
 |-----|------|
-| `GET /api/snapshots` | archive owner は snapshot 一覧読取結果だけを返す。API 共通契約は §27.15 共通参照先に従う。 |
-| `GET /api/snapshots/{id}/download` | archive owner は download tar.gz 生成だけを担当する。API 共通契約は §27.15 共通参照先に従う。 |
-| `DELETE /api/snapshots/{id}` | archive owner は snapshot delete 実体処理だけを担当する。`.config_log` 追記境界と API 共通契約は §27.15 共通参照先に従う。 |
-| `POST /api/history/{id}/rollback` | archive owner は rollback 転送実体処理を担当する。API 共通契約は §27.15 共通参照先、rollback build log/history の作成境界は [`docs/details/runner.md`](runner.md) を参照する。 |
+| `GET /api/snapshots` | archive owner は snapshot 一覧読取結果だけを返す。 |
+| `GET /api/snapshots/{id}/download` | archive owner は download tar.gz 生成だけを担当する。 |
+| `DELETE /api/snapshots/{id}` | archive owner は snapshot delete 実体処理と `.config_log` 追記境界だけを担当する。 |
+| `POST /api/history/{id}/rollback` | archive owner は rollback 転送実体処理を担当する。rollback build log/history の作成境界は [`docs/details/runner.md`](runner.md) を参照する。 |
 
-`id` は build id と一致するものだけ許可する。snapshot 専用 id は採番しない。`/`、`..`、空文字、URL decode 後に path separator を含む値の HTTP status は §27.15 共通参照先に従う。
+`id` は build id と一致するものだけ許可する。snapshot 専用 id は採番しない。`/`、`..`、空文字、URL decode 後に path separator を含む値は失敗扱いとする。
 
 **snapshot 保存固定契約：**
 
@@ -132,11 +132,11 @@ archive owner は snapshot の保存形式、一覧読取、download tar.gz 生�
 | header | `Content-Type: application/octet-stream`、`Content-Disposition: attachment; filename="{id}.tar.gz"`。 |
 | 順序 | directory、file とも相対 path 辞書順。 |
 | mtime | snapshot 内 file の mtime を使用する。snapshot 内 file から mtime を取得できない場合は build log の `finished_at` を使用する。 |
-| secret 除外 | `.github_token`、`.admin_credentials`、`.api_tokens`、`.smtp_secret`、`.webhook_secret`、runner 状態ファイル名は検出時点で download を中止する。HTTP status は §27.15 共通参照先に従う。 |
+| secret 除外 | `.github_token`、`.admin_credentials`、`.api_tokens`、`.smtp_secret`、`.webhook_secret`、runner 状態ファイル名は検出時点で download を中止する。 |
 
 **download stream 固定契約：**
 
-download は stream 開始前に snapshot directory 全体を走査し、entry path、entry 種別、secret 禁止名、`meta.json` schema、`size_bytes`、`file_count` を検証する。stream 開始前検証に失敗した場合は binary header を送信しない。HTTP status と JSON error は §27.15 共通参照先に従う。stream 開始後に read error が発生した場合は stream を中断し、server log に `SNAPSHOT_STREAM_FAILED: id={id} entry={path}` を出す。stream 開始後は JSON error body を追加送信してはならない。状態ファイル、snapshot directory、history、build log、config log は変更しない。
+download は stream 開始前に snapshot directory 全体を走査し、entry path、entry 種別、secret 禁止名、`meta.json` schema、`size_bytes`、`file_count` を検証する。stream 開始前検証に失敗した場合は binary header を送信しない。stream 開始後に read error が発生した場合は stream を中断し、server log に `SNAPSHOT_STREAM_FAILED: id={id} entry={path}` を出す。stream 開始後は JSON error body を追加送信してはならない。状態ファイル、snapshot directory、history、build log、config log は変更しない。
 
 | ケース | HTTP / stream | 状態差分 | 必須 log |
 |--------|---------------|----------|----------|
@@ -148,7 +148,7 @@ download は stream 開始前に snapshot directory 全体を走査し、entry p
 
 **Rollback 仕様：**
 
-rollback は新しい build id を採番し、`.build_history.trigger="rollback"`、`rollback_from=<元id>` を保存する。元 snapshot は変更しない。rollback 中に別 build が running の場合の HTTP status は §27.15 共通参照先に従う。転送失敗時は rollback build log を `failure` とし、元 snapshot は削除しない。
+rollback は新しい build id を採番し、`.build_history.trigger="rollback"`、`rollback_from=<元id>` を保存する。元 snapshot は変更しない。rollback 中に別 build が running の場合は状態差分なしで中止する。転送失敗時は rollback build log を `failure` とし、元 snapshot は削除しない。
 
 rollback は snapshot 内の成果物を deploy target へ再転送する操作であり、以下を行ってはならない。
 
@@ -163,7 +163,7 @@ rollback は snapshot 内の成果物を deploy target へ再転送する操作�
 
 rollback build log は `target_status="success"` または `failure_build` とし、`trigger="rollback"`、`rollback_from=<元id>`、`snapshot_id=<元id>` を含める。rollback 転送で pending が発生した場合は `success_deploy_pending` とし、`.pending_transfers` に rollback 用 entry を追加する。
 
-rollback 開始時は `.build_lock` を取得し、取得できない場合は状態差分なしで中止する。HTTP status と response body は §27.15 共通参照先に従う。`.build_lock` 取得後に `.build_state.running=true`、`current_build_id=<new_id>` を保存し、転送完了後に finalizer で `running=false` とする。rollback は queue に積まない。
+rollback 開始時は `.build_lock` を取得し、取得できない場合は状態差分なしで中止する。`.build_lock` 取得後に `.build_state.running=true`、`current_build_id=<new_id>` を保存し、転送完了後に finalizer で `running=false` とする。rollback は queue に積まない。
 
 **snapshot 一覧・削除固定契約：**
 
@@ -172,7 +172,7 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は�
 | 一覧対象 | `.snapshots/{id}/meta.json` が存在する directory だけ。 |
 | size | directory 配下の通常ファイル size 合計。symlink は size 集計前に異常扱い。 |
 | delete 順 | id validation → running check → snapshot directory 確認 → delete → `.config_log` 追記 → response。 |
-| delete log 失敗 | snapshot 削除済みのまま。HTTP status は §27.15 共通参照先に従う。削除は巻き戻さない。 |
+| delete log 失敗 | snapshot 削除済みのまま。削除は巻き戻さない。 |
 | rollback pending | pending entry には `rollback_from`、`snapshot_id`、deploy target を保存する。 |
 
 **snapshot delete 副作用固定契約：**
@@ -181,11 +181,11 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 
 | 段階 | 成功条件 | 失敗時副作用 |
 |------|----------|--------------|
-| id validation | build id 形式、path separator なし、URL decode 後も安全。 | HTTP status は §27.15 共通参照先に従う。snapshot、config log、history、build log、pending、state 差分なし。 |
-| running check | `.build_state.running=false`。 | HTTP status は §27.15 共通参照先に従う。snapshot、config log、history、build log、pending 差分なし。 |
-| 存在確認 | `.snapshots/{id}/meta.json` が schema valid。 | HTTP status は §27.15 共通参照先に従う。差分なし。 |
-| delete | 対象 snapshot directory だけ削除成功。 | HTTP status は §27.15 共通参照先に従う。対象 snapshot が残る。config log 追記なし。 |
-| config log | `.config_log` に `target="snapshot_delete"`、`target_id={id}` を追記。 | snapshot は削除済みのまま。HTTP status は §27.15 共通参照先に従う。他 snapshot、history、build log、pending は変更しない。 |
+| id validation | build id 形式、path separator なし、URL decode 後も安全。 | snapshot、config log、history、build log、pending、state 差分なし。 |
+| running check | `.build_state.running=false`。 | snapshot、config log、history、build log、pending 差分なし。 |
+| 存在確認 | `.snapshots/{id}/meta.json` が schema valid。 | 差分なし。 |
+| delete | 対象 snapshot directory だけ削除成功。 | 対象 snapshot が残る。config log 追記なし。 |
+| config log | `.config_log` に `target="snapshot_delete"`、`target_id={id}` を追記。 | snapshot は削除済みのまま。他 snapshot、history、build log、pending は変更しない。 |
 | response | `{ "message":"Snapshot deleted" }`。 | 成功 response を返さない。 |
 
 **artifact 実装確認固定契約：**
@@ -194,8 +194,8 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 |------|----------|--------------|
 | snapshot save | `site.tar.gz` と `meta.json` を tmp directory に作成し、検証後に `.snapshots/{build_id}` へ rename する。`meta.json.output_sha256` が build history の値と一致する。 | tmp 作成中の失敗では公開 snapshot directory を作らない。既存 snapshot は変更しない。 |
 | snapshot list | `meta.json` が schema valid な snapshot だけを `saved_at` 降順、同時刻 id 降順で返す。 | 破損 snapshot は除外し、WARN `SNAPSHOT_META_CORRUPT`。修復しない。 |
-| download | tar.gz entry が root 外を参照せず、相対 path 辞書順で stream される。 | unsafe entry、secret file、symlink 検出時は stream 開始前なら HTTP status は §27.15 共通参照先に従い、開始後なら stream を中断し server log に固定 code を出す。状態は変更しない。 |
-| delete | 対象 snapshot directory だけを削除し、`.config_log` に target `snapshot_delete` を追記する。 | `.config_log` 失敗では snapshot は削除済みのまま。HTTP status は §27.15 共通参照先に従う。他 snapshot は変更しない。 |
+| download | tar.gz entry が root 外を参照せず、相対 path 辞書順で stream される。 | unsafe entry、secret file、symlink 検出時は stream 開始前なら binary header を返さず、開始後なら stream を中断し server log に固定 code を出す。状態は変更しない。 |
+| delete | 対象 snapshot directory だけを削除し、`.config_log` に target `snapshot_delete` を追記する。 | `.config_log` 失敗では snapshot は削除済みのまま。他 snapshot は変更しない。 |
 | rollback success | 新規 build id、rollback build log、history、`.build_status.json` finalizer、deploy result が整合する。 | deploy 失敗時は rollback build を failure または success_deploy_pending として新規記録し、元 snapshot と `.last_sha` は変更しない。 |
 
 **snapshot `meta.json` schema 固定契約：**
@@ -209,7 +209,7 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | `file_count` | integer | 必須 | snapshot 対象通常ファイル数。 |
 | `output_sha256` | string/null | 必須 | build history の `output_sha256`。不明時 `null`。 |
 
-未知 key は read 時に無視せず `SNAPSHOT_META_CORRUPT` としてその snapshot を一覧から除外する。`size_bytes` と `file_count` は download 時にも再計算し、`meta.json` と不一致なら failure とする。HTTP status は §27.15 共通参照先に従う。
+未知 key は read 時に無視せず `SNAPSHOT_META_CORRUPT` としてその snapshot を一覧から除外する。`size_bytes` と `file_count` は download 時にも再計算し、`meta.json` と不一致なら failure とする。
 
 **rollback 状態更新順固定契約：**
 
@@ -224,7 +224,7 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 9. `.build_status.json` finalizer と `.build_state.running=false` を保存する。
 10. `.build_lock` を解放する。
 
-手順 3 より前の失敗は状態差分なしとする。手順 3 以後の失敗は rollback build log に失敗地点、`rollback_from`、`snapshot_id` を残し、`.build_lock` 解放と finalizer を必ず試行する。finalizer 失敗時の HTTP status は §27.15 共通参照先に従い、元 snapshot、元 build log、過去 history、`.last_sha` は変更しない。
+手順 3 より前の失敗は状態差分なしとする。手順 3 以後の失敗は rollback build log に失敗地点、`rollback_from`、`snapshot_id` を残し、`.build_lock` 解放と finalizer を必ず試行する。finalizer 失敗時も、元 snapshot、元 build log、過去 history、`.last_sha` は変更しない。
 
 **rollback 実装確認ゲート：**
 
@@ -236,20 +236,20 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | success | rollback build log、history、`.build_status.json` finalizer が成功し、元 snapshot、元 build log、過去 history、`.last_sha` が unchanged。 |
 | deploy failure | rollback build log / history は failure または success_deploy_pending として新規保存し、元 snapshot、`.last_sha`、元 build log は unchanged。 |
 | pending | `.pending_transfers` entry に `trigger="rollback"`、`rollback_from`、`snapshot_id`、deploy target、retry_count を保存する。 |
-| finalizer failure | HTTP status は §27.15 共通参照先に従う。server log 固定 code、元 snapshot / 元 log / `.last_sha` unchanged。lock 解放は best effort。 |
+| finalizer failure | server log 固定 code、元 snapshot / 元 log / `.last_sha` unchanged。lock 解放は best effort。 |
 
 **archive / snapshot fixture 合格ゲート：**
 
 | fixture | 合格条件 |
 |---------|----------|
 | `success-snapshot-list-download` | `meta.json` schema、一覧 sort、download header、tar entry 順序、entry mtime、read-only no-write、secret absence が expected と一致する。 |
-| `failure-snapshot-download-unsafe-entry` | unsafe path、symlink、secret file、meta mismatch のいずれかで stream 開始前 failure、binary header なし、状態差分なし。HTTP status は §27.15 共通参照先に従う。 |
+| `failure-snapshot-download-unsafe-entry` | unsafe path、symlink、secret file、meta mismatch のいずれかで stream 開始前 failure、binary header なし、状態差分なし。 |
 | `partial-snapshot-download-stream-failure` | stream 開始後 read error で stream 中断、JSON 追加なし、状態差分なし、固定 server log。 |
 | `success-snapshot-delete` | delete 順、`.config_log`、deleted path、unchanged 他 snapshot / history / log / pending が expected と一致する。 |
-| `failure-snapshot-delete-log-failure` | snapshot 削除済み、`.config_log` 失敗、他 snapshot / history / log / pending unchanged。HTTP status は §27.15 共通参照先に従う。 |
+| `failure-snapshot-delete-log-failure` | snapshot 削除済み、`.config_log` 失敗、他 snapshot / history / log / pending unchanged。 |
 | `success-snapshot-rollback` | rollback 状態更新順、new build id、history/log/status/pending、元 snapshot / `.last_sha` unchanged が expected と一致する。 |
 | `failure-snapshot-rollback-deploy` | rollback failure の新規 log/history、finalizer、lock 解放、元 snapshot / `.last_sha` unchanged が expected と一致する。 |
-| `failure-snapshot-running-conflict` | delete / rollback conflict、snapshot / history / log / pending / config log 差分なし。HTTP status は §27.15 共通参照先に従う。 |
+| `failure-snapshot-running-conflict` | delete / rollback conflict、snapshot / history / log / pending / config log 差分なし。 |
 
 **検証条件：**
 
@@ -259,8 +259,8 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | download | tar.gz を返し、snapshot 外のファイルを含まない。 |
 | delete | 対象 id だけ削除、config log 追記。 |
 | rollback 成功 | 新規 build id、trigger rollback、rollback_from 保存。 |
-| 不正 id | HTTP status は §27.15 共通参照先に従い、状態差分なし。 |
-| download symlink | symlink entry を含めず、secret 名検出時の HTTP status は §27.15 共通参照先に従う。 |
+| 不正 id | 状態差分なし。 |
+| download symlink | symlink entry を含めず、secret 名検出時は stream 開始前に中止する。 |
 | rollback pending | 新規 rollback log/history、pending entry、元 snapshot 維持。 |
-| rollback running | HTTP status は §27.15 共通参照先に従い、状態差分なし。 |
-| delete log failure | snapshot は削除済み。HTTP status は §27.15 共通参照先に従う。 |
+| rollback running | 状態差分なし。 |
+| delete log failure | snapshot は削除済み。 |
