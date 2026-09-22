@@ -1645,6 +1645,8 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 
 owner component は `builder` とする。collaborator component は `runner`、`api`、`statefile` とする。
 
+[`docs/details/builder.md`](builder.md) §27.4 で API response、API 表示、fixture 照合に触れる場合、API 契約は [`docs/details/api.md`](api.md) §22.0e、fixture 証跡は [`docs/details/fixture.md`](fixture.md) §27-F を共通参照先とする。builder 詳細本文では、HTML meta、REPORT、build log へ保存する値と escape 条件だけを定義する。
+
 `adlaire-ci-build` は `--build-id`、`--commit-sha`、`--build-at` を受け取り、全 HTML ページの `<head>` に次の meta を必ず出力する。
 
 ```html
@@ -1655,7 +1657,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 値が空文字の場合も meta tag は出力し、`content=""` とする。HTML escape は attribute escape とし、`"`、`&`、`<`、`>` を escape する。runner が pipeline を起動する場合は、同じ値を CLI 引数または環境変数 `ADLAIRE_BUILD_ID`、`ADLAIRE_COMMIT_SHA`、`ADLAIRE_BUILD_AT` のいずれかで渡す。CLI 引数を使える場合は CLI 引数を優先する。
 
-`[REPORT]` には `build_id`、`commit_sha`、`build_at` を追加する。`.build_logs/{id}.json.build_meta` は HTML meta と同じ値を保存する。`GET /api/output-meta` の response は [`docs/details/api.md`](api.md) §22.0e を参照する。
+`[REPORT]` には `build_id`、`commit_sha`、`build_at` を追加する。`.build_logs/{id}.json.build_meta` は HTML meta と同じ値を保存する。`GET /api/output-meta` の response は [`docs/details/builder.md`](builder.md) §27.4 共通参照先に従う。
 
 **build meta 入力固定契約：**
 
@@ -1664,7 +1666,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | `build_id` | 空文字または `^[A-Za-z0-9_-]{1,64}$`。不正値は builder 終了コード `2`。 |
 | `commit_sha` | 空文字、7〜40 文字 lowercase hex。その他は終了コード `2`。 |
 | `build_at` | 空文字または UTC ISO 8601 秒精度。timezone offset、ミリ秒は終了コード `2`。 |
-| HTML / REPORT / build log | builder が出力・保存する 3 箇所の値は byte 単位で一致させる。空文字は `""` として保持する。API response との対応は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
+| HTML / REPORT / build log | builder が出力・保存する 3 箇所の値は byte 単位で一致させる。空文字は `""` として保持する。API response との対応は [`docs/details/builder.md`](builder.md) §27.4 共通参照先に従う。 |
 | escape | HTML meta attribute は `esc()` ではなく attribute escape を使う。 |
 
 検証条件:
@@ -1674,9 +1676,9 @@ owner component は `builder` とする。collaborator component は `runner`、
 | 値あり | 全 HTML に 3 meta が同値で出力される。 |
 | 値なし | 3 meta が `content=""` で出力される。 |
 | 複数ページ | index と全ページで同じ build meta。 |
-| output-meta | HTML meta、REPORT、build log の build meta 値が一致する。API response との照合は [`docs/details/api.md`](api.md) §22.0e と [`docs/details/fixture.md`](fixture.md) §27-F を参照する。 |
+| output-meta | HTML meta、REPORT、build log の build meta 値が一致する。API response と fixture 照合は [`docs/details/builder.md`](builder.md) §27.4 共通参照先に従う。 |
 | 不正 sha | 終了コード `2`、出力差分なし。 |
-| 空値 | HTML / REPORT / build log がすべて空文字で一致する。API response の空値表現は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
+| 空値 | HTML / REPORT / build log がすべて空文字で一致する。API response の空値表現は [`docs/details/builder.md`](builder.md) §27.4 共通参照先に従う。 |
 
 ### 27.25 ビルドキャッシュ
 

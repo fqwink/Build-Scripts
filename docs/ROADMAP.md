@@ -6,22 +6,26 @@
 
 HTTP response schema、状態ファイル schema、SDK method の実装詳細、UI DOM、fixture assertion、具体的な処理順序の正本ではない。
 
+**状態・計画責務 共通参照先：**
+
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で実装詳細、HTTP endpoint、schema、DOM、SDK method、fixture、検証証跡に触れる場合、実装詳細は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture / expected / fake / 実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、文書・実装ファイル所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を共通参照先とする。状態・計画責務では状態、実装可否、Phase、将来計画、昇格入口だけを本文として扱う。
+
 ## 1. ロードマップ責務
 
 | 管理対象 | 状態・計画責務で扱う内容 | 詳細参照先 |
 |----------|----------------------|--------------|
-| 状態分類 | component ごとの `未仕様化`、`将来計画`、`改訂予定`、`仕様化済み・未実装`、`実装中・検証未完了`、`実装済み` の分類。 | 詳細仕様本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
-| Phase | Phase 順序、対象 owner component、依存条件、判定条件、引き継ぎ契約。 | 関数、endpoint、schema、DOM、fixture 本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
-| 機能インベントリ | 機能の分類、実装可否、詳細仕様参照先。 | 実装詳細は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
-| 将来計画 | 実装不可の構想と昇格入口。 | 実装可能な具体値は、昇格後に owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
-| 追加仕様化機能参照・横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能 owner、主本文、collaborator、横断受け入れ観点。 | 個別機能本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。 |
+| 状態分類 | component ごとの `未仕様化`、`将来計画`、`改訂予定`、`仕様化済み・未実装`、`実装中・検証未完了`、`実装済み` の分類。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先に従う。 |
+| Phase | Phase 順序、対象 owner component、依存条件、判定条件、引き継ぎ契約。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先に従う。 |
+| 機能インベントリ | 機能の分類、実装可否、詳細仕様参照先。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先に従う。 |
+| 将来計画 | 実装不可の構想と昇格入口。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先に従う。 |
+| 追加仕様化機能参照・横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能 owner、主本文、collaborator、横断受け入れ観点。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先に従う。 |
 
 ## 2. 状態分類
 
 | 状態 | 実装可否 | 意味 | 実装者の扱い |
 |------|----------|------|--------------|
 | 実装済み | 完了済み | ソースコード実装と必須検証が完了した項目。 | 関連する実装ファイル、検証結果、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。 |
-| 実装中・検証未完了 | 検証待ち | 実装に着手済みだが、必須検証または証跡が未完了の項目。 | 未完了の確認対象を [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務または実装検証証跡で確認する。 |
+| 実装中・検証未完了 | 検証待ち | 実装に着手済みだが、必須検証または証跡が未完了の項目。 | 未完了の確認対象は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先に従う。 |
 | 仕様化済み・未実装 | 実装可 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に実装可能な詳細が揃っている項目。 | Phase と詳細仕様参照先を確認する。 |
 | 改訂予定 | 実装不可 | 将来計画から格上げ済みだが、詳細仕様作成中の項目。 | 詳細仕様の作成先と不足項目を確認する。 |
 | 将来計画 | 実装不可 | 構想として保持するが、実装契約がない項目。 | 昇格手順は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 を確認する。 |
@@ -65,7 +69,7 @@ Go 版初期実装の対象範囲と Phase 単位の扱いは [`docs/SPEC.md`](S
 
 ### 4.1.1 Phase 1 完全仕様ゲート（`builder`）
 
-Phase 完全仕様ゲートは、対象 Phase の対象、依存条件、判定条件、後続 Phase への引き継ぎ確認だけを扱う。各 Phase の実装詳細本文は下表の参照先を正とする。
+Phase 完全仕様ゲートは、対象 Phase の対象、依存条件、判定条件、後続 Phase への引き継ぎ確認だけを扱う。各 Phase の実装詳細本文は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先と下表の参照先を正とする。
 
 Phase 1 完全仕様ゲートでは、Phase 1 の対象、依存条件、判定条件、後続 Phase への引き継ぎ確認だけを扱う。
 
@@ -515,6 +519,10 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 に列挙する追加仕様化機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。追加仕様化機能共通実装契約は、実装時に共通して確認する参照順、越境確認、実装検証証跡の入口だけを示す。
 
+**追加仕様化機能 横断共通参照先：**
+
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 で API endpoint、SDK method、UI 操作、状態ファイル副作用、fixture、実装検証証跡に触れる場合、API 契約は [`docs/details/api.md`](details/api.md)、SDK 契約は [`docs/details/sdk.md`](details/sdk.md)、UI 契約は [`docs/details/ui.md`](details/ui.md)、状態ファイル契約は [`docs/details/statefile.md`](details/statefile.md)、fixture / 実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) を共通参照先とする。状態・計画責務 §6 では、追加仕様化機能の owner、主本文、collaborator、横断確認観点だけを本文として扱う。
+
 | 確認 | 固定内容 |
 |------|----------|
 | 実装対象判定 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で状態分類と実装可否を確認する。将来計画、実装不可、未仕様化、MCP 専用詳細仕様がない状態の MCP 機能の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。 |
@@ -524,7 +532,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 状態更新 | 状態ファイル更新は [`docs/details/statefile.md`](details/statefile.md) §22.0a、[`docs/details/statefile.md`](details/statefile.md) §22.0c を基準とする。lock、atomic write、JSON Lines、破損時処理は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。 |
 | security | secret mask、token、session、scope、audit、rate limit は [`docs/details/security.md`](details/security.md) を基準とし、平文保存・平文表示を行わない。 |
 | fixture / 実装検証証跡 | 追加仕様化機能の fixture manifest、expected/effects、assertion、実装検証証跡、受け入れゲートは [`docs/details/fixture.md`](details/fixture.md) §27-F、builder 拡張 fixture は [`docs/details/fixture.md`](details/fixture.md) §28-F を参照する。 |
-| api / sdk / ui 同期 | API endpoint、SDK method、UI 操作が同一機能に関わる場合は、endpoint は [`docs/details/api.md`](details/api.md)、SDK method は [`docs/details/sdk.md`](details/sdk.md)、UI 操作は [`docs/details/ui.md`](details/ui.md) をそれぞれ詳細本文責務として参照し、名称、引数、response、error、表示、成功後再取得、失敗時固定が食い違わないことを確認する。 |
+| api / sdk / ui 同期 | API endpoint、SDK method、UI 操作が同一機能に関わる場合は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能 横断共通参照先に従い、名称、引数、response、error、表示、成功後再取得、失敗時固定が食い違わないことを確認する。 |
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能を実装した変更は、対象節、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture、secret mask、失敗時副作用、実装対象外を [`docs/details/fixture.md`](details/fixture.md) の実装検証証跡に記録する。記録が不足する場合は、実装済みとして扱わない。
 
@@ -636,7 +644,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 **api / sdk / ui / statefile 横断連動契約：**
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.4 の横断確認表は、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.4 の横断確認表に含まれる機能群は、各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に定義済みの API endpoint、SDK method、UI 操作、状態ファイル副作用を同じ実装単位でそろえるための確認対象である。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 を参照する。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.4 の横断確認表は、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。同表は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能 横断共通参照先と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に従い、同一機能群の横断確認観点だけをそろえる。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 を参照する。
 
 | 機能群 | API | SDK | UI 操作 | 状態ファイル副作用 | 成功後再取得 | 失敗時固定 |
 |--------|-----|-----|---------|--------------------|--------------|------------|

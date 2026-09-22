@@ -201,7 +201,7 @@ Phase 4 実装の完了判定は [`docs/details/fixture.md`](fixture.md) §0g.8-
 
 **API / SDK / UI / 状態ファイル cross fixture 固定：**
 
-[`docs/details/fixture.md`](fixture.md) §22-F の固定表の fixture は、API endpoint、SDK method、UI 操作、状態ファイル副作用の横断整合を固定する。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md)、SDK method と error 変換は [`docs/details/sdk.md`](sdk.md)、UI DOM と表示状態は [`docs/details/ui.md`](ui.md)、状態ファイル schema と保存手順は [`docs/details/statefile.md`](statefile.md) を参照する。
+[`docs/details/fixture.md`](fixture.md) §22-F の固定表の fixture は、API endpoint、SDK method、UI 操作、状態ファイル副作用の横断整合を固定する。API 契約は [`docs/details/api.md`](api.md)、SDK 契約は [`docs/details/sdk.md`](sdk.md)、UI 契約は [`docs/details/ui.md`](ui.md)、状態ファイル契約は [`docs/details/statefile.md`](statefile.md) を共通参照先とする。fixture 詳細本文では、横断 fixture の入力、副作用有無、期待結果だけを固定する。
 
 | fixture | 入力 | 必須確認 |
 |---------|------|----------|

@@ -67,8 +67,8 @@
 | ファイル | 役割 |
 |---------|------|
 | [`README.md`](../README.md) | 初見向け入口。概要と主要参照先を示す。 |
-| [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針、ポリシー、正本参照先、禁止事項、リリース判断を示す。 |
-| [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を示す。 |
+| [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針・ポリシー正本。 |
+| [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 状態・計画正本。 |
 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様参照入口、共通固定値、対応表、リポジトリ内ソース配置を示す。 |
 | [`docs/details/builder.md`](details/builder.md) | `builder` owner component の詳細本文責務。 |
 | [`docs/details/runner.md`](details/runner.md) | `runner` owner component の詳細本文責務。 |
@@ -134,15 +134,16 @@
 
 ## 正本参照先
 
+以下は正本所在の一覧である。各正本の内容説明は再掲せず、詳細な読み分けは [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [索引責務の使い方](#索引責務の使い方) と [目的別参照先](#目的別参照先) を参照する。
+
 | 正本対象 | 参照先 |
 |----------|------|
-| 作業ルール、承認、Git 運用、文書整合 | [`AGENTS.md`](../AGENTS.md) |
-| 方針、ポリシー、正本参照先、禁止事項、リリース判断 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 |
-| 状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 |
-| 詳細仕様参照入口、索引、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 |
-| 各 component の入出力、状態、処理順序、異常系、検証条件の本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 |
-| 生成静的 Web サイトのデザイン関係 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 |
-| 文書・実装ファイルの参照先と役割 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 |
-| 実装ファイル、テスト、fixture の所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [実装ファイル一覧](#実装ファイル一覧) |
+| 作業ルール | [`AGENTS.md`](../AGENTS.md) |
+| 方針・ポリシー | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 |
+| 状態・計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 |
+| 詳細仕様入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 |
+| 詳細本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 |
+| デザイン | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 |
+| 文書・実装ファイル所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 |
 
 文書整合の禁止事項、責務分離、参照リンク化、重複禁止は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a、作業手順は [`AGENTS.md`](../AGENTS.md) を参照する。

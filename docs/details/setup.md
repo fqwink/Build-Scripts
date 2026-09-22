@@ -584,7 +584,7 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md`]
 
 **関連責務参照：**
 
-[`docs/details/api.md`](api.md) §22、[`docs/details/statefile.md`](statefile.md) §22.0a / [`docs/details/statefile.md`](statefile.md) §22.0c、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24、[`docs/details/security.md`](security.md) §25 / [`docs/details/security.md`](security.md) §27.42〜§27.47、[`docs/details/setup.md`](setup.md) §26 にまたがる API、状態ファイル、SDK、UI、認証、setup / update の整合は、各 owner component 別の詳細本文責務と fixture 証跡責務を同時に参照する。[`docs/details/setup.md`](setup.md) §26.8 は setup / release / update の実行条件だけを扱う。API endpoint、SDK method、UI 操作、認証方式、状態 schema、fixture 名、実装検証証跡項目は、それぞれ責務を持つ詳細本文責務または fixture 証跡責務を正本とする。
+API、状態ファイル、SDK、UI、認証、setup / update の整合は、[`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先と下表の主本文を同時に参照する。[`docs/details/setup.md`](setup.md) §26.8 は setup / release / update の実行条件だけを扱う。API endpoint、SDK method、UI 操作、認証方式、状態 schema、fixture 名、実装検証証跡項目は、それぞれ責務を持つ詳細本文責務または fixture 証跡責務を正本とする。
 
 | 対象 | 主本文 | setup 側の確認範囲 |
 |------|--------|--------------------|
