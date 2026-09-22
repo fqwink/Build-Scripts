@@ -1013,8 +1013,7 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 
 ### 7.1 テーマ切り替え（廃止）
 
-ADS 採用により、ダークモードおよびテーマトグルボタンは廃止。
-出力サイトはライトモード固定（`prefers-color-scheme` 非対応）。
+生成 HTML のデザイン関係は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とする。出力サイトはライトモード固定とし、ダークモード、テーマトグルボタン、`prefers-color-scheme` 対応を実装しない。
 
 ### 7.2 サイドバー開閉
 
