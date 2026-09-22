@@ -8,17 +8,17 @@
 
 ## 詳細仕様管理
 
-詳細仕様入口責務は、管理対象と責務を持つ正本への確認入口を示す。
+詳細仕様入口責務は、管理対象と責務を持つ正本への確認入口だけを示す。方針、ポリシー、状態分類、実装可否、Phase、将来計画、owner component 本文は本文化せず、下表の正本へリンクする。
 
 | 管理対象 | 参照先 | 詳細仕様入口責務での扱い |
 |----------|------|--------------------|
 | 詳細仕様参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 実装者が詳細仕様本文へ到達するための入口を示す。 |
 | 共通固定値 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | component 間で共有する固定値だけを示す。 |
 | 詳細節対応表 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象機能、詳細仕様節、受け入れ条件の入口を示す。 |
-| 状態分類、実装可否、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 確認入口。 |
-| [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能参照 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 | 確認入口。 |
-| owner component 本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 参照入口。 |
-| 方針、ポリシー、正本参照先 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 確認入口。 |
+| 状態分類、実装可否、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 状態正本への入口。 |
+| [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能参照 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 | 追加仕様化機能参照への入口。 |
+| owner component 本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 詳細本文への入口。 |
+| 方針、ポリシー、正本参照先 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針正本への入口。 |
 
 ## 詳細仕様入口責務
 > 実装の具体的詳細へ到達するための入口を定める。「どこから詳細仕様を読むか」に答える。
@@ -58,7 +58,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文の owner / c
 
 ## 0a. 詳細仕様の記載基準
 
-詳細仕様項目の粒度は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.4 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 を参照する。詳細仕様入口責務は、owner component 別詳細本文責務で確認する項目の入口表である。
+詳細仕様項目の粒度は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.4 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 を参照する。詳細仕様入口責務は、owner component 別詳細本文責務で確認する項目の入口表だけを持つ。
 
 仕様項目を追加または改訂する場合は、対象範囲に応じて以下の項目を owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で確認する。
 
@@ -75,7 +75,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文の owner / c
 | セキュリティ | 認証、認可、秘密情報の保存禁止、権限、外部公開可否 |
 | 検証 | 構文確認、実行確認、API 確認、生成物確認、整合性確認 |
 
-未確定内容、実装可能性、推測補完の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、未確定項目の検出先と参照先を示す。
+未確定内容、実装可能性、推測補完の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、未確定項目の検出先と参照先だけを示す。
 
 対象範囲の具体化先は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務とする。
 
@@ -95,7 +95,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文の owner / c
 
 ## 0b.0.1 詳細仕様カテゴリ
 
-カテゴリ索引は、実装者が対象機能から読むべき owner component 別の詳細本文責務を特定するための検索入口である。カテゴリは owner component、状態分類、実装可否、ロードマップ状態を変更しない。
+カテゴリ索引は、実装者が対象機能から読むべき owner component 別の詳細本文責務を特定するための検索入口である。カテゴリは owner component、状態分類、実装可否、ロードマップ状態を変更しない。これらの判定は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と §0b の owner component 参照表を正とする。
 
 | カテゴリ | 対象 component | 主な確認対象 | 読む詳細仕様 |
 |----------|----------------|--------------|--------------|
@@ -112,7 +112,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文の owner / c
 
 ## 0b. 詳細仕様参照表
 
-詳細仕様参照入口は、owner component ごとに参照する詳細仕様節を示す。状態分類、実装可否、ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
+詳細仕様参照入口は、owner component ごとに参照する詳細仕様節だけを示す。状態分類、実装可否、ロードマップ状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を確認する。
 
 | owner component | 詳細仕様節 | 主な確認対象 |
 |--------------------|------------|--------------|

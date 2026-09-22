@@ -1067,7 +1067,9 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 
 **builder 詳細本文責務 §28.1〜§28.5 fixture 固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28.1〜§28.5 の fixture は、[`docs/details/builder.md`](builder.md) §28.1〜§28.5 実装詳細固定契約に列挙された中間状態、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/builder.md`](builder.md) §28.x に固定し、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。
+[`docs/details/builder.md`](builder.md) §28.1〜§28.25 の fixture は、対象 [`docs/details/builder.md`](builder.md) §28.x の実装詳細固定契約に列挙された HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 §28.x、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。各ブロックの `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。
+
+[`docs/details/builder.md`](builder.md) §28.1〜§28.5 の fixture は、中間状態、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。
 
 | feature slug | fixture | 固定する内容 |
 |--------------|---------|--------------|
@@ -1108,11 +1110,11 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `heading-numbering` | `noop-heading-numbering-none` | `none` で heading、TOC、search index 表示 text を変更せず、`numbered_headings=0` にする。 |
 | `heading-numbering` | `security-heading-slug-unchanged` | 採番有無で heading id、anchor href、collapse target、hash history target が byte 単位で一致する。 |
 
-[`docs/details/builder.md`](builder.md) §28.1〜§28.5 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。failure / security fixture では、`forbidden_updated_paths` と `forbidden_deleted_paths` に公開 `--out`、既存 `.dependency_manifest.json`、既存 `assets/search-index.json` を必ず含める。
+§28.1〜§28.5 の failure / security fixture では、`forbidden_updated_paths` と `forbidden_deleted_paths` に公開 `--out`、既存 `.dependency_manifest.json`、既存 `assets/search-index.json` を必ず含める。
 
 **builder 詳細本文責務 §28.6〜§28.10 fixture 固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28.6〜§28.10 の fixture は、[`docs/details/builder.md`](builder.md) §28.6〜§28.10 実装詳細固定契約に列挙された UI 状態、TOC、timestamp、code token、image token、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/builder.md`](builder.md) §28.x に固定し、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。
+[`docs/details/builder.md`](builder.md) §28.6〜§28.10 の fixture は、UI 状態、TOC、timestamp、code token、image token、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。manifest と共通 effects key は §28.1〜§28.5 の共通契約に従う。
 
 | feature slug | fixture | 固定する内容 |
 |--------------|---------|--------------|
@@ -1150,11 +1152,11 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `lazy-images` | `security-lazy-alt-escape` | alt、src、title 相当の attribute に raw HTML、quote、event handler が混入しても attribute escape される。 |
 | `lazy-images` | `security-lazy-invalid-scheme-strict` | `javascript:`、`file:`、その他未許可 scheme を strict で `BUILDER28_INVALID_OPTION`、終了コード `2`、公開出力維持にする。 |
 
-[`docs/details/builder.md`](builder.md) §28.6〜§28.10 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。browser runtime、visual layout、parser precedence と併用する fixture では、該当共通 fixture と同じ localStorage key、media query、parser 保護、external call 0 件を再確認する。
+§28.6〜§28.10 で browser runtime、visual layout、parser precedence と併用する fixture では、該当共通 fixture と同じ localStorage key、media query、parser 保護、external call 0 件を再確認する。
 
 **builder 詳細本文責務 §28.11〜§28.15 fixture 固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28.11〜§28.15 の fixture は、[`docs/details/builder.md`](builder.md) §28.11〜§28.15 実装詳細固定契約に列挙された head meta、theme state、code title、template var、minify byte、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/builder.md`](builder.md) §28.x に固定し、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。
+[`docs/details/builder.md`](builder.md) §28.11〜§28.15 の fixture は、head meta、theme state、code title、template var、minify byte、HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。manifest と共通 effects key は §28.1〜§28.5 の共通契約に従う。
 
 | feature slug | fixture | 固定する内容 |
 |--------------|---------|--------------|
@@ -1191,11 +1193,11 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `minify-html` | `noop-minify-disabled` | minify 無効時に HTML byte を変更せず、minify REPORT byte count を 0 にする。 |
 | `minify-html` | `security-minify-no-script-style-inline` | minify 実装が新規 inline script / style を追加せず、既存 script / style 相当領域の内部 byte を変更しない。 |
 
-[`docs/details/builder.md`](builder.md) §28.11〜§28.15 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。security fixture では secret / credential が stdout、stderr、REPORT、manifest、HTML attribute、search index のいずれにも平文で残らないことを `expected/security.json` に固定する。
+§28.11〜§28.15 の security fixture では secret / credential が stdout、stderr、REPORT、manifest、HTML attribute、search index のいずれにも平文で残らないことを `expected/security.json` に固定する。
 
 **builder 詳細本文責務 §28.16〜§28.20 fixture 固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28.16〜§28.20 の fixture は、[`docs/details/builder.md`](builder.md) §28.16〜§28.20 実装詳細固定契約に列挙された TOC active、Mermaid、footnote、math、hash history の HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/builder.md`](builder.md) §28.x に固定し、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。
+[`docs/details/builder.md`](builder.md) §28.16〜§28.20 の fixture は、TOC active、Mermaid、footnote、math、hash history の HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。manifest と共通 effects key は §28.1〜§28.5 の共通契約に従う。
 
 | feature slug | fixture | 固定する内容 |
 |--------------|---------|--------------|
@@ -1220,11 +1222,11 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `hash-history` | `noop-hash-history-disabled` | `--hash-history=false` で pushState handler、popstate handler、tabindex 補助を出力せず、通常 anchor fallback だけを残す。 |
 | `hash-history` | `security-hash-history-missing-target` | 存在しない hash、heading 以外の id、external URL、footnote backlink、empty hash を no-op にし、runtime 例外、build 時公開出力破壊、search index 混入を発生させない。 |
 
-[`docs/details/builder.md`](builder.md) §28.16〜§28.20 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。browser runtime と parser precedence に関わる fixture では、`expected/site/assets/app.js` と `expected/effects.json` に handler 登録順、fallback 分岐、保護対象 token、external call 0 件を固定する。security fixture では external script、CDN、runtime network fetch、raw HTML、event handler、credential、secret が HTML、CSS、JS、search index、stdout、stderr、REPORT、manifest に残らないことを `expected/security.json` に固定する。
+§28.16〜§28.20 の browser runtime と parser precedence に関わる fixture では、`expected/site/assets/app.js` と `expected/effects.json` に handler 登録順、fallback 分岐、保護対象 token、external call 0 件を固定する。security fixture では external script、CDN、runtime network fetch、raw HTML、event handler、credential、secret が HTML、CSS、JS、search index、stdout、stderr、REPORT、manifest に残らないことを `expected/security.json` に固定する。
 
 **builder 詳細本文責務 §28.21〜§28.25 fixture 固定契約：**
 
-[`docs/details/builder.md`](builder.md) §28.21〜§28.25 の fixture は、[`docs/details/builder.md`](builder.md) §28.21〜§28.25 実装詳細固定契約に列挙された accessibility、lightbox、print QR、definition list、task list の HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。各 fixture は `manifest.json.section` を対象 [`docs/details/builder.md`](builder.md) §28.x に固定し、`manifest.json.feature_slug` を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F カタログ固定契約の feature slug と一致させる。
+[`docs/details/builder.md`](builder.md) §28.21〜§28.25 の fixture は、accessibility、lightbox、print QR、definition list、task list の HTML / CSS / JS / search index、stdout、stderr、REPORT、副作用を固定する。manifest と共通 effects key は §28.1〜§28.5 の共通契約に従う。
 
 | feature slug | fixture | 固定する内容 |
 |--------------|---------|--------------|
@@ -1249,7 +1251,7 @@ visual layout fixture の `manifest.json` は、`viewport_width` を使う場合
 | `task-lists` | `noop-task-list-non-target` | `[-]`、`[o]`、`[]`、`[xx]`、文中 marker、disabled option では通常 list text として扱い、checkbox を出力しない。 |
 | `task-lists` | `security-task-list-disabled-aria` | checkbox が常に disabled、click で状態変更不可、aria label 非空、search index から checkbox label / marker text を除外する。 |
 
-[`docs/details/builder.md`](builder.md) §28.21〜§28.25 の `expected/effects.json` は、少なくとも `created_paths`、`updated_paths`、`preserved_paths`、`deleted_paths`、`forbidden_created_paths`、`forbidden_updated_paths`、`forbidden_deleted_paths`、`external_calls` を持つ。accessibility と lightbox の fixture は browser runtime fixture と同じ focus / keyboard / no-break 条件を再確認する。print QR、definition list、task list の security fixture は external call 0 件、外部 library 不使用、raw HTML 不在、credential / secret 非表示、search index 除外対象を `expected/security.json` に固定する。
+§28.21〜§28.25 の accessibility と lightbox fixture は browser runtime fixture と同じ focus / keyboard / no-break 条件を再確認する。print QR、definition list、task list の security fixture は external call 0 件、外部 library 不使用、raw HTML 不在、credential / secret 非表示、search index 除外対象を `expected/security.json` に固定する。
 
 **[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §28-F expected 比較方式固定契約：**
 
