@@ -32,15 +32,15 @@ archive owner は、保存済み build log と snapshot artifact の圧縮、展
 
 owner component は `archive` とする。collaborator component は `runner`、`api`、`statefile` とする。
 
-以降の §27.7 で archive / cleanup API の HTTP endpoint、query、response body、HTTP response body への変換を述べる場合は、[`docs/details/api.md`](api.md) §22.0e を共通参照先とする。§27.7 では archive log の探索、展開、圧縮、削除、処理結果だけを定義する。
+以降の §27.7 で archive / cleanup API の HTTP endpoint、query、response body、HTTP response body への変換を述べる場合は、[`docs/details/api.md`](api.md) §22.0e を共通参照先とする。§27.7 では archive log の探索、展開、圧縮、削除、処理結果だけを定義する。各表で API response、HTTP status、JSON error に触れる場合は、表内で個別に明記しない限り §27.7 共通参照先を参照する。
 
 archive owner は、runner または `POST /api/logs/archive` から呼び出された場合に、`.server_config.log_archive_after_days > 0` で対象日数より古い `.build_logs/{id}.json` を gzip 圧縮し、`.build_logs/archive/{id}.json.gz` へ保存する。圧縮成功後、元の `.build_logs/{id}.json` を削除する。`.build_logs/archive/` 内のファイルを再圧縮してはならない。
 
 gzip は Go 標準ライブラリ `compress/gzip` を使用し、mtime は元ファイル mtime ではなく圧縮実行時刻でよい。圧縮前 JSON を読み込めないファイルは archive 対象外とし、WARN `LOG_ARCHIVE_SKIP_CORRUPT: id=<id>` を出す。実行中 build の `current_build_id` と一致する log は対象外とする。
 
-archive owner は、通常 log が存在しない場合に archive log を gzip 展開し、通常 `.build_logs/{id}.json` と同じ schema の JSON object として呼び出し元へ渡す。`GET /api/logs/search`、`GET /api/history/{id}/log`、`GET /api/output-meta`、`GET /api/disk-usage` の API 共通契約は §27.7 共通参照先に従う。
+archive owner は、通常 log が存在しない場合に archive log を gzip 展開し、通常 `.build_logs/{id}.json` と同じ schema の JSON object として呼び出し元へ渡す。
 
-archive owner は、`POST /api/logs/cleanup` から呼び出された場合に、archive 済みファイルも `log_retention_days` の削除対象に含める。archive owner の処理結果は `archived_count`、`deleted_count`、`failed_count` を持つ。HTTP response body の形式は §27.7 共通参照先に従う。
+archive owner は、`POST /api/logs/cleanup` から呼び出された場合に、archive 済みファイルも `log_retention_days` の削除対象に含める。archive owner の処理結果は `archived_count`、`deleted_count`、`failed_count` を持つ。
 
 **archive / cleanup 固定契約：**
 
@@ -51,7 +51,7 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 | gzip path | `.build_logs/archive/{id}.json.gz`。既存 archive がある場合は上書きせず skip する。 |
 | cleanup 順 | 通常 log 削除 → archive log 削除 → 空 archive directory 削除試行。 |
 | 削除失敗 | 処理継続し、処理結果に `failed_count` を含める。 |
-| 処理結果 | archive は `archived_count`、cleanup は `deleted_count` と `failed_count` を処理結果として返す。HTTP response への変換は §27.7 共通参照先に従う。 |
+| 処理結果 | archive は `archived_count`、cleanup は `deleted_count` と `failed_count` を処理結果として返す。 |
 
 **archive / cleanup 実装確認ゲート：**
 
@@ -97,7 +97,7 @@ archive owner は snapshot の保存形式、一覧読取、download tar.gz 生�
 
 **§27.15 API / SDK / UI 共通参照先：**
 
-以降の §27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md`](api.md) §22.0e、SDK method、error 変換、HTTP status の扱いは [`docs/details/sdk.md`](sdk.md) §23、UI 表示、disabled 判定、操作後再取得、直接操作禁止は [`docs/details/ui.md`](ui.md) §24 を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。各表の失敗時 HTTP status、JSON error、SDK error、UI 表示は、表内で個別に明記しない限り §27.15 API / SDK / UI 共通参照先に従う。
+以降の §27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md`](api.md) §22.0e、SDK method、error 変換、HTTP status の扱いは [`docs/details/sdk.md`](sdk.md) §23、UI 表示、disabled 判定、操作後再取得、直接操作禁止は [`docs/details/ui.md`](ui.md) §24 を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。各表の失敗時 HTTP status、JSON error、SDK error、UI 表示は、表内で個別に明記しない限り §27.15 API / SDK / UI 共通参照先を参照する。
 
 **API 呼び出し境界参照：**
 

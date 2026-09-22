@@ -115,7 +115,7 @@
 
 標準配置図に含まれる未作成 path は、将来追加予定 path として扱い、該当 owner component が実装対象になった変更で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成しない。
 
-`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置である。標準配置と現行実体の所在確認は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、実装ファイル一覧を同時に確認する。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置である。標準配置と現行実体の所在確認は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、実装ファイル一覧を参照する。
 
 | パス | component | 所在区分 | 役割 |
 |------|-----------|----------|------|

@@ -513,7 +513,7 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md`]
 
 **§26.7 関連 component 共通参照先：**
 
-[`docs/details/setup.md`](setup.md) §26.7 で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md`](api.md) §22.0 / [`docs/details/api.md`](api.md) §22.0e、SDK 契約は [`docs/details/sdk.md`](sdk.md) §23、UI 契約は [`docs/details/ui.md`](ui.md) §24、security 契約は [`docs/details/security.md`](security.md) §25 / [`docs/details/security.md`](security.md) §27.42〜§27.47 を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。
+[`docs/details/setup.md`](setup.md) §26.7 で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md`](api.md) §22.0 / [`docs/details/api.md`](api.md) §22.0e、SDK 契約は [`docs/details/sdk.md`](sdk.md) §23、UI 契約は [`docs/details/ui.md`](ui.md) §24、security 契約は [`docs/details/security.md`](security.md) §25 / [`docs/details/security.md`](security.md) §27.42〜§27.47 を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。各表で API / SDK / UI / security の具体表現に触れる場合は、表内で個別に明記しない限り §26.7 関連 component 共通参照先を参照する。
 
 | 対象 | 必須コマンド / 確認 | 合格条件 |
 |------|---------------------|----------|
@@ -521,12 +521,12 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md`]
 | Go test | `go test ./...` | Go module が存在する場合に成功する。Go module が存在しない場合は、その理由を実装確認結果に明記する。 |
 | build script | `adlaire-ci-build --src <sample.md> --out <tmp.html>` | exit code `0`、HTML 出力あり、`[REPORT]` の `status` が `success`。 |
 | runner | `adlaire-ci-runner --state-dir <tmp-state>` | 必須 secret 未設定時の exit code / ERROR log が [`docs/details/runner.md`](runner.md) §12 と一致し、`.build_lock` が残らない。 |
-| API | API service の起動、local health check、admin UI から到達可能な endpoint 境界を確認する。 | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。 |
-| SDK | admin UI 配布物に SDK 静的ファイルが含まれ、browser runtime から読み込めることを確認する。 | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。 |
-| UI | admin UI 配布物が静的配信され、ログイン画面と主要 panel へ到達できることを確認する。 | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。 |
+| API | API service の起動、local health check、admin UI から到達可能な endpoint 境界を確認する。 | setup 側は service 配置、起動、local 到達だけを確認する。 |
+| SDK | admin UI 配布物に SDK 静的ファイルが含まれ、browser runtime から読み込めることを確認する。 | setup 側は SDK 静的ファイルの配置と読込可否だけを確認する。 |
+| UI | admin UI 配布物が静的配信され、ログイン画面と主要 panel へ到達できることを確認する。 | setup 側は admin UI 配布物の配置と到達可否だけを確認する。 |
 | setup | [`docs/details/setup.md`](setup.md) §26.3 または [`docs/details/setup.md`](setup.md) §26.3b の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
 | update | [`docs/details/setup.md`](setup.md) §26.5 の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 条件が仕様どおり。 |
-| security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示の漏えい有無を確認する。 | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。setup 側は配置・保持・権限・log 出力を確認する。 |
+| security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示の漏えい有無を確認する。 | setup 側は配置・保持・権限・log 出力を確認する。 |
 
 **認証 / セットアップ fixture 固定：**
 
@@ -535,9 +535,9 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md`]
 | credentials init success | 空 state dir で `adlaire-ci-api --init-credentials --state-dir <abs>` | `.admin_credentials` mode `600`、schema 全 key、`must_change=true`、stdout 固定文言。 |
 | credentials init existing | `.admin_credentials` 既存 | exit `2`、stderr `credentials already exist`、既存ファイル差分なし。 |
 | login success | 初期 password `admin` | `must_change:"prompt"`、TOTP 無効時 token 発行、hash/salt 非表示、`.access_log` 成功行。 |
-| login failure lock | password 連続 10 回失敗 | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。setup 側は password 詳細非表示と secret 非保存を確認する。 |
+| login failure lock | password 連続 10 回失敗 | setup 側は password 詳細非表示と secret 非保存を確認する。 |
 | change password | current 正、新 password 有効 | `.admin_credentials` の salt/hash 更新、`must_change=false`、現 session 以外破棄。 |
-| session restart | token 発行後に API process restart | restart 後の認証失敗表現は [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。setup 側は session file が存在しないことを確認する。 |
+| session restart | token 発行後に API process restart | setup 側は session file が存在しないことを確認する。 |
 | setup checksum mismatch | Release asset と `SHA256SUMS` 不一致 | バイナリ配置なし、systemd 変更なし、終了コード `1`。 |
 | update restart failure | 新バイナリ配置後に service restart 失敗 | 旧バイナリ復元を 1 回だけ行い、state/history/secret は巻き戻さない。 |
 
@@ -569,18 +569,18 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md`]
 | fixture | 入力 | 合格条件 |
 |---------|------|----------|
 | snapshot save and prune | `snapshots_keep=2` で build success を 3 回実行 | 最新 2 世代だけ残り、各 snapshot に `site.tar.gz` と `meta.json` が存在する。 |
-| snapshot rollback running | `.build_state.running=true` で `POST /api/history/{id}/rollback` | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。queue 追加なし、history 追記なし。 |
-| maintenance enable no-op | 同一 reason で enable を 2 回実行 | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。`.config_log` 追記なし。 |
-| access-control deny | allow に接続元以外を設定して API 呼び出し | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。password/token 検証なし。 |
+| snapshot rollback running | `.build_state.running=true` で `POST /api/history/{id}/rollback` | queue 追加なし、history 追記なし。 |
+| maintenance enable no-op | 同一 reason で enable を 2 回実行 | `.config_log` 追記なし。 |
+| access-control deny | allow に接続元以外を設定して API 呼び出し | password/token 検証なし。 |
 | hook pre abort | `pre` hook が exit `1`、`abort_on_failure=true` | pipeline 未実行、build status `hook_error`、hook log 保存。 |
-| alert duplicate | 同一 alert rule を 2 回作成 | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。`.alert_rules` 差分なし。 |
+| alert duplicate | 同一 alert rule を 2 回作成 | `.alert_rules` 差分なし。 |
 | tag rule invalid | 破損 condition を含む `.tag_rules` で build | build failure、ERROR log `TAG_RULE_INVALID`、SHA cache 更新なし。 |
-| verify-output no history | 成功履歴なしで `POST /api/verify-output` | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。状態ファイル変更なし。 |
-| pipeline config reserved arg | `extra_args:["--src","x"]` | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。`.pipeline_config` 差分なし。 |
-| notes no-op | 同一 content を 2 回保存 | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。`.config_log` 追記なし。 |
-| smtp secret mask | password 付き `POST /api/smtp-config` 後に GET / backup / log 確認 | password 本体は返らず、mask / secret 表示契約は [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。 |
-| queue disabled | `queue_max_size=0`、build running 中に `POST /api/build` | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。`.build_state.queued` は空。 |
-| dashboard duplicate widget | widgets に重複 id を指定 | [`docs/details/setup.md`](setup.md) §26.7 関連 component 共通参照先に従う。`.dashboard_layout` 差分なし。 |
+| verify-output no history | 成功履歴なしで `POST /api/verify-output` | 状態ファイル変更なし。 |
+| pipeline config reserved arg | `extra_args:["--src","x"]` | `.pipeline_config` 差分なし。 |
+| notes no-op | 同一 content を 2 回保存 | `.config_log` 追記なし。 |
+| smtp secret mask | password 付き `POST /api/smtp-config` 後に GET / backup / log 確認 | password 本体は返らず、setup 側は secret 非保存を確認する。 |
+| queue disabled | `queue_max_size=0`、build running 中に `POST /api/build` | `.build_state.queued` は空。 |
+| dashboard duplicate widget | widgets に重複 id を指定 | `.dashboard_layout` 差分なし。 |
 
 **関連責務参照：**
 

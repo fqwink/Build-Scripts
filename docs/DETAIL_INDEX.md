@@ -220,7 +220,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0c の実装前確認ゲートのいずれかが未充足の場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、不足している入口項目と更新すべき対応表を特定する。
 
-実装後の判定は、以下を入口として確認する。実装前確認項目は判定条件本文の正本ではない。Phase、状態分類、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、実装検証証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を正本として参照する。
+実装後の判定は、以下を入口として確認する。実装前確認項目は判定条件本文を持たない。Phase、状態分類、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、実装検証証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を参照する。
 
 1. 実装した機能が、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と詳細仕様入口責務の対応表に記載された入力、出力、状態、異常系、検証条件と一致する。
 2. 対象機能が owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i の詳細節対応表の受け入れ条件を満たしている。
@@ -254,9 +254,9 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 ## 0e. 完全実装検証マトリクス
 
-検証マトリクスは、実装確認へ進むための参照入口である。fixture 名、expected / effects、fake 動作、実装検証証跡項目、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。検証マトリクスは fixture 本文、期待値本文、差し戻し条件本文の正本ではない。
+検証マトリクスは、実装確認へ進むための参照入口である。fixture 名、expected / effects、fake 動作、実装検証証跡項目、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。検証マトリクスは fixture 本文、期待値本文、差し戻し条件本文を持たない。
 
-対象項目を確認済み扱いにできるかは、対象 owner component の詳細本文、関連 collaborator component の詳細本文、fixture 証跡責務、状態・計画責務を同時に確認する。確認済み扱いの可否は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f、状態分類は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。
+対象項目を確認済み扱いにできるかは、対象 owner component の詳細本文、関連 collaborator component の詳細本文、fixture 証跡責務、状態・計画責務を参照して判定する。確認済み扱いの可否は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f、状態分類は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。
 
 | 対象 | 詳細本文参照 | fixture / 証跡参照 |
 |------|--------------|--------------------|
@@ -279,7 +279,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 ## 0f. 仕様策定完了チェック
 
-仕様策定完了チェックは、Go 版初期実装へ進む前に確認する参照入口である。実装着手可否、判定方針は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f、対象 Phase と状態分類は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4 を参照する。仕様策定完了チェックは各 component の判定本文、fixture 本文の正本ではない。
+仕様策定完了チェックは、Go 版初期実装へ進む前に確認する参照入口である。実装着手可否、判定方針は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f、対象 Phase と状態分類は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4 を参照する。仕様策定完了チェックは各 component の判定本文、fixture 本文を持たない。
 
 | 対象 | 実装前に確認する詳細本文 | 確認する入口 |
 |------|--------------------------|--------------|
@@ -537,7 +537,7 @@ Adlaire CI の標準ディレクトリ構成 tree は [`docs/SPEC.md`](SPEC.md) 
 
 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の本文は、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の「詳細仕様管理」と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i を入口として確認する。
 
-[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は詳細仕様本文の正本ではない。対象機能の owner component は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b または [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i で特定し、該当する [`docs/details/*.md`](details/) 詳細本文責務を主本文とする。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は詳細仕様本文を持たない。対象機能の owner component は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b または [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i で特定し、該当する [`docs/details/*.md`](details/) 詳細本文責務を主本文とする。
 
 | 対象範囲 | 主な参照先 |
 |----------|------------|

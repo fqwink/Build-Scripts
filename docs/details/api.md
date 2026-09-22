@@ -113,7 +113,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | セキュリティヘッダー | すべての API レスポンスに `Cache-Control: no-store`、`X-Content-Type-Options: nosniff` を付与する。SSE は `Cache-Control: no-store` と `X-Accel-Buffering: no` を付与する。 |
 | 判定順 | path 解決 → method 検証 → body 可否/サイズ検証 → JSON parse → 認証 → 権限 → 入力検証 → 状態競合 → 処理実行の順に判定する。 |
 
-エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、[`docs/details/api.md`](api.md) §22、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 の対応関係を同時に確認する。
+エンドポイント例に記載されたフィールド名、型、有効値、HTTP ステータスは規範とする。API、SDK、標準管理ツールのいずれかを変更する場合は、[`docs/details/api.md`](api.md) §22、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 の対応関係を参照する。
 
 **API 共通エラー固定文言：**
 

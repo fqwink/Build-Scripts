@@ -1645,7 +1645,7 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 
 owner component は `builder` とする。collaborator component は `runner`、`api`、`statefile` とする。
 
-[`docs/details/builder.md`](builder.md) §27.4 で API response、API 表示、fixture 照合に触れる場合、API 契約は [`docs/details/api.md`](api.md) §22.0e、fixture 証跡は [`docs/details/fixture.md`](fixture.md) §27-F を共通参照先とする。builder 詳細本文では、HTML meta、REPORT、build log へ保存する値と escape 条件だけを定義する。API response と fixture 照合に関する各表の記載は、表内で個別に明記しない限り §27.4 共通参照先に従う。
+[`docs/details/builder.md`](builder.md) §27.4 で API response、API 表示、fixture 照合に触れる場合、API 契約は [`docs/details/api.md`](api.md) §22.0e、fixture 証跡は [`docs/details/fixture.md`](fixture.md) §27-F を共通参照先とする。builder 詳細本文では、HTML meta、REPORT、build log へ保存する値と escape 条件だけを定義する。API response と fixture 照合に関する各表の記載は、表内で個別に明記しない限り §27.4 共通参照先を参照する。
 
 `adlaire-ci-build` は `--build-id`、`--commit-sha`、`--build-at` を受け取り、全 HTML ページの `<head>` に次の meta を必ず出力する。
 
