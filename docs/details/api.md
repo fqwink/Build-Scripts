@@ -681,7 +681,7 @@ api / sdk / ui / statefile にまたがる横断 fixture の fixture 名、入�
 
 ### 22.0f Phase 3 / Phase 4 API fixture 参照
 
-API の Phase 3 / Phase 4 必須検証、fixture 名、入力状態、期待 response、期待副作用は [`docs/details/fixture.md`](fixture.md) §22-F を参照する。個別 API 節では fixture 名、fixture manifest、testdata 配置、期待副作用、実装検証証跡を再定義しない。個別 API 節で fixture 確認が必要な場合は、[`docs/details/api.md`](api.md) §22.0f へのリンク参照だけを置く。
+API の Phase 3 / Phase 4 必須検証、fixture 名、入力状態、期待 response、期待副作用は [`docs/details/fixture.md`](fixture.md) §22-F を参照する。個別 API 節では fixture 名、fixture manifest、testdata 配置、期待副作用、実装検証証跡を再定義しない。
 
 `api` 詳細では、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、実装検証証跡は [`docs/details/fixture.md`](fixture.md)、Phase 別の判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) を参照する。
 
@@ -2640,9 +2640,9 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 **[`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 api 連動境界確認表：**
 
-[`docs/details/runner.md`](runner.md) §27.21〜§27.38、[`docs/details/security.md`](security.md) §27.42〜§27.47 の各機能は、owner component の個別節を主本文とする。[`docs/details/api.md`](api.md) §27.20 の固定表は api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認するための表であり、runner / builder / security / fixture の主本文を置き換えない。[`docs/details/api.md`](api.md) §27.20 の固定表は endpoint、SDK method、UI 操作、状態 schema、fixture を新規定義しない。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は [`docs/details/runner.md`](runner.md) §27.21〜§27.38 の runner 拡張を横断検証する補足契約として扱う。
+[`docs/details/api.md`](api.md) §27.20 の固定表は、api owner が関与する場合の入力境界、出力境界、状態 read/write 呼び出し境界、失敗時副作用、fixture 参照を確認する表である。runner / builder / security / fixture の主本文は、表の節リンク先と [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を参照する。
 
-詳細実装確認では、対象機能の owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) §27-F の fixture、必要な collaborator component 別の [`docs/details/*.md`](../details/) 詳細本文責務を同時に参照する。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
+詳細実装確認では、対象機能の owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) §27-F、必要な collaborator component 別の詳細本文責務を参照する。api が owner ではない行は、api が受け渡す endpoint、response、状態 read/write 境界の確認だけに使用する。
 
 | 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |----|------|------|------|---------------------------|--------------|--------------|
@@ -2673,7 +2673,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 
 **[`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 api / sdk / ui 連動参照表：**
 
-[`docs/details/api.md`](api.md) §27 API / SDK / UI 接続固定表は api、sdk、ui の接続点をそろえるための参照表である。各 API endpoint の詳細は [`docs/details/api.md`](api.md) 詳細本文責務の個別節、SDK method の詳細は [`docs/details/sdk.md`](sdk.md) §23、UI 操作の詳細は [`docs/details/ui.md`](ui.md) §24、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。§27 API / SDK / UI 接続固定表だけを根拠に endpoint、method、DOM、状態ファイル、fixture を追加してはならない。
+[`docs/details/api.md`](api.md) §27 API / SDK / UI 接続固定表は api、sdk、ui の接続点をそろえるための参照表である。API endpoint は api 個別節、SDK method は [`docs/details/sdk.md`](sdk.md) §23、UI 操作は [`docs/details/ui.md`](ui.md) §24、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。この表だけを根拠に endpoint、method、DOM、状態ファイル、fixture を追加してはならない。
 
 | 節 | API | SDK | UI |
 |----|-----|-----|----|

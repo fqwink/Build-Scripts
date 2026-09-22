@@ -513,7 +513,7 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md`]
 
 **§26.7 関連 component 共通参照先：**
 
-[`docs/details/setup.md`](setup.md) §26.7 で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md`](api.md) §22.0 / [`docs/details/api.md`](api.md) §22.0e、SDK 契約は [`docs/details/sdk.md`](sdk.md) §23、UI 契約は [`docs/details/ui.md`](ui.md) §24、security 契約は [`docs/details/security.md`](security.md) §25 / [`docs/details/security.md`](security.md) §27.42〜§27.47 を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。各表で API / SDK / UI / security の具体表現に触れる場合は、表内で個別に明記しない限り §26.7 関連 component 共通参照先を参照する。
+[`docs/details/setup.md`](setup.md) §26.7 で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md`](api.md) §22.0 / §22.0e、SDK 契約は [`docs/details/sdk.md`](sdk.md) §23、UI 契約は [`docs/details/ui.md`](ui.md) §24、security 契約は [`docs/details/security.md`](security.md) §25 / §27.42〜§27.47 を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。
 
 | 対象 | 必須コマンド / 確認 | 合格条件 |
 |------|---------------------|----------|
@@ -584,7 +584,7 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md`]
 
 **関連責務参照：**
 
-API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主本文を参照する。[`docs/details/setup.md`](setup.md) §26.8 は setup / release / update の実行条件だけを扱う。
+API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主本文を参照する。§26.8 は setup / release / update の実行条件だけを扱う。
 
 | 対象 | 主本文 | setup 側の確認範囲 |
 |------|--------|--------------------|

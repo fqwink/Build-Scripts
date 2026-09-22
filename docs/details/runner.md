@@ -1779,7 +1779,7 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 
 **runner §27 API / SDK / UI 共通参照先：**
 
-runner §27 の各機能で API endpoint、HTTP status、request / response、warning、SDK method、UI 表示、filter、error body を述べる場合、API 契約は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、SDK 契約は [`docs/details/sdk.md`](sdk.md) §23、UI 契約は [`docs/details/ui.md`](ui.md) §24 を共通参照先とする。runner 詳細本文では、runner が保存する値、処理順、状態差分、失敗時副作用だけを定義する。各表で API response、HTTP status、SDK 型、UI 表示に触れる場合は、表内で個別に明記しない限り runner §27 API / SDK / UI 共通参照先を参照する。
+runner §27 の各機能で API endpoint、HTTP status、request / response、warning、SDK method、UI 表示、filter、error body を述べる場合、API 契約は [`docs/details/api.md`](api.md) §22.0c.1 / [`docs/details/api.md`](api.md) §22.0e、SDK 契約は [`docs/details/sdk.md`](sdk.md) §23、UI 契約は [`docs/details/ui.md`](ui.md) §24 を共通参照先とする。runner 詳細本文では、runner が保存する値、処理順、状態差分、失敗時副作用だけを定義する。
 
 **runner §27 owner / collaborator 境界参照先：**
 

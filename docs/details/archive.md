@@ -32,7 +32,7 @@ archive owner は、保存済み build log と snapshot artifact の圧縮、展
 
 owner component は `archive` とする。collaborator component は `runner`、`api`、`statefile` とする。
 
-以降の §27.7 で archive / cleanup API の HTTP endpoint、query、response body、HTTP response body への変換を述べる場合は、[`docs/details/api.md`](api.md) §22.0e を共通参照先とする。§27.7 では archive log の探索、展開、圧縮、削除、処理結果だけを定義する。各表で API response、HTTP status、JSON error に触れる場合は、表内で個別に明記しない限り §27.7 共通参照先を参照する。
+§27.7 で archive / cleanup API の HTTP endpoint、query、response body、HTTP response body への変換を述べる場合は、[`docs/details/api.md`](api.md) §22.0e を共通参照先とする。§27.7 では archive log の探索、展開、圧縮、削除、処理結果だけを定義する。
 
 archive owner は、runner または `POST /api/logs/archive` から呼び出された場合に、`.server_config.log_archive_after_days > 0` で対象日数より古い `.build_logs/{id}.json` を gzip 圧縮し、`.build_logs/archive/{id}.json.gz` へ保存する。圧縮成功後、元の `.build_logs/{id}.json` を削除する。`.build_logs/archive/` 内のファイルを再圧縮してはならない。
 
@@ -89,15 +89,15 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 
 ### 27.15 ビルドアーティファクト管理
 
-本機能の目的は、`.snapshots/` に保存された build artifact について、archive owner が一覧読取、download tar.gz 生成、削除、rollback 転送の実体処理を固定することである。API endpoint、SDK method、UI 操作表示の境界は [`docs/details/archive.md`](archive.md) §27.15 API / SDK / UI 共通参照先を参照する。
+本機能の目的は、`.snapshots/` に保存された build artifact について、archive owner が一覧読取、download tar.gz 生成、削除、rollback 転送の実体処理を固定することである。API endpoint、SDK method、UI 操作表示の境界は §27.15 API / SDK / UI 共通参照先を参照する。
 
 owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は [`docs/details/runner.md`](runner.md) §14b を参照する。
 
-archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api / sdk / ui の境界は [`docs/details/archive.md`](archive.md) §27.15 API / SDK / UI 共通参照先、runner の通常 build 実行、通常 snapshot 作成タイミング、build history / status finalizer の共通処理は [`docs/details/runner.md`](runner.md) 詳細本文責務を参照する。
+archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api / sdk / ui の境界は §27.15 API / SDK / UI 共通参照先、runner の通常 build 実行、snapshot 作成タイミング、build history / status finalizer は [`docs/details/runner.md`](runner.md) 詳細本文責務を参照する。
 
 **§27.15 API / SDK / UI 共通参照先：**
 
-以降の §27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md`](api.md) §22.0e、SDK method、error 変換、HTTP status の扱いは [`docs/details/sdk.md`](sdk.md) §23、UI 表示、disabled 判定、操作後再取得、直接操作禁止は [`docs/details/ui.md`](ui.md) §24 を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。各表の失敗時 HTTP status、JSON error、SDK error、UI 表示は、表内で個別に明記しない限り §27.15 API / SDK / UI 共通参照先を参照する。
+§27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md`](api.md) §22.0e、SDK method と error 変換は [`docs/details/sdk.md`](sdk.md) §23、UI 表示と直接操作禁止は [`docs/details/ui.md`](ui.md) §24 を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。
 
 **API 呼び出し境界参照：**
 

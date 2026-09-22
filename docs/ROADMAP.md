@@ -14,11 +14,11 @@
 
 | 管理対象 | 状態・計画責務で扱う内容 | 詳細参照先 |
 |----------|----------------------|--------------|
-| 状態分類 | component ごとの `未仕様化`、`将来計画`、`改訂予定`、`仕様化済み・未実装`、`実装中・検証未完了`、`実装済み` の分類。 | 詳細本文、fixture、文書所在が必要な場合は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先を参照する。 |
-| Phase | Phase 順序、対象 owner component、依存条件、判定条件、引き継ぎ契約。 | 詳細本文、fixture、文書所在が必要な場合は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先を参照する。 |
-| 機能インベントリ | 機能の分類、実装可否、詳細仕様参照先。 | 詳細本文、fixture、文書所在が必要な場合は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先を参照する。 |
-| 将来計画 | 実装不可の構想と昇格入口。 | 詳細本文、fixture、文書所在が必要な場合は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先を参照する。 |
-| 追加仕様化機能参照・横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能 owner、主本文、collaborator、横断受け入れ観点。 | 詳細本文、fixture、文書所在が必要な場合は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先を参照する。 |
+| 状態分類 | component ごとの `未仕様化`、`将来計画`、`改訂予定`、`仕様化済み・未実装`、`実装中・検証未完了`、`実装済み` の分類。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先。 |
+| Phase | Phase 順序、対象 owner component、依存条件、判定条件、引き継ぎ契約。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先。 |
+| 機能インベントリ | 機能の分類、実装可否、詳細仕様参照先。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先。 |
+| 将来計画 | 実装不可の構想と昇格入口。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先。 |
+| 追加仕様化機能参照・横断補足契約 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能 owner、主本文、collaborator、横断受け入れ観点。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先。 |
 
 ## 2. 状態分類
 
@@ -644,7 +644,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 **api / sdk / ui / statefile 横断連動契約：**
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.4 の横断確認表は、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義する表ではない。同表は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能 横断共通参照先と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に従い、同一機能群の横断確認観点だけをそろえる。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 を参照する。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.4 の横断確認表は、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義しない。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能 横断共通参照先と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に従い、同一機能群の横断確認観点だけをそろえる。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 を参照する。
 
 | 機能群 | API | SDK | UI 操作 | 状態ファイル副作用 | 成功後再取得 | 失敗時固定 |
 |--------|-----|-----|---------|--------------------|--------------|------------|
