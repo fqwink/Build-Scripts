@@ -81,7 +81,7 @@
 | [`docs/details/archive.md`](details/archive.md) 詳細本文責務 | `archive` owner component の詳細本文責務。 |
 | [`docs/details/commitstatus.md`](details/commitstatus.md) 詳細本文責務 | `commitstatus` owner component の詳細本文責務。 |
 | [`docs/details/security.md`](details/security.md) 詳細本文責務 | `security` owner component の詳細本文責務。 |
-| [`docs/details/fixture.md`](details/fixture.md) 詳細本文責務 | `fixture` owner component の詳細本文責務。 |
+| [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 | `fixture` owner component の fixture 証跡責務。 |
 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン関係の正本。 |
 | [`AGENTS.md`](../AGENTS.md) | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | 文書・実装ファイルの役割と所在を示す。 |
@@ -103,7 +103,7 @@
 | [`docs/details/archive.md`](details/archive.md) 詳細本文責務 | `archive` |
 | [`docs/details/commitstatus.md`](details/commitstatus.md) 詳細本文責務 | `commitstatus` |
 | [`docs/details/security.md`](details/security.md) 詳細本文責務 | `security` |
-| [`docs/details/fixture.md`](details/fixture.md) 詳細本文責務 | `fixture` |
+| [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 | `fixture` |
 
 ## 実装ファイル一覧
 

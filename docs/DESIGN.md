@@ -182,6 +182,6 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 ## 8. 生成側参照
 
-ビルド実行方法、入出力パス、既定値、終了コード、レポート出力は [`docs/details/builder.md`](details/builder.md) builder 詳細本文責務を参照する。
+ビルド実行方法、入出力パス、既定値、終了コード、レポート出力は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
 
 CSS トークンの変更は Go 版 `components/builder.go` の HTML テンプレート内 `:root { }` ブロックに反映して再ビルドする。

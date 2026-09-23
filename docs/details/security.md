@@ -1,6 +1,6 @@
 # Adlaire CI — Security 詳細仕様
 
-`security` owner component の詳細本文責務は、[`docs/details/security.md`](security.md) を正本とする。
+`security` owner component の詳細本文責務は、[`docs/details/security.md`](security.md) 詳細本文責務を正本とする。
 
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`security` owner component の主本文であり、collaborator component の仕様は呼び出し境界、endpoint、SDK、UI、状態 schema、fixture、検証観点として参照する。
 
@@ -21,31 +21,31 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 | 範囲 | 内容 |
 |------|------|
-| [`docs/details/security.md`](security.md) §27.42 | ビルドトリガー専用 API スコープ。 |
-| [`docs/details/security.md`](security.md) §27.43 | API キー管理。 |
-| [`docs/details/security.md`](security.md) §27.44 | 監査ログ。 |
-| [`docs/details/security.md`](security.md) §27.45 | セッションタイムアウト変更設定。 |
-| [`docs/details/security.md`](security.md) §27.46 | TOTP 二要素認証。 |
-| [`docs/details/security.md`](security.md) §27.47 | API レート制限。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 | ビルドトリガー専用 API スコープ。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.43 | API キー管理。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.44 | 監査ログ。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.45 | セッションタイムアウト変更設定。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.46 | TOTP 二要素認証。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.47 | API レート制限。 |
 
 ---
 
 ## 横断固定契約
 
-**[`docs/details/security.md`](security.md) §27.42〜§27.47 認証・監査・制限機能 実装確認固定契約：**
+**[`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 認証・監査・制限機能 実装確認固定契約：**
 
-[`docs/details/security.md`](security.md) §27.42〜§27.47 は、API token、監査、session、TOTP、rate limit に関する安全機能である。各機能の詳細実装確認では、個別節に加えて [`docs/details/security.md`](security.md) §27.42〜§27.47 認証・監査・制限機能 実装確認固定表を満たす。
+[`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 は、API token、監査、session、TOTP、rate limit に関する安全機能である。各機能の詳細実装確認では、個別節に加えて [`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 認証・監査・制限機能 実装確認固定表を満たす。
 
 | 節 | 機能 | 判定入口 | 成功時副作用 | 失敗時副作用 | 漏えい禁止値 | 必須 fixture |
 |----|------|----------|--------------|--------------|--------------|--------------|
-| [`docs/details/security.md`](security.md) §27.42 | API token scope | route / method 確定後、body parse 前。 | 許可 endpoint だけ処理し、[`docs/details/security.md`](security.md) §27.44 の監査対象 event に該当する場合は audit に actor を残す。 | 権限不足は対象処理を実行せず `403`。audit 失敗時は `500`。 | token 本体、Authorization header。 | trigger allowed、read denied、multi scope、path param、body 未評価、audit failure。 |
-| [`docs/details/security.md`](security.md) §27.43 | API key 管理 | admin session または admin scope。 | token hash だけ保存し、作成時だけ token 本体を返す。 | validation 失敗は保存差分なし。失効済み token は再有効化しない。 | token 本体、token hash の不要露出。 | create、list mask、revoke、expired、duplicate label、admin token create。 |
-| [`docs/details/security.md`](security.md) §27.44 | 監査ログ | security / config / operation event 確定時。 | 1 event 1 JSON Lines で追記し、actor / target / result を保存する。 | 必須 audit 失敗は対象処理を `500` にする。任意 audit は個別節優先。 | secret、password、token、TOTP secret、raw request body。 | success、denied、failure、mask、append failure、pagination。 |
-| [`docs/details/security.md`](security.md) §27.45 | session timeout | login、authenticated request、timeout config API。 | session の last_seen / expires_at を固定規則で更新する。 | timeout session は `401`、対象 endpoint は実行しない。 | session token。 | active、expired、sliding update、config update、revoke all、clock boundary。 |
-| [`docs/details/security.md`](security.md) §27.46 | TOTP | setup、confirm、login/totp、disable。 | secret は confirm 成功後だけ有効保存し、ticket は一回だけ使う。 | ticket 再利用、期限切れ、code 不正は対象状態を変更しない。 | TOTP secret、backup code 相当値、ticket token。 | setup、confirm、login success、code reuse、disable、audit failure。 |
-| [`docs/details/security.md`](security.md) §27.47 | API rate limit | route / auth / scope 判定の定義済み位置。 | 上限未満だけ count を増やし endpoint 処理へ進む。 | `429` は count を増やさず、audit 成功時だけ返す。 | API token、session token、request body。 | login 11 回目、window reset、IP+actor、disabled、policy update、state save failure。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 | API token scope | route / method 確定後、body parse 前。 | 許可 endpoint だけ処理し、[`docs/details/security.md`](security.md) 詳細本文責務 §27.44 の監査対象 event に該当する場合は audit に actor を残す。 | 権限不足は対象処理を実行せず `403`。audit 失敗時は `500`。 | token 本体、Authorization header。 | trigger allowed、read denied、multi scope、path param、body 未評価、audit failure。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.43 | API key 管理 | admin session または admin scope。 | token hash だけ保存し、作成時だけ token 本体を返す。 | validation 失敗は保存差分なし。失効済み token は再有効化しない。 | token 本体、token hash の不要露出。 | create、list mask、revoke、expired、duplicate label、admin token create。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.44 | 監査ログ | security / config / operation event 確定時。 | 1 event 1 JSON Lines で追記し、actor / target / result を保存する。 | 必須 audit 失敗は対象処理を `500` にする。任意 audit は個別節優先。 | secret、password、token、TOTP secret、raw request body。 | success、denied、failure、mask、append failure、pagination。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.45 | session timeout | login、authenticated request、timeout config API。 | session の last_seen / expires_at を固定規則で更新する。 | timeout session は `401`、対象 endpoint は実行しない。 | session token。 | active、expired、sliding update、config update、revoke all、clock boundary。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.46 | TOTP | setup、confirm、login/totp、disable。 | secret は confirm 成功後だけ有効保存し、ticket は一回だけ使う。 | ticket 再利用、期限切れ、code 不正は対象状態を変更しない。 | TOTP secret、backup code 相当値、ticket token。 | setup、confirm、login success、code reuse、disable、audit failure。 |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.47 | API rate limit | route / auth / scope 判定の定義済み位置。 | 上限未満だけ count を増やし endpoint 処理へ進む。 | `429` は count を増やさず、audit 成功時だけ返す。 | API token、session token、request body。 | login 11 回目、window reset、IP+actor、disabled、policy update、state save failure。 |
 
-**[`docs/details/security.md`](security.md) §27.42〜§27.47 セキュリティ機能 横断順序固定契約：**
+**[`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 セキュリティ機能 横断順序固定契約：**
 
 | 順序 | 処理 | 固定条件 |
 |------|------|----------|
@@ -58,13 +58,13 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | 7 | endpoint 固有 validation を行う。 | 失敗時は対象状態、外部 API、外部 command を変更しない。 |
 | 8 | endpoint 固有処理を実行する。 | 成功時だけ個別節の保存順で状態、access log、audit log を確定する。 |
 
-[`docs/details/security.md`](security.md) §27.42〜§27.47 認証・監査・制限機能 実装確認固定表の順序を変更してはならない。個別節が別順序を明記する場合は、セキュリティ上の漏えいを増やさない範囲で個別節を優先する。順序変更が必要な場合は、先に [`docs/details/security.md`](security.md) §27.42〜§27.47 認証・監査・制限機能 実装確認固定表と該当個別節を同時に改訂する。
+[`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 認証・監査・制限機能 実装確認固定表の順序を変更してはならない。個別節が別順序を明記する場合は、セキュリティ上の漏えいを増やさない範囲で個別節を優先する。順序変更が必要な場合は、先に [`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 認証・監査・制限機能 実装確認固定表と該当個別節を同時に改訂する。
 
 ---
 
 ## 認証共通詳細
 
-[`docs/details/security.md`](security.md) §認証共通詳細は、password 認証、session、login ticket、認証ログ、`--init-credentials` の [`docs/details/security.md`](security.md) 詳細本文責務である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md`](api.md) §22.0e および [`docs/details/security.md`](security.md) §25 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) §22.0c を参照する。
+[`docs/details/security.md`](security.md) 詳細本文責務 §認証共通詳細は、password 認証、session、login ticket、認証ログ、`--init-credentials` の [`docs/details/security.md`](security.md) 詳細本文責務である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e および [`docs/details/security.md`](security.md) 詳細本文責務 §25 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0c を参照する。
 
 **password hash 固定契約：**
 
@@ -130,7 +130,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | logout | `200` | 変更なし | 対象 session 削除 | `logout` を追記 | `logout` を追記 | token 本体と token hash は保存しない。 |
 | password 変更成功 | `200` | 新 salt / hash、`must_change:false`、`updated_at` 更新 | 現 session 以外削除 | `password_change` を追記 | `password_change` を追記 | 新旧 password、hash、salt は保存しない。 |
 
-[`docs/details/security.md`](security.md) §認証共通詳細の固定表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、個別節で別指定がない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
+[`docs/details/security.md`](security.md) 詳細本文責務 §認証共通詳細の固定表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、個別節で別指定がない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
 
 **認証副作用順序固定契約：**
 
@@ -221,7 +221,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 | `config` | `POST /api/schedule/interval`, `POST /api/schedule/pause`, `POST /api/schedule/resume`, `POST /api/schedule/allowed-hours`, `POST /api/schedule/force-interval`, `POST /api/schedule/cooldown`, `POST /api/notify-config`, `POST /api/config/validate`, `POST /api/config`, `POST /api/log-level`, `POST /api/pat-update`, `POST /api/repo-config`, `POST /api/branch-config`, `POST /api/restore`, `POST /api/webhook-config`, `DELETE /api/snapshots/{id}`, `POST /api/maintenance/enable`, `POST /api/maintenance/disable`, `POST /api/access-control`, `POST /api/hooks`, `DELETE /api/hooks/{id}`, `POST /api/alert-rules`, `DELETE /api/alert-rules/{id}`, `POST /api/tag-rules`, `DELETE /api/tag-rules/{id}`, `POST /api/pipeline-config`, `POST /api/build-chain-config`, `POST /api/notes`, `POST /api/smtp-config`, `POST /api/dashboard-layout`, `POST /api/history/{id}/comment`, `POST /api/history/{id}/flag`, `POST /api/history/{id}/tags`, `POST /api/logs/cleanup`, `POST /api/logs/archive` |
 | `admin` | `GET /api/access-log`, `GET /api/api-access-log`, `GET /api/audit-log`, `GET /api/api-rate-limit`, `POST /api/api-rate-limit`, `GET /api/sessions`, `POST /api/sessions/revoke-all`, `GET /api/auth/totp-status`, `POST /api/auth/totp-setup`, `POST /api/auth/totp-confirm`, `DELETE /api/auth/totp`, `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}` |
 
-管理 session は [`docs/details/security.md`](security.md) §27.42 の scope 固定表に関係なく全 endpoint を許可する。API token が複数 scope を持つ場合は、いずれか 1 つの scope が endpoint に一致すれば許可する。`POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password` は API token scope 判定の対象外とし、API token では使用できない。`POST /api/webhook` は GitHub Webhook secret 検証専用であり、API token では使用できない。[`docs/details/security.md`](security.md) §27.42 の scope 固定表に存在しない endpoint は [`docs/details/api.md`](api.md) §22.0e と [`docs/details/security.md`](security.md) §27.42 の scope 固定表へ追加されるまで API token では許可してはならない。
+管理 session は [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の scope 固定表に関係なく全 endpoint を許可する。API token が複数 scope を持つ場合は、いずれか 1 つの scope が endpoint に一致すれば許可する。`POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password` は API token scope 判定の対象外とし、API token では使用できない。`POST /api/webhook` は GitHub Webhook secret 検証専用であり、API token では使用できない。[`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の scope 固定表に存在しない endpoint は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e と [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の scope 固定表へ追加されるまで API token では許可してはならない。
 
 **正常系：**
 
@@ -245,10 +245,10 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 |------|------|
 | 1 | route match と method check を行う。未定義は `404` / `405` を返し、API token scope 判定は行わない。 |
 | 2 | 認証不要 endpoint か判定する。`GET /api/health` と `POST /api/webhook` は API token scope 判定対象外。 |
-| 3 | login endpoint は [`docs/details/security.md`](security.md) §27.47 の login rate limit を先に判定する。 |
+| 3 | login endpoint は [`docs/details/security.md`](security.md) 詳細本文責務 §27.47 の login rate limit を先に判定する。 |
 | 4 | 認証必須 endpoint は Bearer token を検証し、actor を確定する。 |
 | 5 | API token の場合だけ scope 判定を行う。管理 session は scope 表を参照しない。 |
-| 6 | 認証後 endpoint の rate limit を [`docs/details/security.md`](security.md) §27.47 に従って判定する。 |
+| 6 | 認証後 endpoint の rate limit を [`docs/details/security.md`](security.md) 詳細本文責務 §27.47 に従って判定する。 |
 | 7 | endpoint 固有処理へ進む。 |
 
 scope 判定前に endpoint 固有の request body parse、状態ファイル更新、外部送信を実行してはならない。
@@ -260,7 +260,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 | session token | scope 表を参照せず許可する。 |
 | API token の `scopes` が空 | token record 破損として扱い `500`。 |
 | API token の `scopes` に未知値 | token record 破損として扱い `500`。 |
-| endpoint が複数 group に現れる | [`docs/details/security.md`](security.md) §27.42 の表で先に定義された group を採用する。 |
+| endpoint が複数 group に現れる | [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の表で先に定義された group を採用する。 |
 | path parameter 付き endpoint | 正規化 path pattern で scope 判定する。例: `DELETE /api/tokens/abc` は `DELETE /api/tokens/{id}`。 |
 | query string | scope 判定には使用しない。method と path pattern だけで判定する。 |
 | `GET /api/health` | 認証不要。API token scope 判定を行わない。 |
@@ -316,7 +316,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 | `expires_at` | string/null | 必須 | `null` または UTC ISO 8601。 |
 | `revoked_at` | string/null | 必須 | 失効時に UTC ISO 8601 を保存する。 |
 
-`.api_tokens` に未知 key、必須 key 不足、型不一致、未知 scope、空 scopes、hash 形式不正、時刻形式不正がある場合は破損として扱い、token 認証、一覧、作成、失効をすべて `500 {"error":"Internal server error"}` で拒否する。ただし旧 `scope` 文字列から `scopes:[scope]` への正規化は [`docs/details/statefile.md`](statefile.md) §22.0c の例外に従う。破損内容、hash、token 本体は response、`.access_log`、`.audit_log`、journal に出力しない。
+`.api_tokens` に未知 key、必須 key 不足、型不一致、未知 scope、空 scopes、hash 形式不正、時刻形式不正がある場合は破損として扱い、token 認証、一覧、作成、失効をすべて `500 {"error":"Internal server error"}` で拒否する。ただし旧 `scope` 文字列から `scopes:[scope]` への正規化は [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0c の例外に従う。破損内容、hash、token 本体は response、`.access_log`、`.audit_log`、journal に出力しない。
 
 **API token 認証時の副作用境界：**
 
@@ -328,7 +328,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 | scope 不足 | `403` | `last_used_at` 更新なし | `permission_denied` を追記 | `permission_denied` を追記 | 対象 endpoint は実行しない。 |
 | 認証成功 | endpoint 固有 | `last_used_at` を現在時刻へ更新 | `token_auth` を追記 | `token_auth` を追記 | endpoint 実行前に更新する。 |
 
-[`docs/details/security.md`](security.md) §27.43 の固定表で `.api_tokens` 保存後に `.access_log` または `.audit_log` 追記へ失敗した場合、対象 API は `500` とし、endpoint 固有処理へ進まない。`last_used_at` 更新済み record は巻き戻さない。
+[`docs/details/security.md`](security.md) 詳細本文責務 §27.43 の固定表で `.api_tokens` 保存後に `.access_log` または `.audit_log` 追記へ失敗した場合、対象 API は `500` とし、endpoint 固有処理へ進まない。`last_used_at` 更新済み record は巻き戻さない。
 
 **処理順：**
 
@@ -480,7 +480,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | `action` filter | `action` 完全一致。 |
 | `result` filter | `success`、`failure`、`denied` の完全一致。 |
 | 壊れた行 | 無視する。API response に壊れた行の内容を含めない。 |
-| 返却上限 | `limit` は [`docs/details/api.md`](api.md) §22.0b の 1〜200。未指定時は 100。 |
+| 返却上限 | `limit` は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0b の 1〜200。未指定時は 100。 |
 
 `GET /api/audit-log` は監査ログ取得操作自体を `.audit_log` へ記録しない。通常の API request として `.api_access_log` には記録する。フィルタ値が未知 action、未知 result、200 文字超過 actor の場合は `422` とし、壊れた行の有無とは独立して判定する。
 
@@ -521,7 +521,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 
 | 項目 | 仕様 |
 |------|------|
-| 保存先 | `.server_config.session_timeout_seconds`。他 key と同時更新された場合も [`docs/details/statefile.md`](statefile.md) §22.0a の単一ファイル更新手順で保存する。 |
+| 保存先 | `.server_config.session_timeout_seconds`。他 key と同時更新された場合も [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a の単一ファイル更新手順で保存する。 |
 | 既定値 merge | `.server_config` に key がない場合、`GET /api/config` は `28800` を返す。ファイルへ暗黙保存しない。 |
 | login 時適用 | session token 発行直前に `.server_config` を読み、当該時点の値で `expires_at` を計算する。 |
 | TOTP login | TOTP 有効時は `POST /api/login/totp` の成功時点で値を読む。`POST /api/login` の password 成功時点では session を発行しない。 |
@@ -717,11 +717,11 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 | 条件 | group |
 |------|-------|
 | `POST /api/login`、`POST /api/login/totp` | `login` |
-| [`docs/details/security.md`](security.md) §27.42 の `trigger` 許可 endpoint | `trigger` |
-| [`docs/details/security.md`](security.md) §27.42 の `operate` 許可 endpoint | `operate` |
-| [`docs/details/security.md`](security.md) §27.42 の `config` 許可 endpoint | `config` |
-| [`docs/details/security.md`](security.md) §27.42 の `admin` 許可 endpoint | `admin` |
-| [`docs/details/security.md`](security.md) §27.42 の `read` 許可 endpoint | `read` |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の `trigger` 許可 endpoint | `trigger` |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の `operate` 許可 endpoint | `operate` |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の `config` 許可 endpoint | `config` |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の `admin` 許可 endpoint | `admin` |
+| [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の `read` 許可 endpoint | `read` |
 | `GET /api/health` | rate limit 対象外 |
 | 未知 path / method 不一致 | rate limit 判定前に `404` / `405` |
 
@@ -774,7 +774,7 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 | `.api_rate_state` 書き込み失敗 | `500`。対象 API は実行しない。 |
 | unknown group | `422`。 |
 | `enabled` 欠落 | `422`。 |
-| `.api_rate_state` 破損 | [`docs/details/statefile.md`](statefile.md) §22.0a に従って退避し、空 window で再生成する。 |
+| `.api_rate_state` 破損 | [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a に従って退避し、空 window で再生成する。 |
 | `.audit_log` 追記失敗 | `500`。`429` response は返さない。 |
 | lock 取得 10 秒超過 | `409`。対象 API は実行しない。 |
 
