@@ -1325,8 +1325,8 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 **CLI 出力固定契約：**
 
-| ケース | stdout | stderr | 終了コード | 副作用 |
-|--------|--------|--------|------------|--------|
+| Builder CLI ケース | stdout | stderr | 終了コード | 副作用 |
+|--------------------|--------|--------|------------|--------|
 | `--help` | `Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--version] [--help]` + LF | 空 | `0` | 入力読込、出力作成なし。 |
 | `--version` | `adlaire-ci-build v3 go={version}` + LF | 空 | `0` | 入力読込、出力作成なし。 |
 | 引数不正 | 空 | 固定エラー 1 行 + LF | `2` | 入力読込、出力作成なし。 |
@@ -1610,8 +1610,8 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 
 [`docs/details/builder.md`](builder.md) §8〜[`docs/details/builder.md`](builder.md) §8a の中核機能は、各節の本文と fixture に加えて [`docs/details/builder.md`](builder.md) §8〜§8a の中核機能別実装確認固定表を満たす。[`docs/details/builder.md`](builder.md) §8〜§8a の中核機能別実装確認固定表は builder owner の詳細実装確認表であり、runner、setup、api、sdk、ui、statefile、archive、commitstatus、security、将来機能、MCP、外部公開構成、上位方針は扱わない。runner の起動、設定、処理フロー、pipeline、deploy、snapshot、log、systemd、GitHub、setup、既知制限は [`docs/details/runner.md`](runner.md) §10〜§20、setup / release 手順は [`docs/details/setup.md`](setup.md) §26 を参照する。
 
-| 節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
-|----|------|------|------|---------------------------|--------------|--------------|
+| Builder 中核機能確認節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
+|------------------------|------|------|------|---------------------------|--------------|--------------|
 | [`docs/details/builder.md`](builder.md) §8 | builder CLI 実行 | CLI 引数、Markdown file / directory、theme、build meta。 | 静的 Web サイト、stdout 進捗、`[REPORT]`。 | 公開用 `--out` は tmp 完成後だけ置換する。 | 引数不正、UTF-8 不正、strict 警告、書込失敗時は既存出力を保持する。 | help/version、単一入力、directory 入力、strict、atomic output。 |
 | [`docs/details/builder.md`](builder.md) §8a | builder fixture | `testdata/builder/` 入力一式。 | expected HTML / CSS / JS / search index / stdout / stderr。 | fixture 実行時だけ一時出力を作成する。 | 異常系 fixture で `[REPORT]` を出さず既存出力を変えない。 | Fixture A〜H 全件。 |
 

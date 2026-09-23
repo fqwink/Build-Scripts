@@ -148,8 +148,8 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 **`--init-credentials` CLI 固定契約：**
 
-| ケース | stdout | stderr | 終了コード | 副作用 |
-|--------|--------|--------|------------|--------|
+| init-credentials CLI ケース | stdout | stderr | 終了コード | 副作用 |
+|----------------------------|--------|--------|------------|--------|
 | 新規生成成功 | `credentials initialized` + LF | 空 | `0` | `.admin_credentials` を mode `0600` で作成する。 |
 | 既存あり | 空 | `credentials already exist` + LF | `2` | 既存ファイルを変更しない。 |
 | `--state-dir` 相対 path | 空 | `state directory must be absolute: {path}` + LF | `2` | ファイル作成なし。 |
