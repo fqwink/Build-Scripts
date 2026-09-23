@@ -56,7 +56,7 @@
 | [`docs/details/setup.md`](details/setup.md) §26 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
 | `admin` | [`docs/details/admin.md`](details/admin.md) 詳細本文責務。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
 
-owner component 別の [`docs/details/*.md`](details/) 詳細本文の owner / collaborator 境界は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。
+owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の owner / collaborator 境界は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。
 
 ## 0a. 詳細仕様の記載基準
 
