@@ -47,14 +47,14 @@
 | 範囲 | 役割 |
 |------|------|
 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0〜§0j | 詳細仕様の記載基準、実装前確認項目、共通固定値、検証、詳細節対応表、リポジトリ内ソース配置 |
-| [`docs/details/builder.md`](details/builder.md) §1〜§9 | [`docs/details/builder.md`](details/builder.md)。`builder` / `adlaire-ci-build` の詳細仕様 |
-| [`docs/details/runner.md`](details/runner.md) §10〜§20 | [`docs/details/runner.md`](details/runner.md)。`runner` / `adlaire-ci-runner` の詳細仕様 |
-| [`docs/details/api.md`](details/api.md) §21〜§22 | [`docs/details/api.md`](details/api.md)。`api` / `adlaire-ci-api` の詳細仕様。[`docs/details/api.md`](details/api.md) §21a は管理 API サーバー制限を定義する。 |
-| [`docs/details/sdk.md`](details/sdk.md) §23 | [`docs/details/sdk.md`](details/sdk.md)。`sdk` の詳細仕様 |
-| [`docs/details/ui.md`](details/ui.md) §24 | [`docs/details/ui.md`](details/ui.md)。`ui` の詳細仕様 |
-| [`docs/details/api.md`](details/api.md) §25 | [`docs/details/api.md`](details/api.md)。認証の実装仕様 |
-| [`docs/details/setup.md`](details/setup.md) §26 | [`docs/details/setup.md`](details/setup.md)。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
-| `admin` | [`docs/details/admin.md`](details/admin.md)。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
+| [`docs/details/builder.md`](details/builder.md) §1〜§9 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務。`builder` / `adlaire-ci-build` の詳細仕様 |
+| [`docs/details/runner.md`](details/runner.md) §10〜§20 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務。`runner` / `adlaire-ci-runner` の詳細仕様 |
+| [`docs/details/api.md`](details/api.md) §21〜§22 | [`docs/details/api.md`](details/api.md) 詳細本文責務。`api` / `adlaire-ci-api` の詳細仕様。[`docs/details/api.md`](details/api.md) 詳細本文責務 §21a は管理 API サーバー制限を定義する。 |
+| [`docs/details/sdk.md`](details/sdk.md) §23 | [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務。`sdk` の詳細仕様 |
+| [`docs/details/ui.md`](details/ui.md) §24 | [`docs/details/ui.md`](details/ui.md) 詳細本文責務。`ui` の詳細仕様 |
+| [`docs/details/api.md`](details/api.md) §25 | [`docs/details/api.md`](details/api.md) 詳細本文責務。認証の実装仕様 |
+| [`docs/details/setup.md`](details/setup.md) §26 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務。バイナリ配布前提のセットアップ、アップデート、受け入れ条件 |
+| `admin` | [`docs/details/admin.md`](details/admin.md) 詳細本文責務。管理 UI 静的ファイルの配布物構成、配置、HTTP 静的配信境界 |
 
 owner component 別の [`docs/details/*.md`](details/) 詳細本文の owner / collaborator 境界は、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。
 
