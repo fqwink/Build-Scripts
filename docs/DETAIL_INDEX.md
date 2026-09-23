@@ -1,6 +1,6 @@
 # Adlaire CI — 詳細仕様入口
 
-[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、実装者が owner component 別詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達するための入口、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置だけを扱う。責務分離と重複禁止の方針は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を正本とする。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、実装者が owner component 別詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達するための入口、共通固定値、実装前確認項目、検証マトリクス、詳細節対応表、リポジトリ内ソース配置だけを扱う。責務分離と重複禁止の判断は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を参照する。
 
 方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態・計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、詳細本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture / expected / fake / 実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。
 
@@ -102,14 +102,14 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の own
 
 カテゴリ索引は、実装者が対象機能から読むべき owner component 別の詳細本文責務を特定するための検索入口である。カテゴリは owner component、状態分類、実装可否、ロードマップ状態を変更しない。これらの判定は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と §0b の owner component 参照表を正とする。
 
-| カテゴリ | 対象 component | 主な確認対象 | 読む詳細仕様 |
-|----------|----------------|--------------|--------------|
+| カテゴリ | 対象 component / 責務 | 主な確認対象 | 読む詳細仕様 |
+|----------|----------------------|--------------|--------------|
 | Build 系 | `builder` | Markdown 入力、静的 Web サイト出力、theme component、検索 index、変換 report。 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 |
 | CI / 運用系 | `runner`、`commitstatus`、`archive` | GitHub 監視、pipeline、deploy、snapshot、通知、Commit Status、archive / rollback / cleanup。 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/commitstatus.md`](details/commitstatus.md) 詳細本文責務、[`docs/details/archive.md`](details/archive.md) 詳細本文責務 |
 | 管理系 | `api`、`sdk`、`ui`、`admin` | 管理 API、JavaScript SDK、標準管理 UI、管理 UI 静的ファイル配布と配信境界。 | [`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務、[`docs/details/admin.md`](details/admin.md) 詳細本文責務 |
 | 状態 / 安全系 | `statefile`、`security` | 状態ファイル、lock、atomic write、schema、token、scope、audit、session、TOTP、rate limit。 | [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/security.md`](details/security.md) 詳細本文責務 |
-| 配布 / 検証系 | `setup`、`fixture` | バイナリ配布、systemd、セットアップ、アップデート、fixture、fake、実装検証証跡、acceptance checklist。 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 |
-| 将来計画 | `mcp` | MCP サーバー。現時点では実装可能な詳細仕様を持たない。 | 未定義。将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 を確認する。 |
+| 配布 / 検証系 | `setup`、fixture 証跡責務 | バイナリ配布、systemd、セットアップ、アップデート、fixture、fake、実装検証証跡、acceptance checklist。 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 |
+| 将来計画 | `mcp` | MCP サーバー。現時点では実装可能な詳細仕様を持たない。 | MCP 専用詳細仕様なし。将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 を確認する。 |
 
 カテゴリをまたぐ機能では、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b の owner component 参照表を優先して owner component を 1 件に確定する。
 
@@ -132,7 +132,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の own
 | `archive` | [`docs/details/archive.md`](details/archive.md) 詳細本文責務 §27.7、[`docs/details/archive.md`](details/archive.md) 詳細本文責務 §27.15 | build log archive、snapshot、download、delete、rollback、cleanup。 |
 | `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) 詳細本文責務 §27.1 | GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
 | `security` | [`docs/details/security.md`](details/security.md) 詳細本文責務 §27.42〜§27.47、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F security 詳細本文責務 §27.42〜§27.47 fixture 固定契約 | API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序、security fixture 証跡。 |
-| `mcp` | 未定義。将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 を確認する。 | 将来計画。現時点では実装可能な入出力、状態、起動手順、ツール定義、検証条件の本文を持たない。 |
+| `mcp` | MCP 専用詳細仕様なし。将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 を確認する。 | 将来計画。現時点では実装可能な入出力、状態、起動手順、ツール定義、検証条件の本文を持たない。 |
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b の詳細仕様参照表の `詳細仕様節` は参照入口であり、主本文の owner component を変更しない。複数ファイルを参照する行では、対象機能の owner component のファイルを主本文とし、他ファイルは collaborator の境界、schema、security、setup、受け入れ条件を確認するために読む。fixture assertion は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務で確認する。同じ HTTP body、状態 schema、DOM id、SDK method、fixture assertion の重複定義禁止は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を参照する。
 
@@ -275,7 +275,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 | `archive` | [`docs/details/archive.md`](details/archive.md) 詳細本文責務 §27.7、[`docs/details/archive.md`](details/archive.md) 詳細本文責務 §27.15 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F |
 | `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) 詳細本文責務 §27.1 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F |
 | `admin` | [`docs/details/admin.md`](details/admin.md) 詳細本文責務 §0、A1〜A6 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F |
-| `fixture` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §8a-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §15a-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §8a-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §15a-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F |
+| fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §8a-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §15a-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §8a-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §15a-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F |
 
 状態分類、実装可否、Phase 判定条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。確認済み扱いの可否と仕様変更判定条件は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f を参照する。
 
@@ -516,7 +516,7 @@ Adlaire CI の標準ディレクトリ構成 tree は [`docs/SPEC.md`](SPEC.md) 
 | `admin/index.html` | `ui` | 標準管理ツール UI を提供する。 |
 | `admin/adlaire-ci-sdk.js` | `sdk` | 管理 API 通信用 SDK を提供する。 |
 | `admin/` | `ui` / `sdk` | 標準管理 UI の静的ファイルを配置する。 |
-| `testdata/` | `fixture` | コンポーネント別 fixture を配置する。 |
+| `testdata/` | fixture 配置責務 | コンポーネント別 fixture を配置する。 |
 | `docs/examples/` | `-` | 利用例、設定例、サンプル構成を配置する。 |
 
 `main.go` は 1 ファイルとし、実装詳細を含めない。`components/` 配下は 1 コンポーネント = 1 Go ファイルとし、各ファイルは [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j の標準リポジトリ内ソース配置表に記載された責務を実装する。

@@ -1,6 +1,6 @@
 # Build-Scripts — 文書索引
 
-このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。仕様本文、方針本文、状態本文、詳細本文、デザイン本文を持たない。責務分離と重複禁止の方針は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a、正本所在は [正本参照先](#正本参照先) を正本とする。
+このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。仕様本文、方針本文、状態本文、詳細本文、デザイン本文を持たない。責務分離と重複禁止の判断は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を参照し、正本所在は [正本参照先](#正本参照先) に整理する。
 
 方針・ポリシー、状態・計画、詳細仕様、デザイン、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務は `docs/` 配下に集約する。ルールブック [`AGENTS.md`](../AGENTS.md) と入口文書 [`README.md`](../README.md) はリポジトリ root に置く。
 
@@ -82,7 +82,7 @@
 | [`docs/details/archive.md`](details/archive.md) 詳細本文責務 | `archive` owner component の詳細本文責務。 |
 | [`docs/details/commitstatus.md`](details/commitstatus.md) 詳細本文責務 | `commitstatus` owner component の詳細本文責務。 |
 | [`docs/details/security.md`](details/security.md) 詳細本文責務 | `security` owner component の詳細本文責務。 |
-| [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 | `fixture` owner component の fixture 証跡責務。 |
+| [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 | fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件の証跡責務。 |
 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン関係の正本。 |
 | [`AGENTS.md`](../AGENTS.md) | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | 文書・実装ファイルの役割と所在を示す。 |
@@ -91,8 +91,8 @@
 
 詳細仕様管理表は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の配置先だけを示す索引である。詳細仕様入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、追加仕様化機能参照と横断補足契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 を参照する。
 
-| ファイル | owner component |
-|----------|-----------------|
+| ファイル | owner component / 責務 |
+|----------|----------------------|
 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 | `builder` |
 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 | `runner` |
 | [`docs/details/api.md`](details/api.md) 詳細本文責務 | `api` |
@@ -104,7 +104,7 @@
 | [`docs/details/archive.md`](details/archive.md) 詳細本文責務 | `archive` |
 | [`docs/details/commitstatus.md`](details/commitstatus.md) 詳細本文責務 | `commitstatus` |
 | [`docs/details/security.md`](details/security.md) 詳細本文責務 | `security` |
-| [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 | `fixture` |
+| [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 | fixture 証跡責務 |
 
 ## 実装ファイル一覧
 

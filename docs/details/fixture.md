@@ -1,8 +1,8 @@
 # Adlaire CI — Fixture 詳細仕様
 
-`fixture` owner component の fixture 証跡責務は、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務を正本とする。
+fixture 証跡責務は、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務を正本とする。
 
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`fixture` owner component の主本文であり、collaborator component の仕様は fixture 入力、expected、effects、assertion、実装検証証跡、検証観点として参照する。
+component 境界管理の参照先は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 とする。[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は owner component 別詳細本文責務ではなく、fixture 入力、expected、effects、assertion、実装検証証跡、検証観点の証跡本文を持つ。
 
 ---
 
@@ -10,9 +10,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 | 項目 | 内容 |
 |------|------|
-| owner component | `fixture` |
-| collaborator component | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`security`、`setup` |
-| 持つ内容 | `fixture` owner が主本文として定義する fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、実装検証証跡テンプレート、acceptance checklist、差し戻し条件。 |
+| 証跡責務 | `fixture` |
+| 対象 component | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`security`、`setup` |
+| 持つ内容 | fixture 証跡責務が本文として定義する fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、実装検証証跡テンプレート、acceptance checklist、差し戻し条件。 |
 | 持たない内容 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
 
 ---
