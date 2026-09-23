@@ -322,15 +322,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 確認 dialog で cancel した場合は SDK method を呼ばず、success / error 表示を変更しない。
 
-**UI fixture 固定：**
-
-| fixture | 入力 | 合格条件 |
-|---------|------|----------|
-| login totp | `login()` が `totp_required:true` を返す | password 消去、TOTP field 表示、ticket は DOM に表示しない。 |
-| forced password | `must_change:"forced"` | password panel 以外が操作不可。変更成功後に通常初期取得を行う。 |
-| refresh failure | 変更 API 成功後の再取得 2 件目が失敗 | 変更成功は維持し、再取得失敗だけ panel error に表示する。 |
-| destructive cancel | 確認 dialog cancel | SDK method 呼び出し 0 回、表示差分なし。 |
-| secret clearing | token 発行、TOTP setup、PAT 更新、Webhook secret 保存 | 次 user action または遷移で秘密情報 field と一回表示が消える。 |
+UI 共通 fixture 名、入力、fake SDK、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の UI owner fixture 固定契約を正本とする。[`docs/details/ui.md`](ui.md) 詳細本文責務では、DOM 更新、破壊的操作確認、secret one-time 表示、SDK 呼び出し境界の実装契約だけを扱う。
 
 **Phase 3 UI 操作固定契約：**
 
@@ -360,19 +352,7 @@ Phase 3 UI の disabled 条件は以下に固定する。
 | `503` maintenance / circuit | build、force build、cancel 以外の状態変更操作。circuit reset は有効。 | maintenance disabled または circuit reset 成功後の再取得。 |
 | `401` | 全 authenticated 操作 | login 成功後。 |
 
-**Phase 3 UI fixture 固定：**
-
-| fixture | fake SDK 入力 | 合格条件 |
-|---------|---------------|----------|
-| ui phase3 initial status error | `getStatus()` が `AdlaireCIError(status=500,message="State file is corrupted")` | status panel error に固定 message を表示し、build button を成功扱いにしない。 |
-| ui phase3 manual build conflict | `triggerBuild()` が `409 Conflict` | error 表示、`getStatus()` と `getQueue()` をこの順で再取得、同じ build request を再送しない。 |
-| ui phase3 queue full | `triggerBuild()` が `429 queue_full` | build button を 10 秒 disabled、password や secret field は変更しない。 |
-| ui phase3 stream success | `streamBuild()` が log 2 件と end 1 件を返す | log 行 2 件を append、end 後に status、queue、logs を順に再取得、stream indicator を消す。 |
-| ui phase3 stream user close | ユーザーが `StreamHandle.close()` を押す | error 表示なし、closed 表示、status/queue 再取得あり。 |
-| ui phase3 history validation | `getHistory()` が `422 details` を返す | 該当 filter field に message を紐付け、history rows を前回表示のまま維持する。 |
-| ui phase3 log not found | `getHistoryLog(id)` が `404 Not found` | detail panel に not found を表示し、履歴一覧は再取得しない。 |
-| ui phase3 circuit reset | `resetCircuitBreaker()` 成功 | circuit 表示を閉じ、status/queue を再取得し、build を自動開始しない。 |
-| ui phase3 unauthorized | 任意操作が `401` | token/ticket/secret field を消去し、`panel-login` だけ表示する。 |
+Phase 3 UI fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の UI owner fixture 固定契約を正本とする。
 
 **Phase 4 UI 操作固定契約：**
 
@@ -398,20 +378,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 | TOTP secret / ticket / code | confirm 成功、confirm 失敗、panel 遷移、logout、`401`。 |
 | password / current_password / new_password | login / change 成功、login / change 失敗、logout、`401`。 |
 
-**Phase 4 UI fixture 固定：**
-
-| fixture | fake SDK 入力 | 合格条件 |
-|---------|---------------|----------|
-| ui phase4 config validation | `setConfig()` が `422 details` | 該当 field に error、panel error summary 1 行、入力値保持、`getConfig()` を呼ばない。 |
-| ui phase4 schedule save failure | `setScheduleInterval()` が `500` | panel error 表示後に `getSchedule()` を 1 回呼び、保存済み値を表示する。 |
-| ui phase4 secret save failure | `setWebhookConfig()` または `setSmtpConfig()` が `500` | secret field を消去し、secret 平文を error 表示しない。 |
-| ui phase4 notify test | `notifyTest()` 成功 | 結果表示後に `getNotifyLog()` を呼び、通知設定を自動保存しない。 |
-| ui p4 snapshot delete cancel | delete 確認 dialog cancel | SDK method 呼び出し 0 回、success / error 表示差分なし。 |
-| ui p4 rollback conflict | `rollbackHistory()` が `409 Build is running` | error 表示、`getStatus()` を呼ぶ、rollback request を再送しない。 |
-| ui p4 maintenance enabled | `getMaintenance()` が enabled | maintenance banner 表示、build / rollback / 設定変更系 disabled、disable maintenance は enabled。 |
-| ui p5 token issue once | `createToken()` 成功 | token 本体を一回表示し、`getTokens()` 後の一覧には token 本体を表示しない。 |
-| ui p5 duplicate rule | `addAlertRule()` が `409 Conflict` | 競合表示、rule list は前回表示を保持し、自動 retry しない。 |
-| ui p5 layout invalid | `setDashboardLayout()` が `422 details` | 該当 widget field error、dashboard 表示順を変更しない。 |
+Phase 4 UI fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の UI owner fixture 固定契約を正本とする。
 
 **UI 表示データ固定契約：**
 
@@ -455,20 +422,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 
 上位条件が残っている場合、下位条件の解除処理で button を有効化してはならない。複数 error が同時に発生した場合は、最上位の条件だけを global 表示し、下位の詳細は対象 panel error に残す。
 
-**UI 詳細 fixture 固定：**
-
-| fixture | fake SDK 入力 | 合格条件 |
-|---------|---------------|----------|
-| ui dashboard unknown widget | `getDashboardLayout()` が `["status","unknown","stats"]` を返す。 | `status`、`stats` だけ表示し、順序保持。`unknown` は panel error 1 行。layout 保存を自動実行しない。 |
-| ui compare two builds | history 2 件選択後、左右の `getHistoryLog()` が異なる stdout を返す。 | 左右ログを別 column で API 行順表示し、差分 class は DOM 一時表示だけ。状態保存 API を呼ばない。 |
-| ui compare missing build | 右側 `getHistoryLog()` が `404`。 | compare panel error、左側表示は維持、history 再取得なし、選択値は保持。 |
-| ui approvals expired | `getApprovals()` が `status:"expired"` を含む。 | approve / reject button disabled、期限切れ表示、UI が pending へ戻さない。 |
-| ui approval approve conflict | `approveBuild(id)` が `409`。 | error 表示後に `getApprovals()` を 1 回呼び、同じ approve を再送しない。 |
-| ui notes preserve content | notes に前後空白と連続改行を含めて保存。 | `setNotes(content)` へ入力値そのまま送信し、trim しない。 |
-| ui hook command args | 3 行の command args を入力し、中央行が空。 | 空行を除いた配列を `addHook()` に渡し、shell 文字列を作らない。 |
-| ui pipeline reserved arg | `setPipelineConfig()` が `422 details`。 | field error を表示し、入力値を保持し、`getPipelineConfig()` を呼ばない。 |
-| ui token issued clear | `createToken()` が token 本体を返す。 | `issued-token-once` に 1 回表示し、次 user action で消去。`getTokens()` の一覧に token 本体を表示しない。 |
-| ui disabled priority | maintenance enabled 中に `429` が発生し 10 秒経過。 | maintenance が継続する限り build / rollback / 設定変更系は disabled のまま。 |
+UI 詳細 fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の UI owner fixture 固定契約を正本とする。
 
 **§27.21〜§27.47 UI 連動実装確認固定契約：**
 

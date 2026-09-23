@@ -816,6 +816,24 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 | `runner-state-corrupt-boundary` | `runner`、`statefile` | 破損 `.build_state`、`.build_status.json`、`.build_history`、対象 [`docs/details/runner.md`](runner.md) 詳細本文責務 §27 状態。 | `expected/response.json` または runner exit code、`expected/effects.json`。 | [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a の退避 / 再生成 / 停止条件に従い、破損内容を response / log / expected に出さない。 |
 | `runner-state-secret-mask` | `runner`、`statefile` | PAT、branch env secret、hook output secret、remote credential、notification secret。 | `expected/security.json`、`expected/logs/`、`expected/effects.json`。 | secret 平文、prefix、suffix、長さ、hash が stdout / stderr / state / log / fixture expected に残らない。 |
 
+**statefile owner fixture 固定契約：**
+
+[`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a〜§22.0s の fixture は、状態ファイルの schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation を固定する。各 fixture は `manifest.json.owner_component` を `statefile`、`manifest.json.section` を対象 [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0s、`expected/effects.json` に file list、mtime、mode、content、write order、forbidden writes を記録する。
+
+| fixture | 初期状態 | 操作 | 合格条件 |
+|---------|----------|------|----------|
+| `state-read-missing` | target 不在 | 対応する read adapter 呼び出し | [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a の不在時戻り値を返し、filesystem 差分なし。 |
+| `state-corrupt-object` | JSON parse 不能または未知 key あり | read adapter 呼び出し | `ErrStateCorrupted`。target 差分なし。API の公開応答は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0c.1 を参照する。 |
+| `state-corrupt-regenerates` | [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a で再生成指定済み file が破損 | write caller または再生成を伴う操作 | corrupt backup が 1 件作成され、初期値だけが保存される。 |
+| `state-lock-timeout` | `{name}.lock` が 10 秒以上残る | write caller 呼び出し | conflict failure、target/tmp 差分なし。 |
+| `state-chmod-failure` | chmod を fake failure | write caller 呼び出し | 成功扱いにせず、target 更新有無が atomic write 表の失敗時動作と一致する。 |
+| `state-fsync-failure` | file sync または parent sync を fake failure | write caller 呼び出し | write failure、ERROR log、secret 非表示。 |
+| `json-lines-partial-corrupt` | 有効行と破損行が混在 | list caller 呼び出し | 有効行だけ返し、server log に line number、呼び出し元の公開値に破損詳細なし。 |
+| `read-no-mutation` | 破損なし state 一式 | 全 read-only caller 呼び出し | state dir の file list、mtime、mode、content が変化しない。 |
+| `multi-write-partial-failure` | 2 file 目の write を fake failure | 複数ファイル更新 caller 呼び出し | 1 file 目は保持、2 file 目以降は未変更、`.config_log` に失敗記録。 |
+
+statefile owner fixture が不足する場合、`statefile` は詳細実装確認を満たした扱いにしてはならない。不足時は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F の不足時共通扱いに従う。
+
 **API / SDK / UI 連動 fixture 固定契約：**
 
 [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.21〜§27.38 / [`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 のうち API、SDK、UI が連動する実装変更は、対象機能の owner fixture に加えて [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の固定表の連動 fixture を必要数作成する。fixture は owner component の主本文を置き換えず、API response、SDK method、UI 表示の接続点を固定する。
@@ -834,6 +852,49 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 `expected/ui_trace.json` は、少なくとも `actions`、`sdk_calls`、`refresh_order`、`disabled_transitions`、`cleared_fields` を持つ。`sdk_calls` は SDK method 名と引数だけを記録し、API endpoint URL、Authorization header、secret 平文を保存してはならない。
 
 `expected/ui_dom.json` は、panel id、error / success text、field error、hidden state、disabled state、one-time 表示領域の有無を構造化して固定する。DOM snapshot 文字列だけで合否判定してはならない。
+
+**UI owner fixture 固定契約：**
+
+[`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の UI fixture は、SDK method 呼び出し、DOM 表示、disabled / loading / error、secret field 消去、再取得順、one-time 表示、no speculative state を固定する。各 fixture は `manifest.json.owner_component` を `ui`、`manifest.json.section` を [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 または対象 §27.x、`expected/ui_trace.json` と `expected/ui_dom.json` を必須にする。API response、SDK error、fake SDK 入力は `input/fakes.json` または `expected/sdk_trace.json` で固定し、[`docs/details/ui.md`](ui.md) 詳細本文責務では再定義しない。
+
+| fixture | 入力 / fake SDK 入力 | 合格条件 |
+|---------|----------------------|----------|
+| `ui-login-totp` | `login()` が `totp_required:true` を返す。 | password 消去、TOTP field 表示、ticket は DOM に表示しない。 |
+| `ui-forced-password` | `must_change:"forced"`。 | password panel 以外が操作不可。変更成功後に通常初期取得を行う。 |
+| `ui-refresh-failure` | 変更 API 成功後の再取得 2 件目が失敗。 | 変更成功は維持し、再取得失敗だけ panel error に表示する。 |
+| `ui-destructive-cancel` | 確認 dialog cancel。 | SDK method 呼び出し 0 回、表示差分なし。 |
+| `ui-secret-clearing` | token 発行、TOTP setup、PAT 更新、Webhook secret 保存。 | 次 user action または遷移で秘密情報 field と一回表示が消える。 |
+| `ui-phase3-initial-status-error` | `getStatus()` が `AdlaireCIError(status=500,message="State file is corrupted")` を返す。 | status panel error に固定 message を表示し、build button を成功扱いにしない。 |
+| `ui-phase3-manual-build-conflict` | `triggerBuild()` が `409 Conflict` を返す。 | error 表示、`getStatus()` と `getQueue()` をこの順で再取得、同じ build request を再送しない。 |
+| `ui-phase3-queue-full` | `triggerBuild()` が `429 queue_full` を返す。 | build button を 10 秒 disabled、password や secret field は変更しない。 |
+| `ui-phase3-stream-success` | `streamBuild()` が log 2 件と end 1 件を返す。 | log 行 2 件を append、end 後に status、queue、logs を順に再取得、stream indicator を消す。 |
+| `ui-phase3-stream-user-close` | ユーザーが `StreamHandle.close()` を押す。 | error 表示なし、closed 表示、status/queue 再取得あり。 |
+| `ui-phase3-history-validation` | `getHistory()` が `422 details` を返す。 | 該当 filter field に message を紐付け、history rows を前回表示のまま維持する。 |
+| `ui-phase3-log-not-found` | `getHistoryLog(id)` が `404 Not found` を返す。 | detail panel に not found を表示し、履歴一覧は再取得しない。 |
+| `ui-phase3-circuit-reset` | `resetCircuitBreaker()` 成功。 | circuit 表示を閉じ、status/queue を再取得し、build を自動開始しない。 |
+| `ui-phase3-unauthorized` | 任意操作が `401` を返す。 | token/ticket/secret field を消去し、`panel-login` だけ表示する。 |
+| `ui-phase4-config-validation` | `setConfig()` が `422 details` を返す。 | 該当 field に error、panel error summary 1 行、入力値保持、`getConfig()` を呼ばない。 |
+| `ui-phase4-schedule-save-failure` | `setScheduleInterval()` が `500` を返す。 | panel error 表示後に `getSchedule()` を 1 回呼び、保存済み値を表示する。 |
+| `ui-phase4-secret-save-failure` | `setWebhookConfig()` または `setSmtpConfig()` が `500` を返す。 | secret field を消去し、secret 平文を error 表示しない。 |
+| `ui-phase4-notify-test` | `notifyTest()` 成功。 | 結果表示後に `getNotifyLog()` を呼び、通知設定を自動保存しない。 |
+| `ui-p4-snapshot-delete-cancel` | delete 確認 dialog cancel。 | SDK method 呼び出し 0 回、success / error 表示差分なし。 |
+| `ui-p4-rollback-conflict` | `rollbackHistory()` が `409 Build is running` を返す。 | error 表示、`getStatus()` を呼ぶ、rollback request を再送しない。 |
+| `ui-p4-maintenance-enabled` | `getMaintenance()` が enabled を返す。 | maintenance banner 表示、build / rollback / 設定変更系 disabled、disable maintenance は enabled。 |
+| `ui-p5-token-issue-once` | `createToken()` 成功。 | token 本体を一回表示し、`getTokens()` 後の一覧には token 本体を表示しない。 |
+| `ui-p5-duplicate-rule` | `addAlertRule()` が `409 Conflict` を返す。 | 競合表示、rule list は前回表示を保持し、自動 retry しない。 |
+| `ui-p5-layout-invalid` | `setDashboardLayout()` が `422 details` を返す。 | 該当 widget field error、dashboard 表示順を変更しない。 |
+| `ui-dashboard-unknown-widget` | `getDashboardLayout()` が `["status","unknown","stats"]` を返す。 | `status`、`stats` だけ表示し、順序保持。`unknown` は panel error 1 行。layout 保存を自動実行しない。 |
+| `ui-compare-two-builds` | history 2 件選択後、左右の `getHistoryLog()` が異なる stdout を返す。 | 左右ログを別 column で API 行順表示し、差分 class は DOM 一時表示だけ。状態保存 API を呼ばない。 |
+| `ui-compare-missing-build` | 右側 `getHistoryLog()` が `404` を返す。 | compare panel error、左側表示は維持、history 再取得なし、選択値は保持。 |
+| `ui-approvals-expired` | `getApprovals()` が `status:"expired"` を含む。 | approve / reject button disabled、期限切れ表示、UI が pending へ戻さない。 |
+| `ui-approval-approve-conflict` | `approveBuild(id)` が `409` を返す。 | error 表示後に `getApprovals()` を 1 回呼び、同じ approve を再送しない。 |
+| `ui-notes-preserve-content` | notes に前後空白と連続改行を含めて保存。 | `setNotes(content)` へ入力値そのまま送信し、trim しない。 |
+| `ui-hook-command-args` | 3 行の command args を入力し、中央行が空。 | 空行を除いた配列を `addHook()` に渡し、shell 文字列を作らない。 |
+| `ui-pipeline-reserved-arg` | `setPipelineConfig()` が `422 details` を返す。 | field error を表示し、入力値を保持し、`getPipelineConfig()` を呼ばない。 |
+| `ui-token-issued-clear` | `createToken()` が token 本体を返す。 | `issued-token-once` に 1 回表示し、次 user action で消去。`getTokens()` の一覧に token 本体を表示しない。 |
+| `ui-disabled-priority` | maintenance enabled 中に `429` が発生し 10 秒経過。 | maintenance が継続する限り build / rollback / 設定変更系は disabled のまま。 |
+
+UI owner fixture が不足する場合、UI 実装変更は詳細実装確認を満たした扱いにしてはならない。不足時は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F の不足時共通扱いに従う。
 
 **fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約：**
 

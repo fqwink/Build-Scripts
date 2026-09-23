@@ -853,18 +853,4 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | corrupt handling | [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a に再生成指定がある file だけ backup → 初期値再生成を許可する。 | 破損判定結果と対象 path。 | backup 失敗時は再生成しない。再生成指定がない file は変更しない。 |
 | secret path | secret を含む file は `0600`、通常 state は `0644`、directory は `0755` に固定する。 | secret file 判定。 | chmod 失敗を成功扱いにせず、secret 内容を log / 呼び出し元の公開値 / fixture expected に出さない。 |
 
-**状態ファイル fixture 合格ゲート：**
-
-| fixture | 初期状態 | 操作 | 合格条件 |
-|---------|----------|------|----------|
-| state read missing | target 不在 | 対応する read adapter 呼び出し | [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a の不在時戻り値を返し、filesystem 差分なし。 |
-| state corrupt object | JSON parse 不能または未知 key あり | read adapter 呼び出し | `ErrStateCorrupted`。target 差分なし。API の公開応答は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0c.1 を参照する。 |
-| state corrupt regenerates | [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a で再生成指定済み file が破損 | write caller または再生成を伴う操作 | corrupt backup が 1 件作成され、初期値だけが保存される。 |
-| state lock timeout | `{name}.lock` が 10 秒以上残る | write caller 呼び出し | conflict failure、target/tmp 差分なし。 |
-| state chmod failure | chmod を fake failure | write caller 呼び出し | 成功扱いにせず、target 更新有無が atomic write 表の失敗時動作と一致する。 |
-| state fsync failure | file sync または parent sync を fake failure | write caller 呼び出し | write failure、ERROR log、secret 非表示。 |
-| json lines partial corrupt | 有効行と破損行が混在 | list caller 呼び出し | 有効行だけ返し、server log に line number、呼び出し元の公開値に破損詳細なし。 |
-| read no mutation | 破損なし state 一式 | 全 read-only caller 呼び出し | state dir の file list、mtime、mode、content が変化しない。 |
-| multi write partial failure | 2 file 目の write を fake failure | 複数ファイル更新 caller 呼び出し | 1 file 目は保持、2 file 目以降は未変更、`.config_log` に失敗記録。 |
-
-`statefile` は [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0s の固定表の fixture expected が用意され、成功系、validation failure、corrupt read、lock timeout、chmod failure、fsync failure、read no mutation の差分が確認できるまで詳細実装確認を満たした扱いにしてはならない。
+状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。

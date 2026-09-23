@@ -640,7 +640,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | SDK / UI 連携 | API を管理画面から操作する機能は、SDK method は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23、DOM / 表示条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 を参照して確認する。 |
 | statefile | 状態 schema、lock、atomic write、JSON Lines、破損時処理、保存順は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を参照する。 |
 | archive | snapshot、artifact、download、delete、rollback、log archive は [`docs/details/archive.md`](details/archive.md) 詳細本文責務を参照する。 |
-| fixture | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38 に関わる fixture 証跡、secret mask、effects、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F を参照する。 |
+| fixture | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38、[`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 §22.0s、[`docs/details/security.md`](details/security.md) 詳細本文責務 §27.42〜§27.47 に関わる fixture 証跡、secret mask、effects、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F を参照する。 |
 
 **api / sdk / ui / statefile 横断連動契約：**
 
