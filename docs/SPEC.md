@@ -9,7 +9,7 @@
 
 ---
 
-> **Adlaire CI** とは、最初から Go を前提として仕様策定するビルド・CI・管理システムの総称である。仕様対象コンポーネントは `components/builder.go`、`components/runner.go`、`components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js` とする。`components/mcp.go` は将来計画コンポーネントであり、実装対象コンポーネントとして扱わない。各 component の状態分類、実装可否、将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) の状態・計画責務を正本とする。
+> **Adlaire CI** とは、最初から Go を前提として仕様策定するビルド・CI・管理システムの総称である。仕様対象コンポーネントは `components/builder.go`、`components/runner.go`、`components/api.go`、`admin/index.html`、`admin/adlaire-ci-sdk.js` とする。`components/mcp.go` は将来計画コンポーネントであり、実装対象コンポーネントとして扱わない。各 component の状態分類、実装可否、将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) の状態・計画責務を参照する。
 
 ## 文書責務
 
@@ -43,7 +43,7 @@
 
 状態責務は [`docs/ROADMAP.md`](ROADMAP.md) を正本とする。
 
-[`docs/SPEC.md`](SPEC.md) では、状態分類、Phase 実装単位、実装着手可否の方針とポリシーだけを定義する。個別 component の現在状態、Phase 一覧、将来計画一覧、昇格手順は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
+[`docs/SPEC.md`](SPEC.md) では、状態分類、Phase 実装単位、実装着手可否の方針とポリシーだけを定義する。個別 component の現在状態、Phase 一覧、将来計画一覧、昇格手順は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 ---
 
@@ -257,7 +257,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 `main.go` は 1 ファイルとし、起動入口、実行ファイル名判定、引数受け取り、対象 owner component 呼び出しだけを担当する。`main.go` に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、MCP 処理の実装詳細を書いてはならない。
 
-`components/` は、1 実装対象コンポーネント = 1 Go ファイルとする。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、状態分類は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。`admin` は Go コンポーネントではなく `admin/` 配下の静的配布物として扱う。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の状態、実装可否、追加条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
+`components/` は、1 実装対象コンポーネント = 1 Go ファイルとする。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、状態分類は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は Go コンポーネントではなく `admin/` 配下の静的配布物として扱う。`statefile`、`archive`、`commitstatus` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の状態、実装可否、追加条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
@@ -299,11 +299,11 @@ Adlaire CI の実装順序、実装計画、実装 PR、完了判定は Phase �
 
 Phase 実装単位方針は、Phase を実装単位とする方針を定める。Phase 単位で行わなければならない事項、優先度ラベルを実装単位として使ってはならない事項、Phase 途中追加の禁止事項は、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f の Phase 実装単位ポリシーを正本とする。
 
-Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件が明確な実装単位である。Phase の一覧、順序、依存条件、完了条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4 を正本とする。
+Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件が明確な実装単位である。Phase の一覧、順序、依存条件、完了条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §4 を参照する。
 
-`P0`、`P1`、`P2〜P5` などの優先度ラベル、抽象段階、API 内部分類、fixture 分類を、実装単位、PR 単位、完了判定単位として扱ってはならない。
+優先度ラベル、抽象段階、API 内部分類、fixture 分類を実装単位、PR 単位、完了判定単位として扱わない禁止事項は、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を正本とする。
 
-個別 Phase の対象範囲、順序、依存条件、完了条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。[`docs/SPEC.md`](SPEC.md) は、Phase 単位でのみ実装する方針と、優先度ラベルを実装単位として扱わないポリシーだけを定義する。
+個別 Phase の対象範囲、順序、依存条件、完了条件は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。[`docs/SPEC.md`](SPEC.md) は、Phase 単位でのみ実装する方針と、優先度ラベルを実装単位として扱わないポリシーだけを定義する。
 
 将来計画、改訂予定、未仕様化の機能は Phase に含めない。対象機能を Phase に含める場合は、先に詳細仕様、検証条件、受け入れ条件を整え、`仕様化済み・未実装` へ昇格させる。
 
@@ -400,7 +400,7 @@ Adlaire CI は GitHub Actions の workflow、hosted runner、Marketplace action�
 
 Adlaire CI の状態確認・操作を行う管理インターフェース。ヘッドレスアーキテクチャにより、フロントエンドとバックエンドを明確に分離する。
 
-[`docs/SPEC.md`](SPEC.md) 方針責務 §6 以降の管理ツール・管理 API・SDK に関する記載は、状態分類を固定しない機能方針である。対象ファイルの存在、状態分類、実装可否、検証結果は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
+[`docs/SPEC.md`](SPEC.md) 方針責務 §6 以降の管理ツール・管理 API・SDK に関する記載は、状態分類を固定しない機能方針である。対象ファイルの存在、状態分類、実装可否、検証結果は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 ### 6.2 ヘッドレスアーキテクチャ方針
 
@@ -427,17 +427,11 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 - **SDK 経由**：バックエンドとの通信はすべて SDK を介する
 - **カスタマイズ基盤**：標準管理ツールをベースとしたカスタマイズを前提とした設計とする。上書き・差し替えが容易な構造を仕様条件として固定する
 
-## 7. 機能インベントリ参照
+## 7. 機能インベントリ・ロードマップ参照
 
-機能インベントリ責務は [`docs/ROADMAP.md`](ROADMAP.md) を正本とする。
+機能インベントリ、状態分類、Phase 一覧、将来計画一覧、昇格手順の本文は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
-[`docs/SPEC.md`](SPEC.md) では、機能をどの方針とポリシーで扱うかだけを定義する。機能一覧本文は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
-
-## 8. ロードマップ参照
-
-ロードマップ責務は [`docs/ROADMAP.md`](ROADMAP.md) を正本とする。
-
-[`docs/SPEC.md`](SPEC.md) では、状態分類、Phase 実装単位、昇格時の方針とポリシーだけを定義する。ロードマップ本文は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
+[`docs/SPEC.md`](SPEC.md) では、機能をどの方針とポリシーで扱うか、Phase 単位でのみ実装する理由、昇格時に満たすべき方針とポリシーだけを定義する。
 
 ---
 
@@ -458,7 +452,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 方針とポリシーは [`docs/SPEC.md`](SPEC.md) だけに記載しなければならない。ただし、生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) だけに記載しなければならない。[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md)、実装ファイル、fixture、PR 本文へ方針またはポリシーを本文として記載してはならない。
 
-詳細仕様は実装詳細だけを記載しなければならない。ロードマップは状態、実装可否、Phase、将来計画だけを記載しなければならない。索引は文書と実装ファイルの所在だけを記載しなければならない。README は利用入口だけを記載しなければならない。
+各責務文書は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a で定義した責務範囲を義務として守らなければならない。詳細仕様は実装詳細、ロードマップは状態・実装可否・Phase・将来計画、索引は文書と実装ファイルの所在、README は利用入口だけを本文として記載する。
 
 他責務の内容を説明する必要がある場合は、本文を再定義せず、責務を持つ正本と節番号を参照する。参照先に必要な内容が存在しない場合は、参照元へ補足を書かず、責務を持つ正本側を先に改訂しなければならない。責務を持つ正本側で確定できない内容は未確定として扱い、仕様化済みとして扱ってはならない。
 

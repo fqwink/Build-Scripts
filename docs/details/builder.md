@@ -2,7 +2,7 @@
 
 `builder` owner component の詳細本文責務は、[`docs/details/builder.md`](builder.md) を正本とする。
 
-詳細本文境界管理条件は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
 
 ---
 
@@ -1013,8 +1013,7 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 
 ### 7.1 テーマ切り替え（廃止）
 
-ADS 採用により、ダークモードおよびテーマトグルボタンは廃止。
-出力サイトはライトモード固定（`prefers-color-scheme` 非対応）。
+生成 HTML のデザイン関係は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とする。出力サイトはライトモード固定とし、ダークモード、テーマトグルボタン、`prefers-color-scheme` 対応を実装しない。
 
 ### 7.2 サイドバー開閉
 
@@ -1646,6 +1645,8 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 
 owner component は `builder` とする。collaborator component は `runner`、`api`、`statefile` とする。
 
+[`docs/details/builder.md`](builder.md) §27.4 では、HTML meta、REPORT、build log へ保存する値と escape 条件だけを定義する。API response は [`docs/details/api.md`](api.md) §22.0e、fixture 証跡は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。
+
 `adlaire-ci-build` は `--build-id`、`--commit-sha`、`--build-at` を受け取り、全 HTML ページの `<head>` に次の meta を必ず出力する。
 
 ```html
@@ -1656,7 +1657,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 値が空文字の場合も meta tag は出力し、`content=""` とする。HTML escape は attribute escape とし、`"`、`&`、`<`、`>` を escape する。runner が pipeline を起動する場合は、同じ値を CLI 引数または環境変数 `ADLAIRE_BUILD_ID`、`ADLAIRE_COMMIT_SHA`、`ADLAIRE_BUILD_AT` のいずれかで渡す。CLI 引数を使える場合は CLI 引数を優先する。
 
-`[REPORT]` には `build_id`、`commit_sha`、`build_at` を追加する。`.build_logs/{id}.json.build_meta` は HTML meta と同じ値を保存する。`GET /api/output-meta` の response は [`docs/details/api.md`](api.md) §22.0e を参照する。
+`[REPORT]` には `build_id`、`commit_sha`、`build_at` を追加する。`.build_logs/{id}.json.build_meta` は HTML meta と同じ値を保存する。
 
 **build meta 入力固定契約：**
 
@@ -1665,7 +1666,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 | `build_id` | 空文字または `^[A-Za-z0-9_-]{1,64}$`。不正値は builder 終了コード `2`。 |
 | `commit_sha` | 空文字、7〜40 文字 lowercase hex。その他は終了コード `2`。 |
 | `build_at` | 空文字または UTC ISO 8601 秒精度。timezone offset、ミリ秒は終了コード `2`。 |
-| HTML / REPORT / build log | builder が出力・保存する 3 箇所の値は byte 単位で一致させる。空文字は `""` として保持する。API response との対応は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
+| HTML / REPORT / build log | builder が出力・保存する 3 箇所の値は byte 単位で一致させる。空文字は `""` として保持する。 |
 | escape | HTML meta attribute は `esc()` ではなく attribute escape を使う。 |
 
 検証条件:
@@ -1675,9 +1676,9 @@ owner component は `builder` とする。collaborator component は `runner`、
 | 値あり | 全 HTML に 3 meta が同値で出力される。 |
 | 値なし | 3 meta が `content=""` で出力される。 |
 | 複数ページ | index と全ページで同じ build meta。 |
-| output-meta | HTML meta、REPORT、build log の build meta 値が一致する。API response との照合は [`docs/details/api.md`](api.md) §22.0e と [`docs/details/fixture.md`](fixture.md) §27-F を参照する。 |
+| output-meta | HTML meta、REPORT、build log の build meta 値が一致する。 |
 | 不正 sha | 終了コード `2`、出力差分なし。 |
-| 空値 | HTML / REPORT / build log がすべて空文字で一致する。API response の空値表現は [`docs/details/api.md`](api.md) §22.0e を参照する。 |
+| 空値 | HTML / REPORT / build log がすべて空文字で一致する。 |
 
 ### 27.25 ビルドキャッシュ
 
@@ -2660,7 +2661,7 @@ meta key は以下に固定する。
 
 **[`docs/details/builder.md`](builder.md) §28.12 ライトモード固定詳細契約：**
 
-生成 HTML は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務に従い、ライトモード固定とする。可変 color scheme は仕様対象外であり、dark / auto 表示、theme toggle、color scheme 永続化は追加しない。
+生成 HTML は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務に従い、ライトモード固定とする。[`docs/details/builder.md`](builder.md) §7.1 の廃止方針に従い、可変 color scheme を追加しない。
 
 可変 color scheme の禁止識別子は以下に固定する。以下の識別子は CLI、環境変数、設定ファイル、HTML、CSS、JavaScript、localStorage、REPORT のいずれにも有効機能として定義してはならない。
 

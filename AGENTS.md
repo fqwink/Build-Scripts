@@ -230,7 +230,7 @@ Build-Scripts の標準 GitHub リポジトリ設定は以下とする。
 - secret scanning: `enabled`
 - secret scanning push protection: `enabled`
 - Dependabot security updates: `disabled`
-- main branch protection: 設定対象（この節の初期標準を適用）
+- main branch protection: 設定対象（GitHub 設定の初期適用方針を適用）
 
 GitHub 設定の初期適用方針は以下とする。
 
