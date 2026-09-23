@@ -70,18 +70,18 @@
 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針・ポリシー正本。 |
 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 状態・計画正本。 |
 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様参照入口、共通固定値、対応表、リポジトリ内ソース配置を示す。 |
-| [`docs/details/builder.md`](details/builder.md) | `builder` owner component の詳細本文責務。 |
-| [`docs/details/runner.md`](details/runner.md) | `runner` owner component の詳細本文責務。 |
-| [`docs/details/api.md`](details/api.md) | `api` owner component の詳細本文責務。 |
-| [`docs/details/admin.md`](details/admin.md) | `admin` owner component の詳細本文責務。 |
-| [`docs/details/sdk.md`](details/sdk.md) | `sdk` owner component の詳細本文責務。 |
-| [`docs/details/ui.md`](details/ui.md) | `ui` owner component の詳細本文責務。 |
-| [`docs/details/setup.md`](details/setup.md) | `setup` owner component の詳細本文責務。 |
-| [`docs/details/statefile.md`](details/statefile.md) | `statefile` owner component の詳細本文責務。 |
-| [`docs/details/archive.md`](details/archive.md) | `archive` owner component の詳細本文責務。 |
-| [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` owner component の詳細本文責務。 |
-| [`docs/details/security.md`](details/security.md) | `security` owner component の詳細本文責務。 |
-| [`docs/details/fixture.md`](details/fixture.md) | `fixture` owner component の詳細本文責務。 |
+| [`docs/details/builder.md`](details/builder.md) 詳細本文責務 | `builder` owner component の詳細本文責務。 |
+| [`docs/details/runner.md`](details/runner.md) 詳細本文責務 | `runner` owner component の詳細本文責務。 |
+| [`docs/details/api.md`](details/api.md) 詳細本文責務 | `api` owner component の詳細本文責務。 |
+| [`docs/details/admin.md`](details/admin.md) 詳細本文責務 | `admin` owner component の詳細本文責務。 |
+| [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 | `sdk` owner component の詳細本文責務。 |
+| [`docs/details/ui.md`](details/ui.md) 詳細本文責務 | `ui` owner component の詳細本文責務。 |
+| [`docs/details/setup.md`](details/setup.md) 詳細本文責務 | `setup` owner component の詳細本文責務。 |
+| [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 | `statefile` owner component の詳細本文責務。 |
+| [`docs/details/archive.md`](details/archive.md) 詳細本文責務 | `archive` owner component の詳細本文責務。 |
+| [`docs/details/commitstatus.md`](details/commitstatus.md) 詳細本文責務 | `commitstatus` owner component の詳細本文責務。 |
+| [`docs/details/security.md`](details/security.md) 詳細本文責務 | `security` owner component の詳細本文責務。 |
+| [`docs/details/fixture.md`](details/fixture.md) 詳細本文責務 | `fixture` owner component の詳細本文責務。 |
 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン関係の正本。 |
 | [`AGENTS.md`](../AGENTS.md) | エージェント作業ルールブック。承認、仕様書管理、実装管理、Git 運用、文書整合の最上位ルール。 |
 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | 文書・実装ファイルの役割と所在を示す。 |
