@@ -67,8 +67,8 @@ var DefaultBuildConfig = BuildConfig{
 | `--build-id <id>` | 任意 | 空文字 | 出力 HTML の `<head>` に `adlaire-build-id` として埋め込む。空文字の場合も空 content の meta を出力する。 |
 | `--commit-sha <sha>` | 任意 | 空文字 | 出力 HTML の `<head>` に `adlaire-commit-sha` として埋め込む。空文字の場合も空 content の meta を出力する。 |
 | `--build-at <iso8601>` | 任意 | 空文字 | 出力 HTML の `<head>` に `adlaire-build-at` として埋め込む。値がある場合は UTC ISO 8601 のみ許可する。 |
-| `--version` | 任意 | なし | バイナリ名、バージョン識別子、Go build 情報を 1 行で標準出力へ表示して終了する。 |
-| `--help` | 任意 | なし | 引数一覧を標準出力へ表示して終了する。 |
+| `--version` | 任意 | なし | [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0d の CLI 共通固定契約に従う。stdout の固定値は [固定出力](#固定出力) を参照する。 |
+| `--help` | 任意 | なし | [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0d の CLI 共通固定契約に従う。stdout の固定値は [固定出力](#固定出力) を参照する。 |
 
 **CLI 引数の異常系：**
 
@@ -88,17 +88,16 @@ var DefaultBuildConfig = BuildConfig{
 | `--out` が既存ファイル | `1` | stderr に `output path is not directory: <path>` |
 | `--out` 書き込み失敗 | `1` | stderr に `cannot write output: <path>` |
 
-`--help` と `--version` は他の引数より優先し、成功時は終了コード `0` とする。
+`--help` と `--version` の優先順位、成功時終了コード、stdout / stderr 行末、parse 形式、短縮 option 禁止は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0d の CLI 共通固定契約を正本とする。
 
 **CLI パース固定仕様：**
 
-- 引数は `flag` package 互換の `--name value` と `--name=value` の両方を許可する。
-- 短縮オプション（例：`-s`、`-o`）は禁止する。指定された場合は未知の引数として扱う。
+- builder CLI の parse 形式と短縮 option 禁止は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0d の CLI 共通固定契約に従う。
 - 同一引数が複数回指定された場合は最後の値を採用する。ただし `--strict` は 1 回以上指定されれば `true` とする。
 - `--src`、`--out`、`--base-dir` の相対パスは `os.Getwd()` の戻り値を基準に `filepath.Abs()` で絶対パスへ変換する。
 - `--base-dir` が空ではない場合、存在するディレクトリでなければならない。存在しない場合は終了コード `2`、stderr に `base directory not found: <path>` を出力する。
 - `--base-dir` がファイルの場合は終了コード `2`、stderr に `base path is not directory: <path>` を出力する。
-- stderr のエラー行は末尾に改行 1 つを付ける。複数エラーをまとめて出力せず、最初に検出したエラー 1 件で終了する。
+- builder 固有の path 解決、重複 option、`--strict` の扱いは本節を正本とする。
 
 **固定出力：**
 
@@ -107,7 +106,7 @@ var DefaultBuildConfig = BuildConfig{
 | `--help` | `Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--version] [--help]` |
 | `--version` | `adlaire-ci-build v3 go=<runtime.Version()>` |
 
-`--help` と `--version` の stdout は 1 行固定とし、末尾に改行 1 つを付ける。`--help` または `--version` を指定した場合、`--src` の存在確認、`--theme` 検証、出力ディレクトリ作成は行わない。
+`--help` と `--version` の stdout は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0d の CLI 共通固定契約に従い 1 行固定とする。`--help` または `--version` を指定した場合、`--src` の存在確認、`--theme` 検証、出力ディレクトリ作成は行わない。
 
 **CLI 値正規化・path 安全契約：**
 

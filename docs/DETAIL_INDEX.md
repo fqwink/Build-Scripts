@@ -248,6 +248,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 | ロック | 状態ファイル lock の作成、待機、解除、競合時応答は [`docs/details/statefile.md`](details/statefile.md) §22.0a を参照する。 |
 | ログ秘密情報 | PAT、Webhook Secret、SMTP password、session token、API token は stdout、stderr、JSON log、API response、UI 表示へ平文出力しない。表示が必要な場合は `"***"` とする。 |
 | 終了コード | CLI / runner は `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` ロック競合を標準とする。個別節に明記がある場合もこの意味から外してはならない。 |
+| CLI 共通固定契約 | Go CLI component は `--help` と `--version` を共通 option として持つ。どちらも他の引数より優先し、成功時は終了コード `0` とする。`--help` は引数一覧、`--version` はバイナリ名、バージョン識別子、Go build 情報を 1 行で stdout へ出力する。stdout と stderr の行末は LF 1 つとし、stderr は最初に検出したエラー 1 件だけを出力する。引数 parse は `flag` package 互換の `--name value` と `--name=value` を許可し、短縮 option は禁止する。 |
 | 仕様外追加の扱い | 仕様にない環境変数、状態ファイル、HTTP endpoint、CLI option、外部依存の扱いは [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §4 を参照する。必要な場合は該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務または詳細仕様入口責務の対応表を確認する。 |
 
 ---

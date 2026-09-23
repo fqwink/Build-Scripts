@@ -262,18 +262,18 @@ type DeployTarget struct {
 | `--state-dir <path>` | 任意 | `/opt/adlaire-builder` | 状態ファイル、repo、dist、admin の基準ディレクトリ。相対パスは禁止。 |
 | `--once` | 任意 | `true` | 1 回だけ実行して終了する。Go 版 runner は oneshot 固定のため、指定してもしなくても同じ挙動とする。 |
 | `--dry-run` | 任意 | `false` | 設定、状態、GitHub target、SHA 差分、起動可否だけを検証し、ビルド、deploy、通知、状態ファイル更新を行わず終了する。 |
-| `--version` | 任意 | なし | バイナリ名、バージョン識別子、Go build 情報を 1 行で標準出力へ表示して終了する。 |
-| `--help` | 任意 | なし | 引数一覧を標準出力へ表示して終了する。 |
+| `--version` | 任意 | なし | [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0d の CLI 共通固定契約に従う。 |
+| `--help` | 任意 | なし | [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0d の CLI 共通固定契約に従う。 |
 
 未知引数、値欠落、相対 `--state-dir` は終了コード `2` とし、ビルド処理を開始しない。
 
 **runner CLI パース固定仕様：**
 
-- 引数は `flag` package 互換の `--name value` と `--name=value` の両方を許可する。
-- 短縮オプション（例：`-s`、`-o`）は禁止する。指定された場合は未知の引数として扱う。
+- runner CLI の parse 形式と短縮 option 禁止は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0d の CLI 共通固定契約に従う。
 - 同一引数が複数回指定された場合は最後の値を採用する。ただし `--once` は指定有無にかかわらず `true` として扱う。`--dry-run` は 1 回以上指定されれば `true` とする。
 - `--help` と `--version` は他の引数より優先し、`.github_token` 読み込み、lock 作成、状態ファイル読み込み、GitHub API 呼び出しを行わない。
-- stderr のエラー行は末尾に改行 1 つを付ける。複数エラーをまとめて出力せず、最初に検出したエラー 1 件で終了する。
+- stdout / stderr 行末と単一エラー出力は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0d の CLI 共通固定契約に従う。
+- runner 固有の重複 option、`--once`、`--dry-run` の扱いは本節を正本とする。
 
 **runner 設定正規化契約：**
 
