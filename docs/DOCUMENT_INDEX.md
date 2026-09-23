@@ -92,18 +92,18 @@
 
 | ファイル | owner component |
 |----------|-----------------|
-| [`docs/details/builder.md`](details/builder.md) | `builder` |
-| [`docs/details/runner.md`](details/runner.md) | `runner` |
-| [`docs/details/api.md`](details/api.md) | `api` |
-| [`docs/details/admin.md`](details/admin.md) | `admin` |
-| [`docs/details/sdk.md`](details/sdk.md) | `sdk` |
-| [`docs/details/ui.md`](details/ui.md) | `ui` |
-| [`docs/details/setup.md`](details/setup.md) | `setup` |
-| [`docs/details/statefile.md`](details/statefile.md) | `statefile` |
-| [`docs/details/archive.md`](details/archive.md) | `archive` |
-| [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` |
-| [`docs/details/security.md`](details/security.md) | `security` |
-| [`docs/details/fixture.md`](details/fixture.md) | `fixture` |
+| [`docs/details/builder.md`](details/builder.md) 詳細本文責務 | `builder` |
+| [`docs/details/runner.md`](details/runner.md) 詳細本文責務 | `runner` |
+| [`docs/details/api.md`](details/api.md) 詳細本文責務 | `api` |
+| [`docs/details/admin.md`](details/admin.md) 詳細本文責務 | `admin` |
+| [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 | `sdk` |
+| [`docs/details/ui.md`](details/ui.md) 詳細本文責務 | `ui` |
+| [`docs/details/setup.md`](details/setup.md) 詳細本文責務 | `setup` |
+| [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 | `statefile` |
+| [`docs/details/archive.md`](details/archive.md) 詳細本文責務 | `archive` |
+| [`docs/details/commitstatus.md`](details/commitstatus.md) 詳細本文責務 | `commitstatus` |
+| [`docs/details/security.md`](details/security.md) 詳細本文責務 | `security` |
+| [`docs/details/fixture.md`](details/fixture.md) 詳細本文責務 | `fixture` |
 
 ## 実装ファイル一覧
 
