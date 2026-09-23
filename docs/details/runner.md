@@ -1717,14 +1717,15 @@ runner が journal へ出力する内容は [`docs/details/runner.md`](runner.md
 
 ---
 
-## 17. GitHub 側設定
+## 17. GitHub 連携前提
 
 | 項目 | 内容 |
 |------|------|
 | PAT スコープ | `contents: read`（読み取り専用）のみ |
 | PAT の種類 | Fine-grained PAT（特定リポジトリのみ許可）を使用する。 |
 | Webhook 設定（ポーリング方式） | **不要**（デフォルト。`BRANCH_TARGETS` によるポーリングのみ使用する場合） |
-| Webhook 設定（受信方式） | GitHub リポジトリ設定 → Webhooks → Add webhook で `POST /api/webhook` の URL・Secret を設定する。イベントは `push` のみ選択する。**外部公開エンドポイントが必要**（リバースプロキシ経由） |
+| Webhook 受信方式の前提 | `POST /api/webhook` endpoint と Webhook Secret が必要。endpoint、署名検証、request / response は [`docs/details/api.md`](api.md) §22.0e と [`docs/details/api.md`](api.md) §22-W を参照する。 |
+| 外部公開境界 | GitHub から webhook を受信する場合の外部公開、TLS 終端、リバースプロキシ構成は runner 詳細本文責務では定義しない。 |
 
 ---
 
