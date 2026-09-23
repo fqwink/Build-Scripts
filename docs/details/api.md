@@ -1293,20 +1293,13 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 **`GET /api/branch-config` レスポンス例：**
 
+`branches[]` の各 object は [`docs/details/statefile.md`](statefile.md) §22.0c `.branch_config` schema の `branch_targets[]` と同じ key を返す。`deploy_targets[]` の具体構造と固定サンプル値は [`docs/details/statefile.md`](statefile.md) §22.0c を正本とし、api 詳細本文責務では response wrapper と `source` の値だけを固定する。
+
 ```json
 {
   "source": "file",
   "branches": [
-    {
-      "branch": "main",
-      "target_file": "docs",
-      "sha_file": "/opt/adlaire-builder/.last_sha",
-      "src": "/opt/adlaire-builder/repo/docs",
-      "out": "/opt/adlaire-builder/dist/site",
-      "deploy_targets": [
-        { "host": "192.0.2.1", "user": "deploy", "dest_dir": "/var/www/html/" }
-      ]
-    }
+    "<branch_targets object from docs/details/statefile.md §22.0c>"
   ]
 }
 ```
