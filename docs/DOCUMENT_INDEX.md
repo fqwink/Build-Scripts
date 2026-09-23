@@ -18,7 +18,8 @@
 | 方針・ポリシー | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | 方針・ポリシー正本。 |
 | 状態・計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 状態・計画正本。 |
 | 詳細仕様入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様入口。 |
-| 詳細仕様本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | owner component 別詳細本文。 |
+| 詳細仕様本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | owner component 別詳細本文。[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を含めない。 |
+| fixture 証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 | fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件。 |
 | デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成静的 Web サイトのデザイン正本。 |
 | 実装所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の [実装ファイル一覧](#実装ファイル一覧) | 実装ファイル、テスト、fixture の所在。 |
 
@@ -30,9 +31,9 @@
 | リポジトリ全体の文書構造を把握したい | [`AGENTS.md`](../AGENTS.md) と [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | 各文書の責務範囲と所在の確認先。 |
 | 方針、ポリシー、禁止事項を確認したい | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | - | 方針・ポリシー・禁止事項は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務だけを正本とする。 |
 | 状態分類、実装可否、Phase、将来計画を確認したい | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 状態・計画正本への入口。 |
-| 詳細仕様本文を探したい | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 対象機能の owner component、参照節、受け入れ条件の確認先。 |
+| 詳細仕様本文を探したい | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 対象機能の owner component、参照節、受け入れ条件の確認先。fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を確認する。 |
 | 実装ファイル、テスト、fixture の所在を確認したい | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j | 現行実装ファイル、将来追加予定 path、標準配置の確認先。 |
-| component の入出力、状態、処理順序、異常系、検証条件を確認したい | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | owner component を確定してから、実装時に従う具体仕様と collaborator 境界を確認する。 |
+| component の入出力、状態、処理順序、異常系、検証条件を確認したい | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | owner component を確定してから、実装時に従う具体仕様と collaborator 境界を確認する。fixture、expected、fake は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を確認する。 |
 | 生成静的 Web サイトの見た目を確認したい | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | - | 生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務だけを正本とする。 |
 
 ## リポジトリ文書索引
@@ -43,7 +44,7 @@
 |----------|------------|--------------|
 | 参照順序 | [参照順序](#参照順序) | 作業開始から詳細仕様本文までの確認先。 |
 | 文書一覧 | [文書一覧](#文書一覧) | 各文書の役割と所在。 |
-| 詳細仕様管理 | [詳細仕様管理](#詳細仕様管理) | owner component 別詳細本文責務の配置。 |
+| 詳細仕様管理 | [詳細仕様管理](#詳細仕様管理) | owner component 別詳細本文責務と fixture 証跡責務の配置。 |
 | 実装ファイル一覧 | [実装ファイル一覧](#実装ファイル一覧) | 実装ファイル、テスト、fixture の所在。 |
 | 正本参照先 | [正本参照先](#正本参照先) | 対象ごとの正本参照先。 |
 
@@ -58,7 +59,7 @@
 | 5 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | 状態・計画正本を確認する。 |
 | 6 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 詳細仕様参照入口、共通固定値、対応表、ソース配置を確認する。 |
 | 7 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | 生成 HTML のデザイン関係を確認する。 |
-| 8 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。 |
+| 8 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 対象 owner component の入出力、状態、処理順序、異常系、検証条件を確認する。fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を確認する。 |
 
 文書一覧表は参照先索引である。作業開始前の最上位確認は [`AGENTS.md`](../AGENTS.md) と [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務の両方を先に読むことを必須とする。
 
@@ -88,7 +89,7 @@
 
 ## 詳細仕様管理
 
-詳細仕様管理表は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の配置先だけを示す索引である。詳細仕様入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、追加仕様化機能参照と横断補足契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 を参照する。
+詳細仕様管理表は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の配置先だけを示す索引である。詳細仕様入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、追加仕様化機能参照と横断補足契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 を参照する。
 
 | ファイル | owner component |
 |----------|-----------------|
@@ -147,7 +148,8 @@
 | 方針・ポリシー | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 |
 | 状態・計画 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 |
 | 詳細仕様入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 |
-| 詳細本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 |
+| 詳細本文 | owner component 別の [`docs/details/*.md`](details/) 詳細本文責務。ただし [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を含めない。 |
+| fixture 証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 |
 | デザイン | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 |
 | 文書・実装ファイル所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 |
 

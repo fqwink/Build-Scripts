@@ -35,7 +35,7 @@
 
 [`docs/SPEC.md`](SPEC.md) の `技術方針` 表と `ディレクトリ構成` tree は、Adlaire CI の方針責務本文である。削除、他文書への移動、参照だけへの置き換えを禁止する。これらは実装詳細、状態一覧、索引本文として扱わない。
 
-[`docs/SPEC.md`](SPEC.md) は、関数単位の処理、HTTP response schema、状態ファイル schema、SDK method、UI DOM、fixture assertion、具体的な実行手順を定義しない。これらの本文は、責務ベース明示的原則、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に従って、責務を持つ正本へ分離する。
+[`docs/SPEC.md`](SPEC.md) は、関数単位の処理、HTTP response schema、状態ファイル schema、SDK method、UI DOM、fixture assertion、具体的な実行手順を定義しない。これらの本文は、責務ベース明示的原則、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に従って、責務を持つ正本へ分離する。
 
 文書を整理する場合も、[`docs/SPEC.md`](SPEC.md) の正本範囲を越えてはならない。詳細仕様本文、状態分類、ロードマップ状態、文書所在は、責務を持つ正本を参照する。
 
@@ -55,14 +55,15 @@
 | ポリシー責務 | [`docs/SPEC.md`](SPEC.md) | **しなければならない／してはならない** | 遵守義務のある規則、制約、禁止事項、セキュリティ要件、運用ルール、バージョン管理規則。 |
 | 状態・計画責務 | [`docs/ROADMAP.md`](ROADMAP.md) | **いつ・どれを** | 状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順。 |
 | 詳細仕様入口責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | **どこから読むか** | 詳細仕様参照入口、共通固定値、詳細節対応表、リポジトリ内ソース配置。 |
-| owner component 別詳細本文責務 | [`docs/details/*.md`](details/) | **どのように実装するか** | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
+| owner component 別詳細本文責務 | [`docs/details/*.md`](details/)。ただし [`docs/details/fixture.md`](details/fixture.md) を除く。 | **どのように実装するか** | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
+| fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) | **何で検証するか** | fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件。 |
 | デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | **どう見せるか** | 生成 HTML のデザイン関係。 |
 | 文書・実装ファイル所在の索引責務 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | **どこにあるか** | 文書、実装ファイル、生成物、将来追加予定 path の所在。 |
 | 利用入口責務 | [`README.md`](../README.md) | **どう始めるか** | 利用者向け入口、概要、参照先。 |
 
 新しい記載内容は「この内容はどの責務の問いに答えるか」を基準に、責務を持つ正本を決定する。
 
-判断対象が方針またはポリシーである場合、責務を持つ正本は必ず [`docs/SPEC.md`](SPEC.md) とする。ただし、判断対象が生成 HTML のデザイン関係である場合、責務を持つ正本は [`docs/DESIGN.md`](DESIGN.md) とする。判断対象が実装詳細、状態分類、文書所在、利用入口、検証証跡のいずれかである場合だけ、該当責務の正本を参照する。
+判断対象が方針またはポリシーである場合、責務を持つ正本は必ず [`docs/SPEC.md`](SPEC.md) とする。ただし、判断対象が生成 HTML のデザイン関係である場合、責務を持つ正本は [`docs/DESIGN.md`](DESIGN.md) とする。判断対象が実装詳細、状態分類、文書所在、利用入口、fixture 証跡のいずれかである場合だけ、該当責務の正本を参照する。
 
 実装者は、実装前に以下の参照順序方針に従う。
 
@@ -175,7 +176,7 @@ Adlaire CI は、`core`、`adlaire-ci-core`、`internal/core`、`common`、`base
 
 Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の最上位方針として採用する。
 
-[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a の責務ベース明示的原則は [`docs/SPEC.md`](SPEC.md) 全体に適用する。[`docs/SPEC.md`](SPEC.md) 内の各記載は、方針責務、ポリシー責務、状態・計画責務の参照、詳細仕様入口責務の参照、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の参照、文書・実装ファイル所在の索引責務の参照、利用入口責務の参照のいずれかとして読めなければならない。
+[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a の責務ベース明示的原則は [`docs/SPEC.md`](SPEC.md) 全体に適用する。[`docs/SPEC.md`](SPEC.md) 内の各記載は、方針責務、ポリシー責務、状態・計画責務の参照、詳細仕様入口責務の参照、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の参照、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の参照、文書・実装ファイル所在の索引責務の参照、利用入口責務の参照のいずれかとして読めなければならない。
 
 責務ベース明示的原則とは、方針、ポリシー、状態分類、実装可否、Phase、将来計画、詳細仕様本文、fixture、expected、fake、検証証跡、文書索引を、それぞれ異なる責務として明示的に分離し、同一判断対象を複数文書で正本化しない原則である。
 
@@ -183,7 +184,7 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 参照はリンク化を必須とする。文書間参照、節参照、表参照、責務正本参照、実装ファイル参照、fixture 参照を書く場合は、Markdown link を用いて参照先へ移動できる形にする。単なるファイル名、裸の節番号、裸の見出し名、または `参照` という文字だけで参照先を示した扱いにしてはならない。
 
-リンク化する参照は、表示文言に責務名、ファイル名、節番号、または対象名を含める。例として、状態・計画責務を参照する場合は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様入口責務を参照する場合は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別詳細本文責務を参照する場合は [`docs/details/*.md`](details/)、文書・実装ファイル所在の索引責務を参照する場合は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、利用入口責務を参照する場合は [`README.md`](../README.md) のように記載する。リンク化できない生成物、PR 本文、外部ツール出力で参照を記録する場合でも、参照先ファイル名と節番号を省略してはならない。
+リンク化する参照は、表示文言に責務名、ファイル名、節番号、または対象名を含める。例として、状態・計画責務を参照する場合は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様入口責務を参照する場合は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別詳細本文責務を参照する場合は [`docs/details/*.md`](details/) 詳細本文責務、fixture 証跡責務を参照する場合は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、文書・実装ファイル所在の索引責務を参照する場合は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、利用入口責務を参照する場合は [`README.md`](../README.md) のように記載する。リンク化できない生成物、PR 本文、外部ツール出力で参照を記録する場合でも、参照先ファイル名と節番号を省略してはならない。
 
 方針とポリシーは [`docs/SPEC.md`](SPEC.md) だけに記載する。ただし、生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) だけに記載する。詳細仕様、ロードマップ、索引、README、実装ファイル、fixture、PR 本文は、方針またはポリシーを本文として定義、補足、緩和、例外化、再解釈してはならない。
 
@@ -200,6 +201,8 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 owner component は対象機能の詳細本文を持つ。collaborator component は、境界、接続、入力受け渡し、出力受け渡し、検証観点として参照される。collaborator component は、owner component の本文を置き換えたり、同じ判断対象を別正本として再定義したりしてはならない。
 
 fixture、expected、fake、検証証跡、完了判定は検証責務として扱い、[`docs/details/fixture.md`](details/fixture.md) を正本とする。状態分類、実装可否、Phase、将来計画は状態責務として扱い、[`docs/ROADMAP.md`](ROADMAP.md) を正本とする。詳細仕様参照入口、対応表、共通固定値、リポジトリ内ソース配置は詳細仕様入口責務として扱い、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) を正本とする。生成 HTML のデザイン関係はデザイン責務として扱い、[`docs/DESIGN.md`](DESIGN.md) を正本とする。文書配置と実装ファイル所在は、文書・実装ファイル所在の索引責務として扱い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
+
+[`docs/details/*.md`](details/) を総称として参照する場合でも、[`docs/details/fixture.md`](details/fixture.md) を owner component 別詳細本文責務に含めて読んではならない。fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件は、常に [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務として扱う。
 
 [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a の責務ベース明示的原則は、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の記載整理より上位の方針である。これらの文書を整理する場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a に従い、重複本文を増やさず、責務と参照先を明示する。
 
