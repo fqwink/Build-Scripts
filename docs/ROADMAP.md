@@ -2,7 +2,7 @@
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、Adlaire CI の状態分類、実装可否、Phase、機能インベントリ、将来計画、昇格手順、追加仕様化機能参照、横断補足契約を管理するロードマップ正本である。
 
-責務外の本文は再掲しない。方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、デザインは [`docs/DESIGN.md`](DESIGN.md) デザイン責務、詳細仕様入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、詳細本文は [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+責務外の本文は再掲しない。方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、デザインは [`docs/DESIGN.md`](DESIGN.md) デザイン責務、詳細仕様入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、詳細本文は [`docs/details/*.md`](details/) 詳細本文責務、fixture / expected / fake / 実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。
 
 実装詳細、schema、SDK / UI / fixture の本文は状態・計画責務に置かない。
 
@@ -56,7 +56,7 @@ Go 版初期実装の対象範囲と Phase 単位の扱いは [`docs/SPEC.md`](S
 
 実装単位、実装変更単位、判定単位に関する禁止事項は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。API の実装範囲は、Phase 3 を「API 基盤・認証・状態 read/write・運用基本操作」、Phase 4 を「API 拡張運用操作」として管理する。
 
-各 Phase の `対象` は、その Phase の owner component を示す。状態ファイル、security、archive、commitstatus、admin、fixture、setup が関わる場合も、それらは collaborator component として該当 Phase の判定条件に含める。collaborator component の詳細本文責務に未充足がある場合の扱いは [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
+各 Phase の `対象` は、その Phase の owner component を示す。状態ファイル、security、archive、commitstatus、admin、setup が関わる場合も、それらは collaborator component として該当 Phase の判定条件に含める。fixture / expected / fake / 実装検証証跡は collaborator component ではなく [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務として判定条件に含める。collaborator component の詳細本文責務に未充足がある場合の扱いは [`docs/SPEC.md`](SPEC.md) 方針責務 §4.7 と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
 
 | Phase | 対象 | 実装範囲 | 依存条件 | 判定条件 |
 |-------|------|----------|----------|----------|
@@ -86,7 +86,7 @@ Phase 2 完全仕様ゲートでは、Phase 2 が Phase 1 の `adlaire-ci-build`
 | 確認 | 参照先 |
 |------|--------|
 | CI runner、GitHub API 連携、SHA cache、pipeline、deploy、snapshot、通知、systemd | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §10〜§20、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §15a |
-| runner fixture、fake GitHub、fake ssh / notifier、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F |
+| runner fixture 証跡、fake GitHub、fake ssh / notifier、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F |
 | Phase 2 release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 |
 
 ### 4.1.3 Phase 3 完全仕様ゲート（`api`）
@@ -330,7 +330,7 @@ Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化
 
 MCP サーバー領域の行は、現時点ではすべて将来構想例であり、実装契約、API 契約、状態ファイル契約、起動手順、検証条件を本文として持たない。`components/mcp.go`、MCP tools、MCP resources、MCP prompts、HTTP SSE transport、MCP audit / stats / config CRUD は、MCP 専用詳細仕様を新設し、`改訂予定` を経て `仕様化済み・未実装` へ昇格するまで実装してはならない。
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 の統合ロードマップ表の `概要` は、状態・計画責務としての状態要約である。関数、処理順序、endpoint、状態 schema、fixture、UI DOM、SDK method の本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。実装済み行は、実装済み状態と検証済み証跡の要約だけを示す。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 の統合ロードマップ表の `概要` は、状態・計画責務としての状態要約である。関数、処理順序、endpoint、状態 schema、UI DOM、SDK method の本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture、expected、fake、実装検証証跡の本文は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。実装済み行は、実装済み状態と検証済み証跡の要約だけを示す。
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 の統合ロードマップ表の `確認先 / 次アクション` は、状態に応じた確認先または次作業だけを示す。実装済み行では検証済み証跡の要約を示し、fixture の入力、expected、fake、assertion 本文は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。未実装行では実装前に読む責務文書だけを示す。
 
@@ -540,7 +540,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 ### 6.2 追加仕様化機能 参照索引
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能参照索引は、追加仕様化機能の owner、主本文、collaborator を一覧化するインデックスである。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、fixture schema、横断処理順は、同索引の「主本文」に記載された owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、同索引に記載された主本文、owner component、collaborator component を置き換えない。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能参照索引は、追加仕様化機能の owner、主本文、collaborator を一覧化するインデックスである。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、横断処理順は、同索引の「主本文」に記載された owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。fixture schema、expected、fake、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、同索引に記載された主本文、owner component、collaborator component を置き換えない。
 
 | 節 | 機能 | owner | 主本文 | collaborator |
 |----|------|-------|--------|--------------|
@@ -630,7 +630,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 横断補足契約の責務範囲は、横断確認、同期禁止、横断処理順、成功後再取得、失敗時固定、実装確認時の横断受け入れ観点に限定する。個別機能本文は各 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
-横断補足契約と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI、fixture は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を基準とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを横断補足契約で確認する。横断補足契約にだけ存在する endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+横断補足契約と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務または [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の内容が矛盾する場合は、個別機能の入出力、状態、処理、異常系、endpoint、SDK、UI は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を基準とし、横断処理順、API / SDK / UI / statefile 同期、成功後再取得、失敗時固定だけを横断補足契約で確認する。横断補足契約にだけ存在する endpoint、SDK method、UI 操作、状態ファイル、設定 key、fixture の扱いは、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。
 
 | 確認 | 固定内容 |
 |------|----------|
@@ -640,7 +640,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | SDK / UI 連携 | API を管理画面から操作する機能は、SDK method は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23、DOM / 表示条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 を参照して確認する。 |
 | statefile | 状態 schema、lock、atomic write、JSON Lines、破損時処理、保存順は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を参照する。 |
 | archive | snapshot、artifact、download、delete、rollback、log archive は [`docs/details/archive.md`](details/archive.md) 詳細本文責務を参照する。 |
-| fixture | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38 の受け入れ fixture、secret mask、effects、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F を参照する。 |
+| fixture | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38 の fixture 証跡、secret mask、effects、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F を参照する。 |
 
 **api / sdk / ui / statefile 横断連動契約：**
 

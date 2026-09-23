@@ -2,9 +2,9 @@
 
 `runner` owner component の詳細本文責務は、[`docs/details/runner.md`](runner.md) 詳細本文責務を正本とする。
 
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、fixture、検証観点として参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
-[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、[`docs/details/runner.md`](runner.md) 詳細本文責務の個別節を参照し、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、受け入れ fixture の同期確認として [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を確認する。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は [`docs/details/runner.md`](runner.md) 詳細本文責務の個別節を上書きせず、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 の内容を [`docs/details/runner.md`](runner.md) 詳細本文責務へ重複定義してはならない。
+[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は runner / builder / api / sdk / ui にまたがる横断補足契約である。runner 拡張機能を実装する場合は、[`docs/details/runner.md`](runner.md) 詳細本文責務の個別節を参照し、横断する処理順、状態ファイル保存責務、api / sdk / ui 連動条件、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務との同期確認として [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 を確認する。[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 は [`docs/details/runner.md`](runner.md) 詳細本文責務の個別節を上書きせず、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §6.3 の内容を [`docs/details/runner.md`](runner.md) 詳細本文責務へ重複定義してはならない。
 
 ---
 
@@ -14,7 +14,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 |------|------|
 | owner component | `runner` |
 | collaborator component | `builder`、`statefile`、`commitstatus`、`api`、`archive` |
-| 持つ内容 | `runner` owner が主本文として定義する GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner fixture、runner owner 追加機能。 |
+| 持つ内容 | `runner` owner が主本文として定義する GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner 検証条件、runner owner 追加機能。 |
 | 持たない内容 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture 証跡責務。 |
 
 ---
@@ -1281,13 +1281,13 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 
 ---
 
-## 15a. `runner` 受け入れ fixture
+## 15a. `runner` 受け入れ検証条件
 
-`runner` の初期実装は、[`docs/details/runner.md`](runner.md) 詳細本文責務 §15a の fixture をすべて満たすまで完了として扱わない。`testdata/runner/` は runner fixture の配置予定 path であり、現時点で未作成の場合は現行実体として扱わない。fixture ファイルは runner fixture を追加する実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
+`runner` の初期実装は、[`docs/details/runner.md`](runner.md) 詳細本文責務 §15a の検証条件と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の fixture をすべて満たすまで完了として扱わない。`testdata/runner/` は runner fixture の配置予定 path であり、現時点で未作成の場合は現行実体として扱わない。fixture ファイルは [`docs/details/fixture.md`](fixture.md) fixture 証跡責務に従う実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
 
 ### 15a.0 fixture 共通期待結果
 
-以下は runner fixture の共通期待結果である。個別 fixture は、対象条件と固有の状態差分だけを本文に書き、共通期待結果は本節を参照する。
+以下は runner 検証条件の共通期待結果である。個別 fixture の fixture 名、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を正本とし、本節は runner owner の検証観点だけを示す。
 
 | 共通期待結果 | 固定内容 |
 |--------------|----------|

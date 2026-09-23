@@ -2,7 +2,7 @@
 
 `builder` owner component の詳細本文責務は、[`docs/details/builder.md`](builder.md) 詳細本文責務を正本とする。
 
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---
 
@@ -12,7 +12,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 |------|------|
 | owner component | `builder` |
 | collaborator component | `runner`、`api`、`statefile` |
-| 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder fixture、builder owner 追加機能。 |
+| 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder 検証条件、builder owner 追加機能。 |
 | 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture 証跡責務。 |
 
 ---
@@ -1410,9 +1410,9 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 ---
 
-## 8a. `builder` 受け入れ fixture
+## 8a. `builder` 受け入れ検証条件
 
-`builder` の初期実装は、[`docs/details/builder.md`](builder.md) 詳細本文責務 §8a の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装変更で `testdata/builder/` 配下へ追加する。仕様変更では fixture の期待値を [`docs/details/builder.md`](builder.md) 詳細本文責務 §8a で固定する。
+`builder` の初期実装は、[`docs/details/builder.md`](builder.md) 詳細本文責務 §8a の検証条件と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装変更で `testdata/builder/` 配下へ追加する。仕様変更では fixture の期待値を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務で固定する。
 
 ### Fixture A: 単一 Markdown 入力
 
@@ -1613,7 +1613,7 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 | Builder 中核機能確認節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |------------------------|------|------|------|---------------------------|--------------|--------------|
 | [`docs/details/builder.md`](builder.md) 詳細本文責務 §8 | builder CLI 実行 | CLI 引数、Markdown file / directory、theme、build meta。 | 静的 Web サイト、stdout 進捗、`[REPORT]`。 | 公開用 `--out` は tmp 完成後だけ置換する。 | 引数不正、UTF-8 不正、strict 警告、書込失敗時は既存出力を保持する。 | help/version、単一入力、directory 入力、strict、atomic output。 |
-| [`docs/details/builder.md`](builder.md) 詳細本文責務 §8a | builder fixture | `testdata/builder/` 入力一式。 | expected HTML / CSS / JS / search index / stdout / stderr。 | fixture 実行時だけ一時出力を作成する。 | 異常系 fixture で `[REPORT]` を出さず既存出力を変えない。 | Fixture A〜H 全件。 |
+| [`docs/details/builder.md`](builder.md) 詳細本文責務 §8a | builder 検証条件 | `testdata/builder/` 入力一式。 | expected HTML / CSS / JS / search index / stdout / stderr は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務で固定する。 | fixture 実行時だけ一時出力を作成する。 | 異常系 fixture で `[REPORT]` を出さず既存出力を変えない。 | Fixture A〜H 全件。 |
 
 **[`docs/details/builder.md`](builder.md) 詳細本文責務 §8〜[`docs/details/builder.md`](builder.md) 詳細本文責務 §8a builder 中核機能 受け入れ固定契約：**
 

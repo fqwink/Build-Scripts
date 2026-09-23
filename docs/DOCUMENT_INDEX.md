@@ -127,7 +127,7 @@
 | `testdata/builder/` | `builder` | 現行実体 | builder 用 fixture 入力。 |
 | `components/runner.go` | `runner` | 現行実体 | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。 |
 | `components/runner_test.go` | `runner` | 現行実体 | `components/runner.go` の Go 検証ファイル。 |
-| `testdata/runner/` | `runner` | 未作成 path | runner fixture の配置予定 path。runner fixture を追加する実装検証変更で作成し、未作成の間は現行実体として扱わない。 |
+| `testdata/runner/` | `runner` | 未作成 path | runner fixture 証跡の配置予定 path。runner fixture 証跡を追加する実装検証変更で作成し、未作成の間は現行実体として扱わない。 |
 | `components/api.go` | `api` | 現行実体 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
 | `components/api_test.go` | `api` | 現行実体 | `components/api.go` の API endpoint、認証、状態ファイル、管理操作の検証テスト。 |
 | `testdata/api/` | `api` | 未作成 path | API fixture の配置予定 path。API fixture を追加する実装検証変更で作成し、未作成の間は現行実体として扱わない。 |

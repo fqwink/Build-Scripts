@@ -2,7 +2,7 @@
 
 `ui` owner component の詳細本文責務は、[`docs/details/ui.md`](ui.md) 詳細本文責務を正本とする。
 
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、fixture、検証観点として参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
