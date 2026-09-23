@@ -101,11 +101,11 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の own
 
 | カテゴリ | 対象 component | 主な確認対象 | 読む詳細仕様 |
 |----------|----------------|--------------|--------------|
-| Build 系 | `builder` | Markdown 入力、静的 Web サイト出力、theme component、検索 index、変換 report。 | [`docs/details/builder.md`](details/builder.md) |
-| CI / 運用系 | `runner`、`commitstatus`、`archive` | GitHub 監視、pipeline、deploy、snapshot、通知、Commit Status、archive / rollback / cleanup。 | [`docs/details/runner.md`](details/runner.md)、[`docs/details/commitstatus.md`](details/commitstatus.md)、[`docs/details/archive.md`](details/archive.md) |
-| 管理系 | `api`、`sdk`、`ui`、`admin` | 管理 API、JavaScript SDK、標準管理 UI、管理 UI 静的ファイル配布と配信境界。 | [`docs/details/api.md`](details/api.md)、[`docs/details/sdk.md`](details/sdk.md)、[`docs/details/ui.md`](details/ui.md)、[`docs/details/admin.md`](details/admin.md) |
-| 状態 / 安全系 | `statefile`、`security` | 状態ファイル、lock、atomic write、schema、token、scope、audit、session、TOTP、rate limit。 | [`docs/details/statefile.md`](details/statefile.md)、[`docs/details/security.md`](details/security.md) |
-| 配布 / 検証系 | `setup`、`fixture` | バイナリ配布、systemd、セットアップ、アップデート、fixture、fake、実装検証証跡、acceptance checklist。 | [`docs/details/setup.md`](details/setup.md)、[`docs/details/fixture.md`](details/fixture.md) |
+| Build 系 | `builder` | Markdown 入力、静的 Web サイト出力、theme component、検索 index、変換 report。 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 |
+| CI / 運用系 | `runner`、`commitstatus`、`archive` | GitHub 監視、pipeline、deploy、snapshot、通知、Commit Status、archive / rollback / cleanup。 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/commitstatus.md`](details/commitstatus.md) 詳細本文責務、[`docs/details/archive.md`](details/archive.md) 詳細本文責務 |
+| 管理系 | `api`、`sdk`、`ui`、`admin` | 管理 API、JavaScript SDK、標準管理 UI、管理 UI 静的ファイル配布と配信境界。 | [`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務、[`docs/details/admin.md`](details/admin.md) 詳細本文責務 |
+| 状態 / 安全系 | `statefile`、`security` | 状態ファイル、lock、atomic write、schema、token、scope、audit、session、TOTP、rate limit。 | [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/security.md`](details/security.md) 詳細本文責務 |
+| 配布 / 検証系 | `setup`、`fixture` | バイナリ配布、systemd、セットアップ、アップデート、fixture、fake、実装検証証跡、acceptance checklist。 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) 詳細本文責務 |
 | 将来計画 | `mcp` | MCP サーバー。現時点では実装可能な詳細仕様を持たない。 | 未定義。将来計画状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 を確認する。 |
 
 カテゴリをまたぐ機能では、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b の owner component 参照表を優先して owner component を 1 件に確定する。
