@@ -137,7 +137,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文の owner / c
 
 ## 0b.1 owner component 別 owner / collaborator 境界管理
 
-owner / collaborator 境界管理は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の境界を維持する。方針・ポリシーは [`docs/SPEC.md`](SPEC.md)、状態・計画は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。
+owner / collaborator 境界管理は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の境界を維持する。方針・ポリシーは [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、状態・計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 各 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の冒頭では、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 への参照と自ファイルの owner / collaborator 境界だけを示す。
 
