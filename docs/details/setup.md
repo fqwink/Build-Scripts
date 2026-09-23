@@ -186,7 +186,7 @@ setup / update 実装は、各段階の開始と成功を stderr または stdou
 確認のいずれかが失敗した場合、セットアップは失敗扱いとする。ただし自動削除や状態ファイル巻き戻しは行わない。
 
 ```bash
-# ── 変数設定 ──────────────────────────────────────────
+# ── 初回導入変数設定 ──────────────────────────────────
 INSTALL_DIR="/opt/adlaire-builder"
 BIN_DIR="/usr/local/bin"
 VERSION="V.1.100"
@@ -226,7 +226,7 @@ systemctl daemon-reload
 # ── 7. タイマー有効化・起動 ───────────────────────────
 systemctl enable --now adlaire-ci.timer
 
-# ── 8. 起動確認 ───────────────────────────────────────
+# ── 8. runner timer 起動確認 ─────────────────────────
 systemctl status adlaire-ci.timer
 ```
 
@@ -305,7 +305,7 @@ systemctl daemon-reload
 # ── 7. サービス有効化・起動 ───────────────────────────
 systemctl enable --now adlaire-ci-api
 
-# ── 8. 起動確認 ───────────────────────────────────────
+# ── 8. 管理 API 起動確認 ─────────────────────────────
 systemctl status adlaire-ci-api
 ```
 
@@ -424,7 +424,7 @@ rollback は 1 回だけ実行する。rollback 自体が失敗した場合は�
 確認失敗時はアップデート失敗として扱う。binary 配置や restart が成功していても、確認失敗を成功報告してはならない。local API 確認、API response の具体契約、実装検証証跡形式は [`docs/details/setup.md`](setup.md) §26.2b setup 共通確認契約に従う。未確認のまま合格扱いにしない。
 
 ```bash
-# ── 変数設定 ──────────────────────────────────────────
+# ── 更新変数設定 ─────────────────────────────────────
 BIN_DIR="/usr/local/bin"
 NEW_VERSION="V.2.102"
 OS_ARCH="linux-amd64"

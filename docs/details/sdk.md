@@ -404,8 +404,8 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) §22.0e の SDK �
 
 SDK 実装変更は、対象 [`docs/details/sdk.md`](sdk.md) §27 機能ごとに [`docs/details/sdk.md`](sdk.md) §23 の固定表の証跡を fixture で固定する。[`docs/details/sdk.md`](sdk.md) §23 の固定表の証跡がない場合、SDK method が存在していても詳細実装確認を満たした扱いにしない。
 
-| 証跡 | 固定する内容 | 合格条件 | 禁止条件 |
-|------|--------------|----------|----------|
+| SDK 証跡 | 固定する内容 | 合格条件 | 禁止条件 |
+|----------|--------------|----------|----------|
 | request trace | `method`、`path`、query key 順、body key、body なし endpoint。 | [`docs/details/api.md`](api.md) §22.0e と [`docs/details/sdk.md`](sdk.md) §23 SDK 引数変換契約に完全一致する。 | body なし endpoint へ `{}` を送る、query 未指定時に `?` を付ける。 |
 | response passthrough | API success body、binary body、SSE frame。 | SDK は存在 key を削除せず、存在しない key を追加しない。binary は `Blob`、SSE は `StreamHandle`。 | UI 用 label、集計値、既定値、token list、rate limit reset を SDK が合成する。 |
 | error object | `401`、`403`、`409`、`422 details`、`429`、`500`、network、timeout、protocol error。 | すべて `AdlaireCIError` になり、`status`、`message`、`details`、`responseBody` が固定される。 | `403` で token を破棄する、`409` / `429` を自動 retry する。 |

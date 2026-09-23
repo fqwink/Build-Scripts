@@ -507,8 +507,8 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 
 UI 実装変更は、対象 [`docs/details/ui.md`](ui.md) §27 機能ごとに [`docs/details/ui.md`](ui.md) §24 の固定表の証跡を fixture で固定する。UI は API / SDK の返却値を表示する補助層であり、状態確定、補完、保存、再試行を独自判断で行わない。
 
-| 証跡 | 固定する内容 | 合格条件 | 禁止条件 |
-|------|--------------|----------|----------|
+| UI 証跡 | 固定する内容 | 合格条件 | 禁止条件 |
+|---------|--------------|----------|----------|
 | SDK only call trace | user action ごとの SDK method 名、引数、呼び出し順。 | [`docs/details/ui.md`](ui.md) §24 の固定表の使用 SDK method だけを呼ぶ。直接 `fetch()`、`XMLHttpRequest`、`EventSource`、状態ファイル操作が 0 件。 | API endpoint を UI から直接呼ぶ、SDK にない method を仮実装する。 |
 | refresh order | 成功後再取得、`409` / `429` / `500` 後の再取得、再取得失敗時表示。 | 表の左から順に await し、途中失敗時は変更成功を維持して panel error に固定文言を表示する。 | 再取得失敗を理由に同じ変更 API を再送する。 |
 | disabled priority | maintenance、SSE 接続中、送信中、`429`、validation error の優先順位。 | [`docs/details/ui.md`](ui.md) §24 の UI error / disabled 優先順位固定に従い、上位条件が残る限り下位解除で有効化しない。 | `429` timer 終了で maintenance disabled を無視して button を有効化する。 |
