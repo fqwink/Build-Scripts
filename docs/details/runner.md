@@ -1283,7 +1283,7 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 
 ## 15a. `runner` 受け入れ fixture
 
-`runner` の初期実装は、[`docs/details/runner.md`](runner.md) §15a の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
+`runner` の初期実装は、[`docs/details/runner.md`](runner.md) §15a の fixture をすべて満たすまで完了として扱わない。`testdata/runner/` は runner fixture の配置予定 path であり、現時点で未作成の場合は現行実体として扱わない。fixture ファイルは runner fixture を追加する実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
 
 ### 15a.0 fixture 共通期待結果
 

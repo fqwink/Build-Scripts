@@ -111,7 +111,7 @@
 
 リポジトリ内ソース配置は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j を参照する。
 
-[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の実装ファイル一覧表は、現行リポジトリに存在する実装ファイルと、将来追加予定 path を区別して示す。`main.go`、`components/*.go`、`admin/` 配下の静的 UI ファイル、`testdata/<component>/` を現行配置として扱う。
+[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の実装ファイル一覧表は、現行リポジトリに存在する実装ファイルと、将来追加予定 path を区別して示す。`main.go`、実在する `components/*.go`、`admin/` 配下の静的 UI ファイル、実在する `testdata/<component>/` だけを現行実体として扱う。
 
 標準配置図に含まれる未作成 path は、将来追加予定 path として扱い、該当 owner component が実装対象になった変更で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成しない。
 
@@ -126,6 +126,7 @@
 | `testdata/builder/` | `builder` | 現行実体 | builder 用 fixture 入力。 |
 | `components/runner.go` | `runner` | 現行実体 | Go 版 CI ランナー。`adlaire-ci-runner` バイナリとして実行する。 |
 | `components/runner_test.go` | `runner` | 現行実体 | `components/runner.go` の Go 検証ファイル。 |
+| `testdata/runner/` | `runner` | 未作成 path | runner fixture の配置予定 path。runner fixture を追加する実装検証変更で作成し、未作成の間は現行実体として扱わない。 |
 | `components/api.go` | `api` | 現行実体 | 管理 API サーバー。常駐 HTTP サーバーとして Adlaire CI の状態確認・操作 API を提供する。 |
 | `components/api_test.go` | `api` | 現行実体 | `components/api.go` の API endpoint、認証、状態ファイル、管理操作の検証テスト。 |
 | `admin/adlaire-ci-sdk.js` | `sdk` | 現行実体 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |

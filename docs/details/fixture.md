@@ -46,6 +46,8 @@ Phase、API、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/securi
 
 **Phase fixture / testdata 配置固定契約：**
 
+以下の配置は fixture 証跡責務上の配置契約である。現行リポジトリに未作成の `testdata/<component>/` は、該当 Phase または該当 fixture の実装検証変更で作成するまで現行実体として扱わない。
+
 | Phase | 必須配置 | 必須内容 | 禁止条件 |
 |-------|----------|----------|----------|
 | Phase 1 | `testdata/builder/single/`、`testdata/builder/site/`、`testdata/builder/empty-dir/`、`testdata/builder/strict/`、`testdata/builder/safe/`、各 fixture の `expected/`。 | 入力 Markdown、テーマ設定、asset 入力、期待 HTML / CSS / JS / search index、期待 stdout / stderr、期待終了コード。 | 実行環境ごとに変わる絶対 path、timestamp、乱数、外部 URL 取得結果を期待値へ含めてはならない。 |
