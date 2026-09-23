@@ -163,6 +163,18 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 
 `.server_config` の `POST /api/config` では `force_build_interval_hours`、`build_cooldown_seconds`、`schedule_interval_seconds`、`schedule_paused`、`allowed_hours` を直接更新してはならない。これらは専用スケジュール API からのみ更新する。
 
+**共通 field 定義：**
+
+| 共通 field | 型 | 許容値 | 説明 |
+|------------|----|--------|------|
+| notification `label` | string | 0〜64 文字 | 管理画面表示名。 |
+| notification `retry_interval_seconds` | integer | 1〜3600 | 再試行間隔。 |
+| build `output_size_bytes` | integer/null | 0 以上または `null` | 成果物サイズ。 |
+| build `output_sha256` | string/null | SHA-256 hex または `null` | 成果物チェックサム。 |
+| build `flagged` | boolean | boolean | 重要フラグ。 |
+| build `comment` | string/null | コメント検証に従う | コメント。 |
+| request `remote_addr` | string/null | IP 文字列または `null` | 接続元。 |
+
 **`.notify_config` schema：**
 
 | キー | 型 | 既定値 | 許容値 | 説明 |
@@ -179,24 +191,24 @@ Channel object:
 |------|----|--------|--------|------|
 | `id` | string | 自動採番 | `n` + 数字、または 1〜64 文字の英数字 `_` `-` | channel 識別子。 |
 | `type` | string | 必須 | `"webhook"` / `"email"` / `"command"` | 送信方式。 |
-| `label` | string | `""` | 0〜64 文字 | 管理画面表示名。 |
+| `label` | string | `""` | Channel object は共通 field `notification label` | 管理画面表示名。 |
 | `enabled` | boolean | `true` | boolean | `false` の channel へは送信しない。 |
 | `on` | string[] | `[]` | top-level `on` と同じ、または `"*"` | 空配列の場合は top-level `on` に従う。 |
 | `config` | object | `{}` | type 別 schema | webhook `url`、email `to`、command `command_args`。 |
 | `retry_count` | integer | `2` | 0〜10 | retry 対象失敗時の追加試行回数。 |
-| `retry_interval_seconds` | integer | `30` | 1〜3600 | 再試行間隔。 |
+| `retry_interval_seconds` | integer | `30` | Channel object は共通 field `notification retry_interval_seconds` | 再試行間隔。 |
 
 Webhook object:
 
 | キー | 型 | 既定値 | 許容値 | 説明 |
 |------|----|--------|--------|------|
 | `url` | string | 必須 | URL 検証に従う | 送信先 URL。 |
-| `label` | string | `""` | 0〜64 文字 | 管理画面表示名。 |
+| `label` | string | `""` | Webhook object は共通 field `notification label` | 管理画面表示名。 |
 | `enabled` | boolean | `true` | boolean | `false` の宛先へは送信しない。 |
 | `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"deploy_failure"`, `"weekly_summary"`, `"approval_required"`, `"duration_anomaly"`, `"config_corrupt"`, `"*"` | この宛先が受け取るイベント。空配列の場合は top-level `on` に従う。 |
 | `payload_template` | string/null | `null` | 0〜10000 文字または `null` | `null` は標準 payload。 |
 | `retry_count` | integer | `2` | 0〜10 | 送信失敗時の追加試行回数。 |
-| `retry_interval_seconds` | integer | `30` | 1〜3600 | 再試行間隔。 |
+| `retry_interval_seconds` | integer | `30` | Webhook object は共通 field `notification retry_interval_seconds` | 再試行間隔。 |
 | `secret` | string/null | `null` | 1〜256 文字または `null` | 保存時は平文保存可。ただし GET/backup では `"***"` へマスクする。 |
 
 Summary object:
@@ -344,7 +356,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | `target_type` | string | 必須 | [`docs/details/security.md`](security.md) §27.44 | 対象種別。 |
 | `target_id` | string/null | 必須 | 対象 id または `null` | 対象識別子。 |
 | `result` | string | 必須 | `"success"` / `"failure"` / `"denied"` | 結果。 |
-| `remote_addr` | string/null | 必須 | IP 文字列または `null` | 接続元。 |
+| `remote_addr` | string/null | 必須 | audit log は共通 field `request remote_addr` | 接続元。 |
 | `message` | string/null | 必須 | 0〜500 文字または `null` | 固定文言。secret、token、password は保存しない。 |
 
 **`.api_rate_state` schema：**
@@ -598,7 +610,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 | `duration_ms` | integer | 必須 | 0 以上 | handler 開始から response 確定までのミリ秒。 |
 | `auth_type` | string | 必須 | `"session"`, `"api_token"`, `"webhook"`, `"none"` | 認証種別。 |
 | `actor` | string/null | 必須 | `"admin"`、token id、`"webhook"`、または `null` | 操作者。token 本体は保存しない。 |
-| `remote_addr` | string/null | 必須 | IP 文字列または `null` | 接続元。 |
+| `remote_addr` | string/null | 必須 | access log は共通 field `request remote_addr` | 接続元。取得不能時は `null`。 |
 | `user_agent` | string/null | 必須 | 文字列または `null` | 取得不能時は `null`。 |
 | `error` | string/null | 必須 | エラーコードまたは `null` | 成功時は `null`。 |
 
@@ -648,14 +660,14 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 | `sha` | string/null | 必須 | Git SHA または `null` | 対象 blob / commit SHA。 |
 | `status` | string | 必須 | `"success"`, `"failure"`, `"cancelled"`, `"hook_error"` | ビルド結果。 |
 | `trigger` | string | 必須 | `"polling"`, `"force_interval"`, `"manual"`, `"webhook"`, `"retry_pending_transfer"`, `"startup_config_integrity"`, `"rollback"`, `"local_watch"`, `"approval"` | 起動種別。 |
-| `output_size_bytes` | integer/null | 必須 | 0 以上または `null` | 成果物サイズ。 |
-| `output_sha256` | string/null | 任意 | SHA-256 hex または `null` | 成果物チェックサム。 |
+| `output_size_bytes` | integer/null | 必須 | build history は共通 field `build output_size_bytes` | 成果物サイズ。 |
+| `output_sha256` | string/null | 任意 | build history は共通 field `build output_sha256` | 成果物チェックサム。 |
 | `duration_seconds` | integer/null | 必須 | 0 以上または `null` | 所要時間。 |
 | `retry_count` | integer | 任意 | 0 以上 | 最終成功または最終失敗までに実行した追加 retry 回数。未記録時は `0` と扱う。 |
 | `commit_status_state` | string/null | 任意 | `"pending"`, `"success"`, `"failure"`, `"error"`, `null` | 最終 GitHub Commit Status 送信状態。未送信時は `null`。 |
-| `flagged` | boolean | 必須 | boolean | 重要フラグ。 |
+| `flagged` | boolean | 必須 | build history は共通 field `build flagged` | 重要フラグ。 |
 | `tags` | string[] | 必須 | タグ検証に従う | 手動/自動タグ。 |
-| `comment` | string/null | 必須 | コメント検証に従う | コメント。 |
+| `comment` | string/null | 必須 | build history は共通 field `build comment` | コメント。 |
 | `rollback_from` | string/null | 任意 | build id または `null` | rollback の元 build id。 |
 
 **`.build_logs/{id}.json` schema：**
@@ -679,8 +691,8 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 | `stderr` | string[] | 必須 | 0 件以上 | `pipeline.sh` stderr 行。 |
 | `warnings` | string[] | 必須 | 0 件以上 | `[WARN]` 行または runner warning。 |
 | `report` | object/null | 必須 | 次の Report object または `null` | `[REPORT]` の解析結果。 |
-| `output_size_bytes` | integer/null | 必須 | 0 以上または `null` | 成果物サイズ。 |
-| `output_sha256` | string/null | 任意 | SHA-256 hex または `null` | 成果物チェックサム。 |
+| `output_size_bytes` | integer/null | 必須 | build log は共通 field `build output_size_bytes` | 成果物サイズ。 |
+| `output_sha256` | string/null | 任意 | build log は共通 field `build output_sha256` | 成果物チェックサム。 |
 | `size_warn` | boolean | 必須 | boolean | サイズ警告。 |
 | `transfer_verified` | boolean/null | 必須 | boolean または `null` | SSH 転送未実行時は `null`。 |
 | `dry_run` | boolean | 必須 | boolean | 通常 build log では常に `false`。dry-run は build log を作成しないため、本 field が `true` の build log を新規作成してはならない。 |
@@ -689,8 +701,8 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 | `commit_status` | object/null | 必須 | CommitStatus object または `null` | GitHub Commit Status API 送信結果。無効時は `null`。 |
 | `build_meta` | object | 必須 | BuildMeta object | 出力サイトへ埋め込んだ build metadata。 |
 | `error` | string/null | 必須 | 文字列または `null` | 失敗理由。 |
-| `comment` | string/null | 必須 | コメント検証に従う | コメント。 |
-| `flagged` | boolean | 必須 | boolean | 重要フラグ。 |
+| `comment` | string/null | 必須 | build log は共通 field `build comment` | コメント。 |
+| `flagged` | boolean | 必須 | build log は共通 field `build flagged` | 重要フラグ。 |
 | `tags` | string[] | 必須 | タグ検証に従う | タグ。 |
 
 Report object:
