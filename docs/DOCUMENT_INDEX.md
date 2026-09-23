@@ -130,6 +130,7 @@
 | `components/api_test.go` | `api` | 現行実体 | `components/api.go` の API endpoint、認証、状態ファイル、管理操作の検証テスト。 |
 | `admin/adlaire-ci-sdk.js` | `sdk` | 現行実体 | 管理ツール用 JavaScript SDK。管理 API 通信を抽象化する。 |
 | `admin/index.html` | `ui` | 現行実体 | 標準管理ツール UI。SDK 経由で API と通信する。 |
+| `docs/examples/` | `-` | 未作成 path | 利用例、設定例、サンプル構成を追加する場合の配置先。実装コンポーネントではなく、空ディレクトリや placeholder は作成しない。 |
 | `components/mcp.go` | `mcp` | 将来追加予定 | MCP サーバー。現時点では未作成であり、実装可能な詳細仕様を持たず、MCP 専用詳細仕様が新設されるまで実装対象ではない。 |
 
 ## 正本参照先

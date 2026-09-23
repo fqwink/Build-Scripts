@@ -528,6 +528,7 @@ Adlaire CI の標準ディレクトリ構成 tree は [`docs/SPEC.md`](SPEC.md) 
 | 標準外配置禁止 | `build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` を標準配置として扱わない。同じ実装本文または同じ fixture を標準配置外に併存させない。 |
 | testdata | 実装済みまたは仕様化済み・未実装の owner component ごとに `testdata/<component>/` を使用する。`testdata/mcp/` は MCP 専用詳細仕様が新設されるまで作成しない。 |
 | admin | `admin/index.html` と `admin/adlaire-ci-sdk.js` は、それぞれ [`docs/details/ui.md`](details/ui.md) と [`docs/details/sdk.md`](details/sdk.md) の owner component 別詳細本文責務に従う。`admin/style.css` と `admin/app.js` は、[`docs/details/admin.md`](details/admin.md) A1 に定義された任意配布物として扱い、未定義の admin 静的ファイルを追加しない。 |
+| docs examples | `docs/examples/` は利用例、設定例、サンプル構成を追加する場合の配置先とする。現時点では未作成 path とし、標準ディレクトリ構成に含まれることだけを理由に空ディレクトリ、placeholder、未確定 example を作成しない。 |
 | 将来追加予定 path | `components/mcp.go` と MCP 用 fixture は未作成の将来追加予定 path であり、MCP 専用詳細仕様が新設され、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で `仕様化済み・未実装` へ昇格するまで作成しない。 |
 
 標準配置を変更する場合は、標準外配置と標準配置の両方が同じ実装実体として併存していないこと、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の「実装ファイル一覧」、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の状態分類、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、testdata 参照が同じ配置を指すことを確認する。
