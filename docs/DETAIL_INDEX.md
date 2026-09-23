@@ -359,8 +359,8 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 
 [`docs/details/builder.md`](details/builder.md) §28.1〜§28.25 を実装する場合は、個別行の受け入れ条件に加えて、[`docs/details/builder.md`](details/builder.md) §28 の共通固定契約、CLI / 設定 / REPORT / 出力識別子固定契約、実装パイプライン固定契約、設定解決・終了コード固定契約、設定ファイル / 入力解決固定契約、REPORT 値型固定契約、stdout / stderr / REPORT 固定契約、atomic write / manifest / search index 副作用固定契約、ID / slug / search index / JS state 決定性固定契約、CSS / JS 出力固定契約、CSS / layout / print / visual 固定契約、browser runtime 固定契約、Markdown token / HTML node 変換固定契約、Markdown parser 優先順位固定契約、Markdown 構文文法固定契約、曖昧構文・機能併用固定契約、warning / error code 固定契約、既存出力互換・先取り実装禁止固定契約、個別固定補足契約、詳細実装確認ゲート固定契約、および [`docs/details/fixture.md`](details/fixture.md) §28-F を必ず読む。
 
-| 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
-|------|-------------------|------------|--------------|
+| Builder 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
+|--------------|-------------------|------------|--------------|
 | 出力サイトサイズ警告閾値 | `builder` / `runner` / `api` | [`docs/details/builder.md`](details/builder.md) §8、[`docs/details/runner.md`](details/runner.md) §12、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/api.md`](details/api.md) §22.0e | `OUTPUT_SIZE_WARN_MB`、`size_warn`、WARN ログ、API 表示が一致する。 |
 | 出力サイトへのビルドメタ埋め込み | `builder` / `runner` / `api` | [`docs/details/builder.md`](details/builder.md) §2、[`docs/details/builder.md`](details/builder.md) §5、[`docs/details/builder.md`](details/builder.md) §8、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/builder.md`](details/builder.md) §27.4 | CLI/env 入力、HTML meta、REPORT、build log、`GET /api/output-meta` の値が一致する。 |
 | 変換レポート出力 | `builder` / `runner` / `api` | [`docs/details/builder.md`](details/builder.md) §8、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/runner.md`](details/runner.md) §15、[`docs/details/api.md`](details/api.md) §22.0e | `[REPORT]` stdout、runner 取り込み、`.build_logs`、`GET /api/output-meta` が一致する。 |
@@ -413,8 +413,8 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 
 ### 0i.2 Runner / CI 実行
 
-| 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
-|------|-------------------|------------|--------------|
+| Runner 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
+|-------------|-------------------|------------|--------------|
 | ビルドタイムアウト | `runner` / `api` | [`docs/details/runner.md`](details/runner.md) §12、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/api.md`](details/api.md) §22.0e | `build_timeout_seconds` の既定値、設定 API、`context.WithTimeout` の中断処理、終了コード、ログが一致する。 |
 | ビルドログのファイル保存 | `runner` | [`docs/details/runner.md`](details/runner.md) §11、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/runner.md`](details/runner.md) §15 | `.build_logs/{id}.json` の schema、stdout/stderr、変換レポート、duration、権限が一致する。 |
 | ネットワーク断時の再試行 | `runner` | [`docs/details/runner.md`](details/runner.md) §12、[`docs/details/runner.md`](details/runner.md) §13 | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、失敗時ログが一致する。 |
@@ -455,8 +455,8 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 
 ### 0i.3 API / SDK / UI
 
-| 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
-|------|-------------------|------------|--------------|
+| API / SDK / UI 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
+|---------------------|-------------------|------------|--------------|
 | ポーリング間隔の動的変更 | `api` | [`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/setup.md`](details/setup.md) §26、[`docs/details/api.md`](details/api.md) §27.11 | `POST /api/schedule/interval` が systemd timer 設定を更新し、検証コマンドで反映を確認できる。 |
 | GitHub Webhook 受信 | `api` / `runner` | [`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/api.md`](details/api.md) §22-W、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/api.md`](details/api.md) §27.12 | HMAC 検証、イベント記録、キュー投入またはビルドトリガー、エラー応答が一致する。 |
 | 設定バリデーション API | `api` / `sdk` / `ui` | [`docs/details/statefile.md`](details/statefile.md) §22.0c、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/api.md`](details/api.md) §27.5 | `POST /api/config/validate` が状態を変更せず、正規化後設定、warnings、errors を返す。 |
@@ -472,8 +472,8 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 
 ### 0i.4 Archive / Artifact / Security
 
-| 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
-|------|-------------------|------------|--------------|
+| Archive / Artifact / Security 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
+|-----------------------------------|-------------------|------------|--------------|
 | ビルドログのアーカイブ圧縮 | `runner` / `api` / `sdk` / `ui` | [`docs/details/runner.md`](details/runner.md) §12、[`docs/details/runner.md`](details/runner.md) §13、[`docs/details/runner.md`](details/runner.md) §15、[`docs/details/statefile.md`](details/statefile.md) §22.0c、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/sdk.md`](details/sdk.md) §23、[`docs/details/ui.md`](details/ui.md) §24、[`docs/details/archive.md`](details/archive.md) §27.7 | gzip 形式、archive 先、参照順、cleanup/archive API、disk usage 集計、UI 表示が一致する。 |
 | ビルド所要時間の記録と統計 API | `runner` / `api` | [`docs/details/runner.md`](details/runner.md) §15、[`docs/details/api.md`](details/api.md) §22.0e、[`docs/details/runner.md`](details/runner.md) §27.14 | `started_at`、`finished_at`、`duration_seconds` と統計 API が一致する。 |
 | ビルドアーティファクト世代管理 | `runner` / `api` | [`docs/details/runner.md`](details/runner.md) §14b、[`docs/details/api.md`](details/api.md) §22.0e | `.snapshots/` の保持世代、削除、rollback API が一致する。 |
