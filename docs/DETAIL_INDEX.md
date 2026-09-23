@@ -543,10 +543,10 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の本�
 
 | 対象範囲 | 主な参照先 |
 |----------|------------|
-| [`docs/details/builder.md`](details/builder.md) §1〜§9、[`docs/details/builder.md`](details/builder.md) §8a | [`docs/details/builder.md`](details/builder.md) |
-| [`docs/details/runner.md`](details/runner.md) §10〜§20、[`docs/details/runner.md`](details/runner.md) §15a | [`docs/details/runner.md`](details/runner.md) |
-| [`docs/details/api.md`](details/api.md) §21〜§22、[`docs/details/api.md`](details/api.md) §21a、[`docs/details/api.md`](details/api.md) §25 | [`docs/details/api.md`](details/api.md) |
-| [`docs/details/sdk.md`](details/sdk.md) §23 | [`docs/details/sdk.md`](details/sdk.md) |
-| [`docs/details/ui.md`](details/ui.md) §24 | [`docs/details/ui.md`](details/ui.md) |
-| [`docs/details/setup.md`](details/setup.md) §26 | [`docs/details/setup.md`](details/setup.md) |
+| [`docs/details/builder.md`](details/builder.md) §1〜§9、[`docs/details/builder.md`](details/builder.md) §8a | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 |
+| [`docs/details/runner.md`](details/runner.md) §10〜§20、[`docs/details/runner.md`](details/runner.md) §15a | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 |
+| [`docs/details/api.md`](details/api.md) §21〜§22、[`docs/details/api.md`](details/api.md) §21a、[`docs/details/api.md`](details/api.md) §25 | [`docs/details/api.md`](details/api.md) 詳細本文責務 |
+| [`docs/details/sdk.md`](details/sdk.md) §23 | [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 |
+| [`docs/details/ui.md`](details/ui.md) §24 | [`docs/details/ui.md`](details/ui.md) 詳細本文責務 |
+| [`docs/details/setup.md`](details/setup.md) §26 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務 |
 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 |
