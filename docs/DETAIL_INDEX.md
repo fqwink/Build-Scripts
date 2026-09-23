@@ -34,10 +34,10 @@
 対象機能ごとの参照入口は以下とする。
 
 1. [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で対象の状態分類、実装可否、Phase、将来計画該当有無を確認する。
-2. 生成 HTML のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
-3. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.0 と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b で owner component を確定する。
-4. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
-5. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0a〜§0h で、記載基準、共通固定値、実装前確認項目、検証入口、Phase 詳細仕様参照を確認する。
+2. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b.0 と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0b で owner component を確定する。
+3. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
+4. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0a〜§0h で、記載基準、共通固定値、実装前確認項目、検証入口、Phase 詳細仕様参照を確認する。
+5. 生成 HTML のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
 6. owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
 7. collaborator component がある場合は、該当する [`docs/details/*.md`](details/) 詳細本文責務を呼び出し境界、schema、表示、security、setup、fixture、検証観点として確認する。
 8. [`docs/details/setup.md`](details/setup.md) §26 のセットアップ・アップデート手順と [`docs/details/setup.md`](details/setup.md) §26.7 の受け入れ条件に影響がある場合は、実装変更の検証対象に含める。
