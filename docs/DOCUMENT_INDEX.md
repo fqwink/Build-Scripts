@@ -33,7 +33,7 @@
 | 詳細仕様本文を探したい | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 対象機能の owner component、参照節、受け入れ条件の確認先。 |
 | 実装ファイル、テスト、fixture の所在を確認したい | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j | 現行実装ファイル、将来追加予定 path、標準配置の確認先。 |
 | component の入出力、状態、処理順序、異常系、検証条件を確認したい | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | owner component を確定してから、実装時に従う具体仕様と collaborator 境界を確認する。 |
-| 生成静的 Web サイトの見た目を確認したい | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | [`docs/details/builder.md`](details/builder.md) | 生成 HTML のデザイン関係の確認先。 |
+| 生成静的 Web サイトの見た目を確認したい | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | - | 生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務だけを正本とする。 |
 
 ## リポジトリ文書索引
 
