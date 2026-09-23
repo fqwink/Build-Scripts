@@ -635,7 +635,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 確認 | 固定内容 |
 |------|----------|
 | runner 起点 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38 の多くは runner の build 実行、queue、history、log、notification に影響するため、[`docs/details/runner.md`](details/runner.md) 詳細本文責務の該当 §27 節を先に確認する。 |
-| builder 連携 | cache、dependency、output meta、生成物に関わる場合は [`docs/details/builder.md`](details/builder.md) 詳細本文責務の該当 §27 節を参照する。 |
+| builder 連携 | cache、dependency、output meta に関わる場合は [`docs/details/builder.md`](details/builder.md) 詳細本文責務の該当 §27 節を参照する。静的サイト出力拡張や生成物拡張に関わる場合は [`docs/details/builder.md`](details/builder.md) 詳細本文責務の該当 §28 節を参照する。 |
 | API 連携 | 設定保存、queue、approval、history、stats、snapshot、rollback、hook、notify、search に関わる場合は [`docs/details/api.md`](details/api.md) 詳細本文責務の endpoint / state read-write 契約を参照する。 |
 | SDK / UI 連携 | API を管理画面から操作する機能は、SDK method は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23、DOM / 表示条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 を参照して確認する。 |
 | statefile | 状態 schema、lock、atomic write、JSON Lines、破損時処理、保存順は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を参照する。 |

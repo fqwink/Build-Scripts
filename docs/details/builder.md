@@ -1461,7 +1461,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 ---
 
-## 27. Builder owner 追加仕様化機能 詳細仕様
+## 27. Builder owner 横断連動追加仕様化機能 詳細仕様
 
 ### 27.4 出力サイトへのビルドメタ埋め込み
 
@@ -1639,7 +1639,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | base 外参照 | broken dependency として記録。 |
 | failure build | 既存 manifest を上書きしない。 |
 
-## 28. Builder owner 追加仕様化機能 詳細仕様
+## 28. Builder owner 静的サイト出力拡張追加仕様化機能 詳細仕様
 
 [`docs/details/builder.md`](builder.md) 詳細本文責務 §28 は、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §5.2.2 から参照される builder owner 追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
 
