@@ -35,7 +35,7 @@
 
 コンポーネント状態分類では、仕様化済みの内容と実装済みの内容を区別して扱う。
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 のコンポーネント状態分類表のコンポーネント名は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成に基づく。`main.go`、`components/*.go`、`admin/` 配下の管理 UI 静的ファイル、`testdata/<component>/` を現行配置として扱う。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 のコンポーネント状態分類表のコンポーネント名は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成に基づく。現行配置として扱うのは `main.go`、実在する `components/*.go`、`admin/` 配下の管理 UI 静的ファイル、実在する `testdata/<component>/` だけとする。未作成の `testdata/<component>/` は fixture 配置契約または未作成 path として扱い、現行実体と混同しない。
 
 | コンポーネント | 状態 | 備考 |
 |---------------|------|------|
