@@ -2,7 +2,7 @@
 
 このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。仕様本文、方針本文、状態本文、詳細本文、デザイン本文を持たない。責務分離と重複禁止の方針は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a、正本所在は [正本参照先](#正本参照先) を正本とする。
 
-仕様・詳細仕様・デザイン正本・[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務は `docs/` 配下に集約する。ルールブック [`AGENTS.md`](../AGENTS.md) と入口文書 [`README.md`](../README.md) はリポジトリ root に置く。
+方針・ポリシー、状態・計画、詳細仕様、デザイン、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務は `docs/` 配下に集約する。ルールブック [`AGENTS.md`](../AGENTS.md) と入口文書 [`README.md`](../README.md) はリポジトリ root に置く。
 
 索引内で方針、状態、詳細本文、デザイン本文に触れる場合は、対象文書の内容を再掲せず、責務名付きリンクで参照する。
 
