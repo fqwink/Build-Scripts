@@ -822,7 +822,7 @@ runner 起動（systemd タイマーから呼び出し）
     │   │   GET /repos/{OWNER}/{REPO}/git/trees/{branch}?recursive=1
     │   │   → target_file の blob SHA を取得
     │   │   └─ API 失敗時：API_RETRY_MAX 回まで指数バックオフ（API_RETRY_BASE_SECONDS × 2^n 秒）で再試行
-    │   │        ├─ 全試行失敗時：ERROR ログ、このエントリを failure(api_error) として記録し、SHA を更新せず次エントリへ進む
+    │   │        ├─ Trees API 全試行失敗時：ERROR ログ、このエントリを failure(api_error) として記録し、SHA を更新せず次エントリへ進む
     │   │        └─ レスポンスヘッダー X-RateLimit-Remaining = 0 の場合
     │   │             → X-RateLimit-Reset（Unix 時刻）まで待機してから再試行
     │   │               INFO ログ（`RATE_LIMIT: waiting until {reset_time}`）
@@ -839,7 +839,7 @@ runner 起動（systemd タイマーから呼び出し）
     │   │   GET /repos/{OWNER}/{REPO}/git/blobs/{sha}
     │   │   → Base64 デコード → src パスへ書き出し
     │   │   └─ API 失敗時：API_RETRY_MAX 回まで指数バックオフで再試行
-    │   │        ├─ 全試行失敗時：ERROR ログ、このエントリを failure(api_error) として記録し、SHA を更新せず次エントリへ進む
+    │   │        ├─ Blobs API 全試行失敗時：ERROR ログ、このエントリを failure(api_error) として記録し、SHA を更新せず次エントリへ進む
     │   │        └─ レスポンスヘッダー GitHub-Authentication-Token-Expiration が存在する場合は Step 1 と同様に PAT 有効期限チェックを行う
     │   │
     │   ├─ [コミット情報取得] ビルドトリガーとなったコミット情報を取得し、ビルドログへ記録する
@@ -1285,6 +1285,17 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 
 `runner` の初期実装は、[`docs/details/runner.md`](runner.md) §15a の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
 
+### 15a.0 fixture 共通期待結果
+
+以下は runner fixture の共通期待結果である。個別 fixture は、対象条件と固有の状態差分だけを本文に書き、共通期待結果は本節を参照する。
+
+| 共通期待結果 | 固定内容 |
+|--------------|----------|
+| no external execution | GitHub API、pipeline、deploy、snapshot を実行しない。 |
+| no log history creation | `.build_logs/` と `.build_history` を作成しない。 |
+| clean final state | `.build_state.running=false`、`current_build_id=null`、`.build_lock` 不在で終了する。 |
+| finalizer failure | ERROR ログ `BUILD_STATE_FINALIZE_FAILED` を出し、`.build_lock` は削除を試みる。削除成功/失敗に関わらず、`.build_state.running=false` 保存失敗を正常扱いにしない。 |
+
 ### Fixture R1: CLI 異常系
 
 | 実行 | 終了コード | stdout | stderr |
@@ -1324,7 +1335,7 @@ GitHub Trees API fake response は `target_file=docs` の SHA として `blob-1`
 **前提状態：**
 
 - `.last_sha` は `{"sha":"old-blob"}`。
-- GitHub Trees API fake response は `new-blob` を返す。
+- R3 の GitHub Trees API fake response は `new-blob` を返す。
 - GitHub Blobs API fake response は UTF-8 Markdown を Base64 で返す。
 - `deploy_targets` は空配列。
 - fake `.ci/pipeline.sh` は終了コード `0` で、stdout に `adlaire-ci-build` の `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default` を出力する。
@@ -1391,7 +1402,7 @@ GitHub Trees API fake response は `target_file=docs` の SHA として `blob-1`
 - `.last_sha` は旧 SHA のまま。
 - `.build_logs/{id}.json` は `target_status="failure_build"`、`pipeline.exit_code=null`、`pipeline.stdout="started\n"`、`error="pipeline timeout"` を含む。
 - `.build_history` に `status="failure_build"` を 1 行だけ追記する。
-- `.build_state.running=false`、`current_build_id=null`、`.build_lock` 不在で終了する。
+- R8 は [`docs/details/runner.md`](runner.md) §15a.0 の clean final state を満たす。
 
 ### Fixture R9: GitHub API 全再試行失敗
 
@@ -1406,7 +1417,7 @@ GitHub Trees API fake response は `target_file=docs` の SHA として `blob-1`
 - `.last_sha` は旧 SHA のまま。
 - `.build_logs/{id}.json` は `target_status="failure_api"`、`blob_sha=null`、`pipeline.exit_code=null`、`error="github api failed"` を含む。
 - `.build_history` に `status="failure_api"` を 1 行だけ追記する。
-- pipeline、deploy、snapshot は実行しない。
+- R9 は [`docs/details/runner.md`](runner.md) §15a.0 の no external execution のうち pipeline、deploy、snapshot 非実行を満たす。
 
 ### Fixture R10: 通知失敗は build 成功を反転しない
 
@@ -1450,8 +1461,7 @@ GitHub Trees API fake response は `target_file=docs` の SHA として `blob-1`
 - 終了コード `1`。
 - `.build_logs/{id}.json` と `.build_history` は成功結果を保存済み。
 - `.build_status.json` は最終状態を保存済み。
-- ERROR ログ `BUILD_STATE_FINALIZE_FAILED` を出す。
-- `.build_lock` は削除を試みる。削除成功/失敗に関わらず、`.build_state.running=false` 保存失敗を正常扱いにしない。
+- R12 は [`docs/details/runner.md`](runner.md) §15a.0 の finalizer failure を満たす。
 
 ### Fixture R13: token 権限不正
 
@@ -1465,7 +1475,7 @@ GitHub Trees API fake response は `target_file=docs` の SHA として `blob-1`
 - 終了コード `2`。
 - ERROR ログ `GITHUB_TOKEN_INSECURE_MODE` を出す。
 - `.build_state.running` を `true` にしない。
-- `.build_logs/` と `.build_history` を作成しない。
+- R13 は [`docs/details/runner.md`](runner.md) §15a.0 の no log history creation を満たす。
 - token 値、token 長、token hash を stdout、stderr、状態ファイルへ出力しない。
 
 ### Fixture R14: dry-run directory 作成なし
@@ -1493,14 +1503,14 @@ adlaire-ci-runner --state-dir <state> --dry-run
 **前提状態：**
 
 - `.last_sha` が `{bad json`。
-- GitHub Trees API fake response は `new-blob` を返す。
+- R15 の GitHub Trees API fake response は `new-blob` を返す。
 
 **期待結果：**
 
 - 終了コード `1`。
 - `.last_sha` は変更しない。
 - `.build_logs/{id}.json` は `target_status="failure_decode"`、`previous_blob_sha=""`、`error="sha cache invalid"` を含む。
-- pipeline、deploy、snapshot は実行しない。
+- R15 は [`docs/details/runner.md`](runner.md) §15a.0 の no external execution のうち pipeline、deploy、snapshot 非実行を満たす。
 
 ### Fixture R16: GitHub rate limit reset 不正
 
@@ -1527,7 +1537,7 @@ adlaire-ci-runner --state-dir <state> --dry-run
 
 - 終了コード `0`。
 - `.build_status.json.status` は `skipped_cooldown`。
-- GitHub API、pipeline、deploy、snapshot を実行しない。
+- R17A は [`docs/details/runner.md`](runner.md) §15a.0 の no external execution を満たす。
 
 **期待結果 B: manual force queue**
 
@@ -1590,8 +1600,8 @@ adlaire-ci-runner --state-dir <state> --dry-run
 
 - 終了コード `1`。
 - `.build_state.running` を `true` にしない。
-- GitHub API、pipeline、deploy、snapshot を実行しない。
-- `.build_logs/` と `.build_history` を作成しない。
+- R21 は [`docs/details/runner.md`](runner.md) §15a.0 の no external execution を満たす。
+- R21 は [`docs/details/runner.md`](runner.md) §15a.0 の no log history creation を満たす。
 - `.build_lock` は削除される。
 
 ### Fixture R22: build log write failure
@@ -1609,7 +1619,7 @@ adlaire-ci-runner --state-dir <state> --dry-run
 - `.last_sha` は旧 SHA のまま。
 - deploy、snapshot は実行しない。
 - `.build_status.json` は `status="failure"`、`last_target_status="failure_state_write"`、`last_error="state write failed"` を含む。
-- `.build_state.running=false`、`current_build_id=null`、`.build_lock` 不在で終了する。
+- R22 は [`docs/details/runner.md`](runner.md) §15a.0 の clean final state を満たす。
 
 ### Fixture R23: history append failure
 
@@ -1658,7 +1668,7 @@ adlaire-ci-runner --state-dir <state> --dry-run
 - 各 target の `.build_logs/{id}.json.target_status` は `failure_api`。
 - 各 target の `.build_history.status` は `failure_api`。
 - すべての `sha_file` は旧値のまま。
-- pipeline、deploy、snapshot は実行しない。
+- R25 は [`docs/details/runner.md`](runner.md) §15a.0 の no external execution のうち pipeline、deploy、snapshot 非実行を満たす。
 
 ### Fixture R26: snapshot failure remains success
 
@@ -1691,9 +1701,7 @@ adlaire-ci-runner --state-dir <state> --dry-run
 - 終了コード `1`。
 - `.build_logs/{id}.json.target_status="success"` と `.build_history.status="success"` は保持する。
 - `.build_status.json.status="success"` は保持する。
-- ERROR ログ `BUILD_STATE_FINALIZE_FAILED` を出す。
-- `.build_lock` は削除を試みる。
-- `.build_state.running=false` 保存失敗を正常扱いにしない。
+- R27 は [`docs/details/runner.md`](runner.md) §15a.0 の finalizer failure を満たす。
 
 ---
 
@@ -1793,7 +1801,7 @@ runner は、commit SHA 確定、build id 採番、build 開始前の pending �
 
 ### 27.2 ドライラン実行モード
 
-owner component は `runner` とする。collaborator component は `statefile` とする。
+§27.2 の境界は owner component `runner`、collaborator component `statefile` とする。
 
 `adlaire-ci-runner --dry-run` は、実行計画を検証する読み取り専用モードである。dry-run は `.build_lock`、`.build_state`、`.build_status.json`、`.build_history`、`.build_logs/`、`.pending_transfers`、`.notify_*`、`.snapshots/`、GitHub Commit Status、deploy 先を変更してはならない。
 
@@ -1881,7 +1889,7 @@ dry-run は、破損 state の backup、初期値作成、lock 作成、通知�
 
 ### 27.3 ビルド失敗時の自動リトライ
 
-owner component は `runner` とする。collaborator component は `statefile` とする。
+§27.3 の境界は owner component `runner`、collaborator component `statefile` とする。
 
 runner は `.server_config.build_retry_max > 0` の場合、retry 対象失敗だけを同一 build id 内で最大 `build_retry_max` 回追加試行する。総試行回数は `1 + build_retry_max` とする。
 
@@ -2483,7 +2491,7 @@ runner は build 開始後、builder command または pipeline step command を
 
 ### 27.23 ローカルファイル監視モード
 
-owner component は `runner` とする。collaborator component は `statefile` とする。
+§27.23 の境界は owner component `runner`、collaborator component `statefile` とする。
 
 本機能の目的は、GitHub API を使わない環境で、ローカル Markdown 入力の変更を SHA-256 snapshot により検出することである。
 
@@ -2552,7 +2560,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 
 ### 27.24 タグ付きコミットのみビルド
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
+§27.24 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、release tag が付いた commit だけを build 対象にする filter を提供することである。
 
@@ -2617,7 +2625,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 ### 27.26 並列マルチターゲットビルド
 
-owner component は `runner` とする。collaborator component は `statefile` とする。
+§27.26 の境界は owner component `runner`、collaborator component `statefile` とする。
 
 本機能の目的は、複数 deploy target への転送を bounded parallelism で処理し、遅い target が全体を不必要に止めないようにすることである。
 
@@ -2683,7 +2691,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 
 本機能の目的は、build 前後に登録済み command を安全に実行し、外部 shell 文字列に依存しない拡張点を提供することである。
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
+§27.27 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -2907,7 +2915,7 @@ runner は `approval_required=true` の target に対して、approval queue 以
 
 ### 27.31 ブランチ別環境変数
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
+§27.31 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、branch target ごとに build process へ注入する環境変数を定義し、branch や deploy 先ごとの差分を、保存前検証、注入対象固定、secret mask、log 保存禁止値によって扱うことである。
 
@@ -3072,7 +3080,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 
 ### 27.33 ビルド時間トレンド記録
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
+§27.33 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、build 所要時間の統計を蓄積し、性能傾向と回帰検知の基準を提供することである。
 
@@ -3140,7 +3148,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 ### 27.34 ビルド依存チェーン
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
+§27.34 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、複数 build job の依存関係を DAG として定義し、依存 job 成功後だけ後続 job を実行することである。
 
@@ -3209,7 +3217,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 ### 27.35 ビルド優先度キュー
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
+§27.35 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、manual、webhook、approval などの queue entry を優先度順に処理し、緊急 build を先に実行できるようにすることである。
 
@@ -3276,7 +3284,7 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 
 ### 27.36 失敗原因の自動分類
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
+§27.36 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、build failure を固定カテゴリへ分類し、調査開始点を build log、history、UI に残すことである。
 
@@ -3353,7 +3361,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 ### 27.37 ビルド実行環境の記録
 
-owner component は `runner` とする。collaborator component は `statefile` とする。
+§27.37 の境界は owner component `runner`、collaborator component `statefile` とする。
 
 本機能の目的は、build 時点の実行環境を記録し、後から再現性と障害原因を確認できるようにすることである。
 
@@ -3423,7 +3431,7 @@ owner component は `runner` とする。collaborator component は `statefile` 
 
 ### 27.38 ビルド所要時間の異常検知
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。
+§27.38 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、過去 trend と比較して異常に遅い build を検出し、性能劣化を WARN、history flag、通知で可視化することである。
 
