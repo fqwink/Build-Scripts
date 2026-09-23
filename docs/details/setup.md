@@ -528,59 +528,9 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md`]
 | update | [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.5 の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 条件が仕様どおり。 |
 | security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示の漏えい有無を確認する。 | setup 側は配置・保持・権限・log 出力を確認する。 |
 
-**認証 / セットアップ fixture 固定：**
+**setup / release / update fixture 参照：**
 
-| fixture | 入力 | 合格条件 |
-|---------|------|----------|
-| credentials init success | 空 state dir で `adlaire-ci-api --init-credentials --state-dir <abs>` | `.admin_credentials` mode `600`、schema 全 key、`must_change=true`、stdout 固定文言。 |
-| credentials init existing | `.admin_credentials` 既存 | exit `2`、stderr `credentials already exist`、既存ファイル差分なし。 |
-| login success | 初期 password `admin` | `must_change:"prompt"`、TOTP 無効時 token 発行、hash/salt 非表示、`.access_log` 成功行。 |
-| login failure lock | password 連続 10 回失敗 | setup 側は password 詳細非表示と secret 非保存を確認する。 |
-| change password | current 正、新 password 有効 | `.admin_credentials` の salt/hash 更新、`must_change=false`、現 session 以外破棄。 |
-| session restart | token 発行後に API process restart | setup 側は session file が存在しないことを確認する。 |
-| setup checksum mismatch | Release asset と `SHA256SUMS` 不一致 | バイナリ配置なし、systemd 変更なし、終了コード `1`。 |
-| update restart failure | 新バイナリ配置後に service restart 失敗 | 旧バイナリ復元を 1 回だけ行い、state/history/secret は巻き戻さない。 |
-
-**セットアップ / アップデート fixture 固定：**
-
-| fixture | 入力 | 合格条件 |
-|---------|------|----------|
-| setup variable invalid | `INSTALL_DIR=/`、`BIN_DIR=/`、または `OS_ARCH=darwin-arm64` | 終了コード `2`、download / directory 作成 / 配置なし。 |
-| setup download failure | build binary 取得が失敗 | 終了コード `1`、runner binary 取得済みでも配置なし、systemd 変更なし。HTTP status の具体値は fake / fixture 側で固定する。 |
-| setup checksum duplicate | `SHA256SUMS` に同一 asset 行が 2 件 | 終了コード `1`、checksum failure、配置なし。 |
-| setup symlink target | `$BIN_DIR/adlaire-ci-build` が symlink | 終了コード `1`、symlink 参照先を上書きしない。 |
-| setup pat empty | PAT 入力が空 | 終了コード `2`、`.github_token` 作成なし、systemd 変更なし。 |
-| setup success | 正常 asset、正常 PAT、fresh 環境 | binary mode `755`、`.github_token`/`.last_sha` mode `600`、timer active、固定確認すべて成功。 |
-| setup admin release layout | `admin-ui.tar.gz` と API binary を含む正常 Release | `admin-ui.tar.gz` は [`docs/details/admin.md`](admin.md) 詳細本文責務 A1 の root layout と一致し、API binary と admin UI の version が同一 `VERSION`。 |
-| api setup credentials existing | `.admin_credentials` 既存で API 導入 | `--init-credentials` を再実行せず既存 credentials を保持し、API service 起動確認まで進む。 |
-| api setup admin archive unsafe | `admin-ui.tar.gz` に `../x` または symlink entry | 終了コード `1`、既存 admin UI 維持、API service start なし。 |
-| api setup admin archive extra file | `admin-ui.tar.gz` に A1 未定義 file、重複必須 file、`admin/` wrapper directory | 終了コード `1`、archive 展開なし、既存 admin UI 維持、API service start なし。 |
-| api setup health failure | API service active だが `/api/health` が非 200 | セットアップ失敗扱い、runner timer は停止しない、journal 確認対象を出力。 |
-| setup secret preservation | `.github_token`、`.admin_credentials`、`.webhook_secret`、`.smtp_secret` が既存の状態で update | 明示対象外の secret は content / mode / mtime を保持し、stdout/stderr/journal に secret 原文を出さない。 |
-| update api absent | `adlaire-ci-api` 未導入環境で update | build / runner asset だけ取得・検証・配置し、API asset と admin UI を取得しない。 |
-| update checksum before change | update 対象 asset の checksum 不一致 | 既存 binary、admin UI、systemd、state に差分なし。 |
-| update runner restart failure | runner restart fake failure | build / runner 旧版復元を 1 回だけ実行し、API restart と admin UI 更新へ進まない。 |
-| update api restart failure | API restart fake failure | API binary 旧版復元、runner は戻さない、admin UI 更新へ進まない。 |
-| update admin restart failure | admin UI 差し替え後の API restart fake failure | 旧 admin UI と API 旧版を復元し、runner state / history / secret は巻き戻さない。 |
-| update rollback failure | 旧 binary 不在で rollback executor 失敗 | 追加復旧せず、失敗箇所、退避先、現在配置済みファイル、journal 確認コマンドを報告対象にする。 |
-
-**運用 API fixture 固定：**
-
-| fixture | 入力 | 合格条件 |
-|---------|------|----------|
-| snapshot save and prune | `snapshots_keep=2` で build success を 3 回実行 | 最新 2 世代だけ残り、各 snapshot に `site.tar.gz` と `meta.json` が存在する。 |
-| snapshot rollback running | `.build_state.running=true` で `POST /api/history/{id}/rollback` | queue 追加なし、history 追記なし。 |
-| maintenance enable no-op | 同一 reason で enable を 2 回実行 | `.config_log` 追記なし。 |
-| access-control deny | allow に接続元以外を設定して API 呼び出し | password/token 検証なし。 |
-| hook pre abort | `pre` hook が exit `1`、`abort_on_failure=true` | pipeline 未実行、build status `hook_error`、hook log 保存。 |
-| alert duplicate | 同一 alert rule を 2 回作成 | `.alert_rules` 差分なし。 |
-| tag rule invalid | 破損 condition を含む `.tag_rules` で build | build failure、ERROR log `TAG_RULE_INVALID`、SHA cache 更新なし。 |
-| verify-output no history | 成功履歴なしで `POST /api/verify-output` | 状態ファイル変更なし。 |
-| pipeline config reserved arg | `extra_args:["--src","x"]` | `.pipeline_config` 差分なし。 |
-| notes no-op | 同一 content を 2 回保存 | `.config_log` 追記なし。 |
-| smtp secret mask | password 付き `POST /api/smtp-config` 後に GET / backup / log 確認 | password 本体は返らず、setup 側は secret 非保存を確認する。 |
-| queue disabled | `queue_max_size=0`、build running 中に `POST /api/build` | `.build_state.queued` は空。 |
-| dashboard duplicate widget | widgets に重複 id を指定 | `.dashboard_layout` 差分なし。 |
+setup / release / update、認証初期化、運用 API 連動の fixture 名、入力、fake、expected、effects、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。[`docs/details/setup.md`](setup.md) 詳細本文責務では、配置、保持、権限、起動、restart、rollback、secret 非保存、local 到達の実装受け入れ条件だけを扱う。
 
 **関連責務参照：**
 
@@ -609,7 +559,7 @@ API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主�
 |------|------|----------|
 | 実装前 | setup / update 対象 | 配置対象 binary、admin UI asset、systemd unit、state / secret 保持対象、rollback 対象が [`docs/details/setup.md`](setup.md) 詳細本文責務 §26 に定義済み。 |
 | 実装前 | secret handling | setup / update が触る secret file の保存先、権限、保持条件、log 禁止が定義済み。 |
-| 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が [`docs/details/setup.md`](setup.md) 詳細本文責務 §26 の fixture と一致する。 |
+| 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F / §27-F と一致する。 |
 
 Phase 順序、実装変更単位、実装着手条件、判定責務は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務 §4.1 と [`docs/SPEC.md`](../SPEC.md) ポリシー責務 §0f を参照する。
 
@@ -623,14 +573,9 @@ Phase 別の fixture、fake、expected / effects、実装検証証跡、不足�
 | `go test` または `gofmt -l` が実行不能 | 実行不能理由、未実行 command、再実行条件の記録。 | 認めない。setup / update に必要な検証が未実行の場合は確認済み扱い不可。 |
 | release asset checksum 検証不能 | 対象 asset、取得元、期待 checksum、検証不能理由、再実行条件を記録する。 | 認めない。checksum 検証確認まで setup / update 確認済み扱い不可。 |
 
-**fixture 期待値更新固定：**
+**fixture 期待値更新参照：**
 
-| 更新対象 | 更新条件 | 必須確認 |
-|----------|----------|----------|
-| `expected/` 内の生成物 | setup / release / update の配置、起動、保持、rollback、終了コード、標準出力、標準エラー、systemd、ファイル権限に関わる期待値が変更された場合のみ更新する。API response、UI DOM、SDK return、状態 schema の期待値更新条件は、それぞれの owner component 別詳細本文責務と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F を参照する。 | setup / release / update の期待値と [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.8 の setup 責務が一致し、他 owner component の expected は該当する詳細本文責務と一致すること。 |
-| fake transcript | setup / release / update が直接実行する Release asset 取得、checksum 検証、systemd、権限確認、file 配置、rollback の呼び出し仕様が変更された場合のみ更新する。API / SDK / UI / security の fake 更新条件は該当する owner component 別詳細本文責務と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F を参照する。 | secret / token / password 原文が transcript に存在しないこと。 |
-| DOM assertion | setup / release / update が admin UI 静的ファイルの配置と到達確認を変更した場合のみ、setup 側の検証入口として更新する。UI DOM、panel、表示文言、disabled / loading / success / error 条件の具体契約は [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F を参照する。 | setup 側は admin UI 配布物の存在と到達確認だけを固定し、DOM assertion の具体値は UI 詳細本文責務と一致すること。 |
-| error expected | setup / release / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果が変更された場合のみ更新する。HTTP status、API error body、`AdlaireCIError.code` の具体契約は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e、[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F を参照する。 | setup / release / update の正常系 fixture と異常系 fixture の両方で setup 責務の期待値が固定され、API / SDK / UI の期待値は各 owner component の詳細本文責務と一致すること。 |
+setup / release / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果、fake transcript、expected file の更新条件は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F を正本とする。HTTP status、API error body、`AdlaireCIError.code`、UI DOM、SDK return、状態 schema の具体契約は、それぞれ [`docs/details/api.md`](api.md) 詳細本文責務、[`docs/details/sdk.md`](sdk.md) 詳細本文責務、[`docs/details/ui.md`](ui.md) 詳細本文責務、[`docs/details/statefile.md`](statefile.md) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 Phase 判定の実装検証証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F を参照する。[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.8 は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義する。
 
@@ -642,19 +587,19 @@ setup / release / update に関わる受け入れ結果は、[`docs/details/fixt
 
 セットアップ、アップデート、管理 API 導入、admin UI 配布の詳細実装確認では、[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.1〜§26.7 の本文に加えて [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.8 の Setup / Admin 配布実装確認ゲート固定表を満たす。[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.8 は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
 
-| 段階 | 必須入力 | 成功確定条件 | 失敗時固定結果 | fixture 必須 |
+| 段階 | 必須入力 | 成功確定条件 | 失敗時固定結果 | fixture 正本 |
 |------|----------|--------------|----------------|--------------|
-| 変数検証 | `VERSION`、`OS_ARCH`、`INSTALL_DIR`、`BIN_DIR`、`DOWNLOAD_DIR` | 空値なし、危険 path なし、`OS_ARCH=linux-amd64`。 | 終了コード `2`。directory、download、配置なし。 | `setup variable invalid` |
-| Release 取得 | asset URL、`SHA256SUMS` | 対象 asset と `SHA256SUMS` が HTTP 2xx、size > 0。 | 終了コード `1`。未検証 asset を配置しない。 | `setup download failure` |
-| checksum | asset、`SHA256SUMS` | 対象 filename が 1 行だけ存在し、SHA-256 が一致する。 | 終了コード `1`。binary、admin、systemd、state 差分なし。 | `setup checksum duplicate`、`update checksum before change` |
-| binary 配置 | 検証済み binary | symlink でない通常 file へ `0755` で配置し、`--version` が期待値を返す。 | systemd を変更しない。restart 前失敗なら旧 binary を保持する。 | `setup symlink target`、`setup success` |
-| secret / state 初期化 | PAT、初期 state | secret `0600`、`.last_sha` `0600`、LF 付き JSON、fsync 完了。 | systemd を変更しない。secret 値を出力しない。 | `setup pat empty`、`setup success` |
-| admin archive 展開 | `admin-ui.tar.gz` | [`docs/details/admin.md`](admin.md) 詳細本文責務 A1〜A2 を満たし、一時 directory 検証後に差し替える。 | 既存 `$INSTALL_DIR/admin` を変更しない。API service を起動 / restart しない。 | `api setup admin archive unsafe` |
-| systemd 配置 | unit file 内容 | unit 書込、mode、`daemon-reload`、enable/start/restart、`is-active` が成功する。 | enable/start/restart を成功扱いしない。journal 確認対象を出力する。 | `api setup health failure`、`update runner restart failure` |
-| rollback | 旧 binary / 旧 admin backup | 定義済み対象だけ 1 回復元し、対象 service を 1 回 restart する。 | 追加推測復旧を行わず、現在配置済み path と journal 確認対象を出力する。 | `update rollback failure` |
-| 最終確認 | 配置済み binary、state、service、admin UI | [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.3 / [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.3b / [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.5 の固定確認がすべて成功する。 | 成功報告しない。未確認項目を `未実行` として記録する。 | `setup success`、`update api absent` |
+| 変数検証 | `VERSION`、`OS_ARCH`、`INSTALL_DIR`、`BIN_DIR`、`DOWNLOAD_DIR` | 空値なし、危険 path なし、`OS_ARCH=linux-amd64`。 | 終了コード `2`。directory、download、配置なし。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F |
+| Release 取得 | asset URL、`SHA256SUMS` | 対象 asset と `SHA256SUMS` が HTTP 2xx、size > 0。 | 終了コード `1`。未検証 asset を配置しない。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F |
+| checksum | asset、`SHA256SUMS` | 対象 filename が 1 行だけ存在し、SHA-256 が一致する。 | 終了コード `1`。binary、admin、systemd、state 差分なし。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F |
+| binary 配置 | 検証済み binary | symlink でない通常 file へ `0755` で配置し、`--version` が期待値を返す。 | systemd を変更しない。restart 前失敗なら旧 binary を保持する。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F |
+| secret / state 初期化 | PAT、初期 state | secret `0600`、`.last_sha` `0600`、LF 付き JSON、fsync 完了。 | systemd を変更しない。secret 値を出力しない。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F |
+| admin archive 展開 | `admin-ui.tar.gz` | [`docs/details/admin.md`](admin.md) 詳細本文責務 A1〜A2 を満たし、一時 directory 検証後に差し替える。 | 既存 `$INSTALL_DIR/admin` を変更しない。API service を起動 / restart しない。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F |
+| systemd 配置 | unit file 内容 | unit 書込、mode、`daemon-reload`、enable/start/restart、`is-active` が成功する。 | enable/start/restart を成功扱いしない。journal 確認対象を出力する。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F |
+| rollback | 旧 binary / 旧 admin backup | 定義済み対象だけ 1 回復元し、対象 service を 1 回 restart する。 | 追加推測復旧を行わず、現在配置済み path と journal 確認対象を出力する。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F |
+| 最終確認 | 配置済み binary、state、service、admin UI | [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.3 / [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.3b / [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.5 の固定確認がすべて成功する。 | 成功報告しない。未確認項目を `未実行` として記録する。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F |
 
-**setup / admin / release 連動 fixture 固定：**
+**setup / admin / release 連動 fixture 参照：**
 
 setup / admin / release 連動 fixture の fixture 群、対象 component、必須 input、必須 expected、合格条件は、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の [fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約](fixture.md#fixture-証跡責務-27-f-setup--admin--release-連動-fixture-固定契約) を正本とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存の実装受け入れ条件だけを扱う。
 

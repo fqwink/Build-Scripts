@@ -247,15 +247,9 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md`](sdk.md) 詳細本
 | error details | API error response の `details` が配列なら `AdlaireCIError.details` に同じ配列を保持する。配列でなければ `null`。 |
 | responseBody | JSON parse できた error body は object のまま、parse 不能 error body は先頭 4000 文字の string として `responseBody` に保持する。 |
 
-**SDK 検証 fixture：**
+**SDK 検証 fixture 参照：**
 
-| fixture | 入力 | 合格条件 |
-|---------|------|----------|
-| auth token flow | `login()`、`loginTotp()`、`logout()`、`401` response | token set / clear が仕様どおり。localStorage、sessionStorage、Cookie を使わない。 |
-| request shape | 全 public method を fake fetch で呼ぶ | method、path、query、body、headers が [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e と [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 引数変換契約に一致する。 |
-| error shape | `400`、`401`、`403`、`422 details`、`500`、network error、timeout | `AdlaireCIError` の `status`、`message`、`details`、`responseBody` が固定値になる。 |
-| stream | log frame、end frame、invalid frame、client close | callback、closed、error が仕様どおり。EventSource を使用しない。 |
-| binary | `downloadSnapshot(id)` | `Blob` を返し、JSON parse を試みない。 |
+SDK の fixture 名、fake fetch 入力、expected、error shape、stream frame、binary response、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、引数変換、token mutation、response passthrough、error 変換、stream handle の実装契約だけを扱う。
 
 **Phase 3 SDK 操作固定契約：**
 
@@ -276,18 +270,9 @@ Phase 3 実装では、[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 �
 | `resetCircuitBreaker()` | `POST /api/circuit-breaker/reset` | `{message,open,consecutive_failures}` を返す。 | 破損状態 `500` を `AdlaireCIError`。 | reset 成功後に SDK が自動 build を開始しない。 |
 | `streamBuild(onLine,onEnd)` | `GET /api/build/stream` | `StreamHandle` を返し、`log` frame を `onLine`、`end` frame を `onEnd` へ渡す。 | 接続前 `401`、`404`、timeout、invalid frame を `AdlaireCIError`。 | `EventSource`、自動 reconnect、log 永続化を行わない。 |
 
-**Phase 3 SDK fixture 固定：**
+**Phase 3 SDK fixture 参照：**
 
-| fixture | fake fetch 入力 | 合格条件 |
-|---------|-----------------|----------|
-| sdk phase3 status corrupted | `GET /api/status` が `500 {"error":"State file is corrupted"}` | `AdlaireCIError.status=500`、`message="State file is corrupted"`、token 維持。 |
-| sdk phase3 build conflict | `POST /api/build` が `409 {"error":"Conflict"}` | `AdlaireCIError.status=409`、自動 retry なし、自動 `getStatus()` 呼び出しなし。 |
-| sdk phase3 queue full | `POST /api/build` が `429 {"error":"queue_full"}` | `AdlaireCIError.status=429`、`message="queue_full"`、body 再送なし。 |
-| sdk phase3 history paging | `getHistory({page:2,perPage:20,trigger:"manual"})` | query は `page=2&per_page=20&trigger=manual`、`total` と `pages` は API 値をそのまま返す。 |
-| sdk phase3 log not found | `GET /api/history/{id}/log` が `404 {"error":"Not found"}` | `AdlaireCIError.status=404`、`id` は `encodeURIComponent` 済み。 |
-| sdk phase3 stream end | `log` frame 2 件、`end` frame 1 件 | `onLine` 2 回、`onEnd` 1 回、`StreamHandle.closed=true`。 |
-| sdk phase3 stream invalid | `data:` 行が JSON parse 不能 | `AdlaireCIError(status=0,message="Invalid SSE frame")`、`closed=true`。 |
-| sdk phase3 unauthorized | 任意 Phase 3 endpoint が `401` | `this._token=null`、次 request に Authorization header を付けない。 |
+Phase 3 SDK の fake fetch 入力、expected request、expected return、`AdlaireCIError`、stream frame、unauthorized token clear は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §22-F を正本とする。
 
 **Phase 4 SDK 操作固定契約：**
 
@@ -304,15 +289,9 @@ Phase 4 SDK は、[`docs/details/api.md`](api.md) 詳細本文責務 §22.0e の
 | alert / tag / pipeline / notes / dashboard layout | `getAlertRules()`, `addAlertRule()`, `deleteAlertRule()`, `getTagRules()`, `addTagRule()`, `deleteTagRule()`, `getPipelineConfig()`, `setPipelineConfig()`, `getNotes()`, `setNotes()`, `getDashboardLayout()`, `setDashboardLayout()` | API response の rules / config / notes / widgets をそのまま返す。 | duplicate `409`、validation `422`、read failure `500` を保持する。 | rule 重複排除、widget 補完、notes trim を行わない。 |
 | tokens / sessions / audit | `getTokens()`, `createToken()`, `revokeToken()`, `getSessions()`, `revokeAllSessions()`, `getAuditLog()`, `getApiAccessLog()` | `createToken()` の token 本体は response として 1 回だけ返す。 | `403`、`404`、`422`、`429` を status 付きで保持する。 | token 本体を保存しない。token list に作成時 token を合成しない。 |
 
-**Phase 4 SDK fixture 固定：**
+**Phase 4 SDK fixture 参照：**
 
-| fixture | fake fetch 入力 | 合格条件 |
-|---------|-----------------|----------|
-| sdk phase4 config validation | `POST /api/config` が `422 details` | `AdlaireCIError.status=422`、`details` 配列保持、送信 body の未知 key は削除されていない。 |
-| sdk phase4 schedule failure | `POST /api/schedule/interval` が `500 {"error":"Internal server error"}` | error を投げ、SDK が timer 再試行や rollback request を行わない。 |
-| sdk phase4 secret mask | `GET /api/notify-config` と `GET /api/smtp-config` が mask 値を返す | mask 値をそのまま返し、secret 平文を生成しない。 |
-| sdk phase4 webhook events paging | `getWebhookEvents(20,40)` | query は `limit=20&offset=40`、`total` は API 値をそのまま返す。 |
-| sdk phase4 snapshot binary | `downloadSnapshot(id)` が binary response | `Blob` を返し、JSON parse を試みない。 |
+Phase 4 SDK の fake fetch 入力、expected request、expected return、secret mask、webhook paging、snapshot binary response は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §22-F および [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。
 | sdk phase4 rollback conflict | `rollbackHistory(id)` が `409 {"error":"Build is running"}` | `AdlaireCIError.status=409`、自動 `getStatus()` 呼び出しなし。 |
 | sdk phase4 token issue | `createToken()` が `{token:"..."}` を返す | token を response として返すだけで、SDK 内部保存、console 出力、token list 合成をしない。 |
 | sdk phase4 duplicate rule | `addAlertRule()` または `addTagRule()` が `409 Conflict` | `AdlaireCIError.status=409`、自動 retry なし。 |

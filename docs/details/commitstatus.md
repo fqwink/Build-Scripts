@@ -131,17 +131,11 @@ GitHub response body 全体、Authorization header、GitHub token、credential �
 | payload validation failure | commit_status summary の error 保存。 | GitHub Status API 呼び出し、未定義 key 保存、secret 出力。 |
 | state write failure | runner の既存 state write failure 契約に従う。 | Commit Status 失敗を理由に未定義 rollback を実行すること。 |
 
-**Commit Status fixture expected 固定契約：**
+**Commit Status fixture 参照：**
 
-| expected file | 必須内容 |
-|---------------|----------|
-| `input/fakes.json` | fake GitHub Status API の応答順、HTTP status、response body mask、network failure 指定。 |
-| `expected/effects.json.external_calls` | `method`、`path`、`headers_present`、`body`、`order`、`result_status`、`error_reason`。Authorization 値は保存しない。 |
-| `expected/logs/build-log.json` | `commit_status` object。key は `enabled`、`state`、`context`、`target_url`、`sent_at`、`http_status`、`error` だけ。 |
-| `expected/logs/history.jsonl` | `commit_status_state` と build result が非反転であること。 |
-| `expected/security.json` | `forbidden_plaintexts` に GitHub token、Authorization header、credential 付き URL、GitHub response body を含める。 |
+Commit Status fixture の fake GitHub Status API、expected/effects、expected logs、expected security、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。[`docs/details/commitstatus.md`](commitstatus.md) 詳細本文責務では、GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証観点だけを扱う。
 
-検証条件:
+検証観点:
 
 | ケース | 期待結果 |
 |--------|----------|

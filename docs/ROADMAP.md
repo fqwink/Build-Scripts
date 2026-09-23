@@ -76,7 +76,7 @@ Phase 1 完全仕様ゲートでは、Phase 1 の対象、依存条件、判定�
 | 確認 | 参照先 |
 |------|--------|
 | CLI、Markdown 変換、静的 Web サイト出力、theme component、生成物確認 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 §1〜§9、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §8a |
-| Phase 1 fixture、testdata、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F |
+| Phase 1 fixture、testdata、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §8a-F |
 | Phase 1 release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 |
 
 ### 4.1.2 Phase 2 完全仕様ゲート（`runner`）
@@ -86,7 +86,7 @@ Phase 2 完全仕様ゲートでは、Phase 2 が Phase 1 の `adlaire-ci-build`
 | 確認 | 参照先 |
 |------|--------|
 | CI runner、GitHub API 連携、SHA cache、pipeline、deploy、snapshot、通知、systemd | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §10〜§20、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §15a |
-| runner fixture 証跡、fake GitHub、fake ssh / notifier、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F |
+| runner fixture 証跡、fake GitHub、fake ssh / notifier、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §15a-F |
 | Phase 2 release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 |
 
 ### 4.1.3 Phase 3 完全仕様ゲート（`api`）
@@ -148,8 +148,8 @@ Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [
 
 | Phase | 実装対象 | 成果物・fixture 確認先 | 受け入れ条件 |
 |-------|----------|----------------------|--------------|
-| Phase 1 | `builder` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 を満たす。 |
-| Phase 2 | `runner` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 を満たす。 |
+| Phase 1 | `builder` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §8a-F | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 を満たす。 |
+| Phase 2 | `runner` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §15a-F | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 を満たす。 |
 | Phase 3 | `api` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F | [`docs/details/api.md`](details/api.md) 詳細本文責務の API 基盤・認証・状態 read/write・運用基本操作と setup API 導入条件を満たす。 |
 | Phase 4 | `api` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F | [`docs/details/api.md`](details/api.md) 詳細本文責務の API 拡張運用操作を満たす。 |
 | Phase 5 | `sdk` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F | [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23 を満たす。 |
@@ -640,7 +640,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | SDK / UI 連携 | API を管理画面から操作する機能は、SDK method は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23、DOM / 表示条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 を参照して確認する。 |
 | statefile | 状態 schema、lock、atomic write、JSON Lines、破損時処理、保存順は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を参照する。 |
 | archive | snapshot、artifact、download、delete、rollback、log archive は [`docs/details/archive.md`](details/archive.md) 詳細本文責務を参照する。 |
-| fixture | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38 の fixture 証跡、secret mask、effects、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F を参照する。 |
+| fixture | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38 に関わる fixture 証跡、secret mask、effects、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F を参照する。 |
 
 **api / sdk / ui / statefile 横断連動契約：**
 

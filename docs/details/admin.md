@@ -104,32 +104,18 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 ---
 
-## A6. Admin Fixture 固定契約
+## A6. Admin fixture 参照契約
 
-`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。`admin` 詳細では UI DOM、SDK method、API endpoint の詳細を再定義せず、admin 配布境界だけを確認する。
+`admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。`admin` 詳細では UI DOM、SDK method、API endpoint、fixture 入力、expected、fake、実装検証証跡を再定義せず、admin 配布境界だけを確認する。
 
-| fixture | 入力 | 操作 | 合格条件 |
-|---------|------|------|----------|
-| admin archive success | `index.html`、`adlaire-ci-sdk.js`、任意の `style.css` / `app.js` を root 直下に含む archive | admin archive validation | 検証成功。展開後 file mode `0644`、directory mode `0755`。 |
-| admin archive missing required | `index.html` または `adlaire-ci-sdk.js` がない archive | admin archive validation | 検証失敗。既存 `$INSTALL_DIR/admin` 差分なし。 |
-| admin archive extra file | [`docs/details/admin.md`](admin.md) 詳細本文責務 A1 未定義 file を含む archive | admin archive validation | 検証失敗。未定義 file を展開しない。 |
-| admin archive traversal | `../x`、absolute path、backslash、NUL byte を含む entry | admin archive validation | 検証失敗。既存 `$INSTALL_DIR/admin` 差分なし。 |
-| admin archive special entry | symlink、hardlink、device、FIFO、socket | admin archive validation | 検証失敗。参照先を読まない、作成しない。 |
-| admin archive release layout | `admin-ui.tar.gz` の root 直下に [`docs/details/admin.md`](admin.md) 詳細本文責務 A1 の file だけを含む archive | release asset validation | `admin/` directory wrapper、未定義 file、空 archive、重複必須 file を拒否し、配置前状態を保持する。 |
-| admin serve index | `GET /`、`GET /admin/`、`HEAD /admin/index.html` | static serving | `index.html` を返し、`Content-Type: text/html; charset=utf-8`、`Cache-Control: no-store`。 |
-| admin serve assets | `GET /admin/adlaire-ci-sdk.js`、`GET /admin/style.css`、`GET /admin/app.js` | static serving | [`docs/details/admin.md`](admin.md) 詳細本文責務 A3 の Content-Type と Cache-Control。任意 file 不在時は `404`。 |
-| admin serve method denied | `POST /admin/index.html` | static serving | `405`。request body を読まず、state 差分なし。 |
-| admin serve forbidden path | `/admin/../.github_token`、`/.admin_credentials`、`/admin/.server_config` | static serving | `404`。secret / state / log / snapshot の内容を返さない。 |
-| admin serve no directory listing | `GET /admin`、`GET /admin/assets/`、`GET /admin/.build_logs/` | static serving | directory listing を返さず、定義済み redirect を行う場合も body に file 一覧を含めない。未定義 directory は `404`。 |
-| admin static serving security | secret、state、log、snapshot、backup、temporary path への direct request | static serving | status `404`、body は固定 error だけ、Content-Type は secret 内容から推測しない。 |
-| admin no mutation | 正常 admin directory と state dir | 全 admin request fixture 実行 | admin file、state file、credential、build log、snapshot の content / mode / mtime が変化しない。 |
+Admin fixture の fixture 名、入力、操作、expected file、禁止副作用は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の `setup / admin / release 連動 fixture 固定契約` を正本とする。
 
 **Admin 実装確認ゲート：**
 
 | 観点 | 合格条件 |
 |------|----------|
-| archive validation | [`docs/details/admin.md`](admin.md) 詳細本文責務 A2 と [`docs/details/admin.md`](admin.md) 詳細本文責務 A6 の全 archive fixture が成功し、失敗時に既存 admin directory 差分がない。 |
-| static serving | [`docs/details/admin.md`](admin.md) 詳細本文責務 A3 と [`docs/details/admin.md`](admin.md) 詳細本文責務 A6 の全 request fixture が status、header、body 有無、method 制限に一致する。 |
+| archive validation | [`docs/details/admin.md`](admin.md) 詳細本文責務 A2 と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の admin archive fixture が成功し、失敗時に既存 admin directory 差分がない。 |
+| static serving | [`docs/details/admin.md`](admin.md) 詳細本文責務 A3 と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の admin request fixture が status、header、body 有無、method 制限に一致する。 |
 | secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
 | no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
 | setup integration | [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.8 の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |

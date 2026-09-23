@@ -536,17 +536,7 @@ schema 検証では次を必須とする。
 
 設定ファイル起動時整合性チェックは冪等でなければならない。初期化または正規化済みの状態で runner を再起動した場合、追加 backup、追加通知、追加 WARN/ERROR は発生しない。同一破損ファイルが復旧失敗後に残っている場合だけ、次回起動時に再度同じ判定を行う。
 
-検証 fixture は以下を必須とする。
-
-| fixture | 入力状態 | 期待結果 |
-|---------|----------|----------|
-| `config-startup/missing-required` | 対象必須ファイルが存在しない。 | 初期値が作成され、終了コード `0`、ビルド処理へ進む。 |
-| `config-startup/corrupt-build-state` | `.build_state` が `{bad json`。 | `.build_state.corrupt.{timestamp}.bak` へ退避、初期値作成、`config_corrupt` 通知対象、終了コード `0`。 |
-| `config-startup/corrupt-branch-config` | `.branch_config` が JSON array。 | backup 後 `.branch_config` は不在、既定 `BRANCH_TARGETS` 採用、終了コード `0`。 |
-| `config-startup/unknown-key` | `.build_circuit_state` に未知 key がある。 | backup なしで未知 key を除去、`CONFIG_NORMALIZED`、終了コード `0`。 |
-| `config-startup/invalid-pending-entry` | `.pending_transfers` に必須 key 不足 entry がある。 | backup 後 `[]` 作成、終了コード `0`。 |
-| `config-startup/permission-error` | 対象ファイルが読み込み不可。 | 自動退避なし、終了コード `2`、`.build_state.running` 未変更。 |
-| `config-startup/help-version-skip` | `--help` または `--version`。 | 対象ファイルを読まず、変更しない。 |
+設定ファイル起動時整合性チェックの fixture 名、入力状態、expected、fake filesystem、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。[`docs/details/runner.md`](runner.md) 詳細本文責務では、必須 schema、初期化 / 退避 / 正規化 / 失敗時の runner owner 処理だけを扱う。
 
 確認条件は、対象 fixture を Go test で検証できることとする。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、実装ファイル一覧は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照する。
 
@@ -1285,423 +1275,50 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 
 `runner` の初期実装は、[`docs/details/runner.md`](runner.md) 詳細本文責務 §15a の検証条件と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の fixture をすべて満たすまで完了として扱わない。`testdata/runner/` は runner fixture の配置予定 path であり、現時点で未作成の場合は現行実体として扱わない。fixture ファイルは [`docs/details/fixture.md`](fixture.md) fixture 証跡責務に従う実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
 
-### 15a.0 fixture 共通期待結果
-
-以下は runner 検証条件の共通期待結果である。個別 fixture の fixture 名、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を正本とし、本節は runner owner の検証観点だけを示す。
-
-| 共通期待結果 | 固定内容 |
-|--------------|----------|
-| no external execution | GitHub API、pipeline、deploy、snapshot を実行しない。 |
-| no log history creation | `.build_logs/` と `.build_history` を作成しない。 |
-| clean final state | `.build_state.running=false`、`current_build_id=null`、`.build_lock` 不在で終了する。 |
-| finalizer failure | ERROR ログ `BUILD_STATE_FINALIZE_FAILED` を出し、`.build_lock` は削除を試みる。削除成功/失敗に関わらず、`.build_state.running=false` 保存失敗を正常扱いにしない。 |
-
-### Fixture R1: CLI 異常系
-
-| 実行 | 終了コード | stdout | stderr |
-|------|------------|--------|--------|
-| `adlaire-ci-runner --help` | `0` | `Usage: adlaire-ci-runner [--state-dir path] [--once] [--dry-run] [--version] [--help]` | 空 |
-| `adlaire-ci-runner --state-dir relative` | `2` | 空 | `state directory must be absolute: relative` |
-| `adlaire-ci-runner --unknown` | `2` | 空 | `unknown option: --unknown` |
-
-### Fixture R2: 変更なし skip
-
-**前提状態：**
-
-```text
-testdata/runner/r2/state/.github_token
-testdata/runner/r2/state/.last_sha
-testdata/runner/r2/state/.branch_config
-```
-
-`.last_sha`:
-
-```json
-{"sha":"blob-1"}
-```
-
-GitHub Trees API fake response は `target_file=docs` の SHA として `blob-1` を返す。
-
-**期待結果：**
-
-- 終了コード `0`。
-- `.last_sha` は変更しない。
-- `.build_logs/` に新規 log を作成しない。
-- `.build_history` に追記しない。
-- stdout slog に INFO ログ `NO_CHANGE: branch=main target=docs sha=blob-1` を 1 件出力する。
-
-### Fixture R3: 変更あり build 成功 deploy なし
-
-**前提状態：**
-
-- `.last_sha` は `{"sha":"old-blob"}`。
-- R3 の GitHub Trees API fake response は `new-blob` を返す。
-- GitHub Blobs API fake response は UTF-8 Markdown を Base64 で返す。
-- `deploy_targets` は空配列。
-- fake `.ci/pipeline.sh` は終了コード `0` で、stdout に `adlaire-ci-build` の `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default` を出力する。
-
-**期待結果：**
-
-- 終了コード `0`。
-- `.last_sha` は `{"sha":"new-blob"}` に atomic write される。
-- `.build_logs/{id}.json` が作成され、`target_status="success"`、`pipeline.exit_code=0`、`report.pages=1`、`report.tables_count=0`、`deploy=[]`、`error=null` を含む。
-- `.build_history` に同じ `id` の JSON Lines が 1 行追記される。
-- `.build_state.running` は終了時 `false`、`current_build_id` は `null`。
-- `.build_lock` は終了時に存在しない。
-
-### Fixture R4: pipeline 失敗
-
-**前提状態：**
-
-- GitHub fake response は変更ありを返す。
-- fake `.ci/pipeline.sh` は終了コード `7`、stdout `before fail`、stderr `failed` を出力する。
-
-**期待結果：**
-
-- 終了コード `1`。
-- `.last_sha` は旧 SHA のまま。
-- `.build_logs/{id}.json` は `target_status="failure_build"`、`pipeline.exit_code=7`、`pipeline.stdout="before fail"`、`pipeline.stderr="failed"`、`error="pipeline failed"` を含む。
-- `.build_history` に `status="failure_build"` の行を追記する。
-- deploy、snapshot は実行しない。
-
-### Fixture R5: deploy pending
-
-**前提状態：**
-
-- pipeline は成功する。
-- `deploy_targets` は 1 件。
-- fake `ssh` は転送時に終了コード `255` を返す。
-
-**期待結果：**
-
-- 終了コード `1`。
-- `.last_sha` は新 SHA に更新する。
-- `.pending_transfers` に `out`、`host`、`user`、`dest_dir`、`failed_at`、`retry_count=1` を持つ entry を 1 件追加する。
-- `.build_logs/{id}.json` は `target_status="success_deploy_pending"`、`deploy[0].status="pending"`、`deploy[0].transfer_verified=false`、`error="deploy pending"` を含む。
-- snapshot は作成しない。
-
-### Fixture R6: lock 競合
-
-`.build_lock` が存在し、`pid` が `/proc/{pid}` に存在する実行中 PID を指す場合、runner は終了コード `0` で終了し、`.build_state`、`.build_logs/`、`.build_history` を変更しない。stdout slog に `BUILD_SKIP: already running (PID {pid})` を出力する。
-
-### Fixture R7: 状態破損
-
-`.notify_pending` が JSON として壊れている場合、runner は `.notify_pending.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、`.notify_pending` を `[]` で再生成する。その後、通常処理を継続する。退避ファイル名の timestamp は UTC とし、秒単位で固定する。
-
-### Fixture R8: pipeline timeout
-
-**前提状態：**
-
-- GitHub fake response は変更ありを返す。
-- `.server_config.build_timeout_seconds` は `1`。
-- fake `.ci/pipeline.sh` は stdout に `started` を出力後、timeout まで終了しない。
-
-**期待結果：**
-
-- 終了コード `1`。
-- `.last_sha` は旧 SHA のまま。
-- `.build_logs/{id}.json` は `target_status="failure_build"`、`pipeline.exit_code=null`、`pipeline.stdout="started\n"`、`error="pipeline timeout"` を含む。
-- `.build_history` に `status="failure_build"` を 1 行だけ追記する。
-- R8 は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の clean final state を満たす。
-
-### Fixture R9: GitHub API 全再試行失敗
-
-**前提状態：**
-
-- GitHub Trees API fake server は retry 対象の HTTP `503` を返し続ける。
-- `.last_sha` は `{"sha":"old-blob"}`。
-
-**期待結果：**
-
-- 終了コード `3`。
-- `.last_sha` は旧 SHA のまま。
-- `.build_logs/{id}.json` は `target_status="failure_api"`、`blob_sha=null`、`pipeline.exit_code=null`、`error="github api failed"` を含む。
-- `.build_history` に `status="failure_api"` を 1 行だけ追記する。
-- R9 は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の no external execution のうち pipeline、deploy、snapshot 非実行を満たす。
-
-### Fixture R10: 通知失敗は build 成功を反転しない
-
-**前提状態：**
-
-- pipeline は成功する。
-- `.notify_config` は `on:["success"]` の webhook channel を 1 件持つ。
-- fake webhook endpoint は HTTP `500` を返す。
-
-**期待結果：**
-
-- 終了コード `0`。
-- `.last_sha` は新 SHA に更新する。
-- `.build_logs/{id}.json.target_status` は `"success"`。
-- `.notify_pending` に `event="success"`、`retry_count=1` の entry を保存する。
-- `.notify_log` に失敗記録を残す。通知失敗を理由に `.build_history.status` を failure にしない。
-
-### Fixture R11: REPORT 重複
-
-**前提状態：**
-
-- pipeline は終了コード `0`。
-- stdout に `[REPORT]` 行が 2 行ある。
-
-**期待結果：**
-
-- 終了コード `0`。
-- 1 行目の `[REPORT]` だけを `report` に保存する。
-- `.build_logs/{id}.json.warnings` に `REPORT_DUPLICATE` を含める。
-- `.build_history.warnings` は `[WARN]` 行数に `REPORT_DUPLICATE` 分を加えた値にする。
-
-### Fixture R12: finalizer state write failure
-
-**前提状態：**
-
-- pipeline は成功する。
-- `.build_state` の atomic write が finalizer 時だけ失敗する fake filesystem を使用する。
-
-**期待結果：**
-
-- 終了コード `1`。
-- `.build_logs/{id}.json` と `.build_history` は成功結果を保存済み。
-- `.build_status.json` は最終状態を保存済み。
-- R12 は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の finalizer failure を満たす。
-
-### Fixture R13: token 権限不正
-
-**前提状態：**
-
-- `.github_token` が存在し、mode が `0644`。
-- `.build_lock` は存在しない。
-
-**期待結果：**
-
-- 終了コード `2`。
-- ERROR ログ `GITHUB_TOKEN_INSECURE_MODE` を出す。
-- `.build_state.running` を `true` にしない。
-- R13 は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の no log history creation を満たす。
-- token 値、token 長、token hash を stdout、stderr、状態ファイルへ出力しない。
-
-### Fixture R14: dry-run directory 作成なし
-
-**前提状態：**
-
-- `--state-dir` は既存 directory。
-- `{StateDir}/repo`、`{StateDir}/dist`、`{StateDir}/.build_logs`、`{StateDir}/.snapshots` は存在しない。
-
-**実行：**
-
-```bash
-adlaire-ci-runner --state-dir <state> --dry-run
-```
-
-**期待結果：**
-
-- 終了コード `0`。
-- 対象 directory を作成しない。
-- stdout は [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.2 の dry-run JSON 1 件だけを出し、`warnings[]` に `code="DRY_RUN_WOULD_CREATE_DIR"` を対象 directory ごとに出す。
-- `.github_token`、`.build_lock`、GitHub API、pipeline、deploy、通知を実行しない。
-
-### Fixture R15: SHA cache 破損
-
-**前提状態：**
-
-- `.last_sha` が `{bad json`。
-- R15 の GitHub Trees API fake response は `new-blob` を返す。
-
-**期待結果：**
-
-- 終了コード `1`。
-- `.last_sha` は変更しない。
-- `.build_logs/{id}.json` は `target_status="failure_decode"`、`previous_blob_sha=""`、`error="sha cache invalid"` を含む。
-- R15 は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の no external execution のうち pipeline、deploy、snapshot 非実行を満たす。
-
-### Fixture R16: GitHub rate limit reset 不正
-
-**前提状態：**
-
-- GitHub Trees API fake server は HTTP `403`、`X-RateLimit-Remaining: 0`、不正な `X-RateLimit-Reset` を返す。
-- `.last_sha` は `{"sha":"old-blob"}`。
-
-**期待結果：**
-
-- 終了コード `3`。
-- `.last_sha` は旧 SHA のまま。
-- `.build_logs/{id}.json` は `target_status="failure_api"`、`error="github api failed"` を含む。
-- runner は reset header を無視して長時間待機しない。
-
-### Fixture R17: cooldown skip と manual force
-
-**前提状態：**
-
-- `.build_state.last_finished_at` が現在時刻から `build_cooldown_seconds` 未満。
-- `.build_state.queued` は空。
-
-**期待結果 A: polling**
-
-- 終了コード `0`。
-- `.build_status.json.status` は `skipped_cooldown`。
-- R17A は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の no external execution を満たす。
-
-**期待結果 B: manual force queue**
-
-- `.build_state.queued[0].trigger="manual"`、`payload.force=true` の場合、cooldown を無視して build を実行する。
-- build log / history の `trigger` は `manual`。
-- 処理済み queue entry は `.build_state.queued` から削除する。
-
-### Fixture R18: SSH checksum mismatch pending
-
-**前提状態：**
-
-- pipeline は成功する。
-- fake `ssh` は転送コマンドを成功させる。
-- fake `ssh sha256sum` は local checksum と異なる hash を返す。
-
-**期待結果：**
-
-- 終了コード `1`。
-- `.last_sha` は新 SHA に更新する。
-- `.pending_transfers` に `last_error` を含む entry を 1 件保存する。
-- `.build_logs/{id}.json.deploy[0].transfer_verified=false`、`target_status="success_deploy_pending"`、`error="deploy pending"`。
-- snapshot は作成しない。
-
-### Fixture R19: pending 重複統合
-
-**前提状態：**
-
-- `.pending_transfers` に `out`、`host`、`user`、`dest_dir` が同一の entry が 1 件存在する。
-- 新規 deploy 失敗も同じ `out`、`host`、`user`、`dest_dir`。
-
-**期待結果：**
-
-- `.pending_transfers` の件数は増えない。
-- 既存 entry の `retry_count` が +1 され、`failed_at` と `last_error` が最新値に更新される。
-- entry の投入順は保持する。
-
-### Fixture R20: snapshot atomic save and prune
-
-**前提状態：**
-
-- pipeline と deploy は成功する。
-- `HISTORY_KEEP_N=2`。
-- `.snapshots/` に古い snapshot directory が 2 件存在する。
-
-**期待結果：**
-
-- `{StateDir}/.snapshots/{build_id}` が作成される。
-- 一時 directory `{build_id}.tmp.{pid}` は残らない。
-- snapshot 内に通常ファイルだけが保存され、`.github_token`、`.build_lock`、`.pending_transfers` を含まない。
-- snapshot は 2 件だけ残り、最古 snapshot が削除される。
-
-### Fixture R21: status start write failure
-
-**前提状態：**
-
-- `.build_lock` は存在しない。
-- `.build_status.json` の atomic write だけが失敗する fake filesystem を使用する。
-
-**期待結果：**
-
-- 終了コード `1`。
-- `.build_state.running` を `true` にしない。
-- R21 は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の no external execution を満たす。
-- R21 は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の no log history creation を満たす。
-- `.build_lock` は削除される。
-
-### Fixture R22: build log write failure
-
-**前提状態：**
-
-- GitHub fake response は変更ありを返す。
-- pipeline は成功する。
-- `.build_logs/{id}.json` の atomic write だけが失敗する fake filesystem を使用する。
-
-**期待結果：**
-
-- 終了コード `1`。
-- `.build_history` は追記しない。
-- `.last_sha` は旧 SHA のまま。
-- deploy、snapshot は実行しない。
-- `.build_status.json` は `status="failure"`、`last_target_status="failure_state_write"`、`last_error="state write failed"` を含む。
-- R22 は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の clean final state を満たす。
-
-### Fixture R23: history append failure
-
-**前提状態：**
-
-- GitHub fake response は変更ありを返す。
-- pipeline は成功する。
-- `.build_logs/{id}.json` は保存成功する。
-- `.build_history` の追記だけが失敗する fake filesystem を使用する。
-
-**期待結果：**
-
-- 終了コード `1`。
-- `.build_logs/{id}.json` は成功結果を保持する。
-- `.last_sha` は旧 SHA のまま。
-- deploy、snapshot は実行しない。
-- `.build_status.json.last_target_status` は `failure_state_write`。
-- `.build_state.running=false`、`.build_lock` 不在で終了する。
-
-### Fixture R24: multi target partial failure continues
-
-**前提状態：**
-
-- `BRANCH_TARGETS` が 2 件。
-- 1 件目の GitHub Trees API は HTTP `503` を返し続ける。
-- 2 件目は変更あり、pipeline 成功、deploy なし。
-
-**期待結果：**
-
-- 終了コード `1`。
-- 1 件目は `.build_logs/{id1}.json.target_status="failure_api"`、`.build_history.status="failure_api"`。
-- 1 件目の `sha_file` は更新しない。
-- 2 件目は `.build_logs/{id2}.json.target_status="success"`、`.build_history.status="success"`、`sha_file` を更新する。
-- runner は 1 件目の失敗で中断しない。
-
-### Fixture R25: all targets GitHub API failure
-
-**前提状態：**
-
-- `BRANCH_TARGETS` が 2 件。
-- 両方の GitHub Trees API が retry 対象 HTTP `503` を返し続ける。
-
-**期待結果：**
-
-- 終了コード `3`。
-- 各 target の `.build_logs/{id}.json.target_status` は `failure_api`。
-- 各 target の `.build_history.status` は `failure_api`。
-- すべての `sha_file` は旧値のまま。
-- R25 は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の no external execution のうち pipeline、deploy、snapshot 非実行を満たす。
-
-### Fixture R26: snapshot failure remains success
-
-**前提状態：**
-
-- GitHub fake response は変更ありを返す。
-- pipeline と deploy は成功する。
-- snapshot writer だけが失敗する fake filesystem を使用する。
-
-**期待結果：**
-
-- 終了コード `0`。
-- `.last_sha` は新 SHA に更新する。
-- `.build_logs/{id}.json.target_status="success"`。
-- `.build_logs/{id}.json.warnings` に `SNAPSHOT_SAVE_FAILED` を含める。
-- `.build_history.status="success"`。
-- `.pending_transfers` は追加しない。
-- `.build_status.json.status="success"`。
-
-### Fixture R27: build_state finalizer failure keeps failure
-
-**前提状態：**
-
-- pipeline は成功する。
-- `.build_logs/{id}.json`、`.build_history`、`.build_status.json` は保存成功する。
-- finalizer の `.build_state` atomic write だけが失敗する fake filesystem を使用する。
-
-**期待結果：**
-
-- 終了コード `1`。
-- `.build_logs/{id}.json.target_status="success"` と `.build_history.status="success"` は保持する。
-- `.build_status.json.status="success"` は保持する。
-- R27 は [`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 の finalizer failure を満たす。
+### 15a.0 runner fixture 共通検証観点
+
+[`docs/details/runner.md`](runner.md) 詳細本文責務 §15a.0 は runner owner の共通検証観点だけを示す。fixture 名、入力状態、expected、fake GitHub / fake ssh / fake notifier / fake filesystem、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F を正本とする。
+
+| 共通検証観点 | 確認内容 | fixture 正本 |
+|--------------|----------|--------------|
+| no external execution | 対象 fixture が禁止する GitHub API、pipeline、deploy、snapshot を実行しない。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F |
+| no log history creation | 対象 fixture が禁止する `.build_logs/` と `.build_history` を作成しない。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F |
+| clean final state | `.build_state.running=false`、`current_build_id=null`、`.build_lock` 不在で終了する。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F |
+| finalizer failure | finalizer 保存失敗を正常扱いせず、lock 削除試行と ERROR 証跡を残す。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F |
+
+### 15a.1 runner 受け入れ fixture catalog 参照
+
+`runner` 初期実装の受け入れ fixture catalog は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F を正本とする。`runner` 詳細本文では、各 fixture の前提状態、fake response、expected file、実行 command、状態差分を再定義しない。
+
+| fixture | runner owner 検証観点 | fixture 正本 |
+|---------|----------------------|--------------|
+| R1 | CLI 異常系、help、未知 option、state-dir validation。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R1` |
+| R2 | 変更なし skip、SHA cache 維持、log/history 非作成。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R2` |
+| R3 | 変更あり build 成功、deploy なし、log/history/state finalizer。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R3` |
+| R4 | pipeline 失敗、SHA 非更新、deploy/snapshot 非実行。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R4` |
+| R5 | deploy pending、pending transfer 保存、snapshot 非作成。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R5` |
+| R6 | lock 競合、既存状態非変更。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R6` |
+| R7 | 状態破損退避、再生成、継続処理。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R7` |
+| R8 | pipeline timeout、旧 SHA 維持、clean final state。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R8` |
+| R9 | GitHub API 全再試行失敗、pipeline/deploy/snapshot 非実行。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R9` |
+| R10 | 通知失敗を build 成功へ反転しない。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R10` |
+| R11 | `[REPORT]` 重複時の採用行と警告。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R11` |
+| R12 | finalizer state write failure。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R12` |
+| R13 | GitHub token mode 不正、secret 非出力。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R13` |
+| R14 | dry-run directory 非作成、外部副作用なし。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R14` |
+| R15 | SHA cache 破損、pipeline/deploy/snapshot 非実行。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R15` |
+| R16 | GitHub rate limit reset 不正、長時間待機禁止。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R16` |
+| R17 | cooldown skip と manual force queue。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R17` |
+| R18 | SSH checksum mismatch pending。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R18` |
+| R19 | pending transfer 重複統合。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R19` |
+| R20 | snapshot atomic save and prune。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R20` |
+| R21 | status start write failure、外部副作用なし。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R21` |
+| R22 | build log write failure、history 非追記、SHA 非更新。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R22` |
+| R23 | history append failure、保存済み log 維持、SHA 非更新。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R23` |
+| R24 | multi target partial failure continues。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R24` |
+| R25 | all targets GitHub API failure。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R25` |
+| R26 | snapshot failure remains success。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R26` |
+| R27 | build_state finalizer failure keeps failure。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F `Fixture R27` |
 
 ---
 

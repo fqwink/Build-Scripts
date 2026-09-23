@@ -1412,199 +1412,22 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 ## 8a. `builder` 受け入れ検証条件
 
-`builder` の初期実装は、[`docs/details/builder.md`](builder.md) 詳細本文責務 §8a の検証条件と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の fixture をすべて満たすまで完了として扱わない。fixture ファイルは実装変更で `testdata/builder/` 配下へ追加する。仕様変更では fixture の期待値を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務で固定する。
-
-### Fixture A: 単一 Markdown 入力
-
-**入力ファイル：** `testdata/builder/single/source.md`
-
-~~~markdown
-# Title
-
-Intro paragraph with [self](#title).
-
-## Install
-
-```bash
-echo hello
-```
-
-- [x] done
-- [ ] todo
-
-| Name | Value |
-| ---- | ----- |
-| A | 1 |
-
-[^n]: note body
-
-See footnote[^n].
-~~~
-
-**実行：**
-
-```bash
-adlaire-ci-build --src testdata/builder/single/source.md --out /tmp/adlaire-ci-fixture-single --title "Fixture Site"
-```
-
-**期待結果：**
-
-- 終了コード `0`。
-- `/tmp/adlaire-ci-fixture-single/index.html`、`assets/style.css`、`assets/app.js`、`assets/search-index.json` が存在する。
-- `pages/` は存在しない。
-- `index.html` に `<h1 id="title" class="mh h1">Title<button class="hn-link" data-href="#title" aria-label="リンクをコピー">¶</button></h1>` を含む。
-- `index.html` に `<a href="#title">self</a>` を含み、`BROKEN_LINK` 警告を出さない。
-- `index.html` に `<div class="cb-wrap" data-lang="bash">` と `<span class="cl">bash</span>` を含む。
-- `index.html` に `<li class="ml-task"><input type="checkbox" disabled checked>done</li>` と `<li class="ml-task"><input type="checkbox" disabled>todo</li>` を含む。
-- `[REPORT]` は `pages=1`、`theme=adlaire-default` を含む。
-
-### Fixture B: ディレクトリ Markdown 入力
-
-**入力ファイル：**
-
-```text
-testdata/builder/site/docs/intro.md
-testdata/builder/site/docs/guide/setup.md
-testdata/builder/site/docs/guide/setup_copy.md
-```
-
-`intro.md`:
-
-```markdown
-# Intro
-
-Go to [setup](guide/setup.md#setup).
-```
-
-`guide/setup.md`:
-
-```markdown
-# Setup
-
-Body.
-```
-
-`guide/setup_copy.md`:
-
-```markdown
-# Setup
-
-Second.
-```
-
-**実行：**
-
-```bash
-adlaire-ci-build --src testdata/builder/site/docs --out /tmp/adlaire-ci-fixture-site --title "Docs"
-```
-
-**期待結果：**
-
-- 終了コード `0`。
-- `/tmp/adlaire-ci-fixture-site/index.html` がサイト目次ページである。
-- document ページは `pages/guide-setup.html`、`pages/guide-setup-copy.html`、`pages/intro.html` として出力される。
-- 入力順は `guide/setup.md`、`guide/setup_copy.md`、`intro.md` の辞書順とし、サイト目次の表示順も同一とする。
-- `intro.html` 内の `guide/setup.md#setup` は、同じ `pages/` ディレクトリ内のページ間リンクとして `guide-setup.html#setup` に変換する。`guide/setup.html#setup`、`pages/guide-setup.html#setup`、元の `guide/setup.md#setup` のまま出力してはならない。
-- 2 つの `# Setup` 見出しはページごとの slug 空間でそれぞれ `setup` とする。ページをまたいだ見出し slug に `-2` を付けてはならない。
-- `assets/search-index.json` は `index.html#site-index`、`pages/guide-setup.html#setup`、`pages/guide-setup-copy.html#setup`、`pages/intro.html#intro` の entry を含む。
-
-### Fixture C: 異常系
-
-| 実行 | 終了コード | stderr |
-|------|------------|--------|
-| `adlaire-ci-build --theme unknown` | `2` | `unknown theme: unknown` |
-| `adlaire-ci-build --src /path/not-found.md` | `2` | `source not found: /path/not-found.md` |
-| `adlaire-ci-build --src testdata/builder/empty-dir` | `2` | `no markdown files found: testdata/builder/empty-dir` |
-| `adlaire-ci-build --title ""` | `2` | `title must not be empty` |
-
-異常系 fixture では `[REPORT]` を stdout へ出力してはならない。`--out` に既存の正常出力がある場合でも、異常系実行で既存出力を変更してはならない。
-
-### Fixture D: 冪等性
-
-同一入力、同一 CLI 引数で 2 回連続実行した場合、`GeneratedAtUTC` を含む meta 行を除き、全出力ファイルの内容が一致しなければならない。比較対象から除外できるのは、HTML 内の `name="adlaire-generated-at"` meta と footer の生成時刻表示だけとする。検索 index、ページ HTML の本文、CSS、JS、REPORT の数値は一致必須とする。
-
-### Fixture E: path 安全性と既存出力保護
-
-**事前状態：**
-
-`/tmp/adlaire-ci-fixture-safe/index.html` に `previous output` を含む正常出力を作成しておく。
-
-**実行と期待結果：**
-
-| 実行 | 終了コード | 期待結果 |
-|------|------------|----------|
-| `adlaire-ci-build --src testdata/builder/site/docs --out testdata/builder/site/docs/out` | `2` | stderr `output path must be outside source: <path>`、出力作成なし。 |
-| `adlaire-ci-build --src /tmp/adlaire-ci-fixture-safe --out /tmp/adlaire-ci-fixture-safe` | `2` | stderr `output path must be outside source: <path>`、既存 `index.html` 維持。 |
-| 10 MiB 超の Markdown file を `--src` に指定 | `2` | stderr `source file too large: <path>`、`[REPORT]` なし。 |
-
-### Fixture F: HTML escape と Markdown 境界
-
-**入力：**
-
-```markdown
-# Unsafe
-
-<script>alert(1)</script>
-
-| A | B |
-| - | - |
-| 1 |
-| 2 | 3 | 4 |
-
-- item
-        - too deep
-              - deeper
-```
-
-**期待結果：**
-
-- `<script>` は実行可能 tag にならず、`&lt;script&gt;alert(1)&lt;/script&gt;` として出力される。
-- テーブル不足セルは、欠落 cell の個数分だけ空 `<td></td>` を出力する。
-- テーブル超過セルは最後のセルに `3 | 4` として連結される。
-- 7 レベル以上の list nesting は 6 レベルへ丸められ、`[WARN] LIST_NESTING_CLAMPED` が出る。
-
-### Fixture G: search index / JavaScript contract
-
-**入力：** Fixture B と同じ directory 入力。
-
-**期待結果：**
-
-- `assets/search-index.json` は top-level array で、entry key 順が `url`、`id`、`title`、`body`。
-- `body` は HTML tag を含まず、200 文字を超えない。
-- `assets/app.js` に `localStorage` access の `try` / `catch`、`search-results`、`data-search-hit`、`search index unavailable` が含まれる。
-- `assets/app.js` に `document.cookie`、`indexedDB`、外部 URL fetch が含まれない。
-
-### Fixture H: strict warning and atomic output
-
-**事前状態：**
-
-`/tmp/adlaire-ci-fixture-strict/index.html` に `previous output` を含む正常出力を作成しておく。
-
-**入力：**
-
-~~~markdown
-# Title
-
-[missing](#does-not-exist)
-
-```bash
-echo unclosed
-~~~
-
-対象 fixture では実ファイル上の fence を閉じずに EOF とする。
-
-**実行：**
-
-```bash
-adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-fixture-strict --strict
-```
-
-**期待結果：**
-
-- 終了コード `2`。
-- stdout に `[WARN] BROKEN_LINK` と `[WARN] UNCLOSED_FENCE` と `[REPORT]` を出力する。
-- stderr は空。
-- `/tmp/adlaire-ci-fixture-strict/index.html` は `previous output` のままで置換されない。
+`builder` の初期実装は、[`docs/details/builder.md`](builder.md) 詳細本文責務 §8a の検証観点と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F の fixture をすべて満たすまで完了として扱わない。
+
+[`docs/details/builder.md`](builder.md) 詳細本文責務 §8a は、`builder` owner の受け入れ観点だけを扱う。fixture 名、入力 Markdown、実行 command、expected HTML / CSS / JavaScript / search index / stdout / stderr、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F を正本とする。
+
+`builder` 受け入れ検証では、少なくとも以下を確認する。
+
+| 観点 | 確認内容 | fixture 正本 |
+|------|----------|--------------|
+| 単一 Markdown 入力 | 単一 file 入力、heading、anchor、code block、task list、table、footnote、`[REPORT]`。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F `Fixture A` |
+| ディレクトリ Markdown 入力 | 複数 Markdown、目次、page path、相対 Markdown link 変換、page ごとの slug 空間、search index。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F `Fixture B` |
+| 異常系 | 不正 theme、source 不在、Markdown 不在、空 title、`[REPORT]` 非出力、既存出力保護。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F `Fixture C` |
+| 冪等性 | 同一入力と同一 CLI による再実行時の出力決定性。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F `Fixture D` |
+| path 安全性 | source / output の包含禁止、既存出力保護、source size 上限。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F `Fixture E` |
+| HTML escape / Markdown 境界 | raw HTML escape、table cell 補正、list nesting clamp。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F `Fixture F` |
+| search index / JavaScript | search index schema、body 抽出、localStorage guard、外部 storage / network 不使用。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F `Fixture G` |
+| strict / atomic output | strict warning 昇格、stdout / stderr、既存公開出力保護。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F `Fixture H` |
 
 **[`docs/details/builder.md`](builder.md) 詳細本文責務 §8〜[`docs/details/builder.md`](builder.md) 詳細本文責務 §8a builder 中核機能別実装確認固定契約：**
 
@@ -1613,18 +1436,18 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 | Builder 中核機能確認節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | 必須 fixture |
 |------------------------|------|------|------|---------------------------|--------------|--------------|
 | [`docs/details/builder.md`](builder.md) 詳細本文責務 §8 | builder CLI 実行 | CLI 引数、Markdown file / directory、theme、build meta。 | 静的 Web サイト、stdout 進捗、`[REPORT]`。 | 公開用 `--out` は tmp 完成後だけ置換する。 | 引数不正、UTF-8 不正、strict 警告、書込失敗時は既存出力を保持する。 | help/version、単一入力、directory 入力、strict、atomic output。 |
-| [`docs/details/builder.md`](builder.md) 詳細本文責務 §8a | builder 検証条件 | `testdata/builder/` 入力一式。 | expected HTML / CSS / JS / search index / stdout / stderr は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務で固定する。 | fixture 実行時だけ一時出力を作成する。 | 異常系 fixture で `[REPORT]` を出さず既存出力を変えない。 | Fixture A〜H 全件。 |
+| [`docs/details/builder.md`](builder.md) 詳細本文責務 §8a | builder 検証条件 | `testdata/builder/` 入力一式。 | expected HTML / CSS / JS / search index / stdout / stderr は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F で固定する。 | fixture 実行時だけ一時出力を作成する。 | 異常系 fixture で `[REPORT]` を出さず既存出力を変えない。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F `Fixture A`〜`Fixture H` 全件。 |
 
 **[`docs/details/builder.md`](builder.md) 詳細本文責務 §8〜[`docs/details/builder.md`](builder.md) 詳細本文責務 §8a builder 中核機能 受け入れ固定契約：**
 
 | 項目 | 合格条件 |
 |------|----------|
-| atomicity | builder output は tmp 完成後だけ公開用 `--out` へ置換する。失敗時は既存出力、入力 Markdown、設定値、fixture expected を変更しない。 |
+| atomicity | builder output は tmp 完成後だけ公開用 `--out` へ置換する。失敗時は既存出力、入力 Markdown、設定値を変更しない。fixture expected は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F を参照する。 |
 | no hidden dependency | Go 標準ライブラリ以外の Markdown parser、template engine、syntax highlight library、search library、外部 network 取得を追加しない。 |
 | no silent success | 引数不正、UTF-8 不正、strict 警告昇格、書込失敗を成功扱いにしない。 |
-| no secret leak | builder は secret を受け取らない。build meta、HTML、asset、stdout、stderr、fixture expected に secret 風値を新規保存しない。 |
+| no secret leak | builder は secret を受け取らない。build meta、HTML、asset、stdout、stderr に secret 風値を新規保存しない。fixture expected の禁止条件は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F を参照する。 |
 | reproducibility | 同一入力、同一 CLI、同一 build meta では、出力 HTML / CSS / JavaScript / search index / `[REPORT]` が同一になる。 |
-| fixture completeness | [`docs/details/builder.md`](builder.md) 詳細本文責務 §8a の対象 fixture を未実行または FAIL のまま builder の詳細実装確認を満たした扱いにしない。 |
+| fixture completeness | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F の対象 fixture を未実行または FAIL のまま builder の詳細実装確認を満たした扱いにしない。 |
 | downstream handoff | builder が出力する `[REPORT]`、HTML meta、search index、asset は、runner が読む場合でも builder 本文の固定 key と形式を正とする。runner 側の保存、状態更新、API 反映は [`docs/details/runner.md`](runner.md) 詳細本文責務 §13〜§15 と [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a を参照する。 |
 
 ---

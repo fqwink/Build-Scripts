@@ -65,17 +65,11 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 | cleanup | 通常 log、archive log | retention 対象の通常 log、archive log を固定順で削除し、失敗を `failed_count` へ計上する。 | 一部失敗時の処理中断、失敗対象の自動 chmod / rename 修復。 |
 | secret / log | WARN / ERROR 出力 | 固定 code、id、path basename、HTTP status 相当だけを出す。 | build log 本文、token、Authorization header、credential 付き URL、gzip 内容の出力。 |
 
-**archive fixture expected 固定契約：**
+**archive fixture 参照：**
 
-| fixture | 必須 expected |
-|---------|---------------|
-| `success-log-archive` | `expected/effects.json` に created `.json.gz`、deleted `.json`、unchanged 実行中 log、external_calls `[]`、commands `[]`、write_order を固定する。 |
-| `noop-log-archive-empty` | `archived_count=0`、created / updated / deleted paths なし、WARN なし、idempotency を固定する。 |
-| `failure-log-archive-gzip` | gzip write / close / rename failure で元 `.json` 維持、tmp cleanup、`archived_count=0`、WARN / ERROR 固定 code を固定する。 |
-| `success-log-cleanup` | 通常 log 削除、archive log 削除、空 archive directory 削除試行、`deleted_count` / `failed_count`、削除対象外 unchanged を固定する。 |
-| `partial-log-cleanup-delete-failure` | 削除失敗対象を残し、後続対象を継続し、`failed_count` と unchanged failed path を固定する。 |
+archive / snapshot fixture の fixture 名、expected file、effects、fake filesystem、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、archive owner の保存、読取、download、delete、rollback 実体処理と状態差分だけを扱う。
 
-検証条件:
+検証観点:
 
 | ケース | 期待結果 |
 |--------|----------|
@@ -238,18 +232,9 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | pending | `.pending_transfers` entry に `trigger="rollback"`、`rollback_from`、`snapshot_id`、deploy target、retry_count を保存する。 |
 | finalizer failure | server log 固定 code、元 snapshot / 元 log / `.last_sha` unchanged。lock 解放は best effort。 |
 
-**archive / snapshot fixture 合格ゲート：**
+**archive / snapshot fixture 合格ゲート参照：**
 
-| fixture | 合格条件 |
-|---------|----------|
-| `success-snapshot-list-download` | `meta.json` schema、一覧 sort、download header、tar entry 順序、entry mtime、read-only no-write、secret absence が expected と一致する。 |
-| `failure-snapshot-download-unsafe-entry` | unsafe path、symlink、secret file、meta mismatch のいずれかで stream 開始前 failure、binary header なし、状態差分なし。 |
-| `partial-snapshot-download-stream-failure` | stream 開始後 read error で stream 中断、JSON 追加なし、状態差分なし、固定 server log。 |
-| `success-snapshot-delete` | delete 順、`.config_log`、deleted path、unchanged 他 snapshot / history / log / pending が expected と一致する。 |
-| `failure-snapshot-delete-log-failure` | snapshot 削除済み、`.config_log` 失敗、他 snapshot / history / log / pending unchanged。 |
-| `success-snapshot-rollback` | rollback 状態更新順、new build id、history/log/status/pending、元 snapshot / `.last_sha` unchanged が expected と一致する。 |
-| `failure-snapshot-rollback-deploy` | rollback failure の新規 log/history、finalizer、lock 解放、元 snapshot / `.last_sha` unchanged が expected と一致する。 |
-| `failure-snapshot-running-conflict` | delete / rollback conflict、snapshot / history / log / pending / config log 差分なし。 |
+archive / snapshot の fixture 名、合格条件、expected / effects、stream failure、secret absence、状態差分、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、`meta.json` schema、一覧 sort、download header、tar entry 順序、delete 順、rollback 状態更新順、元 snapshot 維持、`.last_sha` 非変更など archive owner の実体処理観点だけを扱う。
 
 **検証条件：**
 

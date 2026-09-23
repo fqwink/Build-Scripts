@@ -81,6 +81,64 @@ Phase、API、[`docs/details/runner.md`](runner.md) 詳細本文責務 §27 / [`
 | 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用禁止の未固定 contract を実装検証証跡に列挙する。 | 次 Phase 着手条件未充足として未完了。 |
 | secret 確認 | log、fixture、snapshot、UI 表示、実装検証証跡に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
 
+## 8a-F builder 初期受け入れ fixture 契約
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §8a-F は、[`docs/details/builder.md`](builder.md) 詳細本文責務 §8a の builder 初期受け入れ fixture、入力、expected、fake、実装検証証跡を扱う正本である。[`docs/details/builder.md`](builder.md) 詳細本文責務 §8a は検証観点だけを持ち、fixture 本文を再定義しない。
+
+| fixture | 入力 / 実行 | expected / effects |
+|---------|-------------|--------------------|
+| Fixture A: 単一 Markdown 入力 | `testdata/builder/single/source.md` を `adlaire-ci-build --src testdata/builder/single/source.md --out <tmp> --title "Fixture Site"` で実行する。入力は H1、self anchor link、bash fence、task list、table、footnote を含む。 | exit `0`。`index.html`、`assets/style.css`、`assets/app.js`、`assets/search-index.json` を作成し、`pages/` は作成しない。H1 id、self link、code block label、task checkbox、`[REPORT] pages=1`、`theme=adlaire-default` を固定する。 |
+| Fixture B: ディレクトリ Markdown 入力 | `testdata/builder/site/docs/intro.md`、`guide/setup.md`、`guide/setup_copy.md` を入力し、`adlaire-ci-build --src testdata/builder/site/docs --out <tmp> --title "Docs"` で実行する。 | exit `0`。目次 `index.html`、`pages/guide-setup.html`、`pages/guide-setup-copy.html`、`pages/intro.html` を出力する。入力順、目次順、Markdown link 変換、page ごとの slug 空間、search index entry を固定する。 |
+| Fixture C: 異常系 | unknown theme、source 不在、Markdown 不在 directory、空 title を入力する。 | exit `2`。stderr は固定 error。stdout に `[REPORT]` を出さず、既存正常出力を変更しない。 |
+| Fixture D: 冪等性 | 同一入力、同一 CLI 引数で 2 回連続実行する。 | 生成時刻 meta と footer 生成時刻以外の HTML、CSS、JavaScript、search index、`[REPORT]` が一致する。 |
+| Fixture E: path 安全性と既存出力保護 | source 配下 out、source と out 同一、10 MiB 超 Markdown を入力する。 | exit `2`。stderr を固定し、出力作成なしまたは既存 `index.html` 維持。 |
+| Fixture F: HTML escape と Markdown 境界 | raw `<script>`、不足 / 超過 cell table、7 レベル以上 list nesting を含む Markdown を入力する。 | raw HTML は escape され、table cell 補正、list nesting clamp、`[WARN] LIST_NESTING_CLAMPED` を固定する。 |
+| Fixture G: search index / JavaScript contract | Fixture B と同じ directory 入力を使用する。 | `assets/search-index.json` の top-level array、entry key 順、body 長、HTML tag 除外、`assets/app.js` の localStorage guard、`search-results`、`data-search-hit`、外部 storage / network 不使用を固定する。 |
+| Fixture H: strict warning and atomic output | strict 用 Markdown と既存正常出力を用意し、`adlaire-ci-build --src testdata/builder/strict/source.md --out <tmp> --strict` を実行する。 | exit `2`。stdout に `[WARN] BROKEN_LINK`、`[WARN] UNCLOSED_FENCE`、`[REPORT]` を出し、stderr は空。既存 `index.html` を置換しない。 |
+
+## 15a-F runner 初期受け入れ fixture 契約
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §15a-F は、[`docs/details/runner.md`](runner.md) 詳細本文責務 §15a の runner 初期受け入れ fixture、入力状態、expected、fake GitHub / fake ssh / fake notifier / fake filesystem、実装検証証跡を扱う正本である。[`docs/details/runner.md`](runner.md) 詳細本文責務 §15a は検証観点だけを持ち、fixture 本文を再定義しない。
+
+**runner fixture 共通 expected：**
+
+| 共通 expected | 固定内容 |
+|---------------|----------|
+| no external execution | 対象 fixture が禁止する GitHub API、pipeline、deploy、snapshot を実行しない。 |
+| no log history creation | 対象 fixture が禁止する `.build_logs/` と `.build_history` を作成しない。 |
+| clean final state | `.build_state.running=false`、`current_build_id=null`、`.build_lock` 不在で終了する。 |
+| finalizer failure | ERROR ログ `BUILD_STATE_FINALIZE_FAILED` を出し、`.build_lock` は削除を試みる。削除成功 / 失敗に関わらず、`.build_state.running=false` 保存失敗を正常扱いしない。 |
+
+| fixture | 入力 / fake | expected / effects |
+|---------|--------------|--------------------|
+| Fixture R1 | CLI help、relative state-dir、unknown option。 | help は exit `0`。不正 CLI は exit `2`、stdout 空、stderr 固定。 |
+| Fixture R2 | `.last_sha={"sha":"blob-1"}`、fake GitHub Trees API が同一 SHA を返す。 | exit `0`。`.last_sha` 維持、log/history 非作成、`NO_CHANGE` INFO。 |
+| Fixture R3 | 旧 SHA、fake GitHub 変更あり、fake blob Markdown、deploy target なし、pipeline success。 | exit `0`。新 SHA 保存、build log/history success、clean final state。 |
+| Fixture R4 | fake GitHub 変更あり、pipeline exit `7`。 | exit `1`。旧 SHA 維持、failure build log/history、deploy/snapshot 非実行。 |
+| Fixture R5 | pipeline success、deploy target 1 件、fake ssh transfer failure。 | exit `1`。新 SHA 保存、pending transfer 追加、success_deploy_pending、snapshot 非作成。 |
+| Fixture R6 | 実行中 PID を指す `.build_lock`。 | exit `0`。状態、log、history を変更せず already running を出力する。 |
+| Fixture R7 | `.notify_pending` が破損 JSON。 | corrupt backup を作成し、`.notify_pending=[]` を再生成して通常処理を継続する。timestamp は UTC 秒精度。 |
+| Fixture R8 | build timeout `1`、pipeline が timeout まで終了しない。 | exit `1`。旧 SHA 維持、pipeline timeout log/history、clean final state。 |
+| Fixture R9 | fake GitHub Trees API が retry 対象 `503` を返し続ける。 | exit `3`。旧 SHA 維持、failure_api log/history、pipeline/deploy/snapshot 非実行。 |
+| Fixture R10 | pipeline success、notify webhook fake `500`。 | exit `0`。build success 維持、notify pending/log を保存し、history を failure にしない。 |
+| Fixture R11 | pipeline stdout に `[REPORT]` 2 行。 | exit `0`。1 行目だけ report 保存、`REPORT_DUPLICATE` warning を保存する。 |
+| Fixture R12 | finalizer 時だけ `.build_state` atomic write failure。 | exit `1`。成功 log/history/status は保存済み、finalizer failure を固定する。 |
+| Fixture R13 | `.github_token` mode `0644`。 | exit `2`。`GITHUB_TOKEN_INSECURE_MODE`、running にせず、token 値 / 長さ / hash を出力しない。 |
+| Fixture R14 | dry-run、repo/dist/log/snapshot directory 不在。 | exit `0`。directory 非作成、dry-run JSON だけ出力、外部副作用なし。 |
+| Fixture R15 | `.last_sha` 破損、fake GitHub 変更あり。 | exit `1`。SHA cache 維持、failure_decode、pipeline/deploy/snapshot 非実行。 |
+| Fixture R16 | fake GitHub `403` rate limit remaining `0`、reset header 不正。 | exit `3`。旧 SHA 維持、failure_api、長時間待機なし。 |
+| Fixture R17 | cooldown 中、または manual force queue。 | polling は skipped_cooldown。manual force は cooldown を無視して build し、処理済み queue entry を削除する。 |
+| Fixture R18 | pipeline success、fake ssh transfer success、fake ssh checksum mismatch。 | exit `1`。新 SHA 保存、pending transfer 保存、success_deploy_pending、snapshot 非作成。 |
+| Fixture R19 | 既存 pending transfer と同一 key の deploy failure。 | entry 件数を増やさず、既存 entry の retry_count、failed_at、last_error を更新し、投入順を保持する。 |
+| Fixture R20 | pipeline/deploy success、snapshot keep `2`、古い snapshot 2 件。 | snapshot を atomic save し、一時 directory を残さず、secret / lock / pending を含めず、最古 snapshot を prune する。 |
+| Fixture R21 | `.build_status.json` start write だけ fake failure。 | exit `1`。running にせず、外部副作用と log/history 作成なし、lock 削除。 |
+| Fixture R22 | build log atomic write だけ fake failure。 | exit `1`。history 非追記、旧 SHA 維持、deploy/snapshot 非実行、status failure_state_write。 |
+| Fixture R23 | history append だけ fake failure。 | exit `1`。保存済み build log 維持、旧 SHA 維持、deploy/snapshot 非実行、clean final state。 |
+| Fixture R24 | branch target 2 件、1 件目 GitHub API failure、2 件目 success。 | exit `1`。1 件目 failure_api、2 件目 success。1 件目失敗で全体中断しない。 |
+| Fixture R25 | branch target 2 件、両方 GitHub API failure。 | exit `3`。全 target failure_api、全 SHA 旧値維持、pipeline/deploy/snapshot 非実行。 |
+| Fixture R26 | pipeline/deploy success、snapshot writer fake failure。 | exit `0`。build success 維持、`SNAPSHOT_SAVE_FAILED` warning、pending transfer なし。 |
+| Fixture R27 | success 保存後、finalizer `.build_state` atomic write だけ fake failure。 | exit `1`。success log/history/status は保持し、finalizer failure を固定する。 |
+
 ## 22-F Phase 3 / Phase 4 API fixture 契約
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §22-F は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md`](api.md) 詳細本文責務 §22 を正本とする。
