@@ -853,6 +853,10 @@ statefile owner fixture が不足する場合、`statefile` は詳細実装確�
 
 `expected/ui_dom.json` は、panel id、error / success text、field error、hidden state、disabled state、one-time 表示領域の有無を構造化して固定する。DOM snapshot 文字列だけで合否判定してはならない。
 
+SDK 連動 fixture は、request trace、response passthrough、error object、token mutation、secret leak、no side-effect helper を `expected/sdk_trace.json`、`expected/sdk_error.json`、`expected/sdk_return.json`、`expected/security.json` のいずれかで固定する。SDK fixture 証跡は [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 の実装契約を検証するための証跡であり、SDK method、戻り値、error class、token 破棄条件の本文を置き換えない。
+
+UI 連動 fixture は、SDK only call trace、refresh order、disabled priority、one-time / secret clearing、no speculative display、field error mapping を `expected/ui_trace.json`、`expected/ui_dom.json`、`expected/security.json` のいずれかで固定する。UI fixture 証跡は [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の実装契約を検証するための証跡であり、DOM、表示順、disabled 条件、secret 消去条件の本文を置き換えない。
+
 **UI owner fixture 固定契約：**
 
 [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の UI fixture は、SDK method 呼び出し、DOM 表示、disabled / loading / error、secret field 消去、再取得順、one-time 表示、no speculative state を固定する。各 fixture は `manifest.json.owner_component` を `ui`、`manifest.json.section` を [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 または対象 §27.x、`expected/ui_trace.json` と `expected/ui_dom.json` を必須にする。API response、SDK error、fake SDK 入力は `input/fakes.json` または `expected/sdk_trace.json` で固定し、[`docs/details/ui.md`](ui.md) 詳細本文責務では再定義しない。

@@ -379,18 +379,9 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) 詳細本文責�
 | binary / stream | snapshot download は `Blob`、SSE は `StreamHandle` とし、JSON response と混同しない。 |
 | fixture evidence | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の SDK / UI 関連 fixture で、request shape、error shape、secret leak、token mutation、no retry、no response補完が確認される。 |
 
-**§27.21〜§27.47 SDK 連動 fixture 必須証跡：**
+**§27.21〜§27.47 SDK 連動 fixture 証跡参照：**
 
-SDK 実装変更は、対象 [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §27 機能ごとに [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 の固定表の証跡を fixture で固定する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 の固定表の証跡がない場合、SDK method が存在していても詳細実装確認を満たした扱いにしない。
-
-| SDK 証跡 | 固定する内容 | 合格条件 | 禁止条件 |
-|----------|--------------|----------|----------|
-| request trace | `method`、`path`、query key 順、body key、body なし endpoint。 | [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e と [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 SDK 引数変換契約に完全一致する。 | body なし endpoint へ `{}` を送る、query 未指定時に `?` を付ける。 |
-| response passthrough | API success body、binary body、SSE frame。 | SDK は存在 key を削除せず、存在しない key を追加しない。binary は `Blob`、SSE は `StreamHandle`。 | UI 用 label、集計値、既定値、token list、rate limit reset を SDK が合成する。 |
-| error object | `401`、`403`、`409`、`422 details`、`429`、`500`、network、timeout、protocol error。 | すべて `AdlaireCIError` になり、`status`、`message`、`details`、`responseBody` が固定される。 | `403` で token を破棄する、`409` / `429` を自動 retry する。 |
-| token mutation | login / logout / `401` / `403` / token create。 | login 成功だけ `_token` を設定し、logout と `401` だけ破棄する。createToken の token 本体は保存しない。 | `localStorage`、`sessionStorage`、Cookie、console、token list への保存。 |
-| secret leak | PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header。 | SDK property、throw message、console、加工済み response に平文が残らない。 | `responseBody` を UI 用に文字列加工して secret を露出する。 |
-| no side-effect helper | 自動 refresh、自動 retry、自動 logout、自動 queue fetch。 | 仕様で明記された `logout()` finally と `401` token 破棄以外の副作用を行わない。 | approve 後に `getQueue()` を SDK が自動実行するなど UI 責務を代行する。 |
+SDK 連動 fixture 名、入力、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の API / SDK / UI 連動 fixture 固定契約を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、request 生成、response passthrough、error object、token mutation、secret leak、side-effect 境界の実装契約だけを扱う。
 
 **SDK 型定義表：**
 

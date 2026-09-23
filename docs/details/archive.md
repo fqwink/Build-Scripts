@@ -232,7 +232,7 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | pending | `.pending_transfers` entry に `trigger="rollback"`、`rollback_from`、`snapshot_id`、deploy target、retry_count を保存する。 |
 | finalizer failure | server log 固定 code、元 snapshot / 元 log / `.last_sha` unchanged。lock 解放は best effort。 |
 
-**archive / snapshot fixture 合格ゲート参照：**
+**archive / snapshot fixture 証跡参照：**
 
 archive / snapshot の fixture 名、合格条件、expected / effects、stream failure、secret absence、状態差分、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、`meta.json` schema、一覧 sort、download header、tar entry 順序、delete 順、rollback 状態更新順、元 snapshot 維持、`.last_sha` 非変更など archive owner の実体処理観点だけを扱う。
 

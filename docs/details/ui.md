@@ -457,18 +457,9 @@ UI 詳細 fixture 名、fake SDK 入力、expected、合格条件、実装検証
 | one-time display | 発行 token、TOTP secret、otpauth URI は専用領域に 1 回だけ表示し、次 user action、copy、panel 遷移、logout、`401` で消去する。 |
 | fixture evidence | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の UI 関連 fixture で、SDK only、refresh order、disabled priority、secret clearing、one-time display、no speculative state が確認される。 |
 
-**§27.21〜§27.47 UI 連動 fixture 必須証跡：**
+**§27.21〜§27.47 UI 連動 fixture 証跡参照：**
 
-UI 実装変更は、対象 [`docs/details/ui.md`](ui.md) 詳細本文責務 §27 機能ごとに [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の固定表の証跡を fixture で固定する。UI は API / SDK の返却値を表示する補助層であり、状態確定、補完、保存、再試行を独自判断で行わない。
-
-| UI 証跡 | 固定する内容 | 合格条件 | 禁止条件 |
-|---------|--------------|----------|----------|
-| SDK only call trace | user action ごとの SDK method 名、引数、呼び出し順。 | [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の固定表の使用 SDK method だけを呼ぶ。直接 `fetch()`、`XMLHttpRequest`、`EventSource`、状態ファイル操作が 0 件。 | API endpoint を UI から直接呼ぶ、SDK にない method を仮実装する。 |
-| refresh order | 成功後再取得、`409` / `429` / `500` 後の再取得、再取得失敗時表示。 | 表の左から順に await し、途中失敗時は変更成功を維持して panel error に固定文言を表示する。 | 再取得失敗を理由に同じ変更 API を再送する。 |
-| disabled priority | maintenance、SSE 接続中、送信中、`429`、validation error の優先順位。 | [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の UI error / disabled 優先順位固定に従い、上位条件が残る限り下位解除で有効化しない。 | `429` timer 終了で maintenance disabled を無視して button を有効化する。 |
-| one-time / secret clearing | password、PAT、Webhook secret、SMTP password、発行 token、TOTP secret、otpauth URI、ticket、TOTP code。 | 成功、失敗、panel 遷移、logout、`401`、revoke all、次 user action で対象値が DOM から消える。 | token / secret を一覧、hidden field、data attribute、error message、clipboard 履歴表示へ残す。 |
-| no speculative display | status、queue、approval、token、rate limit、trend、failure category、environment、TOTP 状態。 | API / SDK response に存在する値だけを表示し、未知値は panel error または空状態で表現する。 | UI 時刻だけで expired を確定、avg / p95 / anomaly / rate limit count を再計算する。 |
-| field error mapping | `422 details` の `field` と panel error summary。 | 該当 field が存在する場合は field error と panel summary、存在しない場合は panel error へ表示する。入力値は保持し secret だけ消去する。 | `422` 後に対象 GET を呼んで入力値を上書きする。 |
+UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の API / SDK / UI 連動 fixture 固定契約および UI owner fixture 固定契約を正本とする。[`docs/details/ui.md`](ui.md) 詳細本文責務では、SDK only call、refresh order、disabled priority、one-time / secret clearing、no speculative display、field error mapping の実装契約だけを扱う。
 
 **UI 設定値契約：**
 
