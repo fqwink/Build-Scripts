@@ -220,7 +220,7 @@ owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の各�
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0c の実装前確認ゲートのいずれかが未充足の場合は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.7、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。不足している入口項目と更新すべき対応表を特定する。
 
-実装後の判定は、以下を入口として確認する。実装前確認項目は判定条件本文を持たない。Phase、状態分類、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、実装検証証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md)、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) を参照する。
+実装後の判定は、以下を入口として確認する。実装前確認項目は判定条件本文を持たない。Phase、状態分類、引き継ぎ契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、fixture、fake、実装検証証跡、acceptance checklist、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、setup / release 実行条件は [`docs/details/setup.md`](details/setup.md) 詳細本文責務を参照する。
 
 1. 実装した機能が、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と詳細仕様入口責務の対応表に記載された入力、出力、状態、異常系、検証条件と一致する。
 2. 対象機能が owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の機能仕様テンプレートを満たし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i の詳細節対応表の受け入れ条件を満たしている。
