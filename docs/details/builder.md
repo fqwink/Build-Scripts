@@ -1,6 +1,6 @@
 # Adlaire CI — Builder 詳細仕様
 
-`builder` owner component の詳細本文責務は、[`docs/details/builder.md`](builder.md) 詳細本文責務を正本とする。
+本ファイルは `builder` owner component の詳細本文責務として、`builder` が主本文として持つ実装契約だけを扱う。
 
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
@@ -1012,7 +1012,7 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 
 ### 7.1 テーマ切り替え（廃止）
 
-生成 HTML のデザイン関係は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とする。出力サイトはライトモード固定とし、ダークモード、テーマトグルボタン、`prefers-color-scheme` 対応を実装しない。
+生成 HTML のデザイン関係は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とする。本節は `builder` が出力してはならない selector、storage、media query、runtime 挙動だけを固定し、色、余白、タイポグラフィ、視覚方針を再定義しない。出力サイトはライトモード固定とし、ダークモード、テーマトグルボタン、`prefers-color-scheme` 対応を実装しない。
 
 ### 7.2 サイドバー開閉
 

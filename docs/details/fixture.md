@@ -1,6 +1,6 @@
 # Adlaire CI — Fixture 詳細仕様
 
-fixture 証跡責務は、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務を正本とする。
+本ファイルは fixture 証跡責務として、fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件だけを扱う。
 
 component 境界管理の参照先は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 とする。[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は owner component 別詳細本文責務ではなく、fixture 入力、expected、effects、assertion、実装検証証跡、検証観点の証跡本文を持つ。
 

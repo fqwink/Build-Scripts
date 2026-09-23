@@ -1,6 +1,6 @@
 # Adlaire CI — Archive 詳細仕様
 
-`archive` owner component の詳細本文責務は、[`docs/details/archive.md`](archive.md) 詳細本文責務を正本とする。
+本ファイルは `archive` owner component の詳細本文責務として、`archive` が主本文として持つ実装契約だけを扱う。
 
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
