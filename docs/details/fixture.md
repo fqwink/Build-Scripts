@@ -747,8 +747,8 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 
 §27.21〜§27.38 の runner owner 機能は、対象機能の個別 fixture に加えて、状態更新を伴う場合に [`docs/details/fixture.md`](fixture.md) §27-F の固定表の連動 fixture を必要数作成する。fixture は runner の業務判断と statefile の保存境界を分離して検証する。
 
-| fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
-|------------|----------------|------------|---------------|----------|
+| runner/statefile fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
+|----------------------------|----------------|------------|---------------|----------|
 | `runner-state-write-order` | `runner`、`statefile` | build lifecycle、queue、history、status、log、対象 [`docs/details/runner.md`](runner.md) §27 状態。 | `expected/effects.json.write_order`、`expected/state/`、`expected/logs/`。 | 個別節の保存順と一致し、並列処理でも永続保存順が固定される。 |
 | `runner-state-partial-failure` | `runner`、`statefile` | N 番目の state write / JSON Lines append / fsync fake failure。 | `expected/effects.json.updated_paths`、`unchanged_paths`、`forbidden_writes`。 | 失敗地点前の成功済み状態は保持し、失敗地点以降は変更しない。未定義 rollback を行わない。 |
 | `runner-state-noop-idempotency` | `runner`、`statefile` | 同一入力の 1 回目 / 2 回目、disabled、skip、duplicate、sample 不足。 | `expected/effects.json`、2 回目の `unchanged_paths`。 | 2 回目または no-op で不要な log / history / status / notify / audit 差分を作らない。 |
@@ -760,8 +760,8 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 
 [`docs/details/runner.md`](runner.md) §27.21〜§27.38 / [`docs/details/security.md`](security.md) §27.42〜§27.47 のうち API、SDK、UI が連動する実装変更は、対象機能の owner fixture に加えて [`docs/details/fixture.md`](fixture.md) §27-F の固定表の連動 fixture を必要数作成する。fixture は owner component の主本文を置き換えず、API response、SDK method、UI 表示の接続点を固定する。
 
-| fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
-|------------|----------------|------------|---------------|----------|
+| api/sdk/ui fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
+|------------------------|----------------|------------|---------------|----------|
 | `api-sdk-ui-request-trace` | `api`、`sdk`、`ui` | UI user action、SDK fake fetch trace、API request fixture。 | `expected/effects.json.external_calls`、`expected/sdk_trace.json`、`expected/ui_trace.json`。 | UI → SDK → API の method / path / query / body が [`docs/details/api.md`](api.md) §22.0e、[`docs/details/sdk.md`](sdk.md) §23、[`docs/details/ui.md`](ui.md) §24 と一致する。 |
 | `api-sdk-ui-error-propagation` | `api`、`sdk`、`ui` | `401`、`403`、`409`、`422 details`、`429`、`500` の fake response。 | `expected/response.json`、`expected/sdk_error.json`、`expected/ui_dom.json`。 | status、message、details、token 破棄条件、panel error、field error、disabled が固定どおり。 |
 | `api-sdk-ui-refresh-order` | `api`、`sdk`、`ui` | 変更 API 成功、成功後再取得 1 件目成功、2 件目失敗。 | `expected/ui_trace.json`、`expected/effects.json.status_api_calls`。 | 再取得順を守り、変更成功は維持し、再取得失敗だけ panel error に表示する。変更 API を再送しない。 |
@@ -779,8 +779,8 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 
 §26 の setup、admin UI 配布、API service 導入、update、rollback を含む実装変更は、対象機能の owner fixture に加えて [`docs/details/fixture.md`](fixture.md) §27-F の固定表の連動 fixture を必要数作成する。fixture は [`docs/details/setup.md`](setup.md) §26.8 と [`docs/details/admin.md`](admin.md) A1〜A6 の合格条件を同じ expected で検証する。
 
-| fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
-|------------|----------------|------------|---------------|----------|
+| setup/admin/release fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
+|---------------------------------|----------------|------------|---------------|----------|
 | `setup-admin-release-layout` | `setup`、`admin` | Release asset 一式、`SHA256SUMS`、`admin-ui.tar.gz`、fake download response。 | `expected/effects.json`、admin archive file list、`expected/security.json`。 | asset 名、checksum 対象、admin archive root layout、必須 file、任意 file、file mode、directory mode が固定値に一致する。 |
 | `setup-admin-archive-boundary` | `setup`、`admin` | unsafe archive、既存 `$INSTALL_DIR/admin`、既存 API binary、API service fake。 | `expected/effects.json.unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`expected/stderr.txt`。 | unsafe archive では admin directory、API binary、credentials、runner state を変更せず、API service start / restart を呼ばない。 |
 | `setup-systemd-rollback-boundary` | `setup`、`runner`、`api` | systemd fake、旧 binary backup、旧 admin backup、restart failure。 | `expected/effects.json.write_order`、`updated_paths`、`unchanged_paths`、`forbidden_writes`、`commands`。 | rollback は 1 回だけ実行し、失敗段階で許可された binary / admin UI だけを戻し、state、history、secret、runner timer を未定義に戻さない。 |
