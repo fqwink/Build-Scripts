@@ -1037,13 +1037,8 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 ```json
 {
   "exported_at": "2026-09-15T10:00:00Z",
-  "notify_config": {
-    "webhooks": [{ "url": "https://hooks.example.com/...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": null }],
-    "on": ["failure"],
-    "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 },
-    "email": { "enabled": false, "to": [], "on": [] }
-  },
-  "server_config": { "log_max_lines": 500, "history_max_count": 100 }
+  "notify_config": "<GET /api/notify-config response body>",
+  "server_config": "<GET /api/config response body>"
 }
 ```
 
@@ -1053,9 +1048,8 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 ```
 
 **`POST /api/build/force` レスポンス例：**
-```json
-{ "message": "Build started", "build_id": "b20260915100500", "queued": false }
-```
+
+`POST /api/build/force` の即時開始 / queue 追加 response 例は [`docs/details/api.md`](api.md) の `POST /api/build` / `POST /api/build/force` レスポンス例を参照する。
 
 **`POST /api/pat-verify` レスポンス例：**
 ```json
@@ -1080,16 +1074,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 
 **`POST /api/restore` リクエスト / レスポンス：**
 ```json
-// リクエスト（GET /api/backup と同一形式）
-{
-  "notify_config": {
-    "webhooks": [{ "url": "https://hooks.example.com/...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": null }],
-    "on": ["failure"],
-    "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 },
-    "email": { "enabled": false, "to": [], "on": [] }
-  },
-  "server_config": { "log_max_lines": 500, "history_max_count": 100 }
-}
+// リクエストは GET /api/backup レスポンス例のうち exported_at を除いた形式
 // レスポンス: 200
 { "message": "Restored" }
 ```
@@ -1333,18 +1318,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 ```json
 // リクエスト（GET /api/branch-config の branches と同一形式）
 {
-  "branches": [
-    {
-      "branch": "main",
-      "target_file": "docs",
-      "sha_file": "/opt/adlaire-builder/.last_sha",
-      "src": "/opt/adlaire-builder/repo/docs",
-      "out": "/opt/adlaire-builder/dist/site",
-      "deploy_targets": [
-        { "host": "192.0.2.1", "user": "deploy", "dest_dir": "/var/www/html/" }
-      ]
-    }
-  ]
+  "branches": "<GET /api/branch-config response branches>"
 }
 // レスポンス: 200
 { "message": "Branch config updated", "branches_count": 1 }
@@ -1352,11 +1326,9 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 
 `branches` が空配列 `[]` の場合は `.branch_config` ファイルを削除し、`BRANCH_TARGETS` のデフォルト値に戻す（`source: "default"` に戻る）。変更は次回ポーリング周回から反映される。
 
-**`POST /api/notify/weekly-summary` レスポンス例：**
+**`POST /api/notify/weekly-summary` レスポンス参照：**
 
-```json
-{ "message": "Weekly summary sent", "period": "2026-09-08/2026-09-14", "success_count": 12, "failure_count": 1, "success_rate": 92.3 }
-```
+レスポンス例は [`docs/details/api.md`](api.md) の `POST /api/notify/weekly-summary` レスポンス例を参照する。
 
 手動 weekly summary の集計、送信、`.notify_log` 追記、失敗時 response は [`docs/details/runner.md`](runner.md) §27.19 を参照する。`on: ["weekly_summary"]` 設定の Webhook 宛先がない場合は `422 Unprocessable Entity` を返す。
 
@@ -1811,9 +1783,7 @@ hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙
 **`GET /api/output-meta` レスポンス変更（`sha256` / build meta フィールド追加）：**
 ```json
 {
-  "size_bytes": 2048576,
-  "mtime": "2026-09-15T10:00:00Z",
-  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sha256": "<SHA-256 hex>",
   "build_id": "b20260915100000",
   "commit_sha": "abc1234",
   "build_at": "2026-09-15T10:00:00Z"
@@ -1858,7 +1828,7 @@ hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙
 **`POST /api/pipeline-config` リクエスト / レスポンス：**
 ```json
 // リクエスト
-{ "extra_args": ["--verbose"], "env": { "DEBUG": "1" } }
+{ "extra_args": "<GET /api/pipeline-config response extra_args>", "env": "<GET /api/pipeline-config response env>" }
 // レスポンス: 200
 { "message": "Pipeline config updated" }
 ```
@@ -1946,10 +1916,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 **`GET /api/notify-config` への追加（`email` セクション）：**
 ```json
 {
-  "webhooks": [ { "url": "...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": "***" } ],
   "channels": [ { "id": "n002", "type": "email", "label": "Ops", "enabled": true, "on": ["failure", "duration_anomaly"], "config": { "to": ["ops@example.com"] }, "retry_count": 2, "retry_interval_seconds": 30 } ],
-  "on": ["failure"],
-  "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 },
   "email": { "enabled": true, "to": ["ops@example.com"], "on": ["failure"] }
 }
 ```
@@ -2091,7 +2058,7 @@ queue entry schema と trigger 別 payload schema は [`docs/details/statefile.m
 ## 27. api owner 追加仕様化機能 詳細仕様
 
 ### 27.5 設定バリデーション API
-owner component は `api` とする。collaborator component は `sdk`、`ui`、`statefile` とする。
+§27.5 の境界は owner component `api`、collaborator component `sdk`、`ui`、`statefile` とする。
 
 
 `POST /api/config/validate` は、`POST /api/config` と同じ入力を受け取り、保存せずに検証結果を返す。
@@ -2137,7 +2104,7 @@ Request body は partial `ConfigObject` とする。未知 key を含む場合�
 | valid false | HTTP 200、保存差分なし。 |
 
 ### 27.6 API アクセスログ
-owner component は `api` とする。collaborator component は `sdk`、`ui`、`statefile` とする。
+§27.6 の境界は owner component `api`、collaborator component `sdk`、`ui`、`statefile` とする。
 
 
 `api` は全 `/api/` request について `.api_access_log` へ JSON Lines を追記する。`GET /api/health` も対象とする。静的 file 配信、admin HTML、SDK JS は対象外とする。
@@ -2321,7 +2288,7 @@ queue entry は [`docs/details/statefile.md`](statefile.md) §22.0c `.build_stat
 | payload oversized | `413`、状態差分なし。 |
 
 ### 27.13 Webhook イベントログ / 一覧取得 API
-owner component は `api` とする。collaborator component は `sdk`、`ui`、`statefile` とする。
+§27.13 の境界は owner component `api`、collaborator component `sdk`、`ui`、`statefile` とする。
 
 本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、sdk、ui のページング参照対象にすることである。
 
@@ -2382,7 +2349,7 @@ Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `g
 | total | 壊れた行を除外した件数。 |
 
 ### 27.16 ヘルスチェックエンドポイント
-owner component は `api` とする。collaborator component は `statefile` とする。
+§27.16 の境界は owner component `api`、collaborator component `statefile` とする。
 
 本機能の目的は、認証不要の `GET /api/health` で、外部監視へ Adlaire CI の最低限の稼働状態を返すことである。
 
@@ -2548,7 +2515,7 @@ runner による `.branch_config` の読込、`RunnerConfig.BranchTargets` へ�
 | POST empty log failure | `.branch_config` は削除済み、response は `500`。 |
 
 ### 27.20 設定変更の詳細 diff 記録
-owner component は `api` とする。collaborator component は `statefile` とする。
+§27.20 の境界は owner component `api`、collaborator component `statefile` とする。
 
 本機能の目的は、設定変更 API が何を変更したかを `.config_log` に機械可読 diff と人間可読 diff の両方で残すことである。
 
