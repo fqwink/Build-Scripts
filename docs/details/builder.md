@@ -217,24 +217,24 @@ Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま�
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │ 1. MDファイル読み込み（raw_lines）                              │
-├────────────────────────────────────────────────────────────────┤
+├─ step 2 heading extraction ────────────────────────────────────┤
 │ 2. 見出し抽出パス（フェンス内を除外）                           │
 │    → headings: []Heading（slug は重複解決済み）                 │
 │    → slugByLine: map[int]string                                │
-├────────────────────────────────────────────────────────────────┤
+├─ step 2b footnote definition collection ───────────────────────┤
 │ 2b. 脚注定義収集パス                                            │
 │    → ctx.FootnoteDefs: map[string]string                       │
 │    ※ ctx.FootnoteOrder は convert() 実行中に inline() が更新    │
-├────────────────────────────────────────────────────────────────┤
+├─ step 3 toc generation ────────────────────────────────────────┤
 │ 3. TOC HTML 生成（buildTOC(headings)）                          │
 │    → tocHTML: string                                           │
-├────────────────────────────────────────────────────────────────┤
+├─ step 4 markdown conversion ───────────────────────────────────┤
 │ 4. MD → HTML 変換（convert(lines, headings, ctx)）              │
 │    → ConvertResult.HTML                                        │
-├────────────────────────────────────────────────────────────────┤
+├─ step 5 site template composition ─────────────────────────────┤
 │ 5. サイトテンプレート合成                                      │
 │    theme component、CSS、JS、search index を生成                 │
-├────────────────────────────────────────────────────────────────┤
+├─ step 6 output write ──────────────────────────────────────────┤
 │ 6. サイトディレクトリ書き出し（OUT）                            │
 └────────────────────────────────────────────────────────────────┘
 ```
@@ -408,7 +408,7 @@ type tocStackItem struct {
 ```html
 <li class="tg">
   <div class="tg-row">
-    <a href="#slug" class="tl lv1" data-slug="slug">見出しテキスト</a>
+    <a href="#group-slug" class="tl lv1" data-slug="group-slug">見出しテキスト</a>
     <button class="tg-btn" aria-expanded="false" data-target="tg-slug" aria-label="展開">
       <svg>…</svg>
     </button>
@@ -422,7 +422,7 @@ type tocStackItem struct {
 **生成 HTML 構造（リーフの場合）：**
 ```html
 <li class="ti">
-  <a href="#slug" class="tl lv1" data-slug="slug">見出しテキスト</a>
+  <a href="#leaf-slug" class="tl lv1" data-slug="leaf-slug">見出しテキスト</a>
 </li>
 ```
 
@@ -1246,18 +1246,18 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 <!-- 先頭章（.ch-prev なし） -->
 <nav class="ch-nav">
   <span></span>
-  <a class="ch-next" href="#next-slug">次の章タイトル →</a>
+  <a class="ch-next" href="#second-slug">第2章タイトル →</a>
 </nav>
 
 <!-- 中間章 -->
 <nav class="ch-nav">
-  <a class="ch-prev" href="#prev-slug">← 前の章タイトル</a>
-  <a class="ch-next" href="#next-slug">次の章タイトル →</a>
+  <a class="ch-prev" href="#first-slug">← 第1章タイトル</a>
+  <a class="ch-next" href="#third-slug">第3章タイトル →</a>
 </nav>
 
 <!-- 最終章（.ch-next なし） -->
 <nav class="ch-nav">
-  <a class="ch-prev" href="#prev-slug">← 前の章タイトル</a>
+  <a class="ch-prev" href="#second-slug">← 第2章タイトル</a>
   <span></span>
 </nav>
 ```
@@ -1642,7 +1642,7 @@ adlaire-ci-build --src testdata/builder/strict/source.md --out /tmp/adlaire-ci-f
 
 ### 27.4 出力サイトへのビルドメタ埋め込み
 
-owner component は `builder` とする。collaborator component は `runner`、`api`、`statefile` とする。
+§27.4 の境界は owner component `builder`、collaborator component `runner`、`api`、`statefile` とする。
 
 [`docs/details/builder.md`](builder.md) §27.4 では、HTML meta、REPORT、build log へ保存する値と escape 条件だけを定義する。API response は [`docs/details/api.md`](api.md) §22.0e、fixture 証跡は [`docs/details/fixture.md`](fixture.md) §27-F を参照する。
 
@@ -1683,7 +1683,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 本機能の目的は、複数ページ静的サイト生成時に未変更入力の変換結果を再利用し、build 時間を短縮することである。
 
-owner component は `builder` とする。collaborator component は `runner`、`statefile` とする。
+§27.25 の境界は owner component `builder`、collaborator component `runner`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -1755,7 +1755,7 @@ owner component は `builder` とする。collaborator component は `runner`、
 
 本機能の目的は、Markdown から参照される画像、相対リンク、include 対象を追跡し、関連する入力だけを再ビルド対象にすることである。
 
-owner component は `builder` とする。collaborator component は `runner`、`statefile` とする。
+§27.28 の境界は owner component `builder`、collaborator component `runner`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -2455,7 +2455,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 
 [`docs/details/builder.md`](builder.md) §28.1〜[`docs/details/builder.md`](builder.md) §28.5 は、後続 [`docs/details/builder.md`](builder.md) §28.6〜[`docs/details/builder.md`](builder.md) §28.25 の入力基盤、出力基盤、検索基盤に影響するため、[`docs/details/builder.md`](builder.md) §28.1〜§28.5 補足固定表の処理単位、状態、出力を固定する。§28.1〜§28.5 補足固定表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class は導入しない。
 
-| 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+| §28.1〜§28.5 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | [`docs/details/builder.md`](builder.md) §28.1 | page set 全体 | `changed_pages`、`reused_pages`、`deleted_pages`、`dependency_impacted_pages`、`incremental_reason` を ASCII path 昇順で保持する。 | staging 内に最終 page set、asset、search index、manifest が揃った場合だけ公開出力へ置換する。 |
 | [`docs/details/builder.md`](builder.md) §28.2 | run 全体 | `output_format` を `html` に正規化する。予約値または未知値を検出した時点で Markdown 読込前に停止する。 | `html` の場合だけ既存 pipeline へ進める。`pdf` / `epub` / 未知値では出力を作成しない。 |
@@ -2548,7 +2548,7 @@ admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。se
 
 [`docs/details/builder.md`](builder.md) §28.6〜[`docs/details/builder.md`](builder.md) §28.10 は、生成 site の閲覧挙動、TOC、時刻表示、code 表示、画像出力に影響するため、[`docs/details/builder.md`](builder.md) §28.6〜§28.10 補足固定表の処理単位、状態、出力を固定する。§28.6〜§28.10 補足固定表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key は導入しない。
 
-| 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+| §28.6〜§28.10 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | [`docs/details/builder.md`](builder.md) §28.6 | heading section | `collapse_targets`、`section_ranges`、`section_state_key`、`default_expanded` を page ごとに保持する。 | h2 / h3 section 範囲、toggle、wrapper、ARIA、localStorage payload、print 展開が一致する。 |
 | [`docs/details/builder.md`](builder.md) §28.7 | TOC tree | `toc_min_depth`、`toc_max_depth`、`toc_links`、`toc_active_targets` を page ごとに保持する。 | TOC link だけを depth filter し、本文 heading、heading id、search index heading source を変更しない。 |
@@ -2631,7 +2631,7 @@ image `src` は以下に分類する。
 
 [`docs/details/builder.md`](builder.md) §28.11〜[`docs/details/builder.md`](builder.md) §28.15 は、head 出力、theme 状態、code block 表示、Markdown 前処理、最終 HTML byte に影響するため、[`docs/details/builder.md`](builder.md) §28.11〜§28.15 補足固定表の処理単位、状態、出力を固定する。§28.11〜§28.15 補足固定表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key は導入しない。
 
-| 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+| §28.11〜§28.15 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | [`docs/details/builder.md`](builder.md) §28.11 | head meta set | `custom_meta_entries`、`custom_meta_rejected`、`custom_meta_order` を page ごとに保持する。 | key validation、重複解決、head 内順序、attribute escape、禁止 key 拒否が一致する。 |
 | [`docs/details/builder.md`](builder.md) §28.12 | light visual baseline | `color_scheme_fixed`、`light_css_variables` を page ごとに保持する。 | light 固定 CSS variables、print light、禁止識別子不在が一致する。 |
@@ -2733,7 +2733,7 @@ minify 後に byte 数が 0、doctype / html / head / body が消える、pre / 
 
 [`docs/details/builder.md`](builder.md) §28.16〜[`docs/details/builder.md`](builder.md) §28.20 は、TOC runtime、diagram 変換、脚注、数式表示、hash navigation に影響するため、[`docs/details/builder.md`](builder.md) §28.16〜§28.20 補足固定表の処理単位、状態、出力を固定する。§28.16〜§28.20 補足固定表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 script は導入しない。
 
-| 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+| §28.16〜§28.20 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | [`docs/details/builder.md`](builder.md) §28.16 | TOC active target set | `toc_active_enabled`、`toc_active_targets`、`toc_active_current`、`toc_active_fallback_mode` を page ごとに保持する。 | TOC link 集合、`.is-active` 1 件化、`aria-current`、IntersectionObserver / scroll fallback、TOC depth 同期が一致する。 |
 | [`docs/details/builder.md`](builder.md) §28.17 | mermaid code block | `mermaid_source`、`mermaid_nodes`、`mermaid_edges`、`mermaid_unsupported` を block ごとに保持する。 | 対応構文、SVG node / edge、source fallback、escape、外部 script 不在、unsupported warning が一致する。 |
@@ -2818,7 +2818,7 @@ JS 無効時は通常 anchor として機能する。JS 実行時に `history.pu
 
 [`docs/details/builder.md`](builder.md) §28.21〜[`docs/details/builder.md`](builder.md) §28.25 は、生成 site のアクセシビリティ、画像操作、印刷出力、Markdown block / list 変換に影響するため、[`docs/details/builder.md`](builder.md) §28.21〜§28.25 補足固定表の処理単位、状態、出力を固定する。§28.21〜§28.25 補足固定表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 asset は導入しない。
 
-| 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+| §28.21〜§28.25 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | [`docs/details/builder.md`](builder.md) §28.21 | page accessibility audit | `a11y_landmarks`、`a11y_label_targets`、`a11y_duplicate_ids`、`a11y_focus_targets` を page ごとに保持する。 | skip link、landmark、aria label、focus order、duplicate id 検出、keyboard trap 不在が一致する。 |
 | [`docs/details/builder.md`](builder.md) §28.22 | image lightbox target set | `lightbox_targets`、`lightbox_dialog_id`、`lightbox_focus_order`、`lightbox_warnings` を page ごとに保持する。 | trigger、dialog 1 個、Escape / backdrop / close button、focus trap、alt warning、external no-fetch が一致する。 |
