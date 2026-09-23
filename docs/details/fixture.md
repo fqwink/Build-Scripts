@@ -46,7 +46,7 @@ Phase、API、[`docs/details/runner.md`](runner.md) §27 / [`docs/details/securi
 
 **Phase fixture / testdata 配置固定契約：**
 
-以下の配置は fixture 証跡責務上の配置契約である。現行リポジトリに未作成の `testdata/<component>/` は、該当 Phase または該当 fixture の実装検証変更で作成するまで現行実体として扱わない。
+以下の配置は fixture 証跡責務上の配置契約である。Phase 2〜Phase 6 の `testdata/runner/`、`testdata/api/`、`testdata/sdk/`、`testdata/ui/` は、現行リポジトリに未作成の場合、該当 Phase または該当 fixture の実装検証変更で作成するまで現行実体として扱わない。
 
 | Phase | 必須配置 | 必須内容 | 禁止条件 |
 |-------|----------|----------|----------|
