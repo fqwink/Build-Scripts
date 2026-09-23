@@ -194,7 +194,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 ---
 
 ### 27.42 ビルドトリガー専用 API スコープ
-owner component は `security` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+§27.42 の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
 
 
 本機能の目的は、外部システムによる build 開始操作を `trigger` scope の API token と build 開始 endpoint だけに限定することである。
@@ -279,7 +279,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 | scope 前 body | 権限不足時に request body validation や状態更新を行わない。 |
 
 ### 27.43 API キー管理
-owner component は `security` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+§27.43 の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
 
 
 本機能の目的は、API key の発行、一覧、失効、期限、scope を実装し、key 本体を保存しないことである。
@@ -500,7 +500,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | body secret | request body 全体が保存されない。 |
 
 ### 27.45 セッションタイムアウト変更設定
-owner component は `security` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+§27.45 の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
 
 
 本機能の目的は、新規 session の有効期限を管理 API から更新し、既存 session への影響を明確にすることである。
@@ -542,7 +542,7 @@ session timeout の値は session 発行時に秒単位で加算する。`expire
 | 秒精度 | `expires_at` は UTC ISO 8601 秒精度。 |
 
 ### 27.46 TOTP 二要素認証
-owner component は `security` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+§27.46 の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
 
 
 本機能の目的は、外部ライブラリなしで RFC 6238 TOTP を検証し、password 漏えい時の管理 API 不正利用を抑止することである。
@@ -646,7 +646,7 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 | 全角 code | `422`。 |
 
 ### 27.47 API レート制限
-owner component は `security` とする。collaborator component は `api`、`sdk`、`ui`、`statefile` とする。
+§27.47 の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
 
 
 本機能の目的は、login 総当たり、API token 濫用、外部連携の暴走を Go 標準ライブラリだけで抑止することである。
