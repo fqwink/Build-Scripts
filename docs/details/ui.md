@@ -322,7 +322,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 確認 dialog で cancel した場合は SDK method を呼ばず、success / error 表示を変更しない。
 
-UI 共通 fixture 名、入力、fake SDK、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の UI owner fixture 固定契約を正本とする。[`docs/details/ui.md`](ui.md) 詳細本文責務では、DOM 更新、破壊的操作確認、secret one-time 表示、SDK 呼び出し境界の実装契約だけを扱う。
+UI 共通 fixture 名、入力、fake SDK、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-ui-owner-fixture-固定契約) fixture 証跡責務 §27-F UI owner fixture 固定契約を正本とする。[`docs/details/ui.md`](ui.md) 詳細本文責務では、DOM 更新、破壊的操作確認、secret one-time 表示、SDK 呼び出し境界の実装契約だけを扱う。
 
 **Phase 3 UI 操作固定契約：**
 
@@ -352,7 +352,7 @@ Phase 3 UI の disabled 条件は以下に固定する。
 | `503` maintenance / circuit | build、force build、cancel 以外の状態変更操作。circuit reset は有効。 | maintenance disabled または circuit reset 成功後の再取得。 |
 | `401` | 全 authenticated 操作 | login 成功後。 |
 
-Phase 3 UI fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の UI owner fixture 固定契約を正本とする。
+Phase 3 UI fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-ui-owner-fixture-固定契約) fixture 証跡責務 §27-F UI owner fixture 固定契約を正本とする。
 
 **Phase 4 UI 操作固定契約：**
 
@@ -378,7 +378,7 @@ Phase 4 UI の秘密情報消去条件は以下に固定する。
 | TOTP secret / ticket / code | confirm 成功、confirm 失敗、panel 遷移、logout、`401`。 |
 | password / current_password / new_password | login / change 成功、login / change 失敗、logout、`401`。 |
 
-Phase 4 UI fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の UI owner fixture 固定契約を正本とする。
+Phase 4 UI fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-ui-owner-fixture-固定契約) fixture 証跡責務 §27-F UI owner fixture 固定契約を正本とする。
 
 **UI 表示データ固定契約：**
 
@@ -422,7 +422,7 @@ Phase 4 UI fixture 名、fake SDK 入力、expected、合格条件、実装検�
 
 上位条件が残っている場合、下位条件の解除処理で button を有効化してはならない。複数 error が同時に発生した場合は、最上位の条件だけを global 表示し、下位の詳細は対象 panel error に残す。
 
-UI 詳細 fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の UI owner fixture 固定契約を正本とする。
+UI 詳細 fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-ui-owner-fixture-固定契約) fixture 証跡責務 §27-F UI owner fixture 固定契約を正本とする。
 
 **§27.21〜§27.47 UI 連動実装確認固定契約：**
 
@@ -459,7 +459,7 @@ UI 詳細 fixture 名、fake SDK 入力、expected、合格条件、実装検証
 
 **§27.21〜§27.47 UI 連動 fixture 証跡参照：**
 
-UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の API / SDK / UI 連動 fixture 固定契約および UI owner fixture 固定契約を正本とする。[`docs/details/ui.md`](ui.md) 詳細本文責務では、SDK only call、refresh order、disabled priority、one-time / secret clearing、no speculative display、field error mapping の実装契約だけを扱う。
+UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-api--sdk--ui-連動-fixture-固定契約) fixture 証跡責務 §27-F API / SDK / UI 連動 fixture 固定契約、および [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-ui-owner-fixture-固定契約) fixture 証跡責務 §27-F UI owner fixture 固定契約を正本とする。[`docs/details/ui.md`](ui.md) 詳細本文責務では、SDK only call、refresh order、disabled priority、one-time / secret clearing、no speculative display、field error mapping の実装契約だけを扱う。
 
 **UI 設定値契約：**
 

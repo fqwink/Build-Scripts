@@ -381,7 +381,7 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) 詳細本文責�
 
 **§27.21〜§27.47 SDK 連動 fixture 証跡参照：**
 
-SDK 連動 fixture 名、入力、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の API / SDK / UI 連動 fixture 固定契約を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、request 生成、response passthrough、error object、token mutation、secret leak、side-effect 境界の実装契約だけを扱う。
+SDK 連動 fixture 名、入力、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-api--sdk--ui-連動-fixture-固定契約) fixture 証跡責務 §27-F API / SDK / UI 連動 fixture 固定契約を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、request 生成、response passthrough、error object、token mutation、secret leak、side-effect 境界の実装契約だけを扱う。
 
 **SDK 型定義表：**
 

@@ -853,4 +853,4 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | corrupt handling | [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a に再生成指定がある file だけ backup → 初期値再生成を許可する。 | 破損判定結果と対象 path。 | backup 失敗時は再生成しない。再生成指定がない file は変更しない。 |
 | secret path | secret を含む file は `0600`、通常 state は `0644`、directory は `0755` に固定する。 | secret file 判定。 | chmod 失敗を成功扱いにせず、secret 内容を log / 呼び出し元の公開値 / fixture expected に出さない。 |
 
-状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。
+状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-statefile-owner-fixture-固定契約) fixture 証跡責務 §27-F statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。

@@ -677,7 +677,7 @@ API endpoint、SDK method、UI 操作、状態ファイル副作用の本文は�
 
 **横断 fixture 参照：**
 
-api / sdk / ui / statefile にまたがる横断 fixture の fixture 名、入力、必須確認は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §22-F の cross fixture 固定契約を参照する。
+api / sdk / ui / statefile にまたがる横断 fixture の fixture 名、入力、必須確認は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-22-f-api--sdk--ui--状態ファイル-cross-fixture-固定契約) fixture 証跡責務 §22-F API / SDK / UI / 状態ファイル cross fixture 固定契約を参照する。
 
 ### 22.0f Phase 3 / Phase 4 API fixture 参照
 

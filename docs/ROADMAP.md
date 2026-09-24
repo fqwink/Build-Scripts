@@ -531,12 +531,12 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 補完確認 | endpoint、状態ファイル、設定 key、UI 操作、SDK method、外部依存が、個別節または owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に存在することを確認する。存在しない項目の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §4、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、関連 collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture catalog、必要な対応表を参照する。 |
 | 状態更新 | 状態ファイル更新は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 §22.0a、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 §22.0c を基準とする。lock、atomic write、JSON Lines、破損時処理は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。 |
 | security | secret mask、token、session、scope、audit、rate limit は [`docs/details/security.md`](details/security.md) 詳細本文責務を基準とし、平文保存・平文表示を行わない。 |
-| fixture / 実装検証証跡 | 追加仕様化機能の fixture manifest、expected/effects、assertion、実装検証証跡、受け入れゲートは [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F、builder 拡張 fixture は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F を参照する。 |
+| fixture / 実装検証証跡 | 追加仕様化機能の fixture manifest、expected/effects、assertion、実装検証証跡、受け入れゲートは [`docs/details/fixture.md`](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F、builder 拡張 fixture は [`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F を参照する。 |
 | api / sdk / ui 同期 | API endpoint、SDK method、UI 操作が同一機能に関わる場合は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能 横断共通参照先に従い、名称、引数、response、error、表示、成功後再取得、失敗時固定が食い違わないことを確認する。 |
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能を実装した変更は、対象節、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture、secret mask、失敗時副作用、実装対象外を [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の実装検証証跡に記録する。記録が不足する場合は、実装済みとして扱わない。
 
-追加仕様化機能の責務分離、dry-run 固定契約、fixture 判定条件の詳細は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F を参照する。builder 拡張 fixture 判定条件は、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28 と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は同じ fixture schema、expected/effects、個別機能本文を持たない。
+追加仕様化機能の責務分離、dry-run 固定契約、fixture 判定条件の詳細は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を参照する。builder 拡張 fixture 判定条件は、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28 と [`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は同じ fixture schema、expected/effects、個別機能本文を持たない。
 
 ### 6.2 追加仕様化機能 参照索引
 
