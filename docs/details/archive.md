@@ -42,7 +42,7 @@ archive owner は、通常 log が存在しない場合に archive log を gzip 
 
 archive owner は、`POST /api/logs/cleanup` から呼び出された場合に、archive 済みファイルも `log_retention_days` の削除対象に含める。archive owner の処理結果は `archived_count`、`deleted_count`、`failed_count` を持つ。
 
-**archive / cleanup 固定契約：**
+#### archive / cleanup 固定契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -53,7 +53,7 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 | 削除失敗 | 処理継続し、処理結果に `failed_count` を含める。 |
 | 処理結果 | archive は `archived_count`、cleanup は `deleted_count` と `failed_count` を処理結果として返す。 |
 
-**archive / cleanup 実装確認ゲート：**
+#### archive / cleanup 実装確認ゲート
 
 | 観点 | 入力 | 合格条件 | 禁止条件 |
 |------|------|----------|----------|
@@ -65,9 +65,9 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 | cleanup | 通常 log、archive log | retention 対象の通常 log、archive log を固定順で削除し、失敗を `failed_count` へ計上する。 | 一部失敗時の処理中断、失敗対象の自動 chmod / rename 修復。 |
 | secret / log | WARN / ERROR 出力 | 固定 code、id、path basename、HTTP status 相当だけを出す。 | build log 本文、token、Authorization header、credential 付き URL、gzip 内容の出力。 |
 
-**archive fixture 参照：**
+#### archive fixture 参照
 
-archive / snapshot fixture の fixture 名、expected file、effects、fake filesystem、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、archive owner の保存、読取、download、delete、rollback 実体処理と状態差分だけを扱う。
+archive / snapshot fixture の fixture 名、expected file、effects、fake filesystem、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、archive owner の保存、読取、download、delete、rollback 実体処理と状態差分だけを扱う。
 
 検証観点:
 
@@ -93,7 +93,7 @@ archive owner は snapshot の保存形式、一覧読取、download tar.gz 生�
 
 §27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e、SDK method と error 変換は [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23、UI 表示と直接操作禁止は [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。
 
-**API 呼び出し境界参照：**
+##### API 呼び出し境界参照
 
 | API | 処理 |
 |-----|------|
@@ -104,7 +104,7 @@ archive owner は snapshot の保存形式、一覧読取、download tar.gz 生�
 
 `id` は build id と一致するものだけ許可する。snapshot 専用 id は採番しない。`/`、`..`、空文字、URL decode 後に path separator を含む値は失敗扱いとする。
 
-**snapshot 保存固定契約：**
+##### snapshot 保存固定契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -116,7 +116,7 @@ archive owner は snapshot の保存形式、一覧読取、download tar.gz 生�
 | 既存 snapshot | 同じ build id の snapshot が既に存在する場合は上書きせず、WARN `SNAPSHOT_EXISTS: id={id}` を出して snapshot 保存を skip する。 |
 | 世代削除 | 新 snapshot 作成成功後に `saved_at` 昇順で `snapshots_keep` 超過分だけ削除する。削除失敗は build 成功を失敗へ反転せず、WARN `SNAPSHOT_PRUNE_FAILED` を出す。 |
 
-**download tar.gz 生成契約：**
+##### download tar.gz 生成契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -128,7 +128,7 @@ archive owner は snapshot の保存形式、一覧読取、download tar.gz 生�
 | mtime | snapshot 内 file の mtime を使用する。snapshot 内 file から mtime を取得できない場合は build log の `finished_at` を使用する。 |
 | secret 除外 | `.github_token`、`.admin_credentials`、`.api_tokens`、`.smtp_secret`、`.webhook_secret`、runner 状態ファイル名は検出時点で download を中止する。 |
 
-**download stream 固定契約：**
+##### download stream 固定契約
 
 download は stream 開始前に snapshot directory 全体を走査し、entry path、entry 種別、secret 禁止名、`meta.json` schema、`size_bytes`、`file_count` を検証する。stream 開始前検証に失敗した場合は binary header を送信しない。stream 開始後に read error が発生した場合は stream を中断し、server log に `SNAPSHOT_STREAM_FAILED: id={id} entry={path}` を出す。stream 開始後は JSON error body を追加送信してはならない。状態ファイル、snapshot directory、history、build log、config log は変更しない。
 
@@ -140,7 +140,7 @@ download は stream 開始前に snapshot directory 全体を走査し、entry p
 | meta 不一致 | `500 {"error":"Snapshot metadata mismatch"}`。binary header なし。 | なし。 | `SNAPSHOT_META_MISMATCH: id={id}` |
 | stream 中 read error | stream 中断。JSON body 追加なし。 | なし。 | `SNAPSHOT_STREAM_FAILED: id={id} entry={path}` |
 
-**Rollback 仕様：**
+##### Rollback 仕様
 
 rollback は新しい build id を採番し、`.build_history.trigger="rollback"`、`rollback_from=<元id>` を保存する。元 snapshot は変更しない。rollback 中に別 build が running の場合は状態差分なしで中止する。転送失敗時は rollback build log を `failure` とし、元 snapshot は削除しない。
 
@@ -159,7 +159,7 @@ rollback build log は `target_status="success"` または `failure_build` と�
 
 rollback 開始時は `.build_lock` を取得し、取得できない場合は状態差分なしで中止する。`.build_lock` 取得後に `.build_state.running=true`、`current_build_id=<new_id>` を保存し、転送完了後に finalizer で `running=false` とする。rollback は queue に積まない。
 
-**snapshot 一覧・削除固定契約：**
+##### snapshot 一覧・削除固定契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -169,7 +169,7 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は�
 | delete log 失敗 | snapshot 削除済みのまま。削除は巻き戻さない。 |
 | rollback pending | pending entry には `rollback_from`、`snapshot_id`、deploy target を保存する。 |
 
-**snapshot delete 副作用固定契約：**
+##### snapshot delete 副作用固定契約
 
 delete は destructive endpoint であるため、成功条件と失敗時副作用を [`docs/details/archive.md`](archive.md) 詳細本文責務 §27.15 の固定表に固定する。
 
@@ -182,7 +182,7 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | config log | `.config_log` に `target="snapshot_delete"`、`target_id={id}` を追記。 | snapshot は削除済みのまま。他 snapshot、history、build log、pending は変更しない。 |
 | response | `{ "message":"Snapshot deleted" }`。 | 成功 response を返さない。 |
 
-**artifact 実装確認固定契約：**
+##### artifact 実装確認固定契約
 
 | 操作 | 確認条件 | 失敗時副作用 |
 |------|----------|--------------|
@@ -192,7 +192,7 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | delete | 対象 snapshot directory だけを削除し、`.config_log` に target `snapshot_delete` を追記する。 | `.config_log` 失敗では snapshot は削除済みのまま。他 snapshot は変更しない。 |
 | rollback success | 新規 build id、rollback build log、history、`.build_status.json` finalizer、deploy result が整合する。 | deploy 失敗時は rollback build を failure または success_deploy_pending として新規記録し、元 snapshot と `.last_sha` は変更しない。 |
 
-**snapshot `meta.json` schema 固定契約：**
+##### snapshot `meta.json` schema 固定契約
 
 | key | 型 | 必須 | 仕様 |
 |-----|----|------|------|
@@ -205,7 +205,7 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 
 未知 key は read 時に無視せず `SNAPSHOT_META_CORRUPT` としてその snapshot を一覧から除外する。`size_bytes` と `file_count` は download 時にも再計算し、`meta.json` と不一致なら failure とする。
 
-**rollback 状態更新順固定契約：**
+##### rollback 状態更新順固定契約
 
 1. snapshot id を検証する。
 2. snapshot と `meta.json` を検証する。
@@ -220,7 +220,7 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 
 手順 3 より前の失敗は状態差分なしとする。手順 3 以後の失敗は rollback build log に失敗地点、`rollback_from`、`snapshot_id` を残し、`.build_lock` 解放と finalizer を必ず試行する。finalizer 失敗時も、元 snapshot、元 build log、過去 history、`.last_sha` は変更しない。
 
-**rollback 実装確認ゲート：**
+##### rollback 実装確認ゲート
 
 | 観点 | 合格条件 |
 |------|----------|
@@ -232,11 +232,11 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | pending | `.pending_transfers` entry に `trigger="rollback"`、`rollback_from`、`snapshot_id`、deploy target、retry_count を保存する。 |
 | finalizer failure | server log 固定 code、元 snapshot / 元 log / `.last_sha` unchanged。lock 解放は best effort。 |
 
-**archive / snapshot fixture 証跡参照：**
+##### archive / snapshot fixture 証跡参照
 
-archive / snapshot の fixture 名、合格条件、expected / effects、stream failure、secret absence、状態差分、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、`meta.json` schema、一覧 sort、download header、tar entry 順序、delete 順、rollback 状態更新順、元 snapshot 維持、`.last_sha` 非変更など archive owner の実体処理観点だけを扱う。
+archive / snapshot の fixture 名、合格条件、expected / effects、stream failure、secret absence、状態差分、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、`meta.json` schema、一覧 sort、download header、tar entry 順序、delete 順、rollback 状態更新順、元 snapshot 維持、`.last_sha` 非変更など archive owner の実体処理観点だけを扱う。
 
-**検証条件：**
+##### 検証条件
 
 | ケース | 期待結果 |
 |--------|----------|

@@ -76,7 +76,7 @@ Phase 1 完全仕様ゲートでは、Phase 1 の対象、依存条件、判定�
 | 確認 | 参照先 |
 |------|--------|
 | CLI、Markdown 変換、静的 Web サイト出力、theme component、生成物確認 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 §1〜§9、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §8a |
-| Phase 1 fixture、testdata、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §8a-F |
+| Phase 1 fixture、testdata、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F |
 | Phase 1 release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 |
 
 ### 4.1.2 Phase 2 完全仕様ゲート（`runner`）
@@ -86,7 +86,7 @@ Phase 2 完全仕様ゲートでは、Phase 2 が Phase 1 の `adlaire-ci-build`
 | 確認 | 参照先 |
 |------|--------|
 | CI runner、GitHub API 連携、SHA cache、pipeline、deploy、snapshot、通知、systemd | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §10〜§20、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §15a |
-| runner fixture 証跡、fake GitHub、fake ssh / notifier、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §15a-F |
+| runner fixture 証跡、fake GitHub、fake ssh / notifier、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F |
 | Phase 2 release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 |
 
 ### 4.1.3 Phase 3 完全仕様ゲート（`api`）
@@ -107,7 +107,7 @@ Phase 4 完全仕様ゲートでは、拡張運用 endpoint が SDK / UI の最�
 |------|--------|
 | 拡張運用 endpoint、request / response、error、auth、secret mask | [`docs/details/api.md`](details/api.md) 詳細本文責務 §22.0e、[`docs/details/api.md`](details/api.md) 詳細本文責務 §22.0f |
 | security 連携 | [`docs/details/security.md`](details/security.md) 詳細本文責務 §27.42〜§27.47 |
-| API fixture、endpoint 証跡 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F |
+| API fixture、endpoint 証跡 | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F |
 
 ### 4.1.5 Phase 5 完全仕様ゲート（`sdk`）
 
@@ -117,7 +117,7 @@ Phase 5 完全仕様ゲートでは、SDK が固定済み API endpoint だけを
 |------|--------|
 | SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄 | [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23 |
 | API endpoint 対応 | [`docs/details/api.md`](details/api.md) 詳細本文責務 §22.0e |
-| SDK fixture、fake fetch / stream | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F |
+| SDK fixture、fake fetch / stream | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
 
 ### 4.1.6 Phase 6 完全仕様ゲート（`ui`）
 
@@ -127,7 +127,7 @@ Phase 6 完全仕様ゲートでは、UI が SDK 経由だけで API と通信�
 |------|--------|
 | DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去 | [`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 |
 | SDK method 契約 | [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23 |
-| UI fixture、fake SDK、直接 API 呼び出し禁止確認 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F |
+| UI fixture、fake SDK、直接 API 呼び出し禁止確認 | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
 
 ### 4.1.7 Phase 間引き継ぎ契約
 
@@ -144,16 +144,16 @@ Phase 6 完全仕様ゲートでは、UI が SDK 経由だけで API と通信�
 
 ### 4.1.8 Phase 別 実装成果物チェックリスト
 
-Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F を参照する。Phase 別実装成果物チェックリストは、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、実装検証証跡項目を本文として持たない。
+Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を参照する。Phase 別実装成果物チェックリストは、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、実装検証証跡項目を本文として持たない。
 
 | Phase | 実装対象 | 成果物・fixture 確認先 | 受け入れ条件 |
 |-------|----------|----------------------|--------------|
-| Phase 1 | `builder` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §8a-F | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 を満たす。 |
-| Phase 2 | `runner` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §15a-F | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 を満たす。 |
-| Phase 3 | `api` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F | [`docs/details/api.md`](details/api.md) 詳細本文責務の API 基盤・認証・状態 read/write・運用基本操作と setup API 導入条件を満たす。 |
-| Phase 4 | `api` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F | [`docs/details/api.md`](details/api.md) 詳細本文責務の API 拡張運用操作を満たす。 |
-| Phase 5 | `sdk` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F | [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23 を満たす。 |
-| Phase 6 | `ui` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §0g.8-F | [`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 を満たす。 |
+| Phase 1 | `builder` | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 を満たす。 |
+| Phase 2 | `runner` | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 を満たす。 |
+| Phase 3 | `api` | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F | [`docs/details/api.md`](details/api.md) 詳細本文責務の API 基盤・認証・状態 read/write・運用基本操作と setup API 導入条件を満たす。 |
+| Phase 4 | `api` | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F | [`docs/details/api.md`](details/api.md) 詳細本文責務の API 拡張運用操作を満たす。 |
+| Phase 5 | `sdk` | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F | [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23 を満たす。 |
+| Phase 6 | `ui` | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F | [`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 を満たす。 |
 
 ---
 
@@ -166,7 +166,7 @@ Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [
 
 ### ビルド・CI ランナー（components/runner.go）
 
-**Go 版で実装済みの初期範囲：**
+#### Go 版で実装済みの初期範囲
 
 - `--state-dir`、`--once`、`--version`、`--help` の CLI 契約
 - `.branch_config` と `.last_sha` による branch target / SHA cache 読み込み
@@ -192,7 +192,7 @@ Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [
 - `OUTPUT_SIZE_WARN_MB` による出力サイトサイズ警告
 - Phase 2 fixture R1〜R7 と判定パステスト
 
-**Go 版で仕様化済みの全体範囲：**
+#### Go 版で仕様化済みの全体範囲
 
 - GitHub リポジトリの対象ファイルを定期ポーリング（systemd timer）
 - blob SHA による差分検出（変更なし時はビルドをスキップ）
@@ -455,32 +455,32 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 将来計画 | 実装不可 | 管理ツール・API | API レスポンスキャッシュ制御 | 将来計画候補。詳細本文、対象 endpoint、TTL、無効化条件は未定義。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | スナップショット間サイト差分 API | 将来計画候補。詳細本文、endpoint 契約、差分形式は未定義。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | Webhook 送信履歴の手動再送 API | 将来計画候補。詳細本文、endpoint 契約、再送境界は未定義。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 差分ビルド | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.1、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 複数出力形式 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.2、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | Markdown 拡張記法サポート | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.3、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | コードブロック行番号表示 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.4、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 見出しの自動採番 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.5、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | セクション折りたたみ | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.6、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | TOC 深さ制御 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.7、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 最終更新日の自動埋め込み | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.8、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | diff ハイライト | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.9、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 画像の遅延読み込み | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.10、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | カスタムメタタグ注入 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.11、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ライトモード固定 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務、[`docs/details/builder.md`](details/builder.md) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.12、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | コードブロックのファイル名表示 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.13、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | テンプレート変数展開 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.14、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | HTML ミニファイ | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.15、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | TOC ハイライト追従 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.16、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | Mermaid ダイアグラム描画 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.17、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 脚注サポート | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.18、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | インライン数式レンダリング | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.19、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ページ内ナビゲーション履歴 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.20、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.21、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 画像ライトボックス | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.22、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 差分ビルド | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.1、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 複数出力形式 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.2、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | Markdown 拡張記法サポート | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.3、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | コードブロック行番号表示 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.4、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 見出しの自動採番 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.5、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | セクション折りたたみ | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.6、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | TOC 深さ制御 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.7、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 最終更新日の自動埋め込み | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.8、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | diff ハイライト | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.9、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 画像の遅延読み込み | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.10、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | カスタムメタタグ注入 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.11、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ライトモード固定 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務、[`docs/details/builder.md`](details/builder.md) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DESIGN.md`](DESIGN.md) デザイン責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.12、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | コードブロックのファイル名表示 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.13、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | テンプレート変数展開 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.14、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | HTML ミニファイ | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.15、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | TOC ハイライト追従 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.16、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | Mermaid ダイアグラム描画 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.17、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 脚注サポート | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.18、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | インライン数式レンダリング | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.19、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ページ内ナビゲーション履歴 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.20、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.21、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 画像ライトボックス | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.22、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | [`docs/details/builder.md`](details/builder.md) 詳細本文責務、[`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §2、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §5、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §8、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §13、[`docs/details/api.md`](details/api.md) 詳細本文責務 §22.0e、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §27.4 に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 印刷時 QR コード挿入 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.23、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 定義リストサポート | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.24、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | タスクリストサポート | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.25、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 印刷時 QR コード挿入 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.23、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 定義リストサポート | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.24、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | タスクリストサポート | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i.1、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.25、[`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F に従って実装する。 |
 | 将来計画 | 実装不可 | MCP サーバー | MCP サーバー実装 | 将来計画候補。MCP 専用詳細仕様が新設されるまで、実装 path、transport、認証、接続設定は未定義。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
 | 将来計画 | 実装不可 | MCP サーバー | MCP ツール・リソース公開 | 将来計画候補。MCP 専用詳細仕様が新設されるまで、tool 名、resource URI、scope、戻り値は未定義。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
 | 将来計画 | 実装不可 | MCP サーバー | AI 支援ビルドエラー分析 | 将来計画候補。MCP 専用詳細仕様が新設されるまで、分析開始条件、参照 tool、保存先、責務境界は未定義。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
@@ -519,7 +519,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 に列挙する追加仕様化機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。追加仕様化機能共通実装契約は、実装時に共通して確認する参照順、越境確認、実装検証証跡の入口だけを示す。
 
-**追加仕様化機能 横断共通参照先：**
+#### 追加仕様化機能 横断共通参照先
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 で API endpoint、SDK method、UI 操作、状態ファイル副作用、fixture、実装検証証跡に触れる場合、API 契約は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK 契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、UI 契約は [`docs/details/ui.md`](details/ui.md) 詳細本文責務、状態ファイル契約は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、fixture / 実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を共通参照先とする。状態・計画責務 §6 では、追加仕様化機能の owner、主本文、collaborator、横断確認観点だけを本文として扱う。
 
@@ -640,9 +640,9 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | SDK / UI 連携 | API を管理画面から操作する機能は、SDK method は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23、DOM / 表示条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 を参照して確認する。 |
 | statefile | 状態 schema、lock、atomic write、JSON Lines、破損時処理、保存順は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を参照する。 |
 | archive | snapshot、artifact、download、delete、rollback、log archive は [`docs/details/archive.md`](details/archive.md) 詳細本文責務を参照する。 |
-| fixture | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38、[`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 §22.0s、[`docs/details/security.md`](details/security.md) 詳細本文責務 §27.42〜§27.47 に関わる fixture 証跡、secret mask、effects、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 §27-F を参照する。 |
+| fixture | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38、[`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 §22.0s、[`docs/details/security.md`](details/security.md) 詳細本文責務 §27.42〜§27.47 に関わる fixture 証跡、secret mask、effects、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を参照する。 |
 
-**api / sdk / ui / statefile 横断連動契約：**
+#### api / sdk / ui / statefile 横断連動契約
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.4 の横断確認表は、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義しない。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能 横断共通参照先と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に従い、同一機能群の横断確認観点だけをそろえる。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 を参照する。
 
@@ -657,7 +657,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | access / hooks / rules / pipeline / notes / layout | access、hooks、alert rules、tag rules、pipeline config、notes、dashboard layout の GET/POST/DELETE endpoint | 対応する [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23 SDK method | 保存、追加、削除、notes 保存、dashboard layout 保存。 | `.access_control`、`.hooks`、`.alert_rules`、`.tag_rules`、`.pipeline_config`、`.notes`、`.dashboard_layout`、`.config_log`。 | 対象 GET → 変更系で config log 対象の場合は `getConfigLog()`。layout は `getDashboardLayout()` → `getDashboard()`。 | duplicate `409` は競合表示。validation `422` は field error。削除対象不在は `404`。 |
 | tokens / audit / access logs / rate limit | `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}`, `GET /api/audit-log`, `GET /api/access-log`, `GET /api/api-access-log`, `GET/POST /api/api-rate-limit` | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getAccessLog()`, `getApiAccessLog()`, `getApiRateLimit()`, `setApiRateLimit()` | token 発行/失効、audit / access log 表示、rate limit 保存。 | `.api_tokens`、`.audit_log`、`.access_log`、`.api_access_log`、`.api_rate_state`、`.server_config`、`.config_log`。token 本体は作成時 response のみ。 | token 操作は `getTokens()` → `getAuditLog()`。rate limit は `getApiRateLimit()`。 | token 本体は再取得不可。`403` は logout しない。`429` は rate limit 表示し、同一操作を自動 retry しない。 |
 
-**横断処理順契約：**
+#### 横断処理順契約
 
 | 処理種別 | 固定順序 |
 |----------|----------|

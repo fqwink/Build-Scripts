@@ -26,7 +26,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 **ファイル：** `admin/adlaire-ci-sdk.js`（単一ファイル、外部依存なし）
 **モジュール形式：** ES Module（`import` / `export`）
 
-**SDK 実行環境契約：**
+### SDK 実行環境契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -176,7 +176,7 @@ export { AdlaireCI, AdlaireCIError };
 
 全メソッドは `Promise` を返す。`streamBuild` は SSE 接続確立後に `StreamHandle` で resolve し、接続前エラーは `AdlaireCIError` で reject する。HTTP エラー（4xx / 5xx）は `AdlaireCIError` としてスローする。`401` 受信時はセッション期限切れとして `this._token` をクリアする。constructor、private method、helper 関数を除く public method は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e の SDK 列と完全一致させる。
 
-**SDK 共通実装契約：**
+### SDK 共通実装契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -200,7 +200,7 @@ export { AdlaireCI, AdlaireCIError };
 | 戻り値補完禁止 | 成功時は API response にない key を追加しない。失敗時は HTTP status、API error、details、responseBody 以外を推測しない。fallback 値は API response に含まれる値だけを返し、表示用加工は UI 側で行う。 |
 | retry | SDK は自動 retry を行わない。ユーザー操作による再実行、または UI の明示的な再取得のみを許可する。 |
 
-**SDK transport / error 固定契約：**
+### SDK transport / error 固定契約
 
 SDK の内部 request helper は、すべての public method で [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 の固定表の処理順に固定する。public method ごとに個別 fetch 処理を複製してはならない。
 
@@ -231,7 +231,7 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md`](sdk.md) 詳細本
 
 `429` は SDK で自動待機、自動再送、自動 refresh を行わない。binary response は `downloadSnapshot(id)` の `2xx` のみ `Blob` とする。`4xx` / `5xx` では `Content-Type` が `application/json` または `+json` で終わる場合だけ JSON error として parse し、parse 成功時は response の `error` / `details` を保持した `AdlaireCIError` を投げる。JSON parse 不能、JSON 以外の error body、空 body の場合は body text を `responseBody` に保持し、`message` は `HTTP {status}` とする。`streamBuild()` は接続後の `close()` をユーザー停止として扱い、`AdlaireCIError` を投げない。接続後に network error または invalid frame が発生した場合は `StreamHandle.closed=true`、`StreamHandle.error` に `AdlaireCIError(status=0,message="Network error")` または `AdlaireCIError(status=0,message="Invalid SSE frame")` を保存する。
 
-**SDK メソッド実装固定契約：**
+### SDK メソッド実装固定契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -247,11 +247,11 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md`](sdk.md) 詳細本
 | error details | API error response の `details` が配列なら `AdlaireCIError.details` に同じ配列を保持する。配列でなければ `null`。 |
 | responseBody | JSON parse できた error body は object のまま、parse 不能 error body は先頭 4000 文字の string として `responseBody` に保持する。 |
 
-**SDK 検証 fixture 参照：**
+### SDK 検証 fixture 参照
 
-SDK の fixture 名、fake fetch 入力、expected、error shape、stream frame、binary response、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、引数変換、token mutation、response passthrough、error 変換、stream handle の実装契約だけを扱う。
+SDK の fixture 名、fake fetch 入力、expected、error shape、stream frame、binary response、実装検証証跡は [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、引数変換、token mutation、response passthrough、error 変換、stream handle の実装契約だけを扱う。
 
-**Phase 3 SDK 操作固定契約：**
+### Phase 3 SDK 操作固定契約
 
 Phase 3 実装では、[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 の固定表の SDK method を最小運用範囲として固定する。SDK は成功時 response を endpoint schema の範囲でそのまま返し、失敗時は HTTP status、API error、details、responseBody を保持した `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
 
@@ -270,11 +270,11 @@ Phase 3 実装では、[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 �
 | `resetCircuitBreaker()` | `POST /api/circuit-breaker/reset` | `{message,open,consecutive_failures}` を返す。 | 破損状態 `500` を `AdlaireCIError`。 | reset 成功後に SDK が自動 build を開始しない。 |
 | `streamBuild(onLine,onEnd)` | `GET /api/build/stream` | `StreamHandle` を返し、`log` frame を `onLine`、`end` frame を `onEnd` へ渡す。 | 接続前 `401`、`404`、timeout、invalid frame を `AdlaireCIError`。 | `EventSource`、自動 reconnect、log 永続化を行わない。 |
 
-**Phase 3 SDK fixture 参照：**
+### Phase 3 SDK fixture 参照
 
-Phase 3 SDK の fake fetch 入力、expected request、expected return、`AdlaireCIError`、stream frame、unauthorized token clear は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §22-F を正本とする。
+Phase 3 SDK の fake fetch 入力、expected request、expected return、`AdlaireCIError`、stream frame、unauthorized token clear は [`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F を正本とする。
 
-**Phase 4 SDK 操作固定契約：**
+### Phase 4 SDK 操作固定契約
 
 Phase 4 SDK は、[`docs/details/api.md`](api.md) 詳細本文責務 §22.0e の endpoint 契約と [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行う場合でも、検証対象は必須引数、型、範囲、path parameter 形式に限定する。API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
 
@@ -289,14 +289,14 @@ Phase 4 SDK は、[`docs/details/api.md`](api.md) 詳細本文責務 §22.0e の
 | alert / tag / pipeline / notes / dashboard layout | `getAlertRules()`, `addAlertRule()`, `deleteAlertRule()`, `getTagRules()`, `addTagRule()`, `deleteTagRule()`, `getPipelineConfig()`, `setPipelineConfig()`, `getNotes()`, `setNotes()`, `getDashboardLayout()`, `setDashboardLayout()` | API response の rules / config / notes / widgets をそのまま返す。 | duplicate `409`、validation `422`、read failure `500` を保持する。 | rule 重複排除、widget 補完、notes trim を行わない。 |
 | tokens / sessions / audit | `getTokens()`, `createToken()`, `revokeToken()`, `getSessions()`, `revokeAllSessions()`, `getAuditLog()`, `getApiAccessLog()` | `createToken()` の token 本体は response として 1 回だけ返す。 | `403`、`404`、`422`、`429` を status 付きで保持する。 | token 本体を保存しない。token list に作成時 token を合成しない。 |
 
-**Phase 4 SDK fixture 参照：**
+### Phase 4 SDK fixture 参照
 
-Phase 4 SDK の fake fetch 入力、expected request、expected return、secret mask、webhook paging、snapshot binary response は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §22-F および [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を正本とする。
+Phase 4 SDK の fake fetch 入力、expected request、expected return、secret mask、webhook paging、snapshot binary response は [`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F および [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。
 | sdk phase4 rollback conflict | `rollbackHistory(id)` が `409 {"error":"Build is running"}` | `AdlaireCIError.status=409`、自動 `getStatus()` 呼び出しなし。 |
 | sdk phase4 token issue | `createToken()` が `{token:"..."}` を返す | token を response として返すだけで、SDK 内部保存、console 出力、token list 合成をしない。 |
 | sdk phase4 duplicate rule | `addAlertRule()` または `addTagRule()` が `409 Conflict` | `AdlaireCIError.status=409`、自動 retry なし。 |
 
-**SDK 引数変換契約：**
+### SDK 引数変換契約
 
 SDK method は、[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 の固定表の通りに引数を path、query、body へ変換する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 の固定表にない引数、既定値、body key を追加してはならない。
 
@@ -338,7 +338,7 @@ SDK method は、[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 の固�
 
 path に入る `id` は `encodeURIComponent` したうえで 1 segment として連結する。`/`、`.`、空文字を含む `id` は HTTP 送信前に `TypeError` とする。
 
-**SDK method 完全性検証契約：**
+### SDK method 完全性検証契約
 
 SDK 詳細実装確認では、[`docs/details/api.md`](api.md) 詳細本文責務 §22.0e の SDK 列に記載された method 名と `AdlaireCI.prototype` の public method 名が一致しなければならない。constructor、private method、helper 関数、`AdlaireCIError` は比較対象外とする。
 
@@ -351,9 +351,9 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) 詳細本文責�
 | error handling | 4xx / 5xx、network error、timeout、empty JSON、invalid SSE frame が `AdlaireCIError` になる。 |
 | token handling | `login()` 成功で token を保持し、`logout()` と `401` で token を破棄する。 |
 
-**§27.21〜§27.47 SDK 連動実装確認固定契約：**
+### §27.21〜§27.47 SDK 連動実装確認固定契約
 
-[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §27.21〜§27.47 の追加仕様化機能で SDK の詳細実装確認を満たすには、対象 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/api.md`](api.md) 詳細本文責務 §27 の連動参照表、[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
+[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §27.21〜§27.47 の追加仕様化機能で SDK の詳細実装確認を満たすには、対象 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/api.md`](api.md) 詳細本文責務 §27 の連動参照表、[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
 
 | 対象 | SDK method | request 固定 | success 固定 | error 固定 | 禁止条件 |
 |------|------------|--------------|---------------|------------|----------|
@@ -367,7 +367,7 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) 詳細本文責�
 | [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.36 / [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.37 failure category / environment | `getHistory()`, `getHistoryLog(id)`, `getOutputMeta()`, `getStatus()` | filter query は指定された値だけ送る。 | `failure_category`、`failure_evidence`、environment object を削除しない。 | 未知 filter `422` を保持する。 | category 分類、environment fallback、secret mask 判定を SDK が行わない。 |
 | [`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 security | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getSessions()`, `revokeAllSessions()`, `getTotpStatus()`, `setupTotp()`, `confirmTotp(code)`, `disableTotp(code)`, `getApiRateLimit()`, `setApiRateLimit(policy)` | token / TOTP / rate limit request は [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 引数変換契約どおり送る。 | token 本体、TOTP secret、otpauth URI は response として返すだけで SDK 内部に保存しない。 | `401` は token 破棄、`403` は token 維持、`429` は自動待機なし、`500` は message 保持。 | scope 推測、rate limit 待機、token list への token 合成、TOTP code 再送、audit 補完を行わない。 |
 
-**§27.21〜§27.47 SDK 合格ゲート：**
+### §27.21〜§27.47 SDK 合格ゲート
 
 | ゲート | 合格条件 |
 |--------|----------|
@@ -377,13 +377,13 @@ SDK 詳細実装確認では、[`docs/details/api.md`](api.md) 詳細本文責�
 | security handling | token、password、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header を SDK property、console、error message に保存しない。 |
 | error stability | `401` / `403` / `409` / `422` / `429` / `500` / network / timeout が固定 `AdlaireCIError` になり、自動 retry、自動 refresh、自動 logout は仕様に記載された場合だけ行う。 |
 | binary / stream | snapshot download は `Blob`、SSE は `StreamHandle` とし、JSON response と混同しない。 |
-| fixture evidence | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の SDK / UI 関連 fixture で、request shape、error shape、secret leak、token mutation、no retry、no response補完が確認される。 |
+| fixture evidence | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の SDK / UI 関連 fixture で、request shape、error shape、secret leak、token mutation、no retry、no response補完が確認される。 |
 
-**§27.21〜§27.47 SDK 連動 fixture 証跡参照：**
+### §27.21〜§27.47 SDK 連動 fixture 証跡参照
 
 SDK 連動 fixture 名、入力、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-api--sdk--ui-連動-fixture-固定契約) fixture 証跡責務 §27-F API / SDK / UI 連動 fixture 固定契約を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、request 生成、response passthrough、error object、token mutation、secret leak、side-effect 境界の実装契約だけを扱う。
 
-**SDK 型定義表：**
+### SDK 型定義表
 
 [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 の object 型表は sdk owner が返す object 型の詳細本文責務である。`nullable` は `null` を許可することを示す。配列は API response に `[]` として存在する場合だけ `[]` を返し、SDK が未取得配列を生成してはならない。API response に存在しないキーを SDK が補完してはならない。ただし `GET /api/config`、`GET /api/notify-config`、`GET /api/dashboard-layout` の既定値 merge は API 側の責務とする。
 

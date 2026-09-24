@@ -110,12 +110,12 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 Admin fixture の fixture 名、入力、操作、expected file、禁止副作用は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-setup--admin--release-連動-fixture-固定契約) fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約を正本とする。
 
-**Admin 実装確認ゲート：**
+### Admin 実装確認ゲート
 
 | 観点 | 合格条件 |
 |------|----------|
-| archive validation | [`docs/details/admin.md`](admin.md) 詳細本文責務 A2 と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の admin archive fixture が成功し、失敗時に既存 admin directory 差分がない。 |
-| static serving | [`docs/details/admin.md`](admin.md) 詳細本文責務 A3 と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の admin request fixture が status、header、body 有無、method 制限に一致する。 |
+| archive validation | [`docs/details/admin.md`](admin.md) 詳細本文責務 A2 と [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の admin archive fixture が成功し、失敗時に既存 admin directory 差分がない。 |
+| static serving | [`docs/details/admin.md`](admin.md) 詳細本文責務 A3 と [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の admin request fixture が status、header、body 有無、method 制限に一致する。 |
 | secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
 | no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
 | setup integration | [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.8 の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |

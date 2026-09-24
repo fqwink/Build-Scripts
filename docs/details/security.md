@@ -32,7 +32,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 ## 横断固定契約
 
-**[`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 認証・監査・制限機能 実装確認固定契約：**
+### [`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 認証・監査・制限機能 実装確認固定契約
 
 [`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 は、API token、監査、session、TOTP、rate limit に関する安全機能である。各機能の詳細実装確認では、個別節に加えて [`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 認証・監査・制限機能 実装確認固定表を満たす。
 
@@ -45,7 +45,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | [`docs/details/security.md`](security.md) 詳細本文責務 §27.46 | TOTP | setup、confirm、login/totp、disable。 | secret は confirm 成功後だけ有効保存し、ticket は一回だけ使う。 | ticket 再利用、期限切れ、code 不正は対象状態を変更しない。 | TOTP secret、backup code 相当値、ticket token。 | [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-security-詳細本文責務-27422747-fixture-固定契約) fixture 証跡責務 §27-F security 詳細本文責務 §27.42〜§27.47 fixture 固定契約。 |
 | [`docs/details/security.md`](security.md) 詳細本文責務 §27.47 | API rate limit | route / auth / scope 判定の定義済み位置。 | 上限未満だけ count を増やし endpoint 処理へ進む。 | `429` は count を増やさず、audit 成功時だけ返す。 | API token、session token、request body。 | [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-security-詳細本文責務-27422747-fixture-固定契約) fixture 証跡責務 §27-F security 詳細本文責務 §27.42〜§27.47 fixture 固定契約。 |
 
-**[`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 セキュリティ機能 横断順序固定契約：**
+### [`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 セキュリティ機能 横断順序固定契約
 
 | 順序 | 処理 | 固定条件 |
 |------|------|----------|
@@ -66,7 +66,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 [`docs/details/security.md`](security.md) 詳細本文責務 §認証共通詳細は、password 認証、session、login ticket、認証ログ、`--init-credentials` の [`docs/details/security.md`](security.md) 詳細本文責務である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e および [`docs/details/security.md`](security.md) 詳細本文責務 §25 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0c を参照する。
 
-**password hash 固定契約：**
+### password hash 固定契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -78,7 +78,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | 比較 | 入力 password から同一手順で digest を生成し、`crypto/subtle.ConstantTimeCompare` で比較する。 |
 | 外部依存 | `golang.org/x/crypto/pbkdf2` 等の外部パッケージは使用しない。 |
 
-**password 入力制約：**
+### password 入力制約
 
 | 項目 | 仕様 |
 |------|------|
@@ -90,7 +90,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | 失敗時応答 | password 不一致は `401 {"error":"Unauthorized"}`。どの条件に失敗したかは返さない。 |
 | 成功時保存 | `.admin_credentials` に新 salt、新 hash、`must_change:false`、`updated_at` を原子的に保存する。 |
 
-**session / ticket 固定契約：**
+### session / ticket 固定契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -106,7 +106,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 `GET /api/sessions` は `session_id` ではなく `current`、`created_at`、`expires_at`、`last_used_at` のみ返す。認証必須 API で有効 token を受信した場合、`last_used_at` を現在時刻へ更新する。期限切れ token は検出時にメモリから削除する。`POST /api/logout` は対象 token のみ削除する。`POST /api/sessions/revoke-all` は現在 token 以外を削除する。
 
-**login 失敗制御：**
+### login 失敗制御
 
 | 項目 | 仕様 |
 |------|------|
@@ -116,7 +116,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | 応答時間 | password 不一致、存在しない credentials、lock 中を除く検証失敗では、条件の詳細を response へ出さない。 |
 | log | 成功、失敗、lock 拒否はいずれも `.access_log` へ追記する。password、token、hash、salt は記録しない。 |
 
-**認証処理の副作用境界：**
+### 認証処理の副作用境界
 
 | ケース | HTTP status | `.admin_credentials` | メモリ session / ticket | `.access_log` | `.audit_log` | 備考 |
 |--------|-------------|----------------------|-------------------------|---------------|--------------|------|
@@ -132,7 +132,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 [`docs/details/security.md`](security.md) 詳細本文責務 §認証共通詳細の固定表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、個別節で別指定がない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
 
-**認証副作用順序固定契約：**
+### 認証副作用順序固定契約
 
 | 処理 | 固定順序 | 失敗時 |
 |------|----------|--------|
@@ -146,7 +146,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 session token と login ticket は `crypto/rand` 成功後にだけ生成し、生成した値はメモリ上で hash 化して保持する。response body に含める token / ticket は、その request の成功 response 1 回だけに含める。`403`、`429`、`500`、network 切断検出時に、未送信 token をログや状態ファイルへ退避してはならない。
 
-**`--init-credentials` CLI 固定契約：**
+### `--init-credentials` CLI 固定契約
 
 | init-credentials CLI ケース | stdout | stderr | 終了コード | 副作用 |
 |----------------------------|--------|--------|------------|--------|
@@ -158,7 +158,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 生成手順は、state dir 検証 → 既存確認 → salt 生成 → hash 生成 → `{path}.tmp.{pid}` へ JSON + LF 書込 → mode `0600` → file sync → rename → parent directory sync の順に固定する。rename 後の sync に失敗した場合は `1` を返し、作成済みファイルは残る。実装者判断で初期 password を環境変数、対話入力、ランダム生成へ変更してはならない。
 
-**認証共通実装確認ゲート：**
+### 認証共通実装確認ゲート
 
 | 観点 | 合格条件 | 禁止条件 |
 |------|----------|----------|
@@ -171,7 +171,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 | audit dependency | 必須 audit が定義された操作は、audit 追記成功まで完了 response を返さない。 | 必須 audit 失敗時に成功 response を返すこと、audit failure を audit に再帰記録すること。 |
 | secret scan | response、stdout、stderr、journal、`.access_log`、`.audit_log`、`.api_access_log`、`.config_log`、fixture expected に禁止値が存在しないことを検証する。 | 目視確認だけで secret 非表示を合格扱いにすること。 |
 
-**one-time response 固定契約：**
+### one-time response 固定契約
 
 | 値 | 返却 endpoint | 保存先 | 成功 response 以外の扱い |
 |----|---------------|--------|--------------------------|
@@ -191,7 +191,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 本機能の目的は、外部システムによる build 開始操作を `trigger` scope の API token と build 開始 endpoint だけに限定することである。
 
-**scope：**
+#### scope
 
 | scope | 許可 |
 |-------|------|
@@ -203,7 +203,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 `trigger` scope は cancel、queue clear、config、token、audit、PAT 更新を許可しない。
 
-**endpoint group 対応：**
+#### endpoint group 対応
 
 | scope | 許可 endpoint |
 |-------|---------------|
@@ -215,13 +215,13 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 管理 session は [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の scope 固定表に関係なく全 endpoint を許可する。API token が複数 scope を持つ場合は、いずれか 1 つの scope が endpoint に一致すれば許可する。`POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password` は API token scope 判定の対象外とし、API token では使用できない。`POST /api/webhook` は GitHub Webhook secret 検証専用であり、API token では使用できない。[`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の scope 固定表に存在しない endpoint は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e と [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 の scope 固定表へ追加されるまで API token では許可してはならない。
 
-**正常系：**
+#### 正常系
 
 1. `POST /api/tokens` は `scopes:["trigger"]` を受け付ける。
 2. 発行 token は `Authorization: Bearer <token>` で使用する。
 3. `trigger` token による build は `.audit_log` と `.build_logs/{id}.json.trigger_actor` に token id を記録する。
 
-**判定順：**
+#### 判定順
 
 1. Bearer token の形式を検査する。`act_` prefix の場合は API token、64 文字 hex の場合は session token として扱う。どちらにも一致しない場合は `401`。
 2. API token の hash、期限、失効状態を検証する。
@@ -231,7 +231,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 `permission_denied` の監査ログ追記に失敗した場合は `500` を返し、対象 endpoint の処理は実行しない。
 
-**認証・rate limit 組み合わせ順：**
+#### 認証・rate limit 組み合わせ順
 
 | 段階 | 処理 |
 |------|------|
@@ -245,7 +245,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 scope 判定前に endpoint 固有の request body parse、状態ファイル更新、外部送信を実行してはならない。
 
-**scope 判定固定条件：**
+#### scope 判定固定条件
 
 | 条件 | 判定 |
 |------|------|
@@ -257,7 +257,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 | query string | scope 判定には使用しない。method と path pattern だけで判定する。 |
 | `GET /api/health` | 認証不要。API token scope 判定を行わない。 |
 
-**検証条件：**
+#### 検証条件
 
 | ケース | 期待結果 |
 |--------|----------|
@@ -276,7 +276,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 
 本機能の目的は、API key の発行、一覧、失効、期限、scope を実装し、key 本体を保存しないことである。
 
-**API 権限：**
+#### API 権限
 
 | endpoint | 必要認証 |
 |----------|----------|
@@ -286,7 +286,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 
 `admin` scope API token は、`POST /api/tokens` の認証と scope 判定を通過した場合だけ新しい `admin` scope API token を発行する。発行者 token と発行対象 token は別 record とし、親子関係は保存しない。
 
-**正常系：**
+#### 正常系
 
 1. `POST /api/tokens` は `label`、`scopes`、`expires_at` を受け取る。
 2. token 本体は `act_` + 32 byte 相当のランダム文字列とする。
@@ -295,7 +295,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 5. 認証時は hash 一致、`revoked_at == null`、`expires_at == null または now < expires_at` を満たす token だけ有効とする。
 6. 作成、認証成功、失効、期限切れ拒否を `.audit_log` へ記録する。ただし token 本体は記録しない。
 
-**`.api_tokens` record schema：**
+#### `.api_tokens` record schema
 
 | キー | 型 | 必須 | 許容値 |
 |------|----|------|--------|
@@ -310,7 +310,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 
 `.api_tokens` に未知 key、必須 key 不足、型不一致、未知 scope、空 scopes、hash 形式不正、時刻形式不正がある場合は破損として扱い、token 認証、一覧、作成、失効をすべて `500 {"error":"Internal server error"}` で拒否する。ただし旧 `scope` 文字列から `scopes:[scope]` への正規化は [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0c の例外に従う。破損内容、hash、token 本体は response、`.access_log`、`.audit_log`、journal に出力しない。
 
-**API token 認証時の副作用境界：**
+#### API token 認証時の副作用境界
 
 | ケース | HTTP status | `.api_tokens` | `.access_log` | `.audit_log` | 備考 |
 |--------|-------------|---------------|---------------|--------------|------|
@@ -322,7 +322,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 
 [`docs/details/security.md`](security.md) 詳細本文責務 §27.43 の固定表で `.api_tokens` 保存後に `.access_log` または `.audit_log` 追記へ失敗した場合、対象 API は `500` とし、endpoint 固有処理へ進まない。`last_used_at` 更新済み record は巻き戻さない。
 
-**処理順：**
+#### 処理順
 
 `POST /api/tokens` は以下の順で処理する。
 
@@ -350,7 +350,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 
 認証に使用中の API token 自身を path `id` に指定した場合、その token を失効対象にする。当該リクエストは成功し、次リクエストから `401` になる。
 
-**token ID 採番・返却固定契約：**
+#### token ID 採番・返却固定契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -361,7 +361,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 | 一覧 response | `tokens` 配列に `token_hash` と `token` を含めない。並び順は `created_at` 降順、同時刻は `id` 昇順。 |
 | label 正規化 | 前後空白を除去し、内部空白は保持する。64 文字判定は Unicode code point 数ではなく UTF-8 byte 数で行う。 |
 
-**異常系：**
+#### 異常系
 
 | 条件 | 処理 |
 |------|------|
@@ -374,7 +374,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 | 失効済み token 再失効 | `404` または冪等成功にせず `404` 固定。 |
 | `.api_tokens` 破損 | `500`。自動再生成しない。 |
 
-**検証条件：**
+#### 検証条件
 
 | ケース | 期待結果 |
 |--------|----------|
@@ -395,7 +395,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 
 本機能の目的は、認証、権限拒否、token 作成・失効、設定変更、build trigger、session revoke、TOTP enable / disable、rate limit 設定変更を追跡できる JSON Lines 監査ログとして保存することである。
 
-**対象 action：**
+#### 対象 action
 
 | action | target_type |
 |--------|-------------|
@@ -406,7 +406,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 | `build_trigger`, `build_force_trigger` | `build` |
 | `config_update`, `rate_limit_update` | `config` |
 
-**record 生成規則：**
+#### record 生成規則
 
 | 項目 | 仕様 |
 |------|------|
@@ -420,7 +420,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 
 監査ログへ保存する object は `.audit_log` schema のキーだけとする。未知キー、request body、query 全体、header 全体、cookie、secret、token、password、hash、salt、TOTP secret を保存してはならない。
 
-**action 生成固定値：**
+#### action 生成固定値
 
 | 操作 | action | actor_type | target_type | target_id | result |
 |------|--------|------------|-------------|-----------|--------|
@@ -445,7 +445,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 
 同一操作で `.config_log` と `.audit_log` の両方を追記する場合、`.config_log` を先に追記する。`.config_log` 成功後に `.audit_log` が失敗した場合は `500` を返し、`.config_log` は巻き戻さない。`.audit_log` 追記失敗そのものを `.audit_log` に記録しようとしてはならない。
 
-**監査 record 保存順・失敗契約：**
+#### 監査 record 保存順・失敗契約
 
 | 操作種別 | 保存順 | `.audit_log` 失敗時 |
 |----------|--------|----------------------|
@@ -455,14 +455,14 @@ owner component は `security` とする。collaborator component は `api`、`s
 | 設定変更 | 対象設定保存 → `.config_log` → `.audit_log` → response | 対象設定と `.config_log` は巻き戻さず `500`。 |
 | token 作成 | `.api_tokens` 保存 → `.access_log` → `.audit_log` → response | 作成済み record は残し、token 本体は返さず `500`。 |
 
-**正常系：**
+#### 正常系
 
 1. 監査対象操作の成否が確定した後、`.audit_log` へ 1 行追記する。
 2. 監査ログ追記に失敗した場合、対象操作は失敗扱いにし、`500` を返す。
 3. secret、password、session token、API token 本体、hash、salt、TOTP secret は保存しない。
 4. `GET /api/audit-log` は `limit`、`offset`、`actor`、`action`、`result` で絞り込み、新しい順で返す。
 
-**取得仕様：**
+#### 取得仕様
 
 | 項目 | 仕様 |
 |------|------|
@@ -476,7 +476,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 
 `GET /api/audit-log` は監査ログ取得操作自体を `.audit_log` へ記録しない。通常の API request として `.api_access_log` には記録する。フィルタ値が未知 action、未知 result、200 文字超過 actor の場合は `422` とし、壊れた行の有無とは独立して判定する。
 
-**検証条件：**
+#### 検証条件
 
 | ケース | 期待結果 |
 |--------|----------|
@@ -497,7 +497,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 
 本機能の目的は、新規 session の有効期限を管理 API から更新し、既存 session への影響を明確にすることである。
 
-**仕様：**
+#### 仕様
 
 | 項目 | 値 |
 |------|----|
@@ -509,7 +509,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 
 設定変更は新規 session にだけ適用する。既存 session の `expires_at` は延長も短縮もしない。
 
-**処理契約：**
+#### 処理契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -522,7 +522,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 
 session timeout の値は session 発行時に秒単位で加算する。`expires_at = issued_at + session_timeout_seconds` とし、計算後の時刻は UTC ISO 8601 秒精度で保存する。ミリ秒、ナノ秒、local timezone は保存しない。
 
-**検証条件：**
+#### 検証条件
 
 | ケース | 期待結果 |
 |--------|----------|
@@ -539,7 +539,7 @@ session timeout の値は session 発行時に秒単位で加算する。`expire
 
 本機能の目的は、外部ライブラリなしで RFC 6238 TOTP を検証し、password 漏えい時の管理 API 不正利用を抑止することである。
 
-**アルゴリズム：**
+#### アルゴリズム
 
 | 項目 | 仕様 |
 |------|------|
@@ -553,7 +553,7 @@ session timeout の値は session 発行時に秒単位で加算する。`expire
 
 QR code 生成は初期実装対象外とする。UI は secret と otpauth URI を一回表示し、ユーザーの認証アプリ登録手段は手入力または URI 貼り付けに限定する。
 
-**メモリ上状態：**
+#### メモリ上状態
 
 | 状態 | 保存場所 | 期限 | 内容 |
 |------|----------|------|------|
@@ -562,7 +562,7 @@ QR code 生成は初期実装対象外とする。UI は secret と otpauth URI 
 
 setup 仮 secret と login ticket は永続ファイルへ保存しない。API response、UI 一回表示、メモリ上状態以外に secret/ticket 本体を残してはならない。
 
-**正常系：**
+#### 正常系
 
 1. `POST /api/auth/totp-setup` は仮 secret と otpauth URI を返すが、永続化しない。
 2. `POST /api/auth/totp-confirm` は仮 secret と code を検証し、成功時だけ `.totp_secret.enabled=true` と secret 情報を保存する。
@@ -570,7 +570,7 @@ setup 仮 secret と login ticket は永続ファイルへ保存しない。API 
 4. `POST /api/login/totp` は ticket と code を検証し、成功時に session token を返す。
 5. `DELETE /api/auth/totp` は code を検証して TOTP を無効化する。
 
-**endpoint 処理詳細：**
+#### endpoint 処理詳細
 
 | endpoint | 処理 |
 |----------|------|
@@ -585,7 +585,7 @@ TOTP code は 6 桁の ASCII 数字のみ受け付ける。空文字、全角数
 
 TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記録する。code 不一致、replay、ticket 不正は `result:"failure"` とし、code、secret、ticket 本体は保存しない。
 
-**TOTP 計算固定契約：**
+#### TOTP 計算固定契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -595,7 +595,7 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 | base32 decode | 大文字 ASCII のみ保存する。入力確認時は空白を除去せず、保存値と同じ RFC 4648 padding なし形式だけを扱う。 |
 | clock source | API server の現在時刻だけを使う。client 時刻は受け取らない。 |
 
-**TOTP 状態更新順：**
+#### TOTP 状態更新順
 
 | 操作 | 更新順 | 失敗時 |
 |------|--------|--------|
@@ -608,7 +608,7 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 
 `POST /api/login/totp` は、ticket が存在しない、期限切れ、hash 不一致、既に削除済みのいずれの場合も `401 {"error":"Unauthorized"}` を返す。ticket 不正の詳細、ticket hash、ticket 発行時刻は response と log に含めない。TOTP 有効化または無効化に成功した場合、既存 session は破棄しない。
 
-**異常系：**
+#### 異常系
 
 | 条件 | 処理 |
 |------|------|
@@ -622,7 +622,7 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 | `.totp_secret` 書き込み失敗 | `500`。response に secret、token、ticket を含めない。 |
 | `.audit_log` 追記失敗 | `500`。保存済み `.totp_secret` は巻き戻さない。 |
 
-**検証条件：**
+#### 検証条件
 
 | ケース | 期待結果 |
 |--------|----------|
@@ -643,7 +643,7 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 
 本機能の目的は、login 総当たり、API token 濫用、外部連携の暴走を Go 標準ライブラリだけで抑止することである。
 
-**固定窓 policy：**
+#### 固定窓 policy
 
 | group | 既定 window | 既定 max | 対象 |
 |-------|-------------|----------|------|
@@ -654,7 +654,7 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 | `config` | 60 秒 | 60 | 設定変更 endpoint。 |
 | `admin` | 60 秒 | 60 | token、audit、rate limit endpoint。 |
 
-**判定キー：**
+#### 判定キー
 
 | 認証状態 | key |
 |----------|-----|
@@ -666,7 +666,7 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 
 `remote_addr` は `net/http.Request.RemoteAddr` の host 部分を使用する。`X-Forwarded-For`、`X-Real-IP`、`Forwarded` header は標準では信用せず、key 生成に使用しない。IPv6 は `net.SplitHostPort` で host を抽出し、正規化済み文字列をそのまま key に入れる。host 抽出に失敗した場合は `ip:unknown:{group}` を使用する。
 
-**policy object：**
+#### policy object
 
 ```json
 {
@@ -685,7 +685,7 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 
 永続化先は `.server_config.api_rate_limit` とし、保存時は `enabled` と `groups` だけを保存する。`state_summary` は `GET /api/api-rate-limit` と `POST /api/api-rate-limit` response 用の算出値であり、永続化しない。
 
-**`state_summary` item：**
+#### `state_summary` item
 
 | キー | 型 | 説明 |
 |------|----|------|
@@ -697,14 +697,14 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 
 `state_summary` は `reset_at` 降順、同時刻は `key` 昇順で最大 100 件返す。期限切れ window は response 算出前に `.api_rate_state` から削除する。
 
-**正常系：**
+#### 正常系
 
 1. path 解決後、認証前に IP key の login 制限を確認する。
 2. 認証後、endpoint group を判定し、actor key と IP key の count を更新する。
 3. `GET /api/api-rate-limit` は policy と window summary を返す。
 4. `POST /api/api-rate-limit` は policy を検証して保存し、`.api_rate_state.windows` を空にする。
 
-**endpoint group 判定：**
+#### endpoint group 判定
 
 | 条件 | group |
 |------|-------|
@@ -719,7 +719,7 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 
 endpoint が複数 group に現れる場合は、`login`、`admin`、`config`、`operate`、`trigger`、`read` の順で最初に一致した group を採用する。
 
-**判定・更新手順：**
+#### 判定・更新手順
 
 1. `.server_config.api_rate_limit.enabled == false` の場合、`.api_rate_state` を読まずに対象 API 処理へ進む。
 2. endpoint group を決める。
@@ -733,7 +733,7 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 
 認証後 endpoint の rate limit では、actor key と IP key の両方を同じ lock 内で判定・更新する。片方だけの count 更新に成功した状態を残してはならない。`.api_rate_state` 保存失敗時は対象 API を実行せず `500` を返す。rate limit 判定で `429` になる request は count を増やさない。
 
-**rate limit 副作用固定契約：**
+#### rate limit 副作用固定契約
 
 | ケース | `.api_rate_state` | `.access_log` | `.audit_log` | endpoint 固有処理 |
 |--------|-------------------|---------------|--------------|-------------------|
@@ -744,7 +744,7 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 
 `429` 判定時は `.audit_log` 追記を `.api_rate_state` 保存前に行う。`.audit_log` 追記に成功した場合だけ `429` を返す。`.audit_log` 追記に失敗した場合は `.api_rate_state` を変更せず `500` を返す。
 
-**設定更新契約：**
+#### 設定更新契約
 
 | 項目 | 仕様 |
 |------|------|
@@ -756,7 +756,7 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 | 保存順 | `.server_config` 保存 → `.api_rate_state.windows` 空保存 → `.config_log` 追記 → `.audit_log` に `rate_limit_update` 追記 → response。 |
 | 同値更新 | `200` とし、`.server_config` と `.api_rate_state` は変更しない。`.config_log` と `.audit_log` に追記しない。 |
 
-**異常系：**
+#### 異常系
 
 | 条件 | 処理 |
 |------|------|
@@ -770,7 +770,7 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 | `.audit_log` 追記失敗 | `500`。`429` response は返さない。 |
 | lock 取得 10 秒超過 | `409`。対象 API は実行しない。 |
 
-**検証条件：**
+#### 検証条件
 
 | ケース | 期待結果 |
 |--------|----------|
