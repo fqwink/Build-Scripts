@@ -108,9 +108,9 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 `admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。`admin` 詳細では UI DOM、SDK method、API endpoint、fixture 入力、expected、fake、実装検証証跡を再定義せず、admin 配布境界だけを確認する。
 
-Admin fixture の fixture 名、入力、操作、expected file、禁止副作用は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-setup--admin--release-連動-fixture-固定契約) fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約を正本とする。
+Admin fixture の fixture 名、入力、操作、expected file、禁止副作用は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約を正本とする。
 
-### Admin 実装確認ゲート
+**Admin 実装確認ゲート：**
 
 | 観点 | 合格条件 |
 |------|----------|

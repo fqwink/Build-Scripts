@@ -24,7 +24,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | §22.0a | 状態ファイル共通仕様、更新手順、schema 厳格化、状態読取 adapter。 |
 | §22.0c | 主要状態ファイル schema。 |
 
-### 22.0a 状態ファイル共通仕様
+**22.0a 状態ファイル共通仕様：**
 
 `api` および拡張後 `runner` が読み書きする状態ファイルは、[`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a の状態ファイル固定表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a へパス、形式、初期値、更新責務、破損時の扱いを追記する。
 
@@ -76,7 +76,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時は末尾に改行を必ず付ける。秘密情報を含む可能性のある `.admin_credentials`、`.totp_secret`、`.github_token`、`.webhook_secret`、`.smtp_secret` は mode `600` を必須とする。
 
-#### 状態ファイル更新手順
+**状態ファイル更新手順：**
 
 1. 対象ファイルの `{name}.lock` を `O_CREATE|O_EXCL` で作成する。
 2. ロック取得に失敗した場合は 100ms 間隔で最大 10 秒待つ。
@@ -89,7 +89,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 
 手順 3〜7 の途中で失敗した場合は target を変更せず、tmp を削除し、ロックを削除して write caller へ失敗を返す。`os.Rename` 後の `Sync` に失敗した場合は target を維持し、ERROR ログと `.config_log` へ失敗を記録して write caller へ失敗を返す。複数ファイル更新 caller は、呼び出し元が定義する Write 列順にこの手順を実行し、途中失敗時は未処理ファイルを書き込まない。API 固有の Write 列順は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0d 以降を参照する。既に書き込んだファイルの自動ロールバックは行わず、`.config_log` に失敗内容を記録する。
 
-#### 状態ファイル schema 厳格化契約
+**状態ファイル schema 厳格化契約：**
 
 状態ファイルの読込、正規化、保存は以下に固定する。[`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0c または個別機能節で例外を明記していない限り、実装者判断で旧形式、未知 key、null、欠落配列を成功扱いにしてはならない。
 
@@ -106,7 +106,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 
 旧 schema からの正規化は、[`docs/details/statefile.md`](statefile.md) 詳細本文責務に「旧 key」「変換後 key」「削除する key」「保存するか読み取り時だけか」を明記した場合だけ実装する。明記がない旧形式は破損扱いとし、黙って推測変換してはならない。
 
-#### 状態読取 adapter 固定契約
+**状態読取 adapter 固定契約：**
 
 [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a の状態読取 adapter 固定契約は、statefile owner component が提供する状態読取 adapter 名、読取対象、正常戻り値、不在時、破損時 / 読込不能時の固定契約である。API endpoint ごとの読取順、response 算出、HTTP status は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0c.1 と [`docs/details/api.md`](api.md) 詳細本文責務 §22.0d 以降を参照する。各 component は同じ状態ファイルを endpoint ごとに別ロジックで直接 parse してはならない。
 
@@ -129,11 +129,11 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 
 `.build_lock` の PID が存在しない場合、`readBuildLock()` は `running=false, stale=true, valid=true` を返す。read-only caller は stale lock を削除しない。build command は開始前に `.build_lock` を再読込し、同じ stale 判定なら `.build_lock` だけを削除してから新規 lock を作成する。削除失敗時は conflict failure とし、`.build_state` を変更しない。
 
-### 22.0c 主要状態ファイル schema
+**22.0c 主要状態ファイル schema：**
 
 [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0c の schema は、API 実装、SDK 型、標準管理ツール表示、バックアップ/リストアの基準である。[`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0c に定義したキー以外を保存してはならない。追加キーを追加する場合は、型、既定値、読み書き API、既存データの扱いを [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0c へ追記してから実装する。
 
-#### `.server_config` schema
+**`.server_config` schema：**
 
 | キー | 型 | 既定値 | 許容値 | 読み書き API | 説明 |
 |------|----|--------|--------|--------------|------|
@@ -163,7 +163,7 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 
 `.server_config` の `POST /api/config` では `force_build_interval_hours`、`build_cooldown_seconds`、`schedule_interval_seconds`、`schedule_paused`、`allowed_hours` を直接更新してはならない。これらは専用スケジュール API からのみ更新する。
 
-#### 共通 field 定義
+**共通 field 定義：**
 
 | 共通 field | 型 | 許容値 | 説明 |
 |------------|----|--------|------|
@@ -175,7 +175,7 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 | build `comment` | string/null | コメント検証に従う | コメント。 |
 | request `remote_addr` | string/null | IP 文字列または `null` | 接続元。 |
 
-#### `.notify_config` schema
+**`.notify_config` schema：**
 
 | キー | 型 | 既定値 | 許容値 | 説明 |
 |------|----|--------|--------|------|
@@ -228,7 +228,7 @@ Email object:
 | `to` | string[] | `[]` | メールアドレス配列、最大 50 件 |
 | `on` | string[] | `[]` | `"start"`, `"success"`, `"failure"`, `"duration_anomaly"` |
 
-#### `.branch_config` schema
+**`.branch_config` schema：**
 
 ```json
 {
@@ -262,7 +262,7 @@ Email object:
 
 `.branch_config` の永続 key は `branch_targets` に固定する。API の表示名、default 復帰、空配列入力時の挙動は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e および [`docs/details/api.md`](api.md) 詳細本文責務 §27.18 を参照する。statefile は `branches` を永続 key として保存してはならない。
 
-#### `.last_sha` / `BranchTarget.SHAFile` schema
+**`.last_sha` / `BranchTarget.SHAFile` schema：**
 
 ```json
 {"sha":""}
@@ -286,7 +286,7 @@ SHA cache は target ごとの処理済み Git blob SHA を保存する JSON obj
 
 SHA cache の更新タイミング、skip / failure 時の更新可否、複数 target 時の個別更新は [`docs/details/runner.md`](runner.md) 詳細本文責務 §13 の SHA cache 読み書き契約を参照する。
 
-#### `.repo_config` schema
+**`.repo_config` schema：**
 
 | キー | 型 | 既定値 | 許容値 | 説明 |
 |------|----|--------|--------|------|
@@ -298,7 +298,7 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 
 repo config caller は指定されたキーのみ更新する。未指定キーは既存値を保持する。全キーが未指定の場合は validation failure を返す。
 
-#### `.totp_secret` schema
+**`.totp_secret` schema：**
 
 ```json
 {
@@ -316,7 +316,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | `confirmed_at` | string/null | 必須 | ISO 8601 または `null` | TOTP 有効化完了日時。 |
 | `last_accepted_step` | integer/null | 必須 | Unix time 30 秒 step または `null` | 同一 code 再利用防止。 |
 
-#### `.admin_credentials` schema
+**`.admin_credentials` schema：**
 
 ```json
 {
@@ -344,7 +344,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 
 `.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致もすべて credentials 破損とする。API 起動時検証、login / password change の公開応答、認証ログ、監査ログ、漏えい禁止値は [`docs/details/security.md`](security.md) 詳細本文責務 認証共通詳細および [`docs/details/security.md`](security.md) 詳細本文責務 §27.45〜§27.46 を参照する。statefile は破損内容、hash、salt を呼び出し元の公開値として返してはならない。
 
-#### `.audit_log` schema
+**`.audit_log` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -359,7 +359,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | `remote_addr` | string/null | 必須 | audit log は共通 field `request remote_addr` | 接続元。 |
 | `message` | string/null | 必須 | 0〜500 文字または `null` | 固定文言。secret、token、password は保存しない。 |
 
-#### `.api_rate_state` schema
+**`.api_rate_state` schema：**
 
 ```json
 {
@@ -378,7 +378,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | `window_start` | string | 必須 | ISO 8601 | 現在窓の開始時刻。 |
 | `count` | integer | 必須 | 0 以上 | 現在窓内リクエスト数。 |
 
-#### `.api_tokens` schema
+**`.api_tokens` schema：**
 
 ```json
 {
@@ -411,7 +411,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 
 `POST /api/tokens` は token 本体を `act_` + 32 byte 相当のランダム文字列として生成し、レスポンス時に 1 回だけ返す。保存する値は `token_hash` のみとする。`DELETE /api/tokens/{id}` は物理削除せず、`revoked_at` を現在時刻へ更新する。旧 `scope` 文字列が存在する場合は読み込み時に `scopes:[scope]` へ正規化して保存し直す。
 
-#### `.api_tokens` 実装固定値
+**`.api_tokens` 実装固定値：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -425,7 +425,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | 認証時更新 | 有効 token 認証成功時だけ `last_used_at` を現在時刻へ更新する。期限切れ、失効済み、hash 不一致では更新しない。 |
 | 破損行相当 | `.api_tokens.tokens` 内の個別 record が schema 不正の場合、認証と一覧 caller へ破損失敗を返し、自動補正しない。旧 `scope` から `scopes` への正規化だけは例外として許可する。 |
 
-#### `.maintenance` schema
+**`.maintenance` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -435,7 +435,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 
 `enabled: false` の場合、`reason` と `since` は `null` とする。`POST /api/maintenance/enable` は `enabled: true`、`reason`、`since` を同時に保存する。
 
-#### `.access_control` schema
+**`.access_control` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -443,7 +443,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 
 `allow` の各要素は前後空白を除去してから検証する。空文字、IPv6、hostname、URL、CIDR prefix が 0〜32 以外、parse 不能な値は validation failure とし、既存 `.access_control` を変更しない。
 
-#### `.hooks` schema
+**`.hooks` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -458,7 +458,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 
 `command_args[0]` は 1〜256 文字、`command_args[1:]` の各要素は 1〜500 文字とし、NUL、改行、CR を禁止する。`command_args[0]` は絶対 path または PATH 解決可能なコマンド名に限定する。`phase` と `command_args` が既存 enabled hook と完全一致する場合の重複時の扱いは [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e を参照する。
 
-#### `.alert_rules` schema
+**`.alert_rules` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -470,7 +470,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | `level` | string | 必須 | `info`, `warn`, `error` | alert severity。 |
 | `message` | string | 必須 | 1〜200 文字 | UI 表示文。secret を含めない。 |
 
-#### `.tag_rules` schema
+**`.tag_rules` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -481,7 +481,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 
 `condition` は `変数 空白 演算子 空白 値` の 1 条件だけを許可する。`&&`、`||`、括弧、関数呼び出し、正規表現、算術式は validation failure とする。
 
-#### `.pipeline_config` schema
+**`.pipeline_config` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -490,13 +490,13 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 
 `extra_args` は空文字、NUL、改行、CR を禁止し、`--src`、`--out`、`--build-id`、`--commit-sha`、`--build-at`、`--version`、`--help` を指定してはならない。`env` key は `^[A-Z_][A-Z0-9_]{0,63}$`、value は 0〜1000 文字とし、`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN` は上書き禁止とする。
 
-#### `.dashboard_layout` schema
+**`.dashboard_layout` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `widgets` | string[] | 必須 | [`docs/details/ui.md`](ui.md) 詳細本文責務 §16D の widget id、1〜9 件 | 表示 widget 順序。重複禁止。 |
 
-#### `.smtp_config` schema
+**`.smtp_config` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -511,7 +511,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 
 `.smtp_secret` は UTF-8 text とし、末尾 LF なしで password 本体だけを保存する。mode は `0600` 固定。`POST /api/smtp-config` で `password` が未指定の場合、既存 `.smtp_secret` を変更しない。`password:null` は secret 削除を意味し、`.smtp_secret` が存在する場合だけ削除する。
 
-#### `.build_state` schema
+**`.build_state` schema：**
 
 ```json
 {
@@ -557,7 +557,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 
 `running: false` の場合、`current_build_id` は `null` とする。`DELETE /api/queue` は `queued` を空配列へ置換し、`running` と `current_build_id` は変更しない。
 
-#### `.build_circuit_state` schema
+**`.build_circuit_state` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -569,7 +569,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 
 初期値は `{"open":false,"consecutive_failures":0,"opened_at":null,"last_failure_at":null,"last_error":null}` とする。`POST /api/circuit-breaker/reset` は初期値へ戻す。
 
-#### `.config_log` JSON Lines schema
+**`.config_log` JSON Lines schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -581,7 +581,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 
 `diff` は `{key:[before,after]}` とする。`diff_text` は 1 行以上の文字列とし、値は JSON 表現で記録する。キー名に `password`、`token`、`secret`、`pat`、`smtp_password` を含む値は before / after とも `"***"` に置換する。配列や object の内部 key も同じ規則で再帰的にマスクする。
 
-#### `.access_log` JSON Lines schema
+**`.access_log` JSON Lines schema：**
 
 各行はログイン、ログアウト、API token 作成/失効、read token 認証の監査イベントを表す JSON object とする。秘密情報、セッショントークン、API token 本体を保存してはならない。
 
@@ -595,7 +595,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 | `remote_addr` | string/null | 必須 | IP 文字列または `null` | 接続元。取得不能時は `null`。 |
 | `reason` | string/null | 必須 | 文字列または `null` | 失敗理由。秘密情報を含めない。 |
 
-#### `.api_access_log` JSON Lines schema
+**`.api_access_log` JSON Lines schema：**
 
 各行は認証後 API、認証失敗 API、Webhook API の HTTP 呼び出し 1 件を表す JSON object とする。password、token、Webhook secret、SMTP password、request body の secret 値を保存してはならない。
 
@@ -614,7 +614,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 | `user_agent` | string/null | 必須 | 文字列または `null` | 取得不能時は `null`。 |
 | `error` | string/null | 必須 | エラーコードまたは `null` | 成功時は `null`。 |
 
-#### `.webhook_events.json` JSON Lines schema
+**`.webhook_events.json` JSON Lines schema：**
 
 `.webhook_events.json` は 1 行 1 event を追記する。mode は `0600` とする。request header 全体、署名値、Webhook secret、payload 全体を保存してはならない。
 
@@ -631,7 +631,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 | `queued_id` | string/null | 必須 | queue id または `null`。 |
 | `result` | string | 必須 | `"queued"`, `"duplicate"`, `"ignored_event"`, `"ignored_branch"`, `"queue_full"`, `"error"`。 |
 
-#### `.approval_queue` JSON Lines schema
+**`.approval_queue` JSON Lines schema：**
 
 `.approval_queue` は append-only とし、1 行 1 record を追記する。同一 id の最新 record を有効状態として扱い、古い record は監査履歴として残す。
 
@@ -649,7 +649,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 | `queue_id` | string/null | 必須 | approve で追加した queue id または `null`。 |
 | `reason` | string/null | 必須 | reject 理由、expire 理由、または `null`。 |
 
-#### `.build_history` JSON Lines schema
+**`.build_history` JSON Lines schema：**
 
 各行は以下の JSON object とする。
 
@@ -670,7 +670,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 | `comment` | string/null | 必須 | build history は共通 field `build comment` | コメント。 |
 | `rollback_from` | string/null | 任意 | build id または `null` | rollback の元 build id。 |
 
-#### `.build_logs/{id}.json` schema
+**`.build_logs/{id}.json` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
@@ -754,7 +754,7 @@ BuildMeta object:
 | `commit_sha` | string | 必須 | HTML meta `adlaire-commit-sha` と同じ値。 |
 | `build_at` | string | 必須 | HTML meta `adlaire-build-at` と同じ値。 |
 
-#### `.build_status.json` schema
+**`.build_status.json` schema：**
 
 `.build_status.json` は runner の現在状態と直近結果を 1 ファイルで読むための要約 schema である。API endpoint ごとの読取順と後方互換値の算出は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0c.1 を参照する。UI 表示は [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 を参照する。MCP は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の将来計画を参照する。
 
@@ -814,7 +814,7 @@ BuildMeta object:
 
 `.build_status.json` の更新タイミング、各 `status` の選択条件、書き込み失敗時の runner 終了コードは [`docs/details/runner.md`](runner.md) 詳細本文責務 §13 の build status 更新契約を参照する。
 
-### §22.0s 状態ファイル実装確認固定契約
+**§22.0s 状態ファイル実装確認固定契約：**
 
 `statefile` owner component は、[`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a〜§22.0c の schema、adapter、更新手順、破損時処理を実装単位として扱う。状態ファイルごとの暗黙処理は追加せず、[`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0s の固定表の共通契約を満たす。
 
@@ -830,7 +830,7 @@ BuildMeta object:
 | JSON Lines | JSON Lines file | 空行、JSON object 以外、必須 key 不足、型不一致行を除外する。 | 有効行だけの配列。 | 壊れた行は server log に固定 code、path、line number だけ記録する。呼び出し元の公開値に壊れた行数を含めない。 |
 | 複数ファイル更新 | 複数 state 書込 caller | 呼び出し元が定義する Write 列順に 1 file ずつ atomic write する。API 固有の順序は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0d 以降を参照する。 | 全対象が順に更新される。 | 未処理 file は変更しない。更新済み file は自動 rollback しない。`.config_log` に失敗を記録する。 |
 
-#### read / write 境界固定
+**read / write 境界固定：**
 
 | 呼び出し種別 | 許可する処理 | 禁止する処理 |
 |--------------|--------------|--------------|
@@ -839,7 +839,7 @@ BuildMeta object:
 | runner write | build lifecycle に必要な state 更新、`.build_lock` stale 判定後の lock 削除。 | API 専用 credentials / token / auth state の直接変更。 |
 | setup write | 初期配置に必要な `.github_token`、`.last_sha`、admin directory の配置。 | API runtime state、history、build log、session、token の生成。 |
 
-#### runner 連動状態更新固定ゲート
+**runner 連動状態更新固定ゲート：**
 
 runner / archive / commitstatus / security / api が同じ実装変更で状態更新を組み合わせる場合でも、statefile owner の契約は [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0s の固定表で固定する。呼び出し元 component は業務判断を持ち、statefile は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当する。
 
@@ -853,4 +853,4 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | corrupt handling | [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0a に再生成指定がある file だけ backup → 初期値再生成を許可する。 | 破損判定結果と対象 path。 | backup 失敗時は再生成しない。再生成指定がない file は変更しない。 |
 | secret path | secret を含む file は `0600`、通常 state は `0644`、directory は `0755` に固定する。 | secret file 判定。 | chmod 失敗を成功扱いにせず、secret 内容を log / 呼び出し元の公開値 / fixture expected に出さない。 |
 
-状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#fixture-証跡責務-27-f-statefile-owner-fixture-固定契約) fixture 証跡責務 §27-F statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。
+状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。

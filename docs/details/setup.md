@@ -23,7 +23,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 [`docs/details/setup.md`](setup.md) 詳細本文責務 §26 は、Go 版 Adlaire CI のセットアップ手順を定義する。
 
-### §26.1 要件
+**§26.1 要件：**
 
 | 項目 | 要件 |
 |------|------|
@@ -35,7 +35,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | バージョン管理 | GitHub Releases のタグ付き安定版を使用する。利用環境でリポジトリ checkout を更新経路にしない。 |
 | ネットワーク | GitHub API への HTTPS 送信。SSH 転送機能を実装した場合のみデプロイ先への SSH 接続。 |
 
-### §26.2 設定変数
+**§26.2 設定変数：**
 
 スクリプト内で以下の変数をカスタマイズする。
 
@@ -48,7 +48,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 | `OS_ARCH` | `linux-amd64` | 取得するリリースバイナリの OS/arch。初期標準は `linux-amd64` のみ |
 | `DOWNLOAD_DIR` | `/tmp/adlaire-ci-release-$VERSION` | Release 添付ファイルの一時取得先 |
 
-### §26.2a リリース成果物
+**§26.2a リリース成果物：**
 
 セットアップ手順は、以下の Release 添付ファイルを取得対象とする。
 
@@ -62,7 +62,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 Release asset 名は [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.2a の固定表の文字列と完全一致させる。`$OS_ARCH` は `linux-amd64` だけを初期標準とし、未知 OS/arch を指定した場合は取得前に `unsupported OS_ARCH: {OS_ARCH}` を stderr へ出力して終了コード `2` とする。`SHA256SUMS` は `"{sha256}  {filename}"` 形式の LF 区切り text とし、対象 filename が 1 回だけ出現することを必須とする。対象行が 0 件または 2 件以上の場合は checksum 検証失敗とする。
 
-### §26.2b セットアップ・アップデート機能単位
+**§26.2b セットアップ・アップデート機能単位：**
 
 セットアップ・アップデート実装は、以下の機能単位に分離する。各機能は前段の出力だけを入力として受け取り、失敗時は後続機能を実行しない。
 
@@ -78,7 +78,7 @@ Release asset 名は [`docs/details/setup.md`](setup.md) 詳細本文責務 §26
 | admin UI installer | `admin-ui.tar.gz`、`INSTALL_DIR` | `$INSTALL_DIR/admin/index.html`、`$INSTALL_DIR/admin/adlaire-ci-sdk.js` | archive 不在、checksum 不一致、展開後必須ファイル不在 | API service 起動を実行せず終了 |
 | rollback executor | `BACKUP_DIR`、`BIN_DIR`、再起動対象 unit | 旧バイナリ復元済み状態 | 旧バイナリ不在、復元失敗、復元後 restart 失敗 | 自動復旧を継続せず journal 確認対象を出力 |
 
-#### セットアップ / アップデート共通終了コード
+**セットアップ / アップデート共通終了コード：**
 
 | 終了コード | 条件 |
 |------------|------|
@@ -88,7 +88,7 @@ Release asset 名は [`docs/details/setup.md`](setup.md) 詳細本文責務 §26
 
 各手順は失敗時に固定文言を stderr へ 1 行以上出力する。secret 値、PAT、token、password、Release URL に埋め込まれた認証情報を stderr/stdout に出してはならない。
 
-#### Release asset 取得・検証固定契約
+**Release asset 取得・検証固定契約：**
 
 セットアップ、管理 API 導入、アップデートはいずれも [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.2b セットアップ・アップデート機能単位 の固定表の順序で Release asset を扱う。順序を入れ替えてはならない。取得済みファイルは checksum 検証が成功するまで配置対象として扱わない。
 
@@ -104,13 +104,13 @@ Release asset 名は [`docs/details/setup.md`](setup.md) 詳細本文責務 §26
 
 `admin-ui.tar.gz` は checksum 検証後に一時展開ディレクトリへ展開する。配布物の中身、必須 file、拒否する archive entry は [`docs/details/admin.md`](admin.md) 詳細本文責務 A1〜A2 を参照する。検証に失敗した場合は、既存 `$INSTALL_DIR/admin` を変更しない。
 
-#### setup 共通確認契約
+**setup 共通確認契約：**
 
 [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.3、[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.3b、[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.5 の shell snippet は、[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.2b の機能単位と [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.2c の共通停止条件に従う具体例である。Release asset 名と checksum 形式は [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.2a、API health の endpoint、HTTP status、JSON object、必須 key は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e、実装検証証跡形式は [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を共通参照先とする。
 
 local API 確認で `curl` が利用できない場合は、Go 標準ライブラリ `net/http` client または同等のローカル HTTP 確認を行う。setup 詳細本文では、local API へ到達して応答を取得することだけを確認し、API response の具体 schema は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e を正本とする。
 
-#### 配置・権限固定契約
+**配置・権限固定契約：**
 
 | 対象 | 配置方法 | mode | 失敗時 |
 |------|----------|------|--------|
@@ -124,7 +124,7 @@ local API 確認で `curl` が利用できない場合は、Go 標準ライブ�
 
 通常ファイル配置では symlink を最終配置先として許可しない。既存配置先が symlink の場合は `1` で停止し、symlink の参照先を上書きしてはならない。`BIN_DIR`、`INSTALL_DIR`、`DOWNLOAD_DIR` が同一 path、親子関係で危険な組み合わせ、またはいずれかが `/` の場合は `2` で停止する。
 
-#### setup / update 失敗時の状態保持契約
+**setup / update 失敗時の状態保持契約：**
 
 | 失敗箇所 | 保持するもの | 変更対象 | 禁止条件 |
 |----------|--------------|------------------|----------|
@@ -136,7 +136,7 @@ local API 確認で `curl` が利用できない場合は、Go 標準ライブ�
 | admin UI 差し替え失敗 | 旧 admin UI、API binary、runner state | admin 一時 directory / backup directory | API restart、credentials 変更。 |
 | rollback 失敗 | 現在配置済み binary、state、secret | journal 確認対象の報告 | 追加 rollback 推測、state/history/secret 巻き戻し。 |
 
-#### セットアップ / アップデート副作用固定契約
+**セットアップ / アップデート副作用固定契約：**
 
 セットアップ、管理 API 導入、アップデートは、[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.2b の副作用境界固定表を超えてはならない。実装者判断で部分成功を成功報告したり、secret、state、systemd、admin UI をまとめて巻き戻したりしてはならない。
 
@@ -156,7 +156,7 @@ setup / update 実装は、各段階の開始と成功を stderr または stdou
 
 `systemctl daemon-reload` 成功だけではセットアップ成功と扱わない。`enable --now`、`restart`、`is-active`、API 導入時の `/api/health` 確認まで完了して初めて成功とする。確認コマンドが利用環境に存在しない場合は、Go `net/http` client または systemd D-Bus / `systemctl show` で同じ確認項目を検証し、実装検証証跡に代替コマンド、期待値、実測値を記録する。未確認のまま成功扱いにしない。
 
-### §26.3 Go 版初回セットアップ手順
+**§26.3 Go 版初回セットアップ手順：**
 
 対象は Go 版の `components/builder.go` と `components/runner.go` から生成した `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci.service`、`adlaire-ci.timer` とする。
 
@@ -173,7 +173,7 @@ setup / update 実装は、各段階の開始と成功を stderr または stdou
 
 初回セットアップが中断した場合、作成済みの通常ディレクトリと展開済みリリース資産は自動削除しない。秘密情報ファイルを作成した後に失敗した場合は、`.github_token` の mode が `0600` であることを確認し、mode 補正に失敗した場合はその場で停止する。
 
-#### 初回セットアップ後の固定確認
+**初回セットアップ後の固定確認：**
 
 | 確認 | コマンド | 合格条件 |
 |------|----------|----------|
@@ -239,7 +239,7 @@ Go 版初回セットアップでは以下を実行しない。
 | `.build_logs/` 作成 | runner 初期導入ではビルド実行時に必要な状態だけを初期化し、api が参照する履歴ディレクトリは [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.3b で作成する。 |
 | `.snapshots/` 作成 | snapshot 参照・rollback API と組み合わせて使うため、[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.3b の管理 API 導入時に作成する。 |
 
-### §26.3b 管理 API 導入後の追加セットアップ手順
+**§26.3b 管理 API 導入後の追加セットアップ手順：**
 
 `api`、`ui`、`sdk` を実装した後にのみ本手順を実行する。
 
@@ -258,7 +258,7 @@ Go 版初回セットアップでは以下を実行しない。
 | systemd 配置 | unit 書き込みまたは `systemctl daemon-reload` 失敗 | API service を enable/start せず終了する。 |
 | 起動確認 | `systemctl is-active adlaire-ci-api` が `active` でない | runner timer を停止せず、API の journal 確認コマンドを出力して終了する。 |
 
-#### 管理 API 導入後の固定確認
+**管理 API 導入後の固定確認：**
 
 | 確認 | コマンド | 合格条件 |
 |------|----------|----------|
@@ -309,9 +309,9 @@ systemctl enable --now adlaire-ci-api
 systemctl status adlaire-ci-api
 ```
 
-### §26.4 systemd サービスファイル
+**§26.4 systemd サービスファイル：**
 
-#### §26.4.1 Go 版 runner の systemd ファイル
+**§26.4.1 Go 版 runner の systemd ファイル：**
 
 **`/etc/systemd/system/adlaire-ci.service`**（`components/runner.go`）：
 
@@ -341,7 +341,7 @@ Unit=adlaire-ci.service
 WantedBy=timers.target
 ```
 
-#### §26.4.2 管理 API 導入後の systemd ファイル
+**§26.4.2 管理 API 導入後の systemd ファイル：**
 
 **`/etc/systemd/system/adlaire-ci-api.service`**（`components/api.go`）：
 
@@ -366,7 +366,7 @@ WantedBy=multi-user.target
 
 systemd unit は [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.4 で定義した systemd unit key 以外を初期標準で追加しない。`Environment=`、`EnvironmentFile=`、`ExecStartPre=`、`ExecStartPost=` を追加する場合は、先に [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.4 へ対象変数、secret 扱い、失敗時挙動を定義する。API service は `127.0.0.1:8765` bind を標準とし、外部公開 bind は [`docs/details/setup.md`](setup.md) 詳細本文責務で未定義のため設定しない。
 
-### §26.5 アップデート手順
+**§26.5 アップデート手順：**
 
 `git pull`、利用環境での `go build`、開発ブランチ checkout は使用しない。タグ付き安定版のリリースバイナリを配置し、サービスを再起動する。管理 API を導入していない構成では、管理 API サービスは再起動対象に含めない。
 
@@ -383,7 +383,7 @@ systemd unit は [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.4 �
 
 rollback 後も service が active にならない場合は、自動復旧を継続せず、`journalctl -u adlaire-ci.service -n 100`、API 導入済みなら `journalctl -u adlaire-ci-api -n 100` を確認対象として報告する。rollback はバイナリ差し戻しと service restart のみを行い、状態ファイル、履歴、ログ、secret を巻き戻してはならない。
 
-#### アップデート rollback 固定契約
+**アップデート rollback 固定契約：**
 
 | 失敗箇所 | rollback 対象 | rollback 後に実行する確認 | 禁止条件 |
 |----------|---------------|----------------------------|----------|
@@ -397,7 +397,7 @@ rollback 後も service が active にならない場合は、自動復旧を継
 
 rollback は 1 回だけ実行する。rollback 自体が失敗した場合は、追加の推測復旧を行わず、失敗箇所、退避先、現在配置済みファイル、journal 確認コマンドを報告対象として固定する。
 
-#### アップデート実行判定固定契約
+**アップデート実行判定固定契約：**
 
 アップデート実装は、以下の判定順で対象を決定する。判定結果を実装者判断で短絡、統合、または省略してはならない。
 
@@ -411,7 +411,7 @@ rollback は 1 回だけ実行する。rollback 自体が失敗した場合は�
 8. API restart が失敗した場合、admin UI 更新へ進まない。
 9. admin UI 差し替え後に API restart が失敗した場合、admin UI と API binary だけ rollback 対象とし、build / runner binary と runner timer は戻さない。
 
-#### アップデート後確認固定契約
+**アップデート後確認固定契約：**
 
 | 確認 | API 未導入 | API 導入済み |
 |------|------------|--------------|
@@ -485,9 +485,9 @@ systemctl restart adlaire-ci-api
 systemctl status adlaire-ci-api
 ```
 
-### §26.6 サービス操作リファレンス
+**§26.6 サービス操作リファレンス：**
 
-#### Go 版 runner
+**Go 版 runner：**
 
 | 操作 | コマンド |
 |------|---------|
@@ -497,7 +497,7 @@ systemctl status adlaire-ci-api
 | 再起動 | `systemctl restart adlaire-ci.timer` |
 | ログ確認（runner） | `journalctl -u adlaire-ci.service -f` |
 
-#### 管理 API 導入後
+**管理 API 導入後：**
 
 | 操作 | コマンド |
 |------|---------|
@@ -507,11 +507,11 @@ systemctl status adlaire-ci-api
 | 再起動 | `systemctl restart adlaire-ci-api` |
 | ログ確認（API） | `journalctl -u adlaire-ci-api -f` |
 
-### §26.7 実装受け入れ条件
+**§26.7 実装受け入れ条件：**
 
 setup / release / update の詳細実装確認では、[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.7 実装受け入れ条件 の固定表の受け入れ条件をすべて満たす。実装対象外のコンポーネントは「未実装」として明記し、確認済み扱いにしない。
 
-#### §26.7 関連 component 共通参照先
+**§26.7 関連 component 共通参照先：**
 
 [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.7 で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md` §22.0](api.md) / [`docs/details/api.md` §22.0e](api.md)、SDK 契約は [`docs/details/sdk.md` §23](sdk.md)、UI 契約は [`docs/details/ui.md` §24](ui.md)、security 契約は [`docs/details/security.md` §25](security.md) / [`docs/details/security.md` §27.42〜§27.47](security.md) を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。
 
@@ -528,11 +528,11 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md`]
 | update | [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.5 の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 条件が仕様どおり。 |
 | security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示の漏えい有無を確認する。 | setup 側は配置・保持・権限・log 出力を確認する。 |
 
-##### setup / release / update fixture 参照
+**setup / release / update fixture 参照：**
 
 setup / release / update、認証初期化、運用 API 連動の fixture 名、入力、fake、expected、effects、実装検証証跡は [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/setup.md`](setup.md) 詳細本文責務では、配置、保持、権限、起動、restart、rollback、secret 非保存、local 到達の実装受け入れ条件だけを扱う。
 
-##### 関連責務参照
+**関連責務参照：**
 
 API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主本文を参照する。§26.8 は setup / release / update の実行条件だけを扱う。
 
@@ -545,7 +545,7 @@ API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主�
 | 認証 / session / token / TOTP / audit | [`docs/details/security.md`](security.md) 詳細本文責務 §25、[`docs/details/security.md`](security.md) 詳細本文責務 §27.42〜§27.47 | secret / credential file の配置、保持、権限、漏えい防止だけを確認する。 |
 | fixture / fake / expected / 実装検証証跡 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F | setup / release / update に関わる証跡の記録先だけを確認する。 |
 
-##### setup / update 失敗時副作用固定契約
+**setup / update 失敗時副作用固定契約：**
 
 | ケース | 固定結果 |
 |--------|----------|
@@ -553,7 +553,7 @@ API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主�
 | update rollback failure | 追加推測復旧を行わず、失敗箇所、退避先、現在配置済みファイル、journal 確認対象を報告する。 |
 | checksum / download / unsafe archive failure | binary、admin UI、systemd、state、secret を変更せず、失敗箇所と再実行条件を記録する。 |
 
-##### setup / update 実装前・実装後確認固定契約
+**setup / update 実装前・実装後確認固定契約：**
 
 | 段階 | 確認 | 合格条件 |
 |------|------|----------|
@@ -565,7 +565,7 @@ Phase 順序、実装変更単位、実装着手条件、判定責務は [`docs/
 
 Phase 別の fixture、fake、expected / effects、実装検証証跡、不足時の扱いは [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を参照する。
 
-##### setup / release 未実行検証の代替条件
+**setup / release 未実行検証の代替条件：**
 
 | 未実行対象 | 代替として認める確認 | 確認済み扱い |
 |------------|----------------------|----------|
@@ -573,7 +573,7 @@ Phase 別の fixture、fake、expected / effects、実装検証証跡、不足�
 | `go test` または `gofmt -l` が実行不能 | 実行不能理由、未実行 command、再実行条件の記録。 | 認めない。setup / update に必要な検証が未実行の場合は確認済み扱い不可。 |
 | release asset checksum 検証不能 | 対象 asset、取得元、期待 checksum、検証不能理由、再実行条件を記録する。 | 認めない。checksum 検証確認まで setup / update 確認済み扱い不可。 |
 
-##### fixture 期待値更新参照
+**fixture 期待値更新参照：**
 
 setup / release / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果、fake transcript、expected file の更新条件は [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を正本とする。HTTP status、API error body、`AdlaireCIError.code`、UI DOM、SDK return、状態 schema の具体契約は、それぞれ [`docs/details/api.md`](api.md) 詳細本文責務、[`docs/details/sdk.md`](sdk.md) 詳細本文責務、[`docs/details/ui.md`](ui.md) 詳細本文責務、[`docs/details/statefile.md`](statefile.md) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
@@ -583,7 +583,7 @@ setup / release / update に関わる受け入れ結果は、[`docs/details/fixt
 
 ---
 
-### §26.8 Setup / Admin 配布実装確認ゲート
+**§26.8 Setup / Admin 配布実装確認ゲート：**
 
 セットアップ、アップデート、管理 API 導入、admin UI 配布の詳細実装確認では、[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.1〜§26.7 の本文に加えて [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.8 の Setup / Admin 配布実装確認ゲート固定表を満たす。[`docs/details/setup.md`](setup.md) 詳細本文責務 §26.8 は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
 
@@ -599,11 +599,11 @@ setup / release / update に関わる受け入れ結果は、[`docs/details/fixt
 | rollback | 旧 binary / 旧 admin backup | 定義済み対象だけ 1 回復元し、対象 service を 1 回 restart する。 | 追加推測復旧を行わず、現在配置済み path と journal 確認対象を出力する。 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
 | 最終確認 | 配置済み binary、state、service、admin UI | [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.3 / [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.3b / [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.5 の固定確認がすべて成功する。 | 成功報告しない。未確認項目を `未実行` として記録する。 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
 
-#### setup / admin / release 連動 fixture 参照
+**setup / admin / release 連動 fixture 参照：**
 
-setup / admin / release 連動 fixture の fixture 群、対象 component、必須 input、必須 expected、合格条件は、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の [fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約](fixture.md#fixture-証跡責務-27-f-setup--admin--release-連動-fixture-固定契約) を正本とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存の実装受け入れ条件だけを扱う。
+setup / admin / release 連動 fixture の fixture 群、対象 component、必須 input、必須 expected、合格条件は、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の [fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存の実装受け入れ条件だけを扱う。
 
-#### setup / update 実装者向け出力固定
+**setup / update 実装者向け出力固定：**
 
 | 出力先 | 必須内容 | 禁止内容 |
 |--------|----------|----------|
@@ -611,7 +611,7 @@ setup / admin / release 連動 fixture の fixture 群、対象 component、必�
 | stderr | 固定 error prefix、失敗段階、終了コード、確認すべき journal / path。 | secret 原文、checksum 対象 file の内容、環境変数全量 dump。 |
 | 実装検証証跡 | 実行 command、exit code、重要 stdout/stderr、差分あり / なし、未実行理由。 | secret 原文、credential 付き URL、ローカル固有 token。 |
 
-#### setup / update 差分確認固定
+**setup / update 差分確認固定：**
 
 | ケース | 必須差分確認 | 合格条件 |
 |--------|--------------|----------|

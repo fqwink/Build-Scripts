@@ -25,7 +25,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 ---
 
-### 27.1 GitHub Commit Status API
+**27.1 GitHub Commit Status API：**
 
 owner component は `commitstatus` とする。collaborator component は `runner`、`statefile` とする。
 
@@ -63,7 +63,7 @@ GitHub request は以下に固定する。retry、GraphQL API、Check Runs API�
 
 Commit Status 送信失敗は build 成否を反転させない。送信失敗時は WARN ログ `COMMIT_STATUS_FAILED: status=<http_status> error=<reason>` を出し、`.build_logs/{id}.json.commit_status.state` を最後に送信しようとした state、`error` を固定文言で保存する。GitHub API 認証失敗、403、404、5xx、network error はすべて送信失敗として扱う。
 
-#### Commit Status 呼び出し入力固定契約
+**Commit Status 呼び出し入力固定契約：**
 
 | 入力 | 取得元 | validation | 不正時 |
 |------|--------|------------|--------|
@@ -75,7 +75,7 @@ Commit Status 送信失敗は build 成否を反転させない。送信失敗�
 | GitHub token | runner secret | 空でない文字列。 | 送信せず、`state="error"`、`error="github token unavailable"`。secret 値は出力しない。 |
 | build result | runner final result | `"success"`、`"failure"`、`"success_deploy_pending"`、CI internal error のいずれかへ正規化する。 | 正規化不能なら `state="error"`。 |
 
-#### state 算出固定契約
+**state 算出固定契約：**
 
 | runner 状態 | Commit Status `state` | description |
 |-------------|-----------------------|-------------|
@@ -87,7 +87,7 @@ Commit Status 送信失敗は build 成否を反転させない。送信失敗�
 
 `description` の `<target_status>` と `<reason>` は英数字、空白、`_`、`-`、`:`、`.` だけに正規化する。その他の文字、改行、tab は空白へ置換し、連続空白は 1 個へ畳み込む。140 文字を超える場合は 137 文字 + `...` に切り詰める。
 
-#### Commit Status 保存固定契約
+**Commit Status 保存固定契約：**
 
 `.build_logs/{id}.json.commit_status` は [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0c の CommitStatus object に定義された key だけを保存する。`pending_sent`、`pending_error`、`final_sent` など未定義 key を保存してはならない。pending / final の送信順、HTTP request、response、失敗有無は fixture の `expected/effects.json` と server WARN log で検証し、build log schema へ未定義 key を追加しない。
 
@@ -104,7 +104,7 @@ Commit Status 送信失敗は build 成否を反転させない。送信失敗�
 
 `.build_history.commit_status_state` は `.build_logs/{id}.json.commit_status.state` と同じ値を保存する。`commit_status` が `null` の場合、または disabled の場合は `null` を保存する。commit SHA なしの場合も `null` とし、build result 自体を failure へ反転してはならない。
 
-#### Commit Status error reason 固定契約
+**Commit Status error reason 固定契約：**
 
 | 失敗 | 保存する `error` | WARN log |
 |------|------------------|----------|
@@ -119,7 +119,7 @@ Commit Status 送信失敗は build 成否を反転させない。送信失敗�
 
 GitHub response body 全体、Authorization header、GitHub token、credential 付き URL は build log、history、server log、fixture expected に保存しない。HTTP status、固定 error reason、request path、payload state/context/description/target_url だけを保存・検証対象にする。
 
-#### 副作用境界固定契約
+**副作用境界固定契約：**
 
 | ケース | 許可する副作用 | 禁止する副作用 |
 |--------|----------------|----------------|
@@ -131,7 +131,7 @@ GitHub response body 全体、Authorization header、GitHub token、credential �
 | payload validation failure | commit_status summary の error 保存。 | GitHub Status API 呼び出し、未定義 key 保存、secret 出力。 |
 | state write failure | runner の既存 state write failure 契約に従う。 | Commit Status 失敗を理由に未定義 rollback を実行すること。 |
 
-#### Commit Status fixture 参照
+**Commit Status fixture 参照：**
 
 Commit Status fixture の fake GitHub Status API、expected/effects、expected logs、expected security、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/commitstatus.md`](commitstatus.md) 詳細本文責務では、GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証観点だけを扱う。
 
