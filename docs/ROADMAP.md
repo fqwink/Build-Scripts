@@ -51,6 +51,8 @@
 
 ## 4. Phase 実装計画
 
+この節は、Phase の順序、対象 owner component、依存条件、判定条件、後続 Phase への引き継ぎ確認だけを管理する。個別処理、fixture、endpoint、SDK、UI の本文は [状態・計画責務 共通参照先](#状態計画責務-共通参照先) と各 Phase の参照先を正本とする。
+
 ## 4.1 初期実装 Phase 単位
 
 Go 版初期実装の対象範囲と Phase 単位の扱いは [`docs/SPEC.md` ポリシー責務 §0e](SPEC.md#0e-初期実装スコープ確定ポリシー) と [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) を参照する。Phase 実装計画は Phase 順、対象、依存条件、判定条件を管理する。
@@ -169,158 +171,41 @@ Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [
 
 ## 5. 機能インベントリと統合ロードマップ
 
+この節は、機能ごとの状態、実装可否、担当領域、詳細仕様参照先だけを管理する。個別 endpoint、SDK method、UI 操作、状態ファイル、fixture の本文は [状態・計画責務 共通参照先](#状態計画責務-共通参照先) に示す責務正本を参照する。
+
 ## 5.1 機能一覧
 
 [`docs/ROADMAP.md` 状態・計画責務 §5.1](ROADMAP.md#51-機能一覧) は、状態・計画責務が管理する機能インベントリである。各機能の仕様詳細は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。状態分類は [`docs/ROADMAP.md` 状態・計画責務 §2](ROADMAP.md#2-状態分類) と [`docs/ROADMAP.md` 状態・計画責務 §3](ROADMAP.md#3-コンポーネント状態分類)、および [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) の仕様成熟度ポリシーに従って判定する。
 
 <a id="ビルドci-ランナーcomponentsrunnergo"></a>
-**ビルド・CI ランナー（components/runner.go）：**
+**ビルド・CI ランナー：**
+
+[`components/runner.go`](../components/runner.go) の状態と実装可否は [`docs/ROADMAP.md` 状態・計画責務 §3](ROADMAP.md#3-コンポーネント状態分類)、Phase と判定条件は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#41-初期実装-phase-単位) の Phase 2 を正とする。CLI、変更検出、pipeline、状態ファイル、転送、通知、snapshot、retry の実装契約は [`docs/details/runner.md` 詳細本文責務 §10](details/runner.md#10-ci-ランナー-要件)〜[§20](details/runner.md#20-ci-ランナー-既知の制限)、状態永続化は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、導入手順は [`docs/details/setup.md` 詳細本文責務 §26](details/setup.md#26-セットアップアップデート手順) を正本とする。
 
 <a id="go-版で実装済みの初期範囲"></a>
 **Go 版で実装済みの初期範囲：**
 
-- `--state-dir`、`--once`、`--version`、`--help` の CLI 契約
-- `.branch_config` と `.last_sha` による branch target / SHA cache 読み込み
-- GitHub Trees API / Blobs API による対象 Markdown 取得
-- SHA 一致時の変更なし skip
-- `pipeline.sh` 起動、stdout/stderr 収集、`[REPORT]` / `[WARN]` 取り込み
-- `.build_logs/{id}.json`、`.build_history`、`.build_status.json`、`.build_state`、`.build_lock` の作成・更新
-- deploy 失敗時の `.pending_transfers` 追加
-- `.notify_pending` 破損時の退避と `[]` 再生成
-- GitHub API retry / rate limit 待機
-- `adlaire-ci-build` 実行可否と disk 空き容量の precheck
-- `.snapshots/{build_id}/site` 保存と世代 pruning
-- `.notify_pending` の HTTP 再送と成功時削除
-- `.build_circuit_state` による circuit open skip と失敗回数記録
-- `.pending_transfers` の起動時再試行と成功時削除
-- SSH 転送時の checksum 比較、未変更ファイル skip、転送後 checksum 検証
-- 複数 branch target の順次処理
-- `BUILD_COOLDOWN_SECONDS` による cooldown skip
-- `FORCE_BUILD_INTERVAL` による変更なし時の定期強制ビルド
-- GitHub commits API によるトリガー commit 情報の build log 記録
-- GitHub PAT 有効期限ヘッダーの 7 日以内 WARN ログ
-- `.notify_config` に基づく成功・失敗・転送失敗 Webhook 通知送信
-- `OUTPUT_SIZE_WARN_MB` による出力サイトサイズ警告
-- Phase 2 fixture R1〜R7 と判定パステスト
+実装済み範囲の個別処理は状態・計画責務へ再掲しない。状態は [`docs/ROADMAP.md` 状態・計画責務 §3](ROADMAP.md#3-コンポーネント状態分類)、Phase 2 の判定対象は [`docs/ROADMAP.md` 状態・計画責務 §4.1.2](ROADMAP.md#412-phase-2-完全仕様ゲートrunner)、実装契約は [`docs/details/runner.md` 詳細本文責務 §15a](details/runner.md#15a-runner-受け入れ検証条件)、fixture と実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §15a-F](details/fixture.md#15a-f-runner-初期受け入れ-fixture-契約) を正本とする。
 
 <a id="go-版で仕様化済みの全体範囲"></a>
 **Go 版で仕様化済みの全体範囲：**
 
-- GitHub リポジトリの対象ファイルを定期ポーリング（systemd timer）
-- blob SHA による差分検出（変更なし時はビルドをスキップ）
-- Markdown → 静的 Web サイト変換（`adlaire-ci-build` を呼び出し）
-- ビルド成功後に SHA キャッシュを更新する
-- ビルド失敗時は SHA キャッシュを更新せず、次回起動時に再試行可能な状態を残す
-- systemd oneshot ユニットとして動作（`adlaire-ci.service`）
-
-- ビルド結果を `.build_history` に記録（ID 形式：`b{YYYYMMDDHHmmss}`）
-- ビルドごとのログを `.build_logs/{id}.json` に保存
-- ビルド成功・失敗時に Webhook 通知を送信（`.notify_config` を読み込み送信。送信責務は `components/runner.go`。通知 API は設定の読み書きのみ）
-- ビルド成功後、出力サイトディレクトリを SSH 経由で静的コンテンツ配信サーバーへ転送する
-- SSH 転送失敗時は `.pending_transfers` へキューイングし、次回起動時に自動再試行する
-- 転送成功後、出力サイトディレクトリを `.snapshots/` へアーカイブし `HISTORY_KEEP_N` 世代を超過分から自動削除する
-- SSH 転送失敗時に Webhook 通知を送信する（`on: ["deploy_failure"]` 設定時）
-- `BRANCH_TARGETS` リストで複数ブランチを順次ポーリング・ビルドする
-- `FORCE_BUILD_INTERVAL` 設定時、前回ビルドから指定時間経過で変更なしでも強制ビルドする
+機能ごとの状態と実装可否は [`docs/ROADMAP.md` 状態・計画責務 §5.2.2](ROADMAP.md#522-統合ロードマップ表)、詳細仕様の対応関係は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](DETAIL_INDEX.md#0i2-runner--ci-実行)、各機能の実装契約は [`docs/details/runner.md`](details/runner.md) 詳細本文責務と該当 collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
 
 <a id="管理-api-エンドポイントcomponentsapigo"></a>
-**管理 API エンドポイント（components/api.go）：**
+**管理 API：**
 
-| カテゴリ | エンドポイント |
-|---------|--------------|
-| 認証 | `POST /api/login` / `POST /api/logout` / `POST /api/change-password` |
-| 死活監視 | `GET /api/health` |
-| ビルド操作 | `POST /api/build` / `POST /api/build/force` / `POST /api/build/cancel` / `GET /api/build/stream` / `POST /api/circuit-breaker/reset` |
-| ステータス | `GET /api/status` / `GET /api/dashboard` |
-| ログ | `GET /api/logs` / `GET /api/logs/export` / `GET /api/logs/search` / `POST /api/logs/cleanup` |
-| ビルド履歴 | `GET /api/history` / `GET /api/history/{id}/log` / `GET /api/history/{id}/comment` / `POST /api/history/{id}/comment` / `GET /api/history/export` / `POST /api/history/{id}/flag` / `POST /api/history/{id}/tags` / `POST /api/history/{id}/rollback` |
-| スケジュール | `GET /api/schedule` / `POST /api/schedule/interval` / `POST /api/schedule/pause` / `POST /api/schedule/resume` / `POST /api/schedule/allowed-hours` / `POST /api/schedule/force-interval` / `POST /api/schedule/cooldown` |
-| 通知 | `GET /api/notify-config` / `POST /api/notify-config` / `POST /api/notify-test` / `GET /api/notify-log` / `POST /api/notify/weekly-summary` |
-| システム情報 | `GET /api/sysinfo` / `GET /api/output-meta` / `GET /api/diagnostics` / `GET /api/rate-limit` / `GET /api/disk-usage` |
-| 統計 | `GET /api/stats` / `GET /api/stats/timeline` / `GET /api/stats/build-duration` |
-| リポジトリ | `GET /api/repo-info` / `POST /api/repo-config` / `GET /api/branch-config` / `POST /api/branch-config` |
-| PAT 管理 | `GET /api/pat-status` / `POST /api/pat-verify` / `POST /api/pat-update` |
-| 設定 | `GET /api/config` / `POST /api/config` / `POST /api/log-level` / `GET /api/config-log` |
-| アクセスログ | `GET /api/access-log` |
-| バックアップ | `GET /api/backup` / `POST /api/restore` |
-| セッション管理 | `GET /api/sessions` / `POST /api/sessions/revoke-all` |
-| API トークン | `GET /api/tokens` / `POST /api/tokens` / `DELETE /api/tokens/{id}` |
-| スナップショット | `GET /api/snapshots` / `GET /api/snapshots/{id}/download` / `DELETE /api/snapshots/{id}` |
-| メンテナンス | `GET /api/maintenance` / `POST /api/maintenance/enable` / `POST /api/maintenance/disable` |
-| アクセス制御 | `GET /api/access-control` / `POST /api/access-control` |
-| フック | `GET /api/hooks` / `POST /api/hooks` / `DELETE /api/hooks/{id}` / `GET /api/hooks/{id}/log` |
-| アラートルール | `GET /api/alert-rules` / `POST /api/alert-rules` / `DELETE /api/alert-rules/{id}` |
-| Webhook 受信 | `POST /api/webhook` / `GET /api/webhook-events` / `GET /api/webhook-config` / `POST /api/webhook-config` |
-| 自動タグ付け | `GET /api/tag-rules` / `POST /api/tag-rules` / `DELETE /api/tag-rules/{id}` |
-| パイプライン | `GET /api/pipeline-config` / `POST /api/pipeline-config` / `POST /api/verify-output` |
-| 運用ノート | `GET /api/notes` / `POST /api/notes` |
-| メール通知 | `GET /api/smtp-config` / `POST /api/smtp-config` / `POST /api/smtp-test` |
-| ビルドキュー | `GET /api/queue` / `DELETE /api/queue` |
-| ダッシュボードレイアウト | `GET /api/dashboard-layout` / `POST /api/dashboard-layout` |
+[`components/api.go`](../components/api.go) の状態と実装可否は [`docs/ROADMAP.md` 状態・計画責務 §3](ROADMAP.md#3-コンポーネント状態分類)、Phase と判定条件は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#41-初期実装-phase-単位) の Phase 3・Phase 4 を正とする。endpoint、request、response、error、認証要否は [`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e) と [§22.0f](details/api.md#sec-22-0f)、認証・secret・session の境界は [`docs/details/security.md`](details/security.md) 詳細本文責務、fixture と実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §22-F](details/fixture.md#22-f-phase-3--phase-4-api-fixture-契約) と [§27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。
 
 <a id="sdk-メソッドadlaire-ci-sdkjs"></a>
-**SDK メソッド（adlaire-ci-sdk.js）：**
+**JavaScript SDK：**
 
-| カテゴリ | メソッド |
-|---------|--------|
-| 認証 | `login()` / `logout()` / `changePassword()` |
-| ビルド操作 | `triggerBuild()` / `buildForce()` / `cancelBuild()` / `streamBuild()` / `resetCircuitBreaker()` |
-| ステータス | `getStatus()` / `getDashboard()` |
-| ログ | `getLogs()` / `exportLogs()` / `searchLogs()` / `cleanupLogs()` |
-| ビルド履歴 | `getHistory()` / `getHistoryLog()` / `getHistoryComment()` / `setHistoryComment()` / `exportHistory()` / `setHistoryFlag()` / `setHistoryTags()` / `rollbackHistory()` |
-| スケジュール | `getSchedule()` / `setScheduleInterval()` / `pauseSchedule()` / `resumeSchedule()` / `setAllowedHours()` / `clearAllowedHours()` / `setForceInterval()` / `setBuildCooldown()` |
-| Webhook 受信 | `getWebhookEvents()` / `getWebhookConfig()` / `setWebhookConfig()` |
-| 通知 | `getNotifyConfig()` / `setNotifyConfig()` / `notifyTest()` / `getNotifyLog()` / `notifyWeeklySummary()` |
-| システム情報 | `getSysinfo()` / `getOutputMeta()` / `getDiagnostics()` / `getRateLimit()` / `getDiskUsage()` |
-| 統計 | `getStats()` / `getStatsTimeline()` / `getStatsBuildDuration()` |
-| リポジトリ | `getRepoInfo()` / `setRepoConfig()` / `getBranchConfig()` / `setBranchConfig()` |
-| PAT 管理 | `getPatStatus()` / `patVerify()` / `updatePat()` |
-| 設定 | `getConfig()` / `setConfig()` / `setLogLevel()` / `getConfigLog()` |
-| アクセスログ | `getAccessLog()` |
-| バックアップ | `backup()` / `restore()` |
-| セッション管理 | `getSessions()` / `revokeAllSessions()` |
-| API トークン | `getTokens()` / `createToken()` / `revokeToken()` |
-| スナップショット | `getSnapshots()` / `downloadSnapshot()` / `deleteSnapshot()` |
-| メンテナンス | `getMaintenance()` / `enableMaintenance()` / `disableMaintenance()` |
-| アクセス制御 | `getAccessControl()` / `setAccessControl()` |
-| フック | `getHooks()` / `addHook()` / `deleteHook()` / `getHookLog()` |
-| アラートルール | `getAlertRules()` / `addAlertRule()` / `deleteAlertRule()` |
-| 自動タグ付け | `getTagRules()` / `addTagRule()` / `deleteTagRule()` |
-| パイプライン | `getPipelineConfig()` / `setPipelineConfig()` / `verifyOutput()` |
-| 運用ノート | `getNotes()` / `setNotes()` |
-| メール通知 | `getSmtpConfig()` / `setSmtpConfig()` / `smtpTest()` |
-| ビルドキュー | `getQueue()` / `clearQueue()` |
-| ダッシュボードレイアウト | `getDashboardLayout()` / `setDashboardLayout()` |
-| 死活監視 | `health()` |
-
-ES Module・外部依存なし。全メソッドは `Promise` を返す。`streamBuild` は SSE 接続確立後に `Promise<StreamHandle>` として resolve し、`StreamHandle` は `{ close(): void, closed: boolean }` を持つ。`constructor` を除く合計は 96 メソッド。
+[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) の状態と実装可否は [`docs/ROADMAP.md` 状態・計画責務 §3](ROADMAP.md#3-コンポーネント状態分類)、Phase と判定条件は [`docs/ROADMAP.md` 状態・計画責務 §4.1.5](ROADMAP.md#415-phase-5-完全仕様ゲートsdk) を正とする。公開 method、引数、戻り値、HTTP 対応、error、timeout、streaming、token 破棄の実装契約は [`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様) を正本とする。
 
 <a id="標準管理ツール-パネルadminindexhtml"></a>
-**標準管理ツール パネル（admin/index.html）：**
+**標準管理ツール UI：**
 
-| パネル | 主な機能 |
-|-------|---------|
-| ログイン | パスワード認証 |
-| パスワード変更 | 強制変更フロー対応（5 回目以降は他パネルを非表示） |
-| ステータス | 最終ビルド情報・出力サイトリンク・メンテナンスバナー表示（モード中） |
-| 手動実行 | ビルド起動・強制ビルド・キャンセル・キュー状態表示・キューのクリア |
-| ログビューア | ログ閲覧・キーワードフィルター・ログレベルフィルター・JSON エクスポート・横断検索（期間指定） |
-| ビルド履歴 | 過去ビルド一覧・タグ列・フラグ列・ページネーション・タグ/フラグフィルター・JSON エクスポート・個別ログ参照 |
-| システム情報 | ファイルサイズ・稼働時間・ディスク使用量・PAT 検証・PAT 更新フォーム・PAT 有効期限表示・GitHub API レート制限表示 |
-| 通知設定 | 複数 Webhook 設定・ペイロードテンプレート編集・テスト送信・定期サマリー設定・送信履歴・メール通知設定（SMTP連携）・Webhook 署名シークレット設定 |
-| 設定 | 保持行数・件数・タイムアウト・ログレベル変更・ログ保持期間（日数）・手動クリーンアップ・設定変更履歴・キュー最大サイズ設定・スナップショット保持世代数設定 |
-| アクセスログ | ログイン履歴（日時・成否） |
-| 統計 | 成功率・平均/最大ビルド時間・時系列グラフ |
-| リポジトリ情報 | 監視設定確認・ポーリング間隔変更フォーム・ポーリング一時停止/再開・許可時間帯設定・強制再ビルド間隔設定・Webhook 受信 Secret 設定・ブランチターゲット設定（`.branch_config` 編集） |
-| セッション管理 | セッション一覧・全セッション強制無効化 |
-| システム診断 | PAT・GitHub API・ファイル・systemd・Webhook・出力整合性 一括診断・アラートバッジ表示・メンテナンスバナー表示 |
-| ビルド比較 | ビルド履歴から 2 件を選択してログを並列差分表示 |
-| API トークン管理 | 読み取り専用トークンの発行・一覧・失効 |
-| スナップショット | ビルド成果物の世代一覧・ダウンロード・削除・ロールバック |
-| メンテナンス | メンテナンスモードの有効化・解除・状態表示 |
-| アクセス制御 | 許可 IP / CIDR 一覧・追加・削除 |
-| フック | Pre/Post ビルドフック設定・実行ログ確認 |
-| 運用ノート | Markdown 記述の運用メモ閲覧・編集 |
+[`admin/index.html`](../admin/index.html) の状態と実装可否は [`docs/ROADMAP.md` 状態・計画責務 §3](ROADMAP.md#3-コンポーネント状態分類)、Phase と判定条件は [`docs/ROADMAP.md` 状態・計画責務 §4.1.6](ROADMAP.md#416-phase-6-完全仕様ゲートui) を正とする。DOM、panel、操作、SDK 呼び出し、表示状態、成功・失敗表示、秘密情報消去の実装契約は [`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様) を正本とする。
 
 ---
 
@@ -375,11 +260,11 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 実装済み | 完了済み | CI ランナー | 出力サイトサイズ警告閾値 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/builder.md`](details/builder.md) 詳細本文責務の出力サイズ警告契約が実装済み。 | Go test で閾値超過時の `size_warn=true` と WARN 記録を検証済み。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | Webhook イベントログ | [`docs/details/api.md`](details/api.md) 詳細本文責務と [`docs/details/runner.md`](details/runner.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](DETAIL_INDEX.md#0i3-api--sdk--ui)、[`docs/details/runner.md` 詳細本文責務 §11](details/runner.md#11-ci-ランナー-ファイル構成)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/api.md` 詳細本文責務 Webhook 受信仕様（22-W）](details/api.md#sec-22-w)、[`docs/details/api.md` 詳細本文責務 §27.13](details/api.md#sec-27-13) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の記録と統計 API | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/api.md`](details/api.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/runner.md` 詳細本文責務 §27.14](details/runner.md#sec-27-14) に従って実装する。 |
-| 実装済み | 完了済み | CI ランナー | ビルドアーティファクト世代管理 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/archive.md`](details/archive.md) 詳細本文責務の snapshot 世代管理契約が実装済み。`POST /api/history/{id}/rollback` による再転送は API 実装対象として残す。 | Go test で build 成功時の `.snapshots/{id}/site` 作成を検証済み。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドアーティファクト管理 | [`docs/details/archive.md`](details/archive.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/runner.md` 詳細本文責務 §14b](details/runner.md#14b-スナップショット管理)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/archive.md` 詳細本文責務 §27.15](details/archive.md#sec-27-15) に従って実装する。 |
+| 実装済み | 完了済み | CI ランナー | ビルドアーティファクト世代管理 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/archive.md`](details/archive.md) 詳細本文責務の snapshot 世代管理契約が実装済み。管理 API 経由の rollback による再転送は API 実装対象として残す。 | Go test で build 成功時の snapshot 作成を検証済み。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドアーティファクト管理 | [`docs/details/archive.md`](details/archive.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/runner.md` 詳細本文責務 §14b](details/runner.md#14b-スナップショット管理)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/archive.md` 詳細本文責務 §27.15](details/archive.md#sec-27-15) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | 管理ツール・API | ヘルスチェックエンドポイント | [`docs/details/api.md`](details/api.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](DETAIL_INDEX.md#0i3-api--sdk--ui)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/api.md` 詳細本文責務 §27.16](details/api.md#sec-27-16) に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | Webhook イベント一覧取得 API | [`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](DETAIL_INDEX.md#0i3-api--sdk--ui)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §27.13](details/api.md#sec-27-13) に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドログ重大度フィルター | [`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](DETAIL_INDEX.md#0i3-api--sdk--ui)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §27.17](details/api.md#sec-27-17) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | Webhook イベント一覧取得 API | [`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](DETAIL_INDEX.md#0i3-api--sdk--ui)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §27.13](details/api.md#sec-27-13) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドログ重大度フィルター | [`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](DETAIL_INDEX.md#0i3-api--sdk--ui)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §27.17](details/api.md#sec-27-17) に従って実装する。 |
 | 実装済み | 完了済み | ビルドスクリプト | 変換レポート出力 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務の変換レポート契約が実装済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0h](DETAIL_INDEX.md#0h-機能仕様テンプレート) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力) の確認済み項目。 |
 | 実装済み | 完了済み | ビルドスクリプト | シンタックスハイライト | [`docs/details/builder.md`](details/builder.md) 詳細本文責務のシンタックスハイライト契約が実装済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0h](DETAIL_INDEX.md#0h-機能仕様テンプレート) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力) の確認済み項目。 |
 | 実装済み | 完了済み | ビルドスクリプト | 本文内全文検索 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務の全文検索契約が実装済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0h](DETAIL_INDEX.md#0h-機能仕様テンプレート) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力) の確認済み項目。 |
@@ -426,31 +311,31 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド優先度キュー | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/api.md`](details/api.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](DETAIL_INDEX.md#0i2-runner--ci-実行)、[`docs/details/runner.md` 詳細本文責務 §11](details/runner.md#11-ci-ランナー-ファイル構成)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/runner.md` 詳細本文責務 §27.35](details/runner.md#sec-27-35) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | 失敗原因の自動分類 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/api.md`](details/api.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](DETAIL_INDEX.md#0i2-runner--ci-実行)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/runner.md` 詳細本文責務 §27.36](details/runner.md#sec-27-36) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド実行環境の記録 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](DETAIL_INDEX.md#0i2-runner--ci-実行)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/runner.md` 詳細本文責務 §27.37](details/runner.md#sec-27-37) に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドトリガー種別の記録 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](DETAIL_INDEX.md#0i2-runner--ci-実行)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/runner.md` 詳細本文責務 §27.9](details/runner.md#sec-27-9)、[`docs/details/runner.md` 詳細本文責務 §27.23](details/runner.md#sec-27-23)、[`docs/details/runner.md` 詳細本文責務 §27.30](details/runner.md#sec-27-30) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | CI ランナー | ビルドトリガー種別の記録 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](DETAIL_INDEX.md#0i2-runner--ci-実行)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/runner.md` 詳細本文責務 §27.9](details/runner.md#sec-27-9)、[`docs/details/runner.md` 詳細本文責務 §27.23](details/runner.md#sec-27-23)、[`docs/details/runner.md` 詳細本文責務 §27.30](details/runner.md#sec-27-30) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | ビルド所要時間の異常検知 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/api.md`](details/api.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](DETAIL_INDEX.md#0i2-runner--ci-実行)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/runner.md` 詳細本文責務 §16](details/runner.md#16-systemd-タイマー参照)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/runner.md` 詳細本文責務 §27.38](details/runner.md#sec-27-38) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | CI ランナー | 設定ファイル起動時整合性チェック | [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](DETAIL_INDEX.md#0i2-runner--ci-実行)、[`docs/details/runner.md` 詳細本文責務 §11](details/runner.md#11-ci-ランナー-ファイル構成)、[`docs/details/runner.md` 詳細本文責務 §12](details/runner.md#12-設定値runner)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/runner.md` 詳細本文責務 §27.10](details/runner.md#sec-27-10) に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | マルチユーザー対応 | 将来計画候補。詳細本文、ユーザー model、認証境界、監査境界は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 通知先の拡張 | 将来計画候補。詳細本文、対象通知先、API / UI 契約は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | データストア切り替え | 将来計画候補。詳細本文、採用データストア、移行契約は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 外部認証連携 | 将来計画候補。詳細本文、認証方式、連携境界は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | TOTP 二要素認証 | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.46](details/security.md#sec-27-46) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | TOTP 二要素認証 | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.46](details/security.md#sec-27-46) に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 統計データの CSV エクスポート | 将来計画候補。詳細本文、出力形式、endpoint 契約は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | キュー内個別エントリのキャンセル | 将来計画候補。詳細本文、endpoint 契約、対象 queue、失敗時副作用は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定バリデーション API | [`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](DETAIL_INDEX.md#0i3-api--sdk--ui)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §27.5](details/api.md#sec-27-5) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 設定バリデーション API | [`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](DETAIL_INDEX.md#0i3-api--sdk--ui)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §27.5](details/api.md#sec-27-5) に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | Prometheus メトリクスエンドポイント | 将来計画候補。詳細本文、endpoint 契約、出力形式は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | CLI 管理クライアント | 将来計画候補。詳細本文、binary 名、command、API 呼び出し契約は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 設定の自動スナップショット | 将来計画候補。詳細本文、保存契約、副作用境界は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ステータスバッジ生成 | 将来計画候補。詳細本文、endpoint 契約、出力形式は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルド履歴の自動削除設定 | 将来計画候補。詳細本文、保持期間 key、削除対象、副作用境界は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | セッションタイムアウト変更設定 | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.45](details/security.md#sec-27-45) に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドトリガー専用 API スコープ | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.42](details/security.md#sec-27-42) に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 監査ログ | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.44](details/security.md#sec-27-44) に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API レート制限 | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.47](details/security.md#sec-27-47) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | セッションタイムアウト変更設定 | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.45](details/security.md#sec-27-45) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | ビルドトリガー専用 API スコープ | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.42](details/security.md#sec-27-42) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | 監査ログ | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.44](details/security.md#sec-27-44) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API レート制限 | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.47](details/security.md#sec-27-47) に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ロールベースアクセス制御 | 将来計画候補。詳細本文、role 種別、認可 matrix、監査境界は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 成果物ダウンロード API | 将来計画候補。詳細本文、endpoint 契約、archive 形式、認可境界は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 設定スナップショット差分表示 | 将来計画候補。詳細本文、diff 形式、snapshot 対象、表示契約は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 複数プロジェクト管理 | 将来計画候補。詳細本文、project model、切替境界、状態分離は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API キー管理 | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.43](details/security.md#sec-27-43) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API キー管理 | [`docs/details/security.md`](details/security.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.4](DETAIL_INDEX.md#0i4-archive--artifact--security)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.43](details/security.md#sec-27-43) に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルドログのリアルタイム配信 | 将来計画候補。詳細本文、transport、endpoint 契約は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 設定のインポート／エクスポート | 将来計画候補。詳細本文、対象設定、形式、検証条件、失敗時処理は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルド統計ダッシュボード | 将来計画候補。詳細本文、集計項目、表示契約、更新条件は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -462,7 +347,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 将来計画 | 実装不可 | 管理ツール・API | 通知チャンネル管理 | 将来計画候補。詳細本文、対象通知先、API / UI 契約は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルドキューの手動並び替え | 将来計画候補。詳細本文、queue 操作、並び替え制約、競合処理は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 設定テンプレート | 将来計画候補。詳細本文、template 形式、保存先、適用条件は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
-| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API アクセスログ | [`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](DETAIL_INDEX.md#0i3-api--sdk--ui)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §27.6](details/api.md#sec-27-6) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | 管理ツール・API | API アクセスログ | [`docs/details/api.md`](details/api.md) 詳細本文責務、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、[`docs/details/ui.md`](details/ui.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](DETAIL_INDEX.md#0i3-api--sdk--ui)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §27.6](details/api.md#sec-27-6) に従って実装する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | 管理者向けイベントフィード | 将来計画候補。詳細本文、event 種別、配信方式、表示契約は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | ビルドキュー可視化 | 将来計画候補。詳細本文、queue 状態、表示形式、更新条件は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
 | 将来計画 | 実装不可 | 管理ツール・API | メンテナンスモード | 将来計画候補。詳細本文、切替条件、停止範囲、復帰条件は未定義。 | [`docs/ROADMAP.md` 状態・計画責務 §5.2.3](ROADMAP.md#523-状態変更昇格手順) の手順で `改訂予定` へ昇格し、詳細仕様を追加する。 |
@@ -494,7 +379,7 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | ページ内ナビゲーション履歴 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/builder.md` 詳細本文責務 §28.20](details/builder.md#sec-28-20)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/builder.md` 詳細本文責務 §28.21](details/builder.md#sec-28-21)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 画像ライトボックス | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/builder.md` 詳細本文責務 §28.22](details/builder.md#sec-28-22)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) に従って実装する。 |
-| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | [`docs/details/builder.md`](details/builder.md) 詳細本文責務、[`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務の詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/builder.md` 詳細本文責務 §2](details/builder.md#2-ファイルパス設定)、[`docs/details/builder.md` 詳細本文責務 §5](details/builder.md#5-静的-web-サイト出力構造)、[`docs/details/builder.md` 詳細本文責務 §8](details/builder.md#8-実行方法)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/builder.md` 詳細本文責務 §27.4](details/builder.md#sec-27-4) に従って実装する。 |
+| 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | [`docs/details/builder.md`](details/builder.md) 詳細本文責務、[`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/api.md`](details/api.md) 詳細本文責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/builder.md` 詳細本文責務 §2](details/builder.md#2-ファイルパス設定)、[`docs/details/builder.md` 詳細本文責務 §5](details/builder.md#5-静的-web-サイト出力構造)、[`docs/details/builder.md` 詳細本文責務 §8](details/builder.md#8-実行方法)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/builder.md` 詳細本文責務 §27.4](details/builder.md#sec-27-4) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 印刷時 QR コード挿入 | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/builder.md` 詳細本文責務 §28.23](details/builder.md#sec-28-23)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | 定義リストサポート | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/builder.md` 詳細本文責務 §28.24](details/builder.md#sec-28-24)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) に従って実装する。 |
 | 仕様化済み・未実装 | 実装可 | ビルドスクリプト | タスクリストサポート | [`docs/details/builder.md`](details/builder.md) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に実装契約が定義済み。 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/builder.md` 詳細本文責務 §28.25](details/builder.md#sec-28-25)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) に従って実装する。 |
@@ -665,31 +550,30 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | fixture | [`docs/details/runner.md` 詳細本文責務 §27.21](details/runner.md#sec-27-21)〜[§27.38](details/runner.md#sec-27-38)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/statefile.md` 詳細本文責務 §22.0s](details/statefile.md#sec-22-0s)、[`docs/details/security.md` 詳細本文責務 §27.42](details/security.md#sec-27-42)〜[§27.47](details/security.md#sec-27-47) に関わる fixture 証跡、secret mask、effects、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を参照する。 |
 
 <a id="api--sdk--ui--statefile-横断連動契約"></a>
-**api / sdk / ui / statefile 横断連動契約：**
+**6.4 API / SDK / UI / statefile 横断連動確認：**
 
-[`docs/ROADMAP.md` 状態・計画責務 §6.4](ROADMAP.md) の横断確認表は、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義しない。[`docs/ROADMAP.md` 状態・計画責務 §6](ROADMAP.md#6-追加仕様化機能実装参照) 追加仕様化機能 横断共通参照先と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に従い、同一機能群の横断確認観点だけをそろえる。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md` 状態・計画責務 §2](ROADMAP.md#2-状態分類) と [`docs/ROADMAP.md` 状態・計画責務 §3](ROADMAP.md#3-コンポーネント状態分類) を参照する。
+[`docs/ROADMAP.md` 状態・計画責務 §6.4](ROADMAP.md#api--sdk--ui--statefile-横断連動契約) は、新しい endpoint、SDK method、UI 操作、状態ファイル副作用を定義しない。同一機能の owner、collaborator、状態、Phase、正本参照先が一致していることだけを確認する。個別の名称、値、処理順序、成功時動作、失敗時動作は [追加仕様化機能 横断共通参照先](#追加仕様化機能-横断共通参照先) と下表の責務正本を参照する。
 
-| 機能群 | API | SDK | UI 操作 | 状態ファイル副作用 | 成功後再取得 | 失敗時固定 |
-|--------|-----|-----|---------|--------------------|--------------|------------|
-| login / session | `POST /api/login`, `POST /api/login/totp`, `POST /api/logout`, `GET /api/sessions`, `POST /api/sessions/revoke-all` | `login()`, `loginTotp()`, `logout()`, `getSessions()`, `revokeAllSessions()` | login、TOTP 確認、logout、session 一括失効。 | `.admin_credentials`、`.access_log`、`.audit_log`、memory session。token 本体は永続化しない。 | login 成功後は `getDashboard()` → `getStatus()` → `getQueue()`。session 失効後は `getSessions()`。 | `401` は SDK token / ticket / secret field を破棄し、UI は `panel-login` のみ表示する。 |
-| build control | `POST /api/build`, `POST /api/build/force`, `POST /api/build/cancel`, `GET /api/build/stream`, `GET /api/queue`, `DELETE /api/queue` | `triggerBuild()`, `buildForce()`, `cancelBuild()`, `streamBuild()`, `getQueue()`, `clearQueue()` | manual build、force build、cancel、stream 開始/停止、queue clear。 | `.build_state`、`.build_lock`、`.build_logs/{id}.json`、queue entry。force build 時だけ SHA cache 更新。 | `getStatus()` → `getQueue()`、stream end 後は `getLogs()` も実行。 | running は `409`、queue full は `429`、maintenance / circuit は `503` または仕様済み `409`。UI は同じ build request を自動再送しない。 |
-| logs / history | `GET /api/logs`, `GET /api/logs/search`, `GET /api/history`, `GET /api/history/{id}/log`, `POST /api/history/{id}/comment`, `POST /api/history/{id}/flag`, `POST /api/history/{id}/tags` | `getLogs()`, `searchLogs()`, `getHistory()`, `getHistoryLog()`, `setHistoryComment()`, `setHistoryFlag()`, `setHistoryTags()` | log 表示、検索、history 表示、comment / flag / tag 保存。 | read-only GET は副作用なし。comment / flag / tag は `.build_logs/{id}.json` と、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で履歴・設定ログ更新が定義された場合に限り `.build_history`、`.config_log`。 | 変更系は `getHistory()`、comment は `getHistoryComment(id)` も実行。 | `404` は選択解除または not found 表示。`422 details` は field error。壊れた JSON Lines は response に含めない。 |
-| config / repo / branch / schedule | `GET/POST /api/config`, `POST /api/config/validate`, `GET/POST /api/repo-config`, `GET/POST /api/branch-config`, `GET /api/schedule`, `POST /api/schedule/*` | `getConfig()`, `setConfig()`, `validateConfig()`, `setRepoConfig()`, `getBranchConfig()`, `setBranchConfig()`, `getSchedule()`, schedule 系 method | config 保存、validate、repo 保存、branch 保存、schedule 変更。 | `.server_config`、`.repo_config`、`.branch_config`、`.config_log`。validate は保存なし。systemd 反映失敗時も保存済み値は戻さない。 | 保存系は対象 GET → `getConfigLog()`。validate は再取得なし。 | `422` は書込前停止。systemd 失敗 `500` は保存済み値を再取得して表示する。no-op は状態ファイルと log を変更しない。 |
-| notify / SMTP / webhook | `GET/POST /api/notify-config`, `POST /api/notify-test`, `GET /api/notify-log`, `GET/POST /api/smtp-config`, `POST /api/smtp-test`, `GET/POST /api/webhook-config`, `GET /api/webhook-events`, `POST /api/notify/weekly-summary` | `getNotifyConfig()`, `setNotifyConfig()`, `notifyTest()`, `getNotifyLog()`, `getSmtpConfig()`, `setSmtpConfig()`, `smtpTest()`, `getWebhookConfig()`, `setWebhookConfig()`, `getWebhookEvents()`, `notifyWeeklySummary()` | notify 保存、test、SMTP 保存/test、webhook secret 保存、event 表示、weekly summary。 | `.notify_config`、`.smtp_config`、`.smtp_secret`、`.webhook_secret`、`.notify_log`、`.webhook_events.json`、`.config_log`。 | 保存系は対象 GET → `getConfigLog()`。test / summary は `getNotifyLog()`。 | secret は response / log / fixture へ平文出力しない。保存成功・失敗とも UI secret field を消去する。 |
-| snapshots / rollback / maintenance | `GET /api/snapshots`, `GET /api/snapshots/{id}/download`, `DELETE /api/snapshots/{id}`, `POST /api/history/{id}/rollback`, `GET /api/maintenance`, `POST /api/maintenance/enable`, `POST /api/maintenance/disable` | `getSnapshots()`, `downloadSnapshot()`, `deleteSnapshot()`, `rollbackHistory()`, `getMaintenance()`, `enableMaintenance()`, `disableMaintenance()` | snapshot list/download/delete、rollback、maintenance enable/disable。 | `.snapshots/`、`.build_history`、`.build_logs/{new_id}.json`、`.maintenance`、`.config_log`。download は副作用なし。 | delete は `getSnapshots()`。rollback は `getHistory()` → `getStatus()`。maintenance は `getMaintenance()`。 | delete / rollback は確認必須。running rollback は `409`。maintenance enabled 中は build / rollback / 設定変更系を disabled。 |
-| access / hooks / rules / pipeline / notes / layout | access、hooks、alert rules、tag rules、pipeline config、notes、dashboard layout の GET/POST/DELETE endpoint | 対応する [`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様) SDK method | 保存、追加、削除、notes 保存、dashboard layout 保存。 | `.access_control`、`.hooks`、`.alert_rules`、`.tag_rules`、`.pipeline_config`、`.notes`、`.dashboard_layout`、`.config_log`。 | 対象 GET → 変更系で config log 対象の場合は `getConfigLog()`。layout は `getDashboardLayout()` → `getDashboard()`。 | duplicate `409` は競合表示。validation `422` は field error。削除対象不在は `404`。 |
-| tokens / audit / access logs / rate limit | `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}`, `GET /api/audit-log`, `GET /api/access-log`, `GET /api/api-access-log`, `GET/POST /api/api-rate-limit` | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getAccessLog()`, `getApiAccessLog()`, `getApiRateLimit()`, `setApiRateLimit()` | token 発行/失効、audit / access log 表示、rate limit 保存。 | `.api_tokens`、`.audit_log`、`.access_log`、`.api_access_log`、`.api_rate_state`、`.server_config`、`.config_log`。token 本体は作成時 response のみ。 | token 操作は `getTokens()` → `getAuditLog()`。rate limit は `getApiRateLimit()`。 | token 本体は再取得不可。`403` は logout しない。`429` は rate limit 表示し、同一操作を自動 retry しない。 |
+| 確認対象 | 横断確認観点 | 責務正本 |
+|----------|--------------|----------|
+| API | 対象機能の owner、endpoint 契約、認証要否、状態副作用の参照先が一致している。 | [`docs/details/api.md`](details/api.md) 詳細本文責務 |
+| SDK | UI が必要とする操作に対応する API 契約と公開 method の参照先が一致している。 | [`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様) |
+| UI | 通信経路、操作、表示、成功後再取得、失敗時固定、秘密情報消去の参照先が SDK / API と一致している。 | [`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様) |
+| statefile | API または runner の副作用と、schema、lock、atomic write、破損時処理の参照先が一致している。 | [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 |
+| security | 認証、scope、session、token、secret mask、audit、rate limit の参照先が API / SDK / UI と一致している。 | [`docs/details/security.md`](details/security.md) 詳細本文責務 |
+| fixture / 実装検証証跡 | 横断契約の expected、effects、fake、assertion、差し戻し条件が各責務正本と一致している。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 
 <a id="横断処理順契約"></a>
-**横断処理順契約：**
+**6.5 横断処理順確認：**
 
-| 処理種別 | 固定順序 |
-|----------|----------|
-| 認証必須 JSON API | method / path 判定 → body 禁止判定 → JSON parse → 認証 / scope → rate limit → endpoint 固有 validation → read → write 計画 → atomic write → JSON Lines 追記 → response。 |
-| read-only API | method / path 判定 → body 禁止判定 → 認証 / scope → query validation → read → 壊れた任意行除外 → response。read-only API は状態ファイルを書き換えない。 |
-| UI 変更操作 | panel error / success 消去 → UI 入力検証 → 対象操作 disabled → SDK 呼び出し → 成功後再取得 → success 表示 → secret 消去 → disabled 再評価。 |
-| UI 取得操作 | panel error 消去 → 対象操作 disabled → SDK 呼び出し → DOM 更新 → empty state 判定 → disabled 再評価。success 表示は行わない。 |
-| SDK request | 引数検証 → path / query / body 生成 → Authorization 付与 → timeout 設定 → fetch → status 判定 → response parse → token 変化適用 → return / throw。 |
-| multi-file write | 全入力検証 → 全対象 read → 全 write payload 生成 → [`docs/details/api.md` 詳細本文責務 §22.0d](details/api.md#sec-22-0d) の Write 順に atomic write → JSON Lines 追記 → response。途中失敗時は未処理ファイルを書かない。 |
+処理順序の本文は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。[`docs/ROADMAP.md` 状態・計画責務 §6.5](ROADMAP.md#横断処理順契約) は、呼び出し境界と副作用境界が各責務正本間で矛盾していないことだけを確認する。
+
+| 処理境界 | 主本文 | 横断確認先 |
+|----------|--------|------------|
+| API request / response / multi-file write | [`docs/details/api.md`](details/api.md) 詳細本文責務 | [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/security.md`](details/security.md) 詳細本文責務 |
+| SDK request / response / error | [`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様) | [`docs/details/api.md`](details/api.md) 詳細本文責務 |
+| UI 取得・変更操作 | [`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様) | [`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様) |
+| runner 起点の状態更新 | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 | [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、[`docs/details/archive.md`](details/archive.md) 詳細本文責務 |
+| 横断受け入れ確認 | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務 | 該当 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務 |
 
 [`docs/details/runner.md` 詳細本文責務 §27.21](details/runner.md#sec-27-21)〜[§27.38](details/runner.md#sec-27-38) の実装確認では、状態ファイル、endpoint、SDK method、UI 操作、外部公開構成が owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に存在することを確認する。存在しない項目の追加可否と改訂先は、[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a)、[`docs/SPEC.md` ポリシー責務 §0](SPEC.md#0-詳細仕様記載ポリシー)、該当 owner / collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
