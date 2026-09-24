@@ -69,7 +69,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 <a id="認証共通詳細"></a>
 **認証共通詳細：**
 
-[`docs/details/security.md`](security.md) 詳細本文責務 §認証共通詳細は、password 認証、session、login ticket、認証ログ、`--init-credentials` の [`docs/details/security.md`](security.md) 詳細本文責務である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) および [`docs/details/security.md`](security.md) 詳細本文責務 §25 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を参照する。
+[`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) は、password 認証、session、login ticket、認証ログ、`--init-credentials` の [`docs/details/security.md` 詳細本文責務](security.md) である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) および [`docs/details/api.md` 詳細本文責務 §25](api.md#25-認証-実装仕様) を参照する。`.admin_credentials` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を参照する。
 
 **password hash 固定契約：**
 
@@ -135,7 +135,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | logout | `200` | 変更なし | 対象 session 削除 | `logout` を追記 | `logout` を追記 | token 本体と token hash は保存しない。 |
 | password 変更成功 | `200` | 新 salt / hash、`must_change:false`、`updated_at` 更新 | 現 session 以外削除 | `password_change` を追記 | `password_change` を追記 | 新旧 password、hash、salt は保存しない。 |
 
-[`docs/details/security.md`](security.md) 詳細本文責務 §認証共通詳細の固定表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、個別節で別指定がない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
+[`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) の固定表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、個別節で別指定がない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
 
 **認証副作用順序固定契約：**
 
@@ -192,7 +192,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 <a id="sec-27-42-3"></a>
 **27.42 ビルドトリガー専用 API スコープ：**
-§27.42 の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
+[`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42-3) の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
 
 
 本機能の目的は、外部システムによる build 開始操作を `trigger` scope の API token と build 開始 endpoint だけに限定することである。
@@ -278,7 +278,7 @@ scope 判定前に endpoint 固有の request body parse、状態ファイル更
 
 <a id="sec-27-43"></a>
 **27.43 API キー管理：**
-§27.43 の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
+[`docs/details/security.md` 詳細本文責務 §27.43](security.md#sec-27-43) の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
 
 
 本機能の目的は、API key の発行、一覧、失効、期限、scope を実装し、key 本体を保存しないことである。
@@ -501,7 +501,7 @@ owner component は `security` とする。collaborator component は `api`、`s
 
 <a id="sec-27-45"></a>
 **27.45 セッションタイムアウト変更設定：**
-§27.45 の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
+[`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45) の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
 
 
 本機能の目的は、新規 session の有効期限を管理 API から更新し、既存 session への影響を明確にすることである。
@@ -544,7 +544,7 @@ session timeout の値は session 発行時に秒単位で加算する。`expire
 
 <a id="sec-27-46"></a>
 **27.46 TOTP 二要素認証：**
-§27.46 の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
+[`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
 
 
 本機能の目的は、外部ライブラリなしで RFC 6238 TOTP を検証し、password 漏えい時の管理 API 不正利用を抑止することである。
@@ -649,7 +649,7 @@ TOTP 関連の成功、失敗、無効化、ticket 発行は `.audit_log` へ記
 
 <a id="sec-27-47"></a>
 **27.47 API レート制限：**
-§27.47 の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
+[`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) の境界は owner component `security`、collaborator component `api`、`sdk`、`ui`、`statefile` とする。
 
 
 本機能の目的は、login 総当たり、API token 濫用、外部連携の暴走を Go 標準ライブラリだけで抑止することである。

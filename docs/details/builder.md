@@ -1497,7 +1497,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 <a id="sec-27-4"></a>
 **27.4 出力サイトへのビルドメタ埋め込み：**
 
-§27.4 の境界は owner component `builder`、collaborator component `runner`、`api`、`statefile` とする。
+[`docs/details/builder.md` 詳細本文責務 §27.4](builder.md#sec-27-4) の境界は owner component `builder`、collaborator component `runner`、`api`、`statefile` とする。
 
 [`docs/details/builder.md` 詳細本文責務 §27.4](builder.md#sec-27-4) では、HTML meta、REPORT、build log へ保存する値と escape 条件だけを定義する。API response は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、fixture 証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を参照する。
 
@@ -1539,7 +1539,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 本機能の目的は、複数ページ静的サイト生成時に未変更入力の変換結果を再利用し、build 時間を短縮することである。
 
-§27.25 の境界は owner component `builder`、collaborator component `runner`、`statefile` とする。
+[`docs/details/builder.md` 詳細本文責務 §27.25](builder.md#sec-27-25) の境界は owner component `builder`、collaborator component `runner`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -1612,7 +1612,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 本機能の目的は、Markdown から参照される画像、相対リンク、include 対象を追跡し、関連する入力だけを再ビルド対象にすることである。
 
-§27.28 の境界は owner component `builder`、collaborator component `runner`、`statefile` とする。
+[`docs/details/builder.md` 詳細本文責務 §27.28](builder.md#sec-27-28) の境界は owner component `builder`、collaborator component `runner`、`statefile` とする。
 
 **入力 / 状態：**
 

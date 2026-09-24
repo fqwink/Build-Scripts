@@ -36,7 +36,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 `runner` は `adlaire-ci-runner` バイナリとして実行する。起動形式は systemd timer から呼び出される oneshot 実行とし、1 回の起動で対象ブランチ設定を読み込み、変更検出、ビルド起動、ログ保存、通知、転送、後処理を完了して終了する。
 
-実装時は、対象項目ごとに [`docs/details/runner.md`](runner.md) 詳細本文責務 §0c の実装前確認項目を満たしていることを確認する。未充足の項目が 1 つでもある場合の実装着手可否は [`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#0a-仕様成熟度ポリシー)〜[§0f](../SPEC.md#0f-phase-実装単位ポリシー) を参照し、詳細本文の不足は先に [`docs/details/runner.md` 詳細本文責務 §10a](runner.md#10a-ci-ランナー-実装対象) を改訂する。
+実装時は、対象項目ごとに [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0c](../DETAIL_INDEX.md#0c-実装前確認項目) の実装前確認項目を満たしていることを確認する。未充足の項目が 1 つでもある場合の実装着手可否は [`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#0a-仕様成熟度ポリシー)〜[§0f](../SPEC.md#0f-phase-実装単位ポリシー) を参照し、詳細本文の不足は先に [`docs/details/runner.md` 詳細本文責務 §10a](runner.md#10a-ci-ランナー-実装対象) を改訂する。
 
 | 項目 | 関連節 | 実装内容 |
 |------|--------|------------|
@@ -1220,7 +1220,7 @@ stdout は Go 標準ライブラリ `log/slog` で出力し、systemd が journa
 | 出力サイズ警告 | `OUTPUT_SIZE_WARN_MB` 超過時に `size_warn: true` を保存する。 |
 | ログ世代管理 | `LOG_KEEP_N` を超過した `.build_logs/{id}.json` を古いものから削除する。 |
 
-これらのログ項目を実装対象に含める時点で、[`docs/details/runner.md` 詳細本文責務 §10a](runner.md#10a-ci-ランナー-実装対象) の実装対象、[`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner) の設定値、[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の処理フロー、[`docs/details/runner.md`](runner.md) 詳細本文責務 §22 の API レスポンス仕様と整合させる。
+これらのログ項目を実装対象に含める時点で、[`docs/details/runner.md` 詳細本文責務 §10a](runner.md#10a-ci-ランナー-実装対象) の実装対象、[`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner) の設定値、[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の処理フロー、[`docs/details/api.md` 詳細本文責務 §22](api.md#22-バックエンド-api-仕様) の API レスポンス仕様と整合させる。
 
 **`.build_logs/{id}.json` schema 参照：**
 
@@ -1421,14 +1421,14 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 ## 27. Runner owner 追加仕様化機能 詳細仕様
 
 <a id="runner-27-api--sdk--ui-共通参照先"></a>
-**runner §27 API / SDK / UI 共通参照先：**
+**[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) API / SDK / UI 共通参照先：**
 
-runner §27 の各機能で API endpoint、HTTP status、request / response、warning、SDK method、UI 表示、filter、error body を述べる場合、API 契約は [`docs/details/api.md` 詳細本文責務 §22.0c.1](api.md#sec-22-0c-1) / [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、SDK 契約は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様)、UI 契約は [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) を共通参照先とする。runner 詳細本文では、runner が保存する値、処理順、状態差分、失敗時副作用だけを定義する。
+[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) の各機能で API endpoint、HTTP status、request / response、warning、SDK method、UI 表示、filter、error body を述べる場合、API 契約は [`docs/details/api.md` 詳細本文責務 §22.0c.1](api.md#sec-22-0c-1) / [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、SDK 契約は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様)、UI 契約は [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) を共通参照先とする。runner 詳細本文では、runner が保存する値、処理順、状態差分、失敗時副作用だけを定義する。
 
 <a id="sec-27"></a>
-**runner §27 owner / collaborator 境界参照先：**
+**[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) owner / collaborator 境界参照先：**
 
-runner §27 の各節で owner / collaborator を宣言する場合、その宣言は当該節の実装境界確認であり、境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) を正本とする。同一 collaborator 組み合わせの節でも、節単位の境界確認として維持する。
+[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) の各節で owner / collaborator を宣言する場合、その宣言は当該節の実装境界確認であり、境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) を正本とする。同一 collaborator 組み合わせの節でも、節単位の境界確認として維持する。
 
 <a id="sec-27-1"></a>
 **27.1 GitHub Commit Status API：**
@@ -1440,7 +1440,7 @@ runner は、commit SHA 確定、build id 採番、build 開始前の pending �
 <a id="sec-27-2"></a>
 **27.2 ドライラン実行モード：**
 
-§27.2 の境界は owner component `runner`、collaborator component `statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.2](runner.md#sec-27-2) の境界は owner component `runner`、collaborator component `statefile` とする。
 
 `adlaire-ci-runner --dry-run` は、実行計画を検証する読み取り専用モードである。dry-run は `.build_lock`、`.build_state`、`.build_status.json`、`.build_history`、`.build_logs/`、`.pending_transfers`、`.notify_*`、`.snapshots/`、GitHub Commit Status、deploy 先を変更してはならない。
 
@@ -1529,7 +1529,7 @@ dry-run は、破損 state の backup、初期値作成、lock 作成、通知�
 <a id="sec-27-3"></a>
 **27.3 ビルド失敗時の自動リトライ：**
 
-§27.3 の境界は owner component `runner`、collaborator component `statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.3](runner.md#sec-27-3) の境界は owner component `runner`、collaborator component `statefile` とする。
 
 runner は `.server_config.build_retry_max > 0` の場合、retry 対象失敗だけを同一 build id 内で最大 `build_retry_max` 回追加試行する。総試行回数は `1 + build_retry_max` とする。
 
@@ -1689,7 +1689,7 @@ runner は [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27
 
 **api / sdk / ui 参照：**
 
-`GET /api/history` の `trigger` query、HTTP status、response warning、SDK `getHistory({trigger})`、UI filter 表示は [runner §27 API / SDK / UI 共通参照先](#runner-27-api--sdk--ui-共通参照先) を参照する。`runner` 詳細では runner が保存する trigger 値、保存先、判定順序だけを定義する。
+`GET /api/history` の `trigger` query、HTTP status、response warning、SDK `getHistory({trigger})`、UI filter 表示は [`docs/details/runner.md` 詳細本文責務 §27 API / SDK / UI 共通参照先](#runner-27-api--sdk--ui-共通参照先) を参照する。`runner` 詳細では runner が保存する trigger 値、保存先、判定順序だけを定義する。
 
 **異常系：**
 
@@ -2057,7 +2057,7 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 
 **`.pipeline_config` 適用固定契約：**
 
-`.pipeline_config` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を参照する。API による保存、request / response、HTTP status は [`docs/details/api.md`](api.md) 詳細本文責務 §15D を参照する。
+`.pipeline_config` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を参照する。API による保存、request / response、HTTP status は [`docs/details/api.md` 詳細本文責務 ビルドパイプライン設定（15D）](api.md#sec-15d) を参照する。
 
 runner は build 開始後、builder command または pipeline step command を組み立てる直前に `.pipeline_config` を 1 回だけ読む。同一 build 中に `.pipeline_config` を再読込してはならない。
 
@@ -2139,7 +2139,7 @@ runner は build 開始後、builder command または pipeline step command を
 <a id="sec-27-23"></a>
 **27.23 ローカルファイル監視モード：**
 
-§27.23 の境界は owner component `runner`、collaborator component `statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.23](runner.md#sec-27-23) の境界は owner component `runner`、collaborator component `statefile` とする。
 
 本機能の目的は、GitHub API を使わない環境で、ローカル Markdown 入力の変更を SHA-256 snapshot により検出することである。
 
@@ -2209,7 +2209,7 @@ runner は build 開始後、builder command または pipeline step command を
 <a id="sec-27-24"></a>
 **27.24 タグ付きコミットのみビルド：**
 
-§27.24 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.24](runner.md#sec-27-24) の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、release tag が付いた commit だけを build 対象にする filter を提供することである。
 
@@ -2275,7 +2275,7 @@ runner は build 開始後、builder command または pipeline step command を
 <a id="sec-27-26"></a>
 **27.26 並列マルチターゲットビルド：**
 
-§27.26 の境界は owner component `runner`、collaborator component `statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.26](runner.md#sec-27-26) の境界は owner component `runner`、collaborator component `statefile` とする。
 
 本機能の目的は、複数 deploy target への転送を bounded parallelism で処理し、遅い target が全体を不必要に止めないようにすることである。
 
@@ -2342,7 +2342,7 @@ runner は build 開始後、builder command または pipeline step command を
 
 本機能の目的は、build 前後に登録済み command を安全に実行し、外部 shell 文字列に依存しない拡張点を提供することである。
 
-§27.27 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.27](runner.md#sec-27-27) の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 **入力 / 状態：**
 
@@ -2569,7 +2569,7 @@ runner は `approval_required=true` の target に対して、approval queue 以
 <a id="sec-27-31"></a>
 **27.31 ブランチ別環境変数：**
 
-§27.31 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.31](runner.md#sec-27-31) の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、branch target ごとに build process へ注入する環境変数を定義し、branch や deploy 先ごとの差分を、保存前検証、注入対象固定、secret mask、log 保存禁止値によって扱うことである。
 
@@ -2736,7 +2736,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 <a id="sec-27-33"></a>
 **27.33 ビルド時間トレンド記録：**
 
-§27.33 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.33](runner.md#sec-27-33) の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、build 所要時間の統計を蓄積し、性能傾向と回帰検知の基準を提供することである。
 
@@ -2805,7 +2805,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 <a id="sec-27-34"></a>
 **27.34 ビルド依存チェーン：**
 
-§27.34 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.34](runner.md#sec-27-34) の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、複数 build job の依存関係を DAG として定義し、依存 job 成功後だけ後続 job を実行することである。
 
@@ -2875,7 +2875,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 <a id="sec-27-35"></a>
 **27.35 ビルド優先度キュー：**
 
-§27.35 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、manual、webhook、approval などの queue entry を優先度順に処理し、緊急 build を先に実行できるようにすることである。
 
@@ -2943,7 +2943,7 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 <a id="sec-27-36"></a>
 **27.36 失敗原因の自動分類：**
 
-§27.36 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.36](runner.md#sec-27-36) の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、build failure を固定カテゴリへ分類し、調査開始点を build log、history、UI に残すことである。
 
@@ -3021,7 +3021,7 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 <a id="sec-27-37"></a>
 **27.37 ビルド実行環境の記録：**
 
-§27.37 の境界は owner component `runner`、collaborator component `statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.37](runner.md#sec-27-37) の境界は owner component `runner`、collaborator component `statefile` とする。
 
 本機能の目的は、build 時点の実行環境を記録し、後から再現性と障害原因を確認できるようにすることである。
 
@@ -3092,7 +3092,7 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 <a id="sec-27-38"></a>
 **27.38 ビルド所要時間の異常検知：**
 
-§27.38 の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
+[`docs/details/runner.md` 詳細本文責務 §27.38](runner.md#sec-27-38) の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
 本機能の目的は、過去 trend と比較して異常に遅い build を検出し、性能劣化を WARN、history flag、通知で可視化することである。
 

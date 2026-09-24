@@ -1746,6 +1746,7 @@ hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙
 
 ---
 
+<a id="sec-15b"></a>
 **自動タグ付けルール（15B）：**
 
 ビルド完了時に条件式を評価し、マッチしたルールのタグを `.build_history` のエントリへ自動追記する（手動タグと共存する）。`.tag_rules` に保存する。
@@ -1822,9 +1823,10 @@ hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙
 
 ---
 
+<a id="sec-15d"></a>
 **ビルドパイプライン設定（15D）：**
 
-[`docs/details/api.md`](api.md) 詳細本文責務ビルドパイプライン設定（15D）は、`GET /api/pipeline-config` と `POST /api/pipeline-config` の request / response、`.pipeline_config` read/write 境界だけを定義する。runner による `.pipeline_config` 読込タイミング、`extra_args` / `env` 適用、読込不能または schema 不正時の build 停止条件は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を参照する。
+[`docs/details/api.md` 詳細本文責務 ビルドパイプライン設定（15D）](api.md#sec-15d) は、`GET /api/pipeline-config` と `POST /api/pipeline-config` の request / response、`.pipeline_config` read/write 境界だけを定義する。runner による `.pipeline_config` 読込タイミング、`extra_args` / `env` 適用、読込不能または schema 不正時の build 停止条件は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を参照する。
 
 **`GET /api/pipeline-config` レスポンス例：**
 ```json
@@ -2048,18 +2050,18 @@ queue entry schema と trigger 別 payload schema は [`docs/details/statefile.m
 
 ## 25. 認証 実装仕様
 
-認証、session、password hash、login ticket、TOTP 連携、認証ログ、漏えい禁止、`--init-credentials` 生成手順の主本文は [`docs/details/security.md`](security.md) 詳細本文責務の認証共通詳細および [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45)〜[§27.46](security.md#sec-27-46) を参照する。`.admin_credentials` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を参照する。
+認証、session、password hash、login ticket、TOTP 連携、認証ログ、漏えい禁止、`--init-credentials` 生成手順の主本文は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) および [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45)〜[§27.46](security.md#sec-27-46) を参照する。`.admin_credentials` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を参照する。
 
 `api` 詳細では、認証関連 API の endpoint、request / response、HTTP status、状態ファイル read / write 境界だけを定義する。
 
 | API / CLI | API 側の担当 | 主本文 |
 |-----------|--------------|--------|
-| `POST /api/login` | route、body parse、response body、HTTP status、`.admin_credentials` / `.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) 詳細本文責務 認証共通詳細、[`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) |
-| `POST /api/login/totp` | route、body parse、response body、HTTP status、`.totp_secret` / `.admin_credentials` read/write 呼び出し境界。 | [`docs/details/security.md`](security.md) 詳細本文責務 認証共通詳細、[`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) |
-| `POST /api/logout` | route、body 禁止、response body、HTTP status。 | [`docs/details/security.md`](security.md) 詳細本文責務 認証共通詳細 |
-| `POST /api/change-password` | route、body parse、response body、HTTP status、`.admin_credentials` write 呼び出し境界。 | [`docs/details/security.md`](security.md) 詳細本文責務 認証共通詳細 |
-| `GET /api/sessions` / `POST /api/sessions/revoke-all` | route、response body、HTTP status、memory session 操作呼び出し境界。 | [`docs/details/security.md`](security.md) 詳細本文責務 認証共通詳細、[`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45) |
-| `--init-credentials` | CLI option dispatch、stdout / stderr / exit code を security 契約どおり返す。 | [`docs/details/security.md`](security.md) 詳細本文責務 認証共通詳細、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) |
+| `POST /api/login` | route、body parse、response body、HTTP status、`.admin_credentials` / `.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細)、[`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) |
+| `POST /api/login/totp` | route、body parse、response body、HTTP status、`.totp_secret` / `.admin_credentials` read/write 呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細)、[`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) |
+| `POST /api/logout` | route、body 禁止、response body、HTTP status。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) |
+| `POST /api/change-password` | route、body parse、response body、HTTP status、`.admin_credentials` write 呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) |
+| `GET /api/sessions` / `POST /api/sessions/revoke-all` | route、response body、HTTP status、memory session 操作呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細)、[`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45) |
+| `--init-credentials` | CLI option dispatch、stdout / stderr / exit code を security 契約どおり返す。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) |
 | `GET /api/auth/totp-status` / `POST /api/auth/totp-setup` / `POST /api/auth/totp-confirm` / `DELETE /api/auth/totp` | route、body parse、response body、HTTP status、`.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) |
 
 ---
@@ -2068,7 +2070,7 @@ queue entry schema と trigger 別 payload schema は [`docs/details/statefile.m
 
 <a id="sec-27-5"></a>
 **27.5 設定バリデーション API：**
-§27.5 の境界は owner component `api`、collaborator component `sdk`、`ui`、`statefile` とする。
+[`docs/details/api.md` 詳細本文責務 §27.5](api.md#sec-27-5) の境界は owner component `api`、collaborator component `sdk`、`ui`、`statefile` とする。
 
 
 `POST /api/config/validate` は、`POST /api/config` と同じ入力を受け取り、保存せずに検証結果を返す。
@@ -2115,7 +2117,7 @@ Request body は partial `ConfigObject` とする。未知 key を含む場合�
 
 <a id="sec-27-6"></a>
 **27.6 API アクセスログ：**
-§27.6 の境界は owner component `api`、collaborator component `sdk`、`ui`、`statefile` とする。
+[`docs/details/api.md` 詳細本文責務 §27.6](api.md#sec-27-6) の境界は owner component `api`、collaborator component `sdk`、`ui`、`statefile` とする。
 
 
 `api` は全 `/api/` request について `.api_access_log` へ JSON Lines を追記する。`GET /api/health` も対象とする。静的 file 配信、admin HTML、SDK JS は対象外とする。
@@ -2302,7 +2304,7 @@ queue entry は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefi
 
 <a id="sec-27-13"></a>
 **27.13 Webhook イベントログ / 一覧取得 API：**
-§27.13 の境界は owner component `api`、collaborator component `sdk`、`ui`、`statefile` とする。
+[`docs/details/api.md` 詳細本文責務 §27.13](api.md#sec-27-13) の境界は owner component `api`、collaborator component `sdk`、`ui`、`statefile` とする。
 
 本機能の目的は、受信した GitHub Webhook の監査情報を `.webhook_events.json` に保存し、管理 API、sdk、ui のページング参照対象にすることである。
 
@@ -2364,7 +2366,7 @@ Response は `{ "events": WebhookEventRecord[], "total": N }` とする。SDK `g
 
 <a id="sec-27-16"></a>
 **27.16 ヘルスチェックエンドポイント：**
-§27.16 の境界は owner component `api`、collaborator component `statefile` とする。
+[`docs/details/api.md` 詳細本文責務 §27.16](api.md#sec-27-16) の境界は owner component `api`、collaborator component `statefile` とする。
 
 本機能の目的は、認証不要の `GET /api/health` で、外部監視へ Adlaire CI の最低限の稼働状態を返すことである。
 
@@ -2510,7 +2512,7 @@ owner component は `api` とする。collaborator component は `runner`、`sta
 | POST empty | `.branch_config` 存在確認 → 削除 → `.config_log` 追記 → response。 | 削除失敗は `500`。`.config_log` 失敗は `500`、削除済み状態は巻き戻さない。 |
 | POST no-op | 正規化後の `branch_targets` が既存値と一致する。 | `.branch_config` と `.config_log` を変更せず `{ "message":"No changes","branches_count":N }` を返す。 |
 
-`.config_log` の diff target は `branch_config` とする。deploy target の `host`、`user`、`dest_dir` は secret として扱わないが、値に token / password / secret 風 key が含まれる object を追加した場合は [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.20 の mask 規則を適用する。
+`.config_log` の diff target は `branch_config` とする。deploy target の `host`、`user`、`dest_dir` は secret として扱わないが、値に token / password / secret 風 key が含まれる object を追加した場合は [`docs/details/api.md` 詳細本文責務 §27.20](api.md#sec-27-20) の mask 規則を適用する。
 
 **検証：**
 
@@ -2533,7 +2535,7 @@ runner による `.branch_config` の読込、`RunnerConfig.BranchTargets` へ�
 
 <a id="sec-27-20"></a>
 **27.20 設定変更の詳細 diff 記録：**
-§27.20 の境界は owner component `api`、collaborator component `statefile` とする。
+[`docs/details/api.md` 詳細本文責務 §27.20](api.md#sec-27-20) の境界は owner component `api`、collaborator component `statefile` とする。
 
 本機能の目的は、設定変更 API が何を変更したかを `.config_log` に機械可読 diff と人間可読 diff の両方で残すことである。
 
@@ -2698,7 +2700,7 @@ api / sdk / ui のいずれも、[`docs/details/api.md` 詳細本文責務 §27]
 
 | ゲート | API 側の合格条件 | SDK / UI への固定契約 | 禁止条件 |
 |--------|------------------|------------------------|----------|
-| endpoint 対応 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、個別 [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) / [`docs/details/security.md`](security.md) 詳細本文責務 §27 節、[`docs/details/api.md` 詳細本文責務 §27](api.md#27-api-owner-追加仕様化機能-詳細仕様) API / SDK / UI 接続固定表の API 列が同じ method / path / query / body / response を示す。 | SDK method と UI 操作は [`docs/details/api.md` 詳細本文責務 §27](api.md#27-api-owner-追加仕様化機能-詳細仕様) API / SDK / UI 接続固定表の SDK / UI 列だけを使用する。 | 表にない endpoint、method、UI 操作を実装都合で追加すること。 |
+| endpoint 対応 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、個別 [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47)、[`docs/details/api.md` 詳細本文責務 §27](api.md#27-api-owner-追加仕様化機能-詳細仕様) API / SDK / UI 接続固定表の API 列が同じ method / path / query / body / response を示す。 | SDK method と UI 操作は [`docs/details/api.md` 詳細本文責務 §27](api.md#27-api-owner-追加仕様化機能-詳細仕様) API / SDK / UI 接続固定表の SDK / UI 列だけを使用する。 | 表にない endpoint、method、UI 操作を実装都合で追加すること。 |
 | request 正規化 | path parameter、query、body key、nullable、既定値を API 側で検証し、不正値は `422` とする。 | SDK は指定値を表どおり送信し、UI は入力正規化だけを行う。 | SDK が未知 key を削除する、UI が API 既定値を保存前に補完すること。 |
 | response 透過 | 成功 response は個別節の key だけを返し、array 順、nullable、mask 値を固定する。 | SDK は response を補完・再計算せず返し、UI は API 順序で表示する。 | SDK / UI が存在しない key、集計値、状態名、token list を合成すること。 |
 | error 伝播 | `401` / `403` / `409` / `422` / `429` / `500` の status と error body を固定する。 | SDK は `AdlaireCIError` として保持し、UI は status 別表示と仕様上の再取得だけを行う。 | 自動 retry、自動 refresh、自動 logout、同一変更 API の再送を仕様外で行うこと。 |

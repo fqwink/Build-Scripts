@@ -110,7 +110,7 @@ Release asset 名は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.
 
 **setup 共通確認契約：**
 
-[`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3)、[`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b)、[`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の shell snippet は、[`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) の機能単位と [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.2c の共通停止条件に従う具体例である。Release asset 名と checksum 形式は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)、API health の endpoint、HTTP status、JSON object、必須 key は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、実装検証証跡形式は [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を共通参照先とする。
+[`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3)、[`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b)、[`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の shell snippet は、[`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) の機能単位と共通停止条件に従う具体例である。Release asset 名と checksum 形式は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)、API health の endpoint、HTTP status、JSON object、必須 key は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、実装検証証跡形式は [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を共通参照先とする。
 
 local API 確認で `curl` が利用できない場合は、Go 標準ライブラリ `net/http` client または同等のローカル HTTP 確認を行う。setup 詳細本文では、local API へ到達して応答を取得することだけを確認し、API response の具体 schema は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を正本とする。
 
@@ -526,7 +526,7 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md` 
 <a id="sec-26-7-2"></a>
 **§26.7 関連 component 共通参照先：**
 
-[`docs/details/setup.md` 詳細本文責務 §26.7](setup.md#sec-26-7) で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) / [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、SDK 契約は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様)、UI 契約は [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様)、security 契約は [`docs/details/security.md`](security.md) 詳細本文責務 認証共通詳細 / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。
+[`docs/details/setup.md` 詳細本文責務 §26.7](setup.md#sec-26-7) で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) / [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、SDK 契約は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様)、UI 契約は [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様)、security 契約は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。
 
 | 対象 | 必須コマンド / 確認 | 合格条件 |
 |------|---------------------|----------|
@@ -555,7 +555,7 @@ API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主�
 | 状態ファイル schema / atomic write / 破損時処理 | [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) | setup が初期作成または保持する path、権限、既存 state / secret 保護だけを確認する。 |
 | SDK method / transport / error | [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) | admin UI 配布時に SDK 静的ファイルを配置することだけを確認する。 |
 | UI DOM / 操作 / 表示状態 | [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) | admin UI 配布物と静的配信境界だけを確認する。 |
-| 認証 / session / token / TOTP / audit | [`docs/details/security.md`](security.md) 詳細本文責務 §25、[`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) | secret / credential file の配置、保持、権限、漏えい防止だけを確認する。 |
+| 認証 / session / token / TOTP / audit | [`docs/details/api.md` 詳細本文責務 §25](api.md#25-認証-実装仕様)、[`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細)、[`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) | secret / credential file の配置、保持、権限、漏えい防止だけを確認する。 |
 | fixture / fake / expected / 実装検証証跡 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F | setup / release / update に関わる証跡の記録先だけを確認する。 |
 
 **setup / update 失敗時副作用固定契約：**

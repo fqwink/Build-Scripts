@@ -345,7 +345,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 | `last_login_at` | string/null | 必須 | UTC ISO 8601 または `null` | session token 発行成功時だけ更新する。 |
 | `updated_at` | string | 必須 | UTC ISO 8601 | password hash 更新時刻。 |
 
-`.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致もすべて credentials 破損とする。API 起動時検証、login / password change の公開応答、認証ログ、監査ログ、漏えい禁止値は [`docs/details/security.md`](security.md) 詳細本文責務 認証共通詳細および [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45)〜[§27.46](security.md#sec-27-46) を参照する。statefile は破損内容、hash、salt を呼び出し元の公開値として返してはならない。
+`.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致もすべて credentials 破損とする。API 起動時検証、login / password change の公開応答、認証ログ、監査ログ、漏えい禁止値は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) および [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45)〜[§27.46](security.md#sec-27-46) を参照する。statefile は破損内容、hash、salt を呼び出し元の公開値として返してはならない。
 
 **`.audit_log` schema：**
 
@@ -479,7 +479,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 |------|----|------|--------|------|
 | `rules` | object[] | 必須 | 0〜100 件 | 自動タグ付け rule。 |
 | `id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 §22.0e.2](api.md#sec-22-0e-2) の tag rule id | rule 識別子。 |
-| `condition` | string | 必須 | [`docs/details/runner.md`](runner.md) 詳細本文責務 §15B の条件式 grammar | 評価条件。 |
+| `condition` | string | 必須 | [`docs/details/api.md` 詳細本文責務 自動タグ付けルール（15B）](api.md#sec-15b) の条件式 grammar | 評価条件。 |
 | `tags` | string[] | 必須 | 1〜20 件、各 1〜50 文字 | 付与するタグ。重複は除去する。 |
 
 `condition` は `変数 空白 演算子 空白 値` の 1 条件だけを許可する。`&&`、`||`、括弧、関数呼び出し、正規表現、算術式は validation failure とする。
