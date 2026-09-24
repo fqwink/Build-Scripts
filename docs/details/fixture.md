@@ -26,6 +26,8 @@ component 境界管理の参照先は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.m
 | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F | [`docs/details/runner.md`](runner.md) 詳細本文責務 §27 / [`docs/details/security.md`](security.md) 詳細本文責務 §27 の fixture 配置、fixture カタログ、manifest、assertion、expected/effects、相互整合、component 別検証責務。 |
 | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F-EVIDENCE | [`docs/details/runner.md`](runner.md) 詳細本文責務 §27 / [`docs/details/security.md`](security.md) 詳細本文責務 §27 の実装検証証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
 
+<a id="0g8-f-phase-fixture--testdata--fake--実装検証証跡契約"></a>
+
 ## 0g.8-F Phase fixture / testdata / fake / 実装検証証跡契約
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、実装完了判定に必要な fixture、fake、testdata、expected / effects、実装検証証跡、acceptance checklist、差し戻し条件を扱う。[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0e、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0g、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0i は完了判定の入口を示すだけとし、[`docs/details/setup.md`](setup.md) 詳細本文責務 §26 は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、実装検証証跡項目、不足時の扱い、差し戻し条件は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
@@ -138,6 +140,8 @@ Phase、API、[`docs/details/runner.md`](runner.md) 詳細本文責務 §27 / [`
 | Fixture R25 | branch target 2 件、両方 GitHub API failure。 | exit `3`。全 target failure_api、全 SHA 旧値維持、pipeline/deploy/snapshot 非実行。 |
 | Fixture R26 | pipeline/deploy success、snapshot writer fake failure。 | exit `0`。build success 維持、`SNAPSHOT_SAVE_FAILED` warning、pending transfer なし。 |
 | Fixture R27 | success 保存後、finalizer `.build_state` atomic write だけ fake failure。 | exit `1`。success log/history/status は保持し、finalizer failure を固定する。 |
+
+<a id="22-f-phase-3--phase-4-api-fixture-契約"></a>
 
 ## 22-F Phase 3 / Phase 4 API fixture 契約
 
@@ -273,6 +277,8 @@ Phase 4 実装の完了判定は [`docs/details/fixture.md`](fixture.md#0g8-f-ph
 | cross stream invalid frame | `GET /api/build/stream` が parse 不能 frame を返す。 | SDK は `AdlaireCIError(status=0,message="Invalid SSE frame")`、UI は stream error を表示し、status / queue を再取得する。状態ファイルは変更しない。 |
 | cross binary snapshot | `downloadSnapshot(id)` が binary success。 | API は binary header、SDK は `Blob`、UI は download 開始表示。JSON parse、success JSON body、状態ファイル更新なし。 |
 | cross destructive cancel | 削除 / rollback 確認 dialog を cancel。 | SDK method 呼び出し 0 回、状態ファイル副作用なし、success / error 表示差分なし。 |
+
+<a id="27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約"></a>
 
 ## 27-F fixture 証跡責務 / runner・security 実装検証証跡詳細契約
 
@@ -984,6 +990,8 @@ UI owner fixture が不足する場合、UI 実装変更は詳細実装確認を
 | download / stream 中断 | サーバー側状態を成功/失敗へ変更しない。access log は endpoint 固有節で中断 status 記録が定義されている場合だけ追記し、history と build log は変更しない。 |
 | 再実行 no-op | 同一入力で差分がない保存 API は、個別節の no-op response を返し、状態、config log、audit log、notify log に新規差分を作らない。 |
 | 破損 JSON Lines | read API は破損行を除外し、破損内容を response に出さない。write API は既存破損行を修復、削除、並べ替えしない。 |
+
+<a id="28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約"></a>
 
 ## 28-F fixture 証跡責務 / builder 拡張実装検証証跡詳細契約
 

@@ -51,7 +51,9 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 外部フォント（Google Fonts 等）は使用しない。
 
-### 見出し階層
+<a id="見出し階層"></a>
+
+**見出し階層：**
 
 | 要素 | サイズ | ウェイト | 装飾 |
 |---|---|---|---|
@@ -84,7 +86,9 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 | `--sw` | `var(--adlaire-layout-sidebar-compact)` = `260px` | サイドバー幅 |
 | `--adlaire-layout-container-narrow` | `760px` | コンテンツ最大幅（`.ci`） |
 
-### レスポンシブ
+<a id="レスポンシブ"></a>
+
+**レスポンシブ：**
 
 | ブレークポイント | 動作 |
 |---|---|
@@ -95,7 +99,9 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 ## 5. サイドバー（TOC）
 
-### 開閉制御
+<a id="開閉制御"></a>
+
+**開閉制御：**
 
 デスクトップとモバイルで制御方法が異なる。
 
@@ -108,7 +114,9 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 `localStorage` キー `adb-sb`（`"1"` = 開、`"0"` = 閉）で開閉状態を永続化。
 
-### TOC 構造
+<a id="toc-構造"></a>
+
+**TOC 構造：**
 
 ```
 ┌─ 検索ボックス ─────────────────────────────┐
@@ -121,7 +129,9 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 └─────────────────────────────────────────────┘
 ```
 
-### TOC リンクスタイル
+<a id="toc-リンクスタイル"></a>
+
+**TOC リンクスタイル：**
 
 | クラス | `padding-left` | フォントサイズ | 色 |
 |---|---|---|---|
@@ -135,7 +145,9 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 ## 6. コンポーネント
 
-### コードブロック
+<a id="コードブロック"></a>
+
+**コードブロック：**
 
 ```
 ┌─ .cb-wrap ──────────────────────────────────────────┐
@@ -150,21 +162,29 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 - コピーボタン（`.cb-copy`）：通常 `opacity: 0`、ホバーで表示。クリック後「✓ 完了」→ 1.8 秒後に「コピー」へ復元
 - `pre.cb`：フォントサイズ `--adlaire-font-size-sm`（0.875rem）、行高 `1.65`
 
-### テーブル
+<a id="テーブル"></a>
+
+**テーブル：**
 
 - `.tw`（ラッパー）：`overflow-x: auto`、ボーダー・角丸 `--adlaire-radius-lg`・シャドウ
 - `th`：モノフォント、`--adlaire-font-size-xs`、背景 `--adlaire-surface-soft`
 - 偶数行：背景 `--adlaire-surface-soft`。ホバー行：背景 `--adlaire-surface-soft-strong`
 
-### インラインコード
+<a id="インラインコード"></a>
+
+**インラインコード：**
 
 - モノフォント、サイズ `0.83em`、背景 `--adlaire-surface-soft-strong`、テキスト `--adlaire-surface-accent-strong`、ボーダー `--adlaire-surface-border` 1px、角丸 `--adlaire-radius-sm`（4px）
 
-### 引用（blockquote）
+<a id="引用blockquote"></a>
+
+**引用（blockquote）：**
 
 - 左ボーダー `3px solid --adlaire-color-primary`、背景 `--adlaire-surface-soft`、角丸 `0 --adlaire-radius-lg --adlaire-radius-lg 0`、斜体テキスト
 
-### 定義リスト
+<a id="定義リスト"></a>
+
+**定義リスト：**
 
 - `dt`：`font-weight: semibold`、`--adlaire-surface-text`
 - `dd`：`margin-left: --adlaire-space-6`、`--adlaire-surface-text-muted`
