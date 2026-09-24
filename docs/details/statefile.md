@@ -496,7 +496,7 @@ repo config caller は指定されたキーのみ更新する。未指定キー�
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
-| `widgets` | string[] | 必須 | [`docs/details/ui.md`](ui.md) 詳細本文責務 §16D の widget id、1〜9 件 | 表示 widget 順序。重複禁止。 |
+| `widgets` | string[] | 必須 | [`docs/details/api.md` 詳細本文責務 ダッシュボードウィジェットカスタマイズ（16D）](api.md#sec-16d) の widget id、1〜9 件 | 表示 widget 順序。重複禁止。 |
 
 **`.smtp_config` schema：**
 

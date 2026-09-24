@@ -935,7 +935,7 @@ UI owner fixture が不足する場合、UI 実装変更は詳細実装確認を
 <a id="sec-27-f-19"></a>
 **fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約：**
 
-§26 の setup、admin UI 配布、API service 導入、update、rollback を含む実装変更は、対象機能の owner fixture に加えて [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の固定表の連動 fixture を必要数作成する。fixture は [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) と [`docs/details/admin.md`](admin.md) 詳細本文責務 A1〜A6 の合格条件を同じ expected で検証する。
+§26 の setup、admin UI 配布、API service 導入、update、rollback を含む実装変更は、対象機能の owner fixture に加えて [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の固定表の連動 fixture を必要数作成する。fixture は [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) と [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界)〜[§A6](admin.md#a6-admin-fixture-参照契約) の合格条件を同じ expected で検証する。
 
 | setup/admin/release fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
 |---------------------------------|----------------|------------|---------------|----------|

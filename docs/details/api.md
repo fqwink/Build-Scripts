@@ -857,7 +857,7 @@ API の Phase 3 / Phase 4 必須検証、fixture 名、入力状態、期待 res
 ```
 
 `last_build_status` の有効値：`"success"` | `"failure"` | `"success_deploy_pending"` | `"skipped_no_change"` | `"skipped_cooldown"` | `"circuit_open"` | `"config_recovered"` | `"config_error"` | `"lock_skipped"` | `"none"`（初回未実行時）
-`last_trigger` の有効値：§13 の `trigger` 有効値または `null`
+`last_trigger` の有効値：[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の `trigger` 有効値または `null`
 `running` の有効値：`true`（ビルド実行中）| `false`（待機中）
 `running` の判定：`.build_state.running == true` または有効な `.build_lock` が存在する場合に `true` を返す。`.build_state.running == false` かつ `.build_lock` が存在しない場合は `false` を返す。形式不正または PID 判定不能な `.build_lock` が存在する場合は、状態競合として `running: true` を返し、API 側でロックを上書きしない。
 
@@ -1230,8 +1230,8 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 `size_diff_bytes`：前回ビルド時との差分（正＝増加、負＝減少、`null`＝比較不能）。
 前回サイズは `.build_history` の直近エントリに記録された `output_size_bytes` フィールドから取得する。
 
-`tables_count` / `code_blocks_count`：直近ビルドの変換レポート（§8）より取得。ビルド前は `null`。
-`build_warnings`：直近ビルドで発生した警告メッセージの配列（§8 参照）。ビルド前は空配列 `[]`。
+`tables_count` / `code_blocks_count`：直近ビルドの変換レポート（[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)）より取得。ビルド前は `null`。
+`build_warnings`：直近ビルドで発生した警告メッセージの配列（[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) 参照）。ビルド前は空配列 `[]`。
 `build_id` / `commit_sha` / `build_at`：直近ビルドログの `build_meta` を優先し、不在の場合は出力 HTML の meta tag を読み取る。どちらにも存在しない場合は空文字を返す。
 値は `runner` が `.build_logs/{id}.json` または `.build_logs/archive/{id}.json.gz` から最新エントリを読み取って返す。
 
@@ -1358,7 +1358,7 @@ data: {"type": "end",  "status": "success", "duration_seconds": 42}
 ```
 
 `started_at` は `pipeline.sh` 実行開始時刻、`finished_at` は完了（または失敗）時刻。`duration_seconds` は整数（小数点以下切り捨て）。
-`commit_sha` / `commit_message` / `commit_author` / `commit_at` はコミット情報取得 API（§13）の結果を記録する。API 失敗時は `null`。
+`commit_sha` / `commit_message` / `commit_author` / `commit_at` はコミット情報取得 API（[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー)）の結果を記録する。API 失敗時は `null`。
 `size_warn` は出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` 超過時 `true`、それ以外 `false`。`OUTPUT_SIZE_WARN_MB = 0` の場合は常に `false`。
 
 **`GET /api/diagnostics` レスポンス例：**
@@ -1499,11 +1499,13 @@ snapshot の保存、世代削除、download、delete、rollback 実体処理は
 
 ---
 
+<a id="sec-22-w"></a>
+
 **Webhook 受信仕様（22-W）：**
 
 `POST /api/webhook` は GitHub からの push event を受信し、HMAC-SHA256 署名検証後に build queue へ投入する。認証ヘッダー（`Authorization: Bearer`）は不要とし、Webhook 署名検証を認証代替として扱う。
 
-[`docs/details/api.md`](api.md) 詳細本文責務 Webhook 受信仕様（22-W）は Webhook 受信 endpoint の概要と必須 header だけを定義する。署名検証、status code、response、event log、queue 投入、重複判定、異常系、検証条件は [`docs/details/api.md` 詳細本文責務 §27.12](api.md#sec-27-12) を参照する。Webhook 受信仕様（22-W）へ `POST /api/webhook` の response 例、event log schema、queue entry schema を重複定義してはならない。
+[`docs/details/api.md` 詳細本文責務 Webhook 受信仕様（22-W）](api.md#sec-22-w) は Webhook 受信 endpoint の概要と必須 header だけを定義する。署名検証、status code、response、event log、queue 投入、重複判定、異常系、検証条件は [`docs/details/api.md` 詳細本文責務 §27.12](api.md#sec-27-12) を参照する。Webhook 受信仕様（22-W）へ `POST /api/webhook` の response 例、event log schema、queue entry schema を重複定義してはならない。
 
 **`POST /api/webhook` リクエストヘッダー：**
 ```
@@ -1513,7 +1515,7 @@ X-Hub-Signature-256: sha256=<hmac_hex>
 Content-Type: application/json
 ```
 
-Secret は `.webhook_secret` を基準とする。secret 不在、header 不在、prefix 不正、hex 不正、署名不一致はいずれも [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.12 の固定契約どおり `401` とし、event log と queue を変更しない。
+Secret は `.webhook_secret` を基準とする。secret 不在、header 不在、prefix 不正、hex 不正、署名不一致はいずれも [`docs/details/api.md` 詳細本文責務 §27.12](api.md#sec-27-12) の固定契約どおり `401` とし、event log と queue を変更しない。
 
 **Webhook Secret 設定 API：**
 
@@ -1971,6 +1973,8 @@ queue entry schema と trigger 別 payload schema は [`docs/details/statefile.m
 
 ---
 
+<a id="sec-16d"></a>
+
 **ダッシュボードウィジェットカスタマイズ（16D）：**
 
 ダッシュボードに表示するウィジェットの種類・順序を設定できる機能。`.dashboard_layout` に保存する。
@@ -2026,7 +2030,7 @@ queue entry schema と trigger 別 payload schema は [`docs/details/statefile.m
 
 設定は `.repo_config` に保存し、`GET /api/repo-info` もこのファイルを参照する。
 
-`trigger` の有効値：§13 の固定値（`"polling"`、`"force_interval"`、`"manual"`、`"webhook"`、`"retry_pending_transfer"`、`"startup_config_integrity"`、`"rollback"`、`"local_watch"`、`"approval"`）
+`trigger` の有効値：[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の固定値（`"polling"`、`"force_interval"`、`"manual"`、`"webhook"`、`"retry_pending_transfer"`、`"startup_config_integrity"`、`"rollback"`、`"local_watch"`、`"approval"`）
 
 **エラーレスポンス形式：**
 
@@ -2308,7 +2312,7 @@ queue entry は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefi
 
 | key | 型 | 必須 | 仕様 |
 |-----|----|------|------|
-| `id` | string | 必須 | [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.12 の event id。 |
+| `id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 §27.12](api.md#sec-27-12) の event id。 |
 | `timestamp` | string | 必須 | UTC ISO 8601 秒精度。 |
 | `delivery_id` | string | 必須 | `X-GitHub-Delivery`。空、NUL、改行は禁止。 |
 | `event` | string | 必須 | `push` または受信した GitHub event 名。 |

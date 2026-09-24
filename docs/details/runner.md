@@ -1343,7 +1343,7 @@ runner が journal へ出力する内容は [`docs/details/runner.md` 詳細本�
 | PAT スコープ | `contents: read`（読み取り専用）のみ |
 | PAT の種類 | Fine-grained PAT（特定リポジトリのみ許可）を使用する。 |
 | Webhook 設定（ポーリング方式） | **不要**（デフォルト。`BRANCH_TARGETS` によるポーリングのみ使用する場合） |
-| Webhook 受信方式の前提 | `POST /api/webhook` endpoint と Webhook Secret が必要。endpoint、署名検証、request / response は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) と [`docs/details/api.md`](api.md) 詳細本文責務 §22-W を参照する。 |
+| Webhook 受信方式の前提 | `POST /api/webhook` endpoint と Webhook Secret が必要。endpoint、署名検証、request / response は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) と [`docs/details/api.md` 詳細本文責務 Webhook 受信仕様（22-W）](api.md#sec-22-w) を参照する。 |
 | 外部公開境界 | GitHub から webhook を受信する場合の外部公開、TLS 終端、リバースプロキシ構成は runner 詳細本文責務では定義しない。 |
 
 ---
