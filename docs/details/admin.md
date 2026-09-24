@@ -114,14 +114,14 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 `admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。`admin` 詳細では UI DOM、SDK method、API endpoint、fixture 入力、expected、fake、実装検証証跡を再定義せず、admin 配布境界だけを確認する。
 
-Admin fixture の fixture 名、入力、操作、expected file、禁止副作用は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約を正本とする。
+Admin fixture の fixture 名、入力、操作、expected file、禁止副作用は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) setup / admin / release 連動 fixture 固定契約を正本とする。
 
 **Admin 実装確認ゲート：**
 
 | 観点 | 合格条件 |
 |------|----------|
-| archive validation | [`docs/details/admin.md` 詳細本文責務 §A2](admin.md#a2-管理-ui-archive-検証) と [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の admin archive fixture が成功し、失敗時に既存 admin directory 差分がない。 |
-| static serving | [`docs/details/admin.md` 詳細本文責務 §A3](admin.md#a3-静的配信契約) と [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の admin request fixture が status、header、body 有無、method 制限に一致する。 |
+| archive validation | [`docs/details/admin.md` 詳細本文責務 §A2](admin.md#a2-管理-ui-archive-検証) と [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の admin archive fixture が成功し、失敗時に既存 admin directory 差分がない。 |
+| static serving | [`docs/details/admin.md` 詳細本文責務 §A3](admin.md#a3-静的配信契約) と [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の admin request fixture が status、header、body 有無、method 制限に一致する。 |
 | secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
 | no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
 | setup integration | [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |

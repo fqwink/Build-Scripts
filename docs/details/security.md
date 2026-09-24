@@ -35,21 +35,21 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 **横断固定契約：**
 
 <a id="sec-27-42"></a>
-**`docs/details/security.md` 詳細本文責務 §27.42〜§27.47 認証・監査・制限機能 実装確認固定契約：**
+**[`docs/details/security.md` 詳細本文責務 §27.42〜§27.47 認証・監査・制限機能 実装確認固定契約](security.md#sec-27-42)：**
 
 [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) は、API token、監査、session、TOTP、rate limit に関する安全機能である。各機能の詳細実装確認では、個別節に加えて [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) 認証・監査・制限機能 実装確認固定表を満たす。
 
 | 節 | 機能 | 判定入口 | 成功時副作用 | 失敗時副作用 | 漏えい禁止値 | fixture 証跡入口 |
 |----|------|----------|--------------|--------------|--------------|----------------|
-| [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) | API token scope | route / method 確定後、body parse 前。 | 許可 endpoint だけ処理し、[`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) の監査対象 event に該当する場合は audit に actor を残す。 | 権限不足は対象処理を実行せず `403`。audit 失敗時は `500`。 | token 本体、Authorization header。 | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F security 詳細本文責務 §27.42〜§27.47 fixture 固定契約。 |
-| [`docs/details/security.md` 詳細本文責務 §27.43](security.md#sec-27-43) | API key 管理 | admin session または admin scope。 | token hash だけ保存し、作成時だけ token 本体を返す。 | validation 失敗は保存差分なし。失効済み token は再有効化しない。 | token 本体、token hash の不要露出。 | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F security 詳細本文責務 §27.42〜§27.47 fixture 固定契約。 |
-| [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) | 監査ログ | security / config / operation event 確定時。 | 1 event 1 JSON Lines で追記し、actor / target / result を保存する。 | 必須 audit 失敗は対象処理を `500` にする。任意 audit は個別節優先。 | secret、password、token、TOTP secret、raw request body。 | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F security 詳細本文責務 §27.42〜§27.47 fixture 固定契約。 |
-| [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45) | session timeout | login、authenticated request、timeout config API。 | session の last_seen / expires_at を固定規則で更新する。 | timeout session は `401`、対象 endpoint は実行しない。 | session token。 | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F security 詳細本文責務 §27.42〜§27.47 fixture 固定契約。 |
-| [`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) | TOTP | setup、confirm、login/totp、disable。 | secret は confirm 成功後だけ有効保存し、ticket は一回だけ使う。 | ticket 再利用、期限切れ、code 不正は対象状態を変更しない。 | TOTP secret、backup code 相当値、ticket token。 | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F security 詳細本文責務 §27.42〜§27.47 fixture 固定契約。 |
-| [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) | API rate limit | route / auth / scope 判定の定義済み位置。 | 上限未満だけ count を増やし endpoint 処理へ進む。 | `429` は count を増やさず、audit 成功時だけ返す。 | API token、session token、request body。 | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F security 詳細本文責務 §27.42〜§27.47 fixture 固定契約。 |
+| [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) | API token scope | route / method 確定後、body parse 前。 | 許可 endpoint だけ処理し、[`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) の監査対象 event に該当する場合は audit に actor を残す。 | 権限不足は対象処理を実行せず `403`。audit 失敗時は `500`。 | token 本体、Authorization header。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42) fixture 固定契約。 |
+| [`docs/details/security.md` 詳細本文責務 §27.43](security.md#sec-27-43) | API key 管理 | admin session または admin scope。 | token hash だけ保存し、作成時だけ token 本体を返す。 | validation 失敗は保存差分なし。失効済み token は再有効化しない。 | token 本体、token hash の不要露出。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42) fixture 固定契約。 |
+| [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) | 監査ログ | security / config / operation event 確定時。 | 1 event 1 JSON Lines で追記し、actor / target / result を保存する。 | 必須 audit 失敗は対象処理を `500` にする。任意 audit は個別節優先。 | secret、password、token、TOTP secret、raw request body。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42) fixture 固定契約。 |
+| [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45) | session timeout | login、authenticated request、timeout config API。 | session の last_seen / expires_at を固定規則で更新する。 | timeout session は `401`、対象 endpoint は実行しない。 | session token。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42) fixture 固定契約。 |
+| [`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) | TOTP | setup、confirm、login/totp、disable。 | secret は confirm 成功後だけ有効保存し、ticket は一回だけ使う。 | ticket 再利用、期限切れ、code 不正は対象状態を変更しない。 | TOTP secret、backup code 相当値、ticket token。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42) fixture 固定契約。 |
+| [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) | API rate limit | route / auth / scope 判定の定義済み位置。 | 上限未満だけ count を増やし endpoint 処理へ進む。 | `429` は count を増やさず、audit 成功時だけ返す。 | API token、session token、request body。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42) fixture 固定契約。 |
 
 <a id="sec-27-42-2"></a>
-**`docs/details/security.md` 詳細本文責務 §27.42〜§27.47 セキュリティ機能 横断順序固定契約：**
+**[`docs/details/security.md` 詳細本文責務 §27.42〜§27.47 セキュリティ機能 横断順序固定契約](security.md#sec-27-42-2)：**
 
 | 順序 | 処理 | 固定条件 |
 |------|------|----------|
@@ -186,7 +186,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 | TOTP setup secret | `POST /api/auth/totp-setup` | memory の仮 secret。confirm 成功後だけ `.totp_secret`。 | setup response 以外へ出さない。audit / access / server log / status response へ出さない。 |
 | otpauth URI | `POST /api/auth/totp-setup` | 永続保存しない。 | UI 一回表示以外へ出さない。fixture expected では secret 部分を `***` として扱う。 |
 
-認証共通 fixture 名、入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F security 詳細本文責務 §27.42〜§27.47 fixture 固定契約を正本とする。[`docs/details/security.md`](security.md) 詳細本文責務では、one-time response、memory-only state、hash-only storage、audit dependency、secret scan の実装契約だけを扱う。
+認証共通 fixture 名、入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42) fixture 固定契約を正本とする。[`docs/details/security.md`](security.md) 詳細本文責務では、one-time response、memory-only state、hash-only storage、audit dependency、secret scan の実装契約だけを扱う。
 
 ---
 

@@ -22,7 +22,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 | 範囲 | 内容 |
 |------|------|
-| §27.1 | GitHub Commit Status API。 |
+| [`docs/details/commitstatus.md` 詳細本文責務 §27.1](commitstatus.md#sec-27-1) | GitHub Commit Status API。 |
 
 ---
 
@@ -135,7 +135,7 @@ GitHub response body 全体、Authorization header、GitHub token、credential �
 
 **Commit Status fixture 参照：**
 
-Commit Status fixture の fake GitHub Status API、expected/effects、expected logs、expected security、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/commitstatus.md`](commitstatus.md) 詳細本文責務では、GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証観点だけを扱う。
+Commit Status fixture の fake GitHub Status API、expected/effects、expected logs、expected security、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。[`docs/details/commitstatus.md`](commitstatus.md) 詳細本文責務では、GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証観点だけを扱う。
 
 検証観点:
 

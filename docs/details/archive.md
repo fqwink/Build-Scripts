@@ -24,8 +24,8 @@ archive owner は、保存済み build log と snapshot artifact の圧縮、展
 
 | 範囲 | 内容 |
 |------|------|
-| §27.7 | ビルドログのアーカイブ圧縮。 |
-| §27.15 | ビルドアーティファクト管理。 |
+| [§27.7](archive.md#sec-27-7) | ビルドログのアーカイブ圧縮。 |
+| [§27.15](archive.md#sec-27-15) | ビルドアーティファクト管理。 |
 
 ---
 
@@ -34,7 +34,7 @@ archive owner は、保存済み build log と snapshot artifact の圧縮、展
 
 owner component は `archive` とする。collaborator component は `runner`、`api`、`statefile` とする。
 
-§27.7 で archive / cleanup API の HTTP endpoint、query、response body、HTTP response body への変換を述べる場合は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を共通参照先とする。§27.7 では archive log の探索、展開、圧縮、削除、処理結果だけを定義する。
+[§27.7](archive.md#sec-27-7) で archive / cleanup API の HTTP endpoint、query、response body、HTTP response body への変換を述べる場合は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を共通参照先とする。[§27.7](archive.md#sec-27-7) では archive log の探索、展開、圧縮、削除、処理結果だけを定義する。
 
 archive owner は、runner または `POST /api/logs/archive` から呼び出された場合に、`.server_config.log_archive_after_days > 0` で対象日数より古い `.build_logs/{id}.json` を gzip 圧縮し、`.build_logs/archive/{id}.json.gz` へ保存する。圧縮成功後、元の `.build_logs/{id}.json` を削除する。`.build_logs/archive/` 内のファイルを再圧縮してはならない。
 
@@ -69,7 +69,7 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 
 **archive fixture 参照：**
 
-archive / snapshot fixture の fixture 名、expected file、effects、fake filesystem、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、archive owner の保存、読取、download、delete、rollback 実体処理と状態差分だけを扱う。
+archive / snapshot fixture の fixture 名、expected file、effects、fake filesystem、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、archive owner の保存、読取、download、delete、rollback 実体処理と状態差分だけを扱う。
 
 検証観点:
 
@@ -93,9 +93,9 @@ owner component は `archive` とする。collaborator component は `api`、`sd
 archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api / sdk / ui の境界は [§27.15 API / SDK / UI 共通参照先](#2715-api--sdk--ui-共通参照先)、runner の通常 build 実行、snapshot 作成タイミング、build history / status finalizer は [`docs/details/runner.md`](runner.md) 詳細本文責務を参照する。
 
 <a id="2715-api--sdk--ui-共通参照先"></a>
-**§27.15 API / SDK / UI 共通参照先：**
+**[§27.15 API / SDK / UI 共通参照先](archive.md#2715-api--sdk--ui-共通参照先)：**
 
-§27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、SDK method と error 変換は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様)、UI 表示と直接操作禁止は [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。
+[§27.15](archive.md#sec-27-15) で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、SDK method と error 変換は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様)、UI 表示と直接操作禁止は [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。
 
 **API 呼び出し境界参照：**
 
@@ -238,7 +238,7 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 
 **archive / snapshot fixture 証跡参照：**
 
-archive / snapshot の fixture 名、合格条件、expected / effects、stream failure、secret absence、状態差分、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、`meta.json` schema、一覧 sort、download header、tar entry 順序、delete 順、rollback 状態更新順、元 snapshot 維持、`.last_sha` 非変更など archive owner の実体処理観点だけを扱う。
+archive / snapshot の fixture 名、合格条件、expected / effects、stream failure、secret absence、状態差分、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、`meta.json` schema、一覧 sort、download header、tar entry 順序、delete 順、rollback 状態更新順、元 snapshot 維持、`.last_sha` 非変更など archive owner の実体処理観点だけを扱う。
 
 **検証条件：**
 

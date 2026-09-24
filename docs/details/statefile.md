@@ -22,8 +22,8 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 | 範囲 | 内容 |
 |------|------|
-| §22.0a | 状態ファイル共通仕様、更新手順、schema 厳格化、状態読取 adapter。 |
-| §22.0c | 主要状態ファイル schema。 |
+| [§22.0a](statefile.md#sec-22-0a) | 状態ファイル共通仕様、更新手順、schema 厳格化、状態読取 adapter。 |
+| [§22.0c](statefile.md#sec-22-0c) | 主要状態ファイル schema。 |
 
 <a id="sec-22-0a"></a>
 **22.0a 状態ファイル共通仕様：**
@@ -818,7 +818,7 @@ BuildMeta object:
 `.build_status.json` の更新タイミング、各 `status` の選択条件、書き込み失敗時の runner 終了コードは [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の build status 更新契約を参照する。
 
 <a id="sec-22-0s"></a>
-**§22.0s 状態ファイル実装確認固定契約：**
+**[§22.0s 状態ファイル実装確認固定契約](statefile.md#sec-22-0s)：**
 
 `statefile` owner component は、[`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a)〜[§22.0c](statefile.md#sec-22-0c) の schema、adapter、更新手順、破損時処理を実装単位として扱う。状態ファイルごとの暗黙処理は追加せず、[`docs/details/statefile.md` 詳細本文責務 §22.0s](statefile.md#sec-22-0s) の固定表の共通契約を満たす。
 
@@ -857,4 +857,4 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | corrupt handling | [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) に再生成指定がある file だけ backup → 初期値再生成を許可する。 | 破損判定結果と対象 path。 | backup 失敗時は再生成しない。再生成指定がない file は変更しない。 |
 | secret path | secret を含む file は `0600`、通常 state は `0644`、directory は `0755` に固定する。 | secret file 判定。 | chmod 失敗を成功扱いにせず、secret 内容を log / 呼び出し元の公開値 / fixture expected に出さない。 |
 
-状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。
+状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。

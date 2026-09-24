@@ -249,7 +249,7 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務
 
 **SDK 検証 fixture 参照：**
 
-SDK の fixture 名、fake fetch 入力、expected、error shape、stream frame、binary response、実装検証証跡は [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、引数変換、token mutation、response passthrough、error 変換、stream handle の実装契約だけを扱う。
+SDK の fixture 名、fake fetch 入力、expected、error shape、stream frame、binary response、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-phase-3--phase-4-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、引数変換、token mutation、response passthrough、error 変換、stream handle の実装契約だけを扱う。
 
 <a id="sec-3"></a>
 **Phase 3 SDK 操作固定契約：**
@@ -274,7 +274,7 @@ Phase 3 実装では、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23
 <a id="sec-3-2"></a>
 **Phase 3 SDK fixture 参照：**
 
-Phase 3 SDK の fake fetch 入力、expected request、expected return、`AdlaireCIError`、stream frame、unauthorized token clear は [`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F を正本とする。
+Phase 3 SDK の fake fetch 入力、expected request、expected return、`AdlaireCIError`、stream frame、unauthorized token clear は [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) を正本とする。
 
 <a id="sec-4"></a>
 **Phase 4 SDK 操作固定契約：**
@@ -295,7 +295,7 @@ Phase 4 SDK は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-
 <a id="sec-4-2"></a>
 **Phase 4 SDK fixture 参照：**
 
-Phase 4 SDK の fake fetch 入力、expected request、expected return、secret mask、webhook paging、snapshot binary response は [`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F および [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。
+Phase 4 SDK の fake fetch 入力、expected request、expected return、secret mask、webhook paging、snapshot binary response は [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) および [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。
 | sdk phase4 rollback conflict | `rollbackHistory(id)` が `409 {"error":"Build is running"}` | `AdlaireCIError.status=409`、自動 `getStatus()` 呼び出しなし。 |
 | sdk phase4 token issue | `createToken()` が `{token:"..."}` を返す | token を response として返すだけで、SDK 内部保存、console 出力、token list 合成をしない。 |
 | sdk phase4 duplicate rule | `addAlertRule()` または `addTagRule()` が `409 Conflict` | `AdlaireCIError.status=409`、自動 retry なし。 |
@@ -357,9 +357,9 @@ SDK 詳細実装確認では、[`docs/details/api.md` 詳細本文責務 §22.0e
 
 <a id="sec-27-21"></a>
 <a id="sec-27-47"></a>
-**§27.21〜§27.47 SDK 連動実装確認固定契約：**
+**[§27.21〜§27.47 SDK 連動実装確認固定契約](sdk.md#sec-27-47)：**
 
-[`docs/details/sdk.md` 詳細本文責務 §27.21](sdk.md#sec-27-21)〜[§27.47](sdk.md#sec-27-47) の追加仕様化機能で SDK の詳細実装確認を満たすには、対象 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/api.md` 詳細本文責務 §27](api.md#27-api-owner-追加仕様化機能-詳細仕様) の連動参照表、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
+[`docs/details/sdk.md` 詳細本文責務 §27.21](sdk.md#sec-27-21)〜[§27.47](sdk.md#sec-27-47) の追加仕様化機能で SDK の詳細実装確認を満たすには、対象 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/api.md` 詳細本文責務 §27](api.md#27-api-owner-追加仕様化機能-詳細仕様) の連動参照表、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
 
 | 対象 | SDK method | request 固定 | success 固定 | error 固定 | 禁止条件 |
 |------|------------|--------------|---------------|------------|----------|
@@ -374,7 +374,7 @@ SDK 詳細実装確認では、[`docs/details/api.md` 詳細本文責務 §22.0e
 | [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) security | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getSessions()`, `revokeAllSessions()`, `getTotpStatus()`, `setupTotp()`, `confirmTotp(code)`, `disableTotp(code)`, `getApiRateLimit()`, `setApiRateLimit(policy)` | token / TOTP / rate limit request は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) 引数変換契約どおり送る。 | token 本体、TOTP secret、otpauth URI は response として返すだけで SDK 内部に保存しない。 | `401` は token 破棄、`403` は token 維持、`429` は自動待機なし、`500` は message 保持。 | scope 推測、rate limit 待機、token list への token 合成、TOTP code 再送、audit 補完を行わない。 |
 
 <a id="sec-27-21-2"></a>
-**§27.21〜§27.47 SDK 合格ゲート：**
+**[§27.21〜§27.47 SDK 合格ゲート](sdk.md#sec-27-21-2)：**
 
 | ゲート | 合格条件 |
 |--------|----------|
@@ -384,12 +384,12 @@ SDK 詳細実装確認では、[`docs/details/api.md` 詳細本文責務 §22.0e
 | security handling | token、password、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header を SDK property、console、error message に保存しない。 |
 | error stability | `401` / `403` / `409` / `422` / `429` / `500` / network / timeout が固定 `AdlaireCIError` になり、自動 retry、自動 refresh、自動 logout は仕様に記載された場合だけ行う。 |
 | binary / stream | snapshot download は `Blob`、SSE は `StreamHandle` とし、JSON response と混同しない。 |
-| fixture evidence | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の SDK / UI 関連 fixture で、request shape、error shape、secret leak、token mutation、no retry、no response補完が確認される。 |
+| fixture evidence | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の SDK / UI 関連 fixture で、request shape、error shape、secret leak、token mutation、no retry、no response補完が確認される。 |
 
 <a id="sec-27-21-3"></a>
-**§27.21〜§27.47 SDK 連動 fixture 証跡参照：**
+**[§27.21〜§27.47 SDK 連動 fixture 証跡参照](sdk.md#sec-27-21-3)：**
 
-SDK 連動 fixture 名、入力、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F API / SDK / UI 連動 fixture 固定契約を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、request 生成、response passthrough、error object、token mutation、secret leak、side-effect 境界の実装契約だけを扱う。
+SDK 連動 fixture 名、入力、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) API / SDK / UI 連動 fixture 固定契約を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、request 生成、response passthrough、error object、token mutation、secret leak、side-effect 境界の実装契約だけを扱う。
 
 **SDK 型定義表：**
 

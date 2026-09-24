@@ -24,7 +24,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) は、Go 版 Adlaire CI のセットアップ手順を定義する。
 
 <a id="sec-26-1"></a>
-**§26.1 要件：**
+**[§26.1 要件](setup.md#sec-26-1)：**
 
 | 項目 | 要件 |
 |------|------|
@@ -37,7 +37,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | ネットワーク | GitHub API への HTTPS 送信。SSH 転送機能を実装した場合のみデプロイ先への SSH 接続。 |
 
 <a id="sec-26-2"></a>
-**§26.2 設定変数：**
+**[§26.2 設定変数](setup.md#sec-26-2)：**
 
 スクリプト内で以下の変数をカスタマイズする。
 
@@ -51,7 +51,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | `DOWNLOAD_DIR` | `/tmp/adlaire-ci-release-$VERSION` | Release 添付ファイルの一時取得先 |
 
 <a id="sec-26-2a"></a>
-**§26.2a リリース成果物：**
+**[§26.2a リリース成果物](setup.md#sec-26-2a)：**
 
 セットアップ手順は、以下の Release 添付ファイルを取得対象とする。
 
@@ -66,7 +66,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 Release asset 名は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) の固定表の文字列と完全一致させる。`$OS_ARCH` は `linux-amd64` だけを初期標準とし、未知 OS/arch を指定した場合は取得前に `unsupported OS_ARCH: {OS_ARCH}` を stderr へ出力して終了コード `2` とする。`SHA256SUMS` は `"{sha256}  {filename}"` 形式の LF 区切り text とし、対象 filename が 1 回だけ出現することを必須とする。対象行が 0 件または 2 件以上の場合は checksum 検証失敗とする。
 
 <a id="sec-26-2b"></a>
-**§26.2b セットアップ・アップデート機能単位：**
+**[§26.2b セットアップ・アップデート機能単位](setup.md#sec-26-2b)：**
 
 セットアップ・アップデート実装は、以下の機能単位に分離する。各機能は前段の出力だけを入力として受け取り、失敗時は後続機能を実行しない。
 
@@ -110,7 +110,7 @@ Release asset 名は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.
 
 **setup 共通確認契約：**
 
-[`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3)、[`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b)、[`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の shell snippet は、[`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) の機能単位と共通停止条件に従う具体例である。Release asset 名と checksum 形式は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)、API health の endpoint、HTTP status、JSON object、必須 key は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、実装検証証跡形式は [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を共通参照先とする。
+[`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3)、[`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b)、[`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の shell snippet は、[`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) の機能単位と共通停止条件に従う具体例である。Release asset 名と checksum 形式は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)、API health の endpoint、HTTP status、JSON object、必須 key は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、実装検証証跡形式は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) を共通参照先とする。
 
 local API 確認で `curl` が利用できない場合は、Go 標準ライブラリ `net/http` client または同等のローカル HTTP 確認を行う。setup 詳細本文では、local API へ到達して応答を取得することだけを確認し、API response の具体 schema は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を正本とする。
 
@@ -161,7 +161,7 @@ setup / update 実装は、各段階の開始と成功を stderr または stdou
 `systemctl daemon-reload` 成功だけではセットアップ成功と扱わない。`enable --now`、`restart`、`is-active`、API 導入時の `/api/health` 確認まで完了して初めて成功とする。確認コマンドが利用環境に存在しない場合は、Go `net/http` client または systemd D-Bus / `systemctl show` で同じ確認項目を検証し、実装検証証跡に代替コマンド、期待値、実測値を記録する。未確認のまま成功扱いにしない。
 
 <a id="sec-26-3"></a>
-**§26.3 Go 版初回セットアップ手順：**
+**[§26.3 Go 版初回セットアップ手順](setup.md#sec-26-3)：**
 
 対象は Go 版の `components/builder.go` と `components/runner.go` から生成した `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci.service`、`adlaire-ci.timer` とする。
 
@@ -245,7 +245,7 @@ Go 版初回セットアップでは以下を実行しない。
 | `.snapshots/` 作成 | snapshot 参照・rollback API と組み合わせて使うため、[`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b) の管理 API 導入時に作成する。 |
 
 <a id="sec-26-3b"></a>
-**§26.3b 管理 API 導入後の追加セットアップ手順：**
+**[§26.3b 管理 API 導入後の追加セットアップ手順](setup.md#sec-26-3b)：**
 
 `api`、`ui`、`sdk` を実装した後にのみ本手順を実行する。
 
@@ -316,10 +316,10 @@ systemctl status adlaire-ci-api
 ```
 
 <a id="sec-26-4"></a>
-**§26.4 systemd サービスファイル：**
+**[§26.4 systemd サービスファイル](setup.md#sec-26-4)：**
 
 <a id="sec-26-4-1"></a>
-**§26.4.1 Go 版 runner の systemd ファイル：**
+**[§26.4.1 Go 版 runner の systemd ファイル](setup.md#sec-26-4-1)：**
 
 **`/etc/systemd/system/adlaire-ci.service`**（`components/runner.go`）：
 
@@ -350,7 +350,7 @@ WantedBy=timers.target
 ```
 
 <a id="sec-26-4-2"></a>
-**§26.4.2 管理 API 導入後の systemd ファイル：**
+**[§26.4.2 管理 API 導入後の systemd ファイル](setup.md#sec-26-4-2)：**
 
 **`/etc/systemd/system/adlaire-ci-api.service`**（`components/api.go`）：
 
@@ -376,7 +376,7 @@ WantedBy=multi-user.target
 systemd unit は [`docs/details/setup.md` 詳細本文責務 §26.4](setup.md#sec-26-4) で定義した systemd unit key 以外を初期標準で追加しない。`Environment=`、`EnvironmentFile=`、`ExecStartPre=`、`ExecStartPost=` を追加する場合は、先に [`docs/details/setup.md` 詳細本文責務 §26.4](setup.md#sec-26-4) へ対象変数、secret 扱い、失敗時挙動を定義する。API service は `127.0.0.1:8765` bind を標準とし、外部公開 bind は [`docs/details/setup.md`](setup.md) 詳細本文責務で未定義のため設定しない。
 
 <a id="sec-26-5"></a>
-**§26.5 アップデート手順：**
+**[§26.5 アップデート手順](setup.md#sec-26-5)：**
 
 `git pull`、利用環境での `go build`、開発ブランチ checkout は使用しない。タグ付き安定版のリリースバイナリを配置し、サービスを再起動する。管理 API を導入していない構成では、管理 API サービスは再起動対象に含めない。
 
@@ -496,7 +496,7 @@ systemctl status adlaire-ci-api
 ```
 
 <a id="sec-26-6"></a>
-**§26.6 サービス操作リファレンス：**
+**[§26.6 サービス操作リファレンス](setup.md#sec-26-6)：**
 
 **Go 版 runner：**
 
@@ -519,12 +519,12 @@ systemctl status adlaire-ci-api
 | ログ確認（API） | `journalctl -u adlaire-ci-api -f` |
 
 <a id="sec-26-7"></a>
-**§26.7 実装受け入れ条件：**
+**[§26.7 実装受け入れ条件](setup.md#sec-26-7)：**
 
 setup / release / update の詳細実装確認では、[`docs/details/setup.md` 詳細本文責務 §26.7](setup.md#sec-26-7) 実装受け入れ条件 の固定表の受け入れ条件をすべて満たす。実装対象外のコンポーネントは「未実装」として明記し、確認済み扱いにしない。
 
 <a id="sec-26-7-2"></a>
-**§26.7 関連 component 共通参照先：**
+**[§26.7 関連 component 共通参照先](setup.md#sec-26-7-2)：**
 
 [`docs/details/setup.md` 詳細本文責務 §26.7](setup.md#sec-26-7) で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) / [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、SDK 契約は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様)、UI 契約は [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様)、security 契約は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。
 
@@ -543,11 +543,11 @@ setup / release / update の詳細実装確認では、[`docs/details/setup.md` 
 
 **setup / release / update fixture 参照：**
 
-setup / release / update、認証初期化、運用 API 連動の fixture 名、入力、fake、expected、effects、実装検証証跡は [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/setup.md`](setup.md) 詳細本文責務では、配置、保持、権限、起動、restart、rollback、secret 非保存、local 到達の実装受け入れ条件だけを扱う。
+setup / release / update、認証初期化、運用 API 連動の fixture 名、入力、fake、expected、effects、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-phase-3--phase-4-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。[`docs/details/setup.md`](setup.md) 詳細本文責務では、配置、保持、権限、起動、restart、rollback、secret 非保存、local 到達の実装受け入れ条件だけを扱う。
 
 **関連責務参照：**
 
-API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主本文を参照する。§26.8 は setup / release / update の実行条件だけを扱う。
+API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主本文を参照する。[§26.8](setup.md#sec-26-8) は setup / release / update の実行条件だけを扱う。
 
 | 対象 | 主本文 | setup 側の確認範囲 |
 |------|--------|--------------------|
@@ -556,7 +556,7 @@ API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主�
 | SDK method / transport / error | [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) | admin UI 配布時に SDK 静的ファイルを配置することだけを確認する。 |
 | UI DOM / 操作 / 表示状態 | [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) | admin UI 配布物と静的配信境界だけを確認する。 |
 | 認証 / session / token / TOTP / audit | [`docs/details/api.md` 詳細本文責務 §25](api.md#25-認証-実装仕様)、[`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細)、[`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) | secret / credential file の配置、保持、権限、漏えい防止だけを確認する。 |
-| fixture / fake / expected / 実装検証証跡 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F | setup / release / update に関わる証跡の記録先だけを確認する。 |
+| fixture / fake / expected / 実装検証証跡 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-phase-3--phase-4-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) | setup / release / update に関わる証跡の記録先だけを確認する。 |
 
 **setup / update 失敗時副作用固定契約：**
 
@@ -572,11 +572,11 @@ API、状態ファイル、SDK、UI、認証、fixture の本文は下表の主�
 |------|------|----------|
 | 実装前 | setup / update 対象 | 配置対象 binary、admin UI asset、systemd unit、state / secret 保持対象、rollback 対象が [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) に定義済み。 |
 | 実装前 | secret handling | setup / update が触る secret file の保存先、権限、保持条件、log 禁止が定義済み。 |
-| 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F / §27-F と一致する。 |
+| 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) / [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) と一致する。 |
 
 Phase 順序、実装変更単位、実装着手条件、判定責務は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#41-初期実装-phase-単位) と [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#0f-phase-実装単位ポリシー) を参照する。
 
-Phase 別の fixture、fake、expected / effects、実装検証証跡、不足時の扱いは [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を参照する。
+Phase 別の fixture、fake、expected / effects、実装検証証跡、不足時の扱いは [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) を参照する。
 
 **setup / release 未実行検証の代替条件：**
 
@@ -588,34 +588,34 @@ Phase 別の fixture、fake、expected / effects、実装検証証跡、不足�
 
 **fixture 期待値更新参照：**
 
-setup / release / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果、fake transcript、expected file の更新条件は [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を正本とする。HTTP status、API error body、`AdlaireCIError.code`、UI DOM、SDK return、状態 schema の具体契約は、それぞれ [`docs/details/api.md`](api.md) 詳細本文責務、[`docs/details/sdk.md`](sdk.md) 詳細本文責務、[`docs/details/ui.md`](ui.md) 詳細本文責務、[`docs/details/statefile.md`](statefile.md) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
+setup / release / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果、fake transcript、expected file の更新条件は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) を正本とする。HTTP status、API error body、`AdlaireCIError.code`、UI DOM、SDK return、状態 schema の具体契約は、それぞれ [`docs/details/api.md`](api.md) 詳細本文責務、[`docs/details/sdk.md`](sdk.md) 詳細本文責務、[`docs/details/ui.md`](ui.md) 詳細本文責務、[`docs/details/statefile.md`](statefile.md) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
-Phase 判定の実装検証証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を参照する。[`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義する。
+Phase 判定の実装検証証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) を参照する。[`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) は setup / release / update の実行条件、setup / release 未実行検証の代替条件、fixture 期待値更新条件だけを定義する。
 
-setup / release / update に関わる受け入れ結果は、[`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F の形式で実装検証証跡に記録する。失敗、未実行、環境都合で省略した項目がある場合、setup / release / update を確認済み扱いにしてはならない。
+setup / release / update に関わる受け入れ結果は、[`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) の形式で実装検証証跡に記録する。失敗、未実行、環境都合で省略した項目がある場合、setup / release / update を確認済み扱いにしてはならない。
 
 ---
 
 <a id="sec-26-8"></a>
-**§26.8 Setup / Admin 配布実装確認ゲート：**
+**[§26.8 Setup / Admin 配布実装確認ゲート](setup.md#sec-26-8)：**
 
 セットアップ、アップデート、管理 API 導入、admin UI 配布の詳細実装確認では、[`docs/details/setup.md` 詳細本文責務 §26.1](setup.md#sec-26-1)〜[§26.7](setup.md#sec-26-7-2) の本文に加えて [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) の Setup / Admin 配布実装確認ゲート固定表を満たす。[`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
 
 | 段階 | 必須入力 | 成功確定条件 | 失敗時固定結果 | fixture 正本 |
 |------|----------|--------------|----------------|--------------|
-| 変数検証 | `VERSION`、`OS_ARCH`、`INSTALL_DIR`、`BIN_DIR`、`DOWNLOAD_DIR` | 空値なし、危険 path なし、`OS_ARCH=linux-amd64`。 | 終了コード `2`。directory、download、配置なし。 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
-| Release 取得 | asset URL、`SHA256SUMS` | 対象 asset と `SHA256SUMS` が HTTP 2xx、size > 0。 | 終了コード `1`。未検証 asset を配置しない。 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
-| checksum | asset、`SHA256SUMS` | 対象 filename が 1 行だけ存在し、SHA-256 が一致する。 | 終了コード `1`。binary、admin、systemd、state 差分なし。 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
-| binary 配置 | 検証済み binary | symlink でない通常 file へ `0755` で配置し、`--version` が期待値を返す。 | systemd を変更しない。restart 前失敗なら旧 binary を保持する。 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
-| secret / state 初期化 | PAT、初期 state | secret `0600`、`.last_sha` `0600`、LF 付き JSON、fsync 完了。 | systemd を変更しない。secret 値を出力しない。 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
-| admin archive 展開 | `admin-ui.tar.gz` | [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界)〜[§A2](admin.md#a2-管理-ui-archive-検証) を満たし、一時 directory 検証後に差し替える。 | 既存 `$INSTALL_DIR/admin` を変更しない。API service を起動 / restart しない。 | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F |
-| systemd 配置 | unit file 内容 | unit 書込、mode、`daemon-reload`、enable/start/restart、`is-active` が成功する。 | enable/start/restart を成功扱いしない。journal 確認対象を出力する。 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
-| rollback | 旧 binary / 旧 admin backup | 定義済み対象だけ 1 回復元し、対象 service を 1 回 restart する。 | 追加推測復旧を行わず、現在配置済み path と journal 確認対象を出力する。 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
-| 最終確認 | 配置済み binary、state、service、admin UI | [`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3) / [`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b) / [`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の固定確認がすべて成功する。 | 成功報告しない。未確認項目を `未実行` として記録する。 | [`docs/details/fixture.md`](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
+| 変数検証 | `VERSION`、`OS_ARCH`、`INSTALL_DIR`、`BIN_DIR`、`DOWNLOAD_DIR` | 空値なし、危険 path なし、`OS_ARCH=linux-amd64`。 | 終了コード `2`。directory、download、配置なし。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) |
+| Release 取得 | asset URL、`SHA256SUMS` | 対象 asset と `SHA256SUMS` が HTTP 2xx、size > 0。 | 終了コード `1`。未検証 asset を配置しない。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) |
+| checksum | asset、`SHA256SUMS` | 対象 filename が 1 行だけ存在し、SHA-256 が一致する。 | 終了コード `1`。binary、admin、systemd、state 差分なし。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) |
+| binary 配置 | 検証済み binary | symlink でない通常 file へ `0755` で配置し、`--version` が期待値を返す。 | systemd を変更しない。restart 前失敗なら旧 binary を保持する。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) |
+| secret / state 初期化 | PAT、初期 state | secret `0600`、`.last_sha` `0600`、LF 付き JSON、fsync 完了。 | systemd を変更しない。secret 値を出力しない。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) |
+| admin archive 展開 | `admin-ui.tar.gz` | [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界)〜[§A2](admin.md#a2-管理-ui-archive-検証) を満たし、一時 directory 検証後に差し替える。 | 既存 `$INSTALL_DIR/admin` を変更しない。API service を起動 / restart しない。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| systemd 配置 | unit file 内容 | unit 書込、mode、`daemon-reload`、enable/start/restart、`is-active` が成功する。 | enable/start/restart を成功扱いしない。journal 確認対象を出力する。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) |
+| rollback | 旧 binary / 旧 admin backup | 定義済み対象だけ 1 回復元し、対象 service を 1 回 restart する。 | 追加推測復旧を行わず、現在配置済み path と journal 確認対象を出力する。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) |
+| 最終確認 | 配置済み binary、state、service、admin UI | [`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3) / [`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b) / [`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の固定確認がすべて成功する。 | 成功報告しない。未確認項目を `未実行` として記録する。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) |
 
 **setup / admin / release 連動 fixture 参照：**
 
-setup / admin / release 連動 fixture の fixture 群、対象 component、必須 input、必須 expected、合格条件は、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の [fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存の実装受け入れ条件だけを扱う。
+setup / admin / release 連動 fixture の fixture 群、対象 component、必須 input、必須 expected、合格条件は、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の [fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存の実装受け入れ条件だけを扱う。
 
 **setup / update 実装者向け出力固定：**
 

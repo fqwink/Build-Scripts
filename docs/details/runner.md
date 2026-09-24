@@ -544,7 +544,7 @@ schema 検証では次を必須とする。
 
 設定ファイル起動時整合性チェックは冪等でなければならない。初期化または正規化済みの状態で runner を再起動した場合、追加 backup、追加通知、追加 WARN/ERROR は発生しない。同一破損ファイルが復旧失敗後に残っている場合だけ、次回起動時に再度同じ判定を行う。
 
-設定ファイル起動時整合性チェックの fixture 名、入力状態、expected、fake filesystem、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/runner.md`](runner.md) 詳細本文責務では、必須 schema、初期化 / 退避 / 正規化 / 失敗時の runner owner 処理だけを扱う。
+設定ファイル起動時整合性チェックの fixture 名、入力状態、expected、fake filesystem、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。[`docs/details/runner.md`](runner.md) 詳細本文責務では、必須 schema、初期化 / 退避 / 正規化 / 失敗時の runner owner 処理だけを扱う。
 
 確認条件は、対象 fixture を Go test で検証できることとする。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、実装ファイル一覧は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照する。
 
@@ -1288,49 +1288,49 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 <a id="sec-15a-0"></a>
 **15a.0 runner fixture 共通検証観点：**
 
-[`docs/details/runner.md` 詳細本文責務 §15a.0](runner.md#sec-15a-0) は runner owner の共通検証観点だけを示す。fixture 名、入力状態、expected、fake GitHub / fake ssh / fake notifier / fake filesystem、実装検証証跡は [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F を正本とする。
+[`docs/details/runner.md` 詳細本文責務 §15a.0](runner.md#sec-15a-0) は runner owner の共通検証観点だけを示す。fixture 名、入力状態、expected、fake GitHub / fake ssh / fake notifier / fake filesystem、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) を正本とする。
 
 | 共通検証観点 | 確認内容 | fixture 正本 |
 |--------------|----------|--------------|
-| no external execution | 対象 fixture が禁止する GitHub API、pipeline、deploy、snapshot を実行しない。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F |
-| no log history creation | 対象 fixture が禁止する `.build_logs/` と `.build_history` を作成しない。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F |
-| clean final state | `.build_state.running=false`、`current_build_id=null`、`.build_lock` 不在で終了する。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F |
-| finalizer failure | finalizer 保存失敗を正常扱いせず、lock 削除試行と ERROR 証跡を残す。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F |
+| no external execution | 対象 fixture が禁止する GitHub API、pipeline、deploy、snapshot を実行しない。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) |
+| no log history creation | 対象 fixture が禁止する `.build_logs/` と `.build_history` を作成しない。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) |
+| clean final state | `.build_state.running=false`、`current_build_id=null`、`.build_lock` 不在で終了する。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) |
+| finalizer failure | finalizer 保存失敗を正常扱いせず、lock 削除試行と ERROR 証跡を残す。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) |
 
 <a id="sec-15a-1"></a>
 **15a.1 runner 受け入れ fixture catalog 参照：**
 
-`runner` 初期実装の受け入れ fixture catalog は [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F を正本とする。`runner` 詳細本文では、各 fixture の前提状態、fake response、expected file、実行 command、状態差分を再定義しない。
+`runner` 初期実装の受け入れ fixture catalog は [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) を正本とする。`runner` 詳細本文では、各 fixture の前提状態、fake response、expected file、実行 command、状態差分を再定義しない。
 
 | fixture | runner owner 検証観点 | fixture 正本 |
 |---------|----------------------|--------------|
-| R1 | CLI 異常系、help、未知 option、state-dir validation。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R1` |
-| R2 | 変更なし skip、SHA cache 維持、log/history 非作成。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R2` |
-| R3 | 変更あり build 成功、deploy なし、log/history/state finalizer。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R3` |
-| R4 | pipeline 失敗、SHA 非更新、deploy/snapshot 非実行。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R4` |
-| R5 | deploy pending、pending transfer 保存、snapshot 非作成。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R5` |
-| R6 | lock 競合、既存状態非変更。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R6` |
-| R7 | 状態破損退避、再生成、継続処理。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R7` |
-| R8 | pipeline timeout、旧 SHA 維持、clean final state。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R8` |
-| R9 | GitHub API 全再試行失敗、pipeline/deploy/snapshot 非実行。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R9` |
-| R10 | 通知失敗を build 成功へ反転しない。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R10` |
-| R11 | `[REPORT]` 重複時の採用行と警告。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R11` |
-| R12 | finalizer state write failure。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R12` |
-| R13 | GitHub token mode 不正、secret 非出力。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R13` |
-| R14 | dry-run directory 非作成、外部副作用なし。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R14` |
-| R15 | SHA cache 破損、pipeline/deploy/snapshot 非実行。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R15` |
-| R16 | GitHub rate limit reset 不正、長時間待機禁止。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R16` |
-| R17 | cooldown skip と manual force queue。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R17` |
-| R18 | SSH checksum mismatch pending。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R18` |
-| R19 | pending transfer 重複統合。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R19` |
-| R20 | snapshot atomic save and prune。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R20` |
-| R21 | status start write failure、外部副作用なし。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R21` |
-| R22 | build log write failure、history 非追記、SHA 非更新。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R22` |
-| R23 | history append failure、保存済み log 維持、SHA 非更新。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R23` |
-| R24 | multi target partial failure continues。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R24` |
-| R25 | all targets GitHub API failure。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R25` |
-| R26 | snapshot failure remains success。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R26` |
-| R27 | build_state finalizer failure keeps failure。 | [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F `Fixture R27` |
+| R1 | CLI 異常系、help、未知 option、state-dir validation。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R1` |
+| R2 | 変更なし skip、SHA cache 維持、log/history 非作成。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R2` |
+| R3 | 変更あり build 成功、deploy なし、log/history/state finalizer。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R3` |
+| R4 | pipeline 失敗、SHA 非更新、deploy/snapshot 非実行。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R4` |
+| R5 | deploy pending、pending transfer 保存、snapshot 非作成。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R5` |
+| R6 | lock 競合、既存状態非変更。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R6` |
+| R7 | 状態破損退避、再生成、継続処理。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R7` |
+| R8 | pipeline timeout、旧 SHA 維持、clean final state。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R8` |
+| R9 | GitHub API 全再試行失敗、pipeline/deploy/snapshot 非実行。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R9` |
+| R10 | 通知失敗を build 成功へ反転しない。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R10` |
+| R11 | `[REPORT]` 重複時の採用行と警告。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R11` |
+| R12 | finalizer state write failure。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R12` |
+| R13 | GitHub token mode 不正、secret 非出力。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R13` |
+| R14 | dry-run directory 非作成、外部副作用なし。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R14` |
+| R15 | SHA cache 破損、pipeline/deploy/snapshot 非実行。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R15` |
+| R16 | GitHub rate limit reset 不正、長時間待機禁止。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R16` |
+| R17 | cooldown skip と manual force queue。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R17` |
+| R18 | SSH checksum mismatch pending。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R18` |
+| R19 | pending transfer 重複統合。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R19` |
+| R20 | snapshot atomic save and prune。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R20` |
+| R21 | status start write failure、外部副作用なし。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R21` |
+| R22 | build log write failure、history 非追記、SHA 非更新。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R22` |
+| R23 | history append failure、保存済み log 維持、SHA 非更新。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R23` |
+| R24 | multi target partial failure continues。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R24` |
+| R25 | all targets GitHub API failure。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R25` |
+| R26 | snapshot failure remains success。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R26` |
+| R27 | build_state finalizer failure keeps failure。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R27` |
 
 ---
 
@@ -3159,9 +3159,9 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 | 確認条件 | fixture は sample 不足 no-op、avg 超過、p95 境界、通知失敗、failure build、tag 重複、設定不正をすべて固定する。 |
 
 <a id="sec-27-21-2"></a>
-**`docs/details/runner.md` 詳細本文責務 §27.21〜`docs/details/runner.md` 詳細本文責務 §27.38 runner / statefile 連動実装確認ゲート：**
+**[`docs/details/runner.md` 詳細本文責務 §27.21〜`docs/details/runner.md` 詳細本文責務 §27.38 runner / statefile 連動実装確認ゲート](runner.md#sec-27-21-2)：**
 
-[`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21)〜[`docs/details/runner.md` 詳細本文責務 §27.38](runner.md#sec-27-38) の runner owner 機能は、個別節の確認条件に加えて [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) runner owner 機能横断ゲート固定表を満たす。runner owner 機能横断ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c)、fixture 本文は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を参照する。
+[`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21)〜[`docs/details/runner.md` 詳細本文責務 §27.38](runner.md#sec-27-38) の runner owner 機能は、個別節の確認条件に加えて [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) runner owner 機能横断ゲート固定表を満たす。runner owner 機能横断ゲートは runner が状態更新を呼び出す順序と失敗時境界を固定するものであり、状態ファイル schema 本文は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c)、fixture 本文は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を参照する。
 
 | ゲート | 合格条件 | 禁止条件 |
 |--------|----------|----------|

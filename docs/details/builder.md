@@ -962,7 +962,7 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 | `.sb-none` | 検索結果なしメッセージ |
 
 <a id="sec-7-8"></a>
-**シンタックスハイライト CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.8）：**
+**[シンタックスハイライト CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.8）](builder.md#sec-7-8)：**
 
 | クラス | 対象トークン |
 |--------|------------|
@@ -974,14 +974,14 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 | `.hl-op` | diff 追加行（`+`）・削除行（`-`） |
 
 <a id="sec-7-11"></a>
-**見出しアンカーリンクコピー CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.11）：**
+**[見出しアンカーリンクコピー CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.11）](builder.md#sec-7-11)：**
 
 | クラス | 要素 | 説明 |
 |--------|------|------|
 | `.hn-link` | `<button>` | 見出し末尾に付与する `¶` ボタン（通常時 `opacity: 0`、ホバー時 `opacity: 1`） |
 
 <a id="sec-7-13"></a>
-**進捗バー・テーブルソート CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.13・`docs/details/builder.md` 詳細本文責務 §7.14）：**
+**[進捗バー・テーブルソート CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.13・`docs/details/builder.md` 詳細本文責務 §7.14）](builder.md#sec-7-13)：**
 
 | クラス / セレクター | 要素 | 説明 |
 |--------------------|------|------|
@@ -991,14 +991,14 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 | `.mt th[aria-sort="descending"]::after` | `::after` 疑似要素 | `content: " ▼"` |
 
 <a id="sec-4-5-2"></a>
-**読了時間表示 CSS クラス（`docs/details/builder.md` 詳細本文責務 §4.5）：**
+**[読了時間表示 CSS クラス（`docs/details/builder.md` 詳細本文責務 §4.5）](builder.md#sec-4-5-2)：**
 
 | クラス / セレクター | 要素 | 説明 |
 |--------------------|------|------|
 | `#reading-time` | `<span>` | 固定ヘッダー右端に表示（`margin-left: auto`）。`color: var(--adlaire-text-secondary)`、`font-size: var(--adlaire-font-size-sm)`、`white-space: nowrap` |
 
 <a id="sec-7-15"></a>
-**前後章ナビゲーション CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.15）：**
+**[前後章ナビゲーション CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.15）](builder.md#sec-7-15)：**
 
 | クラス / セレクター | 要素 | 説明 |
 |--------------------|------|------|
@@ -1007,7 +1007,7 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 | `.ch-next` | `<a>` | 次の章リンク（`color: var(--adlaire-color-primary)`、テキスト装飾なし） |
 
 <a id="sec-6"></a>
-**印刷スタイル（`docs/details/builder.md` 詳細本文責務 §6 @media print）：**
+**[印刷スタイル（`docs/details/builder.md` 詳細本文責務 §6 @media print）](builder.md#sec-6)：**
 
 `@media print` ブロックでの主な規則：
 
@@ -1441,44 +1441,44 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 <a id="8a-builder-受け入れ検証条件"></a>
 **8a. `builder` 受け入れ検証条件：**
 
-`builder` の初期実装は、[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の検証観点と [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F の fixture をすべて満たすまで完了として扱わない。
+`builder` の初期実装は、[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の検証観点と [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) の fixture をすべて満たすまで完了として扱わない。
 
-[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) は、`builder` owner の受け入れ観点だけを扱う。fixture 名、入力 Markdown、実行 command、expected HTML / CSS / JavaScript / search index / stdout / stderr、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F を正本とする。
+[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) は、`builder` owner の受け入れ観点だけを扱う。fixture 名、入力 Markdown、実行 command、expected HTML / CSS / JavaScript / search index / stdout / stderr、fake、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) を正本とする。
 
 `builder` 受け入れ検証では、少なくとも以下を確認する。
 
 | 観点 | 確認内容 | fixture 正本 |
 |------|----------|--------------|
-| 単一 Markdown 入力 | 単一 file 入力、heading、anchor、code block、task list、table、footnote、`[REPORT]`。 | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F `Fixture A` |
-| ディレクトリ Markdown 入力 | 複数 Markdown、目次、page path、相対 Markdown link 変換、page ごとの slug 空間、search index。 | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F `Fixture B` |
-| 異常系 | 不正 theme、source 不在、Markdown 不在、空 title、`[REPORT]` 非出力、既存出力保護。 | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F `Fixture C` |
-| 冪等性 | 同一入力と同一 CLI による再実行時の出力決定性。 | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F `Fixture D` |
-| path 安全性 | source / output の包含禁止、既存出力保護、source size 上限。 | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F `Fixture E` |
-| HTML escape / Markdown 境界 | raw HTML escape、table cell 補正、list nesting clamp。 | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F `Fixture F` |
-| search index / JavaScript | search index schema、body 抽出、localStorage guard、外部 storage / network 不使用。 | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F `Fixture G` |
-| strict / atomic output | strict warning 昇格、stdout / stderr、既存公開出力保護。 | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F `Fixture H` |
+| 単一 Markdown 入力 | 単一 file 入力、heading、anchor、code block、task list、table、footnote、`[REPORT]`。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture A` |
+| ディレクトリ Markdown 入力 | 複数 Markdown、目次、page path、相対 Markdown link 変換、page ごとの slug 空間、search index。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture B` |
+| 異常系 | 不正 theme、source 不在、Markdown 不在、空 title、`[REPORT]` 非出力、既存出力保護。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture C` |
+| 冪等性 | 同一入力と同一 CLI による再実行時の出力決定性。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture D` |
+| path 安全性 | source / output の包含禁止、既存出力保護、source size 上限。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture E` |
+| HTML escape / Markdown 境界 | raw HTML escape、table cell 補正、list nesting clamp。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture F` |
+| search index / JavaScript | search index schema、body 抽出、localStorage guard、外部 storage / network 不使用。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture G` |
+| strict / atomic output | strict warning 昇格、stdout / stderr、既存公開出力保護。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture H` |
 
 <a id="sec-8"></a>
-**`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能別実装確認固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能別実装確認固定契約](builder.md#sec-8)：**
 
 [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の中核機能は、各節の本文と fixture に加えて [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表を満たす。[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表は builder owner の詳細実装確認表であり、runner、setup、api、sdk、ui、statefile、archive、commitstatus、security、将来機能、MCP、外部公開構成、上位方針は扱わない。runner の起動、設定、処理フロー、pipeline、deploy、snapshot、log、systemd、GitHub、setup、既知制限は [`docs/details/runner.md` 詳細本文責務 §10](runner.md#10-ci-ランナー-要件)〜[§20](runner.md#20-ci-ランナー-既知の制限)、setup / release 手順は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) を参照する。
 
 | Builder 中核機能確認節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | fixture 証跡参照 |
 |------------------------|------|------|------|---------------------------|--------------|----------------|
-| [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) | builder CLI 実行 | CLI 引数、Markdown file / directory、theme、build meta。 | 静的 Web サイト、stdout 進捗、`[REPORT]`。 | 公開用 `--out` は tmp 完成後だけ置換する。 | 引数不正、UTF-8 不正、strict 警告、書込失敗時は既存出力を保持する。 | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) | builder 検証条件 | `testdata/builder/` 入力一式。 | expected HTML / CSS / JS / search index / stdout / stderr は [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F で固定する。 | fixture 実行時だけ一時出力を作成する。 | 異常系 fixture で `[REPORT]` を出さず既存出力を変えない。 | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F。 |
+| [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) | builder CLI 実行 | CLI 引数、Markdown file / directory、theme、build meta。 | 静的 Web サイト、stdout 進捗、`[REPORT]`。 | 公開用 `--out` は tmp 完成後だけ置換する。 | 引数不正、UTF-8 不正、strict 警告、書込失敗時は既存出力を保持する。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) | builder 検証条件 | `testdata/builder/` 入力一式。 | expected HTML / CSS / JS / search index / stdout / stderr は [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) で固定する。 | fixture 実行時だけ一時出力を作成する。 | 異常系 fixture で `[REPORT]` を出さず既存出力を変えない。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約)。 |
 
 <a id="sec-8-2"></a>
-**`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能 受け入れ固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能 受け入れ固定契約](builder.md#sec-8-2)：**
 
 | 項目 | 合格条件 |
 |------|----------|
-| atomicity | builder output は tmp 完成後だけ公開用 `--out` へ置換する。失敗時は既存出力、入力 Markdown、設定値を変更しない。fixture expected は [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F を参照する。 |
+| atomicity | builder output は tmp 完成後だけ公開用 `--out` へ置換する。失敗時は既存出力、入力 Markdown、設定値を変更しない。fixture expected は [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) を参照する。 |
 | no hidden dependency | Go 標準ライブラリ以外の Markdown parser、template engine、syntax highlight library、search library、外部 network 取得を追加しない。 |
 | no silent success | 引数不正、UTF-8 不正、strict 警告昇格、書込失敗を成功扱いにしない。 |
-| no secret leak | builder は secret を受け取らない。build meta、HTML、asset、stdout、stderr に secret 風値を新規保存しない。fixture expected の禁止条件は [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F を参照する。 |
+| no secret leak | builder は secret を受け取らない。build meta、HTML、asset、stdout、stderr に secret 風値を新規保存しない。fixture expected の禁止条件は [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) を参照する。 |
 | reproducibility | 同一入力、同一 CLI、同一 build meta では、出力 HTML / CSS / JavaScript / search index / `[REPORT]` が同一になる。 |
-| fixture completeness | [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F の対象 fixture を未実行または FAIL のまま builder の詳細実装確認を満たした扱いにしない。 |
+| fixture completeness | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) の対象 fixture を未実行または FAIL のまま builder の詳細実装確認を満たした扱いにしない。 |
 | downstream handoff | builder が出力する `[REPORT]`、HTML meta、search index、asset は、runner が読む場合でも builder 本文の固定 key と形式を正とする。runner 側の保存、状態更新、API 反映は [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー)〜[§15](runner.md#15-ログ) と [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) を参照する。 |
 
 ---
@@ -1499,7 +1499,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 [`docs/details/builder.md` 詳細本文責務 §27.4](builder.md#sec-27-4) の境界は owner component `builder`、collaborator component `runner`、`api`、`statefile` とする。
 
-[`docs/details/builder.md` 詳細本文責務 §27.4](builder.md#sec-27-4) では、HTML meta、REPORT、build log へ保存する値と escape 条件だけを定義する。API response は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、fixture 証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を参照する。
+[`docs/details/builder.md` 詳細本文責務 §27.4](builder.md#sec-27-4) では、HTML meta、REPORT、build log へ保存する値と escape 条件だけを定義する。API response は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、fixture 証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を参照する。
 
 `adlaire-ci-build` は `--build-id`、`--commit-sha`、`--build-at` を受け取り、全 HTML ページの `<head>` に次の meta を必ず出力する。
 
@@ -1680,7 +1680,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
 
 <a id="sec-28"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 共通固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 共通固定契約](builder.md#sec-28)：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -1691,10 +1691,10 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | path safety | 入力 Markdown base dir 外を参照する path、絶対 path、URL scheme 偽装、`..` による脱出は警告または終了コード `2` とする。 |
 | report | 機能ごとの成功件数、警告件数、無効化理由、異常件数を `[REPORT]` に追加する。既存 key の意味を変更しない。 |
 | strict | `--strict` 有効時は、仕様で警告扱いとした構文不正、path 不正、未解決参照を終了コード `2` に昇格する。 |
-| fixture | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F の fixture 名、入力、期待出力、期待副作用を満たす。 |
+| fixture | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) の fixture 名、入力、期待出力、期待副作用を満たす。 |
 
 <a id="sec-28-common-cli"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 CLI / 設定 / REPORT / 出力識別子固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 CLI / 設定 / REPORT / 出力識別子固定契約](builder.md#sec-28-common-cli)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の横断固定値表にない CLI option、環境変数、REPORT key、CSS class、DOM id、localStorage key、data attribute を [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装で追加してはならない。実装上追加が必要な場合は、先に [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の横断固定値表を改訂する。
 
@@ -1727,7 +1727,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | [`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) | `--task-lists=<true\|false>`、`ADLAIRE_TASK_LISTS` | `true` | `task_list_items`、`task_list_checked` | `.task-list-item`、`.task-list-checkbox`、`aria-label` | checkbox が enabled、非対象 list を変換した場合。 |
 
 <a id="sec-28-common-pipeline"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 実装パイプライン固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 実装パイプライン固定契約](builder.md#sec-28-common-pipeline)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 機能は、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の処理順序固定表の順序で処理する。機能ごとの独自の前処理、後処理、escape、report 生成順は追加しない。順序変更が必要な場合は、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の処理順序固定表を先に改訂する。
 
@@ -1749,7 +1749,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | 14 | REPORT 出力 | すべての生成物 write が成功した後に `[REPORT]` を stdout へ 1 行だけ出力する。strict warning による終了コード `2` の場合だけ `[WARN]` と `[REPORT]` を stdout へ出力する。その他の終了コード `1` / `2` では stderr へ error を出し、`[REPORT]` は出力しない。 |
 
 <a id="sec-28-common-config-exit"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 設定解決・終了コード固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 設定解決・終了コード固定契約](builder.md#sec-28-common-config-exit)：**
 
 | 条件 | non-strict | strict | 副作用 |
 |------|------------|--------|--------|
@@ -1764,7 +1764,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 終了コード `0` は、HTML、CSS、JS、search index、manifest、`[REPORT]` のうち対象 run で必要な出力がすべて成功した場合だけ返す。終了コード `1` は実装内部エラー、I/O エラー、atomic write 失敗、minify 後検証失敗に限定する。終了コード `2` は入力、設定、仕様上拒否する値、strict 昇格に限定する。
 
 <a id="sec-28-common-config-file"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 設定ファイル / 入力解決固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 設定ファイル / 入力解決固定契約](builder.md#sec-28-common-config-file)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の設定ファイルは、入力 Markdown file の親 directory、または入力 Markdown directory 直下にある `adlaire-ci-build.json` だけを自動検出する。`--config` option、別名設定ファイル、複数設定ファイル、上位 directory 探索、home directory 探索、repository root 推定探索を追加してはならない。設定ファイルは任意であり、存在しない場合は既定値だけで続行する。設定ファイルを build 中に生成、更新、削除してはならない。
 
@@ -1865,7 +1865,7 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 設定ファイルの読み込み、parse、validation、正規化、source 解決は、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装パイプライン固定契約の順序 1〜2 の範囲で完了させる。設定解決で終了コード `2` が確定した場合、Markdown 読込、HTML / CSS / JS / search index / manifest 生成、atomic write を実行してはならない。
 
 <a id="sec-28-common-report-types"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 REPORT 値型固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 REPORT 値型固定契約](builder.md#sec-28-common-report-types)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の `[REPORT]` は、既存 [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) と同じ 1 行の `key=value` 形式を維持する。JSON object 全体を stdout に出力してはならない。[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) で追加する key は、既存固定順の末尾へ ASCII 昇順で追加する。既存 key の名前、順序、値表現を変更してはならない。
 
@@ -1880,7 +1880,7 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 | array | `template_vars_missing`、`incremental_reason` | compact JSON array。例: `incremental_reason=["changed","dependency"]`。空配列は `[]`。 |
 
 <a id="sec-28-common-report-output"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 stdout / stderr / REPORT 固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 stdout / stderr / REPORT 固定契約](builder.md#sec-28-common-report-output)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装は、既存 [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) の CLI 出力固定契約を拡張する。終了コードごとの stdout、stderr、`[REPORT]` 有無、副作用は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の固定表に固定する。
 
@@ -1899,7 +1899,7 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の `[REPORT]` 追加 key は、既存 [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) の固定順 `pages headings tables code_blocks warnings size_warn broken_links heading_skips reading_time theme build_id commit_sha build_at` の後ろへ追加する。追加 key は ASCII 昇順で並べる。fixture は 1 行完全一致で確認し、順序違い、key 省略、値型違い、空白入り compact JSON を不合格とする。
 
 <a id="sec-28-common-atomic"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 atomic write / manifest / search index 副作用固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 atomic write / manifest / search index 副作用固定契約](builder.md#sec-28-common-atomic)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装は、HTML、CSS、JS、search index、`.dependency_manifest.json` を 1 回の build transaction として扱う。page 単位の成功、asset 単位の成功、manifest だけの成功、search index だけの成功は公開状態として残さない。
 
@@ -1962,7 +1962,7 @@ search index は、reuse page を含む最終 page set 全体から毎回再生�
 | failure | staging の search index が生成済みでも公開 `assets/search-index.json` へ反映しない。 |
 
 <a id="sec-28-common-assets"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 CSS / JS 出力固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 CSS / JS 出力固定契約](builder.md#sec-28-common-assets)：**
 
 CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力する。[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装で新規 asset file、inline external script、CDN、runtime import、dynamic network fetch を追加してはならない。
 
@@ -1975,7 +1975,7 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | accessibility | click 操作を追加する要素には keyboard 操作と `aria-label` を同時に定義する。 |
 
 <a id="sec-28-common-visual"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 CSS / layout / print / visual 固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 CSS / layout / print / visual 固定契約](builder.md#sec-28-common-visual)：**
 
 生成 HTML の視覚仕様、layout、responsive、print の正本は [`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) とする。本節は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装が出力する CSS / JS asset、出力順序、selector 境界、禁止出力だけを固定する。
 
@@ -2003,7 +2003,7 @@ print 用挙動は `@media print` 内、または print event の一時状態だ
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) visual 受け入れでは、[`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) への適合を expected CSS / HTML で確認できなければならない。画像 snapshot だけを合否根拠にしてはならない。
 
 <a id="sec-28-common-determinism"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 ID / slug / search index / JS state 決定性固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 ID / slug / search index / JS state 決定性固定契約](builder.md#sec-28-common-determinism)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装は、HTML id、anchor href、TOC、hash history、section collapse、TOC active tracking、search index、localStorage key / value を同じ入力から常に同じ値にする。現在時刻、実 git 状態、OS path separator、map iteration order、ブラウザ viewport、locale、乱数により値が変わってはならない。
 
@@ -2039,7 +2039,7 @@ localStorage は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#
 | `adlaire:section-state` | [`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6) | JSON object。key は `{page_key}#{slug}`、value は `true` なら展開、`false` なら折りたたみ。object key は保存時に ASCII 昇順へ並べる。 |
 
 <a id="sec-28-common-runtime"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 browser runtime 固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 browser runtime 固定契約](builder.md#sec-28-common-runtime)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) のブラウザ JS は、静的 HTML を補助する progressive enhancement として実装する。JS が無効、JS 初期化失敗、localStorage 使用不可、IntersectionObserver 使用不可、History API 使用不可、dialog API 使用不可のいずれの場合でも、本文、TOC、anchor、画像、検索 index file の存在を壊してはならない。runtime 状態を理由にした HTML 再生成、外部通信、追加 asset 取得、cookie / sessionStorage / IndexedDB 書込は行わない。
 
@@ -2088,7 +2088,7 @@ browser runtime が出力または変更してよい DOM state は [`docs/detail
 | accessibility | `.skip-link` focus、`:focus-visible` CSS による表示。 |
 
 <a id="sec-28-common-markdown-token"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 Markdown token / HTML node 変換固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 Markdown token / HTML node 変換固定契約](builder.md#sec-28-common-markdown-token)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装は、Markdown を文字列置換だけで直接 HTML 化してはならない。以下の token 種別を内部表現として扱い、token 単位で変換する。token 名、判定順、fallback は固定値とする。
 
@@ -2107,7 +2107,7 @@ browser runtime が出力または変更してよい DOM state は [`docs/detail
 | `task_item` | [`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) | list item の先頭が `[ ]`、`[x]`、`[X]`。 | disabled checkbox と list text。 | その他 bracket は通常 list。 |
 
 <a id="sec-28-common-parser-priority"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 Markdown parser 優先順位固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 Markdown parser 優先順位固定契約](builder.md#sec-28-common-parser-priority)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の Markdown parser は、入力 Markdown を LF 改行へ正規化した後、行単位 block parser と text 単位 inline parser を分けて処理する。block parser は inline parser を呼ぶが、inline parser は block parser を呼んではならない。機能ごとの都合による別順序の parser、正規表現置換の後処理、HTML 生成後の再 parse は追加しない。
 
@@ -2141,7 +2141,7 @@ inline parser は、code span を最優先の保護領域として切り出し�
 | 8 | text | 前記 token に一致しない text。 | text escape だけを行う。 |
 
 <a id="sec-28-common-grammar"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 Markdown 構文文法固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 Markdown 構文文法固定契約](builder.md#sec-28-common-grammar)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) で追加する構文の具体的な grammar は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の固定表に固定する。[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の固定表にない省略形、別名、大小文字差分吸収、属性追加、HTML comment 指示、front matter 指示を追加してはならない。
 
@@ -2160,7 +2160,7 @@ inline parser は、code span を最優先の保護領域として切り出し�
 | task list | list marker 後の `[ ] `、`[x] `、`[X] `。 | `[X]` は checked に正規化。 | `[o]`、`[-]`、`[]` は通常 list text。 |
 
 <a id="sec-28-common-composition"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 曖昧構文・機能併用固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 曖昧構文・機能併用固定契約](builder.md#sec-28-common-composition)：**
 
 複数の [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 機能が同じ入力へ適用できる場合は、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の固定表の結果に固定する。読みやすさ、既存 Markdown 処理、ブラウザ表示の都合による別解釈は選択しない。
 
@@ -2191,7 +2191,7 @@ inline parser は、code span を最優先の保護領域として切り出し�
 6. page shell、CSS、JS、search index、minify、atomic write の順で後続処理する。
 
 <a id="sec-28-common-escape"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 HTML 属性順・escape 固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 HTML 属性順・escape 固定契約](builder.md#sec-28-common-escape)：**
 
 生成 HTML は、fixture 比較を安定させるため属性順を固定する。属性順は `id`、`class`、`data-*`、`role`、`aria-*`、`href`、`src`、`alt`、`title`、`datetime`、`loading`、`decoding`、その他の順とする。同じ分類内は ASCII 昇順とする。
 
@@ -2204,7 +2204,7 @@ inline parser は、code span を最優先の保護領域として切り出し�
 | SVG | [`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17)、[`docs/details/builder.md` 詳細本文責務 §28.23](builder.md#sec-28-23) の内製 SVG は許可するが、`script`、event handler 属性、外部参照属性を出力しない。 |
 
 <a id="sec-28-common-warning"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 warning / error code 固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 warning / error code 固定契約](builder.md#sec-28-common-warning)：**
 
 stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN] CODE file:line section message` または `[ERROR] CODE file:line section message` に固定する。`[WARN]` は stdout だけ、`[ERROR]` は stderr だけに出力する。file が特定できない場合は `-`、line が特定できない場合は `0` とする。message に secret、URL credential、未escape HTML を含めてはならない。
 
@@ -2219,7 +2219,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | `BUILDER28_INTERNAL_IO` | ERROR | atomic write、rename、読み書き失敗。 | 常に終了コード `1`。 |
 
 <a id="sec-28-common-report-count"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 report count 固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 report count 固定契約](builder.md#sec-28-common-report-count)：**
 
 件数は、出力された最終 HTML / CSS / JS / search index を基準に数える。入力に存在しても fallback、無効化、strict 停止により出力されない対象は、成功件数に含めず warning / rejected / unsupported 系 key に含める。
 
@@ -2233,7 +2233,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | fallback | non-strict で通常 text、非表示、source 表示へ落とした対象 1 件を 1 とする。 |
 
 <a id="sec-28-common-compat"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 既存出力互換・先取り実装禁止固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 既存出力互換・先取り実装禁止固定契約](builder.md#sec-28-common-compat)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装変更は、対象機能を有効化しない既存 fixture の HTML、CSS、JS、search index、REPORT が変化しないことを示す。既定有効の機能は、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の既定有効明記に基づく [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10)、[`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16)、[`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18)、[`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20)、[`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21)、[`docs/details/builder.md` 詳細本文責務 §28.24](builder.md#sec-28-24)、[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) に限定する。
 
@@ -2246,7 +2246,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | warning code を実装変更内で独自追加する。 | stderr / fixture 比較が不安定になる。 |
 
 <a id="sec-28-common-feature-detail"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 機能別詳細仕様：**
+**[`docs/details/builder.md` 詳細本文責務 §28 機能別詳細仕様](builder.md#sec-28-common-feature-detail)：**
 
 | 節 | 機能 | 入力 | 出力 | 処理順序 | 異常系 | 検証条件 |
 |----|------|------|------|----------|--------|----------|
@@ -2277,44 +2277,44 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | [`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) | タスクリストサポート | `- [ ] item`、`- [x] item`。 | disabled checkbox 付き list item。 | list parse → checked 判定 → input disabled aria-label → item inline 変換。 | `[X]` は checked。その他は通常 list。 | unchecked、checked、nested、aria、通常 list 非変換。 |
 
 <a id="sec-28-common-supplement"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 個別固定補足契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 個別固定補足契約](builder.md#sec-28-common-supplement)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の補足契約固定表は、[`docs/details/builder.md` 詳細本文責務 §28.1](builder.md#sec-28-1)〜[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) の機能別詳細仕様を実装時の固定値へ落とす補足契約である。個別行の仕様と補足契約固定表が矛盾する場合は、補足契約固定表ではなく個別行を修正してから実装する。fixture 証跡参照列は fixture 正本への参照入口であり、fixture 名、input、expected、合格条件の正本ではない。
 
 | 節 | validation | HTML / asset 固定 | warning / error | REPORT count | fixture 証跡参照 |
 |----|------------|-------------------|-----------------|--------------|----------------|
-| [`docs/details/builder.md` 詳細本文責務 §28.1](builder.md#sec-28-1) | manifest path は base 内相対 path のみ。`.dependency_manifest.json` root は object、page key は正規化相対 path。 | 未変更 page は byte 単位で維持し、削除 source の stale HTML は成功置換時だけ削除し、search index は最終 page set 全体から再生成する。 | `--changed-manifest` 破損は終了コード `2`、`.dependency_manifest.json` 破損は warning なし full build。path 不正は `BUILDER28_PATH_OUTSIDE_BASE`。 | changed / reused は page 数。reason は sorted array。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.2](builder.md#sec-28-2) | format は 1 値のみ。`html` 以外は予約または未知として拒否。 | `html` は既存 output layout だけを使う。`pdf` / `epub` file を作らない。 | 予約値は `BUILDER28_UNSUPPORTED_RESERVED`、未知値は `BUILDER28_INVALID_OPTION`。fatal failure のため `[REPORT]` は出力しない。 | 成功時のみ `output_format="html"`、`output_format_supported=true`。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.3](builder.md#sec-28-3) | extension csv は `admonition`、`badge` のみ。空白 trim、重複は 1 件に正規化。 | admonition は `section`、title、body の順。badge は inline `span`。 | badge color 不正は non-strict で通常 text、strict で `BUILDER28_INVALID_OPTION`。 | admonitions / badges は出力 node 数。warnings は fallback 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.4](builder.md#sec-28-4) | CLI 有効または fence option ありの場合だけ行番号を出す。 | code wrapper 内に line number column と code text column を分離する。 | copy text に line number が混入した場合は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | blocks は line number 付き block 数、lines は付与した行数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.5](builder.md#sec-28-5) | mode は `none` または `h2`。 | 表示 prefix は text node とし、anchor id / slug は不変。 | 未知 mode は `BUILDER28_INVALID_OPTION`。 | numbered_headings は prefix を出した heading 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6) | collapse 対象は h2 / h3 のみ。target id は heading slug から作る。 | toggle button は heading 内の先頭に置き、section body を wrapper 化する。 | target id 重複は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | collapsible_sections は toggle 生成数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) | min / max は 1〜6。min <= max。 | TOC node だけ filter し、本文 heading は変更しない。 | 範囲不正は `BUILDER28_INVALID_OPTION`。 | toc_items は出力された TOC link 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.8](builder.md#sec-28-8) | source は `none`、`git`、`file`。fake 値があれば実 git / mtime より優先。 | `time.page-updated-at` に `datetime` と表示 text を出す。 | git 失敗かつ fallback 不能は `BUILDER28_INTERNAL_IO`。 | fallback は git から file へ落ちた回数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.9](builder.md#sec-28-9) | fence language が `diff` / `patch` の場合だけ適用。 | line ごとに inserted / deleted / context / header class を 1 つ付与する。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | insertions / deletions は該当 line 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) | lazy option は boolean。src は URL または base 内 path。 | 既存 img に `loading`、`decoding` を追加し、alt 順序を保つ。 | base 外 path は `BUILDER28_PATH_OUTSIDE_BASE`。 | lazy_images は属性を付与した img 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.11](builder.md#sec-28-11) | key は `name:*`、`property:og:*`、`property:twitter:*`、または bare name。 | meta は head 内で既存 meta の後、stylesheet より前に出力する。 | 禁止 key は `BUILDER28_INVALID_OPTION`、escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | custom_meta_count は採用 meta 数、rejected は拒否数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.12](builder.md#sec-28-12) | scheme 入力は定義しない。 | `:root` に light 固定 CSS variables だけを出す。 | dark / auto / theme toggle / color scheme 永続化の出力は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | color_scheme_fixed は `true` 固定。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.13](builder.md#sec-28-13) | title は colon 形式または `title=` 形式。空 title は無効。 | `.code-block-header` 内に `.code-title` を置き、copy 対象から除外する。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | code_titles は title 出力 block 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.14](builder.md#sec-28-14) | key は `^[A-Z0-9_]{1,64}$`、値は UTF-8 string。 | code fence / code span 内は置換しない。置換後 text は通常 Markdown 処理へ渡す。 | 未定義は `BUILDER28_UNRESOLVED_REFERENCE`。key 不正は `BUILDER28_INVALID_OPTION`。 | replaced は置換回数、missing は sorted array。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.15](builder.md#sec-28-15) | minify は HTML 完成後のみ。 | minify 後も必須 marker、doctype、head、body、pre/code 内容を保持する。 | marker 消失、空 HTML は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | bytes_* は byte 数、saved は before - after。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) | TOC がある page のみ有効。 | active class と `aria-current` は同一 link にだけ付与する。 | depth 外 active は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | toc_active_items は監視対象 link 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17) | 対応構文は `graph TD` の node / edge だけ。 | 対応時は内製 SVG、未対応時は `.mermaid-source` を出す。 | 未対応は `BUILDER28_UNSUPPORTED_RESERVED`。外部 script は `BUILDER28_ESCAPE_BLOCKED`。 | rendered / unsupported は block 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18) | id は 1〜64 文字、重複定義は先勝ち。 | footnotes block は本文末尾、backref は各 footnote の末尾。 | 未定義参照は `BUILDER28_UNRESOLVED_REFERENCE`。 | footnotes は定義出力数、references は参照数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.19](builder.md#sec-28-19) | code span / code fence 内は math 変換しない。 | inline は `span`、block は `div`。外部 renderer は使わない。 | 未閉鎖 delimiter は `BUILDER28_UNRESOLVED_REFERENCE`。 | inline / block は出力 node 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) | hash target は生成済み heading id のみ。 | click handler は heading focus と history push を同時に行う。 | missing target は non-strict no-op、strict で `BUILDER28_UNRESOLVED_REFERENCE`。 | hash_history_targets は対象 anchor 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21) | id 重複、空 label、keyboard trap を検査する。 | skip link、landmark、button label、focus outline を出す。 | a11y 不備は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | a11y_* は検出件数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.22](builder.md#sec-28-22) | lightbox 対象は alt を持つ image。 | dialog は page 1 個、trigger は image ごと、focus trap を JS で管理する。 | alt なしは `BUILDER28_UNRESOLVED_REFERENCE`。 | lightbox_images は trigger 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.23](builder.md#sec-28-23) | URL は空または 512 byte 以下。scheme は `http` / `https`。 | SVG は print footer 内だけに出力し、通常表示では非表示。 | URL 長すぎ / scheme 不正は `BUILDER28_INVALID_OPTION`。 | print_qr は SVG 出力 boolean。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.24](builder.md#sec-28-24) | term と definition が両方非空の連続 block だけ変換。 | 1 group を 1 `dl.definition-list` とし、term ごとに `dt` / `dd` を出す。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | definition_lists は dl 数、definition_terms は dt 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) | `[ ]`、`[x]`、`[X]` だけ task marker。 | checkbox は `disabled`、text は label 相当として出力する。 | enabled checkbox は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | items は task item 数、checked は checked 数。 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.1](builder.md#sec-28-1) | manifest path は base 内相対 path のみ。`.dependency_manifest.json` root は object、page key は正規化相対 path。 | 未変更 page は byte 単位で維持し、削除 source の stale HTML は成功置換時だけ削除し、search index は最終 page set 全体から再生成する。 | `--changed-manifest` 破損は終了コード `2`、`.dependency_manifest.json` 破損は warning なし full build。path 不正は `BUILDER28_PATH_OUTSIDE_BASE`。 | changed / reused は page 数。reason は sorted array。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.2](builder.md#sec-28-2) | format は 1 値のみ。`html` 以外は予約または未知として拒否。 | `html` は既存 output layout だけを使う。`pdf` / `epub` file を作らない。 | 予約値は `BUILDER28_UNSUPPORTED_RESERVED`、未知値は `BUILDER28_INVALID_OPTION`。fatal failure のため `[REPORT]` は出力しない。 | 成功時のみ `output_format="html"`、`output_format_supported=true`。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.3](builder.md#sec-28-3) | extension csv は `admonition`、`badge` のみ。空白 trim、重複は 1 件に正規化。 | admonition は `section`、title、body の順。badge は inline `span`。 | badge color 不正は non-strict で通常 text、strict で `BUILDER28_INVALID_OPTION`。 | admonitions / badges は出力 node 数。warnings は fallback 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.4](builder.md#sec-28-4) | CLI 有効または fence option ありの場合だけ行番号を出す。 | code wrapper 内に line number column と code text column を分離する。 | copy text に line number が混入した場合は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | blocks は line number 付き block 数、lines は付与した行数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.5](builder.md#sec-28-5) | mode は `none` または `h2`。 | 表示 prefix は text node とし、anchor id / slug は不変。 | 未知 mode は `BUILDER28_INVALID_OPTION`。 | numbered_headings は prefix を出した heading 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6) | collapse 対象は h2 / h3 のみ。target id は heading slug から作る。 | toggle button は heading 内の先頭に置き、section body を wrapper 化する。 | target id 重複は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | collapsible_sections は toggle 生成数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) | min / max は 1〜6。min <= max。 | TOC node だけ filter し、本文 heading は変更しない。 | 範囲不正は `BUILDER28_INVALID_OPTION`。 | toc_items は出力された TOC link 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.8](builder.md#sec-28-8) | source は `none`、`git`、`file`。fake 値があれば実 git / mtime より優先。 | `time.page-updated-at` に `datetime` と表示 text を出す。 | git 失敗かつ fallback 不能は `BUILDER28_INTERNAL_IO`。 | fallback は git から file へ落ちた回数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.9](builder.md#sec-28-9) | fence language が `diff` / `patch` の場合だけ適用。 | line ごとに inserted / deleted / context / header class を 1 つ付与する。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | insertions / deletions は該当 line 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) | lazy option は boolean。src は URL または base 内 path。 | 既存 img に `loading`、`decoding` を追加し、alt 順序を保つ。 | base 外 path は `BUILDER28_PATH_OUTSIDE_BASE`。 | lazy_images は属性を付与した img 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.11](builder.md#sec-28-11) | key は `name:*`、`property:og:*`、`property:twitter:*`、または bare name。 | meta は head 内で既存 meta の後、stylesheet より前に出力する。 | 禁止 key は `BUILDER28_INVALID_OPTION`、escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | custom_meta_count は採用 meta 数、rejected は拒否数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.12](builder.md#sec-28-12) | scheme 入力は定義しない。 | `:root` に light 固定 CSS variables だけを出す。 | dark / auto / theme toggle / color scheme 永続化の出力は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | color_scheme_fixed は `true` 固定。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.13](builder.md#sec-28-13) | title は colon 形式または `title=` 形式。空 title は無効。 | `.code-block-header` 内に `.code-title` を置き、copy 対象から除外する。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | code_titles は title 出力 block 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.14](builder.md#sec-28-14) | key は `^[A-Z0-9_]{1,64}$`、値は UTF-8 string。 | code fence / code span 内は置換しない。置換後 text は通常 Markdown 処理へ渡す。 | 未定義は `BUILDER28_UNRESOLVED_REFERENCE`。key 不正は `BUILDER28_INVALID_OPTION`。 | replaced は置換回数、missing は sorted array。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.15](builder.md#sec-28-15) | minify は HTML 完成後のみ。 | minify 後も必須 marker、doctype、head、body、pre/code 内容を保持する。 | marker 消失、空 HTML は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | bytes_* は byte 数、saved は before - after。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) | TOC がある page のみ有効。 | active class と `aria-current` は同一 link にだけ付与する。 | depth 外 active は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | toc_active_items は監視対象 link 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17) | 対応構文は `graph TD` の node / edge だけ。 | 対応時は内製 SVG、未対応時は `.mermaid-source` を出す。 | 未対応は `BUILDER28_UNSUPPORTED_RESERVED`。外部 script は `BUILDER28_ESCAPE_BLOCKED`。 | rendered / unsupported は block 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18) | id は 1〜64 文字、重複定義は先勝ち。 | footnotes block は本文末尾、backref は各 footnote の末尾。 | 未定義参照は `BUILDER28_UNRESOLVED_REFERENCE`。 | footnotes は定義出力数、references は参照数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.19](builder.md#sec-28-19) | code span / code fence 内は math 変換しない。 | inline は `span`、block は `div`。外部 renderer は使わない。 | 未閉鎖 delimiter は `BUILDER28_UNRESOLVED_REFERENCE`。 | inline / block は出力 node 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) | hash target は生成済み heading id のみ。 | click handler は heading focus と history push を同時に行う。 | missing target は non-strict no-op、strict で `BUILDER28_UNRESOLVED_REFERENCE`。 | hash_history_targets は対象 anchor 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21) | id 重複、空 label、keyboard trap を検査する。 | skip link、landmark、button label、focus outline を出す。 | a11y 不備は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | a11y_* は検出件数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.22](builder.md#sec-28-22) | lightbox 対象は alt を持つ image。 | dialog は page 1 個、trigger は image ごと、focus trap を JS で管理する。 | alt なしは `BUILDER28_UNRESOLVED_REFERENCE`。 | lightbox_images は trigger 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.23](builder.md#sec-28-23) | URL は空または 512 byte 以下。scheme は `http` / `https`。 | SVG は print footer 内だけに出力し、通常表示では非表示。 | URL 長すぎ / scheme 不正は `BUILDER28_INVALID_OPTION`。 | print_qr は SVG 出力 boolean。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.24](builder.md#sec-28-24) | term と definition が両方非空の連続 block だけ変換。 | 1 group を 1 `dl.definition-list` とし、term ごとに `dt` / `dd` を出す。 | escape 不備は `BUILDER28_ESCAPE_BLOCKED`。 | definition_lists は dl 数、definition_terms は dt 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) | `[ ]`、`[x]`、`[X]` だけ task marker。 | checkbox は `disabled`、text は label 相当として出力する。 | enabled checkbox は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | items は task item 数、checked は checked 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
 
 <a id="sec-28-group-1-5"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.1〜`docs/details/builder.md` 詳細本文責務 §28.5 実装詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.1〜`docs/details/builder.md` 詳細本文責務 §28.5 実装詳細固定契約](builder.md#sec-28-group-1-5)：**
 
-[`docs/details/builder.md` 詳細本文責務 §28.1](builder.md#sec-28-1)〜[`docs/details/builder.md` 詳細本文責務 §28.5](builder.md#sec-28-5) は、後続 [`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6)〜[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) の入力基盤、出力基盤、検索基盤に影響するため、[`docs/details/builder.md` 詳細本文責務 §28.1](builder.md#sec-28-1)〜[`docs/details/builder.md` 詳細本文責務 §28.5](builder.md#sec-28-5) 補足固定表の処理単位、状態、出力を固定する。§28.1〜§28.5 補足固定表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class は導入しない。
+[`docs/details/builder.md` 詳細本文責務 §28.1](builder.md#sec-28-1)〜[`docs/details/builder.md` 詳細本文責務 §28.5](builder.md#sec-28-5) は、後続 [`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6)〜[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) の入力基盤、出力基盤、検索基盤に影響するため、[`docs/details/builder.md` 詳細本文責務 §28.1](builder.md#sec-28-1)〜[`docs/details/builder.md` 詳細本文責務 §28.5](builder.md#sec-28-5) 補足固定表の処理単位、状態、出力を固定する。[§28.1〜§28.5 補足固定表](builder.md#sec-28-group-1-5)にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class は導入しない。
 
-| §28.1〜§28.5 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+| [§28.1〜§28.5 節](builder.md#sec-28-group-1-5) | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | [`docs/details/builder.md` 詳細本文責務 §28.1](builder.md#sec-28-1) | page set 全体 | `changed_pages`、`reused_pages`、`deleted_pages`、`dependency_impacted_pages`、`incremental_reason` を ASCII path 昇順で保持する。 | staging 内に最終 page set、asset、search index、manifest が揃った場合だけ公開出力へ置換する。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.2](builder.md#sec-28-2) | run 全体 | `output_format` を `html` に正規化する。予約値または未知値を検出した時点で Markdown 読込前に停止する。 | `html` の場合だけ既存 pipeline へ進める。`pdf` / `epub` / 未知値では出力を作成しない。 |
@@ -2323,7 +2323,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | [`docs/details/builder.md` 詳細本文責務 §28.5](builder.md#sec-28-5) | heading tree | `heading_numbering_mode`、`heading_counters`、`heading_display_number` を page ごとに保持する。 | heading id / slug を変更せず、本文 heading、TOC、search index の表示番号が一致した場合だけ完了とする。 |
 
 <a id="sec-28-1"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.1 差分ビルド詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.1 差分ビルド詳細固定契約](builder.md#sec-28-1)：**
 
 `--changed-manifest` は、外部 CI や runner が渡す変更候補 manifest である。公開出力配下の `.dependency_manifest.json` は、前回 builder 成功時の依存 manifest である。この 2 種類は混同しない。
 
@@ -2347,7 +2347,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 `[REPORT]` は成功時または strict warning 時だけ出力し、fatal failure では出力しない。`incremental_enabled` は `--changed-manifest` 指定または既存 `.dependency_manifest.json` 有効時に `true`、それ以外は `false` とする。`incremental_changed_pages`、`incremental_reused_pages` は 0 以上の整数、`incremental_reason` は compact JSON string array、ASCII 昇順、重複なしとする。
 
 <a id="sec-28-2"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.2 複数出力形式詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.2 複数出力形式詳細固定契約](builder.md#sec-28-2)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28.2](builder.md#sec-28-2) の実装対象 format は `html` だけである。`pdf` と `epub` は予約値であり、予約値として認識したうえで拒否する。予約値を unknown として扱ってはならない。
 
@@ -2363,7 +2363,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 `--format` は non-repeatable option とする。CLI、env、設定ファイルに同時指定された場合は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 設定解決・終了コード固定契約の source 優先順位に従い、同一 source 内の重複だけを fatal validation とする。
 
 <a id="sec-28-3"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.3 Markdown 拡張詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.3 Markdown 拡張詳細固定契約](builder.md#sec-28-3)：**
 
 `--markdown-extensions` は csv とし、許可値は `admonition`、`badge` だけである。値は comma 分割後に trim し、空要素は無視し、重複は 1 件へ正規化する。未知 extension は終了コード `2`、stderr `BUILDER28_INVALID_OPTION` とする。
 
@@ -2375,7 +2375,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。search index には admonition title を含めず、admonition body と badge label は含める。`admonitions` は出力した admonition 数、`badges` は出力した badge 数、`markdown_extension_warnings` は fallback 数とする。
 
 <a id="sec-28-4"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.4 コードブロック行番号詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.4 コードブロック行番号詳細固定契約](builder.md#sec-28-4)：**
 
 行番号は、CLI `--code-line-numbers` が有効な場合は全 code fence に適用し、fence option `line-numbers` がある場合は該当 code fence にだけ適用する。両方が無効な場合は既存 code block 出力を変更しない。
 
@@ -2391,7 +2391,7 @@ admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。se
 `code_line_number_blocks` は行番号を出力した code block 数、`code_line_number_lines` は出力した `span.line-no` 数とする。line number が copy text に混入した場合、終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED` とする。
 
 <a id="sec-28-5"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.5 見出し自動採番詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.5 見出し自動採番詳細固定契約](builder.md#sec-28-5)：**
 
 `--heading-numbering` の許可値は `none`、`h2` だけである。`none` は既定値で、本文 heading、TOC、search index の表示 text を変更しない。
 
@@ -2409,11 +2409,11 @@ admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。se
 `heading_numbering` は `"none"` または `"h2"` の JSON string、`numbered_headings` は `span.heading-number` を出力した heading 数とする。未知 mode は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
 
 <a id="sec-28-group-6-10"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.6〜`docs/details/builder.md` 詳細本文責務 §28.10 実装詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.6〜`docs/details/builder.md` 詳細本文責務 §28.10 実装詳細固定契約](builder.md#sec-28-group-6-10)：**
 
-[`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6)〜[`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) は、生成 site の閲覧挙動、TOC、時刻表示、code 表示、画像出力に影響するため、[`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6)〜[`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) 補足固定表の処理単位、状態、出力を固定する。§28.6〜§28.10 補足固定表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key は導入しない。
+[`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6)〜[`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) は、生成 site の閲覧挙動、TOC、時刻表示、code 表示、画像出力に影響するため、[`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6)〜[`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) 補足固定表の処理単位、状態、出力を固定する。[§28.6〜§28.10 補足固定表](builder.md#sec-28-group-6-10)にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key は導入しない。
 
-| §28.6〜§28.10 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+| [§28.6〜§28.10 節](builder.md#sec-28-group-6-10) | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | [`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6) | heading section | `collapse_targets`、`section_ranges`、`section_state_key`、`default_expanded` を page ごとに保持する。 | h2 / h3 section 範囲、toggle、wrapper、ARIA、localStorage payload、print 展開が一致する。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) | TOC tree | `toc_min_depth`、`toc_max_depth`、`toc_links`、`toc_active_targets` を page ごとに保持する。 | TOC link だけを depth filter し、本文 heading、heading id、search index heading source を変更しない。 |
@@ -2422,7 +2422,7 @@ admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。se
 | [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) | image token | `lazy_image_targets`、`image_path_warnings`、`image_src_kind` を image ごとに保持する。 | img src / alt escape、lazy 属性、base 外 path warning、外部 URL no-fetch が一致する。 |
 
 <a id="sec-28-6"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.6 セクション折りたたみ詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.6 セクション折りたたみ詳細固定契約](builder.md#sec-28-6)：**
 
 `--section-collapse` は boolean option である。`false` の場合、toggle、section wrapper、collapse JS state、`adlaire:section-state` の読み書きを出力しない。`true` の場合だけ h2 / h3 を対象にする。
 
@@ -2443,7 +2443,7 @@ print 時は全 section を展開状態で表示する。screen state は書き�
 `collapsible_sections` は出力した toggle 数、`collapsed_sections_default` は既定折りたたみ数とする。
 
 <a id="sec-28-7"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.7 TOC 深さ制御詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.7 TOC 深さ制御詳細固定契約](builder.md#sec-28-7)：**
 
 `--toc-depth` は `<min>:<max>` 形式だけを許可する。`min` と `max` は 1〜6 の整数、`min <= max` とする。空値、整数以外、範囲外、`min > max`、separator 不一致、余分な値は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
 
@@ -2452,7 +2452,7 @@ TOC depth は TOC 出力だけに適用する。本文 heading、heading id、an
 TOC link order は本文 heading 出現順に固定する。TOC link href は確定 heading id への `#<id>` とし、TOC 表示 text は [`docs/details/builder.md` 詳細本文責務 §28.5](builder.md#sec-28-5) heading numbering が有効な場合は表示番号を含める。`toc_min_depth` と `toc_max_depth` は integer、`toc_items` は出力した TOC link 数とする。
 
 <a id="sec-28-8"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.8 最終更新日詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.8 最終更新日詳細固定契約](builder.md#sec-28-8)：**
 
 `--updated-at-source` の許可値は `none`、`git`、`file` だけである。未知値は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
 
@@ -2467,7 +2467,7 @@ timestamp は UTC、RFC3339、秒精度、例 `2026-09-18T12:34:56Z` に固定�
 search index には updated-at の UI label と timestamp を含めない。`updated_at` は JSON string、`updated_at_fallback` は 0 以上の整数とする。
 
 <a id="sec-28-9"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.9 diff ハイライト詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.9 diff ハイライト詳細固定契約](builder.md#sec-28-9)：**
 
 diff highlight は fence language が `diff` または `patch` の場合だけ適用する。その他の code fence は、行頭 `+` / `-` / space を含んでも diff class を付けない。
 
@@ -2481,7 +2481,7 @@ diff highlight は fence language が `diff` または `patch` の場合だけ�
 HTML text は class 付与前に escape する。copy text と search index には元の diff 記号と code text を含めるが、class 名、line number、UI label は含めない。[`docs/details/builder.md` 詳細本文責務 §28.4](builder.md#sec-28-4) と併用する場合、line number node に diff class を付けず、code text 側だけに diff class を付ける。`diff_blocks` は diff / patch fence 数、`diff_insertions` と `diff_deletions` は該当行数とする。
 
 <a id="sec-28-10"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.10 画像遅延読み込み詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.10 画像遅延読み込み詳細固定契約](builder.md#sec-28-10)：**
 
 `--lazy-images` は boolean option である。`true` の場合だけ Markdown image 由来の `img` に `loading="lazy"` と `decoding="async"` を付与する。`false` の場合、既存 img 出力を変更しない。既に同名属性を持つ raw HTML は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) parser の raw HTML escape 対象であり、[`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) は raw HTML img を信頼して属性補完してはならない。
 
@@ -2498,11 +2498,11 @@ image `src` は以下に分類する。
 `alt` は必ず attribute escape する。`lazy_images` は `loading="lazy"` と `decoding="async"` を付与した img 数、`image_path_warnings` は warning 件数とする。search index には image alt text を含めるが、src、loading、decoding、warning text は含めない。
 
 <a id="sec-28-group-11-15"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.11〜`docs/details/builder.md` 詳細本文責務 §28.15 実装詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.11〜`docs/details/builder.md` 詳細本文責務 §28.15 実装詳細固定契約](builder.md#sec-28-group-11-15)：**
 
-[`docs/details/builder.md` 詳細本文責務 §28.11](builder.md#sec-28-11)〜[`docs/details/builder.md` 詳細本文責務 §28.15](builder.md#sec-28-15) は、head 出力、theme 状態、code block 表示、Markdown 前処理、最終 HTML byte に影響するため、[`docs/details/builder.md` 詳細本文責務 §28.11](builder.md#sec-28-11)〜[`docs/details/builder.md` 詳細本文責務 §28.15](builder.md#sec-28-15) 補足固定表の処理単位、状態、出力を固定する。§28.11〜§28.15 補足固定表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key は導入しない。
+[`docs/details/builder.md` 詳細本文責務 §28.11](builder.md#sec-28-11)〜[`docs/details/builder.md` 詳細本文責務 §28.15](builder.md#sec-28-15) は、head 出力、theme 状態、code block 表示、Markdown 前処理、最終 HTML byte に影響するため、[`docs/details/builder.md` 詳細本文責務 §28.11](builder.md#sec-28-11)〜[`docs/details/builder.md` 詳細本文責務 §28.15](builder.md#sec-28-15) 補足固定表の処理単位、状態、出力を固定する。[§28.11〜§28.15 補足固定表](builder.md#sec-28-group-11-15)にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key は導入しない。
 
-| §28.11〜§28.15 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+| [§28.11〜§28.15 節](builder.md#sec-28-group-11-15) | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | [`docs/details/builder.md` 詳細本文責務 §28.11](builder.md#sec-28-11) | head meta set | `custom_meta_entries`、`custom_meta_rejected`、`custom_meta_order` を page ごとに保持する。 | key validation、重複解決、head 内順序、attribute escape、禁止 key 拒否が一致する。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.12](builder.md#sec-28-12) | light visual baseline | `color_scheme_fixed`、`light_css_variables` を page ごとに保持する。 | light 固定 CSS variables、print light、禁止識別子不在が一致する。 |
@@ -2511,7 +2511,7 @@ image `src` は以下に分類する。
 | [`docs/details/builder.md` 詳細本文責務 §28.15](builder.md#sec-28-15) | final HTML byte stream | `minify_bytes_before`、`minify_bytes_after`、`minify_bytes_saved`、`minify_preserved_ranges` を page ごとに保持する。 | safe minify、保持対象、validation、failure no-replace、REPORT byte count が一致する。 |
 
 <a id="sec-28-11"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.11 カスタムメタタグ詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.11 カスタムメタタグ詳細固定契約](builder.md#sec-28-11)：**
 
 `--meta` は repeatable option とし、1 指定につき `key=value` を 1 件受け付ける。設定ファイルでは `meta` object、環境変数 `ADLAIRE_META_JSON` では JSON object を受け付ける。値は UTF-8 string だけを許可する。object 以外、string 以外、空 key、空 value、制御文字、raw `<` / `>` を含む key は終了コード `2`、stderr `BUILDER28_INVALID_OPTION` とする。
 
@@ -2531,7 +2531,7 @@ meta key は以下に固定する。
 `custom_meta_count` は採用して出力した meta 数、`custom_meta_rejected` は validation で拒否した meta key 数とする。fatal validation では `[REPORT]` を出力しない。
 
 <a id="sec-28-12"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.12 ライトモード固定詳細契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.12 ライトモード固定詳細契約](builder.md#sec-28-12)：**
 
 生成 HTML は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務に従い、ライトモード固定とする。[`docs/details/builder.md` 詳細本文責務 §7.1](builder.md#sec-7-1) の廃止契約に従い、可変 color scheme を追加しない。
 
@@ -2554,7 +2554,7 @@ browser runtime は color scheme を読まない、保存しない、復元し�
 print は常に light 固定とする。REPORT の `color_scheme_fixed` は JSON boolean `true` 固定とする。
 
 <a id="sec-28-13"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.13 コードブロックタイトル詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.13 コードブロックタイトル詳細固定契約](builder.md#sec-28-13)：**
 
 code title は fenced code の info string からだけ決定する。許可形式は以下とする。
 
@@ -2569,7 +2569,7 @@ title は trim 後 1〜128 文字を有効とする。空 title、空白だけ�
 出力は `.code-block-header` の中に `.code-title` を 1 個置き、対応する code block の直前にだけ表示する。copy text、search index、line number count、diff count には title text を含めない。`code_titles` は title を出力した code block 数、`code_title_warnings` は不正な title 指定を non-fatal no-op した件数とする。空 title、空白 title、`title=`、`lang:` の値なしは仕様上の no-op であり、`code_title_warnings` に加算しない。
 
 <a id="sec-28-14"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.14 テンプレート変数詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.14 テンプレート変数詳細固定契約](builder.md#sec-28-14)：**
 
 template var key は `^[A-Z0-9_]{1,64}$` に固定する。CLI `--var KEY=VALUE` は repeatable、設定ファイルは `template_vars` object、環境変数 `ADLAIRE_TEMPLATE_VARS_JSON` は JSON object とする。値は UTF-8 string だけを許可する。key 不正、object 以外、string 以外は終了コード `2`、stderr `BUILDER28_INVALID_OPTION` とする。
 
@@ -2580,7 +2580,7 @@ template var key は `^[A-Z0-9_]{1,64}$` に固定する。CLI `--var KEY=VALUE`
 `template_vars` は定義済み key 数、`template_vars_missing` は missing key の compact JSON string array、ASCII 昇順、重複なし、`template_vars_replaced` は置換回数とする。secret 風 value と credential 付き URL value は stdout、stderr、REPORT、manifest へ平文出力しない。
 
 <a id="sec-28-15"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.15 HTML ミニファイ詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.15 HTML ミニファイ詳細固定契約](builder.md#sec-28-15)：**
 
 minify は HTML 生成、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 全 HTML 変換、CSS / JS 参照確定後、atomic write の staging validation 前に実行する。`--minify-html=false` の場合は HTML byte を変更せず、`minify_html=false`、`minify_bytes_before=0`、`minify_bytes_after=0`、`minify_bytes_saved=0` とする。
 
@@ -2606,11 +2606,11 @@ minify 後に byte 数が 0、doctype / html / head / body が消える、pre / 
 `minify_bytes_before` は minify 前 HTML byte 数、`minify_bytes_after` は minify 後 HTML byte 数、`minify_bytes_saved` は `before - after` とする。`after > before` の場合は `saved=0` とし、minify 後 HTML を採用してよいのは validation がすべて成功した場合だけとする。
 
 <a id="sec-28-group-16-20"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.16〜`docs/details/builder.md` 詳細本文責務 §28.20 実装詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.16〜`docs/details/builder.md` 詳細本文責務 §28.20 実装詳細固定契約](builder.md#sec-28-group-16-20)：**
 
-[`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16)〜[`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) は、TOC runtime、diagram 変換、脚注、数式表示、hash navigation に影響するため、[`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16)〜[`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) 補足固定表の処理単位、状態、出力を固定する。§28.16〜§28.20 補足固定表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 script は導入しない。
+[`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16)〜[`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) は、TOC runtime、diagram 変換、脚注、数式表示、hash navigation に影響するため、[`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16)〜[`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) 補足固定表の処理単位、状態、出力を固定する。[§28.16〜§28.20 補足固定表](builder.md#sec-28-group-16-20)にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 script は導入しない。
 
-| §28.16〜§28.20 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+| [§28.16〜§28.20 節](builder.md#sec-28-group-16-20) | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) | TOC active target set | `toc_active_enabled`、`toc_active_targets`、`toc_active_current`、`toc_active_fallback_mode` を page ごとに保持する。 | TOC link 集合、`.is-active` 1 件化、`aria-current`、IntersectionObserver / scroll fallback、TOC depth 同期が一致する。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17) | mermaid code block | `mermaid_source`、`mermaid_nodes`、`mermaid_edges`、`mermaid_unsupported` を block ごとに保持する。 | 対応構文、SVG node / edge、source fallback、escape、外部 script 不在、unsupported warning が一致する。 |
@@ -2619,7 +2619,7 @@ minify 後に byte 数が 0、doctype / html / head / body が消える、pre / 
 | [`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) | hash target set | `hash_history_enabled`、`hash_history_targets`、`hash_focus_targets`、`hash_missing_targets` を page ごとに保持する。 | heading target、`tabindex="-1"`、pushState、popstate、focus、missing hash no-op が一致する。 |
 
 <a id="sec-28-16"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.16 TOC ハイライト追従詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.16 TOC ハイライト追従詳細固定契約](builder.md#sec-28-16)：**
 
 `--toc-active` は boolean option である。`true` の場合だけ `assets/app.js` に TOC active tracking を出力する。`false` の場合、`.is-active` 初期 class、`aria-current`、active tracking handler、IntersectionObserver 使用、scroll fallback を出力してはならない。
 
@@ -2638,7 +2638,7 @@ active 更新は以下に固定する。
 同時に active link が 2 件以上になる、`aria-current` と `.is-active` の対象が異なる、depth 外 heading を active にする、TOC link 以外を active にする場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力維持とする。JS 実行時に IntersectionObserver、scroll、DOM query が例外になっても静的本文と TOC を壊してはならない。
 
 <a id="sec-28-17"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.17 Mermaid ダイアグラム詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.17 Mermaid ダイアグラム詳細固定契約](builder.md#sec-28-17)：**
 
 Mermaid 変換は `--mermaid=true` の場合だけ有効である。`--mermaid=false` の場合、info string `mermaid` の code fence は通常 code block として出力し、`.mermaid-source`、`.mermaid-diagram`、`.mermaid-node`、`.mermaid-edge`、SVG を出力してはならない。
 
@@ -2658,7 +2658,7 @@ Mermaid 変換は `--mermaid=true` の場合だけ有効である。`--mermaid=f
 `mermaid_blocks` は `mermaid` fence 数、`mermaid_rendered` は SVG 化した block 数、`mermaid_unsupported` は source fallback または strict failure 対象 block 数とする。外部 script 参照を検出した場合は終了コード `1`、stderr `BUILDER28_ESCAPE_BLOCKED`、公開出力維持とする。
 
 <a id="sec-28-18"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.18 脚注詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.18 脚注詳細固定契約](builder.md#sec-28-18)：**
 
 `--footnotes` は boolean option である。`true` の場合だけ footnote definition と reference を変換する。`false` の場合、`[^id]` と `[^id]: text` は既存 Markdown 処理の通常 text として扱い、`.footnotes`、`.footnote-ref`、`.footnote-backref` を出力してはならない。
 
@@ -2671,7 +2671,7 @@ reference は本文出現順で番号を割り当てる。同じ id を複数回
 `footnotes` は出力した footnote definition 数、`footnote_references` は出力した reference 数、`footnote_warnings` は duplicate、undefined、unreferenced warning 数とする。search index には脚注本文を含めてよいが、reference 番号、backlink label、footnotes heading、UI label は含めない。
 
 <a id="sec-28-19"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.19 インライン数式詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.19 インライン数式詳細固定契約](builder.md#sec-28-19)：**
 
 `--math` は boolean option である。`true` の場合だけ math inline と math block を変換する。`false` の場合、`$...$` と `$$...$$` は通常 text として扱い、`.math-inline`、`.math-block` を出力してはならない。
 
@@ -2684,7 +2684,7 @@ code fence、code span、link destination、image src、raw HTML escape 対象�
 `math_inline` は出力した `span.math-inline` 数、`math_block` は出力した `div.math-block` 数、`math_warnings` は fallback warning 数とする。search index には math content の text を含めてよいが、delimiter、class 名、UI label は含めない。
 
 <a id="sec-28-20"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.20 ページ内ナビゲーション履歴詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.20 ページ内ナビゲーション履歴詳細固定契約](builder.md#sec-28-20)：**
 
 `--hash-history` は boolean option である。`true` の場合だけ heading anchor click、TOC link click、back / forward navigation の history handler を `assets/app.js` に出力する。`false` の場合、history handler、pushState、popstate handler、heading focus 補助を出力してはならない。
 
@@ -2697,11 +2697,11 @@ JS 無効時は通常 anchor として機能する。JS 実行時に `history.pu
 `hash_history_enabled` は boolean、`hash_history_targets` は対象 heading 数とする。search index には hash handler、focus label、back / forward UI text を含めない。
 
 <a id="sec-28-group-21-25"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.21〜`docs/details/builder.md` 詳細本文責務 §28.25 実装詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.21〜`docs/details/builder.md` 詳細本文責務 §28.25 実装詳細固定契約](builder.md#sec-28-group-21-25)：**
 
-[`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21)〜[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) は、生成 site のアクセシビリティ、画像操作、印刷出力、Markdown block / list 変換に影響するため、[`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21)〜[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) 補足固定表の処理単位、状態、出力を固定する。§28.21〜§28.25 補足固定表にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 asset は導入しない。
+[`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21)〜[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) は、生成 site のアクセシビリティ、画像操作、印刷出力、Markdown block / list 変換に影響するため、[`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21)〜[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) 補足固定表の処理単位、状態、出力を固定する。[§28.21〜§28.25 補足固定表](builder.md#sec-28-group-21-25)にない中間状態、追加 file、追加 REPORT key、追加 warning code、追加 DOM class、追加 localStorage key、追加外部 asset は導入しない。
 
-| §28.21〜§28.25 節 | 処理単位 | 固定する中間状態 | 出力確定条件 |
+| [§28.21〜§28.25 節](builder.md#sec-28-group-21-25) | 処理単位 | 固定する中間状態 | 出力確定条件 |
 |----|----------|------------------|--------------|
 | [`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21) | page accessibility audit | `a11y_landmarks`、`a11y_label_targets`、`a11y_duplicate_ids`、`a11y_focus_targets` を page ごとに保持する。 | skip link、landmark、aria label、focus order、duplicate id 検出、keyboard trap 不在が一致する。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.22](builder.md#sec-28-22) | image lightbox target set | `lightbox_targets`、`lightbox_dialog_id`、`lightbox_focus_order`、`lightbox_warnings` を page ごとに保持する。 | trigger、dialog 1 個、Escape / backdrop / close button、focus trap、alt warning、external no-fetch が一致する。 |
@@ -2710,7 +2710,7 @@ JS 無効時は通常 anchor として機能する。JS 実行時に `history.pu
 | [`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) | task list item | `task_list_items`、`task_list_checked`、`task_list_nested_depth` を list item ごとに保持する。 | disabled checkbox、checked 判定、nested list、aria label、通常 list 非変換が一致する。 |
 
 <a id="sec-28-21"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.21 読み上げ対応詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.21 読み上げ対応詳細固定契約](builder.md#sec-28-21)：**
 
 `--a11y-check` は boolean option である。`true` の場合だけ生成 HTML の accessibility audit と補助出力を有効にする。`false` の場合、audit warning / failure を出さず、`.skip-link`、追加 landmark role、追加 focus CSS、追加 label 補助を [`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21) 理由では出力してはならない。
 
@@ -2729,7 +2729,7 @@ landmark は以下に固定する。
 空 `aria-label`、空 button name、label なし input、focus 不能 skip target、keyboard trap、focus outline 非表示、focus / hover による layout 寸法変化は出力検証 failure とする。`:focus-visible` は既存 CSS の後ろ、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) visual selector の固定順に従って出力する。`a11y_warnings` は non-fatal advisory 件数、`a11y_duplicate_ids` は検出した重複 id 件数、`a11y_missing_labels` は label 欠落件数とする。出力検証 failure では `[REPORT]` を出力しない。
 
 <a id="sec-28-22"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.22 画像ライトボックス詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.22 画像ライトボックス詳細固定契約](builder.md#sec-28-22)：**
 
 `--image-lightbox` は boolean option である。`true` の場合だけ Markdown image 由来の image を lightbox 対象にする。`false` の場合、trigger、dialog、lightbox JS、`data-lightbox-src`、`.adlaire-lightbox-trigger`、`.adlaire-lightbox-dialog` を出力してはならない。
 
@@ -2750,7 +2750,7 @@ JS 挙動は以下に固定する。
 focus trap が失敗する、Escape で閉じない、dialog が複数出力される、外部 script / asset を要求する、`data-lightbox-src` が attribute escape されない場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED` または `BUILDER28_ESCAPE_BLOCKED`、公開出力維持とする。`lightbox_images` は trigger 数、`lightbox_warnings` は alt なし等で対象外にした image 数とする。search index には alt text だけを含め、dialog label、button label、src を含めない。
 
 <a id="sec-28-23"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.23 印刷時 QR コード詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.23 印刷時 QR コード詳細固定契約](builder.md#sec-28-23)：**
 
 `--print-qr-url` は string option である。空値の場合は QR を出力せず、`print_qr=false`、`print_qr_url=""` とする。非空値は trim 後 1〜512 byte、scheme は `http` または `https` だけを許可する。credential 付き URL、fragment 以外に制御文字を含む URL、`javascript:`、`data:`、`file:`、相対 URL、512 byte 超過は終了コード `2`、stderr `BUILDER28_INVALID_OPTION`、stdout 空、公開出力維持とする。
 
@@ -2759,7 +2759,7 @@ QR は外部 library を使わない deterministic QR-lite SVG とする。[`doc
 `.print-qr` は print 専用 block とし、screen では非表示、print では footer 相当領域に表示する。通常本文内に常時表示してはならない。`print_qr` は SVG を出力した場合 `true`、`print_qr_url` は JSON string とする。ただし credential、secret 風 query、token 風 query value は stdout、stderr、REPORT、manifest、search index に平文出力してはならない。search index には QR URL、SVG text、print label を含めない。
 
 <a id="sec-28-24"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.24 定義リスト詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.24 定義リスト詳細固定契約](builder.md#sec-28-24)：**
 
 `--definition-lists` は boolean option である。`true` の場合だけ definition list 変換を有効にする。`false` の場合、対象構文は通常 paragraph として処理し、`dl`、`dt`、`dd`、`.definition-list` を [`docs/details/builder.md` 詳細本文責務 §28.24](builder.md#sec-28-24) 理由で出力してはならない。
 
@@ -2776,7 +2776,7 @@ definition list は以下の block だけを対象にする。
 term と definition は通常 inline 変換を適用し、HTML escape 後に `dt` / `dd` へ出力する。paragraph 境界は空行で確定し、空行をまたいで同一 definition list group にしてはならない。`definition_lists` は出力した `dl.definition-list` 数、`definition_terms` は出力した `dt` 数とする。search index には term と definition text を本文出現順で含めるが、`dl` / `dt` / `dd` label や UI text は含めない。escape 後に raw HTML、event handler、`javascript:` が実行可能形で残る場合は終了コード `1`、stderr `BUILDER28_ESCAPE_BLOCKED`、公開出力維持とする。
 
 <a id="sec-28-25"></a>
-**`docs/details/builder.md` 詳細本文責務 §28.25 タスクリスト詳細固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28.25 タスクリスト詳細固定契約](builder.md#sec-28-25)：**
 
 `--task-lists` は boolean option である。`true` の場合だけ task list marker を変換する。`false` の場合、`[ ]`、`[x]`、`[X]` は通常 list item text として処理し、`.task-list-item`、`.task-list-checkbox` を [`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) 理由で出力してはならない。
 
@@ -2787,12 +2787,12 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 `task_list_items` は出力した task list item 数、`task_list_checked` は checked checkbox 数とする。search index には task item text を含めるが、checkbox label、checked state label、marker text を含めない。
 
 <a id="sec-28-implementation-check"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 詳細実装確認条件：**
+**[`docs/details/builder.md` 詳細本文責務 §28 詳細実装確認条件](builder.md#sec-28-implementation-check)：**
 
-各機能は、該当 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](../DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F を満たすまで詳細実装確認を満たした扱いにしない。複数の [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 機能を同一変更で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の実装検証証跡に列挙する。
+各機能は、該当 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](../DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) を満たすまで詳細実装確認を満たした扱いにしない。複数の [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 機能を同一変更で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の実装検証証跡に列挙する。
 
 <a id="sec-28-implementation-gate"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 詳細実装確認ゲート固定契約：**
+**[`docs/details/builder.md` 詳細本文責務 §28 詳細実装確認ゲート固定契約](builder.md#sec-28-implementation-gate)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 機能の詳細実装確認では、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の固定表のゲートをすべて満たす。1 件でも未達がある場合は、詳細実装未充足、仕様不足、または検証不足として扱う。
 
@@ -2807,17 +2807,17 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | 既存出力互換 | 対象機能無効時、または対象入力なし時に既存 HTML / CSS / JS / search index / REPORT が変わらない。 | 対象外の既存 fixture 差分、未使用 CSS / JS の出力。 |
 | security | HTML escape、attribute escape、URL validation、base 外 path、外部依存不使用を確認する。 | raw HTML、credential、CDN、外部 script、runtime network fetch の残存。 |
 | atomicity | 失敗時に既存出力、manifest、search index を部分更新しない。 | 失敗 fixture で file 更新、削除、manifest 上書きが残る。 |
-| fixture 完備 | [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F の fixture catalog、manifest schema、expected 比較、最低確認項目を満たす。 | fixture 名不足、manifest key 不足、expected 不足、比較除外理由なし。 |
+| fixture 完備 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) の fixture catalog、manifest schema、expected 比較、最低確認項目を満たす。 | fixture 名不足、manifest key 不足、expected 不足、比較除外理由なし。 |
 
 <a id="sec-28-unmet-conditions"></a>
-**`docs/details/builder.md` 詳細本文責務 §28 詳細実装未充足条件：**
+**[`docs/details/builder.md` 詳細本文責務 §28 詳細実装未充足条件](builder.md#sec-28-unmet-conditions)：**
 
 以下のいずれかに該当する場合は、コードが動作して見えても詳細実装確認を満たした扱いにしない。
 
 | 条件 | 理由 |
 |------|------|
 | 対象 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) にない CLI option、Markdown 記法、CSS class、JS 挙動を追加した。 | 先取り実装であり、仕様範囲外。 |
-| [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F にない fixture 名または fixture 構成で検証した。 | fixture 証跡責務から外れている。 |
+| [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) にない fixture 名または fixture 構成で検証した。 | fixture 証跡責務から外れている。 |
 | strict / non-strict の片方だけを実装した。 | 異常系の固定挙動が未完成。 |
 | REPORT key が仕様表と一致しない。 | runner / API / 実装検証証跡が同じ結果を読めない。 |
 | HTML / CSS / JS の expected 差分を目視または snapshot だけで合格扱いした。 | 再現性ある合否判定ではない。 |
