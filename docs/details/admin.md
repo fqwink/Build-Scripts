@@ -19,7 +19,8 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 ---
 
-## A1. 管理 UI 静的ファイル境界
+<a id="a1-管理-ui-静的ファイル境界"></a>
+**A1. 管理 UI 静的ファイル境界：**
 
 標準管理 UI の配布物は、次の path に固定する。
 
@@ -36,7 +37,8 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 ---
 
-## A2. 管理 UI Archive 検証
+<a id="a2-管理-ui-archive-検証"></a>
+**A2. 管理 UI Archive 検証：**
 
 admin archive の検証は以下の順序に固定する。
 
@@ -52,7 +54,8 @@ admin archive の検証は以下の順序に固定する。
 
 ---
 
-## A3. 静的配信契約
+<a id="a3-静的配信契約"></a>
+**A3. 静的配信契約：**
 
 `api` が管理 UI を配信する場合、`admin` は静的 file 解決と response header 決定だけを担当する。
 
@@ -71,7 +74,8 @@ admin archive の検証は以下の順序に固定する。
 
 ---
 
-## A4. Setup 連携境界
+<a id="a4-setup-連携境界"></a>
+**A4. Setup 連携境界：**
 
 setup 手順本文、release asset 取得手順、rollback 手順は [`docs/details/setup.md`](setup.md) 詳細本文責務を参照する。
 
@@ -89,7 +93,8 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 ---
 
-## A5. 受け入れ条件
+<a id="a5-受け入れ条件"></a>
+**A5. 受け入れ条件：**
 
 `admin` の詳細実装確認では、以下をすべて満たす。
 
@@ -104,7 +109,8 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 ---
 
-## A6. Admin fixture 参照契約
+<a id="a6-admin-fixture-参照契約"></a>
+**A6. Admin fixture 参照契約：**
 
 `admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。`admin` 詳細では UI DOM、SDK method、API endpoint、fixture 入力、expected、fake、実装検証証跡を再定義せず、admin 配布境界だけを確認する。
 

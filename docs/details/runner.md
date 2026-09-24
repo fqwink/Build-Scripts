@@ -360,7 +360,8 @@ BRANCH_TARGETS = [
 
 `BRANCH_TARGETS` が空の場合、`runner` は ERROR ログを出力し、ビルドを実行せず終了コード `2` で終了する。
 
-## runner 終了コード
+<a id="runner-終了コード"></a>
+**runner 終了コード：**
 
 | 終了コード | 条件 |
 |------------|------|
@@ -372,7 +373,8 @@ BRANCH_TARGETS = [
 
 systemd timer からの再実行を妨げないため、終了コード `1` と `3` でもロック削除、ログ保存、通知キュー保存を試行してから終了する。
 
-## atomic write 共通契約
+<a id="atomic-write-共通契約"></a>
+**atomic write 共通契約：**
 
 runner が JSON object、JSON array、SHA cache、`.build_state`、`.build_circuit_state`、`.notify_pending`、`.pending_transfers`、`.server_config`、`.branch_config` を更新する場合は、以下の順序で atomic write を行う。
 
@@ -384,7 +386,8 @@ runner が JSON object、JSON array、SHA cache、`.build_state`、`.build_circu
 
 atomic write 失敗時は対象ファイルを更新済みとして扱わない。tmp ファイルが残った場合は削除を試行し、削除失敗時は WARN ログ `TMP_CLEANUP_FAILED: path={tmp}` を出す。
 
-## lock ファイル契約
+<a id="lock-ファイル契約"></a>
+**lock ファイル契約：**
 
 `.build_lock` は UTF-8 text で、内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。
 
@@ -398,7 +401,8 @@ atomic write 失敗時は対象ファイルを更新済みとして扱わない�
 
 PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` を読めない場合は PID 実行中確認不能として終了コード `4` とする。
 
-## GitHub token 読み込み契約
+<a id="github-token-読み込み契約"></a>
+**GitHub token 読み込み契約：**
 
 `.github_token` は `StateDir` 直下の通常ファイルだけを認める。symbolic link、directory、device file、FIFO は禁止する。
 
@@ -413,7 +417,8 @@ PID 実行中判定は Linux の `/proc/{pid}` 存在確認で行う。`/proc` �
 
 token は `strings.TrimSpace` 後の値だけを HTTP Authorization header に使用する。token の値、先頭文字、末尾文字、長さ、hash は stdout、stderr、`.build_logs/{id}.json`、`.build_history`、`.notify_pending`、`.notify_log`、snapshot、fixture expected output に保存してはならない。secret mask は token 読み込み成功直後に登録し、以降の全ログ保存処理より前に適用する。
 
-## runner 状態ファイル参照契約
+<a id="runner-状態ファイル参照契約"></a>
+**runner 状態ファイル参照契約：**
 
 状態ファイルの path、形式、初期値、schema、破損時の扱い、atomic write、adapter は [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を参照する。`runner` 詳細では、runner がどの処理段階で状態を読むか、いつ更新するか、失敗時に後続処理を止めるかだけを定義する。API endpoint ごとの状態読取順と response 算出は [`docs/details/api.md` 詳細本文責務 §22.0c.1](api.md#sec-22-0c-1) を参照する。
 
@@ -425,7 +430,8 @@ runner は起動時の設定正規化で `.branch_config` を 1 回だけ読み�
 
 `.pending_transfers` entry は [`docs/details/runner.md` 詳細本文責務 §14a](runner.md#14a-ssh-サイト転送) の形式と [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の状態 schema を同時に満たす。JSON array 内の entry は投入順を保持し、再試行も投入順で処理する。重複統合は `out`、`host`、`user`、`dest_dir` の 4 項目完全一致で判定する。
 
-## SHA cache 読み書き契約
+<a id="sha-cache-読み書き契約"></a>
+**SHA cache 読み書き契約：**
 
 `sha_file` は target ごとの処理済み Git blob SHA を保存する JSON file である。runner は legacy text 形式を自動変換してはならない。
 
@@ -441,11 +447,13 @@ runner は起動時の設定正規化で `.branch_config` を 1 回だけ読み�
 
 SHA cache の更新は、pipeline 成功後、deploy 前に行う。複数 target のうち一部 target が成功した場合は、成功 target の `sha_file` だけを更新する。失敗 target、skip target、branch target 設定不正 target の `sha_file` を更新してはならない。
 
-## 状態ファイル権限契約
+<a id="状態ファイル権限契約"></a>
+**状態ファイル権限契約：**
 
 runner が新規作成する状態ファイルは、JSON object、JSON array、SHA cache、lock file、pending transfer file、build log、build history の分類に関係なく `0600` とする。directory は `0700` とする。既存ファイルの mode が広い場合、secret を含む `.github_token`、`.notify_config`、`.notify_pending`、`.pending_transfers` は停止条件とし、それ以外の runner 状態ファイルは WARN `STATE_FILE_INSECURE_MODE: path={path} mode={mode}` を出して `0600` へ chmod する。chmod 失敗時は終了コード `2` とする。
 
-## 設定ファイル起動時整合性チェック
+<a id="設定ファイル起動時整合性チェック"></a>
+**設定ファイル起動時整合性チェック：**
 
 本機能の目的は、runner 起動時に状態ファイルの破損、型不一致、必須 key 不足、権限不備を検出し、ビルド処理開始前に復旧または停止することである。owner component は `runner` とし、collaborator component は `statefile` とする。管理 API の HTTP endpoint、sdk、ui は本機能の実行責務を持たない。
 
@@ -540,7 +548,8 @@ schema 検証では次を必須とする。
 
 確認条件は、対象 fixture を Go test で検証できることとする。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、実装ファイル一覧は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照する。
 
-## build id 契約
+<a id="build-id-契約"></a>
+**build id 契約：**
 
 runner が生成する build id は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` とする。同一秒内に複数 target のビルドログが必要な場合は、2 件目以降を `b{YYYYMMDDHHmmss}-2`、`-3` とする。build id は `.build_logs/{id}.json`、`.build_history`、`.snapshots/{id}/` で同一値を使用する。
 
@@ -1271,7 +1280,8 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 
 ---
 
-## 15a. `runner` 受け入れ検証条件
+<a id="15a-runner-受け入れ検証条件"></a>
+**15a. `runner` 受け入れ検証条件：**
 
 `runner` の初期実装は、[`docs/details/runner.md` 詳細本文責務 §15a](runner.md#15a-runner-受け入れ検証条件) の検証条件と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の fixture をすべて満たすまで完了として扱わない。`testdata/runner/` は runner fixture の配置予定 path であり、現時点で未作成の場合は現行実体として扱わない。fixture ファイルは [`docs/details/fixture.md`](fixture.md) fixture 証跡責務に従う実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
 
@@ -1324,7 +1334,8 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 
 ---
 
-## 16. systemd タイマー参照
+<a id="16-systemd-タイマー参照"></a>
+**16. systemd タイマー参照：**
 
 systemd unit 本文、配置先、起動手順、更新手順は setup owner component の責務とし、[`docs/details/setup.md` 詳細本文責務 §26.4.1](setup.md#sec-26-4-1)、[`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) を参照する。
 
@@ -1348,7 +1359,8 @@ runner が journal へ出力する内容は [`docs/details/runner.md` 詳細本�
 
 ---
 
-## 18. 初回セットアップ手順参照
+<a id="18-初回セットアップ手順参照"></a>
+**18. 初回セットアップ手順参照：**
 
 初回セットアップ、Release asset 取得、checksum 検証、バイナリ配置、secret 初期化、状態ファイル初期化、systemd unit 書き込み、service 起動、管理 API 導入、管理 UI 配置は setup owner component の責務とし、[`docs/details/setup.md` 詳細本文責務 §26.1](setup.md#sec-26-1)〜[§26.4](setup.md#sec-26-4) を参照する。
 
@@ -1368,7 +1380,8 @@ runner が起動時に必要ファイル不足または権限不備を検出し�
 
 ---
 
-## 19. 管理 API サーバー制限参照
+<a id="19-管理-api-サーバー制限参照"></a>
+**19. 管理 API サーバー制限参照：**
 
 管理 API サーバーの HTTP listener、認証、session、rate limit、TLS 非対応、外部認証非対応、worker pool 非採用の制限は api owner component の責務とし、[`docs/details/api.md` 詳細本文責務 §21a](api.md#21a-管理-api-サーバー制限) および [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) を参照する。
 

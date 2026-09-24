@@ -1438,7 +1438,8 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 ---
 
-## 8a. `builder` 受け入れ検証条件
+<a id="8a-builder-受け入れ検証条件"></a>
+**8a. `builder` 受け入れ検証条件：**
 
 `builder` の初期実装は、[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の検証観点と [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F の fixture をすべて満たすまで完了として扱わない。
 

@@ -38,7 +38,7 @@
 2. [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.0](DETAIL_INDEX.md#0b0-詳細仕様選択フロー) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表) で owner component を確定する。
 3. [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) で、対象機能に対応する詳細仕様節と受け入れ条件を特定する。
 4. [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0a](DETAIL_INDEX.md#0a-詳細仕様の記載基準)〜[§0h](DETAIL_INDEX.md#0h-機能仕様テンプレート) で、記載基準、共通固定値、実装前確認項目、検証入口、Phase 詳細仕様参照を確認する。
-5. 生成 HTML のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
+5. 生成 HTML のデザイン関係を扱う場合は、[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務分離に従い、具体的な視覚仕様は [`docs/DESIGN.md`](DESIGN.md) デザイン責務で確認する。
 6. owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を主本文として読み、入力、出力、状態、正常系、異常系、セキュリティ、検証条件を確認する。
 7. collaborator component がある場合は、該当する [`docs/details/*.md`](details/) 詳細本文責務を呼び出し境界、schema、表示、security、setup、検証観点として確認する。
 8. fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件を確認する場合は、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を確認する。

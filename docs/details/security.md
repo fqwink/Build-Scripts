@@ -17,7 +17,8 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 ---
 
-## 対象範囲
+<a id="対象範囲"></a>
+**対象範囲：**
 
 | 範囲 | 内容 |
 |------|------|
@@ -30,7 +31,8 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 ---
 
-## 横断固定契約
+<a id="横断固定契約"></a>
+**横断固定契約：**
 
 <a id="sec-27-42"></a>
 **`docs/details/security.md` 詳細本文責務 §27.42〜§27.47 認証・監査・制限機能 実装確認固定契約：**
@@ -64,7 +66,8 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 ---
 
-## 認証共通詳細
+<a id="認証共通詳細"></a>
+**認証共通詳細：**
 
 [`docs/details/security.md`](security.md) 詳細本文責務 §認証共通詳細は、password 認証、session、login ticket、認証ログ、`--init-credentials` の [`docs/details/security.md`](security.md) 詳細本文責務である。HTTP endpoint の method、path、request、response、status は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) および [`docs/details/security.md`](security.md) 詳細本文責務 §25 を参照する。`.admin_credentials` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を参照する。
 

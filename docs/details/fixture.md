@@ -17,7 +17,8 @@ component 境界管理の参照先は [`docs/DETAIL_INDEX.md` 詳細仕様入口
 
 ---
 
-## 対象範囲
+<a id="対象範囲"></a>
+**対象範囲：**
 
 | 範囲 | 内容 |
 |------|------|
@@ -28,7 +29,7 @@ component 境界管理の参照先は [`docs/DETAIL_INDEX.md` 詳細仕様入口
 
 <a id="0g8-f-phase-fixture--testdata--fake--実装検証証跡契約"></a>
 
-## 0g.8-F Phase fixture / testdata / fake / 実装検証証跡契約
+**0g.8-F Phase fixture / testdata / fake / 実装検証証跡契約：**
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、実装完了判定に必要な fixture、fake、testdata、expected / effects、実装検証証跡、acceptance checklist、差し戻し条件を扱う。[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0e](../DETAIL_INDEX.md#0e-完全実装検証マトリクス)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0g](../DETAIL_INDEX.md#0g-phase-詳細仕様参照)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](../DETAIL_INDEX.md#0i-詳細節対応表) は完了判定の入口を示すだけとし、[`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) は setup / release / Phase 判定の実行条件を示すだけとする。fixture 名、expected / effects、fake 動作、実装検証証跡項目、不足時の扱い、差し戻し条件は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
@@ -86,7 +87,8 @@ Phase、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-ru
 | 後続 Phase への影響 | 後続 Phase が利用許可済みの contract と、利用禁止の未固定 contract を実装検証証跡に列挙する。 | 次 Phase 着手条件未充足として未完了。 |
 | secret 確認 | log、fixture、snapshot、UI 表示、実装検証証跡に secret / token / password 原文がないこと。 | security 不合格として未完了。 |
 
-## 8a-F builder 初期受け入れ fixture 契約
+<a id="8a-f-builder-初期受け入れ-fixture-契約"></a>
+**8a-F builder 初期受け入れ fixture 契約：**
 
 [`docs/details/fixture.md`](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F は、[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の builder 初期受け入れ fixture、入力、expected、fake、実装検証証跡を扱う正本である。[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) は検証観点だけを持ち、fixture 本文を再定義しない。
 
@@ -101,7 +103,8 @@ Phase、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-ru
 | Fixture G: search index / JavaScript contract | Fixture B と同じ directory 入力を使用する。 | `assets/search-index.json` の top-level array、entry key 順、body 長、HTML tag 除外、`assets/app.js` の localStorage guard、`search-results`、`data-search-hit`、外部 storage / network 不使用を固定する。 |
 | Fixture H: strict warning and atomic output | strict 用 Markdown と既存正常出力を用意し、`adlaire-ci-build --src testdata/builder/strict/source.md --out <tmp> --strict` を実行する。 | exit `2`。stdout に `[WARN] BROKEN_LINK`、`[WARN] UNCLOSED_FENCE`、`[REPORT]` を出し、stderr は空。既存 `index.html` を置換しない。 |
 
-## 15a-F runner 初期受け入れ fixture 契約
+<a id="15a-f-runner-初期受け入れ-fixture-契約"></a>
+**15a-F runner 初期受け入れ fixture 契約：**
 
 [`docs/details/fixture.md`](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F は、[`docs/details/runner.md` 詳細本文責務 §15a](runner.md#15a-runner-受け入れ検証条件) の runner 初期受け入れ fixture、入力状態、expected、fake GitHub / fake ssh / fake notifier / fake filesystem、実装検証証跡を扱う正本である。[`docs/details/runner.md` 詳細本文責務 §15a](runner.md#15a-runner-受け入れ検証条件) は検証観点だけを持ち、fixture 本文を再定義しない。
 
@@ -146,7 +149,7 @@ Phase、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-ru
 
 <a id="22-f-phase-3--phase-4-api-fixture-契約"></a>
 
-## 22-F Phase 3 / Phase 4 API fixture 契約
+**22-F Phase 3 / Phase 4 API fixture 契約：**
 
 [`docs/details/fixture.md`](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F は、Phase 3 / Phase 4 API の必須検証、fixture 名、入力状態、期待 response、期待副作用を扱う fixture 証跡責務である。API endpoint の method、path、request、response、error、read / write 境界は [`docs/details/api.md` 詳細本文責務 §22](api.md#22-バックエンド-api-仕様) を正本とする。
 
@@ -287,7 +290,7 @@ Phase 4 実装の完了判定は [`docs/details/fixture.md`](fixture.md#0g8-f-ph
 
 <a id="27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約"></a>
 
-## 27-F fixture 証跡責務 / runner・security 実装検証証跡詳細契約
+**27-F fixture 証跡責務 / runner・security 実装検証証跡詳細契約：**
 
 <a id="sec-27-f"></a>
 **fixture 証跡責務 §27-F 配置・命名固定契約：**
@@ -1022,7 +1025,7 @@ UI owner fixture が不足する場合、UI 実装変更は詳細実装確認を
 
 <a id="28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約"></a>
 
-## 28-F fixture 証跡責務 / builder 拡張実装検証証跡詳細契約
+**28-F fixture 証跡責務 / builder 拡張実装検証証跡詳細契約：**
 
 [`docs/details/fixture.md`](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F は、[`docs/details/builder.md` 詳細本文責務 §28.1](builder.md#sec-28-1)〜[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) の fixture、fake、expected、effects、実装検証証跡を扱う fixture 証跡責務である。各 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 機能は、Markdown 入力、CLI option、期待 HTML、期待 CSS / JS、`[REPORT]`、終了コード、strict / non-strict の差分を fixture で固定する。外部 library、CDN、実 network、現在時刻、実 git repository、実画像取得、画像 snapshot だけの合否判定を fixture の前提にしてはならない。
 
