@@ -1,8 +1,8 @@
 # Adlaire CI — Commit Status 詳細仕様
 
-`commitstatus` owner component の詳細本文責務は、[`docs/details/commitstatus.md`](commitstatus.md) を正本とする。
+本ファイルは `commitstatus` owner component の詳細本文責務として、`commitstatus` が主本文として持つ実装契約だけを扱う。
 
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`commitstatus` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、fixture、検証観点として参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`commitstatus` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---
 
@@ -25,7 +25,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md
 
 ---
 
-### 27.1 GitHub Commit Status API
+**27.1 GitHub Commit Status API：**
 
 owner component は `commitstatus` とする。collaborator component は `runner`、`statefile` とする。
 
@@ -89,7 +89,7 @@ Commit Status 送信失敗は build 成否を反転させない。送信失敗�
 
 **Commit Status 保存固定契約：**
 
-`.build_logs/{id}.json.commit_status` は [`docs/details/statefile.md`](statefile.md) §22.0c の CommitStatus object に定義された key だけを保存する。`pending_sent`、`pending_error`、`final_sent` など未定義 key を保存してはならない。pending / final の送信順、HTTP request、response、失敗有無は fixture の `expected/effects.json` と server WARN log で検証し、build log schema へ未定義 key を追加しない。
+`.build_logs/{id}.json.commit_status` は [`docs/details/statefile.md`](statefile.md) 詳細本文責務 §22.0c の CommitStatus object に定義された key だけを保存する。`pending_sent`、`pending_error`、`final_sent` など未定義 key を保存してはならない。pending / final の送信順、HTTP request、response、失敗有無は fixture の `expected/effects.json` と server WARN log で検証し、build log schema へ未定義 key を追加しない。
 
 | ケース | `enabled` | `state` | `sent_at` | `http_status` | `error` |
 |--------|-----------|---------|-----------|---------------|---------|
@@ -114,7 +114,7 @@ Commit Status 送信失敗は build 成否を反転させない。送信失敗�
 | HTTP `5xx` | `"github status server error"` | `COMMIT_STATUS_FAILED: status={status} error=github status server error` |
 | HTTP `201` 以外 | `"github status unexpected response"` | `COMMIT_STATUS_FAILED: status={status} error=github status unexpected response` |
 | network / DNS / timeout | `"github status network error"` | `COMMIT_STATUS_FAILED: status=0 error=github status network error` |
-| invalid owner / repo / context / target_url | [`docs/details/commitstatus.md`](commitstatus.md) §27.1 の固定表の固定 validation error | `COMMIT_STATUS_FAILED: status=0 error={reason}` |
+| invalid owner / repo / context / target_url | [`docs/details/commitstatus.md`](commitstatus.md) 詳細本文責務 §27.1 の固定表の固定 validation error | `COMMIT_STATUS_FAILED: status=0 error={reason}` |
 | state write failure | `"commit status state write failed"` | `COMMIT_STATUS_FAILED: status=0 error=commit status state write failed` |
 
 GitHub response body 全体、Authorization header、GitHub token、credential 付き URL は build log、history、server log、fixture expected に保存しない。HTTP status、固定 error reason、request path、payload state/context/description/target_url だけを保存・検証対象にする。
@@ -131,17 +131,11 @@ GitHub response body 全体、Authorization header、GitHub token、credential �
 | payload validation failure | commit_status summary の error 保存。 | GitHub Status API 呼び出し、未定義 key 保存、secret 出力。 |
 | state write failure | runner の既存 state write failure 契約に従う。 | Commit Status 失敗を理由に未定義 rollback を実行すること。 |
 
-**Commit Status fixture expected 固定契約：**
+**Commit Status fixture 参照：**
 
-| expected file | 必須内容 |
-|---------------|----------|
-| `input/fakes.json` | fake GitHub Status API の応答順、HTTP status、response body mask、network failure 指定。 |
-| `expected/effects.json.external_calls` | `method`、`path`、`headers_present`、`body`、`order`、`result_status`、`error_reason`。Authorization 値は保存しない。 |
-| `expected/logs/build-log.json` | `commit_status` object。key は `enabled`、`state`、`context`、`target_url`、`sent_at`、`http_status`、`error` だけ。 |
-| `expected/logs/history.jsonl` | `commit_status_state` と build result が非反転であること。 |
-| `expected/security.json` | `forbidden_plaintexts` に GitHub token、Authorization header、credential 付き URL、GitHub response body を含める。 |
+Commit Status fixture の fake GitHub Status API、expected/effects、expected logs、expected security、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/commitstatus.md`](commitstatus.md) 詳細本文責務では、GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証観点だけを扱う。
 
-検証条件:
+検証観点:
 
 | ケース | 期待結果 |
 |--------|----------|

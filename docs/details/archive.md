@@ -1,8 +1,8 @@
 # Adlaire CI — Archive 詳細仕様
 
-`archive` owner component の詳細本文責務は、[`docs/details/archive.md`](archive.md) を正本とする。
+本ファイルは `archive` owner component の詳細本文責務として、`archive` が主本文として持つ実装契約だけを扱う。
 
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、fixture、検証観点として参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---
 
@@ -28,11 +28,11 @@ archive owner は、保存済み build log と snapshot artifact の圧縮、展
 
 ---
 
-### 27.7 ビルドログのアーカイブ圧縮
+**27.7 ビルドログのアーカイブ圧縮：**
 
 owner component は `archive` とする。collaborator component は `runner`、`api`、`statefile` とする。
 
-§27.7 で archive / cleanup API の HTTP endpoint、query、response body、HTTP response body への変換を述べる場合は、[`docs/details/api.md`](api.md) §22.0e を共通参照先とする。§27.7 では archive log の探索、展開、圧縮、削除、処理結果だけを定義する。
+§27.7 で archive / cleanup API の HTTP endpoint、query、response body、HTTP response body への変換を述べる場合は、[`docs/details/api.md`](api.md) 詳細本文責務 §22.0e を共通参照先とする。§27.7 では archive log の探索、展開、圧縮、削除、処理結果だけを定義する。
 
 archive owner は、runner または `POST /api/logs/archive` から呼び出された場合に、`.server_config.log_archive_after_days > 0` で対象日数より古い `.build_logs/{id}.json` を gzip 圧縮し、`.build_logs/archive/{id}.json.gz` へ保存する。圧縮成功後、元の `.build_logs/{id}.json` を削除する。`.build_logs/archive/` 内のファイルを再圧縮してはならない。
 
@@ -65,17 +65,11 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 | cleanup | 通常 log、archive log | retention 対象の通常 log、archive log を固定順で削除し、失敗を `failed_count` へ計上する。 | 一部失敗時の処理中断、失敗対象の自動 chmod / rename 修復。 |
 | secret / log | WARN / ERROR 出力 | 固定 code、id、path basename、HTTP status 相当だけを出す。 | build log 本文、token、Authorization header、credential 付き URL、gzip 内容の出力。 |
 
-**archive fixture expected 固定契約：**
+**archive fixture 参照：**
 
-| fixture | 必須 expected |
-|---------|---------------|
-| `success-log-archive` | `expected/effects.json` に created `.json.gz`、deleted `.json`、unchanged 実行中 log、external_calls `[]`、commands `[]`、write_order を固定する。 |
-| `noop-log-archive-empty` | `archived_count=0`、created / updated / deleted paths なし、WARN なし、idempotency を固定する。 |
-| `failure-log-archive-gzip` | gzip write / close / rename failure で元 `.json` 維持、tmp cleanup、`archived_count=0`、WARN / ERROR 固定 code を固定する。 |
-| `success-log-cleanup` | 通常 log 削除、archive log 削除、空 archive directory 削除試行、`deleted_count` / `failed_count`、削除対象外 unchanged を固定する。 |
-| `partial-log-cleanup-delete-failure` | 削除失敗対象を残し、後続対象を継続し、`failed_count` と unchanged failed path を固定する。 |
+archive / snapshot fixture の fixture 名、expected file、effects、fake filesystem、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、archive owner の保存、読取、download、delete、rollback 実体処理と状態差分だけを扱う。
 
-検証条件:
+検証観点:
 
 | ケース | 期待結果 |
 |--------|----------|
@@ -87,17 +81,18 @@ archive owner は、`POST /api/logs/cleanup` から呼び出された場合に�
 | archive 既存 | 上書きせず skip。 |
 | cleanup 一部失敗 | `failed_count` に計上し処理継続。 |
 
-### 27.15 ビルドアーティファクト管理
+**27.15 ビルドアーティファクト管理：**
 
 本機能の目的は、`.snapshots/` に保存された build artifact について、archive owner が一覧読取、download tar.gz 生成、削除、rollback 転送の実体処理を固定することである。API endpoint、SDK method、UI 操作表示の境界は [§27.15 API / SDK / UI 共通参照先](#2715-api--sdk--ui-共通参照先) を参照する。
 
-owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は [`docs/details/runner.md`](runner.md) §14b を参照する。
+owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は [`docs/details/runner.md`](runner.md) 詳細本文責務 §14b を参照する。
 
 archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api / sdk / ui の境界は [§27.15 API / SDK / UI 共通参照先](#2715-api--sdk--ui-共通参照先)、runner の通常 build 実行、snapshot 作成タイミング、build history / status finalizer は [`docs/details/runner.md`](runner.md) 詳細本文責務を参照する。
 
-#### §27.15 API / SDK / UI 共通参照先
+<a id="2715-api--sdk--ui-共通参照先"></a>
+**§27.15 API / SDK / UI 共通参照先：**
 
-§27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md`](api.md) §22.0e、SDK method と error 変換は [`docs/details/sdk.md`](sdk.md) §23、UI 表示と直接操作禁止は [`docs/details/ui.md`](ui.md) §24 を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。
+§27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e、SDK method と error 変換は [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23、UI 表示と直接操作禁止は [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。
 
 **API 呼び出し境界参照：**
 
@@ -106,7 +101,7 @@ archive owner は snapshot の保存形式、一覧読取、download tar.gz 生�
 | `GET /api/snapshots` | archive owner は snapshot 一覧読取結果だけを返す。 |
 | `GET /api/snapshots/{id}/download` | archive owner は download tar.gz 生成だけを担当する。 |
 | `DELETE /api/snapshots/{id}` | archive owner は snapshot delete 実体処理と `.config_log` 追記境界だけを担当する。 |
-| `POST /api/history/{id}/rollback` | archive owner は rollback 転送実体処理を担当する。rollback build log/history の作成境界は [`docs/details/runner.md`](runner.md) を参照する。 |
+| `POST /api/history/{id}/rollback` | archive owner は rollback 転送実体処理を担当する。rollback build log/history の作成境界は [`docs/details/runner.md`](runner.md) 詳細本文責務を参照する。 |
 
 `id` は build id と一致するものだけ許可する。snapshot 専用 id は採番しない。`/`、`..`、空文字、URL decode 後に path separator を含む値は失敗扱いとする。
 
@@ -177,7 +172,7 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は�
 
 **snapshot delete 副作用固定契約：**
 
-delete は destructive endpoint であるため、成功条件と失敗時副作用を [`docs/details/archive.md`](archive.md) §27.15 の固定表に固定する。
+delete は destructive endpoint であるため、成功条件と失敗時副作用を [`docs/details/archive.md`](archive.md) 詳細本文責務 §27.15 の固定表に固定する。
 
 | 段階 | 成功条件 | 失敗時副作用 |
 |------|----------|--------------|
@@ -238,18 +233,9 @@ delete は destructive endpoint であるため、成功条件と失敗時副作
 | pending | `.pending_transfers` entry に `trigger="rollback"`、`rollback_from`、`snapshot_id`、deploy target、retry_count を保存する。 |
 | finalizer failure | server log 固定 code、元 snapshot / 元 log / `.last_sha` unchanged。lock 解放は best effort。 |
 
-**archive / snapshot fixture 合格ゲート：**
+**archive / snapshot fixture 証跡参照：**
 
-| fixture | 合格条件 |
-|---------|----------|
-| `success-snapshot-list-download` | `meta.json` schema、一覧 sort、download header、tar entry 順序、entry mtime、read-only no-write、secret absence が expected と一致する。 |
-| `failure-snapshot-download-unsafe-entry` | unsafe path、symlink、secret file、meta mismatch のいずれかで stream 開始前 failure、binary header なし、状態差分なし。 |
-| `partial-snapshot-download-stream-failure` | stream 開始後 read error で stream 中断、JSON 追加なし、状態差分なし、固定 server log。 |
-| `success-snapshot-delete` | delete 順、`.config_log`、deleted path、unchanged 他 snapshot / history / log / pending が expected と一致する。 |
-| `failure-snapshot-delete-log-failure` | snapshot 削除済み、`.config_log` 失敗、他 snapshot / history / log / pending unchanged。 |
-| `success-snapshot-rollback` | rollback 状態更新順、new build id、history/log/status/pending、元 snapshot / `.last_sha` unchanged が expected と一致する。 |
-| `failure-snapshot-rollback-deploy` | rollback failure の新規 log/history、finalizer、lock 解放、元 snapshot / `.last_sha` unchanged が expected と一致する。 |
-| `failure-snapshot-running-conflict` | delete / rollback conflict、snapshot / history / log / pending / config log 差分なし。 |
+archive / snapshot の fixture 名、合格条件、expected / effects、stream failure、secret absence、状態差分、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、`meta.json` schema、一覧 sort、download header、tar entry 順序、delete 順、rollback 状態更新順、元 snapshot 維持、`.last_sha` 非変更など archive owner の実体処理観点だけを扱う。
 
 **検証条件：**
 
