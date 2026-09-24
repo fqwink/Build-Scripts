@@ -2,7 +2,7 @@
 
 本ファイルは `archive` owner component の詳細本文責務として、`archive` が主本文として持つ実装契約だけを扱う。
 
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`archive` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、表示、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---
 
@@ -28,11 +28,12 @@ archive owner は、保存済み build log と snapshot artifact の圧縮、展
 
 ---
 
+<a id="sec-27-7"></a>
 **27.7 ビルドログのアーカイブ圧縮：**
 
 owner component は `archive` とする。collaborator component は `runner`、`api`、`statefile` とする。
 
-§27.7 で archive / cleanup API の HTTP endpoint、query、response body、HTTP response body への変換を述べる場合は、[`docs/details/api.md`](api.md) 詳細本文責務 §22.0e を共通参照先とする。§27.7 では archive log の探索、展開、圧縮、削除、処理結果だけを定義する。
+§27.7 で archive / cleanup API の HTTP endpoint、query、response body、HTTP response body への変換を述べる場合は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を共通参照先とする。§27.7 では archive log の探索、展開、圧縮、削除、処理結果だけを定義する。
 
 archive owner は、runner または `POST /api/logs/archive` から呼び出された場合に、`.server_config.log_archive_after_days > 0` で対象日数より古い `.build_logs/{id}.json` を gzip 圧縮し、`.build_logs/archive/{id}.json.gz` へ保存する。圧縮成功後、元の `.build_logs/{id}.json` を削除する。`.build_logs/archive/` 内のファイルを再圧縮してはならない。
 
@@ -81,18 +82,19 @@ archive / snapshot fixture の fixture 名、expected file、effects、fake file
 | archive 既存 | 上書きせず skip。 |
 | cleanup 一部失敗 | `failed_count` に計上し処理継続。 |
 
+<a id="sec-27-15"></a>
 **27.15 ビルドアーティファクト管理：**
 
 本機能の目的は、`.snapshots/` に保存された build artifact について、archive owner が一覧読取、download tar.gz 生成、削除、rollback 転送の実体処理を固定することである。API endpoint、SDK method、UI 操作表示の境界は [§27.15 API / SDK / UI 共通参照先](#2715-api--sdk--ui-共通参照先) を参照する。
 
-owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は [`docs/details/runner.md`](runner.md) 詳細本文責務 §14b を参照する。
+owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成は [`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理) を参照する。
 
 archive owner は snapshot の保存形式、一覧読取、download tar.gz 生成、delete 実体処理、rollback 転送実体処理を担当する。api / sdk / ui の境界は [§27.15 API / SDK / UI 共通参照先](#2715-api--sdk--ui-共通参照先)、runner の通常 build 実行、snapshot 作成タイミング、build history / status finalizer は [`docs/details/runner.md`](runner.md) 詳細本文責務を参照する。
 
 <a id="2715-api--sdk--ui-共通参照先"></a>
 **§27.15 API / SDK / UI 共通参照先：**
 
-§27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md`](api.md) 詳細本文責務 §22.0e、SDK method と error 変換は [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23、UI 表示と直接操作禁止は [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。
+§27.15 で HTTP status、JSON error、streaming response、API endpoint、request / response を述べる場合は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、SDK method と error 変換は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様)、UI 表示と直接操作禁止は [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) を共通参照先とする。各表では archive owner が担当する実体処理と状態差分だけを記載する。
 
 **API 呼び出し境界参照：**
 
@@ -172,7 +174,7 @@ rollback 開始時は `.build_lock` を取得し、取得できない場合は�
 
 **snapshot delete 副作用固定契約：**
 
-delete は destructive endpoint であるため、成功条件と失敗時副作用を [`docs/details/archive.md`](archive.md) 詳細本文責務 §27.15 の固定表に固定する。
+delete は destructive endpoint であるため、成功条件と失敗時副作用を [`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) の固定表に固定する。
 
 | 段階 | 成功条件 | 失敗時副作用 |
 |------|----------|--------------|

@@ -85,7 +85,7 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 `components/mcp.go` は将来計画コンポーネントであり、状態分類、実装可否、ロードマップ状態は [docs/ROADMAP.md](docs/ROADMAP.md) を正とする。[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の owner component 参照表と該当する owner component 別の [docs/details/*.md](docs/details/) 詳細本文責務に入出力、状態、起動手順、検証条件が定義されるまでは実装対象として扱わない。
 
-`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、owner component 別の詳細本文責務として作成してはならない。横断する固定値、詳細仕様参照入口、対応表は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) 詳細仕様入口責務として扱う。追加仕様化機能の横断補足契約は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務 §6 を正とする。いずれも component として扱わない。
+`COMMON`、`CORE`、`BASE`、`SHARED`、`FOUNDATION`、その他の横断共通基盤ファイルは、owner component 別の詳細本文責務として作成してはならない。横断する固定値、詳細仕様参照入口、対応表は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) 詳細仕様入口責務として扱う。追加仕様化機能の横断補足契約は [docs/ROADMAP.md 状態・計画責務 §6](docs/ROADMAP.md#6-追加仕様化機能実装参照) を正とする。いずれも component として扱わない。
 
 [docs/DESIGN.md](docs/DESIGN.md) は、出力 HTML のデザイン関係の正本である。機能仕様、状態分類、実装可否、API 仕様、状態 schema、builder 処理本文は定義しない。生成 HTML のデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンは [docs/DESIGN.md](docs/DESIGN.md) を正とする。
 
@@ -105,7 +105,7 @@ owner component 別の [docs/details/*.md](docs/details/) は、各 component �
 
 未確定の内容を実装可能な詳細仕様として扱ってはならない。実装判断に必要な具体値、条件、処理が未確定の場合は、[docs/ROADMAP.md](docs/ROADMAP.md) の状態分類を確認し、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) または owner component 別の [docs/details/*.md](docs/details/) へ推測で具体値を記載してはならない。
 
-仕様項目の成熟度と実装可否は、[docs/SPEC.md](docs/SPEC.md) 方針責務 §4.5 の仕様成熟度方針、および [docs/SPEC.md](docs/SPEC.md) ポリシー責務 §0a の仕様成熟度ポリシーに従って判定する。
+仕様項目の成熟度と実装可否は、[docs/SPEC.md 方針責務 §4.5](docs/SPEC.md#sec-4-5) の仕様成熟度方針、および [docs/SPEC.md ポリシー責務 §0a](docs/SPEC.md#0a-仕様成熟度ポリシー) の仕様成熟度ポリシーに従って判定する。
 
 作業開始時には、対象機能・対象コンポーネントについて [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、対象 owner component 別の [docs/details/*.md](docs/details/) の対象節と実ファイルの存在を確認する。
 

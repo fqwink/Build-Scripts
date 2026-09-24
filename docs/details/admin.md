@@ -2,7 +2,7 @@
 
 本ファイルは `admin` owner component の詳細本文責務として、`admin` が主本文として持つ実装契約だけを扱う。
 
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`admin` owner component の主本文であり、collaborator component の仕様は呼び出し境界、配布境界、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`admin` owner component の主本文であり、collaborator component の仕様は呼び出し境界、配布境界、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---
 
@@ -100,7 +100,7 @@ setup が admin UI を配置する場合は、以下を満たす。
 | serving | [`docs/details/admin.md`](admin.md) 詳細本文責務 A3 の path、Content-Type、Cache-Control、method、404 / 405 が一致する。 |
 | no mutation | UI / SDK file 内容、状態ファイル、credential、build log、snapshot を変更しない。 |
 | no secret exposure | `.admin_credentials`、`.github_token`、`.server_config`、`.build_logs`、`.snapshots` を静的配信しない。 |
-| setup integration | [`docs/details/setup.md`](setup.md) 詳細本文責務 §26 の配置・rollback 条件と矛盾しない。 |
+| setup integration | [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) の配置・rollback 条件と矛盾しない。 |
 
 ---
 
@@ -118,5 +118,5 @@ Admin fixture の fixture 名、入力、操作、expected file、禁止副作�
 | static serving | [`docs/details/admin.md`](admin.md) 詳細本文責務 A3 と [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の admin request fixture が status、header、body 有無、method 制限に一致する。 |
 | secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
 | no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
-| setup integration | [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.8 の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |
+| setup integration | [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |
 | fixture integration | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の `setup-admin-release-layout`、`setup-admin-archive-boundary`、`setup-systemd-rollback-boundary`、`admin-static-serving-security`、`setup-secret-preservation` と fixture 名、expected file、禁止副作用が一致する。 |

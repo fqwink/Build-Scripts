@@ -189,6 +189,35 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 - `dt`：`font-weight: semibold`、`--adlaire-surface-text`
 - `dd`：`margin-left: --adlaire-space-6`、`--adlaire-surface-text-muted`
 
+<a id="builder-拡張コンポーネント視覚契約"></a>
+
+**Builder 拡張コンポーネント視覚契約：**
+
+[`docs/details/builder.md` 詳細本文責務 §28](details/builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) で追加される生成 HTML の視覚仕様、レイアウト、レスポンシブ、印刷時の見え方は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を正本とする。出力対象 selector、設定値、REPORT、状態、検証条件は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
+
+| 対象 | 視覚契約 |
+|------|----------|
+| light visual baseline | `:root` は light 固定の custom property を定義する。dark / auto selector、dark background、theme toggle の視覚表現を持たない。 |
+| typography / block | admonition、badge、definition list、task list、footnote、math は本文幅内に収め、本文の行長、余白、読みやすさを壊さない。 |
+| code extension | code title、line number、diff highlight は code block と一体で読める配置にし、copy 対象 text と装飾 text を視覚的に区別する。 |
+| navigation runtime UI | section collapse、TOC active、hash focus、skip link は focus indicator と active indicator を常に可視にし、focus / active 化で layout 寸法を変えない。 |
+| media UI | image lightbox、Mermaid placeholder / SVG wrapper、print QR は本文の流れを妨げない。外部画像取得や外部 script 読込を前提にした視覚状態を持たない。 |
+| responsive | 幅 `320px` の viewport で、本文、見出し、TOC、skip link、admonition、badge、definition list、task list、footnote、math、code title、line numbers、diff highlight、lightbox、print QR の text が重ならず、切れず、親要素外へ不可視にはみ出さない。table と code block だけは既存 scroll wrapper 内の horizontal overflow を許可する。 |
+| print | `@media print` では interactive controls、collapse toggle、lightbox trigger UI、TOC active indicator、skip link の画面専用装飾を非表示にする。本文、見出し、画像、code、table、footnote、definition list、task list は非表示にしない。印刷時は全 section を展開表示し、light 固定の背景と文字色を維持する。 |
+
+| 対象 | layout 固定内容 |
+|------|----------------|
+| `.adlaire-admonition` | 本文幅内の block とし、他 card 内へ入れ子の card 表現を追加しない。title と body は縦積み、長い語は折り返す。 |
+| `.adlaire-badge` | inline 要素として扱い、行高を不自然に拡大しない。前後 text を押し潰さない。 |
+| `.code-title` | 対応する code block 直前にだけ表示し、code block と分離して floating 表示しない。 |
+| `.code-lines` / `.line-no` | line number column と code text column の対応を維持し、折り返し時も行番号と本文が逆転しない。 |
+| `.tok-inserted` / `.tok-deleted` / `.tok-context` | 背景色と text color の両方で状態を表し、色だけに依存しない記号または text を維持する。 |
+| `.math-inline` / `.math-block` | inline math は行内、block math は本文幅内 block とし、未対応記法を画像化しない。 |
+| `.adlaire-lightbox-dialog` | dialog 表示時は viewport 内に収め、画像は `max-inline-size: 100%`、`max-block-size: 100%` 相当で切らない。 |
+| `.mermaid-diagram` / `.mermaid-source` | SVG wrapper は本文幅内に収め、fallback text を保持する。 |
+| `.print-qr` / `.print-qr-svg` | print 専用 block とし、screen 表示では本文内の常時表示要素にしない。 |
+| `.skip-link` / `.is-active` | focus outline は常に可視にし、focus / active 化で layout 寸法を変えない。 |
+
 ---
 
 ## 7. トップへ戻るボタン

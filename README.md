@@ -19,7 +19,7 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 
 ## リリース形式
 
-リリース形式の正本は [`docs/SPEC.md`](docs/SPEC.md) ポリシー責務 §1、セットアップ詳細は [`docs/details/setup.md`](docs/details/setup.md) 詳細本文責務 §26 を参照します。
+リリース形式の正本は [`docs/SPEC.md` ポリシー責務 §1](docs/SPEC.md#1-バージョン管理)、セットアップ詳細は [`docs/details/setup.md` 詳細本文責務 §26](docs/details/setup.md#26-セットアップアップデート手順) を参照します。
 
 ## 注意
 

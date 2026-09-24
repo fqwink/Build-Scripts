@@ -1,6 +1,6 @@
 # Build-Scripts — 文書索引
 
-このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。仕様本文、方針本文、状態本文、詳細本文、デザイン本文を持たない。責務分離と重複禁止の判断は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a を参照し、正本所在は [正本参照先](#正本参照先) に整理する。
+このファイルは、Build-Scripts リポジトリ内の文書・実装ファイルの参照先と役割を整理する索引である。仕様本文、方針本文、状態本文、詳細本文、デザイン本文を持たない。責務分離と重複禁止の判断は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) を参照し、正本所在は [正本参照先](#正本参照先) に整理する。
 
 方針・ポリシー、状態・計画、詳細仕様、デザイン、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務は `docs/` 配下に集約する。ルールブック [`AGENTS.md`](../AGENTS.md) と入口文書 [`README.md`](../README.md) はリポジトリ root に置く。
 
@@ -32,7 +32,7 @@
 | 方針、ポリシー、禁止事項を確認したい | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務 | - | 方針・ポリシー・禁止事項は [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務だけを正本とする。 |
 | 状態分類、実装可否、Phase、将来計画を確認したい | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 状態・計画正本への入口。 |
 | 詳細仕様本文を探したい | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | 対象機能の owner component、参照節、受け入れ条件の確認先。fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を確認する。 |
-| 実装ファイル、テスト、fixture の所在を確認したい | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j | 現行実装ファイル、将来追加予定 path、標準配置の確認先。 |
+| 実装ファイル、テスト、fixture の所在を確認したい | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0j](DETAIL_INDEX.md#0j-リポジトリ内ソース配置) | 現行実装ファイル、将来追加予定 path、標準配置の確認先。 |
 | component の入出力、状態、処理順序、異常系、検証条件を確認したい | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 | 対象 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務 | owner component を確定してから、実装時に従う具体仕様と collaborator 境界を確認する。fixture、expected、fake は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を確認する。 |
 | 生成静的 Web サイトの見た目を確認したい | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 | - | 生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) デザイン責務だけを正本とする。 |
 
@@ -89,7 +89,7 @@
 
 ## 詳細仕様管理
 
-詳細仕様管理表は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の配置先だけを示す索引である。詳細仕様入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、追加仕様化機能参照と横断補足契約は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 を参照する。
+詳細仕様管理表は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の配置先だけを示す索引である。詳細仕様入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、追加仕様化機能参照と横断補足契約は [`docs/ROADMAP.md` 状態・計画責務 §6](ROADMAP.md#6-追加仕様化機能実装参照) を参照する。
 
 | ファイル | owner component / 責務 |
 |----------|----------------------|
@@ -110,13 +110,13 @@
 
 実装ファイル一覧は、現行リポジトリに存在する実装ファイル、テスト、fixture、および将来追加予定 path の所在を示す索引である。状態分類と実装可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
-リポジトリ内ソース配置は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3 のディレクトリ構成と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j を参照する。
+リポジトリ内ソース配置は、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) のディレクトリ構成と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0j](DETAIL_INDEX.md#0j-リポジトリ内ソース配置) を参照する。
 
 [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の実装ファイル一覧表は、現行リポジトリに存在する実装ファイルと、将来追加予定 path を区別して示す。`main.go`、実在する `components/*.go`、`admin/` 配下の静的 UI ファイル、実在する `testdata/<component>/` だけを現行実体として扱う。
 
 標準配置図に含まれる未作成 path は、将来追加予定 path として扱い、該当 owner component が実装対象になった変更で追加する。標準配置図に含まれていることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成しない。
 
-`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置である。標準配置と現行実体の所在確認は、[`docs/SPEC.md`](SPEC.md) 方針責務 §4.3、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0j、実装ファイル一覧を参照する。
+`build_spec.go`、`runner.go`、`build_spec_test.go`、`runner_test.go`、`testdata/build_spec/` は標準外配置である。標準配置と現行実体の所在確認は、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0j](DETAIL_INDEX.md#0j-リポジトリ内ソース配置)、実装ファイル一覧を参照する。
 
 | パス | component | 所在区分 | 役割 |
 |------|-----------|----------|------|
@@ -153,4 +153,4 @@
 | デザイン | [`docs/DESIGN.md`](DESIGN.md) デザイン責務 |
 | 文書・実装ファイル所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務 |
 
-文書整合の禁止事項、責務分離、参照リンク化、重複禁止は [`docs/SPEC.md`](SPEC.md) 方針責務 §4.2a、作業手順は [`AGENTS.md`](../AGENTS.md) を参照する。
+文書整合の禁止事項、責務分離、参照リンク化、重複禁止は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a)、作業手順は [`AGENTS.md`](../AGENTS.md) を参照する。
