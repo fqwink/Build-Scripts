@@ -900,7 +900,7 @@ UI 連動 fixture は、SDK only call trace、refresh order、disabled priority�
 
 UI owner fixture が不足する場合、UI 実装変更は詳細実装確認を満たした扱いにしてはならない。不足時は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §0g.8-F の不足時共通扱いに従う。
 
-**fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約：**
+### fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約
 
 §26 の setup、admin UI 配布、API service 導入、update、rollback を含む実装変更は、対象機能の owner fixture に加えて [`docs/details/fixture.md`](fixture.md) fixture 証跡責務 §27-F の固定表の連動 fixture を必要数作成する。fixture は [`docs/details/setup.md`](setup.md) 詳細本文責務 §26.8 と [`docs/details/admin.md`](admin.md) 詳細本文責務 A1〜A6 の合格条件を同じ expected で検証する。
 
