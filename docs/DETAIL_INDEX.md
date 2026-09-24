@@ -358,7 +358,8 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 
 対象節に [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0h の必須項目が不足している場合の実装着手可否は、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a〜§0f を参照する。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 の追加仕様化機能参照で、owner、主本文、collaborator を確認する。
 
-### 0i.1 Builder / 静的 Web サイト出力
+<a id="0i1-builder--静的-web-サイト出力"></a>
+**0i.1 Builder / 静的 Web サイト出力：**
 
 [`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.1〜§28.25 を実装する場合は、個別行の受け入れ条件に加えて、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28 の共通固定契約、CLI / 設定 / REPORT / 出力識別子固定契約、実装パイプライン固定契約、設定解決・終了コード固定契約、設定ファイル / 入力解決固定契約、REPORT 値型固定契約、stdout / stderr / REPORT 固定契約、atomic write / manifest / search index 副作用固定契約、ID / slug / search index / JS state 決定性固定契約、CSS / JS 出力固定契約、CSS / layout / print / visual 固定契約、browser runtime 固定契約、Markdown token / HTML node 変換固定契約、Markdown parser 優先順位固定契約、Markdown 構文文法固定契約、曖昧構文・機能併用固定契約、warning / error code 固定契約、既存出力互換・先取り実装禁止固定契約、個別固定補足契約、詳細実装確認ゲート固定契約、および [`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F を必ず読む。
 
@@ -414,7 +415,8 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 | 定義リストサポート | `builder` | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.24 | `<dl>/<dt>/<dd>` 出力、paragraph 境界、inline escape が一致する。 |
 | タスクリストサポート | `builder` | [`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28.25 | disabled checkbox、checked 判定、nested list、aria が一致する。 |
 
-### 0i.2 Runner / CI 実行
+<a id="0i2-runner--ci-実行"></a>
+**0i.2 Runner / CI 実行：**
 
 | Runner 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
 |-------------|-------------------|------------|--------------|
@@ -456,7 +458,8 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 | ビルド実行環境の記録 | `runner` | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §13、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §15、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.37 | build 開始時の environment snapshot、secret 非含有、log schema、検証 fixture が一致する。 |
 | ビルド所要時間の異常検知 | `runner` / `api` | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §13、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §15、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §16、[`docs/details/api.md`](details/api.md) 詳細本文責務 §22.0e、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.38 | trend 基準、異常判定、WARN、history flag、通知 payload、設定値が一致する。 |
 
-### 0i.3 API / SDK / UI
+<a id="0i3-api--sdk--ui"></a>
+**0i.3 API / SDK / UI：**
 
 | API / SDK / UI 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
 |---------------------|-------------------|------------|--------------|
@@ -473,7 +476,8 @@ Phase の一覧、順序、対象 owner component、依存条件、判定条件�
 | 設定変更の詳細 diff 記録 | `api` | [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 §22.0a、[`docs/details/api.md`](details/api.md) 詳細本文責務 §22.0e、[`docs/details/api.md`](details/api.md) 詳細本文責務 §27.20 | `.config_log` の diff 文字列、対象 API、マスク条件が一致する。 |
 | ビルド承認フロー | `runner` / `api` / `sdk` / `ui` | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §11、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §13、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §15、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §16、[`docs/details/api.md`](details/api.md) 詳細本文責務 §22.0e、[`docs/details/api.md`](details/api.md) 詳細本文責務 §27.30 | `.approval_queue`、承認/却下 API、通知、timeout、UI 操作、履歴 status が一致する。 |
 
-### 0i.4 Archive / Artifact / Security
+<a id="0i4-archive--artifact--security"></a>
+**0i.4 Archive / Artifact / Security：**
 
 | Archive / Artifact / Security 機能 | 参照 component | 詳細仕様節 | 受け入れ条件 |
 |-----------------------------------|-------------------|------------|--------------|

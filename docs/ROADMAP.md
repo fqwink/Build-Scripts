@@ -6,7 +6,8 @@
 
 実装詳細、schema、SDK / UI / fixture の本文は状態・計画責務に置かない。
 
-### 状態・計画責務 共通参照先
+<a id="状態計画責務-共通参照先"></a>
+**状態・計画責務 共通参照先：**
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で実装詳細、HTTP endpoint、schema、DOM、SDK method、fixture、検証証跡に触れる場合、実装詳細は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture / expected / fake / 実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、文書・実装ファイル所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を共通参照先とする。状態・計画責務では状態、実装可否、Phase、将来計画、昇格入口だけを本文として扱う。
 
@@ -67,7 +68,8 @@ Go 版初期実装の対象範囲と Phase 単位の扱いは [`docs/SPEC.md`](S
 | Phase 5 | `sdk` | [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23 の SDK class、method、戻り値、HTTP error、token 破棄、query / body 生成。 | Phase 3 と Phase 4 が完了し、[`docs/details/api.md`](details/api.md) 詳細本文責務 §22.0e の endpoint 契約が固定されている。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e の `sdk` 契約と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0f の `sdk` 判定入口を満たす。 |
 | Phase 6 | `ui` | [`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24 の標準管理ツール UI、DOM id、panel、操作、SDK 呼び出し、成功表示、失敗表示、disabled、再取得、秘密情報消去。 | Phase 5 が完了し、SDK method 契約が固定されている。 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0e の `ui` 契約と [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0f の `ui` 判定入口を満たす。 |
 
-### 4.1.1 Phase 1 完全仕様ゲート（`builder`）
+<a id="411-phase-1-完全仕様ゲートbuilder"></a>
+**4.1.1 Phase 1 完全仕様ゲート（`builder`）：**
 
 Phase 完全仕様ゲートは、対象 Phase の対象、依存条件、判定条件、後続 Phase への引き継ぎ確認だけを扱う。各 Phase の実装詳細本文は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 共通参照先と下表の参照先を正とする。
 
@@ -79,7 +81,8 @@ Phase 1 完全仕様ゲートでは、Phase 1 の対象、依存条件、判定�
 | Phase 1 fixture、testdata、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md#8a-f-builder-初期受け入れ-fixture-契約) fixture 証跡責務 §8a-F |
 | Phase 1 release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 |
 
-### 4.1.2 Phase 2 完全仕様ゲート（`runner`）
+<a id="412-phase-2-完全仕様ゲートrunner"></a>
+**4.1.2 Phase 2 完全仕様ゲート（`runner`）：**
 
 Phase 2 完全仕様ゲートでは、Phase 2 が Phase 1 の `adlaire-ci-build` 契約に依存し、後続 API が読む runner 状態契約を固定することだけを扱う。
 
@@ -89,7 +92,8 @@ Phase 2 完全仕様ゲートでは、Phase 2 が Phase 1 の `adlaire-ci-build`
 | runner fixture 証跡、fake GitHub、fake ssh / notifier、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md#15a-f-runner-初期受け入れ-fixture-契約) fixture 証跡責務 §15a-F |
 | Phase 2 release / setup 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26.7 |
 
-### 4.1.3 Phase 3 完全仕様ゲート（`api`）
+<a id="413-phase-3-完全仕様ゲートapi"></a>
+**4.1.3 Phase 3 完全仕様ゲート（`api`）：**
 
 Phase 3 完全仕様ゲートでは、API 共通契約、認証、状態 read/write、運用基本 endpoint が Phase 4〜6 の前提になることだけを扱う。
 
@@ -99,7 +103,8 @@ Phase 3 完全仕様ゲートでは、API 共通契約、認証、状態 read/wr
 | 状態ファイル schema、lock、atomic write | [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 §22.0a、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 §22.0c |
 | 管理 API 導入、systemd、release 受け入れ条件 | [`docs/details/setup.md`](details/setup.md) 詳細本文責務 §26 |
 
-### 4.1.4 Phase 4 完全仕様ゲート（`api`）
+<a id="414-phase-4-完全仕様ゲートapi"></a>
+**4.1.4 Phase 4 完全仕様ゲート（`api`）：**
 
 Phase 4 完全仕様ゲートでは、拡張運用 endpoint が SDK / UI の最終入力契約になることだけを扱う。
 
@@ -109,7 +114,8 @@ Phase 4 完全仕様ゲートでは、拡張運用 endpoint が SDK / UI の最�
 | security 連携 | [`docs/details/security.md`](details/security.md) 詳細本文責務 §27.42〜§27.47 |
 | API fixture、endpoint 証跡 | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F、[`docs/details/fixture.md`](details/fixture.md#22-f-phase-3--phase-4-api-fixture-契約) fixture 証跡責務 §22-F、[`docs/details/fixture.md`](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F |
 
-### 4.1.5 Phase 5 完全仕様ゲート（`sdk`）
+<a id="415-phase-5-完全仕様ゲートsdk"></a>
+**4.1.5 Phase 5 完全仕様ゲート（`sdk`）：**
 
 Phase 5 完全仕様ゲートでは、SDK が固定済み API endpoint だけを呼び、UI 表示決定を持たないことだけを扱う。
 
@@ -119,7 +125,8 @@ Phase 5 完全仕様ゲートでは、SDK が固定済み API endpoint だけを
 | API endpoint 対応 | [`docs/details/api.md`](details/api.md) 詳細本文責務 §22.0e |
 | SDK fixture、fake fetch / stream | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
 
-### 4.1.6 Phase 6 完全仕様ゲート（`ui`）
+<a id="416-phase-6-完全仕様ゲートui"></a>
+**4.1.6 Phase 6 完全仕様ゲート（`ui`）：**
 
 Phase 6 完全仕様ゲートでは、UI が SDK 経由だけで API と通信し、秘密情報を DOM に残さないことだけを扱う。
 
@@ -129,7 +136,8 @@ Phase 6 完全仕様ゲートでは、UI が SDK 経由だけで API と通信�
 | SDK method 契約 | [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23 |
 | UI fixture、fake SDK、直接 API 呼び出し禁止確認 | [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F |
 
-### 4.1.7 Phase 間引き継ぎ契約
+<a id="417-phase-間引き継ぎ契約"></a>
+**4.1.7 Phase 間引き継ぎ契約：**
 
 各 Phase の完了時は、次 Phase が依存する契約を変更不可として扱う。後続 Phase で変更が必要になった場合は、後続 Phase の実装で吸収せず、契約を定義した owner component 別の [`docs/details/*.md`](details/) 詳細本文責務へ戻す。
 
@@ -142,7 +150,8 @@ Phase 6 完全仕様ゲートでは、UI が SDK 経由だけで API と通信�
 | Phase 5 | Phase 6 | SDK method 名、引数、戻り値、error object、stream handle、token 破棄条件。 | [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 |
 | Phase 6 | 初期実装確認 | UI 操作、表示状態、secret 消去、SDK 経由通信、実装確認結果。 | [`docs/details/ui.md`](details/ui.md) 詳細本文責務 |
 
-### 4.1.8 Phase 別 実装成果物チェックリスト
+<a id="418-phase-別-実装成果物チェックリスト"></a>
+**4.1.8 Phase 別 実装成果物チェックリスト：**
 
 Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [`docs/details/fixture.md`](details/fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約) fixture 証跡責務 §0g.8-F を参照する。Phase 別実装成果物チェックリストは、Phase ごとの成果物参照先だけを保持し、fixture 名、expected / effects、fake 動作、実装検証証跡項目を本文として持たない。
 
@@ -164,9 +173,11 @@ Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.1 は、状態・計画責務が管理する機能インベントリである。各機能の仕様詳細は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務と owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。状態分類は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3、および [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a の仕様成熟度ポリシーに従って判定する。
 
-### ビルド・CI ランナー（components/runner.go）
+<a id="ビルドci-ランナーcomponentsrunnergo"></a>
+**ビルド・CI ランナー（components/runner.go）：**
 
-#### Go 版で実装済みの初期範囲
+<a id="go-版で実装済みの初期範囲"></a>
+**Go 版で実装済みの初期範囲：**
 
 - `--state-dir`、`--once`、`--version`、`--help` の CLI 契約
 - `.branch_config` と `.last_sha` による branch target / SHA cache 読み込み
@@ -192,7 +203,8 @@ Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [
 - `OUTPUT_SIZE_WARN_MB` による出力サイトサイズ警告
 - Phase 2 fixture R1〜R7 と判定パステスト
 
-#### Go 版で仕様化済みの全体範囲
+<a id="go-版で仕様化済みの全体範囲"></a>
+**Go 版で仕様化済みの全体範囲：**
 
 - GitHub リポジトリの対象ファイルを定期ポーリング（systemd timer）
 - blob SHA による差分検出（変更なし時はビルドをスキップ）
@@ -211,7 +223,8 @@ Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [
 - `BRANCH_TARGETS` リストで複数ブランチを順次ポーリング・ビルドする
 - `FORCE_BUILD_INTERVAL` 設定時、前回ビルドから指定時間経過で変更なしでも強制ビルドする
 
-### 管理 API エンドポイント（components/api.go）
+<a id="管理-api-エンドポイントcomponentsapigo"></a>
+**管理 API エンドポイント（components/api.go）：**
 
 | カテゴリ | エンドポイント |
 |---------|--------------|
@@ -245,7 +258,8 @@ Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [
 | ビルドキュー | `GET /api/queue` / `DELETE /api/queue` |
 | ダッシュボードレイアウト | `GET /api/dashboard-layout` / `POST /api/dashboard-layout` |
 
-### SDK メソッド（adlaire-ci-sdk.js）
+<a id="sdk-メソッドadlaire-ci-sdkjs"></a>
+**SDK メソッド（adlaire-ci-sdk.js）：**
 
 | カテゴリ | メソッド |
 |---------|--------|
@@ -281,7 +295,8 @@ Phase fixture / testdata 配置、fake 実装、実装検証証跡の詳細は [
 
 ES Module・外部依存なし。全メソッドは `Promise` を返す。`streamBuild` は SSE 接続確立後に `Promise<StreamHandle>` として resolve し、`StreamHandle` は `{ close(): void, closed: boolean }` を持つ。`constructor` を除く合計は 96 メソッド。
 
-### 標準管理ツール パネル（admin/index.html）
+<a id="標準管理ツール-パネルadminindexhtml"></a>
+**標準管理ツール パネル（admin/index.html）：**
 
 | パネル | 主な機能 |
 |-------|---------|
@@ -318,13 +333,15 @@ Adlaire CI の実装済み項目、実装中・検証未完了項目、仕様化
 
 **担当領域：** `CI ランナー` / `管理ツール・API` / `MCP サーバー` / `ビルドスクリプト`
 
-### 5.2.1 統合ロードマップ参照入口
+<a id="521-統合ロードマップ参照入口"></a>
+**5.2.1 統合ロードマップ参照入口：**
 
 拡張ポイント・将来計画の項目は、単一の統合ロードマップ表で管理する。状態分類と実装可否の定義は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 を参照する。実装着手可否の判定は [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0a と [`docs/SPEC.md`](SPEC.md) ポリシー責務 §0d を参照する。
 
 ---
 
-### 5.2.2 統合ロードマップ表
+<a id="522-統合ロードマップ表"></a>
+**5.2.2 統合ロードマップ表：**
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 の統合ロードマップ表は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2 の全項目を状態別に統合した唯一の一覧である。項目を追加、削除、昇格、実装済みにする場合は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.2 の統合ロードマップ表の `状態`、`実装可否`、`次アクション` を同時に更新する。
 
@@ -497,7 +514,8 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | 将来計画 | 実装不可 | MCP サーバー | MCP 設定 CRUD ツール | 将来計画候補。MCP 専用詳細仕様が新設されるまで、設定対象、tool 名、認可、検証条件は未定義。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
 | 将来計画 | 実装不可 | MCP サーバー | MCP Elicitation による副作用操作の確認 | 将来計画候補。MCP 専用詳細仕様が新設されるまで、副作用 tool、確認 payload、承認結果の扱いは未定義。 | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §5.2.3 の手順で `改訂予定` へ昇格し、MCP 専用詳細仕様を新設する。 |
 
-### 5.2.3 状態変更・昇格手順
+<a id="523-状態変更昇格手順"></a>
+**5.2.3 状態変更・昇格手順：**
 
 統合ロードマップ表の `将来計画` の項目を実装対象にする場合は、以下の順で進める。
 
@@ -515,11 +533,13 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 追加仕様化機能実装参照は、追加仕様化機能の状態、実装可否、owner、主本文、collaborator を確認するための参照索引である。各機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。参照先の特定は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務 §0i と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 で行う。
 
-### 6.1 追加仕様化機能 共通実装契約
+<a id="61-追加仕様化機能-共通実装契約"></a>
+**6.1 追加仕様化機能 共通実装契約：**
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 に列挙する追加仕様化機能の主本文は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。追加仕様化機能共通実装契約は、実装時に共通して確認する参照順、越境確認、実装検証証跡の入口だけを示す。
 
-#### 追加仕様化機能 横断共通参照先
+<a id="追加仕様化機能-横断共通参照先"></a>
+**追加仕様化機能 横断共通参照先：**
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 で API endpoint、SDK method、UI 操作、状態ファイル副作用、fixture、実装検証証跡に触れる場合、API 契約は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK 契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務、UI 契約は [`docs/details/ui.md`](details/ui.md) 詳細本文責務、状態ファイル契約は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務、fixture / 実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を共通参照先とする。状態・計画責務 §6 では、追加仕様化機能の owner、主本文、collaborator、横断確認観点だけを本文として扱う。
 
@@ -538,7 +558,8 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 
 追加仕様化機能の責務分離、dry-run 固定契約、fixture 判定条件の詳細は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務と [`docs/details/fixture.md`](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を参照する。builder 拡張 fixture 判定条件は、[`docs/details/builder.md`](details/builder.md) 詳細本文責務 §28 と [`docs/details/fixture.md`](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) fixture 証跡責務 §28-F を参照する。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は同じ fixture schema、expected/effects、個別機能本文を持たない。
 
-### 6.2 追加仕様化機能 参照索引
+<a id="62-追加仕様化機能-参照索引"></a>
+**6.2 追加仕様化機能 参照索引：**
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.2 の追加仕様化機能参照索引は、追加仕様化機能の owner、主本文、collaborator を一覧化するインデックスである。個別機能本文、状態 schema、endpoint、SDK method、UI DOM、横断処理順は、同索引の「主本文」に記載された owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。fixture schema、expected、fake、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、同索引に記載された主本文、owner component、collaborator component を置き換えない。
 
@@ -624,7 +645,8 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | [`docs/details/api.md`](details/api.md) 詳細本文責務 §27.17、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21、[`docs/details/api.md`](details/api.md) 詳細本文責務 §27.30、[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.32 | API、SDK、UI、状態ファイルの連動境界は、該当 collaborator component 別の [`docs/details/*.md`](details/) 詳細本文責務と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.3 を参照する。 |
 | [`docs/details/security.md`](details/security.md) 詳細本文責務 §27.42〜§27.47 | scope、token、audit、session、TOTP、rate limit は `security` を基準とし、API / SDK / UI は呼び出し境界と表示だけを担当する。 |
 
-### 6.3 横断連動・Runner 拡張機能 実装補足契約
+<a id="63-横断連動runner-拡張機能-実装補足契約"></a>
+**6.3 横断連動・Runner 拡張機能 実装補足契約：**
 
 横断連動・Runner 拡張機能実装補足契約は、追加仕様化機能の横断補足契約である。[`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38 および api / sdk / ui / statefile の横断連動では、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を主本文とし、横断補足契約は横断確認として参照する。
 
@@ -642,7 +664,8 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | archive | snapshot、artifact、download、delete、rollback、log archive は [`docs/details/archive.md`](details/archive.md) 詳細本文責務を参照する。 |
 | fixture | [`docs/details/runner.md`](details/runner.md) 詳細本文責務 §27.21〜§27.38、[`docs/details/ui.md`](details/ui.md) 詳細本文責務 §24、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務 §22.0s、[`docs/details/security.md`](details/security.md) 詳細本文責務 §27.42〜§27.47 に関わる fixture 証跡、secret mask、effects、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を参照する。 |
 
-#### api / sdk / ui / statefile 横断連動契約
+<a id="api--sdk--ui--statefile-横断連動契約"></a>
+**api / sdk / ui / statefile 横断連動契約：**
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6.4 の横断確認表は、新しい API endpoint、SDK method、UI 操作、状態ファイル副作用を定義しない。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §6 追加仕様化機能 横断共通参照先と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に従い、同一機能群の横断確認観点だけをそろえる。API、SDK、UI の実装順と仕様外仮実装の扱いは、[`docs/SPEC.md`](SPEC.md) ポリシー責務 §0f を参照する。UI が未実装の Phase では、UI 列は fixture の期待操作として確認し、実装済み扱いは [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §2 と [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務 §3 を参照する。
 
@@ -657,7 +680,8 @@ MCP サーバー領域の行は、現時点ではすべて将来構想例であ�
 | access / hooks / rules / pipeline / notes / layout | access、hooks、alert rules、tag rules、pipeline config、notes、dashboard layout の GET/POST/DELETE endpoint | 対応する [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務 §23 SDK method | 保存、追加、削除、notes 保存、dashboard layout 保存。 | `.access_control`、`.hooks`、`.alert_rules`、`.tag_rules`、`.pipeline_config`、`.notes`、`.dashboard_layout`、`.config_log`。 | 対象 GET → 変更系で config log 対象の場合は `getConfigLog()`。layout は `getDashboardLayout()` → `getDashboard()`。 | duplicate `409` は競合表示。validation `422` は field error。削除対象不在は `404`。 |
 | tokens / audit / access logs / rate limit | `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}`, `GET /api/audit-log`, `GET /api/access-log`, `GET /api/api-access-log`, `GET/POST /api/api-rate-limit` | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getAccessLog()`, `getApiAccessLog()`, `getApiRateLimit()`, `setApiRateLimit()` | token 発行/失効、audit / access log 表示、rate limit 保存。 | `.api_tokens`、`.audit_log`、`.access_log`、`.api_access_log`、`.api_rate_state`、`.server_config`、`.config_log`。token 本体は作成時 response のみ。 | token 操作は `getTokens()` → `getAuditLog()`。rate limit は `getApiRateLimit()`。 | token 本体は再取得不可。`403` は logout しない。`429` は rate limit 表示し、同一操作を自動 retry しない。 |
 
-#### 横断処理順契約
+<a id="横断処理順契約"></a>
+**横断処理順契約：**
 
 | 処理種別 | 固定順序 |
 |----------|----------|
