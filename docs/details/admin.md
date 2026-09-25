@@ -11,9 +11,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 項目 | 内容 |
 |------|------|
 | owner component | `admin` |
-| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
+| 実装主体 | 単独の Go artifact は持たない。配布対象は [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、HTTP 静的配信の実装先は [`components/api.go`](../../components/api.go) とする。配置実行主体は [`docs/details/setup.md`](setup.md) の未確定契約に従う。 |
 | 持つ内容 | `admin` owner が主本文として定義する管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
-| 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、release asset 取得手順、fixture 証跡責務。 |
+| 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、Release asset 取得手順、fixture 証跡責務。 |
 
 `admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の仕様は [`docs/details/ui.md`](ui.md) 詳細本文責務を基準とし、`sdk` の仕様は [`docs/details/sdk.md`](sdk.md) 詳細本文責務を参照する。
 
@@ -73,7 +73,7 @@ admin archive の検証は以下の順序に固定する。
 <a id="a4-setup-連携境界"></a>
 **A4. Setup 連携境界：**
 
-setup 手順本文、release asset 取得手順、rollback 手順は [`docs/details/setup.md`](setup.md) 詳細本文責務を参照する。
+setup 手順本文、Release asset 取得手順、rollback 手順は [`docs/details/setup.md`](setup.md) 詳細本文責務を参照する。
 
 [`docs/details/admin.md`](admin.md) 詳細本文責務は、`admin` owner の配布境界として、setup が扱う `admin-ui.tar.gz` の中身、展開後の必須 file、静的配信 path、拒否すべき archive entry を定義する。
 
@@ -110,7 +110,7 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 `admin` owner component は、配布物検証、archive 安全性、静的配信、no mutation を fixture で確認できる状態にする。`admin` 詳細では UI DOM、SDK method、API endpoint、fixture 入力、expected、fake、実装検証証跡を再定義せず、admin 配布境界だけを確認する。
 
-Admin fixture の fixture 名、入力、操作、expected file、禁止副作用は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) setup / admin / release 連動 fixture 固定契約を正本とする。
+Admin fixture の fixture 名、入力、操作、expected file、禁止副作用は [`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](fixture.md#sec-27-f-19) を正本とする。
 
 **Admin 実装確認ゲート：**
 
@@ -121,4 +121,4 @@ Admin fixture の fixture 名、入力、操作、expected file、禁止副作�
 | secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
 | no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
 | setup integration | [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |
-| fixture integration | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の `setup-admin-release-layout`、`setup-admin-archive-boundary`、`setup-systemd-rollback-boundary`、`admin-static-serving-security`、`setup-secret-preservation` と fixture 名、expected file、禁止副作用が一致する。 |
+| fixture integration | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の `setup-admin-release-asset-layout`、`setup-admin-archive-boundary`、`setup-systemd-rollback-boundary`、`admin-static-serving-security`、`setup-secret-preservation` と fixture 名、expected file、禁止副作用が一致する。 |

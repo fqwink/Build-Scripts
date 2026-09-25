@@ -11,9 +11,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 項目 | 内容 |
 |------|------|
 | owner component | `statefile` |
-| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
+| 実装主体 | 単独の Go artifact は持たない。runner が所有する状態の読み書きは [`components/runner.go`](../../components/runner.go)、API が所有する状態の読み書きは [`components/api.go`](../../components/api.go) に内包する。 |
 | 持つ内容 | `statefile` owner が主本文として定義する状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
-| 持たない内容 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / release 手順、fixture 証跡責務、個別 component の業務判断。 |
+| 持たない内容 | API endpoint の request / response、runner の業務処理、SDK method 実装、UI 表示判断、setup / update 手順、release 生成・公開手順、fixture 証跡責務、個別 component の業務判断。 |
 
 ---
 

@@ -13,9 +13,9 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | 項目 | 内容 |
 |------|------|
 | owner component | `ui` |
-| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
+| 実装主体 | [`admin/index.html`](../../admin/index.html) の単一静的ファイル。 |
 | 持つ内容 | `ui` owner が主本文として定義する DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
-| 持たない内容 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture 証跡責務。 |
+| 持たない内容 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 

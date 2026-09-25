@@ -1,7 +1,7 @@
 # Adlaire CI 生成 HTML デザイン仕様
 
 **対象出力：** `adlaire-ci-build` が生成する静的 Web サイト HTML
-**ビルドコンポーネント：** [`components/builder.go`](../components/builder.go) から生成する `adlaire-ci-build`
+**ビルド実装 artifact：** [`components/builder.go`](../components/builder.go) から生成する `adlaire-ci-build`
 **デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)
 **更新履歴：** 日付本文を正本化しない。デザイン変更の時系列は Git 履歴と Pull Request を正とする。
 
@@ -80,11 +80,11 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 └──────────┴─────────────────────────────────────────────────┘
 ```
 
-| 変数 | 値 | 用途 |
+| 寸法 | 値 | 用途 |
 |---|---|---|
-| `--hh` | `52px` | ヘッダー高さ |
-| `--sw` | `var(--adlaire-layout-sidebar-compact)` = `260px` | サイドバー幅 |
-| `--adlaire-layout-container-narrow` | `760px` | コンテンツ最大幅（`.ci`） |
+| ヘッダー高さ | `52px` | 固定ヘッダーの高さ |
+| サイドバー幅 | `var(--adlaire-layout-sidebar-compact)` = `260px` | デスクトップサイドバーの幅 |
+| コンテンツ最大幅 | `var(--adlaire-layout-container-narrow)` = `760px` | `.ci` の最大幅 |
 
 <a id="レスポンシブ"></a>
 
@@ -107,7 +107,7 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 | モード | 開 | 閉 |
 |---|---|---|
-| デスクトップ（> 768px） | サイドバーを表示し、コンテンツ開始位置を `var(--sw)` 分確保する。 | サイドバーを非表示にし、コンテンツ開始位置を `0` にする。 |
+| デスクトップ（> 768px） | サイドバーを表示し、コンテンツ開始位置を `var(--adlaire-layout-sidebar-compact)` 分確保する。 | サイドバーを非表示にし、コンテンツ開始位置を `0` にする。 |
 | モバイル（≤ 768px） | サイドバーを `translateX(0)` で画面内に表示する。 | サイドバーを `translateX(-86vw)` で画面外に収納する。 |
 
 開閉イベント、状態 class、永続化、復元処理は [`docs/details/builder.md` 詳細本文責務 §7.2](details/builder.md#sec-7-2) を参照する。

@@ -13,18 +13,15 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | 項目 | 内容 |
 |------|------|
 | owner component | `sdk` |
-| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
+| 実装主体 | [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js) の単一 ES Module。 |
 | 持つ内容 | `sdk` owner が主本文として定義する SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture 証跡責務。 |
+| 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
 ## 23. JavaScript SDK 仕様
 
-[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) は、sdk owner の JavaScript SDK 詳細本文責務である。
-
-**ファイル：** [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)（単一ファイル、外部依存なし）
-**モジュール形式：** ES Module（`import` / `export`）
+[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) は、sdk owner の JavaScript SDK 詳細本文責務である。実装 artifact は [責務境界](#0-責務境界)、module 形式は以下の SDK 実行環境契約を参照する。
 
 **SDK 実行環境契約：**
 
@@ -34,7 +31,6 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | module | `admin/adlaire-ci-sdk.js` は ES Module とし、`export { AdlaireCI, AdlaireCIError }` を必須 export とする。default export は定義しない。 |
 | browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder`、`URLSearchParams` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
 | 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。Node.js 専用 API、npm package、bundler、polyfill による補完は行わない。 |
-| 外部依存 | [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1) と [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を参照する。 |
 | global 汚染 | `window.AdlaireCI` 等の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
 | stream 前提 | `streamBuild()` は native `EventSource` を使用しない。Authorization header を付与できる `fetch` streaming を必須実装とする。 |
 | API 対応範囲 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の全 endpoint のうち、GitHub が直接送信する `POST /api/webhook` だけは SDK method を定義しない。それ以外の endpoint は少なくとも 1 SDK method と対応させる。原則は 1 endpoint に 1 method とし、`POST /api/schedule/allowed-hours` だけは request body ありの `setAllowedHours()` と、`{from:null,to:null}` を送る `clearAllowedHours()` の 2 method を明示的例外とする。 |

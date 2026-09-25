@@ -11,9 +11,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 項目 | 内容 |
 |------|------|
 | owner component | `archive` |
-| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
+| 実装主体 | 単独の Go artifact は持たない。archive / snapshot / rollback の実体処理は [`components/runner.go`](../../components/runner.go)、HTTP 呼び出し境界は [`components/api.go`](../../components/api.go) に内包する。 |
 | 持つ内容 | `archive` owner が主本文として定義する build log archive / cleanup の実体処理、snapshot 保存形式、保存済み tar.gz の検証・配信、snapshot 世代削除、snapshot delete 実体処理、rollback 用 artifact の展開・転送・temporary cleanup 実体処理。 |
-| 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、rollback build の lock、ID 採番、log / history / status / pending 書込、API 共通 request / response、`.config_log`、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 手順、fixture 証跡責務。 |
+| 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、rollback build の lock、ID 採番、log / history / status / pending 書込、API 共通 request / response、`.config_log`、SDK method 実装、UI DOM 詳細、状態 schema、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 archive owner は、保存済み build log と snapshot artifact の圧縮、展開、列挙、削除、転送の実体処理と、呼び出し元が状態を確定できる処理結果の返却だけを担当する。API 境界は [`docs/details/api.md`](api.md)、SDK 境界は [`docs/details/sdk.md`](sdk.md)、UI 境界は [`docs/details/ui.md`](ui.md)、runner 境界は [`docs/details/runner.md`](runner.md) の各詳細本文責務を参照する。
 

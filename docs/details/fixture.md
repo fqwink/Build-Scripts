@@ -13,7 +13,7 @@ component 境界管理の参照先は [`docs/DETAIL_INDEX.md` 詳細仕様入口
 | 証跡責務 | `fixture` |
 | 対象 component | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`security`、`setup` |
 | 持つ内容 | fixture 証跡責務が本文として定義する fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、実装検証証跡テンプレート、acceptance checklist、差し戻し条件。 |
-| 持たない内容 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / release 実行手順。 |
+| 持たない内容 | 個別 component の通常処理本文、API endpoint 詳細、SDK method 実装、UI DOM 詳細、状態 schema、setup / update 実行手順、release 生成・公開手順。 |
 
 ---
 
@@ -27,11 +27,31 @@ component 境界管理の参照先は [`docs/DETAIL_INDEX.md` 詳細仕様入口
 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) | [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) の fixture 配置、fixture カタログ、manifest、assertion、expected/effects、相互整合、component 別検証責務。 |
 | [`docs/details/fixture.md` fixture 証跡責務 §27-F-EVIDENCE](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) | [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) の実装検証証跡、受け入れゲート、差し戻し条件、部分失敗・再実行契約。 |
 
+<a id="current-implementation-alignment-evidence"></a>
+**現行実装整合証跡：**
+
+以下は実在する実装 artifact と owner component 詳細本文を照合した未完了証跡である。現在状態の割当は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。該当する実装と必須証跡が契約に一致した場合は、同じ変更単位でこの証跡を更新または解消する。
+
+| ID | 対象 | 現在確認できる実装証跡 | 受け入れに必要な証跡 |
+|----|------|------------------------------|----------------------------|
+| <a id="align-01"></a>`ALIGN-01` | 起動入口 | [`main.go`](../../main.go) は builder / runner だけを選択し、API を起動できない。 | [`docs/details/api.md`](api.md) と [`docs/details/setup.md`](setup.md) に一致する API 起動経路とその実行証跡。 |
+| <a id="align-02"></a>`ALIGN-02` | API / admin | API は [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js) を配信しない。 | [`docs/details/admin.md`](admin.md) の配信契約と API fixture。 |
+| <a id="align-03"></a>`ALIGN-03` | API / SDK | SDK が要求する approvals、approve / reject、build-chain-config、stats/build-trends の endpoint が API に存在しない。 | [`docs/details/api.md`](api.md) と [`docs/details/sdk.md`](sdk.md) の公開契約に対応する endpoint と cross fixture。 |
+| <a id="align-04"></a>`ALIGN-04` | API security | token は scope を保存するが、認可時に scope を強制していない。 | [`docs/details/security.md`](security.md) の scope 契約に一致する API 認可処理と fixture。 |
+| <a id="align-05"></a>`ALIGN-05` | UI / SDK | UI に接続されていない SDK 操作が残り、承認一覧に approve / reject 操作がない。 | [`docs/details/ui.md`](ui.md) の必須操作と SDK 呼出しを照合する UI fixture。 |
+| <a id="align-06"></a>`ALIGN-06` | builder / design | builder の生成テンプレートが [`docs/DESIGN.md`](../DESIGN.md) の token、寸法、sidebar、Markdown 画像 selector、トップへ戻る表示と一致しない。 | デザイン正本に一致する生成物と builder fixture。 |
+| <a id="align-07"></a>`ALIGN-07` | fixture | builder の必須 fixture 一部と runner / api / sdk / ui の fixture root が未作成である。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#sec-0g-8-f) の必須 path、expected、fake、実行証跡。 |
+| <a id="align-08"></a>`ALIGN-08` | empty directory fixture | `testdata/builder/empty-dir/` は `.keep` を含む marker-based fixture であり、文字どおりの空 directory ではない。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) と検証処理の marker 除外条件が一致する証跡。 |
+| <a id="align-09"></a>`ALIGN-09` | runner / state schema | [`components/runner.go`](../../components/runner.go) の build log / history は旧 field 構成であり、正規化 `status`、詳細 `target_status`、拡張 object、history の必須 key が [`docs/details/statefile.md`](statefile.md) の schema と一致しない。 | runner、API adapter、archive reader の同型 schema、未知 key、欠落 key、状態写像を検証する fixture。 |
+| <a id="align-10"></a>`ALIGN-10` | API health / PAT | [`components/api.go`](../../components/api.go) の health response は field 名、正規化状態、`checks` が [`docs/details/api.md`](api.md) と一致しない。PAT status は期限を返さず、PAT verify は GitHub 外部検証と scope 取得を行わない。 | health、PAT status、PAT verify の request、response、外部呼出し、秘密情報非表示を照合する API / SDK / UI fixture。 |
+| <a id="align-11"></a>`ALIGN-11` | API request / log schema | [`components/api.go`](../../components/api.go) は request ID を生成・伝播せず、`.api_access_log` と `.config_log` の record field、必須 log の失敗境界が [`docs/details/api.md`](api.md) と [`docs/details/statefile.md`](statefile.md) の契約に一致しない。 | request ID、response header、API access log、config diff log、partial failure、log 追記失敗境界を検証する fixture。 |
+| <a id="align-12"></a>`ALIGN-12` | queue dispatch / active state | [`components/api.go`](../../components/api.go) は idle の manual request で build id と `running=true` を直接保存し、systemd への runner 起動要求を行わない。API と [`components/runner.go`](../../components/runner.go) の `.build_state` schema は `active_queue_entry` を持たず、runner は waiting-to-active 遷移と未確定 entry の再実行を行わない。 | [`docs/details/api.md`](api.md)、[`docs/details/runner.md`](runner.md)、[`docs/details/statefile.md`](statefile.md) の durable queue、非同期 runner 起動、atomic move、at-least-once retry、response 契約を検証する queue / dispatch fixture。 |
+
 <a id="0g8-f-fixture--testdata--fake--実装検証証跡契約"></a>
 
 **0g.8-F fixture / testdata / fake / 実装検証証跡契約：**
 
-[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、実装完了判定に必要な fixture、fake、testdata、expected / effects、実装検証証跡、acceptance checklist、差し戻し条件を扱う。[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0e](../DETAIL_INDEX.md#0e-完全実装検証マトリクス) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](../DETAIL_INDEX.md#0i-詳細節対応表) は詳細本文と証跡への入口、実装割当・順序・依存は [`docs/ROADMAP.md` 状態・計画責務 §4](../ROADMAP.md#4-phase-実装計画)、実装変更単位と着手条件は [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#0f-phase-実装単位ポリシー)、setup / release の実行条件は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) を参照する。fixture 名、expected / effects、fake 動作、実装検証証跡項目、不足時の扱い、差し戻し条件だけを [`docs/details/fixture.md`](fixture.md) fixture 証跡責務で固定する。
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、実装完了判定に必要な fixture、fake、testdata、expected / effects、実装検証証跡、acceptance checklist、差し戻し条件を扱う。[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0e](../DETAIL_INDEX.md#0e-完全実装検証マトリクス) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](../DETAIL_INDEX.md#0i-詳細節対応表) は詳細本文と証跡への入口、実装割当・順序・依存は [`docs/ROADMAP.md` 状態・計画責務 §4](../ROADMAP.md#4-phase-実装計画)、実装変更単位と着手条件は [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#0f-phase-実装単位ポリシー)、setup / update の実行条件と Release asset 受け入れ条件は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) を参照する。`release` owner component の詳細本文は未作成であり、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](../DETAIL_INDEX.md#0i5-setup--release) を参照する。fixture 名、expected / effects、fake 動作、実装検証証跡項目、不足時の扱い、差し戻し条件だけを [`docs/details/fixture.md`](fixture.md) fixture 証跡責務で固定する。
 
 実装検証証跡は、対象に応じて以下の 3 系統に分類する。複数系統にまたがる変更は、該当する全系統の証跡を実装検証証跡として記録する。
 
@@ -1026,13 +1046,13 @@ UI 連動 fixture は、SDK only call trace、refresh order、disabled priority�
 UI owner fixture が不足する場合、UI 実装変更は詳細実装確認を満たした扱いにしてはならない。不足時は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) の不足時共通扱いに従う。
 
 <a id="sec-27-f-19"></a>
-**[fixture 証跡責務 §27-F setup / admin / release 連動 fixture 固定契約](fixture.md#sec-27-f-19)：**
+**[fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](fixture.md#sec-27-f-19)：**
 
 [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) の setup、admin UI 配布、API service 導入、update、rollback を含む実装変更は、対象機能の owner fixture に加えて [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の固定表の連動 fixture を必要数作成する。fixture は [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) と [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界)〜[§A6](admin.md#a6-admin-fixture-参照契約) の合格条件を同じ expected で検証する。
 
-| setup/admin/release fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
+| setup/admin/Release asset fixture 群 | 対象 component | 必須 input | 必須 expected | 合格条件 |
 |---------------------------------|----------------|------------|---------------|----------|
-| `setup-admin-release-layout` | `setup`、`admin` | Release asset 一式、`SHA256SUMS`、`admin-ui.tar.gz`、fake download response。 | `expected/effects.json`、admin archive file list、`expected/security.json`。 | asset 名、checksum 対象、admin archive root layout、`index.html` と `adlaire-ci-sdk.js` だけを含む file set、file mode、directory mode が固定値に一致し、未定義 file を拒否する。 |
+| `setup-admin-release-asset-layout` | `setup`、`admin` | Release asset 一式、`SHA256SUMS`、`admin-ui.tar.gz`、fake download response。 | `expected/effects.json`、admin archive file list、`expected/security.json`。 | asset 名、checksum 対象、admin archive root layout、`index.html` と `adlaire-ci-sdk.js` だけを含む file set、file mode、directory mode が固定値に一致し、未定義 file を拒否する。 |
 | `setup-admin-archive-boundary` | `setup`、`admin` | unsafe archive、既存 `$INSTALL_DIR/admin`、既存 API binary、API service fake。 | `expected/effects.json.unchanged_paths`、`forbidden_writes`、`forbidden_calls`、`expected/stderr.txt`。 | unsafe archive では admin directory、API binary、credentials、runner state を変更せず、API service start / restart を呼ばない。 |
 | `setup-systemd-rollback-boundary` | `setup`、`runner`、`api` | systemd fake、旧 binary backup、旧 admin backup、restart failure。 | `expected/effects.json.write_order`、`updated_paths`、`unchanged_paths`、`forbidden_writes`、`commands`。 | rollback は 1 回だけ実行し、失敗段階で許可された binary / admin UI だけを戻し、state、history、secret、runner timer を未定義に戻さない。 |
 | `setup-api-runner-dispatch` | `setup`、`runner`、`api` | API / runner / timer unit、systemd fake、manual queue request。 | unit 内容、`expected/effects.json.commands`、API response、queue state。 | API unit が timer を Wants / After し、queue 保存後だけ `systemctl start --no-block adlaire-ci.service` を 1 回実行する。systemctl failure でも queue を保持して timer fallback を返す。 |

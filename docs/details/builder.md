@@ -11,9 +11,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 項目 | 内容 |
 |------|------|
 | owner component | `builder` |
-| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
+| 実装主体 | [`components/builder.go`](../../components/builder.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-build` とする。 |
 | 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder 検証条件、builder owner 追加機能。 |
-| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture 証跡責務。 |
+| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
@@ -22,7 +22,6 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 項目 | 内容 |
 |------|------|
 | Go ランタイム | 最小バージョンは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の共通固定値を参照する。 |
-| 外部依存 | [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1) と [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を参照する。 |
 | 入力 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の文字コード契約を満たす Markdown ファイル、または Markdown ファイルを含むディレクトリ。 |
 | 出力 | 静的 Web サイトディレクトリ（HTML / CSS / JavaScript / search index） |
 
@@ -1441,7 +1440,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 <a id="sec-8"></a>
 **[`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能別実装確認固定契約](builder.md#sec-8)：**
 
-[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の中核機能は、§8〜§8a の対象契約本文と fixture に加えて [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表を満たす。[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表は builder owner の詳細実装確認表であり、runner、setup、api、sdk、ui、statefile、archive、commitstatus、security、将来機能、MCP、外部公開構成、上位方針は扱わない。runner の起動、設定、処理フロー、pipeline、deploy、snapshot、log、systemd、GitHub、setup、既知制限は [`docs/details/runner.md` 詳細本文責務 §10](runner.md#10-ci-ランナー-要件)〜[§20](runner.md#20-ci-ランナー-既知の制限)、setup / release 手順は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) を参照する。
+[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の中核機能は、§8〜§8a の対象契約本文と fixture に加えて [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表を満たす。[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表は builder owner の詳細実装確認表であり、runner、setup、api、sdk、ui、statefile、archive、commitstatus、security、将来機能、MCP、外部公開構成、上位方針は扱わない。runner の起動、設定、処理フロー、pipeline、deploy、snapshot、log、systemd、GitHub、setup、既知制限は [`docs/details/runner.md` 詳細本文責務 §10](runner.md#10-ci-ランナー-要件)〜[§20](runner.md#20-ci-ランナー-既知の制限)、setup / update 手順と Release asset 受け入れ契約は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) を参照する。
 
 | Builder 中核機能確認節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | fixture 証跡参照 |
 |------------------------|------|------|------|---------------------------|--------------|----------------|
@@ -1653,7 +1652,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 ## 28. Builder owner 静的サイト出力拡張追加仕様化機能 詳細仕様
 
-[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) は、[`docs/ROADMAP.md` 状態・計画責務 §5.2.2](../ROADMAP.md#522-統合ロードマップ表) から参照される builder owner 静的サイト出力拡張追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。各機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) は、[`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) から参照される builder owner 静的サイト出力拡張追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。各機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
 

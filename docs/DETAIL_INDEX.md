@@ -9,7 +9,7 @@
 | 確認対象 | 正本 |
 |----------|------|
 | 方針、ポリシー、状態語彙、遷移条件 | [`docs/SPEC.md`](SPEC.md) |
-| component / 機能の現在状態と実装計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
+| 実装 artifact / 機能の現在状態と実装計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | owner component 別の詳細本文 | [`docs/details/`](details/) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
 | 生成 HTML のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
@@ -29,7 +29,7 @@
 
 ## 0a. 詳細仕様の記載基準
 
-記載義務と不足時の扱いは [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4) と [`docs/SPEC.md` ポリシー責務 §0](SPEC.md#0-詳細仕様記載ポリシー) を参照する。詳細本文の項目入口は [機能仕様テンプレート](#0h-機能仕様テンプレート) を使用する。
+記載義務、必須項目、不足時の扱いは [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4) と [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を参照する。
 
 ## 0b.0 詳細仕様選択フロー
 
@@ -43,7 +43,7 @@
 | CI / 運用 | `runner`、`commitstatus`、`archive` | [`docs/details/runner.md`](details/runner.md)、[`docs/details/commitstatus.md`](details/commitstatus.md)、[`docs/details/archive.md`](details/archive.md) |
 | 管理 | `api`、`sdk`、`ui`、`admin` | [`docs/details/api.md`](details/api.md)、[`docs/details/sdk.md`](details/sdk.md)、[`docs/details/ui.md`](details/ui.md)、[`docs/details/admin.md`](details/admin.md) |
 | 状態 / 安全 | `statefile`、`security` | [`docs/details/statefile.md`](details/statefile.md)、[`docs/details/security.md`](details/security.md) |
-| 配布 | `setup` | [`docs/details/setup.md`](details/setup.md) |
+| 配布 | `setup`、`release` | [`docs/details/setup.md`](details/setup.md)。`release` 専用詳細本文は未作成。 |
 | 検証証跡 | fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) |
 | MCP | `mcp` | 専用詳細仕様未作成。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
 
@@ -57,7 +57,8 @@
 | `admin` | [`docs/details/admin.md`](details/admin.md) | 管理 UI 静的配布物と配信境界を持つ。 |
 | `sdk` | [`docs/details/sdk.md`](details/sdk.md) | JavaScript SDK の公開 method と HTTP 変換を持つ。 |
 | `ui` | [`docs/details/ui.md`](details/ui.md) | 管理画面の DOM、操作、表示状態を持つ。 |
-| `setup` | [`docs/details/setup.md`](details/setup.md) | バイナリ配置、systemd、更新、release 受け入れを持つ。 |
+| `setup` | [`docs/details/setup.md`](details/setup.md) | バイナリ配置、systemd、更新、Release asset 受け入れを持つ。 |
+| `release` | 専用詳細本文なし | GitHub Release 成果物の生成・公開前検証・公開の詳細本文は未作成。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
 | `statefile` | [`docs/details/statefile.md`](details/statefile.md) | 状態 schema、lock、atomic write、破損処理を持つ。 |
 | `archive` | [`docs/details/archive.md`](details/archive.md) | log archive、snapshot、download、delete、rollback 実体を持つ。 |
 | `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) | GitHub Commit Status の payload と送信契約を持つ。 |
@@ -67,7 +68,7 @@
 
 ## 0b.1 owner component 別 owner / collaborator 境界管理
 
-一つの機能の詳細本文を持つ owner component は一件に固定する。機能ごとの owner は [詳細節対応表](#0i-詳細節対応表) だけを正本とする。collaborator は owner component の該当詳細節で接続境界と担当処理を定義し、owner の入力、出力、処理順序、異常系を再定義しない。詳細仕様入口には collaborator 一覧を複製しない。fixture の `collaborator_components` は検証対象を記録する証跡であり、責務正本ではない。fixture 証跡責務は owner component に含めない。
+owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) を参照する。[詳細節対応表](#0i-詳細節対応表) の `owner` 列は機能から owner component を特定する入口、[詳細仕様参照表](#0b-詳細仕様参照表) は owner component から主本文を特定する入口とする。
 
 ## 0c. 実装前確認項目
 
@@ -108,23 +109,7 @@
 
 ## 0f. 仕様策定完了チェック
 
-仕様策定の完了条件は [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4)、[`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) を正本とする。この入口では、[詳細仕様参照表](#0b-詳細仕様参照表)、[機能仕様テンプレート](#0h-機能仕様テンプレート)、[詳細節対応表](#0i-詳細節対応表)、[完全実装検証マトリクス](#0e-完全実装検証マトリクス) の参照が揃っていることだけを確認する。
-
-## 0h. 機能仕様テンプレート
-
-| 項目 | 詳細本文で特定できる内容 |
-|------|--------------------------|
-| 目的 | 解決対象と利用者。 |
-| owner / collaborator | owner 一件と必要な collaborator。 |
-| 入力 | 型、必須性、既定値、許容値、入力元。 |
-| 出力 | 型、形式、保存先、公開先。 |
-| 状態 | 読み書き対象、初期値、更新責務、破損時処理。 |
-| 正常系 | 処理順序、分岐、成功条件、副作用順序。 |
-| 異常系 | エラー条件、応答、終了コード、再試行、継続可否。 |
-| セキュリティ | 認証、認可、秘密情報、権限、公開境界。 |
-| 検証 | 必須 fixture、assertion、正常系・異常系確認。 |
-
-項目が不足する場合の扱いは [`docs/SPEC.md` ポリシー責務 §0](SPEC.md#0-詳細仕様記載ポリシー) と [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) を参照する。
+仕様策定の完了条件は [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4)、[`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) を正本とする。この入口では、[詳細仕様参照表](#0b-詳細仕様参照表)、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields)、[詳細節対応表](#0i-詳細節対応表)、[完全実装検証マトリクス](#0e-完全実装検証マトリクス) の参照が揃っていることだけを確認する。
 
 ## 0i. 詳細節対応表
 
@@ -269,6 +254,17 @@
 | セッションタイムアウト変更設定 | `security` | [`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §25](details/api.md#25-認証-実装仕様)、[`docs/details/security.md` 詳細本文責務 §27.45](details/security.md#sec-27-45) |
 | TOTP 二要素認証 | `security` | [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §25](details/api.md#25-認証-実装仕様)、[`docs/details/security.md` 詳細本文責務 §27.46](details/security.md#sec-27-46) |
 | API レート制限 | `security` | [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/security.md` 詳細本文責務 §27.47](details/security.md#sec-27-47) |
+
+<a id="0i5-setup--release"></a>
+**0i.5 Setup / Release：**
+
+| 機能 | owner | 詳細本文 |
+|------|-------|----------|
+| 初回セットアップ | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.1](details/setup.md#sec-26-1)〜[§26.3](details/setup.md#sec-26-3) |
+| 管理 API 導入 | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.3b](details/setup.md#sec-26-3b) |
+| バイナリアップデート | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.4](details/setup.md#sec-26-4) |
+| アップデート rollback | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.4](details/setup.md#sec-26-4) |
+| GitHub Release 成果物生成・公開前検証・公開 | `release` | 専用詳細本文未作成。成果物の受け入れ側契約は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を参照する。 |
 
 ## 詳細仕様セット構成
 

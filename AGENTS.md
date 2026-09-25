@@ -14,15 +14,15 @@
 
 [AGENTS.md](AGENTS.md) または [docs/SPEC.md](docs/SPEC.md) の片方だけを確認した状態で、作業判断に必要な確認を完了したと扱ってはならない。
 
-本リポジトリの仕様判断は、方針、ポリシー、状態語彙、状態定義、状態遷移条件、禁止事項、リリース判断、実装着手可否は [docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務、各 component と各機能の現在状態、Phase、機能インベントリ、将来計画は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務、詳細仕様参照入口、共通固定値、owner / collaborator 対応表は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の詳細本文は [docs/details/*.md](docs/details/) 詳細本文責務、fixture、expected、fake、実装検証証跡は [docs/details/fixture.md](docs/details/fixture.md) fixture 証跡責務、文書と実装ファイルの実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本として行う。
+本リポジトリの仕様判断は、方針、ポリシー、状態語彙、状態定義、状態遷移条件、禁止事項、リリース判断、実装着手可否は [docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務、実装 artifact と各機能の現在状態、Phase、機能インベントリ、将来計画は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務、詳細仕様参照入口、共通固定値、owner / collaborator 対応表は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の詳細本文は [docs/details/*.md](docs/details/) 詳細本文責務、fixture、expected、fake、実装検証証跡は [docs/details/fixture.md](docs/details/fixture.md) fixture 証跡責務、文書と実装ファイルの実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本として行う。
 
-[docs/DESIGN.md](docs/DESIGN.md) は、生成静的 Web サイトのデザイン関係の正本である。機能仕様、運用仕様、API 仕様、CI 仕様、状態語彙、状態定義、component と機能の現在状態の正本ではない。
+[docs/DESIGN.md](docs/DESIGN.md) は、生成静的 Web サイトのデザイン関係の正本である。機能仕様、運用仕様、API 仕様、CI 仕様、状態語彙、状態定義、実装 artifact と機能の現在状態の正本ではない。
 
 [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) は、文書・実装ファイルの役割を整理する索引である。仕様本文の正本ではない。
 
 [AGENTS.md](AGENTS.md) と他ファイルが作業ルール上矛盾する場合は、[AGENTS.md](AGENTS.md) を正とする。
 
-[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務と他ファイルが仕様、方針、ポリシー、状態語彙、状態定義、状態遷移条件、正本参照先、禁止事項、リリース判断、実装着手可否で矛盾する場合は、[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務を正とする。各 component と各機能へ割り当てた現在状態は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務を正とする。ただし、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務を正とする。
+[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務と他ファイルが仕様、方針、ポリシー、状態語彙、状態定義、状態遷移条件、正本参照先、禁止事項、リリース判断、実装着手可否で矛盾する場合は、[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務を正とする。実装 artifact と各機能へ割り当てた現在状態は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務を正とする。ただし、生成 HTML のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務を正とする。
 
 [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、または該当する owner component 別の [docs/details/*.md](docs/details/) と実装ファイルが仕様上矛盾する場合は、仕様と実装の不整合として扱う。仕様を変更する場合は、先に該当する仕様書を改訂し、その内容に基づいて実装を更新する。
 
@@ -72,7 +72,7 @@
 | 判断対象 | 正本 |
 |----------|------|
 | 方針、ポリシー、状態語彙、状態定義、状態遷移条件、禁止事項、実装着手可否 | [docs/SPEC.md](docs/SPEC.md) |
-| component と機能の現在状態、Phase、機能インベントリ、将来計画 | [docs/ROADMAP.md](docs/ROADMAP.md) |
+| 実装 artifact と機能の現在状態、Phase、機能インベントリ、将来計画 | [docs/ROADMAP.md](docs/ROADMAP.md) |
 | 詳細仕様入口、共通固定値、owner / collaborator 対応 | [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) |
 | owner component 別の入出力、状態、処理順序、異常系、検証条件 | [docs/details/*.md](docs/details/) |
 | fixture、expected、fake、assertion、実装検証証跡 | [docs/details/fixture.md](docs/details/fixture.md) |
@@ -287,7 +287,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) は、リポジトリ内の文書・実装ファイルの役割を示す索引として崩してはならない。
 
-ファイル名、正本参照先、実装コンポーネントの追加・削除・リネームが発生した場合は、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の更新要否を確認する。
+ファイル名、正本参照先、実装 artifact の追加・削除・リネームが発生した場合は、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の更新要否を確認する。
 
 [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、または owner component 別の [docs/details/*.md](docs/details/) を改訂した場合は、[docs/DESIGN.md](docs/DESIGN.md)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、実装ファイルへの影響を確認する。
 

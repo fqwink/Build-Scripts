@@ -11,9 +11,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 項目 | 内容 |
 |------|------|
 | owner component | `security` |
-| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
+| 実装主体 | 単独の Go artifact は持たない。認証、認可、token、session、TOTP、rate limit、audit の実装は [`components/api.go`](../../components/api.go) に内包する。 |
 | 持つ内容 | `security` owner が主本文として定義する API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| 持たない内容 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / release 手順、fixture 証跡責務。 |
+| 持たない内容 | API endpoint 共通処理、SDK method 実装、UI DOM 詳細、runner / builder の業務処理、状態 schema、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 

@@ -13,9 +13,9 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 | 項目 | 内容 |
 |------|------|
 | owner component | `runner` |
-| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
+| 実装主体 | [`components/runner.go`](../../components/runner.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-runner` とする。 |
 | 持つ内容 | `runner` owner が主本文として定義する GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner 検証条件、runner owner 追加機能。 |
-| 持たない内容 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / release 手順、fixture 証跡責務。 |
+| 持たない内容 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
@@ -24,7 +24,6 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 | 項目 | 内容 |
 |------|------|
 | Go ランタイム | 最小バージョンは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の共通固定値を参照する。 |
-| 外部依存 | [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1) と [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を参照する。 |
 | 対象 OS | Linux（systemd 対応環境） |
 | ネットワーク | GitHub API は `api.github.com` への HTTPS、通知は検証済みの設定先への HTTP(S) または SMTP、deploy と remote build は設定済み host への SSH だけを許可する。接続先、port、timeout、認証は各機能契約に定義された値だけを許可し、未定義の送信先へ接続しない。 |
 

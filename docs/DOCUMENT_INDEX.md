@@ -8,7 +8,7 @@
 |----------|--------|
 | 作業ルール | [`AGENTS.md`](../AGENTS.md) |
 | 方針、ポリシー、状態語彙、状態遷移条件 | [`docs/SPEC.md`](SPEC.md) |
-| 各 component と各機能の現在状態、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
+| 実装 artifact と各機能の現在状態、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | 詳細仕様入口、共通固定値、owner / collaborator 対応 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
 | owner component 別詳細本文 | [`docs/details/`](details/) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
@@ -60,7 +60,7 @@
 
 ## 実装ファイル一覧
 
-| パス | component | 所在区分 |
+| パス | 実装上の役割 | 所在区分 |
 |------|-----------|----------|
 | [`main.go`](../main.go) | 起動入口 | 実在 |
 | [`go.mod`](../go.mod) | Go module | 実在 |

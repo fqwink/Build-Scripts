@@ -1,6 +1,6 @@
 # Adlaire CI — Roadmap
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、Adlaire CI の各 component と各機能へ割り当てる現在状態、Phase、機能インベントリ、将来計画を管理する正本である。状態語彙、状態定義、実装可否、着手条件、状態遷移条件、完了条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を正本とし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務では再定義しない。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、Adlaire CI の実装 artifact と各機能へ割り当てる現在状態、Phase、機能インベントリ、将来計画を管理する正本である。owner component と実装 artifact の区別、状態語彙、状態定義、実装可否、着手条件、状態遷移条件、完了条件は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) と [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を正本とし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務では再定義しない。
 
 方針・ポリシーは [`docs/SPEC.md`](SPEC.md)、生成 HTML のデザインは [`docs/DESIGN.md`](DESIGN.md)、詳細仕様入口と owner / collaborator 対応は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別詳細本文は [`docs/details/`](details/)、fixture と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。
 
@@ -13,7 +13,7 @@
 
 | 管理対象 | 本文で管理する内容 |
 |----------|------------------|
-| 現在状態 | component と機能へ割り当てた現在の状態、および未完了理由。 |
+| 現在状態 | 実装 artifact と機能へ割り当てた現在の状態、および未完了理由。 |
 | Phase | Phase 順序、対象 owner component、依存関係、現在状態。 |
 | 機能インベントリ | 全機能の担当領域と現在状態。 |
 | 将来計画 | 将来計画へ割り当てた機能名と担当領域。 |
@@ -22,33 +22,19 @@
 
 状態語彙と判定条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を参照する。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の状態セルは現在の割り当てだけを示す。
 
-## 3. コンポーネント現在状態
+## 3. 実装 artifact 現在状態
 
-| component / 実装 | 現在状態 | 未完了理由 |
-|--------------------|----------|------------|
-| `components/builder.go` | 実装中・検証未完了 | 必須の `testdata/builder/strict/`、`safe/`、各 fixture の `expected/` が未作成であり、生成テンプレートが [`docs/DESIGN.md`](DESIGN.md) と一致していない。 |
-| `components/runner.go` | 実装中・検証未完了 | 必須の `testdata/runner/` と実装検証証跡が未作成である。 |
-| `components/api.go` | 実装中・検証未完了 | API 起動入口、管理 UI 配信、SDK が要求する一部 endpoint、token scope 強制、`testdata/api/` が未完了である。 |
-| `admin/adlaire-ci-sdk.js` | 実装中・検証未完了 | 公開 method に対応する一部 API endpoint と `testdata/sdk/` が未完了である。 |
-| `admin/index.html` | 実装中・検証未完了 | 詳細仕様が要求する一部 SDK 操作との接続と `testdata/ui/` が未完了である。 |
+この表は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の実装 artifact だけを対象とする。owner component が持つ個別機能の現在状態は [統合機能インベントリ](#522-統合ロードマップ表) を参照する。実装不一致の技術的な確認内容は [`docs/details/fixture.md` fixture 証跡責務 現行実装整合証跡](details/fixture.md#current-implementation-alignment-evidence) を参照する。
+
+| 実装 artifact | 現在状態 | 未完了理由 / 証跡 |
+|-----------------|----------|-------------------|
+| [`main.go`](../main.go) | 実装中・検証未完了 | 起動入口の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01) |
+| [`components/builder.go`](../components/builder.go) | 実装中・検証未完了 | デザイン整合と必須 fixture が未完了である。[`ALIGN-06`](details/fixture.md#align-06)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-08`](details/fixture.md#align-08) |
+| [`components/runner.go`](../components/runner.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-12`](details/fixture.md#align-12) |
+| [`components/api.go`](../components/api.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01)〜[`ALIGN-04`](details/fixture.md#align-04)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)〜[`ALIGN-12`](details/fixture.md#align-12) |
+| [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10) |
+| [`admin/index.html`](../admin/index.html) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-05`](details/fixture.md#align-05)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10) |
 | `components/mcp.go` | 将来計画 | 実装ファイルと MCP 専用詳細仕様が存在しない。 |
-
-**実装整合性未完了台帳：**
-
-| ID | 対象 | 現在確認できる不一致 | 完了条件 |
-|----|------|----------------------|----------|
-| `ALIGN-01` | 起動入口 | [`main.go`](../main.go) は builder / runner だけを選択し、API を起動できない。 | [`docs/details/api.md`](details/api.md) と [`docs/details/setup.md`](details/setup.md) に一致する API 起動経路を実装し、証跡を追加する。 |
-| `ALIGN-02` | API / admin | API は [`admin/index.html`](../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) を配信しない。 | [`docs/details/admin.md`](details/admin.md) の配信契約を実装し、API fixture で確認する。 |
-| `ALIGN-03` | API / SDK | SDK が要求する approvals、approve / reject、build-chain-config、stats/build-trends の endpoint が API に存在しない。 | [`docs/details/api.md`](details/api.md) と [`docs/details/sdk.md`](details/sdk.md) の公開契約を一致させる。 |
-| `ALIGN-04` | API security | token は scope を保存するが、認可時に scope を強制していない。 | [`docs/details/security.md`](details/security.md) の scope 契約を API 認可処理と fixture に反映する。 |
-| `ALIGN-05` | UI / SDK | UI に接続されていない SDK 操作が残り、承認一覧には approve / reject 操作がない。 | [`docs/details/ui.md`](details/ui.md) の全操作を SDK 経由で接続し、UI fixture で確認する。 |
-| `ALIGN-06` | builder / design | builder の生成テンプレートが [`docs/DESIGN.md`](DESIGN.md) の token、寸法、sidebar、Markdown 画像 selector、トップへ戻る表示と一致しない。 | デザイン正本に実装を一致させ、生成物 fixture で確認する。 |
-| `ALIGN-07` | fixture | builder の必須 fixture 一部と runner / api / sdk / ui の fixture root が未作成である。 | [`docs/details/fixture.md`](details/fixture.md) に定義された全必須 path と証跡を作成する。 |
-| `ALIGN-08` | empty directory fixture | `testdata/builder/empty-dir/` は `.keep` を含む marker-based fixture であり、文字どおりの空ディレクトリではない。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](details/fixture.md#8a-f-builder-初期受け入れ-fixture-契約) と検証処理の双方で marker の除外条件を一致させる。 |
-| `ALIGN-09` | runner / state schema | [`components/runner.go`](../components/runner.go) の build log / history は旧 field 構成であり、正規化 `status`、詳細 `target_status`、拡張 object、history の必須 key が [`docs/details/statefile.md`](details/statefile.md) の正本 schema と一致しない。 | runner、API adapter、archive reader、fixture を正本 schema へ一致させ、未知 key、欠落 key、状態写像、通常 log / archive 同型を検証する。 |
-| `ALIGN-10` | API health / PAT | [`components/api.go`](../components/api.go) の health response は field 名、正規化状態、`checks` が [`docs/details/api.md`](details/api.md) と一致せず、PAT status は期限を返さず、PAT verify は GitHub 外部検証と scope 取得を行わない。 | health、PAT status、PAT verify の request、response、外部呼出し、秘密情報非表示を API / SDK / UI / fixture 契約へ一致させる。 |
-| `ALIGN-11` | API request / log schema | [`components/api.go`](../components/api.go) は request ID を生成・伝播せず、`.api_access_log` と `.config_log` の record field、必須 log の失敗境界が [`docs/details/api.md`](details/api.md) と [`docs/details/statefile.md`](details/statefile.md) の正本契約に一致しない。 | request ID、response header、API access log、config diff log、partial failure、log 追記失敗境界を実装し、[`docs/details/fixture.md`](details/fixture.md) の必須証跡で検証する。 |
-| `ALIGN-12` | queue dispatch / active state | [`components/api.go`](../components/api.go) は idle の manual request で build id と `running=true` を直接保存し、systemd への runner 起動要求を行わない。[`components/api.go`](../components/api.go) と [`components/runner.go`](../components/runner.go) の `.build_state` schema は `active_queue_entry` を持たず、runner は waiting-to-active 遷移と未確定 entry の再実行を行わない。 | [`docs/details/api.md`](details/api.md)、[`docs/details/runner.md`](details/runner.md)、[`docs/details/statefile.md`](details/statefile.md) の durable queue、非同期 runner 起動、waiting-to-active atomic move、at-least-once retry、response 契約を実装し、[`docs/details/fixture.md`](details/fixture.md) の queue / dispatch 証跡で検証する。 |
 
 ## 4. Phase 実装計画
 
@@ -65,39 +51,20 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 5 | `sdk` | 実装中・検証未完了 | Phase 4 |
 | Phase 6 | `ui` | 実装中・検証未完了 | Phase 5 |
 
+現在の active Phase は `Phase 1` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) を参照する。
+
 各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) を参照する。
+
+`setup` と `release` の機能は現在状態が `改訂予定` であり、現在は Phase 未割当である。状態遷移条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、Phase 追加条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) を参照する。
 
 ---
 
-## 5. 機能インベントリと統合ロードマップ
+## 5. 統合機能インベントリ
 
-## 5.1 機能一覧
-
-<a id="ビルドci-ランナーcomponentsrunnergo"></a>
-**ビルド・CI ランナー：** 現在状態は [統合ロードマップ表](#522-統合ロードマップ表)、詳細本文は [`docs/details/runner.md`](details/runner.md) を参照する。
-
-<a id="go-版で実装済みの初期範囲"></a>
-**Go 版で実装が存在する初期範囲：** 実装の存在は完了を意味しない。component の現在状態は [コンポーネント現在状態](#3-コンポーネント現在状態) を正とする。
-
-<a id="go-版で仕様化済みの全体範囲"></a>
-**Go 版で仕様化済みの全体範囲：** 機能別状態は [統合ロードマップ表](#522-統合ロードマップ表)、詳細入口は [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) を参照する。
-
-<a id="管理-api-エンドポイントcomponentsapigo"></a>
-**管理 API：** 現在状態は [コンポーネント現在状態](#3-コンポーネント現在状態)、詳細本文は [`docs/details/api.md`](details/api.md) を参照する。
-
-<a id="sdk-メソッドadlaire-ci-sdkjs"></a>
-**JavaScript SDK：** 現在状態は [コンポーネント現在状態](#3-コンポーネント現在状態)、詳細本文は [`docs/details/sdk.md`](details/sdk.md) を参照する。
-
-<a id="標準管理ツール-パネルadminindexhtml"></a>
-**標準管理ツール UI：** 現在状態は [コンポーネント現在状態](#3-コンポーネント現在状態)、詳細本文は [`docs/details/ui.md`](details/ui.md) を参照する。
-
-## 5.2 拡張ポイント・将来計画
-
-<a id="521-統合ロードマップ参照入口"></a>
-**5.2.1 統合ロードマップ参照入口：** 状態の意味と遷移条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、実装詳細の入口は [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) を参照する。
+状態の意味と遷移条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、実装詳細の入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) を参照する。以下の表は実装可能な機能、実装中の機能、未実装機能、将来計画を同じ現在状態語彙で管理する。
 
 <a id="522-統合ロードマップ表"></a>
-**5.2.2 統合ロードマップ表：** 以下を全機能の現在状態に関する唯一の一覧とする。
+**統合機能インベントリ：** 以下を全機能の現在状態に関する唯一の一覧とする。
 
 | 現在状態 | 担当領域 | 機能 | 詳細入口 / 次の扱い |
 |----------|----------|------|----------------------|
@@ -240,6 +207,11 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 仕様化済み・未実装 | ビルドスクリプト | 印刷時 QR コード挿入 | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | ビルドスクリプト | 定義リストサポート | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | ビルドスクリプト | タスクリストサポート | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 改訂予定 | 配布・セットアップ | 初回セットアップ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 改訂予定 | 配布・セットアップ | 管理 API 導入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 改訂予定 | 配布・セットアップ | バイナリアップデート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 改訂予定 | 配布・セットアップ | アップデート rollback | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 改訂予定 | リリース | GitHub Release 成果物生成・公開前検証・公開 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
 | 将来計画 | MCP サーバー | MCP サーバー実装 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) |
 | 将来計画 | MCP サーバー | MCP ツール・リソース公開 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) |
 | 将来計画 | MCP サーバー | AI 支援ビルドエラー分析 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) |
