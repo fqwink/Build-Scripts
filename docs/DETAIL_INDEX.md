@@ -1,6 +1,6 @@
 # Adlaire CI — 詳細仕様入口
 
-[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、対象機能から owner component、collaborator component、詳細本文、fixture 証跡へ到達するための入口、共通固定値、対応表だけを管理する。方針・ポリシー・状態定義・着手可否は [`docs/SPEC.md`](SPEC.md)、現在状態と実装計画は [`docs/ROADMAP.md`](ROADMAP.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、対象機能から唯一の owner component を確定する対応表、owner 詳細本文が定義する collaborator 境界への参照入口、fixture 証跡への参照入口、共通固定値だけを管理する。方針・ポリシー・状態定義・着手可否は [`docs/SPEC.md`](SPEC.md)、現在状態と実装計画は [`docs/ROADMAP.md`](ROADMAP.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は owner component の処理本文、HTTP body、状態 schema、SDK method、UI DOM、fixture assertion、現在状態を再定義しない。
 
@@ -12,7 +12,7 @@
 | 実装 artifact / 機能の現在状態と実装計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | owner component 別の詳細本文 | [`docs/details/`](details/) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
-| 生成 HTML のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
+| 生成静的 Web サイトと標準管理 UI のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
 | 文書、実装、testdata の実在所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) |
 
 ## 詳細仕様入口責務
@@ -82,10 +82,15 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | 文字コード | 入力、出力、状態ファイル、HTTP body は UTF-8。 |
 | 改行 | 新規 text / JSON Lines は LF。CRLF 入力は読み込み時に LF として扱う。 |
 | 機械処理時刻 | UTC の ISO 8601 秒精度 `YYYY-MM-DDTHH:MM:SSZ`。ミリ秒、ナノ秒、UTC 以外の offset、local timezone の保存を禁止する。ローカル時刻は UI 表示だけで使用する。 |
-| CLI 終了コード | `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` lock 形式不正などの継続不能な lock 異常。実行中 lock による通常 skip は `0`。 |
+| CLI 終了コード | `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` `.build_lock` の schema / PID 解析不正、PID 実行中判定不能、または lock 作成失敗。実行中 lock による通常 skip は `0`。 |
 | CLI 共通 option | `--help` と `--version`。短縮 option は使用しない。 |
 | 時刻ベース ID | prefix と UTC `YYYYMMDDHHmmss` を連結する。未衝突 ID に suffix は付けない。衝突時は `-001` から `-999` まで 3 桁連番を順に試し、上限到達時は既存 ID を上書きせず失敗とする。 |
 | 出力成果物 manifest SHA-256 | 出力 root 配下の通常 file だけを entry とし、`/` 区切りの相対 path を UTF-8 byte 辞書順に並べる。各 file の SHA-256 を lowercase hex で算出し、各 entry の `relative_path + "\n" + file_sha256 + "\n"` を順に連結した byte 列全体の SHA-256 lowercase hex を `output_sha256` とする。directory は走査だけに使用し entry に含めない。symlink、link count 2 以上の hardlink、device、socket、FIFO を 1 件でも検出した場合は除外継続せず算出失敗とする。出力 root は symlink でない directory、全 path は valid UTF-8 とし、先頭 `/`、空 segment、`.`、`..`、backslash、NUL、CR、LF を含む相対 path は算出失敗とする。file は no-follow open 後の identity / type と読取前後の size / mtime が列挙時から不変の場合だけ採用し、走査中の追加・削除・置換・変更は算出失敗とする。通常 file が 0 件の出力 root は空 byte 列の SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` とする。 |
+
+<a id="process-environment-entry-contract"></a>
+**Process environment entry 共通固定契約：**
+
+environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,63}$`、各 value は UTF-8 の 0〜4096 bytes とし、NUL、LF、CR を禁止する。`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN`、`ADLAIRE_CHANGED_TARGETS` と `ADLAIRE_CI_` prefix は reserved とし、保存、pipeline step 定義、process 注入を禁止する。永続化する environment object は key を ASCII 昇順で保存する。
 
 状態ファイルの lock、atomic write、権限、JSON 処理は [`docs/details/statefile.md`](details/statefile.md)、秘密情報は [`docs/details/security.md`](details/security.md)、外部依存とデータ交換形式は [`docs/SPEC.md`](SPEC.md) を正本とする。
 
@@ -103,7 +108,9 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | `security` | [`docs/details/security.md`](details/security.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `archive` | [`docs/details/archive.md`](details/archive.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `setup` | [`docs/details/setup.md`](details/setup.md) | [`docs/details/fixture.md`](details/fixture.md) |
+| `setup` | [`docs/details/setup.md`](details/setup.md) | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](details/fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture](details/fixture.md#sec-27-f-19) |
+| `release` | 専用詳細本文未作成 | 実装検証対象外。専用詳細本文と fixture 契約の作成後に本表へ証跡入口を追加する。 |
+| `mcp` | 専用詳細本文未作成 | 実装検証対象外。専用詳細本文と fixture 契約の作成後に本表へ証跡入口を追加する。 |
 
 完了判定と状態遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。
 
@@ -142,7 +149,7 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | 読了時間推計と表示 | `builder` | [`docs/details/builder.md` 詳細本文責務 §4.5](details/builder.md#sec-4-5)、[`docs/details/builder.md` 詳細本文責務 §5](details/builder.md#5-静的-web-サイト出力構造)、[`docs/details/builder.md` 詳細本文責務 §6](details/builder.md#6-css-クラス一覧)、[`docs/details/builder.md` 詳細本文責務 §8](details/builder.md#8-実行方法) |
 | テーブルのソート機能 | `builder` | [`docs/details/builder.md` 詳細本文責務 §7.14](details/builder.md#sec-7-14) |
 | キーボードショートカット | `builder` | [`docs/details/builder.md` 詳細本文責務 §7.12](details/builder.md#sec-7-12) |
-| ビルドキャッシュ | `builder` | [`docs/details/builder.md` 詳細本文責務 §5](details/builder.md#5-静的-web-サイト出力構造)、[`docs/details/builder.md` 詳細本文責務 §8](details/builder.md#8-実行方法)、[`docs/details/runner.md` 詳細本文責務 §11](details/runner.md#11-ci-ランナー-ファイル構成)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/builder.md` 詳細本文責務 §27.25](details/builder.md#sec-27-25) |
+| ビルドキャッシュ | `builder` | [`docs/details/builder.md` 詳細本文責務 §5](details/builder.md#5-静的-web-サイト出力構造)、[`docs/details/builder.md` 詳細本文責務 §8](details/builder.md#8-実行方法)、[`docs/details/runner.md` 詳細本文責務 §11](details/runner.md#11-ci-ランナー-ファイル構成)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §14](details/runner.md#runner-build-pipeline-execution)、[`docs/details/builder.md` 詳細本文責務 §27.25](details/builder.md#sec-27-25) |
 | 依存ファイルトラッキング | `builder` | [`docs/details/builder.md` 詳細本文責務 §4.3](details/builder.md#sec-4-3)、[`docs/details/builder.md` 詳細本文責務 §5](details/builder.md#5-静的-web-サイト出力構造)、[`docs/details/runner.md` 詳細本文責務 §11](details/runner.md#11-ci-ランナー-ファイル構成)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/builder.md` 詳細本文責務 §27.28](details/builder.md#sec-27-28) |
 | 差分ビルド | `builder` | [`docs/details/builder.md` 詳細本文責務 §28.1](details/builder.md#sec-28-1) |
 | 複数出力形式 | `builder` | [`docs/details/builder.md` 詳細本文責務 §28.2](details/builder.md#sec-28-2) |
@@ -198,7 +205,7 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | ビルド失敗時の自動リトライ | `runner` | [`docs/details/runner.md` 詳細本文責務 §12](details/runner.md#12-設定値runner)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/runner.md` 詳細本文責務 §27.3](details/runner.md#sec-27-3) |
 | Webhook 通知失敗リトライキュー | `runner` | [`docs/details/runner.md` 詳細本文責務 §11](details/runner.md#11-ci-ランナー-ファイル構成)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §16](details/runner.md#16-systemd-タイマー参照) |
 | 複数ファイル監視 | `runner` | [`docs/details/runner.md` 詳細本文責務 §11](details/runner.md#11-ci-ランナー-ファイル構成)、[`docs/details/runner.md` 詳細本文責務 §12](details/runner.md#12-設定値runner)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/runner.md` 詳細本文責務 §27.21](details/runner.md#sec-27-21) |
-| ビルドパイプライン YAML 定義 | `runner` | [`docs/details/runner.md` 詳細本文責務 §12](details/runner.md#12-設定値runner)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/runner.md` 詳細本文責務 §27.22](details/runner.md#sec-27-22) |
+| ビルドパイプライン YAML 定義 | `runner` | [`docs/details/runner.md` 詳細本文責務 §12](details/runner.md#12-設定値runner)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §14](details/runner.md#runner-build-pipeline-execution)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/runner.md` 詳細本文責務 §27.22](details/runner.md#sec-27-22) |
 | ローカルファイル監視モード | `runner` | [`docs/details/runner.md` 詳細本文責務 §11](details/runner.md#11-ci-ランナー-ファイル構成)、[`docs/details/runner.md` 詳細本文責務 §12](details/runner.md#12-設定値runner)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §27.23](details/runner.md#sec-27-23) |
 | タグ付きコミットのみビルド | `runner` | [`docs/details/runner.md` 詳細本文責務 §12](details/runner.md#12-設定値runner)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/runner.md` 詳細本文責務 §27.24](details/runner.md#sec-27-24) |
 | 並列マルチターゲットビルド | `runner` | [`docs/details/runner.md` 詳細本文責務 §12](details/runner.md#12-設定値runner)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §14a](details/runner.md#14a-ssh-サイト転送)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/runner.md` 詳細本文責務 §27.26](details/runner.md#sec-27-26) |
@@ -218,6 +225,10 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 
 | 機能 | owner | 詳細本文 |
 |------|-------|----------|
+| JavaScript SDK 公開契約 | `sdk` | [`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/fixture.md` fixture 証跡責務 §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| 標準管理ツール UI 契約 | `ui` | [`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](DESIGN.md#admin-ui-visual-contract)、[`docs/details/fixture.md` fixture 証跡責務 §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| 管理 UI 静的配布物構成・Archive 検証 | `admin` | [`docs/details/admin.md` 詳細本文責務 §A1](details/admin.md#a1-管理-ui-静的ファイル境界)〜[§A2](details/admin.md#a2-管理-ui-archive-検証)、[`docs/details/admin.md` 詳細本文責務 §A4](details/admin.md#a4-setup-連携境界)〜[§A6](details/admin.md#a6-admin-fixture-参照契約)、[`docs/details/fixture.md` fixture 証跡責務 setup / admin / Release asset 連動契約](details/fixture.md#sec-27-f-19) |
+| 管理 UI 静的 HTTP 配信 | `admin` | [`docs/details/admin.md` 詳細本文責務 §A3](details/admin.md#a3-静的配信契約)、[`docs/details/admin.md` 詳細本文責務 §A5](details/admin.md#a5-受け入れ条件)〜[§A6](details/admin.md#a6-admin-fixture-参照契約)、[`docs/details/fixture.md` fixture 証跡責務 setup / admin / Release asset 連動契約](details/fixture.md#sec-27-f-19) |
 | ポーリング間隔の動的変更 | `api` | [`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/setup.md` 詳細本文責務 §26](details/setup.md#26-セットアップアップデート手順)、[`docs/details/api.md` 詳細本文責務 §27.11](details/api.md#sec-27-11) |
 | GitHub Webhook 受信 | `api` | [`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/api.md` 詳細本文責務 Webhook 受信境界](details/api.md#webhook-receive-overview)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/api.md` 詳細本文責務 §27.12](details/api.md#sec-27-12) |
 | 設定バリデーション API | `api` | [`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/api.md` 詳細本文責務 §27.5](details/api.md#sec-27-5) |
@@ -239,11 +250,12 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | アラート閾値設定 | `api` | [`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様) |
 | バックアップ／リストア | `api` | [`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様) |
 
-<a id="0i4-archive--artifact--security"></a>
-**0i.4 Archive / Artifact / Security：**
+<a id="0i4-statefile--archive--security"></a>
+**0i.4 Statefile / Archive / Security：**
 
 | 機能 | owner | 詳細本文 |
 |------|-------|----------|
+| 状態ファイル共通永続化契約 | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/fixture.md` fixture 証跡責務 statefile owner fixture 固定契約](details/fixture.md#sec-27-f-16) |
 | ビルドログのアーカイブ圧縮 | `archive` | [`docs/details/runner.md` 詳細本文責務 §12](details/runner.md#12-設定値runner)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様)、[`docs/details/archive.md` 詳細本文責務 §27.7](details/archive.md#sec-27-7) |
 | ビルド所要時間の記録と統計 API | `runner` | [`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/runner.md` 詳細本文責務 §27.14](details/runner.md#sec-27-14) |
 | ビルドアーティファクト世代管理 | `archive` | [`docs/details/runner.md` 詳細本文責務 §14b](details/runner.md#14b-スナップショット管理)、[`docs/details/archive.md` 詳細本文責務 §27.15](details/archive.md#sec-27-15)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e) |
@@ -260,11 +272,11 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 
 | 機能 | owner | 詳細本文 |
 |------|-------|----------|
-| 初回セットアップ | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.1](details/setup.md#sec-26-1)〜[§26.3](details/setup.md#sec-26-3) |
-| 管理 API 導入 | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.3b](details/setup.md#sec-26-3b) |
-| バイナリアップデート | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.4](details/setup.md#sec-26-4) |
-| アップデート rollback | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.4](details/setup.md#sec-26-4) |
-| GitHub Release 成果物生成・公開前検証・公開 | `release` | 専用詳細本文未作成。成果物の受け入れ側契約は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を参照する。 |
+| 初回セットアップ | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.1](details/setup.md#sec-26-1)〜[§26.3](details/setup.md#sec-26-3)、[§26.4.1](details/setup.md#sec-26-4-1)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
+| 管理 API 導入 | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.3b](details/setup.md#sec-26-3b)、[§26.4.2](details/setup.md#sec-26-4-2)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
+| バイナリアップデート | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.5](details/setup.md#sec-26-5)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
+| アップデート rollback | `setup` | [`docs/details/setup.md` 詳細本文責務 アップデート rollback 固定契約](details/setup.md#setup-update-rollback-contract)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
+| GitHub Release 成果物生成・公開前検証・公開 | `release` | 専用詳細本文未作成。成果物の受け入れ側契約は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) と [§26.8](details/setup.md#sec-26-8) を参照する。 |
 
 ## 詳細仕様セット構成
 

@@ -89,16 +89,20 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 <a id="statefile-update-procedure"></a>
 **状態ファイル更新手順：**
 
+状態ファイル更新手順は、既存 target を置換できる通常 mode と、target 不在時だけ作成できる create-only mode を持つ。caller は owner 詳細本文で mode を固定し、省略時は通常 mode とする。statefile owner が caller の業務条件から mode を推測してはならない。
+
 1. 対象ファイルの `{name}.lock` を `O_CREATE|O_EXCL|O_WRONLY`、mode `0600` で作成する。
 2. ロック取得に失敗した場合は 100ms 間隔で最大 10 秒待つ。
-3. 現在値を読み込み、schema と入力値を検証する。
-4. 更新後 JSON を対象と同じ親ディレクトリの `{name}.tmp.{pid}` に `O_CREATE|O_EXCL|O_WRONLY`、mode `0600`、UTF-8 / LF で全 byte 書き出す。既存 tmp を truncate または再利用しない。
+3. 通常 mode は現在値を読み込み、schema と入力値を検証する。create-only mode は `Lstat` で target の存在だけを再確認し、通常 file、directory、symlink、その他の file type のいずれでも存在する場合は内容を読まず `ErrStateAlreadyExists` とする。target 不在時だけ入力値を検証して手順 4 へ進む。
+4. 状態ファイル固定表が対象に指定する JSON、JSON Lines、または UTF-8 text の更新後 payload を、対象と同じ親ディレクトリの `{name}.tmp.{pid}` に `O_CREATE|O_EXCL|O_WRONLY`、mode `0600`、UTF-8 / LF で全 byte 書き出す。JSON object / array は末尾 LF 1 個、JSON Lines は各 object の末尾 LF 1 個、UTF-8 text は末尾 LF 1 個だけを持つ。既存 tmp を truncate または再利用しない。
 5. tmp file に `Sync` を実行し、mode `0600` を確定してから close する。`Sync`、chmod、close のいずれかが失敗した場合は rename しない。
 6. `os.Rename(tmp, target)` で置換する。
 7. 親ディレクトリを open して `Sync` し、rename された directory entry を永続化する。
 8. ロックファイルを削除する。
 
 `os.Rename` が成功する前に手順 3〜6 が失敗した場合は target を変更せず、当該 write 呼び出しが作成した tmp がある場合は tmp、当該 write 呼び出しが取得した lock がある場合は lock の順で、それぞれ `os.Remove` を 1 回だけ実行する。削除成功と `os.IsNotExist` は cleanup 成功とする。それ以外の tmp 削除失敗は `STATE_TMP_CLEANUP_FAILED`、lock 削除失敗は `STATE_LOCK_CLEANUP_FAILED` を ERROR で server log に記録し、code と対象 basename 以外を記録しない。cleanup は再試行せず、cleanup 失敗後も最初の write failure を呼び出し元へ返し、残存 tmp または lock を別 process のものと推測して削除しない。lock 取得前の失敗では tmp と lock の cleanup を行わない。
+
+create-only mode で `ErrStateAlreadyExists` が確定した場合は tmp を作成せず、この呼び出しが取得した lock を 1 回削除する。削除成功または `os.IsNotExist` の場合は `ErrStateAlreadyExists` を返す。lock 削除失敗は `STATE_LOCK_CLEANUP_FAILED` を ERROR で記録し、target を変更せず cleanup failure を返す。caller は `ErrStateAlreadyExists` と cleanup failure を同じ公開結果へ丸めてはならない。
 
 `os.Rename` 成功後に手順 7 または 8 が失敗した場合は、rename 済みの新しい target を維持し、server log に `STATE_WRITE_AFTER_RENAME_FAILED` を ERROR で記録し、write caller へ post-rename partial write failure を返す。statefile owner は caller 固有の `.config_log`、`.audit_log`、その他の業務 log を直接追記しない。write caller は自身の詳細本文責務に明記された場合だけ partial failure を記録し、失敗した atomic write を同じ payload で再試行しない。owner component の詳細本文責務が lifecycle 最終化または補償の発動条件、対象、固定値、書込順、最大回数を明記する場合に限り、最初の業務 write とは別の補償 atomic write をその契約どおり実行できる。この補償は元の payload の retry として扱わず、statefile owner が発動判断、補償値、順序、回数を補完してはならない。複数ファイル更新 caller は、呼び出し元が定義する Write 列順にこの手順を実行し、途中失敗時は未処理ファイルを書き込まない。API 固有の Write 列順は [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) 以降を参照する。既に書き込んだファイルの暗黙のロールバックは行わない。
 
@@ -315,23 +319,39 @@ Email object:
 
 **`.notify_log` JSON Lines schema：**
 
-`.notify_log` は送信 attempt 1 回につき 1 record を追記する。payload 本文、送信先 URL、email address、command 引数、secret は保存しない。
+`.notify_log` は通常通知または手動 test の channel 処理結果を記録する。外部送信を開始した場合は 1 attempt につき 1 record だけを追記し、最終 retry 失敗を `failure` と `dropped` の 2 record に重複記録してはならない。送信開始前の SMTP 未設定判定と、最終 retry 失敗による破棄判定も、それぞれ 1 record だけを追記する。payload 本文、送信先 URL、email address、command 引数、stdout、stderr、secret は保存しない。
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `id` | string | 必須 | base は `ntfy{YYYYMMDDHHmmss}` | 衝突処理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の時刻ベース ID 契約に従う。 |
 | `at` | string | 必須 | UTC ISO 8601 秒精度 | attempt 結果確定時刻。 |
-| `event` | string | 必須 | `.notify_config.on` の列挙値 | 通知 event。 |
-| `channel_id` | string | 必須 | Channel object の `id` | 正規化後 channel id。 |
+| `event` | string | 必須 | `.notify_config.on` の列挙値、`"notify_test"`、`"smtp_test"` | 通知 event。test 値は対応する手動 test API のみ使用する。 |
+| `channel_id` | string | 必須 | Channel object の `id`、または `event="smtp_test"` の場合だけ `"smtp-test"` | 正規化後 channel id。 |
 | `channel_type` | string | 必須 | `"webhook"`, `"email"`, `"command"` | 送信方式。 |
-| `payload_sha256` | string | 必須 | 64 文字 lowercase hex | secret mask 後 payload の canonical JSON byte に対する SHA-256。 |
-| `result` | string | 必須 | `"success"`, `"failure"`, `"not_configured"`, `"dropped"` | attempt 結果。 |
-| `attempt` | integer | 必須 | 1 以上 | 初回送信を 1 とする。 |
+| `payload_sha256` | string | 必須 | 64 文字 lowercase hex | secret mask 後 NotificationPayload object、または API 詳細本文で固定した test payload の canonical JSON byte に対する SHA-256。 |
+| `result` | string | 必須 | `"success"`, `"failure"`, `"not_configured"`, `"dropped"` | channel 処理結果。 |
+| `attempt` | integer | 必須 | 1 以上 | 初回の送信または送信前判定を `1` とし、保存に成功した retry 結果ごとに 1 を加える。retry の log 保存失敗時は pending の `attempts` を変更せず、次回に同じ番号を再使用する。`dropped` は最後に実行した retry の番号を使い、別番号を採番しない。 |
 | `http_status` | integer/null | 必須 | 100〜599 または `null` | HTTP response を受信した webhook だけ整数。 |
-| `error_code` | string/null | 必須 | 固定 error code または `null` | 送信失敗分類。 |
+| `error_code` | string/null | 必須 | `"http_1xx"`, `"http_3xx"`, `"http_4xx"`, `"http_5xx"`, `"timeout"`, `"network_error"`, `"smtp_not_configured"`, `"smtp_error"`, `"command_error"`, `"retry_exhausted"`, `null` | 送信失敗分類。 |
 | `error` | string/null | 必須 | 500 文字以下または `null` | secret mask 後の短い失敗理由。 |
 
-`result="success"` では `error_code` と `error` を `null` とする。`result="not_configured"` は必須設定がないため送信を開始しなかった場合、`result="dropped"` は retry 上限超過で pending entry を破棄した場合だけ使用する。
+`result="success"` では `error_code` と `error` を `null` とする。それ以外の result では `error_code` と `error` を非 `null` とする。`result="failure"` の固定値は次のとおりとする。
+
+| 条件 | `error_code` | `error` | `http_status` |
+|------|--------------|---------|---------------|
+| Webhook HTTP `100`〜`199` | `"http_1xx"` | `"HTTP {status}"` | 受信した status |
+| Webhook HTTP `300`〜`399` | `"http_3xx"` | `"HTTP {status}"` | 受信した status |
+| Webhook HTTP `400`〜`499` | `"http_4xx"` | `"HTTP {status}"` | 受信した status |
+| Webhook HTTP `500`〜`599` | `"http_5xx"` | `"HTTP {status}"` | 受信した status |
+| Webhook response 受信前の接続失敗 | `"network_error"` | `"network error"` | `null` |
+| Webhook、SMTP、command の timeout | `"timeout"` | `"timeout"` | `null` |
+| SMTP 接続・認証・送信失敗 | `"smtp_error"` | `"SMTP error"` | `null` |
+| command process 起動失敗 | `"command_error"` | `"command start failed"` | `null` |
+| command 非 0 終了 | `"command_error"` | `"command exit {exit_code}"` | `null` |
+
+`{status}` は 3 桁の decimal HTTP status、`{exit_code}` は符号付き decimal process exit code とし、前後空白を付けない。`result="not_configured"` は必須 SMTP 設定がないため通常の email channel 送信を開始しなかった場合だけ使用し、`error_code="smtp_not_configured"`、`error="SMTP not configured"`、`http_status=null` とする。`result="dropped"` は最後に許可された retry が `http_5xx` または `timeout` で失敗し、pending entry を破棄する場合だけ使用し、`error_code="retry_exhausted"`、`error="retry exhausted"` とする。最後の失敗が HTTP 5xx なら受信 status を `http_status` に保存し、timeout なら `null` とする。最終 retry では同じ attempt 番号の `failure` record を別途追記しない。
+
+`event="notify_test"` は `POST /api/notify-test` の 1 回の Webhook 送信だけに使い、`channel_id` は API が選択した正規化後 Webhook channel id、`channel_type="webhook"`、`attempt=1` とする。`event="smtp_test"` は `POST /api/smtp-test` の 1 回の SMTP 送信だけに使い、`channel_id="smtp-test"`、`channel_type="email"`、`attempt=1`、`http_status=null` とする。両 test event は `.notify_config.on`、Channel object の `on`、`.notify_pending`、NotificationPayload object の event 値として使用しない。
 
 **`.notify_pending` schema：**
 
@@ -341,8 +361,8 @@ Email object:
 |------|----|------|--------|------|
 | `id` | string | 必須 | base は `np{YYYYMMDDHHmmss}` | 衝突処理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の時刻ベース ID 契約に従う。 |
 | `event` | string | 必須 | `.notify_config.on` の列挙値 | payload の `event` と一致させる。 |
-| `channel_id` | string | 必須 | Channel object の `id` | retry 対象 channel。 |
-| `channel_type` | string | 必須 | `"webhook"`, `"email"`, `"command"` | channel の送信方式。 |
+| `channel_id` | string | 必須 | `type="webhook"` の Channel object の `id` | retry 対象 Webhook channel。 |
+| `channel_type` | string | 必須 | `"webhook"` | retry 対象は Webhook の HTTP 5xx / timeout だけとする。 |
 | `payload` | object | 必須 | NotificationPayload object | secret mask 後 payload。 |
 | `attempts` | integer | 必須 | 1 以上 | 初回送信を含む実行済み attempt 数。 |
 | `next_attempt_at` | string | 必須 | UTC ISO 8601 秒精度 | 次回 retry を許可する最早時刻。 |
@@ -421,7 +441,7 @@ array は投入順を保持する。転送先識別子は `branch`、`target_id`
 | `src` | string | 必須 | 絶対パス | blob 本文の書き出し先。 |
 | `out` | string | 必須 | 絶対パス | ビルド成果物パス。 |
 | `approval_required` | boolean | 任意 | boolean | 省略時は `false`。 |
-| `env` | object | 任意 | string:string、0〜100 key | 省略時は `{}`。branch target 固有の process environment。 |
+| `env` | object | 任意 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Process environment entry 共通固定契約](../DETAIL_INDEX.md#process-environment-entry-contract) | 省略時は `{}`。branch target 固有の process environment。 |
 | `deploy_targets` | object[] | 必須 | 0〜20 件 | SSH 転送先。空配列は転送なし。 |
 | `deploy_targets[].id` | string | 任意 | `^[A-Za-z0-9_-]{1,64}$`、同一 branch target 内で一意 | 省略時は正規化前の `{branch_index}-{target_index}`。 |
 | `deploy_targets[].host` | string | 必須 | `^[A-Za-z0-9._-]{1,255}$` | SSH host。 |
@@ -432,12 +452,13 @@ array は投入順を保持する。転送先識別子は `branch`、`target_id`
 
 `deploy_targets[].dest_dir` は `/` で開始し、有効な UTF-8 文字列とし、NUL、CR、LF、その他の制御文字、および正規化前の `..` segment を禁止する。入力を Go `path.Clean` で正規化し、root 以外の末尾 `/` を除いた値を保存する。この正規化後の `dest_dir` を deploy target の一致判定と SSH 転送のみに使用する。
 
-`env` key は `^[A-Z_][A-Z0-9_]{0,63}$`、value は UTF-8 で 0〜4096 bytes とし、NUL、改行、CR を禁止する。key は ASCII 昇順で保存する。process 注入と secret mask は [`docs/details/runner.md` 詳細本文責務 §27.31](runner.md#sec-27-31) を参照する。
+`env` の process 注入と secret mask は [`docs/details/runner.md` 詳細本文責務 §27.31](runner.md#sec-27-31) を参照する。
 
 `target_files`、`approval_required`、`env`、`deploy_targets[].id` の欠落は `.branch_config` に限る旧形式正規化例外とする。読取時は [`.branch_config` schema](#branch-config-schema) の既定値または導出値を memory 上で補い、読取だけではファイルを書き換えない。次回の API 保存時は正規化後の全 key を明示保存する。`deploy_targets[].id` の導出に使う index は request の配列順を基準とする。正規化後は `branch_targets` を branch 名の byte 昇順、各 `deploy_targets` を id の byte 昇順で保存する。branch 重複または同一 branch target 内の deploy target id 重複は schema 不正とし、API 入力は `422`、保存済み状態の読取は `ErrStateCorrupted` とする。
 
 `.branch_config` の永続 key は `branch_targets` に固定する。API の表示名、default 復帰、空配列入力時の挙動は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) および [`docs/details/api.md` 詳細本文責務 §27.18](api.md#sec-27-18) を参照する。statefile は `branches` を永続 key として保存してはならない。
 
+<a id="last-sha-schema"></a>
 **`.last_sha` / `BranchTarget.SHAFile` schema：**
 
 ```json
@@ -732,15 +753,21 @@ repo config write caller は request の `owner` または `repo` のうち指�
 
 `condition` は `変数 空白 演算子 空白 値` の 1 条件だけを許可する。`&&`、`||`、括弧、関数呼び出し、正規表現、算術式は validation failure とする。
 
+<a id="pipeline-config-schema"></a>
 **`.pipeline_config` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `extra_args` | string[] | 必須 | 0〜50 件 | `builder` に渡す追加 CLI 引数。 |
-| `env` | object | 必須 | key/value は次の | builder process に追加する環境変数。 |
+| `env` | object | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Process environment entry 共通固定契約](../DETAIL_INDEX.md#process-environment-entry-contract) | builder process に追加する環境変数。 |
 | `inline_yaml` | string/null | 必須 | UTF-8 で 0〜262144 bytes、または `null` | `.pipeline.yml` 不在時に使用する内製 YAML subset。空文字は pipeline 未指定として扱う。 |
 
-`extra_args` は空文字、NUL、改行、CR を禁止し、`--src`、`--out`、`--build-id`、`--commit-sha`、`--build-at`、`--version`、`--help` を指定してはならない。`env` key は `^[A-Z_][A-Z0-9_]{0,63}$`、value は 0〜1000 文字とし、`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN` は上書き禁止とする。`inline_yaml` は UTF-8 不正、NUL、CR を拒否し、LF は保持する。YAML grammar、source 優先順位、parse、step 実行は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を参照する。
+<a id="pipeline-config-reserved-builder-options"></a>
+**`.pipeline_config.extra_args` 予約 builder option 固定契約：**
+
+`extra_args` は空文字、NUL、改行、CR を禁止し、`--src`、`--out`、`--build-id`、`--commit-sha`、`--build-at`、`--cache-dir`、`--version`、`--help` およびこれらの `--name=value` 形式を指定してはならない。
+
+`inline_yaml` は UTF-8 不正、BOM、NUL、CR を拒否し、LF は保持する。YAML grammar、source 優先順位、parse、step 実行は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を参照する。
 
 **`.dashboard_layout` schema：**
 
@@ -896,7 +923,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | `build_triggered` | boolean | 必須 | queue 追加済みなら `true`。 |
 | `queued_id` | string/null | 必須 | queue id または `null`。 |
 | `result` | string | 必須 | `"queued"`, `"duplicate"`, `"ignored_event"`, `"ignored_branch"`, `"queue_full"`。 |
-| `error_code` | string/null | 必須 | 固定 error code または `null`。secret、署名、payload 断片を含めない。 |
+| `error_code` | string/null | 必須 | `result="queue_full"` では `"queue_full"`、その他の `result` では `null`。secret、署名、payload 断片を含めない。 |
 
 **`.approval_queue` JSON Lines schema：**
 
@@ -1265,8 +1292,8 @@ TargetResult object:
 | `status` | string | 必須 | `"success"` または `"failure"`。 |
 | `started_at` | string | 必須 | UTC ISO 8601。 |
 | `finished_at` | string | 必須 | UTC ISO 8601。 |
-| `error_code` | string/null | 必須 | `deploy_timeout` 等の固定 code または `null`。 |
-| `error` | string/null | 必須 | 固定エラー文言または `null`。 |
+| `error_code` | string/null | 必須 | `"deploy_timeout"`, `"deploy_ssh_error"`, `"deploy_checksum_error"`, `"deploy_internal_error"`, `null`。`status="success"` では `null`、`status="failure"` では非 `null` を必須とする。 |
+| `error` | string/null | 必須 | `error_code` が `null` なら `null`。非 `null` ではそれぞれ `"deploy timeout"`, `"deploy ssh failed"`, `"deploy checksum failed"`, `"deploy internal error"` とする。 |
 
 RemoteBuild object:
 
@@ -1313,7 +1340,7 @@ FailureEvidence object:
 | キー | 型 | 必須 | 説明 |
 |------|----|------|------|
 | `source` | string | 必須 | `"github_api"`, `"pipeline"`, `"deploy"`, `"hook"`, `"config"`, `"resource"`, `"runner"`。 |
-| `code` | string | 必須 | 固定 code。 |
+| `code` | string | 必須 | 同じ build log の `failure_category` と完全一致する FailureCategory 値。 |
 | `message` | string | 必須 | secret と入力値連結を含まない固定文言、最大 300 文字。 |
 | `at` | string | 必須 | UTC ISO 8601。 |
 

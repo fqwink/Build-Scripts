@@ -163,7 +163,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 | 書込失敗 | 空 | `credentials write failed` + LF | `1` | tmp を削除し、部分ファイルを残さない。 |
 | rand 失敗 | 空 | `random source failed` + LF | `1` | ファイル作成なし。 |
 
-生成手順は、state dir 検証 → 既存確認 → salt 生成 → hash 生成 → `{path}.tmp.{pid}` へ JSON + LF 書込 → mode `0600` → file sync → rename → parent directory sync の順に固定する。rename 後の sync に失敗した場合は `1` を返し、作成済みファイルは残る。実装者判断で初期 password を環境変数、対話入力、ランダム生成へ変更してはならない。
+生成手順は、state dir 検証 → `.admin_credentials` の予備存在確認 → salt 生成 → hash 生成 → [`docs/details/statefile.md` 詳細本文責務 §22.0a 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode 呼出し、の順に固定する。create-only mode は lock 取得後に存在を再確認するため、予備確認後の競合でも既存 `.admin_credentials` を上書きしない。`ErrStateAlreadyExists` は「既存あり」の終了コード `2`、lock / tmp / write / chmod / file sync / rename / parent sync / cleanup failure は「書込失敗」の終了コード `1` へ写像する。rename 後の partial failure では作成済みファイルを残す。security owner は tmp 名、lock 名、rename、cleanup を再定義しない。実装者判断で初期 password を環境変数、対話入力、ランダム生成へ変更してはならない。
 
 **認証共通実装確認ゲート：**
 
@@ -288,7 +288,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 **正常系：**
 
 1. `POST /api/tokens` は `label`、`scopes`、`expires_at` を受け取る。
-2. token 本体は `act_` + 32 byte 相当のランダム文字列とする。
+2. token 本体は `io.ReadFull(crypto/rand.Reader, buffer)` で取得した 32 bytes を `base64.RawURLEncoding.EncodeToString` で符号化し、`act_` を前置した文字列とする。
 3. `.api_tokens` には `sha256(token)` の lowercase hex だけを保存する。
 4. response の `token` は作成時 1 回だけ返す。`GET /api/tokens` では返さない。
 5. 認証時は hash 一致、`revoked_at == null`、`expires_at == null または now < expires_at` を満たす token だけ有効とする。
@@ -346,7 +346,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 |------|------|
 | 採番元 | `.api_tokens.tokens[].id` の数値 suffix 最大値。存在しない場合は `tok000001`。 |
 | 衝突時 | 最大 suffix + 1 を採用する。削除済みや失効済み id は再利用しない。 |
-| token 本体 | `act_` + `crypto/rand` 32 bytes を base64url padding なしで encode した文字列。 |
+| token 本体 | `io.ReadFull(crypto/rand.Reader, buffer)` で 32 bytes を完全に取得し、`base64.RawURLEncoding.EncodeToString` で padding なしの 43 ASCII 文字へ変換し、`act_` を前置する。完成 token は合計 47 bytes、本体 alphabet は `[A-Za-z0-9_-]` に固定する。 |
 | 作成 response | `{ "id", "label", "scopes", "created_at", "expires_at", "revoked_at", "last_used_at", "token" }`。`token` はこの response だけに含める。 |
 | 一覧 response | `tokens` 配列に `token_hash` と `token` を含めない。並び順は `created_at` 降順、同時刻は `id` 昇順。 |
 | label 正規化 | 前後空白を除去し、内部空白は保持する。64 文字判定は Unicode code point 数ではなく UTF-8 byte 数で行う。 |
@@ -363,6 +363,8 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 | 期限切れ token | `401`。 |
 | 失効済み token 再失効 | `404` または冪等成功にせず `404` 固定。 |
 | `.api_tokens` 破損 | `500`。自動再生成しない。 |
+| `crypto/rand.Reader` が 32 bytes を取得できない | `500 {"error":"Internal server error"}`。token、hash、record、access log、audit log を作成せず、lock を解放する。短い読み取りを成功扱いしない。 |
+| 生成した `sha256(token)` が既存 record の `token_hash` と一致 | `500 {"error":"Internal server error"}`。自動再生成せず、既存 record と全 log を変更せず lock を解放する。token または hash の値を出力しない。 |
 
 **検証条件：**
 

@@ -96,7 +96,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 競合 | 現在状態と要求操作が両立しない場合は `409 Conflict` を返す。対象は、ビルド未実行時の cancel、停止済みスケジュールへの pause、稼働中スケジュールへの resume、lock 取得 10 秒超過、stale 判定不能な `.build_lock` である。実行中の manual / force / webhook build request は queue 上限内なら waiting entry として受理し、上限到達時は `429 queue_full` とする。 |
 | 未設定機能 | endpoint の必須 secret、必須外部設定、必須状態ファイルが未設定で処理を開始できない場合は `501 Not Implemented` と `{"error":"Not configured"}` を返す。エンドポイント固有仕様で `422`、`503`、`500` を明記している場合のみ個別指定を優先する。 |
 | 時刻形式 | API レスポンスと状態ファイルの機械処理用時刻は UTC ISO 8601 `YYYY-MM-DDTHH:MM:SSZ` とする。明示オフセット、timezone なし文字列、ミリ秒付き文字列は保存しない。外部 API から取得した時刻も保存前に UTC `Z` へ正規化する。 |
-| GET の副作用 | `GET` endpoint 固有処理は業務状態を変更しない。認証 session の `last_used_at`、rate limit の `.api_rate_state`、`.access_log`、`.api_access_log` など security / observability 共通処理の副作用だけは [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42-2) と [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) に従う。診断 API が外部確認を行う場合も診断結果は保存しない。 |
+| GET の副作用 | `GET` endpoint 固有処理は業務状態を変更しない。許可する共通副作用は、(1) 有効な管理 session の memory-only `last_used_at` 更新または期限切れ session の memory からの削除、(2) API token 認証成功時の `.api_tokens.last_used_at` 更新、(3) [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) が要求する `.api_rate_state` 更新、(4) [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42-2) が対象 event に要求する `.access_log` と `.audit_log` の追記、(5) 全 `/api/` request に対する `.api_access_log` の best-effort 追記の 5 群だけとする。endpoint 固有契約が method、対象、timeout を固定した外部 read または read-only command は観測処理として実行できるが、結果を業務状態へ保存しない。これら以外の file 作成・更新・削除、queue 変更、外部 write、変更 command、未定義 command、通知送信を禁止する。 |
 | 状態ファイル更新 | JSON 状態ファイルの atomic write、lock、mode、file sync、親ディレクトリ sync は [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) に従う。永続化失敗時は `500` を返す。 |
 | 秘密情報 | PAT、Webhook Secret、セッショントークン、API トークンはログ、バックアップ、GET レスポンスへ平文出力しない。設定済み表示は `"***"` または boolean で返す。 |
 | 並列更新 | 同一状態ファイルを更新する API は、ファイル単位のロックを取得してから読み込み、検証、書き込みを行う。ロック取得待ちは最大 10 秒とし、超過時は `409 Conflict` を返す。 |
@@ -276,8 +276,7 @@ API 実装では、[`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec
 | `POST /api/auth/totp-confirm` | `.totp_secret` | `.totp_secret`, `.audit_log` | 仮 secret を code 検証後に保存し、TOTP を有効化する。 |
 | `DELETE /api/auth/totp` | `.totp_secret` | `.totp_secret`, `.audit_log` | code 検証後に TOTP を無効化する。 |
 | `GET /api/status` | `.build_status.json`, `.build_lock`, `.build_history`, `.build_state`, `.pending_transfers`, `.notify_pending`, `.build_circuit_state` | なし | `.build_status.json` を第一参照元とする。不在時のみ残りの状態から status 不在時集約値を算出する。 |
-| `POST /api/build` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | `.build_state.queued`, `.audit_log` | idle / running にかかわらず manual queue entry を保存し、保存後に runner 起動を要求する。 |
-| `POST /api/build/force` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | `.build_state.queued`, `.audit_log` | `payload.force=true` の manual queue entry を保存し、保存後に runner 起動を要求する。API は SHA cache を読み書きしない。 |
+| `POST /api/build` / `POST /api/build/force` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | `.build_state.queued`, `.audit_log` | idle / running にかかわらず manual queue entry を保存し、保存後に runner 起動を要求する。後者は `payload.force=true` とし、API は SHA cache を読み書きしない。 |
 | `POST /api/build/cancel` | `.build_lock`, `.build_state` | `.build_state`, `.build_logs/{id}.json` | 実行中でない場合は `409`。 |
 | `GET /api/build/stream` | `.build_logs/{id}.json`, `.build_logs/archive/`, `.build_state` | なし | 保存済み log 1 件の有限 SSE 配信だけを行い、通常 log と archive を更新しない。 |
 | `GET /api/logs` | `.build_logs/`, `.build_logs/archive/` | なし | 通常 log を優先し、同一 build id の通常 log 不在時だけ archive を読む。 |
@@ -432,7 +431,7 @@ API 実装では、[`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec
 | `GET /api/notify-config` | none | `NotifyConfig` | `200` | `401`, `500` | `getNotifyConfig()` | 通知設定 |
 | `POST /api/notify-config` | `NotifyConfig` | `{message}` | `200` | `401`, `422`, `500` | `setNotifyConfig(config)` | 通知設定 |
 | `GET /api/notify-log` | query `{limit,offset}` | `{log}` | `200` | `401`, `422` | `getNotifyLog()` | 通知設定 |
-| `POST /api/notify-test` | none | `{message,webhook_url}` | `200` | `401`, `422`, `500` | `notifyTest()` | 通知設定 |
+| `POST /api/notify-test` | none | `{message,channel_id}` | `200` | `401`, `422`, `500` | `notifyTest()` | 通知設定 |
 | `POST /api/notify/weekly-summary` | none | `{message,period,success_count,failure_count,success_rate}` | `200` | `401`, `422`, `500` | `notifyWeeklySummary()` | 通知設定 |
 | `GET /api/config` | none | `ConfigObject` | `200` | `401`, `500` | `getConfig()` | 設定 |
 | `POST /api/config/validate` | partial `ConfigObject` | `ConfigValidationObject` | `200` | `401`, `422`, `500` | `validateConfig(config)` | 設定 |
@@ -562,7 +561,7 @@ restore の `.config_log` は対象 file ごとの差分を 1 record にまと�
 <a id="sec-22-0e-1"></a>
 **22.0e.1 API 機能別処理契約：**
 
-集約 API は、[`docs/details/api.md` 詳細本文責務 §22.0e.1](api.md#sec-22-0e-1) の固定表の読取元、算出方法、空状態の戻り値に従う。[`docs/details/api.md` 詳細本文責務 §22.0e.1](api.md#sec-22-0e-1) の固定表にない読取元や推測値を使用してレスポンスを補完してはならない。
+集約 API の読取元と write 境界は [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) の endpoint 別状態アクセス表を正本とする。[`docs/details/api.md` 詳細本文責務 §22.0e.1](api.md#sec-22-0e-1) の固定表は算出方法と空状態の戻り値だけを定義する。両表にない読取元や推測値を使用してレスポンスを補完してはならない。
 
 `GET /api/sysinfo`、`GET /api/output-meta`、`GET /api/dashboard`、`GET /api/diagnostics`、`GET /api/disk-usage`、`POST /api/verify-output` の単数形の出力値は、以下の固定順で 1 件に決定した API 選択出力 target だけを対象とする。複数 target の集約値、任意の最新 directory、ファイル更新時刻の最大値から target を推測してはならない。
 
@@ -572,23 +571,23 @@ restore の `.config_log` は対象 file ごとの差分を 1 record にまと�
 4. 選択値は `branch`、`target_file`、`out` の 3 値とし、1 request 内で固定する。応答生成中に `.branch_config` または `.build_status.json` を再読込して target を切り替えてはならない。
 5. 選択 target の履歴は `.build_history` の `branch` と `target_file` が両方完全一致し、`status` が `success` または `success_deploy_pending` の行だけを対象とする。`finished_at` 降順、同時刻は `id` 降順で並べ、対応 log は同じ `id` の通常 log、archive log の順で読む。他 target の履歴、log、report、checksum を fallback に使用してはならない。
 
-| 機能 | Endpoint | 読取元 | 算出方法 | 空状態 / 不足時 |
-|------|----------|--------|----------|-----------------|
-| 現在状態 | `GET /api/status` | `.build_status.json`, `.build_lock`, `.build_history`, `.build_state`, `.pending_transfers`, `.notify_pending`, `.build_circuit_state` | [StatusObject 固定契約](#status-object-contract) の 10 key だけを返す。`.build_status.json` がある場合は同 file と lock だけから算出し、不在時だけ履歴、state、pending、circuit へ fallback する。 | 履歴なしは `last_sha:null`, `last_build_at:null`, `last_build_status:"none"`, `last_target_status:null`, `last_trigger:null`, `last_deploy_status:null`, 両 pending 件数 `0`, `circuit_open:false`, `running:false`。 |
-| 手動ビルド要求 | `POST /api/build` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の競合優先順位に従い、manual queue entry の保存と runner 起動要求を行う。build 開始状態と SHA cache は変更しない。 | queue 上限到達は `429 {"error":"queue_full"}`。 |
-| 強制ビルド要求 | `POST /api/build/force` | `.server_config`, `.build_state`, `.build_lock`, `.maintenance`, `.build_circuit_state` | `payload.force=true` の manual queue entry を保存し、runner 起動を要求する。API は SHA cache を空値化せず、runner は SHA 一致 skip だけを bypass し、build 成功後に限り新 SHA を保存する。 | queue 上限到達は `429 {"error":"queue_full"}`。 |
-| ログ一覧 | `GET /api/logs` | `.build_logs/`, `.build_logs/archive/` | 同一 build id は通常 log を優先し、通常 log 不在時だけ archive を展開する。対象 build log の `pipeline.stdout`、`pipeline.stderr`、`warnings` をこの順で行配列へ連結し、build log の `finished_at` 昇順、同時刻は build id 昇順で並べた後に末尾 `n` 行を返す。`q` が空でない場合は大文字小文字を区別する部分一致行だけを絞り込んでから `n` を適用する。 | ログなしは `{"lines":[]}`。 |
-| ログ検索 | `GET /api/logs/search` | `.build_logs/`, `.build_logs/archive/` | [`docs/details/api.md` 詳細本文責務 §27.17](api.md#sec-27-17) の固定契約に従い、通常 log 優先で、`finished_at` 降順、build id 降順に検索し、一致 message を build 単位の `lines` へ固定 source 順でまとめる。 | 一致なしは `results:[]`。 |
-| 履歴一覧 | `GET /api/history` | `.build_history` | schema-valid かつ id 重複除外済みの行を `finished_at` 降順、同時刻は `id` 降順に並べ、`trigger`、`tag`、`flagged`、`failure_category` を指定時のみ完全一致で絞り込み、ページングする。壊れた行と重複 id 行は無視して固定 ERROR code を記録する。`total` と `pages` は絞り込み後の一意な有効行だけで算出する。`warnings` は返却 page の保存済み未知 category に限定する。 | 履歴なしまたは一致なしは `total:0`、検証済み query の `page` と `per_page`、`pages:0`, `history:[]`, `warnings:[]`。 |
-| システム情報 | `GET /api/sysinfo` | `.branch_config`, `.build_status.json`, API 選択出力 target, process start time | API 選択出力 target の `out` 配下の通常 file 合計 bytes、directory mtime、process uptime を返す。 | 出力 directory 不在は `output_size_bytes:0`, `output_mtime:null`。 |
-| 出力メタ | `GET /api/output-meta` | `.branch_config`, `.build_status.json`, `.build_history`, `.build_logs/`, `.build_logs/archive/`, API 選択出力 target | 選択 target の出力サイトの現在サイズと mtime、同じ target の直近成功履歴の `output_sha256`、対応 log の `report`、対応 log または HTML meta の `build_id` / `commit_sha` / `build_at` を返す。 | 出力サイト不在は `404`。同じ target の成功履歴がない場合は `sha256:""`、report 数値は `null`、warning は `[]`、build meta は HTML meta 不在時に空文字。 |
-| ダッシュボード | `GET /api/dashboard` | `.branch_config`, `.build_status.json`, `.build_history`, `.server_config`, `.alert_rules`, `.dashboard_layout`, `.build_state`, `.build_lock`, API 選択出力 target, process start time | `status`、API 選択出力 target の `sysinfo`、`stats(days=7)`、`schedule`、`alerts` を同一リクエスト時点で算出し、widget 順序は `.dashboard_layout.widgets` を使用する。 | `.dashboard_layout` 不在は既定 widget 順。出力 directory 不在の `sysinfo` は size `0` / mtime `null`。alerts なしは `[]`。 |
-| 診断 | `GET /api/diagnostics` | `.branch_config`, `.build_status.json`, `.github_token`, API 選択出力 target, systemd, `.notify_config`, `.webhook_secret` | PAT、GitHub API、API 選択出力 target の出力サイト、systemd、Webhook 設定を個別 item として返す。診断結果は保存しない。 | 出力 directory 不在は `output_file` item を `error` とする。各項目は `ok`、`warn`、`error` のいずれかを返す。 |
-| ディスク使用量 | `GET /api/disk-usage` | `.branch_config`, `.build_status.json`, `.build_logs/`, `.build_logs/archive/`, API 選択出力 target | 通常 build log、archive build log、API 選択出力 target の `out` 配下の通常 file を分類ごとに集計する。 | 出力 directory 不在は `output_file_bytes:0`。log directory 不在は対応 bytes / count を `0`。 |
-| 出力検証 | `POST /api/verify-output` | `.branch_config`, `.build_status.json`, `.build_history`, API 選択出力 target | 選択 target の直近成功履歴 `output_sha256` と、同 target の現在の出力サイト manifest SHA-256 を比較する。 | 同 target の成功履歴なし、`output_sha256:null`、または出力 directory 不在は `404 {"error":"Not found"}`。 |
-| キュー | `GET /api/queue` | `.build_state`, `.server_config` | `.build_state.active_queue_entry` を `active`、`.build_state.queued` を priority 順の `queued`、`.server_config.queue_max_size` を `max_size` として返す。 | `.build_state` 不在は `active:null`, `queued:[]`。 |
-| バックアップ | `GET /api/backup` | [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) の backup 対象状態ファイル | 設定状態だけを export し、secret 値は返さず `webhook_secret_set` / `smtp_password_set` boolean に変換する。履歴、ログ、snapshot、session は含めない。 | 不在の任意設定ファイルは初期値で返す。 |
-| リストア | `POST /api/restore` | request body | 対象 state schema をすべて検証してから [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) の write 順に保存する。secret が `"***"` の場合は既存 secret を保持する。 | 検証失敗は書き込み前に `422`。途中失敗は未処理ファイルを書かない。 |
+| 機能 | Endpoint | 算出方法 | 空状態 / 不足時 |
+|------|----------|----------|-----------------|
+| 現在状態 | `GET /api/status` | [StatusObject 固定契約](#status-object-contract) の 10 key だけを返す。`.build_status.json` がある場合は同 file と lock だけから算出し、不在時だけ履歴、state、pending、circuit へ fallback する。 | 履歴なしは `last_sha:null`, `last_build_at:null`, `last_build_status:"none"`, `last_target_status:null`, `last_trigger:null`, `last_deploy_status:null`, 両 pending 件数 `0`, `circuit_open:false`, `running:false`。 |
+| 手動ビルド要求 | `POST /api/build` | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の競合優先順位に従い、manual queue entry の保存と runner 起動要求を行う。build 開始状態と SHA cache は変更しない。 | queue 上限到達は `429 {"error":"queue_full"}`。 |
+| 強制ビルド要求 | `POST /api/build/force` | `payload.force=true` の manual queue entry を保存し、runner 起動を要求する。API は SHA cache を空値化せず、runner は SHA 一致 skip だけを bypass し、build 成功後に限り新 SHA を保存する。 | queue 上限到達は `429 {"error":"queue_full"}`。 |
+| ログ一覧 | `GET /api/logs` | 同一 build id は通常 log を優先し、通常 log 不在時だけ archive を展開する。対象 build log の `pipeline.stdout`、`pipeline.stderr`、`warnings` をこの順で行配列へ連結し、build log の `finished_at` 昇順、同時刻は build id 昇順で並べた後に末尾 `n` 行を返す。`q` が空でない場合は大文字小文字を区別する部分一致行だけを絞り込んでから `n` を適用する。 | ログなしは `{"lines":[]}`。 |
+| ログ検索 | `GET /api/logs/search` | [`docs/details/api.md` 詳細本文責務 §27.17](api.md#sec-27-17) の固定契約に従い、通常 log 優先で、`finished_at` 降順、build id 降順に検索し、一致 message を build 単位の `lines` へ固定 source 順でまとめる。 | 一致なしは `results:[]`。 |
+| 履歴一覧 | `GET /api/history` | schema-valid かつ id 重複除外済みの行を `finished_at` 降順、同時刻は `id` 降順に並べ、`trigger`、`tag`、`flagged`、`failure_category` を指定時のみ完全一致で絞り込み、ページングする。壊れた行と重複 id 行は無視して固定 ERROR code を記録する。`total` と `pages` は絞り込み後の一意な有効行だけで算出する。`warnings` は返却 page の保存済み未知 category に限定する。 | 履歴なしまたは一致なしは `total:0`、検証済み query の `page` と `per_page`、`pages:0`, `history:[]`, `warnings:[]`。 |
+| システム情報 | `GET /api/sysinfo` | API 選択出力 target の `out` 配下の通常 file 合計 bytes、directory mtime、process uptime を返す。 | 出力 directory 不在は `output_size_bytes:0`, `output_mtime:null`。 |
+| 出力メタ | `GET /api/output-meta` | 選択 target の出力サイトの現在サイズと mtime、同じ target の直近成功履歴の `output_sha256`、対応 log の `report`、対応 log または HTML meta の `build_id` / `commit_sha` / `build_at` を返す。 | 出力サイト不在は `404`。同じ target の成功履歴がない場合は `sha256:""`、report 数値は `null`、warning は `[]`、build meta は HTML meta 不在時に空文字。 |
+| ダッシュボード | `GET /api/dashboard` | `status`、API 選択出力 target の `sysinfo`、`stats(days=7)`、`schedule`、`alerts` を同一リクエスト時点で算出し、widget 順序は `.dashboard_layout.widgets` を使用する。 | `.dashboard_layout` 不在は既定 widget 順。出力 directory 不在の `sysinfo` は size `0` / mtime `null`。alerts なしは `[]`。 |
+| 診断 | `GET /api/diagnostics` | PAT、GitHub API、API 選択出力 target の出力サイト、systemd、Webhook 設定を個別 item として返す。診断結果は保存しない。 | 出力 directory 不在は `output_file` item を `error` とする。各項目は `ok`、`warn`、`error` のいずれかを返す。 |
+| ディスク使用量 | `GET /api/disk-usage` | 通常 build log、archive build log、API 選択出力 target の `out` 配下の通常 file を分類ごとに集計する。 | 出力 directory 不在は `output_file_bytes:0`。log directory 不在は対応 bytes / count を `0`。 |
+| 出力検証 | `POST /api/verify-output` | 選択 target の直近成功履歴 `output_sha256` と、同 target の現在の出力サイト manifest SHA-256 を比較する。 | 同 target の成功履歴なし、`output_sha256:null`、または出力 directory 不在は `404 {"error":"Not found"}`。 |
+| キュー | `GET /api/queue` | `.build_state.active_queue_entry` を `active`、`.build_state.queued` を priority 順の `queued`、`.server_config.queue_max_size` を `max_size` として返す。 | `.build_state` 不在は `active:null`, `queued:[]`。 |
+| バックアップ | `GET /api/backup` | 設定状態だけを export し、secret 値は返さず `webhook_secret_set` / `smtp_password_set` boolean に変換する。履歴、ログ、snapshot、session は含めない。 | 不在の任意設定ファイルは初期値で返す。 |
+| リストア | `POST /api/restore` | 対象 state schema をすべて検証してから [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) の write 順に保存する。secret が `"***"` の場合は既存 secret を保持する。 | 検証失敗は書き込み前に `422`。途中失敗は未処理ファイルを書かない。 |
 
 <a id="sec-22-0e-2"></a>
 **22.0e.2 API ID 採番契約：**
@@ -621,7 +620,7 @@ API handler は endpoint ごとの個別処理へ入る前に、[`docs/details/a
 | rollback command | `POST /api/history/{id}/rollback` | 共通判定 → id 検証 → maintenance → circuit → runner rollback prepare → `build_trigger` audit → prepared worker 開始 | worker 開始境界が `accepted` を返した後だけ `202` と rollback build id を返す。 | 不正 id は `422`、history / snapshot 不在は `404`、maintenance は `503`、circuit open、running、現在の deploy target 不在は `409`、snapshot 破損、状態書込失敗は `500`。audit 失敗は prepared rollback を abort して `500`。manual queue entry と systemd runner 起動要求を作成しない。 |
 | snapshot delete | `DELETE /api/snapshots/{id}` | 共通判定 → id 検証 → runner owner の snapshot delete guard 取得・state 再確認 → archive owner の事前検証・削除 → 三値結果別 log 処理 → guard 解放 → response | `deleted` かつ success config / audit と guard 解放の成功後だけ `{ "message":"Snapshot deleted" }` を返す。 | 不正 id は `422`、不在は `404`、running / lock conflict は `409`、state 破損・読取失敗、archive 破損、`delete_partial`、`delete_failed`、log 失敗、guard 解放失敗は `500`。public snapshot 削除後の失敗で snapshot と先行 log を巻き戻さない。guard 解放は guard 取得後の全終了経路で 1 回試行する。 |
 | destructive delete | `DELETE /api/queue`, `DELETE /api/hooks/{id}`, `DELETE /api/alert-rules/{id}`, `DELETE /api/tag-rules/{id}`, `DELETE /api/tokens/{id}` | path / auth 検証 → 対象存在確認 → 削除または失効 → [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約に従い `.config_log` または `.audit_log` 追記 | `{message}` と件数がある場合は件数を返す。 | 対象不在は `404`。部分削除は禁止し、失敗時は `500`。 |
-| external check | `POST /api/pat-verify`, `GET /api/rate-limit`, `GET /api/diagnostics`, `POST /api/smtp-test`, `POST /api/notify-test` | 設定読込 → timeout 付き外部確認 → 結果 response → [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約で定義された log 追記 | 確認結果を保存しない。ただし test 送信 log は仕様どおり追記する。 | 未設定は `501` または endpoint 固有 `422`。timeout は `500`。 |
+| external check | `POST /api/pat-verify`, `GET /api/rate-limit`, `GET /api/diagnostics`, `POST /api/smtp-test`, `POST /api/notify-test` | 設定読込 → timeout 付き外部確認 → [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約が要求する log 追記 → 結果 response | 確認結果そのものを状態へ保存しない。test 送信 log は response 確定前に仕様どおり追記する。 | 未設定は `501` または endpoint 固有 `422`。timeout は `500`。 |
 | binary response | `GET /api/snapshots/{id}/download` | path 検証 → snapshot 存在確認 → archive owner による保存済み archive 事前検証 → header 確定 →検証に使用した同一 file descriptor から stream | 事前検証成功後だけ `Content-Type` と `Content-Disposition` を付与する。 | 不正 id は `422`、不在は `404`、事前検証または読込失敗は `500`。stream 開始後は JSON error を追加しない。 |
 | stream response | `GET /api/build/stream` | 認証 → `.build_state` 読取 → 保存済み log を固定規則で 1 件選択 → SSE header → 有限 frame 送信 | `log` frame 後、必ず `end` frame を 1 回送って close する。wait、poll、tail、自動 reconnect は行わない。 | 選択可能 log 不在は `404`。選択対象または必須状態の読込不能・破損は `500`。送信中断時は状態ファイルを更新しない。 |
 
@@ -1078,10 +1077,14 @@ response schema、状態判定、`checks` の順序、不在・破損時の扱�
 
 **`POST /api/notify-test` レスポンス例：**
 ```json
-{ "message": "Test notification sent", "webhook_url": "https://hooks.example.com/..." }
+{ "message": "Test notification sent", "channel_id": "n001" }
 ```
 
-有効な Webhook 通知先がない場合は `422 {"error":"Webhook not configured"}` を返し、送信しない。送信失敗または `.notify_log` 追記失敗は `500 {"error":"Internal server error"}` を返す。送信成功・失敗のどちらも、response 前に secret を含まない送信結果を `.notify_log` へ追記する。
+`.notify_config.channels[]` が 1 件以上ある場合は `type="webhook"` かつ `enabled=true` の channel、空の場合は有効な legacy `webhooks[]` を runner と同じ規則で channel へ正規化し、channel id の byte 昇順で先頭 1 件だけを test 対象とする。test は `on[]` による event 選択を適用しない。有効な Webhook 通知先がない場合は `422 {"error":"Webhook not configured"}` を返し、送信と `.notify_log` 追記を行わない。
+
+test payload は未知 key を含まない `{"event":"notify_test","message":"Test notification"}` 固定とし、key を ASCII 昇順にした canonical JSON byte を送信と `payload_sha256` の両方に使う。HTTP redirect は追従しない。送信 attempt の成功・失敗のどちらも、response 確定前に [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.notify_log` schema どおり `event="notify_test"`、選択 channel の `channel_id`、`channel_type="webhook"`、`attempt=1` で 1 record を追記する。HTTP 応答を得た場合は `http_status` を記録し、2xx だけを `result="success"` とする。1xx、3xx、4xx、5xx、timeout、response 受信前の接続失敗は同 schema の対応する `error_code` と secret mask 後 `error` で `result="failure"` とする。test 失敗は `.notify_pending` を作成しない。
+
+送信失敗または `.notify_log` 追記失敗は `500 {"error":"Internal server error"}` を返す。送信に成功しても log 追記に失敗した場合は success response を返さない。成功 response の `channel_id` は選択した channel id と完全一致させる。response、log、server log に Webhook URL または Webhook secret を含めない。
 
 **`POST /api/build/force` レスポンス例：**
 
@@ -1929,7 +1932,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 | 削除 | `password:null` は `.smtp_secret` 削除。削除対象が不在なら no-op。 |
 | GET | `.smtp_secret` の存在だけを `password_set` で返し、password 本体は返さない。 |
 | 送信 timeout | 接続、TLS、送信全体を合計 30 秒で timeout する。 |
-| 送信 log | `.notify_log` に `type:"smtp_test"`、`result`、`message`、`at` を追記する。password は記録しない。 |
+| 送信 log | [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.notify_log` schema で `event="smtp_test"`、`channel_id="smtp-test"`、`channel_type="email"`、`attempt=1`、`http_status=null` を記録する。password、宛先、SMTP response 本文は記録しない。 |
 
 `enabled:true` にする場合は `host`、`port`、`from`、`to` 1 件以上を必須とする。`POST /api/smtp-test` は `enabled:false`、宛先なし、secret 必須構成で `.smtp_secret` 不在のいずれも `422 {"error":"SMTP not configured"}` を返す。
 
@@ -1945,7 +1948,7 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 | `.config_log` 追記失敗 | 保存済み | 保存または削除済み | 失敗 | 追記なし | `500` |
 | `.audit_log` 追記失敗 | 保存済み | 保存または削除済み | 追記済み | 失敗 | `500`。保存済み状態と `.config_log` は巻き戻さない。 |
 
-`POST /api/smtp-test` は `.smtp_config` と `.smtp_secret` を読み、送信成功 / 失敗のどちらも `.notify_log` へ追記してから response を返す。`.notify_log` 追記失敗時は `500` を返す。SMTP password、認証失敗時の server response に含まれる credential 断片、接続 URL の userinfo は `message` と log に含めず固定文言へ置換する。
+`POST /api/smtp-test` は `.smtp_config` と `.smtp_secret` を読み、test payload を未知 key のない `{"event":"smtp_test","message":"Test email"}` 固定とする。key を ASCII 昇順にした canonical JSON byte の SHA-256 を `.notify_log.payload_sha256` とする。送信成功は `result="success"`、SMTP 接続・認証・送信失敗は `result="failure"` / `error_code="smtp_error"`、timeout は `result="failure"` / `error_code="timeout"` とし、成功 / 失敗のどちらも `.notify_log` へ 1 record を追記してから response を返す。test 送信は `.notify_pending` を作成しない。SMTP 未設定の `422` は送信 attempt ではないため `.notify_log` を追記しない。`.notify_log` 追記失敗時は `500` を返す。SMTP password、認証失敗時の server response に含まれる credential 断片、接続 URL の userinfo は response `message`、`.notify_log.error`、server log のいずれにも含めず固定文言へ置換する。
 
 **`GET /api/notify-config` への追加（`email` セクション）：**
 ```json
@@ -2761,7 +2764,7 @@ api / sdk / ui のいずれも、[`docs/details/api.md` 詳細本文責務 §27]
 | response 透過 | 成功 response は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint に定義された key だけを返し、array 順、nullable、mask 値を固定する。 | SDK は response を補完・再計算せず返し、UI は API 順序で表示する。 | SDK / UI が存在しない key、集計値、状態名、token list を合成すること。 |
 | error 伝播 | `401` / `403` / `409` / `422` / `429` / `500` の status と error body を固定する。 | SDK は `AdlaireCIError` として保持し、UI は status 別表示と仕様上の再取得だけを行う。 | 自動 retry、自動 refresh、自動 logout、同一変更 API の再送を仕様外で行うこと。 |
 | side effect | validation 失敗、認可失敗、rate limit、no-op、partial failure の write / call / log 差分を [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint と [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) で固定する。 | SDK / UI は副作用完了を推測せず、成功後再取得で確認する。 | read-only、dry-run、validation failure、`403`、`429` で、[`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の共通処理順序または対象 endpoint に許可されていない状態、log、外部副作用を発生させること。 |
-| secret / one-time | token、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header は response・log・state の許可箇所以外へ出さない。 | SDK は内部保存せず、UI は専用一回表示領域だけに出し、次 user action / panel 遷移 / logout / `401` で消去する。 | token 本体の再表示、token list への合成、secret の error message / DOM / expected への残存。 |
+| secret / one-time | token、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header は response・log・state の許可箇所以外へ出さない。 | SDK は内部保存せず、UI は [`docs/details/ui.md` 詳細本文責務 one-time secret 消去契約](ui.md#ui-one-time-secret-contract) の専用領域、trusted event、copy、即時消去、generation 一致条件に従う。 | token 本体の再表示、token list への合成、secret の error message / 許可外 DOM / expected への残存。 |
 | fixture 証跡 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の API / SDK / UI 連動 fixture で request、response、error、side effect、secret、refresh order を確認する。 | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の実装検証証跡に対象 fixture、未実装対象、未定義 endpoint / UI / 状態ファイル不追加を記録する。 | fixture なし、または実装挙動に合わせて期待値を弱めること。 |
 
 <a id="sec-27-30"></a>

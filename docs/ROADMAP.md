@@ -2,7 +2,7 @@
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、Adlaire CI の実装 artifact と各機能へ割り当てる現在状態、Phase、機能インベントリ、将来計画を管理する正本である。owner component と実装 artifact の区別、状態語彙、状態定義、実装可否、着手条件、状態遷移条件、完了条件は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) と [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を正本とし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務では再定義しない。
 
-方針・ポリシーは [`docs/SPEC.md`](SPEC.md)、生成 HTML のデザインは [`docs/DESIGN.md`](DESIGN.md)、詳細仕様入口と owner / collaborator 対応は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別詳細本文は [`docs/details/`](details/)、fixture と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。
+方針・ポリシーは [`docs/SPEC.md`](SPEC.md)、生成静的 Web サイトと標準管理 UI のデザインは [`docs/DESIGN.md`](DESIGN.md)、詳細仕様入口・owner 対応表・collaborator 境界参照入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別詳細本文は [`docs/details/`](details/)、fixture と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。
 
 <a id="状態計画責務-共通参照先"></a>
 **状態・計画責務 共通参照先：**
@@ -29,7 +29,7 @@
 | 実装 artifact | 現在状態 | 未完了理由 / 証跡 |
 |-----------------|----------|-------------------|
 | [`main.go`](../main.go) | 実装中・検証未完了 | 起動入口の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01) |
-| [`components/builder.go`](../components/builder.go) | 実装中・検証未完了 | デザイン整合と必須 fixture が未完了である。[`ALIGN-06`](details/fixture.md#align-06)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-08`](details/fixture.md#align-08) |
+| [`components/builder.go`](../components/builder.go) | 実装中・検証未完了 | デザイン整合、Markdown block 契約、report 契約、必須 fixture が未完了である。[`ALIGN-06`](details/fixture.md#align-06)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-08`](details/fixture.md#align-08)、[`ALIGN-13`](details/fixture.md#align-13) |
 | [`components/runner.go`](../components/runner.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-12`](details/fixture.md#align-12) |
 | [`components/api.go`](../components/api.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01)〜[`ALIGN-04`](details/fixture.md#align-04)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)〜[`ALIGN-12`](details/fixture.md#align-12) |
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10) |
@@ -42,12 +42,12 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 
 ## 4.1 初期実装 Phase 単位
 
-| Phase | owner | 現在状態 | 依存する Phase |
-|-------|-------|----------|----------------|
+| Phase | owner / scope | 現在状態 | 依存する Phase |
+|-------|---------------|----------|----------------|
 | Phase 1 | `builder` | 実装中・検証未完了 | なし |
 | Phase 2 | `runner` | 実装中・検証未完了 | Phase 1 |
-| Phase 3 | `api` 基盤 | 実装中・検証未完了 | Phase 2 |
-| Phase 4 | `api` 拡張 | 実装中・検証未完了 | Phase 3 |
+| Phase 3 | `api` request lifecycle | 実装中・検証未完了 | Phase 2 |
+| Phase 4 | `api` operations | 実装中・検証未完了 | Phase 3 |
 | Phase 5 | `sdk` | 実装中・検証未完了 | Phase 4 |
 | Phase 6 | `ui` | 実装中・検証未完了 | Phase 5 |
 
@@ -68,6 +68,11 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 
 | 現在状態 | 担当領域 | 機能 | 詳細入口 / 次の扱い |
 |----------|----------|------|----------------------|
+| 実装中・検証未完了 | 管理ツール・SDK | JavaScript SDK 公開契約 | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装中・検証未完了 | 管理ツール・UI | 標準管理ツール UI 契約 | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装中・検証未完了 | 状態管理 | 状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 改訂予定 | 管理ツール・配布 | 管理 UI 静的配布物構成・Archive 検証 | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表)。setup 実行 artifact の path、起動名、入力 interface を確定するまで実装不可。 |
+| 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的 HTTP 配信 | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | CI ランナー | ビルドタイムアウト | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | CI ランナー | ポーリング間隔の動的変更 | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | CI ランナー | ビルドログのファイル保存 | [`docs/DETAIL_INDEX.md` §0i](DETAIL_INDEX.md#0i-詳細節対応表) |

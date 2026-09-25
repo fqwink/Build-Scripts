@@ -11,11 +11,11 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 項目 | 内容 |
 |------|------|
 | owner component | `admin` |
-| 実装主体 | 単独の Go artifact は持たない。配布対象は [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、HTTP 静的配信の実装先は [`components/api.go`](../../components/api.go) とする。配置実行主体は [`docs/details/setup.md`](setup.md) の未確定契約に従う。 |
+| 実装主体 | 単独の Go artifact は持たない。配布対象は [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、HTTP 静的配信の実装先は [`components/api.go`](../../components/api.go) とする。配置挙動は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) と [§26.8](setup.md#sec-26-8) を正本とするが、その挙動を実行する repository artifact は未確定である。 |
 | 持つ内容 | `admin` owner が主本文として定義する管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
-| 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、Release asset 取得手順、fixture 証跡責務。 |
+| 持たない内容 | UI DOM 詳細、標準管理 UI の視覚値、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、Release asset 取得手順、fixture 証跡責務。 |
 
-`admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の仕様は [`docs/details/ui.md`](ui.md) 詳細本文責務を基準とし、`sdk` の仕様は [`docs/details/sdk.md`](sdk.md) 詳細本文責務を参照する。
+`admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の DOM と動作は [`docs/details/ui.md`](ui.md) 詳細本文責務、標準管理 UI の視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract)、`sdk` の仕様は [`docs/details/sdk.md`](sdk.md) 詳細本文責務を参照する。
 
 ---
 
@@ -26,7 +26,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 | 配布元 path | 配置先 path | 必須 | 内容確認先 |
 |-------------|-------------|------|------------|
-| `admin/index.html` | `$INSTALL_DIR/admin/index.html` | 必須 | [`docs/details/ui.md`](ui.md) 詳細本文責務 |
+| `admin/index.html` | `$INSTALL_DIR/admin/index.html` | 必須 | DOM と動作は [`docs/details/ui.md`](ui.md) 詳細本文責務、視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) |
 | `admin/adlaire-ci-sdk.js` | `$INSTALL_DIR/admin/adlaire-ci-sdk.js` | 必須 | [`docs/details/sdk.md`](sdk.md) 詳細本文責務 |
 
 配布物に [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の配布物固定表以外のファイルを含める場合は、先に [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の配布物固定表へ path、必須区分、内容確認先を追加する。未記載ファイルを暗黙に配布してはならない。
@@ -121,4 +121,4 @@ Admin fixture の fixture 名、入力、操作、expected file、禁止副作�
 | secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
 | no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
 | setup integration | [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |
-| fixture integration | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の `setup-admin-release-asset-layout`、`setup-admin-archive-boundary`、`setup-systemd-rollback-boundary`、`admin-static-serving-security`、`setup-secret-preservation` と fixture 名、expected file、禁止副作用が一致する。 |
+| fixture integration | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の `success-setup-admin-release-asset-layout`、`security-setup-admin-archive-boundary`、`partial-setup-systemd-rollback-boundary`、`security-admin-static-serving`、`security-setup-secret-preservation` と fixture 名、expected file、禁止副作用が一致する。 |

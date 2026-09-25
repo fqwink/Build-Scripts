@@ -58,7 +58,7 @@ var DefaultBuildConfig = BuildConfig{
 | 引数 | 必須 | 既定値 | 説明 |
 |------|------|--------|------|
 | `--src <path>` | 任意 | `DefaultBuildConfig.Src` | 入力 Markdown ファイルまたは Markdown ディレクトリの絶対パスまたは相対パス。相対パスはカレントディレクトリ基準で解決する。 |
-| `--out <path>` | 任意 | `DefaultBuildConfig.Out` | 出力サイトディレクトリの絶対パスまたは相対パス。存在しない場合は作成する。 |
+| `--out <path>` | 任意 | `DefaultBuildConfig.Out` | 出力サイトディレクトリの絶対パスまたは相対パス。親ディレクトリは既存でなければならず、最終 path だけが存在しない場合は atomic output writer が作成する。 |
 | `--title <text>` | 任意 | `DefaultBuildConfig.Title` | サイト名、`index.html` の `<title>`、header 表示名に使用する。空文字は禁止。 |
 | `--theme <name>` | 任意 | `DefaultBuildConfig.Theme` | 初期仕様では `adlaire-default` のみ許可する。 |
 | `--base-dir <path>` | 任意 | `DefaultBuildConfig.BaseDir` | 相対リンク・画像解決の基準ディレクトリ。空の場合は `--src` がファイルなら親ディレクトリ、ディレクトリなら `--src` 自身を使用する。 |
@@ -190,25 +190,30 @@ Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま�
 | CLI resolver | `os.Args`、`DefaultBuildConfig` | `BuildConfig` | 未知引数、値欠落、空 title、未知 theme | ファイル読込・出力作成を行わず終了コード `2`。 |
 | source collector | `BuildConfig.Src`、`BuildConfig.BaseDir` | `[]PageInput` | source 不在、Markdown 0 件、UTF-8 不正、許可外拡張子 | 出力ディレクトリを変更せず終了コード `2`。 |
 | page planner | `[]PageInput` | `[]PageData`、slug map、output path map | slug / output path 衝突を連番解決後も一意化できない | 出力ディレクトリを変更せず終了コード `1`。 |
-| markdown renderer | `PageInput`、heading map、footnote map | page HTML fragment、warning list、report counters | 未閉鎖 fence、broken link などの警告があり `--strict=true` | 出力ディレクトリを変更せず終了コード `2`。 |
+| markdown renderer | `PageInput`、heading map、footnote map | page HTML fragment、warning list、report counters | warning list が 1 件以上あり `--strict=true` | 出力ディレクトリを変更せず終了コード `2`。 |
 | site assembler | `[]PageData`、theme component | `index.html`、`pages/*.html`、`assets/*` のメモリ上生成物 | theme component 欠落、template 合成失敗 | 出力ディレクトリを変更せず終了コード `1`。 |
-| atomic output writer | メモリ上生成物、`BuildConfig.Out` | 出力サイトディレクトリ | tmp 作成失敗、書き込み失敗、rename 失敗、sync 失敗 | 既存正常出力を維持し終了コード `1`。 |
+| atomic output writer | メモリ上生成物、`BuildConfig.Out` | 出力サイトディレクトリ | tmp 作成・書込・検証失敗、公開確定前の rename / sync 失敗 | 補償成功時は更新前の公開状態を維持して終了コード `1`。補償失敗時は残存 path を保持して終了コード `1`。公開確定後の旧出力 cleanup 失敗だけは WARN と終了コード `0`。 |
 | report emitter | report counters、warning list | stdout `[WARN]`、`[REPORT]` | stdout 書き込み失敗 | 終了コード `1`。出力済みファイルは巻き戻さない。 |
 
 `PageInput` は `{source_path, relative_path, raw_text}` を持つメモリ上構造とする。`PageData` は `{title, slug, source_path, output_path, html, headings, warnings, reading_time}` を持つメモリ上構造とする。これらの構造は状態ファイルとして保存しない。
 
+<a id="builder-atomic-output-writer"></a>
 **atomic output writer 詳細：**
 
-1. `BuildConfig.Out` と同じ親ディレクトリに `{basename}.tmp.{pid}` を作成する。
-2. tmp 内に `index.html`、必要な `pages/`、`assets/style.css`、`assets/app.js`、`assets/search-index.json` をすべて書き込む。
-3. 全ファイルを close し、通常ファイルは `0644`、ディレクトリは `0755` に補正する。
-4. tmp 配下の各ファイルを `Sync` し、tmp ディレクトリを `Sync` する。
-5. 既存 `BuildConfig.Out` が存在する場合は `{basename}.prev.{pid}` へ rename する。
-6. tmp を `BuildConfig.Out` へ rename する。
-7. 親ディレクトリを `Sync` する。
-8. 手順 6 まで成功した後に prev を削除する。prev 削除失敗は `[WARN] OUTPUT_PREV_CLEANUP_FAILED: path={path}` とし、終了コードは `0` のままとする。
+1. `BuildConfig.Out` と同じ親ディレクトリを列挙し、名前が `{basename}.tmp.{decimal_pid}` または `{basename}.prev.{decimal_pid}` に完全一致する entry を抽出する。`decimal_pid` は先頭 `0` のない 1 以上の ASCII decimal integer とする。該当 entry が 1 件以上あれば file type と所有 process の有無を推測せず、UTF-8 byte 列で最小の絶対 path を使って `output staging path already exists: <path>` を stderr へ出し、該当 entry を削除または上書きせず終了コード `1` とする。0 件の場合だけ、現在 PID から `tmp={basename}.tmp.{pid}`、`prev={basename}.prev.{pid}` を決定する。
+2. `tmp` を mode `0755` で作成する。
+3. `tmp` 内に `index.html`、必要な `pages/`、`assets/style.css`、`assets/app.js`、`assets/search-index.json` をすべて書き込む。[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の build transaction では、同じ `tmp` 内へ `.dependency_manifest.json` も最終相対 path で書き込む。
+4. 通常ファイルを `0644`、ディレクトリを `0755` に補正し、全 file の `Sync` と `Close`、最深 directory から `tmp` までの directory `Sync` を完了する。
+5. 必須 file、生成物 schema、禁止 path、出力内 link を検証する。
+6. 既存 `BuildConfig.Out` が directory として存在する場合だけ `prev` へ rename し、親 directory を `Sync` する。既存 `BuildConfig.Out` が directory 以外なら公開状態を変更せず終了コード `1` とする。
+7. `tmp` を `BuildConfig.Out` へ rename し、親 directory を `Sync` する。この 2 操作が両方成功した時点を公開確定とする。
+8. 公開確定後に `prev` があれば削除し、親 directory を `Sync` する。`prev` の削除または削除後 `Sync` だけが失敗した場合は `[WARN] OUTPUT_PREV_CLEANUP_FAILED: path={path}` を出し、完全生成済みの新しい `BuildConfig.Out` を維持して終了コード `0` とする。
 
-手順 1〜4 で失敗した場合は tmp を削除し、既存 `BuildConfig.Out` を変更しない。手順 5 成功後から手順 6 失敗までの間に失敗した場合は、prev を `BuildConfig.Out` へ戻す。復元に失敗した場合は stderr に `cannot restore previous output: <path>` を出力し終了コード `1` とする。
+手順 1〜5、既存 `BuildConfig.Out` の型確認、または手順 6 の `prev` への rename 自体が失敗した場合は、この実行が作成した `tmp` だけを 1 回削除し、既存 `BuildConfig.Out` を変更しない。`tmp` 削除失敗は `[WARN] OUTPUT_TMP_CLEANUP_FAILED: path={path}` を出すが、最初の失敗を返す。手順 6 の rename 失敗は `cannot stage previous output directory: <path>` を stderr へ出す。
+
+手順 6 の `prev` への rename 成功後から手順 7 の親 directory `Sync` 成功前まで、または更新前出力が存在しない状態で手順 7 が失敗した場合は、公開前状態への補償を 1 回だけ実行する。手順 7 の rename 済みなら新しい `BuildConfig.Out` を `tmp` へ戻し、`prev` がある場合は `prev` を `BuildConfig.Out` へ戻し、親 directory を `Sync` する。`prev` がない場合は `BuildConfig.Out` が存在しない状態を確認して親 directory を `Sync` する。その後、この実行の `tmp` を 1 回削除して親 directory を再度 `Sync` する。補償成功時は更新前の公開状態を維持し、最初の失敗に対応する `cannot replace output directory: <path>` または `cannot sync output parent directory: <path>` を stderr へ出して終了コード `1` とする。
+
+補償途中の rename、削除、または `Sync` が失敗した場合は、それ以上の復旧を試行せず、`cannot restore previous output directory: <path>` の後に最初の失敗文言を stderr へ出して終了コード `1` とする。残った `tmp`、`prev`、`BuildConfig.Out` を自動削除または上書きせず、次回実行は PID が異なっても手順 1 の親ディレクトリ列挙で残存 entry を検出し、staging path 衝突として停止する。終了コード `1` の全経路で `[REPORT]` を出力しない。
 
 ---
 
@@ -280,7 +285,7 @@ Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま�
 <a id="sec-4-2"></a>
 **4.2 `esc(s string) string`：**
 
-Go 標準ライブラリ `html.EscapeString(s)` 相当の処理を行う。HTML 特殊文字（`<`、`>`、`&`、`"`、`'`）をエスケープする。
+Go 標準ライブラリ `html.EscapeString(s)` を直接呼び出す。独自置換表または別の escape 関数で代用しない。
 
 **実装契約：**
 - Go 実装では `html.EscapeString` を使用する。
@@ -377,7 +382,7 @@ type RenderContext struct {
 <a id="sec-4-4"></a>
 **4.4 `buildTOC(headings []Heading) string`：**
 
-見出しリストから TOC（目次）の HTML を生成する。h1〜h3 のみを対象とし（h4 は除外）、子見出しを持つ見出しはグループとしてアコーディオン形式に構築する。
+見出しリストから TOC（目次）の HTML を生成する。`buildTOC()` 自体は h1〜h6 を有効な入力として扱い、受け取った見出しだけを出力する。通常 caller は既定 TOC 深さ h1〜h3 で事前 filter し、[`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) を有効にした caller は指定された h1〜h6 の範囲で事前 filter する。子見出しを持つ見出しはグループとしてアコーディオン形式に構築する。
 
 **関連型：**
 
@@ -430,7 +435,7 @@ type tocStackItem struct {
 </li>
 ```
 
-**エラー：** 戻り値エラーは持たない。`Level` が 1〜4 以外の `Heading` は無視し、`[WARN] INVALID_HEADING_LEVEL: line={LineNumber}` を stdout へ出力する。警告件数は `[REPORT]` の `warnings` に含める。
+**エラー：** 戻り値エラーは持たない。`Level` が 1〜6 以外の `Heading` は無視し、`[WARN] INVALID_HEADING_LEVEL: line={LineNumber}` を stdout へ出力する。警告件数は `[REPORT]` の `warnings` に含める。
 
 ---
 
@@ -489,15 +494,15 @@ type ConvertResult struct {
 **ブロック要素の検出優先順位（1 行ずつ処理）：**
 
 1. フェンスコードブロック開始・終了（`` ``` `` / `~~~` で始まる行）
-2. 見出し（`#` で始まる行）
+2. 見出し（1〜6 個の `#` と 1 個以上の ASCII space で始まる行）
 3. 水平線（`---`、`***`、`___`）
-4. テーブル（`|` で始まる行、連続する `|` 行をまとめて処理）
+4. テーブル候補（先頭が `|` かつ行末の `|` 直前の連続 backslash 数が偶数の行。連続するテーブル候補行をまとめて処理）
 5. 引用（`>` で始まる行、連続する `>` でネスト可能）
 6. 定義リスト（`: 定義` 形式の行かつ `para_buf` に用語がある場合）
 7. リスト項目（`- * +` または `1.` 形式、`[ ]`/`[x]` プレフィックスでタスクリスト）
 8. 空行（バッファのフラッシュトリガー）
 9. 脚注定義行（`[^id]:` で始まる行、`ctx.FootnoteDefs` 収集済みのためスキップ）
-10. 段落（優先順位 1〜9 の条件に一致しない非空行を、連続行単位で 1 つの `<p>` にまとめる）。先読みループは次のいずれかに該当する行で停止する：`#`（見出し）、`|`（テーブル）、`` ` ``×3以上（フェンス）、`~`×3以上（フェンス）、`>`（引用）、リストマーカー（`[-*+]` または `\d+[.)]`）、`: `（定義リストマーカー）、水平線（`---+`・`***+`・`___+`）
+10. 段落（優先順位 1〜9 の条件に一致しない非空行を、連続行単位で 1 つの `<p>` にまとめる）。先読みループは次のいずれかに該当する行で停止する：1〜6 個の `#` と 1 個以上の ASCII space（見出し）、先頭が `|` かつ行末の `|` 直前の連続 backslash 数が偶数（テーブル候補）、`` ` ``×3以上（フェンス）、`~`×3以上（フェンス）、`>`（引用）、リストマーカー（`[-*+]` または `\d+[.)]`）、`: `（定義リストマーカー）、水平線（`---+`・`***+`・`___+`）。`#` が 7 個以上、`#` 直後に ASCII space がない、または行末 `|` が backslash で escape されている行は停止条件とせず、通常段落として消費する。
 
 **Markdown passthrough 禁止契約：**
 
@@ -511,9 +516,12 @@ type ConvertResult struct {
 `builder` は Markdown 入力由来の HTML を信頼済みとして扱ってはならない。`PageData.BodyHTML` に入る HTML は、[`docs/details/builder.md`](builder.md) 詳細本文責務で生成すると定義したタグと属性だけで構成する。
 
 **テーブル変換の詳細：**
-セパレーター行（`:---:`、`---` などで構成された行）のインデックスを自動検出し、セパレーター行より前の行をヘッダー（`<th>`）、それ以降を本文（`<td>`）として出力する。セパレーター行自体は出力しない。
 
-テーブル列数はヘッダー行のセル数を基準とする。本文行のセル数が不足する場合は空文字セルを補い、超過する場合は超過分を最後のセルへ ` | ` で連結する。ヘッダー行が存在しない、またはセパレーター行だけの場合はテーブルとして扱わず、段落として出力する。
+table block は、空白を除去していない元の各行が ASCII `|` で始まり、かつ行末の `|` の直前に連続する backslash 数が偶数である連続行だけを候補とする。先頭と末尾の境界 `|` を各 1 byte 除去し、残りを左から byte scan する。scan 中の `|` の直前に連続する backslash 数が偶数なら delimiter、奇数なら literal `|` とする。literal `|` では直前の backslash を 1 byte だけ escape marker として除去し、それ以外の backslash は入力どおり cell text に残す。`||` は空 cell を 1 件生成する。各 cell の前後 ASCII space と tab を除去してから inline 変換する。
+
+table として成立する条件は、候補の 1 行目が header、2 行目が separator、候補が合計 2 行以上であることとする。separator の cell 数は header の cell 数と完全一致させ、各 separator cell は正規表現 `^:?-{3,}:?$` に完全一致しなければならない。separator の先頭 colon と末尾 colon は left / center / right の入力記法として受理するが、初期仕様では出力 class、style、text alignment を変更せず、すべて既定の左寄せとする。2 行目以外を separator として探索してはならない。
+
+table 列数は header の cell 数を基準とする。header の cell 数は 1 以上を必須とし、空 header cell は許可する。本文行の cell 数が不足する場合は末尾へ空文字 cell を補い、超過する場合は基準列数を超えた cell を最後の cell へ入力順で ASCII ` | ` を挟んで連結する。separator 行は出力しない。候補が成立条件を 1 つでも満たさない場合は table tag を 1 つも生成せず、候補の各元行を入力順に `inline()` へ渡し、1 行につき `<p class="mp">...</p>` を 1 件出力する。
 
 **引用ネストの詳細：**
 `>` で始まる連続行をまとめて収集し、`renderBlockquote(lines []string, ctx *RenderContext) string` が再帰的にネストを処理する。1 レベル分の `>` を剥いた後、内側行を先頭から走査し、`>` で始まる連続する行は `renderBlockquote()` を再帰呼び出し、それ以外の行は `inline(text, ctx)` でレンダリングして結合する。これにより、単一行・複数行・混在ネスト（同一ブロック内で `>` 行と `>>` 行が混在する場合）をすべて正しく処理する。例：`>> text` → `<blockquote class="mbq"><blockquote class="mbq">text</blockquote></blockquote>`。
@@ -552,14 +560,15 @@ type ConvertResult struct {
 
 **見出し階層スキップ警告：**
 
-`convert()` 内で `prevHeadingLevel int = 0` をローカル変数として保持する。見出し行（`#` で始まる行）を処理するたびに現在レベルと前回レベルを比較し、2 段以上の降順スキップ（例：h1→h3、h2→h4）を検出した場合に次の形式で `[WARN]` を出力する：
+`convert()` 内で `prevHeadingLevel int = 0` をローカル変数として保持し、`0` は前回見出し未設定を表す。最初の見出しはレベルにかかわらず警告せず、そのレベルを `prevHeadingLevel` に設定する。2 件目以降の見出し行（1〜6 個の `#` と 1 個以上の ASCII space で始まる行）では、`currentHeadingLevel > prevHeadingLevel + 1` の場合だけ、深い方向への 2 段以上のスキップ（例：h1→h3、h2→h4）として次の形式で `[WARN]` を出力する。判定後は警告の有無にかかわらず現在レベルを `prevHeadingLevel` へ設定する：
 
 ```
 [WARN] HEADING_SKIP: h1→h3 "見出しテキスト"
 ```
 
-- 昇順への復帰（例：h3→h1）はスキップに該当しない（章の区切りとして正常）
-- 同レベルの連続（h2→h2）・1段降順（h2→h3）もスキップに該当しない
+- 浅い方向への移動（例：h3→h1）はスキップに該当しない（章の区切りとして正常）
+- 同レベルの連続（h2→h2）・深い方向への 1 段移動（h2→h3）もスキップに該当しない
+- 文書先頭の h2〜h6 は比較対象となる前回見出しがないためスキップに該当しない
 - 件数は `[REPORT]` の `heading_skips` フィールドに反映される
 
 **読了時間集計：**
@@ -574,7 +583,7 @@ readingTimeMinutes := int(math.Ceil(float64(ctx.CharCount) / 200.0)) // 200文�
 算出した `readingTimeMinutes` は `ConvertResult.ReadingTimeMinutes` として返し、呼び出し元が `[REPORT]` 行と `.build_logs/{id}.json` に記録する。また HTML ヘッダーへの静的埋め込み（[`docs/details/builder.md` 詳細本文責務 §5](builder.md#5-静的-web-サイト出力構造)）にも使用する。
 
 **見出し出力 HTML 構造：**
-`#` で始まる行を `h1`〜`h4` に変換する際、末尾に `.hn-link` ボタンを付与する。
+1〜6 個の `#` と 1 個以上の ASCII space で始まる行を `h1`〜`h6` に変換する際、末尾に `.hn-link` ボタンを付与する。7 個以上の `#`、または `#` の直後に ASCII space がない行は見出しにせず通常段落として処理する。
 
 ```html
 <h2 id="slug" class="mh h2">見出しテキスト<button class="hn-link" data-href="#slug" aria-label="リンクをコピー">¶</button></h2>
@@ -760,17 +769,7 @@ type SearchIndexEntry struct {
 
 **出力更新手順：**
 
-`assembleSite()` は `--out` を直接途中更新してはならない。以下の順で一時ディレクトリへ完全生成してから置換する。
-
-1. `--out` と同じ親ディレクトリに `{basename}.tmp.{pid}` を作成する。
-2. 一時ディレクトリ配下へ `index.html`、ページ HTML、`assets/` をすべて書き出す。
-3. すべてのファイルについて `file.Sync()` と `file.Close()` を完了する。
-4. 一時ディレクトリ内の必須ファイル存在を検証する。
-5. 既存 `--out` が存在する場合は `{basename}.prev.{pid}` へ `os.Rename` する。
-6. 一時ディレクトリを `--out` へ `os.Rename` する。
-7. 置換成功後、旧 `{basename}.prev.{pid}` を削除する。
-
-手順 1〜4 で失敗した場合は一時ディレクトリを削除し、既存 `--out` を変更してはならない。手順 6 で失敗した場合は `{basename}.prev.{pid}` が存在するか確認し、存在する場合は `{basename}.prev.{pid}` を `--out` へ戻す復旧 rename を必ず 1 回試行する。復旧 rename が失敗した場合は stderr に `cannot restore previous output directory: <path>` を出力した後、続けて `cannot replace output directory: <path>` を出力し、終了コード `1` とする。`{basename}.prev.{pid}` が存在しない場合は `cannot replace output directory: <path>` のみを出力し、終了コード `1` とする。
+`assembleSite()` は `--out` を直接途中更新せず、[`docs/details/builder.md` 詳細本文責務 atomic output writer](builder.md#builder-atomic-output-writer) の生成、検証、rename、directory `Sync`、補償、cleanup 契約をそのまま使用する。本節は出力 file set と相対 root だけを定義し、別の置換順序または失敗時復旧を定義しない。
 
 `--out` が既存ファイルでディレクトリではない場合は終了コード `1` とし、stderr に `output path is not directory: <path>` を出力する。
 
@@ -896,8 +895,8 @@ builder owner は、出力する selector、対応要素、DOM 上の意味、Ja
 
 | クラス | 要素 | 説明 |
 |--------|------|------|
-| `.mh` | `h1`〜`h4` | 見出し共通スタイル |
-| `.h1`〜`.h4` | `h1`〜`h4` | 見出しレベル別スタイル |
+| `.mh` | `h1`〜`h6` | 見出し共通スタイル |
+| `.h1`〜`.h6` | `h1`〜`h6` | 見出しレベル別スタイル |
 | `.mp` | `p` | 本文段落 |
 | `.mr` | `hr` | 水平線 |
 | `.mbq` | `blockquote` | 引用ブロック |
@@ -959,7 +958,7 @@ builder owner は、出力する selector、対応要素、DOM 上の意味、Ja
 | `.tc` | グループの子 `<ul>`（`hidden` で折りたたみ） |
 | `.ti` | リーフ（子を持たない見出し） |
 | `.tl` | TOC リンク（`<a>` 要素） |
-| `.tl.lv1`〜`.tl.lv3` | TOC リンクのレベル別スタイル |
+| `.tl.lv1`〜`.tl.lv6` | TOC リンクのレベル別スタイル。通常 caller は `.lv1`〜`.lv3`、[`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) は指定深さまでを出力する。 |
 | `.tl.active` | アクティブな TOC リンク |
 | `.sb-none` | 検索結果なしメッセージ |
 
@@ -1020,7 +1019,7 @@ builder owner は、出力する selector、対応要素、DOM 上の意味、Ja
 <a id="sec-7-1"></a>
 **7.1 テーマ切り替え（廃止）：**
 
-生成 HTML のデザイン関係は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とする。builder owner は出力してはならない selector、storage、media query、runtime 挙動だけを固定し、色、余白、タイポグラフィ、視覚方針を再定義しない。`builder` は color scheme を変更する runtime、テーマトグルボタン、color scheme 用 storage、`prefers-color-scheme` に応じた分岐を出力しない。
+生成静的 Web サイトのデザイン関係は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とする。builder owner は出力してはならない selector、storage、media query、runtime 挙動だけを固定し、色、余白、タイポグラフィ、視覚方針を再定義しない。`builder` は color scheme を変更する runtime、テーマトグルボタン、color scheme 用 storage、`prefers-color-scheme` に応じた分岐を出力しない。
 
 <a id="sec-7-2"></a>
 **7.2 サイドバー開閉：**
@@ -1346,7 +1345,7 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 **一時出力・置換契約：**
 
-`adlaire-ci-build` は公開用 `--out` へ直接書き込まず、同一親ディレクトリに `{out}.tmp.{pid}` を作成して全ファイルを書き込む。全ファイルの write、close、sync、検索 index 生成、asset 生成が成功した場合だけ、既存 `--out` を `{out}.previous.{pid}` へ rename し、tmp を `--out` へ rename する。rename 後に親ディレクトリを sync する。置換成功後、旧 directory を削除する。置換前に失敗した場合は tmp だけ削除し、既存 `--out` を保持する。置換後の旧 directory 削除に失敗した場合は WARN を出すが終了コードは `0` のままとする。
+`adlaire-ci-build` の一時 path、公開確定点、親 directory `Sync`、更新前出力の復元、cleanup、stderr、終了コードは [`docs/details/builder.md` 詳細本文責務 atomic output writer](builder.md#builder-atomic-output-writer) を正本とする。本節では CLI から同契約を呼び出し、終了コード `1` では `[REPORT]` を出さず、公開確定前の失敗を成功扱いにしない。
 
 **標準出力：**
 ```
@@ -1370,7 +1369,7 @@ Done → /opt/adlaire-builder/dist/site  (pages=12 files=15 bytes=1713731)
 | `warnings` | ビルド中に発生した警告件数 |
 | `size_warn` | 出力サイト合計サイズが `OUTPUT_SIZE_WARN_MB` を超えた場合 `true`、それ以外 `false`（`OUTPUT_SIZE_WARN_MB = 0` の場合は常に `false`） |
 | `broken_links` | 参照先スラグが存在しない内部アンカーリンク（`[label](#anchor)`）の件数 |
-| `heading_skips` | 見出しレベルが 2 段以上の降順スキップとなった件数 |
+| `heading_skips` | 見出しレベルが深い方向へ 2 段以上スキップした件数 |
 | `reading_time` | 推計読了時間（分、切り上げ）。200文字/分で算出 |
 | `theme` | 使用した theme 名。初期仕様では `adlaire-default` |
 | `build_id` | `--build-id` の値。未指定時は空文字 |
@@ -1388,13 +1387,12 @@ pages headings tables code_blocks warnings size_warn broken_links heading_skips 
 警告が発生した場合、`[REPORT]` 行の直前に `[WARN] {メッセージ}` 形式で 1 件ずつ出力する。
 
 **`runner` による取り込み：**
-Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json` のビルドログエントリに追記する。
+Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) と [§27.22](runner.md#sec-27-22) で選択した build process の標準出力から `[REPORT]` 行と `[WARN]` 行を抽出し、パースした結果を `.build_logs/{id}.json.report` に保存する。以下の JSON は Report object 部分だけの保存例であり、`.build_logs/{id}.json` 全体 schema とその必須 key は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を正本とする。
 
 ```json
 {
-  "build_id": "b20260915100000",
-  "status": "success",
   "report": {
+    "pages": 12,
     "headings": 342,
     "tables_count": 128,
     "code_blocks_count": 64,
@@ -1424,7 +1422,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 [`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) は、`builder` owner の受け入れ観点だけを扱う。fixture 名、入力 Markdown、実行 command、expected HTML / CSS / JavaScript / search index / stdout / stderr、fake、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) を正本とする。
 
-`builder` 受け入れ検証では、少なくとも以下を確認する。
+`builder` 受け入れ検証では、以下の全項目を確認する。
 
 | 観点 | 確認内容 | fixture 正本 |
 |------|----------|--------------|
@@ -1435,12 +1433,13 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | path 安全性 | source / output の包含禁止、既存出力保護、source size 上限。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture E` |
 | HTML escape / Markdown 境界 | raw HTML escape、table cell 補正、list nesting clamp。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture F` |
 | search index / JavaScript | search index schema、body 抽出、localStorage guard、外部 storage / network 不使用。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture G` |
-| strict / atomic output | strict warning 昇格、stdout / stderr、既存公開出力保護。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture H` |
+| strict warning | strict warning 昇格、stdout / stderr、公開前停止時の既存出力保護。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture H` |
+| atomic output | rename / directory sync 失敗、1 回だけの補償、補償失敗時の path 保持、`[REPORT]` 非出力。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture I` |
 
 <a id="sec-8"></a>
 **[`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能別実装確認固定契約](builder.md#sec-8)：**
 
-[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の中核機能は、§8〜§8a の対象契約本文と fixture に加えて [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表を満たす。[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表は builder owner の詳細実装確認表であり、runner、setup、api、sdk、ui、statefile、archive、commitstatus、security、将来機能、MCP、外部公開構成、上位方針は扱わない。runner の起動、設定、処理フロー、pipeline、deploy、snapshot、log、systemd、GitHub、setup、既知制限は [`docs/details/runner.md` 詳細本文責務 §10](runner.md#10-ci-ランナー-要件)〜[§20](runner.md#20-ci-ランナー-既知の制限)、setup / update 手順と Release asset 受け入れ契約は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) を参照する。
+[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の中核機能は、同範囲の対象契約本文と fixture に加えて、中核機能別実装確認固定表を満たす。同固定表は builder owner の詳細実装確認表であり、runner、setup、api、sdk、ui、statefile、archive、commitstatus、security、将来機能、MCP、外部公開構成、上位方針は扱わない。runner の起動、設定、処理フロー、pipeline、deploy、snapshot、log、systemd、GitHub、setup、既知制限は [`docs/details/runner.md` 詳細本文責務 §10](runner.md#10-ci-ランナー-要件)〜[§20](runner.md#20-ci-ランナー-既知の制限)、setup / update 手順と Release asset 受け入れ契約は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) を参照する。
 
 | Builder 中核機能確認節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | fixture 証跡参照 |
 |------------------------|------|------|------|---------------------------|--------------|----------------|
@@ -1529,6 +1528,17 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | 状態 | `.build_cache.json` と `.build_cache/pages/` |
 | cache key | input relative path、input sha256、builder version、theme、build config hash。 |
 
+**`--cache-dir` CLI 固定契約：**
+
+| 項目 | 仕様 |
+|------|------|
+| parse | `--cache-dir <path>` と `--cache-dir=<path>` だけを許可する。値欠落は終了コード `2`、stderr `missing value: --cache-dir`。空文字は終了コード `2`、stderr `cache directory must not be empty`。短縮 option は追加しない。 |
+| 重複 | 同一 run で複数回指定した場合は [`docs/details/builder.md` 詳細本文責務 §2](builder.md#2-ファイルパス設定) の基本 CLI と同じく最後の値を採用する。 |
+| path 解決 | 相対 path は `os.Getwd()` 基準で `filepath.Abs` → `filepath.Clean` し、解決後の絶対 path を cache root とする。 |
+| file type | `os.Lstat` で実在する symlink でない directory だけを許可する。不在は終了コード `2`、stderr `cache directory not found: <path>`。directory 以外は終了コード `2`、stderr `cache path is not directory: <path>`。symlink は終了コード `2`、stderr `cache path must not be symlink: <path>`。その他の `Lstat` 失敗は終了コード `1`、stderr `cannot access cache directory: <path>`。 |
+| 重なり | cache root が正規化後の `--src` または `--out` と同一、またはその配下の場合は終了コード `2`、stderr `cache directory must be outside source and output: <path>`。cache root が `--src` または `--out` の祖先 directory であることは許可する。 |
+| help | 本機能を実装する変更で、[`docs/details/builder.md` 詳細本文責務 §2](builder.md#2-ファイルパス設定) と [§8](builder.md#8-実行方法) の固定 help 行に `[--cache-dir path]` を `[--build-at iso8601]` の直後として同時に追加する。片方だけの変更を禁止する。 |
+
 **正常系：**
 
 1. cache 有効時、builder は入力 file ごとに cache key を計算する。
@@ -1563,9 +1573,9 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 | 項目 | 仕様 |
 |------|------|
-| cache 有効条件 | `--cache-dir` が指定され、`.server_config.build_cache_enabled=true` 相当の runner 設定から有効化された場合だけ使用する。CLI 単体では `--cache-dir` 指定が有効化条件になる。 |
-| cache root | `--cache-dir` 配下だけを読み書きする。`--out`、入力 root、state dir の他状態ファイルへ cache entry を作らない。 |
-| atomic save | `.build_cache.json.tmp.{pid}` と `pages/{cache_key}.json.tmp.{pid}` に書き、fsync 相当後に rename する。途中失敗では既存 cache index / page を変更しない。 |
+| cache 有効条件 | builder は `--cache-dir` が指定された場合だけ cache を使用し、未指定では使用しない。runner の標準 builder command は [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) に従い、`RunnerConfig.BuildCacheEnabled=true` の場合だけ `--cache-dir RunnerConfig.StateDir` を渡す。CLI 単体実行では `--cache-dir` の有無だけを判定し、`.server_config` を読まない。 |
+| cache root | `--cache-dir` の値を `filepath.Abs` → `filepath.Clean` した path だけを root とし、index は `{cache-dir}/.build_cache.json`、page entry は `{cache-dir}/.build_cache/pages/{cache_key}.json` とする。`--out`、入力 root、その他状態ファイルへ cache entry を作らない。 |
+| atomic save | `.build_cache/pages/{cache_key}.json` と `.build_cache.json` の各保存は [`docs/details/statefile.md` 詳細本文責務 §22.0a 状態ファイル更新手順](statefile.md#statefile-update-procedure) の通常 mode を使用する。builder owner は tmp 名、lock 名、rename、cleanup を再定義しない。rename 前失敗では対象の既存 cache index / page を変更せず、rename 後 partial failure では statefile owner の戻り値を cache write failure として扱う。 |
 | hit 出力 | cache hit でも最終 HTML、assets、search index、manifest は通常 build と同じ staging → rename 契約で出力する。cache fragment を公開出力へ直接コピーしない。 |
 | byte 一致 | cache hit 出力は同一入力を通常変換した場合の HTML fragment と byte 等価でなければならない。違う場合は hit を破棄し miss とする。 |
 | dependency 連動 | `.dependency_manifest.json` が存在し、該当 page の dependency SHA が一致する場合だけ hit を許可する。dependency manifest 破損時は全 entry miss。 |
@@ -1583,6 +1593,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | cache 破損 | build 継続、WARN。 |
 | entry 不一致 | miss として通常変換。 |
 | cache write failure | build success、report に warning。 |
+| cache CLI 不正 | 入力 Markdown 読込、cache 読取、staging 作成の前に固定 stderr と終了コード `1` または `2` で停止する。 |
 
 <a id="sec-27-28"></a>
 **27.28 依存ファイルトラッキング：**
@@ -1634,7 +1645,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | path 解決 | page の所在 directory を基準に正規化し、base dir 外へ出る path は `broken_dependencies[]` に `reason:"base_escape"` として記録する。 |
 | 対象外 | `http:`、`https:`、`mailto:`、`tel:`、`data:`、fragment-only、absolute path、空 path、NUL / 改行を含む path は dependency として保存しない。 |
 | missing | 参照先不在は `broken_dependencies[]` に `reason:"missing"` として保存する。non-strict では WARN、strict では終了コード `2`。 |
-| manifest save | build 成功、output validation 成功、cache save 判定後に `.dependency_manifest.json.tmp.{pid}` へ書き、rename で置換する。 |
+| manifest save | build 成功、output validation 成功、cache save 判定後に manifest byte 列を確定し、[`docs/details/builder.md` 詳細本文責務 atomic output writer](builder.md#builder-atomic-output-writer) の `tmp/.dependency_manifest.json` へ最終名で書き込む。manifest 単独の tmp file、rename、公開更新を行わない。 |
 | failure 保護 | build failure、strict failure、manifest 生成 failure では既存 `.dependency_manifest.json` を維持する。 |
 | runner 逆引き | runner は dependency path の SHA 差分がある場合、その dependency を持つ page key を changed target に追加する。manifest 破損時は full build。 |
 | report | `[REPORT] dependencies_tracked=N`、`broken_dependencies=N`、および `dependency_manifest_updated=true` または `dependency_manifest_updated=false` を出力する。 |
@@ -1654,7 +1665,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) は、[`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) から参照される builder owner 静的サイト出力拡張追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。各機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
 
-[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。実装言語と外部依存の採否は [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を正本とする。builder 出力と実行時挙動は CDN、外部 API、runtime network fetch、browser 専用 build tool を要求してはならない。
 
 <a id="sec-28"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 共通固定契約](builder.md#sec-28)：**
@@ -1878,19 +1889,17 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 <a id="sec-28-common-atomic"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 atomic write / manifest / search index 副作用固定契約](builder.md#sec-28-common-atomic)：**
 
-[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装は、HTML、CSS、JS、search index、`.dependency_manifest.json` を 1 回の build transaction として扱う。page 単位の成功、asset 単位の成功、manifest だけの成功、search index だけの成功は公開状態として残さない。
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装は、HTML、CSS、JS、search index、`.dependency_manifest.json` を 1 回の build transaction として扱う。page 単位の成功、asset 単位の成功、manifest だけの成功、search index だけの成功は公開状態として残さない。一時 path の命名、残存検出、file / directory `Sync`、公開確定点、更新前出力の復元、cleanup、stderr、終了コードは [`docs/details/builder.md` 詳細本文責務 atomic output writer](builder.md#builder-atomic-output-writer) だけを正本とし、本節で別手順を定義しない。
 
 | 項目 | 固定 |
 |------|------|
 | transaction 対象 | `*.html`、`assets/style.css`、`assets/app.js`、`assets/search-index.json`、`.dependency_manifest.json`。 |
-| staging directory | `--out` の親 directory 内に `.adlaire-ci-build-tmp-<pid>-<counter>` を作成する。`<pid>` は 10 進数、`<counter>` は同一 process 内 1 始まりの 10 進数。既存 path と衝突する場合は counter を増やす。 |
 | staging 外 write 禁止 | 成功判定前に公開用 `--out` 配下、既存 `.dependency_manifest.json`、既存 `assets/search-index.json`、入力 Markdown、設定ファイルを書き換えてはならない。 |
 | staging 内容 | 最終公開状態と同じ相対 path で HTML、CSS、JS、search index、manifest を配置する。staging 専用 path、絶対 path、host 固有 path を生成物内へ埋め込まない。 |
 | 生成順 | HTML page 全件、CSS、JS、search index、manifest、生成物 validation、公開置換、`[REPORT]` の順に固定する。 |
-| 成功置換 | staging 内の生成物 validation がすべて成功した場合だけ、既存 `--out` を置換する。置換後の公開 `--out` は staging と byte 単位で一致する。 |
 | stale 削除 | 入力 source set から消えた Markdown に対応する HTML は、成功置換時だけ公開出力から消える。失敗時は既存 stale HTML を維持する。 |
-| staging cleanup | 失敗時は staging directory を削除する。成功時は staging directory を公開用 `--out` へ rename するため、元の staging path を残さない。公開置換前の staging cleanup または staging 残存検査に失敗した場合は終了コード `1` とし、公開 `--out` は置換しない。 |
-| failure 副作用 | 終了コード `1`、fatal `2`、strict warning `2` では公開 `--out`、既存 manifest、既存 search index、既存 HTML、既存 asset を維持する。 |
+| writer | transaction 全体をメモリ上で確定してから [`docs/details/builder.md` 詳細本文責務 atomic output writer](builder.md#builder-atomic-output-writer) に 1 回だけ渡す。別の staging path、manifest 単独 write、page 単独 publish を行わない。 |
+| failure 副作用 | writer 呼出し前の fatal `2` と strict warning `2` は公開状態を変更しない。writer 呼出し後の終了状態、補償、残存 path は [`docs/details/builder.md` 詳細本文責務 atomic output writer](builder.md#builder-atomic-output-writer) に従う。 |
 | non-strict warning 副作用 | 終了コード `0` の warning 継続は成功 transaction として扱い、fallback 後の HTML、manifest、search index を公開する。 |
 
 差分ビルドは、`--changed-manifest` と `.dependency_manifest.json` の両方を入力として判定する。どちらか片方だけを更新して成功扱いにしてはならない。
@@ -1956,7 +1965,7 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) で追加する selector は、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) CLI / 設定 / REPORT / 出力識別子固定契約に列挙した class、id、data attribute だけを使用する。[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) selector は既存 `.ci`、`main`、`nav`、`pre`、`code`、`table` の基礎 layout を上書きしてはならない。必要な場合は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の追加 class を起点に scoped selector として定義する。
 
-[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装は viewport width に比例する font size、負の `letter-spacing`、hover / focus で寸法が変わる border / padding / font weight を追加してはならない。
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装は [`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) の typography stability と navigation runtime UI を満たす selector だけを出力する。
 
 print 用挙動は `@media print` 内、または print event の一時状態だけで処理する。通常画面の DOM を print 専用に永続書き換えしてはならない。`pre`、`code`、line number、diff line の text を欠落させてはならない。line number は code text のコピー対象に含めない。[`docs/details/builder.md` 詳細本文責務 §28.23](builder.md#sec-28-23) が有効な場合だけ print 用 QR を表示する。
 
@@ -2173,7 +2182,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | `BUILDER28_INVALID_OPTION` | ERROR | unknown option、許容値外、複数指定禁止違反。 | 常に終了コード `2`。 |
 | `BUILDER28_PATH_OUTSIDE_BASE` | WARN | base 外 path、絶対 path、`..` 脱出。 | 終了コード `2`。 |
 | `BUILDER28_UNRESOLVED_REFERENCE` | WARN | 未定義 footnote、未定義 template var、存在しない hash target。 | 終了コード `2`。 |
-| `BUILDER28_UNSUPPORTED_RESERVED` | WARN / ERROR | `pdf`、`epub`、未対応 Mermaid 構文など予約・未対応機能。予約値は ERROR、non-strict の未対応 Mermaid 構文は WARN。 | ERROR は常に終了コード `2`。WARN は strict で終了コード `2`。 |
+| `BUILDER28_UNSUPPORTED_RESERVED` | WARN / ERROR | [`docs/details/builder.md` 詳細本文責務 §28.2](builder.md#sec-28-2) の予約値 `pdf` / `epub` は ERROR、[`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17) で許可 grammar 外と定義した Mermaid 構文は non-strict で WARN。これ以外の条件へ使用しない。 | ERROR は常に終了コード `2`。WARN は strict で終了コード `2`。 |
 | `BUILDER28_ESCAPE_BLOCKED` | ERROR | escape 後にも危険 HTML、event handler、外部 script が残る場合。 | 常に終了コード `2`。 |
 | `BUILDER28_OUTPUT_VALIDATION_FAILED` | ERROR | minify 後 marker 消失、空 HTML、必須 asset 欠落。 | 常に終了コード `1`。 |
 | `BUILDER28_INTERNAL_IO` | ERROR | atomic write、rename、読み書き失敗。 | 常に終了コード `1`。 |
@@ -2707,7 +2716,7 @@ JS 挙動は以下に固定する。
 | close button | dialog を閉じ、opener が存在する場合だけ focus を戻す。 |
 | Tab / Shift+Tab | dialog 内 focusable 要素だけで循環する。focusable 要素がない場合は dialog 自体に focus する。 |
 
-focus trap が失敗する、Escape で閉じない、dialog が複数出力される、外部 script / asset を要求する、`data-lightbox-src` が attribute escape されない場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED` または `BUILDER28_ESCAPE_BLOCKED`、公開出力維持とする。`lightbox_images` は trigger 数、`lightbox_warnings` は alt なし等で対象外にした image 数とする。search index には alt text だけを含め、dialog label、button label、src を含めない。
+focus trap が失敗する、Escape で閉じない、dialog が複数出力される、外部 script / asset を要求する、`data-lightbox-src` が attribute escape されない場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED` または `BUILDER28_ESCAPE_BLOCKED`、公開出力維持とする。`lightbox_images` は trigger 数、`lightbox_warnings` は [`docs/details/builder.md` 詳細本文責務 §28.22](builder.md#sec-28-22) で列挙した alt なし、空 alt、空白 alt により対象外にした image 数とする。search index には alt text だけを含め、dialog label、button label、src を含めない。
 
 <a id="sec-28-23"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28.23 印刷時 QR コード詳細固定契約](builder.md#sec-28-23)：**
@@ -2781,6 +2790,6 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | strict / non-strict の片方だけを実装した。 | 異常系の固定挙動が未完成。 |
 | REPORT key が仕様表と一致しない。 | runner / API / 実装検証証跡が同じ結果を読めない。 |
 | HTML / CSS / JS の expected 差分を目視または snapshot だけで合格扱いした。 | 再現性ある合否判定ではない。 |
-| 外部 library、CDN、runtime network fetch、npm package、Python 実装を追加した。 | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 共通固定契約違反。 |
+| 実装言語または外部依存が [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) に違反する、または builder 出力が CDN、外部 API、runtime network fetch、browser 専用 build tool を要求する。 | 上位方針違反または builder runtime 契約違反。 |
 | 失敗時に既存出力または manifest が更新された。 | atomicity 違反。 |
 | 実装検証証跡に対象機能、fixture、REPORT、strict / non-strict、既存互換、対象外機能が列挙されていない。 | 実装証跡不足。 |

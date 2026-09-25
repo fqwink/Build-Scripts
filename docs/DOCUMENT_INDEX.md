@@ -9,10 +9,10 @@
 | 作業ルール | [`AGENTS.md`](../AGENTS.md) |
 | 方針、ポリシー、状態語彙、状態遷移条件 | [`docs/SPEC.md`](SPEC.md) |
 | 実装 artifact と各機能の現在状態、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
-| 詳細仕様入口、共通固定値、owner / collaborator 対応 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
+| 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
 | owner component 別詳細本文 | [`docs/details/`](details/) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
-| 生成 HTML のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
+| 生成静的 Web サイトと標準管理 UI のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
 | 利用入口 | [`README.md`](../README.md) |
 
 ## 目的別参照先
@@ -81,8 +81,14 @@
 | `testdata/builder/**/expected/` | `builder` expected | 未作成 |
 | `testdata/runner/` | `runner` fixture root | 未作成 |
 | `testdata/api/` | `api` fixture root | 未作成 |
+| `testdata/admin/` | `admin` fixture root | 未作成 |
 | `testdata/sdk/` | `sdk` fixture root | 未作成 |
 | `testdata/ui/` | `ui` fixture root | 未作成 |
+| `testdata/statefile/` | `statefile` fixture root | 未作成 |
+| `testdata/archive/` | `archive` fixture root | 未作成 |
+| `testdata/commitstatus/` | `commitstatus` fixture root | 未作成 |
+| `testdata/security/` | `security` fixture root | 未作成 |
+| `testdata/setup/` | `setup` fixture root | 未作成 |
 | `components/mcp.go` | `mcp` | 未作成 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を参照する。

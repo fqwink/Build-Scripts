@@ -27,7 +27,7 @@
 
 完了扱いの可否、実装着手可否、仕様変更単位、禁止事項の判断で迷う場合は [`docs/SPEC.md`](SPEC.md) を正とする。実行順序、コマンド、確認手順、PR 操作手順の判断で迷う場合は [`AGENTS.md`](../AGENTS.md) を正とする。
 
-方針・ポリシーの配置、生成 HTML のデザイン関係の例外、詳細本文との分離、`技術方針` 表と `ディレクトリ構成` tree の削除禁止は、[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則を唯一の本文とする。[`docs/SPEC.md`](SPEC.md) 方針責務の入口では同じ禁止事項を再定義しない。
+方針・ポリシーの配置、生成静的 Web サイトと標準管理 UI のデザイン関係の例外、詳細本文との分離、`技術方針` 表と `ディレクトリ構成` tree の削除禁止は、[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則を唯一の本文とする。[`docs/SPEC.md`](SPEC.md) 方針責務の入口では同じ禁止事項を再定義しない。
 
 ## 状態参照方針
 
@@ -44,16 +44,16 @@
 | 方針責務 | [`docs/SPEC.md`](SPEC.md) | **なぜ・何を** | 目的、設計思想、方向性の原則。変更頻度が低く、判断の拠り所となる指針。 |
 | ポリシー責務 | [`docs/SPEC.md`](SPEC.md) | **しなければならない／してはならない** | 遵守義務のある規則、制約、禁止事項、セキュリティ要件、運用ルール、バージョン管理規則。 |
 | 状態・計画責務 | [`docs/ROADMAP.md`](ROADMAP.md) | **現在どの状態か・いつ・どれを** | 実装 artifact と各機能の現在状態、Phase、機能インベントリ、将来計画。状態語彙と遷移条件は再定義しない。 |
-| 詳細仕様入口責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | **どこから読むか** | 詳細仕様参照入口、共通固定値、owner / collaborator 対応表。 |
+| 詳細仕様入口責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | **どこから読むか** | 詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口。 |
 | owner component 別詳細本文責務 | [`docs/details/*.md`](details/)。ただし [`docs/details/fixture.md`](details/fixture.md) を除く。 | **どのように実装するか** | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
 | fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) | **何で検証するか** | fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件。 |
-| デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | **どう見せるか** | 生成 HTML のデザイン関係。 |
+| デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | **どう見せるか** | 生成静的 Web サイトと標準管理 UI のデザイン関係。 |
 | 文書・実装ファイル所在の索引責務 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | **どこにあるか** | 文書、実装ファイル、testdata、未作成 path の所在。 |
 | 利用入口責務 | [`README.md`](../README.md) | **どう始めるか** | 利用者向け入口、概要、参照先。 |
 
 新しい記載内容は「この内容はどの責務の問いに答えるか」を基準に、責務を持つ正本を決定する。
 
-判断対象が方針またはポリシーである場合、責務を持つ正本は必ず [`docs/SPEC.md`](SPEC.md) とする。ただし、判断対象が生成 HTML のデザイン関係である場合、責務を持つ正本は [`docs/DESIGN.md`](DESIGN.md) とする。判断対象が実装詳細、実装 artifact または機能の現在状態、文書所在、利用入口、fixture 証跡のいずれかである場合だけ、該当責務の正本を参照する。
+判断対象が方針またはポリシーである場合、責務を持つ正本は必ず [`docs/SPEC.md`](SPEC.md) とする。ただし、判断対象が生成静的 Web サイトまたは標準管理 UI のデザイン関係である場合、責務を持つ正本は [`docs/DESIGN.md`](DESIGN.md) とする。判断対象が実装詳細、実装 artifact または機能の現在状態、文書所在、利用入口、fixture 証跡のいずれかである場合だけ、該当責務の正本を参照する。
 
 実装者は、実装前に以下の参照順序方針に従う。
 
@@ -61,8 +61,8 @@
 2. [`docs/ROADMAP.md`](ROADMAP.md) で対象の現在状態、Phase、将来計画該当有無を確認し、実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) で判定する。
 3. [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1)〜[§4.10](SPEC.md#sec-4-10) で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、詳細仕様粒度、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
 4. [`docs/SPEC.md`](SPEC.md) のポリシー責務で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
-5. 生成 HTML のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
-6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner / collaborator 対応表を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
+5. 生成静的 Web サイトまたは標準管理 UI のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
+6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
 
 ---
 
@@ -92,7 +92,7 @@
 
 | 領域 | 方針 |
 |---|---|
-| ランタイム | Go stable release |
+| ランタイム | 正式公開済みの Go stable toolchain。最低バージョンは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](DETAIL_INDEX.md#0d-共通固定値) の共通固定値とし、beta、release candidate、開発 snapshot は使用しない。 |
 | 言語 | Go（ビルド、ランナー、管理 API）/ JavaScript（SDK）/ HTML・CSS・Vanilla JavaScript（UI） |
 | HTTP | Go 標準ライブラリ `net/http` |
 | データベース | なし（ファイルベース） |
@@ -114,14 +114,14 @@ Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核と
 
 各コンポーネントの自律性は以下を満たす。
 
-| コンポーネント | 自律性の条件 |
-|----------------|--------------|
-| `components/builder.go` | Go 標準ライブラリだけで Markdown 解析、HTML/CSS/JS/search index 生成、検証レポート出力を行う。外部 Markdown parser、template engine、syntax highlight library、search library に依存しない。 |
-| `components/runner.go` | Go 標準ライブラリと OS 標準コマンドだけで GitHub API polling、SHA 比較、ビルド起動、ログ、通知、SSH 転送、snapshot、lock、retry を処理する。外部 CI サービス、job queue、scheduler library に依存しない。 |
-| `components/api.go` | Go 標準ライブラリ `net/http` を基本に、認証、session、状態ファイル CRUD、入力検証、API response を内製実装する。外部 web framework、router、ORM、database driver に依存しない。 |
-| `admin/adlaire-ci-sdk.js` | 単一 ES Module とし、browser 標準 API のみで API client、error handling、streaming、timeout を実装する。npm package、bundler、polyfill、framework に依存しない。 |
-| `admin/index.html` | HTML / CSS / Vanilla JavaScript だけで標準管理ツールを構成し、SDK 経由で通信する。React、Vue、Svelte、CSS framework、icon package、chart library に依存しない。 |
-| `components/mcp.go` | 仕様化する場合も Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。本行は現在状態、実装着手許可、詳細仕様成立、実ファイル作成許可を意味しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
+| owner component | 標準実装 artifact | 自律性の条件 |
+|-----------------|-------------------|--------------|
+| `builder` | `components/builder.go` | Go 標準ライブラリだけで Markdown 解析、HTML/CSS/JS/search index 生成、検証レポート出力を行う。外部 Markdown parser、template engine、syntax highlight library、search library に依存しない。 |
+| `runner` | `components/runner.go` | Go 標準ライブラリと OS 標準コマンドだけで GitHub API polling、SHA 比較、ビルド起動、ログ、通知、SSH 転送、snapshot、lock、retry を処理する。外部 CI サービス、job queue、scheduler library に依存しない。 |
+| `api` | `components/api.go` | Go 標準ライブラリ `net/http` を基本に、認証、session、状態ファイル CRUD、入力検証、API response を内製実装する。外部 web framework、router、ORM、database driver に依存しない。 |
+| `sdk` | `admin/adlaire-ci-sdk.js` | 単一 ES Module とし、browser 標準 API のみで API client、error handling、streaming、timeout を実装する。npm package、bundler、polyfill、framework に依存しない。 |
+| `ui` | `admin/index.html` | HTML / CSS / Vanilla JavaScript だけで標準管理ツールを構成し、SDK 経由で通信する。React、Vue、Svelte、CSS framework、icon package、chart library に依存しない。 |
+| `mcp` | `components/mcp.go`（将来追加予定 path） | 仕様化する場合も Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。本行は現在状態、実装着手許可、詳細仕様成立、実ファイル作成許可を意味しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
 
 [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のコンポーネント自律性表はコンポーネント自律性の方針であり、関数単位の処理、入出力、状態、異常系、検証条件を定義するものではない。各コンポーネントの具体的な実装契約は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
 
@@ -195,9 +195,9 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 本文内ラベルをリンク参照先にする必要がある場合は、Markdown 見出しを作成せず、当該ラベル直前に `<a id="..."></a>` 形式の本文アンカーを置く。本文アンカーの id は、同一ファイル内で重複してはならない。本文アンカーは参照先を固定するためだけに使用し、責務、正本、禁止事項、判断原則、固定契約の本文を置き換えてはならない。
 
-方針とポリシーは [`docs/SPEC.md`](SPEC.md) だけに記載する。ただし、生成 HTML のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) だけに記載する。詳細仕様、ロードマップ、索引、README、実装ファイル、fixture、PR 本文は、方針またはポリシーを本文として定義、補足、緩和、例外化、再解釈してはならない。
+方針とポリシーは [`docs/SPEC.md`](SPEC.md) だけに記載する。ただし、生成静的 Web サイトと標準管理 UI のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) だけに記載する。詳細仕様、ロードマップ、索引、README、実装ファイル、fixture、PR 本文は、方針またはポリシーを本文として定義、補足、緩和、例外化、再解釈してはならない。
 
-方針またはポリシーに該当する記載を [`docs/SPEC.md`](SPEC.md) から削除し、他文書への参照だけに置き換えてはならない。ただし、生成 HTML のデザイン関係は [`docs/SPEC.md`](SPEC.md) に本文を置かず、[`docs/DESIGN.md`](DESIGN.md) に記載する。方針またはポリシーを整理する場合は、[`docs/SPEC.md`](SPEC.md) 内で責務名、適用範囲、禁止事項、参照先を明示して整える。
+方針またはポリシーに該当する記載を [`docs/SPEC.md`](SPEC.md) から削除し、他文書への参照だけに置き換えてはならない。ただし、生成静的 Web サイトと標準管理 UI のデザイン関係は [`docs/SPEC.md`](SPEC.md) に本文を置かず、[`docs/DESIGN.md`](DESIGN.md) に記載する。方針またはポリシーを整理する場合は、[`docs/SPEC.md`](SPEC.md) 内で責務名、適用範囲、禁止事項、参照先を明示して整える。
 
 [`docs/SPEC.md`](SPEC.md) の `技術方針` 表と `ディレクトリ構成` tree は、方針責務本文である。これらを実装詳細、状態一覧、索引本文とみなして削除、他文書へ移動、または参照だけへ置き換えてはならない。
 
@@ -211,9 +211,9 @@ owner component は対象機能の詳細本文を持つ。collaborator component
 
 owner component と実装 artifact は別の判断対象とする。owner component は機能契約の責務境界であり、単独の実装ファイルが存在することを意味しない。実装 artifact は [`main.go`](../main.go)、`components/*.go`、`admin/*`、実行バイナリ、配布物、または運用実行物のように、リポジトリまたはリリースで実在と実行可否を確認できる対象をいう。owner component が持つ機能の現在状態を、同名の実装 artifact が存在するという理由だけで判定してはならない。
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact の現在状態と owner component が持つ機能の現在状態を区別して記録する。単独 artifact を持たない `statefile`、`archive`、`commitstatus`、`security`、`setup`、`release` 等の owner component は、機能インベントリの現在状態で管理する。実装 artifact の path、起動名、入力 interface のいずれかが必要であるにもかかわらず未定義の機能は、実装可能な仕様として扱ってはならない。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact の現在状態と owner component が持つ機能の現在状態を区別して記録する。単独の専用 Go 実装 artifact を持たない `admin`、`statefile`、`archive`、`commitstatus`、`security`、`setup`、`release` の owner component は、機能インベントリの現在状態で管理する。実装 artifact の path、起動名、入力 interface のいずれかが必要であるにもかかわらず未定義の機能は、実装可能な仕様として扱ってはならない。
 
-fixture、expected、fake、検証証跡、個別 acceptance assertion は検証責務として扱い、[`docs/details/fixture.md`](details/fixture.md) を正本とする。状態語彙、状態定義、実装可否、状態遷移条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、実装 artifact と各機能の現在状態、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。詳細仕様参照入口、対応表、共通固定値は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を正本とする。生成 HTML のデザイン関係はデザイン責務として扱い、[`docs/DESIGN.md`](DESIGN.md) を正本とする。文書配置と実装ファイル所在は、文書・実装ファイル所在の索引責務として扱い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
+fixture、expected、fake、検証証跡、個別 acceptance assertion は検証責務として扱い、[`docs/details/fixture.md`](details/fixture.md) を正本とする。状態語彙、状態定義、実装可否、状態遷移条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、実装 artifact と各機能の現在状態、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。詳細仕様参照入口、owner 対応表、collaborator 境界参照入口、共通固定値は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を正本とする。生成静的 Web サイトと標準管理 UI のデザイン関係はデザイン責務として扱い、[`docs/DESIGN.md`](DESIGN.md) を正本とする。文書配置と実装ファイル所在は、文書・実装ファイル所在の索引責務として扱い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
 
 [`docs/details/*.md`](details/) を総称として参照する場合でも、[`docs/details/fixture.md`](details/fixture.md) を owner component 別詳細本文責務に含めて読んではならない。fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件は、常に [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務として扱う。
 
@@ -262,8 +262,14 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   │       └── expected/
 │   ├── runner/
 │   ├── api/
+│   ├── admin/
 │   ├── sdk/
-│   └── ui/
+│   ├── ui/
+│   ├── statefile/
+│   ├── archive/
+│   ├── commitstatus/
+│   ├── security/
+│   └── setup/
 │
 ├── docs/
 │   ├── SPEC.md
@@ -293,7 +299,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 [`main.go`](../main.go) は 1 ファイルとし、起動入口、実行ファイル名判定、引数受け取り、対象 owner component 呼び出しだけを担当する。[`main.go`](../main.go) に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、MCP 処理の実装詳細を書いてはならない。
 
-`components/` は、1 実装対象コンポーネント = 1 Go ファイルとする。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は Go コンポーネントではなく `admin/` 配下の静的配布物として扱う。`statefile`、`archive`、`commitstatus`、`security`、`setup`、`release` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+`components/` は、1 標準 Go 実装対象 = 1 Go ファイルとする。この 1 ファイル原則は実装 artifact の配置規則であり、owner component と実装 artifact を同一概念にする規則ではない。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は Go 実装 artifact ではなく `admin/` 配下の静的配布物を所有する責務境界として扱う。`statefile`、`archive`、`commitstatus`、`security`、`setup`、`release` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
@@ -310,7 +316,7 @@ owner component 別の [`docs/details/*.md`](details/) は、詳細本文責務�
 
 仕様化済み・未実装の項目であっても、実装予定として扱う場合は実装者が迷わない粒度まで詳細化する。実装時期、設計判断、具体値が未確定の内容は、実装可能な仕様として扱わず、未仕様化または将来計画として明示する。
 
-詳細仕様入口責務と詳細本文責務の組み合わせは、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) の全項目を追加判断なしで特定できる状態を満たす。方針責務 §4.4 に必須項目を再掲して別の判定表としてはならない。
+詳細仕様入口責務と詳細本文責務の組み合わせは、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) の全項目を追加判断なしで特定できる状態を満たす。[`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4) に必須項目を再掲して別の判定表としてはならない。
 
 <a id="45-仕様成熟度方針"></a>
 
@@ -399,7 +405,7 @@ Phase は、対象 owner component、実装範囲、依存条件、完了条件�
 
 | 単位 | 含める内容 | 分割可否 |
 |------|------------|----------|
-| コンポーネント単位 | `components/builder.go`、`components/runner.go`、`components/api.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html` の単一責務変更 | 同一コンポーネント内で完結する場合のみ単独 PR 可 |
+| owner component 単位 | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`security`、`release`、`mcp` のうち 1 件が所有する単一責務変更。標準実装 artifact が定義済みの owner は、`builder`=`components/builder.go`、`runner`=`components/runner.go`、`api`=`components/api.go`、`sdk`=`admin/adlaire-ci-sdk.js`、`ui`=`admin/index.html` とする。 | 同一 owner component 内で完結する場合のみ単独 PR 可 |
 | 横断契約単位 | API / SDK / UI / 状態ファイル / 認証 / セットアップの対応関係 | 分割不可。同一 PR で同期する |
 | 運用単位 | systemd、セットアップ、アップデート、rollback、受け入れ条件 | 分割不可。手順と検証を同一 PR に含める |
 | 将来計画単位 | 実装時期未定の方向性、候補、未確定案 | 実装可能仕様と混在禁止。将来計画として明示する |
@@ -482,7 +488,7 @@ Adlaire CI と管理ツールは API を介して通信する。フロントエ�
 API は SDK として提供し、管理ツール実装者が直接 HTTP 通信を記述しなくてよい抽象化レイヤーを提供する。
 
 - **初期対応言語**：JavaScript のみ
-- **フレームワーク非依存**：バニラ JS・React・Vue・Svelte 等、いずれの環境でも利用可能
+- **フレームワーク非依存**：標準 SDK は browser 標準 API だけを使用する。外部 consumer application は、SDK の必須 browser API を提供する任意の frontend framework 環境から ES Module として読み込める。この consumer 側利用は、本リポジトリ、標準 SDK、標準管理 UI、配布物への framework 依存追加を許可しない
 - **内製 SDK**：外部ライブラリへの依存はゼロ（[`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針) 参照）
 - 標準管理ツールも本 SDK を経由して通信する
 
@@ -542,7 +548,9 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | security | 認証、認可、token、秘密情報、権限、公開境界、出力禁止情報。 |
 | 検証 | 必須 fixture、assertion、正常系・異常系確認、構文確認、実行確認、生成物確認、必須証跡。 |
 
-「適切に処理する」「必要に応じて対応する」「安全に扱う」など、実装判断を実装者へ委ねる表現を単独で完了仕様として扱ってはならない。使用する場合は、具体的な条件、処理、値、禁止事項、確認方法を併記する。
+「適切に処理する」「必要に応じて対応する」「安全に扱う」のように実装判断を実装者へ委ねる表現を単独で完了仕様として扱ってはならない。使用する場合は、具体的な条件、処理、値、禁止事項、確認方法を併記する。
+
+許可値、許可 path、許可副作用、許可依存、owner 候補、fixture component、schema key を列挙する契約では、`など`、`等`、`任意の同等物`、例示だけの列挙を使用して集合を開いてはならない。許可集合を固定列挙するか、追加値を許可する判定条件、登録先の正本、未登録値の拒否結果を同じ契約で明示する。禁止対象の理解を助ける例示は使用できるが、例示に含まれない対象を許可する意味に読めないことを明記する。
 
 ## 0a. 仕様成熟度ポリシー
 
@@ -581,10 +589,14 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 |------|----------|
 | 方針責務・ポリシー責務 | 方針、ポリシー、実装着手ゲート、完了判定が [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務に明記されている。 |
 | 状態・計画責務 | 実装 artifact と各機能の現在状態、Phase、将来計画が [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に明記され、状態語彙、実装可否、昇格条件が [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) と矛盾していない。 |
-| 詳細仕様入口責務 | 対象機能の owner / collaborator、詳細本文参照先、fixture 証跡参照先が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に明記されている。 |
+| 詳細仕様入口責務 | 対象機能の owner 対応表、owner 詳細本文から collaborator 境界へ到達する参照、詳細本文参照先、fixture 証跡参照先が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に明記されている。 |
 | owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。 |
 | 横断契約 | API、SDK、UI、状態ファイル、認証、セットアップの対応関係が該当する詳細本文責務で同期している。 |
 | 索引責務 | ファイル名、正本参照先、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |
+| owner 網羅 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に列挙された owner component のうち、[`docs/ROADMAP.md`](ROADMAP.md) で `未仕様化` または `将来計画` 以外の機能を持つ owner は、少なくとも 1 件の機能から owner 詳細本文と fixture 証跡へ到達できる。実装 artifact の行で owner 機能の現在状態を代用していない。 |
+| 列挙閉包 | 許可値、許可 path、許可副作用、許可依存、fixture component、schema key の集合が固定列挙または明示的な登録条件で閉じており、未登録値の扱いが確定している。 |
+| デザイン責務 | 生成静的 Web サイトと標準管理 UI の視覚値は [`docs/DESIGN.md`](DESIGN.md) にあり、owner 詳細本文は DOM、selector、状態、操作境界だけを持つ。 |
+| fixture 配置 | [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の `testdata/` tree、[`docs/details/fixture.md`](details/fixture.md) の配置契約、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の実在所在が一致している。 |
 
 仕様 PR は、未確定事項を「推奨」「検討」「適切に」等の表現だけで残してはならない。未確定事項を残す場合は、実装不可の `未仕様化` または `将来計画` として明示する。
 
@@ -757,7 +769,9 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 **外部フレームワーク：**
 
-**いかなる条件でも禁止する。** 例外なし。
+本リポジトリが所有する実装 artifact、標準 SDK、標準管理 UI、build/runtime 依存、配布物へ外部フレームワークを導入することは、**いかなる条件でも禁止する。** 例外なし。
+
+外部 consumer application が [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) を ES Module として読み込む環境は、この禁止対象ではない。React、Vue、Svelte を含む consumer 側 framework から SDK を利用できるが、その framework、adapter、型定義 package、bundler、polyfill を本リポジトリの依存、配布物、検証前提へ追加してはならない。
 
 <a id="外部ライブラリ"></a>
 

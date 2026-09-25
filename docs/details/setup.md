@@ -77,12 +77,12 @@ Release asset 名は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.
 | Release asset resolver | `VERSION`、`OS_ARCH`、取得対象成果物名、GitHub Release URL | `DOWNLOAD_DIR` 内の取得済みファイル | `VERSION` / `OS_ARCH` 空、HTTP status 非 2xx、取得ファイル 0 byte | 取得済みファイルを配置せず終了 |
 | checksum verifier | `SHA256SUMS`、取得済み成果物 | 検証済み成果物一覧 | `SHA256SUMS` 不在、対象行不在、SHA-256 不一致 | バイナリ配置を実行せず終了 |
 | binary installer | 検証済みバイナリ、`BIN_DIR` | `adlaire-ci-build`、`adlaire-ci-runner`、API 導入対象の実装では `adlaire-ci-api` | 入力バイナリ不在、実行権限付与失敗、`install` 失敗 | systemd 変更を実行せず終了 |
-| secret initializer | [`docs/details/runner.md` 詳細本文責務 §17](runner.md#17-github-連携前提) の権限契約を満たす PAT 入力、`INSTALL_DIR` | `.github_token` mode `0600` | PAT 空、書き込み失敗、mode 補正失敗 | systemd 変更を実行せず終了 |
-| state initializer | `INSTALL_DIR` | `.last_sha`、build log 保存対象の実装では `.build_logs/`、snapshot 保存対象の実装では `.snapshots/` | 書き込み失敗、mode 補正失敗 | systemd 変更を実行せず終了 |
+| secret initializer | [`docs/details/runner.md` 詳細本文責務 GitHub token 読み込み契約](runner.md#github-token-読み込み契約) に一致する PAT 入力、`INSTALL_DIR` | statefile create-only mode で作成した `.github_token` mode `0600`、または検証済み既存ファイルの byte 単位保持 | PAT 不正、既存ファイル不正、statefile create-only failure | systemd 変更を実行せず終了 |
+| state initializer | `INSTALL_DIR` | statefile create-only mode で作成した `.last_sha`、または schema 検証済み既存ファイルの byte 単位保持。build log 保存対象の実装では `.build_logs/`、snapshot 保存対象の実装では `.snapshots/` | 既存ファイル破損、statefile create-only failure、directory 作成または mode 確定失敗 | systemd 変更を実行せず終了 |
+| admin UI installer | `admin-ui.tar.gz`、`INSTALL_DIR` | `$INSTALL_DIR/admin/index.html`、`$INSTALL_DIR/admin/adlaire-ci-sdk.js` | archive 不在、checksum 不一致、展開後必須ファイル不在 | API 導入・更新対象では API service 起動 / restart を実行せず終了。runner のみの初回セットアップでは本機能を対象外とし、後続の systemd 処理へ進む。 |
 | systemd unit writer | unit 内容、`SERVICE_USER`、`INSTALL_DIR`、`BIN_DIR` | `/etc/systemd/system/adlaire-ci.service`、`adlaire-ci.timer`、API 導入対象の実装では `adlaire-ci-api.service` | unit 書き込み失敗、`systemctl daemon-reload` 失敗 | enable/start を実行せず終了 |
 | service activator | systemd unit 名 | active な timer / service | `enable --now` 失敗、`is-active` 非 `active` | 直前の journal 確認コマンドを出力して終了 |
-| admin UI installer | `admin-ui.tar.gz`、`INSTALL_DIR` | `$INSTALL_DIR/admin/index.html`、`$INSTALL_DIR/admin/adlaire-ci-sdk.js` | archive 不在、checksum 不一致、展開後必須ファイル不在 | API service 起動を実行せず終了 |
-| rollback executor | `BACKUP_DIR`、`BIN_DIR`、再起動対象 unit | 旧バイナリ復元済み状態 | 旧バイナリ不在、復元失敗、復元後 restart 失敗 | 自動復旧を継続せず journal 確認対象を出力 |
+| rollback executor | `BACKUP_DIR`、`BIN_DIR`、API 導入済み update では旧 `admin/` backup、再起動対象 unit | 定義済みの旧 version cohort 復元済み状態 | 必須 backup 不在、復元失敗、復元後 restart 失敗 | 自動復旧を継続せず journal 確認対象を出力 |
 
 **セットアップ / アップデート共通終了コード：**
 
@@ -90,11 +90,11 @@ Release asset 名は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.
 |------------|------|
 | `0` | 全手順成功。 |
 | `1` | 取得失敗、checksum 不一致、配置失敗、systemd 操作失敗、権限補正失敗、rollback 失敗。 |
-| `2` | 変数不正、unsupported OS/arch、必須入力空、既存 credentials あり、実行前検証不合格。 |
+| `2` | 変数不正、unsupported OS/arch、必須入力空、`--init-credentials` 実行時の既存 credentials あり、実行前検証不合格。 |
 
 各手順は失敗時に固定文言を stderr へ 1 行以上出力する。secret 値、PAT、token、password、Release URL に埋め込まれた認証情報を stderr/stdout に出してはならない。
 
-secret initializer が検証する PAT 条件は、空でないこと、通常ファイルへ保存できること、mode `0600` を設定できることだけとする。setup は GitHub API を呼び出さず、Fine-grained PAT の repository permission を推測または保証しない。運用者は [`docs/details/runner.md` 詳細本文責務 §17](runner.md#17-github-連携前提) の権限を事前に付与する。実行時に権限が不足した場合、GitHub read は runner の API failure、Commit Status の HTTP `403` は [`docs/details/commitstatus.md` 詳細本文責務 §27.1](commitstatus.md#sec-27-1) の送信失敗として扱う。
+secret initializer は PAT を `strings.TrimSpace` し、空でないこと、UTF-8 であること、trim 後の値に空白、NUL、改行、CR、その他の制御文字がないことを [`docs/details/runner.md` 詳細本文責務 GitHub token 読み込み契約](runner.md#github-token-読み込み契約) と同じ条件で検証する。setup は GitHub API を呼び出さず、Fine-grained PAT の repository permission を推測または保証しない。運用者は [`docs/details/runner.md` 詳細本文責務 §17](runner.md#17-github-連携前提) の権限を事前に付与する。実行時に権限が不足した場合、GitHub read は runner の API failure、Commit Status の HTTP `403` は [`docs/details/commitstatus.md` 詳細本文責務 §27.1](commitstatus.md#sec-27-1) の送信失敗として扱う。
 
 **Release asset 取得・検証固定契約：**
 
@@ -116,7 +116,7 @@ secret initializer が検証する PAT 条件は、空でないこと、通常�
 
 [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b)、[`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3)、[`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b)、[`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の固定表と順序付き契約を setup / update 実装手順の正本とする。重複する shell 例を別契約として扱ってはならない。Release asset 名と checksum 形式は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)、API health の endpoint、HTTP status、JSON object、必須 key は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、実装検証証跡形式は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) を共通参照先とする。
 
-local API 確認で `curl` が利用できない場合は、Go 標準ライブラリ `net/http` client または同等のローカル HTTP 確認を行う。setup 詳細本文では、local API へ到達して応答を取得することだけを確認し、API response の具体 schema は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を正本とする。
+setup / update 実装の local API 確認は、Go 標準ライブラリ `net/http` client による `GET http://127.0.0.1:8765/api/health` に固定する。任意の外部 command、外部 HTTP client library、shell fallback を実装依存にしてはならない。`curl` は運用者が手動確認に使用できる例に限り、`curl` の有無を setup / update の実行条件または成功条件にしてはならない。setup 詳細本文では local API へ到達して応答を取得することだけを確認し、API response の具体 schema は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を正本とする。
 
 **配置・権限固定契約：**
 
@@ -125,12 +125,16 @@ local API 確認で `curl` が利用できない場合は、Go 標準ライブ�
 | `adlaire-ci-build` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-build` へ配置する。 | `0755` | systemd restart を行わない。旧 binary がある場合は保持する。 |
 | `adlaire-ci-runner` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-runner` へ配置する。 | `0755` | systemd restart を行わない。旧 binary がある場合は保持する。 |
 | `adlaire-ci-api` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-api` へ配置する。 | `0755` | API service を restart / start しない。 |
-| `.github_token` | 一時ファイルへ書込後、mode `0600`、rename、fsync。 | `0600` | systemd unit を変更しない。secret 平文を stderr/stdout に出さない。 |
-| `.last_sha` | `{"sha":""}` + LF を一時ファイルへ書込後、mode `0600`、rename、fsync。 | `0600` | systemd unit を変更しない。 |
+| `.github_token` | PAT を `strings.TrimSpace` した値 + LF 1 個を、[`docs/details/statefile.md` 詳細本文責務 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode へ渡す。 | `0600` | systemd unit を変更しない。secret 平文を stderr/stdout に出さない。 |
+| `.last_sha` | `{"sha":""}` + LF 1 個を、[`docs/details/statefile.md` 詳細本文責務 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode へ渡す。 | `0600` | systemd unit を変更しない。 |
 | `.admin_credentials` | `adlaire-ci-api --init-credentials` の固定手順で生成する。 | `0600` | API service を enable/start しない。 |
 | `admin/` | checksum 検証済み archive を一時 directory へ展開し、必須ファイル確認後に差し替える。 | directory `0755`、file `0644` | 既存 `admin/` を変更しない。 |
 
 通常ファイル配置では symlink を最終配置先として許可しない。既存配置先が symlink の場合は `1` で停止し、symlink の参照先を上書きしてはならない。`BIN_DIR`、`INSTALL_DIR`、`DOWNLOAD_DIR` が同一 path、親子関係で危険な組み合わせ、またはいずれかが `/` の場合は `2` で停止する。
+
+fresh setup の secret / state 初期化は `.github_token` → `.last_sha` の順に実行する。PAT は `strings.TrimSpace` 後が空、UTF-8 不正、または trim 後に空白、NUL、改行、CR、制御文字を含む場合は、書込み前に stderr へ `invalid GitHub token input` + LF を出力して終了コード `2` とする。create-only mode が `ErrStateAlreadyExists` を返した場合、`.github_token` は [`docs/details/runner.md` 詳細本文責務 GitHub token 読み込み契約](runner.md#github-token-読み込み契約)、`.last_sha` は [`docs/details/statefile.md` 詳細本文責務 `.last_sha` schema](statefile.md#last-sha-schema) で read-only 検証する。有効な既存ファイルは content、mode、mtime を変更せず該当初期化の成功とする。既存 `.github_token` 不正は `existing GitHub token is invalid`、既存 `.last_sha` 不正は `existing SHA state is invalid` と LF を stderr へ出力し、いずれも終了コード `2` で停止する。自動 chmod、修復、再生成、上書きは行わない。
+
+create-only mode の lock、tmp、write、chmod、file sync、rename、parent sync、cleanup failure は stderr へ `state initialization failed: {basename}` + LF を出力し、終了コード `1` で停止する。rename 後の partial failure では新 target を残し、同じ payload を再試行しない。`.github_token` 作成後に `.last_sha` 初期化が失敗しても `.github_token` を削除しない。update は secret / state initializer を実行せず、`.github_token` と `.last_sha` の content、mode、mtime を保持する。
 
 **setup / update 失敗時の状態保持契約：**
 
@@ -138,15 +142,18 @@ local API 確認で `curl` が利用できない場合は、Go 標準ライブ�
 |----------|--------------|------------------|----------|
 | download / checksum | 既存 binary、既存 systemd、既存 state、既存 admin UI | `DOWNLOAD_DIR` 内の取得済みファイル | 未検証 asset の配置、service restart。 |
 | binary 配置前 | 既存 binary、既存 service 稼働状態 | `DOWNLOAD_DIR` | systemd unit 書換、state 書換。 |
-| binary 配置後 / restart 前 | 配置済み新 binary または rollback 対象旧 binary | rollback executor が対象 binary だけを復元する。 | state、history、secret、admin UI の巻き戻し。 |
-| runner restart 失敗 | `.github_token`、`.last_sha`、history、snapshot、admin UI | build / runner binary の旧版復元、runner restart 1 回 | API credentials や admin UI の変更。 |
-| API setup 失敗 | runner binary、runner timer、runner state | API binary、admin 一時展開 directory | runner timer 停止、`.github_token` 変更。 |
-| admin UI 差し替え失敗 | 旧 admin UI、API binary、runner state | admin 一時 directory / backup directory | API restart、credentials 変更。 |
-| rollback 失敗 | 現在配置済み binary、state、secret | journal 確認対象の報告 | 追加 rollback 推測、state/history/secret 巻き戻し。 |
+| fresh setup の binary 配置後 / service 起動前 | 配置前から存在した binary、state、history、secret、admin UI | 失敗した配置操作の一時 file だけを除去し、既存 file を保持する。 | state、history、secret、admin UI、systemd の巻き戻し。 |
+| update の binary 配置後 / runner restart 前 | 更新開始前の binary version cohort、state、history、secret、既存 admin UI | [アップデート rollback 固定契約「対象 binary 配置失敗」](#setup-update-rollback-contract)を 1 回適用する。 | service restart、state、history、secret、admin UI の変更。 |
+| update の runner restart 失敗 | state、history、secret、既存 admin UI | [アップデート rollback 固定契約「runner restart 失敗」](#setup-update-rollback-contract)を 1 回適用する。 | API restart、admin UI、credentials の変更。 |
+| 管理 API 初回 setup 失敗 | 既存 runner binary、runner timer、runner state、既存 admin UI | API binary、admin 一時展開 directory、未起動 API unit。 | runner timer 停止、`.github_token` 変更。 |
+| update の admin UI 差し替え失敗 | state、history、secret | [アップデート rollback 固定契約「admin UI 展開失敗」](#setup-update-rollback-contract)を 1 回適用する。 | API restart、credentials 変更。 |
+| API 未導入 update の最終確認失敗 | state、history、secret | [アップデート rollback 固定契約「アップデート後の最終確認失敗」](#setup-update-rollback-contract)の API 未導入処理を 1 回適用する。 | API / admin UI の変更、state、history、secret の巻き戻し。 |
+| API 導入済み update の API restart または最終確認失敗 | state、history、secret | 失敗段階に対応する [アップデート rollback 固定契約](#setup-update-rollback-contract) の「admin UI 差し替え後 API restart 失敗」または「アップデート後の最終確認失敗」を 1 回適用する。 | state、history、secret、credentials の巻き戻し。 |
+| rollback 失敗 | 現在配置済み binary / admin UI、state、secret | journal 確認対象の報告 | 追加 rollback 推測、state/history/secret 巻き戻し。 |
 
 **セットアップ / アップデート副作用固定契約：**
 
-セットアップ、管理 API 導入、アップデートは、[`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) の副作用境界固定表を超えてはならない。実装者判断で部分成功を成功報告したり、secret、state、systemd、admin UI をまとめて巻き戻したりしてはならない。
+セットアップ、管理 API 導入、アップデートは、[`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) の副作用境界固定表を超えてはならない。実装者判断で部分成功を成功報告したり、[アップデート rollback 固定契約](#setup-update-rollback-contract) に定義していない state、history、secret、systemd unit、admin UI を巻き戻したりしてはならない。
 
 | 段階 | 変更可能対象 | 成功確定条件 | 失敗時固定動作 |
 |------|--------------|--------------|----------------|
@@ -154,15 +161,15 @@ local API 確認で `curl` が利用できない場合は、Go 標準ライブ�
 | download | `DOWNLOAD_DIR` 配下だけ | 対象 asset と `SHA256SUMS` を取得し、size > 0。 | 既存 binary、state、secret、systemd、admin UI を変更しない。 |
 | checksum | `DOWNLOAD_DIR` 配下だけ | 対象 filename が `SHA256SUMS` に 1 回だけ存在し、SHA-256 が一致する。 | 未検証 asset を配置しない。 |
 | binary 配置 | `$BIN_DIR` の対象 binary だけ | 通常ファイルへ `0755` で配置し、`--version` が対象 version を返す。 | systemd restart を行わない。配置済み新 binary は [アップデート rollback 固定契約](#setup-update-rollback-contract) に従う。 |
-| secret / state 初期化 | 対象 secret / state file だけ | 一時ファイル、mode、rename、fsync、親 directory sync が成功する。 | systemd unit を変更しない。secret 平文を出力しない。 |
+| secret / state 初期化 | fresh setup で対象 secret / state file だけ | statefile create-only mode が成功するか、検証済み既存 target が byte 単位で保持される。 | systemd unit を変更しない。secret 平文を出力しない。partial failure と既存不正を成功扱いしない。 |
 | admin UI 展開 | admin 一時 directory、成功時のみ `$INSTALL_DIR/admin` | archive 安全検査、必須ファイル確認、差し替えがすべて成功する。 | 既存 admin UI を維持する。API restart を行わない。 |
 | systemd unit 配置 | 対象 unit file だけ | unit 書込、mode、`systemctl daemon-reload` が成功する。 | enable / restart / start を行わない。 |
-| service 起動 / 再起動 | 対象 unit だけ | runner は `adlaire-ci.timer` が `active` かつ `adlaire-ci.service` を `systemctl cat` で確認できる。api は `adlaire-ci-api` が `active` かつ health check も成功する。 | [アップデート rollback 固定契約](#setup-update-rollback-contract) に従い、追加推測復旧を行わない。 |
-| 最終確認 | なし | [`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3)、[`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b)、[`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の確認項目がすべて成功。 | 成功報告しない。確認失敗箇所と journal 確認対象を出力する。 |
+| service 起動 / 再起動 | 対象 unit だけ | runner は `systemctl is-active adlaire-ci.timer` が `active`、`systemctl cat adlaire-ci.service` と `systemctl cat adlaire-ci.timer` が exit `0`。API 導入時はこれらに加え、`systemctl is-active adlaire-ci-api` が `active`、`systemctl cat adlaire-ci-api.service` が exit `0`、health check が成功する。 | fresh setup は後続処理を停止して journal 確認対象を出力する。update は [アップデート rollback 固定契約](#setup-update-rollback-contract) を 1 回適用し、追加推測復旧を行わない。 |
+| 最終確認 | なし | [`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3)、[`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b)、[`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の確認項目がすべて成功。 | 成功報告しない。fresh setup は確認失敗箇所と journal 確認対象を出力する。update は [アップデート rollback 固定契約](#setup-update-rollback-contract) の最終確認失敗を 1 回適用する。 |
 
-setup / update 実装は、各段階の開始と成功を stderr または stdout に固定文言で 1 行ずつ出力する。PAT、password、session token、API token、Webhook secret、SMTP password、Release URL の credential 部分は出力してはならない。secret file が既に存在する場合は、個別手順で上書きを明記している場合を除き、既存値を保持する。特に `.github_token`、`.admin_credentials`、`.webhook_secret`、`.smtp_secret` は、アップデートで自動上書きしない。
+setup / update 実装は、各段階の開始と成功を stderr または stdout に固定文言で 1 行ずつ出力する。PAT、password、session token、API token、Webhook secret、SMTP password、Release URL の credential 部分は出力してはならない。secret file が既に存在する場合は、個別手順で上書きを明記している場合を除き、既存値を保持する。特に `.github_token`、`.last_sha`、`.admin_credentials`、`.webhook_secret`、`.smtp_secret` は、アップデートで自動上書きしない。
 
-`systemctl daemon-reload` 成功だけではセットアップ成功と扱わない。`enable --now`、`restart`、`is-active`、API 導入時の `/api/health` 確認まで完了して初めて成功とする。確認コマンドが利用環境に存在しない場合は、Go `net/http` client または systemd D-Bus / `systemctl show` で同じ確認項目を検証し、実装検証証跡に代替コマンド、期待値、実測値を記録する。未確認のまま成功扱いにしない。
+`systemctl daemon-reload` 成功だけではセットアップ成功と扱わない。`enable --now`、`restart`、`is-active`、API 導入時の `/api/health` 確認まで完了して初めて成功とする。API health は [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) の Go `net/http` client で確認する。systemd は runner 導入時に `systemctl is-active adlaire-ci.timer`、`systemctl cat adlaire-ci.service`、`systemctl cat adlaire-ci.timer`、API 導入時にこれらと `systemctl is-active adlaire-ci-api`、`systemctl cat adlaire-ci-api.service` をそれぞれ実行する。D-Bus、`systemctl show`、その他の代替経路を setup / update 実装の成功判定に使用してはならない。実装検証証跡には各固定 command、期待値、実測値を記録し、未確認のまま成功扱いにしない。
 
 <a id="sec-26-3"></a>
 **[§26.3 Go 版初回セットアップ手順](setup.md#sec-26-3)：**
@@ -188,9 +195,11 @@ setup / update 実装は、各段階の開始と成功を stderr または stdou
 |------|----------|----------|
 | build binary | `$BIN_DIR/adlaire-ci-build --version` | exit `0`、stdout が `adlaire-ci-build v3` を含む。 |
 | runner binary | `$BIN_DIR/adlaire-ci-runner --version` | exit `0`、stdout が `adlaire-ci-runner v3` を含む。 |
-| PAT file | `stat -c '%a' "$INSTALL_DIR/.github_token"` | `600`。 |
-| SHA cache | `cat "$INSTALL_DIR/.last_sha"` | `{"sha":""}` + LF。 |
+| PAT file | setup 内部 read-only 検証と `stat -c '%a' "$INSTALL_DIR/.github_token"` | [`docs/details/runner.md` 詳細本文責務 GitHub token 読み込み契約](runner.md#github-token-読み込み契約) に合格し mode `600`。token 本体は stdout / stderr へ出力しない。 |
+| SHA cache | statefile read-only adapter で `$INSTALL_DIR/.last_sha` を読み込む | [`docs/details/statefile.md` 詳細本文責務 `.last_sha` schema](statefile.md#last-sha-schema) に合格する。新規作成時は `{"sha":""}` + LF、既存有効 target は元の値を保持する。 |
 | timer | `systemctl is-active adlaire-ci.timer` | `active`。 |
+| runner service unit | `systemctl cat adlaire-ci.service` | exit `0`。 |
+| runner timer unit | `systemctl cat adlaire-ci.timer` | exit `0`。 |
 
 確認のいずれかが失敗した場合、セットアップは失敗扱いとする。ただし自動削除や状態ファイル巻き戻しは行わない。
 
@@ -231,9 +240,13 @@ Go 版初回セットアップでは以下を実行しない。
 | credentials | `stat -c '%a' "$INSTALL_DIR/.admin_credentials"` | `600`。 |
 | admin UI | `test -f "$INSTALL_DIR/admin/index.html"` / `test -f "$INSTALL_DIR/admin/adlaire-ci-sdk.js"` | 両方成功。 |
 | API service | `systemctl is-active adlaire-ci-api` | `active`。 |
-| local health | `curl -fsS http://127.0.0.1:8765/api/health` | [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従い、setup 側は local API 到達と応答取得を確認する。 |
+| runner timer | `systemctl is-active adlaire-ci.timer` | `active`。 |
+| runner service unit | `systemctl cat adlaire-ci.service` | exit `0`。 |
+| runner timer unit | `systemctl cat adlaire-ci.timer` | exit `0`。 |
+| API service unit | `systemctl cat adlaire-ci-api.service` | exit `0`。 |
+| local health | Go 標準ライブラリ `net/http` client で `GET http://127.0.0.1:8765/api/health` | [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従い、setup 側は local API 到達と応答取得を確認する。 |
 
-`curl` が利用できない環境の確認方法と API response の具体契約は [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従う。未確認のまま API 導入確認を満たした扱いにしてはならない。
+`curl -fsS http://127.0.0.1:8765/api/health` は運用者の手動確認例として使用できるが、setup / update 実装は `curl` を起動してはならない。API response の具体契約は [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従い、未確認のまま API 導入確認を満たした扱いにしてはならない。
 
 <a id="sec-26-4"></a>
 **[§26.4 systemd サービスファイル](setup.md#sec-26-4)：**
@@ -296,25 +309,27 @@ WantedBy=multi-user.target
 
 管理 API を導入する環境では `adlaire-ci.service` と `adlaire-ci.timer` を必ず同時に配置する。`Wants=adlaire-ci.timer` は durable queue の fallback を有効にするための必須依存とし、削除してはならない。API は queue 保存後に `systemctl start --no-block adlaire-ci.service` を実行できる `User` で起動する。初期標準の `User=root` を非 root へ変更する場合は、同コマンドだけを許可する systemd / polkit 権限を先に定義し、shell、sudo password、包括的 systemctl 権限を付与してはならない。
 
-systemd unit は [`docs/details/setup.md` 詳細本文責務 §26.4](setup.md#sec-26-4) で定義した systemd unit key 以外を初期標準で追加しない。`Environment=`、`EnvironmentFile=`、`ExecStartPre=`、`ExecStartPost=` を追加する場合は、先に [`docs/details/setup.md` 詳細本文責務 §26.4](setup.md#sec-26-4) へ対象変数、secret 扱い、失敗時挙動を定義する。API service は `127.0.0.1:8765` bind を標準とし、外部公開 bind は [`docs/details/setup.md`](setup.md) 詳細本文責務で未定義のため設定しない。API service 起動確認では `systemctl is-active adlaire-ci-api` に加え `systemctl is-active adlaire-ci.timer` と `systemctl cat adlaire-ci.service` が成功しなければならない。
+systemd unit は [`docs/details/setup.md` 詳細本文責務 §26.4](setup.md#sec-26-4) で定義した systemd unit key 以外を初期標準で追加しない。`Environment=`、`EnvironmentFile=`、`ExecStartPre=`、`ExecStartPost=` を追加する場合は、先に [`docs/details/setup.md` 詳細本文責務 §26.4](setup.md#sec-26-4) へ対象変数、secret 扱い、失敗時挙動を定義する。API service は `127.0.0.1:8765` bind を標準とし、外部公開 bind は [`docs/details/setup.md`](setup.md) 詳細本文責務で未定義のため設定しない。API service 起動確認では `systemctl is-active adlaire-ci-api`、`systemctl is-active adlaire-ci.timer`、`systemctl cat adlaire-ci.service`、`systemctl cat adlaire-ci.timer`、`systemctl cat adlaire-ci-api.service` がそれぞれ成功しなければならない。
 
 <a id="sec-26-5"></a>
 **[§26.5 アップデート手順](setup.md#sec-26-5)：**
 
 `git pull`、利用環境での `go build`、開発ブランチ checkout は使用しない。タグ付き安定版のリリースバイナリを配置し、サービスを再起動する。管理 API を導入していない構成では、管理 API サービスは再起動対象に含めない。
 
+更新対象 version cohort は、常に `adlaire-ci-build`、`adlaire-ci-runner`、API 導入済みの場合は加えて `adlaire-ci-api`、`admin-ui.tar.gz` の全対象とする。成功時は全対象を同一 `NEW_VERSION`、rollback 時は全対象を更新開始前の旧 version cohort へ戻す。後段失敗時に一部の新バイナリまたは新 admin UI を残し、新旧 version を混在させてはならない。
+
 アップデートは以下の順序で実行し、途中失敗時は [アップデート rollback 固定契約](#setup-update-rollback-contract) に従う。
 
 | 手順 | 成功条件 | 失敗時 rollback / 停止条件 |
 |------|----------|-----------------------------|
-| 現在版記録 | 既存バイナリを退避し、退避先パスを保持する。 | 更新を開始しない。 |
-| バイナリ取得 | 新 Release バイナリと `SHA256SUMS` の取得、checksum 検証が成功する。 | 退避済み旧バイナリを維持して終了する。 |
-| バイナリ更新 | checksum 検証済みの新バイナリを `install -m 0755` で配置できる。 | 退避済み旧バイナリを元へ戻し、サービスを再起動しない。 |
-| runner 再起動 | `systemctl restart adlaire-ci.timer` と `systemctl is-active adlaire-ci.timer` が成功する。 | 旧バイナリを戻し、再度 `systemctl restart adlaire-ci.timer` を 1 回だけ実行する。 |
-| API 再起動 | API 導入済みの場合のみ `systemctl restart adlaire-ci-api` と `systemctl is-active adlaire-ci-api` が成功する。 | 旧バイナリを戻し、runner と API の再起動を 1 回だけ実行する。 |
-| 管理 UI 更新 | API 導入済みの場合のみ `admin-ui.tar.gz` の取得、checksum 検証、一時ディレクトリへの展開、必須ファイル確認、旧 `admin/` との差し替えが成功する。 | 旧 `admin/` を維持または退避先から復元し、API 再起動を実行しない。 |
+| 現在版記録 | 全対象 binary を退避し、退避先 path と各 `--version` を保持する。API 導入済みでは既存 `admin/` の必須 file を確認して directory 全体を退避する。 | 更新を開始しない。既存 binary、admin UI、service、state、secret を変更しない。 |
+| Release asset 取得・検証 | `SHA256SUMS` と全対象 asset を取得し、各対象 filename が `SHA256SUMS` に 1 回だけ存在して checksum が一致する。API 導入済みでは `admin-ui.tar.gz` もこの段階で取得・検証する。 | 未検証 asset を配置または展開せず、退避済み旧 version cohort を維持して終了する。 |
+| バイナリ更新 | checksum 検証済みの対象新バイナリをそれぞれ `install -m 0755` で配置できる。 | [アップデート rollback 固定契約「対象 binary 配置失敗」](#setup-update-rollback-contract)を 1 回適用する。 |
+| runner 再起動 | `systemctl restart adlaire-ci.timer` が exit `0`、`systemctl is-active adlaire-ci.timer` が `active`、`systemctl cat adlaire-ci.service` と `systemctl cat adlaire-ci.timer` が exit `0`。 | [アップデート rollback 固定契約「runner restart 失敗」](#setup-update-rollback-contract)を 1 回適用する。 |
+| 管理 UI 更新 | API 導入済みの場合のみ、先行検証済みの `admin-ui.tar.gz` を一時ディレクトリへ展開し、必須ファイル確認後に旧 `admin/` と差し替える。 | [アップデート rollback 固定契約「admin UI 展開失敗」](#setup-update-rollback-contract)を 1 回適用する。 |
+| API 再起動 | API 導入済みの場合のみ管理 UI 更新成功後に `systemctl restart adlaire-ci-api` が exit `0`、`systemctl is-active adlaire-ci-api` が `active`、`systemctl cat adlaire-ci-api.service` が exit `0`。 | [アップデート rollback 固定契約「admin UI 差し替え後 API restart 失敗」](#setup-update-rollback-contract)を 1 回適用する。 |
 
-rollback 後も service が active にならない場合は、自動復旧を継続せず、`journalctl -u adlaire-ci.service -n 100`、API 導入済みなら `journalctl -u adlaire-ci-api -n 100` を確認対象として報告する。rollback はバイナリ差し戻しと service restart のみを行い、状態ファイル、履歴、ログ、secret を巻き戻してはならない。
+rollback 後も service が active にならない場合は、自動復旧を継続せず、`journalctl -u adlaire-ci.service -n 100`、API 導入済みなら `journalctl -u adlaire-ci-api -n 100` を確認対象として報告する。rollback は対象 binary、API 導入済み update では旧 `admin/`、失敗段階で定義した service restart だけを扱い、状態ファイル、履歴、ログ、secret、credentials、systemd unit を巻き戻してはならない。
 
 <a id="setup-update-rollback-contract"></a>
 **アップデート rollback 固定契約：**
@@ -322,14 +337,15 @@ rollback 後も service が active にならない場合は、自動復旧を継
 | 失敗箇所 | rollback 対象 | rollback 後に実行する確認 | 禁止条件 |
 |----------|---------------|----------------------------|----------|
 | checksum 検証前 | なし | 旧 service active 確認のみ | 取得済み未検証ファイルを配置しない。 |
-| build / runner 配置失敗 | 配置に成功した新バイナリだけ旧版へ戻す。 | `adlaire-ci-build --version`、`adlaire-ci-runner --version` | systemd restart しない。 |
-| runner restart 失敗 | build / runner 旧版復元 | `systemctl is-active adlaire-ci.timer` | state、history、secret を戻さない。 |
-| API binary 配置失敗 | API 旧版復元。runner は戻さない。 | `adlaire-ci-api --version` | runner service を restart しない。 |
-| API restart 失敗 | API 旧版復元 | `systemctl is-active adlaire-ci-api` | `.admin_credentials`、admin UI を戻さない。ただし UI 更新前に失敗した場合。 |
-| admin UI 展開失敗 | 旧 `admin/` 維持 | 必須ファイル確認 | API restart しない。 |
-| admin UI 差し替え後 API restart 失敗 | 旧 `admin/` 復元、API 旧版復元 | API service active 確認 | runner state を戻さない。 |
+| 対象 binary 配置失敗 | 配置済み対象を含む全対象 binary が旧 version cohort になるよう復元する。 | 全対象 binary の `--version` が更新前に記録した値と完全一致する。 | systemd restart しない。 |
+| runner restart 失敗 | 全対象 binary を旧 version cohort へ復元する。 | 全対象 binary の `--version` が更新前に記録した値と完全一致し、`systemctl is-active adlaire-ci.timer` が `active`、`systemctl cat adlaire-ci.service` と `systemctl cat adlaire-ci.timer` が exit `0`。 | API restart、admin UI 変更、state、history、secret の巻き戻し。 |
+| admin UI 展開失敗 | 旧 `admin/` 維持または復元、対象バイナリをすべて旧 version cohort へ復元 | 対象バイナリの `--version` が更新前に記録した値と完全一致し、旧 admin 必須ファイルが存在し、runner timer が `active`。 | API restart しない。state、history、secret を戻さない。 |
+| admin UI 差し替え後 API restart 失敗 | 旧 `admin/` 復元、対象バイナリをすべて旧 version cohort へ復元 | 全対象 binary の `--version` が更新前に記録した値と完全一致し、`systemctl is-active adlaire-ci.timer` と `systemctl is-active adlaire-ci-api` が `active`、runner / API の 3 unit を `systemctl cat` で確認できる。 | state、history、secret を戻さない。 |
+| アップデート後の最終確認失敗 | API 未導入では全対象 binary、API 導入済みでは旧 `admin/` と全対象 binary を旧 version cohort へ復元する。API 未導入では runner timer、API 導入済みでは runner timer と API を rollback 処理としてそれぞれ 1 回だけ restart する。 | API 未導入では全対象 binary の更新前 version、runner timer の `active`、runner 2 unit の `systemctl cat` を確認する。API 導入済みではこれらに加えて旧 admin 必須 file、API の更新前 version、API service の `active`、API unit の `systemctl cat`、local API health を確認する。 | state、history、secret、credentials、systemd unit を戻さない。 |
 
 rollback は 1 回だけ実行する。rollback 自体が失敗した場合は、追加の推測復旧を行わず、失敗箇所、退避先、現在配置済みファイル、journal 確認コマンドを報告対象として固定する。
+
+restart 回数は rollback 処理内の回数を表す。runner restart 失敗では失敗した最初の呼出しと rollback の呼出しを合わせて `systemctl restart adlaire-ci.timer` は合計 2 回、admin UI 更新失敗では成功済みの最初の呼出しと rollback の呼出しを合わせて runner restart は合計 2 回、API restart 失敗では runner restart と API restart が更新処理と rollback 処理で各 1 回ずつの合計各 2 回となる。アップデート後の最終確認失敗も API 未導入では runner restart 合計 2 回、API 導入済みでは runner restart と API restart が合計各 2 回となる。これを超えて再試行してはならない。
 
 **アップデート実行判定固定契約：**
 
@@ -342,20 +358,20 @@ rollback は 1 回だけ実行する。rollback 自体が失敗した場合は�
 5. すべての対象 asset の checksum 検証が成功するまで、既存 binary、既存 admin UI、systemd unit を変更しない。
 6. binary 配置後の version 確認に失敗した場合は、その binary を配置失敗として rollback 対象に含める。
 7. runner restart が失敗した場合、API restart と admin UI 更新へ進まない。
-8. API restart が失敗した場合、admin UI 更新へ進まない。
-9. admin UI 差し替え後に API restart が失敗した場合、admin UI と API binary だけ rollback 対象とし、build / runner binary と runner timer は戻さない。
+8. admin UI 更新が失敗した場合は [アップデート rollback 固定契約「admin UI 展開失敗」](#setup-update-rollback-contract)を 1 回適用し、API restart へ進まない。
+9. admin UI 差し替え後の API restart が失敗した場合は [アップデート rollback 固定契約「admin UI 差し替え後 API restart 失敗」](#setup-update-rollback-contract)を 1 回適用する。
 
 **アップデート後確認固定契約：**
 
 | 確認 | API 未導入 | API 導入済み |
 |------|------------|--------------|
 | binary version | `adlaire-ci-build --version`、`adlaire-ci-runner --version` が `NEW_VERSION` を含む。 | `adlaire-ci-build --version`、`adlaire-ci-runner --version`、`adlaire-ci-api --version` がそれぞれ `NEW_VERSION` を含む。 |
-| service | `systemctl is-active adlaire-ci.timer` が `active`。 | `systemctl is-active adlaire-ci.timer` と `systemctl is-active adlaire-ci-api` がそれぞれ `active`。 |
+| service | `systemctl is-active adlaire-ci.timer` が `active`、`systemctl cat adlaire-ci.service` と `systemctl cat adlaire-ci.timer` が exit `0`。 | API 未導入の 3 確認に加え、`systemctl is-active adlaire-ci-api` が `active`、`systemctl cat adlaire-ci-api.service` が exit `0`。 |
 | admin UI | 確認しない。 | `$INSTALL_DIR/admin/index.html` と `$INSTALL_DIR/admin/adlaire-ci-sdk.js` が存在する。 |
 | local API | 確認しない。 | [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従い、API service が local health check に応答する。 |
-| state preservation | `.github_token`、`.last_sha`、`.build_state`、`.build_history` の mtime と内容が更新対象操作と無関係に変わっていない。 | `.github_token`、`.last_sha`、`.build_state`、`.build_history` の mtime と内容が更新対象操作と無関係に変わっていない。`.admin_credentials` が存在する場合は mode `0600` と内容が保持される。 |
+| state preservation | `.github_token`、`.last_sha`、`.build_state`、`.build_history` の mtime と内容が更新対象操作と無関係に変わっていない。 | API 未導入時と同じ 4 file に加え、`.admin_credentials` が存在する場合は mode `0600` と内容が保持される。 |
 
-確認失敗時はアップデート失敗として扱う。binary 配置や restart が成功していても、確認失敗を成功報告してはならない。local API 確認、API response の具体契約、実装検証証跡形式は [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従う。未確認のまま合格扱いにしない。
+確認失敗時はアップデート失敗として扱い、[アップデート rollback 固定契約](#setup-update-rollback-contract) の「アップデート後の最終確認失敗」を 1 回適用する。binary 配置や restart が成功していても、確認失敗を成功報告してはならない。local API 確認、API response の具体契約、実装検証証跡形式は [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従う。未確認のまま合格扱いにしない。
 
 <a id="sec-26-6"></a>
 **[§26.6 サービス操作リファレンス](setup.md#sec-26-6)：**
@@ -385,8 +401,8 @@ rollback は 1 回だけ実行する。rollback 自体が失敗した場合は�
 
 setup / update と Release asset 受け入れの詳細実装確認では、[`docs/details/setup.md` 詳細本文責務 §26.7](setup.md#sec-26-7) 実装受け入れ条件 の固定表の受け入れ条件をすべて満たす。実装対象外のコンポーネントは「未実装」として明記し、確認済み扱いにしない。
 
-<a id="sec-26-7-2"></a>
-**[§26.7 関連 component 共通参照先](setup.md#sec-26-7-2)：**
+<a id="sec-26-7a"></a>
+**[§26.7a 関連 component 共通参照先](setup.md#sec-26-7a)：**
 
 [`docs/details/setup.md` 詳細本文責務 §26.7](setup.md#sec-26-7) で API endpoint、request / response、HTTP status、body、SDK method、UI DOM、security 処理に触れる場合、API 契約は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) / [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e)、SDK 契約は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様)、UI 契約は [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様)、security 契約は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) を共通参照先とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存だけを確認する。
 
@@ -394,12 +410,12 @@ setup / update と Release asset 受け入れの詳細実装確認では、[`doc
 |------|---------------------|----------|
 | Go 共通 | `gofmt -l <実装対象Goファイル>` | 実装対象 Go ファイルが存在する場合、出力が空。未作成ファイルはコマンド対象に含めない。 |
 | Go test | `go test ./...` | Go module が存在する場合に成功する。Go module が存在しない場合は、その理由を実装確認結果に明記する。 |
-| build script | `adlaire-ci-build --src <sample.md> --out <tmp-site>` | exit code `0`、`<tmp-site>/index.html`、`<tmp-site>/assets/style.css`、`<tmp-site>/assets/app.js`、`<tmp-site>/assets/search-index.json` が存在し、`[REPORT]` の `status` が `success`。 |
+| build script | `adlaire-ci-build --src <sample.md> --out <tmp-site>` | exit code `0`、`<tmp-site>/index.html`、`<tmp-site>/assets/style.css`、`<tmp-site>/assets/app.js`、`<tmp-site>/assets/search-index.json` が存在し、stdout に [`docs/details/builder.md` 詳細本文責務 §8](builder.md#sec-8) の固定 13 key を固定順で持つ `[REPORT]` 行が 1 行だけ存在し、`pages=1`、`warnings=0` である。 |
 | runner | `adlaire-ci-runner --state-dir <tmp-state>` | 必須 secret 未設定時の exit code / ERROR log が [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner) と一致し、`.build_lock` が残らない。 |
 | API | API service の起動、local health check、admin UI から到達可能な endpoint 境界を確認する。 | setup 側は service 配置、起動、local 到達だけを確認する。 |
 | SDK | admin UI 配布物に SDK 静的ファイルが含まれ、browser runtime から読み込めることを確認する。 | setup 側は SDK 静的ファイルの配置と読込可否だけを確認する。 |
 | UI | admin UI 配布物が静的配信され、ログイン画面と主要 panel へ到達できることを確認する。 | setup 側は admin UI 配布物の配置と到達可否だけを確認する。 |
-| setup | [`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3) または [`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b) の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、secret mode が仕様どおり。 |
+| setup | [`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3) または [`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b) の手順を fresh 環境で実行する。 | unit 配置、権限、`systemctl is-active`、`systemctl cat`、secret mode が [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) の固定確認どおり。 |
 | update | [`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の手順を前版バイナリから新 tag のリリースバイナリへ実行する。 | 旧バイナリ退避、新バイナリ配置、restart、失敗時 rollback 条件が仕様どおり。 |
 | security | secret 値を含む入力後、stdout、stderr、journal、API response、UI 表示の漏えい有無を確認する。 | setup 側は配置・保持・権限・log 出力を確認する。 |
 
@@ -462,7 +478,7 @@ setup / update と Release asset 受け入れに関わる結果は、[`docs/deta
 <a id="sec-26-8"></a>
 **[§26.8 Setup / Admin 配布実装確認ゲート](setup.md#sec-26-8)：**
 
-セットアップ、アップデート、管理 API 導入、admin UI 配布の詳細実装確認では、[`docs/details/setup.md` 詳細本文責務 §26.1](setup.md#sec-26-1)〜[§26.7](setup.md#sec-26-7-2) の本文に加えて [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) の Setup / Admin 配布実装確認ゲート固定表を満たす。[`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
+セットアップ、アップデート、管理 API 導入、admin UI 配布の詳細実装確認では、[`docs/details/setup.md` 詳細本文責務 §26.1](setup.md#sec-26-1)〜[§26.7a](setup.md#sec-26-7a) の本文に加えて [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) の Setup / Admin 配布実装確認ゲート固定表を満たす。[`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) は実装時の確認粒度を固定するための詳細であり、未定義の成果物、未定義の service、未定義の rollback 対象を追加する根拠にしてはならない。
 
 | 段階 | 必須入力 | 成功確定条件 | 失敗時固定結果 | fixture 正本 |
 |------|----------|--------------|----------------|--------------|
@@ -473,7 +489,7 @@ setup / update と Release asset 受け入れに関わる結果は、[`docs/deta
 | secret / state 初期化 | PAT、初期 state | secret `0600`、`.last_sha` `0600`、LF 付き JSON、fsync 完了。 | systemd を変更しない。secret 値を出力しない。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) |
 | admin archive 展開 | `admin-ui.tar.gz` | [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界)〜[§A2](admin.md#a2-管理-ui-archive-検証) を満たし、一時 directory 検証後に差し替える。 | 既存 `$INSTALL_DIR/admin` を変更しない。API service を起動 / restart しない。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | systemd 配置 | unit file 内容 | unit 書込、mode、`daemon-reload`、enable/start/restart、`is-active` が成功する。 | enable/start/restart を成功扱いしない。journal 確認対象を出力する。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) |
-| rollback | 旧 binary / 旧 admin backup | 定義済み対象だけ 1 回復元し、対象 service を 1 回 restart する。 | 追加推測復旧を行わず、現在配置済み path と journal 確認対象を出力する。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) |
+| rollback | 旧 binary / 旧 admin backup | 定義済みの旧 version cohort を 1 回復元し、失敗段階で定義された各対象 service をそれぞれ 1 回だけ restart する。 | 追加推測復旧を行わず、現在配置済み path と journal 確認対象を出力する。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) |
 | 最終確認 | 配置済み binary、state、service、admin UI | [`docs/details/setup.md` 詳細本文責務 §26.3](setup.md#sec-26-3) / [`docs/details/setup.md` 詳細本文責務 §26.3b](setup.md#sec-26-3b) / [`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) の固定確認がすべて成功する。 | 成功報告しない。未確認項目を `未実行` として記録する。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) |
 
 **setup / admin / Release asset 連動 fixture 参照：**

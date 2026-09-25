@@ -4,7 +4,7 @@
 
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
-UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
+UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) を参照する。標準管理 UI の色、寸法、余白、配置、responsive、focus の視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
 ---
 
@@ -15,7 +15,7 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | owner component | `ui` |
 | 実装主体 | [`admin/index.html`](../../admin/index.html) の単一静的ファイル。 |
 | 持つ内容 | `ui` owner が主本文として定義する DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
-| 持たない内容 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
+| 持たない内容 | 色、寸法、余白、配置、responsive、focus の視覚値、SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
@@ -47,7 +47,7 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | システム情報 | `panel-system` | `system` | `form-pat` | `token`, `pat_expires_at` | `btn-pat-verify`, `btn-pat-update` |
 | 通知設定 | `panel-notify` | `notify` | `form-notify` | `webhooks`, `channels`, `on`, `summary`, `email`, `secret`, `smtp_password` | `btn-save-notify`, `btn-notify-test`, `btn-weekly-summary`, `btn-save-webhook-secret`, `btn-save-smtp`, `btn-smtp-test` |
 | 設定 | `panel-config` | `config` | `form-config` | `log_max_lines`, `history_max_count`, `build_timeout_seconds`, `log_retention_days`, `log_archive_after_days`, `log_level`, `queue_max_size`, `snapshots_keep`, `build_retry_max`, `build_retry_base_seconds`, `commit_status_enabled`, `commit_status_context`, `commit_status_target_url`, `build_trend_keep_count`, `duration_anomaly_enabled`, `duration_anomaly_min_samples`, `duration_anomaly_avg_multiplier`, `duration_anomaly_p95_multiplier`, `backup_file` | `btn-save-config`, `btn-validate-config`, `btn-set-log-level`, `btn-backup`, `btn-restore` |
-| セキュリティ | `panel-security` | `security` | `form-security` | `totp_code`, `api_rate_enabled`, `api_rate_group`, `api_rate_window_seconds`, `api_rate_max_requests`, `session_timeout_seconds` | `btn-load-security`, `btn-totp-setup`, `btn-totp-confirm`, `btn-totp-disable`, `btn-save-api-rate-limit`, `btn-save-session-timeout` |
+| セキュリティ | `panel-security` | `security` | `form-security` | `totp_code`, `api_rate_enabled`, `api_rate_group`, `api_rate_window_seconds`, `api_rate_max_requests`, `session_timeout_seconds` | `btn-load-security`, `btn-totp-setup`, `btn-totp-confirm`, `btn-totp-disable`, `btn-copy-totp-secret`, `btn-copy-totp-otpauth`, `btn-save-api-rate-limit`, `btn-save-session-timeout` |
 | アクセスログ | `panel-access-log` | `access-log` | `form-api-access-log-filter` | `limit`, `offset`, `method`, `path`, `status` | `btn-load-access-log`, `btn-load-api-access-log` |
 | 監査ログ | `panel-audit-log` | `audit-log` | `form-audit-log-filter` | `limit`, `offset`, `actor`, `action`, `result` | `btn-load-audit-log` |
 | 統計 | `panel-stats` | `stats` | なし | なし | `btn-load-stats` |
@@ -55,14 +55,14 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | セッション管理 | `panel-sessions` | `sessions` | なし | なし | `btn-load-sessions`, `btn-revoke-sessions` |
 | システム診断 | `panel-diagnostics` | `diagnostics` | なし | なし | `btn-run-diagnostics`, `btn-verify-output`, `btn-load-webhook-events` |
 | ビルド比較 | `panel-compare` | `compare` | `form-compare` | `left_build_id`, `right_build_id` | `btn-compare-builds` |
-| API トークン管理 | `panel-tokens` | `tokens` | `form-token` | `label`, `scopes`, `expires_at` | `btn-create-token` |
+| API トークン管理 | `panel-tokens` | `tokens` | `form-token` | `label`, `scopes`, `expires_at` | `btn-create-token`, `btn-copy-issued-token` |
 | 運用ノート | `panel-notes` | `notes` | `form-notes` | `content` | `btn-save-notes` |
 | スナップショット | `panel-snapshots` | `snapshots` | なし | なし | `btn-load-snapshots` |
 | メンテナンス | `panel-maintenance` | `maintenance` | `form-maintenance` | `reason` | `btn-maintenance-enable`, `btn-maintenance-disable` |
 | アクセス制御 | `panel-access-control` | `access-control` | `form-access-control` | `allow` | `btn-save-access-control` |
 | フック | `panel-hooks` | `hooks` | `form-hook` | `phase`, `command_args`, `abort_on_failure` | `btn-add-hook` |
 
-共通領域の DOM id は、`app-root`、`nav-panels`、`global-banner`、`global-error`、`global-success`、`maintenance-banner`、`build-log-stream`、`build-queue-summary`、`issued-token-once` とする。エラー表示要素は各 panel 内に `id="{section-id}-error"`、成功表示要素は `id="{section-id}-success"` を置く。`label[for]` と input `id` は `field-{field_name}` 形式で一致させる。複数行・配列入力は `textarea` または table row で表現し、保存直前に SDK 引数の型へ変換する。
+共通領域の DOM id は、`app-root`、`nav-panels`、`global-banner`、`global-error`、`global-success`、`maintenance-banner`、`build-log-stream`、`build-queue-summary`、`issued-token-once`、`totp-secret-once`、`totp-otpauth-once` とする。エラー表示要素は各 panel 内に `id="{section-id}-error"`、成功表示要素は `id="{section-id}-success"` を置く。`label[for]` と input `id` は `field-{field_name}` 形式で一致させる。複数行・配列入力は `textarea` または table row で表現し、保存直前に SDK 引数の型へ変換する。
 
 **画面構成：**
 
@@ -252,7 +252,12 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 7. 秘密情報 field を消去する。
 8. disabled を解除する。ただし `401`、`503`、SSE 接続中、メンテナンス中、または仕様上 disabled 条件が継続する場合は解除しない。
 
-秘密情報 field は、`password`、`current_password`、`new_password`、`totp_code`、`token`、`secret`、`smtp_password`、`issued-token-once`、`totp-secret-once` とする。これらは成功、失敗、画面遷移、`401`、`logout()`、`revokeAllSessions()` のいずれの場合も DOM 値を空にする。発行直後 token は `issued-token-once`、TOTP setup secret は `totp-secret-once` に 1 回だけ表示し、次の任意の user action で消去する。
+<a id="ui-one-time-secret-contract"></a>
+秘密情報 field は、`password`、`current_password`、`new_password`、`totp_code`、`token`、`secret`、`smtp_password`、`issued-token-once`、`totp-secret-once`、`totp-otpauth-once` とする。これらは成功、失敗、panel 遷移、`401`、`logout()`、`revokeAllSessions()` のいずれの場合も DOM 値を空にする。発行直後 token、TOTP setup secret、otpauth URI はそれぞれ `issued-token-once`、`totp-secret-once`、`totp-otpauth-once` にだけ表示し、同じ値を別の DOM property、attribute、一覧、message へ複製しない。新しい one-time 値を表示する前に旧値の listener と timer を解除し、旧値を消去してから新しい generation を開始する。
+
+one-time 値の表示を開始した event task の終了後に消去 listener を有効化する。有効化後、`Event.isTrusted === true` の `click`、`submit`、`input`、`change`、`keydown`、`copy` のいずれかを最初に受けたら、対象 generation の 3 領域をすべて消去し、listener を解除する。`Event.isTrusted === false`、timer、network callback、SDK 再取得、`focus`、`blur`、`mousemove`、`scroll` は user action として扱わない。panel 遷移、`401`、`logout()`、`revokeAllSessions()` は listener 有効化前でも直ちに消去する。旧 generation の遅延 callback は generation 一致を確認し、現在値を消去しない。
+
+`btn-copy-issued-token`、`btn-copy-totp-secret`、`btn-copy-totp-otpauth` は対応値の表示中だけ enabled とする。各 click handler は SDK method を呼ばず、対応する現在 generation の DOM 値を `navigator.clipboard.writeText()` へ1 回だけ渡す。その Promise が fulfilled なら panel success に `Copied`、rejected または API 不在なら panel error に `Copy failed` を表示し、どちらも確定後に 3 領域を消去する。copy button の trusted `click` は汎用消去 listener で先に消去せず、copy handler 完了時の消去だけを適用する。別の対象への trusted `copy` はブラウザの既定 copy 処理後と同じ event task 内で消去する。
 
 **UI 操作完全性検証契約：**
 
@@ -267,7 +272,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | disabled restore | 操作失敗時も、継続条件がない限り disabled を解除する。`401`、`503`、SSE 接続中、メンテナンス中は解除しない。 |
 | secret clearing | [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の秘密情報 field が、成功、失敗、画面遷移、`401`、logout、revoke all の全経路で空になる。 |
 | empty state | UI パネル初期取得契約の空状態表示が、各 panel 内に 1 行で表示される。 |
-| global error | 初期化失敗、SDK constructor 失敗、想定外 `TypeError` は `global-error` に固定文言 `Client error` または `UI initialization failed` を表示する。 |
+| global error | SDK constructor または初期 DOM binding の失敗は `global-error` に `UI initialization failed` を表示する。初期化完了後、[UI 操作契約表](#ui-operation-contract) と field error mapping のどちらにも割り当てられていない `TypeError` は `global-error` に `Client error` を表示する。field error mapping 対象の `TypeError` を global error に重複表示しない。 |
 
 **UI 状態遷移固定契約：**
 
@@ -316,7 +321,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | disabled | 送信中 disabled は操作単位で行う。同一 panel の無関係 button は disabled にしない。ただし maintenance、forced password change、SSE 接続中は仕様上の対象をまとめて disabled にする。 |
 | error 領域 | panel ごとに 1 つの error 領域を使う。field error は該当 field に紐付け、panel error にも summary を 1 行表示する。 |
 | success 領域 | 変更系操作成功時だけ更新する。GET 再読み込みだけでは success を表示しない。 |
-| secret one-time 表示 | issued token と TOTP secret は専用領域に 1 回だけ表示し、任意の次 user action、panel 遷移、logout、`401` で消去する。 |
+| secret one-time 表示 | issued token、TOTP secret、otpauth URI は [one-time secret 消去契約](#ui-one-time-secret-contract) の専用領域、trusted event、copy 完了、即時消去、generation 一致に従う。 |
 
 **破壊的操作確認文言：**
 
@@ -376,15 +381,15 @@ UI 共通 fixture 名、入力、fake SDK、expected、合格条件、実装検�
 | snapshots / rollback | snapshot list、download、delete、rollback | list 件数、download 開始、delete 完了、rollback 開始を表示する。 | delete は `getSnapshots()`。rollback は `getHistory()`, `getStatus()`。 | delete / rollback は確認 dialog 必須。running `409` は status 再取得。 |
 | maintenance / access / hooks | maintenance enable/disable、access 保存、hook 追加/削除 | 固定成功文言と件数または状態を表示する。 | `getMaintenance()` / `getAccessControl()` / `getHooks()` と `getConfigLog()`。 | maintenance enabled 中は build / rollback / 設定変更系を disabled。hook 追加失敗時は command 入力を保持する。 |
 | alert / tag / pipeline / notes / layout | rule 追加/削除、pipeline 保存、notes 保存、dashboard layout 保存 | 固定成功文言を表示する。 | 対象 GET。dashboard layout 保存後は `getDashboard()`、設定ログ対象操作後は `getConfigLog()`。 | duplicate `409` は競合表示。validation `422` は field error。no-op は成功表示のみ。 |
-| tokens / sessions / audit | token 発行/失効、session revoke、audit/API access log 表示 | token 発行時は token 本体を一回表示する。失効/revoke は固定成功文言。 | token 操作は `getTokens()`, `getAuditLog()`。session revoke は `getSessions()`。 | token 本体は次 user action、panel 遷移、logout、`401` で消去する。`403` は logout しない。 |
+| tokens / sessions / audit | token 発行/失効、session revoke、audit/API access log 表示 | token 発行時は token 本体を一回表示する。失効/revoke は固定成功文言。 | token 操作は `getTokens()`, `getAuditLog()`。session revoke は `getSessions()`。 | token 本体は [one-time secret 消去契約](#ui-one-time-secret-contract) でだけ消去する。`403` は logout しない。 |
 
 拡張運用 UI の秘密情報消去条件は以下に固定する。
 
 | 対象 field / 表示 | 消去タイミング |
 |-------------------|----------------|
 | PAT、Webhook Secret、SMTP password | 保存成功、保存失敗、panel 遷移、logout、`401`。 |
-| 発行直後 API token | 次 user action、copy button 押下後、panel 遷移、logout、`401`。 |
-| TOTP secret / ticket / code | confirm 成功、confirm 失敗、panel 遷移、logout、`401`。 |
+| 発行直後 API token / TOTP secret / otpauth URI | [one-time secret 消去契約](#ui-one-time-secret-contract) の trusted event、copy 完了、即時消去、generation 一致条件。 |
+| TOTP ticket / code | confirm 成功、confirm 失敗、panel 遷移、logout、`401`。ticket は DOM に表示しない。 |
 | password / current_password / new_password | login / change 成功、login / change 失敗、logout、`401`。 |
 
 **UI 表示データ固定契約：**
@@ -465,7 +470,7 @@ UI 詳細 fixture 名、fake SDK 入力、expected、合格条件、実装検証
 | no speculative state | UI が status、queue、approval、token、rate limit、trend、failure category、environment、TOTP 状態を API response なしに確定しない。 |
 | secret clearing | password、PAT、Webhook secret、SMTP password、発行 token、TOTP secret、ticket、TOTP code は成功、失敗、panel 遷移、logout、`401`、revoke all で消去される。 |
 | error discipline | `401` は login へ戻す。`403` は logout しない。`409` は仕様上の再取得だけ行う。`422` は field error。`429` は同一操作だけ 10 秒 disabled。 |
-| one-time display | 発行 token、TOTP secret、otpauth URI は専用領域に 1 回だけ表示し、次 user action、copy、panel 遷移、logout、`401` で消去する。 |
+| one-time display | 発行 token、TOTP secret、otpauth URI は [one-time secret 消去契約](#ui-one-time-secret-contract) の専用領域にだけ表示し、trusted event、copy 完了、panel 遷移、logout、`401`、revoke all の固定条件で消去する。 |
 | fixture evidence | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の UI 関連 fixture で、SDK only、refresh order、disabled priority、secret clearing、one-time display、no speculative state が確認される。 |
 
 <a id="sec-27-21-3"></a>
@@ -479,7 +484,7 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 |--------|--------|--------|------|
 | SDK `baseUrl` | `index.html` 内の `data-api-base-url` 属性 | `/api` | 空文字の場合は `/api` を使用する。外部 origin の URL は ui 詳細本文責務では使用しない。 |
 | 初期表示 panel | 固定値 | `panel-login` | token 永続化を行わないため、画面読み込み直後は常にログイン panel を表示する。 |
-| theme token | `:root` CSS custom property | [`docs/DESIGN.md` デザイン責務 §2](../DESIGN.md#2-カラートークンads-トークン) の値 | JavaScript は theme token を変更しない。UI 操作で theme 切替を実装しない。 |
+| theme token | `:root` CSS custom property | [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) の値 | JavaScript は theme token を変更しない。UI 操作で theme 切替を実装しない。 |
 | panel 表示制御 | `hidden` 属性 | 全 panel hidden、`panel-login` のみ表示 | DOM 削除ではなく `hidden` で切り替える。 |
 | API 呼び出し経路 | `AdlaireCI` instance | 1 instance | panel ごとに SDK instance を作らず、画面全体で 1 つの `AdlaireCI` instance を共有する。 |
 

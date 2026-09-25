@@ -1,19 +1,24 @@
-# Adlaire CI 生成 HTML デザイン仕様
+# Adlaire CI Web デザイン仕様
 
-**対象出力：** `adlaire-ci-build` が生成する静的 Web サイト HTML
-**ビルド実装 artifact：** [`components/builder.go`](../components/builder.go) から生成する `adlaire-ci-build`
+**対象 surface：** `adlaire-ci-build` が生成する静的 Web サイトと [`admin/index.html`](../admin/index.html) の標準管理 UI
+**実装 artifact：** 生成静的 Web サイトは [`components/builder.go`](../components/builder.go)、標準管理 UI は [`admin/index.html`](../admin/index.html)
 **デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)
 **更新履歴：** 日付本文を正本化しない。デザイン変更の時系列は Git 履歴と Pull Request を正とする。
 
 ---
 
-[`docs/DESIGN.md`](DESIGN.md) デザイン責務は、生成 HTML のデザイン関係を定義する正本である。生成 HTML のデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンの確認先は [`docs/DESIGN.md`](DESIGN.md) デザイン責務とする。
+[`docs/DESIGN.md`](DESIGN.md) デザイン責務は、生成静的 Web サイトと標準管理 UI のデザイン関係を定義する正本である。生成静的 Web サイトのデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンは [§1〜§8](#1-デザイン方針)、標準管理 UI の視覚仕様は [標準管理 UI 視覚契約](#admin-ui-visual-contract) を確認する。
+
+| surface | デザイン正本範囲 | 挙動の参照先 |
+|---------|------------------|--------------|
+| 生成静的 Web サイト | [§1〜§8](#1-デザイン方針) の token、selector、レイアウト、responsive、print。 | [`docs/details/builder.md`](details/builder.md) |
+| 標準管理 UI | [標準管理 UI 視覚契約](#admin-ui-visual-contract) の token、selector、レイアウト、responsive。 | [`docs/details/ui.md`](details/ui.md) |
 
 デザイン外の正本参照先は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照する。
 
 ## 1. デザイン方針
 
-docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
+[`docs/DESIGN.md` デザイン責務 §1](DESIGN.md#1-デザイン方針)〜[§8](DESIGN.md#8-生成側参照) は生成静的 Web サイトへ適用する。docs.rs / MDN に倣った技術ドキュメントレイアウトとし、14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
 
 - ヘッダーのみアクセントカラーを使う。コンテンツ・サイドバーは中性色ベース
 - CSS カスタムプロパティは [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/`）定義の `--adlaire-*` トークンのみ使用
@@ -61,6 +66,8 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 | h2 | `--adlaire-font-size-xl`（1.5rem） | 600 | 下線（`--adlaire-surface-border` 1px）、上マージン `--adlaire-space-12` |
 | h3 | `--adlaire-font-size-lg`（1.125rem） | 600 | 装飾なし |
 | h4 | `--adlaire-font-size-sm`（0.875rem） | 500 | 左ボーダー（`--adlaire-color-primary` 3px）＋背景（`--adlaire-surface-soft`）、モノスペースフォント |
+| h5 | `0.8125rem` | 600 | 装飾なし、本文色 |
+| h6 | `--adlaire-font-size-xs`（0.75rem） | 600 | 装飾なし、`--adlaire-surface-text-muted` |
 
 本文行長は `max-width: 68ch` でキャップ。
 
@@ -136,6 +143,9 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 | `.lv1` | `14px` | `--adlaire-font-size-sm`（0.875rem） | `--adlaire-surface-text` |
 | `.lv2` | `20px` | `0.8125rem` | `--adlaire-surface-text-muted` |
 | `.lv3` | `34px` | `--adlaire-font-size-xs`（0.75rem） | `--adlaire-surface-text-subtle` |
+| `.lv4` | `42px` | `--adlaire-font-size-xs`（0.75rem） | `--adlaire-surface-text-subtle` |
+| `.lv5` | `50px` | `--adlaire-font-size-xs`（0.75rem） | `--adlaire-surface-text-subtle` |
+| `.lv6` | `58px` | `--adlaire-font-size-xs`（0.75rem） | `--adlaire-surface-text-subtle` |
 
 アクティブ状態：`color: --adlaire-color-secondary`、`background: --adlaire-surface-soft`、`border-left: 2px solid --adlaire-color-primary`
 
@@ -197,6 +207,7 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 |------|----------|
 | light visual baseline | `:root` は light 固定の custom property を定義する。dark / auto selector、dark background、theme toggle の視覚表現を持たない。 |
 | typography / block | admonition、badge、definition list、task list、footnote、math は本文幅内に収め、本文の行長、余白、読みやすさを壊さない。 |
+| typography stability | font size を viewport width に比例させず、負の `letter-spacing` を使わない。hover / focus により border、padding、font weight、要素寸法を変えない。 |
 | code extension | code title、line number、diff highlight は code block と一体で読める配置にし、copy 対象 text と装飾 text を視覚的に区別する。 |
 | navigation runtime UI | section collapse、TOC active、hash focus、skip link は focus indicator と active indicator を常に可視にし、focus / active 化で layout 寸法を変えない。 |
 | media UI | image lightbox、Mermaid placeholder / SVG wrapper、print QR は本文の流れを妨げない。外部画像取得や外部 script 読込を前提にした視覚状態を持たない。 |
@@ -257,3 +268,70 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 ビルド実行方法、入出力パス、既定値、終了コード、レポート出力は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
 
 `builder` が生成する `assets/style.css` は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務の token、selector、視覚値を実装しなければならない。生成処理と出力検証は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
+
+---
+
+<a id="admin-ui-visual-contract"></a>
+
+## 9. 標準管理 UI 視覚契約
+
+標準管理 UI は反復操作と状態比較を行う運用画面とし、装飾的な hero、入れ子の card、背景画像、gradient、外部配信 font、外部配信 CSS、外部配信 JavaScript を使用しない。repository 内の [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) は必須のローカル ES Module として読み込む。ライトモード固定とし、色切替 UI と `prefers-color-scheme` 分岐を持たない。DOM、操作、表示状態、SDK 呼び出しは [`docs/details/ui.md`](details/ui.md)、配布と静的配信は [`docs/details/admin.md`](details/admin.md) を参照する。
+
+**標準管理 UI カラートークン：**
+
+`:root` は `color-scheme: light` と次の custom property だけを持つ。標準管理 UI の JavaScript は値を書き換えない。
+
+| token | 値 | 用途 |
+|-------|----|------|
+| `--bg` | `#f6f7f9` | page background |
+| `--surface` | `#ffffff` | panel、message background |
+| `--text` | `#1f2933` | primary text |
+| `--muted` | `#687385` | label、empty state、secondary text |
+| `--line` | `#d8dde6` | border |
+| `--accent` | `#0f766e` | primary action |
+| `--accent-dark` | `#115e59` | secondary action text |
+| `--danger` | `#b42318` | destructive action、error |
+| `--warn` | `#b45309` | warning banner |
+| `--ok` | `#0f7a3b` | success message |
+| `--focus` | `#2563eb` | keyboard focus indicator |
+
+**標準管理 UI タイポグラフィ・レイアウト：**
+
+| 対象 | 固定値 |
+|------|--------|
+| universal selector | `box-sizing: border-box`。 |
+| `body` | margin `0`、background `var(--bg)`、text `var(--text)`、`font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`、`font-size: 14px`、`line-height: 1.5`。 |
+| button / input / select / textarea | `font: inherit`。 |
+| `.shell` | CSS grid、`grid-template-columns: 260px minmax(0, 1fr)`、`min-height: 100vh`。 |
+| `.sidebar` | width は shell の `260px` track、padding `16px`、右 border `1px solid var(--line)`、background `#202a35`、text `#f9fafb`。 |
+| `.brand` | margin `0 0 16px`、font-size `18px`。 |
+| `.nav` | CSS grid、gap `6px`。 |
+| `.content` | padding `20px`。 |
+| `.panel` | CSS grid、gap `14px`、max-width `1180px`、margin `0 auto 24px`、border `1px solid var(--line)`、radius `8px`、background `var(--surface)`、padding `18px`。 |
+| `.panel h2` | margin `0`、font-size `20px`。 |
+| `.grid` | `repeat(auto-fit, minmax(210px, 1fr))`、gap `12px`。 |
+| `.actions` | flex、wrap、gap `8px`、cross-axis center。 |
+| `.nav button` | width `100%`、transparent border / background、text `#e5e7eb`、左寄せ。`aria-current="page"` の場合は background `#314154`、text `#ffffff`。 |
+| button | min-height `34px`、border `1px solid var(--accent)`、radius `6px`、background `var(--accent)`、text `#ffffff`、padding `6px 12px`、cursor `pointer`。secondary は background `#ffffff` / text `var(--accent-dark)`、danger は border / background `var(--danger)`。 |
+| input / select / textarea | width `100%`、border `1px solid var(--line)`、radius `6px`、background `#ffffff`、text `var(--text)`、padding `7px 9px`。textarea は min-height `88px`、vertical resize。checkbox は width `auto`。 |
+| label | CSS grid、gap `4px`、text `var(--muted)`、font-size `12px`、font-weight `600`。 |
+| `pre` | overflow `auto`、border `1px solid var(--line)`、radius `6px`、background `#f9fafb`、padding `10px`、`white-space: pre-wrap`、`word-break: break-word`。 |
+| `.banner` / `.message` | margin `0 0 12px`、border `1px solid var(--line)`、radius `6px`、background `var(--surface)`、padding `10px 12px`。`.message.error` は border `#f3b6b0` / text `var(--danger)`、`.message.success` は border `#a7e0b8` / text `var(--ok)`、`.banner` は border `#f3d08c` / text `var(--warn)`。 |
+| `.token-once` | border `#9cc8ff`、background `#f0f7ff`、text `#174ea6`。one-time secret 専用領域以外へ適用しない。 |
+| `.output` | min-height `42px`。 |
+| `.inline` | flex、gap `8px`、cross-axis center。内部 checkbox は flex `0 0 auto`。 |
+| `.empty` | text `var(--muted)`。 |
+
+**標準管理 UI responsive・状態表現：**
+
+| 条件 | 固定動作 |
+|------|----------|
+| viewport `> 820px` | `.shell` は sidebar `260px` と content の 2 column。 |
+| viewport `≤ 820px` | `.shell` は `1fr` の 1 column、`.sidebar` は `position: static`。 |
+| `[hidden]` | `display: none !important`。表示切替で DOM 順序を変更しない。 |
+| disabled | cursor `not-allowed`、opacity `0.55`。寸法を変更しない。 |
+| keyboard focus | `button`、`input`、`select`、`textarea`、`a[href]` の `:focus-visible` は `outline: 2px solid var(--focus)` と `outline-offset: 2px` を使用する。border、padding、要素寸法を変更しない。 |
+| error / success / warning | 色だけに依存せず、[`docs/details/ui.md`](details/ui.md) の固定 text と領域で状態を示す。 |
+| overflow | `pre` は内部 scroll を許可し、通常 text、label、button text、field text は親要素外へ不可視にはみ出さない。 |
+
+[`admin/index.html`](../admin/index.html) の inline CSS は、[標準管理 UI 視覚契約](#admin-ui-visual-contract) の token、selector、視覚値を実装しなければならない。視覚値を変更する場合は、先に [`docs/DESIGN.md`](DESIGN.md) デザイン責務を改訂する。

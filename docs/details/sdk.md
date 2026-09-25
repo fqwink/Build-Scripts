@@ -32,8 +32,9 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder`、`URLSearchParams` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
 | 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。Node.js 専用 API、npm package、bundler、polyfill による補完は行わない。 |
 | global 汚染 | `window.AdlaireCI` 等の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
+| 外部 consumer | 必須 browser API を提供する外部 consumer application は、利用側の framework または bundler から本 ES Module を import してよい。consumer 側の framework adapter、package manifest、bundler 設定、polyfill、framework runtime を本リポジトリ、SDK 配布物、標準管理 UI 配布物へ追加してはならない。 |
 | stream 前提 | `streamBuild()` は native `EventSource` を使用しない。Authorization header を付与できる `fetch` streaming を必須実装とする。 |
-| API 対応範囲 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の全 endpoint のうち、GitHub が直接送信する `POST /api/webhook` だけは SDK method を定義しない。それ以外の endpoint は少なくとも 1 SDK method と対応させる。原則は 1 endpoint に 1 method とし、`POST /api/schedule/allowed-hours` だけは request body ありの `setAllowedHours()` と、`{from:null,to:null}` を送る `clearAllowedHours()` の 2 method を明示的例外とする。 |
+| API 対応範囲 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の全 endpoint のうち、GitHub が直接送信する `POST /api/webhook` は SDK method 0 件、`POST /api/schedule/allowed-hours` は request body ありの `setAllowedHours()` と `{from:null,to:null}` を送る `clearAllowedHours()` の 2 件、それ以外は endpoint 表の SDK 列に記載された 1 method と対応させる。表外 method、対応 0 件、明示例外以外の複数 method を禁止する。 |
 
 ```js
 class AdlaireCI {
@@ -68,7 +69,7 @@ class AdlaireCI {
   getRepoInfo()             // GET /api/repo-info            → Promise<RepoInfoObject>
   backup()                  // GET /api/backup               → Promise<BackupObject>
   restore(config)           // POST /api/restore RestoreObject → Promise<{message: string}>
-  notifyTest()              // POST /api/notify-test         → Promise<{message: string, webhook_url: string}>
+  notifyTest()              // POST /api/notify-test         → Promise<{message: string, channel_id: string}>
   buildForce()              // POST /api/build/force         → Promise<{message: string, queue_id: string, queued: true, dispatch: "requested"|"timer_fallback"}>
   patVerify()               // POST /api/pat-verify          → Promise<PatVerifyObject>
   getHistoryLog(id)         // GET /api/history/{id}/log     → Promise<HistoryLogObject>
@@ -210,7 +211,7 @@ SDK の内部 request helper は、すべての public method で [`docs/details
 | 3 | body 生成 | `Request=none` では `body` と `Content-Type` を設定しない。JSON body ありの場合だけ `JSON.stringify()` する。 |
 | 4 | header 生成 | `Accept` を常に付与する。JSON body を送信する場合だけ `Content-Type` を付与する。token が空でない場合だけ `Authorization` を付与し、token が空の場合は `Authorization` header を付けない。 |
 | 5 | timeout 設定 | 通常 request は `AbortController` で 30 秒 timeout。`streamBuild()` は接続確立まで 30 秒。 |
-| 6 | `fetch()` 実行 | network error、abort、CORS 等の失敗はすべて `AdlaireCIError(status=0,message="Network error")`、timeout だけ `"Request timeout"` とする。 |
+| 6 | `fetch()` 実行 | 手順 5 で SDK 自身が設定した timeout により `AbortController` が abort した reject だけを `AdlaireCIError(status=0,message="Request timeout")` とする。timeout 以外の理由で `fetch()` が reject した場合は、例外名や browser 文言を公開せず `AdlaireCIError(status=0,message="Network error")` とする。`streamBuild().close()` による user close は reject として扱わず、StreamHandle 固定契約の terminal transition を適用する。 |
 | 7 | response parse | 成功 / 失敗に関わらず JSON error body がある場合は parse する。parse 不能 error body は `responseBody` に text を保持し、`message` は HTTP status 固定文言とする。 |
 | 8 | token 変化 | `401` の場合だけ `this._token = null`。`403`、`429`、`500`、network error、timeout では token を破棄しない。 |
 | 9 | return / throw | `2xx` は endpoint の型で返す。`4xx` / `5xx` は `AdlaireCIError` を投げる。 |
