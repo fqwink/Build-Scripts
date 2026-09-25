@@ -1,10 +1,10 @@
 # Adlaire CI — UI 詳細仕様
 
-本ファイルは `ui` owner component の詳細本文責務として、`ui` が主本文として持つ実装契約だけを扱う。
+[`docs/details/ui.md`](ui.md) は `ui` owner component の詳細本文責務として、`ui` が主本文として持つ実装契約だけを扱う。
 
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務 §0b.1 に従う。`ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
+owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
-UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
+UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) を参照する。標準管理 UI の色、寸法、余白、配置、responsive、focus の視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
 ---
 
@@ -13,15 +13,15 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | 項目 | 内容 |
 |------|------|
 | owner component | `ui` |
-| collaborator component | `sdk`、`api`、`security` |
+| 実装主体 | [`admin/index.html`](../../admin/index.html) の単一静的ファイル。 |
 | 持つ内容 | `ui` owner が主本文として定義する DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
-| 持たない内容 | SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture 証跡責務。 |
+| 持たない内容 | 色、寸法、余白、配置、responsive、focus の視覚値、SDK method 実装、API endpoint 実装、状態 schema、状態ファイル直接操作、admin 静的配信、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
 ## 24. 標準管理ツール 仕様
 
-[`docs/details/ui.md`](ui.md) 詳細本文責務 §24 は、ui owner の `admin/index.html` 詳細本文責務である。
+[`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) は、ui owner の [`admin/index.html`](../../admin/index.html) 詳細本文責務である。
 
 **ファイル構成：**
 ```
@@ -30,9 +30,10 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 └── adlaire-ci-sdk.js   # SDK（標準管理ツールに同梱）
 ```
 
+<a id="ui-dom-naming-contract"></a>
 **DOM / section / form field 命名契約：**
 
-標準管理ツールは、[`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の DOM 固定表の DOM id、`data-panel`、form field name を使用する。表にない主要パネル id、主要 form name、主要 button id を追加してはならない。表示・非表示は `hidden` 属性で制御し、DOM 要素の生成順は [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の DOM 固定表の順序とする。
+標準管理ツールは、[`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の DOM 固定表の DOM id、`data-panel`、form field name を使用する。表にない主要パネル id、主要 form name、主要 button id を追加してはならない。表示・非表示は `hidden` 属性で制御し、DOM 要素の生成順は [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の DOM 固定表の順序とする。
 
 | パネル | section id | data-panel | 主フォーム id | 主要 field name | 主要 button id |
 |--------|------------|------------|---------------|-----------------|----------------|
@@ -42,26 +43,26 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | 手動実行 | `panel-build` | `build` | なし | なし | `btn-build`, `btn-build-force`, `btn-build-cancel`, `btn-stream-close`, `btn-queue-clear` |
 | 承認待ち | `panel-approvals` | `approvals` | なし | なし | `btn-refresh-approvals` |
 | ログビューア | `panel-logs` | `logs` | `form-log-search` | `n`, `q`, `from`, `to`, `level` | `btn-load-logs`, `btn-search-logs`, `btn-export-logs`, `btn-cleanup-logs`, `btn-archive-logs` |
-| ビルド履歴 | `panel-history` | `history` | `form-history-filter` | `page`, `per_page`, `trigger`, `tag`, `flagged` | `btn-export-history` |
+| ビルド履歴 | `panel-history` | `history` | `form-history-filter` | `page`, `per_page`, `trigger`, `tag`, `flagged`, `failure_category` | `btn-export-history` |
 | システム情報 | `panel-system` | `system` | `form-pat` | `token`, `pat_expires_at` | `btn-pat-verify`, `btn-pat-update` |
 | 通知設定 | `panel-notify` | `notify` | `form-notify` | `webhooks`, `channels`, `on`, `summary`, `email`, `secret`, `smtp_password` | `btn-save-notify`, `btn-notify-test`, `btn-weekly-summary`, `btn-save-webhook-secret`, `btn-save-smtp`, `btn-smtp-test` |
-| 設定 | `panel-config` | `config` | `form-config` | `log_max_lines`, `history_max_count`, `build_timeout_seconds`, `log_retention_days`, `log_archive_after_days`, `log_level`, `queue_max_size`, `snapshots_keep`, `build_retry_max`, `build_retry_base_seconds`, `commit_status_enabled`, `commit_status_context`, `commit_status_target_url`, `build_trend_keep_count`, `duration_anomaly_enabled`, `duration_anomaly_min_samples`, `duration_anomaly_avg_multiplier`, `duration_anomaly_p95_multiplier` | `btn-save-config`, `btn-validate-config`, `btn-set-log-level` |
-| セキュリティ | `panel-security` | `security` | `form-security` | `totp_code`, `api_rate_enabled`, `api_rate_group`, `api_rate_window_seconds`, `api_rate_max_requests`, `session_timeout_seconds` | `btn-load-security`, `btn-totp-setup`, `btn-totp-confirm`, `btn-totp-disable`, `btn-save-api-rate-limit`, `btn-save-session-timeout` |
+| 設定 | `panel-config` | `config` | `form-config` | `log_max_lines`, `history_max_count`, `build_timeout_seconds`, `log_retention_days`, `log_archive_after_days`, `log_level`, `queue_max_size`, `snapshots_keep`, `build_retry_max`, `build_retry_base_seconds`, `commit_status_enabled`, `commit_status_context`, `commit_status_target_url`, `build_trend_keep_count`, `duration_anomaly_enabled`, `duration_anomaly_min_samples`, `duration_anomaly_avg_multiplier`, `duration_anomaly_p95_multiplier`, `backup_file` | `btn-save-config`, `btn-validate-config`, `btn-set-log-level`, `btn-backup`, `btn-restore` |
+| セキュリティ | `panel-security` | `security` | `form-security` | `totp_code`, `api_rate_enabled`, `api_rate_group`, `api_rate_window_seconds`, `api_rate_max_requests`, `session_timeout_seconds` | `btn-load-security`, `btn-totp-setup`, `btn-totp-confirm`, `btn-totp-disable`, `btn-copy-totp-secret`, `btn-copy-totp-otpauth`, `btn-save-api-rate-limit`, `btn-save-session-timeout` |
 | アクセスログ | `panel-access-log` | `access-log` | `form-api-access-log-filter` | `limit`, `offset`, `method`, `path`, `status` | `btn-load-access-log`, `btn-load-api-access-log` |
 | 監査ログ | `panel-audit-log` | `audit-log` | `form-audit-log-filter` | `limit`, `offset`, `actor`, `action`, `result` | `btn-load-audit-log` |
 | 統計 | `panel-stats` | `stats` | なし | なし | `btn-load-stats` |
 | リポジトリ情報 | `panel-repo` | `repo` | `form-repo` | `owner`, `repo`, `branch`, `target_file`, `interval_seconds`, `allowed_from`, `allowed_to`, `maintenance_reason` | `btn-save-repo`, `btn-save-branch-config`, `btn-pause-schedule`, `btn-resume-schedule`, `btn-enable-maintenance`, `btn-disable-maintenance` |
 | セッション管理 | `panel-sessions` | `sessions` | なし | なし | `btn-load-sessions`, `btn-revoke-sessions` |
-| システム診断 | `panel-diagnostics` | `diagnostics` | なし | なし | `btn-run-diagnostics`, `btn-verify-output` |
+| システム診断 | `panel-diagnostics` | `diagnostics` | なし | なし | `btn-run-diagnostics`, `btn-verify-output`, `btn-load-webhook-events` |
 | ビルド比較 | `panel-compare` | `compare` | `form-compare` | `left_build_id`, `right_build_id` | `btn-compare-builds` |
-| API トークン管理 | `panel-tokens` | `tokens` | `form-token` | `label`, `scopes`, `expires_at` | `btn-create-token` |
+| API トークン管理 | `panel-tokens` | `tokens` | `form-token` | `label`, `scopes`, `expires_at` | `btn-create-token`, `btn-copy-issued-token` |
 | 運用ノート | `panel-notes` | `notes` | `form-notes` | `content` | `btn-save-notes` |
 | スナップショット | `panel-snapshots` | `snapshots` | なし | なし | `btn-load-snapshots` |
 | メンテナンス | `panel-maintenance` | `maintenance` | `form-maintenance` | `reason` | `btn-maintenance-enable`, `btn-maintenance-disable` |
 | アクセス制御 | `panel-access-control` | `access-control` | `form-access-control` | `allow` | `btn-save-access-control` |
 | フック | `panel-hooks` | `hooks` | `form-hook` | `phase`, `command_args`, `abort_on_failure` | `btn-add-hook` |
 
-共通領域の DOM id は、`app-root`、`nav-panels`、`global-banner`、`global-error`、`global-success`、`maintenance-banner`、`build-log-stream`、`build-queue-summary`、`issued-token-once` とする。エラー表示要素は各 panel 内に `id="{section-id}-error"`、成功表示要素は `id="{section-id}-success"` を置く。`label[for]` と input `id` は `field-{field_name}` 形式で一致させる。複数行・配列入力は `textarea` または table row で表現し、保存直前に SDK 引数の型へ変換する。
+共通領域の DOM id は、`app-root`、`nav-panels`、`global-banner`、`global-error`、`global-success`、`maintenance-banner`、`build-log-stream`、`build-queue-summary`、`issued-token-once`、`totp-secret-once`、`totp-otpauth-once` とする。エラー表示要素は各 panel 内に `id="{section-id}-error"`、成功表示要素は `id="{section-id}-success"` を置く。`label[for]` と input `id` は `field-{field_name}` 形式で一致させる。複数行・配列入力は `textarea` または table row で表現し、保存直前に SDK 引数の型へ変換する。
 
 **画面構成：**
 
@@ -70,20 +71,20 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | ログイン | パスワード入力フォーム。TOTP が必要な場合は同じ panel 内で TOTP code 入力へ切り替える。 | 未ログイン時のみ |
 | パスワード変更 | 現在・新パスワード入力フォーム | `must_change: "prompt"` または `"forced"` 時（`"forced"` 時は他パネル非表示） |
 | ステータス | 最終ビルド時刻・SHA・成否・出力サイトリンク・ダッシュボードウィジェット編集モード（表示するウィジェットをチェックボックスで選択・並び替え・保存） | ログイン済み |
-| 手動実行 | ビルドトリガーボタン・SHA リセットを含む強制ビルドボタン・キャンセルボタン（実行中のみ有効）・実行結果表示・リアルタイムログ表示エリア（SSE ストリーミング）・キュー状態表示（待機中件数・クリアボタン） | ログイン済み |
-| 承認待ち | 承認待ち build の一覧（id・branch・sha・target・status・created_at・expires_at）・承認ボタン・却下ボタン・再取得ボタン。pending 以外の entry は操作ボタンを disabled にする。 | ログイン済み |
+| 手動実行 | ビルドトリガーボタン・SHA 一致による skip を無効化する強制ビルドボタン・キャンセルボタン（実行中のみ有効）・dispatch 結果表示・保存済み build log の SSE 配信表示エリア・キュー状態表示（active entry・待機中件数・待機列クリアボタン） | ログイン済み |
+| 承認待ち | 承認待ち build の一覧（id・branch・sha・target・requested_trigger・requested_force・status・created_at・expires_at）・承認ボタン・却下ボタン・再取得ボタン。`requested_force=true` は強制 build と明示する。pending 以外の entry は操作ボタンを disabled にする。 | ログイン済み |
 | ログビューア | 最新ビルドログ（n 行・キーワードフィルター・ログレベルフィルターボタン（INFO / WARNING / ERROR / DEBUG）・JSON エクスポートボタン・横断検索フォーム（期間指定）・検索結果一覧） | ログイン済み |
-| ビルド履歴 | 過去ビルド一覧（日時・SHA・成否・トリガー種別・所要時間・重要フラグ列・タグ列・ログ表示リンク・コメント入力欄）・フラグ付きのみ表示フィルター・タグフィルター・ページネーション UI・JSON エクスポートボタン | ログイン済み |
-| システム情報 | 出力サイトサイズ・更新日時・稼働時間・ディスク使用量（ログ合計・出力サイト）・PAT 即時検証ボタン・PAT 更新フォーム・PAT 有効期限表示（設定フォーム・期限切れ間近で警告表示）・GitHub API レート制限表示 | ログイン済み |
+| ビルド履歴 | 過去ビルド一覧（日時・SHA・成否・トリガー種別・所要時間・失敗分類・重要フラグ列・タグ列・ログ表示リンク・コメント入力欄）・フラグ付きのみ表示フィルター・タグフィルター・失敗分類フィルター・ページネーション UI・JSON エクスポートボタン | ログイン済み |
+| システム情報 | 出力サイトサイズ・更新日時・稼働時間・出力 SHA-256・build id・commit SHA・build 日時・heading / table / code block 件数・build warning・サイズ警告・ディスク使用量（ログ合計・出力サイト）・PAT 即時検証ボタン・PAT 更新フォーム・PAT 有効期限表示（設定フォーム・期限切れ間近で警告表示）・GitHub API レート制限表示 | ログイン済み |
 | 通知設定     | Webhook 一覧（追加/削除/ラベル/有効無効切り替え/リトライ回数・間隔設定/シークレット入力欄）・通知条件設定（ビルド開始時・成功時・失敗時）・各 Webhook ペイロードテンプレート編集フォーム（変数一覧表示）・テスト送信ボタン・定期サマリー設定（間隔・時刻・曜日・即時送信ボタン）・送信履歴（試行回数・エラー内容列含む）・メール通知セクション（SMTP 設定フォーム・宛先リスト・通知条件・テスト送信ボタン） | ログイン済み |
-| 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・command_args 入力フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
+| 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・設定バックアップの JSON download・バックアップ JSON 選択によるリストア・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・command_args 入力フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
 | セキュリティ | 単一 admin の TOTP 状態、TOTP setup secret / otpauth URI の一回表示、TOTP 確認/無効化、API rate limit policy、session timeout 設定。QR code 生成は初期実装対象外。 | ログイン済み |
 | アクセスログ | ログイン履歴（日時・成否）・API アクセスログ（method、path、status、duration、actor、remote_addr）・API アクセスログフィルター | ログイン済み |
-| 監査ログ | 設定変更、認証、token、build trigger、権限拒否の監査イベント一覧と actor / action / result フィルター。secret、password、token 本体は表示しない。 | ログイン済み |
+| 監査ログ | 設定変更、認証、session、TOTP、token、build trigger、approval、権限拒否の監査イベント一覧と actor / action / result フィルター。secret、password、token 本体は表示しない。 | ログイン済み |
 | 統計         | ビルド回数・成功率・平均間隔・平均・最大ビルド時間・中央値・p95・異常件数・日別時系列データ（グラフ表示対応） | ログイン済み |
-| リポジトリ情報 | 監視対象リポジトリ・ブランチ・ファイルの確認・設定変更フォーム（OWNER / REPO / BRANCH / TARGET_FILE）・ポーリング間隔変更フォーム・ポーリング一時停止／再開ボタン・許可時間帯設定（from〜to、解除ボタン）・メンテナンスモード有効化フォーム（理由入力）・解除ボタン・現在の状態表示 | ログイン済み |
+| リポジトリ情報 | GitHub repository 識別子の確認・OWNER / REPO 変更フォーム・branch target 一覧・BRANCH / TARGET_FILE / source / output / deploy target 変更フォーム・ポーリング間隔変更フォーム・ポーリング一時停止／再開ボタン・許可時間帯設定（from〜to、解除ボタン）・メンテナンスモード有効化フォーム（理由入力）・解除ボタン・現在の状態表示。repository 識別子と branch target を同一 request body で保存しない。 | ログイン済み |
 | セッション管理 | 有効セッション一覧・全セッション強制無効化ボタン | ログイン済み |
-| システム診断   | PAT・GitHub API・出力サイト・systemd・Webhook の診断項目一覧（ok / warn / error）・診断実行ボタン・アラートバッジ（`GET /api/dashboard` の `alerts` に基づき warn / error を表示）・出力整合性チェック項目（`POST /api/verify-output` 結果表示）・メンテナンスモード中はバナーを全パネル上部に表示 | ログイン済み |
+| システム診断   | PAT・GitHub API・出力サイト・systemd・Webhook の診断項目一覧（ok / warn / error）・診断実行ボタン・Webhook event 最新 50 件（delivery id・event・branch・sha・result・queued id）・アラートバッジ（`GET /api/dashboard` の `alerts` に基づき warn / error を表示）・出力整合性チェック項目（`POST /api/verify-output` 結果表示）・メンテナンスモード中はバナーを全パネル上部に表示 | ログイン済み |
 | ビルド比較     | ビルド履歴から 2 件を選択・ログ並列表示・差分ハイライト（クライアントサイド処理） | ログイン済み |
 | API トークン管理 | 発行済みトークン一覧（ラベル・スコープ・作成日時・最終使用日時・有効期限・失効日時）・新規発行フォーム（ラベル入力・scope 複数選択・有効期限）・発行時のみトークン文字列を表示・失効ボタン | ログイン済み |
 | 運用ノート     | Markdown レンダリング表示・編集モード切替・保存ボタン・最終更新日時表示 | ログイン済み |
@@ -94,7 +95,7 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 
 **UI パネル初期取得契約：**
 
-各パネルを表示する時は、[`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の固定表の SDK method を上から順に呼び出す。表示済み panel へ再遷移した場合も、ユーザー操作で表示した時点で同じ順序で再取得する。空配列はエラーではなく空状態として表示する。
+各パネルを表示する時は、[`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の固定表の SDK method を上から順に呼び出す。表示済み panel へ再遷移した場合も、ユーザー操作で表示した時点で同じ順序で再取得する。空配列はエラーではなく空状態として表示する。
 
 | パネル | 初期取得 SDK method | 空状態表示 |
 |--------|---------------------|------------|
@@ -102,16 +103,16 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | 手動実行 | `getStatus()`, `getQueue()`, `getMaintenance()` | queue なしを 1 行で表示する。 |
 | ログビューア | `getLogs(100,"")` | ログなしを 1 行で表示する。 |
 | ビルド履歴 | `getHistory({page:1,perPage:20})` | 履歴なしを 1 行で表示する。 |
-| システム情報 | `getSysinfo()`, `getPatStatus()`, `getRateLimit()`, `getDiskUsage()` | 取得不能項目は該当ブロックにエラー表示し、他ブロックは表示する。 |
+| システム情報 | `getSysinfo()`, `getOutputMeta()`, `getPatStatus()`, `getRateLimit()`, `getDiskUsage()` | 取得不能項目は該当ブロックにエラー表示し、他ブロックは表示する。`getOutputMeta()` の `build_warnings` は API 配列順、nullable 数値は `null` のまま表示判定し、UI が再計算しない。 |
 | 通知設定 | `getNotifyConfig()`, `getWebhookConfig()`, `getSmtpConfig()`, `getNotifyLog()` | webhook / email / log なしをそれぞれ 1 行で表示する。 |
 | 設定 | `getConfig()`, `getConfigLog()`, `getAccessControl()`, `getHooks()`, `getAlertRules()`, `getTagRules()`, `getPipelineConfig()` | 各一覧なしを 1 行で表示する。 |
 | セキュリティ | `getTotpStatus()`, `getApiRateLimit()`, `getConfig()` | TOTP disabled、rate limit disabled は通常状態として表示する。admin 権限なしの `403` は rate limit と session timeout 編集欄だけ非表示にする。 |
 | アクセスログ | `getAccessLog()`, `getApiAccessLog({limit:100,offset:0})` | ログなしを 1 行で表示する。 |
 | 監査ログ | `getAuditLog({limit:100,offset:0})` | log なしを 1 行で表示する。admin 権限なしの `403` は panel を非表示にする。 |
-| 統計 | `getStats(7)`, `getStatsTimeline(30)`, `getStatsBuildDuration(20)` | 統計対象なしを 1 行で表示する。 |
+| 統計 | `getStats(7)`, `getStatsTimeline(30)`, `getStatsBuildDuration(20)`, `getBuildTrends(100)` | 統計対象なしを 1 行で表示する。 |
 | リポジトリ情報 | `getRepoInfo()`, `getBranchConfig()`, `getSchedule()`, `getMaintenance()` | branch target なしを 1 行で表示する。 |
 | セッション管理 | `getSessions()` | 現 session だけの場合も通常一覧として表示する。 |
-| システム診断 | `getDiagnostics()` | 診断 item なしは `No diagnostics` と表示する。 |
+| システム診断 | `getDiagnostics()`, `getWebhookEvents(50,0)` | 診断 item または webhook event がない領域は、それぞれ空状態を表示する。 |
 | ビルド比較 | `getHistory({page:1,perPage:100})` | 比較対象 2 件未満は compare button を disabled にする。 |
 | API トークン管理 | `getTokens()` | token なしを 1 行で表示する。 |
 | 運用ノート | `getNotes()` | content 空文字は空 editor として表示する。 |
@@ -122,13 +123,16 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 
 UI は、初期取得で一部 API が失敗した場合、ログイン状態を維持し、該当 panel の error 領域に失敗を表示する。ただし `401` は全 panel 表示を中止してログイン画面へ戻す。
 
+`health()` は外部死活監視クライアント用 SDK method とし、標準管理ツールは呼び出さない。ステータス表示は `getDashboard()` と `getStatus()` の response を使用する。
+
 **パスワード変更フロー：**
 - `must_change: "prompt"`: パスワード変更パネルを表示。他パネルも操作可能
 - `must_change: "forced"`: パスワード変更パネルのみ表示。変更完了後に通常画面へ遷移
 
+<a id="ui-operation-contract"></a>
 **UI 操作契約表：**
 
-標準管理ツールは、[`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の固定表の SDK method 以外を直接呼び出してはならない。ファイル操作、`fetch()` の直接呼び出し、`systemctl` 実行、`runner` 直接起動は禁止する。成功時表示は対象パネル内に 1 行で表示し、失敗時表示は `AdlaireCIError.message` と `details` を同じパネル内に表示する。
+標準管理ツールは、[`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の固定表の SDK method 以外を直接呼び出してはならない。ファイル操作、`fetch()` の直接呼び出し、`systemctl` 実行、`runner` 直接起動は禁止する。成功時表示は対象パネル内に 1 行で表示し、失敗時表示は `AdlaireCIError.message` と `details` を同じパネル内に表示する。
 
 | パネル | 操作 | SDK method | 成功時表示 | 成功後再取得 | disabled 条件 |
 |--------|------|------------|------------|--------------|---------------|
@@ -138,17 +142,18 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | 全パネル共通 | ログアウト | `logout()` | ログイン画面へ戻る | なし | 送信中 |
 | ステータス | 再読み込み | `getDashboard()` | 最終更新時刻を表示 | `getDashboard()` | 読み込み中 |
 | ステータス | ウィジェット保存 | `setDashboardLayout(widgets)` | `Dashboard layout updated` | `getDashboardLayout()`, `getDashboard()` | widgets 空配列、送信中 |
-| 手動実行 | ビルド開始 | `triggerBuild()` | `Build queued` または `Build started` | `getStatus()`, `getQueue()` | running true、maintenance enabled、送信中 |
-| 手動実行 | 強制ビルド | `buildForce()` | `Force build queued` または `Force build started` | `getStatus()`, `getQueue()` | maintenance enabled、送信中 |
+| 手動実行 | ビルド要求 | `triggerBuild()` | `Build queued`。`dispatch="timer_fallback"` は `Runner activation deferred; timer fallback` を同じ panel の warning に追加する。 | `getStatus()`, `getQueue()` | maintenance enabled、queue capacity full、送信中 |
+| 手動実行 | 強制ビルド要求 | `buildForce()` | `Force build queued`。`dispatch="timer_fallback"` は通常 build と同じ warning を追加する。 | `getStatus()`, `getQueue()` | maintenance enabled、queue capacity full、送信中 |
 | 手動実行 | キャンセル | `cancelBuild()` | `Build cancelled` | `getStatus()`, `getQueue()` | running false、送信中 |
-| 手動実行 | リアルタイムログ開始 | `streamBuild(onLine,onEnd)` | ログ行を追記 | `getStatus()`, `getQueue()` on end | token なし、接続中 |
+| 手動実行 | 保存済みログ配信開始 | `streamBuild(onLine,onEnd)` | ログ行を固定順で追記し、`end.status="running"` は途中保存 snapshot と表示する。 | `StreamHandle.done` の結果に従い `getStatus()`, `getQueue()`、正常 end だけ `getLogs()` | token なし、接続中 |
 | 手動実行 | キュー削除 | `clearQueue()` | `Queue cleared` | `getQueue()`, `getStatus()` | queue 空、送信中 |
 | ログビューア | 最新ログ取得 | `getLogs(n,q)` | ログ行を表示 | なし | 読み込み中 |
-| ログビューア | 横断検索 | `searchLogs(q,from,to)` | 検索結果件数を表示 | なし | 日付不正、検索中 |
+| ログビューア | 横断検索 | `searchLogs(q,from,to,level)` | 検索結果件数を表示 | なし | 日付または level 不正、検索中 |
 | ログビューア | JSON export | `exportLogs()` | export 完了表示 | なし | 処理中 |
 | ログビューア | cleanup | `cleanupLogs()` | 削除件数を表示 | `getLogs()`, `getDiskUsage()` | 処理中 |
 | ログビューア | archive | `archiveLogs()` | 圧縮件数を表示 | `getLogs()`, `getDiskUsage()` | 処理中 |
-| ビルド履歴 | 一覧取得 | `getHistory({page,perPage,trigger,tag,flagged})` | 件数を表示 | なし | 読み込み中 |
+| ビルド履歴 | 一覧取得 | `getHistory({page,perPage,trigger,tag,flagged,failureCategory})` | 件数を表示し、`warnings` が非空なら panel 内 warning に表示 | なし | 読み込み中 |
+| ビルド履歴 | JSON export | `exportHistory()` | `History exported` と表示し、UTF-8 JSON を `adlaire-ci-history-{YYYYMMDDHHmmss}.json` として browser download する | なし | 処理中 |
 | ビルド履歴 | コメント保存 | `setHistoryComment(id,comment)` | `Comment saved` | `getHistory()`, `getHistoryComment(id)` | id 未選択、送信中 |
 | ビルド履歴 | 重要フラグ切替 | `setHistoryFlag(id,flagged)` | `Flag updated` | `getHistory()` | id 未選択、送信中 |
 | ビルド履歴 | タグ保存 | `setHistoryTags(id,tags)` | `Tags updated` | `getHistory()` | id 未選択、送信中 |
@@ -169,6 +174,8 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | 設定 | alert rule 追加/削除 | `addAlertRule()`, `deleteAlertRule(id)` | rule 件数を表示 | `getAlertRules()`, `getDashboard()` | 入力不正、送信中 |
 | 設定 | tag rule 追加/削除 | `addTagRule()`, `deleteTagRule(id)` | rule 件数を表示 | `getTagRules()` | 入力不正、送信中 |
 | 設定 | pipeline config 保存 | `setPipelineConfig(config)` | `Pipeline config updated` | `getPipelineConfig()`, `getConfigLog()` | 入力不正、送信中 |
+| 設定 | 設定バックアップ | `backup()` | `Backup downloaded` と表示し、UTF-8 JSON を `adlaire-ci-backup-{YYYYMMDDHHmmss}.json` として browser download する | なし | 処理中 |
+| 設定 | 設定リストア | `restore(config)` | `Restore completed` | `getConfig()`, `getNotifyConfig()`, `getWebhookConfig()`, `getSmtpConfig()`, `getAccessControl()`, `getPipelineConfig()`, `getConfigLog()` | file 未選択、JSON parse 失敗、確認未完了、送信中 |
 | セキュリティ | TOTP setup | `setupTotp()` | secret と otpauth URI を一回表示 | なし | TOTP enabled、送信中 |
 | セキュリティ | TOTP confirm | `confirmTotp(code)` | `TOTP enabled` | `getTotpStatus()`, `getAuditLog()` | code 空欄、送信中 |
 | セキュリティ | TOTP disable | `disableTotp(code)` | `TOTP disabled` | `getTotpStatus()`, `getAuditLog()` | code 空欄、送信中 |
@@ -178,12 +185,13 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | アクセスログ | API アクセスログ取得 | `getApiAccessLog({limit,offset,method,path,status})` | 件数を表示 | なし | 読み込み中 |
 | 監査ログ | 取得 | `getAuditLog({limit,offset,actor,action,result})` | 件数を表示 | なし | 読み込み中 |
 | 統計 | 取得 | `getStats()`, `getStatsTimeline()`, `getStatsBuildDuration()` | グラフと数値を更新 | なし | 読み込み中 |
-| リポジトリ情報 | repo 保存 | `setRepoConfig(config)` | `Repo config updated` | `getRepoInfo()`, `getConfigLog()` | 入力不正、送信中 |
+| リポジトリ情報 | repo 保存 | `setRepoConfig({owner,repo})` | `Repo config updated` | `getRepoInfo()`, `getConfigLog()` | owner / repo の両方が空、入力不正、送信中。branch / target field はこの request に含めない。 |
 | リポジトリ情報 | branch config 保存 | `setBranchConfig(branches)` | `Branch config updated` | `getBranchConfig()`, `getConfigLog()` | 入力不正、送信中 |
 | リポジトリ情報 | schedule 変更 | `setScheduleInterval()`, `pauseSchedule()`, `resumeSchedule()`, `setAllowedHours()`, `clearAllowedHours()`, `setForceInterval()`, `setBuildCooldown()` | schedule 変更結果を表示 | `getSchedule()`, `getConfigLog()` | 入力不正、送信中 |
 | セッション管理 | 全 revoke | `revokeAllSessions()` | revoke 件数を表示 | `getSessions()` | 送信中 |
 | システム診断 | 診断実行 | `getDiagnostics()` | 診断結果を表示 | なし | 読み込み中 |
 | システム診断 | 出力 checksum 検証 | `verifyOutput()` | match 結果を表示 | なし | 送信中 |
+| システム診断 | Webhook event 再取得 | `getWebhookEvents(50,0)` | 最新 50 件と total を表示 | なし | 読み込み中 |
 | API トークン管理 | token 発行 | `createToken(label,scopes,expiresAt)` | token 本体を 1 回だけ表示 | `getTokens()`, `getAuditLog()` | label 空欄、scope 未選択、送信中 |
 | API トークン管理 | token 失効 | `revokeToken(id)` | `Token revoked` | `getTokens()` | id 未選択、送信中 |
 | 運用ノート | 保存 | `setNotes(content)` | `Notes updated` | `getNotes()` | 送信中 |
@@ -210,10 +218,10 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | `503` | メンテナンスバナーを表示し、ビルド操作ボタンを disabled にする。 |
 | 秘密情報入力 | password、TOTP code、TOTP secret、PAT、Webhook Secret、SMTP password、発行直後 token は画面遷移、成功表示、再取得後にフォーム値から消去する。 |
 | 自動更新 | ステータス、キュー、SSE 以外のパネルは自動ポーリングしない。ユーザー操作または画面表示時に取得する。 |
-| SSE 切断 | `streamBuild()` が error になった場合はリアルタイム表示を停止し、`getStatus()` と `getQueue()` を再取得する。ユーザーが停止した場合はエラー表示しない。 |
+| SSE 切断 | `streamBuild()` の接続前 reject と `StreamHandle.done` の接続後 reject を同じ stream error 経路で処理し、保存済み log 配信表示を停止し、error を 1 回表示して `getStatus()` と `getQueue()` をこの順で再取得する。`StreamHandle.close()` による `done` の `null` resolve はユーザー停止とし、エラー表示しない。`404` は配信可能な保存済み log がまだない状態として panel 内に表示し、過去 log を UI が代替選択しない。 |
 | フォーム保存 | 保存 API が成功するまで UI 上の表示値を確定表示にしない。失敗時は入力値を保持する。 |
 | 入力検証 | UI は送信前に必須入力、数値範囲、配列空、URL、CIDR、日付形式を検証する。UI 検証に通っても API 側検証は省略しない。 |
-| 破壊的操作 | snapshot 削除、token 失効、queue clear、session revoke all、rollback はクリック後に確認ダイアログを 1 回表示する。確認文には対象 ID または件数を含める。 |
+| 破壊的操作 | snapshot 削除、token 失効、queue clear、session revoke all、rollback、設定リストアはクリック後に確認ダイアログを 1 回表示する。確認文には対象 ID、件数、または選択した backup filename を含める。 |
 | 表示時刻 | API から受け取った UTC ISO 8601 はブラウザのローカル時刻で表示する。ただし data 属性または title 属性に元の ISO 8601 文字列を保持する。 |
 | 一覧の空状態 | 配列が空の場合は、空表ではなくパネル内に 1 行の空状態メッセージを表示する。空状態はエラーとして扱わない。 |
 | focus / aria | `422` は最初の invalid field へ focus する。`401` はログイン password field へ focus する。SSE ログ領域は `aria-live="polite"` とし、エラー領域は `role="alert"` とする。 |
@@ -226,7 +234,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 2. `window.AdlaireCI` 等の global 参照を使わず、`./adlaire-ci-sdk.js` から `AdlaireCI` と `AdlaireCIError` を ES Module import する。
 3. `AdlaireCI` を `new AdlaireCI({baseUrl})` で 1 回だけ生成する。`baseUrl` は同一 origin の `/api` を既定値とし、外部 origin は ui 詳細本文責務では許可しない。
 4. すべての panel を `hidden=true` にし、`panel-login` だけを表示する。
-5. form submit と button click の event listener を登録する。登録対象は [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の DOM / section / form field 命名契約表の id に限定する。
+5. form submit と button click の event listener を登録する。登録対象は [DOM / section / form field 命名契約表](#ui-dom-naming-contract) の id に限定する。
 6. `localStorage`、`sessionStorage`、Cookie から token を読み込まない。
 7. `global-error`、`global-success`、各 panel error/success を空にする。
 8. login password field へ focus する。
@@ -239,27 +247,32 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 2. UI 側入力検証を行う。失敗時は SDK method を呼ばない。
 3. 対象 button と同一操作グループを disabled にする。
 4. SDK method を呼ぶ。
-5. 成功時は成功メッセージを表示し、[`docs/details/ui.md`](ui.md) 詳細本文責務 §24 UI 操作契約表の成功後再取得を左から順に実行する。
+5. 成功時は成功メッセージを表示し、[UI 操作契約表](#ui-operation-contract) の成功後再取得を左から順に実行する。
 6. 失敗時は `AdlaireCIError` として表示する。`TypeError` は UI 実装エラーとして `global-error` に `Client error` を表示する。
 7. 秘密情報 field を消去する。
 8. disabled を解除する。ただし `401`、`503`、SSE 接続中、メンテナンス中、または仕様上 disabled 条件が継続する場合は解除しない。
 
-秘密情報 field は、`password`、`current_password`、`new_password`、`totp_code`、`token`、`secret`、`smtp_password`、`issued-token-once`、`totp-secret-once` とする。これらは成功、失敗、画面遷移、`401`、`logout()`、`revokeAllSessions()` のいずれの場合も DOM 値を空にする。発行直後 token は `issued-token-once`、TOTP setup secret は `totp-secret-once` に 1 回だけ表示し、次の任意の user action で消去する。
+<a id="ui-one-time-secret-contract"></a>
+秘密情報 field は、`password`、`current_password`、`new_password`、`totp_code`、`token`、`secret`、`smtp_password`、`issued-token-once`、`totp-secret-once`、`totp-otpauth-once` とする。これらは成功、失敗、panel 遷移、`401`、`logout()`、`revokeAllSessions()` のいずれの場合も DOM 値を空にする。発行直後 token、TOTP setup secret、otpauth URI はそれぞれ `issued-token-once`、`totp-secret-once`、`totp-otpauth-once` にだけ表示し、同じ値を別の DOM property、attribute、一覧、message へ複製しない。新しい one-time 値を表示する前に旧値の listener と timer を解除し、旧値を消去してから新しい generation を開始する。
+
+one-time 値の表示を開始した event task の終了後に消去 listener を有効化する。有効化後、`Event.isTrusted === true` の `click`、`submit`、`input`、`change`、`keydown`、`copy` のいずれかを最初に受けたら、対象 generation の 3 領域をすべて消去し、listener を解除する。`Event.isTrusted === false`、timer、network callback、SDK 再取得、`focus`、`blur`、`mousemove`、`scroll` は user action として扱わない。panel 遷移、`401`、`logout()`、`revokeAllSessions()` は listener 有効化前でも直ちに消去する。旧 generation の遅延 callback は generation 一致を確認し、現在値を消去しない。
+
+`btn-copy-issued-token`、`btn-copy-totp-secret`、`btn-copy-totp-otpauth` は対応値の表示中だけ enabled とする。各 click handler は SDK method を呼ばず、対応する現在 generation の DOM 値を `navigator.clipboard.writeText()` へ1 回だけ渡す。その Promise が fulfilled なら panel success に `Copied`、rejected または API 不在なら panel error に `Copy failed` を表示し、どちらも確定後に 3 領域を消去する。copy button の trusted `click` は汎用消去 listener で先に消去せず、copy handler 完了時の消去だけを適用する。別の対象への trusted `copy` はブラウザの既定 copy 処理後と同じ event task 内で消去する。
 
 **UI 操作完全性検証契約：**
 
-標準管理ツールの詳細実装確認では、[`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の DOM / section / form field 命名契約表と UI 操作契約表を照合し、[`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の固定表を満たす。
+標準管理ツールの詳細実装確認では、[DOM / section / form field 命名契約表](#ui-dom-naming-contract) と [UI 操作契約表](#ui-operation-contract) を照合し、両契約の全条件を満たす。
 
 | 検証項目 | 合格条件 |
 |----------|----------|
-| panel coverage | DOM / section / form field 命名契約表の `section id` がすべて `index.html` に存在する。 |
-| button coverage | UI 操作契約表の各操作に対応する button または form submit が存在し、event listener が 1 つだけ登録される。 |
-| SDK only | UI 操作契約表の SDK method 以外を UI から呼び出していない。直接 `fetch()`、`XMLHttpRequest`、`EventSource` を使用していない。 |
+| panel coverage | [DOM / section / form field 命名契約表](#ui-dom-naming-contract) の `section id` がすべて `index.html` に存在する。 |
+| button coverage | [UI 操作契約表](#ui-operation-contract) の各操作に対応する button または form submit が存在し、event listener が 1 つだけ登録される。 |
+| SDK only | [UI 操作契約表](#ui-operation-contract) の SDK method 以外を UI から呼び出していない。直接 `fetch()`、`XMLHttpRequest`、`EventSource` を使用していない。 |
 | success refresh | 成功後再取得列に複数 method がある場合、左から順に await し、途中失敗時は残りを中止して error 表示する。 |
 | disabled restore | 操作失敗時も、継続条件がない限り disabled を解除する。`401`、`503`、SSE 接続中、メンテナンス中は解除しない。 |
-| secret clearing | [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の秘密情報 field が、成功、失敗、画面遷移、`401`、logout、revoke all の全経路で空になる。 |
+| secret clearing | [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の秘密情報 field が、成功、失敗、画面遷移、`401`、logout、revoke all の全経路で空になる。 |
 | empty state | UI パネル初期取得契約の空状態表示が、各 panel 内に 1 行で表示される。 |
-| global error | 初期化失敗、SDK constructor 失敗、想定外 `TypeError` は `global-error` に固定文言 `Client error` または `UI initialization failed` を表示する。 |
+| global error | SDK constructor または初期 DOM binding の失敗は `global-error` に `UI initialization failed` を表示する。初期化完了後、[UI 操作契約表](#ui-operation-contract) と field error mapping のどちらにも割り当てられていない `TypeError` は `global-error` に `Client error` を表示する。field error mapping 対象の `TypeError` を global error に重複表示しない。 |
 
 **UI 状態遷移固定契約：**
 
@@ -280,7 +293,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 **UI 操作状態固定契約：**
 
-標準管理ツールは、同一操作の多重実行、API 成功前の確定表示、秘密情報の残存を防ぐため、各操作を [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の固定表の状態で管理する。
+標準管理ツールは、同一操作の多重実行、API 成功前の確定表示、秘密情報の残存を防ぐため、各操作を [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の固定表の状態で管理する。
 
 | 状態 | 開始条件 | UI 表示 | 許可される遷移 |
 |------|----------|---------|----------------|
@@ -294,7 +307,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | `failed` | SDK method が `AdlaireCIError` を投げる | panel error と field error を表示する。secret field を消去する。 | `idle` / `unauthorized` |
 | `unauthorized` | `401` | token / ticket / secret field を消去し、全 panel を hidden、`panel-login` だけ表示する。 | `idle` |
 
-同一 panel に複数操作がある場合でも、`sending` による disabled は同一操作グループに限定する。ただし [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の disabled 優先順位で maintenance、forced password change、SSE 接続中、`401` が上位条件として残る場合は、その上位条件に従う。UI は `sending` または `refreshing` の間、同じ SDK method を再実行してはならない。
+同一 panel に複数操作がある場合でも、`sending` による disabled は同一操作グループに限定する。ただし [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の disabled 優先順位で maintenance、forced password change、SSE 接続中、`401` が上位条件として残る場合は、その上位条件に従う。UI は `sending` または `refreshing` の間、同じ SDK method を再実行してはならない。
 
 秘密情報 field は、`blocked` のうち確認 dialog cancel を除き、`succeeded`、`refresh_failed`、`failed`、`unauthorized`、panel 遷移、logout、revoke all のいずれでも空にする。API 成功前に入力欄以外の確定表示、一覧更新、badge 更新、設定値反映を行ってはならない。入力中の form 値は、secret を除き、`failed` と `refresh_failed` では保持する。
 
@@ -308,7 +321,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | disabled | 送信中 disabled は操作単位で行う。同一 panel の無関係 button は disabled にしない。ただし maintenance、forced password change、SSE 接続中は仕様上の対象をまとめて disabled にする。 |
 | error 領域 | panel ごとに 1 つの error 領域を使う。field error は該当 field に紐付け、panel error にも summary を 1 行表示する。 |
 | success 領域 | 変更系操作成功時だけ更新する。GET 再読み込みだけでは success を表示しない。 |
-| secret one-time 表示 | issued token と TOTP secret は専用領域に 1 回だけ表示し、任意の次 user action、panel 遷移、logout、`401` で消去する。 |
+| secret one-time 表示 | issued token、TOTP secret、otpauth URI は [one-time secret 消去契約](#ui-one-time-secret-contract) の専用領域、trusted event、copy 完了、即時消去、generation 一致に従う。 |
 
 **破壊的操作確認文言：**
 
@@ -316,69 +329,68 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 |------|--------|
 | snapshot 削除 | `Delete snapshot {id}?` |
 | token 失効 | `Revoke token {id}?` |
-| queue clear | `Clear {count} queued builds?` |
+| queue clear | `Clear {count} waiting builds?`。`count` は `getQueue().queued.length` だけを使い、active を含めない。 |
 | session revoke all | `Revoke all other sessions?` |
 | rollback | `Rollback from build {id}?` |
 
 確認 dialog で cancel した場合は SDK method を呼ばず、success / error 表示を変更しない。
 
-UI 共通 fixture 名、入力、fake SDK、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F UI owner fixture 固定契約を正本とする。[`docs/details/ui.md`](ui.md) 詳細本文責務では、DOM 更新、破壊的操作確認、secret one-time 表示、SDK 呼び出し境界の実装契約だけを扱う。
+UI 共通 fixture 名、入力、fake SDK、expected、合格条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) UI owner fixture 固定契約を正本とする。[`docs/details/ui.md`](ui.md) 詳細本文責務では、DOM 更新、破壊的操作確認、secret one-time 表示、SDK 呼び出し境界の実装契約だけを扱う。
 
-**Phase 3 UI 操作固定契約：**
+<a id="sec-3"></a>
+**基本運用 UI 操作固定契約：**
 
-Phase 3 UI は、ビルド状態確認、手動ビルド、強制ビルド、キャンセル、SSE ログ表示、履歴、ログ、キュー、circuit breaker reset だけを最小運用操作として固定する。UI は SDK response に存在しない状態を推測せず、API / SDK の error status と message に基づいて表示を分岐する。
+基本運用 UI は、ビルド状態確認、手動ビルド、強制ビルド、キャンセル、SSE ログ表示、履歴、ログ、キュー、circuit breaker reset の操作契約を固定する。UI は SDK response に存在しない状態を推測せず、API / SDK の error status と message に基づいて表示を分岐する。
 
 | 操作 | 使用 SDK method | 成功時表示 | 成功後再取得 | 失敗時表示 / disabled |
 |------|-----------------|------------|--------------|------------------------|
 | 初期状態取得 | `getStatus()`, `getQueue()` | status badge、last build、queue 件数を表示する。 | なし | `500` は status panel error。`401` は login panel へ戻す。 |
-| 手動 build | `triggerBuild()` | `Build queued` または `Build started` を表示する。 | `getStatus()`, `getQueue()` | `409` は競合表示後に status/queue 再取得。`429` は build button を 10 秒 disabled。`503` は maintenance/circuit 表示。 |
-| 強制 build | `buildForce()` | `Force build queued` または `Force build started` を表示する。 | `getStatus()`, `getQueue()` | `409`、`429`、`503` は手動 build と同じ扱い。 |
+| 手動 build | `triggerBuild()` | `Build queued` と queue id を表示する。`dispatch="timer_fallback"` は runner 未開始の待機 warning を併記する。 | `getStatus()`, `getQueue()` | `409 circuit_open` は circuit 表示、その他の `409` は競合表示後に status/queue 再取得。`429` は build button を 10 秒 disabled。`503 maintenance` / `maintenance_unavailable` は maintenance 表示。 |
+| 強制 build | `buildForce()` | `Force build queued` と queue id を表示し、dispatch warning は手動 build と同じ規則にする。 | `getStatus()`, `getQueue()` | `409`、`429`、`503` は手動 build と同じ error body 判定を使用する。 |
 | cancel | `cancelBuild()` | `Build cancel requested` を表示する。 | `getStatus()`, `getQueue()` | `409` は「実行中 build なし」として表示し、status/queue を再取得する。 |
-| SSE 表示開始 | `streamBuild(onLine,onEnd)` | 接続中は stream indicator を表示し、受信行を append する。 | `onEnd` 後に `getStatus()`, `getQueue()`, `getLogs()` | invalid frame / network error は stream error 表示後に status/queue 再取得。ユーザー停止は error 表示なし。 |
+| SSE 表示開始 | `streamBuild(onLine,onEnd)` | 接続中は stream indicator を表示し、受信行を append する。`onEnd.status="running"` と `duration_seconds:null` は有限 snapshot の終端として表示し、build 完了表示へ変換しない。 | `StreamHandle.done` が summary で resolve した後に `getStatus()`, `getQueue()`, `getLogs()` | `done` reject は stream error 表示後に status/queue 再取得。`done` が `null` で resolve するユーザー停止は error 表示なし。 |
 | ログ取得 | `getLogs(n,q)` | 行順を保持して log panel に表示する。空配列は空状態表示。 | なし | `500` は log panel error。検索条件は保持する。 |
-| 履歴取得 | `getHistory(options)` | `total`、`pages`、history 行を API 順序で表示する。 | なし | `422` は該当 filter field、`500` は history panel error。 |
+| 履歴取得 | `getHistory(options)` | `total`、`pages`、history 行を API 順序で表示し、`warnings` は配列順で同じ panel に 1 回ずつ表示する。 | なし | `422` は該当 filter field、`500` は history panel error。 |
 | 履歴 log 表示 | `getHistoryLog(id)` | 選択 build の log detail を表示する。 | なし | `404` は選択解除して not found 表示。`500` は detail error。 |
-| キュー取得 | `getQueue()` | queue 件数、max size、各 entry を API 順序で表示する。 | なし | `500` は queue panel error。 |
+| キュー取得 | `getQueue()` | active を実行中または再実行待ちとして 1 件の専用行へ表示し、waiting 件数、max size、waiting entry を API 順序で別表示する。 | なし | `500` は queue panel error。active を waiting 件数に含めない。 |
 | circuit reset | `resetCircuitBreaker()` | `Circuit breaker reset` を表示する。 | `getStatus()`, `getQueue()` | `500` は circuit error。成功後に build を自動開始しない。 |
 
-Phase 3 UI の disabled 条件は以下に固定する。
+基本運用 UI の disabled 条件は以下に固定する。
 
 | 条件 | disabled 対象 | 解除条件 |
 |------|---------------|----------|
 | SDK method 実行中 | 同一操作 button と同一 form submit | 成功または失敗後。ただし次の継続条件がある場合は解除しない。 |
-| `streamBuild()` 接続中 | stream 開始 button、manual build button、force build button | `end` frame、stream error、またはユーザー停止。 |
-| `getStatus().running=true` | manual build button。force build は仕様上許可される場合のみ有効。rollback は disabled。 | 次回 `getStatus().running=false`。 |
+| `streamBuild()` 接続中 | stream 開始 button、manual build button、force build button | `StreamHandle.done` の resolve / reject、またはユーザー停止。 |
+| queue capacity full | manual build button、force build button。active または running がある場合は `queued.length >= max_size`、どちらもない場合は `queued.length >= max(1,max_size)` で判定する。rollback は running 中だけ disabled。 | `getQueue()` 再取得で空きが確認できた場合。 |
 | `429` | 同一操作 button | 10 秒経過後に status/queue 再取得し、継続条件がなければ解除する。 |
-| `503` maintenance / circuit | build、force build、cancel 以外の状態変更操作。circuit reset は有効。 | maintenance disabled または circuit reset 成功後の再取得。 |
+| `409 circuit_open` | manual build、force build、rollback。circuit reset は有効。 | circuit reset 成功後の status/queue 再取得。 |
+| `503 maintenance` / `maintenance_unavailable` | maintenance 中に仕様上禁止される状態変更操作。maintenance 状態取得と許可された解除操作は有効。 | maintenance disable 成功後、または unavailable 原因解消後の再取得。 |
 | `401` | 全 authenticated 操作 | login 成功後。 |
 
-Phase 3 UI fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F UI owner fixture 固定契約を正本とする。
+<a id="sec-4"></a>
+**拡張運用 UI 操作固定契約：**
 
-**Phase 4 UI 操作固定契約：**
-
-Phase 4 UI は、[`docs/details/ui.md`](ui.md) 詳細本文責務 §24 UI 操作契約表の SDK method だけを呼び出す。UI は API / SDK response の補完、状態ファイル直接操作、未定義 endpoint 呼び出し、保存成功前の確定表示を行ってはならない。
+拡張運用 UI は、[`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) UI 操作契約表の SDK method だけを呼び出す。UI は API / SDK response の補完、状態ファイル直接操作、未定義 endpoint 呼び出し、保存成功前の確定表示を行ってはならない。
 
 | 機能群 | 主操作 | 成功時表示 | 成功後再取得 | 失敗時表示 / disabled |
 |--------|--------|------------|--------------|------------------------|
 | config / repo / branch | config 保存、repo 保存、branch config 保存、config validate | API message を表示する。validate は `valid` と errors / warnings を表示する。 | 保存系は `getConfig()` または対象 GET と `getConfigLog()`。validate は再取得なし。 | `422` は field error。`500` は panel error。入力値は保持する。 |
 | schedule | interval、pause、resume、allowed hours、force interval、cooldown | 変更後値を表示する。 | `getSchedule()`, `getConfigLog()` | systemd 失敗 `500` は schedule panel error とし、再取得で保存済み値を表示する。 |
-| diagnostics / dashboard | diagnostics、dashboard、rate limit、disk、output meta 取得 | item ごとの ok/warn/error を表示する。 | なし | HTTP error は panel error。item warn/error を HTTP error として扱わない。 |
+| diagnostics / dashboard | `getDiagnostics()`、`getDashboard()`、`getRateLimit()`、`getDiskUsage()`、`getOutputMeta()` | diagnostics item ごとの ok/warn/error と、各 API response の固定 field を表示する。 | なし | HTTP error は panel error。item warn/error を HTTP error として扱わない。output meta の checksum、report、build meta を他 response から補完しない。 |
 | notify / SMTP / webhook | notify config 保存、webhook secret 保存、SMTP 保存、test、weekly summary、webhook events 表示 | API message、送信結果、件数を表示する。 | 保存系は対象 GET と `getConfigLog()`。test / summary は `getNotifyLog()`。 | secret 入力は成功・失敗の両方で消去する。未設定 `422` / `501` は panel error。 |
 | snapshots / rollback | snapshot list、download、delete、rollback | list 件数、download 開始、delete 完了、rollback 開始を表示する。 | delete は `getSnapshots()`。rollback は `getHistory()`, `getStatus()`。 | delete / rollback は確認 dialog 必須。running `409` は status 再取得。 |
 | maintenance / access / hooks | maintenance enable/disable、access 保存、hook 追加/削除 | 固定成功文言と件数または状態を表示する。 | `getMaintenance()` / `getAccessControl()` / `getHooks()` と `getConfigLog()`。 | maintenance enabled 中は build / rollback / 設定変更系を disabled。hook 追加失敗時は command 入力を保持する。 |
 | alert / tag / pipeline / notes / layout | rule 追加/削除、pipeline 保存、notes 保存、dashboard layout 保存 | 固定成功文言を表示する。 | 対象 GET。dashboard layout 保存後は `getDashboard()`、設定ログ対象操作後は `getConfigLog()`。 | duplicate `409` は競合表示。validation `422` は field error。no-op は成功表示のみ。 |
-| tokens / sessions / audit | token 発行/失効、session revoke、audit/API access log 表示 | token 発行時は token 本体を一回表示する。失効/revoke は固定成功文言。 | token 操作は `getTokens()`, `getAuditLog()`。session revoke は `getSessions()`。 | token 本体は次 user action、panel 遷移、logout、`401` で消去する。`403` は logout しない。 |
+| tokens / sessions / audit | token 発行/失効、session revoke、audit/API access log 表示 | token 発行時は token 本体を一回表示する。失効/revoke は固定成功文言。 | token 操作は `getTokens()`, `getAuditLog()`。session revoke は `getSessions()`。 | token 本体は [one-time secret 消去契約](#ui-one-time-secret-contract) でだけ消去する。`403` は logout しない。 |
 
-Phase 4 UI の秘密情報消去条件は以下に固定する。
+拡張運用 UI の秘密情報消去条件は以下に固定する。
 
 | 対象 field / 表示 | 消去タイミング |
 |-------------------|----------------|
 | PAT、Webhook Secret、SMTP password | 保存成功、保存失敗、panel 遷移、logout、`401`。 |
-| 発行直後 API token | 次 user action、copy button 押下後、panel 遷移、logout、`401`。 |
-| TOTP secret / ticket / code | confirm 成功、confirm 失敗、panel 遷移、logout、`401`。 |
+| 発行直後 API token / TOTP secret / otpauth URI | [one-time secret 消去契約](#ui-one-time-secret-contract) の trusted event、copy 完了、即時消去、generation 一致条件。 |
+| TOTP ticket / code | confirm 成功、confirm 失敗、panel 遷移、logout、`401`。ticket は DOM に表示しない。 |
 | password / current_password / new_password | login / change 成功、login / change 失敗、logout、`401`。 |
-
-Phase 4 UI fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F UI owner fixture 固定契約を正本とする。
 
 **UI 表示データ固定契約：**
 
@@ -388,6 +400,7 @@ Phase 4 UI fixture 名、fake SDK 入力、expected、合格条件、実装検�
 | build history | `getHistory()` | API response の `history` 配列順。 | UI 独自 sort、欠落 duration の算出、status 名の言い換えは禁止。 |
 | build compare | `getHistory({page:1,perPage:100})`、選択後 `getHistoryLog(left)`, `getHistoryLog(right)` | 左選択、右選択の順。ログ行は各 response の行順。 | API にない diff 結果を保存しない。比較結果は DOM 上の一時表示だけとする。 |
 | approvals | `getApprovals()` | API response の `approvals` 配列順。`pending` 以外は操作 button disabled。 | 期限切れ判定を UI 時刻だけで確定しない。API status を基準とする。 |
+| build queue | `getQueue()` | `active` を先頭の専用行、`queued` を API 配列順で表示する。 | active を waiting 配列へ合成せず、priority / created_seq を再計算しない。 |
 | tokens | `getTokens()`、`createToken()` | 一覧は API 配列順。発行直後 token は `issued-token-once` だけへ表示する。 | `GET /api/tokens` の record に token 本体を合成しない。 |
 | notes | `getNotes()` | `content` を editor へそのまま入れる。表示 preview は HTML escape 後の簡易 Markdown 表示に限定する。 | UI が保存前に trim、整形、Markdown 拡張を行わない。 |
 | hooks / rules | `getHooks()`、`getAlertRules()`、`getTagRules()` | API 配列順。 | UI 側で重複排除、無効化推測、command 文字列結合を行わない。 |
@@ -422,44 +435,48 @@ Phase 4 UI fixture 名、fake SDK 入力、expected、合格条件、実装検�
 
 上位条件が残っている場合、下位条件の解除処理で button を有効化してはならない。複数 error が同時に発生した場合は、最上位の条件だけを global 表示し、下位の詳細は対象 panel error に残す。
 
-UI 詳細 fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F UI owner fixture 固定契約を正本とする。
+UI 詳細 fixture 名、fake SDK 入力、expected、合格条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) UI owner fixture 固定契約を正本とする。
 
-**§27.21〜§27.47 UI 連動実装確認固定契約：**
+<a id="sec-27-21"></a>
+<a id="sec-27-47"></a>
+**[§27.21〜§27.47 UI 連動実装確認固定契約](ui.md#sec-27-21)：**
 
-[`docs/details/ui.md`](ui.md) 詳細本文責務 §27.21〜§27.47 の追加仕様化機能で UI の詳細実装確認を満たすには、[`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の DOM / section / form field 命名契約、UI 操作契約表、UI 共通動作契約、UI 操作完全性検証契約、UI error / disabled 優先順位固定、[`docs/details/sdk.md`](sdk.md) 詳細本文責務 §23 の SDK 連動実装確認固定契約、[`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F を同時に満たす。UI は SDK response に存在しない key を補完せず、状態ファイルを直接読まず、API endpoint を直接呼ばず、成功前に確定表示を行わない。
+[`docs/details/ui.md` 詳細本文責務 §27.21](ui.md#sec-27-21)〜[§27.47](ui.md#sec-27-47) の追加仕様化機能で UI の詳細実装確認を満たすには、[`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の DOM / section / form field 命名契約、UI 操作契約表、UI 共通動作契約、UI 操作完全性検証契約、UI error / disabled 優先順位固定、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の SDK 連動実装確認固定契約、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を同時に満たす。UI は SDK response に存在しない key を補完せず、状態ファイルを直接読まず、API endpoint を直接呼ばず、成功前に確定表示を行わない。
 
 | 対象 | UI 表示 / 操作 | 使用 SDK method | 成功後再取得 | 固定する確認条件 |
 |------|----------------|-----------------|--------------|------------------|
-| [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.21 / [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.31 branch target / env | リポジトリ情報 panel に target files と branch env を表示 / 保存する。secret env value は入力欄以外へ表示しない。 | `getBranchConfig()`, `setBranchConfig(branches)`, `getConfig()` | `getBranchConfig()`, `getConfigLog()` | API 配列順を保持し、env key / target path を UI が正規化しない。保存失敗時は secret を消去し、その他入力値を保持する。 |
-| [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.22 pipeline | 設定 panel の pipeline config を表示 / 保存する。reserved arg や inline YAML を UI が削除・整形しない。 | `getPipelineConfig()`, `setPipelineConfig(config)` | `getPipelineConfig()`, `getConfigLog()` | `422 details` は該当 field error、成功前に画面上の確定 config を更新しない。 |
-| [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.23〜§27.26 local watch / tag / cache / parallel | 設定、履歴、status、build result 表示に API response の watch / tag / cache / target result を表示する。 | `getConfig()`, `setConfig(config)`, `getStatus()`, `getHistory()`, `getHistoryLog(id)` | 操作ごとの表に従う。 | UI は変更検出、tag match、cache hit、parallel result を再計算しない。API response の順序と status を基準とする。 |
-| [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.27 hook | フック panel で `command_args` を 1 行 1 引数として表示 / 保存する。 | `getHooks()`, `addHook()`, `deleteHook(id)`, `getHookLog(id)` | `getHooks()`, `getConfigLog()` | 空行だけ除外し、shell 文字列化、quote 展開、環境変数展開を行わない。失敗時は command 入力を保持する。 |
-| [`docs/details/api.md`](api.md) 詳細本文責務 §27.30 / [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.30 approval | 承認待ち panel に approval record を API 順で表示し、pending だけ approve / reject を有効にする。 | `getApprovals()`, `approveBuild(id)`, `rejectBuild(id)`, `getQueue()` | `getApprovals()`, `getQueue()` | UI 時刻だけで expired 判定を確定しない。`409` 後は一覧再取得だけ行い、同じ approve / reject を再送しない。 |
-| [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.32 notification | 通知設定 panel に channel / notify log / SMTP / webhook を表示 / 保存する。secret は入力欄と mask 表示だけに限定する。 | notify / SMTP / webhook methods | 対象 GET と `getNotifyLog()` / `getConfigLog()` | secret 保存成功・失敗の両方で secret field を消去し、error に secret 平文を表示しない。test は設定を自動保存しない。 |
-| [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.33 / [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.38 trend / anomaly | 統計 panel と dashboard alert に trend summary、sample、anomaly を表示する。 | `getBuildTrends()`, `getStatsBuildDuration()`, `getDashboard()`, `getConfig()`, `setConfig(config)` | config 保存時は `getConfig()`, `getConfigLog()`。表示取得は再取得なし。 | avg / median / p95 / anomaly tag を UI が再計算しない。API warnings は panel 内 warning として表示する。 |
-| [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.34 / [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.35 chain / queue | chain 設定、queue 表示、queue clear、manual build priority 表示を扱う。 | `getBuildChainConfig()`, `setBuildChainConfig(chains)`, `getQueue()`, `clearQueue()`, `triggerBuild()`, `buildForce()` | chain 保存は `getBuildChainConfig()`, `getConfigLog()`。queue clear は `getQueue()`, `getStatus()`。 | priority / created_seq の並びを UI が変更しない。queue full `429` は同一操作だけ 10 秒 disabled。 |
-| [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.36 / [`docs/details/runner.md`](runner.md) 詳細本文責務 §27.37 failure category / environment | 履歴 panel、履歴 detail、システム情報に failure category、evidence、environment を表示する。 | `getHistory()`, `getHistoryLog(id)`, `getOutputMeta()`, `getStatus()` | なし | category ラベル変換、environment fallback 補完、evidence secret 表示を行わない。unknown category warning は warning として表示する。 |
-| [`docs/details/security.md`](security.md) 詳細本文責務 §27.42 / [`docs/details/security.md`](security.md) 詳細本文責務 §27.43 token scope / token | API token 管理 panel で scope 複数選択、発行 token 一回表示、失効を扱う。 | `getTokens()`, `createToken()`, `revokeToken(id)`, `getAuditLog()` | token 操作は `getTokens()`, `getAuditLog()` | token 本体は `issued-token-once` に 1 回だけ表示し、一覧へ合成しない。`403` は権限不足表示で logout しない。 |
-| [`docs/details/security.md`](security.md) 詳細本文責務 §27.44 audit | 監査ログ panel に actor / action / result filter と結果を表示する。 | `getAuditLog({limit,offset,actor,action,result})` | なし | secret、request body、Authorization header、token hash を表示しない。壊れた行の内容を UI に表示しない。 |
-| [`docs/details/security.md`](security.md) 詳細本文責務 §27.45 session timeout / sessions | セキュリティ panel とセッション管理 panel で session timeout、session list、revoke all を扱う。 | `getConfig()`, `setConfig({session_timeout_seconds})`, `getSessions()`, `revokeAllSessions()` | timeout 保存は `getConfig()`, `getConfigLog()`。revoke all は `getSessions()`。 | timeout 更新後も UI が既存 session の期限を再計算しない。revoke all 後は secret field を消去する。 |
-| [`docs/details/security.md`](security.md) 詳細本文責務 §27.46 TOTP | セキュリティ / login panel で setup、confirm、disable、login TOTP を扱う。 | `getTotpStatus()`, `setupTotp()`, `confirmTotp(code)`, `disableTotp(code)`, `loginTotp(ticket,code)` | confirm / disable は `getTotpStatus()`, `getAuditLog()` | secret と otpauth URI は一回表示だけ。ticket は DOM に表示しない。code 成功・失敗・panel 遷移・`401` で消去する。 |
-| [`docs/details/security.md`](security.md) 詳細本文責務 §27.47 rate limit | セキュリティ panel に policy と state summary を表示 / 保存する。 | `getApiRateLimit()`, `setApiRateLimit(policy)` | `getApiRateLimit()`, `getAuditLog()` | UI は reset_at、count、group を API 値で表示し、window / count を再計算しない。`429` は自動 retry しない。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21) / [`docs/details/runner.md` 詳細本文責務 §27.31](runner.md#sec-27-31) branch target / env | リポジトリ情報 panel に target files と branch env を表示 / 保存する。secret env value は入力欄以外へ表示しない。 | `getBranchConfig()`, `setBranchConfig(branches)`, `getConfig()` | `getBranchConfig()`, `getConfigLog()` | API 配列順を保持し、env key / target path を UI が正規化しない。保存失敗時は secret を消去し、その他入力値を保持する。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) pipeline | 設定 panel の pipeline config を表示 / 保存する。reserved arg や inline YAML を UI が削除・整形しない。 | `getPipelineConfig()`, `setPipelineConfig(config)` | `getPipelineConfig()`, `getConfigLog()` | `422 details` は該当 field error、成功前に画面上の確定 config を更新しない。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.23](runner.md#sec-27-23)〜[§27.26](runner.md#sec-27-26) local watch / tag / cache / parallel | 設定、履歴、status、build result 表示に API response の watch / tag / cache / target result を表示する。 | `getConfig()`, `setConfig(config)`, `getStatus()`, `getHistory()`, `getHistoryLog(id)` | 操作ごとの表に従う。 | UI は変更検出、tag match、cache hit、parallel result を再計算しない。API response の順序と status を基準とする。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.27](runner.md#sec-27-27) hook | フック panel で `command_args` を 1 行 1 引数として表示 / 保存する。 | `getHooks()`, `addHook()`, `deleteHook(id)`, `getHookLog(id)` | `getHooks()`, `getConfigLog()` | 空行だけ除外し、shell 文字列化、quote 展開、環境変数展開を行わない。失敗時は command 入力を保持する。 |
+| [`docs/details/api.md` 詳細本文責務 §27.30](api.md#sec-27-30) / [`docs/details/runner.md` 詳細本文責務 §27.30](runner.md#sec-27-30) approval | 承認待ち panel に approval record を API 順で表示し、requested_trigger と requested_force を承認前に明示し、pending だけ approve / reject を有効にする。approve の `dispatch="timer_fallback"` は runner 待機 warning を表示する。 | `getApprovals()`, `approveBuild(id)`, `rejectBuild(id)`, `getQueue()` | `getApprovals()`, `getQueue()` | UI 時刻だけで expired 判定を確定しない。requested_force / dispatch を再計算しない。`409` 後は一覧再取得だけ行い、同じ approve / reject を再送しない。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) notification | 通知設定 panel に channel / notify log / SMTP / webhook を表示 / 保存する。secret は入力欄と mask 表示だけに限定する。 | notify / SMTP / webhook methods | 対象 GET と `getNotifyLog()` / `getConfigLog()` | secret 保存成功・失敗の両方で secret field を消去し、error に secret 平文を表示しない。test は設定を自動保存しない。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.33](runner.md#sec-27-33) / [`docs/details/runner.md` 詳細本文責務 §27.38](runner.md#sec-27-38) trend / anomaly | 統計 panel と dashboard alert に trend summary、sample、anomaly を表示する。 | `getBuildTrends()`, `getStatsBuildDuration()`, `getDashboard()`, `getConfig()`, `setConfig(config)` | config 保存時は `getConfig()`, `getConfigLog()`。表示取得は再取得なし。 | avg / median / p95 / anomaly tag を UI が再計算しない。`BuildTrendStats` に未定義の warning 表示を合成しない。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.34](runner.md#sec-27-34) / [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) chain / queue | chain 設定、active / waiting queue 表示、waiting queue clear、manual build priority 表示を扱う。 | `getBuildChainConfig()`, `setBuildChainConfig(chains)`, `getQueue()`, `clearQueue()`, `triggerBuild()`, `buildForce()` | chain 保存は `getBuildChainConfig()`, `getConfigLog()`。queue clear は `getQueue()`, `getStatus()`。 | active を waiting に混ぜず、priority / created_seq / dispatch を変更しない。queue full `429` は同一操作だけ 10 秒 disabled。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.36](runner.md#sec-27-36) / [`docs/details/runner.md` 詳細本文責務 §27.37](runner.md#sec-27-37) failure category / environment | 履歴 panel に `failure_category` filter と `HistoryPageObject.warnings`、選択した履歴 detail に category、evidence、environment を表示する。 | `getHistory({failureCategory})`, `getHistoryLog(id)` | なし | `.build_status.json` や output meta から category / evidence / environment を推測せず、category ラベル変換、warnings 生成、environment fallback 補完、evidence secret 表示を行わない。`unknown_failure_category` はそのまま panel 内 warning として 1 件表示する。 |
+| [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) / [`docs/details/security.md` 詳細本文責務 §27.43](security.md#sec-27-43) token scope / token | API token 管理 panel で scope 複数選択、発行 token 一回表示、失効を扱う。 | `getTokens()`, `createToken()`, `revokeToken(id)`, `getAuditLog()` | token 操作は `getTokens()`, `getAuditLog()` | token 本体は `issued-token-once` に 1 回だけ表示し、一覧へ合成しない。`403` は権限不足表示で logout しない。 |
+| [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) audit | 監査ログ panel に actor / action / result filter と結果を表示する。 | `getAuditLog({limit,offset,actor,action,result})` | なし | secret、request body、Authorization header、token hash を表示しない。壊れた行の内容を UI に表示しない。 |
+| [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45) session timeout / sessions | セキュリティ panel とセッション管理 panel で session timeout、session list、revoke all を扱う。 | `getConfig()`, `setConfig({session_timeout_seconds})`, `getSessions()`, `revokeAllSessions()` | timeout 保存は `getConfig()`, `getConfigLog()`。revoke all は `getSessions()`。 | timeout 更新後も UI が既存 session の期限を再計算しない。revoke all 後は secret field を消去する。 |
+| [`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) TOTP | セキュリティ / login panel で setup、confirm、disable、login TOTP を扱う。 | `getTotpStatus()`, `setupTotp()`, `confirmTotp(code)`, `disableTotp(code)`, `loginTotp(ticket,code)` | confirm / disable は `getTotpStatus()`, `getAuditLog()` | secret と otpauth URI は一回表示だけ。ticket は DOM に表示しない。code 成功・失敗・panel 遷移・`401` で消去する。 |
+| [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) rate limit | セキュリティ panel に policy と state summary を表示 / 保存する。 | `getApiRateLimit()`, `setApiRateLimit(policy)` | `getApiRateLimit()`, `getAuditLog()` | UI は reset_at、count、group を API 値で表示し、window / count を再計算しない。`429` は自動 retry しない。 |
 
-**§27.21〜§27.47 UI 合格ゲート：**
+<a id="sec-27-21-2"></a>
+**[§27.21〜§27.47 UI 合格ゲート](ui.md#sec-27-21-2)：**
 
 | ゲート | 合格条件 |
 |--------|----------|
-| SDK only | [`docs/details/ui.md`](ui.md) 詳細本文責務 §24 の固定表の全操作が `AdlaireCI` public method だけを呼び、直接 `fetch()` / `XMLHttpRequest` / `EventSource` / 状態ファイル操作を行わない。 |
-| refresh order | 成功後再取得は表の左から順に await し、途中失敗時は変更成功を維持したまま再取得失敗だけを panel error に表示する。 |
+| SDK only | [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の固定表の全操作が `AdlaireCI` public method だけを呼び、直接 `fetch()` / `XMLHttpRequest` / `EventSource` / 状態ファイル操作を行わない。 |
+| refresh order | 成功後再取得は [UI 操作契約表](#ui-operation-contract) の該当行に記載された左から順に await し、途中失敗時は変更成功を維持したまま再取得失敗だけを panel error に表示する。 |
 | no speculative state | UI が status、queue、approval、token、rate limit、trend、failure category、environment、TOTP 状態を API response なしに確定しない。 |
 | secret clearing | password、PAT、Webhook secret、SMTP password、発行 token、TOTP secret、ticket、TOTP code は成功、失敗、panel 遷移、logout、`401`、revoke all で消去される。 |
 | error discipline | `401` は login へ戻す。`403` は logout しない。`409` は仕様上の再取得だけ行う。`422` は field error。`429` は同一操作だけ 10 秒 disabled。 |
-| one-time display | 発行 token、TOTP secret、otpauth URI は専用領域に 1 回だけ表示し、次 user action、copy、panel 遷移、logout、`401` で消去する。 |
-| fixture evidence | [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F の UI 関連 fixture で、SDK only、refresh order、disabled priority、secret clearing、one-time display、no speculative state が確認される。 |
+| one-time display | 発行 token、TOTP secret、otpauth URI は [one-time secret 消去契約](#ui-one-time-secret-contract) の専用領域にだけ表示し、trusted event、copy 完了、panel 遷移、logout、`401`、revoke all の固定条件で消去する。 |
+| fixture evidence | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の UI 関連 fixture で、SDK only、refresh order、disabled priority、secret clearing、one-time display、no speculative state が確認される。 |
 
-**§27.21〜§27.47 UI 連動 fixture 証跡参照：**
+<a id="sec-27-21-3"></a>
+**[§27.21〜§27.47 UI 連動 fixture 証跡参照](ui.md#sec-27-21-3)：**
 
-UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F API / SDK / UI 連動 fixture 固定契約、および [`docs/details/fixture.md`](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) fixture 証跡責務 §27-F UI owner fixture 固定契約を正本とする。[`docs/details/ui.md`](ui.md) 詳細本文責務では、SDK only call、refresh order、disabled priority、one-time / secret clearing、no speculative display、field error mapping の実装契約だけを扱う。
+UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) API / SDK / UI 連動 fixture 固定契約、および [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) UI owner fixture 固定契約を正本とする。[`docs/details/ui.md`](ui.md) 詳細本文責務では、SDK only call、refresh order、disabled priority、one-time / secret clearing、no speculative display、field error mapping の実装契約だけを扱う。
 
 **UI 設定値契約：**
 
@@ -467,7 +484,7 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 |--------|--------|--------|------|
 | SDK `baseUrl` | `index.html` 内の `data-api-base-url` 属性 | `/api` | 空文字の場合は `/api` を使用する。外部 origin の URL は ui 詳細本文責務では使用しない。 |
 | 初期表示 panel | 固定値 | `panel-login` | token 永続化を行わないため、画面読み込み直後は常にログイン panel を表示する。 |
-| theme token | `:root` CSS custom property | [`docs/DESIGN.md`](../DESIGN.md) デザイン責務 §2 の値 | JavaScript は theme token を変更しない。UI 操作で theme 切替を実装しない。 |
+| theme token | `:root` CSS custom property | [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) の値 | JavaScript は theme token を変更しない。UI 操作で theme 切替を実装しない。 |
 | panel 表示制御 | `hidden` 属性 | 全 panel hidden、`panel-login` のみ表示 | DOM 削除ではなく `hidden` で切り替える。 |
 | API 呼び出し経路 | `AdlaireCI` instance | 1 instance | panel ごとに SDK instance を作らず、画面全体で 1 つの `AdlaireCI` instance を共有する。 |
 
