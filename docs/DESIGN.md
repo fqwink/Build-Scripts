@@ -1,7 +1,7 @@
 # Adlaire CI 生成 HTML デザイン仕様
 
 **対象出力：** `adlaire-ci-build` が生成する静的 Web サイト HTML
-**ビルドコンポーネント：** `components/builder.go` から生成する `adlaire-ci-build`
+**ビルドコンポーネント：** [`components/builder.go`](../components/builder.go) から生成する `adlaire-ci-build`
 **デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)
 **更新履歴：** 日付本文を正本化しない。デザイン変更の時系列は Git 履歴と Pull Request を正とする。
 
@@ -107,12 +107,10 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 | モード | 開 | 閉 |
 |---|---|---|
-| デスクトップ（> 768px） | `.closed` なし、`ct.style.marginLeft = 'var(--sw)'`（JS インライン） | `#sb.closed`、`ct.style.marginLeft = '0'`（JS インライン） |
-| モバイル（≤ 768px） | `#sb.open`（`translateX(0)`） | `.open` なし（`translateX(-86vw)` で画面外） |
+| デスクトップ（> 768px） | サイドバーを表示し、コンテンツ開始位置を `var(--sw)` 分確保する。 | サイドバーを非表示にし、コンテンツ開始位置を `0` にする。 |
+| モバイル（≤ 768px） | サイドバーを `translateX(0)` で画面内に表示する。 | サイドバーを `translateX(-86vw)` で画面外に収納する。 |
 
-> **注意：** CSS の `#sb.closed ~ #ct { margin-left: 0 }` ルールは初期レンダリング時のみ機能する。以降の開閉操作はすべて JS のインラインスタイルが CSS クラスより優先して制御する。
-
-`localStorage` キー `adb-sb`（`"1"` = 開、`"0"` = 閉）で開閉状態を永続化。
+開閉イベント、状態 class、永続化、復元処理は [`docs/details/builder.md` 詳細本文責務 §7.2](details/builder.md#sec-7-2) を参照する。
 
 <a id="toc-構造"></a>
 
@@ -159,7 +157,7 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 - 背景 `--adlaire-surface-soft-strong`、ボーダー `--adlaire-surface-border` 1px、角丸 `--adlaire-radius-lg`（8px）
 - `.cb-meta`：`position: absolute; top: 8px; right: 10px`
 - 言語ラベル（`.cl`）：モノフォント、`--adlaire-font-size-xs`、`--adlaire-surface-text-subtle`、大文字
-- コピーボタン（`.cb-copy`）：通常 `opacity: 0`、ホバーで表示。クリック後「✓ 完了」→ 1.8 秒後に「コピー」へ復元
+- コピーボタン（`.cb-copy`）：通常 `opacity: 0`、コードブロック hover または keyboard focus 時に表示する。操作後の文言と復元処理は [`docs/details/builder.md` 詳細本文責務 §7.6](details/builder.md#sec-7-6) を参照する
 - `pre.cb`：フォントサイズ `--adlaire-font-size-sm`（0.875rem）、行高 `1.65`
 
 <a id="テーブル"></a>
@@ -218,13 +216,38 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 | `.print-qr` / `.print-qr-svg` | print 専用 block とし、screen 表示では本文内の常時表示要素にしない。 |
 | `.skip-link` / `.is-active` | focus outline は常に可視にし、focus / active 化で layout 寸法を変えない。 |
 
+| 既存 selector | 視覚契約 |
+|---------------|----------|
+| `.mp` | 本文行長を `max-width: 68ch` で制限する。 |
+| `.md-image` | `max-inline-size: 100%` とし、本文コンテナから横方向にはみ出さない。 |
+| `.cb-wrap` / `.cb-meta` / `.cl` / `.cb-copy` / `.cb` | `.cb-wrap` を配置基準とし、`.cb-meta` は `top: 8px; right: 10px` に配置する。`.cl` はモノスペース、大文字、`--adlaire-font-size-xs` とする。`.cb-copy` は通常非表示、コードブロックの hover または keyboard focus 時に表示する。`.cb` の背景は `--adlaire-surface-soft-strong` とする。 |
+| `.ml-task` / `.ml-task input[type="checkbox"]` | list marker を表示せず、checkbox の accent color は `--adlaire-color-primary` とする。 |
+| `.mdl dt` / `.mdl dd` | `dt` は semibold、`dd` は `margin-left: 1.5rem`、文字色は `--adlaire-surface-text-muted` とする。 |
+| `.tw` | 横方向 overflow は wrapper 内の scroll で扱う。 |
+| `.fn-ref` / `.fn-section` / `.fn-list` | `.fn-ref` は `--adlaire-font-size-xs`、`.fn-section` は上 border で本文と分離し、`.fn-list` は `--adlaire-font-size-sm` とする。 |
+| `.hn-link` | 通常時 `opacity: 0`、見出し hover または keyboard focus 時 `opacity: 1` とする。 |
+| `#progress-bar` | viewport 上端の `top: 0; left: 0` に固定し、高さ `3px`、背景 `--adlaire-color-primary`、`z-index: 1000`、`transition: width 0.1s linear` とする。 |
+| `.mt th[data-sort]` | pointer cursor を表示し、text selection を抑止する。 |
+| `#reading-time` | header 右端へ配置し、`margin-left: auto`、文字色 `--adlaire-surface-text-muted`、`--adlaire-font-size-sm`、折り返しなしとする。 |
+| `.ch-nav` / `.ch-prev` / `.ch-next` | `.ch-nav` は章末尾で前後 link を両端配置し、`padding: 1rem 0`、`margin-top: 2rem`、上 border を持つ。link は `--adlaire-color-primary` とし、既定の text decoration を表示しない。 |
+
+**印刷表現：**
+
+| 対象 | 印刷時の処理 |
+|------|------------|
+| `#hdr`、`#sb`、`.cb-copy`、`.hn-link`、`#btt`、`.expand-code`、`#progress-bar`、`.ch-nav` | `display: none` とする。 |
+| `#lay`、`#ct` | block 表示、幅 `100%`、余白 `0` とする。 |
+| `pre.cb[data-collapsible]` | `max-height: none` とし、内容をすべて表示する。 |
+| `a[href^="http"]::after`、`a[href^="https"]::after` | `content: " (" attr(href) ")"` とし、URL を link text の後ろに表示する。 |
+| `h2`、`h3` | `page-break-before: avoid` とする。 |
+
 ---
 
 ## 7. トップへ戻るボタン
 
 - 画面右下（`bottom: 28px / right: 24px`）に固定。`z-index: --adlaire-z-sticky`
 - 直径 `38px` 円形、背景 `--adlaire-surface-accent`、色 `#fff`
-- `scrollY > 400` で表示（`opacity: 0 → 1`、`pointer-events: none → auto`）
+- 非表示状態は `opacity: 0`、`pointer-events: none`、表示状態は `opacity: 1`、`pointer-events: auto` とする。表示状態へ切り替える条件は [`docs/details/builder.md` 詳細本文責務 §7.7](details/builder.md#sec-7-7) を参照する
 - ホバー時 `translateY(-2px)` で浮き上がり
 
 ---
@@ -233,4 +256,4 @@ docs.rs / MDN に倣った技術ドキュメントレイアウト。14,000 行�
 
 ビルド実行方法、入出力パス、既定値、終了コード、レポート出力は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
 
-CSS トークンの変更は Go 版 `components/builder.go` の HTML テンプレート内 `:root { }` ブロックに反映して再ビルドする。
+`builder` が生成する `assets/style.css` は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務の token、selector、視覚値を実装しなければならない。生成処理と出力検証は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。

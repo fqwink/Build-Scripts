@@ -1,6 +1,6 @@
 # Adlaire CI — Admin 詳細仕様
 
-本ファイルは `admin` owner component の詳細本文責務として、`admin` が主本文として持つ実装契約だけを扱う。
+[`docs/details/admin.md`](admin.md) は `admin` owner component の詳細本文責務として、`admin` が主本文として持つ実装契約だけを扱う。
 
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`admin` owner component の主本文であり、collaborator component の仕様は呼び出し境界、配布境界、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
@@ -11,7 +11,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 項目 | 内容 |
 |------|------|
 | owner component | `admin` |
-| collaborator component | `api`、`ui`、`sdk`、`setup` |
+| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
 | 持つ内容 | `admin` owner が主本文として定義する管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
 | 持たない内容 | UI DOM 詳細、SDK method 実装、API endpoint 実装、状態 schema、systemd 導入手順、release asset 取得手順、fixture 証跡責務。 |
 
@@ -28,8 +28,6 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 |-------------|-------------|------|------------|
 | `admin/index.html` | `$INSTALL_DIR/admin/index.html` | 必須 | [`docs/details/ui.md`](ui.md) 詳細本文責務 |
 | `admin/adlaire-ci-sdk.js` | `$INSTALL_DIR/admin/adlaire-ci-sdk.js` | 必須 | [`docs/details/sdk.md`](sdk.md) 詳細本文責務 |
-| `admin/style.css` | `$INSTALL_DIR/admin/style.css` | 任意 | [`docs/details/ui.md`](ui.md) 詳細本文責務 |
-| `admin/app.js` | `$INSTALL_DIR/admin/app.js` | 任意 | [`docs/details/ui.md`](ui.md) 詳細本文責務 |
 
 配布物に [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の配布物固定表以外のファイルを含める場合は、先に [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の配布物固定表へ path、必須区分、内容確認先を追加する。未記載ファイルを暗黙に配布してはならない。
 
@@ -47,7 +45,7 @@ admin archive の検証は以下の順序に固定する。
 3. entry path に空文字、`.`、`..`、絶対 path、backslash、NUL byte を含まないことを確認する。
 4. symlink、hardlink、device file、FIFO、socket を拒否する。
 5. `index.html` と `adlaire-ci-sdk.js` が root 直下に 1 件ずつ存在することを確認する。
-6. 任意 file が存在する場合は、[`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の表に定義された path だけであることを確認する。
+6. `index.html` と `adlaire-ci-sdk.js` 以外の entry が存在しないことを確認する。
 7. 通常 file の展開後 mode を `0644`、directory mode を `0755` に固定する。
 
 いずれかの検証に失敗した場合は、既存 `$INSTALL_DIR/admin/` を変更しない。
@@ -65,8 +63,6 @@ admin archive の検証は以下の順序に固定する。
 | `/admin/` | `$INSTALL_DIR/admin/index.html` | `text/html; charset=utf-8` | `no-store` |
 | `/admin/index.html` | `$INSTALL_DIR/admin/index.html` | `text/html; charset=utf-8` | `no-store` |
 | `/admin/adlaire-ci-sdk.js` | `$INSTALL_DIR/admin/adlaire-ci-sdk.js` | `text/javascript; charset=utf-8` | `no-cache` |
-| `/admin/style.css` | `$INSTALL_DIR/admin/style.css` | `text/css; charset=utf-8` | `no-cache` |
-| `/admin/app.js` | `$INSTALL_DIR/admin/app.js` | `text/javascript; charset=utf-8` | `no-cache` |
 
 未定義 path、directory listing、path traversal、hidden file、状態ファイル、secret file へのアクセスは `404` とする。認証前に配信する file は [`docs/details/admin.md` 詳細本文責務 §A3](admin.md#a3-静的配信契約) の固定表の静的 file だけとし、API response、状態ファイル、credential、build log、snapshot を静的配信してはならない。
 

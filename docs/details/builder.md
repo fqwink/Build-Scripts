@@ -1,6 +1,6 @@
 # Adlaire CI — Builder 詳細仕様
 
-本ファイルは `builder` owner component の詳細本文責務として、`builder` が主本文として持つ実装契約だけを扱う。
+[`docs/details/builder.md`](builder.md) は `builder` owner component の詳細本文責務として、`builder` が主本文として持つ実装契約だけを扱う。
 
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
@@ -11,7 +11,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 項目 | 内容 |
 |------|------|
 | owner component | `builder` |
-| collaborator component | `runner`、`api`、`statefile` |
+| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
 | 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder 検証条件、builder owner 追加機能。 |
 | 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / release 手順、fixture 証跡責務。 |
 
@@ -21,9 +21,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 | 項目 | 内容 |
 |------|------|
-| Go バージョン | Go `1.22` 以上。 |
-| 外部依存 | なし。Go 標準ライブラリのみを使用する。外部依存の扱いは [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1) と [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を参照する。 |
-| 入力 | UTF-8 エンコードの Markdown ファイル、または Markdown ファイルを含むディレクトリ |
+| Go ランタイム | 最小バージョンは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の共通固定値を参照する。 |
+| 外部依存 | [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1) と [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を参照する。 |
+| 入力 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の文字コード契約を満たす Markdown ファイル、または Markdown ファイルを含むディレクトリ。 |
 | 出力 | 静的 Web サイトディレクトリ（HTML / CSS / JavaScript / search index） |
 
 ---
@@ -52,7 +52,7 @@ var DefaultBuildConfig = BuildConfig{
 }
 ```
 
-別の環境で実行する場合は、この既定値を CLI 引数で上書きする。`builder` は設定ファイルを読み込まない。
+別の環境で実行する場合は、この既定値を CLI 引数で上書きする。[`docs/details/builder.md` 詳細本文責務 §2](builder.md#2-ファイルパス設定) の基本設定 `src`、`out`、`title`、`theme`、`base-dir`、`strict` と build metadata `build-id`、`commit-sha`、`build-at` は、同節に定義した CLI 引数と既定値だけから決定し、環境変数または設定ファイルから読み込まない。[`docs/details/builder.md` 詳細本文責務 §28 設定ファイル / 入力解決固定契約](builder.md#sec-28-common-config-file) は builder 拡張設定だけに適用し、この基本設定または build metadata を上書きしてはならない。
 
 **CLI 引数仕様：**
 
@@ -97,7 +97,7 @@ var DefaultBuildConfig = BuildConfig{
 - `--src`、`--out`、`--base-dir` の相対パスは `os.Getwd()` の戻り値を基準に `filepath.Abs()` で絶対パスへ変換する。
 - `--base-dir` が空ではない場合、存在するディレクトリでなければならない。存在しない場合は終了コード `2`、stderr に `base directory not found: <path>` を出力する。
 - `--base-dir` がファイルの場合は終了コード `2`、stderr に `base path is not directory: <path>` を出力する。
-- builder 固有の path 解決、重複 option、`--strict` の扱いは本節を正本とする。
+- builder 固有の path 解決、重複 option、`--strict` の扱いは [`docs/details/builder.md` 詳細本文責務 §2](builder.md#2-ファイルパス設定) を正本とする。
 
 <a id="固定出力"></a>
 **固定出力：**
@@ -330,9 +330,9 @@ type RenderContext struct {
 | `__text__` | `<strong>text</strong>` |
 | `_text_`（単独 `_`） | `<em>text</em>` |
 | `~~text~~` | `<del>text</del>` |
-| `![alt](url)` | `<img src="url" alt="alt" style="max-width:100%">` |
+| `![alt](url)` | `<img class="md-image" src="url" alt="alt">` |
 | `[label](url)`（`url` が `http://` または `https://` で始まる場合） | `<a href="url" target="_blank" rel="noopener noreferrer">label</a>` |
-| `[label](url)`（前記条件以外 — 内部リンク・アンカー） | `<a href="url">label</a>` |
+| `[label](url)`（`url` が `http://` または `https://` で始まらない場合 — 内部リンク・アンカー） | `<a href="url">label</a>` |
 | `[^id]` | `<sup><a href="#fn-id" id="fnref-id" class="fn-ref">[N]</a></sup>`（N は参照順の番号） |
 
 **処理順の注意：** 画像記法（`![alt](url)`）はリンク記法（`[label](url)`）より先にマッチングする。リンク記法はマッチング後に `url` が `http://` または `https://` で始まるかを判定し、外部リンクと内部リンクを区別する。脚注参照（`[^id]`）はリンク置換後に適用する。
@@ -498,7 +498,7 @@ type ConvertResult struct {
 7. リスト項目（`- * +` または `1.` 形式、`[ ]`/`[x]` プレフィックスでタスクリスト）
 8. 空行（バッファのフラッシュトリガー）
 9. 脚注定義行（`[^id]:` で始まる行、`ctx.FootnoteDefs` 収集済みのためスキップ）
-10. 段落（前記条件以外の非空行、連続行を 1 つの `<p>` にまとめる）。先読みループは次のいずれかに該当する行で停止する：`#`（見出し）、`|`（テーブル）、`` ` ``×3以上（フェンス）、`~`×3以上（フェンス）、`>`（引用）、リストマーカー（`[-*+]` または `\d+[.)]`）、`: `（定義リストマーカー）、水平線（`---+`・`***+`・`___+`）
+10. 段落（優先順位 1〜9 の条件に一致しない非空行を、連続行単位で 1 つの `<p>` にまとめる）。先読みループは次のいずれかに該当する行で停止する：`#`（見出し）、`|`（テーブル）、`` ` ``×3以上（フェンス）、`~`×3以上（フェンス）、`>`（引用）、リストマーカー（`[-*+]` または `\d+[.)]`）、`: `（定義リストマーカー）、水平線（`---+`・`***+`・`___+`）
 
 **Markdown passthrough 禁止契約：**
 
@@ -583,7 +583,7 @@ readingTimeMinutes := int(math.Ceil(float64(ctx.CharCount) / 200.0)) // 200文�
 
 - `data-href` 属性：`#` + 一意化後 slug
 - `¶`（U+00B6 PILCROW SIGN）を使用
-- CSS で通常時 `opacity: 0`、親見出し要素のホバー時に `opacity: 1` に変化する
+- `.hn-link` の表示状態は [`docs/DESIGN.md` デザイン責務 §6](../DESIGN.md#builder-拡張コンポーネント視覚契約) に従う
 
 **見出しスラグ重複解決：**
 
@@ -808,13 +808,13 @@ type SearchIndexEntry struct {
   <link rel="stylesheet" href="{relativeRoot}assets/style.css">
 </head>
 <body>
-  <div id="progress-bar"></div>   <!-- 読み取り進捗バー（ページ上端固定、高さ 3px、幅 = スクロール率 %） -->
-  <header id="hdr">        <!-- 固定ヘッダー（高さ 52px、背景 --adlaire-surface-accent） -->
+  <div id="progress-bar"></div>   <!-- 読み取り進捗バー（幅 = スクロール率 %） -->
+  <header id="hdr">        <!-- ヘッダー -->
     <span id="doc-title">{PageData.Title}</span>
     <span id="reading-time">約 {PageData.ReadingTimeMinutes} 分</span>  <!-- 読了時間（ビルド時に静的埋め込み） -->
   </header>
   <div id="lay">           <!-- フレックスコンテナ -->
-    <nav id="sb">          <!-- サイドバー（幅 260px、固定） -->
+    <nav id="sb">          <!-- サイドバー -->
       <div class="sb-search-wrap">
         <input id="sb-search" type="search" autocomplete="off" aria-label="セクション検索">  <!-- TOC 検索 -->
       </div>
@@ -824,7 +824,7 @@ type SearchIndexEntry struct {
       </div>
     </nav>
     <main id="ct">         <!-- コンテンツエリア -->
-      <div class="ci">     <!-- 最大幅 760px センタリングコンテナ -->
+      <div class="ci">     <!-- 本文コンテナ -->
         {PageData.BodyHTML}
       </div>
     </main>
@@ -891,58 +891,61 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 
 ## 6. CSS クラス一覧
 
+builder owner は、出力する selector、対応要素、DOM 上の意味、JavaScript との連携だけを固定する。色、寸法、余白、配置、タイポグラフィ、表示効果、responsive 表現、print 表現は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とし、builder 詳細本文では再定義しない。
+
 **コンテンツ要素：**
 
 | クラス | 要素 | 説明 |
 |--------|------|------|
 | `.mh` | `h1`〜`h4` | 見出し共通スタイル |
 | `.h1`〜`.h4` | `h1`〜`h4` | 見出しレベル別スタイル |
-| `.mp` | `p` | 本文段落（`max-width: 68ch`） |
+| `.mp` | `p` | 本文段落 |
 | `.mr` | `hr` | 水平線 |
 | `.mbq` | `blockquote` | 引用ブロック |
 | `.ic` | `code` | インラインコード |
 | `.ml` | `ul`/`ol` | リスト |
+| `.md-image` | `img` | Markdown 画像 |
 
 **コードブロック：**
 
 | クラス | 説明 |
 |--------|------|
-| `.cb-wrap` | コードブロック外枠（`position: relative`） |
-| `.cb-meta` | 言語ラベル＋コピーボタンのオーバーレイ（`position: absolute; top: 8px; right: 10px`） |
-| `.cl` | 言語ラベル（`var(--adlaire-font-family-mono)`、大文字、`var(--adlaire-font-size-xs)`） |
-| `.cb-copy` | コピーボタン（ホバーまで非表示） |
+| `.cb-wrap` | コードブロック外枠 |
+| `.cb-meta` | 言語ラベルとコピーボタンの領域 |
+| `.cl` | 言語ラベル |
+| `.cb-copy` | コピーボタン |
 | `.cb-copy.copied` | コピー完了状態（1.8 秒間） |
-| `.cb` | `<pre>` 要素（背景 `var(--adlaire-surface-soft-strong)`） |
+| `.cb` | `<pre>` 要素 |
 
 **タスクリスト：**
 
 | クラス | 説明 |
 |--------|------|
-| `.ml-task` | タスクリスト `<li>`（`list-style: none`、チェックボックス付き） |
-| `.ml-task input[type="checkbox"]` | チェックボックス（`disabled`、`accent-color: var(--adlaire-color-primary)`） |
+| `.ml-task` | チェックボックスを持つタスクリスト `<li>` |
+| `.ml-task input[type="checkbox"]` | `disabled` のタスク状態チェックボックス |
 
 **定義リスト：**
 
 | クラス | 説明 |
 |--------|------|
 | `.mdl` | `<dl>` 要素 |
-| `.mdl dt` | 定義用語（`font-weight: semibold`） |
-| `.mdl dd` | 定義本文（`margin-left: 1.5rem`、`color: var(--adlaire-surface-text-muted)`） |
+| `.mdl dt` | 定義用語 |
+| `.mdl dd` | 定義本文 |
 
 **テーブル：**
 
 | クラス | 説明 |
 |--------|------|
-| `.tw` | テーブルラッパー（`overflow-x: auto`） |
+| `.tw` | テーブルラッパー |
 | `.mt` | `<table>` 要素 |
 
 **脚注：**
 
 | クラス | 説明 |
 |--------|------|
-| `.fn-ref` | 脚注参照リンク（`<sup>` 内、`font-size: var(--adlaire-font-size-xs)`） |
-| `.fn-section` | 脚注セクション全体（本文末尾、`border-top` で区切り） |
-| `.fn-list` | 脚注 `<ol>`（`font-size: var(--adlaire-font-size-sm)`） |
+| `.fn-ref` | `<sup>` 内の脚注参照リンク |
+| `.fn-section` | 本文末尾の脚注セクション全体 |
+| `.fn-list` | 脚注 `<ol>` |
 | `.fn-item` | 脚注 `<li>` |
 | `.fn-back` | 本文への戻りリンク（`↩`） |
 
@@ -978,15 +981,15 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 
 | クラス | 要素 | 説明 |
 |--------|------|------|
-| `.hn-link` | `<button>` | 見出し末尾に付与する `¶` ボタン（通常時 `opacity: 0`、ホバー時 `opacity: 1`） |
+| `.hn-link` | `<button>` | 見出し末尾に付与する `¶` ボタン |
 
 <a id="sec-7-13"></a>
 **[進捗バー・テーブルソート CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.13・`docs/details/builder.md` 詳細本文責務 §7.14）](builder.md#sec-7-13)：**
 
 | クラス / セレクター | 要素 | 説明 |
 |--------------------|------|------|
-| `#progress-bar` | `<div>` | ページ上端固定（`position: fixed; top: 0; left: 0`）、高さ 3px、幅は JS で設定、`background: var(--adlaire-color-primary)`、`z-index: 1000`、`transition: width 0.1s linear` |
-| `.mt th[data-sort]` | `<th>` | ソート可能列ヘッダー（`cursor: pointer; user-select: none`） |
+| `#progress-bar` | `<div>` | JS がスクロール率を百分率へ変換して `width` を更新する進捗要素 |
+| `.mt th[data-sort]` | `<th>` | ソート操作を受け付ける列ヘッダー |
 | `.mt th[aria-sort="ascending"]::after` | `::after` 疑似要素 | `content: " ▲"` |
 | `.mt th[aria-sort="descending"]::after` | `::after` 疑似要素 | `content: " ▼"` |
 
@@ -995,29 +998,21 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 
 | クラス / セレクター | 要素 | 説明 |
 |--------------------|------|------|
-| `#reading-time` | `<span>` | 固定ヘッダー右端に表示（`margin-left: auto`）。`color: var(--adlaire-text-secondary)`、`font-size: var(--adlaire-font-size-sm)`、`white-space: nowrap` |
+| `#reading-time` | `<span>` | ビルド時に算出した読了時間の表示要素 |
 
 <a id="sec-7-15"></a>
 **[前後章ナビゲーション CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.15）](builder.md#sec-7-15)：**
 
 | クラス / セレクター | 要素 | 説明 |
 |--------------------|------|------|
-| `.ch-nav` | `<nav>` | 章末尾ナビゲーション（`display: flex; justify-content: space-between; padding: 1rem 0; margin-top: 2rem; border-top: 1px solid var(--adlaire-border-default)`） |
-| `.ch-prev` | `<a>` | 前の章リンク（`color: var(--adlaire-color-primary)`、テキスト装飾なし） |
-| `.ch-next` | `<a>` | 次の章リンク（`color: var(--adlaire-color-primary)`、テキスト装飾なし） |
+| `.ch-nav` | `<nav>` | 章末尾の前後章ナビゲーション |
+| `.ch-prev` | `<a>` | 前の章リンク |
+| `.ch-next` | `<a>` | 次の章リンク |
 
 <a id="sec-6"></a>
 **[印刷スタイル（`docs/details/builder.md` 詳細本文責務 §6 @media print）](builder.md#sec-6)：**
 
-`@media print` ブロックでの主な規則：
-
-| 対象 | 印刷時の処理 |
-|------|------------|
-| `#hdr`（固定ヘッダー）、`#sb`（サイドバー）、`.cb-copy`、`.hn-link`、`#btt`、`.expand-code`、`#progress-bar`、`.ch-nav` | `display: none` |
-| `#lay`、`#main` | ブロック表示・幅 100%・余白 0 |
-| `pre.cb[data-collapsible]` | `max-height: none`（折りたたみ解除） |
-| `a[href^="http"]::after`、`a[href^="https"]::after` | `content: " (" attr(href) ")"` で URL を末尾に表示 |
-| `h2`、`h3` | `page-break-before: avoid` |
+`builder` は `assets/style.css` に `@media print` ブロックを必ず出力する。対象 selector と印刷時の視覚処理は [`docs/DESIGN.md` デザイン責務 §6](../DESIGN.md#builder-拡張コンポーネント視覚契約) を正本とする。JavaScript が付与した折りたたみ状態にかかわらず、印刷対象本文を欠落させてはならない。
 
 ---
 
@@ -1026,15 +1021,15 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 <a id="sec-7-1"></a>
 **7.1 テーマ切り替え（廃止）：**
 
-生成 HTML のデザイン関係は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とする。本節は `builder` が出力してはならない selector、storage、media query、runtime 挙動だけを固定し、色、余白、タイポグラフィ、視覚方針を再定義しない。出力サイトはライトモード固定とし、ダークモード、テーマトグルボタン、`prefers-color-scheme` 対応を実装しない。
+生成 HTML のデザイン関係は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とする。builder owner は出力してはならない selector、storage、media query、runtime 挙動だけを固定し、色、余白、タイポグラフィ、視覚方針を再定義しない。`builder` は color scheme を変更する runtime、テーマトグルボタン、color scheme 用 storage、`prefers-color-scheme` に応じた分岐を出力しない。
 
 <a id="sec-7-2"></a>
 **7.2 サイドバー開閉：**
 
-`localStorage` キー `adb-sb` に `"1"`（開）または `"0"`（閉）を保存する。
+`localStorage` キー `adb-sb` に `"1"`（開）または `"0"`（閉）を保存する。desktop / mobile の判定 breakpoint と開閉時の視覚状態は [`docs/DESIGN.md` デザイン責務 §4](../DESIGN.md#レスポンシブ)〜[§5](../DESIGN.md#開閉制御) を正本とする。
 
-- デスクトップ（`> 768px`）：`#sb.closed` クラスと JS インラインスタイル（`ct.style.marginLeft`）で幅を制御。CSS の `#sb.closed ~ #ct { margin-left: 0 }` ルールは初期レンダリング時のみ効く。以降の開閉操作はすべて JS インラインスタイルが CSS クラスより優先する
-- モバイル（`≤ 768px`）：`#sb.open` / `transform: translateX` で画面外から引き出す
+- desktop では `#sb.closed` を開閉状態として切り替え、`#ct` の inline style を同じ状態へ同期する
+- mobile では `#sb.open` を開閉状態として切り替える
 - モバイルでは TOC リンククリック時に自動的にサイドバーを閉じる
 
 `localStorage` 読み書きは `try/catch` で保護する。読み込み失敗、保存失敗、保存値が `"1"` / `"0"` 以外の場合は、デスクトップでは開、モバイルでは閉を初期状態とする。`assets/app.js` は localStorage 以外の永続 storage、cookie、IndexedDB を使用してはならない。
@@ -1123,7 +1118,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 ```json
 [
   { "url": "pages/example.html#anchor-slug", "id": "anchor-slug", "title": "見出しテキスト", "body": "段落先頭200文字..." },
-  ...
+  { "url": "pages/guide.html#setup", "id": "setup", "title": "セットアップ", "body": "必要な設定手順を順番に説明する本文" }
 ]
 ```
 
@@ -1177,7 +1172,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 <a id="sec-7-11-2"></a>
 **7.11 見出しアンカーリンクコピー：**
 
-見出しにホバーすると表示される `¶` ボタン（`.hn-link`）をクリックすると、その見出しのアンカー URL をクリップボードにコピーする。
+見出し末尾の `¶` ボタン（`.hn-link`）をクリックすると、その見出しのアンカー URL をクリップボードにコピーする。表示状態は [`docs/DESIGN.md` デザイン責務 §6](../DESIGN.md#builder-拡張コンポーネント視覚契約) に従う。
 
 **コピー対象 URL：**
 `window.location.origin + window.location.pathname + button.dataset.href`
@@ -1204,7 +1199,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 <a id="sec-7-13-2"></a>
 **7.13 読み取り進捗バー：**
 
-ページ上端に高さ 3px の進捗バー（`<div id="progress-bar">`）を固定表示する。
+`<div id="progress-bar">` の幅を現在の読み取り進捗率へ更新する。配置、寸法、色、transition は [`docs/DESIGN.md` デザイン責務 §6](../DESIGN.md#builder-拡張コンポーネント視覚契約) に従う。
 
 **幅の計算：**
 ```js
@@ -1216,21 +1211,6 @@ document.getElementById('progress-bar').style.width = pct + '%';
 ```
 
 **スクロールイベント共有：** [`docs/details/builder.md` 詳細本文責務 §7.5](builder.md#sec-7-5) のアクティブ見出し追跡が登録する `scroll` イベントリスナー（`passive: true`）内で処理する。リスナーを別途登録しない。
-
-**CSS：**
-
-```css
-#progress-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 3px;
-  width: 0%;
-  background: var(--adlaire-color-primary);
-  z-index: 1000;
-  transition: width 0.1s linear;
-}
-```
 
 <a id="sec-7-14"></a>
 **7.14 テーブル列ソート：**
@@ -1296,7 +1276,7 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 **挿入失敗時の扱い：** 対象 h2 の HTML 位置を特定できない場合、本文 HTML を変更せず `[WARN] CHAPTER_NAV_SKIPPED: slug={slug}` を出力し、`[REPORT] warnings` に含める。
 
-**印刷時：** `@media print` で `.ch-nav { display: none }` とする（[`docs/details/builder.md` 詳細本文責務 §6](builder.md#6-css-クラス一覧) CSS 参照）。
+**印刷時：** `.ch-nav` の印刷表現は [`docs/DESIGN.md` デザイン責務 §6](../DESIGN.md#builder-拡張コンポーネント視覚契約) に従う。
 
 **JavaScript 初期化順序固定契約：**
 
@@ -1376,7 +1356,7 @@ Converting MD...
 Building site...
 Writing assets...
 Done → /opt/adlaire-builder/dist/site  (pages=12 files=15 bytes=1713731)
-[REPORT] pages=12 headings=342 tables=128 code_blocks=64 warnings=3 size_warn=false broken_links=1 heading_skips=0 reading_time=87 theme=adlaire-default
+[REPORT] pages=12 headings=342 tables=128 code_blocks=64 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=87 theme=adlaire-default build_id=b20260916010000 commit_sha=abcdef1 build_at=2026-09-16T01:00:00Z
 ```
 
 **変換レポート行（`[REPORT]` プレフィックス）：**
@@ -1394,9 +1374,9 @@ Done → /opt/adlaire-builder/dist/site  (pages=12 files=15 bytes=1713731)
 | `heading_skips` | 見出しレベルが 2 段以上の降順スキップとなった件数 |
 | `reading_time` | 推計読了時間（分、切り上げ）。200文字/分で算出 |
 | `theme` | 使用した theme 名。初期仕様では `adlaire-default` |
-| `build_id` | `--build-id` または環境変数 `ADLAIRE_BUILD_ID` の値。未指定時は空文字 |
-| `commit_sha` | `--commit-sha` または環境変数 `ADLAIRE_COMMIT_SHA` の値。未指定時は空文字 |
-| `build_at` | `--build-at` または環境変数 `ADLAIRE_BUILD_AT` の値。未指定時は空文字 |
+| `build_id` | `--build-id` の値。未指定時は空文字 |
+| `commit_sha` | `--commit-sha` の値。未指定時は空文字 |
+| `build_at` | `--build-at` の値。未指定時は空文字 |
 
 固定順は以下とし、未使用フィールドの省略は禁止する。
 
@@ -1461,7 +1441,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 <a id="sec-8"></a>
 **[`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能別実装確認固定契約](builder.md#sec-8)：**
 
-[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の中核機能は、各節の本文と fixture に加えて [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表を満たす。[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表は builder owner の詳細実装確認表であり、runner、setup、api、sdk、ui、statefile、archive、commitstatus、security、将来機能、MCP、外部公開構成、上位方針は扱わない。runner の起動、設定、処理フロー、pipeline、deploy、snapshot、log、systemd、GitHub、setup、既知制限は [`docs/details/runner.md` 詳細本文責務 §10](runner.md#10-ci-ランナー-要件)〜[§20](runner.md#20-ci-ランナー-既知の制限)、setup / release 手順は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) を参照する。
+[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の中核機能は、§8〜§8a の対象契約本文と fixture に加えて [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表を満たす。[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法)〜[§8a](builder.md#8a-builder-受け入れ検証条件) の中核機能別実装確認固定表は builder owner の詳細実装確認表であり、runner、setup、api、sdk、ui、statefile、archive、commitstatus、security、将来機能、MCP、外部公開構成、上位方針は扱わない。runner の起動、設定、処理フロー、pipeline、deploy、snapshot、log、systemd、GitHub、setup、既知制限は [`docs/details/runner.md` 詳細本文責務 §10](runner.md#10-ci-ランナー-要件)〜[§20](runner.md#20-ci-ランナー-既知の制限)、setup / release 手順は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) を参照する。
 
 | Builder 中核機能確認節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | fixture 証跡参照 |
 |------------------------|------|------|------|---------------------------|--------------|----------------|
@@ -1509,7 +1489,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 <meta name="adlaire-build-at" content="2026-09-16T01:00:00Z">
 ```
 
-値が空文字の場合も meta tag は出力し、`content=""` とする。HTML escape は attribute escape とし、`"`、`&`、`<`、`>` を escape する。runner が pipeline を起動する場合は、同じ値を CLI 引数または環境変数 `ADLAIRE_BUILD_ID`、`ADLAIRE_COMMIT_SHA`、`ADLAIRE_BUILD_AT` のいずれかで渡す。CLI 引数を使える場合は CLI 引数を優先する。
+値が空文字の場合も meta tag は出力し、`content=""` とする。HTML escape は attribute escape とし、`"`、`&`、`<`、`>` を escape する。runner が標準 builder command を起動する場合は、同じ値を `--build-id`、`--commit-sha`、`--build-at` の CLI 引数で渡す。builder は `ADLAIRE_BUILD_ID`、`ADLAIRE_COMMIT_SHA`、`ADLAIRE_BUILD_AT` を読み取らず、環境変数による上書きを許可しない。
 
 `[REPORT]` には `build_id`、`commit_sha`、`build_at` を追加する。`.build_logs/{id}.json.build_meta` は HTML meta と同じ値を保存する。
 
@@ -1517,7 +1497,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 | 項目 | 仕様 |
 |------|------|
-| `build_id` | 空文字または `^[A-Za-z0-9_-]{1,64}$`。不正値は builder 終了コード `2`。 |
+| `build_id` | 空文字、`b{YYYYMMDDHHmmss}`、または衝突時の `b{YYYYMMDDHHmmss}-NNN`。`NNN` は `001`〜`999` の 3 桁固定。不正値は builder 終了コード `2`。 |
 | `commit_sha` | 空文字、7〜40 文字 lowercase hex。その他は終了コード `2`。 |
 | `build_at` | 空文字または UTC ISO 8601 秒精度。timezone offset、ミリ秒は終了コード `2`。 |
 | HTML / REPORT / build log | builder が出力・保存する 3 箇所の値は byte 単位で一致させる。空文字は `""` として保持する。 |
@@ -1546,8 +1526,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | 項目 | 仕様 |
 |------|------|
 | CLI | `adlaire-ci-build --cache-dir <path>` |
-| 設定 key | `.server_config.build_cache_enabled` |
-| 既定値 | `false` |
+| 設定 schema | [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.server_config.build_cache_enabled`。型と既定値は同 schema を正とする。 |
 | 状態 | `.build_cache.json` と `.build_cache/pages/` |
 | cache key | input relative path、input sha256、builder version、theme、build config hash。 |
 
@@ -1562,12 +1541,11 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 | 項目 | 仕様 |
 |------|------|
-| schema version | `.build_cache.json.schema_version=1`。不一致時は全 entry miss。 |
+| schema | `.build_cache.json` と page entry の key、型、path 正規化、`schema_version=1` は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の build cache schema を参照する。version 不一致時は全 entry miss。 |
 | cache key | `sha256(input_relative_path + "\n" + input_sha256 + "\n" + builder_version + "\n" + theme + "\n" + build_config_hash)` の hex。 |
 | page file | `.build_cache/pages/{cache_key}.json`。 |
-| page schema | `{ "cache_key", "input_path", "input_sha256", "deps", "html_fragment", "metadata", "created_at" }`。 |
 | hit 検証 | cache entry の `cache_key`、`input_path`、`input_sha256`、依存 SHA、builder version、theme、build config hash がすべて一致する場合だけ hit。 |
-| 破損 entry | WARN を出し、該当 page file の削除を試みる。削除失敗でも build は継続する。 |
+| 破損 entry | `BUILD_CACHE_ENTRY_INVALID` を WARN で出し、該当 page file だけを `os.Remove` で 1 回削除する。削除成功と `os.IsNotExist` は cleanup 成功とする。それ以外の削除失敗は `BUILD_CACHE_ENTRY_CLEANUP_FAILED` を WARN で出し、再試行せず、当該 entry を miss として build を継続する。warning に absolute path または cache 内容を出力しない。 |
 | report | `cache_hits`、`cache_misses` は integer、`cache_disabled_reason` は `null` または固定文字列。 |
 
 **無効化条件：**
@@ -1592,7 +1570,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | hit 出力 | cache hit でも最終 HTML、assets、search index、manifest は通常 build と同じ staging → rename 契約で出力する。cache fragment を公開出力へ直接コピーしない。 |
 | byte 一致 | cache hit 出力は同一入力を通常変換した場合の HTML fragment と byte 等価でなければならない。違う場合は hit を破棄し miss とする。 |
 | dependency 連動 | `.dependency_manifest.json` が存在し、該当 page の dependency SHA が一致する場合だけ hit を許可する。dependency manifest 破損時は全 entry miss。 |
-| report | `[REPORT] cache_hits=N`、`cache_misses=N`、`cache_write_failures=N`、`cache_disabled_reason=<json|null>` を必ず出力する。 |
+| report | `[REPORT] cache_hits=N`、`cache_misses=N`、`cache_write_failures=N` を必ず出力する。`cache_disabled_reason` は JSON 値または `null` とする。 |
 | failure | build failure、strict failure、output validation failure では cache index / page を新規保存しない。既存 cache は維持する。 |
 | secret | cache entry は Markdown 変換結果だけを保存し、environment、token、secret、absolute input path、user home path を保存しない。 |
 
@@ -1621,7 +1599,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | 状態 | `.dependency_manifest.json` |
 | 対象 | Markdown link、image、HTML `<img src>`、`{{ include "path" }}` |
 | path | 相対 path のみ。絶対 URL、fragment-only link は対象外。 |
-| schema | `{ "pages": { "<page>": { "deps": [{"path":"...","sha256":"..."}] } } }` |
+| schema | [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の DependencyManifest object。 |
 
 **正常系：**
 
@@ -1639,7 +1617,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | include | `{{ include "path" }}` の double quote 形式だけを対象にする。single quote、式展開、glob は対象外。 |
 | 重複 dep | page 内で同一 dep path が複数回出ても 1 件だけ保存する。 |
 | 保存条件 | build 成功後だけ `.dependency_manifest.json` を置換する。failure build では既存 manifest を維持する。 |
-| broken deps | `broken_dependencies[]` に page、path、reason を保存する。strict では終了コード `2`。 |
+| broken deps | build transaction 中の `broken_dependencies[]` に page、path、reason を保持し、WARN と `[REPORT]` に反映する。DependencyManifest object には保存しない。strict では終了コード `2`。 |
 
 **異常系：**
 
@@ -1660,7 +1638,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 | manifest save | build 成功、output validation 成功、cache save 判定後に `.dependency_manifest.json.tmp.{pid}` へ書き、rename で置換する。 |
 | failure 保護 | build failure、strict failure、manifest 生成 failure では既存 `.dependency_manifest.json` を維持する。 |
 | runner 逆引き | runner は dependency path の SHA 差分がある場合、その dependency を持つ page key を changed target に追加する。manifest 破損時は full build。 |
-| report | `[REPORT] dependencies_tracked=N`、`broken_dependencies=N`、`dependency_manifest_updated=true|false` を出力する。 |
+| report | `[REPORT] dependencies_tracked=N`、`broken_dependencies=N`、および `dependency_manifest_updated=true` または `dependency_manifest_updated=false` を出力する。 |
 | secret | dependency manifest に absolute path、home path、credential URL、query credential を保存しない。URL query に token 風値がある場合は dependency 対象外として WARN を出す。 |
 
 **検証条件：**
@@ -1675,7 +1653,7 @@ Go 版 CI ランナーでは、`runner` が `pipeline.sh` の標準出力から 
 
 ## 28. Builder owner 静的サイト出力拡張追加仕様化機能 詳細仕様
 
-[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) は、[`docs/ROADMAP.md` 状態・計画責務 §5.2.2](../ROADMAP.md#522-統合ロードマップ表) から参照される builder owner 静的サイト出力拡張追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。状態分類は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) は、[`docs/ROADMAP.md` 状態・計画責務 §5.2.2](../ROADMAP.md#522-統合ロードマップ表) から参照される builder owner 静的サイト出力拡張追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。各機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。外部ライブラリ、CDN、外部 API、実行時 network 取得、ブラウザ専用 build tool、npm package、Python 実装を追加してはならない。
 
@@ -1932,24 +1910,7 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 | 依存 asset 変更 | 該当 asset を参照する page を changed 扱いにする。asset 参照を持たない page は reuse 判定対象にできる。 |
 | builder version / [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 設定差分 | 影響する全 page を changed 扱いにする。理由は `incremental_reason` に sorted string で記録する。 |
 
-`.dependency_manifest.json` は build 成功時だけ公開する。manifest は JSON object 固定で、object key 順は ASCII 昇順で出力する。timestamp、host path、absolute path、user name、temporary path、random value を含めてはならない。
-
-| manifest key | 型 | 固定 |
-|--------------|----|------|
-| `version` | integer | `1` 固定。未知 version は schema 不一致として full build。 |
-| `builder` | object | `name`、`spec_section`、`config_hash` を持つ。`name` は `adlaire-ci-build`、`spec_section` は `"28.1"`。 |
-| `pages` | object | key は入力 base からの Markdown 相対 path。値は page manifest object。key は ASCII 昇順。 |
-| `generated_outputs` | object | key は公開出力相対 path。値は生成元 page key または `asset` / `search-index` / `manifest`。 |
-
-page manifest object は以下に固定する。
-
-| key | 型 | 固定 |
-|-----|----|------|
-| `input_sha256` | string | 入力 Markdown byte の lowercase hex SHA-256。 |
-| `output_path` | string | 出力 HTML の `--out` からの相対 path。`/` 区切り。 |
-| `dependencies` | array | Markdown から参照された base 内 file path。ASCII 昇順。外部 URL は含めない。 |
-| `dependency_sha256` | object | key は `dependencies` の path。値は lowercase hex SHA-256。読めない依存は changed 扱いにし、成功 manifest には含めない。 |
-| `config_hash` | string | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 正規化済み設定 object の lowercase hex SHA-256。secret 値、meta value、template var value は hash input に含めるが manifest には平文出力しない。 |
+`.dependency_manifest.json` は build 成功時だけ公開する。root key、builder object、page object、generated output map、型、並び順、path 制約、禁止値は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.dependency_manifest.json` schema を参照する。builder は読めない dependency を changed 扱いにし、成功 manifest の `dependencies` と `dependency_sha256` に含めない。`config_hash` の hash input には secret 値、meta value、template var value を含めるが、manifest にそれらの平文を出力しない。
 
 search index は、reuse page を含む最終 page set 全体から毎回再生成する。reuse した既存 `assets/search-index.json` の部分流用、page 単位追記、削除 page entry の残存を禁止する。
 
@@ -1977,7 +1938,7 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 <a id="sec-28-common-visual"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 CSS / layout / print / visual 固定契約](builder.md#sec-28-common-visual)：**
 
-生成 HTML の視覚仕様、layout、responsive、print の正本は [`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) とする。本節は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装が出力する CSS / JS asset、出力順序、selector 境界、禁止出力だけを固定する。
+生成 HTML の視覚仕様、layout、responsive、print の正本は [`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) とする。builder owner は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装が出力する CSS / JS asset、出力順序、selector 境界、禁止出力だけを固定する。
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の視覚出力は、既存 `assets/style.css` 内の静的 CSS と既存 `assets/app.js` 内の静的 JS だけで成立させる。[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装で inline style、外部 font、`@import`、remote `url()`、CDN、追加 asset file、画像取得、viewport 依存の実行時 CSS 生成を追加してはならない。
 
@@ -1991,7 +1952,7 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | 4 | code extension | [`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) の code extension に従い、code title、line numbers、diff highlight の selector を出力する。 |
 | 5 | navigation runtime UI | [`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) の navigation runtime UI に従い、section collapse、TOC active、hash focus、skip link の selector を出力する。theme toggle selector を出力しない。 |
 | 6 | media UI | [`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) の media UI に従い、image lightbox、Mermaid placeholder / SVG wrapper、print QR の selector を出力する。 |
-| 7 | responsive | `@media (max-width: 768px)` に [`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) の responsive 条件を満たす selector を出力する。 |
+| 7 | responsive | [`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) が定義する breakpoint の media query に、同 responsive 条件を満たす selector を出力する。 |
 | 8 | print | `@media print` に [`docs/DESIGN.md` デザイン責務 Builder 拡張コンポーネント視覚契約](../DESIGN.md#builder-拡張コンポーネント視覚契約) の print 条件を満たす selector を出力する。 |
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) で追加する selector は、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) CLI / 設定 / REPORT / 出力識別子固定契約に列挙した class、id、data attribute だけを使用する。[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) selector は既存 `.ci`、`main`、`nav`、`pre`、`code`、`table` の基礎 layout を上書きしてはならない。必要な場合は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の追加 class を起点に scoped selector として定義する。
@@ -2125,7 +2086,7 @@ block parser は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#
 | 8 | list / `task_item` | 行頭 0〜3 space 後に `- `、`* `、`+ `。直後が `[ ] `、`[x] `、`[X] ` なら task item。 | list item text に inline parser を適用する。 |
 | 9 | `definition_list` | 現在行が term 候補で、直後の 1 行以上が行頭 0〜3 space 後に `: `。 | term と definition に inline parser を適用する。 |
 | 10 | table / existing block | [`docs/details/builder.md` 詳細本文責務 §1](builder.md#1-要件)〜[`docs/details/builder.md` 詳細本文責務 §9](builder.md#9-既知の制限) の既存 table、horizontal rule、paragraph 等。 | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) token と競合しない範囲で既存処理を維持する。 |
-| 11 | paragraph | 前記 token に一致しない連続行。 | inline parser を適用する。 |
+| 11 | paragraph | 優先 1〜10 の token に一致しない連続行。 | inline parser を適用する。 |
 
 inline parser は、code span を最優先の保護領域として切り出し、保護領域の外側だけを [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の固定表の順序で処理する。inline parser の出力を再度 inline parser に通してはならない。
 
@@ -2138,7 +2099,7 @@ inline parser は、code span を最優先の保護領域として切り出し�
 | 5 | `badge_inline` | `[badge:label:color]`。 | label / color validation。 |
 | 6 | `math_inline` | `$` 1 個で囲まれ、前後が空白または句読点または行端の範囲。 | 中身を escape し、他 inline token は適用しない。 |
 | 7 | emphasis / existing inline | [`docs/details/builder.md` 詳細本文責務 §1](builder.md#1-要件)〜[`docs/details/builder.md` 詳細本文責務 §9](builder.md#9-既知の制限) の既存 inline 強調、code 以外の変換。 | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) token と競合しない範囲で既存処理を維持する。 |
-| 8 | text | 前記 token に一致しない text。 | text escape だけを行う。 |
+| 8 | text | 優先 1〜7 の token に一致しない text。 | text escape だけを行う。 |
 
 <a id="sec-28-common-grammar"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 Markdown 構文文法固定契約](builder.md#sec-28-common-grammar)：**
@@ -2369,7 +2330,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 
 | 構文 | 入力条件 | 出力 | fallback |
 |------|----------|------|----------|
-| admonition | blockquote の先頭 inline text が `[!NOTE]`、`[!WARN]`、`[!TIP]` のいずれか。大小文字は uppercase 正規化する。 | `section.adlaire-admonition`、`data-adlaire-admonition="note|warn|tip"`、先頭に `div.adlaire-admonition-title`、以降に本文 block。 | 未知 type は `note` とし warning 1 件。入れ子 admonition は内側を通常 blockquote として扱う。 |
+| admonition | blockquote の先頭 inline text が `[!NOTE]`、`[!WARN]`、`[!TIP]` のいずれか。大小文字は uppercase 正規化する。 | `section.adlaire-admonition` と `data-adlaire-admonition` を出力する。属性値は `note`、`warn`、`tip` のいずれかとし、先頭に `div.adlaire-admonition-title`、以降に本文 block を置く。 | 未知 type は `note` とし warning 1 件。入れ子 admonition は内側を通常 blockquote として扱う。 |
 | badge | code span 外、link label 外、HTML raw 外の `[badge:label:color]`。label は trim 後 1〜64 文字、color は `gray`、`blue`、`green`、`yellow`、`red`。 | `span.adlaire-badge`、`data-adlaire-badge-color="<color>"`、text は label。 | 不正 label / color は non-strict で元 text、strict で `BUILDER28_INVALID_OPTION`。 |
 
 admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。search index には admonition title を含めず、admonition body と badge label は含める。`admonitions` は出力した admonition 数、`badges` は出力した badge 数、`markdown_extension_warnings` は fallback 数とする。
@@ -2476,7 +2437,7 @@ diff highlight は fence language が `diff` または `patch` の場合だけ�
 | `+++` または `---` で始まる行 | `.tok-diff-header` | insertions / deletions に含めない。 |
 | `+` で始まり、`+++` ではない行 | `.tok-inserted` | `diff_insertions` に加算する。 |
 | `-` で始まり、`---` ではない行 | `.tok-deleted` | `diff_deletions` に加算する。 |
-| space で始まる行、または前記条件以外の行 | `.tok-context` | insertions / deletions に含めない。 |
+| space で始まる行、または `+++`、`---`、`+`、`-` の各行条件に一致しない行 | `.tok-context` | insertions / deletions に含めない。 |
 
 HTML text は class 付与前に escape する。copy text と search index には元の diff 記号と code text を含めるが、class 名、line number、UI label は含めない。[`docs/details/builder.md` 詳細本文責務 §28.4](builder.md#sec-28-4) と併用する場合、line number node に diff class を付けず、code text 側だけに diff class を付ける。`diff_blocks` は diff / patch fence 数、`diff_insertions` と `diff_deletions` は該当行数とする。
 
@@ -2651,7 +2612,7 @@ Mermaid 変換は `--mermaid=true` の場合だけ有効である。`--mermaid=f
 | `A --> B` | edge 定義。両端 id は既存または暗黙 node とする。 |
 | 空行 | 無視する。 |
 
-前記条件以外の行、`graph LR`、subgraph、classDef、click、HTML label、外部 link、script 相当構文は未対応とする。non-strict では stdout に `[WARN] BUILDER28_UNSUPPORTED_RESERVED file:line 28.17 ...` を出し、source fallback として `<pre class="mermaid-source">` だけを出力する。strict では終了コード `2`、公開出力維持とする。
+`graph TD`、node 定義、edge 定義、空行のいずれにも一致しない行、`graph LR`、subgraph、classDef、click、HTML label、外部 link、script 相当構文は未対応とする。non-strict では stdout に `[WARN] BUILDER28_UNSUPPORTED_RESERVED file:line 28.17 ...` を出し、source fallback として `<pre class="mermaid-source">` だけを出力する。strict では終了コード `2`、公開出力維持とする。
 
 対応 diagram は `<figure class="mermaid-diagram">` に deterministic SVG を 1 個出力する。SVG は `role="img"`、`aria-label`、deterministic `viewBox` を持ち、node は `.mermaid-node`、edge は `.mermaid-edge` とする。SVG 内に `script`、`foreignObject`、event handler 属性、外部参照属性、runtime fetch、CDN、外部 `mermaid.js` を含めてはならない。source text は HTML escape し、search index には Mermaid source、SVG text、diagram UI label を含めない。
 

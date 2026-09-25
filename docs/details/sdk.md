@@ -1,6 +1,6 @@
 # Adlaire CI — SDK 詳細仕様
 
-本ファイルは `sdk` owner component の詳細本文責務として、`sdk` が主本文として持つ実装契約だけを扱う。
+[`docs/details/sdk.md`](sdk.md) は `sdk` owner component の詳細本文責務として、`sdk` が主本文として持つ実装契約だけを扱う。
 
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
@@ -13,7 +13,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | 項目 | 内容 |
 |------|------|
 | owner component | `sdk` |
-| collaborator component | `api`、`ui`、`security` |
+| collaborator component | 機能ごとの接続境界と担当処理だけを定義し、ファイル全体の collaborator 一覧は定義しない。 |
 | 持つ内容 | `sdk` owner が主本文として定義する SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
 | 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / release 手順、fixture 証跡責務。 |
 
@@ -23,7 +23,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 
 [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) は、sdk owner の JavaScript SDK 詳細本文責務である。
 
-**ファイル：** `admin/adlaire-ci-sdk.js`（単一ファイル、外部依存なし）
+**ファイル：** [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)（単一ファイル、外部依存なし）
 **モジュール形式：** ES Module（`import` / `export`）
 
 **SDK 実行環境契約：**
@@ -34,9 +34,10 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | module | `admin/adlaire-ci-sdk.js` は ES Module とし、`export { AdlaireCI, AdlaireCIError }` を必須 export とする。default export は定義しない。 |
 | browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder`、`URLSearchParams` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
 | 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。Node.js 専用 API、npm package、bundler、polyfill による補完は行わない。 |
-| 外部依存 | npm package、CDN script、framework、build tool を使用してはならない。 |
+| 外部依存 | [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1) と [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を参照する。 |
 | global 汚染 | `window.AdlaireCI` 等の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
 | stream 前提 | `streamBuild()` は native `EventSource` を使用しない。Authorization header を付与できる `fetch` streaming を必須実装とする。 |
+| API 対応範囲 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の全 endpoint のうち、GitHub が直接送信する `POST /api/webhook` だけは SDK method を定義しない。それ以外の endpoint は少なくとも 1 SDK method と対応させる。原則は 1 endpoint に 1 method とし、`POST /api/schedule/allowed-hours` だけは request body ありの `setAllowedHours()` と、`{from:null,to:null}` を送る `clearAllowedHours()` の 2 method を明示的例外とする。 |
 
 ```js
 class AdlaireCI {
@@ -45,14 +46,14 @@ class AdlaireCI {
 
   login(password)                               // POST /api/login → {token?, must_change, totp_required?, ticket?}; token がある場合は this._token にセット
   loginTotp(ticket, code)                       // POST /api/login/totp → {token, must_change}; this._token にセット
-  logout()                                      // POST /api/logout; this._token をクリア
-  changePassword(currentPassword, newPassword)  // POST /api/change-password
+  logout()                                      // POST /api/logout → Promise<{message: string}>; this._token をクリア
+  changePassword(currentPassword, newPassword)  // POST /api/change-password → Promise<{message: string}>
   getAuditLog({ limit = 100, offset = 0, actor = null, action = null, result = null } = {}) // GET /api/audit-log → Promise<{log: AuditLogRecord[], total: number}>
 
   getStatus()               // GET /api/status               → Promise<StatusObject>
-  triggerBuild()            // POST /api/build               → Promise<{message: string, build_id?: string, queued?: boolean}>
+  triggerBuild()            // POST /api/build               → Promise<{message: string, queue_id: string, queued: true, dispatch: "requested"|"timer_fallback"}>
   getLogs(n = 100, q = '')  // GET /api/logs?n={n}&q={q}     → Promise<{lines: string[]}>
-  getHistory({ page = 1, perPage = 20, trigger = null, tag = null, flagged = null } = {}) // GET /api/history?page={page}&per_page={perPage}&trigger={trigger}&tag={tag}&flagged={flagged} → Promise<HistoryPageObject>
+  getHistory({ page = 1, perPage = 20, trigger = null, tag = null, flagged = null, failureCategory = null } = {}) // GET /api/history?page={page}&per_page={perPage}&trigger={trigger}&tag={tag}&flagged={flagged}&failure_category={failureCategory} → Promise<HistoryPageObject>
   getSysinfo()              // GET /api/sysinfo              → Promise<SysinfoObject>
   getSchedule()             // GET /api/schedule             → Promise<ScheduleObject>
   getNotifyConfig()         // GET /api/notify-config        → Promise<NotifyConfig>
@@ -60,28 +61,28 @@ class AdlaireCI {
   getConfig()               // GET /api/config               → Promise<ConfigObject>
   validateConfig(config)    // POST /api/config/validate     → Promise<ConfigValidationObject>
   setConfig(config)         // POST /api/config              → Promise<{message: string, config: ConfigObject}>
-  health()                  // GET /api/health               → Promise<{status: string}>
+  health()                  // GET /api/health               → Promise<HealthObject>
   getPatStatus()            // GET /api/pat-status           → Promise<PatStatusObject>
-  getAccessLog()            // GET /api/access-log           → Promise<{log: AccessRecord[]}>
+  getAccessLog({ limit = 100, offset = 0 } = {}) // GET /api/access-log?limit={limit}&offset={offset} → Promise<{log: AccessRecord[]}>
   getApiAccessLog({ limit = 100, offset = 0, method = null, path = null, status = null } = {}) // GET /api/api-access-log → Promise<{log: ApiAccessRecord[], total: number}>
   getStats(days = 7)        // GET /api/stats?days={days}    → Promise<StatsObject>
   exportLogs()              // GET /api/logs/export          → Promise<{exported_at: string, lines: string[]}>
-  cleanupLogs()             // POST /api/logs/cleanup        → Promise<{message: string, deleted_count: number}>
+  cleanupLogs()             // POST /api/logs/cleanup        → Promise<{message: string, deleted_count: number, failed_count: number}>
   archiveLogs()             // POST /api/logs/archive        → Promise<{message: string, archived_count: number}>
   getRepoInfo()             // GET /api/repo-info            → Promise<RepoInfoObject>
   backup()                  // GET /api/backup               → Promise<BackupObject>
-  restore(config)           // POST /api/restore             → Promise<{message: string}>
+  restore(config)           // POST /api/restore RestoreObject → Promise<{message: string}>
   notifyTest()              // POST /api/notify-test         → Promise<{message: string, webhook_url: string}>
-  buildForce()              // POST /api/build/force         → Promise<{message: string, build_id?: string, queued?: boolean}>
+  buildForce()              // POST /api/build/force         → Promise<{message: string, queue_id: string, queued: true, dispatch: "requested"|"timer_fallback"}>
   patVerify()               // POST /api/pat-verify          → Promise<PatVerifyObject>
   getHistoryLog(id)         // GET /api/history/{id}/log     → Promise<HistoryLogObject>
   cancelBuild()             // POST /api/build/cancel        → Promise<{message: string}>
   resetCircuitBreaker()     // POST /api/circuit-breaker/reset → Promise<{message: string, open: boolean, consecutive_failures: number}>
-  streamBuild(onLine, onEnd) // GET /api/build/stream (SSE)  → Promise<StreamHandle>（onLine(line), onEnd({status, duration_seconds}) コールバック）
+  streamBuild(onLine, onEnd) // GET /api/build/stream (保存済み log の有限 SSE) → Promise<StreamHandle>（onLine(line), onEnd({status, duration_seconds:number|null}) コールバック、done で終端を監視）
   setLogLevel(level)        // POST /api/log-level           → Promise<{message: string, level: string}>
   updatePat(token)          // POST /api/pat-update          → Promise<{message: string}>
   getDashboard()            // GET /api/dashboard            → Promise<DashboardObject>
-  getNotifyLog()            // GET /api/notify-log           → Promise<{log: NotifyRecord[]}>
+  getNotifyLog({ limit = 100, offset = 0 } = {}) // GET /api/notify-log?limit={limit}&offset={offset} → Promise<{log: NotifyRecord[]}>
   getSessions()             // GET /api/sessions             → Promise<{sessions: SessionRecord[]}>
   revokeAllSessions()       // POST /api/sessions/revoke-all → Promise<{message: string, revoked_count: number}>
   getTotpStatus()           // GET /api/auth/totp-status     → Promise<TotpStatus>
@@ -95,7 +96,7 @@ class AdlaireCI {
   clearAllowedHours()          // POST /api/schedule/allowed-hours {from:null, to:null} → Promise<{message: string, allowed_hours: null}>
   setForceInterval(hours)      // POST /api/schedule/force-interval → Promise<{message: string, hours: number}>
   setBuildCooldown(seconds)    // POST /api/schedule/cooldown → Promise<{message: string, seconds: number}>
-  searchLogs(q = '', from = '', to = '') // GET /api/logs/search?q={q}&from={from}&to={to} → Promise<SearchResult>
+  searchLogs(q = '', from = '', to = '', level = undefined) // GET /api/logs/search?q={q}&from={from}&to={to}&level={level} → Promise<SearchResult>
   getOutputMeta()              // GET /api/output-meta       → Promise<OutputMetaObject>
   getStatsTimeline(days = 30)  // GET /api/stats/timeline?days={days} → Promise<TimelineObject>
   getStatsBuildDuration(n = 10) // GET /api/stats/build-duration?n={n} → Promise<BuildDurationStats>
@@ -103,9 +104,9 @@ class AdlaireCI {
   getDiagnostics()             // GET /api/diagnostics       → Promise<DiagnosticsObject>
   getRateLimit()               // GET /api/rate-limit        → Promise<RateLimitObject>
   getDiskUsage()               // GET /api/disk-usage        → Promise<DiskUsageObject>
-  getConfigLog()               // GET /api/config-log        → Promise<{log: ConfigLogRecord[]}>
-  getApiRateLimit()            // GET /api/api-rate-limit    → Promise<ApiRateLimitPolicy>
-  setApiRateLimit(policy)      // POST /api/api-rate-limit   → Promise<ApiRateLimitPolicy>
+  getConfigLog({ limit = 100, offset = 0 } = {}) // GET /api/config-log?limit={limit}&offset={offset} → Promise<{log: ConfigLogRecord[]}>
+  getApiRateLimit()            // GET /api/api-rate-limit    → Promise<ApiRateLimitPolicyResponse>
+  setApiRateLimit(policy)      // POST /api/api-rate-limit ApiRateLimitPolicyInput → Promise<ApiRateLimitPolicyResponse>
   getBranchConfig()            // GET /api/branch-config     → Promise<{source: string, branches: BranchTargetRecord[]}>
   setBranchConfig(branches)    // POST /api/branch-config    → Promise<{message: string, branches_count: number}>
   notifyWeeklySummary()        // POST /api/notify/weekly-summary → Promise<{message: string, period: string, success_count: number, failure_count: number, success_rate: number}>
@@ -115,11 +116,11 @@ class AdlaireCI {
   getBuildChainConfig()       // GET /api/build-chain-config → Promise<BuildChainConfig>
   setBuildChainConfig(chains) // POST /api/build-chain-config → Promise<{message: string, chains_count: number}>
   getApprovals()              // GET /api/approvals         → Promise<{approvals: ApprovalRecord[]}>
-  approveBuild(id)            // POST /api/approvals/{id}/approve → Promise<{message: string, queued: boolean}>
+  approveBuild(id)            // POST /api/approvals/{id}/approve → Promise<{message: string, queued: true, queue_id: string, dispatch: "requested"|"timer_fallback"}>
   rejectBuild(id)             // POST /api/approvals/{id}/reject  → Promise<{message: string}>
   getHistoryComment(id)        // GET /api/history/{id}/comment  → Promise<CommentObject>
   setHistoryComment(id, comment) // POST /api/history/{id}/comment → Promise<{message: string}>
-  setRepoConfig(config)        // POST /api/repo-config      → Promise<{message: string}>
+  setRepoConfig({ owner = undefined, repo = undefined } = {}) // POST /api/repo-config RepoConfigPatch → Promise<{message: string}>
   exportHistory()              // GET /api/history/export    → Promise<ExportObject>（JSON）
   setHistoryFlag(id, flagged)  // POST /api/history/{id}/flag → Promise<{message: string}>
   setHistoryTags(id, tags)     // POST /api/history/{id}/tags → Promise<{message: string}>
@@ -164,7 +165,7 @@ class AdlaireCI {
   setSmtpConfig(config)        // POST /api/smtp-config      → Promise<{message: string}>
   smtpTest()                   // POST /api/smtp-test        → Promise<{result: string, message: string}>
   // 16C ビルドキュー
-  getQueue()                   // GET /api/queue             → Promise<{queued: QueueEntry[], max_size: number}>
+  getQueue()                   // GET /api/queue             → Promise<{active: QueueEntry|null, queued: QueueEntry[], max_size: number}>
   clearQueue()                 // DELETE /api/queue          → Promise<{message: string, cleared_count: number}>
   // 16D ダッシュボードレイアウト
   getDashboardLayout()         // GET /api/dashboard-layout  → Promise<{widgets: string[]}>
@@ -188,8 +189,10 @@ export { AdlaireCI, AdlaireCIError };
 | `AdlaireCIError` | `name="AdlaireCIError"`、`status`、`message`、`details`、`responseBody` を持つ `Error` 派生クラスとする。constructor は `new AdlaireCIError({status, message, details = null, responseBody = null})` とし、network error、timeout、protocol error は `status=0` とする。`message` は API error response の `error`、network error は `"Network error"`、timeout は `"Request timeout"`、protocol error は固定文言を使用する。 |
 | `logout()` | API 呼び出しが失敗しても `finally` で `this._token` をクリアする。 |
 | request timeout | 通常 API は 30 秒で abort し、`AdlaireCIError(status=0, message="Request timeout")` を投げる。`streamBuild()` は接続確立まで 30 秒、接続確立後は timeout なしとし、利用者が `StreamHandle.close()` で停止する。 |
-| `streamBuild()` | token がない場合は接続前に `AdlaireCIError(status=401, message="Unauthorized")` を投げる。native `EventSource` は Authorization header を付与できないため使用禁止とする。SDK は `fetch()`、`AbortController`、`ReadableStream` reader を使用し、`Accept: text/event-stream` と `Authorization` header を付与して SSE frame を解析する。`data:` 行の JSON を parse し、`type="log"` は `onLine(line)`、`type="end"` は `onEnd({status, duration_seconds})` を呼んで reader を close する。parse 不能 frame は `AdlaireCIError(status=0, message="Invalid SSE frame")` として stream error にする。 |
-| `StreamHandle` | `streamBuild()` の戻り値は `{ close(): void, closed: boolean }` とする。`close()` は AbortController を abort し、複数回呼んでも例外を投げない。`closed` は `end` 受信、error、または `close()` 後に `true` になる。 |
+| `streamBuild()` | `onLine` と `onEnd` は function 必須とし、不正時は HTTP 送信前に `TypeError` とする。token がない場合は接続前に `AdlaireCIError(status=401, message="Unauthorized")` を投げる。native `EventSource` は Authorization header を付与できないため使用禁止とする。SDK は `fetch()`、`AbortController`、`ReadableStream` reader を使用し、`Accept: text/event-stream` と `Authorization` header を付与する。`2xx`、media type `text/event-stream`、readable body の確認後だけ `StreamHandle` で resolve する。`2xx` で media type または readable body が不正な場合は接続前に `AdlaireCIError(status=0,message="Invalid SSE response")` で reject する。 |
+| SSE parser | `TextDecoder("utf-8",{fatal:true})` の streaming decode を使用し、chunk 境界をまたぐ byte、Unicode 文字、frame を buffer する。frame separator は LF 2 個の `\n\n` だけとし、1 frame は `data: ` で始まる 1 行と compact JSON 1 object だけを許可する。CRLF、追加行、空 frame、無効 UTF-8、JSON parse 不能、未知 key、未知 `type`、必須 key 不足、型不一致は `Invalid SSE frame` とする。 |
+| SSE frame 適用 | `type="log"` は key が `type,line,at` だけ、`line` が string、`at` が UTC ISO 8601 秒精度の場合だけ `onLine(line)` を呼ぶ。`type="end"` は key が `type,status,duration_seconds` だけで、status と duration の組合せが API 契約に一致する場合だけ一時保持する。`end` は最終 frame 1 件だけを許可し、その後に EOF と空 buffer を確認してから `onEnd(summary)` を 1 回呼ぶ。実行中 snapshot の `duration_seconds:null` を保持し、完了と推測しない。EOF 前の `end` 不在、`end` 後の byte / frame、EOF 時の未完 frame は `Invalid SSE frame` とする。`onLine` または `onEnd` が例外を投げた場合は reader を停止し、`AdlaireCIError(status=0,message="Stream callback failed")` へ置き換える。 |
+| `StreamHandle` | `StreamEnd.status` は `"running"`、`"success"`、`"failure"`、`"cancelled"` のいずれか、`StreamEnd.duration_seconds` は number または `null` とし、exact object は `{status,duration_seconds}` とする。`streamBuild()` の戻り値は `close()`、`closed`、`error`、`done` だけを持ち、`error` は `AdlaireCIError` または `null`、`done` は `StreamEnd` または `null` で resolve する Promise とする。正常終了時は `onEnd(summary)` 後に `done` を同じ summary で resolve し、`closed=true`、`error=null` とする。接続後 error は `closed=true`、`error` に同じ `AdlaireCIError` を保持し、`done` をその error で reject する。`close()` は reader と AbortController を停止し、複数回呼んでも例外を投げず、`onEnd` を呼ばず、`closed=true`、`error=null`、`done` は `null` で resolve する。normal end、error、user close のうち最初の terminal transition だけが状態と `done` を確定し、後続 callback と再 settle を禁止する。 |
 | Blob レスポンス | `downloadSnapshot(id)` のみ `response.blob()` を使用する。その他は JSON とする。 |
 | メソッド引数検証 | SDK 側でも必須引数の空値、配列型、数値範囲を検証し、HTTP 送信前に `TypeError` を投げる。 |
 | endpoint 対応 | SDK method は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の SDK 列に存在する endpoint だけを呼び出す。[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) にない endpoint を SDK 独自判断で追加してはならない。 |
@@ -207,7 +210,7 @@ SDK の内部 request helper は、すべての public method で [`docs/details
 | 順序 | 処理 | 固定仕様 |
 |------|------|----------|
 | 1 | 引数検証 | 必須引数、型、空配列、数値範囲を検証する。失敗時は `TypeError` を投げ、`fetch()` を呼ばない。 |
-| 2 | URL 生成 | `baseUrl + path + query` を生成する。query key は method 契約表の順序で追加する。 |
+| 2 | URL 生成 | `baseUrl + path + query` を生成する。query key は [SDK 引数変換契約](#sdk-argument-contract) の対象 method 行に記載された順序で追加する。 |
 | 3 | body 生成 | `Request=none` では `body` と `Content-Type` を設定しない。JSON body ありの場合だけ `JSON.stringify()` する。 |
 | 4 | header 生成 | `Accept` を常に付与する。JSON body を送信する場合だけ `Content-Type` を付与する。token が空でない場合だけ `Authorization` を付与し、token が空の場合は `Authorization` header を付けない。 |
 | 5 | timeout 設定 | 通常 request は `AbortController` で 30 秒 timeout。`streamBuild()` は接続確立まで 30 秒。 |
@@ -227,9 +230,11 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務
 | timeout | `0` | `Request timeout` | `null` | 維持 |
 | empty success JSON | `0` | `Empty JSON response` | `null` | 維持 |
 | invalid success JSON | `0` | `Invalid JSON response` | `null` | 維持 |
+| invalid SSE response | `0` | `Invalid SSE response` | `null` | 維持 |
 | invalid SSE frame | `0` | `Invalid SSE frame` | `null` | 維持 |
+| stream callback failure | `0` | `Stream callback failed` | `null` | 維持 |
 
-`429` は SDK で自動待機、自動再送、自動 refresh を行わない。binary response は `downloadSnapshot(id)` の `2xx` のみ `Blob` とする。`4xx` / `5xx` では `Content-Type` が `application/json` または `+json` で終わる場合だけ JSON error として parse し、parse 成功時は response の `error` / `details` を保持した `AdlaireCIError` を投げる。JSON parse 不能、JSON 以外の error body、空 body の場合は body text を `responseBody` に保持し、`message` は `HTTP {status}` とする。`streamBuild()` は接続後の `close()` をユーザー停止として扱い、`AdlaireCIError` を投げない。接続後に network error または invalid frame が発生した場合は `StreamHandle.closed=true`、`StreamHandle.error` に `AdlaireCIError(status=0,message="Network error")` または `AdlaireCIError(status=0,message="Invalid SSE frame")` を保存する。
+`429` は SDK で自動待機、自動再送、自動 refresh を行わない。binary response は `downloadSnapshot(id)` の `2xx` のみ `Blob` とする。`4xx` / `5xx` では `Content-Type` が `application/json` または `+json` で終わる場合だけ JSON error として parse し、parse 成功時は response の `error` / `details` を保持した `AdlaireCIError` を投げる。JSON parse 不能、JSON 以外の error body、空 body の場合は body text を `responseBody` に保持し、`message` は `HTTP {status}` とする。`streamBuild()` は接続後の `close()` をユーザー停止として扱い、`AdlaireCIError` を投げない。接続後の network / frame / callback error は `StreamHandle.error` と `StreamHandle.done` の reject で同じ `AdlaireCIError` を通知する。callback が投げた元の error 本文は `responseBody`、console、UI へ転写しない。
 
 **SDK メソッド実装固定契約：**
 
@@ -249,42 +254,42 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務
 
 **SDK 検証 fixture 参照：**
 
-SDK の fixture 名、fake fetch 入力、expected、error shape、stream frame、binary response、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-phase-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-phase-3--phase-4-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、引数変換、token mutation、response passthrough、error 変換、stream handle の実装契約だけを扱う。
+SDK の fixture 名、fake fetch 入力、expected、error shape、stream frame、binary response、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、引数変換、token mutation、response passthrough、error 変換、stream handle の実装契約だけを扱う。
 
 <a id="sec-3"></a>
-**Phase 3 SDK 操作固定契約：**
+**基本運用 SDK 操作固定契約：**
 
-Phase 3 実装では、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の固定表の SDK method を最小運用範囲として固定する。SDK は成功時 response を endpoint schema の範囲でそのまま返し、失敗時は HTTP status、API error、details、responseBody を保持した `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
+基本運用 SDK は、以下の SDK method の request、response、error 変換を固定する。SDK は成功時 response を endpoint schema の範囲でそのまま返し、失敗時は HTTP status、API error、details、responseBody を保持した `AdlaireCIError` へ変換する。UI が必要とする表示用既定値、並べ替え、ラベル変換は SDK で行わない。
 
 | SDK method | HTTP | 成功時 | 失敗時 | 追加禁止条件 |
 |------------|------|--------|--------|--------------|
 | `login(password)` | `POST /api/login` | `token` がある場合だけ `this._token` へ保存する。`totp_required:true` の場合は token を保存せず response を返す。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | password を console、error、responseBody 加工結果へ出さない。 |
 | `logout()` | `POST /api/logout` | response に関わらず `finally` で token を破棄する。 | network error、`401`、`500` でも token 破棄後に error を投げる。 | logout 失敗を理由に token を保持しない。 |
 | `getStatus()` | `GET /api/status` | `StatusObject` をそのまま返す。 | `500 State file is corrupted` / `State file read failed` を message として保持する。 | `.build_status.json` 不在時の fallback 値を SDK が推測しない。 |
-| `triggerBuild()` | `POST /api/build` | `{message, build_id?, queued?}` を返す。 | `409`、`429`、`503` は `AdlaireCIError.status` に HTTP status を保持し、`message` は API response の `error` を保持する。 | running / queue / circuit を SDK 側で事前判定しない。 |
-| `buildForce()` | `POST /api/build/force` | `{message, build_id?, queued?}` を返す。 | `409`、`429`、`503` を `AdlaireCIError`。 | force 可否を SDK 側で状態推測しない。 |
+| `triggerBuild()` | `POST /api/build` | `{message,queue_id,queued:true,dispatch}` をそのまま返す。 | `409`、`429`、`503` は `AdlaireCIError.status` に HTTP status を保持し、`message` は API response の `error` を保持する。 | dispatch から running / build id を推測せず、runner 起動を SDK から再実行しない。 |
+| `buildForce()` | `POST /api/build/force` | `{message,queue_id,queued:true,dispatch}` をそのまま返す。 | `409`、`429`、`503` を `AdlaireCIError`。 | force 可否、SHA 更新、build 開始を SDK 側で状態推測しない。 |
 | `cancelBuild()` | `POST /api/build/cancel` | `{message}` を返す。 | running なしの `409` を `AdlaireCIError(status=409)`。 | cancel 後に SDK が自動 `getStatus()` を呼ばない。 |
 | `getLogs(n,q)` | `GET /api/logs` | `{lines}` を返す。`lines` は API 順序を保持する。 | `500` は固定 error message を保持する。 | line を結合、trim、level 分類しない。 |
-| `getHistory(options)` | `GET /api/history` | `{total,page,per_page,pages,history}` を返す。 | query 不正 `422` は `details` を保持する。 | `pages`、`total` を SDK 側で再計算しない。 |
+| `getHistory(options)` | `GET /api/history` | `{total,page,per_page,pages,warnings,history}` を返す。 | query 不正 `422` は `details` を保持する。 | `pages`、`total`、`warnings` を SDK 側で再計算または補完しない。 |
 | `getHistoryLog(id)` | `GET /api/history/{id}/log` | log object を返す。 | `404`、`500` を `AdlaireCIError`。 | archive fallback を SDK 側で再試行しない。 |
-| `getQueue()` | `GET /api/queue` | `{queued,max_size}` を返す。`running` が response に含まれる場合も削除しない。 | `.build_state` 破損の `500` を固定 message で保持する。 | queue 並び替え、重複排除、上限補正をしない。 |
+| `getQueue()` | `GET /api/queue` | `{active,queued,max_size}` を返し、active と waiting の区分を保持する。 | `.build_state` 破損の `500` を固定 message で保持する。 | active を queued に混ぜる、queue 並び替え、重複排除、上限補正をしない。 |
 | `resetCircuitBreaker()` | `POST /api/circuit-breaker/reset` | `{message,open,consecutive_failures}` を返す。 | 破損状態 `500` を `AdlaireCIError`。 | reset 成功後に SDK が自動 build を開始しない。 |
-| `streamBuild(onLine,onEnd)` | `GET /api/build/stream` | `StreamHandle` を返し、`log` frame を `onLine`、`end` frame を `onEnd` へ渡す。 | 接続前 `401`、`404`、timeout、invalid frame を `AdlaireCIError`。 | `EventSource`、自動 reconnect、log 永続化を行わない。 |
+| `streamBuild(onLine,onEnd)` | `GET /api/build/stream` | `StreamHandle` を返し、`log` frame を `onLine`、検証済み最終 `end` を `onEnd` と `done` へ渡す。 | 接続前 `401`、`404`、`500`、timeout、invalid response は `streamBuild()` を reject。接続後 error は `done` を reject。 | `EventSource`、自動 reconnect、log 永続化を行わない。 |
 
 <a id="sec-3-2"></a>
-**Phase 3 SDK fixture 参照：**
+**基本運用 SDK fixture 参照：**
 
-Phase 3 SDK の fake fetch 入力、expected request、expected return、`AdlaireCIError`、stream frame、unauthorized token clear は [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) を正本とする。
+基本運用 SDK の fake fetch 入力、expected request、expected return、`AdlaireCIError`、stream frame、unauthorized token clear は [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約) を正本とする。
 
 <a id="sec-4"></a>
-**Phase 4 SDK 操作固定契約：**
+**拡張運用 SDK 操作固定契約：**
 
-Phase 4 SDK は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の endpoint 契約と [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行う場合でも、検証対象は必須引数、型、範囲、path parameter 形式に限定する。API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
+拡張運用 SDK は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の endpoint 契約と [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約だけに従う。SDK は保存前検証の一部を `TypeError` で行う場合でも、検証対象は必須引数、型、範囲、path parameter 形式に限定する。API response の補完、no-op 判定、secret mask 変換、状態ファイル由来値の再計算を行ってはならない。
 
 | 機能群 | SDK method | 成功時 | 失敗時 | 追加禁止条件 |
 |--------|------------|--------|--------|--------------|
-| config / repo / branch | `getConfig()`, `setConfig(config)`, `validateConfig(config)`, `setRepoConfig(config)`, `getBranchConfig()`, `setBranchConfig(branches)` | API response をそのまま返す。`set*` は success message と count / config を保持する。 | `422 details` は `AdlaireCIError.details` に保持する。`500` は固定 message。 | SDK 側で未知 key を削除しない。既定値 merge しない。 |
-| schedule | `setScheduleInterval()`, `pauseSchedule()`, `resumeSchedule()`, `setAllowedHours()`, `clearAllowedHours()`, `setForceInterval()`, `setBuildCooldown()` | response の interval / hours / seconds / allowed_hours をそのまま返す。 | systemd 更新失敗の `500` を `AdlaireCIError` にする。 | timer 状態を SDK が推測しない。 |
+| config / repo / branch | `getConfig()`, `setConfig(config)`, `validateConfig(config)`, `getRepoInfo()`, `setRepoConfig({owner,repo})`, `getBranchConfig()`, `setBranchConfig(branches)` | API response をそのまま返す。`set*` は success message と count / config を保持する。 | `422 details` は `AdlaireCIError.details` に保持する。`500` は固定 message。 | `getRepoInfo()` は `RepoInfoObject` を補完せず返す。`setRepoConfig` に branch / target field を合成せず、`setBranchConfig` に owner / repo を合成しない。SDK 側で未知 key を削除したり既定値 merge したりしない。 |
+| schedule | `getSchedule()`, `setScheduleInterval()`, `pauseSchedule()`, `resumeSchedule()`, `setAllowedHours()`, `clearAllowedHours()`, `setForceInterval()`, `setBuildCooldown()` | response の interval / hours / seconds / allowed_hours をそのまま返す。 | systemd 更新失敗の `500` を `AdlaireCIError` にする。 | timer 状態を SDK が推測しない。 |
 | diagnostics / dashboard | `getDiagnostics()`, `getDashboard()`, `getRateLimit()`, `getDiskUsage()`, `getOutputMeta()` | read-only response をそのまま返す。 | item 単位 warn/error は成功 response として返し、HTTP error だけ例外にする。 | read-only response を SDK が保存・集計しない。 |
 | notify / SMTP / webhook | `getNotifyConfig()`, `setNotifyConfig()`, `notifyTest()`, `notifyWeeklySummary()`, `getWebhookEvents()`, `getWebhookConfig()`, `setWebhookConfig()`, `getSmtpConfig()`, `setSmtpConfig()`, `smtpTest()` | secret は API が mask した値だけ返す。 | 未設定 `422` / `501`、送信失敗 `500` を保持する。 | secret 平文を console、throw message、responseBody 加工結果へ出さない。 |
 | snapshots / rollback | `getSnapshots()`, `downloadSnapshot(id)`, `deleteSnapshot(id)`, `rollbackHistory(id)` | list は API 順序、download は Blob、rollback は `{message,build_id}`。 | `404`、running `409` を `AdlaireCIError`。 | SDK が snapshot 存在確認や rollback 可否を事前推測しない。 |
@@ -293,13 +298,11 @@ Phase 4 SDK は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-
 | tokens / sessions / audit | `getTokens()`, `createToken()`, `revokeToken()`, `getSessions()`, `revokeAllSessions()`, `getAuditLog()`, `getApiAccessLog()` | `createToken()` の token 本体は response として 1 回だけ返す。 | `403`、`404`、`422`、`429` を status 付きで保持する。 | token 本体を保存しない。token list に作成時 token を合成しない。 |
 
 <a id="sec-4-2"></a>
-**Phase 4 SDK fixture 参照：**
+**拡張運用 SDK fixture 参照：**
 
-Phase 4 SDK の fake fetch 入力、expected request、expected return、secret mask、webhook paging、snapshot binary response は [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-phase-3--phase-4-api-fixture-契約) および [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。
-| sdk phase4 rollback conflict | `rollbackHistory(id)` が `409 {"error":"Build is running"}` | `AdlaireCIError.status=409`、自動 `getStatus()` 呼び出しなし。 |
-| sdk phase4 token issue | `createToken()` が `{token:"..."}` を返す | token を response として返すだけで、SDK 内部保存、console 出力、token list 合成をしない。 |
-| sdk phase4 duplicate rule | `addAlertRule()` または `addTagRule()` が `409 Conflict` | `AdlaireCIError.status=409`、自動 retry なし。 |
+拡張運用 SDK の fake fetch 入力、expected request、expected return、secret mask、webhook paging、snapshot binary response は [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約) および [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。
 
+<a id="sdk-argument-contract"></a>
 **SDK 引数変換契約：**
 
 SDK method は、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の固定表の通りに引数を path、query、body へ変換する。[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の固定表にない引数、既定値、body key を追加してはならない。
@@ -310,12 +313,22 @@ SDK method は、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javas
 | `loginTotp(ticket,code)` | `ticket`, `code` | body | `{ticket,code}` |
 | `changePassword(currentPassword,newPassword)` | `currentPassword`, `newPassword` | body | `{current_password: currentPassword, new_password: newPassword}` |
 | `getAuditLog({limit,offset,actor,action,result})` | `limit=100`, `offset=0`, `actor=null`, `action=null`, `result=null` | query | `limit`、`offset` は常に送信する。任意値は `null` の場合送信しない。 |
+| `getAccessLog({limit,offset})` | `limit=100`, `offset=0` | query | `limit`、`offset` を常に送信する。 |
 | `getLogs(n,q)` | `n=100`, `q=""` | query | `n`、`q`。`q` は空文字でも送信する。 |
-| `getHistory({page,perPage,trigger,tag,flagged})` | `page=1`, `perPage=20`, `trigger=null`, `tag=null`, `flagged=null` | query | `page`、`per_page: perPage` は常に送信する。`trigger`、`tag`、`flagged` は `null` の場合は送信しない。 |
+| `getHistory({page,perPage,trigger,tag,flagged,failureCategory})` | `page=1`, `perPage=20`, `trigger=null`, `tag=null`, `flagged=null`, `failureCategory=null` | query | `page`、`per_page: perPage` は常に送信する。`trigger`、`tag`、`flagged`、`failure_category: failureCategory` は `null` の場合は送信しない。 |
+| `getHistoryLog(id)` | `id` | path | path `{id}`。body と query は送信しない。 |
+| `streamBuild(onLine,onEnd)` | `onLine`, `onEnd` | local callback | callback は request に含めず、GET body と query は送信しない。 |
+| `getStats(days)` | `days=7` | query | `days`。 |
+| `getStatsTimeline(days)` | `days=30` | query | `days`。 |
+| `getStatsBuildDuration(n)` | `n=10` | query | `n`。 |
+| `getBuildTrends(n)` | `n=100` | query | `n`。 |
 | `getApiAccessLog({limit,offset,method,path,status})` | `limit=100`, `offset=0`, `method=null`, `path=null`, `status=null` | query | `limit`、`offset` は常に送信する。`method`、`path`、`status` は `null` の場合は送信しない。 |
+| `getNotifyLog({limit,offset})` | `limit=100`, `offset=0` | query | `limit`、`offset` を常に送信する。 |
+| `getConfigLog({limit,offset})` | `limit=100`, `offset=0` | query | `limit`、`offset` を常に送信する。 |
 | `validateConfig(config)` | `config` | body | `config` をそのまま送信する。保存は API が行わない。 |
 | `setNotifyConfig(config)` | `config` | body | `config` をそのまま送信する。 |
 | `setConfig(config)` | `config` | body | `config` をそのまま送信する。未知 key は送信前に削除せず、API の `422` に委ねる。 |
+| `setLogLevel(level)` | `level` | body | `{level}` |
 | `updatePat(token)` | `token` | body | `{token}` |
 | `setScheduleInterval(seconds)` | `seconds` | body | `{interval_seconds: seconds}` |
 | `setAllowedHours(from,to)` | `from`, `to` | body | `{from,to}` |
@@ -339,6 +352,23 @@ SDK method は、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javas
 | `setNotes(content)` | `content` | body | `{content}` |
 | `setSmtpConfig(config)` | `config` | body | `config` をそのまま送信する。`password` が未指定の場合は送信しない。 |
 | `setDashboardLayout(widgets)` | `widgets` | body | `{widgets}` |
+| `restore(config)` | `config` | body | `RestoreObject` として `config` をそのまま送信する。 |
+| `setBranchConfig(branches)` | `branches` | body | `{branches}` |
+| `setBuildChainConfig(chains)` | `chains` | body | `{chains}` |
+| `approveBuild(id)` | `id` | path | path `{id}`。body は送信しない。 |
+| `rejectBuild(id)` | `id` | path | path `{id}`。body は送信しない。 |
+| `getHistoryComment(id)` | `id` | path | path `{id}`。body と query は送信しない。 |
+| `setRepoConfig({owner,repo})` | `owner=undefined`, `repo=undefined` | body | `undefined` でない key だけで `RepoConfigPatch` を作る。両方 `undefined` は HTTP 送信前に `TypeError`。branch / target key は追加しない。 |
+| `rollbackHistory(id)` | `id` | path | path `{id}`。body は送信しない。 |
+| `revokeToken(id)` | `id` | path | path `{id}`。body は送信しない。 |
+| `downloadSnapshot(id)` | `id` | path | path `{id}`。body と query は送信しない。 |
+| `deleteSnapshot(id)` | `id` | path | path `{id}`。body は送信しない。 |
+| `enableMaintenance(reason)` | `reason` | body | `{reason}` |
+| `setAccessControl(allowList)` | `allowList` | body | `{allow: allowList}` |
+| `deleteHook(id)` | `id` | path | path `{id}`。body は送信しない。 |
+| `getHookLog(id)` | `id` | path | path `{id}`。body と query は送信しない。 |
+| `deleteAlertRule(id)` | `id` | path | path `{id}`。body は送信しない。 |
+| `deleteTagRule(id)` | `id` | path | path `{id}`。body は送信しない。 |
 
 path に入る `id` は `encodeURIComponent` したうえで 1 segment として連結する。`/`、`.`、空文字を含む `id` は HTTP 送信前に `TypeError` とする。
 
@@ -357,7 +387,7 @@ SDK 詳細実装確認では、[`docs/details/api.md` 詳細本文責務 §22.0e
 
 <a id="sec-27-21"></a>
 <a id="sec-27-47"></a>
-**[§27.21〜§27.47 SDK 連動実装確認固定契約](sdk.md#sec-27-47)：**
+**[§27.21〜§27.47 SDK 連動実装確認固定契約](sdk.md#sec-27-21)：**
 
 [`docs/details/sdk.md` 詳細本文責務 §27.21](sdk.md#sec-27-21)〜[§27.47](sdk.md#sec-27-47) の追加仕様化機能で SDK の詳細実装確認を満たすには、対象 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/api.md` 詳細本文責務 §27](api.md#27-api-owner-追加仕様化機能-詳細仕様) の連動参照表、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
 
@@ -366,11 +396,11 @@ SDK 詳細実装確認では、[`docs/details/api.md` 詳細本文責務 §22.0e
 | [`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21) / [`docs/details/runner.md` 詳細本文責務 §27.31](runner.md#sec-27-31) branch target / env | `getBranchConfig()`, `setBranchConfig(branches)`, `getConfig()`, `setConfig(config)` | `branches` または `config` を指定 key のまま送信する。`target_files`、`env`、secret 風 key を削除しない。 | API response の branch 配列、`source`、件数をそのまま返す。 | validation `422` details を保持する。 | target path 正規化、env key 並び替え、secret mask 判定を SDK が行わない。 |
 | [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) / [`docs/details/runner.md` 詳細本文責務 §27.27](runner.md#sec-27-27) pipeline / hook | `getPipelineConfig()`, `setPipelineConfig(config)`, `getHooks()`, `addHook()`, `deleteHook(id)`, `getHookLog(id)` | pipeline config はそのまま送る。hook `commandArgs` は配列のまま送る。 | config / hook / log response をそのまま返す。 | `409`、`422`、`500` を `AdlaireCIError` として保持する。 | shell 文字列結合、quote 展開、reserved arg 除去、env 補完を行わない。 |
 | [`docs/details/runner.md` 詳細本文責務 §27.23](runner.md#sec-27-23)〜[§27.26](runner.md#sec-27-26) local watch / tag / cache / parallel | `getConfig()`, `setConfig(config)`, `getStatus()`, `getHistory()`, `getHistoryLog(id)` | config と query を表どおり送る。 | status / history / log に含まれる追加 key を削除しない。 | `422` details、`500` message を保持する。 | local watch 可否、tag match、cache hit、parallel result を SDK が再判定しない。 |
-| [`docs/details/api.md` 詳細本文責務 §27.30](api.md#sec-27-30) / [`docs/details/runner.md` 詳細本文責務 §27.30](runner.md#sec-27-30) approval | `getApprovals()`, `approveBuild(id)`, `rejectBuild(id)`, `getQueue()` | `id` は path parameter 契約で encode し、approve / reject に body を送らない。 | approve は `{message,queued}`、reject は `{message}`、list は API 配列順で返す。 | `409` / `429` / `500` を保持し、自動再送しない。 | expired / rejected / approved を SDK が書き換えない。approve 後に SDK が自動 queue 取得しない。 |
+| [`docs/details/api.md` 詳細本文責務 §27.30](api.md#sec-27-30) / [`docs/details/runner.md` 詳細本文責務 §27.30](runner.md#sec-27-30) approval | `getApprovals()`, `approveBuild(id)`, `rejectBuild(id)`, `getQueue()` | `id` は path parameter 契約で encode し、approve / reject に body を送らない。 | approve は `{message,queued,queue_id,dispatch}`、reject は `{message}`、list は `requested_trigger` / `requested_force` を含む API 配列順で返す。 | `409` / `429` / `500` を保持し、自動再送しない。 | expired / rejected / approved / requested_force / dispatch を SDK が書き換えない。approve 後に SDK が自動 queue 取得しない。 |
 | [`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) notification | `getNotifyConfig()`, `setNotifyConfig(config)`, `getNotifyLog()`, `notifyTest()`, `notifyWeeklySummary()`, `getSmtpConfig()`, `setSmtpConfig(config)`, `smtpTest()` | config は unknown key を削除せず API へ送る。password 未指定時だけ `setSmtpConfig()` は password key を送らない。 | API が返した mask 値、log、pending 状態をそのまま返す。 | 未設定 `422` / `501`、送信失敗 `500` を保持する。 | secret 平文を console、error message、responseBody 加工結果、SDK field に保存しない。 |
-| [`docs/details/runner.md` 詳細本文責務 §27.33](runner.md#sec-27-33) / [`docs/details/runner.md` 詳細本文責務 §27.38](runner.md#sec-27-38) trend / anomaly | `getBuildTrends(n)`, `getStatsBuildDuration(n)`, `getDashboard()`, `getConfig()`, `setConfig(config)` | `n` は number として query へ送る。config はそのまま送る。 | summary、samples、warnings、anomaly flag を API 値のまま返す。 | invalid `n` / config `422` を保持する。 | avg / median / p95 / anomaly を SDK が再計算しない。 |
-| [`docs/details/runner.md` 詳細本文責務 §27.34](runner.md#sec-27-34) / [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) chain / queue | `getBuildChainConfig()`, `setBuildChainConfig(chains)`, `getQueue()`, `clearQueue()`, `triggerBuild()`, `buildForce()` | chains は配列のまま送る。queue clear は body を送らない。 | queue priority / created_seq / chain config を API 順序のまま返す。 | queue full `429`、conflict `409`、validation `422` を保持する。 | priority 並び替え、queue 重複排除、chain DAG 検証を SDK が行わない。 |
-| [`docs/details/runner.md` 詳細本文責務 §27.36](runner.md#sec-27-36) / [`docs/details/runner.md` 詳細本文責務 §27.37](runner.md#sec-27-37) failure category / environment | `getHistory()`, `getHistoryLog(id)`, `getOutputMeta()`, `getStatus()` | filter query は指定された値だけ送る。 | `failure_category`、`failure_evidence`、environment object を削除しない。 | 未知 filter `422` を保持する。 | category 分類、environment fallback、secret mask 判定を SDK が行わない。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.33](runner.md#sec-27-33) / [`docs/details/runner.md` 詳細本文責務 §27.38](runner.md#sec-27-38) trend / anomaly | `getBuildTrends(n)`, `getStatsBuildDuration(n)`, `getDashboard()`, `getConfig()`, `setConfig(config)` | `n` は number として query へ送る。config はそのまま送る。 | summary、samples、anomaly flag を API 値のまま返す。`BuildTrendStats` に `warnings` を補完しない。 | invalid `n` / config `422` を保持する。 | avg / median / p95 / anomaly を SDK が再計算しない。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.34](runner.md#sec-27-34) / [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) chain / queue | `getBuildChainConfig()`, `setBuildChainConfig(chains)`, `getQueue()`, `clearQueue()`, `triggerBuild()`, `buildForce()` | chains は配列のまま送る。queue clear は body を送らない。 | active / waiting 区分、queue priority / created_seq、dispatch、chain config を API 順序のまま返す。 | queue full `429`、conflict `409`、validation `422` を保持する。 | active を waiting へ混在、priority 並び替え、queue 重複排除、chain DAG 検証を SDK が行わない。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.36](runner.md#sec-27-36) / [`docs/details/runner.md` 詳細本文責務 §27.37](runner.md#sec-27-37) failure category / environment | `getHistory()`, `getHistoryLog(id)` | `getHistory()` は `failureCategory != null` の場合だけ `failure_category` query を送る。 | `getHistory()` は history の `failure_category` と `HistoryPageObject.warnings`、`getHistoryLog(id)` は build log の `failure_category`、`failure_evidence`、`environment` を API response のまま返す。 | 未知 filter `422` と log 不在 `404` を保持する。 | category 分類、warnings 生成、environment fallback、secret mask 判定を SDK が行わない。 |
 | [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) security | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getSessions()`, `revokeAllSessions()`, `getTotpStatus()`, `setupTotp()`, `confirmTotp(code)`, `disableTotp(code)`, `getApiRateLimit()`, `setApiRateLimit(policy)` | token / TOTP / rate limit request は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) 引数変換契約どおり送る。 | token 本体、TOTP secret、otpauth URI は response として返すだけで SDK 内部に保存しない。 | `401` は token 破棄、`403` は token 維持、`429` は自動待機なし、`500` は message 保持。 | scope 推測、rate limit 待機、token list への token 合成、TOTP code 再送、audit 補完を行わない。 |
 
 <a id="sec-27-21-2"></a>
@@ -391,57 +421,10 @@ SDK 詳細実装確認では、[`docs/details/api.md` 詳細本文責務 §22.0e
 
 SDK 連動 fixture 名、入力、expected、合格条件、禁止条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) API / SDK / UI 連動 fixture 固定契約を正本とする。[`docs/details/sdk.md`](sdk.md) 詳細本文責務では、SDK method、request 生成、response passthrough、error object、token mutation、secret leak、side-effect 境界の実装契約だけを扱う。
 
-**SDK 型定義表：**
+**SDK response schema 参照契約：**
 
-[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の object 型表は sdk owner が返す object 型の詳細本文責務である。`nullable` は `null` を許可することを示す。配列は API response に `[]` として存在する場合だけ `[]` を返し、SDK が未取得配列を生成してはならない。API response に存在しないキーを SDK が補完してはならない。ただし `GET /api/config`、`GET /api/notify-config`、`GET /api/dashboard-layout` の既定値 merge は API 側の責務とする。
+[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の public method 一覧に記載する `StatusObject`、`HistoryPageObject`、その他の型名は、API response を識別するための名称であり、response schema の正本ではない。HTTP response のキー、型、必須性、nullable、配列、許容値は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の Response 列と対象 endpoint 契約を正本とし、状態由来 record は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の schema を参照する。
 
-| 型名 | 必須キー | nullable キー | 配列キー | 対応 API |
-|------|----------|---------------|----------|----------|
-| `StatusObject` | `last_sha`, `last_build_at`, `last_build_status`, `last_trigger`, `last_deploy_status`, `pending_transfers_count`, `notify_pending_count`, `circuit_open`, `output_url`, `running` | `last_sha`, `last_build_at`, `last_trigger`, `last_deploy_status`, `output_url` | なし | `GET /api/status` |
-| `HistoryPageObject` | `total`, `page`, `per_page`, `pages`, `history` | なし | `history: HistoryRecord[]` | `GET /api/history` |
-| `HistoryRecord` | `id`, `build_at`, `sha`, `status`, `trigger`, `output_size_bytes`, `duration_seconds`, `flagged`, `tags` | `sha`, `output_size_bytes`, `duration_seconds`, `comment`, `output_sha256`, `rollback_from` | `tags: string[]` | `.build_history` |
-| `HistoryLogObject` | `.build_logs/{id}.json` の全必須キー、`lines` | `.build_logs/{id}.json` の nullable キー | `stdout`, `stderr`, `warnings`, `tags`, `lines` | `GET /api/history/{id}/log` |
-| `CommentObject` | `id`, `comment`, `updated_at` | `comment`, `updated_at` | なし | `GET /api/history/{id}/comment` |
-| `ConfigObject` | `.server_config` schema の全キー | `pat_expires_at`, `allowed_hours` | なし | `GET /api/config` |
-| `ConfigValidationObject` | `valid`, `config`, `errors`, `warnings` | なし | `errors`, `warnings` | `POST /api/config/validate` |
-| `AuditLogRecord` | `.audit_log` schema の全必須キー | `actor_id`, `target_id`, `remote_addr`, `message` | なし | `GET /api/audit-log` |
-| `TotpStatus` | `enabled`, `confirmed_at` | `confirmed_at` | なし | `GET /api/auth/totp-status`, `POST /api/auth/totp-confirm`, `DELETE /api/auth/totp` |
-| `ApiRateLimitPolicy` | `enabled`, `groups`, `state_summary` | なし | `groups`, `state_summary` | `GET/POST /api/api-rate-limit` |
-| `NotifyConfig` | `webhooks`, `channels`, `on`, `summary`, `email` | `webhooks[].payload_template`, `webhooks[].secret` | `webhooks`, `channels`, `on`, `email.to`, `email.on` | `GET /api/notify-config` |
-| `RepoInfoObject` | `owner`, `repo`, `branch`, `target_file` | なし | なし | `GET /api/repo-info` |
-| `BranchTargetRecord` | `branch`, `target_file`, `sha_file`, `src`, `out`, `deploy_targets` | なし | `deploy_targets` | `GET /api/branch-config` |
-| `SysinfoObject` | `output_size_bytes`, `output_mtime`, `uptime_seconds` | `output_mtime` | なし | `GET /api/sysinfo` |
-| `HealthObject` | `status`, `last_build_at`, `last_build_status`, `last_deploy_at`, `last_deploy_status`, `pending_transfers`, `uptime_seconds` | `last_build_at`, `last_deploy_at` | なし | `GET /api/health` |
-| `ScheduleObject` | `next_run_at`, `interval`, `paused`, `allowed_hours` | `next_run_at`, `allowed_hours` | なし | `GET /api/schedule` |
-| `StatsObject` | `days`, `total_builds`, `success_count`, `failure_count`, `success_rate`, `avg_interval_minutes`, `avg_duration_seconds`, `max_duration_seconds` | `avg_interval_minutes`, `avg_duration_seconds`, `max_duration_seconds` | なし | `GET /api/stats` |
-| `TimelineObject` | `days`, `timeline` | なし | `timeline` | `GET /api/stats/timeline` |
-| `BuildDurationStats` | `n`, `count`, `avg_seconds`, `min_seconds`, `max_seconds`, `recent` | `avg_seconds`, `min_seconds`, `max_seconds` | `recent` | `GET /api/stats/build-duration` |
-| `OutputMetaObject` | `size_bytes`, `mtime`, `heading_count`, `size_diff_bytes`, `tables_count`, `code_blocks_count`, `build_warnings`, `size_warn`, `sha256`, `build_id`, `commit_sha`, `build_at` | `mtime`, `size_diff_bytes`, `tables_count`, `code_blocks_count`, `sha256` | `build_warnings` | `GET /api/output-meta` |
-| `DashboardObject` | `status`, `sysinfo`, `stats`, `schedule`, `alerts` | なし | `alerts` | `GET /api/dashboard` |
-| `DiagnosticsObject` | `checked_at`, `items` | なし | `items` | `GET /api/diagnostics` |
-| `RateLimitObject` | `limit`, `remaining`, `reset_at`, `used` | なし | なし | `GET /api/rate-limit` |
-| `DiskUsageObject` | `build_logs_bytes`, `build_logs_count`, `build_logs_archive_bytes`, `build_logs_archive_count`, `output_file_bytes`, `total_bytes` | なし | なし | `GET /api/disk-usage` |
-| `AccessRecord` | `.access_log` schema の全必須キー | `session_id`, `token_id`, `remote_addr`, `reason` | なし | `GET /api/access-log` |
-| `ApiAccessRecord` | `.api_access_log` schema の全必須キー | `actor`, `remote_addr`, `user_agent`, `error` | なし | `GET /api/api-access-log` |
-| `ConfigLogRecord` | `.config_log` schema の全必須キー | なし | なし | `GET /api/config-log` |
-| `NotifyRecord` | `at`, `event`, `http_status`, `result`, `attempt`, `error` | `http_status`, `error` | なし | `GET /api/notify-log` |
-| `SessionRecord` | `created_at`, `expires_at`, `last_used_at`, `current` | `last_used_at` | なし | `GET /api/sessions` |
-| `WebhookEventRecord` | `timestamp`, `delivery_id`, `event`, `ref`, `sha`, `build_triggered` | `delivery_id`, `sha` | なし | `GET /api/webhook-events` |
-| `SnapshotRecord` | `id`, `build_id`, `saved_at`, `size_bytes` | なし | なし | `GET /api/snapshots` |
-| `MaintenanceObject` | `enabled`, `reason`, `since` | `reason`, `since` | なし | `GET /api/maintenance` |
-| `QueueEntry` | `id`, `trigger`, `queued_at`, `requested_by`, `payload` | なし | なし | `GET /api/queue` |
-| `TokenRecord` | `id`, `label`, `scopes`, `created_at`, `last_used_at`, `expires_at`, `revoked_at` | `last_used_at`, `expires_at`, `revoked_at` | `scopes` | `GET /api/tokens` |
-| `TokenCreateResult` | `id`, `token`, `label`, `scopes`, `created_at`, `expires_at` | `expires_at` | `scopes` | `POST /api/tokens` |
-| `HookRecord` | `id`, `phase`, `command_args`, `enabled`, `abort_on_failure`, `timeout_seconds` | なし | `command_args` | `GET/POST /api/hooks` |
-| `HookRunRecord` | `build_id`, `ran_at`, `exit_code`, `output` | なし | なし | `GET /api/hooks/{id}/log` |
-| `AlertRule` | `id`, `metric`, `operator`, `threshold`, `level`, `message` | なし | なし | `GET/POST /api/alert-rules` |
-| `TagRule` | `id`, `condition`, `tags` | なし | `tags` | `GET/POST /api/tag-rules` |
-| `PipelineConfig` | `extra_args`, `env` | なし | `extra_args` | `GET /api/pipeline-config` |
-| `BuildChainConfig` | `chains` | なし | `chains` | `GET /api/build-chain-config` |
-| `BuildTrendStats` | `count`, `avg_seconds`, `median_seconds`, `p95_seconds`, `anomaly_count`, `samples` | `avg_seconds`, `median_seconds`, `p95_seconds` | `samples` | `GET /api/stats/build-trends` |
-| `SmtpConfig` | `host`, `port`, `user`, `tls`, `from`, `to`, `on`, `enabled`, `password_set` | `host`, `user`, `from` | `to`, `on` | `GET /api/smtp-config` |
-| `ApprovalRecord` | `id`, `status`, `branch`, `sha`, `target`, `created_at`, `expires_at` | なし | なし | `GET /api/approvals` |
-| `BackupObject` | `exported_at`, `server_config`, `notify_config` | なし | 設定内容に従う | `GET /api/backup` |
-| `ExportObject` | `exported_at`, `history` | なし | `history` | `GET /api/history/export` |
+SDK は成功 response を補完、削除、rename、既定値 merge、再集計せず、そのまま返す。`AdlaireCIError` と `StreamHandle` だけは API response ではなく SDK が生成する型であるため、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の SDK 共通実装契約を正本とする。API response の required / nullable / array key を SDK 文書へ別表として再掲してはならない。
 
 ---
