@@ -29,10 +29,10 @@
 | 実装 artifact | 現在状態 | 未完了理由 / 証跡 |
 |-----------------|----------|-------------------|
 | [`main.go`](../main.go) | 実装中・検証未完了 | 起動入口の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01) |
-| [`components/builder.go`](../components/builder.go) | 実装中・検証未完了 | デザイン整合、Markdown block 契約、report 契約、必須 fixture が未完了である。[`ALIGN-06`](details/fixture.md#align-06)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-08`](details/fixture.md#align-08)、[`ALIGN-13`](details/fixture.md#align-13) |
+| [`components/builder.go`](../components/builder.go) | 実装中・検証未完了 | デザイン整合、Markdown block、report、CLI metadata、atomic publication、必須 fixture が未完了である。[`ALIGN-06`](details/fixture.md#align-06)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-08`](details/fixture.md#align-08)、[`ALIGN-13`](details/fixture.md#align-13)、[`ALIGN-14`](details/fixture.md#align-14) |
 | [`components/runner.go`](../components/runner.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-12`](details/fixture.md#align-12) |
 | [`components/api.go`](../components/api.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01)〜[`ALIGN-04`](details/fixture.md#align-04)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)〜[`ALIGN-12`](details/fixture.md#align-12) |
-| [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10) |
+| [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-15`](details/fixture.md#align-15) |
 | [`admin/index.html`](../admin/index.html) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-05`](details/fixture.md#align-05)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10) |
 | `components/mcp.go` | 将来計画 | 実装ファイルと MCP 専用詳細仕様が存在しない。 |
 

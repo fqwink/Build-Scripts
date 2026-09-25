@@ -118,13 +118,13 @@ create-only mode で `ErrStateAlreadyExists` が確定した場合は tmp を作
 | `null` | 型欄が `string/null`、`object/null`、`integer/null` 等で明示した key だけ許可する。 | nullable でない key に `null` を保存しない。 | validation error または破損扱い。 |
 | 配列 | `[]` を既定値とする key は read adapter の戻り値で空配列を返す。 | 保存呼び出しは配列 key を省略せず、空の場合も `[]` を明示する。 | 型不一致は caller 固有の validation error または状態ファイル破損扱い。 |
 | 数値 | 整数 key は JSON number の整数だけ許可する。小数、指数表記由来の非整数、文字列数値は拒否する。 | 整数は JSON number として保存する。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
-| 時刻 | UTC ISO 8601 秒精度 `YYYY-MM-DDTHH:MM:SSZ` だけ許可する。 | 保存前に UTC 秒精度へ丸める。ミリ秒、ナノ秒、local timezone、UTC 以外の offset 付き文字列を保存しない。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
+| 時刻 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 共通固定値「機械処理時刻」](../DETAIL_INDEX.md#common-machine-time) に一致する文字列だけ許可する。 | 保存前に同固定値へ正規化する。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
 | mode | runtime 状態ファイルと lock file は `0600`、statefile 責務が作成する runtime 状態 directory は `0700` に固定する。 | tmp と lock の chmod は rename 前に完了する。chmod 失敗時は rename せず成功扱いにしない。 | chmod failure を返し、旧 target を byte 単位で維持し、tmp と lock は状態ファイル更新手順の rename 前 cleanup 固定契約で削除する。 |
 | 改行 | text / JSON / JSON Lines は LF で保存する。JSON object / array ファイルは末尾 LF 1 個を付ける。 | CRLF、BOM、末尾余分空白を新規保存しない。 | CRLF を含む保存入力は validation error、CRLF を含む既存 runtime 状態ファイルは破損扱いとする。 |
 
 旧 schema からの正規化は、[`docs/details/statefile.md`](statefile.md) 詳細本文責務に「旧 key」「変換後 key」「削除する key」「保存するか読み取り時だけか」を明記した場合だけ実装する。明記がない旧形式は破損扱いとし、黙って推測変換してはならない。
 
-以降の schema 表で `ISO 8601`、`UTC ISO 8601`、`UTC ISO 8601 秒精度` と略記する時刻文字列は、すべて [状態ファイル schema 厳格化契約](#statefile-schema-strictness-contract) の `YYYY-MM-DDTHH:MM:SSZ` 固定契約を意味する。個別 schema が `YYYY-MM-DD` を明記する日付値はこの時刻契約の対象外とする。
+以降の schema 表で `ISO 8601`、`UTC ISO 8601`、`UTC ISO 8601 秒精度` と略記する時刻文字列は、すべて [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 共通固定値「機械処理時刻」](../DETAIL_INDEX.md#common-machine-time) を意味する。個別 schema が `YYYY-MM-DD` を明記する日付値はこの時刻契約の対象外とする。
 
 <a id="statefile-read-adapter-contract"></a>
 **状態読取 adapter 固定契約：**

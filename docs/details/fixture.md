@@ -34,11 +34,11 @@ component 境界管理の参照先は [`docs/DETAIL_INDEX.md` 詳細仕様入口
 
 | ID | 対象 | 現在確認できる実装証跡 | 受け入れに必要な証跡 |
 |----|------|------------------------------|----------------------------|
-| <a id="align-01"></a>`ALIGN-01` | 起動入口 | [`main.go`](../../main.go) は builder / runner だけを選択し、API を起動できない。 | [`docs/details/api.md`](api.md) と [`docs/details/setup.md`](setup.md) に一致する API 起動経路とその実行証跡。 |
+| <a id="align-01"></a>`ALIGN-01` | 起動入口 | [`main.go`](../../main.go) は実行ファイル basename に `adlaire-ci-runner` を含む場合だけ runner を起動し、それ以外は `adlaire-ci-api` を含めて builder を起動する。標準 3 バイナリ名の完全一致判定と API 起動経路が存在しない。 | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-api` がそれぞれ対応 owner component を起動する [`main.go`](../../main.go) の分岐、API listener の実行、および 3 バイナリ別 fixture。 |
 | <a id="align-02"></a>`ALIGN-02` | API / admin | API は [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js) を配信しない。 | [`docs/details/admin.md`](admin.md) の配信契約と API fixture。 |
-| <a id="align-03"></a>`ALIGN-03` | API / SDK | SDK が要求する approvals、approve / reject、build-chain-config、stats/build-trends の endpoint が API に存在しない。 | [`docs/details/api.md`](api.md) と [`docs/details/sdk.md`](sdk.md) の公開契約に対応する endpoint と cross fixture。 |
-| <a id="align-04"></a>`ALIGN-04` | API security | token は scope を保存するが、認可時に scope を強制していない。 | [`docs/details/security.md`](security.md) の scope 契約に一致する API 認可処理と fixture。 |
-| <a id="align-05"></a>`ALIGN-05` | UI / SDK / design | UI に接続されていない SDK 操作が残り、承認一覧に approve / reject 操作がなく、[`admin/index.html`](../../admin/index.html) の inline CSS は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) の `:focus-visible` indicator を実装していない。 | [`docs/details/ui.md`](ui.md) の必須操作と SDK 呼出しを照合する UI fixture、および [`docs/DESIGN.md`](../DESIGN.md) の selector / token / focus 固定値を照合する構造化 visual fixture。 |
+| <a id="align-03"></a>`ALIGN-03` | API / SDK | [`components/api.go`](../../components/api.go) に `GET /api/approvals`、`POST /api/approvals/{id}/approve`、`POST /api/approvals/{id}/reject`、`GET /api/build-chain-config`、`POST /api/build-chain-config`、`GET /api/stats/build-trends` の 6 endpoint が存在しない。`GET /api/build/stream` は `log` frame の `at` と終端 `end` frame を送信しない。 | [`docs/details/api.md`](api.md) と [`docs/details/sdk.md`](sdk.md) の公開契約に対応する 6 endpoint、`log` / `end` の exact SSE frame、および API / SDK cross fixture。 |
+| <a id="align-04"></a>`ALIGN-04` | API security | [`components/api.go`](../../components/api.go) は `.api_tokens` を root array として読み書きし、record に `name` を保存して `label`、`expires_at`、`last_used_at` を保存しない。作成 request の旧 `name` key と GET / POST response の追加 `name` key を許可し、scope 省略時に未定義の `write` を含む `read,write` を保存する。認証時は token の有効性だけを確認し、endpoint ごとの scope と `expires_at` を強制せず、認証成功時の `last_used_at` も更新しない。 | [`docs/details/security.md`](security.md) と [`docs/details/statefile.md`](statefile.md) に一致する `.api_tokens` object schema、`label` / `expires_at` / `last_used_at`、許可 scope、expiry、scope 認可、認証成功更新、および secret 非表示 fixture。 |
+| <a id="align-05"></a>`ALIGN-05` | UI / SDK / design | [`admin/index.html`](../../admin/index.html) は SDK 113 public method のうち 31 method を UI 操作へ接続せず、承認一覧に approve / reject 操作がない。一時秘密情報は token と TOTP secret の 2 領域だけを一般 click で消去し、otpauth URI 専用領域、trusted event、copy 完了、generation 一致、全終了経路の消去を実装しない。build stream は `StreamHandle.done` を監視しない。inline CSS は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) の `:focus-visible` indicator を実装していない。 | [ALIGN-05 UI 未接続 SDK 操作](#align-05-unconnected-sdk-operations)、[`docs/details/ui.md`](ui.md) の全必須操作、one-time secret、stream terminal、SDK 呼出しを照合する UI fixture、および [`docs/DESIGN.md`](../DESIGN.md) の selector / token / focus 固定値を照合する構造化 visual fixture。 |
 | <a id="align-06"></a>`ALIGN-06` | builder / design | builder の生成テンプレートが [`docs/DESIGN.md`](../DESIGN.md) の token、寸法、sidebar、Markdown 画像 selector、トップへ戻る表示と一致しない。 | デザイン正本に一致する生成物と builder fixture。 |
 | <a id="align-07"></a>`ALIGN-07` | fixture | builder の必須 fixture 一部と `testdata/runner/`、`testdata/api/`、`testdata/admin/`、`testdata/sdk/`、`testdata/ui/`、`testdata/statefile/`、`testdata/archive/`、`testdata/commitstatus/`、`testdata/security/`、`testdata/setup/` の fixture root が未作成である。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#sec-0g-8-f) の必須 path、expected、fake、実行証跡。 |
 | <a id="align-08"></a>`ALIGN-08` | empty directory fixture | `testdata/builder/empty-dir/` は `.keep` を含む marker-based fixture であり、文字どおりの空 directory ではない。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) と検証処理の marker 除外条件が一致する証跡。 |
@@ -47,6 +47,36 @@ component 境界管理の参照先は [`docs/DETAIL_INDEX.md` 詳細仕様入口
 | <a id="align-11"></a>`ALIGN-11` | API request / log schema | [`components/api.go`](../../components/api.go) は request ID を生成・伝播せず、`.api_access_log` と `.config_log` の record field、必須 log の失敗境界が [`docs/details/api.md`](api.md) と [`docs/details/statefile.md`](statefile.md) の契約に一致しない。 | request ID、response header、API access log、config diff log、partial failure、log 追記失敗境界を検証する fixture。 |
 | <a id="align-12"></a>`ALIGN-12` | queue dispatch / active state | [`components/api.go`](../../components/api.go) は idle の manual request で build id と `running=true` を直接保存し、systemd への runner 起動要求を行わない。API と [`components/runner.go`](../../components/runner.go) の `.build_state` schema は `active_queue_entry` を持たず、runner は waiting-to-active 遷移と未確定 entry の再実行を行わない。 | [`docs/details/api.md`](api.md)、[`docs/details/runner.md`](runner.md)、[`docs/details/statefile.md`](statefile.md) の durable queue、非同期 runner 起動、atomic move、at-least-once retry、response 契約を検証する queue / dispatch fixture。 |
 | <a id="align-13"></a>`ALIGN-13` | builder Markdown / report | [`components/builder.go`](../../components/builder.go) は h5 / h6 と対応 CSS、table の固定 grammar、未閉鎖 fence の fallback warning、7 段以上 list の clamp warning、再帰 blockquote、definition list、`build_id` / `commit_sha` / `build_at` を含む REPORT 固定順の全部を実装していない。 | [`docs/details/builder.md` 詳細本文責務 §4.4〜§4.5](builder.md#sec-4-4)、[§6](builder.md#6-css-クラス一覧)、[§8](builder.md#8-実行方法) と一致する HTML / CSS / warning / REPORT、および各正常・fallback・strict fixture。 |
+| <a id="align-14"></a>`ALIGN-14` | builder CLI / atomic publication | [`components/builder.go`](../../components/builder.go) の `BuildConfig`、CLI parser、help、生成 HTML は `build_id`、`commit_sha`、`build_at` を受け渡さない。strict warning は warning と REPORT を stdout へ出す前に stderr error で終了する。atomic writer は出力親 directory を暗黙作成し、既存 staging path を削除し、公開前検証、file sync、directory sync、parent sync を行わず、cleanup failure を報告しない。 | [`docs/details/builder.md`](builder.md) の CLI metadata、strict stdout / stderr / exit、更新前出力維持、staging 衝突、公開前検証、sync、rename、復元、cleanup 契約を正常系と failure injection fixture で確認した証跡。 |
+| <a id="align-15"></a>`ALIGN-15` | SDK request / stream | [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js) は 5 public method の引数契約と `createToken()` の body mapping が詳細仕様と一致せず、SDK 送信前の型・範囲・空配列検証が不足する。`streamBuild()` は response media type、fatal UTF-8、SSE key / type / `at` / 最終 `end` / EOF を検証せず、`StreamHandle.done` と terminal state を持たず、接続後の frame / callback error を固定 error として通知しない。 | [ALIGN-15 SDK 契約差分](#align-15-sdk-contract-gaps)、[`docs/details/sdk.md`](sdk.md) の request shape、送信前 validation、SSE parser、`StreamHandle` terminal transition、および error shape fixture。 |
+
+<a id="align-05-unconnected-sdk-operations"></a>
+**ALIGN-05 UI 未接続 SDK 操作：**
+
+| 操作群 | [`admin/index.html`](../../admin/index.html) から呼び出されていない SDK public method |
+|--------|------------------------------------------------------------|
+| 状態・診断 | `health`、`getOutputMeta`、`getBuildTrends`、`getWebhookEvents`、`resetCircuitBreaker` |
+| 承認・ビルド連鎖 | `approveBuild`、`rejectBuild`、`getBuildChainConfig`、`setBuildChainConfig` |
+| schedule・pipeline | `setAllowedHours`、`clearAllowedHours`、`setForceInterval`、`setBuildCooldown`、`setScheduleInterval`、`setPipelineConfig` |
+| history | `getHistoryComment`、`setHistoryComment`、`setHistoryFlag`、`setHistoryTags`、`rollbackHistory` |
+| backup・restore | `backup`、`restore` |
+| snapshot | `deleteSnapshot`、`downloadSnapshot` |
+| token | `revokeToken` |
+| hook・rule | `getHookLog`、`deleteHook`、`addAlertRule`、`deleteAlertRule`、`addTagRule`、`deleteTagRule` |
+
+<a id="align-15-sdk-contract-gaps"></a>
+**ALIGN-15 SDK 契約差分：**
+
+| 対象 | 現在確認できる差分 |
+|------|--------------------|
+| `getAccessLog()` | `{limit=100,offset=0}` を受け取らず、必須 query を送信しない。 |
+| `getNotifyLog()` | `{limit=100,offset=0}` を受け取らず、必須 query を送信しない。 |
+| `getConfigLog()` | `{limit=100,offset=0}` を受け取らず、必須 query を送信しない。 |
+| `getHistory()` | `failureCategory` を受け取らず、`failure_category` query を送信しない。 |
+| `setRepoConfig()` | `{owner,repo}` の固定引数契約ではなく任意 object をそのまま body として送信する。 |
+| `createToken()` | `{label,scopes,expires_at}` ではなく `{name,scopes,expires_at}` を送信する。 |
+| request validation | 数値範囲、列挙値、空配列、object key の送信前検証が public method ごとの固定契約を満たさない。 |
+| `streamBuild()` | `Content-Type: text/event-stream`、fatal UTF-8、frame の exact key / type / `at`、最終 `end`、EOF 後 buffer を検証せず、`done` Promise と normal / error / user close の一回だけの terminal transition を実装しない。 |
 
 <a id="0g8-f-fixture--testdata--fake--実装検証証跡契約"></a>
 
