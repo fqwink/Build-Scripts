@@ -1454,6 +1454,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | search index / JavaScript | search index schema、body 抽出、localStorage guard、外部 storage / network 不使用。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture G` |
 | strict warning | strict warning 昇格、stdout / stderr、公開前停止時の既存出力保護。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture H` |
 | atomic output | rename / directory sync 失敗、1 回だけの補償、補償失敗時の path 保持、`[REPORT]` 非出力。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture I` |
+| build metadata dataflow | CLI metadata 指定時と省略時の `BuildConfig` → `SiteData.BuildMeta` → 全 HTML meta → `[REPORT]` の完全一致、生成時刻非依存。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture J` |
 
 <a id="sec-8"></a>
 **[`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能別実装確認固定契約](builder.md#sec-8)：**

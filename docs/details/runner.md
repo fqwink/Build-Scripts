@@ -1274,6 +1274,8 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 | R30 | circuit open 中の pending retry、queue 保持、runtime flag 終了状態。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R30` |
 | R31 | final build log atomic replace 失敗、running log 維持、history 非追記、完了済み副作用非巻き戻し。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R31` |
 | R32 | repository identity の既定値、API 更新後の次回起動適用、破損時の GitHub API 呼出し禁止。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R32` |
+| R33 | multi-target の build id 一意性、target files の 1 ID への集約、target 別 log / history / snapshot / output SHA の帰属。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R33` |
+| R34 | pipeline output の正規化、マスク、上限、REPORT parse、warning、元 exit code 保持。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R34` |
 
 ---
 
