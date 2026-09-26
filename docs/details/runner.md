@@ -449,11 +449,17 @@ SHA cache の更新は、pipeline 成功後、deploy 前に行う。複数 targe
 
 runner が生成する build id の base は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` とし、衝突 suffix は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の時刻ベース ID 契約に従う。build id は `.build_logs/{id}.json`、`.build_history`、`.snapshots/{id}/` で同一値を使用し、suffix 上限到達時は既存 ID を上書きせず終了コード `1` とする。
 
+build id の割当単位は、処理を開始する正規化済み `BranchTarget` 1 件とする。1 回の runner process が複数の `BranchTarget` を順次処理する場合は、target ごとに別の build id を採番し、同じ ID を別 target へ再利用してはならない。1 件の `BranchTarget` が複数の `target_files` を監視する場合は、それらを 1 build として同じ build id に集約する。`skipped_no_change` では割当済み ID を log、history、snapshot に保存せず、次 target へ再利用しない。
+
+各 build id は、当該 `BranchTarget` の `.build_logs/{id}.json` 1 件、`.build_history` 1 行、作成成功時の `.snapshots/{id}/` 1 件、`BranchTarget.Out` から算出した `output_sha256` 1 件だけに帰属する。branch、target file、output root が異なる target 間で log、history、snapshot、output manifest を共有または上書きしてはならない。
+
 ---
 
 ## 13. 処理フロー
 
 [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の処理フローは、`runner` の標準フローである。
+
+以下の手順 3〜11 は build lifecycle を開始する `BranchTarget` ごとに繰り返す。各 target の開始時に当該 target 専用 build id を採番し、`.build_status.json.current_build_id` と `.build_state.current_build_id` をその ID へ更新する。target の最終 log、history、status を確定してから次 target の ID を採番する。全 target の処理完了後にだけ手順 12〜13を実行し、process 全体の終了コードは [ターゲット結果分類](#runner-target-status-selection) の最大重大度とする。
 
 **状態更新順序の規範：**
 
@@ -874,9 +880,11 @@ repository `.pipeline.yml` と inline YAML の parse、schema、step 実行、�
 |------|---------------------------------|
 | working directory | `filepath.Dir(BranchTarget.Src)` の絶対 clean path。 |
 | timeout | `RunnerConfig.BuildTimeoutSeconds`。[`docs/details/statefile.md` 詳細本文責務 `.server_config` schema](statefile.md#server-config-schema) で検証済みの値だけを使用する。 |
-| stdout / stderr | それぞれ最大 1 MiB。上限超過時は先頭を破棄して末尾 1 MiB を保存し、`stdout_truncated` / `stderr_truncated` を `true` にする。secret mask は保存前に適用する。 |
+| stdout / stderr | それぞれ最大 1 MiB。CRLF と CR を LF へ正規化し、NUL を `\\u0000` の 6 ASCII byte へ置換し、invalid UTF-8 を U+FFFD へ置換した後に既知 secret を mask する。上限超過時は UTF-8 rune 境界を壊さず先頭を破棄して末尾 1 MiB 以下を保存し、`stdout_truncated` / `stderr_truncated` を `true` にする。未超過時は対応 flag を `false` にする。 |
 | success | 終了コード `0` かつ出力 file set 検証成功。 |
 | failure | 非 `0` は `failure_build`。timeout は process group を 1 回終了し、`target_status="failure_timeout"`、`error="pipeline timeout"`。取得済み stdout / stderr は保存する。 |
+
+stdout / stderr は process 実行中に並行して読み取り、process の終了待ちより先に両 stream の drain を開始する。各 stream は、UTF-8 decode →改行正規化→ NUL 可視化→ secret mask→論理行判定→ REPORT / WARN 取り込み→保存用末尾 1 MiB 制限の順で処理する。REPORT / WARN 取り込みは 1 MiB 制限前の全論理行を対象とし、保存上限を超えた先頭部分に存在する行も判定から除外しない。stdout / stderr 全体を無制限に memory へ保持してはならない。
 
 pipeline process の environment は、親 process 環境 → `BranchTarget.Env` → `.pipeline_config.env` → YAML step env の順で設定し、最後に以下の runner 固定値を上書きする。標準 builder command は YAML step env を持たない。不在の環境変数を空文字で追加しない。
 
@@ -1183,11 +1191,13 @@ runner owner component は、build log の生成タイミング、stdout / stder
 | REPORT 重複 | `[REPORT]` が複数ある場合は最初の 1 行を採用し、`warnings` に `REPORT_DUPLICATE` を追加する。 |
 | REPORT parse 失敗 | `report:null` とし、`warnings` に `REPORT_PARSE_FAILED` を追加する。pipeline exit code は変更しない。 |
 
+`[REPORT]` は stdout の LF 正規化済み各行について、行頭が完全に `[REPORT] ` と一致する行だけを候補とする。候補が 0 件なら `report:null` と `REPORT_MISSING`、2 件以上なら最初の候補だけを parse して `REPORT_DUPLICATE` を追加する。parse 対象の先頭 13 token は [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) の key、順序、型を完全一致で検証する。key 欠落、順序違い、重複 key、未知 key の割込み、整数・boolean・UTC ISO 8601・build id・commit SHA の型または値不正は `REPORT_PARSE_FAILED` とし、部分的な Report object を保存してはならない。拡張 key は必須 13 token の後ろだけに許可し、Report object へ保存しない。
+
 **`.build_history` JSON Lines 追記契約：**
 
 `.build_history` の保存 key、型、必須条件、許容値は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.build_history` JSON Lines schema を参照する。
 
-runner は build 結果確定後、`.build_history` へ 1 build につき 1 行だけ追記する。`status` は runner の最終結果、`trigger` は [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の有効値、`output_sha256` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の出力成果物 manifest SHA-256 とする。manifest 生成に失敗した場合のみ `output_sha256:null` を許可する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
+runner は build 結果確定後、`.build_history` へ 1 build につき 1 行だけ追記する。`status` は runner の最終結果、`trigger` は [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の有効値、`output_sha256` は当該 build id を割り当てた `BranchTarget.Out` だけを root として [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の出力成果物 manifest SHA-256 を算出した値とする。別 target の output、`RunnerConfig.StateDir` 配下の固定 path、直前に成功した target の値を使用してはならない。manifest 生成に失敗した場合のみ `output_sha256:null` を許可し、対応する warning を同じ build log に保存する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
 
 **固定エラー文言：**
 
@@ -1933,7 +1943,7 @@ owner component は `runner` とする。collaborator component は `builder`、
 | 項目 | 仕様 |
 |------|------|
 | 差分検出単位 | target path ごとに before SHA、after SHA、source `github` / `local`、result `changed` / `unchanged` / `missing` / `error` を memory 上で確定してから build 可否を決める。 |
-| build id | 1 runner 起動で複数 target が変更されても build id は 1 件だけ採番する。target ごとに build id を分けない。 |
+| build id | 同一 `BranchTarget` の `target_files` が複数変更されても build id は 1 件だけ採番する。別 `BranchTarget` は別 build lifecycle であり、変更がある各 target に別の build id を採番する。 |
 | builder 入力 | builder へ渡す `--src` は branch target の `src` 1 件だけとし、target_files を複数 `--src` に展開しない。変更 target list は `ADLAIRE_CHANGED_TARGETS` だけで渡す。 |
 | SHA 更新順 | build success finalizer 後に、changed target と force build 対象 target の SHA cache を target path 辞書順で更新する。 |
 | 部分更新禁止 | build failure、deploy failure before success、pipeline failure、hook pre abort、SHA 部分取得失敗では target SHA cache を 1 件も更新しない。 |

@@ -33,12 +33,15 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 ```go
 type BuildConfig struct {
-    Src     string
-    Out     string
-    Title   string
-    Theme   string
-    BaseDir string
-    Strict  bool
+    Src       string
+    Out       string
+    Title     string
+    Theme     string
+    BaseDir   string
+    Strict    bool
+    BuildID   string
+    CommitSHA string
+    BuildAt   string
 }
 
 var DefaultBuildConfig = BuildConfig{
@@ -48,8 +51,13 @@ var DefaultBuildConfig = BuildConfig{
     Theme: "adlaire-default",
     BaseDir: "",
     Strict: false,
+    BuildID: "",
+    CommitSHA: "",
+    BuildAt: "",
 }
 ```
+
+`BuildConfig.BuildID`、`BuildConfig.CommitSHA`、`BuildConfig.BuildAt` は、それぞれ正規化・検証済みの `--build-id`、`--commit-sha`、`--build-at` と完全一致させる。builder 内で ID、commit SHA、build 時刻を生成または補完してはならない。未指定値は空文字のまま保持する。
 
 別の環境で実行する場合は、この既定値を CLI 引数で上書きする。[`docs/details/builder.md` 詳細本文責務 §2](builder.md#2-ファイルパス設定) の基本設定 `src`、`out`、`title`、`theme`、`base-dir`、`strict` と build metadata `build-id`、`commit-sha`、`build-at` は、同節に定義した CLI 引数と既定値だけから決定し、環境変数または設定ファイルから読み込まない。[`docs/details/builder.md` 詳細本文責務 §28 設定ファイル / 入力解決固定契約](builder.md#sec-28-common-config-file) は builder 拡張設定だけに適用し、この基本設定または build metadata を上書きしてはならない。
 
@@ -662,10 +670,16 @@ uniqueSlug := func(base string) string {
 
 ```go
 type SiteData struct {
-    Title          string
-    Pages          []PageData
-    SearchIndex    []SearchIndexEntry
-    GeneratedAtUTC string
+    Title       string
+    Pages       []PageData
+    SearchIndex []SearchIndexEntry
+    BuildMeta   BuildMeta
+}
+
+type BuildMeta struct {
+    BuildID   string
+    CommitSHA string
+    BuildAt   string
 }
 
 type PageData struct {
@@ -712,6 +726,7 @@ type SearchIndexEntry struct {
 | `SiteData.Title` | `string` | 空は禁止。HTML 出力時は `esc()` する。 |
 | `SiteData.Pages` | `[]PageData` | 1 件以上。単一 Markdown 入力の場合も 1 ページのサイトとして扱う。 |
 | `SiteData.SearchIndex` | `[]SearchIndexEntry` | サイト内検索用。未生成時は空配列。 |
+| `SiteData.BuildMeta` | `BuildMeta` | `BuildConfig.BuildID`、`CommitSHA`、`BuildAt` を同名 field へそのまま写像した値。独立した現在時刻を取得してはならない。 |
 | `SearchIndexEntry.URL` | `string` | `PageData.OutputPath` または `PageData.OutputPath + "#" + headingSlug`。空は禁止。 |
 | `SearchIndexEntry.ID` | `string` | 見出し slug。ページ単位エントリの場合は空文字を許可する。 |
 | `SearchIndexEntry.Title` | `string` | 検索結果に表示するタイトル。空は禁止。 |
@@ -724,9 +739,13 @@ type SearchIndexEntry struct {
 | `TocHTML` | `string` | `buildTOC(headings)` の戻り値。`<ul id="toc-root">` の内側へ挿入する。 |
 | `BodyHTML` | `string` | `ConvertResult.HTML`。`<div class="ci">` の内側へ挿入する。 |
 | `ReadingTimeMinutes` | `int` | 1 以上。0 以下の場合は `1` として表示する。 |
-| `GeneratedAtUTC` | `string` | UTC ISO 8601。空の場合は生成日時 meta を出力しない。 |
+| `BuildMeta.BuildID` | `string` | `BuildConfig.BuildID` と完全一致する。空文字を許可し、`adlaire-build-id` meta の `content` にそのまま使用する。 |
+| `BuildMeta.CommitSHA` | `string` | `BuildConfig.CommitSHA` と完全一致する。空文字を許可し、`adlaire-commit-sha` meta の `content` にそのまま使用する。 |
+| `BuildMeta.BuildAt` | `string` | `BuildConfig.BuildAt` と完全一致する。空文字を許可し、`adlaire-build-at` meta の `content` にそのまま使用する。生成日時を表示する場合もこの値だけを使用する。 |
 
 `assembleSite()` は `PageData` fields を結合してファイルを書き出すだけとし、Markdown 変換、slug 生成、TOC 生成、検索インデックス抽出、警告集計を行ってはならない。
+
+`BuildConfig` から `SiteData` を作る処理は `BuildMeta{BuildID: cfg.BuildID, CommitSHA: cfg.CommitSHA, BuildAt: cfg.BuildAt}` を設定する。出力 HTML、`[REPORT]`、検索インデックス、footer その他の生成物で build metadata を参照する場合は、すべて同じ `SiteData.BuildMeta` を使用する。`time.Now()`、file mtime、process 起動時刻を build metadata または生成日時の代替値として使用してはならない。
 
 **出力ディレクトリ構造：**
 
@@ -879,7 +898,7 @@ type SearchIndexEntry struct {
 | meta build id | `--build-id` 未指定時も `content=""` で出力する。 |
 | meta commit sha | `--commit-sha` 未指定時も `content=""` で出力する。 |
 | meta build at | `--build-at` 未指定時も `content=""` で出力する。 |
-| generated at | `GeneratedAtUTC` が空でない場合だけ `<meta name="adlaire-generated-at" content="{GeneratedAtUTC}">` を出力する。 |
+| generated at | 独立した `adlaire-generated-at` meta は出力しない。生成時刻として必要な値は `BuildMeta.BuildAt` を使用する。 |
 | CSS link | HTML ごとに `{relativeRoot}assets/style.css` 1 件だけ。 |
 | JS script | `</body>` 直前に `{relativeRoot}assets/app.js` 1 件だけ。 |
 
