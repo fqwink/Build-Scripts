@@ -66,6 +66,7 @@
 | fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) | fixture、expected、fake、assertion、実装検証証跡を持つ。 |
 | `mcp` | 専用詳細仕様なし | 現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
 
+<a id="0b1-owner-component-別-owner-collaborator-境界管理"></a>
 ## 0b.1 owner component 別 owner / collaborator 境界管理
 
 owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) を参照する。[詳細節対応表](#0i-詳細節対応表) の `owner` 列は機能から owner component を特定する入口、[詳細仕様参照表](#0b-詳細仕様参照表) は owner component から主本文を特定する入口とする。
