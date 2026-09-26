@@ -84,9 +84,21 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | 改行 | 新規 text / JSON Lines は LF。CRLF 入力は読み込み時に LF として扱う。 |
 | <a id="common-machine-time"></a>機械処理時刻 | UTC の ISO 8601 秒精度 `YYYY-MM-DDTHH:MM:SSZ`。ミリ秒、ナノ秒、UTC 以外の offset、local timezone の保存を禁止する。ローカル時刻は UI 表示だけで使用する。 |
 | CLI 終了コード | `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` `.build_lock` の schema / PID 解析不正、PID 実行中判定不能、または lock 作成失敗。実行中 lock による通常 skip は `0`。 |
-| CLI 共通 option | `--help` と `--version`。短縮 option は使用しない。 |
+| CLI 共通 option | `--help` と `--version`。parse、優先順位、出力、副作用は [CLI 共通固定契約](#common-cli-contract) に従う。 |
 | 時刻ベース ID | prefix と UTC `YYYYMMDDHHmmss` を連結する。未衝突 ID に suffix は付けない。衝突時は `-001` から `-999` まで 3 桁連番を順に試し、上限到達時は既存 ID を上書きせず失敗とする。 |
 | 出力成果物 manifest SHA-256 | 出力 root 配下の通常 file だけを entry とし、`/` 区切りの相対 path を UTF-8 byte 辞書順に並べる。各 file の SHA-256 を lowercase hex で算出し、各 entry の `relative_path + "\n" + file_sha256 + "\n"` を順に連結した byte 列全体の SHA-256 lowercase hex を `output_sha256` とする。directory は走査だけに使用し entry に含めない。symlink、link count 2 以上の hardlink、device、socket、FIFO を 1 件でも検出した場合は除外継続せず算出失敗とする。出力 root は symlink でない directory、全 path は valid UTF-8 とし、先頭 `/`、空 segment、`.`、`..`、backslash、NUL、CR、LF を含む相対 path は算出失敗とする。file は no-follow open 後の identity / type と読取前後の size / mtime が列挙時から不変の場合だけ採用し、走査中の追加・削除・置換・変更は算出失敗とする。通常 file が 0 件の出力 root は空 byte 列の SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` とする。 |
+
+<a id="common-cli-contract"></a>
+**CLI 共通固定契約：**
+
+| 項目 | 固定契約 |
+|------|----------|
+| option token | option は owner 詳細本文で列挙した `--[a-z][a-z0-9-]*` 形式だけを許可する。短縮 option、列挙外 option、owner 詳細本文が明示的に許可していない位置引数を禁止する。 |
+| 値 option | 値を取る option は、owner 詳細本文が当該 option に `--name=value` を明示的に許可した場合を除き、`--name value` の 2 token 形式だけを許可する。値 token がない、または次 token が `--` で始まる場合は `missing value: --name` とする。未許可の `--name=value` は token 全体を未知 option とする。 |
+| 共通 option 優先順位 | argv に exact `--help` が 1 件以上あれば `--help`、それ以外で exact `--version` が 1 件以上あれば `--version` を、残りの argv の parse、必須値検証、path / file / state 検証より先に確定する。両方がある場合は `--help` を採用する。 |
+| help / version 結果 | owner 詳細本文の固定文字列 1 行と LF だけを stdout へ出力し、stderr は空、終了コードは `0` とする。file read/write、directory 作成、lock、listener、外部通信、child process、乱数取得を行わない。 |
+| parse / 入力検証失敗 | stdout は空、stderr は owner 詳細本文で固定した最初のエラー 1 行と LF だけ、終了コードは `2` とする。owner 詳細本文で固定した検証順に最初の 1 件を選び、状態変更と外部副作用を開始しない。未知 option と禁止位置引数は `unknown option: <token>` とする。 |
+| owner 固有契約 | 許可 option、固定 help / version 文字列、重複指定、値正規化、検証順、固有エラー、実行 mode は owner 詳細本文を正本とする。owner 詳細本文はこの共通契約を暗黙に上書きせず、異なる parse 形式を許可する option を個別に明示する。 |
 
 <a id="process-environment-entry-contract"></a>
 **Process environment entry 共通固定契約：**

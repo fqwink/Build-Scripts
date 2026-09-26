@@ -36,6 +36,36 @@ admin/index.html（標準管理ツール）
 
 owner component `api` は、Go 標準ライブラリ `net/http` で実装し、管理ツールからの API リクエストを受け付ける。`runner` とは独立して常駐する。
 
+<a id="api-cli-contract"></a>
+**`api` CLI 固定契約：**
+
+| option | 必須 | 既定値 | 固定契約 |
+|--------|------|--------|----------|
+| `--addr <address>` | listener mode では任意 | `127.0.0.1:8765` | `127.0.0.1:<port>` だけを許可する。`port` は先頭 `0` のない 10 進数 `1`〜`65535` とする。 |
+| `--state-dir <path>` | listener mode、init-credentials mode で必須 | なし | 空でない絶対 path。既存の symlink でない directory だけを許可する。 |
+| `--init-credentials` | 任意 | `false` | listener を起動せず、[`docs/details/security.md` 詳細本文責務 `--init-credentials` CLI 固定契約](security.md#init-credentials-cli-contract)を 1 回だけ実行する。 |
+| `--version` | 任意 | なし | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)に従う。 |
+| `--help` | 任意 | なし | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)に従う。 |
+
+`api` CLI は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)に従って parse する。同一の値 option が複数回指定された場合は最後の値を採用し、`--init-credentials` は 1 回以上指定されれば `true` とする。`--help`、`--version`、init-credentials、listener の順に mode を確定する。`--init-credentials` と `--addr` の同時指定は終了コード `2`、stderr `--addr is not allowed with --init-credentials` + LF とし、標準入力読取、credentials 処理、listener 起動を行わない。
+
+| 条件 | stdout | stderr | 終了コード | 副作用 |
+|------|--------|--------|------------|--------|
+| `--help` | `Usage: adlaire-ci-api --state-dir path [--addr 127.0.0.1:port] [--init-credentials] [--version] [--help]` + LF | 空 | `0` | 標準入力、状態、credentials、listener に触れない。 |
+| `--version` | `adlaire-ci-api v3 go=<runtime.Version()>` + LF | 空 | `0` | 標準入力、状態、credentials、listener に触れない。 |
+| `--state-dir` 未指定 | 空 | `state directory is required` + LF | `2` | credentials 処理と listener 起動を行わない。 |
+| `--state-dir` 空文字 | 空 | `state directory must not be empty` + LF | `2` | 同上。 |
+| `--state-dir` 相対 path | 空 | `state directory must be absolute: <path>` + LF | `2` | 同上。 |
+| `--state-dir` 不在 | 空 | `state directory not found: <path>` + LF | `2` | 同上。 |
+| `--state-dir` が directory でない | 空 | `state path is not directory: <path>` + LF | `2` | 同上。 |
+| `--state-dir` が symlink | 空 | `state directory must not be symlink: <path>` + LF | `2` | 同上。 |
+| `--addr` が固定形式外 | 空 | `invalid listen address: <address>` + LF | `2` | 状態読取、credentials 処理、listener 起動を行わない。 |
+| listener mode で `.admin_credentials` 不在 | 空 | `credentials are not initialized` + LF | `2` | credentials を生成せず、listener を起動しない。 |
+| listener mode で `.admin_credentials` が読取不能または schema 不正 | 空 | `credentials are invalid` + LF | `2` | credentials を修復、退避、上書きせず、listener を起動しない。 |
+| listener 起動失敗 | 空 | `listen failed` + LF | `1` | listener を再試行せず、状態を変更しない。 |
+
+CLI 検証順は、共通 option mode 確定 → option parse → mode 組み合わせ → `--state-dir` の未指定、空文字、絶対 path、存在、symlink、file type → listener mode の `--addr` → listener mode の `.admin_credentials` 存在・schema の順とする。init-credentials mode は CLI 検証完了後に security 詳細本文の既存確認と標準入力処理へ進み、以降の stdout、stderr、終了コード、credentials 副作用は security 詳細本文を正本とする。listener mode は検証済み `state-dir` と `addr` から server を 1 回だけ構築し、credentials 起動時検証成功後に listener を 1 回だけ起動する。
+
 **`api` 実行時設定：**
 
 | 項目 | 入力元 | 固定契約 |
@@ -79,7 +109,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 項目 | 仕様 |
 |------|------|
 | 実装前提 | Go 最小バージョンは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値)、HTTP 技術選定は [`docs/SPEC.md` 方針責務 §4](../SPEC.md#4-技術方針) を参照する。 |
-| bind | 既定値は `127.0.0.1:8765`。`--addr <host:port>` が指定された場合は、起動中の listen address だけを置換する。`--addr 0.0.0.0:<port>` を指定しても、`api` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
+| bind | 既定値は `127.0.0.1:8765`。指定可能な listen address、検証順、失敗時副作用は [`docs/details/api.md` 詳細本文責務 `api` CLI 固定契約](api.md#api-cli-contract)を正本とする。外部公開 bind、hostname、IPv6、wildcard address は拒否する。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の文字コード契約を使用する。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
 | request ID | 全 `/api/` request の受付時に `crypto/rand` で 16 bytes を生成し、32 文字 lowercase hex として扱う。全 response の `X-Request-Id`、`.api_access_log.request_id`、同一 request で作成する `.audit_log.request_id` と `.config_log.request_id` は同じ値を使用する。生成失敗時は endpoint 処理、認証、状態更新、各 request log 追記を行わず `500 {"error":"Internal server error"}` を返し、`X-Request-Id` は付与しない。server log には secret や乱数値を含まない固定エラーを記録する。 |
@@ -2096,7 +2126,7 @@ history response の `trigger` は [`docs/details/statefile.md` 詳細本文責�
 | `POST /api/logout` | route、body 禁止、response body、HTTP status。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) |
 | `POST /api/change-password` | route、body parse、response body、HTTP status、`.admin_credentials` write 呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) |
 | `GET /api/sessions` / `POST /api/sessions/revoke-all` | route、response body、HTTP status、memory session 操作呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細)、[`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45) |
-| `--init-credentials` | CLI option dispatch、stdout / stderr / exit code を security 契約どおり返す。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) |
+| `--init-credentials` | CLI option dispatch、stdout / stderr / exit code を security 契約どおり返す。 | [`docs/details/security.md` 詳細本文責務 `--init-credentials` CLI 固定契約](security.md#init-credentials-cli-contract)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) |
 | `GET /api/auth/totp-status` / `POST /api/auth/totp-setup` / `POST /api/auth/totp-confirm` / `DELETE /api/auth/totp` | route、body parse、response body、HTTP status、`.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) |
 
 ---

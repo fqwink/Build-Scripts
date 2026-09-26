@@ -91,7 +91,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 最小長 | 8 文字。 |
 | 最大長 | 128 文字。 |
 | 許可文字 | UTF-8 文字列。NUL 文字は禁止。前後空白はトリムせず、入力値そのものを検証・ハッシュ化する。 |
-| 初期 password | `--init-credentials` で `.admin_credentials` に生成する。初回 login 時は `must_change:"prompt"` を返す。 |
+| 初期 password | `--init-credentials` の非 terminal 標準入力から取得し、平文を保存または出力せず `.admin_credentials` に hash を生成する。初回 login 時は `must_change:"prompt"` を返す。 |
 | 変更時検証 | `new_password` が現在 password と同一の場合は `422`。 |
 | 失敗時応答 | password 不一致は `401 {"error":"Unauthorized"}`。どの条件に失敗したかは返さない。 |
 | 成功時保存 | `.admin_credentials` に新 salt、新 hash、`must_change:false`、`updated_at` を原子的に保存する。 |
@@ -153,17 +153,23 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 session token と login ticket は `crypto/rand` 成功後にだけ生成し、生成した値はメモリ上で hash 化して保持する。response body に含める token / ticket は、その request の成功 response 1 回だけに含める。`403`、`429`、`500`、network 切断検出時に、未送信 token をログや状態ファイルへ退避してはならない。
 
+<a id="init-credentials-cli-contract"></a>
 **`--init-credentials` CLI 固定契約：**
+
+初期 password は非 terminal の標準入力から exactly 1 行で受け取る。入力 byte 列は UTF-8 password byte 列と末尾 LF 1 byte だけで構成し、末尾 LF より後の byte、途中の LF、CR、NUL、UTF-8 不正を禁止する。末尾 LF は password に含めず、前後空白を trim しない。UTF-8 code point 数は 8〜128 とする。実装は最大 514 bytes まで読み、513 bytes 以下で exactly 1 個の末尾 LFを確認してから UTF-8 と code point 数を検証する。標準入力が terminal の場合は password を読み取らない。password byte 列は hash 入力以外に複製、保存、log 出力せず、処理終了前に保持 buffer を上書きする。
 
 | init-credentials CLI ケース | stdout | stderr | 終了コード | 副作用 |
 |----------------------------|--------|--------|------------|--------|
 | 新規生成成功 | `credentials initialized` + LF | 空 | `0` | `.admin_credentials` を mode `0600` で作成する。 |
 | 既存あり | 空 | `credentials already exist` + LF | `2` | 既存ファイルを変更しない。 |
 | `--state-dir` 相対 path | 空 | `state directory must be absolute: {path}` + LF | `2` | ファイル作成なし。 |
+| 標準入力が terminal | 空 | `initial password stdin must not be terminal` + LF | `2` | password 読取とファイル作成なし。 |
+| password 入力が形式不正 | 空 | `invalid initial password` + LF | `2` | salt / hash 生成とファイル作成なし。 |
+| password 読取失敗 | 空 | `password input failed` + LF | `1` | salt / hash 生成とファイル作成なし。 |
 | 書込失敗 | 空 | `credentials write failed` + LF | `1` | tmp を削除し、部分ファイルを残さない。 |
 | rand 失敗 | 空 | `random source failed` + LF | `1` | ファイル作成なし。 |
 
-生成手順は、state dir 検証 → `.admin_credentials` の予備存在確認 → salt 生成 → hash 生成 → [`docs/details/statefile.md` 詳細本文責務 §22.0a 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode 呼出し、の順に固定する。create-only mode は lock 取得後に存在を再確認するため、予備確認後の競合でも既存 `.admin_credentials` を上書きしない。`ErrStateAlreadyExists` は「既存あり」の終了コード `2`、lock / tmp / write / chmod / file sync / rename / parent sync / cleanup failure は「書込失敗」の終了コード `1` へ写像する。rename 後の partial failure では作成済みファイルを残す。security owner は tmp 名、lock 名、rename、cleanup を再定義しない。実装者判断で初期 password を環境変数、対話入力、ランダム生成へ変更してはならない。
+生成手順は、API CLI の state dir 検証 → `.admin_credentials` の予備存在確認 → 標準入力の terminal 判定 → password 読取・検証 → salt 生成 → hash 生成 → [`docs/details/statefile.md` 詳細本文責務 §22.0a 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode 呼出し、の順に固定する。予備確認で既存 file を検出した場合は標準入力を読まず「既存あり」で終了する。create-only mode は lock 取得後に存在を再確認するため、予備確認後の競合でも既存 `.admin_credentials` を上書きしない。`ErrStateAlreadyExists` は「既存あり」の終了コード `2`、lock / tmp / write / chmod / file sync / rename / parent sync / cleanup failure は「書込失敗」の終了コード `1` へ写像する。rename 後の partial failure では作成済みファイルを残す。security owner は tmp 名、lock 名、rename、cleanup を再定義しない。初期 password を process 引数、環境変数、設定ファイル、固定値、terminal 対話、ランダム生成、stdout / stderr 出力から取得してはならない。
 
 **認証共通実装確認ゲート：**
 

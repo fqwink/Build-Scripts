@@ -352,7 +352,7 @@ BRANCH_TARGETS = [
 | `1` | 1 件以上のビルドまたは転送が失敗したが、runner 自体は最後まで処理できた。 |
 | `2` | 設定不正、必須ファイル不足、CLI 引数不正。 |
 | `3` | GitHub API など外部サービスへの全再試行が失敗し、全ターゲットが処理不能。 |
-| `4` | `.build_lock` 作成に失敗し、既存 PID の実行中確認もできない。 |
+| `4` | `.build_lock` の schema / PID 解析が不正、PID 実行中判定が不能、または lock 作成に失敗した。[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の CLI 終了コードと [lock ファイル契約](#lock-ファイル契約) を正本とする。 |
 
 systemd timer からの再実行を妨げないため、終了コード `1` と `3` でも、[処理フロー](#13-処理フロー) の failure 別書込順と [ビルド通知連携](#sec-27-32) に従い、該当する log / history / status / state / notification pending の書込と所有確認付き lock 解放を各契約の最大回数で実行してから終了する。本文だけを根拠に追加 retry を行ってはならない。
 
