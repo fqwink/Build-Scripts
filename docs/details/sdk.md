@@ -29,7 +29,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 |------|------|
 | JavaScript | ECMAScript 2022 以上を前提とする。transpile、bundle、polyfill は SDK 詳細本文責務に含めない。 |
 | module | `admin/adlaire-ci-sdk.js` は ES Module とし、`export { AdlaireCI, AdlaireCIError }` を必須 export とする。default export は定義しない。 |
-| browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder`、`URLSearchParams` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
+| browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
 | 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。Node.js 専用 API、npm package、bundler、polyfill による補完は行わない。 |
 | global 汚染 | `window.AdlaireCI` 等の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
 | 外部 consumer | 必須 browser API を提供する外部 consumer application は、利用側の framework または bundler から本 ES Module を import してよい。consumer 側の framework adapter、package manifest、bundler 設定、polyfill、framework runtime を本リポジトリ、SDK 配布物、標準管理 UI 配布物へ追加してはならない。 |
@@ -178,19 +178,19 @@ export { AdlaireCI, AdlaireCIError };
 
 | 項目 | 仕様 |
 |------|------|
-| `baseUrl` | 末尾 `/` を除去して保持する。空文字、`null`、`undefined` は `TypeError`。 |
-| URL 組み立て | パスは `/api/...` をそのまま連結し、クエリ値は `encodeURIComponent` でエンコードする。 |
+| `baseUrl` | API origin だけを表す absolute `http` / `https` URL とする。path は `/`、userinfo、query、fragment はなしとし、保持時は末尾 `/` を除去する。空文字、relative URL、`null`、`undefined`、その他の形式違反は HTTP 送信前に `TypeError("Invalid argument: baseUrl")` とする。`baseUrl` に `/api` を含めない。 |
+| URL 組み立て | パスは `/api/...` をそのまま連結する。query key は各 method の固定名をそのまま使用し、query value は `encodeURIComponent(String(value))` の結果を使用する。空白は `%20` とし、`+` への変換を禁止する。 |
 | 認証ヘッダー | `this._token` が存在する場合のみ `Authorization: Bearer ${token}` を付与する。 |
 | JSON 送信 | `POST` / `DELETE` で body を送る場合は `Content-Type: application/json` を付与し、`JSON.stringify` した body を送信する。 |
 | JSON 受信 | `Content-Type` が JSON の場合のみ `response.json()` を呼ぶ。[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) で JSON response を定義した endpoint の成功時に空 body を受信した場合は protocol error として `AdlaireCIError(status=0, message="Empty JSON response")` を投げる。 |
 | `AdlaireCIError` | `name="AdlaireCIError"`、`status`、`message`、`details`、`responseBody` を持つ `Error` 派生クラスとする。constructor は `new AdlaireCIError({status, message, details = null, responseBody = null})` とし、network error、timeout、protocol error は `status=0` とする。`message` は API error response の `error`、network error は `"Network error"`、timeout は `"Request timeout"`、protocol error は固定文言を使用する。 |
 | `logout()` | API 呼び出しが失敗しても `finally` で `this._token` をクリアする。 |
-| request timeout | 通常 API は 30 秒で abort し、`AdlaireCIError(status=0, message="Request timeout")` を投げる。`streamBuild()` は接続確立まで 30 秒、接続確立後は timeout なしとし、利用者が `StreamHandle.close()` で停止する。 |
+| request timeout | 通常 API の 30 秒は `fetch()` 開始から JSON text または Blob の body 読取完了までとする。response header 受信時に timeout を解除しない。SDK 自身の timeout で header 待機または body 読取が abort した場合は `AdlaireCIError(status=0, message="Request timeout")` を投げる。`streamBuild()` は接続確立まで 30 秒、接続確立後は timeout なしとし、利用者が `StreamHandle.close()` で停止する。 |
 | `streamBuild()` | `onLine` と `onEnd` は function 必須とし、不正時は HTTP 送信前に `TypeError` とする。token がない場合は接続前に `AdlaireCIError(status=401, message="Unauthorized")` を投げる。native `EventSource` は Authorization header を付与できないため使用禁止とする。SDK は `fetch()`、`AbortController`、`ReadableStream` reader を使用し、`Accept: text/event-stream` と `Authorization` header を付与する。`2xx`、media type `text/event-stream`、readable body の確認後だけ `StreamHandle` で resolve する。`2xx` で media type または readable body が不正な場合は接続前に `AdlaireCIError(status=0,message="Invalid SSE response")` で reject する。 |
 | SSE parser | `TextDecoder("utf-8",{fatal:true})` の streaming decode を使用し、chunk 境界をまたぐ byte、Unicode 文字、frame を buffer する。frame separator は LF 2 個の `\n\n` だけとし、1 frame は `data: ` で始まる 1 行と compact JSON 1 object だけを許可する。CRLF、追加行、空 frame、無効 UTF-8、JSON parse 不能、未知 key、未知 `type`、必須 key 不足、型不一致は `Invalid SSE frame` とする。 |
 | SSE frame 適用 | `type="log"` は key が `type,line,at` だけ、`line` が string、`at` が UTC ISO 8601 秒精度の場合だけ `onLine(line)` を呼ぶ。`type="end"` は key が `type,status,duration_seconds` だけで、status と duration の組合せが API 契約に一致する場合だけ一時保持する。`end` は最終 frame 1 件だけを許可し、その後に EOF と空 buffer を確認してから `onEnd(summary)` を 1 回呼ぶ。実行中 snapshot の `duration_seconds:null` を保持し、完了と推測しない。EOF 前の `end` 不在、`end` 後の byte / frame、EOF 時の未完 frame は `Invalid SSE frame` とする。`onLine` または `onEnd` が例外を投げた場合は reader を停止し、`AdlaireCIError(status=0,message="Stream callback failed")` へ置き換える。 |
 | `StreamHandle` | `StreamEnd.status` は `"running"`、`"success"`、`"failure"`、`"cancelled"` のいずれか、`StreamEnd.duration_seconds` は number または `null` とし、exact object は `{status,duration_seconds}` とする。`streamBuild()` の戻り値は `close()`、`closed`、`error`、`done` だけを持ち、`error` は `AdlaireCIError` または `null`、`done` は `StreamEnd` または `null` で resolve する Promise とする。正常終了時は `onEnd(summary)` 後に `done` を同じ summary で resolve し、`closed=true`、`error=null` とする。接続後 error は `closed=true`、`error` に同じ `AdlaireCIError` を保持し、`done` をその error で reject する。`close()` は reader と AbortController を停止し、複数回呼んでも例外を投げず、`onEnd` を呼ばず、`closed=true`、`error=null`、`done` は `null` で resolve する。normal end、error、user close のうち最初の terminal transition だけが状態と `done` を確定し、後続 callback と再 settle を禁止する。 |
-| Blob レスポンス | `downloadSnapshot(id)` のみ `response.blob()` を使用する。その他は JSON とする。 |
+| Blob レスポンス | `downloadSnapshot(id)` の `2xx` のみ `response.blob()` を使用する。成功 response の `Content-Type` を media type と parameter に分解し、media type が case-insensitive で `application/octet-stream` と完全一致する場合だけ Blob を返す。不一致は `AdlaireCIError(status=0,message="Invalid binary response")` とする。その他の成功 response は JSON とする。 |
 | メソッド引数検証 | SDK 側でも必須引数の空値、配列型、数値範囲を検証し、HTTP 送信前に `TypeError` を投げる。 |
 | endpoint 対応 | SDK method は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の SDK 列に存在する endpoint だけを呼び出す。[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) にない endpoint を SDK 独自判断で追加してはならない。 |
 | body なし endpoint | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の `Request` が `none` の場合、SDK は `fetch` に `body` を設定しない。`{}` も送信しない。 |
@@ -210,11 +210,12 @@ SDK の内部 request helper は、すべての public method で [`docs/details
 | 2 | URL 生成 | `baseUrl + path + query` を生成する。query key は [SDK 引数変換契約](#sdk-argument-contract) の対象 method 行に記載された順序で追加する。 |
 | 3 | body 生成 | `Request=none` では `body` と `Content-Type` を設定しない。JSON body ありの場合だけ `JSON.stringify()` する。 |
 | 4 | header 生成 | `Accept` を常に付与する。JSON body を送信する場合だけ `Content-Type` を付与する。token が空でない場合だけ `Authorization` を付与し、token が空の場合は `Authorization` header を付けない。 |
-| 5 | timeout 設定 | 通常 request は `AbortController` で 30 秒 timeout。`streamBuild()` は接続確立まで 30 秒。 |
+| 5 | timeout 設定 | 通常 request は `AbortController` で 30 秒 timeout を開始し、手順 7 の body 読取またはそれ以前の失敗が確定するまで維持する。`streamBuild()` は接続確立まで 30 秒。 |
 | 6 | `fetch()` 実行 | 手順 5 で SDK 自身が設定した timeout により `AbortController` が abort した reject だけを `AdlaireCIError(status=0,message="Request timeout")` とする。timeout 以外の理由で `fetch()` が reject した場合は、例外名や browser 文言を公開せず `AdlaireCIError(status=0,message="Network error")` とする。`streamBuild().close()` による user close は reject として扱わず、StreamHandle 固定契約の terminal transition を適用する。 |
-| 7 | response parse | 成功 / 失敗に関わらず JSON error body がある場合は parse する。parse 不能 error body は `responseBody` に text を保持し、`message` は HTTP status 固定文言とする。 |
-| 8 | token 変化 | `401` の場合だけ `this._token = null`。`403`、`429`、`500`、network error、timeout では token を破棄しない。 |
-| 9 | return / throw | `2xx` は endpoint の型で返す。`4xx` / `5xx` は `AdlaireCIError` を投げる。 |
+| 7 | response body 読取 / parse | 成功 / 失敗に関わらず、JSON は `response.text()`、binary は `response.blob()` の完了まで timeout 対象とする。body 読取が SDK timeout で reject した場合は `Request timeout`、その他の理由で reject した場合は `Network error` とする。JSON error body がある場合は parse し、parse 不能 error body は `responseBody` に text を保持し、`message` は HTTP status 固定文言とする。 |
+| 8 | timeout 解除 | body 読取と parse、または先行失敗が確定した terminal path の `finally` で 1 回だけ解除する。response header 受信直後の解除を禁止する。 |
+| 9 | token 変化 | `401` の場合だけ `this._token = null`。`403`、`429`、`500`、network error、timeout では token を破棄しない。 |
+| 10 | return / throw | `2xx` は endpoint の型で返す。`4xx` / `5xx` は `AdlaireCIError` を投げる。 |
 
 HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の固定表に固定する。
 
@@ -227,11 +228,12 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務
 | timeout | `0` | `Request timeout` | `null` | 維持 |
 | empty success JSON | `0` | `Empty JSON response` | `null` | 維持 |
 | invalid success JSON | `0` | `Invalid JSON response` | `null` | 維持 |
+| invalid binary response | `0` | `Invalid binary response` | `null` | 維持 |
 | invalid SSE response | `0` | `Invalid SSE response` | `null` | 維持 |
 | invalid SSE frame | `0` | `Invalid SSE frame` | `null` | 維持 |
 | stream callback failure | `0` | `Stream callback failed` | `null` | 維持 |
 
-`429` は SDK で自動待機、自動再送、自動 refresh を行わない。binary response は `downloadSnapshot(id)` の `2xx` のみ `Blob` とする。`4xx` / `5xx` では `Content-Type` が `application/json` または `+json` で終わる場合だけ JSON error として parse し、parse 成功時は response の `error` / `details` を保持した `AdlaireCIError` を投げる。JSON parse 不能、JSON 以外の error body、空 body の場合は body text を `responseBody` に保持し、`message` は `HTTP {status}` とする。`streamBuild()` は接続後の `close()` をユーザー停止として扱い、`AdlaireCIError` を投げない。接続後の network / frame / callback error は `StreamHandle.error` と `StreamHandle.done` の reject で同じ `AdlaireCIError` を通知する。callback が投げた元の error 本文は `responseBody`、console、UI へ転写しない。
+`429` は SDK で自動待機、自動再送、自動 refresh を行わない。binary response は `downloadSnapshot(id)` の `2xx` のみ `Blob` とする。`4xx` / `5xx` では `Content-Type` を media type と parameter に分解し、type と subtype を case-insensitive で判定する。type が `application` で subtype が `json`、または subtype が 1 文字以上の prefix と `+json` から成る場合だけ JSON error として parse する。parse 成功時は response の `error` / `details` を保持した `AdlaireCIError` を投げる。JSON parse 不能、JSON 以外の error body、空 body の場合は body text を `responseBody` に保持し、`message` は `HTTP {status}` とする。`streamBuild()` は接続後の `close()` をユーザー停止として扱い、`AdlaireCIError` を投げない。接続後の network / frame / callback error は `StreamHandle.error` と `StreamHandle.done` の reject で同じ `AdlaireCIError` を通知する。callback が投げた元の error 本文は `responseBody`、console、UI へ転写しない。
 
 **SDK メソッド実装固定契約：**
 
@@ -241,7 +243,7 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務
 | private helper | private helper は `_request`, `_json`, `_query`, `_requireToken`, `_validateId`, `_clearTokenOn401` だけを定義する。helper を export しない。 |
 | TypeError 文言 | SDK 側引数検証の `TypeError.message` は `"Invalid argument: <name>"` に固定する。複数不正がある場合は最初に検出した引数だけを返す。 |
 | path parameter | `id` を path に入れる method は、SDK 側で `encodeURIComponent(id)` を必ず行う。`/`、`.`、`..`、空文字は送信前に `TypeError`。 |
-| query parameter | query key は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の表記順で生成する。任意 query が未指定の場合、`?` 自体を付けない。 |
+| query parameter | query key は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の表記順で生成する。value は各々 `encodeURIComponent(String(value))` を 1 回だけ適用し、空白を `%20` とする。`URLSearchParams` 等による `+` 変換、2 重 encode、並べ替えを禁止する。任意 query が未指定の場合、`?` 自体を付けない。 |
 | body parameter | body object の key 順は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の送信値順とする。未知 key を SDK が追加しない。 |
 | token mutation | `login()` と `loginTotp()` は response に `token` が存在する場合だけ `this._token` を更新する。`totp_required:true` かつ token なしの場合は既存 token を保持せず `null` にする。 |
 | logout failure | `logout()` は network error、`401`、`500` のいずれでも `finally` で `this._token=null` にする。 |

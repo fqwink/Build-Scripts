@@ -145,8 +145,9 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 7 | endpoint 固有処理を実行し、必要な状態ファイルを [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) の Write 列順に更新する。 | endpoint 固有 | 途中失敗時の巻き戻しは、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約または [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) に明記された範囲だけ行う。 |
 | 8 | endpoint 固有契約が response 確定前に要求する `.config_log`、`.audit_log`、`.access_log`、`.notify_log`、event log を仕様順に追記する。security 段階で追記済みの log は再追記しない。 | endpoint 固有 | 必須 log の失敗時挙動は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の該当 endpoint 固有契約に従う。既に確定済みの endpoint 状態は自動推測で再変更しない。 |
 | 9 | response status、body、header を確定する。 | - | response 生成時に追加の状態読取、状態書込、外部呼び出しを行わない。 |
-| 10 | 確定した response の status と request ID を用いて `.api_access_log` を [`docs/details/api.md` 詳細本文責務 §27.6](api.md#sec-27-6) に従い追記する。 | 元の status を維持 | 追記失敗で response を `500` へ変更しない。server log に `API_ACCESS_LOG_WRITE_FAILED` を WARN で記録する。 |
-| 11 | 確定済み response を送信する。 | - | 送信開始後に状態や log を追加更新しない。 |
+| 10 | JSON response を送信前に全量 serialize する。binary response と SSE response はそれぞれの endpoint 固有契約に従う。 | `500` | JSON serialize 失敗時は元 response の header / status / body を送信せず、status と body を `500 {"error":"Internal server error"}` へ確定し直す。固定 error body は定数 byte 列を使用し、再度 JSON serialize しない。既に完了した状態と log は巻き戻さず、server log に `API_RESPONSE_ENCODE_FAILED` を ERROR で 1 件記録する。 |
+| 11 | 手順 10 後の最終 response status と request ID を用いて `.api_access_log` を [`docs/details/api.md` 詳細本文責務 §27.6](api.md#sec-27-6) に従い追記する。 | 最終 status を維持 | 追記失敗で response を `500` へ変更しない。server log に `API_ACCESS_LOG_WRITE_FAILED` を WARN で 1 件記録する。失敗した JSON Lines の一部を残さない。 |
+| 12 | 確定済み header、status、serialize 済み body の順で response を送信する。 | - | body write の全失敗、partial write、または client 切断で別の HTTP response を追加送信しない。業務状態、状態ファイル、JSON Lines log を追加更新せず、server log に `API_RESPONSE_WRITE_FAILED` を WARN で 1 件記録する。 |
 
 `GET` endpoint は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の API 共通処理順序固定表の段階 7 で業務状態ファイルを書き換えない。`POST`、`DELETE` endpoint でも、段階 6 までに失敗した場合は endpoint 固有の状態書込を一切行わない。外部 API 送信、systemd 操作、hook 実行、通知送信、snapshot 操作は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約の処理順に現れる場合だけ実行する。実装者判断で「先に外部確認してから validation error を返す」処理にしてはならない。
 

@@ -232,7 +232,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 1. `app-root`、`nav-panels`、`global-error`、`global-success`、各 `panel-*` の存在を検査する。欠落時は `global-error` に `UI initialization failed` を表示し、以降の API 呼び出しを行わない。
 2. `window.AdlaireCI` 等の global 参照を使わず、`./adlaire-ci-sdk.js` から `AdlaireCI` と `AdlaireCIError` を ES Module import する。
-3. `AdlaireCI` を `new AdlaireCI({baseUrl})` で 1 回だけ生成する。`baseUrl` は同一 origin の `/api` を既定値とし、外部 origin は ui 詳細本文責務では許可しない。
+3. `AdlaireCI` を `new AdlaireCI({baseUrl})` で 1 回だけ生成する。`baseUrl` の既定値は `window.location.origin` とし、`/api` を含めない。`data-api-base-url` が不在または空文字なら既定値を使用する。値がある場合は absolute `http` / `https` URL として parse し、`origin === window.location.origin`、path が `/`、userinfo、query、fragment なしの全条件を満たす場合だけ SDK constructor へ渡す。条件違反は `UI initialization failed` を表示し、SDK を生成せず HTTP 送信を行わない。
 4. すべての panel を `hidden=true` にし、`panel-login` だけを表示する。
 5. form submit と button click の event listener を登録する。登録対象は [DOM / section / form field 命名契約表](#ui-dom-naming-contract) の id に限定する。
 6. `localStorage`、`sessionStorage`、Cookie から token を読み込まない。
@@ -482,7 +482,7 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 
 | 設定値 | 取得元 | 既定値 | 仕様 |
 |--------|--------|--------|------|
-| SDK `baseUrl` | `index.html` 内の `data-api-base-url` 属性 | `/api` | 空文字の場合は `/api` を使用する。外部 origin の URL は ui 詳細本文責務では使用しない。 |
+| SDK `baseUrl` | `index.html` 内の `data-api-base-url` 属性 | `window.location.origin` | 属性不在または空文字は既定値を使用する。明示値は同一 origin の absolute URL で、path `/`、userinfo / query / fragment なしだけを許可する。`/api` を含めない。 |
 | 初期表示 panel | 固定値 | `panel-login` | token 永続化を行わないため、画面読み込み直後は常にログイン panel を表示する。 |
 | theme token | `:root` CSS custom property | [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) の値 | JavaScript は theme token を変更しない。UI 操作で theme 切替を実装しない。 |
 | panel 表示制御 | `hidden` 属性 | 全 panel hidden、`panel-login` のみ表示 | DOM 削除ではなく `hidden` で切り替える。 |
