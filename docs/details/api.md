@@ -97,7 +97,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ## 22. バックエンド API 仕様
 
-**ベース URL：** `http://localhost:{PORT}/api`
+**ベース URL：** `http://127.0.0.1:{PORT}/api`
 **認証：** `Authorization: Bearer {SESSION_TOKEN}`（`/api/login` で取得したセッショントークン）
 **レスポンス形式：** JSON
 
@@ -122,7 +122,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | JSON 不正 | JSON ボディのパースに失敗した場合は `400 Bad Request` と `{"error": "Invalid JSON"}` を返す。 |
 | 入力検証失敗 | 型、必須キー、範囲、有効値が仕様と異なる場合は `422 Unprocessable Entity` と `{"error":"Validation failed","details":[...]}` を返す。`field` は JSON body key、query key、または path parameter 名とし、body 全体の形式不正は `field` を `"$"` とする。 |
 | 認証なし | 認証必須エンドポイントで Bearer トークンがない、または無効な場合は `401 Unauthorized` と `{"error": "Unauthorized"}` を返す。 |
-| 権限不足 | 認証済み API token の scope が不足する場合は `403 Forbidden` と `{"error":"Forbidden"}` を返す。管理 session は全 API 操作を許可する。API token は `read`、`trigger`、`operate`、`config`、`admin` の scope だけを許可し、token 作成時に指定された scope 外の endpoint は拒否する。 |
+| 権限不足 | 認証済み API token の scope が不足する場合は `403 Forbidden` と `{"error":"Forbidden"}` を返す。管理 session は、session record の `password_change_required` が `false` の場合に全 API 操作を許可する。`true` の管理 session は `POST /api/change-password` と `POST /api/logout` だけを許可し、その他の認証必須 endpoint は endpoint 固有 body の parse より前に `403 Forbidden` と `{"error":"Password change required"}` で拒否する。API token はこの強制変更 gate の対象外とし、`read`、`trigger`、`operate`、`config`、`admin` の scope だけを許可し、token 作成時に指定された scope 外の endpoint は拒否する。 |
 | 競合 | 現在状態と要求操作が両立しない場合は `409 Conflict` を返す。対象は、ビルド未実行時の cancel、停止済みスケジュールへの pause、稼働中スケジュールへの resume、lock 取得 10 秒超過、stale 判定不能な `.build_lock` である。実行中の manual / force / webhook build request は queue 上限内なら waiting entry として受理し、上限到達時は `429 queue_full` とする。 |
 | 未設定機能 | endpoint の必須 secret、必須外部設定、必須状態ファイルが未設定で処理を開始できない場合は `501 Not Implemented` と `{"error":"Not configured"}` を返す。エンドポイント固有仕様で `422`、`503`、`500` を明記している場合のみ個別指定を優先する。 |
 | 時刻形式 | API レスポンスと状態ファイルの機械処理用時刻は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 共通固定値「機械処理時刻」](../DETAIL_INDEX.md#common-machine-time) に従う。外部 API から取得した時刻は、保存前および API レスポンス組立前に同固定値へ正規化する。 |
@@ -148,10 +148,12 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | JSON parse 失敗 | `400` | `{"error":"Invalid JSON"}` |
 | 認証なし / 無効 token / 期限切れ session | `401` | `{"error":"Unauthorized"}` |
 | scope 不足 / 管理操作不可 | `403` | `{"error":"Forbidden"}` |
+| password 強制変更中の管理 session による非許可操作 | `403` | `{"error":"Password change required"}` |
 | access control 破損 / 読取不能 | `503` | `{"error":"Access control unavailable"}` |
 | maintenance 有効中 | `503` | `{"error":"maintenance"}` |
 | maintenance 破損 / 読取不能 | `503` | `{"error":"maintenance_unavailable"}` |
 | rate limit 超過 | `429` | `{"error":"Too many requests"}` |
+| login lock 期限内 | `429` | `{"error":"Too many attempts"}` |
 | 入力検証失敗 | `422` | `{"error":"Validation failed","details":[...]}` |
 | 状態競合 | `409` | endpoint 固有文言。未定義の場合は `{"error":"Conflict"}` |
 | 必須設定なし | `501` | `{"error":"Not configured"}` |
@@ -419,7 +421,7 @@ API 実装では、[`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec
 
 | Endpoint | Request | Response | Success | Errors | SDK | UI |
 | ---------- | --------- | ---------- | --------- | -------- | ----- | ---- |
-| `POST /api/login` | `{password}` | `{token?,must_change,totp_required?,ticket?}` | `200` | `401`, `422`, `429`, `500` | `login(password)` | ログイン |
+| `POST /api/login` | `{password}` | `LoginResult` | `200` | `401`, `422`, `429`, `500` | `login(password)` | ログイン |
 | `POST /api/login/totp` | `{ticket,code}` | `{token,must_change}` | `200` | `401`, `422`, `429`, `500` | `loginTotp(ticket,code)` | ログイン |
 | `POST /api/logout` | none | `{message}` | `200` | `401`, `500` | `logout()` | 全パネル共通 |
 | `POST /api/change-password` | `{current_password,new_password}` | `{message}` | `200` | `401`, `422`, `500` | `changePassword()` | パスワード変更 |
@@ -807,6 +809,9 @@ API の必須検証、fixture 名、入力状態、期待 response、期待副�
 endpoint の method、path、認証境界、request、response、error、read / write 境界の一覧は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の API 完全契約表を唯一の正本とする。以降は endpoint ごとの追加詳細だけを記載する。
 
 **`POST /api/login` リクエスト / レスポンス：**
+
+`LoginResult` は次の 2 形式だけを許可する相互排他の response とする。TOTP 無効時は `token` と `must_change` の 2 key だけを返す。TOTP 有効時の password 成功では `totp_required:true` と `ticket` の 2 key だけを返し、`token` と `must_change` を含めない。両形式の key を混在させてはならない。
+
 ```text
 // リクエスト
 { "password": "admin" }
@@ -815,10 +820,10 @@ endpoint の method、path、認証境界、request、response、error、read / 
 { "token": "<session_token>", "must_change": "prompt" }
 
 // レスポンス（TOTP 有効）
-{ "totp_required": true, "ticket": "<login_ticket>", "must_change": "none" }
+{ "totp_required": true, "ticket": "<login_ticket>" }
 ```
 
-`must_change` の有効値：`"none"`（変更不要）| `"prompt"`（促す：初回ログイン時）| `"forced"`（強制：5 回目以降。変更完了まで管理画面の操作を制限）
+`must_change` の有効値は `"none"`、`"prompt"`、`"forced"` とする。算出条件、`login_count` 更新時点、TOTP の遅延算出は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) を参照する。
 
 **`POST /api/login/totp` リクエスト / レスポンス：**
 ```text
@@ -828,6 +833,10 @@ endpoint の method、path、認証境界、request、response、error、read / 
 // レスポンス
 { "token": "<session_token>", "must_change": "none" }
 ```
+
+`POST /api/login/totp` の `must_change` は TOTP 成功時に算出した最終値であり、login ticket 発行時の値を保存または再利用してはならない。`"forced"` を返した session は、password 変更が成功するまで `POST /api/change-password` と `POST /api/logout` 以外の認証必須 endpoint を使用できない。
+
+`POST /api/login` で pre-auth rate limit と login lock が同時に成立する場合は、pre-auth rate limit を優先して `429 {"error":"Too many requests"}` を返す。pre-auth rate limit の window が終了し、login lock 期限内だけが成立する場合は `429 {"error":"Too many attempts"}` を返す。
 
 **`POST /api/logout` リクエスト / レスポンス：**
 ```text
@@ -1514,7 +1523,7 @@ record schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](state
 { "id": "tok000001", "token": "act_...", "label": "監視用", "scopes": ["read"], "created_at": "2026-09-15T10:00:00Z", "expires_at": null }
 ```
 
-`token` はレスポンス時のみ返却し、以後は取得不可。`scopes` の有効値は `read`、`trigger`、`operate`、`config`、`admin` とする。管理 session は全 API 操作を許可し、API token は指定 scope の範囲だけを許可する。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
+`token` はレスポンス時のみ返却し、以後は取得不可。`scopes` の有効値は `read`、`trigger`、`operate`、`config`、`admin` とする。管理 session の認証後許可範囲は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の強制変更 gate、API token の許可範囲は [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の scope 固定表を参照する。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
 
 **`DELETE /api/tokens/{id}` レスポンス例：**
 ```json

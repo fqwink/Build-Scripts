@@ -58,7 +58,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 3 | 認証不要 endpoint を判定する。 | `GET /api/health` と `POST /api/webhook` は個別契約を優先する。Webhook は [`docs/details/api.md` 詳細本文責務 §27.12](api.md#sec-27-12) の body size 判定と署名検証を認証代替とする。 |
 | 4 | login rate limit を判定する。 | login group は credential body の parse と認証より前に IP key で判定する。login 以外ではこの段階を省略する。 |
 | 5 | 認証情報を検証する。 | 認証必須 endpoint は session と API token を混同しない。形式不一致は `401`。login は検証済み body 上限内で credential body を parse し、個別認証契約を適用する。 |
-| 6 | API token scope を判定する。 | scope 不足時は endpoint 固有 body の parse / validation と状態更新を行わない。管理 session と認証不要 endpoint では省略する。 |
+| 6 | 認可 gate を判定する。 | API token は endpoint scope を判定し、scope 不足は `403 {"error":"Forbidden"}` とする。管理 session は session 発行時の `password_change_required` を判定し、`true` の場合は `POST /api/change-password` と `POST /api/logout` 以外を `403 {"error":"Password change required"}` とする。拒否時は endpoint 固有 body の parse / validation、認証後 rate limit 更新、endpoint 固有状態更新を行わない。認証不要 endpoint では省略する。 |
 | 7 | 認証後 rate limit を判定する。 | actor key と IP key を同一 lock 内で判定・更新する。`POST /api/webhook` は署名検証成功後に `trigger` group の IP key だけを判定・更新する。その他の認証不要 endpoint は個別契約で対象 group が明記された場合だけ実行する。 |
 | 8 | endpoint 固有 body / query / path validation を行う。 | 失敗時は対象状態、外部 API、外部 command を変更しない。前段階までに完了した security 副作用は保持する。 |
 | 9 | endpoint 固有処理を実行する。 | 成功時だけ [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint に固定された保存順で状態、access log、audit log を確定する。 |
@@ -91,7 +91,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 最小長 | 8 文字。 |
 | 最大長 | 128 文字。 |
 | 許可文字 | UTF-8 文字列。NUL 文字は禁止。前後空白はトリムせず、入力値そのものを検証・ハッシュ化する。 |
-| 初期 password | `--init-credentials` の非 terminal 標準入力から取得し、平文を保存または出力せず `.admin_credentials` に hash を生成する。初回 login 時は `must_change:"prompt"` を返す。 |
+| 初期 password | `--init-credentials` の非 terminal 標準入力から取得し、平文を保存または出力せず `.admin_credentials` に hash、`must_change:true`、`login_count:0` を生成する。session 発行時の response は session / ticket 固定契約の `must_change` 算出を使用する。 |
 | 変更時検証 | `new_password` が現在 password と同一の場合は `422`。 |
 | 失敗時応答 | password 不一致は `401 {"error":"Unauthorized"}`。どの条件に失敗したかは返さない。 |
 | 成功時保存 | `.admin_credentials` に新 salt、新 hash、`must_change:false`、`updated_at` を原子的に保存する。 |
@@ -105,7 +105,11 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | session key | token 本体ではなく `sha256(token)` の lowercase hex。 |
 | session 期限 | 新規発行時点の `.server_config.session_timeout_seconds`。設定不在時は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の既定値を使用する。 |
 | session_id | `crypto/rand` で 16 bytes を生成し、lowercase hex とする。 |
+| `must_change` 算出 | session token 発行と同じ credentials 更新で `login_count` を飽和加算した後に算出する。`.admin_credentials.must_change=false` は `"none"`、`true` かつ増加後 `login_count` が 1〜4 は `"prompt"`、`true` かつ増加後 `login_count` が 5 以上は `"forced"` とする。 |
+| password 変更 gate | session record は発行 response の `must_change` が `"forced"` の場合だけ `password_change_required:true` をメモリ上に保持する。password 変更成功時に現 session の値を `false` にし、その他の session は失効する。 |
 | login ticket | TOTP 有効 login の password 成功時だけ生成し、メモリ上で hash 化して保持する。 |
+| login ticket 保持値 | password 検証済みであること、ticket hash、発行時刻、期限、credentials fingerprint だけを保持する。`must_change`、`login_count`、`last_login_at`、`password_change_required` は保持しない。 |
+| credentials fingerprint | ticket 発行時の `password_hash`、`salt`、`algorithm`、`iterations` の 10 進 ASCII、`updated_at` をこの順で LF 1 byte で連結した UTF-8 byte 列の SHA-256 lowercase hex。TOTP 成功処理で最新 credentials から再算出し、`crypto/subtle.ConstantTimeCompare` で一致しない場合は ticket を消費して `401 {"error":"Unauthorized"}` とする。fingerprint は response と log に出力しない。 |
 | 永続化禁止 | session token、login ticket、setup 仮 secret、連続失敗回数はファイル保存しない。 |
 | response 禁止 | password hash、salt、session token hash、ticket hash、TOTP secret 保存値は response に含めない。 |
 | log 禁止 | password、current_password、new_password、token、ticket、hash、salt、TOTP code は `.access_log`、`.audit_log`、`.api_access_log`、journal に含めない。 |
@@ -116,9 +120,11 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 | 項目 | 仕様 |
 |------|------|
-| 失敗記録 | `api` はメモリ上で直近の連続 login 失敗回数と最終失敗時刻を保持する。再起動で失敗回数はリセットされる。 |
-| lock 条件 | 連続 10 回失敗した場合、最終失敗から 10 分間 `POST /api/login` を `429 {"error":"Too many attempts"}` で拒否する。 |
-| 成功時 | login 成功時は連続失敗回数を 0 に戻す。 |
+| key | [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) の IP key と同じ正規化を使用する。`RemoteAddr` を `net.SplitHostPort` で host に正規化し、parse 失敗時は同節の固定 fallback key を使用する。 |
+| 失敗記録 | `POST /api/login` の password hash 不一致だけが、IP key ごとの連続失敗回数と最終失敗時刻をメモリ上で更新する。JSON / body 検証失敗、pre-auth rate limit 拒否、TOTP 失敗はこの回数を更新しない。再起動で全 entry を破棄する。 |
+| lock 成立 | 10 回目の連続 password 不一致は `401 {"error":"Unauthorized"}` を返し、`locked_until = last_failure_at + 10分` を記録する。その後 `now < locked_until` の request は password hash 検証を行わず `429 {"error":"Too many attempts"}` で拒否する。 |
+| lock 解除 | `now >= locked_until` であれば対象 entry を削除してから password hash 検証を行う。password hash 一致時も、TOTP の有効・無効にかかわらず対象 entry を削除する。 |
+| rate limit 優先順位 | pre-auth login rate limit を login lock より前に判定する。両方が拒否条件を満たす場合は `429 {"error":"Too many requests"}` を返し、login lock 判定、password hash 検証、失敗回数更新を行わない。 |
 | 応答時間 | password 不一致、存在しない credentials、lock 中を除く検証失敗では、条件の詳細を response へ出さない。 |
 | log | 成功、失敗、lock 拒否はいずれも `.access_log` へ追記する。password、token、hash、salt は記録しない。 |
 
@@ -134,7 +140,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | TOTP 成功 | `200` | `login_count`、`last_login_at` 更新 | ticket 削除、session 追加 | `login_success` を追記 | `login_success` を追記 | session 期限は成功時点の設定で決める。 |
 | session 期限切れ | `401` | 変更なし | 対象 session 削除 | 追記しない | 追記しない | `.api_access_log` は通常 API request として記録する。 |
 | logout | `200` | 変更なし | 対象 session 削除 | `logout` を追記 | `logout` を追記 | token 本体と token hash は保存しない。 |
-| password 変更成功 | `200` | 新 salt / hash、`must_change:false`、`updated_at` 更新 | 現 session 以外削除 | `password_change` を追記 | `password_change` を追記 | 新旧 password、hash、salt は保存しない。 |
+| password 変更成功 | `200` | 新 salt / hash、`must_change:false`、`updated_at` 更新 | 現 session の `password_change_required=false`、現 session 以外削除 | `password_change` を追記 | `password_change` を追記 | 新旧 password、hash、salt は保存しない。 |
 | 他 session 一括失効 | `200` | 変更なし | 現 session 以外削除 | `session_revoke_all` を追記 | `session_revoke_all` を追記 | 現 session と実行中 response は維持する。 |
 
 [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) の固定表で `.access_log` または `.audit_log` の追記が必要な処理は、response 返却前に追記を完了する。追記失敗時は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint または対象の [§27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) 機能契約で別の応答が定義されていない限り `500 {"error":"Internal server error"}` を返す。session token、login ticket、TOTP setup secret は、必要なログ追記がすべて成功するまで response に含めてはならない。
@@ -143,12 +149,12 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 | 処理 | 固定順序 | 失敗時 |
 |------|----------|--------|
-| `POST /api/login` password 不一致 | credentials 読込 → lock 判定 → hash 比較 → 失敗回数更新 → `.access_log` → `.audit_log` → `401` response | ログ追記失敗は `500`。失敗回数は戻さない。session/ticket は作成しない。 |
-| `POST /api/login` password 成功 / TOTP 無効 | credentials 読込 → hash 比較 → 失敗回数 reset → `.admin_credentials` 更新 → session token 生成 → `.access_log` → `.audit_log` → token response | credentials またはログ追記失敗は `500`。token は response しない。 |
-| `POST /api/login` password 成功 / TOTP 有効 | credentials 読込 → hash 比較 → 失敗回数 reset → ticket 生成 → `.access_log` → `.audit_log` → ticket response | ログ追記失敗は `500`。ticket は保存しない。 |
-| `POST /api/login/totp` 成功 | ticket 検証 → TOTP secret 読込 → code 検証 → `.totp_secret.last_accepted_step` 更新 → `.admin_credentials` 更新 → session token 生成 → `.access_log` → `.audit_log` → token response | 途中失敗時は token を response しない。ticket は成功/失敗いずれも再利用不可にする。 |
+| `POST /api/login` password 不一致 | pre-auth rate limit → IP key の lock entry 期限判定 → credentials 読込 → hash 比較 → 失敗回数更新 → `.access_log` → `.audit_log` → `401` response | 10 回目も `401`。ログ追記失敗は `500`。失敗回数は戻さない。session/ticket は作成しない。 |
+| `POST /api/login` password 成功 / TOTP 無効 | pre-auth rate limit → IP key の lock entry 期限判定 → credentials lock 取得 → credentials 読込 → hash 比較 → IP key の失敗 entry 削除 → session token 生成 → `login_count=min(login_count+1,9223372036854775807)` と `last_login_at` 更新 → `must_change` 算出 → credentials 保存 → `.access_log` → `.audit_log` →同値の `password_change_required` を持つ session record 追加 → token response | token 生成失敗は credentials 更新前の `500`。credentials またはログ追記失敗も `500` とし、token を response せず session record を追加しない。ログ失敗前に保存済みの credentials は戻さない。 |
+| `POST /api/login` password 成功 / TOTP 有効 | pre-auth rate limit → IP key の lock entry 期限判定 → credentials 読込 → hash 比較 → IP key の失敗 entry 削除 → password 検証済み ticket 生成 → `.access_log` → `.audit_log` → ticket response | `.admin_credentials`、`login_count`、`last_login_at` は更新せず、ticket に `must_change` を保存しない。ログ追記失敗は `500`。ticket は保存しない。 |
+| `POST /api/login/totp` 成功 | ticket 検証・即時無効化 → TOTP secret 読込 → code 検証 → credentials lock 取得 → credentials 再読込 → credentials fingerprint 一致判定 → session token 生成 → `.totp_secret.last_accepted_step` 更新 → `login_count=min(login_count+1,9223372036854775807)` と `last_login_at` 更新 → `must_change` 算出 → credentials 保存 → `.access_log` → `.audit_log` →同値の `password_change_required` を持つ session record 追加 → token response | fingerprint 不一致は状態更新前の `401`。その他の途中失敗時は token を response せず session record を追加しない。ticket は成功/失敗いずれも再利用不可とし、ticket 発行時の credentials 値から `must_change` を推測しない。失敗地点より前に永続化済みの `.totp_secret` または credentials は戻さない。 |
 | `POST /api/logout` | token 認証 → 対象 session 削除 → `.access_log` → `.audit_log` → response | ログ追記失敗は `500`。削除済み session は戻さない。 |
-| `POST /api/change-password` | token 認証 → current password 検証 → new password 検証 → salt/hash 生成 → `.admin_credentials` 更新 → 現 session 以外削除 → `.access_log` → `.audit_log` → response | credentials 更新失敗は session を変更しない。ログ追記失敗時は `500` だが更新済み credentials は戻さない。 |
+| `POST /api/change-password` | token 認証 → current password 検証 → new password 検証 → salt/hash 生成 → `.admin_credentials` 更新 → 現 session の `password_change_required=false` → 現 session 以外削除 → `.access_log` → `.audit_log` → response | credentials 更新失敗は session を変更しない。ログ追記失敗時は `500` だが更新済み credentials と session 変更は戻さない。 |
 | `POST /api/sessions/revoke-all` | token 認証 → 現 session 以外を削除 → `.access_log` → `.audit_log` → response | ログ追記失敗時は `500`。削除済み session は戻さない。 |
 
 session token と login ticket は `crypto/rand` 成功後にだけ生成し、生成した値はメモリ上で hash 化して保持する。response body に含める token / ticket は、その request の成功 response 1 回だけに含める。`403`、`429`、`500`、network 切断検出時に、未送信 token をログや状態ファイルへ退避してはならない。
@@ -227,7 +233,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 | `config` | `POST /api/schedule/interval`, `POST /api/schedule/pause`, `POST /api/schedule/resume`, `POST /api/schedule/allowed-hours`, `POST /api/schedule/force-interval`, `POST /api/schedule/cooldown`, `POST /api/notify-config`, `POST /api/config/validate`, `POST /api/config`, `POST /api/log-level`, `POST /api/pat-update`, `POST /api/repo-config`, `POST /api/branch-config`, `POST /api/restore`, `POST /api/webhook-config`, `DELETE /api/snapshots/{id}`, `POST /api/maintenance/enable`, `POST /api/maintenance/disable`, `POST /api/access-control`, `POST /api/hooks`, `DELETE /api/hooks/{id}`, `POST /api/alert-rules`, `DELETE /api/alert-rules/{id}`, `POST /api/tag-rules`, `DELETE /api/tag-rules/{id}`, `POST /api/pipeline-config`, `POST /api/build-chain-config`, `POST /api/notes`, `POST /api/smtp-config`, `POST /api/dashboard-layout`, `POST /api/history/{id}/comment`, `POST /api/history/{id}/flag`, `POST /api/history/{id}/tags`, `POST /api/logs/cleanup`, `POST /api/logs/archive` |
 | `admin` | `GET /api/access-log`, `GET /api/api-access-log`, `GET /api/audit-log`, `GET /api/api-rate-limit`, `POST /api/api-rate-limit`, `GET /api/sessions`, `POST /api/sessions/revoke-all`, `GET /api/auth/totp-status`, `POST /api/auth/totp-setup`, `POST /api/auth/totp-confirm`, `DELETE /api/auth/totp`, `GET /api/tokens`, `POST /api/tokens`, `DELETE /api/tokens/{id}` |
 
-管理 session は [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の scope 固定表に関係なく全 endpoint を許可する。API token が複数 scope を持つ場合は、いずれか 1 つの scope が endpoint に一致すれば許可する。`POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password` は API token scope 判定の対象外とし、API token では使用できない。`POST /api/webhook` は GitHub Webhook secret 検証専用であり、API token では使用できない。[`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の scope 固定表に存在しない endpoint は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) と [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の scope 固定表へ追加されるまで API token では許可してはならない。
+管理 session は API token scope 固定表の対象外とするが、[`docs/details/security.md` 詳細本文責務 §27.42〜§27.47 セキュリティ機能 横断順序固定契約](security.md#sec-27-42-2) の `password_change_required` 判定を常に適用する。API token が複数 scope を持つ場合は、いずれか 1 つの scope が endpoint に一致すれば許可する。`POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password` は API token scope 判定の対象外とし、API token では使用できない。`POST /api/webhook` は GitHub Webhook secret 検証専用であり、API token では使用できない。[`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の scope 固定表に存在しない endpoint は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) と [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の scope 固定表へ追加されるまで API token では許可してはならない。
 
 **正常系：**
 
@@ -253,7 +259,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 | 条件 | 判定 |
 |------|------|
-| session token | scope 表を参照せず許可する。 |
+| session token | API token scope 表は参照せず、[`docs/details/security.md` 詳細本文責務 §27.42〜§27.47 セキュリティ機能 横断順序固定契約](security.md#sec-27-42-2) の `password_change_required` 判定後に許可する。 |
 | API token の `scopes` が空 | token record 破損として扱い `500`。 |
 | API token の `scopes` に未知値 | token record 破損として扱い `500`。 |
 | endpoint が複数 group に現れる | 仕様不整合とし、group の優先順を推測せず実装しない。[`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の endpoint 割当ては method と正規化 path pattern の組で正確に 1 group だけに属しなければならない。 |
@@ -573,7 +579,7 @@ QR code 生成は初期実装対象外とする。UI は secret と otpauth URI 
 | 状態 | 保存場所 | 期限 | 内容 |
 |------|----------|------|------|
 | setup 仮 secret | `api` のメモリ | 10 分 | `secret_base32`, `created_at`。サーバー再起動で破棄する。 |
-| login ticket | `api` のメモリ | 5 分 | `ticket_hash`, `created_at`, `password_verified_at`。ticket 本体は hash 化して保持する。 |
+| login ticket | `api` のメモリ | 5 分 | `ticket_hash`, `created_at`, `password_verified_at`, `credentials_fingerprint`。ticket 本体は hash 化して保持する。 |
 
 setup 仮 secret と login ticket は永続ファイルへ保存しない。API response、UI 一回表示、メモリ上状態以外に secret/ticket 本体を残してはならない。
 
@@ -593,8 +599,8 @@ setup 仮 secret と login ticket は永続ファイルへ保存しない。API 
 | `POST /api/auth/totp-setup` | TOTP 有効時は `409`。無効時は仮 secret を生成し、既存の未確認仮 secret を上書きする。`.totp_secret` は書き込まない。 |
 | `POST /api/auth/totp-confirm` | 仮 secret がない、または期限切れなら `409`。code 成功時に `.totp_secret` を保存し、仮 secret をメモリから削除する。 |
 | `DELETE /api/auth/totp` | `.totp_secret.enabled == false` は `409`。code 成功時に `enabled:false`, `secret_base32:null`, `confirmed_at:null`, `last_accepted_step:null` を保存する。 |
-| `POST /api/login` | password 成功かつ TOTP 有効なら `ticket` を `crypto/rand` 32 bytes の lowercase hex で生成し、`{must_change,totp_required:true,ticket}` を返す。 |
-| `POST /api/login/totp` | ticket hash と code を検証し、成功時に ticket を削除して session token を返す。失敗時も ticket は削除する。 |
+| `POST /api/login` | password 成功かつ TOTP 有効なら `ticket` を `crypto/rand` 32 bytes の lowercase hex で生成する。credentials を更新せず、ticket に `must_change` を保持しない。HTTP response は [`docs/details/api.md` 詳細本文責務 `POST /api/login`](api.md#25-認証-実装仕様) の `LoginResult` を参照する。 |
+| `POST /api/login/totp` | ticket hash と code を検証し、成功時に ticket を削除する。最新 credentials を再読込して session 発行時の `must_change` を算出する。失敗時も ticket は削除する。HTTP response は [`docs/details/api.md` 詳細本文責務 `POST /api/login/totp`](api.md#25-認証-実装仕様) を参照する。 |
 
 TOTP code は 6 桁の ASCII 数字のみ受け付ける。空文字、全角数字、空白付き文字列、6 桁以外は `422` とする。検証は `window` 内の step を古い順に試し、最初に一致した step を採用する。採用 step が `.totp_secret.last_accepted_step` 以下の場合は `401` とする。
 

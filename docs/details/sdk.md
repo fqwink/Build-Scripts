@@ -41,7 +41,7 @@ class AdlaireCI {
   constructor({ baseUrl })
   // this._token でセッショントークンを管理。login() 後の全リクエストに自動付与
 
-  login(password)                               // POST /api/login → {token?, must_change, totp_required?, ticket?}; token がある場合は this._token にセット
+  login(password)                               // POST /api/login → {token, must_change} | {totp_required: true, ticket}; token がある場合は this._token にセット
   loginTotp(ticket, code)                       // POST /api/login/totp → {token, must_change}; this._token にセット
   logout()                                      // POST /api/logout → Promise<{message: string}>; this._token をクリア
   changePassword(currentPassword, newPassword)  // POST /api/change-password → Promise<{message: string}>
@@ -246,7 +246,7 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務
 | path parameter | `id` を path に入れる method は、`id` が string かつ [`docs/details/api.md` 詳細本文責務 §22.0b](api.md#sec-22-0b) の `^[A-Za-z0-9_-]{1,64}$` に完全一致することを SDK 側で検証する。不一致は HTTP 送信前に `TypeError("Invalid argument: id")` とする。検証成功後の値に `encodeURIComponent(id)` を 1 回だけ適用し、1 segment として連結する。 |
 | query parameter | query key は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の表記順で生成する。value は各々 `encodeURIComponent(String(value))` を 1 回だけ適用し、空白を `%20` とする。`URLSearchParams` 等による `+` 変換、2 重 encode、並べ替えを禁止する。任意 query が未指定の場合、`?` 自体を付けない。 |
 | body parameter | body object の key 順は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の送信値順とする。未知 key を SDK が追加しない。 |
-| token mutation | `login()` と `loginTotp()` は response に `token` が存在する場合だけ `this._token` を更新する。`totp_required:true` かつ token なしの場合は既存 token を保持せず `null` にする。 |
+| token mutation | `login()` と `loginTotp()` は response に `token` が存在する場合だけ `this._token` を更新する。`totp_required:true` かつ token なしの場合は既存 token を保持せず `null` にする。SDK は `must_change` を算出または補完せず、TOTP 必須 response に `must_change` を追加しない。 |
 | logout failure | `logout()` は network error、`401`、`500` のいずれでも `finally` で `this._token=null` にする。 |
 | response passthrough | 成功 response は clone、整形、既定値 merge を行わず、そのまま返す。Blob と StreamHandle は例外とする。 |
 | error details | API error response の `details` が配列なら `AdlaireCIError.details` に同じ配列を保持する。配列でなければ `null`。 |
@@ -263,7 +263,8 @@ SDK の fixture 名、fake fetch 入力、expected、error shape、stream frame�
 
 | SDK method | HTTP | 成功時 | 失敗時 | 追加禁止条件 |
 |------------|------|--------|--------|--------------|
-| `login(password)` | `POST /api/login` | `token` がある場合だけ `this._token` へ保存する。`totp_required:true` の場合は token を保存せず response を返す。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | password を console、error、responseBody 加工結果へ出さない。 |
+| `login(password)` | `POST /api/login` | TOTP 無効時は exact `{token,must_change}` を返し token を保存する。TOTP 有効時は exact `{totp_required:true,ticket}` を返し、token を `null` にする。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | password を console、error、responseBody 加工結果へ出さない。両 response 形式の key を合成しない。 |
+| `loginTotp(ticket,code)` | `POST /api/login/totp` | exact `{token,must_change}` を返し、token を `this._token` へ保存する。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | ticket、code、token を console、error、responseBody 加工結果へ出さない。`must_change` を ticket の値から補完しない。 |
 | `logout()` | `POST /api/logout` | response に関わらず `finally` で token を破棄する。 | network error、`401`、`500` でも token 破棄後に error を投げる。 | logout 失敗を理由に token を保持しない。 |
 | `getStatus()` | `GET /api/status` | `StatusObject` をそのまま返す。 | `500 State file is corrupted` / `State file read failed` を message として保持する。 | `.build_status.json` 不在時の fallback 値を SDK が推測しない。 |
 | `triggerBuild()` | `POST /api/build` | `{message,queue_id,queued:true,dispatch}` をそのまま返す。 | `409`、`429`、`503` は `AdlaireCIError.status` に HTTP status を保持し、`message` は API response の `error` を保持する。 | dispatch から running / build id を推測せず、runner 起動を SDK から再実行しない。 |
