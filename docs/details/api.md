@@ -36,6 +36,36 @@ admin/index.html（標準管理ツール）
 
 owner component `api` は、Go 標準ライブラリ `net/http` で実装し、管理ツールからの API リクエストを受け付ける。`runner` とは独立して常駐する。
 
+<a id="api-cli-contract"></a>
+**`api` CLI 固定契約：**
+
+| option | 必須 | 既定値 | 固定契約 |
+|--------|------|--------|----------|
+| `--addr <address>` | listener mode では任意 | `127.0.0.1:8765` | `127.0.0.1:<port>` だけを許可する。`port` は先頭 `0` のない 10 進数 `1`〜`65535` とする。 |
+| `--state-dir <path>` | listener mode、init-credentials mode で必須 | なし | 空でない絶対 path。既存の symlink でない directory だけを許可する。 |
+| `--init-credentials` | 任意 | `false` | listener を起動せず、[`docs/details/security.md` 詳細本文責務 `--init-credentials` CLI 固定契約](security.md#init-credentials-cli-contract)を 1 回だけ実行する。 |
+| `--version` | 任意 | なし | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)に従う。 |
+| `--help` | 任意 | なし | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)に従う。 |
+
+`api` CLI は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)に従って parse する。同一の値 option が複数回指定された場合は最後の値を採用し、`--init-credentials` は 1 回以上指定されれば `true` とする。`--help`、`--version`、init-credentials、listener の順に mode を確定する。`--init-credentials` と `--addr` の同時指定は終了コード `2`、stderr `--addr is not allowed with --init-credentials` + LF とし、標準入力読取、credentials 処理、listener 起動を行わない。
+
+| 条件 | stdout | stderr | 終了コード | 副作用 |
+|------|--------|--------|------------|--------|
+| `--help` | `Usage: adlaire-ci-api --state-dir path [--addr 127.0.0.1:port] [--init-credentials] [--version] [--help]` + LF | 空 | `0` | 標準入力、状態、credentials、listener に触れない。 |
+| `--version` | `adlaire-ci-api v3 go=<runtime.Version()>` + LF | 空 | `0` | 標準入力、状態、credentials、listener に触れない。 |
+| `--state-dir` 未指定 | 空 | `state directory is required` + LF | `2` | credentials 処理と listener 起動を行わない。 |
+| `--state-dir` 空文字 | 空 | `state directory must not be empty` + LF | `2` | 同上。 |
+| `--state-dir` 相対 path | 空 | `state directory must be absolute: <path>` + LF | `2` | 同上。 |
+| `--state-dir` 不在 | 空 | `state directory not found: <path>` + LF | `2` | 同上。 |
+| `--state-dir` が directory でない | 空 | `state path is not directory: <path>` + LF | `2` | 同上。 |
+| `--state-dir` が symlink | 空 | `state directory must not be symlink: <path>` + LF | `2` | 同上。 |
+| `--addr` が固定形式外 | 空 | `invalid listen address: <address>` + LF | `2` | 状態読取、credentials 処理、listener 起動を行わない。 |
+| listener mode で `.admin_credentials` 不在 | 空 | `credentials are not initialized` + LF | `2` | credentials を生成せず、listener を起動しない。 |
+| listener mode で `.admin_credentials` が読取不能または schema 不正 | 空 | `credentials are invalid` + LF | `2` | credentials を修復、退避、上書きせず、listener を起動しない。 |
+| listener 起動失敗 | 空 | `listen failed` + LF | `1` | listener を再試行せず、状態を変更しない。 |
+
+CLI 検証順は、共通 option mode 確定 → option parse → mode 組み合わせ → `--state-dir` の未指定、空文字、絶対 path、存在、symlink、file type → listener mode の `--addr` → listener mode の `.admin_credentials` 存在・schema の順とする。init-credentials mode は CLI 検証完了後に security 詳細本文の既存確認と標準入力処理へ進み、以降の stdout、stderr、終了コード、credentials 副作用は security 詳細本文を正本とする。listener mode は検証済み `state-dir` と `addr` から server を 1 回だけ構築し、credentials 起動時検証成功後に listener を 1 回だけ起動する。
+
 **`api` 実行時設定：**
 
 | 項目 | 入力元 | 固定契約 |
@@ -67,7 +97,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 ## 22. バックエンド API 仕様
 
-**ベース URL：** `http://localhost:{PORT}/api`
+**ベース URL：** `http://127.0.0.1:{PORT}/api`
 **認証：** `Authorization: Bearer {SESSION_TOKEN}`（`/api/login` で取得したセッショントークン）
 **レスポンス形式：** JSON
 
@@ -79,7 +109,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 項目 | 仕様 |
 |------|------|
 | 実装前提 | Go 最小バージョンは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値)、HTTP 技術選定は [`docs/SPEC.md` 方針責務 §4](../SPEC.md#4-技術方針) を参照する。 |
-| bind | 既定値は `127.0.0.1:8765`。`--addr <host:port>` が指定された場合は、起動中の listen address だけを置換する。`--addr 0.0.0.0:<port>` を指定しても、`api` は TLS listener、origin 制限、IP allowlist、reverse proxy 設定生成を追加実行しない。 |
+| bind | 既定値は `127.0.0.1:8765`。指定可能な listen address、検証順、失敗時副作用は [`docs/details/api.md` 詳細本文責務 `api` CLI 固定契約](api.md#api-cli-contract)を正本とする。外部公開 bind、hostname、IPv6、wildcard address は拒否する。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の文字コード契約を使用する。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
 | request ID | 全 `/api/` request の受付時に `crypto/rand` で 16 bytes を生成し、32 文字 lowercase hex として扱う。全 response の `X-Request-Id`、`.api_access_log.request_id`、同一 request で作成する `.audit_log.request_id` と `.config_log.request_id` は同じ値を使用する。生成失敗時は endpoint 処理、認証、状態更新、各 request log 追記を行わず `500 {"error":"Internal server error"}` を返し、`X-Request-Id` は付与しない。server log には secret や乱数値を含まない固定エラーを記録する。 |
@@ -92,7 +122,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | JSON 不正 | JSON ボディのパースに失敗した場合は `400 Bad Request` と `{"error": "Invalid JSON"}` を返す。 |
 | 入力検証失敗 | 型、必須キー、範囲、有効値が仕様と異なる場合は `422 Unprocessable Entity` と `{"error":"Validation failed","details":[...]}` を返す。`field` は JSON body key、query key、または path parameter 名とし、body 全体の形式不正は `field` を `"$"` とする。 |
 | 認証なし | 認証必須エンドポイントで Bearer トークンがない、または無効な場合は `401 Unauthorized` と `{"error": "Unauthorized"}` を返す。 |
-| 権限不足 | 認証済み API token の scope が不足する場合は `403 Forbidden` と `{"error":"Forbidden"}` を返す。管理 session は全 API 操作を許可する。API token は `read`、`trigger`、`operate`、`config`、`admin` の scope だけを許可し、token 作成時に指定された scope 外の endpoint は拒否する。 |
+| 権限不足 | 認証済み API token の scope が不足する場合は `403 Forbidden` と `{"error":"Forbidden"}` を返す。管理 session は、session record の `password_change_required` が `false` の場合に全 API 操作を許可する。`true` の管理 session は `POST /api/change-password` と `POST /api/logout` だけを許可し、その他の認証必須 endpoint は endpoint 固有 body の parse より前に `403 Forbidden` と `{"error":"Password change required"}` で拒否する。API token はこの強制変更 gate の対象外とし、`read`、`trigger`、`operate`、`config`、`admin` の scope だけを許可し、token 作成時に指定された scope 外の endpoint は拒否する。 |
 | 競合 | 現在状態と要求操作が両立しない場合は `409 Conflict` を返す。対象は、ビルド未実行時の cancel、停止済みスケジュールへの pause、稼働中スケジュールへの resume、lock 取得 10 秒超過、stale 判定不能な `.build_lock` である。実行中の manual / force / webhook build request は queue 上限内なら waiting entry として受理し、上限到達時は `429 queue_full` とする。 |
 | 未設定機能 | endpoint の必須 secret、必須外部設定、必須状態ファイルが未設定で処理を開始できない場合は `501 Not Implemented` と `{"error":"Not configured"}` を返す。エンドポイント固有仕様で `422`、`503`、`500` を明記している場合のみ個別指定を優先する。 |
 | 時刻形式 | API レスポンスと状態ファイルの機械処理用時刻は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 共通固定値「機械処理時刻」](../DETAIL_INDEX.md#common-machine-time) に従う。外部 API から取得した時刻は、保存前および API レスポンス組立前に同固定値へ正規化する。 |
@@ -118,10 +148,12 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | JSON parse 失敗 | `400` | `{"error":"Invalid JSON"}` |
 | 認証なし / 無効 token / 期限切れ session | `401` | `{"error":"Unauthorized"}` |
 | scope 不足 / 管理操作不可 | `403` | `{"error":"Forbidden"}` |
+| password 強制変更中の管理 session による非許可操作 | `403` | `{"error":"Password change required"}` |
 | access control 破損 / 読取不能 | `503` | `{"error":"Access control unavailable"}` |
 | maintenance 有効中 | `503` | `{"error":"maintenance"}` |
 | maintenance 破損 / 読取不能 | `503` | `{"error":"maintenance_unavailable"}` |
 | rate limit 超過 | `429` | `{"error":"Too many requests"}` |
+| login lock 期限内 | `429` | `{"error":"Too many attempts"}` |
 | 入力検証失敗 | `422` | `{"error":"Validation failed","details":[...]}` |
 | 状態競合 | `409` | endpoint 固有文言。未定義の場合は `{"error":"Conflict"}` |
 | 必須設定なし | `501` | `{"error":"Not configured"}` |
@@ -145,8 +177,9 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 7 | endpoint 固有処理を実行し、必要な状態ファイルを [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) の Write 列順に更新する。 | endpoint 固有 | 途中失敗時の巻き戻しは、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約または [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) に明記された範囲だけ行う。 |
 | 8 | endpoint 固有契約が response 確定前に要求する `.config_log`、`.audit_log`、`.access_log`、`.notify_log`、event log を仕様順に追記する。security 段階で追記済みの log は再追記しない。 | endpoint 固有 | 必須 log の失敗時挙動は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の該当 endpoint 固有契約に従う。既に確定済みの endpoint 状態は自動推測で再変更しない。 |
 | 9 | response status、body、header を確定する。 | - | response 生成時に追加の状態読取、状態書込、外部呼び出しを行わない。 |
-| 10 | 確定した response の status と request ID を用いて `.api_access_log` を [`docs/details/api.md` 詳細本文責務 §27.6](api.md#sec-27-6) に従い追記する。 | 元の status を維持 | 追記失敗で response を `500` へ変更しない。server log に `API_ACCESS_LOG_WRITE_FAILED` を WARN で記録する。 |
-| 11 | 確定済み response を送信する。 | - | 送信開始後に状態や log を追加更新しない。 |
+| 10 | JSON response を送信前に全量 serialize する。binary response と SSE response はそれぞれの endpoint 固有契約に従う。 | `500` | JSON serialize 失敗時は元 response の header / status / body を送信せず、status と body を `500 {"error":"Internal server error"}` へ確定し直す。固定 error body は定数 byte 列を使用し、再度 JSON serialize しない。既に完了した状態と log は巻き戻さず、server log に `API_RESPONSE_ENCODE_FAILED` を ERROR で 1 件記録する。 |
+| 11 | 手順 10 後の最終 response status と request ID を用いて `.api_access_log` を [`docs/details/api.md` 詳細本文責務 §27.6](api.md#sec-27-6) に従い追記する。 | 最終 status を維持 | 追記失敗で response を `500` へ変更しない。server log に `API_ACCESS_LOG_WRITE_FAILED` を WARN で 1 件記録する。失敗した JSON Lines の一部を残さない。 |
+| 12 | 確定済み header、status、serialize 済み body の順で response を送信する。 | - | body write の全失敗、partial write、または client 切断で別の HTTP response を追加送信しない。業務状態、状態ファイル、JSON Lines log を追加更新せず、server log に `API_RESPONSE_WRITE_FAILED` を WARN で 1 件記録する。 |
 
 `GET` endpoint は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の API 共通処理順序固定表の段階 7 で業務状態ファイルを書き換えない。`POST`、`DELETE` endpoint でも、段階 6 までに失敗した場合は endpoint 固有の状態書込を一切行わない。外部 API 送信、systemd 操作、hook 実行、通知送信、snapshot 操作は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約の処理順に現れる場合だけ実行する。実装者判断で「先に外部確認してから validation error を返す」処理にしてはならない。
 
@@ -388,7 +421,7 @@ API 実装では、[`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec
 
 | Endpoint | Request | Response | Success | Errors | SDK | UI |
 | ---------- | --------- | ---------- | --------- | -------- | ----- | ---- |
-| `POST /api/login` | `{password}` | `{token?,must_change,totp_required?,ticket?}` | `200` | `401`, `422`, `429`, `500` | `login(password)` | ログイン |
+| `POST /api/login` | `{password}` | `LoginResult` | `200` | `401`, `422`, `429`, `500` | `login(password)` | ログイン |
 | `POST /api/login/totp` | `{ticket,code}` | `{token,must_change}` | `200` | `401`, `422`, `429`, `500` | `loginTotp(ticket,code)` | ログイン |
 | `POST /api/logout` | none | `{message}` | `200` | `401`, `500` | `logout()` | 全パネル共通 |
 | `POST /api/change-password` | `{current_password,new_password}` | `{message}` | `200` | `401`, `422`, `500` | `changePassword()` | パスワード変更 |
@@ -776,6 +809,9 @@ API の必須検証、fixture 名、入力状態、期待 response、期待副�
 endpoint の method、path、認証境界、request、response、error、read / write 境界の一覧は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の API 完全契約表を唯一の正本とする。以降は endpoint ごとの追加詳細だけを記載する。
 
 **`POST /api/login` リクエスト / レスポンス：**
+
+`LoginResult` は次の 2 形式だけを許可する相互排他の response とする。TOTP 無効時は `token` と `must_change` の 2 key だけを返す。TOTP 有効時の password 成功では `totp_required:true` と `ticket` の 2 key だけを返し、`token` と `must_change` を含めない。両形式の key を混在させてはならない。
+
 ```text
 // リクエスト
 { "password": "admin" }
@@ -784,10 +820,10 @@ endpoint の method、path、認証境界、request、response、error、read / 
 { "token": "<session_token>", "must_change": "prompt" }
 
 // レスポンス（TOTP 有効）
-{ "totp_required": true, "ticket": "<login_ticket>", "must_change": "none" }
+{ "totp_required": true, "ticket": "<login_ticket>" }
 ```
 
-`must_change` の有効値：`"none"`（変更不要）| `"prompt"`（促す：初回ログイン時）| `"forced"`（強制：5 回目以降。変更完了まで管理画面の操作を制限）
+`must_change` の有効値は `"none"`、`"prompt"`、`"forced"` とする。算出条件、`login_count` 更新時点、TOTP の遅延算出は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) を参照する。
 
 **`POST /api/login/totp` リクエスト / レスポンス：**
 ```text
@@ -797,6 +833,10 @@ endpoint の method、path、認証境界、request、response、error、read / 
 // レスポンス
 { "token": "<session_token>", "must_change": "none" }
 ```
+
+`POST /api/login/totp` の `must_change` は TOTP 成功時に算出した最終値であり、login ticket 発行時の値を保存または再利用してはならない。`"forced"` を返した session は、password 変更が成功するまで `POST /api/change-password` と `POST /api/logout` 以外の認証必須 endpoint を使用できない。
+
+`POST /api/login` で pre-auth rate limit と login lock が同時に成立する場合は、pre-auth rate limit を優先して `429 {"error":"Too many requests"}` を返す。pre-auth rate limit の window が終了し、login lock 期限内だけが成立する場合は `429 {"error":"Too many attempts"}` を返す。
 
 **`POST /api/logout` リクエスト / レスポンス：**
 ```text
@@ -1483,7 +1523,7 @@ record schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](state
 { "id": "tok000001", "token": "act_...", "label": "監視用", "scopes": ["read"], "created_at": "2026-09-15T10:00:00Z", "expires_at": null }
 ```
 
-`token` はレスポンス時のみ返却し、以後は取得不可。`scopes` の有効値は `read`、`trigger`、`operate`、`config`、`admin` とする。管理 session は全 API 操作を許可し、API token は指定 scope の範囲だけを許可する。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
+`token` はレスポンス時のみ返却し、以後は取得不可。`scopes` の有効値は `read`、`trigger`、`operate`、`config`、`admin` とする。管理 session の認証後許可範囲は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の強制変更 gate、API token の許可範囲は [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の scope 固定表を参照する。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
 
 **`DELETE /api/tokens/{id}` レスポンス例：**
 ```json
@@ -2095,7 +2135,7 @@ history response の `trigger` は [`docs/details/statefile.md` 詳細本文責�
 | `POST /api/logout` | route、body 禁止、response body、HTTP status。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) |
 | `POST /api/change-password` | route、body parse、response body、HTTP status、`.admin_credentials` write 呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) |
 | `GET /api/sessions` / `POST /api/sessions/revoke-all` | route、response body、HTTP status、memory session 操作呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細)、[`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45) |
-| `--init-credentials` | CLI option dispatch、stdout / stderr / exit code を security 契約どおり返す。 | [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) |
+| `--init-credentials` | CLI option dispatch、stdout / stderr / exit code を security 契約どおり返す。 | [`docs/details/security.md` 詳細本文責務 `--init-credentials` CLI 固定契約](security.md#init-credentials-cli-contract)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) |
 | `GET /api/auth/totp-status` / `POST /api/auth/totp-setup` / `POST /api/auth/totp-confirm` / `DELETE /api/auth/totp` | route、body parse、response body、HTTP status、`.totp_secret` read/write 呼び出し境界。 | [`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) |
 
 ---

@@ -624,11 +624,11 @@ repo config write caller は request の `owner` または `repo` のうち指�
 | `algorithm` | string | 必須 | `"sha256_iter_v1"` 固定 | 他 algorithm は初期実装で拒否する。 |
 | `iterations` | integer | 必須 | `260000` 固定 | 値が異なる場合は認証 caller へ破損失敗を返す。 |
 | `must_change` | boolean | 必須 | boolean | 初期生成時 `true`、パスワード変更後 `false`。 |
-| `login_count` | integer | 必須 | 0 以上 | session token 発行成功時だけ +1。TOTP ticket 発行時は増やさない。 |
+| `login_count` | integer | 必須 | `0`〜`9223372036854775807` | session token 発行処理の credentials 保存時に `min(login_count+1,9223372036854775807)` とする。TOTP 無効 login は password 成功時、TOTP 有効 login は `POST /api/login/totp` 成功処理時に増加し、TOTP ticket 発行時は増やさない。上限値では飽和させ、overflow させない。 |
 | `last_login_at` | string/null | 必須 | UTC ISO 8601 または `null` | session token 発行成功時だけ更新する。 |
 | `updated_at` | string | 必須 | UTC ISO 8601 | password hash 更新時刻。 |
 
-`.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致もすべて credentials 破損とする。API 起動時検証、login / password change の公開応答、認証ログ、監査ログ、漏えい禁止値は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) および [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45)〜[§27.46](security.md#sec-27-46) を参照する。statefile は破損内容、hash、salt を呼び出し元の公開値として返してはならない。
+`.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致、`login_count` 範囲外もすべて credentials 破損とする。API 起動時検証、login / password change の公開応答、`must_change` 算出、認証ログ、監査ログ、漏えい禁止値は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) および [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45)〜[§27.46](security.md#sec-27-46) を参照する。statefile は破損内容、hash、salt を呼び出し元の公開値として返してはならない。
 
 **`.audit_log` schema：**
 

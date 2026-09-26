@@ -847,6 +847,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 - SDK の module 形式、公開 API、error class、timeout、streaming 契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする
 - SDK は自動 retry、戻り値補完、token 永続化、global 代入を行ってはならない
 
+<a id="9-標準管理ツール-ui-sdk-境界ポリシー"></a>
 ## 9. 標準管理ツール UI / SDK 境界ポリシー
 
 [`docs/SPEC.md` ポリシー責務 §9](SPEC.md#9-標準管理ツール-ui-sdk-境界ポリシー) は、[`admin/index.html`](../admin/index.html) に適用する。

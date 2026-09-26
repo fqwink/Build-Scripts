@@ -126,19 +126,19 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 `health()` は外部死活監視クライアント用 SDK method とし、標準管理ツールは呼び出さない。ステータス表示は `getDashboard()` と `getStatus()` の response を使用する。
 
 **パスワード変更フロー：**
-- `must_change: "prompt"`: パスワード変更パネルを表示。他パネルも操作可能
-- `must_change: "forced"`: パスワード変更パネルのみ表示。変更完了後に通常画面へ遷移
+
+`must_change` ごとの表示、初期取得、password 変更成功後の遷移は [UI 状態遷移固定契約](#ui-state-transition-contract) を正本とする。
 
 <a id="ui-operation-contract"></a>
 **UI 操作契約表：**
 
-標準管理ツールは、[`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の固定表の SDK method 以外を直接呼び出してはならない。ファイル操作、`fetch()` の直接呼び出し、`systemctl` 実行、`runner` 直接起動は禁止する。成功時表示は対象パネル内に 1 行で表示し、失敗時表示は `AdlaireCIError.message` と `details` を同じパネル内に表示する。
+標準管理ツールは、[`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) の固定表の SDK method 以外を直接呼び出してはならない。ファイル操作、`fetch()` の直接呼び出し、`systemctl` 実行、`runner` 直接起動は禁止する。成功時表示は対象パネル内に 1 行で表示する。password 変更成功で対象 panel を hidden にする場合だけは、`global-success` に `Password changed` を 1 行で表示する。失敗時表示は `AdlaireCIError.message` と `details` を同じパネル内に表示する。
 
 | パネル | 操作 | SDK method | 成功時表示 | 成功後再取得 | disabled 条件 |
 |--------|------|------------|------------|--------------|---------------|
-| ログイン | ログイン | `login(password)` | 通常画面へ遷移、または TOTP 入力へ切替 | `getDashboard()`, `getStatus()`, `getQueue()` | password 空欄、送信中 |
-| ログイン | TOTP 確認 | `loginTotp(ticket,code)` | 通常画面へ遷移 | `getDashboard()`, `getStatus()`, `getQueue()` | ticket なし、code 空欄、送信中 |
-| パスワード変更 | 変更保存 | `changePassword(currentPassword,newPassword)` | `Password changed` | なし | 入力不足、送信中 |
+| ログイン | ログイン | `login(password)` | TOTP 必須は TOTP 入力へ切替。session 発行は response の `must_change` に対応するパスワード変更フローへ遷移。 | TOTP 必須と `forced` はなし。`none` と `prompt` はログイン成功後の初期取得。 | password 空欄、送信中 |
+| ログイン | TOTP 確認 | `loginTotp(ticket,code)` | response の `must_change` に対応するパスワード変更フローへ遷移。 | `forced` はなし。`none` と `prompt` はログイン成功後の初期取得。 | ticket なし、code 空欄、送信中 |
+| パスワード変更 | 変更保存 | `changePassword(currentPassword,newPassword)` | `Password changed` | `forced` からの変更成功だけログイン成功後の初期取得。`prompt` からの成功は再取得なし。 | 入力不足、送信中 |
 | 全パネル共通 | ログアウト | `logout()` | ログイン画面へ戻る | なし | 送信中 |
 | ステータス | 再読み込み | `getDashboard()` | 最終更新時刻を表示 | `getDashboard()` | 読み込み中 |
 | ステータス | ウィジェット保存 | `setDashboardLayout(widgets)` | `Dashboard layout updated` | `getDashboardLayout()`, `getDashboard()` | widgets 空配列、送信中 |
@@ -208,7 +208,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | 初期表示 | `localStorage` から token を復元しない。画面読み込み時は未ログイン状態から開始する。 |
 | API 経路 | UI は必ず `AdlaireCI` SDK method を呼び出す。`fetch()`、`XMLHttpRequest`、`EventSource`、`ReadableStream` reader の直接生成は禁止する。ただし SDK の `streamBuild()` が返した `StreamHandle.close()` を呼ぶ操作は許可する。 |
 | API 呼び出し中 | 対象ボタンを disabled にし、同一操作の二重送信を防ぐ。完了または失敗後に元へ戻す。 |
-| 成功表示 | 変更系操作は成功時にパネル内へ 1 行の成功メッセージを表示し、関連 GET API を再取得する。 |
+| 成功表示 | 変更系操作は成功時にパネル内へ 1 行の成功メッセージを表示し、関連 GET API を再取得する。password 変更成功で password panel を hidden にする場合だけは `global-success` に `Password changed` を表示する。 |
 | 失敗表示 | SDK が投げた `AdlaireCIError.message` をパネル内エラー領域に表示する。`details` が配列の場合は各 `field` のフォーム項目に `message` を紐付け、該当項目が存在しない場合はパネル内エラー領域へ箇条書きで表示する。`responseBody`、token、secret、PAT は表示しない。 |
 | `401` | token を破棄し、ログインパネルへ戻す。直前の入力値のうち秘密情報は消去する。 |
 | `403` | 操作権限なしとしてエラー表示し、ログアウトはしない。 |
@@ -232,14 +232,14 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 
 1. `app-root`、`nav-panels`、`global-error`、`global-success`、各 `panel-*` の存在を検査する。欠落時は `global-error` に `UI initialization failed` を表示し、以降の API 呼び出しを行わない。
 2. `window.AdlaireCI` 等の global 参照を使わず、`./adlaire-ci-sdk.js` から `AdlaireCI` と `AdlaireCIError` を ES Module import する。
-3. `AdlaireCI` を `new AdlaireCI({baseUrl})` で 1 回だけ生成する。`baseUrl` は同一 origin の `/api` を既定値とし、外部 origin は ui 詳細本文責務では許可しない。
+3. `AdlaireCI` を `new AdlaireCI({baseUrl})` で 1 回だけ生成する。`baseUrl` の既定値は `window.location.origin` とし、`/api` を含めない。`data-api-base-url` が不在または空文字なら既定値を使用する。値がある場合は absolute `http` / `https` URL として parse し、`origin === window.location.origin`、path が `/`、userinfo、query、fragment なしの全条件を満たす場合だけ SDK constructor へ渡す。条件違反は `UI initialization failed` を表示し、SDK を生成せず HTTP 送信を行わない。
 4. すべての panel を `hidden=true` にし、`panel-login` だけを表示する。
 5. form submit と button click の event listener を登録する。登録対象は [DOM / section / form field 命名契約表](#ui-dom-naming-contract) の id に限定する。
 6. `localStorage`、`sessionStorage`、Cookie から token を読み込まない。
 7. `global-error`、`global-success`、各 panel error/success を空にする。
 8. login password field へ focus する。
 
-ログイン成功後の初期取得順は、`getDashboard()` → `getStatus()` → `getQueue()` → `getMaintenance()` → `getDashboardLayout()` とする。途中で `401` を受信した場合は残りの取得を中止してログイン画面へ戻す。`getMaintenance()` が `enabled=true` を返した場合は `maintenance-banner` を表示し、ビルド開始、強制ビルド、rollback、hook 追加、設定変更系ボタンを disabled にする。
+ログイン成功後の初期取得順は、`getDashboard()` → `getStatus()` → `getQueue()` → `getMaintenance()` → `getDashboardLayout()` とする。`must_change:"none"` と `must_change:"prompt"` の session 発行直後、または `must_change:"forced"` の session で password 変更が成功した直後だけ、この 5 method を左から順に実行する。TOTP 必須 response 受信時と `must_change:"forced"` の session 発行直後は初期取得を実行しない。途中で `401` を受信した場合は残りの取得を中止してログイン画面へ戻す。`getMaintenance()` が `enabled=true` を返した場合は `maintenance-banner` を表示し、ビルド開始、強制ビルド、rollback、hook 追加、設定変更系ボタンを disabled にする。
 
 イベント処理は、各操作につき以下の順で行う。
 
@@ -274,15 +274,16 @@ one-time 値の表示を開始した event task の終了後に消去 listener �
 | empty state | UI パネル初期取得契約の空状態表示が、各 panel 内に 1 行で表示される。 |
 | global error | SDK constructor または初期 DOM binding の失敗は `global-error` に `UI initialization failed` を表示する。初期化完了後、[UI 操作契約表](#ui-operation-contract) と field error mapping のどちらにも割り当てられていない `TypeError` は `global-error` に `Client error` を表示する。field error mapping 対象の `TypeError` を global error に重複表示しない。 |
 
+<a id="ui-state-transition-contract"></a>
 **UI 状態遷移固定契約：**
 
 | 状態 | 表示 / 処理 |
 |------|-------------|
 | 未ログイン | `panel-login` だけを表示し、nav item は disabled。API token、session token、TOTP ticket を永続化しない。 |
 | password 成功 / TOTP 必須 | login password field を消去し、同じ login panel 内で TOTP field を表示する。`ticket` はメモリだけに保持する。 |
-| login 完了 | `panel-status` を表示し、ログイン成功後の初期取得順を実行する。 |
-| must_change prompt | パスワード変更 panel を表示するが、他 panel 操作を許可する。 |
-| must_change forced | パスワード変更 panel 以外を hidden または disabled にする。 |
+| login 完了 / `must_change:none` | ログイン成功後の初期取得順を実行し、完了後に `panel-status` を表示する。 |
+| login 完了 / `must_change:prompt` | ログイン成功後の初期取得順を実行し、パスワード変更 panel と通常 panel を表示する。他 panel 操作を許可する。password 変更成功後は初期取得を再実行せず、password panel を hidden にして `global-success` に `Password changed` を表示する。 |
+| login 完了 / `must_change:forced` | 初期取得は 0 件とし、パスワード変更 panel 以外を hidden または disabled にする。password 変更成功後にログイン成功後の初期取得順を実行し、完了後に通常 panel を表示して `global-success` に `Password changed` を表示する。 |
 | maintenance enabled | `maintenance-banner` を表示し、build、force build、rollback、hook 追加、設定変更系操作を disabled にする。 |
 | session expired | token と ticket を破棄し、秘密情報 field を消去し、`panel-login` に戻す。 |
 | fatal UI init error | API 呼び出しを行わず、`global-error` に `UI initialization failed` を表示する。 |
@@ -482,7 +483,7 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 
 | 設定値 | 取得元 | 既定値 | 仕様 |
 |--------|--------|--------|------|
-| SDK `baseUrl` | `index.html` 内の `data-api-base-url` 属性 | `/api` | 空文字の場合は `/api` を使用する。外部 origin の URL は ui 詳細本文責務では使用しない。 |
+| SDK `baseUrl` | `index.html` 内の `data-api-base-url` 属性 | `window.location.origin` | 属性不在または空文字は既定値を使用する。明示値は同一 origin の absolute URL で、path `/`、userinfo / query / fragment なしだけを許可する。`/api` を含めない。 |
 | 初期表示 panel | 固定値 | `panel-login` | token 永続化を行わないため、画面読み込み直後は常にログイン panel を表示する。 |
 | theme token | `:root` CSS custom property | [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) の値 | JavaScript は theme token を変更しない。UI 操作で theme 切替を実装しない。 |
 | panel 表示制御 | `hidden` 属性 | 全 panel hidden、`panel-login` のみ表示 | DOM 削除ではなく `hidden` で切り替える。 |
