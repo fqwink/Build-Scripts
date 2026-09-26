@@ -106,6 +106,17 @@ create-only mode で `ErrStateAlreadyExists` が確定した場合は tmp を作
 
 `os.Rename` 成功後に手順 7 または 8 が失敗した場合は、rename 済みの新しい target を維持し、server log に `STATE_WRITE_AFTER_RENAME_FAILED` を ERROR で記録し、write caller へ post-rename partial write failure を返す。statefile owner は caller 固有の `.config_log`、`.audit_log`、その他の業務 log を直接追記しない。write caller は自身の詳細本文責務に明記された場合だけ partial failure を記録し、失敗した atomic write を同じ payload で再試行しない。owner component の詳細本文責務が lifecycle 最終化または補償の発動条件、対象、固定値、書込順、最大回数を明記する場合に限り、最初の業務 write とは別の補償 atomic write をその契約どおり実行できる。この補償は元の payload の retry として扱わず、statefile owner が発動判断、補償値、順序、回数を補完してはならない。複数ファイル更新 caller は、呼び出し元が定義する Write 列順にこの手順を実行し、途中失敗時は未処理ファイルを書き込まない。API 固有の Write 列順は [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) 以降を参照する。既に書き込んだファイルの暗黙のロールバックは行わない。
 
+<a id="statefile-locked-update-adapter-contract"></a>
+**lock 内 read-modify-write adapter 固定契約：**
+
+既存値に基づいて同一状態ファイルを更新する caller は、read-only adapter と write adapter を別々に呼び出してはならない。statefile owner が提供する単一の locked update adapter を使用し、`{name}.lock` 取得 → 現在値の読込と strict schema 検証 → caller が渡した純粋な mutation callback の実行 → 更新後値の strict schema 検証 → tmp / sync / rename / parent sync → lock 解放を、[状態ファイル更新手順](#statefile-update-procedure) の 1 回の lock 区間で実行する。
+
+mutation callback は typed current value だけを直接引数として受け取り、更新後 typed value と caller へ返す決定的 result value、`no-op` と決定的 result value、または error のいずれかを返す。必要な業務入力は caller が adapter 呼出し前に確定し、callback closure へ不変値として渡す。result value は current value、事前確定済み業務入力、更新後値だけから算出し、statefile owner は内容を解釈、補完、永続化しない。callback は filesystem、network、command、clock、entropy、別状態ファイル、component の memory lock を呼び出してはならない。
+
+更新値を返した場合は schema 検証と atomic write がすべて成功した後だけ result value と `nil` error を caller へ返す。`no-op` は tmp、rename、target write を行わず、lock 解放成功後に result value と `nil` error を返す。callback が error を返した場合は tmp、rename、target write を行わず、lock を解放して callback error の `errors.Is` identity を維持したまま返す。callback の panic は recover し、tmp、rename、target write を行わず、lock を解放して sentinel `ErrStateMutationPanic` を返し、server log に code `STATE_MUTATION_PANIC`、level `ERROR` を 1 件だけ記録する。panic value、stack、state path、current value を log または返却 error に含めない。callback 完了後の schema 検証または atomic write が失敗した場合は result value の zero value と当該 statefile error を返し、caller は callback の result value を確定済み業務結果として使用してはならない。rename 前の lock 解放失敗は既存 cleanup 固定契約に従い、最初の callback error または `ErrStateMutationPanic` を維持する。
+
+1 回の locked update adapter は 1 状態ファイルだけを対象とし、同時に複数の `{name}.lock` を保持しない。複数ファイル更新は owner component の Write 列順で 1 file ずつ実行し、前の lock を解放してから次の lock を取得する。再帰的な同一 adapter 呼出し、別 state lock の nested 取得、lock 取得前の current value に基づく更新を禁止する。lock 取得は elapsed `0` で 1 回、その後 elapsed `100ms` から `9900ms` まで 100ms ごとに 1 回、合計最大 100 回試行する。各失敗後は次の試行時刻または elapsed `10s` まで待つ。elapsed `10s` 到達時は timeout を優先して追加取得を行わず、同時刻の lock 解放を成功扱いにしない。timeout 時は target と tmp を変更せず conflict failure を返す。
+
 <a id="statefile-schema-strictness-contract"></a>
 **状態ファイル schema 厳格化契約：**
 

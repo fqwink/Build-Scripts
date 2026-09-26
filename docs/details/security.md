@@ -157,6 +157,27 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | `POST /api/change-password` | token 認証 → current password 検証 → new password 検証 → salt/hash 生成 → `.admin_credentials` 更新 → 現 session の `password_change_required=false` → 現 session 以外削除 → `.access_log` → `.audit_log` → response | credentials 更新失敗は session を変更しない。ログ追記失敗時は `500` だが更新済み credentials と session 変更は戻さない。 |
 | `POST /api/sessions/revoke-all` | token 認証 → 現 session 以外を削除 → `.access_log` → `.audit_log` → response | ログ追記失敗時は `500`。削除済み session は戻さない。 |
 
+<a id="security-auth-concurrency-contract"></a>
+**認証 transaction・並行更新固定契約：**
+
+security owner は、credentials、TOTP、session、login ticket、TOTP setup 仮 secret、login 失敗 entry をまたぐ認証状態遷移を process 内の単一 auth transaction coordinator で直列化する。対象は `POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password`、`GET /api/sessions`、`POST /api/sessions/revoke-all`、`GET /api/auth/totp-status`、`POST /api/auth/totp-setup`、`POST /api/auth/totp-confirm`、`DELETE /api/auth/totp`、session 認証時の期限切れ削除と `last_used_at` 更新である。同じ request から coordinator を再帰取得してはならない。
+
+auth transaction coordinator の取得待ちは最大 10 秒とする。待機開始を elapsed `0` とし、elapsed `<10s` でだけ取得成功を許可する。elapsed `10s` 到達時は timeout を優先し、同時刻の解放を取得成功扱いにしない。timeout 時は endpoint 固有 body parse、credentials / TOTP read、entropy 取得、memory state 変更、状態 write、`.access_log`、`.audit_log` を開始せず、`409 {"error":"Conflict"}` を返す。request context が取得前に cancel された場合も副作用なしで終了する。取得後は、対象処理の認証副作用順序固定契約が完了するまで coordinator を保持し、response 値を確定した後に解放する。
+
+auth transaction coordinator は、statefile locked update adapter 内の file lock と memory auth lock のどちらよりも先に取得し、どちらを解放した後にも最後まで保持する。file lock と memory auth lock を同時に保持してはならず、一方を保持中に他方を取得してはならない。同じ transaction で両方が必要な場合は、memory auth lock で必要値を read-copy して解放 → statefile locked update adapter を完了して file lock を解放 → memory auth lock で確定済み mutation を適用して解放、の順に固定する。coordinator が他 request の認証状態遷移を排他するため、各区間の間に同じ auth 状態を別 request が変更することはない。filesystem、network、command、log write、password hash、TOTP 計算、entropy 読取は memory auth lock 外で実行する。memory auth lock 内では session、ticket、pending TOTP、login failure / rate entry の read-copy または確定済み mutation だけを行う。auth transaction coordinator は statefile I/O と log write をまたいで保持できるが、別 request の response writer、network client、systemd command を待ってはならない。
+
+| 競合処理 | 直列化後の固定結果 |
+|----------|--------------------|
+| 同時 password login 成功 | 先に coordinator を取得した request から 1 件ずつ最新 credentials を読み、各成功ごとに `login_count` を飽和加算する。lost update を禁止する。 |
+| login と password change | password change の credentials rename が先なら旧 password login は `401`。login の session 発行が先なら password change はその session を使用でき、変更成功時に他 session を失効する。 |
+| TOTP ticket と credentials 変更 | ticket の credentials fingerprint と成功時再読込値が一致しない場合は `401`。旧 revision の ticket から session を発行しない。 |
+| 同時 TOTP setup | 後に coordinator を取得した setup が pending secret を置換する。confirm は request 開始時ではなく coordinator 取得後の最新 pending secret だけを検証し、置換前 secret の code は `409`。 |
+| TOTP confirm と disable | 先に完了した transaction の永続状態を後続 request が再読込する。後続 request は stale memory snapshot を使用しない。 |
+| revoke-all と通常認証 | revoke-all が先なら削除対象 token の後続認証は `401`。通常認証が先ならその request だけ完了でき、revoke-all 完了後の次 request は `401`。 |
+| session 期限切れと logout | 最初の transaction が対象 session を削除し、後続 request は `401`。同じ session を二重削除、二重 audit しない。 |
+
+credentials、TOTP、API token の read-modify-write は [`docs/details/statefile.md` 詳細本文責務 lock 内 read-modify-write adapter 固定契約](statefile.md#statefile-locked-update-adapter-contract) を使用する。transaction 開始前の read-only snapshot に基づく保存、file lock 外の `login_count` 加算、TOTP replay step 更新、token `last_used_at` 更新を禁止する。
+
 session token と login ticket は `crypto/rand` 成功後にだけ生成し、生成した値はメモリ上で hash 化して保持する。response body に含める token / ticket は、その request の成功 response 1 回だけに含める。`403`、`429`、`500`、network 切断検出時に、未送信 token をログや状態ファイルへ退避してはならない。
 
 <a id="init-credentials-cli-contract"></a>

@@ -303,10 +303,14 @@ WorkingDirectory=/opt/adlaire-builder
 ExecStart=/usr/local/bin/adlaire-ci-api --addr 127.0.0.1:8765 --state-dir /opt/adlaire-builder
 Restart=always
 RestartSec=10
+KillSignal=SIGTERM
+TimeoutStopSec=15s
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+`KillSignal=SIGTERM` は [`docs/details/api.md` 詳細本文責務 API listener lifecycle 固定契約](api.md#api-server-lifecycle-contract) の graceful shutdown を開始する。`TimeoutStopSec=15s` は API の shutdown context `10s` と強制 close 後の process 終了猶予を含む固定値とする。unit に `SendSIGKILL=no`、`KillMode=none`、独自 `ExecStop`、shell wrapper を追加して graceful shutdown を回避してはならない。正常な `systemctl stop` / update / rollback は `SIGTERM` 送信後に process 終了を待ち、15 秒超過時だけ systemd の標準強制終了へ移行する。
 
 `User` / `WorkingDirectory` / `ExecStart` のパスは [`docs/details/setup.md` 詳細本文責務 §26.2](setup.md#sec-26-2) の論理入力に合わせて変更する。
 

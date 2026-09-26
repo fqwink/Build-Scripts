@@ -63,6 +63,8 @@ owner component `api` は、Go 標準ライブラリ `net/http` で実装し、�
 | listener mode で `.admin_credentials` 不在 | 空 | `credentials are not initialized` + LF | `2` | credentials を生成せず、listener を起動しない。 |
 | listener mode で `.admin_credentials` が読取不能または schema 不正 | 空 | `credentials are invalid` + LF | `2` | credentials を修復、退避、上書きせず、listener を起動しない。 |
 | listener 起動失敗 | 空 | `listen failed` + LF | `1` | listener を再試行せず、状態を変更しない。 |
+| signal 後の graceful shutdown 成功 | 空 | 空 | `0` | 新規受付を停止し、進行中 request の確定済み結果を維持する。 |
+| shutdown timeout、`Shutdown` failure、`Close` failure、2 回目 signal による強制 close | 空 | `shutdown failed` + LF | `1` | `Close` を最大 1 回実行し、未定義 retry、補償 write、状態 rollback を行わない。 |
 
 CLI 検証順は、共通 option mode 確定 → option parse → mode 組み合わせ → `--state-dir` の未指定、空文字、絶対 path、存在、symlink、file type → listener mode の `--addr` → listener mode の `.admin_credentials` 存在・schema の順とする。init-credentials mode は CLI 検証完了後に security 詳細本文の既存確認と標準入力処理へ進み、以降の stdout、stderr、終了コード、credentials 副作用は security 詳細本文を正本とする。listener mode は検証済み `state-dir` と `addr` から server を 1 回だけ構築し、credentials 起動時検証成功後に listener を 1 回だけ起動する。
 
@@ -90,6 +92,28 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 外部認証非対応 | 認証は `.admin_credentials`、`.totp_secret`、session、API token で完結する。 | SSO、OAuth、LDAP、SAML、複数ユーザー管理を追加しない。 |
 | 独自接続数制限なし | Go 標準ライブラリ `net/http` の標準 server で処理する。API rate limit は [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) の固定窓で行う。 | 独自 worker pool、connection pool、接続数上限、外部 queue を追加しない。 |
 | runner 処理責務なし | api は HTTP endpoint、durable queue 投入、systemd への非同期起動要求、response だけを担当する。 | build id 採番、`running=true` 遷移、runner の polling loop、GitHub read、pipeline 実行、build log 確定処理を api で行わない。 |
+
+<a id="api-server-lifecycle-contract"></a>
+**API listener lifecycle 固定契約：**
+
+`api` は package-level `http.ListenAndServe` を使用せず、次の値を明示した単一の `http.Server` を構築する。表の項目を Go runtime の既定値へ委ねてはならない。TLS 関連 field は HTTPS listener 非対応契約に従って使用しない。
+
+| `http.Server` 項目 | 固定値 | 固定契約 |
+|--------------------|--------|----------|
+| `Addr` | CLI 検証済み `--addr` | [`api` CLI 固定契約](#api-cli-contract) に合格した loopback address だけを設定する。 |
+| `Handler` | API 共通 middleware を含む root handler | request ID、path、method、access control、認証、rate limit、endpoint、response 記録を同一 handler chain で処理する。 |
+| `ReadHeaderTimeout` | `5s` | request header 完了までの上限。超過時は handler を呼ばず connection を閉じ、request ID、API response、状態副作用、`.api_access_log` を生成しない。Go error と受信済み header byte を log へ出力しない。 |
+| `ReadTimeout` | `30s` | request header と body の全読取上限。endpoint 固有の 1 MiB body 上限を置き換えない。handler 開始後の body 読取 timeout は `408 Request Timeout` と `{"error":"Request timeout"}` を返し、endpoint 固有状態を変更しない。 |
+| `WriteTimeout` | `0` | 有限 SSE response を途中で server deadline により切断しない。通常 JSON / binary response の停止条件は request context と write error で判定する。 |
+| `IdleTimeout` | `60s` | keep-alive connection の次 request 待機上限。 |
+| `MaxHeaderBytes` | `32768` | request header の最大 byte 数。超過時は handler を呼ばず、Go `net/http` の `431 Request Header Fields Too Large` と connection close だけを許可する。API JSON、request ID、状態副作用、`.api_access_log` を生成しない。 |
+| `ErrorLog` | redacted server logger | Go 標準 logger の stderr 直結を使用しない。受け取った raw message を stdout、stderr、状態ファイルへ転写せず、server log に code `API_HTTP_SERVER_ERROR`、level `WARN` だけを 1 event として記録する。client address、request byte、Go error、path、header、credential を記録しない。 |
+
+listener は 1 回だけ開始する。bind、permission、既使用 port、その他の開始失敗では再試行せず、CLI 固定契約の stderr `listen failed` + LF、終了コード `1` を返す。制御された shutdown 後の `http.ErrServerClosed` は正常終了として扱い、stderr を出力しない。それ以外の server error は `listen failed` として扱い、Go error、address、状態 path を stdout / stderr へ出力しない。
+
+`adlaire-ci-api` は `SIGTERM` と `SIGINT` を process 単位で受け付ける。最初の signal で新規 connection と新規 request の受付を停止し、`10s` の shutdown context で `http.Server.Shutdown` を 1 回実行する。進行中 request は shutdown context 内で完了でき、完了済みの状態更新を巻き戻さない。signal 受信時を elapsed `0` とし、elapsed `<10s` で `Shutdown` が `nil` を返し、かつ server goroutine が `http.ErrServerClosed` で終了した場合だけ graceful shutdown 成功とする。elapsed `10s` 到達時は timeout を優先し、同時刻に到着した `Shutdown` 結果を成功扱いにしない。timeout または `Shutdown` failure では `http.Server.Close` を 1 回実行し、残る connection を閉じる。`Close` の成否にかかわらず stderr `shutdown failed` + LF、終了コード `1` とする。2 回目以降の signal は新しい shutdown goroutine、状態更新、log 追記を開始せず、未実行なら `Close` を 1 回だけ実行し、stderr `shutdown failed` + LF、終了コード `1` とする。shutdown 開始後に endpoint 固有処理を開始した request は、その request の owner 固定契約に従って成功または失敗を確定し、shutdown を理由に未定義の retry、補償 write、成功 response を生成してはならない。
+
+listener、signal source、shutdown clock / timer は [`docs/details/fixture.md` fixture 証跡責務 fake adapter 接続固定契約](fixture.md#fixture-fake-adapter-binding-contract) を通じて差し替え可能にする。本番 adapter は OS listener、`os.Signal`、標準 clock / timer を使用し、fixture 実行中に実 port bind、実 signal 送信、実時間 sleep を行わない。
 
 セッション、API token、TOTP、rate limit、audit log の security 主本文は [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) を基準とし、[`docs/details/api.md` 詳細本文責務 §21a](api.md#21a-管理-api-サーバー制限) は API server の実行時境界だけを定義する。
 
@@ -120,6 +144,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 未知のパス | 定義されていない `/api/...` は `404 Not Found` と `{"error": "Not found"}` を返す。 |
 | 未対応メソッド | パスは存在するがメソッドが異なる場合は `405 Method Not Allowed` と `{"error": "Method not allowed"}` を返す。 |
 | JSON 不正 | JSON ボディのパースに失敗した場合は `400 Bad Request` と `{"error": "Invalid JSON"}` を返す。 |
+| request timeout | handler 開始後に request body の読取が `ReadTimeout` を超えた場合は `408 Request Timeout` と `{"error":"Request timeout"}` を返す。endpoint 固有状態、`.access_log`、`.audit_log`、外部呼出しを変更または実行しない。認証と rate limit の完了済み共通副作用は維持し、`.api_access_log` は status `408` で記録する。 |
 | 入力検証失敗 | 型、必須キー、範囲、有効値が仕様と異なる場合は `422 Unprocessable Entity` と `{"error":"Validation failed","details":[...]}` を返す。`field` は JSON body key、query key、または path parameter 名とし、body 全体の形式不正は `field` を `"$"` とする。 |
 | 認証なし | 認証必須エンドポイントで Bearer トークンがない、または無効な場合は `401 Unauthorized` と `{"error": "Unauthorized"}` を返す。 |
 | 権限不足 | 認証済み API token の scope が不足する場合は `403 Forbidden` と `{"error":"Forbidden"}` を返す。管理 session は、session record の `password_change_required` が `false` の場合に全 API 操作を許可する。`true` の管理 session は `POST /api/change-password` と `POST /api/logout` だけを許可し、その他の認証必須 endpoint は endpoint 固有 body の parse より前に `403 Forbidden` と `{"error":"Password change required"}` で拒否する。API token はこの強制変更 gate の対象外とし、`read`、`trigger`、`operate`、`config`、`admin` の scope だけを許可し、token 作成時に指定された scope 外の endpoint は拒否する。 |
@@ -146,6 +171,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | body 禁止 endpoint に body あり | `400` | `{"error":"Request body is not allowed"}` |
 | body 上限超過 | `413` | `{"error":"Payload too large"}` |
 | JSON parse 失敗 | `400` | `{"error":"Invalid JSON"}` |
+| request body 読取 timeout | `408` | `{"error":"Request timeout"}` |
 | 認証なし / 無効 token / 期限切れ session | `401` | `{"error":"Unauthorized"}` |
 | scope 不足 / 管理操作不可 | `403` | `{"error":"Forbidden"}` |
 | password 強制変更中の管理 session による非許可操作 | `403` | `{"error":"Password change required"}` |
@@ -172,7 +198,7 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 2 | method 検証。path が存在し method が不一致か判定する。 | `405` | endpoint 固有処理を開始しない。`.api_access_log` 以外を変更しない。 |
 | 3 | `GET /api/health` 以外で `.access_control` を読み、接続元 IP を判定する。 | `403` / `503` | body 読取、認証、rate limit 更新、endpoint 状態読取、状態書込、外部呼び出しを行わない。 |
 | 4 | [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42-2) の認証不要判定、pre-auth rate limit、認証、scope、認証後 rate limit を順番どおり実行する。 | `401` / `403` / `413` / `429` / `500` | [`docs/details/security.md` 詳細本文責務 §27.42〜§27.47](security.md#sec-27-42-2) の副作用境界に従う。scope 不足時は endpoint 固有 body を parse しない。Webhook は body size 判定と署名検証、login は login rate limit 後の credential body parse をこの段階で行う。 |
-| 5 | body 禁止、body size、JSON parse、query、path parameter、body schema、enum、範囲を検証する。Webhook と login で段階 4 に実施済みの検証は再実行しない。 | `400` / `413` / `422` | endpoint 固有の業務状態を変更しない。段階 4 までに完了した security / observability 副作用は保持する。外部 API、systemd、runner、hook、通知を呼び出さない。 |
+| 5 | body 禁止、body size、body read timeout、JSON parse、query、path parameter、body schema、enum、範囲を検証する。Webhook と login で段階 4 に実施済みの検証は再実行しない。 | `400` / `408` / `413` / `422` | endpoint 固有の業務状態を変更しない。段階 4 までに完了した security / observability 副作用は保持する。外部 API、systemd、runner、hook、通知を呼び出さない。 |
 | 6 | endpoint 固有 gate と read adapter を呼び、maintenance、状態破損、状態競合を判定する。 | `409` / `500` / `503` | write lock を取得していても target を変更しない。tmp file があれば削除する。 |
 | 7 | endpoint 固有処理を実行し、必要な状態ファイルを [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) の Write 列順に更新する。 | endpoint 固有 | 途中失敗時の巻き戻しは、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約または [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) に明記された範囲だけ行う。 |
 | 8 | endpoint 固有契約が response 確定前に要求する `.config_log`、`.audit_log`、`.access_log`、`.notify_log`、event log を仕様順に追記する。security 段階で追記済みの log は再追記しない。 | endpoint 固有 | 必須 log の失敗時挙動は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の該当 endpoint 固有契約に従う。既に確定済みの endpoint 状態は自動推測で再変更しない。 |
@@ -182,6 +208,13 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 | 12 | 確定済み header、status、serialize 済み body の順で response を送信する。 | - | body write の全失敗、partial write、または client 切断で別の HTTP response を追加送信しない。業務状態、状態ファイル、JSON Lines log を追加更新せず、server log に `API_RESPONSE_WRITE_FAILED` を WARN で 1 件記録する。 |
 
 `GET` endpoint は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の API 共通処理順序固定表の段階 7 で業務状態ファイルを書き換えない。`POST`、`DELETE` endpoint でも、段階 6 までに失敗した場合は endpoint 固有の状態書込を一切行わない。外部 API 送信、systemd 操作、hook 実行、通知送信、snapshot 操作は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約の処理順に現れる場合だけ実行する。実装者判断で「先に外部確認してから validation error を返す」処理にしてはならない。
+
+<a id="api-response-writer-contract"></a>
+**HTTP response writer 固定契約：**
+
+response status recorder は、underlying `http.ResponseWriter` が最初に確定した status だけを記録する。`WriteHeader` の最初の呼出しを確定値とし、2 回目以降の `WriteHeader` は recorder 値と underlying response のどちらも変更しない。`Write` が先に呼ばれた場合は status `200` を確定してから同じ byte 列を 1 回だけ underlying writer へ渡す。body write の戻り値は underlying writer の `n` と `error` を変更せず caller へ返し、`n < len(body)` または `error != nil` を成功扱いにしない。
+
+SSE response に使用する recorder は underlying writer が実装する `http.Flusher` を透過し、実装しない writer を実装済みとして見せてはならない。`GET /api/build/stream` は、完全な frame 1 件の `Write` 成功後に `Flush` を 1 回呼び、次 frame へ進む。frame write failure、partial write、client 切断では `Flush` と後続 frame を実行せず、[API 実行順・副作用境界固定契約](#sec-22-0) の response write failure として扱う。recorder は status または optional interface のために response body を buffering、複製、再送してはならない。
 
 <a id="sec-22-0a"></a>
 **22.0a API から参照する状態ファイル共通仕様：**
