@@ -163,7 +163,7 @@ read-only 呼び出しでは、[`docs/details/statefile.md` 詳細本文責務 �
 
 `ErrStateCorrupted` は JSON parse 失敗、schema_version 不一致、必須 key 不足、型不一致、列挙値不一致、UTC 時刻形式不一致のいずれかで返す。`ErrStateReadFailed` は permission denied、通常ファイルではない path、gzip 読込失敗、I/O error で返す。API の公開応答は [`docs/details/api.md` 詳細本文責務 §22.0c.1](api.md#sec-22-0c-1) と [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) 以降を参照する。statefile adapter の error は、path、Go error、ファイル内容を呼び出し元へ公開する response 値として含めない。
 
-JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 key 不足、型不一致の行を壊れた行として除外する。除外後に sort、filter、paging、`total`、`pages` を算出する。壊れた行の存在は呼び出し元の公開値に含めず、server log に固定コード、path、1 始まりの line number だけを記録する。
+JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 key 不足、型不一致の行を壊れた行として除外する。除外後に sort、filter、paging、`total`、`pages` を算出する。壊れた行の存在は呼び出し元の公開値に含めず、server log には呼び出し元 owner 詳細本文が定義する固定コード、path、1 始まりの line number だけを記録する。statefile owner は呼び出し元固有のコード名を推測しない。
 
 `readBuildHistory()` は schema-valid な行を物理的な file 先頭から読み、最初に出現した id の行だけを採用する。同じ id の後続行は `BUILD_HISTORY_DUPLICATE_ID`、path、1 始まりの line number、id だけを server log へ記録して除外し、file を書き換えない。`.build_history` で対象機能契約に並び順がない「最新」「直近」「一つ前」を判定する場合は、`finished_at` 降順、同時刻は `id` 降順とし、「一つ前」はその並びで直後の行とする。status summary 対象行は、[runner 結果値 schema](#runner-result-schema) で `status summary` が `許可` の詳細結果だけとし、`approval_rejected`、`approval_expired`、`skipped_dependency_failed` を含む history-only 行は除外する。対象機能契約が別の sort、filter、集計対象を明記する場合は、その契約を適用する。
 
@@ -531,7 +531,7 @@ file 内容は Git object SHA の lowercase hexadecimal 40 文字または 64 �
 | `cache_key` | string | 必須 | file 名と同じ 64 文字 lowercase hex | cache entry 識別子。 |
 | `input_path` | string | 必須 | index の input relative path | cache index key と一致させる。 |
 | `input_sha256` | string | 必須 | 64 文字 lowercase hex | 入力 Markdown byte SHA-256。 |
-| `builder_version` | string | 必須 | 非空文字 | builder version。 |
+| `builder_version` | string | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) のバイナリバージョン | cache を作成した builder の注入済みバージョン。 |
 | `theme` | string | 必須 | builder の theme 列挙値 | 変換時 theme。 |
 | `build_config_hash` | string | 必須 | 64 文字 lowercase hex | 正規化済み build config SHA-256。 |
 | `deps` | object | 必須 | string:string | key は dependency 相対 path、value は 64 文字 lowercase hex。 |
@@ -1362,8 +1362,8 @@ Environment object:
 | `os` | string | 必須 | `runtime.GOOS`。 |
 | `arch` | string | 必須 | `runtime.GOARCH`。 |
 | `go_version` | string | 必須 | `runtime.Version()`。 |
-| `runner_version` | string | 必須 | build info main version または `"unknown"`。 |
-| `builder_version` | string | 必須 | builder version token または `"unknown"`。 |
+| `runner_version` | string | 必須 | runner 自身の注入済みバイナリバージョン。 |
+| `builder_version` | string | 必須 | 標準 builder では検証済み `--version` stdout の第 2 token。custom YAML pipeline では `"unknown"`。 |
 | `hostname` | string | 必須 | 最大 255 文字。取得不能は `"unknown"`。 |
 | `state_dir` | string | 必須 | home 配下は basename、それ以外は絶対 path。 |
 | `disk_free_bytes` | integer/null | 必須 | 0 以上または取得不能時 `null`。 |

@@ -194,8 +194,8 @@ setup / update 実装は、各段階の開始と成功を stderr または stdou
 
 | 確認 | コマンド | 合格条件 |
 |------|----------|----------|
-| build binary | `$BIN_DIR/adlaire-ci-build --version` | exit `0`、stdout が `adlaire-ci-build v3` を含む。 |
-| runner binary | `$BIN_DIR/adlaire-ci-runner --version` | exit `0`、stdout が `adlaire-ci-runner v3` を含む。 |
+| build binary | `$BIN_DIR/adlaire-ci-build --version` | exit `0`、stderr 空、stdout が exact `adlaire-ci-build $VERSION go=<non-empty>` + LF。`$VERSION` は Release asset の tag と一致し、`V.0.0-dev` は拒否する。 |
+| runner binary | `$BIN_DIR/adlaire-ci-runner --version` | exit `0`、stderr 空、stdout が exact `adlaire-ci-runner $VERSION go=<non-empty>` + LF。`$VERSION` は Release asset の tag と一致し、`V.0.0-dev` は拒否する。 |
 | PAT file | setup 内部 read-only 検証と `stat -c '%a' "$INSTALL_DIR/.github_token"` | [`docs/details/runner.md` 詳細本文責務 GitHub token 読み込み契約](runner.md#github-token-読み込み契約) に合格し mode `600`。token 本体は stdout / stderr へ出力しない。 |
 | SHA cache | statefile read-only adapter で `$INSTALL_DIR/.last_sha` を読み込む | [`docs/details/statefile.md` 詳細本文責務 `.last_sha` schema](statefile.md#last-sha-schema) に合格する。新規作成時は `{"sha":""}` + LF、既存有効 target は元の値を保持する。 |
 | timer | `systemctl is-active adlaire-ci.timer` | `active`。 |
@@ -239,7 +239,7 @@ Go 版初回セットアップでは以下を実行しない。
 
 | 確認 | コマンド | 合格条件 |
 |------|----------|----------|
-| API binary | `$BIN_DIR/adlaire-ci-api --version` | exit `0`、stdout が `adlaire-ci-api v3` を含む。 |
+| API binary | `$BIN_DIR/adlaire-ci-api --version` | exit `0`、stderr 空、stdout が exact `adlaire-ci-api $VERSION go=<non-empty>` + LF。`$VERSION` は Release asset の tag と一致し、`V.0.0-dev` は拒否する。 |
 | credentials | statefile read-only adapter と `stat -c '%a' "$INSTALL_DIR/.admin_credentials"` | [`docs/details/statefile.md` 詳細本文責務 §22.0c の `.admin_credentials` schema](statefile.md#sec-22-0c) に合格し mode `600`。hash、salt、password を stdout / stderr へ出力しない。 |
 | admin UI | `test -f "$INSTALL_DIR/admin/index.html"` / `test -f "$INSTALL_DIR/admin/adlaire-ci-sdk.js"` | 両方成功。 |
 | API service | `systemctl is-active adlaire-ci-api` | `active`。 |
@@ -372,7 +372,7 @@ restart 回数は rollback 処理内の回数を表す。runner restart 失敗�
 
 | 確認 | API 未導入 | API 導入済み |
 |------|------------|--------------|
-| binary version | `adlaire-ci-build --version`、`adlaire-ci-runner --version` が `NEW_VERSION` を含む。 | `adlaire-ci-build --version`、`adlaire-ci-runner --version`、`adlaire-ci-api --version` がそれぞれ `NEW_VERSION` を含む。 |
+| binary version | build / runner の各 `--version` が exit `0`、stderr 空、exact `<binary-name> $NEW_VERSION go=<non-empty>` + LF。 | build / runner / API の各 `--version` が exit `0`、stderr 空、exact `<binary-name> $NEW_VERSION go=<non-empty>` + LF。 |
 | service | `systemctl is-active adlaire-ci.timer` が `active`、`systemctl cat adlaire-ci.service` と `systemctl cat adlaire-ci.timer` が exit `0`。 | API 未導入の 3 確認に加え、`systemctl is-active adlaire-ci-api` が `active`、`systemctl cat adlaire-ci-api.service` が exit `0`。 |
 | admin UI | 確認しない。 | `$INSTALL_DIR/admin/index.html` と `$INSTALL_DIR/admin/adlaire-ci-sdk.js` が存在する。 |
 | local API | 確認しない。 | [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従い、API service が local health check に応答する。 |
@@ -474,7 +474,7 @@ API、状態ファイル、SDK、UI、認証、fixture の本文は [関連責�
 
 **fixture 期待値更新参照：**
 
-setup / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果、fake transcript、expected file の更新条件は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) を正本とする。HTTP status、API error body、`AdlaireCIError.code`、UI DOM、SDK return、状態 schema の具体契約は、それぞれ [`docs/details/api.md`](api.md) 詳細本文責務、[`docs/details/sdk.md`](sdk.md) 詳細本文責務、[`docs/details/ui.md`](ui.md) 詳細本文責務、[`docs/details/statefile.md`](statefile.md) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
+setup / update が直接返す exit code、stderr prefix、rollback 結果、配置失敗結果、fake transcript、expected file の更新条件は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) を正本とする。HTTP status、API error body、`AdlaireCIError` の `status`、`message`、`details`、`responseBody`、UI DOM、SDK return、状態 schema の具体契約は、それぞれ [`docs/details/api.md`](api.md) 詳細本文責務、[`docs/details/sdk.md`](sdk.md) 詳細本文責務、[`docs/details/ui.md`](ui.md) 詳細本文責務、[`docs/details/statefile.md`](statefile.md) 詳細本文責務、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 実装単位判定の実装検証証跡テンプレート、必須記載項目、不足時の扱いは [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) を参照する。[`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) は setup / update と Release asset 受け入れの実行条件、setup / update 未実行検証の代替条件、fixture 期待値更新条件だけを定義する。
 

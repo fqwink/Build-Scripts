@@ -52,7 +52,7 @@ owner component `api` は、Go 標準ライブラリ `net/http` で実装し、�
 | 条件 | stdout | stderr | 終了コード | 副作用 |
 |------|--------|--------|------------|--------|
 | `--help` | `Usage: adlaire-ci-api --state-dir path [--addr 127.0.0.1:port] [--init-credentials] [--version] [--help]` + LF | 空 | `0` | 標準入力、状態、credentials、listener に触れない。 |
-| `--version` | `adlaire-ci-api v3 go=<runtime.Version()>` + LF | 空 | `0` | 標準入力、状態、credentials、listener に触れない。 |
+| `--version` | `adlaire-ci-api <binary-version> go=<runtime.Version()>` + LF | 空 | `0` | 標準入力、状態、credentials、listener に触れない。 |
 | `--state-dir` 未指定 | 空 | `state directory is required` + LF | `2` | credentials 処理と listener 起動を行わない。 |
 | `--state-dir` 空文字 | 空 | `state directory must not be empty` + LF | `2` | 同上。 |
 | `--state-dir` 相対 path | 空 | `state directory must be absolute: <path>` + LF | `2` | 同上。 |
@@ -136,7 +136,7 @@ listener、signal source、shutdown clock / timer は [`docs/details/fixture.md`
 | bind | 既定値は `127.0.0.1:8765`。指定可能な listen address、検証順、失敗時副作用は [`docs/details/api.md` 詳細本文責務 `api` CLI 固定契約](api.md#api-cli-contract)を正本とする。外部公開 bind、hostname、IPv6、wildcard address は拒否する。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の文字コード契約を使用する。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
-| request ID | 全 `/api/` request の受付時に `crypto/rand` で 16 bytes を生成し、32 文字 lowercase hex として扱う。全 response の `X-Request-Id`、`.api_access_log.request_id`、同一 request で作成する `.audit_log.request_id` と `.config_log.request_id` は同じ値を使用する。生成失敗時は endpoint 処理、認証、状態更新、各 request log 追記を行わず `500 {"error":"Internal server error"}` を返し、`X-Request-Id` は付与しない。server log には secret や乱数値を含まない固定エラーを記録する。 |
+| request ID | 全 `/api/` request の受付時に `crypto/rand` で 16 bytes を生成し、32 文字 lowercase hex として扱う。全 response の `X-Request-Id`、`.api_access_log.request_id`、同一 request で作成する `.audit_log.request_id` と `.config_log.request_id` は同じ値を使用する。生成失敗時は endpoint 処理、認証、状態更新、各 request log 追記を行わず `500 {"error":"Internal server error"}` を返し、`X-Request-Id` は付与しない。server log には ERROR code `API_REQUEST_ID_GENERATION_FAILED` だけを 1 件記録し、secret、乱数値、Go error、request path、header を含めない。 |
 | リクエスト body 上限 | JSON body は 1 MiB を上限とする。超過時は `413 Payload Too Large` と `{"error": "Payload too large"}` を返す。 |
 | request body 禁止 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) で `Request` が `none` の endpoint に body がある場合は `400 Bad Request` と `{"error": "Request body is not allowed"}` を返す。 |
 | 成功レスポンス | 各エンドポイント例に記載した JSON オブジェクトを返す。空レスポンスは使用しない。 |
@@ -1373,7 +1373,7 @@ wire format、対象 log 選択、途中保存 log、frame 順、有限 close、
 }
 ```
 
-`count` は、schema-valid で `duration_seconds` が 0 以上の log を `finished_at` 降順、同時刻は build id 降順に並べた先頭 `n` 件の件数とする。同一 build id が通常 log と archive にある場合は通常 log だけを採用する。`recent` はこの選択順のまま返し、`recent[].id=log.id`、`recent[].build_at=log.finished_at`、`recent[].status=log.status`、`recent[].target_status=log.target_status` とする。`avg_seconds`は小数第 3 位を四捨五入し小数第 2 位まで、`min_seconds` と `max_seconds` は選択対象から算出する。対象 0 件は `count:0`、`avg_seconds:null`、`min_seconds:null`、`max_seconds:null`、`recent:[]`とする。個別 log 破損と archive 展開失敗は除外し固定 WARN code だけを記録し、log directory 自体の読込不能は `500`とする。
+`count` は、schema-valid で `duration_seconds` が 0 以上の log を `finished_at` 降順、同時刻は build id 降順に並べた先頭 `n` 件の件数とする。同一 build id が通常 log と archive にある場合は通常 log だけを採用する。`recent` はこの選択順のまま返し、`recent[].id=log.id`、`recent[].build_at=log.finished_at`、`recent[].status=log.status`、`recent[].target_status=log.target_status` とする。`avg_seconds`は小数第 3 位を四捨五入し小数第 2 位まで、`min_seconds` と `max_seconds` は選択対象から算出する。対象 0 件は `count:0`、`avg_seconds:null`、`min_seconds:null`、`max_seconds:null`、`recent:[]`とする。個別 log 破損と archive 展開失敗は除外し、[`docs/details/statefile.md` 詳細本文責務 read adapter 契約](statefile.md#statefile-read-adapter-contract) の WARN code `LOG_SKIP_CORRUPT`、build id、file basename だけを記録する。log directory 自体の読込不能は `500`とする。
 
 **`GET /api/stats/build-trends` レスポンス固定契約：**
 
@@ -1822,7 +1822,7 @@ cooldown 共通参照は [`docs/details/runner.md` 詳細本文責務 §13](runn
 |-----|--------|--------|
 | `POST /api/hooks` | 入力検証 → `.hooks` lock → id 採番 → record append → `.hooks` atomic write → `.config_log` 追記 → `config_update` audit → response | `.config_log` または audit 失敗時は `500`。追加済み record と先行 log は巻き戻さない。 |
 | `DELETE /api/hooks/{id}` | path id 検証 → `.hooks` lock → 対象存在確認 → record 削除 → `.hooks` atomic write → `.config_log` 追記 → `config_update` audit → response | 対象不在は `404`。`.config_log` または audit 失敗時は `500`、削除済み record と先行 log は巻き戻さない。 |
-| `GET /api/hooks/{id}/log` | path id 検証 → `.hooks` で存在確認 → `.build_logs/*_hook_{id}.json` を `ran_at` 降順、同時刻は `build_id` 降順で最大 20 件読込 → response | hook 不在は `404`。個別 hook log 破損はその file を除外し、server log に固定コードを出す。 |
+| `GET /api/hooks/{id}/log` | path id 検証 → `.hooks` で存在確認 → `.build_logs/*_hook_{id}.json` を `ran_at` 降順、同時刻は `build_id` 降順で最大 20 件読込 → response | hook 不在は `404`。個別 hook log 破損はその file を除外し、server log に WARN code `HOOK_LOG_SKIP_CORRUPT`、hook id、file basename だけを出す。file 内容、絶対 path、Go error は出さない。 |
 
 hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙動は [`docs/details/runner.md` 詳細本文責務 §27.27](runner.md#sec-27-27) を参照する。`GET /api/hooks/{id}/log` は保存済み hook log を読み取り、response の `runs[]` へ `build_id`、`ran_at`、`exit_code`、`output` を返す。`output` は保存済み `stdout + stderr` をこの順で連結した表示用互換値とし、保存時点で secret mask 済みの値だけを返す。
 
@@ -2397,7 +2397,7 @@ queue entry は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefi
 | body size | body は 1 MiB + 1 byte まで読み、1 MiB 超過を検出した時点で `413` とする。secret 読取、署名検証、JSON parse、event log、queue 操作は行わない。上限以内の場合だけ署名検証へ進む。 |
 | rate limit | 署名検証成功後、JSON parse 前に `trigger` group の IP key だけを判定・更新する。`429` 時は event log、queue、runner 起動要求を変更または実行しない。 |
 | 保存順 | queue 追加が必要な場合は `.build_state` lock 取得 → queue 追加 atomic write → `.webhook_events.json` 追記 → response の順とする。 |
-| queue 追加後の event log 失敗 | queue entry は巻き戻さず、response に `event_log_failed:true` を含める。server log には固定 code だけを出し、payload 内容は出さない。 |
+| queue 追加後の event log 失敗 | queue entry は巻き戻さず、response に `event_log_failed:true` を含める。server log には JSON Lines 失敗境界の固定 code `WEBHOOK_EVENT_LOG_WRITE_FAILED` だけを出し、payload 内容は出さない。 |
 | event id 採番 | fake clock の UTC 秒を使う。prefix、suffix、上限到達時の失敗は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の時刻ベース ID 契約に従う。 |
 | duplicate 判定 | `X-GitHub-Delivery`、branch、after SHA が一致する active / waiting entry だけを duplicate とする。delivery id だけ一致して branch または sha が異なる場合は `409 {"error":"Conflicting delivery"}` とし、queue を変更しない。 |
 | 対象 branch | `.branch_config` が存在する場合は `branch_targets[].branch`、不在時は default branch 設定と照合する。照合できない branch は `ignored_branch` として event log だけ残す。 |
@@ -2596,7 +2596,7 @@ owner component は `api` とする。collaborator component は `sdk`、`ui`、
 | q | 部分一致。大文字小文字は区別しない。空文字は全件。NUL、改行を含む q は `422`。 |
 | 並び順 | `results` は build log の `finished_at` 降順、同時刻は build id 降順。`lines` は source 順 `stdout` → `stderr` → `warnings` → `error`、各 source 内の line number 昇順。 |
 | archive | 同一 build id が通常 log と archive にある場合は通常 log を優先し、二重に返さない。 |
-| 破損 log | 破損通常 log または gzip 展開失敗は除外し、固定 WARN code だけを server log に出す。本文は出さない。 |
+| 破損 log | 破損通常 log または gzip 展開失敗は除外し、[`docs/details/statefile.md` 詳細本文責務 read adapter 契約](statefile.md#statefile-read-adapter-contract) の WARN code `LOG_SKIP_CORRUPT`、build id、file basename だけを server log に出す。本文、絶対 path、Go error は出さない。 |
 | read-only | 検索 API は log、archive、history、status、config を変更しない。 |
 
 SDK request の引数変換は [`docs/details/sdk.md` SDK 引数変換契約](sdk.md#sdk-argument-contract)、UI の filter 操作と表示は [`docs/details/ui.md` UI 操作契約表](ui.md#ui-operation-contract) を正本とする。API は `q`、`from`、`to`、`level` の受信、検証、検索、response 生成だけを担当する。

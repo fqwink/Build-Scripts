@@ -293,7 +293,7 @@ runner は CLI、`.repo_config`、`.server_config`、`.branch_config`、既定�
 | 条件 | stdout |
 |------|--------|
 | `--help` | `Usage: adlaire-ci-runner [--state-dir path] [--once] [--dry-run] [--version] [--help]` |
-| `--version` | `adlaire-ci-runner v3 go=<runtime.Version()>` |
+| `--version` | `adlaire-ci-runner <binary-version> go=<runtime.Version()>` |
 
 **CLI 異常系：**
 
@@ -803,7 +803,7 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
     │   ├─ [事前チェック] 選択済み pipeline 実行前に以下を確認し、不足時は ERROR ログ＋deploy_failure Webhook 通知、このエントリをスキップ
     │   │   ├─ ディスク空き容量 ≥ max(出力サイト推定サイズ × 3, 64MiB)。取得は `syscall.Statfs(outDir)` を使用する
     │   │   ├─ 標準 builder command では `adlaire-ci-build` が通常ファイルかつ実行可能であること（`os.Stat` と mode bit）
-    │   │   └─ 標準 builder command では `/usr/local/bin/adlaire-ci-build --version` が終了コード 0 で、stdout に `adlaire-ci-build` と `v3` を含むこと。YAML pipeline では全 step command の解決と schema validation が完了していること
+    │   │   └─ 標準 builder command では `/usr/local/bin/adlaire-ci-build --version` が終了コード 0、stderr 空、stdout が [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#common-cli-contract) の exact 3 token 形式であり、第 1 token が `adlaire-ci-build`、第 2 token が runner 自身の `<binary-version>` と一致すること。YAML pipeline では全 step command の解決と schema validation が完了していること
     │   │
     │   ├─ 選択済み標準 builder command または YAML step を shell を介さず実行
     │   │   ├─ 成功（exit 0）：INFO ログ
@@ -3008,8 +3008,8 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 
 | 項目 | 仕様 |
 |------|------|
-| `builder_version` | `adlaire-ci-build --version` を最大 2 秒で実行し、stdout 先頭行の最初の空白区切り token を保存する。stderr は保存しない。 |
-| `runner_version` | Go build info の main version が空の場合は `"unknown"`。VCS revision は保存しない。 |
+| `builder_version` | 標準 builder command は事前チェックで 1 回だけ取得・検証した `--version` stdout の第 2 token を保存する。別 process で再取得しない。custom YAML pipeline は builder binary を一意に確定できないため `"unknown"` を保存する。stderr は保存しない。 |
+| `runner_version` | runner 自身にビルド時注入され、`--version` が第 2 token として返す `<binary-version>` を保存する。Go build info の main version や VCS revision から別値を導出しない。 |
 | `hostname` | 255 文字を超える場合は 255 文字で切り詰める。取得失敗時は `"unknown"`。 |
 | `state_dir` | `--state-dir` が home directory 配下の場合は basename だけ保存する。それ以外は絶対 path を保存する。 |
 | 保存失敗 | environment 保存失敗は build を開始せず、`.build_status.json` に `status="failure"`、`last_target_status="failure_state_write"` を保存し、終了コード `1`。 |
@@ -3020,7 +3020,8 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 |------|------|
 | hostname 取得失敗 | `"unknown"`。 |
 | disk stat 失敗 | `disk_free_bytes=null`、WARN。 |
-| builder version 取得 timeout | `"unknown"`、build 継続。 |
+| 標準 builder version 取得 timeout、非 `0`、stderr 非空、形式不正、バージョン不一致 | 事前チェック失敗とし、builder と pipeline を起動しない。`builder_version` を保存する environment record も作成しない。 |
+| custom YAML pipeline | `builder_version="unknown"` で build 継続。 |
 | environment 保存失敗 | build 本体を実行せず failure。 |
 
 **検証条件：**
@@ -3028,7 +3029,8 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 | ケース | 期待結果 |
 |--------|----------|
 | 通常 build | environment object が保存される。 |
-| builder version 失敗 | build 継続、unknown。 |
+| 標準 builder version 失敗 | pipeline 未起動、environment 未作成。 |
+| custom YAML pipeline | build 継続、`builder_version="unknown"`。 |
 | secret env 存在 | log に値が出ない。 |
 | home 配下 state dir | basename だけ保存される。 |
 | environment write failure | pipeline を起動しない。 |
@@ -3039,11 +3041,11 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 |------|----------|
 | 取得時点 | build id 採番直後、builder 起動前に environment snapshot を取得して保存する。 |
 | secret 非保存 | 環境変数 value、token、secret、PATH 全体、VCS revision を保存しない。 |
-| version 取得 | builder version は 2 秒 timeout、stdout 先頭行の最初の token だけを保存し、失敗時は `"unknown"`。 |
+| version 取得 | 標準 builder は 2 秒 timeout の事前チェックを 1 回だけ実行する。stdout は exact 3 token で検証し、第 2 token のみを保存する。第 1 token が `adlaire-ci-build` でない、第 2 token が runner と不一致、第 3 token が空の `go=` である、追加 token / 追加行がある、stderr 非空、timeout、非 `0` のいずれかは事前チェック失敗とする。custom YAML pipeline は `"unknown"` とする。 |
 | path 境界 | home 配下 state dir は basename だけ、それ以外は絶対 path を保存する。 |
 | 保存失敗 | environment 保存失敗時は build 本体を起動せず、`.build_status.json` に `status="failure"`、`last_target_status="failure_state_write"` を保存する。 |
-| 継続可能失敗 | hostname、disk stat、builder version 取得不能は WARN または unknown/null とし、build を継続する。 |
-| 確認条件 | fixture は通常保存、builder version timeout、home path 短縮、secret 非保存、environment write failure をすべて固定する。 |
+| 継続可能失敗 | hostname と disk stat の取得不能は WARN または unknown/null とし、build を継続する。custom YAML pipeline の builder version 未確定は失敗ではなく `"unknown"` とする。 |
+| 確認条件 | fixture は標準 builder の正常保存、第 2 token 保存、timeout、非 `0`、stderr 非空、名前不一致、バージョン不一致、不正 `go=`、追加 token / 行、custom YAML の `unknown`、home path 短縮、secret 非保存、environment write failure をすべて固定する。 |
 
 <a id="sec-27-38"></a>
 **27.38 ビルド所要時間の異常検知：**
