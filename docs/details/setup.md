@@ -1,16 +1,14 @@
 # Adlaire CI — Setup 詳細仕様
 
-[`docs/details/setup.md`](setup.md) は `setup` owner component の詳細本文責務として、`setup` が主本文として持つ実装契約だけを扱う。
-
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`setup` owner component の主本文であり、collaborator component の仕様は配置対象、状態初期化、admin 配布、service health、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
-
 [`docs/details/setup.md`](setup.md) 詳細本文責務は、バイナリ配布、配置、systemd、セットアップ、アップデート、Release 成果物の受け入れ・checksum 検証を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。実装 artifact と機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、fixture、fake、expected / effects、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 [`docs/details/setup.md`](setup.md) が定義するのは `components/setup.go` が `adlaire-ci-setup` として実行する setup / update の挙動と、Release 成果物の受け入れ・checksum 検証契約である。GitHub Release 成果物の生成・公開前検証・公開は [`docs/details/release.md`](release.md) の `release` owner component が持ち、[`docs/details/setup.md`](setup.md) の責務に含めない。実装可否は [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](../SPEC.md#detail-contract-required-fields)、現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。
 
 ---
 
-## 0. 責務境界
+<a id="0-責務境界"></a>
+
+**0. 責務境界：**
 
 | 項目 | 内容 |
 |------|------|
@@ -21,7 +19,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 ---
 
-## 26. セットアップ・アップデート手順
+<a id="26-セットアップアップデート手順"></a>
+
+**26. セットアップ・アップデート手順：**
 
 [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) は、Go 版 Adlaire CI のセットアップ手順を定義する。
 
@@ -149,6 +149,9 @@ secret initializerは`GITHUB_TOKEN_FILE`を`Lstat`し、絶対path、symlinkで�
 
 setup / update 実装の local API 確認は、Go 標準ライブラリ `net/http` client による `GET http://127.0.0.1:8765/api/health` に固定する。任意の外部 command、外部 HTTP client library、shell fallback を実装依存にしてはならない。`curl` は運用者が手動確認に使用できる例に限り、`curl` の有無を setup / update の実行条件または成功条件にしてはならない。setup 詳細本文では local API へ到達して応答を取得することだけを確認し、API response の具体 schema は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を正本とする。
 
+<a id="setup-runner-unit-verification"></a>
+runner 導入済み状態の共通確認は、`systemctl is-active adlaire-ci.timer` が exact `active`、`systemctl cat adlaire-ci.service` と `systemctl cat adlaire-ci.timer` がいずれも exit `0` であることを、この順序で検証する。初回セットアップ後の固定確認と管理 API 導入前後の固定確認は、この共通確認を省略または変更してはならない。
+
 Release asset の初回 URL は `https://github.com/<owner>/<repository>/releases/download/<target-version>/<asset-name>` に固定し、各 path segment を 1 回だけ percent encode する。HTTPS 以外、userinfo、fragment、未知 query、IP literal を禁止する。redirect は最大 3 回とし、各 Location は HTTPS、userinfo / fragment なし、host が `github.com`、`objects.githubusercontent.com`、`release-assets.githubusercontent.com` のいずれかである場合だけ追従する。redirect 後に Authorization、Cookie、Referer を送信してはならない。TLS verification を無効化してはならない。
 
 asset 1 件の request から保存完了までの timeout は `5m`、local API health は request 全体 `10s` とする。HTTP response body 上限は実行 binary 1 件 `128 MiB`、`admin-ui.tar.gz` `16 MiB`、`SHA256SUMS` `64 KiB`、health body `1 MiB` とする。`Content-Length` が存在する場合は 1 以上かつ対象上限以下を取得前に確認し、body は上限 + 1 byte まで読んで超過を検出する。partial file は `DOWNLOAD_DIR` 内の `.partial` suffixへ書き、status、size、fsync、close成功後だけ固定asset名へatomic renameする。失敗時は当該partial fileだけを削除し、既存固定assetを上書きしない。
@@ -267,9 +270,7 @@ PAT、password、session token、API token、Webhook secret、SMTP password、cr
 | setup binary | `$BIN_DIR/adlaire-ci-setup --version` | exit `0`、stderr空、stdoutがexact `adlaire-ci-setup $VERSION go=<non-empty>` + LF。`$VERSION`はRelease assetのtagと一致し、`V.0.0-dev`は拒否する。 |
 | PAT file | setup 内部 read-only 検証と `stat -c '%a' "$INSTALL_DIR/.github_token"` | [`docs/details/runner.md` 詳細本文責務 GitHub token 読み込み契約](runner.md#github-token-読み込み契約) に合格し mode `600`。token 本体は stdout / stderr へ出力しない。 |
 | SHA cache | statefile read-only adapter で `$INSTALL_DIR/.last_sha` を読み込む | [`docs/details/statefile.md` 詳細本文責務 `.last_sha` schema](statefile.md#last-sha-schema) に合格する。新規作成時は `{"sha":""}` + LF、既存有効 target は元の値を保持する。 |
-| timer | `systemctl is-active adlaire-ci.timer` | `active`。 |
-| runner service unit | `systemctl cat adlaire-ci.service` | exit `0`。 |
-| runner timer unit | `systemctl cat adlaire-ci.timer` | exit `0`。 |
+| runner unit | [runner 導入済み状態の共通確認](#setup-runner-unit-verification) | 3 command が定義順に合格する。 |
 
 確認のいずれかが失敗した場合、セットアップは失敗扱いとする。ただし自動削除や状態ファイル巻き戻しは行わない。
 
@@ -315,9 +316,7 @@ Go 版初回セットアップでは以下を実行しない。
 | credentials | statefile read-only adapter と `stat -c '%a' "$INSTALL_DIR/.admin_credentials"` | [`docs/details/statefile.md` 詳細本文責務 §22.0c の `.admin_credentials` schema](statefile.md#sec-22-0c) に合格し mode `600`。hash、salt、password を stdout / stderr へ出力しない。 |
 | admin UI | `test -f "$INSTALL_DIR/admin/index.html"` / `test -f "$INSTALL_DIR/admin/adlaire-ci-sdk.js"` | 両方成功。 |
 | API service | `systemctl is-active adlaire-ci-api` | `active`。 |
-| runner timer | `systemctl is-active adlaire-ci.timer` | `active`。 |
-| runner service unit | `systemctl cat adlaire-ci.service` | exit `0`。 |
-| runner timer unit | `systemctl cat adlaire-ci.timer` | exit `0`。 |
+| runner unit | [runner 導入済み状態の共通確認](#setup-runner-unit-verification) | 3 command が定義順に合格する。 |
 | API service unit | `systemctl cat adlaire-ci-api.service` | exit `0`。 |
 | local health | Go 標準ライブラリ `net/http` client で `GET http://127.0.0.1:8765/api/health` | [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従い、setup 側は local API 到達と応答取得を確認する。 |
 

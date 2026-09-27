@@ -1,12 +1,10 @@
 # Adlaire CI — Statefile 詳細仕様
 
-[`docs/details/statefile.md`](statefile.md) は `statefile` owner component の詳細本文責務として、`statefile` が主本文として持つ実装契約だけを扱う。
-
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`statefile` owner component の主本文であり、collaborator component の仕様は読み書き境界、業務処理、表示、security、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
-
 ---
 
-## 0. 責務境界
+<a id="0-責務境界"></a>
+
+**0. 責務境界：**
 
 | 項目 | 内容 |
 |------|------|
@@ -219,7 +217,6 @@ TagFilter object:
 
 | キー | 型 | 必須 | 許容値 / 説明 |
 |------|----|------|---------------|
-| `enabled` | boolean | 必須 | `true` / `false`。 |
 | `patterns` | string[] | 必須 | 0〜100 件。各値は 1〜255 文字の完全一致文字列、末尾 `*` だけを使う prefix pattern、または `*` 単体。重複は禁止する。 |
 
 `patterns` は入力順を保持して保存する。空文字、前後空白、制御文字、中間 `*`、複数の `*`、正規表現構文は validation failure とする。`enabled=true` かつ空配列の場合は任意の tag 1 件以上を一致条件とする。build 判定は [`docs/details/runner.md` 詳細本文責務 §27.24](runner.md#sec-27-24) を参照する。
@@ -228,7 +225,6 @@ RemoteBuildConfig object:
 
 | キー | 型 | 必須 | 許容値 / 説明 |
 |------|----|------|---------------|
-| `enabled` | boolean | 必須 | `true` / `false`。 |
 | `host` | string/null | 必須 | `^[A-Za-z0-9._-]{1,255}$` または `null`。 |
 | `user` | string/null | 必須 | `^[A-Za-z0-9._-]{1,64}$` または `null`。 |
 | `work_dir` | string/null | 必須 | remote host 上の正規化済み絶対 POSIX path または `null`。 |
@@ -243,7 +239,6 @@ DurationAnomaly object:
 
 | キー | 型 | 必須 | 許容値 / 説明 |
 |------|----|------|---------------|
-| `enabled` | boolean | 必須 | `true` / `false`。 |
 | `min_samples` | integer | 必須 | 1〜10000。 |
 | `avg_multiplier` | number | 必須 | 1.0〜100.0。 |
 | `p95_multiplier` | number | 必須 | 1.0〜100.0。 |
@@ -254,7 +249,6 @@ ApiRateLimitPolicy object:
 
 | キー | 型 | 必須 | 許容値 / 説明 |
 |------|----|------|---------------|
-| `enabled` | boolean | 必須 | `true` / `false`。 |
 | `groups` | object | 必須 | `login`、`read`、`trigger`、`operate`、`config`、`admin` の 6 key を過不足なく持つ。 |
 | `groups.<group>.window_seconds` | integer | 必須 | 1〜86400。 |
 | `groups.<group>.max_requests` | integer | 必須 | 1〜100000。 |
@@ -263,17 +257,31 @@ ApiRateLimitPolicy object:
 
 `.server_config` の `POST /api/config` では `force_build_interval_hours`、`build_cooldown_seconds`、`schedule_interval_seconds`、`schedule_paused`、`allowed_hours` を直接更新してはならない。これらは専用スケジュール API からのみ更新する。
 
+<a id="statefile-common-fields"></a>
 **共通 field 定義：**
 
 | 共通 field | 型 | 許容値 | 説明 |
 |------------|----|--------|------|
 | notification `label` | string | 0〜64 文字 | 管理画面表示名。 |
 | notification `retry_interval_seconds` | integer | 1〜3600 | 再試行間隔。 |
+| object `enabled` | boolean | `true` / `false` | 対象 object の有効状態。 |
 | build `output_size_bytes` | integer/null | 0 以上または `null` | 成果物サイズ。 |
 | build `output_sha256` | string/null | SHA-256 hex または `null` | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の出力成果物 manifest SHA-256。 |
+| build `size_warn` | boolean | `true` / `false` | 出力サイズ警告。 |
 | build `flagged` | boolean | boolean | 重要フラグ。 |
-| build `comment` | string/null | 0〜2000 文字または `null` | コメント。 |
+| build `tags` | string[] | 0〜100 件、重複禁止 | 手動 / 自動タグ。 |
+| build `comment` | string/null | 2000 文字以内または `null` | 管理コメント。 |
+| build `error` | string/null | 500 文字以内または `null` | 固定エラー文言。 |
+| content `input_sha256` | string | 64 文字 lowercase hex | 入力 Markdown byte SHA-256。 |
+| operation `started_at` | string | UTC ISO 8601 | 処理開始時刻。 |
+| operation `binary_status` | string | `"success"` または `"failure"` | 二値の処理結果。 |
+| operation `fixed_error` | string/null | 固定エラー文言または `null` | 処理失敗理由。 |
+| pending `last_error` | string | 1〜500 文字 | secret mask 後の最終失敗理由。 |
 | request `remote_addr` | string/null | IP 文字列または `null` | 接続元。 |
+
+TagFilter object、RemoteBuildConfig object、DurationAnomaly object、ApiRateLimitPolicy object は `enabled` を必須 key とし、型と許容値は [共通 field 定義](#statefile-common-fields) の object `enabled` を適用する。`.build_history` と `.build_logs/{id}.json` は `output_size_bytes`、`output_sha256`、`size_warn`、`flagged`、`tags`、`comment`、`error` をすべて必須 key とし、型と許容値は同表の build field 契約を適用する。
+
+CachePage object と DependencyManifestPage object は `input_sha256` を必須 key とし、型と許容値は同表の content `input_sha256` を適用する。Attempt object、HookLog object、TargetResult object は `started_at` を必須 key とし、型と許容値は operation `started_at` を適用する。Attempt object、TargetResult object、RemoteBuild object は `status` を必須 key とし、型と許容値は operation `binary_status` を適用する。PipelineStep object、Deploy object、RemoteBuild object は `error` を必須 key とし、型と許容値は operation `fixed_error` を適用する。NotificationPending object と PendingTransfer object は `last_error` を必須 key とし、型と許容値は pending `last_error` を適用する。
 
 **`.notify_config` schema：**
 
@@ -377,7 +385,6 @@ Email object:
 | `payload` | object | 必須 | NotificationPayload object | secret mask 後 payload。 |
 | `attempts` | integer | 必須 | 1 以上 | 初回送信を含む実行済み attempt 数。 |
 | `next_attempt_at` | string | 必須 | UTC ISO 8601 秒精度 | 次回 retry を許可する最早時刻。 |
-| `last_error` | string | 必須 | 1〜500 文字 | secret mask 後の最終失敗理由。 |
 | `created_at` | string | 必須 | UTC ISO 8601 秒精度 | pending 初回作成時刻。 |
 
 NotificationPayload object は全 event 共通で `event`、`build_id`、`status`、`branch`、`trigger`、`created_at` を必須 key とし、取得できない値は `null` とする。`event` は string、その他の共通 key は string/null とする。event 別に追加できる key は以下だけとし、それ以外の未知 key は禁止する。
@@ -413,7 +420,6 @@ NotificationPayload object は canonical JSON 生成時に key を ASCII 昇順�
 | `output_sha256` | string | 必須 | 64 文字 lowercase hex | pending 投入時の成果物 manifest SHA-256。 |
 | `failed_at` | string | 必須 | UTC ISO 8601 秒精度 | 直近失敗時刻。 |
 | `retry_count` | integer | 必須 | 0 以上 | pending 投入後に実行した retry 回数。初期値は `0`。 |
-| `last_error` | string | 必須 | 1〜500 文字 | secret mask 後の最終失敗理由。 |
 
 `trigger="deploy"` は `source_kind="output"`、`out`非 `null`、`rollback_from=null`、`snapshot_id=null` とする。`trigger="rollback"` は `source_kind="snapshot"`、`out=null`、`rollback_from`と `snapshot_id` を非 `null` の同一 snapshot id とする。それ以外の組合せは schema 不正とする。`output_sha256` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の固定アルゴリズムで算出した値とする。
 
@@ -530,7 +536,6 @@ file 内容は Git object SHA の lowercase hexadecimal 40 文字または 64 �
 |------|----|------|--------|------|
 | `cache_key` | string | 必須 | file 名と同じ 64 文字 lowercase hex | cache entry 識別子。 |
 | `input_path` | string | 必須 | index の input relative path | cache index key と一致させる。 |
-| `input_sha256` | string | 必須 | 64 文字 lowercase hex | 入力 Markdown byte SHA-256。 |
 | `builder_version` | string | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) のバイナリバージョン | cache を作成した builder の注入済みバージョン。 |
 | `theme` | string | 必須 | builder の theme 列挙値 | 変換時 theme。 |
 | `build_config_hash` | string | 必須 | 64 文字 lowercase hex | 正規化済み build config SHA-256。 |
@@ -566,7 +571,6 @@ DependencyManifestPage object:
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
-| `input_sha256` | string | 必須 | 64 文字 lowercase hex | 入力 Markdown byte SHA-256。 |
 | `output_path` | string | 必須 | 正規化済み相対 path | 対応する HTML output path。 |
 | `dependencies` | string[] | 必須 | ASCII 昇順、重複なし | input base 内の参照 file path。 |
 | `dependency_sha256` | object | 必須 | string:string | key は `dependencies` の各 path、value は 64 文字 lowercase hex。 |
@@ -1093,15 +1097,8 @@ runner 結果値は保存先ごとに意味を分離する。`.build_logs/{id}.j
 | `blob_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | 対象 blob SHA。API の `sha` は `commit_sha`、`blob_sha` の順で算出する。 |
 | `pages` | integer/null | 必須 | 0 以上または `null` | report 不在は `null`。 |
 | `warnings` | integer | 必須 | 0 以上 | warning 件数。 |
-| `error` | string/null | 必須 | 500 文字以内または `null` | 固定エラー文言。 |
-| `output_size_bytes` | integer/null | 必須 | 0 以上または `null` | 成果物サイズ。 |
-| `output_sha256` | string/null | 必須 | 64 文字 lowercase hex または `null` | 成果物 manifest SHA-256。 |
-| `size_warn` | boolean | 必須 | boolean | サイズ警告。 |
 | `retry_count` | integer | 必須 | 0 以上 | 初回以後の追加 retry 回数。 |
 | `commit_status_state` | string/null | 必須 | `"pending"`, `"success"`, `"failure"`, `"error"`, `null` | 最終 GitHub Commit Status。 |
-| `flagged` | boolean | 必須 | boolean | 重要フラグ。 |
-| `tags` | string[] | 必須 | 0〜100 件、重複禁止 | 手動 / 自動タグ。 |
-| `comment` | string/null | 必須 | 2000 文字以内または `null` | 管理コメント。 |
 | `rollback_from` | string/null | 必須 | build id または `null` | rollback 元 build id。 |
 | `snapshot_id` | string/null | 必須 | build id または `null` | 使用または生成した snapshot id。 |
 | `failure_category` | string/null | 必須 | 読取時は FailureCategory 値、前方互換 category id、または `null`。保存時は FailureCategory 値または `null`。 | `status="success_deploy_pending"` は `"deploy_failure"`。失敗結果は runner の分類値。`status="success"`、cancel、skip、approval event は `null`。 |
@@ -1157,19 +1154,12 @@ build log を伴わない history record は次の値を固定する。表にな
 | `chain_summary` | object/null | 必須 | ChainSummary object または `null` | chain 最終 job 以外は `null`。 |
 | `snapshot_id` | string/null | 必須 | build id または `null` | snapshot 未作成は `null`。 |
 | `rollback_from` | string/null | 必須 | build id または `null` | rollback 以外は `null`。 |
-| `output_size_bytes` | integer/null | 必須 | 0 以上または `null` | 成果物サイズ。 |
-| `output_sha256` | string/null | 必須 | 64 文字 lowercase hex または `null` | 成果物 manifest SHA-256。 |
-| `size_warn` | boolean | 必須 | boolean | サイズ警告。 |
 | `transfer_verified` | boolean/null | 必須 | boolean または `null` | deploy 未実行は `null`。 |
 | `commit_status` | object/null | 必須 | CommitStatus object または `null` | GitHub Commit Status 無効時は `null`。 |
 | `build_meta` | object/null | 必須 | BuildMeta object または `null` | builder 出力未生成は `null`。 |
 | `failure_category` | string/null | 必須 | FailureCategory 値または `null` | `target_status="success_deploy_pending"` は `"deploy_failure"`。`status="failure"` は runner の分類値。その他は `null`。 |
 | `failure_evidence` | object[] | 必須 | FailureEvidence object、最大 10 件 | `status="failure"` または `target_status="success_deploy_pending"` で evidence がある場合だけ保存し、その他または evidence なしは空配列。 |
 | `environment` | object | 必須 | Environment object | build id 採番直後の実行環境。 |
-| `error` | string/null | 必須 | 500 文字以内または `null` | 固定エラー文言。 |
-| `comment` | string/null | 必須 | 2000 文字以内または `null` | 管理コメント。 |
-| `flagged` | boolean | 必須 | boolean | 重要フラグ。 |
-| `tags` | string[] | 必須 | 0〜100 件、重複禁止 | 手動 / 自動タグ。 |
 
 途中保存は `status:"running"`、`target_status:null`、`finished_at:null`、`duration_seconds:null` の組合せに限る。最終保存は `status` を `"success"`、`"failure"`、`"cancelled"` のいずれかに確定し、`target_status` を非 `null`、`finished_at >= started_at`、`duration_seconds >= 0` とする。これら以外の status / nullable 組合せは build log 破損とする。dry-run は build log 自体を作成しない。
 
@@ -1196,10 +1186,8 @@ Attempt object:
 | キー | 型 | 必須 | 説明 |
 |------|----|------|------|
 | `attempt` | integer | 必須 | 初回は `1`。retry ごとに +1。 |
-| `started_at` | string | 必須 | UTC ISO 8601。 |
 | `finished_at` | string/null | 必須 | 完了時刻。dry-run は build log を作成しないため、本 field を保存しない。 |
 | `stage` | string | 必須 | `"github"`, `"pipeline"`, `"remote_build"`, `"deploy"` のいずれか。dry-run は build log を作成しないため `"dry_run"` stage を新規保存してはならない。 |
-| `status` | string | 必須 | `"success"` または `"failure"`。 |
 | `retryable` | boolean | 必須 | この失敗が retry 対象か。成功時は `false`。 |
 | `error` | string/null | 必須 | 失敗理由。成功時は `null`。 |
 
@@ -1248,7 +1236,6 @@ PipelineStep object:
 | `stdout` | string | 必須 | secret mask 済み、最大 64 KiB。未実行は空文字。 |
 | `stderr` | string | 必須 | secret mask 済み、最大 64 KiB。未実行は空文字。 |
 | `truncated` | boolean | 必須 | stdout または stderr を切り詰めた場合だけ `true`。 |
-| `error` | string/null | 必須 | 固定エラー文言または `null`。 |
 
 HookLog object:
 
@@ -1258,7 +1245,6 @@ HookLog object:
 | `build_id` | string | 必須 | build id。file 名の `{build_id}` と一致する。 |
 | `phase` | string | 必須 | `"pre"` または `"post"`。 |
 | `status` | string | 必須 | `"success"`、`"failure"`、`"timeout"` のいずれか。 |
-| `started_at` | string | 必須 | UTC ISO 8601。 |
 | `finished_at` | string | 必須 | UTC ISO 8601。`finished_at >= started_at`。 |
 | `duration_seconds` | integer | 必須 | 0 以上。負値になる clock drift は `0` に丸める。 |
 | `stdout` | string | 必須 | LF 正規化、secret mask 済み、UTF-8 byte 数で最大 65536 bytes。 |
@@ -1283,7 +1269,6 @@ Deploy object:
 | `files_uploaded` | integer | 必須 | 0 以上かつ `files_total` 以下。 |
 | `files_skipped` | integer | 必須 | 0 以上かつ `files_total` 以下。 |
 | `bytes_uploaded` | integer | 必須 | 0 以上。 |
-| `error` | string/null | 必須 | 固定エラー文言または `null`。 |
 
 ChangedTarget object:
 
@@ -1300,8 +1285,6 @@ TargetResult object:
 | キー | 型 | 必須 | 説明 |
 |------|----|------|------|
 | `target_id` | string | 必須 | Deploy object と同じ target id。 |
-| `status` | string | 必須 | `"success"` または `"failure"`。 |
-| `started_at` | string | 必須 | UTC ISO 8601。 |
 | `finished_at` | string | 必須 | UTC ISO 8601。 |
 | `error_code` | string/null | 必須 | `"deploy_timeout"`, `"deploy_ssh_error"`, `"deploy_checksum_error"`, `"deploy_internal_error"`, `null`。`status="success"` では `null`、`status="failure"` では非 `null` を必須とする。 |
 | `error` | string/null | 必須 | `error_code` が `null` なら `null`。非 `null` ではそれぞれ `"deploy timeout"`, `"deploy ssh failed"`, `"deploy checksum failed"`, `"deploy internal error"` とする。 |
@@ -1318,8 +1301,6 @@ RemoteBuild object:
 | `duration_seconds` | integer | 必須 | 0 以上。 |
 | `artifact_size_bytes` | integer/null | 必須 | artifact 未取得は `null`。 |
 | `manifest_file_count` | integer/null | 必須 | manifest 未検証は `null`。 |
-| `status` | string | 必須 | `"success"` または `"failure"`。 |
-| `error` | string/null | 必須 | 固定エラー文言または `null`。 |
 
 Chain object:
 

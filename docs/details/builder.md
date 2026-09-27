@@ -1,12 +1,10 @@
 # Adlaire CI — Builder 詳細仕様
 
-[`docs/details/builder.md`](builder.md) は `builder` owner component の詳細本文責務として、`builder` が主本文として持つ実装契約だけを扱う。
-
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
-
 ---
 
-## 0. 責務境界
+<a id="0-責務境界"></a>
+
+**0. 責務境界：**
 
 | 項目 | 内容 |
 |------|------|
@@ -17,7 +15,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 ---
 
-## 1. 要件
+<a id="1-要件"></a>
+
+**1. 要件：**
 
 | 項目 | 内容 |
 |------|------|
@@ -27,7 +27,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 ---
 
-## 2. ファイルパス設定
+<a id="2-ファイルパス設定"></a>
+
+**2. ファイルパス設定：**
 
 `builder` は、以下の既定値を持つ設定構造体で入出力パスを管理する。
 
@@ -130,7 +132,9 @@ var DefaultBuildConfig = BuildConfig{
 
 ---
 
-## 2a. 入力収集・出力パス決定
+<a id="2a-入力収集出力パス決定"></a>
+
+**2a. 入力収集・出力パス決定：**
 
 `builder` は、`--src` がファイルかディレクトリかで入力収集方法を切り替える。
 
@@ -225,7 +229,9 @@ Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま�
 
 ---
 
-## 3. 処理パイプライン
+<a id="3-処理パイプライン"></a>
+
+**3. 処理パイプライン：**
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -254,7 +260,9 @@ Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま�
 
 ---
 
-## 4. 関数リファレンス
+<a id="4-関数リファレンス"></a>
+
+**4. 関数リファレンス：**
 
 <a id="sec-4-1"></a>
 **4.1 `slugify(text string) string`：**
@@ -375,9 +383,10 @@ type RenderContext struct {
 
 **インライン記法のネスト仕様：**
 
+`***text***` の出力は、直前の [インライン記法の正規表現置換表](#sec-4-3) に定義した契約を使用する。
+
 | 入力 | 出力 |
 |------|------|
-| `***text***` | `<strong><em>text</em></strong>` |
 | `**_text_**` | `<strong><em>text</em></strong>` |
 | `__*text*__` | `<strong><em>text</em></strong>` |
 | `*__text__*` | `<em><strong>text</strong></em>` |
@@ -662,7 +671,9 @@ uniqueSlug := func(base string) string {
 
 ---
 
-## 5. 静的 Web サイト出力構造
+<a id="5-静的-web-サイト出力構造"></a>
+
+**5. 静的 Web サイト出力構造：**
 
 サイト全体の合成は `assembleSite(site SiteData, theme Theme) error` が担当する。`convert()` は各 Markdown ページの本文 HTML を生成し、`assembleSite()` はページ HTML、共通 CSS、共通 JavaScript、検索インデックス、テーマコンポーネントを出力サイトディレクトリへ書き出す。
 
@@ -906,7 +917,9 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 
 ---
 
-## 6. CSS クラス一覧
+<a id="6-css-クラス一覧"></a>
+
+**6. CSS クラス一覧：**
 
 builder owner は、出力する selector、対応要素、DOM 上の意味、JavaScript との連携だけを固定する。色、寸法、余白、配置、タイポグラフィ、表示効果、responsive 表現、print 表現は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とし、builder 詳細本文では再定義しない。
 
@@ -1033,7 +1046,9 @@ builder owner は、出力する selector、対応要素、DOM 上の意味、Ja
 
 ---
 
-## 7. JavaScript 機能
+<a id="7-javascript-機能"></a>
+
+**7. JavaScript 機能：**
 
 <a id="sec-7-1"></a>
 **7.1 テーマ切り替え（廃止）：**
@@ -1311,7 +1326,9 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 ---
 
-## 8. 実行方法
+<a id="8-実行方法"></a>
+
+**8. 実行方法：**
 
 ```bash
 /usr/local/bin/adlaire-ci-build
@@ -1481,7 +1498,9 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 
 ---
 
-## 9. 既知の制限
+<a id="9-既知の制限"></a>
+
+**9. 既知の制限：**
 
 | 制限 | 詳細 |
 |------|------|
@@ -1490,7 +1509,9 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 
 ---
 
-## 27. Builder owner 横断連動追加仕様化機能 詳細仕様
+<a id="27-builder-owner-横断連動追加仕様化機能-詳細仕様"></a>
+
+**27. Builder owner 横断連動追加仕様化機能 詳細仕様：**
 
 <a id="sec-27-4"></a>
 **27.4 出力サイトへのビルドメタ埋め込み：**
@@ -1681,7 +1702,9 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | base 外参照 | broken dependency として記録。 |
 | failure build | 既存 manifest を上書きしない。 |
 
-## 28. Builder owner 静的サイト出力拡張追加仕様化機能 詳細仕様
+<a id="28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様"></a>
+
+**28. Builder owner 静的サイト出力拡張追加仕様化機能 詳細仕様：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) は、[`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) から参照される builder owner 静的サイト出力拡張追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。各機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
 

@@ -1,7 +1,5 @@
 # Adlaire CI — Release 詳細仕様
 
-[`docs/details/release.md`](release.md) は `release` owner component の詳細本文責務として、GitHub Release 成果物の生成、公開前検証、draft 公開、asset 検証、正式公開を定義する。
-
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。Release の作成条件、バージョン体系、標準 OS/arch は [`docs/SPEC.md` ポリシー責務 §1 GitHub リリースポリシー](../SPEC.md#github-リリースポリシー)、asset の受け入れと配置は [`docs/details/setup.md`](setup.md)、admin archive の内容は [`docs/details/admin.md`](admin.md)、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---

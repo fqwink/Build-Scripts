@@ -1,16 +1,14 @@
 # Adlaire CI — API 詳細仕様
 
-[`docs/details/api.md`](api.md) は `api` owner component の詳細本文責務として、`api` が主本文として持つ実装契約だけを扱う。
-
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`api` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、security、表示、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
-
 api 連動機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](../DETAIL_INDEX.md#0i3-api--sdk--ui) を入口とする。endpoint、成功時・失敗時動作、状態副作用は [`docs/details/api.md`](api.md)、SDK method は [`docs/details/sdk.md`](sdk.md)、UI 操作は [`docs/details/ui.md`](ui.md)、状態 schema は [`docs/details/statefile.md`](statefile.md)、検証証跡は [`docs/details/fixture.md`](fixture.md) を正本とする。
 
 [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) は security 領域の詳細本文責務である。api が security 機能に関わる場合、[`docs/details/api.md`](api.md) 詳細本文責務は endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) 詳細本文責務を参照する。
 
 ---
 
-## 0. 責務境界
+<a id="0-責務境界"></a>
+
+**0. 責務境界：**
 
 | 項目 | 内容 |
 |------|------|
@@ -21,7 +19,9 @@ api 連動機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕�
 
 ---
 
-## 21. 管理ツール システム構成
+<a id="21-管理ツール-システム構成"></a>
+
+**21. 管理ツール システム構成：**
 
 ```
 systemd timer
@@ -81,7 +81,9 @@ API service の systemd unit、配置、起動、更新、rollback は setup own
 
 `api` は `adlaire-ci-api --addr 127.0.0.1:8765 --state-dir /opt/adlaire-builder` として起動された後の HTTP listener、request / response、状態ファイル read/write 呼び出し境界だけを定義する。
 
-## 21a. 管理 API サーバー制限
+<a id="21a-管理-api-サーバー制限"></a>
+
+**21a. 管理 API サーバー制限：**
 
 [`docs/details/api.md` 詳細本文責務 §21a](api.md#21a-管理-api-サーバー制限) は `api` の実行時制限を定義する。runner、setup、admin、sdk、ui は [`docs/details/api.md` 詳細本文責務 §21a](api.md#21a-管理-api-サーバー制限) の制限を上書きしてはならない。
 
@@ -119,7 +121,9 @@ listener、signal source、shutdown clock / timer は [`docs/details/fixture.md`
 
 ---
 
-## 22. バックエンド API 仕様
+<a id="22-バックエンド-api-仕様"></a>
+
+**22. バックエンド API 仕様：**
 
 **ベース URL：** `http://127.0.0.1:{PORT}/api`
 **認証：** `Authorization: Bearer {SESSION_TOKEN}`（`/api/login` で取得したセッショントークン）
@@ -2155,7 +2159,9 @@ history response の `trigger` は [`docs/details/statefile.md` 詳細本文責�
 
 ---
 
-## 25. 認証 実装仕様
+<a id="25-認証-実装仕様"></a>
+
+**25. 認証 実装仕様：**
 
 認証、session、password hash、login ticket、TOTP 連携、認証ログ、漏えい禁止、`--init-credentials` 生成手順の主本文は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) および [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45)〜[§27.46](security.md#sec-27-46) を参照する。`.admin_credentials` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を参照する。
 
@@ -2173,7 +2179,9 @@ history response の `trigger` は [`docs/details/statefile.md` 詳細本文責�
 
 ---
 
-## 27. api owner 追加仕様化機能 詳細仕様
+<a id="27-api-owner-追加仕様化機能-詳細仕様"></a>
+
+**27. api owner 追加仕様化機能 詳細仕様：**
 
 <a id="sec-27-5"></a>
 **27.5 設定バリデーション API：**

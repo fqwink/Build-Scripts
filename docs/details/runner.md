@@ -1,14 +1,12 @@
 # Adlaire CI — Runner 詳細仕様
 
-[`docs/details/runner.md`](runner.md) は `runner` owner component の詳細本文責務として、`runner` が主本文として持つ実装契約だけを扱う。
-
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`runner` owner component の主本文であり、collaborator component の仕様は呼び出し境界、schema、setup、security、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
-
 runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](../DETAIL_INDEX.md#0i2-runner--ci-実行) を入口とする。runner の処理順と副作用は [`docs/details/runner.md`](runner.md)、状態 schema は [`docs/details/statefile.md`](statefile.md)、archive 実体は [`docs/details/archive.md`](archive.md)、Commit Status は [`docs/details/commitstatus.md`](commitstatus.md)、API / SDK / UI 接続は各 owner 詳細本文、検証証跡は [`docs/details/fixture.md`](fixture.md) を正本とする。
 
 ---
 
-## 0. 責務境界
+<a id="0-責務境界"></a>
+
+**0. 責務境界：**
 
 | 項目 | 内容 |
 |------|------|
@@ -19,7 +17,9 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 
 ---
 
-## 10. CI ランナー 要件
+<a id="10-ci-ランナー-要件"></a>
+
+**10. CI ランナー 要件：**
 
 | 項目 | 内容 |
 |------|------|
@@ -29,7 +29,9 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 
 ---
 
-## 10a. CI ランナー 実装対象
+<a id="10a-ci-ランナー-実装対象"></a>
+
+**10a. CI ランナー 実装対象：**
 
 [`docs/details/runner.md` 詳細本文責務 §10a](runner.md#10a-ci-ランナー-実装対象) は、`runner` として実装する CI ランナー機能を定義する。
 
@@ -67,7 +69,9 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 
 ---
 
-## 11. CI ランナー ファイル構成
+<a id="11-ci-ランナー-ファイル構成"></a>
+
+**11. CI ランナー ファイル構成：**
 
 [`docs/details/runner.md` 詳細本文責務 §11](runner.md#11-ci-ランナー-ファイル構成) は、Go 版 CI ランナー固有の実行物、入力 checkout、出力先だけを示す。runtime 状態ファイルの path、形式、初期値、更新責務、破損時処理は [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a)、リポジトリ内ファイルの実在有無と役割は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md)、インストール先と unit 配置は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) を正本とする。
 
@@ -125,7 +129,9 @@ runner は [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md
 
 ---
 
-## 12. 設定値（`runner`）
+<a id="12-設定値runner"></a>
+
+**12. 設定値（`runner`）：**
 
 `runner` は [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner) の設定値を基準とする。設定値は Go 構造体の既定値、設定ファイル、または CLI 引数で与える。どの入力経路を採用する場合でも、内部表現は [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner) のキー名・型・既定値に従う。
 
@@ -455,7 +461,9 @@ build id の割当単位は、処理を開始する正規化済み `BranchTarget
 
 ---
 
-## 13. 処理フロー
+<a id="13-処理フロー"></a>
+
+**13. 処理フロー：**
 
 [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の処理フローは、`runner` の標準フローである。
 
@@ -868,7 +876,7 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
 ---
 
 <a id="runner-build-pipeline-execution"></a>
-## 14. ビルドパイプライン実行
+**14. ビルドパイプライン実行：**
 
 runner は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) の source 優先順で repository `.pipeline.yml`、`.pipeline_config.inline_yaml`、標準 builder command のいずれか 1 つを選択する。`.ci/pipeline.sh`、任意 shell script、`sh -c`、`bash -c` を暗黙の fallback として起動しない。
 
@@ -962,7 +970,9 @@ runner は stdout / stderr の CRLF を LF に正規化して保存する。NUL 
 
 ---
 
-## 14a. SSH サイト転送
+<a id="14a-ssh-サイト転送"></a>
+
+**14a. SSH サイト転送：**
 
 [`docs/details/runner.md` 詳細本文責務 §14a](runner.md#14a-ssh-サイト転送) は、runner owner の SSH 転送詳細本文責務である。
 
@@ -1046,7 +1056,9 @@ remote `sha256sum` の終了コード非 0、空出力、stderr のみの出力�
 
 ---
 
-## 14b. スナップショット管理
+<a id="14b-スナップショット管理"></a>
+
+**14b. スナップショット管理：**
 
 [`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理) は、`runner` owner の snapshot 作成トリガー判定、`archive` owner への入力引渡し、build 結果への反映だけを定義する。snapshot の保存形式、archive 作成、検証、世代削除、一覧、download、delete、展開、rollback 転送実体は [`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) を正本とし、runner owner 側で重複定義しない。
 
@@ -1128,7 +1140,9 @@ process crash 後、次の runner 起動が stale lock、`.build_state.running=t
 
 ---
 
-## 15. ログ
+<a id="15-ログ"></a>
+
+**15. ログ：**
 
 [`docs/details/runner.md` 詳細本文責務 §15](runner.md#15-ログ) は、`runner` の stdout ログと構造化ビルドログを定義する。
 
@@ -1301,7 +1315,9 @@ runner が journal へ出力する内容は [`docs/details/runner.md` 詳細本�
 
 ---
 
-## 17. GitHub 連携前提
+<a id="17-github-連携前提"></a>
+
+**17. GitHub 連携前提：**
 
 | 項目 | 内容 |
 |------|------|
@@ -1346,7 +1362,9 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 
 ---
 
-## 20. CI ランナー 既知の制限
+<a id="20-ci-ランナー-既知の制限"></a>
+
+**20. CI ランナー 既知の制限：**
 
 <a id="sec-20-1"></a>
 **20.1 Go 版 runner の制限：**
@@ -1373,7 +1391,9 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 
 ---
 
-## 27. Runner owner 追加仕様化機能 詳細仕様
+<a id="27-runner-owner-追加仕様化機能-詳細仕様"></a>
+
+**27. Runner owner 追加仕様化機能 詳細仕様：**
 
 <a id="runner-27-api--sdk--ui-共通参照先"></a>
 **[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) API / SDK / UI 共通参照先：**

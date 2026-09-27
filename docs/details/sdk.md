@@ -1,14 +1,12 @@
 # Adlaire CI — SDK 詳細仕様
 
-[`docs/details/sdk.md`](sdk.md) は `sdk` owner component の詳細本文責務として、`sdk` が主本文として持つ実装契約だけを扱う。
-
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
-
 SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を参照する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務は SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
 ---
 
-## 0. 責務境界
+<a id="0-責務境界"></a>
+
+**0. 責務境界：**
 
 | 項目 | 内容 |
 |------|------|
@@ -19,7 +17,9 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 
 ---
 
-## 23. JavaScript SDK 仕様
+<a id="23-javascript-sdk-仕様"></a>
+
+**23. JavaScript SDK 仕様：**
 
 [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) は、sdk owner の JavaScript SDK 詳細本文責務である。実装 artifact は [責務境界](#0-責務境界)、module 形式は以下の SDK 実行環境契約を参照する。
 

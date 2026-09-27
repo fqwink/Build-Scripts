@@ -1,26 +1,11 @@
 # Adlaire CI — Roadmap
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、Adlaire CI の実装 artifact と各機能へ割り当てる現在状態、Phase、機能インベントリ、将来計画を管理する正本である。owner component と実装 artifact の区別、状態語彙、状態定義、実装可否、着手条件、状態遷移条件、完了条件は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) と [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を正本とし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務では再定義しない。
-
-方針・ポリシーは [`docs/SPEC.md`](SPEC.md)、生成静的 Web サイトと標準管理 UI のデザインは [`docs/DESIGN.md`](DESIGN.md)、詳細仕様入口・owner 対応表・collaborator 境界参照入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別詳細本文は [`docs/details/`](details/)、fixture と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact と各機能の現在状態・未完了理由、Phase の順序・対象 owner・依存関係、機能インベントリ、将来計画を管理する唯一の正本である。状態語彙、状態定義、実装可否、着手条件、状態遷移条件、完了条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を参照し、本文書では再定義しない。
 
 <a id="状態計画責務-共通参照先"></a>
 **状態・計画責務 共通参照先：**
 
-現在状態は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) の判定条件を適用して [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務へ割り当てる。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は割当結果と未完了理由だけを記録し、endpoint、schema、SDK method、DOM、処理順序、fixture 本文を再掲しない。
-
-## 1. ロードマップ責務
-
-| 管理対象 | 本文で管理する内容 |
-|----------|------------------|
-| 現在状態 | 実装 artifact と機能へ割り当てた現在の状態、および未完了理由。 |
-| Phase | Phase 順序、対象 owner component、依存関係、現在状態。 |
-| 機能インベントリ | 全機能の担当領域と現在状態。 |
-| 将来計画 | 将来計画へ割り当てた機能名と担当領域。 |
-
-## 2. 状態語彙参照
-
-状態語彙と判定条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を参照する。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の状態セルは現在の割り当てだけを示す。
+本文書の状態セルは現在の割り当てだけを示す。endpoint、schema、SDK method、DOM、処理順序、fixture 本文は記載しない。
 
 ## 3. 実装 artifact 現在状態
 

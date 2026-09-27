@@ -1,14 +1,12 @@
 # Adlaire CI — UI 詳細仕様
 
-[`docs/details/ui.md`](ui.md) は `ui` owner component の詳細本文責務として、`ui` が主本文として持つ実装契約だけを扱う。
-
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`ui` owner component の主本文であり、collaborator component の仕様は SDK method、API response、security、admin 配布、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
-
 UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) を参照する。標準管理 UI の色、寸法、余白、配置、responsive、focus の視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
 ---
 
-## 0. 責務境界
+<a id="0-責務境界"></a>
+
+**0. 責務境界：**
 
 | 項目 | 内容 |
 |------|------|
@@ -19,7 +17,9 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 
 ---
 
-## 24. 標準管理ツール 仕様
+<a id="24-標準管理ツール-仕様"></a>
+
+**24. 標準管理ツール 仕様：**
 
 [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) は、ui owner の [`admin/index.html`](../../admin/index.html) 詳細本文責務である。
 
