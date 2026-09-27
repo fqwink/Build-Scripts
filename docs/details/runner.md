@@ -87,8 +87,8 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 ├── .github_token
 ├── .last_sha
 └── repo/
-    ├── docs/
-    └── .pipeline.yml      # 任意。GitHub mode では実行時に memory 取得
+    ├── docs/
+    └── .pipeline.yml      # 任意。GitHub mode では実行時に memory 取得
 ```
 
 **runtime 状態参照：**
@@ -717,7 +717,16 @@ pipeline が終了コード `0` で `[REPORT]` が不在の場合、SHA を更�
 
 runner が読み込む JSON object / JSON array の状態ファイルが破損している場合は、[`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の破損時の扱いに従う。JSON Lines は壊れた行だけを無視し、ファイル全体を破棄してはならない。破損退避ファイル名は `{original}.corrupt.{YYYYMMDDHHMMSS}.bak` とする。
 
-以下の処理フロー内の節番号は、[`docs/details/runner.md` 詳細本文責務 §27.10](runner.md#sec-27-10)、[§27.22](runner.md#sec-27-22)、[§27.32](runner.md#sec-27-32)、[§14a](runner.md#14a-ssh-サイト転送)、[§14b](runner.md#14b-スナップショット管理)、[`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) を参照する。
+以下の処理フローは参照先を短いマーカーで示す。各マーカーの正本参照先は次の対応表だけで確定し、処理フロー内の裸の節番号を参照として使用しない。
+
+| 参照マーカー | 正本参照先 |
+|--------------|------------|
+| `ref:startup-integrity` | [`docs/details/runner.md` 詳細本文責務 §27.10](runner.md#sec-27-10) |
+| `ref:pipeline-source` | [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) |
+| `ref:notification-retry` | [`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) |
+| `ref:deploy-retry` | [`docs/details/runner.md` 詳細本文責務 §14a](runner.md#14a-ssh-サイト転送) |
+| `ref:snapshot` | [`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理) |
+| `ref:builder-report` | [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) |
 
 ```
 runner 起動（systemd timer、または API の `systemctl start --no-block adlaire-ci.service` から呼び出し）
@@ -732,10 +741,10 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
     │   （以降、正常終了・例外終了いずれの場合も defer で .build_lock を削除）
     │
     ├─ [設定ファイル起動時整合性チェック]
-    │   ├─ §27.10 の対象 7 ファイルを固定順序で検証
-    │   ├─ 復旧対象 6 file の回復可能な破損 / unknown key → corrupt backup、ファイル別の初期化または default fallback、§27.10 の通知条件を満たす場合は config_corrupt 通知
+    │   ├─ [ref:startup-integrity] の対象 7 ファイルを固定順序で検証
+    │   ├─ 復旧対象 6 file の回復可能な破損 / unknown key → corrupt backup、ファイル別の初期化または default fallback、[ref:startup-integrity] の通知条件を満たす場合は config_corrupt 通知
     │   ├─ .maintenance の破損 / unknown key / 読取不能 → backup・初期化・通知を行わず終了コード 2
-    │   └─ permission error / IO error → .build_state.running=true にせず §27.10 の固定終了コードで終了
+    │   └─ permission error / IO error → .build_state.running=true にせず [ref:startup-integrity] の固定終了コードで終了
     │
     ├─ [ペンディングキュー再試行] PENDING_FILE が存在する場合
     │   └─ ペンディングエントリごとに SSH 転送を再試行
@@ -743,7 +752,7 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
     │       └─ 失敗 → ERROR ログ、エントリを保持（次回起動時に再試行）
     │
     ├─ [Webhook 通知ペンディング再試行] .notify_pending が存在する場合
-    │   └─ ペンディングエントリごとに §27.32 の retry 状態遷移を実行
+    │   └─ ペンディングエントリごとに [ref:notification-retry] の retry 状態遷移を実行
     │       ├─ 成功（HTTP 2xx）→ success log、エントリ削除
     │       ├─ HTTP 5xx / timeout かつ retry 残あり → failure log、attempts / next_attempt_at 更新
     │       ├─ HTTP 5xx / timeout かつ最終 retry → dropped log 1 件、エントリ削除
@@ -799,33 +808,33 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
     │   │       commit_at      = commit.commit.author.date
     │   │   └─ API 失敗時：各フィールドを null として記録し、処理続行（ビルドは妨げない）
     │   │
-    │   ├─ [pipeline source 選択] §27.22 の優先順で repository `.pipeline.yml`、inline YAML、標準 builder command のいずれか 1 つを確定
-    │   ├─ [事前チェック] 選択済み pipeline 実行前に以下を確認し、不足時は ERROR ログ＋deploy_failure Webhook 通知、このエントリをスキップ
-    │   │   ├─ ディスク空き容量 ≥ max(出力サイト推定サイズ × 3, 64MiB)。取得は `syscall.Statfs(outDir)` を使用する
-    │   │   ├─ 標準 builder command では `adlaire-ci-build` が通常ファイルかつ実行可能であること（`os.Stat` と mode bit）
-    │   │   └─ 標準 builder command では `/usr/local/bin/adlaire-ci-build --version` が終了コード 0、stderr 空、stdout が [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#common-cli-contract) の exact 3 token 形式であり、第 1 token が `adlaire-ci-build`、第 2 token が runner 自身の `<binary-version>` と一致すること。YAML pipeline では全 step command の解決と schema validation が完了していること
+    │   ├─ [pipeline source 選択] [ref:pipeline-source] の優先順で repository `.pipeline.yml`、inline YAML、標準 builder command のいずれか 1 つを確定
+    │   ├─ [事前チェック] 選択済み pipeline 実行前に以下を確認し、不足時は ERROR ログ＋deploy_failure Webhook 通知、このエントリをスキップ
+    │   │   ├─ ディスク空き容量 ≥ max(出力サイト推定サイズ × 3, 64MiB)。取得は `syscall.Statfs(outDir)` を使用する
+    │   │   ├─ 標準 builder command では `adlaire-ci-build` が通常ファイルかつ実行可能であること（`os.Stat` と mode bit）
+    │   │   └─ 標準 builder command では `/usr/local/bin/adlaire-ci-build --version` が終了コード 0、stderr 空、stdout が [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#common-cli-contract) の exact 3 token 形式であり、第 1 token が `adlaire-ci-build`、第 2 token が runner 自身の `<binary-version>` と一致すること。YAML pipeline では全 step command の解決と schema validation が完了していること
     │   │
-    │   ├─ 選択済み標準 builder command または YAML step を shell を介さず実行
+    │   ├─ 選択済み標準 builder command または YAML step を shell を介さず実行
     │   │   ├─ 成功（exit 0）：INFO ログ
     │   │   │   └─ [通知送信] on: ["success"] 設定時
-    │   │   │       → §27.32 の channel 選択、NotificationPayload object、送信結果、pending 固定契約を実行
+    │   │   │       → [ref:notification-retry] の channel 選択、NotificationPayload object、送信結果、pending 固定契約を実行
     │   │   └─ 失敗（exit ≠ 0）：ERROR ログ、sha_file 更新せず、このエントリを failure(build_failed) として記録し、次エントリへ進む
     │   │       └─ [通知送信] on: ["failure"] 設定時
-    │   │           → §27.32 の channel 選択、NotificationPayload object、送信結果、pending 固定契約を実行
+    │   │           → [ref:notification-retry] の channel 選択、NotificationPayload object、送信結果、pending 固定契約を実行
     │   │
     │   └─ sha_file を新 SHA で更新（`{"sha": "<new_sha>"}` を JSON 書き込み）
     │        └─ SSH サイト転送（deploy_targets リストの各エントリへ転送）
     │             ├─ [転送後整合性検証] 引用済み remote path を `sha256sum --zero --` で検証
     │             │   ├─ 全ファイルのローカル sha256 と一致 → 転送成功
-    │             │   └─ 不一致またはコマンド失敗 → ERROR ログ、ペンディングキューへ再投入（§14a）
-    │             └─ 整合性検証成功後 → §14b の条件判定後に archive owner の snapshot save を呼び出す
+    │             │   └─ 不一致またはコマンド失敗 → ERROR ログ、ペンディングキューへ再投入（[ref:deploy-retry]）
+    │             └─ 整合性検証成功後 → [ref:snapshot] の条件判定後に archive owner の snapshot save を呼び出す
     │
     │        [出力サイズチェック] OUTPUT_SIZE_WARN_MB > 0 の場合
     │        出力サイト配下の通常ファイル合計サイズを取得し、閾値と比較：
     │            size_mb = total_site_bytes / (1024 * 1024)
     │            size_mb > OUTPUT_SIZE_WARN_MB の場合：
     │            → WARN ログ（`OUTPUT_SIZE_WARN: size={size_mb:.1f}MB threshold={OUTPUT_SIZE_WARN_MB}MB`）
-    │            → ビルドログの size_warn フィールドを true に設定（builder §8）
+    │            → ビルドログの size_warn フィールドを true に設定（[ref:builder-report]）
     │
     └─ [サーキットブレーカー判定] API_CIRCUIT_BREAKER_THRESHOLD > 0 の場合
         全ブランチの今周回結果を集計し、全ブランチが失敗（API エラー・スキップを除くビルド失敗）の場合：

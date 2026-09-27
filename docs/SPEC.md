@@ -725,11 +725,11 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 | タグ形式 | `V.X.N`（リリースバージョンと一致させる）例：`V.2.102` |
 | リリースタイトル | タグ名と同一にする |
 | リリース形式 | バイナリ配布を標準とする。利用者は GitHub Release から OS/arch 別の実行バイナリを取得し、ソースからのビルドを標準導入手順に含めない |
-| バイナリバージョン | 全 Release asset の `--version` が、バイナリ名に続く第 2 token として tag と同一のリリースバージョンを返す。`V.0.0-dev`、tag と不一致の値、未注入値を含む asset は公開禁止とする |
+| バイナリバージョン | Release 用実行バイナリ asset の `--version` が、バイナリ名に続く第 2 token として tag と同一のリリースバージョンを返す。`V.0.0-dev`、tag と不一致の値、未注入値を含む実行バイナリ asset は公開禁止とする |
 | 標準 OS/arch | 初期標準は Linux x86_64（`linux-amd64`）とする。追加 OS/arch は将来のリリース対象として個別に仕様化する |
-| 添付ファイル | `adlaire-ci-build`、`adlaire-ci-runner`、管理 API 導入後は `adlaire-ci-api` の実行バイナリを添付する。将来 `adlaire-ci-cli` を実装した場合のみ CLI バイナリを追加する。静的 Web サイト生成物を release archive として添付しない |
-| 管理 UI 配布物 | `admin/adlaire-ci-sdk.js` と `admin/index.html` はバイナリではなく管理 UI 配布物として扱い、管理 API 導入後の release archive に含める |
-| checksum | Release 添付ファイルごとに SHA-256 checksum を提供する。セットアップ手順では配置前に checksum を検証する |
+| 添付ファイル | builder、runner、管理 API 導入後の API の各 OS/arch 別実行バイナリを添付する。exact asset 名と取得タイミングは [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を正本とする。将来 CLI を実装した場合のみ CLI 実行バイナリを追加する。生成静的 Web サイトを Release asset として添付しない |
+| 管理 UI 配布物 | 管理 API 導入後は管理 UI を実行バイナリと分離した単独の archive asset として添付する。exact asset 名は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a)、archive 内容と検証境界は [`docs/details/admin.md` 詳細本文責務 §A1](details/admin.md#a1-管理-ui-静的ファイル境界)〜[§A2](details/admin.md#a2-管理-ui-archive-検証) を正本とする |
+| checksum | checksum manifest 自身を除く全 Release asset の SHA-256 checksum を checksum manifest で提供する。checksum manifest 自身を再帰的な checksum 対象にしてはならない。exact asset 名、manifest 形式、検証条件は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を正本とし、セットアップ手順では配置または展開前に checksum を検証する |
 | プレリリースフラグ | 安定版リリースでは `Pre-release` にチェックを入れない |
 | ドラフト公開禁止 | Draft Release のまま公開しない |
 

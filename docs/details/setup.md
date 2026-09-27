@@ -33,7 +33,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | Go 版バイナリ | `adlaire-ci-build`、`adlaire-ci-runner`。管理 API 導入時は `adlaire-ci-api` も配置する。 |
 | 配布形式 | GitHub Release に添付された OS/arch 別の実行バイナリを標準とする。初期標準は Linux x86_64（`linux-amd64`）。 |
 | Go toolchain | 利用環境には不要。リリースバイナリをそのまま配置し、利用環境で `go build` しない。 |
-| checksum | Release 添付ファイルごとの SHA-256 checksum を取得し、配置前に必ず検証する。 |
+| checksum | `SHA256SUMS` 自身を除く取得対象 Release asset の SHA-256 checksum を取得し、配置または展開前に必ず検証する。`SHA256SUMS` 自身を checksum 対象にしない。 |
 | init システム | systemd（Linux） |
 | バージョン管理 | GitHub Releases のタグ付き安定版を使用する。利用環境でリポジトリ checkout を更新経路にしない。 |
 | ネットワーク | setup / update は GitHub Release / API への HTTPS 取得と、導入後確認の `127.0.0.1` API health 接続だけを行う。runner 実行時の GitHub API、通知、SMTP、SSH deploy / remote build は [`docs/details/runner.md` 詳細本文責務 §10](runner.md#10-ci-ランナー-要件) を参照し、setup 責務の送信許可範囲に含めない。 |
@@ -64,9 +64,9 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | `adlaire-ci-runner-$OS_ARCH` | 初回セットアップ、アップデート | `components/runner.go` から生成した CI ランナーバイナリ。 |
 | `adlaire-ci-api-$OS_ARCH` | 管理 API 導入手順、管理 API 導入後のアップデート | `components/api.go` から生成した管理 API サーバーバイナリ。 |
 | `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の管理 UI 配布物。 |
-| `SHA256SUMS` | Release 添付ファイル取得時 | Release 添付ファイルの SHA-256 checksum 一覧。 |
+| `SHA256SUMS` | Release 添付ファイル取得時 | `SHA256SUMS` 自身を除く取得対象 Release asset の SHA-256 checksum 一覧。 |
 
-Release asset 名は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) の固定表の文字列と完全一致させる。`$OS_ARCH` は `linux-amd64` だけを初期標準とし、未知 OS/arch を指定した場合は取得前に `unsupported OS_ARCH: {OS_ARCH}` を stderr へ出力して終了コード `2` とする。`SHA256SUMS` は `"{sha256}  {filename}"` 形式の LF 区切り text とし、対象 filename が 1 回だけ出現することを必須とする。対象行が 0 件または 2 件以上の場合は checksum 検証失敗とする。
+Release asset 名は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) の固定表の文字列と完全一致させる。`$OS_ARCH` は `linux-amd64` だけを初期標準とし、未知 OS/arch を指定した場合は取得前に `unsupported OS_ARCH: {OS_ARCH}` を stderr へ出力して終了コード `2` とする。`SHA256SUMS` は `"{sha256}  {filename}"` 形式の LF 区切り text とし、`SHA256SUMS` 自身の行を含めず、checksum 検証対象の filename が 1 回だけ出現することを必須とする。対象行が 0 件または 2 件以上の場合は checksum 検証失敗とする。
 
 <a id="sec-26-2b"></a>
 **[§26.2b セットアップ・アップデート機能単位](setup.md#sec-26-2b)：**

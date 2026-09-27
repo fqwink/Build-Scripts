@@ -85,7 +85,7 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | <a id="common-machine-time"></a>機械処理時刻 | UTC の ISO 8601 秒精度 `YYYY-MM-DDTHH:MM:SSZ`。ミリ秒、ナノ秒、UTC 以外の offset、local timezone の保存を禁止する。ローカル時刻は UI 表示だけで使用する。 |
 | CLI 終了コード | `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` `.build_lock` の schema / PID 解析不正、PID 実行中判定不能、または lock 作成失敗。実行中 lock による通常 skip は `0`。 |
 | CLI 共通 option | `--help` と `--version`。parse、優先順位、出力、副作用は [CLI 共通固定契約](#common-cli-contract) に従う。 |
-| バイナリバージョン | 未注入の local / 検証用ビルドは `V.0.0-dev`。バージョン付き開発ビルドと Release asset は割当済みバージョンと exact 一致する `^V\.[1-9][0-9]*\.[0-9]+$` 形式。Release asset では tag とも exact 一致させる。その他の値、空文字、前後空白、改行を禁止する。 |
+| バイナリバージョン | 未注入の local / 検証用ビルドは `V.0.0-dev`。バージョン付き開発ビルドと Release 用実行バイナリ asset は割当済みバージョンと exact 一致する `^V\.[1-9][0-9]*\.[0-9]+$` 形式。Release 用実行バイナリ asset では tag とも exact 一致させる。その他の値、空文字、前後空白、改行を禁止する。 |
 | 時刻ベース ID | prefix と UTC `YYYYMMDDHHmmss` を連結する。未衝突 ID に suffix は付けない。衝突時は `-001` から `-999` まで 3 桁連番を順に試し、上限到達時は既存 ID を上書きせず失敗とする。 |
 | 出力成果物 manifest SHA-256 | 出力 root 配下の通常 file だけを entry とし、`/` 区切りの相対 path を UTF-8 byte 辞書順に並べる。各 file の SHA-256 を lowercase hex で算出し、各 entry の `relative_path + "\n" + file_sha256 + "\n"` を順に連結した byte 列全体の SHA-256 lowercase hex を `output_sha256` とする。directory は走査だけに使用し entry に含めない。symlink、link count 2 以上の hardlink、device、socket、FIFO を 1 件でも検出した場合は除外継続せず算出失敗とする。出力 root は symlink でない directory、全 path は valid UTF-8 とし、先頭 `/`、空 segment、`.`、`..`、backslash、NUL、CR、LF を含む相対 path は算出失敗とする。file は no-follow open 後の identity / type と読取前後の size / mtime が列挙時から不変の場合だけ採用し、走査中の追加・削除・置換・変更は算出失敗とする。通常 file が 0 件の出力 root は空 byte 列の SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` とする。 |
 
