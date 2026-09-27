@@ -179,7 +179,27 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則は [`docs/SPEC.md`](SPEC.md) 全体に適用する。[`docs/SPEC.md`](SPEC.md) 内の各記載は、方針責務、ポリシー責務、状態・計画責務の参照、詳細仕様入口責務の参照、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の参照、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の参照、文書・実装ファイル所在の索引責務の参照、利用入口責務の参照のいずれかとして読めなければならない。
 
-責務ベース明示的原則とは、方針・ポリシー・状態語彙・状態定義・状態遷移条件、実装 artifact と機能の現在状態・Phase・将来計画、詳細仕様本文、fixture・expected・fake・検証証跡、文書・実装所在を、それぞれ異なる責務として明示的に分離し、同一判断対象を複数文書で正本化しない原則である。
+責務ベース明示的原則とは、方針・ポリシー・状態語彙・状態定義・状態遷移条件、実装 artifact と機能の現在状態・Phase・将来計画、詳細仕様本文、fixture・expected・fake・検証証跡、文書・実装所在を、それぞれ異なる責務として明示的に分離する原則である。
+
+<a id="spec-global-no-duplicate-principle"></a>
+**仕様全般重複記載禁止原則：**
+
+仕様上の一つの判断対象は、一つの責務正本だけが本文を持たなければならない。この原則は、[`docs/SPEC.md`](SPEC.md)、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/details/fixture.md`](details/fixture.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の仕様全般に適用する。
+
+同一判断対象について、完全一致する記載、言い換え、要約、部分転載、表または箇条書きへの再掲、具体値、条件、禁止事項、schema、処理順序、異常系、検証条件の再定義を重複記載として禁止する。複数箇所の内容が一致する場合は重複違反、内容が一致しない場合は重複違反かつ仕様矛盾として扱う。
+
+正本以外の文書は、正本の内容を説明、補足、要約、緩和、例外化、再解釈してはならない。責務外の判断対象が必要な場合は、責務名付き Markdown link で正本の該当 anchor を参照し、自分の責務に固有の内容だけを記載する。参照先に必要な仕様が存在しない場合は、参照元へ仮置きまたは補足せず、責務を持つ正本を先に改訂する。責務を持つ正本で確定できない内容は未確定として扱い、仕様化済みとして扱ってはならない。
+
+分かりやすさ、参照性、一覧性、実装者向け補足、または文書単体で理解できることを、重複記載の理由として認めない。これらは責務名、責務正本、正本範囲、参照 anchor を明示した Markdown link によって担保する。
+
+重複記載を発見した場合は、責務ベース明示的原則によって唯一の正本を確定し、正本だけに本文を残す。正本以外の重複本文は削除し、必要な参照だけを責務名付き Markdown link へ置き換える。正本を確定できない状態、重複記載が残る状態、または参照へ置き換えた結果として実装判断に必要な情報が失われる状態を、仕様整合完了として扱ってはならない。
+
+次の記載だけは、同一判断対象の正本本文を持たず、正本の意味を追加または変更しない場合に限り、重複記載として扱わない。
+
+- Markdown link の参照対象を識別するために必要な機能名、責務名、owner component 名、ファイル名、節名、anchor 名。
+- 索引責務または詳細仕様入口責務が管理する path、存在区分、owner 対応、参照先。
+- collaborator component が自分の責務として持つ接続、入力受け渡し、出力受け渡し、変換、失敗伝播の固有契約。
+- fixture 証跡責務が正本へのリンクとともに記録する入力、操作、期待結果、assertion、実装検証証跡。これらは仕様本文の正本ではなく、正本との一致を検証する証跡としてだけ扱う。
 
 正本参照先は、必ず責務名とファイル名で示す。文書を章構成、便宜分類、または他文書の従属章として扱ってはならない。[`docs/SPEC.md`](SPEC.md) 内部の見出しも責務名で示し、`Part` 名称で扱ってはならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/details/*.md`](details/)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) を [`docs/SPEC.md`](SPEC.md) の章として扱ってはならない。
 
@@ -205,10 +225,6 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 詳細仕様は実装詳細だけを記載する。ロードマップは実装 artifact と各機能の現在状態、Phase、機能インベントリ、将来計画だけを記載する。実装可否、着手条件、状態遷移条件、完了判定方針は [`docs/SPEC.md`](SPEC.md) だけに記載する。索引は文書と実装ファイルの所在だけを記載する。README は利用入口だけを記載する。fixture、expected、fake、個別 acceptance assertion、実装検証証跡は検証責務だけに記載する。
 
-各文書は、自分の責務外の内容を本文として記載してはならない。責務外の内容が必要な場合は、責務を持つ正本と節番号を参照する。参照先に必要な内容が存在しない場合は、参照元へ補足を書かず、責務を持つ正本側を改訂する。責務を持つ正本側で確定できない内容は未確定として扱い、仕様化済みとして扱ってはならない。
-
-分かりやすさは、同じ説明を複数文書へ重複記載することで担保してはならない。分かりやすさは、責務名、責務を持つ正本、正本範囲、参照節を明示することで担保する。責務名を使わない正本説明、判断に迷う記載、二重に読める記載、例外に見える記載、参照先を持たない責務外説明は禁止する。
-
 owner component は対象機能の詳細本文を持つ。collaborator component は、境界、接続、入力受け渡し、出力受け渡し、検証観点として参照される。collaborator component は、owner component の本文を置き換えたり、同じ判断対象を別正本として再定義したりしてはならない。
 
 owner component と実装 artifact は別の判断対象とする。owner component は機能契約の責務境界であり、単独の実装ファイルが存在することを意味しない。実装 artifact は [`main.go`](../main.go)、`components/*.go`、`admin/*`、実行バイナリ、配布物、または運用実行物のように、リポジトリまたはリリースで実在と実行可否を確認できる対象をいう。owner component が持つ機能の現在状態を、同名の実装 artifact が存在するという理由だけで判定してはならない。
@@ -219,9 +235,7 @@ fixture、expected、fake、検証証跡、個別 acceptance assertion は検証
 
 [`docs/details/*.md`](details/) を総称として参照する場合でも、[`docs/details/fixture.md`](details/fixture.md) を owner component 別詳細本文責務に含めて読んではならない。fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件は、常に [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務として扱う。
 
-[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則は、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の記載整理より上位の方針である。これらの文書を整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) に従い、重複本文を増やさず、責務と参照先を明示する。
-
-[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) への違反が残る状態では、仕様整合完了、仕様 PR 完了、実装着手、実装済み判定を行ってはならない。
+仕様全般を整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) を、各文書の個別整理規則より上位の方針として適用する。
 
 <a id="43-ディレクトリ構成"></a>
 
@@ -531,11 +545,7 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
 owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、実装者が実装レベルで迷わない記載にしなければならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) は、対象機能から該当する詳細本文と fixture 証跡へ迷わず到達できる参照入口にしなければならない。
 
-詳細仕様、状態管理、fixture、索引、入口文書を記載または整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則に従わなければならない。
-
-方針、ポリシー、状態語彙、状態定義、現在状態、Phase、将来計画、詳細仕様本文、fixture、expected、fake、検証証跡、文書索引を同じ本文内で重複正本化してはならない。
-
-責務別の配置、重複正本化の禁止、他責務の参照方法、未確定時の扱い、違反残存時の完了禁止は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) を正本とする。[`docs/SPEC.md` ポリシー責務 §0](SPEC.md#0-詳細仕様記載ポリシー) では、詳細仕様に必要な実装情報だけを追加定義する。
+詳細仕様、状態管理、fixture、索引、入口文書を記載または整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) に従わなければならない。[`docs/SPEC.md` ポリシー責務 §0](SPEC.md#0-詳細仕様記載ポリシー) は、責務別の配置、重複記載の定義、参照方法、未確定時の扱いを再定義せず、詳細仕様に必要な実装情報だけを追加定義する。
 
 機能、API、設定、状態ファイル、UI、SDK method、運用手順を仕様化する場合は、該当する必須項目を owner component の詳細本文で特定できる状態にしなければならない。
 
@@ -601,6 +611,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 詳細仕様入口責務 | 対象機能の owner 対応表、owner 詳細本文から collaborator 境界へ到達する参照、詳細本文参照先、fixture 証跡参照先が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に明記されている。 |
 | owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。 |
 | 横断契約 | API、SDK、UI、状態ファイル、認証、セットアップの対応関係が該当する詳細本文責務で同期している。 |
+| 重複記載 | [`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) への適合確認が完了し、未解消違反が 0 件である。 |
 | 索引責務 | ファイル名、正本参照先、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |
 | owner 網羅 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に列挙された owner component のうち、[`docs/ROADMAP.md`](ROADMAP.md) で `未仕様化` または `将来計画` 以外の機能を持つ owner は、少なくとも 1 件の機能から owner 詳細本文と fixture 証跡へ到達できる。実装 artifact の行で owner 機能の現在状態を代用していない。 |
 | 列挙閉包 | 許可値、許可 path、許可副作用、許可依存、fixture component、schema key の集合が固定列挙または明示的な登録条件で閉じており、未登録値の扱いが確定している。 |

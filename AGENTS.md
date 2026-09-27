@@ -89,6 +89,8 @@
 
 仕様変更では、変更した責務正本から参照される [docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、[docs/DESIGN.md](docs/DESIGN.md)、owner / collaborator 詳細本文、fixture 証跡、実装ファイルへの影響を確認する。
 
+仕様変更の編集前と編集後に、[docs/SPEC.md 方針責務 §4.2a 仕様全般重複記載禁止原則](docs/SPEC.md#spec-global-no-duplicate-principle) への適合を確認する。完全一致する本文だけでなく、言い換え、要約、部分転載、表と本文の再掲、owner と collaborator 間の意味上の重複を確認する。確認では、判断対象、唯一の責務正本、重複候補の所在、削除または参照化の処置を特定し、未解消件数が 0 になるまで仕様変更を完了扱いにしてはならない。
+
 文書整理だけを目的とする変更では、機能契約、現在状態、実装可否、Phase、将来計画を変更してはならない。ただし、実装と必須証跡を確認した結果、既存の状態記載が事実と矛盾すると判明した場合は、承認済み範囲内で [docs/ROADMAP.md](docs/ROADMAP.md) の現在状態を事実へ一致させる。
 
 標準ディレクトリ構成は [docs/SPEC.md 方針責務 §4.3](docs/SPEC.md#sec-4-3)、実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) を確認する。未作成 path を実在ファイルとして扱ってはならない。
