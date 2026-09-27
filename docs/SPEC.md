@@ -96,7 +96,7 @@
 | 言語 | Go（ビルド、ランナー、管理 API、セットアップ、リリース）/ JavaScript（SDK）/ HTML・CSS・Vanilla JavaScript（UI） |
 | HTTP | Go 標準ライブラリ `net/http` |
 | データベース | なし（ファイルベース） |
-| Git 操作 | GitHub REST API（Blobs API）を Go 標準ライブラリ `net/http` 経由で呼び出す |
+| Git・GitHub 参照 | `runner` の source 取得は GitHub REST API の Blobs / Trees API を Go 標準ライブラリ `net/http` 経由で行う。`release` の local commit / tag / source 参照は read-only Git command、remote repository / branch / tag / Release 参照は GitHub REST API を使用する。実行時の Git 状態変更、ref 作成・更新・削除、fetch、checkout、merge、commit、push は行わない。 |
 | フロントエンド | HTML / CSS / Vanilla JavaScript |
 | 標準運用 | systemd を使用する自己管理 Linux CI サーバーでビルドし、別ホストの静的コンテンツ配信サーバーへ SSH で転送する 2 サーバー構成 |
 | データ交換形式 | JSON に統一する。エクスポート・インポートを含む全 API データ交換に CSV・XML 等の非 JSON 形式を使用しない |
@@ -773,7 +773,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 **基本原則：**
 
-[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のゼロ依存・フルインハウス原則を正本とする。開発言語の**標準ライブラリのみ**を採用し、主要機能は本リポジトリ内の仕様と内製実装で完結させる。
+[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のゼロ依存・フルインハウス原則を正本とする。開発言語の標準ライブラリだけで実装することを原則とし、主要機能は本リポジトリ内の仕様と内製実装で完結させる。外部ライブラリを使用できるのは、[`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針) の例外条件をすべて満たし、同節の許可外部ライブラリ一覧に登録されている場合だけとする。
 
 外部依存を追加しなければ実装できない機能は、仕様不足または設計不備として扱う。実装者は外部依存の追加で不足仕様を補完してはならない。
 

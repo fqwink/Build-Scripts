@@ -4,22 +4,8 @@
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は owner component の処理本文、HTTP body、状態 schema、SDK method、UI DOM、fixture assertion、現在状態を再定義しない。
 
-## 詳細仕様管理
-
-| 確認対象 | 正本 |
-|----------|------|
-| 方針、ポリシー、状態語彙、遷移条件 | [`docs/SPEC.md`](SPEC.md) |
-| 実装 artifact / 機能の現在状態と実装計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
-| owner component 別の詳細本文 | [`docs/details/`](details/) |
-| fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
-| 生成静的 Web サイトと標準管理 UI のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
-| 文書、実装、testdata の実在所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) |
-
-## 詳細仕様入口責務
-
-対象機能は [詳細節対応表](#0i-詳細節対応表) で唯一の owner component を確定し、[詳細仕様参照表](#0b-詳細仕様参照表) からその owner component の主本文へ移動する。
-
-## 詳細仕様参照入口
+<a id="詳細仕様参照入口"></a>
+**対象機能から詳細本文への選択手順：**
 
 1. [`docs/ROADMAP.md`](ROADMAP.md) で対象機能の現在状態と実装計画上の割当を確認する。
 2. [詳細節対応表](#0i-詳細節対応表) で機能の owner component を一件に確定し、対応する詳細節を開く。
@@ -27,27 +13,8 @@
 4. collaborator がある場合だけ、その component の詳細本文を境界確認として読む。
 5. fixture と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) を読む。
 
-## 0a. 詳細仕様の記載基準
-
-記載義務、必須項目、不足時の扱いは [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4) と [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を参照する。
-
-## 0b.0 詳細仕様選択フロー
-
-[詳細仕様カテゴリ](#0b01-詳細仕様カテゴリ) は検索入口、[詳細節対応表](#0i-詳細節対応表) は機能 owner と詳細節の対応、[詳細仕様参照表](#0b-詳細仕様参照表) は owner component と主本文の対応を担当する。カテゴリ名を owner component として扱わない。
-
-## 0b.0.1 詳細仕様カテゴリ
-
-| カテゴリ | owner 候補 | 詳細本文 |
-|----------|------------|----------|
-| Build | `builder` | [`docs/details/builder.md`](details/builder.md) |
-| CI / 運用 | `runner`、`commitstatus`、`archive` | [`docs/details/runner.md`](details/runner.md)、[`docs/details/commitstatus.md`](details/commitstatus.md)、[`docs/details/archive.md`](details/archive.md) |
-| 管理 | `api`、`sdk`、`ui`、`admin` | [`docs/details/api.md`](details/api.md)、[`docs/details/sdk.md`](details/sdk.md)、[`docs/details/ui.md`](details/ui.md)、[`docs/details/admin.md`](details/admin.md) |
-| 状態 / 安全 | `statefile`、`security` | [`docs/details/statefile.md`](details/statefile.md)、[`docs/details/security.md`](details/security.md) |
-| 配布 | `setup`、`release` | [`docs/details/setup.md`](details/setup.md)、[`docs/details/release.md`](details/release.md) |
-| 検証証跡 | fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) |
-| MCP | `mcp` | 専用詳細仕様未作成。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
-
-## 0b. 詳細仕様参照表
+<a id="0b-詳細仕様参照表"></a>
+**owner component 別詳細本文参照表：**
 
 | owner component | 主本文 | 主な責務 |
 |-----------------|--------|----------|
@@ -67,15 +34,17 @@
 | `mcp` | 専用詳細仕様なし | 現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
 
 <a id="0b1-owner-component-別-owner-collaborator-境界管理"></a>
-## 0b.1 owner component 別 owner / collaborator 境界管理
+**owner / collaborator 境界参照：**
 
 owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) を参照する。[詳細節対応表](#0i-詳細節対応表) の `owner` 列は機能から owner component を特定する入口、[詳細仕様参照表](#0b-詳細仕様参照表) は owner component から主本文を特定する入口とする。
 
-## 0c. 実装前確認項目
+<a id="0c-実装前確認項目"></a>
+**実装前参照：**
 
 実装着手可否は [`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7) と [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) を正本とする。この入口では、対象機能が [詳細節対応表](#0i-詳細節対応表) に存在し、owner 詳細本文と fixture 証跡へ到達できることだけを確認する。
 
-## 0d. 共通固定値
+<a id="0d-共通固定値"></a>
+**共通固定値：**
 
 | 項目 | 固定値 |
 |------|--------|
@@ -110,7 +79,8 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 
 状態ファイルの lock、atomic write、権限、JSON 処理は [`docs/details/statefile.md`](details/statefile.md)、秘密情報は [`docs/details/security.md`](details/security.md)、外部依存とデータ交換形式は [`docs/SPEC.md`](SPEC.md) を正本とする。
 
-## 0e. 完全実装検証マトリクス
+<a id="0e-完全実装検証マトリクス"></a>
+**owner component 別詳細本文・fixture 参照表：**
 
 | 対象 | 詳細本文 | fixture / 証跡 |
 |------|----------|----------------|
@@ -130,11 +100,13 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 
 完了判定と状態遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。
 
-## 0f. 仕様策定完了チェック
+<a id="0f-仕様策定完了チェック"></a>
+**仕様策定完了条件の参照：**
 
 仕様策定の完了条件は [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4)、[`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) を正本とする。この入口では、[詳細仕様参照表](#0b-詳細仕様参照表)、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields)、[詳細節対応表](#0i-詳細節対応表)、[完全実装検証マトリクス](#0e-完全実装検証マトリクス) の参照が揃っていることだけを確認する。
 
-## 0i. 詳細節対応表
+<a id="0i-詳細節対応表"></a>
+**機能・owner component・詳細本文対応表：**
 
 [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i 詳細節対応表](DETAIL_INDEX.md#0i-詳細節対応表) は対象機能から唯一の owner と関連詳細本文へ移動するための対応表である。`owner` 列だけが機能 owner の正本であり、collaborator の接続境界と担当処理は owner の該当詳細節を参照する。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、受け入れ assertion は [`docs/details/fixture.md`](details/fixture.md) を正本とし、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i 詳細節対応表](DETAIL_INDEX.md#0i-詳細節対応表) では再掲しない。
 
@@ -293,15 +265,3 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 | バイナリアップデート | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.5](details/setup.md#sec-26-5)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
 | アップデート rollback | `setup` | [`docs/details/setup.md` 詳細本文責務 アップデート rollback 固定契約](details/setup.md#setup-update-rollback-contract)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
 | GitHub Release 成果物生成・公開前検証・公開 | `release` | [`docs/details/release.md` 詳細本文責務 §R1](details/release.md#release-cli-contract)〜[§R7](details/release.md#release-acceptance-contract)。成果物の受け入れ側契約は[`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a)と[§26.8](details/setup.md#sec-26-8)を参照する。 |
-
-## 詳細仕様セット構成
-
-詳細仕様セットは [詳細仕様参照表](#0b-詳細仕様参照表) に列挙した owner component 詳細本文と [`docs/details/fixture.md`](details/fixture.md) で構成する。実在するファイルの一覧は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。
-
-## 0j. リポジトリ内ソース配置
-
-標準ディレクトリ構成は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、実在する文書・実装・testdata・未作成 path は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では tree、現在配置、将来 path を再掲しない。
-
-## owner component 別詳細本文責務索引
-
-[詳細仕様参照表](#0b-詳細仕様参照表) を owner component 別詳細本文責務の唯一の索引とする。
