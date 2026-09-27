@@ -43,7 +43,7 @@
 | CI / 運用 | `runner`、`commitstatus`、`archive` | [`docs/details/runner.md`](details/runner.md)、[`docs/details/commitstatus.md`](details/commitstatus.md)、[`docs/details/archive.md`](details/archive.md) |
 | 管理 | `api`、`sdk`、`ui`、`admin` | [`docs/details/api.md`](details/api.md)、[`docs/details/sdk.md`](details/sdk.md)、[`docs/details/ui.md`](details/ui.md)、[`docs/details/admin.md`](details/admin.md) |
 | 状態 / 安全 | `statefile`、`security` | [`docs/details/statefile.md`](details/statefile.md)、[`docs/details/security.md`](details/security.md) |
-| 配布 | `setup`、`release` | [`docs/details/setup.md`](details/setup.md)。`release` 専用詳細本文は未作成。 |
+| 配布 | `setup`、`release` | [`docs/details/setup.md`](details/setup.md)、[`docs/details/release.md`](details/release.md) |
 | 検証証跡 | fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) |
 | MCP | `mcp` | 専用詳細仕様未作成。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
 
@@ -58,7 +58,7 @@
 | `sdk` | [`docs/details/sdk.md`](details/sdk.md) | JavaScript SDK の公開 method と HTTP 変換を持つ。 |
 | `ui` | [`docs/details/ui.md`](details/ui.md) | 管理画面の DOM、操作、表示状態を持つ。 |
 | `setup` | [`docs/details/setup.md`](details/setup.md) | バイナリ配置、systemd、更新、Release asset 受け入れを持つ。 |
-| `release` | 専用詳細本文なし | GitHub Release 成果物の生成・公開前検証・公開の詳細本文は未作成。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
+| `release` | [`docs/details/release.md`](details/release.md) | GitHub Release成果物の生成、再現性確認、公開前検証、draft upload、正式公開を持つ。 |
 | `statefile` | [`docs/details/statefile.md`](details/statefile.md) | 状態 schema、lock、atomic write、破損処理を持つ。 |
 | `archive` | [`docs/details/archive.md`](details/archive.md) | log archive、snapshot、download、delete、rollback 実体を持つ。 |
 | `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) | GitHub Commit Status の payload と送信契約を持つ。 |
@@ -125,7 +125,7 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 | `archive` | [`docs/details/archive.md`](details/archive.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `setup` | [`docs/details/setup.md`](details/setup.md) | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](details/fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture](details/fixture.md#sec-27-f-19) |
-| `release` | 専用詳細本文未作成 | 実装検証対象外。専用詳細本文と fixture 契約の作成後に本表へ証跡入口を追加する。 |
+| `release` | [`docs/details/release.md`](details/release.md) | [`docs/details/fixture.md` fixture 証跡責務 Release fixture 固定契約](details/fixture.md#release-fixture-contract) |
 | `mcp` | 専用詳細本文未作成 | 実装検証対象外。専用詳細本文と fixture 契約の作成後に本表へ証跡入口を追加する。 |
 
 完了判定と状態遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。
@@ -292,7 +292,7 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 | 管理 API 導入 | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.3b](details/setup.md#sec-26-3b)、[§26.4.2](details/setup.md#sec-26-4-2)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
 | バイナリアップデート | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.5](details/setup.md#sec-26-5)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
 | アップデート rollback | `setup` | [`docs/details/setup.md` 詳細本文責務 アップデート rollback 固定契約](details/setup.md#setup-update-rollback-contract)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
-| GitHub Release 成果物生成・公開前検証・公開 | `release` | 専用詳細本文未作成。成果物の受け入れ側契約は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) と [§26.8](details/setup.md#sec-26-8) を参照する。 |
+| GitHub Release 成果物生成・公開前検証・公開 | `release` | [`docs/details/release.md` 詳細本文責務 §R1](details/release.md#release-cli-contract)〜[§R7](details/release.md#release-acceptance-contract)。成果物の受け入れ側契約は[`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a)と[§26.8](details/setup.md#sec-26-8)を参照する。 |
 
 ## 詳細仕様セット構成
 

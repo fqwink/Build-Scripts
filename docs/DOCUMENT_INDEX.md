@@ -52,6 +52,7 @@
 | [`docs/details/sdk.md`](details/sdk.md) | `sdk` |
 | [`docs/details/ui.md`](details/ui.md) | `ui` |
 | [`docs/details/setup.md`](details/setup.md) | `setup` |
+| [`docs/details/release.md`](details/release.md) | `release` |
 | [`docs/details/statefile.md`](details/statefile.md) | `statefile` |
 | [`docs/details/archive.md`](details/archive.md) | `archive` |
 | [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` |
@@ -70,6 +71,10 @@
 | [`components/runner_test.go`](../components/runner_test.go) | `runner` test | 実在 |
 | [`components/api.go`](../components/api.go) | `api` | 実在 |
 | [`components/api_test.go`](../components/api_test.go) | `api` test | 実在 |
+| `components/setup.go` | `setup` | 未作成 |
+| `components/setup_test.go` | `setup` test | 未作成 |
+| `components/release.go` | `release` | 未作成 |
+| `components/release_test.go` | `release` test | 未作成 |
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | `sdk` | 実在 |
 | [`admin/index.html`](../admin/index.html) | `ui` | 実在 |
 | [`testdata/builder/`](../testdata/builder/) | `builder` fixture root | 実在 |
@@ -89,6 +94,7 @@
 | `testdata/commitstatus/` | `commitstatus` fixture root | 未作成 |
 | `testdata/security/` | `security` fixture root | 未作成 |
 | `testdata/setup/` | `setup` fixture root | 未作成 |
+| `testdata/release/` | `release` fixture root | 未作成 |
 | `components/mcp.go` | `mcp` | 未作成 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を参照する。
