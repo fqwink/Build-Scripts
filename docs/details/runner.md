@@ -253,6 +253,10 @@ type RemoteBuildConfig struct {
 
 - runner CLI の parse 形式と短縮 option 禁止は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の CLI 共通固定契約に従う。
 - 同一引数が複数回指定された場合は最後の値を採用する。ただし `--once` は指定有無にかかわらず `true` として扱う。`--dry-run` は 1 回以上指定されれば `true` とする。
+- `--state-dir` が複数回指定された場合、最後の `--state-dir` 値だけを `RunnerConfig.StateDir` の候補として検証する。最後より前の `--state-dir` 値は検証、directory 作成、存在確認、状態読取、log 出力、expected 保存の対象にしてはならない。
+- `--state-dir /tmp/a --state-dir /tmp/b` は `/tmp/b` だけを採用する。`--state-dir relative --state-dir /tmp/b` は `/tmp/b` だけを検証して成功可能とし、`relative` を相対 path error にしてはならない。`--state-dir /tmp/a --state-dir relative` は最後の `relative` を検証して終了コード `2` とし、`/tmp/a` を読んではならない。
+- `--once --once` は終了コード `0` の通常 oneshot と同一扱いにし、重複 option error にしてはならない。
+- `--dry-run --dry-run` は `--dry-run` 1 回と同一扱いにし、重複 option error にしてはならない。`--dry-run` 重複時も dry-run の副作用禁止契約は変わらない。
 - `--help` と `--version` は他の引数より優先し、`.github_token` 読み込み、lock 作成、状態ファイル読み込み、GitHub API 呼び出しを行わない。
 - stdout / stderr 行末と単一エラー出力は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の CLI 共通固定契約に従う。
 - runner 固有の重複 option、`--once`、`--dry-run` の扱いは [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner) を正本とする。
@@ -1236,7 +1240,7 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 
 | fixture | runner owner 検証観点 | fixture 正本 |
 |---------|----------------------|--------------|
-| R1 | CLI 異常系、help、未知 option、state-dir validation。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R1` |
+| R1 | CLI 異常系、help、未知 option、state-dir validation、runner 固有重複 option。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R1` |
 | R2 | 変更なし skip、SHA cache 維持、log/history 非作成。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R2` |
 | R3 | 変更あり build 成功、deploy なし、log/history/state finalizer。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R3` |
 | R4 | pipeline 失敗、SHA 非更新、deploy/snapshot 非実行。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R4` |
