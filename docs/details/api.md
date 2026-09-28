@@ -139,7 +139,7 @@ listener、signal source、shutdown clock / timer は [`docs/details/fixture.md`
 | bind | 既定値は `127.0.0.1:8765`。指定可能な listen address、検証順、失敗時副作用は [`docs/details/api.md` 詳細本文責務 `api` CLI 固定契約](api.md#api-cli-contract)を正本とする。外部公開 bind、hostname、IPv6、wildcard address は拒否する。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の文字コード契約を使用する。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
-| request ID | 全 `/api/` request の受付時に `crypto/rand` で 16 bytes を生成し、32 文字 lowercase hex として扱う。全 response の `X-Request-Id`、`.api_access_log.request_id`、同一 request で作成する `.audit_log.request_id` と `.config_log.request_id` は同じ値を使用する。生成失敗時は endpoint 処理、認証、状態更新、各 request log 追記を行わず `500 {"error":"Internal server error"}` を返し、`X-Request-Id` は付与しない。server log には ERROR code `API_REQUEST_ID_GENERATION_FAILED` だけを 1 件記録し、secret、乱数値、Go error、request path、header を含めない。 |
+| <a id="api-request-id-contract"></a>request ID | 全 `/api/` request の受付時に `crypto/rand` で 16 bytes を生成し、32 文字 lowercase hex として扱う。全 response の `X-Request-Id`、`.api_access_log.request_id`、同一 request で作成する `.audit_log.request_id` と `.config_log.request_id` は同じ値を使用する。生成失敗時は endpoint 処理、認証、状態更新、各 request log 追記を行わず `500 {"error":"Internal server error"}` を返し、`X-Request-Id` は付与しない。server log には ERROR code `API_REQUEST_ID_GENERATION_FAILED` だけを 1 件記録し、secret、乱数値、Go error、request path、header を含めない。 |
 | リクエスト body 上限 | JSON body は 1 MiB を上限とする。超過時は `413 Payload Too Large` と `{"error": "Payload too large"}` を返す。 |
 | request body 禁止 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) で `Request` が `none` の endpoint に body がある場合は `400 Bad Request` と `{"error": "Request body is not allowed"}` を返す。 |
 | 成功レスポンス | 各エンドポイント例に記載した JSON オブジェクトを返す。空レスポンスは使用しない。 |
@@ -1133,7 +1133,7 @@ response schema、状態判定、`checks` の順序、不在・破損時の扱�
   "alert_rules": {"rules": []},
   "tag_rules": {"rules": []},
   "pipeline_config": {"extra_args": [], "env": {}},
-  "dashboard_layout": {"widgets": ["status", "stats", "schedule", "alerts", "disk", "rate_limit", "snapshots", "maintenance", "queue"]},
+  "dashboard_layout": {"widgets": ["status", "alerts", "stats", "schedule", "disk"]},
   "smtp_config": {"host": null, "port": 587, "user": null, "tls": true, "from": null, "to": [], "on": [], "enabled": false},
   "webhook_secret_set": false,
   "smtp_password_set": false
@@ -1548,7 +1548,7 @@ record schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](state
 { "id": "tok000001", "token": "act_...", "label": "監視用", "scopes": ["read"], "created_at": "2026-09-15T10:00:00Z", "expires_at": null }
 ```
 
-`token` はレスポンス時のみ返却し、以後は取得不可。`scopes` の有効値は `read`、`trigger`、`operate`、`config`、`admin` とする。管理 session の認証後許可範囲は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の強制変更 gate、API token の許可範囲は [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) の scope 固定表を参照する。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
+`token` はレスポンス時のみ返却し、以後は取得不可。`scopes` の有効値と API token の許可範囲は [`docs/details/security.md` 詳細本文責務 API token scope 固定契約](security.md#api-token-scope-contract)、保存する配列の型と件数は [`docs/details/statefile.md` 詳細本文責務 `.api_tokens` schema](statefile.md#api-token-schema) を参照する。管理 session の認証後許可範囲は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の強制変更 gate に従う。トークンは `Authorization: Bearer <token>` ヘッダーで送信する。
 
 **`DELETE /api/tokens/{id}` レスポンス例：**
 ```json
@@ -1822,6 +1822,7 @@ hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙
 
 ---
 
+<a id="alert-rule-api"></a>
 **カスタムアラートルール：**
 
 `GET /api/dashboard` 取得時にルールを評価し、条件を満たすものを `alerts` 配列へ自動追加する。`.alert_rules` に保存する。
@@ -1854,7 +1855,7 @@ hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙
 
 `.alert_rules` 不在時は `rules:[]` と扱う。`GET /api/dashboard` は rule 配列順で評価し、条件一致した rule だけ `alerts` へ追加する。alert object は `id`、`level`、`message`、`metric`、`value`、`threshold` を必須 key とする。評価に必要な metric が算出不能な rule は alert 化せず、WARN log `ALERT_METRIC_UNAVAILABLE` を出す。
 
-`POST /api/alert-rules` は `metric`、`operator`、`threshold`、`level`、`message` の正規化後値が既存 rule と一致する場合、`409 {"error":"Conflict"}` を返す。`DELETE` は対象 id 不在時 `404` とし、部分削除は行わない。
+`POST /api/alert-rules` の保存 object のキー、型、件数、`threshold`、`level`、`message` の許容条件は [`docs/details/statefile.md` 詳細本文責務 `.alert_rules` schema](statefile.md#alert-rule-schema) を参照する。`metric` と `operator` の意味は [`docs/details/api.md` 詳細本文責務 alert rule 固定契約](api.md#alert-rule-api) が所有する。正規化後の `metric`、`operator`、`threshold`、`level`、`message` が既存 rule と一致する場合は `409 {"error":"Conflict"}` を返す。`DELETE` は対象 id 不在時 `404` とし、部分削除は行わない。
 
 ---
 
@@ -2094,7 +2095,7 @@ queue entry schema と trigger 別 payload schema は [`docs/details/statefile.m
 ```json
 { "widgets": ["status", "alerts", "stats", "schedule", "disk"] }
 ```
-未設定時はデフォルト順（全ウィジェット）を返す。
+未設定時は [`docs/details/statefile.md` 詳細本文責務 状態ファイル固定表](statefile.md#statefile-fixed-table) の `.dashboard_layout` 初期値に定義された順序を返す。
 
 **`POST /api/dashboard-layout` リクエスト / レスポンス：**
 ```text
@@ -2107,7 +2108,7 @@ queue entry schema と trigger 別 payload schema は [`docs/details/statefile.m
 
 **dashboard layout 固定契約：**
 
-既定 widget 順は `["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]` とする。`POST /api/dashboard-layout` は `widgets` 全体置換のみ許可し、空配列、重複、未知 id は `422`。正規化後値が既存値と一致する場合は `.dashboard_layout`、`.config_log`、`.audit_log` を変更せず `{ "message":"No changes" }` を返す。
+既定 widget 順は [`docs/details/statefile.md` 詳細本文責務 状態ファイル固定表](statefile.md#statefile-fixed-table) の `.dashboard_layout` 初期値を使用する。`widgets` の型、件数、重複条件は [`docs/details/statefile.md` 詳細本文責務 `.dashboard_layout` schema](statefile.md#dashboard-layout-schema)、有効な widget id は [`docs/details/api.md` 詳細本文責務 ダッシュボードウィジェットカスタマイズ](api.md#dashboard-layout-api) を正本とする。`POST /api/dashboard-layout` は `widgets` 全体置換だけを許可し、これらの条件に違反する場合は `422` とする。正規化後値が既存値と一致する場合は `.dashboard_layout`、`.config_log`、`.audit_log` を変更せず `{ "message":"No changes" }` を返す。
 
 ---
 
@@ -2237,7 +2238,7 @@ record の key、型、必須性は [`docs/details/statefile.md` 詳細本文責
 | key | 導出仕様 |
 |-----|----------|
 | `at` | response status 確定後、`.api_access_log` 追記直前の UTC 秒精度時刻。 |
-| `request_id` | [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の 32 文字 lowercase hex。response header `X-Request-Id` と一致させる。 |
+| `request_id` | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値。response header `X-Request-Id` と一致させる。 |
 | `method` | request の HTTP method を大文字化した値。 |
 | `path` | URL decode や path 正規化で別名化せず、query を除いた request path。 |
 | `query` | route の query 契約で許可され、[`docs/details/api.md` 詳細本文責務 §22.0b](api.md#sec-22-0b) の検証に成功した明示指定 key だけを保存する。number、boolean、固定 enum、`YYYY-MM-DD` は正規化後の値を保存し、それ以外の string 値は常に `"***"` へ置換する。既定値、未指定 key、未知 key、検証失敗値、raw query string は保存しない。path / method / query 検証完了前の response は `{}` とする。 |
@@ -2956,7 +2957,7 @@ response 算出時点で `reset_at` が現在時刻以下の window は `state_s
 |----|------------------|------------------|
 | [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42) | route / method、endpoint dispatch、HTTP status、request / response body、状態ファイル read/write 呼び出し境界。 | scope 判定順、許可 endpoint group、permission denied audit、body parse 前判定、漏えい禁止値。 |
 | [`docs/details/security.md` 詳細本文責務 §27.43](security.md#sec-27-43) | token API の route、HTTP method、request validation 入口、response schema、`.api_tokens` read/write 呼び出し境界。 | token 生成、hash 保存、scope 検証、作成時 1 回だけ token 本体を返す契約、認証成功時の `last_used_at` 更新、token 漏えい禁止。 |
-| [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) | audit log API の route、query parameter、response envelope、`.audit_log` read 呼び出し境界。 | action / actor / target / result の導出、必須 audit 失敗時の `500`、secret / token / request body 保存禁止、壊れた行の扱い。record schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を参照する。 |
+| [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) | audit log API の route、query parameter、response envelope、`.audit_log` read 呼び出し境界。 | action / actor / target / result の導出、必須 audit 失敗時の `500`、secret / token / request body 保存禁止、壊れた行の扱い。record schema は [`docs/details/statefile.md` 詳細本文責務 `.audit_log` schema](statefile.md#audit-log-schema) を参照する。 |
 | [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45) | session timeout config API の route、request body、response body、`.server_config.session_timeout_seconds` read/write 呼び出し境界。 | session の作成、非 sliding の期限判定、`last_used_at` 更新、期限切れ時 `401`、既存 session への反映条件、監査順序。 |
 | [`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) | auth / TOTP API の route、request body、response body、`.totp_secret` read/write 呼び出し境界。 | TOTP secret 生成、setup 仮 secret、login ticket、code 検証、secret の一回表示、ticket 再利用禁止、TOTP 漏えい禁止、監査順序。 |
 | [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) | rate limit config API の route、request body、response body、`.server_config.api_rate_limit` と `.api_rate_state` の read/write 呼び出し境界。 | endpoint group 判定、window / count 更新、`429` 時に count を増やさない契約、actor key / IP key の同一 lock 更新、rate limit audit。 |

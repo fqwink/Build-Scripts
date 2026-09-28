@@ -2617,7 +2617,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 |------|------|
 | 設定 | `.notify_config.channels[]` |
 | channel type | `"webhook"`、`"email"`、`"command"` |
-| event | `"start"`、`"success"`、`"failure"`、`"deploy_failure"`、`"weekly_summary"`、`"approval_required"`、`"duration_anomaly"`、`"config_corrupt"` |
+| event | [`docs/details/statefile.md` 詳細本文責務 `.notify_config` schema](statefile.md#notify-config-schema) の top-level `on` 許容値。 |
 | log | `.notify_log` JSON Lines |
 | pending | `.notify_pending` JSON array。Webhook HTTP 5xx / timeout の retry entry だけを持つ。 |
 | secret | webhook secret、SMTP password、command env secret は GET response と log で必ず mask。 |

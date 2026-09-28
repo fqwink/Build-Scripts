@@ -27,6 +27,7 @@
 
 `api` および拡張後 `runner` が読み書きする状態ファイルは、[`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の状態ファイル固定表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) へパス、形式、初期値、更新責務、破損時の扱いを追記する。
 
+<a id="statefile-fixed-table"></a>
 | パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
 |------|------|--------|----------|--------------|
 | `.admin_credentials` | JSON object | `--init-credentials` で生成 | `api` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
@@ -659,12 +660,13 @@ repo config write caller は request の `owner` または `repo` のうち指�
 
 `.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致、`login_count` 範囲外もすべて credentials 破損とする。API 起動時検証、login / password change の公開応答、`must_change` 算出、認証ログ、監査ログ、漏えい禁止値は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) および [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45)〜[§27.46](security.md#sec-27-46) を参照する。statefile は破損内容、hash、salt を呼び出し元の公開値として返してはならない。
 
+<a id="audit-log-schema"></a>
 **`.audit_log` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `timestamp` | string | 必須 | ISO 8601 | 発生日時。 |
-| `request_id` | string/null | 必須 | 32 文字 lowercase hex または `null` | API request は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) で生成する識別子。API request に紐づかない `runner` 内部 event は `null`。 |
+| `request_id` | string/null | 必須 | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値、または `null` | API request は生成済み request ID、API request に紐づかない `runner` 内部 event は `null`。 |
 | `actor_type` | string | 必須 | `"admin"` / `"api_token"` / `"webhook"` / `"system"` / `"anonymous"` | 操作者種別。 |
 | `actor_id` | string/null | 必須 | `"admin"`、token id、`"webhook"`、`"system"`、または `null` | 操作者。secret 本体は保存しない。 |
 | `action` | string | 必須 | [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) | 操作種別。 |
@@ -693,6 +695,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 | `window_start` | string | 必須 | ISO 8601 | 現在窓の開始時刻。 |
 | `count` | integer | 必須 | 0 以上 | 現在窓内リクエスト数。 |
 
+<a id="api-token-schema"></a>
 **`.api_tokens` schema：**
 
 ```json
@@ -717,7 +720,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 | `tokens` | object[] | 必須 | 0〜100 件 | 発行済み API token 一覧。 |
 | `id` | string | 必須 | `tok` + 6 桁以上の数字 | token 識別子。 |
 | `label` | string | 必須 | 1〜64 文字 | 表示名。 |
-| `scopes` | string[] | 必須 | `read`, `trigger`, `operate`, `config`, `admin` の 1〜5 件 | token に許可する scope。 |
+| `scopes` | string[] | 必須 | [`docs/details/security.md` 詳細本文責務 API token scope 固定契約](security.md#api-token-scope-contract) の 1〜5 件 | token に許可する scope。 |
 | `token_hash` | string | 必須 | SHA-256 hex | token 本体は保存しない。 |
 | `created_at` | string | 必須 | ISO 8601 | 作成日時。 |
 | `last_used_at` | string/null | 必須 | ISO 8601 または `null` | 最終使用日時。 |
@@ -759,14 +762,15 @@ repo config write caller は request の `owner` または `repo` のうち指�
 
 `command_args[0]` は 1〜256 文字、`command_args[1:]` の各要素は 1〜500 文字とし、NUL、改行、CR を禁止する。`command_args[0]` は絶対 path または PATH 解決可能なコマンド名に限定する。`phase` と `command_args` が既存 enabled hook と完全一致する場合の重複時の扱いは [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を参照する。
 
+<a id="alert-rule-schema"></a>
 **`.alert_rules` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `rules` | object[] | 必須 | 0〜100 件 | dashboard alert rule。 |
 | `id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 §22.0e.2](api.md#sec-22-0e-2) の alert rule id | rule 識別子。 |
-| `metric` | string | 必須 | `success_rate_7d`, `avg_duration_seconds`, `last_build_age_hours`, `disk_usage_bytes` | 評価対象。 |
-| `operator` | string | 必須 | `lt`, `gt`, `lte`, `gte` | 比較演算子。 |
+| `metric` | string | 必須 | [`docs/details/api.md` 詳細本文責務 alert rule 固定契約](api.md#alert-rule-api) の metric | 評価対象。 |
+| `operator` | string | 必須 | [`docs/details/api.md` 詳細本文責務 alert rule 固定契約](api.md#alert-rule-api) の operator | 比較演算子。 |
 | `threshold` | number | 必須 | 0 以上 | 比較値。 |
 | `level` | string | 必須 | `info`, `warn`, `error` | alert severity。 |
 | `message` | string | 必須 | 1〜200 文字 | UI 表示文。secret を含めない。 |
@@ -798,6 +802,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 
 `inline_yaml` は UTF-8 不正、BOM、NUL、CR を拒否し、LF は保持する。YAML grammar、source 優先順位、parse、step 実行は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を参照する。
 
+<a id="dashboard-layout-schema"></a>
 **`.dashboard_layout` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
@@ -894,7 +899,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | `type` | string | 必須 | `^[a-z][a-z0-9_]{0,63}$` | [`docs/details/api.md` 詳細本文責務 §27.20](api.md#sec-27-20) の endpoint 固定名。 |
 | `action` | string | 必須 | `"create"`, `"update"`, `"delete"` | 変更種別。 |
 | `actor` | string | 必須 | `"admin"` または API token id | 操作者。token 本体は保存しない。 |
-| `request_id` | string | 必須 | 32 文字 lowercase hex | [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) で生成した同一 request の識別子。 |
+| `request_id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値 | 同一 request の識別子。 |
 | `endpoint` | string | 必須 | `{METHOD} {path_template}` | path parameter の実値と query を含めない。 |
 | `result` | string | 必須 | `"success"`, `"partial_failure"` | 主状態変更と必須後続処理の結果。主状態変更後の後続処理失敗だけ `"partial_failure"` とする。 |
 | `error` | string/null | 必須 | `null` または `^[a-z][a-z0-9_]{0,63}$` | `result="success"` では `null`。`result="partial_failure"` では caller 固有節が定める固定 error code。 |
@@ -924,7 +929,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `at` | string | 必須 | ISO 8601 | response 送信直前の日時。 |
-| `request_id` | string | 必須 | 32 文字 lowercase hex | [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) で生成する API 呼び出し識別子。 |
+| `request_id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値 | API 呼び出し識別子。 |
 | `method` | string | 必須 | HTTP method | `GET` / `POST` / `PUT` / `PATCH` / `DELETE`。 |
 | `path` | string | 必須 | `/api/...` | query を含まない path。 |
 | `query` | object | 必須 | JSON object | 許可済み query key と値。秘密値は禁止。 |

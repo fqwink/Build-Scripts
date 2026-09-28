@@ -229,6 +229,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 本機能の目的は、外部システムによる build 開始操作を `trigger` scope の API token と build 開始 endpoint だけに限定することである。
 
+<a id="api-token-scope-contract"></a>
 **scope：**
 
 | scope | 許可 |
@@ -435,7 +436,7 @@ owner component は `security` とする。collaborator component は `api`、`r
 | 項目 | 仕様 |
 |------|------|
 | `timestamp` | 操作結果が確定した UTC 時刻。 |
-| `request_id` | API event は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) で生成した 32 文字 lowercase hex。同一 API 処理中に複数 log を書く場合は同じ値を使う。`runner` 内部 event は `null`。 |
+| `request_id` | API event は [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) で生成した値を使用し、同一 API 処理中に複数 log を書く場合は同じ値を使う。`runner` 内部 event は `null`。 |
 | `actor_type` | 未認証 login は `"anonymous"`、管理 session は `"admin"`、API token は `"api_token"`、署名検証済み Webhook は `"webhook"`、内部処理は `"system"`。 |
 | `actor_id` | 管理 session は `"admin"`、API token は token id、署名検証済み Webhook は `"webhook"`、未認証は `null`、内部処理は `"system"`。 |
 | `target_id` | 対象 id がある場合は id。endpoint 拒否は `"{METHOD} {path}"`。対象なしは `null`。 |
@@ -443,7 +444,7 @@ owner component は `security` とする。collaborator component は `api`、`r
 | `remote_addr` | [`docs/details/api.md` 詳細本文責務 §27.6](api.md#sec-27-6) の `remote_addr` 導出規則に従う。API request に紐づかない内部処理は `null`。 |
 | `message` | 固定文言のみ。入力値を連結しない。最大 500 文字。 |
 
-監査 record のキー、型、必須性、許容値は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.audit_log` schema を唯一の正本とする。監査ログへ保存する object はその schema のキーだけとし、未知キー、request body、query 全体、header 全体、cookie、secret、token、password、hash、salt、TOTP secret を保存してはならない。
+監査 record のキー、型、必須性、許容値は [`docs/details/statefile.md` 詳細本文責務 `.audit_log` schema](statefile.md#audit-log-schema) を唯一の正本とする。監査ログへ保存する object はその schema のキーだけとし、未知キー、request body、query 全体、header 全体、cookie、secret、token、password、hash、salt、TOTP secret を保存してはならない。
 
 **action 生成固定値：**
 
