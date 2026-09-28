@@ -206,6 +206,7 @@ error response object は以下とする。
 
 副作用 `yes` の tool は `29.15` の elicitation を必須とする。
 
+<a id="296-tool-schema"></a>
 ## 29.6 Tool schema
 
 `tools/list` の `ToolDescriptor` は `name`、`description`、`inputSchema`、`annotations` を持つ。`annotations.readOnlyHint` は副作用 `no` の tool だけ `true`、副作用 `yes` の tool は `false` とする。`inputSchema` は JSON Schema draft 非依存の object とし、`type`、`required`、`properties`、`additionalProperties:false` だけを使用する。
@@ -229,6 +230,28 @@ error response object は以下とする。
 | `adlaire.getMetrics` | `{}` | metrics object | `.mcp_metrics` と API metrics を読む。 |
 | `adlaire.getAuditLog` | `limit`, `offset` | audit list | MCP audit tail と API audit を混在させない。 |
 | `adlaire.resendWebhook` | `delivery_id` | resend accepted | elicitation 必須。 |
+
+tool 別 params schema は以下に固定する。表にない key は `-32602 Invalid params` とし、tool 実行、audit、metrics 更新を行わない。
+
+| tool name | required | validation |
+|-----------|----------|------------|
+| `adlaire.getStatus` | なし | params は `{}`。 |
+| `adlaire.getQueue` | なし | params は `{}`。 |
+| `adlaire.triggerBuild` | `target`, `source` | `target` と `source` は 1〜128 byte UTF-8。`options` は object、省略時 `{}`。 |
+| `adlaire.cancelQueueEntry` | `queue_id` | `queue_id` は 1〜128 byte UTF-8、slash、NUL、CR、LF 禁止。 |
+| `adlaire.getHistory` | なし | `limit` は 1〜100、省略時 50。`offset` は 0 以上、省略時 0。 |
+| `adlaire.getBuildLog` | `build_id` | `build_id` は 1〜128 byte UTF-8、slash、NUL、CR、LF 禁止。 |
+| `adlaire.analyzeBuildError` | `build_id` | `build_id` は `adlaire.getBuildLog` と同じ。 |
+| `adlaire.getConfig` | なし | params は `{}`。 |
+| `adlaire.setConfig` | `path`, `value` | `path` は `.server_config` の許可 key path。`value` は JSON value。 |
+| `adlaire.getMcpConfig` | なし | params は `{}`。 |
+| `adlaire.setMcpConfig` | なし | `tool_timeout_ms`、`sampling_timeout_ms`、`scopes` の 1 key 以上。各 key は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpConfig` に従う。 |
+| `adlaire.createConfigSnapshot` | なし | `label` は string または `null`、省略時 `null`。 |
+| `adlaire.diffConfigSnapshots` | `left_id`, `right_id` | id は `cfgsnap_` prefix 必須。同一 id は `-32602`。 |
+| `adlaire.restoreConfigSnapshot` | `snapshot_id` | `snapshot_id` は `cfgsnap_` prefix 必須。 |
+| `adlaire.getMetrics` | なし | params は `{}`。 |
+| `adlaire.getAuditLog` | なし | `limit` は 1〜100、省略時 50。`offset` は 0 以上、省略時 0。 |
+| `adlaire.resendWebhook` | `delivery_id` | `delivery_id` は 1〜128 byte UTF-8、slash、NUL、CR、LF 禁止。 |
 
 `adlaire.triggerBuild` params は以下とする。
 

@@ -496,6 +496,17 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 
 SDK は上表にない追加管理 API public method を作成してはならない。query object は `undefined` / `null` の値を送信せず、空文字は API へそのまま送る。path parameter は空文字、`/`、NUL byte を SDK 側で `TypeError` とする。body 禁止 endpoint は `fetch` に `body` property を渡してはならない。
 
+追加管理 API SDK の引数検証は以下に固定する。SDK が `TypeError` を投げる場合、HTTP request を開始してはならない。
+
+| 対象 | `TypeError` 条件 | HTTP へ渡す条件 |
+|------|------------------|----------------|
+| `id` / `queueId` / `deliveryId` / `leftId` / `rightId` | string 以外、空文字、`/`、NUL、CR、LF、`.`、`..` | `encodeURIComponent` を 1 回だけ適用する。 |
+| `token` | string 以外、空文字、`/`、NUL、CR、LF | path parameter として 1 回だけ encode する。 |
+| `query` object | object 以外、array、未知 key | `undefined` / `null` の値は送信しない。 |
+| `queueIds` | array 以外、空配列、string 以外の要素、重複 | `{queue_ids: queueIds}` を body にする。 |
+| `input` object | object 以外、array、`null` | API schema の unknown key 判定は API に委譲する。 |
+| confirmation input | confirmation key が string 以外 | 値の一致判定は API に委譲する。 |
+
 path parameter は [SDK メソッド実装固定契約](#sdk-method-implementation-contract) の `path parameter` 行に従い、1 回だけ percent encode する。
 
 body 禁止 endpoint は body を送信しない。
@@ -507,5 +518,14 @@ binary response は `Blob`、text response は `string`、SSE response は `Stre
 `getStatusBadge()` は SVG response を `Blob` として返す。
 
 `streamAdminEvents()` は `StreamHandle` を返し、UI が close できるようにする。
+
+追加管理 API SDK は response media type を以下のように検証する。media type 不一致、body parse 失敗、空 body 不許可は `AdlaireCIError` とし、`status` は HTTP status、`message` は `Invalid response` とする。
+
+| method | 期待 media type | 戻り値 |
+|--------|-----------------|--------|
+| `getPrometheusMetrics()` | `text/plain` | response text。 |
+| `getStatusBadge()` | `image/svg+xml` | `Blob`。 |
+| `streamAdminEvents()` | `text/event-stream` | `StreamHandle`。 |
+| その他の追加管理 API method | `application/json` | API JSON object をそのまま返す。 |
 
 追加管理 API の SDK 完全性検証では、上表の public method が `AdlaireCI.prototype` に存在し、未定義 public method が存在しないことを確認する。

@@ -2451,6 +2451,17 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 追加管理 API 実装検証証跡には、対象機能名、owner component、API endpoint、必要 permission、SDK method、UI panel、state path、fixture 名、実行結果、未実施項目を列挙する。未実施項目が 1 件でもある場合、対象機能を実装済みへ遷移してはならない。
 
+追加管理 API fixture の expected file は以下に固定する。対象外の expected file は `manifest.json.not_applicable` に理由を記録する。
+
+| fixture 群 | 必須 expected |
+|------------|---------------|
+| `testdata/api/additional-management/` | `expected/response.json`、`expected/state/state-diff.json`、`expected/effects.json`、`expected/security.json`。 |
+| `testdata/sdk/additional-management/` | `expected/sdk-calls.json`、`expected/return.json` または `expected/error.json`、`expected/security.json`。 |
+| `testdata/ui/additional-management/` | `expected/dom.json`、`expected/sdk-calls.json`、`expected/security.json`。 |
+| `testdata/statefile/additional-management/` | `expected/state/state-diff.json`、`expected/effects.json`、`expected/security.json`。 |
+
+追加管理 API fixture は [`docs/details/api.md` 詳細本文責務 追加管理 API validation / error 優先順位固定契約](api.md#additional-management-validation-order) の順序を検証する。validation failure fixture は、後続の状態 read/write、外部通信、audit、admin event が発生しないことを `expected/effects.json.forbidden_writes` と `expected/effects.json.external_calls=[]` で示す。
+
 <a id="mcp-fixture-contract"></a>
 ## 30-F MCP fixture 固定契約
 
@@ -2470,3 +2481,18 @@ MCP fixture は [`docs/details/mcp.md`](mcp.md) 詳細本文責務を確認す�
 | `mcp-state-metrics-audit` | `testdata/mcp/state/` | `.mcp_config`、`.mcp_audit_log`、`.mcp_client_log`、`.mcp_metrics` の schema、append、破損時処理。 |
 
 MCP 実装検証証跡には、tool 名、resource URI、prompt 名、scope、confirmation、timeout、audit、metrics、client log、SSE event、未実施項目を含める。副作用 tool を確認する場合、confirmation なし実行拒否と confirmation 付き実行成功の両方を必須とする。secret、token、Authorization header、raw params の secret 値が stdout、stderr、audit、client log、metrics、expected に出現した場合は不合格とする。
+
+MCP fixture の expected file は以下に固定する。対象外の expected file は `manifest.json.not_applicable` に理由を記録する。
+
+| fixture 群 | 必須 expected |
+|------------|---------------|
+| `testdata/mcp/cli/` | `expected/stdout.txt`、`expected/stderr.txt`、`expected/effects.json`。 |
+| `testdata/mcp/jsonrpc/` | `expected/response.json`、`expected/state/state-diff.json`、`expected/effects.json`、`expected/security.json`。 |
+| `testdata/mcp/tools/` | `expected/response.json`、`expected/state/state-diff.json`、`expected/effects.json`、`expected/security.json`。 |
+| `testdata/mcp/resources/` | `expected/response.json`、`expected/events.json`、`expected/security.json`。 |
+| `testdata/mcp/prompts/` | `expected/response.json`、`expected/effects.json`、`expected/security.json`。 |
+| `testdata/mcp/sampling/` | `expected/request.json`、`expected/response.json`、`expected/state/state-diff.json`、`expected/security.json`。 |
+| `testdata/mcp/sse/` | `expected/events.json`、`expected/effects.json`。 |
+| `testdata/mcp/state/` | `expected/state/state-diff.json`、`expected/effects.json`、`expected/security.json`。 |
+
+MCP fixture は [`docs/details/mcp.md` 詳細本文責務 tool 別 params schema](mcp.md#296-tool-schema) の未知 key、必須 key 不足、型不一致、範囲外を個別に検証する。params validation failure では `.mcp_audit_log`、`.mcp_metrics`、対象 owner state を更新しないことを固定する。

@@ -853,6 +853,27 @@ API endpoint group と必要 permission は以下に固定する。ここにな�
 
 `*` 以外の permission は暗黙に他 permission を含めない。
 
+追加管理 API の認証・認可判定は以下の順に固定する。route、request、response、HTTP status の一覧は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) を参照する。
+
+| 順序 | 判定 | 失敗時 |
+|------|------|--------|
+| 1 | `/api/version` と `/api/openapi.json` は認証判定を行わない。 | security 副作用なし。 |
+| 2 | `/api/share/{token}/status` は share token を検証する。 | token 不正は `401`、不在または revoke 済みは `404`、期限切れは `410`。session を作成しない。 |
+| 3 | その他の追加管理 API は session または API token を検証する。 | 不在、不正、期限切れは `401`。対象状態は読まない。 |
+| 4 | user status を確認する。 | `disabled` または `locked` は `401`。対象状態は読まない。 |
+| 5 | permission を判定する。 | 不足は `403`。対象状態は読まず、permission denied audit だけを許可する。 |
+| 6 | endpoint 固有の user / role / share link 制約を確認する。 | 最後の admin 保護、system role 変更、role 使用中、self lock は `409`。 |
+
+初期 system role は以下に固定する。
+
+| role id | name | permissions | system |
+|---------|------|-------------|--------|
+| `admin` | `Administrator` | `*` | `true` |
+| `operator` | `Operator` | `status:read`, `build:write`, `config:read` | `true` |
+| `viewer` | `Viewer` | `status:read` | `true` |
+
+system role は削除禁止、`id` 変更禁止、`system:false` への変更禁止とする。system role の `name` と `permissions` を変更する request は `409` とし、状態を変更しない。
+
 role 削除時、対象 role を持つ active user が 1 件でも存在する場合は `409` とする。
 
 <a id="sec-27-61"></a>
@@ -872,6 +893,8 @@ disabled user の session は次 request で `401` とする。
 
 locked user の password login は `401` とし、API token と外部認証も拒否する。
 
+user 更新時の最後の admin 保護は、変更適用後に `*` permission を持つ active user が 1 件以上残ることを条件とする。自分自身の `role_ids` 変更、`status` 変更、password 削除、external subject 削除がこの条件を満たさない場合は `409` とし、session、user、role、audit、admin event を変更しない。
+
 <a id="sec-27-67"></a>
 ## 27.67 読み取り専用共有リンク
 
@@ -888,3 +911,5 @@ share link は read-only であり、build trigger、config update、queue 操�
 期限切れは `410`、revoke 済みは `404` とする。
 
 share link request は通常 session を作成しない。
+
+share link 作成時の `expires_at` は `null` または現在時刻より後の UTC ISO 8601 秒精度とする。過去時刻、現在時刻と同一秒、local timezone、offset 付き時刻は `422` とする。revoke は `revoked_at` が `null` の record だけを対象とし、revoke 済み record への再 revoke は `404` とする。

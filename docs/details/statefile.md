@@ -1514,6 +1514,21 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `.mcp_client_log` | JSON Lines `McpClientRecord` |
 | `.mcp_metrics` | `McpMetrics` |
 
+<a id="additional-management-statefile-common-contract"></a>
+**追加管理 API / MCP 状態共通固定契約：**
+
+[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の状態 file は、[`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の atomic write、lock、権限、破損時処理に従う。本節は追加管理 API と MCP が追加で使用する record key、ID、hash、JSON Lines record を固定する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| random id | `usr_`、`tmpl_`、`share_` は 128 bit 以上の乱数を Crockford Base32 26 文字で表す。alphabet は `0123456789ABCDEFGHJKMNPQRSTVWXYZ` 固定。生成済み id と衝突した場合は 10 回まで再生成し、すべて衝突した場合は caller へ state conflict を返し、write しない。 |
+| timestamp id | `cfgsnap_` と `evt_` は UTC `YYYYMMDDHHMMSS` を使い、同一秒衝突時は `-001` から `-999` を順に付ける。`-999` まで使用済みなら caller へ state conflict を返し、既存 record を上書きしない。 |
+| canonical JSON hash | hash 算出用 JSON は UTF-8、object key は UTF-8 byte 昇順、array は保存順、空白なし、HTML escape なし、整数は decimal、boolean/null は lowercase とする。状態保存そのものの pretty print 有無は hash 入力へ影響させない。 |
+| secret mask | snapshot、diff、template、event、audit、cache body に secret 値を保存する場合は値を `"***"` に置換する。secret の種類と漏えい禁止は [`docs/details/security.md`](security.md) 詳細本文責務を参照する。 |
+| read validation | required key 不足、未知 key、型不一致、nullable 不一致、enum 不一致、id 重複、参照先 id 不在、JSON Lines の壊れた行は破損として扱う。壊れた値を削除して継続保存してはならない。 |
+| write validation | caller は write 前に対象 record 全体を schema validation する。部分 object だけの保存、未知 key 維持、既存破損 file への追記は禁止する。 |
+| JSON Lines append | `.admin_events`、`.mcp_audit_log`、`.mcp_client_log` は 1 record 1 行、末尾 LF 必須、途中改行禁止とする。append 失敗時は部分行を残さない。 |
+
 **UserRecord：**
 
 | key | 型 | 必須 | 仕様 |
@@ -1648,10 +1663,23 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 
 **McpAuditRecord / McpClientRecord / McpMetrics：**
 
-| record | 必須 key |
-|--------|----------|
-| `McpAuditRecord` | `id`, `timestamp`, `client_name`, `tool`, `params_hash`, `scope`, `confirmation_id`, `status`, `duration_ms` |
-| `McpClientRecord` | `id`, `connected_at`, `client_name`, `client_version`, `remote_addr`, `capabilities` |
-| `McpMetrics` | `tools` |
+| record | key | 型 | 必須 | 仕様 |
+|--------|-----|----|------|------|
+| `McpAuditRecord` | `id` | string | yes | `mcpaud_` + UTC `YYYYMMDDHHMMSS` + 衝突 suffix。 |
+| `McpAuditRecord` | `timestamp` | string | yes | UTC ISO 8601 秒精度。 |
+| `McpAuditRecord` | `client_name` | string | yes | initialize 済み client name。 |
+| `McpAuditRecord` | `tool` | string | yes | MCP tool name。 |
+| `McpAuditRecord` | `params_hash` | string | yes | canonical JSON params の SHA-256 lowercase hex。raw params は保存しない。 |
+| `McpAuditRecord` | `scope` | string | yes | 判定に使用した MCP scope。 |
+| `McpAuditRecord` | `confirmation_id` | string/null | yes | 副作用 tool の confirmation id。read-only tool は `null`。 |
+| `McpAuditRecord` | `status` | string | yes | `success`、`error`、`timeout`、`forbidden`、`confirmation_required` のいずれか。 |
+| `McpAuditRecord` | `duration_ms` | integer | yes | 0 以上。 |
+| `McpClientRecord` | `id` | string | yes | `mcpcli_` + UTC `YYYYMMDDHHMMSS` + 衝突 suffix。 |
+| `McpClientRecord` | `connected_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `McpClientRecord` | `client_name` | string | yes | 1〜128 Unicode scalar values。 |
+| `McpClientRecord` | `client_version` | string/null | yes | 1〜64 Unicode scalar values または `null`。 |
+| `McpClientRecord` | `remote_addr` | string | yes | loopback address と port。 |
+| `McpClientRecord` | `capabilities` | object | yes | initialize params の capabilities を secret 除去後に保存する。 |
+| `McpMetrics` | `tools` | object | yes | tool name を key とする metrics object。 |
 
-`McpMetrics.tools` は tool name を key とし、value は `success_count`、`error_count`、`timeout_count`、`last_duration_ms`、`last_at` を持つ object とする。
+`McpMetrics.tools` の value は `success_count`、`error_count`、`timeout_count`、`forbidden_count`、`last_duration_ms`、`last_at` を持つ object とする。counter は 0 以上の integer、`last_duration_ms` は 0 以上の integer、`last_at` は UTC ISO 8601 秒精度または `null` とする。

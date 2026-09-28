@@ -3004,6 +3004,45 @@ response 算出時点で `reset_at` が現在時刻以下の window は `state_s
 
 追加管理 API の request body は JSON object だけを許可し、array、scalar、`null`、空 body が許可されていない endpoint は `400` とする。body 禁止 endpoint は `Content-Length` が 0 または body 未送信だけを許可し、body がある場合は endpoint 固有状態を読まず `400` とする。未知 key、型不一致、範囲外、列挙値不一致、path parameter 不正、query parameter 不正は `422` とし、状態を変更しない。
 
+<a id="additional-management-validation-order"></a>
+**追加管理 API validation / error 優先順位固定契約：**
+
+追加管理 API の handler は、以下の順に最初の失敗 1 件だけを返す。同一 request 内に複数の失敗条件がある場合でも、後続判定、状態 read、状態 write、外部通信、監査追記を開始してはならない。
+
+| 順序 | 判定 | 失敗 status | 副作用 |
+|------|------|-------------|--------|
+| 1 | route と HTTP method を確定する。 | `404` または `405` | request body を読まない。 |
+| 2 | body 禁止 endpoint の body 有無、body 必須 endpoint の `Content-Type: application/json`、body size 上限 1 MiB を確認する。 | `400` | endpoint 固有状態を読まない。 |
+| 3 | path parameter を検証する。 | `422` | endpoint 固有状態を読まない。 |
+| 4 | query parameter の key、重複、型、範囲を検証する。 | `422` | endpoint 固有状態を読まない。 |
+| 5 | JSON body を parse し、object / required key / unknown key / 型 / 値域を検証する。 | parse と object 不一致は `400`、schema 不一致は `422` | endpoint 固有状態を読まない。 |
+| 6 | 認証、session、API token、share token、permission を判定する。 | [`docs/details/security.md` 詳細本文責務 §27.58](security.md#sec-27-58) と [§27.67](security.md#sec-27-67) に従う。 | permission 不足では対象状態を読まず、security owner が定義する監査だけを許可する。 |
+| 7 | endpoint 固有状態を read し、存在確認、競合確認、業務 validation を行う。 | `404`、`409`、`422`、`500` | write は開始しない。 |
+| 8 | [追加管理 API 状態更新順固定契約](#additional-management-state-order) に従って write する。 | write 失敗は `500` | 成功済み write の巻き戻しは同表に明示した場合だけ許可する。 |
+
+追加管理 API の error body は `{"error": string}` を必須とし、validation 詳細を返す場合だけ `details` object を追加できる。`details` の key は request field 名、path parameter 名、または query parameter 名だけを許可し、secret、token、raw request body、Authorization header を含めてはならない。
+
+<a id="additional-management-parameter-contract"></a>
+**追加管理 API path / query 固定契約：**
+
+| 対象 | 許可 key / 形式 | 既定値 | 固定条件 |
+|------|----------------|--------|----------|
+| `limit` | integer 1〜100 | endpoint が paging を持つ場合 `50` | `0`、負数、小数、指数表記、前後空白は `422`。 |
+| `offset` | integer 0 以上 | `0` | 小数、指数表記、前後空白は `422`。 |
+| `status` query | endpoint ごとの状態 enum | なし | 未指定時は全状態を対象にする。空文字は `422`。 |
+| `role_id` query | `RoleRecord.id` | なし | 存在しない role は空結果を返す。validation failure ではない。 |
+| `type` query | `user`、`config`、`build`、`system`、`security`、`notification` | なし | 未指定時は全 type。空文字は `422`。 |
+| `after` query | UTC ISO 8601 秒精度 | なし | `after` より後の event だけを返す。同時刻は含めない。 |
+| `from` / `to` query | UTC ISO 8601 秒精度 | なし | 両方必須。`from > to` は `422`。 |
+| `granularity` query | `build`、`day`、`month` | `build` | `day` と `month` は UTC 境界で集計する。 |
+| `target` / `branch` query | 1〜128 byte UTF-8、NUL/CR/LF 禁止 | なし | 未指定時は全 target / branch。 |
+| `{id}` | 対象 record id | なし | slash、percent-decoded slash、NUL、空文字、`.`、`..` は `422`。存在しない schema-valid id は `404`。 |
+| `{queue_id}` | queue entry id | なし | running entry は `409`、存在しない schema-valid id は `404`。 |
+| `{delivery_id}` | notify delivery id | なし | 再送中は `409`、存在しない schema-valid id は `404`。 |
+| `{token}` | URL-safe Base64 token | なし | decode 不能は `401`。decode 後 32 byte 未満は `401`。期限切れは `410`。 |
+
+list response の配列順は、状態 file または JSON Lines の保存順を基準とする。ただし event 系は `timestamp` 降順、config snapshot は `created_at` 降順、cache entry は `created_at` 降順とする。同一 timestamp の順序は id の ASCII 昇順に固定する。
+
 <a id="additional-management-state-order"></a>
 **追加管理 API 状態更新順固定契約：**
 

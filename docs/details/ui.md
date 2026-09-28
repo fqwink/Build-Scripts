@@ -537,6 +537,19 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 
 上表の panel id と control id は `admin/index.html` 内で一意とする。未実装の追加管理 UI を作る場合でも、表にない id を使って既存機能を代替してはならない。UI は API response に存在しない件数、status、permission、diff、token 値を合成しない。
 
+追加管理 API UI の共通状態遷移は以下に固定する。
+
+| 条件 | UI 動作 | 禁止事項 |
+|------|---------|----------|
+| SDK 呼び出し開始 | 対象 panel の submit control を disabled にし、同一操作の二重送信を防ぐ。 | 別 panel 全体を無効化しない。 |
+| `200` / `201` / `202` success | 対象行または summary を API response で更新し、[追加管理 API UI DOM / 操作固定表](#sec-24-8) の再取得順を実行する。 | UI 側で成功 status、件数、token、diff を推測しない。 |
+| `401` | 全 secret field、share token 表示、stream handle、pending confirmation を破棄し、login panel へ遷移する。 | 失敗した request を自動再送しない。 |
+| `403` | 対象 panel の summary に permission error を表示し、入力値は保持する。 | role / permission を UI 側で推測して非表示にしない。 |
+| `409` | 対象 panel の summary に conflict を表示し、該当一覧を再取得する。 | 競合解決を UI 側で自動適用しない。 |
+| `422` with `details` | `details` key と同じ `name` または `data-field` の control へ field error を表示し、最初の field error へ focus する。 | API に存在しない field error を合成しない。 |
+| network error | 対象 panel の summary に connection failure を表示し、入力値を保持する。 | 成功扱い、楽観更新、local retry queue 作成を行わない。 |
+| stream close | stream state を stopped にし、secret field を保持しない。 | close 済み `StreamHandle` を再利用しない。 |
+
 confirmation を必要とする操作では、UI は固定文言を表示し、ユーザー操作で明示された場合だけ confirmation value を SDK method へ渡す。
 
 secret、token、share token、external auth secret、webhook secret は一覧、履歴、error、event feed に表示してはならない。
