@@ -1822,6 +1822,34 @@ Admin CLI fixture の `expected/request.json` は root object とし、root key 
 
 `success-admin-cli-transport` の `forbidden_requests` は、`trigger-build` に対する `POST /api/builds`、redirect 追従、retry、proxy、Cookie 送信を必ず含める。`security-admin-cli-secret-redaction` の `expected/request.json` は同じ schema を使用し、token、Authorization header 実値、URL query 内 secret、redirect `Location` 内 secret、server raw body 内 secret、Go error 内 secret、absolute path 内 secret を `requests`、`forbidden_requests`、`headers`、`body`、`reason` に平文または派生値として含めてはならない。
 
+Admin CLI fixture は CLI 実行入力を `input/cli.json` に固定し、HTTP 応答 fake を使用する fixture は `input/fakes.json` の `fetch` root を使用する。Admin CLI fixture で `input/request.json` を作成してはならない。`partial-admin-cli-lifecycle` のうち API 呼び出しへ到達しない case は HTTP fake を使用せず、`input/fakes.json` を置く場合でも `fetch=[]` とする。`success-admin-cli-transport`、`failure-admin-cli-output-errors`、`security-admin-cli-secret-redaction` のうち API 呼び出しへ到達する case は、実 request 1 件につき `input/fakes.json.fetch[]` 1 件と `expected/effects.json.external_calls[]` 1 件を同じ順序で持つ。
+
+Admin CLI 用 `input/fakes.json.fetch[]` は次表の固定契約に従う。未知 key、実 network、実 proxy、実 cookie jar、実 redirect、実 retry、環境変数由来 proxy を禁止する。
+
+| 対象 | key | 型 | 固定契約 |
+|------|-----|----|----------|
+| `fetch[]` | `operation` | string | `request` 固定。 |
+| `fetch[]` | `target` | string | `admin_cli_api` 固定。 |
+| `fetch[].input` | `method` | string | Admin CLI が実送信する uppercase method。 |
+| `fetch[].input` | `path` | string | 正規化後の `--api-url` path prefix と command 固定 path を byte 連結した path。query、fragment、scheme、host を含めない。 |
+| `fetch[].input` | `headers` | object | CLI が明示的に送る header。`Authorization` は `${secret:admin_cli_token}`、`Accept`、`User-Agent`、body あり command の `Content-Type` だけを許可する。 |
+| `fetch[].input` | `body` | string または null | 送信 body。body なしは null。byte 表現は [`docs/details/admin.md` 詳細本文責務 §A7](admin.md#sec-a7) の request body 契約と完全一致させる。 |
+| `fetch[].input` | `timeout_milliseconds` | integer | `30000` 固定。 |
+| `fetch[].input` | `redirect_policy` | string | `manual` 固定。 |
+| `fetch[].input` | `retry_count` | integer | `0` 固定。 |
+| `fetch[].input` | `proxy_used` | boolean | false 固定。 |
+| `fetch[].input` | `cookies_sent` | integer | `0` 固定。 |
+| `fetch[].output` | `status` | integer または null | HTTP response を受け取った場合は `100`〜`599`。network error、TLS error、timeout、connection close before response は null。 |
+| `fetch[].output` | `headers` | object | response header。header なしまたは response 確定前失敗は空 object。key は lowercase ASCII、値は受信順に `, ` で連結した string。 |
+| `fetch[].output` | `body` | string または null | 1 MiB 以下で body read 成功時だけ raw body byte を UTF-8 string として置く。1 MiB 超過、body read timeout、connection close、response 確定前失敗は null。 |
+| `fetch[].output` | `body_size_bytes` | integer | 実際に受信または fake が提示する body byte 数。body なしは 0。 |
+| `fetch[].output` | `body_sha256` | string または null | `body` が null で `body_size_bytes>0` の場合だけ 64 文字 lowercase hex。通常 body を `body` に置く場合は null。 |
+| `fetch[].output` | `body_read_result` | string | `success`、`over_limit`、`timeout`、`connection_closed`、`not_started` のいずれか。 |
+
+Admin CLI 用 `fetch[]` の `result="success"` は HTTP response を受け取ったことだけを意味し、HTTP status `300`〜`599`、redirect response、invalid JSON、invalid Content-Type、1 MiB 超過 response も `result="success"` とする。1 MiB 超過 response は `error_code=null`、`output.body=null`、`output.body_read_result="over_limit"` とし、期待 stderr は `api error: invalid response` + LF に固定する。network error、TLS error、timeout、connection close before response、response body read timeout、response body read 中の connection close は `result="failure"` または `result="timeout"`、`output.body=null`、`error_code="connection_failed"` とし、期待 stderr は `api error: connection failed` + LF に固定する。
+
+Admin CLI の `expected/effects.json.external_calls[]` は outbound HTTP 証跡として次を固定する。各要素は `operation="call"`、`target="admin_cli_api"`、`input` は対応する `fetch[].input` と同一 key / 同一値、`output` は `status`、`body_size_bytes`、`body_sha256`、`body_read_result` の 4 key、`result` と `error_code` は対応する `fetch[]` と同一値にする。response body 本文と secret を `expected/effects.json` に保存してはならない。`expected/request.json.requests[]`、`input/fakes.json.fetch[]`、`expected/effects.json.external_calls[]` は、実 request 件数、順序、method、path、header、body、redirect、retry、proxy、cookie が一致しなければならない。
+
 Admin CLI fixture の stdout / response 検証は [`docs/details/admin.md` 詳細本文責務 §A7](admin.md#sec-a7) の human stdout 写像契約に従う。`success-admin-cli-transport` は HTTP transport の成功に加えて、代表 success response から `expected/stdout.txt` を byte 単位で生成できることを固定する。`failure-admin-cli-output-errors` は HTTP status が `2xx` であっても、command ごとの stdout 写像に必要な key、型、許容値が不足または不一致の response を invalid response として扱う case を持つ。
 
 | command | success stdout の source | invalid response 必須 case |
@@ -1867,6 +1895,23 @@ Admin CLI fixture の stdout / response 検証は [`docs/details/admin.md` 詳�
 | `no-arg-command-extra` | `status`、`queue`、`history`、`trigger-build`、`events` のいずれかに追加 token がある。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
 
 `success-admin-cli-transport` は各 command について method、path、request body、header を `expected/request.json` に固定する。`Authorization` は placeholder `${secret:admin_cli_token}` だけを許可し、token 実値、token hash、部分文字列、長さから復元できる値を expected に置いてはならない。`config-snapshot` の JSON body、`cancel-queue` の 1 回だけの percent encode、`User-Agent`、`Accept`、`Content-Type`、redirect 不追従、retry 0 回、proxy 0 回、Cookie 0 件を検証する。
+
+`success-admin-cli-transport` の必須 case は次表に固定する。各 case は `input/cli.json`、`input/fakes.json.fetch[]`、`expected/request.json.requests[]`、`expected/effects.json.external_calls[]`、`expected/stdout.txt`、`expected/stderr.txt` を byte 単位で照合する。
+
+| case | 入力条件 | 必須検証 |
+|------|----------|----------|
+| `status-default-origin` | `--api-url http://127.0.0.1:8765 status`。 | `GET /api/status`、body null、`Authorization` / `Accept` / `User-Agent` だけ、stdout `status=<last_build_status> running=<running>`、stderr 空。 |
+| `status-path-prefix` | `--api-url http://127.0.0.1:8765/adlaire/ status`。 | request path は `/adlaire/api/status`。末尾 `/` を 1 個だけ除去し、`/api` 重複除去、path clean、percent decode をしない。 |
+| `queue-active-null` | `queue` が `active:null` と `queued` array を返す。 | `GET /api/queue`、stdout は `active=none queued=<array-length>`。 |
+| `history-empty` | `history` が `total` integer と空 `history` array を返す。 | `GET /api/history`、stdout は `total=<total> latest=none`。 |
+| `trigger-build-endpoint` | `trigger-build`。 | `POST /api/build`、body `{}`、`Content-Type: application/json`、stdout `queued=<queue_id>`、`forbidden_requests` に `POST /api/builds` を含める。 |
+| `cancel-queue-percent-encode` | `cancel-queue` の `<queue_id>` に percent encode が必要な文字を含める。 | `DELETE /api/queue/{queue_id}` の path parameter を 1 回だけ encode する。slash 生成、2 重 encode、query 化を禁止する。 |
+| `config-snapshot-null-body` | `config-snapshot` label 未指定。 | `POST /api/config-snapshots`、body `{"label":null}`、末尾 LF なし、stdout `snapshot=<id>`。 |
+| `config-snapshot-label-body` | `config-snapshot` label 指定。 | body は `{"label":"<label>"}`。JSON string escape、UTF-8、余分な空白なしを固定する。 |
+| `events-total` | `events` が `total` integer と `events` array を返す。 | `GET /api/events`、stdout は `events=<total>`。`events` array length を stdout に使用しない。 |
+| `json-mode-wire-body` | `--json status`。 | response shape 合格後、API wire body の前後 ASCII whitespace だけを除去し、key order と number / string 表現を保持して LF 1 個を追加する。 |
+
+`success-admin-cli-transport` の全 case は `expected/request.json.forbidden_requests` に redirect 追従、retry、proxy、Cookie 送信を含める。redirect 先 request、2 回目以降の同一 request、proxy 経由 request、Cookie 付き request が `input/fakes.json.fetch[]` または `expected/effects.json.external_calls[]` に 1 件でも存在する場合は不合格とする。
 
 `failure-admin-cli-output-errors` は success body と failure body を混在させない。invalid JSON、複数 JSON value、body 空、Content-Type 不一致、複数 Content-Type、1 MiB 超過、HTTP `300`〜`599`、network error、TLS error、timeout、connection close before response を別 case とし、stdout 空、stderr 固定 1 行、終了 code `1` を byte 単位で検証する。`--json` success case では API wire body の key order と number / string 表現を保持し、末尾 LF 1 個だけを追加することを確認する。
 
