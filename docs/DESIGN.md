@@ -2,7 +2,7 @@
 
 **対象 surface：** `adlaire-ci-build` が生成する静的 Web サイトと [`admin/index.html`](../admin/index.html) の標準管理 UI
 **実装 artifact：** 生成静的 Web サイトは [`components/builder.go`](../components/builder.go)、標準管理 UI は [`admin/index.html`](../admin/index.html)
-**デザインシステム：** [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)
+**デザインシステム正本 revision：** [Adlaire Design System `3c51349791883b8b7dd599a569b63c11779dfa88`](https://github.com/fqwink/Adlaire-Design-System/tree/3c51349791883b8b7dd599a569b63c11779dfa88)
 **更新履歴：** 日付本文を正本化しない。デザイン変更の時系列は Git 履歴と Pull Request を正とする。
 
 ---
@@ -21,7 +21,7 @@
 [`docs/DESIGN.md` デザイン責務 §1](DESIGN.md#1-デザイン方針)〜[§8](DESIGN.md#8-生成側参照) は生成静的 Web サイトへ適用する。docs.rs / MDN に倣った技術ドキュメントレイアウトとし、14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
 
 - ヘッダーのみアクセントカラーを使う。コンテンツ・サイドバーは中性色ベース
-- CSS カスタムプロパティは [Adlaire Design System](https://github.com/fqwink/Adlaire-Design-System)（`Tokens/`）定義の `--adlaire-*` トークンのみ使用
+- CSS カスタムプロパティは [Adlaire Design System revision `3c51349791883b8b7dd599a569b63c11779dfa88` の `Tokens/`](https://github.com/fqwink/Adlaire-Design-System/tree/3c51349791883b8b7dd599a569b63c11779dfa88/Tokens) 定義の `--adlaire-*` トークンのみ使用
 - **ライトモード固定**（`prefers-color-scheme` 非対応、ダークモードなし）
 - 外部フォント不使用。システムフォントスタックで日本語環境の可読性を確保
 
@@ -52,7 +52,7 @@
 | トークン | 値 |
 |---|---|
 | `--adlaire-font-family-base` | `"Helvetica Neue", Helvetica, Arial, sans-serif` |
-| `--adlaire-font-family-mono` | `"JetBrains Mono", "Courier New", Courier, monospace` |
+| `--adlaire-font-family-mono` | `"Courier New", Courier, monospace` |
 
 <a id="見出し階層"></a>
 

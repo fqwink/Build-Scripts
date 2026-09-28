@@ -46,7 +46,7 @@
 | `.build_logs/{build_id}_hook_{hook_id}.json` | JSON object | hook 実行ごとに新規作成 | `runner` | 個別破損 file は hook log 一覧から除外して固定 ERROR code を記録し、自動修復または上書きしない。 |
 | `.build_lock` | text | 不在 | `runner` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は `readBuildLock()` が stale として返し、read-only caller は削除しない。runner owner の build / rollback / snapshot delete 排他 coordinator だけが開始前再読取で同じ stale 判定を確認後に削除できる。PID が存在する場合は実行中 conflict、形式不正または PID 判定不能は上書きせず conflict failure とする。 |
 | `.last_sha` / `BranchTarget.SHAFile` | JSON object | `{"sha":""}` | `runner` | JSON 破損、object 以外、`sha` key 不在、`sha` 型不一致は当該 target の decode failure とし、成功時まで更新しない。 |
-| `.sha_cache/{branch_safe}/{target_hash}.sha` | UTF-8 text | 不在 | `runner` | 40 または 64 文字 lowercase hex と末尾 LF 以外は cache miss として WARN を記録し、build 成功時だけ置換する。 |
+| `.sha_cache/{branch_safe}/{target_hash}.sha` | UTF-8 text | 不在 | `runner` | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) の値と末尾 LF 以外は cache miss として WARN を記録し、build 成功時だけ置換する。 |
 | `.branch_config` | JSON object | 不在 | `runner` / `api` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、再生成せず `BRANCH_TARGETS` デフォルトへフォールバックする。 |
 | `.build_state` | JSON object | `{"running":false,"current_build_id":null,"active_queue_entry":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `runner` / `api` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.build_status.json` | JSON object | `{"schema_version":1,"updated_at":null,"status":"none","running":false,"current_build_id":null,"last_build_id":null,"last_trigger":null,"last_target_status":null,"last_branch":null,"last_target_file":null,"last_blob_sha":null,"last_commit_sha":null,"last_started_at":null,"last_finished_at":null,"last_duration_seconds":null,"last_error":null,"last_deploy_at":null,"last_deploy_status":null,"pending_transfers_count":0,"notify_pending_count":0,"circuit_open":false,"circuit_consecutive_failures":0,"output_sha256":null,"size_warn":false}` | `runner` | `.build_status.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
@@ -498,9 +498,9 @@ array は投入順を保持する。転送先識別子は `branch`、`target_id`
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
-| `sha` | string | 必須 | 空文字または Git blob SHA | 空文字は初回実行扱い。 |
+| `sha` | string | 必須 | 空文字または [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値 | 空文字は初回実行扱い。 |
 
-SHA cache は target ごとの処理済み Git blob SHA を保存する JSON object とする。JSON object 以外の保存形式は破損として扱う。
+この JSON object は target ごとの処理済み target SHA / digest を保存する。JSON object 以外の保存形式と、対象種別に対応しない長さの非空値は破損として扱う。
 
 | 状態 | 読込時の扱い | 保存時の扱い |
 |------|--------------|--------------|
@@ -517,7 +517,7 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 <a id="sha-cache-text-contract"></a>
 **`.sha_cache/{branch_safe}/{target_hash}.sha` schema：**
 
-file 内容は Git object SHA の lowercase hexadecimal 40 文字または 64 文字と、末尾 LF 1 個だけとする。先頭空白、末尾空白、CRLF、複数行、大文字 hex、`0x` prefix、末尾 LF なしは不正とする。不在または不正値は cache miss とし、不正な既存 file を読取時に自動更新しない。path の `branch_safe` / `target_hash` 導出、比較、成功時更新、skip / failure 時の更新禁止は [`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21) を参照する。
+file 内容は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値と、末尾 LF 1 個だけとする。先頭空白、末尾空白、CRLF、複数行、大文字 hex、`0x` prefix、末尾 LF なしは不正とする。不在または不正値は cache miss とし、不正な既存 file を読取時に自動更新しない。path の `branch_safe` / `target_hash` 導出、比較、成功時更新、skip / failure 時の更新禁止は [`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21) を参照する。
 
 **`.local_watch_state.json` schema：**
 
@@ -969,7 +969,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | `id` | string | 必須 | base は `appr{YYYYMMDDHHmmss}`。衝突処理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の時刻ベース ID 契約に従う。 |
 | `status` | string | 必須 | `"pending"`、`"approved"`、`"rejected"`、`"expired"`。 |
 | `branch` | string | 必須 | branch target 名。 |
-| `sha` | string | 必須 | 40 文字 lowercase hex。 |
+| `sha` | string | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値。 |
 | `target` | string | 必須 | branch target id または target file。 |
 | `requested_trigger` | string | 必須 | [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の Approval 許容値。 |
 | `requested_force` | boolean | 必須 | SHA 一致時も build を実行する要求なら `true`。`force_interval` と手動 force は `true`、その他は `false`。 |
@@ -1114,7 +1114,7 @@ runner 結果値は保存先ごとに意味を分離する。`.build_logs/{id}.j
 | `finished_at` | string | 必須 | UTC ISO 8601 | build 完了または event 確定日時。API の `build_at` はこの値から算出する。 |
 | `duration_seconds` | integer/null | 必須 | 0 以上または `null` | build 未実行 event は `null`。 |
 | `commit_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | 対象 commit SHA。 |
-| `blob_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | 対象 blob SHA。API の `sha` は `commit_sha`、`blob_sha` の順で算出する。 |
+| `blob_sha` | string/null | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値または `null` | 対象 target SHA / digest。API の `sha` は `commit_sha`、`blob_sha` の順で算出する。 |
 | `pages` | integer/null | 必須 | 0 以上または `null` | report 不在は `null`。 |
 | `warnings` | integer | 必須 | 0 以上 | warning 件数。 |
 | `retry_count` | integer | 必須 | 0 以上 | 初回以後の追加 retry 回数。 |
@@ -1152,8 +1152,8 @@ build log を伴わない history record は次の値を固定する。表にな
 | `started_at` | string | 必須 | UTC ISO 8601 | 開始日時。 |
 | `finished_at` | string/null | 必須 | UTC ISO 8601 または `null` | 完了前は `null`。 |
 | `duration_seconds` | integer/null | 必須 | 0 以上または `null` | 完了前は `null`。 |
-| `blob_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | 対象 blob SHA。 |
-| `previous_blob_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | 初回または取得不能は `null`。 |
+| `blob_sha` | string/null | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値または `null` | 対象 target SHA / digest。 |
+| `previous_blob_sha` | string/null | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値または `null` | 初回または取得不能は `null`。 |
 | `commit_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | commit SHA。 |
 | `commit_message` | string/null | 必須 | 1000 文字以内または `null` | commit message。 |
 | `commit_author` | string/null | 必須 | 255 文字以内または `null` | commit author。 |
@@ -1295,8 +1295,8 @@ ChangedTarget object:
 | キー | 型 | 必須 | 説明 |
 |------|----|------|------|
 | `target_file` | string | 必須 | 正規化済み相対 path。 |
-| `before_sha` | string/null | 必須 | 変更前 SHA。不明は `null`。 |
-| `after_sha` | string/null | 必須 | 変更後 SHA。missing / error は `null`。 |
+| `before_sha` | string/null | 必須 | 変更前の [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値。不明は `null`。 |
+| `after_sha` | string/null | 必須 | 変更後の [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値。missing / error は `null`。 |
 | `source` | string | 必須 | `"github"` または `"local"`。 |
 | `result` | string | 必須 | `"changed"`, `"unchanged"`, `"missing"`, `"error"`。 |
 
@@ -1417,7 +1417,7 @@ Environment object:
 | `last_target_status` | string/null | 必須 | [runner 結果値 schema](#runner-result-schema) で status summary が許可された値または `null` | 詳細結果。初回のみ `null`。 |
 | `last_branch` | string/null | 必須 | branch 名または `null` | 最終対象 branch。 |
 | `last_target_file` | string/null | 必須 | 相対 path または `null` | 最終対象 file。 |
-| `last_blob_sha` | string/null | 必須 | Git blob SHA または `null` | 取得不能時は `null`。 |
+| `last_blob_sha` | string/null | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値または `null` | 取得不能時は `null`。 |
 | `last_commit_sha` | string/null | 必須 | Git commit SHA または `null` | 取得不能時は `null`。 |
 | `last_started_at` | string/null | 必須 | UTC ISO 8601 または `null` | 最終開始時刻。 |
 | `last_finished_at` | string/null | 必須 | UTC ISO 8601 または `null` | 最終終了時刻。 |

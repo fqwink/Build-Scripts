@@ -837,6 +837,7 @@ type SearchIndexEntry struct {
 <body>
   <div id="progress-bar"></div>   <!-- 読み取り進捗バー（幅 = スクロール率 %） -->
   <header id="hdr">        <!-- ヘッダー -->
+    <button id="sb-toggle" type="button" aria-controls="sb" aria-expanded="true" aria-label="目次を閉じる">☰</button>
     <span id="doc-title">{PageData.Title}</span>
     <span id="reading-time">約 {PageData.ReadingTimeMinutes} 分</span>  <!-- 読了時間（ビルド時に静的埋め込み） -->
   </header>
@@ -881,12 +882,15 @@ type SearchIndexEntry struct {
 |------------|------|--------|----------|
 | `#progress-bar` | 各 HTML 1 個 | `assets/app.js` [`docs/details/builder.md` 詳細本文責務 §7.13](builder.md#sec-7-13) | 変更禁止 |
 | `#hdr` | 各 HTML 1 個 | CSS / layout | 変更禁止 |
+| `#sb-toggle` | 各 HTML 1 個 | sidebar JS [`docs/details/builder.md` 詳細本文責務 §7.2](builder.md#sec-7-2) | 変更禁止 |
 | `#doc-title` | 各 HTML 1 個 | header | 変更禁止 |
 | `#reading-time` | 各 HTML 1 個 | header | 変更禁止 |
 | `#lay` | 各 HTML 1 個 | CSS / sidebar layout | 変更禁止 |
 | `#sb` | 各 HTML 1 個 | sidebar JS | 変更禁止 |
 | `#sb-search` | 各 HTML 1 個 | TOC/search JS | 変更禁止 |
+| `#sb-toc` | 各 HTML 1 個 | TOC/search result container | 変更禁止 |
 | `#toc-root` | 各 HTML 1 個 | TOC JS | 変更禁止 |
+| `#sb-none` | 各 HTML 1 個 | TOC 検索 0 件表示 | 変更禁止 |
 | `#ct` | 各 HTML 1 個 | content layout | 変更禁止 |
 | `.ci` | 各 HTML 1 個 | content width | 変更禁止 |
 | `#btt` | 各 HTML 1 個 | top button JS | 変更禁止 |
@@ -990,11 +994,11 @@ builder owner は、出力する selector、対応要素、DOM 上の意味、Ja
 | `.ti` | リーフ（子を持たない見出し） |
 | `.tl` | TOC リンク（`<a>` 要素） |
 | `.tl.lv1`〜`.tl.lv6` | TOC リンクのレベル別スタイル。通常 caller は `.lv1`〜`.lv3`、[`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) は指定深さまでを出力する。 |
-| `.tl.active` | アクティブな TOC リンク |
+| `.tl.is-active` | アクティブな TOC リンク。付与条件は [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) を正本とする。 |
 | `.sb-none` | 検索結果なしメッセージ |
 
-<a id="sec-7-8"></a>
-**[シンタックスハイライト CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.8）](builder.md#sec-7-8)：**
+<a id="builder-syntax-highlight-css"></a>
+**シンタックスハイライト CSS クラス（振る舞いは [`docs/details/builder.md` 詳細本文責務 §7.8](builder.md#sec-7-8)）：**
 
 | クラス | 対象トークン |
 |--------|------------|
@@ -1005,15 +1009,15 @@ builder owner は、出力する selector、対応要素、DOM 上の意味、Ja
 | `.hl-key` | JSON オブジェクトキー |
 | `.hl-op` | diff 追加行（`+`）・削除行（`-`） |
 
-<a id="sec-7-11"></a>
-**[見出しアンカーリンクコピー CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.11）](builder.md#sec-7-11)：**
+<a id="builder-heading-anchor-css"></a>
+**見出しアンカーリンクコピー CSS クラス（振る舞いは [`docs/details/builder.md` 詳細本文責務 §7.11](builder.md#sec-7-11)）：**
 
 | クラス | 要素 | 説明 |
 |--------|------|------|
 | `.hn-link` | `<button>` | 見出し末尾に付与する `¶` ボタン |
 
-<a id="sec-7-13"></a>
-**[進捗バー・テーブルソート CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.13・`docs/details/builder.md` 詳細本文責務 §7.14）](builder.md#sec-7-13)：**
+<a id="builder-progress-table-css"></a>
+**進捗バー・テーブルソート CSS クラス（振る舞いは [`docs/details/builder.md` 詳細本文責務 §7.13](builder.md#sec-7-13) および [`docs/details/builder.md` 詳細本文責務 §7.14](builder.md#sec-7-14)）：**
 
 | クラス / セレクター | 要素 | 説明 |
 |--------------------|------|------|
@@ -1029,8 +1033,8 @@ builder owner は、出力する selector、対応要素、DOM 上の意味、Ja
 |--------------------|------|------|
 | `#reading-time` | `<span>` | ビルド時に算出した読了時間の表示要素 |
 
-<a id="sec-7-15"></a>
-**[前後章ナビゲーション CSS クラス（`docs/details/builder.md` 詳細本文責務 §7.15）](builder.md#sec-7-15)：**
+<a id="builder-chapter-navigation-css"></a>
+**前後章ナビゲーション CSS クラス（振る舞いは [`docs/details/builder.md` 詳細本文責務 §7.15](builder.md#sec-7-15)）：**
 
 | クラス / セレクター | 要素 | 説明 |
 |--------------------|------|------|
@@ -1057,13 +1061,18 @@ builder owner は、出力する selector、対応要素、DOM 上の意味、Ja
 <a id="sec-7-2"></a>
 **7.2 サイドバー開閉：**
 
-`localStorage` キー `adb-sb` に `"1"`（開）または `"0"`（閉）を保存する。desktop / mobile の判定 breakpoint と開閉時の視覚状態は [`docs/DESIGN.md` デザイン責務 §4](../DESIGN.md#レスポンシブ)〜[§5](../DESIGN.md#開閉制御) を正本とする。
+`localStorage` キー `adb-sb` に `"1"`（開）または `"0"`（閉）を保存する。desktop / mobile の判定は `window.matchMedia("(max-width: 768px)")` だけを使用し、開閉時の視覚状態は [`docs/DESIGN.md` デザイン責務 §4](../DESIGN.md#レスポンシブ)〜[§5](../DESIGN.md#開閉制御) を正本とする。
 
-- desktop では `#sb.closed` を開閉状態として切り替え、`#ct` の inline style を同じ状態へ同期する
-- mobile では `#sb.open` を開閉状態として切り替える
-- モバイルでは TOC リンククリック時に自動的にサイドバーを閉じる
+| 状態 | desktop（`> 768px`） | mobile（`≤ 768px`） |
+|------|-------------------------|-------------------------|
+| 開 | `#sb.closed` を除去し、`#sb.open` も除去する。 | `#sb.open` を付与し、`#sb.closed` を除去する。 |
+| 閉 | `#sb.closed` を付与し、`#sb.open` を除去する。 | `#sb.open` と `#sb.closed` を除去する。 |
 
-`localStorage` 読み書きは `try/catch` で保護する。読み込み失敗、保存失敗、保存値が `"1"` / `"0"` 以外の場合は、デスクトップでは開、モバイルでは閉を初期状態とする。`assets/app.js` は localStorage 以外の永続 storage、cookie、IndexedDB を使用してはならない。
+`#sb-toggle` の click で現在 mode の開閉を反転し、成功した状態を `adb-sb` へ保存する。開では `aria-expanded="true"` / `aria-label="目次を閉じる"`、閉では `aria-expanded="false"` / `aria-label="目次を開く"` とする。`#ct` の inline style を書き換えず、状態 class と [`docs/DESIGN.md`](../DESIGN.md) の CSS だけで表示を切り替える。
+
+`DOMContentLoaded` の初期化で有効な保存値を 1 回読み、保存値がない、`"1"` / `"0"` 以外、または読取失敗の場合は desktop を開、mobile を閉とする。breakpoint を跨ぐ `MediaQueryList` `change` では最新の有効な保存値を再適用し、無効値は各 mode の初期状態を適用する。mobile の `.tl` click は遷移前に閉状態と `"0"` を適用する。
+
+`localStorage` の全 read/write は個別に `try/catch` で保護し、保存失敗で DOM 状態を巻き戻さない。`assets/app.js` は localStorage 以外の永続 storage、cookie、IndexedDB を使用してはならない。
 
 <a id="sec-7-3"></a>
 **7.3 TOC グループ展開：**
@@ -1080,44 +1089,46 @@ builder owner は、出力する selector、対応要素、DOM 上の意味、Ja
 
 `#sb-search` の `input` イベントで TOC 項目をリアルタイムフィルタリングする。
 
-- 各 `.tl` のテキストコンテンツと検索クエリ（小文字化）を照合
-- 非一致の `<li>` は `hidden = true` で非表示
-- グループは子に一致項目があれば表示を維持し、`<ul>` を強制展開
-- 入力がクリアされた場合は全項目を復元し、展開状態を `aria-expanded` に従って復元
-- 一致なしの場合は `#sb-none` メッセージを表示
+検索正規化は `normalizeSearch(value) = value.trim().replace(/[A-Z]/g, ch => ch.toLowerCase())` に固定する。ASCII 英大文字だけを小文字化し、非 ASCII 文字、記号、内部空白、Unicode normalization form を変更しない。各 `.tl.textContent` と query を同じ関数で正規化し、`includes()` の結果だけで一致を決める。
 
-**状態変数 `searchActive`：** 検索中はアクティブ TOC リンクの自動スクロールを抑制する。
+query が空から非空へ変わる最初の `input` で、各 TOC `<li>` の `hidden`、各 `.tg-btn` の `aria-expanded`、対応 `.tc` の `hidden` を memory 上に 1 回だけ snapshot する。検索中の query 変更で snapshot を上書きせず、TOC 展開状態を localStorage へ書かない。
+
+| 条件 | 固定処理 |
+|------|----------|
+| leaf 一致 | 対応 `<li>` の `hidden=false`。 |
+| leaf 非一致 | 対応 `<li>` の `hidden=true`。 |
+| group 内に 1 件以上一致 | group `<li>` を表示し、`.tg-btn[aria-expanded="true"]`、`.tc.hidden=false` とする。 |
+| group 内一致 0 件 | group `<li>` を非表示にする。 |
+| 全体一致 0 件 | `#sb-none.hidden=false`。 |
+| query 空 | snapshot を各要素へ完全復元し、snapshot を破棄し、`#sb-none.hidden=true` とする。 |
+
+`searchActive` は正規化後 query が非空の間だけ `true` とする。`searchActive=true` は [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) の active TOC link 自動 `scrollIntoView` だけを抑制し、active 判定と class / `aria-current` 更新は継続する。
 
 <a id="sec-7-5"></a>
 **7.5 アクティブ見出し追跡：**
 
-`IntersectionObserver` で `.mh[id]` 要素のビューポート内への進入を監視する。
-
-- `rootMargin: "-8% 0px -78% 0px"` — 画面上部 8% 〜 22% の帯域内の見出しを「アクティブ」とみなす
-- 進入した見出しの `id` に対応する TOC リンクに `.active` クラスを付与
-- 親グループが折りたたまれている場合は自動展開し `aria-expanded="true"` を設定
-- 検索中でない場合は対応 TOC リンクを `scrollIntoView` で可視範囲にスクロール
-
-**進捗バー連動：** `scroll` イベントリスナー（`passive: true`）を同一リスナーで共有し、スクロールのたびに読み取り進捗バーの幅を更新する。
+本機能の機能名は `TOC ハイライト追従（アクティブ見出し追跡）` とする。現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、入力、対象 heading / TOC link、候補決定、IntersectionObserver / fallback、class、`aria-current`、検索連動、例外時処理の唯一の本文は [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) を正本とする。本節で別の追跡 algorithm、class、observer 条件、fallback を定義しない。
 
 <a id="sec-7-6"></a>
 **7.6 コピーボタン：**
 
 各 `.cb-copy` ボタンのクリックで、親 `.cb-wrap` 内の `<code>` の `innerText` をクリップボードにコピーする。
 
-```
-navigator.clipboard.writeText() → 成功: done()
-                                 → 失敗: fallbackCopy() → done()
-fallbackCopy(): <textarea> を一時生成して execCommand('copy') を実行
-done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付与、1.8 秒後に "コピー" に戻す
-```
+コードブロックと [`docs/details/builder.md` 詳細本文責務 §7.11](builder.md#sec-7-11) は次の共通 `copyText(text)` 契約を使用する。
+
+1. `navigator.clipboard` が存在し、`writeText` が function なら 1 回呼び出す。Promise fulfill の場合だけ成功とする。
+2. Clipboard API 不在、同期 throw、または Promise reject の場合は fallback を 1 回だけ実行する。
+3. fallback は read-only `<textarea>` を `document.body` に一時追加し、入力 `text` を無変換で設定し、`focus()`、`select()`、`document.execCommand("copy")` の順に実行する。戻り値が exact `true` の場合だけ成功とする。`false` または throw は失敗とする。
+4. fallback の `<textarea>` は成否にかかわらず `finally` 相当で 1 回削除する。Clipboard API 成功後に fallback を実行せず、fallback 成功後に Clipboard API を再試行しない。
+
+`.cb-copy` の成功時はテキストを `"✓ 完了"`、`.copied` 付与とし、1,800 ms 後に `"コピー"`、`.copied` 除去へ戻す。失敗時は `.copied` を付与せずテキストを `"コピー失敗"` とし、1,800 ms 後に `"コピー"` へ戻す。失敗を成功表示してはならない。
 
 <a id="sec-7-7"></a>
 **7.7 トップへ戻るボタン：**
 
-`scroll` イベント（`passive: true`）で `scrollY > 400` の場合に `#btt.visible` クラスを付与する。クリックで `window.scrollTo({ top: 0, behavior: 'smooth' })` を実行する。
+`DOMContentLoaded` 時と共通 scroll handler 実行時に `window.scrollY > 400` を評価し、true の場合だけ `#btt.visible` を付与し、false で除去する。`#btt` click は `window.scrollTo({ top: 0, behavior: "smooth" })` を 1 回実行する。`#btt` 不在時は handler 登録を省略し、他の初期化を停止しない。
 
-<a id="sec-7-8-2"></a>
+<a id="sec-7-8"></a>
 **7.8 シンタックスハイライト：**
 
 コードブロックに言語別の色分けを `assets/app.js` で適用する。外部ライブラリ不要。
@@ -1125,18 +1136,29 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 **対応言語：** `python` / `bash` / `json` / `sql` / `ini` / `diff`
 
 **実装方式：**
-各言語ごとにトークン正規表現パターンを定義し、`<code>` 要素のテキストに対して順次マッチを走らせる。マッチしたトークンを `<span class="hl-{type}">` でラップしてから `innerHTML` に書き戻す。
+各 `<code>` の `textContent` を 1 回取得し、UTF-16 index `0` から左へ戻らず走査する。同じ index で複数 token が成立する場合は次の言語別表の上から順に優先し、同じ token 種別の候補は最長一致を採用する。マッチしない 1 Unicode code point は無 class の text node としてそのまま出力する。生成済み token を再走査したり、token を入れ子にしてはならない。
+
+| 言語 | 優先順と固定 token |
+|------|--------------------------|
+| `python` | comment: string 外の `#` から LF 直前まで。string: `'''`、`"""`、`'`、`"` の順に開始 delimiter を判定し、同じ delimiter まで。backslash は次の 1 code point を string 内とする。number: `\b(?:0|[1-9][0-9]*)(?:\.[0-9]+)?\b`。keyword: `and`, `as`, `assert`, `async`, `await`, `break`, `class`, `continue`, `def`, `del`, `elif`, `else`, `except`, `False`, `finally`, `for`, `from`, `global`, `if`, `import`, `in`, `is`, `lambda`, `None`, `nonlocal`, `not`, `or`, `pass`, `raise`, `return`, `True`, `try`, `while`, `with`, `yield` の ASCII identifier 完全一致。 |
+| `bash` | comment: line 先頭または ASCII space / tab 直後の `#` から LF 直前まで。string: `'` は次の `'` まで、`"` は backslash で次の 1 code point を escape しながら次の `"` まで。number: Python と同じ。keyword: `case`, `do`, `done`, `elif`, `else`, `esac`, `fi`, `for`, `function`, `if`, `in`, `select`, `then`, `until`, `while` の ASCII identifier 完全一致。 |
+| `json` | string: JSON の `"` string grammar。string 直後の ASCII whitespace を飛ばした次の文字が `:` なら `.hl-key`、それ以外は `.hl-str`。number: `-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?`。keyword: `true`, `false`, `null` 完全一致。comment は許可しない。 |
+| `sql` | comment: string 外の `--` から LF 直前まで。string: `'` から次の unescaped `'` まで、`''` は string 内の 1 文字とする。`"` identifier も `.hl-str` とし、`""` を 1 文字とする。number: Python と同じ。keyword: `ALTER`, `AND`, `AS`, `ASC`, `BY`, `CREATE`, `DELETE`, `DESC`, `DISTINCT`, `DROP`, `FROM`, `GROUP`, `HAVING`, `INSERT`, `INTO`, `JOIN`, `LIMIT`, `NOT`, `NULL`, `ON`, `OR`, `ORDER`, `SELECT`, `SET`, `TABLE`, `UPDATE`, `VALUES`, `WHERE` を ASCII case-insensitive で完全一致。 |
+| `ini` | comment: line の ASCII space / tab を除いた先頭が `;` または `#` の場合に行末まで。section: trim 後の行全体が `[` で開始し `]` で終わる場合に `.hl-kw`。key: comment / section 以外の行で最初の `=` または `:` より前の trim した非空範囲を `.hl-key`。引用符 string と number は Python と同じ。keyword は定義しない。 |
+| `diff` | 各行を 1 token とし、line 先頭が `+` の行と `-` の行だけを `.hl-op`、その他を無 class とする。LF は各行 token の外で text node として維持する。 |
+
+閉じられていない string は入力末まで string token とし、runtime warning は生成しない。keyword の ASCII identifier 境界は直前と直後が `[A-Za-z0-9_]` でないこととする。
 
 | CSS クラス | 対象トークン |
 |---|---|
-| `hl-kw` | キーワード（`def`, `class`, `if`, `SELECT` 等） |
+| `hl-kw` | 言語別固定表のキーワードまたは INI section |
 | `hl-str` | 文字列リテラル（シングル／ダブルクォート） |
 | `hl-num` | 数値リテラル |
-| `hl-cmt` | コメント（`#`・`//`・`--` 行コメント） |
+| `hl-cmt` | 言語別固定表の comment token |
 | `hl-key` | オブジェクトキー（JSON の `"key":` パターン） |
 | `hl-op` | diff の追加行（`+`）・削除行（`-`） |
 
-**適用タイミング：** `DOMContentLoaded` 後に全 `.cb-wrap` 要素を走査し、`data-lang` 属性の値を参照して言語を判定する（`data-lang` は `.cb-wrap` div に付与されており、`<code>` 要素には付与されない）。ハイライト処理は配下の `<code>` 要素のテキストに対して行う。`data-lang` が未設定または対応外の場合はハイライトをスキップする。
+**適用タイミングと DOM 安全性：** `DOMContentLoaded` 後に全 `.cb-wrap` 要素を DOM 順で走査し、`data-lang` 属性の値を参照して言語を判定する（`data-lang` は `.cb-wrap` div に付与し、`<code>` には付与しない）。対応外または空の `data-lang`、配下 `<code>` 不在は DOM 無変更で終了する。出力は `document.createTextNode()` と `document.createElement("span")`、`className`、`textContent` だけで構築し、`innerHTML`、`insertAdjacentHTML`、HTML 文字列連結を使用しない。元テキストをトークン順に連結した値が処理前 `textContent` と UTF-16 code unit 単位で完全一致しない場合は DOM を置換しない。
 
 <a id="sec-7-9"></a>
 **7.9 本文内全文検索：**
@@ -1164,10 +1186,12 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 - `title` と `body` に HTML entity を残してはならない。検索 index は表示前に JS 側で `textContent` として挿入し、`innerHTML` へ直接挿入しない。
 
 **検索 UI の配置：**
-[`docs/details/builder.md` 詳細本文責務 §7.4](builder.md#sec-7-4) の TOC 検索フィルター入力欄を兼用する。入力値が 2 文字以上になった時点でインデックスに対して部分一致検索を実行する。
+[`docs/details/builder.md` 詳細本文責務 §7.4](builder.md#sec-7-4) の TOC 検索フィルター入力欄を兼用する。入力は同節の `normalizeSearch()` で正規化し、Unicode code point 数が 2 以上の場合だけ index 検索を実行する。entry の `title` と `body` を同じ関数で正規化し、どちらかが query を `includes()` する entry をヒットとする。`url` と `id` は検索対象に含めない。
 
 **ヒット箇所ハイライト：**
-一致したエントリの見出しを検索結果として表示する。現在ページ内のヒットは TOC 内でハイライト（`.toc-hit` クラス付与）し、クリックで対象アンカーへスクロールする。別ページのヒットは `url` へ遷移する。現在ページ内では `<mark>` 要素でヒット文字列をページ内マーキングする（外部依存なし・標準 DOM 操作のみ）。
+一致した entry の `title` を検索結果として表示する。`new URL(entry.url, document.baseURI)` の `origin` と `pathname` が `window.location.origin` と `window.location.pathname` にそれぞれ完全一致する entry だけを現在ページとする。query と hash はページ同一性判定に使用しない。現在ページの対応 TOC link に `.toc-hit` を付与し、結果 click で entry `url` の hash target へ遷移する。別ページの結果 click は entry `url` へ遷移する。
+
+ページ内 marking は `.ci` 配下の text node を DOM 順で走査する。`pre`、`code`、`script`、`style`、`textarea`、`button`、`a`、または `mark[data-search-hit="true"]` の子孫 text node は対象外とする。query は `normalizeSearch()`、text node 値は `normalizeSearchMark(value) = value.replace(/[A-Z]/g, ch => ch.toLowerCase())` で正規化し、左から重ならない一致をすべて `<mark data-search-hit="true">` へ置換する。`normalizeSearchMark()` は trim、空白縮約、Unicode normalization を行わないため、処理前後の UTF-16 code unit 数が一致する。正規化後 index を元 text node の index として使用する。DOM 構築は `createTextNode()` と `createElement("mark")`、`textContent`、`dataset.searchHit="true"` だけを使用し、`innerHTML` を使用しない。
 
 **クリア：**
 入力欄を空にすると TOC ハイライトおよびページ内マーキングをすべて解除する。
@@ -1176,13 +1200,15 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 
 | 項目 | 仕様 |
 |------|------|
-| fetch path | 現在 HTML の `relativeRoot + "assets/search-index.json"`。 |
-| fetch 失敗 | TOC 検索だけを継続し、console に `search index unavailable` を 1 回だけ出す。 |
-| 最小文字数 | 2 文字未満は index 検索を実行しない。TOC filter は 1 文字から実行する。 |
+| fetch | 現在 HTML の `relativeRoot + "assets/search-index.json"` へ `DOMContentLoaded` 後に 1 回だけ GET する。query 変更ごとの再 fetch、retry、中断済み response の再利用を禁止する。 |
+| response 検証 | `response.ok === true` の body を JSON parse し、top-level array、各 entry が `url`、`id`、`title`、`body` の 4 key だけを持つ object、全値が string、`url` が `new URL(url, document.baseURI)` で parse でき同一 origin の場合だけ index 全体を受理する。1 entry でも不正なら index 全体を破棄する。 |
+| fetch / parse / schema 失敗 | TOC 検索だけを継続し、`console.warn("search index unavailable")` を初回失敗時に 1 回だけ呼び、結果 DOM と marking を空にする。error object、URL、body を console へ出さない。 |
+| fetch 完了前の入力 | 最新 query を保持する。index 受理後、その時点の最新 query が 2 code point 以上なら 1 回だけ検索し、過去 query の結果を表示しない。 |
+| 最小文字数 | 正規化後 2 Unicode code point 未満は index 検索と marking を実行せず、前回の結果と marking を解除する。TOC filter は正規化後 1 code point から実行する。 |
 | 最大結果 | 20 件。entry 順を保持する。 |
 | 表示先 | `#sb-toc` 内に `<div id="search-results">` を 1 個だけ作成し、結果更新時に中身を置換する。 |
 | 挿入方法 | result title/body/url は `textContent` または `setAttribute` で設定し、`innerHTML` へ検索 index 由来値を入れない。 |
-| mark 解除 | 検索ごとに前回の `<mark data-search-hit="true">` を text node へ戻してから新規 mark を挿入する。 |
+| mark 解除 | 検索ごとに前回の `<mark data-search-hit="true">` を同じ `textContent` の text node へ戻し、親要素を `normalize()` してから新規 mark を挿入する。query 空、2 code point 未満、fetch 失敗時も解除する。 |
 
 <a id="sec-7-10"></a>
 **7.10 コードブロック折りたたみ：**
@@ -1200,7 +1226,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 **コピーボタンとの共存：**
 [`docs/details/builder.md` 詳細本文責務 §7.6](builder.md#sec-7-6) のコピーボタンは折りたたみ状態でも常時表示する。コピー操作は全行テキストを対象とする（表示行のみではない）。
 
-<a id="sec-7-11-2"></a>
+<a id="sec-7-11"></a>
 **7.11 見出しアンカーリンクコピー：**
 
 見出し末尾の `¶` ボタン（`.hn-link`）をクリックすると、その見出しのアンカー URL をクリップボードにコピーする。表示状態は [`docs/DESIGN.md` デザイン責務 §6](../DESIGN.md#builder-拡張コンポーネント視覚契約) に従う。
@@ -1209,7 +1235,7 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 `window.location.origin + window.location.pathname + button.dataset.href`
 
 **実装：**
-[`docs/details/builder.md` 詳細本文責務 §7.6](builder.md#sec-7-6) と同じ Clipboard API（`navigator.clipboard.writeText()`）を使用し、同一のフォールバック（`execCommand('copy')`）を流用する。コピー完了フィードバックは `aria-label` を `"コピーしました"` に一時変更し、1.8 秒後に `"リンクをコピー"` へ復元する（[`docs/details/builder.md` 詳細本文責務 §7.6](builder.md#sec-7-6) のコピーボタンと同じタイミング）。
+[`docs/details/builder.md` 詳細本文責務 §7.6](builder.md#sec-7-6) の共通 `copyText(text)` を使用する。成功時だけ `aria-label="コピーしました"` とし、1,800 ms 後に `aria-label="リンクをコピー"` へ戻す。失敗時は `aria-label="コピーに失敗しました"` とし、1,800 ms 後に `aria-label="リンクをコピー"` へ戻す。成否確定前の label 変更、失敗時の成功 label、二重 fallback を禁止する。
 
 **イベント登録：**
 `DOMContentLoaded` 後に `document.querySelectorAll('.hn-link')` を走査して `click` リスナーを登録する。
@@ -1217,17 +1243,19 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 <a id="sec-7-12"></a>
 **7.12 キーボードショートカット：**
 
-`keydown` イベントで以下のショートカットを処理する。フォーカスが `<input>`・`<textarea>`・`<select>` にある場合は `/` と `t` を無効にする（`Escape` のみ有効）。
+`DOMContentLoaded` 後に `document` へ `keydown` handler を 1 個だけ登録する。`event.defaultPrevented === true`、`event.isComposing === true`、`event.repeat === true`、または `event.ctrlKey || event.metaKey || event.altKey` の場合は全ショートカットを処理しない。
+
+`event.target` が `input`、`textarea`、`select`、`button`、`a[href]`、`[contenteditable]:not([contenteditable="false"])` またはそれらの子孫である場合を editable / interactive target とする。editable / interactive target では `/` と `t` を処理しない。`Escape` は target にかかわらず、[`docs/details/builder.md` 詳細本文責務 §7.4](builder.md#sec-7-4) の `searchActive=true` または `#sb-search.value` が非空の場合だけ処理する。
 
 | キー | 動作 |
 |------|------|
-| `/` | TOC 検索欄（`#sb-search`）にフォーカスを移動し、ページスクロールを抑止（`event.preventDefault()`） |
-| `Escape` | TOC 検索欄の内容をクリアし、検索結果をリセットする（[`docs/details/builder.md` 詳細本文責務 §7.4](builder.md#sec-7-4) の検索リセット処理と同等） |
-| `t` | ページ先頭へスクロール（`window.scrollTo({ top: 0, behavior: 'smooth' })`） |
+| `/` | `event.key === "/"` で、`Shift` の有無は問わない。`#sb-search` が存在する場合だけ `event.preventDefault()` 後に `focus()` する。不在時は no-op。 |
+| `Escape` | 有効条件を満たす場合だけ `event.preventDefault()`、`#sb-search.value=""`、`input` event dispatch の順で [`docs/details/builder.md` 詳細本文責務 §7.4](builder.md#sec-7-4) の snapshot、TOC、結果、marking を復元する。検索非 active で入力空なら no-op。 |
+| `t` | `event.key === "t"` かつ `event.shiftKey === false` の場合だけ `window.scrollTo({ top: 0, behavior: "smooth" })` を 1 回実行する。`preventDefault()` は行わない。 |
 
-**イベント登録：** `document.addEventListener('keydown', handler)` を `DOMContentLoaded` 後に登録する。
+`event.key` 以外の `keyCode`、`which`、keyboard layout 推測を使用しない。
 
-<a id="sec-7-13-2"></a>
+<a id="sec-7-13"></a>
 **7.13 読み取り進捗バー：**
 
 `<div id="progress-bar">` の幅を現在の読み取り進捗率へ更新する。配置、寸法、色、transition は [`docs/DESIGN.md` デザイン責務 §6](../DESIGN.md#builder-拡張コンポーネント視覚契約) に従う。
@@ -1237,11 +1265,11 @@ done(): ボタンテキストを "✓ 完了" に変更、.copied クラス付�
 const scrolled = document.documentElement.scrollTop;
 const total    = document.documentElement.scrollHeight
                  - document.documentElement.clientHeight;
-const pct      = total > 0 ? (scrolled / total * 100) : 0;
+const pct      = total > 0 ? Math.min(100, Math.max(0, scrolled / total * 100)) : 0;
 document.getElementById('progress-bar').style.width = pct + '%';
 ```
 
-**スクロールイベント共有：** [`docs/details/builder.md` 詳細本文責務 §7.5](builder.md#sec-7-5) のアクティブ見出し追跡が登録する `scroll` イベントリスナー（`passive: true`）内で処理する。リスナーを別途登録しない。
+**スクロールイベント共有：** `assets/app.js` は `document` の `scroll` へ `{passive:true}` の listener を最大 1 個だけ登録する。共通 handler は、有効な場合の [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) fallback、本節の進捗率更新、[`docs/details/builder.md` 詳細本文責務 §7.7](builder.md#sec-7-7) の表示更新の順に呼ぶ。`DOMContentLoaded` 初期化の最後に同じ handler を 1 回同期実行する。`#progress-bar` 不在時は進捗更新だけを省略する。
 
 <a id="sec-7-14"></a>
 **7.14 テーブル列ソート：**
@@ -1256,21 +1284,30 @@ document.getElementById('progress-bar').style.width = pct + '%';
 
 **ソートアルゴリズム：**
 
-1. クリックされた `<th>` の `aria-sort` を確認し、`"ascending"` → `"descending"`、それ以外 → `"ascending"` に決定
-2. 同テーブル内の他の全 `<th>` の `aria-sort` を `"none"` にリセット
-3. 対象列のセルテキスト（`textContent.trim()`）を取得し、`Number()` で数値変換可能ならば数値比較、それ以外は文字列比較（`localeCompare`）でソート
-4. `<tbody>` の子 `<tr>` を並び替えて再挿入
-5. クリックされた `<th>` の `aria-sort` を決定した値に更新（CSS `::after` でインジケーター表示）
+1. 所属 table、その直下または table section 内の `<tbody>` 1 個、および各直下 `<tr>` の対象 cell 存在を検証する。`<tbody>` が 1 個でない、または対象 cell 不在の行がある場合は no-op とし、DOM と `aria-sort` を変更しない
+2. クリックされた `<th>` の `aria-sort` を確認し、`"ascending"` → `"descending"`、それ以外 → `"ascending"` に決定
+3. 同テーブル内の他の全 `<th>` の `aria-sort` を `"none"` にリセット
+4. 対象 `<tbody>` の直下 `<tr>` を DOM 順で列挙し、各行に元 index を付与する。対象 cell の `textContent.trim()` を以下の型・比較契約でソートする
+5. ソート済み `<tr>` を同じ `<tbody>` へ順に `appendChild()` する。`<table>` 直下へ移動しない
+6. クリックされた `<th>` の `aria-sort` を決定した値に更新（CSS `::after` でインジケーター表示）
+
+**型・比較固定契約：**
+
+| 値 | 分類・比較 |
+|----|------------|
+| 空文字 | `empty`。昇順・降順のどちらでも常に最後。empty 同士は元 index 順。 |
+| `-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?` と完全一致し、数学的な値が 0 なら先頭 `-` を持たない値 | `number`。sign、整数部、小数部に分解し、小数部の末尾 `0` を除去する。符号が異なるときは負数を先、同じ正数は整数部桁数、整数部 ASCII 辞書順、小数部を右側 `0` で同長にした ASCII 辞書順の順で比較する。同じ負数はこの絶対値比較を反転する。`Number()` へ変換しない。 |
+| その他 | `text`。UTF-16 code unit を先頭から比較し、最初の相違 code unit が小さい方を先とする。prefix が同じなら短い方を先とする。`localeCompare()` と locale 依存 API を使用しない。 |
+
+non-empty の異種間は、昇順・降順のどちらでも `number` を `text` より先とする。降順は同一分類内の値比較だけを反転し、分類順と empty 最後を反転しない。数学的同値または文字列同値は元 index が小さい行を先とする。`+1`、`01`、`.5`、`1.`、`1e3`、`Infinity`、`NaN`、`-0`、`-0.0`、hex を number としてはならない。
 
 **イベント登録：** `DOMContentLoaded` 後に `document.querySelectorAll('.mt th[data-sort]')` を走査して `click` リスナーを登録する。
 
-**スコープ：** 同一テーブル内のソートのみ。複数列ソートは対象外。
-
-同値比較の場合は元の行順を保持する安定ソートとする。数値比較では空文字は文字列として扱い、`Number("")` による `0` 扱いを禁止する。
+**スコープ：** 同一テーブル内のソートのみ。複数列ソート、ソート状態の永続化、header 複数行、rowspan / colspan の解釈は対象外とする。
 
 ---
 
-<a id="sec-7-15-2"></a>
+<a id="sec-7-15"></a>
 **7.15 前後章ナビゲーションボタン：**
 
 h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末尾に静的生成する。
@@ -1309,17 +1346,24 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 **印刷時：** `.ch-nav` の印刷表現は [`docs/DESIGN.md` デザイン責務 §6](../DESIGN.md#builder-拡張コンポーネント視覚契約) に従う。
 
+<a id="builder-js-init-order"></a>
 **JavaScript 初期化順序固定契約：**
 
 `assets/app.js` は `DOMContentLoaded` 後に以下の順で初期化する。
 
 1. 必須 DOM 参照を取得し、存在しない要素があっても例外で停止せず該当機能だけ無効化する。
-2. sidebar 状態を復元する。
-3. TOC group 状態を復元する。
-4. TOC 検索と search index fetch を初期化する。
-5. syntax highlight を適用する。
-6. copy button、heading anchor、table sort、code expand、top button、keyboard shortcut を登録する。
-7. IntersectionObserver と scroll handler を登録し、進捗バーを 1 回更新する。
+2. 共通 localStorage read / write wrapper を作成する。localStorage 使用不可時は保存と復元だけを無効化し、memory fallback を作らない。
+3. [`docs/details/builder.md` 詳細本文責務 §7.2](builder.md#sec-7-2) の sidebar 状態を復元する。
+4. [`docs/details/builder.md` 詳細本文責務 §7.3](builder.md#sec-7-3) の TOC group 状態を復元する。
+5. `--section-collapse=true` の場合だけ [`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6) の section collapse を初期化する。
+6. [`docs/details/builder.md` 詳細本文責務 §7.4](builder.md#sec-7-4) と [`docs/details/builder.md` 詳細本文責務 §7.9](builder.md#sec-7-9) の TOC 検索と search index fetch を初期化する。
+7. [`docs/details/builder.md` 詳細本文責務 §7.8](builder.md#sec-7-8) の syntax highlight を適用する。
+8. copy button、heading anchor、table sort、code expand、top button、[`docs/details/builder.md` 詳細本文責務 §7.12](builder.md#sec-7-12) の keyboard shortcut を登録する。
+9. `--hash-history=true` の場合だけ [`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) の hash history を初期化する。
+10. `--toc-active=true` の場合だけ [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) の対応配列、初期 active、IntersectionObserver または fallback を初期化する。
+11. `--image-lightbox=true` の場合だけ [`docs/details/builder.md` 詳細本文責務 §28.22](builder.md#sec-28-22) の lightbox を初期化する。
+12. `--a11y-check=true` の場合だけ [`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21) の accessibility guard を実行する。
+13. [`docs/details/builder.md` 詳細本文責務 §7.13](builder.md#sec-7-13) の共通 scroll handler を登録し、同じ handler を 1 回同期実行して進捗バーとトップボタンを初期化する。
 
 初期化中の 1 機能の失敗で他機能を停止してはならない。catch した例外は `console.warn("adlaire static init failed", name)` の形式で機能名だけを出し、Markdown 本文、search query、secret 相当値を出力しない。
 
@@ -1471,6 +1515,14 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | strict warning | strict warning 昇格、stdout / stderr、公開前停止時の既存出力保護。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture H` |
 | atomic output | rename / directory sync 失敗、1 回だけの補償、補償失敗時の path 保持、`[REPORT]` 非出力。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture I` |
 | build metadata dataflow | CLI metadata 指定時と省略時の `BuildConfig` → `SiteData.BuildMeta` → 全 HTML meta → `[REPORT]` の完全一致、生成時刻非依存。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture J` |
+| sidebar runtime | breakpoint、保存値、開閉、ARIA、storage failure、mobile link click。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture K` |
+| TOC filter runtime | query 正規化、snapshot、group / leaf 表示、検索解除時復元。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture L` |
+| copy runtime | Clipboard API、fallback、成功 / 失敗表示、timer 復元。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture M` |
+| syntax highlight runtime | 言語別 token 優先、text 保持、DOM 安全性。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture N` |
+| search runtime | fetch、schema、race、page 判定、marking、clear。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture O` |
+| keyboard runtime | modifier、composition、repeat、interactive target、キー別副作用。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture P` |
+| scroll runtime | listener 共有、進捗 clamp、トップボタン境界、初期同期実行。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture Q` |
+| table sort runtime | 決定的分類・比較、stable sort、empty、ARIA、不正構造 no-op。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture R` |
 
 <a id="sec-8"></a>
 **[`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能別実装確認固定契約](builder.md#sec-8)：**
@@ -1980,7 +2032,7 @@ CSS と JS は、既存 `assets/style.css`、`assets/app.js` にだけ出力す�
 | 対象 | 固定内容 |
 |------|----------|
 | CSS class | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) CLI / 設定 / REPORT / 出力識別子固定契約に列挙した class だけを追加する。命名は `adlaire-` prefix または既存 class とし、第三者 library 名を使わない。 |
-| JS state | localStorage key は [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) に列挙した `adlaire:*` key だけを使う。保存値は JSON string、boolean、または許容値 string に限定する。 |
+| JS state | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#sec-28-common-storage) が追加する localStorage key と payload は、同節の拡張 localStorage 固定契約に列挙した値だけを使う。既存機能の key と payload は [`docs/details/builder.md` 詳細本文責務 §7.2](builder.md#sec-7-2) と [`docs/details/builder.md` 詳細本文責務 §7.3](builder.md#sec-7-3) を正本とする。 |
 | JS failure | JS 実行時例外が起きても静的 HTML の閲覧、TOC、本文、検索 index file の存在を壊してはならない。 |
 | print | print 用挙動は `@media print` 内で完結させる。通常画面の DOM を print 専用に書き換えない。 |
 | accessibility | click 操作を追加する要素には keyboard 操作と `aria-label` を同時に定義する。 |
@@ -2043,7 +2095,10 @@ search index は、[`docs/details/builder.md` 詳細本文責務 §28](builder.m
 | footnote | footnote 本文は含める。footnote reference number、backlink label は含めない。 |
 | math / Mermaid / print QR / lightbox / skip link | 表示用 UI text、SVG text、dialog label、QR URL は含めない。 |
 
-localStorage は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の固定表の key と payload だけを許可する。payload は JSON.stringify 相当の compact JSON 文字列、または許容値 string に固定する。保存失敗、JSON parse 失敗、未知 key、未知 page key、未知 slug は無視し、HTML 表示と search index を壊してはならない。
+<a id="sec-28-common-storage"></a>
+**[`docs/details/builder.md` 詳細本文責務 §28 拡張 localStorage 固定契約](builder.md#sec-28-common-storage)：**
+
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) が新たに使用する localStorage は次表の key と payload だけを許可する。既存機能の key と payload は [`docs/details/builder.md` 詳細本文責務 §7.2](builder.md#sec-7-2) と [`docs/details/builder.md` 詳細本文責務 §7.3](builder.md#sec-7-3) を正本とし、次表で再定義しない。payload は JSON.stringify 相当の compact JSON 文字列、または許容値 string に固定する。保存失敗、JSON parse 失敗、未知 key、未知 page key、未知 slug は無視し、HTML 表示と search index を壊してはならない。
 
 | key | owner | payload |
 |-----|-------|---------|
@@ -2054,39 +2109,19 @@ localStorage は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) のブラウザ JS は、静的 HTML を補助する progressive enhancement として実装する。JS が無効、JS 初期化失敗、localStorage 使用不可、IntersectionObserver 使用不可、History API 使用不可、dialog API 使用不可のいずれの場合でも、本文、TOC、anchor、画像、検索 index file の存在を壊してはならない。runtime 状態を理由にした HTML 再生成、外部通信、追加 asset 取得、cookie / sessionStorage / IndexedDB 書込は行わない。
 
-runtime 初期化順は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の固定表に固定する。途中で例外が発生した場合は、その機能だけを無効化し、後続機能の初期化を継続する。例外内容を UI、stdout、stderr、REPORT、localStorage に出力してはならない。
+`assets/app.js` 全体の初期化順は [`docs/details/builder.md` 詳細本文責務 §7 JavaScript 初期化順序固定契約](builder.md#builder-js-init-order) だけを正本とする。本節または各 §28 機能節で別の初期化順、独立した全体初期化 loop、追加の scroll listener を定義してはならない。途中で例外が発生した場合は、その機能だけを無効化し、後続機能の初期化を継続する。例外内容を UI、stdout、stderr、REPORT、localStorage に出力してはならない。
 
-| 順序 | 初期化対象 | 固定内容 |
-|------|------------|----------|
-| 1 | static guard | `document.querySelector`、`addEventListener`、`classList` が存在しない場合、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) JS 初期化を終了する。 |
-| 2 | storage guard | localStorage read / write wrapper を作成する。例外時は memory fallback を使わず、保存と復元だけを無効化する。 |
-| 3 | section collapse | heading toggle、wrapper、`aria-expanded`、`adlaire-section-collapsed`、保存値を同期する。 |
-| 4 | hash history | heading link click、hashchange、popstate、focus 移動を登録する。 |
-| 5 | TOC active | IntersectionObserver があれば使用し、なければ scroll fallback を登録する。 |
-| 6 | lightbox | trigger、dialog、focus trap、Escape / backdrop close を登録する。 |
-| 7 | accessibility guard | skip link、keyboard 操作、focus-visible 補助、aria current / aria expanded の最終整合を確認する。 |
+browser runtime の機能別挙動は次の責務正本だけを参照し、本節で同じ algorithm、状態遷移、event 順序を再定義しない。
 
-browser runtime の機能別挙動は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の固定表に固定する。
-
-| 対象 | 固定挙動 |
-|------|----------|
-| section collapse 初期状態 | `--section-collapse=false` では toggle と wrapper を生成しない。`true` では h2 / h3 section を既定展開にする。保存値がある場合だけ保存値を優先する。 |
-| section collapse toggle | click または `Enter` / `Space` で対象 section を反転する。`aria-expanded=true` は展開、`false` は折りたたみ。wrapper class `adlaire-section-collapsed` は折りたたみ時だけ付与する。 |
-| section collapse 保存 | `adlaire:section-state` に `{page_key}#{slug}` ごとの boolean を保存する。保存失敗時も DOM 状態は維持する。 |
-| search hit 展開 | search hit または hash target が折りたたみ section 内にある場合、対象 section を一時展開する。一時展開だけでは localStorage を更新しない。 |
-| print 展開 | `beforeprint` で全 section を展開表示にし、`afterprint` で印刷前状態へ戻す。`beforeprint` / `afterprint` がない環境では CSS `@media print` で全展開表示にする。 |
-| light visual baseline | CLI、config、localStorage による color scheme 変更を受け付けない。生成 HTML は常に light 固定とし、`data-color-scheme`、`.theme-toggle`、`adlaire:color-scheme` を出力しない。 |
-| TOC active | active link は常に 0 件または 1 件。active link だけに `.is-active` と `aria-current="location"` を付与し、他 link からは両方を除去する。 |
-| TOC active fallback | IntersectionObserver がない場合は scroll position から、viewport top 以下で最も近い対象 heading を active とする。scroll event は requestAnimationFrame 相当で集約する。 |
-| hash click | heading / TOC link click 時、target heading が存在する場合だけ `history.pushState` を呼び、target heading に一時 `tabindex="-1"` を付与して focus する。 |
-| hash missing | target heading が存在しない hash は no-op。例外、warning、storage 更新、URL 書換を行わない。 |
-| back / forward | `popstate` / `hashchange` では URL hash の heading へ scroll / focus し、存在しない場合は no-op。 |
-| lightbox open | trigger click または `Enter` / `Space` で page 内 1 個の dialog を開き、trigger を opener として保持し、最初の close button または dialog 自体へ focus する。 |
-| lightbox close | Escape、backdrop click、close button で閉じる。閉じた後は opener が存在する場合だけ opener へ focus を戻す。 |
-| lightbox focus trap | dialog open 中は `Tab` / `Shift+Tab` を dialog 内 focusable 要素に循環させる。focusable 要素がない場合は dialog 自体へ focus する。 |
-| keyboard scope | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) で追加する keyboard handler は対象 UI に focus がある場合だけ有効にする。既存 [`docs/details/builder.md` 詳細本文責務 §7.12](builder.md#sec-7-12) の `/`、`Escape`、`t` を上書きしない。 |
-| skip link | `.skip-link` は main content へ移動する。target が存在しない場合は表示だけ残し、click は通常 anchor 動作に任せる。 |
-| JS exception | 個別 handler 内の例外は握りつぶし、その handler の処理だけを中止する。DOM を rollback せず、他 handler を削除しない。 |
+| 対象 | 挙動の正本 |
+|------|------------|
+| section collapse、search hit / hash target 一時展開、print 展開 | [`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6) |
+| light visual baseline と color scheme 禁止 | [`docs/details/builder.md` 詳細本文責務 §28.12](builder.md#sec-28-12) |
+| TOC active、IntersectionObserver、scroll fallback | [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) |
+| hash click、missing hash、back / forward | [`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) |
+| keyboard scope、skip link、accessibility guard | [`docs/details/builder.md` 詳細本文責務 §7.12](builder.md#sec-7-12) と [`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21) |
+| lightbox open / close / focus trap | [`docs/details/builder.md` 詳細本文責務 §28.22](builder.md#sec-28-22) |
+| runtime 例外分離 | [`docs/details/builder.md` 詳細本文責務 §7 JavaScript 初期化順序固定契約](builder.md#builder-js-init-order) |
 
 browser runtime が出力または変更してよい DOM state は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の DOM state 固定表に限定する。[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の DOM state 固定表にない class、attribute、storage key、event side effect を追加する場合は、先に [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) を改訂する。
 
@@ -2276,7 +2311,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | [`docs/details/builder.md` 詳細本文責務 §28.13](builder.md#sec-28-13) | コードブロックのファイル名表示 | fence info `go:main.go`、`bash:title=deploy.sh`。 | `.code-title` 表示。 | info parse → language と title 分離 → title escape → code block header へ出力。 | path traversal 表示は禁止せず text 扱いだが HTML escape。空 title は非表示。 | colon 形式、title 形式、escape、copy 対象除外。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.14](builder.md#sec-28-14) | テンプレート変数展開 | `--var KEY=VALUE`、`{{ KEY }}`。 | 変数展開済み Markdown HTML、report counts。 | 変換前に text node だけ置換 → code fence 内は置換しない → 未定義変数を警告。 | key は `^[A-Z0-9_]{1,64}$`。未定義は strict で終了コード `2`。 | 置換、code 内非置換、未定義警告、escape。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.15](builder.md#sec-28-15) | HTML ミニファイ | `--minify-html`。 | 空白圧縮済み HTML。 | HTML 生成後 → safe minify → pre/code/textarea/script 相当領域は保持。 | minify 後の byte が 0、必須 marker 消失なら元 HTML を残し終了コード `1`。 | 通常圧縮、code 保持、必須 marker、出力縮小 report。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) | TOC ハイライト追従 | heading anchor と scroll event。 | `.is-active` class、`aria-current="location"`。 | IntersectionObserver 使用 → fallback scroll 計算 → active item 更新。 | JS 無効時は静的 TOC のまま。TOC depth と同期。 | scroll active、fallback、depth 連動、aria-current。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) | TOC ハイライト追従（アクティブ見出し追跡） | heading / TOC 対応集合。 | `.is-active` class、`aria-current="location"`。 | 候補決定、observer / fallback、検索連動は [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) だけに従う。 | JS 無効時は静的 TOC のまま。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#sec-28-f-14)。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17) | Mermaid ダイアグラム描画 | fence info `mermaid`。 | `<pre class="mermaid-source">` と内製簡易 SVG 対応分だけ。 | Mermaid text を保存 → 対応構文 `graph TD` の node/edge だけ SVG 化 → unsupported は source 表示。 | 外部 mermaid.js は使用禁止。未対応構文は warning、strict で終了コード `2`。 | graph TD、unsupported warning、escape、外部 script なし。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18) | 脚注サポート | `[^id]`、`[^id]: text`。 | 本文 sup link、末尾 `.footnotes`。 | 定義収集 → 参照順に番号付け → backlink 生成 → 未参照定義は report。 | 未定義参照は warning、strict で終了コード `2`。 | 複数脚注、重複定義、未定義、backlink。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.19](builder.md#sec-28-19) | インライン数式レンダリング | `$...$`、`$$...$$`。 | `<span class="math-inline">`、`<div class="math-block">`。 | delimiter parse → HTML escape → CSS で等幅表示。 | KaTeX 等外部 renderer は使用しない。未閉鎖 delimiter は通常 text、strict で終了コード `2`。 | inline、block、escape、未閉鎖、code 内非変換。 |
@@ -2447,7 +2482,7 @@ section 範囲は以下に固定する。
 
 toggle は heading 内の先頭に `button.adlaire-section-toggle` として出力し、`type="button"`、`aria-controls="section-<slug>"`、`aria-expanded="true"`、`data-section-id="<page_key>#<slug>"`、固定 label text を持つ。section body wrapper は `id="section-<slug>"` を持つ。`<slug>` は [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) ID / slug / search index / JS state 決定性固定契約で確定した heading id と同じ値とする。wrapper id が既存 id と衝突する場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力維持とする。
 
-localStorage key は `adlaire:section-state` だけを使用する。値は JSON object string とし、object key は `<page_key>#<slug>`、value は boolean とする。`true` は展開、`false` は折りたたみを表す。保存時の object key は ASCII 昇順に並べる。未知 key、JSON parse 失敗、boolean 以外の値は無視する。`collapsed_sections_default` は既定で折りたたまれている section 数であり、初期仕様では常に `0` とする。
+[`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6) が使用する localStorage key、payload、key 順、無効値と保存失敗の扱いは [`docs/details/builder.md` 詳細本文責務 §28 拡張 localStorage 固定契約](builder.md#sec-28-common-storage) だけを正本とする。初期化時に同 key を 1 回読み、現在 page の既知 slug に対応する保存値だけを DOM へ適用する。ユーザーが toggle を操作した場合は該当 entry を更新した object 全体を 1 回保存し、保存失敗でも適用済み DOM 状態を巻き戻さない。検索 hit、hash target、active TOC、print による一時展開では保存しない。`collapsed_sections_default` は既定で折りたたまれている section 数であり、初期仕様では常に `0` とする。
 
 print 時は全 section を展開状態で表示する。screen state は書き換えず、`@media print` または beforeprint / afterprint の一時処理だけで制御する。検索 hit または hash target が折りたたみ範囲内にある場合は、該当 section を一時展開し、localStorage の保存値は変更しない。
 
@@ -2560,7 +2595,7 @@ meta key は以下に固定する。
 
 HTML root は color scheme 用の属性を持たない。CSS は `:root` に light 固定 custom property を定義する。外部 theme file、外部 font、runtime CSS fetch を追加してはならない。
 
-browser runtime は color scheme を読まない、保存しない、復元しない。localStorage は `adlaire:section-state` だけを許可する。
+browser runtime は color scheme を読まない、保存しない、復元しない。color scheme 用 localStorage key は一切許可しない。既存機能と他の §28 機能が使用できる localStorage key は、[`docs/details/builder.md` 詳細本文責務 §7.2](builder.md#sec-7-2)、[`docs/details/builder.md` 詳細本文責務 §7.3](builder.md#sec-7-3)、[`docs/details/builder.md` 詳細本文責務 §28 拡張 localStorage 固定契約](builder.md#sec-28-common-storage) を正本とし、本節で再定義しない。
 
 print は常に light 固定とする。REPORT の `color_scheme_fixed` は JSON boolean `true` 固定とする。
 
@@ -2630,23 +2665,30 @@ minify 後に byte 数が 0、doctype / html / head / body が消える、pre / 
 | [`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) | hash target set | `hash_history_enabled`、`hash_history_targets`、`hash_focus_targets`、`hash_missing_targets` を page ごとに保持する。 | heading target、`tabindex="-1"`、pushState、popstate、focus、missing hash no-op が一致する。 |
 
 <a id="sec-28-16"></a>
-**[`docs/details/builder.md` 詳細本文責務 §28.16 TOC ハイライト追従詳細固定契約](builder.md#sec-28-16)：**
+**[`docs/details/builder.md` 詳細本文責務 §28.16 TOC ハイライト追従（アクティブ見出し追跡）詳細固定契約](builder.md#sec-28-16)：**
 
 `--toc-active` は boolean option である。`true` の場合だけ `assets/app.js` に TOC active tracking を出力する。`false` の場合、`.is-active` 初期 class、`aria-current`、active tracking handler、IntersectionObserver 使用、scroll fallback を出力してはならない。
 
 監視対象は、[`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) TOC depth 適用後に TOC へ出力された link と同一集合に固定する。TOC に存在しない heading、depth 外 heading、本文外 anchor、footnote backlink、code title anchor、collapse wrapper id、lightbox target を active 対象にしてはならない。`toc_active_items` は監視対象 TOC link 数、`toc_active_tracking` は boolean とする。
 
+heading と link の対応は、TOC link の `href` が `#<id>` で、`document.getElementById(<id>)` が監視対象 heading を返す組だけとする。不正 URL escape、重複 id、heading 不在の link は出力 validation 失敗とする。runtime では対応済み heading / link 配列を DOM 順で 1 回作り、その後に TOC text または DOM 順から対応を推測しない。
+
+active 候補決定関数は次の 1 種類に固定する。`anchorY = window.innerHeight * 0.08` を算出し、対応済み全 heading の `getBoundingClientRect().top` を DOM 順で取得する。`top <= anchorY` の heading が 1 件以上あればその最後の heading、0 件なら配列先頭の heading を選ぶ。target が 0 件なら active は 0 件とする。IntersectionObserver と scroll fallback はこの同一関数を呼び、observer callback の `entries` の順序や最後の entry を active 決定に使用しない。
+
 active 更新は以下に固定する。
 
 | 状態 | 挙動 |
 |------|------|
-| 初期表示 | location hash が既存 heading id を指す場合は該当 TOC link だけを active にする。hash がない場合は本文上端に最も近い監視対象 heading を active にする。 |
-| scroll | IntersectionObserver が使用可能なら observer 結果から active heading を 1 件に決める。使用不能なら scroll position fallback で同じ候補集合から 1 件に決める。 |
+| 初期表示 | `location.hash` を URL decode でき、対応済み heading id と完全一致する場合は該当 link だけを active にする。hash 不在、decode 失敗、または対象外 hash は active 候補決定関数を 1 回実行する。 |
+| observer | `IntersectionObserver` が function なら `root=null`、`rootMargin="-8% 0px -78% 0px"`、`threshold=[0]` の observer を 1 個作り、各対応 heading を 1 回ずつ observe する。callback ごとに active 候補決定関数を 1 回呼ぶ。 |
+| fallback | `IntersectionObserver` が function でない場合だけ、[`docs/details/builder.md` 詳細本文責務 §7.13](builder.md#sec-7-13) の共通 scroll handler から active 候補決定関数を呼ぶ。別の scroll listener を登録しない。 |
 | depth 外 heading | active 候補にしない。直前の depth 内 heading を維持する。 |
-| active 変更 | 新 active link にだけ `.is-active` と `aria-current="location"` を付与し、旧 active link から両方を削除する。 |
+| active 変更 | 全対応 link から `.is-active` と `aria-current` を除去した後、新 active link にだけ `.is-active` と `aria-current="location"` を付与する。同じ link が連続する場合は DOM を更新しない。 |
+| 折りたたみ group | active link の祖先 `.tc[hidden]` を展開し、対応 `.tg-btn` を `aria-expanded="true"` とする。この自動展開は localStorage へ書かない。 |
+| TOC 内スクロール | [`docs/details/builder.md` 詳細本文責務 §7.4](builder.md#sec-7-4) の `searchActive=false` の場合だけ、active 変更後の link に `scrollIntoView({block:"nearest"})` を 1 回実行する。同じ link への連続更新と検索中は実行しない。 |
 | TOC なし | handler を登録せず、REPORT は `toc_active_tracking=false`、`toc_active_items=0` とする。 |
 
-同時に active link が 2 件以上になる、`aria-current` と `.is-active` の対象が異なる、depth 外 heading を active にする、TOC link 以外を active にする場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力維持とする。JS 実行時に IntersectionObserver、scroll、DOM query が例外になっても静的本文と TOC を壊してはならない。
+同時に active link が 2 件以上になる、`aria-current` と `.is-active` の対象が異なる、depth 外 heading を active にする、TOC link 以外を active にする場合は終了コード `1`、stderr `BUILDER28_OUTPUT_VALIDATION_FAILED`、公開出力維持とする。JS 実行時の observer 作成、observe、DOM query、rectangle 取得、class 更新、`scrollIntoView` の例外は当該更新だけを中止し、`console.warn("adlaire static init failed", "toc-active")` を最大 1 回出す。例外 object、heading text、URL を出力せず、静的本文、TOC、検索、進捗バー、トップボタンの初期化を停止しない。
 
 <a id="sec-28-17"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28.17 Mermaid ダイアグラム詳細固定契約](builder.md#sec-28-17)：**

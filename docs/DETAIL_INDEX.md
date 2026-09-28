@@ -55,6 +55,7 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | CLI 共通 option | `--help` と `--version`。parse、優先順位、出力、副作用は [CLI 共通固定契約](#common-cli-contract) に従う。 |
 | バイナリバージョン | 未注入の local / 検証用ビルドは `V.0.0-dev`。バージョン付き開発ビルドと Release 用実行バイナリ asset は割当済みバージョンと exact 一致する `^V\.[1-9][0-9]*\.[0-9]+$` 形式。Release 用実行バイナリ asset では tag とも exact 一致させる。その他の値、空文字、前後空白、改行を禁止する。 |
 | 時刻ベース ID | prefix と UTC `YYYYMMDDHHmmss` を連結する。未衝突 ID に suffix は付けない。衝突時は `-001` から `-999` まで 3 桁連番を順に試し、上限到達時は既存 ID を上書きせず失敗とする。 |
+| <a id="common-target-digest"></a>target SHA / digest | GitHub の単一 file target は Git object SHA の 40 文字 lowercase hex、GitHub の directory target と local target は SHA-256 の 64 文字 lowercase hex とする。算出 byte 列は GitHub target が [`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、local target が [`docs/details/runner.md` 詳細本文責務 §27.23](details/runner.md#sec-27-23) を正本とする。空文字または `null` は owner schema が個別に許可する場合だけ使用する。commit SHA、GitHub Webhook `after`、commit status SHA はこの契約に含めず、40 文字 lowercase hex に固定する。互換性のため既存の `blob_sha`、`last_blob_sha`、`previous_blob_sha`、`current_blob_sha`、`before_sha`、`after_sha` の key 名は変更しない。 |
 | 出力成果物 manifest SHA-256 | 出力 root 配下の通常 file だけを entry とし、`/` 区切りの相対 path を UTF-8 byte 辞書順に並べる。各 file の SHA-256 を lowercase hex で算出し、各 entry の `relative_path + "\n" + file_sha256 + "\n"` を順に連結した byte 列全体の SHA-256 lowercase hex を `output_sha256` とする。directory は走査だけに使用し entry に含めない。symlink、link count 2 以上の hardlink、device、socket、FIFO を 1 件でも検出した場合は除外継続せず算出失敗とする。出力 root は symlink でない directory、全 path は valid UTF-8 とし、先頭 `/`、空 segment、`.`、`..`、backslash、NUL、CR、LF を含む相対 path は算出失敗とする。file は no-follow open 後の identity / type と読取前後の size / mtime が列挙時から不変の場合だけ採用し、走査中の追加・削除・置換・変更は算出失敗とする。通常 file が 0 件の出力 root は空 byte 列の SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` とする。 |
 
 <a id="common-cli-contract"></a>
@@ -70,6 +71,18 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | version 注入 | 実装はビルド時に不変の `binary-version` を受け取る。未指定時は `V.0.0-dev` とする。Release build は tag と同じ具体値を全バイナリへ注入し、出力が不一致または `V.0.0-dev` の場合は成果物作成を失敗させる。 |
 | parse / 入力検証失敗 | stdout は空、stderr は owner 詳細本文で固定した最初のエラー 1 行と LF だけ、終了コードは `2` とする。owner 詳細本文で固定した検証順に最初の 1 件を選び、状態変更と外部副作用を開始しない。未知 option と禁止位置引数は `unknown option: <token>` とする。 |
 | owner 固有契約 | 許可 option、固定 help / version 文字列、重複指定、値正規化、検証順、固有エラー、実行 mode は owner 詳細本文を正本とする。owner 詳細本文はこの共通契約を暗黙に上書きせず、異なる parse 形式を許可する option を個別に明示する。 |
+
+<a id="common-state-dir-contract"></a>
+**CLI state directory 共通固定契約：**
+
+`--state-dir` を持つ owner CLI は、option の必須性、既定値、symlink、mode、owner、検証順、検証後の処理を各 owner 詳細本文で定義する。以下の共通失敗の stdout、stderr、終了コード、副作用はこの表だけを正本とし、owner 詳細本文で再定義しない。
+
+| 条件 | stdout | stderr | 終了コード | 副作用 |
+|------|--------|--------|------------|--------|
+| 値が空文字 | 空 | `state directory must not be empty` + LF | `2` | state read/write、directory 作成、listener、外部通信、child process を開始しない。 |
+| 相対 path | 空 | `state directory must be absolute: <path>` + LF | `2` | 同上。`<path>` は入力値を改行なしで使用する。 |
+| path 不在 | 空 | `state directory not found: <path>` + LF | `2` | 同上。 |
+| directory でない | 空 | `state path is not directory: <path>` + LF | `2` | 同上。 |
 
 <a id="process-environment-entry-contract"></a>
 **Process environment entry 共通固定契約：**
@@ -101,6 +114,9 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 | 出力サイトサイズ警告閾値 | `builder` | [`docs/details/builder.md` 詳細本文責務 §8](details/builder.md#8-実行方法)、[`docs/details/runner.md` 詳細本文責務 §12](details/runner.md#12-設定値runner)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e) |
 | 出力サイトへのビルドメタ埋め込み | `builder` | [`docs/details/builder.md` 詳細本文責務 §2](details/builder.md#2-ファイルパス設定)、[`docs/details/builder.md` 詳細本文責務 §5](details/builder.md#5-静的-web-サイト出力構造)、[`docs/details/builder.md` 詳細本文責務 §8](details/builder.md#8-実行方法)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e)、[`docs/details/builder.md` 詳細本文責務 §27.4](details/builder.md#sec-27-4) |
 | 変換レポート出力 | `builder` | [`docs/details/builder.md` 詳細本文責務 §8](details/builder.md#8-実行方法)、[`docs/details/runner.md` 詳細本文責務 §13](details/runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §15](details/runner.md#15-ログ)、[`docs/details/api.md` 詳細本文責務 §22.0e](details/api.md#sec-22-0e) |
+| サイドバー開閉 | `builder` | [`docs/details/builder.md` 詳細本文責務 §7.2](details/builder.md#sec-7-2) |
+| TOC 検索フィルター | `builder` | [`docs/details/builder.md` 詳細本文責務 §7.4](details/builder.md#sec-7-4) |
+| トップへ戻るボタン | `builder` | [`docs/details/builder.md` 詳細本文責務 §7.7](details/builder.md#sec-7-7) |
 | シンタックスハイライト | `builder` | [`docs/details/builder.md` 詳細本文責務 §7.8](details/builder.md#sec-7-8) |
 | 本文内全文検索 | `builder` | [`docs/details/builder.md` 詳細本文責務 §7.9](details/builder.md#sec-7-9) |
 | アンカーリンク自動検証 | `builder` | [`docs/details/builder.md` 詳細本文責務 §4.3](details/builder.md#sec-4-3)、[`docs/details/builder.md` 詳細本文責務 §8](details/builder.md#8-実行方法) |
@@ -137,7 +153,7 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 | コードブロックのファイル名表示 | `builder` | [`docs/details/builder.md` 詳細本文責務 §28.13](details/builder.md#sec-28-13) |
 | テンプレート変数展開 | `builder` | [`docs/details/builder.md` 詳細本文責務 §28.14](details/builder.md#sec-28-14) |
 | HTML ミニファイ | `builder` | [`docs/details/builder.md` 詳細本文責務 §28.15](details/builder.md#sec-28-15) |
-| TOC ハイライト追従 | `builder` | [`docs/details/builder.md` 詳細本文責務 §28.16](details/builder.md#sec-28-16) |
+| TOC ハイライト追従（アクティブ見出し追跡） | `builder` | [`docs/details/builder.md` 詳細本文責務 §7.5](details/builder.md#sec-7-5)、[`docs/details/builder.md` 詳細本文責務 §28.16](details/builder.md#sec-28-16) |
 | Mermaid ダイアグラム描画 | `builder` | [`docs/details/builder.md` 詳細本文責務 §28.17](details/builder.md#sec-28-17) |
 | 脚注サポート | `builder` | [`docs/details/builder.md` 詳細本文責務 §28.18](details/builder.md#sec-28-18) |
 | インライン数式レンダリング | `builder` | [`docs/details/builder.md` 詳細本文責務 §28.19](details/builder.md#sec-28-19) |

@@ -1,8 +1,6 @@
 # Adlaire CI — Fixture 詳細仕様
 
-[`docs/details/fixture.md`](fixture.md) は fixture 証跡責務として、fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件だけを扱う。
-
-component 境界管理の参照先は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) とする。[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は owner component 別詳細本文責務ではなく、fixture 入力、expected、effects、assertion、実装検証証跡、検証観点の証跡本文を持つ。
+[`docs/details/fixture.md`](fixture.md) は、[`docs/SPEC.md` 責務文書構成](../SPEC.md#document-responsibility-map) で割り当てられた fixture 証跡責務として、fixture 入力、expected、fake、effects、assertion、実装検証証跡、acceptance checklist、差し戻し条件だけを扱う。owner / collaborator 境界は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) を参照し、owner component 別詳細本文を再定義しない。
 
 ---
 
@@ -154,7 +152,8 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | fake ssh executable | runner | fixture 指定の stdout、stderr、終了コード、timeout を返す。実 shell、実 SSH、実 file 転送は実行しない。 | argv、stdin 有無、環境変数名、終了コード、timeout 発生有無。secret 値は記録しない。 |
 | fake notifier | runner / API 運用 | fixture 指定の HTTP status、response body、timeout を返す。通知先へ送信しない。 | URL の host 部分、payload schema、mask 後 payload、retry 回数、最終結果。 |
 | fake filesystem | builder / runner / API | atomic write 失敗、sync 失敗、lock 競合、JSON 破損、permission error を fixture 単位で再現する。通常 file I/O の代替にはしない。 | 対象 path、操作種別、注入した失敗、復旧後の状態。 |
-| fake fetch | SDK | `status`、`headers`、`body`、network error、timeout、abort、stream chunk を fixture どおり返す。実 network は使用しない。 | method、URL、query、headers、body 有無、abort 発生有無、呼び出し順。token 値は `***` に置換する。 |
+| fake fetch | builder / SDK | `status`、`headers`、`body`、network error、timeout、abort、stream chunk を fixture どおり返す。実 network は使用しない。 | method、URL、query、headers、body 有無、abort 発生有無、呼び出し順。token 値は `***` に置換する。 |
+| fake browser runtime | builder | fixture の DOM tree、event、`matchMedia`、localStorage、Clipboard API、`execCommand`、timer、IntersectionObserver、scroll geometry、console を決定的に再現する。実 browser、実 storage、実 clipboard を使用しない。fetch は `fake fetch` を使用する。 | listener の target / type / options / 登録順、API 呼出しと引数、DOM の class / attribute / text / tree、storage read / write、timer 登録 / 発火、console warning を呼出し順で記録する。 |
 | fake SDK | UI | SDK method ごとに固定 return、固定 throw、固定 stream event を返す。UI からの直接 API 呼び出しは受け付けない。 | method 名、引数、呼び出し順、throw した error code、stream unsubscribe 実行有無。 |
 
 <a id="sec-0g-8-f-3"></a>
@@ -188,6 +187,16 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | Fixture H: strict warning before publish | strict 用 Markdown と既存正常出力を用意し、`adlaire-ci-build --src testdata/builder/strict/source.md --out <tmp> --strict` を実行する。 | exit `2`。stdout に `[WARN] BROKEN_LINK`、`[WARN] UNCLOSED_FENCE`、`[REPORT]` を出し、stderr は空。公開 rename を 0 回とし、既存 `index.html` を置換しない。 |
 | Fixture I: atomic output compensation | 既存正常出力を用意し、fake filesystem で (1) 既存出力から `prev` への rename 後の `tmp` 公開 rename、(2) `tmp` 公開 rename 後の親 directory `Sync`、(3) 各 subcase の補償 rename または補償 `Sync` を個別に失敗させる。(3) の後は異なる current PID で再実行する。 | (1) と (2) で補償成功時は exit `1`、`[REPORT]` なし、更新前 `index.html` の byte 一致、`tmp` / `prev` 不在、補償 1 回を固定する。(3) は exit `1`、`cannot restore previous output directory` と最初の失敗文言、追加復旧 0 回、残存 `tmp` / `prev` / 公開 path の実状態を `expected/state/state-diff.json` と `expected/effects.json` に固定する。異なる PID の再実行も親 directory の残存 entry を削除せず、UTF-8 byte 列で最小の絶対 path を含む `output staging path already exists` で停止する。 |
 | Fixture J: build metadata dataflow | 固定 `--build-id b20260926010203-001 --commit-sha abcdef1 --build-at 2026-09-26T01:02:03Z` と、各 metadata option を省略した実行を個別に行う。 | 指定時は `BuildConfig`、`SiteData.BuildMeta`、全 HTML meta、`[REPORT]` の 3 値が完全一致する。省略時は 3 値を空文字のまま出力する。独立した生成日時を追加せず、fake clock を変えても生成物が変化しない。 |
+| Fixture K: sidebar runtime | desktop / mobile の fake `matchMedia`、`adb-sb` の不在・`"1"`・`"0"`・不正値、storage read/write throw、toggle click、breakpoint change、mobile `.tl` click を個別に実行する。 | [`docs/details/builder.md` 詳細本文責務 §7.2](builder.md#sec-7-2) の mode 別 `open` / `closed` class、`aria-expanded`、日本語 `aria-label`、保存値、既定状態を exact 比較する。storage failure でも DOM 状態を維持し、`#ct` inline style、cookie、IndexedDB を変更しない。 |
+| Fixture L: TOC filter runtime | ASCII 大文字、非 ASCII、内部空白、group / leaf、0 件結果を含む TOC を用意し、空 query → 非空 query 1 → 非空 query 2 → 空 query を実行する。 | [`docs/details/builder.md` 詳細本文責務 §7.4](builder.md#sec-7-4) の正規化、最初の snapshot 1 回、leaf / group `hidden`、group 一時展開、`#sb-none`、`searchActive`、空 query での完全復元を固定する。検索中の localStorage write は 0 回とする。 |
+| Fixture M: copy runtime | Clipboard API fulfill、同期 throw、Promise reject、fallback `true`、`false`、throw を、`.cb-copy` と `.hn-link` の両方で fake timer とともに実行する。 | [`docs/details/builder.md` 詳細本文責務 §7.6](builder.md#sec-7-6) と [§7.11](builder.md#sec-7-11) の呼出し順、fallback 最大 1 回、textarea 必須削除、成功 / 失敗表示、1,800 ms 復元を固定する。`false` / throw を成功表示せず、二重 copy を行わない。 |
+| Fixture N: syntax highlight runtime | `python`、`bash`、`json`、`sql`、`ini`、`diff` の優先競合、未閉鎖 string、対応外言語、HTML 風文字列を含む `<code>` を入力する。 | [`docs/details/builder.md` 詳細本文責務 §7.8](builder.md#sec-7-8) の token class と優先順を exact DOM tree で比較し、処理前後の `textContent` を UTF-16 code unit 単位で一致させる。`innerHTML` 使用、HTML 解釈、token 入れ子、対応外言語の DOM 変更を 0 件とする。 |
+| Fixture O: search runtime | 正常 index、HTTP failure、JSON failure、1 entry schema failure、同一 / 別 pathname、fetch 完了前の query 更新、1 / 2 code point query、先頭空白を持つ text node、連続検索と clear を fake fetch / DOM で実行する。 | [`docs/details/builder.md` 詳細本文責務 §7.9](builder.md#sec-7-9) の fetch 1 回、index 全体破棄、最新 query だけの結果、entry 順最大 20 件、same-origin / same-path 判定、mark 除外要素、UTF-16 index を保持する `normalizeSearchMark()`、左から非重複 mark、解除後 `normalize()`、警告最大 1 回を固定する。index 由来値を `innerHTML` へ渡さない。 |
+| Fixture P: keyboard runtime | 通常 target、各 editable / interactive target とその子孫、`defaultPrevented`、composition、repeat、Ctrl / Meta / Alt、Shift、空 / 非空検索を組み合わせて `/`、`Escape`、`t`、未定義 key を dispatch する。 | [`docs/details/builder.md` 詳細本文責務 §7.12](builder.md#sec-7-12) の handler 1 個、処理 / no-op、`preventDefault()`、focus、input event、smooth scroll の呼出し回数を固定する。`keyCode` / `which` 参照は 0 回とする。 |
+| Fixture Q: scroll runtime | scroll range 正、0、負相当、scrollTop が範囲外、`scrollY` 400 / 401、各 DOM 欠落、IntersectionObserver 不在を fake scroll source で実行する。 | [`docs/details/builder.md` 詳細本文責務 §7.7](builder.md#sec-7-7) と [§7.13](builder.md#sec-7-13) の passive listener 1 個、fallback → progress → top button の順、初期同期実行 1 回、進捗 `0`〜`100` clamp、`.visible` 境界、欠落機能だけの no-op を固定する。 |
+| Fixture R: table sort runtime | 正負整数、小数、数学的同値、text、空、`-0`、指数表記、同値行、複数 `<tbody>`、対象 cell 欠落を含む table で各列を 2 回 click する。 | [`docs/details/builder.md` 詳細本文責務 §7.14](builder.md#sec-7-14) の number / text / empty 分類、昇順 / 降順、empty 常時末尾、stable 元 index、UTF-16 比較、`aria-sort`、同じ `<tbody>` への再配置を固定する。不正構造は DOM / aria 無変更、`Number()` / `localeCompare()` 使用は 0 回とする。 |
+
+`TOC ハイライト追従（アクティブ見出し追跡）` の runtime fixture は、同一挙動をここへ重複定義せず [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#sec-28-f-14) の [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) 対応行を唯一の正本とする。
 
 <a id="15a-f-runner-初期受け入れ-fixture-契約"></a>
 **15a-F runner 初期受け入れ fixture 契約：**
@@ -206,7 +215,7 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | fixture | 入力 / fake | expected / effects |
 |---------|--------------|--------------------|
 | Fixture R1 | CLI help、relative state-dir、unknown option。 | help は exit `0`。不正 CLI は exit `2`、stdout 空、stderr 固定。 |
-| Fixture R2 | `.last_sha={"sha":"blob-1"}`、fake GitHub Trees API が同一 SHA を返す。 | exit `0`。`.last_sha` 維持、log/history 非作成、`NO_CHANGE` INFO。 |
+| Fixture R2 | GitHub single file target の `.last_sha={"sha":"1111111111111111111111111111111111111111"}`、fake GitHub Trees API が同じ 40 文字 SHA を返す。 | exit `0`。`.last_sha` の 40 文字値を byte 不変で維持し、log/history 非作成、`NO_CHANGE` INFO。 |
 | Fixture R3 | 旧 SHA、fake GitHub 変更あり、fake blob Markdown、deploy target なし、pipeline success、`snapshots_keep=0`。 | exit `0`。新 SHA 保存、build log/history success、archive owner 非呼出し、`snapshot_id=null`、clean final state。 |
 | Fixture R4 | fake GitHub 変更あり、pipeline exit `7`。 | exit `1`。旧 SHA 維持、failure build log/history、deploy/snapshot 非実行。 |
 | Fixture R5 | pipeline success、deploy target 1 件、引用対象文字を含む remote path、fake ssh transfer failure。 | local argv の `ssh`, `--`, `user@host`, remote command の順、`quoteRemoteArg` 適用後の `mkdir` / `tee`、stdin を固定する。exit `1`、新 SHA 保存、pending transfer 追加、build log `target_status="success_deploy_pending"`、history `status="success_deploy_pending"`、両方の `failure_category="deploy_failure"`、snapshot 非作成。 |
@@ -239,6 +248,8 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | Fixture R32 | `.repo_config` 不在、正常値、API 更新前に起動した process、更新後の次回 process、破損 JSON を個別に用意する。 | 不在時は `fqwink/Build-Scripts`、正常値は保存済み owner/repo を全 GitHub API path に使用する。起動済み process は更新前値を維持し、次回 process は更新後値を使う。破損時は exit `2`、`REPO_CONFIG_INVALID`、GitHub API / queue / build / pipeline / deploy / snapshot 呼出しと状態自動修復は 0 件。 |
 | Fixture R33 | branch target 2 件を同一 runner process で成功させ、各 target は異なる `Out` と複数 `target_files` を持つ。fake clock は同一秒を返し、1 件目の build id と衝突させる。 | target ごとに suffix を含む一意 build id を 1 件ずつ採番する。同一 target の `target_files` は 1 ID に集約する。`.build_state.current_build_id` は target 順に遷移し、log、history、snapshot、output SHA は各 2 件かつ target の branch / output root と一致し、上書きと同一 history ID を 0 件とする。process 終了時は current ID を null にして exit `0`。 |
 | Fixture R34 | stdout / stderr に CRLF、単独 CR、NUL、invalid UTF-8、既知 secret、1 MiB 超過、4000 文字超行を含める。REPORT なし、正常 1 行、重複、key 欠落、順序違い、型不正、必須 13 key 後の拡張 key を個別に実行し、`[WARN]` と `[WARNING]` も含める。 | LF 正規化、NUL 可視化、U+FFFD 置換、secret mask、UTF-8 rune 境界を保つ末尾 1 MiB 以下、truncation flag、行長制限を固定する。REPORT なしは `REPORT_MISSING`、重複は最初の 1 行と `REPORT_DUPLICATE`、不正は `report:null` と `REPORT_PARSE_FAILED`、正常と拡張 key は 13 key だけの Report object とし、いずれも元 pipeline exit code を変更しない。 |
+| Fixture R35 | GitHub directory target 配下に path と blob SHA が異なる `.md` file 3 件を fake Trees API 順序を変えて返し、正規化済み path 順 payload から期待 64 文字 digest を事前算出する。`.last_sha` には同 digest を保存する。 | API 応答順に依存せず [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の directory target digest が期待 64 文字値と一致する。exit `0`、`.last_sha` byte 不変、log/history/pipeline/deploy/snapshot 非実行、`NO_CHANGE` INFO。 |
+| Fixture R36 | local mode の対象 file 2 件と空 target を個別に用意し、相対 path / file SHA-256 payload から期待 64 文字 digest を事前算出する。変更あり subcase は旧 64 文字値を保存する。 | [`docs/details/runner.md` 詳細本文責務 §27.23](runner.md#sec-27-23) の path 順 local target digest、空 target digest、dry-run `current_blob_sha`、build 成功後の 64 文字保存値を exact 比較する。GitHub API / Commit Status 呼出しは 0 件とする。 |
 
 <a id="22-f-api-fixture-契約"></a>
 

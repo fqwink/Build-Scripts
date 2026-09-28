@@ -81,7 +81,7 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 | `/usr/local/bin/adlaire-ci-runner` | `components/runner.go` から生成する CI ランナーバイナリ。 |
 | `/usr/local/bin/adlaire-ci-build` | `components/builder.go` から生成する Markdown → 静的 Web サイトビルドバイナリ。 |
 | `/opt/adlaire-builder/.github_token` | GitHub PAT。`runner` が読み込む。 |
-| `/opt/adlaire-builder/.last_sha` | 前回取得した blob SHA。JSON 形式で保存する。 |
+| `/opt/adlaire-builder/.last_sha` | 前回処理した target SHA / digest。JSON 形式で保存する。 |
 | `/opt/adlaire-builder/repo/docs/` | GitHub Blobs API から取得した Markdown の書き出し先。単一 Markdown の場合も本ディレクトリ内へ保存する。 |
 | repository root の `.pipeline.yml` | 存在する場合に [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) が優先する任意の pipeline 定義。GitHub mode では resolved tree / Blob API から memory へ取得し、local watch mode では `BranchTarget.Src` の親 directory から読む。 |
 
@@ -302,14 +302,12 @@ runner は CLI、`.repo_config`、`.server_config`、`.branch_config`、既定�
 
 **CLI 異常系：**
 
+`--state-dir` の空文字、相対 path、不在、directory でない場合の stdout、stderr、終了コード、副作用は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) をそのまま使用し、ここでは再定義しない。
+
 | 条件 | 終了コード | stderr |
 |------|------------|--------|
 | 未知の引数 | `2` | `unknown option: <name>` |
 | `--state-dir` 値欠落 | `2` | `missing value: --state-dir` |
-| `--state-dir` が空文字 | `2` | `state directory must not be empty` |
-| `--state-dir` が相対パス | `2` | `state directory must be absolute: <path>` |
-| `--state-dir` が存在しない | `2` | `state directory not found: <path>` |
-| `--state-dir` がディレクトリではない | `2` | `state path is not directory: <path>` |
 
 以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`.server_config.build_cooldown_seconds`、`.server_config.snapshots_keep`、`.server_config.force_build_interval_hours`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` を Go 版 runner の標準設定とする。`.server_config` の正確な key、型、既定値、許容範囲、0 の意味は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を正本とする。
 
@@ -332,7 +330,7 @@ BRANCH_TARGETS = [
     {
         "branch":      "main",                                        # 監視対象ブランチ
         "target_file": "docs",                                        # 監視対象 Markdown ファイルまたはディレクトリ
-        "sha_file":    "/opt/adlaire-builder/.last_sha",             # blob SHA キャッシュ（JSON 形式: {"sha": "..."}）
+        "sha_file":    "/opt/adlaire-builder/.last_sha",             # target SHA / digest キャッシュ（JSON 形式: {"sha": "..."}）
         "src":         "/opt/adlaire-builder/repo/docs",              # Blobs API 書き出し先
         "out":         "/opt/adlaire-builder/dist/site",              # ビルド成果物ディレクトリ
         "deploy_targets": [
@@ -425,17 +423,7 @@ runner は起動時の設定正規化で `.branch_config` を 1 回だけ読み�
 <a id="sha-cache-読み書き契約"></a>
 **SHA cache 読み書き契約：**
 
-`sha_file` は target ごとの処理済み Git blob SHA を保存する JSON file である。JSON object 以外の保存形式は破損として扱い、自動変換してはならない。
-
-| 状態 | 処理 |
-|------|------|
-| 不在 | 初回実行として `previous_blob_sha=""` を扱う。build 成功時に `{"sha":"<new_sha>"}` を atomic write する。 |
-| `{"sha":""}` | 初回実行として扱う。 |
-| `{"sha":"<value>"}` | `<value>` を前回 SHA として比較する。 |
-| JSON 破損 | `failure_state_write` ではなく `failure_decode` として当該 target を失敗扱いし、sha_file を更新しない。 |
-| object 以外 | JSON 破損と同じ扱い。 |
-| `sha` key 不在または string 以外 | JSON 破損と同じ扱い。 |
-| 未知 key あり | schema 破損として `failure_decode` で当該 target を失敗扱いし、sha_file を更新しない。 |
+`sha_file` の JSON schema、不在・空値・破損時の読取、保存値は [`docs/details/statefile.md` 詳細本文責務 `.last_sha` / `BranchTarget.SHAFile` schema](statefile.md#last-sha-schema) を唯一の正本とする。runner は schema-valid な非空値を [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に従って比較する。statefile adapter が schema 破損を返した場合は `failure_state_write` ではなく `failure_decode` として当該 target を失敗扱いし、`sha_file` を更新しない。
 
 SHA cache の更新は、pipeline 成功後、deploy 前に行う。複数 target のうち一部 target が成功した場合は、成功 target の `sha_file` だけを更新する。失敗 target、skip target、branch target 設定不正 target の `sha_file` を更新してはならない。
 
@@ -586,7 +574,7 @@ runner は `BRANCH_TARGETS` の各 entry について、[`docs/details/statefile
 | state start | `.build_state` | `.build_state` | queue entry は waiting から active への移動と `running=true`、`current_build_id`、`last_started_at` を同じ atomic write で保存する。polling は active / waiting を変更せず runtime field だけを保存する。 | `.build_lock` を削除し、終了コード `1`。 |
 | build log start | build id, `.build_state`, `.build_status.json` | `.build_logs/{id}.json` | [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の途中保存 schema を atomic write する。 | GitHub API、pipeline、deploy、snapshot を開始せず、`failure_state_write` とする。 |
 | cooldown gate | `.build_state`, `.server_config` | none | cooldown 範囲外なら target 処理へ進む。 | cooldown 中は `target_status=skipped_cooldown`、終了コード `0`。 |
-| GitHub tree resolve | `.github_token`, branch target | `.build_logs/{id}.json` | target file の blob SHA を取得する。 | 全 retry 失敗は `failure_api` を記録し、SHA を更新しない。 |
+| GitHub tree resolve | `.github_token`, branch target | `.build_logs/{id}.json` | 単一 file target は Git object SHA、directory target は対象 `.md` file 集合と target digest を確定する。 | 全 retry 失敗は `failure_api` を記録し、target SHA / digest を更新しない。 |
 | SHA decision | `sha_file`, `.server_config` | none | 変更あり、force 条件成立、または webhook/force queue payload により build 対象を確定する。 | 変更なしは `skipped_no_change`。状態ファイルを更新しない。 |
 | blob materializer | GitHub blob API, branch target | `src` | Base64 decode 後、対象 Markdown を atomic write する。 | decode/write 失敗は `failure_decode`。SHA を更新しない。 |
 | precheck | branch target, output path, build binary | `.build_logs/{id}.json` | disk、binary、version がすべて合格する。 | `failure_precheck` を記録し、pipeline を起動しない。 |
@@ -768,7 +756,7 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
     │   │
     │   ├─ Step 1: Git Trees API
     │   │   GET /repos/{RunnerConfig.RepositoryOwner}/{RunnerConfig.RepositoryName}/git/trees/{branch}?recursive=1
-    │   │   → target_file の blob SHA を取得
+    │   │   → 単一 file target の Git object SHA、または directory target の対象 `.md` file 集合と target digest を確定
     │   │   └─ API 失敗時：API_RETRY_MAX 回まで指数バックオフ（API_RETRY_BASE_SECONDS × 2^n 秒）で再試行
     │   │        ├─ Trees API 全試行失敗時：ERROR ログ、このエントリを failure(api_error) として記録し、SHA を更新せず次エントリへ進む
     │   │        └─ レスポンスヘッダー X-RateLimit-Remaining = 0 の場合
@@ -784,8 +772,8 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
     │   │   └─ 不一致（変更あり）→ 続行
     │   │
     │   ├─ Step 2: Git Blobs API
-    │   │   GET /repos/{RunnerConfig.RepositoryOwner}/{RunnerConfig.RepositoryName}/git/blobs/{sha}
-    │   │   → Base64 デコード → src パスへ書き出し
+    │   │   GET /repos/{RunnerConfig.RepositoryOwner}/{RunnerConfig.RepositoryName}/git/blobs/{blob_sha}
+    │   │   → 単一 file target は 1 件、directory target は確定済み `.md` file ごとに path 順で取得し、Base64 デコード後に `src` へ materialize
     │   │   └─ API 失敗時：API_RETRY_MAX 回まで指数バックオフで再試行
     │   │        ├─ Blobs API 全試行失敗時：ERROR ログ、このエントリを failure(api_error) として記録し、SHA を更新せず次エントリへ進む
     │   │        └─ レスポンスヘッダー GitHub-Authentication-Token-Expiration が存在する場合は Step 1 と同様に PAT 有効期限チェックを行う
@@ -813,7 +801,7 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
     │   │       └─ [通知送信] on: ["failure"] 設定時
     │   │           → [ref:notification-retry] の channel 選択、NotificationPayload object、送信結果、pending 固定契約を実行
     │   │
-    │   └─ sha_file を新 SHA で更新（`{"sha": "<new_sha>"}` を JSON 書き込み）
+    │   └─ sha_file を新 target SHA / digest で更新（`{"sha": "<new_sha_or_digest>"}` を JSON 書き込み）
     │        └─ SSH サイト転送（deploy_targets リストの各エントリへ転送）
     │             ├─ [転送後整合性検証] 引用済み remote path を `sha256sum --zero --` で検証
     │             │   ├─ 全ファイルのローカル sha256 と一致 → 転送成功
@@ -925,7 +913,7 @@ HTTP `401` は `failure_api` とし、ERROR ログ `GITHUB_AUTH_FAILED` を出�
 |------|------|------|
 | Trees API | `truncated=true` | `failure_api`。ERROR `GITHUB_TREE_TRUNCATED: branch={branch}` を出し、Blob API へ進まない。 |
 | Trees API | `target_file` が file として一致 | 対象 blob SHA を使用する。 |
-| Trees API | `target_file` が directory として一致 | 配下 `.md` file の blob SHA を path 昇順に連結し、SHA-256 hex を target digest とする。Blob API は各 `.md` file に対して実行する。 |
+| Trees API | `target_file` が directory として一致 | 配下 `.md` file を正規化済み repository 相対 path の UTF-8 byte 昇順に並べ、各 file の `relative_path + "\n" + blob_sha + "\n"` を連結した byte 列の SHA-256 lowercase hex を target digest とする。結果は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) の 64 文字形式に一致させる。Blob API は各 `.md` file に対して実行する。対象 `.md` file が 0 件の場合は target missing とし、空 byte 列 digest を使用しない。 |
 | Trees API | `target_file` が見つからない | `failure_api`。ERROR `GITHUB_TARGET_MISSING: branch={branch} target={target_file}`。 |
 | Blob API | `encoding!="base64"` | `failure_decode`。 |
 | Blob API | Base64 decode 失敗 | `failure_decode`。 |
@@ -1282,6 +1270,8 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 | R32 | repository identity の既定値、API 更新後の次回起動適用、破損時の GitHub API 呼出し禁止。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R32` |
 | R33 | multi-target の build id 一意性、target files の 1 ID への集約、target 別 log / history / snapshot / output SHA の帰属。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R33` |
 | R34 | pipeline output の正規化、マスク、上限、REPORT parse、warning、元 exit code 保持。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R34` |
+| R35 | GitHub directory target digest の path 順決定性と 64 文字 cache。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R35` |
+| R36 | local target digest、空 target、dry-run、成功時の 64 文字保存。 | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) `Fixture R36` |
 
 ---
 
@@ -1357,7 +1347,7 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 | pipeline 起動 | repository `.pipeline.yml`、`.pipeline_config.inline_yaml`、標準 builder command の順で 1 経路を選択する。source 選択、YAML subset、step 実行は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22)、標準 builder command の argv は [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) を参照する。 |
 | `BRANCH_TARGETS` 直列処理 | 複数エントリはリスト順に順次処理する。並列処理は行わない。1 件の処理が失敗しても、失敗をログと `.build_logs/{id}.json` に記録した上で次エントリへ進む。 |
 | GitHub API リトライ | GitHub API 失敗時は `API_RETRY_MAX` 回まで指数バックオフで再試行する。全試行失敗時は ERROR ログを記録し、当該ターゲットのビルドをスキップする。SHA は更新しない。 |
-| ビルド失敗時の扱い | 標準 builder command または必須 YAML step が非 0 で終了した場合は ERROR ログを出し、SHA を更新しない。次回実行では同じ blob SHA を再検出して再度ビルド対象になる。 |
+| ビルド失敗時の扱い | 標準 builder command または必須 YAML step が非 0 で終了した場合は ERROR ログを出し、target SHA / digest を更新しない。次回実行では同じ target SHA / digest を再検出して再度ビルド対象になる。 |
 
 <a id="sec-20-2"></a>
 **20.2 標準機能の制限：**
@@ -1412,8 +1402,8 @@ dry-run の stdout は JSON object 1 件と末尾改行に固定する。
     {
       "branch": "main",
       "target_file": "docs",
-      "previous_sha": "old",
-      "current_blob_sha": "new",
+      "previous_sha": "1111111111111111111111111111111111111111",
+      "current_blob_sha": "2222222222222222222222222222222222222222",
       "current_commit_sha": "89abcdef0123456789abcdef0123456789abcdef",
       "would_build": true,
       "trigger": "polling",
@@ -1446,8 +1436,8 @@ dry-run の stdout は JSON object 1 件と末尾改行に固定する。
 | `targets` | array | branch target 正規化後の処理順で返す。複数 target は branch 名昇順、同一 branch は target path 昇順。 |
 | `targets[].branch` | string | 対象 branch 名。 |
 | `targets[].target_file` | string | 対象 Markdown file または directory。 |
-| `targets[].previous_sha` | `string` または `null` | dry-run 開始時点の保存済み SHA。存在しない場合は `null`。 |
-| `targets[].current_blob_sha` | `string` または `null` | fake GitHub read で取得した blob SHA。GitHub read 失敗または precheck failure では `null`。 |
+| `targets[].previous_sha` | `string` または `null` | dry-run 開始時点の保存済み [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) の値。存在しない場合は `null`。 |
+| `targets[].current_blob_sha` | `string` または `null` | 対象種別に応じて取得または算出した [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) の値。GitHub read 失敗または precheck failure では `null`。 |
 | `targets[].current_commit_sha` | `string` または `null` | fake GitHub read で取得した commit SHA。GitHub read 失敗または precheck failure では `null`。 |
 | `targets[].would_build` | boolean | 非 dry-run なら build を開始する場合だけ `true`。`github_error`、`config_error`、`precheck_error` では `false`。 |
 | `targets[].trigger` | string | 判定 trigger。既定は `"polling"`。 |
@@ -2123,6 +2113,8 @@ runner は build 開始後、builder command または pipeline step command を
 3. hidden directory、`.git`、出力先 `out`、`.snapshots` は走査対象外とする。
 4. SHA-256 manifest を作成し、前回 `.local_watch_state.json` と比較する。
 5. 差分があれば build を実行し、成功時だけ state を更新する。
+
+local target digest は、対象 file を正規化済み相対 path の UTF-8 byte 昇順に並べ、各 file の `relative_path + "\n" + file_sha256 + "\n"` を連結した byte 列全体の SHA-256 lowercase hex とする。対象 file が 0 件の場合は空 byte 列の SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` とする。`current_blob_sha`、`previous_blob_sha`、`last_blob_sha` という既存 key 名へ local target の値を保存する場合も、この [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) の 64 文字値を使用する。
 
 **local scan 固定契約：**
 

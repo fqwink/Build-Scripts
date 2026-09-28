@@ -13,7 +13,7 @@
 | 項目 | 内容 |
 |------|------|
 | owner component | `setup` |
-| 実装主体 | `components/setup.go`。起動入口は `main.go`、実行ファイル名は `adlaire-ci-setup`、起動 interface は [setup CLI 固定契約](#setup-cli-contract) とする。 |
+| 実装主体 | `components/setup.go`。起動入口は [`main.go`](../../main.go)、実行ファイル名は `adlaire-ci-setup`、起動 interface は [setup CLI 固定契約](#setup-cli-contract) とする。 |
 | 持つ内容 | `setup` owner が主本文として定義するバイナリ配布、配置、systemd、セットアップ、アップデート、Release 成果物の受け入れ・checksum 検証。 |
 
 ---

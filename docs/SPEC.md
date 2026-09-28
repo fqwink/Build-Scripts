@@ -11,6 +11,8 @@
 
 > **Adlaire CI** とは、最初から Go を前提として仕様策定するビルド・CI・管理システムの総称である。
 
+<a id="spec-document-responsibility"></a>
+
 ## 文書責務
 
 [`AGENTS.md`](../AGENTS.md) と [`docs/SPEC.md`](SPEC.md) は、本リポジトリにおける最上位文書である。
@@ -21,7 +23,9 @@
 
 方針・ポリシーの配置、生成静的 Web サイトと標準管理 UI のデザイン関係の例外、詳細本文との分離、`技術方針` 表と `ディレクトリ構成` tree の削除禁止は、[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則を唯一の本文とする。[`docs/SPEC.md`](SPEC.md) 方針責務の入口では同じ禁止事項を再定義しない。
 
-[`docs/SPEC.md`](SPEC.md) 内の節を参照する場合は、表示文言に `方針責務` または `ポリシー責務` と節番号を必ず併記する。両責務は独立した節番号体系を持つため、責務名を伴わない節番号、または `docs/SPEC.md §番号` だけの参照を仕様判断に使用してはならない。
+[`docs/SPEC.md`](SPEC.md) 内の番号付き節を参照する場合は、表示文言に `方針責務` または `ポリシー責務` と節番号を必ず併記する。両責務は独立した節番号体系を持つため、責務名を伴わない節番号、または `docs/SPEC.md §番号` だけの参照を仕様判断に使用してはならない。番号を持たない前置き節のうち、[文書責務](#spec-document-responsibility)、[状態参照方針](#spec-state-reference-policy)、[責務文書構成](#document-responsibility-map) は、表示文言に対象責務名を併記し、ここで指定した固定 anchor へリンクする場合に限り参照できる。この例外を番号付き節、その他の見出し、または自動生成 anchor だけの参照へ拡張してはならない。
+
+<a id="spec-state-reference-policy"></a>
 
 ## 状態参照方針
 
@@ -451,7 +455,7 @@ Adlaire CI と管理ツールは API を介して通信する。フロントエ�
 
 API は SDK として提供し、管理ツール実装者が直接 HTTP 通信を記述しなくてよい抽象化レイヤーを提供する。
 
-SDK の実装言語と技術は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#4-技術方針)、外部依存の禁止条件は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針)、API 変更との同期と標準管理ツールからの通信境界は [`docs/SPEC.md` ポリシー責務 §8](SPEC.md#8-sdk-通信契約ポリシー) および [`docs/SPEC.md` ポリシー責務 §9](SPEC.md#9-標準管理ツール-ui-sdk-境界ポリシー)、公開 method と transport の実装契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務だけを正本とする。[`docs/SPEC.md` 方針責務 §6.3](SPEC.md#sec-6-3) は SDK を設ける目的だけを定義し、これらの強制条件を再定義しない。
+SDK の実装言語と技術は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#4-技術方針)、外部依存の禁止条件は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針)、API 変更との同期と標準管理ツールからの通信境界は [`docs/SPEC.md` ポリシー責務 §8](SPEC.md#8-sdk-通信契約ポリシー) および [`docs/SPEC.md` ポリシー責務 §9](SPEC.md#policy-9-admin-ui-sdk-boundary)、公開 method と transport の実装契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務だけを正本とする。[`docs/SPEC.md` 方針責務 §6.3](SPEC.md#sec-6-3) は SDK を設ける目的だけを定義し、これらの強制条件を再定義しない。
 
 <a id="64-標準管理ツール方針"></a>
 
@@ -460,7 +464,7 @@ SDK の実装言語と技術は [`docs/SPEC.md` 方針責務 §4 技術方針表
 
 Adlaire CI はすぐに使える標準管理ツールを同梱する。
 
-標準管理ツールは、利用者が管理機能を直ちに操作でき、同じ SDK 境界を利用する別クライアントへ差し替えられる標準クライアントとして位置付ける。実装技術は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#4-技術方針)、SDK 通信とカスタマイズ境界の強制条件は [`docs/SPEC.md` ポリシー責務 §9](SPEC.md#9-標準管理ツール-ui-sdk-境界ポリシー)、視覚仕様は [`docs/DESIGN.md`](DESIGN.md) デザイン責務、DOM・操作・状態の実装契約は [`docs/details/ui.md`](details/ui.md) 詳細本文責務だけを正本とする。[`docs/SPEC.md` 方針責務 §6.4](SPEC.md#sec-6-4) は標準管理ツールを同梱する目的だけを定義し、これらの強制条件を再定義しない。
+標準管理ツールは、利用者が管理機能を直ちに操作でき、同じ SDK 境界を利用する別クライアントへ差し替えられる標準クライアントとして位置付ける。実装技術は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#4-技術方針)、SDK 通信とカスタマイズ境界の強制条件は [`docs/SPEC.md` ポリシー責務 §9](SPEC.md#policy-9-admin-ui-sdk-boundary)、視覚仕様は [`docs/DESIGN.md`](DESIGN.md) デザイン責務、DOM・操作・状態の実装契約は [`docs/details/ui.md`](details/ui.md) 詳細本文責務だけを正本とする。[`docs/SPEC.md` 方針責務 §6.4](SPEC.md#sec-6-4) は標準管理ツールを同梱する目的だけを定義し、これらの強制条件を再定義しない。
 
 ## 7. 機能インベントリ・ロードマップ参照
 
@@ -779,9 +783,11 @@ SDK の実装言語と技術は [`docs/SPEC.md` 方針責務 §4 技術方針表
 - SDK の module 形式、公開 API、error class、timeout、streaming 契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする
 - SDK は API response と利用者操作の境界を変更してはならない。禁止する補完、再試行、永続化、global 汚染の具体条件は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする
 
+<a id="policy-9-admin-ui-sdk-boundary"></a>
+
 ## 9. 標準管理ツール UI / SDK 境界ポリシー
 
-[`docs/SPEC.md` ポリシー責務 §9](SPEC.md#9-標準管理ツール-ui-sdk-境界ポリシー) は、[`admin/index.html`](../admin/index.html) に適用する。
+[`docs/SPEC.md` ポリシー責務 §9](SPEC.md#policy-9-admin-ui-sdk-boundary) は、[`admin/index.html`](../admin/index.html) に適用する。
 
 標準管理ツールの実装技術は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#4-技術方針)、外部依存の禁止条件は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針) だけを正本とする。この節は UI と SDK の境界だけを定義し、実装技術または外部依存条件を再定義しない。
 
