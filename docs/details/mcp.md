@@ -238,7 +238,6 @@ JSON parse 失敗時の HTTP status は `400`、JSON-RPC error response の `id`
 副作用 `yes` の tool は [`docs/details/mcp.md` 詳細本文責務 §29.15](mcp.md#sec-29-15) の elicitation を必須とする。
 
 <a id="sec-29-6"></a>
-<a id="296-tool-schema"></a>
 **29.6 Tool schema：**
 
 `tools/list` の `ToolDescriptor` は `name`、`description`、`inputSchema`、`annotations` を持つ。`annotations.readOnlyHint` は副作用 `no` の tool だけ `true`、副作用 `yes` の tool は `false` とする。`inputSchema` は JSON Schema draft 非依存の object とし、`type`、`required`、`properties`、`additionalProperties:false` だけを使用する。

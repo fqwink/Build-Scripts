@@ -2433,7 +2433,7 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | 比較除外が `not_applicable` に理由付きで記載されていない。 | fixture schema 不備。 |
 
 <a id="additional-management-api-fixture-contract"></a>
-## 29-F 追加管理 API fixture 固定契約
+**[fixture 証跡責務 §29-F 追加管理 API fixture 固定契約](fixture.md#additional-management-api-fixture-contract)：**
 
 追加管理 API fixture は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) を確認する。
 
@@ -2462,8 +2462,12 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 追加管理 API fixture は [`docs/details/api.md` 詳細本文責務 追加管理 API validation / error 優先順位固定契約](api.md#additional-management-validation-order) の順序を検証する。validation failure fixture は、後続の状態 read/write、外部通信、audit、admin event が発生しないことを `expected/effects.json.forbidden_writes` と `expected/effects.json.external_calls=[]` で示す。
 
+追加管理 API validation failure fixture は、次の確認をすべて持つ。HTTP status と error body は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の対象 endpoint 契約と完全一致させる。`expected/state/state-diff.json` は対象状態ファイルが byte 不変であることを示し、`expected/effects.json` は `created_paths`、`updated_paths`、`deleted_paths`、`external_calls`、`commands`、`notifications`、`streams`、`read_api_calls` を空配列にする。認証または認可まで到達する failure だけは、[`docs/details/security.md` 詳細本文責務](security.md) が許可する共通 audit / access log 副作用を `expected/effects.json` に明示する。`expected/security.json` は request body、Authorization header、share token、external auth secret、Webhook secret、SMTP password、raw restore template secret の平文が response、stdout、stderr、log、expected file に出現しないことを列挙する。
+
+追加管理 API fixture の `manifest.json` は、`name`、`section`、`feature`、`owner_component`、`components`、`references`、`assertions`、`not_applicable` を必須 key とする。`section` は対象 [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、または [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) のいずれかを固定文字列で持つ。複数責務を横断する fixture は主 owner を 1 件だけ `owner_component` に置き、残りを `components` と `references` に記録する。`assertions` は実在する expected file と 1 対 1 で対応させ、fixture 実行時に使わない expected file は作成せず、`not_applicable` に理由を置く。
+
 <a id="mcp-fixture-contract"></a>
-## 30-F MCP fixture 固定契約
+**[fixture 証跡責務 §30-F MCP fixture 固定契約](fixture.md#mcp-fixture-contract)：**
 
 MCP fixture は [`docs/details/mcp.md`](mcp.md) 詳細本文責務を確認する。
 
@@ -2495,4 +2499,12 @@ MCP fixture の expected file は以下に固定する。対象外の expected f
 | `testdata/mcp/sse/` | `expected/events.json`、`expected/effects.json`。 |
 | `testdata/mcp/state/` | `expected/state/state-diff.json`、`expected/effects.json`、`expected/security.json`。 |
 
-MCP fixture は [`docs/details/mcp.md` 詳細本文責務 tool 別 params schema](mcp.md#296-tool-schema) の未知 key、必須 key 不足、型不一致、範囲外を個別に検証する。params validation failure では `.mcp_audit_log`、`.mcp_metrics`、対象 owner state を更新しないことを固定する。
+MCP fixture は [`docs/details/mcp.md` 詳細本文責務 §29.6 Tool schema](mcp.md#sec-29-6) の未知 key、必須 key 不足、型不一致、範囲外を個別に検証する。params validation failure では `.mcp_audit_log`、`.mcp_metrics`、対象 owner state を更新しないことを固定する。
+
+MCP fixture の `manifest.json` は、`name`、`section`、`feature`、`owner_component`、`components`、`references`、`assertions`、`not_applicable` を必須 key とする。`owner_component` は `mcp` 固定、`components` は fixture が呼び出す owner component を ASCII 昇順で持つ。`section` は [`docs/details/mcp.md` 詳細本文責務 §29.0](mcp.md#sec-29-0)〜[§29.17](mcp.md#sec-29-17) の対象節を固定文字列で持つ。`references` は対象 MCP 節、呼び出す owner component 詳細本文、必要な [`docs/details/fixture.md` fixture 証跡責務 §30-F](fixture.md#mcp-fixture-contract) を含める。read-only 起動 fixture では副作用 tool を `tools/list` から除外する expected を必須とし、除外した tool 名を `not_applicable` ではなく `expected/response.json` に記録する。
+
+MCP JSON-RPC failure fixture は、`id` の保持、`jsonrpc:"2.0"`、error code、message、data の有無を `expected/response.json` に固定する。parse error、invalid request、batch request、method not found、invalid params、unauthorized、forbidden、timeout は別 fixture とし、1 fixture で複数の失敗分類を兼用してはならない。initialize 前に許可されない method を呼んだ場合、`.mcp_client_log`、`.mcp_audit_log`、`.mcp_metrics`、対象 owner state の各副作用有無を `expected/effects.json` に明示する。
+
+MCP tool call fixture は、`tools/list` の descriptor と `tools/call` の request / response を別 assertion として記録する。副作用 `yes` の tool は、confirmation なし拒否、confirmation params hash 不一致、confirmation 期限切れ、confirmation 付き成功を別 fixture とする。confirmation なし拒否、不一致、期限切れでは対象 owner state、runner queue、config、archive、notification、audit 対象外 log を更新してはならない。confirmation 付き成功では、tool 実行開始前の audit 追記、対象 owner 呼び出し、metrics 更新、JSON-RPC success response の順序を `expected/effects.json` に記録する。
+
+MCP security fixture は、Authorization header、API token、session token、tool params 内 secret、prompt 本文に含まれる secret、sampling request 本文の secret が stdout、stderr、`.mcp_client_log`、`.mcp_audit_log`、`.mcp_metrics`、`expected/response.json`、`expected/events.json` に平文で出現しないことを `expected/security.json` に列挙する。secret を placeholder として表す場合は `${secret:<source_id>}` だけを使用し、実値、hash 入力、部分文字列、長さから復元可能な値を expected file に置いてはならない。
