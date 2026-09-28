@@ -137,7 +137,7 @@ API request path は、正規化後の `--api-url` path prefix と command 固�
 | `history` | なし | `GET /api/history` | なし | `total=<total> latest=<id-or-none>` + LF。`--json` 指定時は API response JSON + LF。 |
 | `trigger-build` | なし | `POST /api/build` | `{}` | `queued=<queue_id-or-none>` + LF。`--json` 指定時は API response JSON + LF。 |
 | `cancel-queue` | `<queue_id>` | `DELETE /api/queue/{queue_id}` | なし | `queue cancelled` + LF。`--json` 指定時は API response JSON + LF。 |
-| `config-snapshot` | `[label]` | `POST /api/config-snapshots` | `{ "label": <label-or-null> }` | `snapshot=<id>` + LF。`--json` 指定時は API response JSON + LF。 |
+| `config-snapshot` | `[label]` | `POST /api/config-snapshots` | 未指定時 `{"label":null}` / 指定時 `{"label":"<label>"}` | `snapshot=<id>` + LF。`--json` 指定時は API response JSON + LF。 |
 | `events` | なし | `GET /api/events` | なし | `events=<count>` + LF。`--json` 指定時は API response JSON + LF。 |
 
 `cancel-queue` の `<queue_id>` は path parameter として 1 回だけ percent encode する。空文字、`/`、`..`、NUL byte を含む値は API 呼び出し前に parse error とする。`config-snapshot` の `label` は未指定なら `null`、指定時は 1〜128 Unicode scalar values とし、改行、NUL byte、BOM を禁止する。

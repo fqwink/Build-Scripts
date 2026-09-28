@@ -1802,6 +1802,26 @@ Admin CLI fixture の `manifest.json.assertions` は次表に固定する。複�
 | `failure-admin-cli-output-errors` | `response`、`stdout`、`stderr`、`effects`、`secret-mask`、`no-write` |
 | `security-admin-cli-secret-redaction` | `response`、`request`、`stdout`、`stderr`、`effects`、`secret-mask`、`no-write` |
 
+Admin CLI fixture の `expected/request.json` は root object とし、root key は `requests`、`forbidden_requests` だけを許可する。`requests` は実際に送信する HTTP request を command 実行順で持つ配列、`forbidden_requests` は送信してはならない HTTP request または transport 挙動を列挙する配列とする。未知 root key、未知 request key、未知 forbidden request key を含む fixture は不合格とする。
+
+| 対象 | key | 型 | 固定契約 |
+|------|-----|----|----------|
+| `requests[]` | `order` | integer | 1 始まりの送信順。重複、欠番、0 以下を禁止する。 |
+| `requests[]` | `command` | string | [`docs/details/admin.md` 詳細本文責務 §A7](admin.md#sec-a7) の command 固定表にある 7 command のいずれか。 |
+| `requests[]` | `method` | string | 実送信 method の uppercase 文字列。 |
+| `requests[]` | `path` | string | 正規化後の `--api-url` path prefix と command 固定 path を byte 連結した path。query、fragment、percent decode 後の値を含めてはならない。 |
+| `requests[]` | `headers` | object | CLI が明示的に設定する header だけを持つ。`Authorization` は `${secret:admin_cli_token}` 固定、`Accept` は `application/json` 固定、`User-Agent` は `adlaire-ci-admin/<binary-version>` 固定、body を持つ command だけ `Content-Type: application/json` を持つ。 |
+| `requests[]` | `body` | string または null | body なし command は null。`trigger-build` は `{}`。`config-snapshot` は未指定時 `{"label":null}`、指定時 `{"label":"<label>"}`。UTF-8、末尾 LF なし、余分な空白なしで固定する。 |
+| `requests[]` | `redirects_followed` | integer | 常に 0。 |
+| `requests[]` | `retry_count` | integer | 常に 0。 |
+| `requests[]` | `proxy_used` | boolean | 常に false。 |
+| `requests[]` | `cookies_sent` | integer | 常に 0。 |
+| `forbidden_requests[]` | `method` | string | 送信禁止 request method。transport 挙動だけを禁止する場合は空文字を許可する。 |
+| `forbidden_requests[]` | `path` | string | 送信禁止 request path。transport 挙動だけを禁止する場合は空文字を許可する。 |
+| `forbidden_requests[]` | `reason` | string | `wrong-endpoint`、`redirect-follow`、`retry`、`proxy`、`cookie`、`secret-leak` のいずれか。 |
+
+`success-admin-cli-transport` の `forbidden_requests` は、`trigger-build` に対する `POST /api/builds`、redirect 追従、retry、proxy、Cookie 送信を必ず含める。`security-admin-cli-secret-redaction` の `expected/request.json` は同じ schema を使用し、token、Authorization header 実値、URL query 内 secret、redirect `Location` 内 secret、server raw body 内 secret、Go error 内 secret、absolute path 内 secret を `requests`、`forbidden_requests`、`headers`、`body`、`reason` に平文または派生値として含めてはならない。
+
 `partial-admin-cli-lifecycle` は `--help` と `--version` が API URL、token、state directory、network fake を一切参照しないことを `expected/effects.json.external_calls=[]`、`forbidden_writes`、`forbidden_reads` で固定する。parse error、未知 command、引数不足、引数過多、同一 option 重複、`--name=value`、短縮 option、禁止制御文字は個別 case とし、stdout 空、stderr 1 行、終了 code `2` を byte 単位で検証する。
 
 `success-admin-cli-transport` は各 command について method、path、request body、header を `expected/request.json` に固定する。`Authorization` は placeholder `${secret:admin_cli_token}` だけを許可し、token 実値、token hash、部分文字列、長さから復元できる値を expected に置いてはならない。`config-snapshot` の JSON body、`cancel-queue` の 1 回だけの percent encode、`User-Agent`、`Accept`、`Content-Type`、redirect 不追従、retry 0 回、proxy 0 回、Cookie 0 件を検証する。
