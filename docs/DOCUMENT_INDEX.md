@@ -48,6 +48,7 @@
 | [`docs/details/archive.md`](details/archive.md) | `archive` |
 | [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` |
 | [`docs/details/security.md`](details/security.md) | `security` |
+| [`docs/details/mcp.md`](details/mcp.md) | `mcp` |
 | [`docs/details/fixture.md`](details/fixture.md) | fixture 証跡責務 |
 
 <a id="実装ファイル一覧"></a>
@@ -63,6 +64,8 @@
 | [`components/runner_test.go`](../components/runner_test.go) | `runner` test | 実在 |
 | [`components/api.go`](../components/api.go) | `api` | 実在 |
 | [`components/api_test.go`](../components/api_test.go) | `api` test | 実在 |
+| `components/admin.go` | `admin` CLI | 未作成 |
+| `components/admin_test.go` | `admin` CLI test | 未作成 |
 | `components/setup.go` | `setup` | 未作成 |
 | `components/setup_test.go` | `setup` test | 未作成 |
 | `components/release.go` | `release` | 未作成 |
@@ -87,6 +90,7 @@
 | `testdata/security/` | `security` fixture root | 未作成 |
 | `testdata/setup/` | `setup` fixture root | 未作成 |
 | `testdata/release/` | `release` fixture root | 未作成 |
+| `testdata/mcp/` | `mcp` fixture root | 未作成 |
 | `components/mcp.go` | `mcp` | 未作成 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。

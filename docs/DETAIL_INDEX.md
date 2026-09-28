@@ -30,7 +30,7 @@
 | `archive` | [`docs/details/archive.md`](details/archive.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `security` | [`docs/details/security.md`](details/security.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `mcp` | 専用詳細本文未作成 | 実装検証対象外。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。 |
+| `mcp` | [`docs/details/mcp.md`](details/mcp.md) | [`docs/details/fixture.md` MCP fixture 固定契約](details/fixture.md#mcp-fixture-contract) |
 
 <a id="0b1-owner-component-別-owner-collaborator-境界管理"></a>
 **owner / collaborator 境界参照：**
@@ -265,3 +265,53 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 | バイナリアップデート | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.5](details/setup.md#sec-26-5)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
 | アップデート rollback | `setup` | [`docs/details/setup.md` 詳細本文責務 アップデート rollback 固定契約](details/setup.md#setup-update-rollback-contract)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
 | GitHub Release 成果物生成・公開前検証・公開 | `release` | [`docs/details/release.md` 詳細本文責務 §R1](details/release.md#release-cli-contract)〜[§R7](details/release.md#release-acceptance-contract)。成果物の受け入れ側契約は[`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a)と[§26.8](details/setup.md#sec-26-8)を参照する。 |
+
+<a id="0i6-追加管理api機能"></a>
+**0i.6 追加管理 API 機能：**
+
+| 機能 | owner | 詳細本文 |
+|------|-------|----------|
+| マルチユーザー対応 | `security` | [`docs/details/security.md` 詳細本文責務 §27.48](details/security.md#sec-27-48)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.48](details/api.md#sec-27-48) |
+| データストア切り替え | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.49](details/api.md#sec-27-49) |
+| 外部認証連携 | `security` | [`docs/details/security.md` 詳細本文責務 §27.50](details/security.md#sec-27-50)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.50](details/api.md#sec-27-50) |
+| 統計データの JSON エクスポート | `api` | [`docs/details/api.md` 詳細本文責務 §27.51](details/api.md#sec-27-51)、SDK は [`docs/details/sdk.md` 詳細本文責務 §23.8](details/sdk.md#sec-23-8)、UI は [`docs/details/ui.md` 詳細本文責務 §24.8](details/ui.md#sec-24-8) |
+| キュー内個別エントリのキャンセル | `runner` | [`docs/details/runner.md` 詳細本文責務 queue 契約](details/runner.md#sec-27-17)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.52](details/api.md#sec-27-52) |
+| Prometheus メトリクスエンドポイント | `api` | [`docs/details/api.md` 詳細本文責務 §27.53](details/api.md#sec-27-53) |
+| CLI 管理クライアント | `admin` | [`docs/details/admin.md` 詳細本文責務 §A7](details/admin.md#sec-a7)、API 対応は [`docs/details/api.md` 詳細本文責務 §27.54](details/api.md#sec-27-54) |
+| 設定の自動スナップショット | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.55](details/api.md#sec-27-55) |
+| ステータスバッジ生成 | `api` | [`docs/details/api.md` 詳細本文責務 §27.56](details/api.md#sec-27-56) |
+| ビルド履歴の自動削除設定 | `runner` | [`docs/details/runner.md` 詳細本文責務 history 契約](details/runner.md#sec-27-30)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.57](details/api.md#sec-27-57) |
+| ロールベースアクセス制御 | `security` | [`docs/details/security.md` 詳細本文責務 §27.58](details/security.md#sec-27-58)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.58](details/api.md#sec-27-58) |
+| 設定スナップショット差分表示 | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.59](details/api.md#sec-27-59) |
+| 複数プロジェクト管理 | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.60](details/api.md#sec-27-60) |
+| ユーザー管理 API | `security` | [`docs/details/security.md` 詳細本文責務 §27.61](details/security.md#sec-27-61)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.61](details/api.md#sec-27-61) |
+| API バージョニング | `api` | [`docs/details/api.md` 詳細本文責務 §27.62](details/api.md#sec-27-62) |
+| API ドキュメント自動生成 | `api` | [`docs/details/api.md` 詳細本文責務 §27.63](details/api.md#sec-27-63) |
+| ビルドキューの手動並び替え | `runner` | [`docs/details/runner.md` 詳細本文責務 queue 契約](details/runner.md#sec-27-17)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.64](details/api.md#sec-27-64) |
+| 設定テンプレート | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.65](details/api.md#sec-27-65) |
+| 管理者向けイベントフィード | `api` | [`docs/details/api.md` 詳細本文責務 §27.66](details/api.md#sec-27-66) |
+| 読み取り専用共有リンク | `security` | [`docs/details/security.md` 詳細本文責務 §27.67](details/security.md#sec-27-67)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.67](details/api.md#sec-27-67) |
+| API レスポンスキャッシュ制御 | `api` | [`docs/details/api.md` 詳細本文責務 §27.68](details/api.md#sec-27-68) |
+| スナップショット間サイト差分 API | `archive` | [`docs/details/archive.md` 詳細本文責務 snapshot 契約](details/archive.md#sec-27-15)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.69](details/api.md#sec-27-69) |
+| Webhook 送信履歴の手動再送 API | `runner` | [`docs/details/runner.md` 詳細本文責務 notification 契約](details/runner.md#sec-27-38)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.70](details/api.md#sec-27-70) |
+
+<a id="0i7-mcp"></a>
+**0i.7 MCP：**
+
+| 機能 | owner | 詳細本文 |
+|------|-------|----------|
+| MCP サーバー実装 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.0](details/mcp.md#290-実装境界)〜[§29.4](details/mcp.md#294-mcp-initialize) |
+| MCP ツール・リソース公開 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.5](details/mcp.md#295-tool-一覧)〜[§29.8](details/mcp.md#298-resource-subscription) |
+| AI 支援ビルドエラー分析 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.10](details/mcp.md#2910-sampling) |
+| MCP Prompts 定義 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.9](details/mcp.md#299-prompts) |
+| MCP Sampling によるビルドログ自動分析 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.10](details/mcp.md#2910-sampling) |
+| MCP Notifications（イベントプッシュ） | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.11](details/mcp.md#2911-notifications) |
+| MCP HTTP SSE transport 対応 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.12](details/mcp.md#2912-http-sse-transport) |
+| MCP ツールスコープ細分化 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.13](details/mcp.md#2913-tool-scope) |
+| MCP ツール呼び出し監査ログ | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.14](details/mcp.md#2914-audit--client--metrics) |
+| MCP リソース購読（Resource Subscriptions） | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.8](details/mcp.md#298-resource-subscription) |
+| MCP クライアント情報ログ | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.14](details/mcp.md#2914-audit--client--metrics) |
+| MCP ツール実行統計 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.14](details/mcp.md#2914-audit--client--metrics) |
+| MCP ツール実行タイムアウト設定 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#2915-timeout--config-crud--elicitation) |
+| MCP 設定 CRUD ツール | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#2915-timeout--config-crud--elicitation) |
+| MCP Elicitation による副作用操作の確認 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#2915-timeout--config-crud--elicitation) |

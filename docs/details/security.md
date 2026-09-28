@@ -779,3 +779,101 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 | proxy header | `X-Forwarded-For` ではなく `RemoteAddr` host で key を作る。 |
 | audit failure on 429 | count は増えず `500`。 |
 | state save failure | endpoint 固有処理なし、部分 count 更新なし。 |
+
+<a id="sec-27-48"></a>
+## 27.48 マルチユーザー対応
+
+マルチユーザー対応の owner は `security` とする。
+
+`.users` と `.roles` の schema は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) を正本とする。
+
+既定 user は初期セットアップ時に 1 件だけ作成する。既定 user は `admin` role を持つ。
+
+session には `user_id`、`role_ids`、`permissions_hash`、`issued_at`、`expires_at` を保存する。
+
+role または permission が変更された場合、既存 session の `permissions_hash` が不一致になった request は `401` とし、再 login を要求する。
+
+最後の active admin user を disabled、locked、role 剥奪してはならない。
+
+**監査対象：**
+
+| 操作 | audit action |
+|------|--------------|
+| user create | `user_create` |
+| user update | `user_update` |
+| user disable | `user_disable` |
+| role assignment change | `user_role_update` |
+
+<a id="sec-27-50"></a>
+## 27.50 外部認証連携
+
+外部認証連携の owner は `security` とする。
+
+対応 provider type は `oidc` だけとする。
+
+OIDC discovery URL は `issuer + "/.well-known/openid-configuration"` とする。
+
+外部認証連携は local password 認証を暗黙に無効化しない。
+
+provider secret は `.external_auth_config` に保存せず、`client_secret_ref` だけを保存する。
+
+callback 検証では `state`、`nonce`、`issuer`、`audience`、`exp`、`iat`、`sub` を検証する。
+
+検証失敗は `401` とし、失敗理由の詳細、token、claim 全文を response、server log、audit log に出してはならない。
+
+<a id="sec-27-58"></a>
+## 27.58 ロールベースアクセス制御
+
+ロールベースアクセス制御の owner は `security` とする。
+
+permission 名は以下に固定する。
+
+| permission | 許可範囲 |
+|------------|----------|
+| `*` | 全操作。system admin role だけが保持できる。 |
+| `status:read` | status、history、metrics、badge の read。 |
+| `build:write` | build trigger、queue reorder、queue cancel。 |
+| `config:read` | config、snapshot、template の read。 |
+| `config:write` | config、snapshot create / restore、template apply。 |
+| `user:admin` | user、role、external auth、share link 管理。 |
+| `system:admin` | datastore、cache、retention、event stream、webhook resend。 |
+
+API endpoint group と必要 permission は [`docs/details/api.md` 詳細本文責務 §27.48〜§27.70](api.md#sec-27-48) の route ごとに固定し、未割当 endpoint は `403` とする。
+
+`*` 以外の permission は暗黙に他 permission を含めない。
+
+role 削除時、対象 role を持つ active user が 1 件でも存在する場合は `409` とする。
+
+<a id="sec-27-61"></a>
+## 27.61 ユーザー管理 API
+
+ユーザー管理 API の owner は `security` とする。
+
+username は case-sensitive ではなく、保存前に lowercase に正規化する。
+
+同一 username の active または disabled user が存在する場合、作成は `409` とする。
+
+password 更新時は平文を保存せず、既存 `.admin_credentials` と同じ hash 方式を使用する。
+
+password 未設定 user は local password login を禁止し、外部認証または API token だけを許可する。
+
+disabled user の session は次 request で `401` とする。
+
+locked user の password login は `401` とし、API token と外部認証も拒否する。
+
+<a id="sec-27-67"></a>
+## 27.67 読み取り専用共有リンク
+
+読み取り専用共有リンクの owner は `security` とする。
+
+share token は 32 byte 以上の乱数を URL-safe Base64 で表現する。
+
+token 本体は作成 response で 1 回だけ返し、`.share_links` には SHA-256 hash だけを保存する。
+
+share link scope は `status`、`history`、`snapshot_diff` のいずれかとする。
+
+share link は read-only であり、build trigger、config update、queue 操作、user 操作、webhook resend を実行してはならない。
+
+期限切れは `410`、revoke 済みは `404` とする。
+
+share link request は通常 session を作成しない。

@@ -445,7 +445,7 @@ API 実装では、[`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec
 <a id="sec-22-0e"></a>
 **22.0e API 完全契約表：**
 
-[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の固定表は、HTTP request / response / status、SDK method、UI 操作先の契約インデックスである。endpoint 固有の状態 read / write と処理補足は [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) を唯一の正本とし、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) には再掲しない。endpoint を追加、削除、名称変更、body 変更、response 変更する場合は、[`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) の状態アクセス表、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約、[`docs/details/sdk.md` SDK 引数変換契約](sdk.md#sdk-argument-contract)、[`docs/details/ui.md` UI 操作契約表](ui.md#ui-operation-contract)、[`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約) を同じ仕様変更範囲で先に更新する。[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の固定表に存在しない endpoint は実装対象外とする。SHA cache clear 専用 endpoint は定義しない。週次サマリーの手動送信は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の `POST /api/notify/weekly-summary` だけを使用する。
+[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の固定表は、HTTP request / response / status、SDK method、UI 操作先の契約インデックスである。endpoint 固有の状態 read / write と処理補足は [`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) を唯一の正本とし、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) には再掲しない。endpoint を追加、削除、名称変更、body 変更、response 変更する場合は、[`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec-22-0d) の状態アクセス表、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約、[`docs/details/sdk.md` SDK 引数変換契約](sdk.md#sdk-argument-contract)、[`docs/details/ui.md` UI 操作契約表](ui.md#ui-operation-contract)、[`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約) を同じ仕様変更範囲で先に更新する。[`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) は追加管理 API の endpoint 固定契約として §22.0e の固定表と同格に扱う。§22.0e 固定表または §27.48〜§27.70 に存在しない endpoint は実装対象外とする。SHA cache clear 専用 endpoint は定義しない。週次サマリーの手動送信は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の `POST /api/notify/weekly-summary` だけを使用する。
 
 `Request` が `none` の場合、request body を受け付けない。空 JSON object `{}` も送信してはならない。`Response` は成功時 body の schema 名または正確な top-level object を示す。schema 名の全 key は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約、状態由来の nested record の key は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を正本とする。`SDK` 列と `UI` 列は endpoint と collaborator の対応索引であり、response schema の正本ではない。SDK method の本文は [`docs/details/sdk.md`](sdk.md)、UI 操作の本文は [`docs/details/ui.md`](ui.md) を参照する。
 
@@ -2951,3 +2951,315 @@ response 算出時点で `reset_at` が現在時刻以下の window は `state_s
 | [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45) | session timeout config API の route、request body、response body、`.server_config.session_timeout_seconds` read/write 呼び出し境界。 | session の作成、非 sliding の期限判定、`last_used_at` 更新、期限切れ時 `401`、既存 session への反映条件、監査順序。 |
 | [`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) | auth / TOTP API の route、request body、response body、`.totp_secret` read/write 呼び出し境界。 | TOTP secret 生成、setup 仮 secret、login ticket、code 検証、secret の一回表示、ticket 再利用禁止、TOTP 漏えい禁止、監査順序。 |
 | [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) | rate limit config API の route、request body、response body、`.server_config.api_rate_limit` と `.api_rate_state` の read/write 呼び出し境界。 | endpoint group 判定、window / count 更新、`429` 時に count を増やさない契約、actor key / IP key の同一 lock 更新、rate limit audit。 |
+
+<a id="sec-27-48"></a>
+## 27.48 マルチユーザー対応 API 境界
+
+マルチユーザー対応の owner は `security` とする。ユーザー、role、permission、session の判定本文は [`docs/details/security.md` 詳細本文責務 §27.48](security.md#sec-27-48) と [§27.58](security.md#sec-27-58) を正本とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/users` | query `limit`, `offset`, `status`, `role_id` | `UserListResponse` | `200` | `401`, `403`, `422`, `500` |
+| `POST` | `/api/users` | `UserCreateInput` | `UserRecord` | `201` | `400`, `401`, `403`, `409`, `422`, `500` |
+| `PATCH` | `/api/users/{id}` | `UserPatchInput` | `UserRecord` | `200` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
+| `DELETE` | `/api/users/{id}` | body 禁止 | `{ "message": "User disabled" }` | `200` | `401`, `403`, `404`, `409`, `500` |
+
+`DELETE /api/users/{id}` は物理削除せず `status:"disabled"` にする。
+
+自分自身の最後の admin role を無効化または role 削除する request は `409` とする。
+
+<a id="sec-27-49"></a>
+## 27.49 データストア切り替え API 境界
+
+データストア切り替えの owner は `statefile` とする。API は `.datastore_config` の read/write 呼び出し境界だけを持つ。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/datastore` | body 禁止 | `DatastoreStatusResponse` | `200` | `401`, `403`, `500` |
+| `POST` | `/api/datastore/switch` | `DatastoreSwitchInput` | `DatastoreSwitchResponse` | `202` | `400`, `401`, `403`, `409`, `422`, `500` |
+
+`DatastoreSwitchInput` は `target_store`、`dry_run`、`confirmation` を持つ。
+
+`dry_run:true` は状態を変更せず検証結果だけを返す。
+
+`dry_run:false` は `confirmation:"SWITCH_DATASTORE"` を必須とする。
+
+<a id="sec-27-50"></a>
+## 27.50 外部認証連携 API 境界
+
+外部認証連携の owner は `security` とする。認証 protocol、secret 保存、callback 検証本文は [`docs/details/security.md` 詳細本文責務 §27.50](security.md#sec-27-50) を正本とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/external-auth-config` | body 禁止 | `ExternalAuthConfigResponse` | `200` | `401`, `403`, `500` |
+| `POST` | `/api/external-auth-config` | `ExternalAuthConfigInput` | `ExternalAuthConfigResponse` | `200` | `400`, `401`, `403`, `422`, `500` |
+| `POST` | `/api/external-auth/test` | `ExternalAuthTestInput` | `ExternalAuthTestResponse` | `200` | `400`, `401`, `403`, `422`, `502` |
+
+response に client secret、private key、raw token を含めてはならない。
+
+<a id="sec-27-51"></a>
+## 27.51 統計データの JSON エクスポート API 境界
+
+統計データの JSON エクスポートの owner は `api` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/stats/export` | query `from`, `to`, `granularity`, `target` | `StatsExportResponse` | `200` | `401`, `403`, `422`, `500` |
+
+`from` と `to` は UTC ISO 8601 秒精度とし、`from <= to` を必須とする。
+
+`granularity` は `build`、`day`、`month` のいずれかとする。
+
+response は `generated_at`、`range`、`summary`、`items` を持つ JSON object とする。
+
+<a id="sec-27-52"></a>
+## 27.52 キュー内個別エントリのキャンセル API 境界
+
+キュー内個別エントリのキャンセル owner は `runner` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `DELETE` | `/api/queue/{queue_id}` | body 禁止 | `QueueCancelResponse` | `200` | `401`, `403`, `404`, `409`, `500` |
+
+`running` の entry は `409` とし、状態を変更しない。
+
+`queued` の entry は `status:"cancelled"` に変更し、history に `cancelled_by_api` を追記する。
+
+<a id="sec-27-53"></a>
+## 27.53 Prometheus メトリクスエンドポイント
+
+Prometheus メトリクスエンドポイントの owner は `api` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/metrics` | body 禁止 | `text/plain; version=0.0.4` | `200` | `401`, `403`, `500` |
+
+metric name は `adlaire_ci_` prefix を必須とする。
+
+metric line は `# HELP`、`# TYPE`、sample の順で出力する。
+
+token、path secret、repository token を label に含めてはならない。
+
+<a id="sec-27-54"></a>
+## 27.54 CLI 管理クライアント API 対応
+
+CLI 管理クライアントの owner は `admin` とする。CLI が呼び出せる API は本書の管理 API endpoint に限定する。
+
+CLI 管理クライアントは endpoint を追加定義しない。
+
+CLI 管理クライアントの command、option、stdout、stderr、終了 code は [`docs/details/admin.md` 詳細本文責務 §A7](admin.md#sec-a7) を正本とする。
+
+<a id="sec-27-55"></a>
+## 27.55 設定の自動スナップショット API 境界
+
+設定の自動スナップショットの owner は `statefile` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/config-snapshots` | query `limit`, `offset` | `ConfigSnapshotListResponse` | `200` | `401`, `403`, `422`, `500` |
+| `POST` | `/api/config-snapshots` | `ConfigSnapshotCreateInput` | `ConfigSnapshotRecord` | `201` | `400`, `401`, `403`, `409`, `422`, `500` |
+| `GET` | `/api/config-snapshots/{id}` | body 禁止 | `ConfigSnapshotObject` | `200` | `401`, `403`, `404`, `500` |
+| `POST` | `/api/config-snapshots/{id}/restore` | `ConfigSnapshotRestoreInput` | `ConfigSnapshotRestoreResponse` | `200` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
+| `DELETE` | `/api/config-snapshots/{id}` | body 禁止 | `{ "message": "Config snapshot deleted" }` | `200` | `401`, `403`, `404`, `500` |
+
+restore は `confirmation:"RESTORE_CONFIG"` を必須とする。
+
+<a id="sec-27-56"></a>
+## 27.56 ステータスバッジ生成
+
+ステータスバッジ生成の owner は `api` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/badge/status.svg` | query `target`, `branch` | `image/svg+xml` | `200` | `401`, `403`, `404`, `422`, `500` |
+
+SVG は script、external reference、inline event handler、remote image を含めてはならない。
+
+<a id="sec-27-57"></a>
+## 27.57 ビルド履歴の自動削除設定 API 境界
+
+ビルド履歴の自動削除設定の owner は `runner` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/history/retention` | body 禁止 | `HistoryRetentionPolicy` | `200` | `401`, `403`, `500` |
+| `POST` | `/api/history/retention` | `HistoryRetentionPolicyInput` | `HistoryRetentionPolicy` | `200` | `400`, `401`, `403`, `422`, `500` |
+| `POST` | `/api/history/retention/run` | body 禁止 | `HistoryRetentionRunResponse` | `200` | `401`, `403`, `409`, `500` |
+
+retention run は lock 取得中なら `409` とする。
+
+<a id="sec-27-58"></a>
+## 27.58 ロールベースアクセス制御 API 境界
+
+ロールベースアクセス制御の owner は `security` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/roles` | body 禁止 | `RoleListResponse` | `200` | `401`, `403`, `500` |
+| `POST` | `/api/roles` | `RoleInput` | `RoleRecord` | `201` | `400`, `401`, `403`, `409`, `422`, `500` |
+| `PATCH` | `/api/roles/{id}` | `RoleInput` | `RoleRecord` | `200` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
+| `DELETE` | `/api/roles/{id}` | body 禁止 | `{ "message": "Role deleted" }` | `200` | `401`, `403`, `404`, `409`, `500` |
+
+permission 名と role 判定本文は [`docs/details/security.md` 詳細本文責務 §27.58](security.md#sec-27-58) を正本とする。
+
+<a id="sec-27-59"></a>
+## 27.59 設定スナップショット差分表示 API 境界
+
+設定スナップショット差分表示の owner は `statefile` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/config-snapshots/{left_id}/diff/{right_id}` | body 禁止 | `ConfigSnapshotDiffResponse` | `200` | `401`, `403`, `404`, `422`, `500` |
+
+diff item は `path`、`change`、`left`、`right` を持つ。
+
+secret value は `left` / `right` とも `"***"` に mask する。
+
+<a id="sec-27-60"></a>
+## 27.60 複数プロジェクト管理 API 境界
+
+複数プロジェクト管理の owner は `statefile` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/projects` | query `status` | `ProjectListResponse` | `200` | `401`, `403`, `422`, `500` |
+| `POST` | `/api/projects` | `ProjectInput` | `ProjectRecord` | `201` | `400`, `401`, `403`, `409`, `422`, `500` |
+| `PATCH` | `/api/projects/{id}` | `ProjectPatchInput` | `ProjectRecord` | `200` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
+| `DELETE` | `/api/projects/{id}` | body 禁止 | `{ "message": "Project archived" }` | `200` | `401`, `403`, `404`, `409`, `500` |
+
+delete は物理削除せず `status:"archived"` にする。
+
+<a id="sec-27-61"></a>
+## 27.61 ユーザー管理 API
+
+ユーザー管理 API は [§27.48](#sec-27-48) の route を正本とする。
+
+ユーザーの password、TOTP、external auth mapping、role assignment の保存本文は [`docs/details/security.md` 詳細本文責務 §27.61](security.md#sec-27-61) を正本とする。
+
+<a id="sec-27-62"></a>
+## 27.62 API バージョニング
+
+API バージョニングの owner は `api` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/version` | body 禁止 | `ApiVersionResponse` | `200` | `500` |
+
+response は `api_version`、`spec_version`、`binary_version`、`compatible_versions`、`deprecated_versions` を持つ。
+
+未指定の API request は current version として扱う。
+
+versioned path を追加する場合は `/api/v{major}/...` とする。
+
+<a id="sec-27-63"></a>
+## 27.63 API ドキュメント自動生成
+
+API ドキュメント自動生成の owner は `api` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/openapi.json` | body 禁止 | `OpenApiDocument` | `200` | `500` |
+
+`OpenApiDocument` は実装済み endpoint だけを含める。
+
+未実装 endpoint を `paths` に含めてはならない。
+
+<a id="sec-27-64"></a>
+## 27.64 ビルドキューの手動並び替え API 境界
+
+ビルドキューの手動並び替えの owner は `runner` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `POST` | `/api/queue/reorder` | `QueueReorderInput` | `QueueReorderResponse` | `200` | `400`, `401`, `403`, `409`, `422`, `500` |
+
+`QueueReorderInput.queue_ids` は queued entry の id を全件 exact に含める。
+
+running、finished、cancelled、missing、duplicate を含む request は `422` とし状態を変更しない。
+
+<a id="sec-27-65"></a>
+## 27.65 設定テンプレート API 境界
+
+設定テンプレートの owner は `statefile` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/config-templates` | body 禁止 | `ConfigTemplateListResponse` | `200` | `401`, `403`, `500` |
+| `POST` | `/api/config-templates` | `ConfigTemplateInput` | `ConfigTemplateRecord` | `201` | `400`, `401`, `403`, `409`, `422`, `500` |
+| `POST` | `/api/config-templates/{id}/apply` | `ConfigTemplateApplyInput` | `ConfigTemplateApplyResponse` | `200` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
+| `DELETE` | `/api/config-templates/{id}` | body 禁止 | `{ "message": "Config template deleted" }` | `200` | `401`, `403`, `404`, `500` |
+
+apply は `confirmation:"APPLY_CONFIG_TEMPLATE"` を必須とする。
+
+<a id="sec-27-66"></a>
+## 27.66 管理者向けイベントフィード
+
+管理者向けイベントフィードの owner は `api` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/events` | query `limit`, `offset`, `type`, `after` | `AdminEventListResponse` | `200` | `401`, `403`, `422`, `500` |
+| `GET` | `/api/events/stream` | query `type` | `text/event-stream` | `200` | `401`, `403`, `422`, `500` |
+
+SSE は 30 秒ごとに `: keepalive` を送信する。
+
+event data に secret、token、password、raw request body を含めてはならない。
+
+<a id="sec-27-67"></a>
+## 27.67 読み取り専用共有リンク API 境界
+
+読み取り専用共有リンクの owner は `security` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/share-links` | body 禁止 | `ShareLinkListResponse` | `200` | `401`, `403`, `500` |
+| `POST` | `/api/share-links` | `ShareLinkCreateInput` | `ShareLinkCreateResponse` | `201` | `400`, `401`, `403`, `409`, `422`, `500` |
+| `DELETE` | `/api/share-links/{id}` | body 禁止 | `{ "message": "Share link revoked" }` | `200` | `401`, `403`, `404`, `500` |
+| `GET` | `/api/share/{token}/status` | body 禁止 | `SharedStatusResponse` | `200` | `401`, `404`, `410`, `500` |
+
+share token 本体は作成 response で 1 回だけ返す。
+
+保存時は hash だけを保存する。
+
+<a id="sec-27-68"></a>
+## 27.68 API レスポンスキャッシュ制御
+
+API レスポンスキャッシュ制御の owner は `api` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/cache-policy` | body 禁止 | `CachePolicyResponse` | `200` | `401`, `403`, `500` |
+| `POST` | `/api/cache-policy` | `CachePolicyInput` | `CachePolicyResponse` | `200` | `400`, `401`, `403`, `422`, `500` |
+| `DELETE` | `/api/response-cache` | body 禁止 | `CachePurgeResponse` | `200` | `401`, `403`, `500` |
+
+cache 対象 endpoint は `GET` の read-only endpoint だけとする。
+
+認証情報、session、user 固有 response は共有 cache に保存しない。
+
+<a id="sec-27-69"></a>
+## 27.69 スナップショット間サイト差分 API 境界
+
+スナップショット間サイト差分 API の owner は `archive` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `GET` | `/api/snapshots/{left_id}/diff/{right_id}` | body 禁止 | `SnapshotSiteDiffResponse` | `200` | `401`, `403`, `404`, `422`, `500` |
+
+diff は added、removed、modified、unchanged_count を返す。
+
+file content は response に含めない。
+
+<a id="sec-27-70"></a>
+## 27.70 Webhook 送信履歴の手動再送 API 境界
+
+Webhook 送信履歴の手動再送 API の owner は `runner` とする。
+
+| method | path | request | response | 成功 | 失敗 |
+|--------|------|---------|----------|------|------|
+| `POST` | `/api/notify-log/{delivery_id}/resend` | `WebhookResendInput` | `WebhookResendResponse` | `202` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
+
+`WebhookResendInput` は `confirmation:"RESEND_WEBHOOK"` を必須とする。
+
+再送対象 payload は保存済み payload hash と delivery metadata から再構成し、secret は statefile から再取得する。
+
+同一 `delivery_id` の再送実行中は `409` とする。

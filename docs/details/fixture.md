@@ -1754,9 +1754,9 @@ setup / admin / Release asset 連動 fixture の `manifest.json.name`、`section
 
 | fixture名 | 必須input | 必須expected | 合格条件 |
 |-----------|-----------|--------------|----------|
-| `success-release-assets-reproducible` | clean Git状態、tag / commit、2個のtemporary root、同一commitから生成した独立`git archive` stream 2件、未作成out path、Go command fake、admin配布物。 | `expected/stdout.txt`、`expected/stderr.txt`、`expected/effects.json`、`expected/release-assets.json`、`expected/security.json`。 | 2つのsource snapshotのfile set / mode / size / digest、4 binaryとadmin archiveのbyte、固定build引数、`GOENV=off` / `GOWORK=off` / `GOTOOLCHAIN=local` / network offを含むenvironment、version出力、commit timestamp、USTAR / gzip level 9を含むarchive metadata、asset mode、checksum 5行が一致する。保持済みout parent descriptor相対のsibling staging作成、file sync / directory sync / atomic rename / parent sync順、local Git再検証、temporary cleanupを固定し、live checkout file readとGitHub writeは0件。 |
+| `success-release-assets-reproducible` | clean Git状態、tag / commit、2個のtemporary root、同一commitから生成した独立`git archive` stream 2件、未作成out path、Go command fake、admin配布物。 | `expected/stdout.txt`、`expected/stderr.txt`、`expected/effects.json`、`expected/release-assets.json`、`expected/security.json`。 | 2つのsource snapshotのfile set / mode / size / digest、6 binaryとadmin archiveのbyte、固定build引数、`GOENV=off` / `GOWORK=off` / `GOTOOLCHAIN=local` / network offを含むenvironment、version出力、commit timestamp、USTAR / gzip level 9を含むarchive metadata、asset mode、checksum 7行が一致する。保持済みout parent descriptor相対のsibling staging作成、file sync / directory sync / atomic rename / parent sync順、local Git再検証、temporary cleanupを固定し、live checkout file readとGitHub writeは0件。 |
 | `failure-release-output-parent-race` | 初回検証時のparent symlink、検証後のsymlink差替え、parent directory置換、`<out>.tmp`競合、異なるmountへの誘導を個別に発生させるfake。 | 初回不正はstderr`release: INVALID_INPUT`、検証後の差替え / 競合はstderr`release: OUTPUT_FAILED`、全caseでstdout空、`expected/effects.json`、`expected/security.json`。 | 最終parent descriptorを1回だけ保持し、staging作成前とrename前にdevice / inodeを再検証する。通常path操作、descriptor外write、既存path上書き、checkout内write、GitHub writeを0件とし、staging作成後の失敗は保持済みdescriptor相対でstagingだけをcleanupする。 |
-| `success-release-draft-publish` | 検証済み6 asset、memory保持済みnotes、token placeholder、local Git、repository / default branch ref / compare / tag / Release read、create / upload / download / patch fake。 | `expected/stdout.txt`、`expected/stderr.txt`、`expected/response.json`、`expected/effects.json`、`expected/release-assets.json`、`expected/security.json`。 | write前local / remote再検証、draft作成、draft直後remote再検証、6件順次upload、一覧再取得、6件download digest、publish直前remote / metadata再検証、publish、公開後再取得の順序が一致する。 |
+| `success-release-draft-publish` | 検証済み8 asset、memory保持済みnotes、token placeholder、local Git、repository / default branch ref / compare / tag / Release read、create / upload / download / patch fake。 | `expected/stdout.txt`、`expected/stderr.txt`、`expected/response.json`、`expected/effects.json`、`expected/release-assets.json`、`expected/security.json`。 | write前local / remote再検証、draft作成、draft直後remote再検証、8件順次upload、一覧再取得、8件download digest、publish直前remote / metadata再検証、publish、公開後再取得の順序が一致する。 |
 | `failure-release-dirty-worktree` | tracked変更またはuntracked fileを含むGit status。 | stdout空、stderr`release: DIRTY_WORKTREE`、`expected/effects.json`、`expected/security.json`。 | directory作成、Go command、archive、GitHub callが0件である。 |
 | `failure-release-version-mismatch` | HEAD、local tag、remote tag、`--commit`、remote default branch ref / compare、binary `--version`の各不一致case。 | Git ref / commit / ancestor不一致caseはstderr`release: TAG_MISMATCH`、binary出力不一致caseはstderr`release: VERSION_MISMATCH`、全caseで`expected/effects.json`、`expected/security.json`。 | local / remote Git・GitHub検証またはversion検証の最初の不一致で停止し、GitHub writeが0件、checkoutとtagが不変である。各stderrはLF 1個で終わる。 |
 | `failure-release-source-snapshot-boundary` | 128 MiB超過、絶対path、`.` / `..`、backslash、symlink、hardlink、device、FIFO、socket、重複entry、root脱出、A / B不一致の各`git archive` fake。 | stdout空、stderr`release: BUILD_FAILED`、`expected/effects.json`、`expected/security.json`。 | unsafe entryへのwrite、existing path上書き、Go command、`--out`、GitHub writeが0件で、A / B temporary rootをcleanupする。 |
@@ -2431,3 +2431,41 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | expected/effects.json に既存出力維持がない。 | atomicity 検証未完了。 |
 | REPORT key の型または件数が expected にない。 | REPORT 検証未完了。 |
 | 比較除外が `not_applicable` に理由付きで記載されていない。 | fixture schema 不備。 |
+
+<a id="additional-management-api-fixture-contract"></a>
+## 29-F 追加管理 API fixture 固定契約
+
+追加管理 API fixture は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) を確認する。
+
+| fixture 群 | 必須確認 |
+|------------|----------|
+| `testdata/api/additional-management/` | 27.48〜27.70 の success、validation error、auth error、permission error、conflict、secret redaction。 |
+| `testdata/sdk/additional-management/` | SDK method coverage、path encode、body 禁止、binary / text / stream response、token 破棄条件。 |
+| `testdata/ui/additional-management/` | SDK only、成功後再取得順、confirmation、one-time secret 消去、SSE close、no speculative state。 |
+| `testdata/statefile/additional-management/` | `.users`、`.roles`、`.external_auth_config`、`.datastore_config`、`.config_snapshots`、`.projects`、`.config_templates`、`.admin_events`、`.share_links`、`.response_cache` の schema、破損、atomic write。 |
+
+実装検証証跡には、対象機能名、owner component、API endpoint、SDK method、UI panel、state path、fixture 名、実行結果、未実施項目を列挙する。
+
+未実施項目がある場合、対象機能を実装済みへ遷移してはならない。
+
+<a id="mcp-fixture-contract"></a>
+## 30-F MCP fixture 固定契約
+
+MCP fixture は [`docs/details/mcp.md`](mcp.md) 詳細本文責務を確認する。
+
+| fixture 群 | 必須確認 |
+|------------|----------|
+| `testdata/mcp/cli/` | `--help`、`--version`、`--state-dir`、loopback bind、non-loopback 拒否、read-only 起動。 |
+| `testdata/mcp/jsonrpc/` | parse error、invalid request、method not found、invalid params、internal error、unauthorized、forbidden、timeout。 |
+| `testdata/mcp/tools/` | `tools/list`、read-only tool 除外、tool success、tool error、scope 不足、confirmation required。 |
+| `testdata/mcp/resources/` | `resources/list`、`resources/read`、subscribe、resource update notification。 |
+| `testdata/mcp/prompts/` | `prompts/list`、`prompts/get`、prompt params validation。 |
+| `testdata/mcp/sampling/` | client sampling request、timeout、外部 AI API direct call 不在、audit hash。 |
+| `testdata/mcp/sse/` | keepalive、resource-updated、shutdown、client disconnect。 |
+| `testdata/mcp/state/` | `.mcp_config`、`.mcp_audit_log`、`.mcp_client_log`、`.mcp_metrics` の schema、append、破損時処理。 |
+
+MCP 実装検証証跡には、tool 名、resource URI、prompt 名、scope、confirmation、timeout、audit、metrics、client log、SSE event の確認結果を含める。
+
+MCP fixture で副作用 tool を確認する場合、confirmation なし実行拒否と confirmation 付き実行成功の両方を必須とする。
+
+MCP fixture で secret、token、Authorization header、raw params の secret 値が stdout、stderr、audit、client log、metrics、expected に出現した場合は不合格とする。

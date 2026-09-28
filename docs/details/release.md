@@ -117,7 +117,7 @@ release 実装は永続設定ファイルと業務状態ファイルを持たず
 <a id="release-asset-contract"></a>
 **R3. Release asset 固定契約：**
 
-安定版 Release は次の 6 asset だけを持つ。追加 asset、source archive の独自 upload、debug binary、`latest` alias を禁止する。GitHub が自動提供する source code archive は本表の Release asset に含めない。
+安定版 Release は次の 8 asset だけを持つ。追加 asset、source archive の独自 upload、debug binary、`latest` alias を禁止する。GitHub が自動提供する source code archive は本表の Release asset に含めない。
 
 | asset 名 | 内容 | mode |
 |----------|------|------|
@@ -125,12 +125,14 @@ release 実装は永続設定ファイルと業務状態ファイルを持たず
 | `adlaire-ci-runner-linux-amd64` | root `main` package を build し、basename dispatch で `runner` owner を起動する実行バイナリ。 | `0755` |
 | `adlaire-ci-api-linux-amd64` | root `main` package を build し、basename dispatch で `api` owner を起動する実行バイナリ。 | `0755` |
 | `adlaire-ci-setup-linux-amd64` | root `main` package を build し、basename dispatch で `setup` owner を起動する実行バイナリ。 | `0755` |
+| `adlaire-ci-admin-linux-amd64` | root `main` package を build し、basename dispatch で `admin` owner の CLI 管理クライアントを起動する実行バイナリ。 | `0755` |
+| `adlaire-ci-mcp-linux-amd64` | root `main` package を build し、basename dispatch で `mcp` owner を起動する実行バイナリ。 | `0755` |
 | `admin-ui.tar.gz` | [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の 2 file を archive root 直下に持つ gzip 圧縮 tar。 | archive `0644` |
-| `SHA256SUMS` | 前 5 asset の SHA-256 一覧。 | `0644` |
+| `SHA256SUMS` | 前 7 asset の SHA-256 一覧。 | `0644` |
 
-実行バイナリは component の単一 source file を直接 build して生成してはならない。4 binary はすべて checkout root の `main` package を入力とし、実行時の basename exact 一致によって owner component を選択する。部分一致、default fallback、未知 basename の builder 扱いを禁止する。
+実行バイナリは component の単一 source file を直接 build して生成してはならない。6 binary はすべて checkout root の `main` package を入力とし、実行時の basename exact 一致によって owner component を選択する。部分一致、default fallback、未知 basename の builder 扱いを禁止する。
 
-`SHA256SUMS` は `SHA256SUMS` 自身を除く 5 asset を filename の ASCII 昇順で並べ、各行を lowercase SHA-256 64 文字、ASCII space 2 文字、filename、LF の順とする。空行、comment、絶対 path、directory、重複 filename、未掲載 asset を禁止する。
+`SHA256SUMS` は `SHA256SUMS` 自身を除く 7 asset を filename の ASCII 昇順で並べ、各行を lowercase SHA-256 64 文字、ASCII space 2 文字、filename、LF の順とする。空行、comment、絶対 path、directory、重複 filename、未掲載 asset を禁止する。
 
 ---
 
@@ -144,10 +146,10 @@ release 実装は、checkout を変更せず、`--out` と OS temporary director
 3. A / B の展開 file set、mode、size、SHA-256 を relative path の ASCII 昇順で比較し、完全一致を確認する。`go.mod`、`main.go`、Release asset に必要な実装 artifact、admin 配布物は A / B 内の通常 file として再確認する。
 4. A の snapshot 内にある `.go` regular file を relative path の ASCII 昇順で列挙し、各 file に対して `gofmt -d <path>` を shell を介さず 1 file 1 process で実行する。各実行は stdout 空、stderr 空、終了コード `0` の場合だけ合格とする。対象 0 件、最初に差分 stdout を返した file、stderr 非空、終了コード非 0、timeout、起動失敗はいずれも `FORMAT_FAILED` とする。後続 file は最初の不合格後に実行しない。
 5. `go test ./...` を A で実行し、終了コード `0` を確認する。
-6. A / B それぞれで [R3 Release asset 固定契約](#release-asset-contract) の 4 binary を同一環境・同一引数で生成し、admin archive を生成する。
+6. A / B それぞれで [R3 Release asset 固定契約](#release-asset-contract) の 6 binary を同一環境・同一引数で生成し、admin archive を生成する。
 7. A と B の同名 asset を byte 単位で比較する。
-8. R2 で保持した `--out` parent descriptor に対し、basename `<out>.tmp`をmode`0700`のsibling staging directoryとして排他的に作成し、一致したAの5成果物を固定modeでcopyして各fileをsync / closeする。
-9. staging directory内に`SHA256SUMS`を生成してsync / closeし、全6fileの名前、type、mode、size、digestを再検証する。
+8. R2 で保持した `--out` parent descriptor に対し、basename `<out>.tmp`をmode`0700`のsibling staging directoryとして排他的に作成し、一致したAの7成果物を固定modeでcopyして各fileをsync / closeする。
+9. staging directory内に`SHA256SUMS`を生成してsync / closeし、全8fileの名前、type、mode、size、digestを再検証する。
 10. `git status --porcelain=v1 --untracked-files=all`、`git rev-parse HEAD`、`git rev-parse refs/tags/<tag>^{commit}` を再実行し、実行開始時と同じ clean / commit / tag 条件を確認する。dirty は `DIRTY_WORKTREE`、HEAD / tag 不一致は `TAG_MISMATCH` とし、`<out>.tmp` を削除して `--out` と GitHub write を作成しない。
 11. staging directoryをsync / closeしてから、保持済みparent descriptorに対するbasename相対操作でstaging directoryを`--out`へatomic renameし、同じparent descriptorをsyncする。
 
@@ -182,7 +184,7 @@ GitHub API は `https://api.github.com` と、create response が返す scheme `
 | 既存Release確認 | `GET /repos/{owner}/{repository}/releases/tags/{tag}` | `404`だけを不在とする。`200`は`RELEASE_EXISTS`、その他は`GITHUB_READ_FAILED`。 |
 | draft作成 | `POST /repos/{owner}/{repository}/releases` | `201`、positive integer `id`、`draft=true`、`prerelease=false`、tag / target / name / body一致、安全な`upload_url`と`html_url`。 |
 | asset upload | create responseの`upload_url`へquery `name=<asset-name>`だけを追加した`POST` | `201`、positive integer `id`、name、size一致、state=`uploaded`。 |
-| asset一覧 | `GET /repos/{owner}/{repository}/releases/{release-id}/assets?per_page=100&page=1` | `200`、6件、id / name / size一意、次pageを示す`Link`なし。 |
+| asset一覧 | `GET /repos/{owner}/{repository}/releases/{release-id}/assets?per_page=100&page=1` | `200`、8件、id / name / size一意、次pageを示す`Link`なし。 |
 | asset再取得 | `GET /repos/{owner}/{repository}/releases/assets/{asset-id}`、`Accept: application/octet-stream` | `200`、または許可download redirect 1回後の`200`。最終responseのContent-Length / byte数 / SHA-256一致。 |
 | Release再取得 | `GET /repos/{owner}/{repository}/releases/{release-id}` | `200`、id、tag、target、name、body、draft、prerelease、asset件数一致。 |
 | 正式公開 | `PATCH /repos/{owner}/{repository}/releases/{release-id}` body `{"draft":false,"prerelease":false}` | `200`、`draft=false`、`prerelease=false`、その他の固定値一致。 |
@@ -199,12 +201,12 @@ remote default branch head SHA、remote tag peeled commit、既存 Release 不�
 1. local checkout の clean、HEAD、local tag と、remote repository、default branch head、`--commit` 包含、tag peeled commit、既存 Release 不在を再確認する。この確認は [R2 実行前固定契約](#release-precondition-contract) の事前確認後に状態が変化した競合を検出する 2 回目の確認であり、省略しない。
 2. `tag_name=<tag>`、`target_commitish=<commit>`、`name=<tag>`、`body=<notes-file byte>`、`draft=true`、`prerelease=false`、`generate_release_notes=false` で draft Release を1件作成する。
 3. draft 作成直後に remote default branch head、`--commit` 包含、tag peeled commit、Release metadata を再取得する。不一致は `PUBLISH_FAILED` とし、asset upload を開始せず draft cleanup を実行する。
-4. [R3 Release asset 固定契約](#release-asset-contract) の順で6 assetを1件ずつuploadする。
+4. [R3 Release asset 固定契約](#release-asset-contract) の順で8 assetを1件ずつuploadする。
 5. draft Releaseのasset一覧を再取得し、名前、件数、sizeをlocal成果物と一致させる。
 6. 各uploaded assetをGitHubから一時directoryへ再取得し、local SHA-256と一致させる。
 7. repository、remote default branch head、`--commit` 包含、tag peeled commit、Releaseのtag、target commit、title、notes、draft、prerelease、asset件数を再取得して一致させる。不一致は `PUBLISH_FAILED` とし、publish せず draft cleanup を実行する。
 8. `draft=false`、`prerelease=false`へ更新して正式公開する。
-9. 公開済みReleaseを再取得し、`draft=false`、`prerelease=false`、asset 6件を確認する。
+9. 公開済みReleaseを再取得し、`draft=false`、`prerelease=false`、asset 8件を確認する。
 
 upload は `Content-Type: application/octet-stream` とし、asset name は URL query へ 1 回だけ percent encode する。既存 asset の削除・置換、同名 upload の retry、公開後の本文変更を行わない。通信失敗時の自動 retry は、response body を送信していない read-only GET に限り最大2回、1秒、2秒で許可する。create、upload、PATCH、DELETE を自動再送してはならない。
 
@@ -218,7 +220,7 @@ draft 作成後、正式公開前に失敗した場合は、作成した draft �
 成功時のstdoutはUTF-8 JSON object 1行とLFだけとし、key順を次に固定する。
 
 ```json
-{"tag":"V.X.N","commit":"40-hex-sha","release_url":"https://github.com/owner/repository/releases/tag/V.X.N","assets":["adlaire-ci-build-linux-amd64","adlaire-ci-runner-linux-amd64","adlaire-ci-api-linux-amd64","adlaire-ci-setup-linux-amd64","admin-ui.tar.gz","SHA256SUMS"],"published":true}
+{"tag":"V.X.N","commit":"40-hex-sha","release_url":"https://github.com/owner/repository/releases/tag/V.X.N","assets":["adlaire-ci-build-linux-amd64","adlaire-ci-runner-linux-amd64","adlaire-ci-api-linux-amd64","adlaire-ci-setup-linux-amd64","adlaire-ci-admin-linux-amd64","adlaire-ci-mcp-linux-amd64","admin-ui.tar.gz","SHA256SUMS"],"published":true}
 ```
 
 実値へ置換した後もkey順とasset順を維持する。成功時stderrは空とする。失敗時stdoutは空、stderrは`release: <error-code>` + LFの1行とする。error codeは [R1 CLI 固定契約](#release-cli-contract) の固定表に列挙した値だけを許可する。追加説明、path、URL、draft id、HTTP body、Go error、command outputをstdout / stderrへ出してはならない。

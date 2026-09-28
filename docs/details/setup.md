@@ -29,7 +29,7 @@
 
 | 項目 | 要件 |
 |------|------|
-| Go 版バイナリ | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`。管理 API 導入時は `adlaire-ci-api` も配置する。 |
+| Go 版バイナリ | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`。管理 API 導入時は `adlaire-ci-api` と `adlaire-ci-admin`、MCP 導入時は `adlaire-ci-mcp` も配置する。 |
 | 配布形式 | GitHub Release 添付 asset を取得対象とする。Release 形式と標準 OS/arch は [`docs/SPEC.md` ポリシー責務 §1](../SPEC.md#policy-versioning)、取得対象 asset は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) を参照する。 |
 | Go toolchain | 利用環境には不要。リリースバイナリをそのまま配置し、利用環境で `go build` しない。 |
 | checksum | `SHA256SUMS` 自身を除く取得対象 Release asset の SHA-256 checksum を取得し、配置または展開前に必ず検証する。`SHA256SUMS` 自身を checksum 対象にしない。 |
@@ -91,10 +91,12 @@ parseと入力検証の順序は、共通option、mode、未知・重複option�
 | `adlaire-ci-runner-$OS_ARCH` | 初回セットアップ、アップデート | root `main` packageから生成し、basename dispatchで`runner` ownerを起動する実行バイナリ。 |
 | `adlaire-ci-api-$OS_ARCH` | 管理 API 導入手順、管理 API 導入後のアップデート | root `main` packageから生成し、basename dispatchで`api` ownerを起動する実行バイナリ。 |
 | `adlaire-ci-setup-$OS_ARCH` | 初回セットアップ、アップデート | root `main` packageから生成し、basename dispatchで`setup` ownerを起動する実行バイナリ。 |
+| `adlaire-ci-admin-$OS_ARCH` | 管理 API 導入手順、管理 API 導入後のアップデート | root `main` packageから生成し、basename dispatchで`admin` owner の CLI 管理クライアントを起動する実行バイナリ。 |
+| `adlaire-ci-mcp-$OS_ARCH` | MCP 導入手順、MCP 導入後のアップデート | root `main` packageから生成し、basename dispatchで`mcp` ownerを起動する実行バイナリ。 |
 | `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | `SHA256SUMS` 自身を除く取得対象 Release asset の SHA-256 checksum 一覧。 |
 
-Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を正本とする。setupはmodeに必要なassetだけを取得し、固定名と完全一致することを検証する。`$OS_ARCH`は`linux-amd64`だけを受け付け、未知OS/archは取得前に[setup出力・error固定契約](#setup-output-contract)の`UNSUPPORTED_PLATFORM`、終了コード`2`とする。`SHA256SUMS`は対象filenameが1回だけ存在し、未取得assetを含むrelease全体の5行が[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)と一致することを確認する。0件、重複、未知行、自己行、形式不正はchecksum検証失敗とする。
+Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を正本とする。setupはmodeに必要なassetだけを取得し、固定名と完全一致することを検証する。`$OS_ARCH`は`linux-amd64`だけを受け付け、未知OS/archは取得前に[setup出力・error固定契約](#setup-output-contract)の`UNSUPPORTED_PLATFORM`、終了コード`2`とする。`SHA256SUMS`は対象filenameが1回だけ存在し、未取得assetを含むrelease全体の7行が[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)と一致することを確認する。0件、重複、未知行、自己行、形式不正はchecksum検証失敗とする。
 
 <a id="sec-26-2b"></a>
 **[§26.2b セットアップ・アップデート機能単位](setup.md#sec-26-2b)：**
@@ -105,7 +107,7 @@ Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細�
 |------|------|------|----------|------------------|
 | Release asset resolver | `VERSION`、`OS_ARCH`、取得対象成果物名、GitHub Release URL | `DOWNLOAD_DIR` 内の取得済みファイル | `VERSION` / `OS_ARCH` 空、HTTP status 非 2xx、取得ファイル 0 byte | 取得済みファイルを配置せず終了 |
 | checksum verifier | `SHA256SUMS`、取得済み成果物 | 検証済み成果物一覧 | `SHA256SUMS` 不在、対象行不在、SHA-256 不一致 | バイナリ配置を実行せず終了 |
-| binary installer | 検証済みバイナリ、`BIN_DIR` | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`、API 導入対象の実装では `adlaire-ci-api` | 入力バイナリ不在、実行権限付与失敗、atomic replace失敗 | systemd 変更を実行せず終了 |
+| binary installer | 検証済みバイナリ、`BIN_DIR` | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`、API 導入対象の実装では `adlaire-ci-api` と `adlaire-ci-admin`、MCP 導入対象の実装では `adlaire-ci-mcp` | 入力バイナリ不在、実行権限付与失敗、atomic replace失敗 | systemd 変更を実行せず終了 |
 | secret initializer | [`docs/details/runner.md` 詳細本文責務 GitHub token 読み込み契約](runner.md#github-token-読み込み契約) に一致する PAT 入力、管理 API 新規導入時は `ADMIN_INITIAL_PASSWORD_FILE`、`INSTALL_DIR` | statefile create-only mode で作成した `.github_token` mode `0600`、管理 API 新規導入時は `adlaire-ci-api --init-credentials` が作成した `.admin_credentials` mode `0600`、または検証済み既存ファイルの byte 単位保持 | PAT 不正、初期 password file 不正、既存 secret 不正、statefile create-only failure、credentials 初期化失敗 | systemd 変更を実行せず終了 |
 | state initializer | `INSTALL_DIR` | statefile create-only mode で作成した `.last_sha`、または schema 検証済み既存ファイルの byte 単位保持。build log 保存対象の実装では `.build_logs/`、snapshot 保存対象の実装では `.snapshots/` | 既存ファイル破損、statefile create-only failure、directory 作成または mode 確定失敗 | systemd 変更を実行せず終了 |
 | admin UI installer | `admin-ui.tar.gz`、`INSTALL_DIR` | `$INSTALL_DIR/admin/index.html`、`$INSTALL_DIR/admin/adlaire-ci-sdk.js` | archive 不在、checksum 不一致、展開後必須ファイル不在 | API 導入・更新対象では API service 起動 / restart を実行せず終了。runner のみの初回セットアップでは本機能を対象外とし、後続の systemd 処理へ進む。 |
@@ -163,6 +165,8 @@ asset 1 件の request から保存完了までの timeout は `5m`、local API 
 | `adlaire-ci-runner` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-runner` へ配置する。 | `0755` | systemd restart を行わない。旧 binary がある場合は保持する。 |
 | `adlaire-ci-setup` | 検証済み asset を一時pathへ`0755`で作成し、実行中inodeを変更せず`$BIN_DIR/adlaire-ci-setup`へatomic renameする。 | `0755` | systemd restartを行わない。旧binaryがある場合は保持する。 |
 | `adlaire-ci-api` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-api` へ配置する。 | `0755` | API service を restart / start しない。 |
+| `adlaire-ci-admin` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-admin` へ配置する。 | `0755` | API service を restart / start しない。 |
+| `adlaire-ci-mcp` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-mcp` へ配置する。 | `0755` | MCP server を起動しない。 |
 | `.github_token` | PAT を `strings.TrimSpace` した値 + LF 1 個を、[`docs/details/statefile.md` 詳細本文責務 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode へ渡す。 | `0600` | systemd unit を変更しない。secret 平文を stderr/stdout に出さない。 |
 | `.last_sha` | `{"sha":""}` + LF 1 個を、[`docs/details/statefile.md` 詳細本文責務 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode へ渡す。 | `0600` | systemd unit を変更しない。 |
 | `.admin_credentials` | 検証済み `ADMIN_INITIAL_PASSWORD_FILE` の内容を stdin として `adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"` を起動し、[`docs/details/security.md` 詳細本文責務 `--init-credentials` CLI 固定契約](security.md#init-credentials-cli-contract)で生成する。 | `0600` | API service を enable/start しない。password を argv、environment、stdout、stderr、log へ出さない。 |
@@ -245,7 +249,7 @@ PAT、password、session token、API token、Webhook secret、SMTP password、cr
 <a id="sec-26-3"></a>
 **[§26.3 Go 版初回セットアップ手順](setup.md#sec-26-3)：**
 
-対象はroot `main` packageから生成した`adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`と、`adlaire-ci.service`、`adlaire-ci.timer`とする。owner componentとの対応は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を参照する。
+初回セットアップ対象はroot `main` packageから生成した`adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`と、`adlaire-ci.service`、`adlaire-ci.timer`とする。管理 API、admin CLI、MCP の追加導入対象は各導入手順の固定表で扱う。owner componentとの対応は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を参照する。
 
 初回セットアップの停止条件を次の表で固定する。各手順は直前の手順が成功した場合のみ実行する。失敗時に後続手順を継続してはならない。
 
@@ -287,9 +291,9 @@ Go 版初回セットアップでは以下を実行しない。
 
 `api`、`ui`、`sdk` を実装した後にのみ本手順を実行する。
 
-管理 API 導入手順は、runner の既存稼働状態を壊してはならない。`adlaire-ci-api` の配置、認証情報生成、systemd enable のいずれかが失敗した場合でも、`adlaire-ci.timer` は停止しない。`.admin_credentials` が既に存在する場合は `--init-credentials` を再実行せず、mode exact `0600` と [`docs/details/statefile.md` 詳細本文責務 §22.0c の `.admin_credentials` schema](statefile.md#sec-22-0c)を read-only 検証する。有効な既存 credentials は content、mode、mtime を維持して成功扱いとし、不正な既存 credentials は[setup出力・error固定契約](#setup-output-contract)の`EXISTING_STATE_INVALID`、終了コード`2`として修復、退避、上書きせず停止する。
+管理 API 導入手順は、runner の既存稼働状態を壊してはならない。`adlaire-ci-api`、`adlaire-ci-admin` の配置、認証情報生成、systemd enable のいずれかが失敗した場合でも、`adlaire-ci.timer` は停止しない。`.admin_credentials` が既に存在する場合は `--init-credentials` を再実行せず、mode exact `0600` と [`docs/details/statefile.md` 詳細本文責務 §22.0c の `.admin_credentials` schema](statefile.md#sec-22-0c)を read-only 検証する。有効な既存 credentials は content、mode、mtime を維持して成功扱いとし、不正な既存 credentials は[setup出力・error固定契約](#setup-output-contract)の`EXISTING_STATE_INVALID`、終了コード`2`として修復、退避、上書きせず停止する。
 
-`install-api`はdirectory作成またはdownloadの前に、`$BIN_DIR/adlaire-ci-build`、`$BIN_DIR/adlaire-ci-runner`、`$BIN_DIR/adlaire-ci-setup`がsymlinkでない通常fileであり、各`--version`がexit`0`、stderr空、exact `<binary-name> $VERSION go=<non-empty>` + LFを返すこと、`systemctl is-active adlaire-ci.timer`が`active`、`systemctl cat adlaire-ci.service`と`systemctl cat adlaire-ci.timer`がexit`0`であることを順に確認する。1件でも不合格なら`PRECONDITION_FAILED`、終了コード`2`とし、directory作成、download、binary / state / unit変更を行わない。これによりAPI、admin UI、既存3 binaryを同じRelease version cohortへ固定する。
+`install-api`はdirectory作成またはdownloadの前に、`$BIN_DIR/adlaire-ci-build`、`$BIN_DIR/adlaire-ci-runner`、`$BIN_DIR/adlaire-ci-setup`がsymlinkでない通常fileであり、各`--version`がexit`0`、stderr空、exact `<binary-name> $VERSION go=<non-empty>` + LFを返すこと、`systemctl is-active adlaire-ci.timer`が`active`、`systemctl cat adlaire-ci.service`と`systemctl cat adlaire-ci.timer`がexit`0`であることを順に確認する。1件でも不合格なら`PRECONDITION_FAILED`、終了コード`2`とし、directory作成、download、binary / state / unit変更を行わない。これによりAPI、admin CLI、admin UI、既存 build / runner / setup binary を同じRelease version cohortへ固定する。
 
 `.admin_credentials` が不在の場合、setup は `ADMIN_INITIAL_PASSWORD_FILE` を `Lstat` し、絶対 path、symlink でない通常 file、mode exact `0600`、実行ユーザー所有を確認する。検証成功後、file を no-follow で 1 回だけ開き、その file descriptor を `adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"` の stdin として渡す。setup は file 内容を shell 変数、command line、environment、temporary file、出力へ保持せず、child 終了後に file descriptor を閉じる。入力 file は運用者所有物として削除、chmod、上書きしない。検証失敗は[setup出力・error固定契約](#setup-output-contract)の`SECRET_INPUT_INVALID`、終了コード`2`とし、credentials 初期化と systemd 配置を開始しない。
 
@@ -297,10 +301,10 @@ Go 版初回セットアップでは以下を実行しない。
 
 | 手順 | 停止条件 | 失敗時の扱い |
 |------|----------|--------------|
-| API バイナリ取得 | `adlaire-ci-api-$OS_ARCH` または `SHA256SUMS` の取得、checksum 検証に失敗 | API バイナリを配置せず終了する。 |
+| API / admin CLI バイナリ取得 | `adlaire-ci-api-$OS_ARCH`、`adlaire-ci-admin-$OS_ARCH`、または `SHA256SUMS` の取得、checksum 検証に失敗 | API / admin CLI バイナリを配置せず終了する。 |
 | 管理 UI 取得 | `admin-ui.tar.gz` の取得またはchecksum検証に失敗 | API serviceを起動せず、runtime directoryを作成せず終了する。 |
 | ディレクトリ作成 | checksum検証後に行う`$INSTALL_DIR/.build_logs`、`$INSTALL_DIR/.snapshots`、admin一時directoryの作成に失敗 | runner timerを変更せず、既存`$INSTALL_DIR/admin`を変更せず終了する。 |
-| API バイナリ配置 | checksum 検証済み API バイナリ不在、または `install` 失敗 | API service を起動せず終了する。 |
+| API / admin CLI バイナリ配置 | checksum 検証済み API / admin CLI バイナリ不在、または `install` 失敗 | API service を起動せず終了する。 |
 | 管理 UI 展開 | archive安全検証、一時directoryへの展開、必須file検証、atomic差し替えに失敗 | API serviceを起動せず、既存`$INSTALL_DIR/admin`を維持して終了する。 |
 | 管理 UI 必須ファイル確認 | `$INSTALL_DIR/admin/index.html` または `$INSTALL_DIR/admin/adlaire-ci-sdk.js` が存在しない | API service を起動せず終了する。 |
 | 認証情報生成 | `.admin_credentials` 新規生成に失敗、または既存ファイルが mode / schema 検証に不合格。検証済み既存ファイルは成功扱い | API service を起動せず終了する。既存ファイルを修復、退避、上書きしない。 |
@@ -312,6 +316,7 @@ Go 版初回セットアップでは以下を実行しない。
 | 確認 | コマンド | 合格条件 |
 |------|----------|----------|
 | API binary | `$BIN_DIR/adlaire-ci-api --version` | exit `0`、stderr 空、stdout が exact `adlaire-ci-api $VERSION go=<non-empty>` + LF。`$VERSION` は Release asset の tag と一致し、`V.0.0-dev` は拒否する。 |
+| admin CLI binary | `$BIN_DIR/adlaire-ci-admin --version` | exit `0`、stderr 空、stdout が exact `adlaire-ci-admin $VERSION go=<non-empty>` + LF。`$VERSION` は Release asset の tag と一致し、`V.0.0-dev` は拒否する。 |
 | credentials | statefile read-only adapter と `stat -c '%a' "$INSTALL_DIR/.admin_credentials"` | [`docs/details/statefile.md` 詳細本文責務 §22.0c の `.admin_credentials` schema](statefile.md#sec-22-0c) に合格し mode `600`。hash、salt、password を stdout / stderr へ出力しない。 |
 | admin UI | `test -f "$INSTALL_DIR/admin/index.html"` / `test -f "$INSTALL_DIR/admin/adlaire-ci-sdk.js"` | 両方成功。 |
 | API service | `systemctl is-active adlaire-ci-api` | `active`。 |
@@ -393,7 +398,7 @@ systemd unit は [`docs/details/setup.md` 詳細本文責務 §26.4](setup.md#se
 
 `git pull`、利用環境での `go build`、開発ブランチ checkout は使用しない。タグ付き安定版のリリースバイナリを配置し、サービスを再起動する。管理 API を導入していない構成では、管理 API サービスは再起動対象に含めない。
 
-更新対象 version cohort は、常に `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`、API 導入済みの場合は加えて `adlaire-ci-api`、`admin-ui.tar.gz` の全対象とする。成功時は全対象を同一 `VERSION`、rollback 時は全対象を更新開始前の旧 version cohort へ戻す。後段失敗時に一部の新バイナリまたは新 admin UI を残し、新旧 version を混在させてはならない。
+更新対象 version cohort は、常に `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`、API 導入済みの場合は加えて `adlaire-ci-api`、`adlaire-ci-admin`、`admin-ui.tar.gz`、MCP 導入済みの場合は加えて `adlaire-ci-mcp` の全対象とする。成功時は全対象を同一 `VERSION`、rollback 時は全対象を更新開始前の旧 version cohort へ戻す。後段失敗時に一部の新バイナリまたは新 admin UI を残し、新旧 version を混在させてはならない。
 
 アップデートは以下の順序で実行し、途中失敗時は [アップデート rollback 固定契約](#setup-update-rollback-contract) に従う。
 
@@ -430,10 +435,12 @@ restart 回数は rollback 処理内の回数を表す。runner restart 失敗�
 
 1. 既存`$BIN_DIR/adlaire-ci-build`、`$BIN_DIR/adlaire-ci-runner`、`$BIN_DIR/adlaire-ci-setup`の存在を確認する。いずれかが不在の場合は終了コード`2`とし、更新を開始しない。
 2. API 導入済み判定は `$BIN_DIR/adlaire-ci-api` が通常ファイルとして存在し、`systemctl is-enabled adlaire-ci-api` が `enabled` または `static` を返す場合だけ `true` とする。
-3. API 導入済みでない場合、`adlaire-ci-api-$OS_ARCH` と `admin-ui.tar.gz` は取得しない。
-4. API 導入済みの場合、build / runner / setup / api binary と admin UI を同じ `VERSION` の asset から取得する。version 混在は禁止する。
-5. すべての対象 asset の checksum 検証が成功するまで、既存 binary、既存 admin UI、systemd unit を変更しない。
-6. binary 配置後の version 確認に失敗した場合は、その binary を配置失敗として rollback 対象に含める。
+3. MCP 導入済み判定は `$BIN_DIR/adlaire-ci-mcp` が通常ファイルとして存在する場合だけ `true` とする。
+4. API 導入済みでない場合、`adlaire-ci-api-$OS_ARCH`、`adlaire-ci-admin-$OS_ARCH`、`admin-ui.tar.gz` は取得しない。
+5. MCP 導入済みでない場合、`adlaire-ci-mcp-$OS_ARCH` は取得しない。
+6. API 導入済みの場合、build / runner / setup / api / admin binary と admin UI を同じ `VERSION` の asset から取得する。MCP 導入済みの場合は mcp binary も同じ `VERSION` の asset から取得する。version 混在は禁止する。
+7. すべての対象 asset の checksum 検証が成功するまで、既存 binary、既存 admin UI、systemd unit を変更しない。
+8. binary 配置後の version 確認に失敗した場合は、その binary を配置失敗として rollback 対象に含める。
 7. runner restart が失敗した場合、API restart と admin UI 更新へ進まない。
 8. admin UI 更新が失敗した場合は [アップデート rollback 固定契約「admin UI 展開失敗」](#setup-update-rollback-contract)を 1 回適用し、API restart へ進まない。
 9. admin UI 差し替え後の API restart が失敗した場合は [アップデート rollback 固定契約「admin UI 差し替え後 API restart 失敗」](#setup-update-rollback-contract)を 1 回適用する。

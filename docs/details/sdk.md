@@ -430,3 +430,48 @@ SDK 連動 fixture 名、入力、expected、合格条件、禁止条件、実�
 SDK は成功 response を補完、削除、rename、既定値 merge、再集計せず、そのまま返す。`AdlaireCIError` と `StreamHandle` だけは API response ではなく SDK が生成する型であるため、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の SDK 共通実装契約を正本とする。API response の required / nullable / array key を SDK 文書へ別表として再掲してはならない。
 
 ---
+
+<a id="sec-23-8"></a>
+## 23.8 追加管理 API SDK 対応
+
+本節は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の追加管理 API に対応する SDK method を定義する。
+
+本節は API request / response schema を再定義しない。
+
+| 機能 | SDK method |
+|------|------------|
+| マルチユーザー対応 / ユーザー管理 API | `getUsers(query)`, `createUser(input)`, `updateUser(id,input)`, `disableUser(id)` |
+| ロールベースアクセス制御 | `getRoles()`, `createRole(input)`, `updateRole(id,input)`, `deleteRole(id)` |
+| 外部認証連携 | `getExternalAuthConfig()`, `setExternalAuthConfig(input)`, `testExternalAuth(input)` |
+| データストア切り替え | `getDatastore()`, `switchDatastore(input)` |
+| 統計データの JSON エクスポート | `exportStats(query)` |
+| キュー内個別エントリのキャンセル | `cancelQueueEntry(queueId)` |
+| Prometheus メトリクスエンドポイント | `getPrometheusMetrics()` |
+| 設定の自動スナップショット | `getConfigSnapshots(query)`, `createConfigSnapshot(input)`, `getConfigSnapshot(id)`, `restoreConfigSnapshot(id,input)`, `deleteConfigSnapshot(id)` |
+| ステータスバッジ生成 | `getStatusBadge(query)` |
+| ビルド履歴の自動削除設定 | `getHistoryRetention()`, `setHistoryRetention(input)`, `runHistoryRetention()` |
+| 設定スナップショット差分表示 | `diffConfigSnapshots(leftId,rightId)` |
+| 複数プロジェクト管理 | `getProjects(query)`, `createProject(input)`, `updateProject(id,input)`, `archiveProject(id)` |
+| API バージョニング | `getApiVersion()` |
+| API ドキュメント自動生成 | `getOpenApiDocument()` |
+| ビルドキューの手動並び替え | `reorderQueue(queueIds)` |
+| 設定テンプレート | `getConfigTemplates()`, `createConfigTemplate(input)`, `applyConfigTemplate(id,input)`, `deleteConfigTemplate(id)` |
+| 管理者向けイベントフィード | `getAdminEvents(query)`, `streamAdminEvents(query)` |
+| 読み取り専用共有リンク | `getShareLinks()`, `createShareLink(input)`, `revokeShareLink(id)`, `getSharedStatus(token)` |
+| API レスポンスキャッシュ制御 | `getCachePolicy()`, `setCachePolicy(input)`, `purgeResponseCache()` |
+| スナップショット間サイト差分 API | `diffSnapshots(leftId,rightId)` |
+| Webhook 送信履歴の手動再送 API | `resendWebhook(deliveryId,input)` |
+
+path parameter は [SDK メソッド実装固定契約](#sdk-method-implementation-contract) の `path parameter` 行に従い、1 回だけ percent encode する。
+
+body 禁止 endpoint は body を送信しない。
+
+binary response は `Blob`、text response は `string`、SSE response は `StreamHandle`、JSON response は API の JSON object をそのまま返す。
+
+`getPrometheusMetrics()` は `text/plain` を `string` として返す。
+
+`getStatusBadge()` は SVG response を `Blob` として返す。
+
+`streamAdminEvents()` は `StreamHandle` を返し、UI が close できるようにする。
+
+追加管理 API の SDK 完全性検証では、上表の public method が `AdlaireCI.prototype` に存在し、未定義 public method が存在しないことを確認する。

@@ -17,11 +17,12 @@
 | [`components/builder.go`](../components/builder.go) | 実装中・検証未完了 | デザイン整合、Markdown block、report、CLI metadata、atomic publication、入力・path 安全性、拡張機能、必須 fixture が未完了である。[`ALIGN-06`](details/fixture.md#align-06)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-08`](details/fixture.md#align-08)、[`ALIGN-13`](details/fixture.md#align-13)、[`ALIGN-14`](details/fixture.md#align-14)、[`ALIGN-20`](details/fixture.md#align-20)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-25`](details/fixture.md#align-25)、[`ALIGN-28`](details/fixture.md#align-28)、[`ALIGN-37`](details/fixture.md#align-37) |
 | [`components/runner.go`](../components/runner.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-12`](details/fixture.md#align-12)、[`ALIGN-16`](details/fixture.md#align-16)、[`ALIGN-17`](details/fixture.md#align-17)、[`ALIGN-19`](details/fixture.md#align-19)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-26`](details/fixture.md#align-26)、[`ALIGN-29`](details/fixture.md#align-29)、[`ALIGN-30`](details/fixture.md#align-30)、[`ALIGN-32`](details/fixture.md#align-32)、[`ALIGN-33`](details/fixture.md#align-33)、[`ALIGN-34`](details/fixture.md#align-34)、[`ALIGN-35`](details/fixture.md#align-35)、[`ALIGN-36`](details/fixture.md#align-36)、[`ALIGN-37`](details/fixture.md#align-37) |
 | [`components/api.go`](../components/api.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-02`](details/fixture.md#align-02)、[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-04`](details/fixture.md#align-04)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-11`](details/fixture.md#align-11)、[`ALIGN-12`](details/fixture.md#align-12)、[`ALIGN-17`](details/fixture.md#align-17)、[`ALIGN-18`](details/fixture.md#align-18)、[`ALIGN-19`](details/fixture.md#align-19)、[`ALIGN-21`](details/fixture.md#align-21)、[`ALIGN-22`](details/fixture.md#align-22)、[`ALIGN-23`](details/fixture.md#align-23)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-27`](details/fixture.md#align-27)、[`ALIGN-29`](details/fixture.md#align-29)、[`ALIGN-30`](details/fixture.md#align-30)、[`ALIGN-37`](details/fixture.md#align-37) |
+| `components/admin.go` | 仕様化済み・未実装 | CLI 管理クライアントの実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/admin.md`](details/admin.md#sec-a7) を参照する。 |
 | `components/setup.go` | 仕様化済み・未実装 | 実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/setup.md`](details/setup.md)、現行実装証跡は [`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-37`](details/fixture.md#align-37) を参照する。 |
 | `components/release.go` | 仕様化済み・未実装 | 実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/release.md`](details/release.md)、現行実装証跡は [`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-37`](details/fixture.md#align-37) を参照する。 |
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-15`](details/fixture.md#align-15)、[`ALIGN-24`](details/fixture.md#align-24) |
 | [`admin/index.html`](../admin/index.html) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-05`](details/fixture.md#align-05)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-31`](details/fixture.md#align-31) |
-| `components/mcp.go` | 将来計画 | 実装ファイルと MCP 専用詳細仕様が存在しない。 |
+| `components/mcp.go` | 仕様化済み・未実装 | 実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/mcp.md`](details/mcp.md) を参照する。 |
 
 <a id="roadmap-phase-plan"></a>
 
@@ -141,45 +142,45 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 仕様化済み・未実装 | CI ランナー | ビルドトリガー種別の記録 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | CI ランナー | ビルド所要時間の異常検知 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | CI ランナー | 設定ファイル起動時整合性チェック | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 将来計画 | 管理ツール・API | マルチユーザー対応 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | データストア切り替え | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | 外部認証連携 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | 管理ツール・API | マルチユーザー対応 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | データストア切り替え | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 外部認証連携 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装中・検証未完了 | 管理ツール・API | TOTP 二要素認証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 将来計画 | 管理ツール・API | 統計データの JSON エクスポート | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | キュー内個別エントリのキャンセル | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | 管理ツール・API | 統計データの JSON エクスポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | キュー内個別エントリのキャンセル | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装中・検証未完了 | 管理ツール・API | 設定バリデーション API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 将来計画 | 管理ツール・API | Prometheus メトリクスエンドポイント | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | CLI 管理クライアント | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | 設定の自動スナップショット | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | ステータスバッジ生成 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | ビルド履歴の自動削除設定 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | 管理ツール・API | Prometheus メトリクスエンドポイント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | CLI 管理クライアント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 設定の自動スナップショット | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | ステータスバッジ生成 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | ビルド履歴の自動削除設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装中・検証未完了 | 管理ツール・API | セッションタイムアウト変更設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | ビルドトリガー専用 API スコープ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | 監査ログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | API レート制限 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 将来計画 | 管理ツール・API | ロールベースアクセス制御 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | 設定スナップショット差分表示 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | 複数プロジェクト管理 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | 管理ツール・API | ロールベースアクセス制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 設定スナップショット差分表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 複数プロジェクト管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装中・検証未完了 | 管理ツール・API | API キー管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | ビルドログの保存済み有限 SSE 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | ビルド統計ダッシュボード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 将来計画 | 管理ツール・API | ユーザー管理 API | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | 管理ツール・API | ユーザー管理 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装中・検証未完了 | 管理ツール・API | IP アドレス制限 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 将来計画 | 管理ツール・API | API バージョニング | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | API ドキュメント自動生成 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | 管理ツール・API | API バージョニング | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | API ドキュメント自動生成 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装中・検証未完了 | 管理ツール・API | 通知チャンネル管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 将来計画 | 管理ツール・API | ビルドキューの手動並び替え | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | 設定テンプレート | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | 管理ツール・API | ビルドキューの手動並び替え | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | 設定テンプレート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装中・検証未完了 | 管理ツール・API | API アクセスログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 将来計画 | 管理ツール・API | 管理者向けイベントフィード | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | 管理ツール・API | 管理者向けイベントフィード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装中・検証未完了 | 管理ツール・API | ビルドキュー可視化 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | メンテナンスモード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 将来計画 | 管理ツール・API | 読み取り専用共有リンク | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | 管理ツール・API | 読み取り専用共有リンク | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 実装中・検証未完了 | 管理ツール・API | アラート閾値設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | バックアップ／リストア | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 将来計画 | 管理ツール・API | API レスポンスキャッシュ制御 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | スナップショット間サイト差分 API | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | 管理ツール・API | Webhook 送信履歴の手動再送 API | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | 管理ツール・API | API レスポンスキャッシュ制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | スナップショット間サイト差分 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
+| 仕様化済み・未実装 | 管理ツール・API | Webhook 送信履歴の手動再送 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | ビルドスクリプト | 差分ビルド | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | ビルドスクリプト | 複数出力形式 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | ビルドスクリプト | Markdown 拡張記法サポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
@@ -211,18 +212,18 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 仕様化済み・未実装 | 配布・セットアップ | バイナリアップデート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
 | 仕様化済み・未実装 | 配布・セットアップ | アップデート rollback | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
 | 仕様化済み・未実装 | リリース | GitHub Release 成果物生成・公開前検証・公開 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
-| 将来計画 | MCP サーバー | MCP サーバー実装 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP ツール・リソース公開 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | AI 支援ビルドエラー分析 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP Prompts 定義 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP Sampling によるビルドログ自動分析 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP Notifications（イベントプッシュ） | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP HTTP SSE transport 対応 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP ツールスコープ細分化 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP ツール呼び出し監査ログ | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP リソース購読（Resource Subscriptions） | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP クライアント情報ログ | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP ツール実行統計 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP ツール実行タイムアウト設定 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP 設定 CRUD ツール | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
-| 将来計画 | MCP サーバー | MCP Elicitation による副作用操作の確認 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) |
+| 仕様化済み・未実装 | MCP サーバー | MCP サーバー実装 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP ツール・リソース公開 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | AI 支援ビルドエラー分析 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP Prompts 定義 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP Sampling によるビルドログ自動分析 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP Notifications（イベントプッシュ） | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP HTTP SSE transport 対応 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP ツールスコープ細分化 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP ツール呼び出し監査ログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP リソース購読（Resource Subscriptions） | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP クライアント情報ログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP ツール実行統計 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP ツール実行タイムアウト設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP 設定 CRUD ツール | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
+| 仕様化済み・未実装 | MCP サーバー | MCP Elicitation による副作用操作の確認 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |

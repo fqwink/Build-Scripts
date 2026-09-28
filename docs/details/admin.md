@@ -102,3 +102,52 @@ setup が admin UI を配置する場合、admin owner の正本本文は [`docs
 Admin fixture の fixture 名、入力、操作、expected file、禁止副作用は [`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](fixture.md#sec-27-f-19) を正本とする。
 
 Admin 実装確認は [`docs/details/admin.md` 詳細本文責務 §A5](admin.md#a5-受け入れ条件) の全条件と、[`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](fixture.md#sec-27-f-19) の該当条件を同時に満たした場合だけ合格とする。fixture 名、input、expected、fake、禁止副作用を本節で再掲してはならない。
+
+<a id="sec-a7"></a>
+## A7. CLI 管理クライアント
+
+CLI 管理クライアントの owner は `admin` とする。
+
+配布 binary 名は `adlaire-ci-admin` とする。
+
+実装主体は `components/admin.go` とする。
+
+起動入口は `main.go` の basename dispatch とする。
+
+CLI 管理クライアントは `api` owner の endpoint を呼び出す client であり、server side の状態、認証、認可、endpoint response を再定義しない。
+
+**CLI 形式：**
+
+```text
+adlaire-ci-admin --api-url <url> --token <token> <command> [--json]
+adlaire-ci-admin --help
+adlaire-ci-admin --version
+```
+
+| command | 呼び出す API | stdout |
+|---------|--------------|--------|
+| `status` | `GET /api/status` | status summary。`--json` 指定時は API response JSON。 |
+| `queue` | `GET /api/queue` | queue summary。`--json` 指定時は API response JSON。 |
+| `history` | `GET /api/history` | history summary。`--json` 指定時は API response JSON。 |
+| `trigger-build` | `POST /api/builds` | created build id。`--json` 指定時は API response JSON。 |
+| `cancel-queue` | `DELETE /api/queue/{queue_id}` | fixed message。`--json` 指定時は API response JSON。 |
+| `config-snapshot` | `POST /api/config-snapshots` | snapshot id。`--json` 指定時は API response JSON。 |
+| `events` | `GET /api/events` | event summary。`--json` 指定時は API response JSON。 |
+
+`--token` の値を stdout、stderr、server log、fixture expected に出力してはならない。
+
+未知 command は stdout 空、stderr `unknown command: <command>` + LF、終了 code `2` とする。
+
+API が `4xx` または `5xx` を返した場合、CLI は stdout 空、stderr `api error: <status>` + LF、終了 code `1` とする。
+
+`--json` 指定時でも error response body を stderr に出力してはならない。
+
+**検証条件：**
+
+| ケース | 期待結果 |
+|--------|----------|
+| help | 終了 code `0`、状態変更なし。 |
+| version | 終了 code `0`、状態変更なし。 |
+| token redaction | token が stdout / stderr / log / fixture expected に出現しない。 |
+| unknown command | 終了 code `2`。 |
+| api 401 | 終了 code `1`、token を出さない。 |

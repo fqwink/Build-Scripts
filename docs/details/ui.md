@@ -490,3 +490,41 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 | API 呼び出し経路 | `AdlaireCI` instance | 1 instance | panel ごとに SDK instance を作らず、画面全体で 1 つの `AdlaireCI` instance を共有する。 |
 
 ---
+
+<a id="sec-24-8"></a>
+## 24.8 追加管理 API UI 対応
+
+本節は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の追加管理 API に対応する UI 表示 / 操作を定義する。
+
+本節は API request / response schema、SDK method 本文、state schema を再定義しない。
+
+| UI 領域 | 対象機能 | 使用 SDK method | 成功後再取得 |
+|---------|----------|-----------------|--------------|
+| ユーザー管理 panel | マルチユーザー対応、ユーザー管理 API | `getUsers`, `createUser`, `updateUser`, `disableUser` | `getUsers`, `getAuditLog` |
+| ロール管理 panel | ロールベースアクセス制御 | `getRoles`, `createRole`, `updateRole`, `deleteRole` | `getRoles`, `getAuditLog` |
+| 外部認証 panel | 外部認証連携 | `getExternalAuthConfig`, `setExternalAuthConfig`, `testExternalAuth` | `getExternalAuthConfig`, `getAuditLog` |
+| データストア panel | データストア切り替え | `getDatastore`, `switchDatastore` | `getDatastore`, `getAdminEvents` |
+| 統計 export panel | 統計データの JSON エクスポート | `exportStats` | なし |
+| queue 操作 panel | キュー内個別エントリのキャンセル、ビルドキューの手動並び替え | `cancelQueueEntry`, `reorderQueue`, `getQueue` | `getQueue`, `getStatus` |
+| metrics panel | Prometheus メトリクスエンドポイント | `getPrometheusMetrics` | なし |
+| 設定 snapshot panel | 設定の自動スナップショット、設定スナップショット差分表示 | `getConfigSnapshots`, `createConfigSnapshot`, `getConfigSnapshot`, `restoreConfigSnapshot`, `deleteConfigSnapshot`, `diffConfigSnapshots` | `getConfigSnapshots`, `getConfig`, `getConfigLog` |
+| badge panel | ステータスバッジ生成 | `getStatusBadge` | なし |
+| 履歴 retention panel | ビルド履歴の自動削除設定 | `getHistoryRetention`, `setHistoryRetention`, `runHistoryRetention` | `getHistoryRetention`, `getHistory` |
+| project panel | 複数プロジェクト管理 | `getProjects`, `createProject`, `updateProject`, `archiveProject` | `getProjects`, `getAdminEvents` |
+| API 情報 panel | API バージョニング、API ドキュメント自動生成 | `getApiVersion`, `getOpenApiDocument` | なし |
+| 設定 template panel | 設定テンプレート | `getConfigTemplates`, `createConfigTemplate`, `applyConfigTemplate`, `deleteConfigTemplate` | `getConfigTemplates`, `getConfig`, `getConfigLog` |
+| event feed panel | 管理者向けイベントフィード | `getAdminEvents`, `streamAdminEvents` | stream close 後に `getAdminEvents` |
+| share link panel | 読み取り専用共有リンク | `getShareLinks`, `createShareLink`, `revokeShareLink`, `getSharedStatus` | `getShareLinks`, `getAuditLog` |
+| cache panel | API レスポンスキャッシュ制御 | `getCachePolicy`, `setCachePolicy`, `purgeResponseCache` | `getCachePolicy`, `getAdminEvents` |
+| snapshot diff panel | スナップショット間サイト差分 API | `diffSnapshots` | なし |
+| webhook resend panel | Webhook 送信履歴の手動再送 API | `resendWebhook` | `getNotifyLog`, `getAdminEvents` |
+
+confirmation を必要とする操作では、UI は固定文言を表示し、ユーザー操作で明示された場合だけ confirmation value を SDK method へ渡す。
+
+secret、token、share token、external auth secret、webhook secret は一覧、履歴、error、event feed に表示してはならない。
+
+share token は作成直後の one-time 表示だけに限定し、panel 遷移、logout、`401`、revoke 成功、copy 完了で消去する。
+
+SSE stream は panel 離脱、logout、`401`、明示 stop 操作で close する。
+
+UI は Prometheus metric、SVG badge、OpenAPI document、snapshot diff、config diff を再計算せず、SDK response を表示用に整形するだけとする。
