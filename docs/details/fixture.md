@@ -1349,7 +1349,7 @@ Fixture manifest の component 識別子は `builder`、`runner`、`api`、`admi
 | `not_applicable` | array[object] | 必須 | 各 object は `path` と `reason` の 2 key だけを持つ。`path` は対象 file set 契約の条件付き候補 file または directory の fixture root 相対 path、`reason` は空でない固定理由とする。`path` の ASCII 昇順、重複なしとし、必須 file、実在 path、契約外 path は列挙しない。該当なしは空配列とする。 |
 | `missing_state` | array[string] | 必須 | fixture の仮想実行 cwd 起点の `/` 区切り相対 path で、実行前に存在しないことを期待する状態 file だけを ASCII 昇順、重複なしで持つ。directory、symlink、絶対 path、`.` / `..` segment を禁止する。該当なしは空配列とする。 |
 | `input_files` | array[string] | 必須 | fixture directory からの `/` 区切り相対 path。対象 file set 契約が許可する `input/` 配下の通常 file だけを ASCII 昇順、重複なしで持ち、非空時は実在 input file set と完全一致させる。input file 不要時は空配列とする。directory、symlink、絶対 path、`.` / `..` segment を禁止する。 |
-| `assertions` | array[string] | 必須 | `response`、`sdk-trace`、`sdk-return`、`sdk-error`、`ui-trace`、`ui-dom`、`stdout`、`stderr`、`state`、`logs`、`effects`、`secret-mask`、`order`、`idempotency`、`no-write` の 1 件以上。重複を禁止し、複数値はこの列挙順で記録する。 |
+| `assertions` | array[string] | 必須 | `response`、`request`、`sdk-trace`、`sdk-return`、`sdk-error`、`ui-trace`、`ui-dom`、`stdout`、`stderr`、`state`、`logs`、`effects`、`secret-mask`、`order`、`idempotency`、`no-write` の 1 件以上。重複を禁止し、複数値はこの列挙順で記録する。 |
 
 <a id="sec-27-f-9"></a>
 **[fixture 証跡責務 §27-F 合否判定固定契約](fixture.md#sec-27-f-9)：**
@@ -1357,6 +1357,7 @@ Fixture manifest の component 識別子は `builder`、`runner`、`api`、`admi
 | 判定 | 合格条件 |
 |------|----------|
 | response | status、headers、body、error details、request id が期待値と一致する。 |
+| request | method、path、query、header、body byte、呼出順が期待値と一致する。secret は placeholder だけを許可し、禁止 request、redirect 追従、retry、proxy、未定義 external call が期待値に含まれる場合は不合格とする。 |
 | sdk-trace | SDK method、引数、HTTP request、結果種別、status、呼出順が一致し、secret 値と Authorization 値を保持しない。 |
 | sdk-return | SDK success return が API response を補完せず一致し、return 後 token state が一致する。 |
 | sdk-error | error class、status、message、details、responseBody、error 後 token state が一致する。 |
@@ -1609,7 +1610,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `manifest.json.owner_component` と `components` | `owner_component` は `components` に必ず含める。 | owner 責務不一致として失敗。 |
 | `manifest.json.collaborator_components` と `components` | `collaborator_components` は `components` にすべて含め、`owner_component` を含めてはならない。 | collaborator 責務不一致として失敗。 |
 | fixture 固定表の必須 input と入力ファイル | CLI / setup script 実行は `input/cli.json`、[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) の builder は `input/options.json`、HTTP request / SDK invocation / UI action は `input/request.json` を置く。その他の builder fixture は対象 file set 契約に従う。複数条件に該当する場合は必要 file をすべて置き、該当する条件を `not_applicable` で除外してはならない。 | 入力責務不一致として失敗。 |
-| `manifest.json.assertions` と期待値ファイル | `response` は `expected/response.json`、`sdk-trace` は `expected/sdk_trace.json`、`sdk-return` は `expected/sdk_return.json`、`sdk-error` は `expected/sdk_error.json`、`ui-trace` は `expected/ui_trace.json`、`ui-dom` は `expected/ui_dom.json`、`stdout` は `expected/stdout.txt`、`stderr` は `expected/stderr.txt`、`logs` は `expected/logs/`、`effects` は `expected/effects.json`、`secret-mask` は `expected/security.json` を要求する。`state` は [fixture 証跡責務 §27-F](#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) では `expected/state/`、[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) では `expected/site/` と `expected/builder-output.json` を要求する。 | 期待値不足として失敗。 |
+| `manifest.json.assertions` と期待値ファイル | `response` は `expected/response.json`、`request` は `expected/request.json`、`sdk-trace` は `expected/sdk_trace.json`、`sdk-return` は `expected/sdk_return.json`、`sdk-error` は `expected/sdk_error.json`、`ui-trace` は `expected/ui_trace.json`、`ui-dom` は `expected/ui_dom.json`、`stdout` は `expected/stdout.txt`、`stderr` は `expected/stderr.txt`、`logs` は `expected/logs/`、`effects` は `expected/effects.json`、`secret-mask` は `expected/security.json` を要求する。`state` は [fixture 証跡責務 §27-F](#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) では `expected/state/`、[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) では `expected/site/` と `expected/builder-output.json` を要求する。 | 期待値不足として失敗。 |
 | `expected/effects.json.write_order` と expected file set | `created_paths` / `updated_paths` として `write_order` に現れる path は [fixture 証跡責務 §27-F](#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) の `expected/state/` / `expected/logs/`、または [fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) の `expected/site/` / `expected/builder-output.json` で最終値を固定する。`deleted_paths` は対応する expected tree に存在させず、削除期待を `expected/effects.json` に固定する。 | 保存順だけの空検証として失敗。 |
 | `expected/effects.json` の実行後 path 集合 | `unchanged_paths`、`created_paths`、`updated_paths`、`deleted_paths` は pairwise disjoint とする。 | 副作用分類矛盾として失敗。 |
 | `expected/effects.json` の実行期待と禁止集合 | `created_paths` と `forbidden_created_paths` / `forbidden_writes`、`updated_paths` と `forbidden_updated_paths` / `forbidden_writes`、`deleted_paths` と `forbidden_deleted_paths` / `forbidden_writes` に同一 path を含めない。 | 禁止副作用矛盾として失敗。 |
@@ -1797,9 +1798,9 @@ Admin CLI fixture の `manifest.json.assertions` は次表に固定する。複�
 | fixture 名 | 必須 assertions |
 |------------|-----------------|
 | `partial-admin-cli-lifecycle` | `stdout`、`stderr`、`effects`、`secret-mask`、`no-write` |
-| `success-admin-cli-transport` | `stdout`、`stderr`、`effects`、`secret-mask`、`order` |
+| `success-admin-cli-transport` | `request`、`stdout`、`stderr`、`effects`、`secret-mask`、`order` |
 | `failure-admin-cli-output-errors` | `response`、`stdout`、`stderr`、`effects`、`secret-mask`、`no-write` |
-| `security-admin-cli-secret-redaction` | `response`、`stdout`、`stderr`、`effects`、`secret-mask`、`no-write` |
+| `security-admin-cli-secret-redaction` | `response`、`request`、`stdout`、`stderr`、`effects`、`secret-mask`、`no-write` |
 
 `partial-admin-cli-lifecycle` は `--help` と `--version` が API URL、token、state directory、network fake を一切参照しないことを `expected/effects.json.external_calls=[]`、`forbidden_writes`、`forbidden_reads` で固定する。parse error、未知 command、引数不足、引数過多、同一 option 重複、`--name=value`、短縮 option、禁止制御文字は個別 case とし、stdout 空、stderr 1 行、終了 code `2` を byte 単位で検証する。
 
