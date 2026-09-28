@@ -2437,35 +2437,36 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 追加管理 API fixture は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) を確認する。
 
-| fixture 群 | 必須確認 |
-|------------|----------|
-| `testdata/api/additional-management/` | 27.48〜27.70 の success、validation error、auth error、permission error、conflict、secret redaction。 |
-| `testdata/sdk/additional-management/` | SDK method coverage、path encode、body 禁止、binary / text / stream response、token 破棄条件。 |
-| `testdata/ui/additional-management/` | SDK only、成功後再取得順、confirmation、one-time secret 消去、SSE close、no speculative state。 |
-| `testdata/statefile/additional-management/` | `.users`、`.roles`、`.external_auth_config`、`.datastore_config`、`.config_snapshots`、`.projects`、`.config_templates`、`.admin_events`、`.share_links`、`.response_cache` の schema、破損、atomic write。 |
+| fixture 名 | fixture 群 | 必須確認 |
+|------------|------------|----------|
+| `additional-management-users-roles-success` | `testdata/api/additional-management/` | users / roles の create、update、disable、delete、最後の admin 保護、audit、admin event。 |
+| `additional-management-auth-permission-denied` | `testdata/api/additional-management/` | [`docs/details/security.md` 詳細本文責務 §27.58](security.md#sec-27-58) の permission 不足で `403`、対象 state 差分なし。 |
+| `additional-management-request-validation` | `testdata/api/additional-management/` | body 禁止、未知 key、型不一致、path parameter 不正、query 不正が `400` または `422` で no-write。 |
+| `additional-management-secret-redaction` | `testdata/api/additional-management/` | external auth secret、share token、Authorization header、Webhook secret が response、log、expected に出ない。share token は作成 response だけ許可。 |
+| `additional-management-config-state-order` | `testdata/statefile/additional-management/` | config snapshot、template、restore、apply の write order、partial failure、secret mask。 |
+| `additional-management-queue-retention-webhook` | `testdata/api/additional-management/` | queue cancel / reorder、retention run、webhook resend の conflict、confirmation、runner owner 境界。 |
+| `additional-management-sdk-transport` | `testdata/sdk/additional-management/` | [`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8) の全 method、path encode、query 省略、body 禁止、Blob / text / StreamHandle。 |
+| `additional-management-ui-flow` | `testdata/ui/additional-management/` | [`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8) の panel id、SDK only、成功後再取得順、confirmation、one-time secret 消去、SSE close。 |
+| `additional-management-cache-share-diff` | `testdata/api/additional-management/` | response cache、share link、snapshot diff、badge、metrics、OpenAPI、version の read-only no-write。 |
 
-実装検証証跡には、対象機能名、owner component、API endpoint、SDK method、UI panel、state path、fixture 名、実行結果、未実施項目を列挙する。
-
-未実施項目がある場合、対象機能を実装済みへ遷移してはならない。
+追加管理 API 実装検証証跡には、対象機能名、owner component、API endpoint、必要 permission、SDK method、UI panel、state path、fixture 名、実行結果、未実施項目を列挙する。未実施項目が 1 件でもある場合、対象機能を実装済みへ遷移してはならない。
 
 <a id="mcp-fixture-contract"></a>
 ## 30-F MCP fixture 固定契約
 
 MCP fixture は [`docs/details/mcp.md`](mcp.md) 詳細本文責務を確認する。
 
-| fixture 群 | 必須確認 |
-|------------|----------|
-| `testdata/mcp/cli/` | `--help`、`--version`、`--state-dir`、loopback bind、non-loopback 拒否、read-only 起動。 |
-| `testdata/mcp/jsonrpc/` | parse error、invalid request、method not found、invalid params、internal error、unauthorized、forbidden、timeout。 |
-| `testdata/mcp/tools/` | `tools/list`、read-only tool 除外、tool success、tool error、scope 不足、confirmation required。 |
-| `testdata/mcp/resources/` | `resources/list`、`resources/read`、subscribe、resource update notification。 |
-| `testdata/mcp/prompts/` | `prompts/list`、`prompts/get`、prompt params validation。 |
-| `testdata/mcp/sampling/` | client sampling request、timeout、外部 AI API direct call 不在、audit hash。 |
-| `testdata/mcp/sse/` | keepalive、resource-updated、shutdown、client disconnect。 |
-| `testdata/mcp/state/` | `.mcp_config`、`.mcp_audit_log`、`.mcp_client_log`、`.mcp_metrics` の schema、append、破損時処理。 |
+| fixture 名 | fixture 群 | 必須確認 |
+|------------|------------|----------|
+| `mcp-cli-lifecycle` | `testdata/mcp/cli/` | `--help`、`--version`、`--state-dir`、loopback bind、non-loopback 拒否、read-only 起動。 |
+| `mcp-jsonrpc-errors` | `testdata/mcp/jsonrpc/` | parse error、invalid request、batch 拒否、method not found、invalid params、unauthorized、forbidden、timeout。 |
+| `mcp-initialize-client-log` | `testdata/mcp/jsonrpc/` | initialize、notifications/initialized、`.mcp_client_log` append、initialize 前 method 拒否。 |
+| `mcp-tools-list-call` | `testdata/mcp/tools/` | `tools/list` descriptor、read-only tool 除外、`tools/call` success/error、scope 不足。 |
+| `mcp-tools-confirmation` | `testdata/mcp/tools/` | 副作用 tool の confirmation required、params hash mismatch、期限切れ、confirmation 付き成功。 |
+| `mcp-resources-subscription` | `testdata/mcp/resources/` | `resources/list`、`resources/read`、subscribe、unsubscribe、resource-updated notification。 |
+| `mcp-prompts` | `testdata/mcp/prompts/` | `prompts/list`、`prompts/get`、prompt params validation、prompt が副作用を実行しないこと。 |
+| `mcp-sampling` | `testdata/mcp/sampling/` | client sampling request、timeout、外部 AI API direct call 不在、prompt hash、本文非保存。 |
+| `mcp-sse` | `testdata/mcp/sse/` | keepalive、resource-updated、shutdown、client disconnect、未接続時 notification 破棄。 |
+| `mcp-state-metrics-audit` | `testdata/mcp/state/` | `.mcp_config`、`.mcp_audit_log`、`.mcp_client_log`、`.mcp_metrics` の schema、append、破損時処理。 |
 
-MCP 実装検証証跡には、tool 名、resource URI、prompt 名、scope、confirmation、timeout、audit、metrics、client log、SSE event の確認結果を含める。
-
-MCP fixture で副作用 tool を確認する場合、confirmation なし実行拒否と confirmation 付き実行成功の両方を必須とする。
-
-MCP fixture で secret、token、Authorization header、raw params の secret 値が stdout、stderr、audit、client log、metrics、expected に出現した場合は不合格とする。
+MCP 実装検証証跡には、tool 名、resource URI、prompt 名、scope、confirmation、timeout、audit、metrics、client log、SSE event、未実施項目を含める。副作用 tool を確認する場合、confirmation なし実行拒否と confirmation 付き実行成功の両方を必須とする。secret、token、Authorization header、raw params の secret 値が stdout、stderr、audit、client log、metrics、expected に出現した場合は不合格とする。

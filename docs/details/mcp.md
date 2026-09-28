@@ -124,6 +124,23 @@ error response object は以下とする。
 | `-32003` | `Timeout` | tool timeout 超過 |
 | `-32004` | `Confirmation required` | elicitation confirmation 未完了 |
 
+**JSON-RPC method 固定表：**
+
+| method | params | result | 副作用 |
+|--------|--------|--------|--------|
+| `initialize` | [`docs/details/mcp.md` 詳細本文責務 §29.4](mcp.md#294-mcp-initialize) | serverInfo / capabilities | `.mcp_client_log` 追記 |
+| `notifications/initialized` | body なし | response なし | connection を initialized 済みにする |
+| `tools/list` | `{}` | `{ "tools": ToolDescriptor[] }` | なし |
+| `tools/call` | `{ "name": string, "arguments": object }` | [`docs/details/mcp.md` 詳細本文責務 §29.6](mcp.md#296-tool-schema) の wrapper | tool ごとの契約に従う |
+| `resources/list` | `{}` | `{ "resources": ResourceDescriptor[] }` | なし |
+| `resources/read` | `{ "uri": string }` | `{ "contents": ResourceContent[] }` | なし |
+| `resources/subscribe` | `{ "uri": string }` | `{}` | connection 内 subscription 追加 |
+| `resources/unsubscribe` | `{ "uri": string }` | `{}` | connection 内 subscription 削除 |
+| `prompts/list` | `{}` | `{ "prompts": PromptDescriptor[] }` | なし |
+| `prompts/get` | `{ "name": string, "arguments": object }` | `{ "messages": PromptMessage[] }` | なし |
+
+`initialize` 成功前に `initialize` 以外の method を受けた場合は `-32600 Invalid Request` とする。`notifications/initialized` は JSON-RPC notification とし、`id` を持つ request として送られた場合は `-32600 Invalid Request` とする。batch request は受け付けず `-32600 Invalid Request` とする。
+
 ## 29.4 MCP initialize
 
 `initialize` params は以下とする。
@@ -176,6 +193,8 @@ error response object は以下とする。
 | `adlaire.analyzeBuildError` | `read:history` | no | `mcp` |
 | `adlaire.getConfig` | `read:config` | no | `api`, `statefile` |
 | `adlaire.setConfig` | `write:config` | yes | `api`, `statefile` |
+| `adlaire.getMcpConfig` | `read:mcp` | no | `mcp`, `statefile` |
+| `adlaire.setMcpConfig` | `write:mcp` | yes | `mcp`, `statefile` |
 | `adlaire.createConfigSnapshot` | `write:config` | yes | `statefile` |
 | `adlaire.diffConfigSnapshots` | `read:config` | no | `statefile` |
 | `adlaire.restoreConfigSnapshot` | `write:config` | yes | `statefile` |
@@ -188,6 +207,28 @@ error response object は以下とする。
 副作用 `yes` の tool は `29.15` の elicitation を必須とする。
 
 ## 29.6 Tool schema
+
+`tools/list` の `ToolDescriptor` は `name`、`description`、`inputSchema`、`annotations` を持つ。`annotations.readOnlyHint` は副作用 `no` の tool だけ `true`、副作用 `yes` の tool は `false` とする。`inputSchema` は JSON Schema draft 非依存の object とし、`type`、`required`、`properties`、`additionalProperties:false` だけを使用する。
+
+| tool name | params | result `data` | 固定条件 |
+|-----------|--------|---------------|----------|
+| `adlaire.getStatus` | `{}` | `GET /api/status` 相当の object | 状態を変更しない。 |
+| `adlaire.getQueue` | `{}` | `GET /api/queue` 相当の object | 状態を変更しない。 |
+| `adlaire.triggerBuild` | `target`, `source`, `options` | queue id と dispatch | elicitation 必須。`POST /api/build` 境界を使用する。 |
+| `adlaire.cancelQueueEntry` | `queue_id` | cancelled queue id | elicitation 必須。running entry は error。 |
+| `adlaire.getHistory` | `limit`, `offset` | history list | `limit` 1〜100、`offset` 0 以上。 |
+| `adlaire.getBuildLog` | `build_id` | log object | 存在しない build は `-32602`。 |
+| `adlaire.analyzeBuildError` | `build_id` | sampling summary | 外部 AI API を server から直接呼ばない。 |
+| `adlaire.getConfig` | `{}` | effective Adlaire config | `.mcp_config` を返さない。 |
+| `adlaire.setConfig` | `path`, `value` | updated path | elicitation 必須。`.server_config` の許可 key path だけ。 |
+| `adlaire.getMcpConfig` | `{}` | `.mcp_config` | token 本体を返さない。 |
+| `adlaire.setMcpConfig` | `tool_timeout_ms`, `sampling_timeout_ms`, `scopes` | updated MCP config | elicitation 必須。token 本体は禁止。 |
+| `adlaire.createConfigSnapshot` | `label` | snapshot id | elicitation 必須。 |
+| `adlaire.diffConfigSnapshots` | `left_id`, `right_id` | diff object | secret は `"***"`。 |
+| `adlaire.restoreConfigSnapshot` | `snapshot_id` | restored paths | elicitation 必須。 |
+| `adlaire.getMetrics` | `{}` | metrics object | `.mcp_metrics` と API metrics を読む。 |
+| `adlaire.getAuditLog` | `limit`, `offset` | audit list | MCP audit tail と API audit を混在させない。 |
+| `adlaire.resendWebhook` | `delivery_id` | resend accepted | elicitation 必須。 |
 
 `adlaire.triggerBuild` params は以下とする。
 
@@ -250,6 +291,8 @@ tool result は必ず以下の wrapper を返す。
 
 失敗は JSON-RPC error とし、`ok:false` result は返さない。
 
+tool params に未知 key がある場合、必須 key 不足、型不一致、範囲外、secret 値を許可しない field への secret 形状入力は `-32602 Invalid params` とし、tool 実行、audit、metrics 更新を行わない。tool 実行開始後の失敗は `.mcp_audit_log` と `.mcp_metrics` に失敗結果を記録する。ただし audit 追記不能時は副作用 tool を失敗扱いにし、対象 owner の状態変更を開始しない。
+
 ## 29.7 Resources
 
 | resource URI | 内容 | 更新通知 |
@@ -267,6 +310,8 @@ tool result は必ず以下の wrapper を返す。
 
 `resources/read` は存在しない URI に `-32602 Invalid params` を返す。
 
+`resources/read` の `ResourceContent` は `uri`、`mimeType`、`text` を持つ。`adlaire://logs/{build_id}` だけは `mimeType:"text/plain"`、その他は `mimeType:"application/json"` とする。JSON resource の `text` は UTF-8 JSON object 文字列とし、secret、token、Authorization header を含めない。
+
 ## 29.8 Resource subscription
 
 `resources/subscribe` params は以下とする。
@@ -280,6 +325,8 @@ tool result は必ず以下の wrapper を返す。
 subscription は client connection 単位で保持する。
 
 subscription は `.mcp_subscriptions` へ永続化しない。
+
+`resources/unsubscribe` は未購読 URI に対しても `{}` を返す。存在しない URI は `-32602 Invalid params` とする。
 
 resource 更新時は `/mcp/events` へ以下を送信する。
 
@@ -297,6 +344,8 @@ data: {"uri":"adlaire://status","updated_at":"2026-09-28T00:00:00Z"}
 | `adlaire.configReview` | `{ "snapshot_id": "string" }` | 設定 snapshot の差分確認 |
 
 `prompts/get` result は message list を返す。
+
+`prompts/list` は `name`、`description`、`arguments` を返す。`prompts/get` は `arguments` を prompt ごとの params と照合し、必須 key 不足、未知 key、型不一致を `-32602 Invalid params` とする。`PromptMessage` は `role:"user"` と `content.type:"text"` だけを使用する。prompt text は実行を促す手順文だけを生成し、server 側で build、config、queue を変更しない。
 
 prompt は実行を伴わない。
 
@@ -389,13 +438,13 @@ client 接続は `.mcp_client_log` へ append-only で記録する。
 
 ## 29.15 Timeout / config CRUD / elicitation
 
-`.mcp_config` schema は [docs/details/statefile.md](statefile.md) を正本とする。
+`.mcp_config` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) を正本とする。
 
 tool timeout は `.mcp_config.tool_timeout_ms` を使用する。
 
-`adlaire.getConfig` は `.mcp_config` 全体を返す。
+`adlaire.getMcpConfig` は `.mcp_config` 全体を返す。
 
-`adlaire.setConfig` は `.mcp_config` の許可 key のみ更新する。
+`adlaire.setMcpConfig` は `.mcp_config` の許可 key のみ更新する。
 
 副作用 tool は以下の elicitation flow を必須とする。
 

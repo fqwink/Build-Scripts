@@ -462,6 +462,40 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 | スナップショット間サイト差分 API | `diffSnapshots(leftId,rightId)` |
 | Webhook 送信履歴の手動再送 API | `resendWebhook(deliveryId,input)` |
 
+**追加管理 API SDK transport 固定表：**
+
+| SDK method | HTTP | path / query / body |
+|------------|------|---------------------|
+| `getUsers(query)` | `GET` | `/api/users`。`limit`、`offset`、`status`、`role_id` だけを query に入れる。 |
+| `createUser(input)` | `POST` | `/api/users`。body は input object。 |
+| `updateUser(id,input)` | `PATCH` | `/api/users/{id}`。`id` は 1 回だけ percent encode。 |
+| `disableUser(id)` | `DELETE` | `/api/users/{id}`。body なし。 |
+| `getRoles()` | `GET` | `/api/roles`。body なし。 |
+| `createRole(input)` | `POST` | `/api/roles`。body は input object。 |
+| `updateRole(id,input)` | `PATCH` | `/api/roles/{id}`。 |
+| `deleteRole(id)` | `DELETE` | `/api/roles/{id}`。body なし。 |
+| `getExternalAuthConfig()` / `setExternalAuthConfig(input)` / `testExternalAuth(input)` | `GET` / `POST` / `POST` | `/api/external-auth-config`、`/api/external-auth/test`。 |
+| `getDatastore()` / `switchDatastore(input)` | `GET` / `POST` | `/api/datastore`、`/api/datastore/switch`。 |
+| `exportStats(query)` | `GET` | `/api/stats/export`。`from`、`to`、`granularity`、`target` だけを query に入れる。 |
+| `cancelQueueEntry(queueId)` | `DELETE` | `/api/queue/{queueId}`。body なし。 |
+| `getPrometheusMetrics()` | `GET` | `/api/metrics`。text response。 |
+| `getConfigSnapshots(query)` / `createConfigSnapshot(input)` | `GET` / `POST` | `/api/config-snapshots`。 |
+| `getConfigSnapshot(id)` / `restoreConfigSnapshot(id,input)` / `deleteConfigSnapshot(id)` | `GET` / `POST` / `DELETE` | `/api/config-snapshots/{id}`、`/api/config-snapshots/{id}/restore`。 |
+| `getStatusBadge(query)` | `GET` | `/api/badge/status.svg`。`target`、`branch` だけを query に入れる。Blob response。 |
+| `getHistoryRetention()` / `setHistoryRetention(input)` / `runHistoryRetention()` | `GET` / `POST` / `POST` | `/api/history/retention`、`/api/history/retention/run`。 |
+| `diffConfigSnapshots(leftId,rightId)` | `GET` | `/api/config-snapshots/{leftId}/diff/{rightId}`。 |
+| `getProjects(query)` / `createProject(input)` / `updateProject(id,input)` / `archiveProject(id)` | `GET` / `POST` / `PATCH` / `DELETE` | `/api/projects`、`/api/projects/{id}`。 |
+| `getApiVersion()` / `getOpenApiDocument()` | `GET` / `GET` | `/api/version`、`/api/openapi.json`。 |
+| `reorderQueue(queueIds)` | `POST` | `/api/queue/reorder`。body は `{queue_ids: queueIds}`。 |
+| `getConfigTemplates()` / `createConfigTemplate(input)` / `applyConfigTemplate(id,input)` / `deleteConfigTemplate(id)` | `GET` / `POST` / `POST` / `DELETE` | `/api/config-templates`、`/api/config-templates/{id}/apply`。 |
+| `getAdminEvents(query)` / `streamAdminEvents(query)` | `GET` / `GET` | `/api/events`、`/api/events/stream`。stream は `StreamHandle`。 |
+| `getShareLinks()` / `createShareLink(input)` / `revokeShareLink(id)` / `getSharedStatus(token)` | `GET` / `POST` / `DELETE` / `GET` | `/api/share-links`、`/api/share-links/{id}`、`/api/share/{token}/status`。 |
+| `getCachePolicy()` / `setCachePolicy(input)` / `purgeResponseCache()` | `GET` / `POST` / `DELETE` | `/api/cache-policy`、`/api/response-cache`。 |
+| `diffSnapshots(leftId,rightId)` | `GET` | `/api/snapshots/{leftId}/diff/{rightId}`。 |
+| `resendWebhook(deliveryId,input)` | `POST` | `/api/notify-log/{deliveryId}/resend`。 |
+
+SDK は上表にない追加管理 API public method を作成してはならない。query object は `undefined` / `null` の値を送信せず、空文字は API へそのまま送る。path parameter は空文字、`/`、NUL byte を SDK 側で `TypeError` とする。body 禁止 endpoint は `fetch` に `body` property を渡してはならない。
+
 path parameter は [SDK メソッド実装固定契約](#sdk-method-implementation-contract) の `path parameter` 行に従い、1 回だけ percent encode する。
 
 body 禁止 endpoint は body を送信しない。

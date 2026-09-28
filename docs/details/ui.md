@@ -519,6 +519,24 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 | snapshot diff panel | スナップショット間サイト差分 API | `diffSnapshots` | なし |
 | webhook resend panel | Webhook 送信履歴の手動再送 API | `resendWebhook` | `getNotifyLog`, `getAdminEvents` |
 
+**追加管理 API UI DOM / 操作固定表：**
+
+| UI 領域 | panel id | primary controls | 固定操作 |
+|---------|----------|------------------|----------|
+| ユーザー管理 panel | `panel-users` | `users-refresh`, `user-create-submit`, `user-update-submit`, `user-disable-submit` | `createUser` / `updateUser` / `disableUser` 成功後は `getUsers` → `getAuditLog` の順で再取得する。最後の admin 保護は API response で確定し、UI は推測しない。 |
+| ロール管理 panel | `panel-roles` | `roles-refresh`, `role-create-submit`, `role-update-submit`, `role-delete-submit` | permission checkbox は DOM 順で配列化し、未知 permission を UI 側で削除しない。 |
+| 外部認証 panel | `panel-external-auth` | `external-auth-save`, `external-auth-test` | client secret field は成功、失敗、panel 遷移、logout、`401` で消去する。 |
+| データストア panel | `panel-datastore` | `datastore-dry-run`, `datastore-switch` | switch は confirmation dialog で `SWITCH_DATASTORE` を渡す。dry-run は confirmation を渡さない。 |
+| 設定 snapshot panel | `panel-config-snapshots` | `config-snapshot-create`, `config-snapshot-restore`, `config-snapshot-delete`, `config-snapshot-diff` | restore は confirmation `RESTORE_CONFIG` を渡し、成功後 `getConfigSnapshots` → `getConfig` → `getConfigLog`。 |
+| queue 操作 panel | `panel-queue-admin` | `queue-cancel-submit`, `queue-reorder-submit` | reorder は表示中 queued id 全件を順序どおり渡す。active entry を含めない。 |
+| 設定 template panel | `panel-config-templates` | `config-template-create`, `config-template-apply`, `config-template-delete` | apply は confirmation `APPLY_CONFIG_TEMPLATE` を渡す。secret 平文を preview に表示しない。 |
+| event feed panel | `panel-events` | `events-refresh`, `events-stream-start`, `events-stream-stop` | stream handle は panel 離脱、logout、`401`、stop で close する。 |
+| share link panel | `panel-share-links` | `share-link-create`, `share-link-revoke`, `share-token-copy` | 作成 token は `share-token-once` だけに表示し、copy 完了、revoke 成功、panel 遷移、logout、`401` で消去する。 |
+| cache panel | `panel-cache` | `cache-policy-save`, `cache-purge` | purge 成功後は `getCachePolicy` → `getAdminEvents`。 |
+| webhook resend panel | `panel-webhook-resend` | `webhook-resend-submit` | confirmation `RESEND_WEBHOOK` を渡し、成功後 `getNotifyLog` → `getAdminEvents`。 |
+
+上表の panel id と control id は `admin/index.html` 内で一意とする。未実装の追加管理 UI を作る場合でも、表にない id を使って既存機能を代替してはならない。UI は API response に存在しない件数、status、permission、diff、token 値を合成しない。
+
 confirmation を必要とする操作では、UI は固定文言を表示し、ユーザー操作で明示された場合だけ confirmation value を SDK method へ渡す。
 
 secret、token、share token、external auth secret、webhook secret は一覧、履歴、error、event feed に表示してはならない。

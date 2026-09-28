@@ -119,28 +119,38 @@ CLI 管理クライアントは `api` owner の endpoint を呼び出す client 
 **CLI 形式：**
 
 ```text
-adlaire-ci-admin --api-url <url> --token <token> <command> [--json]
+adlaire-ci-admin --api-url <url> --token <token> [--json] <command> [command-args]
 adlaire-ci-admin --help
 adlaire-ci-admin --version
 ```
 
-| command | 呼び出す API | stdout |
-|---------|--------------|--------|
-| `status` | `GET /api/status` | status summary。`--json` 指定時は API response JSON。 |
-| `queue` | `GET /api/queue` | queue summary。`--json` 指定時は API response JSON。 |
-| `history` | `GET /api/history` | history summary。`--json` 指定時は API response JSON。 |
-| `trigger-build` | `POST /api/builds` | created build id。`--json` 指定時は API response JSON。 |
-| `cancel-queue` | `DELETE /api/queue/{queue_id}` | fixed message。`--json` 指定時は API response JSON。 |
-| `config-snapshot` | `POST /api/config-snapshots` | snapshot id。`--json` 指定時は API response JSON。 |
-| `events` | `GET /api/events` | event summary。`--json` 指定時は API response JSON。 |
+option は `--name value` の 2 token 形式だけを許可する。`--name=value`、短縮 option、位置引数による option 値、同一 option の重複、未知 option は parse error とする。`--api-url` は `http://` または `https://` の absolute URL とし、userinfo、query、fragment を禁止する。末尾 `/` は 1 個だけ除去し、`/api` を暗黙追加しない。`--token` は 1〜4096 byte の UTF-8 text とし、空文字を禁止する。
+
+| command | command-args | 呼び出す API | request body | stdout |
+|---------|--------------|--------------|--------------|--------|
+| `status` | なし | `GET /api/status` | なし | `status=<last_build_status> running=<running>` + LF。`--json` 指定時は API response JSON + LF。 |
+| `queue` | なし | `GET /api/queue` | なし | `active=<id-or-none> queued=<count>` + LF。`--json` 指定時は API response JSON + LF。 |
+| `history` | なし | `GET /api/history` | なし | `total=<total> latest=<id-or-none>` + LF。`--json` 指定時は API response JSON + LF。 |
+| `trigger-build` | なし | `POST /api/build` | `{}` | `queued=<queue_id-or-none>` + LF。`--json` 指定時は API response JSON + LF。 |
+| `cancel-queue` | `<queue_id>` | `DELETE /api/queue/{queue_id}` | なし | `queue cancelled` + LF。`--json` 指定時は API response JSON + LF。 |
+| `config-snapshot` | `[label]` | `POST /api/config-snapshots` | `{ "label": <label-or-null> }` | `snapshot=<id>` + LF。`--json` 指定時は API response JSON + LF。 |
+| `events` | なし | `GET /api/events` | なし | `events=<count>` + LF。`--json` 指定時は API response JSON + LF。 |
+
+`cancel-queue` の `<queue_id>` は path parameter として 1 回だけ percent encode する。空文字、`/`、`..`、NUL byte を含む値は API 呼び出し前に parse error とする。`config-snapshot` の `label` は未指定なら `null`、指定時は 1〜128 Unicode scalar values とし、改行、NUL byte、BOM を禁止する。
 
 `--token` の値を stdout、stderr、server log、fixture expected に出力してはならない。
 
+全 API 呼び出しは `Authorization: Bearer <token>`、`Accept: application/json` を送信する。body を持つ command は `Content-Type: application/json` を送信する。`--json` 未指定時でも CLI は API JSON response を parse し、上表の stdout へ写像する。response JSON parse 失敗は stdout 空、stderr `api error: invalid response` + LF、終了 code `1` とする。
+
 未知 command は stdout 空、stderr `unknown command: <command>` + LF、終了 code `2` とする。
+
+引数不足、引数過多、option parse error、`--api-url` 不正、`--token` 不正、command 固有引数不正は stdout 空、stderr `usage error` + LF、終了 code `2` とする。
 
 API が `4xx` または `5xx` を返した場合、CLI は stdout 空、stderr `api error: <status>` + LF、終了 code `1` とする。
 
 `--json` 指定時でも error response body を stderr に出力してはならない。
+
+network error、TLS error、timeout、connection close before response は stdout 空、stderr `api error: connection failed` + LF、終了 code `1` とする。timeout は 30 秒固定とし、retry しない。
 
 **検証条件：**
 
@@ -151,3 +161,6 @@ API が `4xx` または `5xx` を返した場合、CLI は stdout 空、stderr `
 | token redaction | token が stdout / stderr / log / fixture expected に出現しない。 |
 | unknown command | 終了 code `2`。 |
 | api 401 | 終了 code `1`、token を出さない。 |
+| trigger-build | `POST /api/build` だけを呼び、`POST /api/builds` を呼ばない。 |
+| cancel-queue path encode | queue id を 1 回だけ percent encode する。 |
+| json mode | success 時だけ API response JSON を stdout へ出し、error body は出さない。 |

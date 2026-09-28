@@ -81,10 +81,14 @@
 | `testdata/builder/**/expected/` | `builder` expected | 未作成 |
 | `testdata/runner/` | `runner` fixture root | 未作成 |
 | `testdata/api/` | `api` fixture root | 未作成 |
+| `testdata/api/additional-management/` | 追加管理 API fixture root | 未作成 |
 | `testdata/admin/` | `admin` fixture root | 未作成 |
 | `testdata/sdk/` | `sdk` fixture root | 未作成 |
+| `testdata/sdk/additional-management/` | 追加管理 SDK fixture root | 未作成 |
 | `testdata/ui/` | `ui` fixture root | 未作成 |
+| `testdata/ui/additional-management/` | 追加管理 UI fixture root | 未作成 |
 | `testdata/statefile/` | `statefile` fixture root | 未作成 |
+| `testdata/statefile/additional-management/` | 追加管理 statefile fixture root | 未作成 |
 | `testdata/archive/` | `archive` fixture root | 未作成 |
 | `testdata/commitstatus/` | `commitstatus` fixture root | 未作成 |
 | `testdata/security/` | `security` fixture root | 未作成 |

@@ -838,7 +838,18 @@ permission 名は以下に固定する。
 | `user:admin` | user、role、external auth、share link 管理。 |
 | `system:admin` | datastore、cache、retention、event stream、webhook resend。 |
 
-API endpoint group と必要 permission は [`docs/details/api.md` 詳細本文責務 §27.48〜§27.70](api.md#sec-27-48) の route ごとに固定し、未割当 endpoint は `403` とする。
+API endpoint group と必要 permission は以下に固定する。ここにない追加管理 API endpoint は `403` とし、実装判断で既存 permission に割り当ててはならない。route、request、response は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) を参照する。
+
+| endpoint 群 | 必要 permission |
+|--------------|----------------|
+| `/api/users`, `/api/roles`, `/api/external-auth-*`, `/api/share-links`, `/api/share/{token}/status` | `user:admin`。ただし `/api/share/{token}/status` は share token 検証成功時だけ session permission 不要。 |
+| `/api/datastore`, `/api/datastore/switch`, `/api/cache-policy`, `/api/response-cache`, `/api/events`, `/api/events/stream`, `/api/notify-log/{delivery_id}/resend` | `system:admin` |
+| `/api/config-snapshots`, `/api/config-snapshots/{id}`, `/api/config-snapshots/{id}/restore`, `/api/config-snapshots/{left_id}/diff/{right_id}`, `/api/config-templates`, `/api/config-templates/{id}/apply` | read は `config:read`、write / restore / apply / delete は `config:write` |
+| `/api/projects` | read は `config:read`、write / archive は `config:write` |
+| `/api/queue/{queue_id}`, `/api/queue/reorder` | `build:write` |
+| `/api/history/retention`, `/api/history/retention/run` | read は `status:read`、write / run は `system:admin` |
+| `/api/stats/export`, `/api/metrics`, `/api/badge/status.svg`, `/api/snapshots/{left_id}/diff/{right_id}` | `status:read` |
+| `/api/version`, `/api/openapi.json` | 認証不要。個別 permission 不要。 |
 
 `*` 以外の permission は暗黙に他 permission を含めない。
 

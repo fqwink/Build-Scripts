@@ -2952,6 +2952,72 @@ response 算出時点で `reset_at` が現在時刻以下の window は `state_s
 | [`docs/details/security.md` 詳細本文責務 §27.46](security.md#sec-27-46) | auth / TOTP API の route、request body、response body、`.totp_secret` read/write 呼び出し境界。 | TOTP secret 生成、setup 仮 secret、login ticket、code 検証、secret の一回表示、ticket 再利用禁止、TOTP 漏えい禁止、監査順序。 |
 | [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) | rate limit config API の route、request body、response body、`.server_config.api_rate_limit` と `.api_rate_state` の read/write 呼び出し境界。 | endpoint group 判定、window / count 更新、`429` 時に count を増やさない契約、actor key / IP key の同一 lock 更新、rate limit audit。 |
 
+<a id="additional-management-api-contract"></a>
+**追加管理 API 入出力固定契約：**
+
+[`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の request / response は、以下の固定表に従う。API 詳細本文は HTTP route、query、body、response envelope、状態 read/write 呼び出し境界だけを定義する。保存 record の key、型、nullable、初期値は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d)、permission 判定は [`docs/details/security.md` 詳細本文責務 §27.58](security.md#sec-27-58)、SDK method は [`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、UI 操作は [`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、fixture は [`docs/details/fixture.md` fixture 証跡責務 §29-F](fixture.md#additional-management-api-fixture-contract) を参照する。
+
+| 型名 | API 側で固定する key | 値の扱い |
+|------|----------------------|----------|
+| `UserListResponse` | `users`, `total`, `limit`, `offset` | `users` は [`docs/details/statefile.md` 詳細本文責務 UserRecord](statefile.md#sec-22-0d) の配列、`total` は filter 後 paging 前件数。 |
+| `UserCreateInput` | `username`, `display_name`, `role_ids`, `password`, `external_subjects` | `username`、`display_name`、`role_ids` は必須、`password` と `external_subjects` は任意。未知 key は `422`。 |
+| `UserPatchInput` | `display_name`, `role_ids`, `password`, `external_subjects`, `status` | 1 key 以上必須。未指定 key は既存値維持。`status` は `active`、`disabled`、`locked`。 |
+| `RoleListResponse` | `roles` | [`docs/details/statefile.md` 詳細本文責務 RoleRecord](statefile.md#sec-22-0d) の配列。 |
+| `RoleInput` | `id`, `name`, `permissions` | `POST` は全 key 必須、`PATCH` は `name` または `permissions` の 1 key 以上必須。system role の `id` と `system` は変更不可。 |
+| `ExternalAuthConfigResponse` | `enabled`, `providers` | secret 本体を含めず、provider ごとに `client_secret_set` boolean を返す。 |
+| `ExternalAuthConfigInput` | `enabled`, `providers` | provider secret は `client_secret` 入力時だけ受け取り、保存 response では返さない。`client_secret:"***"` は既存 secret 維持。 |
+| `ExternalAuthTestInput` | `provider_id`, `discovery_url` | `provider_id` または `discovery_url` のどちらか 1 つだけ許可する。 |
+| `ExternalAuthTestResponse` | `ok`, `issuer`, `authorization_endpoint`, `token_endpoint`, `jwks_uri` | `ok:false` は返さず、検証失敗は `422` または `502`。 |
+| `DatastoreStatusResponse` | `active_store`, `stores`, `pending_switch` | `.datastore_config` の schema-valid 値を返す。 |
+| `DatastoreSwitchInput` | `target_store`, `dry_run`, `confirmation` | `dry_run:true` は `confirmation` 不要。`dry_run:false` は `confirmation:"SWITCH_DATASTORE"` 必須。 |
+| `DatastoreSwitchResponse` | `accepted`, `dry_run`, `target_store`, `checks` | `checks[]` は `name`, `status`, `message` を持ち、`status` は `ok`、`warn`、`error`。 |
+| `StatsExportResponse` | `generated_at`, `range`, `summary`, `items` | `range` は request の `from`, `to`, `granularity`, `target` を正規化して返す。 |
+| `QueueCancelResponse` | `message`, `queue_id`, `status` | `status` は `cancelled` 固定。 |
+| `ConfigSnapshotListResponse` | `snapshots`, `total`, `limit`, `offset` | `snapshots` は id、label、created_at、created_by、sha256、corrupted を返す。 |
+| `ConfigSnapshotCreateInput` | `label` | `label` は string または `null`。省略時は `null`。 |
+| `ConfigSnapshotRecord` | `id`, `label`, `created_at`, `created_by`, `sha256` | `files` 本体は list / create response へ含めない。 |
+| `ConfigSnapshotObject` | `id`, `label`, `created_at`, `created_by`, `files`, `sha256`, `corrupted` | `files` は secret mask 済み value だけを含める。 |
+| `ConfigSnapshotRestoreInput` | `confirmation` | `confirmation:"RESTORE_CONFIG"` 必須。 |
+| `ConfigSnapshotRestoreResponse` | `message`, `snapshot_id`, `restored_paths` | `restored_paths` は書込成功 path の ASCII 昇順。 |
+| `HistoryRetentionPolicyInput` | `enabled`, `max_count`, `max_age_days`, `dry_run` | `max_count` と `max_age_days` は少なくとも一方を指定する。 |
+| `HistoryRetentionPolicy` | `enabled`, `max_count`, `max_age_days`, `updated_at` | 保存済み policy または既定値を返す。 |
+| `HistoryRetentionRunResponse` | `deleted_count`, `dry_run`, `matched_ids` | `matched_ids` は削除または削除予定 build id。 |
+| `ProjectListResponse` | `projects`, `total` | `projects` は [`docs/details/statefile.md` 詳細本文責務 ProjectRecord](statefile.md#sec-22-0d) の配列。 |
+| `ProjectInput` | `id`, `name`, `root`, `branch` | 全 key 必須。`status` と `default` は request で受け付けない。 |
+| `ProjectPatchInput` | `name`, `root`, `branch`, `status` | 1 key 以上必須。`status` は `active` または `archived`。 |
+| `QueueReorderInput` | `queue_ids` | queued entry id の全件 exact 配列。重複、欠落、余剰は `422`。 |
+| `QueueReorderResponse` | `message`, `queue_ids` | 保存後の queue id 順を返す。 |
+| `ConfigTemplateInput` | `name`, `description`, `values` | `values` は config restore 対象と同じ schema-valid partial object。secret 平文は禁止。 |
+| `ConfigTemplateApplyInput` | `confirmation` | `confirmation:"APPLY_CONFIG_TEMPLATE"` 必須。 |
+| `ConfigTemplateApplyResponse` | `message`, `template_id`, `updated_paths` | `updated_paths` は ASCII 昇順。 |
+| `AdminEventListResponse` | `events`, `total`, `limit`, `offset` | `events` は [`docs/details/statefile.md` 詳細本文責務 AdminEventRecord](statefile.md#sec-22-0d) の配列。 |
+| `ShareLinkListResponse` | `links` | token 本体と `token_hash` を含めない。 |
+| `ShareLinkCreateInput` | `scope`, `expires_at` | `scope` は [`docs/details/security.md` 詳細本文責務 §27.67](security.md#sec-27-67) の値。 |
+| `ShareLinkCreateResponse` | `id`, `token`, `scope`, `expires_at`, `created_at` | `token` は作成 response で 1 回だけ返す。 |
+| `SharedStatusResponse` | `status`, `history`, `snapshot_diff` | link scope に含まれない key は返さない。 |
+| `CachePolicyInput` | `enabled`, `ttl_seconds`, `endpoints` | `endpoints` は read-only `GET` endpoint path だけ。 |
+| `CachePolicyResponse` | `enabled`, `ttl_seconds`, `endpoints`, `entry_count` | `entry_count` は schema-valid cache entry 件数。 |
+| `CachePurgeResponse` | `message`, `purged_count` | 削除件数を返す。 |
+| `SnapshotSiteDiffResponse` | `left_id`, `right_id`, `added`, `removed`, `modified`, `unchanged_count` | file content は含めない。 |
+| `WebhookResendInput` | `confirmation` | `confirmation:"RESEND_WEBHOOK"` 必須。 |
+| `WebhookResendResponse` | `accepted`, `delivery_id`, `queued_at` | `accepted:true` 固定。 |
+
+追加管理 API の request body は JSON object だけを許可し、array、scalar、`null`、空 body が許可されていない endpoint は `400` とする。body 禁止 endpoint は `Content-Length` が 0 または body 未送信だけを許可し、body がある場合は endpoint 固有状態を読まず `400` とする。未知 key、型不一致、範囲外、列挙値不一致、path parameter 不正、query parameter 不正は `422` とし、状態を変更しない。
+
+<a id="additional-management-state-order"></a>
+**追加管理 API 状態更新順固定契約：**
+
+| 対象 | Read | Write 順 | 失敗時副作用 |
+|------|------|----------|--------------|
+| users / roles | `.users`, `.roles` | 対象主 state → `.audit_log` → `.admin_events` | validation、permission、最後の admin 保護、role 使用中判定の失敗では差分なし。主 state 成功後の `.audit_log` 失敗は `500`、主 state は巻き戻さない。 |
+| external auth | `.external_auth_config` と secret ref | `.external_auth_config` → `.audit_log` → `.admin_events` | discovery test は状態を変更しない。secret 平文を response / log に出さない。 |
+| datastore switch | `.datastore_config` | `.datastore_config` → `.admin_events` | `dry_run:true` は write なし。switch 実行中は `409`。 |
+| config snapshots / diff / templates | 対象 state と `.config_snapshots/`、`.config_templates` | snapshot/template state → 対象 config state → `.config_log` → `.audit_log` → `.admin_events` | restore / apply の途中失敗は未処理 file を書かず、成功済み file は巻き戻さない。 |
+| queue / retention / webhook resend | `.build_state`, `.server_config`, `.notify_log` | runner owner の対象 state → `.audit_log` → `.admin_events` | running conflict、queue id 不在、同一 delivery 再送中は差分なし。 |
+| projects | `.projects` | `.projects` → `.admin_events` | default project の archive は `409`。 |
+| events / metrics / badge / OpenAPI / version / stats export / diff read | endpoint 固有 state | なし | read-only endpoint は業務状態を作成、修復、削除しない。 |
+| response cache | `.response_cache`, `.server_config` | `.server_config` または `.response_cache` → `.admin_events` | purge 失敗時は未削除 entry を保持する。user 固有 response は cache へ保存しない。 |
+
 <a id="sec-27-48"></a>
 ## 27.48 マルチユーザー対応 API 境界
 

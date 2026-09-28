@@ -1576,28 +1576,67 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `files` | object | yes | snapshot 対象 state path ごとの JSON value または secret mask。 |
 | `sha256` | string | yes | `files` canonical JSON の SHA-256 lowercase hex。 |
 
-**ProjectRecord / ConfigTemplateRecord / AdminEventRecord：**
+**ProjectRecord：**
 
-| record | 必須 key |
-|--------|----------|
-| `ProjectRecord` | `id`, `name`, `status`, `root`, `branch`, `created_at`, `updated_at` |
-| `ConfigTemplateRecord` | `id`, `name`, `description`, `values`, `created_at`, `updated_at` |
-| `AdminEventRecord` | `id`, `timestamp`, `type`, `actor`, `target_type`, `target_id`, `message`, `severity` |
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | lowercase ASCII、digit、`-`、`_`。`default` は既定 project だけが使用する。 |
+| `name` | string | yes | 1〜128 Unicode scalar values。 |
+| `status` | string | yes | `active`、`archived` のいずれか。 |
+| `root` | string | yes | absolute path または repository ref 表現。NUL、CR、LF 禁止。 |
+| `branch` | string | yes | branch 名。空文字、NUL、CR、LF、`..`、先頭 `/` 禁止。 |
+| `default` | boolean | yes | 既定 project だけ `true`。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
 
-`ProjectRecord.status` は `active`、`archived` のいずれかとする。
+**ConfigTemplateRecord：**
 
-`AdminEventRecord.severity` は `info`、`warning`、`error` のいずれかとする。
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | `tmpl_` + 26 文字 Crockford Base32。 |
+| `name` | string | yes | 1〜128 Unicode scalar values。 |
+| `description` | string/null | yes | 0〜1000 Unicode scalar values または `null`。 |
+| `values` | object | yes | config restore 対象と同じ schema-valid partial object。secret 平文禁止。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
 
-**ShareLinkRecord / ResponseCacheEntry：**
+**AdminEventRecord：**
 
-| record | 必須 key |
-|--------|----------|
-| `ShareLinkRecord` | `id`, `token_hash`, `scope`, `expires_at`, `created_at`, `revoked_at` |
-| `ResponseCacheEntry` | `key`, `endpoint`, `vary`, `created_at`, `expires_at`, `status`, `headers`, `body_sha256`, `body` |
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | `evt_` + UTC `YYYYMMDDHHMMSS` + 衝突 suffix。 |
+| `timestamp` | string | yes | UTC ISO 8601 秒精度。 |
+| `type` | string | yes | `user`、`config`、`build`、`system`、`security`、`notification` のいずれか。 |
+| `actor` | string/null | yes | user id、API token id、`system`、または `null`。 |
+| `target_type` | string | yes | 操作対象分類。 |
+| `target_id` | string/null | yes | 操作対象 id または `null`。 |
+| `message` | string | yes | 1〜500 Unicode scalar values。secret、token、raw request body 禁止。 |
+| `severity` | string | yes | `info`、`warning`、`error` のいずれか。 |
 
-`ShareLinkRecord` は token 本体を保存してはならない。
+**ShareLinkRecord：**
 
-`ResponseCacheEntry.body` は JSON response だけを保存し、binary、SVG、SSE、user 固有 response を保存してはならない。
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | `share_` + 26 文字 Crockford Base32。 |
+| `token_hash` | string | yes | token 本体の SHA-256 lowercase hex。token 本体は禁止。 |
+| `scope` | string | yes | `status`、`history`、`snapshot_diff` のいずれか。 |
+| `expires_at` | string/null | yes | UTC ISO 8601 秒精度または `null`。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `revoked_at` | string/null | yes | UTC ISO 8601 秒精度または `null`。 |
+
+**ResponseCacheEntry：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `key` | string | yes | method、path、query、vary を canonical JSON 化した SHA-256 lowercase hex。 |
+| `endpoint` | string | yes | cache 対象 endpoint path。 |
+| `vary` | object | yes | cache key 算出に使った query、target、branch 等の値。secret 禁止。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `expires_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `status` | integer | yes | HTTP status。`200` だけを保存する。 |
+| `headers` | object | yes | cache response に必要な公開 header。`Set-Cookie`、`Authorization` 禁止。 |
+| `body_sha256` | string | yes | body canonical JSON byte の SHA-256 lowercase hex。 |
+| `body` | object | yes | JSON response だけを保存する。binary、SVG、SSE、user 固有 response は保存禁止。 |
 
 **McpConfig：**
 
