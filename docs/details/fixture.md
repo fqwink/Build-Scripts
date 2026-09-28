@@ -843,6 +843,7 @@ fixture 名は `success-*`、`failure-*`、`partial-*`、`noop-*`、`security-*`
 | `expected/stderr.txt` | `manifest.json.assertions` に `stderr` がある場合に必須 | stderr 完全一致。stderr なしを検証する場合は空ファイル。 | secret、実 token、実 URL credential。 |
 | `expected/state/` | [fixture 証跡責務 §27-F](#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) の `manifest.json.assertions` に `state` がある場合に必須 | 実行後状態ファイル一式、または [state diff expected 固定契約](#fixture-state-diff-expected-contract) に従う `expected/state/state-diff.json`。[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) の `state` は [§28-F ファイルセット固定契約](#sec-28-f-3) の `expected/site/` と `expected/builder-output.json` に割り当てる。 | 期待しないファイルの混入、実行後ファイル一式と `state-diff.json` の併用、[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) での代用。 |
 | `expected/logs/` | `manifest.json.assertions` に `logs` がある場合に必須 | build log、history、access log、audit log、notify log の期待値。 | secret 平文、実 Authorization header。 |
+| `expected/events.json` | [追加管理 API fixture 固定契約](#additional-management-api-fixture-contract) または [MCP fixture 固定契約](#mcp-fixture-contract) が protocol event evidence を要求する場合に必須 | SSE frame、MCP notification、resource-updated、keepalive、disconnect 等の protocol event 期待値。fixture 名別 expected 固定表で要求し、`manifest.json.assertions` には追加しない。 | UI DOM、SDK return、状態 file、secret 平文。 |
 | `expected/effects.json` | 必須 | 外部 API 呼び出し、command 実行、通知送信、download/stream 中断、呼び出し 0 件の期待値。 | 呼び出し順未指定、実外部送信。 |
 | `expected/security.json` | `manifest.json.assertions` に `secret-mask` がある場合に必須 | secret 非表示確認対象、禁止文字列、token hash 検証、scope 判定、rate count。 | secret を検証用に平文保存すること。 |
 
@@ -2464,9 +2465,9 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | `additional-management-secret-redaction` | `testdata/api/additional-management/` | external auth secret、share token、Authorization header、Webhook secret が response、log、expected に出ない。share token は作成 response だけ許可。 |
 | `additional-management-config-state-order` | `testdata/statefile/additional-management/` | config snapshot、template、restore、apply の write order、partial failure、secret mask。 |
 | `additional-management-queue-retention-webhook` | `testdata/api/additional-management/` | queue cancel / reorder、retention run、webhook resend の conflict、confirmation、runner owner 境界。 |
-| `additional-management-sdk-transport` | `testdata/sdk/additional-management/` | [`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8) の全 method、path encode、query 省略、body 禁止、Blob / text / StreamHandle。 |
-| `additional-management-ui-flow` | `testdata/ui/additional-management/` | [`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8) の panel id、SDK only、成功後再取得順、confirmation、one-time secret 消去、SSE close。 |
-| `additional-management-cache-share-diff` | `testdata/api/additional-management/` | response cache、share link、snapshot diff、badge、metrics、OpenAPI、version の read-only no-write。 |
+| `additional-management-sdk-transport` | `testdata/sdk/additional-management/` | [`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8) の全 method、path encode、query 省略、body 禁止、Blob / text / StreamHandle、admin event stream callback。 |
+| `additional-management-ui-flow` | `testdata/ui/additional-management/` | [`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8) の panel id、SDK only、成功後再取得順、confirmation、one-time secret 消去、SSE close、event feed callback 表示。 |
+| `additional-management-cache-share-diff` | `testdata/api/additional-management/` | response cache の hit / miss / policy / purge、share link、snapshot diff、badge、metrics、OpenAPI、version、admin event stream の response、状態差分、副作用境界。 |
 
 追加管理 API 実装検証証跡には、対象機能名、owner component、API endpoint、必要 permission、SDK method、UI panel、state path、fixture 名、実行結果、未実施項目を列挙する。未実施項目が 1 件でもある場合、対象機能を実装済みへ遷移してはならない。
 
@@ -2482,7 +2483,7 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | `additional-management-queue-retention-webhook` | `expected/response.json`、`expected/state/state-diff.json`、`expected/logs/`、`expected/effects.json`、`expected/security.json`。 |
 | `additional-management-sdk-transport` | `expected/sdk_trace.json`、`expected/sdk_return.json`、`expected/sdk_error.json`、`expected/security.json`。 |
 | `additional-management-ui-flow` | `expected/sdk_trace.json`、`expected/ui_trace.json`、`expected/ui_dom.json`、`expected/security.json`。 |
-| `additional-management-cache-share-diff` | `expected/response.json`、`expected/state/state-diff.json`、`expected/effects.json`、`expected/security.json`。 |
+| `additional-management-cache-share-diff` | `expected/response.json`、`expected/events.json`、`expected/state/state-diff.json`、`expected/logs/`、`expected/effects.json`、`expected/security.json`。 |
 
 追加管理 API fixture の `manifest.json.category` は fixture 名ごとに以下へ固定する。fixture 名から category を推測してはならない。
 
@@ -2496,13 +2497,27 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | `additional-management-queue-retention-webhook` | `partial` |
 | `additional-management-sdk-transport` | `partial` |
 | `additional-management-ui-flow` | `success` |
-| `additional-management-cache-share-diff` | `noop` |
+| `additional-management-cache-share-diff` | `partial` |
 
 追加管理 API fixture は [`docs/details/api.md` 詳細本文責務 追加管理 API validation / error 優先順位固定契約](api.md#additional-management-validation-order) の順序を検証する。validation failure fixture は、後続の状態 read/write、外部通信、audit、admin event が発生しないことを `expected/effects.json.forbidden_writes` と `expected/effects.json.external_calls=[]` で示す。
 
 追加管理 API validation failure fixture は、次の確認をすべて持つ。HTTP status と error body は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の対象 endpoint 契約と完全一致させる。`expected/state/state-diff.json` は対象状態ファイルが byte 不変であることを示し、`expected/effects.json` は `created_paths`、`updated_paths`、`deleted_paths`、`external_calls`、`commands`、`notifications`、`streams`、`read_api_calls` を空配列にする。認証または認可まで到達する failure だけは、[`docs/details/security.md` 詳細本文責務](security.md) が許可する共通 audit / access log 副作用を `expected/effects.json` に明示する。`expected/security.json` は request body、Authorization header、share token、external auth secret、Webhook secret、SMTP password、raw restore template secret の平文が response、stdout、stderr、log、expected file に出現しないことを列挙する。
 
-追加管理 API fixture の `manifest.json` は、`name`、`section`、`feature`、`owner_component`、`components`、`references`、`assertions`、`not_applicable` を必須 key とする。`section` は対象 [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、または [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) のいずれかを固定文字列で持つ。複数責務を横断する fixture は主 owner を 1 件だけ `owner_component` に置き、残りを `components` と `references` に記録する。`assertions` は実在する expected file と 1 対 1 で対応させ、fixture 実行時に使わない expected file は作成せず、`not_applicable` に理由を置く。
+`additional-management-cache-share-diff` は `GET /api/version`、`GET /api/openapi.json`、`GET /api/events`、`GET /api/events/stream`、`GET /api/share/{token}/status`、`GET /api/cache-policy`、`POST /api/cache-policy`、`DELETE /api/response-cache` を同一 fixture 群内の別 case として持つ。`GET /api/version` は `api_version="1"`、`compatible_versions=["1"]`、`deprecated_versions=[]`、`spec_version="V.N"`、`binary_version` が注入値または `V.0.0-dev` であること、`Cache-Control: no-store`、`.response_cache` no-read/no-write を `expected/response.json` と `expected/effects.json` で固定する。
+
+`additional-management-cache-share-diff` の OpenAPI case は `openapi="3.1.0"`、`info.title="Adlaire CI API"`、`servers=[{"url":"/"}]`、path ASCII 昇順、method 固定順、`operationId` の重複なし、未実装 endpoint 不在、secret / token example 不在、`Cache-Control: no-store`、`.response_cache` no-read/no-write を固定する。OpenAPI の JSON object key 順を比較対象にする場合は fixture runner が canonical JSON へ正規化してから比較し、array 順は byte 単位で固定する。
+
+`additional-management-cache-share-diff` の admin event stream case は、`input/events.jsonl` に schema-valid event、壊れた行、別 `type` event を含める。`expected/events.json` は `id:`、`event: admin-event`、`data:`、`: keepalive`、`event: error` の frame byte 列を LF 区切りで固定し、CRLF、`retry:`、複数 `data:` 行、secret 値が存在しないことを `expected/security.json` で確認する。client disconnect case は `expected/effects.json` の `streams` に close reason を記録し、状態、audit、admin event、cache が不変であることを固定する。
+
+`additional-management-cache-share-diff` の share link case は token 作成 response にだけ token 本体が存在すること、`.share_links` に token hash だけが保存されること、list response に token / token_hash が出ないこと、作成と失効の `.share_links` → `.audit_log` → `.admin_events` 順、不正 token `401`、不在 hash / revoke 済み `404`、期限切れ `410`、`GET /api/share/{token}/status` の `.audit_log` / `.admin_events` no-write、scope 別 `SharedStatusResponse` key 1 件だけ、snapshot 2 件未満の `404` を固定する。`expected/security.json` は token 本体、token hash、token prefix、Authorization header、Cookie が response 許可箇所以外の expected file、log、effects、UI trace に存在しないことを列挙する。
+
+`additional-management-cache-share-diff` の response cache case は許可 endpoint、禁止 endpoint、cache key canonical JSON、hit、miss、expired、corrupt、body hash mismatch、forbidden header、policy disabled、purge success、purge failure、業務状態 write 成功後の全 entry 削除を個別 case として固定する。hit case は endpoint 固有 state read が発生しないこと、miss case は handler 実行後に `200` JSON object だけを保存すること、write failure case は original response を維持し cache 保存だけを諦めることを `expected/effects.json.write_order` と `forbidden_writes` で示す。
+
+`additional-management-sdk-transport` は `streamAdminEvents(query,onEvent)` の `type` query だけ送信、`limit` / `offset` / `after` 不送信、`onEvent` TypeError、admin event frame callback、keepalive 破棄、error frame reject、user close `done=null`、server EOF reject、invalid frame reject を `expected/sdk_trace.json`、`expected/sdk_return.json`、`expected/sdk_error.json` で固定する。
+
+`additional-management-ui-flow` は event feed panel で `streamAdminEvents(query,onEvent)` だけを使用し、UI が `EventSource`、`fetch`、`ReadableStream` reader を直接生成しないことを `expected/ui_trace.json` で固定する。`onEvent` 受信時は API record の値だけを表示へ挿入し、stream error では error 表示 1 回と `getAdminEvents` 1 回、user stop では error 表示 0 回と `getAdminEvents` 1 回を `expected/ui_dom.json` と `expected/sdk_trace.json` で固定する。
+
+追加管理 API fixture の `manifest.json` は、`name`、`section`、`feature`、`owner_component`、`components`、`references`、`assertions`、`not_applicable` を必須 key とする。`section` は対象 [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、または [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) のいずれかを固定文字列で持つ。複数責務を横断する fixture は主 owner を 1 件だけ `owner_component` に置き、残りを `components` と `references` に記録する。`assertions` は実在する expected file と 1 対 1 で対応させ、fixture 実行時に使わない expected file は作成せず、`not_applicable` に理由を置く。ただし `expected/events.json` は protocol event evidence として fixture 名別 expected 固定表で要求し、`manifest.json.assertions` の値としては追加しない。
 
 追加管理 API fixture の `manifest.json.assertions` は次表に固定する。複数値は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) の列挙順で記録する。
 
@@ -2516,7 +2531,7 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 | `additional-management-queue-retention-webhook` | `response`、`state`、`logs`、`effects`、`secret-mask`、`order`、`idempotency` |
 | `additional-management-sdk-transport` | `sdk-trace`、`sdk-return`、`sdk-error`、`secret-mask` |
 | `additional-management-ui-flow` | `sdk-trace`、`ui-trace`、`ui-dom`、`secret-mask`、`order` |
-| `additional-management-cache-share-diff` | `response`、`state`、`effects`、`secret-mask`、`no-write` |
+| `additional-management-cache-share-diff` | `response`、`state`、`logs`、`effects`、`secret-mask`、`order`、`idempotency` |
 
 <a id="mcp-fixture-contract"></a>
 **[fixture 証跡責務 §30-F MCP fixture 固定契約](fixture.md#mcp-fixture-contract)：**

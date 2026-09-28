@@ -468,6 +468,8 @@ owner component は `security` とする。collaborator component は `api`、`r
 | approval 承認 | `approval_approved` | `admin` または `api_token` | `approval` | approval id | `success` |
 | approval 却下 | `approval_rejected` | `admin` または `api_token` | `approval` | approval id | `success` |
 | approval 期限切れ | `approval_expired` | `system` | `approval` | approval id | `success` |
+| share link 作成 | `share_link_create` | `admin` または `api_token` | `share_link` | 作成 share link id | `success` |
+| share link 失効 | `share_link_revoke` | `admin` または `api_token` | `share_link` | 失効 share link id | `success` |
 
 <a id="sec-27-44-config-audit-order"></a>
 **設定変更の保存順・失敗固定契約：**
@@ -487,6 +489,8 @@ owner component は `security` とする。collaborator component は `api`、`r
 | session revoke / TOTP | 対象状態更新 → `.access_log` が必要な場合は追記 → `.audit_log` → response | 保存済み状態は巻き戻さず `500`。one-time secret または token は返さない。 |
 | approval API | queue / approval / history を [`docs/details/api.md` 詳細本文責務 §27.30](api.md#sec-27-30) の順で更新 → `.audit_log` → response | 保存済み状態は巻き戻さず `500`。 |
 | approval runner event | approval / history を [`docs/details/runner.md` 詳細本文責務 §27.30](runner.md#sec-27-30) の順で更新 → `.audit_log` | 保存済み状態は巻き戻さず runner failure とし、後続通知は実行しない。 |
+| share link 作成 | `.share_links` 保存 → `.audit_log` → `.admin_events` → token response | 保存済み share link record は巻き戻さず、token 本体は返さず `500`。 |
+| share link 失効 | `.share_links` 保存 → `.audit_log` → `.admin_events` → response | 保存済み失効状態は巻き戻さず `500`。 |
 
 **取得仕様：**
 
@@ -913,3 +917,11 @@ share link は read-only であり、build trigger、config update、queue 操�
 share link request は通常 session を作成しない。
 
 share link 作成時の `expires_at` は `null` または現在時刻より後の UTC ISO 8601 秒精度とする。過去時刻、現在時刻と同一秒、local timezone、offset 付き時刻は `422` とする。revoke は `revoked_at` が `null` の record だけを対象とし、revoke 済み record への再 revoke は `404` とする。
+
+share token 生成は CSPRNG から 32 byte を取得し、padding なし URL-safe Base64 で表現する。生成 token の文字集合は `A-Z`、`a-z`、`0-9`、`-`、`_` だけとし、`=`、`+`、`/`、空白、改行を含めてはならない。CSPRNG 失敗時は `.share_links`、audit、admin event を変更せず `500` とする。token hash は token 文字列の UTF-8 byte 列ではなく、Base64 decode 後の 32 byte 以上の raw token byte に対する SHA-256 lowercase hex とする。
+
+share token 検証は、(1) path parameter を percent decode する、(2) URL-safe Base64 padding なしとして decode する、(3) decode 後 byte length が 32 以上であることを確認する、(4) SHA-256 lowercase hex を算出する、(5) `.share_links.links[].token_hash` と constant-time 比較する、(6) `revoked_at`、(7) `expires_at` の順に行う。decode 不能または 32 byte 未満では `.share_links` を読まない。hash 不一致、不在、revoke 済みでは同じ `404` 結果とし、どの条件だったかを response、audit、admin event、access log で区別できる値として出さない。
+
+share link 管理 API の `.audit_log` は [`docs/details/statefile.md` 詳細本文責務 `.audit_log` schema](statefile.md#audit-log-schema) の key だけを使用し、`action` は `share_link_create` または `share_link_revoke`、`target_type` は `share_link`、`target_id` は share link id、`actor_type` と `actor_id` は管理 session または API token とする。share link 管理 API の `.admin_events` は [`docs/details/statefile.md` 詳細本文責務 AdminEventRecord](statefile.md#sec-22-0d) の key だけを使用し、`type` は `security`、`target_type` は `share_link`、`target_id` は share link id、`actor` は管理 session user id または API token id、`message` は固定文言だけとする。`GET /api/share/{token}/status` は `.audit_log` と `.admin_events` を書き込まない。`.audit_log`、`.admin_events`、`.access_log`、`.api_access_log`、server log には token 本体、token hash、token prefix、token length、Authorization header、Cookie、raw path を保存してはならない。作成 response 返却後の token 再表示、list response への token 追加、SDK / UI による token 復元、log からの token 復元を禁止する。
+
+share link の `scope` は `status`、`history`、`snapshot_diff` の単一値だけを許可する。複数 scope、wildcard、空配列、将来 scope 名、permission 名、API path を受け付けてはならない。`scope` ごとの response composition は [`docs/details/api.md` 詳細本文責務 §27.67](api.md#sec-27-67) を参照し、security owner は token、hash、期限、revoke、漏えい禁止だけを正本として持つ。

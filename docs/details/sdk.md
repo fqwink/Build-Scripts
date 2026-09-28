@@ -32,7 +32,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。 |
 | global 汚染 | `window.AdlaireCI` 等の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
 | 外部 consumer | 必須 browser API を提供する外部 consumer application は、本 ES Module を import してよい。本リポジトリ、SDK 配布物、標準管理 UI 配布物の依存境界は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) を参照する。 |
-| stream 前提 | `streamBuild()` は native `EventSource` を使用しない。Authorization header を付与できる `fetch` streaming を必須実装とする。 |
+| stream 前提 | `streamBuild()` と `streamAdminEvents()` は native `EventSource` を使用しない。Authorization header を付与できる `fetch` streaming を必須実装とする。 |
 | API 対応範囲 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の全 endpoint のうち、GitHub が直接送信する `POST /api/webhook` は SDK method 0 件、`POST /api/schedule/allowed-hours` は request body ありの `setAllowedHours()` と `{from:null,to:null}` を送る `clearAllowedHours()` の 2 件、それ以外は endpoint 表の SDK 列に記載された 1 method と対応させる。表外 method、対応 0 件、明示例外以外の複数 method を禁止する。 |
 
 ```js
@@ -456,7 +456,7 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 | API ドキュメント自動生成 | `getOpenApiDocument()` |
 | ビルドキューの手動並び替え | `reorderQueue(queueIds)` |
 | 設定テンプレート | `getConfigTemplates()`, `createConfigTemplate(input)`, `applyConfigTemplate(id,input)`, `deleteConfigTemplate(id)` |
-| 管理者向けイベントフィード | `getAdminEvents(query)`, `streamAdminEvents(query)` |
+| 管理者向けイベントフィード | `getAdminEvents(query)`, `streamAdminEvents(query,onEvent)` |
 | 読み取り専用共有リンク | `getShareLinks()`, `createShareLink(input)`, `revokeShareLink(id)`, `getSharedStatus(token)` |
 | API レスポンスキャッシュ制御 | `getCachePolicy()`, `setCachePolicy(input)`, `purgeResponseCache()` |
 | スナップショット間サイト差分 API | `diffSnapshots(leftId,rightId)` |
@@ -488,7 +488,7 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 | `getApiVersion()` / `getOpenApiDocument()` | `GET` / `GET` | `/api/version`、`/api/openapi.json`。 |
 | `reorderQueue(queueIds)` | `POST` | `/api/queue/reorder`。body は `{queue_ids: queueIds}`。 |
 | `getConfigTemplates()` / `createConfigTemplate(input)` / `applyConfigTemplate(id,input)` / `deleteConfigTemplate(id)` | `GET` / `POST` / `POST` / `DELETE` | `/api/config-templates`、`/api/config-templates/{id}/apply`。 |
-| `getAdminEvents(query)` / `streamAdminEvents(query)` | `GET` / `GET` | `/api/events`、`/api/events/stream`。stream は `StreamHandle`。 |
+| `getAdminEvents(query)` / `streamAdminEvents(query,onEvent)` | `GET` / `GET` | `/api/events`、`/api/events/stream`。stream は `StreamHandle`。 |
 | `getShareLinks()` / `createShareLink(input)` / `revokeShareLink(id)` / `getSharedStatus(token)` | `GET` / `POST` / `DELETE` / `GET` | `/api/share-links`、`/api/share-links/{id}`、`/api/share/{token}/status`。 |
 | `getCachePolicy()` / `setCachePolicy(input)` / `purgeResponseCache()` | `GET` / `POST` / `DELETE` | `/api/cache-policy`、`/api/response-cache`。 |
 | `diffSnapshots(leftId,rightId)` | `GET` | `/api/snapshots/{leftId}/diff/{rightId}`。 |
@@ -506,6 +506,7 @@ SDK は上表にない追加管理 API public method を作成してはならな
 | `queueIds` | array 以外、空配列、string 以外の要素、重複 | `{queue_ids: queueIds}` を body にする。 |
 | `input` object | object 以外、array、`null` | API schema の unknown key 判定は API に委譲する。 |
 | confirmation input | confirmation key が string 以外 | 値の一致判定は API に委譲する。 |
+| `onEvent` | function 以外 | `streamAdminEvents()` の callback として保持し、request body または query に含めない。 |
 
 path parameter は [SDK メソッド実装固定契約](#sdk-method-implementation-contract) の `path parameter` 行に従い、1 回だけ percent encode する。
 
@@ -517,7 +518,13 @@ binary response は `Blob`、text response は `string`、SSE response は `Stre
 
 `getStatusBadge()` は SVG response を `Blob` として返す。
 
-`streamAdminEvents()` は `StreamHandle` を返し、UI が close できるようにする。
+`streamAdminEvents(query,onEvent)` は `onEvent` が function の場合だけ HTTP request を開始する。token がない場合は接続前に `AdlaireCIError(status=401, message="Unauthorized")` を投げる。SDK は `fetch()`、`AbortController`、`ReadableStream` reader を使用し、`Accept: text/event-stream` と `Authorization` header を付与する。接続確立 timeout は 30 秒、接続確立後 timeout はなしとする。成功時は `StreamHandle` を返し、UI が `close()` できるようにする。
+
+`streamAdminEvents(query,onEvent)` の query は `type` だけを送信できる。`limit`、`offset`、`after` は `GET /api/events` 専用 query とし、stream request へ送信してはならない。`type` が `undefined` または `null` の場合は省略し、空文字は API へ送信して `422` 判定を委譲する。
+
+`streamAdminEvents(query,onEvent)` の parser は [`docs/details/api.md` 詳細本文責務 §27.66](api.md#sec-27-66) の admin event stream frame だけを受け付ける。`: keepalive` comment frame は状態変更なしで破棄する。`event: admin-event` frame は `id:` 1 行、`event:` 1 行、`data:` 1 行だけを許可し、`data` を compact JSON object として parse する。parse 後の object は `id` が frame id と一致し、[`docs/details/statefile.md` 詳細本文責務 AdminEventRecord](statefile.md#sec-22-0d) の key、型、enum に一致する場合だけ `onEvent(record)` を 1 回呼ぶ。`event: error` frame は `data` の JSON object から `error` string を読み、`AdlaireCIError(status=0,message=error)` で `done` を reject して stream を close する。
+
+`streamAdminEvents(query,onEvent)` は `retry:`、複数 `data:` 行、CRLF、空 event frame、未知 event name、`id` 不一致、無効 UTF-8、JSON parse 不能、必須 key 不足、未知 key、型不一致、`onEvent` 例外を `AdlaireCIError(status=0,message="Invalid SSE frame")` として扱う。ただし `onEvent` 例外の元 message、stack、record 本文は `responseBody`、console、UI へ転写しない。user close では `done` を `null` で resolve し、error 表示を発生させない。server が error frame なしに EOF した場合は `AdlaireCIError(status=0,message="Event stream closed")` で reject する。
 
 追加管理 API SDK は response media type を以下のように検証する。media type 不一致、body parse 失敗、空 body 不許可は `AdlaireCIError` とし、`status` は HTTP status、`message` は `Invalid response` とする。
 
@@ -525,7 +532,7 @@ binary response は `Blob`、text response は `string`、SSE response は `Stre
 |--------|-----------------|--------|
 | `getPrometheusMetrics()` | `text/plain` | response text。 |
 | `getStatusBadge()` | `image/svg+xml` | `Blob`。 |
-| `streamAdminEvents()` | `text/event-stream` | `StreamHandle`。 |
+| `streamAdminEvents(query,onEvent)` | `text/event-stream` | `StreamHandle`。 |
 | その他の追加管理 API method | `application/json` | API JSON object をそのまま返す。 |
 
 追加管理 API の SDK 完全性検証では、上表の public method が `AdlaireCI.prototype` に存在し、未定義 public method が存在しないことを確認する。

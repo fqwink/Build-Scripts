@@ -206,7 +206,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | 項目 | 仕様 |
 |------|------|
 | 初期表示 | `localStorage` から token を復元しない。画面読み込み時は未ログイン状態から開始する。 |
-| API 経路 | UI は必ず `AdlaireCI` SDK method を呼び出す。`fetch()`、`XMLHttpRequest`、`EventSource`、`ReadableStream` reader の直接生成は禁止する。ただし SDK の `streamBuild()` が返した `StreamHandle.close()` を呼ぶ操作は許可する。 |
+| API 経路 | UI は必ず `AdlaireCI` SDK method を呼び出す。`fetch()`、`XMLHttpRequest`、`EventSource`、`ReadableStream` reader の直接生成は禁止する。ただし SDK の `streamBuild()` または `streamAdminEvents()` が返した `StreamHandle.close()` を呼ぶ操作は許可する。 |
 | API 呼び出し中 | 対象ボタンを disabled にし、同一操作の二重送信を防ぐ。完了または失敗後に元へ戻す。 |
 | 成功表示 | 変更系操作は成功時にパネル内へ 1 行の成功メッセージを表示し、関連 GET API を再取得する。password 変更成功で password panel を hidden にする場合だけは `global-success` に `Password changed` を表示する。 |
 | 失敗表示 | SDK が投げた `AdlaireCIError.message` をパネル内エラー領域に表示する。`details` が配列の場合は各 `field` のフォーム項目に `message` を紐付け、該当項目が存在しない場合はパネル内エラー領域へ箇条書きで表示する。`responseBody`、token、secret、PAT は表示しない。 |
@@ -530,7 +530,7 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 | 設定 snapshot panel | `panel-config-snapshots` | `config-snapshot-create`, `config-snapshot-restore`, `config-snapshot-delete`, `config-snapshot-diff` | restore は confirmation `RESTORE_CONFIG` を渡し、成功後 `getConfigSnapshots` → `getConfig` → `getConfigLog`。 |
 | queue 操作 panel | `panel-queue-admin` | `queue-cancel-submit`, `queue-reorder-submit` | reorder は表示中 queued id 全件を順序どおり渡す。active entry を含めない。 |
 | 設定 template panel | `panel-config-templates` | `config-template-create`, `config-template-apply`, `config-template-delete` | apply は confirmation `APPLY_CONFIG_TEMPLATE` を渡す。secret 平文を preview に表示しない。 |
-| event feed panel | `panel-events` | `events-refresh`, `events-stream-start`, `events-stream-stop` | stream handle は panel 離脱、logout、`401`、stop で close する。 |
+| event feed panel | `panel-events` | `events-refresh`, `events-stream-start`, `events-stream-stop` | `streamAdminEvents(query,onEvent)` を呼び、`onEvent` で受け取った `AdminEventRecord` だけを既存 event list の先頭へ追加する。stream handle は panel 離脱、logout、`401`、stop で close する。 |
 | share link panel | `panel-share-links` | `share-link-create`, `share-link-revoke`, `share-token-copy` | 作成 token は `share-token-once` だけに表示し、copy 完了、revoke 成功、panel 遷移、logout、`401` で消去する。 |
 | cache panel | `panel-cache` | `cache-policy-save`, `cache-purge` | purge 成功後は `getCachePolicy` → `getAdminEvents`。 |
 | webhook resend panel | `panel-webhook-resend` | `webhook-resend-submit` | confirmation `RESEND_WEBHOOK` を渡し、成功後 `getNotifyLog` → `getAdminEvents`。 |
@@ -559,3 +559,5 @@ share token は作成直後の one-time 表示だけに限定し、panel 遷移�
 SSE stream は panel 離脱、logout、`401`、明示 stop 操作で close する。
 
 UI は Prometheus metric、SVG badge、OpenAPI document、snapshot diff、config diff を再計算せず、SDK response を表示用に整形するだけとする。
+
+event feed panel は SDK の `onEvent` callback が渡す `AdminEventRecord` を、`timestamp` 降順、同一 `timestamp` は `id` ASCII 昇順の表示順に挿入する。UI は event id、type、severity、actor、target、message を生成・補完せず、stream frame の parse、keepalive 処理、error frame 処理を直接実装しない。stream error では panel summary に error を 1 回表示し、`getAdminEvents` を 1 回だけ再取得する。user stop の `done=null` では error を表示せず、`getAdminEvents` を 1 回だけ再取得する。

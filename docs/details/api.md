@@ -3050,6 +3050,7 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 |------|------|----------|--------------|
 | users / roles | `.users`, `.roles` | 対象主 state → `.audit_log` → `.admin_events` | validation、permission、最後の admin 保護、role 使用中判定の失敗では差分なし。主 state 成功後の `.audit_log` 失敗は `500`、主 state は巻き戻さない。 |
 | external auth | `.external_auth_config` と secret ref | `.external_auth_config` → `.audit_log` → `.admin_events` | discovery test は状態を変更しない。secret 平文を response / log に出さない。 |
+| share links | `.share_links` | `.share_links` → `.audit_log` → `.admin_events` | `GET /api/share/{token}/status` は `.share_links` を read-only で参照し、`.audit_log` と `.admin_events` を書き込まない。token 本体、token hash、Authorization header、Cookie は保存しない。 |
 | datastore switch | `.datastore_config` | `.datastore_config` → `.admin_events` | `dry_run:true` は write なし。switch 実行中は `409`。 |
 | config snapshots / diff / templates | 対象 state と `.config_snapshots/`、`.config_templates` | snapshot/template state → 対象 config state → `.config_log` → `.audit_log` → `.admin_events` | restore / apply の途中失敗は未処理 file を書かず、成功済み file は巻き戻さない。 |
 | queue / retention / webhook resend | `.build_state`, `.server_config`, `.notify_log` | runner owner の対象 state → `.audit_log` → `.admin_events` | running conflict、queue id 不在、同一 delivery 再送中は差分なし。 |
@@ -3256,6 +3257,12 @@ response は `api_version`、`spec_version`、`binary_version`、`compatible_ver
 
 versioned path を追加する場合は `/api/v{major}/...` とする。
 
+`ApiVersionResponse` は次の値で固定する。`api_version` は `"1"`、`compatible_versions` は `["1"]`、`deprecated_versions` は `[]` とする。`spec_version` は [`docs/SPEC.md` ポリシー責務 §1](../SPEC.md#policy-versioning) の仕様バージョン表示値を返す。正式リリース前は `"V.N"` を返し、推測した実数値へ置換しない。`binary_version` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) の `<binary-version>` と同じ注入値を返す。未注入の開発実行では `"V.0.0-dev"` を返し、空文字、Git commit、Go build info、release tag 推測値を返してはならない。
+
+`GET /api/version` は認証、permission、session 作成、API token 更新、rate limit、audit、access log、`.response_cache` の read/write を行わない。HTTP response header は `Content-Type: application/json; charset=utf-8`、`Cache-Control: no-store` とし、`ETag`、`Last-Modified`、`Set-Cookie` を付与しない。
+
+versioned path は current major と一致する `/api/v1/...` だけを current unversioned path と同じ handler へ解決する。`/api/v0/...`、`/api/v2/...`、`/api/v01/...`、`/api/v1`、`/api/v1/`、`/api/v1beta/...`、`/api/vx/...` は `404 {"error":"Not found"}` とし、unversioned path へ fallback しない。versioned path の追加時も unversioned `/api/...` は current version として維持する。
+
 <a id="sec-27-63"></a>
 **27.63 API ドキュメント自動生成：**
 
@@ -3268,6 +3275,16 @@ API ドキュメント自動生成の owner は `api` とする。
 `OpenApiDocument` は実装済み endpoint だけを含める。
 
 未実装 endpoint を `paths` に含めてはならない。
+
+`OpenApiDocument` は OpenAPI `3.1.0` の JSON object とし、root key は `openapi`、`info`、`servers`、`paths`、`components` だけを持つ。`info.title` は `"Adlaire CI API"`、`info.version` は `GET /api/version` の `api_version` と同じ値、`servers` は `[{"url":"/"}]` 固定とする。`components.securitySchemes` は `bearerAuth` だけを持ち、`{"type":"http","scheme":"bearer"}` とする。session token と API token は同じ `Authorization: Bearer` header 経路であるため、別 security scheme を作成しない。
+
+`paths` には実装済み endpoint の route だけを path ASCII 昇順で出力し、各 path 内の HTTP method は `delete`、`get`、`patch`、`post` の順で出力する。`operationId` は leading `/api` と version prefix を除いた path segment を lowerCamelCase 化し、先頭へ HTTP method lowerCamelCase を付ける。path parameter は `By` + lowerCamelCase 名で表す。例として `GET /api/cache-policy` は `getCachePolicy`、`POST /api/config-snapshots/{id}/restore` は `postConfigSnapshotsByIdRestore` とする。同じ `operationId` が発生する場合は OpenAPI 生成失敗として `500 {"error":"OpenAPI generation failed"}` を返し、部分 document を返さない。
+
+各 operation は `summary`、`operationId`、`responses` を必須とする。認証不要の `/api/version`、`/api/openapi.json`、`/api/share/{token}/status` 以外は `security:[{"bearerAuth":[]}]` を持つ。request body がある endpoint だけ `requestBody` を持ち、body 禁止 endpoint に `requestBody` を出力してはならない。JSON response は `application/json`、SSE は `text/event-stream`、Prometheus metrics は `text/plain`、SVG badge は `image/svg+xml`、binary snapshot は `application/octet-stream` として固定する。
+
+OpenAPI document は route、method、query、request schema、response schema、status、media type、security requirement だけを表す。secret の実値、token の例、Authorization header の例、状態ファイル path の絶対 path、host 名、環境変数値、fixture path を含めてはならない。`example` と `examples` は使用しない。`description` を出力する場合は secret、token、raw request body を含めず、[`docs/details/api.md`](api.md) 詳細本文責務の本文を転載してはならない。
+
+`GET /api/openapi.json` は認証、permission、session 作成、API token 更新、rate limit、audit、access log、`.response_cache` の read/write を行わない。HTTP response header は `Content-Type: application/json; charset=utf-8`、`Cache-Control: no-store` とし、`ETag`、`Last-Modified`、`Set-Cookie` を付与しない。
 
 <a id="sec-27-64"></a>
 **27.64 ビルドキューの手動並び替え API 境界：**
@@ -3310,6 +3327,12 @@ SSE は 30 秒ごとに `: keepalive` を送信する。
 
 event data に secret、token、password、raw request body を含めてはならない。
 
+`GET /api/events` は `.admin_events` の schema-valid record だけを対象にし、壊れた行は response から除外する。`total` は `type` と `after` 適用後、`limit` / `offset` 適用前の件数とする。sort は `timestamp` 降順、同一 `timestamp` は `id` ASCII 昇順とする。`.admin_events` 不在は空配列として扱い、file を作成しない。`.admin_events` 読取不能は `500 {"error":"Admin events read failed"}` とする。
+
+`GET /api/events/stream` は接続確立後に新規追記された `.admin_events` の schema-valid record だけを送信する。接続時点の既存 record は送信せず、既存 record の取得は `GET /api/events` を使用する。`type` query が指定された場合は一致する record だけを送信する。壊れた行は送信せず、stream を継続する。`.admin_events` 読取不能が header 送信前に発生した場合は `500 {"error":"Admin events read failed"}` を JSON で返す。header 送信後に読取不能が発生した場合は `event: error`、`data: {"error":"Admin events read failed"}`、空行を送信して connection を close する。
+
+event stream の response header は `Content-Type: text/event-stream; charset=utf-8`、`Cache-Control: no-store`、`X-Accel-Buffering: no` とする。admin event frame は `id: {AdminEventRecord.id}\nevent: admin-event\ndata: {compact-json-AdminEventRecord}\n\n` とし、`data` は compact JSON 1 行だけを許可する。keepalive は `: keepalive\n\n` 固定とし、`retry:`、複数 `data:` 行、CRLF、空 event frame を使用しない。client disconnect、SDK `StreamHandle.close()`、logout による close では状態、audit、admin event、cache を変更しない。
+
 <a id="sec-27-67"></a>
 **27.67 読み取り専用共有リンク API 境界：**
 
@@ -3326,6 +3349,14 @@ share token 本体は作成 response で 1 回だけ返す。
 
 保存時は hash だけを保存する。
 
+`GET /api/share-links` は `.share_links.links` の保存順で返し、各 item から `token_hash` と token 本体を必ず除外する。`POST /api/share-links` は [`docs/details/security.md` 詳細本文責務 §27.67](security.md#sec-27-67) の token 生成、hash 保存、`expires_at` 検証に成功した場合だけ `.share_links` へ追記する。作成 response の `token` は HTTP response body だけに含め、`.admin_events`、`.audit_log`、`.api_access_log`、server log、cache、SDK trace、UI event へ渡してはならない。
+
+`GET /api/share/{token}/status` は token 形式検証、SHA-256 hash 算出、`.share_links` lookup、`revoked_at`、`expires_at` の順で判定する。token decode 不能または decode 後 32 byte 未満は `401 {"error":"Invalid share token"}`、hash 不一致または revoke 済みは `404 {"error":"Share link not found"}`、期限切れは `410 {"error":"Share link expired"}` とする。この endpoint は session、API token、Cookie、permission、rate limit、response cache を使用せず、通常 session を作成しない。
+
+`SharedStatusResponse` は share link scope に対応する key 1 件だけを返す。`scope:"status"` は `{ "status": StatusResponse }`、`scope:"history"` は `{ "history": HistoryPageObject }` とし、history は `limit=20`、`offset=0`、filter なしの `GET /api/history` と同じ sort / corrupt line handling を適用する。`scope:"snapshot_diff"` は `{ "snapshot_diff": SnapshotSiteDiffResponse }` とし、schema-valid snapshot のうち `created_at` 降順、同時刻 `id` ASCII 昇順で先頭 2 件を選び、2 件目を `left_id`、1 件目を `right_id` として [`docs/details/archive.md`](archive.md) 詳細本文責務の diff 境界に渡す。snapshot が 2 件未満の場合は `404 {"error":"Shared resource not found"}` とする。
+
+share link response は read-only とし、build trigger、queue、config、user、role、webhook resend、history retention、snapshot 作成、cache write を実行しない。許可される副作用は `.api_access_log` の best-effort 追記だけとし、その log に token 本体、token hash、Authorization header、Cookie を含めてはならない。
+
 <a id="sec-27-68"></a>
 **27.68 API レスポンスキャッシュ制御：**
 
@@ -3340,6 +3371,16 @@ API レスポンスキャッシュ制御の owner は `api` とする。
 cache 対象 endpoint は `GET` の read-only endpoint だけとする。
 
 認証情報、session、user 固有 response は共有 cache に保存しない。
+
+`CachePolicyInput.endpoints` は次の path だけを許可する。`/api/status`、`/api/health`、`/api/sysinfo`、`/api/output-meta`、`/api/dashboard`、`/api/disk-usage`、`/api/stats`、`/api/stats/timeline`、`/api/stats/build-duration`、`/api/stats/build-trends`。`/api/version`、`/api/openapi.json`、`/api/events`、`/api/events/stream`、`/api/share/{token}/status`、`/api/metrics`、`/api/badge/status.svg`、binary endpoint、SSE endpoint、body を持つ endpoint、user / role / token / audit / log / config / snapshot / template / project / queue / webhook resend endpoint は cache 対象にできない。許可外 path、重複、末尾 slash 差分、versioned path は `422` とし、状態を変更しない。
+
+cache key は [`docs/details/statefile.md` 詳細本文責務 ResponseCacheEntry](statefile.md#sec-22-0d) の `key` と同じ値を使用する。hash 入力は `{"method":"GET","path":canonicalPath,"query":canonicalQuery,"vary":vary}` の canonical JSON とし、`canonicalPath` は unversioned path、`canonicalQuery` は query key ASCII 昇順かつ値を string 化した object、`vary` は endpoint が表示内容の分岐に使用した `target`、`branch`、`granularity`、`from`、`to` だけを持つ。認証 token、session id、Cookie、user id、role id、permission、remote address、User-Agent を cache key、entry、header、body へ含めてはならない。
+
+cache lookup は認証と permission 判定の後、endpoint 固有状態 read の前に行う。policy disabled、endpoint 未許可、entry 不在、entry 破損、`expires_at <= now`、`body_sha256` 不一致、保存 status が `200` 以外、保存 header に禁止 header がある場合は miss とし、endpoint 固有 handler を実行する。hit の場合は保存済み `status`、`headers`、`body` を返し、`X-Adlaire-Cache: HIT` を追加する。miss 後に endpoint 固有 handler が `200` JSON object を返し、secret と user 固有値を含まない場合だけ `X-Adlaire-Cache: MISS` を付けて `.response_cache` へ保存する。`4xx`、`5xx`、binary、SVG、SSE、text、secret を含む response は保存しない。
+
+cache entry の `headers` は `Content-Type: application/json; charset=utf-8` と `Cache-Control` だけを許可する。`Set-Cookie`、`Authorization`、`WWW-Authenticate`、`Location`、`ETag`、`Last-Modified`、`X-Accel-Buffering` を保存してはならない。保存時は `.response_cache` を atomic write し、write 失敗では response を `500 {"error":"Response cache write failed"}` に変更せず、cache 保存だけを諦めて original response を返す。cache 保存失敗を `.admin_events`、`.audit_log`、`.api_access_log` へ追加記録してはならない。
+
+cache policy API 以外の API が業務状態を書き換える request に成功した場合、response 送信前に `.response_cache.entries` を全削除する。自動削除では `.admin_events`、`.audit_log`、`.api_access_log` を追加記録しない。cache purge は `.response_cache.entries` を全削除し、`purged_count` は削除前の schema-valid entry 数とする。purge 途中で削除に失敗した場合は `500 {"error":"Response cache purge failed"}` とし、未削除 entry を保持する。cache policy 変更は `.server_config` の policy を更新するだけで、既存 `.response_cache` の削除は `DELETE /api/response-cache` でだけ行う。`POST /api/cache-policy` と `DELETE /api/response-cache` の成功時は [追加管理 API 状態更新順固定契約](#additional-management-state-order) の `response cache` 行に従って `.admin_events` を追記する。
 
 <a id="sec-27-69"></a>
 **27.69 スナップショット間サイト差分 API 境界：**
