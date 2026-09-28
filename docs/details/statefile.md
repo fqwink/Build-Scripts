@@ -651,7 +651,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 |------|----|------|--------|------|
 | `password_hash` | string | 必須 | 64 文字 lowercase hex | password 本体は保存しない。 |
 | `salt` | string | 必須 | 64 文字 lowercase hex | 32 bytes salt。 |
-| `algorithm` | string | 必須 | `"sha256_iter_v1"` 固定 | 他 algorithm は初期実装で拒否する。 |
+| `algorithm` | string | 必須 | `"sha256_iter_v1"` 固定 | 他 algorithm は拒否する。 |
 | `iterations` | integer | 必須 | `260000` 固定 | 値が異なる場合は認証 caller へ破損失敗を返す。 |
 | `must_change` | boolean | 必須 | boolean | 初期生成時 `true`、パスワード変更後 `false`。 |
 | `login_count` | integer | 必須 | `0`〜`9223372036854775807` | session token 発行処理の credentials 保存時に `min(login_count+1,9223372036854775807)` とする。TOTP 無効 login は password 成功時、TOTP 有効 login は `POST /api/login/totp` 成功処理時に増加し、TOTP ticket 発行時は増やさない。上限値では飽和させ、overflow させない。 |

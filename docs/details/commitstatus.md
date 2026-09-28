@@ -46,7 +46,7 @@ GitHub request は以下に固定する。retry、GraphQL API、Check Runs API�
 | method | `POST` |
 | path | `/repos/{owner}/{repo}/statuses/{sha}` |
 | header | `Accept: application/vnd.github+json`、`Authorization: Bearer {GITHUB_TOKEN}`、`X-GitHub-Api-Version: 2022-11-28` |
-| 呼出条件 | `.server_config.commit_status_enabled=true` の場合だけ呼び出す。GitHub permission は [`docs/SPEC.md` ポリシー責務 §5](../SPEC.md#5-ci-ランナー秘密情報公開境界ポリシー) を正本とする。 |
+| 呼出条件 | `.server_config.commit_status_enabled=true` の場合だけ呼び出す。GitHub permission は [`docs/SPEC.md` ポリシー責務 §5](../SPEC.md#policy-runner-secrets) を正本とする。 |
 | body | `state`、`context`、`description`、任意の `target_url` だけを持つ JSON object。 |
 | timeout | 10 秒。timeout は network error と同じ送信失敗扱い。 |
 | success status | HTTP `201`。`200`、`202`、`204` は失敗扱い。 |

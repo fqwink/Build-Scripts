@@ -142,7 +142,7 @@ release 実装は、checkout を変更せず、`--out` と OS temporary director
 1. mode `0700` の独立した source temporary directory A と B を作成する。
 2. A / B それぞれに対し、`git archive --format=tar <commit>` を shell を介さず独立に 1 回ずつ実行する。Go 標準ライブラリ `archive/tar` で stdout を stream 展開し、entry 名は UTF-8 の checkout root 相対 path だけ、type は directory または regular file だけを許可する。絶対 path、空 segment、`.`、`..`、backslash、NUL、CR、LF、symlink、hardlink、device、FIFO、socket、重複 entry、A / B root 外への脱出、既存 path への上書きを `BUILD_FAILED` とする。regular file は Git archive mode の executable bit に応じて `0644` または `0755`、directory は `0755` とする。
 3. A / B の展開 file set、mode、size、SHA-256 を relative path の ASCII 昇順で比較し、完全一致を確認する。`go.mod`、`main.go`、Release asset に必要な実装 artifact、admin 配布物は A / B 内の通常 file として再確認する。
-4. A の snapshot 内にある `.go` regular file を relative path の ASCII 昇順で列挙し、`gofmt -d <path...>` を shell を介さず 1 回実行する。stdout が空、stderr が空、終了コード `0` の場合だけ合格とする。対象 0 件は `FORMAT_FAILED` とする。
+4. A の snapshot 内にある `.go` regular file を relative path の ASCII 昇順で列挙し、各 file に対して `gofmt -d <path>` を shell を介さず 1 file 1 process で実行する。各実行は stdout 空、stderr 空、終了コード `0` の場合だけ合格とする。対象 0 件、最初に差分 stdout を返した file、stderr 非空、終了コード非 0、timeout、起動失敗はいずれも `FORMAT_FAILED` とする。後続 file は最初の不合格後に実行しない。
 5. `go test ./...` を A で実行し、終了コード `0` を確認する。
 6. A / B それぞれで [R3 Release asset 固定契約](#release-asset-contract) の 4 binary を同一環境・同一引数で生成し、admin archive を生成する。
 7. A と B の同名 asset を byte 単位で比較する。
@@ -230,18 +230,9 @@ draft 作成後、正式公開前に失敗した場合は、作成した draft �
 <a id="release-acceptance-contract"></a>
 **R7. 実装受け入れ条件：**
 
-| 観点 | 合格条件 |
-|------|----------|
-| CLI | 全 option、検証順、help、version、終了コード、固定errorがfixtureと一致する。 |
-| source | clean checkout、HEAD、local tag、remote tag、remote default branch ancestor、immutable source snapshot、GitHub write 前の local / remote 再検証が固定契約と一致する。 |
-| build | Go test、format、固定build環境、version注入、4 binaryのbasename dispatchが一致する。 |
-| reproducibility | 2回生成した5 assetがbyte単位で一致し、不一致時にGitHub writeが0件である。 |
-| archive | file set、順序、mode、owner、timestamp、gzip headerが固定値に一致する。 |
-| checksum | 5 asset、ASCII順、lowercase SHA-256、space 2文字、LF、自己行なしが一致する。 |
-| GitHub | 既存Releaseを上書きせず、draftで全assetを再取得検証してから公開する。 |
-| failure | 公開前失敗ではdraftを1回だけ削除し、tag、checkout、既存Releaseを変更しない。 |
-| control | timeout、response size、再試行、並行実行、既存Release、partial failureが [R2 実行前固定契約](#release-precondition-contract) と [R5 GitHub Release 公開固定契約](#release-publish-contract) の固定境界に一致する。 |
-| secret | token平文がstdout、stderr、notes、asset、URL、fixture expectedへ出ない。 |
-| evidence | [`docs/details/fixture.md` fixture 証跡責務 Release fixture 固定契約](fixture.md#release-fixture-contract) の全fixtureが合格する。 |
+| 観点 | 合格条件正本 |
+|------|----------------|
+| CLI / source / build / asset / GitHub / failure / secret | [`docs/details/release.md` 詳細本文責務 §R1](release.md#release-cli-contract)〜[`docs/details/release.md` 詳細本文責務 §R6](release.md#release-output-contract) の固定契約に一致する。 |
+| evidence | [`docs/details/fixture.md` fixture 証跡責務 Release fixture 固定契約](fixture.md#release-fixture-contract) の全 fixture が合格する。 |
 
-実装完了と状態遷移の判定は [`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#0a-仕様成熟度ポリシー)、現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を正本とし、[`docs/details/release.md`](release.md) 詳細本文責務で再定義しない。
+実装完了と状態遷移の判定は [`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#policy-spec-maturity)、現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を正本とし、[`docs/details/release.md`](release.md) 詳細本文責務で再定義しない。

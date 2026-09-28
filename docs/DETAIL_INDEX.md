@@ -40,7 +40,7 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 <a id="0c-実装前確認項目"></a>
 **実装前参照：**
 
-実装着手可否は、[`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7) の着手ゲート、[`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) の active Phase 条件、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と Phase 割当てをすべて使用して判定する。この入口では、対象機能が [詳細節対応表](#0i-詳細節対応表) に存在し、owner 詳細本文と fixture 証跡へ到達できることだけを確認する。
+実装着手可否は、[`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7) の着手ゲート、[`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の active Phase 条件、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と Phase 割当てをすべて使用して判定する。この入口では、対象機能が [詳細節対応表](#0i-詳細節対応表) に存在し、owner 詳細本文と fixture 証跡へ到達できることだけを確認する。
 
 <a id="0d-共通固定値"></a>
 **共通固定値：**
@@ -66,10 +66,11 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | option token | option は owner 詳細本文で列挙した `--[a-z][a-z0-9-]*` 形式だけを許可する。短縮 option、列挙外 option、owner 詳細本文が明示的に許可していない位置引数を禁止する。 |
 | 値 option | 値を取る option は、owner 詳細本文が当該 option に `--name=value` を明示的に許可した場合を除き、`--name value` の 2 token 形式だけを許可する。値 token がない、または次 token が `--` で始まる場合は `missing value: --name` とする。未許可の `--name=value` は token 全体を未知 option とする。 |
 | 共通 option 優先順位 | argv に exact `--help` が 1 件以上あれば `--help`、それ以外で exact `--version` が 1 件以上あれば `--version` を、残りの argv の parse、必須値検証、path / file / state 検証より先に確定する。両方がある場合は `--help` を採用する。 |
+| argv token safety | `--help` / `--version` の優先順位で成功終了しない場合、owner 固有 parse の前に全 argv token を検証する。各 token は有効な UTF-8 文字列とし、NUL、CR、LF、C0 制御文字、DEL を含んではならない。不合格時は stdout 空、stderr `invalid command line token` + LF、終了コード `2` とし、token 原文を stdout、stderr、log、状態ファイルへ出力せず、状態変更と外部副作用を開始しない。 |
 | help / version 結果 | owner 詳細本文の固定文字列 1 行と LF だけを stdout へ出力し、stderr は空、終了コードは `0` とする。file read/write、directory 作成、lock、listener、外部通信、child process、乱数取得を行わない。 |
 | version 出力 | exact 3 token の `<binary-name> <binary-version> go=<runtime.Version()>` + LF とする。token 間は ASCII space 1 文字、前後空白、追加行、空 token を禁止する。`binary-name` は owner 詳細本文の実行ファイル名、`binary-version` は共通固定値のバイナリバージョン、`runtime.Version()` は空文字禁止とする。 |
 | version 注入 | 実装はビルド時に不変の `binary-version` を受け取る。未指定時は `V.0.0-dev` とする。Release build は tag と同じ具体値を全バイナリへ注入し、出力が不一致または `V.0.0-dev` の場合は成果物作成を失敗させる。 |
-| parse / 入力検証失敗 | stdout は空、stderr は owner 詳細本文で固定した最初のエラー 1 行と LF だけ、終了コードは `2` とする。owner 詳細本文で固定した検証順に最初の 1 件を選び、状態変更と外部副作用を開始しない。未知 option と禁止位置引数は `unknown option: <token>` とする。 |
+| parse / 入力検証失敗 | stdout は空、stderr は owner 詳細本文で固定した最初のエラー 1 行と LF だけ、終了コードは `2` とする。owner 詳細本文で固定した検証順に最初の 1 件を選び、状態変更と外部副作用を開始しない。未知 option と禁止位置引数は、argv token safety 合格後の token だけを対象に `unknown option: <token>` とする。 |
 | owner 固有契約 | 許可 option、固定 help / version 文字列、重複指定、値正規化、検証順、固有エラー、実行 mode は owner 詳細本文を正本とする。owner 詳細本文はこの共通契約を暗黙に上書きせず、異なる parse 形式を許可する option を個別に明示する。 |
 
 <a id="common-state-dir-contract"></a>
@@ -80,7 +81,7 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | 条件 | stdout | stderr | 終了コード | 副作用 |
 |------|--------|--------|------------|--------|
 | 値が空文字 | 空 | `state directory must not be empty` + LF | `2` | state read/write、directory 作成、listener、外部通信、child process を開始しない。 |
-| 相対 path | 空 | `state directory must be absolute: <path>` + LF | `2` | 同上。`<path>` は入力値を改行なしで使用する。 |
+| 相対 path | 空 | `state directory must be absolute: <path>` + LF | `2` | 同上。`<path>` は argv token safety 合格後の入力値を使用する。 |
 | path 不在 | 空 | `state directory not found: <path>` + LF | `2` | 同上。 |
 | directory でない | 空 | `state path is not directory: <path>` + LF | `2` | 同上。 |
 
@@ -94,12 +95,12 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 <a id="0e-完全実装検証マトリクス"></a>
 **完全実装検証参照：**
 
-対象 owner の詳細本文と fixture 証跡は [owner component 別詳細本文・fixture 参照表](#0b-詳細仕様参照表) の同一行を使用する。完了判定と状態遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+対象 owner の詳細本文と fixture 証跡は [owner component 別詳細本文・fixture 参照表](#0b-詳細仕様参照表) の同一行を使用する。完了判定と状態遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**
 
-仕様策定または仕様改訂の完了条件は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#0b-仕様-pr-完了ポリシー) を正本とする。この入口では、[詳細仕様参照表](#0b-詳細仕様参照表)、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields)、[詳細節対応表](#0i-詳細節対応表)、[完全実装検証マトリクス](#0e-完全実装検証マトリクス) の参照が揃っていることだけを確認する。実装着手の凍結判定は [実装前参照](#0c-実装前確認項目) で別途行う。
+仕様策定または仕様改訂の完了条件は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion) を正本とする。この入口では、[詳細仕様参照表](#0b-詳細仕様参照表)、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields)、[詳細節対応表](#0i-詳細節対応表)、[完全実装検証マトリクス](#0e-完全実装検証マトリクス) の参照が揃っていることだけを確認する。実装着手の凍結判定は [実装前参照](#0c-実装前確認項目) で別途行う。
 
 <a id="0i-詳細節対応表"></a>
 **機能・owner component・詳細本文対応表：**

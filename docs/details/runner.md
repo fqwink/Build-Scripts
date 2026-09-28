@@ -36,27 +36,27 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 
 `runner` は `adlaire-ci-runner` バイナリとして実行する。起動形式は systemd timer から呼び出される oneshot 実行とし、1 回の起動で対象ブランチ設定を読み込み、変更検出、ビルド起動、ログ保存、通知、転送、後処理を完了して終了する。
 
-実装時は、対象項目ごとに [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0c](../DETAIL_INDEX.md#0c-実装前確認項目) の実装前確認項目を満たしていることを確認する。実装着手可否は、[`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#0a-仕様成熟度ポリシー) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](../SPEC.md#0d-仕様凍結ポリシー) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#0f-phase-実装単位ポリシー) の active Phase 条件、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の現在状態と Phase 割当てによって判定する。未充足の項目が 1 つでもある場合は着手せず、詳細本文の不足は先に [`docs/details/runner.md` 詳細本文責務 §10a](runner.md#10a-ci-ランナー-実装対象) を改訂する。
+実装時は、対象項目ごとに [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0c](../DETAIL_INDEX.md#0c-実装前確認項目) の実装前確認項目を満たしていることを確認する。実装着手可否は、[`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#policy-spec-maturity) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](../SPEC.md#policy-spec-freeze) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit) の active Phase 条件、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の現在状態と Phase 割当てによって判定する。未充足の項目が 1 つでもある場合は着手せず、詳細本文の不足は先に [`docs/details/runner.md` 詳細本文責務 §10a](runner.md#10a-ci-ランナー-実装対象) を改訂する。
 
-| 項目 | 関連節 | 実装内容 |
-|------|--------|------------|
-| JSON 形式の SHA キャッシュ | [`docs/details/runner.md` 詳細本文責務 §11](runner.md#11-ci-ランナー-ファイル構成)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | 各ターゲットの `sha_file` を `{"sha": "..."}` JSON 形式で読み書きする。 |
-| `BRANCH_TARGETS` | [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | 複数ブランチ、複数 target file、複数出力先を 1 つの設定リストとして処理する。 |
-| GitHub API リトライ | [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | `API_RETRY_MAX`、`API_RETRY_BASE_SECONDS`、指数バックオフ、レート制限待機を実装する。 |
-| ビルドロック | [`docs/details/runner.md` 詳細本文責務 §11](runner.md#11-ci-ランナー-ファイル構成)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | `.build_lock` による多重起動防止を実装する。 |
-| ビルドクールダウン | [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | `.server_config.build_cooldown_seconds` による起動抑制を実装する。 |
-| 強制再ビルド間隔 | [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | `.server_config.force_build_interval_hours` による変更なし時の定期強制ビルドを実装する。 |
-| コミット情報記録 | [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | ビルドトリガー commit の SHA、message、author、date をビルドログへ記録する。 |
-| 事前チェック | [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | ディスク空き容量、`adlaire-ci-build` 実行可否、Go 版ビルドバイナリ配置を確認する。 |
-| 通知 | [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) | `.notify_config` 読み込み、Webhook / email / command channel への成功・失敗・転送失敗・週次サマリー通知、Webhook retry 対象だけを保存する `.notify_pending` 再送を実装する。 |
-| ビルドログ保存 | [`docs/details/runner.md` 詳細本文責務 §11](runner.md#11-ci-ランナー-ファイル構成)〜[`docs/details/runner.md` 詳細本文責務 §15](runner.md#15-ログ) | `.build_logs/{id}.json` へ stdout/stderr、変換レポート、所要時間を保存する。 |
-| SSH 転送 | [`docs/details/runner.md` 詳細本文責務 §14a](runner.md#14a-ssh-サイト転送) | SHA256 差分検出、stdin パイプ転送、転送後整合性検証、ペンディングキューを実装する。 |
-| スナップショット | [`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理) | 作成条件を判定し、`archive` owner の snapshot save を呼び出し、結果を build log / history へ反映する。保存形式、検証、世代削除、download、delete、rollback 実体は [`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) を参照する。 |
-| サーキットブレーカー | [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | `.build_circuit_state` による連続失敗停止を実装する。 |
-| ログ世代管理 | [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | `LOG_KEEP_N` による `.build_logs/` 削除を実装する。 |
-| 出力サイズ警告 | [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) | `OUTPUT_SIZE_WARN_MB` による WARN ログと `size_warn` 記録を実装する。 |
+| 項目 | 詳細本文正本 |
+|------|--------------|
+| JSON 形式の SHA キャッシュ | [`docs/details/runner.md` 詳細本文責務 §11](runner.md#11-ci-ランナー-ファイル構成)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
+| `BRANCH_TARGETS` | [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
+| GitHub API リトライ | [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
+| ビルドロック | [`docs/details/runner.md` 詳細本文責務 §11](runner.md#11-ci-ランナー-ファイル構成)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
+| ビルドクールダウン | [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
+| 強制再ビルド間隔 | [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
+| コミット情報記録 | [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
+| 事前チェック | [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
+| 通知 | [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー)、[`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) |
+| ビルドログ保存 | [`docs/details/runner.md` 詳細本文責務 §11](runner.md#11-ci-ランナー-ファイル構成)〜[`docs/details/runner.md` 詳細本文責務 §15](runner.md#15-ログ) |
+| SSH 転送 | [`docs/details/runner.md` 詳細本文責務 §14a](runner.md#14a-ssh-サイト転送) |
+| スナップショット | [`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理)、[`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) |
+| サーキットブレーカー | [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
+| ログ世代管理 | [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
+| 出力サイズ警告 | [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner)〜[`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) |
 
-**初期実装対象外の連携範囲：**
+**runner 単体責務外の連携範囲：**
 
 [`docs/details/runner.md` 詳細本文責務 §10](runner.md#10-ci-ランナー-要件)〜[`docs/details/runner.md` 詳細本文責務 §20](runner.md#20-ci-ランナー-既知の制限) には、`runner` 単体の責務ではなく管理 API、標準管理ツール、追加の運用機能と結合して成立する項目が含まれる。これらは、API・SDK・UI の対象節に、呼び出し元、呼び出し先、状態ファイル、失敗時応答、検証条件が定義されるまで `runner` 単体で実装しない。
 
@@ -302,7 +302,7 @@ runner は CLI、`.repo_config`、`.server_config`、`.branch_config`、既定�
 
 **CLI 異常系：**
 
-`--state-dir` の空文字、相対 path、不在、directory でない場合の stdout、stderr、終了コード、副作用は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) をそのまま使用し、ここでは再定義しない。
+`runner` CLI の `--state-dir` 共通失敗条件は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) を使用する。`runner` 詳細本文責務では、値欠落と runner 固有 option の異常系だけを定義する。
 
 | 条件 | 終了コード | stderr |
 |------|------------|--------|
@@ -1215,7 +1215,7 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 <a id="15a-runner-受け入れ検証条件"></a>
 **15a. `runner` 受け入れ検証条件：**
 
-`runner` の初期実装は、[`docs/details/runner.md` 詳細本文責務 §15a](runner.md#15a-runner-受け入れ検証条件) の検証条件と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の fixture をすべて満たすまで完了として扱わない。`testdata/runner/` は runner fixture の配置予定 path であり、現時点で未作成の場合は現行実体として扱わない。fixture ファイルは [`docs/details/fixture.md`](fixture.md) fixture 証跡責務に従う実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは初期 fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
+`runner` は、[`docs/details/runner.md` 詳細本文責務 §15a](runner.md#15a-runner-受け入れ検証条件) の検証条件と [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の fixture をすべて満たすまで完了として扱わない。`testdata/runner/` は runner fixture の配置予定 path であり、現時点で未作成の場合は現行実体として扱わない。fixture ファイルは [`docs/details/fixture.md`](fixture.md) fixture 証跡責務に従う実装変更で `testdata/runner/` 配下へ追加する。外部 GitHub API と SSH サーバーへ実接続するテストは受け入れ fixture に含めず、HTTP test server と fake `ssh` executable で再現する。
 
 <a id="sec-15a-0"></a>
 **15a.0 runner fixture 共通検証観点：**
@@ -1232,7 +1232,7 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 <a id="sec-15a-1"></a>
 **15a.1 runner 受け入れ fixture catalog 参照：**
 
-`runner` 初期実装の受け入れ fixture catalog は [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) を正本とする。`runner` 詳細本文では、各 fixture の前提状態、fake response、expected file、実行 command、状態差分を再定義しない。
+`runner` 受け入れ fixture catalog は [`docs/details/fixture.md` fixture 証跡責務 §15a-F](fixture.md#15a-f-runner-初期受け入れ-fixture-契約) を正本とする。`runner` 詳細本文では、各 fixture の前提状態、fake response、expected file、実行 command、状態差分を再定義しない。
 
 | fixture | runner owner 検証観点 | fixture 正本 |
 |---------|----------------------|--------------|
@@ -1294,7 +1294,7 @@ runner が journal へ出力する内容は [`docs/details/runner.md` 詳細本�
 
 | 項目 | 内容 |
 |------|------|
-| PAT 権限 | [`docs/SPEC.md` ポリシー責務 §5](../SPEC.md#5-ci-ランナー秘密情報公開境界ポリシー) を正本とする。runner は `.server_config.commit_status_enabled` に応じて Commit Status API の呼出有無だけを切り替え、権限不足を別 API や別 credential で回避しない。 |
+| PAT 権限 | [`docs/SPEC.md` ポリシー責務 §5](../SPEC.md#policy-runner-secrets) を正本とする。runner は `.server_config.commit_status_enabled` に応じて Commit Status API の呼出有無だけを切り替え、権限不足を別 API や別 credential で回避しない。 |
 | PAT の種類 | Fine-grained PAT（特定リポジトリのみ許可）を使用する。 |
 | Webhook 設定（ポーリング方式） | **不要**（デフォルト。`BRANCH_TARGETS` によるポーリングのみ使用する場合） |
 | Webhook 受信方式の前提 | `POST /api/webhook` endpoint と Webhook Secret が必要。endpoint、署名検証、request / response は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) と [`docs/details/api.md` 詳細本文責務 Webhook 受信境界](api.md#webhook-receive-overview) を参照する。 |

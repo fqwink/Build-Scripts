@@ -7,18 +7,20 @@
 
 ---
 
-[`docs/DESIGN.md`](DESIGN.md) デザイン責務は、生成静的 Web サイトと標準管理 UI のデザイン関係を定義する正本である。生成静的 Web サイトのデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンは [§1〜§8](#1-デザイン方針)、標準管理 UI の視覚仕様は [標準管理 UI 視覚契約](#admin-ui-visual-contract) を確認する。
+[`docs/DESIGN.md`](DESIGN.md) デザイン責務は、生成静的 Web サイトと標準管理 UI のデザイン関係を定義する正本である。生成静的 Web サイトのデザイン方針、視覚仕様、レイアウト、色、タイポグラフィ、TOC、コードブロック、トップへ戻るボタンは [生成静的 Web サイト視覚契約](#design-static-site)、標準管理 UI の視覚仕様は [標準管理 UI 視覚契約](#admin-ui-visual-contract) を確認する。
 
 | surface | デザイン正本範囲 | 挙動の参照先 |
 |---------|------------------|--------------|
-| 生成静的 Web サイト | [§1〜§8](#1-デザイン方針) の token、selector、レイアウト、responsive、print。 | [`docs/details/builder.md`](details/builder.md) |
+| 生成静的 Web サイト | [生成静的 Web サイト視覚契約](#design-static-site) の token、selector、レイアウト、responsive、print。 | [`docs/details/builder.md`](details/builder.md) |
 | 標準管理 UI | [標準管理 UI 視覚契約](#admin-ui-visual-contract) の token、selector、レイアウト、responsive。 | [`docs/details/ui.md`](details/ui.md) |
 
 デザイン外の正本参照先は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照する。
 
+<a id="design-static-site"></a>
+
 ## 1. デザイン方針
 
-[`docs/DESIGN.md` デザイン責務 §1](DESIGN.md#1-デザイン方針)〜[§8](DESIGN.md#8-生成側参照) は生成静的 Web サイトへ適用する。docs.rs / MDN に倣った技術ドキュメントレイアウトとし、14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
+[`docs/DESIGN.md` デザイン責務 生成静的 Web サイト視覚契約](DESIGN.md#design-static-site) は生成静的 Web サイトへ適用する。docs.rs / MDN に倣った技術ドキュメントレイアウトとし、14,000 行超の仕様書を快適に閲覧するため、**構造の明快さ**と**情報密度への耐性**を最優先とする。
 
 - ヘッダーのみアクセントカラーを使う。コンテンツ・サイドバーは中性色ベース
 - CSS カスタムプロパティは [Adlaire Design System revision `3c51349791883b8b7dd599a569b63c11779dfa88` の `Tokens/`](https://github.com/fqwink/Adlaire-Design-System/tree/3c51349791883b8b7dd599a569b63c11779dfa88/Tokens) 定義の `--adlaire-*` トークンのみ使用
@@ -203,7 +205,7 @@
 
 | 対象 | 視覚契約 |
 |------|----------|
-| light visual baseline | [デザイン方針](#1-デザイン方針) のライトモード契約を適用する。 |
+| light visual baseline | [生成静的 Web サイト視覚契約](#design-static-site) のライトモード契約を適用する。 |
 | typography / block | admonition、badge、definition list、task list、footnote、math は本文幅内に収め、本文の行長、余白、読みやすさを壊さない。 |
 | typography stability | font size を viewport width に比例させず、負の `letter-spacing` を使わない。hover / focus により border、padding、font weight、要素寸法を変えない。 |
 | code extension | code title、line number、diff highlight は code block と一体で読める配置にし、copy 対象 text と装飾 text を視覚的に区別する。 |
@@ -261,6 +263,8 @@
 - ホバー時 `translateY(-2px)` で浮き上がり
 
 ---
+
+<a id="design-builder-reference"></a>
 
 ## 8. 生成側参照
 

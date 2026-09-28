@@ -77,7 +77,7 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | システム情報 | 出力サイトサイズ・更新日時・稼働時間・出力 SHA-256・build id・commit SHA・build 日時・heading / table / code block 件数・build warning・サイズ警告・ディスク使用量（ログ合計・出力サイト）・PAT 即時検証ボタン・PAT 更新フォーム・PAT 有効期限表示（設定フォーム・期限切れ間近で警告表示）・GitHub API レート制限表示 | ログイン済み |
 | 通知設定     | Webhook 一覧（追加/削除/ラベル/有効無効切り替え/リトライ回数・間隔設定/シークレット入力欄）・通知条件設定（ビルド開始時・成功時・失敗時）・各 Webhook ペイロードテンプレート編集フォーム（変数一覧表示）・テスト送信ボタン・定期サマリー設定（間隔・時刻・曜日・即時送信ボタン）・送信履歴（試行回数・エラー内容列含む）・メール通知セクション（SMTP 設定フォーム・宛先リスト・通知条件・テスト送信ボタン） | ログイン済み |
 | 設定         | ログ保持行数・履歴保持件数の設定変更・ビルドタイムアウト設定・ログレベル変更（INFO / DEBUG）・ログ保持期間（日数、0 = 無制限）・スナップショット保持世代数設定・ビルドキュー最大長設定・手動クリーンアップボタン・設定変更履歴（変更日時・項目・変更前後の値）・設定バックアップの JSON download・バックアップ JSON 選択によるリストア・IP アクセス制限セクション（許可 IP / CIDR 一覧・追加フォーム・削除ボタン）・フック設定セクション（pre / post フック一覧・command_args 入力フォーム・実行ログリンク・有効無効切り替え）・アラートルール設定セクション（メトリクス・演算子・しきい値・レベル・メッセージの入力フォーム・ルール一覧・削除ボタン）・自動タグ付けルールセクション（条件式・タグ入力フォーム・ルール一覧・削除ボタン）・パイプライン設定セクション（追加引数入力欄・環境変数テーブル） | ログイン済み |
-| セキュリティ | 単一 admin の TOTP 状態、TOTP setup secret / otpauth URI の一回表示、TOTP 確認/無効化、API rate limit policy、session timeout 設定。QR code 生成は初期実装対象外。 | ログイン済み |
+| セキュリティ | 単一 admin の TOTP 状態、TOTP setup secret / otpauth URI の一回表示、TOTP 確認/無効化、API rate limit policy、session timeout 設定。QR code 生成 UI はこの詳細本文責務では仕様化しない。 | ログイン済み |
 | アクセスログ | ログイン履歴（日時・成否）・API アクセスログ（method、path、status、duration、actor、remote_addr）・API アクセスログフィルター | ログイン済み |
 | 監査ログ | 設定変更、認証、session、TOTP、token、build trigger、approval、権限拒否の監査イベント一覧と actor / action / result フィルター。secret、password、token 本体は表示しない。 | ログイン済み |
 | 統計         | ビルド回数・成功率・平均間隔・平均・最大ビルド時間・中央値・p95・異常件数・日別時系列データ（グラフ表示対応） | ログイン済み |

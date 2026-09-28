@@ -90,7 +90,7 @@ var DefaultBuildConfig = BuildConfig{
 | `--title` が空文字 | `2` | stderr に `title must not be empty` |
 | `--theme` が `adlaire-default` 以外 | `2` | stderr に `unknown theme: <name>` |
 | `--build-id` が空文字以外で `b{YYYYMMDDHHmmss}` または `b{YYYYMMDDHHmmss}-NNN` 形式でない | `2` | stderr に `invalid build id: <value>` |
-| `--commit-sha` が空文字以外で 7〜40 文字の lowercase hex でない | `2` | stderr に `invalid commit sha: <value>` |
+| `--commit-sha` が空文字以外で 40 文字の lowercase hex でない | `2` | stderr に `invalid commit sha: <value>` |
 | `--build-at` が空文字以外で UTC ISO 8601 でない | `2` | stderr に `invalid build at: <value>` |
 | `--out` ディレクトリ作成失敗 | `1` | stderr に `cannot create output directory: <path>` |
 | `--out` が既存ファイル | `1` | stderr に `output path is not directory: <path>` |
@@ -804,7 +804,7 @@ type SearchIndexEntry struct {
 
 **初期テーマコンポーネント：**
 
-初期実装の theme は `adlaire-default` のみとする。theme component は Go コード内の内製テンプレートとして保持し、外部テンプレートファイルを読み込んではならない。
+theme は `adlaire-default` のみとする。theme component は Go コード内の内製テンプレートとして保持し、外部テンプレートファイルを読み込んではならない。
 
 | コンポーネント | 責務 |
 |----------------|------|
@@ -1433,7 +1433,7 @@ Converting MD...
 Building site...
 Writing assets...
 Done → /opt/adlaire-builder/dist/site  (pages=12 files=15 bytes=1713731)
-[REPORT] pages=12 headings=342 tables=128 code_blocks=64 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=87 theme=adlaire-default build_id=b20260916010000 commit_sha=abcdef1 build_at=2026-09-16T01:00:00Z
+[REPORT] pages=12 headings=342 tables=128 code_blocks=64 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=87 theme=adlaire-default build_id=b20260916010000 commit_sha=abcdef0123456789abcdef0123456789abcdef01 build_at=2026-09-16T01:00:00Z
 ```
 
 **変換レポート行（`[REPORT]` プレフィックス）：**
@@ -1497,7 +1497,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 <a id="8a-builder-受け入れ検証条件"></a>
 **8a. `builder` 受け入れ検証条件：**
 
-`builder` の初期実装は、[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の検証観点と [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) の fixture をすべて満たすまで完了として扱わない。
+`builder` は、[`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) の検証観点と [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) の fixture をすべて満たすまで完了として扱わない。
 
 [`docs/details/builder.md` 詳細本文責務 §8a](builder.md#8a-builder-受け入れ検証条件) は、`builder` owner の受け入れ観点だけを扱う。fixture 名、入力 Markdown、実行 command、expected HTML / CSS / JavaScript / search index / stdout / stderr、fake、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) を正本とする。
 
@@ -1575,7 +1575,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 
 ```html
 <meta name="adlaire-build-id" content="b20260916010000">
-<meta name="adlaire-commit-sha" content="abcdef1">
+<meta name="adlaire-commit-sha" content="abcdef0123456789abcdef0123456789abcdef01">
 <meta name="adlaire-build-at" content="2026-09-16T01:00:00Z">
 ```
 
@@ -1588,7 +1588,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | 項目 | 仕様 |
 |------|------|
 | `build_id` | 空文字、`b{YYYYMMDDHHmmss}`、または衝突時の `b{YYYYMMDDHHmmss}-NNN`。`NNN` は `001`〜`999` の 3 桁固定。不正値は builder 終了コード `2`。 |
-| `commit_sha` | 空文字、7〜40 文字 lowercase hex。その他は終了コード `2`。 |
+| `commit_sha` | 空文字または 40 文字 lowercase hex。その他は終了コード `2`。 |
 | `build_at` | 空文字または UTC ISO 8601 秒精度。timezone offset、ミリ秒は終了コード `2`。 |
 | HTML / REPORT / build log | builder が出力・保存する 3 箇所の値は byte 単位で一致させる。空文字は `""` として保持する。 |
 | escape | HTML meta attribute は `esc()` ではなく attribute escape を使う。 |
@@ -1759,7 +1759,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) は、[`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) から参照される builder owner 静的サイト出力拡張追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。各機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
 
-[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、`adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。実装言語と外部依存の採否は [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を正本とし、この詳細仕様では再定義しない。
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、`adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。実装言語と外部依存の採否は [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) を正本とし、この詳細仕様では再定義しない。
 
 <a id="sec-28"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 共通固定契約](builder.md#sec-28)：**
@@ -2602,13 +2602,13 @@ print は常に light 固定とする。REPORT の `color_scheme_fixed` は JSON
 <a id="sec-28-13"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28.13 コードブロックタイトル詳細固定契約](builder.md#sec-28-13)：**
 
-code title は fenced code の info string からだけ決定する。許可形式は以下とする。
+code title は fenced code の info string からだけ決定する。許可形式は fenced code の info string として以下に固定する。
 
 | 形式 | 解釈 |
 |------|------|
-| ```` ```go:main.go ```` | language は `go`、title は `main.go`。 |
-| ```` ```bash:title=deploy.sh ```` | language は `bash`、title は `deploy.sh`。 |
-| ```` ```title=README.md ```` | language は空、title は `README.md`。 |
+| `go:main.go` | language は `go`、title は `main.go`。 |
+| `bash:title=deploy.sh` | language は `bash`、title は `deploy.sh`。 |
+| `title=README.md` | language は空、title は `README.md`。 |
 
 title は trim 後 1〜128 文字を有効とする。空 title、空白だけ、`title=` の値なし、`lang:` の値なしは no-op とし、warning は出さない。title は text 扱いであり、path traversal 風文字列、absolute path 風文字列、URL 風文字列でも表示禁止にはしない。ただし HTML escape 後に raw `<` / `>`、event handler 属性、`javascript:` URL が実行可能形で残る場合は終了コード `1`、stderr `BUILDER28_ESCAPE_BLOCKED`、公開出力維持とする。
 
@@ -2874,6 +2874,6 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | strict / non-strict の片方だけを実装した。 | 異常系の固定挙動が未完成。 |
 | REPORT key が仕様表と一致しない。 | runner / API / 実装検証証跡が同じ結果を読めない。 |
 | HTML / CSS / JS の expected 差分を目視または snapshot だけで合格扱いした。 | 再現性ある合否判定ではない。 |
-| 実装言語または外部依存が [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) に違反する、または builder 出力が CDN、外部 API、runtime network fetch、browser 専用 build tool を要求する。 | 上位方針違反または builder runtime 契約違反。 |
+| 実装言語または外部依存が [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) に違反する、または builder 出力が CDN、外部 API、runtime network fetch、browser 専用 build tool を要求する。 | 上位方針違反または builder runtime 契約違反。 |
 | 失敗時に既存出力または manifest が更新された。 | atomicity 違反。 |
 | 実装検証証跡に対象機能、fixture、REPORT、strict / non-strict、基準出力安定性、対象外機能が列挙されていない。 | 実装証跡不足。 |

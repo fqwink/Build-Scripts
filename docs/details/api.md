@@ -48,7 +48,7 @@ owner component `api` は、Go 標準ライブラリ `net/http` で実装し、�
 
 `api` CLI は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract)に従って parse する。同一の値 option が複数回指定された場合は最後の値を採用し、`--init-credentials` は 1 回以上指定されれば `true` とする。`--help`、`--version`、init-credentials、listener の順に mode を確定する。`--init-credentials` と `--addr` の同時指定は終了コード `2`、stderr `--addr is not allowed with --init-credentials` + LF とし、標準入力読取、credentials 処理、listener 起動を行わない。
 
-`--state-dir` の空文字、相対 path、不在、directory でない場合の stdout、stderr、終了コード、副作用は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) をそのまま使用し、ここでは再定義しない。
+`api` CLI の `--state-dir` 共通失敗条件は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) を使用する。`api` 詳細本文責務では、未指定と symlink 拒否だけを owner 固有異常系として定義する。
 
 | 条件 | stdout | stderr | 終了コード | 副作用 |
 |------|--------|--------|------------|--------|
@@ -133,7 +133,7 @@ listener、signal source、shutdown clock / timer は [`docs/details/fixture.md`
 
 | 項目 | 仕様 |
 |------|------|
-| 実装前提 | Go 最小バージョンは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値)、HTTP 技術選定は [`docs/SPEC.md` 方針責務 §4](../SPEC.md#4-技術方針) を参照する。 |
+| 実装前提 | Go 最小バージョンは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値)、HTTP 技術選定は [`docs/SPEC.md` 方針責務 §4](../SPEC.md#direction-technical) を参照する。 |
 | bind | 既定値は `127.0.0.1:8765`。指定可能な listen address、検証順、失敗時副作用は [`docs/details/api.md` 詳細本文責務 `api` CLI 固定契約](api.md#api-cli-contract)を正本とする。外部公開 bind、hostname、IPv6、wildcard address は拒否する。 |
 | 文字コード | リクエストボディ、レスポンスボディ、状態ファイルは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の文字コード契約を使用する。 |
 | JSON レスポンス | JSON レスポンスには `Content-Type: application/json; charset=utf-8` を付与する。 |
@@ -838,7 +838,7 @@ api / sdk / ui / statefile にまたがる横断 fixture の fixture 名、入�
 
 API の必須検証、fixture 名、入力状態、期待 response、期待副作用は [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約) を参照する。個別 API 節では fixture 名、fixture manifest、testdata 配置、期待副作用、実装検証証跡を再定義しない。
 
-`api` 詳細では、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実装計画上の割当と現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、実装可否と完了判定は [`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#0a-仕様成熟度ポリシー) を参照する。
+`api` 詳細では、API endpoint の method、path、request、response、error、read / write 境界だけを定義する。fixture manifest、testdata 配置、期待副作用、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実装計画上の割当と現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、実装可否と完了判定は [`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#policy-spec-maturity) を参照する。
 
 endpoint の method、path、認証境界、request、response、error、read / write 境界の一覧は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の API 完全契約表を唯一の正本とする。以降は endpoint ごとの追加詳細だけを記載する。
 
@@ -1160,7 +1160,7 @@ test payload は未知 key を含まない `{"event":"notify_test","message":"Te
 
 `.github_token` が未設定または空の場合は `501 {"error":"Not configured"}` とする。設定済みの場合は GitHub `GET /user` を 10 秒 timeout で 1 回だけ呼び出す。GitHub が 2xx を返した場合は `valid:true`、401 または 403 を返した場合は `valid:false` とし、いずれも HTTP `200` で `checked_at` に検証完了時の UTC ISO 8601 秒精度を返す。`scopes` は 2xx response の `X-OAuth-Scopes` を comma で分割し、前後空白除去、空要素除外、byte 昇順、重複除去した配列とする。header 不在または `valid:false` は `[]` とする。network error、timeout、429、5xx は `500 {"error":"PAT verification failed"}` とし、検証結果を状態ファイルへ保存しない。
 
-`valid:true` は `GET /user` が 2xx を返したことだけを表し、対象リポジトリの権限充足を保証しない。`scopes` は response header の観測値だけであり、repository permission の代替判定に使用してはならない。必要権限は [`docs/SPEC.md` ポリシー責務 §5](../SPEC.md#5-ci-ランナー秘密情報公開境界ポリシー) を正本とし、不足時は実際の repository API response に従って runner または commitstatus component が失敗を処理する。
+`valid:true` は `GET /user` が 2xx を返したことだけを表し、対象リポジトリの権限充足を保証しない。`scopes` は response header の観測値だけであり、repository permission の代替判定に使用してはならない。必要権限は [`docs/SPEC.md` ポリシー責務 §5](../SPEC.md#policy-runner-secrets) を正本とし、不足時は実際の repository API response に従って runner または commitstatus component が失敗を処理する。
 
 **`GET /api/history/{id}/log` レスポンス：**
 
@@ -1326,7 +1326,7 @@ wire format、対象 log 選択、途中保存 log、frame 順、有限 close、
 | `size_warn` | boolean | 対応 build log の `report.size_warn`。`report:null` または対応 log 不在は `false`。 |
 | `sha256` | string | 同一 target の直近成功履歴 `output_sha256`。履歴不在または `output_sha256:null` は空文字。それ以外は 64 文字 lowercase hex。 |
 | `build_id` | string | 対応 build log の `build_meta.build_id` を優先し、log 不在または `build_meta:null` では同 target 出力 HTML の `adlaire-build-id` meta を使う。どちらも不在は空文字。 |
-| `commit_sha` | string | 対応 build log の `build_meta.commit_sha` を優先し、log 不在または `build_meta:null` では同 target 出力 HTML の `adlaire-commit-sha` meta を使う。どちらも不在は空文字。非空文字は 7〜40 文字 lowercase hex。 |
+| `commit_sha` | string | 対応 build log の `build_meta.commit_sha` を優先し、log 不在または `build_meta:null` では同 target 出力 HTML の `adlaire-commit-sha` meta を使う。どちらも不在は空文字。非空文字は 40 文字 lowercase hex。 |
 | `build_at` | string | 対応 build log の `build_meta.build_at` を優先し、log 不在または `build_meta:null` では同 target 出力 HTML の `adlaire-build-at` meta を使う。どちらも不在は空文字。非空文字は機械処理時刻形式。 |
 
 `runner` は参照元 build log の生成だけを担当し、API response の不在値や target 選択を定義しない。
@@ -1761,7 +1761,7 @@ cooldown 共通参照は [`docs/details/runner.md` 詳細本文責務 §13](runn
 | 判定順 | path / method 判定後、body parse 前、認証前に実行する。拒否時は password、session token、API token、rate limit state を検証または更新しない。 |
 | 対象外 | `GET /api/health` だけを対象外とする。静的 admin UI、SDK JS、その他 `/api/` 以外の配信はこの契約の対象外。 |
 | allow 正規化 | 重複除去、辞書順 sort、単一 IPv4 は canonical 文字列、CIDR は `IP/mask` 表記へ正規化する。 |
-| IPv6 | 初期実装では保存不可。IPv6 literal または IPv6 CIDR は `422`。 |
+| IPv6 | 保存不可。IPv6 literal または IPv6 CIDR は `422`。 |
 | private / public | private address に限定しない。入力が IPv4 または IPv4 CIDR として妥当なら保存可能。 |
 | 保存順・log 失敗 | `.access_control` atomic write 後に [`docs/details/security.md` 詳細本文責務 監査 record 保存順・失敗契約](security.md#sec-27-44) を適用する。 |
 | 破損 / 読取不能時 | [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) に従い自動修復と上書きを行わず、`GET /api/health` 以外の全 request を `503 {"error":"Access control unavailable"}` で拒否する。body 読取、認証、rate limit 更新、endpoint 固有処理は行わない。 |
@@ -2860,7 +2860,7 @@ api / sdk / ui のいずれも、[`docs/details/api.md` 詳細本文責務 §27]
 | list 並び順 | `created_at` 降順、同時刻は id 昇順。 |
 | list 対象 | id ごとの最新 record だけを返す。古い record は監査履歴として返さない。 |
 | body | approve / reject API は body を受け付けない。 |
-| reject reason | 初期実装では固定 `"rejected"` とする。 |
+| reject reason | 固定 `"rejected"` とする。 |
 
 **異常系：**
 

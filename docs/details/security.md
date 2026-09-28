@@ -79,7 +79,7 @@
 | 反復 | `iterations = 260000`。2 回目以降は `previous_digest`、`salt_bytes`、`password_utf8_bytes` をこの順で byte 連結して SHA-256 digest を生成する処理を繰り返す。 |
 | 保存値 | 最終 digest を lowercase hex 文字列で `.admin_credentials.password_hash` に保存する。 |
 | 比較 | 入力 password から同一手順で digest を生成し、`crypto/subtle.ConstantTimeCompare` で比較する。 |
-| 外部依存 | `golang.org/x/crypto/pbkdf2` 等の外部パッケージは使用しない。 |
+| 実装境界 | `crypto/sha256`、`crypto/rand`、`crypto/subtle`、`encoding/hex` だけで成立する。外部依存の採否は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) を参照する。 |
 
 **password 入力制約：**
 
@@ -576,7 +576,7 @@ session timeout の値は session 発行時に秒単位で加算する。`expire
 | replay 防止 | `.totp_secret.last_accepted_step` 以下の step は拒否する。 |
 | otpauth URI | `otpauth://totp/Adlaire%20CI:admin?secret={secret}&issuer=Adlaire%20CI&algorithm=SHA1&digits=6&period=30`。 |
 
-QR code 生成は初期実装対象外とする。UI は secret と otpauth URI を一回表示し、ユーザーの認証アプリ登録手段は手入力または URI 貼り付けに限定する。
+QR code 生成はこの詳細本文責務では仕様化しない。UI は secret と otpauth URI を一回表示し、ユーザーの認証アプリ登録手段は手入力または URI 貼り付けに限定する。
 
 **メモリ上状態：**
 
