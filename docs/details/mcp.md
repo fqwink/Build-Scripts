@@ -208,7 +208,7 @@ JSON parse 失敗時の HTTP status は `400`、JSON-RPC error response の `id`
 
 `clientInfo.name` と `clientInfo.version` は 1〜128 byte UTF-8、NUL、CR、LF 禁止とする。不正時は `-32602 Invalid params` とし、`.mcp_client_log` を更新しない。
 
-`initialize` 成功時は client name、client version、remote address、capabilities、connected_at を `.mcp_client_log` へ追記する。`.mcp_client_log` 追記失敗時は `-32603 Internal error` を返し、connection を initialized 済みにしない。
+`initialize` 成功時は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpClientRecord` として client name、client version、protocol version、remote address、capabilities、connected_at を `.mcp_client_log` へ追記する。`.mcp_client_log` 追記失敗時は `-32603 Internal error` を返し、connection を initialized 済みにしない。
 
 <a id="sec-29-5"></a>
 **29.5 Tool 一覧：**
@@ -258,7 +258,7 @@ JSON parse 失敗時の HTTP status は `400`、JSON-RPC error response の `id`
 | `adlaire.createConfigSnapshot` | `label` | snapshot id | elicitation 必須。 |
 | `adlaire.diffConfigSnapshots` | `left_id`, `right_id` | diff object | secret は `"***"`。 |
 | `adlaire.restoreConfigSnapshot` | `snapshot_id` | restored paths | elicitation 必須。 |
-| `adlaire.getMetrics` | `{}` | metrics object | `.mcp_metrics` と API metrics を読む。 |
+| `adlaire.getMetrics` | `{}` | metrics object | `.mcp_metrics` と API metrics を読む。返却 snapshot は現在の `adlaire.getMetrics` 呼び出し分を含めず、response data 確定後に現在呼び出しの metrics を更新する。 |
 | `adlaire.getAuditLog` | `limit`, `offset` | audit list | MCP audit tail と API audit を混在させない。 |
 | `adlaire.resendWebhook` | `delivery_id` | resend accepted | elicitation 必須。 |
 
@@ -345,7 +345,21 @@ tool result は必ず以下の wrapper を返す。
 
 失敗は JSON-RPC error とし、`ok:false` result は返さない。
 
-tool params に未知 key がある場合、必須 key 不足、型不一致、範囲外、secret 値を許可しない field への secret 形状入力は `-32602 Invalid params` とし、tool 実行、audit、metrics 更新を行わない。tool 実行開始後の失敗は `.mcp_audit_log` と `.mcp_metrics` に失敗結果を記録する。ただし audit 追記不能時は副作用 tool を失敗扱いにし、対象 owner の状態変更を開始しない。
+tool params に未知 key がある場合、必須 key 不足、型不一致、範囲外、secret 値を許可しない field への secret 形状入力は `-32602 Invalid params` とし、tool 実行、audit、metrics 更新を行わない。
+
+`tools/call` は以下の順序で処理する。
+
+1. tool name を [`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) の固定表に照合する。
+2. params を本節の tool 別 params schema に照合する。
+3. `--read-only`、scope、Authorization を確認する。
+4. 副作用 tool は [`docs/details/mcp.md` 詳細本文責務 §29.15](mcp.md#sec-29-15) の confirmation を確認する。
+5. 副作用 tool は対象 owner component を呼び出す前に [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpAuditRecord` を `status:"accepted"`、`duration_ms:0` で `.mcp_audit_log` へ追記する。
+6. 対象 owner component または sampling request を実行する。
+7. `adlaire.analyzeBuildError` は sampling result を [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpAuditRecord` として `.mcp_audit_log` へ追記する。
+8. 実行結果を [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpMetrics` へ反映する。
+9. JSON-RPC success response または error response を返す。
+
+上記 1〜4 の失敗では、tool 実行、audit、metrics 更新、対象 owner state 更新を行わない。副作用 tool の audit 追記に失敗した場合は `-32603 Internal error` を返し、対象 owner component を呼び出さない。sampling result の audit 追記に失敗した場合は `-32603 Internal error` を返し、metrics を更新しない。対象 owner component または sampling request の開始後に失敗した場合は、結果 status を `.mcp_metrics` に反映する。metrics 更新失敗は `-32603 Internal error` とし、完了済みの対象 owner state を rollback しない。
 
 <a id="sec-29-7"></a>
 **29.7 Resources：**
@@ -419,7 +433,7 @@ sampling request timeout は `.mcp_config.sampling_timeout_ms` を使用する�
 
 timeout 時は `-32003 Timeout` を返す。
 
-sampling result は `.mcp_audit_log` へ prompt hash、build_id、client name、duration_ms、status だけを記録する。
+sampling result は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpAuditRecord` として `.mcp_audit_log` へ追記する。`tool` は `adlaire.analyzeBuildError`、`confirmation_id` は `null`、`build_id` と `prompt_hash` は必須、`status` は `success`、`error`、`timeout` のいずれかとする。
 
 sampling result の本文は statefile へ保存しない。
 
@@ -463,11 +477,11 @@ data: {"reason":"server_shutdown"}
 <a id="sec-29-13"></a>
 **29.13 Tool scope：**
 
-scope は `.mcp_config.scopes` に定義する。
+scope は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `.mcp_config.scopes` に定義する。
 
-token 未指定起動時は local trusted mode とし、loopback 接続に限り全 scope を許可する。
+token 未指定起動時は local trusted mode とし、loopback 接続に限り全 scope を許可する。この場合 `.mcp_config.scopes` は参照しない。
 
-token 指定起動時は token record に紐づく scope だけを許可する。
+token 指定起動時は `--client-token` 値の SHA-256 lowercase hex を `.mcp_config.scopes[].token_hash` と照合し、一致した record の `scopes` だけを許可する。該当 record が存在しない場合は `-32002 Forbidden` を返す。
 
 scope 不足時は `-32002 Forbidden` を返す。
 
@@ -476,7 +490,7 @@ scope 不足時は `-32002 Forbidden` を返す。
 <a id="sec-29-14"></a>
 **29.14 Audit / client / metrics：**
 
-副作用 tool 実行時は `.mcp_audit_log` へ以下を追記する。
+副作用 tool 実行時は対象 owner component を呼び出す前に `.mcp_audit_log` へ以下を追記する。
 
 ```json
 {
@@ -487,16 +501,19 @@ scope 不足時は `-32002 Forbidden` を返す。
   "params_hash": "sha256",
   "scope": "write:build",
   "confirmation_id": "string",
-  "status": "success",
-  "duration_ms": 123
+  "status": "accepted",
+  "duration_ms": 0,
+  "jsonrpc_error_code": null,
+  "build_id": null,
+  "prompt_hash": null
 }
 ```
 
-全 tool 実行は `.mcp_metrics` へ aggregate する。
+全 tool 実行は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpMetrics` へ aggregate する。
 
-metrics key は `tool_name`、`status`、`count`、`last_duration_ms`、`last_at` とする。
+metrics は tool name を key とし、value は `success_count`、`error_count`、`timeout_count`、`last_status`、`last_duration_ms`、`last_at` を持つ。
 
-client 接続は `.mcp_client_log` へ append-only で記録する。
+client 接続は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpClientRecord` として `.mcp_client_log` へ append-only で記録する。
 
 <a id="sec-29-15"></a>
 **29.15 Timeout / config CRUD / elicitation：**
@@ -507,7 +524,7 @@ tool timeout は `.mcp_config.tool_timeout_ms` を使用する。
 
 `adlaire.getMcpConfig` は `.mcp_config` 全体を返す。
 
-`adlaire.setMcpConfig` は `.mcp_config` の許可 key のみ更新する。
+`adlaire.setMcpConfig` は `.mcp_config` の許可 key のみ更新する。`scopes` 更新時は `token_hash` と `scopes` を含む `McpScopeRecord[]` 全体を置換し、token 本体または Authorization header 値を受け取った場合は `-32602 Invalid params` とする。
 
 副作用 tool は以下の elicitation flow を必須とする。
 
@@ -557,7 +574,7 @@ confirmation_id は `mcpconf_` + 128 bit 以上の乱数を Crockford Base32 26 
 - `resources/list` が [`docs/details/mcp.md` 詳細本文責務 §29.7](mcp.md#sec-29-7) の URI を返す。
 - `prompts/list` が [`docs/details/mcp.md` 詳細本文責務 §29.9](mcp.md#sec-29-9) の prompt を返す。
 - 副作用 tool が confirmation なしで実行されない。
-- confirmation 付き副作用 tool が `.mcp_audit_log` を追記する。
+- confirmation 付き副作用 tool が対象 owner component 呼び出し前に `status:"accepted"` の `.mcp_audit_log` を追記し、実行結果を `.mcp_metrics` の `success_count`、`error_count`、`timeout_count` のいずれかへ反映する。
 - tool timeout 超過が `-32003 Timeout` を返す。
 - SSE が keepalive、resource update、shutdown を送信する。
 - sampling tool が server から外部 AI API を直接呼び出さない。

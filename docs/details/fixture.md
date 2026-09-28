@@ -2536,6 +2536,16 @@ MCP fixture は [`docs/details/mcp.md`](mcp.md) 詳細本文責務を確認す�
 | `mcp-sse` | `testdata/mcp/sse/` | keepalive、resource-updated、shutdown、client disconnect、未接続時 notification 破棄。 |
 | `mcp-state-metrics-audit` | `testdata/mcp/state/` | `.mcp_config`、`.mcp_audit_log`、`.mcp_client_log`、`.mcp_metrics` の schema、append、破損時処理。 |
 
+`mcp-state-metrics-audit` は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpConfig`、`McpScopeRecord`、`McpAuditRecord`、`McpClientRecord`、`McpMetrics` を byte 単位で検証する。`.mcp_config.scopes[].token_hash` は SHA-256 lowercase hex だけを許可し、token 本体、Authorization header 値、token の部分文字列を `expected/state/state-diff.json`、`expected/logs/`、`expected/effects.json`、`expected/security.json` に含めてはならない。
+
+`mcp-state-metrics-audit` は `.mcp_metrics.tools["<tool_name>"]` の `success_count`、`error_count`、`timeout_count`、`last_status`、`last_duration_ms`、`last_at` を検証する。`tool_name` は [`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) の tool name と完全一致させる。`tool_name`、`status`、`count` を sibling key として保存する旧形式、`forbidden_count`、未知 metrics key は不合格とする。
+
+`mcp-state-metrics-audit` は `adlaire.getMetrics` の返却 snapshot が現在の `adlaire.getMetrics` 呼び出し分を含まず、response data 確定後に `.mcp_metrics.tools["adlaire.getMetrics"]` を更新する順序を `expected/effects.json.write_order` で固定する。
+
+`mcp-state-metrics-audit` は副作用 tool の実行前 audit と sampling result audit を分けて検証する。副作用 tool の audit は対象 owner component 呼び出し前に `status:"accepted"`、`duration_ms:0`、`jsonrpc_error_code:null`、`build_id:null`、`prompt_hash:null` で `.mcp_audit_log` へ追記する。sampling result audit は `tool:"adlaire.analyzeBuildError"`、`build_id`、`prompt_hash` を持ち、sampling response 本文を保存しない。sampling result audit の追記失敗では JSON-RPC `-32603 Internal error` を返し、`.mcp_metrics` を更新しないことを固定する。
+
+`mcp-state-metrics-audit` は metrics 更新失敗の partial case を持つ。対象 owner component または sampling request が完了した後に `.mcp_metrics` 更新が失敗した場合は、完了済み owner state を rollback せず、JSON-RPC `-32603 Internal error` を返し、失敗地点以降の追加 write を行わないことを `expected/effects.json` の `write_order`、`updated_paths`、`unchanged_paths`、`forbidden_writes` で固定する。
+
 MCP 実装検証証跡には、tool 名、resource URI、prompt 名、scope、confirmation、timeout、audit、metrics、client log、SSE event、未実施項目を含める。副作用 tool を確認する場合、confirmation なし実行拒否と confirmation 付き実行成功の両方を必須とする。secret、token、Authorization header、raw params の secret 値が stdout、stderr、audit、client log、metrics、expected に出現した場合は不合格とする。
 
 MCP fixture の expected file は fixture 名ごとに以下へ固定する。対象外の expected file は `manifest.json.not_applicable` に理由を記録する。
@@ -2589,6 +2599,6 @@ MCP fixture の `manifest.json.assertions` は次表に固定する。複数値�
 
 MCP JSON-RPC failure fixture は、`id` の保持、`jsonrpc:"2.0"`、error code、message、data の有無を `expected/response.json` に固定する。parse error、invalid request、batch request、method not found、invalid params、unauthorized、forbidden、timeout は別 fixture とし、1 fixture で複数の失敗分類を兼用してはならない。initialize 前に許可されない method を呼んだ場合、`.mcp_client_log`、`.mcp_audit_log`、`.mcp_metrics`、対象 owner state の各副作用有無を `expected/effects.json` に明示する。
 
-MCP tool call fixture は、`tools/list` の descriptor と `tools/call` の request / response を別 assertion として記録する。副作用 `yes` の tool は、confirmation なし拒否、confirmation params hash 不一致、confirmation 期限切れ、confirmation 付き成功を別 fixture とする。confirmation なし拒否、不一致、期限切れでは対象 owner state、runner queue、config、archive、notification、audit 対象外 log を更新してはならない。confirmation 付き成功では、tool 実行開始前の audit 追記、対象 owner 呼び出し、metrics 更新、JSON-RPC success response の順序を `expected/effects.json` に記録する。
+MCP tool call fixture は、`tools/list` の descriptor と `tools/call` の request / response を別 assertion として記録する。副作用 `yes` の tool は、confirmation なし拒否、confirmation params hash 不一致、confirmation 期限切れ、confirmation 付き成功を別 fixture とする。confirmation なし拒否、不一致、期限切れでは対象 owner state、runner queue、config、archive、notification、`.mcp_audit_log`、`.mcp_metrics` を更新してはならない。confirmation 付き成功では、`status:"accepted"` の audit 追記、対象 owner 呼び出し、metrics 更新、JSON-RPC success response の順序を `expected/effects.json` に記録する。
 
 MCP security fixture は、Authorization header、API token、session token、tool params 内 secret、prompt 本文に含まれる secret、sampling request 本文の secret が stdout、stderr、`.mcp_client_log`、`.mcp_audit_log`、`.mcp_metrics`、`expected/response.json`、`expected/events.json` に平文で出現しないことを `expected/security.json` に列挙する。secret を placeholder として表す場合は `${secret:<source_id>}` だけを使用し、実値、hash 入力、部分文字列、長さから復元可能な値を expected file に置いてはならない。
