@@ -182,7 +182,7 @@ export { AdlaireCI, AdlaireCIError };
 | URL 組み立て | パスは `/api/...` をそのまま連結する。query key は各 method の固定名をそのまま使用し、query value は `encodeURIComponent(String(value))` の結果を使用する。空白は `%20` とし、`+` への変換を禁止する。 |
 | 認証ヘッダー | `this._token` が存在する場合のみ `Authorization: Bearer ${token}` を付与する。 |
 | JSON 送信 | `POST` / `DELETE` で body を送る場合は `Content-Type: application/json` を付与し、`JSON.stringify` した body を送信する。 |
-| JSON 受信 | `Content-Type` が JSON の場合のみ `response.json()` を呼ぶ。[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) で JSON response を定義した endpoint の成功時に空 body を受信した場合は protocol error として `AdlaireCIError(status=0, message="Empty JSON response")` を投げる。 |
+| JSON 受信 | body 読取、media type 判定、空 body 判定、parse、error 変換は [SDK transport / error 固定契約](#sdk-transport-error-contract) を唯一の本文とする。`response.json()` を使用してはならない。 |
 | `AdlaireCIError` | `name="AdlaireCIError"`、`status`、`message`、`details`、`responseBody` を持つ `Error` 派生クラスとする。constructor は `new AdlaireCIError({status, message, details = null, responseBody = null})` とし、network error、timeout、protocol error は `status=0` とする。`message` は API error response の `error`、network error は `"Network error"`、timeout は `"Request timeout"`、protocol error は固定文言を使用する。 |
 | `logout()` | API 呼び出しが失敗しても `finally` で `this._token` をクリアする。 |
 | request timeout | 通常 API の 30 秒は `fetch()` 開始から JSON text または Blob の body 読取完了までとする。response header 受信時に timeout を解除しない。SDK 自身の timeout で header 待機または body 読取が abort した場合は `AdlaireCIError(status=0, message="Request timeout")` を投げる。`streamBuild()` は接続確立まで 30 秒、接続確立後は timeout なしとし、利用者が `StreamHandle.close()` で停止する。 |
@@ -200,6 +200,7 @@ export { AdlaireCI, AdlaireCIError };
 | 戻り値補完禁止 | 成功時は API response にない key を追加しない。失敗時は HTTP status、API error、details、responseBody 以外を推測しない。fallback 値は API response に含まれる値だけを返し、表示用加工は UI 側で行う。 |
 | retry | SDK は自動 retry を行わない。ユーザー操作による再実行、または UI の明示的な再取得のみを許可する。 |
 
+<a id="sdk-transport-error-contract"></a>
 **SDK transport / error 固定契約：**
 
 SDK の内部 request helper は、すべての public method で [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の固定表の処理順に固定する。public method ごとに個別 fetch 処理を複製してはならない。

@@ -48,8 +48,8 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 | 項目 | 固定値 |
 |------|--------|
 | Go 最小バージョン | Go `1.22` 以上。 |
-| 文字コード | 入力、出力、状態ファイル、HTTP body は UTF-8。 |
-| 改行 | 新規 text / JSON Lines は LF。CRLF 入力は読み込み時に LF として扱う。 |
+| 文字コード | JSON、JSON Lines、および owner 詳細本文が text と定義する入力・出力・HTTP body は UTF-8 とする。binary response、圧縮 archive、出力成果物内の通常 file は byte 列として扱い、文字コードを適用しない。状態ファイルの text / binary 区分は [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a) を正本とする。 |
+| 改行 | 新規 JSON object / array と JSON Lines は LF とする。text の改行正規化、末尾 LF、byte 保持、CR / CRLF の許否は各 owner 詳細本文を正本とし、共通処理で変換しない。binary response、圧縮 archive、出力成果物内の通常 file には改行規則を適用しない。状態ファイルは [`docs/details/statefile.md` 詳細本文責務 UTF-8 text payload 固定契約](details/statefile.md#statefile-text-payload-contract) を参照する。 |
 | <a id="common-machine-time"></a>機械処理時刻 | UTC の ISO 8601 秒精度 `YYYY-MM-DDTHH:MM:SSZ`。ミリ秒、ナノ秒、UTC 以外の offset、local timezone の保存を禁止する。ローカル時刻は UI 表示だけで使用する。 |
 | CLI 終了コード | `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` `.build_lock` の schema / PID 解析不正、PID 実行中判定不能、または lock 作成失敗。実行中 lock による通常 skip は `0`。 |
 | CLI 共通 option | `--help` と `--version`。parse、優先順位、出力、副作用は [CLI 共通固定契約](#common-cli-contract) に従う。 |
