@@ -1,6 +1,6 @@
 # Adlaire CI — 仕様ドキュメント
 
-**標準実装 artifact：** [`main.go`](../main.go) / [`components/builder.go`](../components/builder.go) / [`components/runner.go`](../components/runner.go) / [`components/api.go`](../components/api.go) / [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) / [`admin/index.html`](../admin/index.html)
+**標準実装 artifact：** [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) のディレクトリ構成 tree を参照
 **実装 artifact / 機能現在状態：** [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照
 **出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **仕様世代：** Go 初期仕様
@@ -9,36 +9,29 @@
 
 ---
 
-> **Adlaire CI** とは、最初から Go を前提として仕様策定するビルド・CI・管理システムの総称である。標準実装 artifact は [`main.go`](../main.go)、[`components/builder.go`](../components/builder.go)、[`components/runner.go`](../components/runner.go)、[`components/api.go`](../components/api.go)、[`admin/index.html`](../admin/index.html)、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) とする。これらの実装 artifact、各機能、[`components/mcp.go` 将来追加予定 path](ROADMAP.md) の現在状態、Phase、将来計画への割り当ては [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照し、状態語彙と実装可否の定義は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を参照する。
+> **Adlaire CI** とは、最初から Go を前提として仕様策定するビルド・CI・管理システムの総称である。
 
 ## 文書責務
 
 [`AGENTS.md`](../AGENTS.md) と [`docs/SPEC.md`](SPEC.md) は、本リポジトリにおける最上位文書である。
 
-[`AGENTS.md`](../AGENTS.md) は、作業ルール、承認、Git 操作、Pull Request 作成、レビュー対応、検証手順、エージェント実行手順の最上位ルールブックである。
+[`AGENTS.md`](../AGENTS.md) は作業ルールの最上位正本、[`docs/SPEC.md`](SPEC.md) は仕様、方針、ポリシー、禁止事項、完了扱い、実装着手可否の最上位正本である。各文書の責務範囲と矛盾時の正本は、本文書の「責務文書構成」だけで定義する。
 
-[`docs/SPEC.md`](SPEC.md) は、仕様、方針、ポリシー、状態語彙、状態定義、状態遷移条件、正本参照先、禁止事項、リリース判断、実装着手可否の最上位仕様書である。
-
-作業ルール上の矛盾は [`AGENTS.md`](../AGENTS.md) を正とする。
-
-仕様、方針、ポリシー、状態語彙、状態定義、状態遷移条件、正本参照先、禁止事項、リリース判断、実装着手可否の矛盾は [`docs/SPEC.md`](SPEC.md) を正とする。実装 artifact と各機能へ割り当てた現在状態の矛盾は [`docs/ROADMAP.md`](ROADMAP.md) を正とする。
-
-[`docs/SPEC.md`](SPEC.md) は、なぜその運用が必要か、仕様として何を禁止するか、どの状態を完了扱いにしてはならないかを定義する。[`AGENTS.md`](../AGENTS.md) は、承認、実行コマンド、Git 操作、PR 作成、検証手順をどう実行するかを定義する。
-
-完了扱いの可否、実装着手可否、仕様変更単位、禁止事項の判断で迷う場合は [`docs/SPEC.md`](SPEC.md) を正とする。実行順序、コマンド、確認手順、PR 操作手順の判断で迷う場合は [`AGENTS.md`](../AGENTS.md) を正とする。
+[`docs/SPEC.md`](SPEC.md) は「なぜ必要か」と「何を禁止するか」を定義し、[`AGENTS.md`](../AGENTS.md) は承認、実行コマンド、Git 操作、Pull Request 操作、検証手順を定義する。仕様判断と作業手順を同一の正本で定義してはならない。
 
 方針・ポリシーの配置、生成静的 Web サイトと標準管理 UI のデザイン関係の例外、詳細本文との分離、`技術方針` 表と `ディレクトリ構成` tree の削除禁止は、[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則を唯一の本文とする。[`docs/SPEC.md`](SPEC.md) 方針責務の入口では同じ禁止事項を再定義しない。
 
+[`docs/SPEC.md`](SPEC.md) 内の節を参照する場合は、表示文言に `方針責務` または `ポリシー責務` と節番号を必ず併記する。両責務は独立した節番号体系を持つため、責務名を伴わない節番号、または `docs/SPEC.md §番号` だけの参照を仕様判断に使用してはならない。
+
 ## 状態参照方針
 
-状態語彙、各状態の定義、実装可否、状態遷移条件、実装着手条件、完了条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を唯一の正本とする。
-
-実装 artifact と各機能の現在状態、対象 Phase、依存順序、将来計画一覧は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を唯一の正本とする。[`docs/ROADMAP.md`](ROADMAP.md) は状態語彙、状態定義、実装可否、状態遷移条件を再定義してはならない。
+状態語彙、状態定義、実装可否、状態遷移条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、実装 artifact と各機能の現在状態、Phase、依存順序、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を唯一の正本とする。
 
 ---
 
 ## 責務文書構成
 
+<a id="document-responsibility-map"></a>
 | 責務 | 正本 | 責務の問い | 記載する内容 |
 |------|------|-----------|------------|
 | 方針責務 | [`docs/SPEC.md`](SPEC.md) | **なぜ・何を** | 目的、設計思想、方向性の原則。変更頻度が低く、判断の拠り所となる指針。 |
@@ -53,7 +46,7 @@
 
 新しい記載内容は「この内容はどの責務の問いに答えるか」を基準に、責務を持つ正本を決定する。
 
-判断対象が方針またはポリシーである場合、責務を持つ正本は必ず [`docs/SPEC.md`](SPEC.md) とする。ただし、判断対象が生成静的 Web サイトまたは標準管理 UI のデザイン関係である場合、責務を持つ正本は [`docs/DESIGN.md`](DESIGN.md) とする。判断対象が実装詳細、実装 artifact または機能の現在状態、文書所在、利用入口、fixture 証跡のいずれかである場合だけ、該当責務の正本を参照する。
+新しい判断対象の正本は、[責務文書構成表](#document-responsibility-map) の責務の問いと記載内容だけで決定する。表の分担に一致しない他文書を、例外の正本としてはならない。
 
 実装者は、実装前に以下の参照順序方針に従う。
 
@@ -68,8 +61,6 @@
 
 # 方針責務
 > 目的・設計思想・方向性の原則を定める。「なぜこう作るか」に答える。
-
-方針責務の節を参照する場合は、必ず [`docs/SPEC.md`](SPEC.md) 方針責務 §番号 の形式で記載する。番号だけ、または `docs/SPEC.md §番号` だけで参照してはならない。
 
 ## 1. 目的
 
@@ -88,18 +79,18 @@
 
 ## 4. 技術方針
 
-[`docs/SPEC.md` 方針責務 §4](SPEC.md#4-技術方針) の技術方針表は、Adlaire CI の技術選定に関する方針責務本文である。削除、他文書への移動、参照だけへの置き換えを禁止する。詳細仕様は [`docs/SPEC.md` 方針責務 §4](SPEC.md#4-技術方針) の技術方針表に従い、具体的な入出力、処理順序、例外条件、検証条件を owner component 別の [`docs/details/*.md`](details/) 詳細本文責務へ記載する。
+以下の技術方針表は Adlaire CI の技術選定を定義する。詳細仕様はこの表に従い、具体的な入出力、処理順序、例外条件、検証条件を owner component 別の [`docs/details/*.md`](details/) 詳細本文責務へ記載する。
 
 | 領域 | 方針 |
 |---|---|
 | ランタイム | 正式公開済みの Go stable toolchain。最低バージョンは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](DETAIL_INDEX.md#0d-共通固定値) の共通固定値とし、beta、release candidate、開発 snapshot は使用しない。 |
-| 言語 | Go（ビルド、ランナー、管理 API）/ JavaScript（SDK）/ HTML・CSS・Vanilla JavaScript（UI） |
+| 言語 | Go（ビルド、ランナー、管理 API、セットアップ、リリース）/ JavaScript（SDK）/ HTML・CSS・Vanilla JavaScript（UI） |
 | HTTP | Go 標準ライブラリ `net/http` |
 | データベース | なし（ファイルベース） |
-| Git 操作 | GitHub REST API（Blobs API）を Go 標準ライブラリ `net/http` 経由で呼び出す |
+| Git・GitHub 参照 | `runner` の source 取得は GitHub REST API の Blobs / Trees API を Go 標準ライブラリ `net/http` 経由で行う。`release` の local commit / tag / source 参照は read-only Git command、remote repository / branch / tag / Release 参照は GitHub REST API を使用する。実行時の Git 状態変更、ref 作成・更新・削除、fetch、checkout、merge、commit、push は行わない。 |
 | フロントエンド | HTML / CSS / Vanilla JavaScript |
 | 標準運用 | systemd を使用する自己管理 Linux CI サーバーでビルドし、別ホストの静的コンテンツ配信サーバーへ SSH で転送する 2 サーバー構成 |
-| データ交換形式 | JSON に統一する。エクスポート・インポートを含む全 API データ交換に CSV・XML 等の非 JSON 形式を使用しない |
+| データ交換形式 | 構造化 API request / response は JSON に統一し、CSV・XML 等の代替構造化形式を使用しない。例外は、保存済み build log の有限 SSE response、保存済み snapshot の binary response、管理ツールの静的 asset response だけとする。例外となる endpoint、media type、body、失敗時 JSON response は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK の受信・変換契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする。詳細本文責務に明示されていない非 JSON API 交換を実装してはならない |
 
 <a id="41-ゼロ依存フルインハウス原則"></a>
 
@@ -114,14 +105,23 @@ Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核と
 
 各コンポーネントの自律性は以下を満たす。
 
-| owner component | 標準実装 artifact | 自律性の条件 |
-|-----------------|-------------------|--------------|
+| owner component | 実装内包先 / 配布対象 | 自律性の条件 |
+|-----------------|---------------------|--------------|
 | `builder` | `components/builder.go` | Go 標準ライブラリだけで Markdown 解析、HTML/CSS/JS/search index 生成、検証レポート出力を行う。外部 Markdown parser、template engine、syntax highlight library、search library に依存しない。 |
 | `runner` | `components/runner.go` | Go 標準ライブラリと OS 標準コマンドだけで GitHub API polling、SHA 比較、ビルド起動、ログ、通知、SSH 転送、snapshot、lock、retry を処理する。外部 CI サービス、job queue、scheduler library に依存しない。 |
 | `api` | `components/api.go` | Go 標準ライブラリ `net/http` を基本に、認証、session、状態ファイル CRUD、入力検証、API response を内製実装する。外部 web framework、router、ORM、database driver に依存しない。 |
+| `setup` | `components/setup.go` | Go 標準ライブラリと明示した OS 標準 command だけで Release asset 取得、checksum 検証、配置、systemd 操作、更新、rollback を実装する。外部 installer framework、package manager、shell script を実装主体にしない。 |
+| `release` | `components/release.go` | Go 標準ライブラリ、Go toolchain、Git command、GitHub REST API だけで再現可能な成果物生成、checksum、draft upload、再取得検証、正式公開を実装する。外部 release framework、archive tool、checksum tool に依存しない。 |
 | `sdk` | `admin/adlaire-ci-sdk.js` | 単一 ES Module とし、browser 標準 API のみで API client、error handling、streaming、timeout を実装する。npm package、bundler、polyfill、framework に依存しない。 |
 | `ui` | `admin/index.html` | HTML / CSS / Vanilla JavaScript だけで標準管理ツールを構成し、SDK 経由で通信する。React、Vue、Svelte、CSS framework、icon package、chart library に依存しない。 |
+| `admin` | `admin/index.html`、`admin/adlaire-ci-sdk.js` | 管理 UI 静的配布物の構成、検証、配信境界を本リポジトリ内で完結させる。外部 asset pipeline、CDN、archive framework に依存しない。 |
+| `statefile` | `components/runner.go`、`components/api.go` | Go 標準ライブラリだけで状態 schema、lock、atomic write、JSON Lines、破損検出を処理する。外部 database、storage engine、serialization library に依存しない。 |
+| `archive` | `components/runner.go`、`components/api.go` | Go 標準ライブラリだけで archive、snapshot、展開、検証、世代管理を処理する。外部 archive tool、snapshot service、object storage SDK に依存しない。 |
+| `commitstatus` | `components/runner.go` | Go 標準ライブラリ `net/http` だけで GitHub Commit Status payload、送信、応答検証を処理する。外部 GitHub client library、CI status service に依存しない。 |
+| `security` | `components/api.go` | Go 標準ライブラリだけで認証、認可、token、session、TOTP、rate limit、audit、secret 処理を実装する。外部 authentication framework、secret management SDK に依存しない。 |
 | `mcp` | `components/mcp.go`（将来追加予定 path） | 仕様化する場合も Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。本行は現在状態、実装着手許可、詳細仕様成立、実ファイル作成許可を意味しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
+
+「実装内包先 / 配布対象」列は、owner component の責務を実装または配布する artifact の所在を示す。同列を、owner component と artifact の同一視、単独専用 artifact の存在保証、現在状態、実装着手許可の根拠として使用してはならない。実装 artifact の実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、実装 artifact と機能の現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
 
 [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のコンポーネント自律性表はコンポーネント自律性の方針であり、関数単位の処理、入出力、状態、異常系、検証条件を定義するものではない。各コンポーネントの具体的な実装契約は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
 
@@ -177,7 +177,27 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則は [`docs/SPEC.md`](SPEC.md) 全体に適用する。[`docs/SPEC.md`](SPEC.md) 内の各記載は、方針責務、ポリシー責務、状態・計画責務の参照、詳細仕様入口責務の参照、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の参照、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の参照、文書・実装ファイル所在の索引責務の参照、利用入口責務の参照のいずれかとして読めなければならない。
 
-責務ベース明示的原則とは、方針・ポリシー・状態語彙・状態定義・状態遷移条件、実装 artifact と機能の現在状態・Phase・将来計画、詳細仕様本文、fixture・expected・fake・検証証跡、文書・実装所在を、それぞれ異なる責務として明示的に分離し、同一判断対象を複数文書で正本化しない原則である。
+責務ベース明示的原則とは、方針・ポリシー・状態語彙・状態定義・状態遷移条件、実装 artifact と機能の現在状態・Phase・将来計画、詳細仕様本文、fixture・expected・fake・検証証跡、文書・実装所在を、それぞれ異なる責務として明示的に分離する原則である。
+
+<a id="spec-global-no-duplicate-principle"></a>
+**仕様全般重複記載禁止原則：**
+
+仕様上の一つの判断対象は、一つの責務正本だけが本文を持たなければならない。この原則は、[`docs/SPEC.md`](SPEC.md)、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/details/fixture.md`](details/fixture.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の仕様全般に適用する。
+
+同一判断対象について、完全一致する記載、言い換え、要約、部分転載、表または箇条書きへの再掲、具体値、条件、禁止事項、schema、処理順序、異常系、検証条件の再定義を重複記載として禁止する。複数箇所の内容が一致する場合は重複違反、内容が一致しない場合は重複違反かつ仕様矛盾として扱う。
+
+正本以外の文書は、正本の内容を説明、補足、要約、緩和、例外化、再解釈してはならない。責務外の判断対象が必要な場合は、責務名付き Markdown link で正本の該当 anchor を参照し、自分の責務に固有の内容だけを記載する。参照先に必要な仕様が存在しない場合は、参照元へ仮置きまたは補足せず、責務を持つ正本を先に改訂する。責務を持つ正本で確定できない内容は未確定として扱い、仕様化済みとして扱ってはならない。
+
+分かりやすさ、参照性、一覧性、実装者向け補足、または文書単体で理解できることを、重複記載の理由として認めない。これらは責務名、責務正本、正本範囲、参照 anchor を明示した Markdown link によって担保する。
+
+重複記載を発見した場合は、責務ベース明示的原則によって唯一の正本を確定し、正本だけに本文を残す。正本以外の重複本文は削除し、必要な参照だけを責務名付き Markdown link へ置き換える。正本を確定できない状態、重複記載が残る状態、または参照へ置き換えた結果として実装判断に必要な情報が失われる状態を、仕様整合完了として扱ってはならない。
+
+次の記載だけは、同一判断対象の正本本文を持たず、正本の意味を追加または変更しない場合に限り、重複記載として扱わない。
+
+- Markdown link の参照対象を識別するために必要な機能名、責務名、owner component 名、ファイル名、節名、anchor 名。
+- 索引責務または詳細仕様入口責務が管理する path、存在区分、owner 対応、参照先。
+- collaborator component が自分の責務として持つ接続、入力受け渡し、出力受け渡し、変換、失敗伝播の固有契約。
+- fixture 証跡責務が正本へのリンクとともに記録する入力、操作、期待結果、assertion、実装検証証跡。これらは仕様本文の正本ではなく、正本との一致を検証する証跡としてだけ扱う。
 
 正本参照先は、必ず責務名とファイル名で示す。文書を章構成、便宜分類、または他文書の従属章として扱ってはならない。[`docs/SPEC.md`](SPEC.md) 内部の見出しも責務名で示し、`Part` 名称で扱ってはならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/details/*.md`](details/)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) を [`docs/SPEC.md`](SPEC.md) の章として扱ってはならない。
 
@@ -197,29 +217,19 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 方針とポリシーは [`docs/SPEC.md`](SPEC.md) だけに記載する。ただし、生成静的 Web サイトと標準管理 UI のデザイン関係は [`docs/DESIGN.md`](DESIGN.md) だけに記載する。詳細仕様、ロードマップ、索引、README、実装ファイル、fixture、PR 本文は、方針またはポリシーを本文として定義、補足、緩和、例外化、再解釈してはならない。
 
-方針またはポリシーに該当する記載を [`docs/SPEC.md`](SPEC.md) から削除し、他文書への参照だけに置き換えてはならない。ただし、生成静的 Web サイトと標準管理 UI のデザイン関係は [`docs/SPEC.md`](SPEC.md) に本文を置かず、[`docs/DESIGN.md`](DESIGN.md) に記載する。方針またはポリシーを整理する場合は、[`docs/SPEC.md`](SPEC.md) 内で責務名、適用範囲、禁止事項、参照先を明示して整える。
+方針またはポリシーに該当する記載を [`docs/SPEC.md`](SPEC.md) から削除し、他文書への参照だけに置き換えてはならない。方針またはポリシーを整理する場合は、[`docs/SPEC.md`](SPEC.md) 内で責務名、適用範囲、禁止事項、参照先を明示して整える。
 
 [`docs/SPEC.md`](SPEC.md) の `技術方針` 表と `ディレクトリ構成` tree は、方針責務本文である。これらを実装詳細、状態一覧、索引本文とみなして削除、他文書へ移動、または参照だけへ置き換えてはならない。
-
-詳細仕様は実装詳細だけを記載する。ロードマップは実装 artifact と各機能の現在状態、Phase、機能インベントリ、将来計画だけを記載する。実装可否、着手条件、状態遷移条件、完了判定方針は [`docs/SPEC.md`](SPEC.md) だけに記載する。索引は文書と実装ファイルの所在だけを記載する。README は利用入口だけを記載する。fixture、expected、fake、個別 acceptance assertion、実装検証証跡は検証責務だけに記載する。
-
-各文書は、自分の責務外の内容を本文として記載してはならない。責務外の内容が必要な場合は、責務を持つ正本と節番号を参照する。参照先に必要な内容が存在しない場合は、参照元へ補足を書かず、責務を持つ正本側を改訂する。責務を持つ正本側で確定できない内容は未確定として扱い、仕様化済みとして扱ってはならない。
-
-分かりやすさは、同じ説明を複数文書へ重複記載することで担保してはならない。分かりやすさは、責務名、責務を持つ正本、正本範囲、参照節を明示することで担保する。責務名を使わない正本説明、判断に迷う記載、二重に読める記載、例外に見える記載、参照先を持たない責務外説明は禁止する。
 
 owner component は対象機能の詳細本文を持つ。collaborator component は、境界、接続、入力受け渡し、出力受け渡し、検証観点として参照される。collaborator component は、owner component の本文を置き換えたり、同じ判断対象を別正本として再定義したりしてはならない。
 
 owner component と実装 artifact は別の判断対象とする。owner component は機能契約の責務境界であり、単独の実装ファイルが存在することを意味しない。実装 artifact は [`main.go`](../main.go)、`components/*.go`、`admin/*`、実行バイナリ、配布物、または運用実行物のように、リポジトリまたはリリースで実在と実行可否を確認できる対象をいう。owner component が持つ機能の現在状態を、同名の実装 artifact が存在するという理由だけで判定してはならない。
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact の現在状態と owner component が持つ機能の現在状態を区別して記録する。単独の専用 Go 実装 artifact を持たない `admin`、`statefile`、`archive`、`commitstatus`、`security`、`setup`、`release` の owner component は、機能インベントリの現在状態で管理する。実装 artifact の path、起動名、入力 interface のいずれかが必要であるにもかかわらず未定義の機能は、実装可能な仕様として扱ってはならない。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact の現在状態と owner component が持つ機能の現在状態を区別して記録する。単独の専用 Go 実装 artifact を持たない `admin`、`statefile`、`archive`、`commitstatus`、`security` の owner component は、機能インベントリの現在状態で管理する。実装 artifact の path、起動名、入力 interface のいずれかが必要であるにもかかわらず未定義の機能は、実装可能な仕様として扱ってはならない。
 
-fixture、expected、fake、検証証跡、個別 acceptance assertion は検証責務として扱い、[`docs/details/fixture.md`](details/fixture.md) を正本とする。状態語彙、状態定義、実装可否、状態遷移条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、実装 artifact と各機能の現在状態、Phase、将来計画は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。詳細仕様参照入口、owner 対応表、collaborator 境界参照入口、共通固定値は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を正本とする。生成静的 Web サイトと標準管理 UI のデザイン関係はデザイン責務として扱い、[`docs/DESIGN.md`](DESIGN.md) を正本とする。文書配置と実装ファイル所在は、文書・実装ファイル所在の索引責務として扱い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
+[責務文書構成表](#document-responsibility-map) の owner component 別詳細本文責務で [`docs/details/*.md`](details/) を総称として参照する場合でも、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を含めて読んではならない。
 
-[`docs/details/*.md`](details/) を総称として参照する場合でも、[`docs/details/fixture.md`](details/fixture.md) を owner component 別詳細本文責務に含めて読んではならない。fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件は、常に [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務として扱う。
-
-[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則は、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の記載整理より上位の方針である。これらの文書を整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) に従い、重複本文を増やさず、責務と参照先を明示する。
-
-[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) への違反が残る状態では、仕様整合完了、仕様 PR 完了、実装着手、実装済み判定を行ってはならない。
+仕様全般を整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) を、各文書の個別整理規則より上位の方針として適用する。
 
 <a id="43-ディレクトリ構成"></a>
 
@@ -228,9 +238,7 @@ fixture、expected、fake、検証証跡、個別 acceptance assertion は検証
 
 Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
-ディレクトリ構成 tree は、Adlaire CI のディレクトリ構成を明示する方針責務本文である。削除、他文書への移動、参照だけへの置き換えを禁止する。[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は所在索引として [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) に従う。
-
-ディレクトリ構成は以下とする。
+ディレクトリ構成 tree は以下とする。[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は所在索引として [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) に従う。
 
 ```text
 .
@@ -242,7 +250,12 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   ├── runner.go
 │   ├── runner_test.go
 │   ├── api.go
-│   └── api_test.go
+│   ├── api_test.go
+│   ├── setup.go
+│   ├── setup_test.go
+│   ├── release.go
+│   ├── release_test.go
+│   └── mcp.go
 │
 ├── admin/
 │   ├── index.html
@@ -269,7 +282,8 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   ├── archive/
 │   ├── commitstatus/
 │   ├── security/
-│   └── setup/
+│   ├── setup/
+│   └── release/
 │
 ├── docs/
 │   ├── SPEC.md
@@ -285,6 +299,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   │   ├── ui.md
 │   │   ├── admin.md
 │   │   ├── setup.md
+│   │   ├── release.md
 │   │   ├── statefile.md
 │   │   ├── security.md
 │   │   ├── archive.md
@@ -297,9 +312,9 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 └── go.mod
 ```
 
-[`main.go`](../main.go) は 1 ファイルとし、起動入口、実行ファイル名判定、引数受け取り、対象 owner component 呼び出しだけを担当する。[`main.go`](../main.go) に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、MCP 処理の実装詳細を書いてはならない。
+[`main.go`](../main.go) は 1 ファイルとし、起動入口、実行ファイル名の exact 判定、引数受け取り、binary version 注入値の受け渡し、対象 owner component 呼び出しだけを担当する。[`main.go`](../main.go) に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、setup、release、MCP 処理の実装詳細を書いてはならない。未知の実行ファイル名を既定 owner component へ fallback してはならない。
 
-`components/` は、1 標準 Go 実装対象 = 1 Go ファイルとする。この 1 ファイル原則は実装 artifact の配置規則であり、owner component と実装 artifact を同一概念にする規則ではない。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は Go 実装 artifact ではなく `admin/` 配下の静的配布物を所有する責務境界として扱う。`statefile`、`archive`、`commitstatus`、`security`、`setup`、`release` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+`components/` は、1 標準 Go 実装対象 = 1 Go ファイルとする。この 1 ファイル原則は実装 artifact の配置規則であり、owner component と実装 artifact を同一概念にする規則ではない。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は Go 実装 artifact ではなく `admin/` 配下の静的配布物を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup.go` と `components/release.go` とする。`statefile`、`archive`、`commitstatus`、`security` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
@@ -338,59 +353,21 @@ owner component 別の [`docs/details/*.md`](details/) は、詳細本文責務�
 <a id="sec-4-6"></a>
 **4.6 Phase 実装単位方針：**
 
-Adlaire CI の実装順序、実装計画、実装 PR、完了判定は Phase 単位でのみ管理する。
-
-Phase 実装単位方針は、Phase を実装単位とする方針を定める。Phase 単位で行わなければならない事項、優先度ラベルを実装単位として使ってはならない事項、Phase 途中追加の禁止事項は、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) の Phase 実装単位ポリシーを正本とする。
-
-Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件が明確な実装単位である。Phase の一覧、現在状態、順序、依存関係は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#4-phase-実装計画)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、個別の実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、個別の acceptance assertion と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。
-
-優先度ラベル、抽象段階、API 内部分類、fixture 分類を実装単位、PR 単位、完了判定単位として扱わない禁止事項は、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) を正本とする。
-
-個別 Phase の対象 owner、現在状態、順序、依存関係は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。[`docs/SPEC.md`](SPEC.md) は、Phase 単位でのみ実装する方針、着手条件、完了判定方針、優先度ラベルを実装単位として扱わないポリシーを定義する。
-
-将来計画、改訂予定、未仕様化の機能は Phase に含めない。対象機能を Phase に含める場合は、先に詳細仕様、検証条件、受け入れ条件を整え、`仕様化済み・未実装` へ昇格させる。
+Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件を一体として管理する実装単位である。Phase 単位の必須操作、active Phase、優先度ラベルの使用禁止、途中追加禁止は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) を唯一の正本とする。Phase の一覧、現在状態、順序、依存関係は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#4-phase-実装計画)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、個別の実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、acceptance assertion と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。
 
 <a id="47-実装着手ゲート方針"></a>
 
 <a id="sec-4-7"></a>
 **4.7 実装着手ゲート方針：**
 
-実装者は、対象コンポーネントについて以下をすべて満たすまで実装に着手してはならない。
-
-実装順序、実装計画、実装 PR、完了判定は、[`docs/SPEC.md` 方針責務 §4.6](SPEC.md#sec-4-6) の Phase 実装単位方針と [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) の Phase 実装単位ポリシーに従う。
-
-| 判定項目 | 着手条件 |
-|----------|----------|
-| 正本確認 | [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の対象節を確認済みである。 |
-| 状態分類 | 新規実装へ着手する対象は `仕様化済み・未実装` である。`実装中・検証未完了` は既着手範囲の継続、修正、検証だけを許可する。`実装済み` は新規実装の着手状態として扱わず、仕様変更を伴う改修では承認済み仕様変更と再検証条件を先に確定する。`未仕様化`、`将来計画`、`改訂予定` は実装不可とする。 |
-| 詳細節対応 | 対象機能が [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)〜[§0i.5](DETAIL_INDEX.md#0i5-setup--release) の詳細節対応表に含まれ、該当する owner component 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できる。 |
-| 必須項目充足 | 対象機能の詳細仕様が [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を満たしている。 |
-| 責務境界 | 対象コンポーネント、呼び出し元、呼び出し先、状態ファイル、外部接続先が明確である。 |
-| 契約同期 | API、SDK、UI、状態ファイル、セットアップ、検証条件のうち関係する仕様が同時に整合している。 |
-| 禁止事項 | 外部依存、秘密情報、直接 API 呼び出し、互換処理、暗黙フォールバックなどの禁止事項が明確である。 |
-| 完了条件 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) の完了判定方針、owner component 詳細本文、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、必要な場合は [`docs/details/setup.md` 詳細本文責務 §26.7](details/setup.md#sec-26-7) を用いて判定できる。 |
-
-着手条件を満たさない場合、実装者はコードで補完せず、先に仕様改訂を行う。実装 PR では、着手前に参照した詳細仕様節を PR 本文へ明記する。
+実装着手は、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) の仕様凍結条件と [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) の active Phase 条件をともに満たす対象に限る。条件不足を実装判断で補完してはならない。
 
 <a id="48-完了判定方針"></a>
 
 <a id="sec-4-8"></a>
 **4.8 完了判定方針：**
 
-実装完了は、実装ファイルの作成やテスト成功だけでは成立しない。以下をすべて満たした場合にのみ `実装済み` と扱う。
-
-完了判定方針は、実装済み判定の方針を定める。仕様成熟度、仕様 PR 完了、仕様凍結、初期実装スコープ、Phase 実装単位の具体的な必須条件は、[`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)〜[§0f](SPEC.md#0f-phase-実装単位ポリシー) を正本とする。
-
-- 実装が owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の入力、出力、状態、処理順序、異常系、セキュリティ制約と一致している。
-- [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0e](DETAIL_INDEX.md#0e-完全実装検証マトリクス) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0f](DETAIL_INDEX.md#0f-仕様策定完了チェック) から到達する owner component 詳細本文および fixture 証跡の条件を満たしている。
-- [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#4-phase-実装計画) に割り当てられた対象 Phase、順序、依存関係と一致し、PR 分割は [`docs/SPEC.md` ポリシー責務 §0c](SPEC.md#0c-仕様責務分割ポリシー) と [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) を満たしている。
-- 対象機能が [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を owner component 詳細本文で満たし、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)〜[§0i.5](DETAIL_INDEX.md#0i5-setup--release) から到達する [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の acceptance assertion を満たしている。
-- セットアップまたは運用手順に影響する場合、[`docs/details/setup.md` 詳細本文責務 §26.7](details/setup.md#sec-26-7) の実装受け入れ条件を満たしている。
-- API、SDK、UI のいずれかを変更した場合、[`docs/details/api.md` 詳細本文責務 §22](details/api.md#22-バックエンド-api-仕様)、[`docs/details/sdk.md` 詳細本文責務 §23](details/sdk.md#23-javascript-sdk-仕様)、[`docs/details/ui.md` 詳細本文責務 §24](details/ui.md#24-標準管理ツール-仕様) の対応関係が崩れていない。
-- [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、[`docs/SPEC.md`](SPEC.md)、詳細仕様の更新要否を確認済みである。
-- 実装 PR 本文に、対象、実行コマンド、期待結果、実結果、判定を記録している。
-
-検証不能な項目、未実行の項目、環境都合で省略した項目が残る場合、そのコンポーネントを `実装済み` として扱ってはならない。
+`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#0b-仕様-pr-完了ポリシー)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) の条件で判定する。必須 fixture、acceptance assertion、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
 
 <a id="49-仕様策定単位方針"></a>
 
@@ -405,7 +382,7 @@ Phase は、対象 owner component、実装範囲、依存条件、完了条件�
 
 | 単位 | 含める内容 | 分割可否 |
 |------|------------|----------|
-| owner component 単位 | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`security`、`release`、`mcp` のうち 1 件が所有する単一責務変更。標準実装 artifact が定義済みの owner は、`builder`=`components/builder.go`、`runner`=`components/runner.go`、`api`=`components/api.go`、`sdk`=`admin/adlaire-ci-sdk.js`、`ui`=`admin/index.html` とする。 | 同一 owner component 内で完結する場合のみ単独 PR 可 |
+| owner component 単位 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で owner として登録された 1 件が所有する単一責務変更。実装 artifact の配置は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) を参照する。 | 同一 owner component 内で完結する場合のみ単独 PR 可 |
 | 横断契約単位 | API / SDK / UI / 状態ファイル / 認証 / セットアップの対応関係 | 分割不可。同一 PR で同期する |
 | 運用単位 | systemd、セットアップ、アップデート、rollback、受け入れ条件 | 分割不可。手順と検証を同一 PR に含める |
 | 将来計画単位 | 実装時期未定の方向性、候補、未確定案 | 実装可能仕様と混在禁止。将来計画として明示する |
@@ -419,12 +396,12 @@ Phase は、対象 owner component、実装範囲、依存条件、完了条件�
 
 [`docs/SPEC.md`](SPEC.md) 方針責務は、Adlaire CI を最初から Go 言語で設計・実装する前提で策定する。
 
-実装者は、方針、ポリシー、Go 前提、禁止事項、標準ディレクトリ構成を [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、実装 artifact と各機能の現在状態を [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、詳細仕様参照入口を [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、実在所在を [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、各 owner component の入出力、状態、処理順序、異常系、検証条件を owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で確認する。過去の実装、試作、他言語スクリプト、既存ファイル名、既存 CLI、既存ログ、既存生成物、既存状態ファイルを前提にしてはならない。
+実装者は、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務の Go 前提と禁止事項に従い、配置は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を確認する。過去の実装、試作、他言語スクリプト、既存ファイル名、既存 CLI、既存ログ、既存生成物、既存状態ファイルを仕様上の根拠にしてはならない。
 
 Go 実装の判断基準は以下とする。
 
-- [`components/builder.go`](../components/builder.go)、[`components/runner.go`](../components/runner.go)、[`components/api.go`](../components/api.go) を標準 Go 実装 artifact として扱う。
-- `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-api` を標準実行バイナリ名とする。
+- 標準 Go 実装 artifact は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) のディレクトリ構成 tree に従う。
+- `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-api`、`adlaire-ci-setup`、`adlaire-ci-release` を標準実行バイナリ名とする。
 - 仕様未記載の自動変換処理、暗黙の読み替え処理、仕様外分岐を実装判断で追加してはならない。
 - 該当する責務正本に記載されていない挙動は、仕様対象外として扱う。
 
@@ -438,8 +415,6 @@ Go 実装の判断基準は以下とする。
 GitHub API を定期的にポーリングし、対象変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（[`components/runner.go`](../components/runner.go)）。標準の変更検出・実行経路は GitHub Actions、Webhook、外部 CI サービスのいずれにも依存しない。管理 API の任意の GitHub Webhook 受信機能は補助 trigger 経路であり、無効または未実装でも runner の polling 経路と定期実行は単独で成立しなければならない。
 
 - 変更検出の具体的な API、比較値、保存先は [`docs/details/runner.md`](details/runner.md) 詳細本文責務を正本とする
-- 対象変更が存在する場合だけビルドを実行する
-- runner の polling ・定期実行に外部公開エンドポイント・リバースプロキシは不要
 - Go 標準ライブラリを基本とし、外部依存を追加する場合は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針) の例外承認を必須とする
 
 <a id="52-ci-ランナーの開発方針"></a>
@@ -448,8 +423,7 @@ GitHub API を定期的にポーリングし、対象変更を検出してビル
 **5.2 CI ランナーの開発方針：**
 
 - **単一責務実装**：[`components/runner.go`](../components/runner.go) は CI ランナー責務に限定し、Markdown 変換と管理 API を内包しない
-- **シンプル性優先**：HTTP サーバー不要。1 回実行して終了する oneshot 設計
-- **差分検出**：変更がない場合はビルドをスキップ
+- **実行境界**：oneshot、差分検出、多重実行防止は [`docs/SPEC.md` ポリシー責務 §6](SPEC.md#6-ci-ランナー実行境界ポリシー) に従う
 
 <a id="53-github-actions-非依存方針"></a>
 
@@ -514,19 +488,11 @@ Adlaire CI はすぐに使える標準管理ツールを同梱する。
 # ポリシー責務
 > 遵守義務のある規則と制約を定める。「何をしなければならないか／してはならないか」に答える。
 
-ポリシー責務の節を参照する場合は、必ず [`docs/SPEC.md`](SPEC.md) ポリシー責務 §番号 の形式で記載する。番号だけ、または `docs/SPEC.md §番号` だけで参照してはならない。
-
-方針責務とポリシー責務は、それぞれ独立した節番号体系を持つ。`§5`、`§6`、`§7` などの番号が重複して見える場合でも、責務名を省略して参照してはならない。責務名を伴わない節番号参照は、仕様判断に使用してはならない。
-
 ## 0. 詳細仕様記載ポリシー
 
 owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、実装者が実装レベルで迷わない記載にしなければならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) は、対象機能から該当する詳細本文と fixture 証跡へ迷わず到達できる参照入口にしなければならない。
 
-詳細仕様、状態管理、fixture、索引、入口文書を記載または整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則に従わなければならない。
-
-方針、ポリシー、状態語彙、状態定義、現在状態、Phase、将来計画、詳細仕様本文、fixture、expected、fake、検証証跡、文書索引を同じ本文内で重複正本化してはならない。
-
-責務別の配置、重複正本化の禁止、他責務の参照方法、未確定時の扱い、違反残存時の完了禁止は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) を正本とする。[`docs/SPEC.md` ポリシー責務 §0](SPEC.md#0-詳細仕様記載ポリシー) では、詳細仕様に必要な実装情報だけを追加定義する。
+詳細仕様、状態管理、fixture、索引、入口文書を記載または整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) に従わなければならない。[`docs/SPEC.md` ポリシー責務 §0](SPEC.md#0-詳細仕様記載ポリシー) は、責務別の配置、重複記載の定義、参照方法、未確定時の扱いを再定義せず、詳細仕様に必要な実装情報だけを追加定義する。
 
 機能、API、設定、状態ファイル、UI、SDK method、運用手順を仕様化する場合は、該当する必須項目を owner component の詳細本文で特定できる状態にしなければならない。
 
@@ -561,22 +527,15 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | 未仕様化 | 要求、目的、責務、入出力、処理、状態、検証条件のいずれかが実装判断に必要な粒度で定義されていない状態。 | 実装不可 |
 | 将来計画 | 将来的な方向性または候補として記録した状態。実装時期、整理順序、詳細仕様は未確定でもよい。整理順序は実装単位、PR 単位、完了判定単位ではない。 | 実装不可 |
 | 改訂予定 | 将来計画または未仕様化の項目を仕様化対象へ昇格した状態。詳細仕様の作成・改訂作業中であり、実装条件はまだ満たしていない。 | 実装不可 |
-| 仕様化済み・未実装 | owner component、実装主体、入出力、設定値、状態、処理順序、異常系、セキュリティ制約、検証条件が実装可能な粒度で定義済みだが、実装 artifact または実装コードが未作成・未反映の状態。 | 実装可 |
+| 仕様化済み・未実装 | [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を実装可能な粒度で特定済みだが、実装 artifact または実装コードが未作成・未反映の状態。 | 実装可 |
 | 実装中・検証未完了 | 仕様に基づくコード変更へ着手済みだが、必須検証、証跡、または関連文書の整合確認が未完了の状態。 | 検証待ち |
-| 実装済み | 仕様に基づくコード変更が完了し、仕様との差分確認、必要な構文確認、実行確認または生成物確認、関連文書の整合確認が完了した状態。 | 完了済み |
+| 実装済み | [`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition) をすべて満たした状態。 | 完了済み |
 
-`仕様化済み・未実装` へ昇格するには、少なくとも以下を満たさなければならない。
-
-- owner component、必要な collaborator component、責務境界が明確である
-- 実行可能な機能は、実装 artifact の path または配布物名、起動名、呼出し interface が明確である
-- 入力、出力、設定値、状態ファイル、データ構造が明確である
-- 正常系の処理順序と分岐条件が明確である
-- 異常系、ログ、通知、再試行、ロック、タイムアウトの扱いが必要範囲で明確である
-- 認証、認可、秘密情報、外部公開可否などのセキュリティ制約が明確である
-- 実装完了を判定する検証条件が明確である
+`仕様化済み・未実装` へ昇格するには、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) のうち該当機能に適用する全項目が owner component 詳細本文で特定され、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から該当本文と fixture 証跡へ到達でき、実装判断に必要な未確定事項が残っていないことを必須とする。
 
 実装着手は、対象項目が `仕様化済み・未実装` の状態に到達している場合に限る。
 
+<a id="implementation-completion-transition"></a>
 実装完了は、コード変更だけでは成立しない。仕様との差分確認、構文確認、実行確認または生成物確認、必須 fixture と実装検証証跡、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否確認を完了した場合にのみ `実装済み` と扱う。
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。いずれか一方だけを変更して完了扱いにしてはならない。
@@ -592,6 +551,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 詳細仕様入口責務 | 対象機能の owner 対応表、owner 詳細本文から collaborator 境界へ到達する参照、詳細本文参照先、fixture 証跡参照先が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に明記されている。 |
 | owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。 |
 | 横断契約 | API、SDK、UI、状態ファイル、認証、セットアップの対応関係が該当する詳細本文責務で同期している。 |
+| 重複記載 | [`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) への適合確認が完了し、未解消違反が 0 件である。 |
 | 索引責務 | ファイル名、正本参照先、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |
 | owner 網羅 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に列挙された owner component のうち、[`docs/ROADMAP.md`](ROADMAP.md) で `未仕様化` または `将来計画` 以外の機能を持つ owner は、少なくとも 1 件の機能から owner 詳細本文と fixture 証跡へ到達できる。実装 artifact の行で owner 機能の現在状態を代用していない。 |
 | 列挙閉包 | 許可値、許可 path、許可副作用、許可依存、fixture component、schema key の集合が固定列挙または明示的な登録条件で閉じており、未登録値の扱いが確定している。 |
@@ -602,9 +562,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 ## 0c. 仕様責務分割ポリシー
 
-仕様変更は、変更責務と統合順序が明確な単位で作成する。競合防止を優先し、同一目的、同一仕様領域、同一ファイル群の仕様変更は必ず 1 本の変更単位にまとめる。
-
-仕様責務分割ポリシーは、責務ベース明示的原則に基づく必須ポリシーである。仕様変更は同一責務単位で集約し、競合状態、未確認状態、重複状態を完了扱いにしてはならない。
+仕様変更は、責務ベース明示的原則に基づき、変更責務と統合順序が明確な単位で作成する。同一目的、同一仕様領域、同一ファイル群の仕様変更は必ず 1 本の変更単位に集約し、競合状態、未確認状態、重複状態を完了扱いにしてはならない。
 
 | 分類 | ルール |
 |------|--------|
@@ -617,9 +575,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 既存変更優先 | 既存 open PR と同じ仕様領域または同じファイルを変更する場合、新規 PR を作成せず既存 PR へ統合する。 |
 | 競合変更 | `DIRTY`、同一ファイル編集、同一仕様領域、統合順序依存の PR が存在する場合、先に 1 本の PR へ統合し、重複 PR を close する。 |
 
-同一目的の仕様変更を複数 PR に分けてはならない。複数 PR 間で同一ファイルまたは同一仕様領域を編集している場合は、最新の作業ブランチへ統合し、1 本の PR にまとめる。
-
-仕様 PR 作成前には、open PR 一覧、変更ファイル一覧、merge 状態を確認する。[`docs/SPEC.md`](SPEC.md) は、競合状態、未確認状態、重複状態を完了扱いにしてはならないことを定義する。具体的な確認コマンド、Git 操作順序、PR 操作手順は [`AGENTS.md`](../AGENTS.md) の Git 運用ルールを正本とする。
+仕様 PR 作成前の確認コマンド、Git 操作順序、PR 操作手順は [`AGENTS.md` Git 運用ルール](../AGENTS.md#4-git-運用ルール) を正本とする。
 
 競合解消後は、競合マーカーが残っていないこと、`git diff --check` が成功すること、open PR が同一仕様領域で重複していないこと、統合先 PR の merge 状態が `CLEAN` であることを確認する。`UNKNOWN` は merge 可能として扱わない。
 
@@ -647,17 +603,13 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 Go 版初期実装で新規実装へ着手できる対象は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で `仕様化済み・未実装` と割り当てられ、かつ [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務の対応表と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に具体的な実装詳細が存在する範囲に限定する。`実装中・検証未完了` は既着手範囲の継続、修正、検証対象として扱う。`実装済み` は初期実装スコープの現状確認対象には含められるが、新規実装の着手許可を意味しない。
 
-初期実装の対象 Phase と現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、詳細本文への対応は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を正本とする。
+初期実装スコープの実装可否と判定方針は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、実装 artifact と個別機能の現在状態、対象 Phase、将来計画該当有無は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、詳細本文への対応は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
 
-[`docs/SPEC.md`](SPEC.md) は、初期実装スコープの実装可否と判定方針を定義する。実装 artifact と個別機能の現在状態、対象 Phase、将来計画該当有無は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、詳細節番号は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
-
-初期実装 PR では、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で対象外、将来計画、未仕様化、改訂予定に分類された項目を実装してはならない。
-
-初期実装中に対象範囲へ追加したい機能を発見した場合は、先に [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を更新し、仕様凍結を再実施する。
+初期実装中の対象追加は、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) の途中追加禁止と [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) の仕様凍結条件に従う。
 
 初期実装スコープの実装順序は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#4-phase-実装計画) の Phase 割り当て、PR 分割は [`docs/SPEC.md` ポリシー責務 §0c](SPEC.md#0c-仕様責務分割ポリシー) と [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) に従う。
 
-初期実装スコープの完了判定は、対象コンポーネントごとに [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#4-phase-実装計画) の対象 Phase、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0f](DETAIL_INDEX.md#0f-仕様策定完了チェック) の参照入口、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)〜[§0i.5](DETAIL_INDEX.md#0i5-setup--release) の詳細節対応表から到達する owner component 詳細本文と [`docs/details/fixture.md`](details/fixture.md) の受け入れ条件を満たしていることを条件とする。Phase、詳細本文、fixture 証跡のいずれかを満たさない対象は、実装済みとして扱ってはならない。
+初期実装スコープの完了判定は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) と [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) に従い、対象 Phase は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#4-phase-実装計画)、対象機能から詳細本文と fixture 証跡への参照入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務を正本とする。
 
 ## 0f. Phase 実装単位ポリシー
 
@@ -665,7 +617,7 @@ Go 版初期実装で新規実装へ着手できる対象は、[`docs/ROADMAP.md
 
 `P0`、`P1`、`P2〜P5` などの優先度ラベル、抽象段階、API 内部分類、fixture 分類を、実装単位、PR 単位、完了判定単位として使ってはならない。
 
-Phase は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#4-phase-実装計画) に割り当てられた対象 owner、順序、依存関係に従わなければならない。実装契約は owner component 詳細本文、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、acceptance assertion と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に従わなければならない。
+Phase は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#4-phase-実装計画) に割り当てられた対象 owner、順序、依存関係に従わなければならない。実装契約は owner component 詳細本文、完了判定は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) を正本とする。
 
 新規実装作業の active Phase は同時に一つだけとする。active Phase は、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#4-phase-実装計画) の順序で最初に `実装済み` でない Phase とする。依存する Phase が `実装済み` でない後続 Phase で、新規機能実装、`仕様化済み・未実装` 機能の実装着手、または Phase 完了判定を行ってはならない。
 
@@ -713,6 +665,8 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 | リセット禁止 | `X` と `N` はリセット禁止。`V.1` に戻してはならない |
 | 例 | `V.1.100` → `V.1.101` → `V.2.102`（X は安定版リリースのたびに、N はビルドのたびにインクリメント） |
 
+バイナリが公開するバージョンはリリースバージョンと同一の識別子とする。正式リリース用バイナリは対応する tag と完全一致する具体的な `V.X.N` を返さなければならない。バージョン未注入の local / 検証用開発ビルドは `V.0.0-dev` を返し、この値を release tag、GitHub Release、Release asset、setup / update の導入可能バージョンとして扱ってはならない。実数運用開始後のバージョン付き開発ビルドは、当該ビルドに割り当てた具体的な `V.X.N` を返す。`V.0.0-dev` はヘッダーの暫定表記 `V.X.N` を置換する値ではない。バイナリ出力形式と検証方法は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](DETAIL_INDEX.md#0d-共通固定値) を正本とする。
+
 <a id="github-リリースポリシー"></a>
 
 **GitHub リリースポリシー：**
@@ -723,10 +677,11 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 | タグ形式 | `V.X.N`（リリースバージョンと一致させる）例：`V.2.102` |
 | リリースタイトル | タグ名と同一にする |
 | リリース形式 | バイナリ配布を標準とする。利用者は GitHub Release から OS/arch 別の実行バイナリを取得し、ソースからのビルドを標準導入手順に含めない |
+| バイナリバージョン | Release 用実行バイナリ asset の `--version` が、バイナリ名に続く第 2 token として tag と同一のリリースバージョンを返す。`V.0.0-dev`、tag と不一致の値、未注入値を含む実行バイナリ asset は公開禁止とする |
 | 標準 OS/arch | 初期標準は Linux x86_64（`linux-amd64`）とする。追加 OS/arch は将来のリリース対象として個別に仕様化する |
-| 添付ファイル | `adlaire-ci-build`、`adlaire-ci-runner`、管理 API 導入後は `adlaire-ci-api` の実行バイナリを添付する。将来 `adlaire-ci-cli` を実装した場合のみ CLI バイナリを追加する。静的 Web サイト生成物を release archive として添付しない |
-| 管理 UI 配布物 | `admin/adlaire-ci-sdk.js` と `admin/index.html` はバイナリではなく管理 UI 配布物として扱い、管理 API 導入後の release archive に含める |
-| checksum | Release 添付ファイルごとに SHA-256 checksum を提供する。セットアップ手順では配置前に checksum を検証する |
+| 添付ファイル | builder、runner、管理API、setupの各`linux-amd64`実行バイナリ、管理UI archive、checksum manifestの6件だけを添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)を正本とする。`adlaire-ci-release`、生成静的Webサイト、debug binaryをRelease assetとして添付しない |
+| 管理 UI 配布物 | 管理UIは実行バイナリと分離した単独のarchive assetとして全安定版Releaseへ添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)、archive内容は[`docs/details/admin.md` 詳細本文責務 §A1](details/admin.md#a1-管理-ui-静的ファイル境界)、setup側の安全検証は[`docs/details/admin.md` 詳細本文責務 §A2](details/admin.md#a2-管理-ui-archive-検証)を正本とする |
+| checksum | checksum manifest 自身を除く全 Release asset の SHA-256 checksum を checksum manifest で提供する。checksum manifest 自身を再帰的な checksum 対象にしてはならない。exact asset 名、生成形式、公開前検証は [`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract) を正本とし、受け入れ・配置前検証は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を正本とする |
 | プレリリースフラグ | 安定版リリースでは `Pre-release` にチェックを入れない |
 | ドラフト公開禁止 | Draft Release のまま公開しない |
 
@@ -761,9 +716,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 **基本原則：**
 
-[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のゼロ依存・フルインハウス原則を正本とする。開発言語の**標準ライブラリのみ**を採用し、主要機能は本リポジトリ内の仕様と内製実装で完結させる。
-
-外部依存を追加しなければ実装できない機能は、仕様不足または設計不備として扱う。実装者は外部依存の追加で不足仕様を補完してはならない。
+ゼロ依存・フルインハウスの定義、各 component の自律性、仕様不足時の扱いは [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) を正本とする。この節は例外採用の禁止条件と許可一覧だけを追加定義する。
 
 <a id="外部フレームワーク"></a>
 
@@ -789,19 +742,13 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 **内製共通処理：**
 
-内製共通処理は、採用可否、禁止名称、依存方向、同格性が [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務に記載され、責務、入力、出力、状態、異常系、検証条件が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に記載されている場合に限り採用できる。内製であっても、仕様未記載の共通基盤を暗黙に追加してはならない。
-
-横断的な内製共通処理を追加する場合は、[`docs/SPEC.md` 方針責務 §4.2](SPEC.md#sec-4-2) に従い、Core ではなく同格の共通責務コンポーネントとして仕様化する。`core`、`common`、`base`、`foundation`、`utils` の名称を使う package、directory、binary、component を作成してはならない。
+内製共通処理の採用可否、禁止名称、依存方向、同格性は [`docs/SPEC.md` 方針責務 §4.2](SPEC.md#sec-4-2) を正本とする。責務、入力、出力、状態、異常系、検証条件が未定義の共通処理は採用できない。
 
 <a id="内製実装管理ポリシー"></a>
 
 **内製実装管理ポリシー：**
 
-内製スクリプトと標準実装ファイルの実在所在・未作成 path は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、実装 artifact と各機能の現在状態と将来計画への割当は [`docs/ROADMAP.md`](ROADMAP.md) を正本とする。
-
-このポリシーは、内製実装の採用条件だけを定義する。個別ファイルの現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。新規スクリプトを追加する場合は、先に [`docs/ROADMAP.md`](ROADMAP.md) の現在状態、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の実装ファイル一覧、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を整合させる。
-
-内製 Go コンポーネントは Go 標準ライブラリを基本とする。外部依存は許可リスト登録を必須とする。仕様化済み・未実装、実装中・検証未完了、または将来計画のスクリプトは、実装ファイル、詳細仕様、検証結果、関連文書が実装済みとして整合するまで実装済みとして扱わない。
+内製実装の配置、実在所在、現在状態、実装着手可否は、それぞれ [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を正本とする。この節では再定義しない。
 
 <a id="許可外部ライブラリ一覧"></a>
 
@@ -820,8 +767,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 ## 5. CI ランナー秘密情報・公開境界ポリシー
 
 - GitHub PAT（Personal Access Token）はスクリプト内にハードコードしてはならない
-- PAT は最小権限とし、標準構成では対象リポジトリの `Contents: Read` だけを許可する。書き込み権限を必要とする設計を標準としてはならない
-- 任意機能の Commit Status を有効にした場合だけ、対象リポジトリの `Commit statuses: Write` を追加できる。この条件付き権限を他の GitHub 書き込み API に流用してはならず、Commit Status が無効な構成へ付与してはならない
+- PAT は最小権限とし、標準構成では対象リポジトリの `Contents: Read` だけを許可する。任意機能の Commit Status を有効にした場合だけ `Commit statuses: Write` を追加でき、他の GitHub 書き込み API へ流用してはならない
 - PAT の GitHub repository permission と API 呼び出し条件は [`docs/details/runner.md` 詳細本文責務 §17](details/runner.md#17-github-連携前提) と [`docs/details/commitstatus.md` 詳細本文責務 §27.1](details/commitstatus.md#sec-27-1)、保存 path と file 境界は [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、読み取り、mask、漏えい禁止は [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/security.md`](details/security.md) 詳細本文責務を正本とする
 - ランナーは外部公開エンドポイントを持たない。サーバーから GitHub API への送信のみで動作する
 
@@ -845,26 +791,21 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 - SDK の対応言語追加は [`docs/SPEC.md`](SPEC.md) ポリシー責務への記載を先行させる
 - バックエンド API の変更は SDK の更新を伴う
 - SDK の module 形式、公開 API、error class、timeout、streaming 契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする
-- SDK は自動 retry、戻り値補完、token 永続化、global 代入を行ってはならない
+- SDK は API response と利用者操作の境界を変更してはならない。禁止する補完、再試行、永続化、global 汚染の具体条件は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする
 
 ## 9. 標準管理ツール UI / SDK 境界ポリシー
 
 [`docs/SPEC.md` ポリシー責務 §9](SPEC.md#9-標準管理ツール-ui-sdk-境界ポリシー) は、[`admin/index.html`](../admin/index.html) に適用する。
 
 - バニラ HTML / CSS / JavaScript のみで実装する。外部フレームワーク・外部ライブラリは使用しない（[`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針) 参照）
-- バックエンドとの通信はすべて SDK 経由とする。SDK を迂回した直接 API 呼び出しは行わない
+- バックエンドとの通信はすべて SDK 経由とする
 - カスタマイズを妨げる密結合な実装を禁止する。SDK 境界、DOM 境界、状態管理境界を満たさない UI 実装は完了扱いにしてはならない
 - DOM、form、初期ロード順、イベント処理順、成功/失敗表示、秘密情報消去条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務を正本とする
-- UI は `localStorage`、`sessionStorage`、Cookie から token を復元してはならない
-- UI は API transport を直接生成してはならない。禁止対象の具体 API、例外条件、検証条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務を正本とする
+- token の保持・消去と API transport 禁止対象の具体条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務を正本とする
 
 ## 10. 状態ファイル永続化ポリシー
 
-- **初期方針：データベース不使用。** 状態はファイルで管理する。具体的な状態ファイル一覧、schema、権限、更新順序、破損時処理は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする
-- RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、初期仕様ではいかなるデータベースも採用しない
-- 将来的にデータベースを採用する場合は、[`docs/SPEC.md`](SPEC.md) ポリシー責務への仕様追記と [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針) の許可外部ライブラリ一覧の更新を先行させる
-- **データ形式：JSON 形式**を標準とする
-- JSON schema、ファイル分割、ネスト制約、encoding、atomic write は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする
+データベースは使用せず、状態はファイルベースで永続化する。構造化状態の標準形式は JSON object、JSON array、または JSON Lines とする。例外は、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務の状態ファイル固定表に path と形式を明示した UTF-8 text、gzip 圧縮 JSON、directory、および [`docs/details/archive.md`](details/archive.md) 詳細本文責務に形式を明示した tar.gz artifact だけとする。固定表または archive 詳細本文責務に明示されていない非 JSON 形式を追加してはならない。具体的な状態ファイル一覧、schema、権限、更新順序、破損時処理は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。技術選択を変更する場合は、[`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#4-技術方針) の改訂と外部依存の許可判断を実装より先に完了しなければならない。
 
 ## 11. シングルユーザー認証ポリシー
 

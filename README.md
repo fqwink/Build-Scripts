@@ -1,10 +1,6 @@
 # Build-Scripts
 
-Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実装する Adlaire CI の仕様と運用を管理するためのリポジトリです。
-
-## 概要
-
-本リポジトリでは、Markdown ファイルまたは Markdown ディレクトリから静的 Web サイトを生成する Go 版ビルドスクリプト、GitHub 上の対象 Markdown 変更を検出してビルドを実行する Go 版 CI ランナー、管理 API、JavaScript SDK、管理 UI の仕様を管理します。
+Build-Scripts は、Adlaire CI の仕様、Go 実装、管理 UI、検証資産を管理するリポジトリです。
 
 文書構造、正本参照先、実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照します。
 
@@ -17,10 +13,4 @@ Build-Scripts は、Markdown から静的 Web サイトを生成し、Go で実�
 5. [`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md) 詳細仕様入口責務: owner component 別の詳細仕様参照先と fixture 証跡責務の参照先を確認する。
 6. [`docs/DESIGN.md`](docs/DESIGN.md) デザイン責務: 生成静的 Web サイトと標準管理 UI のデザイン関係を確認する。
 
-## リリース形式
-
-リリース形式の正本は [`docs/SPEC.md` ポリシー責務 §1](docs/SPEC.md#1-バージョン管理)、セットアップ詳細は [`docs/details/setup.md` 詳細本文責務 §26](docs/details/setup.md#26-セットアップアップデート手順) を参照します。
-
-## 注意
-
-作業ルールは [`AGENTS.md`](AGENTS.md) を基準とします。
+リリース形式は [`docs/SPEC.md` ポリシー責務 §1](docs/SPEC.md#1-バージョン管理)、セットアップ詳細は [`docs/details/setup.md` 詳細本文責務 §26](docs/details/setup.md#26-セットアップアップデート手順) を参照します。

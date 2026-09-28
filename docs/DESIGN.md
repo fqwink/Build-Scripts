@@ -54,8 +54,6 @@
 | `--adlaire-font-family-base` | `"Helvetica Neue", Helvetica, Arial, sans-serif` |
 | `--adlaire-font-family-mono` | `"JetBrains Mono", "Courier New", Courier, monospace` |
 
-外部フォント（Google Fonts 等）は使用しない。
-
 <a id="見出し階層"></a>
 
 **見出し階層：**
@@ -205,14 +203,14 @@
 
 | 対象 | 視覚契約 |
 |------|----------|
-| light visual baseline | `:root` は light 固定の custom property を定義する。dark / auto selector、dark background、theme toggle の視覚表現を持たない。 |
+| light visual baseline | [デザイン方針](#1-デザイン方針) のライトモード契約を適用する。 |
 | typography / block | admonition、badge、definition list、task list、footnote、math は本文幅内に収め、本文の行長、余白、読みやすさを壊さない。 |
 | typography stability | font size を viewport width に比例させず、負の `letter-spacing` を使わない。hover / focus により border、padding、font weight、要素寸法を変えない。 |
 | code extension | code title、line number、diff highlight は code block と一体で読める配置にし、copy 対象 text と装飾 text を視覚的に区別する。 |
 | navigation runtime UI | section collapse、TOC active、hash focus、skip link は focus indicator と active indicator を常に可視にし、focus / active 化で layout 寸法を変えない。 |
 | media UI | image lightbox、Mermaid placeholder / SVG wrapper、print QR は本文の流れを妨げない。外部画像取得や外部 script 読込を前提にした視覚状態を持たない。 |
 | responsive | 幅 `320px` の viewport で、本文、見出し、TOC、skip link、admonition、badge、definition list、task list、footnote、math、code title、line numbers、diff highlight、lightbox、print QR の text が重ならず、切れず、親要素外へ不可視にはみ出さない。table と code block だけは既存 scroll wrapper 内の horizontal overflow を許可する。 |
-| print | `@media print` では interactive controls、collapse toggle、lightbox trigger UI、TOC active indicator、skip link の画面専用装飾を非表示にする。本文、見出し、画像、code、table、footnote、definition list、task list は非表示にしない。印刷時は全 section を展開表示し、light 固定の背景と文字色を維持する。 |
+| print | [印刷表現契約](#builder-print-visual-contract) を適用する。 |
 
 | 対象 | layout 固定内容 |
 |------|----------------|
@@ -231,10 +229,10 @@
 |---------------|----------|
 | `.mp` | 本文行長を `max-width: 68ch` で制限する。 |
 | `.md-image` | `max-inline-size: 100%` とし、本文コンテナから横方向にはみ出さない。 |
-| `.cb-wrap` / `.cb-meta` / `.cl` / `.cb-copy` / `.cb` | `.cb-wrap` を配置基準とし、`.cb-meta` は `top: 8px; right: 10px` に配置する。`.cl` はモノスペース、大文字、`--adlaire-font-size-xs` とする。`.cb-copy` は通常非表示、コードブロックの hover または keyboard focus 時に表示する。`.cb` の背景は `--adlaire-surface-soft-strong` とする。 |
+| `.cb-wrap` / `.cb-meta` / `.cl` / `.cb-copy` / `.cb` | [コードブロック](#コードブロック) の既存 selector 契約を適用する。 |
 | `.ml-task` / `.ml-task input[type="checkbox"]` | list marker を表示せず、checkbox の accent color は `--adlaire-color-primary` とする。 |
-| `.mdl dt` / `.mdl dd` | `dt` は semibold、`dd` は `margin-left: 1.5rem`、文字色は `--adlaire-surface-text-muted` とする。 |
-| `.tw` | 横方向 overflow は wrapper 内の scroll で扱う。 |
+| `.mdl dt` / `.mdl dd` | [定義リスト](#定義リスト) の既存 selector 契約を適用する。 |
+| `.tw` | [テーブル](#テーブル) の既存 selector 契約を適用する。 |
 | `.fn-ref` / `.fn-section` / `.fn-list` | `.fn-ref` は `--adlaire-font-size-xs`、`.fn-section` は上 border で本文と分離し、`.fn-list` は `--adlaire-font-size-sm` とする。 |
 | `.hn-link` | 通常時 `opacity: 0`、見出し hover または keyboard focus 時 `opacity: 1` とする。 |
 | `#progress-bar` | viewport 上端の `top: 0; left: 0` に固定し、高さ `3px`、背景 `--adlaire-color-primary`、`z-index: 1000`、`transition: width 0.1s linear` とする。 |
@@ -242,6 +240,7 @@
 | `#reading-time` | header 右端へ配置し、`margin-left: auto`、文字色 `--adlaire-surface-text-muted`、`--adlaire-font-size-sm`、折り返しなしとする。 |
 | `.ch-nav` / `.ch-prev` / `.ch-next` | `.ch-nav` は章末尾で前後 link を両端配置し、`padding: 1rem 0`、`margin-top: 2rem`、上 border を持つ。link は `--adlaire-color-primary` とし、既定の text decoration を表示しない。 |
 
+<a id="builder-print-visual-contract"></a>
 **印刷表現：**
 
 | 対象 | 印刷時の処理 |

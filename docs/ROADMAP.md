@@ -1,39 +1,26 @@
 # Adlaire CI — Roadmap
 
-[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、Adlaire CI の実装 artifact と各機能へ割り当てる現在状態、Phase、機能インベントリ、将来計画を管理する正本である。owner component と実装 artifact の区別、状態語彙、状態定義、実装可否、着手条件、状態遷移条件、完了条件は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) と [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を正本とし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務では再定義しない。
-
-方針・ポリシーは [`docs/SPEC.md`](SPEC.md)、生成静的 Web サイトと標準管理 UI のデザインは [`docs/DESIGN.md`](DESIGN.md)、詳細仕様入口・owner 対応表・collaborator 境界参照入口は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別詳細本文は [`docs/details/`](details/)、fixture と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。
+[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact と各機能の現在状態・未完了理由、Phase の順序・対象 owner・依存関係、機能インベントリ、将来計画を管理する唯一の正本である。状態語彙、状態定義、実装可否、着手条件、状態遷移条件、完了条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を参照し、本文書では再定義しない。
 
 <a id="状態計画責務-共通参照先"></a>
 **状態・計画責務 共通参照先：**
 
-現在状態は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) の判定条件を適用して [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務へ割り当てる。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は割当結果と未完了理由だけを記録し、endpoint、schema、SDK method、DOM、処理順序、fixture 本文を再掲しない。
-
-## 1. ロードマップ責務
-
-| 管理対象 | 本文で管理する内容 |
-|----------|------------------|
-| 現在状態 | 実装 artifact と機能へ割り当てた現在の状態、および未完了理由。 |
-| Phase | Phase 順序、対象 owner component、依存関係、現在状態。 |
-| 機能インベントリ | 全機能の担当領域と現在状態。 |
-| 将来計画 | 将来計画へ割り当てた機能名と担当領域。 |
-
-## 2. 状態語彙参照
-
-状態語彙と判定条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を参照する。[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の状態セルは現在の割り当てだけを示す。
+本文書の状態セルは現在の割り当てだけを示す。endpoint、schema、SDK method、DOM、処理順序、fixture 本文は記載しない。
 
 ## 3. 実装 artifact 現在状態
 
-この表は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の実装 artifact だけを対象とする。owner component が持つ個別機能の現在状態は [統合機能インベントリ](#522-統合ロードマップ表) を参照する。実装不一致の技術的な確認内容は [`docs/details/fixture.md` fixture 証跡責務 現行実装整合証跡](details/fixture.md#current-implementation-alignment-evidence) を参照する。
+この表は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) のディレクトリ構成で定義する実装 artifact だけを対象とする。owner component が持つ個別機能の現在状態は [統合機能インベントリ](#522-統合ロードマップ表) を参照する。実装不一致の技術的な確認内容は [`docs/details/fixture.md` fixture 証跡責務 現行実装整合証跡](details/fixture.md#current-implementation-alignment-evidence) を参照する。
 
 | 実装 artifact | 現在状態 | 未完了理由 / 証跡 |
 |-----------------|----------|-------------------|
 | [`main.go`](../main.go) | 実装中・検証未完了 | 起動入口の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01) |
-| [`components/builder.go`](../components/builder.go) | 実装中・検証未完了 | デザイン整合、Markdown block、report、CLI metadata、atomic publication、入力・path 安全性、拡張機能、必須 fixture が未完了である。[`ALIGN-06`](details/fixture.md#align-06)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-08`](details/fixture.md#align-08)、[`ALIGN-13`](details/fixture.md#align-13)、[`ALIGN-14`](details/fixture.md#align-14)、[`ALIGN-20`](details/fixture.md#align-20)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-25`](details/fixture.md#align-25) |
-| [`components/runner.go`](../components/runner.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-12`](details/fixture.md#align-12)、[`ALIGN-16`](details/fixture.md#align-16)、[`ALIGN-17`](details/fixture.md#align-17)、[`ALIGN-19`](details/fixture.md#align-19)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-26`](details/fixture.md#align-26) |
-| [`components/api.go`](../components/api.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-02`](details/fixture.md#align-02)、[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-04`](details/fixture.md#align-04)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-11`](details/fixture.md#align-11)、[`ALIGN-12`](details/fixture.md#align-12)、[`ALIGN-17`](details/fixture.md#align-17)、[`ALIGN-18`](details/fixture.md#align-18)、[`ALIGN-19`](details/fixture.md#align-19)、[`ALIGN-21`](details/fixture.md#align-21)、[`ALIGN-22`](details/fixture.md#align-22)、[`ALIGN-23`](details/fixture.md#align-23)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-27`](details/fixture.md#align-27) |
+| [`components/builder.go`](../components/builder.go) | 実装中・検証未完了 | デザイン整合、Markdown block、report、CLI metadata、atomic publication、入力・path 安全性、拡張機能、必須 fixture が未完了である。[`ALIGN-06`](details/fixture.md#align-06)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-08`](details/fixture.md#align-08)、[`ALIGN-13`](details/fixture.md#align-13)、[`ALIGN-14`](details/fixture.md#align-14)、[`ALIGN-20`](details/fixture.md#align-20)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-25`](details/fixture.md#align-25)、[`ALIGN-28`](details/fixture.md#align-28)、[`ALIGN-37`](details/fixture.md#align-37) |
+| [`components/runner.go`](../components/runner.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-12`](details/fixture.md#align-12)、[`ALIGN-16`](details/fixture.md#align-16)、[`ALIGN-17`](details/fixture.md#align-17)、[`ALIGN-19`](details/fixture.md#align-19)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-26`](details/fixture.md#align-26)、[`ALIGN-29`](details/fixture.md#align-29)、[`ALIGN-30`](details/fixture.md#align-30)、[`ALIGN-32`](details/fixture.md#align-32)、[`ALIGN-33`](details/fixture.md#align-33)、[`ALIGN-34`](details/fixture.md#align-34)、[`ALIGN-35`](details/fixture.md#align-35)、[`ALIGN-36`](details/fixture.md#align-36)、[`ALIGN-37`](details/fixture.md#align-37) |
+| [`components/api.go`](../components/api.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-02`](details/fixture.md#align-02)、[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-04`](details/fixture.md#align-04)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-11`](details/fixture.md#align-11)、[`ALIGN-12`](details/fixture.md#align-12)、[`ALIGN-17`](details/fixture.md#align-17)、[`ALIGN-18`](details/fixture.md#align-18)、[`ALIGN-19`](details/fixture.md#align-19)、[`ALIGN-21`](details/fixture.md#align-21)、[`ALIGN-22`](details/fixture.md#align-22)、[`ALIGN-23`](details/fixture.md#align-23)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-27`](details/fixture.md#align-27)、[`ALIGN-29`](details/fixture.md#align-29)、[`ALIGN-30`](details/fixture.md#align-30)、[`ALIGN-37`](details/fixture.md#align-37) |
+| `components/setup.go` | 仕様化済み・未実装 | 実装ファイルとtestが未作成である。詳細本文は[`docs/details/setup.md`](details/setup.md)を参照する。 |
+| `components/release.go` | 仕様化済み・未実装 | 実装ファイルとtestが未作成である。詳細本文は[`docs/details/release.md`](details/release.md)を参照する。 |
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-15`](details/fixture.md#align-15)、[`ALIGN-24`](details/fixture.md#align-24) |
-| [`admin/index.html`](../admin/index.html) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-05`](details/fixture.md#align-05)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-24`](details/fixture.md#align-24) |
+| [`admin/index.html`](../admin/index.html) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-05`](details/fixture.md#align-05)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-31`](details/fixture.md#align-31) |
 | `components/mcp.go` | 将来計画 | 実装ファイルと MCP 専用詳細仕様が存在しない。 |
 
 ## 4. Phase 実装計画
@@ -55,7 +42,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 
 各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) を参照する。
 
-`setup` と `release` の機能は現在状態が `改訂予定` であり、現在は Phase 未割当である。状態遷移条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、Phase 追加条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) を参照する。
+`setup`と`release`の機能は現在状態が`仕様化済み・未実装`であり、現在はPhase未割当である。状態遷移条件は[`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、Phase追加条件は[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー)を参照する。
 
 ---
 
@@ -71,7 +58,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 実装中・検証未完了 | 管理ツール・SDK | JavaScript SDK 公開契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・UI | 標準管理ツール UI 契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 状態管理 | 状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 管理ツール・配布 | 管理 UI 静的配布物構成・Archive 検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)。setup 実行 artifact の path、起動名、入力 interface を確定するまで実装不可。 |
+| 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的配布物構成・Archive 検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的 HTTP 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | CI ランナー | ビルドタイムアウト | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | CI ランナー | ポーリング間隔の動的変更 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
@@ -212,11 +199,11 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 仕様化済み・未実装 | ビルドスクリプト | 印刷時 QR コード挿入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | ビルドスクリプト | 定義リストサポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | ビルドスクリプト | タスクリストサポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 改訂予定 | 配布・セットアップ | 初回セットアップ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
-| 改訂予定 | 配布・セットアップ | 管理 API 導入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
-| 改訂予定 | 配布・セットアップ | バイナリアップデート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
-| 改訂予定 | 配布・セットアップ | アップデート rollback | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
-| 改訂予定 | リリース | GitHub Release 成果物生成・公開前検証・公開 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 仕様化済み・未実装 | 配布・セットアップ | 初回セットアップ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 仕様化済み・未実装 | 配布・セットアップ | 管理 API 導入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 仕様化済み・未実装 | 配布・セットアップ | バイナリアップデート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 仕様化済み・未実装 | 配布・セットアップ | アップデート rollback | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 仕様化済み・未実装 | リリース | GitHub Release 成果物生成・公開前検証・公開 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
 | 将来計画 | MCP サーバー | MCP サーバー実装 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) |
 | 将来計画 | MCP サーバー | MCP ツール・リソース公開 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) |
 | 将来計画 | MCP サーバー | AI 支援ビルドエラー分析 | [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) |

@@ -4,22 +4,8 @@
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は owner component の処理本文、HTTP body、状態 schema、SDK method、UI DOM、fixture assertion、現在状態を再定義しない。
 
-## 詳細仕様管理
-
-| 確認対象 | 正本 |
-|----------|------|
-| 方針、ポリシー、状態語彙、遷移条件 | [`docs/SPEC.md`](SPEC.md) |
-| 実装 artifact / 機能の現在状態と実装計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
-| owner component 別の詳細本文 | [`docs/details/`](details/) |
-| fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
-| 生成静的 Web サイトと標準管理 UI のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
-| 文書、実装、testdata の実在所在 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) |
-
-## 詳細仕様入口責務
-
-対象機能は [詳細節対応表](#0i-詳細節対応表) で唯一の owner component を確定し、[詳細仕様参照表](#0b-詳細仕様参照表) からその owner component の主本文へ移動する。
-
-## 詳細仕様参照入口
+<a id="詳細仕様参照入口"></a>
+**対象機能から詳細本文への選択手順：**
 
 1. [`docs/ROADMAP.md`](ROADMAP.md) で対象機能の現在状態と実装計画上の割当を確認する。
 2. [詳細節対応表](#0i-詳細節対応表) で機能の owner component を一件に確定し、対応する詳細節を開く。
@@ -27,98 +13,83 @@
 4. collaborator がある場合だけ、その component の詳細本文を境界確認として読む。
 5. fixture と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) を読む。
 
-## 0a. 詳細仕様の記載基準
+<a id="0b-詳細仕様参照表"></a>
+**owner component 別詳細本文・fixture 参照表：**
 
-記載義務、必須項目、不足時の扱いは [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4) と [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を参照する。
+| owner component | 主本文 | fixture / 証跡 |
+|-----------------|--------|----------------|
+| `builder` | [`docs/details/builder.md`](details/builder.md) | [`docs/details/fixture.md` §8a-F](details/fixture.md#8a-f-builder-初期受け入れ-fixture-契約)、[`docs/details/fixture.md` §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) |
+| `runner` | [`docs/details/runner.md`](details/runner.md) | [`docs/details/fixture.md` §15a-F](details/fixture.md#15a-f-runner-初期受け入れ-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `api` | [`docs/details/api.md`](details/api.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `admin` | [`docs/details/admin.md`](details/admin.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `sdk` | [`docs/details/sdk.md`](details/sdk.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `ui` | [`docs/details/ui.md`](details/ui.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `setup` | [`docs/details/setup.md`](details/setup.md) | [`docs/details/fixture.md` §0g.8-F](details/fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` §27-F setup / admin / Release asset 連動 fixture](details/fixture.md#sec-27-f-19) |
+| `release` | [`docs/details/release.md`](details/release.md) | [`docs/details/fixture.md` Release fixture 固定契約](details/fixture.md#release-fixture-contract) |
+| `statefile` | [`docs/details/statefile.md`](details/statefile.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `archive` | [`docs/details/archive.md`](details/archive.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `security` | [`docs/details/security.md`](details/security.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `mcp` | 専用詳細本文未作成 | 実装検証対象外。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。 |
 
-## 0b.0 詳細仕様選択フロー
-
-[詳細仕様カテゴリ](#0b01-詳細仕様カテゴリ) は検索入口、[詳細節対応表](#0i-詳細節対応表) は機能 owner と詳細節の対応、[詳細仕様参照表](#0b-詳細仕様参照表) は owner component と主本文の対応を担当する。カテゴリ名を owner component として扱わない。
-
-## 0b.0.1 詳細仕様カテゴリ
-
-| カテゴリ | owner 候補 | 詳細本文 |
-|----------|------------|----------|
-| Build | `builder` | [`docs/details/builder.md`](details/builder.md) |
-| CI / 運用 | `runner`、`commitstatus`、`archive` | [`docs/details/runner.md`](details/runner.md)、[`docs/details/commitstatus.md`](details/commitstatus.md)、[`docs/details/archive.md`](details/archive.md) |
-| 管理 | `api`、`sdk`、`ui`、`admin` | [`docs/details/api.md`](details/api.md)、[`docs/details/sdk.md`](details/sdk.md)、[`docs/details/ui.md`](details/ui.md)、[`docs/details/admin.md`](details/admin.md) |
-| 状態 / 安全 | `statefile`、`security` | [`docs/details/statefile.md`](details/statefile.md)、[`docs/details/security.md`](details/security.md) |
-| 配布 | `setup`、`release` | [`docs/details/setup.md`](details/setup.md)。`release` 専用詳細本文は未作成。 |
-| 検証証跡 | fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) |
-| MCP | `mcp` | 専用詳細仕様未作成。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
-
-## 0b. 詳細仕様参照表
-
-| owner component | 主本文 | 主な責務 |
-|-----------------|--------|----------|
-| `builder` | [`docs/details/builder.md`](details/builder.md) | Markdown 入力から静的 Web サイトを生成する。 |
-| `runner` | [`docs/details/runner.md`](details/runner.md) | GitHub 監視、build 実行、deploy、通知を調整する。 |
-| `api` | [`docs/details/api.md`](details/api.md) | 管理 HTTP API の request / response と副作用境界を持つ。 |
-| `admin` | [`docs/details/admin.md`](details/admin.md) | 管理 UI 静的配布物と配信境界を持つ。 |
-| `sdk` | [`docs/details/sdk.md`](details/sdk.md) | JavaScript SDK の公開 method と HTTP 変換を持つ。 |
-| `ui` | [`docs/details/ui.md`](details/ui.md) | 管理画面の DOM、操作、表示状態を持つ。 |
-| `setup` | [`docs/details/setup.md`](details/setup.md) | バイナリ配置、systemd、更新、Release asset 受け入れを持つ。 |
-| `release` | 専用詳細本文なし | GitHub Release 成果物の生成・公開前検証・公開の詳細本文は未作成。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
-| `statefile` | [`docs/details/statefile.md`](details/statefile.md) | 状態 schema、lock、atomic write、破損処理を持つ。 |
-| `archive` | [`docs/details/archive.md`](details/archive.md) | log archive、snapshot、download、delete、rollback 実体を持つ。 |
-| `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) | GitHub Commit Status の payload と送信契約を持つ。 |
-| `security` | [`docs/details/security.md`](details/security.md) | token、scope、session、TOTP、audit、rate limit を持つ。 |
-| fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) | fixture、expected、fake、assertion、実装検証証跡を持つ。 |
-| `mcp` | 専用詳細仕様なし | 現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
-
-## 0b.1 owner component 別 owner / collaborator 境界管理
+<a id="0b1-owner-component-別-owner-collaborator-境界管理"></a>
+**owner / collaborator 境界参照：**
 
 owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) を参照する。[詳細節対応表](#0i-詳細節対応表) の `owner` 列は機能から owner component を特定する入口、[詳細仕様参照表](#0b-詳細仕様参照表) は owner component から主本文を特定する入口とする。
 
-## 0c. 実装前確認項目
+<a id="0c-実装前確認項目"></a>
+**実装前参照：**
 
 実装着手可否は [`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7) と [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) を正本とする。この入口では、対象機能が [詳細節対応表](#0i-詳細節対応表) に存在し、owner 詳細本文と fixture 証跡へ到達できることだけを確認する。
 
-## 0d. 共通固定値
+<a id="0d-共通固定値"></a>
+**共通固定値：**
 
 | 項目 | 固定値 |
 |------|--------|
 | Go 最小バージョン | Go `1.22` 以上。 |
-| 文字コード | 入力、出力、状態ファイル、HTTP body は UTF-8。 |
-| 改行 | 新規 text / JSON Lines は LF。CRLF 入力は読み込み時に LF として扱う。 |
+| 文字コード | JSON、JSON Lines、および owner 詳細本文が text と定義する入力・出力・HTTP body は UTF-8 とする。binary response、圧縮 archive、出力成果物内の通常 file は byte 列として扱い、文字コードを適用しない。状態ファイルの text / binary 区分は [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a) を正本とする。 |
+| 改行 | 新規 JSON object / array と JSON Lines は LF とする。text の改行正規化、末尾 LF、byte 保持、CR / CRLF の許否は各 owner 詳細本文を正本とし、共通処理で変換しない。binary response、圧縮 archive、出力成果物内の通常 file には改行規則を適用しない。状態ファイルは [`docs/details/statefile.md` 詳細本文責務 UTF-8 text payload 固定契約](details/statefile.md#statefile-text-payload-contract) を参照する。 |
 | <a id="common-machine-time"></a>機械処理時刻 | UTC の ISO 8601 秒精度 `YYYY-MM-DDTHH:MM:SSZ`。ミリ秒、ナノ秒、UTC 以外の offset、local timezone の保存を禁止する。ローカル時刻は UI 表示だけで使用する。 |
 | CLI 終了コード | `0` 成功、`1` 一般エラー、`2` 入力・設定エラー、`3` 外部サービス・ネットワークエラー、`4` `.build_lock` の schema / PID 解析不正、PID 実行中判定不能、または lock 作成失敗。実行中 lock による通常 skip は `0`。 |
-| CLI 共通 option | `--help` と `--version`。短縮 option は使用しない。 |
+| CLI 共通 option | `--help` と `--version`。parse、優先順位、出力、副作用は [CLI 共通固定契約](#common-cli-contract) に従う。 |
+| バイナリバージョン | 未注入の local / 検証用ビルドは `V.0.0-dev`。バージョン付き開発ビルドと Release 用実行バイナリ asset は割当済みバージョンと exact 一致する `^V\.[1-9][0-9]*\.[0-9]+$` 形式。Release 用実行バイナリ asset では tag とも exact 一致させる。その他の値、空文字、前後空白、改行を禁止する。 |
 | 時刻ベース ID | prefix と UTC `YYYYMMDDHHmmss` を連結する。未衝突 ID に suffix は付けない。衝突時は `-001` から `-999` まで 3 桁連番を順に試し、上限到達時は既存 ID を上書きせず失敗とする。 |
 | 出力成果物 manifest SHA-256 | 出力 root 配下の通常 file だけを entry とし、`/` 区切りの相対 path を UTF-8 byte 辞書順に並べる。各 file の SHA-256 を lowercase hex で算出し、各 entry の `relative_path + "\n" + file_sha256 + "\n"` を順に連結した byte 列全体の SHA-256 lowercase hex を `output_sha256` とする。directory は走査だけに使用し entry に含めない。symlink、link count 2 以上の hardlink、device、socket、FIFO を 1 件でも検出した場合は除外継続せず算出失敗とする。出力 root は symlink でない directory、全 path は valid UTF-8 とし、先頭 `/`、空 segment、`.`、`..`、backslash、NUL、CR、LF を含む相対 path は算出失敗とする。file は no-follow open 後の identity / type と読取前後の size / mtime が列挙時から不変の場合だけ採用し、走査中の追加・削除・置換・変更は算出失敗とする。通常 file が 0 件の出力 root は空 byte 列の SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` とする。 |
+
+<a id="common-cli-contract"></a>
+**CLI 共通固定契約：**
+
+| 項目 | 固定契約 |
+|------|----------|
+| option token | option は owner 詳細本文で列挙した `--[a-z][a-z0-9-]*` 形式だけを許可する。短縮 option、列挙外 option、owner 詳細本文が明示的に許可していない位置引数を禁止する。 |
+| 値 option | 値を取る option は、owner 詳細本文が当該 option に `--name=value` を明示的に許可した場合を除き、`--name value` の 2 token 形式だけを許可する。値 token がない、または次 token が `--` で始まる場合は `missing value: --name` とする。未許可の `--name=value` は token 全体を未知 option とする。 |
+| 共通 option 優先順位 | argv に exact `--help` が 1 件以上あれば `--help`、それ以外で exact `--version` が 1 件以上あれば `--version` を、残りの argv の parse、必須値検証、path / file / state 検証より先に確定する。両方がある場合は `--help` を採用する。 |
+| help / version 結果 | owner 詳細本文の固定文字列 1 行と LF だけを stdout へ出力し、stderr は空、終了コードは `0` とする。file read/write、directory 作成、lock、listener、外部通信、child process、乱数取得を行わない。 |
+| version 出力 | exact 3 token の `<binary-name> <binary-version> go=<runtime.Version()>` + LF とする。token 間は ASCII space 1 文字、前後空白、追加行、空 token を禁止する。`binary-name` は owner 詳細本文の実行ファイル名、`binary-version` は共通固定値のバイナリバージョン、`runtime.Version()` は空文字禁止とする。 |
+| version 注入 | 実装はビルド時に不変の `binary-version` を受け取る。未指定時は `V.0.0-dev` とする。Release build は tag と同じ具体値を全バイナリへ注入し、出力が不一致または `V.0.0-dev` の場合は成果物作成を失敗させる。 |
+| parse / 入力検証失敗 | stdout は空、stderr は owner 詳細本文で固定した最初のエラー 1 行と LF だけ、終了コードは `2` とする。owner 詳細本文で固定した検証順に最初の 1 件を選び、状態変更と外部副作用を開始しない。未知 option と禁止位置引数は `unknown option: <token>` とする。 |
+| owner 固有契約 | 許可 option、固定 help / version 文字列、重複指定、値正規化、検証順、固有エラー、実行 mode は owner 詳細本文を正本とする。owner 詳細本文はこの共通契約を暗黙に上書きせず、異なる parse 形式を許可する option を個別に明示する。 |
 
 <a id="process-environment-entry-contract"></a>
 **Process environment entry 共通固定契約：**
 
-environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,63}$`、各 value は UTF-8 の 0〜4096 bytes とし、NUL、LF、CR を禁止する。`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN`、`ADLAIRE_CHANGED_TARGETS` と `ADLAIRE_CI_` prefix は reserved とし、保存、pipeline step 定義、process 注入を禁止する。永続化する environment object は key を ASCII 昇順で保存する。
+environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,63}$`、各 value は UTF-8 の 0〜4096 bytes とし、NUL、LF、CR を禁止する。利用者入力または保存対象の environment object では、`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN`、`ADLAIRE_CHANGED_TARGETS` と `ADLAIRE_CI_` prefix を reserved とし、保存、pipeline step 定義、利用者指定値としての process 注入を禁止する。runner が所有する固定 process environment は [`docs/details/runner.md` 詳細本文責務 §27.31](details/runner.md#sec-27-31) の列挙値だけを例外とし、利用者入力による上書きを禁止する。永続化する environment object は key を ASCII 昇順で保存する。
 
 状態ファイルの lock、atomic write、権限、JSON 処理は [`docs/details/statefile.md`](details/statefile.md)、秘密情報は [`docs/details/security.md`](details/security.md)、外部依存とデータ交換形式は [`docs/SPEC.md`](SPEC.md) を正本とする。
 
-## 0e. 完全実装検証マトリクス
+<a id="0e-完全実装検証マトリクス"></a>
+**完全実装検証参照：**
 
-| 対象 | 詳細本文 | fixture / 証跡 |
-|------|----------|----------------|
-| `builder` | [`docs/details/builder.md`](details/builder.md) | [`docs/details/fixture.md` §8a-F](details/fixture.md#8a-f-builder-初期受け入れ-fixture-契約)、[`docs/details/fixture.md` §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) |
-| `runner` | [`docs/details/runner.md`](details/runner.md) | [`docs/details/fixture.md` §15a-F](details/fixture.md#15a-f-runner-初期受け入れ-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `api` | [`docs/details/api.md`](details/api.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `sdk` | [`docs/details/sdk.md`](details/sdk.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `ui` | [`docs/details/ui.md`](details/ui.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `admin` | [`docs/details/admin.md`](details/admin.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `statefile` | [`docs/details/statefile.md`](details/statefile.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `security` | [`docs/details/security.md`](details/security.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `archive` | [`docs/details/archive.md`](details/archive.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `setup` | [`docs/details/setup.md`](details/setup.md) | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](details/fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture](details/fixture.md#sec-27-f-19) |
-| `release` | 専用詳細本文未作成 | 実装検証対象外。専用詳細本文と fixture 契約の作成後に本表へ証跡入口を追加する。 |
-| `mcp` | 専用詳細本文未作成 | 実装検証対象外。専用詳細本文と fixture 契約の作成後に本表へ証跡入口を追加する。 |
+対象 owner の詳細本文と fixture 証跡は [owner component 別詳細本文・fixture 参照表](#0b-詳細仕様参照表) の同一行を使用する。完了判定と状態遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
-完了判定と状態遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。
-
-## 0f. 仕様策定完了チェック
+<a id="0f-仕様策定完了チェック"></a>
+**仕様策定完了条件の参照：**
 
 仕様策定の完了条件は [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4)、[`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) を正本とする。この入口では、[詳細仕様参照表](#0b-詳細仕様参照表)、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields)、[詳細節対応表](#0i-詳細節対応表)、[完全実装検証マトリクス](#0e-完全実装検証マトリクス) の参照が揃っていることだけを確認する。
 
-## 0i. 詳細節対応表
+<a id="0i-詳細節対応表"></a>
+**機能・owner component・詳細本文対応表：**
 
 [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i 詳細節対応表](DETAIL_INDEX.md#0i-詳細節対応表) は対象機能から唯一の owner と関連詳細本文へ移動するための対応表である。`owner` 列だけが機能 owner の正本であり、collaborator の接続境界と担当処理は owner の該当詳細節を参照する。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、受け入れ assertion は [`docs/details/fixture.md`](details/fixture.md) を正本とし、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i 詳細節対応表](DETAIL_INDEX.md#0i-詳細節対応表) では再掲しない。
 
@@ -276,16 +247,4 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 | 管理 API 導入 | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.3b](details/setup.md#sec-26-3b)、[§26.4.2](details/setup.md#sec-26-4-2)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
 | バイナリアップデート | `setup` | [`docs/details/setup.md` 詳細本文責務 §26.5](details/setup.md#sec-26-5)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
 | アップデート rollback | `setup` | [`docs/details/setup.md` 詳細本文責務 アップデート rollback 固定契約](details/setup.md#setup-update-rollback-contract)、[§26.7](details/setup.md#sec-26-7)〜[§26.8](details/setup.md#sec-26-8) |
-| GitHub Release 成果物生成・公開前検証・公開 | `release` | 専用詳細本文未作成。成果物の受け入れ側契約は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) と [§26.8](details/setup.md#sec-26-8) を参照する。 |
-
-## 詳細仕様セット構成
-
-詳細仕様セットは [詳細仕様参照表](#0b-詳細仕様参照表) に列挙した owner component 詳細本文と [`docs/details/fixture.md`](details/fixture.md) で構成する。実在するファイルの一覧は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。
-
-## 0j. リポジトリ内ソース配置
-
-標準ディレクトリ構成は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、実在する文書・実装・testdata・未作成 path は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では tree、現在配置、将来 path を再掲しない。
-
-## owner component 別詳細本文責務索引
-
-[詳細仕様参照表](#0b-詳細仕様参照表) を owner component 別詳細本文責務の唯一の索引とする。
+| GitHub Release 成果物生成・公開前検証・公開 | `release` | [`docs/details/release.md` 詳細本文責務 §R1](details/release.md#release-cli-contract)〜[§R7](details/release.md#release-acceptance-contract)。成果物の受け入れ側契約は[`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a)と[§26.8](details/setup.md#sec-26-8)を参照する。 |

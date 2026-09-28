@@ -1,23 +1,22 @@
 # Adlaire CI — Builder 詳細仕様
 
-[`docs/details/builder.md`](builder.md) は `builder` owner component の詳細本文責務として、`builder` が主本文として持つ実装契約だけを扱う。
-
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`builder` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
-
 ---
 
-## 0. 責務境界
+<a id="0-責務境界"></a>
+
+**0. 責務境界：**
 
 | 項目 | 内容 |
 |------|------|
 | owner component | `builder` |
 | 実装主体 | [`components/builder.go`](../../components/builder.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-build` とする。 |
 | 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder 検証条件、builder owner 追加機能。 |
-| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
-## 1. 要件
+<a id="1-要件"></a>
+
+**1. 要件：**
 
 | 項目 | 内容 |
 |------|------|
@@ -27,18 +26,23 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 
 ---
 
-## 2. ファイルパス設定
+<a id="2-ファイルパス設定"></a>
+
+**2. ファイルパス設定：**
 
 `builder` は、以下の既定値を持つ設定構造体で入出力パスを管理する。
 
 ```go
 type BuildConfig struct {
-    Src     string
-    Out     string
-    Title   string
-    Theme   string
-    BaseDir string
-    Strict  bool
+    Src       string
+    Out       string
+    Title     string
+    Theme     string
+    BaseDir   string
+    Strict    bool
+    BuildID   string
+    CommitSHA string
+    BuildAt   string
 }
 
 var DefaultBuildConfig = BuildConfig{
@@ -48,8 +52,13 @@ var DefaultBuildConfig = BuildConfig{
     Theme: "adlaire-default",
     BaseDir: "",
     Strict: false,
+    BuildID: "",
+    CommitSHA: "",
+    BuildAt: "",
 }
 ```
+
+`BuildConfig.BuildID`、`BuildConfig.CommitSHA`、`BuildConfig.BuildAt` は、それぞれ正規化・検証済みの `--build-id`、`--commit-sha`、`--build-at` と完全一致させる。builder 内で ID、commit SHA、build 時刻を生成または補完してはならない。未指定値は空文字のまま保持する。
 
 別の環境で実行する場合は、この既定値を CLI 引数で上書きする。[`docs/details/builder.md` 詳細本文責務 §2](builder.md#2-ファイルパス設定) の基本設定 `src`、`out`、`title`、`theme`、`base-dir`、`strict` と build metadata `build-id`、`commit-sha`、`build-at` は、同節に定義した CLI 引数と既定値だけから決定し、環境変数または設定ファイルから読み込まない。[`docs/details/builder.md` 詳細本文責務 §28 設定ファイル / 入力解決固定契約](builder.md#sec-28-common-config-file) は builder 拡張設定だけに適用し、この基本設定または build metadata を上書きしてはならない。
 
@@ -104,7 +113,7 @@ var DefaultBuildConfig = BuildConfig{
 | 条件 | stdout |
 |------|--------|
 | `--help` | `Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--version] [--help]` |
-| `--version` | `adlaire-ci-build v3 go=<runtime.Version()>` |
+| `--version` | `adlaire-ci-build <binary-version> go=<runtime.Version()>` |
 
 `--help` と `--version` の stdout は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の CLI 共通固定契約に従い 1 行固定とする。`--help` または `--version` を指定した場合、`--src` の存在確認、`--theme` 検証、出力ディレクトリ作成は行わない。
 
@@ -122,7 +131,9 @@ var DefaultBuildConfig = BuildConfig{
 
 ---
 
-## 2a. 入力収集・出力パス決定
+<a id="2a-入力収集出力パス決定"></a>
+
+**2a. 入力収集・出力パス決定：**
 
 `builder` は、`--src` がファイルかディレクトリかで入力収集方法を切り替える。
 
@@ -217,7 +228,9 @@ Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま�
 
 ---
 
-## 3. 処理パイプライン
+<a id="3-処理パイプライン"></a>
+
+**3. 処理パイプライン：**
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -246,7 +259,9 @@ Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま�
 
 ---
 
-## 4. 関数リファレンス
+<a id="4-関数リファレンス"></a>
+
+**4. 関数リファレンス：**
 
 <a id="sec-4-1"></a>
 **4.1 `slugify(text string) string`：**
@@ -367,15 +382,16 @@ type RenderContext struct {
 
 **インライン記法のネスト仕様：**
 
+`***text***` の出力は、直前の [インライン記法の正規表現置換表](#sec-4-3) に定義した契約を使用する。
+
 | 入力 | 出力 |
 |------|------|
-| `***text***` | `<strong><em>text</em></strong>` |
 | `**_text_**` | `<strong><em>text</em></strong>` |
 | `__*text*__` | `<strong><em>text</em></strong>` |
 | `*__text__*` | `<em><strong>text</strong></em>` |
 | `_**text**_` | `<em><strong>text</strong></em>` |
 
-[`docs/details/builder.md` 詳細本文責務 §4.3](builder.md#sec-4-3) の inline 記法固定表以外のネストした強調・削除・リンクの組み合わせは追加変換しない。未対応ネストは、先にマッチした外側または内側の単一記法だけを変換し、残った Markdown 記号は `esc()` 済みテキストとして出力する。実装者判断で CommonMark 全互換のネスト処理を追加してはならない。
+[`docs/details/builder.md` 詳細本文責務 §4.3](builder.md#sec-4-3) の inline 記法固定表以外のネストした強調・削除・リンクの組み合わせは追加変換しない。未対応ネストは、先にマッチした外側または内側の単一記法だけを変換し、残った Markdown 記号は `esc()` 済みテキストとして出力する。実装者判断で CommonMark 完全準拠のネスト処理を追加してはならない。
 
 ---
 
@@ -654,7 +670,9 @@ uniqueSlug := func(base string) string {
 
 ---
 
-## 5. 静的 Web サイト出力構造
+<a id="5-静的-web-サイト出力構造"></a>
+
+**5. 静的 Web サイト出力構造：**
 
 サイト全体の合成は `assembleSite(site SiteData, theme Theme) error` が担当する。`convert()` は各 Markdown ページの本文 HTML を生成し、`assembleSite()` はページ HTML、共通 CSS、共通 JavaScript、検索インデックス、テーマコンポーネントを出力サイトディレクトリへ書き出す。
 
@@ -662,10 +680,16 @@ uniqueSlug := func(base string) string {
 
 ```go
 type SiteData struct {
-    Title          string
-    Pages          []PageData
-    SearchIndex    []SearchIndexEntry
-    GeneratedAtUTC string
+    Title       string
+    Pages       []PageData
+    SearchIndex []SearchIndexEntry
+    BuildMeta   BuildMeta
+}
+
+type BuildMeta struct {
+    BuildID   string
+    CommitSHA string
+    BuildAt   string
 }
 
 type PageData struct {
@@ -712,6 +736,7 @@ type SearchIndexEntry struct {
 | `SiteData.Title` | `string` | 空は禁止。HTML 出力時は `esc()` する。 |
 | `SiteData.Pages` | `[]PageData` | 1 件以上。単一 Markdown 入力の場合も 1 ページのサイトとして扱う。 |
 | `SiteData.SearchIndex` | `[]SearchIndexEntry` | サイト内検索用。未生成時は空配列。 |
+| `SiteData.BuildMeta` | `BuildMeta` | `BuildConfig.BuildID`、`CommitSHA`、`BuildAt` を同名 field へそのまま写像した値。独立した現在時刻を取得してはならない。 |
 | `SearchIndexEntry.URL` | `string` | `PageData.OutputPath` または `PageData.OutputPath + "#" + headingSlug`。空は禁止。 |
 | `SearchIndexEntry.ID` | `string` | 見出し slug。ページ単位エントリの場合は空文字を許可する。 |
 | `SearchIndexEntry.Title` | `string` | 検索結果に表示するタイトル。空は禁止。 |
@@ -724,9 +749,13 @@ type SearchIndexEntry struct {
 | `TocHTML` | `string` | `buildTOC(headings)` の戻り値。`<ul id="toc-root">` の内側へ挿入する。 |
 | `BodyHTML` | `string` | `ConvertResult.HTML`。`<div class="ci">` の内側へ挿入する。 |
 | `ReadingTimeMinutes` | `int` | 1 以上。0 以下の場合は `1` として表示する。 |
-| `GeneratedAtUTC` | `string` | UTC ISO 8601。空の場合は生成日時 meta を出力しない。 |
+| `BuildMeta.BuildID` | `string` | `BuildConfig.BuildID` と完全一致する。空文字を許可し、`adlaire-build-id` meta の `content` にそのまま使用する。 |
+| `BuildMeta.CommitSHA` | `string` | `BuildConfig.CommitSHA` と完全一致する。空文字を許可し、`adlaire-commit-sha` meta の `content` にそのまま使用する。 |
+| `BuildMeta.BuildAt` | `string` | `BuildConfig.BuildAt` と完全一致する。空文字を許可し、`adlaire-build-at` meta の `content` にそのまま使用する。生成日時を表示する場合もこの値だけを使用する。 |
 
 `assembleSite()` は `PageData` fields を結合してファイルを書き出すだけとし、Markdown 変換、slug 生成、TOC 生成、検索インデックス抽出、警告集計を行ってはならない。
+
+`BuildConfig` から `SiteData` を作る処理は `BuildMeta{BuildID: cfg.BuildID, CommitSHA: cfg.CommitSHA, BuildAt: cfg.BuildAt}` を設定する。出力 HTML、`[REPORT]`、検索インデックス、footer その他の生成物で build metadata を参照する場合は、すべて同じ `SiteData.BuildMeta` を使用する。`time.Now()`、file mtime、process 起動時刻を build metadata または生成日時の代替値として使用してはならない。
 
 **出力ディレクトリ構造：**
 
@@ -879,7 +908,7 @@ type SearchIndexEntry struct {
 | meta build id | `--build-id` 未指定時も `content=""` で出力する。 |
 | meta commit sha | `--commit-sha` 未指定時も `content=""` で出力する。 |
 | meta build at | `--build-at` 未指定時も `content=""` で出力する。 |
-| generated at | `GeneratedAtUTC` が空でない場合だけ `<meta name="adlaire-generated-at" content="{GeneratedAtUTC}">` を出力する。 |
+| generated at | 独立した `adlaire-generated-at` meta は出力しない。生成時刻として必要な値は `BuildMeta.BuildAt` を使用する。 |
 | CSS link | HTML ごとに `{relativeRoot}assets/style.css` 1 件だけ。 |
 | JS script | `</body>` 直前に `{relativeRoot}assets/app.js` 1 件だけ。 |
 
@@ -887,7 +916,9 @@ HTML には inline `<style>`、inline `<script>`、外部 CDN、外部 font、�
 
 ---
 
-## 6. CSS クラス一覧
+<a id="6-css-クラス一覧"></a>
+
+**6. CSS クラス一覧：**
 
 builder owner は、出力する selector、対応要素、DOM 上の意味、JavaScript との連携だけを固定する。色、寸法、余白、配置、タイポグラフィ、表示効果、responsive 表現、print 表現は [`docs/DESIGN.md`](../DESIGN.md) デザイン責務を正本とし、builder 詳細本文では再定義しない。
 
@@ -1014,7 +1045,9 @@ builder owner は、出力する selector、対応要素、DOM 上の意味、Ja
 
 ---
 
-## 7. JavaScript 機能
+<a id="7-javascript-機能"></a>
+
+**7. JavaScript 機能：**
 
 <a id="sec-7-1"></a>
 **7.1 テーマ切り替え（廃止）：**
@@ -1292,7 +1325,9 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 ---
 
-## 8. 実行方法
+<a id="8-実行方法"></a>
+
+**8. 実行方法：**
 
 ```bash
 /usr/local/bin/adlaire-ci-build
@@ -1333,8 +1368,8 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 | Builder CLI ケース | stdout | stderr | 終了コード | 副作用 |
 |--------------------|--------|--------|------------|--------|
-| `--help` | `Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--version] [--help]` + LF | 空 | `0` | 入力読込、出力作成なし。 |
-| `--version` | `adlaire-ci-build v3 go={version}` + LF | 空 | `0` | 入力読込、出力作成なし。 |
+| `--help` | [固定出力](#固定出力) の `--help` 値 + LF | 空 | `0` | 入力読込、出力作成なし。 |
+| `--version` | [固定出力](#固定出力) の `--version` 値 + LF | 空 | `0` | 入力読込、出力作成なし。 |
 | 引数不正 | 空 | 固定エラー 1 行 + LF | `2` | 入力読込、出力作成なし。 |
 | 入力不存在 | 空 | `source not found: {path}` + LF | `2` | 出力作成なし。 |
 | UTF-8 不正 | 空 | `source is not valid UTF-8: {path}` + LF | `2` | 出力作成なし。 |
@@ -1435,6 +1470,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | search index / JavaScript | search index schema、body 抽出、localStorage guard、外部 storage / network 不使用。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture G` |
 | strict warning | strict warning 昇格、stdout / stderr、公開前停止時の既存出力保護。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture H` |
 | atomic output | rename / directory sync 失敗、1 回だけの補償、補償失敗時の path 保持、`[REPORT]` 非出力。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture I` |
+| build metadata dataflow | CLI metadata 指定時と省略時の `BuildConfig` → `SiteData.BuildMeta` → 全 HTML meta → `[REPORT]` の完全一致、生成時刻非依存。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture J` |
 
 <a id="sec-8"></a>
 **[`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能別実装確認固定契約](builder.md#sec-8)：**
@@ -1461,7 +1497,9 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 
 ---
 
-## 9. 既知の制限
+<a id="9-既知の制限"></a>
+
+**9. 既知の制限：**
 
 | 制限 | 詳細 |
 |------|------|
@@ -1470,7 +1508,9 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 
 ---
 
-## 27. Builder owner 横断連動追加仕様化機能 詳細仕様
+<a id="27-builder-owner-横断連動追加仕様化機能-詳細仕様"></a>
+
+**27. Builder owner 横断連動追加仕様化機能 詳細仕様：**
 
 <a id="sec-27-4"></a>
 **27.4 出力サイトへのビルドメタ埋め込み：**
@@ -1661,11 +1701,13 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | base 外参照 | broken dependency として記録。 |
 | failure build | 既存 manifest を上書きしない。 |
 
-## 28. Builder owner 静的サイト出力拡張追加仕様化機能 詳細仕様
+<a id="28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様"></a>
+
+**28. Builder owner 静的サイト出力拡張追加仕様化機能 詳細仕様：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) は、[`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) から参照される builder owner 静的サイト出力拡張追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。各機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
 
-[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。実装言語と外部依存の採否は [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を正本とする。builder 出力と実行時挙動は CDN、外部 API、runtime network fetch、browser 専用 build tool を要求してはならない。
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、`adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。実装言語と外部依存の採否は [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を正本とし、この詳細仕様では再定義しない。
 
 <a id="sec-28"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 共通固定契約](builder.md#sec-28)：**
@@ -1673,7 +1715,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | 項目 | 仕様 |
 |------|------|
 | 設定入力 | CLI option を最優先とし、同名の `ADLAIRE_*` 環境変数、設定ファイル、既定値の順で採用する。既存 CLI と競合する option 名を追加しない。 |
-| 既定値 | 既存出力互換を優先し、明示的に有効化する機能は既定 `false` または空値とする。ただしアクセシビリティ、画像 lazy load、既存 Markdown 記法の安全な標準化は既定有効にできる。 |
+| 既定値 | 各機能節が明示する固定値だけを使用する。共通規則による有効化、無効化、暗黙の既定値補完を行わない。 |
 | 出力 | HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json`、`[REPORT]` のいずれかに固定して出力する。未定義 file を作成しない。 |
 | HTML safety | Markdown 由来の値、設定値、ファイル名、meta 値、tooltip 値、ARIA 値は HTML escape または attribute escape を行う。 |
 | path safety | 入力 Markdown base dir 外を参照する path、絶対 path、URL scheme 偽装、`..` による脱出は警告または終了コード `2` とする。 |
@@ -1857,7 +1899,7 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の `[REPORT]` は、既存 [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) と同じ 1 行の `key=value` 形式を維持する。JSON object 全体を stdout に出力してはならない。[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) で追加する key は、既存固定順の末尾へ ASCII 昇順で追加する。既存 key の名前、順序、値表現を変更してはならない。
 
-[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の値は `=` の右辺だけを JSON literal 互換にする。boolean は `true` / `false`、integer は 10 進数、string は JSON string、array は compact JSON array に固定する。compact JSON は空白なし、object なし、要素は JSON string のみとする。key 未使用時は省略せず、機能が評価対象なら既定値を出力する。
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の値は `=` の右辺だけを JSON literal 形式にする。boolean は `true` / `false`、integer は 10 進数、string は JSON string、array は compact JSON array に固定する。compact JSON は空白なし、object なし、要素は JSON string のみとする。key 未使用時は省略せず、機能が評価対象なら既定値を出力する。
 
 | 値種別 | 例 | 固定 |
 |--------|----|------|
@@ -2202,7 +2244,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | fallback | non-strict で通常 text、非表示、source 表示へ落とした対象 1 件を 1 とする。 |
 
 <a id="sec-28-common-compat"></a>
-**[`docs/details/builder.md` 詳細本文責務 §28 既存出力互換・先取り実装禁止固定契約](builder.md#sec-28-common-compat)：**
+**[`docs/details/builder.md` 詳細本文責務 §28 基準出力安定性・先取り実装禁止固定契約](builder.md#sec-28-common-compat)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装変更は、対象機能を有効化しない既存 fixture の HTML、CSS、JS、search index、REPORT が変化しないことを示す。既定有効の機能は、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の既定有効明記に基づく [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10)、[`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16)、[`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18)、[`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20)、[`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21)、[`docs/details/builder.md` 詳細本文責務 §28.24](builder.md#sec-28-24)、[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) に限定する。
 
@@ -2758,7 +2800,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 <a id="sec-28-implementation-check"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 詳細実装確認条件](builder.md#sec-28-implementation-check)：**
 
-各機能は、該当 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](../DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) を満たすまで詳細実装確認を満たした扱いにしない。複数の [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 機能を同一変更で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の実装検証証跡に列挙する。
+各機能は、該当 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](../DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) を満たすまで詳細実装確認を満たした扱いにしない。複数の [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 機能を同一変更で実装する場合は、対象機能ごとに fixture、report key、対象外機能、基準出力安定性確認を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の実装検証証跡に列挙する。
 
 <a id="sec-28-implementation-gate"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 詳細実装確認ゲート固定契約](builder.md#sec-28-implementation-gate)：**
@@ -2773,7 +2815,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | REPORT | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の対象機能別固定契約に定義された REPORT key、型、count 単位、既定値をすべて fixture で確認する。 | key 省略、型違い、件数算出根拠不明、warning count 不一致。 |
 | stdout / stderr | warning / error code、file、line、section、message、出力先の形式が固定契約と一致する。 | 独自 code、message 揺れ、出力先違い、secret / credential / raw HTML 混入。 |
 | strict / non-strict | warning 昇格対象は non-strict と strict の両方を fixture で確認する。 | 片方だけの実装、片方だけの fixture、strict 時の副作用残存。 |
-| 既存出力互換 | 対象機能無効時、または対象入力なし時に既存 HTML / CSS / JS / search index / REPORT が変わらない。 | 対象外の既存 fixture 差分、未使用 CSS / JS の出力。 |
+| 基準出力安定性 | 対象機能無効時、または対象入力なし時に基準 fixture の HTML / CSS / JS / search index / REPORT が変わらない。 | 対象外の基準 fixture 差分、未使用 CSS / JS の出力。 |
 | security | HTML escape、attribute escape、URL validation、base 外 path、外部依存不使用を確認する。 | raw HTML、credential、CDN、外部 script、runtime network fetch の残存。 |
 | atomicity | 失敗時に既存出力、manifest、search index を部分更新しない。 | 失敗 fixture で file 更新、削除、manifest 上書きが残る。 |
 | fixture 完備 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) の fixture catalog、manifest schema、expected 比較、最低確認項目を満たす。 | fixture 名不足、manifest key 不足、expected 不足、比較除外理由なし。 |
@@ -2792,4 +2834,4 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | HTML / CSS / JS の expected 差分を目視または snapshot だけで合格扱いした。 | 再現性ある合否判定ではない。 |
 | 実装言語または外部依存が [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) に違反する、または builder 出力が CDN、外部 API、runtime network fetch、browser 専用 build tool を要求する。 | 上位方針違反または builder runtime 契約違反。 |
 | 失敗時に既存出力または manifest が更新された。 | atomicity 違反。 |
-| 実装検証証跡に対象機能、fixture、REPORT、strict / non-strict、既存互換、対象外機能が列挙されていない。 | 実装証跡不足。 |
+| 実装検証証跡に対象機能、fixture、REPORT、strict / non-strict、基準出力安定性、対象外機能が列挙されていない。 | 実装証跡不足。 |

@@ -1,19 +1,16 @@
 # Adlaire CI — Commit Status 詳細仕様
 
-[`docs/details/commitstatus.md`](commitstatus.md) は `commitstatus` owner component の詳細本文責務として、`commitstatus` が主本文として持つ実装契約だけを扱う。
-
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`commitstatus` owner component の主本文であり、collaborator component の仕様は呼び出し境界、状態、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
-
 ---
 
-## 0. 責務境界
+<a id="0-責務境界"></a>
+
+**0. 責務境界：**
 
 | 項目 | 内容 |
 |------|------|
 | owner component | `commitstatus` |
 | 実装主体 | 単独の Go artifact は持たない。GitHub Commit Status の payload 生成、送信、結果保存は [`components/runner.go`](../../components/runner.go) に内包する。 |
 | 持つ内容 | `commitstatus` owner が主本文として定義する GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
-| 持たない内容 | runner の build 実行判断、GitHub read、API endpoint、SDK method、UI DOM 詳細、状態 schema、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
@@ -49,7 +46,7 @@ GitHub request は以下に固定する。retry、GraphQL API、Check Runs API�
 | method | `POST` |
 | path | `/repos/{owner}/{repo}/statuses/{sha}` |
 | header | `Accept: application/vnd.github+json`、`Authorization: Bearer {GITHUB_TOKEN}`、`X-GitHub-Api-Version: 2022-11-28` |
-| 必須 GitHub permission | `.server_config.commit_status_enabled=true` の場合、Fine-grained PAT の対象リポジトリに `Commit statuses: Write` を必須とする。`false` の場合は本 API を呼び出さず、この追加権限も不要とする。 |
+| 呼出条件 | `.server_config.commit_status_enabled=true` の場合だけ呼び出す。GitHub permission は [`docs/SPEC.md` ポリシー責務 §5](../SPEC.md#5-ci-ランナー秘密情報公開境界ポリシー) を正本とする。 |
 | body | `state`、`context`、`description`、任意の `target_url` だけを持つ JSON object。 |
 | timeout | 10 秒。timeout は network error と同じ送信失敗扱い。 |
 | success status | HTTP `201`。`200`、`202`、`204` は失敗扱い。 |

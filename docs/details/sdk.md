@@ -1,25 +1,24 @@
 # Adlaire CI — SDK 詳細仕様
 
-[`docs/details/sdk.md`](sdk.md) は `sdk` owner component の詳細本文責務として、`sdk` が主本文として持つ実装契約だけを扱う。
-
-owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。`sdk` owner component の主本文であり、collaborator component の仕様は endpoint、response、error、security、UI 呼び出し境界、検証観点として参照する。fixture、expected、fake、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
-
 SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を参照する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務は SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
 ---
 
-## 0. 責務境界
+<a id="0-責務境界"></a>
+
+**0. 責務境界：**
 
 | 項目 | 内容 |
 |------|------|
 | owner component | `sdk` |
 | 実装主体 | [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js) の単一 ES Module。 |
 | 持つ内容 | `sdk` owner が主本文として定義する SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
-| 持たない内容 | API endpoint 実装、API endpoint の状態ファイル更新責務、UI DOM 詳細、状態 schema、状態ファイル直接操作、admin 静的配信、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
-## 23. JavaScript SDK 仕様
+<a id="23-javascript-sdk-仕様"></a>
+
+**23. JavaScript SDK 仕様：**
 
 [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) は、sdk owner の JavaScript SDK 詳細本文責務である。実装 artifact は [責務境界](#0-責務境界)、module 形式は以下の SDK 実行環境契約を参照する。
 
@@ -29,7 +28,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 |------|------|
 | JavaScript | ECMAScript 2022 以上を前提とする。transpile、bundle、polyfill は SDK 詳細本文責務に含めない。 |
 | module | `admin/adlaire-ci-sdk.js` は ES Module とし、`export { AdlaireCI, AdlaireCIError }` を必須 export とする。default export は定義しない。 |
-| browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder`、`URLSearchParams` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
+| browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
 | 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。Node.js 専用 API、npm package、bundler、polyfill による補完は行わない。 |
 | global 汚染 | `window.AdlaireCI` 等の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
 | 外部 consumer | 必須 browser API を提供する外部 consumer application は、利用側の framework または bundler から本 ES Module を import してよい。consumer 側の framework adapter、package manifest、bundler 設定、polyfill、framework runtime を本リポジトリ、SDK 配布物、標準管理 UI 配布物へ追加してはならない。 |
@@ -41,7 +40,7 @@ class AdlaireCI {
   constructor({ baseUrl })
   // this._token でセッショントークンを管理。login() 後の全リクエストに自動付与
 
-  login(password)                               // POST /api/login → {token?, must_change, totp_required?, ticket?}; token がある場合は this._token にセット
+  login(password)                               // POST /api/login → {token, must_change} | {totp_required: true, ticket}; token がある場合は this._token にセット
   loginTotp(ticket, code)                       // POST /api/login/totp → {token, must_change}; this._token にセット
   logout()                                      // POST /api/logout → Promise<{message: string}>; this._token をクリア
   changePassword(currentPassword, newPassword)  // POST /api/change-password → Promise<{message: string}>
@@ -174,23 +173,24 @@ export { AdlaireCI, AdlaireCIError };
 
 全メソッドは `Promise` を返す。`streamBuild` は SSE 接続確立後に `StreamHandle` で resolve し、接続前エラーは `AdlaireCIError` で reject する。HTTP エラー（4xx / 5xx）は `AdlaireCIError` としてスローする。`401` 受信時はセッション期限切れとして `this._token` をクリアする。constructor、private method、helper 関数を除く public method は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の SDK 列と完全一致させる。
 
+<a id="sdk-common-contract"></a>
 **SDK 共通実装契約：**
 
 | 項目 | 仕様 |
 |------|------|
-| `baseUrl` | 末尾 `/` を除去して保持する。空文字、`null`、`undefined` は `TypeError`。 |
-| URL 組み立て | パスは `/api/...` をそのまま連結し、クエリ値は `encodeURIComponent` でエンコードする。 |
+| `baseUrl` | API origin だけを表す absolute `http` / `https` URL とする。path は `/`、userinfo、query、fragment はなしとし、保持時は末尾 `/` を除去する。空文字、relative URL、`null`、`undefined`、その他の形式違反は HTTP 送信前に `TypeError("Invalid argument: baseUrl")` とする。`baseUrl` に `/api` を含めない。 |
+| URL 組み立て | パスは `/api/...` をそのまま連結する。query key は各 method の固定名をそのまま使用し、query value は `encodeURIComponent(String(value))` の結果を使用する。空白は `%20` とし、`+` への変換を禁止する。 |
 | 認証ヘッダー | `this._token` が存在する場合のみ `Authorization: Bearer ${token}` を付与する。 |
 | JSON 送信 | `POST` / `DELETE` で body を送る場合は `Content-Type: application/json` を付与し、`JSON.stringify` した body を送信する。 |
-| JSON 受信 | `Content-Type` が JSON の場合のみ `response.json()` を呼ぶ。[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) で JSON response を定義した endpoint の成功時に空 body を受信した場合は protocol error として `AdlaireCIError(status=0, message="Empty JSON response")` を投げる。 |
+| JSON 受信 | body 読取、media type 判定、空 body 判定、parse、error 変換は [SDK transport / error 固定契約](#sdk-transport-error-contract) を唯一の本文とする。`response.json()` を使用してはならない。 |
 | `AdlaireCIError` | `name="AdlaireCIError"`、`status`、`message`、`details`、`responseBody` を持つ `Error` 派生クラスとする。constructor は `new AdlaireCIError({status, message, details = null, responseBody = null})` とし、network error、timeout、protocol error は `status=0` とする。`message` は API error response の `error`、network error は `"Network error"`、timeout は `"Request timeout"`、protocol error は固定文言を使用する。 |
 | `logout()` | API 呼び出しが失敗しても `finally` で `this._token` をクリアする。 |
-| request timeout | 通常 API は 30 秒で abort し、`AdlaireCIError(status=0, message="Request timeout")` を投げる。`streamBuild()` は接続確立まで 30 秒、接続確立後は timeout なしとし、利用者が `StreamHandle.close()` で停止する。 |
+| request timeout | 通常 API の 30 秒は `fetch()` 開始から JSON text または Blob の body 読取完了までとする。response header 受信時に timeout を解除しない。SDK 自身の timeout で header 待機または body 読取が abort した場合は `AdlaireCIError(status=0, message="Request timeout")` を投げる。`streamBuild()` は接続確立まで 30 秒、接続確立後は timeout なしとし、利用者が `StreamHandle.close()` で停止する。 |
 | `streamBuild()` | `onLine` と `onEnd` は function 必須とし、不正時は HTTP 送信前に `TypeError` とする。token がない場合は接続前に `AdlaireCIError(status=401, message="Unauthorized")` を投げる。native `EventSource` は Authorization header を付与できないため使用禁止とする。SDK は `fetch()`、`AbortController`、`ReadableStream` reader を使用し、`Accept: text/event-stream` と `Authorization` header を付与する。`2xx`、media type `text/event-stream`、readable body の確認後だけ `StreamHandle` で resolve する。`2xx` で media type または readable body が不正な場合は接続前に `AdlaireCIError(status=0,message="Invalid SSE response")` で reject する。 |
 | SSE parser | `TextDecoder("utf-8",{fatal:true})` の streaming decode を使用し、chunk 境界をまたぐ byte、Unicode 文字、frame を buffer する。frame separator は LF 2 個の `\n\n` だけとし、1 frame は `data: ` で始まる 1 行と compact JSON 1 object だけを許可する。CRLF、追加行、空 frame、無効 UTF-8、JSON parse 不能、未知 key、未知 `type`、必須 key 不足、型不一致は `Invalid SSE frame` とする。 |
 | SSE frame 適用 | `type="log"` は key が `type,line,at` だけ、`line` が string、`at` が UTC ISO 8601 秒精度の場合だけ `onLine(line)` を呼ぶ。`type="end"` は key が `type,status,duration_seconds` だけで、status と duration の組合せが API 契約に一致する場合だけ一時保持する。`end` は最終 frame 1 件だけを許可し、その後に EOF と空 buffer を確認してから `onEnd(summary)` を 1 回呼ぶ。実行中 snapshot の `duration_seconds:null` を保持し、完了と推測しない。EOF 前の `end` 不在、`end` 後の byte / frame、EOF 時の未完 frame は `Invalid SSE frame` とする。`onLine` または `onEnd` が例外を投げた場合は reader を停止し、`AdlaireCIError(status=0,message="Stream callback failed")` へ置き換える。 |
 | `StreamHandle` | `StreamEnd.status` は `"running"`、`"success"`、`"failure"`、`"cancelled"` のいずれか、`StreamEnd.duration_seconds` は number または `null` とし、exact object は `{status,duration_seconds}` とする。`streamBuild()` の戻り値は `close()`、`closed`、`error`、`done` だけを持ち、`error` は `AdlaireCIError` または `null`、`done` は `StreamEnd` または `null` で resolve する Promise とする。正常終了時は `onEnd(summary)` 後に `done` を同じ summary で resolve し、`closed=true`、`error=null` とする。接続後 error は `closed=true`、`error` に同じ `AdlaireCIError` を保持し、`done` をその error で reject する。`close()` は reader と AbortController を停止し、複数回呼んでも例外を投げず、`onEnd` を呼ばず、`closed=true`、`error=null`、`done` は `null` で resolve する。normal end、error、user close のうち最初の terminal transition だけが状態と `done` を確定し、後続 callback と再 settle を禁止する。 |
-| Blob レスポンス | `downloadSnapshot(id)` のみ `response.blob()` を使用する。その他は JSON とする。 |
+| Blob レスポンス | `downloadSnapshot(id)` の `2xx` のみ `response.blob()` を使用する。成功 response の `Content-Type` を media type と parameter に分解し、media type が case-insensitive で `application/octet-stream` と完全一致する場合だけ Blob を返す。不一致は `AdlaireCIError(status=0,message="Invalid binary response")` とする。その他の成功 response は JSON とする。 |
 | メソッド引数検証 | SDK 側でも必須引数の空値、配列型、数値範囲を検証し、HTTP 送信前に `TypeError` を投げる。 |
 | endpoint 対応 | SDK method は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の SDK 列に存在する endpoint だけを呼び出す。[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) にない endpoint を SDK 独自判断で追加してはならない。 |
 | body なし endpoint | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の `Request` が `none` の場合、SDK は `fetch` に `body` を設定しない。`{}` も送信しない。 |
@@ -200,6 +200,7 @@ export { AdlaireCI, AdlaireCIError };
 | 戻り値補完禁止 | 成功時は API response にない key を追加しない。失敗時は HTTP status、API error、details、responseBody 以外を推測しない。fallback 値は API response に含まれる値だけを返し、表示用加工は UI 側で行う。 |
 | retry | SDK は自動 retry を行わない。ユーザー操作による再実行、または UI の明示的な再取得のみを許可する。 |
 
+<a id="sdk-transport-error-contract"></a>
 **SDK transport / error 固定契約：**
 
 SDK の内部 request helper は、すべての public method で [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の固定表の処理順に固定する。public method ごとに個別 fetch 処理を複製してはならない。
@@ -210,11 +211,12 @@ SDK の内部 request helper は、すべての public method で [`docs/details
 | 2 | URL 生成 | `baseUrl + path + query` を生成する。query key は [SDK 引数変換契約](#sdk-argument-contract) の対象 method 行に記載された順序で追加する。 |
 | 3 | body 生成 | `Request=none` では `body` と `Content-Type` を設定しない。JSON body ありの場合だけ `JSON.stringify()` する。 |
 | 4 | header 生成 | `Accept` を常に付与する。JSON body を送信する場合だけ `Content-Type` を付与する。token が空でない場合だけ `Authorization` を付与し、token が空の場合は `Authorization` header を付けない。 |
-| 5 | timeout 設定 | 通常 request は `AbortController` で 30 秒 timeout。`streamBuild()` は接続確立まで 30 秒。 |
+| 5 | timeout 設定 | 通常 request は `AbortController` で 30 秒 timeout を開始し、手順 7 の body 読取またはそれ以前の失敗が確定するまで維持する。`streamBuild()` は接続確立まで 30 秒。 |
 | 6 | `fetch()` 実行 | 手順 5 で SDK 自身が設定した timeout により `AbortController` が abort した reject だけを `AdlaireCIError(status=0,message="Request timeout")` とする。timeout 以外の理由で `fetch()` が reject した場合は、例外名や browser 文言を公開せず `AdlaireCIError(status=0,message="Network error")` とする。`streamBuild().close()` による user close は reject として扱わず、StreamHandle 固定契約の terminal transition を適用する。 |
-| 7 | response parse | 成功 / 失敗に関わらず JSON error body がある場合は parse する。parse 不能 error body は `responseBody` に text を保持し、`message` は HTTP status 固定文言とする。 |
-| 8 | token 変化 | `401` の場合だけ `this._token = null`。`403`、`429`、`500`、network error、timeout では token を破棄しない。 |
-| 9 | return / throw | `2xx` は endpoint の型で返す。`4xx` / `5xx` は `AdlaireCIError` を投げる。 |
+| 7 | response body 読取 / parse | 成功 / 失敗に関わらず、JSON は `response.text()`、binary は `response.blob()` の完了まで timeout 対象とする。body 読取が SDK timeout で reject した場合は `Request timeout`、その他の理由で reject した場合は `Network error` とする。JSON error body がある場合は parse し、parse 不能 error body は `responseBody` に text を保持し、`message` は HTTP status 固定文言とする。 |
+| 8 | timeout 解除 | body 読取と parse、または先行失敗が確定した terminal path の `finally` で 1 回だけ解除する。response header 受信直後の解除を禁止する。 |
+| 9 | token 変化 | `401` の場合だけ `this._token = null`。`403`、`429`、`500`、network error、timeout では token を破棄しない。 |
+| 10 | return / throw | `2xx` は endpoint の型で返す。`4xx` / `5xx` は `AdlaireCIError` を投げる。 |
 
 HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の固定表に固定する。
 
@@ -227,12 +229,14 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務
 | timeout | `0` | `Request timeout` | `null` | 維持 |
 | empty success JSON | `0` | `Empty JSON response` | `null` | 維持 |
 | invalid success JSON | `0` | `Invalid JSON response` | `null` | 維持 |
+| invalid binary response | `0` | `Invalid binary response` | `null` | 維持 |
 | invalid SSE response | `0` | `Invalid SSE response` | `null` | 維持 |
 | invalid SSE frame | `0` | `Invalid SSE frame` | `null` | 維持 |
 | stream callback failure | `0` | `Stream callback failed` | `null` | 維持 |
 
-`429` は SDK で自動待機、自動再送、自動 refresh を行わない。binary response は `downloadSnapshot(id)` の `2xx` のみ `Blob` とする。`4xx` / `5xx` では `Content-Type` が `application/json` または `+json` で終わる場合だけ JSON error として parse し、parse 成功時は response の `error` / `details` を保持した `AdlaireCIError` を投げる。JSON parse 不能、JSON 以外の error body、空 body の場合は body text を `responseBody` に保持し、`message` は `HTTP {status}` とする。`streamBuild()` は接続後の `close()` をユーザー停止として扱い、`AdlaireCIError` を投げない。接続後の network / frame / callback error は `StreamHandle.error` と `StreamHandle.done` の reject で同じ `AdlaireCIError` を通知する。callback が投げた元の error 本文は `responseBody`、console、UI へ転写しない。
+`429` は SDK で自動待機、自動再送、自動 refresh を行わない。binary response は `downloadSnapshot(id)` の `2xx` のみ `Blob` とする。`4xx` / `5xx` では `Content-Type` を media type と parameter に分解し、type と subtype を case-insensitive で判定する。type が `application` で subtype が `json`、または subtype が 1 文字以上の prefix と `+json` から成る場合だけ JSON error として parse する。parse 成功時は response の `error` / `details` を保持した `AdlaireCIError` を投げる。JSON parse 不能、JSON 以外の error body、空 body の場合は body text を `responseBody` に保持し、`message` は `HTTP {status}` とする。`streamBuild()` は接続後の `close()` をユーザー停止として扱い、`AdlaireCIError` を投げない。接続後の network / frame / callback error は `StreamHandle.error` と `StreamHandle.done` の reject で同じ `AdlaireCIError` を通知する。callback が投げた元の error 本文は `responseBody`、console、UI へ転写しない。
 
+<a id="sdk-method-implementation-contract"></a>
 **SDK メソッド実装固定契約：**
 
 | 項目 | 仕様 |
@@ -240,10 +244,10 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務
 | public method 定義順 | class 内の public method は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の一覧順に定義する。追加 public method を末尾に置くことは禁止し、先に [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) と本一覧を更新する。 |
 | private helper | private helper は `_request`, `_json`, `_query`, `_requireToken`, `_validateId`, `_clearTokenOn401` だけを定義する。helper を export しない。 |
 | TypeError 文言 | SDK 側引数検証の `TypeError.message` は `"Invalid argument: <name>"` に固定する。複数不正がある場合は最初に検出した引数だけを返す。 |
-| path parameter | `id` を path に入れる method は、SDK 側で `encodeURIComponent(id)` を必ず行う。`/`、`.`、`..`、空文字は送信前に `TypeError`。 |
-| query parameter | query key は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の表記順で生成する。任意 query が未指定の場合、`?` 自体を付けない。 |
+| path parameter | `id` を path に入れる method は、`id` が string かつ [`docs/details/api.md` 詳細本文責務 §22.0b](api.md#sec-22-0b) の `^[A-Za-z0-9_-]{1,64}$` に完全一致することを SDK 側で検証する。不一致は HTTP 送信前に `TypeError("Invalid argument: id")` とする。検証成功後の値に `encodeURIComponent(id)` を 1 回だけ適用し、1 segment として連結する。 |
+| query parameter | query key は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の表記順で生成する。value は各々 `encodeURIComponent(String(value))` を 1 回だけ適用し、空白を `%20` とする。`URLSearchParams` 等による `+` 変換、2 重 encode、並べ替えを禁止する。任意 query が未指定の場合、`?` 自体を付けない。 |
 | body parameter | body object の key 順は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の送信値順とする。未知 key を SDK が追加しない。 |
-| token mutation | `login()` と `loginTotp()` は response に `token` が存在する場合だけ `this._token` を更新する。`totp_required:true` かつ token なしの場合は既存 token を保持せず `null` にする。 |
+| token mutation | `login()` と `loginTotp()` は response に `token` が存在する場合だけ `this._token` を更新する。`totp_required:true` かつ token なしの場合は既存 token を保持せず `null` にする。SDK は `must_change` を算出または補完せず、TOTP 必須 response に `must_change` を追加しない。 |
 | logout failure | `logout()` は network error、`401`、`500` のいずれでも `finally` で `this._token=null` にする。 |
 | response passthrough | 成功 response は clone、整形、既定値 merge を行わず、そのまま返す。Blob と StreamHandle は例外とする。 |
 | error details | API error response の `details` が配列なら `AdlaireCIError.details` に同じ配列を保持する。配列でなければ `null`。 |
@@ -260,7 +264,8 @@ SDK の fixture 名、fake fetch 入力、expected、error shape、stream frame�
 
 | SDK method | HTTP | 成功時 | 失敗時 | 追加禁止条件 |
 |------------|------|--------|--------|--------------|
-| `login(password)` | `POST /api/login` | `token` がある場合だけ `this._token` へ保存する。`totp_required:true` の場合は token を保存せず response を返す。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | password を console、error、responseBody 加工結果へ出さない。 |
+| `login(password)` | `POST /api/login` | TOTP 無効時は exact `{token,must_change}` を返し token を保存する。TOTP 有効時は exact `{totp_required:true,ticket}` を返し、token を `null` にする。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | password を console、error、responseBody 加工結果へ出さない。両 response 形式の key を合成しない。 |
+| `loginTotp(ticket,code)` | `POST /api/login/totp` | exact `{token,must_change}` を返し、token を `this._token` へ保存する。 | `401`、`429`、`500` は `AdlaireCIError`。`401` で既存 token を破棄する。 | ticket、code、token を console、error、responseBody 加工結果へ出さない。`must_change` を ticket の値から補完しない。 |
 | `logout()` | `POST /api/logout` | response に関わらず `finally` で token を破棄する。 | network error、`401`、`500` でも token 破棄後に error を投げる。 | logout 失敗を理由に token を保持しない。 |
 | `getStatus()` | `GET /api/status` | `StatusObject` をそのまま返す。 | `500 State file is corrupted` / `State file read failed` を message として保持する。 | `.build_status.json` 不在時の fallback 値を SDK が推測しない。 |
 | `triggerBuild()` | `POST /api/build` | `{message,queue_id,queued:true,dispatch}` をそのまま返す。 | `409`、`429`、`503` は `AdlaireCIError.status` に HTTP status を保持し、`message` は API response の `error` を保持する。 | dispatch から running / build id を推測せず、runner 起動を SDK から再実行しない。 |
@@ -367,7 +372,7 @@ SDK method は、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javas
 | `deleteAlertRule(id)` | `id` | path | path `{id}`。body は送信しない。 |
 | `deleteTagRule(id)` | `id` | path | path `{id}`。body は送信しない。 |
 
-path に入る `id` は `encodeURIComponent` したうえで 1 segment として連結する。`/`、`.`、空文字を含む `id` は HTTP 送信前に `TypeError` とする。
+path に入る `id` の型、形式、失敗、encode 回数は [SDK メソッド実装固定契約](#sdk-method-implementation-contract) の `path parameter` 行に従う。本引数変換一覧は、各 method の `id` が path 引数であることだけを定義し、検証契約を再定義しない。
 
 **SDK method 完全性検証契約：**
 
@@ -386,7 +391,7 @@ SDK 詳細実装確認では、[`docs/details/api.md` 詳細本文責務 §22.0e
 <a id="sec-27-47"></a>
 **[§27.21〜§27.47 SDK 連動実装確認固定契約](sdk.md#sec-27-21)：**
 
-[`docs/details/sdk.md` 詳細本文責務 §27.21](sdk.md#sec-27-21)〜[§27.47](sdk.md#sec-27-47) の追加仕様化機能で SDK の詳細実装確認を満たすには、対象 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/api.md` 詳細本文責務 §27](api.md#27-api-owner-追加仕様化機能-詳細仕様) の連動参照表、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を同時に満たす。SDK は API の補助層であり、API response の補完、状態推測、保存済み値の再計算、UI 表示用変換、自動 retry、自動 refresh、状態ファイル直接操作を行ってはならない。
+[`docs/details/sdk.md` 詳細本文責務 §27.21](sdk.md#sec-27-21)〜[§27.47](sdk.md#sec-27-47) の追加仕様化機能で SDK の詳細実装確認を満たすには、対象 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/details/api.md` 詳細本文責務 §27](api.md#27-api-owner-追加仕様化機能-詳細仕様) の連動参照表、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約、SDK method 完全性検証契約、[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を同時に満たす。response、token、retry の固定境界は [SDK 共通実装契約](#sdk-common-contract) を参照する。
 
 | 対象 | SDK method | request 固定 | success 固定 | error 固定 | 禁止条件 |
 |------|------------|--------------|---------------|------------|----------|
@@ -397,7 +402,7 @@ SDK 詳細実装確認では、[`docs/details/api.md` 詳細本文責務 §22.0e
 | [`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) notification | `getNotifyConfig()`, `setNotifyConfig(config)`, `getNotifyLog()`, `notifyTest()`, `notifyWeeklySummary()`, `getSmtpConfig()`, `setSmtpConfig(config)`, `smtpTest()` | config は unknown key を削除せず API へ送る。password 未指定時だけ `setSmtpConfig()` は password key を送らない。 | API が返した mask 値、log、pending 状態をそのまま返す。 | 未設定 `422` / `501`、送信失敗 `500` を保持する。 | secret 平文を console、error message、responseBody 加工結果、SDK field に保存しない。 |
 | [`docs/details/runner.md` 詳細本文責務 §27.33](runner.md#sec-27-33) / [`docs/details/runner.md` 詳細本文責務 §27.38](runner.md#sec-27-38) trend / anomaly | `getBuildTrends(n)`, `getStatsBuildDuration(n)`, `getDashboard()`, `getConfig()`, `setConfig(config)` | `n` は number として query へ送る。config はそのまま送る。 | summary、samples、anomaly flag を API 値のまま返す。`BuildTrendStats` に `warnings` を補完しない。 | invalid `n` / config `422` を保持する。 | avg / median / p95 / anomaly を SDK が再計算しない。 |
 | [`docs/details/runner.md` 詳細本文責務 §27.34](runner.md#sec-27-34) / [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) chain / queue | `getBuildChainConfig()`, `setBuildChainConfig(chains)`, `getQueue()`, `clearQueue()`, `triggerBuild()`, `buildForce()` | chains は配列のまま送る。queue clear は body を送らない。 | active / waiting 区分、queue priority / created_seq、dispatch、chain config を API 順序のまま返す。 | queue full `429`、conflict `409`、validation `422` を保持する。 | active を waiting へ混在、priority 並び替え、queue 重複排除、chain DAG 検証を SDK が行わない。 |
-| [`docs/details/runner.md` 詳細本文責務 §27.36](runner.md#sec-27-36) / [`docs/details/runner.md` 詳細本文責務 §27.37](runner.md#sec-27-37) failure category / environment | `getHistory()`, `getHistoryLog(id)` | `getHistory()` は `failureCategory != null` の場合だけ `failure_category` query を送る。 | `getHistory()` は history の `failure_category` と `HistoryPageObject.warnings`、`getHistoryLog(id)` は build log の `failure_category`、`failure_evidence`、`environment` を API response のまま返す。 | 未知 filter `422` と log 不在 `404` を保持する。 | category 分類、warnings 生成、environment fallback、secret mask 判定を SDK が行わない。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.36](runner.md#sec-27-36) / [`docs/details/runner.md` 詳細本文責務 §27.37](runner.md#sec-27-37) failure category / environment | `getHistory()`, `getHistoryLog(id)` | `getHistory()` は `failureCategory != null` の場合だけ `failure_category` query を送る。 | `getHistory()` は history の `failure_category`、`getHistoryLog(id)` は build log の `failure_category`、`failure_evidence`、`environment` を API response のまま返す。 | 未知 filter `422` と log 不在 `404` を保持する。 | category 分類、environment fallback、secret mask 判定を SDK が行わない。 |
 | [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) security | `getTokens()`, `createToken()`, `revokeToken()`, `getAuditLog()`, `getSessions()`, `revokeAllSessions()`, `getTotpStatus()`, `setupTotp()`, `confirmTotp(code)`, `disableTotp(code)`, `getApiRateLimit()`, `setApiRateLimit(policy)` | token / TOTP / rate limit request は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) 引数変換契約どおり送る。 | token 本体、TOTP secret、otpauth URI は response として返すだけで SDK 内部に保存しない。 | `401` は token 破棄、`403` は token 維持、`429` は自動待機なし、`500` は message 保持。 | scope 推測、rate limit 待機、token list への token 合成、TOTP code 再送、audit 補完を行わない。 |
 
 <a id="sec-27-21-2"></a>
@@ -409,7 +414,7 @@ SDK 詳細実装確認では、[`docs/details/api.md` 詳細本文責務 §22.0e
 | request exactness | fake fetch fixture で method、path、query key 順、body key 順、body なし endpoint が [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) と一致する。 |
 | response passthrough | 成功 response に存在する追加 key を削除せず、存在しない key を追加しない。 |
 | security handling | token、password、PAT、Webhook secret、SMTP password、TOTP secret、ticket、Authorization header を SDK property、console、error message に保存しない。 |
-| error stability | `401` / `403` / `409` / `422` / `429` / `500` / network / timeout が固定 `AdlaireCIError` になり、自動 retry、自動 refresh、自動 logout は仕様に記載された場合だけ行う。 |
+| error stability | `401` / `403` / `409` / `422` / `429` / `500` / network / timeout を固定 `AdlaireCIError` にする。再試行は [SDK 共通実装契約](#sdk-common-contract) の `retry` 行に従う。 |
 | binary / stream | snapshot download は `Blob`、SSE は `StreamHandle` とし、JSON response と混同しない。 |
 | fixture evidence | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の SDK / UI 関連 fixture で、request shape、error shape、secret leak、token mutation、no retry、no response補完が確認される。 |
 
