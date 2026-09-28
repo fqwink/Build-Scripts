@@ -12,7 +12,7 @@ component 境界管理の参照先は [`docs/DETAIL_INDEX.md` 詳細仕様入口
 | 項目 | 内容 |
 |------|------|
 | 証跡責務 | `fixture` |
-| 対象 component | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`security`、`setup` |
+| 対象 component | `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`security`、`setup`、`release` |
 | 持つ内容 | fixture 証跡責務が本文として定義する fixture manifest、assertion、fake、testdata、expected / effects、受け入れ fixture 共通契約、実装検証証跡テンプレート、acceptance checklist、差し戻し条件。 |
 
 ---

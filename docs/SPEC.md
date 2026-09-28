@@ -114,6 +114,11 @@ Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核と
 | `release` | `components/release.go` | Go 標準ライブラリ、Go toolchain、Git command、GitHub REST API だけで再現可能な成果物生成、checksum、draft upload、再取得検証、正式公開を実装する。外部 release framework、archive tool、checksum tool に依存しない。 |
 | `sdk` | `admin/adlaire-ci-sdk.js` | 単一 ES Module とし、browser 標準 API のみで API client、error handling、streaming、timeout を実装する。npm package、bundler、polyfill、framework に依存しない。 |
 | `ui` | `admin/index.html` | HTML / CSS / Vanilla JavaScript だけで標準管理ツールを構成し、SDK 経由で通信する。React、Vue、Svelte、CSS framework、icon package、chart library に依存しない。 |
+| `admin` | `admin/index.html`、`admin/adlaire-ci-sdk.js` | 管理 UI 静的配布物の構成、検証、配信境界を本リポジトリ内で完結させる。外部 asset pipeline、CDN、archive framework に依存しない。 |
+| `statefile` | `components/runner.go`、`components/api.go` | Go 標準ライブラリだけで状態 schema、lock、atomic write、JSON Lines、破損検出を処理する。外部 database、storage engine、serialization library に依存しない。 |
+| `archive` | `components/runner.go`、`components/api.go` | Go 標準ライブラリだけで archive、snapshot、展開、検証、世代管理を処理する。外部 archive tool、snapshot service、object storage SDK に依存しない。 |
+| `commitstatus` | `components/runner.go` | Go 標準ライブラリ `net/http` だけで GitHub Commit Status payload、送信、応答検証を処理する。外部 GitHub client library、CI status service に依存しない。 |
+| `security` | `components/api.go` | Go 標準ライブラリだけで認証、認可、token、session、TOTP、rate limit、audit、secret 処理を実装する。外部 authentication framework、secret management SDK に依存しない。 |
 | `mcp` | `components/mcp.go`（将来追加予定 path） | 仕様化する場合も Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。本行は現在状態、実装着手許可、詳細仕様成立、実ファイル作成許可を意味しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
 
 [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のコンポーネント自律性表はコンポーネント自律性の方針であり、関数単位の処理、入出力、状態、異常系、検証条件を定義するものではない。各コンポーネントの具体的な実装契約は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。

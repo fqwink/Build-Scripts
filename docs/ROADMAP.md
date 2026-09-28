@@ -9,7 +9,7 @@
 
 ## 3. 実装 artifact 現在状態
 
-この表は [`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の実装 artifact だけを対象とする。owner component が持つ個別機能の現在状態は [統合機能インベントリ](#522-統合ロードマップ表) を参照する。実装不一致の技術的な確認内容は [`docs/details/fixture.md` fixture 証跡責務 現行実装整合証跡](details/fixture.md#current-implementation-alignment-evidence) を参照する。
+この表は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) のディレクトリ構成で定義する実装 artifact だけを対象とする。owner component が持つ個別機能の現在状態は [統合機能インベントリ](#522-統合ロードマップ表) を参照する。実装不一致の技術的な確認内容は [`docs/details/fixture.md` fixture 証跡責務 現行実装整合証跡](details/fixture.md#current-implementation-alignment-evidence) を参照する。
 
 | 実装 artifact | 現在状態 | 未完了理由 / 証跡 |
 |-----------------|----------|-------------------|
