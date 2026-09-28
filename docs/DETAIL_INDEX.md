@@ -21,7 +21,7 @@
 | `builder` | [`docs/details/builder.md`](details/builder.md) | [`docs/details/fixture.md` §8a-F](details/fixture.md#8a-f-builder-初期受け入れ-fixture-契約)、[`docs/details/fixture.md` §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) |
 | `runner` | [`docs/details/runner.md`](details/runner.md) | [`docs/details/fixture.md` §15a-F](details/fixture.md#15a-f-runner-初期受け入れ-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `api` | [`docs/details/api.md`](details/api.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `admin` | [`docs/details/admin.md`](details/admin.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `admin` | [`docs/details/admin.md`](details/admin.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[`docs/details/fixture.md` Admin CLI fixture 固定契約](details/fixture.md#admin-cli-fixture-contract) |
 | `sdk` | [`docs/details/sdk.md`](details/sdk.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `ui` | [`docs/details/ui.md`](details/ui.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `setup` | [`docs/details/setup.md`](details/setup.md) | [`docs/details/fixture.md` §0g.8-F](details/fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` §27-F setup / admin / Release asset 連動 fixture](details/fixture.md#sec-27-f-19) |
@@ -277,7 +277,7 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 | 統計データの JSON エクスポート | `api` | [`docs/details/api.md` 詳細本文責務 §27.51](details/api.md#sec-27-51)、SDK は [`docs/details/sdk.md` 詳細本文責務 §23.8](details/sdk.md#sec-23-8)、UI は [`docs/details/ui.md` 詳細本文責務 §24.8](details/ui.md#sec-24-8) |
 | キュー内個別エントリのキャンセル | `runner` | [`docs/details/runner.md` 詳細本文責務 queue 契約](details/runner.md#sec-27-17)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.52](details/api.md#sec-27-52) |
 | Prometheus メトリクスエンドポイント | `api` | [`docs/details/api.md` 詳細本文責務 §27.53](details/api.md#sec-27-53) |
-| CLI 管理クライアント | `admin` | [`docs/details/admin.md` 詳細本文責務 §A7](details/admin.md#sec-a7)、API 対応は [`docs/details/api.md` 詳細本文責務 §27.54](details/api.md#sec-27-54) |
+| CLI 管理クライアント | `admin` | [`docs/details/admin.md` 詳細本文責務 §A7](details/admin.md#sec-a7)、API 対応は [`docs/details/api.md` 詳細本文責務 §27.54](details/api.md#sec-27-54)、fixture 証跡は [`docs/details/fixture.md` Admin CLI fixture 固定契約](details/fixture.md#admin-cli-fixture-contract) |
 | 設定の自動スナップショット | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.55](details/api.md#sec-27-55) |
 | ステータスバッジ生成 | `api` | [`docs/details/api.md` 詳細本文責務 §27.56](details/api.md#sec-27-56) |
 | ビルド履歴の自動削除設定 | `runner` | [`docs/details/runner.md` 詳細本文責務 history 契約](details/runner.md#sec-27-30)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.57](details/api.md#sec-27-57) |
