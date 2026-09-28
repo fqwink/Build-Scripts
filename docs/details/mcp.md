@@ -82,6 +82,12 @@ CLI 検証順は、共通 option mode 確定、option parse、`--state-dir` 未�
 
 `/mcp/events` は `Cache-Control: no-store` と `X-Accel-Buffering: no` を返す。SSE 接続確立前の認証失敗は JSON `{"error":"Unauthorized"}` または `{"error":"Forbidden"}` を返し、SSE frame を送信しない。
 
+`/mcp` と `/mcp/events` の token 認証は `Authorization` header だけを使用する。header 値は exact `Bearer ` prefix と token 文字列 1 個で構成し、前後空白、複数 header、空 token、token 後続空白、query parameter、Cookie、Basic 認証をすべて拒否する。`--client-token` 未指定時でも non-loopback 接続は起動時に拒否済みでなければならず、request handler で外部公開を補完許可してはならない。
+
+`POST /mcp` 以外の method で `/mcp` を呼んだ場合、request body を読まず `405` と `{"error":"Method not allowed"}` を返す。`GET /mcp/events` 以外の method で `/mcp/events` を呼んだ場合、SSE 接続を確立せず `405` と `{"error":"Method not allowed"}` を返す。`/mcp/events` は request body を読まない。
+
+HTTP response の JSON body は UTF-8、LF なしの compact JSON とする。成功時、JSON-RPC error 時、HTTP error 時のいずれも token、Authorization header、raw params の secret 値、state-dir absolute path、Go error 文字列を response body へ含めてはならない。
+
 `/health` response body は以下とする。
 
 ```json
@@ -168,6 +174,10 @@ JSON parse 失敗時の HTTP status は `400`、JSON-RPC error response の `id`
 
 `initialize` 成功前に `initialize` 以外の method を受けた場合は `-32600 Invalid Request` とする。`notifications/initialized` は JSON-RPC notification とし、`id` を持つ request として送られた場合は `-32600 Invalid Request` とする。notification 成功時は HTTP status `202`、body 空、状態副作用は connection 初期化状態の memory 更新だけとする。batch request は受け付けず `-32600 Invalid Request` とする。
 
+JSON-RPC request object の top-level key は `jsonrpc`、`id`、`method`、`params` だけを許可する。未知 key、重複 key、`jsonrpc` が exact `"2.0"` でない値、`method` 欠落、`method` 空文字は `-32600 Invalid Request` とする。JSON object 内の重複 key は最初の key を採用せず、request 全体を不正として扱う。
+
+JSON-RPC success response と error response の key order は `jsonrpc`、`id`、`result` または `error` の順に固定する。`error` object の key order は `code`、`message`、`data` の順とし、`data.reason` は secret、path、Go error を含まない固定分類文字列だけにする。notification に対する成功 response body は送信しない。
+
 <a id="sec-29-4"></a>
 **29.4 MCP initialize：**
 
@@ -236,6 +246,8 @@ JSON parse 失敗時の HTTP status は `400`、JSON-RPC error response の `id`
 `--read-only` 指定時は副作用 `yes` の tool を `tools/list` に含めない。
 
 副作用 `yes` の tool は [`docs/details/mcp.md` 詳細本文責務 §29.15](mcp.md#sec-29-15) の elicitation を必須とする。
+
+`tools/list` の tool order は [`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) の固定表の上から下の順とする。`--read-only` 指定時は副作用 `yes` の行だけを除外し、残る tool の相対順序を変更しない。scope 不足の tool は `tools/list` から除外せず、`tools/call` 時に `-32002 Forbidden` を返す。
 
 <a id="sec-29-6"></a>
 **29.6 Tool schema：**
@@ -347,6 +359,8 @@ tool result は必ず以下の wrapper を返す。
 
 tool params に未知 key がある場合、必須 key 不足、型不一致、範囲外、secret 値を許可しない field への secret 形状入力は `-32602 Invalid params` とし、tool 実行、audit、metrics 更新を行わない。
 
+`tools/call` params は exact `{ "name": string, "arguments": object }` とする。`arguments` 省略、`arguments:null`、`arguments` が object 以外、`name` が空文字、`name` が 128 byte 超過、params の未知 key は `-32602 Invalid params` とする。tool 別 params schema の「params は `{}`」は `arguments` が空 object であることを意味し、`arguments` 省略を許可しない。
+
 `tools/call` は以下の順序で処理する。
 
 1. tool name を [`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) の固定表に照合する。
@@ -381,6 +395,8 @@ tool params に未知 key がある場合、必須 key 不足、型不一致、�
 
 `resources/read` の `ResourceContent` は `uri`、`mimeType`、`text` を持つ。`adlaire://logs/{build_id}` だけは `mimeType:"text/plain"`、その他は `mimeType:"application/json"` とする。JSON resource の `text` は UTF-8 JSON object 文字列とし、secret、token、Authorization header を含めない。
 
+`resources/list` の resource order は [`docs/details/mcp.md` 詳細本文責務 §29.7](mcp.md#sec-29-7) の固定表の上から下の順とする。`resources/read` は statefile を補完、修復、初期化、削除、書き戻ししてはならない。破損 state を読んだ場合は `-32603 Internal error` とし、破損内容、absolute path、Go error を response、SSE、audit、metrics へ出力しない。
+
 <a id="sec-29-8"></a>
 **29.8 Resource subscription：**
 
@@ -404,6 +420,8 @@ resource 更新時は `/mcp/events` へ以下を送信する。
 event: resource-updated
 data: {"uri":"adlaire://status","updated_at":"2026-09-28T00:00:00Z"}
 ```
+
+resource update frame は `event: resource-updated\n`、`data: <compact-json>\n`、空行 `\n` の 3 要素をこの順で送信する。`data:` は 1 行だけとし、複数 `data:`、CRLF、`retry:`、event id、comment 混在を使用しない。frame 全体の write が完了した場合だけ flush し、partial write、client disconnect、flush error では以後の frame を送信しない。client disconnect は状態変更、audit、metrics 更新の失敗として扱わない。
 
 <a id="sec-29-9"></a>
 **29.9 Prompts：**
@@ -474,6 +492,8 @@ event: shutdown
 data: {"reason":"server_shutdown"}
 ```
 
+keepalive、resource update、notification、shutdown の各 SSE frame は 1 frame ごとに write と flush を完了させる。frame 生成時刻、送信順、disconnect reason は fixture の `expected/events.json` と `expected/effects.json` で検証できるように固定する。SSE 接続確立後に認証状態を変更しない。server shutdown frame の送信に失敗した場合でも、追加 JSON response、audit、metrics、statefile write を行わない。
+
 <a id="sec-29-13"></a>
 **29.13 Tool scope：**
 
@@ -514,6 +534,8 @@ scope 不足時は `-32002 Forbidden` を返す。
 metrics は tool name を key とし、value は `success_count`、`error_count`、`timeout_count`、`last_status`、`last_duration_ms`、`last_at` を持つ。
 
 client 接続は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpClientRecord` として `.mcp_client_log` へ append-only で記録する。
+
+`.mcp_audit_log`、`.mcp_client_log`、`.mcp_metrics` の read / write / append は statefile owner の lock、atomic write、append 契約に従う。audit または client log の追記失敗時に対象 owner の state を先に変更してはならない。metrics 更新失敗時は、対象 owner の実行が完了済みの場合だけ rollback せず、JSON-RPC `-32603 Internal error` を返す。metrics 更新失敗を success response に隠してはならない。
 
 <a id="sec-29-15"></a>
 **29.15 Timeout / config CRUD / elicitation：**
@@ -584,3 +606,4 @@ confirmation_id は `mcpconf_` + 128 bit 以上の乱数を Crockford Base32 26 
 - `--client-token` 指定時、`/mcp` と `/mcp/events` は token 不一致を `401` で拒否し、`/health` は token 不要で応答する。
 - read-only mode では副作用 tool が `tools/list` に出ず、直接 `tools/call` されても `-32002 Forbidden` で状態を変更しない。
 - confirmation_id は memory only、5 分で期限切れ、params hash 不一致時に tool を実行しない。
+- [`docs/details/fixture.md` fixture 証跡責務 §30-F MCP fixture 固定契約](fixture.md#mcp-fixture-contract) の expected、category、assertions、no-write、secret-mask、order を満たす。

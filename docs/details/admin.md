@@ -124,7 +124,11 @@ adlaire-ci-admin --help
 adlaire-ci-admin --version
 ```
 
-option は `--name value` の 2 token 形式だけを許可する。`--name=value`、短縮 option、位置引数による option 値、同一 option の重複、未知 option は parse error とする。`--api-url` は `http://` または `https://` の absolute URL とし、userinfo、query、fragment を禁止する。末尾 `/` は 1 個だけ除去し、`/api` を暗黙追加しない。`--token` は 1〜4096 byte の UTF-8 text とし、空文字を禁止する。
+CLI parse の共通優先順位、argv token safety、`--help`、`--version` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) を使用する。`--help` の stdout は `Usage: adlaire-ci-admin --api-url url --token token [--json] command [command-args]` + LF とする。`--version` の stdout は `adlaire-ci-admin <binary-version> go=<runtime.Version()>` + LF とする。`--help` と `--version` は API URL 検証、token 検証、network、状態 file read/write、乱数取得を行わない。
+
+option は `--name value` の 2 token 形式だけを許可する。`--name=value`、短縮 option、位置引数による option 値、同一 option の重複、未知 option は parse error とする。`--json` は値を取らない boolean option とし、複数回指定は parse error とする。`--api-url` は `http://` または `https://` の absolute URL とし、host 必須、userinfo、query、fragment を禁止する。path は空、または `/` から始まる clean path だけを許可し、`..` segment、重複 slash、backslash、NUL byte を禁止する。末尾 `/` は 1 個だけ除去し、`/api` を暗黙追加しない。`--token` は 1〜4096 byte の UTF-8 text とし、空文字、NUL、CR、LF を禁止する。
+
+API request path は、正規化後の `--api-url` path prefix と command 固定 path を byte 連結して作る。例として `--api-url http://127.0.0.1:8765` の `status` は `http://127.0.0.1:8765/api/status`、`--api-url http://127.0.0.1:8765/adlaire` の `status` は `http://127.0.0.1:8765/adlaire/api/status` とする。path 連結時に percent decode、path clean、`/api` の重複除去、query 付与を行ってはならない。
 
 | command | command-args | 呼び出す API | request body | stdout |
 |---------|--------------|--------------|--------------|--------|
@@ -138,15 +142,27 @@ option は `--name value` の 2 token 形式だけを許可する。`--name=valu
 
 `cancel-queue` の `<queue_id>` は path parameter として 1 回だけ percent encode する。空文字、`/`、`..`、NUL byte を含む値は API 呼び出し前に parse error とする。`config-snapshot` の `label` は未指定なら `null`、指定時は 1〜128 Unicode scalar values とし、改行、NUL byte、BOM を禁止する。
 
+`trigger-build` の request body は byte 列 `{}` とする。`config-snapshot` の request body は未指定時 `{"label":null}`、指定時 `{"label":"<label>"}` とし、JSON string escape は RFC 8259 に従う。request body は UTF-8、末尾 LF なし、余分な空白なしとする。
+
+CLI 管理クライアントは command 固定表の 7 command だけを実装する。API 側に存在する他 endpoint を CLI command として追加する場合は、先に [`docs/details/admin.md` 詳細本文責務 §A7](admin.md#sec-a7) の command 固定表、stdout 固定表、検証条件、[`docs/details/fixture.md` fixture 証跡責務 Admin CLI fixture 固定契約](fixture.md#admin-cli-fixture-contract) を同じ変更で改訂する。未記載 endpoint を汎用 passthrough、任意 path、任意 method、任意 JSON body として呼び出してはならない。
+
 `--token` の値を stdout、stderr、server log、fixture expected に出力してはならない。
 
-全 API 呼び出しは `Authorization: Bearer <token>`、`Accept: application/json` を送信する。body を持つ command は `Content-Type: application/json` を送信する。`--json` 未指定時でも CLI は API JSON response を parse し、上表の stdout へ写像する。response JSON parse 失敗は stdout 空、stderr `api error: invalid response` + LF、終了 code `1` とする。
+全 API 呼び出しは `Authorization: Bearer <token>`、`Accept: application/json`、`User-Agent: adlaire-ci-admin/<binary-version>` を送信する。body を持つ command は `Content-Type: application/json` を送信する。Cookie、Referer、X-Forwarded-*、環境変数由来 proxy、redirect 追従、retry、connection reuse 前提の状態保持を使用してはならない。timeout は dial、TLS handshake、request body write、response header read、response body read の全体で 30 秒固定とする。
+
+HTTP response は body 全体を上限 1 MiB まで読む。1 MiB を超える場合は stdout 空、stderr `api error: invalid response` + LF、終了 code `1` とし、body の残り、token、URL query、header 値を出力しない。success は HTTP status `200`〜`299` だけとする。`300`〜`599` は stdout 空、stderr `api error: <status>` + LF、終了 code `1` とする。`1xx`、status なし、redirect response、HTTP protocol error は network error と同じ扱いにする。
+
+success response は `Content-Type` が `application/json` または `application/json; charset=utf-8` であることを必須とする。不一致、複数 `Content-Type`、body 空、JSON として単一値でない body は stdout 空、stderr `api error: invalid response` + LF、終了 code `1` とする。
+
+`--json` 指定時は、検証済み API response body から前後の ASCII whitespace だけを除去し、残った byte 列をそのまま stdout へ出し、最後に LF 1 個を付ける。object key order、number 表現、string escape は API wire response を保持し、CLI 側で再 encode しない。`--json` 未指定時は CLI が response JSON を parse し、上表の stdout へ写像する。必要 key 欠落、型不一致、`null` 不許可 field、余分な stderr 出力が必要になる body は invalid response とする。response JSON parse 失敗は stdout 空、stderr `api error: invalid response` + LF、終了 code `1` とする。
+
+human stdout の field は固定順とする。`status` は `last_build_status` を string としてそのまま出し、`running` は JSON boolean を `true` / `false` の lowercase で出す。`queue` は `active` が `null` の場合だけ `none`、それ以外は response の id string、`queued` は array length または numeric count を 10 進数で出す。`history` は `total` を 10 進数、latest は最新 id がない場合だけ `none` とする。`trigger-build` は API response に queue id がある場合その id、ない場合だけ `none` とする。`cancel-queue` は response body の message に依存せず固定 `queue cancelled` とする。`events` は array length または numeric count を 10 進数で出す。
 
 未知 command は stdout 空、stderr `unknown command: <command>` + LF、終了 code `2` とする。
 
-引数不足、引数過多、option parse error、`--api-url` 不正、`--token` 不正、command 固有引数不正は stdout 空、stderr `usage error` + LF、終了 code `2` とする。
+[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) が固定する argv token safety、unknown option、missing value、禁止位置引数の stderr は共通契約に従う。共通契約で stderr が固定されない admin 固有の引数不足、引数過多、`--api-url` 不正、`--token` 不正、command 固有引数不正は stdout 空、stderr `usage error` + LF、終了 code `2` とする。
 
-API が `4xx` または `5xx` を返した場合、CLI は stdout 空、stderr `api error: <status>` + LF、終了 code `1` とする。
+API が `2xx` 以外を返した場合、CLI は stdout 空、stderr `api error: <status>` + LF、終了 code `1` とする。
 
 `--json` 指定時でも error response body を stderr に出力してはならない。
 
@@ -161,6 +177,10 @@ network error、TLS error、timeout、connection close before response は stdou
 | token redaction | token が stdout / stderr / log / fixture expected に出現しない。 |
 | unknown command | 終了 code `2`。 |
 | api 401 | 終了 code `1`、token を出さない。 |
+| api redirect | 終了 code `1`、redirect 追従なし、Location を出さない。 |
 | trigger-build | `POST /api/build` だけを呼び、`POST /api/builds` を呼ばない。 |
 | cancel-queue path encode | queue id を 1 回だけ percent encode する。 |
 | json mode | success 時だけ API response JSON を stdout へ出し、error body は出さない。 |
+| human output mapping | command ごとの固定 field、固定順、LF 1 個、stderr 0 byte を照合する。 |
+| response body limit | 1 MiB 超過 response を invalid response とし、body 断片を出さない。 |
+| fixture linkage | [`docs/details/fixture.md` fixture 証跡責務 Admin CLI fixture 固定契約](fixture.md#admin-cli-fixture-contract) の fixture を満たす。 |

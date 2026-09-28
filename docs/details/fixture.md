@@ -133,7 +133,7 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | runner | `testdata/runner/r1/`〜`testdata/runner/r34/`、各 fixture の `state/`、`github/`、`pipeline/`、`ssh/`、`notify/`、`expected/`。 | GitHub fake response、状態ファイル初期値、lock 状態、pipeline fake 結果、deploy fake 結果、通知 fake 結果、期待 `.last_sha`、期待 queue / snapshot。 | 実 GitHub API、実 SSH、実通知先、実 remote branch 状態に依存して合否を決めてはならない。 |
 | API request lifecycle | `testdata/api/request-lifecycle/auth/`、`status/`、`history/`、`logs/`、`queue/`、`stream/`、`errors/`、各 fixture の `state/`、`requests/`、`responses/`、`expected/`。 | HTTP method / path / query / header / body、状態ファイル初期値、期待 response、期待 error body、SSE frame、状態 read/write 後の期待値。 | API 運用群 endpoint、外部公開設定、仕様未定義 endpoint を fixture に含めてはならない。 |
 | API 運用 | `testdata/api/operations/config/`、`notify/`、`snapshots/`、`maintenance/`、`hooks/`、`tokens/`、各 fixture の `state/`、`requests/`、`responses/`、`expected/`。 | config / notify / snapshot / rollback / maintenance / hook / token の正常系、validation error、secret mask、API request lifecycle 群の回帰確認。 | token 原文、secret 原文、mask 前 payload、再取得不可 token の復元値を fixture または expected に含めてはならない。 |
-| Admin | `testdata/admin/archive/`、`static-serving/`、`security/`、各 fixture の `input/`、`expected/`。 | archive entry、配布 file set、HTTP method / path / header / body、既存 admin directory の維持、secret path 非配信。 | UI / SDK 内容生成、未定義配布 file、unsafe archive entry、directory listing を許可してはならない。 |
+| Admin | `testdata/admin/archive/`、`static-serving/`、`cli/`、`security/`、各 fixture の `input/`、`expected/`。 | archive entry、配布 file set、HTTP method / path / header / body、CLI request / stdout / stderr / exit code、既存 admin directory の維持、secret path 非配信。 | UI / SDK 内容生成、未定義配布 file、unsafe archive entry、directory listing、CLI 未定義 endpoint passthrough を許可してはならない。 |
 | SDK | `testdata/sdk/request-shape/`、`error-shape/`、`stream/`、`binary/`、`operations/`。 | fake fetch transcript、期待 request、期待 SDK return、期待 `AdlaireCIError`、期待 stream event、timeout / abort の期待結果。 | Node.js 専用 API、bundler、npm package、実 network、browser storage 依存を検証前提にしてはならない。 |
 | UI | `testdata/ui/login/`、`status/`、`build/`、`config/`、`secret/`、`stream/`、`operations/`。 | fake SDK script、入力 DOM 状態、操作手順、期待 DOM assertion、期待 SDK call、期待 disabled / loading / error / success 表示。 | 直接 `fetch()`、CDN、外部 framework、画像 snapshot だけの合否判定、secret 表示を含めてはならない。 |
 | Statefile | `testdata/statefile/read/`、`write/`、`lock/`、`json-lines/`、`corrupt/`、`partial/`、各 fixture の `input/`、`expected/`。 | schema、mode、mtime、atomic write、lock、破損時処理、write order、forbidden write。 | caller 固有の業務判断、暗黙の自動修復、未定義状態 file を含めてはならない。 |
@@ -1269,6 +1269,10 @@ listener event の `target` は `api_listener` とする。`listen.input` は `{
 | `partial-setup-api-runner-dispatch` | `26.4` | `setup_admin_integration` | `setup` | [setup / admin / Release asset 連動 fixture 固定表](#sec-27-f-19) |
 | `security-admin-static-serving` | `A3` | `setup_admin_integration` | `admin` | [setup / admin / Release asset 連動 fixture 固定表](#sec-27-f-19) |
 | `security-setup-secret-preservation` | `26.2b` | `setup_admin_integration` | `setup` | [setup / admin / Release asset 連動 fixture 固定表](#sec-27-f-19) |
+| `partial-admin-cli-lifecycle` | `A7` | `admin_cli` | `admin` | [Admin CLI fixture 固定契約](#admin-cli-fixture-contract) |
+| `success-admin-cli-transport` | `A7` | `admin_cli` | `admin` | [Admin CLI fixture 固定契約](#admin-cli-fixture-contract) |
+| `failure-admin-cli-output-errors` | `A7` | `admin_cli` | `admin` | [Admin CLI fixture 固定契約](#admin-cli-fixture-contract) |
+| `security-admin-cli-secret-redaction` | `A7` | `admin_cli` | `admin` | [Admin CLI fixture 固定契約](#admin-cli-fixture-contract) |
 | Release owner固定表の全fixture | `R1-R7` | `release_contract` | `release` | [Release fixture固定表](#release-fixture-contract) |
 | `additional-management-users-roles-success` | `27.48-27.50` | `additional_management_users_roles` | `api` | [追加管理 API fixture 固定契約](#additional-management-api-fixture-contract) |
 | `additional-management-auth-permission-denied` | `27.58` | `additional_management_auth_permission` | `security` | [追加管理 API fixture 固定契約](#additional-management-api-fixture-contract) |
@@ -1295,7 +1299,7 @@ listener event の `target` は `api_listener` とする。`listen.input` は `{
 <a id="sec-27-f-8"></a>
 **[fixture 証跡責務共通 manifest schema 固定契約](fixture.md#sec-27-f-8)：**
 
-[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) の `manifest.json` は次の共通 schema に従う。未知 key は禁止する。対象別の差分は各 fixture catalog と file set 契約で固定し、別 schema を作成してはならない。
+[`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[Admin CLI fixture 固定契約](#admin-cli-fixture-contract)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) の `manifest.json` は次の共通 schema に従う。未知 key は禁止する。対象別の差分は各 fixture catalog と file set 契約で固定し、別 schema を作成してはならない。
 
 <a id="fixture-component-identifier-contract"></a>
 Fixture manifest の component 識別子は `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`release`、`security`、`mcp` の13件だけを許可する。`owner_component`、`collaborator_components`、`components` はこの識別子集合だけを使用する。
@@ -1335,12 +1339,12 @@ Fixture manifest の component 識別子は `builder`、`runner`、`api`、`admi
 |-----|----|------|--------|
 | `name` | string | 必須 | [manifest 識別子レジストリ固定契約](#sec-27-f-manifest-identity) が指す fixture 固定表に記載された fixture 名との完全一致。固定表外の名前、prefix だけが一致する名前、別 fixture 名から推測した名前を禁止する。 |
 | `section` | string | 必須 | [manifest 識別子レジストリ固定契約](#sec-27-f-manifest-identity) で `name` に割り当てられた値との完全一致。範囲表記からの推測、主節の任意選択、別節の代用を禁止する。複数節を検証する fixture はレジストリの主節 1 件だけを `section` とし、残りを `references` に記録する。 |
-| `feature` | string | 必須 | [manifest 識別子レジストリ固定契約](#sec-27-f-manifest-identity) で `name` に割り当てられた値との完全一致。[fixture 証跡責務 §27-F](#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、owner / 連動 fixture、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) はレジストリ記載の snake_case、[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) はカタログ記載の kebab-case をそのまま使用し、相互変換、別名、case 変更を禁止する。 |
+| `feature` | string | 必須 | [manifest 識別子レジストリ固定契約](#sec-27-f-manifest-identity) で `name` に割り当てられた値との完全一致。[fixture 証跡責務 §27-F](#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、owner / 連動 fixture、[Admin CLI fixture 固定契約](#admin-cli-fixture-contract)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) はレジストリ記載の snake_case、[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) はカタログ記載の kebab-case をそのまま使用し、相互変換、別名、case 変更を禁止する。 |
 | `category` | string | 必須 | `success`、`failure`、`partial`、`noop`、`security`。[fixture 証跡責務 §27-F](#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、owner / 連動 fixture は fixture 名 prefix と一致する。[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract) と [MCP fixture 固定契約](#mcp-fixture-contract) は各契約の fixture 名別 category 固定表と一致する。 |
 | `owner_component` | string | 必須 | [manifest 識別子レジストリ固定契約](#sec-27-f-manifest-identity) で `name` に割り当てられた値との完全一致とし、[component 識別子固定契約](#fixture-component-identifier-contract) のいずれか 1 件を使用する。対象 component の列挙順や fixture 配置から推測してはならない。 |
 | `collaborator_components` | array[string] | 必須 | [component 識別子固定契約](#fixture-component-identifier-contract) の値だけを使用する。`owner_component` を含めず、ASCII 昇順、重複なしとする。該当なしは空配列。 |
 | `components` | array[string] | 必須 | `owner_component` 1 件と `collaborator_components` の全要素だけを ASCII 昇順、重複なしで含み、[component 識別子固定契約](#fixture-component-identifier-contract) の値だけを使用する。 |
-| `references` | array[string] | 必須 | 各要素は repository root 起点の `docs/SPEC.md#<anchor>`、`docs/DESIGN.md#<anchor>`、`docs/DETAIL_INDEX.md#<anchor>`、`docs/details/<file>.md#<anchor>` のいずれかとし、実在 file と実在 anchor を指す。先頭は owner の主節、2 件目は対象の [fixture 証跡責務 §27-F](#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) の fixture カタログ、残りは collaborator と関連固定契約を UTF-8 byte 列の昇順で持つ。`docs/ROADMAP.md`、`docs/DOCUMENT_INDEX.md`、重複、fragment なし、絶対 path、`../` を禁止する。 |
+| `references` | array[string] | 必須 | 各要素は repository root 起点の `docs/SPEC.md#<anchor>`、`docs/DESIGN.md#<anchor>`、`docs/DETAIL_INDEX.md#<anchor>`、`docs/details/<file>.md#<anchor>` のいずれかとし、実在 file と実在 anchor を指す。先頭は owner の主節、2 件目は対象の [fixture 証跡責務 §27-F](#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[Admin CLI fixture 固定契約](#admin-cli-fixture-contract)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) の fixture カタログ、残りは collaborator と関連固定契約を UTF-8 byte 列の昇順で持つ。`docs/ROADMAP.md`、`docs/DOCUMENT_INDEX.md`、重複、fragment なし、絶対 path、`../` を禁止する。 |
 | `fake_clock` | string/null | 必須 | UTC の `YYYY-MM-DDTHH:MM:SSZ` または `null`。カレンダー上無効な日時、offset、小数秒を禁止する。時刻依存 fixture は `null` 禁止。 |
 | `not_applicable` | array[object] | 必須 | 各 object は `path` と `reason` の 2 key だけを持つ。`path` は対象 file set 契約の条件付き候補 file または directory の fixture root 相対 path、`reason` は空でない固定理由とする。`path` の ASCII 昇順、重複なしとし、必須 file、実在 path、契約外 path は列挙しない。該当なしは空配列とする。 |
 | `missing_state` | array[string] | 必須 | fixture の仮想実行 cwd 起点の `/` 区切り相対 path で、実行前に存在しないことを期待する状態 file だけを ASCII 昇順、重複なしで持つ。directory、symlink、絶対 path、`.` / `..` segment を禁止する。該当なしは空配列とする。 |
@@ -1601,7 +1605,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 |----------|----------|----------------|
 | `manifest.json.name` と directory 名 | directory 名は `manifest.json.name` と完全一致する。 | fixture 名不一致として失敗。 |
 | `manifest.json.category` と fixture 固定表 | `success-*` は `success`、`failure-*` は `failure`、`partial-*` は `partial`、`noop-*` は `noop`、`security-*` は `security` とする。prefix を持たない [追加管理 API fixture 固定契約](#additional-management-api-fixture-contract) と [MCP fixture 固定契約](#mcp-fixture-contract) の fixture は、各契約の fixture 名別 category 固定表と完全一致させる。 | 分類不一致として失敗。 |
-| `manifest.json.section` と fixture 固定表 | section、fixture 名、owner の組み合わせは対象の [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) のカタログ固定表または owner fixture 固定表に存在する組み合わせだけ許可する。 | 固定表外として失敗。 |
+| `manifest.json.section` と fixture 固定表 | section、fixture 名、owner の組み合わせは対象の [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[Admin CLI fixture 固定契約](#admin-cli-fixture-contract)、[追加管理 API fixture 固定契約](#additional-management-api-fixture-contract)、[MCP fixture 固定契約](#mcp-fixture-contract) のカタログ固定表または owner fixture 固定表に存在する組み合わせだけ許可する。 | 固定表外として失敗。 |
 | `manifest.json.owner_component` と `components` | `owner_component` は `components` に必ず含める。 | owner 責務不一致として失敗。 |
 | `manifest.json.collaborator_components` と `components` | `collaborator_components` は `components` にすべて含め、`owner_component` を含めてはならない。 | collaborator 責務不一致として失敗。 |
 | fixture 固定表の必須 input と入力ファイル | CLI / setup script 実行は `input/cli.json`、[fixture 証跡責務 §28-F](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) の builder は `input/options.json`、HTTP request / SDK invocation / UI action は `input/request.json` を置く。その他の builder fixture は対象 file set 契約に従う。複数条件に該当する場合は必要 file をすべて置き、該当する条件を `not_applicable` で除外してはならない。 | 入力責務不一致として失敗。 |
@@ -1625,7 +1629,7 @@ fixture 内の `manifest.json`、`input/*`、`expected/*` は相互に矛盾し�
 | `builder` | CLI 入力、Markdown 入力、出力 site / HTML / REPORT、asset、cache、dependency、meta、終了コードを fixture で固定する。 | runner / API に渡す REPORT、meta、dependency manifest の key 名と nullable 条件を固定する。 | 出力 file の byte 比較または構造化 expected が存在し、既存出力保護と失敗時 no-write が検証済み。 | GitHub read、状態ファイル直接更新、通知送信。 |
 | `runner` | CLI、設定、lock、SHA cache、build log、history、status、queue、external call、notification、終了コードを fixture で固定する。 | builder output、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の schema、commitstatus payload を仕様どおり消費し、未定義 key や未取得値を追加しない。 | 成功、失敗、skip、partial、dry-run の状態差分と write order が検証済み。 | API endpoint 追加、SDK method 追加、UI 操作追加。 |
 | `api` | method/path/query/body/header、auth/scope/rate limit、response、状態 read/write、access/audit/config log を fixture で固定する。 | SDK / UI が追加 key を生成せずに扱える response schema、HTTP status、error body を返す。 | read-only は endpoint 固有の業務状態が no-write で、共通 security / observability 副作用、write API の保存順、validation failure の forbidden_writes が検証済み。 | runner CLI 処理、UI DOM 操作、未定義状態ファイル作成。 |
-| `admin` | admin archive の file list、entry validation、配置 mode、static serving path/header/body、secret 非配信、no mutation を fixture で固定する。 | setup の admin UI 展開、api の static serving、ui / sdk の配布物境界を壊さない expected を提供する。 | unsafe archive、未定義 file、directory listing、secret path、method denied、no mutation が検証済み。 | UI / SDK 内容生成、API endpoint 実装、状態 schema 変更、systemd 操作。 |
+| `admin` | admin archive の file list、entry validation、配置 mode、static serving path/header/body、CLI request/stdout/stderr/exit code、secret 非配信、no mutation を fixture で固定する。 | setup の admin UI 展開、api の static serving / CLI fake response、security の secret mask、ui / sdk の配布物境界を壊さない expected を提供する。 | unsafe archive、未定義 file、directory listing、secret path、method denied、CLI 未定義 endpoint passthrough 禁止、no mutation が検証済み。 | UI / SDK 内容生成、API endpoint 実装、状態 schema 変更、systemd 操作、CLI からの任意 endpoint 実行。 |
 | `sdk` | method、args、query 生成、error 変換、token 破棄、binary / stream handling を fixture で固定する。 | UI が API 詳細を知らずに扱える戻り値と error をそのまま伝播する。 | API response に存在しない key を生成せず、`401` / `403` / `429` / network error が区別される。 | API response 推測補完、未定義 endpoint 呼び出し、状態ファイル直接操作。 |
 | `ui` | SDK method 呼び出し、DOM 表示、disabled/loading/error、secret field 消去、再取得順を fixture で固定する。 | SDK 戻り値だけを表示し、API / 状態ファイルの内部構造を再解釈しない。 | 直接 API 呼び出し、状態ファイル操作、secret DOM 残存がない。 | 直接 `fetch()`、状態ファイル操作、外部 command 実行。 |
 | `statefile` | schema、atomic write、JSON Lines、lock、破損時処理、保存順、no-write / forbidden write を fixture で固定する。 | runner / API / archive の保存対象ごとに `write_order`、`unchanged_paths`、`forbidden_writes` を固定する。 | read-only、dry-run、validation failure、partial failure の副作用境界が検証済み。 | component 固有の業務判断、UI 表示判断、API response 補完。 |
@@ -1766,6 +1770,46 @@ UI owner fixture が不足する場合、UI 実装変更は詳細実装確認を
 setupをownerまたはcollaboratorに含む全fixtureの`expected/stdout.txt`と`expected/stderr.txt`は[`docs/details/setup.md` 詳細本文責務 §26.2d](setup.md#setup-output-contract)をbyte単位で検証する。成功caseはmode別stageのstart / ok全行と最終success行、stderr 0 byteを必須とする。失敗caseは失敗stageのstart行までのstdout、exact error code、stage、rollback-result、LF 1個のstderrを必須とし、child process出力、path、URL、journal本文、Go error、secret原文を含めてはならない。Release asset download失敗caseの`input/cli.json.expected_exit_code`は`3`とする。
 
 setup / admin / Release asset 連動 fixture の `manifest.json.name`、`section`、`feature`、`owner_component` は [manifest 識別子レジストリ固定契約](#sec-27-f-manifest-identity) の fixture 名別割り当てに従う。`setup` と `admin` のうち owner ではない component を `collaborator_components` に含める。実装変更が API service 起動、static serving、rollback、secret 保持を扱う場合は、`api`、`runner`、`security` のうち当該 fixture の対象 component を collaborator として追加し、`expected/effects.json` の `forbidden_calls` と `forbidden_writes` に禁止副作用を明記する。
+
+<a id="admin-cli-fixture-contract"></a>
+**[fixture 証跡責務 Admin CLI fixture 固定契約](fixture.md#admin-cli-fixture-contract)：**
+
+Admin CLI fixture は [`docs/details/admin.md` 詳細本文責務 §A7](admin.md#sec-a7) だけを確認する。API endpoint の response schema は [`docs/details/api.md`](api.md) 詳細本文責務、認証・secret の扱いは [`docs/details/security.md`](security.md) 詳細本文責務を参照し、本契約で再定義しない。
+
+| fixture 名 | fixture 群 | 必須確認 |
+|------------|------------|----------|
+| `partial-admin-cli-lifecycle` | `testdata/admin/cli/lifecycle/` | `--help`、`--version`、argv token safety、option parse、必須 option、未知 command、終了 code、network / state no-write。 |
+| `success-admin-cli-transport` | `testdata/admin/cli/transport/` | `--api-url` path prefix 連結、method、path、header、request body byte、redirect 不追従、retry なし、proxy なし、timeout。 |
+| `failure-admin-cli-output-errors` | `testdata/admin/cli/output/` | command 別 human stdout、`--json` raw JSON、invalid JSON、Content-Type 不一致、body 上限超過、HTTP error、network error。 |
+| `security-admin-cli-secret-redaction` | `testdata/admin/cli/security/` | token、Authorization header、error body、URL、Location、server body 断片、fixture expected への secret 非出力。 |
+
+Admin CLI fixture の expected file は fixture 名ごとに以下へ固定する。対象外の expected file は `manifest.json.not_applicable` に理由を記録する。
+
+| fixture 名 | 必須 expected |
+|------------|---------------|
+| `partial-admin-cli-lifecycle` | `expected/stdout.txt`、`expected/stderr.txt`、`expected/effects.json`、`expected/security.json`。 |
+| `success-admin-cli-transport` | `expected/request.json`、`expected/stdout.txt`、`expected/stderr.txt`、`expected/effects.json`、`expected/security.json`。 |
+| `failure-admin-cli-output-errors` | `expected/response.json`、`expected/stdout.txt`、`expected/stderr.txt`、`expected/effects.json`、`expected/security.json`。 |
+| `security-admin-cli-secret-redaction` | `expected/request.json`、`expected/response.json`、`expected/stdout.txt`、`expected/stderr.txt`、`expected/effects.json`、`expected/security.json`。 |
+
+Admin CLI fixture の `manifest.json.assertions` は次表に固定する。複数値は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) の列挙順で記録する。
+
+| fixture 名 | 必須 assertions |
+|------------|-----------------|
+| `partial-admin-cli-lifecycle` | `stdout`、`stderr`、`effects`、`secret-mask`、`no-write` |
+| `success-admin-cli-transport` | `stdout`、`stderr`、`effects`、`secret-mask`、`order` |
+| `failure-admin-cli-output-errors` | `response`、`stdout`、`stderr`、`effects`、`secret-mask`、`no-write` |
+| `security-admin-cli-secret-redaction` | `response`、`stdout`、`stderr`、`effects`、`secret-mask`、`no-write` |
+
+`partial-admin-cli-lifecycle` は `--help` と `--version` が API URL、token、state directory、network fake を一切参照しないことを `expected/effects.json.external_calls=[]`、`forbidden_writes`、`forbidden_reads` で固定する。parse error、未知 command、引数不足、引数過多、同一 option 重複、`--name=value`、短縮 option、禁止制御文字は個別 case とし、stdout 空、stderr 1 行、終了 code `2` を byte 単位で検証する。
+
+`success-admin-cli-transport` は各 command について method、path、request body、header を `expected/request.json` に固定する。`Authorization` は placeholder `${secret:admin_cli_token}` だけを許可し、token 実値、token hash、部分文字列、長さから復元できる値を expected に置いてはならない。`config-snapshot` の JSON body、`cancel-queue` の 1 回だけの percent encode、`User-Agent`、`Accept`、`Content-Type`、redirect 不追従、retry 0 回、proxy 0 回、Cookie 0 件を検証する。
+
+`failure-admin-cli-output-errors` は success body と failure body を混在させない。invalid JSON、複数 JSON value、body 空、Content-Type 不一致、複数 Content-Type、1 MiB 超過、HTTP `300`〜`599`、network error、TLS error、timeout、connection close before response を別 case とし、stdout 空、stderr 固定 1 行、終了 code `1` を byte 単位で検証する。`--json` success case では API wire body の key order と number / string 表現を保持し、末尾 LF 1 個だけを追加することを確認する。
+
+`security-admin-cli-secret-redaction` は token、Authorization header、error response body 内 secret、redirect `Location`、URL query、server raw body、Go error、absolute path が stdout、stderr、`expected/request.json`、`expected/response.json`、`expected/effects.json`、`expected/security.json` に平文で出現しないことを列挙する。placeholder は `${secret:<source_id>}` だけを使用し、実値、hash 入力、prefix、suffix、長さ、base64、percent encode された派生値を禁止する。
+
+Admin CLI fixture の `manifest.json.name`、`section="A7"`、`feature="admin_cli"`、`owner_component="admin"` は [manifest 識別子レジストリ固定契約](#sec-27-f-manifest-identity) に従う。HTTP fake を使用する fixture は `api` を collaborator、secret / auth 境界を検証する fixture は `security` を collaborator に含める。`components` は `admin` と collaborator を ASCII 昇順で持つ。`references` は先頭に `docs/details/admin.md#sec-a7`、次に `docs/details/fixture.md#admin-cli-fixture-contract`、以後 collaborator 詳細本文を UTF-8 byte 列の昇順で持つ。
 
 <a id="release-fixture-contract"></a>
 **[fixture 証跡責務 Release fixture 固定契約](fixture.md#release-fixture-contract)：**
