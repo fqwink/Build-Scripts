@@ -15,7 +15,6 @@ api 連動機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕�
 | owner component | `api` |
 | 実装主体 | [`components/api.go`](../../components/api.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-api` とする。 |
 | 持つ内容 | `api` owner が主本文として定義する HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 |
-| 持たない内容 | SDK method 実装、UI DOM 詳細、runner の build 実行責務、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
@@ -313,7 +312,7 @@ API 実装は以下の検証を共通で行う。違反時は、エンドポイ�
 |----------|--------|----------------------|--------|---------------------|
 | `GET /api/status` | `readBuildStatus()` と `readBuildLock()` → status 不在時だけ `readBuildHistory()`、`readBuildState()`、`readPendingTransfers()`、`readNotifyPending()`、`readCircuitState()` | `.build_status.json` がある場合は同ファイルだけから `last_sha`、`last_build_at`、`last_build_status`、`last_target_status`、`last_trigger`、`last_deploy_status`、両 pending 件数、`circuit_open` を写像する。`running` は同ファイルの値とするが、`readBuildLock().running=true` の場合は valid active lock と形式不正または PID 判定不能の conflict lock のどちらでも `true` へ上書きする。stale lock は上書きしない。正確な写像は [`StatusObject` 固定契約](#status-object-contract) を使用する。 | `.build_status.json` 不在時は最新の status summary 対象 history 行から `last_sha`、`last_build_at`、正規化 / 詳細 status、`last_trigger` を導出し、`last_deploy_status:null`、pending 配列件数、circuit state を返す。history-only 行は対象外とし、対象履歴なしは `last_sha:null`、`last_build_at:null`、`last_build_status:"none"`、`last_target_status:null`、`last_trigger:null`。`running` は `.build_state.running \|\| readBuildLock().running`。 | `.build_status.json` 破損は `500 {"error":"State file is corrupted"}`。fallback 中の必須読取破損も `500`。形式不正または PID 判定不能の lock は response を失敗させず `running:true`、stale lock は status または state の値を維持し、API は lock を変更しない。 |
 | `GET /api/health` | `readBuildStatus()` →不在、破損、読込不能時だけ `readBuildHistory()`、常に `readPendingTransfers()`、`readNotifyPending()` | `.build_status.json` が有効な場合は `last_build_at=last_finished_at`、`last_build_status=status`、`last_deploy_at`、`last_deploy_status` を同名または対応 field から返す。[`docs/details/api.md` 詳細本文責務 §27.16](api.md#sec-27-16) の固定順で `checks` を作り、`checks` が空なら `status:"ok"`、1 件以上なら `status:"degraded"` とする。 | `.build_status.json` 不在は history fallback を行い、`last_deploy_at:null`、`last_deploy_status:null`、`build_status_missing` check を返す。 | 読取または parse 異常を対応する `checks` 値へ写像し、response 自体を構築できる場合は `200`。response 構築不能だけ `500`。 |
-| `GET /api/history` | `readBuildHistory()` | schema-valid かつ id 重複除外済みの行を `finished_at` 降順、同時刻は `id` 降順に sort し、`trigger`、`tag`、`flagged`、`failure_category` filter 後に paging する。response の `warnings` は返却対象に未知の保存済み `failure_category` が 1 件以上ある場合だけ `["unknown_failure_category"]`、それ以外は `[]`。 | `total:0`、検証済み query の `page` と `per_page`、`pages:0`、`history:[]`、`warnings:[]`。 | 行単位破損は除外し、`BUILD_HISTORY_SKIP_CORRUPT`、id 重複は `BUILD_HISTORY_DUPLICATE_ID` を server log へ記録する。ファイル読込不能は `500 {"error":"State file read failed"}`。 |
+| `GET /api/history` | `readBuildHistory()` | schema-valid かつ id 重複除外済みの行を `finished_at` 降順、同時刻は `id` 降順に sort し、`trigger`、`tag`、`flagged`、`failure_category` filter 後に paging する。 | `total:0`、検証済み query の `page` と `per_page`、`pages:0`、`history:[]`。 | 行単位破損は除外し、`BUILD_HISTORY_SKIP_CORRUPT`、id 重複は `BUILD_HISTORY_DUPLICATE_ID` を server log へ記録する。ファイル読込不能は `500 {"error":"State file read failed"}`。 |
 | `GET /api/history/{id}/log` | `readBuildLog(id)` | 対象 ID の log object を返す。 | 通常ログと archive の両方が不在なら `404 {"error":"Not found"}`。 | 対象 ID の log 破損は `500 {"error":"State file is corrupted"}`。 |
 | `GET /api/logs` | `readLatestBuildLogs(n,q)` | 最新 log line を時系列順へ正規化し、`q` 指定時は部分一致で絞り込む。 | `{"lines":[]}`。 | 個別 log 破損は除外する。ディレクトリ読込不能は `500 {"error":"State file read failed"}`。 |
 | `GET /api/queue` | `readBuildState()`、queue 上限算出時に `.server_config` | `active=.build_state.active_queue_entry`、priority 順の `queued`、`max_size=queue_max_size` を返す。 | `.build_state` 不在は `active:null`、`queued:[]`。`.server_config` 不在は既定 queue 上限。 | `.build_state` 破損は `500 {"error":"State file is corrupted"}`。 |
@@ -362,7 +361,7 @@ API 実装では、[`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec
 | `POST /api/history/{id}/flag` | `.build_logs/{id}.json` | `.build_logs/{id}.json`, `.config_log` | flag だけ更新する。 |
 | `POST /api/history/{id}/tags` | `.build_logs/{id}.json` | `.build_logs/{id}.json`, `.build_history`, `.config_log` | `.build_history` の同一 id にも反映する。 |
 | `POST /api/history/{id}/rollback` | `.build_history`、`.snapshots/{id}/`、`.server_config`、`.branch_config`、`.maintenance`、`.build_circuit_state`、`.build_lock`、`.build_state` | `.audit_log`。runner owner が `.build_lock`、`.build_status.json`、`.build_state`、`.build_logs/{new_id}.json`、`.build_history`、必要時の `.pending_transfers` を更新する。 | maintenance、circuit、実行中判定後に runner owner の rollback coordinator を prepare し、`build_trigger` audit 成功後だけ worker 開始を確定する。API owner は rollback build log / history / pending を直接書き込まない。 |
-| `GET /api/notify-config` | `.notify_config`, `.smtp_config` | なし | secrets はマスクする。 |
+| `GET /api/notify-config` | `.notify_config` | なし | Webhook channel の `config.secret` はマスクする。 |
 | `POST /api/notify-config` | `.notify_config` | `.notify_config`, `.config_log` | secret は GET で返さない。 |
 | `GET /api/notify-log` | `.notify_log` | なし | [`docs/details/api.md` 詳細本文責務 §22.0e.3](api.md#sec-22-0e-3) の JSON Lines 一覧取得契約を使用する。 |
 | `POST /api/notify-test` | `.notify_config` | `.notify_log` | 送信結果を追記する。 |
@@ -648,7 +647,7 @@ restore の `.config_log` は対象 file ごとの差分を 1 record にまと�
 | 強制ビルド要求 | `POST /api/build/force` | `payload.force=true` の manual queue entry を保存し、runner 起動を要求する。API は SHA cache を空値化せず、runner は SHA 一致 skip だけを bypass し、build 成功後に限り新 SHA を保存する。 | queue 上限到達は `429 {"error":"queue_full"}`。 |
 | ログ一覧 | `GET /api/logs` | 同一 build id は通常 log を優先し、通常 log 不在時だけ archive を展開する。対象 build log の `pipeline.stdout`、`pipeline.stderr`、`warnings` をこの順で行配列へ連結し、build log の `finished_at` 昇順、同時刻は build id 昇順で並べた後に末尾 `n` 行を返す。`q` が空でない場合は大文字小文字を区別する部分一致行だけを絞り込んでから `n` を適用する。 | ログなしは `{"lines":[]}`。 |
 | ログ検索 | `GET /api/logs/search` | [`docs/details/api.md` 詳細本文責務 §27.17](api.md#sec-27-17) の固定契約に従い、通常 log 優先で、`finished_at` 降順、build id 降順に検索し、一致 message を build 単位の `lines` へ固定 source 順でまとめる。 | 一致なしは `results:[]`。 |
-| 履歴一覧 | `GET /api/history` | schema-valid かつ id 重複除外済みの行を `finished_at` 降順、同時刻は `id` 降順に並べ、`trigger`、`tag`、`flagged`、`failure_category` を指定時のみ完全一致で絞り込み、ページングする。壊れた行と重複 id 行は無視して固定 ERROR code を記録する。`total` と `pages` は絞り込み後の一意な有効行だけで算出する。`warnings` は返却 page の保存済み未知 category に限定する。 | 履歴なしまたは一致なしは `total:0`、検証済み query の `page` と `per_page`、`pages:0`, `history:[]`, `warnings:[]`。 |
+| 履歴一覧 | `GET /api/history` | schema-valid かつ id 重複除外済みの行を `finished_at` 降順、同時刻は `id` 降順に並べ、`trigger`、`tag`、`flagged`、`failure_category` を指定時のみ完全一致で絞り込み、ページングする。壊れた行と重複 id 行は無視して固定 ERROR code を記録する。`total` と `pages` は絞り込み後の一意な有効行だけで算出する。 | 履歴なしまたは一致なしは `total:0`、検証済み query の `page` と `per_page`、`pages:0`, `history:[]`。 |
 | システム情報 | `GET /api/sysinfo` | API 選択出力 target の `out` 配下の通常 file 合計 bytes、directory mtime、process uptime を返す。 | 出力 directory 不在は `output_size_bytes:0`, `output_mtime:null`。 |
 | 出力メタ | `GET /api/output-meta` | 選択 target の出力サイトの現在サイズと mtime、同じ target の直近成功履歴の `output_sha256`、対応 log の `report`、対応 log または HTML meta の `build_id` / `commit_sha` / `build_at` を返す。 | 出力サイト不在は `404`。同じ target の成功履歴がない場合は `sha256:""`、report 数値は `null`、warning は `[]`、build meta は HTML meta 不在時に空文字。 |
 | ダッシュボード | `GET /api/dashboard` | `status`、API 選択出力 target の `sysinfo`、`stats(days=7)`、`schedule`、`alerts` を同一リクエスト時点で算出し、widget 順序は `.dashboard_layout.widgets` を使用する。 | `.dashboard_layout` 不在は既定 widget 順。出力 directory 不在の `sysinfo` は size `0` / mtime `null`。alerts なしは `[]`。 |
@@ -737,7 +736,7 @@ API response は、[`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec
 | float | JSON number とし、小数第 2 位までに丸める指定がある値だけ `math.Round(x*100)/100` 相当にする。 |
 | timestamp | UTC ISO 8601 `YYYY-MM-DDTHH:MM:SSZ`。空状態は nullable key なら `null`、非 nullable key なら endpoint 固有の既定値。 |
 | message | 成功 message は endpoint ごとの固定文言とし、入力値を連結しない。 |
-| unknown key | response に schema 外 key を追加しない。互換目的の旧 key 追加も禁止する。 |
+| unknown key | response に schema 外 key を追加しない。廃止済み key の追加も禁止する。 |
 
 **ページング response：**
 
@@ -945,14 +944,11 @@ endpoint の method、path、認証境界、request、response、error、read / 
 ```json
 {
   "total": 0, "page": 1, "per_page": 20, "pages": 0,
-  "warnings": [],
   "history": []
 }
 ```
 
-`page` は 1 始まり。`per_page` の最大値は 100。`trigger` は [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の固定値のみ許可する。`tag` はタグ検証と同じ文字列制約を適用する。`flagged` は `"true"` または `"false"` のみ許可する。`failure_category` は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の FailureCategory 固定値だけを許可し、指定時は保存値の完全一致で絞り込む。`.build_history.status="success"` の純粋な成功履歴は `failure_category:null` のため category filter 指定時に一致しない。`.build_history.status="success_deploy_pending"` の履歴は正規化状態が `success` でも `failure_category:"deploy_failure"` を保存し、`failure_category=deploy_failure` に一致する。未知 query、1 未満の `page`、範囲外の `per_page`、不正な `trigger` / `tag` / `flagged` / `failure_category` は `422 {"error":"Validation failed","details":[...]}` とし、`details[]` は [`docs/details/api.md` 詳細本文責務 §22.0b](api.md#sec-22-0b) の固定規則に従って実際に不正な query 名と理由を返す。例えば未知の `failure_category` は `{"field":"failure_category","message":"invalid value"}`、整数でない `page` は `{"field":"page","message":"integer required"}` とする。有効な正整数だが最終ページを超える `page` は `422` にせず、その `page` と `per_page`、絞り込み後の `total` と `pages`、`history:[]`、`warnings:[]` を返す。各 history object は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の有効な `.build_history` record の全必須 key を保持し、response 専用 `build_at=finished_at` と `sha=commit_sha ?? blob_sha` を追加する。保存ファイルへ `build_at` と `sha` を逆書きしてはならない。
-
-`HistoryPageObject.warnings` は常に string array とする。filter と paging 後の返却対象に、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の前方互換 category id が 1 件以上ある場合だけ `"unknown_failure_category"` を 1 回含める。前方互換 category id を書き換えず、当該 history object の原値を返す。前方互換 category id が paging 対象外の行だけにある場合は `warnings:[]` とする。この top-level `warnings` は個々の history object にある integer の `warnings` と別の field であり、互いに上書き、合算、型変換しない。
+`page` は 1 始まり。`per_page` の最大値は 100。`trigger` は [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の固定値のみ許可する。`tag` はタグ検証と同じ文字列制約を適用する。`flagged` は `"true"` または `"false"` のみ許可する。`failure_category` は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の FailureCategory 固定値だけを許可し、指定時は保存値の完全一致で絞り込む。`.build_history.status="success"` の純粋な成功履歴は `failure_category:null` のため category filter 指定時に一致しない。`.build_history.status="success_deploy_pending"` の履歴は正規化状態が `success` でも `failure_category:"deploy_failure"` を保存し、`failure_category=deploy_failure` に一致する。未知 query、1 未満の `page`、範囲外の `per_page`、不正な `trigger` / `tag` / `flagged` / `failure_category` は `422 {"error":"Validation failed","details":[...]}` とし、`details[]` は [`docs/details/api.md` 詳細本文責務 §22.0b](api.md#sec-22-0b) の固定規則に従って実際に不正な query 名と理由を返す。例えば未知の `failure_category` は `{"field":"failure_category","message":"invalid value"}`、整数でない `page` は `{"field":"page","message":"integer required"}` とする。有効な正整数だが最終ページを超える `page` は `422` にせず、その `page` と `per_page`、絞り込み後の `total` と `pages`、`history:[]` を返す。各 history object は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の有効な `.build_history` record の全必須 key を保持し、response 専用 `build_at=finished_at` と `sha=commit_sha ?? blob_sha` を追加する。保存ファイルへ `build_at` と `sha` を逆書きしてはならない。
 
 history `id` と対応 log の有無は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.build_history` schema を正とする。build record は build id を使い同名 build log を持つ。approval event と dependency skip は正本で定義された id を使い、対応 build log を持たない。
 
@@ -1008,19 +1004,13 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 **`GET /api/notify-config` レスポンス例：**
 ```json
 {
-  "webhooks": [
-    { "url": "https://hooks.example.com/...", "label": "メイン", "enabled": true, "payload_template": null, "retry_count": 2, "retry_interval_seconds": 30, "secret": null }
-  ],
   "channels": [
-    { "id": "n001", "type": "webhook", "label": "メイン", "enabled": true, "on": ["failure"], "config": { "url": "https://hooks.example.com/..." }, "retry_count": 2, "retry_interval_seconds": 30 }
+    { "id": "n001", "type": "webhook", "label": "メイン", "enabled": true, "on": ["failure"], "config": { "url": "https://hooks.example.com/...", "payload_template": null, "secret": "***" }, "retry_count": 2, "retry_interval_seconds": 30 }
   ],
   "on": ["failure"],
-  "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 },
-  "email": { "enabled": false, "to": [], "on": [] }
+  "summary": { "enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1 }
 }
 ```
-
-`secret`：Webhook 署名シークレット。未設定時は `null`、設定済み時は `"***"`（マスク）を返す。
 
 `on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"deploy_failure"`（転送失敗時）| `"weekly_summary"`（定期サマリー送信時）| `"approval_required"`（承認待ち発生時）| `"duration_anomaly"`（所要時間異常時）| `"config_corrupt"`（設定破損復旧時）。複数指定は array 順を保持して保存する。
 
@@ -1043,7 +1033,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 | `{{duration_seconds}}` | ビルド所要時間（秒） |
 | `{{build_at}}` | ビルド実行日時（ISO 8601） |
 
-`secret`：Webhook 送信時の HMAC-SHA256 署名用シークレット文字列。設定時はリクエストヘッダーに `X-Adlaire-Signature: sha256=<hmac>` を付与する。`null` = 署名なし。`GET /api/notify-config` で返却する際、設定済みの場合は `"***"` でマスクし、未設定の場合は `null` を返す。`POST /api/notify-config` で更新可能。
+Webhook channel の `config.secret` は HMAC-SHA256 署名用シークレット文字列とする。設定時はリクエストヘッダーに `X-Adlaire-Signature: sha256=<hmac>` を付与し、`null` は署名なしとする。`GET /api/notify-config` は設定済み値を `"***"` でマスクし、未設定は `null` を返す。更新は `POST /api/notify-config` の対象 Webhook channel に対して行う。
 
 **`GET /api/config` レスポンス例：**
 ```json
@@ -1128,11 +1118,9 @@ response schema、状態判定、`checks` の順序、不在・破損時の扱�
   "exported_at": "2026-09-15T10:00:00Z",
   "server_config": {},
   "notify_config": {
-    "webhooks": [],
     "channels": [],
     "on": [],
-    "summary": {"enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1},
-    "email": {"enabled": false, "to": [], "on": []}
+    "summary": {"enabled": false, "interval": "weekly", "hour": 9, "day_of_week": 1}
   },
   "repo_config": {
     "owner": "fqwink",
@@ -1157,7 +1145,7 @@ response schema、状態判定、`checks` の順序、不在・破損時の扱�
 { "message": "Test notification sent", "channel_id": "n001" }
 ```
 
-`.notify_config.channels[]` が 1 件以上ある場合は `type="webhook"` かつ `enabled=true` の channel、空の場合は有効な legacy `webhooks[]` を runner と同じ規則で channel へ正規化し、channel id の byte 昇順で先頭 1 件だけを test 対象とする。test は `on[]` による event 選択を適用しない。有効な Webhook 通知先がない場合は `422 {"error":"Webhook not configured"}` を返し、送信と `.notify_log` 追記を行わない。
+`.notify_config.channels[]` の `type="webhook"` かつ `enabled=true` の channel を channel id の byte 昇順に並べ、先頭 1 件だけを test 対象とする。test は `on[]` による event 選択を適用しない。有効な Webhook 通知先がない場合は `422 {"error":"Webhook not configured"}` を返し、送信と `.notify_log` 追記を行わない。
 
 test payload は未知 key を含まない `{"event":"notify_test","message":"Test notification"}` 固定とし、key を ASCII 昇順にした canonical JSON byte を送信と `payload_sha256` の両方に使う。HTTP redirect は追従しない。送信 attempt の成功・失敗のどちらも、response 確定前に [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.notify_log` schema どおり `event="notify_test"`、選択 channel の `channel_id`、`channel_type="webhook"`、`attempt=1` で 1 record を追記する。HTTP 応答を得た場合は `http_status` を記録し、2xx だけを `result="success"` とする。1xx、3xx、4xx、5xx、timeout、response 受信前の接続失敗は同 schema の対応する `error_code` と secret mask 後 `error` で `result="failure"` とする。test 失敗は `.notify_pending` を作成しない。
 
@@ -1174,7 +1162,7 @@ test payload は未知 key を含まない `{"event":"notify_test","message":"Te
 
 `.github_token` が未設定または空の場合は `501 {"error":"Not configured"}` とする。設定済みの場合は GitHub `GET /user` を 10 秒 timeout で 1 回だけ呼び出す。GitHub が 2xx を返した場合は `valid:true`、401 または 403 を返した場合は `valid:false` とし、いずれも HTTP `200` で `checked_at` に検証完了時の UTC ISO 8601 秒精度を返す。`scopes` は 2xx response の `X-OAuth-Scopes` を comma で分割し、前後空白除去、空要素除外、byte 昇順、重複除去した配列とする。header 不在または `valid:false` は `[]` とする。network error、timeout、429、5xx は `500 {"error":"PAT verification failed"}` とし、検証結果を状態ファイルへ保存しない。
 
-`valid:true` は `GET /user` が 2xx を返したことだけを表し、対象リポジトリの `Contents: Read` または `Commit statuses: Write` を保証しない。`scopes` は response header の観測値だけであり、repository permission の代替判定に使用してはならない。必要権限は [`docs/details/runner.md` 詳細本文責務 §17](runner.md#17-github-連携前提) を正とし、不足時は実際の repository API response に従って runner または commitstatus component が失敗を処理する。
+`valid:true` は `GET /user` が 2xx を返したことだけを表し、対象リポジトリの権限充足を保証しない。`scopes` は response header の観測値だけであり、repository permission の代替判定に使用してはならない。必要権限は [`docs/SPEC.md` ポリシー責務 §5](../SPEC.md#5-ci-ランナー秘密情報公開境界ポリシー) を正本とし、不足時は実際の repository API response に従って runner または commitstatus component が失敗を処理する。
 
 **`GET /api/history/{id}/log` レスポンス：**
 
@@ -1828,7 +1816,7 @@ cooldown 共通参照は [`docs/details/runner.md` 詳細本文責務 §13](runn
 | `DELETE /api/hooks/{id}` | path id 検証 → `.hooks` lock → 対象存在確認 → record 削除 → `.hooks` atomic write → `.config_log` 追記 → `config_update` audit → response | 対象不在は `404`。`.config_log` または audit 失敗時は `500`、削除済み record と先行 log は巻き戻さない。 |
 | `GET /api/hooks/{id}/log` | path id 検証 → `.hooks` で存在確認 → `.build_logs/*_hook_{id}.json` を `ran_at` 降順、同時刻は `build_id` 降順で最大 20 件読込 → response | hook 不在は `404`。個別 hook log 破損はその file を除外し、server log に WARN code `HOOK_LOG_SKIP_CORRUPT`、hook id、file basename だけを出す。file 内容、絶対 path、Go error は出さない。 |
 
-hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙動は [`docs/details/runner.md` 詳細本文責務 §27.27](runner.md#sec-27-27) を参照する。`GET /api/hooks/{id}/log` は保存済み hook log を読み取り、response の `runs[]` へ `build_id`、`ran_at`、`exit_code`、`output` を返す。`output` は保存済み `stdout + stderr` をこの順で連結した表示用互換値とし、保存時点で secret mask 済みの値だけを返す。
+hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙動は [`docs/details/runner.md` 詳細本文責務 §27.27](runner.md#sec-27-27) を参照する。`GET /api/hooks/{id}/log` は保存済み hook log を読み取り、response の `runs[]` へ `build_id`、`ran_at`、`exit_code`、`output` を返す。`output` は保存済み `stdout + stderr` をこの順で連結した表示値とし、保存時点で secret mask 済みの値だけを返す。
 
 ---
 
@@ -1974,7 +1962,7 @@ build 完了時の `output_sha256` 算出と history 保存は runner owner の�
 
 **メール通知（SMTP）：**
 
-Webhook に加えてメールでビルド結果を通知する機能。SMTP 接続設定は `.smtp_config` に、パスワードは `.smtp_secret`（パーミッション 600）に分離して保存する。`GET /api/notify-config` のレスポンスに `email` セクションを追加する。
+Webhook に加えてメールでビルド結果を通知する機能。SMTP 接続設定は `.smtp_config` に、パスワードは `.smtp_secret`（パーミッション 600）に分離して保存し、`GET /api/smtp-config` で取得する。通知対象と宛先は `GET /api/notify-config` の `channels[]` に `type="email"` として返し、top-level `email` は使用しない。
 
 **`GET /api/smtp-config` レスポンス例：**
 ```json
@@ -2027,11 +2015,10 @@ SMTP 未設定または `enabled: false` の場合は `422` を返す。
 
 `POST /api/smtp-test` は `.smtp_config` と `.smtp_secret` を読み、test payload を未知 key のない `{"event":"smtp_test","message":"Test email"}` 固定とする。key を ASCII 昇順にした canonical JSON byte の SHA-256 を `.notify_log.payload_sha256` とする。送信成功は `result="success"`、SMTP 接続・認証・送信失敗は `result="failure"` / `error_code="smtp_error"`、timeout は `result="failure"` / `error_code="timeout"` とし、成功 / 失敗のどちらも `.notify_log` へ 1 record を追記してから response を返す。test 送信は `.notify_pending` を作成しない。SMTP 未設定の `422` は送信 attempt ではないため `.notify_log` を追記しない。`.notify_log` 追記失敗時は `500` を返す。SMTP password、認証失敗時の server response に含まれる credential 断片、接続 URL の userinfo は response `message`、`.notify_log.error`、server log のいずれにも含めず固定文言へ置換する。
 
-**`GET /api/notify-config` への追加（`email` セクション）：**
+**`GET /api/notify-config` の email channel 例：**
 ```json
 {
-  "channels": [ { "id": "n002", "type": "email", "label": "Ops", "enabled": true, "on": ["failure", "duration_anomaly"], "config": { "to": ["ops@example.com"] }, "retry_count": 2, "retry_interval_seconds": 30 } ],
-  "email": { "enabled": true, "to": ["ops@example.com"], "on": ["failure"] }
+  "channels": [ { "id": "n002", "type": "email", "label": "Ops", "enabled": true, "on": ["failure", "duration_anomaly"], "config": { "to": ["ops@example.com"] }, "retry_count": 2, "retry_interval_seconds": 30 } ]
 }
 ```
 
@@ -2137,7 +2124,7 @@ queue entry schema と trigger 別 payload schema は [`docs/details/statefile.m
 { "exported_at": "2026-09-15T10:00:00Z", "history": [] }
 ```
 
-`ExportObject` は `exported_at` と `history` だけを必須 key とし、未知 key を返さない。`exported_at` は response 作成完了時の UTC ISO 8601 秒精度とする。`history` は filter と paging を適用しない全有効行を `GET /api/history` と同じ重複 id 除外、`finished_at` 降順、同時刻 id 降順で返し、各 item は `HistoryPageObject.history[]` と同じ全保存 key、`build_at`、`sha` を持つ。行単位破損、重複 id、ファイル不在、読込不能は `GET /api/history` と同じ扱いとし、export によって `.build_history` を変更しない。前方互換 category id は history item 内に原値のまま含める。`ExportObject` に paging key と top-level `warnings` は追加しない。
+`ExportObject` は `exported_at` と `history` だけを必須 key とし、未知 key を返さない。`exported_at` は response 作成完了時の UTC ISO 8601 秒精度とする。`history` は filter と paging を適用しない全有効行を `GET /api/history` と同じ重複 id 除外、`finished_at` 降順、同時刻 id 降順で返し、各 item は `HistoryPageObject.history[]` と同じ全保存 key、`build_at`、`sha` を持つ。行単位破損、重複 id、ファイル不在、読込不能は `GET /api/history` と同じ扱いとし、export によって `.build_history` を変更しない。`ExportObject` に paging key を追加しない。
 
 **`POST /api/repo-config` リクエスト / レスポンス：**
 ```text

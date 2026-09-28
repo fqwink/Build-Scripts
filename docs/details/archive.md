@@ -11,7 +11,6 @@
 | owner component | `archive` |
 | 実装主体 | 単独の Go artifact は持たない。archive / snapshot / rollback の実体処理は [`components/runner.go`](../../components/runner.go)、HTTP 呼び出し境界は [`components/api.go`](../../components/api.go) に内包する。 |
 | 持つ内容 | `archive` owner が主本文として定義する build log archive / cleanup の実体処理、snapshot 保存形式、保存済み tar.gz の検証・配信、snapshot 世代削除、snapshot delete 実体処理、rollback 用 artifact の展開・転送・temporary cleanup 実体処理。 |
-| 持たない内容 | runner の通常 build 実行、snapshot 作成トリガー判定、rollback build の lock、ID 採番、log / history / status / pending 書込、API 共通 request / response、`.config_log`、SDK method 実装、UI DOM 詳細、状態 schema、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 archive owner は、保存済み build log と snapshot artifact の圧縮、展開、列挙、削除、転送の実体処理と、呼び出し元が状態を確定できる処理結果の返却だけを担当する。API 境界は [`docs/details/api.md`](api.md)、SDK 境界は [`docs/details/sdk.md`](sdk.md)、UI 境界は [`docs/details/ui.md`](ui.md)、runner 境界は [`docs/details/runner.md`](runner.md) の各詳細本文責務を参照する。
 
@@ -84,11 +83,7 @@ archive / snapshot fixture の fixture 名、expected file、effects、fake file
 <a id="sec-27-15"></a>
 **27.15 ビルドアーティファクト管理：**
 
-本機能の目的は、`.snapshots/` に保存する build artifact の作成、世代削除、一覧読取、保存済み tar.gz の検証・配信、削除、rollback 展開・転送の実体処理を archive owner に固定することである。API endpoint、SDK method、UI 操作表示の境界は [§27.15 API / SDK / UI 共通参照先](#2715-api--sdk--ui-共通参照先) を参照する。
-
-owner component は `archive` とする。collaborator component は `api`、`sdk`、`ui`、`runner`、`statefile` とする。snapshot 作成の呼出条件と入力引渡しは [`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理)、snapshot の保存実体と世代削除は [`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) を正本とする。
-
-archive owner は snapshot の保存形式、保存、世代削除、一覧読取、保存済み tar.gz の検証・配信、delete 実体処理、rollback 展開・転送実体処理を担当する。api / sdk / ui の境界は [§27.15 API / SDK / UI 共通参照先](#2715-api--sdk--ui-共通参照先)、runner の通常 build 実行、snapshot 作成タイミング、build history / status finalizer は [`docs/details/runner.md`](runner.md) 詳細本文責務を参照する。
+snapshot 作成の呼出条件と入力引渡しは [`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理)、API / SDK / UI 境界は [§27.15 API / SDK / UI 共通参照先](#2715-api--sdk--ui-共通参照先) を参照する。この節は snapshot の保存形式、保存、世代削除、一覧読取、tar.gz の検証・配信、delete、rollback 展開・転送の実体処理だけを定義する。
 
 <a id="2715-api--sdk--ui-共通参照先"></a>
 **[§27.15 API / SDK / UI 共通参照先](archive.md#2715-api--sdk--ui-共通参照先)：**

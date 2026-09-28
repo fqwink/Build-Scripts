@@ -11,7 +11,6 @@
 | owner component | `builder` |
 | 実装主体 | [`components/builder.go`](../../components/builder.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-build` とする。 |
 | 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder 検証条件、builder owner 追加機能。 |
-| 持たない内容 | GitHub read、runner 状態更新、API endpoint、SDK method 実装、UI DOM 詳細、状態 schema、admin 静的配信、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
@@ -392,7 +391,7 @@ type RenderContext struct {
 | `*__text__*` | `<em><strong>text</strong></em>` |
 | `_**text**_` | `<em><strong>text</strong></em>` |
 
-[`docs/details/builder.md` 詳細本文責務 §4.3](builder.md#sec-4-3) の inline 記法固定表以外のネストした強調・削除・リンクの組み合わせは追加変換しない。未対応ネストは、先にマッチした外側または内側の単一記法だけを変換し、残った Markdown 記号は `esc()` 済みテキストとして出力する。実装者判断で CommonMark 全互換のネスト処理を追加してはならない。
+[`docs/details/builder.md` 詳細本文責務 §4.3](builder.md#sec-4-3) の inline 記法固定表以外のネストした強調・削除・リンクの組み合わせは追加変換しない。未対応ネストは、先にマッチした外側または内側の単一記法だけを変換し、残った Markdown 記号は `esc()` 済みテキストとして出力する。実装者判断で CommonMark 完全準拠のネスト処理を追加してはならない。
 
 ---
 
@@ -1369,8 +1368,8 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 
 | Builder CLI ケース | stdout | stderr | 終了コード | 副作用 |
 |--------------------|--------|--------|------------|--------|
-| `--help` | `Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--version] [--help]` + LF | 空 | `0` | 入力読込、出力作成なし。 |
-| `--version` | `adlaire-ci-build <binary-version> go=<runtime.Version()>` + LF | 空 | `0` | 入力読込、出力作成なし。 |
+| `--help` | [固定出力](#固定出力) の `--help` 値 + LF | 空 | `0` | 入力読込、出力作成なし。 |
+| `--version` | [固定出力](#固定出力) の `--version` 値 + LF | 空 | `0` | 入力読込、出力作成なし。 |
 | 引数不正 | 空 | 固定エラー 1 行 + LF | `2` | 入力読込、出力作成なし。 |
 | 入力不存在 | 空 | `source not found: {path}` + LF | `2` | 出力作成なし。 |
 | UTF-8 不正 | 空 | `source is not valid UTF-8: {path}` + LF | `2` | 出力作成なし。 |
@@ -1708,7 +1707,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) は、[`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) から参照される builder owner 静的サイト出力拡張追加仕様化機能の詳細本文である。owner component は全項目で `builder` とする。collaborator component は、build 実行記録、状態ファイル、API 表示に関わる場合だけ `runner`、`api`、`statefile` を参照する。各機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、`builder` 詳細では定義しない。
 
-[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、既存の `adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。実装言語と外部依存の採否は [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を正本とする。builder 出力と実行時挙動は CDN、外部 API、runtime network fetch、browser 専用 build tool を要求してはならない。
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の各機能は、`adlaire-ci-build` 実行、Markdown 変換、HTML / CSS / JavaScript 出力、`[REPORT]`、fixture を拡張する。実装言語と外部依存の採否は [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) を正本とし、この詳細仕様では再定義しない。
 
 <a id="sec-28"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 共通固定契約](builder.md#sec-28)：**
@@ -1716,7 +1715,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | 項目 | 仕様 |
 |------|------|
 | 設定入力 | CLI option を最優先とし、同名の `ADLAIRE_*` 環境変数、設定ファイル、既定値の順で採用する。既存 CLI と競合する option 名を追加しない。 |
-| 既定値 | 既存出力互換を優先し、明示的に有効化する機能は既定 `false` または空値とする。ただしアクセシビリティ、画像 lazy load、既存 Markdown 記法の安全な標準化は既定有効にできる。 |
+| 既定値 | 各機能節が明示する固定値だけを使用する。共通規則による有効化、無効化、暗黙の既定値補完を行わない。 |
 | 出力 | HTML、`assets/style.css`、`assets/app.js`、`assets/search-index.json`、`[REPORT]` のいずれかに固定して出力する。未定義 file を作成しない。 |
 | HTML safety | Markdown 由来の値、設定値、ファイル名、meta 値、tooltip 値、ARIA 値は HTML escape または attribute escape を行う。 |
 | path safety | 入力 Markdown base dir 外を参照する path、絶対 path、URL scheme 偽装、`..` による脱出は警告または終了コード `2` とする。 |
@@ -1900,7 +1899,7 @@ CLI / 環境変数 / 設定ファイルで同一 key が複数 source に存在�
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の `[REPORT]` は、既存 [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) と同じ 1 行の `key=value` 形式を維持する。JSON object 全体を stdout に出力してはならない。[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) で追加する key は、既存固定順の末尾へ ASCII 昇順で追加する。既存 key の名前、順序、値表現を変更してはならない。
 
-[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の値は `=` の右辺だけを JSON literal 互換にする。boolean は `true` / `false`、integer は 10 進数、string は JSON string、array は compact JSON array に固定する。compact JSON は空白なし、object なし、要素は JSON string のみとする。key 未使用時は省略せず、機能が評価対象なら既定値を出力する。
+[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の値は `=` の右辺だけを JSON literal 形式にする。boolean は `true` / `false`、integer は 10 進数、string は JSON string、array は compact JSON array に固定する。compact JSON は空白なし、object なし、要素は JSON string のみとする。key 未使用時は省略せず、機能が評価対象なら既定値を出力する。
 
 | 値種別 | 例 | 固定 |
 |--------|----|------|
@@ -2245,7 +2244,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | fallback | non-strict で通常 text、非表示、source 表示へ落とした対象 1 件を 1 とする。 |
 
 <a id="sec-28-common-compat"></a>
-**[`docs/details/builder.md` 詳細本文責務 §28 既存出力互換・先取り実装禁止固定契約](builder.md#sec-28-common-compat)：**
+**[`docs/details/builder.md` 詳細本文責務 §28 基準出力安定性・先取り実装禁止固定契約](builder.md#sec-28-common-compat)：**
 
 [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 実装変更は、対象機能を有効化しない既存 fixture の HTML、CSS、JS、search index、REPORT が変化しないことを示す。既定有効の機能は、[`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の既定有効明記に基づく [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10)、[`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16)、[`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18)、[`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20)、[`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21)、[`docs/details/builder.md` 詳細本文責務 §28.24](builder.md#sec-28-24)、[`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) に限定する。
 
@@ -2801,7 +2800,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 <a id="sec-28-implementation-check"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 詳細実装確認条件](builder.md#sec-28-implementation-check)：**
 
-各機能は、該当 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](../DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) を満たすまで詳細実装確認を満たした扱いにしない。複数の [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 機能を同一変更で実装する場合は、対象機能ごとに fixture、report key、対象外機能、既存出力互換確認を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の実装検証証跡に列挙する。
+各機能は、該当 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の入力、出力、処理順序、異常系、検証条件、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](../DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) を満たすまで詳細実装確認を満たした扱いにしない。複数の [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) 機能を同一変更で実装する場合は、対象機能ごとに fixture、report key、対象外機能、基準出力安定性確認を [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の実装検証証跡に列挙する。
 
 <a id="sec-28-implementation-gate"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28 詳細実装確認ゲート固定契約](builder.md#sec-28-implementation-gate)：**
@@ -2816,7 +2815,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | REPORT | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の対象機能別固定契約に定義された REPORT key、型、count 単位、既定値をすべて fixture で確認する。 | key 省略、型違い、件数算出根拠不明、warning count 不一致。 |
 | stdout / stderr | warning / error code、file、line、section、message、出力先の形式が固定契約と一致する。 | 独自 code、message 揺れ、出力先違い、secret / credential / raw HTML 混入。 |
 | strict / non-strict | warning 昇格対象は non-strict と strict の両方を fixture で確認する。 | 片方だけの実装、片方だけの fixture、strict 時の副作用残存。 |
-| 既存出力互換 | 対象機能無効時、または対象入力なし時に既存 HTML / CSS / JS / search index / REPORT が変わらない。 | 対象外の既存 fixture 差分、未使用 CSS / JS の出力。 |
+| 基準出力安定性 | 対象機能無効時、または対象入力なし時に基準 fixture の HTML / CSS / JS / search index / REPORT が変わらない。 | 対象外の基準 fixture 差分、未使用 CSS / JS の出力。 |
 | security | HTML escape、attribute escape、URL validation、base 外 path、外部依存不使用を確認する。 | raw HTML、credential、CDN、外部 script、runtime network fetch の残存。 |
 | atomicity | 失敗時に既存出力、manifest、search index を部分更新しない。 | 失敗 fixture で file 更新、削除、manifest 上書きが残る。 |
 | fixture 完備 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) の fixture catalog、manifest schema、expected 比較、最低確認項目を満たす。 | fixture 名不足、manifest key 不足、expected 不足、比較除外理由なし。 |
@@ -2835,4 +2834,4 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | HTML / CSS / JS の expected 差分を目視または snapshot だけで合格扱いした。 | 再現性ある合否判定ではない。 |
 | 実装言語または外部依存が [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#4-外部ライブラリフレームワーク方針) に違反する、または builder 出力が CDN、外部 API、runtime network fetch、browser 専用 build tool を要求する。 | 上位方針違反または builder runtime 契約違反。 |
 | 失敗時に既存出力または manifest が更新された。 | atomicity 違反。 |
-| 実装検証証跡に対象機能、fixture、REPORT、strict / non-strict、既存互換、対象外機能が列挙されていない。 | 実装証跡不足。 |
+| 実装検証証跡に対象機能、fixture、REPORT、strict / non-strict、基準出力安定性、対象外機能が列挙されていない。 | 実装証跡不足。 |

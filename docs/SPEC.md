@@ -408,8 +408,6 @@ Go 実装の判断基準は以下とする。
 GitHub API を定期的にポーリングし、対象変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（[`components/runner.go`](../components/runner.go)）。標準の変更検出・実行経路は GitHub Actions、Webhook、外部 CI サービスのいずれにも依存しない。管理 API の任意の GitHub Webhook 受信機能は補助 trigger 経路であり、無効または未実装でも runner の polling 経路と定期実行は単独で成立しなければならない。
 
 - 変更検出の具体的な API、比較値、保存先は [`docs/details/runner.md`](details/runner.md) 詳細本文責務を正本とする
-- 対象変更が存在する場合だけビルドを実行する
-- runner の polling ・定期実行に外部公開エンドポイント・リバースプロキシは不要
 - Go 標準ライブラリを基本とし、外部依存を追加する場合は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針) の例外承認を必須とする
 
 <a id="52-ci-ランナーの開発方針"></a>
@@ -418,8 +416,7 @@ GitHub API を定期的にポーリングし、対象変更を検出してビル
 **5.2 CI ランナーの開発方針：**
 
 - **単一責務実装**：[`components/runner.go`](../components/runner.go) は CI ランナー責務に限定し、Markdown 変換と管理 API を内包しない
-- **シンプル性優先**：HTTP サーバー不要。1 回実行して終了する oneshot 設計
-- **差分検出**：変更がない場合はビルドをスキップ
+- **実行境界**：oneshot、差分検出、多重実行防止は [`docs/SPEC.md` ポリシー責務 §6](SPEC.md#6-ci-ランナー実行境界ポリシー) に従う
 
 <a id="53-github-actions-非依存方針"></a>
 
@@ -712,9 +709,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 **基本原則：**
 
-[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のゼロ依存・フルインハウス原則を正本とする。開発言語の標準ライブラリだけで実装することを原則とし、主要機能は本リポジトリ内の仕様と内製実装で完結させる。外部ライブラリを使用できるのは、[`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針) の例外条件をすべて満たし、同節の許可外部ライブラリ一覧に登録されている場合だけとする。
-
-外部依存を追加しなければ実装できない機能は、仕様不足または設計不備として扱う。実装者は外部依存の追加で不足仕様を補完してはならない。
+ゼロ依存・フルインハウスの定義、各 component の自律性、仕様不足時の扱いは [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) を正本とする。この節は例外採用の禁止条件と許可一覧だけを追加定義する。
 
 <a id="外部フレームワーク"></a>
 
@@ -740,17 +735,13 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 **内製共通処理：**
 
-内製共通処理は、採用可否、禁止名称、依存方向、同格性が [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務に記載され、責務、入力、出力、状態、異常系、検証条件が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に記載されている場合に限り採用できる。内製であっても、仕様未記載の共通基盤を暗黙に追加してはならない。
-
-横断的な内製共通処理を追加する場合は、[`docs/SPEC.md` 方針責務 §4.2](SPEC.md#sec-4-2) に従い、Core ではなく同格の共通責務コンポーネントとして仕様化する。`core`、`common`、`base`、`foundation`、`utils` の名称を使う package、directory、binary、component を作成してはならない。
+内製共通処理の採用可否、禁止名称、依存方向、同格性は [`docs/SPEC.md` 方針責務 §4.2](SPEC.md#sec-4-2) を正本とする。責務、入力、出力、状態、異常系、検証条件が未定義の共通処理は採用できない。
 
 <a id="内製実装管理ポリシー"></a>
 
 **内製実装管理ポリシー：**
 
-このポリシーは、内製実装の採用条件だけを定義する。実装 artifact の実在所在、現在状態、将来計画の正本分担は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) に従う。新規スクリプトを追加する場合は、先に [`docs/ROADMAP.md`](ROADMAP.md) の現在状態、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の実装ファイル一覧、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を整合させる。
-
-内製 Go コンポーネントは Go 標準ライブラリを基本とする。外部依存は許可リスト登録を必須とする。仕様化済み・未実装、実装中・検証未完了、または将来計画のスクリプトは、実装ファイル、詳細仕様、検証結果、関連文書が実装済みとして整合するまで実装済みとして扱わない。
+内製実装の配置、実在所在、現在状態、実装着手可否は、それぞれ [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を正本とする。この節では再定義しない。
 
 <a id="許可外部ライブラリ一覧"></a>
 
@@ -769,8 +760,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 ## 5. CI ランナー秘密情報・公開境界ポリシー
 
 - GitHub PAT（Personal Access Token）はスクリプト内にハードコードしてはならない
-- PAT は最小権限とし、標準構成では対象リポジトリの `Contents: Read` だけを許可する。書き込み権限を必要とする設計を標準としてはならない
-- 任意機能の Commit Status を有効にした場合だけ、対象リポジトリの `Commit statuses: Write` を追加できる。この条件付き権限を他の GitHub 書き込み API に流用してはならず、Commit Status が無効な構成へ付与してはならない
+- PAT は最小権限とし、標準構成では対象リポジトリの `Contents: Read` だけを許可する。任意機能の Commit Status を有効にした場合だけ `Commit statuses: Write` を追加でき、他の GitHub 書き込み API へ流用してはならない
 - PAT の GitHub repository permission と API 呼び出し条件は [`docs/details/runner.md` 詳細本文責務 §17](details/runner.md#17-github-連携前提) と [`docs/details/commitstatus.md` 詳細本文責務 §27.1](details/commitstatus.md#sec-27-1)、保存 path と file 境界は [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、読み取り、mask、漏えい禁止は [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/security.md`](details/security.md) 詳細本文責務を正本とする
 - ランナーは外部公開エンドポイントを持たない。サーバーから GitHub API への送信のみで動作する
 
@@ -794,26 +784,21 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 - SDK の対応言語追加は [`docs/SPEC.md`](SPEC.md) ポリシー責務への記載を先行させる
 - バックエンド API の変更は SDK の更新を伴う
 - SDK の module 形式、公開 API、error class、timeout、streaming 契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする
-- SDK は自動 retry、戻り値補完、token 永続化、global 代入を行ってはならない
+- SDK は API response と利用者操作の境界を変更してはならない。禁止する補完、再試行、永続化、global 汚染の具体条件は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする
 
 ## 9. 標準管理ツール UI / SDK 境界ポリシー
 
 [`docs/SPEC.md` ポリシー責務 §9](SPEC.md#9-標準管理ツール-ui-sdk-境界ポリシー) は、[`admin/index.html`](../admin/index.html) に適用する。
 
 - バニラ HTML / CSS / JavaScript のみで実装する。外部フレームワーク・外部ライブラリは使用しない（[`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針) 参照）
-- バックエンドとの通信はすべて SDK 経由とする。SDK を迂回した直接 API 呼び出しは行わない
+- バックエンドとの通信はすべて SDK 経由とする
 - カスタマイズを妨げる密結合な実装を禁止する。SDK 境界、DOM 境界、状態管理境界を満たさない UI 実装は完了扱いにしてはならない
 - DOM、form、初期ロード順、イベント処理順、成功/失敗表示、秘密情報消去条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務を正本とする
-- UI は `localStorage`、`sessionStorage`、Cookie から token を復元してはならない
-- UI は API transport を直接生成してはならない。禁止対象の具体 API、例外条件、検証条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務を正本とする
+- token の保持・消去と API transport 禁止対象の具体条件は [`docs/details/ui.md`](details/ui.md) 詳細本文責務を正本とする
 
 ## 10. 状態ファイル永続化ポリシー
 
-- **初期方針：データベース不使用。** 状態はファイルで管理する。具体的な状態ファイル一覧、schema、権限、更新順序、破損時処理は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする
-- RDBMS・NoSQL・組み込み DB（SQLite 等）を問わず、初期仕様ではいかなるデータベースも採用しない
-- 将来的にデータベースを採用する場合は、[`docs/SPEC.md`](SPEC.md) ポリシー責務への仕様追記と [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#4-外部ライブラリフレームワーク方針) の許可外部ライブラリ一覧の更新を先行させる
-- **データ形式：JSON 形式**を標準とする
-- JSON schema、ファイル分割、ネスト制約、encoding、atomic write は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする
+データベース不使用、ファイルベース、JSON 統一の技術選択は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#4-技術方針) を正本とする。具体的な状態ファイル一覧、schema、権限、更新順序、破損時処理は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。技術選択を変更する場合は、技術方針表の改訂と外部依存の許可判断を実装より先に完了しなければならない。
 
 ## 11. シングルユーザー認証ポリシー
 

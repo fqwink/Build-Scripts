@@ -74,7 +74,7 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 <a id="process-environment-entry-contract"></a>
 **Process environment entry 共通固定契約：**
 
-environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,63}$`、各 value は UTF-8 の 0〜4096 bytes とし、NUL、LF、CR を禁止する。`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN`、`ADLAIRE_CHANGED_TARGETS` と `ADLAIRE_CI_` prefix は reserved とし、保存、pipeline step 定義、process 注入を禁止する。永続化する environment object は key を ASCII 昇順で保存する。
+environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,63}$`、各 value は UTF-8 の 0〜4096 bytes とし、NUL、LF、CR を禁止する。利用者入力または保存対象の environment object では、`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN`、`ADLAIRE_CHANGED_TARGETS` と `ADLAIRE_CI_` prefix を reserved とし、保存、pipeline step 定義、利用者指定値としての process 注入を禁止する。runner が所有する固定 process environment は [`docs/details/runner.md` 詳細本文責務 §27.31](details/runner.md#sec-27-31) の列挙値だけを例外とし、利用者入力による上書きを禁止する。永続化する environment object は key を ASCII 昇順で保存する。
 
 状態ファイルの lock、atomic write、権限、JSON 処理は [`docs/details/statefile.md`](details/statefile.md)、秘密情報は [`docs/details/security.md`](details/security.md)、外部依存とデータ交換形式は [`docs/SPEC.md`](SPEC.md) を正本とする。
 

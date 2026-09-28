@@ -12,7 +12,6 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | owner component | `release` |
 | 実装主体 | `components/release.go`。起動入口は `main.go`、実行ファイル名は `adlaire-ci-release`。 |
 | 持つ内容 | Release 用バイナリ生成、admin archive 生成、checksum manifest 生成、再現性確認、GitHub draft Release 作成、asset upload・再取得検証、正式公開、失敗時 draft 削除。 |
-| 持たない内容 | Release tag の作成・移動・削除、setup による取得・配置、systemd、admin UI の内容生成、実行環境の更新、GitHub repository 設定変更、fixture 証跡本文。 |
 
 `adlaire-ci-release` は保守者がリポジトリ checkout で実行する Release 作成用バイナリであり、利用者向け Release asset に含めない。利用者向け setup 実行バイナリは `adlaire-ci-setup-linux-amd64` として公開する。
 

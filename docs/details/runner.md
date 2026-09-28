@@ -13,7 +13,6 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 | owner component | `runner` |
 | 実装主体 | [`components/runner.go`](../../components/runner.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-runner` とする。 |
 | 持つ内容 | `runner` owner が主本文として定義する GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner 検証条件、runner owner 追加機能。 |
-| 持たない内容 | API endpoint の認証・応答本文、SDK method 実装、UI DOM 詳細、builder の変換処理、admin 静的配信、security 主本文、状態 schema、setup / update 手順、release 生成・公開手順、fixture 証跡責務。 |
 
 ---
 
@@ -426,7 +425,7 @@ runner は起動時の設定正規化で `.branch_config` を 1 回だけ読み�
 <a id="sha-cache-読み書き契約"></a>
 **SHA cache 読み書き契約：**
 
-`sha_file` は target ごとの処理済み Git blob SHA を保存する JSON file である。runner は legacy text 形式を自動変換してはならない。
+`sha_file` は target ごとの処理済み Git blob SHA を保存する JSON file である。JSON object 以外の保存形式は破損として扱い、自動変換してはならない。
 
 | 状態 | 処理 |
 |------|------|
@@ -934,7 +933,7 @@ pipeline process の environment は、親 process 環境 → `BranchTarget.Env`
 
 HTTP `401` は `failure_api` とし、ERROR ログ `GITHUB_AUTH_FAILED` を出す。HTTP `404` は `target_file` または branch 設定不正として `failure_api` とし、ERROR ログ `GITHUB_NOT_FOUND: branch={branch} target={target_file}` を出す。HTTP `403` で `X-RateLimit-Remaining: 0` の場合のみ rate limit として reset まで待機する。
 
-`POST /api/repo-config` の成功後に起動する次回 runner process から新しい repository identity を使用する。すでに起動済みの runner、実行中 build、active queue entry の repository identity を API 更新によって途中変更しない。`.repo_config` の `branch` / `target_file` を参照する互換処理は実装せず、branch と監視対象は `.branch_config` だけから取得する。
+`POST /api/repo-config` の成功後に起動する次回 runner process から新しい repository identity を使用する。すでに起動済みの runner、実行中 build、active queue entry の repository identity を API 更新によって途中変更しない。branch と監視対象は `.branch_config` だけから取得し、`.repo_config` の schema 外 key は参照しない。
 
 **GitHub API response 処理契約：**
 
@@ -1307,7 +1306,7 @@ runner は build 結果確定後、`.build_history` へ 1 build につき 1 行�
 
 systemd unit 本文、配置先、起動手順、更新手順は setup owner component の責務とし、[`docs/details/setup.md` 詳細本文責務 §26.4.1](setup.md#sec-26-4-1)、[`docs/details/setup.md` 詳細本文責務 §26.5](setup.md#sec-26-5) を参照する。
 
-runner owner component は、`adlaire-ci-runner --state-dir /opt/adlaire-builder` として oneshot 実行された場合の処理、終了コード、状態ファイル更新、ログ出力だけを定義する。
+runner の起動形式は [`docs/details/runner.md` 詳細本文責務 §10a](runner.md#10a-ci-ランナー-実装対象)、CLI は [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner) を参照する。この節は systemd との責務境界だけを定義する。
 
 runner 実装は systemd unit file を生成、配置、更新、enable、restart してはならない。systemd 操作が必要な機能は [`docs/details/setup.md`](setup.md) 詳細本文責務または [`docs/details/api.md`](api.md) 詳細本文責務の owner component 別詳細本文責務で定義する。
 
@@ -1321,8 +1320,7 @@ runner が journal へ出力する内容は [`docs/details/runner.md` 詳細本�
 
 | 項目 | 内容 |
 |------|------|
-| PAT 基本権限 | Fine-grained PAT の対象リポジトリに `Contents: Read` を付与する。Commit Status が無効な標準構成では、GitHub repository permission をこれより広げてはならない。 |
-| Commit Status 有効時の追加権限 | `.server_config.commit_status_enabled=true` の場合だけ、同じ対象リポジトリに `Commit statuses: Write` を追加する。`false` の場合は付与しない。これ以外の GitHub 書き込み権限を追加してはならない。 |
+| PAT 権限 | [`docs/SPEC.md` ポリシー責務 §5](../SPEC.md#5-ci-ランナー秘密情報公開境界ポリシー) を正本とする。runner は `.server_config.commit_status_enabled` に応じて Commit Status API の呼出有無だけを切り替え、権限不足を別 API や別 credential で回避しない。 |
 | PAT の種類 | Fine-grained PAT（特定リポジトリのみ許可）を使用する。 |
 | Webhook 設定（ポーリング方式） | **不要**（デフォルト。`BRANCH_TARGETS` によるポーリングのみ使用する場合） |
 | Webhook 受信方式の前提 | `POST /api/webhook` endpoint と Webhook Secret が必要。endpoint、署名検証、request / response は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) と [`docs/details/api.md` 詳細本文責務 Webhook 受信境界](api.md#webhook-receive-overview) を参照する。 |
@@ -1908,7 +1906,7 @@ weekly summary payload は secret、repository token、SMTP password、Webhook s
 | 項目 | 仕様 |
 |------|------|
 | 実行位置 | runner 起動時の startup integrity、pending transfer retry、maintenance 判定後、通常 GitHub polling / local watch 差分検出前に判定する。 |
-| channel 抽出 | `.notify_config.channels[]` の `enabled=true` かつ `on` に `weekly_summary` を含む channel を配列順に使う。legacy `webhooks` / root `on` だけがある場合は互換 channel として配列順に正規化する。 |
+| channel 抽出 | `.notify_config.channels[]` の `enabled=true` かつ `on` に `weekly_summary` を含む channel を配列順に使う。schema 外の通知先 key は受理しない。 |
 | 自動宛先なし | WARN `WEEKLY_SUMMARY_NO_CHANNEL` を出し、`.notify_pending` と sent date を変更しない。build status は変更しない。 |
 | 手動宛先なし | runner は `.notify_log`、`.notify_pending`、sent date を変更しない。 |
 | payload | `event`、`period_days`、`period_from`、`period_to`、`success_count`、`failure_count`、`success_rate`、`avg_duration_seconds`、`max_duration_seconds`、`max_duration_build_id` を含む。 |
@@ -2904,7 +2902,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 | 項目 | 仕様 |
 |------|------|
 | 採番元 | `.build_state.queued[].created_seq` の最大値。存在しない場合は `0`。次 entry は最大 + 1。 |
-| 旧 entry | `created_seq` 欠落 entry は GET 表示時だけ末尾扱いとし、runner 取り出し前に `.build_state` lock 内で `created_seq` を正規化保存する。正規化値は採番元の規則だけで決定し、entry 内容、priority、id、時刻から推測しない。 |
+| 不正 entry | `created_seq` 欠落 entry は破損として扱い、表示、並べ替え、取り出し、補完保存を行わない。 |
 | priority 省略 | API / webhook / approval の queue 追加時は Queue entry schema の既定値を保存する。 |
 | 表示順 | priority 数値昇順、created_seq 昇順、同値なら id 昇順。 |
 | active 優先 | circuit closed かつ `active_queue_entry != null` の場合は waiting の priority に関係なく active を先に再実行する。circuit open では保持する。 |
@@ -2912,14 +2910,14 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 | clear 後入力 | API が保存した clear 後の `.build_state` をそのまま読み、消失した waiting entry を再生成しない。active が保持されていれば active 優先契約を適用する。 |
 | queue full | priority が高くても既存 entry を押し出さない。 |
 
-runner が旧 entry の `created_seq` 正規化保存に失敗した場合、build を開始せず終了コード `1` とする。正規化前の推測順で build を開始してはならない。
+runner が必須 key 欠落 entry を検出した場合、build を開始せず終了コード `1` とする。entry の値や順序を推測してはならない。
 
 **異常系：**
 
 | 条件 | 処理 |
 |------|------|
 | priority 不正 | runner は対象 queue entry を処理しない。 |
-| created_seq 欠落の旧 entry | GET 表示時は末尾扱いにする。runner 取り出し前または queue 更新時に `.build_state` lock 内で正規化保存する。正規化保存失敗時は build を開始しない。 |
+| created_seq 欠落 entry | queue 破損として失敗し、表示、取り出し、更新を行わない。 |
 | queue full | `429`。priority による上書き削除はしない。 |
 
 **検証条件：**
@@ -2930,7 +2928,7 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 | 同一 priority | FIFO。 |
 | active あり | circuit closed では新規 urgent より active を先に再実行する。circuit open では active と urgent waiting の両方を保持する。 |
 | 不正 priority | 状態差分なしで `422`。 |
-| created_seq 欠落 | 正規化保存後に順序判定し、正規化保存失敗なら build なし。 |
+| created_seq 欠落 | queue 破損として build なし。 |
 | urgent queue full | `429`、既存 low entry も削除しない。 |
 
 **priority queue 実装確認固定契約：**
@@ -2940,10 +2938,9 @@ runner が旧 entry の `created_seq` 正規化保存に失敗した場合、bui
 | 採番 | queue 追加時に `.build_state.queued[].created_seq` 最大値 + 1 を保存し、priority 省略時は `"normal"` を保存する。 |
 | 表示順 | runner が読む queue 順は priority 数値昇順、created_seq 昇順、id 昇順とする。 |
 | 取り出し順 | circuit closed かつ active がなければ runner は表示順と同じ順序で 1 件だけ waiting から active へ移す。active があれば waiting を移動しない。circuit open ではどちらも移動しない。 |
-| 旧 entry | `created_seq` 欠落 entry は runner 取り出し前に lock 内で正規化保存し、保存失敗時は build を開始しない。 |
 | clear 連携 | runner は API clear 後の waiting entry を再生成せず、保持済み active entry を waiting へ戻さない。 |
 | queue full | priority が高くても既存 entry を削除せず `429` とする。 |
-| 確認条件 | fixture は urgent 優先、同一 priority FIFO、created_seq 正規化、不正 priority、queue full、clear をすべて固定する。 |
+| 確認条件 | fixture は urgent 優先、同一 priority FIFO、created_seq 欠落拒否、不正 priority、queue full、clear をすべて固定する。 |
 
 <a id="sec-27-36"></a>
 **27.36 失敗原因の自動分類：**
@@ -2981,7 +2978,7 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 
 **API filter 参照：**
 
-`GET /api/history` の `failure_category` query、`status="success"` 履歴の `null`、`status="success_deploy_pending"` 履歴の `deploy_failure`、未知 query の `422`、既存未知値と `warnings` の扱いは [`docs/details/api.md`](api.md) 詳細本文責務の `HistoryPageObject` 契約を正本とする。runner は HTTP query、status、response を定義または生成しない。
+`GET /api/history` の `failure_category` query、`status="success"` 履歴の `null`、`status="success_deploy_pending"` 履歴の `deploy_failure`、列挙外 query の `422` は [`docs/details/api.md`](api.md) 詳細本文責務の `HistoryPageObject` 契約を正本とする。runner は HTTP query、status、response を定義または生成しない。
 
 **異常系：**
 
