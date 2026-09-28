@@ -432,11 +432,11 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 ---
 
 <a id="sec-23-8"></a>
-## 23.8 追加管理 API SDK 対応
+**23.8 追加管理 API SDK 対応：**
 
-本節は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の追加管理 API に対応する SDK method を定義する。
+[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8) は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の追加管理 API に対応する SDK method を定義する。
 
-本節は API request / response schema を再定義しない。
+[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8) は API request / response schema を再定義しない。
 
 | 機能 | SDK method |
 |------|------------|

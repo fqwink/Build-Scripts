@@ -1491,11 +1491,11 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。
 
 <a id="sec-22-0d"></a>
-## 22.0d 追加管理 API / MCP 状態 schema
+**22.0d 追加管理 API / MCP 状態 schema：**
 
-本節は、追加管理 API 機能と MCP 機能が使用する状態 schema を定義する。
+[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) は、追加管理 API 機能と MCP 機能が使用する状態 schema を定義する。
 
-本節は状態語彙、現在状態、実装着手可否を再定義しない。
+[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) は状態語彙、現在状態、実装着手可否を再定義しない。
 
 | path | schema |
 |------|--------|
@@ -1517,7 +1517,7 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 <a id="additional-management-statefile-common-contract"></a>
 **追加管理 API / MCP 状態共通固定契約：**
 
-[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の状態 file は、[`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の atomic write、lock、権限、破損時処理に従う。本節は追加管理 API と MCP が追加で使用する record key、ID、hash、JSON Lines record を固定する。
+[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の状態 file は、[`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の atomic write、lock、権限、破損時処理に従う。同責務本文は追加管理 API と MCP が追加で使用する record key、ID、hash、JSON Lines record を固定する。
 
 | 対象 | 固定契約 |
 |------|----------|

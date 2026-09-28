@@ -104,7 +104,7 @@ Admin fixture の fixture 名、入力、操作、expected file、禁止副作�
 Admin 実装確認は [`docs/details/admin.md` 詳細本文責務 §A5](admin.md#a5-受け入れ条件) の全条件と、[`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](fixture.md#sec-27-f-19) の該当条件を同時に満たした場合だけ合格とする。fixture 名、input、expected、fake、禁止副作用を本節で再掲してはならない。
 
 <a id="sec-a7"></a>
-## A7. CLI 管理クライアント
+**A7. CLI 管理クライアント：**
 
 CLI 管理クライアントの owner は `admin` とする。
 

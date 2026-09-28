@@ -492,11 +492,11 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 ---
 
 <a id="sec-24-8"></a>
-## 24.8 追加管理 API UI 対応
+**24.8 追加管理 API UI 対応：**
 
-本節は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の追加管理 API に対応する UI 表示 / 操作を定義する。
+[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8) は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の追加管理 API に対応する UI 表示 / 操作を定義する。
 
-本節は API request / response schema、SDK method 本文、state schema を再定義しない。
+[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8) は API request / response schema、SDK method 本文、state schema を再定義しない。
 
 | UI 領域 | 対象機能 | 使用 SDK method | 成功後再取得 |
 |---------|----------|-----------------|--------------|

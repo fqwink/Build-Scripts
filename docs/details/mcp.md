@@ -7,7 +7,7 @@
 本書は方針、ポリシー、状態語彙、現在状態、Phase、将来計画を再定義しない。
 
 <a id="sec-29-0"></a>
-## 29.0 実装境界
+**29.0 実装境界：**
 
 | 項目 | 仕様 |
 |------|------|
@@ -30,42 +30,57 @@
 `components/mcp.go` が他 owner の機能を操作する場合は、該当 owner の公開済み関数または state 契約だけを使用する。
 
 <a id="sec-29-1"></a>
-## 29.1 起動 CLI
+**29.1 起動 CLI：**
 
 `adlaire-ci-mcp` は以下の CLI を持つ。
 
 ```text
-adlaire-ci-mcp --state-dir <path> [--addr <host:port>] [--read-only] [--client-token <token>]
+adlaire-ci-mcp --state-dir <path> [--addr <host:port>] [--read-only] [--client-token <token>] [--allow-non-loopback]
 adlaire-ci-mcp --help
 adlaire-ci-mcp --version
 ```
 
 | option | 必須 | 既定値 | 仕様 |
 |--------|------|--------|------|
-| `--state-dir` | yes | none | statefile root。存在しない場合は起動失敗 |
-| `--addr` | no | `127.0.0.1:8766` | bind address。loopback 以外は `--allow-non-loopback` がない限り起動失敗 |
-| `--read-only` | no | `false` | 副作用 tool を登録しない |
-| `--client-token` | no | none | 指定時は `Authorization: Bearer <token>` を必須にする |
-| `--allow-non-loopback` | no | `false` | 明示指定時のみ loopback 以外 bind を許可 |
+| `--state-dir <path>` | yes | none | statefile root。空でない絶対 path、既存 directory、symlink でないことを必須とする。 |
+| `--addr <host:port>` | no | `127.0.0.1:8766` | host は IPv4 literal または `localhost` だけを許可する。port は `1`〜`65535` の 10 進数。 |
+| `--read-only` | no | `false` | 副作用 tool を `tools/list` から除外し、既存 connection の副作用 tool call を `-32002 Forbidden` にする。 |
+| `--client-token <token>` | no | none | 指定時は `/mcp` と `/mcp/events` に `Authorization: Bearer <token>` を必須にする。`/health` では要求しない。 |
+| `--allow-non-loopback` | no | `false` | 明示指定時のみ `--addr` の non-loopback host を許可する。指定がない場合、`127.0.0.0/8` と `localhost` 以外は拒否する。 |
+| `--help` | no | none | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) に従う。 |
+| `--version` | no | none | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) に従う。 |
 
-`--help` は終了 code `0` で usage を stdout へ出力する。
+CLI parse は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) を使用する。短縮 option、未定義 option、未許可の `--name=value`、未定義位置引数を禁止する。同一値 option が複数回指定された場合は最後の値を採用し、boolean option は 1 回以上指定された場合に `true` とする。
 
-`--version` は終了 code `0` で binary name、version、commit、build time を stdout へ出力する。
+| 条件 | stdout | stderr | 終了 code | 副作用 |
+|------|--------|--------|-----------|--------|
+| `--help` | `Usage: adlaire-ci-mcp --state-dir path [--addr host:port] [--read-only] [--client-token token] [--allow-non-loopback] [--version] [--help]` + LF | 空 | `0` | 状態、listener、client log、metrics、audit に触れない。 |
+| `--version` | `adlaire-ci-mcp <binary-version> go=<runtime.Version()>` + LF | 空 | `0` | 同上。 |
+| `--state-dir` 未指定 | 空 | `state directory is required` + LF | `2` | listener を起動しない。 |
+| `--state-dir` が symlink | 空 | `state directory must not be symlink: <path>` + LF | `2` | 同上。 |
+| `--addr` 形式不正 | 空 | `invalid listen address: <address>` + LF | `2` | 状態 read/write を開始しない。 |
+| non-loopback かつ `--allow-non-loopback` なし | 空 | `non-loopback address is not allowed: <address>` + LF | `2` | 同上。 |
+| `--client-token` が空文字 | 空 | `client token must not be empty` + LF | `2` | 同上。 |
+| listener 起動失敗 | 空 | `listen failed` + LF | `1` | statefile を変更しない。 |
 
-起動失敗時は stderr に `error: <reason>` を出力し、終了 code `2` とする。
+CLI 検証順は、共通 option mode 確定、option parse、`--state-dir` 未指定、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) の空文字・相対 path・不在・directory 判定、symlink 判定、`--addr` 形式、loopback 判定、`--client-token` 検証、listener 起動の順に固定する。
 
 <a id="sec-29-2"></a>
-## 29.2 HTTP endpoint
+**29.2 HTTP endpoint：**
 
 | method | path | 用途 | 成功 status | 失敗 status |
 |--------|------|------|-------------|-------------|
-| `POST` | `/mcp` | JSON-RPC 2.0 request | `200` | `400`, `401`, `403`, `422`, `500` |
+| `POST` | `/mcp` | JSON-RPC 2.0 request | `200` | `400`, `401`, `403`, `413`, `422`, `500` |
 | `GET` | `/mcp/events` | MCP notification SSE | `200` | `401`, `403`, `500` |
 | `GET` | `/health` | health check | `200` | `500` |
 
-`/mcp` request は `Content-Type: application/json` を必須とする。
+`/mcp` request は `Content-Type: application/json` または `application/json; charset=utf-8` を必須とする。未指定、不一致、複数値は `400` とし、JSON-RPC error object ではなく `{"error":"Invalid content type"}` を返す。
+
+`/mcp` request body の上限は 1 MiB とする。超過時は `413` と `{"error":"Payload too large"}` を返し、JSON parse、tool 実行、audit、metrics 更新を行わない。
 
 `/mcp/events` response は `Content-Type: text/event-stream` を返す。
+
+`/mcp/events` は `Cache-Control: no-store` と `X-Accel-Buffering: no` を返す。SSE 接続確立前の認証失敗は JSON `{"error":"Unauthorized"}` または `{"error":"Forbidden"}` を返し、SSE frame を送信しない。
 
 `/health` response body は以下とする。
 
@@ -76,19 +91,25 @@ adlaire-ci-mcp --version
 }
 ```
 
+`/health` は状態 file を読まず、`.mcp_client_log`、`.mcp_audit_log`、`.mcp_metrics` を更新しない。method 不一致は `405` と `{"error":"Method not allowed"}`、未知 path は `404` と `{"error":"Not found"}` を返す。
+
 <a id="sec-29-3"></a>
-## 29.3 JSON-RPC 共通契約
+**29.3 JSON-RPC 共通契約：**
 
 request object は以下とする。
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "string-or-number",
+  "id": "string-or-number-or-null",
   "method": "string",
   "params": {}
 }
 ```
+
+`id` は string、number、または `null` だけを許可する。number は JSON number とし、NaN、Infinity は JSON として受け付けない。object、array、boolean の `id` は `-32600 Invalid Request` とする。
+
+`method` は 1〜128 byte の UTF-8 string とし、NUL、CR、LF を禁止する。`params` は object、または省略時 `{}` と同じ扱いに固定する。`params:null`、array、string、number、boolean は `-32602 Invalid params` とする。
 
 success response object は以下とする。
 
@@ -128,6 +149,8 @@ error response object は以下とする。
 | `-32003` | `Timeout` | tool timeout 超過 |
 | `-32004` | `Confirmation required` | elicitation confirmation 未完了 |
 
+JSON parse 失敗時の HTTP status は `400`、JSON-RPC error response の `id` は `null` とする。JSON-RPC 形式不正、method 不在、params 不正、初期化順序違反は HTTP status `200` で JSON-RPC error object を返す。認証失敗だけは JSON-RPC error object を返さず、HTTP status `401` または `403` と `{"error":"Unauthorized"}` / `{"error":"Forbidden"}` を返す。
+
 **JSON-RPC method 固定表：**
 
 | method | params | result | 副作用 |
@@ -143,10 +166,10 @@ error response object は以下とする。
 | `prompts/list` | `{}` | `{ "prompts": PromptDescriptor[] }` | なし |
 | `prompts/get` | `{ "name": string, "arguments": object }` | `{ "messages": PromptMessage[] }` | なし |
 
-`initialize` 成功前に `initialize` 以外の method を受けた場合は `-32600 Invalid Request` とする。`notifications/initialized` は JSON-RPC notification とし、`id` を持つ request として送られた場合は `-32600 Invalid Request` とする。batch request は受け付けず `-32600 Invalid Request` とする。
+`initialize` 成功前に `initialize` 以外の method を受けた場合は `-32600 Invalid Request` とする。`notifications/initialized` は JSON-RPC notification とし、`id` を持つ request として送られた場合は `-32600 Invalid Request` とする。notification 成功時は HTTP status `202`、body 空、状態副作用は connection 初期化状態の memory 更新だけとする。batch request は受け付けず `-32600 Invalid Request` とする。
 
 <a id="sec-29-4"></a>
-## 29.4 MCP initialize
+**29.4 MCP initialize：**
 
 `initialize` params は以下とする。
 
@@ -183,10 +206,12 @@ error response object は以下とする。
 }
 ```
 
-`initialize` 成功時は client name、client version、remote address、capabilities、connected_at を `.mcp_client_log` へ追記する。
+`clientInfo.name` と `clientInfo.version` は 1〜128 byte UTF-8、NUL、CR、LF 禁止とする。不正時は `-32602 Invalid params` とし、`.mcp_client_log` を更新しない。
+
+`initialize` 成功時は client name、client version、remote address、capabilities、connected_at を `.mcp_client_log` へ追記する。`.mcp_client_log` 追記失敗時は `-32603 Internal error` を返し、connection を initialized 済みにしない。
 
 <a id="sec-29-5"></a>
-## 29.5 Tool 一覧
+**29.5 Tool 一覧：**
 
 | tool name | scope | 副作用 | owner 参照 |
 |-----------|-------|--------|------------|
@@ -214,7 +239,7 @@ error response object は以下とする。
 
 <a id="sec-29-6"></a>
 <a id="296-tool-schema"></a>
-## 29.6 Tool schema
+**29.6 Tool schema：**
 
 `tools/list` の `ToolDescriptor` は `name`、`description`、`inputSchema`、`annotations` を持つ。`annotations.readOnlyHint` は副作用 `no` の tool だけ `true`、副作用 `yes` の tool は `false` とする。`inputSchema` は JSON Schema draft 非依存の object とし、`type`、`required`、`properties`、`additionalProperties:false` だけを使用する。
 
@@ -270,9 +295,9 @@ tool 別 params schema は以下に固定する。表にない key は `-32602 I
 }
 ```
 
-`target` は `builder` 詳細仕様に定義された build target と一致する。
+`target` は `builder` 詳細仕様に定義された build target と一致する。空文字、`/` だけ、NUL、CR、LF、`..` segment を禁止する。
 
-`source` は local path または repository ref を表す文字列とする。
+`source` は `local:<absolute-path>` または `git:<ref>` のいずれかとする。`local:` の path は絶対 path、NUL / CR / LF 禁止、`..` segment 禁止とする。`git:` の ref は 1〜128 byte、空白、NUL、CR、LF、`..`、`@{` を禁止する。
 
 `adlaire.cancelQueueEntry` params は以下とする。
 
@@ -291,7 +316,7 @@ tool 別 params schema は以下に固定する。表にない key は `-32602 I
 }
 ```
 
-`path` は `.server_config` 内の許可 key path のみ指定できる。
+`path` は `.server_config` 内の許可 key path のみ指定できる。許可 key path は `polling_interval_minutes`、`github_pat_expires_at`、`cooldown_seconds`、`maintenance_mode`、`notification`、`dashboard_layout`、`api_rate_limit` に固定する。未知 path、空 path、`..`、slash 始まりは `-32602 Invalid params` とする。
 
 `adlaire.restoreConfigSnapshot` params は以下とする。
 
@@ -324,7 +349,7 @@ tool result は必ず以下の wrapper を返す。
 tool params に未知 key がある場合、必須 key 不足、型不一致、範囲外、secret 値を許可しない field への secret 形状入力は `-32602 Invalid params` とし、tool 実行、audit、metrics 更新を行わない。tool 実行開始後の失敗は `.mcp_audit_log` と `.mcp_metrics` に失敗結果を記録する。ただし audit 追記不能時は副作用 tool を失敗扱いにし、対象 owner の状態変更を開始しない。
 
 <a id="sec-29-7"></a>
-## 29.7 Resources
+**29.7 Resources：**
 
 | resource URI | 内容 | 更新通知 |
 |--------------|------|----------|
@@ -344,7 +369,7 @@ tool params に未知 key がある場合、必須 key 不足、型不一致、�
 `resources/read` の `ResourceContent` は `uri`、`mimeType`、`text` を持つ。`adlaire://logs/{build_id}` だけは `mimeType:"text/plain"`、その他は `mimeType:"application/json"` とする。JSON resource の `text` は UTF-8 JSON object 文字列とし、secret、token、Authorization header を含めない。
 
 <a id="sec-29-8"></a>
-## 29.8 Resource subscription
+**29.8 Resource subscription：**
 
 `resources/subscribe` params は以下とする。
 
@@ -368,7 +393,7 @@ data: {"uri":"adlaire://status","updated_at":"2026-09-28T00:00:00Z"}
 ```
 
 <a id="sec-29-9"></a>
-## 29.9 Prompts
+**29.9 Prompts：**
 
 | prompt name | params | 用途 |
 |-------------|--------|------|
@@ -383,7 +408,7 @@ data: {"uri":"adlaire://status","updated_at":"2026-09-28T00:00:00Z"}
 prompt は実行を伴わない。
 
 <a id="sec-29-10"></a>
-## 29.10 Sampling
+**29.10 Sampling：**
 
 `adlaire.analyzeBuildError` は sampling 対応 tool とする。
 
@@ -400,7 +425,7 @@ sampling result は `.mcp_audit_log` へ prompt hash、build_id、client name、
 sampling result の本文は statefile へ保存しない。
 
 <a id="sec-29-11"></a>
-## 29.11 Notifications
+**29.11 Notifications：**
 
 MCP server は以下の notification を送信する。
 
@@ -418,7 +443,7 @@ SSE client が未接続の場合、notification は破棄する。
 notification の破棄はエラーとして扱わない。
 
 <a id="sec-29-12"></a>
-## 29.12 HTTP SSE transport
+**29.12 HTTP SSE transport：**
 
 `/mcp/events` は keepalive として 30 秒ごとに comment frame を送信する。
 
@@ -437,7 +462,7 @@ data: {"reason":"server_shutdown"}
 ```
 
 <a id="sec-29-13"></a>
-## 29.13 Tool scope
+**29.13 Tool scope：**
 
 scope は `.mcp_config.scopes` に定義する。
 
@@ -450,7 +475,7 @@ scope 不足時は `-32002 Forbidden` を返す。
 `write:*` scope は `read:*` scope を暗黙に含めない。
 
 <a id="sec-29-14"></a>
-## 29.14 Audit / client / metrics
+**29.14 Audit / client / metrics：**
 
 副作用 tool 実行時は `.mcp_audit_log` へ以下を追記する。
 
@@ -475,7 +500,7 @@ metrics key は `tool_name`、`status`、`count`、`last_duration_ms`、`last_at
 client 接続は `.mcp_client_log` へ append-only で記録する。
 
 <a id="sec-29-15"></a>
-## 29.15 Timeout / config CRUD / elicitation
+**29.15 Timeout / config CRUD / elicitation：**
 
 `.mcp_config` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) を正本とする。
 
@@ -494,8 +519,10 @@ tool timeout は `.mcp_config.tool_timeout_ms` を使用する。
 
 confirmation_id は memory only とし、statefile へ保存しない。
 
+confirmation_id は `mcpconf_` + 128 bit 以上の乱数を Crockford Base32 26 文字で表現する。params hash は confirmation_id を除いた canonical JSON の SHA-256 lowercase hex とする。期限切れ、tool 名不一致、params hash 不一致、read-only mode、scope 不足は tool を実行せず、audit と metrics を更新しない。
+
 <a id="sec-29-16"></a>
-## 29.16 仕様化済み対象
+**29.16 仕様化済み対象：**
 
 本書は以下を仕様化済み・未実装の詳細仕様として定義する。
 
@@ -518,7 +545,7 @@ confirmation_id は memory only とし、statefile へ保存しない。
 | MCP Elicitation による副作用操作の確認 | [`docs/details/mcp.md` 詳細本文責務 §29.15](mcp.md#sec-29-15) |
 
 <a id="sec-29-17"></a>
-## 29.17 検証条件
+**29.17 検証条件：**
 
 実装完了判定には以下を必須とする。
 
@@ -536,3 +563,8 @@ confirmation_id は memory only とし、statefile へ保存しない。
 - SSE が keepalive、resource update、shutdown を送信する。
 - sampling tool が server から外部 AI API を直接呼び出さない。
 - `.mcp_client_log`、`.mcp_metrics`、`.mcp_audit_log` の fixture assertion が存在する。
+- invalid CLI option、invalid addr、non-loopback 拒否、missing state-dir が固定 stderr と終了 code `2` を返す。
+- `/mcp` の invalid content type、body 上限超過、JSON parse 失敗、batch request、未初期化 method、params 不正が固定 error を返し、tool 副作用を開始しない。
+- `--client-token` 指定時、`/mcp` と `/mcp/events` は token 不一致を `401` で拒否し、`/health` は token 不要で応答する。
+- read-only mode では副作用 tool が `tools/list` に出ず、直接 `tools/call` されても `-32002 Forbidden` で状態を変更しない。
+- confirmation_id は memory only、5 分で期限切れ、params hash 不一致時に tool を実行しない。

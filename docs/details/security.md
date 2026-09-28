@@ -781,7 +781,7 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 | state save failure | endpoint 固有処理なし、部分 count 更新なし。 |
 
 <a id="sec-27-48"></a>
-## 27.48 マルチユーザー対応
+**27.48 マルチユーザー対応：**
 
 マルチユーザー対応の owner は `security` とする。
 
@@ -805,7 +805,7 @@ role または permission が変更された場合、既存 session の `permiss
 | role assignment change | `user_role_update` |
 
 <a id="sec-27-50"></a>
-## 27.50 外部認証連携
+**27.50 外部認証連携：**
 
 外部認証連携の owner は `security` とする。
 
@@ -822,7 +822,7 @@ callback 検証では `state`、`nonce`、`issuer`、`audience`、`exp`、`iat`�
 検証失敗は `401` とし、失敗理由の詳細、token、claim 全文を response、server log、audit log に出してはならない。
 
 <a id="sec-27-58"></a>
-## 27.58 ロールベースアクセス制御
+**27.58 ロールベースアクセス制御：**
 
 ロールベースアクセス制御の owner は `security` とする。
 
@@ -877,7 +877,7 @@ system role は削除禁止、`id` 変更禁止、`system:false` への変更禁
 role 削除時、対象 role を持つ active user が 1 件でも存在する場合は `409` とする。
 
 <a id="sec-27-61"></a>
-## 27.61 ユーザー管理 API
+**27.61 ユーザー管理 API：**
 
 ユーザー管理 API の owner は `security` とする。
 
@@ -896,7 +896,7 @@ locked user の password login は `401` とし、API token と外部認証も�
 user 更新時の最後の admin 保護は、変更適用後に `*` permission を持つ active user が 1 件以上残ることを条件とする。自分自身の `role_ids` 変更、`status` 変更、password 削除、external subject 削除がこの条件を満たさない場合は `409` とし、session、user、role、audit、admin event を変更しない。
 
 <a id="sec-27-67"></a>
-## 27.67 読み取り専用共有リンク
+**27.67 読み取り専用共有リンク：**
 
 読み取り専用共有リンクの owner は `security` とする。
 

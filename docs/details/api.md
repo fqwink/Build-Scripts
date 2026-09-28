@@ -3058,7 +3058,7 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 | response cache | `.response_cache`, `.server_config` | `.server_config` または `.response_cache` → `.admin_events` | purge 失敗時は未削除 entry を保持する。user 固有 response は cache へ保存しない。 |
 
 <a id="sec-27-48"></a>
-## 27.48 マルチユーザー対応 API 境界
+**27.48 マルチユーザー対応 API 境界：**
 
 マルチユーザー対応の owner は `security` とする。ユーザー、role、permission、session の判定本文は [`docs/details/security.md` 詳細本文責務 §27.48](security.md#sec-27-48) と [§27.58](security.md#sec-27-58) を正本とする。
 
@@ -3074,7 +3074,7 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 自分自身の最後の admin role を無効化または role 削除する request は `409` とする。
 
 <a id="sec-27-49"></a>
-## 27.49 データストア切り替え API 境界
+**27.49 データストア切り替え API 境界：**
 
 データストア切り替えの owner は `statefile` とする。API は `.datastore_config` の read/write 呼び出し境界だけを持つ。
 
@@ -3090,7 +3090,7 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 `dry_run:false` は `confirmation:"SWITCH_DATASTORE"` を必須とする。
 
 <a id="sec-27-50"></a>
-## 27.50 外部認証連携 API 境界
+**27.50 外部認証連携 API 境界：**
 
 外部認証連携の owner は `security` とする。認証 protocol、secret 保存、callback 検証本文は [`docs/details/security.md` 詳細本文責務 §27.50](security.md#sec-27-50) を正本とする。
 
@@ -3103,7 +3103,7 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 response に client secret、private key、raw token を含めてはならない。
 
 <a id="sec-27-51"></a>
-## 27.51 統計データの JSON エクスポート API 境界
+**27.51 統計データの JSON エクスポート API 境界：**
 
 統計データの JSON エクスポートの owner は `api` とする。
 
@@ -3118,7 +3118,7 @@ response に client secret、private key、raw token を含めてはならない
 response は `generated_at`、`range`、`summary`、`items` を持つ JSON object とする。
 
 <a id="sec-27-52"></a>
-## 27.52 キュー内個別エントリのキャンセル API 境界
+**27.52 キュー内個別エントリのキャンセル API 境界：**
 
 キュー内個別エントリのキャンセル owner は `runner` とする。
 
@@ -3131,7 +3131,7 @@ response は `generated_at`、`range`、`summary`、`items` を持つ JSON objec
 `queued` の entry は `status:"cancelled"` に変更し、history に `cancelled_by_api` を追記する。
 
 <a id="sec-27-53"></a>
-## 27.53 Prometheus メトリクスエンドポイント
+**27.53 Prometheus メトリクスエンドポイント：**
 
 Prometheus メトリクスエンドポイントの owner は `api` とする。
 
@@ -3146,7 +3146,7 @@ metric line は `# HELP`、`# TYPE`、sample の順で出力する。
 token、path secret、repository token を label に含めてはならない。
 
 <a id="sec-27-54"></a>
-## 27.54 CLI 管理クライアント API 対応
+**27.54 CLI 管理クライアント API 対応：**
 
 CLI 管理クライアントの owner は `admin` とする。CLI が呼び出せる API は本書の管理 API endpoint に限定する。
 
@@ -3155,7 +3155,7 @@ CLI 管理クライアントは endpoint を追加定義しない。
 CLI 管理クライアントの command、option、stdout、stderr、終了 code は [`docs/details/admin.md` 詳細本文責務 §A7](admin.md#sec-a7) を正本とする。
 
 <a id="sec-27-55"></a>
-## 27.55 設定の自動スナップショット API 境界
+**27.55 設定の自動スナップショット API 境界：**
 
 設定の自動スナップショットの owner は `statefile` とする。
 
@@ -3170,7 +3170,7 @@ CLI 管理クライアントの command、option、stdout、stderr、終了 code
 restore は `confirmation:"RESTORE_CONFIG"` を必須とする。
 
 <a id="sec-27-56"></a>
-## 27.56 ステータスバッジ生成
+**27.56 ステータスバッジ生成：**
 
 ステータスバッジ生成の owner は `api` とする。
 
@@ -3181,7 +3181,7 @@ restore は `confirmation:"RESTORE_CONFIG"` を必須とする。
 SVG は script、external reference、inline event handler、remote image を含めてはならない。
 
 <a id="sec-27-57"></a>
-## 27.57 ビルド履歴の自動削除設定 API 境界
+**27.57 ビルド履歴の自動削除設定 API 境界：**
 
 ビルド履歴の自動削除設定の owner は `runner` とする。
 
@@ -3194,7 +3194,7 @@ SVG は script、external reference、inline event handler、remote image を含
 retention run は lock 取得中なら `409` とする。
 
 <a id="sec-27-58"></a>
-## 27.58 ロールベースアクセス制御 API 境界
+**27.58 ロールベースアクセス制御 API 境界：**
 
 ロールベースアクセス制御の owner は `security` とする。
 
@@ -3208,7 +3208,7 @@ retention run は lock 取得中なら `409` とする。
 permission 名と role 判定本文は [`docs/details/security.md` 詳細本文責務 §27.58](security.md#sec-27-58) を正本とする。
 
 <a id="sec-27-59"></a>
-## 27.59 設定スナップショット差分表示 API 境界
+**27.59 設定スナップショット差分表示 API 境界：**
 
 設定スナップショット差分表示の owner は `statefile` とする。
 
@@ -3221,7 +3221,7 @@ diff item は `path`、`change`、`left`、`right` を持つ。
 secret value は `left` / `right` とも `"***"` に mask する。
 
 <a id="sec-27-60"></a>
-## 27.60 複数プロジェクト管理 API 境界
+**27.60 複数プロジェクト管理 API 境界：**
 
 複数プロジェクト管理の owner は `statefile` とする。
 
@@ -3235,14 +3235,14 @@ secret value は `left` / `right` とも `"***"` に mask する。
 delete は物理削除せず `status:"archived"` にする。
 
 <a id="sec-27-61"></a>
-## 27.61 ユーザー管理 API
+**27.61 ユーザー管理 API：**
 
 ユーザー管理 API は [§27.48](#sec-27-48) の route を正本とする。
 
 ユーザーの password、TOTP、external auth mapping、role assignment の保存本文は [`docs/details/security.md` 詳細本文責務 §27.61](security.md#sec-27-61) を正本とする。
 
 <a id="sec-27-62"></a>
-## 27.62 API バージョニング
+**27.62 API バージョニング：**
 
 API バージョニングの owner は `api` とする。
 
@@ -3257,7 +3257,7 @@ response は `api_version`、`spec_version`、`binary_version`、`compatible_ver
 versioned path を追加する場合は `/api/v{major}/...` とする。
 
 <a id="sec-27-63"></a>
-## 27.63 API ドキュメント自動生成
+**27.63 API ドキュメント自動生成：**
 
 API ドキュメント自動生成の owner は `api` とする。
 
@@ -3270,7 +3270,7 @@ API ドキュメント自動生成の owner は `api` とする。
 未実装 endpoint を `paths` に含めてはならない。
 
 <a id="sec-27-64"></a>
-## 27.64 ビルドキューの手動並び替え API 境界
+**27.64 ビルドキューの手動並び替え API 境界：**
 
 ビルドキューの手動並び替えの owner は `runner` とする。
 
@@ -3283,7 +3283,7 @@ API ドキュメント自動生成の owner は `api` とする。
 running、finished、cancelled、missing、duplicate を含む request は `422` とし状態を変更しない。
 
 <a id="sec-27-65"></a>
-## 27.65 設定テンプレート API 境界
+**27.65 設定テンプレート API 境界：**
 
 設定テンプレートの owner は `statefile` とする。
 
@@ -3297,7 +3297,7 @@ running、finished、cancelled、missing、duplicate を含む request は `422`
 apply は `confirmation:"APPLY_CONFIG_TEMPLATE"` を必須とする。
 
 <a id="sec-27-66"></a>
-## 27.66 管理者向けイベントフィード
+**27.66 管理者向けイベントフィード：**
 
 管理者向けイベントフィードの owner は `api` とする。
 
@@ -3311,7 +3311,7 @@ SSE は 30 秒ごとに `: keepalive` を送信する。
 event data に secret、token、password、raw request body を含めてはならない。
 
 <a id="sec-27-67"></a>
-## 27.67 読み取り専用共有リンク API 境界
+**27.67 読み取り専用共有リンク API 境界：**
 
 読み取り専用共有リンクの owner は `security` とする。
 
@@ -3327,7 +3327,7 @@ share token 本体は作成 response で 1 回だけ返す。
 保存時は hash だけを保存する。
 
 <a id="sec-27-68"></a>
-## 27.68 API レスポンスキャッシュ制御
+**27.68 API レスポンスキャッシュ制御：**
 
 API レスポンスキャッシュ制御の owner は `api` とする。
 
@@ -3342,7 +3342,7 @@ cache 対象 endpoint は `GET` の read-only endpoint だけとする。
 認証情報、session、user 固有 response は共有 cache に保存しない。
 
 <a id="sec-27-69"></a>
-## 27.69 スナップショット間サイト差分 API 境界
+**27.69 スナップショット間サイト差分 API 境界：**
 
 スナップショット間サイト差分 API の owner は `archive` とする。
 
@@ -3355,7 +3355,7 @@ diff は added、removed、modified、unchanged_count を返す。
 file content は response に含めない。
 
 <a id="sec-27-70"></a>
-## 27.70 Webhook 送信履歴の手動再送 API 境界
+**27.70 Webhook 送信履歴の手動再送 API 境界：**
 
 Webhook 送信履歴の手動再送 API の owner は `runner` とする。
 
