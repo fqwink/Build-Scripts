@@ -2584,10 +2584,10 @@ MCP fixture は [`docs/details/mcp.md`](mcp.md) 詳細本文責務を確認す�
 
 | fixture 名 | fixture 群 | 必須確認 |
 |------------|------------|----------|
-| `mcp-cli-lifecycle` | `testdata/mcp/cli/` | `--help`、`--version`、`--state-dir`、loopback bind、non-loopback 拒否、read-only 起動。 |
+| `mcp-cli-lifecycle` | `testdata/mcp/cli/` | `--help`、`--version`、`--state-dir`、重複 option 拒否、loopback bind、non-loopback 拒否、禁止 host 拒否、read-only 起動。 |
 | `mcp-jsonrpc-errors` | `testdata/mcp/jsonrpc/` | parse error、invalid request、batch 拒否、method not found、invalid params、unauthorized、forbidden、timeout。 |
 | `mcp-initialize-client-log` | `testdata/mcp/jsonrpc/` | initialize、notifications/initialized、`.mcp_client_log` append、initialize 前 method 拒否。 |
-| `mcp-tools-list-call` | `testdata/mcp/tools/` | `tools/list` descriptor、read-only tool 除外、`tools/call` success/error、scope 不足。 |
+| `mcp-tools-list-call` | `testdata/mcp/tools/` | `tools/list` descriptor、ToolDescriptor schema、read-only tool 除外、`tools/call` success/error、scope 不足。 |
 | `mcp-tools-confirmation` | `testdata/mcp/tools/` | 副作用 tool の confirmation required、params hash mismatch、期限切れ、confirmation 付き成功。 |
 | `mcp-resources-subscription` | `testdata/mcp/resources/` | `resources/list`、`resources/read`、subscribe、unsubscribe、resource-updated notification。 |
 | `mcp-prompts` | `testdata/mcp/prompts/` | `prompts/list`、`prompts/get`、prompt params validation、prompt が副作用を実行しないこと。 |
@@ -2596,6 +2596,10 @@ MCP fixture は [`docs/details/mcp.md`](mcp.md) 詳細本文責務を確認す�
 | `mcp-state-metrics-audit` | `testdata/mcp/state/` | `.mcp_config`、`.mcp_audit_log`、`.mcp_client_log`、`.mcp_metrics` の schema、append、破損時処理。 |
 
 `mcp-state-metrics-audit` は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の `McpConfig`、`McpScopeRecord`、`McpAuditRecord`、`McpClientRecord`、`McpMetrics` を byte 単位で検証する。`.mcp_config.scopes[].token_hash` は SHA-256 lowercase hex だけを許可し、token 本体、Authorization header 値、token の部分文字列を `expected/state/state-diff.json`、`expected/logs/`、`expected/effects.json`、`expected/security.json` に含めてはならない。
+
+`mcp-cli-lifecycle` は [`docs/details/mcp.md` 詳細本文責務 §29.1](mcp.md#sec-29-1) の CLI 検証順を固定する。少なくとも `--state-dir` 重複、`--addr` 重複、`--client-token` 重複、`--read-only` 重複、`--allow-non-loopback` 重複、`--addr 0.0.0.0:8766`、`--addr 255.255.255.255:8766`、`--addr 224.0.0.1:8766`、`--addr [::1]:8766`、`--addr example.local:8766`、`--addr 192.168.1.10:8766` かつ `--allow-non-loopback` なし、`--addr 192.168.1.10:8766` かつ `--allow-non-loopback` ありを別 case とする。失敗 case は stdout 空、stderr 固定 1 行、終了 code `2`、listener 起動 0 件、state read/write 0 件、`.mcp_client_log` / `.mcp_audit_log` / `.mcp_metrics` 更新 0 件を `expected/stdout.txt`、`expected/stderr.txt`、`expected/effects.json`、`expected/security.json` で固定する。成功 case は bind 対象、read-only flag、token 要否、状態副作用なしを `expected/effects.json` に固定する。
+
+`mcp-tools-list-call` は [`docs/details/mcp.md` 詳細本文責務 §29.6](mcp.md#sec-29-6) の `ToolDescriptor` を tool 名ごとに byte 等価で検証する。`name`、`description`、`inputSchema`、`annotations` 以外の key、固定 description 不一致、`required` の順序不一致、未知 `properties`、`additionalProperties:false` 欠落、`readOnlyHint` 不一致、[`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) と異なる tool order は不合格とする。read-only 起動 fixture は副作用 `yes` の tool が `tools/list` から除外され、残る tool の相対順序が維持されることを `expected/response.json` で固定する。read-only 起動中に副作用 tool を直接 `tools/call` する case は JSON-RPC `-32002 Forbidden`、対象 owner state 変更 0 件、`.mcp_audit_log` 追記 0 件、`.mcp_metrics` 更新 0 件を `expected/response.json` と `expected/effects.json` で固定する。
 
 `mcp-state-metrics-audit` は `.mcp_metrics.tools["<tool_name>"]` の `success_count`、`error_count`、`timeout_count`、`last_status`、`last_duration_ms`、`last_at` を検証する。`tool_name` は [`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) の tool name と完全一致させる。`tool_name`、`status`、`count` を sibling key として保存する旧形式、`forbidden_count`、未知 metrics key は不合格とする。
 

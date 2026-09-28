@@ -43,19 +43,22 @@ adlaire-ci-mcp --version
 | option | 必須 | 既定値 | 仕様 |
 |--------|------|--------|------|
 | `--state-dir <path>` | yes | none | statefile root。空でない絶対 path、既存 directory、symlink でないことを必須とする。 |
-| `--addr <host:port>` | no | `127.0.0.1:8766` | host は IPv4 literal または `localhost` だけを許可する。port は `1`〜`65535` の 10 進数。 |
+| `--addr <host:port>` | no | `127.0.0.1:8766` | host は IPv4 literal または exact `localhost` だけを許可する。port は `1`〜`65535` の 10 進数。 |
 | `--read-only` | no | `false` | 副作用 tool を `tools/list` から除外し、既存 connection の副作用 tool call を `-32002 Forbidden` にする。 |
 | `--client-token <token>` | no | none | 指定時は `/mcp` と `/mcp/events` に `Authorization: Bearer <token>` を必須にする。`/health` では要求しない。 |
-| `--allow-non-loopback` | no | `false` | 明示指定時のみ `--addr` の non-loopback host を許可する。指定がない場合、`127.0.0.0/8` と `localhost` 以外は拒否する。 |
+| `--allow-non-loopback` | no | `false` | 明示指定時のみ `--addr` の non-loopback IPv4 unicast host を許可する。指定がない場合、`127.0.0.0/8` と exact `localhost` 以外は拒否する。 |
 | `--help` | no | none | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) に従う。 |
 | `--version` | no | none | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) に従う。 |
 
-CLI parse は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) を使用する。短縮 option、未定義 option、未許可の `--name=value`、未定義位置引数を禁止する。同一値 option が複数回指定された場合は最後の値を採用し、boolean option は 1 回以上指定された場合に `true` とする。
+CLI parse は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) を使用する。短縮 option、未定義 option、未許可の `--name=value`、未定義位置引数を禁止する。`--state-dir`、`--addr`、`--client-token`、`--read-only`、`--allow-non-loopback` は同一 option の重複を禁止する。値 option と boolean option のどちらも、2 回目以降の出現を parse error とし、最後の値採用、重複 boolean の黙認、重複値の merge を行ってはならない。
+
+`--addr` の host 判定は文字列 parse 後、名前解決を行わずに実施する。exact `localhost` は loopback として扱い、その他の host 名、IPv6 literal、空 host、wildcard、zone identifier を禁止する。IPv4 literal は 4 octet dotted decimal だけを許可し、octet の空文字、符号、16 進表記、8 進表記、余分な空白、先頭 `+`、NUL、CR、LF を禁止する。`--allow-non-loopback` の有無にかかわらず、`0.0.0.0`、`255.255.255.255`、`224.0.0.0/4`、`240.0.0.0/4` は bind 対象として禁止する。`--allow-non-loopback` なしの場合は `127.0.0.0/8` と exact `localhost` だけを許可する。`--allow-non-loopback` ありの場合は、上記の禁止 host を除く IPv4 unicast literal と exact `localhost` を許可する。
 
 | 条件 | stdout | stderr | 終了 code | 副作用 |
 |------|--------|--------|-----------|--------|
 | `--help` | `Usage: adlaire-ci-mcp --state-dir path [--addr host:port] [--read-only] [--client-token token] [--allow-non-loopback] [--version] [--help]` + LF | 空 | `0` | 状態、listener、client log、metrics、audit に触れない。 |
 | `--version` | `adlaire-ci-mcp <binary-version> go=<runtime.Version()>` + LF | 空 | `0` | 同上。 |
+| option 重複 | 空 | `duplicate option: <option>` + LF | `2` | 状態 read/write、listener、client log、metrics、audit を開始しない。 |
 | `--state-dir` 未指定 | 空 | `state directory is required` + LF | `2` | listener を起動しない。 |
 | `--state-dir` が symlink | 空 | `state directory must not be symlink: <path>` + LF | `2` | 同上。 |
 | `--addr` 形式不正 | 空 | `invalid listen address: <address>` + LF | `2` | 状態 read/write を開始しない。 |
@@ -63,7 +66,7 @@ CLI parse は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定�
 | `--client-token` が空文字 | 空 | `client token must not be empty` + LF | `2` | 同上。 |
 | listener 起動失敗 | 空 | `listen failed` + LF | `1` | statefile を変更しない。 |
 
-CLI 検証順は、共通 option mode 確定、option parse、`--state-dir` 未指定、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) の空文字・相対 path・不在・directory 判定、symlink 判定、`--addr` 形式、loopback 判定、`--client-token` 検証、listener 起動の順に固定する。
+CLI 検証順は、共通 option mode 確定、argv token safety、option parse、option 重複、`--state-dir` 未指定、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) の空文字・相対 path・不在・directory 判定、symlink 判定、`--addr` 形式、禁止 host 判定、loopback 判定、`--client-token` 検証、listener 起動の順に固定する。
 
 <a id="sec-29-2"></a>
 **29.2 HTTP endpoint：**
@@ -252,13 +255,37 @@ JSON-RPC success response と error response の key order は `jsonrpc`、`id`�
 <a id="sec-29-6"></a>
 **29.6 Tool schema：**
 
-`tools/list` の `ToolDescriptor` は `name`、`description`、`inputSchema`、`annotations` を持つ。`annotations.readOnlyHint` は副作用 `no` の tool だけ `true`、副作用 `yes` の tool は `false` とする。`inputSchema` は JSON Schema draft 非依存の object とし、`type`、`required`、`properties`、`additionalProperties:false` だけを使用する。
+`tools/list` の `ToolDescriptor` は `name`、`description`、`inputSchema`、`annotations` を持つ。これ以外の key を返してはならない。`name` は [`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) の tool name と完全一致させる。`description` は下記の `ToolDescriptor.description` 固定表の文字列だけを返す。`annotations` は `readOnlyHint` だけを持ち、副作用 `no` の tool は `true`、副作用 `yes` の tool は `false` とする。`inputSchema` は JSON Schema draft 非依存の object とし、root は `type:"object"`、`required`、`properties`、`additionalProperties:false` の 4 key だけを持つ。
+
+`ToolDescriptor.inputSchema.required` は tool 別 params schema 表の `required` 列を、表記順の JSON array で返す。必須 key がない場合は空 array を返す。`properties` は当該 tool で許可される params key だけを持ち、未知 key を schema に含めてはならない。string 値は `{"type":"string"}`、integer 値は `{"type":"integer"}`、boolean 値は `{"type":"boolean"}`、object 値は `{"type":"object","required":[],"properties":{},"additionalProperties":false}`、全 JSON 型を受ける `value` だけは `{"type":["object","array","string","number","integer","boolean","null"]}` とする。`options` は予約 field とし、初期仕様では空 object だけを許可する。`inputSchema` は型、必須 key、未知 key 禁止だけを表し、byte 長、prefix、path、scope、confirmation は下表と本節本文の validation で判定する。
+
+`ToolDescriptor.description` は以下に固定する。
+
+| tool name | description |
+|-----------|-------------|
+| `adlaire.getStatus` | `Read current Adlaire CI status.` |
+| `adlaire.getQueue` | `Read current build queue.` |
+| `adlaire.triggerBuild` | `Request a new build through the durable queue.` |
+| `adlaire.cancelQueueEntry` | `Cancel a waiting build queue entry.` |
+| `adlaire.getHistory` | `Read build history summary.` |
+| `adlaire.getBuildLog` | `Read one saved build log.` |
+| `adlaire.analyzeBuildError` | `Request client-side sampling for a saved build error.` |
+| `adlaire.getConfig` | `Read effective Adlaire CI configuration.` |
+| `adlaire.setConfig` | `Update one allowed configuration path.` |
+| `adlaire.getMcpConfig` | `Read MCP configuration without token secrets.` |
+| `adlaire.setMcpConfig` | `Update MCP timeout or scope configuration.` |
+| `adlaire.createConfigSnapshot` | `Create a configuration snapshot.` |
+| `adlaire.diffConfigSnapshots` | `Diff two configuration snapshots with secrets masked.` |
+| `adlaire.restoreConfigSnapshot` | `Restore one configuration snapshot.` |
+| `adlaire.getMetrics` | `Read MCP and API metrics snapshot.` |
+| `adlaire.getAuditLog` | `Read MCP audit log entries.` |
+| `adlaire.resendWebhook` | `Request webhook delivery resend.` |
 
 | tool name | params | result `data` | 固定条件 |
 |-----------|--------|---------------|----------|
-| `adlaire.getStatus` | `{}` | `GET /api/status` 相当の object | 状態を変更しない。 |
-| `adlaire.getQueue` | `{}` | `GET /api/queue` 相当の object | 状態を変更しない。 |
-| `adlaire.triggerBuild` | `target`, `source`, `options` | queue id と dispatch | elicitation 必須。`POST /api/build` 境界を使用する。 |
+| `adlaire.getStatus` | `{}` | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の `GET /api/status` response body object | 状態を変更しない。 |
+| `adlaire.getQueue` | `{}` | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の `GET /api/queue` response body object | 状態を変更しない。 |
+| `adlaire.triggerBuild` | `target`, `source`, `options` | queue id と dispatch | elicitation 必須。`POST /api/build` 境界を使用する。`options` は初期仕様では空 object だけを許可する。 |
 | `adlaire.cancelQueueEntry` | `queue_id` | cancelled queue id | elicitation 必須。running entry は error。 |
 | `adlaire.getHistory` | `limit`, `offset` | history list | `limit` 1〜100、`offset` 0 以上。 |
 | `adlaire.getBuildLog` | `build_id` | log object | 存在しない build は `-32602`。 |
@@ -280,7 +307,7 @@ tool 別 params schema は以下に固定する。表にない key は `-32602 I
 |-----------|----------|------------|
 | `adlaire.getStatus` | なし | params は `{}`。 |
 | `adlaire.getQueue` | なし | params は `{}`。 |
-| `adlaire.triggerBuild` | `target`, `source` | `target` と `source` は 1〜128 byte UTF-8。`options` は object、省略時 `{}`。 |
+| `adlaire.triggerBuild` | `target`, `source` | `target` と `source` は 1〜128 byte UTF-8。`options` は object、省略時 `{}`。`options` に key がある場合は `-32602 Invalid params`。 |
 | `adlaire.cancelQueueEntry` | `queue_id` | `queue_id` は 1〜128 byte UTF-8、slash、NUL、CR、LF 禁止。 |
 | `adlaire.getHistory` | なし | `limit` は 1〜100、省略時 50。`offset` は 0 以上、省略時 0。 |
 | `adlaire.getBuildLog` | `build_id` | `build_id` は 1〜128 byte UTF-8、slash、NUL、CR、LF 禁止。 |
@@ -306,9 +333,9 @@ tool 別 params schema は以下に固定する。表にない key は `-32602 I
 }
 ```
 
-`target` は `builder` 詳細仕様に定義された build target と一致する。空文字、`/` だけ、NUL、CR、LF、`..` segment を禁止する。
+`target` は `builder` 詳細仕様に定義された build target と一致する。空文字、`/` だけ、NUL、CR、LF、`..` segment を禁止する。初期仕様では `target` を queue entry の `target_id` として保存し、MCP 側で別名展開、default target 補完、複数 target 展開を行ってはならない。
 
-`source` は `local:<absolute-path>` または `git:<ref>` のいずれかとする。`local:` の path は絶対 path、NUL / CR / LF 禁止、`..` segment 禁止とする。`git:` の ref は 1〜128 byte、空白、NUL、CR、LF、`..`、`@{` を禁止する。
+`source` は `local:<absolute-path>` または `git:<ref>` のいずれかとする。`local:` の path は絶対 path、NUL / CR / LF 禁止、`..` segment 禁止とする。`git:` の ref は 1〜128 byte、空白、NUL、CR、LF、`..`、`@{` を禁止する。MCP 側は `source` を Git checkout、fetch、local file copy の実行根拠にしてはならず、API / runner 境界へ渡す queue payload の値としてだけ扱う。
 
 `adlaire.cancelQueueEntry` params は以下とする。
 
