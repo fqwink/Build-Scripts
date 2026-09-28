@@ -40,7 +40,7 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 <a id="0c-実装前確認項目"></a>
 **実装前参照：**
 
-実装着手可否は [`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7) と [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) を正本とする。この入口では、対象機能が [詳細節対応表](#0i-詳細節対応表) に存在し、owner 詳細本文と fixture 証跡へ到達できることだけを確認する。
+実装着手可否は、[`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7) の着手ゲート、[`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー) の active Phase 条件、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と Phase 割当てをすべて使用して判定する。この入口では、対象機能が [詳細節対応表](#0i-詳細節対応表) に存在し、owner 詳細本文と fixture 証跡へ到達できることだけを確認する。
 
 <a id="0d-共通固定値"></a>
 **共通固定値：**
@@ -86,7 +86,7 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**
 
-仕様策定の完了条件は [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4)、[`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー) を正本とする。この入口では、[詳細仕様参照表](#0b-詳細仕様参照表)、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields)、[詳細節対応表](#0i-詳細節対応表)、[完全実装検証マトリクス](#0e-完全実装検証マトリクス) の参照が揃っていることだけを確認する。
+仕様策定または仕様改訂の完了条件は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#0b-仕様-pr-完了ポリシー) を正本とする。この入口では、[詳細仕様参照表](#0b-詳細仕様参照表)、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields)、[詳細節対応表](#0i-詳細節対応表)、[完全実装検証マトリクス](#0e-完全実装検証マトリクス) の参照が揃っていることだけを確認する。実装着手の凍結判定は [実装前参照](#0c-実装前確認項目) で別途行う。
 
 <a id="0i-詳細節対応表"></a>
 **機能・owner component・詳細本文対応表：**

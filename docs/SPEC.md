@@ -2,7 +2,7 @@
 
 **標準実装 artifact：** [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) のディレクトリ構成 tree を参照
 **実装 artifact / 機能現在状態：** [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照
-**出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
+**Builder 標準出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **仕様世代：** Go 初期仕様
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記）。[`docs/SPEC.md` ポリシー責務 §1](SPEC.md#1-バージョン管理) 参照。
 **更新履歴：** 日付本文を正本化しない。仕様変更の時系列は Git 履歴と Pull Request を正とする。
@@ -52,7 +52,7 @@
 
 1. [`docs/SPEC.md`](SPEC.md) の「文書責務」と「状態参照方針」で、正本範囲を確認する。
 2. [`docs/ROADMAP.md`](ROADMAP.md) で対象の現在状態、Phase、将来計画該当有無を確認し、実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) で判定する。
-3. [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1)〜[§4.10](SPEC.md#sec-4-10) で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、詳細仕様粒度、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
+3. [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1)〜[`docs/SPEC.md` 方針責務 §4.10](SPEC.md#sec-4-10) で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、詳細仕様粒度、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
 4. [`docs/SPEC.md`](SPEC.md) のポリシー責務で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
 5. 生成静的 Web サイトまたは標準管理 UI のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
 6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
@@ -64,10 +64,9 @@
 
 ## 1. 目的
 
-[`components/builder.go`](../components/builder.go) は、任意の UTF-8 Markdown ファイルまたは Markdown ディレクトリを、静的配信可能な Web サイトへ変換する Go プログラムである。[`docs/SPEC.md`](SPEC.md) 方針責務では、Go 実装を最初からの正本として定義する。
+Adlaire CI は、Markdown からの静的 Web サイト生成、source 変更検出と build / deploy、管理 interface、setup / update、バイナリ release を、Go を中心とする自己管理型システムとして一貫して提供する。
 
-- 大規模 Markdown 仕様書、複数 Markdown ドキュメント、運用メモを、静的 Web サイトへ変換する
-- `index.html`、ページ HTML、共通 CSS、共通 JavaScript、検索 index を出力ディレクトリへ生成する
+個別機能の実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、実装 artifact と機能の現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、利用者向け release asset の形式は [`docs/SPEC.md` ポリシー責務 §1](SPEC.md#1-バージョン管理) を正本とする。
 
 ## 2. 開発方針
 
@@ -748,7 +747,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 **内製実装管理ポリシー：**
 
-内製実装の配置、実在所在、現在状態、実装着手可否は、それぞれ [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー) を正本とする。この節では再定義しない。
+内製実装の配置は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、現在状態と Phase 割当ては [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。実装着手可否は、[`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7)の着手ゲート、[`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#0a-仕様成熟度ポリシー)の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#0d-仕様凍結ポリシー)の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#0f-phase-実装単位ポリシー)の active Phase 条件、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と Phase 割当てをすべて使用して判定する。この節では再定義しない。
 
 <a id="許可外部ライブラリ一覧"></a>
 

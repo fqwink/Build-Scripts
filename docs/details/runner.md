@@ -36,7 +36,7 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 
 `runner` は `adlaire-ci-runner` バイナリとして実行する。起動形式は systemd timer から呼び出される oneshot 実行とし、1 回の起動で対象ブランチ設定を読み込み、変更検出、ビルド起動、ログ保存、通知、転送、後処理を完了して終了する。
 
-実装時は、対象項目ごとに [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0c](../DETAIL_INDEX.md#0c-実装前確認項目) の実装前確認項目を満たしていることを確認する。未充足の項目が 1 つでもある場合の実装着手可否は [`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#0a-仕様成熟度ポリシー)〜[§0f](../SPEC.md#0f-phase-実装単位ポリシー) を参照し、詳細本文の不足は先に [`docs/details/runner.md` 詳細本文責務 §10a](runner.md#10a-ci-ランナー-実装対象) を改訂する。
+実装時は、対象項目ごとに [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0c](../DETAIL_INDEX.md#0c-実装前確認項目) の実装前確認項目を満たしていることを確認する。実装着手可否は、[`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#0a-仕様成熟度ポリシー) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](../SPEC.md#0d-仕様凍結ポリシー) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#0f-phase-実装単位ポリシー) の active Phase 条件、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の現在状態と Phase 割当てによって判定する。未充足の項目が 1 つでもある場合は着手せず、詳細本文の不足は先に [`docs/details/runner.md` 詳細本文責務 §10a](runner.md#10a-ci-ランナー-実装対象) を改訂する。
 
 | 項目 | 関連節 | 実装内容 |
 |------|--------|------------|
