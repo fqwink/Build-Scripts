@@ -125,7 +125,7 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 <a id="sec-0g-8-f"></a>
 **[fixture 証跡責務 §0g.8-F fixture / testdata 配置固定契約](fixture.md#sec-0g-8-f)：**
 
-以下の配置はfixture証跡責務上の配置契約である。未作成pathは、該当componentまたは該当fixtureの実装検証変更で作成するまで現行実体として扱わない。`testdata/release/`はrelease実装変更で必要fixtureを作成する場合だけ作成する。`mcp`はowner詳細本文とfixture契約が未作成であるため、対応する`testdata/` rootを推測して作成してはならない。
+以下の配置はfixture証跡責務上の配置契約である。未作成pathは、該当componentまたは該当fixtureの実装検証変更で作成するまで現行実体として扱わない。`testdata/release/`はrelease実装変更で必要fixtureを作成する場合だけ作成する。`mcp`のfixture契約は [`docs/details/fixture.md` fixture 証跡責務 §30-F](fixture.md#mcp-fixture-contract) を正本とする。`testdata/mcp/`はfixture配置契約として定義済みだが、実体はMCP実装検証変更まで作成してはならない。
 
 | 検証群 | 必須配置 | 必須内容 | 禁止条件 |
 |--------|----------|----------|----------|

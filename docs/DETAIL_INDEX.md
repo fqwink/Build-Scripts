@@ -300,18 +300,18 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 
 | 機能 | owner | 詳細本文 |
 |------|-------|----------|
-| MCP サーバー実装 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.0](details/mcp.md#290-実装境界)〜[§29.4](details/mcp.md#294-mcp-initialize) |
-| MCP ツール・リソース公開 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.5](details/mcp.md#295-tool-一覧)〜[§29.8](details/mcp.md#298-resource-subscription) |
-| AI 支援ビルドエラー分析 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.10](details/mcp.md#2910-sampling) |
-| MCP Prompts 定義 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.9](details/mcp.md#299-prompts) |
-| MCP Sampling によるビルドログ自動分析 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.10](details/mcp.md#2910-sampling) |
-| MCP Notifications（イベントプッシュ） | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.11](details/mcp.md#2911-notifications) |
-| MCP HTTP SSE transport 対応 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.12](details/mcp.md#2912-http-sse-transport) |
-| MCP ツールスコープ細分化 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.13](details/mcp.md#2913-tool-scope) |
-| MCP ツール呼び出し監査ログ | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.14](details/mcp.md#2914-audit--client--metrics) |
-| MCP リソース購読（Resource Subscriptions） | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.8](details/mcp.md#298-resource-subscription) |
-| MCP クライアント情報ログ | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.14](details/mcp.md#2914-audit--client--metrics) |
-| MCP ツール実行統計 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.14](details/mcp.md#2914-audit--client--metrics) |
-| MCP ツール実行タイムアウト設定 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#2915-timeout--config-crud--elicitation) |
-| MCP 設定 CRUD ツール | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#2915-timeout--config-crud--elicitation) |
-| MCP Elicitation による副作用操作の確認 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#2915-timeout--config-crud--elicitation) |
+| MCP サーバー実装 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.0](details/mcp.md#sec-29-0)〜[§29.4](details/mcp.md#sec-29-4) |
+| MCP ツール・リソース公開 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.5](details/mcp.md#sec-29-5)〜[§29.8](details/mcp.md#sec-29-8) |
+| AI 支援ビルドエラー分析 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.10](details/mcp.md#sec-29-10) |
+| MCP Prompts 定義 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.9](details/mcp.md#sec-29-9) |
+| MCP Sampling によるビルドログ自動分析 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.10](details/mcp.md#sec-29-10) |
+| MCP Notifications（イベントプッシュ） | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.11](details/mcp.md#sec-29-11) |
+| MCP HTTP SSE transport 対応 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.12](details/mcp.md#sec-29-12) |
+| MCP ツールスコープ細分化 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.13](details/mcp.md#sec-29-13) |
+| MCP ツール呼び出し監査ログ | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.14](details/mcp.md#sec-29-14) |
+| MCP リソース購読（Resource Subscriptions） | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.8](details/mcp.md#sec-29-8) |
+| MCP クライアント情報ログ | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.14](details/mcp.md#sec-29-14) |
+| MCP ツール実行統計 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.14](details/mcp.md#sec-29-14) |
+| MCP ツール実行タイムアウト設定 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#sec-29-15) |
+| MCP 設定 CRUD ツール | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#sec-29-15) |
+| MCP Elicitation による副作用操作の確認 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#sec-29-15) |

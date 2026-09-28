@@ -6,6 +6,7 @@
 
 本書は方針、ポリシー、状態語彙、現在状態、Phase、将来計画を再定義しない。
 
+<a id="sec-29-0"></a>
 ## 29.0 実装境界
 
 | 項目 | 仕様 |
@@ -28,6 +29,7 @@
 
 `components/mcp.go` が他 owner の機能を操作する場合は、該当 owner の公開済み関数または state 契約だけを使用する。
 
+<a id="sec-29-1"></a>
 ## 29.1 起動 CLI
 
 `adlaire-ci-mcp` は以下の CLI を持つ。
@@ -52,6 +54,7 @@ adlaire-ci-mcp --version
 
 起動失敗時は stderr に `error: <reason>` を出力し、終了 code `2` とする。
 
+<a id="sec-29-2"></a>
 ## 29.2 HTTP endpoint
 
 | method | path | 用途 | 成功 status | 失敗 status |
@@ -73,6 +76,7 @@ adlaire-ci-mcp --version
 }
 ```
 
+<a id="sec-29-3"></a>
 ## 29.3 JSON-RPC 共通契約
 
 request object は以下とする。
@@ -128,10 +132,10 @@ error response object は以下とする。
 
 | method | params | result | 副作用 |
 |--------|--------|--------|--------|
-| `initialize` | [`docs/details/mcp.md` 詳細本文責務 §29.4](mcp.md#294-mcp-initialize) | serverInfo / capabilities | `.mcp_client_log` 追記 |
+| `initialize` | [`docs/details/mcp.md` 詳細本文責務 §29.4](mcp.md#sec-29-4) | serverInfo / capabilities | `.mcp_client_log` 追記 |
 | `notifications/initialized` | body なし | response なし | connection を initialized 済みにする |
 | `tools/list` | `{}` | `{ "tools": ToolDescriptor[] }` | なし |
-| `tools/call` | `{ "name": string, "arguments": object }` | [`docs/details/mcp.md` 詳細本文責務 §29.6](mcp.md#296-tool-schema) の wrapper | tool ごとの契約に従う |
+| `tools/call` | `{ "name": string, "arguments": object }` | [`docs/details/mcp.md` 詳細本文責務 §29.6](mcp.md#sec-29-6) の wrapper | tool ごとの契約に従う |
 | `resources/list` | `{}` | `{ "resources": ResourceDescriptor[] }` | なし |
 | `resources/read` | `{ "uri": string }` | `{ "contents": ResourceContent[] }` | なし |
 | `resources/subscribe` | `{ "uri": string }` | `{}` | connection 内 subscription 追加 |
@@ -141,6 +145,7 @@ error response object は以下とする。
 
 `initialize` 成功前に `initialize` 以外の method を受けた場合は `-32600 Invalid Request` とする。`notifications/initialized` は JSON-RPC notification とし、`id` を持つ request として送られた場合は `-32600 Invalid Request` とする。batch request は受け付けず `-32600 Invalid Request` とする。
 
+<a id="sec-29-4"></a>
 ## 29.4 MCP initialize
 
 `initialize` params は以下とする。
@@ -180,6 +185,7 @@ error response object は以下とする。
 
 `initialize` 成功時は client name、client version、remote address、capabilities、connected_at を `.mcp_client_log` へ追記する。
 
+<a id="sec-29-5"></a>
 ## 29.5 Tool 一覧
 
 | tool name | scope | 副作用 | owner 参照 |
@@ -204,8 +210,9 @@ error response object は以下とする。
 
 `--read-only` 指定時は副作用 `yes` の tool を `tools/list` に含めない。
 
-副作用 `yes` の tool は `29.15` の elicitation を必須とする。
+副作用 `yes` の tool は [`docs/details/mcp.md` 詳細本文責務 §29.15](mcp.md#sec-29-15) の elicitation を必須とする。
 
+<a id="sec-29-6"></a>
 <a id="296-tool-schema"></a>
 ## 29.6 Tool schema
 
@@ -316,6 +323,7 @@ tool result は必ず以下の wrapper を返す。
 
 tool params に未知 key がある場合、必須 key 不足、型不一致、範囲外、secret 値を許可しない field への secret 形状入力は `-32602 Invalid params` とし、tool 実行、audit、metrics 更新を行わない。tool 実行開始後の失敗は `.mcp_audit_log` と `.mcp_metrics` に失敗結果を記録する。ただし audit 追記不能時は副作用 tool を失敗扱いにし、対象 owner の状態変更を開始しない。
 
+<a id="sec-29-7"></a>
 ## 29.7 Resources
 
 | resource URI | 内容 | 更新通知 |
@@ -335,6 +343,7 @@ tool params に未知 key がある場合、必須 key 不足、型不一致、�
 
 `resources/read` の `ResourceContent` は `uri`、`mimeType`、`text` を持つ。`adlaire://logs/{build_id}` だけは `mimeType:"text/plain"`、その他は `mimeType:"application/json"` とする。JSON resource の `text` は UTF-8 JSON object 文字列とし、secret、token、Authorization header を含めない。
 
+<a id="sec-29-8"></a>
 ## 29.8 Resource subscription
 
 `resources/subscribe` params は以下とする。
@@ -358,6 +367,7 @@ event: resource-updated
 data: {"uri":"adlaire://status","updated_at":"2026-09-28T00:00:00Z"}
 ```
 
+<a id="sec-29-9"></a>
 ## 29.9 Prompts
 
 | prompt name | params | 用途 |
@@ -372,6 +382,7 @@ data: {"uri":"adlaire://status","updated_at":"2026-09-28T00:00:00Z"}
 
 prompt は実行を伴わない。
 
+<a id="sec-29-10"></a>
 ## 29.10 Sampling
 
 `adlaire.analyzeBuildError` は sampling 対応 tool とする。
@@ -388,6 +399,7 @@ sampling result は `.mcp_audit_log` へ prompt hash、build_id、client name、
 
 sampling result の本文は statefile へ保存しない。
 
+<a id="sec-29-11"></a>
 ## 29.11 Notifications
 
 MCP server は以下の notification を送信する。
@@ -405,6 +417,7 @@ SSE client が未接続の場合、notification は破棄する。
 
 notification の破棄はエラーとして扱わない。
 
+<a id="sec-29-12"></a>
 ## 29.12 HTTP SSE transport
 
 `/mcp/events` は keepalive として 30 秒ごとに comment frame を送信する。
@@ -423,6 +436,7 @@ event: shutdown
 data: {"reason":"server_shutdown"}
 ```
 
+<a id="sec-29-13"></a>
 ## 29.13 Tool scope
 
 scope は `.mcp_config.scopes` に定義する。
@@ -435,6 +449,7 @@ scope 不足時は `-32002 Forbidden` を返す。
 
 `write:*` scope は `read:*` scope を暗黙に含めない。
 
+<a id="sec-29-14"></a>
 ## 29.14 Audit / client / metrics
 
 副作用 tool 実行時は `.mcp_audit_log` へ以下を追記する。
@@ -459,6 +474,7 @@ metrics key は `tool_name`、`status`、`count`、`last_duration_ms`、`last_at
 
 client 接続は `.mcp_client_log` へ append-only で記録する。
 
+<a id="sec-29-15"></a>
 ## 29.15 Timeout / config CRUD / elicitation
 
 `.mcp_config` schema は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) を正本とする。
@@ -478,28 +494,30 @@ tool timeout は `.mcp_config.tool_timeout_ms` を使用する。
 
 confirmation_id は memory only とし、statefile へ保存しない。
 
+<a id="sec-29-16"></a>
 ## 29.16 仕様化済み対象
 
 本書は以下を仕様化済み・未実装の詳細仕様として定義する。
 
 | 機能 | 詳細仕様 |
 |------|----------|
-| MCP サーバー実装 | `29.0` から `29.4` |
-| MCP ツール・リソース公開 | `29.5` から `29.8` |
-| AI 支援ビルドエラー分析 | `29.10` |
-| MCP Prompts 定義 | `29.9` |
-| MCP Sampling によるビルドログ自動分析 | `29.10` |
-| MCP Notifications | `29.11` |
-| MCP HTTP SSE transport 対応 | `29.12` |
-| MCP ツールスコープ細分化 | `29.13` |
-| MCP ツール呼び出し監査ログ | `29.14` |
-| MCP リソース購読 | `29.8` |
-| MCP クライアント情報ログ | `29.14` |
-| MCP ツール実行統計 | `29.14` |
-| MCP ツール実行タイムアウト設定 | `29.15` |
-| MCP 設定 CRUD ツール | `29.15` |
-| MCP Elicitation による副作用操作の確認 | `29.15` |
+| MCP サーバー実装 | [`docs/details/mcp.md` 詳細本文責務 §29.0](mcp.md#sec-29-0) から [§29.4](mcp.md#sec-29-4) |
+| MCP ツール・リソース公開 | [`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) から [§29.8](mcp.md#sec-29-8) |
+| AI 支援ビルドエラー分析 | [`docs/details/mcp.md` 詳細本文責務 §29.10](mcp.md#sec-29-10) |
+| MCP Prompts 定義 | [`docs/details/mcp.md` 詳細本文責務 §29.9](mcp.md#sec-29-9) |
+| MCP Sampling によるビルドログ自動分析 | [`docs/details/mcp.md` 詳細本文責務 §29.10](mcp.md#sec-29-10) |
+| MCP Notifications | [`docs/details/mcp.md` 詳細本文責務 §29.11](mcp.md#sec-29-11) |
+| MCP HTTP SSE transport 対応 | [`docs/details/mcp.md` 詳細本文責務 §29.12](mcp.md#sec-29-12) |
+| MCP ツールスコープ細分化 | [`docs/details/mcp.md` 詳細本文責務 §29.13](mcp.md#sec-29-13) |
+| MCP ツール呼び出し監査ログ | [`docs/details/mcp.md` 詳細本文責務 §29.14](mcp.md#sec-29-14) |
+| MCP リソース購読 | [`docs/details/mcp.md` 詳細本文責務 §29.8](mcp.md#sec-29-8) |
+| MCP クライアント情報ログ | [`docs/details/mcp.md` 詳細本文責務 §29.14](mcp.md#sec-29-14) |
+| MCP ツール実行統計 | [`docs/details/mcp.md` 詳細本文責務 §29.14](mcp.md#sec-29-14) |
+| MCP ツール実行タイムアウト設定 | [`docs/details/mcp.md` 詳細本文責務 §29.15](mcp.md#sec-29-15) |
+| MCP 設定 CRUD ツール | [`docs/details/mcp.md` 詳細本文責務 §29.15](mcp.md#sec-29-15) |
+| MCP Elicitation による副作用操作の確認 | [`docs/details/mcp.md` 詳細本文責務 §29.15](mcp.md#sec-29-15) |
 
+<a id="sec-29-17"></a>
 ## 29.17 検証条件
 
 実装完了判定には以下を必須とする。
@@ -508,10 +526,10 @@ confirmation_id は memory only とし、statefile へ保存しない。
 - `adlaire-ci-mcp --version` が終了 code `0` で version を出力する。
 - `adlaire-ci-mcp --state-dir <fixture>` が loopback で起動する。
 - `/health` が `{"status":"ok","component":"mcp"}` を返す。
-- `initialize` が `29.4` の capabilities を返す。
+- `initialize` が [`docs/details/mcp.md` 詳細本文責務 §29.4](mcp.md#sec-29-4) の capabilities を返す。
 - `tools/list` が read-only 指定の有無に応じて副作用 tool の有無を切り替える。
-- `resources/list` が `29.7` の URI を返す。
-- `prompts/list` が `29.9` の prompt を返す。
+- `resources/list` が [`docs/details/mcp.md` 詳細本文責務 §29.7](mcp.md#sec-29-7) の URI を返す。
+- `prompts/list` が [`docs/details/mcp.md` 詳細本文責務 §29.9](mcp.md#sec-29-9) の prompt を返す。
 - 副作用 tool が confirmation なしで実行されない。
 - confirmation 付き副作用 tool が `.mcp_audit_log` を追記する。
 - tool timeout 超過が `-32003 Timeout` を返す。
