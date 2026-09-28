@@ -1628,6 +1628,8 @@ component 責務を複数変更へ分ける場合でも、各変更が満たす�
 | fixture | 初期状態 | 操作 | 合格条件 |
 |---------|----------|------|----------|
 | `success-state-read-missing` | target 不在 | 対応する read adapter 呼び出し | [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の不在時戻り値を返し、filesystem 差分なし。 |
+| `success-state-text-payload` | `.notes`、`.webhook_secret`、`.smtp_secret` の各 target 不在または schema-valid な既存 byte 列 | [`docs/details/statefile.md` 詳細本文責務 UTF-8 text payload 固定契約](statefile.md#statefile-text-payload-contract) の path 別 valid payload を write adapter へ渡す | 保存後 byte 列が入力と完全一致し、暗黙の trim、Unicode normalization、末尾 LF の追加または削除がなく、mode `0600`、tmp / lock 残存なし。 |
+| `failure-state-text-payload` | `.notes`、`.webhook_secret`、`.smtp_secret` の schema-valid な既存 byte 列 | 同固定契約の path 別拒否条件を 1 条件ずつ write adapter へ渡す | validation failure を返し、target content / mode / mtime、tmp、lock に差分なし。secret 平文を stdout、stderr、log、error、fixture expected へ出力しない。 |
 | `failure-state-corrupt-object` | JSON parse 不能または未知 key あり | read adapter 呼び出し | `ErrStateCorrupted`。target 差分なし。API の公開応答は [`docs/details/api.md` 詳細本文責務 §22.0c.1](api.md#sec-22-0c-1) を参照する。 |
 | `success-state-corrupt-regenerates` | [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) で再生成指定済み file が破損 | write caller または再生成を伴う操作 | corrupt backup が 1 件作成され、初期値だけが保存される。 |
 | `failure-state-lock-timeout` | `{name}.lock` が残る case、elapsed `9900ms` の試行前に解放する case、elapsed `10000ms` と同時に解放する case で、timer target `state_lock_wait` を `100ms` ずつ進める | write caller 呼び出し | elapsed `0` と `100ms`〜`9900ms` の合計 100 回だけ取得を試行する。`9900ms` 解放は取得成功、`10000ms` 同時解放は追加取得なしの conflict failure。timeout case は target / tmp 差分なし。 |

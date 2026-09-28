@@ -109,13 +109,4 @@ setup が admin UI を配置する場合は、以下を満たす。
 
 Admin fixture の fixture 名、入力、操作、expected file、禁止副作用は [`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](fixture.md#sec-27-f-19) を正本とする。
 
-**Admin 実装確認ゲート：**
-
-| 観点 | 合格条件 |
-|------|----------|
-| archive validation | [`docs/details/admin.md` 詳細本文責務 §A2](admin.md#a2-管理-ui-archive-検証) と [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の admin archive fixture が成功し、失敗時に既存 admin directory 差分がない。 |
-| static serving | [`docs/details/admin.md` 詳細本文責務 §A3](admin.md#a3-静的配信契約) と [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) の admin request fixture が status、header、body 有無、method 制限に一致する。 |
-| secret isolation | secret、state、log、snapshot path への direct request がすべて `404` で、response body に secret 原文を含まない。 |
-| no generation | admin は UI / SDK file 内容を生成・整形・書換しない。配布と配信だけを行う。 |
-| setup integration | [`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) の admin archive 展開、差分確認、rollback 条件と同じ expected を参照する。 |
-| fixture integration | [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の `success-setup-admin-release-asset-layout`、`security-setup-admin-archive-boundary`、`partial-setup-systemd-rollback-boundary`、`security-admin-static-serving`、`security-setup-secret-preservation` と fixture 名、expected file、禁止副作用が一致する。 |
+Admin 実装確認は [`docs/details/admin.md` 詳細本文責務 §A5](admin.md#a5-受け入れ条件) の全条件と、[`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](fixture.md#sec-27-f-19) の該当条件を同時に満たした場合だけ合格とする。fixture 名、input、expected、fake、禁止副作用を本節で再掲してはならない。

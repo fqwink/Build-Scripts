@@ -63,7 +63,7 @@
 | `.config_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.access_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.api_access_log` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。秘密情報は記録しない。 |
-| `.webhook_secret` | text | 不在 | `api` | 読み込み不能時は Webhook caller へ secret read failure を返す。 |
+| `.webhook_secret` | UTF-8 text | 不在 | `api` | 読み込み不能時は Webhook caller へ secret read failure を返す。 |
 | `.webhook_events.json` | JSON Lines | 空ファイル | `api` | 読み込み可能な行のみ返し、壊れた行は無視する。 |
 | `.access_control` | JSON object | `{"allow":[]}` | `api` | 破損または読取不能時は自動修復せず、read adapter は caller へ判別可能な失敗を返す。API の拒否契約は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) を参照する。 |
 | `.hooks` | JSON object | `{"hooks":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
@@ -74,7 +74,7 @@
 | `.pipeline_config` | JSON object | `{"extra_args":[],"env":{},"inline_yaml":null}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.notes` | UTF-8 text | 空文字列 | `api` | 読み込み不能時は read failure を返し、自動上書きしない。 |
 | `.smtp_config` | JSON object | `{"host":null,"port":587,"user":null,"tls":true,"from":null,"to":[],"on":[],"enabled":false}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.smtp_secret` | text | 不在 | `api` | 読み込み不能時は SMTP caller へ secret read failure を返す。 |
+| `.smtp_secret` | UTF-8 text | 不在 | `api` | 読み込み不能時は SMTP caller へ secret read failure を返す。 |
 | `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 
 状態ファイル固定表の「破損時の扱い」に記載した退避、再生成、初期値復旧、default fallback は、更新 caller または起動時整合性回復が明示的に回復処理を呼び出した場合だけ実行する。read-only caller は必ず [状態読取 adapter 固定契約](#statefile-read-adapter-contract) を優先し、作成、削除、退避、再生成、書き戻しを行わず、破損または読取不能を caller へ返す。
@@ -82,6 +82,22 @@
 `.build_logs/archive/` は gzip 圧縮済み build log の保存先ディレクトリである。初期値は空ディレクトリとし、runner または `POST /api/logs/archive` から呼び出された archive owner が書き込み前に存在確認し、不在の場合だけ作成する。runner と api owner は directory または gzip file を直接作成しない。圧縮済みファイル名は `{id}.json.gz` 固定とし、通常 `.build_logs/{id}.json` と同じ build id を表す。
 
 JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時は末尾に改行を必ず付ける。runtime 状態ファイルは内容分類にかかわらず mode `0600`、statefile 責務が作成する runtime 状態ディレクトリは mode `0700` を必須とする。公開成果物ディレクトリ、インストール先 root、admin 静的配布物の mode は statefile 責務に含めない。
+
+<a id="statefile-text-payload-contract"></a>
+**UTF-8 text payload 固定契約：**
+
+UTF-8 text 状態ファイルは、path ごとに次の byte 契約を適用する。statefile owner は caller から受け取った検証済み payload を byte 単位で保存し、trim、Unicode normalization、末尾 LF の追加または削除を行わない。
+
+| path | 保存する byte 列 | 読込・保存拒否条件 |
+|------|------------------|--------------------|
+| `.build_lock` | [状態ファイル固定表](#sec-22-0a)の固定形式。 | 固定形式不一致。 |
+| `.github_token` | [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) が生成した payload。 | statefile owner は内容を再解釈せず、setup owner の検証失敗を保存しない。 |
+| `.sha_cache/{branch_safe}/{target_hash}.sha` | [SHA cache text 固定契約](#sha-cache-text-contract) の payload。 | 同契約の不正値。 |
+| `.notes` | 0〜100000 Unicode scalar values の UTF-8 byte 列をそのまま保存する。LF と末尾 LF の有無を保持する。空 byte 列を許可する。 | UTF-8 不正、BOM、NUL、CR、100000 Unicode scalar values 超過。 |
+| `.webhook_secret` | 1〜4096 byte の UTF-8 byte 列をそのまま保存し、末尾 LF を持たない。 | UTF-8 不正、BOM、C0 制御文字、DEL、4096 byte 超過。 |
+| `.smtp_secret` | 1〜4096 byte の UTF-8 byte 列をそのまま保存し、末尾 LF を持たない。 | UTF-8 不正、BOM、C0 制御文字、DEL、4096 byte 超過。 |
+
+`.notes` の 100000 Unicode scalar values は UTF-8 で最大 400000 byte となる。`.webhook_secret` と `.smtp_secret` の C0 制御文字拒否には NUL、LF、CR を含む。API owner は request validation で同じ拒否条件を適用し、statefile owner は保存直前にも再検証する。
 
 <a id="statefile-update-procedure"></a>
 **状態ファイル更新手順：**
@@ -91,7 +107,7 @@ JSON Lines ファイルは、1 行につき 1 JSON object とする。追記時�
 1. 対象ファイルの `{name}.lock` を `O_CREATE|O_EXCL|O_WRONLY`、mode `0600` で作成する。
 2. ロック取得に失敗した場合は 100ms 間隔で最大 10 秒待つ。
 3. 通常 mode は現在値を読み込み、schema と入力値を検証する。create-only mode は `Lstat` で target の存在だけを再確認し、通常 file、directory、symlink、その他の file type のいずれでも存在する場合は内容を読まず `ErrStateAlreadyExists` とする。target 不在時だけ入力値を検証して手順 4 へ進む。
-4. 状態ファイル固定表が対象に指定する JSON、JSON Lines、または UTF-8 text の更新後 payload を、対象と同じ親ディレクトリの `{name}.tmp.{pid}` に `O_CREATE|O_EXCL|O_WRONLY`、mode `0600`、UTF-8 / LF で全 byte 書き出す。JSON object / array は末尾 LF 1 個、JSON Lines は各 object の末尾 LF 1 個、UTF-8 text は末尾 LF 1 個だけを持つ。既存 tmp を truncate または再利用しない。
+4. 状態ファイル固定表が対象に指定する JSON、JSON Lines、または UTF-8 text の更新後 payload を、対象と同じ親ディレクトリの `{name}.tmp.{pid}` に `O_CREATE|O_EXCL|O_WRONLY`、mode `0600` で全 byte 書き出す。JSON object / array は UTF-8 / LF かつ末尾 LF 1 個、JSON Lines は UTF-8 / LF かつ各 object の末尾 LF 1 個とする。UTF-8 text は [UTF-8 text payload 固定契約](#statefile-text-payload-contract) の path 別 byte 列をそのまま書き出す。既存 tmp を truncate または再利用しない。
 5. tmp file に `Sync` を実行し、mode `0600` を確定してから close する。`Sync`、chmod、close のいずれかが失敗した場合は rename しない。
 6. `os.Rename(tmp, target)` で置換する。
 7. 親ディレクトリを open して `Sync` し、rename された directory entry を永続化する。
@@ -128,7 +144,7 @@ mutation callback は typed current value だけを直接引数として受け�
 | 数値 | 整数 key は JSON number の整数だけ許可する。小数、指数表記由来の非整数、文字列数値は拒否する。 | 整数は JSON number として保存する。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
 | 時刻 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 共通固定値「機械処理時刻」](../DETAIL_INDEX.md#common-machine-time) に一致する文字列だけ許可する。 | 保存前に同固定値へ正規化する。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
 | mode | runtime 状態ファイルと lock file は `0600`、statefile 責務が作成する runtime 状態 directory は `0700` に固定する。 | tmp と lock の chmod は rename 前に完了する。chmod 失敗時は rename せず成功扱いにしない。 | chmod failure を返し、旧 target を byte 単位で維持し、tmp と lock は状態ファイル更新手順の rename 前 cleanup 固定契約で削除する。 |
-| 改行 | text / JSON / JSON Lines は LF で保存する。JSON object / array ファイルは末尾 LF 1 個を付ける。 | CRLF、BOM、末尾余分空白を新規保存しない。 | CRLF を含む保存入力は validation error、CRLF を含む既存 runtime 状態ファイルは破損扱いとする。 |
+| 改行 | JSON object / array と JSON Lines は LF で保存し、JSON object / array は末尾 LF 1 個、JSON Lines は各 object の末尾 LF 1 個を持つ。UTF-8 text は [UTF-8 text payload 固定契約](#statefile-text-payload-contract) に従う。 | JSON / JSON Lines に CRLF、BOM、末尾余分空白を新規保存しない。UTF-8 text を暗黙に trim または改行変換しない。 | JSON / JSON Lines の CRLF は validation error または破損扱い。UTF-8 text は path 別の拒否条件を適用する。 |
 
 状態ファイルの schema migration、旧 key の読み替え、欠落値の補完、未知値の保持は禁止する。現行 schema に一致しない保存済み状態は破損として扱い、自動変換してはならない。
 
@@ -282,6 +298,7 @@ TagFilter object、RemoteBuildConfig object、DurationAnomaly object、ApiRateLi
 
 CachePage object と DependencyManifestPage object は `input_sha256` を必須 key とし、型と許容値は同表の content `input_sha256` を適用する。Attempt object、HookLog object、TargetResult object は `started_at` を必須 key とし、型と許容値は operation `started_at` を適用する。Attempt object、TargetResult object、RemoteBuild object は `status` を必須 key とし、型と許容値は operation `binary_status` を適用する。PipelineStep object、Deploy object、RemoteBuild object は `error` を必須 key とし、型と許容値は operation `fixed_error` を適用する。NotificationPending object と PendingTransfer object は `last_error` を必須 key とし、型と許容値は pending `last_error` を適用する。
 
+<a id="notify-config-schema"></a>
 **`.notify_config` schema：**
 
 | キー | 型 | 既定値 | 許容値 | 説明 |
@@ -496,6 +513,7 @@ SHA cache は target ごとの処理済み Git blob SHA を保存する JSON obj
 
 SHA cache の更新タイミング、skip / failure 時の更新可否、複数 target 時の個別更新は [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の SHA cache 読み書き契約を参照する。
 
+<a id="sha-cache-text-contract"></a>
 **`.sha_cache/{branch_safe}/{target_hash}.sha` schema：**
 
 file 内容は Git object SHA の lowercase hexadecimal 40 文字または 64 文字と、末尾 LF 1 個だけとする。先頭空白、末尾空白、CRLF、複数行、大文字 hex、`0x` prefix、末尾 LF なしは不正とする。不在または不正値は cache miss とし、不正な既存 file を読取時に自動更新しない。path の `branch_safe` / `target_hash` 導出、比較、成功時更新、skip / failure 時の更新禁止は [`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21) を参照する。
@@ -786,6 +804,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 |------|----|------|--------|------|
 | `widgets` | string[] | 必須 | [`docs/details/api.md` 詳細本文責務 ダッシュボードウィジェットカスタマイズ](api.md#dashboard-layout-api) の widget id、1〜9 件 | 表示 widget 順序。重複禁止。 |
 
+<a id="smtp-config-schema"></a>
 **`.smtp_config` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
@@ -799,7 +818,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 | `on` | string[] | 必須 | `start`, `success`, `failure`, `duration_anomaly` | 送信イベント。 |
 | `enabled` | boolean | 必須 | boolean | メール通知有効状態。 |
 
-`.smtp_secret` は UTF-8 text とし、末尾 LF なしで password 本体だけを保存する。mode は `0600` 固定。`password` を `.smtp_config` に保存してはならない。password 未指定、`null`、非空文字の更新操作は [`docs/details/api.md`](api.md) 詳細本文責務の `POST /api/smtp-config` 契約を正本とする。
+`.smtp_secret` の保存 byte と拒否条件は [UTF-8 text payload 固定契約](#statefile-text-payload-contract) を正本とする。`password` を `.smtp_config` に保存してはならない。password 未指定、`null`、非空文字の更新操作は [`docs/details/api.md`](api.md) 詳細本文責務の `POST /api/smtp-config` 契約を正本とする。
 
 **`.build_state` schema：**
 
@@ -832,7 +851,7 @@ Queue entry schema:
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 §22.0e.2](api.md#sec-22-0e-2) の queue id | queue id。 |
-| `trigger` | string | 必須 | `"manual"`, `"webhook"`, `"approval"` | 起動種別。 |
+| `trigger` | string | 必須 | [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の Queue entry 許容値 | 起動種別。 |
 | `queued_at` | string | 必須 | UTC ISO 8601 | queue 追加日時。 |
 | `requested_by` | string | 必須 | `"admin"`, `"webhook"`, `"approval"`, API token id | queue 追加元。 |
 | `priority` | string | 必須 | `"low"`, `"normal"`, `"high"`, `"urgent"` | 優先度。未指定作成時は `"normal"`。処理順は [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) を参照する。 |
@@ -847,7 +866,7 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 |---------|---------|
 | `manual` | `{ "force": boolean }`。 |
 | `webhook` | `{ "delivery_id": string, "branch": string, "sha": string }`。 |
-| `approval` | `{ "approval_id": string, "branch": string, "sha": string, "target": string, "requested_trigger": string, "requested_force": boolean, "delivery_id": string/null }`。`requested_trigger` は `"polling"`, `"force_interval"`, `"manual"`, `"webhook"`, `"local_watch"` のいずれか。`requested_force` は SHA 一致時も build を実行する要求の場合だけ `true`。`delivery_id` は webhook 由来だけ非 `null`。 |
+| `approval` | `{ "approval_id": string, "branch": string, "sha": string, "target": string, "requested_trigger": string, "requested_force": boolean, "delivery_id": string/null }`。`requested_trigger` は [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の Approval 許容値。`requested_force` は SHA 一致時も build を実行する要求の場合だけ `true`。`delivery_id` は webhook 由来だけ非 `null`。 |
 
 `running:true` の場合、`current_build_id` は非 `null` の build id とする。`running:false` の場合、`current_build_id` は `null` とする。この対応が崩れた object は `.build_state` 破損とし、read adapter は値を補完しない。`active_queue_entry` は runner が結果を確定できず再実行を必要とする場合に限り `running:false` でも非 `null` を許可する。`active_queue_entry` と `queued[]` に同じ queue id が同時に存在してはならない。waiting queue の表示・追加・clear は [`docs/details/api.md`](api.md) 詳細本文責務の queue API 契約、active 選択・取得・完了遷移は [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) を参照する。
 
@@ -947,7 +966,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | `branch` | string | 必須 | branch target 名。 |
 | `sha` | string | 必須 | 40 文字 lowercase hex。 |
 | `target` | string | 必須 | branch target id または target file。 |
-| `requested_trigger` | string | 必須 | `"polling"`, `"force_interval"`, `"manual"`, `"webhook"`, `"local_watch"`。 |
+| `requested_trigger` | string | 必須 | [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の Approval 許容値。 |
 | `requested_force` | boolean | 必須 | SHA 一致時も build を実行する要求なら `true`。`force_interval` と手動 force は `true`、その他は `false`。 |
 | `requested_by` | string | 必須 | `"system"`, `"admin"`, `"webhook"`, API token id。 |
 | `delivery_id` | string/null | 必須 | webhook delivery id または `null`。 |
@@ -1083,7 +1102,7 @@ runner 結果値は保存先ごとに意味を分離する。`.build_logs/{id}.j
 |------|----|------|--------|------|
 | `id` | string | 必須 | build id または approval id | `.build_history` の schema-valid 行全体で一意な build、approval、chain job ID。 |
 | `status` | string | 必須 | [runner 結果値 schema](#runner-result-schema) で history が許可された値 | 詳細結果。 |
-| `trigger` | string | 必須 | `"polling"`, `"force_interval"`, `"manual"`, `"webhook"`, `"retry_pending_transfer"`, `"rollback"`, `"local_watch"`, `"approval"` | 起動種別。 |
+| `trigger` | string | 必須 | [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の trigger 許容値から `startup_config_integrity` を除く値 | 起動種別。`startup_config_integrity` は history を作成しない。 |
 | `branch` | string/null | 必須 | branch 名または `null` | approval / build target の branch。取得不能時だけ `null`。 |
 | `target_file` | string/null | 必須 | 相対 path または `null` | 対象 file または directory。 |
 | `started_at` | string/null | 必須 | UTC ISO 8601 または `null` | build 未実行の approval event は `null`。 |
@@ -1121,7 +1140,7 @@ build log を伴わない history record は次の値を固定する。表にな
 | `id` | string | 必須 | build id | ファイル名 `{id}.json` と一致する。 |
 | `status` | string | 必須 | `"running"`, `"success"`, `"failure"`, `"cancelled"` | 正規化状態。 |
 | `target_status` | string/null | 必須 | [runner 結果値 schema](#runner-result-schema) で build log が許可された値または `null` | 詳細結果。途中保存だけ `null`、最終保存では必須 string。 |
-| `trigger` | string | 必須 | `.build_history.trigger` と同じ | 起動種別。 |
+| `trigger` | string | 必須 | [`.build_history` JSON Lines schema](#build-history-schema) の `trigger` と同じ | 起動種別。 |
 | `trigger_actor` | string/null | 必須 | token id、`"admin"`、`"system"`、または `null` | 起動主体。secret 値は禁止する。 |
 | `branch` | string | 必須 | branch 名 | 対象 branch。 |
 | `target_file` | string | 必須 | 相対 path | 対象 file または directory。 |
@@ -1389,7 +1408,7 @@ Environment object:
 | `running` | boolean | 必須 | boolean | runner が build 処理中なら `true`。 |
 | `current_build_id` | string/null | 必須 | build id または `null` | 実行中 build id。実行中でなければ `null`。 |
 | `last_build_id` | string/null | 必須 | build id または `null` | 最後に status summary 対象の build log / history を確定した build id。history-only 行の追記では更新しない。未実行なら `null`。 |
-| `last_trigger` | string/null | 必須 | `.build_history.trigger` の値、`"startup_config_integrity"`、または `null` | 起動種別。startup integrity だけで終了した場合も保存できる。 |
+| `last_trigger` | string/null | 必須 | [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の trigger 許容値または `null` | 起動種別。startup integrity だけで終了した場合も保存できる。 |
 | `last_target_status` | string/null | 必須 | [runner 結果値 schema](#runner-result-schema) で status summary が許可された値または `null` | 詳細結果。初回のみ `null`。 |
 | `last_branch` | string/null | 必須 | branch 名または `null` | 最終対象 branch。 |
 | `last_target_file` | string/null | 必須 | 相対 path または `null` | 最終対象 file。 |

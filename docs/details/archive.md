@@ -96,7 +96,7 @@ snapshot 作成の呼出条件と入力引渡しは [`docs/details/runner.md` �
 |-----|------|
 | `GET /api/snapshots` | archive owner は snapshot 一覧読取結果だけを返す。 |
 | `GET /api/snapshots/{id}/download` | archive owner は保存済み `site.tar.gz` の事前検証と、検証した同一 file descriptor からの byte stream 引渡しだけを担当する。HTTP header / status は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を参照する。 |
-| `DELETE /api/snapshots/{id}` | archive owner は事前検証と snapshot delete 実体処理を行い、`deleted`、`delete_partial`、`delete_failed` のいずれかを返す。`.config_log`、`.audit_log`、HTTP response は `api` owner の責務とする。 |
+| `DELETE /api/snapshots/{id}` | archive owner は [snapshot delete 副作用固定契約](#snapshot-delete-side-effect-contract) の事前検証と実体処理を行い、同契約の result handoff を返す。`.config_log`、`.audit_log`、HTTP response は `api` owner の責務とする。 |
 | `POST /api/history/{id}/rollback` | archive owner は rollback 用 artifact の事前検証、展開、転送、temporary cleanup を行い、deploy 結果と pending 候補値を `runner` owner へ返す。rollback build の lock、ID、log、history、status、pending は [`docs/details/runner.md`](runner.md) 詳細本文責務を参照する。 |
 
 `id` は build id と一致するものだけ許可する。snapshot 専用 id は採番しない。`/`、`..`、空文字、URL decode 後に path separator を含む値は失敗扱いとする。
@@ -119,7 +119,7 @@ snapshot 作成の呼出条件と入力引渡しは [`docs/details/runner.md` �
 | `meta.json` | `id`、`build_id`、`saved_at`、`size_bytes`、`file_count`、`output_sha256` を必須 key とする。UTF-8、BOM なし、JSON object 1 個、末尾 LF 1 個で保存し、保存 key 順は `id`、`build_id`、`saved_at`、`size_bytes`、`file_count`、`output_sha256` に固定する。`size_bytes` は tar 内の通常 file の非圧縮 byte 合計、`file_count` は通常 file entry 数とし、`site.tar.gz` と `meta.json` 自身を含めない。 |
 | atomic publish | tmp directory 内で `site.tar.gz` と `meta.json` を作成し、tar / gzip writer close → underlying archive file sync → archive file close → metadata write 完了 → metadata file sync → metadata file close → tmp directory sync → [保存済み archive 検証・配信契約](#snapshot-archive-validation) の事前検証・metadata 再計算 → `{build_id}` へ rename → `.snapshots` directory sync の順に行う。rename 前の失敗は public path を作成せず `failed`、rename 後の `.snapshots` sync 失敗は検証済み public snapshot を維持し、結果 `saved`、warning `SNAPSHOT_DIRECTORY_SYNC_FAILED`として prune を実行しない。成功・失敗のどちらでも tmp path 削除を 1 回試行し、削除失敗は `SNAPSHOT_TMP_CLEANUP_FAILED` warning を返す。 |
 | 既存 snapshot | 同じ build id が存在する場合は上書きしない。`meta.json` と `site.tar.gz` を [保存済み archive 検証・配信契約](#snapshot-archive-validation) で検証し、`id`、`build_id`、`output_sha256` が呼出入力と一致する場合だけ `exists_valid` と `SNAPSHOT_EXISTS` を返す。破損または不一致は `failed` と `SNAPSHOT_EXISTS_MISMATCH` を返し、既存 directory を変更しない。 |
-| 世代削除 | 新 snapshot の publish 成功後だけ実行する。schema-valid な snapshot を `saved_at` 昇順、同時刻は id 昇順に並べ、`snapshots_keep` 超過分だけ古い順に削除する。破損 snapshot は自動削除しない。削除は [snapshot delete 副作用固定契約](#snapshot-delete-side-effect-contract) と同じ tombstone rename、directory sync、cleanup、directory sync の実装原語を使用する。`deleted` 以外は当該 id を失敗として記録し、残りの超過分を続行する。保存結果は `saved` のまま、失敗 id が 1 件以上なら warning `SNAPSHOT_PRUNE_FAILED` を 1 回返す。`delete_partial` の public path を復元せず、`delete_failed` の public path を自動削除しない。 |
+| 世代削除 | 新 snapshot の publish 成功後だけ実行する。schema-valid な snapshot を `saved_at` 昇順、同時刻は id 昇順に並べ、`snapshots_keep` 超過分だけ古い順に削除する。破損 snapshot は自動削除しない。削除は [snapshot delete 副作用固定契約](#snapshot-delete-side-effect-contract) を使用し、同契約の成功結果以外は当該 id の失敗として記録して残りの超過分を続行する。保存結果は `saved` のまま、失敗 id が 1 件以上なら warning `SNAPSHOT_PRUNE_FAILED` を 1 回返す。public path と失敗後副作用は同契約の result handoff を変更しない。 |
 
 <a id="snapshot-archive-validation"></a>
 **保存済み archive 検証・配信契約：**
@@ -170,8 +170,8 @@ rollback は [保存済み archive 検証・配信契約](#snapshot-archive-vali
 |------|------|
 | 一覧対象 | `.snapshots/{id}/meta.json` と `.snapshots/{id}/site.tar.gz` がとも存在し、[保存済み archive 検証・配信契約](#snapshot-archive-validation) の事前検証を通過する build id 形式の directory だけ。`.` で始まる save / rollback / pending / delete temporary path は一覧、破損 warning、prune 対象から除外する。 |
 | size | `meta.json.size_bytes` の値。directory 使用量、圧縮後 `site.tar.gz` size、`meta.json` size を合算しない。 |
-| delete 順 | api owner の id validation → runner owner の snapshot delete guard 取得・state 再確認 → archive owner の snapshot 事前検証・delete → 三値結果返却 → api owner の結果別 log 処理 → runner owner の guard 解放 → HTTP response。archive owner は guard を取得または解放しない。 |
-| delete partial / log 失敗 | public snapshot 削除後の tombstone cleanup / directory sync 失敗は archive owner が `delete_partial` を返す。api owner の `.config_log` / `.audit_log` 書込順、書込可否、guard 解放、HTTP は [`docs/details/api.md` 詳細本文責務 snapshot delete API 契約](api.md#snapshot-delete-api-contract) を正とする。必須 log 失敗の場合も `500` とし、public snapshot と先行 log を巻き戻さない。 |
+| delete 順 | archive owner の事前検証、削除、result handoff は [snapshot delete 副作用固定契約](#snapshot-delete-side-effect-contract)、owner 間の呼出順、log、guard、HTTP は [`docs/details/api.md` 詳細本文責務 snapshot delete API 契約](api.md#snapshot-delete-api-contract) を正本とする。archive owner は guard を取得または解放しない。 |
+| delete partial / log 失敗 | public path と archive owner の結果は [snapshot delete 副作用固定契約](#snapshot-delete-side-effect-contract)、必須 log 失敗後の副作用と HTTP は [`docs/details/api.md` 詳細本文責務 snapshot delete API 契約](api.md#snapshot-delete-api-contract) を正本とする。archive owner は API 固有の log failure を解釈しない。 |
 | rollback pending | [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の PendingTransfer object を使用し、`trigger="rollback"`、`source_kind="snapshot"`、`out=null`、`rollback_from=snapshot_id`、`output_sha256=meta.json.output_sha256` とする。`output_sha256=null` の snapshot は pending 候補を返さず `failure_build` とする。 |
 
 <a id="snapshot-delete-side-effect-contract"></a>
@@ -195,7 +195,7 @@ delete は destructive 操作であるため、archive owner が行う事前検�
 | snapshot save | 固定順の `site.tar.gz` と schema-valid な `meta.json` を tmp directory に作成し、再検証後に `.snapshots/{build_id}` へ rename する。`meta.json.output_sha256` は runner が引き渡した値と一致する。 | tmp 作成中の失敗では public snapshot directory を作らない。既存 snapshot は変更しない。 |
 | snapshot list | `meta.json` と `site.tar.gz` が [保存済み archive 検証・配信契約](#snapshot-archive-validation) を通過した snapshot だけを `saved_at` 降順、同時刻 id 降順で返す。 | 破損 snapshot は除外し、WARN `SNAPSHOT_META_CORRUPT`。修復しない。 |
 | download | 保存済み `site.tar.gz` の全 entry を事前検証し、同じ file descriptor から保存済み byte 列をそのまま stream する。 | unsafe entry、secret file、metadata 不一致では stream を開始せず、固定 code を返す。stream 開始後の read error では stream を中断する。状態は変更しない。 |
-| delete | 対象 snapshot directory を tombstone へ atomic rename 後に cleanup し、`deleted`、`delete_partial`、`delete_failed` のいずれかを api owner へ返す。 | rename 前失敗は public snapshot を維持する。rename 後失敗は public snapshot を巻き戻さず partial とする。archive owner は `.config_log`、`.audit_log`、history、build log、pending を変更しない。 |
+| delete | [snapshot delete 副作用固定契約](#snapshot-delete-side-effect-contract) の各段階を fixture で確認する。 | 同契約の結果 handoff と禁止副作用に一致しなければ実装確認不合格とする。 |
 | rollback success | 検証済み archive を展開し、deploy result、pending 候補、warning を runner owner へ返す。 | 展開または deploy 失敗を `failure_build` または `success_deploy_pending` で返し、元 snapshot と `.last_sha` を変更しない。 |
 
 **snapshot pending retry 固定契約：**

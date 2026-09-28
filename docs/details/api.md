@@ -586,7 +586,7 @@ backup response に secret 原文を含めてはならない。`password`、`tok
 
 `BackupObject` は `exported_at`、`server_config`、`notify_config`、`repo_config`、`branch_config`、`access_control`、`hooks`、`alert_rules`、`tag_rules`、`pipeline_config`、`dashboard_layout`、`smtp_config`、`webhook_secret_set`、`smtp_password_set` の全 key を必須とし、未知 key を返さない。各設定 object の schema は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の同名状態ファイル schema を参照する。
 
-`RestoreObject` は `server_config`、`notify_config`、`repo_config`、`branch_config`、`access_control`、`hooks`、`alert_rules`、`tag_rules`、`pipeline_config`、`dashboard_layout`、`smtp_config` を必須 key とし、`exported_at`、`webhook_secret_set`、`smtp_password_set`、`webhook_secret`、`smtp_password` だけを任意 key とする。このため `BackupObject` は変換なしで restore request として使用できる。`exported_at` は UTC ISO 8601 として検証するが永続化しない。`webhook_secret_set` と `smtp_password_set` は backup 時の参照値であり、restore の secret 書込を発生させない。`webhook_secret` と `smtp_password` は、key 省略で既存値保持、`"***"` で既存値保持、`null` で削除、それ以外の空でない string で新規保存とする。未知 key、空文字の secret、型不一致は `422`とし、どの file も変更しない。
+`RestoreObject` は `server_config`、`notify_config`、`repo_config`、`branch_config`、`access_control`、`hooks`、`alert_rules`、`tag_rules`、`pipeline_config`、`dashboard_layout`、`smtp_config` を必須 key とし、`exported_at`、`webhook_secret_set`、`smtp_password_set`、`webhook_secret`、`smtp_password` だけを任意 key とする。このため `BackupObject` は変換なしで restore request として使用できる。`exported_at` は UTC ISO 8601 として検証するが永続化しない。`webhook_secret_set` と `smtp_password_set` は backup 時の参照値であり、restore の secret 書込を発生させない。`webhook_secret` と `smtp_password` は、key 省略で既存値保持、`"***"` で既存値保持、`null` で削除、それ以外は [`docs/details/statefile.md` 詳細本文責務 UTF-8 text payload 固定契約](statefile.md#statefile-text-payload-contract) の対応する secret 条件を満たす string で新規保存とする。未知 key、secret 条件不一致、型不一致は `422` とし、どの file も変更しない。
 
 **backup / restore 固定契約：**
 
@@ -684,7 +684,7 @@ API handler は endpoint ごとの個別処理へ入る前に、[`docs/details/a
 | read-only verification | `POST /api/verify-output` | API 選択出力 target 決定 →同 target の成功履歴読込 →現在 manifest 算出 → checksum 比較 → response 生成 | 出力、履歴、log、SHA cache、状態ファイルを変更しない。 | 出力または検証可能な成功履歴不在は `404`。読取不能は `500`。 |
 | single-file update | `POST /api/config`, `POST /api/repo-config`, `POST /api/maintenance/*`, `POST /api/access-control`, `POST /api/dashboard-layout` | body 検証 → 現在値読込 → 差分生成 → atomic write → `.config_log` → `config_update` audit | 更新後値または `{message}` を返す。 | body 検証失敗は書込前に `422`。`.config_log` または audit 失敗時は対象更新済みのまま `500`。 |
 | multi-file update | `POST /api/restore`, `POST /api/smtp-config`, `POST /api/history/{id}/tags` | 全入力検証 → 全対象読込 → 書込計画生成 → 定義済み Write 順に atomic write → `.config_log` → `config_update` audit | 全対象の更新完了後に response を返す。 | 検証失敗は書込なし `422`。途中失敗は未処理ファイルを書かず `500`。 |
-| secret update | `POST /api/pat-update`, `POST /api/webhook-config`, `POST /api/smtp-config` password あり | secret 入力検証 → [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の atomic write と mode を適用 → `.config_log` へ `"***"` で記録 → `config_update` audit | secret 本体を response に含めない。 | secret 書込失敗は `500`。ログ、response、stdout へ平文を出さない。 |
+| secret update | `POST /api/pat-update`, `POST /api/webhook-config` | secret 入力検証 → [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の atomic write と mode を適用 → `.config_log` へ `"***"` で記録 → `config_update` audit | secret 本体を response に含めない。 | secret 書込失敗は `500`。ログ、response、stdout へ平文を出さない。 |
 | build dispatch | `POST /api/build`, `POST /api/build/force` | 共通判定 → maintenance → circuit → active / waiting 重複判定 → lock / queue 容量 → queue entry atomic write → trigger audit → `systemctl start --no-block adlaire-ci.service` | 新規 entry は `202` と queue id、`queued:true`、`dispatch` を返す。同一 active / waiting entry は再起動要求後に `200`。 | maintenance 破損 / 読取不能は `503 maintenance_unavailable`、enabled は `503 maintenance`、circuit open は `409 circuit_open`、lock 判定不能は `409 Conflict`、queue full は `429`。queue 書込みまたは audit 失敗は `500`。起動要求失敗は queue を残し `dispatch:"timer_fallback"`。 |
 | rollback command | `POST /api/history/{id}/rollback` | 共通判定 → id 検証 → maintenance → circuit → runner rollback prepare → `build_trigger` audit → prepared worker 開始 | worker 開始境界が `accepted` を返した後だけ `202` と rollback build id を返す。 | 不正 id は `422`、history / snapshot 不在は `404`、maintenance は `503`、circuit open、running、現在の deploy target 不在は `409`、snapshot 破損、状態書込失敗は `500`。audit 失敗は prepared rollback を abort して `500`。manual queue entry と systemd runner 起動要求を作成しない。 |
 | snapshot delete | `DELETE /api/snapshots/{id}` | 共通判定 → id 検証 → runner owner の snapshot delete guard 取得・state 再確認 → archive owner の事前検証・削除 → 三値結果別 log 処理 → guard 解放 → response | `deleted` かつ success config / audit と guard 解放の成功後だけ `{ "message":"Snapshot deleted" }` を返す。 | 不正 id は `422`、不在は `404`、running / lock conflict は `409`、state 破損・読取失敗、archive 破損、`delete_partial`、`delete_failed`、log 失敗、guard 解放失敗は `500`。public snapshot 削除後の失敗で snapshot と先行 log を巻き戻さない。guard 解放は guard 取得後の全終了経路で 1 回試行する。 |
@@ -923,7 +923,7 @@ endpoint の method、path、認証境界、request、response、error、read / 
 | `circuit_open` | boolean | `circuit_open`。 | `readCircuitState().open`。 |
 | `running` | boolean | `running`。ただし `readBuildLock().running=true` なら `true`。 | `readBuildState().running \|\| readBuildLock().running`。 |
 
-`last_build_status` は [`docs/details/statefile.md` 詳細本文責務 `.build_status.json` schema](statefile.md#build-status-schema) の正規化値、`last_target_status` は同 schema の詳細結果値とする。`last_trigger` は [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の trigger 有効値または `null`、`last_deploy_status` は同じ statefile schema の許容値または `null` とする。`last_sha` は 40 または 64 文字 lowercase hex または `null`、pending 件数は 0 以上の整数とする。
+`last_build_status` は [`docs/details/statefile.md` 詳細本文責務 `.build_status.json` schema](statefile.md#build-status-schema) の正規化値、`last_target_status` は同 schema の詳細結果値とする。`last_trigger` は [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の trigger 許容値または `null`、`last_deploy_status` は同じ statefile schema の許容値または `null` とする。`last_sha` は 40 または 64 文字 lowercase hex または `null`、pending 件数は 0 以上の整数とする。
 
 `running` の読取順、stale lock、形式不正または PID 判定不能の lock の扱いは、[`docs/details/api.md` 詳細本文責務 §22.0c.1](api.md#sec-22-0c-1) の `GET /api/status` 行を正本とする。
 
@@ -948,7 +948,7 @@ endpoint の method、path、認証境界、request、response、error、read / 
 }
 ```
 
-`page` は 1 始まり。`per_page` の最大値は 100。`trigger` は [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の固定値のみ許可する。`tag` はタグ検証と同じ文字列制約を適用する。`flagged` は `"true"` または `"false"` のみ許可する。`failure_category` は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の FailureCategory 固定値だけを許可し、指定時は保存値の完全一致で絞り込む。`.build_history.status="success"` の純粋な成功履歴は `failure_category:null` のため category filter 指定時に一致しない。`.build_history.status="success_deploy_pending"` の履歴は正規化状態が `success` でも `failure_category:"deploy_failure"` を保存し、`failure_category=deploy_failure` に一致する。未知 query、1 未満の `page`、範囲外の `per_page`、不正な `trigger` / `tag` / `flagged` / `failure_category` は `422 {"error":"Validation failed","details":[...]}` とし、`details[]` は [`docs/details/api.md` 詳細本文責務 §22.0b](api.md#sec-22-0b) の固定規則に従って実際に不正な query 名と理由を返す。例えば未知の `failure_category` は `{"field":"failure_category","message":"invalid value"}`、整数でない `page` は `{"field":"page","message":"integer required"}` とする。有効な正整数だが最終ページを超える `page` は `422` にせず、その `page` と `per_page`、絞り込み後の `total` と `pages`、`history:[]` を返す。各 history object は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の有効な `.build_history` record の全必須 key を保持し、response 専用 `build_at=finished_at` と `sha=commit_sha ?? blob_sha` を追加する。保存ファイルへ `build_at` と `sha` を逆書きしてはならない。
+`page` は 1 始まり。`per_page` の最大値は 100。`trigger` は [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の固定値のみ許可する。`tag` はタグ検証と同じ文字列制約を適用する。`flagged` は `"true"` または `"false"` のみ許可する。`failure_category` は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の FailureCategory 固定値だけを許可し、指定時は保存値の完全一致で絞り込む。`.build_history.status="success"` の純粋な成功履歴は `failure_category:null` のため category filter 指定時に一致しない。`.build_history.status="success_deploy_pending"` の履歴は正規化状態が `success` でも `failure_category:"deploy_failure"` を保存し、`failure_category=deploy_failure` に一致する。未知 query、1 未満の `page`、範囲外の `per_page`、不正な `trigger` / `tag` / `flagged` / `failure_category` は `422 {"error":"Validation failed","details":[...]}` とし、`details[]` は [`docs/details/api.md` 詳細本文責務 §22.0b](api.md#sec-22-0b) の固定規則に従って実際に不正な query 名と理由を返す。例えば未知の `failure_category` は `{"field":"failure_category","message":"invalid value"}`、整数でない `page` は `{"field":"page","message":"integer required"}` とする。有効な正整数だが最終ページを超える `page` は `422` にせず、その `page` と `per_page`、絞り込み後の `total` と `pages`、`history:[]` を返す。各 history object は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の有効な `.build_history` record の全必須 key を保持し、response 専用 `build_at=finished_at` と `sha=commit_sha ?? blob_sha` を追加する。保存ファイルへ `build_at` と `sha` を逆書きしてはならない。
 
 history `id` と対応 log の有無は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.build_history` schema を正とする。build record は build id を使い同名 build log を持つ。approval event と dependency skip は正本で定義された id を使い、対応 build log を持たない。
 
@@ -1012,7 +1012,7 @@ SHA キャッシュのクリアだけを行う専用 API は定義しない。�
 }
 ```
 
-`on` の有効値：`"start"`（ビルド開始時）| `"success"`（ビルド成功時）| `"failure"`（ビルド失敗時）| `"deploy_failure"`（転送失敗時）| `"weekly_summary"`（定期サマリー送信時）| `"approval_required"`（承認待ち発生時）| `"duration_anomaly"`（所要時間異常時）| `"config_corrupt"`（設定破損復旧時）。複数指定は array 順を保持して保存する。
+`on` の型、許容値、重複除去は [`docs/details/statefile.md` 詳細本文責務 `.notify_config` schema](statefile.md#notify-config-schema) を正本とする。API は重複除去後も各値の最初の出現順を保持して保存する。
 
 `summary`：週次サマリー通知の設定。`interval` の有効値は `"weekly"` 固定。`hour` は 0〜23（UTC）。`day_of_week` は 0 = 日曜〜6 = 土曜。自動送信条件、二重送信防止、集計、送信順序、`.build_state` 更新は [`docs/details/runner.md` 詳細本文責務 §27.19](runner.md#sec-27-19) を参照する。
 
@@ -1641,6 +1641,8 @@ method、path、認証境界、request、response、error、read / write 境界�
 { "message": "Webhook secret updated" }
 ```
 
+request は `secret` だけを必須 key とする JSON object とし、値は [`docs/details/statefile.md` 詳細本文責務 UTF-8 text payload 固定契約](statefile.md#statefile-text-payload-contract) の `.webhook_secret` 条件を満たす string とする。key 欠落、未知 key、型不一致、secret 条件不一致は `422` とし、`.webhook_secret`、`.config_log`、`.audit_log` を変更しない。
+
 ---
 
 <a id="api-cooldown-common-reference"></a>
@@ -1861,7 +1863,7 @@ hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙
 
 ビルド完了時に条件式を評価し、マッチしたルールのタグを `.build_history` のエントリへ自動追記する（手動タグと共存する）。`.tag_rules` に保存する。
 
-条件式で使用可能な変数：`status`（`"success"` / `"failure"`）/ `duration_seconds`（整数）/ `trigger`（`"polling"` / `"force_interval"` / `"manual"` / `"webhook"` / `"retry_pending_transfer"` / `"startup_config_integrity"` / `"rollback"` / `"local_watch"` / `"approval"`）
+条件式で使用可能な変数：`status`（`"success"` / `"failure"`）/ `duration_seconds`（整数）/ `trigger`（[`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の trigger 許容値）
 演算子：`==`・`!=`・`>`・`<`・`>=`・`<=`
 
 **`GET /api/tag-rules` レスポンス例：**
@@ -1956,7 +1958,7 @@ build 完了時の `output_sha256` 算出と history 保存は runner owner の�
 { "message": "Notes updated", "updated_at": "2026-09-15T10:00:00Z" }
 ```
 
-`.notes` は UTF-8 text として保存し、JSON ではない。`POST /api/notes` の `content` は 0〜100000 文字、NUL 禁止とする。保存時は本文をそのまま `.notes` に atomic write し、更新時刻は `.config_log` の `at` を返す。既存本文と一致する場合は `.notes`、`.config_log`、`.audit_log` を変更せず `{ "message":"No changes","updated_at":null }` を返す。
+`POST /api/notes` の `content` は [`docs/details/statefile.md` 詳細本文責務 UTF-8 text payload 固定契約](statefile.md#statefile-text-payload-contract) の `.notes` 条件を満たす string とする。API は検証済みの UTF-8 byte 列を変換せず `.notes` に atomic write し、更新時刻は `.config_log` の `at` を返す。既存 byte 列と一致する場合は `.notes`、`.config_log`、`.audit_log` を変更せず `{ "message":"No changes","updated_at":null }` を返す。
 
 ---
 
@@ -1978,7 +1980,7 @@ Webhook に加えてメールでビルド結果を通知する機能。SMTP 接�
 // レスポンス: 200
 { "message": "SMTP config updated" }
 ```
-`on` の有効値：`"start"` / `"success"` / `"failure"`
+`on` の型と許容値は [`docs/details/statefile.md` 詳細本文責務 `.smtp_config` schema](statefile.md#smtp-config-schema) を正本とする。`password` は key 省略で既存 `.smtp_secret` を維持し、`null` で削除し、string の場合は [`docs/details/statefile.md` 詳細本文責務 UTF-8 text payload 固定契約](statefile.md#statefile-text-payload-contract) の `.smtp_secret` 条件を満たす値だけを保存する。型不一致または secret 条件不一致は `422` とし、`.smtp_config`、`.smtp_secret`、`.config_log`、`.audit_log` を変更しない。
 
 **`POST /api/smtp-test` レスポンス例：**
 ```text

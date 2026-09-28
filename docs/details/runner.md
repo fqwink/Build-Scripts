@@ -601,23 +601,7 @@ runner は `BRANCH_TARGETS` の各 entry について、[`docs/details/statefile
 
 `.build_logs/{id}.json.status` は正規化状態、`.build_logs/{id}.json.target_status` は詳細結果として同時に保存する。`failure_api`、`failure_decode`、`failure_precheck`、`failure_build`、`failure_state_write` および追加機能の failure 値は `status="failure"` へ写像し、詳細値を `target_status` から失わせてはならない。`error` は [`docs/details/runner.md` 詳細本文責務 §15](runner.md#15-ログ) の固定文言を保存する。API の正規化 `status` と詳細結果の response field は [`docs/details/api.md` 詳細本文責務 §22.0c.1](api.md#sec-22-0c-1) を参照する。
 
-**ビルドトリガー種別契約：**
-
-`trigger` は runner が処理を開始した原因を表す固定文字列であり、runner は `.build_logs/{id}.json`、`.build_history`、`.build_status.json` に同じ値を保存する。実装者判断で `auto`、`force`、`scheduled` など別名を追加してはならない。
-
-| `trigger` | 発生条件 | build log | history | status |
-|-----------|----------|-----------|---------|--------|
-| `polling` | systemd timer 等の通常起動で SHA 差分により build する。 | 記録する | 記録する | 記録する |
-| `force_interval` | SHA 差分なしだが `.server_config.force_build_interval_hours` 条件成立により build する。 | 記録する | 記録する | 記録する |
-| `manual` | `POST /api/build` により `.build_state.queued` へ投入された entry を処理する。 | 記録する | 記録する | 記録する |
-| `webhook` | GitHub Webhook 受信により `.build_state.queued` へ投入された entry を処理する。 | 記録する | 記録する | 記録する |
-| `retry_pending_transfer` | `.pending_transfers` の再送のみを実行する。 | 再送専用 log を作成する場合に記録する | 再送履歴を追記する場合に記録する | 記録する |
-| `startup_config_integrity` | 設定ファイル起動時整合性チェックで破損復旧または停止が発生する。 | 作成しない | 追記しない | 記録する |
-| `rollback` | `POST /api/history/{id}/rollback` により snapshot を再転送する。 | 記録する | 記録する | 記録する |
-| `local_watch` | `watch_mode="local"` の local SHA 差分により build する。 | 記録する | 記録する | 記録する |
-| `approval` | `POST /api/approvals/{id}/approve` により承認済み queue entry を処理する。 | 記録する | 記録する | 記録する |
-
-queue entry の `trigger` は `"manual"`、`"webhook"`、`"approval"` のみ許可する。`"force"` は使用せず、強制実行 API は queue 保存時に `"manual"` と `payload.force=true` を保存する。`force_interval` と `local_watch` は runner が設定値と差分検出結果から内部判定する場合のみ使用する。
+処理開始原因の確定、trigger 許容値、保存先別の許可条件、禁止別名、判定順序は [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) を正本とする。本節の処理フローは確定済み trigger を build result writer と status finalizer へ引き渡し、別名への変換または未定義値の補完を行わない。
 
 **`.build_status.json` 更新契約：**
 
@@ -1219,7 +1203,7 @@ runner owner component は、build log の生成タイミング、stdout / stder
 
 `.build_history` の保存 key、型、必須条件、許容値は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.build_history` JSON Lines schema を参照する。
 
-runner は build 結果確定後、`.build_history` へ 1 build につき 1 行だけ追記する。`status` は runner の最終結果、`trigger` は [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の有効値、`output_sha256` は当該 build id を割り当てた `BranchTarget.Out` だけを root として [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の出力成果物 manifest SHA-256 を算出した値とする。別 target の output、`RunnerConfig.StateDir` 配下の固定 path、直前に成功した target の値を使用してはならない。manifest 生成に失敗した場合のみ `output_sha256:null` を許可し、対応する warning を同じ build log に保存する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
+runner は build 結果確定後、`.build_history` へ 1 build につき 1 行だけ追記する。`status` は runner の最終結果、`trigger` は [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の許容値、`output_sha256` は当該 build id を割り当てた `BranchTarget.Out` だけを root として [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の出力成果物 manifest SHA-256 を算出した値とする。別 target の output、`RunnerConfig.StateDir` 配下の固定 path、直前に成功した target の値を使用してはならない。manifest 生成に失敗した場合のみ `output_sha256:null` を許可し、対応する warning を同じ build log に保存する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
 
 **固定エラー文言：**
 
@@ -1644,6 +1628,7 @@ runner は [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27
 | `.build_history.trigger` | build history を追記する全処理で必須。 |
 | `.build_status.json.last_trigger` | build、skip、復旧、rollback の最終 trigger を保存する。 |
 | Queue entry `trigger` | `"manual"`、`"webhook"`、`"approval"` のみ許可する。 |
+| Approval `requested_trigger` | `"polling"`、`"force_interval"`、`"manual"`、`"webhook"`、`"local_watch"` のみ許可する。 |
 | API response / SDK / UI 連携 | runner は API / SDK / UI に提供する同じ trigger 値を保存する。 |
 
 **判定順序：**
