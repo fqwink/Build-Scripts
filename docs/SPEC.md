@@ -90,7 +90,7 @@
 | Git・GitHub 参照 | `runner` の source 取得は GitHub REST API の Blobs / Trees API を Go 標準ライブラリ `net/http` 経由で行う。`release` の local commit / tag / source 参照は read-only Git command、remote repository / branch / tag / Release 参照は GitHub REST API を使用する。実行時の Git 状態変更、ref 作成・更新・削除、fetch、checkout、merge、commit、push は行わない。 |
 | フロントエンド | HTML / CSS / Vanilla JavaScript |
 | 標準運用 | systemd を使用する自己管理 Linux CI サーバーでビルドし、別ホストの静的コンテンツ配信サーバーへ SSH で転送する 2 サーバー構成 |
-| データ交換形式 | JSON に統一する。エクスポート・インポートを含む全 API データ交換に CSV・XML 等の非 JSON 形式を使用しない |
+| データ交換形式 | 構造化 API request / response は JSON に統一し、CSV・XML 等の代替構造化形式を使用しない。例外は、保存済み build log の有限 SSE response、保存済み snapshot の binary response、管理ツールの静的 asset response だけとする。例外となる endpoint、media type、body、失敗時 JSON response は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK の受信・変換契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする。詳細本文責務に明示されていない非 JSON API 交換を実装してはならない |
 
 <a id="41-ゼロ依存フルインハウス原則"></a>
 
@@ -805,7 +805,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 ## 10. 状態ファイル永続化ポリシー
 
-データベース不使用、ファイルベース、JSON 統一の技術選択は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#4-技術方針) を正本とする。具体的な状態ファイル一覧、schema、権限、更新順序、破損時処理は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。技術選択を変更する場合は、技術方針表の改訂と外部依存の許可判断を実装より先に完了しなければならない。
+データベースは使用せず、状態はファイルベースで永続化する。構造化状態の標準形式は JSON object、JSON array、または JSON Lines とする。例外は、[`docs/details/statefile.md`](details/statefile.md) 詳細本文責務の状態ファイル固定表に path と形式を明示した UTF-8 text、gzip 圧縮 JSON、directory、および [`docs/details/archive.md`](details/archive.md) 詳細本文責務に形式を明示した tar.gz artifact だけとする。固定表または archive 詳細本文責務に明示されていない非 JSON 形式を追加してはならない。具体的な状態ファイル一覧、schema、権限、更新順序、破損時処理は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。技術選択を変更する場合は、[`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#4-技術方針) の改訂と外部依存の許可判断を実装より先に完了しなければならない。
 
 ## 11. シングルユーザー認証ポリシー
 
