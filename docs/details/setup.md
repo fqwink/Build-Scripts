@@ -13,7 +13,7 @@
 | 項目 | 内容 |
 |------|------|
 | owner component | `setup` |
-| 実装主体 | `components/setup.go`。起動入口は `main.go`、実行ファイル名は `adlaire-ci-setup`、起動 interface は [setup CLI 固定契約](#setup-cli-contract) とする。 |
+| 実装主体 | `components/setup.go`。起動入口は [`main.go`](../../main.go)、実行ファイル名は `adlaire-ci-setup`、起動 interface は [setup CLI 固定契約](#setup-cli-contract) とする。 |
 | 持つ内容 | `setup` owner が主本文として定義するバイナリ配布、配置、systemd、セットアップ、アップデート、Release 成果物の受け入れ・checksum 検証。 |
 
 ---
@@ -30,7 +30,7 @@
 | 項目 | 要件 |
 |------|------|
 | Go 版バイナリ | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`。管理 API 導入時は `adlaire-ci-api` も配置する。 |
-| 配布形式 | GitHub Release に添付された OS/arch 別の実行バイナリを標準とする。初期標準は Linux x86_64（`linux-amd64`）。 |
+| 配布形式 | GitHub Release 添付 asset を取得対象とする。Release 形式と標準 OS/arch は [`docs/SPEC.md` ポリシー責務 §1](../SPEC.md#policy-versioning)、取得対象 asset は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) を参照する。 |
 | Go toolchain | 利用環境には不要。リリースバイナリをそのまま配置し、利用環境で `go build` しない。 |
 | checksum | `SHA256SUMS` 自身を除く取得対象 Release asset の SHA-256 checksum を取得し、配置または展開前に必ず検証する。`SHA256SUMS` 自身を checksum 対象にしない。 |
 | init システム | systemd（Linux） |
@@ -94,7 +94,7 @@ parseと入力検証の順序は、共通option、mode、未知・重複option�
 | `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | `SHA256SUMS` 自身を除く取得対象 Release asset の SHA-256 checksum 一覧。 |
 
-Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を正本とする。setupはmodeに必要なassetだけを取得し、固定名と完全一致することを検証する。`$OS_ARCH`は`linux-amd64`だけを初期標準とし、未知OS/archは取得前に[setup出力・error固定契約](#setup-output-contract)の`UNSUPPORTED_PLATFORM`、終了コード`2`とする。`SHA256SUMS`は対象filenameが1回だけ存在し、未取得assetを含むrelease全体の5行が[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)と一致することを確認する。0件、重複、未知行、自己行、形式不正はchecksum検証失敗とする。
+Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を正本とする。setupはmodeに必要なassetだけを取得し、固定名と完全一致することを検証する。`$OS_ARCH`は`linux-amd64`だけを受け付け、未知OS/archは取得前に[setup出力・error固定契約](#setup-output-contract)の`UNSUPPORTED_PLATFORM`、終了コード`2`とする。`SHA256SUMS`は対象filenameが1回だけ存在し、未取得assetを含むrelease全体の5行が[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)と一致することを確認する。0件、重複、未知行、自己行、形式不正はchecksum検証失敗とする。
 
 <a id="sec-26-2b"></a>
 **[§26.2b セットアップ・アップデート機能単位](setup.md#sec-26-2b)：**
@@ -530,7 +530,7 @@ API、状態ファイル、SDK、UI、認証、fixture の本文は [関連責�
 | 実装前 | secret handling | setup / update が触る secret file の保存先、権限、保持条件、log 禁止が定義済み。 |
 | 実装後 | setup/update | checksum、unsafe archive、restart failure、rollback failure、health failure が [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) / [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) と一致する。 |
 
-実装計画上の割当、現在状態、順序、依存関係は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#41-初期実装-phase-単位)、実装変更単位、着手条件、完了判定は [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#0f-phase-実装単位ポリシー) を参照する。
+実装計画上の割当、現在状態、順序、依存関係は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、実装変更単位、着手条件、完了判定は [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit) を参照する。
 
 実装単位別の fixture、fake、expected / effects、実装検証証跡、不足時の扱いは [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) を参照する。
 

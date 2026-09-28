@@ -9,8 +9,8 @@ Build-Scripts は、Adlaire CI の仕様、Go 実装、管理 UI、検証資産�
 1. [`AGENTS.md`](AGENTS.md): 作業ルール、承認、Git 運用を確認する。
 2. [`docs/SPEC.md`](docs/SPEC.md) 方針責務・ポリシー責務: 仕様、方針、ポリシー、禁止事項、実装着手可否を確認する。
 3. [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務: 目的別の参照先を確認する。
-4. [`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務: 実装 artifact と各機能の現在状態、Phase、機能インベントリ、将来計画を確認する。状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](docs/SPEC.md#0a-仕様成熟度ポリシー) を参照する。
+4. [`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務: 実装 artifact と各機能の現在状態、Phase、機能インベントリ、将来計画を確認する。状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](docs/SPEC.md#policy-spec-maturity) を参照する。
 5. [`docs/DETAIL_INDEX.md`](docs/DETAIL_INDEX.md) 詳細仕様入口責務: owner component 別の詳細仕様参照先と fixture 証跡責務の参照先を確認する。
 6. [`docs/DESIGN.md`](docs/DESIGN.md) デザイン責務: 生成静的 Web サイトと標準管理 UI のデザイン関係を確認する。
 
-リリース形式は [`docs/SPEC.md` ポリシー責務 §1](docs/SPEC.md#1-バージョン管理)、セットアップ詳細は [`docs/details/setup.md` 詳細本文責務 §26](docs/details/setup.md#26-セットアップアップデート手順) を参照します。
+リリース形式は [`docs/SPEC.md` ポリシー責務 §1](docs/SPEC.md#policy-versioning)、セットアップ詳細は [`docs/details/setup.md` 詳細本文責務 §26](docs/details/setup.md#26-セットアップアップデート手順) を参照します。

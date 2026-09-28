@@ -27,6 +27,7 @@
 
 `api` および拡張後 `runner` が読み書きする状態ファイルは、[`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の状態ファイル固定表の初期値、形式、更新責務に従う。表にない状態ファイルを追加してはならない。追加が必要な場合は、先に [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) へパス、形式、初期値、更新責務、破損時の扱いを追記する。
 
+<a id="statefile-fixed-table"></a>
 | パス | 形式 | 初期値 | 更新責務 | 破損時の扱い |
 |------|------|--------|----------|--------------|
 | `.admin_credentials` | JSON object | `--init-credentials` で生成 | `api` | 起動時に ERROR ログを出し、HTTP サーバーを起動しない。 |
@@ -45,7 +46,7 @@
 | `.build_logs/{build_id}_hook_{hook_id}.json` | JSON object | hook 実行ごとに新規作成 | `runner` | 個別破損 file は hook log 一覧から除外して固定 ERROR code を記録し、自動修復または上書きしない。 |
 | `.build_lock` | text | 不在 | `runner` | 内容は `pid={pid}\nstarted_at={UTC_ISO8601}\n` とする。PID が存在しない場合は `readBuildLock()` が stale として返し、read-only caller は削除しない。runner owner の build / rollback / snapshot delete 排他 coordinator だけが開始前再読取で同じ stale 判定を確認後に削除できる。PID が存在する場合は実行中 conflict、形式不正または PID 判定不能は上書きせず conflict failure とする。 |
 | `.last_sha` / `BranchTarget.SHAFile` | JSON object | `{"sha":""}` | `runner` | JSON 破損、object 以外、`sha` key 不在、`sha` 型不一致は当該 target の decode failure とし、成功時まで更新しない。 |
-| `.sha_cache/{branch_safe}/{target_hash}.sha` | UTF-8 text | 不在 | `runner` | 40 または 64 文字 lowercase hex と末尾 LF 以外は cache miss として WARN を記録し、build 成功時だけ置換する。 |
+| `.sha_cache/{branch_safe}/{target_hash}.sha` | UTF-8 text | 不在 | `runner` | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) の値と末尾 LF 以外は cache miss として WARN を記録し、build 成功時だけ置換する。 |
 | `.branch_config` | JSON object | 不在 | `runner` / `api` | `.branch_config.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、再生成せず `BRANCH_TARGETS` デフォルトへフォールバックする。 |
 | `.build_state` | JSON object | `{"running":false,"current_build_id":null,"active_queue_entry":null,"queued":[],"last_started_at":null,"last_finished_at":null,"weekly_summary_last_sent_at":null,"weekly_summary_sent_date":null}` | `runner` / `api` | `.build_state.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
 | `.build_status.json` | JSON object | `{"schema_version":1,"updated_at":null,"status":"none","running":false,"current_build_id":null,"last_build_id":null,"last_trigger":null,"last_target_status":null,"last_branch":null,"last_target_file":null,"last_blob_sha":null,"last_commit_sha":null,"last_started_at":null,"last_finished_at":null,"last_duration_seconds":null,"last_error":null,"last_deploy_at":null,"last_deploy_status":null,"pending_transfers_count":0,"notify_pending_count":0,"circuit_open":false,"circuit_consecutive_failures":0,"output_sha256":null,"size_warn":false}` | `runner` | `.build_status.json.corrupt.{YYYYMMDDHHMMSS}.bak` へ退避し、初期値で再生成する。 |
@@ -497,9 +498,9 @@ array は投入順を保持する。転送先識別子は `branch`、`target_id`
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
-| `sha` | string | 必須 | 空文字または Git blob SHA | 空文字は初回実行扱い。 |
+| `sha` | string | 必須 | 空文字または [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値 | 空文字は初回実行扱い。 |
 
-SHA cache は target ごとの処理済み Git blob SHA を保存する JSON object とする。JSON object 以外の保存形式は破損として扱う。
+この JSON object は target ごとの処理済み target SHA / digest を保存する。JSON object 以外の保存形式と、対象種別に対応しない長さの非空値は破損として扱う。
 
 | 状態 | 読込時の扱い | 保存時の扱い |
 |------|--------------|--------------|
@@ -516,7 +517,7 @@ SHA cache の更新タイミング、skip / failure 時の更新可否、複数 
 <a id="sha-cache-text-contract"></a>
 **`.sha_cache/{branch_safe}/{target_hash}.sha` schema：**
 
-file 内容は Git object SHA の lowercase hexadecimal 40 文字または 64 文字と、末尾 LF 1 個だけとする。先頭空白、末尾空白、CRLF、複数行、大文字 hex、`0x` prefix、末尾 LF なしは不正とする。不在または不正値は cache miss とし、不正な既存 file を読取時に自動更新しない。path の `branch_safe` / `target_hash` 導出、比較、成功時更新、skip / failure 時の更新禁止は [`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21) を参照する。
+file 内容は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値と、末尾 LF 1 個だけとする。先頭空白、末尾空白、CRLF、複数行、大文字 hex、`0x` prefix、末尾 LF なしは不正とする。不在または不正値は cache miss とし、不正な既存 file を読取時に自動更新しない。path の `branch_safe` / `target_hash` 導出、比較、成功時更新、skip / failure 時の更新禁止は [`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21) を参照する。
 
 **`.local_watch_state.json` schema：**
 
@@ -650,7 +651,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 |------|----|------|--------|------|
 | `password_hash` | string | 必須 | 64 文字 lowercase hex | password 本体は保存しない。 |
 | `salt` | string | 必須 | 64 文字 lowercase hex | 32 bytes salt。 |
-| `algorithm` | string | 必須 | `"sha256_iter_v1"` 固定 | 他 algorithm は初期実装で拒否する。 |
+| `algorithm` | string | 必須 | `"sha256_iter_v1"` 固定 | 他 algorithm は拒否する。 |
 | `iterations` | integer | 必須 | `260000` 固定 | 値が異なる場合は認証 caller へ破損失敗を返す。 |
 | `must_change` | boolean | 必須 | boolean | 初期生成時 `true`、パスワード変更後 `false`。 |
 | `login_count` | integer | 必須 | `0`〜`9223372036854775807` | session token 発行処理の credentials 保存時に `min(login_count+1,9223372036854775807)` とする。TOTP 無効 login は password 成功時、TOTP 有効 login は `POST /api/login/totp` 成功処理時に増加し、TOTP ticket 発行時は増やさない。上限値では飽和させ、overflow させない。 |
@@ -659,12 +660,13 @@ repo config write caller は request の `owner` または `repo` のうち指�
 
 `.admin_credentials` に未知 key がある場合は credentials 破損として扱い、自動削除しない。必須 key 不足、型不一致、hex 不正、`algorithm` 不一致、`iterations` 不一致、`login_count` 範囲外もすべて credentials 破損とする。API 起動時検証、login / password change の公開応答、`must_change` 算出、認証ログ、監査ログ、漏えい禁止値は [`docs/details/security.md` 詳細本文責務 認証共通詳細](security.md#認証共通詳細) および [`docs/details/security.md` 詳細本文責務 §27.45](security.md#sec-27-45)〜[§27.46](security.md#sec-27-46) を参照する。statefile は破損内容、hash、salt を呼び出し元の公開値として返してはならない。
 
+<a id="audit-log-schema"></a>
 **`.audit_log` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `timestamp` | string | 必須 | ISO 8601 | 発生日時。 |
-| `request_id` | string/null | 必須 | 32 文字 lowercase hex または `null` | API request は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) で生成する識別子。API request に紐づかない `runner` 内部 event は `null`。 |
+| `request_id` | string/null | 必須 | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値、または `null` | API request は生成済み request ID、API request に紐づかない `runner` 内部 event は `null`。 |
 | `actor_type` | string | 必須 | `"admin"` / `"api_token"` / `"webhook"` / `"system"` / `"anonymous"` | 操作者種別。 |
 | `actor_id` | string/null | 必須 | `"admin"`、token id、`"webhook"`、`"system"`、または `null` | 操作者。secret 本体は保存しない。 |
 | `action` | string | 必須 | [`docs/details/security.md` 詳細本文責務 §27.44](security.md#sec-27-44) | 操作種別。 |
@@ -693,6 +695,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 | `window_start` | string | 必須 | ISO 8601 | 現在窓の開始時刻。 |
 | `count` | integer | 必須 | 0 以上 | 現在窓内リクエスト数。 |
 
+<a id="api-token-schema"></a>
 **`.api_tokens` schema：**
 
 ```json
@@ -717,7 +720,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 | `tokens` | object[] | 必須 | 0〜100 件 | 発行済み API token 一覧。 |
 | `id` | string | 必須 | `tok` + 6 桁以上の数字 | token 識別子。 |
 | `label` | string | 必須 | 1〜64 文字 | 表示名。 |
-| `scopes` | string[] | 必須 | `read`, `trigger`, `operate`, `config`, `admin` の 1〜5 件 | token に許可する scope。 |
+| `scopes` | string[] | 必須 | [`docs/details/security.md` 詳細本文責務 API token scope 固定契約](security.md#api-token-scope-contract) の 1〜5 件 | token に許可する scope。 |
 | `token_hash` | string | 必須 | SHA-256 hex | token 本体は保存しない。 |
 | `created_at` | string | 必須 | ISO 8601 | 作成日時。 |
 | `last_used_at` | string/null | 必須 | ISO 8601 または `null` | 最終使用日時。 |
@@ -759,14 +762,15 @@ repo config write caller は request の `owner` または `repo` のうち指�
 
 `command_args[0]` は 1〜256 文字、`command_args[1:]` の各要素は 1〜500 文字とし、NUL、改行、CR を禁止する。`command_args[0]` は絶対 path または PATH 解決可能なコマンド名に限定する。`phase` と `command_args` が既存 enabled hook と完全一致する場合の重複時の扱いは [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を参照する。
 
+<a id="alert-rule-schema"></a>
 **`.alert_rules` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `rules` | object[] | 必須 | 0〜100 件 | dashboard alert rule。 |
 | `id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 §22.0e.2](api.md#sec-22-0e-2) の alert rule id | rule 識別子。 |
-| `metric` | string | 必須 | `success_rate_7d`, `avg_duration_seconds`, `last_build_age_hours`, `disk_usage_bytes` | 評価対象。 |
-| `operator` | string | 必須 | `lt`, `gt`, `lte`, `gte` | 比較演算子。 |
+| `metric` | string | 必須 | [`docs/details/api.md` 詳細本文責務 alert rule 固定契約](api.md#alert-rule-api) の metric | 評価対象。 |
+| `operator` | string | 必須 | [`docs/details/api.md` 詳細本文責務 alert rule 固定契約](api.md#alert-rule-api) の operator | 比較演算子。 |
 | `threshold` | number | 必須 | 0 以上 | 比較値。 |
 | `level` | string | 必須 | `info`, `warn`, `error` | alert severity。 |
 | `message` | string | 必須 | 1〜200 文字 | UI 表示文。secret を含めない。 |
@@ -798,6 +802,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 
 `inline_yaml` は UTF-8 不正、BOM、NUL、CR を拒否し、LF は保持する。YAML grammar、source 優先順位、parse、step 実行は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を参照する。
 
+<a id="dashboard-layout-schema"></a>
 **`.dashboard_layout` schema：**
 
 | キー | 型 | 必須 | 許容値 | 説明 |
@@ -894,7 +899,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | `type` | string | 必須 | `^[a-z][a-z0-9_]{0,63}$` | [`docs/details/api.md` 詳細本文責務 §27.20](api.md#sec-27-20) の endpoint 固定名。 |
 | `action` | string | 必須 | `"create"`, `"update"`, `"delete"` | 変更種別。 |
 | `actor` | string | 必須 | `"admin"` または API token id | 操作者。token 本体は保存しない。 |
-| `request_id` | string | 必須 | 32 文字 lowercase hex | [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) で生成した同一 request の識別子。 |
+| `request_id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値 | 同一 request の識別子。 |
 | `endpoint` | string | 必須 | `{METHOD} {path_template}` | path parameter の実値と query を含めない。 |
 | `result` | string | 必須 | `"success"`, `"partial_failure"` | 主状態変更と必須後続処理の結果。主状態変更後の後続処理失敗だけ `"partial_failure"` とする。 |
 | `error` | string/null | 必須 | `null` または `^[a-z][a-z0-9_]{0,63}$` | `result="success"` では `null`。`result="partial_failure"` では caller 固有節が定める固定 error code。 |
@@ -924,7 +929,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | キー | 型 | 必須 | 許容値 | 説明 |
 |------|----|------|--------|------|
 | `at` | string | 必須 | ISO 8601 | response 送信直前の日時。 |
-| `request_id` | string | 必須 | 32 文字 lowercase hex | [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) で生成する API 呼び出し識別子。 |
+| `request_id` | string | 必須 | [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) の生成値 | API 呼び出し識別子。 |
 | `method` | string | 必須 | HTTP method | `GET` / `POST` / `PUT` / `PATCH` / `DELETE`。 |
 | `path` | string | 必須 | `/api/...` | query を含まない path。 |
 | `query` | object | 必須 | JSON object | 許可済み query key と値。秘密値は禁止。 |
@@ -964,7 +969,7 @@ queue 保存上限は、valid running `.build_lock`、`.build_state.running=true
 | `id` | string | 必須 | base は `appr{YYYYMMDDHHmmss}`。衝突処理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の時刻ベース ID 契約に従う。 |
 | `status` | string | 必須 | `"pending"`、`"approved"`、`"rejected"`、`"expired"`。 |
 | `branch` | string | 必須 | branch target 名。 |
-| `sha` | string | 必須 | 40 文字 lowercase hex。 |
+| `sha` | string | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値。 |
 | `target` | string | 必須 | branch target id または target file。 |
 | `requested_trigger` | string | 必須 | [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の Approval 許容値。 |
 | `requested_force` | boolean | 必須 | SHA 一致時も build を実行する要求なら `true`。`force_interval` と手動 force は `true`、その他は `false`。 |
@@ -1109,7 +1114,7 @@ runner 結果値は保存先ごとに意味を分離する。`.build_logs/{id}.j
 | `finished_at` | string | 必須 | UTC ISO 8601 | build 完了または event 確定日時。API の `build_at` はこの値から算出する。 |
 | `duration_seconds` | integer/null | 必須 | 0 以上または `null` | build 未実行 event は `null`。 |
 | `commit_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | 対象 commit SHA。 |
-| `blob_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | 対象 blob SHA。API の `sha` は `commit_sha`、`blob_sha` の順で算出する。 |
+| `blob_sha` | string/null | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値または `null` | 対象 target SHA / digest。API の `sha` は `commit_sha`、`blob_sha` の順で算出する。 |
 | `pages` | integer/null | 必須 | 0 以上または `null` | report 不在は `null`。 |
 | `warnings` | integer | 必須 | 0 以上 | warning 件数。 |
 | `retry_count` | integer | 必須 | 0 以上 | 初回以後の追加 retry 回数。 |
@@ -1147,8 +1152,8 @@ build log を伴わない history record は次の値を固定する。表にな
 | `started_at` | string | 必須 | UTC ISO 8601 | 開始日時。 |
 | `finished_at` | string/null | 必須 | UTC ISO 8601 または `null` | 完了前は `null`。 |
 | `duration_seconds` | integer/null | 必須 | 0 以上または `null` | 完了前は `null`。 |
-| `blob_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | 対象 blob SHA。 |
-| `previous_blob_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | 初回または取得不能は `null`。 |
+| `blob_sha` | string/null | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値または `null` | 対象 target SHA / digest。 |
+| `previous_blob_sha` | string/null | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値または `null` | 初回または取得不能は `null`。 |
 | `commit_sha` | string/null | 必須 | 40 文字 lowercase hex または `null` | commit SHA。 |
 | `commit_message` | string/null | 必須 | 1000 文字以内または `null` | commit message。 |
 | `commit_author` | string/null | 必須 | 255 文字以内または `null` | commit author。 |
@@ -1290,8 +1295,8 @@ ChangedTarget object:
 | キー | 型 | 必須 | 説明 |
 |------|----|------|------|
 | `target_file` | string | 必須 | 正規化済み相対 path。 |
-| `before_sha` | string/null | 必須 | 変更前 SHA。不明は `null`。 |
-| `after_sha` | string/null | 必須 | 変更後 SHA。missing / error は `null`。 |
+| `before_sha` | string/null | 必須 | 変更前の [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値。不明は `null`。 |
+| `after_sha` | string/null | 必須 | 変更後の [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値。missing / error は `null`。 |
 | `source` | string | 必須 | `"github"` または `"local"`。 |
 | `result` | string | 必須 | `"changed"`, `"unchanged"`, `"missing"`, `"error"`。 |
 
@@ -1412,7 +1417,7 @@ Environment object:
 | `last_target_status` | string/null | 必須 | [runner 結果値 schema](#runner-result-schema) で status summary が許可された値または `null` | 詳細結果。初回のみ `null`。 |
 | `last_branch` | string/null | 必須 | branch 名または `null` | 最終対象 branch。 |
 | `last_target_file` | string/null | 必須 | 相対 path または `null` | 最終対象 file。 |
-| `last_blob_sha` | string/null | 必須 | Git blob SHA または `null` | 取得不能時は `null`。 |
+| `last_blob_sha` | string/null | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / digest 共通固定契約](../DETAIL_INDEX.md#common-target-digest) に合格する値または `null` | 取得不能時は `null`。 |
 | `last_commit_sha` | string/null | 必須 | Git commit SHA または `null` | 取得不能時は `null`。 |
 | `last_started_at` | string/null | 必須 | UTC ISO 8601 または `null` | 最終開始時刻。 |
 | `last_finished_at` | string/null | 必須 | UTC ISO 8601 または `null` | 最終終了時刻。 |

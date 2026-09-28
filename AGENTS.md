@@ -77,7 +77,7 @@
 
 実在ファイルの確認には hidden fixture を含めて列挙できる `rg --files --hidden -g '!.git/**'` を使用する。
 
-新規実装の着手可否は、[`docs/SPEC.md` ポリシー責務 §0a](docs/SPEC.md#0a-仕様成熟度ポリシー) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](docs/SPEC.md#0d-仕様凍結ポリシー) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#0f-phase-実装単位ポリシー) の active Phase 条件、[`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務の現在状態によって判定する。
+新規実装の着手可否は、[`docs/SPEC.md` ポリシー責務 §0a](docs/SPEC.md#policy-spec-maturity) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](docs/SPEC.md#policy-spec-freeze) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) の active Phase 条件、[`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務の現在状態によって判定する。
 
 実装中に未定義の入力、出力、状態、異常系、セキュリティ条件、検証条件を発見した場合は、実装判断で補完せず、先に該当する責務正本を改訂する。
 
@@ -92,6 +92,8 @@ API、SDK、UI のいずれかを変更する場合は、対応する endpoint�
 `実装済み` への状態変更は、[`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](docs/SPEC.md#implementation-completion-transition) と [`docs/SPEC.md` 方針責務 §4.8](docs/SPEC.md#sec-4-8) に従って判定する。
 
 ---
+<a id="agents-git-operations"></a>
+
 ## 4. Git 運用ルール
 
 `main` は保護対象ブランチとする。
@@ -207,7 +209,7 @@ Pull Request merge 後のローカル同期は、以下の手順を標準とす�
 
 承認済み変更作業が完了した場合、エージェントはユーザーからの追加指示および追加承認なしで、作業ブランチでのcommit、remoteへのpush、Pull Requestの作成または既存Pull Requestの更新まで自動実行する。
 
-Pull Request 作成自動化は、[承認ルール](#1-承認ルール) の承認済み範囲と、[本節](#4-git-運用ルール) の `main` 直接 push 禁止およびエージェントによる merge 禁止を例外なく適用する。
+Pull Request 作成自動化は、[承認ルール](#1-承認ルール) の承認済み範囲と、[本節](#agents-git-operations) の `main` 直接 push 禁止およびエージェントによる merge 禁止を例外なく適用する。
 
 Pull Request 作成前には、変更内容に応じて以下を確認する。
 
@@ -230,13 +232,13 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 ## 5. 外部依存変更ルール
 
-外部依存の採否、禁止条件、例外条件、許可範囲、許可外部ライブラリ一覧は、[docs/SPEC.md 方針責務 §4.1](docs/SPEC.md#sec-4-1) と [docs/SPEC.md ポリシー責務 §4](docs/SPEC.md#4-外部ライブラリフレームワーク方針) だけを正本とする。[AGENTS.md](AGENTS.md) で同じ方針または許可条件を再定義してはならない。
+外部依存の採否、禁止条件、例外条件、許可範囲、許可外部ライブラリ一覧は、[docs/SPEC.md 方針責務 §4.1](docs/SPEC.md#sec-4-1) と [docs/SPEC.md ポリシー責務 §4](docs/SPEC.md#policy-dependencies) だけを正本とする。[AGENTS.md](AGENTS.md) で同じ方針または許可条件を再定義してはならない。
 
-外部依存を追加、削除、更新、置換する前に、対象実装、[`go.mod`](go.mod)、配布物、セットアップ、検証手段への影響と、[docs/SPEC.md ポリシー責務 §4](docs/SPEC.md#4-外部ライブラリフレームワーク方針) の許可外部ライブラリ一覧を確認する。
+外部依存を追加、削除、更新、置換する前に、対象実装、[`go.mod`](go.mod)、配布物、セットアップ、検証手段への影響と、[docs/SPEC.md ポリシー責務 §4](docs/SPEC.md#policy-dependencies) の許可外部ライブラリ一覧を確認する。
 
 許可外部ライブラリ一覧にない依存を実装へ追加してはならない。追加が必要な場合は、依存名、採用理由、代替困難性、責務範囲、影響範囲、保守・削除方針、検証条件、[docs/SPEC.md](docs/SPEC.md) の変更内容を提示し、実装変更と仕様変更の両方について事前承認を得る。
 
-外部依存の追加、削除、更新、置換は変更作業として扱う。変更後は、[docs/SPEC.md ポリシー責務 §4](docs/SPEC.md#4-外部ライブラリフレームワーク方針) の許可一覧、[`go.mod`](go.mod)、実装 import、配布・セットアップ手順、検証結果が一致していることを確認する。
+外部依存の追加、削除、更新、置換は変更作業として扱う。変更後は、[docs/SPEC.md ポリシー責務 §4](docs/SPEC.md#policy-dependencies) の許可一覧、[`go.mod`](go.mod)、実装 import、配布・セットアップ手順、検証結果が一致していることを確認する。
 
 ---
 

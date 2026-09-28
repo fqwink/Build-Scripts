@@ -74,15 +74,7 @@ setup 手順本文、Release asset 取得手順、rollback 手順は [`docs/deta
 
 [`docs/details/admin.md`](admin.md) 詳細本文責務は、`admin` owner の配布境界として、setup が扱う `admin-ui.tar.gz` の中身、展開後の必須 file、静的配信 path、拒否すべき archive entry を定義する。
 
-setup が admin UI を配置する場合は、以下を満たす。
-
-| 確認 | 合格条件 |
-|------|----------|
-| archive 内容 | [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の配布物だけを含む。 |
-| 必須 file | `index.html` と `adlaire-ci-sdk.js` が root 直下に存在する。 |
-| path 安全性 | [`docs/details/admin.md` 詳細本文責務 §A2](admin.md#a2-管理-ui-archive-検証) の拒否条件に該当しない。 |
-| 配置結果 | `$INSTALL_DIR/admin/index.html` と `$INSTALL_DIR/admin/adlaire-ci-sdk.js` が通常 file として存在する。 |
-| 失敗時 | 既存 `$INSTALL_DIR/admin/` を変更しない。 |
+setup が admin UI を配置する場合、admin owner の正本本文は [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の配布物境界と [`docs/details/admin.md` 詳細本文責務 §A2](admin.md#a2-管理-ui-archive-検証) の archive 検証だけとする。配置順、rollback、既存 file 保護、終了コードは [`docs/details/setup.md`](setup.md) 詳細本文責務を参照する。
 
 ---
 

@@ -26,12 +26,12 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 
 | 項目 | 仕様 |
 |------|------|
-| JavaScript | ECMAScript 2022 以上を前提とする。transpile、bundle、polyfill は SDK 詳細本文責務に含めない。 |
+| JavaScript | ECMAScript 2022 以上の browser 実行を前提とする。SDK artifact は単一 ES Module とし、外部依存の採否は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) を参照する。 |
 | module | `admin/adlaire-ci-sdk.js` は ES Module とし、`export { AdlaireCI, AdlaireCIError }` を必須 export とする。default export は定義しない。 |
 | browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
-| 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。Node.js 専用 API、npm package、bundler、polyfill による補完は行わない。 |
+| 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。 |
 | global 汚染 | `window.AdlaireCI` 等の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
-| 外部 consumer | 必須 browser API を提供する外部 consumer application は、利用側の framework または bundler から本 ES Module を import してよい。consumer 側の framework adapter、package manifest、bundler 設定、polyfill、framework runtime を本リポジトリ、SDK 配布物、標準管理 UI 配布物へ追加してはならない。 |
+| 外部 consumer | 必須 browser API を提供する外部 consumer application は、本 ES Module を import してよい。本リポジトリ、SDK 配布物、標準管理 UI 配布物の依存境界は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) を参照する。 |
 | stream 前提 | `streamBuild()` は native `EventSource` を使用しない。Authorization header を付与できる `fetch` streaming を必須実装とする。 |
 | API 対応範囲 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の全 endpoint のうち、GitHub が直接送信する `POST /api/webhook` は SDK method 0 件、`POST /api/schedule/allowed-hours` は request body ありの `setAllowedHours()` と `{from:null,to:null}` を送る `clearAllowedHours()` の 2 件、それ以外は endpoint 表の SDK 列に記載された 1 method と対応させる。表外 method、対応 0 件、明示例外以外の複数 method を禁止する。 |
 

@@ -79,7 +79,7 @@
 | 反復 | `iterations = 260000`。2 回目以降は `previous_digest`、`salt_bytes`、`password_utf8_bytes` をこの順で byte 連結して SHA-256 digest を生成する処理を繰り返す。 |
 | 保存値 | 最終 digest を lowercase hex 文字列で `.admin_credentials.password_hash` に保存する。 |
 | 比較 | 入力 password から同一手順で digest を生成し、`crypto/subtle.ConstantTimeCompare` で比較する。 |
-| 外部依存 | `golang.org/x/crypto/pbkdf2` 等の外部パッケージは使用しない。 |
+| 実装境界 | `crypto/sha256`、`crypto/rand`、`crypto/subtle`、`encoding/hex` だけで成立する。外部依存の採否は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) を参照する。 |
 
 **password 入力制約：**
 
@@ -182,11 +182,12 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 初期 password は非 terminal の標準入力から exactly 1 行で受け取る。入力 byte 列は UTF-8 password byte 列と末尾 LF 1 byte だけで構成し、末尾 LF より後の byte、途中の LF、CR、NUL、UTF-8 不正を禁止する。末尾 LF は password に含めず、前後空白を trim しない。UTF-8 code point 数は 8〜128 とする。実装は最大 514 bytes まで読み、513 bytes 以下で exactly 1 個の末尾 LFを確認してから UTF-8 と code point 数を検証する。標準入力が terminal の場合は password を読み取らない。password byte 列は hash 入力以外に複製、保存、log 出力せず、処理終了前に保持 buffer を上書きする。
 
+`--state-dir` の検証は、security 処理を開始する前に [`docs/details/api.md` 詳細本文責務 `api` CLI 固定契約](api.md#api-cli-contract) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) に従って完了させる。security owner は state directory の parse、検証順、エラー出力を再定義しない。
+
 | init-credentials CLI ケース | stdout | stderr | 終了コード | 副作用 |
 |----------------------------|--------|--------|------------|--------|
 | 新規生成成功 | `credentials initialized` + LF | 空 | `0` | `.admin_credentials` を mode `0600` で作成する。 |
 | 既存あり | 空 | `credentials already exist` + LF | `2` | 既存ファイルを変更しない。 |
-| `--state-dir` 相対 path | 空 | `state directory must be absolute: {path}` + LF | `2` | ファイル作成なし。 |
 | 標準入力が terminal | 空 | `initial password stdin must not be terminal` + LF | `2` | password 読取とファイル作成なし。 |
 | password 入力が形式不正 | 空 | `invalid initial password` + LF | `2` | salt / hash 生成とファイル作成なし。 |
 | password 読取失敗 | 空 | `password input failed` + LF | `1` | salt / hash 生成とファイル作成なし。 |
@@ -229,6 +230,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 
 本機能の目的は、外部システムによる build 開始操作を `trigger` scope の API token と build 開始 endpoint だけに限定することである。
 
+<a id="api-token-scope-contract"></a>
 **scope：**
 
 | scope | 許可 |
@@ -418,24 +420,12 @@ owner component は `security` とする。collaborator component は `api`、`r
 
 本機能の目的は、認証、権限拒否、token 作成・失効、設定変更、build trigger、session revoke、TOTP、approval の状態変更を追跡できる JSON Lines 監査ログとして保存することである。
 
-**対象 action：**
-
-| action | target_type |
-|--------|-------------|
-| `login_success`, `login_failure`, `logout`, `session_revoke_all`, `totp_required`, `totp_failure`, `totp_setup`, `totp_enabled`, `totp_disabled` | `auth` |
-| `password_change` | `auth` |
-| `token_create`, `token_revoke`, `token_auth`, `token_expired`, `token_revoked_reject` | `api_token` |
-| `permission_denied` | `endpoint` または `auth` |
-| `build_trigger`, `build_force_trigger` | `build` |
-| `config_update`, `rate_limit_update` | `config` |
-| `approval_pending`, `approval_approved`, `approval_rejected`, `approval_expired` | `approval` |
-
 **record 生成規則：**
 
 | 項目 | 仕様 |
 |------|------|
 | `timestamp` | 操作結果が確定した UTC 時刻。 |
-| `request_id` | API event は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) で生成した 32 文字 lowercase hex。同一 API 処理中に複数 log を書く場合は同じ値を使う。`runner` 内部 event は `null`。 |
+| `request_id` | API event は [`docs/details/api.md` 詳細本文責務 request ID 固定契約](api.md#api-request-id-contract) で生成した値を使用し、同一 API 処理中に複数 log を書く場合は同じ値を使う。`runner` 内部 event は `null`。 |
 | `actor_type` | 未認証 login は `"anonymous"`、管理 session は `"admin"`、API token は `"api_token"`、署名検証済み Webhook は `"webhook"`、内部処理は `"system"`。 |
 | `actor_id` | 管理 session は `"admin"`、API token は token id、署名検証済み Webhook は `"webhook"`、未認証は `null`、内部処理は `"system"`。 |
 | `target_id` | 対象 id がある場合は id。endpoint 拒否は `"{METHOD} {path}"`。対象なしは `null`。 |
@@ -443,7 +433,7 @@ owner component は `security` とする。collaborator component は `api`、`r
 | `remote_addr` | [`docs/details/api.md` 詳細本文責務 §27.6](api.md#sec-27-6) の `remote_addr` 導出規則に従う。API request に紐づかない内部処理は `null`。 |
 | `message` | 固定文言のみ。入力値を連結しない。最大 500 文字。 |
 
-監査 record のキー、型、必須性、許容値は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.audit_log` schema を唯一の正本とする。監査ログへ保存する object はその schema のキーだけとし、未知キー、request body、query 全体、header 全体、cookie、secret、token、password、hash、salt、TOTP secret を保存してはならない。
+監査 record のキー、型、必須性、許容値は [`docs/details/statefile.md` 詳細本文責務 `.audit_log` schema](statefile.md#audit-log-schema) を唯一の正本とする。監査ログへ保存する object はその schema のキーだけとし、未知キー、request body、query 全体、header 全体、cookie、secret、token、password、hash、salt、TOTP secret を保存してはならない。
 
 **action 生成固定値：**
 
@@ -479,7 +469,10 @@ owner component は `security` とする。collaborator component は `api`、`r
 | approval 却下 | `approval_rejected` | `admin` または `api_token` | `approval` | approval id | `success` |
 | approval 期限切れ | `approval_expired` | `system` | `approval` | approval id | `success` |
 
-同一操作で `.config_log` と `.audit_log` の両方を追記する場合、`.config_log` を先に追記する。`.config_log` 成功後に `.audit_log` が失敗した場合は `500` を返し、`.config_log` は巻き戻さない。`.audit_log` 追記失敗そのものを `.audit_log` に記録しようとしてはならない。
+<a id="sec-27-44-config-audit-order"></a>
+**設定変更の保存順・失敗固定契約：**
+
+同一操作で `.config_log` と `.audit_log` の両方を追記する場合、対象状態保存 → `.config_log` → `.audit_log` → response の順に固定する。`.config_log` 追記失敗時は server log に `CONFIG_LOG_WRITE_FAILED` だけを記録し、`.audit_log` を試行せず `500` を返す。`.audit_log` 追記失敗時は server log に `AUDIT_LOG_WRITE_FAILED` だけを記録し、`500` を返す。いずれの失敗でも保存済み対象状態と追記済み先行 log を巻き戻さず、入力値、diff、Go error、path、secret を server log に含めない。`.audit_log` 追記失敗そのものを `.audit_log` に再帰記録してはならない。
 
 **監査 record 保存順・失敗契約：**
 
@@ -488,19 +481,12 @@ owner component は `security` とする。collaborator component は `api`、`r
 | 認証成功 | session または token 状態更新 → `.access_log` → `.audit_log` → response | token / session 状態は巻き戻さず `500`。response に token 本体を含めない。 |
 | 認証失敗 | `.access_log` → `.audit_log` → response | `500`。失敗理由詳細は返さない。 |
 | 権限拒否 | `.access_log` → `.audit_log` → `403` | `500`。対象 endpoint は実行しない。 |
-| 設定変更 | 対象設定保存 → `.config_log` → `.audit_log` → response | 対象設定と `.config_log` は巻き戻さず `500`。 |
+| 設定変更 | [設定変更の保存順・失敗固定契約](#sec-27-44-config-audit-order) を適用する。 | 同契約を適用する。 |
 | token 作成 | `.api_tokens` 保存 → `.access_log` → `.audit_log` → response | 作成済み record は残し、token 本体は返さず `500`。 |
 | build trigger | build / queue 状態保存 → `.audit_log` → response | 保存済み build / queue 状態は巻き戻さず `500`。 |
 | session revoke / TOTP | 対象状態更新 → `.access_log` が必要な場合は追記 → `.audit_log` → response | 保存済み状態は巻き戻さず `500`。one-time secret または token は返さない。 |
 | approval API | queue / approval / history を [`docs/details/api.md` 詳細本文責務 §27.30](api.md#sec-27-30) の順で更新 → `.audit_log` → response | 保存済み状態は巻き戻さず `500`。 |
 | approval runner event | approval / history を [`docs/details/runner.md` 詳細本文責務 §27.30](runner.md#sec-27-30) の順で更新 → `.audit_log` | 保存済み状態は巻き戻さず runner failure とし、後続通知は実行しない。 |
-
-**正常系：**
-
-1. 監査対象操作の成否が確定した後、`.audit_log` へ 1 行追記する。
-2. 監査ログ追記に失敗した場合、対象操作は失敗扱いにし、`500` を返す。
-3. secret、password、session token、API token 本体、hash、salt、TOTP secret は保存しない。
-4. `GET /api/audit-log` は `limit`、`offset`、`actor`、`action`、`result` で絞り込み、新しい順で返す。
 
 **取得仕様：**
 
@@ -590,7 +576,7 @@ session timeout の値は session 発行時に秒単位で加算する。`expire
 | replay 防止 | `.totp_secret.last_accepted_step` 以下の step は拒否する。 |
 | otpauth URI | `otpauth://totp/Adlaire%20CI:admin?secret={secret}&issuer=Adlaire%20CI&algorithm=SHA1&digits=6&period=30`。 |
 
-QR code 生成は初期実装対象外とする。UI は secret と otpauth URI を一回表示し、ユーザーの認証アプリ登録手段は手入力または URI 貼り付けに限定する。
+QR code 生成はこの詳細本文責務では仕様化しない。UI は secret と otpauth URI を一回表示し、ユーザーの認証アプリ登録手段は手入力または URI 貼り付けに限定する。
 
 **メモリ上状態：**
 
