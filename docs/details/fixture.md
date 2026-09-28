@@ -1836,7 +1836,35 @@ Admin CLI fixture の stdout / response 検証は [`docs/details/admin.md` 詳�
 
 `--json` success case は、command ごとの成功 response shape が有効な場合だけ API wire body から前後 ASCII whitespace を除去した byte 列に LF 1 個を付けた `expected/stdout.txt` を固定する。`--json` 指定時であっても、上表の invalid response 必須 case は stdout 空、stderr `api error: invalid response` + LF、終了 code `1` とする。`events.total` と `events.length` が異なる schema-valid response は valid case とし、human stdout は `total` だけを使用することを固定する。
 
-`partial-admin-cli-lifecycle` は `--help` と `--version` が API URL、token、state directory、network fake を一切参照しないことを `expected/effects.json.external_calls=[]`、`forbidden_writes`、`forbidden_reads` で固定する。parse error、未知 command、引数不足、引数過多、同一 option 重複、`--name=value`、短縮 option、禁止制御文字は個別 case とし、stdout 空、stderr 1 行、終了 code `2` を byte 単位で検証する。
+`partial-admin-cli-lifecycle` は [`docs/details/admin.md` 詳細本文責務 §A7](admin.md#sec-a7) の parse / validation 順序を fixture で固定する。`--help` と `--version` は API URL、token、state directory、network fake、file read/write、乱数取得を一切参照しないことを `expected/effects.json.external_calls=[]`、`forbidden_writes`、`forbidden_reads` で固定する。parse error、未知 command、引数不足、引数過多、同一 option 重複、`--name=value`、短縮 option、禁止制御文字は個別 case とし、stdout 空、stderr 1 行、終了 code `2` を byte 単位で検証する。
+
+`partial-admin-cli-lifecycle` の必須 case は次表に固定する。各 case は個別入力として実行し、前段の不合格が後段の不合格より優先されることを確認する。parse / validation 失敗 case の `expected/effects.json` は HTTP request 0 件、state read 0 件、state write 0 件、file read 0 件、file write 0 件、random 0 件、child process 0 件、external call 0 件を固定する。
+
+| case | 入力条件 | 期待 stdout / stderr / exit |
+|------|----------|-----------------------------|
+| `help-precedence` | `--help` と、未指定の `--api-url`、未指定の `--token`、未知 command 相当 token、不正 URL 相当 token を同時に含める。 | stdout は help 固定 1 行、stderr 空、exit `0`。 |
+| `version-precedence` | `--version` と、未指定の `--api-url`、未指定の `--token`、未知 command 相当 token、不正 URL 相当 token を同時に含める。 | stdout は version 固定 1 行、stderr 空、exit `0`。 |
+| `unsafe-token-priority` | `--help` / `--version` を含まず、NUL、CR、LF、C0 制御文字、DEL、invalid UTF-8 のいずれかを含む argv token と、未知 option または不正 URL を同時に含める。 | stdout 空、stderr `invalid command line token` + LF、exit `2`。token 原文を expected に含めない。 |
+| `missing-api-url-value` | `--api-url` の次 token がない、または次 token が `--` で始まる。 | stdout 空、stderr `missing value: --api-url` + LF、exit `2`。 |
+| `missing-token-value` | `--token` の次 token がない、または次 token が `--` で始まる。 | stdout 空、stderr `missing value: --token` + LF、exit `2`。 |
+| `unknown-option` | `--unknown` を command より前に含める。 | stdout 空、stderr `unknown option: --unknown` + LF、exit `2`。 |
+| `equals-option` | `--api-url=http://127.0.0.1:8765` または `--token=value` を含める。 | stdout 空、stderr `unknown option: <token>` + LF、exit `2`。 |
+| `short-option` | `-u`、`-t`、`-j` のいずれかを含める。 | stdout 空、stderr `unknown option: <token>` + LF、exit `2`。 |
+| `duplicate-api-url` | `--api-url` を 2 回指定する。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `duplicate-token` | `--token` を 2 回指定する。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `duplicate-json` | `--json` を 2 回指定する。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `missing-required-api-url` | `--token` と command は有効、`--api-url` は未指定。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `missing-required-token` | `--api-url` と command は有効、`--token` は未指定。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `missing-command` | `--api-url` と `--token` は有効、command は未指定。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `invalid-api-url` | `--api-url` が scheme 不正、host 不在、userinfo あり、query あり、fragment あり、`..` segment、重複 slash、backslash のいずれか。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `invalid-token` | `--token` が空文字、4097 byte 以上、NUL、CR、LF のいずれか。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `unknown-command` | `--api-url` と `--token` は有効、command が固定 7 command 以外。 | stdout 空、stderr `unknown command: <command>` + LF、exit `2`。`<command>` は secret ではない固定入力値にする。 |
+| `cancel-queue-arg-missing` | `cancel-queue` の `<queue_id>` 未指定。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `cancel-queue-arg-invalid` | `cancel-queue` の `<queue_id>` が空文字、`/`、`..`、NUL byte のいずれかを含む。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `cancel-queue-arg-extra` | `cancel-queue` に `<queue_id>` 以外の追加 token がある。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `config-snapshot-label-invalid` | `config-snapshot` の `label` が空文字、129 Unicode scalar values 以上、改行、NUL byte、BOM のいずれか。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `config-snapshot-arg-extra` | `config-snapshot` に `label` 以外の追加 token がある。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
+| `no-arg-command-extra` | `status`、`queue`、`history`、`trigger-build`、`events` のいずれかに追加 token がある。 | stdout 空、stderr `usage error` + LF、exit `2`。 |
 
 `success-admin-cli-transport` は各 command について method、path、request body、header を `expected/request.json` に固定する。`Authorization` は placeholder `${secret:admin_cli_token}` だけを許可し、token 実値、token hash、部分文字列、長さから復元できる値を expected に置いてはならない。`config-snapshot` の JSON body、`cancel-queue` の 1 回だけの percent encode、`User-Agent`、`Accept`、`Content-Type`、redirect 不追従、retry 0 回、proxy 0 回、Cookie 0 件を検証する。
 
