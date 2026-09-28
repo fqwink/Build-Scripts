@@ -135,10 +135,10 @@ API request path は、正規化後の `--api-url` path prefix と command 固�
 | `status` | なし | `GET /api/status` | なし | `status=<last_build_status> running=<running>` + LF。`--json` 指定時は API response JSON + LF。 |
 | `queue` | なし | `GET /api/queue` | なし | `active=<id-or-none> queued=<count>` + LF。`--json` 指定時は API response JSON + LF。 |
 | `history` | なし | `GET /api/history` | なし | `total=<total> latest=<id-or-none>` + LF。`--json` 指定時は API response JSON + LF。 |
-| `trigger-build` | なし | `POST /api/build` | `{}` | `queued=<queue_id-or-none>` + LF。`--json` 指定時は API response JSON + LF。 |
+| `trigger-build` | なし | `POST /api/build` | `{}` | `queued=<queue_id>` + LF。`--json` 指定時は API response JSON + LF。 |
 | `cancel-queue` | `<queue_id>` | `DELETE /api/queue/{queue_id}` | なし | `queue cancelled` + LF。`--json` 指定時は API response JSON + LF。 |
 | `config-snapshot` | `[label]` | `POST /api/config-snapshots` | 未指定時 `{"label":null}` / 指定時 `{"label":"<label>"}` | `snapshot=<id>` + LF。`--json` 指定時は API response JSON + LF。 |
-| `events` | なし | `GET /api/events` | なし | `events=<count>` + LF。`--json` 指定時は API response JSON + LF。 |
+| `events` | なし | `GET /api/events` | なし | `events=<total>` + LF。`--json` 指定時は API response JSON + LF。 |
 
 `cancel-queue` の `<queue_id>` は path parameter として 1 回だけ percent encode する。空文字、`/`、`..`、NUL byte を含む値は API 呼び出し前に parse error とする。`config-snapshot` の `label` は未指定なら `null`、指定時は 1〜128 Unicode scalar values とし、改行、NUL byte、BOM を禁止する。
 
@@ -154,9 +154,9 @@ HTTP response は body 全体を上限 1 MiB まで読む。1 MiB を超える�
 
 success response は `Content-Type` が `application/json` または `application/json; charset=utf-8` であることを必須とする。不一致、複数 `Content-Type`、body 空、JSON として単一値でない body は stdout 空、stderr `api error: invalid response` + LF、終了 code `1` とする。
 
-`--json` 指定時は、検証済み API response body から前後の ASCII whitespace だけを除去し、残った byte 列をそのまま stdout へ出し、最後に LF 1 個を付ける。object key order、number 表現、string escape は API wire response を保持し、CLI 側で再 encode しない。`--json` 未指定時は CLI が response JSON を parse し、上表の stdout へ写像する。必要 key 欠落、型不一致、`null` 不許可 field、余分な stderr 出力が必要になる body は invalid response とする。response JSON parse 失敗は stdout 空、stderr `api error: invalid response` + LF、終了 code `1` とする。
+`--json` 指定時は、検証済み API response body から前後の ASCII whitespace だけを除去し、残った byte 列をそのまま stdout へ出し、最後に LF 1 個を付ける。object key order、number 表現、string escape は API wire response を保持し、CLI 側で再 encode しない。`--json` 指定時でも command ごとの成功 response shape が [`docs/details/api.md`](api.md) 詳細本文責務の対象 response 契約を満たさない場合は invalid response とする。`--json` 未指定時は CLI が response JSON を parse し、上表の stdout へ写像する。必要 key 欠落、型不一致、`null` 不許可 field、余分な stderr 出力が必要になる body は invalid response とする。response JSON parse 失敗は stdout 空、stderr `api error: invalid response` + LF、終了 code `1` とする。
 
-human stdout の field は固定順とする。`status` は `last_build_status` を string としてそのまま出し、`running` は JSON boolean を `true` / `false` の lowercase で出す。`queue` は `active` が `null` の場合だけ `none`、それ以外は response の id string、`queued` は array length または numeric count を 10 進数で出す。`history` は `total` を 10 進数、latest は最新 id がない場合だけ `none` とする。`trigger-build` は API response に queue id がある場合その id、ない場合だけ `none` とする。`cancel-queue` は response body の message に依存せず固定 `queue cancelled` とする。`events` は array length または numeric count を 10 進数で出す。
+human stdout の field は固定順とする。`status` は `last_build_status` を string としてそのまま出し、`running` は JSON boolean を `true` / `false` の lowercase で出す。`queue` は `active` が `null` の場合だけ `active=none` とし、`active` が object の場合は `active.id` の string を出す。`queue` の `queued` は API response の `queued` array length だけを 10 進数で出し、数値 `queued`、`active` object の `id` 欠落、`active.id` の string 以外、`queued` の array 以外は invalid response とする。`history` は `total` を 10 進数で出し、`latest` は `history` array の先頭要素 `id` string、空配列の場合だけ `none` とする。`total` の integer 以外、`history` の array 以外、非空 `history[0].id` の string 以外は invalid response とする。`trigger-build` は `queue_id` の string を必須とし、`queued` は boolean `true`、`dispatch` は `requested` または `timer_fallback` だけを許可する。`queue_id` 欠落、空文字、`queued:false`、未知 `dispatch` は invalid response とし、`none` へ置換しない。`cancel-queue` は response body の `message` に依存せず固定 `queue cancelled` とする。`config-snapshot` は `id` の string を必須とし、欠落、空文字、string 以外は invalid response とする。`events` は `total` integer を 10 進数で出し、`events` array は paging 後の要素列として存在を検証するが stdout の件数には使用しない。`events` array length と `total` が異なることは、[`docs/details/api.md` 詳細本文責務 §27.66](api.md#sec-27-66) の paging 契約上 valid とする。`total` の integer 以外、`events` の array 以外は invalid response とする。
 
 未知 command は stdout 空、stderr `unknown command: <command>` + LF、終了 code `2` とする。
 

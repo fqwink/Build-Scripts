@@ -1822,6 +1822,20 @@ Admin CLI fixture の `expected/request.json` は root object とし、root key 
 
 `success-admin-cli-transport` の `forbidden_requests` は、`trigger-build` に対する `POST /api/builds`、redirect 追従、retry、proxy、Cookie 送信を必ず含める。`security-admin-cli-secret-redaction` の `expected/request.json` は同じ schema を使用し、token、Authorization header 実値、URL query 内 secret、redirect `Location` 内 secret、server raw body 内 secret、Go error 内 secret、absolute path 内 secret を `requests`、`forbidden_requests`、`headers`、`body`、`reason` に平文または派生値として含めてはならない。
 
+Admin CLI fixture の stdout / response 検証は [`docs/details/admin.md` 詳細本文責務 §A7](admin.md#sec-a7) の human stdout 写像契約に従う。`success-admin-cli-transport` は HTTP transport の成功に加えて、代表 success response から `expected/stdout.txt` を byte 単位で生成できることを固定する。`failure-admin-cli-output-errors` は HTTP status が `2xx` であっても、command ごとの stdout 写像に必要な key、型、許容値が不足または不一致の response を invalid response として扱う case を持つ。
+
+| command | success stdout の source | invalid response 必須 case |
+|---------|--------------------------|----------------------------|
+| `status` | `last_build_status` string、`running` boolean。 | `last_build_status` 欠落、`running` 欠落、`running` string。 |
+| `queue` | `active=null` または `active.id` string、`queued` array length。 | `queued` number、`queued` 欠落、`active` object の `id` 欠落、`active.id` number。 |
+| `history` | `total` integer、`history[0].id` string。`history=[]` の場合だけ latest は `none`。 | `total` string、`history` 欠落、非空 `history[0].id` 欠落。 |
+| `trigger-build` | `queue_id` string、`queued=true`、`dispatch` が `requested` または `timer_fallback`。 | `queue_id` 欠落、`queue_id` 空文字、`queued=false`、未知 `dispatch`。 |
+| `cancel-queue` | response body の `message` に依存せず固定 `queue cancelled`。 | JSON object 以外、body 空。 |
+| `config-snapshot` | `id` string。 | `id` 欠落、`id` 空文字、`id` number。 |
+| `events` | `total` integer。`events` array は存在だけを検証し、stdout 件数には使わない。 | `total` 欠落、`total` string、`events` 欠落、`events` number。 |
+
+`--json` success case は、command ごとの成功 response shape が有効な場合だけ API wire body から前後 ASCII whitespace を除去した byte 列に LF 1 個を付けた `expected/stdout.txt` を固定する。`--json` 指定時であっても、上表の invalid response 必須 case は stdout 空、stderr `api error: invalid response` + LF、終了 code `1` とする。`events.total` と `events.length` が異なる schema-valid response は valid case とし、human stdout は `total` だけを使用することを固定する。
+
 `partial-admin-cli-lifecycle` は `--help` と `--version` が API URL、token、state directory、network fake を一切参照しないことを `expected/effects.json.external_calls=[]`、`forbidden_writes`、`forbidden_reads` で固定する。parse error、未知 command、引数不足、引数過多、同一 option 重複、`--name=value`、短縮 option、禁止制御文字は個別 case とし、stdout 空、stderr 1 行、終了 code `2` を byte 単位で検証する。
 
 `success-admin-cli-transport` は各 command について method、path、request body、header を `expected/request.json` に固定する。`Authorization` は placeholder `${secret:admin_cli_token}` だけを許可し、token 実値、token hash、部分文字列、長さから復元できる値を expected に置いてはならない。`config-snapshot` の JSON body、`cancel-queue` の 1 回だけの percent encode、`User-Agent`、`Accept`、`Content-Type`、redirect 不追従、retry 0 回、proxy 0 回、Cookie 0 件を検証する。
