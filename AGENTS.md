@@ -8,21 +8,13 @@
 
 [docs/SPEC.md](docs/SPEC.md) は、仕様、方針、ポリシー、正本参照先、禁止事項、リリース判断、実装着手可否の最上位仕様書である。
 
-このリポジトリで作業するすべてのエージェントは、調査、設計、仕様改訂、実装、検証、Git 操作、Pull Request 作成、レビュー対応を含む全作業において、最初に [AGENTS.md](AGENTS.md) と [docs/SPEC.md](docs/SPEC.md) の両方を必ず読む。
+このリポジトリで作業するすべてのエージェントは、最初に [AGENTS.md](AGENTS.md) と [docs/SPEC.md](docs/SPEC.md) の両方を必ず読む。両方の読了が完了するまで、調査、設計、仕様改訂、実装、検証、ファイル操作、生成物更新、Git 操作、Pull Request 作成、レビュー対応を含むリポジトリに関するすべての作業を開始してはならない。片方だけの読了を、必要な確認の完了と扱ってはならない。
 
-[AGENTS.md](AGENTS.md) と [docs/SPEC.md](docs/SPEC.md) の読了を完了するまで、調査、設計、仕様改訂、実装、検証、ファイル作成、編集、移動、削除、リネーム、整形、生成物更新、Git 操作、Pull Request 作成、レビュー対応を含む、リポジトリに関するすべての作業を開始してはならない。
-
-[AGENTS.md](AGENTS.md) または [docs/SPEC.md](docs/SPEC.md) の片方だけを確認した状態で、作業判断に必要な確認を完了したと扱ってはならない。
-
-本リポジトリの仕様判断は、方針、ポリシー、状態語彙、状態定義、状態遷移条件、禁止事項、リリース判断、実装着手可否は [docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務、生成静的 Web サイトと標準管理 UI のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務、実装 artifact と各機能の現在状態、Phase、機能インベントリ、将来計画は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務、詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口は [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の詳細本文は [docs/details/*.md](docs/details/) 詳細本文責務、fixture、expected、fake、実装検証証跡は [docs/details/fixture.md](docs/details/fixture.md) fixture 証跡責務、文書と実装ファイルの実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本として行う。
-
-[docs/DESIGN.md](docs/DESIGN.md) は、生成静的 Web サイトと標準管理 UI のデザイン関係の正本である。機能仕様、運用仕様、API 仕様、CI 仕様、状態語彙、状態定義、実装 artifact と機能の現在状態の正本ではない。
-
-[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) は、文書・実装ファイルの役割を整理する索引である。仕様本文の正本ではない。
+本リポジトリの仕様判断は、[`docs/SPEC.md` 責務文書構成表](docs/SPEC.md#document-responsibility-map) で対象判断を所有する責務正本を確定して行う。[AGENTS.md](AGENTS.md) で仕様責務の分担を再定義してはならない。
 
 [AGENTS.md](AGENTS.md) と他ファイルが作業ルール上矛盾する場合は、[AGENTS.md](AGENTS.md) を正とする。
 
-[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務と他ファイルが仕様、方針、ポリシー、状態語彙、状態定義、状態遷移条件、正本参照先、禁止事項、リリース判断、実装着手可否で矛盾する場合は、[docs/SPEC.md](docs/SPEC.md) 方針責務・ポリシー責務を正とする。実装 artifact と各機能へ割り当てた現在状態は [docs/ROADMAP.md](docs/ROADMAP.md) 状態・計画責務を正とする。ただし、生成静的 Web サイトと標準管理 UI のデザイン関係は [docs/DESIGN.md](docs/DESIGN.md) デザイン責務を正とする。
+仕様文書間で矛盾する場合は、[`docs/SPEC.md` 責務文書構成表](docs/SPEC.md#document-responsibility-map) で該当判断を所有する責務正本を正とする。
 
 [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、または該当する owner component 別の [docs/details/*.md](docs/details/) と実装ファイルが仕様上矛盾する場合は、仕様と実装の不整合として扱う。仕様を変更する場合は、先に該当する仕様書を改訂し、その内容に基づいて実装を更新する。
 
@@ -67,27 +59,9 @@
 
 ## 2. 仕様書管理ルール
 
-仕様変更では、最初に対象判断の正本を確定する。
+仕様変更では、最初に [`docs/SPEC.md` 責務文書構成表](docs/SPEC.md#document-responsibility-map) で対象判断の責務正本を確定し、[`docs/SPEC.md` 方針責務 §4.2a](docs/SPEC.md#sec-4-2a) の記載範囲と禁止事項を適用する。[AGENTS.md](AGENTS.md) で同じ判断対象の正本分担または禁止事項を再定義してはならない。
 
-| 判断対象 | 正本 |
-|----------|------|
-| 方針、ポリシー、状態語彙、状態定義、状態遷移条件、禁止事項、実装着手可否 | [docs/SPEC.md](docs/SPEC.md) |
-| 実装 artifact と機能の現在状態、Phase、機能インベントリ、将来計画 | [docs/ROADMAP.md](docs/ROADMAP.md) |
-| 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) |
-| owner component 別の入出力、状態、処理順序、異常系、検証条件 | [docs/details/*.md](docs/details/) |
-| fixture、expected、fake、assertion、実装検証証跡 | [docs/details/fixture.md](docs/details/fixture.md) |
-| 生成静的 Web サイトと標準管理 UI のデザイン | [docs/DESIGN.md](docs/DESIGN.md) |
-| 文書、実装、testdata、未作成 path の実在所在 | [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) |
-
-[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) と owner component 別の [docs/details/*.md](docs/details/) に、方針、ポリシー、状態語彙、現在状態、Phase、将来計画、Git 運用、PR 分割判断を記載してはならない。
-
-[docs/ROADMAP.md](docs/ROADMAP.md) に、状態語彙、状態定義、状態遷移条件、endpoint、schema、SDK method、UI DOM、処理順序、fixture assertion を再定義してはならない。
-
-[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) に、方針、現在状態、実装詳細、検証条件を記載してはならない。
-
-実装ファイルの存在だけで `実装済み` と判定してはならない。判定には [docs/SPEC.md](docs/SPEC.md) の状態遷移条件、[docs/ROADMAP.md](docs/ROADMAP.md) の現在状態、owner component 詳細本文、[docs/details/fixture.md](docs/details/fixture.md) の必須証跡を使用する。
-
-仕様変更では、変更した責務正本から参照される [docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、[docs/DESIGN.md](docs/DESIGN.md)、owner / collaborator 詳細本文、fixture 証跡、実装ファイルへの影響を確認する。
+仕様変更の影響確認は、[文書整合ルール](#6-文書整合ルール) に従う。
 
 仕様変更の編集前と編集後に、[docs/SPEC.md 方針責務 §4.2a 仕様全般重複記載禁止原則](docs/SPEC.md#spec-global-no-duplicate-principle) への適合を確認する。完全一致する本文だけでなく、言い換え、要約、部分転載、表と本文の再掲、owner と collaborator 間の意味上の重複を確認する。確認では、判断対象、唯一の責務正本、重複候補の所在、削除または参照化の処置を特定し、未解消件数が 0 になるまで仕様変更を完了扱いにしてはならない。
 
@@ -103,7 +77,7 @@
 
 実在ファイルの確認には hidden fixture を含めて列挙できる `rg --files --hidden -g '!.git/**'` を使用する。
 
-新規実装は、[docs/ROADMAP.md](docs/ROADMAP.md) の現在状態が `仕様化済み・未実装` であり、[docs/SPEC.md](docs/SPEC.md) の着手条件を満たす対象だけに行う。`実装中・検証未完了` は既着手範囲の継続、修正、検証だけを許可する。`未仕様化`、`将来計画`、`改訂予定` へ実装着手してはならない。
+新規実装の着手可否は、[`docs/SPEC.md` ポリシー責務 §0a](docs/SPEC.md#0a-仕様成熟度ポリシー) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](docs/SPEC.md#0d-仕様凍結ポリシー) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#0f-phase-実装単位ポリシー) の active Phase 条件、[`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務の現在状態によって判定する。
 
 実装中に未定義の入力、出力、状態、異常系、セキュリティ条件、検証条件を発見した場合は、実装判断で補完せず、先に該当する責務正本を改訂する。
 
@@ -115,7 +89,7 @@ Go 実装では、対象ファイルに `gofmt -l ...` を実行し、Go module 
 
 API、SDK、UI のいずれかを変更する場合は、対応する endpoint、SDK method、UI 操作、状態副作用、認証・認可、成功後再取得、失敗時固定、fixture 証跡を同じ変更で確認する。
 
-実装済みへの状態変更は、コード、仕様差分、構文確認、実行または生成物確認、必須 fixture、実装検証証跡、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の所在更新要否をすべて確認した後に限る。
+`実装済み` への状態変更は、[`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](docs/SPEC.md#implementation-completion-transition) と [`docs/SPEC.md` 方針責務 §4.8](docs/SPEC.md#sec-4-8) に従って判定する。
 
 ---
 ## 4. Git 運用ルール
@@ -134,15 +108,14 @@ API、SDK、UI のいずれかを変更する場合は、対応する endpoint�
 
 複数の Pull Request に分ける場合は、変更対象ファイル、責務、merge 順序が明確に分離でき、相互に同一ファイルを編集せず、片方だけが merge されても仕様矛盾、参照切れ、状態不一致、未定義の依存関係が発生しない場合に限る。
 
-既存の open Pull Request と同じファイルまたは同じ仕様領域を変更する必要がある場合は、新規 Pull Request を作成せず、既存 Pull Request へ変更を統合する。
-
-既存の open Pull Request と同じファイルまたは同じ仕様領域を変更する必要があるにもかかわらず、別 Pull Request を作成することを禁止する。
+既存の open Pull Request と同じファイルまたは同じ仕様領域を変更する必要がある場合は、別 Pull Request を作成せず、既存 Pull Request へ変更を統合する。
 
 積み上げ Pull Request、同一ファイル編集の並行 Pull Request、merge 順序依存の Pull Request、または GitHub 上で `DIRTY` / conflict 状態の Pull Request が発生した場合は、競合解消作業として扱う。競合解消作業では、最新 `origin/main` から一本化ブランチを作成するか、最も包括的な既存 Pull Request の branch を統合先とし、必要な変更を 1 本の Pull Request に統合する。
 
 一本化後、重複する既存 Pull Request は、統合先 Pull Request を明記したコメントを残して close する。
 
-競合防止のため、作業開始前と Pull Request 作成前に以下を必ず実行する。
+<a id="git-conflict-prevention-check"></a>
+競合防止確認として、作業開始前と Pull Request 作成前に以下を必ず実行する。
 
 1. `git fetch origin`
 2. `gh pr list --state open --json number,title,headRefName,baseRefName,mergeStateStatus,url`
@@ -183,7 +156,6 @@ Build-Scripts の標準 GitHub リポジトリ設定は以下とする。
 
 GitHub 設定の初期適用方針は以下とする。
 
-- `delete_branch_on_merge=true` は即時設定対象とする。
 - `main` branch protection は、初期標準として Pull Request 必須、force push 禁止、branch deletion 禁止を設定する。
 - `main` branch protection の required approvals は初期値 `0` とする。
 - required approvals を `1` へ引き上げる場合は、運用安定後の別変更として、変更対象、現在値、標準値、影響範囲を提示して承認を得る。
@@ -207,21 +179,13 @@ GitHub 設定を変更した後は、GitHub API で再取得し、[AGENTS.md](AG
 
 自動化に関わる設定が未設定または標準値と異なる場合は、変更対象、変更内容、影響範囲を提示し、ユーザーから `承認` を得たうえで標準値へ設定する。
 
-自動化に関わる設定には、少なくとも `delete_branch_on_merge=true` を含める。その他の自動化設定が [docs/SPEC.md](docs/SPEC.md) または本ルールブックで標準化された場合も同様に扱う。
-
-`delete_branch_on_merge=true` は、remote branch 自動削除の必須設定とする。
+`delete_branch_on_merge=true` は remote branch 自動削除の必須自動化設定であり、GitHub 設定の初期適用で即時設定する。その他の自動化設定が [docs/SPEC.md](docs/SPEC.md) または本ルールブックで標準化された場合も同様に扱う。
 
 エージェントは、ユーザー承認なしに GitHub リポジトリ設定を変更、無効化、初期化してはならない。
 
 remote branch は、GitHub リポジトリ設定 `delete_branch_on_merge=true` により、Pull Request merge 後に GitHub 側で自動削除する。
 
-remote branch 自動削除の対象は、merge 済み Pull Request の head branch に限定する。
-
-local branch は、GitHub 側の自動削除では削除されない。
-
-エージェントは、ユーザーによる Pull Request の merge 完了を確認できた場合、追加承認なしで対応する local branch の削除を自動実行する。
-
-local branch 削除の対象は、merge 済み Pull Request の head branch と同名の local branch に限定する。
+remote branch 自動削除の対象は merge 済み Pull Request の head branch に限定する。local branch は GitHub 側の自動削除では削除されないため、エージェントはユーザーによる merge 完了を確認できた場合に限り、追加承認なしで同名の local branch を削除する。
 
 local branch 削除では、`main` へ移動した後に対象 local branch を削除する。
 
@@ -243,26 +207,17 @@ Pull Request merge 後のローカル同期は、以下の手順を標準とす�
 
 承認済み変更作業が完了した場合、エージェントはユーザーからの追加指示および追加承認なしで、作業ブランチでのcommit、remoteへのpush、Pull Requestの作成または既存Pull Requestの更新まで自動実行する。
 
-Pull Request作成自動化では、`main`への直接pushを行ってはならない。
-
-Pull Request作成自動化では、Pull Requestのmergeを行ってはならない。mergeはユーザーが行う。
-
-Pull Request作成自動化は、承認済み変更作業の範囲内で行うGit操作に限る。未承認のファイル作成、編集、移動、削除、リネーム、整形、生成物更新を含めてはならない。
+Pull Request 作成自動化は、[承認ルール](#1-承認ルール) の承認済み範囲と、[本節](#4-git-運用ルール) の `main` 直接 push 禁止およびエージェントによる merge 禁止を例外なく適用する。
 
 Pull Request 作成前には、変更内容に応じて以下を確認する。
 
-- `git fetch origin` を実行し、最新 `origin/main` を取得する。
-- `git diff --name-status origin/main...HEAD` で、変更対象が承認済み範囲内であることを確認する。
-- open Pull Request を確認し、同一ファイルまたは同一仕様領域を変更する Pull Request が存在しないことを確認する。
-- 同一ファイルまたは同一仕様領域の open Pull Request が存在する場合は、新規 Pull Request ではなく既存 Pull Request への統合、または最新 `origin/main` 起点の一本化 Pull Request を作成する。
-- open Pull Request の `mergeStateStatus` が `DIRTY` または `UNKNOWN` の場合は、競合状態または未確認状態として扱い、`CLEAN` を確認するまで報告しない。
-- 競合解消または PR 一本化を行った場合は、重複 PR が open のまま残っていないことを `gh pr list --state open` で確認する。
+- [競合防止確認](#git-conflict-prevention-check) を再実行し、変更対象が承認済み範囲内であり、統合先と重複 PR の状態が確定し、Pull Request の `mergeStateStatus` が `CLEAN` であることを確認する。
 - 文書変更では、`rg` で不要になった名称、矛盾参照、不要になったファイル名が残っていないか確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
 - 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。
 - 実装変更では、変更した実装が実行可能な場合は対象スクリプトの実行確認または生成物確認を行う。実行不能な場合は理由を Pull Request 本文に記録する。
-- 仕様変更では、[docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、該当する owner component 別の [docs/details/*.md](docs/details/)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、[docs/DESIGN.md](docs/DESIGN.md)、実装ファイルの整合を確認する。
+- 仕様変更では、[文書整合ルール](#6-文書整合ルール) に従って責務正本、索引、デザイン、実装への影響を確認する。
 
 Pull Request 本文には、少なくとも以下を記載する。
 
