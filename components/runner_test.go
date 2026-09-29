@@ -1,15 +1,21 @@
 package components
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -93,14 +99,28 @@ func TestRunnerFixtureR3BuildSuccessNoDeploy(t *testing.T) {
 		if log.Status != "success" || log.OutputSHA256 == nil || log.OutputSizeBytes == nil || log.Trigger != "polling" {
 			t.Fatalf("normalized log fields missing: %+v", log)
 		}
+		var manifest runnerDependencyManifest
+		readJSON(t, filepath.Join(state, "dist", "site", ".dependency_manifest.json"), &manifest)
+		if manifest.Version != 1 || manifest.Builder.Name != "adlaire-ci-build" || len(manifest.Pages) != 1 || manifest.GeneratedOutputs[".dependency_manifest.json"] != "manifest" {
+			t.Fatalf("dependency manifest mismatch: %+v", manifest)
+		}
 		if log.BuildMeta == nil || log.BuildMeta.BuildID != log.ID || log.BuildMeta.BuildAt != log.StartedAt || log.TransferVerified != nil || log.RemoteBuild != nil || log.CommitStatusLog != nil {
 			t.Fatalf("schema auxiliary fields mismatch: %+v", log)
 		}
 		if log.Environment.RunnerVersion != "V.0.0-dev" || log.Environment.GoVersion == "" || log.Environment.OS == "" || log.Environment.Arch == "" {
 			t.Fatalf("environment record missing: %+v", log.Environment)
 		}
-		if _, err := os.Stat(filepath.Join(state, ".snapshots", *log.SnapshotID, "site", "index.html")); err != nil {
-			t.Fatalf("snapshot missing: %v", err)
+		snapshotDir := filepath.Join(state, ".snapshots", *log.SnapshotID)
+		var meta snapshotMeta
+		readJSON(t, filepath.Join(snapshotDir, "meta.json"), &meta)
+		if meta.ID != *log.SnapshotID || meta.BuildID != *log.SnapshotID || meta.FileCount == 0 || meta.OutputSHA256 == "" {
+			t.Fatalf("snapshot meta mismatch: %+v", meta)
+		}
+		if !tarGzContains(t, filepath.Join(snapshotDir, "site.tar.gz"), "index.html") {
+			t.Fatalf("snapshot archive missing index.html")
+		}
+		if _, err := os.Stat(filepath.Join(snapshotDir, "site")); !os.IsNotExist(err) {
+			t.Fatalf("legacy snapshot site directory must not exist")
 		}
 		if !strings.Contains(readFile(t, filepath.Join(state, ".build_history")), `"status":"success"`) {
 			t.Fatalf("history missing success")
@@ -808,7 +828,7 @@ func TestRunnerCompletionPendingTransferRetrySuccess(t *testing.T) {
 	}
 	writeRunnerTestJSON(t, filepath.Join(state, ".pending_transfers"), []pendingTransfer{{BuildID: "b20260916000000", Trigger: "deploy", SourceKind: "output", Branch: "main", TargetID: "deploy-1", Out: &out, Host: "host", User: "deploy", DestDir: "/var/www/html", OutputSHA256: sha, FailedAt: "2026-09-16T00:00:00Z", RetryCount: 1, LastError: "previous failure"}})
 	fakeBin := t.TempDir()
-	writeExecutable(t, filepath.Join(fakeBin, "ssh"), "#!/bin/sh\nif [ \"$2\" = \"sha256sum\" ]; then printf '"+sha+"  file\\n'; exit 0; fi\ncat >/dev/null\nexit 0\n")
+	writeExecutable(t, filepath.Join(fakeBin, "ssh"), "#!/bin/sh\ncase \"$2\" in\n  sha256sum*) printf '"+sha+"  file\\n'; exit 0 ;;\n  mkdir*) cat >/dev/null; exit 0 ;;\nesac\nexit 1\n")
 	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	server := fakeGitHub(t, "docs", "blob-1", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
@@ -834,7 +854,7 @@ func TestRunnerCompletionDeployUploadsAndVerifies(t *testing.T) {
 	}
 	marker := filepath.Join(t.TempDir(), "uploaded")
 	fakeBin := t.TempDir()
-	script := fmt.Sprintf("#!/bin/sh\nif [ \"$2\" = \"sha256sum\" ]; then if [ -f %q ]; then printf '%s  %%s\\n' \"$3\"; else printf 'old  %%s\\n' \"$3\"; fi; exit 0; fi\nif [ \"$2\" = \"mkdir\" ]; then cat >/dev/null; touch %q; exit 0; fi\nexit 1\n", marker, sha, marker)
+	script := fmt.Sprintf("#!/bin/sh\ncase \"$2\" in\n  sha256sum*) if [ -f %q ]; then printf '%s  file\\n'; else printf 'old  file\\n'; fi; exit 0 ;;\n  mkdir*) cat >/dev/null; touch %q; exit 0 ;;\nesac\nexit 1\n", marker, sha, marker)
 	writeExecutable(t, filepath.Join(fakeBin, "ssh"), script)
 	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	total, uploaded, skipped, bytesUploaded, err := deploySite(out, DeployTarget{Host: "host", User: "deploy", DestDir: "/var/www/html"})
@@ -871,6 +891,67 @@ func TestRunnerCompletionCommitInfoAndNotification(t *testing.T) {
 		}
 		if notified != 1 {
 			t.Fatalf("expected one notification, got %d", notified)
+		}
+	})
+}
+
+func TestRunnerPhase2NotificationChannelsClassifyFailures(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
+	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "https://example.invalid/elsewhere", http.StatusFound)
+	}))
+	defer redirect.Close()
+	failing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Adlaire-Signature-256") == "" {
+			t.Fatalf("webhook signature missing")
+		}
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer failing.Close()
+	marker := filepath.Join(state, "command-notified")
+	command := filepath.Join(t.TempDir(), "notify-command")
+	writeExecutable(t, command, fmt.Sprintf("#!/usr/bin/env bash\ncat >/dev/null\nprintf ok > %q\nexit 0\n", marker))
+	retryCount := 2
+	retryInterval := 1
+	writeRunnerTestJSON(t, filepath.Join(state, ".notify_config"), notifyConfigFile{
+		Channels: []notifyChannel{
+			{ID: "cmd", Type: "command", Enabled: true, On: []string{"success"}, Config: map[string]any{"command_args": []any{command}}},
+			{ID: "mail", Type: "email", Enabled: true, On: []string{"success"}, Config: map[string]any{}},
+			{ID: "redirect", Type: "webhook", Enabled: true, On: []string{"success"}, Config: map[string]any{"url": redirect.URL}, RetryCount: &retryCount, RetryIntervalSeconds: &retryInterval},
+			{ID: "server", Type: "webhook", Enabled: true, On: []string{"success"}, Config: map[string]any{"url": failing.URL, "secret": "sign-me"}, RetryCount: &retryCount, RetryIntervalSeconds: &retryInterval},
+		},
+	})
+	notifyConfig, err := readNotifyConfig(filepath.Join(state, ".notify_config"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if targets := notifyTargetsForEvent(notifyConfig, "success"); len(targets) != 4 {
+		t.Fatalf("notify targets mismatch: %+v", targets)
+	}
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if readFile(t, marker) != "ok" {
+			t.Fatalf("command notification did not run")
+		}
+		var pending []notifyPendingEntry
+		pendingPath := filepath.Join(state, ".notify_pending")
+		if _, err := os.Stat(pendingPath); err != nil {
+			t.Fatalf("notify pending missing: %v log=%s", err, readFile(t, filepath.Join(state, ".notify_log")))
+		}
+		readJSON(t, pendingPath, &pending)
+		if len(pending) != 1 || pending[0].ChannelID != "server" || pending[0].Attempts != 1 || pending[0].PayloadSHA == "" {
+			t.Fatalf("unexpected pending entries: %+v", pending)
+		}
+		logText := readFile(t, filepath.Join(state, ".notify_log"))
+		for _, needle := range []string{`"channel_id":"cmd"`, `"result":"success"`, `"channel_id":"mail"`, `"error_code":"smtp_not_configured"`, `"channel_id":"redirect"`, `"error_code":"http_3xx"`, `"channel_id":"server"`, `"error_code":"http_5xx"`} {
+			if !strings.Contains(logText, needle) {
+				t.Fatalf("notify log missing %s: %s", needle, logText)
+			}
 		}
 	})
 }
@@ -1037,6 +1118,55 @@ func TestRunnerPhase2PriorityQueueRunsUrgentBeforeNormal(t *testing.T) {
 		readJSON(t, filepath.Join(state, ".build_state"), &bs)
 		if bs.ActiveQueueEntry != nil || len(bs.Queued) != 1 || fmt.Sprint(bs.Queued[0]["id"]) != "q-normal" {
 			t.Fatalf("queue state mismatch: %+v", bs)
+		}
+	})
+}
+
+func TestRunnerPhase2BuildChainRequiredDependencySkipsDependent(t *testing.T) {
+	state := newRunnerState(t, "old-a", nil)
+	writePipeline(t, state, 7, "failed", "boom")
+	targetA := BranchTarget{
+		Branch: "main", TargetFile: "docs-a", SHAFile: filepath.Join(state, ".last_sha_a"),
+		Src: filepath.Join(state, "repo", "docs-a"), Out: filepath.Join(state, "dist", "site-a"),
+	}
+	targetB := BranchTarget{
+		Branch: "main", TargetFile: "docs-b", SHAFile: filepath.Join(state, ".last_sha_b"),
+		Src: filepath.Join(state, "repo", "docs-b"), Out: filepath.Join(state, "dist", "site-b"),
+	}
+	if err := os.WriteFile(targetA.SHAFile, []byte("{\"sha\":\"old-a\"}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(targetB.SHAFile, []byte("{\"sha\":\"old-b\"}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	writeRunnerTestJSON(t, filepath.Join(state, ".branch_config"), branchConfigFile{BranchTargets: []BranchTarget{targetA, targetB}})
+	writeRunnerTestJSON(t, filepath.Join(state, ".build_chain_config"), buildChainConfigFile{Chains: []buildChainJob{
+		{ID: "a", Branch: "main", TargetFile: "docs-a", DependsOn: []string{}, Required: true, Enabled: true},
+		{ID: "b", Branch: "main", TargetFile: "docs-b", DependsOn: []string{"a"}, Required: true, Enabled: true},
+	}})
+	server := fakeGitHubMulti(t, map[string]struct {
+		sha  string
+		blob string
+	}{
+		"docs-a": {sha: "new-a", blob: "# A\n"},
+		"docs-b": {sha: "new-b", blob: "# B\n"},
+	})
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		log := onlyBuildLog(t, state)
+		if log.Chain == nil || log.ChainSummary == nil || log.TargetStatus != "failure_build" {
+			t.Fatalf("chain log mismatch: %+v", log)
+		}
+		summaryJSON, _ := json.Marshal(log.ChainSummary)
+		if !strings.Contains(string(summaryJSON), `"failure_count":1`) || !strings.Contains(string(summaryJSON), `"skipped_count":1`) {
+			t.Fatalf("chain summary mismatch: %s", summaryJSON)
+		}
+		history := readFile(t, filepath.Join(state, ".build_history"))
+		if !strings.Contains(history, `"status":"failure_build"`) || !strings.Contains(history, `"status":"skipped_dependency_failed"`) || !strings.Contains(history, `"chain_run_id":"chain`) {
+			t.Fatalf("chain history mismatch: %s", history)
 		}
 	})
 }
@@ -1245,6 +1375,31 @@ func TestRunnerCompletionSizeWarning(t *testing.T) {
 	})
 }
 
+func TestRunnerCompletionSizeWarningWithoutReport(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipelineWithExtra(t, state, 0, "", "", `dd if=/dev/zero of="$out/big.bin" bs=1048576 count=2 2>/dev/null`)
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		cfg := defaultRunnerConfig(state)
+		cfg.OutputSizeWarnMB = 1
+		cfg.BuildCooldownSeconds = 0
+		var stdout, stderr bytes.Buffer
+		if code := executeRunner(cfg, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		log := onlyBuildLog(t, state)
+		if log.Report != nil {
+			t.Fatalf("report must be absent: %+v", log.Report)
+		}
+		if !log.SizeWarn {
+			t.Fatalf("size warn should be independent of report: %+v", log)
+		}
+		if !strings.Contains(strings.Join(log.Warnings, ","), "REPORT_MISSING") || !strings.Contains(strings.Join(log.Warnings, ","), "OUTPUT_SIZE_WARN") {
+			t.Fatalf("missing warnings: %+v", log.Warnings)
+		}
+	})
+}
+
 func TestRunnerCompletionPATExpiryWarning(t *testing.T) {
 	oldNow := runnerNow
 	runnerNow = func() time.Time { return time.Date(2026, 9, 16, 0, 0, 0, 0, time.UTC) }
@@ -1429,6 +1584,36 @@ func fakeGitHub(t *testing.T, target, sha, blob string) *httptest.Server {
 	}))
 }
 
+func fakeGitHubMulti(t *testing.T, blobs map[string]struct {
+	sha  string
+	blob string
+}) *httptest.Server {
+	t.Helper()
+	encodedBySHA := map[string]string{}
+	tree := []map[string]string{}
+	for path, blob := range blobs {
+		encodedBySHA[blob.sha] = base64.StdEncoding.EncodeToString([]byte(blob.blob))
+		tree = append(tree, map[string]string{"path": path, "type": "blob", "sha": blob.sha})
+	}
+	sort.Slice(tree, func(i, j int) bool { return tree[i]["path"] < tree[j]["path"] })
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.Contains(r.URL.Path, "/git/trees/"):
+			_ = json.NewEncoder(w).Encode(map[string]any{"tree": tree})
+		case strings.Contains(r.URL.Path, "/git/blobs/"):
+			sha := path.Base(r.URL.Path)
+			encoded, ok := encodedBySHA[sha]
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]string{"content": encoded, "encoding": "base64"})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+}
+
 func fakeGitHubWithCommit(t *testing.T, target, sha, blob string) *httptest.Server {
 	t.Helper()
 	encoded := base64.StdEncoding.EncodeToString([]byte(blob))
@@ -1545,5 +1730,32 @@ func readJSON(t *testing.T, path string, v any) {
 	}
 	if err := json.Unmarshal(data, v); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func tarGzContains(t *testing.T, archivePath, name string) bool {
+	t.Helper()
+	f, err := os.Open(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gz.Close()
+	tr := tar.NewReader(gz)
+	for {
+		header, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return false
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if header.Name == name {
+			return true
+		}
 	}
 }
