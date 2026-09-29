@@ -21,22 +21,32 @@ import (
 	"unicode/utf8"
 )
 
+const builderBinaryName = "adlaire-ci-build"
+const builderDefaultVersion = "V.0.0-dev"
+const maxMarkdownFileBytes int64 = 10 * 1024 * 1024
+
 type BuildConfig struct {
-	Src     string
-	Out     string
-	Title   string
-	Theme   string
-	BaseDir string
-	Strict  bool
+	Src       string
+	Out       string
+	Title     string
+	Theme     string
+	BaseDir   string
+	Strict    bool
+	BuildID   string
+	CommitSHA string
+	BuildAt   string
 }
 
 var DefaultBuildConfig = BuildConfig{
-	Src:     "/opt/adlaire-builder/repo/docs",
-	Out:     "/opt/adlaire-builder/dist/site",
-	Title:   "Adlaire Documentation",
-	Theme:   "adlaire-default",
-	BaseDir: "",
-	Strict:  false,
+	Src:       "/opt/adlaire-builder/repo/docs",
+	Out:       "/opt/adlaire-builder/dist/site",
+	Title:     "Adlaire Documentation",
+	Theme:     "adlaire-default",
+	BaseDir:   "",
+	Strict:    false,
+	BuildID:   "",
+	CommitSHA: "",
+	BuildAt:   "",
 }
 
 type exitError struct {
@@ -128,6 +138,13 @@ func RunBuild(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	rep, warnings, err := build(cfg, stdout)
+	for _, w := range warnings {
+		fmt.Fprintf(stdout, "[WARN] %s\n", w)
+	}
+	if cfg.Strict && len(warnings) > 0 {
+		writeReport(stdout, rep, cfg)
+		return 2
+	}
 	if err != nil {
 		var ee exitError
 		if errors.As(err, &ee) {
@@ -137,26 +154,37 @@ func RunBuild(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	for _, w := range warnings {
-		fmt.Fprintf(stdout, "[WARN] %s\n", w)
-	}
-	fmt.Fprintf(stdout, "[REPORT] pages=%d headings=%d tables=%d code_blocks=%d warnings=%d size_warn=%t broken_links=%d heading_skips=%d reading_time=%d theme=%s\n",
-		rep.Pages, rep.Headings, rep.Tables, rep.CodeBlocks, rep.Warnings, rep.SizeWarn, rep.BrokenLinks, rep.HeadingSkips, rep.ReadingTime, rep.Theme)
+	writeReport(stdout, rep, cfg)
 	return 0
+}
+
+func writeReport(stdout io.Writer, rep report, cfg BuildConfig) {
+	fmt.Fprintf(stdout, "[REPORT] pages=%d headings=%d tables=%d code_blocks=%d warnings=%d size_warn=%t broken_links=%d heading_skips=%d reading_time=%d theme=%s build_id=%s commit_sha=%s build_at=%s\n",
+		rep.Pages, rep.Headings, rep.Tables, rep.CodeBlocks, rep.Warnings, rep.SizeWarn, rep.BrokenLinks, rep.HeadingSkips, rep.ReadingTime, rep.Theme, cfg.BuildID, cfg.CommitSHA, cfg.BuildAt)
 }
 
 func parseArgs(args []string, stdout io.Writer) (BuildConfig, bool, error) {
 	cfg := DefaultBuildConfig
+	baseDirExplicit := false
+	for _, arg := range args {
+		if arg == "--help" {
+			fmt.Fprintln(stdout, "Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--version] [--help]")
+			return cfg, true, nil
+		}
+	}
+	for _, arg := range args {
+		if arg == "--version" {
+			fmt.Fprintf(stdout, "%s %s go=%s\n", builderBinaryName, builderDefaultVersion, runtime.Version())
+			return cfg, true, nil
+		}
+	}
+	for _, arg := range args {
+		if invalidArgToken(arg) {
+			return cfg, false, exitError{Code: 2, Msg: "invalid command line token"}
+		}
+	}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if arg == "--help" {
-			fmt.Fprintln(stdout, "Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--version] [--help]")
-			return cfg, true, nil
-		}
-		if arg == "--version" {
-			fmt.Fprintf(stdout, "adlaire-ci-build v3 go=%s\n", runtime.Version())
-			return cfg, true, nil
-		}
 		if arg == "--strict" {
 			cfg.Strict = true
 			continue
@@ -164,14 +192,15 @@ func parseArgs(args []string, stdout io.Writer) (BuildConfig, bool, error) {
 		if !strings.HasPrefix(arg, "--") {
 			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
 		}
-		name, value, hasValue := strings.Cut(arg, "=")
-		if !hasValue {
-			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
-				return cfg, false, exitError{Code: 2, Msg: "missing value: " + name}
-			}
-			i++
-			value = args[i]
+		if strings.Contains(arg, "=") {
+			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
 		}
+		name := arg
+		if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
+			return cfg, false, exitError{Code: 2, Msg: "missing value: " + name}
+		}
+		i++
+		value := args[i]
 		switch name {
 		case "--src":
 			cfg.Src = value
@@ -182,24 +211,42 @@ func parseArgs(args []string, stdout io.Writer) (BuildConfig, bool, error) {
 		case "--theme":
 			cfg.Theme = value
 		case "--base-dir":
+			baseDirExplicit = true
 			cfg.BaseDir = value
+		case "--build-id":
+			cfg.BuildID = value
+		case "--commit-sha":
+			cfg.CommitSHA = value
+		case "--build-at":
+			cfg.BuildAt = value
 		default:
 			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + name}
 		}
 	}
-	if cfg.Title == "" {
+	if strings.TrimSpace(cfg.Title) == "" {
 		return cfg, false, exitError{Code: 2, Msg: "title must not be empty"}
 	}
 	if cfg.Theme != "adlaire-default" {
 		return cfg, false, exitError{Code: 2, Msg: "unknown theme: " + cfg.Theme}
+	}
+	if !validBuildID(cfg.BuildID) {
+		return cfg, false, exitError{Code: 2, Msg: "invalid build id: " + cfg.BuildID}
+	}
+	if !validCommitSHA(cfg.CommitSHA) {
+		return cfg, false, exitError{Code: 2, Msg: "invalid commit sha: " + cfg.CommitSHA}
+	}
+	if !validBuildAt(cfg.BuildAt) {
+		return cfg, false, exitError{Code: 2, Msg: "invalid build at: " + cfg.BuildAt}
+	}
+	if cfg.Src == "" {
+		return cfg, false, exitError{Code: 2, Msg: "source not found: "}
 	}
 	var err error
 	cfg.Src, err = absPath(cfg.Src)
 	if err != nil {
 		return cfg, false, err
 	}
-	cfg.Out, err = absPath(cfg.Out)
-	if err != nil {
+	if err := validateSourcePath(cfg.Src); err != nil {
 		return cfg, false, err
 	}
 	if cfg.BaseDir != "" {
@@ -207,15 +254,109 @@ func parseArgs(args []string, stdout io.Writer) (BuildConfig, bool, error) {
 		if err != nil {
 			return cfg, false, err
 		}
-		info, statErr := os.Stat(cfg.BaseDir)
+		info, statErr := os.Lstat(cfg.BaseDir)
 		if statErr != nil {
 			return cfg, false, exitError{Code: 2, Msg: "base directory not found: " + cfg.BaseDir}
 		}
-		if !info.IsDir() {
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return cfg, false, exitError{Code: 2, Msg: "base path is not directory: " + cfg.BaseDir}
 		}
 	}
+	if baseDirExplicit && cfg.BaseDir == "" {
+		return cfg, false, exitError{Code: 2, Msg: "base directory must not be empty"}
+	}
+	if cfg.Out == "" {
+		return cfg, false, exitError{Code: 2, Msg: "output parent not found: "}
+	}
+	cfg.Out, err = absPath(cfg.Out)
+	if err != nil {
+		return cfg, false, err
+	}
+	if err := validateOutputPath(cfg.Src, cfg.Out); err != nil {
+		return cfg, false, err
+	}
 	return cfg, false, nil
+}
+
+func invalidArgToken(s string) bool {
+	if !utf8.ValidString(s) {
+		return true
+	}
+	for _, r := range s {
+		if r == 0 || r == '\r' || r == '\n' || r == 0x7f || r < 0x20 {
+			return true
+		}
+	}
+	return false
+}
+
+func validBuildID(s string) bool {
+	if s == "" {
+		return true
+	}
+	return regexp.MustCompile(`^b[0-9]{14}(-[0-9]{3})?$`).MatchString(s)
+}
+
+func validCommitSHA(s string) bool {
+	if s == "" {
+		return true
+	}
+	return regexp.MustCompile(`^[0-9a-f]{40}$`).MatchString(s)
+}
+
+func validBuildAt(s string) bool {
+	if s == "" {
+		return true
+	}
+	if !regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$`).MatchString(s) {
+		return false
+	}
+	parsed, err := time.Parse(time.RFC3339, s)
+	return err == nil && parsed.UTC().Format(time.RFC3339) == s
+}
+
+func validateSourcePath(src string) error {
+	info, err := os.Lstat(src)
+	if err != nil {
+		return exitError{Code: 2, Msg: "source not found: " + src}
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return exitError{Code: 2, Msg: "source is not markdown file or directory: " + src}
+	}
+	if !info.IsDir() && !isMarkdownPath(src) {
+		return exitError{Code: 2, Msg: "source is not markdown file or directory: " + src}
+	}
+	return nil
+}
+
+func validateOutputPath(src, out string) error {
+	parent := filepath.Dir(out)
+	info, err := os.Lstat(parent)
+	if err != nil {
+		return exitError{Code: 2, Msg: "output parent not found: " + parent}
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return exitError{Code: 2, Msg: "output parent is not directory: " + parent}
+	}
+	if outInfo, err := os.Lstat(out); err == nil {
+		if !outInfo.IsDir() || outInfo.Mode()&os.ModeSymlink != 0 {
+			return exitError{Code: 1, Msg: "output path is not directory: " + out}
+		}
+	}
+	srcClean := filepath.Clean(src)
+	outClean := filepath.Clean(out)
+	if srcClean == outClean || pathInside(outClean, srcClean) || pathInside(srcClean, outClean) {
+		return exitError{Code: 2, Msg: "output path must be outside source: " + out}
+	}
+	return nil
+}
+
+func pathInside(child, parent string) bool {
+	rel, err := filepath.Rel(parent, child)
+	if err != nil {
+		return false
+	}
+	return rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 func absPath(p string) (string, error) {
@@ -238,7 +379,10 @@ func build(cfg BuildConfig, stdout io.Writer) (report, []string, error) {
 		return report{}, nil, err
 	}
 	if cfg.Strict && len(warnings) > 0 {
-		return report{}, warnings, exitError{Code: 2, Msg: "strict mode failed with warnings"}
+		rep.Pages = len(pages)
+		rep.Warnings = len(warnings)
+		rep.Theme = cfg.Theme
+		return rep, warnings, exitError{Code: 2, Msg: "strict mode failed with warnings"}
 	}
 	fmt.Fprintln(stdout, "Building site...")
 	files, err := assembleSite(cfg, pages)
@@ -261,7 +405,7 @@ func build(cfg BuildConfig, stdout io.Writer) (report, []string, error) {
 }
 
 func collectInputs(cfg BuildConfig) ([]PageInput, string, error) {
-	info, err := os.Stat(cfg.Src)
+	info, err := os.Lstat(cfg.Src)
 	if err != nil {
 		return nil, "", exitError{Code: 2, Msg: "source not found: " + cfg.Src}
 	}
@@ -291,11 +435,17 @@ func collectInputs(cfg BuildConfig) ([]PageInput, string, error) {
 		}
 		if d.IsDir() {
 			name := d.Name()
-			if strings.HasPrefix(name, ".") || name == "node_modules" || name == "vendor" || name == "dist" {
+			if d.Type()&os.ModeSymlink != 0 {
+				return filepath.SkipDir
+			}
+			if strings.HasPrefix(name, ".") || name == ".ci" || name == "node_modules" || name == "vendor" || name == "dist" {
 				if path != cfg.Src {
 					return filepath.SkipDir
 				}
 			}
+			return nil
+		}
+		if d.Type()&os.ModeSymlink != 0 || strings.HasPrefix(d.Name(), ".") {
 			return nil
 		}
 		if isMarkdownPath(path) {
@@ -327,11 +477,18 @@ func collectInputs(cfg BuildConfig) ([]PageInput, string, error) {
 }
 
 func isMarkdownPath(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
+	ext := filepath.Ext(path)
 	return ext == ".md" || ext == ".markdown"
 }
 
 func readUTF8(path string) (string, error) {
+	info, statErr := os.Lstat(path)
+	if statErr != nil {
+		return "", exitError{Code: 2, Msg: "source not found: " + path}
+	}
+	if info.Size() > maxMarkdownFileBytes {
+		return "", exitError{Code: 2, Msg: "source file too large: " + path}
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", exitError{Code: 2, Msg: "source not found: " + path}
@@ -339,6 +496,7 @@ func readUTF8(path string) (string, error) {
 	if !utf8.Valid(data) {
 		return "", exitError{Code: 2, Msg: "source is not valid UTF-8: " + path}
 	}
+	data = bytes.TrimPrefix(data, []byte{0xef, 0xbb, 0xbf})
 	return string(data), nil
 }
 
@@ -1035,13 +1193,14 @@ func siteIndexHTML(pages []PageData) string {
 }
 
 func pageHTML(cfg BuildConfig, page PageData) string {
-	now := time.Now().UTC().Format(time.RFC3339)
-	return `<!doctype html>
+	return `<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="adlaire-generated-at" content="` + now + `">
+<meta name="adlaire-build-id" content="` + esc(cfg.BuildID) + `">
+<meta name="adlaire-commit-sha" content="` + esc(cfg.CommitSHA) + `">
+<meta name="adlaire-build-at" content="` + esc(cfg.BuildAt) + `">
 <title>` + esc(page.Title) + ` - ` + esc(cfg.Title) + `</title>
 <link rel="stylesheet" href="` + assetPrefix(page.OutputPath) + `assets/style.css">
 </head>
@@ -1050,7 +1209,7 @@ func pageHTML(cfg BuildConfig, page PageData) string {
 <header id="hdr"><button id="sb-toggle" aria-label="目次">☰</button><a id="brand" href="` + homeHref(page.OutputPath) + `">` + esc(cfg.Title) + `</a><span id="reading-time">約 ` + strconv.Itoa(max(1, page.ReadingTimeMinutes)) + ` 分</span></header>
 <div id="lay">
 <aside id="sb"><input id="sb-search" type="search" placeholder="Search"><div id="sb-none" hidden>No results</div>` + page.TocHTML + `</aside>
-<main id="ct"><article id="main">` + page.HTML + `</article><footer>Generated at ` + now + `</footer></main>
+<main id="ct"><article id="main">` + page.HTML + `</article><footer>Generated at ` + esc(cfg.BuildAt) + `</footer></main>
 </div>
 <button id="btt" aria-label="トップへ戻る">↑</button>
 <script type="module" src="` + assetPrefix(page.OutputPath) + `assets/app.js"></script>
@@ -1082,19 +1241,19 @@ func defaultJS() string {
 }
 
 func writeAtomic(out string, files []siteFile) error {
-	info, err := os.Stat(out)
+	info, err := os.Lstat(out)
 	if err == nil && !info.IsDir() {
 		return fmt.Errorf("output path is not directory: %s", out)
 	}
 	parent := filepath.Dir(out)
 	base := filepath.Base(out)
-	if err := os.MkdirAll(parent, 0755); err != nil {
-		return fmt.Errorf("cannot create output directory: %s", out)
+	if staging, err := existingStagingPath(parent, base); err != nil {
+		return err
+	} else if staging != "" {
+		return fmt.Errorf("output staging path already exists: %s", staging)
 	}
 	tmp := filepath.Join(parent, fmt.Sprintf("%s.tmp.%d", base, os.Getpid()))
 	prev := filepath.Join(parent, fmt.Sprintf("%s.prev.%d", base, os.Getpid()))
-	os.RemoveAll(tmp)
-	os.RemoveAll(prev)
 	if err := os.MkdirAll(tmp, 0755); err != nil {
 		return fmt.Errorf("cannot create output directory: %s", out)
 	}
@@ -1126,6 +1285,40 @@ func writeAtomic(out string, files []siteFile) error {
 	}
 	os.RemoveAll(prev)
 	return nil
+}
+
+func existingStagingPath(parent, base string) (string, error) {
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		return "", fmt.Errorf("output parent not found: %s", parent)
+	}
+	prefixes := []string{base + ".tmp.", base + ".prev."}
+	var matches []string
+	for _, entry := range entries {
+		name := entry.Name()
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(name, prefix) && isPositiveDecimal(name[len(prefix):]) {
+				matches = append(matches, filepath.Join(parent, name))
+			}
+		}
+	}
+	sort.Strings(matches)
+	if len(matches) == 0 {
+		return "", nil
+	}
+	return matches[0], nil
+}
+
+func isPositiveDecimal(s string) bool {
+	if s == "" || s[0] == '0' {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func outputStats(root string) (int, int64, error) {
@@ -1205,17 +1398,5 @@ func max(a, b int) int {
 }
 
 func stableContent(path string) ([]byte, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	lines := bytes.Split(data, []byte("\n"))
-	var kept [][]byte
-	for _, line := range lines {
-		if bytes.Contains(line, []byte(`name="adlaire-generated-at"`)) || bytes.Contains(line, []byte("Generated at ")) {
-			continue
-		}
-		kept = append(kept, line)
-	}
-	return bytes.Join(kept, []byte("\n")), nil
+	return os.ReadFile(path)
 }
