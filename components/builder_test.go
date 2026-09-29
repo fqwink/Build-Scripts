@@ -155,6 +155,49 @@ func TestFixtureBuildMetadata(t *testing.T) {
 	}
 }
 
+func TestFixtureHeadingLevelsFiveAndSix(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	writeFile(t, filepath.Join(docs, "index.md"), `# Title
+
+##### Deep
+
+###### Deeper
+`)
+	out := filepath.Join(root, "dist")
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", filepath.Join(docs, "index.md"), "--out", out, "--title", "Docs"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	index := readFile(t, filepath.Join(out, "index.html"))
+	for _, want := range []string{
+		`<h5 id="deep" class="mh h5">Deep<button class="hn-link" data-href="#deep" aria-label="リンクをコピー">¶</button></h5>`,
+		`<h6 id="deeper" class="mh h6">Deeper<button class="hn-link" data-href="#deeper" aria-label="リンクをコピー">¶</button></h6>`,
+	} {
+		if !strings.Contains(index, want) {
+			t.Fatalf("index.html missing %q: %s", want, index)
+		}
+	}
+	for _, forbidden := range []string{
+		`<h4 id="deep"`,
+		`<h4 id="deeper"`,
+	} {
+		if strings.Contains(index, forbidden) {
+			t.Fatalf("index.html contains downgraded heading %q: %s", forbidden, index)
+		}
+	}
+	style := readFile(t, filepath.Join(out, "assets", "style.css"))
+	for _, want := range []string{`.h5{font-size:16px}`, `.h6{font-size:14px}`} {
+		if !strings.Contains(style, want) {
+			t.Fatalf("style.css missing %q: %s", want, style)
+		}
+	}
+	if !strings.Contains(stdout.String(), "headings=3") {
+		t.Fatalf("report did not count h5/h6 headings: %s", stdout.String())
+	}
+}
+
 func TestFixtureURLSafety(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, "docs")
