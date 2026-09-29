@@ -488,7 +488,7 @@ build id の割当単位は、処理を開始する正規化済み `BranchTarget
 2. 設定ファイル起動時整合性チェックを実行する。
 3. `.build_status.json` に `status="running"`、`trigger`、`started_at`、`current_build_id` を atomic write で保存する。
 4. `.build_state.running=true`、`current_build_id`、`last_started_at` を atomic write で保存する。
-5. build id 確定後、GitHub API、pipeline、deploy などの外部副作用を開始する前に、`.build_logs/{id}.json` を `status="running"` の途中保存形で atomic write する。
+5. build id 確定後、GitHub API request、Blob 取得、標準 builder command、YAML step、deploy 転送、snapshot save、Commit Status 送信、notification 送信のうち当該 target で実行する副作用を開始する前に、`.build_logs/{id}.json` を `status="running"` の途中保存形で atomic write する。
 6. GitHub API、Blob 取得、事前チェック、[`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) の pipeline source 選択、選択した標準 builder command または YAML step の実行を行う。
 7. ビルド成功時のみ `sha_file` を新 SHA に更新し、deploy を実行する。
 8. deploy target がないか、全 deploy target の転送と検証が成功した場合だけ、[`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理) に従って `archive` owner の snapshot save を呼び出す。
@@ -2900,7 +2900,7 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 
 [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) の境界は owner component `runner`、collaborator component `api`、`statefile` とする。
 
-本機能の目的は、manual、webhook、approval などの queue entry を優先度順に処理し、緊急 build を先に実行できるようにすることである。
+本機能の目的は、`trigger` が `"manual"`、`"webhook"`、`"approval"` のいずれかである queue entry を優先度順に処理し、緊急 build を先に実行できるようにすることである。Queue entry `trigger` の許容値は [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) を正本とする。
 
 **入力 / 状態：**
 
@@ -3171,7 +3171,7 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 | state target | 対象の [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) 機能契約に列挙された状態ファイル、[`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) / [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の schema、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](../DETAIL_INDEX.md#0i-詳細節対応表) の collaborator だけを使用する。 | 未定義状態ファイル、未知 key、空 placeholder file、component 固有でない汎用 state file を追加する。 |
 | write order | 通常 build は [`docs/details/runner.md` 詳細本文責務 §13](runner.md#13-処理フロー) の状態更新順序、rollback は [`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理) の accepted 確定順と worker 書込順、追加機能は該当 owner 節の固定順を fixture でそれぞれ検証する。 | 異なる lifecycle の書込を 1 つの抽象順にまとめる、並列処理の完了順を永続保存順にする、fixture に `write_order` を持たない複数書込を確認済み扱いにする。 |
 | partial failure | 失敗地点より後の write / external call / notification は実行しない。失敗地点より前に成功済みの状態は、対象の [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) 機能契約が rollback を明記しない限り戻さない。 | 保存済み build log / history / status を実装者判断で削除、巻き戻し、再分類する。 |
-| no-op / skip | 変更なし、cooldown、tag 不一致、disabled、sample 不足、queue duplicate 等は、対象の [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) 機能契約が定める runner 結果、保存値、終了コード、副作用ゼロまたは指定最小副作用で固定する。HTTP response は api owner だけが定義する。 | no-op で config log、audit、notify、build log、history、SHA cache を暗黙更新する。 |
+| no-op / skip | 変更なし、cooldown、tag 不一致、disabled、sample 不足、queue duplicate は、対象の [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) 機能契約が定める runner 結果、保存値、終了コード、副作用ゼロまたは指定最小副作用で固定する。HTTP response は api owner だけが定義する。 | no-op で config log、audit、notify、build log、history、SHA cache を暗黙更新する。 |
 | dry-run | dry-run は設定検証、対象判定、差分判定、実行可否の出力だけを行い、状態ファイル、lock、log、history、cache、notification、external write を作成・更新しない。 | dry-run 結果を後続実行用 cache として保存する。 |
 | secret mask | PAT、Webhook secret、SMTP password、branch env secret、hook output secret、remote credential は読込直後に mask 登録し、stdout / stderr / build log / history / status / pending / fixture expected に平文を残さない。 | mask 登録前にログ保存する、secret 長・hash・prefix・suffix を保存する。 |
 | schema strictness | runner が保存する object は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の key だけを持ち、nullable、UTC 時刻、列挙値、配列順を満たす。 | SDK / UI 用の表示名、計算済み label、未定義 fallback key を state に保存する。 |

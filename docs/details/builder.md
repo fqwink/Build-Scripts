@@ -192,7 +192,7 @@ Markdown ディレクトリ入力で Markdown ファイルが 0 件の場合は�
 <a id="builder-url-attribute-safety"></a>
 **URL 属性安全契約：**
 
-Markdown 由来の URL を `href`、`src`、`data-href`、`data-lightbox-src`、検索 index の遷移先、print QR URL、または同等の URL 属性へ出力する場合は、出力前に URL 属性安全契約を通過させる。通過前の URL 文字列を HTML attribute、stdout、stderr、`[REPORT]`、manifest、search index へそのまま出力してはならない。
+Markdown 由来の URL を `href`、`src`、`data-href`、`data-lightbox-src`、検索 index の遷移先 URL、print QR URL のいずれかへ出力する場合は、出力前に URL 属性安全契約を通過させる。これ以外の URL 出力先を追加する場合は、対象 owner 詳細本文で出力先名、属性名、保存先、検証条件を固定してから本契約の対象へ追加する。通過前の URL 文字列を HTML attribute、stdout、stderr、`[REPORT]`、manifest、search index へそのまま出力してはならない。
 
 | 判定対象 | 許可条件 |
 |----------|----------|
@@ -1432,7 +1432,7 @@ h2 見出し単位で「← 前の章」「次の章 →」ボタンを各章末
 | 終了コード | 条件 | 後続処理 |
 |------------|------|----------|
 | `0` | 静的 Web サイト生成に成功し、`[REPORT]` 行を出力した。 | `runner` は成功として扱う。 |
-| `1` | 出力ディレクトリ作成、HTML / CSS / JavaScript / search index 書き込み、テンプレート合成など処理中の一般エラー。 | `runner` はビルド失敗として扱い、SHA を更新しない。 |
+| `1` | 出力ディレクトリ作成失敗、HTML 書き込み失敗、CSS 書き込み失敗、JavaScript 書き込み失敗、search index 書き込み失敗、template 合成失敗、一時ディレクトリ削除失敗のいずれか。 | `runner` はビルド失敗として扱い、SHA を更新しない。 |
 | `2` | CLI 引数不正、入力ファイル不存在、入力 UTF-8 不正、または `--strict` 指定時の警告発生。 | `runner` は設定または入力エラーとして扱い、SHA を更新しない。ただし `--strict` 警告時は `[REPORT]` を取り込む。 |
 
 終了コード `0` の場合、stdout には必ず `Collecting Markdown...`、`Converting MD...`、`Building site...`、`Writing assets...`、`Done → ...`、`[REPORT] ...` をこの順序で出力する。警告がある場合は `[REPORT]` の直前に `[WARN] ...` を 1 件 1 行で出力する。
