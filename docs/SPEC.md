@@ -364,6 +364,8 @@ owner component 別の [`docs/details/*.md`](details/) は、詳細本文責務�
 
 Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件を一体として管理する実装単位である。Phase 単位の必須操作、active Phase、優先度ラベルの使用禁止、途中追加禁止は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を唯一の正本とする。Phase の一覧、現在状態、順序、依存関係は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、個別の実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、acceptance assertion と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。
 
+実装作業の Pull Request は Phase を境界としなければならない。Phase を Pull Request の境界にする理由は、仕様根拠、対象 owner、実装範囲、検証条件、完了判定を一つの責務単位に固定し、複数 Phase の混在、同一 Phase の並行分割、後続 Phase の先取り、仕様根拠のない実装補完を禁止するためである。
+
 <a id="47-実装着手ゲート方針"></a>
 
 <a id="sec-4-7"></a>
@@ -623,6 +625,10 @@ Go 版初期実装で新規実装へ着手できる対象は、[`docs/ROADMAP.md
 ## 0f. Phase 実装単位ポリシー
 
 実装順序、実装計画、実装 PR、完了判定は Phase 単位で行わなければならない。
+
+実装を主目的とする Pull Request は、1 本につき 1 Phase だけを対象にしなければならない。複数 Phase の実装変更を 1 本の Pull Request に混在させてはならない。同一 Phase の実装変更を複数の並行 Pull Request へ分割してはならない。active Phase に対応する open Pull Request が既に存在する場合、同じ Phase の追加実装、修正、検証、仕様根拠の補強は新規 Pull Request を作成せず、既存の該当 Phase Pull Request へ統合しなければならない。
+
+仕様全般に基づく実装とは、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に到達し、その全てと矛盾しない実装だけを行うことをいう。これらのいずれかで対象 Phase、対象機能、入力、出力、状態、副作用、異常系、検証条件、完了条件が未定義または矛盾している場合、実装者はコード判断で補完してはならない。先に該当する責務正本を改訂し、仕様根拠を確定してから実装しなければならない。
 
 `P0`、`P1`、`P2〜P5` などの優先度ラベル、抽象段階、API 内部分類、fixture 分類を、実装単位、PR 単位、完了判定単位として使ってはならない。
 
