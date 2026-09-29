@@ -209,6 +209,7 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 |------|----|--------|--------|--------------|------|
 | `log_max_lines` | integer | `500` | 1〜10000 | `GET/POST /api/config` | `GET /api/logs` が返す最大行数。 |
 | `history_max_count` | integer | `100` | 1〜10000 | `GET/POST /api/config` | `.build_history` の通常表示上限。削除処理の上限ではない。 |
+| `history_retention` | object | `{"enabled":false,"max_count":1000,"max_age_days":null,"updated_at":null}` | [HistoryRetentionPolicy object](#history-retention-policy-object) | `GET/POST /api/history/retention`, `POST /api/history/retention/run` | `.build_history` と対応 log の自動削除 policy。 |
 | `build_timeout_seconds` | integer | `300` | 1〜86400 | `GET/POST /api/config` | 手動/自動ビルドのタイムアウト秒数。 |
 | `log_retention_days` | integer | `30` | 0〜3650 | `GET/POST /api/config`, `POST /api/logs/cleanup` | `0` は自動削除なし。 |
 | `log_level` | string | `"INFO"` | `"INFO"` / `"DEBUG"` / `"WARNING"` / `"ERROR"` | `GET/POST /api/config`, `POST /api/log-level` | `api` のランタイムログレベル。 |
@@ -241,7 +242,19 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 
 `readServerConfig()` は sparse object と既定値を deep copy した memory 上の object へ top-level key 単位で merge し、全 top-level key を持つ `ServerConfig` を返す。nested object の部分 merge は行わない。読取時は `.server_config` の作成、完全形への書き戻し、key 順の変更、mtime の変更を行わない。既存値と更新値の no-op 判定は、どちらも `readServerConfig()` と同じ規則で正規化した全 key の値で比較する。
 
-`POST /api/config`、`POST /api/log-level`、`POST /api/api-rate-limit`、および `POST /api/schedule/*` が no-op でない `.server_config` 更新を確定した場合は、更新後の正規化値の全 top-level key を省略せず atomic write する。起動時整合性回復が初期値 `{}` を再生成する場合と、backup / restore が sparse object を復元する場合だけはこの完全形保存の例外とし、backup / restore の入出力と no-op 判定は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の backup / restore 固定契約を参照する。
+`POST /api/config`、`POST /api/log-level`、`POST /api/api-rate-limit`、`POST /api/history/retention`、および `POST /api/schedule/*` が no-op でない `.server_config` 更新を確定した場合は、更新後の正規化値の全 top-level key を省略せず atomic write する。起動時整合性回復が初期値 `{}` を再生成する場合と、backup / restore が sparse object を復元する場合だけはこの完全形保存の例外とし、backup / restore の入出力と no-op 判定は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の backup / restore 固定契約を参照する。
+
+<a id="history-retention-policy-object"></a>
+HistoryRetentionPolicy object:
+
+| キー | 型 | 必須 | 許容値 / 説明 |
+|------|----|------|---------------|
+| `enabled` | boolean | 必須 | `true` / `false`。 |
+| `max_count` | integer/null | 必須 | 1〜100000 または `null`。保持する最新 build history 件数。 |
+| `max_age_days` | integer/null | 必須 | 1〜3650 または `null`。保持する最大日数。 |
+| `updated_at` | string/null | 必須 | UTC ISO 8601 秒精度または `null`。 |
+
+`max_count` と `max_age_days` を同時に `null` にしてはならない。`enabled=false` でも threshold は保持し、run API は削除せず `deleted_count:0` を返す。`updated_at` は `POST /api/history/retention` の差分保存時だけ API owner が更新し、`POST /api/history/retention/run` は変更しない。
 
 TagFilter object:
 
@@ -309,7 +322,7 @@ ApiRateLimitPolicy object:
 | pending `last_error` | string | 1〜500 文字 | secret mask 後の最終失敗理由。 |
 | request `remote_addr` | string/null | IP 文字列または `null` | 接続元。 |
 
-TagFilter object、RemoteBuildConfig object、DurationAnomaly object、ApiRateLimitPolicy object は `enabled` を必須 key とし、型と許容値は [共通 field 定義](#statefile-common-fields) の object `enabled` を適用する。`.build_history` と `.build_logs/{id}.json` は `output_size_bytes`、`output_sha256`、`size_warn`、`flagged`、`tags`、`comment`、`error` をすべて必須 key とし、型と許容値は同表の build field 契約を適用する。
+HistoryRetentionPolicy object、TagFilter object、RemoteBuildConfig object、DurationAnomaly object、ApiRateLimitPolicy object は `enabled` を必須 key とし、型と許容値は [共通 field 定義](#statefile-common-fields) の object `enabled` を適用する。`.build_history` と `.build_logs/{id}.json` は `output_size_bytes`、`output_sha256`、`size_warn`、`flagged`、`tags`、`comment`、`error` をすべて必須 key とし、型と許容値は同表の build field 契約を適用する。
 
 CachePage object と DependencyManifestPage object は `input_sha256` を必須 key とし、型と許容値は同表の content `input_sha256` を適用する。Attempt object、HookLog object、TargetResult object は `started_at` を必須 key とし、型と許容値は operation `started_at` を適用する。Attempt object、TargetResult object、RemoteBuild object は `status` を必須 key とし、型と許容値は operation `binary_status` を適用する。PipelineStep object、Deploy object、RemoteBuild object は `error` を必須 key とし、型と許容値は operation `fixed_error` を適用する。NotificationPending object と PendingTransfer object は `last_error` を必須 key とし、型と許容値は pending `last_error` を適用する。
 
@@ -1585,11 +1598,13 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | key | 型 | 必須 | 仕様 |
 |-----|----|------|------|
 | `id` | string | yes | `cfgsnap_` + UTC `YYYYMMDDHHMMSS` + 衝突 suffix。 |
-| `label` | string|null | yes | 0〜128 Unicode scalar values。 |
+| `label` | string|null | yes | 1〜128 Unicode scalar values または `null`。空文字は禁止する。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `created_by` | string | yes | user id または `system`。 |
-| `files` | object | yes | snapshot 対象 state path ごとの JSON value または secret mask。 |
+| `files` | object | yes | snapshot 対象 state path ごとの JSON value、または secret file marker。key は [`docs/details/api.md` 詳細本文責務 backup 対象](api.md#backup--restore-固定契約) の path だけを許可する。 |
 | `sha256` | string | yes | `files` canonical JSON の SHA-256 lowercase hex。 |
+
+ConfigSnapshotObject の secret file marker は `{"secret_set":boolean,"value":"***"}` または `{"secret_set":false,"value":null}` のどちらかだけを許可する。secret 本体、secret hash、secret 長、prefix、suffix を保存してはならない。restore 時の secret file marker の扱いは [`docs/details/api.md` 詳細本文責務 §27.55](api.md#sec-27-55) を参照する。
 
 **ProjectRecord：**
 
@@ -1604,6 +1619,8 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
 
+ProjectRecord は `.projects.projects` 内で `id` を一意とし、`default:true` の record を 1 件だけ持つ。`default:true` の record は `status:"active"` 固定とし、archive、物理削除、id 変更を禁止する。`root` は保存時に前後空白を保持せず、入力に前後空白がある場合は validation failure とする。
+
 **ConfigTemplateRecord：**
 
 | key | 型 | 必須 | 仕様 |
@@ -1611,9 +1628,11 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `id` | string | yes | `tmpl_` + 26 文字 Crockford Base32。 |
 | `name` | string | yes | 1〜128 Unicode scalar values。 |
 | `description` | string/null | yes | 0〜1000 Unicode scalar values または `null`。 |
-| `values` | object | yes | config restore 対象と同じ schema-valid partial object。secret 平文禁止。 |
+| `values` | object | yes | config restore 対象と同じ schema-valid partial object。secret 平文、secret mask、`*_set`、`exported_at`、未知 key 禁止。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
+
+ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全一致一意とする。`values` の top-level key は [`docs/details/api.md` 詳細本文責務 backup / restore 固定契約](api.md#backup--restore-固定契約) の restore 対象 JSON state file だけを許可し、`.webhook_secret`、`.smtp_secret`、`.github_token`、session、token、履歴、ログ、snapshot、cache、queue を含めてはならない。
 
 **AdminEventRecord：**
 

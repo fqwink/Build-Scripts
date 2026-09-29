@@ -280,7 +280,7 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 | CLI 管理クライアント | `admin` | [`docs/details/admin.md` 詳細本文責務 §A7](details/admin.md#sec-a7)、API 対応は [`docs/details/api.md` 詳細本文責務 §27.54](details/api.md#sec-27-54)、fixture 証跡は [`docs/details/fixture.md` Admin CLI fixture 固定契約](details/fixture.md#admin-cli-fixture-contract) |
 | 設定の自動スナップショット | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.55](details/api.md#sec-27-55) |
 | ステータスバッジ生成 | `api` | [`docs/details/api.md` 詳細本文責務 §27.56](details/api.md#sec-27-56) |
-| ビルド履歴の自動削除設定 | `runner` | [`docs/details/runner.md` 詳細本文責務 history 契約](details/runner.md#sec-27-30)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.57](details/api.md#sec-27-57) |
+| ビルド履歴の自動削除設定 | `runner` | 状態 schema は [`docs/details/statefile.md` 詳細本文責務 HistoryRetentionPolicy object](details/statefile.md#history-retention-policy-object)、API 境界と削除実行順は [`docs/details/api.md` 詳細本文責務 §27.57](details/api.md#sec-27-57) |
 | ロールベースアクセス制御 | `security` | [`docs/details/security.md` 詳細本文責務 §27.58](details/security.md#sec-27-58)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.58](details/api.md#sec-27-58) |
 | 設定スナップショット差分表示 | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.59](details/api.md#sec-27-59) |
 | 複数プロジェクト管理 | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.60](details/api.md#sec-27-60) |

@@ -2973,20 +2973,21 @@ response 算出時点で `reset_at` が現在時刻以下の window は `state_s
 | `DatastoreSwitchResponse` | `accepted`, `dry_run`, `target_store`, `checks` | `checks[]` は `name`, `status`, `message` を持ち、`status` は `ok`、`warn`、`error`。 |
 | `StatsExportResponse` | `generated_at`, `range`, `summary`, `items` | `range` は request の `from`, `to`, `granularity`, `target` を正規化して返す。 |
 | `QueueCancelResponse` | `message`, `queue_id`, `status` | `status` は `cancelled` 固定。 |
-| `ConfigSnapshotListResponse` | `snapshots`, `total`, `limit`, `offset` | `snapshots` は id、label、created_at、created_by、sha256、corrupted を返す。 |
-| `ConfigSnapshotCreateInput` | `label` | `label` は string または `null`。省略時は `null`。 |
+| `ConfigSnapshotListResponse` | `snapshots`, `total`, `limit`, `offset` | `snapshots` は id、label、created_at、created_by、sha256、corrupted を返す。破損 snapshot の nullable field は §27.55 に従う。 |
+| `ConfigSnapshotCreateInput` | `label` | `label` は 1〜128 Unicode scalar values の string または `null`。省略時は `null`、空文字は `422`。 |
 | `ConfigSnapshotRecord` | `id`, `label`, `created_at`, `created_by`, `sha256` | `files` 本体は list / create response へ含めない。 |
-| `ConfigSnapshotObject` | `id`, `label`, `created_at`, `created_by`, `files`, `sha256`, `corrupted` | `files` は secret mask 済み value だけを含める。 |
+| `ConfigSnapshotObject` | `id`, `label`, `created_at`, `created_by`, `files`, `sha256`, `corrupted` | `files` は schema-valid JSON value または secret file marker だけを含める。 |
 | `ConfigSnapshotRestoreInput` | `confirmation` | `confirmation:"RESTORE_CONFIG"` 必須。 |
 | `ConfigSnapshotRestoreResponse` | `message`, `snapshot_id`, `restored_paths` | `restored_paths` は書込成功 path の ASCII 昇順。 |
-| `HistoryRetentionPolicyInput` | `enabled`, `max_count`, `max_age_days`, `dry_run` | `max_count` と `max_age_days` は少なくとも一方を指定する。 |
+| `HistoryRetentionPolicyInput` | `enabled`, `max_count`, `max_age_days` | `max_count` と `max_age_days` は少なくとも一方を指定する。 |
 | `HistoryRetentionPolicy` | `enabled`, `max_count`, `max_age_days`, `updated_at` | 保存済み policy または既定値を返す。 |
-| `HistoryRetentionRunResponse` | `deleted_count`, `dry_run`, `matched_ids` | `matched_ids` は削除または削除予定 build id。 |
+| `HistoryRetentionRunResponse` | `deleted_count`, `matched_ids` | `matched_ids` は削除した build id。 |
 | `ProjectListResponse` | `projects`, `total` | `projects` は [`docs/details/statefile.md` 詳細本文責務 ProjectRecord](statefile.md#sec-22-0d) の配列。 |
 | `ProjectInput` | `id`, `name`, `root`, `branch` | 全 key 必須。`status` と `default` は request で受け付けない。 |
 | `ProjectPatchInput` | `name`, `root`, `branch`, `status` | 1 key 以上必須。`status` は `active` または `archived`。 |
 | `QueueReorderInput` | `queue_ids` | queued entry id の全件 exact 配列。重複、欠落、余剰は `422`。 |
 | `QueueReorderResponse` | `message`, `queue_ids` | 保存後の queue id 順を返す。 |
+| `ConfigTemplateListResponse` | `templates`, `total` | `templates` は [`docs/details/statefile.md` 詳細本文責務 ConfigTemplateRecord](statefile.md#sec-22-0d) の配列。 |
 | `ConfigTemplateInput` | `name`, `description`, `values` | `values` は config restore 対象と同じ schema-valid partial object。secret 平文は禁止。 |
 | `ConfigTemplateApplyInput` | `confirmation` | `confirmation:"APPLY_CONFIG_TEMPLATE"` 必須。 |
 | `ConfigTemplateApplyResponse` | `message`, `template_id`, `updated_paths` | `updated_paths` は ASCII 昇順。 |
@@ -3052,7 +3053,7 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 | external auth | `.external_auth_config` と secret ref | `.external_auth_config` → `.audit_log` → `.admin_events` | discovery test は状態を変更しない。secret 平文を response / log に出さない。 |
 | share links | `.share_links` | `.share_links` → `.audit_log` → `.admin_events` | `GET /api/share/{token}/status` は `.share_links` を read-only で参照し、`.audit_log` と `.admin_events` を書き込まない。token 本体、token hash、Authorization header、Cookie は保存しない。 |
 | datastore switch | `.datastore_config` | `.datastore_config` → `.admin_events` | `dry_run:true` は write なし。switch 実行中は `409`。 |
-| config snapshots / diff / templates | 対象 state と `.config_snapshots/`、`.config_templates` | snapshot/template state → 対象 config state → `.config_log` → `.audit_log` → `.admin_events` | restore / apply の途中失敗は未処理 file を書かず、成功済み file は巻き戻さない。 |
+| config snapshots / diff / templates | 対象 state と `.config_snapshots/`、`.config_templates` | snapshot/template state → 対象 config state（restore / apply 時のみ）→ `.config_log`（restore / apply 時のみ）→ `.audit_log` → `.admin_events` | restore / apply の途中失敗は未処理 file を書かず、成功済み file は巻き戻さない。 |
 | queue / retention / webhook resend | `.build_state`, `.server_config`, `.notify_log` | runner owner の対象 state → `.audit_log` → `.admin_events` | running conflict、queue id 不在、同一 delivery 再送中は差分なし。 |
 | projects | `.projects` | `.projects` → `.admin_events` | default project の archive は `409`。 |
 | events / metrics / badge / OpenAPI / version / stats export / diff read | endpoint 固有 state | なし | read-only endpoint は業務状態を作成、修復、削除しない。 |
@@ -3170,6 +3171,16 @@ CLI 管理クライアントの command、option、stdout、stderr、終了 code
 
 restore は `confirmation:"RESTORE_CONFIG"` を必須とする。
 
+`GET /api/config-snapshots` は `.config_snapshots/*.json` を file 名 ASCII 昇順で列挙し、schema-valid snapshot と破損 snapshot の両方を response 対象にする。schema-valid snapshot は `created_at` 降順、同一 `created_at` は `id` ASCII 昇順で並べる。破損 snapshot は `id` を file 名から取り、`label:null`、`created_at:null`、`created_by:null`、`sha256:null`、`corrupted:true` として末尾へ file 名 ASCII 昇順で並べる。`total` は paging 前件数、`limit` / `offset` は [追加管理 API path / query 固定契約](#additional-management-parameter-contract) に従う。
+
+`POST /api/config-snapshots` は [`backup / restore 固定契約](#backup--restore-固定契約) の backup 対象だけを読み取り、`ConfigSnapshotObject.files` へ保存する。JSON 状態 file は schema-valid value を保存し、`.webhook_secret` と `.smtp_secret` は secret 本体を保存せず `{"secret_set":true,"value":"***"}` または `{"secret_set":false,"value":null}` に固定する。snapshot 作成は設定状態を変更せず、`.config_snapshots/{id}.json` を新規 atomic write した後に `.audit_log` と `.admin_events` だけを追記する。既存 id への上書きは禁止し、id 衝突を解消できない場合は `409 {"error":"Config snapshot conflict"}` とする。
+
+`GET /api/config-snapshots/{id}` は schema-valid snapshot だけを返す。対象 file が存在しない場合は `404 {"error":"Config snapshot not found"}`、JSON 破損または schema 不一致の場合は `500 {"error":"Config snapshot corrupted"}` とし、状態を修復または削除しない。
+
+`POST /api/config-snapshots/{id}/restore` は snapshot の全 `files` を先に検証し、[`backup / restore 固定契約](#backup--restore-固定契約) の restore 書込順で対象状態を atomic write する。secret file marker は既存 secret file を保持し、存在しない場合も secret file を作成しない。途中 write 失敗では未処理 file、`.config_log`、`.audit_log`、`.admin_events` を書かず、成功済み file は巻き戻さない。`restored_paths` は成功済み path の ASCII 昇順とし、secret file marker により書かなかった secret path は含めない。
+
+`DELETE /api/config-snapshots/{id}` は schema-valid / corrupted にかかわらず対象 file だけを削除する。削除成功後に `.audit_log`、`.admin_events` の順で追記する。存在しない id は `404`、削除失敗は `500 {"error":"Config snapshot delete failed"}` とし、audit / admin event は追記しない。
+
 <a id="sec-27-56"></a>
 **27.56 ステータスバッジ生成：**
 
@@ -3180,6 +3191,12 @@ restore は `confirmation:"RESTORE_CONFIG"` を必須とする。
 | `GET` | `/api/badge/status.svg` | query `target`, `branch` | `image/svg+xml` | `200` | `401`, `403`, `404`, `422`, `500` |
 
 SVG は script、external reference、inline event handler、remote image を含めてはならない。
+
+`GET /api/badge/status.svg` は `GET /api/status` と同じ status 算出結果を read-only で参照し、状態 file の作成、修復、更新、`.response_cache` read/write、audit、admin event を行わない。`target` と `branch` が指定された場合は status 算出対象をその条件へ限定し、該当する status が存在しない場合は `404 {"error":"Status not found"}` とする。
+
+SVG は UTF-8、XML declaration なし、`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20" role="img" aria-label="Adlaire CI: {status}">` を root とする。表示 text は左 `Adlaire CI`、右は `success`、`failure`、`running`、`skipped`、`unknown` のいずれかとし、右背景色は `success=#2e7d32`、`failure=#c62828`、`running=#1565c0`、`skipped=#6d6d6d`、`unknown=#455a64` に固定する。status 文字列以外の動的 text、branch、target、path、error、secret は SVG に含めない。
+
+response header は `Content-Type: image/svg+xml; charset=utf-8`、`Cache-Control: no-store` とし、`ETag`、`Last-Modified`、`Set-Cookie` を付与しない。
 
 <a id="sec-27-57"></a>
 **27.57 ビルド履歴の自動削除設定 API 境界：**
@@ -3193,6 +3210,14 @@ SVG は script、external reference、inline event handler、remote image を含
 | `POST` | `/api/history/retention/run` | body 禁止 | `HistoryRetentionRunResponse` | `200` | `401`, `403`, `409`, `500` |
 
 retention run は lock 取得中なら `409` とする。
+
+`GET /api/history/retention` は `.server_config.history_retention` を [`docs/details/statefile.md` 詳細本文責務 HistoryRetentionPolicy object](statefile.md#history-retention-policy-object) として読み取り、既定値適用後の `HistoryRetentionPolicy` を返す。不在の `.server_config` は既定値で返し、file を作成しない。破損または読取不能は `500 {"error":"History retention config read failed"}` とする。
+
+`POST /api/history/retention` は `enabled` を必須、`max_count` と `max_age_days` の少なくとも一方を非 `null` 必須とし、未知 key、負数、0、小数、文字列数値を `422` とする。正規化後 policy が既存値と一致する場合は `.server_config`、`.audit_log`、`.admin_events` を変更せず `200` を返す。差分がある場合は `.server_config` を atomic write し、`.audit_log`、`.admin_events` の順で追記する。
+
+`POST /api/history/retention/run` は `.build_state.running=true` または有効な build lock がある場合に `409 {"error":"Build is running"}` とし、履歴を変更しない。policy `enabled=false` の場合は `200 {"deleted_count":0,"matched_ids":[]}` とし、`.build_history`、`.build_logs/`、`.audit_log`、`.admin_events` を変更しない。policy 有効時は `.build_history` の schema-valid record を `finished_at` 降順、同一時刻は `id` ASCII 昇順で保持対象にし、`max_count` 超過または `max_age_days` 超過の record を古い順に削除対象へ固定する。
+
+retention run は削除対象の `.build_logs/{id}.json`、`.build_logs/archive/{id}.json.gz`、`.build_history` record を同一計画で扱う。削除対象 log の削除に失敗した場合は `500 {"error":"History retention failed"}` とし、以降の対象を処理せず、削除済み log は戻さない。`.build_history` の atomic write に失敗した場合も削除済み log は戻さない。成功時だけ `.audit_log`、`.admin_events` を追記し、`matched_ids` は `.build_history` から削除した build id を削除処理順で返す。
 
 <a id="sec-27-58"></a>
 **27.58 ロールベースアクセス制御 API 境界：**
@@ -3234,6 +3259,14 @@ secret value は `left` / `right` とも `"***"` に mask する。
 | `DELETE` | `/api/projects/{id}` | body 禁止 | `{ "message": "Project archived" }` | `200` | `401`, `403`, `404`, `409`, `500` |
 
 delete は物理削除せず `status:"archived"` にする。
+
+`GET /api/projects` は `.projects.projects` の保存順で返す。`status` query 未指定時は全 project、指定時は一致する project だけを返す。`total` は filter 後件数とし、paging は行わない。`.projects` 不在は [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の初期値を memory 上で返し、file を作成しない。
+
+`POST /api/projects` は `id` の重複、`id="default"`、`default` または `status` key の指定を `409` または `422` とし、状態を変更しない。成功時は `status:"active"`、`default:false`、`created_at`、`updated_at` を補完し、`.projects.projects` の末尾へ追加する。
+
+`PATCH /api/projects/{id}` は未指定 key を維持し、`status:"archived"` への変更を archive として扱う。`default:true` の project を archive する request、最後の active project を archive する request、`id` 変更、`default` 変更は `409` または `422` とし、状態を変更しない。
+
+`DELETE /api/projects/{id}` は `PATCH` による `status:"archived"` と同じ状態差分を保存し、物理削除しない。成功時は `.projects` → `.admin_events` の順で書く。`.projects` write 成功後の `.admin_events` 失敗は `500` とし、`.projects` は巻き戻さない。
 
 <a id="sec-27-61"></a>
 **27.61 ユーザー管理 API：**
@@ -3299,6 +3332,12 @@ OpenAPI document は route、method、query、request schema、response schema�
 
 running、finished、cancelled、missing、duplicate を含む request は `422` とし状態を変更しない。
 
+`POST /api/queue/reorder` は `.build_state.queued` の waiting entry だけを並び替える。`active_queue_entry`、`running`、`current_build_id`、entry の payload、priority、created_seq、created_at、requested_by は変更しない。`.build_state.queued` が空で `queue_ids:[]` の場合は no-op `200` とし、状態を変更しない。
+
+`queue_ids` は `.build_state.queued[].id` と同じ集合を同じ個数で持つ必要がある。欠落、余剰、重複、active entry id、完了済み build id、cancelled entry id、schema-invalid id は `422 {"error":"Queue reorder validation failed"}` とし、`.build_state`、`.audit_log`、`.admin_events` を変更しない。
+
+成功時は request の `queue_ids` 順に `.build_state.queued` を並び替え、`.build_state` → `.audit_log` → `.admin_events` の順で書く。`.build_state` write 成功後の audit / admin event 失敗は `500` とし、queue 順は巻き戻さない。
+
 <a id="sec-27-65"></a>
 **27.65 設定テンプレート API 境界：**
 
@@ -3312,6 +3351,14 @@ running、finished、cancelled、missing、duplicate を含む request は `422`
 | `DELETE` | `/api/config-templates/{id}` | body 禁止 | `{ "message": "Config template deleted" }` | `200` | `401`, `403`, `404`, `500` |
 
 apply は `confirmation:"APPLY_CONFIG_TEMPLATE"` を必須とする。
+
+`GET /api/config-templates` は `.config_templates.templates` の保存順で返し、`total` は配列件数とする。不在時は空配列を返し、file を作成しない。破損または読取不能は `500 {"error":"Config templates read failed"}` とする。
+
+`POST /api/config-templates` は `name` の完全一致重複を `409` とし、`values` を [`RestoreObject`](#backup--restore-api-副作用固定契約) の subset として検証する。`values` に secret 平文、`webhook_secret`、`smtp_password`、`*_set`、`exported_at`、未知 key、schema-invalid partial object を含めてはならない。成功時は `tmpl_` id、`created_at`、`updated_at` を補完し、`.config_templates` → `.admin_events` の順で書く。
+
+`POST /api/config-templates/{id}/apply` は template の `values` に含まれる state file だけを [`backup / restore 固定契約](#backup--restore-固定契約) の restore 書込順で atomic write する。適用前に対象全 payload を検証し、1 件でも不正なら `422` として書込を開始しない。途中 write 失敗では未処理 file、`.config_log`、`.audit_log`、`.admin_events` を書かず、成功済み file は巻き戻さない。`updated_paths` は実際に書いた path の ASCII 昇順とする。
+
+`DELETE /api/config-templates/{id}` は `.config_templates.templates` から対象 1 件を除去し、template 適用済み設定を巻き戻さない。成功時は `.config_templates` → `.admin_events` の順で書く。
 
 <a id="sec-27-66"></a>
 **27.66 管理者向けイベントフィード：**
@@ -3395,6 +3442,12 @@ diff は added、removed、modified、unchanged_count を返す。
 
 file content は response に含めない。
 
+`GET /api/snapshots/{left_id}/diff/{right_id}` は [`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) の保存済み archive 検証に合格した 2 snapshot だけを比較対象にする。`left_id` と `right_id` が同一の場合は `422 {"error":"Snapshot diff validation failed"}` とし、snapshot を開かない。
+
+diff は各 `site.tar.gz` の通常 file entry だけを path と SHA-256 で比較する。directory entry、tar header、gzip header、mtime、mode、uid、gid は response に含めない。`added` は right にだけ存在する path、`removed` は left にだけ存在する path、`modified` は両方に存在し content hash が異なる path とし、それぞれ path の ASCII 昇順で返す。`unchanged_count` は両方に存在し content hash が一致する通常 file 数とする。
+
+response item は `path` と `sha256` だけを持つ。`modified` item は `left_sha256`、`right_sha256` を持つ。file content、tar path の絶対 path、snapshot 保存 path、secret、token、HTML 本文、差分本文は返さない。比較中に片方の snapshot 検証が失敗した場合は `500 {"error":"Snapshot diff failed"}` とし、状態を変更しない。
+
 <a id="sec-27-70"></a>
 **27.70 Webhook 送信履歴の手動再送 API 境界：**
 
@@ -3409,3 +3462,9 @@ Webhook 送信履歴の手動再送 API の owner は `runner` とする。
 再送対象 payload は保存済み payload hash と delivery metadata から再構成し、secret は statefile から再取得する。
 
 同一 `delivery_id` の再送実行中は `409` とする。
+
+`POST /api/notify-log/{delivery_id}/resend` は `.notify_log` から schema-valid record を `at` 降順、同一時刻は物理行順の逆順で探索し、`id` が一致し、`channel_type="webhook"` で、`result` が `"failure"` または `"dropped"`、かつ `error_code` が `"http_5xx"` または `"timeout"` の record だけを対象にする。対象外 record は `422 {"error":"Webhook delivery is not resendable"}`、不在は `404 {"error":"Webhook delivery not found"}` とする。
+
+再送は元 record の `event`、`channel_id`、`payload_sha256`、`attempt` を検証した後、`.notify_config` から同じ Webhook channel を再取得し、secret は `.webhook_secret` または channel secret ref から再読込する。保存済み payload 本文は `.notify_log` にないため、再構成できない event は `409 {"error":"Webhook payload unavailable"}` とし、送信しない。secret、送信 URL、Authorization header、payload 本文は response、`.admin_events`、`.audit_log`、server log に含めない。
+
+同一 `delivery_id` の resend guard は process 内状態と `.admin_events` の未完了 resend event の両方で判定し、実行中なら `409` とする。送信要求を受理した時点で `202 {"accepted":true,"delivery_id":<delivery_id>,"queued_at":<now>}` を返し、`.admin_events` に `type:"notification"`、`target_type:"notify_log"`、`target_id:<delivery_id>` を追記する。実際の送信結果と `.notify_log` 追記は [`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) の通知 retry 契約に従う。
