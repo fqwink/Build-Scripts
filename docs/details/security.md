@@ -201,7 +201,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 | 観点 | 合格条件 | 禁止条件 |
 |------|----------|----------|
 | one-time response | session token、login ticket、API token 本体、TOTP setup secret、otpauth URI は、該当成功 response 1 回だけに含める。 | `500`、`401`、`403`、`409`、`422`、`429` response、log、状態ファイル、fixture expected へ平文を残すこと。 |
-| memory-only state | session、login ticket、TOTP setup 仮 secret、login 失敗回数は process memory だけに保持し、再起動で破棄する。 | `.sessions` 等の未定義永続ファイル作成、ticket / session / 仮 secret の backup / restore 対象化。 |
+| memory-only state | session、login ticket、TOTP setup 仮 secret、login 失敗回数は process memory だけに保持し、再起動で破棄する。 | session、login ticket、TOTP setup 仮 secret、login 失敗回数を保存する未定義永続ファイルの作成、ticket / session / 仮 secret の backup / restore 対象化。 |
 | required security log before token | token / ticket / secret を response に含める前に、endpoint 固有契約が必須とする `.access_log` と `.audit_log` の追記を完了する。`.api_access_log` は [`docs/details/api.md` 詳細本文責務 §27.6](api.md#sec-27-6) の best-effort 記録とし、one-time 値の返却 gate にしない。 | 必須 `.access_log` または `.audit_log` の追記失敗時に token / ticket / secret を response へ含めること。 |
 | hash-only storage | password、session token、login ticket、API token は保存時に hash 化し、平文を保存しない。 | hash 算出入力の平文、token 本体、ticket 本体、password 本体を expected / log に保存すること。 |
 | fixed error body | 認証失敗、権限不足、rate limit、validation failure は固定 error body だけを返す。 | password 不一致理由、token record 詳細、scope 一覧、TOTP step、rate limit key を response に出すこと。 |
@@ -468,6 +468,8 @@ owner component は `security` とする。collaborator component は `api`、`r
 | approval 承認 | `approval_approved` | `admin` または `api_token` | `approval` | approval id | `success` |
 | approval 却下 | `approval_rejected` | `admin` または `api_token` | `approval` | approval id | `success` |
 | approval 期限切れ | `approval_expired` | `system` | `approval` | approval id | `success` |
+| share link 作成 | `share_link_create` | `admin` または `api_token` | `share_link` | 作成 share link id | `success` |
+| share link 失効 | `share_link_revoke` | `admin` または `api_token` | `share_link` | 失効 share link id | `success` |
 
 <a id="sec-27-44-config-audit-order"></a>
 **設定変更の保存順・失敗固定契約：**
@@ -487,6 +489,8 @@ owner component は `security` とする。collaborator component は `api`、`r
 | session revoke / TOTP | 対象状態更新 → `.access_log` が必要な場合は追記 → `.audit_log` → response | 保存済み状態は巻き戻さず `500`。one-time secret または token は返さない。 |
 | approval API | queue / approval / history を [`docs/details/api.md` 詳細本文責務 §27.30](api.md#sec-27-30) の順で更新 → `.audit_log` → response | 保存済み状態は巻き戻さず `500`。 |
 | approval runner event | approval / history を [`docs/details/runner.md` 詳細本文責務 §27.30](runner.md#sec-27-30) の順で更新 → `.audit_log` | 保存済み状態は巻き戻さず runner failure とし、後続通知は実行しない。 |
+| share link 作成 | `.share_links` 保存 → `.audit_log` → `.admin_events` → token response | 保存済み share link record は巻き戻さず、token 本体は返さず `500`。 |
+| share link 失効 | `.share_links` 保存 → `.audit_log` → `.admin_events` → response | 保存済み失効状態は巻き戻さず `500`。 |
 
 **取得仕様：**
 
@@ -779,3 +783,145 @@ rate limit の `429` は `.audit_log` に `permission_denied` として記録す
 | proxy header | `X-Forwarded-For` ではなく `RemoteAddr` host で key を作る。 |
 | audit failure on 429 | count は増えず `500`。 |
 | state save failure | endpoint 固有処理なし、部分 count 更新なし。 |
+
+<a id="sec-27-48"></a>
+**27.48 マルチユーザー対応：**
+
+マルチユーザー対応の owner は `security` とする。
+
+`.users` と `.roles` の schema は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) を正本とする。
+
+既定 user は初期セットアップ時に 1 件だけ作成する。既定 user は `admin` role を持つ。
+
+session には `user_id`、`role_ids`、`permissions_hash`、`issued_at`、`expires_at` を保存する。
+
+role または permission が変更された場合、既存 session の `permissions_hash` が不一致になった request は `401` とし、再 login を要求する。
+
+最後の active admin user を disabled、locked、role 剥奪してはならない。
+
+**監査対象：**
+
+| 操作 | audit action |
+|------|--------------|
+| user create | `user_create` |
+| user update | `user_update` |
+| user disable | `user_disable` |
+| role assignment change | `user_role_update` |
+
+<a id="sec-27-50"></a>
+**27.50 外部認証連携：**
+
+外部認証連携の owner は `security` とする。
+
+対応 provider type は `oidc` だけとする。
+
+OIDC discovery URL は `issuer + "/.well-known/openid-configuration"` とする。
+
+外部認証連携は local password 認証を暗黙に無効化しない。
+
+provider secret は `.external_auth_config` に保存せず、`client_secret_ref` だけを保存する。
+
+callback 検証では `state`、`nonce`、`issuer`、`audience`、`exp`、`iat`、`sub` を検証する。
+
+検証失敗は `401` とし、失敗理由の詳細、token、claim 全文を response、server log、audit log に出してはならない。
+
+<a id="sec-27-58"></a>
+**27.58 ロールベースアクセス制御：**
+
+ロールベースアクセス制御の owner は `security` とする。
+
+permission 名は以下に固定する。
+
+| permission | 許可範囲 |
+|------------|----------|
+| `*` | 全操作。system admin role だけが保持できる。 |
+| `status:read` | status、history、metrics、badge の read。 |
+| `build:write` | build trigger、queue reorder、queue cancel。 |
+| `config:read` | config、snapshot、template の read。 |
+| `config:write` | config、snapshot create / restore、template apply。 |
+| `user:admin` | user、role、external auth、share link 管理。 |
+| `system:admin` | datastore、cache、retention、event stream、webhook resend。 |
+
+API endpoint group と必要 permission は以下に固定する。ここにない追加管理 API endpoint は `403` とし、実装判断で既存 permission に割り当ててはならない。route、request、response は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) を参照する。
+
+| endpoint 群 | 必要 permission |
+|--------------|----------------|
+| `/api/users`, `/api/roles`, `/api/external-auth-*`, `/api/share-links`, `/api/share/{token}/status` | `user:admin`。ただし `/api/share/{token}/status` は share token 検証成功時だけ session permission 不要。 |
+| `/api/datastore`, `/api/datastore/switch`, `/api/cache-policy`, `/api/response-cache`, `/api/events`, `/api/events/stream`, `/api/notify-log/{delivery_id}/resend` | `system:admin` |
+| `/api/config-snapshots`, `/api/config-snapshots/{id}`, `/api/config-snapshots/{id}/restore`, `/api/config-snapshots/{left_id}/diff/{right_id}`, `/api/config-templates`, `/api/config-templates/{id}/apply` | read は `config:read`、write / restore / apply / delete は `config:write` |
+| `/api/projects` | read は `config:read`、write / archive は `config:write` |
+| `/api/queue/{queue_id}`, `/api/queue/reorder` | `build:write` |
+| `/api/history/retention`, `/api/history/retention/run` | read は `status:read`、write / run は `system:admin` |
+| `/api/stats/export`, `/api/metrics`, `/api/badge/status.svg`, `/api/snapshots/{left_id}/diff/{right_id}` | `status:read` |
+| `/api/version`, `/api/openapi.json` | 認証不要。個別 permission 不要。 |
+
+`*` 以外の permission は暗黙に他 permission を含めない。
+
+追加管理 API の認証・認可判定は以下の順に固定する。route、request、response、HTTP status の一覧は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) を参照する。
+
+| 順序 | 判定 | 失敗時 |
+|------|------|--------|
+| 1 | `/api/version` と `/api/openapi.json` は認証判定を行わない。 | security 副作用なし。 |
+| 2 | `/api/share/{token}/status` は share token を検証する。 | token 不正は `401`、不在または revoke 済みは `404`、期限切れは `410`。session を作成しない。 |
+| 3 | その他の追加管理 API は session または API token を検証する。 | 不在、不正、期限切れは `401`。対象状態は読まない。 |
+| 4 | user status を確認する。 | `disabled` または `locked` は `401`。対象状態は読まない。 |
+| 5 | permission を判定する。 | 不足は `403`。対象状態は読まず、permission denied audit だけを許可する。 |
+| 6 | endpoint 固有の user / role / share link 制約を確認する。 | 最後の admin 保護、system role 変更、role 使用中、self lock は `409`。 |
+
+初期 system role は以下に固定する。
+
+| role id | name | permissions | system |
+|---------|------|-------------|--------|
+| `admin` | `Administrator` | `*` | `true` |
+| `operator` | `Operator` | `status:read`, `build:write`, `config:read` | `true` |
+| `viewer` | `Viewer` | `status:read` | `true` |
+
+system role は削除禁止、`id` 変更禁止、`system:false` への変更禁止とする。system role の `name` と `permissions` を変更する request は `409` とし、状態を変更しない。
+
+role 削除時、対象 role を持つ active user が 1 件でも存在する場合は `409` とする。
+
+<a id="sec-27-61"></a>
+**27.61 ユーザー管理 API：**
+
+ユーザー管理 API の owner は `security` とする。
+
+username は case-sensitive ではなく、保存前に lowercase に正規化する。
+
+同一 username の active または disabled user が存在する場合、作成は `409` とする。
+
+password 更新時は平文を保存せず、既存 `.admin_credentials` と同じ hash 方式を使用する。
+
+password 未設定 user は local password login を禁止し、外部認証または API token だけを許可する。
+
+disabled user の session は次 request で `401` とする。
+
+locked user の password login は `401` とし、API token と外部認証も拒否する。
+
+user 更新時の最後の admin 保護は、変更適用後に `*` permission を持つ active user が 1 件以上残ることを条件とする。自分自身の `role_ids` 変更、`status` 変更、password 削除、external subject 削除がこの条件を満たさない場合は `409` とし、session、user、role、audit、admin event を変更しない。
+
+<a id="sec-27-67"></a>
+**27.67 読み取り専用共有リンク：**
+
+読み取り専用共有リンクの owner は `security` とする。
+
+share token は 32 byte 以上の乱数を URL-safe Base64 で表現する。
+
+token 本体は作成 response で 1 回だけ返し、`.share_links` には SHA-256 hash だけを保存する。
+
+share link scope は `status`、`history`、`snapshot_diff` のいずれかとする。
+
+share link は read-only であり、build trigger、config update、queue 操作、user 操作、webhook resend を実行してはならない。
+
+期限切れは `410`、revoke 済みは `404` とする。
+
+share link request は通常 session を作成しない。
+
+share link 作成時の `expires_at` は `null` または現在時刻より後の UTC ISO 8601 秒精度とする。過去時刻、現在時刻と同一秒、local timezone、offset 付き時刻は `422` とする。revoke は `revoked_at` が `null` の record だけを対象とし、revoke 済み record への再 revoke は `404` とする。
+
+share token 生成は CSPRNG から 32 byte を取得し、padding なし URL-safe Base64 で表現する。生成 token の文字集合は `A-Z`、`a-z`、`0-9`、`-`、`_` だけとし、`=`、`+`、`/`、空白、改行を含めてはならない。CSPRNG 失敗時は `.share_links`、audit、admin event を変更せず `500` とする。token hash は token 文字列の UTF-8 byte 列ではなく、Base64 decode 後の 32 byte 以上の raw token byte に対する SHA-256 lowercase hex とする。
+
+share token 検証は、(1) path parameter を percent decode する、(2) URL-safe Base64 padding なしとして decode する、(3) decode 後 byte length が 32 以上であることを確認する、(4) SHA-256 lowercase hex を算出する、(5) `.share_links.links[].token_hash` と constant-time 比較する、(6) `revoked_at`、(7) `expires_at` の順に行う。decode 不能または 32 byte 未満では `.share_links` を読まない。hash 不一致、不在、revoke 済みでは同じ `404` 結果とし、どの条件だったかを response、audit、admin event、access log で区別できる値として出さない。
+
+share link 管理 API の `.audit_log` は [`docs/details/statefile.md` 詳細本文責務 `.audit_log` schema](statefile.md#audit-log-schema) の key だけを使用し、`action` は `share_link_create` または `share_link_revoke`、`target_type` は `share_link`、`target_id` は share link id、`actor_type` と `actor_id` は管理 session または API token とする。share link 管理 API の `.admin_events` は [`docs/details/statefile.md` 詳細本文責務 AdminEventRecord](statefile.md#sec-22-0d) の key だけを使用し、`type` は `security`、`target_type` は `share_link`、`target_id` は share link id、`actor` は管理 session user id または API token id、`message` は固定文言だけとする。`GET /api/share/{token}/status` は `.audit_log` と `.admin_events` を書き込まない。`.audit_log`、`.admin_events`、`.access_log`、`.api_access_log`、server log には token 本体、token hash、token prefix、token length、Authorization header、Cookie、raw path を保存してはならない。作成 response 返却後の token 再表示、list response への token 追加、SDK / UI による token 復元、log からの token 復元を禁止する。
+
+share link の `scope` は `status`、`history`、`snapshot_diff` の単一値だけを許可する。複数 scope、wildcard、空配列、将来 scope 名、permission 名、API path を受け付けてはならない。`scope` ごとの response composition は [`docs/details/api.md` 詳細本文責務 §27.67](api.md#sec-27-67) を参照し、security owner は token、hash、期限、revoke、漏えい禁止だけを正本として持つ。

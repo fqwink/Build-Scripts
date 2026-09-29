@@ -75,14 +75,19 @@ func TestFixtureDirectory(t *testing.T) {
 }
 
 func TestFixtureErrors(t *testing.T) {
+	out := t.TempDir()
 	cases := []struct {
 		args []string
 		err  string
 	}{
 		{[]string{"--theme", "unknown"}, "unknown theme: unknown"},
 		{[]string{"--src", "/path/not-found.md"}, "source not found: /path/not-found.md"},
-		{[]string{"--src", "../testdata/builder/empty-dir"}, "no markdown files found:"},
+		{[]string{"--src", "../testdata/builder/empty-dir", "--out", out}, "no markdown files found:"},
 		{[]string{"--title", ""}, "title must not be empty"},
+		{[]string{"--src=../testdata/builder/single/source.md"}, "unknown option: --src=../testdata/builder/single/source.md"},
+		{[]string{"--src", "../testdata/builder/single/source.md", "--out", out, "--commit-sha", "abcdef0"}, "invalid commit sha: abcdef0"},
+		{[]string{"--src", "../testdata/builder/single/source.md", "--out", out, "--build-id", "build-1"}, "invalid build id: build-1"},
+		{[]string{"--src", "../testdata/builder/single/source.md", "--out", out, "--build-at", "2026-09-26T01:02:03+09:00"}, "invalid build at: 2026-09-26T01:02:03+09:00"},
 	}
 	for _, tc := range cases {
 		var stdout, stderr bytes.Buffer
@@ -95,6 +100,57 @@ func TestFixtureErrors(t *testing.T) {
 		}
 		if strings.Contains(stdout.String(), "[REPORT]") {
 			t.Fatalf("%v emitted report on failure: %s", tc.args, stdout.String())
+		}
+	}
+}
+
+func TestFixtureHelpPriority(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", "bad\npath", "--help"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "Usage: adlaire-ci-build") {
+		t.Fatalf("help output missing usage: %s", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for help, got %q", stderr.String())
+	}
+}
+
+func TestFixtureBuildMetadata(t *testing.T) {
+	out := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	args := []string{
+		"--src", "../testdata/builder/single/source.md",
+		"--out", out,
+		"--title", "Fixture Site",
+		"--build-id", "b20260926010203-001",
+		"--commit-sha", "abcdef0123456789abcdef0123456789abcdef01",
+		"--build-at", "2026-09-26T01:02:03Z",
+	}
+	code := RunBuild(args, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	index := readFile(t, filepath.Join(out, "index.html"))
+	for _, want := range []string{
+		`<meta name="adlaire-build-id" content="b20260926010203-001">`,
+		`<meta name="adlaire-commit-sha" content="abcdef0123456789abcdef0123456789abcdef01">`,
+		`<meta name="adlaire-build-at" content="2026-09-26T01:02:03Z">`,
+		`Generated at 2026-09-26T01:02:03Z`,
+	} {
+		if !strings.Contains(index, want) {
+			t.Fatalf("index.html missing %q", want)
+		}
+	}
+	for _, want := range []string{
+		"build_id=b20260926010203-001",
+		"commit_sha=abcdef0123456789abcdef0123456789abcdef01",
+		"build_at=2026-09-26T01:02:03Z",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("report missing %q: %s", want, stdout.String())
 		}
 	}
 }

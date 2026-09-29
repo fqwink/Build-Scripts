@@ -30,9 +30,9 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | module | `admin/adlaire-ci-sdk.js` は ES Module とし、`export { AdlaireCI, AdlaireCIError }` を必須 export とする。default export は定義しない。 |
 | browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
 | 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。 |
-| global 汚染 | `window.AdlaireCI` 等の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
+| global 汚染 | `window.AdlaireCI`、`window.AdlaireCIError`、`globalThis.AdlaireCI`、`globalThis.AdlaireCIError` の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
 | 外部 consumer | 必須 browser API を提供する外部 consumer application は、本 ES Module を import してよい。本リポジトリ、SDK 配布物、標準管理 UI 配布物の依存境界は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) を参照する。 |
-| stream 前提 | `streamBuild()` は native `EventSource` を使用しない。Authorization header を付与できる `fetch` streaming を必須実装とする。 |
+| stream 前提 | `streamBuild()` と `streamAdminEvents()` は native `EventSource` を使用しない。Authorization header を付与できる `fetch` streaming を必須実装とする。 |
 | API 対応範囲 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の全 endpoint のうち、GitHub が直接送信する `POST /api/webhook` は SDK method 0 件、`POST /api/schedule/allowed-hours` は request body ありの `setAllowedHours()` と `{from:null,to:null}` を送る `clearAllowedHours()` の 2 件、それ以外は endpoint 表の SDK 列に記載された 1 method と対応させる。表外 method、対応 0 件、明示例外以外の複数 method を禁止する。 |
 
 ```js
@@ -245,7 +245,7 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務
 | private helper | private helper は `_request`, `_json`, `_query`, `_requireToken`, `_validateId`, `_clearTokenOn401` だけを定義する。helper を export しない。 |
 | TypeError 文言 | SDK 側引数検証の `TypeError.message` は `"Invalid argument: <name>"` に固定する。複数不正がある場合は最初に検出した引数だけを返す。 |
 | path parameter | `id` を path に入れる method は、`id` が string かつ [`docs/details/api.md` 詳細本文責務 §22.0b](api.md#sec-22-0b) の `^[A-Za-z0-9_-]{1,64}$` に完全一致することを SDK 側で検証する。不一致は HTTP 送信前に `TypeError("Invalid argument: id")` とする。検証成功後の値に `encodeURIComponent(id)` を 1 回だけ適用し、1 segment として連結する。 |
-| query parameter | query key は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の表記順で生成する。value は各々 `encodeURIComponent(String(value))` を 1 回だけ適用し、空白を `%20` とする。`URLSearchParams` 等による `+` 変換、2 重 encode、並べ替えを禁止する。任意 query が未指定の場合、`?` 自体を付けない。 |
+| query parameter | query key は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の表記順で生成する。value は各々 `encodeURIComponent(String(value))` を 1 回だけ適用し、空白を `%20` とする。`URLSearchParams` による `+` 変換、2 重 encode、並べ替えを禁止する。任意 query が未指定の場合、`?` 自体を付けない。 |
 | body parameter | body object の key 順は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の送信値順とする。未知 key を SDK が追加しない。 |
 | token mutation | `login()` と `loginTotp()` は response に `token` が存在する場合だけ `this._token` を更新する。`totp_required:true` かつ token なしの場合は既存 token を保持せず `null` にする。SDK は `must_change` を算出または補完せず、TOTP 必須 response に `must_change` を追加しない。 |
 | logout failure | `logout()` は network error、`401`、`500` のいずれでも `finally` で `this._token=null` にする。 |
@@ -430,3 +430,109 @@ SDK 連動 fixture 名、入力、expected、合格条件、禁止条件、実�
 SDK は成功 response を補完、削除、rename、既定値 merge、再集計せず、そのまま返す。`AdlaireCIError` と `StreamHandle` だけは API response ではなく SDK が生成する型であるため、[`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) の SDK 共通実装契約を正本とする。API response の required / nullable / array key を SDK 文書へ別表として再掲してはならない。
 
 ---
+
+<a id="sec-23-8"></a>
+**23.8 追加管理 API SDK 対応：**
+
+[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8) は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の追加管理 API に対応する SDK method を定義する。
+
+[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8) は API request / response schema を再定義しない。
+
+| 機能 | SDK method |
+|------|------------|
+| マルチユーザー対応 / ユーザー管理 API | `getUsers(query)`, `createUser(input)`, `updateUser(id,input)`, `disableUser(id)` |
+| ロールベースアクセス制御 | `getRoles()`, `createRole(input)`, `updateRole(id,input)`, `deleteRole(id)` |
+| 外部認証連携 | `getExternalAuthConfig()`, `setExternalAuthConfig(input)`, `testExternalAuth(input)` |
+| データストア切り替え | `getDatastore()`, `switchDatastore(input)` |
+| 統計データの JSON エクスポート | `exportStats(query)` |
+| キュー内個別エントリのキャンセル | `cancelQueueEntry(queueId)` |
+| Prometheus メトリクスエンドポイント | `getPrometheusMetrics()` |
+| 設定の自動スナップショット | `getConfigSnapshots(query)`, `createConfigSnapshot(input)`, `getConfigSnapshot(id)`, `restoreConfigSnapshot(id,input)`, `deleteConfigSnapshot(id)` |
+| ステータスバッジ生成 | `getStatusBadge(query)` |
+| ビルド履歴の自動削除設定 | `getHistoryRetention()`, `setHistoryRetention(input)`, `runHistoryRetention()` |
+| 設定スナップショット差分表示 | `diffConfigSnapshots(leftId,rightId)` |
+| 複数プロジェクト管理 | `getProjects(query)`, `createProject(input)`, `updateProject(id,input)`, `archiveProject(id)` |
+| API バージョニング | `getApiVersion()` |
+| API ドキュメント自動生成 | `getOpenApiDocument()` |
+| ビルドキューの手動並び替え | `reorderQueue(queueIds)` |
+| 設定テンプレート | `getConfigTemplates()`, `createConfigTemplate(input)`, `applyConfigTemplate(id,input)`, `deleteConfigTemplate(id)` |
+| 管理者向けイベントフィード | `getAdminEvents(query)`, `streamAdminEvents(query,onEvent)` |
+| 読み取り専用共有リンク | `getShareLinks()`, `createShareLink(input)`, `revokeShareLink(id)`, `getSharedStatus(token)` |
+| API レスポンスキャッシュ制御 | `getCachePolicy()`, `setCachePolicy(input)`, `purgeResponseCache()` |
+| スナップショット間サイト差分 API | `diffSnapshots(leftId,rightId)` |
+| Webhook 送信履歴の手動再送 API | `resendWebhook(deliveryId,input)` |
+
+**追加管理 API SDK transport 固定表：**
+
+| SDK method | HTTP | path / query / body |
+|------------|------|---------------------|
+| `getUsers(query)` | `GET` | `/api/users`。`limit`、`offset`、`status`、`role_id` だけを query に入れる。 |
+| `createUser(input)` | `POST` | `/api/users`。body は input object。 |
+| `updateUser(id,input)` | `PATCH` | `/api/users/{id}`。`id` は 1 回だけ percent encode。 |
+| `disableUser(id)` | `DELETE` | `/api/users/{id}`。body なし。 |
+| `getRoles()` | `GET` | `/api/roles`。body なし。 |
+| `createRole(input)` | `POST` | `/api/roles`。body は input object。 |
+| `updateRole(id,input)` | `PATCH` | `/api/roles/{id}`。 |
+| `deleteRole(id)` | `DELETE` | `/api/roles/{id}`。body なし。 |
+| `getExternalAuthConfig()` / `setExternalAuthConfig(input)` / `testExternalAuth(input)` | `GET` / `POST` / `POST` | `/api/external-auth-config`、`/api/external-auth/test`。 |
+| `getDatastore()` / `switchDatastore(input)` | `GET` / `POST` | `/api/datastore`、`/api/datastore/switch`。 |
+| `exportStats(query)` | `GET` | `/api/stats/export`。`from`、`to`、`granularity`、`target` だけを query に入れる。 |
+| `cancelQueueEntry(queueId)` | `DELETE` | `/api/queue/{queueId}`。body なし。 |
+| `getPrometheusMetrics()` | `GET` | `/api/metrics`。text response。 |
+| `getConfigSnapshots(query)` / `createConfigSnapshot(input)` | `GET` / `POST` | `/api/config-snapshots`。 |
+| `getConfigSnapshot(id)` / `restoreConfigSnapshot(id,input)` / `deleteConfigSnapshot(id)` | `GET` / `POST` / `DELETE` | `/api/config-snapshots/{id}`、`/api/config-snapshots/{id}/restore`。 |
+| `getStatusBadge(query)` | `GET` | `/api/badge/status.svg`。`target`、`branch` だけを query に入れる。Blob response。 |
+| `getHistoryRetention()` / `setHistoryRetention(input)` / `runHistoryRetention()` | `GET` / `POST` / `POST` | `/api/history/retention`、`/api/history/retention/run`。 |
+| `diffConfigSnapshots(leftId,rightId)` | `GET` | `/api/config-snapshots/{leftId}/diff/{rightId}`。 |
+| `getProjects(query)` / `createProject(input)` / `updateProject(id,input)` / `archiveProject(id)` | `GET` / `POST` / `PATCH` / `DELETE` | `/api/projects`、`/api/projects/{id}`。 |
+| `getApiVersion()` / `getOpenApiDocument()` | `GET` / `GET` | `/api/version`、`/api/openapi.json`。 |
+| `reorderQueue(queueIds)` | `POST` | `/api/queue/reorder`。body は `{queue_ids: queueIds}`。 |
+| `getConfigTemplates()` / `createConfigTemplate(input)` / `applyConfigTemplate(id,input)` / `deleteConfigTemplate(id)` | `GET` / `POST` / `POST` / `DELETE` | `/api/config-templates`、`/api/config-templates/{id}/apply`。 |
+| `getAdminEvents(query)` / `streamAdminEvents(query,onEvent)` | `GET` / `GET` | `/api/events`、`/api/events/stream`。stream は `StreamHandle`。 |
+| `getShareLinks()` / `createShareLink(input)` / `revokeShareLink(id)` / `getSharedStatus(token)` | `GET` / `POST` / `DELETE` / `GET` | `/api/share-links`、`/api/share-links/{id}`、`/api/share/{token}/status`。 |
+| `getCachePolicy()` / `setCachePolicy(input)` / `purgeResponseCache()` | `GET` / `POST` / `DELETE` | `/api/cache-policy`、`/api/response-cache`。 |
+| `diffSnapshots(leftId,rightId)` | `GET` | `/api/snapshots/{leftId}/diff/{rightId}`。 |
+| `resendWebhook(deliveryId,input)` | `POST` | `/api/notify-log/{deliveryId}/resend`。 |
+
+SDK は上表にない追加管理 API public method を作成してはならない。query object は `undefined` / `null` の値を送信せず、空文字は API へそのまま送る。path parameter は空文字、`/`、NUL byte を SDK 側で `TypeError` とする。body 禁止 endpoint は `fetch` に `body` property を渡してはならない。
+
+追加管理 API SDK の引数検証は以下に固定する。SDK が `TypeError` を投げる場合、HTTP request を開始してはならない。
+
+| 対象 | `TypeError` 条件 | HTTP へ渡す条件 |
+|------|------------------|----------------|
+| `id` / `queueId` / `deliveryId` / `leftId` / `rightId` | string 以外、空文字、`/`、NUL、CR、LF、`.`、`..` | `encodeURIComponent` を 1 回だけ適用する。 |
+| `token` | string 以外、空文字、`/`、NUL、CR、LF | path parameter として 1 回だけ encode する。 |
+| `query` object | object 以外、array、未知 key | `undefined` / `null` の値は送信しない。 |
+| `queueIds` | array 以外、空配列、string 以外の要素、重複 | `{queue_ids: queueIds}` を body にする。 |
+| `input` object | object 以外、array、`null` | API schema の unknown key 判定は API に委譲する。 |
+| confirmation input | confirmation key が string 以外 | 値の一致判定は API に委譲する。 |
+| `onEvent` | function 以外 | `streamAdminEvents()` の callback として保持し、request body または query に含めない。 |
+
+path parameter は [SDK メソッド実装固定契約](#sdk-method-implementation-contract) の `path parameter` 行に従い、1 回だけ percent encode する。
+
+body 禁止 endpoint は body を送信しない。
+
+binary response は `Blob`、text response は `string`、SSE response は `StreamHandle`、JSON response は API の JSON object をそのまま返す。
+
+`getPrometheusMetrics()` は `text/plain` を `string` として返す。
+
+`getStatusBadge()` は SVG response を `Blob` として返す。
+
+`streamAdminEvents(query,onEvent)` は `onEvent` が function の場合だけ HTTP request を開始する。token がない場合は接続前に `AdlaireCIError(status=401, message="Unauthorized")` を投げる。SDK は `fetch()`、`AbortController`、`ReadableStream` reader を使用し、`Accept: text/event-stream` と `Authorization` header を付与する。接続確立 timeout は 30 秒、接続確立後 timeout はなしとする。成功時は `StreamHandle` を返し、UI が `close()` できるようにする。
+
+`streamAdminEvents(query,onEvent)` の query は `type` だけを送信できる。`limit`、`offset`、`after` は `GET /api/events` 専用 query とし、stream request へ送信してはならない。`type` が `undefined` または `null` の場合は省略し、空文字は API へ送信して `422` 判定を委譲する。
+
+`streamAdminEvents(query,onEvent)` の parser は [`docs/details/api.md` 詳細本文責務 §27.66](api.md#sec-27-66) の admin event stream frame だけを受け付ける。`: keepalive` comment frame は状態変更なしで破棄する。`event: admin-event` frame は `id:` 1 行、`event:` 1 行、`data:` 1 行だけを許可し、`data` を compact JSON object として parse する。parse 後の object は `id` が frame id と一致し、[`docs/details/statefile.md` 詳細本文責務 AdminEventRecord](statefile.md#sec-22-0d) の key、型、enum に一致する場合だけ `onEvent(record)` を 1 回呼ぶ。`event: error` frame は `data` の JSON object から `error` string を読み、`AdlaireCIError(status=0,message=error)` で `done` を reject して stream を close する。
+
+`streamAdminEvents(query,onEvent)` は `retry:`、複数 `data:` 行、CRLF、空 event frame、未知 event name、`id` 不一致、無効 UTF-8、JSON parse 不能、必須 key 不足、未知 key、型不一致、`onEvent` 例外を `AdlaireCIError(status=0,message="Invalid SSE frame")` として扱う。ただし `onEvent` 例外の元 message、stack、record 本文は `responseBody`、console、UI へ転写しない。user close では `done` を `null` で resolve し、error 表示を発生させない。server が error frame なしに EOF した場合は `AdlaireCIError(status=0,message="Event stream closed")` で reject する。
+
+追加管理 API SDK は response media type を以下のように検証する。media type 不一致、body parse 失敗、空 body 不許可は `AdlaireCIError` とし、`status` は HTTP status、`message` は `Invalid response` とする。
+
+| method | 期待 media type | 戻り値 |
+|--------|-----------------|--------|
+| `getPrometheusMetrics()` | `text/plain` | response text。 |
+| `getStatusBadge()` | `image/svg+xml` | `Blob`。 |
+| `streamAdminEvents(query,onEvent)` | `text/event-stream` | `StreamHandle`。 |
+| その他の追加管理 API method | `application/json` | API JSON object をそのまま返す。 |
+
+追加管理 API の SDK 完全性検証では、上表の public method が `AdlaireCI.prototype` に存在し、未定義 public method が存在しないことを確認する。

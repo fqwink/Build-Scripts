@@ -119,12 +119,12 @@ Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核と
 | `release` | `components/release.go` | Go 標準ライブラリ、Go toolchain、Git command、GitHub REST API だけで再現可能な成果物生成、checksum、draft upload、再取得検証、正式公開を実装する。外部 release framework、archive tool、checksum tool に依存しない。 |
 | `sdk` | `admin/adlaire-ci-sdk.js` | 単一 ES Module とし、browser 標準 API のみで API client、error handling、streaming、timeout を実装する。npm package、bundler、polyfill、framework に依存しない。 |
 | `ui` | `admin/index.html` | HTML / CSS / Vanilla JavaScript だけで標準管理ツールを構成し、SDK 経由で通信する。React、Vue、Svelte、CSS framework、icon package、chart library に依存しない。 |
-| `admin` | `admin/index.html`、`admin/adlaire-ci-sdk.js` | 管理 UI 静的配布物の構成、検証、配信境界を本リポジトリ内で完結させる。外部 asset pipeline、CDN、archive framework に依存しない。 |
+| `admin` | `admin/index.html`、`admin/adlaire-ci-sdk.js`、`components/admin.go` | 管理 UI 静的配布物の構成、検証、配信境界、および CLI 管理クライアントを本リポジトリ内で完結させる。外部 asset pipeline、CDN、archive framework、CLI framework に依存しない。 |
 | `statefile` | `components/runner.go`、`components/api.go` | Go 標準ライブラリだけで状態 schema、lock、atomic write、JSON Lines、破損検出を処理する。外部 database、storage engine、serialization library に依存しない。 |
 | `archive` | `components/runner.go`、`components/api.go` | Go 標準ライブラリだけで archive、snapshot、展開、検証、世代管理を処理する。外部 archive tool、snapshot service、object storage SDK に依存しない。 |
 | `commitstatus` | `components/runner.go` | Go 標準ライブラリ `net/http` だけで GitHub Commit Status payload、送信、応答検証を処理する。外部 GitHub client library、CI status service に依存しない。 |
 | `security` | `components/api.go` | Go 標準ライブラリだけで認証、認可、token、session、TOTP、rate limit、audit、secret 処理を実装する。外部 authentication framework、secret management SDK に依存しない。 |
-| `mcp` | `components/mcp.go`（将来追加予定 path） | 仕様化する場合も Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。本行は現在状態、実装着手許可、詳細仕様成立、実ファイル作成許可を意味しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) を参照する。 |
+| `mcp` | `components/mcp.go` | Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様は [`docs/details/mcp.md`](details/mcp.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。 |
 
 「実装内包先 / 配布対象」列は、owner component の責務を実装または配布する artifact の所在を示す。同列を、owner component と artifact の同一視、単独専用 artifact の存在保証、現在状態、実装着手許可の根拠として使用してはならない。実装 artifact の実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、実装 artifact と機能の現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
 
@@ -256,6 +256,8 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   ├── runner_test.go
 │   ├── api.go
 │   ├── api_test.go
+│   ├── admin.go
+│   ├── admin_test.go
 │   ├── setup.go
 │   ├── setup_test.go
 │   ├── release.go
@@ -288,7 +290,8 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   ├── commitstatus/
 │   ├── security/
 │   ├── setup/
-│   └── release/
+│   ├── release/
+│   └── mcp/
 │
 ├── docs/
 │   ├── SPEC.md
@@ -309,6 +312,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   │   ├── security.md
 │   │   ├── archive.md
 │   │   ├── commitstatus.md
+│   │   ├── mcp.md
 │   │   └── fixture.md
 │   └── examples/
 │
@@ -319,7 +323,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 [`main.go`](../main.go) は 1 ファイルとし、起動入口、実行ファイル名の exact 判定、引数受け取り、binary version 注入値の受け渡し、対象 owner component 呼び出しだけを担当する。[`main.go`](../main.go) に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、setup、release、MCP 処理の実装詳細を書いてはならない。未知の実行ファイル名を既定 owner component へ fallback してはならない。
 
-`components/` は、1 標準 Go 実装対象 = 1 Go ファイルとする。この 1 ファイル原則は実装 artifact の配置規則であり、owner component と実装 artifact を同一概念にする規則ではない。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は Go 実装 artifact ではなく `admin/` 配下の静的配布物を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup.go` と `components/release.go` とする。`statefile`、`archive`、`commitstatus`、`security` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+`components/` は、1 標準 Go 実装対象 = 1 Go ファイルとする。この 1 ファイル原則は実装 artifact の配置規則であり、owner component と実装 artifact を同一概念にする規則ではない。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin.go` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup.go` と `components/release.go` とする。`statefile`、`archive`、`commitstatus`、`security` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
@@ -397,7 +401,7 @@ Phase は、対象 owner component、実装範囲、依存条件、完了条件�
 Go 実装の判断基準は以下とする。
 
 - 標準 Go 実装 artifact は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) のディレクトリ構成 tree に従う。
-- `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-api`、`adlaire-ci-setup`、`adlaire-ci-release` を標準実行バイナリ名とする。
+- `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-api`、`adlaire-ci-setup`、`adlaire-ci-release`、`adlaire-ci-admin`、`adlaire-ci-mcp` を標準実行バイナリ名とする。
 - 仕様未記載の自動変換処理、暗黙の読み替え処理、仕様外分岐を実装判断で追加してはならない。
 - 該当する責務正本に記載されていない挙動は、仕様対象外として扱う。
 
@@ -686,7 +690,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 | リリース形式 | バイナリ配布を標準とする。利用者は GitHub Release から OS/arch 別の実行バイナリを取得し、ソースからのビルドを標準導入手順に含めない |
 | バイナリバージョン | Release 用実行バイナリ asset の `--version` が、バイナリ名に続く第 2 token として tag と同一のリリースバージョンを返す。`V.0.0-dev`、tag と不一致の値、未注入値を含む実行バイナリ asset は公開禁止とする |
 | 標準 OS/arch | 初期標準は Linux x86_64（`linux-amd64`）とする。追加 OS/arch は将来のリリース対象として個別に仕様化する |
-| 添付ファイル | builder、runner、管理API、setupの各`linux-amd64`実行バイナリ、管理UI archive、checksum manifestの6件だけを添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)を正本とする。`adlaire-ci-release`、生成静的Webサイト、debug binaryをRelease assetとして添付しない |
+| 添付ファイル | builder、runner、管理API、setup、管理 CLI、MCP の各`linux-amd64`実行バイナリ、管理UI archive、checksum manifestの8件だけを添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)を正本とする。`adlaire-ci-release`、生成静的Webサイト、debug binaryをRelease assetとして添付しない |
 | 管理 UI 配布物 | 管理UIは実行バイナリと分離した単独のarchive assetとして全安定版Releaseへ添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)、archive内容は[`docs/details/admin.md` 詳細本文責務 §A1](details/admin.md#a1-管理-ui-静的ファイル境界)、setup側の安全検証は[`docs/details/admin.md` 詳細本文責務 §A2](details/admin.md#a2-管理-ui-archive-検証)を正本とする |
 | checksum | checksum manifest 自身を除く全 Release asset の SHA-256 checksum を checksum manifest で提供する。checksum manifest 自身を再帰的な checksum 対象にしてはならない。exact asset 名、生成形式、公開前検証は [`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract) を正本とし、受け入れ・配置前検証は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を正本とする |
 | プレリリースフラグ | 安定版リリースでは `Pre-release` にチェックを入れない |
@@ -832,7 +836,7 @@ SDK の実装言語と技術は [`docs/SPEC.md` 方針責務 §4 技術方針表
 
 [`docs/SPEC.md` ポリシー責務 §11](SPEC.md#policy-single-user-auth) は、管理 API サーバーおよび標準管理ツールに適用する。
 
-- 初期構成はシングルユーザーとし、マルチユーザーは将来計画として扱う
+- 初期構成の既定はシングルユーザーとする。マルチユーザー対応の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様は [`docs/details/security.md`](details/security.md) を正本とする
 - 初期認証、初回変更、強制変更、session、保存形式の具体条件は [`docs/details/api.md`](details/api.md) 詳細本文責務と [`docs/details/security.md`](details/security.md) 詳細本文責務を正本とする
 - パスワードは平文保存禁止とし、保存が必要な認証情報はハッシュ化または secret として扱う
 

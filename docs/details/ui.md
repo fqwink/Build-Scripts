@@ -206,7 +206,7 @@ UI は、初期取得で一部 API が失敗した場合、ログイン状態を
 | 項目 | 仕様 |
 |------|------|
 | 初期表示 | `localStorage` から token を復元しない。画面読み込み時は未ログイン状態から開始する。 |
-| API 経路 | UI は必ず `AdlaireCI` SDK method を呼び出す。`fetch()`、`XMLHttpRequest`、`EventSource`、`ReadableStream` reader の直接生成は禁止する。ただし SDK の `streamBuild()` が返した `StreamHandle.close()` を呼ぶ操作は許可する。 |
+| API 経路 | UI は必ず `AdlaireCI` SDK method を呼び出す。`fetch()`、`XMLHttpRequest`、`EventSource`、`ReadableStream` reader の直接生成は禁止する。ただし SDK の `streamBuild()` または `streamAdminEvents()` が返した `StreamHandle.close()` を呼ぶ操作は許可する。 |
 | API 呼び出し中 | 対象ボタンを disabled にし、同一操作の二重送信を防ぐ。完了または失敗後に元へ戻す。 |
 | 成功表示 | 変更系操作は成功時にパネル内へ 1 行の成功メッセージを表示し、関連 GET API を再取得する。password 変更成功で password panel を hidden にする場合だけは `global-success` に `Password changed` を表示する。 |
 | 失敗表示 | SDK が投げた `AdlaireCIError.message` をパネル内エラー領域に表示する。`details` が配列の場合は各 `field` のフォーム項目に `message` を紐付け、該当項目が存在しない場合はパネル内エラー領域へ箇条書きで表示する。`responseBody`、token、secret、PAT は表示しない。 |
@@ -490,3 +490,74 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 | API 呼び出し経路 | `AdlaireCI` instance | 1 instance | panel ごとに SDK instance を作らず、画面全体で 1 つの `AdlaireCI` instance を共有する。 |
 
 ---
+
+<a id="sec-24-8"></a>
+**24.8 追加管理 API UI 対応：**
+
+[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8) は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70) の追加管理 API に対応する UI 表示 / 操作を定義する。
+
+[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8) は API request / response schema、SDK method 本文、state schema を再定義しない。
+
+| UI 領域 | 対象機能 | 使用 SDK method | 成功後再取得 |
+|---------|----------|-----------------|--------------|
+| ユーザー管理 panel | マルチユーザー対応、ユーザー管理 API | `getUsers`, `createUser`, `updateUser`, `disableUser` | `getUsers`, `getAuditLog` |
+| ロール管理 panel | ロールベースアクセス制御 | `getRoles`, `createRole`, `updateRole`, `deleteRole` | `getRoles`, `getAuditLog` |
+| 外部認証 panel | 外部認証連携 | `getExternalAuthConfig`, `setExternalAuthConfig`, `testExternalAuth` | `getExternalAuthConfig`, `getAuditLog` |
+| データストア panel | データストア切り替え | `getDatastore`, `switchDatastore` | `getDatastore`, `getAdminEvents` |
+| 統計 export panel | 統計データの JSON エクスポート | `exportStats` | なし |
+| queue 操作 panel | キュー内個別エントリのキャンセル、ビルドキューの手動並び替え | `cancelQueueEntry`, `reorderQueue`, `getQueue` | `getQueue`, `getStatus` |
+| metrics panel | Prometheus メトリクスエンドポイント | `getPrometheusMetrics` | なし |
+| 設定 snapshot panel | 設定の自動スナップショット、設定スナップショット差分表示 | `getConfigSnapshots`, `createConfigSnapshot`, `getConfigSnapshot`, `restoreConfigSnapshot`, `deleteConfigSnapshot`, `diffConfigSnapshots` | `getConfigSnapshots`, `getConfig`, `getConfigLog` |
+| badge panel | ステータスバッジ生成 | `getStatusBadge` | なし |
+| 履歴 retention panel | ビルド履歴の自動削除設定 | `getHistoryRetention`, `setHistoryRetention`, `runHistoryRetention` | `getHistoryRetention`, `getHistory` |
+| project panel | 複数プロジェクト管理 | `getProjects`, `createProject`, `updateProject`, `archiveProject` | `getProjects`, `getAdminEvents` |
+| API 情報 panel | API バージョニング、API ドキュメント自動生成 | `getApiVersion`, `getOpenApiDocument` | なし |
+| 設定 template panel | 設定テンプレート | `getConfigTemplates`, `createConfigTemplate`, `applyConfigTemplate`, `deleteConfigTemplate` | `getConfigTemplates`, `getConfig`, `getConfigLog` |
+| event feed panel | 管理者向けイベントフィード | `getAdminEvents`, `streamAdminEvents` | stream close 後に `getAdminEvents` |
+| share link panel | 読み取り専用共有リンク | `getShareLinks`, `createShareLink`, `revokeShareLink`, `getSharedStatus` | `getShareLinks`, `getAuditLog` |
+| cache panel | API レスポンスキャッシュ制御 | `getCachePolicy`, `setCachePolicy`, `purgeResponseCache` | `getCachePolicy`, `getAdminEvents` |
+| snapshot diff panel | スナップショット間サイト差分 API | `diffSnapshots` | なし |
+| webhook resend panel | Webhook 送信履歴の手動再送 API | `resendWebhook` | `getNotifyLog`, `getAdminEvents` |
+
+**追加管理 API UI DOM / 操作固定表：**
+
+| UI 領域 | panel id | primary controls | 固定操作 |
+|---------|----------|------------------|----------|
+| ユーザー管理 panel | `panel-users` | `users-refresh`, `user-create-submit`, `user-update-submit`, `user-disable-submit` | `createUser` / `updateUser` / `disableUser` 成功後は `getUsers` → `getAuditLog` の順で再取得する。最後の admin 保護は API response で確定し、UI は推測しない。 |
+| ロール管理 panel | `panel-roles` | `roles-refresh`, `role-create-submit`, `role-update-submit`, `role-delete-submit` | permission checkbox は DOM 順で配列化し、未知 permission を UI 側で削除しない。 |
+| 外部認証 panel | `panel-external-auth` | `external-auth-save`, `external-auth-test` | client secret field は成功、失敗、panel 遷移、logout、`401` で消去する。 |
+| データストア panel | `panel-datastore` | `datastore-dry-run`, `datastore-switch` | switch は confirmation dialog で `SWITCH_DATASTORE` を渡す。dry-run は confirmation を渡さない。 |
+| 設定 snapshot panel | `panel-config-snapshots` | `config-snapshot-create`, `config-snapshot-restore`, `config-snapshot-delete`, `config-snapshot-diff` | restore は confirmation `RESTORE_CONFIG` を渡し、成功後 `getConfigSnapshots` → `getConfig` → `getConfigLog`。 |
+| queue 操作 panel | `panel-queue-admin` | `queue-cancel-submit`, `queue-reorder-submit` | reorder は表示中 queued id 全件を順序どおり渡す。active entry を含めない。 |
+| 設定 template panel | `panel-config-templates` | `config-template-create`, `config-template-apply`, `config-template-delete` | apply は confirmation `APPLY_CONFIG_TEMPLATE` を渡す。secret 平文を preview に表示しない。 |
+| event feed panel | `panel-events` | `events-refresh`, `events-stream-start`, `events-stream-stop` | `streamAdminEvents(query,onEvent)` を呼び、`onEvent` で受け取った `AdminEventRecord` だけを既存 event list の先頭へ追加する。stream handle は panel 離脱、logout、`401`、stop で close する。 |
+| share link panel | `panel-share-links` | `share-link-create`, `share-link-revoke`, `share-token-copy` | 作成 token は `share-token-once` だけに表示し、copy 完了、revoke 成功、panel 遷移、logout、`401` で消去する。 |
+| cache panel | `panel-cache` | `cache-policy-save`, `cache-purge` | purge 成功後は `getCachePolicy` → `getAdminEvents`。 |
+| webhook resend panel | `panel-webhook-resend` | `webhook-resend-submit` | confirmation `RESEND_WEBHOOK` を渡し、成功後 `getNotifyLog` → `getAdminEvents`。 |
+
+上表の panel id と control id は `admin/index.html` 内で一意とする。未実装の追加管理 UI を作る場合でも、表にない id を使って既存機能を代替してはならない。UI は API response に存在しない件数、status、permission、diff、token 値を合成しない。
+
+追加管理 API UI の共通状態遷移は以下に固定する。
+
+| 条件 | UI 動作 | 禁止事項 |
+|------|---------|----------|
+| SDK 呼び出し開始 | 対象 panel の submit control を disabled にし、同一操作の二重送信を防ぐ。 | 別 panel 全体を無効化しない。 |
+| `200` / `201` / `202` success | 対象行または summary を API response で更新し、[追加管理 API UI DOM / 操作固定表](#sec-24-8) の再取得順を実行する。 | UI 側で成功 status、件数、token、diff を推測しない。 |
+| `401` | 全 secret field、share token 表示、stream handle、pending confirmation を破棄し、login panel へ遷移する。 | 失敗した request を自動再送しない。 |
+| `403` | 対象 panel の summary に permission error を表示し、入力値は保持する。 | role / permission を UI 側で推測して非表示にしない。 |
+| `409` | 対象 panel の summary に conflict を表示し、該当一覧を再取得する。 | 競合解決を UI 側で自動適用しない。 |
+| `422` with `details` | `details` key と同じ `name` または `data-field` の control へ field error を表示し、最初の field error へ focus する。 | API に存在しない field error を合成しない。 |
+| network error | 対象 panel の summary に connection failure を表示し、入力値を保持する。 | 成功扱い、楽観更新、local retry queue 作成を行わない。 |
+| stream close | stream state を stopped にし、secret field を保持しない。 | close 済み `StreamHandle` を再利用しない。 |
+
+confirmation を必要とする操作では、UI は固定文言を表示し、ユーザー操作で明示された場合だけ confirmation value を SDK method へ渡す。
+
+secret、token、share token、external auth secret、webhook secret は一覧、履歴、error、event feed に表示してはならない。
+
+share token は作成直後の one-time 表示だけに限定し、panel 遷移、logout、`401`、revoke 成功、copy 完了で消去する。
+
+SSE stream は panel 離脱、logout、`401`、明示 stop 操作で close する。
+
+UI は Prometheus metric、SVG badge、OpenAPI document、snapshot diff、config diff を再計算せず、SDK response を表示用に整形するだけとする。
+
+event feed panel は SDK の `onEvent` callback が渡す `AdminEventRecord` を、`timestamp` 降順、同一 `timestamp` は `id` ASCII 昇順の表示順に挿入する。UI は event id、type、severity、actor、target、message を生成・補完せず、stream frame の parse、keepalive 処理、error frame 処理を直接実装しない。stream error では panel summary に error を 1 回表示し、`getAdminEvents` を 1 回だけ再取得する。user stop の `done=null` では error を表示せず、`getAdminEvents` を 1 回だけ再取得する。

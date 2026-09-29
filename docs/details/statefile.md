@@ -77,6 +77,20 @@
 | `.smtp_config` | JSON object | `{"host":null,"port":587,"user":null,"tls":true,"from":null,"to":[],"on":[],"enabled":false}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.smtp_secret` | UTF-8 text | 不在 | `api` | 読み込み不能時は SMTP caller へ secret read failure を返す。 |
 | `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.users` | JSON object | `{"users":[]}` | `api` | 破損時は自動再生成せず、user caller へ破損失敗を返す。意図しない再許可を防ぐため上書きしない。 |
+| `.roles` | JSON object | `{"roles":[{"id":"admin","name":"Admin","permissions":["*"],"system":true}]}` | `api` | 破損時は自動再生成せず、role caller へ破損失敗を返す。 |
+| `.external_auth_config` | JSON object | `{"enabled":false,"providers":[]}` | `api` | secret を含む破損 payload は response に出さず、破損失敗を返す。 |
+| `.datastore_config` | JSON object | `{"active_store":"statefile","stores":[{"id":"statefile","type":"statefile","enabled":true}],"pending_switch":null}` | `api` | 破損時は切り替えを禁止し、現在 store を不明として caller へ破損失敗を返す。 |
+| `.config_snapshots/{id}.json` | JSON object | snapshot 作成時に新規作成 | `api` | 個別破損 snapshot は list から除外せず `corrupted:true` で返し、restore を禁止する。 |
+| `.projects` | JSON object | `{"projects":[{"id":"default","name":"default","status":"active","default":true}]}` | `api` / `runner` | 破損時は project caller へ破損失敗を返し、default project を自動再生成しない。 |
+| `.config_templates` | JSON object | `{"templates":[]}` | `api` | 破損時は template caller へ破損失敗を返し、自動再生成しない。 |
+| `.admin_events` | JSON Lines | 空ファイル | `api` / `runner` | 読み込み可能な行のみ返し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.share_links` | JSON object | `{"links":[]}` | `api` | 破損時は share link caller へ破損失敗を返し、自動再生成しない。 |
+| `.response_cache` | JSON object | `{"entries":{}}` | `api` | 破損時は退避せず cache miss として扱い、purge または次回 write で置換する。 |
+| `.mcp_config` | JSON object | `{"tool_timeout_ms":30000,"sampling_timeout_ms":60000,"scopes":[]}` | `mcp` | 破損時は MCP server 起動を失敗させ、自動再生成しない。 |
+| `.mcp_audit_log` | JSON Lines | 空ファイル | `mcp` | 読み込み可能な行のみ返し、壊れた行は ERROR ログへ記録して無視する。追記不能時は副作用 tool を失敗扱いにする。 |
+| `.mcp_client_log` | JSON Lines | 空ファイル | `mcp` | 読み込み可能な行のみ返し、壊れた行は ERROR ログへ記録して無視する。 |
+| `.mcp_metrics` | JSON object | `{"tools":{}}` | `mcp` | 破損時は metrics caller へ破損失敗を返し、自動再生成しない。 |
 
 状態ファイル固定表の「破損時の扱い」に記載した退避、再生成、初期値復旧、default fallback は、更新 caller または起動時整合性回復が明示的に回復処理を呼び出した場合だけ実行する。read-only caller は必ず [状態読取 adapter 固定契約](#statefile-read-adapter-contract) を優先し、作成、削除、退避、再生成、書き戻しを行わず、破損または読取不能を caller へ返す。
 
@@ -140,7 +154,7 @@ mutation callback は typed current value だけを直接引数として受け�
 |------|--------|--------|--------|
 | 未知 key | JSON object に schema 未定義 key がある場合は破損扱いとする。 | 未知 key を保存しない。既存未知 key を黙って削除して保存しない。 | read adapter は `ErrStateCorrupted` を返す。write 呼び出しは target を変更しない。 |
 | 必須 key 不足 | 対象 schema の必須 key が 1 件でも欠ける場合は破損扱いとする。 | 必須 key はすべて明示保存する。 | 初期値再生成が [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) 表で指定されたファイルだけ再生成する。 |
-| `null` | 型欄が `string/null`、`object/null`、`integer/null` 等で明示した key だけ許可する。 | nullable でない key に `null` を保存しない。 | validation error または破損扱い。 |
+| `null` | 型欄が `string/null`、`object/null`、`integer/null`、`number/null`、`boolean/null`、`array/null` で明示した key だけ許可する。 | nullable でない key に `null` を保存しない。 | validation error または破損扱い。 |
 | 配列 | `[]` を既定値とする key は read adapter の戻り値で空配列を返す。 | 保存呼び出しは配列 key を省略せず、空の場合も `[]` を明示する。 | 型不一致は caller 固有の validation error または状態ファイル破損扱い。 |
 | 数値 | 整数 key は JSON number の整数だけ許可する。小数、指数表記由来の非整数、文字列数値は拒否する。 | 整数は JSON number として保存する。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
 | 時刻 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 共通固定値「機械処理時刻」](../DETAIL_INDEX.md#common-machine-time) に一致する文字列だけ許可する。 | 保存前に同固定値へ正規化する。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
@@ -195,6 +209,7 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 |------|----|--------|--------|--------------|------|
 | `log_max_lines` | integer | `500` | 1〜10000 | `GET/POST /api/config` | `GET /api/logs` が返す最大行数。 |
 | `history_max_count` | integer | `100` | 1〜10000 | `GET/POST /api/config` | `.build_history` の通常表示上限。削除処理の上限ではない。 |
+| `history_retention` | object | `{"enabled":false,"max_count":1000,"max_age_days":null,"updated_at":null}` | [HistoryRetentionPolicy object](#history-retention-policy-object) | `GET/POST /api/history/retention`, `POST /api/history/retention/run` | `.build_history` と対応 log の自動削除 policy。 |
 | `build_timeout_seconds` | integer | `300` | 1〜86400 | `GET/POST /api/config` | 手動/自動ビルドのタイムアウト秒数。 |
 | `log_retention_days` | integer | `30` | 0〜3650 | `GET/POST /api/config`, `POST /api/logs/cleanup` | `0` は自動削除なし。 |
 | `log_level` | string | `"INFO"` | `"INFO"` / `"DEBUG"` / `"WARNING"` / `"ERROR"` | `GET/POST /api/config`, `POST /api/log-level` | `api` のランタイムログレベル。 |
@@ -219,7 +234,7 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 | `build_cooldown_seconds` | integer | `0` | 0〜86400 | `POST /api/schedule/cooldown`, `GET /api/schedule` | `0` はクールダウン無効。 |
 | `schedule_interval_seconds` | integer | `300` | 30〜86400 | `POST /api/schedule/interval`, `GET /api/schedule` | systemd timer 更新値。 |
 | `schedule_paused` | boolean | `false` | `true` / `false` | `POST /api/schedule/pause`, `POST /api/schedule/resume`, `GET /api/schedule` | 自動ポーリング停止状態。 |
-| `allowed_hours` | object/null | `null` | `{"from":0〜23,"to":0〜23}` または `null` | `POST /api/schedule/allowed-hours`, `GET /api/schedule` | UTC の自動ビルド許可時間帯。 |
+| `allowed_hours` | object/null | `null` | `{"from":0〜23,"to":0〜23}` かつ `from < to`、または `null` | `POST /api/schedule/allowed-hours`, `GET /api/schedule` | UTC の自動ビルド許可時間帯。 |
 | `session_timeout_seconds` | integer | `28800` | 300〜2592000 | `GET/POST /api/config` | 新規 session の有効期限秒数。既存 session の `expires_at` は変更しない。 |
 | `api_rate_limit` | object | `{"enabled":true,"groups":{"login":{"window_seconds":60,"max_requests":10},"read":{"window_seconds":60,"max_requests":600},"trigger":{"window_seconds":60,"max_requests":60},"operate":{"window_seconds":60,"max_requests":120},"config":{"window_seconds":60,"max_requests":60},"admin":{"window_seconds":60,"max_requests":60}}}` | 次の ApiRateLimitPolicy object | `GET/POST /api/api-rate-limit` | API rate limit の endpoint group 別固定窓設定。判定処理は [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) を参照する。 |
 
@@ -227,7 +242,19 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 
 `readServerConfig()` は sparse object と既定値を deep copy した memory 上の object へ top-level key 単位で merge し、全 top-level key を持つ `ServerConfig` を返す。nested object の部分 merge は行わない。読取時は `.server_config` の作成、完全形への書き戻し、key 順の変更、mtime の変更を行わない。既存値と更新値の no-op 判定は、どちらも `readServerConfig()` と同じ規則で正規化した全 key の値で比較する。
 
-`POST /api/config`、`POST /api/log-level`、`POST /api/api-rate-limit`、および `POST /api/schedule/*` が no-op でない `.server_config` 更新を確定した場合は、更新後の正規化値の全 top-level key を省略せず atomic write する。起動時整合性回復が初期値 `{}` を再生成する場合と、backup / restore が sparse object を復元する場合だけはこの完全形保存の例外とし、backup / restore の入出力と no-op 判定は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の backup / restore 固定契約を参照する。
+`POST /api/config`、`POST /api/log-level`、`POST /api/api-rate-limit`、`POST /api/history/retention`、および `POST /api/schedule/*` が no-op でない `.server_config` 更新を確定した場合は、更新後の正規化値の全 top-level key を省略せず atomic write する。起動時整合性回復が初期値 `{}` を再生成する場合と、backup / restore が sparse object を復元する場合だけはこの完全形保存の例外とし、backup / restore の入出力と no-op 判定は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の backup / restore 固定契約を参照する。
+
+<a id="history-retention-policy-object"></a>
+HistoryRetentionPolicy object:
+
+| キー | 型 | 必須 | 許容値 / 説明 |
+|------|----|------|---------------|
+| `enabled` | boolean | 必須 | `true` / `false`。 |
+| `max_count` | integer/null | 必須 | 1〜100000 または `null`。保持する最新 build history 件数。 |
+| `max_age_days` | integer/null | 必須 | 1〜3650 または `null`。保持する最大日数。 |
+| `updated_at` | string/null | 必須 | UTC ISO 8601 秒精度または `null`。 |
+
+`max_count` と `max_age_days` を同時に `null` にしてはならない。`enabled=false` でも threshold は保持し、run API は削除せず `deleted_count:0` を返す。`updated_at` は `POST /api/history/retention` の差分保存時だけ API owner が更新し、`POST /api/history/retention/run` は変更しない。
 
 TagFilter object:
 
@@ -295,7 +322,7 @@ ApiRateLimitPolicy object:
 | pending `last_error` | string | 1〜500 文字 | secret mask 後の最終失敗理由。 |
 | request `remote_addr` | string/null | IP 文字列または `null` | 接続元。 |
 
-TagFilter object、RemoteBuildConfig object、DurationAnomaly object、ApiRateLimitPolicy object は `enabled` を必須 key とし、型と許容値は [共通 field 定義](#statefile-common-fields) の object `enabled` を適用する。`.build_history` と `.build_logs/{id}.json` は `output_size_bytes`、`output_sha256`、`size_warn`、`flagged`、`tags`、`comment`、`error` をすべて必須 key とし、型と許容値は同表の build field 契約を適用する。
+HistoryRetentionPolicy object、TagFilter object、RemoteBuildConfig object、DurationAnomaly object、ApiRateLimitPolicy object は `enabled` を必須 key とし、型と許容値は [共通 field 定義](#statefile-common-fields) の object `enabled` を適用する。`.build_history` と `.build_logs/{id}.json` は `output_size_bytes`、`output_sha256`、`size_warn`、`flagged`、`tags`、`comment`、`error` をすべて必須 key とし、型と許容値は同表の build field 契約を適用する。
 
 CachePage object と DependencyManifestPage object は `input_sha256` を必須 key とし、型と許容値は同表の content `input_sha256` を適用する。Attempt object、HookLog object、TargetResult object は `started_at` を必須 key とし、型と許容値は operation `started_at` を適用する。Attempt object、TargetResult object、RemoteBuild object は `status` を必須 key とし、型と許容値は operation `binary_status` を適用する。PipelineStep object、Deploy object、RemoteBuild object は `error` を必須 key とし、型と許容値は operation `fixed_error` を適用する。NotificationPending object と PendingTransfer object は `last_error` を必須 key とし、型と許容値は pending `last_error` を適用する。
 
@@ -1089,6 +1116,8 @@ runner 結果値は保存先ごとに意味を分離する。`.build_logs/{id}.j
 | `skipped_dependency_failed` | 禁止 | 許可 | 禁止 | chain dependency failure による未実行 job。build log は作成しない。 |
 | `skipped_no_change` | 禁止 | 禁止 | 許可 | SHA 差分なし。 |
 | `skipped_cooldown` | 禁止 | 禁止 | 許可 | cooldown 中。 |
+| `skipped_schedule_paused` | 禁止 | 禁止 | 許可 | schedule pause 中。 |
+| `skipped_allowed_hours` | 禁止 | 禁止 | 許可 | allowed hours 外。 |
 | `skipped_tag_filter` | 禁止 | 禁止 | 許可 | tag filter 不一致。 |
 | `skipped_maintenance` | 禁止 | 禁止 | 許可 | maintenance mode 中。 |
 | `circuit_open` | 禁止 | 禁止 | 許可 | circuit breaker open。 |
@@ -1475,3 +1504,218 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | state path mode | runtime 状態 file と lock file は `0600`、statefile 責務の runtime 状態 directory は `0700` に固定する。 | path の状態責務への帰属判定。 | chmod 失敗を成功扱いにせず、secret 内容を log / 呼び出し元の公開値 / fixture expected に出さない。 |
 
 状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。
+
+<a id="sec-22-0d"></a>
+**22.0d 追加管理 API / MCP 状態 schema：**
+
+[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) は、追加管理 API 機能と MCP 機能が使用する状態 schema を定義する。
+
+[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) は状態語彙、現在状態、実装着手可否を再定義しない。
+
+| path | schema |
+|------|--------|
+| `.users` | `{ "users": UserRecord[] }` |
+| `.roles` | `{ "roles": RoleRecord[] }` |
+| `.external_auth_config` | `{ "enabled": boolean, "providers": ExternalAuthProvider[] }` |
+| `.datastore_config` | `{ "active_store": string, "stores": DatastoreStore[], "pending_switch": DatastoreSwitchRecord|null }` |
+| `.config_snapshots/{id}.json` | `ConfigSnapshotObject` |
+| `.projects` | `{ "projects": ProjectRecord[] }` |
+| `.config_templates` | `{ "templates": ConfigTemplateRecord[] }` |
+| `.admin_events` | JSON Lines `AdminEventRecord` |
+| `.share_links` | `{ "links": ShareLinkRecord[] }` |
+| `.response_cache` | `{ "entries": { "<cache_key>": ResponseCacheEntry } }` |
+| `.mcp_config` | `McpConfig` |
+| `.mcp_audit_log` | JSON Lines `McpAuditRecord` |
+| `.mcp_client_log` | JSON Lines `McpClientRecord` |
+| `.mcp_metrics` | `McpMetrics` |
+
+<a id="additional-management-statefile-common-contract"></a>
+**追加管理 API / MCP 状態共通固定契約：**
+
+[`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) の状態 file は、[`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) の atomic write、lock、権限、破損時処理に従う。同責務本文は追加管理 API と MCP が追加で使用する record key、ID、hash、JSON Lines record を固定する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| random id | `usr_`、`tmpl_`、`share_` は 128 bit 以上の乱数を Crockford Base32 26 文字で表す。alphabet は `0123456789ABCDEFGHJKMNPQRSTVWXYZ` 固定。生成済み id と衝突した場合は 10 回まで再生成し、すべて衝突した場合は caller へ state conflict を返し、write しない。 |
+| timestamp id | `cfgsnap_`、`evt_`、`mcpaud_`、`mcpcli_` は UTC `YYYYMMDDHHMMSS` を使い、同一秒衝突時は `-001` から `-999` を順に付ける。`-999` まで使用済みなら caller へ state conflict を返し、既存 record を上書きしない。 |
+| canonical JSON hash | hash 算出用 JSON は UTF-8、object key は UTF-8 byte 昇順、array は保存順、空白なし、HTML escape なし、整数は decimal、boolean/null は lowercase とする。状態保存そのものの pretty print 有無は hash 入力へ影響させない。 |
+| secret mask | snapshot、diff、template、event、audit、cache body に secret 値を保存する場合は値を `"***"` に置換する。secret の種類と漏えい禁止は [`docs/details/security.md`](security.md) 詳細本文責務を参照する。 |
+| read validation | required key 不足、未知 key、型不一致、nullable 不一致、enum 不一致、id 重複、参照先 id 不在、JSON Lines の壊れた行は破損として扱う。壊れた値を削除して継続保存してはならない。 |
+| write validation | caller は write 前に対象 record 全体を schema validation する。部分 object だけの保存、未知 key 維持、既存破損 file への追記は禁止する。 |
+| JSON Lines append | `.admin_events`、`.mcp_audit_log`、`.mcp_client_log` は 1 record 1 行、末尾 LF 必須、途中改行禁止とする。append 失敗時は部分行を残さない。 |
+
+**UserRecord：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | `usr_` + 26 文字 Crockford Base32。 |
+| `username` | string | yes | 3〜64 文字。lowercase ASCII、digit、`-`、`_` だけを許可する。 |
+| `display_name` | string | yes | 1〜128 Unicode scalar values。 |
+| `status` | string | yes | `active`、`disabled`、`locked` のいずれか。 |
+| `role_ids` | string[] | yes | `.roles.roles[].id` に存在する id。空配列禁止。 |
+| `password_hash` | string|null | yes | local password 未設定時は `null`。平文禁止。 |
+| `external_subjects` | object[] | yes | provider id と subject の組。 |
+| `totp_enabled` | boolean | yes | TOTP 有効状態。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
+
+**RoleRecord：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | lowercase ASCII、digit、`-`、`_`。 |
+| `name` | string | yes | 1〜64 Unicode scalar values。 |
+| `permissions` | string[] | yes | [`docs/details/security.md` 詳細本文責務 §27.58](security.md#sec-27-58) の permission 名。 |
+| `system` | boolean | yes | system role は削除禁止。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
+
+**ExternalAuthProvider：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | provider id。 |
+| `type` | string | yes | `oidc` のみ。 |
+| `enabled` | boolean | yes | provider 有効状態。 |
+| `issuer` | string | yes | HTTPS URL。 |
+| `client_id` | string | yes | 1〜256 文字。 |
+| `client_secret_ref` | string|null | yes | secret path または `null`。secret 本体禁止。 |
+| `scopes` | string[] | yes | OIDC scope。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
+
+**DatastoreStore / DatastoreSwitchRecord：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | datastore id。 |
+| `type` | string | yes | `statefile` のみ。将来別 type を追加する場合は本節を改訂する。 |
+| `enabled` | boolean | yes | 使用可否。 |
+| `path` | string|null | yes | `statefile` では `null`。 |
+| `started_at` | string | switch only | UTC ISO 8601 秒精度。 |
+| `status` | string | switch only | `pending`、`completed`、`failed`。 |
+
+**ConfigSnapshotObject：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | `cfgsnap_` + UTC `YYYYMMDDHHMMSS` + 衝突 suffix。 |
+| `label` | string|null | yes | 1〜128 Unicode scalar values または `null`。空文字は禁止する。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `created_by` | string | yes | user id または `system`。 |
+| `files` | object | yes | snapshot 対象 state path ごとの JSON value、または secret file marker。key は [`docs/details/api.md` 詳細本文責務 backup / restore 固定契約](api.md#backup-restore-contract) の backup 対象 path だけを許可する。 |
+| `sha256` | string | yes | `files` canonical JSON の SHA-256 lowercase hex。 |
+
+ConfigSnapshotObject の secret file marker は `{"secret_set":boolean,"value":"***"}` または `{"secret_set":false,"value":null}` のどちらかだけを許可する。secret 本体、secret hash、secret 長、prefix、suffix を保存してはならない。restore 時の secret file marker の扱いは [`docs/details/api.md` 詳細本文責務 §27.55](api.md#sec-27-55) を参照する。
+
+**ProjectRecord：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | lowercase ASCII、digit、`-`、`_`。`default` は既定 project だけが使用する。 |
+| `name` | string | yes | 1〜128 Unicode scalar values。 |
+| `status` | string | yes | `active`、`archived` のいずれか。 |
+| `root` | string | yes | absolute path または repository ref 表現。NUL、CR、LF 禁止。 |
+| `branch` | string | yes | branch 名。空文字、NUL、CR、LF、`..`、先頭 `/` 禁止。 |
+| `default` | boolean | yes | 既定 project だけ `true`。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
+
+ProjectRecord は `.projects.projects` 内で `id` を一意とし、`default:true` の record を 1 件だけ持つ。`default:true` の record は `status:"active"` 固定とし、archive、物理削除、id 変更を禁止する。`root` は保存時に前後空白を保持せず、入力に前後空白がある場合は validation failure とする。
+
+**ConfigTemplateRecord：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | `tmpl_` + 26 文字 Crockford Base32。 |
+| `name` | string | yes | 1〜128 Unicode scalar values。 |
+| `description` | string/null | yes | 0〜1000 Unicode scalar values または `null`。 |
+| `values` | object | yes | config restore 対象と同じ schema-valid partial object。secret 平文、secret mask、`*_set`、`exported_at`、未知 key 禁止。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
+
+ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全一致一意とする。`values` の top-level key は [`docs/details/api.md` 詳細本文責務 backup / restore 固定契約](api.md#backup-restore-contract) の restore 対象 JSON state file だけを許可し、`.webhook_secret`、`.smtp_secret`、`.github_token`、session、token、履歴、ログ、snapshot、cache、queue を含めてはならない。
+
+**AdminEventRecord：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | `evt_` + UTC `YYYYMMDDHHMMSS` + 衝突 suffix。 |
+| `timestamp` | string | yes | UTC ISO 8601 秒精度。 |
+| `type` | string | yes | `user`、`config`、`build`、`system`、`security`、`notification` のいずれか。 |
+| `actor` | string/null | yes | user id、API token id、`system`、または `null`。 |
+| `target_type` | string | yes | 操作対象分類。 |
+| `target_id` | string/null | yes | 操作対象 id または `null`。 |
+| `message` | string | yes | 1〜500 Unicode scalar values。secret、token、raw request body 禁止。 |
+| `severity` | string | yes | `info`、`warning`、`error` のいずれか。 |
+
+**ShareLinkRecord：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `id` | string | yes | `share_` + 26 文字 Crockford Base32。 |
+| `token_hash` | string | yes | token 本体の SHA-256 lowercase hex。token 本体は禁止。 |
+| `scope` | string | yes | `status`、`history`、`snapshot_diff` のいずれか。 |
+| `expires_at` | string/null | yes | UTC ISO 8601 秒精度または `null`。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `revoked_at` | string/null | yes | UTC ISO 8601 秒精度または `null`。 |
+
+**ResponseCacheEntry：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `key` | string | yes | method、path、query、vary を canonical JSON 化した SHA-256 lowercase hex。 |
+| `endpoint` | string | yes | cache 対象 endpoint path。 |
+| `vary` | object | yes | cache key 算出に使った query object、target id、branch name、method、path の値。secret 禁止。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `expires_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `status` | integer | yes | HTTP status。`200` だけを保存する。 |
+| `headers` | object | yes | cache response に必要な公開 header。`Set-Cookie`、`Authorization` 禁止。 |
+| `body_sha256` | string | yes | body canonical JSON byte の SHA-256 lowercase hex。 |
+| `body` | object | yes | JSON response だけを保存する。binary、SVG、SSE、user 固有 response は保存禁止。 |
+
+**McpConfig：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `tool_timeout_ms` | integer | yes | 1000〜300000。 |
+| `sampling_timeout_ms` | integer | yes | 1000〜300000。 |
+| `scopes` | McpScopeRecord[] | yes | client token hash と scope 配列。token 本体と Authorization header 値は禁止。 |
+
+**McpScopeRecord：**
+
+| key | 型 | 必須 | 仕様 |
+|-----|----|------|------|
+| `token_hash` | string | yes | `--client-token` 値の SHA-256 lowercase hex。token 本体と Authorization header 値は禁止。 |
+| `scopes` | string[] | yes | 1 件以上。各値は [`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) の tool scope に存在する値だけを許可する。重複禁止、保存順は ASCII 昇順。 |
+| `created_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
+
+**McpAuditRecord / McpClientRecord / McpMetrics：**
+
+| record | key | 型 | 必須 | 仕様 |
+|--------|-----|----|------|------|
+| `McpAuditRecord` | `id` | string | yes | `mcpaud_` + UTC `YYYYMMDDHHMMSS` + 衝突 suffix。 |
+| `McpAuditRecord` | `timestamp` | string | yes | UTC ISO 8601 秒精度。 |
+| `McpAuditRecord` | `client_name` | string | yes | initialize 済み client name。 |
+| `McpAuditRecord` | `tool` | string | yes | MCP tool name。sampling request は呼び出し元 tool 名 `adlaire.analyzeBuildError` を保存する。 |
+| `McpAuditRecord` | `params_hash` | string | yes | canonical JSON params の SHA-256 lowercase hex。raw params は保存しない。 |
+| `McpAuditRecord` | `scope` | string | yes | 判定に使用した MCP scope。 |
+| `McpAuditRecord` | `confirmation_id` | string/null | yes | 副作用 tool の confirmation id。read-only tool は `null`。 |
+| `McpAuditRecord` | `status` | string | yes | `accepted`、`success`、`error`、`timeout` のいずれか。副作用 tool の実行前監査は `accepted`、sampling result は結果に応じて `success`、`error`、`timeout` を使用する。 |
+| `McpAuditRecord` | `duration_ms` | integer | yes | 0 以上。 |
+| `McpAuditRecord` | `jsonrpc_error_code` | integer/null | yes | 成功または `accepted` は `null`。JSON-RPC error として返す失敗では error code。 |
+| `McpAuditRecord` | `build_id` | string/null | yes | sampling 対象 build id。sampling 以外は `null`。 |
+| `McpAuditRecord` | `prompt_hash` | string/null | yes | sampling prompt canonical text の SHA-256 lowercase hex。sampling 以外は `null`。prompt 本文は禁止。 |
+| `McpClientRecord` | `id` | string | yes | `mcpcli_` + UTC `YYYYMMDDHHMMSS` + 衝突 suffix。 |
+| `McpClientRecord` | `connected_at` | string | yes | UTC ISO 8601 秒精度。 |
+| `McpClientRecord` | `client_name` | string | yes | 1〜128 Unicode scalar values。 |
+| `McpClientRecord` | `client_version` | string/null | yes | 1〜64 Unicode scalar values または `null`。 |
+| `McpClientRecord` | `protocol_version` | string | yes | initialize request の protocolVersion。 |
+| `McpClientRecord` | `remote_addr` | string | yes | loopback address と port。 |
+| `McpClientRecord` | `capabilities` | object | yes | initialize params の capabilities を secret 除去後に保存する。 |
+| `McpMetrics` | `tools` | object | yes | tool name を key とする metrics object。 |
+
+`McpMetrics.tools` の key は [`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) の tool name だけを許可する。存在しない tool の metrics record は作成しない。
+
+`McpMetrics.tools` の value は `success_count`、`error_count`、`timeout_count`、`last_status`、`last_duration_ms`、`last_at` を持つ object とする。counter は 0 以上の integer、`last_status` は `success`、`error`、`timeout` のいずれか、`last_duration_ms` は 0 以上の integer、`last_at` は UTC ISO 8601 秒精度とする。tool の初回 metrics 更新時に value を作成し、作成時は該当 status の counter だけを 1、他 counter を 0 とする。

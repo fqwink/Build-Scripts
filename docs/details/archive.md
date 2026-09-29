@@ -251,7 +251,7 @@ runner owner が `source_kind="snapshot"` の PendingTransfer object を再試�
 
 **archive / snapshot fixture 証跡参照：**
 
-archive / snapshot の fixture 名、合格条件、expected / effects、stream failure、secret absence、状態差分、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、snapshot 保存形式、`meta.json` schema、一覧 sort、保存済み tar.gz の entry 順序・検証・配信、delete 実体、rollback 用 artifact の展開・転送・temporary cleanup、元 snapshot 維持、`.last_sha` 非変更など archive owner の実体処理観点だけを扱う。HTTP header / status / body、`.config_log`、rollback 状態書込は各 owner を参照する。
+archive / snapshot の fixture 名、合格条件、expected / effects、stream failure、secret absence、状態差分、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) を正本とする。[`docs/details/archive.md`](archive.md) 詳細本文責務では、snapshot 保存形式、`meta.json` schema、一覧 sort、保存済み tar.gz の entry 順序・検証・配信、delete 実体、rollback 用 artifact の展開・転送・temporary cleanup、元 snapshot 維持、`.last_sha` 非変更の各 archive owner 実体処理観点だけを扱う。HTTP header / status / body、`.config_log`、rollback 状態書込は各 owner を参照する。
 
 **検証条件：**
 

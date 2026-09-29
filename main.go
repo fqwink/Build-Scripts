@@ -1,16 +1,26 @@
 package main
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/fqwink/build-scripts/components"
 )
 
 func main() {
-	if strings.Contains(filepath.Base(os.Args[0]), "adlaire-ci-runner") {
-		os.Exit(components.RunRunner(os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(dispatchMain(filepath.Base(os.Args[0]), os.Args[1:], os.Stdout, os.Stderr))
+}
+
+func dispatchMain(name string, args []string, stdout io.Writer, stderr io.Writer) int {
+	switch name {
+	case "adlaire-ci-build":
+		return components.RunBuild(args, stdout, stderr)
+	case "adlaire-ci-runner":
+		return components.RunRunner(args, stdout, stderr)
+	default:
+		fmt.Fprintf(stderr, "unknown command: %s\n", name)
+		return 2
 	}
-	os.Exit(components.RunBuild(os.Args[1:], os.Stdout, os.Stderr))
 }
