@@ -287,6 +287,64 @@ func TestFixtureURLSafetyStrictKeepsExistingOutput(t *testing.T) {
 	}
 }
 
+func TestFixtureUnclosedFenceNonStrictWarnsAndOutputsCode(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	writeFile(t, filepath.Join(docs, "index.md"), "# Intro\n\n```go\nfmt.Println(1)\n## Not Heading\n")
+	out := filepath.Join(root, "dist")
+
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", docs, "--out", out, "--title", "Docs"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for non-strict warning, got %q", stderr.String())
+	}
+	for _, want := range []string{"[WARN] UNCLOSED_FENCE: line=3", "[REPORT] pages=1", "warnings=1", "code_blocks=1"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout missing %q: %s", want, stdout.String())
+		}
+	}
+	index := readFile(t, filepath.Join(out, "index.html"))
+	for _, want := range []string{`<div class="cb-wrap" data-lang="go">`, "fmt.Println(1)\n## Not Heading"} {
+		if !strings.Contains(index, want) {
+			t.Fatalf("index.html missing %q: %s", want, index)
+		}
+	}
+	if strings.Contains(index, `id="not-heading"`) {
+		t.Fatalf("unclosed fence content was parsed as heading: %s", index)
+	}
+}
+
+func TestFixtureUnclosedFenceStrictKeepsExistingOutput(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	writeFile(t, filepath.Join(docs, "index.md"), "# Intro\n\n```go\nfmt.Println(1)\n")
+	out := filepath.Join(root, "dist")
+	writeFile(t, filepath.Join(out, "index.html"), "old")
+
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", docs, "--out", out, "--title", "Docs", "--strict"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for strict warning, got %q", stderr.String())
+	}
+	for _, want := range []string{"[WARN] UNCLOSED_FENCE: line=3", "[REPORT] pages=1", "warnings=1", "code_blocks=1"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout missing %q: %s", want, stdout.String())
+		}
+	}
+	if strings.Contains(stdout.String(), "Done") {
+		t.Fatalf("strict warning must not emit Done: %s", stdout.String())
+	}
+	if got := readFile(t, filepath.Join(out, "index.html")); got != "old" {
+		t.Fatalf("strict warning replaced existing output: %q", got)
+	}
+}
+
 func TestFixtureAtomicStagingCollision(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, "docs")

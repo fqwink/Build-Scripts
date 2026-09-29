@@ -986,6 +986,7 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 	var codeBuf []string
 	var codeLang string
 	var fence string
+	var fenceStartLine int
 	inFence := false
 	tables := 0
 	codeBlocks := 0
@@ -1084,6 +1085,7 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 				flushTable()
 				inFence = true
 				fence = trim[:3]
+				fenceStartLine = i + 1
 				codeLang = strings.TrimSpace(trim[3:])
 				codeBuf = nil
 				continue
@@ -1093,6 +1095,7 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 				emitCode()
 				inFence = false
 				codeLang = ""
+				fenceStartLine = 0
 				codeBuf = nil
 			} else {
 				codeBuf = append(codeBuf, raw)
@@ -1165,7 +1168,10 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 		para = append(para, trim)
 	}
 	if inFence {
-		return "", nil, tables, codeBlocks, exitError{Code: 2, Msg: "unclosed code fence"}
+		if len(codeBuf) > 0 {
+			emitCode()
+		}
+		ctx.Warnings = append(ctx.Warnings, fmt.Sprintf("UNCLOSED_FENCE: line=%d", fenceStartLine))
 	}
 	flushPara()
 	flushList()
