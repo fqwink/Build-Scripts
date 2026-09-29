@@ -11,6 +11,7 @@
 | owner component | `builder` |
 | 実装主体 | [`components/builder.go`](../../components/builder.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-build` とする。 |
 | 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder 検証条件、builder owner 追加機能。 |
+| 起動入口受け渡し | [`main.go`](../../main.go) は実行ファイル basename が `adlaire-ci-build` と完全一致する場合だけ `builder` owner を呼び出す。`builder` owner が受け取る argv は `os.Args[1:]` 相当の配列、binary version は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#common-cli-contract) の version 注入値とし、`builder` owner は `os.Args[0]`、process 名、環境変数、設定ファイルから owner 選択または version 値を再判定しない。 |
 
 ---
 
@@ -89,10 +90,15 @@ var DefaultBuildConfig = BuildConfig{
 | `--src` 内の Markdown が UTF-8 として読めない | `2` | stderr に `source is not valid UTF-8: <path>` |
 | `--title` が空文字 | `2` | stderr に `title must not be empty` |
 | `--theme` が `adlaire-default` 以外 | `2` | stderr に `unknown theme: <name>` |
+| `--base-dir` を明示指定し、値が空文字 | `2` | stderr に `base directory must not be empty` |
+| `--base-dir` が存在しない | `2` | stderr に `base directory not found: <path>` |
+| `--base-dir` がディレクトリでない | `2` | stderr に `base path is not directory: <path>` |
 | `--build-id` が空文字以外で `b{YYYYMMDDHHmmss}` または `b{YYYYMMDDHHmmss}-NNN` 形式でない | `2` | stderr に `invalid build id: <value>` |
 | `--commit-sha` が空文字以外で 40 文字の lowercase hex でない | `2` | stderr に `invalid commit sha: <value>` |
 | `--build-at` が空文字以外で UTC ISO 8601 でない | `2` | stderr に `invalid build at: <value>` |
 | `--out` ディレクトリ作成失敗 | `1` | stderr に `cannot create output directory: <path>` |
+| `--out` の親ディレクトリが存在しない | `2` | stderr に `output parent not found: <path>` |
+| `--out` の親ディレクトリがディレクトリでない | `2` | stderr に `output parent is not directory: <path>` |
 | `--out` が既存ファイル | `1` | stderr に `output path is not directory: <path>` |
 | `--out` 書き込み失敗 | `1` | stderr に `cannot write output: <path>` |
 
@@ -101,11 +107,15 @@ var DefaultBuildConfig = BuildConfig{
 **CLI パース固定仕様：**
 
 - builder CLI の parse 形式と短縮 option 禁止は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の CLI 共通固定契約に従う。
-- 同一引数が複数回指定された場合は最後の値を採用する。ただし `--strict` は 1 回以上指定されれば `true` とする。
+- 同一の値 option が複数回指定された場合は、最後の値 token だけを採用する。最後より前の値 token は path 解決、存在確認、UTF-8 読取、状態変更、stdout、stderr、`[REPORT]`、生成物へ使用しない。ただし `--strict` は 1 回以上指定されれば `true` とし、重複指定を error にしない。
 - `--src`、`--out`、`--base-dir` の相対パスは `os.Getwd()` の戻り値を基準に `filepath.Abs()` で絶対パスへ変換する。
+- `--base-dir` を省略した場合または `DefaultBuildConfig.BaseDir` が空の場合は、[`docs/details/builder.md` 詳細本文責務 §2a](builder.md#2a-入力収集出力パス決定) の規則で `--src` から基準ディレクトリを決定する。`--base-dir` を明示指定して値 token が空文字の場合は、既定値扱いにせず終了コード `2`、stderr に `base directory must not be empty` を出力する。
 - `--base-dir` が空ではない場合、存在するディレクトリでなければならない。存在しない場合は終了コード `2`、stderr に `base directory not found: <path>` を出力する。
 - `--base-dir` がファイルの場合は終了コード `2`、stderr に `base path is not directory: <path>` を出力する。
+- `--src`、明示指定した `--base-dir`、既存の `--out`、`--out` の親ディレクトリは `os.Lstat` で symlink でないことを確認する。`--src` が symlink の場合は `source is not markdown file or directory: <path>`、明示指定した `--base-dir` が symlink の場合は `base path is not directory: <path>`、既存の `--out` が symlink の場合は `output path is not directory: <path>`、`--out` 親ディレクトリが symlink の場合は `output parent is not directory: <path>` を stderr へ出して終了する。終了コードは `--out` 既存 symlink だけ `1`、その他は `2` とする。
 - builder 固有の path 解決、重複 option、`--strict` の扱いは [`docs/details/builder.md` 詳細本文責務 §2](builder.md#2-ファイルパス設定) を正本とする。
+
+CLI resolver の検証順は固定する。`--help` / `--version` の共通優先順位と argv token safety の後、未知 option、値欠落、重複 option の最後値確定、`--title`、`--theme`、`--build-id`、`--commit-sha`、`--build-at`、`--src` path、`--base-dir` path、`--out` path、`--src` と `--out` の相互包含、入力収集の順に検証する。先に失敗した条件 1 件だけを stderr へ出す。
 
 <a id="固定出力"></a>
 **固定出力：**
@@ -122,8 +132,8 @@ var DefaultBuildConfig = BuildConfig{
 | 対象 | 正規化 | 禁止 / 失敗条件 |
 |------|--------|-----------------|
 | `--src` | `filepath.Abs` → `filepath.Clean` | NUL、空文字、存在しない path。 |
-| `--out` | `filepath.Abs` → `filepath.Clean` | NUL、空文字、親ディレクトリ不存在、既存通常ファイル。 |
-| `--base-dir` | 空なら [`docs/details/builder.md` 詳細本文責務 §2a](builder.md#2a-入力収集出力パス決定) の規則で決定。指定時は `filepath.Abs` → `filepath.Clean` | NUL、空文字、存在しない path、通常ファイル。 |
+| `--out` | `filepath.Abs` → `filepath.Clean` | NUL、空文字、親ディレクトリ不存在、親ディレクトリ symlink、既存通常ファイル、既存 symlink。 |
+| `--base-dir` | 省略時または既定値の空文字なら [`docs/details/builder.md` 詳細本文責務 §2a](builder.md#2a-入力収集出力パス決定) の規則で決定。指定時は `filepath.Abs` → `filepath.Clean` | NUL、明示指定の空文字、存在しない path、通常ファイル、symlink。 |
 | `--title` | 前後空白を除去せず入力値をそのまま使用 | 空文字だけ禁止。空白だけの文字列は空 title として扱い `2`。 |
 | `--theme` | 前後空白を除去せず完全一致 | `adlaire-default` 以外。 |
 
