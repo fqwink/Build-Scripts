@@ -20,7 +20,7 @@ func TestRunnerFixtureR1CLI(t *testing.T) {
 	if code := RunRunner([]string{"--help"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("help exit=%d", code)
 	}
-	if strings.TrimSpace(stdout.String()) != "Usage: adlaire-ci-runner [--state-dir path] [--once] [--version] [--help]" || stderr.Len() != 0 {
+	if strings.TrimSpace(stdout.String()) != "Usage: adlaire-ci-runner [--state-dir path] [--once] [--dry-run] [--version] [--help]" || stderr.Len() != 0 {
 		t.Fatalf("unexpected help stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
 	stdout.Reset()
@@ -38,6 +38,14 @@ func TestRunnerFixtureR1CLI(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "unknown option: --unknown") {
 		t.Fatalf("missing unknown error: %s", stderr.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	if code := RunRunner([]string{"--version", "--state-dir", "relative"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("version exit=%d stderr=%s", code, stderr.String())
+	}
+	if !strings.HasPrefix(strings.TrimSpace(stdout.String()), "adlaire-ci-runner V.0.0-dev go=") || stderr.Len() != 0 {
+		t.Fatalf("unexpected version stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
 }
 
@@ -82,11 +90,27 @@ func TestRunnerFixtureR3BuildSuccessNoDeploy(t *testing.T) {
 		if log.SnapshotID == nil {
 			t.Fatalf("snapshot id must be recorded")
 		}
+		if log.Status != "success" || log.OutputSHA256 == nil || log.OutputSizeBytes == nil || log.Trigger != "polling" {
+			t.Fatalf("normalized log fields missing: %+v", log)
+		}
+		if log.Environment.RunnerVersion != "V.0.0-dev" || log.Environment.GoVersion == "" || log.Environment.OS == "" || log.Environment.Arch == "" {
+			t.Fatalf("environment record missing: %+v", log.Environment)
+		}
 		if _, err := os.Stat(filepath.Join(state, ".snapshots", *log.SnapshotID, "site", "index.html")); err != nil {
 			t.Fatalf("snapshot missing: %v", err)
 		}
 		if !strings.Contains(readFile(t, filepath.Join(state, ".build_history")), `"status":"success"`) {
 			t.Fatalf("history missing success")
+		}
+		var summary buildStatusSummary
+		readJSON(t, filepath.Join(state, ".build_status.json"), &summary)
+		if summary.Status != "success" || summary.Running || summary.LastBuildID == nil || *summary.LastBuildID != log.ID || summary.OutputSHA256 == nil {
+			t.Fatalf("unexpected build status summary: %+v", summary)
+		}
+		var trends buildTrendsFile
+		readJSON(t, filepath.Join(state, ".build_trends.json"), &trends)
+		if trends.SchemaVersion != 1 || len(trends.Samples) != 1 || trends.Samples[0].BuildID != log.ID || trends.Summary.Count != 1 || trends.Summary.AvgSeconds == nil {
+			t.Fatalf("unexpected build trends: %+v", trends)
 		}
 		var bs buildState
 		readJSON(t, filepath.Join(state, ".build_state"), &bs)
@@ -116,7 +140,247 @@ func TestRunnerFixtureR4PipelineFailure(t *testing.T) {
 		if log.TargetStatus != "failure_build" || log.Pipeline.ExitCode == nil || *log.Pipeline.ExitCode != 7 || log.Pipeline.Stdout != "before fail" || log.Pipeline.Stderr != "failed" || log.Error == nil || *log.Error != "pipeline failed" {
 			t.Fatalf("unexpected failure log: %+v", log)
 		}
+		if log.FailureCategory == nil || *log.FailureCategory != "build_failure" || log.Status != "failure" {
+			t.Fatalf("failure category not recorded: %+v", log)
+		}
 	})
+}
+
+func TestRunnerCompletionServerConfigSparseSchema(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writeRunnerTestJSON(t, filepath.Join(state, ".server_config"), map[string]any{
+		"log_max_lines":              750,
+		"history_max_count":          500,
+		"history_retention":          map[string]any{"enabled": false, "max_count": 1000, "max_age_days": nil, "updated_at": nil},
+		"build_timeout_seconds":      120,
+		"log_retention_days":         30,
+		"log_level":                  "INFO",
+		"pat_expires_at":             nil,
+		"snapshots_keep":             0,
+		"queue_max_size":             3,
+		"build_retry_max":            1,
+		"build_retry_base_seconds":   5,
+		"commit_status_enabled":      false,
+		"commit_status_context":      "Adlaire CI",
+		"commit_status_target_url":   nil,
+		"log_archive_after_days":     0,
+		"build_trend_keep_count":     1000,
+		"duration_anomaly":           map[string]any{"enabled": false, "min_samples": 20, "avg_multiplier": 2.0, "p95_multiplier": 1.5},
+		"watch_mode":                 "github",
+		"tag_filter":                 map[string]any{"enabled": false, "patterns": []any{}},
+		"build_cache_enabled":        false,
+		"deploy_parallelism":         1,
+		"remote_build":               map[string]any{"enabled": false, "host": nil, "user": nil, "work_dir": nil, "command_args": []any{}, "artifact_path": nil},
+		"approval_timeout_seconds":   86400,
+		"force_build_interval_hours": 0,
+		"build_cooldown_seconds":     0,
+		"schedule_interval_seconds":  300,
+		"schedule_paused":            false,
+		"allowed_hours":              nil,
+		"session_timeout_seconds":    28800,
+		"api_rate_limit": map[string]any{"enabled": true, "groups": map[string]any{
+			"login": map[string]any{"window_seconds": 60, "max_requests": 10},
+		}},
+	})
+	cfg := defaultRunnerConfig(state)
+	if err := loadRunnerConfig(&cfg, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))); err != nil {
+		t.Fatalf("valid sparse server config rejected: %v", err)
+	}
+	if cfg.BuildTimeoutSeconds != 120 || cfg.SnapshotsKeep != 0 || cfg.BuildRetryMax != 1 || cfg.WatchMode != "github" || cfg.DeployParallelism != 1 {
+		t.Fatalf("server config not applied: %+v", cfg)
+	}
+}
+
+func TestRunnerCompletionServerConfigRejectsUnknownKey(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writeRunnerTestJSON(t, filepath.Join(state, ".server_config"), map[string]any{"unknown": true})
+	cfg := defaultRunnerConfig(state)
+	err := loadRunnerConfig(&cfg, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
+	if err == nil || !strings.Contains(err.Error(), "SERVER_CONFIG_INVALID") {
+		t.Fatalf("unknown server config key accepted: %v", err)
+	}
+}
+
+func TestRunnerCompletionDryRunNoWrites(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	for _, path := range []string{filepath.Join(state, "repo"), filepath.Join(state, "dist"), filepath.Join(state, ".build_logs"), filepath.Join(state, ".build_lock")} {
+		_ = os.RemoveAll(path)
+	}
+	var stdout, stderr bytes.Buffer
+	if code := RunRunner([]string{"--state-dir", state, "--dry-run"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("dry-run exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	var result map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &result); err != nil {
+		t.Fatalf("invalid dry-run json: %v stdout=%s", err, stdout.String())
+	}
+	if result["dry_run"] != true {
+		t.Fatalf("dry_run flag missing: %+v", result)
+	}
+	for _, path := range []string{filepath.Join(state, "repo"), filepath.Join(state, "dist"), filepath.Join(state, ".build_logs"), filepath.Join(state, ".build_lock"), filepath.Join(state, ".build_history")} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("dry-run wrote path %s", path)
+		}
+	}
+}
+
+func TestRunnerCompletionLocalWatchDoesNotRequireToken(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	if err := os.Remove(filepath.Join(state, ".github_token")); err != nil {
+		t.Fatal(err)
+	}
+	writeRunnerTestJSON(t, filepath.Join(state, ".server_config"), map[string]any{
+		"watch_mode":             "local",
+		"build_cooldown_seconds": 0,
+	})
+	src := filepath.Join(state, "repo", "docs")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "source.md"), []byte("# Local\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	log := onlyBuildLog(t, state)
+	if log.Environment.WatchMode != "local" || log.BlobSHA == nil || *log.BlobSHA == "old-blob" {
+		t.Fatalf("local watch log mismatch: %+v", log)
+	}
+}
+
+func TestRunnerCompletionMultiFileChangedTargets(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipelineWithExtra(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "", `if [ "${ADLAIRE_CHANGED_TARGETS:-}" != '["docs/a.md","docs/b.md"]' ]; then exit 8; fi`)
+	target := BranchTarget{
+		Branch: "main", TargetFile: "docs/a.md", TargetFiles: []string{"docs/b.md", "docs/a.md"},
+		SHAFile: filepath.Join(state, ".last_sha"), Src: filepath.Join(state, "repo", "docs"), Out: filepath.Join(state, "dist", "site"),
+	}
+	writeRunnerTestJSON(t, filepath.Join(state, ".branch_config"), branchConfigFile{BranchTargets: []BranchTarget{target}})
+	encodedA := base64.StdEncoding.EncodeToString([]byte("# A\n"))
+	encodedB := base64.StdEncoding.EncodeToString([]byte("# B\n"))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.Contains(r.URL.Path, "/git/trees/"):
+			_ = json.NewEncoder(w).Encode(map[string]any{"tree": []map[string]string{
+				{"path": "docs/a.md", "type": "blob", "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+				{"path": "docs/b.md", "type": "blob", "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+			}})
+		case strings.Contains(r.URL.Path, "/git/blobs/aaaaaaaa"):
+			_ = json.NewEncoder(w).Encode(map[string]string{"content": encodedA, "encoding": "base64"})
+		case strings.Contains(r.URL.Path, "/git/blobs/bbbbbbbb"):
+			_ = json.NewEncoder(w).Encode(map[string]string{"content": encodedB, "encoding": "base64"})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		log := onlyBuildLog(t, state)
+		if strings.Join(log.TargetFiles, ",") != "docs/a.md,docs/b.md" || strings.Join(log.ChangedTargets, ",") != "docs/a.md,docs/b.md" {
+			t.Fatalf("target tracking mismatch: %+v", log)
+		}
+		if _, err := os.Stat(filepath.Join(state, "repo", "docs", "docs", "a.md")); err != nil {
+			t.Fatalf("source a not materialized: %v", err)
+		}
+		if readFile(t, filepath.Join(state, ".last_sha")) == "{\"sha\":\"old-blob\"}\n" {
+			t.Fatalf("multi-file digest not updated")
+		}
+	})
+}
+
+func TestRunnerCompletionApprovalRequiredSkipsBuild(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	target := BranchTarget{
+		Branch: "main", TargetFile: "docs", TargetFiles: []string{"docs"},
+		SHAFile: filepath.Join(state, ".last_sha"), Src: filepath.Join(state, "repo", "docs"), Out: filepath.Join(state, "dist", "site"),
+		ApprovalRequired: true,
+	}
+	writeRunnerTestJSON(t, filepath.Join(state, ".branch_config"), branchConfigFile{BranchTargets: []BranchTarget{target}})
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if _, err := os.Stat(filepath.Join(state, ".build_history")); !os.IsNotExist(err) {
+			t.Fatalf("approval pending must not create history")
+		}
+		if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"old-blob\"}\n" {
+			t.Fatalf("approval pending updated sha")
+		}
+		if !strings.Contains(readFile(t, filepath.Join(state, ".approval_queue")), `"status":"pending"`) {
+			t.Fatalf("approval queue missing")
+		}
+		var summary buildStatusSummary
+		readJSON(t, filepath.Join(state, ".build_status.json"), &summary)
+		if summary.Status != "skipped" || summary.LastTargetStatus == nil || *summary.LastTargetStatus != "pending_approval" {
+			t.Fatalf("approval status mismatch: %+v", summary)
+		}
+	})
+}
+
+func TestRunnerCompletionReportDuplicateUsesFirst(t *testing.T) {
+	report, warnings := parseRunnerReport("[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=first\n[REPORT] pages=2 headings=2 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=second\n")
+	if report == nil || report.Pages != 1 || report.Theme != "first" {
+		t.Fatalf("first report not preserved: %+v", report)
+	}
+	if len(warnings) != 1 || warnings[0] != "REPORT_DUPLICATE" {
+		t.Fatalf("missing duplicate warning: %+v", warnings)
+	}
+}
+
+func TestRunnerCompletionTrimLogUTF8Safe(t *testing.T) {
+	raw := strings.Repeat("a", 1024*1024-1) + "あいう"
+	trimmed, truncated := trimLog(raw)
+	if !truncated {
+		t.Fatalf("expected truncation")
+	}
+	if !strings.Contains(trimmed, "あいう") || strings.Contains(trimmed, "\uFFFD") {
+		t.Fatalf("trimmed log is not utf8 safe: suffix=%q", trimmed[len(trimmed)-12:])
+	}
+}
+
+func TestRunnerCompletionArchivesOldBuildLogs(t *testing.T) {
+	state := t.TempDir()
+	dir := filepath.Join(state, ".build_logs")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	old := filepath.Join(dir, "old.json")
+	newer := filepath.Join(dir, "new.json")
+	if err := os.WriteFile(old, []byte(`{"id":"old"}`+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(newer, []byte(`{"id":"new"}`+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	oldNow := runnerNow
+	runnerNow = func() time.Time { return time.Date(2026, 9, 16, 0, 0, 0, 0, time.UTC) }
+	defer func() { runnerNow = oldNow }()
+	oldTime := runnerNow().Add(-48 * time.Hour)
+	if err := os.Chtimes(old, oldTime, oldTime); err != nil {
+		t.Fatal(err)
+	}
+	newTime := runnerNow()
+	if err := os.Chtimes(newer, newTime, newTime); err != nil {
+		t.Fatal(err)
+	}
+	cleanupBuildLogs(dir, 1, 1, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Fatalf("old log not removed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "archive", "old.json.gz")); err != nil {
+		t.Fatalf("old log not archived: %v", err)
+	}
+	if _, err := os.Stat(newer); err != nil {
+		t.Fatalf("new log removed: %v", err)
+	}
 }
 
 func TestRunnerHardeningRetriesGitHubAPI(t *testing.T) {
@@ -206,7 +470,7 @@ func TestRunnerHardeningCircuitOpenSkipsPolling(t *testing.T) {
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		var stdout, stderr bytes.Buffer
-		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
 		if _, err := os.Stat(filepath.Join(state, ".build_history")); !os.IsNotExist(err) {
@@ -232,7 +496,7 @@ func TestRunnerCompletionPendingTransferRetrySuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeRunnerTestJSON(t, filepath.Join(state, ".pending_transfers"), []pendingTransfer{{Out: out, Host: "host", User: "deploy", DestDir: "/var/www/html", RetryCount: 1}})
+	writeRunnerTestJSON(t, filepath.Join(state, ".pending_transfers"), []pendingTransfer{{BuildID: "b20260916000000", Trigger: "deploy", SourceKind: "output", Branch: "main", TargetID: "deploy-1", Out: &out, Host: "host", User: "deploy", DestDir: "/var/www/html", OutputSHA256: sha, FailedAt: "2026-09-16T00:00:00Z", RetryCount: 1, LastError: "previous failure"}})
 	fakeBin := t.TempDir()
 	writeExecutable(t, filepath.Join(fakeBin, "ssh"), "#!/bin/sh\nif [ \"$2\" = \"sha256sum\" ]; then printf '"+sha+"  file\\n'; exit 0; fi\ncat >/dev/null\nexit 0\n")
 	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -298,6 +562,118 @@ func TestRunnerCompletionCommitInfoAndNotification(t *testing.T) {
 	})
 }
 
+func TestRunnerCompletionCommitStatus(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
+	writeRunnerTestJSON(t, filepath.Join(state, ".server_config"), map[string]any{
+		"build_cooldown_seconds": 0,
+		"commit_status_enabled":  true,
+		"commit_status_context":  "Adlaire CI",
+	})
+	encoded := base64.StdEncoding.EncodeToString([]byte("# Title\n"))
+	statuses := []string{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.Contains(r.URL.Path, "/git/trees/"):
+			_ = json.NewEncoder(w).Encode(map[string]any{"tree": []map[string]string{{"path": "docs", "type": "blob", "sha": "new-blob"}}})
+		case strings.Contains(r.URL.Path, "/git/blobs/"):
+			_ = json.NewEncoder(w).Encode(map[string]string{"content": encoded, "encoding": "base64"})
+		case strings.Contains(r.URL.Path, "/commits"):
+			_ = json.NewEncoder(w).Encode([]map[string]any{{
+				"sha": "abcdef0123456789abcdef0123456789abcdef01",
+				"commit": map[string]any{
+					"message": "Update docs",
+					"author":  map[string]string{"name": "A. Developer", "date": "2026-09-16T00:00:00Z"},
+				},
+			}})
+		case strings.Contains(r.URL.Path, "/statuses/"):
+			var payload map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("status payload decode: %v", err)
+			}
+			statuses = append(statuses, fmt.Sprint(payload["state"]))
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if got := strings.Join(statuses, ","); got != "pending,success" {
+			t.Fatalf("unexpected commit statuses: %s", got)
+		}
+		log := onlyBuildLog(t, state)
+		if log.CommitStatus == nil || *log.CommitStatus != "success" {
+			t.Fatalf("commit status not recorded in log: %+v", log.CommitStatus)
+		}
+		if !strings.Contains(readFile(t, filepath.Join(state, ".build_history")), `"commit_status_state":"success"`) {
+			t.Fatalf("commit status not recorded in history")
+		}
+	})
+}
+
+func TestRunnerCompletionBuildRetrySucceeds(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	counter := filepath.Join(state, "retry-count")
+	buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
+	writeExecutable(t, buildBin, fmt.Sprintf(`#!/usr/bin/env bash
+set -u
+if [ "${1:-}" = "--version" ]; then
+  printf 'adlaire-ci-build V.0.0-dev go=fake\n'
+  exit 0
+fi
+out=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --out)
+      shift
+      out="${1:-}"
+      ;;
+  esac
+  shift || true
+done
+if [ ! -f %q ]; then
+  printf '1' > %q
+  printf 'first failure'
+  exit 7
+fi
+mkdir -p "$out/assets"
+printf '<html></html>' > "$out/index.html"
+printf 'body{}' > "$out/assets/style.css"
+printf 'console.log("ok")' > "$out/assets/app.js"
+printf '[]' > "$out/assets/search-index.json"
+printf '[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default'
+exit 0
+`, counter, counter))
+	t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+	oldSleep := runnerSleep
+	runnerSleep = func(time.Duration) {}
+	defer func() { runnerSleep = oldSleep }()
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		cfg := defaultRunnerConfig(state)
+		cfg.BuildRetryMax = 1
+		cfg.BuildRetryBaseSeconds = 1
+		cfg.BuildCooldownSeconds = 0
+		var stdout, stderr bytes.Buffer
+		if code := executeRunner(cfg, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		log := onlyBuildLog(t, state)
+		if log.RetryCount != 1 || len(log.Attempts) != 2 || log.Attempts[0].ExitCode == nil || *log.Attempts[0].ExitCode != 7 || log.TargetStatus != "success" {
+			t.Fatalf("retry log mismatch: %+v", log)
+		}
+		if !strings.Contains(readFile(t, filepath.Join(state, ".build_history")), `"retry_count":1`) {
+			t.Fatalf("history missing retry count")
+		}
+	})
+}
+
 func TestRunnerCompletionCooldownSkips(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
 	now := time.Date(2026, 9, 16, 1, 2, 3, 0, time.UTC)
@@ -345,12 +721,7 @@ func TestRunnerCompletionForceIntervalBuildsSameSHA(t *testing.T) {
 
 func TestRunnerCompletionSizeWarning(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
-	dir := filepath.Join(state, "repo", ".ci")
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	script := "#!/usr/bin/env bash\nprintf '%s' '[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default'\nmkdir -p \"$ADLAIRE_CI_OUT\"\ndd if=/dev/zero of=\"$ADLAIRE_CI_OUT/big.bin\" bs=1048576 count=2 2>/dev/null\nexit 0\n"
-	writeExecutable(t, filepath.Join(dir, "pipeline.sh"), script)
+	writePipelineWithExtra(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "", `dd if=/dev/zero of="$out/big.bin" bs=1048576 count=2 2>/dev/null`)
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		cfg := defaultRunnerConfig(state)
@@ -403,7 +774,7 @@ func TestRunnerFixtureR5DeployPending(t *testing.T) {
 		}
 		var pending []pendingTransfer
 		readJSON(t, filepath.Join(state, ".pending_transfers"), &pending)
-		if len(pending) != 1 || pending[0].RetryCount != 1 || pending[0].DestDir != "/var/www/html" {
+		if len(pending) != 1 || pending[0].RetryCount != 0 || pending[0].DestDir != "/var/www/html" || pending[0].TargetID == "" || pending[0].Out == nil {
 			t.Fatalf("unexpected pending: %+v", pending)
 		}
 		log := onlyBuildLog(t, state)
@@ -459,7 +830,7 @@ func newRunnerState(t *testing.T, sha string, deploy []DeployTarget) string {
 	t.Helper()
 	state := t.TempDir()
 	buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
-	writeExecutable(t, buildBin, "#!/bin/sh\nprintf 'adlaire-ci-build v3 go=fake\\n'\n")
+	writeExecutable(t, buildBin, fakeBuilderScript(0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "", ""))
 	t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
 	if err := os.WriteFile(filepath.Join(state, ".github_token"), []byte("token\n"), 0600); err != nil {
 		t.Fatal(err)
@@ -478,12 +849,45 @@ func newRunnerState(t *testing.T, sha string, deploy []DeployTarget) string {
 
 func writePipeline(t *testing.T, state string, code int, stdout string, stderr string) {
 	t.Helper()
-	dir := filepath.Join(state, "repo", ".ci")
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	script := fmt.Sprintf("#!/usr/bin/env bash\nprintf '%%s' %q\nprintf '%%s' %q >&2\nmkdir -p \"$ADLAIRE_CI_OUT\"\nprintf '<html></html>' > \"$ADLAIRE_CI_OUT/index.html\"\nexit %d\n", stdout, stderr, code)
-	writeExecutable(t, filepath.Join(dir, "pipeline.sh"), script)
+	writePipelineWithExtra(t, state, code, stdout, stderr, "")
+}
+
+func writePipelineWithExtra(t *testing.T, state string, code int, stdout string, stderr string, extra string) {
+	t.Helper()
+	buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
+	writeExecutable(t, buildBin, fakeBuilderScript(code, stdout, stderr, extra))
+	t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+}
+
+func fakeBuilderScript(code int, stdout string, stderr string, extra string) string {
+	return fmt.Sprintf(`#!/usr/bin/env bash
+set -u
+if [ "${1:-}" = "--version" ]; then
+  printf 'adlaire-ci-build V.0.0-dev go=fake\n'
+  exit 0
+fi
+out=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --out)
+      shift
+      out="${1:-}"
+      ;;
+  esac
+  shift || true
+done
+printf '%%s' %q
+printf '%%s' %q >&2
+if [ %d -eq 0 ]; then
+  mkdir -p "$out/assets"
+  printf '<html></html>' > "$out/index.html"
+  printf 'body{}' > "$out/assets/style.css"
+  printf 'console.log("ok")' > "$out/assets/app.js"
+  printf '[]' > "$out/assets/search-index.json"
+  %s
+fi
+exit %d
+`, stdout, stderr, code, extra, code)
 }
 
 func writeExecutable(t *testing.T, path, body string) {

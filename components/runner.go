@@ -2,6 +2,7 @@ package components
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -12,6 +13,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,39 +23,62 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode/utf8"
 )
 
 var runnerGitHubAPIBase = "https://api.github.com"
 var runnerNow = time.Now
 var runnerSleep = time.Sleep
+var runnerBinaryVersion = "V.0.0-dev"
 
 type RunnerConfig struct {
+	DryRun                     bool
 	StateDir                   string
+	RepositoryOwner            string
+	RepositoryName             string
 	PendingFile                string
 	APIRetryMax                int
 	APIRetryBaseSeconds        int
+	BuildTimeoutSeconds        int
 	BuildCooldownSeconds       int
+	BuildRetryMax              int
+	BuildRetryBaseSeconds      int
 	HistoryKeepN               int
+	SnapshotsKeep              int
 	ForceBuildIntervalHours    int
 	LogKeepN                   int
 	APICircuitBreakerThreshold int
 	OutputSizeWarnMB           int
+	LogArchiveAfterDays        int
+	CommitStatusEnabled        bool
+	CommitStatusContext        string
+	CommitStatusTargetURL      *string
+	BuildTrendKeepCount        int
 	WeeklySummaryEnabled       bool
 	WeeklySummaryDay           int
 	WeeklySummaryHour          int
+	SchedulePaused             bool
+	BuildCacheEnabled          bool
+	WatchMode                  string
+	DeployParallelism          int
+	AllowedHours               *AllowedHoursConfig
 	BranchTargets              []BranchTarget
 }
 
 type BranchTarget struct {
-	Branch        string         `json:"branch"`
-	TargetFile    string         `json:"target_file"`
-	SHAFile       string         `json:"sha_file"`
-	Src           string         `json:"src"`
-	Out           string         `json:"out"`
-	DeployTargets []DeployTarget `json:"deploy_targets"`
+	Branch           string            `json:"branch"`
+	TargetFile       string            `json:"target_file"`
+	TargetFiles      []string          `json:"target_files"`
+	SHAFile          string            `json:"sha_file"`
+	Src              string            `json:"src"`
+	Out              string            `json:"out"`
+	ApprovalRequired bool              `json:"approval_required"`
+	Env              map[string]string `json:"env"`
+	DeployTargets    []DeployTarget    `json:"deploy_targets"`
 }
 
 type DeployTarget struct {
+	ID      string `json:"id"`
 	Host    string `json:"host"`
 	User    string `json:"user"`
 	DestDir string `json:"dest_dir"`
@@ -63,6 +88,49 @@ type branchConfigFile struct {
 	BranchTargets []BranchTarget `json:"branch_targets"`
 }
 
+type repoConfigFile struct {
+	Owner string `json:"owner"`
+	Repo  string `json:"repo"`
+}
+
+type serverConfigFile struct {
+	LogMaxLines             *int                `json:"log_max_lines"`
+	HistoryMaxCount         *int                `json:"history_max_count"`
+	HistoryRetention        json.RawMessage     `json:"history_retention"`
+	BuildTimeoutSeconds     *int                `json:"build_timeout_seconds"`
+	LogRetentionDays        *int                `json:"log_retention_days"`
+	LogLevel                *string             `json:"log_level"`
+	PATExpiresAt            *string             `json:"pat_expires_at"`
+	BuildCooldownSeconds    *int                `json:"build_cooldown_seconds"`
+	SnapshotsKeep           *int                `json:"snapshots_keep"`
+	QueueMaxSize            *int                `json:"queue_max_size"`
+	BuildRetryMax           *int                `json:"build_retry_max"`
+	BuildRetryBaseSeconds   *int                `json:"build_retry_base_seconds"`
+	CommitStatusEnabled     *bool               `json:"commit_status_enabled"`
+	CommitStatusContext     *string             `json:"commit_status_context"`
+	CommitStatusTargetURL   *string             `json:"commit_status_target_url"`
+	LogArchiveAfterDays     *int                `json:"log_archive_after_days"`
+	BuildTrendKeepCount     *int                `json:"build_trend_keep_count"`
+	DurationAnomaly         json.RawMessage     `json:"duration_anomaly"`
+	WatchMode               *string             `json:"watch_mode"`
+	TagFilter               json.RawMessage     `json:"tag_filter"`
+	DeployParallelism       *int                `json:"deploy_parallelism"`
+	RemoteBuild             json.RawMessage     `json:"remote_build"`
+	ApprovalTimeoutSeconds  *int                `json:"approval_timeout_seconds"`
+	ForceBuildIntervalHours *int                `json:"force_build_interval_hours"`
+	ScheduleIntervalSeconds *int                `json:"schedule_interval_seconds"`
+	SchedulePaused          *bool               `json:"schedule_paused"`
+	AllowedHours            *AllowedHoursConfig `json:"allowed_hours"`
+	SessionTimeoutSeconds   *int                `json:"session_timeout_seconds"`
+	APIRateLimit            json.RawMessage     `json:"api_rate_limit"`
+	BuildCacheEnabled       *bool               `json:"build_cache_enabled"`
+}
+
+type AllowedHoursConfig struct {
+	From int `json:"from"`
+	To   int `json:"to"`
+}
+
 type shaCache struct {
 	SHA string `json:"sha"`
 }
@@ -70,6 +138,7 @@ type shaCache struct {
 type buildState struct {
 	Running                 bool             `json:"running"`
 	CurrentBuildID          *string          `json:"current_build_id"`
+	ActiveQueueEntry        map[string]any   `json:"active_queue_entry"`
 	Queued                  []map[string]any `json:"queued"`
 	LastStartedAt           *string          `json:"last_started_at"`
 	LastFinishedAt          *string          `json:"last_finished_at"`
@@ -103,9 +172,13 @@ type runnerReport struct {
 	HeadingSkips    int    `json:"heading_skips"`
 	ReadingTime     int    `json:"reading_time"`
 	Theme           string `json:"theme"`
+	BuildID         string `json:"build_id"`
+	CommitSHA       string `json:"commit_sha"`
+	BuildAt         string `json:"build_at"`
 }
 
 type deployLog struct {
+	TargetID         string  `json:"target_id"`
 	Host             string  `json:"host"`
 	User             string  `json:"user"`
 	DestDir          string  `json:"dest_dir"`
@@ -120,9 +193,14 @@ type deployLog struct {
 
 type buildLog struct {
 	ID              string        `json:"id"`
+	Status          string        `json:"status"`
 	Branch          string        `json:"branch"`
 	TargetFile      string        `json:"target_file"`
+	TargetFiles     []string      `json:"target_files"`
+	ChangedTargets  []string      `json:"changed_targets"`
 	TargetStatus    string        `json:"target_status"`
+	Trigger         string        `json:"trigger"`
+	TriggerActor    *string       `json:"trigger_actor"`
 	StartedAt       string        `json:"started_at"`
 	FinishedAt      string        `json:"finished_at"`
 	DurationSeconds int64         `json:"duration_seconds"`
@@ -130,11 +208,31 @@ type buildLog struct {
 	BlobSHA         *string       `json:"blob_sha"`
 	PreviousBlobSHA string        `json:"previous_blob_sha"`
 	Pipeline        pipelineLog   `json:"pipeline"`
+	Attempts        []pipelineLog `json:"attempts"`
+	RetryCount      int           `json:"retry_count"`
 	Report          *runnerReport `json:"report"`
 	Warnings        []string      `json:"warnings"`
 	Deploy          []deployLog   `json:"deploy"`
 	SnapshotID      *string       `json:"snapshot_id"`
+	OutputSHA256    *string       `json:"output_sha256"`
+	OutputSizeBytes *int64        `json:"output_size_bytes"`
+	SizeWarn        bool          `json:"size_warn"`
+	FailureCategory *string       `json:"failure_category"`
+	CommitStatus    *string       `json:"commit_status_state"`
+	Environment     buildEnvLog   `json:"environment"`
 	Error           *string       `json:"error"`
+}
+
+type buildEnvLog struct {
+	OS            string  `json:"os"`
+	Arch          string  `json:"arch"`
+	GoVersion     string  `json:"go_version"`
+	RunnerVersion string  `json:"runner_version"`
+	Hostname      *string `json:"hostname"`
+	PID           int     `json:"pid"`
+	WatchMode     string  `json:"watch_mode"`
+	CacheEnabled  bool    `json:"cache_enabled"`
+	RemoteBuild   bool    `json:"remote_build"`
 }
 
 type historyRecord struct {
@@ -142,6 +240,7 @@ type historyRecord struct {
 	Branch          string  `json:"branch"`
 	TargetFile      string  `json:"target_file"`
 	Status          string  `json:"status"`
+	Trigger         string  `json:"trigger"`
 	StartedAt       string  `json:"started_at"`
 	FinishedAt      string  `json:"finished_at"`
 	DurationSeconds int64   `json:"duration_seconds"`
@@ -151,18 +250,31 @@ type historyRecord struct {
 	Warnings        int     `json:"warnings"`
 	SizeWarn        bool    `json:"size_warn"`
 	OutputSHA256    *string `json:"output_sha256"`
+	OutputSizeBytes *int64  `json:"output_size_bytes"`
+	RetryCount      int     `json:"retry_count"`
+	FailureCategory *string `json:"failure_category"`
+	CommitStatus    *string `json:"commit_status_state"`
+	SnapshotID      *string `json:"snapshot_id"`
 	RollbackFrom    *string `json:"rollback_from"`
+	ChainRunID      *string `json:"chain_run_id"`
 }
 
 type pendingTransfer struct {
-	BranchIdx  int    `json:"branch_idx"`
-	DeployIdx  int    `json:"deploy_idx"`
-	Out        string `json:"out"`
-	Host       string `json:"host"`
-	User       string `json:"user"`
-	DestDir    string `json:"dest_dir"`
-	FailedAt   string `json:"failed_at"`
-	RetryCount int    `json:"retry_count"`
+	BuildID      string  `json:"build_id"`
+	Trigger      string  `json:"trigger"`
+	SourceKind   string  `json:"source_kind"`
+	RollbackFrom *string `json:"rollback_from"`
+	SnapshotID   *string `json:"snapshot_id"`
+	Branch       string  `json:"branch"`
+	TargetID     string  `json:"target_id"`
+	Out          *string `json:"out"`
+	Host         string  `json:"host"`
+	User         string  `json:"user"`
+	DestDir      string  `json:"dest_dir"`
+	OutputSHA256 string  `json:"output_sha256"`
+	FailedAt     string  `json:"failed_at"`
+	RetryCount   int     `json:"retry_count"`
+	LastError    string  `json:"last_error"`
 }
 
 type notifyPendingEntry struct {
@@ -193,6 +305,58 @@ type buildCircuitState struct {
 	LastError           *string `json:"last_error"`
 }
 
+type buildStatusSummary struct {
+	SchemaVersion              int     `json:"schema_version"`
+	UpdatedAt                  *string `json:"updated_at"`
+	Status                     string  `json:"status"`
+	Running                    bool    `json:"running"`
+	CurrentBuildID             *string `json:"current_build_id"`
+	LastBuildID                *string `json:"last_build_id"`
+	LastTrigger                *string `json:"last_trigger"`
+	LastTargetStatus           *string `json:"last_target_status"`
+	LastBranch                 *string `json:"last_branch"`
+	LastTargetFile             *string `json:"last_target_file"`
+	LastBlobSHA                *string `json:"last_blob_sha"`
+	LastCommitSHA              *string `json:"last_commit_sha"`
+	LastStartedAt              *string `json:"last_started_at"`
+	LastFinishedAt             *string `json:"last_finished_at"`
+	LastDurationSeconds        *int64  `json:"last_duration_seconds"`
+	LastError                  *string `json:"last_error"`
+	LastDeployAt               *string `json:"last_deploy_at"`
+	LastDeployStatus           *string `json:"last_deploy_status"`
+	PendingTransfersCount      int     `json:"pending_transfers_count"`
+	NotifyPendingCount         int     `json:"notify_pending_count"`
+	CircuitOpen                bool    `json:"circuit_open"`
+	CircuitConsecutiveFailures int     `json:"circuit_consecutive_failures"`
+	OutputSHA256               *string `json:"output_sha256"`
+	SizeWarn                   bool    `json:"size_warn"`
+}
+
+type buildTrendsFile struct {
+	SchemaVersion int                `json:"schema_version"`
+	Samples       []buildTrendSample `json:"samples"`
+	Summary       buildTrendsSummary `json:"summary"`
+}
+
+type buildTrendSample struct {
+	BuildID         string `json:"build_id"`
+	FinishedAt      string `json:"finished_at"`
+	Branch          string `json:"branch"`
+	Trigger         string `json:"trigger"`
+	DurationSeconds int64  `json:"duration_seconds"`
+	Status          string `json:"status"`
+	TargetStatus    string `json:"target_status"`
+	Anomaly         bool   `json:"anomaly"`
+}
+
+type buildTrendsSummary struct {
+	Count         int      `json:"count"`
+	AvgSeconds    *float64 `json:"avg_seconds"`
+	MedianSeconds *float64 `json:"median_seconds"`
+	P95Seconds    *float64 `json:"p95_seconds"`
+	AnomalyCount  int      `json:"anomaly_count"`
+}
+
 type gitTreeResponse struct {
 	Tree []struct {
 		Path string `json:"path"`
@@ -204,6 +368,13 @@ type gitTreeResponse struct {
 type gitBlobResponse struct {
 	Content  string `json:"content"`
 	Encoding string `json:"encoding"`
+}
+
+type resolvedRunnerTarget struct {
+	Digest         string
+	ChangedTargets []string
+	Contents       map[string][]byte
+	Local          bool
 }
 
 type gitCommitResponse []struct {
@@ -236,16 +407,32 @@ func RunRunner(args []string, stdout, stderr io.Writer) int {
 
 func parseRunnerArgs(args []string, stdout io.Writer) (RunnerConfig, bool, error) {
 	cfg := defaultRunnerConfig("/opt/adlaire-builder")
+	for _, arg := range args {
+		if arg == "--help" {
+			fmt.Fprintln(stdout, "Usage: adlaire-ci-runner [--state-dir path] [--once] [--dry-run] [--version] [--help]")
+			return cfg, true, nil
+		}
+	}
+	for _, arg := range args {
+		if arg == "--version" {
+			fmt.Fprintf(stdout, "adlaire-ci-runner %s go=%s\n", runnerBinaryVersion, runtime.Version())
+			return cfg, true, nil
+		}
+	}
+	for _, arg := range args {
+		if !validCLIArgToken(arg) {
+			return cfg, false, exitError{Code: 2, Msg: "invalid command line token"}
+		}
+	}
+	stateDir := cfg.StateDir
+	dryRun := false
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch arg {
-		case "--help":
-			fmt.Fprintln(stdout, "Usage: adlaire-ci-runner [--state-dir path] [--once] [--version] [--help]")
-			return cfg, true, nil
-		case "--version":
-			fmt.Fprintf(stdout, "adlaire-ci-runner v3 go=%s\n", runtime.Version())
-			return cfg, true, nil
 		case "--once":
+			continue
+		case "--dry-run":
+			dryRun = true
 			continue
 		}
 		if strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") {
@@ -254,19 +441,21 @@ func parseRunnerArgs(args []string, stdout io.Writer) (RunnerConfig, bool, error
 		if !strings.HasPrefix(arg, "--") {
 			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
 		}
-		name, value, hasValue := strings.Cut(arg, "=")
+		if strings.Contains(arg, "=") {
+			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
+		}
+		name := arg
 		if name != "--state-dir" {
 			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + name}
 		}
-		if !hasValue {
-			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
-				return cfg, false, exitError{Code: 2, Msg: "missing value: " + name}
-			}
-			i++
-			value = args[i]
+		if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
+			return cfg, false, exitError{Code: 2, Msg: "missing value: " + name}
 		}
-		cfg = defaultRunnerConfig(value)
+		i++
+		stateDir = args[i]
 	}
+	cfg = defaultRunnerConfig(stateDir)
+	cfg.DryRun = dryRun
 	if cfg.StateDir == "" {
 		return cfg, false, exitError{Code: 2, Msg: "state directory must not be empty"}
 	}
@@ -283,34 +472,90 @@ func parseRunnerArgs(args []string, stdout io.Writer) (RunnerConfig, bool, error
 	return cfg, false, nil
 }
 
+func validCLIArgToken(arg string) bool {
+	if !utf8.ValidString(arg) {
+		return false
+	}
+	for _, r := range arg {
+		if r == 0 || r == '\n' || r == '\r' || r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
 func defaultRunnerConfig(stateDir string) RunnerConfig {
 	return RunnerConfig{
+		DryRun:                     false,
 		StateDir:                   stateDir,
+		RepositoryOwner:            "fqwink",
+		RepositoryName:             "Build-Scripts",
 		PendingFile:                filepath.Join(stateDir, ".pending_transfers"),
 		APIRetryMax:                5,
 		APIRetryBaseSeconds:        1,
+		BuildTimeoutSeconds:        300,
 		BuildCooldownSeconds:       60,
+		BuildRetryMax:              0,
+		BuildRetryBaseSeconds:      5,
 		HistoryKeepN:               10,
+		SnapshotsKeep:              5,
 		LogKeepN:                   50,
 		APICircuitBreakerThreshold: 3,
 		OutputSizeWarnMB:           5,
+		LogArchiveAfterDays:        0,
+		CommitStatusEnabled:        false,
+		CommitStatusContext:        "Adlaire CI",
+		BuildTrendKeepCount:        1000,
 		WeeklySummaryEnabled:       true,
 		WeeklySummaryDay:           0,
 		WeeklySummaryHour:          9,
+		WatchMode:                  "github",
+		DeployParallelism:          1,
 		BranchTargets: []BranchTarget{{
 			Branch:     "main",
 			TargetFile: "docs",
-			SHAFile:    filepath.Join(stateDir, ".last_sha"),
-			Src:        filepath.Join(stateDir, "repo", "docs"),
-			Out:        filepath.Join(stateDir, "dist", "site"),
+			TargetFiles: []string{
+				"docs",
+			},
+			SHAFile: filepath.Join(stateDir, ".last_sha"),
+			Src:     filepath.Join(stateDir, "repo", "docs"),
+			Out:     filepath.Join(stateDir, "dist", "site"),
+			Env:     map[string]string{},
 		}},
 	}
 }
 
 func executeRunner(cfg RunnerConfig, stdout, stderr io.Writer) int {
 	logger := slog.New(slog.NewTextHandler(stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	if cfg.DryRun {
+		code := executeRunnerDryRun(cfg, stdout)
+		_ = stderr
+		return code
+	}
+	lockPath := filepath.Join(cfg.StateDir, ".build_lock")
+	release, locked, code := acquireRunnerLock(lockPath, logger)
+	if !locked {
+		return code
+	}
+	defer release()
 	if err := loadRunnerConfig(&cfg, logger); err != nil {
 		logger.Error(err.Error())
+		_ = writeBuildStatusError(cfg, "config_error", "startup_config_integrity", err.Error())
+		return 2
+	}
+	token := ""
+	if cfg.WatchMode == "github" {
+		var err error
+		token, err = readRunnerToken(filepath.Join(cfg.StateDir, ".github_token"))
+		if err != nil {
+			logger.Error(err.Error())
+			_ = writeBuildStatusError(cfg, "config_error", "startup_config_integrity", err.Error())
+			return 2
+		}
+	}
+	if err := ensureRunnerStateDirectories(cfg.StateDir); err != nil {
+		logger.Error("STATE_DIR_INVALID: path=" + cfg.StateDir)
+		_ = writeBuildStatusError(cfg, "config_error", "startup_config_integrity", err.Error())
 		return 2
 	}
 	if err := repairCorruptJSONArray(filepath.Join(cfg.StateDir, ".notify_pending"), logger); err != nil {
@@ -323,31 +568,30 @@ func executeRunner(cfg RunnerConfig, stdout, stderr io.Writer) int {
 	if err := retryNotifyPending(filepath.Join(cfg.StateDir, ".notify_pending"), logger); err != nil {
 		logger.Error("NOTIFY_PENDING_RETRY_FAILED: " + err.Error())
 	}
-	token, err := readRunnerToken(filepath.Join(cfg.StateDir, ".github_token"))
-	if err != nil {
-		logger.Error(err.Error())
-		return 2
-	}
-	lockPath := filepath.Join(cfg.StateDir, ".build_lock")
-	release, locked, code := acquireRunnerLock(lockPath, logger)
-	if !locked {
-		return code
-	}
-	defer release()
 	if circuitOpen(cfg.StateDir) {
 		logger.Error("CIRCUIT_OPEN: polling skipped")
-		return 1
-	}
-	if cooldownActive(cfg, logger) {
+		_ = writeBuildStatusSkip(cfg, "circuit_open", "polling", nil)
+		_ = clearRunningBuildState(cfg.StateDir)
 		return 0
 	}
-	buildID := runnerBuildID(runnerNow().UTC(), 1)
-	if err := writeBuildState(cfg.StateDir, true, &buildID); err != nil {
-		logger.Error("STATE_START_FAILED: " + err.Error())
-		return 1
+	if cfg.SchedulePaused {
+		_ = writeBuildStatusSkip(cfg, "skipped_schedule_paused", "polling", nil)
+		return 0
+	}
+	if cooldownActive(cfg, logger) {
+		_ = writeBuildStatusSkip(cfg, "skipped_cooldown", "polling", nil)
+		return 0
 	}
 	exit := 0
 	for i, target := range cfg.BranchTargets {
+		buildID, err := runnerNextBuildID(cfg.StateDir, runnerNow().UTC())
+		if err != nil {
+			logger.Error("BUILD_ID_ALLOC_FAILED: " + err.Error())
+			if exit < 1 {
+				exit = 1
+			}
+			continue
+		}
 		if status := processRunnerTarget(cfg, i, target, token, buildID, logger); status > exit {
 			exit = status
 		}
@@ -361,12 +605,37 @@ func executeRunner(cfg RunnerConfig, stdout, stderr io.Writer) int {
 			exit = 1
 		}
 	}
-	cleanupBuildLogs(filepath.Join(cfg.StateDir, ".build_logs"), cfg.LogKeepN, logger)
+	cleanupBuildLogs(filepath.Join(cfg.StateDir, ".build_logs"), cfg.LogKeepN, cfg.LogArchiveAfterDays, logger)
 	_ = stderr
 	return exit
 }
 
+func ensureRunnerStateDirectories(stateDir string) error {
+	for _, dir := range []string{filepath.Join(stateDir, "repo"), filepath.Join(stateDir, "dist"), filepath.Join(stateDir, ".build_logs")} {
+		info, err := os.Stat(dir)
+		if errors.Is(err, os.ErrNotExist) {
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				return err
+			}
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			return fmt.Errorf("state path is not directory: %s", dir)
+		}
+	}
+	return nil
+}
+
 func loadRunnerConfig(cfg *RunnerConfig, logger *slog.Logger) error {
+	if err := loadRepoConfig(cfg); err != nil {
+		return err
+	}
+	if err := loadServerConfig(cfg); err != nil {
+		return err
+	}
 	path := filepath.Join(cfg.StateDir, ".branch_config")
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -381,40 +650,355 @@ func loadRunnerConfig(cfg *RunnerConfig, logger *slog.Logger) error {
 	}
 	for key := range raw {
 		if key != "branch_targets" {
-			logger.Warn("CONFIG_UNKNOWN_KEY: key=" + key)
+			return fmt.Errorf("BRANCH_CONFIG_INVALID: unknown key=%s", key)
 		}
 	}
 	var bc branchConfigFile
 	if err := json.Unmarshal(data, &bc); err != nil {
 		return err
 	}
-	cfg.BranchTargets = bc.BranchTargets
+	cfg.BranchTargets = normalizeBranchTargets(bc.BranchTargets)
 	return validateRunnerConfig(*cfg)
 }
 
+func loadRepoConfig(cfg *RunnerConfig) error {
+	var rc repoConfigFile
+	err := runnerReadJSONFile(filepath.Join(cfg.StateDir, ".repo_config"), &rc)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil || rc.Owner == "" || rc.Repo == "" {
+		return errors.New("REPO_CONFIG_INVALID")
+	}
+	cfg.RepositoryOwner = rc.Owner
+	cfg.RepositoryName = rc.Repo
+	return nil
+}
+
+func loadServerConfig(cfg *RunnerConfig) error {
+	var raw map[string]json.RawMessage
+	path := filepath.Join(cfg.StateDir, ".server_config")
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	allowed := map[string]bool{
+		"log_max_lines": true, "history_max_count": true, "history_retention": true,
+		"build_timeout_seconds": true, "log_retention_days": true, "log_level": true,
+		"pat_expires_at": true, "snapshots_keep": true, "queue_max_size": true,
+		"build_retry_max": true, "build_retry_base_seconds": true,
+		"commit_status_enabled": true, "commit_status_context": true, "commit_status_target_url": true,
+		"log_archive_after_days": true, "build_trend_keep_count": true, "duration_anomaly": true,
+		"watch_mode": true, "tag_filter": true, "build_cache_enabled": true,
+		"deploy_parallelism": true, "remote_build": true, "approval_timeout_seconds": true,
+		"force_build_interval_hours": true, "build_cooldown_seconds": true,
+		"schedule_interval_seconds": true, "schedule_paused": true, "allowed_hours": true,
+		"session_timeout_seconds": true, "api_rate_limit": true,
+	}
+	for key := range raw {
+		if !allowed[key] {
+			return fmt.Errorf("SERVER_CONFIG_INVALID: unknown key=%s", key)
+		}
+	}
+	var sc serverConfigFile
+	if err := json.Unmarshal(data, &sc); err != nil {
+		return err
+	}
+	if sc.BuildTimeoutSeconds != nil {
+		cfg.BuildTimeoutSeconds = *sc.BuildTimeoutSeconds
+	}
+	if sc.BuildCooldownSeconds != nil {
+		cfg.BuildCooldownSeconds = *sc.BuildCooldownSeconds
+	}
+	if sc.BuildRetryMax != nil {
+		cfg.BuildRetryMax = *sc.BuildRetryMax
+	}
+	if sc.BuildRetryBaseSeconds != nil {
+		cfg.BuildRetryBaseSeconds = *sc.BuildRetryBaseSeconds
+	}
+	if sc.SnapshotsKeep != nil {
+		cfg.SnapshotsKeep = *sc.SnapshotsKeep
+		cfg.HistoryKeepN = *sc.SnapshotsKeep
+	}
+	if sc.CommitStatusEnabled != nil {
+		cfg.CommitStatusEnabled = *sc.CommitStatusEnabled
+	}
+	if sc.CommitStatusContext != nil {
+		cfg.CommitStatusContext = *sc.CommitStatusContext
+	}
+	if sc.CommitStatusTargetURL != nil {
+		cfg.CommitStatusTargetURL = sc.CommitStatusTargetURL
+	}
+	if sc.LogArchiveAfterDays != nil {
+		cfg.LogArchiveAfterDays = *sc.LogArchiveAfterDays
+	}
+	if sc.BuildTrendKeepCount != nil {
+		cfg.BuildTrendKeepCount = *sc.BuildTrendKeepCount
+	}
+	if sc.WatchMode != nil {
+		cfg.WatchMode = *sc.WatchMode
+	}
+	if sc.DeployParallelism != nil {
+		cfg.DeployParallelism = *sc.DeployParallelism
+	}
+	if sc.ForceBuildIntervalHours != nil {
+		cfg.ForceBuildIntervalHours = *sc.ForceBuildIntervalHours
+	}
+	if sc.SchedulePaused != nil {
+		cfg.SchedulePaused = *sc.SchedulePaused
+	}
+	if sc.AllowedHours != nil {
+		cfg.AllowedHours = sc.AllowedHours
+	}
+	if sc.BuildCacheEnabled != nil {
+		cfg.BuildCacheEnabled = *sc.BuildCacheEnabled
+	}
+	return nil
+}
+
+func normalizeBranchTargets(targets []BranchTarget) []BranchTarget {
+	out := make([]BranchTarget, 0, len(targets))
+	for i, t := range targets {
+		if len(t.TargetFiles) == 0 && t.TargetFile != "" {
+			t.TargetFiles = []string{t.TargetFile}
+		}
+		sort.Strings(t.TargetFiles)
+		if t.Env == nil {
+			t.Env = map[string]string{}
+		}
+		for j := range t.DeployTargets {
+			if t.DeployTargets[j].ID == "" {
+				t.DeployTargets[j].ID = fmt.Sprintf("deploy-%d", j+1)
+			}
+		}
+		sort.SliceStable(t.DeployTargets, func(i, j int) bool {
+			return t.DeployTargets[i].ID < t.DeployTargets[j].ID
+		})
+		if t.Branch == "" {
+			t.Branch = fmt.Sprintf("target-%d", i+1)
+		}
+		out = append(out, t)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Branch == out[j].Branch {
+			return out[i].TargetFile < out[j].TargetFile
+		}
+		return out[i].Branch < out[j].Branch
+	})
+	return out
+}
+
 func validateRunnerConfig(cfg RunnerConfig) error {
+	if cfg.RepositoryOwner == "" || cfg.RepositoryName == "" {
+		return errors.New("repository identity is required")
+	}
+	if cfg.BuildTimeoutSeconds < 1 || cfg.BuildTimeoutSeconds > 86400 {
+		return errors.New("invalid build timeout seconds")
+	}
+	if cfg.BuildRetryMax < 0 || cfg.BuildRetryMax > 10 {
+		return errors.New("invalid build retry max")
+	}
+	if cfg.BuildRetryBaseSeconds < 1 || cfg.BuildRetryBaseSeconds > 3600 {
+		return errors.New("invalid build retry base seconds")
+	}
+	if cfg.SnapshotsKeep < 0 || cfg.SnapshotsKeep > 100 {
+		return errors.New("invalid snapshots keep")
+	}
+	if cfg.CommitStatusContext == "" || len(cfg.CommitStatusContext) > 100 || hasUnsafeControl(cfg.CommitStatusContext) {
+		return errors.New("invalid commit status context")
+	}
+	if cfg.CommitStatusTargetURL != nil && *cfg.CommitStatusTargetURL != "" && !strings.HasPrefix(*cfg.CommitStatusTargetURL, "http://") && !strings.HasPrefix(*cfg.CommitStatusTargetURL, "https://") {
+		return errors.New("invalid commit status target url")
+	}
+	if cfg.BuildTrendKeepCount < 10 || cfg.BuildTrendKeepCount > 10000 {
+		return errors.New("invalid build trend keep count")
+	}
+	if cfg.WatchMode != "github" && cfg.WatchMode != "local" {
+		return errors.New("invalid watch mode")
+	}
+	if cfg.DeployParallelism < 1 || cfg.DeployParallelism > 16 {
+		return errors.New("invalid deploy parallelism")
+	}
+	if cfg.LogArchiveAfterDays < 0 || cfg.LogArchiveAfterDays > 3650 {
+		return errors.New("invalid log archive after days")
+	}
+	if cfg.AllowedHours != nil && (cfg.AllowedHours.From < 0 || cfg.AllowedHours.From > 23 || cfg.AllowedHours.To < 0 || cfg.AllowedHours.To > 23 || cfg.AllowedHours.From >= cfg.AllowedHours.To) {
+		return errors.New("CONFIG_ALLOWED_HOURS_INVALID")
+	}
 	if len(cfg.BranchTargets) == 0 {
 		return errors.New("branch targets must not be empty")
 	}
 	for _, t := range cfg.BranchTargets {
-		if t.Branch == "" || strings.Contains(t.Branch, "..") || strings.Contains(t.Branch, "~") {
+		if t.Branch == "" || strings.Contains(t.Branch, "..") || strings.Contains(t.Branch, "~") || hasUnsafeControl(t.Branch) {
 			return fmt.Errorf("invalid branch target: %s", t.Branch)
 		}
 		if t.TargetFile == "" || filepath.IsAbs(t.TargetFile) || strings.Contains(t.TargetFile, "..") {
 			return fmt.Errorf("invalid target file: %s", t.TargetFile)
+		}
+		if len(t.TargetFiles) == 0 || len(t.TargetFiles) > 100 {
+			return errors.New("target files must not be empty")
+		}
+		hasPrimaryTarget := false
+		for _, targetFile := range t.TargetFiles {
+			if targetFile == t.TargetFile {
+				hasPrimaryTarget = true
+			}
+			if targetFile == "" || filepath.IsAbs(targetFile) || strings.Contains(targetFile, "..") || hasUnsafeControl(targetFile) {
+				return fmt.Errorf("invalid target file: %s", targetFile)
+			}
+		}
+		if !hasPrimaryTarget {
+			return errors.New("target_files must include target_file")
 		}
 		for _, p := range []string{t.SHAFile, t.Src, t.Out} {
 			if p == "" || !filepath.IsAbs(p) {
 				return fmt.Errorf("path must be absolute: %s", p)
 			}
 		}
+		if sameOrNestedPath(t.Src, t.Out) {
+			return fmt.Errorf("CONFIG_PATH_CONFLICT: src=%s out=%s", t.Src, t.Out)
+		}
+		if err := validateRunnerEnv(t.Env); err != nil {
+			return err
+		}
 		for _, d := range t.DeployTargets {
-			if d.Host == "" || d.User == "" || d.DestDir == "" || !filepath.IsAbs(d.DestDir) {
+			if d.ID == "" || d.Host == "" || d.User == "" || d.DestDir == "" || !strings.HasPrefix(d.DestDir, "/") {
 				return errors.New("invalid deploy target")
 			}
 		}
 	}
 	return nil
+}
+
+func hasUnsafeControl(s string) bool {
+	for _, r := range s {
+		if r == 0 || r == '\n' || r == '\r' || r < 0x20 || r == 0x7f {
+			return true
+		}
+	}
+	return false
+}
+
+func sameOrNestedPath(a, b string) bool {
+	cleanA := filepath.Clean(a)
+	cleanB := filepath.Clean(b)
+	if cleanA == cleanB {
+		return true
+	}
+	relAB, errAB := filepath.Rel(cleanA, cleanB)
+	relBA, errBA := filepath.Rel(cleanB, cleanA)
+	return (errAB == nil && relAB != "." && !strings.HasPrefix(relAB, ".."+string(os.PathSeparator)) && relAB != "..") ||
+		(errBA == nil && relBA != "." && !strings.HasPrefix(relBA, ".."+string(os.PathSeparator)) && relBA != "..")
+}
+
+func validateRunnerEnv(env map[string]string) error {
+	if len(env) > 100 {
+		return errors.New("invalid branch env")
+	}
+	for key, value := range env {
+		if !validRunnerEnvKey(key) || strings.HasPrefix(key, "ADLAIRE_CI_") {
+			return fmt.Errorf("invalid branch env key: %s", key)
+		}
+		switch key {
+		case "PATH", "HOME", "SHELL", "USER", "GITHUB_TOKEN", "ADLAIRE_TOKEN", "ADLAIRE_CHANGED_TARGETS":
+			return fmt.Errorf("reserved branch env key: %s", key)
+		}
+		if !utf8.ValidString(value) || len(value) > 4096 || strings.ContainsAny(value, "\x00\n\r") {
+			return fmt.Errorf("invalid branch env value: %s", key)
+		}
+	}
+	return nil
+}
+
+func validRunnerEnvKey(key string) bool {
+	if key == "" || len(key) > 64 {
+		return false
+	}
+	for i, r := range key {
+		if i == 0 {
+			if r != '_' && (r < 'A' || r > 'Z') {
+				return false
+			}
+			continue
+		}
+		if r != '_' && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func executeRunnerDryRun(cfg RunnerConfig, stdout io.Writer) int {
+	result := map[string]any{
+		"mode":           "dry-run",
+		"dry_run":        true,
+		"state_dir":      cfg.StateDir,
+		"targets":        []map[string]any{},
+		"would_write":    []string{},
+		"would_call":     []string{},
+		"secrets_masked": true,
+		"errors":         []map[string]any{},
+		"warnings":       []map[string]any{},
+	}
+	if err := loadRunnerConfig(&cfg, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
+		result["errors"] = []map[string]any{{"code": "config_error", "message": err.Error(), "target": nil}}
+		data, _ := json.Marshal(result)
+		fmt.Fprintln(stdout, string(data))
+		return 2
+	}
+	targets := []map[string]any{}
+	wouldWrite := map[string]bool{}
+	for _, target := range cfg.BranchTargets {
+		prev, prevErr := readSHACache(target.SHAFile)
+		prevValue := any(nil)
+		if prevErr == nil && prev != "" {
+			prevValue = prev
+		}
+		reason := "sha_changed"
+		wouldBuild := true
+		if prevErr != nil {
+			reason = "config_error"
+			wouldBuild = false
+		} else if cfg.SchedulePaused {
+			reason = "config_error"
+			wouldBuild = false
+		} else if cooldownActive(cfg, slog.New(slog.NewTextHandler(io.Discard, nil))) {
+			reason = "cooldown"
+			wouldBuild = false
+		}
+		if wouldBuild {
+			for _, key := range []string{"lock", "build_log", "history", "status", "sha_cache"} {
+				wouldWrite[key] = true
+			}
+		}
+		targets = append(targets, map[string]any{
+			"branch":             target.Branch,
+			"target_file":        target.TargetFile,
+			"previous_sha":       prevValue,
+			"current_blob_sha":   nil,
+			"current_commit_sha": nil,
+			"would_build":        wouldBuild,
+			"trigger":            "polling",
+			"reason":             reason,
+			"warnings":           []map[string]any{},
+		})
+	}
+	keys := make([]string, 0, len(wouldWrite))
+	for key := range wouldWrite {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	result["targets"] = targets
+	result["would_write"] = keys
+	data, _ := json.Marshal(result)
+	fmt.Fprintln(stdout, string(data))
+	return 0
 }
 
 func cooldownActive(cfg RunnerConfig, logger *slog.Logger) bool {
@@ -461,13 +1045,31 @@ func runnerReadBuildState(stateDir string) (buildState, error) {
 }
 
 func readRunnerToken(path string) (string, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return "", errors.New("GITHUB_TOKEN_MISSING: path=" + path)
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return "", errors.New("GITHUB_TOKEN_INVALID: reason=filetype")
+	}
+	if info.Mode().Perm()&0077 != 0 {
+		return "", fmt.Errorf("GITHUB_TOKEN_INSECURE_MODE: path=%s mode=%04o", path, info.Mode().Perm())
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", errors.New("github token missing")
+		return "", errors.New("GITHUB_TOKEN_PERMISSION: path=" + path)
+	}
+	if !utf8.Valid(data) {
+		return "", errors.New("GITHUB_TOKEN_INVALID: reason=utf8")
 	}
 	token := strings.TrimSpace(string(data))
 	if token == "" {
-		return "", errors.New("github token missing")
+		return "", errors.New("GITHUB_TOKEN_INVALID: reason=empty")
+	}
+	for _, r := range token {
+		if r == 0 || r == '\n' || r == '\r' || r == '\t' || r < 0x20 || r == 0x7f || r == ' ' {
+			return "", errors.New("GITHUB_TOKEN_INVALID: reason=character")
+		}
 	}
 	return token, nil
 }
@@ -484,7 +1086,7 @@ func acquireRunnerLock(path string, logger *slog.Logger) (func(), bool, int) {
 			_ = os.Remove(path)
 			return func() {}, false, 4
 		}
-		return func() { _ = os.Remove(path) }, true, 0
+		return func() { releaseRunnerLock(path, data, logger) }, true, 0
 	}
 	existing, readErr := os.ReadFile(path)
 	if readErr != nil {
@@ -521,43 +1123,144 @@ func pidRunning(pid int) bool {
 	if pid <= 0 {
 		return false
 	}
-	err := syscall.Kill(pid, 0)
-	return err == nil || errors.Is(err, syscall.EPERM)
+	if _, err := os.Stat("/proc"); errors.Is(err, os.ErrNotExist) {
+		err = syscall.Kill(pid, 0)
+		return err == nil || errors.Is(err, syscall.EPERM)
+	}
+	if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(pid))); err == nil {
+		return true
+	} else if !errors.Is(err, os.ErrNotExist) && !errors.Is(err, os.ErrPermission) {
+		err = syscall.Kill(pid, 0)
+		return err == nil || errors.Is(err, syscall.EPERM)
+	}
+	return false
+}
+
+func releaseRunnerLock(path string, expected []byte, logger *slog.Logger) {
+	current, err := os.ReadFile(path)
+	if err != nil {
+		if logger != nil {
+			logger.Warn("LOCK_RELEASE_FAILED: " + err.Error())
+		}
+		return
+	}
+	if !bytes.Equal(current, expected) {
+		if logger != nil {
+			logger.Warn("LOCK_RELEASE_SKIPPED: owner mismatch")
+		}
+		return
+	}
+	if err := os.Remove(path); err != nil && logger != nil {
+		logger.Warn("LOCK_RELEASE_FAILED: " + err.Error())
+	}
 }
 
 func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, buildID string, logger *slog.Logger) int {
 	started := runnerNow().UTC()
-	prevSHA, _ := readSHACache(target.SHAFile)
-	blobSHA, err := fetchTargetSHA(cfg, logger, token, target.Branch, target.TargetFile)
-	if err != nil {
-		logFailure(cfg, target, buildID, started, nil, prevSHA, "failure_api", "github api failed", nil, nil, logger)
-		recordCircuitFailure(cfg, "github api failed")
-		return 3
-	}
-	forceBuild := forceIntervalDue(cfg)
-	if blobSHA == prevSHA && !forceBuild {
-		logger.Info(fmt.Sprintf("NO_CHANGE: branch=%s target=%s sha=%s", target.Branch, target.TargetFile, blobSHA))
-		return 0
-	}
-	content, err := fetchBlobContent(cfg, logger, token, blobSHA)
-	if err != nil {
-		logFailure(cfg, target, buildID, started, &blobSHA, prevSHA, "failure_decode", "blob decode failed", nil, nil, logger)
-		recordCircuitFailure(cfg, "blob decode failed")
+	startedText := started.Format(time.RFC3339)
+	trigger := "polling"
+	if err := writeBuildStatusRunning(cfg, buildID, trigger, target.Branch, target.TargetFile, startedText); err != nil {
+		logger.Error("BUILD_STATUS_WRITE_FAILED: " + err.Error())
 		return 1
 	}
-	if err := materializeSource(target.Src, content); err != nil {
-		logFailure(cfg, target, buildID, started, &blobSHA, prevSHA, "failure_decode", "source write failed", nil, nil, logger)
+	if err := writeBuildState(cfg.StateDir, true, &buildID); err != nil {
+		logger.Error("STATE_START_FAILED: " + err.Error())
+		_ = writeBuildStatusError(cfg, "failure_state_write", trigger, err.Error())
+		return 1
+	}
+	if err := writeBuildLog(cfg.StateDir, runningBuildLog(buildID, target, trigger, startedText)); err != nil {
+		logger.Error("BUILD_LOG_START_FAILED: " + err.Error())
+		_ = writeBuildStatusError(cfg, "failure_state_write", trigger, err.Error())
+		return 1
+	}
+	prevSHA, prevErr := readSHACache(target.SHAFile)
+	if prevErr != nil {
+		logFailure(cfg, target, buildID, started, nil, "", "failure_decode", "sha cache decode failed", nil, nil, logger)
+		recordCircuitFailure(cfg, "sha cache decode failed")
+		return 1
+	}
+	resolved, err := resolveRunnerTarget(cfg, logger, token, target)
+	if err != nil {
+		status := "failure_api"
+		exit := 3
+		if cfg.WatchMode == "local" {
+			status = "failure_decode"
+			exit = 1
+		}
+		logFailure(cfg, target, buildID, started, nil, prevSHA, status, "source resolve failed", nil, nil, logger)
+		recordCircuitFailure(cfg, "source resolve failed")
+		return exit
+	}
+	forceBuild := forceIntervalDue(cfg)
+	if resolved.Digest == prevSHA && !forceBuild {
+		logger.Info(fmt.Sprintf("NO_CHANGE: branch=%s target=%s sha=%s", target.Branch, target.TargetFile, resolved.Digest))
+		_ = writeBuildStatusSkip(cfg, "skipped_no_change", trigger, &target)
+		return 0
+	}
+	if cfg.AllowedHours != nil && !allowedNow(*cfg.AllowedHours, runnerNow().UTC()) {
+		_ = writeBuildStatusSkip(cfg, "skipped_allowed_hours", trigger, &target)
+		return 0
+	}
+	if target.ApprovalRequired {
+		if err := appendApprovalPending(cfg, target, buildID, resolved.Digest, resolved.ChangedTargets); err != nil {
+			logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, "failure_state_write", "approval pending write failed", nil, nil, logger)
+			return 1
+		}
+		_ = os.Remove(filepath.Join(cfg.StateDir, ".build_logs", buildID+".json"))
+		_ = clearRunningBuildState(cfg.StateDir)
+		_ = writeBuildStatusSkip(cfg, "pending_approval", trigger, &target)
+		return 0
+	}
+	if err := materializeResolvedSource(target.Src, resolved); err != nil {
+		logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, "failure_decode", "source write failed", nil, nil, logger)
 		recordCircuitFailure(cfg, "source write failed")
 		return 1
 	}
 	if err := precheckRunnerTarget(target); err != nil {
-		logFailure(cfg, target, buildID, started, &blobSHA, prevSHA, "failure_precheck", "precheck failed", nil, nil, logger)
+		logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, "failure_precheck", "precheck failed", nil, nil, logger)
 		recordCircuitFailure(cfg, "precheck failed")
 		return 1
 	}
-	commit := fetchCommitInfo(cfg, logger, token, target.Branch, target.TargetFile)
-	pl := runPipeline(cfg, target, buildID)
+	commit := commitInfo{}
+	if cfg.WatchMode == "github" {
+		commit = fetchCommitInfo(cfg, logger, token, target.Branch, target.TargetFile)
+	}
+	commitSHA := ""
+	if commit.SHA != nil {
+		commitSHA = *commit.SHA
+	}
+	commitStatusState := (*string)(nil)
+	if cfg.CommitStatusEnabled {
+		state := "error"
+		if commit.SHA != nil {
+			if err := postCommitStatus(cfg, token, *commit.SHA, "pending", buildID, "Build started"); err == nil {
+				state = "pending"
+			} else {
+				logger.Warn("COMMIT_STATUS_FAILED: " + err.Error())
+			}
+		} else {
+			logger.Warn("COMMIT_STATUS_FAILED: commit sha unavailable")
+		}
+		commitStatusState = &state
+	}
+	attempts := []pipelineLog{}
+	pl := runPipeline(cfg, target, buildID, commitSHA, startedText, resolved.ChangedTargets)
+	attempts = append(attempts, pl)
+	for retry := 1; retry <= cfg.BuildRetryMax && shouldRetryPipeline(pl); retry++ {
+		runnerSleep(time.Duration(cfg.BuildRetryBaseSeconds*retry) * time.Second)
+		pl = runPipeline(cfg, target, buildID, commitSHA, startedText, resolved.ChangedTargets)
+		attempts = append(attempts, pl)
+	}
+	retryCount := len(attempts) - 1
 	rep, warns := parseRunnerReport(pl.Stdout)
+	if rep != nil {
+		rep.BuildID = buildID
+		rep.CommitSHA = commitSHA
+		rep.BuildAt = startedText
+	}
+	if pl.ExitCode != nil && *pl.ExitCode == 0 && rep == nil {
+		warns = append(warns, "REPORT_MISSING")
+	}
 	if rep != nil && cfg.OutputSizeWarnMB > 0 {
 		if size, ok := outputSizeBytes(target.Out); ok && size > int64(cfg.OutputSizeWarnMB)*1024*1024 {
 			rep.SizeWarn = true
@@ -568,19 +1271,29 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 	status := "success"
 	var errText *string
 	exitCode := 0
-	if pl.ExitCode == nil || *pl.ExitCode != 0 {
+	if pl.ExitCode == nil {
+		status = "failure_timeout"
+		msg := "pipeline timeout"
+		errText = &msg
+		exitCode = 1
+	} else if *pl.ExitCode != 0 {
 		status = "failure_build"
 		msg := "pipeline failed"
 		errText = &msg
 		exitCode = 1
-	} else if err := runnerAtomicWriteJSON(target.SHAFile, shaCache{SHA: blobSHA}, 0600); err != nil {
+	} else if err := validateOutputSite(target.Out); err != nil {
+		status = "failure_build"
+		msg := "output validation failed"
+		errText = &msg
+		exitCode = 1
+	} else if err := runnerAtomicWriteJSON(target.SHAFile, shaCache{SHA: resolved.Digest}, 0600); err != nil {
 		status = "failure_state_write"
 		msg := "state write failed"
 		errText = &msg
 		exitCode = 1
 	} else {
 		for deployIdx, d := range target.DeployTargets {
-			dl := executeDeploy(cfg, idx, deployIdx, target, d)
+			dl := executeDeploy(cfg, idx, deployIdx, target, d, buildID)
 			deploys = append(deploys, dl)
 			if dl.Status == "pending" {
 				status = "success_deploy_pending"
@@ -599,31 +1312,71 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		}
 	}
 	finished := runnerNow().UTC()
+	outputSHA, _ := outputManifestSHA(target.Out)
+	var outputSize *int64
+	if size, ok := outputSizeBytes(target.Out); ok {
+		outputSize = &size
+	}
+	failureCategory := buildFailureCategory(status)
+	normalizedStatus := buildStatusFromTargetStatus(status)
+	if cfg.CommitStatusEnabled {
+		state := "error"
+		if commit.SHA != nil {
+			state = commitStatusStateForTargetStatus(status)
+			if err := postCommitStatus(cfg, token, *commit.SHA, state, buildID, "Build "+state); err != nil {
+				logger.Warn("COMMIT_STATUS_FAILED: " + err.Error())
+				state = "error"
+			}
+		}
+		commitStatusState = &state
+	}
 	blog := buildLog{
 		ID:              buildID,
+		Status:          normalizedStatus,
 		Branch:          target.Branch,
 		TargetFile:      target.TargetFile,
+		TargetFiles:     append([]string(nil), target.TargetFiles...),
+		ChangedTargets:  append([]string(nil), resolved.ChangedTargets...),
 		TargetStatus:    status,
+		Trigger:         trigger,
+		TriggerActor:    nil,
 		StartedAt:       started.Format(time.RFC3339),
 		FinishedAt:      finished.Format(time.RFC3339),
 		DurationSeconds: int64(finished.Sub(started).Seconds()),
 		Commit:          commit,
-		BlobSHA:         &blobSHA,
+		BlobSHA:         &resolved.Digest,
 		PreviousBlobSHA: prevSHA,
 		Pipeline:        pl,
+		Attempts:        attempts,
+		RetryCount:      retryCount,
 		Report:          rep,
 		Warnings:        warns,
 		Deploy:          deploys,
 		SnapshotID:      snapshotID,
+		OutputSHA256:    outputSHA,
+		OutputSizeBytes: outputSize,
+		SizeWarn:        rep != nil && rep.SizeWarn,
+		FailureCategory: failureCategory,
+		CommitStatus:    commitStatusState,
+		Environment:     currentBuildEnv(cfg),
 		Error:           errText,
 	}
 	if err := writeBuildLog(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_LOG_WRITE_FAILED: " + err.Error())
+		_ = writeBuildStatusError(cfg, "failure_state_write", trigger, err.Error())
 		return 1
 	}
 	if err := appendHistory(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_HISTORY_WRITE_FAILED: " + err.Error())
+		_ = writeBuildStatusError(cfg, "failure_state_write", trigger, err.Error())
 		return 1
+	}
+	if err := updateBuildTrends(cfg, blog); err != nil {
+		logger.Warn("BUILD_TRENDS_WRITE_FAILED: " + err.Error())
+	}
+	if err := writeBuildStatusFinal(cfg, blog); err != nil {
+		logger.Error("BUILD_STATUS_WRITE_FAILED: " + err.Error())
+		exitCode = 1
 	}
 	sendBuildNotifications(cfg, blog, logger)
 	if exitCode == 0 {
@@ -634,37 +1387,187 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 	return exitCode
 }
 
-func fetchTargetSHA(cfg RunnerConfig, logger *slog.Logger, token, branch, targetFile string) (string, error) {
-	owner, repo := runnerRepo()
-	url := fmt.Sprintf("%s/repos/%s/%s/git/trees/%s?recursive=1", strings.TrimRight(runnerGitHubAPIBase, "/"), owner, repo, branch)
-	var tree gitTreeResponse
-	if err := runnerGetJSON(cfg, logger, token, url, &tree); err != nil {
-		return "", err
+func runningBuildLog(buildID string, target BranchTarget, trigger, started string) buildLog {
+	return buildLog{
+		ID:              buildID,
+		Status:          "running",
+		Branch:          target.Branch,
+		TargetFile:      target.TargetFile,
+		TargetFiles:     append([]string(nil), target.TargetFiles...),
+		ChangedTargets:  []string{},
+		TargetStatus:    "running",
+		Trigger:         trigger,
+		TriggerActor:    nil,
+		StartedAt:       started,
+		FinishedAt:      "",
+		DurationSeconds: 0,
+		Commit:          commitInfo{},
+		BlobSHA:         nil,
+		PreviousBlobSHA: "",
+		Pipeline:        pipelineLog{},
+		Attempts:        []pipelineLog{},
+		RetryCount:      0,
+		Report:          nil,
+		Warnings:        []string{},
+		Deploy:          []deployLog{},
+		SnapshotID:      nil,
+		OutputSHA256:    nil,
+		OutputSizeBytes: nil,
+		SizeWarn:        false,
+		FailureCategory: nil,
+		CommitStatus:    nil,
+		Environment:     buildEnvLog{},
+		Error:           nil,
 	}
+}
+
+func allowedNow(hours AllowedHoursConfig, now time.Time) bool {
+	hour := now.UTC().Hour()
+	return hours.From <= hour && hour < hours.To
+}
+
+func resolveRunnerTarget(cfg RunnerConfig, logger *slog.Logger, token string, target BranchTarget) (resolvedRunnerTarget, error) {
+	if cfg.WatchMode == "local" {
+		digest, err := localTargetDigest(target)
+		if err != nil {
+			return resolvedRunnerTarget{}, err
+		}
+		return resolvedRunnerTarget{
+			Digest:         digest,
+			ChangedTargets: normalizedTargetFiles(target),
+			Local:          true,
+		}, nil
+	}
+	shas, err := fetchTargetSHAs(cfg, logger, token, target.Branch, normalizedTargetFiles(target))
+	if err != nil {
+		return resolvedRunnerTarget{}, err
+	}
+	digest := digestTargetSHAs(target, shas)
+	contents := map[string][]byte{}
+	for _, path := range normalizedTargetFiles(target) {
+		content, err := fetchBlobContent(cfg, logger, token, shas[path])
+		if err != nil {
+			return resolvedRunnerTarget{}, err
+		}
+		contents[path] = content
+	}
+	return resolvedRunnerTarget{
+		Digest:         digest,
+		ChangedTargets: normalizedTargetFiles(target),
+		Contents:       contents,
+	}, nil
+}
+
+func normalizedTargetFiles(target BranchTarget) []string {
+	files := append([]string(nil), target.TargetFiles...)
+	if len(files) == 0 && target.TargetFile != "" {
+		files = []string{target.TargetFile}
+	}
+	sort.Strings(files)
+	return files
+}
+
+func fetchTargetSHAs(cfg RunnerConfig, logger *slog.Logger, token, branch string, targetFiles []string) (map[string]string, error) {
+	owner, repo := cfg.RepositoryOwner, cfg.RepositoryName
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/git/trees/%s?recursive=1", strings.TrimRight(runnerGitHubAPIBase, "/"), url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(branch))
+	var tree gitTreeResponse
+	if err := runnerGetJSON(cfg, logger, token, apiURL, &tree); err != nil {
+		return nil, err
+	}
+	needed := map[string]bool{}
+	for _, targetFile := range targetFiles {
+		needed[targetFile] = true
+	}
+	found := map[string]string{}
 	for _, item := range tree.Tree {
-		if item.Path == targetFile {
-			return item.SHA, nil
+		if needed[item.Path] {
+			found[item.Path] = item.SHA
 		}
 	}
-	return "", errors.New("target not found")
+	for _, targetFile := range targetFiles {
+		if found[targetFile] == "" {
+			return nil, fmt.Errorf("target not found: %s", targetFile)
+		}
+	}
+	return found, nil
+}
+
+func digestTargetSHAs(target BranchTarget, shas map[string]string) string {
+	files := normalizedTargetFiles(target)
+	if len(files) == 1 {
+		return shas[files[0]]
+	}
+	parts := make([]string, 0, len(files))
+	for _, path := range files {
+		parts = append(parts, path+"\n"+shas[path]+"\n")
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "")))
+	return hex.EncodeToString(sum[:])
+}
+
+func localTargetDigest(target BranchTarget) (string, error) {
+	files := normalizedTargetFiles(target)
+	parts := make([]string, 0, len(files))
+	for _, targetFile := range files {
+		path := filepath.Join(target.Src, filepath.FromSlash(targetFile))
+		if info, err := os.Lstat(path); err == nil {
+			if info.IsDir() {
+				sum, err := outputManifestSHA(path)
+				if err != nil {
+					return "", err
+				}
+				parts = append(parts, targetFile+"\n"+derefString(sum, "")+"\n")
+				continue
+			}
+			if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+				return "", fmt.Errorf("invalid local target: %s", targetFile)
+			}
+			fileSum, err := runnerFileSHA256(path)
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, targetFile+"\n"+fileSum+"\n")
+			continue
+		}
+		if len(files) == 1 {
+			sum, err := outputManifestSHA(target.Src)
+			if err != nil {
+				return "", err
+			}
+			return derefString(sum, ""), nil
+		}
+		return "", fmt.Errorf("local target not found: %s", targetFile)
+	}
+	if len(files) == 1 {
+		fields := strings.Split(parts[0], "\n")
+		if len(fields) >= 2 {
+			return fields[1], nil
+		}
+	}
+	sort.Strings(parts)
+	sum := sha256.Sum256([]byte(strings.Join(parts, "")))
+	return hex.EncodeToString(sum[:]), nil
 }
 
 func fetchBlobContent(cfg RunnerConfig, logger *slog.Logger, token, sha string) ([]byte, error) {
-	owner, repo := runnerRepo()
-	url := fmt.Sprintf("%s/repos/%s/%s/git/blobs/%s", strings.TrimRight(runnerGitHubAPIBase, "/"), owner, repo, sha)
+	owner, repo := cfg.RepositoryOwner, cfg.RepositoryName
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/git/blobs/%s", strings.TrimRight(runnerGitHubAPIBase, "/"), url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(sha))
 	var blob gitBlobResponse
-	if err := runnerGetJSON(cfg, logger, token, url, &blob); err != nil {
+	if err := runnerGetJSON(cfg, logger, token, apiURL, &blob); err != nil {
 		return nil, err
+	}
+	if blob.Encoding != "base64" {
+		return nil, errors.New("unsupported blob encoding")
 	}
 	content := strings.ReplaceAll(blob.Content, "\n", "")
 	return base64.StdEncoding.DecodeString(content)
 }
 
 func fetchCommitInfo(cfg RunnerConfig, logger *slog.Logger, token, branch, targetFile string) commitInfo {
-	owner, repo := runnerRepo()
-	url := fmt.Sprintf("%s/repos/%s/%s/commits?path=%s&sha=%s&per_page=1", strings.TrimRight(runnerGitHubAPIBase, "/"), owner, repo, targetFile, branch)
+	owner, repo := cfg.RepositoryOwner, cfg.RepositoryName
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/commits?path=%s&sha=%s&per_page=1", strings.TrimRight(runnerGitHubAPIBase, "/"), url.PathEscape(owner), url.PathEscape(repo), url.QueryEscape(targetFile), url.QueryEscape(branch))
 	var commits gitCommitResponse
-	if err := runnerGetJSON(cfg, logger, token, url, &commits); err != nil || len(commits) == 0 {
+	if err := runnerGetJSON(cfg, logger, token, apiURL, &commits); err != nil || len(commits) == 0 {
 		return commitInfo{}
 	}
 	msg := strings.SplitN(commits[0].Commit.Message, "\n", 2)[0]
@@ -672,18 +1575,6 @@ func fetchCommitInfo(cfg RunnerConfig, logger *slog.Logger, token, branch, targe
 	author := commits[0].Commit.Author.Name
 	date := commits[0].Commit.Author.Date
 	return commitInfo{SHA: &sha, Message: &msg, Author: &author, Date: &date}
-}
-
-func runnerRepo() (string, string) {
-	repo := os.Getenv("ADLAIRE_CI_REPOSITORY")
-	if repo == "" {
-		repo = "fqwink/Build-Scripts"
-	}
-	owner, name, ok := strings.Cut(repo, "/")
-	if !ok || owner == "" || name == "" {
-		return "fqwink", "Build-Scripts"
-	}
-	return owner, name
 }
 
 func runnerGetJSON(cfg RunnerConfig, logger *slog.Logger, token, url string, out any) error {
@@ -722,6 +1613,52 @@ func runnerGetJSON(cfg RunnerConfig, logger *slog.Logger, token, url string, out
 		runnerSleep(retryDelay(cfg, attempt, nil))
 	}
 	return lastErr
+}
+
+func postCommitStatus(cfg RunnerConfig, token, sha, state, buildID, description string) error {
+	if sha == "" {
+		return errors.New("commit sha unavailable")
+	}
+	payload := map[string]any{
+		"state":       state,
+		"context":     cfg.CommitStatusContext,
+		"description": description,
+	}
+	if cfg.CommitStatusTargetURL != nil && *cfg.CommitStatusTargetURL != "" {
+		payload["target_url"] = *cfg.CommitStatusTargetURL
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/statuses/%s", strings.TrimRight(runnerGitHubAPIBase, "/"), url.PathEscape(cfg.RepositoryOwner), url.PathEscape(cfg.RepositoryName), url.PathEscape(sha))
+	req, err := http.NewRequest(http.MethodPost, apiURL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "adlaire-ci-runner")
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Adlaire-Build-ID", buildID)
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("github commit status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func commitStatusStateForTargetStatus(targetStatus string) string {
+	if targetStatus == "success" {
+		return "success"
+	}
+	return "failure"
 }
 
 func logPATExpiryWarning(resp *http.Response, logger *slog.Logger) {
@@ -779,7 +1716,7 @@ func retryDelay(cfg RunnerConfig, attempt int, resp *http.Response) time.Duratio
 		if reset := resp.Header.Get("X-RateLimit-Reset"); reset != "" {
 			if unix, err := strconv.ParseInt(reset, 10, 64); err == nil {
 				wait := time.Until(time.Unix(unix, 0))
-				if wait > 0 {
+				if wait > 0 && wait <= time.Hour {
 					return wait
 				}
 			}
@@ -791,14 +1728,34 @@ func retryDelay(cfg RunnerConfig, attempt int, resp *http.Response) time.Duratio
 	return time.Duration(cfg.APIRetryBaseSeconds) * time.Second * time.Duration(1<<attempt)
 }
 
-func materializeSource(src string, content []byte) error {
+func materializeResolvedSource(src string, resolved resolvedRunnerTarget) error {
+	if resolved.Local {
+		return nil
+	}
 	if err := os.RemoveAll(src); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(src, 0755); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(src, "source.md"), content, 0644)
+	if len(resolved.Contents) == 1 {
+		for _, content := range resolved.Contents {
+			return os.WriteFile(filepath.Join(src, "source.md"), content, 0644)
+		}
+	}
+	for rel, content := range resolved.Contents {
+		if invalidOutputRelativePath(rel) {
+			return fmt.Errorf("invalid source path: %s", rel)
+		}
+		path := filepath.Join(src, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, content, 0644); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func precheckRunnerTarget(target BranchTarget) error {
@@ -821,7 +1778,8 @@ func precheckRunnerTarget(target BranchTarget) error {
 	if err != nil {
 		return err
 	}
-	if !strings.Contains(string(out), "adlaire-ci-build") || !strings.Contains(string(out), "v3") {
+	fields := strings.Fields(string(out))
+	if len(fields) != 3 || fields[0] != "adlaire-ci-build" || fields[1] != runnerBinaryVersion || !strings.HasPrefix(fields[2], "go=") {
 		return fmt.Errorf("build binary version mismatch: %s", buildBin)
 	}
 	return nil
@@ -842,13 +1800,20 @@ func ensureDiskAvailable(path string) error {
 	return nil
 }
 
-func runPipeline(cfg RunnerConfig, target BranchTarget, buildID string) pipelineLog {
-	script := filepath.Join(filepath.Dir(target.Src), ".ci", "pipeline.sh")
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+func runPipeline(cfg RunnerConfig, target BranchTarget, buildID, commitSHA, buildAt string, changedTargets []string) pipelineLog {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.BuildTimeoutSeconds)*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "bash", script)
+	buildBin := os.Getenv("ADLAIRE_CI_BUILD_BIN")
+	if buildBin == "" {
+		buildBin = "/usr/local/bin/adlaire-ci-build"
+	}
+	args := []string{"--src", target.Src, "--out", target.Out, "--build-id", buildID, "--commit-sha", commitSHA, "--build-at", buildAt}
+	if cfg.BuildCacheEnabled {
+		args = append(args, "--cache-dir", cfg.StateDir)
+	}
+	cmd := exec.CommandContext(ctx, buildBin, args...)
 	cmd.Dir = filepath.Dir(target.Src)
-	cmd.Env = append(os.Environ(),
+	env := append(os.Environ(),
 		"ADLAIRE_CI_SRC="+target.Src,
 		"ADLAIRE_CI_OUT="+target.Out,
 		"ADLAIRE_CI_BRANCH="+target.Branch,
@@ -856,10 +1821,23 @@ func runPipeline(cfg RunnerConfig, target BranchTarget, buildID string) pipeline
 		"ADLAIRE_CI_TARGET_FILE="+target.TargetFile,
 		"ADLAIRE_CI_STATE_DIR="+cfg.StateDir,
 	)
+	if len(changedTargets) > 0 {
+		data, _ := json.Marshal(changedTargets)
+		env = append(env, "ADLAIRE_CHANGED_TARGETS="+string(data))
+	}
+	for key, value := range target.Env {
+		env = append(env, key+"="+value)
+	}
+	cmd.Env = env
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
+	if ctx.Err() == context.DeadlineExceeded {
+		trimmedStdout, stdoutTruncated := trimLog(stdout.String())
+		trimmedStderr, stderrTruncated := trimLog(stderr.String())
+		return pipelineLog{ExitCode: nil, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated}
+	}
 	code := 0
 	if err != nil {
 		code = 1
@@ -868,7 +1846,13 @@ func runPipeline(cfg RunnerConfig, target BranchTarget, buildID string) pipeline
 			code = ee.ExitCode()
 		}
 	}
-	return pipelineLog{ExitCode: &code, Stdout: trimLog(stdout.String()), Stderr: trimLog(stderr.String())}
+	trimmedStdout, stdoutTruncated := trimLog(stdout.String())
+	trimmedStderr, stderrTruncated := trimLog(stderr.String())
+	return pipelineLog{ExitCode: &code, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated}
+}
+
+func shouldRetryPipeline(pl pipelineLog) bool {
+	return pl.ExitCode == nil || (pl.ExitCode != nil && *pl.ExitCode != 0)
 }
 
 func parseRunnerReport(stdout string) (*runnerReport, []string) {
@@ -885,6 +1869,10 @@ func parseRunnerReport(stdout string) (*runnerReport, []string) {
 				if ok {
 					values[k] = v
 				}
+			}
+			if report != nil {
+				warnings = append(warnings, "REPORT_DUPLICATE")
+				continue
 			}
 			report = &runnerReport{
 				Pages:           atoi(values["pages"]),
@@ -908,16 +1896,39 @@ func atoi(s string) int {
 	return n
 }
 
-func trimLog(s string) string {
+func trimLog(s string) (string, bool) {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	s = strings.ReplaceAll(s, "\x00", "\\u0000")
+	s = strings.ToValidUTF8(s, "\uFFFD")
 	const max = 1024 * 1024
 	if len(s) <= max {
-		return strings.TrimSuffix(s, "\n")
+		return strings.TrimSuffix(s, "\n"), false
 	}
-	return s[len(s)-max:]
+	start := len(s) - max
+	for start < len(s) && !utf8.RuneStart(s[start]) {
+		start++
+	}
+	return strings.TrimSuffix(s[start:], "\n"), true
 }
 
-func executeDeploy(cfg RunnerConfig, branchIdx, deployIdx int, target BranchTarget, d DeployTarget) deployLog {
-	dl := deployLog{Host: d.Host, User: d.User, DestDir: d.DestDir, Status: "success", TransferVerified: true}
+func validateOutputSite(root string) error {
+	required := []string{"index.html", "assets/style.css", "assets/app.js", "assets/search-index.json"}
+	for _, rel := range required {
+		path := filepath.Join(root, rel)
+		info, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("invalid output file: %s", rel)
+		}
+	}
+	return nil
+}
+
+func executeDeploy(cfg RunnerConfig, branchIdx, deployIdx int, target BranchTarget, d DeployTarget, buildID string) deployLog {
+	dl := deployLog{TargetID: d.ID, Host: d.Host, User: d.User, DestDir: d.DestDir, Status: "success", TransferVerified: true}
 	total, uploaded, skipped, bytesUploaded, err := deploySite(target.Out, d)
 	dl.FilesTotal = total
 	dl.FilesUploaded = uploaded
@@ -928,10 +1939,14 @@ func executeDeploy(cfg RunnerConfig, branchIdx, deployIdx int, target BranchTarg
 		dl.Status = "pending"
 		dl.TransferVerified = false
 		dl.Error = &errStr
+		outputSHA, _ := outputManifestSHA(target.Out)
+		out := target.Out
 		_ = addPendingTransfer(cfg.PendingFile, pendingTransfer{
-			BranchIdx: branchIdx, DeployIdx: deployIdx, Out: target.Out,
-			Host: d.Host, User: d.User, DestDir: d.DestDir,
-			FailedAt: runnerNow().UTC().Format(time.RFC3339), RetryCount: 1,
+			BuildID: buildID, Trigger: "deploy", SourceKind: "output",
+			RollbackFrom: nil, SnapshotID: nil, Branch: target.Branch,
+			TargetID: d.ID, Out: &out, Host: d.Host, User: d.User, DestDir: d.DestDir,
+			OutputSHA256: derefString(outputSHA, ""), FailedAt: runnerNow().UTC().Format(time.RFC3339),
+			RetryCount: 0, LastError: errStr,
 		})
 	}
 	return dl
@@ -1013,7 +2028,7 @@ func remoteJoin(root, rel string) string {
 }
 
 func writeSnapshot(cfg RunnerConfig, target BranchTarget, buildID string) (string, error) {
-	if cfg.HistoryKeepN == 0 {
+	if cfg.SnapshotsKeep == 0 {
 		return "", errors.New("snapshot disabled")
 	}
 	dest := filepath.Join(cfg.StateDir, ".snapshots", buildID, "site")
@@ -1023,7 +2038,7 @@ func writeSnapshot(cfg RunnerConfig, target BranchTarget, buildID string) (strin
 	if err := copyDir(target.Out, dest); err != nil {
 		return "", err
 	}
-	if err := pruneSnapshots(filepath.Join(cfg.StateDir, ".snapshots"), cfg.HistoryKeepN); err != nil {
+	if err := pruneSnapshots(filepath.Join(cfg.StateDir, ".snapshots"), cfg.SnapshotsKeep); err != nil {
 		return "", err
 	}
 	return buildID, nil
@@ -1078,9 +2093,17 @@ func addPendingTransfer(path string, entry pendingTransfer) error {
 	var entries []pendingTransfer
 	_ = readJSONArray(path, &entries)
 	for i := range entries {
-		if entries[i].Out == entry.Out && entries[i].Host == entry.Host && entries[i].User == entry.User && entries[i].DestDir == entry.DestDir {
-			entries[i].RetryCount++
+		if entries[i].Branch == entry.Branch && entries[i].TargetID == entry.TargetID && entries[i].Host == entry.Host && entries[i].User == entry.User && entries[i].DestDir == entry.DestDir {
+			entries[i].BuildID = entry.BuildID
+			entries[i].Trigger = entry.Trigger
+			entries[i].SourceKind = entry.SourceKind
+			entries[i].RollbackFrom = entry.RollbackFrom
+			entries[i].SnapshotID = entry.SnapshotID
+			entries[i].Out = entry.Out
+			entries[i].OutputSHA256 = entry.OutputSHA256
+			entries[i].RetryCount = 0
 			entries[i].FailedAt = entry.FailedAt
+			entries[i].LastError = entry.LastError
 			return runnerAtomicWriteJSON(path, entries, 0600)
 		}
 	}
@@ -1101,15 +2124,19 @@ func retryPendingTransfers(cfg *RunnerConfig, logger *slog.Logger) error {
 	}
 	remaining := []pendingTransfer{}
 	for _, entry := range entries {
-		target := BranchTarget{Out: entry.Out}
+		if entry.Out == nil {
+			remaining = append(remaining, entry)
+			continue
+		}
 		deploy := DeployTarget{Host: entry.Host, User: entry.User, DestDir: entry.DestDir}
-		result := executeDeploy(*cfg, entry.BranchIdx, entry.DeployIdx, target, deploy)
-		if result.Status == "success" {
+		_, _, _, _, err := deploySite(*entry.Out, deploy)
+		if err == nil {
 			logger.Info("PENDING RETRY OK site -> " + entry.Host)
 			continue
 		}
 		entry.RetryCount++
 		entry.FailedAt = runnerNow().UTC().Format(time.RFC3339)
+		entry.LastError = err.Error()
 		remaining = append(remaining, entry)
 		logger.Error("PENDING RETRY FAILED site: " + entry.Host)
 	}
@@ -1161,6 +2188,7 @@ func sendBuildNotifications(cfg RunnerConfig, log buildLog, logger *slog.Logger)
 	payload := map[string]any{
 		"event": event, "build_id": log.ID, "status": log.TargetStatus,
 		"branch": log.Branch, "target_file": log.TargetFile,
+		"target_files": log.TargetFiles, "changed_targets": log.ChangedTargets,
 	}
 	for _, hook := range config.Webhooks {
 		if !hook.Enabled || hook.URL == "" || !hookHandlesEvent(hook, event) {
@@ -1219,18 +2247,32 @@ func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started t
 		pl = &pipelineLog{}
 	}
 	finished := runnerNow().UTC()
+	failureCategory := buildFailureCategory(status)
+	normalizedStatus := buildStatusFromTargetStatus(status)
 	blog := buildLog{
-		ID: buildID, Branch: target.Branch, TargetFile: target.TargetFile, TargetStatus: status,
+		ID: buildID, Status: normalizedStatus, Branch: target.Branch, TargetFile: target.TargetFile,
+		TargetFiles: append([]string(nil), target.TargetFiles...), ChangedTargets: []string{}, TargetStatus: status,
+		Trigger: "polling", TriggerActor: nil,
 		StartedAt: started.Format(time.RFC3339), FinishedAt: finished.Format(time.RFC3339),
 		DurationSeconds: int64(finished.Sub(started).Seconds()), Commit: commitInfo{},
-		BlobSHA: blobSHA, PreviousBlobSHA: prevSHA, Pipeline: *pl, Report: rep,
-		Warnings: []string{}, Deploy: []deployLog{}, SnapshotID: nil, Error: &msg,
+		BlobSHA: blobSHA, PreviousBlobSHA: prevSHA, Pipeline: *pl, Attempts: []pipelineLog{}, RetryCount: 0, Report: rep,
+		Warnings: []string{}, Deploy: []deployLog{}, SnapshotID: nil,
+		OutputSHA256: nil, OutputSizeBytes: nil, SizeWarn: false,
+		FailureCategory: failureCategory, Environment: currentBuildEnv(cfg), Error: &msg,
 	}
 	if err := writeBuildLog(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_LOG_WRITE_FAILED: " + err.Error())
+		_ = writeBuildStatusError(cfg, "failure_state_write", "polling", err.Error())
 	}
 	if err := appendHistory(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_HISTORY_WRITE_FAILED: " + err.Error())
+		_ = writeBuildStatusError(cfg, "failure_state_write", "polling", err.Error())
+	}
+	if err := updateBuildTrends(cfg, blog); err != nil {
+		logger.Warn("BUILD_TRENDS_WRITE_FAILED: " + err.Error())
+	}
+	if err := writeBuildStatusFinal(cfg, blog); err != nil {
+		logger.Error("BUILD_STATUS_WRITE_FAILED: " + err.Error())
 	}
 	sendBuildNotifications(cfg, blog, logger)
 }
@@ -1304,15 +2346,226 @@ func runnerDefaultBuildState() buildState {
 	return buildState{Queued: []map[string]any{}}
 }
 
+func clearRunningBuildState(stateDir string) error {
+	state, err := runnerReadBuildState(stateDir)
+	if err != nil {
+		state = runnerDefaultBuildState()
+	}
+	now := runnerNow().UTC().Format(time.RFC3339)
+	state.Running = false
+	state.CurrentBuildID = nil
+	state.LastFinishedAt = &now
+	return runnerAtomicWriteJSON(filepath.Join(stateDir, ".build_state"), state, 0600)
+}
+
+func runnerNextBuildID(stateDir string, now time.Time) (string, error) {
+	for i := 0; i <= 999; i++ {
+		id := runnerBuildID(now, i)
+		if _, err := os.Stat(filepath.Join(stateDir, ".build_logs", id+".json")); errors.Is(err, os.ErrNotExist) {
+			return id, nil
+		}
+	}
+	return "", errors.New("build id suffix exhausted")
+}
+
+func buildStatusFromTargetStatus(targetStatus string) string {
+	switch {
+	case targetStatus == "success" || targetStatus == "success_deploy_pending":
+		return "success"
+	case targetStatus == "cancelled":
+		return "cancelled"
+	case strings.HasPrefix(targetStatus, "skipped_") || targetStatus == "circuit_open" || targetStatus == "lock_skipped":
+		return "skipped"
+	default:
+		return "failure"
+	}
+}
+
+func buildFailureCategory(targetStatus string) *string {
+	var category string
+	switch targetStatus {
+	case "success_deploy_pending":
+		category = "deploy_failure"
+	case "failure_api":
+		category = "github_api_failure"
+	case "failure_decode":
+		category = "decode_failure"
+	case "failure_precheck":
+		category = "precheck_failure"
+	case "failure_build":
+		category = "build_failure"
+	case "failure_timeout":
+		category = "timeout"
+	case "failure_state_write":
+		category = "state_write_failure"
+	default:
+		return nil
+	}
+	return &category
+}
+
+func writeBuildStatusRunning(cfg RunnerConfig, buildID, trigger, branch, targetFile, started string) error {
+	triggerValue := trigger
+	status := buildStatusSummary{
+		SchemaVersion:  1,
+		Status:         "running",
+		Running:        true,
+		CurrentBuildID: &buildID,
+		LastTrigger:    &triggerValue,
+		LastBranch:     &branch,
+		LastTargetFile: &targetFile,
+		LastStartedAt:  &started,
+	}
+	now := runnerNow().UTC().Format(time.RFC3339)
+	status.UpdatedAt = &now
+	fillBuildStatusCounts(cfg.StateDir, &status)
+	return runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_status.json"), status, 0600)
+}
+
+func writeBuildStatusFinal(cfg RunnerConfig, log buildLog) error {
+	statusText := buildStatusFromTargetStatus(log.TargetStatus)
+	trigger := log.Trigger
+	branch := log.Branch
+	targetFile := log.TargetFile
+	status := buildStatusSummary{
+		SchemaVersion:       1,
+		Status:              statusText,
+		Running:             false,
+		CurrentBuildID:      nil,
+		LastBuildID:         &log.ID,
+		LastTrigger:         &trigger,
+		LastTargetStatus:    &log.TargetStatus,
+		LastBranch:          &branch,
+		LastTargetFile:      &targetFile,
+		LastBlobSHA:         log.BlobSHA,
+		LastCommitSHA:       log.Commit.SHA,
+		LastStartedAt:       &log.StartedAt,
+		LastFinishedAt:      &log.FinishedAt,
+		LastDurationSeconds: &log.DurationSeconds,
+		LastError:           log.Error,
+		OutputSHA256:        log.OutputSHA256,
+		SizeWarn:            log.SizeWarn,
+	}
+	now := runnerNow().UTC().Format(time.RFC3339)
+	status.UpdatedAt = &now
+	if len(log.Deploy) == 0 {
+		skipped := "skipped"
+		status.LastDeployStatus = &skipped
+	} else {
+		deployAt := log.FinishedAt
+		status.LastDeployAt = &deployAt
+		if log.TargetStatus == "success_deploy_pending" {
+			pending := "pending"
+			status.LastDeployStatus = &pending
+		} else {
+			success := "success"
+			status.LastDeployStatus = &success
+		}
+	}
+	fillBuildStatusCounts(cfg.StateDir, &status)
+	return runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_status.json"), status, 0600)
+}
+
+func writeBuildStatusSkip(cfg RunnerConfig, targetStatus, trigger string, target *BranchTarget) error {
+	status := buildStatusSummary{
+		SchemaVersion:    1,
+		Status:           "skipped",
+		Running:          false,
+		LastTargetStatus: &targetStatus,
+		LastTrigger:      &trigger,
+		CurrentBuildID:   nil,
+		LastDeployStatus: stringPtr("skipped"),
+		LastFinishedAt:   stringPtr(runnerNow().UTC().Format(time.RFC3339)),
+	}
+	now := runnerNow().UTC().Format(time.RFC3339)
+	status.UpdatedAt = &now
+	if target != nil {
+		status.LastBranch = &target.Branch
+		status.LastTargetFile = &target.TargetFile
+	}
+	fillBuildStatusCounts(cfg.StateDir, &status)
+	return runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_status.json"), status, 0600)
+}
+
+func writeBuildStatusError(cfg RunnerConfig, targetStatus, trigger, message string) error {
+	status := buildStatusSummary{
+		SchemaVersion:    1,
+		Status:           "failure",
+		Running:          false,
+		LastTargetStatus: &targetStatus,
+		LastTrigger:      &trigger,
+		LastError:        stringPtr(sanitizeStatusError(message)),
+		CurrentBuildID:   nil,
+		LastFinishedAt:   stringPtr(runnerNow().UTC().Format(time.RFC3339)),
+	}
+	now := runnerNow().UTC().Format(time.RFC3339)
+	status.UpdatedAt = &now
+	fillBuildStatusCounts(cfg.StateDir, &status)
+	return runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_status.json"), status, 0600)
+}
+
+func fillBuildStatusCounts(stateDir string, status *buildStatusSummary) {
+	status.PendingTransfersCount = runnerJSONArrayLen(filepath.Join(stateDir, ".pending_transfers"))
+	status.NotifyPendingCount = runnerJSONArrayLen(filepath.Join(stateDir, ".notify_pending"))
+	if circuit, err := runnerReadCircuitState(stateDir); err == nil {
+		status.CircuitOpen = circuit.Open
+		status.CircuitConsecutiveFailures = circuit.ConsecutiveFailures
+	}
+}
+
+func runnerJSONArrayLen(path string) int {
+	var raw []json.RawMessage
+	if err := runnerReadJSONFile(path, &raw); err != nil {
+		return 0
+	}
+	return len(raw)
+}
+
+func sanitizeStatusError(s string) string {
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	s = strings.ReplaceAll(s, "\r", "\\n")
+	if len(s) > 500 {
+		s = s[:500]
+	}
+	return s
+}
+
+func stringPtr(s string) *string {
+	return &s
+}
+
+func currentBuildEnv(cfg RunnerConfig) buildEnvLog {
+	var hostname *string
+	if name, err := os.Hostname(); err == nil && name != "" {
+		hostname = &name
+	}
+	return buildEnvLog{
+		OS:            runtime.GOOS,
+		Arch:          runtime.GOARCH,
+		GoVersion:     runtime.Version(),
+		RunnerVersion: runnerBinaryVersion,
+		Hostname:      hostname,
+		PID:           os.Getpid(),
+		WatchMode:     cfg.WatchMode,
+		CacheEnabled:  cfg.BuildCacheEnabled,
+		RemoteBuild:   false,
+	}
+}
+
 func writeBuildLog(stateDir string, log buildLog) error {
 	return runnerAtomicWriteJSON(filepath.Join(stateDir, ".build_logs", log.ID+".json"), log, 0600)
 }
 
 func appendHistory(stateDir string, log buildLog) error {
 	path := filepath.Join(stateDir, ".build_history")
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
+	release, err := acquireStateFileLock(path)
+	if err != nil {
+		return err
+	}
+	defer release()
 	var pages *int
 	warnings := 0
 	sizeWarn := false
@@ -1321,12 +2574,14 @@ func appendHistory(stateDir string, log buildLog) error {
 		warnings = log.Report.WarningsCount
 		sizeWarn = log.Report.SizeWarn
 	}
-	outputSHA, _ := outputManifestSHA(filepath.Join(stateDir, "dist", "site"))
 	rec := historyRecord{
 		ID: log.ID, Branch: log.Branch, TargetFile: log.TargetFile, Status: log.TargetStatus,
+		Trigger:   log.Trigger,
 		StartedAt: log.StartedAt, FinishedAt: log.FinishedAt, DurationSeconds: log.DurationSeconds,
 		CommitSHA: log.Commit.SHA, BlobSHA: log.BlobSHA, Pages: pages, Warnings: warnings,
-		SizeWarn: sizeWarn, OutputSHA256: outputSHA, RollbackFrom: nil,
+		SizeWarn: sizeWarn, OutputSHA256: log.OutputSHA256, OutputSizeBytes: log.OutputSizeBytes,
+		RetryCount: log.RetryCount, FailureCategory: log.FailureCategory, CommitStatus: log.CommitStatus,
+		SnapshotID: log.SnapshotID, RollbackFrom: nil, ChainRunID: nil,
 	}
 	data, err := json.Marshal(rec)
 	if err != nil {
@@ -1336,29 +2591,214 @@ func appendHistory(stateDir string, log buildLog) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	if info, err := f.Stat(); err == nil && info.Size() > 0 {
+		var last [1]byte
+		if _, err := f.ReadAt(last[:], info.Size()-1); err != nil {
+			_ = f.Close()
+			return err
+		}
+		if last[0] != '\n' {
+			if _, err := f.Write([]byte("\n")); err != nil {
+				_ = f.Close()
+				return err
+			}
+		}
+	}
 	if _, err := f.Write(append(data, '\n')); err != nil {
+		_ = f.Close()
 		return err
 	}
-	return f.Sync()
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return syncParentDir(path)
+}
+
+func appendApprovalPending(cfg RunnerConfig, target BranchTarget, buildID, digest string, changedTargets []string) error {
+	record := map[string]any{
+		"id":              "approval-" + buildID,
+		"build_id":        buildID,
+		"status":          "pending",
+		"branch":          target.Branch,
+		"target_file":     target.TargetFile,
+		"target_files":    normalizedTargetFiles(target),
+		"target_sha":      digest,
+		"changed_targets": changedTargets,
+		"trigger":         "polling",
+		"created_at":      runnerNow().UTC().Format(time.RFC3339),
+	}
+	return appendRunnerJSONLine(filepath.Join(cfg.StateDir, ".approval_queue"), record, 0600)
+}
+
+func appendRunnerJSONLine(path string, v any, mode os.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return err
+	}
+	release, err := acquireStateFileLock(path)
+	if err != nil {
+		return err
+	}
+	defer release()
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, mode)
+	if err != nil {
+		return err
+	}
+	if info, err := f.Stat(); err == nil && info.Size() > 0 {
+		var last [1]byte
+		if _, err := f.ReadAt(last[:], info.Size()-1); err != nil {
+			_ = f.Close()
+			return err
+		}
+		if last[0] != '\n' {
+			if _, err := f.Write([]byte("\n")); err != nil {
+				_ = f.Close()
+				return err
+			}
+		}
+	}
+	if _, err := f.Write(append(data, '\n')); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Chmod(mode); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return syncParentDir(path)
+}
+
+func updateBuildTrends(cfg RunnerConfig, log buildLog) error {
+	if cfg.BuildTrendKeepCount <= 0 {
+		return nil
+	}
+	path := filepath.Join(cfg.StateDir, ".build_trends.json")
+	trends := buildTrendsFile{SchemaVersion: 1, Samples: []buildTrendSample{}, Summary: summarizeBuildTrends(nil)}
+	if err := runnerReadJSONFile(path, &trends); err != nil && !errors.Is(err, os.ErrNotExist) {
+		_ = backupCorruptJSON(path, slog.New(slog.NewTextHandler(io.Discard, nil)))
+		trends = buildTrendsFile{SchemaVersion: 1, Samples: []buildTrendSample{}}
+	}
+	trends.SchemaVersion = 1
+	trends.Samples = append(trends.Samples, buildTrendSample{
+		BuildID:         log.ID,
+		FinishedAt:      log.FinishedAt,
+		Branch:          log.Branch,
+		Trigger:         log.Trigger,
+		DurationSeconds: log.DurationSeconds,
+		Status:          log.Status,
+		TargetStatus:    log.TargetStatus,
+		Anomaly:         false,
+	})
+	if len(trends.Samples) > cfg.BuildTrendKeepCount {
+		trends.Samples = trends.Samples[len(trends.Samples)-cfg.BuildTrendKeepCount:]
+	}
+	trends.Summary = summarizeBuildTrends(trends.Samples)
+	return runnerAtomicWriteJSON(path, trends, 0600)
+}
+
+func summarizeBuildTrends(samples []buildTrendSample) buildTrendsSummary {
+	summary := buildTrendsSummary{Count: len(samples)}
+	if len(samples) == 0 {
+		return summary
+	}
+	values := make([]int64, 0, len(samples))
+	var total int64
+	for _, sample := range samples {
+		if sample.Anomaly {
+			summary.AnomalyCount++
+		}
+		duration := sample.DurationSeconds
+		if duration < 0 {
+			duration = 0
+		}
+		total += duration
+		values = append(values, duration)
+	}
+	sort.Slice(values, func(i, j int) bool { return values[i] < values[j] })
+	avg := float64(total) / float64(len(values))
+	median := percentileDuration(values, 0.5)
+	p95 := percentileDuration(values, 0.95)
+	summary.AvgSeconds = &avg
+	summary.MedianSeconds = &median
+	summary.P95Seconds = &p95
+	return summary
+}
+
+func percentileDuration(values []int64, p float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+	if len(values) == 1 {
+		return float64(values[0])
+	}
+	idx := int(float64(len(values)-1) * p)
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(values) {
+		idx = len(values) - 1
+	}
+	return float64(values[idx])
 }
 
 func outputManifestSHA(root string) (*string, error) {
-	if _, err := os.Stat(root); err != nil {
+	info, err := os.Lstat(root)
+	if err != nil {
 		return nil, err
 	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("invalid output root: %s", root)
+	}
 	parts := []string{}
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+	err = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
+		}
+		info, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Sys() == nil {
+			return fmt.Errorf("invalid output file: %s", path)
+		}
+		if stat, ok := info.Sys().(*syscall.Stat_t); ok && stat.Nlink > 1 {
+			return fmt.Errorf("hardlink output file: %s", path)
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		if invalidOutputRelativePath(rel) {
+			return fmt.Errorf("invalid output path: %s", rel)
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
+		after, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		if after.Size() != info.Size() || !after.ModTime().Equal(info.ModTime()) {
+			return fmt.Errorf("output changed during read: %s", path)
+		}
 		sum := sha256.Sum256(data)
-		rel, _ := filepath.Rel(root, path)
-		parts = append(parts, filepath.ToSlash(rel)+"\n"+hex.EncodeToString(sum[:])+"\n")
+		parts = append(parts, rel+"\n"+hex.EncodeToString(sum[:])+"\n")
 		return nil
 	})
 	if err != nil {
@@ -1370,15 +2810,34 @@ func outputManifestSHA(root string) (*string, error) {
 	return &out, nil
 }
 
+func invalidOutputRelativePath(rel string) bool {
+	if rel == "" || strings.HasPrefix(rel, "/") || strings.Contains(rel, "\\") || strings.Contains(rel, "\x00") || strings.Contains(rel, "\n") || strings.Contains(rel, "\r") {
+		return true
+	}
+	for _, part := range strings.Split(rel, "/") {
+		if part == "" || part == "." || part == ".." {
+			return true
+		}
+	}
+	return false
+}
+
 func outputSizeBytes(root string) (int64, bool) {
+	info, err := os.Lstat(root)
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return 0, false
+	}
 	var size int64
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+	err = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		info, err := d.Info()
+		info, err := os.Lstat(path)
 		if err != nil {
 			return err
+		}
+		if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("invalid output file: %s", path)
 		}
 		size += info.Size()
 		return nil
@@ -1386,7 +2845,7 @@ func outputSizeBytes(root string) (int64, bool) {
 	return size, err == nil
 }
 
-func cleanupBuildLogs(dir string, keep int, logger *slog.Logger) {
+func cleanupBuildLogs(dir string, keep int, archiveAfterDays int, logger *slog.Logger) {
 	if keep <= 0 {
 		return
 	}
@@ -1409,7 +2868,18 @@ func cleanupBuildLogs(dir string, keep int, logger *slog.Logger) {
 		}
 	}
 	sort.Slice(files, func(i, j int) bool { return files[i].mod.Before(files[j].mod) })
+	cutoff := time.Time{}
+	if archiveAfterDays > 0 {
+		cutoff = runnerNow().UTC().Add(-time.Duration(archiveAfterDays) * 24 * time.Hour)
+	}
 	for len(files) > keep {
+		if !cutoff.IsZero() && files[0].mod.Before(cutoff) {
+			if err := archiveBuildLog(dir, files[0].path); err != nil {
+				logger.Warn("LOG_ARCHIVE_FAILED: path=" + files[0].path)
+				files = files[1:]
+				continue
+			}
+		}
 		if err := os.Remove(files[0].path); err != nil {
 			logger.Warn("LOG_CLEANUP_FAILED: path=" + files[0].path)
 		}
@@ -1417,12 +2887,55 @@ func cleanupBuildLogs(dir string, keep int, logger *slog.Logger) {
 	}
 }
 
+func archiveBuildLog(dir, path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	archiveDir := filepath.Join(dir, "archive")
+	if err := os.MkdirAll(archiveDir, 0700); err != nil {
+		return err
+	}
+	outPath := filepath.Join(archiveDir, filepath.Base(path)+".gz")
+	f, err := os.OpenFile(outPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	gz, err := gzip.NewWriterLevel(f, gzip.BestCompression)
+	if err != nil {
+		_ = f.Close()
+		_ = os.Remove(outPath)
+		return err
+	}
+	if _, err := gz.Write(data); err != nil {
+		_ = gz.Close()
+		_ = f.Close()
+		_ = os.Remove(outPath)
+		return err
+	}
+	if err := gz.Close(); err != nil {
+		_ = f.Close()
+		_ = os.Remove(outPath)
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		_ = os.Remove(outPath)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(outPath)
+		return err
+	}
+	return syncParentDir(outPath)
+}
+
 func runnerBuildID(t time.Time, n int) string {
 	base := "b" + t.UTC().Format("20060102150405")
-	if n <= 1 {
+	if n <= 0 {
 		return base
 	}
-	return fmt.Sprintf("%s-%d", base, n)
+	return fmt.Sprintf("%s-%03d", base, n)
 }
 
 func repairCorruptJSONArray(path string, logger *slog.Logger) error {
@@ -1461,9 +2974,14 @@ func runnerReadJSONFile(path string, out any) error {
 }
 
 func runnerAtomicWriteJSON(path string, v any, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
+	release, err := acquireStateFileLock(path)
+	if err != nil {
+		return err
+	}
+	defer release()
 	data, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -1471,7 +2989,27 @@ func runnerAtomicWriteJSON(path string, v any, mode os.FileMode) error {
 	data = append(data, '\n')
 	base := filepath.Base(path)
 	tmp := filepath.Join(filepath.Dir(path), fmt.Sprintf(".%s.tmp.%d", base, os.Getpid()))
-	if err := os.WriteFile(tmp, data, mode); err != nil {
+	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
+	if err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmp)
+		return err
+	}
+	if err := f.Chmod(mode); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmp)
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmp)
+		return err
+	}
+	if err := f.Close(); err != nil {
 		_ = os.Remove(tmp)
 		return err
 	}
@@ -1479,5 +3017,43 @@ func runnerAtomicWriteJSON(path string, v any, mode os.FileMode) error {
 		_ = os.Remove(tmp)
 		return err
 	}
-	return nil
+	return syncParentDir(path)
+}
+
+func acquireStateFileLock(path string) (func(), error) {
+	lockPath := path + ".lock"
+	var lastErr error
+	for attempt := 0; attempt <= 100; attempt++ {
+		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+		if err == nil {
+			_, writeErr := fmt.Fprintf(f, "pid=%d\nstarted_at=%s\n", os.Getpid(), runnerNow().UTC().Format(time.RFC3339))
+			closeErr := f.Close()
+			if writeErr != nil || closeErr != nil {
+				_ = os.Remove(lockPath)
+				if writeErr != nil {
+					return func() {}, writeErr
+				}
+				return func() {}, closeErr
+			}
+			return func() { _ = os.Remove(lockPath) }, nil
+		}
+		lastErr = err
+		if !errors.Is(err, os.ErrExist) || attempt == 100 {
+			break
+		}
+		runnerSleep(100 * time.Millisecond)
+	}
+	if lastErr == nil {
+		lastErr = errors.New("state file lock failed")
+	}
+	return func() {}, lastErr
+}
+
+func syncParentDir(path string) error {
+	dir, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
 }
