@@ -9,6 +9,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base32"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -21,52 +22,93 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+	"unicode/utf8"
 )
 
 const (
+	apiBinaryName       = "adlaire-ci-api"
 	defaultAPIAddr      = "127.0.0.1:8765"
 	defaultQueueMaxSize = 3
 	apiTimeLayout       = "2006-01-02T15:04:05Z"
 	passwordIterations  = 260000
+	maxLoginCount       = int64(9223372036854775807)
 )
 
+var apiBinaryVersion = "V.0.0-dev"
+
+var errAPIQueueFull = errors.New("api queue full")
+var errAPIQueueConflict = errors.New("api queue conflict")
+var errAPIOutputTargetUnavailable = errors.New("api output target unavailable")
+var errAPIStateLockConflict = errors.New("api state file lock conflict")
+var errAPIPasswordMismatch = errors.New("api password mismatch")
+var errAPIPasswordUnchanged = errors.New("api password unchanged")
+var errAPITOTPInvalid = errors.New("api totp invalid")
+var errAPITokenCorrupt = errors.New("api token state corrupted")
+var errAPITokenLimit = errors.New("api token limit exceeded")
+var errAPITokenCollision = errors.New("api token hash collision")
+
 type APIConfig struct {
-	Addr      string
-	StateDir  string
-	Now       func() time.Time
-	RequestID func() (string, error)
+	Addr                   string
+	StateDir               string
+	Now                    func() time.Time
+	RequestID              func() (string, error)
+	HTTPClient             *http.Client
+	GitHubAPIBaseURL       string
+	CommandRunner          apiCommandRunner
+	SystemdDir             string
+	AuthTransactionTimeout time.Duration
+}
+
+type apiCommandRunner func(context.Context, string, ...string) (apiCommandResult, error)
+
+type apiCommandResult struct {
+	Stdout   string
+	ExitCode int
 }
 
 type APIServer struct {
-	cfg          APIConfig
-	startedAt    time.Time
-	mu           sync.Mutex
-	sessions     map[string]apiSession
-	loginTickets map[string]apiLoginTicket
-	totpSetup    *apiPendingTOTP
+	cfg              APIConfig
+	startedAt        time.Time
+	mu               sync.Mutex
+	sessions         map[string]apiSession
+	loginTickets     map[string]apiLoginTicket
+	totpSetup        *apiPendingTOTP
+	loginFailures    map[string]apiLoginFailure
+	authTransactions chan struct{}
 }
 
 type apiSession struct {
-	TokenHash  string
-	CreatedAt  string
-	ExpiresAt  string
-	LastUsedAt string
+	TokenHash              string
+	CreatedAt              string
+	ExpiresAt              string
+	LastUsedAt             string
+	PasswordChangeRequired bool
 }
 
 type apiLoginTicket struct {
-	MustChange string
-	ExpiresAt  time.Time
+	CredentialsFingerprint string
+	ExpiresAt              time.Time
 }
 
 type apiPendingTOTP struct {
 	SecretBase32 string
 	ExpiresAt    time.Time
+}
+
+type apiLoginFailure struct {
+	Count         int
+	LastFailureAt time.Time
+	LockedUntil   time.Time
 }
 
 type statusRecorder struct {
@@ -110,17 +152,14 @@ func statusResponseWriter(w http.ResponseWriter) (http.ResponseWriter, *statusRe
 }
 
 type apiCredentials struct {
-	PasswordHash  string  `json:"password_hash"`
-	Salt          string  `json:"salt"`
-	Algorithm     string  `json:"algorithm"`
-	Iterations    int     `json:"iterations"`
-	MustChange    bool    `json:"must_change"`
-	FailedCount   int     `json:"failed_count"`
-	LockedUntil   *string `json:"locked_until"`
-	CreatedAt     string  `json:"created_at"`
-	UpdatedAt     string  `json:"updated_at"`
-	LastLoginAt   *string `json:"last_login_at"`
-	LastFailureAt *string `json:"last_failure_at"`
+	PasswordHash string  `json:"password_hash"`
+	Salt         string  `json:"salt"`
+	Algorithm    string  `json:"algorithm"`
+	Iterations   int     `json:"iterations"`
+	MustChange   bool    `json:"must_change"`
+	LoginCount   int64   `json:"login_count"`
+	LastLoginAt  *string `json:"last_login_at"`
+	UpdatedAt    string  `json:"updated_at"`
 }
 
 type apiTOTPSecret struct {
@@ -133,6 +172,7 @@ type apiTOTPSecret struct {
 type apiBuildState struct {
 	Running                 bool             `json:"running"`
 	CurrentBuildID          *string          `json:"current_build_id"`
+	ActiveQueueEntry        map[string]any   `json:"active_queue_entry"`
 	Queued                  []map[string]any `json:"queued"`
 	LastStartedAt           *string          `json:"last_started_at"`
 	LastFinishedAt          *string          `json:"last_finished_at"`
@@ -173,6 +213,12 @@ type apiBranchTarget struct {
 	Src           string            `json:"src"`
 	Out           string            `json:"out"`
 	DeployTargets []apiDeployTarget `json:"deploy_targets"`
+}
+
+type apiOutputTarget struct {
+	Branch     string
+	TargetFile string
+	Out        string
 }
 
 type apiDeployTarget struct {
@@ -306,9 +352,32 @@ type apiAuthContextKey struct{}
 
 type apiAuthCaptureContextKey struct{}
 
+type apiRequestIDContextKey struct{}
+
 type apiAuthInfo struct {
-	AuthType string
-	Actor    *string
+	AuthType               string
+	Actor                  *string
+	Scopes                 []string
+	PasswordChangeRequired bool
+}
+
+type apiRateLimitPolicy struct {
+	Enabled bool                         `json:"enabled"`
+	Groups  map[string]apiRateLimitGroup `json:"groups"`
+}
+
+type apiRateLimitGroup struct {
+	WindowSeconds int `json:"window_seconds"`
+	MaxRequests   int `json:"max_requests"`
+}
+
+type apiRateLimitState struct {
+	Windows map[string]apiRateLimitWindow `json:"windows"`
+}
+
+type apiRateLimitWindow struct {
+	WindowStart string `json:"window_start"`
+	Count       int    `json:"count"`
 }
 
 var apiExactRouteMethods = map[string][]string{
@@ -317,6 +386,7 @@ var apiExactRouteMethods = map[string][]string{
 	"/api/alert-rules":             {http.MethodGet, http.MethodPost},
 	"/api/api-access-log":          {http.MethodGet},
 	"/api/api-rate-limit":          {http.MethodGet, http.MethodPost},
+	"/api/approvals":               {http.MethodGet},
 	"/api/audit-log":               {http.MethodGet},
 	"/api/auth/totp":               {http.MethodDelete},
 	"/api/auth/totp-confirm":       {http.MethodPost},
@@ -328,6 +398,7 @@ var apiExactRouteMethods = map[string][]string{
 	"/api/build/cancel":            {http.MethodPost},
 	"/api/build/force":             {http.MethodPost},
 	"/api/build/stream":            {http.MethodGet},
+	"/api/build-chain-config":      {http.MethodGet, http.MethodPost},
 	"/api/change-password":         {http.MethodPost},
 	"/api/circuit-breaker/reset":   {http.MethodPost},
 	"/api/config":                  {http.MethodGet, http.MethodPost},
@@ -382,6 +453,7 @@ var apiExactRouteMethods = map[string][]string{
 	"/api/snapshots":               {http.MethodGet},
 	"/api/stats":                   {http.MethodGet},
 	"/api/stats/build-duration":    {http.MethodGet},
+	"/api/stats/build-trends":      {http.MethodGet},
 	"/api/stats/timeline":          {http.MethodGet},
 	"/api/status":                  {http.MethodGet},
 	"/api/sysinfo":                 {http.MethodGet},
@@ -393,27 +465,251 @@ var apiExactRouteMethods = map[string][]string{
 	"/api/webhook-events":          {http.MethodGet},
 }
 
+var apiExactRouteQueryKeys = map[string]map[string]bool{
+	"/api/access-log":           {"limit": true, "offset": true},
+	"/api/api-access-log":       {"limit": true, "offset": true, "method": true, "path": true, "status": true},
+	"/api/audit-log":            {"limit": true, "offset": true, "actor": true, "action": true, "result": true},
+	"/api/config-log":           {"limit": true, "offset": true},
+	"/api/history":              {"page": true, "per_page": true, "trigger": true, "tag": true, "flagged": true, "failure_category": true},
+	"/api/logs":                 {"n": true, "q": true},
+	"/api/logs/search":          {"q": true, "from": true, "to": true, "level": true},
+	"/api/notify-log":           {"limit": true, "offset": true},
+	"/api/stats":                {"days": true},
+	"/api/stats/build-duration": {"n": true},
+	"/api/stats/build-trends":   {"n": true},
+	"/api/stats/timeline":       {"days": true},
+	"/api/webhook-events":       {"limit": true, "offset": true},
+}
+
 type apiTokenRecord struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	TokenHash string   `json:"token_hash"`
-	Scopes    []string `json:"scopes"`
-	CreatedAt string   `json:"created_at"`
-	RevokedAt *string  `json:"revoked_at"`
+	ID         string   `json:"id"`
+	Label      string   `json:"label"`
+	Scopes     []string `json:"scopes"`
+	TokenHash  string   `json:"token_hash"`
+	CreatedAt  string   `json:"created_at"`
+	LastUsedAt *string  `json:"last_used_at"`
+	ExpiresAt  *string  `json:"expires_at"`
+	RevokedAt  *string  `json:"revoked_at"`
+}
+
+type apiTokenFile struct {
+	Tokens []apiTokenRecord `json:"tokens"`
 }
 
 type apiConfigLogRecord struct {
-	At      string         `json:"at"`
-	Type    string         `json:"type"`
-	Changes map[string]any `json:"changes"`
+	At        string           `json:"at"`
+	Type      string           `json:"type"`
+	Action    string           `json:"action,omitempty"`
+	Actor     string           `json:"actor,omitempty"`
+	RequestID string           `json:"request_id,omitempty"`
+	Endpoint  string           `json:"endpoint,omitempty"`
+	Result    string           `json:"result,omitempty"`
+	Error     *string          `json:"error,omitempty"`
+	Diff      map[string][]any `json:"diff,omitempty"`
+	DiffText  string           `json:"diff_text,omitempty"`
+	Changes   map[string]any   `json:"changes,omitempty"`
+}
+
+func (record apiConfigLogRecord) MarshalJSON() ([]byte, error) {
+	type wireRecord struct {
+		At        string           `json:"at"`
+		Type      string           `json:"type"`
+		Action    string           `json:"action"`
+		Actor     string           `json:"actor"`
+		RequestID string           `json:"request_id"`
+		Endpoint  string           `json:"endpoint"`
+		Result    string           `json:"result"`
+		Error     *string          `json:"error"`
+		Diff      map[string][]any `json:"diff"`
+		DiffText  string           `json:"diff_text"`
+		Changes   map[string]any   `json:"changes,omitempty"`
+	}
+	action := firstNonEmpty(record.Action, apiConfigLogAction(record.Type))
+	actor := firstNonEmpty(record.Actor, "admin")
+	requestID := firstNonEmpty(record.RequestID, "00000000000000000000000000000000")
+	endpoint := firstNonEmpty(record.Endpoint, apiConfigLogEndpoint(record.Type))
+	result := firstNonEmpty(record.Result, "success")
+	diff := record.Diff
+	if diff == nil {
+		diff = apiConfigLogDiff(record.Changes)
+	}
+	diffText := record.DiffText
+	if diffText == "" {
+		diffText = apiConfigLogDiffText(diff)
+	}
+	return json.Marshal(wireRecord{
+		At:        record.At,
+		Type:      record.Type,
+		Action:    action,
+		Actor:     actor,
+		RequestID: requestID,
+		Endpoint:  endpoint,
+		Result:    result,
+		Error:     record.Error,
+		Diff:      diff,
+		DiffText:  diffText,
+		Changes:   record.Changes,
+	})
+}
+
+func apiConfigLogAction(logType string) string {
+	if strings.HasSuffix(logType, "_delete") || logType == "snapshot_delete" {
+		return "delete"
+	}
+	return "update"
+}
+
+func apiConfigLogEndpoint(logType string) string {
+	switch logType {
+	case "server_config":
+		return "POST /api/config"
+	case "log_level":
+		return "POST /api/log-level"
+	case "api_rate_limit":
+		return "POST /api/api-rate-limit"
+	case "access_control":
+		return "POST /api/access-control"
+	case "repo_config":
+		return "POST /api/repo-config"
+	case "branch_config":
+		return "POST /api/branch-config"
+	case "notify_config":
+		return "POST /api/notify-config"
+	case "schedule_interval":
+		return "POST /api/schedule/interval"
+	case "schedule_pause":
+		return "POST /api/schedule/pause"
+	case "schedule_resume":
+		return "POST /api/schedule/resume"
+	case "schedule_allowed_hours":
+		return "POST /api/schedule/allowed-hours"
+	case "schedule_force_interval":
+		return "POST /api/schedule/force-interval"
+	case "schedule_cooldown":
+		return "POST /api/schedule/cooldown"
+	case "history_comment":
+		return "POST /api/history/{id}/comment"
+	case "history_flag":
+		return "POST /api/history/{id}/flag"
+	case "history_tags":
+		return "POST /api/history/{id}/tags"
+	case "rollback":
+		return "POST /api/history/{id}/rollback"
+	case "circuit_breaker_reset":
+		return "POST /api/circuit-breaker/reset"
+	case "maintenance":
+		return "POST /api/maintenance"
+	case "pat_update":
+		return "POST /api/pat-update"
+	case "restore":
+		return "POST /api/restore"
+	case "webhook_config":
+		return "POST /api/webhook-config"
+	case "snapshot_delete":
+		return "DELETE /api/snapshots/{id}"
+	case "pipeline_config":
+		return "POST /api/pipeline-config"
+	case "build_chain_config":
+		return "POST /api/build-chain-config"
+	case "notes":
+		return "POST /api/notes"
+	case "smtp_config":
+		return "POST /api/smtp-config"
+	case "dashboard_layout":
+		return "POST /api/dashboard-layout"
+	case "hook":
+		return "POST /api/hooks"
+	case "hook_delete":
+		return "DELETE /api/hooks/{id}"
+	case "alert_rule":
+		return "POST /api/alert-rules"
+	case "alert_rule_delete":
+		return "DELETE /api/alert-rules/{id}"
+	case "tag_rule":
+		return "POST /api/tag-rules"
+	case "tag_rule_delete":
+		return "DELETE /api/tag-rules/{id}"
+	default:
+		return "POST /api/" + strings.ReplaceAll(strings.Trim(logType, "_"), "_", "-")
+	}
+}
+
+func apiConfigLogDiff(changes map[string]any) map[string][]any {
+	diff := map[string][]any{}
+	for _, key := range sortedMapKeys(changes) {
+		diff[key] = []any{nil, apiConfigLogMaskValue(key, changes[key])}
+	}
+	if len(diff) == 0 {
+		diff["change"] = []any{nil, true}
+	}
+	return diff
+}
+
+func apiConfigLogDiffText(diff map[string][]any) string {
+	keys := sortedMapKeysAnySlice(diff)
+	lines := make([]string, 0, len(keys))
+	for _, key := range keys {
+		pair := diff[key]
+		if len(pair) != 2 {
+			pair = []any{nil, pair}
+		}
+		before, _ := json.Marshal(pair[0])
+		after, _ := json.Marshal(pair[1])
+		lines = append(lines, key+": "+string(before)+" -> "+string(after))
+	}
+	if len(lines) == 0 {
+		return "change: null -> true"
+	}
+	return strings.Join(lines, "\n")
+}
+
+func sortedMapKeys(values map[string]any) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func sortedMapKeysAnySlice(values map[string][]any) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func apiConfigLogMaskValue(key string, value any) any {
+	lowerKey := strings.ToLower(key)
+	if strings.Contains(lowerKey, "password") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "pat") {
+		return "***"
+	}
+	switch typed := value.(type) {
+	case map[string]any:
+		return maskSecrets(typed)
+	default:
+		return value
+	}
+}
+
+type apiConfigValidationIssue struct {
+	Field   string `json:"field"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 type apiBuildStatus struct {
+	Status                *string `json:"status"`
+	LastBranch            *string `json:"last_branch"`
+	LastTargetFile        *string `json:"last_target_file"`
 	LastBlobSHA           *string `json:"last_blob_sha"`
 	LastCommitSHA         *string `json:"last_commit_sha"`
 	LastStartedAt         *string `json:"last_started_at"`
 	LastFinishedAt        *string `json:"last_finished_at"`
 	LastTargetStatus      *string `json:"last_target_status"`
+	LastDeployAt          *string `json:"last_deploy_at"`
 	LastDeployStatus      *string `json:"last_deploy_status"`
 	LastTrigger           *string `json:"last_trigger"`
 	PendingTransfersCount int     `json:"pending_transfers_count"`
@@ -424,6 +720,8 @@ type apiBuildStatus struct {
 
 type apiHistoryRecord struct {
 	ID              string   `json:"id"`
+	Branch          string   `json:"branch,omitempty"`
+	TargetFile      string   `json:"target_file,omitempty"`
 	BuildAt         string   `json:"build_at,omitempty"`
 	StartedAt       string   `json:"started_at,omitempty"`
 	FinishedAt      string   `json:"finished_at,omitempty"`
@@ -433,30 +731,387 @@ type apiHistoryRecord struct {
 	Status          string   `json:"status"`
 	Trigger         string   `json:"trigger,omitempty"`
 	DurationSeconds int64    `json:"duration_seconds"`
+	FailureCategory *string  `json:"failure_category,omitempty"`
 	Flagged         bool     `json:"flagged"`
 	Tags            []string `json:"tags"`
 	OutputSizeBytes *int64   `json:"output_size_bytes"`
+	OutputSHA256    *string  `json:"output_sha256,omitempty"`
 }
 
 type apiBuildLog struct {
-	ID              string         `json:"id"`
-	StartedAt       string         `json:"started_at"`
-	FinishedAt      string         `json:"finished_at"`
-	TargetStatus    string         `json:"target_status"`
-	Commit          map[string]any `json:"commit"`
-	Pipeline        apiPipelineLog `json:"pipeline"`
-	Warnings        []string       `json:"warnings"`
-	DurationSeconds int64          `json:"duration_seconds"`
-	Comment         *string        `json:"comment"`
-	Flagged         bool           `json:"flagged"`
-	Tags            []string       `json:"tags"`
-	OutputSHA256    string         `json:"output_sha256,omitempty"`
-	SHA256          string         `json:"sha256,omitempty"`
+	ID              string          `json:"id"`
+	Branch          string          `json:"branch,omitempty"`
+	TargetFile      string          `json:"target_file,omitempty"`
+	Status          string          `json:"status"`
+	StartedAt       string          `json:"started_at"`
+	FinishedAt      string          `json:"finished_at"`
+	TargetStatus    string          `json:"target_status"`
+	Commit          map[string]any  `json:"commit"`
+	Pipeline        apiPipelineLog  `json:"pipeline"`
+	Warnings        []string        `json:"warnings"`
+	DurationSeconds int64           `json:"duration_seconds"`
+	Report          *apiBuildReport `json:"report,omitempty"`
+	Error           *string         `json:"error,omitempty"`
+	Comment         *string         `json:"comment"`
+	Flagged         bool            `json:"flagged"`
+	Tags            []string        `json:"tags"`
+	OutputSHA256    string          `json:"output_sha256,omitempty"`
+	OutputSizeBytes *int64          `json:"output_size_bytes,omitempty"`
+	SHA256          string          `json:"sha256,omitempty"`
+	BuildMeta       *apiBuildMeta   `json:"build_meta,omitempty"`
+}
+
+type apiBuildReport struct {
+	Headings        int  `json:"headings"`
+	TablesCount     int  `json:"tables_count"`
+	CodeBlocksCount int  `json:"code_blocks_count"`
+	SizeWarn        bool `json:"size_warn"`
+}
+
+type apiBuildMeta struct {
+	BuildID   string `json:"build_id"`
+	CommitSHA string `json:"commit_sha"`
+	BuildAt   string `json:"build_at"`
+}
+
+type apiBuildStreamLogFrame struct {
+	Type string `json:"type"`
+	Line string `json:"line"`
+	At   string `json:"at"`
+}
+
+type apiBuildStreamEndFrame struct {
+	Type            string `json:"type"`
+	Status          string `json:"status"`
+	DurationSeconds *int64 `json:"duration_seconds"`
+}
+
+type apiBuildTrendFile struct {
+	SchemaVersion int                   `json:"schema_version"`
+	Samples       []apiBuildTrendSample `json:"samples"`
+	Summary       map[string]any        `json:"summary"`
+}
+
+type apiBuildTrendSample struct {
+	BuildID         string  `json:"build_id"`
+	FinishedAt      string  `json:"finished_at"`
+	Branch          string  `json:"branch"`
+	Trigger         string  `json:"trigger"`
+	DurationSeconds float64 `json:"duration_seconds"`
+	Status          string  `json:"status"`
+	TargetStatus    string  `json:"target_status"`
+	Anomaly         bool    `json:"anomaly"`
+}
+
+type apiBuildChainConfig struct {
+	Chains []apiBuildChainJob `json:"chains"`
+}
+
+type apiBuildChainJob struct {
+	ID         string   `json:"id"`
+	Branch     string   `json:"branch"`
+	TargetFile string   `json:"target_file"`
+	DependsOn  []string `json:"depends_on"`
+	Required   bool     `json:"required"`
+	Enabled    bool     `json:"enabled"`
+}
+
+type apiApprovalRecord struct {
+	ID               string  `json:"id"`
+	Status           string  `json:"status"`
+	Branch           string  `json:"branch"`
+	SHA              string  `json:"sha"`
+	Target           string  `json:"target"`
+	RequestedTrigger string  `json:"requested_trigger"`
+	RequestedForce   bool    `json:"requested_force"`
+	RequestedBy      string  `json:"requested_by"`
+	DeliveryID       *string `json:"delivery_id"`
+	CreatedAt        string  `json:"created_at"`
+	ExpiresAt        string  `json:"expires_at"`
+	DecidedAt        *string `json:"decided_at"`
+	DecidedBy        *string `json:"decided_by"`
+	QueueID          *string `json:"queue_id"`
+	Reason           *string `json:"reason"`
 }
 
 type apiPipelineLog struct {
 	Stdout string `json:"stdout"`
 	Stderr string `json:"stderr"`
+}
+
+type apiCLIConfig struct {
+	Addr            string
+	StateDir        string
+	InitCredentials bool
+	AddrProvided    bool
+}
+
+func RunAPI(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	cfg, handled, err := parseAPIArgs(args, stdout)
+	if err != nil {
+		var ee exitError
+		if errors.As(err, &ee) {
+			fmt.Fprintln(stderr, ee.Msg)
+			return ee.Code
+		}
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if handled {
+		return 0
+	}
+	if cfg.InitCredentials {
+		return executeAPIInitCredentials(cfg, stdin, stdout, stderr)
+	}
+	return executeAPIListener(cfg, stderr)
+}
+
+func parseAPIArgs(args []string, stdout io.Writer) (apiCLIConfig, bool, error) {
+	cfg := apiCLIConfig{Addr: defaultAPIAddr}
+	for _, arg := range args {
+		if arg == "--help" {
+			fmt.Fprintln(stdout, "Usage: adlaire-ci-api --state-dir path [--addr 127.0.0.1:port] [--init-credentials] [--version] [--help]")
+			return cfg, true, nil
+		}
+	}
+	for _, arg := range args {
+		if arg == "--version" {
+			fmt.Fprintf(stdout, "%s %s go=%s\n", apiBinaryName, apiBinaryVersion, runtime.Version())
+			return cfg, true, nil
+		}
+	}
+	for _, arg := range args {
+		if !validCLIArgToken(arg) {
+			return cfg, false, exitError{Code: 2, Msg: "invalid command line token"}
+		}
+	}
+	stateDirProvided := false
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--init-credentials" {
+			cfg.InitCredentials = true
+			continue
+		}
+		if strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") {
+			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
+		}
+		if !strings.HasPrefix(arg, "--") {
+			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
+		}
+		if strings.Contains(arg, "=") {
+			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
+		}
+		switch arg {
+		case "--state-dir", "--addr":
+			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
+				return cfg, false, exitError{Code: 2, Msg: "missing value: " + arg}
+			}
+			i++
+			if arg == "--state-dir" {
+				cfg.StateDir = args[i]
+				stateDirProvided = true
+			} else {
+				cfg.Addr = args[i]
+				cfg.AddrProvided = true
+			}
+		default:
+			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
+		}
+	}
+	if cfg.InitCredentials && cfg.AddrProvided {
+		return cfg, false, exitError{Code: 2, Msg: "--addr is not allowed with --init-credentials"}
+	}
+	if !stateDirProvided {
+		return cfg, false, exitError{Code: 2, Msg: "state directory is required"}
+	}
+	if err := validateAPIStateDir(cfg.StateDir); err != nil {
+		return cfg, false, err
+	}
+	if !cfg.InitCredentials {
+		if err := validateAPIListenAddress(cfg.Addr); err != nil {
+			return cfg, false, err
+		}
+	}
+	return cfg, false, nil
+}
+
+func validateAPIStateDir(path string) error {
+	if path == "" {
+		return exitError{Code: 2, Msg: "state directory must not be empty"}
+	}
+	if !filepath.IsAbs(path) {
+		return exitError{Code: 2, Msg: "state directory must be absolute: " + path}
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return exitError{Code: 2, Msg: "state directory not found: " + path}
+		}
+		return exitError{Code: 2, Msg: "state directory not found: " + path}
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return exitError{Code: 2, Msg: "state directory must not be symlink: " + path}
+	}
+	if !info.IsDir() {
+		return exitError{Code: 2, Msg: "state path is not directory: " + path}
+	}
+	return nil
+}
+
+func validateAPIListenAddress(addr string) error {
+	host, portText, err := net.SplitHostPort(addr)
+	if err != nil || host != "127.0.0.1" || portText == "" || (len(portText) > 1 && portText[0] == '0') {
+		return exitError{Code: 2, Msg: "invalid listen address: " + addr}
+	}
+	port, err := strconv.Atoi(portText)
+	if err != nil || port < 1 || port > 65535 {
+		return exitError{Code: 2, Msg: "invalid listen address: " + addr}
+	}
+	return nil
+}
+
+func executeAPIInitCredentials(cfg apiCLIConfig, stdin io.Reader, stdout, stderr io.Writer) int {
+	credentialsPath := filepath.Join(cfg.StateDir, ".admin_credentials")
+	if _, err := os.Stat(credentialsPath); err == nil {
+		fmt.Fprintln(stderr, "credentials already exist")
+		return 2
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		fmt.Fprintln(stderr, "credentials write failed")
+		return 1
+	}
+	if apiInputIsTerminal(stdin) {
+		fmt.Fprintln(stderr, "initial password stdin must not be terminal")
+		return 2
+	}
+	password, ok, err := readInitialPassword(stdin)
+	if err != nil {
+		fmt.Fprintln(stderr, "password input failed")
+		return 1
+	}
+	if !ok {
+		fmt.Fprintln(stderr, "invalid initial password")
+		return 2
+	}
+	if err := InitCredentials(cfg.StateDir, password, time.Now().UTC()); err != nil {
+		if err.Error() == "credentials already exist" {
+			fmt.Fprintln(stderr, "credentials already exist")
+			return 2
+		}
+		fmt.Fprintln(stderr, "credentials write failed")
+		return 1
+	}
+	fmt.Fprintln(stdout, "credentials initialized")
+	return 0
+}
+
+func apiInputIsTerminal(stdin io.Reader) bool {
+	statReader, ok := stdin.(interface {
+		Stat() (os.FileInfo, error)
+	})
+	if !ok {
+		return false
+	}
+	info, err := statReader.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
+}
+
+func readInitialPassword(stdin io.Reader) (string, bool, error) {
+	data, err := io.ReadAll(io.LimitReader(stdin, 514))
+	if err != nil {
+		return "", false, err
+	}
+	defer zeroBytes(data)
+	if len(data) == 0 || len(data) >= 514 || data[len(data)-1] != '\n' || bytes.Count(data, []byte{'\n'}) != 1 {
+		return "", false, nil
+	}
+	passwordBytes := data[:len(data)-1]
+	if !validInitialPasswordBytes(passwordBytes) {
+		return "", false, nil
+	}
+	return string(passwordBytes), true, nil
+}
+
+func validInitialPasswordBytes(password []byte) bool {
+	if bytes.ContainsAny(password, "\n\r\x00") || !utf8.Valid(password) {
+		return false
+	}
+	runeCount := utf8.RuneCount(password)
+	return runeCount >= 8 && runeCount <= 128
+}
+
+func validInitialPasswordString(password string) bool {
+	if strings.ContainsAny(password, "\n\r\x00") || !utf8.ValidString(password) {
+		return false
+	}
+	runeCount := utf8.RuneCountInString(password)
+	return runeCount >= 8 && runeCount <= 128
+}
+
+func zeroBytes(data []byte) {
+	for i := range data {
+		data[i] = 0
+	}
+}
+
+func executeAPIListener(cfg apiCLIConfig, stderr io.Writer) int {
+	credentialsPath := filepath.Join(cfg.StateDir, ".admin_credentials")
+	if err := validateCredentials(credentialsPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintln(stderr, "credentials are not initialized")
+			return 2
+		}
+		fmt.Fprintln(stderr, "credentials are invalid")
+		return 2
+	}
+	server, err := NewAPIServer(APIConfig{Addr: cfg.Addr, StateDir: cfg.StateDir})
+	if err != nil {
+		fmt.Fprintln(stderr, "credentials are invalid")
+		return 2
+	}
+	httpServer := server.HTTPServer()
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- httpServer.ListenAndServe()
+	}()
+	signals := make(chan os.Signal, 2)
+	signal.Notify(signals, syscall.SIGTERM, os.Interrupt)
+	defer signal.Stop(signals)
+	select {
+	case err := <-errCh:
+		if errors.Is(err, http.ErrServerClosed) {
+			return 0
+		}
+		fmt.Fprintln(stderr, "listen failed")
+		return 1
+	case <-signals:
+		return shutdownAPIHTTPServer(httpServer, errCh, signals, stderr)
+	}
+}
+
+func shutdownAPIHTTPServer(server *http.Server, errCh <-chan error, signals <-chan os.Signal, stderr io.Writer) int {
+	done := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			done <- err
+			return
+		}
+		done <- <-errCh
+	}()
+	select {
+	case <-signals:
+		_ = server.Close()
+		fmt.Fprintln(stderr, "shutdown failed")
+		return 1
+	case err := <-done:
+		if errors.Is(err, http.ErrServerClosed) {
+			return 0
+		}
+		_ = server.Close()
+		fmt.Fprintln(stderr, "shutdown failed")
+		return 1
+	}
 }
 
 func NewAPIServer(cfg APIConfig) (*APIServer, error) {
@@ -475,10 +1130,25 @@ func NewAPIServer(cfg APIConfig) (*APIServer, error) {
 	if cfg.RequestID == nil {
 		cfg.RequestID = newAPIRequestID
 	}
+	if cfg.HTTPClient == nil {
+		cfg.HTTPClient = &http.Client{Timeout: 10 * time.Second}
+	}
+	if cfg.GitHubAPIBaseURL == "" {
+		cfg.GitHubAPIBaseURL = "https://api.github.com"
+	}
+	if cfg.CommandRunner == nil {
+		cfg.CommandRunner = runAPICommand
+	}
+	if cfg.SystemdDir == "" {
+		cfg.SystemdDir = "/etc/systemd/system"
+	}
+	if cfg.AuthTransactionTimeout <= 0 {
+		cfg.AuthTransactionTimeout = 10 * time.Second
+	}
 	if err := validateCredentials(filepath.Join(cfg.StateDir, ".admin_credentials")); err != nil {
 		return nil, err
 	}
-	return &APIServer{cfg: cfg, startedAt: cfg.Now().UTC(), sessions: map[string]apiSession{}, loginTickets: map[string]apiLoginTicket{}}, nil
+	return &APIServer{cfg: cfg, startedAt: cfg.Now().UTC(), sessions: map[string]apiSession{}, loginTickets: map[string]apiLoginTicket{}, loginFailures: map[string]apiLoginFailure{}, authTransactions: make(chan struct{}, 1)}, nil
 }
 
 func apiRouteMethods(path string) ([]string, bool) {
@@ -496,9 +1166,18 @@ func apiRouteMethods(path string) ([]string, bool) {
 		return []string{http.MethodDelete}, true
 	case strings.HasPrefix(path, "/api/hooks/"):
 		return apiHookRouteMethods(path)
+	case strings.HasPrefix(path, "/api/approvals/"):
+		return apiApprovalRouteMethods(path)
 	default:
 		return nil, false
 	}
+}
+
+func apiRouteQueryKeys(path string) map[string]bool {
+	if allowed, ok := apiExactRouteQueryKeys[path]; ok {
+		return allowed
+	}
+	return nil
 }
 
 func apiHistoryRouteMethods(path string) ([]string, bool) {
@@ -550,6 +1229,20 @@ func apiHookRouteMethods(path string) ([]string, bool) {
 	return []string{http.MethodDelete}, true
 }
 
+func apiApprovalRouteMethods(path string) ([]string, bool) {
+	rest := strings.Trim(strings.TrimPrefix(path, "/api/approvals/"), "/")
+	id, action, ok := strings.Cut(rest, "/")
+	if !ok || id == "" {
+		return nil, false
+	}
+	switch action {
+	case "approve", "reject":
+		return []string{http.MethodPost}, true
+	default:
+		return nil, false
+	}
+}
+
 func apiMethodAllowed(method string, methods []string) bool {
 	for _, allowed := range methods {
 		if method == allowed {
@@ -563,8 +1256,8 @@ func InitCredentials(stateDir, password string, now time.Time) error {
 	if !filepath.IsAbs(stateDir) {
 		return fmt.Errorf("state directory must be absolute: %s", stateDir)
 	}
-	if password == "" {
-		return errors.New("password must not be empty")
+	if !validInitialPasswordString(password) {
+		return errors.New("invalid initial password")
 	}
 	path := filepath.Join(stateDir, ".admin_credentials")
 	if _, err := os.Stat(path); err == nil {
@@ -572,7 +1265,7 @@ func InitCredentials(stateDir, password string, now time.Time) error {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	salt, err := randomHex(16)
+	salt, err := randomHex(32)
 	if err != nil {
 		return err
 	}
@@ -583,7 +1276,8 @@ func InitCredentials(stateDir, password string, now time.Time) error {
 		Algorithm:    "sha256_iter_v1",
 		Iterations:   passwordIterations,
 		MustChange:   true,
-		CreatedAt:    at,
+		LoginCount:   0,
+		LastLoginAt:  nil,
 		UpdatedAt:    at,
 	}
 	return atomicWriteJSON(path, cred, 0600)
@@ -616,6 +1310,7 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/stats", s.withAuth(s.handleStats))
 	mux.HandleFunc("/api/stats/timeline", s.withAuth(s.handleStatsTimeline))
 	mux.HandleFunc("/api/stats/build-duration", s.withAuth(s.handleStatsBuildDuration))
+	mux.HandleFunc("/api/stats/build-trends", s.withAuth(s.handleStatsBuildTrends))
 	mux.HandleFunc("/api/output-meta", s.withAuth(s.handleOutputMeta))
 	mux.HandleFunc("/api/dashboard", s.withAuth(s.handleDashboard))
 	mux.HandleFunc("/api/notify-config", s.withAuth(s.handleNotifyConfig))
@@ -667,6 +1362,7 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/hooks/", s.withAuth(s.handleHookPath))
 	mux.HandleFunc("/api/verify-output", s.withAuth(s.handleVerifyOutput))
 	mux.HandleFunc("/api/pipeline-config", s.withAuth(s.handlePipelineConfig))
+	mux.HandleFunc("/api/build-chain-config", s.withAuth(s.handleBuildChainConfig))
 	mux.HandleFunc("/api/notes", s.withAuth(s.handleNotes))
 	mux.HandleFunc("/api/dashboard-layout", s.withAuth(s.handleDashboardLayout))
 	mux.HandleFunc("/api/smtp-config", s.withAuth(s.handleSMTPConfig))
@@ -676,6 +1372,8 @@ func (s *APIServer) Handler() http.Handler {
 	mux.HandleFunc("/api/maintenance/enable", s.withAuth(s.handleMaintenanceEnable))
 	mux.HandleFunc("/api/maintenance/disable", s.withAuth(s.handleMaintenanceDisable))
 	mux.HandleFunc("/api/queue", s.withAuth(s.handleQueue))
+	mux.HandleFunc("/api/approvals", s.withAuth(s.handleApprovals))
+	mux.HandleFunc("/api/approvals/", s.withAuth(s.handleApprovalPath))
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "Not found")
 	})
@@ -695,6 +1393,7 @@ func (s *APIServer) Handler() http.Handler {
 		w.Header().Set("X-Request-Id", requestID)
 		authCapture := &apiAuthInfo{AuthType: "none"}
 		r = r.WithContext(context.WithValue(r.Context(), apiAuthCaptureContextKey{}, authCapture))
+		r = r.WithContext(context.WithValue(r.Context(), apiRequestIDContextKey{}, requestID))
 		rw, rec := statusResponseWriter(w)
 		if methods, ok := apiRouteMethods(r.URL.Path); !ok {
 			writeError(rw, http.StatusNotFound, "Not found")
@@ -732,6 +1431,17 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodPost) {
 		return
 	}
+	if !s.enforceAPIRateLimit(w, r, apiAuthInfo{AuthType: "anonymous"}, "login") {
+		return
+	}
+	if !validateRouteQuery(w, r) {
+		return
+	}
+	releaseAuthTransaction, ok := s.acquireAuthTransaction(w, r)
+	if !ok {
+		return
+	}
+	defer releaseAuthTransaction()
 	var req struct {
 		Password string `json:"password"`
 	}
@@ -742,24 +1452,69 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeValidation(w, "password", "required")
 		return
 	}
+	if s.loginLockActive(r) {
+		if err := s.appendAuthAccessLog(r, "login_locked", "denied", "too_many_attempts"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := s.appendSecurityAudit(r, "permission_denied", "anonymous", nil, "auth", "login", "denied"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeError(w, http.StatusTooManyRequests, "Too many attempts")
+		return
+	}
 	path := filepath.Join(s.cfg.StateDir, ".admin_credentials")
-	cred, err := readCredentials(path)
+	cred, err := readCredentialsLocked(path)
 	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	now := s.nowString()
-	if cred.PasswordHash != hashPassword(req.Password, cred.Salt) {
-		cred.FailedCount++
-		cred.LastFailureAt = &now
-		_ = atomicWriteJSON(path, cred, 0600)
+	if !passwordHashEqual(cred.PasswordHash, hashPassword(req.Password, cred.Salt)) {
+		s.recordLoginFailure(r)
+		if err := s.appendAuthAccessLog(r, "login_failure", "failure", "password_mismatch"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := s.appendSecurityAudit(r, "login_failure", "anonymous", nil, "auth", "login", "failure"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	cred.FailedCount = 0
-	cred.LastLoginAt = &now
-	if err := atomicWriteJSON(path, cred, 0600); err != nil {
+	s.clearLoginFailure(r)
+	totp, err := readTOTPSecretLocked(filepath.Join(s.cfg.StateDir, ".totp_secret"))
+	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if totp.Enabled {
+		ticket, err := randomToken()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := s.appendAuthAccessLog(r, "totp_required", "success", ""); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := s.appendSecurityAudit(r, "totp_required", "anonymous", nil, "auth", "login", "success"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		s.mu.Lock()
+		s.loginTickets[tokenHash(ticket)] = apiLoginTicket{CredentialsFingerprint: credentialsFingerprint(cred), ExpiresAt: s.cfg.Now().UTC().Add(5 * time.Minute)}
+		s.mu.Unlock()
+		writeJSON(w, http.StatusOK, map[string]any{"totp_required": true, "ticket": ticket})
 		return
 	}
 	token, err := randomToken()
@@ -767,23 +1522,42 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	mustChange := "none"
-	if cred.MustChange {
-		mustChange = "prompt"
-	}
-	if totp, err := readTOTPSecret(filepath.Join(s.cfg.StateDir, ".totp_secret")); err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	} else if totp.Enabled {
-		ticket, err := randomToken()
-		if err != nil {
+	now := s.nowString()
+	cred, err = updateCredentialsLocked(path, func(current apiCredentials) (apiCredentials, bool, error) {
+		if !passwordHashEqual(current.PasswordHash, hashPassword(req.Password, current.Salt)) {
+			return current, false, errAPIPasswordMismatch
+		}
+		advanceCredentialsLogin(&current, now)
+		return current, true, nil
+	})
+	if errors.Is(err, errAPIPasswordMismatch) {
+		s.recordLoginFailure(r)
+		if logErr := s.appendAuthAccessLog(r, "login_failure", "failure", "password_mismatch"); logErr != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		s.mu.Lock()
-		s.loginTickets[tokenHash(ticket)] = apiLoginTicket{MustChange: mustChange, ExpiresAt: s.cfg.Now().UTC().Add(5 * time.Minute)}
-		s.mu.Unlock()
-		writeJSON(w, http.StatusOK, map[string]any{"must_change": mustChange, "totp_required": true, "ticket": ticket})
+		if logErr := s.appendSecurityAudit(r, "login_failure", "anonymous", nil, "auth", "login", "failure"); logErr != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	mustChange := credentialsMustChange(&cred)
+	if err := s.appendAuthAccessLog(r, "login_success", "success", ""); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if err := s.appendSecurityAudit(r, "login_success", "anonymous", nil, "auth", "login", "success"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	timeoutSeconds := 28800
@@ -792,7 +1566,7 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	expires := s.cfg.Now().UTC().Add(time.Duration(timeoutSeconds) * time.Second).Format(apiTimeLayout)
 	s.mu.Lock()
-	s.sessions[tokenHash(token)] = apiSession{TokenHash: tokenHash(token), CreatedAt: now, ExpiresAt: expires, LastUsedAt: now}
+	s.sessions[tokenHash(token)] = apiSession{TokenHash: tokenHash(token), CreatedAt: now, ExpiresAt: expires, LastUsedAt: now, PasswordChangeRequired: mustChange == "forced"}
 	s.mu.Unlock()
 	writeJSON(w, http.StatusOK, map[string]any{"token": token, "must_change": mustChange})
 }
@@ -801,6 +1575,17 @@ func (s *APIServer) handleLoginTOTP(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodPost) {
 		return
 	}
+	if !s.enforceAPIRateLimit(w, r, apiAuthInfo{AuthType: "anonymous"}, "login") {
+		return
+	}
+	if !validateRouteQuery(w, r) {
+		return
+	}
+	releaseAuthTransaction, ok := s.acquireAuthTransaction(w, r)
+	if !ok {
+		return
+	}
+	defer releaseAuthTransaction()
 	var req struct {
 		Ticket string `json:"ticket"`
 		Code   string `json:"code"`
@@ -824,16 +1609,58 @@ func (s *APIServer) handleLoginTOTP(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.Unlock()
 	if !ok || !s.cfg.Now().UTC().Before(ticket.ExpiresAt) {
-		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		s.writeTOTPLoginFailure(w, r)
 		return
 	}
-	totp, err := readTOTPSecret(filepath.Join(s.cfg.StateDir, ".totp_secret"))
-	if err != nil || !totp.Enabled || totp.SecretBase32 == nil || !verifyTOTPCode(*totp.SecretBase32, req.Code, s.cfg.Now().UTC()) {
-		writeError(w, http.StatusUnauthorized, "Unauthorized")
+	totpPath := filepath.Join(s.cfg.StateDir, ".totp_secret")
+	totp, err := readTOTPSecretLocked(totpPath)
+	if err != nil || !totp.Enabled || totp.SecretBase32 == nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
+		s.writeTOTPLoginFailure(w, r)
+		return
+	}
+	step, ok := verifyTOTPCodeStep(*totp.SecretBase32, req.Code, s.cfg.Now().UTC())
+	if !ok || (totp.LastAcceptedStep != nil && step <= *totp.LastAcceptedStep) {
+		s.writeTOTPLoginFailure(w, r)
+		return
+	}
+	credPath := filepath.Join(s.cfg.StateDir, ".admin_credentials")
+	cred, err := readCredentialsLocked(credPath)
+	if err != nil || !passwordHashEqual(credentialsFingerprint(cred), ticket.CredentialsFingerprint) {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
+		s.writeTOTPLoginFailure(w, r)
 		return
 	}
 	token, err := randomToken()
 	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	totp, err = updateTOTPSecretLocked(totpPath, func(current apiTOTPSecret) (apiTOTPSecret, bool, error) {
+		if !current.Enabled || current.SecretBase32 == nil || !passwordHashEqual(*current.SecretBase32, *totp.SecretBase32) {
+			return current, false, errAPITOTPInvalid
+		}
+		if current.LastAcceptedStep != nil && step <= *current.LastAcceptedStep {
+			return current, false, errAPITOTPInvalid
+		}
+		current.LastAcceptedStep = &step
+		return current, true, nil
+	})
+	if errors.Is(err, errAPITOTPInvalid) {
+		s.writeTOTPLoginFailure(w, r)
+		return
+	}
+	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
@@ -842,11 +1669,39 @@ func (s *APIServer) handleLoginTOTP(w http.ResponseWriter, r *http.Request) {
 		timeoutSeconds = cfg.SessionTimeoutSeconds
 	}
 	now := s.nowString()
+	cred, err = updateCredentialsLocked(credPath, func(current apiCredentials) (apiCredentials, bool, error) {
+		if !passwordHashEqual(credentialsFingerprint(current), ticket.CredentialsFingerprint) {
+			return current, false, errAPIPasswordMismatch
+		}
+		advanceCredentialsLogin(&current, now)
+		return current, true, nil
+	})
+	if errors.Is(err, errAPIPasswordMismatch) {
+		s.writeTOTPLoginFailure(w, r)
+		return
+	}
+	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	mustChange := credentialsMustChange(&cred)
+	if err := s.appendAuthAccessLog(r, "login_success", "success", ""); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if err := s.appendSecurityAudit(r, "login_success", "anonymous", nil, "auth", "login", "success"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 	expires := s.cfg.Now().UTC().Add(time.Duration(timeoutSeconds) * time.Second).Format(apiTimeLayout)
 	s.mu.Lock()
-	s.sessions[tokenHash(token)] = apiSession{TokenHash: tokenHash(token), CreatedAt: now, ExpiresAt: expires, LastUsedAt: now}
+	s.sessions[tokenHash(token)] = apiSession{TokenHash: tokenHash(token), CreatedAt: now, ExpiresAt: expires, LastUsedAt: now, PasswordChangeRequired: mustChange == "forced"}
 	s.mu.Unlock()
-	writeJSON(w, http.StatusOK, map[string]any{"token": token, "must_change": ticket.MustChange})
+	writeJSON(w, http.StatusOK, map[string]any{"token": token, "must_change": mustChange})
 }
 
 func (s *APIServer) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -857,6 +1712,15 @@ func (s *APIServer) handleLogout(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	delete(s.sessions, tokenHash(token))
 	s.mu.Unlock()
+	if err := s.appendAuthAccessLog(r, "logout", "success", ""); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	actorType, actorID := apiAuditActor(r)
+	if err := s.appendSecurityAudit(r, "logout", actorType, actorID, "auth", "logout", "success"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Logged out"})
 }
 
@@ -879,39 +1743,63 @@ func (s *APIServer) handleChangePassword(w http.ResponseWriter, r *http.Request)
 		writeValidation(w, "new_password", "must be at least 12 characters")
 		return
 	}
-	path := filepath.Join(s.cfg.StateDir, ".admin_credentials")
-	cred, err := readCredentials(path)
+	salt, err := randomHex(32)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	if cred.PasswordHash != hashPassword(req.CurrentPassword, cred.Salt) {
+	path := filepath.Join(s.cfg.StateDir, ".admin_credentials")
+	now := s.nowString()
+	_, err = updateCredentialsLocked(path, func(current apiCredentials) (apiCredentials, bool, error) {
+		currentHash := hashPassword(req.CurrentPassword, current.Salt)
+		if !passwordHashEqual(current.PasswordHash, currentHash) {
+			return current, false, errAPIPasswordMismatch
+		}
+		if passwordHashEqual(currentHash, hashPassword(req.NewPassword, current.Salt)) {
+			return current, false, errAPIPasswordUnchanged
+		}
+		current.Salt = salt
+		current.PasswordHash = hashPassword(req.NewPassword, salt)
+		current.MustChange = false
+		current.UpdatedAt = now
+		return current, true, nil
+	})
+	if errors.Is(err, errAPIPasswordMismatch) {
 		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	salt, err := randomHex(16)
+	if errors.Is(err, errAPIPasswordUnchanged) {
+		writeValidation(w, "new_password", "must be different from current password")
+		return
+	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	now := s.nowString()
-	cred.Salt = salt
-	cred.PasswordHash = hashPassword(req.NewPassword, salt)
-	cred.MustChange = false
-	cred.UpdatedAt = now
-	cred.FailedCount = 0
-	if err := atomicWriteJSON(path, cred, 0600); err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	currentHash := tokenHash(bearerToken(r))
-	s.mu.Lock()
-	for key := range s.sessions {
-		if key != currentHash {
-			delete(s.sessions, key)
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
 		}
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	currentSessionHash := tokenHash(bearerToken(r))
+	s.mu.Lock()
+	for key, session := range s.sessions {
+		if key != currentSessionHash {
+			delete(s.sessions, key)
+			continue
+		}
+		session.PasswordChangeRequired = false
+		s.sessions[key] = session
 	}
 	s.mu.Unlock()
+	if err := s.appendAuthAccessLog(r, "password_change", "success", ""); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	actorType, actorID := apiAuditActor(r)
+	if err := s.appendSecurityAudit(r, "password_change", actorType, actorID, "auth", "password", "success"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Password changed"})
 }
 
@@ -919,47 +1807,62 @@ func (s *APIServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
-	status := "ok"
-	items := []map[string]any{
-		{"name": "api", "status": "ok"},
+	if !validateRouteQuery(w, r) {
+		return
 	}
 	lastBuildAt := any(nil)
 	lastBuildStatus := "none"
+	lastDeployAt := any(nil)
 	lastDeployStatus := any(nil)
-	pendingTransfersCount := 0
-	if st, ok, err := readBuildStatus(filepath.Join(s.cfg.StateDir, ".build_status.json")); err != nil {
-		status = "degraded"
-		items = append(items, map[string]any{"name": "build_status", "status": "error"})
-	} else if !ok {
-		status = "degraded"
-		items = append(items, map[string]any{"name": "build_status", "status": "warn"})
-	} else {
-		items = append(items, map[string]any{"name": "build_status", "status": "ok"})
-		lastBuildAt = coalesceString(st.LastFinishedAt, st.LastStartedAt)
-		lastBuildStatus = stringOr(st.LastTargetStatus, "none")
+	checks := []string{}
+	statusPath := filepath.Join(s.cfg.StateDir, ".build_status.json")
+	if st, ok, check := readBuildStatusForHealth(statusPath); ok {
+		lastBuildAt = st.LastFinishedAt
+		lastBuildStatus = stringOr(st.Status, "none")
+		lastDeployAt = st.LastDeployAt
 		lastDeployStatus = st.LastDeployStatus
-		pendingTransfersCount = st.PendingTransfersCount
-	}
-	if lastBuildAt == nil {
-		history := readHistory(filepath.Join(s.cfg.StateDir, ".build_history"))
-		if len(history) > 0 {
-			lastBuildAt = firstNonEmpty(history[0].FinishedAt, history[0].StartedAt, history[0].BuildAt)
-			lastBuildStatus = history[0].Status
+	} else {
+		if check != "" {
+			checks = append(checks, check)
 		}
+		history, err := readHealthHistory(filepath.Join(s.cfg.StateDir, ".build_history"))
+		if err != nil {
+			checks = append(checks, "build_history_read_error")
+		} else if latest := latestStatusSummaryHistory(history); latest != nil {
+			lastBuildAt = nullableString(firstNonEmpty(latest.FinishedAt, latest.StartedAt, latest.BuildAt))
+			lastBuildStatus = normalizeHealthBuildStatus(latest.Status)
+		}
+	}
+	pendingTransfers, err := readJSONArrayCount(filepath.Join(s.cfg.StateDir, ".pending_transfers"))
+	if err != nil {
+		pendingTransfers = 0
+		checks = append(checks, "pending_transfers_read_error")
+	} else if pendingTransfers > 0 {
+		checks = append(checks, "pending_transfers_present")
+	}
+	if _, err := readJSONArrayCount(filepath.Join(s.cfg.StateDir, ".notify_pending")); err != nil {
+		checks = append(checks, "notify_pending_read_error")
+	}
+	if healthRunnerStale(filepath.Join(s.cfg.StateDir, ".build_status.json"), s.cfg.Now().UTC()) {
+		checks = append(checks, "runner_stale")
 	}
 	uptime := int64(s.cfg.Now().UTC().Sub(s.startedAt).Seconds())
 	if uptime < 0 {
 		uptime = 0
 	}
+	status := "ok"
+	if len(checks) > 0 {
+		status = "degraded"
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":                  status,
-		"checked_at":              s.nowString(),
-		"uptime_seconds":          uptime,
-		"last_build_at":           lastBuildAt,
-		"last_build_status":       lastBuildStatus,
-		"last_deploy_status":      lastDeployStatus,
-		"pending_transfers_count": pendingTransfersCount,
-		"items":                   items,
+		"status":             status,
+		"last_build_at":      lastBuildAt,
+		"last_build_status":  lastBuildStatus,
+		"last_deploy_at":     lastDeployAt,
+		"last_deploy_status": lastDeployStatus,
+		"pending_transfers":  pendingTransfers,
+		"uptime_seconds":     uptime,
+		"checks":             checks,
 	})
 }
 
@@ -999,7 +1902,15 @@ func (s *APIServer) handleRevokeSessions(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	s.mu.Unlock()
-	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".access_log"), apiLogRecord{At: s.nowString(), Action: "sessions_revoke_all", Result: "success"})
+	if err := s.appendAuthAccessLog(r, "session_revoke_all", "success", ""); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	actorType, actorID := apiAuditActor(r)
+	if err := s.appendSecurityAudit(r, "session_revoke_all", actorType, actorID, "auth", "sessions", "success"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"message": "All other sessions revoked", "revoked_count": revoked})
 }
 
@@ -1007,8 +1918,12 @@ func (s *APIServer) handleTOTPStatus(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
-	totp, err := readTOTPSecret(filepath.Join(s.cfg.StateDir, ".totp_secret"))
+	totp, err := readTOTPSecretLocked(filepath.Join(s.cfg.StateDir, ".totp_secret"))
 	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "State file is corrupted")
 		return
 	}
@@ -1019,8 +1934,12 @@ func (s *APIServer) handleTOTPSetup(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
 		return
 	}
-	totp, err := readTOTPSecret(filepath.Join(s.cfg.StateDir, ".totp_secret"))
+	totp, err := readTOTPSecretLocked(filepath.Join(s.cfg.StateDir, ".totp_secret"))
 	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "State file is corrupted")
 		return
 	}
@@ -1036,6 +1955,25 @@ func (s *APIServer) handleTOTPSetup(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	s.totpSetup = &apiPendingTOTP{SecretBase32: secret, ExpiresAt: s.cfg.Now().UTC().Add(10 * time.Minute)}
 	s.mu.Unlock()
+	if err := s.appendAuthAccessLog(r, "totp_setup", "success", ""); err != nil {
+		s.mu.Lock()
+		if s.totpSetup != nil && s.totpSetup.SecretBase32 == secret {
+			s.totpSetup = nil
+		}
+		s.mu.Unlock()
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	actorType, actorID := apiAuditActor(r)
+	if err := s.appendSecurityAudit(r, "totp_setup", actorType, actorID, "auth", "totp_setup", "success"); err != nil {
+		s.mu.Lock()
+		if s.totpSetup != nil && s.totpSetup.SecretBase32 == secret {
+			s.totpSetup = nil
+		}
+		s.mu.Unlock()
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 	uri := "otpauth://totp/Adlaire%20CI:admin?issuer=Adlaire%20CI&secret=" + secret + "&algorithm=SHA1&digits=6&period=30"
 	writeJSON(w, http.StatusOK, map[string]any{"secret": secret, "otpauth_uri": uri})
 }
@@ -1062,20 +2000,51 @@ func (s *APIServer) handleTOTPConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !verifyTOTPCode(pending.SecretBase32, body.Code, s.cfg.Now().UTC()) {
+		if err := s.appendAuthAccessLog(r, "totp_failure", "failure", "invalid_totp"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		actorType, actorID := apiAuditActor(r)
+		if err := s.appendSecurityAudit(r, "totp_failure", actorType, actorID, "auth", "totp_confirm", "failure"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	now := s.nowString()
 	secret := pending.SecretBase32
 	totp := apiTOTPSecret{Enabled: true, SecretBase32: &secret, ConfirmedAt: &now}
-	if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".totp_secret"), totp, 0600); err != nil {
+	totp, err := updateTOTPSecretLocked(filepath.Join(s.cfg.StateDir, ".totp_secret"), func(current apiTOTPSecret) (apiTOTPSecret, bool, error) {
+		if current.Enabled {
+			return current, false, errAPITOTPInvalid
+		}
+		return apiTOTPSecret{Enabled: true, SecretBase32: &secret, ConfirmedAt: &now}, true, nil
+	})
+	if errors.Is(err, errAPITOTPInvalid) {
+		writeError(w, http.StatusConflict, "Conflict")
+		return
+	}
+	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	s.mu.Lock()
 	s.totpSetup = nil
 	s.mu.Unlock()
-	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": now, "action": "totp_enable", "result": "success"})
+	if err := s.appendAuthAccessLog(r, "totp_enabled", "success", ""); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	actorType, actorID := apiAuditActor(r)
+	if err := s.appendSecurityAudit(r, "totp_enabled", actorType, actorID, "auth", "totp", "success"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 	writeJSON(w, http.StatusOK, totpStatusPayload(totp))
 }
 
@@ -1094,8 +2063,12 @@ func (s *APIServer) handleTOTPDisable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := filepath.Join(s.cfg.StateDir, ".totp_secret")
-	totp, err := readTOTPSecret(path)
+	totp, err := readTOTPSecretLocked(path)
 	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "State file is corrupted")
 		return
 	}
@@ -1103,16 +2076,55 @@ func (s *APIServer) handleTOTPDisable(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "Conflict")
 		return
 	}
-	if !verifyTOTPCode(*totp.SecretBase32, body.Code, s.cfg.Now().UTC()) {
+	step, ok := verifyTOTPCodeStep(*totp.SecretBase32, body.Code, s.cfg.Now().UTC())
+	if !ok || (totp.LastAcceptedStep != nil && step <= *totp.LastAcceptedStep) {
+		if err := s.appendAuthAccessLog(r, "totp_failure", "failure", "invalid_totp"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		actorType, actorID := apiAuditActor(r)
+		if err := s.appendSecurityAudit(r, "totp_failure", actorType, actorID, "auth", "totp_disable", "failure"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	next := apiTOTPSecret{Enabled: false}
-	if err := atomicWriteJSON(path, next, 0600); err != nil {
+	next, err = updateTOTPSecretLocked(path, func(current apiTOTPSecret) (apiTOTPSecret, bool, error) {
+		if !current.Enabled || current.SecretBase32 == nil || !passwordHashEqual(*current.SecretBase32, *totp.SecretBase32) {
+			return current, false, errAPITOTPInvalid
+		}
+		if current.LastAcceptedStep != nil && step <= *current.LastAcceptedStep {
+			return current, false, errAPITOTPInvalid
+		}
+		return apiTOTPSecret{Enabled: false}, true, nil
+	})
+	if errors.Is(err, errAPITOTPInvalid) {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": s.nowString(), "action": "totp_disable", "result": "success"})
+	s.mu.Lock()
+	s.loginTickets = map[string]apiLoginTicket{}
+	s.totpSetup = nil
+	s.mu.Unlock()
+	if err := s.appendAuthAccessLog(r, "totp_disabled", "success", ""); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	actorType, actorID := apiAuditActor(r)
+	if err := s.appendSecurityAudit(r, "totp_disabled", actorType, actorID, "auth", "totp", "success"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 	writeJSON(w, http.StatusOK, totpStatusPayload(next))
 }
 
@@ -1161,8 +2173,8 @@ func (s *APIServer) handleConfigValidate(w http.ResponseWriter, r *http.Request)
 	if !method(w, r, http.MethodPost) {
 		return
 	}
-	var patch map[string]any
-	if !decodeBody(w, r, &patch, true) {
+	raw, order, ok := decodeRawObjectBody(w, r, true)
+	if !ok {
 		return
 	}
 	cfg, err := s.readMergedConfig()
@@ -1170,11 +2182,17 @@ func (s *APIServer) handleConfigValidate(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	next, _, ok := validateConfigPatch(w, cfg, patch)
-	if !ok {
-		return
+	next, errorsList, warningsList, valid := validateConfigDryRun(cfg, raw, order)
+	for _, item := range errorsList {
+		if item.Code == "unknown_key" {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"error":   "Validation failed",
+				"details": []map[string]string{{"field": item.Field, "message": "Unknown config key"}},
+			})
+			return
+		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"valid": true, "config": next, "warnings": []string{}, "errors": []string{}})
+	writeJSON(w, http.StatusOK, map[string]any{"valid": valid, "config": next, "warnings": warningsList, "errors": errorsList})
 }
 
 func (s *APIServer) handleLogLevel(w http.ResponseWriter, r *http.Request) {
@@ -1221,49 +2239,457 @@ func (s *APIServer) handleAPIRateLimit(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		policy := cfg.APIRateLimit
-		if policy == nil {
-			policy = map[string]any{"enabled": false, "groups": []any{}}
+		policy, ok := apiRateLimitPolicyFromConfig(cfg.APIRateLimit)
+		if !ok {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
 		}
-		state, _, _ := readOptionalJSONMap(filepath.Join(s.cfg.StateDir, ".api_rate_state"))
-		writeJSON(w, http.StatusOK, map[string]any{"policy": policy, "state_summary": state})
+		state, err := s.readAPIRateLimitState()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeJSON(w, http.StatusOK, s.apiRateLimitResponse(policy, state))
 	case http.MethodPost:
 		var body map[string]any
 		if !decodeBody(w, r, &body, true) {
 			return
 		}
-		if _, ok := body["enabled"].(bool); !ok {
-			writeValidation(w, "enabled", "required")
+		policy, ok := validateAPIRateLimitPolicyBody(w, body)
+		if !ok {
 			return
-		}
-		if groups, ok := body["groups"]; ok {
-			if _, ok := groups.([]any); !ok {
-				writeValidation(w, "groups", "invalid type")
-				return
-			}
-		} else {
-			body["groups"] = []any{}
 		}
 		cfg, err := s.readMergedConfig()
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		cfg.APIRateLimit = body
+		currentPolicy, ok := apiRateLimitPolicyFromConfig(cfg.APIRateLimit)
+		if !ok {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		state, err := s.readAPIRateLimitState()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if apiRateLimitPoliciesEqual(currentPolicy, policy) {
+			writeJSON(w, http.StatusOK, s.apiRateLimitResponse(policy, state))
+			return
+		}
+		policyMap := apiRateLimitPolicyToMap(policy)
+		cfg.APIRateLimit = policyMap
 		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".server_config"), cfg, 0600); err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".api_rate_state"), map[string]any{"windows": map[string]any{}}, 0600); err != nil {
+		emptyState := apiRateLimitState{Windows: map[string]apiRateLimitWindow{}}
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".api_rate_state"), emptyState, 0600); err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "api_rate_limit", Changes: map[string]any{"policy": body}})
-		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": s.nowString(), "action": "api_rate_limit_update", "result": "success"})
-		writeJSON(w, http.StatusOK, map[string]any{"policy": body, "state_summary": map[string]any{"windows": map[string]any{}}})
+		if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "api_rate_limit", Changes: map[string]any{"policy": policyMap}}); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		actorType, actorID := apiAuditActor(r)
+		if err := s.appendSecurityAudit(r, "rate_limit_update", actorType, actorID, "config", "api_rate_limit", "success"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeJSON(w, http.StatusOK, s.apiRateLimitResponse(policy, emptyState))
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
+}
+
+func (s *APIServer) enforceAPIRateLimit(w http.ResponseWriter, r *http.Request, auth apiAuthInfo, group string) bool {
+	if group == "" {
+		return true
+	}
+	cfg, err := s.readMergedConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return false
+	}
+	policy, ok := apiRateLimitPolicyFromConfig(cfg.APIRateLimit)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return false
+	}
+	if !policy.Enabled {
+		return true
+	}
+	groupPolicy, ok := policy.Groups[group]
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return false
+	}
+	keys := apiRateLimitKeys(auth, r, group)
+	if len(keys) == 0 {
+		return true
+	}
+	statePath := filepath.Join(s.cfg.StateDir, ".api_rate_state")
+	release, err := acquireStateFileLock(statePath)
+	if err != nil {
+		writeError(w, http.StatusConflict, "Conflict")
+		return false
+	}
+	defer release()
+	state, err := s.readAPIRateLimitStateLocked(statePath)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return false
+	}
+	now := s.cfg.Now().UTC()
+	limited := false
+	for _, key := range keys {
+		window := apiRateLimitCurrentWindow(state.Windows[key], groupPolicy, now)
+		if window.Count >= groupPolicy.MaxRequests {
+			limited = true
+		}
+		state.Windows[key] = window
+	}
+	if limited {
+		actorType, actorID := apiRateLimitAuditActor(auth)
+		if err := s.appendSecurityAudit(r, "permission_denied", actorType, actorID, "endpoint", strings.ToUpper(r.Method)+" "+r.URL.Path, "denied"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return false
+		}
+		writeError(w, http.StatusTooManyRequests, "Too many requests")
+		return false
+	}
+	for _, key := range keys {
+		window := state.Windows[key]
+		window.Count++
+		state.Windows[key] = window
+	}
+	if err := atomicWriteJSON(statePath, state, 0600); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return false
+	}
+	return true
+}
+
+func apiRateLimitAuditActor(auth apiAuthInfo) (string, any) {
+	switch auth.AuthType {
+	case "session":
+		return "admin", "admin"
+	case "api_token":
+		if auth.Actor != nil {
+			return "api_token", *auth.Actor
+		}
+		return "api_token", nil
+	case "webhook":
+		return "webhook", "webhook"
+	default:
+		return "anonymous", nil
+	}
+}
+
+func apiRateLimitKeys(auth apiAuthInfo, r *http.Request, group string) []string {
+	ipKey := "ip:" + apiRateLimitRemoteAddr(r) + ":" + group
+	switch auth.AuthType {
+	case "session":
+		return []string{"session:admin:" + group, ipKey}
+	case "api_token":
+		if auth.Actor != nil && *auth.Actor != "" {
+			return []string{"token:" + *auth.Actor + ":" + group, ipKey}
+		}
+		return []string{ipKey}
+	case "webhook", "anonymous":
+		return []string{ipKey}
+	default:
+		return []string{ipKey}
+	}
+}
+
+func apiRateLimitRemoteAddr(r *http.Request) string {
+	value := apiRemoteAddr(r)
+	if value == nil || *value == "" {
+		return "unknown"
+	}
+	return *value
+}
+
+func loginFailureKey(r *http.Request) string {
+	return "ip:" + apiRateLimitRemoteAddr(r) + ":login"
+}
+
+func (s *APIServer) loginLockActive(r *http.Request) bool {
+	key := loginFailureKey(r)
+	now := s.cfg.Now().UTC()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry, ok := s.loginFailures[key]
+	if !ok {
+		return false
+	}
+	if !entry.LockedUntil.IsZero() && now.Before(entry.LockedUntil) {
+		return true
+	}
+	if !entry.LockedUntil.IsZero() && !now.Before(entry.LockedUntil) {
+		delete(s.loginFailures, key)
+	}
+	return false
+}
+
+func (s *APIServer) recordLoginFailure(r *http.Request) {
+	key := loginFailureKey(r)
+	now := s.cfg.Now().UTC()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry := s.loginFailures[key]
+	entry.Count++
+	entry.LastFailureAt = now
+	if entry.Count >= 10 {
+		entry.LockedUntil = now.Add(10 * time.Minute)
+	}
+	s.loginFailures[key] = entry
+}
+
+func (s *APIServer) clearLoginFailure(r *http.Request) {
+	key := loginFailureKey(r)
+	s.mu.Lock()
+	delete(s.loginFailures, key)
+	s.mu.Unlock()
+}
+
+func apiRateLimitCurrentWindow(window apiRateLimitWindow, group apiRateLimitGroup, now time.Time) apiRateLimitWindow {
+	start, err := time.Parse(apiTimeLayout, window.WindowStart)
+	if err != nil || !now.Before(start.Add(time.Duration(group.WindowSeconds)*time.Second)) {
+		return apiRateLimitWindow{WindowStart: now.Format(apiTimeLayout), Count: 0}
+	}
+	if window.Count < 0 {
+		window.Count = 0
+	}
+	return window
+}
+
+func (s *APIServer) readAPIRateLimitState() (apiRateLimitState, error) {
+	path := filepath.Join(s.cfg.StateDir, ".api_rate_state")
+	release, err := acquireStateFileLock(path)
+	if err != nil {
+		return apiRateLimitState{}, err
+	}
+	defer release()
+	return s.readAPIRateLimitStateLocked(path)
+}
+
+func (s *APIServer) readAPIRateLimitStateLocked(path string) (apiRateLimitState, error) {
+	state := apiRateLimitState{Windows: map[string]apiRateLimitWindow{}}
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return state, nil
+	}
+	if err != nil {
+		return state, err
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&state); err != nil || state.Windows == nil || !apiRateLimitStateValid(state) {
+		if backupErr := s.backupCorruptAPIRateLimitState(path); backupErr != nil {
+			return apiRateLimitState{}, backupErr
+		}
+		return apiRateLimitState{Windows: map[string]apiRateLimitWindow{}}, nil
+	}
+	return state, nil
+}
+
+func (s *APIServer) backupCorruptAPIRateLimitState(path string) error {
+	backup := fmt.Sprintf("%s.corrupt.%s.bak", path, s.cfg.Now().UTC().Format("20060102150405"))
+	if err := os.Rename(path, backup); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return atomicWriteJSON(path, apiRateLimitState{Windows: map[string]apiRateLimitWindow{}}, 0600)
+}
+
+func apiRateLimitStateValid(state apiRateLimitState) bool {
+	for key, window := range state.Windows {
+		if key == "" || window.Count < 0 || !validAPITime(window.WindowStart) {
+			return false
+		}
+		group := apiRateLimitGroupFromKey(key)
+		if !apiRateLimitGroupNameAllowed(group) {
+			return false
+		}
+	}
+	return true
+}
+
+func apiRateLimitGroupFromKey(key string) string {
+	if idx := strings.LastIndex(key, ":"); idx >= 0 && idx < len(key)-1 {
+		return key[idx+1:]
+	}
+	return ""
+}
+
+func (s *APIServer) apiRateLimitResponse(policy apiRateLimitPolicy, state apiRateLimitState) map[string]any {
+	return map[string]any{
+		"policy":        apiRateLimitPolicyToMap(policy),
+		"state_summary": s.apiRateLimitStateSummary(policy, state),
+	}
+}
+
+func (s *APIServer) apiRateLimitStateSummary(policy apiRateLimitPolicy, state apiRateLimitState) []map[string]any {
+	now := s.cfg.Now().UTC()
+	summary := []map[string]any{}
+	for key, window := range state.Windows {
+		groupName := apiRateLimitGroupFromKey(key)
+		group, ok := policy.Groups[groupName]
+		if !ok {
+			continue
+		}
+		start, err := time.Parse(apiTimeLayout, window.WindowStart)
+		if err != nil {
+			continue
+		}
+		resetAt := start.Add(time.Duration(group.WindowSeconds) * time.Second)
+		if !resetAt.After(now) {
+			continue
+		}
+		summary = append(summary, map[string]any{
+			"key":          key,
+			"group":        groupName,
+			"window_start": window.WindowStart,
+			"count":        window.Count,
+			"reset_at":     resetAt.UTC().Format(apiTimeLayout),
+		})
+	}
+	sort.Slice(summary, func(i, j int) bool {
+		left := fmt.Sprint(summary[i]["reset_at"])
+		right := fmt.Sprint(summary[j]["reset_at"])
+		if left == right {
+			return fmt.Sprint(summary[i]["key"]) < fmt.Sprint(summary[j]["key"])
+		}
+		return left > right
+	})
+	if len(summary) > 100 {
+		summary = summary[:100]
+	}
+	return summary
+}
+
+func validateAPIRateLimitPolicyBody(w http.ResponseWriter, body map[string]any) (apiRateLimitPolicy, bool) {
+	policy, ok := apiRateLimitPolicyFromConfig(body)
+	if !ok {
+		writeValidation(w, "body", "invalid value")
+		return apiRateLimitPolicy{}, false
+	}
+	return policy, true
+}
+
+func apiRateLimitPolicyFromConfig(raw map[string]any) (apiRateLimitPolicy, bool) {
+	if raw == nil {
+		return defaultAPIRateLimitPolicy(), true
+	}
+	if len(raw) != 2 {
+		return apiRateLimitPolicy{}, false
+	}
+	enabled, ok := raw["enabled"].(bool)
+	if !ok {
+		return apiRateLimitPolicy{}, false
+	}
+	groupsRaw, ok := raw["groups"].(map[string]any)
+	if !ok || len(groupsRaw) != len(apiRateLimitGroupNames()) {
+		return apiRateLimitPolicy{}, false
+	}
+	policy := apiRateLimitPolicy{Enabled: enabled, Groups: map[string]apiRateLimitGroup{}}
+	for _, name := range apiRateLimitGroupNames() {
+		groupRaw, ok := groupsRaw[name].(map[string]any)
+		if !ok || len(groupRaw) != 2 {
+			return apiRateLimitPolicy{}, false
+		}
+		window, ok := apiRateLimitInt(groupRaw["window_seconds"], 1, 86400)
+		if !ok {
+			return apiRateLimitPolicy{}, false
+		}
+		maxRequests, ok := apiRateLimitInt(groupRaw["max_requests"], 1, 100000)
+		if !ok {
+			return apiRateLimitPolicy{}, false
+		}
+		policy.Groups[name] = apiRateLimitGroup{WindowSeconds: window, MaxRequests: maxRequests}
+	}
+	for name := range groupsRaw {
+		if !apiRateLimitGroupNameAllowed(name) {
+			return apiRateLimitPolicy{}, false
+		}
+	}
+	return policy, true
+}
+
+func apiRateLimitInt(value any, min, max int) (int, bool) {
+	var v int
+	switch typed := value.(type) {
+	case int:
+		v = typed
+	case int64:
+		v = int(typed)
+	case float64:
+		if typed != math.Trunc(typed) {
+			return 0, false
+		}
+		v = int(typed)
+	default:
+		return 0, false
+	}
+	return v, v >= min && v <= max
+}
+
+func apiRateLimitPolicyToMap(policy apiRateLimitPolicy) map[string]any {
+	groups := map[string]any{}
+	for _, name := range apiRateLimitGroupNames() {
+		group := policy.Groups[name]
+		groups[name] = map[string]any{"window_seconds": group.WindowSeconds, "max_requests": group.MaxRequests}
+	}
+	return map[string]any{"enabled": policy.Enabled, "groups": groups}
+}
+
+func apiRateLimitPoliciesEqual(a, b apiRateLimitPolicy) bool {
+	if a.Enabled != b.Enabled {
+		return false
+	}
+	for _, name := range apiRateLimitGroupNames() {
+		if a.Groups[name] != b.Groups[name] {
+			return false
+		}
+	}
+	return true
+}
+
+func defaultAPIRateLimitPolicy() apiRateLimitPolicy {
+	return apiRateLimitPolicy{Enabled: true, Groups: map[string]apiRateLimitGroup{
+		"login":   {WindowSeconds: 60, MaxRequests: 10},
+		"read":    {WindowSeconds: 60, MaxRequests: 600},
+		"trigger": {WindowSeconds: 60, MaxRequests: 60},
+		"operate": {WindowSeconds: 60, MaxRequests: 120},
+		"config":  {WindowSeconds: 60, MaxRequests: 60},
+		"admin":   {WindowSeconds: 60, MaxRequests: 60},
+	}}
+}
+
+func apiRateLimitGroupNames() []string {
+	return []string{"login", "read", "trigger", "operate", "config", "admin"}
+}
+
+func apiRateLimitGroupNameAllowed(name string) bool {
+	for _, candidate := range apiRateLimitGroupNames() {
+		if name == candidate {
+			return true
+		}
+	}
+	return false
+}
+
+func apiRateLimitGroupForRequest(method, path string) (string, bool) {
+	if strings.ToUpper(method) == http.MethodPost && (path == "/api/login" || path == "/api/login/totp") {
+		return "login", true
+	}
+	if strings.ToUpper(method) == http.MethodPost && path == "/api/webhook" {
+		return "trigger", true
+	}
+	return apiTokenRequiredScope(strings.ToUpper(method), path)
 }
 
 func (s *APIServer) handleAuditLog(w http.ResponseWriter, r *http.Request) {
@@ -1287,10 +2713,22 @@ func (s *APIServer) handleAuditLog(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if action != "" && !validAuditAction(action) {
+		writeValidation(w, "action", "invalid value")
+		return
+	}
+	if result != "" && result != "success" && result != "failure" && result != "denied" {
+		writeValidation(w, "result", "invalid value")
+		return
+	}
 	records := readJSONLines(filepath.Join(s.cfg.StateDir, ".audit_log"))
-	filtered := []map[string]any{}
-	for _, record := range records {
-		if actor != "" && fmt.Sprint(record["actor"]) != actor {
+	type indexedAuditRecord struct {
+		index  int
+		record map[string]any
+	}
+	filtered := []indexedAuditRecord{}
+	for i, record := range records {
+		if actor != "" && !auditActorMatches(record, actor) {
 			continue
 		}
 		if action != "" && fmt.Sprint(record["action"]) != action {
@@ -1299,10 +2737,15 @@ func (s *APIServer) handleAuditLog(w http.ResponseWriter, r *http.Request) {
 		if result != "" && fmt.Sprint(record["result"]) != result {
 			continue
 		}
-		filtered = append(filtered, record)
+		filtered = append(filtered, indexedAuditRecord{index: i, record: record})
 	}
 	sort.Slice(filtered, func(i, j int) bool {
-		return fmt.Sprint(filtered[i]["at"]) > fmt.Sprint(filtered[j]["at"])
+		left := auditRecordTimestamp(filtered[i].record)
+		right := auditRecordTimestamp(filtered[j].record)
+		if left != right {
+			return left > right
+		}
+		return filtered[i].index > filtered[j].index
 	})
 	total := len(filtered)
 	start := offset
@@ -1313,7 +2756,43 @@ func (s *APIServer) handleAuditLog(w http.ResponseWriter, r *http.Request) {
 	if end > total {
 		end = total
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"log": filtered[start:end], "total": total})
+	out := []map[string]any{}
+	for _, entry := range filtered[start:end] {
+		out = append(out, entry.record)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"log": out, "total": total})
+}
+
+func validAuditAction(action string) bool {
+	switch action {
+	case "login_success", "login_failure", "permission_denied", "totp_required", "logout", "session_revoke_all", "password_change", "token_create", "token_auth", "token_expired", "token_revoked_reject", "token_revoke", "totp_setup", "totp_failure", "totp_enabled", "totp_disabled", "build_trigger", "build_force_trigger", "config_update", "rate_limit_update", "approval_pending", "approval_approved", "approval_rejected", "approval_expired", "share_link_create", "share_link_revoke":
+		return true
+	default:
+		return false
+	}
+}
+
+func auditActorMatches(record map[string]any, actor string) bool {
+	if actor == "anonymous" {
+		return fmt.Sprint(record["actor_type"]) == "anonymous" && record["actor_id"] == nil
+	}
+	if value, ok := record["actor_id"].(string); ok {
+		return value == actor
+	}
+	if value, ok := record["actor"].(string); ok {
+		return value == actor
+	}
+	return false
+}
+
+func auditRecordTimestamp(record map[string]any) string {
+	if value, ok := record["timestamp"].(string); ok {
+		return value
+	}
+	if value, ok := record["at"].(string); ok {
+		return value
+	}
+	return ""
 }
 
 func (s *APIServer) handleAccessControl(w http.ResponseWriter, r *http.Request) {
@@ -1691,13 +3170,49 @@ func (s *APIServer) handleScheduleInterval(w http.ResponseWriter, r *http.Reques
 		writeValidation(w, "interval_seconds", "out of range")
 		return
 	}
-	if !s.updateScheduleConfig(w, "schedule_interval", map[string]any{"interval_seconds": body.IntervalSeconds}, func(cfg *apiServerConfig) (bool, map[string]any) {
-		changed := cfg.ScheduleIntervalSeconds != body.IntervalSeconds
-		cfg.ScheduleIntervalSeconds = body.IntervalSeconds
-		return changed, map[string]any{"message": "Interval updated", "interval_seconds": body.IntervalSeconds}
-	}) {
+	cfg, err := s.readMergedConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
+	if cfg.ScheduleIntervalSeconds == body.IntervalSeconds {
+		writeJSON(w, http.StatusOK, map[string]any{"message": "No changes", "interval_seconds": body.IntervalSeconds})
+		return
+	}
+	cfg.ScheduleIntervalSeconds = body.IntervalSeconds
+	if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".server_config"), cfg, 0600); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	changes := map[string]any{"interval_seconds": body.IntervalSeconds}
+	if err := s.applyScheduleInterval(r.Context(), body.IntervalSeconds); err != nil {
+		changes["result"] = "partial_failure"
+		changes["error"] = "systemd_update_failed"
+		now := s.nowString()
+		if logErr := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: now, Type: "schedule_interval", Changes: changes}); logErr != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if auditErr := appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": now, "action": "config_update", "result": "failure", "target_id": "schedule_interval"}); auditErr != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		log.Printf("SCHEDULE_INTERVAL_APPLY_FAILED")
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	changes["result"] = "success"
+	changes["error"] = nil
+	now := s.nowString()
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: now, Type: "schedule_interval", Changes: changes}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": now, "action": "config_update", "result": "success", "target_id": "schedule_interval"}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"message": "Schedule interval updated", "interval_seconds": body.IntervalSeconds})
 }
 
 func (s *APIServer) handleSchedulePause(w http.ResponseWriter, r *http.Request) {
@@ -1832,6 +3347,48 @@ func (s *APIServer) updateScheduleConfig(w http.ResponseWriter, logType string, 
 	return true
 }
 
+func (s *APIServer) applyScheduleInterval(ctx context.Context, seconds int) error {
+	dropInDir := filepath.Join(s.cfg.SystemdDir, "adlaire-ci.timer.d")
+	content := fmt.Sprintf("[Timer]\nOnUnitActiveSec=%ds\nPersistent=true\n", seconds)
+	if err := atomicWriteText(filepath.Join(dropInDir, "override.conf"), content, 0644); err != nil {
+		return err
+	}
+	cmdCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if result, err := s.cfg.CommandRunner(cmdCtx, "systemctl", "daemon-reload"); err != nil || result.ExitCode != 0 {
+		return errors.New("systemd daemon-reload failed")
+	}
+	if result, err := s.cfg.CommandRunner(cmdCtx, "systemctl", "restart", "adlaire-ci.timer"); err != nil || result.ExitCode != 0 {
+		return errors.New("systemd restart failed")
+	}
+	result, err := s.cfg.CommandRunner(cmdCtx, "systemctl", "show", "adlaire-ci.timer", "-p", "OnUnitActiveSec")
+	if err != nil || result.ExitCode != 0 {
+		return errors.New("systemd show failed")
+	}
+	if parseSystemdSeconds(result.Stdout) != seconds {
+		return errors.New("systemd interval mismatch")
+	}
+	return nil
+}
+
+func parseSystemdSeconds(value string) int {
+	value = strings.TrimSpace(value)
+	if before, after, ok := strings.Cut(value, "="); ok && before != "" {
+		value = strings.TrimSpace(after)
+	}
+	value = strings.TrimSuffix(value, "s")
+	if seconds, err := strconv.Atoi(value); err == nil {
+		return seconds
+	}
+	if strings.HasSuffix(value, "min") {
+		minutes, err := strconv.Atoi(strings.TrimSuffix(value, "min"))
+		if err == nil {
+			return minutes * 60
+		}
+	}
+	return -1
+}
+
 func (s *APIServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
@@ -1844,6 +3401,29 @@ func (s *APIServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *APIServer) statusPayload(w http.ResponseWriter) (map[string]any, bool) {
+	statusPath := filepath.Join(s.cfg.StateDir, ".build_status.json")
+	if st, ok, err := readBuildStatus(statusPath); err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return nil, false
+	} else if ok {
+		running := st.Running || lockExists(filepath.Join(s.cfg.StateDir, ".build_lock"))
+		lastSHA := st.LastBlobSHA
+		if lastSHA == nil {
+			lastSHA = st.LastCommitSHA
+		}
+		return map[string]any{
+			"last_sha":                lastSHA,
+			"last_build_at":           coalesceString(st.LastFinishedAt, st.LastStartedAt),
+			"last_build_status":       stringOr(st.Status, "none"),
+			"last_target_status":      st.LastTargetStatus,
+			"last_trigger":            st.LastTrigger,
+			"last_deploy_status":      st.LastDeployStatus,
+			"pending_transfers_count": st.PendingTransfersCount,
+			"notify_pending_count":    st.NotifyPendingCount,
+			"circuit_open":            st.CircuitOpen,
+			"running":                 running,
+		}, true
+	}
 	state, err := readBuildState(filepath.Join(s.cfg.StateDir, ".build_state"))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "State file is corrupted")
@@ -1854,52 +3434,35 @@ func (s *APIServer) statusPayload(w http.ResponseWriter) (map[string]any, bool) 
 		writeError(w, http.StatusInternalServerError, "State file is corrupted")
 		return nil, false
 	}
-	statusPath := filepath.Join(s.cfg.StateDir, ".build_status.json")
-	if st, ok, err := readBuildStatus(statusPath); err != nil {
+	pendingTransfers, err := readJSONArrayCount(filepath.Join(s.cfg.StateDir, ".pending_transfers"))
+	if err != nil {
 		writeError(w, http.StatusInternalServerError, "State file is corrupted")
 		return nil, false
-	} else if ok {
-		running := st.Running || state.Running || lockExists(filepath.Join(s.cfg.StateDir, ".build_lock"))
-		lastSHA := st.LastBlobSHA
-		if lastSHA == nil {
-			lastSHA = st.LastCommitSHA
-		}
-		return map[string]any{
-			"last_sha":                lastSHA,
-			"last_build_at":           coalesceString(st.LastFinishedAt, st.LastStartedAt),
-			"last_build_status":       stringOr(st.LastTargetStatus, "none"),
-			"last_trigger":            st.LastTrigger,
-			"last_deploy_status":      st.LastDeployStatus,
-			"pending_transfers_count": st.PendingTransfersCount,
-			"notify_pending_count":    st.NotifyPendingCount,
-			"circuit_open":            st.CircuitOpen,
-			"output_url":              nil,
-			"running":                 running,
-			"queued":                  state.Queued,
-		}, true
+	}
+	notifyPending, err := readJSONArrayCount(filepath.Join(s.cfg.StateDir, ".notify_pending"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return nil, false
 	}
 	history := readHistory(filepath.Join(s.cfg.StateDir, ".build_history"))
-	var latest *apiHistoryRecord
-	if len(history) > 0 {
-		latest = &history[0]
-	}
+	latest := latestStatusSummaryHistory(history)
 	resp := map[string]any{
 		"last_sha":                nil,
 		"last_build_at":           nil,
 		"last_build_status":       "none",
+		"last_target_status":      nil,
 		"last_trigger":            nil,
 		"last_deploy_status":      nil,
-		"pending_transfers_count": 0,
-		"notify_pending_count":    0,
+		"pending_transfers_count": pendingTransfers,
+		"notify_pending_count":    notifyPending,
 		"circuit_open":            circuit.Open,
-		"output_url":              nil,
 		"running":                 state.Running || lockExists(filepath.Join(s.cfg.StateDir, ".build_lock")),
-		"queued":                  state.Queued,
 	}
 	if latest != nil {
 		resp["last_sha"] = firstNonNil(latest.BlobSHA, latest.CommitSHA, latest.SHA)
 		resp["last_build_at"] = firstNonEmpty(latest.FinishedAt, latest.StartedAt, latest.BuildAt)
-		resp["last_build_status"] = latest.Status
+		resp["last_build_status"] = normalizeHealthBuildStatus(latest.Status)
+		resp["last_target_status"] = latest.Status
 		if latest.Trigger != "" {
 			resp["last_trigger"] = latest.Trigger
 		}
@@ -1911,7 +3474,12 @@ func (s *APIServer) handleSysinfo(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
-	meta, err := inspectOutput(s.outputDir())
+	target, err := s.selectedOutputTarget()
+	if err != nil {
+		writeOutputTargetError(w, err)
+		return
+	}
+	meta, err := inspectOutput(target.Out)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
@@ -1920,13 +3488,7 @@ func (s *APIServer) handleSysinfo(w http.ResponseWriter, r *http.Request) {
 	if uptime < 0 {
 		uptime = 0
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"uptime_seconds":    uptime,
-		"state_dir":         s.cfg.StateDir,
-		"output_exists":     meta.Exists,
-		"output_size_bytes": meta.SizeBytes,
-		"output_mtime":      meta.MTime,
-	})
+	writeJSON(w, http.StatusOK, outputSysinfo(meta, uptime))
 }
 
 func (s *APIServer) handleStats(w http.ResponseWriter, r *http.Request) {
@@ -1953,7 +3515,6 @@ func (s *APIServer) handleStatsTimeline(w http.ResponseWriter, r *http.Request) 
 		Date    string `json:"date"`
 		Success int    `json:"success"`
 		Failure int    `json:"failure"`
-		Total   int    `json:"total"`
 	}
 	byDate := map[string]*bucket{}
 	for _, record := range records {
@@ -1965,7 +3526,6 @@ func (s *APIServer) handleStatsTimeline(w http.ResponseWriter, r *http.Request) 
 		if byDate[date] == nil {
 			byDate[date] = &bucket{Date: date}
 		}
-		byDate[date].Total++
 		switch statusCategory(record.Status) {
 		case "success":
 			byDate[date].Success++
@@ -1977,7 +3537,7 @@ func (s *APIServer) handleStatsTimeline(w http.ResponseWriter, r *http.Request) 
 	for date := range byDate {
 		keys = append(keys, date)
 	}
-	sort.Strings(keys)
+	sort.Sort(sort.Reverse(sort.StringSlice(keys)))
 	timeline := []bucket{}
 	for _, date := range keys {
 		timeline = append(timeline, *byDate[date])
@@ -1996,18 +3556,23 @@ func (s *APIServer) handleStatsBuildDuration(w http.ResponseWriter, r *http.Requ
 	durations := []int64{}
 	recent := []map[string]any{}
 	for _, log := range s.readBuildLogsNewest() {
-		if log.DurationSeconds <= 0 {
+		if log.DurationSeconds < 0 {
 			continue
 		}
 		if len(durations) >= n {
 			break
 		}
 		durations = append(durations, log.DurationSeconds)
+		status := log.Status
+		if status == "" {
+			status = normalizeHealthBuildStatus(log.TargetStatus)
+		}
 		recent = append(recent, map[string]any{
 			"id":               log.ID,
 			"build_at":         firstNonEmpty(log.FinishedAt, log.StartedAt),
 			"duration_seconds": log.DurationSeconds,
-			"status":           log.TargetStatus,
+			"status":           status,
+			"target_status":    log.TargetStatus,
 		})
 	}
 	var sum, min, max int64
@@ -2020,13 +3585,52 @@ func (s *APIServer) handleStatsBuildDuration(w http.ResponseWriter, r *http.Requ
 			max = duration
 		}
 	}
-	avg := 0.0
+	var avg any
+	var minValue any
+	var maxValue any
 	if len(durations) > 0 {
-		avg = float64(sum) / float64(len(durations))
+		avg = math.Round((float64(sum)/float64(len(durations)))*100) / 100
+		minValue = min
+		maxValue = max
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"n": n, "count": len(durations), "avg_seconds": avg,
-		"min_seconds": min, "max_seconds": max, "recent": recent,
+		"min_seconds": minValue, "max_seconds": maxValue, "recent": recent,
+	})
+}
+
+func (s *APIServer) handleStatsBuildTrends(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	n, ok := parseBoundedInt(w, r, "n", 100, 1, 1000)
+	if !ok {
+		return
+	}
+	var trend apiBuildTrendFile
+	if err := readJSONIfExists(filepath.Join(s.cfg.StateDir, ".build_trends.json"), &trend); err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	if trend.Samples == nil {
+		trend.Samples = []apiBuildTrendSample{}
+	}
+	samples := trend.Samples
+	if len(samples) > n {
+		samples = samples[len(samples)-n:]
+	}
+	samples = append([]apiBuildTrendSample(nil), samples...)
+	sort.Slice(samples, func(i, j int) bool {
+		if samples[i].FinishedAt == samples[j].FinishedAt {
+			return samples[i].BuildID < samples[j].BuildID
+		}
+		return samples[i].FinishedAt < samples[j].FinishedAt
+	})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"n":       n,
+		"count":   len(samples),
+		"samples": samples,
+		"summary": buildTrendSummary(samples),
 	})
 }
 
@@ -2034,7 +3638,12 @@ func (s *APIServer) handleOutputMeta(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
-	meta, err := inspectOutput(s.outputDir())
+	target, err := s.selectedOutputTarget()
+	if err != nil {
+		writeOutputTargetError(w, err)
+		return
+	}
+	meta, err := inspectOutput(target.Out)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
@@ -2043,15 +3652,21 @@ func (s *APIServer) handleOutputMeta(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
 	}
-	logs := s.readBuildLogsNewest()
-	var latest *apiBuildLog
-	if len(logs) > 0 {
-		latest = &logs[0]
+	histories := outputMetaSuccessHistory(readHistory(filepath.Join(s.cfg.StateDir, ".build_history")), target)
+	var history *apiHistoryRecord
+	if len(histories) > 0 {
+		history = &histories[0]
+	}
+	var log *apiBuildLog
+	if history != nil {
+		if found, err := readBuildLogByID(s.cfg.StateDir, history.ID); err == nil {
+			log = &found
+		}
 	}
 	resp := map[string]any{
 		"size_bytes":        meta.SizeBytes,
 		"mtime":             meta.MTime,
-		"sha256":            meta.SHA256,
+		"sha256":            "",
 		"heading_count":     nil,
 		"tables_count":      nil,
 		"code_blocks_count": nil,
@@ -2059,16 +3674,72 @@ func (s *APIServer) handleOutputMeta(w http.ResponseWriter, r *http.Request) {
 		"size_warn":         false,
 		"build_warnings":    []string{},
 		"build_id":          "",
-		"commit_sha":        nil,
+		"commit_sha":        "",
 		"build_at":          "",
 	}
-	if latest != nil {
-		resp["build_warnings"] = latest.Warnings
-		resp["build_id"] = latest.ID
-		resp["commit_sha"] = firstCommitSHA(latest.Commit)
-		resp["build_at"] = firstNonEmpty(latest.FinishedAt, latest.StartedAt)
+	if history != nil {
+		resp["sha256"] = stringPtrValue(history.OutputSHA256)
+		compare := outputMetaCompareHistory(histories, log)
+		if compare != nil && compare.OutputSizeBytes != nil {
+			resp["size_diff_bytes"] = meta.SizeBytes - *compare.OutputSizeBytes
+		}
+	}
+	if log != nil {
+		resp["build_warnings"] = log.Warnings
+		commitSHA := ""
+		if value, ok := firstCommitSHA(log.Commit).(string); ok {
+			commitSHA = value
+		}
+		if log.Report != nil {
+			resp["heading_count"] = log.Report.Headings
+			resp["tables_count"] = log.Report.TablesCount
+			resp["code_blocks_count"] = log.Report.CodeBlocksCount
+			resp["size_warn"] = log.Report.SizeWarn
+		}
+		resp["build_id"] = log.ID
+		resp["commit_sha"] = commitSHA
+		resp["build_at"] = firstNonEmpty(log.FinishedAt, log.StartedAt)
+		if log.BuildMeta != nil {
+			resp["build_id"] = firstNonEmpty(log.BuildMeta.BuildID, log.ID)
+			resp["commit_sha"] = firstNonEmpty(log.BuildMeta.CommitSHA, commitSHA)
+			resp["build_at"] = firstNonEmpty(log.BuildMeta.BuildAt, log.FinishedAt, log.StartedAt)
+		}
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func outputMetaSuccessHistory(records []apiHistoryRecord, target apiOutputTarget) []apiHistoryRecord {
+	out := []apiHistoryRecord{}
+	for _, record := range records {
+		if record.Branch != target.Branch || record.TargetFile != target.TargetFile {
+			continue
+		}
+		switch record.Status {
+		case "success", "success_deploy_pending":
+			out = append(out, record)
+		}
+	}
+	return out
+}
+
+func outputMetaCompareHistory(records []apiHistoryRecord, log *apiBuildLog) *apiHistoryRecord {
+	if len(records) == 0 {
+		return nil
+	}
+	currentID := ""
+	if log != nil {
+		currentID = log.ID
+		if log.BuildMeta != nil && log.BuildMeta.BuildID != "" {
+			currentID = log.BuildMeta.BuildID
+		}
+	}
+	if currentID != "" && currentID == records[0].ID {
+		if len(records) < 2 {
+			return nil
+		}
+		return &records[1]
+	}
+	return &records[0]
 }
 
 func (s *APIServer) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -2079,7 +3750,12 @@ func (s *APIServer) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	meta, err := inspectOutput(s.outputDir())
+	target, err := s.selectedOutputTarget()
+	if err != nil {
+		writeOutputTargetError(w, err)
+		return
+	}
+	meta, err := inspectOutput(target.Out)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
@@ -2089,23 +3765,68 @@ func (s *APIServer) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		uptime = 0
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status": status,
-		"sysinfo": map[string]any{
-			"uptime_seconds":    uptime,
-			"output_exists":     meta.Exists,
-			"output_size_bytes": meta.SizeBytes,
-			"output_mtime":      meta.MTime,
-		},
+		"status":   status,
+		"sysinfo":  outputSysinfo(meta, uptime),
 		"stats":    s.statsSummary(7),
 		"schedule": map[string]any{"enabled": false, "next_run_at": nil},
-		"alerts":   map[string]any{"notify_pending_count": status["notify_pending_count"], "circuit_open": status["circuit_open"]},
+		"alerts":   []any{},
 	})
+}
+
+func (s *APIServer) selectedOutputTarget() (apiOutputTarget, error) {
+	cfg, _, err := s.readBranchConfig()
+	if err != nil {
+		return apiOutputTarget{}, err
+	}
+	if len(cfg.BranchTargets) == 0 {
+		return apiOutputTarget{}, errAPIOutputTargetUnavailable
+	}
+	targets := append([]apiBranchTarget(nil), cfg.BranchTargets...)
+	sort.Slice(targets, func(i, j int) bool {
+		if targets[i].Branch == targets[j].Branch {
+			return targets[i].TargetFile < targets[j].TargetFile
+		}
+		return targets[i].Branch < targets[j].Branch
+	})
+	if status, ok, err := readBuildStatus(filepath.Join(s.cfg.StateDir, ".build_status.json")); err == nil && ok && status.LastBranch != nil && status.LastTargetFile != nil {
+		for _, target := range targets {
+			if target.Branch == *status.LastBranch && target.TargetFile == *status.LastTargetFile {
+				return apiOutputTarget{Branch: target.Branch, TargetFile: target.TargetFile, Out: target.Out}, nil
+			}
+		}
+	}
+	target := targets[0]
+	return apiOutputTarget{Branch: target.Branch, TargetFile: target.TargetFile, Out: target.Out}, nil
+}
+
+func writeOutputTargetError(w http.ResponseWriter, err error) {
+	if errors.Is(err, errAPIOutputTargetUnavailable) {
+		writeError(w, http.StatusInternalServerError, "Output target unavailable")
+		return
+	}
+	writeError(w, http.StatusInternalServerError, "State file is corrupted")
+}
+
+func outputSysinfo(meta outputInspection, uptime int64) map[string]any {
+	size := meta.SizeBytes
+	mtime := meta.MTime
+	if !meta.Exists {
+		size = 0
+		mtime = nil
+	}
+	return map[string]any{
+		"output_size_bytes": size,
+		"output_mtime":      mtime,
+		"uptime_seconds":    uptime,
+	}
 }
 
 func (s *APIServer) statsSummary(days int) map[string]any {
 	records := s.historyWithinDays(days)
 	success := 0
 	failure := 0
+	durations := []int64{}
+	times := []time.Time{}
 	for _, record := range records {
 		switch statusCategory(record.Status) {
 		case "success":
@@ -2113,14 +3834,50 @@ func (s *APIServer) statsSummary(days int) map[string]any {
 		case "failure":
 			failure++
 		}
+		if record.DurationSeconds >= 0 {
+			durations = append(durations, record.DurationSeconds)
+		}
+		if at := historyRecordTime(record); !at.IsZero() {
+			times = append(times, at)
+		}
 	}
-	latestStatus := "none"
-	if len(records) > 0 {
-		latestStatus = records[0].Status
+	total := len(records)
+	var successRate any
+	if total > 0 {
+		successRate = math.Round((float64(success)/float64(total))*1000) / 1000
+	}
+	var avgIntervalMinutes any
+	if len(times) >= 2 {
+		sort.Slice(times, func(i, j int) bool { return times[i].After(times[j]) })
+		var totalMinutes float64
+		for i := 0; i < len(times)-1; i++ {
+			totalMinutes += times[i].Sub(times[i+1]).Minutes()
+		}
+		avgIntervalMinutes = math.Round((totalMinutes/float64(len(times)-1))*100) / 100
+	}
+	var avgDuration any
+	var maxDuration any
+	if len(durations) > 0 {
+		var sum int64
+		var max int64
+		for i, duration := range durations {
+			sum += duration
+			if i == 0 || duration > max {
+				max = duration
+			}
+		}
+		avgDuration = math.Round((float64(sum)/float64(len(durations)))*100) / 100
+		maxDuration = max
 	}
 	return map[string]any{
-		"days": days, "total": len(records), "success": success,
-		"failure": failure, "latest_status": latestStatus,
+		"days":                 days,
+		"total_builds":         total,
+		"success_count":        success,
+		"failure_count":        failure,
+		"success_rate":         successRate,
+		"avg_interval_minutes": avgIntervalMinutes,
+		"avg_duration_seconds": avgDuration,
+		"max_duration_seconds": maxDuration,
 	}
 }
 
@@ -2137,16 +3894,17 @@ func (s *APIServer) historyWithinDays(days int) []apiHistoryRecord {
 	return out
 }
 
-func (s *APIServer) outputDir() string {
-	return filepath.Join(s.cfg.StateDir, "site")
-}
-
 func (s *APIServer) handleBuild(force bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
 			return
 		}
-		if maintenanceEnabled(filepath.Join(s.cfg.StateDir, ".maintenance")) {
+		maintenance, err := maintenanceEnabled(filepath.Join(s.cfg.StateDir, ".maintenance"))
+		if err != nil {
+			writeError(w, http.StatusServiceUnavailable, "maintenance_unavailable")
+			return
+		}
+		if maintenance {
 			writeError(w, http.StatusServiceUnavailable, "maintenance")
 			return
 		}
@@ -2165,46 +3923,41 @@ func (s *APIServer) handleBuild(force bool) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "State file is corrupted")
 			return
 		}
-		if !state.Running && lockExists(filepath.Join(s.cfg.StateDir, ".build_lock")) {
+		if !state.Running && state.CurrentBuildID == nil && lockExists(filepath.Join(s.cfg.StateDir, ".build_lock")) {
 			writeError(w, http.StatusConflict, "Conflict")
 			return
 		}
-		if state.Running {
-			maxSize := s.queueMaxSize()
-			if maxSize == 0 || len(state.Queued) >= maxSize {
+		actorType, actorID := apiAuditActor(r)
+		requestedBy := "admin"
+		if actorType == "api_token" {
+			if id, ok := actorID.(string); ok && id != "" {
+				requestedBy = id
+			}
+		}
+		queueID, duplicate, err := s.enqueueBuildRequest(statePath, "manual", requestedBy, map[string]any{"force": force})
+		if err != nil {
+			if errors.Is(err, errAPIQueueFull) {
 				writeError(w, http.StatusTooManyRequests, "queue_full")
 				return
 			}
-			entry := map[string]any{
-				"id":           s.newID("q"),
-				"trigger":      "manual",
-				"queued_at":    s.nowString(),
-				"requested_by": "admin",
-				"priority":     "normal",
-				"created_seq":  nextCreatedSeq(state.Queued),
-				"payload":      map[string]any{"force": force},
-			}
-			state.Queued = append(state.Queued, entry)
-			if err := atomicWriteJSON(statePath, state, 0600); err != nil {
-				writeError(w, http.StatusInternalServerError, "Internal server error")
-				return
-			}
-			writeJSON(w, http.StatusAccepted, map[string]any{"message": "Build queued", "queued": true})
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
 			return
 		}
-		buildID := s.newID("b")
-		state.Running = true
-		state.CurrentBuildID = &buildID
-		now := s.nowString()
-		state.LastStartedAt = &now
+		action := "build_trigger"
 		if force {
-			_ = atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".last_sha"), map[string]string{"sha": ""}, 0600)
+			action = "build_force_trigger"
 		}
-		if err := atomicWriteJSON(statePath, state, 0600); err != nil {
+		if err := s.appendSecurityAudit(r, action, actorType, actorID, "build", queueID, "success"); err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		writeJSON(w, http.StatusAccepted, map[string]any{"message": "Build started", "build_id": buildID, "queued": false})
+		status := http.StatusAccepted
+		message := "Build queued"
+		if duplicate {
+			status = http.StatusOK
+			message = "Already queued"
+		}
+		writeJSON(w, status, map[string]any{"message": message, "queue_id": queueID, "queued": true, "dispatch": s.dispatchRunner(queueID)})
 	}
 }
 
@@ -2237,27 +3990,46 @@ func (s *APIServer) handleBuildStream(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("X-Accel-Buffering", "no")
-	flusher, _ := w.(http.Flusher)
-	for _, line := range s.allLogLines() {
-		payload, err := json.Marshal(map[string]string{"type": "log", "line": line})
-		if err != nil {
-			continue
-		}
-		frame := fmt.Sprintf("data: %s\n\n", payload)
-		n, err := io.WriteString(w, frame)
-		if err != nil || n != len(frame) {
+	logRecord, running, found, err := s.selectBuildStreamLog()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	if !found {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	at := firstNonEmpty(logRecord.FinishedAt, logRecord.StartedAt)
+	if at == "" {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	status := buildStreamStatus(logRecord, running)
+	var duration *int64
+	if status != "running" {
+		value := logRecord.DurationSeconds
+		if value < 0 {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
 			return
 		}
-		if flusher != nil {
-			flusher.Flush()
+		duration = &value
+	}
+	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+	w.Header().Set("X-Accel-Buffering", "no")
+	flusher, _ := w.(http.Flusher)
+	for _, line := range buildStreamLines(logRecord) {
+		if !writeSSEFrame(w, flusher, apiBuildStreamLogFrame{Type: "log", Line: truncateStreamRunes(line, 4000), At: at}) {
+			return
 		}
 	}
+	_ = writeSSEFrame(w, flusher, apiBuildStreamEndFrame{Type: "end", Status: status, DurationSeconds: duration})
 }
 
 func (s *APIServer) handleLogs(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	if !validateQueryKeys(w, r, map[string]bool{"n": true, "q": true}) {
 		return
 	}
 	n, ok := parseBoundedInt(w, r, "n", 100, 1, 1000)
@@ -2326,37 +4098,110 @@ func (s *APIServer) handleLogSearch(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
-	q := r.URL.Query().Get("q")
-	if len(q) > 500 {
-		writeValidation(w, "q", "must be 500 characters or less")
+	if !validateLogSearchQuery(w, r) {
 		return
 	}
-	level := strings.ToUpper(r.URL.Query().Get("level"))
-	if level == "WARN" {
+	q := r.URL.Query().Get("q")
+	from, fromValue, ok := parseLogSearchDate(w, r.URL.Query().Get("from"), "from")
+	if !ok {
+		return
+	}
+	to, toValue, ok := parseLogSearchDate(w, r.URL.Query().Get("to"), "to")
+	if !ok {
+		return
+	}
+	if !from.IsZero() && !to.IsZero() && from.After(to) {
+		writeValidation(w, "from", "must be before or equal to to")
+		return
+	}
+	levelRaw := strings.TrimSpace(r.URL.Query().Get("level"))
+	level := strings.ToUpper(levelRaw)
+	if level == "WARN" || level == "WARNING" {
 		level = "WARNING"
 	}
-	if level != "" && level != "INFO" && level != "WARNING" && level != "ERROR" && level != "DEBUG" {
-		writeValidation(w, "level", "invalid value")
-		return
+	var levelValue any
+	if level != "" {
+		levelValue = level
 	}
 	results := []map[string]any{}
 	for _, log := range s.readBuildLogsNewest() {
-		lines := append(splitLines(log.Pipeline.Stdout), splitLines(log.Pipeline.Stderr)...)
-		lines = append(lines, log.Warnings...)
-		lines = filterContains(lines, q)
+		buildAt := firstNonEmpty(log.FinishedAt, log.StartedAt)
+		buildTime, _ := time.Parse(apiTimeLayout, buildAt)
+		if !from.IsZero() && buildTime.Before(from) {
+			continue
+		}
+		if !to.IsZero() && buildTime.After(to) {
+			continue
+		}
+		lines := logSearchLines(log)
+		lines = filterContainsFold(lines, q)
 		if level != "" {
 			lines = filterContains(lines, "["+level+"]")
 		}
 		if len(lines) == 0 {
 			continue
 		}
-		results = append(results, map[string]any{"id": log.ID, "build_at": firstNonEmpty(log.FinishedAt, log.StartedAt), "lines": lines})
+		results = append(results, map[string]any{"id": log.ID, "build_at": buildAt, "lines": lines})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"query": q, "from": r.URL.Query().Get("from"), "to": r.URL.Query().Get("to"), "results": results})
+	writeJSON(w, http.StatusOK, map[string]any{"query": q, "from": fromValue, "to": toValue, "level": levelValue, "results": results})
+}
+
+func validateLogSearchQuery(w http.ResponseWriter, r *http.Request) bool {
+	allowed := map[string]bool{"q": true, "from": true, "to": true, "level": true}
+	if !validateQueryKeys(w, r, allowed) {
+		return false
+	}
+	q := r.URL.Query().Get("q")
+	if len(q) > 500 {
+		writeValidation(w, "q", "must be 500 characters or less")
+		return false
+	}
+	if strings.ContainsAny(q, "\x00\r\n") {
+		writeValidation(w, "q", "invalid value")
+		return false
+	}
+	level := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("level")))
+	if level == "WARN" {
+		level = "WARNING"
+	}
+	if level != "" && level != "INFO" && level != "WARNING" && level != "ERROR" && level != "DEBUG" {
+		writeValidation(w, "level", "invalid value")
+		return false
+	}
+	return true
+}
+
+func parseLogSearchDate(w http.ResponseWriter, value, field string) (time.Time, any, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return time.Time{}, nil, true
+	}
+	day, err := time.ParseInLocation("2006-01-02", value, time.UTC)
+	if err != nil {
+		writeValidation(w, field, "invalid value")
+		return time.Time{}, nil, false
+	}
+	if field == "to" {
+		day = day.Add(24*time.Hour - time.Second)
+	}
+	return day, value, true
+}
+
+func logSearchLines(log apiBuildLog) []string {
+	lines := append([]string{}, splitLines(log.Pipeline.Stdout)...)
+	lines = append(lines, splitLines(log.Pipeline.Stderr)...)
+	lines = append(lines, log.Warnings...)
+	if log.Error != nil && *log.Error != "" {
+		lines = append(lines, *log.Error)
+	}
+	return lines
 }
 
 func (s *APIServer) handleHistory(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	if !validateHistoryQuery(w, r) {
 		return
 	}
 	page, ok := parseBoundedInt(w, r, "page", 1, 1, 1_000_000)
@@ -2372,6 +4217,7 @@ func (s *APIServer) handleHistory(w http.ResponseWriter, r *http.Request) {
 	if history == nil {
 		return
 	}
+	history = decorateHistoryRecords(history)
 	total := len(history)
 	pages := 0
 	if total > 0 {
@@ -2392,7 +4238,7 @@ func (s *APIServer) handleHistoryExport(w http.ResponseWriter, r *http.Request) 
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"exported_at": s.nowString(), "history": readHistory(filepath.Join(s.cfg.StateDir, ".build_history"))})
+	writeJSON(w, http.StatusOK, map[string]any{"exported_at": s.nowString(), "history": decorateHistoryRecords(readHistory(filepath.Join(s.cfg.StateDir, ".build_history")))})
 }
 
 func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
@@ -2400,6 +4246,10 @@ func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
 	id, suffix, ok := strings.Cut(rest, "/")
 	if !ok || id == "" {
 		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if !validSimpleID(id) {
+		writeValidation(w, "id", "invalid value")
 		return
 	}
 	log, err := readBuildLogByID(s.cfg.StateDir, id)
@@ -2446,17 +4296,23 @@ func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
 				writeValidation(w, "comment", "must be 2000 characters or less")
 				return
 			}
+			var nextComment *string
 			if comment == "" {
-				log.Comment = nil
+				nextComment = nil
 			} else {
-				log.Comment = &comment
+				nextComment = &comment
 			}
+			if nullableStringEqual(log.Comment, nextComment) {
+				writeJSON(w, http.StatusOK, map[string]any{"message": "Comment saved"})
+				return
+			}
+			log.Comment = nextComment
 			if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".build_logs", id+".json"), log, 0600); err != nil {
 				writeError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
 			_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "history_comment", Changes: map[string]any{"id": id}})
-			writeJSON(w, http.StatusOK, map[string]any{"id": log.ID, "comment": log.Comment})
+			writeJSON(w, http.StatusOK, map[string]any{"message": "Comment saved"})
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		}
@@ -2474,6 +4330,10 @@ func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
 			writeValidation(w, "flagged", "required")
 			return
 		}
+		if log.Flagged == *body.Flagged {
+			writeJSON(w, http.StatusOK, map[string]any{"message": "Flag updated"})
+			return
+		}
 		log.Flagged = *body.Flagged
 		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".build_logs", id+".json"), log, 0600); err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
@@ -2486,7 +4346,7 @@ func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "history_flag", Changes: map[string]any{"id": id, "flagged": *body.Flagged}})
-		writeJSON(w, http.StatusOK, map[string]any{"id": log.ID, "flagged": log.Flagged})
+		writeJSON(w, http.StatusOK, map[string]any{"message": "Flag updated"})
 	case "tags":
 		if !method(w, r, http.MethodPost) {
 			return
@@ -2501,6 +4361,10 @@ func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return
 		}
+		if stringSlicesEqual(log.Tags, tags) {
+			writeJSON(w, http.StatusOK, map[string]any{"message": "Tags updated"})
+			return
+		}
 		log.Tags = tags
 		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".build_logs", id+".json"), log, 0600); err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
@@ -2513,7 +4377,7 @@ func (s *APIServer) handleHistoryPath(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "history_tags", Changes: map[string]any{"id": id, "tags": tags}})
-		writeJSON(w, http.StatusOK, map[string]any{"id": log.ID, "tags": log.Tags})
+		writeJSON(w, http.StatusOK, map[string]any{"message": "Tags updated"})
 	case "rollback":
 		if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
 			return
@@ -2552,12 +4416,29 @@ func (s *APIServer) handleCircuitReset(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
 		return
 	}
+	current, err := readCircuitState(filepath.Join(s.cfg.StateDir, ".build_circuit_state"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	if circuitStateInitial(current) {
+		writeJSON(w, http.StatusOK, map[string]any{"message": "Circuit breaker reset", "open": false, "consecutive_failures": 0})
+		return
+	}
 	state := apiCircuitState{Open: false, ConsecutiveFailures: 0}
 	if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, ".build_circuit_state"), state, 0600); err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
+	if err := appendConfigAndAuditLog(s.cfg.StateDir, s.nowString(), "circuit_breaker_reset", map[string]any{"open": false, "consecutive_failures": 0}, "circuit_breaker_reset"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"message": "Circuit breaker reset", "open": false, "consecutive_failures": 0})
+}
+
+func circuitStateInitial(state apiCircuitState) bool {
+	return !state.Open && state.ConsecutiveFailures == 0 && state.OpenedAt == nil && state.LastFailureAt == nil && state.LastError == nil
 }
 
 func (s *APIServer) handleMaintenance(w http.ResponseWriter, r *http.Request) {
@@ -2603,11 +4484,11 @@ func (s *APIServer) handleMaintenanceEnable(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "maintenance", Changes: map[string]any{"enabled": true, "reason": reason}}); err != nil {
+	if err := appendConfigAndAuditLog(s.cfg.StateDir, s.nowString(), "maintenance", map[string]any{"enabled": true, "reason": reason}, "maintenance"); err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"message": "Maintenance enabled", "since": since})
+	writeJSON(w, http.StatusOK, map[string]any{"message": "Maintenance mode enabled", "since": since})
 }
 
 func (s *APIServer) handleMaintenanceDisable(w http.ResponseWriter, r *http.Request) {
@@ -2629,11 +4510,18 @@ func (s *APIServer) handleMaintenanceDisable(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "maintenance", Changes: map[string]any{"enabled": false}}); err != nil {
+	if err := appendConfigAndAuditLog(s.cfg.StateDir, s.nowString(), "maintenance", map[string]any{"enabled": false}, "maintenance"); err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"message": "Maintenance disabled"})
+	writeJSON(w, http.StatusOK, map[string]any{"message": "Maintenance mode disabled"})
+}
+
+func appendConfigAndAuditLog(stateDir, at, logType string, changes map[string]any, targetID string) error {
+	if err := appendJSONLine(filepath.Join(stateDir, ".config_log"), apiConfigLogRecord{At: at, Type: logType, Changes: changes}); err != nil {
+		return err
+	}
+	return appendJSONLine(filepath.Join(stateDir, ".audit_log"), map[string]any{"at": at, "action": "config_update", "result": "success", "target_id": targetID})
 }
 
 func (s *APIServer) handleQueue(w http.ResponseWriter, r *http.Request) {
@@ -2648,7 +4536,7 @@ func (s *APIServer) handleQueue(w http.ResponseWriter, r *http.Request) {
 		if !rejectBody(w, r) {
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"queued": state.Queued, "max_size": s.queueMaxSize()})
+		writeJSON(w, http.StatusOK, map[string]any{"active": state.ActiveQueueEntry, "queued": sortedQueueEntries(state.Queued), "max_size": s.queueMaxSize()})
 	case http.MethodDelete:
 		if !rejectBody(w, r) {
 			return
@@ -2665,16 +4553,164 @@ func (s *APIServer) handleQueue(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *APIServer) handleApprovals(w http.ResponseWriter, r *http.Request) {
+	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
+		return
+	}
+	records, err := readLatestApprovals(filepath.Join(s.cfg.StateDir, ".approval_queue"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	sort.Slice(records, func(i, j int) bool {
+		if records[i].CreatedAt == records[j].CreatedAt {
+			return records[i].ID < records[j].ID
+		}
+		return records[i].CreatedAt > records[j].CreatedAt
+	})
+	writeJSON(w, http.StatusOK, map[string]any{"approvals": records})
+}
+
+func (s *APIServer) handleApprovalPath(w http.ResponseWriter, r *http.Request) {
+	rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/approvals/"), "/")
+	id, action, ok := strings.Cut(rest, "/")
+	if !ok || !validSimpleID(id) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
+		return
+	}
+	switch action {
+	case "approve":
+		s.approveBuild(w, r, id)
+	case "reject":
+		s.rejectBuildApproval(w, r, id)
+	default:
+		writeError(w, http.StatusNotFound, "Not found")
+	}
+}
+
+func (s *APIServer) approveBuild(w http.ResponseWriter, r *http.Request, id string) {
+	approvalPath := filepath.Join(s.cfg.StateDir, ".approval_queue")
+	record, found, err := latestApprovalByID(approvalPath, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	if !found {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if record.Status != "pending" {
+		writeError(w, http.StatusConflict, "Conflict")
+		return
+	}
+	actor := apiActorID(r)
+	payload := map[string]any{
+		"approval_id":       record.ID,
+		"branch":            record.Branch,
+		"sha":               record.SHA,
+		"target":            record.Target,
+		"requested_trigger": record.RequestedTrigger,
+		"requested_force":   record.RequestedForce,
+		"delivery_id":       record.DeliveryID,
+	}
+	queueID, duplicate, err := s.enqueueApprovalRequest(filepath.Join(s.cfg.StateDir, ".build_state"), actor, payload)
+	if err != nil {
+		if errors.Is(err, errAPIQueueFull) {
+			writeError(w, http.StatusTooManyRequests, "queue_full")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	now := s.nowString()
+	record.Status = "approved"
+	record.DecidedAt = &now
+	record.DecidedBy = &actor
+	record.QueueID = &queueID
+	record.Reason = nil
+	if err := appendJSONLine(approvalPath, record); err != nil {
+		log.Printf("APPROVAL_APPROVED_RECORD_FAILED: path=%s", approvalPath)
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": now, "actor": actor, "action": "approval_approved", "result": "success", "target_type": "approval", "target_id": id}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	message := "Build approved"
+	if duplicate {
+		message = "Build approved"
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"message": message, "queued": true, "queue_id": queueID, "dispatch": s.dispatchRunner(queueID)})
+}
+
+func (s *APIServer) rejectBuildApproval(w http.ResponseWriter, r *http.Request, id string) {
+	approvalPath := filepath.Join(s.cfg.StateDir, ".approval_queue")
+	record, found, err := latestApprovalByID(approvalPath, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	if !found {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if record.Status != "pending" {
+		writeError(w, http.StatusConflict, "Conflict")
+		return
+	}
+	actor := apiActorID(r)
+	now := s.nowString()
+	reason := "rejected"
+	record.Status = "rejected"
+	record.DecidedAt = &now
+	record.DecidedBy = &actor
+	record.QueueID = nil
+	record.Reason = &reason
+	if err := appendJSONLine(approvalPath, record); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	history := apiHistoryRecord{ID: id, Status: "approval_rejected", Trigger: "approval", FinishedAt: now, BlobSHA: &record.SHA, DurationSeconds: 0, Tags: []string{}}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".build_history"), history); err != nil {
+		log.Printf("APPROVAL_REJECT_HISTORY_FAILED: path=%s", filepath.Join(s.cfg.StateDir, ".build_history"))
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": now, "actor": actor, "action": "approval_rejected", "result": "success", "target_type": "approval", "target_id": id}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Build rejected"})
+}
+
 func (s *APIServer) handlePATStatus(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
-	info, err := os.Stat(filepath.Join(s.cfg.StateDir, ".github_token"))
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	configured, err := patConfigured(filepath.Join(s.cfg.StateDir, ".github_token"))
+	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"configured": err == nil, "mode": fileModeString(info)})
+	cfg, err := s.readMergedConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	expiresInDays, err := expiresInDays(cfg.PATExpiresAt, s.cfg.Now().UTC())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"configured":      configured,
+		"expires_at":      cfg.PATExpiresAt,
+		"expires_in_days": expiresInDays,
+	})
 }
 
 func (s *APIServer) handlePATVerify(w http.ResponseWriter, r *http.Request) {
@@ -2690,7 +4726,39 @@ func (s *APIServer) handlePATVerify(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"configured": true, "valid": true, "checked_at": s.nowString(), "remote_checked": false})
+	result, err := s.verifyGitHubPAT(r.Context(), token)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "PAT verification failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (s *APIServer) verifyGitHubPAT(ctx context.Context, token string) (map[string]any, error) {
+	base := strings.TrimRight(s.cfg.GitHubAPIBaseURL, "/")
+	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, base+"/user", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "adlaire-ci")
+	resp, err := s.cfg.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+	checkedAt := s.nowString()
+	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+		return map[string]any{"valid": true, "checked_at": checkedAt, "scopes": githubScopes(resp.Header.Get("X-OAuth-Scopes"))}, nil
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return map[string]any{"valid": false, "checked_at": checkedAt, "scopes": []string{}}, nil
+	}
+	return nil, fmt.Errorf("github pat verify status %d", resp.StatusCode)
 }
 
 func (s *APIServer) handlePATUpdate(w http.ResponseWriter, r *http.Request) {
@@ -2720,66 +4788,66 @@ func (s *APIServer) handleBackup(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
-	backup := map[string]any{}
-	for _, file := range backupConfigFiles() {
-		if value, ok, err := readOptionalJSONMap(filepath.Join(s.cfg.StateDir, file)); err != nil {
-			writeError(w, http.StatusInternalServerError, "Internal server error")
-			return
-		} else if ok {
-			backup[strings.TrimPrefix(file, ".")] = maskSecrets(value)
-		}
+	backup, err := s.backupObject()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
 	}
-	if _, err := os.Stat(filepath.Join(s.cfg.StateDir, ".github_token")); err == nil {
-		backup["github_token_set"] = true
-	}
-	if _, err := os.Stat(filepath.Join(s.cfg.StateDir, ".webhook_secret")); err == nil {
-		backup["webhook_secret_set"] = true
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"exported_at": s.nowString(), "config": backup})
+	writeJSON(w, http.StatusOK, backup)
 }
 
 func (s *APIServer) handleRestore(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodPost) {
 		return
 	}
-	var body struct {
-		Config map[string]map[string]any `json:"config"`
-	}
-	if !decodeBody(w, r, &body, true) {
+	rawBody := map[string]json.RawMessage{}
+	if !decodeBody(w, r, &rawBody, true) {
 		return
 	}
-	if body.Config == nil {
-		writeValidation(w, "config", "required")
+	plan, changed, ok := s.restorePlan(w, rawBody)
+	if !ok {
 		return
 	}
-	allowed := map[string]string{}
-	for _, file := range backupConfigFiles() {
-		allowed[strings.TrimPrefix(file, ".")] = file
+	if !changed {
+		writeJSON(w, http.StatusOK, map[string]string{"message": "No changes"})
+		return
 	}
-	writes := map[string]map[string]any{}
-	for key, value := range body.Config {
-		file, ok := allowed[key]
-		if !ok {
-			writeValidation(w, key, "unknown key")
-			return
-		}
-		if containsMaskedSecret(value) {
-			current, _, _ := readOptionalJSONMap(filepath.Join(s.cfg.StateDir, file))
-			value = mergeMaskedSecrets(value, current)
-		}
-		writes[file] = value
-	}
-	for _, file := range backupConfigFiles() {
-		value, ok := writes[file]
-		if !ok {
+	for _, write := range plan.JSONWrites {
+		if write.Delete {
+			if err := removeIfExists(filepath.Join(s.cfg.StateDir, write.File)); err != nil {
+				writeError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
 			continue
 		}
-		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, file), value, 0600); err != nil {
+		if err := atomicWriteJSON(filepath.Join(s.cfg.StateDir, write.File), write.Value, 0600); err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
 	}
-	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "restore", Changes: map[string]any{"files": len(writes)}})
+	for _, write := range plan.SecretWrites {
+		path := filepath.Join(s.cfg.StateDir, write.File)
+		if write.Delete {
+			if err := removeIfExists(path); err != nil {
+				writeError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+			continue
+		}
+		if err := atomicWriteText(path, write.Value, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+	}
+	now := s.nowString()
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: now, Type: "restore", Changes: plan.ChangeSummary}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": now, "action": "config_update", "result": "success", "target_type": "config", "target_id": "restore"}); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Config restored"})
 }
 
@@ -2787,16 +4855,115 @@ func (s *APIServer) handleDiagnostics(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodGet) || !rejectBody(w, r) {
 		return
 	}
-	meta, err := inspectOutput(s.outputDir())
+	items, err := s.diagnosticsItems(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	_, tokenErr := os.Stat(filepath.Join(s.cfg.StateDir, ".github_token"))
-	writeJSON(w, http.StatusOK, map[string]any{"items": []map[string]any{
-		{"name": "github_token", "status": statusFromExists(tokenErr)},
-		{"name": "output", "status": map[bool]string{true: "ok", false: "warn"}[meta.Exists]},
-	}})
+	writeJSON(w, http.StatusOK, map[string]any{"checked_at": s.nowString(), "items": items})
+}
+
+func (s *APIServer) diagnosticsItems(ctx context.Context) ([]map[string]any, error) {
+	token, tokenErr := readSecretText(filepath.Join(s.cfg.StateDir, ".github_token"))
+	tokenConfigured := tokenErr == nil && strings.TrimSpace(token) != ""
+	if tokenErr != nil && !errors.Is(tokenErr, os.ErrNotExist) {
+		return nil, tokenErr
+	}
+	cfg, err := s.readMergedConfig()
+	if err != nil {
+		return nil, err
+	}
+	target, err := s.selectedOutputTarget()
+	if err != nil {
+		return nil, err
+	}
+	meta, err := inspectOutput(target.Out)
+	if err != nil {
+		return nil, err
+	}
+	return []map[string]any{
+		s.diagnosticsPATItem(tokenConfigured, cfg.PATExpiresAt),
+		s.diagnosticsGitHubAPIItem(ctx, token, tokenConfigured),
+		diagnosticsOutputItem(meta),
+		s.diagnosticsSystemdItem(ctx),
+		diagnosticsWebhookItem(filepath.Join(s.cfg.StateDir, ".webhook_secret")),
+	}, nil
+}
+
+func (s *APIServer) diagnosticsPATItem(configured bool, expiresAt *string) map[string]any {
+	if !configured {
+		return diagnosticsItem("pat", "error", "PAT is not configured")
+	}
+	days, err := expiresInDays(expiresAt, s.cfg.Now().UTC())
+	if err != nil {
+		return diagnosticsItem("pat", "error", "PAT expiration is invalid")
+	}
+	if days != nil && *days <= 0 {
+		return diagnosticsItem("pat", "error", "PAT is expired")
+	}
+	if days != nil && *days <= 7 {
+		return diagnosticsItem("pat", "warn", "PAT expires within 7 days")
+	}
+	return diagnosticsItem("pat", "ok", "PAT is valid")
+}
+
+func (s *APIServer) diagnosticsGitHubAPIItem(ctx context.Context, token string, configured bool) map[string]any {
+	if !configured {
+		return diagnosticsItem("github_api", "error", "GitHub API not checked because PAT is not configured")
+	}
+	if _, err := s.fetchGitHubRateLimit(ctx, token); err != nil {
+		return diagnosticsItem("github_api", "error", "GitHub API unreachable")
+	}
+	return diagnosticsItem("github_api", "ok", "GitHub API reachable")
+}
+
+func diagnosticsOutputItem(meta outputInspection) map[string]any {
+	if !meta.Exists {
+		return diagnosticsItem("output_file", "error", "Output site is missing")
+	}
+	return diagnosticsItem("output_file", "ok", fmt.Sprintf("Output site exists (%s)", humanBytes(meta.SizeBytes)))
+}
+
+func humanBytes(size int64) string {
+	if size < 1024 {
+		return fmt.Sprintf("%d B", size)
+	}
+	value := float64(size)
+	for _, unit := range []string{"KB", "MB", "GB", "TB"} {
+		value = value / 1024
+		if value < 1024 || unit == "TB" {
+			return fmt.Sprintf("%.1f %s", value, unit)
+		}
+	}
+	return fmt.Sprintf("%d B", size)
+}
+
+func (s *APIServer) diagnosticsSystemdItem(ctx context.Context) map[string]any {
+	cmdCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	timer, err := s.cfg.CommandRunner(cmdCtx, "systemctl", "is-active", "adlaire-ci.timer")
+	if err != nil || timer.ExitCode != 0 || strings.TrimSpace(timer.Stdout) != "active" {
+		return diagnosticsItem("systemd", "error", "systemd timer or service is not ready")
+	}
+	cmdCtx, cancel = context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	service, err := s.cfg.CommandRunner(cmdCtx, "systemctl", "cat", "adlaire-ci.service")
+	if err != nil || service.ExitCode != 0 {
+		return diagnosticsItem("systemd", "error", "systemd timer or service is not ready")
+	}
+	return diagnosticsItem("systemd", "ok", "adlaire-ci.timer is active and adlaire-ci.service is installed")
+}
+
+func diagnosticsWebhookItem(path string) map[string]any {
+	configured, err := patConfigured(path)
+	if err == nil && configured {
+		return diagnosticsItem("webhook", "ok", "Webhook secret configured")
+	}
+	return diagnosticsItem("webhook", "warn", "Webhook URL not configured")
+}
+
+func diagnosticsItem(name, status, message string) map[string]any {
+	return map[string]any{"name": name, "status": status, "message": message}
 }
 
 func (s *APIServer) handleRateLimit(w http.ResponseWriter, r *http.Request) {
@@ -2812,15 +4979,56 @@ func (s *APIServer) handleRateLimit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"checked_at":       s.nowString(),
-		"remote_checked":   false,
-		"limit":            nil,
-		"remaining":        nil,
-		"reset_at":         nil,
-		"resource":         "core",
-		"token_configured": true,
-	})
+	result, err := s.fetchGitHubRateLimit(r.Context(), token)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "GitHub rate limit check failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (s *APIServer) fetchGitHubRateLimit(ctx context.Context, token string) (map[string]any, error) {
+	base := strings.TrimRight(s.cfg.GitHubAPIBaseURL, "/")
+	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, base+"/rate_limit", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "adlaire-ci")
+	resp, err := s.cfg.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+		return nil, fmt.Errorf("github rate limit status %d", resp.StatusCode)
+	}
+	var payload struct {
+		Resources struct {
+			Core struct {
+				Limit     int   `json:"limit"`
+				Remaining int   `json:"remaining"`
+				Reset     int64 `json:"reset"`
+				Used      int   `json:"used"`
+			} `json:"core"`
+		} `json:"resources"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&payload); err != nil {
+		return nil, err
+	}
+	if payload.Resources.Core.Reset <= 0 {
+		return nil, errors.New("missing core rate limit")
+	}
+	return map[string]any{
+		"limit":     payload.Resources.Core.Limit,
+		"remaining": payload.Resources.Core.Remaining,
+		"reset_at":  time.Unix(payload.Resources.Core.Reset, 0).UTC().Format(apiTimeLayout),
+		"used":      payload.Resources.Core.Used,
+	}, nil
 }
 
 func (s *APIServer) handleDiskUsage(w http.ResponseWriter, r *http.Request) {
@@ -2833,7 +5041,12 @@ func (s *APIServer) handleDiskUsage(w http.ResponseWriter, r *http.Request) {
 	archiveBytes, archiveCount := fileTreeStats(filepath.Join(s.cfg.StateDir, ".build_logs", "archive"), func(path string) bool {
 		return strings.HasSuffix(path, ".json.gz")
 	})
-	outputBytes, _ := fileTreeStats(s.outputDir(), func(path string) bool { return true })
+	target, err := s.selectedOutputTarget()
+	if err != nil {
+		writeOutputTargetError(w, err)
+		return
+	}
+	outputBytes, _ := fileTreeStats(target.Out, func(path string) bool { return true })
 	writeJSON(w, http.StatusOK, map[string]any{
 		"build_logs_bytes":         logBytes,
 		"build_logs_count":         logCount,
@@ -2889,7 +5102,11 @@ func (s *APIServer) handleWebhookEvents(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	events := readJSONLines(filepath.Join(s.cfg.StateDir, ".webhook_events.json"))
-	sort.Slice(events, func(i, j int) bool { return fmt.Sprint(events[i]["at"]) > fmt.Sprint(events[j]["at"]) })
+	sort.Slice(events, func(i, j int) bool {
+		left := firstNonEmpty(fmt.Sprint(events[i]["timestamp"]), fmt.Sprint(events[i]["at"]))
+		right := firstNonEmpty(fmt.Sprint(events[j]["timestamp"]), fmt.Sprint(events[j]["at"]))
+		return left > right
+	})
 	start := offset
 	if start > len(events) {
 		start = len(events)
@@ -2919,42 +5136,170 @@ func (s *APIServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	if maintenanceEnabled(filepath.Join(s.cfg.StateDir, ".maintenance")) {
-		writeError(w, http.StatusServiceUnavailable, "maintenance")
+	webhookActor := "webhook"
+	webhookAuth := apiAuthInfo{AuthType: "webhook", Actor: &webhookActor}
+	if capture, ok := r.Context().Value(apiAuthCaptureContextKey{}).(*apiAuthInfo); ok {
+		*capture = webhookAuth
+	}
+	if !s.enforceAPIRateLimit(w, r, webhookAuth, "trigger") {
+		return
+	}
+	if !validateRouteQuery(w, r) {
 		return
 	}
 	var payload map[string]any
 	if err := json.Unmarshal(raw, &payload); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	eventID := s.newID("wh")
+	deliveryID := strings.TrimSpace(r.Header.Get("X-GitHub-Delivery"))
+	eventName := r.Header.Get("X-GitHub-Event")
+	if deliveryID == "" || eventName == "" {
 		writeError(w, http.StatusUnprocessableEntity, "Validation failed")
 		return
 	}
-	eventID := firstNonEmpty(r.Header.Get("X-GitHub-Delivery"), s.newID("evt"))
-	eventName := r.Header.Get("X-GitHub-Event")
-	result := "ignored_event"
-	queued := false
-	var queueID any
-	if eventName == "push" || eventName == "" {
-		statePath := filepath.Join(s.cfg.StateDir, ".build_state")
-		state, err := readBuildState(statePath)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "State file is corrupted")
-			return
-		}
-		maxSize := s.queueMaxSize()
-		if maxSize == 0 || len(state.Queued) >= maxSize {
-			writeError(w, http.StatusTooManyRequests, "queue_full")
-			return
-		}
-		id := s.newID("q")
-		state.Queued = append(state.Queued, map[string]any{"id": id, "trigger": "webhook", "queued_at": s.nowString(), "requested_by": "webhook", "priority": "normal", "created_seq": nextCreatedSeq(state.Queued), "payload": map[string]any{"delivery_id": eventID, "ref": payload["ref"], "after": payload["after"]}})
-		if err := atomicWriteJSON(statePath, state, 0600); err != nil {
+	maintenance, err := maintenanceEnabled(filepath.Join(s.cfg.StateDir, ".maintenance"))
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "maintenance_unavailable")
+		return
+	}
+	if maintenance {
+		writeError(w, http.StatusServiceUnavailable, "maintenance")
+		return
+	}
+	ref, _ := payload["ref"].(string)
+	branch := ""
+	if strings.HasPrefix(ref, "refs/heads/") {
+		branch = strings.TrimPrefix(ref, "refs/heads/")
+	}
+	sha, _ := payload["after"].(string)
+	repository := webhookRepository(payload)
+	if eventName != "push" {
+		if err := s.appendWebhookEvent(eventID, deliveryID, eventName, nullableString(ref), nullableString(branch), nullableString(sha), repository, false, nil, "ignored_event"); err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		result, queued, queueID = "queued", true, id
+		writeJSON(w, http.StatusAccepted, map[string]any{"message": "Webhook ignored", "queued": false, "event_id": eventID})
+		return
 	}
-	_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".webhook_events.json"), map[string]any{"at": s.nowString(), "event_id": eventID, "event": eventName, "result": result, "queued_id": queueID})
-	writeJSON(w, http.StatusAccepted, map[string]any{"message": "Webhook accepted", "queued": queued, "event_id": eventID, "queue_id": queueID})
+	if branch == "" {
+		if err := s.appendWebhookEvent(eventID, deliveryID, eventName, nullableString(ref), nil, nullableString(sha), repository, false, nil, "ignored_branch"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeJSON(w, http.StatusAccepted, map[string]any{"message": "Webhook ignored", "queued": false, "event_id": eventID})
+		return
+	}
+	if !isLowerHex(sha, 40) {
+		writeValidation(w, "after", "invalid value")
+		return
+	}
+	allowed, err := s.webhookBranchAllowed(branch)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	if !allowed {
+		if err := s.appendWebhookEvent(eventID, deliveryID, eventName, &ref, &branch, &sha, repository, false, nil, "ignored_branch"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeJSON(w, http.StatusAccepted, map[string]any{"message": "Webhook ignored", "queued": false, "event_id": eventID})
+		return
+	}
+	id, duplicate, err := s.enqueueBuildRequest(filepath.Join(s.cfg.StateDir, ".build_state"), "webhook", "webhook", map[string]any{"delivery_id": deliveryID, "branch": branch, "sha": sha})
+	if err != nil {
+		if errors.Is(err, errAPIQueueFull) {
+			_ = s.appendWebhookEvent(eventID, deliveryID, eventName, &ref, &branch, &sha, repository, false, nil, "queue_full")
+			writeError(w, http.StatusTooManyRequests, "queue_full")
+			return
+		}
+		if errors.Is(err, errAPIQueueConflict) {
+			writeError(w, http.StatusConflict, "Conflicting delivery")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		return
+	}
+	result := "queued"
+	message := "Webhook accepted"
+	if duplicate {
+		result = "duplicate"
+		message = "Webhook already queued"
+	}
+	eventLogFailed := false
+	if err := s.appendWebhookEvent(eventID, deliveryID, eventName, &ref, &branch, &sha, repository, true, &id, result); err != nil {
+		log.Printf("WEBHOOK_EVENT_LOG_WRITE_FAILED")
+		eventLogFailed = true
+	}
+	if err := s.appendSecurityAudit(r, "build_trigger", "webhook", "webhook", "build", id, "success"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	resp := map[string]any{"message": message, "queued": true, "event_id": eventID, "queue_id": id, "dispatch": s.dispatchRunner(id)}
+	if eventLogFailed {
+		resp["event_log_failed"] = true
+	}
+	writeJSON(w, http.StatusAccepted, resp)
+}
+
+func (s *APIServer) webhookBranchAllowed(branch string) (bool, error) {
+	cfg, _, err := s.readBranchConfig()
+	if err != nil {
+		return false, err
+	}
+	for _, target := range cfg.BranchTargets {
+		if target.Branch == branch {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (s *APIServer) appendWebhookEvent(id, deliveryID, eventName string, ref, branch, sha, repository *string, buildTriggered bool, queueID *string, result string) error {
+	var errorCode *string
+	if result == "queue_full" {
+		value := "queue_full"
+		errorCode = &value
+	}
+	record := map[string]any{
+		"id":              id,
+		"timestamp":       s.nowString(),
+		"delivery_id":     deliveryID,
+		"event":           eventName,
+		"ref":             ref,
+		"branch":          branch,
+		"sha":             sha,
+		"repository":      repository,
+		"build_triggered": buildTriggered,
+		"queued_id":       queueID,
+		"result":          result,
+		"error_code":      errorCode,
+	}
+	return appendJSONLine(filepath.Join(s.cfg.StateDir, ".webhook_events.json"), record)
+}
+
+func webhookRepository(payload map[string]any) *string {
+	repository, ok := payload["repository"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	name, _ := repository["name"].(string)
+	ownerMap, _ := repository["owner"].(map[string]any)
+	owner, _ := ownerMap["login"].(string)
+	if owner == "" || name == "" {
+		return nil
+	}
+	value := owner + "/" + name
+	return &value
+}
+
+func nullableString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }
 
 func (s *APIServer) handleSnapshots(w http.ResponseWriter, r *http.Request) {
@@ -3020,7 +5365,16 @@ func (s *APIServer) handleSnapshotPath(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "snapshot_delete", Changes: map[string]any{"id": id}})
+		now := s.nowString()
+		if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: now, Type: "snapshot_delete", Changes: map[string]any{"id": id}}); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		actorType, actorID := apiAuditActor(r)
+		if err := s.appendSecurityAudit(r, "snapshot_delete", actorType, actorID, "snapshot", id, "success"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 		writeJSON(w, http.StatusOK, map[string]string{"message": "Snapshot deleted"})
 	default:
 		writeError(w, http.StatusNotFound, "Not found")
@@ -3041,52 +5395,98 @@ func (s *APIServer) handleTokens(w http.ResponseWriter, r *http.Request) {
 		}
 		out := []map[string]any{}
 		for _, token := range tokens {
-			out = append(out, map[string]any{"id": token.ID, "name": token.Name, "scopes": token.Scopes, "created_at": token.CreatedAt, "revoked_at": token.RevokedAt})
+			out = append(out, map[string]any{
+				"id":           token.ID,
+				"label":        token.Label,
+				"scopes":       token.Scopes,
+				"created_at":   token.CreatedAt,
+				"last_used_at": token.LastUsedAt,
+				"expires_at":   token.ExpiresAt,
+				"revoked_at":   token.RevokedAt,
+			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"tokens": out})
 	case http.MethodPost:
 		var body struct {
-			Label  string   `json:"label"`
-			Name   string   `json:"name"`
-			Scopes []string `json:"scopes"`
+			Label     string   `json:"label"`
+			Scopes    []string `json:"scopes"`
+			ExpiresAt *string  `json:"expires_at"`
 		}
 		if !decodeBody(w, r, &body, true) {
 			return
 		}
 		label := strings.TrimSpace(body.Label)
-		if label == "" {
-			label = strings.TrimSpace(body.Name)
-		}
-		if label == "" || len(label) > 100 {
+		if label == "" || len([]byte(label)) > 64 {
 			writeValidation(w, "label", "invalid value")
 			return
 		}
-		tokens, err := readAPITokens(path)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+		scopes, ok := normalizeTokenScopes(body.Scopes)
+		if !ok {
+			writeValidation(w, "scopes", "invalid value")
 			return
 		}
-		raw, err := randomHex(32)
+		expiresAt, ok := normalizeTokenExpiresAt(body.ExpiresAt, s.cfg.Now().UTC())
+		if !ok {
+			writeValidation(w, "expires_at", "invalid value")
+			return
+		}
+		token, err := newAPIToken()
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		token := "act_" + raw
-		record := apiTokenRecord{ID: s.newID("tok"), Name: label, TokenHash: tokenHash(token), Scopes: normalizeTokenScopes(body.Scopes), CreatedAt: s.nowString()}
-		tokens = append(tokens, record)
-		if err := atomicWriteJSON(path, tokens, 0600); err != nil {
+		hash := tokenHash(token)
+		var record apiTokenRecord
+		_, err = updateAPITokensLocked(path, func(tokens []apiTokenRecord) ([]apiTokenRecord, bool, error) {
+			if len(tokens) >= 100 {
+				return nil, false, errAPITokenLimit
+			}
+			for _, existing := range tokens {
+				if tokenHashEqual(existing.TokenHash, hash) {
+					return nil, false, errAPITokenCollision
+				}
+			}
+			id, err := nextTokenID(tokens)
+			if err != nil {
+				return nil, false, err
+			}
+			record = apiTokenRecord{ID: id, Label: label, TokenHash: hash, Scopes: scopes, CreatedAt: s.nowString(), ExpiresAt: expiresAt}
+			return append(tokens, record), true, nil
+		})
+		if err != nil {
+			if errors.Is(err, errAPIStateLockConflict) {
+				writeError(w, http.StatusConflict, "Conflict")
+				return
+			}
+			if errors.Is(err, errAPITokenLimit) {
+				writeValidation(w, "tokens", "limit exceeded")
+				return
+			}
+			if errors.Is(err, errAPITokenCorrupt) {
+				writeError(w, http.StatusInternalServerError, "State file is corrupted")
+				return
+			}
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": s.nowString(), "action": "token_issue", "id": record.ID})
+		if err := s.appendTokenAccessLog(r, "token_create", record.ID, "success", ""); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		actorType, actorID := apiAuditActor(r)
+		if err := s.appendSecurityAudit(r, "token_create", actorType, actorID, "api_token", record.ID, "success"); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 		writeJSON(w, http.StatusCreated, map[string]any{
-			"id":         record.ID,
-			"token":      token,
-			"label":      record.Name,
-			"name":       record.Name,
-			"scopes":     record.Scopes,
-			"created_at": record.CreatedAt,
-			"expires_at": nil,
+			"id":           record.ID,
+			"label":        record.Label,
+			"scopes":       record.Scopes,
+			"created_at":   record.CreatedAt,
+			"expires_at":   record.ExpiresAt,
+			"revoked_at":   record.RevokedAt,
+			"last_used_at": record.LastUsedAt,
+			"token":        token,
 		})
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -3103,25 +5503,44 @@ func (s *APIServer) handleTokenPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := filepath.Join(s.cfg.StateDir, ".api_tokens")
-	tokens, err := readAPITokens(path)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "State file is corrupted")
-		return
-	}
-	for i := range tokens {
-		if tokens[i].ID == id {
-			now := s.nowString()
-			tokens[i].RevokedAt = &now
-			if err := atomicWriteJSON(path, tokens, 0600); err != nil {
-				writeError(w, http.StatusInternalServerError, "Internal server error")
-				return
+	var revoked bool
+	_, err := updateAPITokensLocked(path, func(tokens []apiTokenRecord) ([]apiTokenRecord, bool, error) {
+		for i := range tokens {
+			if tokens[i].ID == id && tokens[i].RevokedAt == nil {
+				now := s.nowString()
+				tokens[i].RevokedAt = &now
+				revoked = true
+				return tokens, true, nil
 			}
-			_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{"at": now, "action": "token_revoke", "id": id})
-			writeJSON(w, http.StatusOK, map[string]string{"message": "Token revoked"})
+		}
+		return tokens, false, nil
+	})
+	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			writeError(w, http.StatusConflict, "Conflict")
 			return
 		}
+		if errors.Is(err, errAPITokenCorrupt) {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
 	}
-	writeError(w, http.StatusNotFound, "Not found")
+	if !revoked {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if err := s.appendTokenAccessLog(r, "token_revoke", id, "success", ""); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	actorType, actorID := apiAuditActor(r)
+	if err := s.appendSecurityAudit(r, "token_revoke", actorType, actorID, "api_token", id, "success"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Token revoked"})
 }
 
 func (s *APIServer) handleRuleFile(filename, logType string, createStatus int) http.HandlerFunc {
@@ -3156,7 +5575,12 @@ func (s *APIServer) handleRuleFile(filename, logType string, createStatus int) h
 				writeError(w, http.StatusConflict, "Conflict")
 				return
 			}
-			rule["id"] = s.newID("rule")
+			id, err := s.nextTimeID(ruleIDPrefix(logType), ruleIDSet(rules))
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+			rule["id"] = id
 			if logType == "hook" {
 				if _, ok := rule["enabled"]; !ok {
 					rule["enabled"] = true
@@ -3166,7 +5590,7 @@ func (s *APIServer) handleRuleFile(filename, logType string, createStatus int) h
 				}
 			}
 			rules = append(rules, rule)
-			if err := atomicWriteJSON(path, rules, 0600); err != nil {
+			if err := atomicWriteJSON(path, ruleListWrapper(path, rules), 0600); err != nil {
 				writeError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
@@ -3213,7 +5637,7 @@ func (s *APIServer) handleRulePath(filename, logType string) http.HandlerFunc {
 			writeError(w, http.StatusNotFound, "Not found")
 			return
 		}
-		if err := atomicWriteJSON(path, next, 0600); err != nil {
+		if err := atomicWriteJSON(path, ruleListWrapper(path, next), 0600); err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
@@ -3262,17 +5686,27 @@ func (s *APIServer) handleVerifyOutput(w http.ResponseWriter, r *http.Request) {
 	if !method(w, r, http.MethodPost) || !rejectBody(w, r) {
 		return
 	}
-	logs := s.readBuildLogsNewest()
-	if len(logs) == 0 {
+	target, err := s.selectedOutputTarget()
+	if err != nil {
+		writeOutputTargetError(w, err)
+		return
+	}
+	histories := outputMetaSuccessHistory(readHistory(filepath.Join(s.cfg.StateDir, ".build_history")), target)
+	if len(histories) == 0 {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
 	}
-	expected := firstNonEmpty(logs[0].OutputSHA256, logs[0].SHA256)
+	expected := stringPtrValue(histories[0].OutputSHA256)
+	if expected == "" {
+		if log, err := readBuildLogByID(s.cfg.StateDir, histories[0].ID); err == nil {
+			expected = firstNonEmpty(log.OutputSHA256, log.SHA256)
+		}
+	}
 	if expected == "" {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
 	}
-	meta, err := inspectOutput(s.outputDir())
+	meta, err := inspectOutput(target.Out)
 	if err == nil && !meta.Exists {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
@@ -3327,6 +5761,59 @@ func (s *APIServer) handlePipelineConfig(w http.ResponseWriter, r *http.Request)
 		}
 		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "pipeline_config", Changes: maskSecrets(value)})
 		writeJSON(w, http.StatusOK, map[string]string{"message": "Pipeline config updated"})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+func (s *APIServer) handleBuildChainConfig(w http.ResponseWriter, r *http.Request) {
+	path := filepath.Join(s.cfg.StateDir, ".build_chain_config")
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		var cfg apiBuildChainConfig
+		if err := readJSONIfExists(path, &cfg); err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		if cfg.Chains == nil {
+			cfg.Chains = []apiBuildChainJob{}
+		}
+		writeJSON(w, http.StatusOK, cfg)
+	case http.MethodPost:
+		var cfg apiBuildChainConfig
+		if !decodeBody(w, r, &cfg, true) {
+			return
+		}
+		if cfg.Chains == nil {
+			cfg.Chains = []apiBuildChainJob{}
+		}
+		if !validateBuildChainConfig(w, cfg) {
+			return
+		}
+		var current apiBuildChainConfig
+		if err := readJSONIfExists(path, &current); err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		if current.Chains == nil {
+			current.Chains = []apiBuildChainJob{}
+		}
+		if buildChainConfigsEqual(current, cfg) {
+			writeJSON(w, http.StatusOK, map[string]any{"message": "No changes", "chains_count": len(cfg.Chains)})
+			return
+		}
+		if err := atomicWriteJSON(path, cfg, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if err := appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "build_chain_config", Changes: map[string]any{"chains_count": len(cfg.Chains)}}); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"message": "Build chain config updated", "chains_count": len(cfg.Chains)})
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
@@ -3518,17 +6005,96 @@ func (s *APIServer) handleJSONLinesLog(filename, key string) http.HandlerFunc {
 
 func (s *APIServer) withAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token := bearerToken(r)
-		auth, ok := s.authenticateToken(token)
+		authTransactionPath := apiAuthTransactionPath(r.URL.Path)
+		releaseAuthTransaction, ok := s.acquireAuthTransaction(w, r)
 		if !ok {
+			return
+		}
+		authTransactionReleased := false
+		releaseAuth := func() {
+			if authTransactionReleased {
+				return
+			}
+			releaseAuthTransaction()
+			authTransactionReleased = true
+		}
+		defer releaseAuth()
+
+		token := bearerToken(r)
+		auth, status := s.authenticateRequest(r, token)
+		if status != http.StatusOK {
+			if status == http.StatusForbidden {
+				writeError(w, http.StatusForbidden, "Forbidden")
+				return
+			}
+			if status == http.StatusConflict {
+				writeError(w, http.StatusConflict, "Conflict")
+				return
+			}
+			if status == http.StatusInternalServerError {
+				writeError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
 			writeError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
-		s.touchSession(token)
+		if auth.AuthType == "session" {
+			if auth.PasswordChangeRequired && r.URL.Path != "/api/change-password" && r.URL.Path != "/api/logout" {
+				writeError(w, http.StatusForbidden, "Password change required")
+				return
+			}
+			s.touchSession(token)
+		}
+		if !authTransactionPath {
+			releaseAuth()
+		}
 		if capture, ok := r.Context().Value(apiAuthCaptureContextKey{}).(*apiAuthInfo); ok {
 			*capture = auth
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), apiAuthContextKey{}, auth)))
+		nextReq := r.WithContext(context.WithValue(r.Context(), apiAuthContextKey{}, auth))
+		group, _ := apiRateLimitGroupForRequest(r.Method, r.URL.Path)
+		if !s.enforceAPIRateLimit(w, nextReq, auth, group) {
+			return
+		}
+		if !validateRouteQuery(w, nextReq) {
+			return
+		}
+		next(w, nextReq)
+	}
+}
+
+func (s *APIServer) acquireAuthTransaction(w http.ResponseWriter, r *http.Request) (func(), bool) {
+	timer := time.NewTimer(s.cfg.AuthTransactionTimeout)
+	defer timer.Stop()
+	select {
+	case s.authTransactions <- struct{}{}:
+		return func() {
+			<-s.authTransactions
+		}, true
+	case <-timer.C:
+		writeError(w, http.StatusConflict, "Conflict")
+		return nil, false
+	case <-r.Context().Done():
+		writeError(w, http.StatusConflict, "Conflict")
+		return nil, false
+	}
+}
+
+func apiAuthTransactionPath(path string) bool {
+	switch path {
+	case "/api/login",
+		"/api/login/totp",
+		"/api/logout",
+		"/api/change-password",
+		"/api/sessions",
+		"/api/sessions/revoke-all",
+		"/api/auth/totp-status",
+		"/api/auth/totp-setup",
+		"/api/auth/totp-confirm",
+		"/api/auth/totp":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -3545,16 +6111,35 @@ func (s *APIServer) validSession(token string) bool {
 	return ok
 }
 
+func (s *APIServer) authenticateRequest(r *http.Request, token string) (apiAuthInfo, int) {
+	if token == "" {
+		return apiAuthInfo{}, http.StatusUnauthorized
+	}
+	hash := tokenHash(token)
+	if auth, ok := s.authenticateSession(hash); ok {
+		return auth, http.StatusOK
+	}
+	return s.validAPITokenForRequest(hash, r)
+}
+
 func (s *APIServer) authenticateToken(token string) (apiAuthInfo, bool) {
 	if token == "" {
 		return apiAuthInfo{}, false
 	}
 	hash := tokenHash(token)
+	if auth, ok := s.authenticateSession(hash); ok {
+		return auth, true
+	}
+	auth, status := s.validAPITokenForReadOnlyAuth(hash)
+	return auth, status == http.StatusOK
+}
+
+func (s *APIServer) authenticateSession(hash string) (apiAuthInfo, bool) {
 	s.mu.Lock()
 	session, ok := s.sessions[hash]
 	if !ok {
 		s.mu.Unlock()
-		return s.validAPITokenAuth(hash)
+		return apiAuthInfo{}, false
 	}
 	expires, err := time.Parse(apiTimeLayout, session.ExpiresAt)
 	if err != nil || !s.cfg.Now().UTC().Before(expires) {
@@ -3564,29 +6149,195 @@ func (s *APIServer) authenticateToken(token string) (apiAuthInfo, bool) {
 	}
 	s.mu.Unlock()
 	actor := "admin"
-	return apiAuthInfo{AuthType: "session", Actor: &actor}, true
+	return apiAuthInfo{AuthType: "session", Actor: &actor, PasswordChangeRequired: session.PasswordChangeRequired}, true
 }
 
 func (s *APIServer) validAPIToken(token string) bool {
 	if token == "" {
 		return false
 	}
-	_, ok := s.validAPITokenAuth(tokenHash(token))
-	return ok
+	_, status := s.validAPITokenForReadOnlyAuth(tokenHash(token))
+	return status == http.StatusOK
 }
 
-func (s *APIServer) validAPITokenAuth(hash string) (apiAuthInfo, bool) {
+func (s *APIServer) validAPITokenForReadOnlyAuth(hash string) (apiAuthInfo, int) {
 	tokens, err := readAPITokens(filepath.Join(s.cfg.StateDir, ".api_tokens"))
 	if err != nil {
-		return apiAuthInfo{}, false
+		return apiAuthInfo{}, http.StatusInternalServerError
 	}
 	for _, record := range tokens {
-		if record.TokenHash == hash && record.RevokedAt == nil {
-			actor := record.ID
-			return apiAuthInfo{AuthType: "api_token", Actor: &actor}, true
+		if !tokenHashEqual(record.TokenHash, hash) {
+			continue
 		}
+		if record.RevokedAt != nil || apiTokenExpired(record, s.cfg.Now().UTC()) {
+			return apiAuthInfo{}, http.StatusUnauthorized
+		}
+		actor := record.ID
+		return apiAuthInfo{AuthType: "api_token", Actor: &actor, Scopes: append([]string{}, record.Scopes...)}, http.StatusOK
 	}
-	return apiAuthInfo{}, false
+	return apiAuthInfo{}, http.StatusUnauthorized
+}
+
+func (s *APIServer) validAPITokenForRequest(hash string, r *http.Request) (apiAuthInfo, int) {
+	method := strings.ToUpper(r.Method)
+	path := r.URL.Path
+	tokensPath := filepath.Join(s.cfg.StateDir, ".api_tokens")
+	var matched *apiTokenRecord
+	var failureAction string
+	var failureReason string
+	var failureStatus int
+	_, err := updateAPITokensLocked(tokensPath, func(tokens []apiTokenRecord) ([]apiTokenRecord, bool, error) {
+		for i := range tokens {
+			if !tokenHashEqual(tokens[i].TokenHash, hash) {
+				continue
+			}
+			record := tokens[i]
+			matched = &record
+			if tokens[i].RevokedAt != nil {
+				failureAction = "token_revoked_reject"
+				failureReason = "revoked"
+				failureStatus = http.StatusUnauthorized
+				return tokens, false, nil
+			}
+			if apiTokenExpired(tokens[i], s.cfg.Now().UTC()) {
+				failureAction = "token_expired"
+				failureReason = "expired"
+				failureStatus = http.StatusUnauthorized
+				return tokens, false, nil
+			}
+			if !apiTokenScopesAllow(tokens[i].Scopes, method, path) {
+				failureAction = "permission_denied"
+				failureReason = "scope_denied"
+				failureStatus = http.StatusForbidden
+				return tokens, false, nil
+			}
+			now := s.nowString()
+			tokens[i].LastUsedAt = &now
+			record = tokens[i]
+			matched = &record
+			return tokens, true, nil
+		}
+		return tokens, false, nil
+	})
+	if err != nil {
+		if errors.Is(err, errAPIStateLockConflict) {
+			return apiAuthInfo{}, http.StatusConflict
+		}
+		return apiAuthInfo{}, http.StatusInternalServerError
+	}
+	if matched == nil {
+		return apiAuthInfo{}, http.StatusUnauthorized
+	}
+	if failureAction != "" {
+		if err := s.appendTokenAccessLog(r, failureAction, matched.ID, "failure", failureReason); err != nil {
+			return apiAuthInfo{}, http.StatusInternalServerError
+		}
+		result := "failure"
+		targetType := "api_token"
+		targetID := any(matched.ID)
+		if failureAction == "permission_denied" {
+			result = "denied"
+			targetType = "endpoint"
+			targetID = method + " " + path
+		}
+		if err := s.appendSecurityAudit(r, failureAction, "api_token", matched.ID, targetType, targetID, result); err != nil {
+			return apiAuthInfo{}, http.StatusInternalServerError
+		}
+		return apiAuthInfo{}, failureStatus
+	}
+	if err := s.appendTokenAccessLog(r, "token_auth", matched.ID, "success", ""); err != nil {
+		return apiAuthInfo{}, http.StatusInternalServerError
+	}
+	if err := s.appendSecurityAudit(r, "token_auth", "api_token", matched.ID, "api_token", matched.ID, "success"); err != nil {
+		return apiAuthInfo{}, http.StatusInternalServerError
+	}
+	actor := matched.ID
+	return apiAuthInfo{AuthType: "api_token", Actor: &actor, Scopes: append([]string{}, matched.Scopes...)}, http.StatusOK
+}
+
+func (s *APIServer) appendTokenAccessLog(r *http.Request, action, tokenID, result, reason string) error {
+	var reasonValue any
+	if reason != "" {
+		reasonValue = reason
+	}
+	return appendJSONLine(filepath.Join(s.cfg.StateDir, ".access_log"), map[string]any{
+		"at":          s.nowString(),
+		"action":      action,
+		"result":      result,
+		"session_id":  nil,
+		"token_id":    tokenID,
+		"remote_addr": apiRemoteAddr(r),
+		"reason":      reasonValue,
+	})
+}
+
+func (s *APIServer) appendAuthAccessLog(r *http.Request, action, result, reason string) error {
+	var reasonValue any
+	if reason != "" {
+		reasonValue = reason
+	}
+	return appendJSONLine(filepath.Join(s.cfg.StateDir, ".access_log"), map[string]any{
+		"at":          s.nowString(),
+		"action":      action,
+		"result":      result,
+		"session_id":  nil,
+		"token_id":    nil,
+		"remote_addr": apiRemoteAddr(r),
+		"reason":      reasonValue,
+	})
+}
+
+func (s *APIServer) writeTOTPLoginFailure(w http.ResponseWriter, r *http.Request) {
+	if err := s.appendAuthAccessLog(r, "totp_failure", "failure", "invalid_totp"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	if err := s.appendSecurityAudit(r, "totp_failure", "anonymous", nil, "auth", "login_totp", "failure"); err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeError(w, http.StatusUnauthorized, "Unauthorized")
+}
+
+func (s *APIServer) appendSecurityAudit(r *http.Request, action, actorType string, actorID any, targetType string, targetID any, result string) error {
+	return appendJSONLine(filepath.Join(s.cfg.StateDir, ".audit_log"), map[string]any{
+		"timestamp":   s.nowString(),
+		"request_id":  apiRequestID(r),
+		"action":      action,
+		"actor_type":  actorType,
+		"actor_id":    actorID,
+		"target_type": targetType,
+		"target_id":   targetID,
+		"result":      result,
+		"remote_addr": apiRemoteAddr(r),
+		"message":     nil,
+	})
+}
+
+func apiAuditActor(r *http.Request) (string, any) {
+	auth, ok := r.Context().Value(apiAuthContextKey{}).(apiAuthInfo)
+	if !ok {
+		return "anonymous", nil
+	}
+	switch auth.AuthType {
+	case "session":
+		return "admin", "admin"
+	case "api_token":
+		if auth.Actor != nil {
+			return "api_token", *auth.Actor
+		}
+		return "api_token", nil
+	default:
+		return "anonymous", nil
+	}
+}
+
+func apiRequestID(r *http.Request) any {
+	requestID, ok := r.Context().Value(apiRequestIDContextKey{}).(string)
+	if !ok || requestID == "" {
+		return nil
+	}
+	return requestID
 }
 
 func (s *APIServer) touchSession(token string) {
@@ -3607,6 +6358,242 @@ func (s *APIServer) queueMaxSize() int {
 		return defaultQueueMaxSize
 	}
 	return cfg.QueueMaxSize
+}
+
+func (s *APIServer) enqueueBuildRequest(statePath, trigger, requestedBy string, payload map[string]any) (string, bool, error) {
+	state, err := readBuildState(statePath)
+	if err != nil {
+		return "", false, err
+	}
+	if trigger == "webhook" {
+		id, duplicate, conflict := webhookQueueMatch(state, payload)
+		if duplicate {
+			return id, true, nil
+		}
+		if conflict {
+			return "", false, errAPIQueueConflict
+		}
+	} else if queueEntryMatches(state.ActiveQueueEntry, trigger, payload) {
+		return fmt.Sprint(state.ActiveQueueEntry["id"]), true, nil
+	}
+	for _, entry := range sortedQueueEntries(state.Queued) {
+		if queueEntryMatches(entry, trigger, payload) {
+			return fmt.Sprint(entry["id"]), true, nil
+		}
+	}
+	limit := s.queueMaxSize()
+	active := len(state.ActiveQueueEntry) > 0
+	if !state.Running && !active && !lockExists(filepath.Join(s.cfg.StateDir, ".build_lock")) && state.CurrentBuildID == nil && limit < 1 {
+		limit = 1
+	}
+	if limit == 0 || len(state.Queued) >= limit {
+		return "", false, errAPIQueueFull
+	}
+	id, err := s.nextTimeID("q", queueIDSet(state.ActiveQueueEntry, state.Queued))
+	if err != nil {
+		return "", false, err
+	}
+	state.Queued = append(state.Queued, map[string]any{
+		"id":           id,
+		"trigger":      trigger,
+		"queued_at":    s.nowString(),
+		"requested_by": requestedBy,
+		"priority":     "normal",
+		"created_seq":  nextCreatedSeq(state.Queued),
+		"payload":      payload,
+	})
+	return id, false, atomicWriteJSON(statePath, state, 0600)
+}
+
+func (s *APIServer) enqueueApprovalRequest(statePath, requestedBy string, payload map[string]any) (string, bool, error) {
+	state, err := readBuildState(statePath)
+	if err != nil {
+		return "", false, err
+	}
+	matches := []map[string]any{}
+	if fmt.Sprint(state.ActiveQueueEntry["trigger"]) == "approval" && queuePayloadApprovalID(state.ActiveQueueEntry["payload"]) == fmt.Sprint(payload["approval_id"]) {
+		matches = append(matches, state.ActiveQueueEntry)
+	}
+	for _, entry := range state.Queued {
+		if fmt.Sprint(entry["trigger"]) != "approval" {
+			continue
+		}
+		if queuePayloadApprovalID(entry["payload"]) == fmt.Sprint(payload["approval_id"]) {
+			matches = append(matches, entry)
+		}
+	}
+	if len(matches) == 1 {
+		if !queuePayloadEqual(matches[0]["payload"], payload) {
+			log.Printf("APPROVAL_QUEUE_INCONSISTENT: approval_id=%s", payload["approval_id"])
+			return "", false, errors.New("approval queue inconsistent")
+		}
+		return fmt.Sprint(matches[0]["id"]), true, nil
+	}
+	if len(matches) > 1 {
+		log.Printf("APPROVAL_QUEUE_INCONSISTENT: approval_id=%s", payload["approval_id"])
+		return "", false, errors.New("approval queue inconsistent")
+	}
+	limit := s.queueMaxSize()
+	active := len(state.ActiveQueueEntry) > 0
+	if !state.Running && !active && !lockExists(filepath.Join(s.cfg.StateDir, ".build_lock")) && state.CurrentBuildID == nil && limit < 1 {
+		limit = 1
+	}
+	if limit == 0 || len(state.Queued) >= limit {
+		return "", false, errAPIQueueFull
+	}
+	id, err := s.nextTimeID("q", queueIDSet(state.ActiveQueueEntry, state.Queued))
+	if err != nil {
+		return "", false, err
+	}
+	state.Queued = append(state.Queued, map[string]any{
+		"id":           id,
+		"trigger":      "approval",
+		"queued_at":    s.nowString(),
+		"requested_by": requestedBy,
+		"priority":     "normal",
+		"created_seq":  nextCreatedSeq(state.Queued),
+		"payload":      payload,
+	})
+	return id, false, atomicWriteJSON(statePath, state, 0600)
+}
+
+func (s *APIServer) dispatchRunner(queueID string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	commandRunner := s.cfg.CommandRunner
+	if commandRunner == nil {
+		commandRunner = runAPICommand
+	}
+	result, err := commandRunner(ctx, "systemctl", "start", "--no-block", "adlaire-ci.service")
+	if err == nil && result.ExitCode == 0 {
+		return "requested"
+	}
+	log.Printf("RUNNER_ACTIVATION_DEFERRED: queue_id=%s", queueID)
+	return "timer_fallback"
+}
+
+func runAPICommand(ctx context.Context, name string, args ...string) (apiCommandResult, error) {
+	cmd := exec.CommandContext(ctx, name, args...)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = io.Discard
+	err := cmd.Run()
+	result := apiCommandResult{Stdout: stdout.String(), ExitCode: 0}
+	if err != nil {
+		result.ExitCode = -1
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			result.ExitCode = exitErr.ExitCode()
+		}
+	}
+	return result, err
+}
+
+func queuePayloadApprovalID(value any) string {
+	if payload, ok := value.(map[string]any); ok {
+		return fmt.Sprint(payload["approval_id"])
+	}
+	return ""
+}
+
+func queuePayloadEqual(a any, b map[string]any) bool {
+	aj, errA := json.Marshal(a)
+	bj, errB := json.Marshal(b)
+	return errA == nil && errB == nil && string(aj) == string(bj)
+}
+
+func queueEntryMatches(entry map[string]any, trigger string, payload map[string]any) bool {
+	return len(entry) > 0 && fmt.Sprint(entry["trigger"]) == trigger && queuePayloadEqual(entry["payload"], payload)
+}
+
+func sortedQueueEntries(entries []map[string]any) []map[string]any {
+	out := make([]map[string]any, len(entries))
+	copy(out, entries)
+	sort.SliceStable(out, func(i, j int) bool {
+		leftPriority := queuePriorityRank(fmt.Sprint(out[i]["priority"]))
+		rightPriority := queuePriorityRank(fmt.Sprint(out[j]["priority"]))
+		if leftPriority != rightPriority {
+			return leftPriority < rightPriority
+		}
+		leftSeq := queueCreatedSeq(out[i])
+		rightSeq := queueCreatedSeq(out[j])
+		if leftSeq != rightSeq {
+			return leftSeq < rightSeq
+		}
+		return fmt.Sprint(out[i]["id"]) < fmt.Sprint(out[j]["id"])
+	})
+	return out
+}
+
+func queuePriorityRank(priority string) int {
+	switch priority {
+	case "urgent":
+		return 0
+	case "high":
+		return 1
+	case "normal":
+		return 2
+	case "low":
+		return 3
+	default:
+		return 4
+	}
+}
+
+func queueCreatedSeq(entry map[string]any) int {
+	switch v := entry["created_seq"].(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case float64:
+		return int(v)
+	case json.Number:
+		n, _ := strconv.Atoi(v.String())
+		return n
+	default:
+		return 0
+	}
+}
+
+func webhookQueueMatch(state apiBuildState, payload map[string]any) (string, bool, bool) {
+	deliveryID := fmt.Sprint(payload["delivery_id"])
+	branch := fmt.Sprint(payload["branch"])
+	sha := fmt.Sprint(payload["sha"])
+	activeID, activeDuplicate, activeConflict := webhookEntryMatch(state.ActiveQueueEntry, deliveryID, branch, sha)
+	if activeDuplicate || activeConflict {
+		if activeDuplicate {
+			for _, entry := range sortedQueueEntries(state.Queued) {
+				if waitingID, waitingDuplicate, _ := webhookEntryMatch(entry, deliveryID, branch, sha); waitingDuplicate {
+					log.Printf("QUEUE_DUPLICATE_STATE: queue_id=%s", waitingID)
+					break
+				}
+			}
+		}
+		return activeID, activeDuplicate, activeConflict
+	}
+	for _, entry := range sortedQueueEntries(state.Queued) {
+		id, duplicate, conflict := webhookEntryMatch(entry, deliveryID, branch, sha)
+		if duplicate || conflict {
+			return id, duplicate, conflict
+		}
+	}
+	return "", false, false
+}
+
+func webhookEntryMatch(entry map[string]any, deliveryID, branch, sha string) (string, bool, bool) {
+	if len(entry) == 0 || fmt.Sprint(entry["trigger"]) != "webhook" {
+		return "", false, false
+	}
+	payload, ok := entry["payload"].(map[string]any)
+	if !ok || fmt.Sprint(payload["delivery_id"]) != deliveryID {
+		return "", false, false
+	}
+	id := fmt.Sprint(entry["id"])
+	if fmt.Sprint(payload["branch"]) == branch && fmt.Sprint(payload["sha"]) == sha {
+		return id, true, false
+	}
+	return id, false, true
 }
 
 func (s *APIServer) readMergedConfig() (apiServerConfig, error) {
@@ -3730,6 +6717,78 @@ func (s *APIServer) newID(prefix string) string {
 	return prefix + s.cfg.Now().UTC().Format("20060102150405")
 }
 
+func (s *APIServer) nextTimeID(prefix string, existing map[string]bool) (string, error) {
+	base := s.newID(prefix)
+	if !existing[base] {
+		return base, nil
+	}
+	for i := 1; i <= 999; i++ {
+		id := fmt.Sprintf("%s-%03d", base, i)
+		if !existing[id] {
+			return id, nil
+		}
+	}
+	return "", errors.New("id suffix exhausted")
+}
+
+func queueIDSet(active map[string]any, entries []map[string]any) map[string]bool {
+	ids := map[string]bool{}
+	if id := fmt.Sprint(active["id"]); id != "" {
+		ids[id] = true
+	}
+	for _, entry := range entries {
+		id := fmt.Sprint(entry["id"])
+		if id != "" {
+			ids[id] = true
+		}
+	}
+	return ids
+}
+
+func ruleIDSet(rules []map[string]any) map[string]bool {
+	ids := map[string]bool{}
+	for _, rule := range rules {
+		id := fmt.Sprint(rule["id"])
+		if id != "" {
+			ids[id] = true
+		}
+	}
+	return ids
+}
+
+func ruleIDPrefix(logType string) string {
+	switch logType {
+	case "hook":
+		return "h"
+	case "alert_rule":
+		return "r"
+	case "tag_rule":
+		return "t"
+	default:
+		return "r"
+	}
+}
+
+func nextTokenID(tokens []apiTokenRecord) (string, error) {
+	maxID := 0
+	for _, token := range tokens {
+		if !strings.HasPrefix(token.ID, "tok") || len(token.ID) != 9 {
+			continue
+		}
+		n, err := strconv.Atoi(token.ID[3:])
+		if err != nil {
+			continue
+		}
+		if n > maxID {
+			maxID = n
+		}
+	}
+	if maxID >= 999999 {
+		return "", errors.New("token id exhausted")
+	}
+	return fmt.Sprintf("tok%06d", maxID+1), nil
+}
+
 func (s *APIServer) readBuildLogsNewest() []apiBuildLog {
 	dir := filepath.Join(s.cfg.StateDir, ".build_logs")
 	entries, err := os.ReadDir(dir)
@@ -3768,6 +6827,7 @@ func inspectOutput(root string) (outputInspection, error) {
 		return outputInspection{}, err
 	}
 	files := []string{}
+	mtimeSource := info.ModTime()
 	if !info.IsDir() {
 		files = append(files, root)
 	} else if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
@@ -3784,7 +6844,6 @@ func inspectOutput(root string) (outputInspection, error) {
 	}
 	sort.Strings(files)
 	var total int64
-	var latest time.Time
 	manifest := sha256.New()
 	for _, path := range files {
 		info, err := os.Stat(path)
@@ -3792,9 +6851,6 @@ func inspectOutput(root string) (outputInspection, error) {
 			return outputInspection{}, err
 		}
 		total += info.Size()
-		if info.ModTime().After(latest) {
-			latest = info.ModTime()
-		}
 		rel := filepath.Base(path)
 		if info.IsDir() {
 			continue
@@ -3812,8 +6868,8 @@ func inspectOutput(root string) (outputInspection, error) {
 		_, _ = io.WriteString(manifest, "\n")
 	}
 	var mtime any
-	if !latest.IsZero() {
-		mtime = latest.UTC().Format(apiTimeLayout)
+	if !mtimeSource.IsZero() {
+		mtime = mtimeSource.UTC().Format(apiTimeLayout)
 	}
 	return outputInspection{
 		Exists: true, SizeBytes: total, MTime: mtime,
@@ -3846,9 +6902,216 @@ func (s *APIServer) allLogLines() []string {
 	return lines
 }
 
+func (s *APIServer) selectBuildStreamLog() (apiBuildLog, bool, bool, error) {
+	state, err := readBuildState(filepath.Join(s.cfg.StateDir, ".build_state"))
+	if err != nil {
+		return apiBuildLog{}, false, false, err
+	}
+	if state.Running && state.CurrentBuildID != nil && *state.CurrentBuildID != "" {
+		logRecord, err := readBuildLog(filepath.Join(s.cfg.StateDir, ".build_logs", *state.CurrentBuildID+".json"))
+		if errors.Is(err, os.ErrNotExist) {
+			return apiBuildLog{}, true, false, nil
+		}
+		if err != nil {
+			return apiBuildLog{}, true, false, err
+		}
+		if logRecord.ID == "" {
+			logRecord.ID = *state.CurrentBuildID
+		}
+		return logRecord, true, true, nil
+	}
+	logs := s.readBuildStreamLogsNewest()
+	if len(logs) == 0 {
+		return apiBuildLog{}, false, false, nil
+	}
+	return logs[0], false, true, nil
+}
+
+func (s *APIServer) readBuildStreamLogsNewest() []apiBuildLog {
+	dir := filepath.Join(s.cfg.StateDir, ".build_logs")
+	logs := []apiBuildLog{}
+	normalIDs := map[string]bool{}
+	if entries, err := os.ReadDir(dir); err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+				continue
+			}
+			logRecord, err := readBuildLog(filepath.Join(dir, entry.Name()))
+			if err != nil || logRecord.FinishedAt == "" {
+				if err != nil {
+					log.Printf("BUILD_STREAM_SKIP_CORRUPT: build_id=%s", strings.TrimSuffix(entry.Name(), ".json"))
+				}
+				continue
+			}
+			if logRecord.ID == "" {
+				logRecord.ID = strings.TrimSuffix(entry.Name(), ".json")
+			}
+			normalIDs[logRecord.ID] = true
+			logs = append(logs, logRecord)
+		}
+	}
+	archiveDir := filepath.Join(dir, "archive")
+	if entries, err := os.ReadDir(archiveDir); err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json.gz") {
+				continue
+			}
+			id := strings.TrimSuffix(entry.Name(), ".json.gz")
+			if normalIDs[id] {
+				continue
+			}
+			logRecord, err := readArchivedBuildLog(filepath.Join(archiveDir, entry.Name()))
+			if err != nil || logRecord.FinishedAt == "" {
+				log.Printf("BUILD_STREAM_SKIP_CORRUPT: build_id=%s", id)
+				continue
+			}
+			if logRecord.ID == "" {
+				logRecord.ID = id
+			}
+			logs = append(logs, logRecord)
+		}
+	}
+	sort.Slice(logs, func(i, j int) bool {
+		if logs[i].FinishedAt == logs[j].FinishedAt {
+			return logs[i].ID > logs[j].ID
+		}
+		return logs[i].FinishedAt > logs[j].FinishedAt
+	})
+	return logs
+}
+
+func readArchivedBuildLog(path string) (apiBuildLog, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return apiBuildLog{}, err
+	}
+	defer file.Close()
+	reader, err := gzip.NewReader(file)
+	if err != nil {
+		return apiBuildLog{}, err
+	}
+	defer reader.Close()
+	var logRecord apiBuildLog
+	if err := json.NewDecoder(reader).Decode(&logRecord); err != nil {
+		return apiBuildLog{}, err
+	}
+	return logRecord, nil
+}
+
+func buildStreamLines(logRecord apiBuildLog) []string {
+	lines := []string{}
+	appendTextLines := func(value string) {
+		if value == "" {
+			return
+		}
+		parts := strings.Split(value, "\n")
+		if len(parts) > 0 && parts[len(parts)-1] == "" {
+			parts = parts[:len(parts)-1]
+		}
+		for _, line := range parts {
+			lines = append(lines, strings.TrimRight(line, "\r"))
+		}
+	}
+	appendTextLines(logRecord.Pipeline.Stdout)
+	appendTextLines(logRecord.Pipeline.Stderr)
+	lines = append(lines, logRecord.Warnings...)
+	if logRecord.Error != nil && *logRecord.Error != "" {
+		lines = append(lines, *logRecord.Error)
+	}
+	return lines
+}
+
+func buildStreamStatus(logRecord apiBuildLog, running bool) string {
+	if running {
+		return "running"
+	}
+	switch logRecord.Status {
+	case "success", "failure", "cancelled":
+		return logRecord.Status
+	}
+	switch {
+	case logRecord.TargetStatus == "success" || logRecord.TargetStatus == "success_deploy_pending":
+		return "success"
+	case logRecord.TargetStatus == "cancelled":
+		return "cancelled"
+	default:
+		return "failure"
+	}
+}
+
+func writeSSEFrame(w http.ResponseWriter, flusher http.Flusher, value any) bool {
+	payload, err := json.Marshal(value)
+	if err != nil {
+		return false
+	}
+	frame := fmt.Sprintf("data: %s\n\n", payload)
+	n, err := io.WriteString(w, frame)
+	if err != nil || n != len(frame) {
+		return false
+	}
+	if flusher != nil {
+		flusher.Flush()
+	}
+	return true
+}
+
+func truncateStreamRunes(value string, limit int) string {
+	if limit < 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= limit {
+		return value
+	}
+	return string(runes[:limit])
+}
+
 func validateCredentials(path string) error {
 	_, err := readCredentials(path)
 	return err
+}
+
+func acquireAPIStateFileLock(path string) (func(), error) {
+	release, err := acquireStateFileLock(path)
+	if err != nil {
+		return func() {}, fmt.Errorf("%w: %v", errAPIStateLockConflict, err)
+	}
+	return release, nil
+}
+
+func readCredentialsLocked(path string) (apiCredentials, error) {
+	release, err := acquireAPIStateFileLock(path)
+	if err != nil {
+		return apiCredentials{}, err
+	}
+	defer release()
+	return readCredentials(path)
+}
+
+func updateCredentialsLocked(path string, mutate func(apiCredentials) (apiCredentials, bool, error)) (apiCredentials, error) {
+	release, err := acquireAPIStateFileLock(path)
+	if err != nil {
+		return apiCredentials{}, err
+	}
+	defer release()
+	current, err := readCredentials(path)
+	if err != nil {
+		return apiCredentials{}, err
+	}
+	next, write, err := mutate(current)
+	if err != nil {
+		return apiCredentials{}, err
+	}
+	if !write {
+		return next, nil
+	}
+	if err := validateCredentialsValue(next); err != nil {
+		return apiCredentials{}, err
+	}
+	if err := atomicWriteJSON(path, next, 0600); err != nil {
+		return apiCredentials{}, err
+	}
+	return next, nil
 }
 
 func readCredentials(path string) (apiCredentials, error) {
@@ -3856,10 +7119,51 @@ func readCredentials(path string) (apiCredentials, error) {
 	if err := readStrictJSONFile(path, &cred); err != nil {
 		return cred, err
 	}
-	if cred.Algorithm != "sha256_iter_v1" || cred.Iterations != passwordIterations || !isLowerHex(cred.PasswordHash, 64) || !isLowerHex(cred.Salt, 32) {
-		return cred, errors.New("invalid credentials")
+	return cred, validateCredentialsValue(cred)
+}
+
+func validateCredentialsValue(cred apiCredentials) error {
+	if cred.Algorithm != "sha256_iter_v1" || cred.Iterations != passwordIterations || !isLowerHex(cred.PasswordHash, 64) || !isLowerHex(cred.Salt, 64) || cred.LoginCount < 0 || !validAPITime(cred.UpdatedAt) {
+		return errors.New("invalid credentials")
 	}
-	return cred, nil
+	if cred.LastLoginAt != nil && !validAPITime(*cred.LastLoginAt) {
+		return errors.New("invalid credentials")
+	}
+	return nil
+}
+
+func passwordHashEqual(left, right string) bool {
+	return hmac.Equal([]byte(left), []byte(right))
+}
+
+func advanceCredentialsLogin(cred *apiCredentials, now string) string {
+	if cred.LoginCount < maxLoginCount {
+		cred.LoginCount++
+	}
+	cred.LastLoginAt = &now
+	return credentialsMustChange(cred)
+}
+
+func credentialsMustChange(cred *apiCredentials) string {
+	if !cred.MustChange {
+		return "none"
+	}
+	if cred.LoginCount >= 5 {
+		return "forced"
+	}
+	return "prompt"
+}
+
+func credentialsFingerprint(cred apiCredentials) string {
+	payload := strings.Join([]string{
+		cred.PasswordHash,
+		cred.Salt,
+		cred.Algorithm,
+		strconv.Itoa(cred.Iterations),
+		cred.UpdatedAt,
+	}, "\n")
+	sum := sha256.Sum256([]byte(payload))
+	return hex.EncodeToString(sum[:])
 }
 
 func hashPassword(password, saltHex string) string {
@@ -3880,6 +7184,18 @@ func hashPassword(password, saltHex string) string {
 func tokenHash(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+func tokenHashEqual(left, right string) bool {
+	return hmac.Equal([]byte(left), []byte(right))
+}
+
+func newAPIToken() (string, error) {
+	buf := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, buf); err != nil {
+		return "", err
+	}
+	return "act_" + base64.RawURLEncoding.EncodeToString(buf), nil
 }
 
 func randomHex(n int) (string, error) {
@@ -3928,27 +7244,89 @@ func readTOTPSecret(path string) (apiTOTPSecret, error) {
 	return secret, nil
 }
 
+func readTOTPSecretLocked(path string) (apiTOTPSecret, error) {
+	release, err := acquireAPIStateFileLock(path)
+	if err != nil {
+		return apiTOTPSecret{}, err
+	}
+	defer release()
+	return readTOTPSecret(path)
+}
+
+func updateTOTPSecretLocked(path string, mutate func(apiTOTPSecret) (apiTOTPSecret, bool, error)) (apiTOTPSecret, error) {
+	release, err := acquireAPIStateFileLock(path)
+	if err != nil {
+		return apiTOTPSecret{}, err
+	}
+	defer release()
+	current, err := readTOTPSecret(path)
+	if err != nil {
+		return apiTOTPSecret{}, err
+	}
+	next, write, err := mutate(current)
+	if err != nil {
+		return apiTOTPSecret{}, err
+	}
+	if !write {
+		return next, nil
+	}
+	if err := validateTOTPSecretValue(next); err != nil {
+		return apiTOTPSecret{}, err
+	}
+	if err := atomicWriteJSON(path, next, 0600); err != nil {
+		return apiTOTPSecret{}, err
+	}
+	return next, nil
+}
+
+func validateTOTPSecretValue(secret apiTOTPSecret) error {
+	if !secret.Enabled {
+		if secret.SecretBase32 != nil || secret.ConfirmedAt != nil || secret.LastAcceptedStep != nil {
+			return errors.New("invalid totp secret")
+		}
+		return nil
+	}
+	if secret.SecretBase32 == nil || strings.TrimSpace(*secret.SecretBase32) == "" {
+		return errors.New("invalid totp secret")
+	}
+	if _, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ToUpper(strings.TrimSpace(*secret.SecretBase32))); err != nil {
+		return errors.New("invalid totp secret")
+	}
+	if secret.ConfirmedAt != nil && !validAPITime(*secret.ConfirmedAt) {
+		return errors.New("invalid totp secret")
+	}
+	if secret.LastAcceptedStep != nil && *secret.LastAcceptedStep < 0 {
+		return errors.New("invalid totp secret")
+	}
+	return nil
+}
+
 func totpStatusPayload(secret apiTOTPSecret) map[string]any {
 	return map[string]any{"enabled": secret.Enabled, "confirmed_at": secret.ConfirmedAt}
 }
 
 func verifyTOTPCode(secretBase32, code string, at time.Time) bool {
+	_, ok := verifyTOTPCodeStep(secretBase32, code, at)
+	return ok
+}
+
+func verifyTOTPCodeStep(secretBase32, code string, at time.Time) (int64, bool) {
 	code = strings.TrimSpace(code)
 	if len(code) != 6 {
-		return false
+		return 0, false
 	}
 	for _, r := range code {
 		if r < '0' || r > '9' {
-			return false
+			return 0, false
 		}
 	}
 	step := at.UTC().Unix() / 30
 	for _, offset := range []int64{-1, 0, 1} {
 		if totpCode(secretBase32, step+offset) == code {
-			return true
+			return step + offset, true
 		}
 	}
-	return false
+	return 0, false
 }
 
 func totpCode(secretBase32 string, step int64) string {
@@ -4001,19 +7379,40 @@ func readBuildStatus(path string) (apiBuildStatus, bool, error) {
 	return status, true, nil
 }
 
+func readBuildStatusForHealth(path string) (apiBuildStatus, bool, string) {
+	var status apiBuildStatus
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return status, false, "build_status_missing"
+	}
+	if err != nil {
+		return status, false, "build_status_read_error"
+	}
+	if err := json.Unmarshal(data, &status); err != nil {
+		return status, false, "build_status_corrupt"
+	}
+	return status, true, ""
+}
+
 func readHistory(path string) []apiHistoryRecord {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return []apiHistoryRecord{}
 	}
 	records := []apiHistoryRecord{}
-	for _, line := range strings.Split(string(data), "\n") {
+	seen := map[string]bool{}
+	for lineNo, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		var record apiHistoryRecord
 		if json.Unmarshal([]byte(line), &record) == nil && record.ID != "" && record.Status != "" {
+			if seen[record.ID] {
+				fmt.Fprintf(os.Stderr, "BUILD_HISTORY_DUPLICATE_ID: path=%s line=%d id=%s\n", path, lineNo+1, record.ID)
+				continue
+			}
+			seen[record.ID] = true
 			records = append(records, record)
 		} else {
 			fmt.Fprintf(os.Stderr, "BUILD_HISTORY_SKIP_CORRUPT: path=%s\n", path)
@@ -4025,10 +7424,67 @@ func readHistory(path string) []apiHistoryRecord {
 	return records
 }
 
+func readHealthHistory(path string) ([]apiHistoryRecord, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return []apiHistoryRecord{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	records := []apiHistoryRecord{}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var record apiHistoryRecord
+		if json.Unmarshal([]byte(line), &record) == nil && record.ID != "" && record.Status != "" {
+			records = append(records, record)
+		}
+	}
+	sort.Slice(records, func(i, j int) bool {
+		return firstNonEmpty(records[i].FinishedAt, records[i].StartedAt, records[i].BuildAt, records[i].ID) > firstNonEmpty(records[j].FinishedAt, records[j].StartedAt, records[j].BuildAt, records[j].ID)
+	})
+	return records, nil
+}
+
+func latestStatusSummaryHistory(records []apiHistoryRecord) *apiHistoryRecord {
+	for i := range records {
+		if statusSummaryEligible(records[i].Status) {
+			return &records[i]
+		}
+	}
+	return nil
+}
+
+func statusSummaryEligible(status string) bool {
+	switch status {
+	case "success", "success_deploy_pending", "failure", "failure_api", "failure_decode", "failure_precheck",
+		"failure_build", "failure_state_write", "failure_target_missing", "failure_pipeline_config",
+		"failure_timeout", "failure_remote_build", "failure_tag_rule", "hook_error", "cancelled",
+		"skipped_no_change", "skipped_cooldown", "skipped_schedule_paused", "skipped_allowed_hours",
+		"skipped_tag_filter", "skipped_maintenance", "circuit_open", "config_recovered", "config_error",
+		"lock_skipped":
+		return true
+	default:
+		return false
+	}
+}
+
 func filterHistory(w http.ResponseWriter, r *http.Request, records []apiHistoryRecord) []apiHistoryRecord {
 	trigger := strings.TrimSpace(r.URL.Query().Get("trigger"))
 	tag := strings.TrimSpace(r.URL.Query().Get("tag"))
 	flaggedRaw := strings.TrimSpace(r.URL.Query().Get("flagged"))
+	failureCategory := strings.TrimSpace(r.URL.Query().Get("failure_category"))
+	if trigger != "" && !validHistoryTrigger(trigger) {
+		writeValidation(w, "trigger", "invalid value")
+		return nil
+	}
+	if failureCategory != "" && !validFailureCategory(failureCategory) {
+		writeValidation(w, "failure_category", "invalid value")
+		return nil
+	}
 	var flagged *bool
 	if flaggedRaw != "" {
 		switch strings.ToLower(flaggedRaw) {
@@ -4054,9 +7510,57 @@ func filterHistory(w http.ResponseWriter, r *http.Request, records []apiHistoryR
 		if flagged != nil && record.Flagged != *flagged {
 			continue
 		}
+		if failureCategory != "" && stringPtrValue(record.FailureCategory) != failureCategory {
+			continue
+		}
 		out = append(out, record)
 	}
 	return out
+}
+
+func validateHistoryQuery(w http.ResponseWriter, r *http.Request) bool {
+	allowed := map[string]bool{"page": true, "per_page": true, "trigger": true, "tag": true, "flagged": true, "failure_category": true}
+	for key := range r.URL.Query() {
+		if !allowed[key] {
+			writeValidation(w, key, "unknown query")
+			return false
+		}
+	}
+	return true
+}
+
+func decorateHistoryRecords(records []apiHistoryRecord) []apiHistoryRecord {
+	out := make([]apiHistoryRecord, len(records))
+	for i, record := range records {
+		if record.BuildAt == "" {
+			record.BuildAt = firstNonEmpty(record.FinishedAt, record.StartedAt)
+		}
+		if record.SHA == nil {
+			if sha := firstNonEmpty(stringPtrValue(record.CommitSHA), stringPtrValue(record.BlobSHA)); sha != "" {
+				record.SHA = &sha
+			}
+		}
+		out[i] = record
+	}
+	return out
+}
+
+func validHistoryTrigger(value string) bool {
+	switch value {
+	case "polling", "manual", "webhook", "approval", "rollback", "retry":
+		return true
+	default:
+		return false
+	}
+}
+
+func validFailureCategory(value string) bool {
+	switch value {
+	case "github_api", "pipeline_timeout", "pipeline_exit", "deploy_failure", "hook_error", "config_error", "resource_error", "unknown":
+		return true
+	default:
+		return false
+	}
 }
 
 func updateHistoryRecord(path, id string, update func(*apiHistoryRecord)) error {
@@ -4128,6 +7632,7 @@ func defaultServerConfig() apiServerConfig {
 		CommitStatusEnabled: false, CommitStatusContext: "Adlaire CI",
 		BuildTrendKeepCount: 1000, SessionTimeoutSeconds: 28800,
 		ScheduleIntervalSeconds: 300,
+		APIRateLimit:            apiRateLimitPolicyToMap(defaultAPIRateLimitPolicy()),
 	}
 }
 
@@ -4356,6 +7861,9 @@ func normalizeServerConfig(cfg apiServerConfig) apiServerConfig {
 	if cfg.ScheduleIntervalSeconds == 0 {
 		cfg.ScheduleIntervalSeconds = def.ScheduleIntervalSeconds
 	}
+	if cfg.APIRateLimit == nil {
+		cfg.APIRateLimit = apiRateLimitPolicyToMap(defaultAPIRateLimitPolicy())
+	}
 	return cfg
 }
 
@@ -4489,6 +7997,160 @@ func validateConfigPatch(w http.ResponseWriter, cfg apiServerConfig, patch map[s
 		}
 	}
 	return cfg, changed, true
+}
+
+func validateConfigDryRun(cfg apiServerConfig, raw map[string]json.RawMessage, order []string) (apiServerConfig, []apiConfigValidationIssue, []apiConfigValidationIssue, bool) {
+	errorsList := []apiConfigValidationIssue{}
+	warningsList := []apiConfigValidationIssue{}
+	seenWarnings := map[string]bool{}
+	for _, key := range order {
+		value := raw[key]
+		if secretLikeKey(key) || !configPatchKeyAllowed(key) {
+			errorsList = append(errorsList, apiConfigValidationIssue{Field: key, Code: "unknown_key", Message: "Unknown config key"})
+			continue
+		}
+		switch key {
+		case "log_max_lines":
+			if v, ok := rawInt(value, 1, 10000); ok {
+				cfg.LogMaxLines = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "log_max_lines must be 1..10000"))
+			}
+		case "history_max_count":
+			if v, ok := rawInt(value, 1, 10000); ok {
+				cfg.HistoryMaxCount = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "history_max_count must be 1..10000"))
+			}
+		case "build_timeout_seconds":
+			if v, ok := rawInt(value, 1, 86400); ok {
+				cfg.BuildTimeoutSeconds = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "build_timeout_seconds must be 1..86400"))
+			}
+		case "log_retention_days":
+			if v, ok := rawInt(value, 0, 3650); ok {
+				cfg.LogRetentionDays = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "log_retention_days must be 0..3650"))
+			}
+		case "log_archive_after_days":
+			if v, ok := rawInt(value, 0, 3650); ok {
+				cfg.LogArchiveAfterDays = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "log_archive_after_days must be 0..3650"))
+			}
+		case "log_level":
+			var v string
+			if json.Unmarshal(value, &v) == nil && (v == "INFO" || v == "DEBUG" || v == "WARNING" || v == "ERROR") {
+				cfg.LogLevel = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "invalid_value", "log_level must be INFO, DEBUG, WARNING, or ERROR"))
+			}
+		case "pat_expires_at":
+			if v, ok := rawNullableString(value); ok {
+				cfg.PATExpiresAt = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "invalid_value", "pat_expires_at must be string or null"))
+			}
+		case "commit_status_target_url":
+			if v, ok := rawNullableString(value); ok {
+				cfg.CommitStatusTargetURL = v
+				if v != nil && strings.HasPrefix(*v, "http://") && !seenWarnings[key] {
+					warningsList = append(warningsList, apiConfigValidationIssue{Field: key, Code: "http_url", Message: "https is recommended"})
+					seenWarnings[key] = true
+				}
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "invalid_value", "commit_status_target_url must be string or null"))
+			}
+		case "snapshots_keep":
+			if v, ok := rawInt(value, 0, 100); ok {
+				cfg.SnapshotsKeep = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "snapshots_keep must be 0..100"))
+			}
+		case "queue_max_size":
+			if v, ok := rawInt(value, 0, 100); ok {
+				cfg.QueueMaxSize = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "queue_max_size must be 0..100"))
+			}
+		case "build_retry_max":
+			if v, ok := rawInt(value, 0, 10); ok {
+				cfg.BuildRetryMax = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "build_retry_max must be 0..10"))
+			}
+		case "build_retry_base_seconds":
+			if v, ok := rawInt(value, 1, 3600); ok {
+				cfg.BuildRetryBaseSeconds = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "build_retry_base_seconds must be 1..3600"))
+			}
+		case "commit_status_enabled":
+			var v bool
+			if json.Unmarshal(value, &v) == nil {
+				cfg.CommitStatusEnabled = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "invalid_value", "commit_status_enabled must be boolean"))
+			}
+		case "commit_status_context":
+			var v string
+			if json.Unmarshal(value, &v) == nil && len(v) >= 1 && len(v) <= 100 && !containsControl(v) {
+				cfg.CommitStatusContext = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "invalid_value", "commit_status_context must be 1..100 characters"))
+			}
+		case "build_trend_keep_count":
+			if v, ok := rawInt(value, 10, 10000); ok {
+				cfg.BuildTrendKeepCount = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "build_trend_keep_count must be 10..10000"))
+			}
+		case "session_timeout_seconds":
+			if v, ok := rawInt(value, 300, 2592000); ok {
+				cfg.SessionTimeoutSeconds = v
+			} else {
+				errorsList = append(errorsList, configValidationError(key, "out_of_range", "session_timeout_seconds must be 300..2592000"))
+			}
+		}
+	}
+	sort.Slice(warningsList, func(i, j int) bool {
+		return warningsList[i].Field < warningsList[j].Field
+	})
+	return cfg, errorsList, warningsList, len(errorsList) == 0
+}
+
+func configPatchKeyAllowed(key string) bool {
+	switch key {
+	case "log_max_lines", "history_max_count", "build_timeout_seconds", "log_retention_days", "log_archive_after_days", "log_level", "pat_expires_at", "snapshots_keep", "queue_max_size", "build_retry_max", "build_retry_base_seconds", "commit_status_enabled", "commit_status_context", "commit_status_target_url", "build_trend_keep_count", "session_timeout_seconds":
+		return true
+	default:
+		return false
+	}
+}
+
+func configValidationError(field, code, message string) apiConfigValidationIssue {
+	return apiConfigValidationIssue{Field: field, Code: code, Message: message}
+}
+
+func rawInt(raw json.RawMessage, min, max int) (int, bool) {
+	var value int
+	if err := json.Unmarshal(raw, &value); err != nil || value < min || value > max {
+		return 0, false
+	}
+	return value, true
+}
+
+func rawNullableString(raw json.RawMessage) (*string, bool) {
+	var value *string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return nil, false
+	}
+	if value != nil && containsControl(*value) {
+		return nil, false
+	}
+	return value, true
 }
 
 func decodeIntField(w http.ResponseWriter, key string, raw json.RawMessage, min, max int, out *int) bool {
@@ -4837,7 +8499,7 @@ func apiAccessLogQuery(r *http.Request, status int) map[string]string {
 
 func apiAccessLogQueryKeyAllowed(key string) bool {
 	switch key {
-	case "action", "days", "enabled", "flagged", "from", "limit", "method", "n", "offset", "page", "path", "per_page", "q", "result", "status", "tag", "to", "trigger", "type":
+	case "action", "days", "enabled", "failure_category", "flagged", "from", "limit", "method", "n", "offset", "page", "path", "per_page", "q", "result", "status", "tag", "to", "trigger", "type":
 		return true
 	default:
 		return false
@@ -5161,6 +8823,650 @@ func backupConfigFiles() []string {
 	return []string{".server_config", ".notify_config", ".repo_config", ".branch_config", ".access_control", ".hooks", ".alert_rules", ".tag_rules", ".pipeline_config", ".dashboard_layout", ".smtp_config"}
 }
 
+type apiRestoreJSONWrite struct {
+	File   string
+	Value  map[string]any
+	Delete bool
+}
+
+type apiRestoreSecretWrite struct {
+	File   string
+	Value  string
+	Delete bool
+}
+
+type apiRestorePlan struct {
+	JSONWrites    []apiRestoreJSONWrite
+	SecretWrites  []apiRestoreSecretWrite
+	ChangeSummary map[string]any
+}
+
+func (s *APIServer) backupObject() (map[string]any, error) {
+	out := map[string]any{"exported_at": s.nowString()}
+	for _, key := range backupConfigKeys() {
+		value, err := s.backupJSONValue(key, true)
+		if err != nil {
+			return nil, err
+		}
+		out[key] = value
+	}
+	out["webhook_secret_set"] = fileExists(filepath.Join(s.cfg.StateDir, ".webhook_secret"))
+	out["smtp_password_set"] = fileExists(filepath.Join(s.cfg.StateDir, ".smtp_secret"))
+	return out, nil
+}
+
+func (s *APIServer) restorePlan(w http.ResponseWriter, body map[string]json.RawMessage) (apiRestorePlan, bool, bool) {
+	if len(body) == 0 {
+		writeValidation(w, "body", "required")
+		return apiRestorePlan{}, false, false
+	}
+	if raw, ok := body["exported_at"]; ok {
+		var exportedAt string
+		if err := json.Unmarshal(raw, &exportedAt); err != nil || !validAPITime(exportedAt) {
+			writeValidation(w, "exported_at", "invalid value")
+			return apiRestorePlan{}, false, false
+		}
+	}
+	allowed := restoreAllowedKeys()
+	for key := range body {
+		if !allowed[key] {
+			writeValidation(w, key, "unknown key")
+			return apiRestorePlan{}, false, false
+		}
+	}
+	plan := apiRestorePlan{ChangeSummary: map[string]any{"files": []string{}, "secrets": []string{}}}
+	changed := false
+	for _, key := range backupConfigKeys() {
+		raw, ok := body[key]
+		if !ok {
+			writeValidation(w, key, "required")
+			return apiRestorePlan{}, false, false
+		}
+		value, deleteFile, valid := s.restoreJSONValue(w, key, raw)
+		if !valid {
+			return apiRestorePlan{}, false, false
+		}
+		current, err := s.backupJSONValue(key, false)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return apiRestorePlan{}, false, false
+		}
+		if mapsEqual(current, value) && !deleteFile {
+			continue
+		}
+		changed = true
+		file := "." + key
+		plan.JSONWrites = append(plan.JSONWrites, apiRestoreJSONWrite{File: file, Value: value, Delete: deleteFile})
+		plan.ChangeSummary["files"] = appendStringAny(plan.ChangeSummary["files"], key)
+	}
+	secretChanged, ok := s.addRestoreSecretPlan(w, body, "webhook_secret", ".webhook_secret", &plan)
+	if !ok {
+		return apiRestorePlan{}, false, false
+	}
+	changed = changed || secretChanged
+	secretChanged, ok = s.addRestoreSecretPlan(w, body, "smtp_password", ".smtp_secret", &plan)
+	if !ok {
+		return apiRestorePlan{}, false, false
+	}
+	changed = changed || secretChanged
+	return plan, changed, true
+}
+
+func backupConfigKeys() []string {
+	out := make([]string, 0, len(backupConfigFiles()))
+	for _, file := range backupConfigFiles() {
+		out = append(out, strings.TrimPrefix(file, "."))
+	}
+	return out
+}
+
+func restoreAllowedKeys() map[string]bool {
+	allowed := map[string]bool{
+		"exported_at":        true,
+		"webhook_secret_set": true,
+		"smtp_password_set":  true,
+		"webhook_secret":     true,
+		"smtp_password":      true,
+	}
+	for _, key := range backupConfigKeys() {
+		allowed[key] = true
+	}
+	return allowed
+}
+
+func (s *APIServer) backupJSONValue(key string, mask bool) (map[string]any, error) {
+	path := filepath.Join(s.cfg.StateDir, "."+key)
+	var value map[string]any
+	switch key {
+	case "server_config":
+		raw, ok, err := readOptionalJSONMap(path)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			value = raw
+		} else {
+			value = map[string]any{}
+		}
+	case "notify_config":
+		cfg, err := s.readNotifyConfig()
+		if err != nil {
+			return nil, err
+		}
+		if mask {
+			cfg = maskNotifyConfig(cfg)
+		}
+		return mapFromJSONValue(cfg)
+	case "repo_config":
+		cfg, err := s.readRepoConfig()
+		if err != nil {
+			return nil, err
+		}
+		value = map[string]any{"owner": cfg.Owner, "repo": cfg.Repo, "updated_at": nil}
+		if cfg.UpdatedAt != "" {
+			value["updated_at"] = cfg.UpdatedAt
+		}
+	case "branch_config":
+		cfg, _, err := s.readBranchConfig()
+		if err != nil {
+			return nil, err
+		}
+		return mapFromJSONValue(cfg)
+	case "access_control":
+		cfg, err := s.readAccessControl()
+		if err != nil {
+			return nil, err
+		}
+		return mapFromJSONValue(cfg)
+	case "hooks":
+		rules, err := readRuleList(path)
+		if err != nil {
+			return nil, err
+		}
+		value = map[string]any{"hooks": rules}
+	case "alert_rules", "tag_rules":
+		rules, err := readRuleList(path)
+		if err != nil {
+			return nil, err
+		}
+		value = map[string]any{"rules": rules}
+	case "pipeline_config":
+		raw, ok, err := readOptionalJSONMap(path)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			value = raw
+		} else {
+			value = defaultPipelineConfig()
+		}
+	case "dashboard_layout":
+		raw, ok, err := readOptionalJSONMap(path)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			value = raw
+		} else {
+			value = defaultDashboardLayout()
+		}
+	case "smtp_config":
+		raw, ok, err := readOptionalJSONMap(path)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			value = raw
+		} else {
+			value = defaultSMTPConfig()
+		}
+	default:
+		return nil, fmt.Errorf("unknown backup key %s", key)
+	}
+	if mask {
+		return maskSecrets(value), nil
+	}
+	return value, nil
+}
+
+func (s *APIServer) restoreJSONValue(w http.ResponseWriter, key string, raw json.RawMessage) (map[string]any, bool, bool) {
+	value, ok := decodeRestoreObject(w, key, raw)
+	if !ok {
+		return nil, false, false
+	}
+	current, _ := s.backupJSONValue(key, false)
+	if containsMaskedSecret(value) {
+		value = mergeMaskedSecrets(value, current)
+	}
+	switch key {
+	case "server_config":
+		if !validateRestoreServerConfig(w, raw) {
+			return nil, false, false
+		}
+	case "notify_config":
+		var cfg apiNotifyConfig
+		if err := json.Unmarshal(mustJSON(value), &cfg); err != nil {
+			writeValidation(w, key, "invalid value")
+			return nil, false, false
+		}
+		normalized, valid := normalizeNotifyConfig(w, cfg)
+		if !valid {
+			return nil, false, false
+		}
+		next, err := mapFromJSONValue(normalized)
+		if err != nil {
+			writeValidation(w, key, "invalid value")
+			return nil, false, false
+		}
+		value = next
+	case "repo_config":
+		next, deleteFile, valid := s.restoreRepoConfigValue(w, value)
+		return next, deleteFile, valid
+	case "branch_config":
+		var cfg apiBranchConfigFile
+		if err := json.Unmarshal(mustJSON(value), &cfg); err != nil {
+			writeValidation(w, key, "invalid value")
+			return nil, false, false
+		}
+		if cfg.BranchTargets == nil {
+			cfg.BranchTargets = []apiBranchTarget{}
+		}
+		if !validateBranchTargets(w, cfg.BranchTargets) {
+			return nil, false, false
+		}
+		next, err := mapFromJSONValue(cfg)
+		if err != nil {
+			writeValidation(w, key, "invalid value")
+			return nil, false, false
+		}
+		return next, len(cfg.BranchTargets) == 0, true
+	case "access_control":
+		var cfg apiAccessControl
+		if err := json.Unmarshal(mustJSON(value), &cfg); err != nil {
+			writeValidation(w, key, "invalid value")
+			return nil, false, false
+		}
+		normalized, valid := normalizeAccessControl(w, cfg)
+		if !valid {
+			return nil, false, false
+		}
+		next, err := mapFromJSONValue(normalized)
+		if err != nil {
+			writeValidation(w, key, "invalid value")
+			return nil, false, false
+		}
+		value = next
+	case "hooks":
+		if !validateRestoreRuleWrapper(w, key, value, "hooks", 50) {
+			return nil, false, false
+		}
+	case "alert_rules", "tag_rules":
+		if !validateRestoreRuleWrapper(w, key, value, "rules", 100) {
+			return nil, false, false
+		}
+	case "pipeline_config":
+		if !validatePipelineConfig(w, value) {
+			return nil, false, false
+		}
+	case "dashboard_layout":
+		if !validateDashboardLayout(w, value) {
+			return nil, false, false
+		}
+	case "smtp_config":
+		if !validateSMTPConfig(w, value) {
+			return nil, false, false
+		}
+	}
+	return value, false, true
+}
+
+func (s *APIServer) restoreRepoConfigValue(w http.ResponseWriter, value map[string]any) (map[string]any, bool, bool) {
+	for key := range value {
+		if key != "owner" && key != "repo" && key != "updated_at" {
+			writeValidation(w, key, "unknown key")
+			return nil, false, false
+		}
+	}
+	owner, ok := value["owner"].(string)
+	if !ok || strings.TrimSpace(owner) == "" || containsControl(owner) {
+		writeValidation(w, "owner", "invalid value")
+		return nil, false, false
+	}
+	repo, ok := value["repo"].(string)
+	if !ok || strings.TrimSpace(repo) == "" || containsControl(repo) {
+		writeValidation(w, "repo", "invalid value")
+		return nil, false, false
+	}
+	owner = strings.TrimSpace(owner)
+	repo = strings.TrimSpace(repo)
+	var updatedAt any
+	if raw, ok := value["updated_at"]; ok && raw != nil {
+		text, ok := raw.(string)
+		if !ok || !validAPITime(text) {
+			writeValidation(w, "updated_at", "invalid value")
+			return nil, false, false
+		}
+		updatedAt = text
+	}
+	def := defaultRepoConfig()
+	if owner == def.Owner && repo == def.Repo && updatedAt == nil {
+		return map[string]any{"owner": owner, "repo": repo, "updated_at": nil}, fileExists(filepath.Join(s.cfg.StateDir, ".repo_config")), true
+	}
+	if updatedAt == nil {
+		updatedAt = s.nowString()
+	}
+	return map[string]any{"owner": owner, "repo": repo, "updated_at": updatedAt}, false, true
+}
+
+func (s *APIServer) addRestoreSecretPlan(w http.ResponseWriter, body map[string]json.RawMessage, field, file string, plan *apiRestorePlan) (bool, bool) {
+	raw, exists := body[field]
+	if !exists {
+		return false, true
+	}
+	deleteSecret, value, keep, ok := parseRestoreSecret(w, field, raw)
+	if !ok || keep {
+		return false, ok
+	}
+	path := filepath.Join(s.cfg.StateDir, file)
+	current, err := os.ReadFile(path)
+	currentExists := err == nil
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
+		return false, false
+	}
+	if deleteSecret {
+		if !currentExists {
+			return false, true
+		}
+		plan.SecretWrites = append(plan.SecretWrites, apiRestoreSecretWrite{File: file, Delete: true})
+		plan.ChangeSummary["secrets"] = appendStringAny(plan.ChangeSummary["secrets"], field)
+		return true, true
+	}
+	if currentExists && string(current) == value {
+		return false, true
+	}
+	plan.SecretWrites = append(plan.SecretWrites, apiRestoreSecretWrite{File: file, Value: value})
+	plan.ChangeSummary["secrets"] = appendStringAny(plan.ChangeSummary["secrets"], field)
+	return true, true
+}
+
+func decodeRestoreObject(w http.ResponseWriter, field string, raw json.RawMessage) (map[string]any, bool) {
+	var value map[string]any
+	if err := json.Unmarshal(raw, &value); err != nil || value == nil {
+		writeValidation(w, field, "object required")
+		return nil, false
+	}
+	return value, true
+}
+
+func parseRestoreSecret(w http.ResponseWriter, field string, raw json.RawMessage) (bool, string, bool, bool) {
+	if string(raw) == "null" {
+		return true, "", false, true
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		writeValidation(w, field, "invalid value")
+		return false, "", false, false
+	}
+	if value == "***" {
+		return false, "", true, true
+	}
+	if !validRestoreSecret(value) {
+		writeValidation(w, field, "invalid value")
+		return false, "", false, false
+	}
+	return false, value, false, true
+}
+
+func validRestoreSecret(value string) bool {
+	return value != "" && len([]byte(value)) <= 4096 && strings.ToValidUTF8(value, "") == value && !strings.HasPrefix(value, "\ufeff") && !containsControl(value)
+}
+
+func validateRestoreServerConfig(w http.ResponseWriter, raw json.RawMessage) bool {
+	fields := map[string]json.RawMessage{}
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		writeValidation(w, "server_config", "invalid value")
+		return false
+	}
+	for key, value := range fields {
+		if secretLikeKey(key) {
+			writeValidation(w, key, "unknown key")
+			return false
+		}
+		switch key {
+		case "log_max_lines":
+			if !validRawInt(value, 1, 10000) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "history_max_count":
+			if !validRawInt(value, 1, 10000) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "build_timeout_seconds":
+			if !validRawInt(value, 1, 86400) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "log_retention_days", "log_archive_after_days":
+			if !validRawInt(value, 0, 3650) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "log_level":
+			var v string
+			if json.Unmarshal(value, &v) != nil || (v != "INFO" && v != "DEBUG" && v != "WARNING" && v != "ERROR") {
+				writeValidation(w, key, "invalid value")
+				return false
+			}
+		case "pat_expires_at", "commit_status_target_url":
+			var v *string
+			if json.Unmarshal(value, &v) != nil || (v != nil && containsControl(*v)) {
+				writeValidation(w, key, "invalid value")
+				return false
+			}
+		case "snapshots_keep", "queue_max_size":
+			if !validRawInt(value, 0, 100) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "build_retry_max":
+			if !validRawInt(value, 0, 10) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "build_retry_base_seconds":
+			if !validRawInt(value, 1, 3600) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "commit_status_enabled", "schedule_paused":
+			var v bool
+			if json.Unmarshal(value, &v) != nil {
+				writeValidation(w, key, "invalid value")
+				return false
+			}
+		case "commit_status_context":
+			var v string
+			if json.Unmarshal(value, &v) != nil || len(v) < 1 || len(v) > 100 || containsControl(v) {
+				writeValidation(w, key, "invalid value")
+				return false
+			}
+		case "build_trend_keep_count":
+			if !validRawInt(value, 10, 10000) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "session_timeout_seconds":
+			if !validRawInt(value, 300, 2592000) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "force_build_interval_hours":
+			if !validRawInt(value, 0, 8760) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "build_cooldown_seconds":
+			if !validRawInt(value, 0, 86400) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "schedule_interval_seconds":
+			if !validRawInt(value, 30, 86400) {
+				writeValidation(w, key, "out of range")
+				return false
+			}
+		case "allowed_hours":
+			if string(value) == "null" {
+				continue
+			}
+			var hours apiAllowedHours
+			if json.Unmarshal(value, &hours) != nil || hours.From < 0 || hours.From > 23 || hours.To < 0 || hours.To > 23 || hours.From > hours.To {
+				writeValidation(w, key, "invalid value")
+				return false
+			}
+		case "api_rate_limit":
+			var rate map[string]any
+			if json.Unmarshal(value, &rate) != nil || rate == nil {
+				writeValidation(w, key, "invalid value")
+				return false
+			}
+			if _, ok := apiRateLimitPolicyFromConfig(rate); !ok {
+				writeValidation(w, key, "invalid value")
+				return false
+			}
+		default:
+			writeValidation(w, key, "unknown key")
+			return false
+		}
+	}
+	return true
+}
+
+func validateRestoreRuleWrapper(w http.ResponseWriter, field string, value map[string]any, listKey string, max int) bool {
+	if len(value) != 1 {
+		writeValidation(w, field, "invalid value")
+		return false
+	}
+	raw, ok := value[listKey].([]any)
+	if !ok || len(raw) > max {
+		writeValidation(w, listKey, "invalid value")
+		return false
+	}
+	for i, item := range raw {
+		child, ok := item.(map[string]any)
+		if !ok || fmt.Sprint(child["id"]) == "" {
+			writeValidation(w, fmt.Sprintf("%s[%d]", listKey, i), "invalid value")
+			return false
+		}
+	}
+	return true
+}
+
+func validateSMTPConfig(w http.ResponseWriter, value map[string]any) bool {
+	required := map[string]bool{"host": true, "port": true, "user": true, "tls": true, "from": true, "to": true, "on": true, "enabled": true}
+	if len(value) != len(required) {
+		writeValidation(w, "smtp_config", "invalid value")
+		return false
+	}
+	for key := range value {
+		if !required[key] {
+			writeValidation(w, key, "unknown key")
+			return false
+		}
+	}
+	if raw, ok := value["port"].(float64); !ok || raw < 1 || raw > 65535 || math.Trunc(raw) != raw {
+		writeValidation(w, "port", "out of range")
+		return false
+	}
+	if _, ok := value["tls"].(bool); !ok {
+		writeValidation(w, "tls", "invalid value")
+		return false
+	}
+	if _, ok := value["enabled"].(bool); !ok {
+		writeValidation(w, "enabled", "invalid value")
+		return false
+	}
+	for _, key := range []string{"host", "user", "from"} {
+		if value[key] == nil {
+			continue
+		}
+		text, ok := value[key].(string)
+		if !ok || containsControl(text) || len(text) > 255 {
+			writeValidation(w, key, "invalid value")
+			return false
+		}
+	}
+	for _, key := range []string{"to", "on"} {
+		list, ok := value[key].([]any)
+		if !ok || len(list) > 50 {
+			writeValidation(w, key, "invalid value")
+			return false
+		}
+		for _, item := range list {
+			text, ok := item.(string)
+			if !ok || text == "" || containsControl(text) {
+				writeValidation(w, key, "invalid value")
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func defaultDashboardLayout() map[string]any {
+	return map[string]any{"widgets": []any{"status", "stats", "schedule", "alerts", "disk", "rate_limit", "snapshots", "maintenance", "queue"}}
+}
+
+func defaultSMTPConfig() map[string]any {
+	return map[string]any{"host": nil, "port": 587, "user": nil, "tls": true, "from": nil, "to": []any{}, "on": []any{}, "enabled": false}
+}
+
+func validRawInt(raw json.RawMessage, min, max int) bool {
+	var value int
+	return json.Unmarshal(raw, &value) == nil && value >= min && value <= max
+}
+
+func validAPITime(value string) bool {
+	parsed, err := time.Parse(apiTimeLayout, value)
+	return err == nil && parsed.UTC().Format(apiTimeLayout) == value
+}
+
+func secretLikeKey(key string) bool {
+	lower := strings.ToLower(key)
+	return strings.Contains(lower, "secret") || strings.Contains(lower, "password") || strings.Contains(lower, "token")
+}
+
+func mapFromJSONValue(value any) (map[string]any, error) {
+	var out map[string]any
+	if err := json.Unmarshal(mustJSON(value), &out); err != nil {
+		return nil, err
+	}
+	if out == nil {
+		out = map[string]any{}
+	}
+	return out, nil
+}
+
+func mustJSON(value any) []byte {
+	data, _ := json.Marshal(value)
+	return data
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func appendStringAny(value any, item string) []string {
+	if list, ok := value.([]string); ok {
+		return append(list, item)
+	}
+	return []string{item}
+}
+
 func readOptionalJSONMap(path string) (map[string]any, bool, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -5241,7 +9547,28 @@ func mergeMaskedSecrets(next, current map[string]any) map[string]any {
 			out[key] = mergeMaskedSecrets(child, curChild)
 			continue
 		}
+		if list, ok := value.([]any); ok {
+			curList, _ := current[key].([]any)
+			out[key] = mergeMaskedSecretLists(list, curList)
+			continue
+		}
 		out[key] = value
+	}
+	return out
+}
+
+func mergeMaskedSecretLists(next, current []any) []any {
+	out := make([]any, len(next))
+	for i, value := range next {
+		if child, ok := value.(map[string]any); ok {
+			var curChild map[string]any
+			if i < len(current) {
+				curChild, _ = current[i].(map[string]any)
+			}
+			out[i] = mergeMaskedSecrets(child, curChild)
+			continue
+		}
+		out[i] = value
 	}
 	return out
 }
@@ -5290,43 +9617,447 @@ func validWebhookSignature(secret string, body []byte, header string) bool {
 }
 
 func validSimpleID(id string) bool {
-	if id == "" || len(id) > 128 || containsControl(id) || strings.Contains(id, "..") || strings.ContainsAny(id, `/\`) {
+	if id == "" || len(id) > 64 {
+		return false
+	}
+	for _, ch := range id {
+		if (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' {
+			continue
+		}
 		return false
 	}
 	return true
 }
 
 func readAPITokens(path string) ([]apiTokenRecord, error) {
-	tokens := []apiTokenRecord{}
-	if err := readJSONIfExists(path, &tokens); err != nil {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return []apiTokenRecord{}, nil
+	}
+	if err != nil {
 		return nil, err
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+	if len(raw) != 1 {
+		return nil, errors.New("invalid api token file")
+	}
+	listRaw, ok := raw["tokens"]
+	if !ok {
+		return nil, errors.New("invalid api token file")
+	}
+	var rows []map[string]json.RawMessage
+	if err := json.Unmarshal(listRaw, &rows); err != nil {
+		return nil, err
+	}
+	if len(rows) > 100 {
+		return nil, errors.New("invalid api token file")
+	}
+	tokens := make([]apiTokenRecord, 0, len(rows))
+	for _, row := range rows {
+		record, err := decodeAPITokenRecord(row)
+		if err != nil {
+			return nil, err
+		}
+		tokens = append(tokens, record)
 	}
 	return tokens, nil
 }
 
-func normalizeTokenScopes(scopes []string) []string {
-	if len(scopes) == 0 {
-		return []string{"read", "write"}
+func writeAPITokens(path string, tokens []apiTokenRecord) error {
+	sort.SliceStable(tokens, func(i, j int) bool {
+		if tokens[i].CreatedAt == tokens[j].CreatedAt {
+			return tokens[i].ID < tokens[j].ID
+		}
+		return tokens[i].CreatedAt > tokens[j].CreatedAt
+	})
+	return atomicWriteJSON(path, apiTokenFile{Tokens: tokens}, 0600)
+}
+
+func updateAPITokensLocked(path string, mutate func([]apiTokenRecord) ([]apiTokenRecord, bool, error)) ([]apiTokenRecord, error) {
+	release, err := acquireAPIStateFileLock(path)
+	if err != nil {
+		return nil, err
 	}
-	out := []string{}
+	defer release()
+	current, err := readAPITokens(path)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", errAPITokenCorrupt, err)
+	}
+	next, write, err := mutate(current)
+	if err != nil {
+		return nil, err
+	}
+	if !write {
+		return next, nil
+	}
+	if err := validateAPITokenRecords(next); err != nil {
+		return nil, err
+	}
+	if err := writeAPITokens(path, next); err != nil {
+		return nil, err
+	}
+	return next, nil
+}
+
+func validateAPITokenRecords(tokens []apiTokenRecord) error {
+	if len(tokens) > 100 {
+		return errors.New("invalid api token file")
+	}
+	encoded, err := json.Marshal(apiTokenFile{Tokens: tokens})
+	if err != nil {
+		return err
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(encoded, &raw); err != nil {
+		return err
+	}
+	listRaw, ok := raw["tokens"]
+	if !ok || len(raw) != 1 {
+		return errors.New("invalid api token file")
+	}
+	var rows []map[string]json.RawMessage
+	if err := json.Unmarshal(listRaw, &rows); err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if _, err := decodeAPITokenRecord(row); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func decodeAPITokenRecord(row map[string]json.RawMessage) (apiTokenRecord, error) {
+	allowed := map[string]bool{"id": true, "label": true, "scopes": true, "token_hash": true, "created_at": true, "last_used_at": true, "expires_at": true, "revoked_at": true}
+	if len(row) != len(allowed) {
+		return apiTokenRecord{}, errors.New("invalid api token record")
+	}
+	for key := range row {
+		if !allowed[key] {
+			return apiTokenRecord{}, errors.New("invalid api token record")
+		}
+	}
+	id, ok := rawJSONString(row["id"])
+	if !ok || !validTokenID(id) {
+		return apiTokenRecord{}, errors.New("invalid api token id")
+	}
+	label, ok := rawJSONString(row["label"])
+	if !ok || strings.TrimSpace(label) == "" || len([]byte(label)) > 64 {
+		return apiTokenRecord{}, errors.New("invalid api token label")
+	}
+	scopes, ok := rawJSONStringList(row["scopes"])
+	if !ok {
+		return apiTokenRecord{}, errors.New("invalid api token scopes")
+	}
+	scopes, ok = normalizeTokenScopes(scopes)
+	if !ok {
+		return apiTokenRecord{}, errors.New("invalid api token scopes")
+	}
+	hash, ok := rawJSONString(row["token_hash"])
+	if !ok || !validLowerHex(hash, 64) {
+		return apiTokenRecord{}, errors.New("invalid api token hash")
+	}
+	createdAt, ok := rawJSONString(row["created_at"])
+	if !ok || !validAPITime(createdAt) {
+		return apiTokenRecord{}, errors.New("invalid api token created_at")
+	}
+	lastUsedAt, ok := rawNullableAPITime(row["last_used_at"])
+	if !ok {
+		return apiTokenRecord{}, errors.New("invalid api token last_used_at")
+	}
+	expiresAt, ok := rawNullableAPITime(row["expires_at"])
+	if !ok {
+		return apiTokenRecord{}, errors.New("invalid api token expires_at")
+	}
+	revokedAt, ok := rawNullableAPITime(row["revoked_at"])
+	if !ok {
+		return apiTokenRecord{}, errors.New("invalid api token revoked_at")
+	}
+	return apiTokenRecord{ID: id, Label: label, Scopes: scopes, TokenHash: hash, CreatedAt: createdAt, LastUsedAt: lastUsedAt, ExpiresAt: expiresAt, RevokedAt: revokedAt}, nil
+}
+
+func normalizeTokenScopes(scopes []string) ([]string, bool) {
 	seen := map[string]bool{}
 	for _, scope := range scopes {
 		scope = strings.TrimSpace(scope)
-		if scope == "" || seen[scope] {
-			continue
+		if !validTokenScope(scope) || seen[scope] {
+			return nil, false
 		}
 		seen[scope] = true
-		out = append(out, scope)
 	}
-	return out
+	if len(seen) == 0 || len(seen) > 5 {
+		return nil, false
+	}
+	out := []string{}
+	for _, scope := range []string{"trigger", "read", "operate", "config", "admin"} {
+		if seen[scope] {
+			out = append(out, scope)
+		}
+	}
+	return out, true
+}
+
+func normalizeTokenExpiresAt(value *string, now time.Time) (*string, bool) {
+	if value == nil {
+		return nil, true
+	}
+	trimmed := strings.TrimSpace(*value)
+	parsed, err := time.Parse(apiTimeLayout, trimmed)
+	if err != nil || !now.Before(parsed) {
+		return nil, false
+	}
+	return &trimmed, true
+}
+
+func apiTokenExpired(record apiTokenRecord, now time.Time) bool {
+	if record.ExpiresAt == nil {
+		return false
+	}
+	expires, err := time.Parse(apiTimeLayout, *record.ExpiresAt)
+	return err != nil || !now.Before(expires)
+}
+
+func validTokenScope(scope string) bool {
+	switch scope {
+	case "trigger", "read", "operate", "config", "admin":
+		return true
+	default:
+		return false
+	}
+}
+
+func validTokenID(id string) bool {
+	if !strings.HasPrefix(id, "tok") || len(id) < 9 {
+		return false
+	}
+	for _, ch := range id[3:] {
+		if ch < '0' || ch > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func validLowerHex(value string, size int) bool {
+	if len(value) != size {
+		return false
+	}
+	for _, ch := range value {
+		if (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func rawJSONString(raw json.RawMessage) (string, bool) {
+	var value string
+	if len(raw) == 0 || json.Unmarshal(raw, &value) != nil {
+		return "", false
+	}
+	return value, true
+}
+
+func rawJSONStringList(raw json.RawMessage) ([]string, bool) {
+	var value []string
+	if len(raw) == 0 || json.Unmarshal(raw, &value) != nil {
+		return nil, false
+	}
+	return value, true
+}
+
+func rawNullableAPITime(raw json.RawMessage) (*string, bool) {
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return nil, true
+	}
+	value, ok := rawJSONString(raw)
+	if !ok || !validAPITime(value) {
+		return nil, false
+	}
+	return &value, true
+}
+
+func apiTokenScopesAllow(scopes []string, method, path string) bool {
+	required, ok := apiTokenRequiredScope(method, path)
+	if !ok {
+		return false
+	}
+	for _, scope := range scopes {
+		if scope == required {
+			return true
+		}
+	}
+	return false
+}
+
+func apiTokenRequiredScope(method, path string) (string, bool) {
+	if method == http.MethodPost && (path == "/api/build" || path == "/api/build/force") {
+		return "trigger", true
+	}
+	if apiTokenReadEndpoint(method, path) {
+		return "read", true
+	}
+	if apiTokenOperateEndpoint(method, path) {
+		return "operate", true
+	}
+	if apiTokenConfigEndpoint(method, path) {
+		return "config", true
+	}
+	if apiTokenAdminEndpoint(method, path) {
+		return "admin", true
+	}
+	return "", false
+}
+
+func apiTokenReadEndpoint(method, path string) bool {
+	if method != http.MethodGet {
+		return false
+	}
+	if apiTokenExactPath(path, []string{
+		"/api/status", "/api/logs", "/api/logs/search", "/api/logs/export", "/api/history", "/api/history/export",
+		"/api/sysinfo", "/api/health", "/api/schedule", "/api/notify-config", "/api/notify-log", "/api/config",
+		"/api/config-log", "/api/pat-status", "/api/stats", "/api/stats/timeline", "/api/stats/build-duration",
+		"/api/stats/build-trends", "/api/output-meta", "/api/repo-info", "/api/branch-config", "/api/backup",
+		"/api/dashboard", "/api/diagnostics", "/api/rate-limit", "/api/disk-usage", "/api/webhook-events",
+		"/api/webhook-config", "/api/snapshots", "/api/maintenance", "/api/access-control", "/api/hooks",
+		"/api/alert-rules", "/api/tag-rules", "/api/pipeline-config", "/api/build-chain-config", "/api/notes",
+		"/api/smtp-config", "/api/queue", "/api/approvals", "/api/dashboard-layout",
+	}) {
+		return true
+	}
+	return apiTokenSuffixEndpoint(path, "/api/history/", []string{"/log", "/comment"}) ||
+		apiTokenSuffixEndpoint(path, "/api/snapshots/", []string{"/download"}) ||
+		apiTokenSuffixEndpoint(path, "/api/hooks/", []string{"/log"})
+}
+
+func apiTokenOperateEndpoint(method, path string) bool {
+	if method == http.MethodGet && path == "/api/build/stream" {
+		return true
+	}
+	if method == http.MethodPost && apiTokenExactPath(path, []string{"/api/build/cancel", "/api/notify-test", "/api/notify/weekly-summary", "/api/pat-verify", "/api/circuit-breaker/reset", "/api/smtp-test", "/api/verify-output"}) {
+		return true
+	}
+	if method == http.MethodDelete && path == "/api/queue" {
+		return true
+	}
+	if method == http.MethodPost && apiTokenSuffixEndpoint(path, "/api/history/", []string{"/rollback"}) {
+		return true
+	}
+	if method == http.MethodPost && apiTokenSuffixEndpoint(path, "/api/approvals/", []string{"/approve", "/reject"}) {
+		return true
+	}
+	return false
+}
+
+func apiTokenConfigEndpoint(method, path string) bool {
+	if method == http.MethodPost && apiTokenExactPath(path, []string{
+		"/api/schedule/interval", "/api/schedule/pause", "/api/schedule/resume", "/api/schedule/allowed-hours",
+		"/api/schedule/force-interval", "/api/schedule/cooldown", "/api/notify-config", "/api/config/validate",
+		"/api/config", "/api/log-level", "/api/pat-update", "/api/repo-config", "/api/branch-config", "/api/restore",
+		"/api/webhook-config", "/api/maintenance/enable", "/api/maintenance/disable", "/api/access-control",
+		"/api/hooks", "/api/alert-rules", "/api/tag-rules", "/api/pipeline-config", "/api/build-chain-config",
+		"/api/notes", "/api/smtp-config", "/api/dashboard-layout", "/api/logs/cleanup", "/api/logs/archive",
+	}) {
+		return true
+	}
+	if method == http.MethodDelete && apiTokenSuffixEndpoint(path, "/api/snapshots/", []string{""}) {
+		return true
+	}
+	if method == http.MethodDelete && (apiTokenSuffixEndpoint(path, "/api/hooks/", []string{""}) || apiTokenSuffixEndpoint(path, "/api/alert-rules/", []string{""}) || apiTokenSuffixEndpoint(path, "/api/tag-rules/", []string{""})) {
+		return true
+	}
+	if method == http.MethodPost && apiTokenSuffixEndpoint(path, "/api/history/", []string{"/comment", "/flag", "/tags"}) {
+		return true
+	}
+	return false
+}
+
+func apiTokenAdminEndpoint(method, path string) bool {
+	if method == http.MethodGet && apiTokenExactPath(path, []string{"/api/access-log", "/api/api-access-log", "/api/audit-log", "/api/api-rate-limit", "/api/sessions", "/api/auth/totp-status", "/api/tokens"}) {
+		return true
+	}
+	if method == http.MethodPost && apiTokenExactPath(path, []string{"/api/api-rate-limit", "/api/sessions/revoke-all", "/api/auth/totp-setup", "/api/auth/totp-confirm", "/api/tokens"}) {
+		return true
+	}
+	if method == http.MethodDelete && (path == "/api/auth/totp" || apiTokenSuffixEndpoint(path, "/api/tokens/", []string{""})) {
+		return true
+	}
+	return false
+}
+
+func apiTokenExactPath(path string, allowed []string) bool {
+	for _, item := range allowed {
+		if path == item {
+			return true
+		}
+	}
+	return false
+}
+
+func apiTokenSuffixEndpoint(path, prefix string, suffixes []string) bool {
+	if !strings.HasPrefix(path, prefix) {
+		return false
+	}
+	rest := strings.TrimPrefix(path, prefix)
+	if rest == "" || strings.Contains(rest, "/") && !apiTokenSuffixRestAllowed(rest, suffixes) {
+		return false
+	}
+	if len(suffixes) == 1 && suffixes[0] == "" {
+		return !strings.Contains(rest, "/")
+	}
+	for _, suffix := range suffixes {
+		if strings.HasSuffix(rest, suffix) {
+			id := strings.TrimSuffix(rest, suffix)
+			return id != "" && !strings.Contains(id, "/")
+		}
+	}
+	return false
+}
+
+func apiTokenSuffixRestAllowed(rest string, suffixes []string) bool {
+	for _, suffix := range suffixes {
+		if suffix != "" && strings.HasSuffix(rest, suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 func readRuleList(path string) ([]map[string]any, error) {
-	rules := []map[string]any{}
-	if err := readJSONIfExists(path, &rules); err != nil {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return []map[string]any{}, nil
+	}
+	if err != nil {
 		return nil, err
 	}
+	var wrapper map[string][]map[string]any
+	if err := json.Unmarshal(data, &wrapper); err != nil {
+		return nil, err
+	}
+	rules, ok := wrapper[ruleListKey(path)]
+	if !ok || len(wrapper) != 1 {
+		return nil, errors.New("invalid rule list")
+	}
+	if rules == nil {
+		rules = []map[string]any{}
+	}
 	return rules, nil
+}
+
+func ruleListWrapper(path string, rules []map[string]any) map[string]any {
+	return map[string]any{ruleListKey(path): rules}
+}
+
+func ruleListKey(path string) string {
+	if filepath.Base(path) == ".hooks" {
+		return "hooks"
+	}
+	return "rules"
 }
 
 func duplicateRule(rules []map[string]any, rule map[string]any) bool {
@@ -5435,7 +10166,11 @@ func validateDashboardLayout(w http.ResponseWriter, value map[string]any) bool {
 		writeValidation(w, "widgets", "required")
 		return false
 	}
-	allowed := map[string]bool{"status": true, "sysinfo": true, "stats": true, "schedule": true, "alerts": true}
+	if len(raw) > 9 {
+		writeValidation(w, "widgets", "too many")
+		return false
+	}
+	allowed := map[string]bool{"status": true, "stats": true, "schedule": true, "alerts": true, "disk": true, "rate_limit": true, "snapshots": true, "maintenance": true, "queue": true}
 	seen := map[string]bool{}
 	for _, item := range raw {
 		widget := fmt.Sprint(item)
@@ -5457,6 +10192,196 @@ func mapsEqual(a, b map[string]any) bool {
 	aj, errA := json.Marshal(a)
 	bj, errB := json.Marshal(b)
 	return errA == nil && errB == nil && string(aj) == string(bj)
+}
+
+func buildTrendSummary(samples []apiBuildTrendSample) map[string]any {
+	if len(samples) == 0 {
+		return map[string]any{"count": 0, "avg_seconds": nil, "median_seconds": nil, "p95_seconds": nil, "anomaly_count": 0}
+	}
+	values := make([]float64, 0, len(samples))
+	anomalies := 0
+	total := 0.0
+	for _, sample := range samples {
+		values = append(values, sample.DurationSeconds)
+		total += sample.DurationSeconds
+		if sample.Anomaly {
+			anomalies++
+		}
+	}
+	sort.Float64s(values)
+	return map[string]any{
+		"count":          len(samples),
+		"avg_seconds":    math.Round((total/float64(len(samples)))*100) / 100,
+		"median_seconds": percentile(values, 0.5),
+		"p95_seconds":    percentile(values, 0.95),
+		"anomaly_count":  anomalies,
+	}
+}
+
+func percentile(values []float64, p float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+	if p == 0.5 && len(values)%2 == 0 {
+		mid := len(values) / 2
+		return math.Round(((values[mid-1]+values[mid])/2)*100) / 100
+	}
+	index := int(math.Ceil(float64(len(values))*p)) - 1
+	if index < 0 {
+		index = 0
+	}
+	if index >= len(values) {
+		index = len(values) - 1
+	}
+	return math.Round(values[index]*100) / 100
+}
+
+func buildChainConfigsEqual(a, b apiBuildChainConfig) bool {
+	aj, errA := json.Marshal(a)
+	bj, errB := json.Marshal(b)
+	return errA == nil && errB == nil && string(aj) == string(bj)
+}
+
+func validateBuildChainConfig(w http.ResponseWriter, cfg apiBuildChainConfig) bool {
+	if len(cfg.Chains) > 100 {
+		writeValidation(w, "chains", "too many items")
+		return false
+	}
+	ids := map[string]apiBuildChainJob{}
+	for _, job := range cfg.Chains {
+		if !validBuildChainID(job.ID) {
+			writeValidation(w, "id", "invalid value")
+			return false
+		}
+		if _, exists := ids[job.ID]; exists {
+			writeValidation(w, "id", "duplicate value")
+			return false
+		}
+		if !validateBranchName(w, job.Branch) || !validateTargetFile(w, job.TargetFile) {
+			return false
+		}
+		if job.DependsOn == nil {
+			writeValidation(w, "depends_on", "required")
+			return false
+		}
+		if len(job.DependsOn) > 20 {
+			writeValidation(w, "depends_on", "too many items")
+			return false
+		}
+		ids[job.ID] = job
+	}
+	for _, job := range cfg.Chains {
+		seen := map[string]bool{}
+		for _, dep := range job.DependsOn {
+			if seen[dep] || dep == job.ID {
+				writeValidation(w, "depends_on", "invalid value")
+				return false
+			}
+			target, ok := ids[dep]
+			if !ok || (job.Enabled && !target.Enabled) {
+				writeValidation(w, "depends_on", "invalid value")
+				return false
+			}
+			seen[dep] = true
+		}
+	}
+	visiting := map[string]bool{}
+	visited := map[string]bool{}
+	var visit func(string) bool
+	visit = func(id string) bool {
+		if visiting[id] {
+			return false
+		}
+		if visited[id] {
+			return true
+		}
+		visiting[id] = true
+		for _, dep := range ids[id].DependsOn {
+			if !visit(dep) {
+				return false
+			}
+		}
+		visiting[id] = false
+		visited[id] = true
+		return true
+	}
+	for id := range ids {
+		if !visit(id) {
+			writeValidation(w, "depends_on", "cycle detected")
+			return false
+		}
+	}
+	return true
+}
+
+func validBuildChainID(id string) bool {
+	if id == "" || len(id) > 64 {
+		return false
+	}
+	for _, r := range id {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func apiActorID(r *http.Request) string {
+	if auth, ok := r.Context().Value(apiAuthContextKey{}).(apiAuthInfo); ok && auth.Actor != nil && *auth.Actor != "" {
+		return *auth.Actor
+	}
+	return "admin"
+}
+
+func latestApprovalByID(path, id string) (apiApprovalRecord, bool, error) {
+	records, err := readLatestApprovals(path)
+	if err != nil {
+		return apiApprovalRecord{}, false, err
+	}
+	for _, record := range records {
+		if record.ID == id {
+			return record, true, nil
+		}
+	}
+	return apiApprovalRecord{}, false, nil
+}
+
+func readLatestApprovals(path string) ([]apiApprovalRecord, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return []apiApprovalRecord{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	latest := map[string]apiApprovalRecord{}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var record apiApprovalRecord
+		if err := json.Unmarshal([]byte(line), &record); err != nil || !validApprovalRecord(record) {
+			log.Printf("APPROVAL_QUEUE_CORRUPT_LINE: path=%s", path)
+			continue
+		}
+		latest[record.ID] = record
+	}
+	records := make([]apiApprovalRecord, 0, len(latest))
+	for _, record := range latest {
+		records = append(records, record)
+	}
+	return records, nil
+}
+
+func validApprovalRecord(record apiApprovalRecord) bool {
+	switch record.Status {
+	case "pending", "approved", "rejected", "expired":
+	default:
+		return false
+	}
+	return record.ID != "" && record.Branch != "" && record.SHA != "" && record.Target != "" && record.RequestedTrigger != "" && record.RequestedBy != "" && record.CreatedAt != "" && record.ExpiresAt != ""
 }
 
 func appendJSONLine(path string, value any) error {
@@ -5521,6 +10446,96 @@ func stringPtrValue(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func normalizeHealthBuildStatus(status string) string {
+	switch {
+	case status == "":
+		return "none"
+	case status == "success" || status == "success_deploy_pending":
+		return "success"
+	case status == "cancelled":
+		return "cancelled"
+	case strings.HasPrefix(status, "skipped_") || status == "circuit_open" || status == "config_recovered" || status == "config_error" || status == "lock_skipped":
+		return "skipped"
+	case strings.HasPrefix(status, "failure_") || status == "hook_error":
+		return "failure"
+	default:
+		return status
+	}
+}
+
+func readJSONArrayCount(path string) (int, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	var values []json.RawMessage
+	if err := json.Unmarshal(data, &values); err != nil {
+		return 0, err
+	}
+	return len(values), nil
+}
+
+func healthRunnerStale(path string, now time.Time) bool {
+	status, ok, check := readBuildStatusForHealth(path)
+	if !ok || check != "" || !status.Running || status.LastStartedAt == nil || *status.LastStartedAt == "" {
+		return false
+	}
+	startedAt, err := time.Parse(apiTimeLayout, *status.LastStartedAt)
+	if err != nil {
+		return false
+	}
+	return now.Sub(startedAt.UTC()) > 24*time.Hour
+}
+
+func patConfigured(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !info.Mode().IsRegular() {
+		return false, nil
+	}
+	token, err := readSecretText(path)
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(token) != "", nil
+}
+
+func expiresInDays(expiresAt *string, now time.Time) (*int, error) {
+	if expiresAt == nil {
+		return nil, nil
+	}
+	expiresDate, err := time.ParseInLocation("2006-01-02", *expiresAt, time.UTC)
+	if err != nil {
+		return nil, err
+	}
+	nowDate := time.Date(now.UTC().Year(), now.UTC().Month(), now.UTC().Day(), 0, 0, 0, 0, time.UTC)
+	days := int(expiresDate.Sub(nowDate).Hours() / 24)
+	return &days, nil
+}
+
+func githubScopes(header string) []string {
+	seen := map[string]bool{}
+	scopes := []string{}
+	for _, raw := range strings.Split(header, ",") {
+		scope := strings.TrimSpace(raw)
+		if scope == "" || seen[scope] {
+			continue
+		}
+		seen[scope] = true
+		scopes = append(scopes, scope)
+	}
+	sort.Strings(scopes)
+	return scopes
 }
 
 func readJSONIfExists(path string, out any) error {
@@ -5622,6 +10637,77 @@ func decodeBody(w http.ResponseWriter, r *http.Request, out any, required bool) 
 	return true
 }
 
+func decodeRawObjectBody(w http.ResponseWriter, r *http.Request, required bool) (map[string]json.RawMessage, []string, bool) {
+	if r.Body == nil || r.Body == http.NoBody {
+		if required {
+			writeError(w, http.StatusBadRequest, "Invalid JSON")
+			return nil, nil, false
+		}
+		return map[string]json.RawMessage{}, nil, true
+	}
+	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, "Payload too large")
+			return nil, nil, false
+		}
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return nil, nil, false
+	}
+	var raw map[string]json.RawMessage
+	dec := json.NewDecoder(bytes.NewReader(data))
+	if err := dec.Decode(&raw); err != nil || raw == nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return nil, nil, false
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return nil, nil, false
+	}
+	order, ok := jsonObjectKeyOrder(data)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return nil, nil, false
+	}
+	return raw, order, true
+}
+
+func jsonObjectKeyOrder(data []byte) ([]string, bool) {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	tok, err := dec.Token()
+	if err != nil {
+		return nil, false
+	}
+	delim, ok := tok.(json.Delim)
+	if !ok || delim != '{' {
+		return nil, false
+	}
+	keys := []string{}
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			return nil, false
+		}
+		key, ok := tok.(string)
+		if !ok {
+			return nil, false
+		}
+		keys = append(keys, key)
+		var raw json.RawMessage
+		if err := dec.Decode(&raw); err != nil {
+			return nil, false
+		}
+	}
+	tok, err = dec.Token()
+	if err != nil {
+		return nil, false
+	}
+	delim, ok = tok.(json.Delim)
+	return keys, ok && delim == '}'
+}
+
 func writeJSON(w http.ResponseWriter, status int, value any) {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -5645,11 +10731,34 @@ func writeValidation(w http.ResponseWriter, field, message string) {
 	})
 }
 
+func validateQueryKeys(w http.ResponseWriter, r *http.Request, allowed map[string]bool) bool {
+	for key, values := range r.URL.Query() {
+		if !allowed[key] {
+			writeValidation(w, key, "unknown query")
+			return false
+		}
+		if len(values) > 1 {
+			writeValidation(w, key, "duplicate value")
+			return false
+		}
+	}
+	return true
+}
+
+func validateRouteQuery(w http.ResponseWriter, r *http.Request) bool {
+	return validateQueryKeys(w, r, apiRouteQueryKeys(r.URL.Path))
+}
+
 func parseBoundedInt(w http.ResponseWriter, r *http.Request, key string, def, min, max int) (int, bool) {
-	raw := r.URL.Query().Get(key)
-	if raw == "" {
+	values, ok := r.URL.Query()[key]
+	if !ok || len(values) == 0 || values[0] == "" {
 		return def, true
 	}
+	if len(values) != 1 {
+		writeValidation(w, key, "duplicate value")
+		return 0, false
+	}
+	raw := values[0]
 	value, err := strconv.Atoi(raw)
 	if err != nil || value < min || value > max {
 		writeValidation(w, key, "out of range")
@@ -5663,9 +10772,12 @@ func lockExists(path string) bool {
 	return err == nil
 }
 
-func maintenanceEnabled(path string) bool {
+func maintenanceEnabled(path string) (bool, error) {
 	state, err := readMaintenanceState(path)
-	return err == nil && state.Enabled
+	if err != nil {
+		return false, err
+	}
+	return state.Enabled, nil
 }
 
 func isLowerHex(value string, length int) bool {
@@ -5735,6 +10847,13 @@ func normalizeTags(w http.ResponseWriter, values []string) ([]string, bool) {
 	}
 	sort.Strings(tags)
 	return tags, true
+}
+
+func nullableStringEqual(left, right *string) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
 }
 
 func containsString(values []string, want string) bool {
@@ -5813,6 +10932,20 @@ func filterContains(lines []string, q string) []string {
 	out := []string{}
 	for _, line := range lines {
 		if strings.Contains(line, q) {
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
+func filterContainsFold(lines []string, q string) []string {
+	if q == "" {
+		return lines
+	}
+	q = strings.ToLower(q)
+	out := []string{}
+	for _, line := range lines {
+		if strings.Contains(strings.ToLower(line), q) {
 			out = append(out, line)
 		}
 	}
