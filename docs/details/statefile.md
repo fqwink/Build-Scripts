@@ -72,7 +72,7 @@
 | `.api_tokens` | JSON object | `{"tokens":[]}` | `api` | token caller へ破損失敗を返し、自動再生成しない。token 管理情報の消失による意図しない再許可を防ぐため、破損ファイルは上書きしない。 |
 | `.alert_rules` | JSON object | `{"rules":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.tag_rules` | JSON object | `{"rules":[]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
-| `.pipeline_config` | JSON object | `{"extra_args":[],"env":{},"inline_yaml":null}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
+| `.pipeline_config` | JSON object | `{"extra_args":[],"env":{}}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.notes` | UTF-8 text | 空文字列 | `api` | 読み込み不能時は read failure を返し、自動上書きしない。 |
 | `.smtp_config` | JSON object | `{"host":null,"port":587,"user":null,"tls":true,"from":null,"to":[],"on":[],"enabled":false}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.smtp_secret` | UTF-8 text | 不在 | `api` | 読み込み不能時は SMTP caller へ secret read failure を返す。 |
@@ -324,7 +324,7 @@ ApiRateLimitPolicy object:
 
 HistoryRetentionPolicy object、TagFilter object、RemoteBuildConfig object、DurationAnomaly object、ApiRateLimitPolicy object は `enabled` を必須 key とし、型と許容値は [共通 field 定義](#statefile-common-fields) の object `enabled` を適用する。`.build_history` と `.build_logs/{id}.json` は `output_size_bytes`、`output_sha256`、`size_warn`、`flagged`、`tags`、`comment`、`error` をすべて必須 key とし、型と許容値は同表の build field 契約を適用する。
 
-CachePage object と DependencyManifestPage object は `input_sha256` を必須 key とし、型と許容値は同表の content `input_sha256` を適用する。Attempt object、HookLog object、TargetResult object は `started_at` を必須 key とし、型と許容値は operation `started_at` を適用する。Attempt object、TargetResult object、RemoteBuild object は `status` を必須 key とし、型と許容値は operation `binary_status` を適用する。PipelineStep object、Deploy object、RemoteBuild object は `error` を必須 key とし、型と許容値は operation `fixed_error` を適用する。NotificationPending object と PendingTransfer object は `last_error` を必須 key とし、型と許容値は pending `last_error` を適用する。
+CachePage object と DependencyManifestPage object は `input_sha256` を必須 key とし、型と許容値は同表の content `input_sha256` を適用する。Attempt object、HookLog object、TargetResult object は `started_at` を必須 key とし、型と許容値は operation `started_at` を適用する。Attempt object、TargetResult object、RemoteBuild object は `status` を必須 key とし、型と許容値は operation `binary_status` を適用する。Deploy object と RemoteBuild object は `error` を必須 key とし、型と許容値は operation `fixed_error` を適用する。NotificationPending object と PendingTransfer object は `last_error` を必須 key とし、型と許容値は pending `last_error` を適用する。
 
 <a id="notify-config-schema"></a>
 **`.notify_config` schema：**
@@ -820,14 +820,13 @@ repo config write caller は request の `owner` または `repo` のうち指�
 |------|----|------|--------|------|
 | `extra_args` | string[] | 必須 | 0〜50 件 | `builder` に渡す追加 CLI 引数。 |
 | `env` | object | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Process environment entry 共通固定契約](../DETAIL_INDEX.md#process-environment-entry-contract) | builder process に追加する環境変数。 |
-| `inline_yaml` | string/null | 必須 | UTF-8 で 0〜262144 bytes、または `null` | `.pipeline.yml` 不在時に使用する内製 YAML subset。空文字は pipeline 未指定として扱う。 |
 
 <a id="pipeline-config-reserved-builder-options"></a>
 **`.pipeline_config.extra_args` 予約 builder option 固定契約：**
 
 `extra_args` は空文字、NUL、改行、CR を禁止し、`--src`、`--out`、`--build-id`、`--commit-sha`、`--build-at`、`--cache-dir`、`--version`、`--help` およびこれらの `--name=value` 形式を指定してはならない。
 
-`inline_yaml` は UTF-8 不正、BOM、NUL、CR を拒否し、LF は保持する。YAML grammar、source 優先順位、parse、step 実行は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を参照する。
+`.pipeline_config` は上表の `extra_args` と `env` だけを持つ。その他の key は schema validation failure とする。build 実行への適用順、読込不能時の扱い、標準 builder command への反映は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を参照する。
 
 <a id="dashboard-layout-schema"></a>
 **`.dashboard_layout` schema：**
@@ -1102,11 +1101,11 @@ runner 結果値は保存先ごとに意味を分離する。`.build_logs/{id}.j
 | `failure_api` | 許可 | 許可 | 許可 | GitHub API の最終失敗。 |
 | `failure_decode` | 許可 | 許可 | 許可 | blob decode または source materialize 失敗。 |
 | `failure_precheck` | 許可 | 許可 | 許可 | build 前検証失敗。 |
-| `failure_build` | 許可 | 許可 | 許可 | builder または必須 pipeline step の失敗。 |
+| `failure_build` | 許可 | 許可 | 許可 | builder の失敗。 |
 | `failure_state_write` | 許可 | 許可 | 許可 | 必須状態保存失敗。 |
 | `failure_target_missing` | 許可 | 許可 | 許可 | 必須 target 不在。 |
 | `failure_pipeline_config` | 許可 | 許可 | 許可 | pipeline 設定不正または読取不能。 |
-| `failure_timeout` | 許可 | 許可 | 許可 | build、step、remote build の timeout。 |
+| `failure_timeout` | 許可 | 許可 | 許可 | build または remote build の timeout。 |
 | `failure_remote_build` | 許可 | 許可 | 許可 | remote build または artifact 検証失敗。 |
 | `failure_tag_rule` | 許可 | 許可 | 許可 | 保存済み自動 tag rule の parse または評価失敗。 |
 | `hook_error` | 許可 | 許可 | 許可 | pre hook により build を中止した。 |
@@ -1187,8 +1186,7 @@ build log を伴わない history record は次の値を固定する。表にな
 | `commit_message` | string/null | 必須 | 1000 文字以内または `null` | commit message。 |
 | `commit_author` | string/null | 必須 | 255 文字以内または `null` | commit author。 |
 | `commit_at` | string/null | 必須 | UTC ISO 8601 または `null` | commit 日時。 |
-| `pipeline` | object | 必須 | Pipeline object | 標準 builder command または pipeline の実行結果。未実行時も null field を持つ object。 |
-| `pipeline_steps` | object[] | 必須 | PipelineStep object、定義順 | 標準 builder command だけを使用した場合は空配列。 |
+| `pipeline` | object | 必須 | Pipeline object | 標準 builder command の実行結果。未実行時も null field を持つ object。 |
 | `report` | object/null | 必須 | Report object または `null` | `[REPORT]` 解析結果。 |
 | `warnings` | string[] | 必須 | 0 件以上 | warning code / message。 |
 | `deploy` | object[] | 必須 | Deploy object、設定順 | deploy 未実行は空配列。 |
@@ -1269,22 +1267,6 @@ Pipeline object:
 | `stderr` | string | 必須 | LF 正規化、secret mask 済み、最大 64 KiB。 |
 | `stdout_truncated` | boolean | 必須 | stdout 切り詰め時だけ `true`。 |
 | `stderr_truncated` | boolean | 必須 | stderr 切り詰め時だけ `true`。 |
-
-PipelineStep object:
-
-| キー | 型 | 必須 | 説明 |
-|------|----|------|------|
-| `index` | integer | 必須 | `.pipeline.yml` または inline YAML の 0 始まり定義順。 |
-| `name` | string | 必須 | 1〜100 文字。 |
-| `required` | boolean | 必須 | 必須 step なら `true`。 |
-| `status` | string | 必須 | `"success"`, `"failure"`, `"optional_failed"`, `"timeout"`, `"not_run"`。 |
-| `started_at` | string/null | 必須 | 未実行は `null`。 |
-| `finished_at` | string/null | 必須 | 未実行は `null`。 |
-| `duration_seconds` | integer/null | 必須 | 未実行は `null`、それ以外は 0 以上。 |
-| `exit_code` | integer/null | 必須 | timeout / 未実行は `null`。 |
-| `stdout` | string | 必須 | secret mask 済み、最大 64 KiB。未実行は空文字。 |
-| `stderr` | string | 必須 | secret mask 済み、最大 64 KiB。未実行は空文字。 |
-| `truncated` | boolean | 必須 | stdout または stderr を切り詰めた場合だけ `true`。 |
 
 HookLog object:
 
@@ -1393,7 +1375,7 @@ Environment object:
 | `arch` | string | 必須 | `runtime.GOARCH`。 |
 | `go_version` | string | 必須 | `runtime.Version()`。 |
 | `runner_version` | string | 必須 | runner 自身の注入済みバイナリバージョン。 |
-| `builder_version` | string | 必須 | 標準 builder では検証済み `--version` stdout の第 2 token。custom YAML pipeline では `"unknown"`。 |
+| `builder_version` | string | 必須 | 標準 builder で検証済み `--version` stdout の第 2 token。 |
 | `hostname` | string | 必須 | 最大 255 文字。取得不能は `"unknown"`。 |
 | `state_dir` | string | 必須 | home 配下は basename、それ以外は絶対 path。 |
 | `disk_free_bytes` | integer/null | 必須 | 0 以上または取得不能時 `null`。 |

@@ -405,7 +405,7 @@ UI 共通 fixture 名、入力、fake SDK、expected、合格条件、実装検�
 | tokens | `getTokens()`、`createToken()` | 一覧は API 配列順。発行直後 token は `issued-token-once` だけへ表示する。 | `GET /api/tokens` の record に token 本体を合成しない。 |
 | notes | `getNotes()` | `content` を editor へそのまま入れる。表示 preview は HTML escape 後の簡易 Markdown 表示に限定する。 | UI が保存前に trim、整形、Markdown 拡張を行わない。 |
 | hooks / rules | `getHooks()`、`getAlertRules()`、`getTagRules()` | API 配列順。 | UI 側で重複排除、無効化推測、command 文字列結合を行わない。 |
-| pipeline config | `getPipelineConfig()` | `extra_args` と `env` を response 順で表示する。 | reserved arg の削除、env key の補完、inline YAML の再整形を行わない。 |
+| pipeline config | `getPipelineConfig()` | `extra_args` と `env` を response 順で表示する。 | reserved arg の削除、env key の補完、未定義 key の生成を行わない。 |
 
 **UI 入力正規化固定契約：**
 
@@ -447,7 +447,7 @@ UI 詳細 fixture 名、fake SDK 入力、expected、合格条件、実装検証
 | 対象 | UI 表示 / 操作 | 使用 SDK method | 成功後再取得 | 固定する確認条件 |
 |------|----------------|-----------------|--------------|------------------|
 | [`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21) / [`docs/details/runner.md` 詳細本文責務 §27.31](runner.md#sec-27-31) branch target / env | リポジトリ情報 panel に target files と branch env を表示 / 保存する。secret env value は入力欄以外へ表示しない。 | `getBranchConfig()`, `setBranchConfig(branches)`, `getConfig()` | `getBranchConfig()`, `getConfigLog()` | API 配列順を保持し、env key / target path を UI が正規化しない。保存失敗時は secret を消去し、その他入力値を保持する。 |
-| [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) pipeline | 設定 panel の pipeline config を表示 / 保存する。reserved arg や inline YAML を UI が削除・整形しない。 | `getPipelineConfig()`, `setPipelineConfig(config)` | `getPipelineConfig()`, `getConfigLog()` | `422 details` は該当 field error、成功前に画面上の確定 config を更新しない。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) pipeline | 設定 panel の pipeline config を表示 / 保存する。reserved arg や未定義 key を UI が削除・整形しない。 | `getPipelineConfig()`, `setPipelineConfig(config)` | `getPipelineConfig()`, `getConfigLog()` | `422 details` は該当 field error、成功前に画面上の確定 config を更新しない。 |
 | [`docs/details/runner.md` 詳細本文責務 §27.23](runner.md#sec-27-23)〜[§27.26](runner.md#sec-27-26) local watch / tag / cache / parallel | 設定、履歴、status、build result 表示に API response の watch / tag / cache / target result を表示する。 | `getConfig()`, `setConfig(config)`, `getStatus()`, `getHistory()`, `getHistoryLog(id)` | 操作ごとの表に従う。 | UI は変更検出、tag match、cache hit、parallel result を再計算しない。API response の順序と status を基準とする。 |
 | [`docs/details/runner.md` 詳細本文責務 §27.27](runner.md#sec-27-27) hook | フック panel で `command_args` を 1 行 1 引数として表示 / 保存する。 | `getHooks()`, `addHook()`, `deleteHook(id)`, `getHookLog(id)` | `getHooks()`, `getConfigLog()` | 空行だけ除外し、shell 文字列化、quote 展開、環境変数展開を行わない。失敗時は command 入力を保持する。 |
 | [`docs/details/api.md` 詳細本文責務 §27.30](api.md#sec-27-30) / [`docs/details/runner.md` 詳細本文責務 §27.30](runner.md#sec-27-30) approval | 承認待ち panel に approval record を API 順で表示し、requested_trigger と requested_force を承認前に明示し、pending だけ approve / reject を有効にする。approve の `dispatch="timer_fallback"` は runner 待機 warning を表示する。 | `getApprovals()`, `approveBuild(id)`, `rejectBuild(id)`, `getQueue()` | `getApprovals()`, `getQueue()` | UI 時刻だけで expired 判定を確定しない。requested_force / dispatch を再計算しない。`409` 後は一覧再取得だけ行い、同じ approve / reject を再送しない。 |

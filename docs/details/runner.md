@@ -83,15 +83,13 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 | `/opt/adlaire-builder/.github_token` | GitHub PAT。`runner` が読み込む。 |
 | `/opt/adlaire-builder/.last_sha` | 前回処理した target SHA / digest。JSON 形式で保存する。 |
 | `/opt/adlaire-builder/repo/docs/` | GitHub Blobs API から取得した Markdown の書き出し先。単一 Markdown の場合も本ディレクトリ内へ保存する。 |
-| repository root の `.pipeline.yml` | 存在する場合に [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) が優先する任意の pipeline 定義。GitHub mode では resolved tree / Blob API から memory へ取得し、local watch mode では `BranchTarget.Src` の親 directory から読む。 |
 
 ```
 /opt/adlaire-builder/
 ├── .github_token
 ├── .last_sha
 └── repo/
-    ├── docs/
-    └── .pipeline.yml      # 任意。GitHub mode では実行時に memory 取得
+    └── docs/
 ```
 
 **runtime 状態参照：**
@@ -122,8 +120,7 @@ runner は [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md
 
 ```
 <repo>/
-├── docs/              # ソース Markdown（GitHub 上のマスター）
-└── .pipeline.yml      # 任意の内製 YAML subset
+└── docs/              # ソース Markdown（GitHub 上のマスター）
 ```
 
 ---
@@ -488,8 +485,8 @@ build id の割当単位は、処理を開始する正規化済み `BranchTarget
 2. 設定ファイル起動時整合性チェックを実行する。
 3. `.build_status.json` に `status="running"`、`trigger`、`started_at`、`current_build_id` を atomic write で保存する。
 4. `.build_state.running=true`、`current_build_id`、`last_started_at` を atomic write で保存する。
-5. build id 確定後、GitHub API request、Blob 取得、標準 builder command、YAML step、deploy 転送、snapshot save、Commit Status 送信、notification 送信のうち当該 target で実行する副作用を開始する前に、`.build_logs/{id}.json` を `status="running"` の途中保存形で atomic write する。
-6. GitHub API、Blob 取得、事前チェック、[`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) の pipeline source 選択、選択した標準 builder command または YAML step の実行を行う。
+5. build id 確定後、GitHub API request、Blob 取得、標準 builder command、deploy 転送、snapshot save、Commit Status 送信、notification 送信のうち当該 target で実行する副作用を開始する前に、`.build_logs/{id}.json` を `status="running"` の途中保存形で atomic write する。
+6. GitHub API、Blob 取得、事前チェック、[`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) の `.pipeline_config` 読込、標準 builder command の実行を行う。
 7. ビルド成功時のみ `sha_file` を新 SHA に更新し、deploy を実行する。
 8. deploy target がないか、全 deploy target の転送と検証が成功した場合だけ、[`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理) に従って `archive` owner の snapshot save を呼び出す。
 9. stdout/stderr、`[REPORT]`、警告、転送結果、snapshot 結果、`trigger` を含む最終形で、同じ build id の running log を atomic replace する。
@@ -498,7 +495,7 @@ build id の割当単位は、処理を開始する正規化済み `BranchTarget
 12. `.build_state.running=false`、`last_finished_at` を保存する。
 13. `.build_lock` を削除する。
 
-途中失敗時は、失敗が発生した段階以降の成功前提更新を行わない。例えば標準 builder command または必須 YAML step の失敗時は `sha_file`、snapshot、転送成功履歴を更新しない。ただし `.build_logs/{id}.json`、`.build_history`、`.build_state.running=false`、通知 pending は失敗記録として保存する。
+途中失敗時は、失敗が発生した段階以降の成功前提更新を行わない。例えば標準 builder command の失敗時は `sha_file`、snapshot、転送成功履歴を更新しない。ただし `.build_logs/{id}.json`、`.build_history`、`.build_state.running=false`、通知 pending は失敗記録として保存する。
 
 <a id="runner-target-status-selection"></a>
 **ターゲット結果分類：**
@@ -516,8 +513,8 @@ runner は `BRANCH_TARGETS` の各 entry について、[`docs/details/statefile
 | `failure_api` | GitHub API が全再試行失敗。 | 全 target がこれなら `3`、一部なら `1`。 |
 | `failure_decode` | Blob Base64 decode または Markdown 書き出し失敗。 | `1`。 |
 | `failure_precheck` | 事前チェック失敗。 | `1`。 |
-| `failure_build` | 標準 builder command または必須 pipeline step が非 0 終了。 | `1`。 |
-| `failure_timeout` | builder、pipeline step、remote build が timeout。 | `1`。 |
+| `failure_build` | 標準 builder command が非 0 終了。 | `1`。 |
+| `failure_timeout` | builder または remote build が timeout。 | `1`。 |
 | `failure_state_write` | SHA、ログ、履歴、状態ファイルの必須更新に失敗。 | `1`。 |
 
 `BRANCH_TARGETS` が複数ある場合、runner は設定不正を除き、1 target の失敗で全体処理を中断しない。全 target 処理後、最も重い終了コードを採用する。重さは `4 > 3 > 2 > 1 > 0` とする。
@@ -829,13 +826,13 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
     │   │       commit_at      = commit.commit.author.date
     │   │   └─ API 失敗時：各フィールドを null として記録し、処理続行（ビルドは妨げない）
     │   │
-    │   ├─ [pipeline source 選択] [ref:pipeline-source] の優先順で repository `.pipeline.yml`、inline YAML、標準 builder command のいずれか 1 つを確定
+    │   ├─ [.pipeline_config 読込] 標準 builder command へ適用する extra_args / env を確定
     │   ├─ [事前チェック] 選択済み pipeline 実行前に以下を確認し、不足時は ERROR ログ＋deploy_failure Webhook 通知、このエントリをスキップ
     │   │   ├─ ディスク空き容量 ≥ max(出力サイト推定サイズ × 3, 64MiB)。取得は `syscall.Statfs(outDir)` を使用する
     │   │   ├─ 標準 builder command では `adlaire-ci-build` が通常ファイルかつ実行可能であること（`os.Stat` と mode bit）
-    │   │   └─ 標準 builder command では `/usr/local/bin/adlaire-ci-build --version` が終了コード 0、stderr 空、stdout が [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#common-cli-contract) の exact 3 token 形式であり、第 1 token が `adlaire-ci-build`、第 2 token が runner 自身の `<binary-version>` と一致すること。YAML pipeline では全 step command の解決と schema validation が完了していること
+    │   │   └─ 標準 builder command では `/usr/local/bin/adlaire-ci-build --version` が終了コード 0、stderr 空、stdout が [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#common-cli-contract) の exact 3 token 形式であり、第 1 token が `adlaire-ci-build`、第 2 token が runner 自身の `<binary-version>` と一致すること。
     │   │
-    │   ├─ 選択済み標準 builder command または YAML step を shell を介さず実行
+    │   ├─ 標準 builder command を shell を介さず実行
     │   │   ├─ 成功（exit 0）：INFO ログ
     │   │   │   └─ [通知送信] on: ["success"] 設定時
     │   │   │       → [ref:notification-retry] の channel 選択、NotificationPayload object、送信結果、pending 固定契約を実行
@@ -891,9 +888,7 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
 <a id="runner-build-pipeline-execution"></a>
 **14. ビルドパイプライン実行：**
 
-runner は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) の source 優先順で repository `.pipeline.yml`、`.pipeline_config.inline_yaml`、標準 builder command のいずれか 1 つを選択する。`.ci/pipeline.sh`、任意 shell script、`sh -c`、`bash -c` を暗黙の fallback として起動しない。
-
-repository `.pipeline.yml` と inline YAML の parse、schema、step 実行、異常系は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を正本とする。両方が不在の場合だけ、runner は以下の標準 builder command を `exec.CommandContext` で直接起動する。
+runner は標準 builder command だけを `exec.CommandContext` で直接起動する。JSON 以外の build 定義、任意 shell script、`sh -c`、`bash -c`、追加 parser、追加 executor を build 経路として使用してはならない。
 
 | argv index | 値 | 条件 |
 |------------|----|------|
@@ -916,7 +911,7 @@ repository `.pipeline.yml` と inline YAML の parse、schema、step 実行、�
 
 stdout / stderr は process 実行中に並行して読み取り、process の終了待ちより先に両 stream の drain を開始する。各 stream は、UTF-8 decode →改行正規化→ NUL 可視化→ secret mask→論理行判定→ REPORT / WARN 取り込み→保存用末尾 1 MiB 制限の順で処理する。REPORT / WARN 取り込みは 1 MiB 制限前の全論理行を対象とし、保存上限を超えた先頭部分に存在する行も判定から除外しない。stdout / stderr 全体を無制限に memory へ保持してはならない。
 
-pipeline process の environment は、親 process 環境 → `BranchTarget.Env` → `.pipeline_config.env` → YAML step env の順で設定し、最後に以下の runner 固定値を上書きする。標準 builder command は YAML step env を持たない。不在の環境変数を空文字で追加しない。
+pipeline process の environment は、親 process 環境 → `BranchTarget.Env` → `.pipeline_config.env` の順で設定し、最後に以下の runner 固定値を上書きする。不在の環境変数を空文字で追加しない。
 
 | 環境変数 | 値 |
 |----------|----|
@@ -928,7 +923,7 @@ pipeline process の environment は、親 process 環境 → `BranchTarget.Env`
 | `ADLAIRE_CI_STATE_DIR` | `RunnerConfig.StateDir` |
 | `ADLAIRE_CHANGED_TARGETS` | [`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21) が対象の場合だけ、正規化済み target path を辞書順で持つ compact JSON array string。 |
 
-標準 builder command または全必須 YAML step の終了後、runner は `BranchTarget.Out` に `index.html`、`assets/style.css`、`assets/app.js`、`assets/search-index.json` が symlink でない通常ファイルとして存在することを確認する。Markdown directory 入力の `pages/*.html` を含む全 file set は [`docs/details/builder.md` 詳細本文責務 §2a](builder.md#2a-入力収集出力パス決定) と [§5](builder.md#5-静的-web-サイト出力構造) に一致させる。不足、symlink、directory、device、FIFO、出力 root 外参照は `failure_build`、`error="output validation failed"` とし、SHA、deploy、snapshot を更新しない。
+標準 builder command の終了後、runner は `BranchTarget.Out` に `index.html`、`assets/style.css`、`assets/app.js`、`assets/search-index.json` が symlink でない通常ファイルとして存在することを確認する。Markdown directory 入力の `pages/*.html` を含む全 file set は [`docs/details/builder.md` 詳細本文責務 §2a](builder.md#2a-入力収集出力パス決定) と [§5](builder.md#5-静的-web-サイト出力構造) に一致させる。不足、symlink、directory、device、FIFO、出力 root 外参照は `failure_build`、`error="output validation failed"` とし、SHA、deploy、snapshot を更新しない。
 
 **GitHub API 固定契約：**
 
@@ -989,7 +984,7 @@ runner は stdout / stderr の CRLF を LF に正規化して保存する。NUL 
 
 [`docs/details/runner.md` 詳細本文責務 §14a](runner.md#14a-ssh-サイト転送) は、runner owner の SSH 転送詳細本文責務である。
 
-`runner` は標準 builder command または全必須 YAML step の成功後に、出力サイトディレクトリ配下の全ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。local process は `ssh` バイナリを `exec.CommandContext` で直接起動し、local の `/bin/sh -c` を使わない。OpenSSH の remote command は remote login shell に 1 文字列として渡るため、動的値は [remote 引数引用固定契約](#runner-remote-argument-quoting-contract) で必ず引用する。
+`runner` は標準 builder command の成功後に、出力サイトディレクトリ配下の全ファイルを SSH 経由で静的コンテンツ配信サーバーへ転送する。scp・rsync は使用しない。local process は `ssh` バイナリを `exec.CommandContext` で直接起動し、local の `/bin/sh -c` を使わない。OpenSSH の remote command は remote login shell に 1 文字列として渡るため、動的値は [remote 引数引用固定契約](#runner-remote-argument-quoting-contract) で必ず引用する。
 
 **設定値：**
 
@@ -1177,7 +1172,7 @@ stdout は Go 標準ライブラリ `log/slog` で出力し、systemd が journa
 | 項目 | 内容 |
 |------|------|
 | ビルドログファイル | ビルドごとに `.build_logs/{id}.json` を作成する。 |
-| stdout / stderr 保存 | 標準 builder command または YAML pipeline step の標準出力・標準エラーを各対象の上限と secret mask 契約に従ってビルドログへ保存する。 |
+| stdout / stderr 保存 | 標準 builder command の標準出力・標準エラーを各対象の上限と secret mask 契約に従ってビルドログへ保存する。 |
 | 変換レポート取り込み | `builder` が出力する `[REPORT]` 行の先頭 13 key を [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) の固定順でパースする。`pages`、`headings`、`size_warn`、`broken_links`、`heading_skips`、`reading_time`、`theme`、`build_id`、`commit_sha`、`build_at` は同名 key、`tables` は `tables_count`、`code_blocks` は `code_blocks_count`、`warnings` は `warnings_count` へ写像し、[`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の Report object 13 key だけを保存する。`builder` が 13 key の後ろへ出力する仕様化済み拡張 key は `pipeline.stdout` に原文を保存し、Report object へは追加しない。 |
 | 警告取り込み | `[WARN]` 行を配列として保存し、`warnings` 件数と整合させる。 |
 | ビルド所要時間 | `started_at`、`finished_at`、`duration_seconds` を保存する。 |
@@ -1386,10 +1381,10 @@ runner と api が同じ状態ファイルを参照する場合でも、runner �
 | 制限 | 詳細 |
 |------|------|
 | ポーリング遅延 | 変更検出は systemd timer の実行間隔に依存する。即時反応が必要な場合は `POST /api/webhook` を併用する。 |
-| pipeline 起動 | repository `.pipeline.yml`、`.pipeline_config.inline_yaml`、標準 builder command の順で 1 経路を選択する。source 選択、YAML subset、step 実行は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22)、標準 builder command の argv は [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) を参照する。 |
+| pipeline 起動 | 標準 builder command だけを起動する。`.pipeline_config` の `extra_args` / `env` 適用は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22)、標準 builder command の argv は [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) を参照する。 |
 | `BRANCH_TARGETS` 直列処理 | 複数エントリはリスト順に順次処理する。並列処理は行わない。1 件の処理が失敗しても、失敗をログと `.build_logs/{id}.json` に記録した上で次エントリへ進む。 |
 | GitHub API リトライ | GitHub API 失敗時は `API_RETRY_MAX` 回まで指数バックオフで再試行する。全試行失敗時は ERROR ログを記録し、当該ターゲットのビルドをスキップする。SHA は更新しない。 |
-| ビルド失敗時の扱い | 標準 builder command または必須 YAML step が非 0 で終了した場合は ERROR ログを出し、target SHA / digest を更新しない。次回実行では同じ target SHA / digest を再検出して再度ビルド対象になる。 |
+| ビルド失敗時の扱い | 標準 builder command が非 0 で終了した場合は ERROR ログを出し、target SHA / digest を更新しない。次回実行では同じ target SHA / digest を再検出して再度ビルド対象になる。 |
 
 <a id="sec-20-2"></a>
 **20.2 標準機能の制限：**
@@ -2020,117 +2015,79 @@ owner component は `runner` とする。collaborator component は `builder`、
 | SHA 部分失敗 | build なし、SHA cache 差分なし。 |
 
 <a id="sec-27-22"></a>
-**27.22 ビルドパイプライン YAML 定義：**
+**27.22 標準 builder command 拡張設定：**
 
-本機能の目的は、固定 shell script 依存をなくし、内製 YAML subset で build step を明示定義できるようにすることである。
+本機能の目的は、runner の build 経路を標準 builder command に固定したまま、追加 CLI 引数と追加環境変数だけを JSON 状態ファイルで管理できるようにすることである。
 
-owner component は `runner` とする。collaborator component は `api`、`statefile` とする。外部 YAML ライブラリは使用しない。
+owner component は `runner` とする。collaborator component は `api`、`statefile` とする。build 経路は標準 builder command だけに固定し、構造化設定形式の禁止は [`docs/SPEC.md` 方針責務 技術方針](../SPEC.md#direction-technical) に従う。
 
 **入力 / 状態：**
 
 | 項目 | 仕様 |
 |------|------|
-| repository 設定ファイル | repository root の `.pipeline.yml` だけを許可する。GitHub mode は対象 branch の resolved tree 上の root blob を Blob API で取得して memory 上だけで処理し、input checkout へ書き出さない。local watch mode は `filepath.Dir(BranchTarget.Src)/.pipeline.yml` の symlink でない通常ファイルだけを読む。 |
-| inline 設定 | `.pipeline_config.inline_yaml`。repository 設定ファイルが不在の場合だけ読む。`null` または空文字は pipeline 未指定。 |
+| 状態ファイル | `.pipeline_config`。schema は [`docs/details/statefile.md` 詳細本文責務 `.pipeline_config` schema](statefile.md#pipeline-config-schema) を参照する。 |
 | API | `GET /api/pipeline-config` / `POST /api/pipeline-config` |
-| YAML root | `version: 1`、`steps:` のみ許可。 |
-| step key | `name`、`phase`、`command`、`args`、`env`、`timeout_seconds`、`required`。 |
-| phase | `"precheck"`、`"build"`、`"test"`、`"deploy"`、`"post"`。 |
-| command | 絶対 path または PATH 解決可能なコマンド名。shell 文字列は禁止。 |
-| args | string 配列。空文字、NUL、改行は禁止。 |
-| env | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Process environment entry 共通固定契約](../DETAIL_INDEX.md#process-environment-entry-contract) を満たす string:string object。reserved key は step env で指定不可。 |
-| timeout_seconds | 1〜86400。省略時は `build_timeout_seconds`。 |
-
-**YAML subset：**
-
-対応する構文は、2 space indent、string scalar、integer scalar、boolean scalar、string array、object array のみとする。anchor、alias、複数 document、flow style、tag、複数行 string、コメント行以外の inline comment は禁止する。禁止構文を検出した場合は parse error とする。
+| 適用先 | [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) の標準 builder command だけ。 |
+| 禁止入力 | `.pipeline_config` schema 外 key、任意 shell script path、shell 文字列。 |
 
 **`.pipeline_config` 適用固定契約：**
 
-`.pipeline_config` schema は [`docs/details/statefile.md` 詳細本文責務 `.pipeline_config` schema](statefile.md#pipeline-config-schema) を参照する。API による保存、request / response、HTTP status は [`docs/details/api.md` 詳細本文責務 ビルドパイプライン設定](api.md#pipeline-config-api) を参照する。
+`.pipeline_config` schema は [`docs/details/statefile.md` 詳細本文責務 `.pipeline_config` schema](statefile.md#pipeline-config-schema) を参照する。API による保存、request / response、HTTP status は [`docs/details/api.md` 詳細本文責務 標準 builder command 拡張設定](api.md#pipeline-config-api) を参照する。
 
-runner は build 開始後、builder command または pipeline step command を組み立てる直前に `.pipeline_config` を 1 回だけ読む。同一 build 中に `.pipeline_config` を再読込してはならない。
+runner は build 開始後、標準 builder command を組み立てる直前に `.pipeline_config` を 1 回だけ読む。同一 build 中に `.pipeline_config` を再読込してはならない。
 
 | 項目 | 仕様 |
 |------|------|
-| 読込タイミング | build id 採番、target 確定、`running=true` 保存後、builder / step command 組み立て直前。 |
-| `extra_args` | 標準 builder command を使う場合にだけ、固定引数の後ろへ配列順で追加する。YAML step command には追加しない。 |
-| `env` | 親 process env → branch env → `.pipeline_config.env` → YAML step env → [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) の runner 固定値の順で上書きする。 |
+| 読込タイミング | build id 採番、target 確定、`running=true` 保存後、標準 builder command 組み立て直前。 |
+| `extra_args` | [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) の固定引数の後ろへ配列順で追加する。 |
+| `env` | 親 process env → `BranchTarget.Env` → `.pipeline_config.env` → [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) の runner 固定値の順で上書きする。 |
 | 読込不能 | build 本体を開始せず `failure_pipeline_config`、終了コード `2`。SHA cache、deploy、snapshot は更新しない。 |
 | schema 不正 | build 本体を開始せず `failure_pipeline_config`、終了コード `2`。SHA cache、deploy、snapshot は更新しない。 |
-| secret mask | `.pipeline_config.env` の secret key 値は stdout/stderr、hook log、notify payload、pipeline step log へ保存前に mask する。 |
+| secret mask | `.pipeline_config.env` の secret key 値は stdout/stderr、hook log、notify payload へ保存前に mask する。 |
 
 `.pipeline_config.extra_args` は [`docs/details/statefile.md` 詳細本文責務 予約 builder option 固定契約](statefile.md#pipeline-config-reserved-builder-options) の option を上書きまたは追加してはならない。禁止 option を検出した場合は build 本体を開始せず `failure_pipeline_config` とする。
 
 **正常系：**
 
-1. repository `.pipeline.yml` の存在と file type を確定する。存在する場合は取得、byte 制約、decode を完了し、inline YAML を読まない。
-2. repository `.pipeline.yml` が不在なら `.pipeline_config.inline_yaml` を読み、`null` または空文字なら [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) の標準 builder command を実行する。
-3. YAML source がある場合は YAML subset parser で `PipelineConfig` に変換する。
-4. 起動時に [`docs/details/runner.md` 詳細本文責務 §27.31](runner.md#sec-27-31) の検証が完了した `BranchTarget.Env` だけを使用する。全 step の schema、command 解決、[`docs/details/statefile.md` 詳細本文責務 `.pipeline_config` schema](statefile.md#pipeline-config-schema) と step env の reserved key を実行前に検証した後、step を定義順に実行する。
-5. `required=false` の step 失敗は WARN として継続し、build log に `optional_failed` を記録する。
-6. `required=true` または省略 step の失敗は build を中断する。
-7. 各 step の stdout/stderr、exit_code、duration_seconds を `.build_logs/{id}.json.pipeline_steps[]` に保存する。
+1. `.pipeline_config` を 1 回だけ読み、`extra_args` と `env` の schema を検証する。
+2. `extra_args` の予約 option を検証する。
+3. `env` の key / value と reserved key を検証する。
+4. [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) の固定 argv を作成し、`extra_args` を末尾へ追加する。
+5. [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) の固定 environment を作成し、`.pipeline_config.env` を反映する。
+6. 標準 builder command を shell を介さず 1 process として実行する。
 
-**step 実行・保存固定契約：**
-
-| 項目 | 仕様 |
-|------|------|
-| step id | 保存時は 0 始まりの `index` と `name` を保存する。`name` が空の場合は API 保存時 `422`。 |
-| env merge | 親 process env → branch env → `.pipeline_config.env` → pipeline step env → [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) の runner 固定値の順で上書きする。 |
-| secret mask | branch env と step env の secret key 値を stdout/stderr、hook log、notify payload、pipeline step log へ保存前に mask する。 |
-| optional failure | `required=false` の step が失敗した場合、`status="optional_failed"` として保存し、後続 step を継続する。全体 status は後続 required step の結果で決める。 |
-| timeout | step timeout 時は process group を kill し、`exit_code:null`、`status:"timeout"`、`error:"step timeout"` を保存する。 |
-| 保存順 | step 完了ごとにメモリへ結果を追加し、build 終了時に `.build_logs/{id}.json.pipeline_steps[]` へ定義順で保存する。完了順で並べ替えない。 |
-
-**YAML parser 禁止構文固定：**
-
-| 構文 | 処理 |
-|------|------|
-| tab indent | parse error。 |
-| anchor / alias | parse error。 |
-| `---` / `...` | parse error。 |
-| flow style `{}` / `[]` | parse error。 |
-| block scalar <code>&#124;</code> / `>` | parse error。 |
-| inline comment | quoted string 外の `#` は、行頭 comment 以外 parse error。 |
-
-**pipeline 実装確認固定契約：**
+**標準 builder command 拡張実装確認固定契約：**
 
 | 項目 | 仕様 |
 |------|------|
-| source 優先順位 | `.pipeline.yml` が存在する場合は常に file を優先し、`.pipeline_config.inline_yaml` は読まない。file 不在時だけ inline YAML を読む。 |
-| no pipeline | file と inline YAML がない場合は標準 builder command を使う。標準 builder command でも `.pipeline_config.extra_args` と `.pipeline_config.env` は適用する。 |
-| repository file bytes | 0 bytes は parse error、最大 262144 bytes、UTF-8、BOM なし、NUL / CR なし、LF 改行に固定する。GitHub mode の blob `encoding` は `base64` だけを許可し、decoded bytes に上限を適用する。 |
-| standard builder cache | `RunnerConfig.BuildCacheEnabled=true` の標準 builder command だけ `--cache-dir RunnerConfig.StateDir` を固定引数として追加する。YAML step の args は定義どおりとし、runner が builder command を推測して引数を挿入しない。 |
-| pre-build failure | YAML parse、schema validation、禁止引数、command 解決失敗は build 本体、deploy、snapshot、SHA cache 更新を開始せず、build log に `failure_pipeline_config` を残す。 |
-| step log | `pipeline_steps[]` は定義順で保存し、未実行 step は `status:"not_run"`、`exit_code:null`、`stdout:""`、`stderr:""` として保存する。 |
-| stdout/stderr | 各 step の stdout/stderr は最大 64 KiB まで保存し、超過時は末尾を切り詰めて `truncated=true` を保存する。 |
-| required failure | required step が failure / timeout の場合、以降の step は実行しない。ただし未実行 step は `not_run` として保存する。 |
-| optional failure | optional failure は build status を反転しないが、`warnings[]` に `PIPELINE_OPTIONAL_STEP_FAILED` を追加し、stdout に `[WARN] PIPELINE_OPTIONAL_STEP_FAILED: index={index} name={json_name} status={status} exit_code={exit_code_or_null}` を 1 行出力する。`json_name` は step name の JSON string literal、`status` は `optional_failed` または `timeout`、`exit_code_or_null` は非 0 終了コードまたは `null` とする。 |
-| secret | env 値、command args 内 secret 風値、stdout/stderr 内 secret 値は保存前に mask する。mask 不能なら build を失敗させ、平文を保存しない。 |
+| build 経路固定 | 標準 builder command 以外の build 定義、parser、executor、複数 step 実行経路を runner build 経路に追加してはならない。 |
+| 標準 builder 固定 | build 本体は標準 builder command 1 process だけで実行する。 |
+| standard builder cache | `RunnerConfig.BuildCacheEnabled=true` の標準 builder command だけ `--cache-dir RunnerConfig.StateDir` を固定引数として追加する。 |
+| pre-build failure | `.pipeline_config` 読込不能、schema validation、禁止引数、env reserved key は build 本体、deploy、snapshot、SHA cache 更新を開始せず、build log に `failure_pipeline_config` を残す。 |
+| stdout/stderr | 標準 builder command の stdout/stderr は [`docs/details/runner.md` 詳細本文責務 §14](runner.md#runner-build-pipeline-execution) の上限と正規化に従って保存する。 |
+| secret | env 値、stdout/stderr 内 secret 値は保存前に mask する。mask 不能なら build を失敗させ、平文を保存しない。 |
 
 **異常系：**
 
 | 条件 | 処理 |
 |------|------|
-| YAML parse error | build 実行前に `failure_pipeline_config`、終了コード `2`。 |
-| command 不正 | `failure_pipeline_config`。 |
-| timeout | step を kill し、`failure_timeout`。 |
-| `.pipeline.yml` 読み取り権限エラー | 終了コード `1`、状態更新なし。 |
-| GitHub mode の `.pipeline.yml` blob 取得が retry 後も失敗 | `failure_api`、終了コード `3`。inline YAML または標準 builder command へ fallback しない。 |
-| `.pipeline.yml` が symlink / directory / device / FIFO、0 bytes、size 超過、UTF-8 不正、BOM / NUL / CR 含有 | `failure_pipeline_config`、終了コード `2`。inline YAML または標準 builder command へ fallback しない。 |
-| `.pipeline_config.env` または step env に reserved key | `failure_pipeline_config`、終了コード `2`。process を起動しない。branch env の検出時点と失敗は [`docs/details/runner.md` 詳細本文責務 §27.31](runner.md#sec-27-31) を参照する。 |
+| `.pipeline_config` 読取不能 | build 実行前に `failure_pipeline_config`、終了コード `2`。 |
+| `.pipeline_config` schema 不正 | build 実行前に `failure_pipeline_config`、終了コード `2`。 |
+| `extra_args` 禁止 option | build 実行前に `failure_pipeline_config`、終了コード `2`。 |
+| `.pipeline_config.env` reserved key | build 実行前に `failure_pipeline_config`、終了コード `2`。process を起動しない。branch env の検出時点と失敗は [`docs/details/runner.md` 詳細本文責務 §27.31](runner.md#sec-27-31) を参照する。 |
+| 標準 builder timeout | `failure_timeout`。 |
+| 標準 builder 非 0 | `failure_build`。 |
 
 **検証条件：**
 
 | ケース | 期待結果 |
 |--------|----------|
-| build step 成功 | step log と build success が記録される。 |
-| required step 失敗 | 後続 step を実行せず failure。 |
-| optional step 失敗 | WARN、後続 step 継続。 |
-| 禁止 YAML 構文 | parse error、build なし。 |
-| secret env stdout | pipeline step log では `"***"`。 |
-| step timeout | process kill、後続 required step なし。 |
+| `extra_args` 正常 | 固定 argv の後ろに配列順で追加される。 |
+| `env` 正常 | 親 process env、branch env の後に反映され、runner 固定値で上書きされる。 |
+| 禁止 option | build なし、`failure_pipeline_config`。 |
+| reserved env | build なし、`failure_pipeline_config`。 |
+| schema 外 key 指定 | API 保存時 `422`、runner では schema 不正。 |
+| secret env stdout | build log では `"***"`。 |
 
 <a id="sec-27-23"></a>
 **27.23 ローカルファイル監視モード：**
@@ -2446,7 +2403,7 @@ remote build command は `cd {quoted_work_dir} && exec {quoted_arg_0} {quoted_ar
 
 | 項目 | 仕様 |
 |------|------|
-| local build 禁止 | `remote_build.enabled=true` の build では local builder command または local pipeline step を実行しない。pre/post hook は通常契約どおり実行する。 |
+| local build 禁止 | `remote_build.enabled=true` の build では local builder command を実行しない。pre/post hook は通常契約どおり実行する。 |
 | remote command | 論理 argv の各要素を `quoteRemoteArg` で個別引用した固定形 remote command だけを実行する。未引用値、任意 shell fragment、glob、環境変数展開を禁止する。 |
 | artifact fetch | remote command 成功後だけ、引用済み `artifact_path` に対する固定 `cat --` command で artifact を取得する。remote command 失敗時は artifact が存在しても取得しない。 |
 | deploy 境界 | artifact 検証成功後だけ既存 deploy / snapshot / history 処理へ渡す。検証前に公開 output や snapshot を置換しない。 |
@@ -2605,7 +2562,7 @@ runner は `approval_required=true` の target に対して、approval queue 以
 | reserved key | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Process environment entry 共通固定契約](../DETAIL_INDEX.md#process-environment-entry-contract) の reserved key は保存と process 注入の両方を禁止する。保存済み file に含まれる場合は schema 不一致とし、process を起動しない。 |
 | secret 判定 | schema 検証後の大文字 key に `TOKEN`、`SECRET`、`PASSWORD`、`PAT` を含む場合は secret。lowercase を含む key は secret 判定前の schema 検証で拒否する。 |
 | log 保存 | `.build_logs/{id}.json.environment.env_keys` に key 名だけを保存する。value、value length、hash は保存しない。 |
-| process env | branch env は builder、pipeline step、hook、command notification に渡す。通知 payload には値を含めない。 |
+| process env | branch env は builder、hook、command notification に渡す。通知 payload には値を含めない。 |
 | mask failure | mask 対象値を保存前に置換できない場合、build を失敗扱いにし、平文を保存しない。 |
 
 **異常系：**
@@ -2613,7 +2570,7 @@ runner は `approval_required=true` の target に対して、approval queue 以
 | 条件 | 処理 |
 |------|------|
 | key 不正 | runner は終了コード `2`。 |
-| reserved key | API 保存は `422`。runner 読取で検出した場合は終了コード `2`とし、builder、pipeline step、hook、command notification を起動しない。 |
+| reserved key | API 保存は `422`。runner 読取で検出した場合は終了コード `2`とし、builder、hook、command notification を起動しない。 |
 | value 上限超過 | `422`。 |
 | secret mask 漏れ | 実装不合格。該当 build は成功扱いにしない。 |
 
@@ -2634,7 +2591,7 @@ runner は `approval_required=true` の target に対して、approval queue 以
 | 項目 | 合格条件 |
 |------|----------|
 | 設定保存 | `.branch_config.branch_targets[].env` は key 検証、value 検証、ASCII 昇順保存、上限 100 key をすべて満たす。 |
-| 注入範囲 | builder、pipeline step、hook、command notification の process env に同一値を渡し、system env 同名 key より branch env を優先する。 |
+| 注入範囲 | builder、hook、command notification の process env に同一値を渡し、system env 同名 key より branch env を優先する。 |
 | secret mask | secret key の value は response、stdout、stderr、build log、history、notify log、pending、UI 表示、fixture effects に平文で残さない。 |
 | ログ保存 | `.build_logs/{id}.json.environment.env_keys` には key 名だけを保存し、value、length、hash、部分文字列を保存しない。 |
 | 失敗境界 | key 不正、value 不正、mask failure では build または保存を成功扱いにせず、失敗地点以降の状態更新を行わない。 |
@@ -3055,7 +3012,7 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 
 | 項目 | 仕様 |
 |------|------|
-| `builder_version` | 標準 builder command は事前チェックで 1 回だけ取得・検証した `--version` stdout の第 2 token を保存する。別 process で再取得しない。custom YAML pipeline は builder binary を一意に確定できないため `"unknown"` を保存する。stderr は保存しない。 |
+| `builder_version` | 標準 builder command は事前チェックで 1 回だけ取得・検証した `--version` stdout の第 2 token を保存する。別 process で再取得しない。stderr は保存しない。 |
 | `runner_version` | runner 自身にビルド時注入され、`--version` が第 2 token として返す `<binary-version>` を保存する。Go build info の main version や VCS revision から別値を導出しない。 |
 | `hostname` | 255 文字を超える場合は 255 文字で切り詰める。取得失敗時は `"unknown"`。 |
 | `state_dir` | `--state-dir` が home directory 配下の場合は basename だけ保存する。それ以外は絶対 path を保存する。 |
@@ -3067,8 +3024,7 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 |------|------|
 | hostname 取得失敗 | `"unknown"`。 |
 | disk stat 失敗 | `disk_free_bytes=null`、WARN。 |
-| 標準 builder version 取得 timeout、非 `0`、stderr 非空、形式不正、バージョン不一致 | 事前チェック失敗とし、builder と pipeline を起動しない。`builder_version` を保存する environment record も作成しない。 |
-| custom YAML pipeline | `builder_version="unknown"` で build 継続。 |
+| 標準 builder version 取得 timeout、非 `0`、stderr 非空、形式不正、バージョン不一致 | 事前チェック失敗とし、builder を起動しない。`builder_version` を保存する environment record も作成しない。 |
 | environment 保存失敗 | build 本体を実行せず failure。 |
 
 **検証条件：**
@@ -3076,8 +3032,7 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 | ケース | 期待結果 |
 |--------|----------|
 | 通常 build | environment object が保存される。 |
-| 標準 builder version 失敗 | pipeline 未起動、environment 未作成。 |
-| custom YAML pipeline | build 継続、`builder_version="unknown"`。 |
+| 標準 builder version 失敗 | builder 未起動、environment 未作成。 |
 | secret env 存在 | log に値が出ない。 |
 | home 配下 state dir | basename だけ保存される。 |
 | environment write failure | pipeline を起動しない。 |
@@ -3088,11 +3043,11 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 |------|----------|
 | 取得時点 | build id 採番直後、builder 起動前に environment snapshot を取得して保存する。 |
 | secret 非保存 | 環境変数 value、token、secret、PATH 全体、VCS revision を保存しない。 |
-| version 取得 | 標準 builder は 2 秒 timeout の事前チェックを 1 回だけ実行する。stdout は exact 3 token で検証し、第 2 token のみを保存する。第 1 token が `adlaire-ci-build` でない、第 2 token が runner と不一致、第 3 token が空の `go=` である、追加 token / 追加行がある、stderr 非空、timeout、非 `0` のいずれかは事前チェック失敗とする。custom YAML pipeline は `"unknown"` とする。 |
+| version 取得 | 標準 builder は 2 秒 timeout の事前チェックを 1 回だけ実行する。stdout は exact 3 token で検証し、第 2 token のみを保存する。第 1 token が `adlaire-ci-build` でない、第 2 token が runner と不一致、第 3 token が空の `go=` である、追加 token / 追加行がある、stderr 非空、timeout、非 `0` のいずれかは事前チェック失敗とする。 |
 | path 境界 | home 配下 state dir は basename だけ、それ以外は絶対 path を保存する。 |
 | 保存失敗 | environment 保存失敗時は build 本体を起動せず、`.build_status.json` に `status="failure"`、`last_target_status="failure_state_write"` を保存する。 |
-| 継続可能失敗 | hostname と disk stat の取得不能は WARN または unknown/null とし、build を継続する。custom YAML pipeline で builder version を確定できない場合は失敗ではなく `"unknown"` とする。 |
-| 確認条件 | fixture は標準 builder の正常保存、第 2 token 保存、timeout、非 `0`、stderr 非空、名前不一致、バージョン不一致、不正 `go=`、追加 token / 行、custom YAML の `unknown`、home path 短縮、secret 非保存、environment write failure をすべて固定する。 |
+| 継続可能失敗 | hostname と disk stat の取得不能は WARN または unknown/null とし、build を継続する。 |
+| 確認条件 | fixture は標準 builder の正常保存、第 2 token 保存、timeout、非 `0`、stderr 非空、名前不一致、バージョン不一致、不正 `go=`、追加 token / 行、home path 短縮、secret 非保存、environment write failure をすべて固定する。 |
 
 <a id="sec-27-38"></a>
 **27.38 ビルド所要時間の異常検知：**
