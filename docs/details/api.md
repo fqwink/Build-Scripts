@@ -573,6 +573,7 @@ API 実装では、[`docs/details/api.md` 詳細本文責務 §22.0d](api.md#sec
 
 `POST /api/logs/cleanup`、`POST /api/logs/archive`、`GET /api/snapshots`、`GET /api/snapshots/{id}/download`、`DELETE /api/snapshots/{id}` の archive 実体処理、download 安全性、rollback 用 artifact の検証・展開・転送は [`docs/details/archive.md` 詳細本文責務 §27.7](archive.md#sec-27-7) および [`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) を参照する。rollback build の lock、ID、log、history、pending、status、state は [`docs/details/runner.md` 詳細本文責務 §14b](runner.md#14b-スナップショット管理) を参照する。`api` 詳細では API endpoint、request / response、HTTP status、`.config_log` / `.audit_log` 境界だけを定義する。
 
+<a id="backup-restore-api-effect-contract"></a>
 **backup / restore API 副作用固定契約：**
 
 | API | 処理順序 | 成功時副作用 | 失敗時副作用 |
@@ -586,6 +587,7 @@ backup response に secret 原文を含めてはならない。`password`、`tok
 
 `RestoreObject` は `server_config`、`notify_config`、`repo_config`、`branch_config`、`access_control`、`hooks`、`alert_rules`、`tag_rules`、`pipeline_config`、`dashboard_layout`、`smtp_config` を必須 key とし、`exported_at`、`webhook_secret_set`、`smtp_password_set`、`webhook_secret`、`smtp_password` だけを任意 key とする。このため `BackupObject` は変換なしで restore request として使用できる。`exported_at` は UTC ISO 8601 として検証するが永続化しない。`webhook_secret_set` と `smtp_password_set` は backup 時の参照値であり、restore の secret 書込を発生させない。`webhook_secret` と `smtp_password` は、key 省略で既存値保持、`"***"` で既存値保持、`null` で削除、それ以外は [`docs/details/statefile.md` 詳細本文責務 UTF-8 text payload 固定契約](statefile.md#statefile-text-payload-contract) の対応する secret 条件を満たす string で新規保存とする。未知 key、secret 条件不一致、型不一致は `422` とし、どの file も変更しない。
 
+<a id="backup-restore-contract"></a>
 **backup / restore 固定契約：**
 
 | 項目 | 仕様 |
@@ -3173,11 +3175,11 @@ restore は `confirmation:"RESTORE_CONFIG"` を必須とする。
 
 `GET /api/config-snapshots` は `.config_snapshots/*.json` を file 名 ASCII 昇順で列挙し、schema-valid snapshot と破損 snapshot の両方を response 対象にする。schema-valid snapshot は `created_at` 降順、同一 `created_at` は `id` ASCII 昇順で並べる。破損 snapshot は `id` を file 名から取り、`label:null`、`created_at:null`、`created_by:null`、`sha256:null`、`corrupted:true` として末尾へ file 名 ASCII 昇順で並べる。`total` は paging 前件数、`limit` / `offset` は [追加管理 API path / query 固定契約](#additional-management-parameter-contract) に従う。
 
-`POST /api/config-snapshots` は [`backup / restore 固定契約](#backup--restore-固定契約) の backup 対象だけを読み取り、`ConfigSnapshotObject.files` へ保存する。JSON 状態 file は schema-valid value を保存し、`.webhook_secret` と `.smtp_secret` は secret 本体を保存せず `{"secret_set":true,"value":"***"}` または `{"secret_set":false,"value":null}` に固定する。snapshot 作成は設定状態を変更せず、`.config_snapshots/{id}.json` を新規 atomic write した後に `.audit_log` と `.admin_events` だけを追記する。既存 id への上書きは禁止し、id 衝突を解消できない場合は `409 {"error":"Config snapshot conflict"}` とする。
+`POST /api/config-snapshots` は [`backup / restore 固定契約](#backup-restore-contract) の backup 対象だけを読み取り、`ConfigSnapshotObject.files` へ保存する。JSON 状態 file は schema-valid value を保存し、`.webhook_secret` と `.smtp_secret` は secret 本体を保存せず `{"secret_set":true,"value":"***"}` または `{"secret_set":false,"value":null}` に固定する。snapshot 作成は設定状態を変更せず、`.config_snapshots/{id}.json` を新規 atomic write した後に `.audit_log` と `.admin_events` だけを追記する。既存 id への上書きは禁止し、id 衝突を解消できない場合は `409 {"error":"Config snapshot conflict"}` とする。
 
 `GET /api/config-snapshots/{id}` は schema-valid snapshot だけを返す。対象 file が存在しない場合は `404 {"error":"Config snapshot not found"}`、JSON 破損または schema 不一致の場合は `500 {"error":"Config snapshot corrupted"}` とし、状態を修復または削除しない。
 
-`POST /api/config-snapshots/{id}/restore` は snapshot の全 `files` を先に検証し、[`backup / restore 固定契約](#backup--restore-固定契約) の restore 書込順で対象状態を atomic write する。secret file marker は既存 secret file を保持し、存在しない場合も secret file を作成しない。途中 write 失敗では未処理 file、`.config_log`、`.audit_log`、`.admin_events` を書かず、成功済み file は巻き戻さない。`restored_paths` は成功済み path の ASCII 昇順とし、secret file marker により書かなかった secret path は含めない。
+`POST /api/config-snapshots/{id}/restore` は snapshot の全 `files` を先に検証し、[`backup / restore 固定契約](#backup-restore-contract) の restore 書込順で対象状態を atomic write する。secret file marker は既存 secret file を保持し、存在しない場合も secret file を作成しない。途中 write 失敗では未処理 file、`.config_log`、`.audit_log`、`.admin_events` を書かず、成功済み file は巻き戻さない。`restored_paths` は成功済み path の ASCII 昇順とし、secret file marker により書かなかった secret path は含めない。
 
 `DELETE /api/config-snapshots/{id}` は schema-valid / corrupted にかかわらず対象 file だけを削除する。削除成功後に `.audit_log`、`.admin_events` の順で追記する。存在しない id は `404`、削除失敗は `500 {"error":"Config snapshot delete failed"}` とし、audit / admin event は追記しない。
 
@@ -3354,9 +3356,9 @@ apply は `confirmation:"APPLY_CONFIG_TEMPLATE"` を必須とする。
 
 `GET /api/config-templates` は `.config_templates.templates` の保存順で返し、`total` は配列件数とする。不在時は空配列を返し、file を作成しない。破損または読取不能は `500 {"error":"Config templates read failed"}` とする。
 
-`POST /api/config-templates` は `name` の完全一致重複を `409` とし、`values` を [`RestoreObject`](#backup--restore-api-副作用固定契約) の subset として検証する。`values` に secret 平文、`webhook_secret`、`smtp_password`、`*_set`、`exported_at`、未知 key、schema-invalid partial object を含めてはならない。成功時は `tmpl_` id、`created_at`、`updated_at` を補完し、`.config_templates` → `.admin_events` の順で書く。
+`POST /api/config-templates` は `name` の完全一致重複を `409` とし、`values` を [`RestoreObject`](#backup-restore-api-effect-contract) の subset として検証する。`values` に secret 平文、`webhook_secret`、`smtp_password`、`*_set`、`exported_at`、未知 key、schema-invalid partial object を含めてはならない。成功時は `tmpl_` id、`created_at`、`updated_at` を補完し、`.config_templates` → `.admin_events` の順で書く。
 
-`POST /api/config-templates/{id}/apply` は template の `values` に含まれる state file だけを [`backup / restore 固定契約](#backup--restore-固定契約) の restore 書込順で atomic write する。適用前に対象全 payload を検証し、1 件でも不正なら `422` として書込を開始しない。途中 write 失敗では未処理 file、`.config_log`、`.audit_log`、`.admin_events` を書かず、成功済み file は巻き戻さない。`updated_paths` は実際に書いた path の ASCII 昇順とする。
+`POST /api/config-templates/{id}/apply` は template の `values` に含まれる state file だけを [`backup / restore 固定契約](#backup-restore-contract) の restore 書込順で atomic write する。適用前に対象全 payload を検証し、1 件でも不正なら `422` として書込を開始しない。途中 write 失敗では未処理 file、`.config_log`、`.audit_log`、`.admin_events` を書かず、成功済み file は巻き戻さない。`updated_paths` は実際に書いた path の ASCII 昇順とする。
 
 `DELETE /api/config-templates/{id}` は `.config_templates.templates` から対象 1 件を除去し、template 適用済み設定を巻き戻さない。成功時は `.config_templates` → `.admin_events` の順で書く。
 

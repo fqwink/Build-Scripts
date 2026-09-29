@@ -1603,7 +1603,7 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `label` | string|null | yes | 1〜128 Unicode scalar values または `null`。空文字は禁止する。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `created_by` | string | yes | user id または `system`。 |
-| `files` | object | yes | snapshot 対象 state path ごとの JSON value、または secret file marker。key は [`docs/details/api.md` 詳細本文責務 backup 対象](api.md#backup--restore-固定契約) の path だけを許可する。 |
+| `files` | object | yes | snapshot 対象 state path ごとの JSON value、または secret file marker。key は [`docs/details/api.md` 詳細本文責務 backup / restore 固定契約](api.md#backup-restore-contract) の backup 対象 path だけを許可する。 |
 | `sha256` | string | yes | `files` canonical JSON の SHA-256 lowercase hex。 |
 
 ConfigSnapshotObject の secret file marker は `{"secret_set":boolean,"value":"***"}` または `{"secret_set":false,"value":null}` のどちらかだけを許可する。secret 本体、secret hash、secret 長、prefix、suffix を保存してはならない。restore 時の secret file marker の扱いは [`docs/details/api.md` 詳細本文責務 §27.55](api.md#sec-27-55) を参照する。
@@ -1634,7 +1634,7 @@ ProjectRecord は `.projects.projects` 内で `id` を一意とし、`default:tr
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
 
-ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全一致一意とする。`values` の top-level key は [`docs/details/api.md` 詳細本文責務 backup / restore 固定契約](api.md#backup--restore-固定契約) の restore 対象 JSON state file だけを許可し、`.webhook_secret`、`.smtp_secret`、`.github_token`、session、token、履歴、ログ、snapshot、cache、queue を含めてはならない。
+ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全一致一意とする。`values` の top-level key は [`docs/details/api.md` 詳細本文責務 backup / restore 固定契約](api.md#backup-restore-contract) の restore 対象 JSON state file だけを許可し、`.webhook_secret`、`.smtp_secret`、`.github_token`、session、token、履歴、ログ、snapshot、cache、queue を含めてはならない。
 
 **AdminEventRecord：**
 

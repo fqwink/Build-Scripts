@@ -515,7 +515,7 @@ type ConvertResult struct {
 - `HeadingSkips` — 見出し階層スキップ件数。
 - `Warnings` — `[WARN]` として stdout 出力した警告本文の一覧。
 
-**エラー：** 戻り値エラーは持たない。入力ファイル不存在、UTF-8 不正、書き込み失敗などの異常は [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) の実行方法と終了コードで扱う。Markdown 構文上の不足は警告またはフォールバック出力で処理する。
+**エラー：** 戻り値エラーは持たない。入力ファイル不存在、UTF-8 不正、出力 directory 作成失敗、HTML / CSS / JavaScript / search index 書き込み失敗、template 合成失敗は [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) の実行方法と終了コードで扱う。Markdown 構文上の不足は警告またはフォールバック出力で処理する。
 
 **内部バッファと状態変数：**
 
@@ -2888,7 +2888,7 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | ゲート | 合格条件 | 未充足時の扱い |
 |--------|----------|------------|
 | 対象節明示 | 実装検証証跡に対象 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) を列挙し、対象外 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) も列挙する。 | 対象外機能が不明、または複数機能の混入範囲が不明。 |
-| CLI / env | 対象 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の CLI option、環境変数、既定値、拒否値を fixture で確認する。 | CLI のみ、env のみ、既定値のみなど片方だけの確認。 |
+| CLI / env | 対象 [`docs/details/builder.md` 詳細本文責務 §28.x](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の CLI option、環境変数、既定値、拒否値を fixture で確認する。 | CLI のみ、env のみ、既定値のみ、拒否値のみ、または CLI / env の片方だけの確認。 |
 | HTML / CSS / JS | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の対象機能別固定契約に定義された tag、attribute、class、data attribute、storage key、handler だけを出力する。 | 未定義 class、未定義 asset、未定義 handler、未定義 localStorage key の追加。 |
 | REPORT | [`docs/details/builder.md` 詳細本文責務 §28](builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) の対象機能別固定契約に定義された REPORT key、型、count 単位、既定値をすべて fixture で確認する。 | key 省略、型違い、件数算出根拠不明、warning count 不一致。 |
 | stdout / stderr | warning / error code、file、line、section、message、出力先の形式が固定契約と一致する。 | 独自 code、message 揺れ、出力先違い、secret / credential / raw HTML 混入。 |

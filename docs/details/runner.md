@@ -380,7 +380,7 @@ BRANCH_TARGETS = [
 | `0` | 起動、ロック確認、対象処理が完了した。変更なし、クールダウン、既存ロックによるスキップも正常終了に含める。 |
 | `1` | 1 件以上のビルドまたは転送が失敗したが、runner 自体は最後まで処理できた。 |
 | `2` | 設定不正、必須ファイル不足、CLI 引数不正。 |
-| `3` | GitHub API など外部サービスへの全再試行が失敗し、全ターゲットが処理不能。 |
+| `3` | GitHub API、Blob API、SSH / rsync 転送のうち、当該実行で必須となる外部サービスへの全再試行が失敗し、全ターゲットが処理不能。 |
 | `4` | `.build_lock` の schema / PID 解析が不正、PID 実行中判定が不能、または lock 作成に失敗した。[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の CLI 終了コードと [lock ファイル契約](#lock-ファイル契約) を正本とする。 |
 
 systemd timer からの再実行を妨げないため、終了コード `1` と `3` でも、[処理フロー](#13-処理フロー) の failure 別書込順と [ビルド通知連携](#sec-27-32) に従い、該当する log / history / status / state / notification pending の書込と所有確認付き lock 解放を各契約の最大回数で実行してから終了する。本文だけを根拠に追加 retry を行ってはならない。
@@ -3091,7 +3091,7 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 | version 取得 | 標準 builder は 2 秒 timeout の事前チェックを 1 回だけ実行する。stdout は exact 3 token で検証し、第 2 token のみを保存する。第 1 token が `adlaire-ci-build` でない、第 2 token が runner と不一致、第 3 token が空の `go=` である、追加 token / 追加行がある、stderr 非空、timeout、非 `0` のいずれかは事前チェック失敗とする。custom YAML pipeline は `"unknown"` とする。 |
 | path 境界 | home 配下 state dir は basename だけ、それ以外は絶対 path を保存する。 |
 | 保存失敗 | environment 保存失敗時は build 本体を起動せず、`.build_status.json` に `status="failure"`、`last_target_status="failure_state_write"` を保存する。 |
-| 継続可能失敗 | hostname と disk stat の取得不能は WARN または unknown/null とし、build を継続する。custom YAML pipeline の builder version 未確定は失敗ではなく `"unknown"` とする。 |
+| 継続可能失敗 | hostname と disk stat の取得不能は WARN または unknown/null とし、build を継続する。custom YAML pipeline で builder version を確定できない場合は失敗ではなく `"unknown"` とする。 |
 | 確認条件 | fixture は標準 builder の正常保存、第 2 token 保存、timeout、非 `0`、stderr 非空、名前不一致、バージョン不一致、不正 `go=`、追加 token / 行、custom YAML の `unknown`、home path 短縮、secret 非保存、environment write failure をすべて固定する。 |
 
 <a id="sec-27-38"></a>
