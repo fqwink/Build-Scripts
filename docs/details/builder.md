@@ -170,14 +170,35 @@ Markdown ディレクトリ入力で Markdown ファイルが 0 件の場合は�
 
 | 入力 | 処理 |
 |------|------|
-| `http://` / `https://` URL | 外部 URL としてそのまま出力する。 |
-| `mailto:` / `tel:` URL | 内部リンク検証対象外とし、`href` はそのまま出力する。 |
+| `http://` / `https://` URL | [URL 属性安全契約](#builder-url-attribute-safety) を満たす場合だけ外部 URL として `href` または `src` へ出力する。 |
+| `mailto:` / `tel:` URL | [URL 属性安全契約](#builder-url-attribute-safety) を満たす場合だけ内部リンク検証対象外とし、`href` へ出力する。 |
 | `#anchor` | 同一ページ内 anchor として、ページ内の一意化後 slug と照合する。 |
 | `./doc.md` / `../dir/doc.md` / `dir/doc.markdown#x` | `--base-dir` 基準で Markdown 入力ファイルへ解決し、該当ページの HTML パスへ変換する。anchor がある場合は `#x` を維持し、出力先ページの slug と照合する。 |
-| `.md` / `.markdown` 以外の相対リンク | ファイルをコピーせず、元の相対 URL を保持する。存在確認は警告対象外。 |
-| 画像 `![alt](path)` | ファイルコピーを行わず、`src` は元 URL を `esc()` して出力する。`assets/` へ画像を複製してはならない。 |
+| `.md` / `.markdown` 以外の相対リンク | [URL 属性安全契約](#builder-url-attribute-safety) を満たす場合だけファイルをコピーせず、attribute escape 後の相対 URL を保持する。存在確認は警告対象外。 |
+| 画像 `![alt](path)` | ファイルコピーを行わず、[URL 属性安全契約](#builder-url-attribute-safety) を満たす場合だけ `src` へ attribute escape 後の URL を出力する。`assets/` へ画像を複製してはならない。 |
 
-Markdown 間リンクの解決に失敗した場合、HTML は元 URL のまま出力し、`[WARN] BROKEN_PAGE_LINK: <url> (in: <source>)` を出力する。`--strict` が `true` の場合、警告出力後に終了コード `2` とする。ページ間リンク解決で使用するパス比較は、絶対パス化、`filepath.Clean()`、パス区切り `/` 正規化を行った文字列で比較する。
+[URL 属性安全契約](#builder-url-attribute-safety) を通過した Markdown 間リンクの解決に失敗した場合、HTML は attribute escape 後の入力 URL を `href` へ出力し、`[WARN] BROKEN_PAGE_LINK: <url> (in: <source>)` を出力する。`<url>` には credential、query、secret 風文字列を含めず、path と fragment だけを記録する。`--strict` が `true` の場合、警告出力後に終了コード `2` とする。ページ間リンク解決で使用するパス比較は、絶対パス化、`filepath.Clean()`、パス区切り `/` 正規化を行った文字列で比較する。
+
+<a id="builder-url-attribute-safety"></a>
+**URL 属性安全契約：**
+
+Markdown 由来の URL を `href`、`src`、`data-href`、`data-lightbox-src`、検索 index の遷移先、print QR URL、または同等の URL 属性へ出力する場合は、出力前に URL 属性安全契約を通過させる。通過前の URL 文字列を HTML attribute、stdout、stderr、`[REPORT]`、manifest、search index へそのまま出力してはならない。
+
+| 判定対象 | 許可条件 |
+|----------|----------|
+| 共通 byte 条件 | 空文字、NUL、CR、LF、tab、U+0000〜U+001F、U+007F、ASCII space、未正規 UTF-8 を含まない。 |
+| scheme 付き URL | scheme は小文字化して判定し、link `href` は `http`、`https`、`mailto`、`tel` だけを許可する。image `src` は `http`、`https` と、[`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) が許可する `data` だけを許可する。その他 scheme は拒否する。 |
+| network URL | `net/url.Parse` 後に `Scheme` と `Host` が非空であり、`User` が空でなければならない。protocol-relative URL `//host/path` は拒否する。build 時 fetch、存在確認、redirect 追跡を行わない。 |
+| `mailto` / `tel` | `Host` と `User` を持たず、path または opaque 部分が非空である場合だけ許可する。構文正規化、到達性確認、電話番号正規化は行わない。 |
+| fragment-only URL | `#` に続く値が空でなく、生成済み heading slug と完全一致する場合だけ許可する。存在しない fragment は unsafe ではなく link 整合 warning として扱う。footnote、UI shell、skip link、lightbox、内部 runtime 用 id は Markdown 入力由来 fragment の許可対象にしない。 |
+| query-only URL | `?` で始まり、制御文字と ASCII space を含まない場合だけ同一ページ内 URL として許可する。 |
+| 相対 path URL | scheme、先頭 `/`、先頭 `//`、`\`、drive letter、NUL、制御文字、ASCII space を含まず、`path.Clean` 後に `..` で始まらず、`--base-dir` 外へ解決されない場合だけ許可する。 |
+| `.md` / `.markdown` relative link | URL path 部分を `--base-dir` 基準で絶対 path 化し、収集済み Markdown 入力 file と一致した場合は対応 HTML path へ変換する。query は破棄せず維持し、fragment は変換先 page の slug と照合する。 |
+| `.md` / `.markdown` 以外の relative link | path 正規化と安全判定だけを行い、存在確認、コピー、hash 照合を行わない。 |
+
+許可された URL は、path 区切りを `/` に統一し、Markdown link 変換で生成した HTML path、fragment、query を結合した後、attribute escape して出力する。URL encode の追加、percent decode による再解釈、host lowercase 化、末尾 slash 補完、query sort、fragment sort は行わない。
+
+拒否時は link では label を `esc()` 済み text node として出力し、`<a>` を出力しない。image では alt を `esc()` 済み text node として出力し、alt が空なら何も出力しない。non-strict では stdout に `[WARN] UNSAFE_URL: <kind> (in: <source>)` を出し、`warnings` へ加算する。warning message に拒否した URL 値、credential、query、secret 風文字列を含めてはならない。`--strict=true` では warning 出力後に終了コード `2` とし、公開 `--out` を置換してはならない。
 
 **入力収集固定契約：**
 
@@ -349,12 +370,12 @@ type RenderContext struct {
 | `__text__` | `<strong>text</strong>` |
 | `_text_`（単独 `_`） | `<em>text</em>` |
 | `~~text~~` | `<del>text</del>` |
-| `![alt](url)` | `<img class="md-image" src="url" alt="alt">` |
-| `[label](url)`（`url` が `http://` または `https://` で始まる場合） | `<a href="url" target="_blank" rel="noopener noreferrer">label</a>` |
-| `[label](url)`（`url` が `http://` または `https://` で始まらない場合 — 内部リンク・アンカー） | `<a href="url">label</a>` |
+| `![alt](url)` | [URL 属性安全契約](#builder-url-attribute-safety) を通過した場合だけ `<img class="md-image" src="{escaped-url}" alt="{escaped-alt}">` |
+| `[label](url)`（外部 URL） | [URL 属性安全契約](#builder-url-attribute-safety) を通過した `http` / `https` URL だけ `<a href="{escaped-url}" target="_blank" rel="noopener noreferrer">{escaped-label}</a>` |
+| `[label](url)`（内部リンク・アンカー・許可相対 URL） | [URL 属性安全契約](#builder-url-attribute-safety) を通過した URL だけ `<a href="{escaped-url}">{escaped-label}</a>` |
 | `[^id]` | `<sup><a href="#fn-id" id="fnref-id" class="fn-ref">[N]</a></sup>`（N は参照順の番号） |
 
-**処理順の注意：** 画像記法（`![alt](url)`）はリンク記法（`[label](url)`）より先にマッチングする。リンク記法はマッチング後に `url` が `http://` または `https://` で始まるかを判定し、外部リンクと内部リンクを区別する。脚注参照（`[^id]`）はリンク置換後に適用する。
+**処理順の注意：** 画像記法（`![alt](url)`）はリンク記法（`[label](url)`）より先にマッチングする。リンク記法はマッチング後に [URL 属性安全契約](#builder-url-attribute-safety) で scheme、fragment、relative path を判定し、外部リンク、内部リンク、相対リンク、拒否 URL を区別する。脚注参照（`[^id]`）はリンク置換後に適用する。
 
 **内部リンク整合性チェック：**
 
@@ -1523,6 +1544,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | keyboard runtime | modifier、composition、repeat、interactive target、キー別副作用。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture P` |
 | scroll runtime | listener 共有、進捗 clamp、トップボタン境界、初期同期実行。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture Q` |
 | table sort runtime | 決定的分類・比較、stable sort、empty、ARIA、不正構造 no-op。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture R` |
+| URL 属性安全性 | link / image URL の許可 scheme、credential 拒否、相対 path 脱出拒否、attribute escape、strict 昇格、secret 非表示。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture S` |
 
 <a id="sec-8"></a>
 **[`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能別実装確認固定契約](builder.md#sec-8)：**
@@ -2245,7 +2267,7 @@ inline parser は、code span を最優先の保護領域として切り出し�
 |------|----------|
 | text node | `&`、`<`、`>` を escape する。quote は text node では escape しなくてよい。 |
 | attribute | `&`、`<`、`>`、`"`、制御文字を escape または除去する。single quote は `&#39;` に統一する。 |
-| URL | scheme、base 外 path、credential を検証してから attribute escape する。`javascript:`、`data:text/html`、credential 付き URL は warning または終了コード `2`。 |
+| URL | [URL 属性安全契約](#builder-url-attribute-safety) に従い、scheme、base 外 path、credential を検証してから attribute escape する。`javascript:`、`data:text/html`、credential 付き URL は warning または終了コード `2`。 |
 | raw HTML | Markdown 由来 raw HTML は実行可能要素として扱わず text として escape する。 |
 | SVG | [`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17)、[`docs/details/builder.md` 詳細本文責務 §28.23](builder.md#sec-28-23) の内製 SVG は許可するが、`script`、event handler 属性、外部参照属性を出力しない。 |
 
@@ -2305,7 +2327,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | [`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) | TOC 深さ制御 | `--toc-depth <min>:<max>`。 | 指定範囲だけの TOC。本文 heading は不変。 | option parse → heading filter → TOC 生成 → active tracking も同範囲に限定。 | min/max 範囲外、min > max は終了コード `2`。 | h2-h3、h1-h6、範囲外除外、active tracking 一致。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.8](builder.md#sec-28-8) | 最終更新日の自動埋め込み | `--updated-at-source git\|file\|none`、fake clock / fake git fixture。 | footer の updated time、`[REPORT].updated_at_source`。 | source 判定 → git timestamp または file mtime 取得 → UTC 秒精度へ正規化 → footer 出力。 | git 取得失敗時は file mtime fallback、strict では終了コード `2`。 | git 値、file mtime、fallback、UTC 形式、footer escape。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.9](builder.md#sec-28-9) | diff ハイライト | fence info `diff` または `patch`。 | `.tok-inserted`、`.tok-deleted`、`.tok-context` class。 | code line 先頭 `+` / `-` / space を判定 → HTML escape → class 付与。 | `+++` / `---` header は header class。通常言語では適用しない。 | insert/delete/header/context、escape、copy 本文維持。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) | 画像の遅延読み込み | Markdown image、HTML img 相当出力。 | `<img loading="lazy" decoding="async">`。 | image token 解析 → src 正規化 → alt escape → lazy 属性付与。 | data URI、外部 URL は許可するが fetch しない。base 外相対 path は warning。 | 相対画像、外部画像、alt escape、base 外警告。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) | 画像の遅延読み込み | Markdown image、HTML img 相当出力。 | `<img loading="lazy" decoding="async">`。 | image token 解析 → src 正規化 → alt escape → lazy 属性付与。 | data URI、外部 URL は許可するが fetch しない。base 外相対 path は warning と参照無効化。 | 相対画像、外部画像、alt escape、base 外 warning / strict。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.11](builder.md#sec-28-11) | カスタムメタタグ注入 | `--meta key=value`、設定 meta map。 | `<meta name="..." content="...">` または `property="og:..."`。 | key validation → name/property 判定 → 重複解決 → head へ出力。 | `script`、`http-equiv`、空 key、制御文字は終了コード `2`。 | OGP、Twitter、重複、escape、禁止 key。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.12](builder.md#sec-28-12) | ライトモード固定 | なし。 | light 固定 CSS variables。 | `:root` の light 固定変数だけを出力し、dark / auto / theme toggle / color scheme 永続化を出力しない。 | dark / auto / theme toggle / color scheme 永続化が出力された場合は検証失敗。 | light 固定、print light、禁止識別子不在。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.13](builder.md#sec-28-13) | コードブロックのファイル名表示 | fence info `go:main.go`、`bash:title=deploy.sh`。 | `.code-title` 表示。 | info parse → language と title 分離 → title escape → code block header へ出力。 | path traversal 表示は禁止せず text 扱いだが HTML escape。空 title は非表示。 | colon 形式、title 形式、escape、copy 対象除外。 |
@@ -2465,7 +2487,7 @@ admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。se
 | [`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) | TOC tree | `toc_min_depth`、`toc_max_depth`、`toc_links`、`toc_active_targets` を page ごとに保持する。 | TOC link だけを depth filter し、本文 heading、heading id、search index heading source を変更しない。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.8](builder.md#sec-28-8) | page timestamp | `updated_at_source`、`updated_at_value`、`updated_at_fallback` を page ごとに保持する。 | UTC RFC3339 秒精度の `datetime` と表示 text が一致し、取得不能時の fallback / failure が固定される。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.9](builder.md#sec-28-9) | code fence | `diff_blocks`、`diff_insertions`、`diff_deletions`、`diff_headers` を code block ごとに保持する。 | diff / patch fence だけに token class を付け、escape と copy text が維持される。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) | image token | `lazy_image_targets`、`image_path_warnings`、`image_src_kind` を image ごとに保持する。 | img src / alt escape、lazy 属性、base 外 path warning、外部 URL no-fetch が一致する。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) | image token | `lazy_image_targets`、`image_path_warnings`、`image_src_kind` を image ごとに保持する。 | img src / alt escape、lazy 属性、base 外 path warning / 参照無効化、外部 URL no-fetch が一致する。 |
 
 <a id="sec-28-6"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28.6 セクション折りたたみ詳細固定契約](builder.md#sec-28-6)：**
@@ -2536,12 +2558,12 @@ image `src` は以下に分類する。
 | src 種別 | 挙動 |
 |----------|------|
 | base 内相対 path | path を `/` 区切り、先頭 `./` なしに正規化し、属性へ escape 済みで出力する。 |
-| base 外相対 path | non-strict では warning `BUILDER28_PATH_OUTSIDE_BASE` を stdout に出し、属性は元 text を escape 済みで出力する。strict では終了コード `2`、公開出力維持。 |
+| base 外相対 path | non-strict では warning `BUILDER28_PATH_OUTSIDE_BASE` を stdout に出し、image は [URL 属性安全契約](#builder-url-attribute-safety) の拒否時出力に従って alt text だけまたは空出力にする。strict では終了コード `2`、公開出力維持。 |
 | `http` / `https` URL | 属性へ escape 済みで出力する。build 時 fetch、存在確認、redirect 追跡を行わない。 |
 | `data:` URL | 属性へ escape 済みで出力する。内容 decode、MIME 判定、fetch を行わない。 |
 | その他 scheme | non-strict では warning `BUILDER28_INVALID_OPTION` とし、strict では終了コード `2`、公開出力維持。 |
 
-`alt` は必ず attribute escape する。`lazy_images` は `loading="lazy"` と `decoding="async"` を付与した img 数、`image_path_warnings` は warning 件数とする。search index には image alt text を含めるが、src、loading、decoding、warning text は含めない。
+`alt` は必ず attribute escape する。`lazy_images` は `loading="lazy"` と `decoding="async"` を付与した img 数、`image_path_warnings` は warning 件数とする。URL 拒否により `img` を出力しない image は `lazy_images` に含めない。search index には image alt text を含めるが、src、loading、decoding、warning text は含めない。
 
 <a id="sec-28-group-11-15"></a>
 **[`docs/details/builder.md` 詳細本文責務 §28.11〜`docs/details/builder.md` 詳細本文責務 §28.15 実装詳細固定契約](builder.md#sec-28-group-11-15)：**
