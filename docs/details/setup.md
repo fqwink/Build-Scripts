@@ -441,15 +441,15 @@ restart 回数は rollback 処理内の回数を表す。runner restart 失敗�
 6. API 導入済みの場合、build / runner / setup / api / admin binary と admin UI を同じ `VERSION` の asset から取得する。MCP 導入済みの場合は mcp binary も同じ `VERSION` の asset から取得する。version 混在は禁止する。
 7. すべての対象 asset の checksum 検証が成功するまで、既存 binary、既存 admin UI、systemd unit を変更しない。
 8. binary 配置後の version 確認に失敗した場合は、その binary を配置失敗として rollback 対象に含める。
-7. runner restart が失敗した場合、API restart と admin UI 更新へ進まない。
-8. admin UI 更新が失敗した場合は [アップデート rollback 固定契約「admin UI 展開失敗」](#setup-update-rollback-contract)を 1 回適用し、API restart へ進まない。
-9. admin UI 差し替え後の API restart が失敗した場合は [アップデート rollback 固定契約「admin UI 差し替え後 API restart 失敗」](#setup-update-rollback-contract)を 1 回適用する。
+9. runner restart が失敗した場合、API restart と admin UI 更新へ進まない。
+10. admin UI 更新が失敗した場合は [アップデート rollback 固定契約「admin UI 展開失敗」](#setup-update-rollback-contract)を 1 回適用し、API restart へ進まない。
+11. admin UI 差し替え後の API restart が失敗した場合は [アップデート rollback 固定契約「admin UI 差し替え後 API restart 失敗」](#setup-update-rollback-contract)を 1 回適用する。
 
 **アップデート後確認固定契約：**
 
 | 確認 | API 未導入 | API 導入済み |
 |------|------------|--------------|
-| binary version | build / runner / setup の各 `--version` が exit `0`、stderr 空、exact `<binary-name> $VERSION go=<non-empty>` + LF。 | build / runner / setup / API の各 `--version` が exit `0`、stderr 空、exact `<binary-name> $VERSION go=<non-empty>` + LF。 |
+| binary version | build / runner / setup の各 `--version` が exit `0`、stderr 空、exact `<binary-name> $VERSION go=<non-empty>` + LF。MCP 導入済みの場合は `adlaire-ci-mcp` も同じ条件で確認する。 | build / runner / setup / API / admin の各 `--version` が exit `0`、stderr 空、exact `<binary-name> $VERSION go=<non-empty>` + LF。MCP 導入済みの場合は `adlaire-ci-mcp` も同じ条件で確認する。 |
 | service | `systemctl is-active adlaire-ci.timer` が `active`、`systemctl cat adlaire-ci.service` と `systemctl cat adlaire-ci.timer` が exit `0`。 | API 未導入の 3 確認に加え、`systemctl is-active adlaire-ci-api` が `active`、`systemctl cat adlaire-ci-api.service` が exit `0`。 |
 | admin UI | 確認しない。 | `$INSTALL_DIR/admin/index.html` と `$INSTALL_DIR/admin/adlaire-ci-sdk.js` が存在する。 |
 | local API | 確認しない。 | [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従い、API service が local health check に応答する。 |
