@@ -16,7 +16,7 @@
 | [`main.go`](../main.go) | 実装中・検証未完了 | 起動入口の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01) |
 | [`components/builder.go`](../components/builder.go) | 実装済み | Phase 1 builder 実装は [PR #74](https://github.com/fqwink/Build-Scripts/pull/74) で merge 済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 1 builder 実装検証証跡](details/fixture.md#phase-1-builder-implementation-evidence) を参照する。 |
 | [`components/runner.go`](../components/runner.go) | 実装済み | Phase 2 runner 実装は [PR #75](https://github.com/fqwink/Build-Scripts/pull/75) で実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 2 runner 実装検証証跡](details/fixture.md#phase-2-runner-implementation-evidence) を参照する。 |
-| [`components/api.go`](../components/api.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-02`](details/fixture.md#align-02)、[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-04`](details/fixture.md#align-04)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-11`](details/fixture.md#align-11)、[`ALIGN-12`](details/fixture.md#align-12)、[`ALIGN-17`](details/fixture.md#align-17)、[`ALIGN-18`](details/fixture.md#align-18)、[`ALIGN-19`](details/fixture.md#align-19)、[`ALIGN-21`](details/fixture.md#align-21)、[`ALIGN-22`](details/fixture.md#align-22)、[`ALIGN-23`](details/fixture.md#align-23)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-27`](details/fixture.md#align-27)、[`ALIGN-29`](details/fixture.md#align-29)、[`ALIGN-30`](details/fixture.md#align-30)、[`ALIGN-37`](details/fixture.md#align-37) |
+| [`components/api.go`](../components/api.go) | 実装済み | Phase 4 `api` operations は実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 4 api operations 実装検証証跡](details/fixture.md#phase-4-api-operations-implementation-evidence) を参照する。追加管理 API、SDK、UI、admin、setup、release、mcp、正式 fixture directory harness の現在状態は各 owner の行と [統合機能インベントリ](#522-統合ロードマップ表) を参照する。 |
 | `components/admin.go` | 仕様化済み・未実装 | CLI 管理クライアントの実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/admin.md`](details/admin.md#sec-a7) を参照する。 |
 | `components/setup.go` | 仕様化済み・未実装 | 実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/setup.md`](details/setup.md)、現行実装証跡は [`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-37`](details/fixture.md#align-37) を参照する。 |
 | `components/release.go` | 仕様化済み・未実装 | 実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/release.md`](details/release.md)、現行実装証跡は [`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-37`](details/fixture.md#align-37) を参照する。 |
@@ -39,7 +39,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 1 | `builder` | 実装済み | なし |
 | Phase 2 | `runner` | 実装済み | Phase 1 |
 | Phase 3 | `api` request lifecycle | 実装済み | Phase 2 |
-| Phase 4 | `api` operations | 実装中・検証未完了 | Phase 3 |
+| Phase 4 | `api` operations | 実装済み | Phase 3 |
 | Phase 5 | `sdk` | 実装中・検証未完了 | Phase 4 |
 | Phase 6 | `ui` | 実装中・検証未完了 | Phase 5 |
 | Phase 7 | `admin` | 仕様化済み・未実装 | Phase 6 |
@@ -47,7 +47,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 9 | `release` | 仕様化済み・未実装 | Phase 8 |
 | Phase 10 | `mcp` | 仕様化済み・未実装 | Phase 9 |
 
-現在の active Phase は `Phase 4` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
+現在の active Phase は `Phase 5` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 
 各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) を参照する。
 
@@ -70,9 +70,9 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的配布物構成・Archive 検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的 HTTP 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルドタイムアウト | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | ポーリング間隔の動的変更 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | ポーリング間隔の動的変更 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルドログのファイル保存 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | GitHub Webhook 受信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | GitHub Webhook 受信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ネットワーク断時の再試行 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | GitHub API レート制限自動待機 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | 転送後リモート整合性検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
@@ -87,13 +87,13 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 実装済み | CI ランナー | コミット情報のビルドログ記録 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | GitHub API 連続失敗によるサーキットブレーカー | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | 出力サイトサイズ警告閾値 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | Webhook イベントログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | Webhook イベントログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルド所要時間の記録と統計入力 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルドアーティファクト世代管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | ビルドアーティファクト管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | ヘルスチェックエンドポイント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | Webhook イベント一覧取得 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | ビルドログ重大度フィルター | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | ビルドアーティファクト管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | ヘルスチェックエンドポイント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | Webhook イベント一覧取得 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | ビルドログ重大度フィルター | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | ビルドスクリプト | 変換レポート出力 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | ビルドスクリプト | builder 起動入口 / version | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | ビルドスクリプト | builder CLI parse / validation order | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
@@ -119,9 +119,9 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 実装済み | ビルドスクリプト | 見出し階層スキップ警告 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | ビルドスクリプト | 読了時間推計と表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | Webhook 通知失敗リトライキュー | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | ブランチ設定の動的変更 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | ブランチ設定の動的変更 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | 週次ビルドサマリー Webhook | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | 設定変更の詳細 diff 記録 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | 設定変更の詳細 diff 記録 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | ビルドスクリプト | テーブルのソート機能 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | ビルドスクリプト | キーボードショートカット | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | 複数ファイル監視 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
@@ -152,39 +152,39 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 仕様化済み・未実装 | 管理ツール・API | マルチユーザー対応 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | データストア切り替え | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | 外部認証連携 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 実装中・検証未完了 | 管理ツール・API | TOTP 二要素認証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | TOTP 二要素認証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・API | 統計データの JSON エクスポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | キュー内個別エントリのキャンセル | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 実装中・検証未完了 | 管理ツール・API | 設定バリデーション API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | 設定バリデーション API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・API | Prometheus メトリクスエンドポイント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | CLI 管理クライアント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | 設定の自動スナップショット | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | ステータスバッジ生成 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | ビルド履歴の自動削除設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 実装中・検証未完了 | 管理ツール・API | セッションタイムアウト変更設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | ビルドトリガー専用 API スコープ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | 監査ログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | API レート制限 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | セッションタイムアウト変更設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | ビルドトリガー専用 API スコープ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | 監査ログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | API レート制限 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・API | ロールベースアクセス制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | 設定スナップショット差分表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | 複数プロジェクト管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 実装中・検証未完了 | 管理ツール・API | API キー管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | ビルドログの保存済み有限 SSE 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | ビルド統計ダッシュボード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | API キー管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | ビルドログの保存済み有限 SSE 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | ビルド統計ダッシュボード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・API | ユーザー管理 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 実装中・検証未完了 | 管理ツール・API | IP アドレス制限 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | IP アドレス制限 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・API | API バージョニング | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | API ドキュメント自動生成 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 実装中・検証未完了 | 管理ツール・API | 通知チャンネル管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | 通知チャンネル管理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・API | ビルドキューの手動並び替え | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | 設定テンプレート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 実装中・検証未完了 | 管理ツール・API | API アクセスログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | API アクセスログ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・API | 管理者向けイベントフィード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 実装中・検証未完了 | 管理ツール・API | ビルドキュー可視化 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | メンテナンスモード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | ビルドキュー可視化 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | メンテナンスモード | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・API | 読み取り専用共有リンク | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 実装中・検証未完了 | 管理ツール・API | アラート閾値設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・API | バックアップ／リストア | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | アラート閾値設定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・API | バックアップ／リストア | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・API | API レスポンスキャッシュ制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | スナップショット間サイト差分 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | Webhook 送信履歴の手動再送 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |

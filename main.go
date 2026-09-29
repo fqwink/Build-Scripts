@@ -19,6 +19,8 @@ func dispatchMain(name string, args []string, stdout io.Writer, stderr io.Writer
 		return components.RunBuild(args, stdout, stderr)
 	case "adlaire-ci-runner":
 		return components.RunRunner(args, stdout, stderr)
+	case "adlaire-ci-api":
+		return components.RunAPI(args, os.Stdin, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command: %s\n", name)
 		return 2

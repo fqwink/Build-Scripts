@@ -47,4 +47,17 @@ func TestDispatchMainExactBasename(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("expected no stderr for runner help, got %q", stderr.String())
 	}
+
+	stdout.Reset()
+	stderr.Reset()
+
+	if code := dispatchMain("adlaire-ci-api", []string{"--help"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected api help exit code 0, got %d", code)
+	}
+	if got := stdout.String(); !strings.Contains(got, "Usage: adlaire-ci-api") {
+		t.Fatalf("expected api help usage, got %q", got)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for api help, got %q", stderr.String())
+	}
 }
