@@ -78,6 +78,7 @@
 | `testdata/builder/empty-dir/.keep` | `builder` fixture marker | 実在 |
 | `testdata/builder/strict/` | `builder` fixture | 未作成 |
 | `testdata/builder/safe/` | `builder` fixture | 未作成 |
+| `testdata/builder/url-safety/` | `builder` fixture | 未作成 |
 | `testdata/builder/**/expected/` | `builder` expected | 未作成 |
 | `testdata/runner/` | `runner` fixture root | 未作成 |
 | `testdata/api/` | `api` fixture root | 未作成 |

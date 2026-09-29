@@ -95,6 +95,9 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 実装中・検証未完了 | 管理ツール・API | Webhook イベント一覧取得 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | ビルドログ重大度フィルター | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | ビルドスクリプト | 変換レポート出力 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装中・検証未完了 | ビルドスクリプト | builder 起動入口 / version | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装中・検証未完了 | ビルドスクリプト | builder CLI parse / validation order | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装中・検証未完了 | ビルドスクリプト | builder 入力 path / symlink / base-dir | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | ビルドスクリプト | サイドバー開閉 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | ビルドスクリプト | TOC 検索フィルター | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | ビルドスクリプト | トップへ戻るボタン | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |

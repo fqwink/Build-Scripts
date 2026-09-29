@@ -1555,6 +1555,9 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | scroll runtime | listener 共有、進捗 clamp、トップボタン境界、初期同期実行。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture Q` |
 | table sort runtime | 決定的分類・比較、stable sort、empty、ARIA、不正構造 no-op。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture R` |
 | URL 属性安全性 | link / image URL の許可 scheme、credential 拒否、相対 path 脱出拒否、attribute escape、strict 昇格、secret 非表示。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture S` |
+| 起動入口 / version | `adlaire-ci-build` の `--help` / `--version` 優先、exact 3 token version、入力検証前成功、無副作用。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture T` |
+| CLI parse / validation order | unsafe argv token、未知 option、位置引数、短縮 option、値欠落、重複 option、検証順、parse failure 無副作用。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture U` |
+| path / symlink / base-dir | `--base-dir`、hidden / symlink / 大文字拡張子除外、BOM / 改行正規化、source / out / parent symlink、相互包含禁止。 | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](fixture.md#8a-f-builder-初期受け入れ-fixture-契約) `Fixture V` |
 
 <a id="sec-8"></a>
 **[`docs/details/builder.md` 詳細本文責務 §8〜`docs/details/builder.md` 詳細本文責務 §8a builder 中核機能別実装確認固定契約](builder.md#sec-8)：**
