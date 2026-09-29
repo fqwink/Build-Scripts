@@ -366,6 +366,8 @@ Phase は、対象 owner component、実装範囲、依存条件、完了条件�
 
 実装作業の Pull Request は Phase を境界としなければならない。Phase を Pull Request の境界にする理由は、仕様根拠、対象 owner、実装範囲、検証条件、完了判定を一つの責務単位に固定し、複数 Phase の混在、同一 Phase の並行分割、後続 Phase の先取り、仕様根拠のない実装補完を禁止するためである。
 
+Phase を Pull Request の境界にすることは、Phase の一部分だけを完了扱いにすることを意味しない。実装作業の Pull Request は、対象 Phase 全体の実装、検証、証跡、状態整合が完了した単位で扱う。Phase 内に未実装、未検証、仕様不整合、証跡不足、状態更新不足が残る状態を、Pull Request 作成可能、review ready、merge 可能、または完了済みとして扱ってはならない。
+
 <a id="47-実装着手ゲート方針"></a>
 
 <a id="sec-4-7"></a>
@@ -627,6 +629,12 @@ Go 版初期実装で新規実装へ着手できる対象は、[`docs/ROADMAP.md
 実装順序、実装計画、実装 PR、完了判定は Phase 単位で行わなければならない。
 
 実装を主目的とする Pull Request は、1 本につき 1 Phase だけを対象にしなければならない。複数 Phase の実装変更を 1 本の Pull Request に混在させてはならない。同一 Phase の実装変更を複数の並行 Pull Request へ分割してはならない。active Phase に対応する open Pull Request が既に存在する場合、同じ Phase の追加実装、修正、検証、仕様根拠の補強は新規 Pull Request を作成せず、既存の該当 Phase Pull Request へ統合しなければならない。
+
+対象 Phase 全体が完了するまで、実装を主目的とする Pull Request を作成してはならない。既に active Phase に対応する open Pull Request が存在する場合、その Pull Request は Phase 全体完了まで work in progress として扱い、review ready、merge 可能、完了済みとして報告してはならない。
+
+Phase 全体完了とは、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan) で対象 Phase に割り当てられた全 owner、全機能、全依存条件について、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の実装契約、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の必須 acceptance assertion と実装検証証跡、[`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition)、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) の完了判定を満たすことをいう。
+
+Phase 内に `仕様化済み・未実装`、`実装中・検証未完了`、未実行の必須検証、未記録の実装検証証跡、未解消の仕様不整合、未反映の状態・索引更新が残る場合、実装者は同一作業ブランチで実装、検証、不整合修正、再検証を繰り返さなければならない。この反復を省略して Pull Request 作成、完了報告、または merge 可能報告を行ってはならない。
 
 仕様全般に基づく実装とは、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に到達し、その全てと矛盾しない実装だけを行うことをいう。これらのいずれかで対象 Phase、対象機能、入力、出力、状態、副作用、異常系、検証条件、完了条件が未定義または矛盾している場合、実装者はコード判断で補完してはならない。先に該当する責務正本を改訂し、仕様根拠を確定してから実装しなければならない。
 
