@@ -207,6 +207,35 @@ type pipelineLog struct {
 	StderrTruncated bool   `json:"stderr_truncated"`
 }
 
+type hooksFile struct {
+	Hooks []runnerHook `json:"hooks"`
+}
+
+type runnerHook struct {
+	ID             string   `json:"id"`
+	Phase          string   `json:"phase"`
+	CommandArgs    []string `json:"command_args"`
+	Enabled        bool     `json:"enabled"`
+	AbortOnFailure bool     `json:"abort_on_failure"`
+	TimeoutSeconds int      `json:"timeout_seconds"`
+	CreatedAt      string   `json:"created_at"`
+}
+
+type hookRunLog struct {
+	HookID          string `json:"hook_id"`
+	BuildID         string `json:"build_id"`
+	Phase           string `json:"phase"`
+	Status          string `json:"status"`
+	StartedAt       string `json:"started_at"`
+	FinishedAt      string `json:"finished_at"`
+	DurationSeconds int64  `json:"duration_seconds"`
+	Stdout          string `json:"stdout"`
+	Stderr          string `json:"stderr"`
+	ExitCode        *int   `json:"exit_code"`
+	TimedOut        bool   `json:"timed_out"`
+	Truncated       bool   `json:"truncated"`
+}
+
 type runnerReport struct {
 	Pages           int    `json:"pages"`
 	Headings        int    `json:"headings"`
@@ -255,6 +284,7 @@ type buildLog struct {
 	BlobSHA         *string       `json:"blob_sha"`
 	PreviousBlobSHA string        `json:"previous_blob_sha"`
 	Pipeline        pipelineLog   `json:"pipeline"`
+	SkippedHookIDs  []string      `json:"skipped_hook_ids"`
 	Attempts        []pipelineLog `json:"attempts"`
 	RetryCount      int           `json:"retry_count"`
 	Report          *runnerReport `json:"report"`
@@ -1618,6 +1648,18 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 	if commit.SHA != nil {
 		commitSHA = *commit.SHA
 	}
+	hooks, skippedHookIDs, err := readRunnerHooks(cfg.StateDir)
+	if err != nil {
+		logHookAbortFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, trigger, "hook config invalid", skippedHookIDs, nil, logger)
+		recordCircuitFailure(cfg, "hook config invalid")
+		return 1
+	}
+	hookWarnings, preAbortReason, _ := executeRunnerHooks(cfg, target, buildID, "pre", commitSHA, startedText, resolved.ChangedTargets, hooks, logger)
+	if preAbortReason != nil {
+		logHookAbortFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, trigger, *preAbortReason, skippedHookIDs, hookWarnings, logger)
+		recordCircuitFailure(cfg, *preAbortReason)
+		return 1
+	}
 	commitStatusState := (*string)(nil)
 	if cfg.CommitStatusEnabled {
 		state := "error"
@@ -1736,10 +1778,11 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		BlobSHA:         &resolved.Digest,
 		PreviousBlobSHA: prevSHA,
 		Pipeline:        pl,
+		SkippedHookIDs:  skippedHookIDs,
 		Attempts:        attempts,
 		RetryCount:      retryCount,
 		Report:          rep,
-		Warnings:        warns,
+		Warnings:        append(warns, hookWarnings...),
 		Deploy:          deploys,
 		SnapshotID:      snapshotID,
 		OutputSHA256:    outputSHA,
@@ -1765,6 +1808,17 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 	}
 	if err := writeBuildStatusFinal(cfg, blog); err != nil {
 		logger.Error("BUILD_STATUS_WRITE_FAILED: " + err.Error())
+		exitCode = 1
+	}
+	postWarnings, _, postExitBump := executeRunnerHooks(cfg, target, buildID, "post", commitSHA, startedText, resolved.ChangedTargets, hooks, logger)
+	if len(postWarnings) > 0 || len(skippedHookIDs) > 0 {
+		blog.Warnings = append(blog.Warnings, postWarnings...)
+		if err := writeBuildLog(cfg.StateDir, blog); err != nil {
+			logger.Error("BUILD_LOG_WRITE_FAILED: " + err.Error())
+			exitCode = 1
+		}
+	}
+	if postExitBump {
 		exitCode = 1
 	}
 	sendBuildNotifications(cfg, blog, logger)
@@ -1795,6 +1849,7 @@ func runningBuildLog(buildID string, target BranchTarget, trigger, started strin
 		BlobSHA:         nil,
 		PreviousBlobSHA: "",
 		Pipeline:        pipelineLog{},
+		SkippedHookIDs:  []string{},
 		Attempts:        []pipelineLog{},
 		RetryCount:      0,
 		Report:          nil,
@@ -2410,6 +2465,222 @@ func exitCodeFromError(err error) int {
 		return ee.ExitCode()
 	}
 	return 1
+}
+
+func readRunnerHooks(stateDir string) ([]runnerHook, []string, error) {
+	path := filepath.Join(stateDir, ".hooks")
+	file, err := os.Open(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, []string{}, nil
+		}
+		return nil, nil, err
+	}
+	defer file.Close()
+	dec := json.NewDecoder(file)
+	dec.DisallowUnknownFields()
+	var cfg hooksFile
+	if err := dec.Decode(&cfg); err != nil {
+		return nil, nil, err
+	}
+	if len(cfg.Hooks) > 50 {
+		return nil, nil, errors.New("hooks count exceeds 50")
+	}
+	seen := map[string]bool{}
+	skipped := []string{}
+	for i := range cfg.Hooks {
+		hook := &cfg.Hooks[i]
+		if !validRunnerHookID(hook.ID) {
+			return nil, nil, fmt.Errorf("invalid hook id: %s", hook.ID)
+		}
+		if seen[hook.ID] {
+			return nil, nil, fmt.Errorf("duplicate hook id: %s", hook.ID)
+		}
+		seen[hook.ID] = true
+		if hook.Phase != "pre" && hook.Phase != "post" {
+			return nil, nil, fmt.Errorf("invalid hook phase: %s", hook.ID)
+		}
+		if err := validateRunnerHookCommand(hook.CommandArgs); err != nil {
+			return nil, nil, fmt.Errorf("invalid hook command: %s", hook.ID)
+		}
+		if hook.TimeoutSeconds < 1 || hook.TimeoutSeconds > 3600 {
+			return nil, nil, fmt.Errorf("invalid hook timeout: %s", hook.ID)
+		}
+		if _, err := time.Parse(time.RFC3339, hook.CreatedAt); err != nil {
+			return nil, nil, fmt.Errorf("invalid hook created_at: %s", hook.ID)
+		}
+		if !hook.Enabled {
+			skipped = append(skipped, hook.ID)
+		}
+	}
+	sort.Slice(cfg.Hooks, func(i, j int) bool { return cfg.Hooks[i].ID < cfg.Hooks[j].ID })
+	sort.Strings(skipped)
+	return cfg.Hooks, skipped, nil
+}
+
+func validRunnerHookID(id string) bool {
+	if len(id) < 1 || len(id) > 64 {
+		return false
+	}
+	for _, r := range id {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func validateRunnerHookCommand(args []string) error {
+	if len(args) < 1 || len(args) > 20 {
+		return errors.New("command_args length invalid")
+	}
+	for i, arg := range args {
+		limit := 500
+		if i == 0 {
+			limit = 256
+		}
+		if arg == "" || len(arg) > limit || strings.ContainsAny(arg, "\x00\n\r") {
+			return fmt.Errorf("command_args[%d] invalid", i)
+		}
+	}
+	return nil
+}
+
+func executeRunnerHooks(cfg RunnerConfig, target BranchTarget, buildID, phase, commitSHA, buildAt string, changedTargets []string, hooks []runnerHook, logger *slog.Logger) ([]string, *string, bool) {
+	warnings := []string{}
+	exitBump := false
+	for _, hook := range hooks {
+		if !hook.Enabled || hook.Phase != phase {
+			continue
+		}
+		result := runRunnerHook(cfg, target, buildID, commitSHA, buildAt, changedTargets, hook)
+		if err := writeRunnerHookLog(cfg.StateDir, result); err != nil {
+			logger.Error("HOOK_LOG_WRITE_FAILED: " + err.Error())
+			if phase == "pre" {
+				msg := "hook log write failed"
+				return warnings, &msg, true
+			}
+			warnings = append(warnings, "HOOK_LOG_WRITE_FAILED:"+hook.ID)
+			exitBump = true
+			continue
+		}
+		if result.Status == "success" {
+			continue
+		}
+		if phase == "pre" && hook.AbortOnFailure {
+			msg := "pre hook failed"
+			return warnings, &msg, true
+		}
+		if phase == "post" {
+			warnings = append(warnings, "POST_HOOK_FAILED:"+hook.ID)
+			exitBump = true
+		} else {
+			warnings = append(warnings, "PRE_HOOK_FAILED:"+hook.ID)
+		}
+	}
+	return warnings, nil, exitBump
+}
+
+func runRunnerHook(cfg RunnerConfig, target BranchTarget, buildID, commitSHA, buildAt string, changedTargets []string, hook runnerHook) hookRunLog {
+	started := runnerNow().UTC()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(hook.TimeoutSeconds)*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, hook.CommandArgs[0], hook.CommandArgs[1:]...)
+	cmd.Dir = filepath.Dir(target.Src)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Env = runnerHookEnv(cfg, target, buildID, commitSHA, buildAt, changedTargets, hook)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	timedOut := ctx.Err() == context.DeadlineExceeded
+	if timedOut && cmd.Process != nil {
+		if killErr := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); killErr != nil && !errors.Is(killErr, os.ErrProcessDone) && !errors.Is(killErr, syscall.ESRCH) {
+			stderr.WriteString("\nHOOK_PROCESS_GROUP_KILL_FAILED")
+		}
+	}
+	status := "success"
+	exitCode := (*int)(nil)
+	if timedOut {
+		status = "timeout"
+	} else {
+		code := exitCodeFromError(err)
+		exitCode = &code
+		if code != 0 {
+			status = "failure"
+		}
+	}
+	finished := runnerNow().UTC()
+	stdoutText, stdoutTruncated := trimHookOutput(stdout.String(), runnerSecretValues(target.Env))
+	stderrText, stderrTruncated := trimHookOutput(stderr.String(), runnerSecretValues(target.Env))
+	duration := int64(finished.Sub(started).Seconds())
+	if duration < 0 {
+		duration = 0
+	}
+	return hookRunLog{
+		HookID: hook.ID, BuildID: buildID, Phase: hook.Phase, Status: status,
+		StartedAt: started.Format(time.RFC3339), FinishedAt: finished.Format(time.RFC3339), DurationSeconds: duration,
+		Stdout: stdoutText, Stderr: stderrText, ExitCode: exitCode, TimedOut: timedOut,
+		Truncated: stdoutTruncated || stderrTruncated,
+	}
+}
+
+func runnerHookEnv(cfg RunnerConfig, target BranchTarget, buildID, commitSHA, buildAt string, changedTargets []string, hook runnerHook) []string {
+	env := append(os.Environ(),
+		"ADLAIRE_CI_SRC="+target.Src,
+		"ADLAIRE_CI_OUT="+target.Out,
+		"ADLAIRE_CI_BRANCH="+target.Branch,
+		"ADLAIRE_CI_BUILD_ID="+buildID,
+		"ADLAIRE_CI_COMMIT_SHA="+commitSHA,
+		"ADLAIRE_CI_BUILD_AT="+buildAt,
+		"ADLAIRE_CI_TARGET_FILE="+target.TargetFile,
+		"ADLAIRE_CI_STATE_DIR="+cfg.StateDir,
+		"ADLAIRE_CI_HOOK_ID="+hook.ID,
+		"ADLAIRE_CI_HOOK_PHASE="+hook.Phase,
+	)
+	if len(changedTargets) > 0 {
+		data, _ := json.Marshal(changedTargets)
+		env = append(env, "ADLAIRE_CHANGED_TARGETS="+string(data))
+	}
+	for key, value := range target.Env {
+		env = append(env, key+"="+value)
+	}
+	return env
+}
+
+func runnerSecretValues(env map[string]string) []string {
+	secrets := []string{}
+	for key, value := range env {
+		lower := strings.ToLower(key)
+		if value != "" && (strings.Contains(lower, "secret") || strings.Contains(lower, "token") || strings.Contains(lower, "password")) {
+			secrets = append(secrets, value)
+		}
+	}
+	return secrets
+}
+
+func trimHookOutput(s string, secrets []string) (string, bool) {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	s = strings.ReplaceAll(s, "\x00", "\\u0000")
+	s = strings.ToValidUTF8(s, "\uFFFD")
+	for _, secret := range secrets {
+		s = strings.ReplaceAll(s, secret, "***")
+	}
+	const max = 64 * 1024
+	if len(s) <= max {
+		return strings.TrimSuffix(s, "\n"), false
+	}
+	start := len(s) - max
+	for start < len(s) && !utf8.RuneStart(s[start]) {
+		start++
+	}
+	return strings.TrimSuffix(s[start:], "\n"), true
+}
+
+func writeRunnerHookLog(stateDir string, log hookRunLog) error {
+	return runnerAtomicWriteJSON(filepath.Join(stateDir, ".build_logs", log.BuildID+"_hook_"+log.HookID+".json"), log, 0600)
 }
 
 func shouldRetryPipeline(pl pipelineLog) bool {
@@ -3029,8 +3300,48 @@ func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started t
 		Trigger: trigger, TriggerActor: nil,
 		StartedAt: started.Format(time.RFC3339), FinishedAt: finished.Format(time.RFC3339),
 		DurationSeconds: int64(finished.Sub(started).Seconds()), Commit: commitInfo{},
-		BlobSHA: blobSHA, PreviousBlobSHA: prevSHA, Pipeline: *pl, Attempts: []pipelineLog{}, RetryCount: 0, Report: rep,
+		BlobSHA: blobSHA, PreviousBlobSHA: prevSHA, Pipeline: *pl, SkippedHookIDs: []string{}, Attempts: []pipelineLog{}, RetryCount: 0, Report: rep,
 		Warnings: []string{}, Deploy: []deployLog{}, SnapshotID: nil,
+		OutputSHA256: nil, OutputSizeBytes: nil, SizeWarn: false,
+		FailureCategory: failureCategory, Environment: currentBuildEnv(cfg), Error: &msg,
+	}
+	if err := writeBuildLog(cfg.StateDir, blog); err != nil {
+		logger.Error("BUILD_LOG_WRITE_FAILED: " + err.Error())
+		_ = writeBuildStatusError(cfg, "failure_state_write", trigger, err.Error())
+	}
+	if err := appendHistory(cfg.StateDir, blog); err != nil {
+		logger.Error("BUILD_HISTORY_WRITE_FAILED: " + err.Error())
+		_ = writeBuildStatusError(cfg, "failure_state_write", trigger, err.Error())
+	}
+	if err := updateBuildTrends(cfg, blog); err != nil {
+		logger.Warn("BUILD_TRENDS_WRITE_FAILED: " + err.Error())
+	}
+	if err := writeBuildStatusFinal(cfg, blog); err != nil {
+		logger.Error("BUILD_STATUS_WRITE_FAILED: " + err.Error())
+	}
+	sendBuildNotifications(cfg, blog, logger)
+}
+
+func logHookAbortFailure(cfg RunnerConfig, target BranchTarget, buildID string, started time.Time, blobSHA *string, prevSHA, trigger, msg string, skippedHookIDs []string, warnings []string, logger *slog.Logger) {
+	finished := runnerNow().UTC()
+	status := "hook_error"
+	failureCategory := buildFailureCategory(status)
+	normalizedStatus := buildStatusFromTargetStatus(status)
+	if skippedHookIDs == nil {
+		skippedHookIDs = []string{}
+	}
+	if warnings == nil {
+		warnings = []string{}
+	}
+	blog := buildLog{
+		ID: buildID, Status: normalizedStatus, Branch: target.Branch, TargetFile: target.TargetFile,
+		TargetFiles: append([]string(nil), target.TargetFiles...), ChangedTargets: []string{}, MatchedTags: []string{}, TargetStatus: status,
+		Trigger: trigger, TriggerActor: nil,
+		StartedAt: started.Format(time.RFC3339), FinishedAt: finished.Format(time.RFC3339),
+		DurationSeconds: int64(finished.Sub(started).Seconds()), Commit: commitInfo{},
+		BlobSHA: blobSHA, PreviousBlobSHA: prevSHA, Pipeline: pipelineLog{}, SkippedHookIDs: append([]string(nil), skippedHookIDs...),
+		Attempts: []pipelineLog{}, RetryCount: 0, Report: nil,
+		Warnings: append([]string(nil), warnings...), Deploy: []deployLog{}, SnapshotID: nil,
 		OutputSHA256: nil, OutputSizeBytes: nil, SizeWarn: false,
 		FailureCategory: failureCategory, Environment: currentBuildEnv(cfg), Error: &msg,
 	}
@@ -3220,6 +3531,8 @@ func buildFailureCategory(targetStatus string) *string {
 		category = "timeout"
 	case "failure_state_write":
 		category = "state_write_failure"
+	case "hook_error":
+		category = "hook_error"
 	default:
 		return nil
 	}

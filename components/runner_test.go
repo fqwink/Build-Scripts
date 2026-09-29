@@ -250,6 +250,112 @@ func TestRunnerCompletionLocalWatchDoesNotRequireToken(t *testing.T) {
 	}
 }
 
+func TestRunnerPhase2HooksPrePostSuccess(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
+	preMarker := filepath.Join(t.TempDir(), "pre.txt")
+	postMarker := filepath.Join(t.TempDir(), "post.txt")
+	preHook := filepath.Join(t.TempDir(), "pre-hook")
+	postHook := filepath.Join(t.TempDir(), "post-hook")
+	writeExecutable(t, preHook, fmt.Sprintf("#!/usr/bin/env bash\nset -u\nprintf '%%s' \"$MY_SECRET\"\nprintf '%%s' \"$ADLAIRE_CI_HOOK_PHASE:$ADLAIRE_CI_BRANCH\" > %q\n", preMarker))
+	writeExecutable(t, postHook, fmt.Sprintf("#!/usr/bin/env bash\nset -u\nprintf '%%s' \"$ADLAIRE_CI_HOOK_PHASE:$ADLAIRE_CI_BRANCH\" > %q\n", postMarker))
+	target := BranchTarget{
+		Branch: "main", TargetFile: "docs", SHAFile: filepath.Join(state, ".last_sha"),
+		Src: filepath.Join(state, "repo", "docs"), Out: filepath.Join(state, "dist", "site"),
+		Env: map[string]string{"MY_SECRET": "super-secret"},
+	}
+	writeRunnerTestJSON(t, filepath.Join(state, ".branch_config"), branchConfigFile{BranchTargets: []BranchTarget{target}})
+	writeRunnerTestJSON(t, filepath.Join(state, ".hooks"), hooksFile{Hooks: []runnerHook{
+		{ID: "disabled", Phase: "pre", CommandArgs: []string{preHook}, Enabled: false, AbortOnFailure: true, TimeoutSeconds: 300, CreatedAt: "2026-09-16T00:00:00Z"},
+		{ID: "pre", Phase: "pre", CommandArgs: []string{preHook}, Enabled: true, AbortOnFailure: true, TimeoutSeconds: 300, CreatedAt: "2026-09-16T00:00:00Z"},
+		{ID: "post", Phase: "post", CommandArgs: []string{postHook}, Enabled: true, AbortOnFailure: false, TimeoutSeconds: 300, CreatedAt: "2026-09-16T00:00:00Z"},
+	}})
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		log := onlyBuildLog(t, state)
+		if log.Status != "success" || log.TargetStatus != "success" || len(log.SkippedHookIDs) != 1 || log.SkippedHookIDs[0] != "disabled" {
+			t.Fatalf("unexpected hook build log: %+v", log)
+		}
+		if readFile(t, preMarker) != "pre:main" || readFile(t, postMarker) != "post:main" {
+			t.Fatalf("hook markers missing pre=%q post=%q", readFile(t, preMarker), readFile(t, postMarker))
+		}
+		preLog := readHookLog(t, state, log.ID, "pre")
+		if preLog.Status != "success" || preLog.Stdout != "***" || preLog.Truncated {
+			t.Fatalf("unexpected pre hook log: %+v", preLog)
+		}
+		postLog := readHookLog(t, state, log.ID, "post")
+		if postLog.Status != "success" || postLog.Phase != "post" {
+			t.Fatalf("unexpected post hook log: %+v", postLog)
+		}
+	})
+}
+
+func TestRunnerPhase2HooksPreAbortSkipsBuild(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipelineWithExtra(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "", `printf builder > "$out/builder-ran"`)
+	preHook := filepath.Join(t.TempDir(), "pre-hook")
+	writeExecutable(t, preHook, "#!/usr/bin/env bash\nprintf pre-failed\nexit 9\n")
+	writeRunnerTestJSON(t, filepath.Join(state, ".hooks"), hooksFile{Hooks: []runnerHook{
+		{ID: "pre_abort", Phase: "pre", CommandArgs: []string{preHook}, Enabled: true, AbortOnFailure: true, TimeoutSeconds: 300, CreatedAt: "2026-09-16T00:00:00Z"},
+	}})
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"old-blob\"}\n" {
+			t.Fatalf("sha changed after hook abort")
+		}
+		if _, err := os.Stat(filepath.Join(state, "dist", "site", "builder-ran")); !os.IsNotExist(err) {
+			t.Fatalf("builder ran after hook abort")
+		}
+		log := onlyBuildLog(t, state)
+		if log.Status != "failure" || log.TargetStatus != "hook_error" || log.Error == nil || *log.Error != "pre hook failed" {
+			t.Fatalf("unexpected abort log: %+v", log)
+		}
+		hookLog := readHookLog(t, state, log.ID, "pre_abort")
+		if hookLog.Status != "failure" || hookLog.ExitCode == nil || *hookLog.ExitCode != 9 || hookLog.Stdout != "pre-failed" {
+			t.Fatalf("unexpected hook log: %+v", hookLog)
+		}
+	})
+}
+
+func TestRunnerPhase2HooksPostFailureKeepsBuildStatus(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
+	postHook := filepath.Join(t.TempDir(), "post-hook")
+	writeExecutable(t, postHook, "#!/usr/bin/env bash\nprintf post-failed >&2\nexit 5\n")
+	writeRunnerTestJSON(t, filepath.Join(state, ".hooks"), hooksFile{Hooks: []runnerHook{
+		{ID: "post_fail", Phase: "post", CommandArgs: []string{postHook}, Enabled: true, AbortOnFailure: false, TimeoutSeconds: 300, CreatedAt: "2026-09-16T00:00:00Z"},
+	}})
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"new-blob\"}\n" {
+			t.Fatalf("sha not updated after successful build")
+		}
+		log := onlyBuildLog(t, state)
+		if log.Status != "success" || log.TargetStatus != "success" || !runnerTestContainsString(log.Warnings, "POST_HOOK_FAILED:post_fail") {
+			t.Fatalf("post failure changed build result or warning missing: %+v", log)
+		}
+		hookLog := readHookLog(t, state, log.ID, "post_fail")
+		if hookLog.Status != "failure" || hookLog.ExitCode == nil || *hookLog.ExitCode != 5 || hookLog.Stderr != "post-failed" {
+			t.Fatalf("unexpected hook log: %+v", hookLog)
+		}
+	})
+}
+
 func TestRunnerCompletionMultiFileChangedTargets(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
 	writePipelineWithExtra(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "", `if [ "${ADLAIRE_CHANGED_TARGETS:-}" != '["docs/a.md","docs/b.md"]' ]; then exit 8; fi`)
@@ -1142,12 +1248,34 @@ func onlyBuildLog(t *testing.T, state string) buildLog {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 1 {
-		t.Fatalf("expected one build log, got %d", len(entries))
+	mainLogs := []os.DirEntry{}
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".json") && !strings.Contains(entry.Name(), "_hook_") {
+			mainLogs = append(mainLogs, entry)
+		}
+	}
+	if len(mainLogs) != 1 {
+		t.Fatalf("expected one build log, got %d", len(mainLogs))
 	}
 	var log buildLog
-	readJSON(t, filepath.Join(state, ".build_logs", entries[0].Name()), &log)
+	readJSON(t, filepath.Join(state, ".build_logs", mainLogs[0].Name()), &log)
 	return log
+}
+
+func readHookLog(t *testing.T, state, buildID, hookID string) hookRunLog {
+	t.Helper()
+	var log hookRunLog
+	readJSON(t, filepath.Join(state, ".build_logs", buildID+"_hook_"+hookID+".json"), &log)
+	return log
+}
+
+func runnerTestContainsString(values []string, needle string) bool {
+	for _, value := range values {
+		if value == needle {
+			return true
+		}
+	}
+	return false
 }
 
 func writeRunnerTestJSON(t *testing.T, path string, v any) {
