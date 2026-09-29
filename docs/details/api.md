@@ -1917,25 +1917,25 @@ build 完了時の `output_sha256` 算出と history 保存は runner owner の�
 ---
 
 <a id="pipeline-config-api"></a>
-**ビルドパイプライン設定：**
+**標準 builder command 拡張設定：**
 
-[`docs/details/api.md` 詳細本文責務 ビルドパイプライン設定](api.md#pipeline-config-api) は、`GET /api/pipeline-config` と `POST /api/pipeline-config` の request / response、`.pipeline_config` read/write 境界だけを定義する。runner による `.pipeline_config` 読込タイミング、`extra_args` / `env` 適用、読込不能または schema 不正時の build 停止条件は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を参照する。
+[`docs/details/api.md` 詳細本文責務 標準 builder command 拡張設定](api.md#pipeline-config-api) は、`GET /api/pipeline-config` と `POST /api/pipeline-config` の request / response、`.pipeline_config` read/write 境界だけを定義する。runner による `.pipeline_config` 読込タイミング、`extra_args` / `env` 適用、読込不能または schema 不正時の build 停止条件は [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) を参照する。
 
 **`GET /api/pipeline-config` レスポンス例：**
 ```json
-{ "extra_args": ["--verbose"], "env": { "DEBUG": "1" }, "inline_yaml": null }
+{ "extra_args": ["--verbose"], "env": { "DEBUG": "1" } }
 ```
-初期値（未設定時）：`{ "extra_args": [], "env": {}, "inline_yaml": null }`
+初期値（未設定時）：`{ "extra_args": [], "env": {} }`
 
 **`POST /api/pipeline-config` リクエスト / レスポンス：**
 ```text
 // リクエスト
-{ "extra_args": "<GET /api/pipeline-config response extra_args>", "env": "<GET /api/pipeline-config response env>", "inline_yaml": "<GET /api/pipeline-config response inline_yaml>" }
+{ "extra_args": "<GET /api/pipeline-config response extra_args>", "env": "<GET /api/pipeline-config response env>" }
 // レスポンス: 200
 { "message": "Pipeline config updated" }
 ```
 
-`POST /api/pipeline-config` は `.pipeline_config` 全体置換とし、部分更新を許可しない。`extra_args`、`env`、`inline_yaml` のいずれかが欠ける場合は `422`。`inline_yaml` の空文字は保存前に `null` へ正規化し、空白だけの文字列は保持して runner の YAML 検証対象とする。正規化後値が既存値と一致する場合は `.pipeline_config`、`.config_log`、`.audit_log` を変更せず `{ "message":"No changes" }` を返す。
+`POST /api/pipeline-config` は `.pipeline_config` 全体置換とし、部分更新を許可しない。`extra_args` または `env` が欠ける場合、またはそれ以外の key が含まれる場合は `422`。保存前に API が `extra_args` の予約 builder option と `env` の key / value を検証する。検証規則は [`docs/details/statefile.md` 詳細本文責務 `.pipeline_config` schema](statefile.md#pipeline-config-schema) を参照する。保存値が既存値と一致する場合は `.pipeline_config`、`.config_log`、`.audit_log` を変更せず `{ "message":"No changes" }` を返す。
 
 ---
 
@@ -2757,7 +2757,7 @@ diff 生成は状態保存前に memory 上で完了させる。diff 生成に�
 | API 連動境界確認節 | 機能 | 入力 | 出力 | 状態ファイル / 外部副作用 | 失敗時副作用 | fixture 証跡参照 |
 |--------------------|------|------|------|---------------------------|--------------|----------------|
 | [`docs/details/runner.md` 詳細本文責務 §27.21](runner.md#sec-27-21) | 複数ファイル監視 | `.branch_config.branch_targets[].target_files`、GitHub content SHA または local SHA。 | `changed_targets[]`、target 単位 SHA cache、build log。 | 成功時だけ該当 target SHA cache を更新する。 | SHA 部分失敗では build を開始せず、成功取得済み cache も更新しない。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)。 |
-| [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) | pipeline YAML | `.pipeline.yml` または `.pipeline_config.inline_yaml`。 | `pipeline_steps[]`、step stdout/stderr、build status。 | step を定義順に実行し、build 終了時に定義順で保存する。 | parse / command 不正では build を開始しない。required step 失敗で後続 required step を実行しない。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)。 |
+| [`docs/details/runner.md` 詳細本文責務 §27.22](runner.md#sec-27-22) | 標準 builder command 拡張設定 | `.pipeline_config.extra_args` と `.pipeline_config.env`。 | 標準 builder argv / env、build status。 | runner が標準 builder command 組み立て直前に 1 回だけ読み、固定引数の後ろへ `extra_args` を追加し、環境変数 merge に `env` を反映する。 | schema 不正、予約 builder option、予約 env key では build を開始しない。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)。 |
 | [`docs/details/runner.md` 詳細本文責務 §27.23](runner.md#sec-27-23) | local watch | `.server_config.watch_mode`、local `src` 配下 Markdown。 | `.local_watch_state.json`、trigger `local_watch`。 | local mode では GitHub API / PAT を呼ばず、成功時だけ state を置換する。 | file read 失敗は build なし。dry-run は state を作成 / 更新しない。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)。 |
 | [`docs/details/runner.md` 詳細本文責務 §27.24](runner.md#sec-27-24) | tag filter | `.server_config.tag_filter`、GitHub tags refs。 | `matched_tags[]`、skip status。 | tag 一致時だけ build。tag 不一致 skip は `.build_status.json` だけ更新する。 | tags API 最終失敗は build なし。local mode 併用は終了コード `2`。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)。 |
 | [`docs/details/builder.md` 詳細本文責務 §27.25](builder.md#sec-27-25) | build cache | `--cache-dir`、cache 設定、input / deps SHA。 | cache entry、page cache、`[REPORT]` cache counts。 | hit 時は変換結果を再利用し、miss 成功時だけ entry を書く。 | cache read/write 失敗は build を成功可能にし、WARN / report に残す。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)。 |

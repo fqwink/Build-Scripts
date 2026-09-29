@@ -3030,7 +3030,50 @@ func (s *APIServer) handleVerifyOutput(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *APIServer) handlePipelineConfig(w http.ResponseWriter, r *http.Request) {
-	s.handleGenericConfigFile(w, r, ".pipeline_config", "pipeline_config", validatePipelineConfig)
+	path := filepath.Join(s.cfg.StateDir, ".pipeline_config")
+	switch r.Method {
+	case http.MethodGet:
+		if !rejectBody(w, r) {
+			return
+		}
+		value, _, err := readOptionalJSONMap(path)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		if value == nil {
+			value = defaultPipelineConfig()
+		}
+		writeJSON(w, http.StatusOK, value)
+	case http.MethodPost:
+		var value map[string]any
+		if !decodeBody(w, r, &value, true) {
+			return
+		}
+		if !validatePipelineConfig(w, value) {
+			return
+		}
+		current, _, err := readOptionalJSONMap(path)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "State file is corrupted")
+			return
+		}
+		if current == nil {
+			current = defaultPipelineConfig()
+		}
+		if mapsEqual(current, value) {
+			writeJSON(w, http.StatusOK, map[string]string{"message": "No changes"})
+			return
+		}
+		if err := atomicWriteJSON(path, value, 0600); err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".config_log"), apiConfigLogRecord{At: s.nowString(), Type: "pipeline_config", Changes: maskSecrets(value)})
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Pipeline config updated"})
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
 }
 
 func (s *APIServer) handleNotes(w http.ResponseWriter, r *http.Request) {
@@ -4903,15 +4946,80 @@ func mapWithoutID(value map[string]any) map[string]any {
 	return out
 }
 
+func defaultPipelineConfig() map[string]any {
+	return map[string]any{"extra_args": []any{}, "env": map[string]any{}}
+}
+
 func validatePipelineConfig(w http.ResponseWriter, value map[string]any) bool {
+	if len(value) != 2 {
+		writeValidation(w, "body", "extra_args and env required")
+		return false
+	}
+	for key := range value {
+		if key != "extra_args" && key != "env" {
+			writeValidation(w, key, "unknown field")
+			return false
+		}
+	}
 	raw, ok := value["extra_args"].([]any)
 	if !ok {
-		return true
+		writeValidation(w, "extra_args", "required")
+		return false
 	}
-	reserved := map[string]bool{"--src": true, "--out": true, "--state-dir": true}
+	if len(raw) > 50 {
+		writeValidation(w, "extra_args", "too many")
+		return false
+	}
+	reserved := []string{"--src", "--out", "--build-id", "--commit-sha", "--build-at", "--cache-dir", "--version", "--help"}
 	for _, item := range raw {
-		if reserved[fmt.Sprint(item)] {
-			writeValidation(w, "extra_args", "reserved arg")
+		arg, ok := item.(string)
+		if !ok || arg == "" || strings.ContainsAny(arg, "\x00\n\r") {
+			writeValidation(w, "extra_args", "invalid value")
+			return false
+		}
+		for _, option := range reserved {
+			if arg == option || strings.HasPrefix(arg, option+"=") {
+				writeValidation(w, "extra_args", "reserved arg")
+				return false
+			}
+		}
+	}
+	env, ok := value["env"].(map[string]any)
+	if !ok {
+		writeValidation(w, "env", "required")
+		return false
+	}
+	if len(env) > 100 {
+		writeValidation(w, "env", "too many")
+		return false
+	}
+	for key, rawValue := range env {
+		stringValue, ok := rawValue.(string)
+		if !ok || !validPipelineEnvKey(key) || strings.HasPrefix(key, "ADLAIRE_CI_") || strings.ContainsAny(stringValue, "\x00\n\r") || len(stringValue) > 4096 {
+			writeValidation(w, "env", "invalid value")
+			return false
+		}
+		switch key {
+		case "PATH", "HOME", "SHELL", "USER", "GITHUB_TOKEN", "ADLAIRE_TOKEN", "ADLAIRE_CHANGED_TARGETS":
+			writeValidation(w, "env", "reserved key")
+			return false
+		}
+	}
+	return true
+}
+
+func validPipelineEnvKey(key string) bool {
+	if key == "" || len(key) > 64 {
+		return false
+	}
+	for i, r := range key {
+		if i == 0 {
+			if r != '_' && (r < 'A' || r > 'Z') {
+				return false
+			}
+			continue
+		}
+		if r != '_' && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
 			return false
 		}
 	}

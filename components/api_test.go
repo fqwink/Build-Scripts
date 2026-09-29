@@ -1113,10 +1113,24 @@ func TestAPIPhase4RulePipelineNotesAndLayoutFixtures(t *testing.T) {
 	}
 	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".alert_rules", ".config_log"}))
 
+	resp = apiRequest(t, server, http.MethodGet, "/api/pipeline-config", token, nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("pipeline config default code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var pipelineDefault map[string]any
+	decodeTestJSON(t, resp.Body.Bytes(), &pipelineDefault)
+	if len(pipelineDefault) != 2 || len(pipelineDefault["extra_args"].([]any)) != 0 || len(pipelineDefault["env"].(map[string]any)) != 0 {
+		t.Fatalf("unexpected pipeline config default: %#v", pipelineDefault)
+	}
 	before = snapshotFiles(t, state, []string{".pipeline_config"})
-	resp = apiRequest(t, server, http.MethodPost, "/api/pipeline-config", token, map[string]any{"extra_args": []string{"--src"}})
+	resp = apiRequest(t, server, http.MethodPost, "/api/pipeline-config", token, map[string]any{"extra_args": []string{"--src"}, "env": map[string]string{}})
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("reserved pipeline arg code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".pipeline_config"}))
+	resp = apiRequest(t, server, http.MethodPost, "/api/pipeline-config", token, map[string]any{"extra_args": []string{}, "env": map[string]string{}, "unknown_key": nil})
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("unknown pipeline config key code=%d body=%s", resp.Code, resp.Body.String())
 	}
 	assertSnapshotEqual(t, before, snapshotFiles(t, state, []string{".pipeline_config"}))
 

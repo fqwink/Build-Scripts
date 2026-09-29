@@ -95,7 +95,7 @@ Adlaire CI は、Markdown からの静的 Web サイト生成、source 変更検
 | Git・GitHub 参照 | `runner` の source 取得は GitHub REST API の Blobs / Trees API を Go 標準ライブラリ `net/http` 経由で行う。`release` の local commit / tag / source 参照は read-only Git command、remote repository / branch / tag / Release 参照は GitHub REST API を使用する。実行時の Git 状態変更、ref 作成・更新・削除、fetch、checkout、merge、commit、push は行わない。 |
 | フロントエンド | HTML / CSS / Vanilla JavaScript |
 | 標準運用 | systemd を使用する自己管理 Linux CI サーバーでビルドし、別ホストの静的コンテンツ配信サーバーへ SSH で転送する 2 サーバー構成 |
-| データ交換形式 | 構造化 API request / response は JSON に統一し、CSV・XML 等の代替構造化形式を使用しない。例外は、保存済み build log の有限 SSE response、保存済み snapshot の binary response、管理ツールの静的 asset response だけとする。例外となる endpoint、media type、body、失敗時 JSON response は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK の受信・変換契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする。詳細本文責務に明示されていない非 JSON API 交換を実装してはならない |
+| データ交換形式 | 構造化 API request / response、Adlaire CI が読み書きまたは解釈する状態ファイル、設定ファイル、build 拡張設定は JSON に統一し、YAML・CSV・XML 等の代替構造化形式を使用しない。この禁止は Adlaire CI の runtime / API / state / build 定義に適用し、GitHub Actions / GitHub workflow の `.github/workflows/*.yml` / `.github/workflows/*.yaml` は対象外とする。例外は、保存済み build log の有限 SSE response、保存済み snapshot の binary response、管理ツールの静的 asset response だけとする。例外となる endpoint、media type、body、失敗時 JSON response は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK の受信・変換契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする。詳細本文責務に明示されていない非 JSON API 交換、状態設定、build 定義を実装してはならない |
 
 <a id="41-ゼロ依存フルインハウス原則"></a>
 
@@ -366,6 +366,8 @@ Phase は、対象 owner component、実装範囲、依存条件、完了条件�
 
 実装作業の Pull Request は Phase を境界としなければならない。Phase を Pull Request の境界にする理由は、仕様根拠、対象 owner、実装範囲、検証条件、完了判定を一つの責務単位に固定し、複数 Phase の混在、同一 Phase の並行分割、後続 Phase の先取り、仕様根拠のない実装補完を禁止するためである。
 
+Phase を Pull Request の境界にすることは、Phase の一部分だけを完了扱いにすることを意味しない。実装作業の Pull Request は、対象 Phase 全体の実装、検証、証跡、状態整合が完了した単位で扱う。Phase 内に未実装、未検証、仕様不整合、証跡不足、状態更新不足が残る状態を、Pull Request 作成可能、review ready、merge 可能、または完了済みとして扱ってはならない。
+
 <a id="47-実装着手ゲート方針"></a>
 
 <a id="sec-4-7"></a>
@@ -627,6 +629,12 @@ Go 版初期実装で新規実装へ着手できる対象は、[`docs/ROADMAP.md
 実装順序、実装計画、実装 PR、完了判定は Phase 単位で行わなければならない。
 
 実装を主目的とする Pull Request は、1 本につき 1 Phase だけを対象にしなければならない。複数 Phase の実装変更を 1 本の Pull Request に混在させてはならない。同一 Phase の実装変更を複数の並行 Pull Request へ分割してはならない。active Phase に対応する open Pull Request が既に存在する場合、同じ Phase の追加実装、修正、検証、仕様根拠の補強は新規 Pull Request を作成せず、既存の該当 Phase Pull Request へ統合しなければならない。
+
+対象 Phase 全体が完了するまで、実装を主目的とする Pull Request を作成してはならない。既に active Phase に対応する open Pull Request が存在する場合、その Pull Request は Phase 全体完了まで work in progress として扱い、review ready、merge 可能、完了済みとして報告してはならない。
+
+Phase 全体完了とは、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan) で対象 Phase に割り当てられた全 owner、全機能、全依存条件について、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の実装契約、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の必須 acceptance assertion と実装検証証跡、[`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition)、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) の完了判定を満たすことをいう。
+
+Phase 内に `仕様化済み・未実装`、`実装中・検証未完了`、未実行の必須検証、未記録の実装検証証跡、未解消の仕様不整合、未反映の状態・索引更新が残る場合、実装者は同一作業ブランチで実装、検証、不整合修正、再検証を繰り返さなければならない。この反復を省略して Pull Request 作成、完了報告、または merge 可能報告を行ってはならない。
 
 仕様全般に基づく実装とは、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に到達し、その全てと矛盾しない実装だけを行うことをいう。これらのいずれかで対象 Phase、対象機能、入力、出力、状態、副作用、異常系、検証条件、完了条件が未定義または矛盾している場合、実装者はコード判断で補完してはならない。先に該当する責務正本を改訂し、仕様根拠を確定してから実装しなければならない。
 
