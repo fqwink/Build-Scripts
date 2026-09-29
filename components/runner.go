@@ -32,6 +32,7 @@ var runnerGitHubAPIBase = "https://api.github.com"
 var runnerNow = time.Now
 var runnerSleep = time.Sleep
 var runnerBinaryVersion = "V.0.0-dev"
+var runnerBuilderVersionTimeout = 2 * time.Second
 
 type RunnerConfig struct {
 	DryRun                     bool
@@ -200,11 +201,20 @@ type commitInfo struct {
 }
 
 type pipelineLog struct {
-	ExitCode        *int   `json:"exit_code"`
-	Stdout          string `json:"stdout"`
-	Stderr          string `json:"stderr"`
-	StdoutTruncated bool   `json:"stdout_truncated"`
-	StderrTruncated bool   `json:"stderr_truncated"`
+	ExitCode        *int            `json:"exit_code"`
+	Stdout          string          `json:"stdout"`
+	Stderr          string          `json:"stderr"`
+	StdoutTruncated bool            `json:"stdout_truncated"`
+	StderrTruncated bool            `json:"stderr_truncated"`
+	TargetStatus    string          `json:"-"`
+	ErrorMessage    string          `json:"-"`
+	EnvKeys         []string        `json:"-"`
+	RemoteBuild     *remoteBuildLog `json:"-"`
+}
+
+type pipelineConfigFile struct {
+	ExtraArgs []string          `json:"extra_args"`
+	Env       map[string]string `json:"env"`
 }
 
 type hooksFile struct {
@@ -264,52 +274,117 @@ type deployLog struct {
 	FilesSkipped     int     `json:"files_skipped"`
 	BytesUploaded    int64   `json:"bytes_uploaded"`
 	Error            *string `json:"error"`
+	StartedAt        string  `json:"-"`
+	FinishedAt       string  `json:"-"`
 }
 
 type buildLog struct {
-	ID              string        `json:"id"`
-	Status          string        `json:"status"`
-	Branch          string        `json:"branch"`
-	TargetFile      string        `json:"target_file"`
-	TargetFiles     []string      `json:"target_files"`
-	ChangedTargets  []string      `json:"changed_targets"`
-	MatchedTags     []string      `json:"matched_tags"`
-	TargetStatus    string        `json:"target_status"`
-	Trigger         string        `json:"trigger"`
-	TriggerActor    *string       `json:"trigger_actor"`
-	StartedAt       string        `json:"started_at"`
-	FinishedAt      string        `json:"finished_at"`
-	DurationSeconds int64         `json:"duration_seconds"`
-	Commit          commitInfo    `json:"commit"`
-	BlobSHA         *string       `json:"blob_sha"`
-	PreviousBlobSHA string        `json:"previous_blob_sha"`
-	Pipeline        pipelineLog   `json:"pipeline"`
-	SkippedHookIDs  []string      `json:"skipped_hook_ids"`
-	Attempts        []pipelineLog `json:"attempts"`
-	RetryCount      int           `json:"retry_count"`
-	Report          *runnerReport `json:"report"`
-	Warnings        []string      `json:"warnings"`
-	Deploy          []deployLog   `json:"deploy"`
-	SnapshotID      *string       `json:"snapshot_id"`
-	OutputSHA256    *string       `json:"output_sha256"`
-	OutputSizeBytes *int64        `json:"output_size_bytes"`
-	SizeWarn        bool          `json:"size_warn"`
-	FailureCategory *string       `json:"failure_category"`
-	CommitStatus    *string       `json:"commit_status_state"`
-	Environment     buildEnvLog   `json:"environment"`
-	Error           *string       `json:"error"`
+	ID               string            `json:"id"`
+	Status           string            `json:"status"`
+	Branch           string            `json:"branch"`
+	TargetFile       string            `json:"target_file"`
+	TargetFiles      []string          `json:"target_files"`
+	ChangedTargets   []string          `json:"changed_targets"`
+	MatchedTags      []string          `json:"matched_tags"`
+	TargetStatus     string            `json:"target_status"`
+	Trigger          string            `json:"trigger"`
+	TriggerActor     *string           `json:"trigger_actor"`
+	StartedAt        string            `json:"started_at"`
+	FinishedAt       string            `json:"finished_at"`
+	DurationSeconds  int64             `json:"duration_seconds"`
+	Commit           commitInfo        `json:"commit"`
+	CommitSHA        *string           `json:"commit_sha"`
+	CommitMessage    *string           `json:"commit_message"`
+	CommitAuthor     *string           `json:"commit_author"`
+	CommitAt         *string           `json:"commit_at"`
+	BlobSHA          *string           `json:"blob_sha"`
+	PreviousBlobSHA  string            `json:"previous_blob_sha"`
+	Pipeline         pipelineLog       `json:"pipeline"`
+	SkippedHookIDs   []string          `json:"skipped_hook_ids"`
+	Attempts         []pipelineLog     `json:"attempts"`
+	RetryCount       int               `json:"retry_count"`
+	RemoteBuild      *remoteBuildLog   `json:"remote_build"`
+	Chain            any               `json:"chain"`
+	ChainSummary     any               `json:"chain_summary"`
+	Report           *runnerReport     `json:"report"`
+	Warnings         []string          `json:"warnings"`
+	Deploy           []deployLog       `json:"deploy"`
+	TargetResults    []targetResultLog `json:"target_results"`
+	SnapshotID       *string           `json:"snapshot_id"`
+	RollbackFrom     *string           `json:"rollback_from"`
+	TransferVerified *bool             `json:"transfer_verified"`
+	OutputSHA256     *string           `json:"output_sha256"`
+	OutputSizeBytes  *int64            `json:"output_size_bytes"`
+	SizeWarn         bool              `json:"size_warn"`
+	FailureCategory  *string           `json:"failure_category"`
+	FailureEvidence  []failureEvidence `json:"failure_evidence"`
+	CommitStatus     *string           `json:"commit_status_state"`
+	CommitStatusLog  *commitStatusLog  `json:"commit_status"`
+	BuildMeta        *buildMetaLog     `json:"build_meta"`
+	Environment      buildEnvLog       `json:"environment"`
+	Error            *string           `json:"error"`
+}
+
+type remoteBuildLog struct {
+	Host              string  `json:"host"`
+	User              string  `json:"user"`
+	WorkDirBasename   string  `json:"work_dir_basename"`
+	CommandName       string  `json:"command_name"`
+	ExitCode          *int    `json:"exit_code"`
+	DurationSeconds   int64   `json:"duration_seconds"`
+	ArtifactSizeBytes *int64  `json:"artifact_size_bytes"`
+	ManifestFileCount *int    `json:"manifest_file_count"`
+	Status            string  `json:"status"`
+	Error             *string `json:"error"`
+}
+
+type commitStatusLog struct {
+	Enabled    bool    `json:"enabled"`
+	State      *string `json:"state"`
+	Context    string  `json:"context"`
+	TargetURL  *string `json:"target_url"`
+	SentAt     *string `json:"sent_at"`
+	HTTPStatus *int    `json:"http_status"`
+	Error      *string `json:"error"`
+}
+
+type buildMetaLog struct {
+	BuildID   string `json:"build_id"`
+	CommitSHA string `json:"commit_sha"`
+	BuildAt   string `json:"build_at"`
+}
+
+type targetResultLog struct {
+	TargetID   string  `json:"target_id"`
+	Status     string  `json:"status"`
+	StartedAt  string  `json:"started_at"`
+	FinishedAt string  `json:"finished_at"`
+	ErrorCode  *string `json:"error_code"`
+	Error      *string `json:"error"`
+}
+
+type failureEvidence struct {
+	Source  string `json:"source"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	At      string `json:"at"`
 }
 
 type buildEnvLog struct {
-	OS            string  `json:"os"`
-	Arch          string  `json:"arch"`
-	GoVersion     string  `json:"go_version"`
-	RunnerVersion string  `json:"runner_version"`
-	Hostname      *string `json:"hostname"`
-	PID           int     `json:"pid"`
-	WatchMode     string  `json:"watch_mode"`
-	CacheEnabled  bool    `json:"cache_enabled"`
-	RemoteBuild   bool    `json:"remote_build"`
+	OS             string   `json:"os"`
+	Arch           string   `json:"arch"`
+	GoVersion      string   `json:"go_version"`
+	RunnerVersion  string   `json:"runner_version"`
+	BuilderVersion string   `json:"builder_version"`
+	Hostname       string   `json:"hostname"`
+	PID            int      `json:"pid"`
+	WatchMode      string   `json:"watch_mode"`
+	CacheEnabled   bool     `json:"cache_enabled"`
+	RemoteBuild    bool     `json:"remote_build"`
+	StateDir       string   `json:"state_dir"`
+	DiskFreeBytes  *int64   `json:"disk_free_bytes"`
+	CapturedAt     string   `json:"captured_at"`
+	EnvKeys        []string `json:"env_keys"`
 }
 
 type historyRecord struct {
@@ -950,12 +1025,9 @@ func normalizeBranchTargets(targets []BranchTarget) []BranchTarget {
 		}
 		for j := range t.DeployTargets {
 			if t.DeployTargets[j].ID == "" {
-				t.DeployTargets[j].ID = fmt.Sprintf("deploy-%d", j+1)
+				t.DeployTargets[j].ID = fmt.Sprintf("%d-%d", i, j)
 			}
 		}
-		sort.SliceStable(t.DeployTargets, func(i, j int) bool {
-			return t.DeployTargets[i].ID < t.DeployTargets[j].ID
-		})
 		if t.Branch == "" {
 			t.Branch = fmt.Sprintf("target-%d", i+1)
 		}
@@ -1177,6 +1249,59 @@ func validRunnerEnvKey(key string) bool {
 		}
 	}
 	return true
+}
+
+func readRunnerPipelineConfig(stateDir string) (pipelineConfigFile, error) {
+	path := filepath.Join(stateDir, ".pipeline_config")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return pipelineConfigFile{}, err
+	}
+	dec := json.NewDecoder(strings.NewReader(string(data)))
+	dec.DisallowUnknownFields()
+	var config pipelineConfigFile
+	if err := dec.Decode(&config); err != nil {
+		return pipelineConfigFile{}, err
+	}
+	var extra struct{}
+	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+		return pipelineConfigFile{}, errors.New("pipeline config must contain one JSON object")
+	}
+	if err := validateRunnerPipelineConfig(config); err != nil {
+		return pipelineConfigFile{}, err
+	}
+	return config, nil
+}
+
+func validateRunnerPipelineConfig(config pipelineConfigFile) error {
+	if config.ExtraArgs == nil || config.Env == nil {
+		return errors.New("pipeline config requires extra_args and env")
+	}
+	if len(config.ExtraArgs) > 50 {
+		return errors.New("too many pipeline extra args")
+	}
+	for _, arg := range config.ExtraArgs {
+		if !utf8.ValidString(arg) || arg == "" || strings.ContainsAny(arg, "\x00\n\r") {
+			return errors.New("invalid pipeline extra arg")
+		}
+		if reservedPipelineExtraArg(arg) {
+			return errors.New("reserved pipeline extra arg")
+		}
+	}
+	if err := validateRunnerEnv(config.Env); err != nil {
+		return fmt.Errorf("invalid pipeline env: %w", err)
+	}
+	return nil
+}
+
+func reservedPipelineExtraArg(arg string) bool {
+	reserved := []string{"--src", "--out", "--build-id", "--commit-sha", "--build-at", "--cache-dir", "--version", "--help"}
+	for _, option := range reserved {
+		if arg == option || strings.HasPrefix(arg, option+"=") {
+			return true
+		}
+	}
+	return false
 }
 
 func executeRunnerDryRun(cfg RunnerConfig, stdout io.Writer) int {
@@ -1639,7 +1764,8 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		recordCircuitFailure(cfg, "source write failed")
 		return 1
 	}
-	if err := precheckRunnerTarget(cfg, target); err != nil {
+	builderVersion, err := precheckRunnerTarget(cfg, target)
+	if err != nil {
 		logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, trigger, "failure_precheck", "precheck failed", nil, nil, logger)
 		recordCircuitFailure(cfg, "precheck failed")
 		return 1
@@ -1702,7 +1828,18 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 	status := "success"
 	var errText *string
 	exitCode := 0
-	if pl.ExitCode == nil {
+	if pl.TargetStatus != "" {
+		status = pl.TargetStatus
+		msg := pl.ErrorMessage
+		if msg == "" {
+			msg = "pipeline failed"
+		}
+		errText = &msg
+		exitCode = 1
+		if pl.TargetStatus == "failure_pipeline_config" {
+			exitCode = 2
+		}
+	} else if pl.ExitCode == nil {
 		status = "failure_timeout"
 		msg := "pipeline timeout"
 		errText = &msg
@@ -1747,7 +1884,10 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 	if size, ok := outputSizeBytes(target.Out); ok {
 		outputSize = &size
 	}
+	targetResults := buildTargetResults(deploys)
+	transferVerified := buildTransferVerified(deploys)
 	failureCategory := buildFailureCategory(status)
+	failureEvidence := buildFailureEvidence(status, failureCategory, finished)
 	normalizedStatus := buildStatusFromTargetStatus(status)
 	if cfg.CommitStatusEnabled {
 		state := "error"
@@ -1761,37 +1901,50 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		commitStatusState = &state
 	}
 	blog := buildLog{
-		ID:              buildID,
-		Status:          normalizedStatus,
-		Branch:          target.Branch,
-		TargetFile:      target.TargetFile,
-		TargetFiles:     append([]string(nil), target.TargetFiles...),
-		ChangedTargets:  append([]string(nil), resolved.ChangedTargets...),
-		MatchedTags:     append([]string(nil), matchedTags...),
-		TargetStatus:    status,
-		Trigger:         trigger,
-		TriggerActor:    nil,
-		StartedAt:       started.Format(time.RFC3339),
-		FinishedAt:      finished.Format(time.RFC3339),
-		DurationSeconds: int64(finished.Sub(started).Seconds()),
-		Commit:          commit,
-		BlobSHA:         &resolved.Digest,
-		PreviousBlobSHA: prevSHA,
-		Pipeline:        pl,
-		SkippedHookIDs:  skippedHookIDs,
-		Attempts:        attempts,
-		RetryCount:      retryCount,
-		Report:          rep,
-		Warnings:        append(warns, hookWarnings...),
-		Deploy:          deploys,
-		SnapshotID:      snapshotID,
-		OutputSHA256:    outputSHA,
-		OutputSizeBytes: outputSize,
-		SizeWarn:        rep != nil && rep.SizeWarn,
-		FailureCategory: failureCategory,
-		CommitStatus:    commitStatusState,
-		Environment:     currentBuildEnv(cfg),
-		Error:           errText,
+		ID:               buildID,
+		Status:           normalizedStatus,
+		Branch:           target.Branch,
+		TargetFile:       target.TargetFile,
+		TargetFiles:      append([]string(nil), target.TargetFiles...),
+		ChangedTargets:   append([]string(nil), resolved.ChangedTargets...),
+		MatchedTags:      append([]string(nil), matchedTags...),
+		TargetStatus:     status,
+		Trigger:          trigger,
+		TriggerActor:     nil,
+		StartedAt:        started.Format(time.RFC3339),
+		FinishedAt:       finished.Format(time.RFC3339),
+		DurationSeconds:  int64(finished.Sub(started).Seconds()),
+		Commit:           commit,
+		CommitSHA:        commit.SHA,
+		CommitMessage:    commit.Message,
+		CommitAuthor:     commit.Author,
+		CommitAt:         commit.Date,
+		BlobSHA:          &resolved.Digest,
+		PreviousBlobSHA:  prevSHA,
+		Pipeline:         pl,
+		SkippedHookIDs:   skippedHookIDs,
+		Attempts:         attempts,
+		RetryCount:       retryCount,
+		RemoteBuild:      pl.RemoteBuild,
+		Chain:            nil,
+		ChainSummary:     nil,
+		Report:           rep,
+		Warnings:         append(warns, hookWarnings...),
+		Deploy:           deploys,
+		TargetResults:    targetResults,
+		SnapshotID:       snapshotID,
+		RollbackFrom:     nil,
+		TransferVerified: transferVerified,
+		OutputSHA256:     outputSHA,
+		OutputSizeBytes:  outputSize,
+		SizeWarn:         rep != nil && rep.SizeWarn,
+		FailureCategory:  failureCategory,
+		FailureEvidence:  failureEvidence,
+		CommitStatus:     commitStatusState,
+		CommitStatusLog:  buildCommitStatusLog(cfg, commitStatusState, finished),
+		BuildMeta:        buildBuildMeta(rep),
+		Environment:      currentBuildEnv(cfg, builderVersion, pl.EnvKeys),
+		Error:            errText,
 	}
 	if err := writeBuildLog(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_LOG_WRITE_FAILED: " + err.Error())
@@ -1832,37 +1985,50 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 
 func runningBuildLog(buildID string, target BranchTarget, trigger, started string) buildLog {
 	return buildLog{
-		ID:              buildID,
-		Status:          "running",
-		Branch:          target.Branch,
-		TargetFile:      target.TargetFile,
-		TargetFiles:     append([]string(nil), target.TargetFiles...),
-		ChangedTargets:  []string{},
-		MatchedTags:     []string{},
-		TargetStatus:    "running",
-		Trigger:         trigger,
-		TriggerActor:    nil,
-		StartedAt:       started,
-		FinishedAt:      "",
-		DurationSeconds: 0,
-		Commit:          commitInfo{},
-		BlobSHA:         nil,
-		PreviousBlobSHA: "",
-		Pipeline:        pipelineLog{},
-		SkippedHookIDs:  []string{},
-		Attempts:        []pipelineLog{},
-		RetryCount:      0,
-		Report:          nil,
-		Warnings:        []string{},
-		Deploy:          []deployLog{},
-		SnapshotID:      nil,
-		OutputSHA256:    nil,
-		OutputSizeBytes: nil,
-		SizeWarn:        false,
-		FailureCategory: nil,
-		CommitStatus:    nil,
-		Environment:     buildEnvLog{},
-		Error:           nil,
+		ID:               buildID,
+		Status:           "running",
+		Branch:           target.Branch,
+		TargetFile:       target.TargetFile,
+		TargetFiles:      append([]string(nil), target.TargetFiles...),
+		ChangedTargets:   []string{},
+		MatchedTags:      []string{},
+		TargetStatus:     "running",
+		Trigger:          trigger,
+		TriggerActor:     nil,
+		StartedAt:        started,
+		FinishedAt:       "",
+		DurationSeconds:  0,
+		Commit:           commitInfo{},
+		CommitSHA:        nil,
+		CommitMessage:    nil,
+		CommitAuthor:     nil,
+		CommitAt:         nil,
+		BlobSHA:          nil,
+		PreviousBlobSHA:  "",
+		Pipeline:         pipelineLog{},
+		SkippedHookIDs:   []string{},
+		Attempts:         []pipelineLog{},
+		RetryCount:       0,
+		RemoteBuild:      nil,
+		Chain:            nil,
+		ChainSummary:     nil,
+		Report:           nil,
+		Warnings:         []string{},
+		Deploy:           []deployLog{},
+		TargetResults:    []targetResultLog{},
+		SnapshotID:       nil,
+		RollbackFrom:     nil,
+		TransferVerified: nil,
+		OutputSHA256:     nil,
+		OutputSizeBytes:  nil,
+		SizeWarn:         false,
+		FailureCategory:  nil,
+		FailureEvidence:  []failureEvidence{},
+		CommitStatus:     nil,
+		CommitStatusLog:  nil,
+		BuildMeta:        nil,
+		Environment:      buildEnvLog{},
+		Error:            nil,
 	}
 }
 
@@ -2265,12 +2431,12 @@ func materializeResolvedSource(src string, resolved resolvedRunnerTarget) error 
 	return nil
 }
 
-func precheckRunnerTarget(cfg RunnerConfig, target BranchTarget) error {
+func precheckRunnerTarget(cfg RunnerConfig, target BranchTarget) (string, error) {
 	if err := ensureDiskAvailable(filepath.Dir(target.Out)); err != nil {
-		return err
+		return "", err
 	}
 	if cfg.RemoteBuild.Enabled {
-		return nil
+		return "", nil
 	}
 	buildBin := os.Getenv("ADLAIRE_CI_BUILD_BIN")
 	if buildBin == "" {
@@ -2278,21 +2444,32 @@ func precheckRunnerTarget(cfg RunnerConfig, target BranchTarget) error {
 	}
 	info, err := os.Stat(buildBin)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if info.IsDir() || info.Mode()&0111 == 0 {
-		return fmt.Errorf("build binary is not executable: %s", buildBin)
+		return "", fmt.Errorf("build binary is not executable: %s", buildBin)
 	}
-	cmd := exec.Command(buildBin, "--version")
-	out, err := cmd.Output()
+	ctx, cancel := context.WithTimeout(context.Background(), runnerBuilderVersionTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, buildBin, "--version")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	if ctx.Err() == context.DeadlineExceeded {
+		return "", fmt.Errorf("build binary version timeout: %s", buildBin)
+	}
 	if err != nil {
-		return err
+		return "", err
 	}
-	fields := strings.Fields(string(out))
-	if len(fields) != 3 || fields[0] != "adlaire-ci-build" || fields[1] != runnerBinaryVersion || !strings.HasPrefix(fields[2], "go=") {
-		return fmt.Errorf("build binary version mismatch: %s", buildBin)
+	if strings.TrimSpace(stderr.String()) != "" {
+		return "", fmt.Errorf("build binary version wrote stderr: %s", buildBin)
 	}
-	return nil
+	fields := strings.Fields(stdout.String())
+	if len(fields) != 3 || fields[0] != "adlaire-ci-build" || fields[1] != runnerBinaryVersion || !strings.HasPrefix(fields[2], "go=") || fields[2] == "go=" {
+		return "", fmt.Errorf("build binary version mismatch: %s", buildBin)
+	}
+	return fields[1], nil
 }
 
 func ensureDiskAvailable(path string) error {
@@ -2314,6 +2491,22 @@ func runPipeline(cfg RunnerConfig, target BranchTarget, buildID, commitSHA, buil
 	if cfg.RemoteBuild.Enabled {
 		return runRemoteBuildPipeline(cfg, target, buildID, commitSHA, buildAt, changedTargets)
 	}
+	pipelineConfig, err := readRunnerPipelineConfig(cfg.StateDir)
+	if err != nil {
+		code := 2
+		stderr, stderrTruncated := trimLog(err.Error())
+		return pipelineLog{
+			ExitCode:        &code,
+			Stdout:          "",
+			Stderr:          stderr,
+			StdoutTruncated: false,
+			StderrTruncated: stderrTruncated,
+			TargetStatus:    "failure_pipeline_config",
+			ErrorMessage:    "pipeline config invalid",
+			EnvKeys:         runnerEnvironmentKeysFrom(target.Env, nil),
+		}
+	}
+	envKeys := runnerEnvironmentKeysFrom(target.Env, pipelineConfig.Env)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.BuildTimeoutSeconds)*time.Second)
 	defer cancel()
 	buildBin := os.Getenv("ADLAIRE_CI_BUILD_BIN")
@@ -2324,32 +2517,32 @@ func runPipeline(cfg RunnerConfig, target BranchTarget, buildID, commitSHA, buil
 	if cfg.BuildCacheEnabled {
 		args = append(args, "--cache-dir", cfg.StateDir)
 	}
+	args = append(args, pipelineConfig.ExtraArgs...)
 	cmd := exec.CommandContext(ctx, buildBin, args...)
 	cmd.Dir = filepath.Dir(target.Src)
-	env := append(os.Environ(),
-		"ADLAIRE_CI_SRC="+target.Src,
-		"ADLAIRE_CI_OUT="+target.Out,
-		"ADLAIRE_CI_BRANCH="+target.Branch,
-		"ADLAIRE_CI_BUILD_ID="+buildID,
-		"ADLAIRE_CI_TARGET_FILE="+target.TargetFile,
-		"ADLAIRE_CI_STATE_DIR="+cfg.StateDir,
-	)
+	fixedEnv := map[string]string{
+		"ADLAIRE_CI_SRC":         target.Src,
+		"ADLAIRE_CI_OUT":         target.Out,
+		"ADLAIRE_CI_BRANCH":      target.Branch,
+		"ADLAIRE_CI_BUILD_ID":    buildID,
+		"ADLAIRE_CI_TARGET_FILE": target.TargetFile,
+		"ADLAIRE_CI_STATE_DIR":   cfg.StateDir,
+	}
 	if len(changedTargets) > 0 {
 		data, _ := json.Marshal(changedTargets)
-		env = append(env, "ADLAIRE_CHANGED_TARGETS="+string(data))
+		fixedEnv["ADLAIRE_CHANGED_TARGETS"] = string(data)
 	}
-	for key, value := range target.Env {
-		env = append(env, key+"="+value)
-	}
-	cmd.Env = env
+	cmd.Env = mergeRunnerProcessEnv(os.Environ(), target.Env, pipelineConfig.Env, fixedEnv)
+	secrets := runnerSecretValues(target.Env)
+	secrets = append(secrets, runnerSecretValues(pipelineConfig.Env)...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	err := cmd.Run()
+	err = cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
-		trimmedStdout, stdoutTruncated := trimLog(stdout.String())
-		trimmedStderr, stderrTruncated := trimLog(stderr.String())
-		return pipelineLog{ExitCode: nil, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated}
+		trimmedStdout, stdoutTruncated := trimLogWithSecrets(stdout.String(), secrets)
+		trimmedStderr, stderrTruncated := trimLogWithSecrets(stderr.String(), secrets)
+		return pipelineLog{ExitCode: nil, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated, EnvKeys: envKeys}
 	}
 	code := 0
 	if err != nil {
@@ -2359,12 +2552,15 @@ func runPipeline(cfg RunnerConfig, target BranchTarget, buildID, commitSHA, buil
 			code = ee.ExitCode()
 		}
 	}
-	trimmedStdout, stdoutTruncated := trimLog(stdout.String())
-	trimmedStderr, stderrTruncated := trimLog(stderr.String())
-	return pipelineLog{ExitCode: &code, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated}
+	trimmedStdout, stdoutTruncated := trimLogWithSecrets(stdout.String(), secrets)
+	trimmedStderr, stderrTruncated := trimLogWithSecrets(stderr.String(), secrets)
+	return pipelineLog{ExitCode: &code, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated, EnvKeys: envKeys}
 }
 
 func runRemoteBuildPipeline(cfg RunnerConfig, target BranchTarget, buildID, commitSHA, buildAt string, changedTargets []string) pipelineLog {
+	envKeys := runnerEnvironmentKeysFrom(target.Env, nil)
+	started := runnerNow().UTC()
+	remoteLog := newRemoteBuildLog(cfg.RemoteBuild)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.BuildTimeoutSeconds)*time.Second)
 	defer cancel()
 	remote := cfg.RemoteBuild
@@ -2392,7 +2588,11 @@ func runRemoteBuildPipeline(cfg RunnerConfig, target BranchTarget, buildID, comm
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
-		return timeoutPipelineLog(stdout.String(), stderr.String())
+		pl := timeoutPipelineLog(stdout.String(), stderr.String())
+		pl.EnvKeys = envKeys
+		finishRemoteBuildLog(remoteLog, started, nil, "remote build timeout")
+		pl.RemoteBuild = remoteLog
+		return pl
 	}
 	code := exitCodeFromError(err)
 	if err == nil && remote.ArtifactPath != nil {
@@ -2401,12 +2601,66 @@ func runRemoteBuildPipeline(cfg RunnerConfig, target BranchTarget, buildID, comm
 		stderr.WriteString(scpStderr)
 		code = scpCode
 		if ctx.Err() == context.DeadlineExceeded {
-			return timeoutPipelineLog(stdout.String(), stderr.String())
+			pl := timeoutPipelineLog(stdout.String(), stderr.String())
+			pl.EnvKeys = envKeys
+			finishRemoteBuildLog(remoteLog, started, nil, "remote artifact timeout")
+			pl.RemoteBuild = remoteLog
+			return pl
 		}
 	}
 	trimmedStdout, stdoutTruncated := trimLog(stdout.String())
 	trimmedStderr, stderrTruncated := trimLog(stderr.String())
-	return pipelineLog{ExitCode: &code, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated}
+	errorText := ""
+	if code != 0 {
+		errorText = "remote build failed"
+	}
+	finishRemoteBuildLog(remoteLog, started, &code, errorText)
+	return pipelineLog{ExitCode: &code, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated, EnvKeys: envKeys, RemoteBuild: remoteLog}
+}
+
+func newRemoteBuildLog(remote RemoteBuildConfig) *remoteBuildLog {
+	host := derefString(remote.Host, "")
+	user := derefString(remote.User, "")
+	workDir := derefString(remote.WorkDir, "")
+	commandName := ""
+	if len(remote.CommandArgs) > 0 {
+		commandName = filepath.Base(remote.CommandArgs[0])
+	}
+	return &remoteBuildLog{
+		Host:              host,
+		User:              user,
+		WorkDirBasename:   filepath.Base(workDir),
+		CommandName:       commandName,
+		ExitCode:          nil,
+		DurationSeconds:   0,
+		ArtifactSizeBytes: nil,
+		ManifestFileCount: nil,
+		Status:            "failure",
+		Error:             nil,
+	}
+}
+
+func finishRemoteBuildLog(log *remoteBuildLog, started time.Time, exitCode *int, errorText string) {
+	if log == nil {
+		return
+	}
+	finished := runnerNow().UTC()
+	duration := int64(finished.Sub(started).Seconds())
+	if duration < 0 {
+		duration = 0
+	}
+	log.DurationSeconds = duration
+	log.ExitCode = exitCode
+	if errorText == "" && exitCode != nil && *exitCode == 0 {
+		log.Status = "success"
+		log.Error = nil
+		return
+	}
+	log.Status = "failure"
+	if errorText == "" {
+		errorText = "remote build failed"
+	}
+	log.Error = &errorText
 }
 
 func remoteEndpoint(remote RemoteBuildConfig) string {
@@ -2660,6 +2914,39 @@ func runnerSecretValues(env map[string]string) []string {
 	return secrets
 }
 
+func mergeRunnerProcessEnv(base []string, overlays ...map[string]string) []string {
+	order := []string{}
+	values := map[string]string{}
+	for _, entry := range base {
+		key, value, ok := strings.Cut(entry, "=")
+		if !ok || key == "" {
+			continue
+		}
+		if _, exists := values[key]; !exists {
+			order = append(order, key)
+		}
+		values[key] = value
+	}
+	for _, overlay := range overlays {
+		keys := make([]string, 0, len(overlay))
+		for key := range overlay {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			if _, exists := values[key]; !exists {
+				order = append(order, key)
+			}
+			values[key] = overlay[key]
+		}
+	}
+	out := make([]string, 0, len(order))
+	for _, key := range order {
+		out = append(out, key+"="+values[key])
+	}
+	return out
+}
+
 func trimHookOutput(s string, secrets []string) (string, bool) {
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	s = strings.ReplaceAll(s, "\r", "\n")
@@ -2684,7 +2971,10 @@ func writeRunnerHookLog(stateDir string, log hookRunLog) error {
 }
 
 func shouldRetryPipeline(pl pipelineLog) bool {
-	return pl.ExitCode == nil || (pl.ExitCode != nil && *pl.ExitCode != 0)
+	if pl.TargetStatus == "failure_pipeline_config" {
+		return false
+	}
+	return pl.ExitCode == nil
 }
 
 func parseRunnerReport(stdout string) (*runnerReport, []string) {
@@ -2729,10 +3019,17 @@ func atoi(s string) int {
 }
 
 func trimLog(s string) (string, bool) {
+	return trimLogWithSecrets(s, nil)
+}
+
+func trimLogWithSecrets(s string, secrets []string) (string, bool) {
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	s = strings.ReplaceAll(s, "\r", "\n")
 	s = strings.ReplaceAll(s, "\x00", "\\u0000")
 	s = strings.ToValidUTF8(s, "\uFFFD")
+	for _, secret := range secrets {
+		s = strings.ReplaceAll(s, secret, "***")
+	}
 	const max = 1024 * 1024
 	if len(s) <= max {
 		return strings.TrimSuffix(s, "\n"), false
@@ -2760,12 +3057,18 @@ func validateOutputSite(root string) error {
 }
 
 func executeDeploy(cfg RunnerConfig, branchIdx, deployIdx int, target BranchTarget, d DeployTarget, buildID string) deployLog {
-	dl := deployLog{TargetID: d.ID, Host: d.Host, User: d.User, DestDir: d.DestDir, Status: "success", TransferVerified: true}
+	started := runnerNow().UTC()
+	targetID := d.ID
+	if targetID == "" {
+		targetID = fmt.Sprintf("%d-%d", branchIdx, deployIdx)
+	}
+	dl := deployLog{TargetID: targetID, Host: d.Host, User: d.User, DestDir: d.DestDir, Status: "success", TransferVerified: true, StartedAt: started.Format(time.RFC3339)}
 	total, uploaded, skipped, bytesUploaded, err := deploySite(target.Out, d)
 	dl.FilesTotal = total
 	dl.FilesUploaded = uploaded
 	dl.FilesSkipped = skipped
 	dl.BytesUploaded = bytesUploaded
+	dl.FinishedAt = runnerNow().UTC().Format(time.RFC3339)
 	if err != nil {
 		errStr := err.Error()
 		dl.Status = "pending"
@@ -2776,7 +3079,7 @@ func executeDeploy(cfg RunnerConfig, branchIdx, deployIdx int, target BranchTarg
 		_ = addPendingTransfer(cfg.PendingFile, pendingTransfer{
 			BuildID: buildID, Trigger: "deploy", SourceKind: "output",
 			RollbackFrom: nil, SnapshotID: nil, Branch: target.Branch,
-			TargetID: d.ID, Out: &out, Host: d.Host, User: d.User, DestDir: d.DestDir,
+			TargetID: targetID, Out: &out, Host: d.Host, User: d.User, DestDir: d.DestDir,
 			OutputSHA256: derefString(outputSHA, ""), FailedAt: runnerNow().UTC().Format(time.RFC3339),
 			RetryCount: 0, LastError: errStr,
 		})
@@ -2821,6 +3124,74 @@ func executeDeploys(cfg RunnerConfig, branchIdx int, target BranchTarget, buildI
 	close(jobs)
 	wg.Wait()
 	return results
+}
+
+func buildTargetResults(deploys []deployLog) []targetResultLog {
+	results := make([]targetResultLog, 0, len(deploys))
+	for _, deploy := range deploys {
+		result := targetResultLog{
+			TargetID:   deploy.TargetID,
+			Status:     "success",
+			StartedAt:  deploy.StartedAt,
+			FinishedAt: deploy.FinishedAt,
+			ErrorCode:  nil,
+			Error:      nil,
+		}
+		if deploy.Status != "success" {
+			code := "deploy_ssh_error"
+			message := "deploy ssh failed"
+			result.Status = "failure"
+			result.ErrorCode = &code
+			result.Error = &message
+		}
+		results = append(results, result)
+	}
+	return results
+}
+
+func buildTransferVerified(deploys []deployLog) *bool {
+	if len(deploys) == 0 {
+		return nil
+	}
+	verified := true
+	for _, deploy := range deploys {
+		if deploy.Status != "success" || !deploy.TransferVerified {
+			verified = false
+			break
+		}
+	}
+	return &verified
+}
+
+func buildCommitStatusLog(cfg RunnerConfig, state *string, at time.Time) *commitStatusLog {
+	if !cfg.CommitStatusEnabled {
+		return nil
+	}
+	var sentAt *string
+	if state != nil {
+		value := at.UTC().Format(time.RFC3339)
+		sentAt = &value
+	}
+	return &commitStatusLog{
+		Enabled:    cfg.CommitStatusEnabled,
+		State:      state,
+		Context:    cfg.CommitStatusContext,
+		TargetURL:  cfg.CommitStatusTargetURL,
+		SentAt:     sentAt,
+		HTTPStatus: nil,
+		Error:      nil,
+	}
+}
+
+func buildBuildMeta(report *runnerReport) *buildMetaLog {
+	if report == nil {
+		return nil
+	}
+	return &buildMetaLog{
+		BuildID:   report.BuildID,
+		CommitSHA: report.CommitSHA,
+		BuildAt:   report.BuildAt,
+	}
 }
 
 func deploySite(out string, d DeployTarget) (int, int, int, int64, error) {
@@ -3293,6 +3664,7 @@ func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started t
 	}
 	finished := runnerNow().UTC()
 	failureCategory := buildFailureCategory(status)
+	failureEvidence := buildFailureEvidence(status, failureCategory, finished)
 	normalizedStatus := buildStatusFromTargetStatus(status)
 	blog := buildLog{
 		ID: buildID, Status: normalizedStatus, Branch: target.Branch, TargetFile: target.TargetFile,
@@ -3300,10 +3672,13 @@ func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started t
 		Trigger: trigger, TriggerActor: nil,
 		StartedAt: started.Format(time.RFC3339), FinishedAt: finished.Format(time.RFC3339),
 		DurationSeconds: int64(finished.Sub(started).Seconds()), Commit: commitInfo{},
+		CommitSHA: nil, CommitMessage: nil, CommitAuthor: nil, CommitAt: nil,
 		BlobSHA: blobSHA, PreviousBlobSHA: prevSHA, Pipeline: *pl, SkippedHookIDs: []string{}, Attempts: []pipelineLog{}, RetryCount: 0, Report: rep,
-		Warnings: []string{}, Deploy: []deployLog{}, SnapshotID: nil,
+		RemoteBuild: pl.RemoteBuild, Chain: nil, ChainSummary: nil,
+		Warnings: []string{}, Deploy: []deployLog{}, TargetResults: []targetResultLog{}, SnapshotID: nil,
+		RollbackFrom: nil, TransferVerified: nil,
 		OutputSHA256: nil, OutputSizeBytes: nil, SizeWarn: false,
-		FailureCategory: failureCategory, Environment: currentBuildEnv(cfg), Error: &msg,
+		FailureCategory: failureCategory, FailureEvidence: failureEvidence, CommitStatusLog: buildCommitStatusLog(cfg, nil, finished), BuildMeta: buildBuildMeta(rep), Environment: currentBuildEnv(cfg, "", runnerEnvironmentKeysFrom(target.Env, nil)), Error: &msg,
 	}
 	if err := writeBuildLog(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_LOG_WRITE_FAILED: " + err.Error())
@@ -3326,6 +3701,7 @@ func logHookAbortFailure(cfg RunnerConfig, target BranchTarget, buildID string, 
 	finished := runnerNow().UTC()
 	status := "hook_error"
 	failureCategory := buildFailureCategory(status)
+	failureEvidence := buildFailureEvidence(status, failureCategory, finished)
 	normalizedStatus := buildStatusFromTargetStatus(status)
 	if skippedHookIDs == nil {
 		skippedHookIDs = []string{}
@@ -3339,11 +3715,14 @@ func logHookAbortFailure(cfg RunnerConfig, target BranchTarget, buildID string, 
 		Trigger: trigger, TriggerActor: nil,
 		StartedAt: started.Format(time.RFC3339), FinishedAt: finished.Format(time.RFC3339),
 		DurationSeconds: int64(finished.Sub(started).Seconds()), Commit: commitInfo{},
+		CommitSHA: nil, CommitMessage: nil, CommitAuthor: nil, CommitAt: nil,
 		BlobSHA: blobSHA, PreviousBlobSHA: prevSHA, Pipeline: pipelineLog{}, SkippedHookIDs: append([]string(nil), skippedHookIDs...),
 		Attempts: []pipelineLog{}, RetryCount: 0, Report: nil,
-		Warnings: append([]string(nil), warnings...), Deploy: []deployLog{}, SnapshotID: nil,
+		RemoteBuild: nil, Chain: nil, ChainSummary: nil,
+		Warnings: append([]string(nil), warnings...), Deploy: []deployLog{}, TargetResults: []targetResultLog{}, SnapshotID: nil,
+		RollbackFrom: nil, TransferVerified: nil,
 		OutputSHA256: nil, OutputSizeBytes: nil, SizeWarn: false,
-		FailureCategory: failureCategory, Environment: currentBuildEnv(cfg), Error: &msg,
+		FailureCategory: failureCategory, FailureEvidence: failureEvidence, CommitStatusLog: buildCommitStatusLog(cfg, nil, finished), BuildMeta: nil, Environment: currentBuildEnv(cfg, "", runnerEnvironmentKeysFrom(target.Env, nil)), Error: &msg,
 	}
 	if err := writeBuildLog(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_LOG_WRITE_FAILED: " + err.Error())
@@ -3520,23 +3899,67 @@ func buildFailureCategory(targetStatus string) *string {
 	case "success_deploy_pending":
 		category = "deploy_failure"
 	case "failure_api":
-		category = "github_api_failure"
+		category = "github_api"
 	case "failure_decode":
-		category = "decode_failure"
+		category = "unknown"
 	case "failure_precheck":
-		category = "precheck_failure"
+		category = "resource_error"
 	case "failure_build":
-		category = "build_failure"
+		category = "pipeline_exit"
 	case "failure_timeout":
-		category = "timeout"
+		category = "pipeline_timeout"
 	case "failure_state_write":
-		category = "state_write_failure"
+		category = "resource_error"
+	case "failure_pipeline_config", "failure_tag_rule", "failure_target_missing":
+		category = "config_error"
+	case "failure_remote_build":
+		category = "pipeline_exit"
 	case "hook_error":
 		category = "hook_error"
 	default:
 		return nil
 	}
 	return &category
+}
+
+func buildFailureEvidence(targetStatus string, category *string, at time.Time) []failureEvidence {
+	if category == nil {
+		return []failureEvidence{}
+	}
+	source := "runner"
+	message := "runner failure"
+	switch *category {
+	case "github_api":
+		source = "github_api"
+		message = "github api failure"
+	case "pipeline_timeout":
+		source = "pipeline"
+		message = "pipeline timeout"
+	case "pipeline_exit":
+		source = "pipeline"
+		message = "pipeline exited non-zero"
+	case "deploy_failure":
+		source = "deploy"
+		message = "deploy verification failed"
+	case "hook_error":
+		source = "hook"
+		message = "hook failure"
+	case "config_error":
+		source = "config"
+		message = "configuration invalid"
+	case "resource_error":
+		source = "resource"
+		message = "resource failure"
+	case "unknown":
+		source = "runner"
+		message = "unknown failure"
+	}
+	return []failureEvidence{{
+		Source:  source,
+		Code:    *category,
+		Message: message,
+		At:      at.UTC().Format(time.RFC3339),
+	}}
 }
 
 func writeBuildStatusRunning(cfg RunnerConfig, buildID, trigger, branch, targetFile, started string) error {
@@ -3669,22 +4092,74 @@ func stringPtr(s string) *string {
 	return &s
 }
 
-func currentBuildEnv(cfg RunnerConfig) buildEnvLog {
-	var hostname *string
+func currentBuildEnv(cfg RunnerConfig, builderVersion string, envKeys []string) buildEnvLog {
+	hostname := "unknown"
 	if name, err := os.Hostname(); err == nil && name != "" {
-		hostname = &name
+		hostname = name
+		if len(hostname) > 255 {
+			hostname = hostname[:255]
+		}
 	}
 	return buildEnvLog{
-		OS:            runtime.GOOS,
-		Arch:          runtime.GOARCH,
-		GoVersion:     runtime.Version(),
-		RunnerVersion: runnerBinaryVersion,
-		Hostname:      hostname,
-		PID:           os.Getpid(),
-		WatchMode:     cfg.WatchMode,
-		CacheEnabled:  cfg.BuildCacheEnabled,
-		RemoteBuild:   cfg.RemoteBuild.Enabled,
+		OS:             runtime.GOOS,
+		Arch:           runtime.GOARCH,
+		GoVersion:      runtime.Version(),
+		RunnerVersion:  runnerBinaryVersion,
+		BuilderVersion: builderVersion,
+		Hostname:       hostname,
+		PID:            os.Getpid(),
+		WatchMode:      cfg.WatchMode,
+		CacheEnabled:   cfg.BuildCacheEnabled,
+		RemoteBuild:    cfg.RemoteBuild.Enabled,
+		StateDir:       runnerStateDirForLog(cfg.StateDir),
+		DiskFreeBytes:  runnerDiskFreeBytes(cfg.StateDir),
+		CapturedAt:     runnerNow().UTC().Format(time.RFC3339),
+		EnvKeys:        append([]string(nil), envKeys...),
 	}
+}
+
+func runnerStateDirForLog(stateDir string) string {
+	abs, err := filepath.Abs(stateDir)
+	if err != nil {
+		return stateDir
+	}
+	home, err := os.UserHomeDir()
+	if err == nil && home != "" {
+		if rel, err := filepath.Rel(home, abs); err == nil && rel != "." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) && rel != ".." {
+			return filepath.Base(abs)
+		}
+	}
+	return abs
+}
+
+func runnerDiskFreeBytes(path string) *int64 {
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(path, &stat); err != nil {
+		return nil
+	}
+	free := stat.Bavail * uint64(stat.Bsize)
+	maxInt64 := uint64(^uint64(0) >> 1)
+	if free > maxInt64 {
+		free = maxInt64
+	}
+	v := int64(free)
+	return &v
+}
+
+func runnerEnvironmentKeysFrom(branchEnv map[string]string, pipelineEnv map[string]string) []string {
+	keys := map[string]bool{}
+	for key := range branchEnv {
+		keys[key] = true
+	}
+	for key := range pipelineEnv {
+		keys[key] = true
+	}
+	out := make([]string, 0, len(keys))
+	for key := range keys {
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func writeBuildLog(stateDir string, log buildLog) error {

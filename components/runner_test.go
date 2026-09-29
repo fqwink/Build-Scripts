@@ -93,6 +93,9 @@ func TestRunnerFixtureR3BuildSuccessNoDeploy(t *testing.T) {
 		if log.Status != "success" || log.OutputSHA256 == nil || log.OutputSizeBytes == nil || log.Trigger != "polling" {
 			t.Fatalf("normalized log fields missing: %+v", log)
 		}
+		if log.BuildMeta == nil || log.BuildMeta.BuildID != log.ID || log.BuildMeta.BuildAt != log.StartedAt || log.TransferVerified != nil || log.RemoteBuild != nil || log.CommitStatusLog != nil {
+			t.Fatalf("schema auxiliary fields mismatch: %+v", log)
+		}
 		if log.Environment.RunnerVersion != "V.0.0-dev" || log.Environment.GoVersion == "" || log.Environment.OS == "" || log.Environment.Arch == "" {
 			t.Fatalf("environment record missing: %+v", log.Environment)
 		}
@@ -140,10 +143,211 @@ func TestRunnerFixtureR4PipelineFailure(t *testing.T) {
 		if log.TargetStatus != "failure_build" || log.Pipeline.ExitCode == nil || *log.Pipeline.ExitCode != 7 || log.Pipeline.Stdout != "before fail" || log.Pipeline.Stderr != "failed" || log.Error == nil || *log.Error != "pipeline failed" {
 			t.Fatalf("unexpected failure log: %+v", log)
 		}
-		if log.FailureCategory == nil || *log.FailureCategory != "build_failure" || log.Status != "failure" {
+		if log.FailureCategory == nil || *log.FailureCategory != "pipeline_exit" || log.Status != "failure" {
 			t.Fatalf("failure category not recorded: %+v", log)
 		}
+		if len(log.FailureEvidence) != 1 || log.FailureEvidence[0].Source != "pipeline" || log.FailureEvidence[0].Code != "pipeline_exit" || log.FailureEvidence[0].Message != "pipeline exited non-zero" {
+			t.Fatalf("failure evidence not recorded: %+v", log.FailureEvidence)
+		}
 	})
+}
+
+func TestRunnerPhase2PipelineConfigAppliesArgsEnvAndMasksSecret(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	argsFile := filepath.Join(state, "args.txt")
+	buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
+	writeExecutable(t, buildBin, fmt.Sprintf(`#!/usr/bin/env bash
+set -u
+if [ "${1:-}" = "--version" ]; then
+  printf 'adlaire-ci-build V.0.0-dev go=fake\n'
+  exit 0
+fi
+out=""
+for arg in "$@"; do
+  printf '%%s\n' "$arg" >> %q
+  if [ "$arg" = "--out" ]; then
+    shift
+    out="${1:-}"
+  fi
+  shift || true
+done
+if [ "${PIPELINE_ENV:-}" != "pipeline" ]; then
+  printf 'pipeline env mismatch' >&2
+  exit 6
+fi
+if [ "${BRANCH_VALUE:-}" != "pipeline-wins" ]; then
+  printf 'pipeline env precedence mismatch' >&2
+  exit 7
+fi
+if [ "${BRANCH_ONLY:-}" != "branch-only" ]; then
+  printf 'branch env missing' >&2
+  exit 8
+fi
+printf '{"extra_args":[],"env":{"MUTATED":"yes"}}' > "$ADLAIRE_CI_STATE_DIR/.pipeline_config"
+mkdir -p "$out/assets"
+printf '<html></html>' > "$out/index.html"
+printf 'body{}' > "$out/assets/style.css"
+printf 'console.log("ok")' > "$out/assets/app.js"
+printf '[]' > "$out/assets/search-index.json"
+printf 'secret=%%s\n' "$PIPELINE_SECRET"
+printf '[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default'
+`, argsFile))
+	t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+	var branches branchConfigFile
+	readJSON(t, filepath.Join(state, ".branch_config"), &branches)
+	branches.BranchTargets[0].Env = map[string]string{"BRANCH_VALUE": "branch", "BRANCH_ONLY": "branch-only"}
+	writeRunnerTestJSON(t, filepath.Join(state, ".branch_config"), branches)
+	writeRunnerTestJSON(t, filepath.Join(state, ".pipeline_config"), pipelineConfigFile{
+		ExtraArgs: []string{"--theme", "adlaire-alt", "--flag=value"},
+		Env: map[string]string{
+			"BRANCH_VALUE":    "pipeline-wins",
+			"PIPELINE_ENV":    "pipeline",
+			"PIPELINE_SECRET": "super-secret",
+		},
+	})
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		args := strings.Split(strings.TrimSpace(readFile(t, argsFile)), "\n")
+		wantSuffix := []string{"--theme", "adlaire-alt", "--flag=value"}
+		if len(args) < len(wantSuffix) || strings.Join(args[len(args)-len(wantSuffix):], "\n") != strings.Join(wantSuffix, "\n") {
+			t.Fatalf("pipeline extra args not appended: %#v", args)
+		}
+		log := onlyBuildLog(t, state)
+		if strings.Contains(log.Pipeline.Stdout, "super-secret") || !strings.Contains(log.Pipeline.Stdout, "secret=***") {
+			t.Fatalf("pipeline secret was not masked: %q", log.Pipeline.Stdout)
+		}
+		if log.Environment.BuilderVersion != "V.0.0-dev" || log.Environment.Hostname == "" || log.Environment.StateDir == "" || log.Environment.CapturedAt == "" || log.Environment.DiskFreeBytes == nil {
+			t.Fatalf("environment record incomplete: %+v", log.Environment)
+		}
+		if got, want := strings.Join(log.Environment.EnvKeys, ","), "BRANCH_ONLY,BRANCH_VALUE,PIPELINE_ENV,PIPELINE_SECRET"; got != want {
+			t.Fatalf("environment keys mismatch got=%q want=%q", got, want)
+		}
+	})
+}
+
+func TestRunnerPhase2BuilderVersionPrecheckStrict(t *testing.T) {
+	oldTimeout := runnerBuilderVersionTimeout
+	runnerBuilderVersionTimeout = 20 * time.Millisecond
+	defer func() { runnerBuilderVersionTimeout = oldTimeout }()
+
+	cases := []struct {
+		name          string
+		versionScript string
+	}{
+		{
+			name:          "stderr",
+			versionScript: "printf 'adlaire-ci-build V.0.0-dev go=fake\\n'\nprintf 'warn\\n' >&2\nexit 0",
+		},
+		{
+			name:          "empty_go_token",
+			versionScript: "printf 'adlaire-ci-build V.0.0-dev go=\\n'\nexit 0",
+		},
+		{
+			name:          "extra_token",
+			versionScript: "printf 'adlaire-ci-build V.0.0-dev go=fake extra\\n'\nexit 0",
+		},
+		{
+			name:          "timeout",
+			versionScript: "sleep 1\nprintf 'adlaire-ci-build V.0.0-dev go=fake\\n'\nexit 0",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			state := newRunnerState(t, "old-blob", nil)
+			marker := filepath.Join(state, "builder-started")
+			buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
+			writeExecutable(t, buildBin, fmt.Sprintf(`#!/usr/bin/env bash
+set -u
+if [ "${1:-}" = "--version" ]; then
+%s
+fi
+printf started > %q
+exit 0
+`, tc.versionScript, marker))
+			t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+			server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+			withRunnerServer(t, server.URL, func() {
+				var stdout, stderr bytes.Buffer
+				if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 1 {
+					t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+				}
+				if _, err := os.Stat(marker); !os.IsNotExist(err) {
+					t.Fatalf("builder body must not start, marker err=%v", err)
+				}
+				log := onlyBuildLog(t, state)
+				if log.TargetStatus != "failure_precheck" || log.FailureCategory == nil || *log.FailureCategory != "resource_error" || log.Environment.BuilderVersion != "" {
+					t.Fatalf("unexpected precheck log: %+v", log)
+				}
+			})
+		})
+	}
+}
+
+func TestRunnerPhase2PipelineConfigInvalidDoesNotStartBuild(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+	}{
+		{
+			name:    "reserved_arg",
+			content: `{"extra_args":["--src=/tmp/other"],"env":{}}`,
+		},
+		{
+			name:    "reserved_env",
+			content: `{"extra_args":[],"env":{"ADLAIRE_CI_BAD":"x"}}`,
+		},
+		{
+			name:    "unknown_key",
+			content: `{"extra_args":[],"env":{},"unknown":true}`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			state := newRunnerState(t, "old-blob", nil)
+			marker := filepath.Join(state, "pipeline-started")
+			buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
+			writeExecutable(t, buildBin, fmt.Sprintf(`#!/usr/bin/env bash
+set -u
+if [ "${1:-}" = "--version" ]; then
+  printf 'adlaire-ci-build V.0.0-dev go=fake\n'
+  exit 0
+fi
+printf started > %q
+exit 0
+`, marker))
+			t.Setenv("ADLAIRE_CI_BUILD_BIN", buildBin)
+			if err := os.WriteFile(filepath.Join(state, ".pipeline_config"), []byte(tc.content+"\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+			withRunnerServer(t, server.URL, func() {
+				var stdout, stderr bytes.Buffer
+				if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 2 {
+					t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+				}
+				if _, err := os.Stat(marker); !os.IsNotExist(err) {
+					t.Fatalf("builder body must not start, marker err=%v", err)
+				}
+				if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"old-blob\"}\n" {
+					t.Fatalf("sha changed on invalid pipeline config")
+				}
+				log := onlyBuildLog(t, state)
+				if log.TargetStatus != "failure_pipeline_config" || log.Pipeline.ExitCode == nil || *log.Pipeline.ExitCode != 2 || log.RetryCount != 0 || len(log.Attempts) != 1 {
+					t.Fatalf("unexpected pipeline config failure log: %+v", log)
+				}
+				if log.FailureCategory == nil || *log.FailureCategory != "config_error" || log.Error == nil || *log.Error != "pipeline config invalid" {
+					t.Fatalf("pipeline config category/error mismatch: %+v", log)
+				}
+				if len(log.FailureEvidence) != 1 || log.FailureEvidence[0].Source != "config" || log.FailureEvidence[0].Code != "config_error" {
+					t.Fatalf("pipeline config evidence mismatch: %+v", log.FailureEvidence)
+				}
+			})
+		})
+	}
 }
 
 func TestRunnerCompletionServerConfigSparseSchema(t *testing.T) {
@@ -662,6 +866,9 @@ func TestRunnerCompletionCommitInfoAndNotification(t *testing.T) {
 		if log.Commit.SHA == nil || *log.Commit.SHA != "commit-sha" || log.Commit.Message == nil || *log.Commit.Message != "Update docs" {
 			t.Fatalf("commit info not recorded: %+v", log.Commit)
 		}
+		if log.CommitSHA == nil || *log.CommitSHA != "commit-sha" || log.CommitMessage == nil || *log.CommitMessage != "Update docs" || log.CommitAuthor == nil || *log.CommitAuthor != "A. Developer" || log.CommitAt == nil {
+			t.Fatalf("top-level commit fields not recorded: %+v", log)
+		}
 		if notified != 1 {
 			t.Fatalf("expected one notification, got %d", notified)
 		}
@@ -736,6 +943,9 @@ func TestRunnerPhase2RemoteBuild(t *testing.T) {
 		log := onlyBuildLog(t, state)
 		if !log.Environment.RemoteBuild || log.Report == nil || log.Report.Theme != "remote" || log.TargetStatus != "success" {
 			t.Fatalf("remote build log mismatch: %+v", log)
+		}
+		if log.RemoteBuild == nil || log.RemoteBuild.Status != "success" || log.RemoteBuild.CommandName != "sh" || log.RemoteBuild.WorkDirBasename != filepath.Base(workDir) || log.RemoteBuild.ExitCode == nil || *log.RemoteBuild.ExitCode != 0 {
+			t.Fatalf("remote build object mismatch: %+v", log.RemoteBuild)
 		}
 	})
 }
@@ -880,13 +1090,16 @@ func TestRunnerCompletionCommitStatus(t *testing.T) {
 		if log.CommitStatus == nil || *log.CommitStatus != "success" {
 			t.Fatalf("commit status not recorded in log: %+v", log.CommitStatus)
 		}
+		if log.CommitStatusLog == nil || !log.CommitStatusLog.Enabled || log.CommitStatusLog.State == nil || *log.CommitStatusLog.State != "success" || log.CommitStatusLog.Context != "Adlaire CI" {
+			t.Fatalf("commit status object mismatch: %+v", log.CommitStatusLog)
+		}
 		if !strings.Contains(readFile(t, filepath.Join(state, ".build_history")), `"commit_status_state":"success"`) {
 			t.Fatalf("commit status not recorded in history")
 		}
 	})
 }
 
-func TestRunnerCompletionBuildRetrySucceeds(t *testing.T) {
+func TestRunnerCompletionBuildRetryTimeoutSucceeds(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
 	counter := filepath.Join(state, "retry-count")
 	buildBin := filepath.Join(t.TempDir(), "adlaire-ci-build")
@@ -908,8 +1121,9 @@ while [ "$#" -gt 0 ]; do
 done
 if [ ! -f %q ]; then
   printf '1' > %q
-  printf 'first failure'
-  exit 7
+  printf 'first timeout'
+  sleep 2
+  exit 0
 fi
 mkdir -p "$out/assets"
 printf '<html></html>' > "$out/index.html"
@@ -926,6 +1140,7 @@ exit 0
 	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
 	withRunnerServer(t, server.URL, func() {
 		cfg := defaultRunnerConfig(state)
+		cfg.BuildTimeoutSeconds = 1
 		cfg.BuildRetryMax = 1
 		cfg.BuildRetryBaseSeconds = 1
 		cfg.BuildCooldownSeconds = 0
@@ -934,11 +1149,31 @@ exit 0
 			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 		}
 		log := onlyBuildLog(t, state)
-		if log.RetryCount != 1 || len(log.Attempts) != 2 || log.Attempts[0].ExitCode == nil || *log.Attempts[0].ExitCode != 7 || log.TargetStatus != "success" {
+		if log.RetryCount != 1 || len(log.Attempts) != 2 || log.Attempts[0].ExitCode != nil || log.Attempts[1].ExitCode == nil || *log.Attempts[1].ExitCode != 0 || log.TargetStatus != "success" {
 			t.Fatalf("retry log mismatch: %+v", log)
 		}
 		if !strings.Contains(readFile(t, filepath.Join(state, ".build_history")), `"retry_count":1`) {
 			t.Fatalf("history missing retry count")
+		}
+	})
+}
+
+func TestRunnerCompletionBuildRetrySkipsPipelineExit(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipeline(t, state, 7, "first failure", "failed")
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		cfg := defaultRunnerConfig(state)
+		cfg.BuildRetryMax = 1
+		cfg.BuildRetryBaseSeconds = 1
+		cfg.BuildCooldownSeconds = 0
+		var stdout, stderr bytes.Buffer
+		if code := executeRunner(cfg, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		log := onlyBuildLog(t, state)
+		if log.RetryCount != 0 || len(log.Attempts) != 1 || log.Attempts[0].ExitCode == nil || *log.Attempts[0].ExitCode != 7 || log.TargetStatus != "failure_build" {
+			t.Fatalf("pipeline exit should not retry: %+v", log)
 		}
 	})
 }
@@ -1043,12 +1278,24 @@ func TestRunnerFixtureR5DeployPending(t *testing.T) {
 		}
 		var pending []pendingTransfer
 		readJSON(t, filepath.Join(state, ".pending_transfers"), &pending)
-		if len(pending) != 1 || pending[0].RetryCount != 0 || pending[0].DestDir != "/var/www/html" || pending[0].TargetID == "" || pending[0].Out == nil {
+		if len(pending) != 1 || pending[0].RetryCount != 0 || pending[0].DestDir != "/var/www/html" || pending[0].TargetID != "0-0" || pending[0].Out == nil {
 			t.Fatalf("unexpected pending: %+v", pending)
 		}
 		log := onlyBuildLog(t, state)
 		if log.TargetStatus != "success_deploy_pending" || len(log.Deploy) != 1 || log.Deploy[0].Status != "pending" || log.Deploy[0].TransferVerified || log.Error == nil || *log.Error != "deploy pending" {
 			t.Fatalf("unexpected deploy log: %+v", log)
+		}
+		if log.TransferVerified == nil || *log.TransferVerified {
+			t.Fatalf("transfer_verified summary mismatch: %+v", log.TransferVerified)
+		}
+		if len(log.TargetResults) != 1 || log.TargetResults[0].TargetID != "0-0" || log.TargetResults[0].Status != "failure" || log.TargetResults[0].ErrorCode == nil || *log.TargetResults[0].ErrorCode != "deploy_ssh_error" || log.TargetResults[0].Error == nil || *log.TargetResults[0].Error != "deploy ssh failed" {
+			t.Fatalf("unexpected target results: %+v", log.TargetResults)
+		}
+		if _, err := time.Parse(time.RFC3339, log.TargetResults[0].StartedAt); err != nil {
+			t.Fatalf("target result started_at invalid: %+v", log.TargetResults[0])
+		}
+		if _, err := time.Parse(time.RFC3339, log.TargetResults[0].FinishedAt); err != nil {
+			t.Fatalf("target result finished_at invalid: %+v", log.TargetResults[0])
 		}
 	})
 }
@@ -1107,6 +1354,7 @@ func newRunnerState(t *testing.T, sha string, deploy []DeployTarget) string {
 	if err := os.WriteFile(filepath.Join(state, ".last_sha"), []byte(fmt.Sprintf("{\"sha\":\"%s\"}\n", sha)), 0600); err != nil {
 		t.Fatal(err)
 	}
+	writeRunnerTestJSON(t, filepath.Join(state, ".pipeline_config"), pipelineConfigFile{ExtraArgs: []string{}, Env: map[string]string{}})
 	target := BranchTarget{
 		Branch: "main", TargetFile: "docs", SHAFile: filepath.Join(state, ".last_sha"),
 		Src: filepath.Join(state, "repo", "docs"), Out: filepath.Join(state, "dist", "site"),
