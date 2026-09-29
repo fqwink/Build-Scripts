@@ -395,14 +395,13 @@ func build(cfg BuildConfig, stdout io.Writer) (report, []string, error) {
 		return report{}, warnings, exitError{Code: 1, Msg: err.Error()}
 	}
 	fmt.Fprintln(stdout, "Writing assets...")
-	writerWarnings, err := writeAtomic(cfg.Out, files)
+	writerWarnings, count, size, err := writeAtomic(cfg.Out, files)
 	for _, w := range writerWarnings {
 		fmt.Fprintf(stdout, "[WARN] %s\n", w)
 	}
 	if err != nil {
 		return report{}, warnings, exitError{Code: 1, Msg: err.Error()}
 	}
-	count, size, _ := outputStats(cfg.Out)
 	rep.Pages = htmlPageCount(files)
 	rep.Warnings = len(warnings)
 	rep.Theme = cfg.Theme
@@ -1395,42 +1394,42 @@ func defaultJS() string {
 	return `document.addEventListener("DOMContentLoaded",()=>{const q=(s,r=document)=>r.querySelector(s);const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));const sb=q("#sb"),search=q("#sb-search"),btt=q("#btt"),bar=q("#progress-bar");q("#sb-toggle")?.addEventListener("click",()=>sb?.classList.toggle("open"));qa(".cb-copy").forEach(btn=>btn.addEventListener("click",()=>{const code=btn.closest(".cb-wrap")?.querySelector("code")?.innerText||"";const done=()=>{btn.textContent="✓ 完了";btn.classList.add("copied");setTimeout(()=>{btn.textContent="コピー";btn.classList.remove("copied")},1800)};navigator.clipboard?.writeText(code).then(done).catch(()=>{const t=document.createElement("textarea");t.value=code;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();done()})}));qa(".hn-link").forEach(btn=>btn.addEventListener("click",()=>navigator.clipboard?.writeText(location.origin+location.pathname+btn.dataset.href).then(()=>{btn.setAttribute("aria-label","コピーしました");setTimeout(()=>btn.setAttribute("aria-label","リンクをコピー"),1800)})));qa(".expand-code").forEach(btn=>btn.addEventListener("click",()=>{const pre=btn.previousElementSibling;pre.style.maxHeight="none";btn.hidden=true}));qa(".mt th[data-sort]").forEach(th=>th.addEventListener("click",()=>{const table=th.closest("table"),idx=Number(th.dataset.sort),dir=th.getAttribute("aria-sort")==="ascending"?"descending":"ascending";qa("th",table).forEach(h=>h.setAttribute("aria-sort","none"));th.setAttribute("aria-sort",dir);const bodyRows=qa("tbody tr",table),rows=bodyRows.length?bodyRows:qa("tr",table).slice(1);rows.sort((a,b)=>{const av=a.children[idx]?.textContent.trim()||"",bv=b.children[idx]?.textContent.trim()||"",an=Number(av),bn=Number(bv);let c=!Number.isNaN(an)&&!Number.isNaN(bn)?an-bn:av.localeCompare(bv);return dir==="ascending"?c:-c});rows.forEach(r=>table.appendChild(r))}));function onScroll(){if(bar){const d=document.documentElement,total=d.scrollHeight-d.clientHeight;bar.style.width=(total>0?d.scrollTop/total*100:0)+"%"}btt?.classList.toggle("visible",scrollY>400)}document.addEventListener("scroll",onScroll,{passive:true});btt?.addEventListener("click",()=>scrollTo({top:0,behavior:"smooth"}));document.addEventListener("keydown",e=>{const tag=document.activeElement?.tagName;if(e.key==="/"&&!["INPUT","TEXTAREA","SELECT"].includes(tag)){e.preventDefault();search?.focus()}if(e.key==="Escape"&&search){search.value="";search.dispatchEvent(new Event("input"))}if(e.key==="t"&&!["INPUT","TEXTAREA","SELECT"].includes(tag))scrollTo({top:0,behavior:"smooth"})});fetch((location.pathname.includes("/pages/")?"../":"")+"assets/search-index.json").catch(()=>{});search?.addEventListener("input",()=>{const v=search.value.toLowerCase();qa(".tl").forEach(a=>{a.parentElement.hidden=v&&!(a.textContent||"").toLowerCase().includes(v)})});onScroll()});`
 }
 
-func writeAtomic(out string, files []siteFile) ([]string, error) {
+func writeAtomic(out string, files []siteFile) ([]string, int, int64, error) {
 	if err := validateSiteFiles(files); err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	}
 	info, err := os.Lstat(out)
 	if err == nil && (!info.IsDir() || info.Mode()&os.ModeSymlink != 0) {
-		return nil, fmt.Errorf("output path is not directory: %s", out)
+		return nil, 0, 0, fmt.Errorf("output path is not directory: %s", out)
 	}
 	parent := filepath.Dir(out)
 	base := filepath.Base(out)
 	if staging, err := existingStagingPath(parent, base); err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	} else if staging != "" {
-		return nil, fmt.Errorf("output staging path already exists: %s", staging)
+		return nil, 0, 0, fmt.Errorf("output staging path already exists: %s", staging)
 	}
 	tmp := filepath.Join(parent, fmt.Sprintf("%s.tmp.%d", base, os.Getpid()))
 	prev := filepath.Join(parent, fmt.Sprintf("%s.prev.%d", base, os.Getpid()))
 	var warnings []string
-	cleanupTmp := func(primary error) ([]string, error) {
+	cleanupTmp := func(primary error) ([]string, int, int64, error) {
 		if err := os.RemoveAll(tmp); err != nil {
 			warnings = append(warnings, "OUTPUT_TMP_CLEANUP_FAILED: path="+tmp)
 		}
-		return warnings, primary
+		return warnings, 0, 0, primary
 	}
-	cleanupAfterRestore := func(primary error) ([]string, error) {
+	cleanupAfterRestore := func(primary error) ([]string, int, int64, error) {
 		if err := os.RemoveAll(tmp); err != nil {
 			warnings = append(warnings, "OUTPUT_TMP_CLEANUP_FAILED: path="+tmp)
-			return warnings, primary
+			return warnings, 0, 0, primary
 		}
 		if err := syncDir(parent); err != nil {
-			return warnings, fmt.Errorf("cannot restore previous output directory: %s: %w", out, err)
+			return warnings, 0, 0, fmt.Errorf("cannot restore previous output directory: %s: %w", out, err)
 		}
-		return warnings, primary
+		return warnings, 0, 0, primary
 	}
 	if err := os.Mkdir(tmp, 0755); err != nil {
-		return nil, fmt.Errorf("cannot create output directory: %s", out)
+		return nil, 0, 0, fmt.Errorf("cannot create output directory: %s", out)
 	}
 	for _, f := range files {
 		filePath := filepath.Join(tmp, filepath.FromSlash(f.Path))
@@ -1443,6 +1442,10 @@ func writeAtomic(out string, files []siteFile) ([]string, error) {
 	}
 	if err := validateStagedOutput(tmp, files); err != nil {
 		return cleanupTmp(err)
+	}
+	count, size, err := outputStats(tmp)
+	if err != nil {
+		return cleanupTmp(fmt.Errorf("cannot write output: %s", out))
 	}
 	if err := syncTreeDirs(tmp); err != nil {
 		return cleanupTmp(fmt.Errorf("cannot write output: %s", tmp))
@@ -1459,7 +1462,7 @@ func writeAtomic(out string, files []siteFile) ([]string, error) {
 		if err := syncDir(parent); err != nil {
 			primary := fmt.Errorf("cannot sync output parent directory: %s", parent)
 			if restoreErr := restoreOutput(out, tmp, prev, prevStaged, false); restoreErr != nil {
-				return warnings, fmt.Errorf("cannot restore previous output directory: %s: %w", out, primary)
+				return warnings, 0, 0, fmt.Errorf("cannot restore previous output directory: %s: %w", out, primary)
 			}
 			return cleanupAfterRestore(primary)
 		}
@@ -1467,28 +1470,28 @@ func writeAtomic(out string, files []siteFile) ([]string, error) {
 	if err := os.Rename(tmp, out); err != nil {
 		primary := fmt.Errorf("cannot replace output directory: %s", out)
 		if restoreErr := restoreOutput(out, tmp, prev, prevStaged, false); restoreErr != nil {
-			return warnings, fmt.Errorf("cannot restore previous output directory: %s: %w", out, primary)
+			return warnings, 0, 0, fmt.Errorf("cannot restore previous output directory: %s: %w", out, primary)
 		}
 		return cleanupAfterRestore(primary)
 	}
 	if err := syncDir(parent); err != nil {
 		primary := fmt.Errorf("cannot sync output parent directory: %s", parent)
 		if restoreErr := restoreOutput(out, tmp, prev, prevStaged, true); restoreErr != nil {
-			return warnings, fmt.Errorf("cannot restore previous output directory: %s: %w", out, primary)
+			return warnings, 0, 0, fmt.Errorf("cannot restore previous output directory: %s: %w", out, primary)
 		}
 		return cleanupAfterRestore(primary)
 	}
 	if prevStaged {
 		if err := os.RemoveAll(prev); err != nil {
 			warnings = append(warnings, "OUTPUT_PREV_CLEANUP_FAILED: path="+prev)
-			return warnings, nil
+			return warnings, count, size, nil
 		}
 		if err := syncDir(parent); err != nil {
 			warnings = append(warnings, "OUTPUT_PREV_CLEANUP_FAILED: path="+prev)
-			return warnings, nil
+			return warnings, count, size, nil
 		}
 	}
-	return warnings, nil
+	return warnings, count, size, nil
 }
 
 func validateSiteFiles(files []siteFile) error {
@@ -1723,15 +1726,42 @@ func isPositiveDecimal(s string) bool {
 }
 
 func outputStats(root string) (int, int64, error) {
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		return 0, 0, err
+	}
+	if !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 {
+		return 0, 0, fmt.Errorf("invalid output path: %s", root)
+	}
 	count := 0
 	var size int64
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+	err = filepath.WalkDir(root, func(filePath string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if filePath == root {
+			return nil
+		}
+		rel, err := filepath.Rel(root, filePath)
+		if err != nil {
 			return err
+		}
+		rel = slashPath(rel)
+		if err := validateOutputRelPath(rel); err != nil {
+			return err
+		}
+		if d.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("invalid output path: %s", rel)
+		}
+		if d.IsDir() {
+			return nil
 		}
 		info, err := d.Info()
 		if err != nil {
 			return err
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("invalid output path: %s", rel)
 		}
 		count++
 		size += info.Size()

@@ -307,7 +307,7 @@ func TestFixtureAtomicRejectsUnsafeSiteFilePath(t *testing.T) {
 		{Path: "assets/app.js", Data: []byte("js")},
 		{Path: "assets/search-index.json", Data: []byte("[]")},
 	}
-	warnings, err := writeAtomic(out, files)
+	warnings, _, _, err := writeAtomic(out, files)
 	if err == nil {
 		t.Fatalf("expected unsafe path error")
 	}
@@ -344,6 +344,26 @@ func TestFixtureAtomicOutputModes(t *testing.T) {
 		if got := modeOf(filepath.Join(out, rel)); got != 0644 {
 			t.Fatalf("%s mode=%#o", rel, got)
 		}
+	}
+	if !strings.Contains(stdout.String(), "files=4") || !strings.Contains(stdout.String(), "bytes=") {
+		t.Fatalf("Done line missing output stats: %s", stdout.String())
+	}
+}
+
+func TestFixtureOutputStatsRejectsSymlink(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "file.txt")
+	writeFile(t, target, "content")
+	link := filepath.Join(root, "link.txt")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	_, _, err := outputStats(root)
+	if err == nil {
+		t.Fatalf("expected output stats to reject symlink")
+	}
+	if !strings.Contains(err.Error(), "invalid output path: link.txt") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
