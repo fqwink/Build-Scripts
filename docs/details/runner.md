@@ -1166,7 +1166,7 @@ process crash 後、次の runner 起動が stale lock、`.build_state.running=t
 | `INFO` | 起動、変更なしスキップ、ビルド開始・完了、SHA 更新 |
 | `WARNING` | — |
 | `ERROR` | トークン読み込み失敗、API 失敗、ビルド失敗 |
-| `DEBUG` | API レスポンス詳細等（`LOG_LEVEL = "DEBUG"` 時のみ） |
+| `DEBUG` | GitHub API status、rate limit header、response byte length、retry attempt、masked error code（`LOG_LEVEL = "DEBUG"` 時のみ） |
 
 stdout は Go 標準ライブラリ `log/slog` で出力し、systemd が journald に転送する。独自 logger 実装を使用してはならない。
 
@@ -1642,7 +1642,7 @@ owner component は `runner` とする。collaborator component は `api`、`sdk
 
 | 値 | 発生条件 | 補足 |
 |----|----------|------|
-| `polling` | systemd timer 等の通常起動で SHA 差分がある。 | 既定の自動ビルド。 |
+| `polling` | `adlaire-ci.timer` による通常起動または管理者が同一引数で手動実行した通常起動で SHA 差分がある。 | 既定の自動ビルド。 |
 | `force_interval` | SHA 差分なし、かつ `force_build_interval_hours` 条件を満たす。 | 手動 force には使わない。 |
 | `manual` | `POST /api/build` または `POST /api/build/force` 由来の queue entry を処理する。 | force は `payload.force=true` で表す。 |
 | `webhook` | `POST /api/webhook` 由来の queue entry を処理する。 | 署名検証成功済み event のみ。 |

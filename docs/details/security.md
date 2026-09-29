@@ -201,7 +201,7 @@ session token と login ticket は `crypto/rand` 成功後にだけ生成し、�
 | 観点 | 合格条件 | 禁止条件 |
 |------|----------|----------|
 | one-time response | session token、login ticket、API token 本体、TOTP setup secret、otpauth URI は、該当成功 response 1 回だけに含める。 | `500`、`401`、`403`、`409`、`422`、`429` response、log、状態ファイル、fixture expected へ平文を残すこと。 |
-| memory-only state | session、login ticket、TOTP setup 仮 secret、login 失敗回数は process memory だけに保持し、再起動で破棄する。 | `.sessions` 等の未定義永続ファイル作成、ticket / session / 仮 secret の backup / restore 対象化。 |
+| memory-only state | session、login ticket、TOTP setup 仮 secret、login 失敗回数は process memory だけに保持し、再起動で破棄する。 | session、login ticket、TOTP setup 仮 secret、login 失敗回数を保存する未定義永続ファイルの作成、ticket / session / 仮 secret の backup / restore 対象化。 |
 | required security log before token | token / ticket / secret を response に含める前に、endpoint 固有契約が必須とする `.access_log` と `.audit_log` の追記を完了する。`.api_access_log` は [`docs/details/api.md` 詳細本文責務 §27.6](api.md#sec-27-6) の best-effort 記録とし、one-time 値の返却 gate にしない。 | 必須 `.access_log` または `.audit_log` の追記失敗時に token / ticket / secret を response へ含めること。 |
 | hash-only storage | password、session token、login ticket、API token は保存時に hash 化し、平文を保存しない。 | hash 算出入力の平文、token 本体、ticket 本体、password 本体を expected / log に保存すること。 |
 | fixed error body | 認証失敗、権限不足、rate limit、validation failure は固定 error body だけを返す。 | password 不一致理由、token record 詳細、scope 一覧、TOTP step、rate limit key を response に出すこと。 |

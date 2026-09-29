@@ -2142,7 +2142,7 @@ branch、監視対象、source / output path、deploy target の表示と更新�
 
 history response の `trigger` は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.build_history.trigger` をそのまま返す。status summary 専用の `startup_config_integrity` を history へ追加してはならない。
 
-共通エラーの HTTP status と response body は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の API 共通エラー固定文言を正本とする。状態競合、通知未設定、queue 上限、maintenance などの endpoint 固有エラーは [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の固定表と対象 endpoint 契約を正本とし、ここでは再定義しない。
+共通エラーの HTTP status と response body は [`docs/details/api.md` 詳細本文責務 §22.0](api.md#sec-22-0) の API 共通エラー固定文言を正本とする。状態競合、通知未設定、queue 上限、maintenance の endpoint 固有エラーは [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の固定表と対象 endpoint 契約を正本とし、ここでは再定義しない。
 
 ---
 
@@ -2715,8 +2715,8 @@ runner による `.branch_config` の読込、`RunnerConfig.BranchTargets` へ�
 | actor | 管理 session は `"admin"`、API token は token id、未認証で許可される設定変更 API は存在しない。 |
 | request id | access log と response header の request id と同じ値を `request_id` として保存する。request ID 生成失敗時は endpoint 処理へ進まないため `.config_log` を追記しない。 |
 | endpoint | `endpoint` は HTTP method と path template を保存する。path param の実値が secret 風値でも path template だけを保存する。 |
-| action | 対象状態が不在から作成された場合は `create`、既存状態を変更した場合は `update`、対象を削除した場合は `delete` とする。複数状態を変更する restore 等は `update` とする。 |
-| result | 主状態変更と必須後続処理が成功した record は `"success"`。主状態変更後に systemd、sync、外部適用等の必須後続処理が失敗した record は `"partial_failure"`。主状態変更前の失敗では record を作成しない。 |
+| action | 対象状態が不在から作成された場合は `create`、既存状態を変更した場合は `update`、対象を削除した場合は `delete` とする。複数状態を変更する restore は `update` とする。 |
+| result | 主状態変更と必須後続処理が成功した record は `"success"`。主状態変更後に systemd command、sync command、external API write の必須後続処理が失敗した record は `"partial_failure"`。主状態変更前の失敗では record を作成しない。 |
 | error | `result="success"` では `null`。`result="partial_failure"` では [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の対象 endpoint 契約が定める lowercase snake case の固定 error code を保存し、Go error、command output、path、secret を保存しない。 |
 | audit | `.config_log.type` を `target_id` とする `config_update` を 1 件追記する。`.config_log.result="success"` は audit `result="success"`、`partial_failure` は audit `result="failure"` とする。`POST /api/api-rate-limit` だけ action を `rate_limit_update` とする。 |
 | 保存順と追記失敗 | [`docs/details/security.md` 詳細本文責務 監査 record 保存順・失敗契約](security.md#sec-27-44) を適用する。 |

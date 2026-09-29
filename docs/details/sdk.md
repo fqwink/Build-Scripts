@@ -30,7 +30,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | module | `admin/adlaire-ci-sdk.js` は ES Module とし、`export { AdlaireCI, AdlaireCIError }` を必須 export とする。default export は定義しない。 |
 | browser API | `fetch`、`AbortController`、`ReadableStream.getReader()`、`TextDecoder` が存在する browser を必須環境とする。いずれかが存在しない場合、`AdlaireCI` constructor は `TypeError("Unsupported browser runtime")` を投げる。 |
 | 非 browser runtime | browser API 行の必須 API が存在しない実行環境では、runtime 名を判定分岐せず、`AdlaireCI` constructor が `TypeError("Unsupported browser runtime")` を投げる。 |
-| global 汚染 | `window.AdlaireCI` 等の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
+| global 汚染 | `window.AdlaireCI`、`window.AdlaireCIError`、`globalThis.AdlaireCI`、`globalThis.AdlaireCIError` の global 代入を行わない。標準管理ツールは ES Module import で SDK を読み込む。 |
 | 外部 consumer | 必須 browser API を提供する外部 consumer application は、本 ES Module を import してよい。本リポジトリ、SDK 配布物、標準管理 UI 配布物の依存境界は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) を参照する。 |
 | stream 前提 | `streamBuild()` と `streamAdminEvents()` は native `EventSource` を使用しない。Authorization header を付与できる `fetch` streaming を必須実装とする。 |
 | API 対応範囲 | [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) の全 endpoint のうち、GitHub が直接送信する `POST /api/webhook` は SDK method 0 件、`POST /api/schedule/allowed-hours` は request body ありの `setAllowedHours()` と `{from:null,to:null}` を送る `clearAllowedHours()` の 2 件、それ以外は endpoint 表の SDK 列に記載された 1 method と対応させる。表外 method、対応 0 件、明示例外以外の複数 method を禁止する。 |
@@ -245,7 +245,7 @@ HTTP status と SDK error の対応は [`docs/details/sdk.md` 詳細本文責務
 | private helper | private helper は `_request`, `_json`, `_query`, `_requireToken`, `_validateId`, `_clearTokenOn401` だけを定義する。helper を export しない。 |
 | TypeError 文言 | SDK 側引数検証の `TypeError.message` は `"Invalid argument: <name>"` に固定する。複数不正がある場合は最初に検出した引数だけを返す。 |
 | path parameter | `id` を path に入れる method は、`id` が string かつ [`docs/details/api.md` 詳細本文責務 §22.0b](api.md#sec-22-0b) の `^[A-Za-z0-9_-]{1,64}$` に完全一致することを SDK 側で検証する。不一致は HTTP 送信前に `TypeError("Invalid argument: id")` とする。検証成功後の値に `encodeURIComponent(id)` を 1 回だけ適用し、1 segment として連結する。 |
-| query parameter | query key は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の表記順で生成する。value は各々 `encodeURIComponent(String(value))` を 1 回だけ適用し、空白を `%20` とする。`URLSearchParams` 等による `+` 変換、2 重 encode、並べ替えを禁止する。任意 query が未指定の場合、`?` 自体を付けない。 |
+| query parameter | query key は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の表記順で生成する。value は各々 `encodeURIComponent(String(value))` を 1 回だけ適用し、空白を `%20` とする。`URLSearchParams` による `+` 変換、2 重 encode、並べ替えを禁止する。任意 query が未指定の場合、`?` 自体を付けない。 |
 | body parameter | body object の key 順は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) SDK 引数変換契約の送信値順とする。未知 key を SDK が追加しない。 |
 | token mutation | `login()` と `loginTotp()` は response に `token` が存在する場合だけ `this._token` を更新する。`totp_required:true` かつ token なしの場合は既存 token を保持せず `null` にする。SDK は `must_change` を算出または補完せず、TOTP 必須 response に `must_change` を追加しない。 |
 | logout failure | `logout()` は network error、`401`、`500` のいずれでも `finally` で `this._token=null` にする。 |

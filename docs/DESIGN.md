@@ -42,8 +42,8 @@
 | `--adlaire-surface-soft-strong` | `#e8f2ff` | コードブロック背景・インラインコード背景 |
 | `--adlaire-surface-border` | `#e0e0e0` | ボーダー全般 |
 | `--adlaire-surface-text` | `#333333` | 本文テキスト |
-| `--adlaire-surface-text-muted` | `#555555` | 補助テキスト（TOC lv2 等） |
-| `--adlaire-surface-text-subtle` | `#666666` | 三次テキスト（プレースホルダー等） |
+| `--adlaire-surface-text-muted` | `#555555` | 補助テキスト（TOC lv2、検索結果補足、metadata label） |
+| `--adlaire-surface-text-subtle` | `#666666` | 三次テキスト（placeholder、empty-state 補助、disabled 補足） |
 | `--adlaire-color-primary` | `#0066cc` | リンク・アクセントボーダー |
 | `--adlaire-color-secondary` | `#0055aa` | アクティブ TOC リンク色 |
 

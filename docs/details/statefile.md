@@ -154,7 +154,7 @@ mutation callback は typed current value だけを直接引数として受け�
 |------|--------|--------|--------|
 | 未知 key | JSON object に schema 未定義 key がある場合は破損扱いとする。 | 未知 key を保存しない。既存未知 key を黙って削除して保存しない。 | read adapter は `ErrStateCorrupted` を返す。write 呼び出しは target を変更しない。 |
 | 必須 key 不足 | 対象 schema の必須 key が 1 件でも欠ける場合は破損扱いとする。 | 必須 key はすべて明示保存する。 | 初期値再生成が [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) 表で指定されたファイルだけ再生成する。 |
-| `null` | 型欄が `string/null`、`object/null`、`integer/null` 等で明示した key だけ許可する。 | nullable でない key に `null` を保存しない。 | validation error または破損扱い。 |
+| `null` | 型欄が `string/null`、`object/null`、`integer/null`、`number/null`、`boolean/null`、`array/null` で明示した key だけ許可する。 | nullable でない key に `null` を保存しない。 | validation error または破損扱い。 |
 | 配列 | `[]` を既定値とする key は read adapter の戻り値で空配列を返す。 | 保存呼び出しは配列 key を省略せず、空の場合も `[]` を明示する。 | 型不一致は caller 固有の validation error または状態ファイル破損扱い。 |
 | 数値 | 整数 key は JSON number の整数だけ許可する。小数、指数表記由来の非整数、文字列数値は拒否する。 | 整数は JSON number として保存する。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
 | 時刻 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 共通固定値「機械処理時刻」](../DETAIL_INDEX.md#common-machine-time) に一致する文字列だけ許可する。 | 保存前に同固定値へ正規化する。 | 書込入力は caller 固有の validation error、状態ファイル読込は破損扱い。 |
@@ -1666,7 +1666,7 @@ ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全�
 |-----|----|------|------|
 | `key` | string | yes | method、path、query、vary を canonical JSON 化した SHA-256 lowercase hex。 |
 | `endpoint` | string | yes | cache 対象 endpoint path。 |
-| `vary` | object | yes | cache key 算出に使った query、target、branch 等の値。secret 禁止。 |
+| `vary` | object | yes | cache key 算出に使った query object、target id、branch name、method、path の値。secret 禁止。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `expires_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `status` | integer | yes | HTTP status。`200` だけを保存する。 |
