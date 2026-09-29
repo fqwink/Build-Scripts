@@ -244,6 +244,109 @@ func TestFixtureURLSafetyStrictKeepsExistingOutput(t *testing.T) {
 	}
 }
 
+func TestFixtureAtomicStagingCollision(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	writeFile(t, filepath.Join(docs, "index.md"), "# Intro\n")
+	out := filepath.Join(root, "dist")
+	staging := filepath.Join(root, "dist.tmp.1")
+	if err := os.Mkdir(staging, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", docs, "--out", out, "--title", "Docs"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "output staging path already exists: "+staging) {
+		t.Fatalf("stderr missing staging collision: %s", stderr.String())
+	}
+	if strings.Contains(stdout.String(), "[REPORT]") {
+		t.Fatalf("staging collision emitted report: %s", stdout.String())
+	}
+	if _, err := os.Stat(staging); err != nil {
+		t.Fatalf("staging entry was modified or removed: %v", err)
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Fatalf("output should not be created on staging collision")
+	}
+}
+
+func TestFixtureAtomicExistingOutputFileIsPreserved(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	writeFile(t, filepath.Join(docs, "index.md"), "# Intro\n")
+	out := filepath.Join(root, "dist")
+	if err := os.WriteFile(out, []byte("old"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", docs, "--out", out, "--title", "Docs"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "output path is not directory: "+out) {
+		t.Fatalf("stderr missing output type error: %s", stderr.String())
+	}
+	if strings.Contains(stdout.String(), "[REPORT]") {
+		t.Fatalf("existing file failure emitted report: %s", stdout.String())
+	}
+	if got := readFile(t, out); got != "old" {
+		t.Fatalf("existing output file was replaced: %q", got)
+	}
+}
+
+func TestFixtureAtomicRejectsUnsafeSiteFilePath(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "dist")
+	files := []siteFile{
+		{Path: "../escape.html", Data: []byte("escape")},
+		{Path: "index.html", Data: []byte("index")},
+		{Path: "assets/style.css", Data: []byte("css")},
+		{Path: "assets/app.js", Data: []byte("js")},
+		{Path: "assets/search-index.json", Data: []byte("[]")},
+	}
+	warnings, err := writeAtomic(out, files)
+	if err == nil {
+		t.Fatalf("expected unsafe path error")
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected warnings: %v", warnings)
+	}
+	if !strings.Contains(err.Error(), "invalid output path: ../escape.html") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, statErr := os.Stat(out); !os.IsNotExist(statErr) {
+		t.Fatalf("output should not be created for unsafe path")
+	}
+}
+
+func TestFixtureAtomicOutputModes(t *testing.T) {
+	out := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", "../testdata/builder/single/source.md", "--out", out, "--title", "Fixture Site"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	modeOf := func(path string) os.FileMode {
+		t.Helper()
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return info.Mode().Perm()
+	}
+	if got := modeOf(filepath.Join(out, "assets")); got != 0755 {
+		t.Fatalf("assets mode=%#o", got)
+	}
+	for _, rel := range []string{"index.html", "assets/style.css", "assets/app.js", "assets/search-index.json"} {
+		if got := modeOf(filepath.Join(out, rel)); got != 0644 {
+			t.Fatalf("%s mode=%#o", rel, got)
+		}
+	}
+}
+
 func TestFixtureIdempotency(t *testing.T) {
 	out1 := t.TempDir()
 	out2 := t.TempDir()
