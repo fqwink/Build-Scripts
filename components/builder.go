@@ -28,19 +28,19 @@ const builderDefaultVersion = "V.0.0-dev"
 const maxMarkdownFileBytes int64 = 10 * 1024 * 1024
 
 type BuildConfig struct {
-	Src       string
-	Out       string
-	Title     string
-	Theme     string
-	BaseDir   string
-	Strict    bool
-	BuildID   string
-	CommitSHA string
-	BuildAt   string
-	LazyImages      bool
-	Footnotes       bool
-	DefinitionLists bool
-	TaskLists       bool
+	Src                string
+	Out                string
+	Title              string
+	Theme              string
+	BaseDir            string
+	Strict             bool
+	BuildID            string
+	CommitSHA          string
+	BuildAt            string
+	LazyImages         bool
+	Footnotes          bool
+	DefinitionLists    bool
+	TaskLists          bool
 	ChangedManifest    string
 	OutputFormat       string
 	MarkdownExtensions map[string]bool
@@ -63,19 +63,19 @@ type BuildConfig struct {
 }
 
 var DefaultBuildConfig = BuildConfig{
-	Src:       "/opt/adlaire-builder/repo/docs",
-	Out:       "/opt/adlaire-builder/dist/site",
-	Title:     "Adlaire Documentation",
-	Theme:     "adlaire-default",
-	BaseDir:   "",
-	Strict:    false,
-	BuildID:   "",
-	CommitSHA: "",
-	BuildAt:   "",
-	LazyImages:      true,
-	Footnotes:       true,
-	DefinitionLists: true,
-	TaskLists:       true,
+	Src:                "/opt/adlaire-builder/repo/docs",
+	Out:                "/opt/adlaire-builder/dist/site",
+	Title:              "Adlaire Documentation",
+	Theme:              "adlaire-default",
+	BaseDir:            "",
+	Strict:             false,
+	BuildID:            "",
+	CommitSHA:          "",
+	BuildAt:            "",
+	LazyImages:         true,
+	Footnotes:          true,
+	DefinitionLists:    true,
+	TaskLists:          true,
 	ChangedManifest:    "",
 	OutputFormat:       "html",
 	MarkdownExtensions: map[string]bool{},
@@ -164,152 +164,152 @@ type plainBlock struct {
 }
 
 type RenderContext struct {
-	FootnoteDefs     map[string]string
-	FootnoteOrder    []string
-	FootnoteSeen     map[string]bool
-	FootnoteRefCounts map[string]int
-	InternalLinkRefs map[string]string
-	BrokenLinks      []string
-	HeadingSkipCount int
-	CharCount        int
-	KnownAnchors     map[string]bool
-	SourcePath       string
-	BaseDir          string
-	OutputBySource   map[string]string
-	AnchorsBySource  map[string]map[string]bool
-	IsSingle         bool
-	LazyImages       bool
-	Footnotes        bool
-	DefinitionLists  bool
-	TaskLists        bool
-	MarkdownExtensions map[string]bool
-	CodeLineNumbers bool
-	HeadingNumbering string
-	HeadingDisplayByLine map[int]string
-	SectionCollapse bool
-	TOCMinDepth int
-	TOCMaxDepth int
-	UpdatedAtSource string
-	TemplateVars map[string]string
-	MinifyHTML bool
-	TOCActive bool
-	Mermaid bool
-	Math bool
-	HashHistory bool
-	A11yCheck bool
-	ImageLightbox bool
-	PrintQRURL string
-	LazyImageCount   int
-	ImagePathWarnings int
-	DefinitionListCount int
-	DefinitionTermCount int
-	TaskListItems    int
-	TaskListChecked  int
-	FootnoteReferences int
-	FootnoteWarnings int
-	Admonitions int
-	Badges int
+	FootnoteDefs              map[string]string
+	FootnoteOrder             []string
+	FootnoteSeen              map[string]bool
+	FootnoteRefCounts         map[string]int
+	InternalLinkRefs          map[string]string
+	BrokenLinks               []string
+	HeadingSkipCount          int
+	CharCount                 int
+	KnownAnchors              map[string]bool
+	SourcePath                string
+	BaseDir                   string
+	OutputBySource            map[string]string
+	AnchorsBySource           map[string]map[string]bool
+	IsSingle                  bool
+	LazyImages                bool
+	Footnotes                 bool
+	DefinitionLists           bool
+	TaskLists                 bool
+	MarkdownExtensions        map[string]bool
+	CodeLineNumbers           bool
+	HeadingNumbering          string
+	HeadingDisplayByLine      map[int]string
+	SectionCollapse           bool
+	TOCMinDepth               int
+	TOCMaxDepth               int
+	UpdatedAtSource           string
+	TemplateVars              map[string]string
+	MinifyHTML                bool
+	TOCActive                 bool
+	Mermaid                   bool
+	Math                      bool
+	HashHistory               bool
+	A11yCheck                 bool
+	ImageLightbox             bool
+	PrintQRURL                string
+	LazyImageCount            int
+	ImagePathWarnings         int
+	DefinitionListCount       int
+	DefinitionTermCount       int
+	TaskListItems             int
+	TaskListChecked           int
+	FootnoteReferences        int
+	FootnoteWarnings          int
+	Admonitions               int
+	Badges                    int
 	MarkdownExtensionWarnings int
-	CodeLineNumberBlocks int
-	CodeLineNumberLines int
-	NumberedHeadings int
-	CollapsibleSections int
-	DiffBlocks int
-	DiffInsertions int
-	DiffDeletions int
-	CodeTitles int
-	CodeTitleWarnings int
-	MathInline int
-	MathBlock int
-	MathWarnings int
-	MermaidBlocks int
-	MermaidRendered int
-	MermaidUnsupported int
-	HashHistoryTargets int
-	LightboxImages int
-	LightboxWarnings int
-	A11yWarnings int
-	A11yDuplicateIDs int
-	A11yMissingLabels int
-	Warnings         []string
+	CodeLineNumberBlocks      int
+	CodeLineNumberLines       int
+	NumberedHeadings          int
+	CollapsibleSections       int
+	DiffBlocks                int
+	DiffInsertions            int
+	DiffDeletions             int
+	CodeTitles                int
+	CodeTitleWarnings         int
+	MathInline                int
+	MathBlock                 int
+	MathWarnings              int
+	MermaidBlocks             int
+	MermaidRendered           int
+	MermaidUnsupported        int
+	HashHistoryTargets        int
+	LightboxImages            int
+	LightboxWarnings          int
+	A11yWarnings              int
+	A11yDuplicateIDs          int
+	A11yMissingLabels         int
+	Warnings                  []string
 }
 
 type report struct {
-	Pages        int
-	Headings     int
-	Tables       int
-	CodeBlocks   int
-	Warnings     int
-	SizeWarn     bool
-	BrokenLinks  int
-	HeadingSkips int
-	ReadingTime  int
-	Theme        string
-	OutputFiles  int
-	OutputBytes  int64
-	OutputDir    string
-	LazyImages   int
-	ImagePathWarnings int
-	DefinitionLists int
-	DefinitionTerms int
-	TaskListItems int
-	TaskListChecked int
-	FootnoteReferences int
-	FootnoteWarnings int
-	IncrementalEnabled bool
-	IncrementalChangedPages int
-	IncrementalReusedPages int
-	IncrementalReason string
-	OutputFormat string
-	OutputFormatSupported bool
-	Admonitions int
-	Badges int
+	Pages                     int
+	Headings                  int
+	Tables                    int
+	CodeBlocks                int
+	Warnings                  int
+	SizeWarn                  bool
+	BrokenLinks               int
+	HeadingSkips              int
+	ReadingTime               int
+	Theme                     string
+	OutputFiles               int
+	OutputBytes               int64
+	OutputDir                 string
+	LazyImages                int
+	ImagePathWarnings         int
+	DefinitionLists           int
+	DefinitionTerms           int
+	TaskListItems             int
+	TaskListChecked           int
+	FootnoteReferences        int
+	FootnoteWarnings          int
+	IncrementalEnabled        bool
+	IncrementalChangedPages   int
+	IncrementalReusedPages    int
+	IncrementalReason         string
+	OutputFormat              string
+	OutputFormatSupported     bool
+	Admonitions               int
+	Badges                    int
 	MarkdownExtensionWarnings int
-	CodeLineNumberBlocks int
-	CodeLineNumberLines int
-	HeadingNumbering string
-	NumberedHeadings int
-	CollapsibleSections int
-	CollapsedSectionsDefault int
-	TOCMinDepth int
-	TOCMaxDepth int
-	TOCItems int
-	UpdatedAtSource string
-	UpdatedAt string
-	UpdatedAtFallback bool
-	DiffBlocks int
-	DiffInsertions int
-	DiffDeletions int
-	CustomMetaCount int
-	CustomMetaRejected int
-	ColorSchemeFixed bool
-	CodeTitles int
-	CodeTitleWarnings int
-	TemplateVars int
-	TemplateVarsMissing int
-	TemplateVarsReplaced int
-	MinifyHTML bool
-	MinifyBytesBefore int
-	MinifyBytesAfter int
-	MinifyBytesSaved int
-	TOCActiveTracking bool
-	TOCActiveItems int
-	MermaidBlocks int
-	MermaidRendered int
-	MermaidUnsupported int
-	Footnotes int
-	MathInline int
-	MathBlock int
-	MathWarnings int
-	HashHistoryEnabled bool
-	HashHistoryTargets int
-	A11yWarnings int
-	A11yDuplicateIDs int
-	A11yMissingLabels int
-	LightboxImages int
-	LightboxWarnings int
-	PrintQR bool
-	PrintQRURL string
+	CodeLineNumberBlocks      int
+	CodeLineNumberLines       int
+	HeadingNumbering          string
+	NumberedHeadings          int
+	CollapsibleSections       int
+	CollapsedSectionsDefault  int
+	TOCMinDepth               int
+	TOCMaxDepth               int
+	TOCItems                  int
+	UpdatedAtSource           string
+	UpdatedAt                 string
+	UpdatedAtFallback         bool
+	DiffBlocks                int
+	DiffInsertions            int
+	DiffDeletions             int
+	CustomMetaCount           int
+	CustomMetaRejected        int
+	ColorSchemeFixed          bool
+	CodeTitles                int
+	CodeTitleWarnings         int
+	TemplateVars              int
+	TemplateVarsMissing       int
+	TemplateVarsReplaced      int
+	MinifyHTML                bool
+	MinifyBytesBefore         int
+	MinifyBytesAfter          int
+	MinifyBytesSaved          int
+	TOCActiveTracking         bool
+	TOCActiveItems            int
+	MermaidBlocks             int
+	MermaidRendered           int
+	MermaidUnsupported        int
+	Footnotes                 int
+	MathInline                int
+	MathBlock                 int
+	MathWarnings              int
+	HashHistoryEnabled        bool
+	HashHistoryTargets        int
+	A11yWarnings              int
+	A11yDuplicateIDs          int
+	A11yMissingLabels         int
+	LightboxImages            int
+	LightboxWarnings          int
+	PrintQR                   bool
+	PrintQRURL                string
 }
 
 type siteFile struct {
@@ -418,8 +418,10 @@ func parseArgs(args []string, stdout io.Writer) (BuildConfig, bool, error) {
 			"--toc-active":       func(v bool) { cfg.TOCActive = v; specified["toc_active"] = true },
 			"--hash-history":     func(v bool) { cfg.HashHistory = v; specified["hash_history"] = true },
 			"--a11y-check":       func(v bool) { cfg.A11yCheck = v; specified["a11y_check"] = true },
-		}); handled || err != nil {
+		}); err != nil {
 			return cfg, false, err
+		} else if handled {
+			continue
 		}
 		if handled, err := parseFlagOption(arg, seenOption, map[string]func(){
 			"--code-line-numbers": func() { cfg.CodeLineNumbers = true; specified["code_line_numbers"] = true },
@@ -428,8 +430,10 @@ func parseArgs(args []string, stdout io.Writer) (BuildConfig, bool, error) {
 			"--mermaid":           func() { cfg.Mermaid = true; specified["mermaid"] = true },
 			"--math":              func() { cfg.Math = true; specified["math"] = true },
 			"--image-lightbox":    func() { cfg.ImageLightbox = true; specified["image_lightbox"] = true },
-		}); handled || err != nil {
+		}); err != nil {
 			return cfg, false, err
+		} else if handled {
+			continue
 		}
 		if strings.Contains(arg, "=") {
 			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
@@ -716,13 +720,13 @@ func applyBuilderEnv(cfg *BuildConfig, specified map[string]bool) error {
 		Key string
 		Set func(string) error
 	}{
-		"changed_manifest": {"ADLAIRE_CHANGED_MANIFEST", func(v string) error { cfg.ChangedManifest = v; return nil }},
-		"format": {"ADLAIRE_OUTPUT_FORMAT", func(v string) error { cfg.OutputFormat = v; return nil }},
+		"changed_manifest":    {"ADLAIRE_CHANGED_MANIFEST", func(v string) error { cfg.ChangedManifest = v; return nil }},
+		"format":              {"ADLAIRE_OUTPUT_FORMAT", func(v string) error { cfg.OutputFormat = v; return nil }},
 		"markdown_extensions": {"ADLAIRE_MARKDOWN_EXTENSIONS", func(v string) error { return setMarkdownExtensions(cfg, v) }},
-		"heading_numbering": {"ADLAIRE_HEADING_NUMBERING", func(v string) error { cfg.HeadingNumbering = v; return nil }},
-		"toc_depth": {"ADLAIRE_TOC_DEPTH", func(v string) error { return setTOCDepth(cfg, v) }},
-		"updated_at_source": {"ADLAIRE_UPDATED_AT_SOURCE", func(v string) error { cfg.UpdatedAtSource = v; return nil }},
-		"print_qr_url": {"ADLAIRE_PRINT_QR_URL", func(v string) error { cfg.PrintQRURL = v; return nil }},
+		"heading_numbering":   {"ADLAIRE_HEADING_NUMBERING", func(v string) error { cfg.HeadingNumbering = v; return nil }},
+		"toc_depth":           {"ADLAIRE_TOC_DEPTH", func(v string) error { return setTOCDepth(cfg, v) }},
+		"updated_at_source":   {"ADLAIRE_UPDATED_AT_SOURCE", func(v string) error { cfg.UpdatedAtSource = v; return nil }},
+		"print_qr_url":        {"ADLAIRE_PRINT_QR_URL", func(v string) error { cfg.PrintQRURL = v; return nil }},
 	}
 	for key, item := range envString {
 		value, ok := os.LookupEnv(item.Key)
@@ -793,7 +797,7 @@ func addCustomMeta(dst map[string]string, raw string) error {
 
 func addCustomMetaKV(dst map[string]string, key, value string) error {
 	key = strings.TrimSpace(key)
-	if !validMetaKey(key) || containsControl(value) || strings.ContainsAny(value, "<>") {
+	if !validMetaKey(key) || containsBuilderControl(value) || strings.ContainsAny(value, "<>") {
 		return exitError{Code: 2, Msg: "BUILDER28_INVALID_OPTION: --meta"}
 	}
 	dst[key] = value
@@ -828,14 +832,14 @@ func addTemplateVar(dst map[string]string, raw string) error {
 
 func addTemplateVarKV(dst map[string]string, key, value string) error {
 	key = strings.TrimSpace(key)
-	if !regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`).MatchString(key) || containsControl(value) {
+	if !regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`).MatchString(key) || containsBuilderControl(value) {
 		return exitError{Code: 2, Msg: "BUILDER28_INVALID_OPTION: --var"}
 	}
 	dst[key] = value
 	return nil
 }
 
-func containsControl(s string) bool {
+func containsBuilderControl(s string) bool {
 	for _, r := range s {
 		if r == 0 || r == 0x7f || (r < 0x20 && r != '\t') {
 			return true
@@ -1401,37 +1405,37 @@ func renderPages(cfg BuildConfig, baseDir string, inputs []PageInput, isSingle b
 			footnotes = collectFootnotes(lines)
 		}
 		ctx := &RenderContext{
-			FootnoteDefs:     footnotes,
-			FootnoteSeen:     map[string]bool{},
-			FootnoteRefCounts: map[string]int{},
-			InternalLinkRefs: map[string]string{},
-			KnownAnchors:     map[string]bool{},
-			SourcePath:       in.SourcePath,
-			BaseDir:          baseDir,
-			OutputBySource:   outputBySource,
-			AnchorsBySource:  anchorsBySource,
-			IsSingle:         isSingle,
-			LazyImages:       cfg.LazyImages,
-			Footnotes:        cfg.Footnotes,
-			DefinitionLists:  cfg.DefinitionLists,
-			TaskLists:        cfg.TaskLists,
-			MarkdownExtensions: cfg.MarkdownExtensions,
-			CodeLineNumbers: cfg.CodeLineNumbers,
-			HeadingNumbering: cfg.HeadingNumbering,
+			FootnoteDefs:         footnotes,
+			FootnoteSeen:         map[string]bool{},
+			FootnoteRefCounts:    map[string]int{},
+			InternalLinkRefs:     map[string]string{},
+			KnownAnchors:         map[string]bool{},
+			SourcePath:           in.SourcePath,
+			BaseDir:              baseDir,
+			OutputBySource:       outputBySource,
+			AnchorsBySource:      anchorsBySource,
+			IsSingle:             isSingle,
+			LazyImages:           cfg.LazyImages,
+			Footnotes:            cfg.Footnotes,
+			DefinitionLists:      cfg.DefinitionLists,
+			TaskLists:            cfg.TaskLists,
+			MarkdownExtensions:   cfg.MarkdownExtensions,
+			CodeLineNumbers:      cfg.CodeLineNumbers,
+			HeadingNumbering:     cfg.HeadingNumbering,
 			HeadingDisplayByLine: displayByLine,
-			SectionCollapse: cfg.SectionCollapse,
-			TOCMinDepth: cfg.TOCMinDepth,
-			TOCMaxDepth: cfg.TOCMaxDepth,
-			UpdatedAtSource: cfg.UpdatedAtSource,
-			TemplateVars: cfg.TemplateVars,
-			MinifyHTML: cfg.MinifyHTML,
-			TOCActive: cfg.TOCActive,
-			Mermaid: cfg.Mermaid,
-			Math: cfg.Math,
-			HashHistory: cfg.HashHistory,
-			A11yCheck: cfg.A11yCheck,
-			ImageLightbox: cfg.ImageLightbox,
-			PrintQRURL: cfg.PrintQRURL,
+			SectionCollapse:      cfg.SectionCollapse,
+			TOCMinDepth:          cfg.TOCMinDepth,
+			TOCMaxDepth:          cfg.TOCMaxDepth,
+			UpdatedAtSource:      cfg.UpdatedAtSource,
+			TemplateVars:         cfg.TemplateVars,
+			MinifyHTML:           cfg.MinifyHTML,
+			TOCActive:            cfg.TOCActive,
+			Mermaid:              cfg.Mermaid,
+			Math:                 cfg.Math,
+			HashHistory:          cfg.HashHistory,
+			A11yCheck:            cfg.A11yCheck,
+			ImageLightbox:        cfg.ImageLightbox,
+			PrintQRURL:           cfg.PrintQRURL,
 		}
 		for _, h := range headings {
 			ctx.KnownAnchors[h.Slug] = true
@@ -1668,7 +1672,7 @@ func pageSlug(rel string) string {
 }
 
 type updatedAtResult struct {
-	Value string
+	Value    string
 	Fallback bool
 }
 
@@ -3029,13 +3033,13 @@ func printQRHTML(raw string) string {
 }
 
 type dependencyManifestDoc struct {
-	SchemaVersion int `json:"schema_version"`
-	Pages []dependencyPage `json:"pages"`
+	SchemaVersion int              `json:"schema_version"`
+	Pages         []dependencyPage `json:"pages"`
 }
 
 type dependencyPage struct {
-	Path string `json:"path"`
-	Output string `json:"output"`
+	Path         string            `json:"path"`
+	Output       string            `json:"output"`
 	Dependencies []dependencyEntry `json:"dependencies"`
 }
 

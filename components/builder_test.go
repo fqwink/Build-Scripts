@@ -577,7 +577,7 @@ func TestFixtureUnclosedFenceNonStrictWarnsAndOutputsCode(t *testing.T) {
 	out := filepath.Join(root, "dist")
 
 	var stdout, stderr bytes.Buffer
-	code := RunBuild([]string{"--src", docs, "--out", out, "--title", "Docs"}, &stdout, &stderr)
+	code := RunBuild([]string{"--src", filepath.Join(docs, "index.md"), "--out", out, "--title", "Docs"}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
 	}
