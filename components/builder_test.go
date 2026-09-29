@@ -155,6 +155,95 @@ func TestFixtureBuildMetadata(t *testing.T) {
 	}
 }
 
+func TestFixtureURLSafety(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	writeFile(t, filepath.Join(docs, "intro.md"), `# Intro
+
+## Safe
+
+[ok](guide/setup.md#setup)
+[external](https://example.com/path?q=1)
+[email](mailto:team@example.com)
+[missing](guide/setup.md?token=secret#missing)
+[bad](javascript:alert)
+[protocol](//example.com/x)
+![escape](../secret.png)
+![remote](https://example.com/img.png)
+`)
+	writeFile(t, filepath.Join(docs, "guide", "setup.md"), `# Setup
+`)
+	out := filepath.Join(root, "dist")
+
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", docs, "--out", out, "--title", "Docs"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr, got %q", stderr.String())
+	}
+	for _, want := range []string{
+		"UNSAFE_URL: link",
+		"BUILDER28_PATH_OUTSIDE_BASE: image",
+		"BROKEN_PAGE_LINK: guide/setup.md#missing",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout missing %q: %s", want, stdout.String())
+		}
+	}
+	if strings.Contains(stdout.String(), "token=secret") {
+		t.Fatalf("warning leaked query string: %s", stdout.String())
+	}
+	intro := readFile(t, filepath.Join(out, "pages", "intro.html"))
+	for _, want := range []string{
+		`href="guide-setup.html#setup"`,
+		`href="https://example.com/path?q=1" target="_blank" rel="noopener noreferrer"`,
+		`href="mailto:team@example.com"`,
+		`src="https://example.com/img.png"`,
+	} {
+		if !strings.Contains(intro, want) {
+			t.Fatalf("intro.html missing %q: %s", want, intro)
+		}
+	}
+	for _, forbidden := range []string{"javascript:alert", `href="//example.com/x"`, `src="../secret.png"`} {
+		if strings.Contains(intro, forbidden) {
+			t.Fatalf("intro.html contains forbidden URL %q: %s", forbidden, intro)
+		}
+	}
+}
+
+func TestFixtureURLSafetyStrictKeepsExistingOutput(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	writeFile(t, filepath.Join(docs, "index.md"), `# Intro
+
+[bad](javascript:alert)
+`)
+	out := filepath.Join(root, "dist")
+	writeFile(t, filepath.Join(out, "index.html"), "old")
+
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", docs, "--out", out, "--title", "Docs", "--strict"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for strict warning, got %q", stderr.String())
+	}
+	for _, want := range []string{"[WARN] UNSAFE_URL: link", "[REPORT] pages=1", "warnings=1"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout missing %q: %s", want, stdout.String())
+		}
+	}
+	if strings.Contains(stdout.String(), "Done") {
+		t.Fatalf("strict warning must not emit Done: %s", stdout.String())
+	}
+	if got := readFile(t, filepath.Join(out, "index.html")); got != "old" {
+		t.Fatalf("strict warning replaced existing output: %q", got)
+	}
+}
+
 func TestFixtureIdempotency(t *testing.T) {
 	out1 := t.TempDir()
 	out2 := t.TempDir()
@@ -183,6 +272,16 @@ func readFile(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(data)
+}
+
+func writeFile(t *testing.T, path string, data string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(data), 0644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func stableRead(t *testing.T, path string) []byte {

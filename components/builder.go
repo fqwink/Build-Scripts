@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -97,8 +98,12 @@ type RenderContext struct {
 	BrokenLinks      []string
 	HeadingSkipCount int
 	CharCount        int
-	LinkResolver     func(string) (string, string)
 	KnownAnchors     map[string]bool
+	SourcePath       string
+	BaseDir          string
+	OutputBySource   map[string]string
+	AnchorsBySource  map[string]map[string]bool
+	IsSingle         bool
 	Warnings         []string
 }
 
@@ -502,6 +507,7 @@ func readUTF8(path string) (string, error) {
 
 func renderPages(baseDir string, inputs []PageInput, isSingle bool) ([]PageData, report, []string, error) {
 	outputBySource := map[string]string{}
+	anchorsBySource := map[string]map[string]bool{}
 	slugCounts := map[string]int{}
 	for _, in := range inputs {
 		slug := uniqueSlug(pageSlug(in.RelativePath), slugCounts)
@@ -510,6 +516,12 @@ func renderPages(baseDir string, inputs []PageInput, isSingle bool) ([]PageData,
 			out = "pages/" + slug + ".html"
 		}
 		outputBySource[cleanAbs(in.SourcePath)] = out
+		headings, _, _ := collectHeadings(builderSplitLines(in.RawText))
+		anchors := map[string]bool{}
+		for _, h := range headings {
+			anchors[h.Slug] = true
+		}
+		anchorsBySource[cleanAbs(in.SourcePath)] = anchors
 	}
 	var pages []PageData
 	var rep report
@@ -522,12 +534,14 @@ func renderPages(baseDir string, inputs []PageInput, isSingle bool) ([]PageData,
 			FootnoteSeen:     map[string]bool{},
 			InternalLinkRefs: map[string]string{},
 			KnownAnchors:     map[string]bool{},
+			SourcePath:       in.SourcePath,
+			BaseDir:          baseDir,
+			OutputBySource:   outputBySource,
+			AnchorsBySource:  anchorsBySource,
+			IsSingle:         isSingle,
 		}
 		for _, h := range headings {
 			ctx.KnownAnchors[h.Slug] = true
-		}
-		ctx.LinkResolver = func(raw string) (string, string) {
-			return resolveLink(raw, in.SourcePath, outputBySource, isSingle)
 		}
 		body, plain, tables, codeBlocks, err := convert(lines, slugByLine, ctx)
 		if err != nil {
@@ -690,7 +704,7 @@ func inline(text string, ctx *RenderContext) string {
 	segments := codeSpanSegments(text)
 	out := strings.Join(segments, "")
 	out = replaceInlineMarkup(out)
-	out = replaceImages(out)
+	out = replaceImages(out, ctx)
 	out = replaceLinks(out, ctx)
 	out = replaceFootnotes(out, ctx)
 	return out
@@ -741,11 +755,17 @@ func replaceInlineMarkup(text string) string {
 	return text
 }
 
-func replaceImages(text string) string {
+func replaceImages(text string, ctx *RenderContext) string {
 	re := regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	return re.ReplaceAllStringFunc(text, func(m string) string {
 		parts := re.FindStringSubmatch(m)
-		return `<img src="` + esc(parts[2]) + `" alt="` + esc(parts[1]) + `" style="max-width:100%">`
+		raw := parts[2]
+		resolved, ok, warn := resolveURL(raw, "image", ctx)
+		appendURLWarning(ctx, warn)
+		if !ok {
+			return parts[1]
+		}
+		return `<img src="` + esc(resolved) + `" alt="` + esc(parts[1]) + `" style="max-width:100%">`
 	})
 }
 
@@ -755,23 +775,13 @@ func replaceLinks(text string, ctx *RenderContext) string {
 		parts := re.FindStringSubmatch(m)
 		label := parts[1]
 		raw := parts[2]
-		href := raw
-		if ctx != nil && ctx.LinkResolver != nil {
-			resolved, warn := ctx.LinkResolver(raw)
-			if warn != "" {
-				ctx.Warnings = append(ctx.Warnings, warn)
-			}
-			href = resolved
+		href, ok, warn := resolveURL(raw, "link", ctx)
+		appendURLWarning(ctx, warn)
+		if !ok {
+			return label
 		}
-		if strings.HasPrefix(raw, "#") && ctx != nil {
-			anchor := strings.TrimPrefix(raw, "#")
-			ctx.InternalLinkRefs[anchor] = m
-			if !ctx.KnownAnchors[anchor] {
-				msg := "BROKEN_LINK: " + raw + "  (in: " + m + ")"
-				ctx.BrokenLinks = append(ctx.BrokenLinks, msg)
-			}
-		}
-		if strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://") {
+		scheme := strings.ToLower(urlScheme(href))
+		if scheme == "http" || scheme == "https" {
 			return `<a href="` + esc(href) + `" target="_blank" rel="noopener noreferrer">` + label + `</a>`
 		}
 		return `<a href="` + esc(href) + `">` + label + `</a>`
@@ -801,26 +811,167 @@ func replaceFootnotes(text string, ctx *RenderContext) string {
 	})
 }
 
-func resolveLink(raw, sourcePath string, outputBySource map[string]string, isSingle bool) (string, string) {
-	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") || strings.HasPrefix(raw, "mailto:") || strings.HasPrefix(raw, "tel:") || strings.HasPrefix(raw, "#") {
-		return raw, ""
+func appendURLWarning(ctx *RenderContext, warn string) {
+	if warn == "" || ctx == nil {
+		return
+	}
+	if strings.HasPrefix(warn, "BROKEN_") {
+		ctx.BrokenLinks = append(ctx.BrokenLinks, warn)
+		return
+	}
+	ctx.Warnings = append(ctx.Warnings, warn)
+}
+
+func resolveURL(raw, kind string, ctx *RenderContext) (string, bool, string) {
+	if ctx == nil {
+		return raw, true, ""
+	}
+	if !validURLToken(raw) {
+		return "", false, unsafeURLWarning(kind, ctx.SourcePath)
 	}
 	u, err := url.Parse(raw)
-	if err != nil || u.Path == "" || !isMarkdownPath(u.Path) {
-		return raw, ""
+	if err != nil {
+		return "", false, unsafeURLWarning(kind, ctx.SourcePath)
 	}
-	target := filepath.Clean(filepath.Join(filepath.Dir(sourcePath), filepath.FromSlash(u.Path)))
-	out, ok := outputBySource[cleanAbs(target)]
+	if raw == "" || strings.HasPrefix(raw, "//") || strings.Contains(u.Path, `\`) || hasWindowsDrivePrefix(u.Path) {
+		return "", false, unsafeURLWarning(kind, ctx.SourcePath)
+	}
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "" {
+		switch scheme {
+		case "http", "https":
+			if u.Host == "" || u.User != nil {
+				return "", false, unsafeURLWarning(kind, ctx.SourcePath)
+			}
+			return raw, true, ""
+		case "mailto", "tel":
+			if kind != "link" || u.Host != "" || u.User != nil || (u.Path == "" && u.Opaque == "") {
+				return "", false, unsafeURLWarning(kind, ctx.SourcePath)
+			}
+			return raw, true, ""
+		case "data":
+			if kind != "image" {
+				return "", false, unsafeURLWarning(kind, ctx.SourcePath)
+			}
+			return raw, true, ""
+		default:
+			return "", false, unsafeURLWarning(kind, ctx.SourcePath)
+		}
+	}
+	if strings.HasPrefix(raw, "#") {
+		anchor := strings.TrimPrefix(raw, "#")
+		ctx.InternalLinkRefs[anchor] = raw
+		if anchor == "" {
+			return "", false, unsafeURLWarning(kind, ctx.SourcePath)
+		}
+		if !ctx.KnownAnchors[anchor] {
+			return raw, true, "BROKEN_LINK: #" + anchor + " (in: " + ctx.SourcePath + ")"
+		}
+		return raw, true, ""
+	}
+	if strings.HasPrefix(raw, "?") {
+		return raw, true, ""
+	}
+	if u.Path == "" || strings.HasPrefix(u.Path, "/") {
+		return "", false, unsafeURLWarning(kind, ctx.SourcePath)
+	}
+	cleanPath := path.Clean(u.Path)
+	if cleanPath == ".." || strings.HasPrefix(cleanPath, "../") {
+		if kind == "image" {
+			return "", false, "BUILDER28_PATH_OUTSIDE_BASE: image (in: " + ctx.SourcePath + ")"
+		}
+		return "", false, unsafeURLWarning(kind, ctx.SourcePath)
+	}
+	baseDir := ctx.BaseDir
+	if baseDir == "" {
+		baseDir = filepath.Dir(ctx.SourcePath)
+	}
+	target := filepath.Clean(filepath.Join(baseDir, filepath.FromSlash(cleanPath)))
+	if cleanAbs(target) != cleanAbs(baseDir) && !pathInside(cleanAbs(target), cleanAbs(baseDir)) {
+		if kind == "image" {
+			return "", false, "BUILDER28_PATH_OUTSIDE_BASE: image (in: " + ctx.SourcePath + ")"
+		}
+		return "", false, unsafeURLWarning(kind, ctx.SourcePath)
+	}
+	if !isMarkdownPath(cleanPath) {
+		return urlWithNormalizedPath(u, cleanPath), true, ""
+	}
+	out, ok := ctx.OutputBySource[cleanAbs(target)]
 	if !ok {
-		return raw, "BROKEN_PAGE_LINK: " + raw + " (in: " + sourcePath + ")"
+		return raw, true, "BROKEN_PAGE_LINK: " + sanitizeRelativeURL(raw) + " (in: " + ctx.SourcePath + ")"
 	}
-	if !isSingle && strings.HasPrefix(out, "pages/") {
+	if u.Fragment != "" && !ctx.AnchorsBySource[cleanAbs(target)][u.Fragment] {
+		return raw, true, "BROKEN_PAGE_LINK: " + sanitizeRelativeURL(raw) + " (in: " + ctx.SourcePath + ")"
+	}
+	if !ctx.IsSingle && strings.HasPrefix(out, "pages/") {
 		out = strings.TrimPrefix(out, "pages/")
+	}
+	if u.RawQuery != "" || u.ForceQuery {
+		out += "?"
+		if u.RawQuery != "" {
+			out += u.RawQuery
+		}
 	}
 	if u.Fragment != "" {
 		out += "#" + u.Fragment
 	}
-	return out, ""
+	return out, true, ""
+}
+
+func validURLToken(s string) bool {
+	if s == "" || !utf8.ValidString(s) {
+		return false
+	}
+	for _, r := range s {
+		if r == '\t' || r == 0x7f || r <= 0x1f || r == ' ' {
+			return false
+		}
+	}
+	return true
+}
+
+func unsafeURLWarning(kind, source string) string {
+	return "UNSAFE_URL: " + kind + " (in: " + source + ")"
+}
+
+func urlScheme(raw string) string {
+	if i := strings.IndexByte(raw, ':'); i > 0 {
+		return raw[:i]
+	}
+	return ""
+}
+
+func hasWindowsDrivePrefix(s string) bool {
+	return len(s) >= 2 && s[1] == ':' && ((s[0] >= 'A' && s[0] <= 'Z') || (s[0] >= 'a' && s[0] <= 'z'))
+}
+
+func urlWithNormalizedPath(u *url.URL, cleanPath string) string {
+	out := cleanPath
+	if u.RawQuery != "" || u.ForceQuery {
+		out += "?"
+		if u.RawQuery != "" {
+			out += u.RawQuery
+		}
+	}
+	if u.Fragment != "" {
+		out += "#" + u.Fragment
+	}
+	return out
+}
+
+func sanitizeRelativeURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "-"
+	}
+	out := u.Path
+	if out == "" {
+		out = "-"
+	}
+	if u.Fragment != "" {
+		out += "#" + u.Fragment
+	}
+	return out
 }
 
 func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (string, []plainBlock, int, int, error) {
