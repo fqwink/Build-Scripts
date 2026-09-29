@@ -21,8 +21,8 @@ func TestFixtureSingle(t *testing.T) {
 		`<a href="#title">self</a>`,
 		`<div class="cb-wrap" data-lang="bash">`,
 		`<span class="cl">bash</span>`,
-		`<li class="ml-task"><input type="checkbox" disabled checked>done</li>`,
-		`<li class="ml-task"><input type="checkbox" disabled>todo</li>`,
+		`<li class="task-list-item"><input class="task-list-checkbox" type="checkbox" disabled aria-label="Task complete" checked>done`,
+		`<li class="task-list-item"><input class="task-list-checkbox" type="checkbox" disabled aria-label="Task incomplete">todo`,
 	} {
 		if !strings.Contains(index, want) {
 			t.Fatalf("index.html missing %q", want)
@@ -41,6 +41,119 @@ func TestFixtureSingle(t *testing.T) {
 	}
 	if strings.Contains(stdout.String(), "BROKEN_LINK") {
 		t.Fatalf("unexpected broken link warning: %s", stdout.String())
+	}
+}
+
+func TestFixtureExtendedMarkdownBlocks(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	writeFile(t, filepath.Join(docs, "index.md"), `# Title
+
+| Name | Value |
+| --- | --- |
+| escaped \| pipe | a | b |
+
+> parent
+> > child
+
+Term
+: Definition
+
+- top
+  - child
+              - deep
+
+![Alt](image.png)
+[^missing]
+`)
+	writeFile(t, filepath.Join(docs, "image.png"), "png")
+	out := filepath.Join(root, "dist")
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", filepath.Join(docs, "index.md"), "--out", out, "--title", "Docs"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	index := readFile(t, filepath.Join(out, "index.html"))
+	for _, want := range []string{
+		`<th data-sort="0" aria-sort="none">Name</th>`,
+		`<td>escaped | pipe</td><td>a | b</td>`,
+		`<blockquote class="mbq"><p class="mp">parent</p>`,
+		`<blockquote class="mbq"><p class="mp">child</p></blockquote>`,
+		`<dl class="definition-list"><dt>Term</dt><dd>Definition</dd></dl>`,
+		`<li>top`,
+		`<li>child`,
+		`<img class="md-image" src="image.png" alt="Alt" loading="lazy" decoding="async">`,
+		`[^missing]`,
+	} {
+		if !strings.Contains(index, want) {
+			t.Fatalf("index.html missing %q: %s", want, index)
+		}
+	}
+	for _, want := range []string{
+		`LIST_NESTING_CLAMPED: line=15 level=7`,
+		`BUILDER28_UNRESOLVED_REFERENCE: footnote missing`,
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("report missing %q: %s", want, stdout.String())
+		}
+	}
+}
+
+func TestFixtureMarkdownExtensionFlags(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	writeFile(t, filepath.Join(docs, "index.md"), `# Title
+
+Term
+: Definition
+
+- [x] done
+
+![Alt](image.png)
+
+[^note]
+
+[^note]: Body
+`)
+	writeFile(t, filepath.Join(docs, "image.png"), "png")
+	out := filepath.Join(root, "dist")
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{
+		"--src", filepath.Join(docs, "index.md"),
+		"--out", out,
+		"--title", "Docs",
+		"--definition-lists=false",
+		"--task-lists=false",
+		"--lazy-images=false",
+		"--footnotes=false",
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	index := readFile(t, filepath.Join(out, "index.html"))
+	for _, forbidden := range []string{
+		`class="definition-list"`,
+		`class="task-list-item"`,
+		`class="task-list-checkbox"`,
+		`class="footnote-ref"`,
+		`class="footnotes"`,
+		`loading="lazy"`,
+		`decoding="async"`,
+	} {
+		if strings.Contains(index, forbidden) {
+			t.Fatalf("index.html contains disabled feature %q: %s", forbidden, index)
+		}
+	}
+	for _, want := range []string{
+		`<p class="mp">Term : Definition</p>`,
+		`<li>[x] done`,
+		`<img class="md-image" src="image.png" alt="Alt">`,
+		`<p class="mp">[^note]</p>`,
+		`<p class="mp">[^note]: Body</p>`,
+	} {
+		if !strings.Contains(index, want) {
+			t.Fatalf("index.html missing %q: %s", want, index)
+		}
 	}
 }
 

@@ -36,6 +36,10 @@ type BuildConfig struct {
 	BuildID   string
 	CommitSHA string
 	BuildAt   string
+	LazyImages      bool
+	Footnotes       bool
+	DefinitionLists bool
+	TaskLists       bool
 }
 
 var DefaultBuildConfig = BuildConfig{
@@ -48,6 +52,10 @@ var DefaultBuildConfig = BuildConfig{
 	BuildID:   "",
 	CommitSHA: "",
 	BuildAt:   "",
+	LazyImages:      true,
+	Footnotes:       true,
+	DefinitionLists: true,
+	TaskLists:       true,
 }
 
 type exitError struct {
@@ -94,6 +102,7 @@ type RenderContext struct {
 	FootnoteDefs     map[string]string
 	FootnoteOrder    []string
 	FootnoteSeen     map[string]bool
+	FootnoteRefCounts map[string]int
 	InternalLinkRefs map[string]string
 	BrokenLinks      []string
 	HeadingSkipCount int
@@ -104,6 +113,18 @@ type RenderContext struct {
 	OutputBySource   map[string]string
 	AnchorsBySource  map[string]map[string]bool
 	IsSingle         bool
+	LazyImages       bool
+	Footnotes        bool
+	DefinitionLists  bool
+	TaskLists        bool
+	LazyImageCount   int
+	ImagePathWarnings int
+	DefinitionListCount int
+	DefinitionTermCount int
+	TaskListItems    int
+	TaskListChecked  int
+	FootnoteReferences int
+	FootnoteWarnings int
 	Warnings         []string
 }
 
@@ -121,6 +142,14 @@ type report struct {
 	OutputFiles  int
 	OutputBytes  int64
 	OutputDir    string
+	LazyImages   int
+	ImagePathWarnings int
+	DefinitionLists int
+	DefinitionTerms int
+	TaskListItems int
+	TaskListChecked int
+	FootnoteReferences int
+	FootnoteWarnings int
 }
 
 type siteFile struct {
@@ -164,16 +193,17 @@ func RunBuild(args []string, stdout, stderr io.Writer) int {
 }
 
 func writeReport(stdout io.Writer, rep report, cfg BuildConfig) {
-	fmt.Fprintf(stdout, "[REPORT] pages=%d headings=%d tables=%d code_blocks=%d warnings=%d size_warn=%t broken_links=%d heading_skips=%d reading_time=%d theme=%s build_id=%s commit_sha=%s build_at=%s\n",
-		rep.Pages, rep.Headings, rep.Tables, rep.CodeBlocks, rep.Warnings, rep.SizeWarn, rep.BrokenLinks, rep.HeadingSkips, rep.ReadingTime, rep.Theme, cfg.BuildID, cfg.CommitSHA, cfg.BuildAt)
+	fmt.Fprintf(stdout, "[REPORT] pages=%d headings=%d tables=%d code_blocks=%d warnings=%d size_warn=%t broken_links=%d heading_skips=%d reading_time=%d theme=%s build_id=%s commit_sha=%s build_at=%s lazy_images=%d image_path_warnings=%d definition_lists=%d definition_terms=%d task_list_items=%d task_list_checked=%d footnote_references=%d footnote_warnings=%d\n",
+		rep.Pages, rep.Headings, rep.Tables, rep.CodeBlocks, rep.Warnings, rep.SizeWarn, rep.BrokenLinks, rep.HeadingSkips, rep.ReadingTime, rep.Theme, cfg.BuildID, cfg.CommitSHA, cfg.BuildAt, rep.LazyImages, rep.ImagePathWarnings, rep.DefinitionLists, rep.DefinitionTerms, rep.TaskListItems, rep.TaskListChecked, rep.FootnoteReferences, rep.FootnoteWarnings)
 }
 
 func parseArgs(args []string, stdout io.Writer) (BuildConfig, bool, error) {
 	cfg := DefaultBuildConfig
 	baseDirExplicit := false
+	seenExtensionBool := map[string]bool{}
 	for _, arg := range args {
 		if arg == "--help" {
-			fmt.Fprintln(stdout, "Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--version] [--help]")
+			fmt.Fprintln(stdout, "Usage: adlaire-ci-build [--src path] [--out path] [--title text] [--theme name] [--base-dir path] [--strict] [--build-id id] [--commit-sha sha] [--build-at iso8601] [--lazy-images=<true|false>] [--footnotes=<true|false>] [--definition-lists=<true|false>] [--task-lists=<true|false>] [--version] [--help]")
 			return cfg, true, nil
 		}
 	}
@@ -188,11 +218,35 @@ func parseArgs(args []string, stdout io.Writer) (BuildConfig, bool, error) {
 			return cfg, false, exitError{Code: 2, Msg: "invalid command line token"}
 		}
 	}
+	if err := applyEnvBool("ADLAIRE_LAZY_IMAGES", func(v bool) { cfg.LazyImages = v }); err != nil {
+		return cfg, false, err
+	}
+	if err := applyEnvBool("ADLAIRE_FOOTNOTES", func(v bool) { cfg.Footnotes = v }); err != nil {
+		return cfg, false, err
+	}
+	if err := applyEnvBool("ADLAIRE_DEFINITION_LISTS", func(v bool) { cfg.DefinitionLists = v }); err != nil {
+		return cfg, false, err
+	}
+	if err := applyEnvBool("ADLAIRE_TASK_LISTS", func(v bool) { cfg.TaskLists = v }); err != nil {
+		return cfg, false, err
+	}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--strict" {
 			cfg.Strict = true
 			continue
+		}
+		if handled, err := applyExtensionBoolCLI(arg, "--lazy-images", seenExtensionBool, func(v bool) { cfg.LazyImages = v }); handled || err != nil {
+			return cfg, false, err
+		}
+		if handled, err := applyExtensionBoolCLI(arg, "--footnotes", seenExtensionBool, func(v bool) { cfg.Footnotes = v }); handled || err != nil {
+			return cfg, false, err
+		}
+		if handled, err := applyExtensionBoolCLI(arg, "--definition-lists", seenExtensionBool, func(v bool) { cfg.DefinitionLists = v }); handled || err != nil {
+			return cfg, false, err
+		}
+		if handled, err := applyExtensionBoolCLI(arg, "--task-lists", seenExtensionBool, func(v bool) { cfg.TaskLists = v }); handled || err != nil {
+			return cfg, false, err
 		}
 		if !strings.HasPrefix(arg, "--") {
 			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
@@ -320,6 +374,47 @@ func validBuildAt(s string) bool {
 	return err == nil && parsed.UTC().Format(time.RFC3339) == s
 }
 
+func applyEnvBool(name string, set func(bool)) error {
+	value, ok := os.LookupEnv(name)
+	if !ok {
+		return nil
+	}
+	parsed, ok := parseStrictBool(value)
+	if !ok {
+		return exitError{Code: 2, Msg: "BUILDER28_INVALID_OPTION: " + name}
+	}
+	set(parsed)
+	return nil
+}
+
+func applyExtensionBoolCLI(arg, name string, seen map[string]bool, set func(bool)) (bool, error) {
+	prefix := name + "="
+	if !strings.HasPrefix(arg, prefix) {
+		return false, nil
+	}
+	if seen[name] {
+		return true, exitError{Code: 2, Msg: "BUILDER28_INVALID_OPTION: duplicate " + name}
+	}
+	seen[name] = true
+	parsed, ok := parseStrictBool(strings.TrimPrefix(arg, prefix))
+	if !ok {
+		return true, exitError{Code: 2, Msg: "BUILDER28_INVALID_OPTION: " + name}
+	}
+	set(parsed)
+	return true, nil
+}
+
+func parseStrictBool(value string) (bool, bool) {
+	switch value {
+	case "true":
+		return true, true
+	case "false":
+		return false, true
+	default:
+		return false, false
+	}
+}
+
 func validateSourcePath(src string) error {
 	info, err := os.Lstat(src)
 	if err != nil {
@@ -379,7 +474,7 @@ func build(cfg BuildConfig, stdout io.Writer) (report, []string, error) {
 	}
 	fmt.Fprintln(stdout, "Converting MD...")
 	srcInfo, _ := os.Stat(cfg.Src)
-	pages, rep, warnings, err := renderPages(baseDir, inputs, srcInfo != nil && !srcInfo.IsDir())
+	pages, rep, warnings, err := renderPages(cfg, baseDir, inputs, srcInfo != nil && !srcInfo.IsDir())
 	if err != nil {
 		return report{}, nil, err
 	}
@@ -508,7 +603,7 @@ func readUTF8(path string) (string, error) {
 	return string(data), nil
 }
 
-func renderPages(baseDir string, inputs []PageInput, isSingle bool) ([]PageData, report, []string, error) {
+func renderPages(cfg BuildConfig, baseDir string, inputs []PageInput, isSingle bool) ([]PageData, report, []string, error) {
 	outputBySource := map[string]string{}
 	anchorsBySource := map[string]map[string]bool{}
 	slugCounts := map[string]int{}
@@ -532,9 +627,14 @@ func renderPages(baseDir string, inputs []PageInput, isSingle bool) ([]PageData,
 	for _, in := range inputs {
 		lines := builderSplitLines(in.RawText)
 		headings, slugByLine, headingSkips := collectHeadings(lines)
+		footnotes := map[string]string{}
+		if cfg.Footnotes {
+			footnotes = collectFootnotes(lines)
+		}
 		ctx := &RenderContext{
-			FootnoteDefs:     collectFootnotes(lines),
+			FootnoteDefs:     footnotes,
 			FootnoteSeen:     map[string]bool{},
+			FootnoteRefCounts: map[string]int{},
 			InternalLinkRefs: map[string]string{},
 			KnownAnchors:     map[string]bool{},
 			SourcePath:       in.SourcePath,
@@ -542,6 +642,10 @@ func renderPages(baseDir string, inputs []PageInput, isSingle bool) ([]PageData,
 			OutputBySource:   outputBySource,
 			AnchorsBySource:  anchorsBySource,
 			IsSingle:         isSingle,
+			LazyImages:       cfg.LazyImages,
+			Footnotes:        cfg.Footnotes,
+			DefinitionLists:  cfg.DefinitionLists,
+			TaskLists:        cfg.TaskLists,
 		}
 		for _, h := range headings {
 			ctx.KnownAnchors[h.Slug] = true
@@ -564,6 +668,14 @@ func renderPages(baseDir string, inputs []PageInput, isSingle bool) ([]PageData,
 		rep.BrokenLinks += len(ctx.BrokenLinks)
 		rep.HeadingSkips += headingSkips + ctx.HeadingSkipCount
 		rep.ReadingTime += readingTime(ctx.CharCount)
+		rep.LazyImages += ctx.LazyImageCount
+		rep.ImagePathWarnings += ctx.ImagePathWarnings
+		rep.DefinitionLists += ctx.DefinitionListCount
+		rep.DefinitionTerms += ctx.DefinitionTermCount
+		rep.TaskListItems += ctx.TaskListItems
+		rep.TaskListChecked += ctx.TaskListChecked
+		rep.FootnoteReferences += ctx.FootnoteReferences
+		rep.FootnoteWarnings += ctx.FootnoteWarnings
 		pages = append(pages, PageData{
 			Title:              title,
 			Slug:               strings.TrimSuffix(filepath.Base(outPath), ".html"),
@@ -685,7 +797,7 @@ func slugify(text string) string {
 	}
 	out := strings.Trim(b.String(), "-")
 	if out == "" {
-		return "section"
+		return "page"
 	}
 	return out
 }
@@ -764,11 +876,21 @@ func replaceImages(text string, ctx *RenderContext) string {
 		parts := re.FindStringSubmatch(m)
 		raw := parts[2]
 		resolved, ok, warn := resolveURL(raw, "image", ctx)
+		if warn != "" && ctx != nil {
+			ctx.ImagePathWarnings++
+		}
 		appendURLWarning(ctx, warn)
 		if !ok {
 			return parts[1]
 		}
-		return `<img src="` + esc(resolved) + `" alt="` + esc(parts[1]) + `" style="max-width:100%">`
+		attrs := ` class="md-image" src="` + esc(resolved) + `" alt="` + esc(parts[1]) + `"`
+		if ctx == nil || ctx.LazyImages {
+			attrs += ` loading="lazy" decoding="async"`
+			if ctx != nil {
+				ctx.LazyImageCount++
+			}
+		}
+		return `<img` + attrs + `>`
 	})
 }
 
@@ -792,12 +914,17 @@ func replaceLinks(text string, ctx *RenderContext) string {
 }
 
 func replaceFootnotes(text string, ctx *RenderContext) string {
-	if ctx == nil {
+	if ctx == nil || !ctx.Footnotes {
 		return text
 	}
 	re := regexp.MustCompile(`\[\^([^\]]+)\]`)
 	return re.ReplaceAllStringFunc(text, func(m string) string {
 		key := re.FindStringSubmatch(m)[1]
+		if _, ok := ctx.FootnoteDefs[key]; !ok {
+			ctx.Warnings = append(ctx.Warnings, "BUILDER28_UNRESOLVED_REFERENCE: footnote "+key+" (in: "+ctx.SourcePath+")")
+			ctx.FootnoteWarnings++
+			return esc(m)
+		}
 		if !ctx.FootnoteSeen[key] {
 			ctx.FootnoteSeen[key] = true
 			ctx.FootnoteOrder = append(ctx.FootnoteOrder, key)
@@ -809,8 +936,9 @@ func replaceFootnotes(text string, ctx *RenderContext) string {
 				break
 			}
 		}
-		id := esc(key)
-		return fmt.Sprintf(`<sup><a href="#fn-%s" id="fnref-%s" class="fn-ref">[%d]</a></sup>`, id, id, n)
+		ctx.FootnoteRefCounts[key]++
+		ctx.FootnoteReferences++
+		return fmt.Sprintf(`<sup class="footnote-ref"><a href="#fn-%d" id="fnref-%d-%d">[%d]</a></sup>`, n, n, ctx.FootnoteRefCounts[key], n)
 	})
 }
 
@@ -982,7 +1110,7 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 	var plain []plainBlock
 	var para []string
 	var table []string
-	var listOpen string
+	var listStack []listState
 	var codeBuf []string
 	var codeLang string
 	var fence string
@@ -1003,43 +1131,66 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 		para = nil
 	}
 	flushList := func() {
-		if listOpen != "" {
-			out = append(out, "</"+listOpen+">")
-			listOpen = ""
+		for len(listStack) > 0 {
+			top := len(listStack) - 1
+			if listStack[top].liOpen {
+				out = append(out, "</li>")
+			}
+			out = append(out, "</"+listStack[top].tag+">")
+			listStack = listStack[:top]
+		}
+	}
+	closeTopList := func() {
+		top := len(listStack) - 1
+		if listStack[top].liOpen {
+			out = append(out, "</li>")
+		}
+		out = append(out, "</"+listStack[top].tag+">")
+		listStack = listStack[:top]
+	}
+	closeListsTo := func(depth int) {
+		for len(listStack) > depth {
+			closeTopList()
+		}
+	}
+	ensureList := func(depth int, tag string) {
+		if depth < 1 {
+			depth = 1
+		}
+		closeListsTo(depth)
+		if len(listStack) == depth && listStack[depth-1].tag != tag {
+			closeTopList()
+		}
+		for len(listStack) < depth {
+			out = append(out, `<`+tag+` class="ml">`)
+			listStack = append(listStack, listState{tag: tag})
 		}
 	}
 	flushTable := func() {
 		if len(table) == 0 {
 			return
 		}
+		rows, ok := normalizeTableRows(table)
+		if !ok {
+			for _, row := range table {
+				text := strings.TrimSpace(row)
+				if text == "" {
+					continue
+				}
+				ctx.CharCount += utf8.RuneCountInString(text)
+				out = append(out, `<p class="mp">`+inline(text, ctx)+`</p>`)
+				plain = append(plain, plainBlock{Anchor: currentAnchor, Title: currentTitle, Body: normalizePlain(text)})
+			}
+			table = nil
+			return
+		}
 		tables++
 		out = append(out, `<div class="tw"><table class="mt">`)
-		sep := -1
-		for i, row := range table {
-			cells := splitTableCells(row)
-			if len(cells) > 0 {
-				allSep := true
-				for _, c := range cells {
-					c = strings.TrimSpace(c)
-					if !regexp.MustCompile(`^:?-+:?$`).MatchString(c) {
-						allSep = false
-					}
-				}
-				if allSep {
-					sep = i
-					break
-				}
-			}
-		}
-		for i, row := range table {
-			if i == sep {
-				continue
-			}
+		for i, cells := range rows {
 			tag := "td"
-			if sep >= 0 && i < sep {
+			if i == 0 {
 				tag = "th"
 			}
-			cells := splitTableCells(row)
 			var b strings.Builder
 			b.WriteString("<tr>")
 			for idx, c := range cells {
@@ -1075,7 +1226,12 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 		}
 		out = append(out, fmt.Sprintf(`<div class="cb-wrap" data-lang="%s"><div class="cb-meta">%s<button class="cb-copy" aria-label="コピー">コピー</button></div><pre class="cb"%s><code>%s</code></pre>%s</div>`, lang, label, collapsible, esc(code), button))
 	}
+	skipLines := 0
 	for i, line := range lines {
+		if skipLines > 0 {
+			skipLines--
+			continue
+		}
 		raw := strings.TrimRight(line, "\n")
 		trim := strings.TrimSpace(raw)
 		if !inFence {
@@ -1102,7 +1258,7 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 			}
 			continue
 		}
-		if footnoteDefRe.MatchString(raw) {
+		if ctx.Footnotes && footnoteDefRe.MatchString(raw) {
 			continue
 		}
 		if m := headingRe.FindStringSubmatch(raw); m != nil {
@@ -1124,7 +1280,7 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 			flushTable()
 			continue
 		}
-		if strings.Contains(raw, "|") && strings.Count(raw, "|") >= 2 {
+		if isTableCandidateLine(raw) {
 			flushPara()
 			flushList()
 			table = append(table, raw)
@@ -1134,7 +1290,17 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 		if strings.HasPrefix(trim, ">") {
 			flushPara()
 			flushList()
-			out = append(out, `<blockquote class="mbq">`+inline(strings.TrimSpace(strings.TrimPrefix(trim, ">")), ctx)+`</blockquote>`)
+			var quoteLines []string
+			j := i
+			for ; j < len(lines); j++ {
+				qraw := strings.TrimRight(lines[j], "\n")
+				if !strings.HasPrefix(strings.TrimSpace(qraw), ">") {
+					break
+				}
+				quoteLines = append(quoteLines, qraw)
+			}
+			out = append(out, renderBlockquote(quoteLines, ctx))
+			skipLines = j - i - 1
 			continue
 		}
 		if trim == "---" || trim == "***" {
@@ -1143,27 +1309,50 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 			out = append(out, `<hr class="mr">`)
 			continue
 		}
-		if item, ok := parseList(trim); ok {
+		if item, ok := parseList(raw); ok {
 			flushPara()
 			tag := "ul"
 			if item.ordered {
 				tag = "ol"
 			}
-			if listOpen != tag {
-				flushList()
-				listOpen = tag
-				out = append(out, `<`+tag+` class="ml">`)
+			if item.level > 6 {
+				ctx.Warnings = append(ctx.Warnings, fmt.Sprintf("LIST_NESTING_CLAMPED: line=%d level=%d", i+1, item.level))
+				item.level = 6
+			}
+			if item.task && !ctx.TaskLists {
+				item.task = false
+				item.text = item.marker + " " + item.text
+			}
+			depth := item.level + 1
+			ensureList(depth, tag)
+			top := depth - 1
+			if listStack[top].liOpen {
+				out = append(out, "</li>")
 			}
 			if item.task {
 				checked := ""
+				label := "Task incomplete"
 				if item.checked {
 					checked = " checked"
+					label = "Task complete"
+					ctx.TaskListChecked++
 				}
-				out = append(out, `<li class="ml-task"><input type="checkbox" disabled`+checked+`>`+inline(item.text, ctx)+`</li>`)
+				ctx.TaskListItems++
+				out = append(out, `<li class="task-list-item"><input class="task-list-checkbox" type="checkbox" disabled aria-label="`+label+`"`+checked+`>`+inline(item.text, ctx))
 			} else {
-				out = append(out, `<li>`+inline(item.text, ctx)+`</li>`)
+				out = append(out, `<li>`+inline(item.text, ctx))
 			}
+			listStack[top].liOpen = true
 			continue
+		}
+		if ctx.DefinitionLists {
+			if html, consumed, ok := tryDefinitionList(lines, i, ctx); ok {
+				flushPara()
+				flushList()
+				out = append(out, html)
+				skipLines = consumed - 1
+				continue
+			}
 		}
 		para = append(para, trim)
 	}
@@ -1176,46 +1365,233 @@ func convert(lines []string, slugByLine map[int]string, ctx *RenderContext) (str
 	flushPara()
 	flushList()
 	flushTable()
-	if len(ctx.FootnoteOrder) > 0 {
-		out = append(out, `<section class="fn-section"><ol class="fn-list">`)
-		for _, key := range ctx.FootnoteOrder {
+	if ctx.Footnotes {
+		var unreferenced []string
+		for key := range ctx.FootnoteDefs {
+			if !ctx.FootnoteSeen[key] {
+				unreferenced = append(unreferenced, key)
+			}
+		}
+		sort.Strings(unreferenced)
+		for _, key := range unreferenced {
+			ctx.Warnings = append(ctx.Warnings, "BUILDER28_UNRESOLVED_REFERENCE: unreferenced footnote "+key+" (in: "+ctx.SourcePath+")")
+			ctx.FootnoteWarnings++
+		}
+	}
+	if ctx.Footnotes && len(ctx.FootnoteOrder) > 0 {
+		out = append(out, `<section class="footnotes"><ol>`)
+		for i, key := range ctx.FootnoteOrder {
 			body := ctx.FootnoteDefs[key]
-			out = append(out, fmt.Sprintf(`<li id="fn-%s" class="fn-item">%s <a href="#fnref-%s" class="fn-back">↩</a></li>`, esc(key), inline(body, ctx), esc(key)))
+			n := i + 1
+			out = append(out, fmt.Sprintf(`<li id="fn-%d">%s <a href="#fnref-%d-1" class="footnote-backref">↩</a></li>`, n, inline(body, ctx), n))
 		}
 		out = append(out, `</ol></section>`)
 	}
 	return strings.Join(out, "\n"), plain, tables, codeBlocks, nil
 }
 
+type listState struct {
+	tag    string
+	liOpen bool
+}
+
 type listItem struct {
+	level   int
 	ordered bool
 	task    bool
 	checked bool
+	marker  string
 	text    string
 }
 
-func parseList(trim string) (listItem, bool) {
-	if strings.HasPrefix(trim, "- ") || strings.HasPrefix(trim, "* ") {
+func parseList(raw string) (listItem, bool) {
+	expanded := strings.ReplaceAll(raw, "\t", "    ")
+	indent := 0
+	for indent < len(expanded) && expanded[indent] == ' ' {
+		indent++
+	}
+	trim := strings.TrimSpace(expanded)
+	level := indent / 2
+	if strings.HasPrefix(trim, "- ") || strings.HasPrefix(trim, "* ") || strings.HasPrefix(trim, "+ ") {
 		text := strings.TrimSpace(trim[2:])
-		item := listItem{text: text}
+		item := listItem{level: level, text: text}
 		if strings.HasPrefix(text, "[x] ") || strings.HasPrefix(text, "[X] ") || strings.HasPrefix(text, "[ ] ") {
 			item.task = true
+			item.marker = text[:3]
 			item.checked = strings.HasPrefix(text, "[x] ") || strings.HasPrefix(text, "[X] ")
 			item.text = strings.TrimSpace(text[4:])
 		}
 		return item, true
 	}
-	m := regexp.MustCompile(`^\d+\.\s+(.+)$`).FindStringSubmatch(trim)
+	m := regexp.MustCompile(`^\d+[\.)]\s+(.+)$`).FindStringSubmatch(trim)
 	if m != nil {
-		return listItem{ordered: true, text: m[1]}, true
+		return listItem{level: level, ordered: true, text: m[1]}, true
 	}
 	return listItem{}, false
 }
 
+func isTableCandidateLine(raw string) bool {
+	if !strings.HasPrefix(raw, "|") {
+		return false
+	}
+	trimmed := strings.TrimRight(raw, " \t\r")
+	if !strings.HasSuffix(trimmed, "|") {
+		return false
+	}
+	return tablePipeUnescaped(trimmed, len(trimmed)-1)
+}
+
+func normalizeTableRows(rows []string) ([][]string, bool) {
+	if len(rows) < 2 {
+		return nil, false
+	}
+	header := splitTableCells(rows[0])
+	separator := splitTableCells(rows[1])
+	if len(header) == 0 || len(separator) != len(header) {
+		return nil, false
+	}
+	for _, cell := range separator {
+		if !isTableSeparatorCell(cell) {
+			return nil, false
+		}
+	}
+	out := [][]string{header}
+	for _, row := range rows[2:] {
+		cells := splitTableCells(row)
+		if len(cells) < len(header) {
+			for len(cells) < len(header) {
+				cells = append(cells, "")
+			}
+		}
+		if len(cells) > len(header) {
+			last := strings.Join(cells[len(header)-1:], " | ")
+			cells = append(cells[:len(header)-1], last)
+		}
+		out = append(out, cells)
+	}
+	return out, true
+}
+
+func isTableSeparatorCell(cell string) bool {
+	return regexp.MustCompile(`^:?-{3,}:?$`).MatchString(strings.TrimSpace(cell))
+}
+
 func splitTableCells(row string) []string {
 	row = strings.TrimSpace(row)
-	row = strings.Trim(row, "|")
-	return strings.Split(row, "|")
+	if strings.HasPrefix(row, "|") {
+		row = row[1:]
+	}
+	if strings.HasSuffix(row, "|") && tablePipeUnescaped(row, len(row)-1) {
+		row = row[:len(row)-1]
+	}
+	var cells []string
+	var b strings.Builder
+	for i := 0; i < len(row); i++ {
+		if row[i] == '|' && tablePipeUnescaped(row, i) {
+			cells = append(cells, strings.TrimSpace(b.String()))
+			b.Reset()
+			continue
+		}
+		if row[i] == '|' {
+			current := b.String()
+			if strings.HasSuffix(current, `\`) {
+				b.Reset()
+				b.WriteString(current[:len(current)-1])
+			}
+		}
+		b.WriteByte(row[i])
+	}
+	cells = append(cells, strings.TrimSpace(b.String()))
+	return cells
+}
+
+func tablePipeUnescaped(row string, pos int) bool {
+	backslashes := 0
+	for i := pos - 1; i >= 0 && row[i] == '\\'; i-- {
+		backslashes++
+	}
+	return backslashes%2 == 0
+}
+
+func renderBlockquote(lines []string, ctx *RenderContext) string {
+	var out []string
+	for i := 0; i < len(lines); {
+		content := stripBlockquoteMarker(lines[i])
+		if strings.HasPrefix(strings.TrimSpace(content), ">") {
+			var nested []string
+			for i < len(lines) {
+				next := stripBlockquoteMarker(lines[i])
+				if !strings.HasPrefix(strings.TrimSpace(next), ">") {
+					break
+				}
+				nested = append(nested, next)
+				i++
+			}
+			out = append(out, renderBlockquote(nested, ctx))
+			continue
+		}
+		var parts []string
+		for i < len(lines) {
+			next := stripBlockquoteMarker(lines[i])
+			if strings.HasPrefix(strings.TrimSpace(next), ">") {
+				break
+			}
+			next = strings.TrimSpace(next)
+			if next != "" {
+				parts = append(parts, next)
+			}
+			i++
+		}
+		if len(parts) > 0 {
+			out = append(out, `<p class="mp">`+inline(strings.Join(parts, " "), ctx)+`</p>`)
+		}
+	}
+	return `<blockquote class="mbq">` + strings.Join(out, "\n") + `</blockquote>`
+}
+
+func stripBlockquoteMarker(line string) string {
+	trim := strings.TrimSpace(line)
+	if strings.HasPrefix(trim, ">") {
+		return strings.TrimSpace(strings.TrimPrefix(trim, ">"))
+	}
+	return trim
+}
+
+func tryDefinitionList(lines []string, start int, ctx *RenderContext) (string, int, bool) {
+	term := strings.TrimSpace(strings.TrimRight(lines[start], "\n"))
+	if term == "" || strings.HasPrefix(term, ">") || headingRe.MatchString(term) || isTableCandidateLine(term) {
+		return "", 0, false
+	}
+	if _, ok := parseList(lines[start]); ok {
+		return "", 0, false
+	}
+	var defs []string
+	i := start + 1
+	for i < len(lines) {
+		raw := strings.TrimRight(lines[i], "\n")
+		trim := strings.TrimSpace(raw)
+		if trim == ":" {
+			break
+		}
+		if !strings.HasPrefix(trim, ": ") {
+			break
+		}
+		defs = append(defs, strings.TrimSpace(strings.TrimPrefix(trim, ":")))
+		i++
+	}
+	if len(defs) == 0 {
+		return "", 0, false
+	}
+	var b strings.Builder
+	b.WriteString(`<dl class="definition-list">`)
+	b.WriteString(`<dt>` + inline(term, ctx) + `</dt>`)
+	ctx.DefinitionListCount++
+	ctx.DefinitionTermCount++
+	for _, def := range defs {
+		b.WriteString(`<dd>` + inline(def, ctx) + `</dd>`)
+	}
+	b.WriteString(`</dl>`)
+	return b.String(), i - start, true
 }
 
 func buildTOC(headings []Heading) string {
@@ -1390,7 +1766,7 @@ func homeHref(out string) string {
 }
 
 func defaultCSS() string {
-	return `:root{--adlaire-color-primary:#1455d9;--adlaire-surface:#fff;--adlaire-surface-soft:#f5f7fb;--adlaire-surface-soft-strong:#edf1f7;--adlaire-surface-text:#172033;--adlaire-surface-text-muted:#5d687a;--adlaire-border-default:#d9e0ec;--adlaire-font-family-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--adlaire-font-size-xs:12px;--adlaire-font-size-sm:14px}body{margin:0;background:var(--adlaire-surface);color:var(--adlaire-surface-text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}#hdr{position:fixed;top:0;left:0;right:0;height:56px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--adlaire-border-default);background:#fff;z-index:10}#brand{font-weight:700;color:inherit;text-decoration:none}#reading-time{margin-left:auto;color:var(--adlaire-surface-text-muted);font-size:var(--adlaire-font-size-sm);white-space:nowrap}#lay{display:flex;padding-top:56px}#sb{position:fixed;top:56px;bottom:0;width:280px;overflow:auto;border-right:1px solid var(--adlaire-border-default);background:var(--adlaire-surface-soft);padding:16px;box-sizing:border-box}#ct{margin-left:312px;max-width:980px;padding:32px;width:100%}.mh{scroll-margin-top:72px}.h1{font-size:32px}.h2{font-size:24px}.h3{font-size:20px}.h4{font-size:18px}.h5{font-size:16px}.h6{font-size:14px}.mp{max-width:68ch;line-height:1.75}.mr{border:0;border-top:1px solid var(--adlaire-border-default)}.mbq{border-left:4px solid var(--adlaire-color-primary);margin:1rem 0;padding:.25rem 1rem;background:var(--adlaire-surface-soft)}.ic{font-family:var(--adlaire-font-family-mono);background:var(--adlaire-surface-soft-strong);padding:.1rem .25rem;border-radius:4px}.ml{line-height:1.7}.ml-task{list-style:none}.ml-task input[type="checkbox"]{accent-color:var(--adlaire-color-primary);margin-right:.5rem}.tw{overflow-x:auto}.mt{border-collapse:collapse;width:100%;margin:1rem 0}.mt th,.mt td{border:1px solid var(--adlaire-border-default);padding:.5rem;text-align:left}.mt th[data-sort]{cursor:pointer;user-select:none}.mt th[aria-sort="ascending"]::after{content:" ▲"}.mt th[aria-sort="descending"]::after{content:" ▼"}.cb-wrap{position:relative;margin:1rem 0}.cb-meta{position:absolute;top:8px;right:10px;display:flex;gap:8px}.cl{font-family:var(--adlaire-font-family-mono);font-size:var(--adlaire-font-size-xs);text-transform:uppercase}.cb-copy{opacity:.15}.cb-wrap:hover .cb-copy{opacity:1}.cb{background:var(--adlaire-surface-soft-strong);overflow:auto;padding:2.75rem 1rem 1rem}.fn-section{border-top:1px solid var(--adlaire-border-default);margin-top:2rem}.fn-list{font-size:var(--adlaire-font-size-sm)}.tr{list-style:none;padding:0;margin:0}.ti{margin:.25rem 0}.tl{color:inherit;text-decoration:none}.tl.active{color:var(--adlaire-color-primary);font-weight:700}.hn-link{opacity:0;margin-left:.35rem}.mh:hover .hn-link{opacity:1}#progress-bar{position:fixed;top:0;left:0;height:3px;width:0%;background:var(--adlaire-color-primary);z-index:1000;transition:width .1s linear}.ch-nav{display:flex;justify-content:space-between;padding:1rem 0;margin-top:2rem;border-top:1px solid var(--adlaire-border-default)}.ch-prev,.ch-next{color:var(--adlaire-color-primary);text-decoration:none}#btt{position:fixed;right:20px;bottom:20px;display:none}#btt.visible{display:block}@media(max-width:768px){#sb{transform:translateX(-100%);transition:transform .2s}#sb.open{transform:translateX(0)}#ct{margin-left:0;padding:20px}}@media print{#hdr,#sb,.cb-copy,.hn-link,#btt,.expand-code,#progress-bar,.ch-nav{display:none}#lay,#main{display:block;width:100%;margin:0}pre.cb[data-collapsible]{max-height:none}a[href^="http"]::after,a[href^="https"]::after{content:" (" attr(href) ")"}h2,h3{page-break-before:avoid}}`
+	return `:root{--adlaire-color-primary:#1455d9;--adlaire-surface:#fff;--adlaire-surface-soft:#f5f7fb;--adlaire-surface-soft-strong:#edf1f7;--adlaire-surface-text:#172033;--adlaire-surface-text-muted:#5d687a;--adlaire-border-default:#d9e0ec;--adlaire-font-family-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--adlaire-font-size-xs:12px;--adlaire-font-size-sm:14px}body{margin:0;background:var(--adlaire-surface);color:var(--adlaire-surface-text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}#hdr{position:fixed;top:0;left:0;right:0;height:56px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--adlaire-border-default);background:#fff;z-index:10}#brand{font-weight:700;color:inherit;text-decoration:none}#reading-time{margin-left:auto;color:var(--adlaire-surface-text-muted);font-size:var(--adlaire-font-size-sm);white-space:nowrap}#lay{display:flex;padding-top:56px}#sb{position:fixed;top:56px;bottom:0;width:280px;overflow:auto;border-right:1px solid var(--adlaire-border-default);background:var(--adlaire-surface-soft);padding:16px;box-sizing:border-box}#ct{margin-left:312px;max-width:980px;padding:32px;width:100%}.mh{scroll-margin-top:72px}.h1{font-size:32px}.h2{font-size:24px}.h3{font-size:20px}.h4{font-size:18px}.h5{font-size:16px}.h6{font-size:14px}.mp{max-width:68ch;line-height:1.75}.mr{border:0;border-top:1px solid var(--adlaire-border-default)}.mbq{border-left:4px solid var(--adlaire-color-primary);margin:1rem 0;padding:.25rem 1rem;background:var(--adlaire-surface-soft)}.ic{font-family:var(--adlaire-font-family-mono);background:var(--adlaire-surface-soft-strong);padding:.1rem .25rem;border-radius:4px}.ml{line-height:1.7}.task-list-item{list-style:none}.task-list-checkbox{accent-color:var(--adlaire-color-primary);margin-right:.5rem}.md-image{max-width:100%;height:auto}.definition-list{max-width:68ch}.definition-list dt{font-weight:700}.definition-list dd{margin:.25rem 0 .75rem 1.5rem}.tw{overflow-x:auto}.mt{border-collapse:collapse;width:100%;margin:1rem 0}.mt th,.mt td{border:1px solid var(--adlaire-border-default);padding:.5rem;text-align:left}.mt th[data-sort]{cursor:pointer;user-select:none}.mt th[aria-sort="ascending"]::after{content:" ▲"}.mt th[aria-sort="descending"]::after{content:" ▼"}.cb-wrap{position:relative;margin:1rem 0}.cb-meta{position:absolute;top:8px;right:10px;display:flex;gap:8px}.cl{font-family:var(--adlaire-font-family-mono);font-size:var(--adlaire-font-size-xs);text-transform:uppercase}.cb-copy{opacity:.15}.cb-wrap:hover .cb-copy{opacity:1}.cb{background:var(--adlaire-surface-soft-strong);overflow:auto;padding:2.75rem 1rem 1rem}.footnotes{border-top:1px solid var(--adlaire-border-default);margin-top:2rem;font-size:var(--adlaire-font-size-sm)}.footnote-ref,.footnote-backref{font-size:var(--adlaire-font-size-sm)}.tr{list-style:none;padding:0;margin:0}.ti{margin:.25rem 0}.tl{color:inherit;text-decoration:none}.tl.active{color:var(--adlaire-color-primary);font-weight:700}.hn-link{opacity:0;margin-left:.35rem}.mh:hover .hn-link{opacity:1}#progress-bar{position:fixed;top:0;left:0;height:3px;width:0%;background:var(--adlaire-color-primary);z-index:1000;transition:width .1s linear}.ch-nav{display:flex;justify-content:space-between;padding:1rem 0;margin-top:2rem;border-top:1px solid var(--adlaire-border-default)}.ch-prev,.ch-next{color:var(--adlaire-color-primary);text-decoration:none}#btt{position:fixed;right:20px;bottom:20px;display:none}#btt.visible{display:block}@media(max-width:768px){#sb{transform:translateX(-100%);transition:transform .2s}#sb.open{transform:translateX(0)}#ct{margin-left:0;padding:20px}}@media print{#hdr,#sb,.cb-copy,.hn-link,#btt,.expand-code,#progress-bar,.ch-nav{display:none}#lay,#main{display:block;width:100%;margin:0}pre.cb[data-collapsible]{max-height:none}a[href^="http"]::after,a[href^="https"]::after{content:" (" attr(href) ")"}h2,h3{page-break-before:avoid}}`
 }
 
 func defaultJS() string {
