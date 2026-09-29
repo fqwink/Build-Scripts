@@ -187,7 +187,7 @@ Markdown ディレクトリ入力で Markdown ファイルが 0 件の場合は�
 | `.md` / `.markdown` 以外の相対リンク | [URL 属性安全契約](#builder-url-attribute-safety) を満たす場合だけファイルをコピーせず、attribute escape 後の相対 URL を保持する。存在確認は警告対象外。 |
 | 画像 `![alt](path)` | ファイルコピーを行わず、[URL 属性安全契約](#builder-url-attribute-safety) を満たす場合だけ `src` へ attribute escape 後の URL を出力する。`assets/` へ画像を複製してはならない。 |
 
-[URL 属性安全契約](#builder-url-attribute-safety) を通過した Markdown 間リンクの解決に失敗した場合、HTML は attribute escape 後の入力 URL を `href` へ出力し、`[WARN] BROKEN_PAGE_LINK: <url> (in: <source>)` を出力する。`<url>` には credential、query、secret 風文字列を含めず、path と fragment だけを記録する。`--strict` が `true` の場合、警告出力後に終了コード `2` とする。ページ間リンク解決で使用するパス比較は、絶対パス化、`filepath.Clean()`、パス区切り `/` 正規化を行った文字列で比較する。
+[URL 属性安全契約](#builder-url-attribute-safety) を通過した Markdown 間リンクの解決に失敗した場合、HTML は attribute escape 後の入力 URL を `href` へ出力し、`[WARN] BROKEN_PAGE_LINK: <url> (in: <source>)` を出力する。`<url>` には credential、query、secret 風文字列を含めず、path と fragment だけを記録する。`--strict` が `true` の場合は strict warning として stdout に `[WARN]` と `[REPORT]` を出力し、stderr は空、終了コード `2`、`Done` 行なし、公開 `--out` 非置換とする。ページ間リンク解決で使用するパス比較は、絶対パス化、`filepath.Clean()`、パス区切り `/` 正規化を行った文字列で比較する。
 
 <a id="builder-url-attribute-safety"></a>
 **URL 属性安全契約：**
@@ -208,7 +208,7 @@ Markdown 由来の URL を `href`、`src`、`data-href`、`data-lightbox-src`、
 
 許可された URL は、path 区切りを `/` に統一し、Markdown link 変換で生成した HTML path、fragment、query を結合した後、attribute escape して出力する。URL encode の追加、percent decode による再解釈、host lowercase 化、末尾 slash 補完、query sort、fragment sort は行わない。
 
-拒否時は link では label を `esc()` 済み text node として出力し、`<a>` を出力しない。image では alt を `esc()` 済み text node として出力し、alt が空なら何も出力しない。non-strict では stdout に `[WARN] UNSAFE_URL: <kind> (in: <source>)` を出し、`warnings` へ加算する。warning message に拒否した URL 値、credential、query、secret 風文字列を含めてはならない。`--strict=true` では warning 出力後に終了コード `2` とし、公開 `--out` を置換してはならない。
+拒否時は link では label を `esc()` 済み text node として出力し、`<a>` を出力しない。image では alt を `esc()` 済み text node として出力し、alt が空なら何も出力しない。non-strict では stdout に `[WARN] UNSAFE_URL: <kind> (in: <source>)` を出し、`warnings` へ加算する。warning message に拒否した URL 値、credential、query、secret 風文字列を含めてはならない。`--strict=true` では strict warning として stdout に `[WARN]` と `[REPORT]` を出力し、stderr は空、終了コード `2`、`Done` 行なし、公開 `--out` 非置換とする。
 
 **入力収集固定契約：**
 
@@ -1754,15 +1754,15 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | include | `{{ include "path" }}` の double quote 形式だけを対象にする。single quote、式展開、glob は対象外。 |
 | 重複 dep | page 内で同一 dep path が複数回出ても 1 件だけ保存する。 |
 | 保存条件 | build 成功後だけ `.dependency_manifest.json` を置換する。failure build では既存 manifest を維持する。 |
-| broken deps | build transaction 中の `broken_dependencies[]` に page、path、reason を保持し、WARN と `[REPORT]` に反映する。DependencyManifest object には保存しない。strict では終了コード `2`。 |
+| broken deps | build transaction 中の `broken_dependencies[]` に page、path、reason を保持し、WARN と `[REPORT]` に反映する。DependencyManifest object には保存しない。strict では strict warning として stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、`Done` 行なし、公開出力維持とする。 |
 
 **異常系：**
 
 | 条件 | 処理 |
 |------|------|
-| dependency 不在 | builder は WARN、strict なら終了コード `2`。 |
+| dependency 不在 | builder は WARN、strict では strict warning として stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、`Done` 行なし、公開出力維持とする。 |
 | manifest 破損 | runner は full build。成功時に再作成。 |
-| base 外参照 | WARN、strict なら終了コード `2`。 |
+| base 外参照 | WARN、strict では strict warning として stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、`Done` 行なし、公開出力維持とする。 |
 
 **dependency tracking 実装確認固定契約：**
 
@@ -1771,7 +1771,7 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | 抽出順 | Markdown link → image → raw HTML `<img src>` → include の順に抽出し、保存時は dep path 辞書順へ正規化する。 |
 | path 解決 | page の所在 directory を基準に正規化し、base dir 外へ出る path は `broken_dependencies[]` に `reason:"base_escape"` として記録する。 |
 | 対象外 | `http:`、`https:`、`mailto:`、`tel:`、`data:`、fragment-only、absolute path、空 path、NUL / 改行を含む path は dependency として保存しない。 |
-| missing | 参照先不在は `broken_dependencies[]` に `reason:"missing"` として保存する。non-strict では WARN、strict では終了コード `2`。 |
+| missing | 参照先不在は `broken_dependencies[]` に `reason:"missing"` として保存する。non-strict では WARN、strict では strict warning として stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、`Done` 行なし、公開出力維持とする。 |
 | manifest save | build 成功、output validation 成功、cache save 判定後に manifest byte 列を確定し、[`docs/details/builder.md` 詳細本文責務 atomic output writer](builder.md#builder-atomic-output-writer) の `tmp/.dependency_manifest.json` へ最終名で書き込む。manifest 単独の tmp file、rename、公開更新を行わない。 |
 | failure 保護 | build failure、strict failure、manifest 生成 failure では既存 `.dependency_manifest.json` を維持する。 |
 | runner 逆引き | runner は dependency path の SHA 差分がある場合、その dependency を持つ page key を changed target に追加する。manifest 破損時は full build。 |
@@ -1872,9 +1872,9 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 |------|------------|--------|--------|
 | unknown option | 終了コード `2` | 終了コード `2` | 出力なし。 |
 | 許容値外 | 終了コード `2` | 終了コード `2` | 出力なし。 |
-| 警告扱いの構文不正 | warning 記録、変換可能部分だけ出力。 | 終了コード `2` | strict 時は出力なし。 |
-| base 外 path | warning 記録、対象参照を無効化。 | 終了コード `2` | strict 時は出力なし。 |
-| 未解決参照 | warning 記録、通常 text または非表示 fallback。 | 終了コード `2` | strict 時は出力なし。 |
+| 警告扱いの構文不正 | warning 記録、変換可能部分だけ出力。 | stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`。 | `Done` 行を出さず、公開用 `--out` を置換しない。 |
+| base 外 path | warning 記録、対象参照を無効化。 | stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`。 | `Done` 行を出さず、公開用 `--out` を置換しない。 |
+| 未解決参照 | warning 記録、通常 text または非表示 fallback。 | stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`。 | `Done` 行を出さず、公開用 `--out` を置換しない。 |
 | 内部変換失敗 | 終了コード `1` | 終了コード `1` | 既存出力を維持する。 |
 | reserved feature | 終了コード `2` | 終了コード `2` | 出力なし。 |
 
@@ -2181,9 +2181,9 @@ browser runtime が出力または変更してよい DOM state は [`docs/detail
 | `code_fence` | [`docs/details/builder.md` 詳細本文責務 §28.4](builder.md#sec-28-4)、[`docs/details/builder.md` 詳細本文責務 §28.9](builder.md#sec-28-9)、[`docs/details/builder.md` 詳細本文責務 §28.13](builder.md#sec-28-13)、[`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17)、[`docs/details/builder.md` 詳細本文責務 §28.19](builder.md#sec-28-19) | fence 開始行と終了行がある block。 | language、option、title を分離して code block node を生成する。 | 未閉鎖 fence は paragraph とせず code block として終端まで扱い warning。 |
 | `image` | [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10)、[`docs/details/builder.md` 詳細本文責務 §28.22](builder.md#sec-28-22) | Markdown image または既存 image token。 | `img` に `src`、`alt`、必要な lazy / lightbox 属性を付与する。 | src 不正は image を出力せず warning。 |
 | `footnote_def` | [`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18) | `[^id]: text`。id は 1〜64 文字。 | footnote 定義 table に登録し、本文位置には出力しない。 | 重複定義は先勝ち、後続は warning。 |
-| `footnote_ref` | [`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18) | `[^id]`。 | 参照順に番号を割り当て `sup.footnote-ref` を生成する。 | 未定義は non-strict で text、strict で終了コード `2`。 |
-| `math_inline` | [`docs/details/builder.md` 詳細本文責務 §28.19](builder.md#sec-28-19) | code span 外の `$...$`。 | `span.math-inline`。中身は escape 済み text。 | 未閉鎖は通常 text、strict で終了コード `2`。 |
-| `math_block` | [`docs/details/builder.md` 詳細本文責務 §28.19](builder.md#sec-28-19) | 独立行の `$$` で囲まれた block。 | `div.math-block`。中身は escape 済み text。 | 未閉鎖は通常 text、strict で終了コード `2`。 |
+| `footnote_ref` | [`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18) | `[^id]`。 | 参照順に番号を割り当て `sup.footnote-ref` を生成する。 | 未定義は non-strict で text、strict では strict warning として終了コード `2`。 |
+| `math_inline` | [`docs/details/builder.md` 詳細本文責務 §28.19](builder.md#sec-28-19) | code span 外の `$...$`。 | `span.math-inline`。中身は escape 済み text。 | 未閉鎖は通常 text、strict では strict warning として終了コード `2`。 |
+| `math_block` | [`docs/details/builder.md` 詳細本文責務 §28.19](builder.md#sec-28-19) | 独立行の `$$` で囲まれた block。 | `div.math-block`。中身は escape 済み text。 | 未閉鎖は通常 text、strict では strict warning として終了コード `2`。 |
 | `definition_list` | [`docs/details/builder.md` 詳細本文責務 §28.24](builder.md#sec-28-24) | term 行直後に `: definition` が 1 行以上続く。 | `dl.definition-list`、`dt`、`dd`。 | term / definition 空は paragraph。 |
 | `task_item` | [`docs/details/builder.md` 詳細本文責務 §28.25](builder.md#sec-28-25) | list item の先頭が `[ ]`、`[x]`、`[X]`。 | disabled checkbox と list text。 | その他 bracket は通常 list。 |
 
@@ -2229,7 +2229,7 @@ inline parser は、code span を最優先の保護領域として切り出し�
 | 対象 | grammar | 正規化 | 不正時 |
 |------|---------|--------|--------|
 | admonition | blockquote の最初の非空行が `> [!TYPE]`。TYPE は ASCII letter 1〜16 文字。 | TYPE は lowercase。`note`、`warn`、`tip` 以外は `note`。 | marker 行は title として出さず、body が空でも空 section を出す。 |
-| badge | `[badge:label:color]`。label は `]` と改行を含まない 1〜64 文字。color は `gray`、`blue`、`green`、`yellow`、`red`。 | label は前後空白 trim。color は lowercase。 | non-strict は元 text、strict は `BUILDER28_INVALID_OPTION`。 |
+| badge | `[badge:label:color]`。label は `]` と改行を含まない 1〜64 文字。color は `gray`、`blue`、`green`、`yellow`、`red`。 | label は前後空白 trim。color は lowercase。 | non-strict は元 text、strict は `BUILDER28_INVALID_CONTENT`。 |
 | fence info | `language`、`language line-numbers`、`language:title=value`、`language:path`、`diff`、`patch`、`mermaid`。 | language は lowercase。title は前後空白 trim。 | 未知 option は code block として出力し、warning count に含める。 |
 | code title | `language:title=value` または `language:path`。`path` は `/`、`.`、`-`、`_` を含められる text。 | `title=` 形式を優先する。colon 以降を title text とする。 | 空 title は title なし。 |
 | diff fence | info string が `diff` または `patch` と完全一致。 | なし。 | 他 language の `+` / `-` 行は diff highlight しない。 |
@@ -2280,7 +2280,7 @@ inline parser は、code span を最優先の保護領域として切り出し�
 |------|----------|
 | text node | `&`、`<`、`>` を escape する。quote は text node では escape しなくてよい。 |
 | attribute | `&`、`<`、`>`、`"`、制御文字を escape または除去する。single quote は `&#39;` に統一する。 |
-| URL | [URL 属性安全契約](#builder-url-attribute-safety) に従い、scheme、base 外 path、credential を検証してから attribute escape する。`javascript:`、`data:text/html`、credential 付き URL は warning または終了コード `2`。 |
+| URL | [URL 属性安全契約](#builder-url-attribute-safety) に従い、scheme、base 外 path、credential を検証してから attribute escape する。`javascript:`、`data:text/html`、credential 付き URL は strict warning の対象であり、fatal validation error として扱わない。 |
 | raw HTML | Markdown 由来 raw HTML は実行可能要素として扱わず text として escape する。 |
 | SVG | [`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17)、[`docs/details/builder.md` 詳細本文責務 §28.23](builder.md#sec-28-23) の内製 SVG は許可するが、`script`、event handler 属性、外部参照属性を出力しない。 |
 
@@ -2292,9 +2292,10 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | code | level | 対象 | strict |
 |------|-------|------|--------|
 | `BUILDER28_INVALID_OPTION` | ERROR | unknown option、許容値外、複数指定禁止違反。 | 常に終了コード `2`。 |
+| `BUILDER28_INVALID_CONTENT` | WARN | Markdown 拡張構文の label / color / marker が構文として認識できるが、non-strict で元 text fallback 可能な場合。 | 終了コード `2`。 |
 | `BUILDER28_PATH_OUTSIDE_BASE` | WARN | base 外 path、絶対 path、`..` 脱出。 | 終了コード `2`。 |
 | `BUILDER28_UNRESOLVED_REFERENCE` | WARN | 未定義 footnote、未定義 template var、存在しない hash target。 | 終了コード `2`。 |
-| `BUILDER28_UNSUPPORTED_RESERVED` | WARN / ERROR | [`docs/details/builder.md` 詳細本文責務 §28.2](builder.md#sec-28-2) の予約値 `pdf` / `epub` は ERROR、[`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17) で許可 grammar 外と定義した Mermaid 構文は non-strict で WARN。これ以外の条件へ使用しない。 | ERROR は常に終了コード `2`。WARN は strict で終了コード `2`。 |
+| `BUILDER28_UNSUPPORTED_RESERVED` | WARN / ERROR | [`docs/details/builder.md` 詳細本文責務 §28.2](builder.md#sec-28-2) の予約値 `pdf` / `epub` は ERROR、[`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17) で許可 grammar 外と定義した Mermaid 構文は non-strict で WARN。これ以外の条件へ使用しない。 | ERROR は常に終了コード `2` の fatal failure。WARN は strict warning として終了コード `2`。 |
 | `BUILDER28_ESCAPE_BLOCKED` | ERROR | escape 後にも危険 HTML、event handler、外部 script が残る場合。 | 常に終了コード `2`。 |
 | `BUILDER28_OUTPUT_VALIDATION_FAILED` | ERROR | minify 後 marker 消失、空 HTML、必須 asset 欠落。 | 常に終了コード `1`。 |
 | `BUILDER28_INTERNAL_IO` | ERROR | atomic write、rename、読み書き失敗。 | 常に終了コード `1`。 |
@@ -2338,18 +2339,18 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | [`docs/details/builder.md` 詳細本文責務 §28.5](builder.md#sec-28-5) | 見出しの自動採番 | `--heading-numbering h2`、`none`。 | 見出し本文の表示番号、TOC 番号、search index 番号。 | heading tree 作成 → h2 以下を階層 count → 表示 prefix 生成 → slug は変更しない。 | h1 不在でも h2 から開始。番号は slug に含めない。 | h2/h3 階層、skip warning 併用、TOC 一致、anchor 不変。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6) | セクション折りたたみ | `--section-collapse`、heading data。 | `.adlaire-section-toggle` と JS 状態。 | h2/h3 section 範囲算出 → toggle 生成 → localStorage に開閉保存。 | 見出しなしは無効。印刷時は全展開。 | h2 折りたたみ、復元、印刷展開、検索 hit 時自動展開。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) | TOC 深さ制御 | `--toc-depth <min>:<max>`。 | 指定範囲だけの TOC。本文 heading は不変。 | option parse → heading filter → TOC 生成 → active tracking も同範囲に限定。 | min/max 範囲外、min > max は終了コード `2`。 | h2-h3、h1-h6、範囲外除外、active tracking 一致。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.8](builder.md#sec-28-8) | 最終更新日の自動埋め込み | `--updated-at-source git\|file\|none`、fake clock / fake git fixture。 | footer の updated time、`[REPORT].updated_at_source`。 | source 判定 → git timestamp または file mtime 取得 → UTC 秒精度へ正規化 → footer 出力。 | git 取得失敗時は file mtime fallback、strict では終了コード `2`。 | git 値、file mtime、fallback、UTC 形式、footer escape。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.8](builder.md#sec-28-8) | 最終更新日の自動埋め込み | `--updated-at-source git\|file\|none`、fake clock / fake git fixture。 | footer の updated time、`[REPORT].updated_at_source`。 | source 判定 → git timestamp または file mtime 取得 → UTC 秒精度へ正規化 → footer 出力。 | git 取得失敗時は file mtime fallback、strict では strict warning として終了コード `2`。 | git 値、file mtime、fallback、UTC 形式、footer escape。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.9](builder.md#sec-28-9) | diff ハイライト | fence info `diff` または `patch`。 | `.tok-inserted`、`.tok-deleted`、`.tok-context` class。 | code line 先頭 `+` / `-` / space を判定 → HTML escape → class 付与。 | `+++` / `---` header は header class。通常言語では適用しない。 | insert/delete/header/context、escape、copy 本文維持。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) | 画像の遅延読み込み | Markdown image、HTML img 相当出力。 | `<img loading="lazy" decoding="async">`。 | image token 解析 → src 正規化 → alt escape → lazy 属性付与。 | data URI、外部 URL は許可するが fetch しない。base 外相対 path は warning と参照無効化。 | 相対画像、外部画像、alt escape、base 外 warning / strict。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.11](builder.md#sec-28-11) | カスタムメタタグ注入 | `--meta key=value`、設定 meta map。 | `<meta name="..." content="...">` または `property="og:..."`。 | key validation → name/property 判定 → 重複解決 → head へ出力。 | `script`、`http-equiv`、空 key、制御文字は終了コード `2`。 | OGP、Twitter、重複、escape、禁止 key。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.12](builder.md#sec-28-12) | ライトモード固定 | なし。 | light 固定 CSS variables。 | `:root` の light 固定変数だけを出力し、dark / auto / theme toggle / color scheme 永続化を出力しない。 | dark / auto / theme toggle / color scheme 永続化が出力された場合は検証失敗。 | light 固定、print light、禁止識別子不在。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.13](builder.md#sec-28-13) | コードブロックのファイル名表示 | fence info `go:main.go`、`bash:title=deploy.sh`。 | `.code-title` 表示。 | info parse → language と title 分離 → title escape → code block header へ出力。 | path traversal 表示は禁止せず text 扱いだが HTML escape。空 title は非表示。 | colon 形式、title 形式、escape、copy 対象除外。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.14](builder.md#sec-28-14) | テンプレート変数展開 | `--var KEY=VALUE`、`{{ KEY }}`。 | 変数展開済み Markdown HTML、report counts。 | 変換前に text node だけ置換 → code fence 内は置換しない → 未定義変数を警告。 | key は `^[A-Z0-9_]{1,64}$`。未定義は strict で終了コード `2`。 | 置換、code 内非置換、未定義警告、escape。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.14](builder.md#sec-28-14) | テンプレート変数展開 | `--var KEY=VALUE`、`{{ KEY }}`。 | 変数展開済み Markdown HTML、report counts。 | 変換前に text node だけ置換 → code fence 内は置換しない → 未定義変数を警告。 | key は `^[A-Z0-9_]{1,64}$`。未定義は strict warning として終了コード `2`。 | 置換、code 内非置換、未定義警告、escape。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.15](builder.md#sec-28-15) | HTML ミニファイ | `--minify-html`。 | 空白圧縮済み HTML。 | HTML 生成後 → safe minify → pre/code/textarea/script 相当領域は保持。 | minify 後の byte が 0、必須 marker 消失なら元 HTML を残し終了コード `1`。 | 通常圧縮、code 保持、必須 marker、出力縮小 report。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) | TOC ハイライト追従（アクティブ見出し追跡） | heading / TOC 対応集合。 | `.is-active` class、`aria-current="location"`。 | 候補決定、observer / fallback、検索連動は [`docs/details/builder.md` 詳細本文責務 §28.16](builder.md#sec-28-16) だけに従う。 | JS 無効時は静的 TOC のまま。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#sec-28-f-14)。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17) | Mermaid ダイアグラム描画 | fence info `mermaid`。 | `<pre class="mermaid-source">` と内製簡易 SVG 対応分だけ。 | Mermaid text を保存 → 対応構文 `graph TD` の node/edge だけ SVG 化 → unsupported は source 表示。 | 外部 mermaid.js は使用禁止。未対応構文は warning、strict で終了コード `2`。 | graph TD、unsupported warning、escape、外部 script なし。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18) | 脚注サポート | `[^id]`、`[^id]: text`。 | 本文 sup link、末尾 `.footnotes`。 | 定義収集 → 参照順に番号付け → backlink 生成 → 未参照定義は report。 | 未定義参照は warning、strict で終了コード `2`。 | 複数脚注、重複定義、未定義、backlink。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.19](builder.md#sec-28-19) | インライン数式レンダリング | `$...$`、`$$...$$`。 | `<span class="math-inline">`、`<div class="math-block">`。 | delimiter parse → HTML escape → CSS で等幅表示。 | KaTeX 等外部 renderer は使用しない。未閉鎖 delimiter は通常 text、strict で終了コード `2`。 | inline、block、escape、未閉鎖、code 内非変換。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.17](builder.md#sec-28-17) | Mermaid ダイアグラム描画 | fence info `mermaid`。 | `<pre class="mermaid-source">` と内製簡易 SVG 対応分だけ。 | Mermaid text を保存 → 対応構文 `graph TD` の node/edge だけ SVG 化 → unsupported は source 表示。 | 外部 mermaid.js は使用禁止。未対応構文は warning、strict warning として終了コード `2`。 | graph TD、unsupported warning、escape、外部 script なし。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.18](builder.md#sec-28-18) | 脚注サポート | `[^id]`、`[^id]: text`。 | 本文 sup link、末尾 `.footnotes`。 | 定義収集 → 参照順に番号付け → backlink 生成 → 未参照定義は report。 | 未定義参照は warning、strict warning として終了コード `2`。 | 複数脚注、重複定義、未定義、backlink。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.19](builder.md#sec-28-19) | インライン数式レンダリング | `$...$`、`$$...$$`。 | `<span class="math-inline">`、`<div class="math-block">`。 | delimiter parse → HTML escape → CSS で等幅表示。 | KaTeX 等外部 renderer は使用しない。未閉鎖 delimiter は通常 text、strict warning として終了コード `2`。 | inline、block、escape、未閉鎖、code 内非変換。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.20](builder.md#sec-28-20) | ページ内ナビゲーション履歴 | hash navigation。 | JS history handler、focus 移動。 | anchor click 捕捉 → `history.pushState` → heading focus → back/forward で scroll 復元。 | JS 無効時は通常 anchor。存在しない hash は何もしない。 | click、back、forward、不在 hash、focus。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.21](builder.md#sec-28-21) | 読み上げ対応（アクセシビリティ） | 生成 HTML 全体。 | `aria-label`、`role`、skip link、focus outline。 | landmark 付与 → icon button label → search / TOC label → keyboard focus 順固定。 | 空 label、重複 id、keyboard trap は出力検証 failure。 | landmark、button label、skip link、tab order、duplicate id。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.22](builder.md#sec-28-22) | 画像ライトボックス | Markdown image。 | lightbox dialog HTML / JS。 | image に button wrapper → dialog 1 個生成 → click / Escape / backdrop close。 | alt なしは warning。外部画像も拡大対象だが fetch しない。 | open/close、Escape、focus trap、alt warning。 |
@@ -2366,7 +2367,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 |----|------------|-------------------|-----------------|--------------|----------------|
 | [`docs/details/builder.md` 詳細本文責務 §28.1](builder.md#sec-28-1) | manifest path は base 内相対 path のみ。`.dependency_manifest.json` root は object、page key は正規化相対 path。 | 未変更 page は byte 単位で維持し、削除 source の stale HTML は成功置換時だけ削除し、search index は最終 page set 全体から再生成する。 | `--changed-manifest` 破損は終了コード `2`、`.dependency_manifest.json` 破損は warning なし full build。path 不正は `BUILDER28_PATH_OUTSIDE_BASE`。 | changed / reused は page 数。reason は sorted array。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.2](builder.md#sec-28-2) | format は 1 値のみ。`html` 以外は予約または未知として拒否。 | `html` は既存 output layout だけを使う。`pdf` / `epub` file を作らない。 | 予約値は `BUILDER28_UNSUPPORTED_RESERVED`、未知値は `BUILDER28_INVALID_OPTION`。fatal failure のため `[REPORT]` は出力しない。 | 成功時のみ `output_format="html"`、`output_format_supported=true`。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
-| [`docs/details/builder.md` 詳細本文責務 §28.3](builder.md#sec-28-3) | extension csv は `admonition`、`badge` のみ。空白 trim、重複は 1 件に正規化。 | admonition は `section`、title、body の順。badge は inline `span`。 | badge color 不正は non-strict で通常 text、strict で `BUILDER28_INVALID_OPTION`。 | admonitions / badges は出力 node 数。warnings は fallback 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
+| [`docs/details/builder.md` 詳細本文責務 §28.3](builder.md#sec-28-3) | extension csv は `admonition`、`badge` のみ。空白 trim、重複は 1 件に正規化。 | admonition は `section`、title、body の順。badge は inline `span`。 | badge color 不正は non-strict で通常 text、strict で `BUILDER28_INVALID_CONTENT`。 | admonitions / badges は出力 node 数。warnings は fallback 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.4](builder.md#sec-28-4) | CLI 有効または fence option ありの場合だけ行番号を出す。 | code wrapper 内に line number column と code text column を分離する。 | copy text に line number が混入した場合は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | blocks は line number 付き block 数、lines は付与した行数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.5](builder.md#sec-28-5) | mode は `none` または `h2`。 | 表示 prefix は text node とし、anchor id / slug は不変。 | 未知 mode は `BUILDER28_INVALID_OPTION`。 | numbered_headings は prefix を出した heading 数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
 | [`docs/details/builder.md` 詳細本文責務 §28.6](builder.md#sec-28-6) | collapse 対象は h2 / h3 のみ。target id は heading slug から作る。 | toggle button は heading 内の先頭に置き、section body を wrapper 化する。 | target id 重複は `BUILDER28_OUTPUT_VALIDATION_FAILED`。 | collapsible_sections は toggle 生成数。 | [`docs/details/fixture.md` fixture 証跡責務 §28-F](fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)。 |
@@ -2451,7 +2452,7 @@ stdout の warning と stderr の error は 1 行 1 件とし、形式を `[WARN
 | 構文 | 入力条件 | 出力 | fallback |
 |------|----------|------|----------|
 | admonition | blockquote の先頭 inline text が `[!NOTE]`、`[!WARN]`、`[!TIP]` のいずれか。大小文字は uppercase 正規化する。 | `section.adlaire-admonition` と `data-adlaire-admonition` を出力する。属性値は `note`、`warn`、`tip` のいずれかとし、先頭に `div.adlaire-admonition-title`、以降に本文 block を置く。 | 未知 type は `note` とし warning 1 件。入れ子 admonition は内側を通常 blockquote として扱う。 |
-| badge | code span 外、link label 外、HTML raw 外の `[badge:label:color]`。label は trim 後 1〜64 文字、color は `gray`、`blue`、`green`、`yellow`、`red`。 | `span.adlaire-badge`、`data-adlaire-badge-color="<color>"`、text は label。 | 不正 label / color は non-strict で元 text、strict で `BUILDER28_INVALID_OPTION`。 |
+| badge | code span 外、link label 外、HTML raw 外の `[badge:label:color]`。label は trim 後 1〜64 文字、color は `gray`、`blue`、`green`、`yellow`、`red`。 | `span.adlaire-badge`、`data-adlaire-badge-color="<color>"`、text は label。 | 不正 label / color は non-strict で元 text、strict で `BUILDER28_INVALID_CONTENT`。 |
 
 admonition title の表示 text は `NOTE`、`WARN`、`TIP` に固定する。search index には admonition title を含めず、admonition body と badge label は含める。`admonitions` は出力した admonition 数、`badges` は出力した badge 数、`markdown_extension_warnings` は fallback 数とする。
 
@@ -2571,10 +2572,10 @@ image `src` は以下に分類する。
 | src 種別 | 挙動 |
 |----------|------|
 | base 内相対 path | path を `/` 区切り、先頭 `./` なしに正規化し、属性へ escape 済みで出力する。 |
-| base 外相対 path | non-strict では warning `BUILDER28_PATH_OUTSIDE_BASE` を stdout に出し、image は [URL 属性安全契約](#builder-url-attribute-safety) の拒否時出力に従って alt text だけまたは空出力にする。strict では終了コード `2`、公開出力維持。 |
+| base 外相対 path | non-strict では warning `BUILDER28_PATH_OUTSIDE_BASE` を stdout に出し、image は [URL 属性安全契約](#builder-url-attribute-safety) の拒否時出力に従って alt text だけまたは空出力にする。strict では stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、公開出力維持とする。 |
 | `http` / `https` URL | 属性へ escape 済みで出力する。build 時 fetch、存在確認、redirect 追跡を行わない。 |
 | `data:` URL | 属性へ escape 済みで出力する。内容 decode、MIME 判定、fetch を行わない。 |
-| その他 scheme | non-strict では warning `BUILDER28_INVALID_OPTION` とし、strict では終了コード `2`、公開出力維持。 |
+| その他 scheme | [URL 属性安全契約](#builder-url-attribute-safety) の拒否時出力に従う。non-strict では `[WARN] UNSAFE_URL` を stdout に出し、strict では stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、公開出力維持とする。 |
 
 `alt` は必ず attribute escape する。`lazy_images` は `loading="lazy"` と `decoding="async"` を付与した img 数、`image_path_warnings` は warning 件数とする。URL 拒否により `img` を出力しない image は `lazy_images` に含めない。search index には image alt text を含めるが、src、loading、decoding、warning text は含めない。
 
@@ -2656,7 +2657,7 @@ template var key は `^[A-Z0-9_]{1,64}$` に固定する。CLI `--var KEY=VALUE`
 
 置換対象は Markdown parse 前の通常 text だけである。code fence、code span、raw HTML escape 対象、link destination、image src、front matter 相当の非本文領域では置換しない。置換構文は `{{ KEY }}` だけを許可し、`{{KEY}}`、`{{ key }}`、`{{ KEY | filter }}` は通常 text として扱う。
 
-未定義変数は non-strict では元 text のまま残し、stdout に `[WARN] BUILDER28_UNRESOLVED_REFERENCE file:line 28.14 ...` を出す。strict では終了コード `2`、stdout に warning と `[REPORT]` を出し、公開出力を置換しない。置換後 text は通常 Markdown 処理へ渡し、HTML escape は後続 parser で行う。
+未定義変数は non-strict では元 text のまま残し、stdout に `[WARN] BUILDER28_UNRESOLVED_REFERENCE file:line 28.14 ...` を出す。strict では strict warning として stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、`Done` 行なし、公開出力を置換しない。置換後 text は通常 Markdown 処理へ渡し、HTML escape は後続 parser で行う。
 
 `template_vars` は定義済み key 数、`template_vars_missing` は missing key の compact JSON string array、ASCII 昇順、重複なし、`template_vars_replaced` は置換回数とする。secret 風 value と credential 付き URL value は stdout、stderr、REPORT、manifest へ平文出力しない。
 
@@ -2739,7 +2740,7 @@ Mermaid 変換は `--mermaid=true` の場合だけ有効である。`--mermaid=f
 | `A --> B` | edge 定義。両端 id は既存または暗黙 node とする。 |
 | 空行 | 無視する。 |
 
-`graph TD`、node 定義、edge 定義、空行のいずれにも一致しない行、`graph LR`、subgraph、classDef、click、HTML label、外部 link、script 相当構文は未対応とする。non-strict では stdout に `[WARN] BUILDER28_UNSUPPORTED_RESERVED file:line 28.17 ...` を出し、source fallback として `<pre class="mermaid-source">` だけを出力する。strict では終了コード `2`、公開出力維持とする。
+`graph TD`、node 定義、edge 定義、空行のいずれにも一致しない行、`graph LR`、subgraph、classDef、click、HTML label、外部 link、script 相当構文は未対応とする。non-strict では stdout に `[WARN] BUILDER28_UNSUPPORTED_RESERVED file:line 28.17 ...` を出し、source fallback として `<pre class="mermaid-source">` だけを出力する。strict では strict warning として stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、`Done` 行なし、公開出力維持とする。
 
 対応 diagram は `<figure class="mermaid-diagram">` に deterministic SVG を 1 個出力する。SVG は `role="img"`、`aria-label`、deterministic `viewBox` を持ち、node は `.mermaid-node`、edge は `.mermaid-edge` とする。SVG 内に `script`、`foreignObject`、event handler 属性、外部参照属性、runtime fetch、CDN、外部 `mermaid.js` を含めてはならない。source text は HTML escape し、search index には Mermaid source、SVG text、diagram UI label を含めない。
 
@@ -2750,11 +2751,11 @@ Mermaid 変換は `--mermaid=true` の場合だけ有効である。`--mermaid=f
 
 `--footnotes` は boolean option である。`true` の場合だけ footnote definition と reference を変換する。`false` の場合、`[^id]` と `[^id]: text` は既存 Markdown 処理の通常 text として扱い、`.footnotes`、`.footnote-ref`、`.footnote-backref` を出力してはならない。
 
-footnote id は `^[A-Za-z0-9_-]{1,64}$` に固定する。definition は block parser で `[^id]: text` として収集し、本文位置には出力しない。definition text は通常 inline 変換を適用するが、脚注 definition 内に別の footnote definition を入れ子にしてはならない。重複 definition は先勝ちとし、後続 definition は non-strict で warning `BUILDER28_UNRESOLVED_REFERENCE`、strict で終了コード `2` とする。
+footnote id は `^[A-Za-z0-9_-]{1,64}$` に固定する。definition は block parser で `[^id]: text` として収集し、本文位置には出力しない。definition text は通常 inline 変換を適用するが、脚注 definition 内に別の footnote definition を入れ子にしてはならない。重複 definition は先勝ちとし、後続 definition は non-strict で warning `BUILDER28_UNRESOLVED_REFERENCE`、strict では strict warning として stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、`Done` 行なし、公開出力維持とする。
 
 reference は本文出現順で番号を割り当てる。同じ id を複数回参照した場合は、同じ番号を再利用し、各 reference に一意な backlink target を生成する。本文側は `sup.footnote-ref` を出力し、内部 link は footnote definition への `href="#fn-<n>"` を持つ。footnotes block は本文末尾、page navigation の前に 1 個だけ出力し、`section.footnotes`、`ol`、`li id="fn-<n>"`、`.footnote-backref` を持つ。
 
-未定義 reference は non-strict では元 text を escape 済み通常 text として残し、stdout に `[WARN] BUILDER28_UNRESOLVED_REFERENCE file:line 28.18 ...` を出す。strict では終了コード `2`、公開出力維持とする。未参照 definition は footnotes block に出力せず、non-strict で warning、strict で終了コード `2` とする。
+未定義 reference は non-strict では元 text を escape 済み通常 text として残し、stdout に `[WARN] BUILDER28_UNRESOLVED_REFERENCE file:line 28.18 ...` を出す。strict では strict warning として stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、`Done` 行なし、公開出力維持とする。未参照 definition は footnotes block に出力せず、non-strict で warning、strict では同じ strict warning 出力契約に従う。
 
 `footnotes` は出力した footnote definition 数、`footnote_references` は出力した reference 数、`footnote_warnings` は duplicate、undefined、unreferenced warning 数とする。search index には脚注本文を含めてよいが、reference 番号、backlink label、footnotes heading、UI label は含めない。
 
@@ -2767,7 +2768,7 @@ math inline は code span 外の `$content$` だけを対象とする。`content
 
 出力は inline が `span.math-inline`、block が `div.math-block` とする。内容は HTML escape 済み text とし、TeX / KaTeX / MathJax / SVG / canvas / image 変換を行わない。外部 renderer、CDN、runtime network fetch、追加 asset file を使用してはならない。
 
-code fence、code span、link destination、image src、raw HTML escape 対象では math 変換しない。未閉鎖 inline delimiter、未閉鎖 block delimiter、長さ超過は non-strict で通常 text fallback と warning `BUILDER28_UNRESOLVED_REFERENCE`、strict で終了コード `2`、公開出力維持とする。
+code fence、code span、link destination、image src、raw HTML escape 対象では math 変換しない。未閉鎖 inline delimiter、未閉鎖 block delimiter、長さ超過は non-strict で通常 text fallback と warning `BUILDER28_UNRESOLVED_REFERENCE`、strict では strict warning として stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、`Done` 行なし、公開出力維持とする。
 
 `math_inline` は出力した `span.math-inline` 数、`math_block` は出力した `div.math-block` 数、`math_warnings` は fallback warning 数とする。search index には math content の text を含めてよいが、delimiter、class 名、UI label は含めない。
 
@@ -2780,7 +2781,7 @@ hash target は生成済み heading id だけに固定する。TOC link、headin
 
 有効時は、全 heading target に `tabindex="-1"` を付与する。既に `tabindex` がある場合は上書きせず、focus 可能性だけを保持する。anchor click 時は default navigation を抑止し、`history.pushState` で hash を更新し、対象 heading へ focus し、scroll する。back / forward 時は `popstate` または `hashchange` で対象 heading を focus し、存在しない hash なら no-op とする。
 
-JS 無効時は通常 anchor として機能する。JS 実行時に `history.pushState`、focus、scroll、DOM query が例外になっても静的本文と TOC を壊してはならない。missing target は non-strict では no-op で warning を出さず、strict でも runtime missing hash を build failure にしてはならない。build 時に生成 HTML 内の hash link が存在しない heading id を指す場合だけ、strict で warning `BUILDER28_UNRESOLVED_REFERENCE` を終了コード `2` に昇格する。
+JS 無効時は通常 anchor として機能する。JS 実行時に `history.pushState`、focus、scroll、DOM query が例外になっても静的本文と TOC を壊してはならない。missing target は non-strict では no-op で warning を出さず、strict でも runtime missing hash を build failure にしてはならない。build 時に生成 HTML 内の hash link が存在しない heading id を指す場合だけ、strict で warning `BUILDER28_UNRESOLVED_REFERENCE` を strict warning として終了コード `2` に昇格し、stdout に `[WARN]` と `[REPORT]`、stderr 空、`Done` 行なし、公開出力維持とする。
 
 `hash_history_enabled` は boolean、`hash_history_targets` は対象 heading 数とする。search index には hash handler、focus label、back / forward UI text を含めない。
 
@@ -2821,7 +2822,7 @@ landmark は以下に固定する。
 
 `--image-lightbox` は boolean option である。`true` の場合だけ Markdown image 由来の image を lightbox 対象にする。`false` の場合、trigger、dialog、lightbox JS、`data-lightbox-src`、`.adlaire-lightbox-trigger`、`.adlaire-lightbox-dialog` を出力してはならない。
 
-lightbox 対象は、[`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) の image src validation を通過し、alt text が trim 後 1 文字以上ある image に限定する。alt なし、空 alt、空白 alt は non-strict で warning `BUILDER28_UNRESOLVED_REFERENCE` とし、lightbox 対象から除外して通常 image として出力する。strict では終了コード `2`、公開出力維持とする。
+lightbox 対象は、[`docs/details/builder.md` 詳細本文責務 §28.10](builder.md#sec-28-10) の image src validation を通過し、alt text が trim 後 1 文字以上ある image に限定する。alt なし、空 alt、空白 alt は non-strict で warning `BUILDER28_UNRESOLVED_REFERENCE` とし、lightbox 対象から除外して通常 image として出力する。strict では strict warning として stdout に `[WARN]` と `[REPORT]`、stderr 空、終了コード `2`、`Done` 行なし、公開出力維持とする。
 
 出力は page ごとに dialog 1 個だけとする。各 image の trigger は `button.adlaire-lightbox-trigger`、`type="button"`、`data-lightbox-src`、`aria-label="Open image"` を持つ。dialog は `.adlaire-lightbox-dialog`、`role="dialog"`、`aria-modal="true"`、`aria-hidden="true"` を持つ。dialog 内 image の src / alt は opener の escaped src / alt だけから設定し、build 時 fetch、runtime fetch、preload、外部 image 存在確認を行わない。
 

@@ -195,7 +195,7 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | Fixture P: keyboard runtime | 通常 target、各 editable / interactive target とその子孫、`defaultPrevented`、composition、repeat、Ctrl / Meta / Alt、Shift、空 / 非空検索を組み合わせて `/`、`Escape`、`t`、未定義 key を dispatch する。 | [`docs/details/builder.md` 詳細本文責務 §7.12](builder.md#sec-7-12) の handler 1 個、処理 / no-op、`preventDefault()`、focus、input event、smooth scroll の呼出し回数を固定する。`keyCode` / `which` 参照は 0 回とする。 |
 | Fixture Q: scroll runtime | scroll range 正、0、負相当、scrollTop が範囲外、`scrollY` 400 / 401、各 DOM 欠落、IntersectionObserver 不在を fake scroll source で実行する。 | [`docs/details/builder.md` 詳細本文責務 §7.7](builder.md#sec-7-7) と [§7.13](builder.md#sec-7-13) の passive listener 1 個、fallback → progress → top button の順、初期同期実行 1 回、進捗 `0`〜`100` clamp、`.visible` 境界、欠落機能だけの no-op を固定する。 |
 | Fixture R: table sort runtime | 正負整数、小数、数学的同値、text、空、`-0`、指数表記、同値行、複数 `<tbody>`、対象 cell 欠落を含む table で各列を 2 回 click する。 | [`docs/details/builder.md` 詳細本文責務 §7.14](builder.md#sec-7-14) の number / text / empty 分類、昇順 / 降順、empty 常時末尾、stable 元 index、UTF-16 比較、`aria-sort`、同じ `<tbody>` への再配置を固定する。不正構造は DOM / aria 無変更、`Number()` / `localeCompare()` 使用は 0 回とする。 |
-| Fixture S: URL 属性安全性 | `testdata/builder/url-safety/source.md` に `http` / `https` link、`mailto`、`tel`、同一 page fragment、Markdown 相対 link、`.md` 以外の相対 link、Markdown image、`javascript:`、`data:text/html`、credential 付き `https`、protocol-relative URL、absolute path、base 外 `..`、backslash、制御文字、ASCII space を含む URL を入れる。non-strict と `--strict` を個別に実行する。 | 許可 URL だけが attribute escape 済み `href` / `src` になる。Markdown 相対 link は対応 HTML path へ変換し、fragment は変換先 page の slug と照合する。拒否 link は label text だけ、拒否 image は alt text だけまたは空出力になり、拒否 URL 値、credential、query、secret 風文字列が stdout、stderr、`[REPORT]`、HTML、search index に残らない。non-strict は `[WARN] UNSAFE_URL` を拒否件数分出し exit `0`、`warnings` に加算する。strict は warning 出力後 exit `2`、stderr 空、公開出力維持、`[REPORT]` 非出力にする。`expected/security.json` は許可 scheme、拒否 scheme、credential 非表示、raw HTML 不在、external call 0 件を固定する。 |
+| Fixture S: URL 属性安全性 | `testdata/builder/url-safety/source.md` に `http` / `https` link、`mailto`、`tel`、同一 page fragment、Markdown 相対 link、`.md` 以外の相対 link、Markdown image、`javascript:`、`data:text/html`、credential 付き `https`、protocol-relative URL、absolute path、base 外 `..`、backslash、制御文字、ASCII space を含む URL を入れる。non-strict と `--strict` を個別に実行する。 | 許可 URL だけが attribute escape 済み `href` / `src` になる。Markdown 相対 link は対応 HTML path へ変換し、fragment は変換先 page の slug と照合する。拒否 link は label text だけ、拒否 image は alt text だけまたは空出力になり、拒否 URL 値、credential、query、secret 風文字列が stdout、stderr、`[REPORT]`、HTML、search index に残らない。non-strict は `[WARN] UNSAFE_URL` を拒否件数分出し exit `0`、`warnings` に加算する。strict は warning 出力後 exit `2`、stdout に `[WARN]` と `[REPORT]`、stderr 空、`Done` 行なし、公開出力維持にする。`expected/security.json` は許可 scheme、拒否 scheme、credential 非表示、raw HTML 不在、external call 0 件を固定する。 |
 | Fixture T: 起動入口 / version | `adlaire-ci-build --version`、`adlaire-ci-build --help`、`adlaire-ci-build --version --src missing`、`adlaire-ci-build --help --theme invalid` を実行する。binary version は未注入の `V.0.0-dev` と具体値 `V.1.100` の 2 case を持つ。 | stdout は [`docs/details/builder.md` 詳細本文責務 §2](builder.md#固定出力) の 1 行固定出力だけ、stderr 空、exit `0`。`--src` 存在確認、`--theme` 検証、directory 作成、atomic writer、fake filesystem、外部通信、状態 read/write は 0 回。version は exact 3 token で、binary name は `adlaire-ci-build`、第 2 token は注入値と完全一致する。 |
 | Fixture U: CLI parse / validation order | `--unknown`、位置引数、短縮 `-s`、未許可 `--src=...`、値欠落、unsafe argv token、重複 `--src` / `--out` / `--base-dir` / `--build-id` / `--commit-sha` / `--build-at` / `--title` / `--theme`、重複 `--strict` を個別 case として実行する。重複値 option は最後の値だけが存在確認対象になるよう、最後より前に存在しない path または secret 風文字列を置く。 | unsafe argv token は owner parse 前に `invalid command line token`、未知 option は `unknown option: <token>`、値欠落は `missing value: --name` を固定する。重複値 option は最後の値だけで成功または失敗し、最後より前の値を stdout、stderr、HTML、search index、`[REPORT]`、`expected/effects.json` へ出さない。`--strict --strict` は single strict と同じ結果にする。parse failure は stdout 空、exit `2`、file read/write、atomic writer、fake filesystem、外部通信 0 回。 |
 | Fixture V: path / symlink / base-dir | `testdata/builder/safe/` 配下に通常 Markdown、hidden Markdown、symlink Markdown、symlink directory、大文字拡張子、10 MiB 超 file、CRLF / CR / UTF-8 BOM file、base 外 relative link を持つ fixture を置く。`--base-dir` 省略、明示空文字、存在しない path、通常 file、symlink directory、`--src` symlink、既存 `--out` symlink、`--out` 親 symlink、`--out` 親不存在、`--src` と `--out` の同一・相互包含を個別 case として実行する。 | hidden Markdown、symlink Markdown、symlink directory、大文字拡張子は入力収集対象外。CRLF / CR は LF、先頭 BOM は除去、本文途中 BOM は保持する。明示空 `--base-dir` は `base directory must not be empty`、`--src` symlink は `source is not markdown file or directory: <path>`、`--base-dir` symlink は `base path is not directory: <path>`、既存 `--out` symlink は `output path is not directory: <path>`、`--out` 親 symlink は `output parent is not directory: <path>`、親不存在は `output parent not found: <path>`、相互包含は `output path must be outside source: <path>` を固定する。failure case は公開出力を置換せず、`[REPORT]` を出さない。 |
@@ -2231,7 +2231,7 @@ atomicity fixture の `input/existing-site/` は、既存 HTML、既存 `assets/
 | `success-admonition-inline-composition` | admonition body 内の badge、footnote、math、fenced code の併用で、body inline 変換と fenced code 保護が両立する。 |
 | `success-heading-inline-slug-source` | heading 内の badge、footnote、math 表示変換と、slug source text から UI text を除外する規則が同時に成立する。 |
 | `success-list-definition-task-boundary` | task list、通常 list、definition list、list 内 `: definition` の境界が固定どおりに分かれる。 |
-| `failure-unclosed-math-strict` | 未閉鎖 math inline / math block が non-strict では通常 text、strict では終了コード `2` と `BUILDER28_UNRESOLVED_REFERENCE` になる。 |
+| `failure-unclosed-math-strict` | 未閉鎖 math inline / math block が non-strict では通常 text、strict では `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持になる。 |
 | `noop-code-fence-protects-extensions` | code fence 内の template var、badge、footnote、math、definition marker、task marker が一切変換されない。 |
 | `security-parser-raw-html-escaped` | raw HTML、event handler、`javascript:` URL、HTML comment 指示が parser 段階で実行可能要素にならず、expected HTML と security.json で escape を確認する。 |
 
@@ -2315,7 +2315,7 @@ visual layout fixture の viewport 条件は `expected/visual.json.viewport_widt
 | `markdown-extensions` | `success-badge-color` | `gray`、`blue`、`green`、`yellow`、`red` の badge を `span.adlaire-badge`、`data-adlaire-badge-color` として出力し、label を escape 済み text にする。 |
 | `markdown-extensions` | `success-extension-csv-normalization` | csv の trim、空要素無視、重複除去、許可値順序の正規化を確認する。 |
 | `markdown-extensions` | `failure-unknown-extension` | 未知 extension を `BUILDER28_INVALID_OPTION`、終了コード `2`、stdout 空、公開出力維持にする。 |
-| `markdown-extensions` | `failure-badge-invalid-text-strict` | strict で不正 badge label / color を `BUILDER28_INVALID_OPTION`、終了コード `2` にする。 |
+| `markdown-extensions` | `failure-badge-invalid-text-strict` | strict で不正 badge label / color を `BUILDER28_INVALID_CONTENT`、終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持にする。 |
 | `markdown-extensions` | `noop-badge-invalid-text-nonstrict` | non-strict で不正 badge を元 text のまま出力し、`markdown_extension_warnings` を加算する。 |
 | `markdown-extensions` | `security-extension-escape` | admonition body、badge label、attribute、raw HTML、危険 URL、event handler が escape される。 |
 | `markdown-extensions` | `noop-extension-disabled` | extension 未指定時に admonition / badge 構文を特別扱いせず、既存 Markdown 変換結果を維持する。 |
@@ -2371,10 +2371,10 @@ visual layout fixture の viewport 条件は `expected/visual.json.viewport_widt
 | `lazy-images` | `success-lazy-external-image-no-fetch` | `http` / `https` URL に lazy 属性を付けるが、external call は 0 件である。 |
 | `lazy-images` | `success-lazy-data-uri-no-fetch` | `data:` URL に lazy 属性を付けるが、decode、MIME 判定、external call を行わない。 |
 | `lazy-images` | `noop-lazy-base-outside-nonstrict` | non-strict で base 外相対 path を `BUILDER28_PATH_OUTSIDE_BASE` warning、exit `0` にし、該当 image は alt text だけまたは空出力、`lazy_images` 加算なし、拒否 URL 値の HTML / search index / stdout / stderr 不在にする。 |
-| `lazy-images` | `failure-lazy-base-outside-strict` | strict で base 外相対 path を `BUILDER28_PATH_OUTSIDE_BASE`、終了コード `2`、公開出力維持にする。 |
+| `lazy-images` | `failure-lazy-base-outside-strict` | strict で base 外相対 path を `BUILDER28_PATH_OUTSIDE_BASE`、終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持にする。 |
 | `lazy-images` | `noop-lazy-disabled` | option 無効時に `loading`、`decoding` を追加せず、既存 img 出力と一致する。 |
 | `lazy-images` | `security-lazy-alt-escape` | alt、src、title 相当の attribute に raw HTML、quote、event handler が混入しても attribute escape される。 |
-| `lazy-images` | `security-lazy-invalid-scheme-strict` | `javascript:`、`file:`、その他未許可 scheme を strict で `BUILDER28_INVALID_OPTION`、終了コード `2`、公開出力維持にする。 |
+| `lazy-images` | `security-lazy-invalid-scheme-strict` | `javascript:`、`file:`、その他未許可 scheme を strict で `[WARN] UNSAFE_URL`、終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持にする。 |
 
 [§28.6〜§28.10](builder.md#sec-28-group-6-10) で browser runtime、visual layout、parser precedence と併用する fixture では、該当共通 fixture と同じ localStorage key、media query、parser 保護、external call 0 件を再確認する。
 
@@ -2407,7 +2407,7 @@ visual layout fixture の viewport 条件は `expected/visual.json.viewport_widt
 | `template-vars` | `success-template-var-multiple-sources` | CLI、env、config の source 優先順位、repeatable CLI、key count、replacement count、missing array を固定する。 |
 | `template-vars` | `noop-template-var-code-fence-span` | code fence と code span 内の `{{ KEY }}` が置換されない。 |
 | `template-vars` | `noop-template-var-invalid-syntax` | `{{KEY}}`、`{{ key }}`、<code>{{ KEY &#124; filter }}</code> が通常 text として残る。 |
-| `template-vars` | `failure-template-var-missing-strict` | strict で未定義 var を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、公開出力維持にする。 |
+| `template-vars` | `failure-template-var-missing-strict` | strict で未定義 var を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持にする。 |
 | `template-vars` | `failure-template-var-key-validation` | key 不正、object 以外、value string 以外を `BUILDER28_INVALID_OPTION`、終了コード `2` にする。 |
 | `template-vars` | `security-template-var-secret-not-reported` | secret 風 value と credential URL value が stdout、stderr、REPORT、manifest に平文出力されない。 |
 | `minify-html` | `success-minify-html` | tag 間 whitespace と HTML comment の安全な削減、byte before / after / saved の REPORT を固定する。 |
@@ -2432,15 +2432,15 @@ visual layout fixture の viewport 条件は `expected/visual.json.viewport_widt
 | `toc-active` | `noop-toc-active-disabled` | `--toc-active=false` で active handler、`.is-active` 初期 class、`aria-current`、未使用 JS branch を出力せず、既存 TOC HTML と一致する。 |
 | `toc-active` | `security-toc-active-depth-sync` | [`docs/details/builder.md` 詳細本文責務 §28.7](builder.md#sec-28-7) と併用し、TOC depth 外 heading、footnote backlink、collapse wrapper、lightbox target を active 対象にしない。 |
 | `mermaid` | `success-mermaid-graph-td` | `graph TD`、node 定義、edge 定義を deterministic SVG へ変換し、`.mermaid-diagram`、`.mermaid-node`、`.mermaid-edge`、viewBox、REPORT rendered count を固定する。 |
-| `mermaid` | `failure-mermaid-unsupported-strict` | strict で未対応 Mermaid 構文を `BUILDER28_UNSUPPORTED_RESERVED`、終了コード `2`、stdout 空、stderr 固定 error、公開出力維持にする。 |
+| `mermaid` | `failure-mermaid-unsupported-strict` | strict で未対応 Mermaid 構文を `BUILDER28_UNSUPPORTED_RESERVED`、終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持にする。 |
 | `mermaid` | `noop-mermaid-disabled` | `--mermaid=false` で `mermaid` fence を通常 code block として出力し、SVG、Mermaid class、external script、REPORT rendered count を増やさない。 |
 | `mermaid` | `security-mermaid-no-external-script` | SVG 内に `script`、`foreignObject`、event handler、external href、CDN、runtime fetch が存在しないことを `expected/security.json` で固定する。 |
 | `footnotes` | `success-footnotes-multiple` | 複数 definition / reference、同一 id 複数参照、参照順番号、`sup.footnote-ref`、末尾 `section.footnotes`、REPORT count を固定する。 |
 | `footnotes` | `success-footnotes-backlink` | 各 footnote item の `.footnote-backref`、本文 reference への backlink target、一意 id、search index から UI label を除外することを固定する。 |
-| `footnotes` | `failure-footnote-undefined-strict` | strict で未定義 reference、未参照 definition、重複 definition を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、stdout 空、stderr 固定 error、公開出力維持にする。 |
+| `footnotes` | `failure-footnote-undefined-strict` | strict で未定義 reference、未参照 definition、重複 definition を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持にする。 |
 | `footnotes` | `security-footnote-escape` | definition text、reference 周辺 text、id、backlink label の raw HTML、quote、event handler、`javascript:` が escape される。 |
 | `math` | `success-math-inline-block` | `$...$` と `$$...$$` を `span.math-inline` / `div.math-block` へ変換し、delimiter 除去、escape、REPORT inline / block count を固定する。 |
-| `math` | `failure-math-unclosed-strict` | strict で未閉鎖 inline delimiter、未閉鎖 block delimiter、長さ超過を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、公開出力維持にする。 |
+| `math` | `failure-math-unclosed-strict` | strict で未閉鎖 inline delimiter、未閉鎖 block delimiter、長さ超過を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持にする。 |
 | `math` | `noop-math-code-fence` | code fence、code span、link destination、image src、escaped dollar、通貨表現では math 変換しない。 |
 | `math` | `security-math-escape` | math content 内 raw HTML、script 風 text、event handler 風 text が escape 済み text として残り、外部 renderer / SVG / canvas / image を出力しない。 |
 | `hash-history` | `success-hash-history-click` | heading / TOC link click、`history.pushState`、`tabindex="-1"`、focus、scroll、REPORT `hash_history_enabled=true` / target count を固定する。 |
@@ -2463,7 +2463,7 @@ visual layout fixture の viewport 条件は `expected/visual.json.viewport_widt
 | `a11y` | `security-a11y-no-keyboard-trap` | section collapse、TOC active、hash target、lightbox、skip link を併用しても Tab / Shift+Tab が閉じ込められず、focus outline が text を隠さない。 |
 | `image-lightbox` | `success-lightbox-open-close` | trigger 数、page 1 個の dialog、open / close button、`aria-modal`、`aria-hidden`、opener focus return、REPORT `lightbox_images` を固定する。 |
 | `image-lightbox` | `success-lightbox-escape-backdrop` | Escape、backdrop click、close button、Enter / Space activation、dialog hidden state、body scroll への副作用なしを `expected/site/assets/app.js` で固定する。 |
-| `image-lightbox` | `failure-lightbox-alt-missing-strict` | strict で alt なし / 空 alt image を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、stdout 空、stderr 固定 error、公開出力維持にする。 |
+| `image-lightbox` | `failure-lightbox-alt-missing-strict` | strict で alt なし / 空 alt image を `BUILDER28_UNRESOLVED_REFERENCE`、終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持にする。 |
 | `image-lightbox` | `security-lightbox-focus-trap` | Tab / Shift+Tab focus trap、external image no-fetch、escaped `data-lightbox-src`、external script / asset 不在を `expected/security.json` で固定する。 |
 | `print-qr` | `success-print-qr-url` | `http` / `https` URL から `.print-qr`、`.print-qr-svg`、viewBox、rect order、print CSS、REPORT `print_qr=true` を固定する。 |
 | `print-qr` | `noop-print-qr-empty-url` | URL 空値で QR SVG、print QR CSS、REPORT URL、search index text を出力せず、`print_qr=false`、`print_qr_url=""` にする。 |
@@ -2562,9 +2562,9 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 | ケース | non-strict fixture | strict fixture | 固定する差分 |
 |--------|--------------------|----------------|--------------|
-| warning で継続できる構文不正 | 終了コード `0`、warning count 増加、fallback 出力あり。 | 終了コード `2`、出力なし。 | stdout / stderr / effects。 |
-| base 外 path | 対象参照を無効化し warning。 | 終了コード `2`。 | 参照先 file が作成されないこと。 |
-| 未定義参照 | 通常 text または非表示 fallback。 | 終了コード `2`。 | HTML fallback と strict 停止。 |
+| warning で継続できる構文不正 | 終了コード `0`、warning count 増加、fallback 出力あり。 | 終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、`Done` 行なし、公開出力維持。 | stdout / stderr / effects。 |
+| base 外 path | 対象参照を無効化し warning。 | 終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持。 | 参照先 file が作成されず、公開出力が置換されないこと。 |
+| 未定義参照 | 通常 text または非表示 fallback。 | 終了コード `2`、stdout `[WARN]` と `[REPORT]`、stderr 空、公開出力維持。 | HTML fallback と strict 停止、`[REPORT]` の warning count。 |
 | reserved feature | 終了コード `2`。 | 終了コード `2`。 | strict 差分なし。 |
 | 内部エラー fixture | 終了コード `1`。 | 終了コード `1`。 | 既存出力維持。 |
 
