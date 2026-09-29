@@ -144,8 +144,10 @@ type RunnerConfig struct {
     PendingFile                 string
     APIRetryMax                 int
     APIRetryBaseSeconds         int
+    BuildTimeoutSeconds         int
     BuildCooldownSeconds        int
     HistoryKeepN                int
+    SnapshotsKeep               int
     ForceBuildIntervalHours     int
     LogKeepN                    int
     APICircuitBreakerThreshold  int
@@ -159,6 +161,8 @@ type RunnerConfig struct {
     DeployParallelism           int
     RemoteBuild                 RemoteBuildConfig
     ApprovalTimeoutSeconds      int
+    SchedulePaused              bool
+    AllowedHours                *AllowedHoursConfig
     BranchTargets               []BranchTarget
 }
 
@@ -194,6 +198,11 @@ type RemoteBuildConfig struct {
     CommandArgs  []string
     ArtifactPath *string
 }
+
+type AllowedHoursConfig struct {
+    From int
+    To   int
+}
 ```
 
 **設定値検証：**
@@ -206,8 +215,10 @@ type RemoteBuildConfig struct {
 | `PendingFile` | 絶対パス。空文字不可。 | 終了コード `2` |
 | `APIRetryMax` | 0 以上。 | 終了コード `2` |
 | `APIRetryBaseSeconds` | 0 以上。 | 終了コード `2` |
+| `BuildTimeoutSeconds` | 1〜86400。 | 終了コード `2` |
 | `BuildCooldownSeconds` | 0 以上。 | 終了コード `2` |
 | `HistoryKeepN` | 0 以上。 | 終了コード `2` |
+| `SnapshotsKeep` | 0〜100。 | 終了コード `2` |
 | `ForceBuildIntervalHours` | 0 以上。 | 終了コード `2` |
 | `LogKeepN` | 0 以上。 | 終了コード `2` |
 | `APICircuitBreakerThreshold` | 0 以上。 | 終了コード `2` |
@@ -219,6 +230,8 @@ type RemoteBuildConfig struct {
 | `DeployParallelism` | 1〜16。 | 終了コード `2` |
 | `RemoteBuild` | [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の RemoteBuildConfig object。 | 終了コード `2` |
 | `ApprovalTimeoutSeconds` | 60〜2592000。 | 終了コード `2` |
+| `SchedulePaused` | boolean。 | 終了コード `2` |
+| `AllowedHours` | `null` または [`docs/details/statefile.md` 詳細本文責務 `.server_config` schema](statefile.md#server-config-schema) の `allowed_hours` object。`From < To` を必須とし、`From >= To` は設定不正とする。 | 終了コード `2`、ERROR `CONFIG_ALLOWED_HOURS_INVALID` |
 | `BranchTargets` | 1 件以上。 | 終了コード `2` |
 | `BranchTarget.Branch` | 空文字不可。`..`、`~`、制御文字禁止。 | 終了コード `2` |
 | `BranchTarget.TargetFile` | 相対パス。絶対パス、`..`、先頭 `/` 禁止。 | 終了コード `2` |
@@ -275,6 +288,10 @@ runner は CLI、`.repo_config`、`.server_config`、`.branch_config`、既定�
 | `BRANCH_TARGETS` 既定値 | `RunnerConfig.BranchTargets` | `.branch_config` が存在しない場合だけ使用する。`.branch_config` が破損復旧で不在化された場合も同じ既定値へ fallback する。 |
 | `.server_config` の数値 | `RunnerConfig` の数値 field | JSON number が整数でない場合は設定不正とする。文字列数値の暗黙変換は禁止する。 |
 | `.server_config` の boolean | `RunnerConfig` の boolean field | JSON boolean のみ許可する。`"true"`、`1`、`"yes"` は不正値とする。 |
+| `.server_config.build_timeout_seconds` | `RunnerConfig.BuildTimeoutSeconds` | [`docs/details/statefile.md` 詳細本文責務 `.server_config` schema](statefile.md#server-config-schema) の範囲検証済み値を採用する。 |
+| `.server_config.snapshots_keep` | `RunnerConfig.SnapshotsKeep` | [`docs/details/statefile.md` 詳細本文責務 `.server_config` schema](statefile.md#server-config-schema) の範囲検証済み値を採用する。 |
+| `.server_config.schedule_paused` | `RunnerConfig.SchedulePaused` | `true` の場合、queue entry が存在しない polling build だけを停止する。manual / webhook / approval / retry / rollback 起動を停止してはならない。 |
+| `.server_config.allowed_hours` | `RunnerConfig.AllowedHours` | `null` は時間帯制限なしとする。object の `from` と `to` は UTC hour として保存値をそのまま採用し、同一 runner 起動中に再読込しない。 |
 | `.server_config.watch_mode` | `RunnerConfig.WatchMode` | [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の既定値と列挙値を適用する。 |
 | `.server_config.tag_filter` | `RunnerConfig.TagFilter` | pattern の入力順を保持する。 |
 | `.server_config.build_cache_enabled` | `RunnerConfig.BuildCacheEnabled` | boolean をそのまま採用する。 |
@@ -313,14 +330,19 @@ runner は CLI、`.repo_config`、`.server_config`、`.branch_config`、既定�
 | 未知の引数 | `2` | `unknown option: <name>` |
 | `--state-dir` 値欠落 | `2` | `missing value: --state-dir` |
 
-以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`.server_config.build_cooldown_seconds`、`.server_config.snapshots_keep`、`.server_config.force_build_interval_hours`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` を Go 版 runner の標準設定とする。`.server_config` の正確な key、型、既定値、許容範囲、0 の意味は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を正本とする。
+以下の `BRANCH_TARGETS`、`PENDING_FILE`、`API_RETRY_MAX`、`.server_config.build_timeout_seconds`、`.server_config.build_cooldown_seconds`、`.server_config.snapshots_keep`、`.server_config.force_build_interval_hours`、`.server_config.schedule_paused`、`.server_config.allowed_hours`、`.server_config.build_cache_enabled`、`LOG_KEEP_N`、`API_CIRCUIT_BREAKER_THRESHOLD`、`OUTPUT_SIZE_WARN_MB`、`WEEKLY_SUMMARY_*` を Go 版 runner の標準設定とする。`.server_config` の正確な key、型、既定値、許容範囲、0 の意味は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) を正本とする。
 
 ```text
 PENDING_FILE           = "/opt/adlaire-builder/.pending_transfers"   # SSH 転送ペンディングキュー（JSON）
 API_RETRY_MAX          = 5    # GitHub API 失敗時の最大再試行回数（指数バックオフ）
 API_RETRY_BASE_SECONDS = 1    # バックオフ基底秒数（1→2→4→8→16 秒。0 = リトライ無効）
+server_config.build_timeout_seconds = 300  # builder / pipeline 共通 timeout 秒数
 server_config.build_cooldown_seconds = 60   # 前回ビルド完了から次ビルドまでの最小間隔（秒。0 = 無効）
+server_config.snapshots_keep = 5            # snapshot 保持数（0 = snapshot 無効）
 server_config.force_build_interval_hours = 0 # 強制再ビルド間隔（時間。0 = 無効）
+server_config.schedule_paused = false        # true の場合、queue entry なしの自動 polling を停止
+server_config.allowed_hours = null           # null = 無制限、object は UTC hour の from < to
+server_config.build_cache_enabled = false    # true の場合、builder へ cache directory を渡す
 LOG_KEEP_N             = 50   # ビルドログ保持件数（0 = 無制限）
 API_CIRCUIT_BREAKER_THRESHOLD = 3    # 全ブランチ連続失敗の許容周回数（0 = 無効）
 OUTPUT_SIZE_WARN_MB           = 5    # 出力サイト合計サイズ警告閾値（MB。0 = 無効）
@@ -446,7 +468,7 @@ SHA cache の更新は、pipeline 成功後、deploy 前に行う。複数 targe
 
 runner が生成する build id の base は UTC 時刻ベースの `b{YYYYMMDDHHmmss}` とし、衝突 suffix は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の時刻ベース ID 契約に従う。build id は `.build_logs/{id}.json`、`.build_history`、`.snapshots/{id}/` で同一値を使用し、suffix 上限到達時は既存 ID を上書きせず終了コード `1` とする。
 
-build id の割当単位は、処理を開始する正規化済み `BranchTarget` 1 件とする。1 回の runner process が複数の `BranchTarget` を順次処理する場合は、target ごとに別の build id を採番し、同じ ID を別 target へ再利用してはならない。1 件の `BranchTarget` が複数の `target_files` を監視する場合は、それらを 1 build として同じ build id に集約する。`skipped_no_change` では割当済み ID を log、history、snapshot に保存せず、次 target へ再利用しない。
+build id の割当単位は、処理を開始する正規化済み `BranchTarget` 1 件とする。1 回の runner process が複数の `BranchTarget` を順次処理する場合は、target ごとに別の build id を採番し、同じ ID を別 target へ再利用してはならない。1 件の `BranchTarget` が複数の `target_files` を監視する場合は、それらを 1 build として同じ build id に集約する。`skipped_no_change` と `skipped_allowed_hours` では割当済み ID を log、history、snapshot に保存せず、次 target へ再利用しない。`skipped_schedule_paused` は target 処理開始前に確定するため build id を採番しない。
 
 各 build id は、当該 `BranchTarget` の `.build_logs/{id}.json` 1 件、`.build_history` 1 行、作成成功時の `.snapshots/{id}/` 1 件、`BranchTarget.Out` から算出した `output_sha256` 1 件だけに帰属する。branch、target file、output root が異なる target 間で log、history、snapshot、output manifest を共有または上書きしてはならない。
 
@@ -481,12 +503,14 @@ build id の割当単位は、処理を開始する正規化済み `BranchTarget
 <a id="runner-target-status-selection"></a>
 **ターゲット結果分類：**
 
-runner は `BRANCH_TARGETS` の各 entry について、[`docs/details/statefile.md` 詳細本文責務 §22.0c runner 結果値 schema](statefile.md#runner-result-schema) で build log に許可された値から、最終的に 1 つの `target_status` を確定する。基本 build lifecycle の選択条件は [`docs/details/runner.md` 詳細本文責務 ターゲット結果分類表](runner.md#runner-target-status-selection) を正本とする。追加機能は runner 結果値 schema の許可値と、対象 owner component の機能契約に定めた選択条件の両方に従う。
+runner は `BRANCH_TARGETS` の各 entry について、[`docs/details/statefile.md` 詳細本文責務 §22.0c runner 結果値 schema](statefile.md#runner-result-schema) で定義された詳細結果値から、最終的に 1 つの `target_status` または `.build_status.json.last_target_status` を確定する。保存先ごとの許可条件は runner 結果値 schema を正本とし、build log 禁止の skip 値は `.build_status.json.last_target_status` だけに保存する。基本 build lifecycle の選択条件は [`docs/details/runner.md` 詳細本文責務 ターゲット結果分類表](runner.md#runner-target-status-selection) を正本とする。追加機能は runner 結果値 schema の許可値と、対象 owner component の機能契約に定めた選択条件の両方に従う。
 
 | `target_status` | 条件 | runner 終了コードへの影響 |
 |-----------------|------|---------------------------|
 | `skipped_no_change` | SHA 一致かつ強制ビルド条件未達。 | 失敗扱いしない。 |
 | `skipped_cooldown` | クールダウンで全体処理を開始しない。 | `0`。 |
+| `skipped_schedule_paused` | queue entry がなく `schedule_paused=true` のため polling を開始しない。 | `0`。 |
+| `skipped_allowed_hours` | queue entry がなく build 対象確定後に現在 UTC hour が `allowed_hours` 範囲外。 | `0`。 |
 | `success` | pipeline 成功、SHA 更新成功、deploy target がないか全 deploy target が成功。 | `0` 候補。 |
 | `success_deploy_pending` | pipeline 成功、SHA 更新成功、1 件以上の deploy が pending。 | `1`。 |
 | `failure_api` | GitHub API が全再試行失敗。 | 全 target がこれなら `3`、一部なら `1`。 |
@@ -574,12 +598,14 @@ runner は `BRANCH_TARGETS` の各 entry について、[`docs/details/statefile
 | pending transfer retry | `.pending_transfers` | `.pending_transfers`, `.build_logs/{id}.json` | 成功 entry を削除し、失敗 entry は `retry_count` を +1 して保持する。 | queue ファイル破損時は [`docs/details/statefile.md` 詳細本文責務 §22.0a](statefile.md#sec-22-0a) に従い退避して `[]` で再生成する。 |
 | notify pending retry | `.notify_pending`, `.notify_config` | `.notify_pending`, `.notify_log` | [`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) の retry 状態遷移だけを実行し、成功、非 retryable 失敗、retry 継続、retry exhaustion を区別する。 | `.notify_config` または対象 Webhook channel が利用不能な場合は送信も log 追記も行わず entry を変更せず保持し、`NOTIFY_RETRY_CHANNEL_UNAVAILABLE: channel_id={json_id}` を ERROR で 1 行記録する。 |
 | circuit gate | `.build_circuit_state`, `.build_state` | `.build_status.json`、必要時だけ `.build_state` | closed なら queue 取得または polling 判定へ進む。open なら pending retry 以外の build 処理を開始しない。 | open 時は active / waiting を保持し、runtime flag が残る場合だけ `running=false`、`current_build_id=null` へ atomic write する。保存失敗は終了コード `1`。 |
+| schedule pause gate | `.server_config`, `.build_state` | `.build_status.json` | queue entry がない polling で `schedule_paused=false` の場合だけ cooldown へ進む。 | paused は `skipped_schedule_paused` として status summary だけ保存し、GitHub API、build log、history は作成しない。 |
 | status start | `.build_state`, `.build_circuit_state`, `.pending_transfers`, `.notify_pending` | `.build_status.json` | circuit closed を確認し、queue entry または polling target を確定した後、`status="running"` と当該起動の `trigger` を保存する。 | 書き込み失敗は終了コード `1`。`.build_state.running=true` へ進まない。 |
 | state start | `.build_state` | `.build_state` | queue entry は waiting から active への移動と `running=true`、`current_build_id`、`last_started_at` を同じ atomic write で保存する。polling は active / waiting を変更せず runtime field だけを保存する。 | `.build_lock` を削除し、終了コード `1`。 |
 | build log start | build id, `.build_state`, `.build_status.json` | `.build_logs/{id}.json` | [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の途中保存 schema を atomic write する。 | GitHub API、pipeline、deploy、snapshot を開始せず、`failure_state_write` とする。 |
 | cooldown gate | `.build_state`, `.server_config` | none | cooldown 範囲外なら target 処理へ進む。 | cooldown 中は `target_status=skipped_cooldown`、終了コード `0`。 |
-| GitHub tree resolve | `.github_token`, branch target | `.build_logs/{id}.json` | 単一 file target は Git object SHA、directory target は対象 `.md` file 集合と target digest を確定する。 | 全 retry 失敗は `failure_api` を記録し、target SHA / digest を更新しない。 |
+| GitHub tree resolve | `.github_token`, branch target | failure_api 時のみ `.build_logs/{id}.json` | 単一 file target は Git object SHA、directory target は対象 `.md` file 集合と target digest を確定する。 | 全 retry 失敗は `failure_api` を記録し、target SHA / digest を更新しない。成功 resolve、`skipped_no_change`、`skipped_allowed_hours` では build log / history を作成しない。 |
 | SHA decision | `sha_file`, `.server_config` | none | 変更あり、force 条件成立、または webhook/force queue payload により build 対象を確定する。 | 変更なしは `skipped_no_change`。状態ファイルを更新しない。 |
+| allowed hours gate | `.server_config`, SHA decision 結果 | `.build_status.json` | queue entry がない polling で allowed hours が `null` または現在 UTC hour を許可している場合だけ materializer へ進む。 | 許可時間外は `skipped_allowed_hours` として status summary だけ保存し、blob API、pipeline、deploy、snapshot、build log、history、SHA 更新は行わない。 |
 | blob materializer | GitHub blob API, branch target | `src` | Base64 decode 後、対象 Markdown を atomic write する。 | decode/write 失敗は `failure_decode`。SHA を更新しない。 |
 | precheck | branch target, output path, build binary | `.build_logs/{id}.json` | disk、binary、version がすべて合格する。 | `failure_precheck` を記録し、pipeline を起動しない。 |
 | pipeline executor | `src`, `.pipeline_config` | none | timeout 前に exit code `0` と stdout / stderr を最終結果 writer へ返す。 | 非 0 は `failure_build`、timeout は `failure_timeout` を返す。SHA、deploy、snapshot を更新しない。 |
@@ -620,6 +646,8 @@ runner は `BRANCH_TARGETS` の各 entry について、[`docs/details/statefile
 | build 失敗 | `failure` | 確定した failure 値 | 実行 trigger | `last_error` に固定エラー文言を保存する。 |
 | build cancel | `cancelled` | `cancelled` | 実行 trigger | build log / history と同じ build id を保存する。 |
 | circuit open skip | `skipped` | `circuit_open` | `polling` | GitHub API 呼び出し前に保存する。 |
+| schedule paused skip | `skipped` | `skipped_schedule_paused` | `polling` | queue entry がない場合だけ保存する。build log / history は作成しない。 |
+| allowed hours skip | `skipped` | `skipped_allowed_hours` | `polling` | queue entry がない場合だけ保存する。build log / history は作成しない。 |
 | startup config 復旧あり | `warning` | `config_recovered` | `startup_config_integrity` | build log / history は作成しない。復旧後に通常 build へ進む場合、次の `running` 更新で上書きする。 |
 | startup config 停止 | `failure` | `config_error` | `startup_config_integrity` | `.build_state.running=true` へ進まない。 |
 | pending transfer retry のみ | `success` または `failure` | 既存値を保持 | `retry_pending_transfer` | build が発生しない場合でも pending 件数を更新する。 |
@@ -636,14 +664,18 @@ API の runner 起動要求は process 起動の契機にすぎない。runner �
 
 queue entry の全必須 key、`queued_at`、`requested_by`、priority、created_seq、trigger 別 payload は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の Queue entry schema を正本とする。不正 entry が active または処理順の先頭にある場合、runner はその entry を `failure_decode` として build log / history に記録し、最終結果の保存成功後だけ active を消去して、次回起動まで次 waiting entry を処理しない。queue 全体が JSON として破損している場合は [`docs/details/runner.md` 詳細本文責務 §12](runner.md#12-設定値runner) の `.build_state` 破損処理に従う。
 
-**cooldown / force build 判定契約：**
+**schedule / cooldown / force build 判定契約：**
 
-runner は起動ごとに `.server_config.build_cooldown_seconds` と `.server_config.force_build_interval_hours` を 1 回読み、当該起動中の cooldown / force build 判定に使用する。同一 runner 起動中に `.server_config` を再読込して判定値を変更してはならない。
+runner は起動ごとに `.server_config.schedule_paused`、`.server_config.allowed_hours`、`.server_config.build_cooldown_seconds`、`.server_config.force_build_interval_hours` を 1 回読み、当該起動中の schedule / cooldown / force build 判定に使用する。同一 runner 起動中に `.server_config` を再読込して判定値を変更してはならない。
 
-判定順は pending transfer retry、notify pending retry、circuit breaker、active / waiting queue 取得、cooldown、SHA decision の順とする。circuit open 中は queue entry を waiting から active へ移さず、既存 active も実行しない。manual queue entry の `payload.force=true` は cooldown を無視する。webhook queue entry は cooldown を適用する。`force_build_interval_hours` は SHA 一致時だけ評価し、SHA 不一致時は常に通常 build とする。
+判定順は pending transfer retry、notify pending retry、circuit breaker、active / waiting queue 取得、schedule pause gate、cooldown、SHA decision、allowed hours gate の順とする。circuit open 中は queue entry を waiting から active へ移さず、既存 active も実行しない。schedule pause gate と allowed hours gate は active / waiting queue がなく通常 polling へ進む場合だけ適用し、manual / webhook / approval / retry / rollback の queue entry には適用しない。manual queue entry の `payload.force=true` は cooldown を無視する。webhook queue entry は cooldown を適用する。`force_build_interval_hours` は SHA 一致時だけ評価し、SHA 不一致時は常に通常 build とする。
+
+`AllowedHours` の判定は UTC hour で行う。`From < To` の場合だけ有効な時間帯定義とし、`From <= hour < To` を許可する。`From >= To` は ERROR `CONFIG_ALLOWED_HOURS_INVALID`、終了コード `2` とし、GitHub API、pipeline、deploy、snapshot、build log、history、SHA 更新を開始しない。
 
 | 条件 | 結果 |
 |------|------|
+| `.server_config.schedule_paused=true` かつ queue entry なし | `skipped_schedule_paused`。GitHub API、pipeline、deploy、snapshot は実行しない。 |
+| `.server_config.allowed_hours` が非 `null` かつ現在 UTC hour が許可範囲外、かつ queue entry なし、かつ SHA decision で build 対象確定 | `skipped_allowed_hours`。blob API、pipeline、deploy、snapshot、build log、history、SHA 更新は実行しない。 |
 | `.build_state.last_finished_at=null` | cooldown は適用しない。 |
 | `.server_config.build_cooldown_seconds=0` | cooldown は無効。 |
 | `now - last_finished_at < build_cooldown_seconds` | `skipped_cooldown`。GitHub API、pipeline、deploy、snapshot は実行しない。 |
@@ -678,7 +710,7 @@ finalizer 中に複数失敗が発生した場合、終了コードは最も重�
 
 `.build_circuit_state.open=true` の場合、runner は pending transfer retry と notify pending retry を完了した後、GitHub API、queue 取得、build id 採番、pipeline、deploy、snapshot を実行せず、`.build_status.json` に `status="skipped"`、`last_target_status="circuit_open"`、`running=false`、`current_build_id=null` を保存して終了する。active / waiting queue は変更しない。`.build_state.running=true` または `current_build_id != null` が残っている場合だけ、process lock 保持中に `running=false`、`current_build_id=null` を同じ atomic write で保存し、`active_queue_entry`、`queued`、`last_started_at`、`last_finished_at` を保持する。状態保存に成功した場合の終了コードは `0`、失敗は `1` とする。circuit open を queue entry の成功、失敗、完了として log / history へ記録してはならず、active entry を消去してはならない。
 
-連続失敗数を増やす対象は `failure_build`、`failure_precheck`、`failure_decode`、`failure_state_write`、`success_deploy_pending` とする。`failure_api`、`skipped_no_change`、`skipped_cooldown`、`lock_skipped`、通知失敗だけの成功 build は連続失敗数を増やさない。いずれかの target が `success` になった場合だけ、`consecutive_failures` は 0 に戻す。
+連続失敗数を増やす対象は `failure_build`、`failure_precheck`、`failure_decode`、`failure_state_write`、`success_deploy_pending` とする。`failure_api`、`skipped_no_change`、`skipped_cooldown`、`skipped_schedule_paused`、`skipped_allowed_hours`、`lock_skipped`、通知失敗だけの成功 build は連続失敗数を増やさない。いずれかの target が `success` になった場合だけ、`consecutive_failures` は 0 に戻す。
 
 **SHA 更新禁止条件：**
 
@@ -752,6 +784,9 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
     │   ├─ active なし / waiting あり → priority / created_seq / id 順の 1 件を active へ atomic move
     │   └─ active / waiting なし → 通常 polling 判定へ進む
     │
+    ├─ [schedule pause gate] 通常 polling かつ schedule_paused = true の場合
+    │   └─ .build_status.json に skipped / skipped_schedule_paused / trigger=polling を保存し、GitHub API を実行せず正常終了
+    │
     ├─ [クールダウンチェック] build_cooldown_seconds > 0 の場合
     │   └─ .build_state.last_finished_at から build_cooldown_seconds 秒未満
     │       → INFO ログ（`COOLDOWN: skip, last_build N秒前`）、正常終了
@@ -774,6 +809,9 @@ runner 起動（systemd timer、または API の `systemctl start --no-block ad
     │   │   ├─ 一致（変更なし）かつ force_build_interval_hours = 0 → INFO ログ、このエントリをスキップ
     │   │   ├─ 一致（変更なし）かつ force_build_interval_hours > 0 → 前回ビルドから指定時間以上経過していれば強制ビルド続行
     │   │   └─ 不一致（変更あり）→ 続行
+    │   │
+    │   ├─ [allowed hours gate] 通常 polling かつ allowed_hours 範囲外の場合
+    │   │   └─ .build_status.json に skipped / skipped_allowed_hours / trigger=polling を保存し、blob API、pipeline、deploy、snapshot、build log、history、SHA 更新を実行せず次回 polling に委ねる
     │   │
     │   ├─ Step 2: Git Blobs API
     │   │   GET /repos/{RunnerConfig.RepositoryOwner}/{RunnerConfig.RepositoryName}/git/blobs/{blob_sha}
@@ -1544,6 +1582,8 @@ owner component は `runner` とする。collaborator component は `api`、`sta
 | queue build 開始前 | pending retry と circuit closed 判定後、waiting entry を `active_queue_entry` へ移し、`status="running"`、`running=true`、`current_build_id`、`last_trigger`、`last_started_at` を保存する。自動 polling build は active を変更しない。 |
 | 変更なし skip | `status="skipped"`、`last_target_status="skipped_no_change"`、`running=false`。build id は更新しない。 |
 | cooldown skip | `status="skipped"`、`last_target_status="skipped_cooldown"`、`running=false`。 |
+| schedule paused skip | `status="skipped"`、`last_target_status="skipped_schedule_paused"`、`running=false`。build id は採番しない。 |
+| allowed hours skip | `status="skipped"`、`last_target_status="skipped_allowed_hours"`、`running=false`。割当済み build id は保存しない。 |
 | build 成功 | `status="success"`、`last_build_id`、`last_finished_at`、`last_duration_seconds`、`output_sha256` を保存する。 |
 | deploy result 確定 | deploy attempt を実行した場合だけ `last_deploy_at` に確定時刻、`last_deploy_status` に `success` / `failure` / `pending` を保存する。deploy 未実行 build では既存の 2 field を保持する。 |
 | deploy pending | `status="success"`、`last_deploy_at`、`last_deploy_status="pending"`、`pending_transfers_count` を保存する。 |
@@ -1792,7 +1832,7 @@ runner owner は、API が読む `.build_logs/` と `.build_logs/archive/` の `
 | 保存順 | build log 最終更新 → `.build_history` 追記 → `.build_status.json` finalizer の順で同じ duration を保存する。 |
 | deploy pending | deploy pending でも build 処理自体の finished_at を保存し、pending retry の所要時間を合算しない。 |
 | rollback | rollback build log も duration を保存する。元 snapshot の duration は変更しない。 |
-| skip | `skipped_no_change`、`skipped_cooldown`、`skipped_tag_filter`、`skipped_maintenance`、`circuit_open`、`lock_skipped` は build log / history / duration を作らない。chain の `skipped_dependency_failed` は history だけを作成し `duration_seconds=null` とする。 |
+| skip | `skipped_no_change`、`skipped_cooldown`、`skipped_schedule_paused`、`skipped_allowed_hours`、`skipped_tag_filter`、`skipped_maintenance`、`circuit_open`、`lock_skipped` は build log / history / duration を作らない。chain の `skipped_dependency_failed` は history だけを作成し `duration_seconds=null` とする。 |
 | read-only stats | stats 系 API が読む history、logs、archive、trend、status は runner 側で read-only 入力として提供される。runner は統計 API 呼び出しで状態を書き換えない。 |
 
 **統計入力分類・丸め固定契約：**

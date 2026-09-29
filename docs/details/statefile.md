@@ -234,7 +234,7 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 | `build_cooldown_seconds` | integer | `0` | 0〜86400 | `POST /api/schedule/cooldown`, `GET /api/schedule` | `0` はクールダウン無効。 |
 | `schedule_interval_seconds` | integer | `300` | 30〜86400 | `POST /api/schedule/interval`, `GET /api/schedule` | systemd timer 更新値。 |
 | `schedule_paused` | boolean | `false` | `true` / `false` | `POST /api/schedule/pause`, `POST /api/schedule/resume`, `GET /api/schedule` | 自動ポーリング停止状態。 |
-| `allowed_hours` | object/null | `null` | `{"from":0〜23,"to":0〜23}` または `null` | `POST /api/schedule/allowed-hours`, `GET /api/schedule` | UTC の自動ビルド許可時間帯。 |
+| `allowed_hours` | object/null | `null` | `{"from":0〜23,"to":0〜23}` かつ `from < to`、または `null` | `POST /api/schedule/allowed-hours`, `GET /api/schedule` | UTC の自動ビルド許可時間帯。 |
 | `session_timeout_seconds` | integer | `28800` | 300〜2592000 | `GET/POST /api/config` | 新規 session の有効期限秒数。既存 session の `expires_at` は変更しない。 |
 | `api_rate_limit` | object | `{"enabled":true,"groups":{"login":{"window_seconds":60,"max_requests":10},"read":{"window_seconds":60,"max_requests":600},"trigger":{"window_seconds":60,"max_requests":60},"operate":{"window_seconds":60,"max_requests":120},"config":{"window_seconds":60,"max_requests":60},"admin":{"window_seconds":60,"max_requests":60}}}` | 次の ApiRateLimitPolicy object | `GET/POST /api/api-rate-limit` | API rate limit の endpoint group 別固定窓設定。判定処理は [`docs/details/security.md` 詳細本文責務 §27.47](security.md#sec-27-47) を参照する。 |
 
@@ -1116,6 +1116,8 @@ runner 結果値は保存先ごとに意味を分離する。`.build_logs/{id}.j
 | `skipped_dependency_failed` | 禁止 | 許可 | 禁止 | chain dependency failure による未実行 job。build log は作成しない。 |
 | `skipped_no_change` | 禁止 | 禁止 | 許可 | SHA 差分なし。 |
 | `skipped_cooldown` | 禁止 | 禁止 | 許可 | cooldown 中。 |
+| `skipped_schedule_paused` | 禁止 | 禁止 | 許可 | schedule pause 中。 |
+| `skipped_allowed_hours` | 禁止 | 禁止 | 許可 | allowed hours 外。 |
 | `skipped_tag_filter` | 禁止 | 禁止 | 許可 | tag filter 不一致。 |
 | `skipped_maintenance` | 禁止 | 禁止 | 許可 | maintenance mode 中。 |
 | `circuit_open` | 禁止 | 禁止 | 許可 | circuit breaker open。 |
