@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unicode/utf8"
@@ -57,6 +59,9 @@ type RunnerConfig struct {
 	WeeklySummaryEnabled       bool
 	WeeklySummaryDay           int
 	WeeklySummaryHour          int
+	TagFilter                  TagFilterConfig
+	RemoteBuild                RemoteBuildConfig
+	DurationAnomaly            DurationAnomalyConfig
 	SchedulePaused             bool
 	BuildCacheEnabled          bool
 	WatchMode                  string
@@ -131,6 +136,27 @@ type AllowedHoursConfig struct {
 	To   int `json:"to"`
 }
 
+type TagFilterConfig struct {
+	Enabled  bool     `json:"enabled"`
+	Patterns []string `json:"patterns"`
+}
+
+type RemoteBuildConfig struct {
+	Enabled      bool     `json:"enabled"`
+	Host         *string  `json:"host"`
+	User         *string  `json:"user"`
+	WorkDir      *string  `json:"work_dir"`
+	CommandArgs  []string `json:"command_args"`
+	ArtifactPath *string  `json:"artifact_path"`
+}
+
+type DurationAnomalyConfig struct {
+	Enabled       bool    `json:"enabled"`
+	MinSamples    int     `json:"min_samples"`
+	AvgMultiplier float64 `json:"avg_multiplier"`
+	P95Multiplier float64 `json:"p95_multiplier"`
+}
+
 type shaCache struct {
 	SHA string `json:"sha"`
 }
@@ -144,6 +170,26 @@ type buildState struct {
 	LastFinishedAt          *string          `json:"last_finished_at"`
 	WeeklySummaryLastSentAt *string          `json:"weekly_summary_last_sent_at"`
 	WeeklySummarySentDate   *string          `json:"weekly_summary_sent_date"`
+}
+
+type queueEntry struct {
+	ID           string         `json:"id"`
+	Trigger      string         `json:"trigger"`
+	QueuedAt     string         `json:"queued_at"`
+	RequestedBy  string         `json:"requested_by"`
+	Priority     string         `json:"priority"`
+	CreatedSeq   int64          `json:"created_seq"`
+	Payload      map[string]any `json:"payload"`
+	OriginalData map[string]any `json:"-"`
+}
+
+type queueRunContext struct {
+	Entry      *queueEntry
+	Trigger    string
+	Force      bool
+	Branch     string
+	TargetFile string
+	CommitSHA  string
 }
 
 type commitInfo struct {
@@ -198,6 +244,7 @@ type buildLog struct {
 	TargetFile      string        `json:"target_file"`
 	TargetFiles     []string      `json:"target_files"`
 	ChangedTargets  []string      `json:"changed_targets"`
+	MatchedTags     []string      `json:"matched_tags"`
 	TargetStatus    string        `json:"target_status"`
 	Trigger         string        `json:"trigger"`
 	TriggerActor    *string       `json:"trigger_actor"`
@@ -278,16 +325,21 @@ type pendingTransfer struct {
 }
 
 type notifyPendingEntry struct {
-	Event      string         `json:"event"`
-	URL        string         `json:"url"`
-	Payload    map[string]any `json:"payload"`
-	QueuedAt   string         `json:"queued_at"`
-	RetryCount int            `json:"retry_count"`
-	LastError  string         `json:"last_error"`
+	Event       string         `json:"event"`
+	ChannelID   string         `json:"channel_id,omitempty"`
+	ChannelType string         `json:"channel_type,omitempty"`
+	URL         string         `json:"url"`
+	Payload     map[string]any `json:"payload"`
+	QueuedAt    string         `json:"queued_at"`
+	RetryCount  int            `json:"retry_count"`
+	LastError   string         `json:"last_error"`
 }
 
 type notifyConfigFile struct {
 	Webhooks []notifyWebhook `json:"webhooks"`
+	Channels []notifyChannel `json:"channels"`
+	On       []string        `json:"on"`
+	Summary  notifySummary   `json:"summary"`
 }
 
 type notifyWebhook struct {
@@ -295,6 +347,21 @@ type notifyWebhook struct {
 	Label   string   `json:"label"`
 	Enabled bool     `json:"enabled"`
 	On      []string `json:"on"`
+}
+
+type notifyChannel struct {
+	ID      string         `json:"id"`
+	Type    string         `json:"type"`
+	Enabled bool           `json:"enabled"`
+	On      []string       `json:"on"`
+	Config  map[string]any `json:"config"`
+}
+
+type notifySummary struct {
+	Enabled   bool   `json:"enabled"`
+	Interval  string `json:"interval"`
+	Hour      int    `json:"hour"`
+	DayOfWeek int    `json:"day_of_week"`
 }
 
 type buildCircuitState struct {
@@ -386,6 +453,14 @@ type gitCommitResponse []struct {
 			Date string `json:"date"`
 		} `json:"author"`
 	} `json:"commit"`
+}
+
+type gitMatchingRefsResponse []struct {
+	Ref    string `json:"ref"`
+	Object struct {
+		SHA  string `json:"sha"`
+		Type string `json:"type"`
+	} `json:"object"`
 }
 
 func RunRunner(args []string, stdout, stderr io.Writer) int {
@@ -509,6 +584,9 @@ func defaultRunnerConfig(stateDir string) RunnerConfig {
 		WeeklySummaryEnabled:       true,
 		WeeklySummaryDay:           0,
 		WeeklySummaryHour:          9,
+		TagFilter:                  TagFilterConfig{Enabled: false, Patterns: []string{}},
+		RemoteBuild:                RemoteBuildConfig{Enabled: false, CommandArgs: []string{}},
+		DurationAnomaly:            DurationAnomalyConfig{Enabled: false, MinSamples: 20, AvgMultiplier: 2.0, P95Multiplier: 1.5},
 		WatchMode:                  "github",
 		DeployParallelism:          1,
 		BranchTargets: []BranchTarget{{
@@ -568,22 +646,37 @@ func executeRunner(cfg RunnerConfig, stdout, stderr io.Writer) int {
 	if err := retryNotifyPending(filepath.Join(cfg.StateDir, ".notify_pending"), logger); err != nil {
 		logger.Error("NOTIFY_PENDING_RETRY_FAILED: " + err.Error())
 	}
+	if err := sendWeeklySummaryIfDue(cfg, logger); err != nil {
+		logger.Warn("WEEKLY_SUMMARY_FAILED: " + err.Error())
+	}
 	if circuitOpen(cfg.StateDir) {
 		logger.Error("CIRCUIT_OPEN: polling skipped")
 		_ = writeBuildStatusSkip(cfg, "circuit_open", "polling", nil)
 		_ = clearRunningBuildState(cfg.StateDir)
 		return 0
 	}
-	if cfg.SchedulePaused {
+	queueCtx, err := readQueueRunContext(cfg.StateDir)
+	if err != nil {
+		logger.Error("QUEUE_READ_FAILED: " + err.Error())
+		_ = writeBuildStatusError(cfg, "failure_decode", "queue", err.Error())
+		return 1
+	}
+	hasQueue := queueCtx.Entry != nil
+	if cfg.SchedulePaused && !hasQueue {
 		_ = writeBuildStatusSkip(cfg, "skipped_schedule_paused", "polling", nil)
 		return 0
 	}
-	if cooldownActive(cfg, logger) {
+	if cooldownActive(cfg, logger) && (!hasQueue || !queueCtx.Force) {
 		_ = writeBuildStatusSkip(cfg, "skipped_cooldown", "polling", nil)
 		return 0
 	}
 	exit := 0
+	matchedQueueTarget := false
 	for i, target := range cfg.BranchTargets {
+		if hasQueue && !queueMatchesTarget(queueCtx, target) {
+			continue
+		}
+		matchedQueueTarget = true
 		buildID, err := runnerNextBuildID(cfg.StateDir, runnerNow().UTC())
 		if err != nil {
 			logger.Error("BUILD_ID_ALLOC_FAILED: " + err.Error())
@@ -592,12 +685,31 @@ func executeRunner(cfg RunnerConfig, stdout, stderr io.Writer) int {
 			}
 			continue
 		}
-		if status := processRunnerTarget(cfg, i, target, token, buildID, logger); status > exit {
+		if status := processRunnerTarget(cfg, i, target, token, buildID, logger, queueCtx); status > exit {
 			exit = status
+		}
+		if hasQueue {
+			break
+		}
+	}
+	if hasQueue && !matchedQueueTarget {
+		logger.Error("QUEUE_TARGET_NOT_FOUND: id=" + queueCtx.Entry.ID)
+		_ = writeBuildStatusError(cfg, "failure_api", queueCtx.Trigger, "queue target not found")
+		exit = 1
+	}
+	if hasQueue && matchedQueueTarget && exit == 0 {
+		if err := clearActiveQueueEntry(cfg.StateDir, queueCtx.Entry.ID); err != nil {
+			logger.Error("QUEUE_FINALIZE_FAILED: " + err.Error())
+			exit = 1
 		}
 	}
 	finished := runnerNow().UTC().Format(time.RFC3339)
-	state := runnerDefaultBuildState()
+	state, err := runnerReadBuildState(cfg.StateDir)
+	if err != nil {
+		state = runnerDefaultBuildState()
+	}
+	state.Running = false
+	state.CurrentBuildID = nil
 	state.LastFinishedAt = &finished
 	if err := runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_state"), state, 0600); err != nil {
 		logger.Error("STATE_FINISH_FAILED: " + err.Error())
@@ -741,6 +853,33 @@ func loadServerConfig(cfg *RunnerConfig) error {
 	if sc.BuildTrendKeepCount != nil {
 		cfg.BuildTrendKeepCount = *sc.BuildTrendKeepCount
 	}
+	if rawJSONPresent(sc.TagFilter) {
+		var value TagFilterConfig
+		if err := json.Unmarshal(sc.TagFilter, &value); err != nil {
+			return fmt.Errorf("SERVER_CONFIG_INVALID: tag_filter")
+		}
+		if value.Patterns == nil {
+			value.Patterns = []string{}
+		}
+		cfg.TagFilter = value
+	}
+	if rawJSONPresent(sc.RemoteBuild) {
+		var value RemoteBuildConfig
+		if err := json.Unmarshal(sc.RemoteBuild, &value); err != nil {
+			return fmt.Errorf("SERVER_CONFIG_INVALID: remote_build")
+		}
+		if value.CommandArgs == nil {
+			value.CommandArgs = []string{}
+		}
+		cfg.RemoteBuild = value
+	}
+	if rawJSONPresent(sc.DurationAnomaly) {
+		var value DurationAnomalyConfig
+		if err := json.Unmarshal(sc.DurationAnomaly, &value); err != nil {
+			return fmt.Errorf("SERVER_CONFIG_INVALID: duration_anomaly")
+		}
+		cfg.DurationAnomaly = value
+	}
 	if sc.WatchMode != nil {
 		cfg.WatchMode = *sc.WatchMode
 	}
@@ -760,6 +899,13 @@ func loadServerConfig(cfg *RunnerConfig) error {
 		cfg.BuildCacheEnabled = *sc.BuildCacheEnabled
 	}
 	return nil
+}
+
+func rawJSONPresent(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	return strings.TrimSpace(string(raw)) != "null"
 }
 
 func normalizeBranchTargets(targets []BranchTarget) []BranchTarget {
@@ -822,6 +968,18 @@ func validateRunnerConfig(cfg RunnerConfig) error {
 	if cfg.WatchMode != "github" && cfg.WatchMode != "local" {
 		return errors.New("invalid watch mode")
 	}
+	if cfg.WatchMode == "local" && cfg.TagFilter.Enabled {
+		return errors.New("invalid tag filter for local watch")
+	}
+	if err := validateTagFilter(cfg.TagFilter); err != nil {
+		return err
+	}
+	if err := validateRemoteBuild(cfg.RemoteBuild); err != nil {
+		return err
+	}
+	if err := validateDurationAnomaly(cfg.DurationAnomaly); err != nil {
+		return err
+	}
 	if cfg.DeployParallelism < 1 || cfg.DeployParallelism > 16 {
 		return errors.New("invalid deploy parallelism")
 	}
@@ -883,6 +1041,63 @@ func hasUnsafeControl(s string) bool {
 		}
 	}
 	return false
+}
+
+func validateTagFilter(filter TagFilterConfig) error {
+	if !filter.Enabled {
+		return nil
+	}
+	if len(filter.Patterns) > 100 {
+		return errors.New("invalid tag filter patterns")
+	}
+	for _, pattern := range filter.Patterns {
+		if pattern == "" || hasUnsafeControl(pattern) {
+			return errors.New("invalid tag filter pattern")
+		}
+		if strings.Count(pattern, "*") > 1 {
+			return errors.New("invalid tag filter pattern")
+		}
+		if strings.Contains(pattern, "*") && !strings.HasSuffix(pattern, "*") {
+			return errors.New("invalid tag filter pattern")
+		}
+	}
+	return nil
+}
+
+func validateRemoteBuild(remote RemoteBuildConfig) error {
+	if !remote.Enabled {
+		return nil
+	}
+	for _, value := range []*string{remote.Host, remote.User, remote.WorkDir} {
+		if value == nil || *value == "" || hasUnsafeControl(*value) {
+			return errors.New("invalid remote build")
+		}
+	}
+	if remote.WorkDir != nil && !strings.HasPrefix(*remote.WorkDir, "/") {
+		return errors.New("invalid remote build")
+	}
+	if len(remote.CommandArgs) == 0 || len(remote.CommandArgs) > 64 {
+		return errors.New("invalid remote build")
+	}
+	for _, arg := range remote.CommandArgs {
+		if arg == "" || hasUnsafeControl(arg) {
+			return errors.New("invalid remote build")
+		}
+	}
+	if remote.ArtifactPath != nil && (*remote.ArtifactPath == "" || hasUnsafeControl(*remote.ArtifactPath)) {
+		return errors.New("invalid remote build")
+	}
+	return nil
+}
+
+func validateDurationAnomaly(config DurationAnomalyConfig) error {
+	if !config.Enabled {
+		return nil
+	}
+	if config.MinSamples < 1 || config.MinSamples > 10000 || config.AvgMultiplier <= 0 || config.P95Multiplier <= 0 {
+		return errors.New("invalid duration anomaly")
+	}
+	return nil
 }
 
 func sameOrNestedPath(a, b string) bool {
@@ -1035,6 +1250,155 @@ func forceIntervalDue(cfg RunnerConfig) bool {
 	return runnerNow().Sub(last) >= time.Duration(cfg.ForceBuildIntervalHours)*time.Hour
 }
 
+func readQueueRunContext(stateDir string) (queueRunContext, error) {
+	state, err := runnerReadBuildState(stateDir)
+	if err != nil {
+		return queueRunContext{}, err
+	}
+	if len(state.ActiveQueueEntry) > 0 {
+		entry, err := parseQueueEntry(state.ActiveQueueEntry)
+		if err != nil {
+			return queueRunContext{}, err
+		}
+		return queueRunContextFromEntry(entry), nil
+	}
+	if len(state.Queued) == 0 {
+		return queueRunContext{}, nil
+	}
+	entries := make([]queueEntry, 0, len(state.Queued))
+	for _, raw := range state.Queued {
+		entry, err := parseQueueEntry(raw)
+		if err != nil {
+			return queueRunContext{}, err
+		}
+		entries = append(entries, *entry)
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		left, right := entries[i], entries[j]
+		if priorityWeight(left.Priority) != priorityWeight(right.Priority) {
+			return priorityWeight(left.Priority) < priorityWeight(right.Priority)
+		}
+		if left.CreatedSeq != right.CreatedSeq {
+			return left.CreatedSeq < right.CreatedSeq
+		}
+		return left.ID < right.ID
+	})
+	return queueRunContextFromEntry(&entries[0]), nil
+}
+
+func parseQueueEntry(raw map[string]any) (*queueEntry, error) {
+	id, ok := raw["id"].(string)
+	if !ok || id == "" {
+		return nil, errors.New("invalid queue entry id")
+	}
+	trigger, ok := raw["trigger"].(string)
+	if !ok || !validQueueTrigger(trigger) {
+		return nil, errors.New("invalid queue entry trigger")
+	}
+	queuedAt, ok := raw["queued_at"].(string)
+	if !ok || queuedAt == "" {
+		return nil, errors.New("invalid queue entry queued_at")
+	}
+	requestedBy, ok := raw["requested_by"].(string)
+	if !ok || requestedBy == "" {
+		return nil, errors.New("invalid queue entry requested_by")
+	}
+	priority, ok := raw["priority"].(string)
+	if !ok || priorityWeight(priority) < 0 {
+		return nil, errors.New("invalid queue entry priority")
+	}
+	createdSeq, ok := jsonNumberToInt64(raw["created_seq"])
+	if !ok || createdSeq < 1 {
+		return nil, errors.New("invalid queue entry created_seq")
+	}
+	payload, ok := raw["payload"].(map[string]any)
+	if !ok {
+		return nil, errors.New("invalid queue entry payload")
+	}
+	return &queueEntry{
+		ID: id, Trigger: trigger, QueuedAt: queuedAt, RequestedBy: requestedBy,
+		Priority: priority, CreatedSeq: createdSeq, Payload: payload, OriginalData: copyStringAnyMap(raw),
+	}, nil
+}
+
+func jsonNumberToInt64(value any) (int64, bool) {
+	switch v := value.(type) {
+	case float64:
+		if v != float64(int64(v)) {
+			return 0, false
+		}
+		return int64(v), true
+	case int:
+		return int64(v), true
+	case int64:
+		return v, true
+	default:
+		return 0, false
+	}
+}
+
+func validQueueTrigger(trigger string) bool {
+	return trigger == "manual" || trigger == "webhook" || trigger == "approval"
+}
+
+func priorityWeight(priority string) int {
+	switch priority {
+	case "urgent":
+		return 0
+	case "high":
+		return 10
+	case "normal":
+		return 20
+	case "low":
+		return 30
+	default:
+		return -1
+	}
+}
+
+func queueRunContextFromEntry(entry *queueEntry) queueRunContext {
+	ctx := queueRunContext{Entry: entry, Trigger: entry.Trigger}
+	switch entry.Trigger {
+	case "manual":
+		ctx.Force, _ = entry.Payload["force"].(bool)
+	case "webhook":
+		ctx.Branch, _ = entry.Payload["branch"].(string)
+		ctx.CommitSHA, _ = entry.Payload["sha"].(string)
+	case "approval":
+		ctx.Branch, _ = entry.Payload["branch"].(string)
+		ctx.TargetFile, _ = entry.Payload["target"].(string)
+		ctx.CommitSHA, _ = entry.Payload["sha"].(string)
+		ctx.Force, _ = entry.Payload["requested_force"].(bool)
+	}
+	return ctx
+}
+
+func queueMatchesTarget(ctx queueRunContext, target BranchTarget) bool {
+	if ctx.Entry == nil {
+		return true
+	}
+	if ctx.Branch != "" && ctx.Branch != target.Branch {
+		return false
+	}
+	if ctx.TargetFile == "" {
+		return true
+	}
+	for _, targetFile := range normalizedTargetFiles(target) {
+		if targetFile == ctx.TargetFile {
+			return true
+		}
+	}
+	return false
+}
+
+func copyStringAnyMap(in map[string]any) map[string]any {
+	out := make(map[string]any, len(in))
+	for key, value := range in {
+		out[key] = value
+	}
+	return out
+}
+
 func runnerReadBuildState(stateDir string) (buildState, error) {
 	var state buildState
 	err := runnerReadJSONFile(filepath.Join(stateDir, ".build_state"), &state)
@@ -1155,15 +1519,18 @@ func releaseRunnerLock(path string, expected []byte, logger *slog.Logger) {
 	}
 }
 
-func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, buildID string, logger *slog.Logger) int {
+func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, buildID string, logger *slog.Logger, queueCtx queueRunContext) int {
 	started := runnerNow().UTC()
 	startedText := started.Format(time.RFC3339)
-	trigger := "polling"
+	trigger := runnerInitialTrigger(cfg)
+	if queueCtx.Entry != nil {
+		trigger = queueCtx.Trigger
+	}
 	if err := writeBuildStatusRunning(cfg, buildID, trigger, target.Branch, target.TargetFile, startedText); err != nil {
 		logger.Error("BUILD_STATUS_WRITE_FAILED: " + err.Error())
 		return 1
 	}
-	if err := writeBuildState(cfg.StateDir, true, &buildID); err != nil {
+	if err := writeBuildStateStart(cfg.StateDir, true, &buildID, queueCtx.Entry); err != nil {
 		logger.Error("STATE_START_FAILED: " + err.Error())
 		_ = writeBuildStatusError(cfg, "failure_state_write", trigger, err.Error())
 		return 1
@@ -1175,7 +1542,7 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 	}
 	prevSHA, prevErr := readSHACache(target.SHAFile)
 	if prevErr != nil {
-		logFailure(cfg, target, buildID, started, nil, "", "failure_decode", "sha cache decode failed", nil, nil, logger)
+		logFailure(cfg, target, buildID, started, nil, "", trigger, "failure_decode", "sha cache decode failed", nil, nil, logger)
 		recordCircuitFailure(cfg, "sha cache decode failed")
 		return 1
 	}
@@ -1187,23 +1554,49 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 			status = "failure_decode"
 			exit = 1
 		}
-		logFailure(cfg, target, buildID, started, nil, prevSHA, status, "source resolve failed", nil, nil, logger)
+		logFailure(cfg, target, buildID, started, nil, prevSHA, trigger, status, "source resolve failed", nil, nil, logger)
 		recordCircuitFailure(cfg, "source resolve failed")
 		return exit
 	}
-	forceBuild := forceIntervalDue(cfg)
+	forceBuild := queueCtx.Force || forceIntervalDue(cfg)
 	if resolved.Digest == prevSHA && !forceBuild {
 		logger.Info(fmt.Sprintf("NO_CHANGE: branch=%s target=%s sha=%s", target.Branch, target.TargetFile, resolved.Digest))
-		_ = writeBuildStatusSkip(cfg, "skipped_no_change", trigger, &target)
+		_ = skipRunnerTarget(cfg, buildID, "skipped_no_change", trigger, &target)
 		return 0
 	}
+	if resolved.Digest == prevSHA && forceBuild && queueCtx.Entry == nil {
+		trigger = "force_interval"
+	}
 	if cfg.AllowedHours != nil && !allowedNow(*cfg.AllowedHours, runnerNow().UTC()) {
-		_ = writeBuildStatusSkip(cfg, "skipped_allowed_hours", trigger, &target)
+		_ = skipRunnerTarget(cfg, buildID, "skipped_allowed_hours", trigger, &target)
 		return 0
+	}
+	commit := commitInfo{}
+	matchedTags := []string{}
+	if cfg.WatchMode == "github" {
+		commit = fetchCommitInfo(cfg, logger, token, target.Branch, target.TargetFile)
+		if cfg.TagFilter.Enabled {
+			if commit.SHA == nil || *commit.SHA == "" {
+				logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, trigger, "failure_api", "github api failed", nil, nil, logger)
+				recordCircuitFailure(cfg, "github api failed")
+				return 3
+			}
+			tags, err := fetchMatchingTags(cfg, logger, token, *commit.SHA)
+			if err != nil {
+				logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, trigger, "failure_api", "github api failed", nil, nil, logger)
+				recordCircuitFailure(cfg, "github api failed")
+				return 3
+			}
+			matchedTags = tags
+			if len(matchedTags) == 0 {
+				_ = skipRunnerTarget(cfg, buildID, "skipped_tag_filter", trigger, &target)
+				return 0
+			}
+		}
 	}
 	if target.ApprovalRequired {
 		if err := appendApprovalPending(cfg, target, buildID, resolved.Digest, resolved.ChangedTargets); err != nil {
-			logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, "failure_state_write", "approval pending write failed", nil, nil, logger)
+			logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, trigger, "failure_state_write", "approval pending write failed", nil, nil, logger)
 			return 1
 		}
 		_ = os.Remove(filepath.Join(cfg.StateDir, ".build_logs", buildID+".json"))
@@ -1212,18 +1605,14 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		return 0
 	}
 	if err := materializeResolvedSource(target.Src, resolved); err != nil {
-		logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, "failure_decode", "source write failed", nil, nil, logger)
+		logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, trigger, "failure_decode", "source write failed", nil, nil, logger)
 		recordCircuitFailure(cfg, "source write failed")
 		return 1
 	}
-	if err := precheckRunnerTarget(target); err != nil {
-		logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, "failure_precheck", "precheck failed", nil, nil, logger)
+	if err := precheckRunnerTarget(cfg, target); err != nil {
+		logFailure(cfg, target, buildID, started, &resolved.Digest, prevSHA, trigger, "failure_precheck", "precheck failed", nil, nil, logger)
 		recordCircuitFailure(cfg, "precheck failed")
 		return 1
-	}
-	commit := commitInfo{}
-	if cfg.WatchMode == "github" {
-		commit = fetchCommitInfo(cfg, logger, token, target.Branch, target.TargetFile)
 	}
 	commitSHA := ""
 	if commit.SHA != nil {
@@ -1292,9 +1681,8 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		errText = &msg
 		exitCode = 1
 	} else {
-		for deployIdx, d := range target.DeployTargets {
-			dl := executeDeploy(cfg, idx, deployIdx, target, d, buildID)
-			deploys = append(deploys, dl)
+		deploys = executeDeploys(cfg, idx, target, buildID)
+		for _, dl := range deploys {
 			if dl.Status == "pending" {
 				status = "success_deploy_pending"
 				msg := "deploy pending"
@@ -1337,6 +1725,7 @@ func processRunnerTarget(cfg RunnerConfig, idx int, target BranchTarget, token, 
 		TargetFile:      target.TargetFile,
 		TargetFiles:     append([]string(nil), target.TargetFiles...),
 		ChangedTargets:  append([]string(nil), resolved.ChangedTargets...),
+		MatchedTags:     append([]string(nil), matchedTags...),
 		TargetStatus:    status,
 		Trigger:         trigger,
 		TriggerActor:    nil,
@@ -1395,6 +1784,7 @@ func runningBuildLog(buildID string, target BranchTarget, trigger, started strin
 		TargetFile:      target.TargetFile,
 		TargetFiles:     append([]string(nil), target.TargetFiles...),
 		ChangedTargets:  []string{},
+		MatchedTags:     []string{},
 		TargetStatus:    "running",
 		Trigger:         trigger,
 		TriggerActor:    nil,
@@ -1419,6 +1809,21 @@ func runningBuildLog(buildID string, target BranchTarget, trigger, started strin
 		Environment:     buildEnvLog{},
 		Error:           nil,
 	}
+}
+
+func runnerInitialTrigger(cfg RunnerConfig) string {
+	if cfg.WatchMode == "local" {
+		return "local_watch"
+	}
+	return "polling"
+}
+
+func skipRunnerTarget(cfg RunnerConfig, buildID, targetStatus, trigger string, target *BranchTarget) error {
+	_ = os.Remove(filepath.Join(cfg.StateDir, ".build_logs", buildID+".json"))
+	if err := clearRunningBuildState(cfg.StateDir); err != nil {
+		return err
+	}
+	return writeBuildStatusSkip(cfg, targetStatus, trigger, target)
 }
 
 func allowedNow(hours AllowedHoursConfig, now time.Time) bool {
@@ -1575,6 +1980,53 @@ func fetchCommitInfo(cfg RunnerConfig, logger *slog.Logger, token, branch, targe
 	author := commits[0].Commit.Author.Name
 	date := commits[0].Commit.Author.Date
 	return commitInfo{SHA: &sha, Message: &msg, Author: &author, Date: &date}
+}
+
+func fetchMatchingTags(cfg RunnerConfig, logger *slog.Logger, token, commitSHA string) ([]string, error) {
+	owner, repo := cfg.RepositoryOwner, cfg.RepositoryName
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/git/matching-refs/tags", strings.TrimRight(runnerGitHubAPIBase, "/"), url.PathEscape(owner), url.PathEscape(repo))
+	var refs gitMatchingRefsResponse
+	if err := runnerGetJSON(cfg, logger, token, apiURL, &refs); err != nil {
+		return nil, err
+	}
+	matches := []string{}
+	for _, ref := range refs {
+		if ref.Object.SHA != commitSHA {
+			continue
+		}
+		name := strings.TrimPrefix(ref.Ref, "refs/tags/")
+		if tagMatchesFilter(name, cfg.TagFilter) {
+			matches = append(matches, name)
+			if len(matches) >= 100 {
+				break
+			}
+		}
+	}
+	return matches, nil
+}
+
+func tagMatchesFilter(tag string, filter TagFilterConfig) bool {
+	if !filter.Enabled {
+		return true
+	}
+	if len(filter.Patterns) == 0 {
+		return tag != ""
+	}
+	for _, pattern := range filter.Patterns {
+		if pattern == "*" {
+			return true
+		}
+		if strings.HasSuffix(pattern, "*") {
+			if strings.HasPrefix(tag, strings.TrimSuffix(pattern, "*")) {
+				return true
+			}
+			continue
+		}
+		if tag == pattern {
+			return true
+		}
+	}
+	return false
 }
 
 func runnerGetJSON(cfg RunnerConfig, logger *slog.Logger, token, url string, out any) error {
@@ -1758,9 +2210,12 @@ func materializeResolvedSource(src string, resolved resolvedRunnerTarget) error 
 	return nil
 }
 
-func precheckRunnerTarget(target BranchTarget) error {
+func precheckRunnerTarget(cfg RunnerConfig, target BranchTarget) error {
 	if err := ensureDiskAvailable(filepath.Dir(target.Out)); err != nil {
 		return err
+	}
+	if cfg.RemoteBuild.Enabled {
+		return nil
 	}
 	buildBin := os.Getenv("ADLAIRE_CI_BUILD_BIN")
 	if buildBin == "" {
@@ -1801,6 +2256,9 @@ func ensureDiskAvailable(path string) error {
 }
 
 func runPipeline(cfg RunnerConfig, target BranchTarget, buildID, commitSHA, buildAt string, changedTargets []string) pipelineLog {
+	if cfg.RemoteBuild.Enabled {
+		return runRemoteBuildPipeline(cfg, target, buildID, commitSHA, buildAt, changedTargets)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.BuildTimeoutSeconds)*time.Second)
 	defer cancel()
 	buildBin := os.Getenv("ADLAIRE_CI_BUILD_BIN")
@@ -1849,6 +2307,109 @@ func runPipeline(cfg RunnerConfig, target BranchTarget, buildID, commitSHA, buil
 	trimmedStdout, stdoutTruncated := trimLog(stdout.String())
 	trimmedStderr, stderrTruncated := trimLog(stderr.String())
 	return pipelineLog{ExitCode: &code, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated}
+}
+
+func runRemoteBuildPipeline(cfg RunnerConfig, target BranchTarget, buildID, commitSHA, buildAt string, changedTargets []string) pipelineLog {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.BuildTimeoutSeconds)*time.Second)
+	defer cancel()
+	remote := cfg.RemoteBuild
+	host := remoteEndpoint(remote)
+	env := map[string]string{
+		"ADLAIRE_CI_SRC":         target.Src,
+		"ADLAIRE_CI_OUT":         target.Out,
+		"ADLAIRE_CI_BRANCH":      target.Branch,
+		"ADLAIRE_CI_BUILD_ID":    buildID,
+		"ADLAIRE_CI_COMMIT_SHA":  commitSHA,
+		"ADLAIRE_CI_BUILD_AT":    buildAt,
+		"ADLAIRE_CI_TARGET_FILE": target.TargetFile,
+		"ADLAIRE_CI_STATE_DIR":   cfg.StateDir,
+	}
+	if len(changedTargets) > 0 {
+		data, _ := json.Marshal(changedTargets)
+		env["ADLAIRE_CHANGED_TARGETS"] = string(data)
+	}
+	for key, value := range target.Env {
+		env[key] = value
+	}
+	cmd := exec.CommandContext(ctx, "ssh", host, remoteCommand(*remote.WorkDir, remote.CommandArgs, env))
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if ctx.Err() == context.DeadlineExceeded {
+		return timeoutPipelineLog(stdout.String(), stderr.String())
+	}
+	code := exitCodeFromError(err)
+	if err == nil && remote.ArtifactPath != nil {
+		scpCode, scpStdout, scpStderr := copyRemoteArtifact(ctx, host, *remote.ArtifactPath, target.Out)
+		stdout.WriteString(scpStdout)
+		stderr.WriteString(scpStderr)
+		code = scpCode
+		if ctx.Err() == context.DeadlineExceeded {
+			return timeoutPipelineLog(stdout.String(), stderr.String())
+		}
+	}
+	trimmedStdout, stdoutTruncated := trimLog(stdout.String())
+	trimmedStderr, stderrTruncated := trimLog(stderr.String())
+	return pipelineLog{ExitCode: &code, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated}
+}
+
+func remoteEndpoint(remote RemoteBuildConfig) string {
+	if remote.User != nil && *remote.User != "" {
+		return *remote.User + "@" + *remote.Host
+	}
+	return *remote.Host
+}
+
+func remoteCommand(workDir string, args []string, env map[string]string) string {
+	keys := make([]string, 0, len(env))
+	for key := range env {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := []string{"cd -- " + shellQuote(workDir), "&&"}
+	for _, key := range keys {
+		parts = append(parts, key+"="+shellQuote(env[key]))
+	}
+	for _, arg := range args {
+		parts = append(parts, shellQuote(arg))
+	}
+	return strings.Join(parts, " ")
+}
+
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+}
+
+func copyRemoteArtifact(ctx context.Context, host, artifactPath, out string) (int, string, string) {
+	if err := os.RemoveAll(out); err != nil {
+		return 1, "", err.Error()
+	}
+	if err := os.MkdirAll(filepath.Dir(out), 0755); err != nil {
+		return 1, "", err.Error()
+	}
+	cmd := exec.CommandContext(ctx, "scp", "-r", host+":"+artifactPath, out)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	return exitCodeFromError(cmd.Run()), stdout.String(), stderr.String()
+}
+
+func timeoutPipelineLog(stdout, stderr string) pipelineLog {
+	trimmedStdout, stdoutTruncated := trimLog(stdout)
+	trimmedStderr, stderrTruncated := trimLog(stderr)
+	return pipelineLog{ExitCode: nil, Stdout: trimmedStdout, Stderr: trimmedStderr, StdoutTruncated: stdoutTruncated, StderrTruncated: stderrTruncated}
+}
+
+func exitCodeFromError(err error) int {
+	if err == nil {
+		return 0
+	}
+	var ee *exec.ExitError
+	if errors.As(err, &ee) {
+		return ee.ExitCode()
+	}
+	return 1
 }
 
 func shouldRetryPipeline(pl pipelineLog) bool {
@@ -1950,6 +2511,45 @@ func executeDeploy(cfg RunnerConfig, branchIdx, deployIdx int, target BranchTarg
 		})
 	}
 	return dl
+}
+
+func executeDeploys(cfg RunnerConfig, branchIdx int, target BranchTarget, buildID string) []deployLog {
+	if len(target.DeployTargets) == 0 {
+		return []deployLog{}
+	}
+	if cfg.DeployParallelism <= 1 || len(target.DeployTargets) == 1 {
+		out := make([]deployLog, 0, len(target.DeployTargets))
+		for deployIdx, d := range target.DeployTargets {
+			out = append(out, executeDeploy(cfg, branchIdx, deployIdx, target, d, buildID))
+		}
+		return out
+	}
+	workers := cfg.DeployParallelism
+	if workers > len(target.DeployTargets) {
+		workers = len(target.DeployTargets)
+	}
+	type job struct {
+		index  int
+		target DeployTarget
+	}
+	jobs := make(chan job)
+	results := make([]deployLog, len(target.DeployTargets))
+	var wg sync.WaitGroup
+	for worker := 0; worker < workers; worker++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for item := range jobs {
+				results[item.index] = executeDeploy(cfg, branchIdx, item.index, target, item.target, buildID)
+			}
+		}()
+	}
+	for i, deployTarget := range target.DeployTargets {
+		jobs <- job{index: i, target: deployTarget}
+	}
+	close(jobs)
+	wg.Wait()
+	return results
 }
 
 func deploySite(out string, d DeployTarget) (int, int, int, int64, error) {
@@ -2152,19 +2752,11 @@ func retryNotifyPending(path string, logger *slog.Logger) error {
 		return err
 	}
 	remaining := []notifyPendingEntry{}
-	client := &http.Client{Timeout: 30 * time.Second}
 	for _, entry := range entries {
-		body, _ := json.Marshal(entry.Payload)
-		resp, err := client.Post(entry.URL, "application/json", bytes.NewReader(body))
-		if err == nil && resp != nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			resp.Body.Close()
+		if err := postNotify(entry.URL, entry.Payload); err == nil {
 			logger.Info("NOTIFY_PENDING_RETRY_OK: url=" + entry.URL)
 			continue
-		}
-		if resp != nil {
-			entry.LastError = fmt.Sprintf("http status %d", resp.StatusCode)
-			resp.Body.Close()
-		} else if err != nil {
+		} else {
 			entry.LastError = err.Error()
 		}
 		entry.RetryCount++
@@ -2176,7 +2768,7 @@ func retryNotifyPending(path string, logger *slog.Logger) error {
 
 func sendBuildNotifications(cfg RunnerConfig, log buildLog, logger *slog.Logger) {
 	config, err := readNotifyConfig(filepath.Join(cfg.StateDir, ".notify_config"))
-	if err != nil || len(config.Webhooks) == 0 {
+	if err != nil {
 		return
 	}
 	event := "failure"
@@ -2190,18 +2782,7 @@ func sendBuildNotifications(cfg RunnerConfig, log buildLog, logger *slog.Logger)
 		"branch": log.Branch, "target_file": log.TargetFile,
 		"target_files": log.TargetFiles, "changed_targets": log.ChangedTargets,
 	}
-	for _, hook := range config.Webhooks {
-		if !hook.Enabled || hook.URL == "" || !hookHandlesEvent(hook, event) {
-			continue
-		}
-		if err := postNotify(hook.URL, payload); err != nil {
-			_ = addNotifyPending(filepath.Join(cfg.StateDir, ".notify_pending"), notifyPendingEntry{
-				Event: event, URL: hook.URL, Payload: payload,
-				QueuedAt: runnerNow().UTC().Format(time.RFC3339), RetryCount: 1, LastError: err.Error(),
-			})
-			logger.Error("NOTIFY_FAILED: url=" + hook.URL)
-		}
-	}
+	_ = sendRunnerNotificationEvent(cfg, config, event, payload, logger)
 }
 
 func readNotifyConfig(path string) (notifyConfigFile, error) {
@@ -2213,8 +2794,162 @@ func readNotifyConfig(path string) (notifyConfigFile, error) {
 	return config, err
 }
 
+func sendWeeklySummaryIfDue(cfg RunnerConfig, logger *slog.Logger) error {
+	config, err := readNotifyConfig(filepath.Join(cfg.StateDir, ".notify_config"))
+	if err != nil {
+		return err
+	}
+	if len(notifyTargetsForEvent(config, "weekly_summary")) == 0 {
+		return nil
+	}
+	summary := config.Summary
+	enabled := cfg.WeeklySummaryEnabled || summary.Enabled
+	if !enabled {
+		return nil
+	}
+	if summary.Interval != "" && summary.Interval != "weekly" {
+		return nil
+	}
+	now := runnerNow().UTC()
+	day := cfg.WeeklySummaryDay
+	hour := cfg.WeeklySummaryHour
+	if summary.Enabled {
+		day = summary.DayOfWeek
+		hour = summary.Hour
+	}
+	if int(now.Weekday()) != day || now.Hour() != hour {
+		return nil
+	}
+	state, err := runnerReadBuildState(cfg.StateDir)
+	if err != nil {
+		state = runnerDefaultBuildState()
+	}
+	sentDate := now.Format("2006-01-02")
+	if state.WeeklySummarySentDate != nil && *state.WeeklySummarySentDate == sentDate {
+		return nil
+	}
+	records, err := readHistoryRecords(cfg.StateDir)
+	if err != nil {
+		return err
+	}
+	payload := weeklySummaryPayload(records, now)
+	if sendRunnerNotificationEvent(cfg, config, "weekly_summary", payload, logger) {
+		sentAt := now.Format(time.RFC3339)
+		state.WeeklySummaryLastSentAt = &sentAt
+		state.WeeklySummarySentDate = &sentDate
+		return runnerAtomicWriteJSON(filepath.Join(cfg.StateDir, ".build_state"), state, 0600)
+	}
+	return nil
+}
+
+func readHistoryRecords(stateDir string) ([]historyRecord, error) {
+	data, err := os.ReadFile(filepath.Join(stateDir, ".build_history"))
+	if errors.Is(err, os.ErrNotExist) {
+		return []historyRecord{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	records := []historyRecord{}
+	for _, line := range bytes.Split(data, []byte("\n")) {
+		line = bytes.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
+		var rec historyRecord
+		if err := json.Unmarshal(line, &rec); err != nil {
+			return nil, err
+		}
+		records = append(records, rec)
+	}
+	return records, nil
+}
+
+func weeklySummaryPayload(records []historyRecord, now time.Time) map[string]any {
+	since := now.AddDate(0, 0, -7)
+	counts := map[string]int{"success": 0, "failure": 0, "skipped": 0, "deploy_pending": 0}
+	var totalDuration int64
+	durationCount := 0
+	for _, rec := range records {
+		finished, err := time.Parse(time.RFC3339, rec.FinishedAt)
+		if err != nil || finished.Before(since) || finished.After(now) {
+			continue
+		}
+		switch {
+		case rec.Status == "success":
+			counts["success"]++
+		case rec.Status == "success_deploy_pending":
+			counts["success"]++
+			counts["deploy_pending"]++
+		case strings.HasPrefix(rec.Status, "skipped_"):
+			counts["skipped"]++
+		default:
+			counts["failure"]++
+		}
+		if rec.DurationSeconds >= 0 {
+			totalDuration += rec.DurationSeconds
+			durationCount++
+		}
+	}
+	var avg *float64
+	if durationCount > 0 {
+		value := math.Round((float64(totalDuration)/float64(durationCount))*100) / 100
+		avg = &value
+	}
+	return map[string]any{
+		"event":                 "weekly_summary",
+		"period_start":          since.Format(time.RFC3339),
+		"period_end":            now.Format(time.RFC3339),
+		"success_count":         counts["success"],
+		"failure_count":         counts["failure"],
+		"skipped_count":         counts["skipped"],
+		"deploy_pending_count":  counts["deploy_pending"],
+		"average_duration_sec":  avg,
+		"history_records_total": len(records),
+	}
+}
+
 func hookHandlesEvent(hook notifyWebhook, event string) bool {
-	for _, item := range hook.On {
+	return eventListHandles(hook.On, nil, event)
+}
+
+type notifyTarget struct {
+	ChannelID   string
+	ChannelType string
+	URL         string
+}
+
+func notifyTargetsForEvent(config notifyConfigFile, event string) []notifyTarget {
+	targets := []notifyTarget{}
+	for i, hook := range config.Webhooks {
+		if !hook.Enabled || hook.URL == "" || !hookHandlesEvent(hook, event) {
+			continue
+		}
+		id := hook.Label
+		if id == "" {
+			id = fmt.Sprintf("webhook-%d", i+1)
+		}
+		targets = append(targets, notifyTarget{ChannelID: id, ChannelType: "webhook", URL: hook.URL})
+	}
+	for _, channel := range config.Channels {
+		if !channel.Enabled || channel.Type != "webhook" || !eventListHandles(channel.On, config.On, event) {
+			continue
+		}
+		rawURL, ok := channel.Config["url"].(string)
+		if !ok || rawURL == "" {
+			continue
+		}
+		targets = append(targets, notifyTarget{ChannelID: channel.ID, ChannelType: channel.Type, URL: rawURL})
+	}
+	return targets
+}
+
+func eventListHandles(primary, fallback []string, event string) bool {
+	items := primary
+	if len(items) == 0 {
+		items = fallback
+	}
+	for _, item := range items {
 		if item == event || item == "*" {
 			return true
 		}
@@ -2222,9 +2957,44 @@ func hookHandlesEvent(hook notifyWebhook, event string) bool {
 	return false
 }
 
+func sendRunnerNotificationEvent(cfg RunnerConfig, config notifyConfigFile, event string, payload map[string]any, logger *slog.Logger) bool {
+	sent := false
+	for _, target := range notifyTargetsForEvent(config, event) {
+		err := postNotify(target.URL, payload)
+		status := "sent"
+		errText := ""
+		if err != nil {
+			status = "queued"
+			errText = err.Error()
+			_ = addNotifyPending(filepath.Join(cfg.StateDir, ".notify_pending"), notifyPendingEntry{
+				Event: event, ChannelID: target.ChannelID, ChannelType: target.ChannelType, URL: target.URL, Payload: payload,
+				QueuedAt: runnerNow().UTC().Format(time.RFC3339), RetryCount: 1, LastError: errText,
+			})
+			logger.Error("NOTIFY_FAILED: url=" + target.URL)
+		} else {
+			sent = true
+		}
+		_ = appendNotifyLog(cfg.StateDir, map[string]any{
+			"event":        event,
+			"channel_id":   target.ChannelID,
+			"channel_type": target.ChannelType,
+			"status":       status,
+			"sent_at":      runnerNow().UTC().Format(time.RFC3339),
+			"error":        errText,
+		})
+	}
+	return sent
+}
+
 func postNotify(url string, payload map[string]any) error {
 	body, _ := json.Marshal(payload)
-	resp, err := http.Post(url, "application/json", bytes.NewReader(body))
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := client.Post(url, "application/json", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -2235,6 +3005,10 @@ func postNotify(url string, payload map[string]any) error {
 	return nil
 }
 
+func appendNotifyLog(stateDir string, record map[string]any) error {
+	return appendRunnerJSONLine(filepath.Join(stateDir, ".notify_log"), record, 0600)
+}
+
 func addNotifyPending(path string, entry notifyPendingEntry) error {
 	var entries []notifyPendingEntry
 	_ = readJSONArray(path, &entries)
@@ -2242,7 +3016,7 @@ func addNotifyPending(path string, entry notifyPendingEntry) error {
 	return runnerAtomicWriteJSON(path, entries, 0600)
 }
 
-func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started time.Time, blobSHA *string, prevSHA, status, msg string, pl *pipelineLog, rep *runnerReport, logger *slog.Logger) {
+func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started time.Time, blobSHA *string, prevSHA, trigger, status, msg string, pl *pipelineLog, rep *runnerReport, logger *slog.Logger) {
 	if pl == nil {
 		pl = &pipelineLog{}
 	}
@@ -2251,8 +3025,8 @@ func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started t
 	normalizedStatus := buildStatusFromTargetStatus(status)
 	blog := buildLog{
 		ID: buildID, Status: normalizedStatus, Branch: target.Branch, TargetFile: target.TargetFile,
-		TargetFiles: append([]string(nil), target.TargetFiles...), ChangedTargets: []string{}, TargetStatus: status,
-		Trigger: "polling", TriggerActor: nil,
+		TargetFiles: append([]string(nil), target.TargetFiles...), ChangedTargets: []string{}, MatchedTags: []string{}, TargetStatus: status,
+		Trigger: trigger, TriggerActor: nil,
 		StartedAt: started.Format(time.RFC3339), FinishedAt: finished.Format(time.RFC3339),
 		DurationSeconds: int64(finished.Sub(started).Seconds()), Commit: commitInfo{},
 		BlobSHA: blobSHA, PreviousBlobSHA: prevSHA, Pipeline: *pl, Attempts: []pipelineLog{}, RetryCount: 0, Report: rep,
@@ -2262,11 +3036,11 @@ func logFailure(cfg RunnerConfig, target BranchTarget, buildID string, started t
 	}
 	if err := writeBuildLog(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_LOG_WRITE_FAILED: " + err.Error())
-		_ = writeBuildStatusError(cfg, "failure_state_write", "polling", err.Error())
+		_ = writeBuildStatusError(cfg, "failure_state_write", trigger, err.Error())
 	}
 	if err := appendHistory(cfg.StateDir, blog); err != nil {
 		logger.Error("BUILD_HISTORY_WRITE_FAILED: " + err.Error())
-		_ = writeBuildStatusError(cfg, "failure_state_write", "polling", err.Error())
+		_ = writeBuildStatusError(cfg, "failure_state_write", trigger, err.Error())
 	}
 	if err := updateBuildTrends(cfg, blog); err != nil {
 		logger.Warn("BUILD_TRENDS_WRITE_FAILED: " + err.Error())
@@ -2331,15 +3105,63 @@ func readSHACache(path string) (string, error) {
 }
 
 func writeBuildState(stateDir string, running bool, buildID *string) error {
+	return writeBuildStateStart(stateDir, running, buildID, nil)
+}
+
+func writeBuildStateStart(stateDir string, running bool, buildID *string, queue *queueEntry) error {
 	now := runnerNow().UTC().Format(time.RFC3339)
 	state, err := runnerReadBuildState(stateDir)
 	if err != nil {
 		state = runnerDefaultBuildState()
 	}
+	if queue != nil {
+		activeID := queueEntryID(state.ActiveQueueEntry)
+		if activeID == "" {
+			nextQueued := make([]map[string]any, 0, len(state.Queued))
+			found := false
+			for _, entry := range state.Queued {
+				if queueEntryID(entry) == queue.ID {
+					found = true
+					continue
+				}
+				nextQueued = append(nextQueued, entry)
+			}
+			if !found {
+				return errors.New("queue entry not found")
+			}
+			state.Queued = nextQueued
+			state.ActiveQueueEntry = copyStringAnyMap(queue.OriginalData)
+		} else if activeID != queue.ID {
+			return errors.New("active queue entry mismatch")
+		}
+	}
 	state.Running = running
 	state.CurrentBuildID = buildID
 	state.LastStartedAt = &now
 	return runnerAtomicWriteJSON(filepath.Join(stateDir, ".build_state"), state, 0600)
+}
+
+func clearActiveQueueEntry(stateDir, id string) error {
+	state, err := runnerReadBuildState(stateDir)
+	if err != nil {
+		return err
+	}
+	if queueEntryID(state.ActiveQueueEntry) == id {
+		state.ActiveQueueEntry = nil
+	}
+	now := runnerNow().UTC().Format(time.RFC3339)
+	state.Running = false
+	state.CurrentBuildID = nil
+	state.LastFinishedAt = &now
+	return runnerAtomicWriteJSON(filepath.Join(stateDir, ".build_state"), state, 0600)
+}
+
+func queueEntryID(raw map[string]any) string {
+	if raw == nil {
+		return ""
+	}
+	id, _ := raw["id"].(string)
+	return id
 }
 
 func runnerDefaultBuildState() buildState {
@@ -2548,7 +3370,7 @@ func currentBuildEnv(cfg RunnerConfig) buildEnvLog {
 		PID:           os.Getpid(),
 		WatchMode:     cfg.WatchMode,
 		CacheEnabled:  cfg.BuildCacheEnabled,
-		RemoteBuild:   false,
+		RemoteBuild:   cfg.RemoteBuild.Enabled,
 	}
 }
 
@@ -2693,6 +3515,7 @@ func updateBuildTrends(cfg RunnerConfig, log buildLog) error {
 		trends = buildTrendsFile{SchemaVersion: 1, Samples: []buildTrendSample{}}
 	}
 	trends.SchemaVersion = 1
+	anomaly := durationAnomaly(cfg, trends.Samples, log.DurationSeconds)
 	trends.Samples = append(trends.Samples, buildTrendSample{
 		BuildID:         log.ID,
 		FinishedAt:      log.FinishedAt,
@@ -2701,13 +3524,36 @@ func updateBuildTrends(cfg RunnerConfig, log buildLog) error {
 		DurationSeconds: log.DurationSeconds,
 		Status:          log.Status,
 		TargetStatus:    log.TargetStatus,
-		Anomaly:         false,
+		Anomaly:         anomaly,
 	})
 	if len(trends.Samples) > cfg.BuildTrendKeepCount {
 		trends.Samples = trends.Samples[len(trends.Samples)-cfg.BuildTrendKeepCount:]
 	}
 	trends.Summary = summarizeBuildTrends(trends.Samples)
 	return runnerAtomicWriteJSON(path, trends, 0600)
+}
+
+func durationAnomaly(cfg RunnerConfig, samples []buildTrendSample, duration int64) bool {
+	if !cfg.DurationAnomaly.Enabled || len(samples) < cfg.DurationAnomaly.MinSamples || duration < 0 {
+		return false
+	}
+	values := make([]int64, 0, len(samples))
+	var total int64
+	for _, sample := range samples {
+		if sample.DurationSeconds < 0 {
+			continue
+		}
+		values = append(values, sample.DurationSeconds)
+		total += sample.DurationSeconds
+	}
+	if len(values) < cfg.DurationAnomaly.MinSamples {
+		return false
+	}
+	sort.Slice(values, func(i, j int) bool { return values[i] < values[j] })
+	avg := float64(total) / float64(len(values))
+	p95 := percentileDuration(values, 0.95)
+	threshold := math.Max(avg*cfg.DurationAnomaly.AvgMultiplier, p95*cfg.DurationAnomaly.P95Multiplier)
+	return float64(duration) > threshold
 }
 
 func summarizeBuildTrends(samples []buildTrendSample) buildTrendsSummary {

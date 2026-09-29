@@ -562,6 +562,169 @@ func TestRunnerCompletionCommitInfoAndNotification(t *testing.T) {
 	})
 }
 
+func TestRunnerPhase2TagFilterBuildsMatchingTag(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
+	writeRunnerTestJSON(t, filepath.Join(state, ".server_config"), map[string]any{
+		"tag_filter": map[string]any{"enabled": true, "patterns": []string{"v*"}},
+	})
+	server := fakeGitHubWithTags(t, "docs", "new-blob", "# Title\n", []map[string]string{{"ref": "refs/tags/v1.0.0", "sha": "commit-sha"}})
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		log := onlyBuildLog(t, state)
+		if log.TargetStatus != "success" || strings.Join(log.MatchedTags, ",") != "v1.0.0" {
+			t.Fatalf("tag filter log mismatch: %+v", log)
+		}
+		if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"new-blob\"}\n" {
+			t.Fatalf("sha not updated after matching tag")
+		}
+	})
+}
+
+func TestRunnerPhase2TagFilterSkipsNonMatchingTag(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	writeRunnerTestJSON(t, filepath.Join(state, ".server_config"), map[string]any{
+		"tag_filter": map[string]any{"enabled": true, "patterns": []string{"release-*"}},
+	})
+	server := fakeGitHubWithTags(t, "docs", "new-blob", "# Title\n", []map[string]string{{"ref": "refs/tags/v1.0.0", "sha": "commit-sha"}})
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if _, err := os.Stat(filepath.Join(state, ".build_history")); !os.IsNotExist(err) {
+			t.Fatalf("tag-filter skip must not create history")
+		}
+		if readFile(t, filepath.Join(state, ".last_sha")) != "{\"sha\":\"old-blob\"}\n" {
+			t.Fatalf("sha updated despite non-matching tag")
+		}
+		var summary buildStatusSummary
+		readJSON(t, filepath.Join(state, ".build_status.json"), &summary)
+		if summary.Status != "skipped" || summary.LastTargetStatus == nil || *summary.LastTargetStatus != "skipped_tag_filter" {
+			t.Fatalf("tag-filter skip status mismatch: %+v", summary)
+		}
+	})
+}
+
+func TestRunnerPhase2RemoteBuild(t *testing.T) {
+	state := newRunnerState(t, "old-blob", nil)
+	workDir := t.TempDir()
+	fakeBin := t.TempDir()
+	writeExecutable(t, filepath.Join(fakeBin, "ssh"), "#!/usr/bin/env bash\nset -euo pipefail\neval \"$2\"\n")
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	writeRunnerTestJSON(t, filepath.Join(state, ".server_config"), map[string]any{
+		"remote_build": map[string]any{
+			"enabled": true, "host": "host", "user": "deploy", "work_dir": workDir,
+			"command_args": []string{"sh", "-c", "mkdir -p \"$ADLAIRE_CI_OUT/assets\" && printf '<html></html>' > \"$ADLAIRE_CI_OUT/index.html\" && printf 'body{}' > \"$ADLAIRE_CI_OUT/assets/style.css\" && printf 'console.log(\"ok\")' > \"$ADLAIRE_CI_OUT/assets/app.js\" && printf '[]' > \"$ADLAIRE_CI_OUT/assets/search-index.json\" && printf '[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=remote'"},
+		},
+	})
+	server := fakeGitHub(t, "docs", "new-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		log := onlyBuildLog(t, state)
+		if !log.Environment.RemoteBuild || log.Report == nil || log.Report.Theme != "remote" || log.TargetStatus != "success" {
+			t.Fatalf("remote build log mismatch: %+v", log)
+		}
+	})
+}
+
+func TestRunnerPhase2WeeklySummaryChannel(t *testing.T) {
+	state := newRunnerState(t, "blob-1", nil)
+	received := 0
+	hook := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received++
+		var payload map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("summary payload decode: %v", err)
+		}
+		if payload["event"] != "weekly_summary" || payload["success_count"] == nil {
+			t.Fatalf("summary payload mismatch: %+v", payload)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer hook.Close()
+	writeRunnerTestJSON(t, filepath.Join(state, ".notify_config"), notifyConfigFile{
+		Channels: []notifyChannel{{ID: "weekly", Type: "webhook", Enabled: true, On: []string{"weekly_summary"}, Config: map[string]any{"url": hook.URL}}},
+		Summary:  notifySummary{Enabled: true, Interval: "weekly", Hour: 9, DayOfWeek: 0},
+	})
+	if err := appendRunnerJSONLine(filepath.Join(state, ".build_history"), historyRecord{ID: "b1", Branch: "main", TargetFile: "docs", Status: "success", FinishedAt: "2026-09-27T08:00:00Z", DurationSeconds: 4}, 0600); err != nil {
+		t.Fatal(err)
+	}
+	oldNow := runnerNow
+	runnerNow = func() time.Time { return time.Date(2026, 9, 27, 9, 0, 0, 0, time.UTC) }
+	defer func() { runnerNow = oldNow }()
+	server := fakeGitHub(t, "docs", "blob-1", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		if received != 1 {
+			t.Fatalf("weekly summary not sent: %d", received)
+		}
+		var bs buildState
+		readJSON(t, filepath.Join(state, ".build_state"), &bs)
+		if bs.WeeklySummarySentDate == nil || *bs.WeeklySummarySentDate != "2026-09-27" {
+			t.Fatalf("summary date not recorded: %+v", bs)
+		}
+		if !strings.Contains(readFile(t, filepath.Join(state, ".notify_log")), `"event":"weekly_summary"`) {
+			t.Fatalf("notify log missing weekly summary")
+		}
+	})
+}
+
+func TestRunnerPhase2DurationAnomaly(t *testing.T) {
+	state := t.TempDir()
+	cfg := defaultRunnerConfig(state)
+	cfg.DurationAnomaly = DurationAnomalyConfig{Enabled: true, MinSamples: 2, AvgMultiplier: 2, P95Multiplier: 2}
+	writeRunnerTestJSON(t, filepath.Join(state, ".build_trends.json"), buildTrendsFile{SchemaVersion: 1, Samples: []buildTrendSample{
+		{BuildID: "a", FinishedAt: "2026-09-16T00:00:00Z", DurationSeconds: 10, Status: "success", TargetStatus: "success"},
+		{BuildID: "b", FinishedAt: "2026-09-16T00:01:00Z", DurationSeconds: 10, Status: "success", TargetStatus: "success"},
+	}})
+	if err := updateBuildTrends(cfg, buildLog{ID: "c", FinishedAt: "2026-09-16T00:02:00Z", DurationSeconds: 100, Status: "success", TargetStatus: "success"}); err != nil {
+		t.Fatal(err)
+	}
+	var trends buildTrendsFile
+	readJSON(t, filepath.Join(state, ".build_trends.json"), &trends)
+	if len(trends.Samples) != 3 || !trends.Samples[2].Anomaly || trends.Summary.AnomalyCount != 1 {
+		t.Fatalf("duration anomaly not recorded: %+v", trends)
+	}
+}
+
+func TestRunnerPhase2PriorityQueueRunsUrgentBeforeNormal(t *testing.T) {
+	state := newRunnerState(t, "same-blob", nil)
+	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
+	writeRunnerTestJSON(t, filepath.Join(state, ".server_config"), map[string]any{
+		"schedule_paused": true,
+	})
+	writeRunnerTestJSON(t, filepath.Join(state, ".build_state"), buildState{Queued: []map[string]any{
+		{"id": "q-normal", "trigger": "manual", "queued_at": "2026-09-16T00:00:00Z", "requested_by": "admin", "priority": "normal", "created_seq": 1, "payload": map[string]any{"force": true}},
+		{"id": "q-urgent", "trigger": "manual", "queued_at": "2026-09-16T00:00:01Z", "requested_by": "admin", "priority": "urgent", "created_seq": 2, "payload": map[string]any{"force": true}},
+	}})
+	server := fakeGitHub(t, "docs", "same-blob", "# Title\n")
+	withRunnerServer(t, server.URL, func() {
+		var stdout, stderr bytes.Buffer
+		if code := RunRunner([]string{"--state-dir", state}, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+		}
+		log := onlyBuildLog(t, state)
+		if log.Trigger != "manual" || log.TargetStatus != "success" {
+			t.Fatalf("queue build log mismatch: %+v", log)
+		}
+		var bs buildState
+		readJSON(t, filepath.Join(state, ".build_state"), &bs)
+		if bs.ActiveQueueEntry != nil || len(bs.Queued) != 1 || fmt.Sprint(bs.Queued[0]["id"]) != "q-normal" {
+			t.Fatalf("queue state mismatch: %+v", bs)
+		}
+	})
+}
+
 func TestRunnerCompletionCommitStatus(t *testing.T) {
 	state := newRunnerState(t, "old-blob", nil)
 	writePipeline(t, state, 0, `[REPORT] pages=1 headings=1 tables=0 code_blocks=0 warnings=0 size_warn=false broken_links=0 heading_skips=0 reading_time=1 theme=adlaire-default`, "")
@@ -929,6 +1092,35 @@ func fakeGitHubWithCommit(t *testing.T, target, sha, blob string) *httptest.Serv
 					"author":  map[string]string{"name": "A. Developer", "date": "2026-09-16T00:00:00Z"},
 				},
 			}})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+}
+
+func fakeGitHubWithTags(t *testing.T, target, sha, blob string, refs []map[string]string) *httptest.Server {
+	t.Helper()
+	encoded := base64.StdEncoding.EncodeToString([]byte(blob))
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.Contains(r.URL.Path, "/git/trees/"):
+			_ = json.NewEncoder(w).Encode(map[string]any{"tree": []map[string]string{{"path": target, "type": "blob", "sha": sha}}})
+		case strings.Contains(r.URL.Path, "/git/blobs/"):
+			_ = json.NewEncoder(w).Encode(map[string]string{"content": encoded, "encoding": "base64"})
+		case strings.Contains(r.URL.Path, "/commits"):
+			_ = json.NewEncoder(w).Encode([]map[string]any{{
+				"sha": "commit-sha",
+				"commit": map[string]any{
+					"message": "Release docs",
+					"author":  map[string]string{"name": "A. Developer", "date": "2026-09-16T00:00:00Z"},
+				},
+			}})
+		case strings.Contains(r.URL.Path, "/git/matching-refs/tags"):
+			out := []map[string]any{}
+			for _, ref := range refs {
+				out = append(out, map[string]any{"ref": ref["ref"], "object": map[string]string{"sha": ref["sha"], "type": "commit"}})
+			}
+			_ = json.NewEncoder(w).Encode(out)
 		default:
 			http.NotFound(w, r)
 		}
