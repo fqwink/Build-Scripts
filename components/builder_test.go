@@ -17,7 +17,7 @@ func TestFixtureSingle(t *testing.T) {
 	}
 	index := readFile(t, filepath.Join(out, "index.html"))
 	for _, want := range []string{
-		`<h1 id="title" class="mh h1">Title<button class="hn-link" data-href="#title" aria-label="リンクをコピー">¶</button></h1>`,
+		`<h1 id="title" class="mh h1" tabindex="-1">Title<button class="hn-link" data-href="#title" aria-label="リンクをコピー">¶</button></h1>`,
 		`<a href="#title">self</a>`,
 		`<div class="cb-wrap" data-lang="bash">`,
 		`<span class="cl">bash</span>`,
@@ -28,7 +28,7 @@ func TestFixtureSingle(t *testing.T) {
 			t.Fatalf("index.html missing %q", want)
 		}
 	}
-	for _, rel := range []string{"index.html", "assets/style.css", "assets/app.js", "assets/search-index.json"} {
+	for _, rel := range []string{"index.html", "assets/style.css", "assets/app.js", "assets/search-index.json", ".dependency_manifest.json"} {
 		if _, err := os.Stat(filepath.Join(out, rel)); err != nil {
 			t.Fatalf("missing %s: %v", rel, err)
 		}
@@ -154,6 +154,176 @@ Term
 		if !strings.Contains(index, want) {
 			t.Fatalf("index.html missing %q: %s", want, index)
 		}
+	}
+}
+
+func TestFixturePhaseOneBuilderExtensions(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	source := strings.Join([]string{
+		"# {{ PRODUCT }}",
+		"",
+		"## Overview",
+		"",
+		"> [!WARNING] Heads up",
+		"> Read [badge:stable:green] and $a+b$.",
+		"",
+		"```go:title=main.go line-numbers",
+		`fmt.Println("hi")`,
+		"```",
+		"",
+		"```diff",
+		"+added",
+		"-removed",
+		"```",
+		"",
+		"```mermaid",
+		"graph TD",
+		"A-->B",
+		"```",
+		"",
+		"$$",
+		"x^2",
+		"$$",
+		"",
+		"![Alt](image.png)",
+		"",
+	}, "\n")
+	writeFile(t, filepath.Join(docs, "index.md"), source)
+	writeFile(t, filepath.Join(docs, "image.png"), "png")
+	out := filepath.Join(root, "dist")
+
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{
+		"--src", filepath.Join(docs, "index.md"),
+		"--out", out,
+		"--title", "Docs",
+		"--markdown-extensions", "admonition,badge",
+		"--code-line-numbers",
+		"--heading-numbering", "h2",
+		"--section-collapse",
+		"--toc-depth", "1:6",
+		"--updated-at-source", "file",
+		"--meta", "description=Docs",
+		"--var", "PRODUCT=Title",
+		"--minify-html",
+		"--mermaid",
+		"--math",
+		"--image-lightbox",
+		"--print-qr-url", "https://example.com/docs",
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	index := readFile(t, filepath.Join(out, "index.html"))
+	for _, want := range []string{
+		`<meta name="description" content="Docs">`,
+		`Title`,
+		`adlaire-admonition`,
+		`adlaire-badge`,
+		`code-title">main.go`,
+		`line-no`,
+		`tok-inserted`,
+		`tok-deleted`,
+		`mermaid-diagram`,
+		`math-inline`,
+		`math-block`,
+		`adlaire-section-toggle`,
+		`page-updated-at`,
+		`adlaire-lightbox-trigger`,
+		`print-qr`,
+		`id="main-content"`,
+	} {
+		if !strings.Contains(index, want) {
+			t.Fatalf("index.html missing %q: %s", want, index)
+		}
+	}
+	manifest := readFile(t, filepath.Join(out, ".dependency_manifest.json"))
+	for _, want := range []string{`"schema_version":1`, `"path":"image.png"`, `"sha256"`} {
+		if !strings.Contains(manifest, want) {
+			t.Fatalf("manifest missing %q: %s", want, manifest)
+		}
+	}
+	for _, want := range []string{
+		"output_format=html",
+		"admonitions=1",
+		"badges=1",
+		"code_line_number_blocks=2",
+		"heading_numbering=h2",
+		"numbered_headings=1",
+		"collapsible_sections=1",
+		"diff_blocks=1",
+		"diff_insertions=1",
+		"diff_deletions=1",
+		"custom_meta_count=1",
+		"code_titles=1",
+		"template_vars=1",
+		"template_vars_replaced=1",
+		"minify_html=true",
+		"toc_active_tracking=true",
+		"mermaid_blocks=1",
+		"mermaid_rendered=1",
+		"math_inline=1",
+		"math_block=1",
+		"hash_history_enabled=true",
+		"lightbox_images=1",
+		"print_qr=true",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("report missing %q: %s", want, stdout.String())
+		}
+	}
+}
+
+func TestFixturePhaseOneBuilderExtensionValidation(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	writeFile(t, filepath.Join(docs, "index.md"), "# Title\n")
+	out := filepath.Join(root, "dist")
+
+	cases := []struct {
+		name string
+		args []string
+		err  string
+	}{
+		{
+			name: "reserved pdf",
+			args: []string{"--src", filepath.Join(docs, "index.md"), "--out", out, "--title", "Docs", "--format", "pdf"},
+			err:  "BUILDER28_UNSUPPORTED_RESERVED: --format pdf",
+		},
+		{
+			name: "duplicate format",
+			args: []string{"--src", filepath.Join(docs, "index.md"), "--out", out, "--title", "Docs", "--format", "html", "--format", "html"},
+			err:  "BUILDER28_INVALID_OPTION: duplicate --format",
+		},
+		{
+			name: "unsafe qr",
+			args: []string{"--src", filepath.Join(docs, "index.md"), "--out", out, "--title", "Docs", "--print-qr-url", "javascript:alert(1)"},
+			err:  "BUILDER28_INVALID_OPTION: --print-qr-url",
+		},
+	}
+	for _, tc := range cases {
+		var stdout, stderr bytes.Buffer
+		code := RunBuild(tc.args, &stdout, &stderr)
+		if code != 2 {
+			t.Fatalf("%s exit=%d stderr=%s stdout=%s", tc.name, code, stderr.String(), stdout.String())
+		}
+		if !strings.Contains(stderr.String(), tc.err) {
+			t.Fatalf("%s stderr missing %q: %s", tc.name, tc.err, stderr.String())
+		}
+		if strings.Contains(stdout.String(), "[REPORT]") {
+			t.Fatalf("%s emitted report on config failure: %s", tc.name, stdout.String())
+		}
+	}
+
+	writeFile(t, filepath.Join(docs, "adlaire-ci-build.json"), `{"builder_extensions":{"code_line_numbers":"yes"}}`)
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", filepath.Join(docs, "index.md"), "--out", out, "--title", "Docs"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("config exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "BUILDER28_INVALID_OPTION: adlaire-ci-build.json") {
+		t.Fatalf("config stderr missing normalized error: %s", stderr.String())
 	}
 }
 
@@ -285,8 +455,8 @@ func TestFixtureHeadingLevelsFiveAndSix(t *testing.T) {
 	}
 	index := readFile(t, filepath.Join(out, "index.html"))
 	for _, want := range []string{
-		`<h5 id="deep" class="mh h5">Deep<button class="hn-link" data-href="#deep" aria-label="リンクをコピー">¶</button></h5>`,
-		`<h6 id="deeper" class="mh h6">Deeper<button class="hn-link" data-href="#deeper" aria-label="リンクをコピー">¶</button></h6>`,
+		`<h5 id="deep" class="mh h5" tabindex="-1">Deep<button class="hn-link" data-href="#deep" aria-label="リンクをコピー">¶</button></h5>`,
+		`<h6 id="deeper" class="mh h6" tabindex="-1">Deeper<button class="hn-link" data-href="#deeper" aria-label="リンクをコピー">¶</button></h6>`,
 	} {
 		if !strings.Contains(index, want) {
 			t.Fatalf("index.html missing %q: %s", want, index)
@@ -520,6 +690,7 @@ func TestFixtureAtomicRejectsUnsafeSiteFilePath(t *testing.T) {
 		{Path: "assets/style.css", Data: []byte("css")},
 		{Path: "assets/app.js", Data: []byte("js")},
 		{Path: "assets/search-index.json", Data: []byte("[]")},
+		{Path: ".dependency_manifest.json", Data: []byte(`{"schema_version":1,"pages":[]}`)},
 	}
 	warnings, _, _, err := writeAtomic(out, files)
 	if err == nil {
@@ -554,12 +725,12 @@ func TestFixtureAtomicOutputModes(t *testing.T) {
 	if got := modeOf(filepath.Join(out, "assets")); got != 0755 {
 		t.Fatalf("assets mode=%#o", got)
 	}
-	for _, rel := range []string{"index.html", "assets/style.css", "assets/app.js", "assets/search-index.json"} {
+	for _, rel := range []string{"index.html", "assets/style.css", "assets/app.js", "assets/search-index.json", ".dependency_manifest.json"} {
 		if got := modeOf(filepath.Join(out, rel)); got != 0644 {
 			t.Fatalf("%s mode=%#o", rel, got)
 		}
 	}
-	if !strings.Contains(stdout.String(), "files=4") || !strings.Contains(stdout.String(), "bytes=") {
+	if !strings.Contains(stdout.String(), "files=5") || !strings.Contains(stdout.String(), "bytes=") {
 		t.Fatalf("Done line missing output stats: %s", stdout.String())
 	}
 }
@@ -593,7 +764,7 @@ func TestFixtureIdempotency(t *testing.T) {
 	if code := RunBuild(args2, &stdout2, &stderr2); code != 0 {
 		t.Fatalf("second exit=%d stderr=%s", code, stderr2.String())
 	}
-	for _, rel := range []string{"index.html", "assets/style.css", "assets/app.js", "assets/search-index.json"} {
+	for _, rel := range []string{"index.html", "assets/style.css", "assets/app.js", "assets/search-index.json", ".dependency_manifest.json"} {
 		a := stableRead(t, filepath.Join(out1, rel))
 		b := stableRead(t, filepath.Join(out2, rel))
 		if !bytes.Equal(a, b) {
