@@ -14,7 +14,7 @@
 | 実装 artifact | 現在状態 | 未完了理由 / 証跡 |
 |-----------------|----------|-------------------|
 | [`main.go`](../main.go) | 実装中・検証未完了 | 起動入口の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01) |
-| [`components/builder.go`](../components/builder.go) | 実装中・検証未完了 | デザイン整合、Markdown block、report、CLI metadata、atomic publication、入力・path 安全性、拡張機能、必須 fixture が未完了である。[`ALIGN-06`](details/fixture.md#align-06)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-08`](details/fixture.md#align-08)、[`ALIGN-13`](details/fixture.md#align-13)、[`ALIGN-14`](details/fixture.md#align-14)、[`ALIGN-20`](details/fixture.md#align-20)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-25`](details/fixture.md#align-25)、[`ALIGN-28`](details/fixture.md#align-28)、[`ALIGN-37`](details/fixture.md#align-37) |
+| [`components/builder.go`](../components/builder.go) | 実装済み | Phase 1 builder 実装は [PR #74](https://github.com/fqwink/Build-Scripts/pull/74) で merge 済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 1 builder 実装検証証跡](details/fixture.md#phase-1-builder-implementation-evidence) を参照する。 |
 | [`components/runner.go`](../components/runner.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-12`](details/fixture.md#align-12)、[`ALIGN-16`](details/fixture.md#align-16)、[`ALIGN-17`](details/fixture.md#align-17)、[`ALIGN-19`](details/fixture.md#align-19)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-26`](details/fixture.md#align-26)、[`ALIGN-29`](details/fixture.md#align-29)、[`ALIGN-30`](details/fixture.md#align-30)、[`ALIGN-32`](details/fixture.md#align-32)、[`ALIGN-33`](details/fixture.md#align-33)、[`ALIGN-34`](details/fixture.md#align-34)、[`ALIGN-35`](details/fixture.md#align-35)、[`ALIGN-36`](details/fixture.md#align-36)、[`ALIGN-37`](details/fixture.md#align-37) |
 | [`components/api.go`](../components/api.go) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-02`](details/fixture.md#align-02)、[`ALIGN-03`](details/fixture.md#align-03)、[`ALIGN-04`](details/fixture.md#align-04)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-09`](details/fixture.md#align-09)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-11`](details/fixture.md#align-11)、[`ALIGN-12`](details/fixture.md#align-12)、[`ALIGN-17`](details/fixture.md#align-17)、[`ALIGN-18`](details/fixture.md#align-18)、[`ALIGN-19`](details/fixture.md#align-19)、[`ALIGN-21`](details/fixture.md#align-21)、[`ALIGN-22`](details/fixture.md#align-22)、[`ALIGN-23`](details/fixture.md#align-23)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-27`](details/fixture.md#align-27)、[`ALIGN-29`](details/fixture.md#align-29)、[`ALIGN-30`](details/fixture.md#align-30)、[`ALIGN-37`](details/fixture.md#align-37) |
 | `components/admin.go` | 仕様化済み・未実装 | CLI 管理クライアントの実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/admin.md`](details/admin.md#sec-a7) を参照する。 |
@@ -36,7 +36,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 
 | Phase | owner / scope | 現在状態 | 依存する Phase |
 |-------|---------------|----------|----------------|
-| Phase 1 | `builder` | 実装中・検証未完了 | なし |
+| Phase 1 | `builder` | 実装済み | なし |
 | Phase 2 | `runner` | 実装中・検証未完了 | Phase 1 |
 | Phase 3 | `api` request lifecycle | 実装中・検証未完了 | Phase 2 |
 | Phase 4 | `api` operations | 実装中・検証未完了 | Phase 3 |
@@ -47,7 +47,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 9 | `release` | 仕様化済み・未実装 | Phase 8 |
 | Phase 10 | `mcp` | 仕様化済み・未実装 | Phase 9 |
 
-現在の active Phase は `Phase 1` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
+現在の active Phase は `Phase 2` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 
 各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) を参照する。
 
@@ -94,36 +94,36 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 実装中・検証未完了 | 管理ツール・API | ヘルスチェックエンドポイント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | Webhook イベント一覧取得 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | ビルドログ重大度フィルター | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 変換レポート出力 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | builder 起動入口 / version | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | builder CLI parse / validation order | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | builder 入力 path / symlink / base-dir | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | サイドバー開閉 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | TOC 検索フィルター | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | トップへ戻るボタン | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | シンタックスハイライト | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 本文内全文検索 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | アンカーリンク自動検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | コードブロックの折りたたみ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 印刷スタイル（`@media print`） | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 静的 Web サイト出力 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | テーマコンポーネント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 外部リンクの自動処理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 読み取り進捗バー | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | コードブロックのコピーボタン | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 見出しアンカーリンクコピー | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | TOC 開閉状態の永続化 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 見出しスラグ重複解決 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 前後章ナビゲーションボタン | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 内部リンク整合性チェック | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 見出し階層スキップ警告 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 読了時間推計と表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 変換レポート出力 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | builder 起動入口 / version | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | builder CLI parse / validation order | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | builder 入力 path / symlink / base-dir | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | サイドバー開閉 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | TOC 検索フィルター | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | トップへ戻るボタン | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | シンタックスハイライト | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 本文内全文検索 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | アンカーリンク自動検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | コードブロックの折りたたみ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 印刷スタイル（`@media print`） | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 静的 Web サイト出力 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | テーマコンポーネント | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 外部リンクの自動処理 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 読み取り進捗バー | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | コードブロックのコピーボタン | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 見出しアンカーリンクコピー | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | TOC 開閉状態の永続化 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 見出しスラグ重複解決 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 前後章ナビゲーションボタン | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 内部リンク整合性チェック | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 見出し階層スキップ警告 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 読了時間推計と表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | CI ランナー | Webhook 通知失敗リトライキュー | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | CI ランナー | ブランチ設定の動的変更 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | CI ランナー | 週次ビルドサマリー Webhook | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 管理ツール・API | 設定変更の詳細 diff 記録 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | テーブルのソート機能 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | キーボードショートカット | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | テーブルのソート機能 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | キーボードショートカット | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | CI ランナー | 複数ファイル監視 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | CI ランナー | GitHub Commit Status API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | CI ランナー | ビルドパイプライン YAML 定義 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
@@ -188,32 +188,32 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 仕様化済み・未実装 | 管理ツール・API | API レスポンスキャッシュ制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | スナップショット間サイト差分 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
 | 仕様化済み・未実装 | 管理ツール・API | Webhook 送信履歴の手動再送 API | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.6](DETAIL_INDEX.md#0i6-追加管理api機能) |
-| 仕様化済み・未実装 | ビルドスクリプト | 差分ビルド | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | 複数出力形式 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | Markdown 拡張記法サポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | コードブロック行番号表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | 見出しの自動採番 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | セクション折りたたみ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | TOC 深さ制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | 最終更新日の自動埋め込み | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | diff ハイライト | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | 画像の遅延読み込み | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | カスタムメタタグ注入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | ライトモード固定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | コードブロックのファイル名表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | テンプレート変数展開 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | HTML ミニファイ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | TOC ハイライト追従（アクティブ見出し追跡） | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | Mermaid ダイアグラム描画 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 脚注サポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | インライン数式レンダリング | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | ページ内ナビゲーション履歴 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | 画像ライトボックス | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | 印刷時 QR コード挿入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | ビルドスクリプト | 定義リストサポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | ビルドスクリプト | タスクリストサポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 差分ビルド | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 複数出力形式 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | Markdown 拡張記法サポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | コードブロック行番号表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 見出しの自動採番 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | セクション折りたたみ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | TOC 深さ制御 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 最終更新日の自動埋め込み | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | diff ハイライト | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 画像の遅延読み込み | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | カスタムメタタグ注入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | ライトモード固定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | コードブロックのファイル名表示 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | テンプレート変数展開 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | HTML ミニファイ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | TOC ハイライト追従（アクティブ見出し追跡） | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | Mermaid ダイアグラム描画 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 脚注サポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | インライン数式レンダリング | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | ページ内ナビゲーション履歴 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 読み上げ対応（アクセシビリティ） | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 画像ライトボックス | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 出力サイトへのビルドメタ埋め込み | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 印刷時 QR コード挿入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | 定義リストサポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | ビルドスクリプト | タスクリストサポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 配布・セットアップ | 初回セットアップ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
 | 仕様化済み・未実装 | 配布・セットアップ | 管理 API 導入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
 | 仕様化済み・未実装 | 配布・セットアップ | バイナリアップデート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
