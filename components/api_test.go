@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -327,6 +328,215 @@ func TestAPIPhase3BuildConflictFixtures(t *testing.T) {
 	readTestJSON(t, filepath.Join(state, ".build_circuit_state"), &circuit)
 	if circuit.Open || circuit.ConsecutiveFailures != 0 {
 		t.Fatalf("circuit reset state: %#v", circuit)
+	}
+}
+
+func TestAPIPhase3RequestIDAndAccessLogContract(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+	if err := os.Remove(filepath.Join(state, ".api_access_log")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/logs?n=2&secret=raw-token", http.NoBody)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("User-Agent", "Phase3Test/1")
+	req.RemoteAddr = "192.0.2.1:1234"
+	authenticated := httptest.NewRecorder()
+	server.Handler().ServeHTTP(authenticated, req)
+	if authenticated.Code != http.StatusOK {
+		t.Fatalf("authenticated code=%d body=%s", authenticated.Code, authenticated.Body.String())
+	}
+	requestID := authenticated.Header().Get("X-Request-Id")
+	if len(requestID) != 32 || strings.ToLower(requestID) != requestID {
+		t.Fatalf("unexpected request id: %q", requestID)
+	}
+	if authenticated.Header().Get("Cache-Control") != "no-store" || authenticated.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("missing security headers: %#v", authenticated.Header())
+	}
+
+	records := readJSONLines(filepath.Join(state, ".api_access_log"))
+	if len(records) != 1 {
+		t.Fatalf("unexpected access log records: %#v", records)
+	}
+	record := records[0]
+	if record["request_id"] != requestID || record["method"] != http.MethodGet || record["path"] != "/api/logs" || record["status"].(float64) != 200 {
+		t.Fatalf("unexpected access log record: %#v", record)
+	}
+	if record["auth_type"] != "session" || record["actor"] != "admin" || record["remote_addr"] != "192.0.2.1" || record["user_agent"] != "Phase3Test/1" {
+		t.Fatalf("unexpected access log actor/source: %#v", record)
+	}
+	if record["duration_ms"].(float64) < 0 {
+		t.Fatalf("duration must be non-negative: %#v", record)
+	}
+	query := record["query"].(map[string]any)
+	if query["n"] != "2" {
+		t.Fatalf("validated query value missing: %#v", query)
+	}
+	if _, ok := query["secret"]; ok {
+		t.Fatalf("secret query must not be logged: %#v", query)
+	}
+	serialized, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(serialized, []byte(token)) || bytes.Contains(serialized, []byte("raw-token")) || bytes.Contains(serialized, []byte("Authorization")) {
+		t.Fatalf("access log leaked secret material: %s", serialized)
+	}
+
+	unauthorized := apiRequest(t, server, http.MethodGet, "/api/status", "", nil)
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthorized code=%d body=%s", unauthorized.Code, unauthorized.Body.String())
+	}
+	unauthorizedID := unauthorized.Header().Get("X-Request-Id")
+	if len(unauthorizedID) != 32 {
+		t.Fatalf("unauthorized request id missing: %q", unauthorizedID)
+	}
+	records = readJSONLines(filepath.Join(state, ".api_access_log"))
+	last := records[len(records)-1]
+	if last["request_id"] != unauthorizedID || last["status"].(float64) != 401 || last["auth_type"] != "none" || last["actor"] != nil {
+		t.Fatalf("unexpected unauthorized access log: %#v", last)
+	}
+}
+
+func TestAPIPhase3RequestIDFailureStopsRequest(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	server.cfg.RequestID = func() (string, error) {
+		return "", errors.New("entropy unavailable")
+	}
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/status", "", nil)
+	if resp.Code != http.StatusInternalServerError {
+		t.Fatalf("request id failure code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	if resp.Header().Get("X-Request-Id") != "" {
+		t.Fatalf("request id header must not be set: %#v", resp.Header())
+	}
+	if records := readJSONLines(filepath.Join(state, ".api_access_log")); len(records) != 0 {
+		t.Fatalf("request id failure must not append api access log: %#v", records)
+	}
+}
+
+func TestAPIPhase3ServerAndStatusWriterContract(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	httpServer := server.HTTPServer()
+	if httpServer.Addr != defaultAPIAddr || httpServer.Handler == nil {
+		t.Fatalf("unexpected http server: %#v", httpServer)
+	}
+	if httpServer.ReadHeaderTimeout != 5*time.Second || httpServer.ReadTimeout != 30*time.Second || httpServer.WriteTimeout != 0 || httpServer.IdleTimeout != 60*time.Second || httpServer.MaxHeaderBytes != 32768 {
+		t.Fatalf("unexpected timeout config: %#v", httpServer)
+	}
+	if httpServer.ErrorLog == nil {
+		t.Fatal("error log must be redacted logger")
+	}
+
+	base := &plainResponseWriter{header: http.Header{}}
+	rw, rec := statusResponseWriter(base)
+	rw.WriteHeader(http.StatusAccepted)
+	rw.WriteHeader(http.StatusInternalServerError)
+	if rec.status != http.StatusAccepted || base.status != http.StatusAccepted {
+		t.Fatalf("first explicit status must win: rec=%d base=%d", rec.status, base.status)
+	}
+
+	base = &plainResponseWriter{header: http.Header{}}
+	rw, rec = statusResponseWriter(base)
+	n, err := rw.Write([]byte("ok"))
+	if err != nil || n != 2 || rec.status != http.StatusOK || base.body.String() != "ok" {
+		t.Fatalf("implicit write mismatch: n=%d err=%v rec=%d body=%q", n, err, rec.status, base.body.String())
+	}
+	if _, ok := rw.(http.Flusher); ok {
+		t.Fatal("non-flusher writer must not be reported as flusher")
+	}
+
+	flushing := &flushingResponseWriter{plainResponseWriter: plainResponseWriter{header: http.Header{}}}
+	rw, _ = statusResponseWriter(flushing)
+	flusher, ok := rw.(http.Flusher)
+	if !ok {
+		t.Fatal("flusher writer must pass through flusher")
+	}
+	flusher.Flush()
+	if flushing.flushes != 1 {
+		t.Fatalf("flush count=%d", flushing.flushes)
+	}
+}
+
+func TestAPIPhase3AccessControlCorruptFailsClosed(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+	if err := os.WriteFile(filepath.Join(state, ".access_control"), []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := apiRequest(t, server, http.MethodGet, "/api/unknown", "", nil)
+	if resp.Code != http.StatusNotFound {
+		t.Fatalf("unknown path must precede access control: code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = apiRequest(t, server, http.MethodPost, "/api/status", "", nil)
+	if resp.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("method mismatch must precede access control/auth: code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	resp = apiRequest(t, server, http.MethodGet, "/api/config", token, nil)
+	if resp.Code != http.StatusServiceUnavailable {
+		t.Fatalf("corrupt access control code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var body map[string]string
+	decodeTestJSON(t, resp.Body.Bytes(), &body)
+	if body["error"] != "Access control unavailable" {
+		t.Fatalf("unexpected body: %#v", body)
+	}
+
+	resp = apiRequestFrom(t, server, http.MethodGet, "/api/health", "", nil, "203.0.113.9:1234")
+	if resp.Code != http.StatusOK {
+		t.Fatalf("health must bypass corrupt access control: code=%d body=%s", resp.Code, resp.Body.String())
+	}
+	records := readJSONLines(filepath.Join(state, ".api_access_log"))
+	found := false
+	for _, record := range records {
+		if record["path"] == "/api/config" && record["status"].(float64) == 503 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing 503 access log record: %#v", records)
+	}
+}
+
+func TestAPIPhase3BodyValidationContract(t *testing.T) {
+	state := newAPIState(t)
+	server := newTestAPI(t, state)
+	token := login(t, server, "admin")
+
+	oversized := `{"queue_max_size":` + strings.Repeat("1", 1<<20) + `}`
+	req := httptest.NewRequest(http.MethodPost, "/api/config/validate", strings.NewReader(oversized))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.RemoteAddr = "192.0.2.1:1234"
+	resp := httptest.NewRecorder()
+	server.Handler().ServeHTTP(resp, req)
+	if resp.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized JSON code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/config/validate", strings.NewReader(`{} {}`))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.RemoteAddr = "192.0.2.1:1234"
+	resp = httptest.NewRecorder()
+	server.Handler().ServeHTTP(resp, req)
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("multiple JSON values code=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/status", strings.NewReader(strings.Repeat("x", 1<<20+1)))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.RemoteAddr = "192.0.2.1:1234"
+	resp = httptest.NewRecorder()
+	server.Handler().ServeHTTP(resp, req)
+	if resp.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized forbidden body code=%d body=%s", resp.Code, resp.Body.String())
 	}
 }
 
@@ -1438,6 +1648,36 @@ func appendLine(t *testing.T, path, line string) {
 	if _, err := f.WriteString(line + "\n"); err != nil {
 		t.Fatal(err)
 	}
+}
+
+type plainResponseWriter struct {
+	header http.Header
+	status int
+	body   bytes.Buffer
+}
+
+func (w *plainResponseWriter) Header() http.Header {
+	return w.header
+}
+
+func (w *plainResponseWriter) WriteHeader(status int) {
+	w.status = status
+}
+
+func (w *plainResponseWriter) Write(data []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	return w.body.Write(data)
+}
+
+type flushingResponseWriter struct {
+	plainResponseWriter
+	flushes int
+}
+
+func (w *flushingResponseWriter) Flush() {
+	w.flushes++
 }
 
 type fileSnapshot struct {

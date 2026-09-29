@@ -3,6 +3,7 @@ package components
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha1"
@@ -14,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net"
 	"net/http"
@@ -35,9 +37,10 @@ const (
 )
 
 type APIConfig struct {
-	Addr     string
-	StateDir string
-	Now      func() time.Time
+	Addr      string
+	StateDir  string
+	Now       func() time.Time
+	RequestID func() (string, error)
 }
 
 type APIServer struct {
@@ -68,12 +71,42 @@ type apiPendingTOTP struct {
 
 type statusRecorder struct {
 	http.ResponseWriter
-	status int
+	status      int
+	wroteHeader bool
 }
 
 func (r *statusRecorder) WriteHeader(status int) {
+	if r.wroteHeader {
+		return
+	}
 	r.status = status
+	r.wroteHeader = true
 	r.ResponseWriter.WriteHeader(status)
+}
+
+func (r *statusRecorder) Write(data []byte) (int, error) {
+	if !r.wroteHeader {
+		r.status = http.StatusOK
+		r.wroteHeader = true
+	}
+	return r.ResponseWriter.Write(data)
+}
+
+type flushStatusRecorder struct {
+	*statusRecorder
+	flusher http.Flusher
+}
+
+func (r *flushStatusRecorder) Flush() {
+	r.flusher.Flush()
+}
+
+func statusResponseWriter(w http.ResponseWriter) (http.ResponseWriter, *statusRecorder) {
+	rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+	if flusher, ok := w.(http.Flusher); ok {
+		return &flushStatusRecorder{statusRecorder: rec, flusher: flusher}, rec
+	}
+	return rec, rec
 }
 
 type apiCredentials struct {
@@ -254,6 +287,112 @@ type apiLogRecord struct {
 	Result string `json:"result,omitempty"`
 }
 
+type apiAccessLogRecord struct {
+	At         string            `json:"at"`
+	RequestID  string            `json:"request_id"`
+	Method     string            `json:"method"`
+	Path       string            `json:"path"`
+	Query      map[string]string `json:"query"`
+	Status     int               `json:"status"`
+	DurationMS int64             `json:"duration_ms"`
+	AuthType   string            `json:"auth_type"`
+	Actor      *string           `json:"actor"`
+	RemoteAddr *string           `json:"remote_addr"`
+	UserAgent  *string           `json:"user_agent"`
+	Error      *string           `json:"error"`
+}
+
+type apiAuthContextKey struct{}
+
+type apiAuthCaptureContextKey struct{}
+
+type apiAuthInfo struct {
+	AuthType string
+	Actor    *string
+}
+
+var apiExactRouteMethods = map[string][]string{
+	"/api/access-control":          {http.MethodGet, http.MethodPost},
+	"/api/access-log":              {http.MethodGet},
+	"/api/alert-rules":             {http.MethodGet, http.MethodPost},
+	"/api/api-access-log":          {http.MethodGet},
+	"/api/api-rate-limit":          {http.MethodGet, http.MethodPost},
+	"/api/audit-log":               {http.MethodGet},
+	"/api/auth/totp":               {http.MethodDelete},
+	"/api/auth/totp-confirm":       {http.MethodPost},
+	"/api/auth/totp-setup":         {http.MethodPost},
+	"/api/auth/totp-status":        {http.MethodGet},
+	"/api/backup":                  {http.MethodGet},
+	"/api/branch-config":           {http.MethodGet, http.MethodPost},
+	"/api/build":                   {http.MethodPost},
+	"/api/build/cancel":            {http.MethodPost},
+	"/api/build/force":             {http.MethodPost},
+	"/api/build/stream":            {http.MethodGet},
+	"/api/change-password":         {http.MethodPost},
+	"/api/circuit-breaker/reset":   {http.MethodPost},
+	"/api/config":                  {http.MethodGet, http.MethodPost},
+	"/api/config-log":              {http.MethodGet},
+	"/api/config/validate":         {http.MethodPost},
+	"/api/dashboard":               {http.MethodGet},
+	"/api/dashboard-layout":        {http.MethodGet, http.MethodPost},
+	"/api/diagnostics":             {http.MethodGet},
+	"/api/disk-usage":              {http.MethodGet},
+	"/api/health":                  {http.MethodGet},
+	"/api/history":                 {http.MethodGet},
+	"/api/history/export":          {http.MethodGet},
+	"/api/hooks":                   {http.MethodGet, http.MethodPost},
+	"/api/log-level":               {http.MethodPost},
+	"/api/login":                   {http.MethodPost},
+	"/api/login/totp":              {http.MethodPost},
+	"/api/logout":                  {http.MethodPost},
+	"/api/logs":                    {http.MethodGet},
+	"/api/logs/archive":            {http.MethodPost},
+	"/api/logs/cleanup":            {http.MethodPost},
+	"/api/logs/export":             {http.MethodGet},
+	"/api/logs/search":             {http.MethodGet},
+	"/api/maintenance":             {http.MethodGet},
+	"/api/maintenance/disable":     {http.MethodPost},
+	"/api/maintenance/enable":      {http.MethodPost},
+	"/api/notes":                   {http.MethodGet, http.MethodPost},
+	"/api/notify-config":           {http.MethodGet, http.MethodPost},
+	"/api/notify-log":              {http.MethodGet},
+	"/api/notify-test":             {http.MethodPost},
+	"/api/notify/weekly-summary":   {http.MethodPost},
+	"/api/output-meta":             {http.MethodGet},
+	"/api/pat-status":              {http.MethodGet},
+	"/api/pat-update":              {http.MethodPost},
+	"/api/pat-verify":              {http.MethodPost},
+	"/api/pipeline-config":         {http.MethodGet, http.MethodPost},
+	"/api/queue":                   {http.MethodGet, http.MethodDelete},
+	"/api/rate-limit":              {http.MethodGet},
+	"/api/repo-config":             {http.MethodPost},
+	"/api/repo-info":               {http.MethodGet},
+	"/api/restore":                 {http.MethodPost},
+	"/api/schedule":                {http.MethodGet},
+	"/api/schedule/allowed-hours":  {http.MethodPost},
+	"/api/schedule/cooldown":       {http.MethodPost},
+	"/api/schedule/force-interval": {http.MethodPost},
+	"/api/schedule/interval":       {http.MethodPost},
+	"/api/schedule/pause":          {http.MethodPost},
+	"/api/schedule/resume":         {http.MethodPost},
+	"/api/sessions":                {http.MethodGet},
+	"/api/sessions/revoke-all":     {http.MethodPost},
+	"/api/smtp-config":             {http.MethodGet, http.MethodPost},
+	"/api/smtp-test":               {http.MethodPost},
+	"/api/snapshots":               {http.MethodGet},
+	"/api/stats":                   {http.MethodGet},
+	"/api/stats/build-duration":    {http.MethodGet},
+	"/api/stats/timeline":          {http.MethodGet},
+	"/api/status":                  {http.MethodGet},
+	"/api/sysinfo":                 {http.MethodGet},
+	"/api/tag-rules":               {http.MethodGet, http.MethodPost},
+	"/api/tokens":                  {http.MethodGet, http.MethodPost},
+	"/api/verify-output":           {http.MethodPost},
+	"/api/webhook":                 {http.MethodPost},
+	"/api/webhook-config":          {http.MethodGet, http.MethodPost},
+	"/api/webhook-events":          {http.MethodGet},
+}
+
 type apiTokenRecord struct {
 	ID        string   `json:"id"`
 	Name      string   `json:"name"`
@@ -333,10 +472,91 @@ func NewAPIServer(cfg APIConfig) (*APIServer, error) {
 	if cfg.Now == nil {
 		cfg.Now = func() time.Time { return time.Now().UTC() }
 	}
+	if cfg.RequestID == nil {
+		cfg.RequestID = newAPIRequestID
+	}
 	if err := validateCredentials(filepath.Join(cfg.StateDir, ".admin_credentials")); err != nil {
 		return nil, err
 	}
 	return &APIServer{cfg: cfg, startedAt: cfg.Now().UTC(), sessions: map[string]apiSession{}, loginTickets: map[string]apiLoginTicket{}}, nil
+}
+
+func apiRouteMethods(path string) ([]string, bool) {
+	if methods, ok := apiExactRouteMethods[path]; ok {
+		return methods, true
+	}
+	switch {
+	case strings.HasPrefix(path, "/api/history/"):
+		return apiHistoryRouteMethods(path)
+	case strings.HasPrefix(path, "/api/snapshots/"):
+		return apiSnapshotRouteMethods(path)
+	case strings.HasPrefix(path, "/api/tokens/"):
+		return []string{http.MethodDelete}, true
+	case strings.HasPrefix(path, "/api/alert-rules/"), strings.HasPrefix(path, "/api/tag-rules/"):
+		return []string{http.MethodDelete}, true
+	case strings.HasPrefix(path, "/api/hooks/"):
+		return apiHookRouteMethods(path)
+	default:
+		return nil, false
+	}
+}
+
+func apiHistoryRouteMethods(path string) ([]string, bool) {
+	rest := strings.TrimPrefix(path, "/api/history/")
+	id, suffix, ok := strings.Cut(rest, "/")
+	if !ok || id == "" {
+		return nil, false
+	}
+	switch suffix {
+	case "log":
+		return []string{http.MethodGet}, true
+	case "comment":
+		return []string{http.MethodGet, http.MethodPost}, true
+	case "flag", "tags", "rollback":
+		return []string{http.MethodPost}, true
+	default:
+		return nil, false
+	}
+}
+
+func apiSnapshotRouteMethods(path string) ([]string, bool) {
+	rest := strings.TrimPrefix(path, "/api/snapshots/")
+	id, suffix, _ := strings.Cut(rest, "/")
+	if id == "" {
+		return nil, false
+	}
+	switch suffix {
+	case "":
+		return []string{http.MethodDelete}, true
+	case "download":
+		return []string{http.MethodGet}, true
+	default:
+		return nil, false
+	}
+}
+
+func apiHookRouteMethods(path string) ([]string, bool) {
+	rest := strings.Trim(strings.TrimPrefix(path, "/api/hooks/"), "/")
+	id, suffix, hasSuffix := strings.Cut(rest, "/")
+	if id == "" {
+		return nil, false
+	}
+	if hasSuffix {
+		if suffix == "log" {
+			return []string{http.MethodGet}, true
+		}
+		return nil, false
+	}
+	return []string{http.MethodDelete}, true
+}
+
+func apiMethodAllowed(method string, methods []string) bool {
+	for _, allowed := range methods {
+		if method == allowed {
+			return true
+		}
+	}
+	return false
 }
 
 func InitCredentials(stateDir, password string, now time.Time) error {
@@ -462,22 +682,50 @@ func (s *APIServer) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-		if strings.HasPrefix(r.URL.Path, "/api/") && !s.accessAllowed(r) {
-			writeError(rec, http.StatusForbidden, "Forbidden")
+		if !strings.HasPrefix(r.URL.Path, "/api/") {
+			mux.ServeHTTP(w, r)
+			return
+		}
+		start := time.Now()
+		requestID, err := s.cfg.RequestID()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		w.Header().Set("X-Request-Id", requestID)
+		authCapture := &apiAuthInfo{AuthType: "none"}
+		r = r.WithContext(context.WithValue(r.Context(), apiAuthCaptureContextKey{}, authCapture))
+		rw, rec := statusResponseWriter(w)
+		if methods, ok := apiRouteMethods(r.URL.Path); !ok {
+			writeError(rw, http.StatusNotFound, "Not found")
+		} else if !apiMethodAllowed(r.Method, methods) {
+			writeError(rw, http.StatusMethodNotAllowed, "Method not allowed")
+		} else if allowed, err := s.accessAllowed(r); err != nil {
+			writeError(rw, http.StatusServiceUnavailable, "Access control unavailable")
+		} else if !allowed {
+			writeError(rw, http.StatusForbidden, "Forbidden")
 		} else {
-			mux.ServeHTTP(rec, r)
+			mux.ServeHTTP(rw, r)
 		}
-		if strings.HasPrefix(r.URL.Path, "/api/") {
-			_ = appendJSONLine(filepath.Join(s.cfg.StateDir, ".api_access_log"), apiLogRecord{
-				At: s.nowString(), Method: r.Method, Path: r.URL.Path, Status: rec.status,
-			})
-		}
+		_ = s.appendAPIAccessLog(r, requestID, rec.status, start)
 	})
 }
 
+func (s *APIServer) HTTPServer() *http.Server {
+	return &http.Server{
+		Addr:              s.cfg.Addr,
+		Handler:           s.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      0,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    32768,
+		ErrorLog:          log.New(io.Discard, "", 0),
+	}
+}
+
 func (s *APIServer) ListenAndServe() error {
-	return http.ListenAndServe(s.cfg.Addr, s.Handler())
+	return s.HTTPServer().ListenAndServe()
 }
 
 func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -1991,12 +2239,20 @@ func (s *APIServer) handleBuildStream(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("X-Accel-Buffering", "no")
+	flusher, _ := w.(http.Flusher)
 	for _, line := range s.allLogLines() {
 		payload, err := json.Marshal(map[string]string{"type": "log", "line": line})
 		if err != nil {
 			continue
 		}
-		fmt.Fprintf(w, "data: %s\n\n", payload)
+		frame := fmt.Sprintf("data: %s\n\n", payload)
+		n, err := io.WriteString(w, frame)
+		if err != nil || n != len(frame) {
+			return
+		}
+		if flusher != nil {
+			flusher.Flush()
+		}
 	}
 }
 
@@ -3263,12 +3519,16 @@ func (s *APIServer) handleJSONLinesLog(filename, key string) http.HandlerFunc {
 func (s *APIServer) withAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := bearerToken(r)
-		if !s.validSession(token) {
+		auth, ok := s.authenticateToken(token)
+		if !ok {
 			writeError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 		s.touchSession(token)
-		next(w, r)
+		if capture, ok := r.Context().Value(apiAuthCaptureContextKey{}).(*apiAuthInfo); ok {
+			*capture = auth
+		}
+		next(w, r.WithContext(context.WithValue(r.Context(), apiAuthContextKey{}, auth)))
 	}
 }
 
@@ -3281,40 +3541,52 @@ func bearerToken(r *http.Request) string {
 }
 
 func (s *APIServer) validSession(token string) bool {
+	_, ok := s.authenticateToken(token)
+	return ok
+}
+
+func (s *APIServer) authenticateToken(token string) (apiAuthInfo, bool) {
 	if token == "" {
-		return false
+		return apiAuthInfo{}, false
 	}
+	hash := tokenHash(token)
 	s.mu.Lock()
-	session, ok := s.sessions[tokenHash(token)]
+	session, ok := s.sessions[hash]
 	if !ok {
 		s.mu.Unlock()
-		return s.validAPIToken(token)
+		return s.validAPITokenAuth(hash)
 	}
 	expires, err := time.Parse(apiTimeLayout, session.ExpiresAt)
 	if err != nil || !s.cfg.Now().UTC().Before(expires) {
-		delete(s.sessions, tokenHash(token))
+		delete(s.sessions, hash)
 		s.mu.Unlock()
-		return false
+		return apiAuthInfo{}, false
 	}
 	s.mu.Unlock()
-	return true
+	actor := "admin"
+	return apiAuthInfo{AuthType: "session", Actor: &actor}, true
 }
 
 func (s *APIServer) validAPIToken(token string) bool {
 	if token == "" {
 		return false
 	}
+	_, ok := s.validAPITokenAuth(tokenHash(token))
+	return ok
+}
+
+func (s *APIServer) validAPITokenAuth(hash string) (apiAuthInfo, bool) {
 	tokens, err := readAPITokens(filepath.Join(s.cfg.StateDir, ".api_tokens"))
 	if err != nil {
-		return false
+		return apiAuthInfo{}, false
 	}
-	hash := tokenHash(token)
 	for _, record := range tokens {
 		if record.TokenHash == hash && record.RevokedAt == nil {
-			return true
+			actor := record.ID
+			return apiAuthInfo{AuthType: "api_token", Actor: &actor}, true
 		}
 	}
-	return false
+	return apiAuthInfo{}, false
 }
 
 func (s *APIServer) touchSession(token string) {
@@ -3616,6 +3888,10 @@ func randomHex(n int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(buf), nil
+}
+
+func newAPIRequestID() (string, error) {
+	return randomHex(16)
 }
 
 func randomToken() (string, error) {
@@ -4470,13 +4746,16 @@ func normalizeIPv4OrCIDR(value string) (string, bool) {
 	return ip.To4().String(), true
 }
 
-func (s *APIServer) accessAllowed(r *http.Request) bool {
+func (s *APIServer) accessAllowed(r *http.Request) (bool, error) {
 	if r.Method == http.MethodGet && r.URL.Path == "/api/health" {
-		return true
+		return true, nil
 	}
 	cfg, err := s.readAccessControl()
-	if err != nil || len(cfg.Allow) == 0 {
-		return err == nil
+	if err != nil {
+		return false, err
+	}
+	if len(cfg.Allow) == 0 {
+		return true, nil
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -4484,23 +4763,147 @@ func (s *APIServer) accessAllowed(r *http.Request) bool {
 	}
 	ip := net.ParseIP(strings.TrimSpace(host))
 	if ip == nil || ip.To4() == nil {
-		return false
+		return false, nil
 	}
 	ip = ip.To4()
 	for _, entry := range cfg.Allow {
 		if strings.Contains(entry, "/") {
 			_, network, err := net.ParseCIDR(entry)
 			if err == nil && network.Contains(ip) {
-				return true
+				return true, nil
 			}
 			continue
 		}
 		allowed := net.ParseIP(entry)
 		if allowed != nil && allowed.To4() != nil && allowed.To4().Equal(ip) {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
+}
+
+func (s *APIServer) appendAPIAccessLog(r *http.Request, requestID string, status int, start time.Time) error {
+	duration := time.Since(start).Milliseconds()
+	if duration < 0 {
+		duration = 0
+	}
+	auth := apiAuthInfo{AuthType: "none"}
+	if capture, ok := r.Context().Value(apiAuthCaptureContextKey{}).(*apiAuthInfo); ok && capture.AuthType != "" {
+		auth = *capture
+	} else if value, ok := r.Context().Value(apiAuthContextKey{}).(apiAuthInfo); ok {
+		auth = value
+	} else if r.URL.Path == "/api/webhook" && status < 400 {
+		actor := "webhook"
+		auth = apiAuthInfo{AuthType: "webhook", Actor: &actor}
+	}
+	record := apiAccessLogRecord{
+		At:         s.nowString(),
+		RequestID:  requestID,
+		Method:     strings.ToUpper(r.Method),
+		Path:       r.URL.Path,
+		Query:      apiAccessLogQuery(r, status),
+		Status:     status,
+		DurationMS: duration,
+		AuthType:   auth.AuthType,
+		Actor:      auth.Actor,
+		RemoteAddr: apiRemoteAddr(r),
+		UserAgent:  apiUserAgent(r),
+		Error:      apiErrorField(status),
+	}
+	return appendJSONLine(filepath.Join(s.cfg.StateDir, ".api_access_log"), record)
+}
+
+func apiAccessLogQuery(r *http.Request, status int) map[string]string {
+	query := map[string]string{}
+	if status >= 400 {
+		return query
+	}
+	for key, values := range r.URL.Query() {
+		if len(values) == 0 || !apiAccessLogQueryKeyAllowed(key) {
+			continue
+		}
+		value := strings.TrimSpace(values[0])
+		if value == "" {
+			continue
+		}
+		if apiAccessLogQueryValuePlain(key, value) {
+			query[key] = value
+		} else {
+			query[key] = "***"
+		}
+	}
+	return query
+}
+
+func apiAccessLogQueryKeyAllowed(key string) bool {
+	switch key {
+	case "action", "days", "enabled", "flagged", "from", "limit", "method", "n", "offset", "page", "path", "per_page", "q", "result", "status", "tag", "to", "trigger", "type":
+		return true
+	default:
+		return false
+	}
+}
+
+func apiAccessLogQueryValuePlain(key, value string) bool {
+	switch key {
+	case "days", "from", "limit", "n", "offset", "page", "per_page", "status", "to":
+		_, err := strconv.Atoi(value)
+		return err == nil
+	case "enabled", "flagged":
+		return value == "true" || value == "false"
+	case "method":
+		return value == http.MethodGet || value == http.MethodPost || value == http.MethodDelete || value == http.MethodPut || value == http.MethodPatch
+	default:
+		return false
+	}
+}
+
+func apiRemoteAddr(r *http.Request) *string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(strings.TrimSpace(host))
+	if ip == nil {
+		return nil
+	}
+	value := ip.String()
+	return &value
+}
+
+func apiUserAgent(r *http.Request) *string {
+	raw := strings.TrimSpace(r.UserAgent())
+	if raw == "" {
+		return nil
+	}
+	var b strings.Builder
+	count := 0
+	for _, rr := range raw {
+		if rr < 0x20 || rr == 0x7f {
+			continue
+		}
+		if count >= 512 {
+			break
+		}
+		b.WriteRune(rr)
+		count++
+	}
+	if b.Len() == 0 {
+		return nil
+	}
+	value := b.String()
+	return &value
+}
+
+func apiErrorField(status int) *string {
+	if status < 400 {
+		return nil
+	}
+	message := http.StatusText(status)
+	if message == "" {
+		message = "HTTP error"
+	}
+	return &message
 }
 
 func stringSlicesEqual(a, b []string) bool {
@@ -5174,8 +5577,17 @@ func rejectBody(w http.ResponseWriter, r *http.Request) bool {
 	if r.Body == nil || r.Body == http.NoBody {
 		return true
 	}
-	data, _ := io.ReadAll(r.Body)
-	if len(strings.TrimSpace(string(data))) > 0 {
+	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, "Payload too large")
+			return false
+		}
+		writeError(w, http.StatusBadRequest, "Request body is not allowed")
+		return false
+	}
+	if len(bytes.TrimSpace(data)) > 0 {
 		writeError(w, http.StatusBadRequest, "Request body is not allowed")
 		return false
 	}
@@ -5194,6 +5606,16 @@ func decodeBody(w http.ResponseWriter, r *http.Request, out any, required bool) 
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(out); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, "Payload too large")
+			return false
+		}
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return false
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
 		writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return false
 	}
@@ -5201,9 +5623,15 @@ func decodeBody(w http.ResponseWriter, r *http.Request, out any, required bool) 
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		status = http.StatusInternalServerError
+		data = []byte(`{"error":"Internal server error"}`)
+	}
+	data = append(data, '\n')
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
+	_, _ = w.Write(data)
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {

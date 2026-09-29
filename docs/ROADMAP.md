@@ -38,7 +38,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 |-------|---------------|----------|----------------|
 | Phase 1 | `builder` | 実装済み | なし |
 | Phase 2 | `runner` | 実装済み | Phase 1 |
-| Phase 3 | `api` request lifecycle | 実装中・検証未完了 | Phase 2 |
+| Phase 3 | `api` request lifecycle | 実装済み | Phase 2 |
 | Phase 4 | `api` operations | 実装中・検証未完了 | Phase 3 |
 | Phase 5 | `sdk` | 実装中・検証未完了 | Phase 4 |
 | Phase 6 | `ui` | 実装中・検証未完了 | Phase 5 |
@@ -47,7 +47,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 9 | `release` | 仕様化済み・未実装 | Phase 8 |
 | Phase 10 | `mcp` | 仕様化済み・未実装 | Phase 9 |
 
-現在の active Phase は `Phase 3` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
+現在の active Phase は `Phase 4` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 
 各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) を参照する。
 
