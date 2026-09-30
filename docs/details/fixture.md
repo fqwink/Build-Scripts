@@ -133,11 +133,11 @@
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 11 の fixture、expected、fake、実装検証証跡の一般形式と配置契約だけを固定する。Phase 11 の完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8)、現在状態と対象外理由は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、owner 割当入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。
 
-Phase 11 対象の fixture root、manifest、input、expected、effects、security、fake transcript、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#sec-0g-8-f)、[`docs/details/fixture.md` fixture 証跡責務 §27-F runner / security 実装検証証跡 必須記録固定契約](fixture.md#sec-27-f-20)、および [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) の Phase 11 完了判定を同時に満たす。Phase 11 対象 root の網羅判定は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) で割り当てた `testdata/builder/`、`testdata/runner/`、`testdata/api/`、`testdata/sdk/`、`testdata/ui/`、`testdata/statefile/`、`testdata/archive/`、`testdata/commitstatus/`、`testdata/security/`、`testdata/admin/cli/`、`testdata/setup/`、`testdata/release/`、`testdata/mcp/` の各 root について、存在、manifest、expected、fake、harness 接続、対象外理由のいずれかへ到達できることで判定する。
+Phase 11 対象の fixture root、manifest、input、expected、effects、security、fake transcript、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#sec-0g-8-f)、[`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](fixture.md#mutation-test-evidence-contract)、[`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](fixture.md#test-contract-drift-evidence-contract)、[`docs/details/fixture.md` fixture 証跡責務 §27-F runner / security 実装検証証跡 必須記録固定契約](fixture.md#sec-27-f-20)、および [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) の Phase 11 完了判定を同時に満たす。Phase 11 対象 root の網羅判定は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) で割り当てた `testdata/builder/`、`testdata/runner/`、`testdata/api/`、`testdata/sdk/`、`testdata/ui/`、`testdata/statefile/`、`testdata/archive/`、`testdata/commitstatus/`、`testdata/security/`、`testdata/admin/cli/`、`testdata/setup/`、`testdata/release/`、`testdata/mcp/` の各 root について、存在、manifest、expected、fake、harness 接続、対象外理由のいずれかへ到達できることで判定する。
 
 Phase 11 対象 root では、directory 名、`manifest.json.name`、fixture catalog 名が 1 対 1 に一致する場合だけ正式 fixture として扱う。`* 2` suffix 付き directory、同一 `manifest.json.name` を持つ複数 directory、fixture catalog 未登録 directory、harness から参照されない directory、expected だけを持つ directory は正式 fixture として扱わず、[`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) の `fixture root identity zero duplicate` 判定で未完了として扱う。
 
-Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*_test.go`、`sdk_contract_test.go`、`ui_contract_test.go` を fixture 証跡の補助 source として扱う。これらの test / contract assertion は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry)、owner 詳細本文、fixture catalog、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できなければならない。test file 自体を仕様正本として扱ってはならず、fixture catalog と owner 詳細本文へ到達しない assertion は Phase 11 の未解消 drift とする。
+Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*_test.go`、`sdk_contract_test.go`、`ui_contract_test.go` を fixture 証跡の補助 source として扱う。これらの test / contract assertion は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry)、owner 詳細本文、fixture catalog、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できなければならない。test file 自体を仕様正本として扱ってはならず、fixture catalog と owner 詳細本文へ到達しない assertion は Phase 11 の未解消 drift とする。mutation test 証跡は [mutation test 証跡固定契約](#mutation-test-evidence-contract) に従い、Phase 11 では `survived=0` を満たすまで完了扱いにしない。
 
 以下は実在する実装 artifact と owner component 詳細本文を照合した、後続 Phase または横断 owner に残る証跡である。Phase 2 runner、Phase 3 api request lifecycle、Phase 4 api operations、Phase 5 sdk、Phase 6 ui、Phase 7 admin CLI、Phase 8 setup、Phase 9 release、および Phase 10 mcp の実装済み状態を取り消す一覧ではない。
 
@@ -214,15 +214,47 @@ Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*
 
 | 系統 | 対象 | 責務節 | 必須証跡 |
 |------|------|--------|----------|
-| component 実装 | builder、runner、api、admin、sdk、ui、statefile、archive、commitstatus、security、setup、release、mcp の実装。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) | owner component、collaborator component、変更ファイル、fixture / testdata path、fake、実行コマンド、期待結果、実結果、依存 component へ引き継ぐ contract。 |
-| API 横断実装 | API と同期する SDK / UI / statefile の実装。 | [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約) | endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、endpoint 固有の業務状態非変更、共通 security / observability 副作用、secret mask。 |
-| [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) の追加仕様化機能 | runner / security 詳細本文責務。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) | 対象 [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様).x / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47)、関連 [`docs/details/api.md` 詳細本文責務 §22](api.md#22-バックエンド-api-仕様) / [`docs/details/api.md` 詳細本文責務 §25](api.md#25-認証-実装仕様) / [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) / [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) / [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順)、owner / collaborator component、fixture 名、状態差分、外部副作用、partial failure、再実行、対象外確認。 |
+| component 実装 | builder、runner、api、admin、sdk、ui、statefile、archive、commitstatus、security、setup、release、mcp の実装。 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約) | owner component、collaborator component、変更ファイル、fixture / testdata path、fake、実行コマンド、期待結果、実結果、依存 component へ引き継ぐ contract、[mutation test 証跡固定契約](#mutation-test-evidence-contract) の対象有無。 |
+| API 横断実装 | API と同期する SDK / UI / statefile の実装。 | [`docs/details/fixture.md` fixture 証跡責務 §22-F](fixture.md#22-f-api-fixture-契約) | endpoint、SDK method、UI 操作、状態 read/write、fixture 名、HTTP status、response、endpoint 固有の業務状態非変更、共通 security / observability 副作用、secret mask、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の対応。 |
+| [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) の追加仕様化機能 | runner / security 詳細本文責務。 | [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) | 対象 [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様).x / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47)、関連 [`docs/details/api.md` 詳細本文責務 §22](api.md#22-バックエンド-api-仕様) / [`docs/details/api.md` 詳細本文責務 §25](api.md#25-認証-実装仕様) / [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) / [`docs/details/ui.md` 詳細本文責務 §24](ui.md#24-標準管理ツール-仕様) / [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順)、owner / collaborator component、fixture 名、状態差分、外部副作用、partial failure、再実行、対象外確認、mutation test 証跡。 |
 
 **不足時共通扱い：**
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務で必須とする fixture、manifest、expected、effects、security、実装検証証跡、対象外確認のいずれかが不足する場合、対象機能は未完了として扱う。fixture の pass だけでは完了証跡を満たさない。[`docs/details/fixture.md`](fixture.md) fixture 証跡責務内の対象別不足時表は、この不足時共通扱いに対する具体条件である。
 
 component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) のいずれの実装検証証跡でも、記録形式は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) 詳細本文責務に同種の記録項目がある場合でも、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は証跡分類、不足時の扱い、差し戻し条件だけを固定する。
+
+<a id="mutation-test-evidence-contract"></a>
+**mutation test 証跡固定契約：**
+
+mutation test の完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) を正本とし、fixture 証跡責務では実装検証証跡へ記録する項目だけを固定する。mutation test 証跡は、対象 test、fixture、expected、security expected、state diff、contract drift checker、または harness assertion が検出すべき仕様違反を、責務名付き Markdown link で正本へ到達できる形にする。
+
+| 証跡項目 | 必須内容 | 不足時の扱い |
+|----------|----------|--------------|
+| 対象責務 | owner component、collaborator component、対象機能、対象 file、対象 test 名または fixture 名、対象 anchor。 | 仕様追跡性不足として未完了。 |
+| mutation class | [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) の mutation class 名、変異対象、検出したい仕様違反。 | mutation 対象未定義として未完了。 |
+| mutation 実行単位 | 変更した実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion のいずれを変異対象にしたか。 | 実装変更と検証変更の対応不足として未完了。 |
+| 実行方法 | 実行コマンド、固定入力、fake clock / fake entropy / fake filesystem / fake HTTP / fake process / fake browser runtime の使用有無、外部通信禁止確認。 | 再現不能として未完了。 |
+| 判定 | `killed`、`survived`、`invalid`、`equivalent` のいずれか、期待 failure、実際の failure、終了コード、差分。 | 判定不能として未完了。 |
+| survived 対応 | `survived` が 1 件以上ある場合の不足 test、未固定仕様、追加すべき fixture、完了不可理由。 | `survived` を残したまま完了扱い不可。 |
+| invalid / equivalent 理由 | `invalid` は構文または観測不能理由、`equivalent` は観測可能挙動が同一である責務正本 anchor と理由。 | 理由または anchor 不足時は `survived` として扱う。 |
+| 集計 | 対象変更単位ごとの `killed` / `survived` / `invalid` / `equivalent` 件数。 | 完了証跡不足として未完了。 |
+
+mutation test 証跡の集計では、`survived=0` を完了条件とする。`invalid` と `equivalent` は件数を隠してはならず、対象 mutation class、対象 file、対象 fixture、対象 anchor を個別に記録する。`equivalent` を理由にする場合でも、[`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) の `equivalent` 定義を満たす責務正本 anchor がないものは `survived` として扱う。
+
+mutation test 証跡は、coverage 証跡、`go test` 成功、`deno check` 成功、fixture 存在確認、snapshot 一致、手作業の確認、または実装者の判断で代替してはならない。coverage を記録する場合でも、未検出 mutation、弱い assertion、未接続 fixture、仕様 anchor 不足がある場合は完了不可とする。
+
+<a id="test-contract-drift-evidence-contract"></a>
+**test / contract drift 証跡固定契約：**
+
+test / contract drift 判定では、実装 test、contract test、fixture manifest、owner 詳細本文、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) の対応を照合する。test または assertion が存在するのに owner 詳細本文、fixture 証跡、または [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の対象外理由へ到達できない場合は、孤立 test として未完了とする。owner 詳細本文で検証条件を持つのに test、fixture、expected、mutation 証跡へ到達できない場合は、未検証契約として未完了とする。
+
+| drift 種別 | 未完了条件 | 解消方法 |
+|------------|------------|----------|
+| 孤立 test | test 名、subtest、contract assertion、fixture presence check が責務正本 anchor へ到達できない。 | 対象 owner 詳細本文または fixture 証跡へ参照を接続する。仕様に存在しない期待値なら test または期待値を削除する。 |
+| 未検証契約 | owner 詳細本文に入力、出力、異常系、状態、副作用、security、境界値、mutation 条件があるが対応する test / fixture / expected / mutation 証跡がない。 | fixture と test を追加し、実装検証証跡へ記録する。 |
+| 期待値ドリフト | expected、snapshot、security expected、effects が owner 詳細本文または [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) と矛盾する。 | expected を責務正本に合わせる。実装挙動へ合わせるための期待値緩和は禁止する。 |
+| harness ドリフト | fixture manifest、fixture catalog、directory 名、test 名、実装検証証跡の対象 owner または fixture 名が一致しない。 | [manifest 識別子レジストリ固定契約](#sec-27-f-manifest-identity) と対象 fixture catalog へ一致させる。 |
 
 <a id="sec-0g-8-f"></a>
 **[fixture 証跡責務 §0g.8-F fixture / testdata 配置固定契約](fixture.md#sec-0g-8-f)：**
