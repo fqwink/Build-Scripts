@@ -28,7 +28,6 @@ import (
 
 const (
 	setupBinaryName         = "adlaire-ci-setup"
-	setupBinaryVersion      = "V.0.0-dev"
 	setupDefaultRepository  = "fqwink/Build-Scripts"
 	setupDefaultInstallDir  = "/opt/adlaire-builder"
 	setupDefaultBinDir      = "/usr/local/bin"
@@ -44,6 +43,8 @@ const (
 	setupHealthLimitBytes   = 1024 * 1024
 	setupSecretInputMaxSize = 64 * 1024
 )
+
+var setupBinaryVersion = "V.0.0-dev"
 
 var (
 	setupVersionPattern    = regexp.MustCompile(`^V\.[1-9][0-9]*\.[0-9]+$`)

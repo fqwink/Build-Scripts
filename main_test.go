@@ -86,4 +86,43 @@ func TestDispatchMainExactBasename(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("expected no stderr for setup help, got %q", stderr.String())
 	}
+
+	stdout.Reset()
+	stderr.Reset()
+
+	if code := dispatchMain("adlaire-ci-release", []string{"--help"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected release help exit code 0, got %d", code)
+	}
+	if got := stdout.String(); !strings.Contains(got, "Usage: adlaire-ci-release") {
+		t.Fatalf("expected release help usage, got %q", got)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for release help, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+
+	if code := dispatchMain("adlaire-ci-build-linux-amd64", []string{"--version"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected release asset build version exit code 0, got %d", code)
+	}
+	if got := stdout.String(); !strings.HasPrefix(got, "adlaire-ci-build V.0.0-dev go=") {
+		t.Fatalf("expected canonical build version, got %q", got)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for release asset build version, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+
+	if code := dispatchMain("adlaire-ci-mcp-linux-amd64", []string{"--version"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected release asset mcp version exit code 0, got %d", code)
+	}
+	if got := stdout.String(); !strings.HasPrefix(got, "adlaire-ci-mcp V.0.0-dev go=") {
+		t.Fatalf("expected canonical mcp version, got %q", got)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for release asset mcp version, got %q", stderr.String())
+	}
 }

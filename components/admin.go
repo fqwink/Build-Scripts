@@ -16,10 +16,11 @@ import (
 
 const (
 	adminBinaryName           = "adlaire-ci-admin"
-	adminBinaryVersion        = "V.0.0-dev"
 	adminHTTPTimeout          = 30 * time.Second
 	adminMaxResponseBodyBytes = 1024 * 1024
 )
+
+var adminBinaryVersion = "V.0.0-dev"
 
 type adminCommandSpec struct {
 	Method  string

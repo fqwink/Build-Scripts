@@ -1,0 +1,9 @@
+{
+  "name": "partial-release-upload-cleanup",
+  "section": "R1-R7",
+  "feature": "release_contract",
+  "owner_component": "release",
+  "collaborator_components": [],
+  "expected_result": "failure",
+  "error_code": "ASSET_UPLOAD_FAILED"
+}

@@ -1,0 +1,6 @@
+{
+  "token_plaintext_present": false,
+  "host_absolute_path_present": false,
+  "http_plaintext_allowed": false,
+  "github_token_in_environment": false
+}

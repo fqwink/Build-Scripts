@@ -1,0 +1,36 @@
+{
+  "git": [
+    "clean",
+    "head_matches_commit",
+    "tag_matches_commit"
+  ],
+  "command": [
+    "gofmt",
+    "go_test",
+    "go_build",
+    "binary_version"
+  ],
+  "filesystem": [
+    "notes_no_follow",
+    "token_no_follow",
+    "output_atomic"
+  ],
+  "archive": [
+    "git_archive_a",
+    "git_archive_b",
+    "admin_ui_tar_gz"
+  ],
+  "github": [
+    "repository",
+    "default_branch",
+    "compare",
+    "tag",
+    "release_absent",
+    "draft",
+    "assets",
+    "publish"
+  ],
+  "download": [
+    "asset_redownload_digest"
+  ]
+}
