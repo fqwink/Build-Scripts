@@ -716,6 +716,8 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 | 回帰 | 修正した不具合、Phase 11 のバグ修正ゼロ化対象、過去に検出した仕様不整合は、同種の再発で失敗する regression test を持つ。 |
 | 完了証跡 | 実行結果、未実行項目、対象外理由、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) へ到達できる形で記録する。 |
 
+非決定的な test、flaky test、retry で偶然成功した test、実時間、乱数、file order、map order、network、GitHub API、systemd、process scheduling、goroutine scheduling、timer、sleep、host 固有 path、OS 差分、外部サービス応答に依存して結果が変わる test は、意味のあるテストとして扱ってはならない。失敗後の再実行で成功した結果、一定回数中の成功率、手元環境での成功、または CI 上の偶発的成功を完了根拠にしてはならない。決定性の証跡 schema、記録項目、fake adapter との対応、再実行一致条件は [`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](details/fixture.md#test-determinism-evidence-set-contract) を正本とする。
+
 mutation test（ミューテーションテスト）は必須とする。実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion を変更する場合、対象変更が検出すべき代表的な mutation を定義し、適用可能な mutation を kill しなければならない。mutation test を実施できない実装変更、または適用可能な mutation が生存する実装変更は、`実装済み`、Phase 全体完了、review ready、merge 可能として扱ってはならない。mutation test の証跡 schema、記録項目、fixture manifest との対応は [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract) を正本とする。
 
 mutation test は、ゼロ依存・フルインハウス原則に従い、本リポジトリで所有する Go 標準ライブラリ実装または既存の標準検証ランタイムだけで再現できなければならない。外部 mutation testing service、外部 hosted runner、許可外部ライブラリ、npm package、外部 framework、手作業の目視確認、coverage percentage だけを mutation test の完了根拠として使用してはならない。
