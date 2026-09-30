@@ -100,7 +100,7 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 <a id="phase-11-quality-gate-entry"></a>
 **Phase 11 バグ修正ゼロ化参照：**
 
-[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、Phase 11 のバグ修正ゼロ化対象から該当する詳細本文と fixture 証跡への入口だけを固定する。Phase 11 の現在状態、依存 Phase、active Phase は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。Phase 11 専用詳細仕様ファイルは置かず、詳細本文は必ず owner component 別の [`docs/details/*.md`](details/) 詳細本文責務または [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達させる。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、Phase 11 のバグ修正ゼロ化対象から該当する詳細本文と fixture 証跡への入口だけを固定する。Phase 11 の現在状態、依存 Phase、active Phase は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針と Phase 専用詳細仕様ファイルの扱いは [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) と [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 
 | 対象 | owner / 責務 | 詳細本文 / fixture 証跡 |
 |------|--------------|--------------------------|
