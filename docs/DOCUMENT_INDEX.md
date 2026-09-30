@@ -58,6 +58,7 @@
 |------|-----------|----------|
 | [`main.go`](../main.go) | 起動入口 | 実在 |
 | [`go.mod`](../go.mod) | Go module | 実在 |
+| [`sdk_contract_test.go`](../sdk_contract_test.go) | `sdk` contract test | 実在 |
 | [`components/builder.go`](../components/builder.go) | `builder` | 実在 |
 | [`components/builder_test.go`](../components/builder_test.go) | `builder` test | 実在 |
 | [`components/runner.go`](../components/runner.go) | `runner` | 実在 |
