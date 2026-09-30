@@ -9,14 +9,14 @@ class AdlaireCIError extends Error {
 }
 
 class AdlaireCI {
-  constructor({ baseUrl }) {
+  constructor(options) {
     if (!runtimeSupported()) {
       throw new TypeError("Unsupported browser runtime");
     }
-    if (typeof baseUrl !== "string" || baseUrl.trim() === "") {
+    if (options === null || typeof options !== "object" || Array.isArray(options)) {
       throw new TypeError("Invalid argument: baseUrl");
     }
-    this.baseUrl = baseUrl.replace(/\/+$/, "");
+    this.baseUrl = normalizeBaseUrl(options.baseUrl);
     this._token = null;
   }
 
@@ -59,6 +59,11 @@ class AdlaireCI {
   }
 
   getAuditLog({ limit = 100, offset = 0, actor = null, action = null, result = null } = {}) {
+    requireNumber(limit, "limit");
+    requireNumber(offset, "offset");
+    requireOptionalString(actor, "actor");
+    requireOptionalString(action, "action");
+    requireOptionalString(result, "result");
     return this._request("/api/audit-log", { query: this._query({ limit, offset, actor, action, result }) });
   }
 
@@ -71,12 +76,22 @@ class AdlaireCI {
   }
 
   getLogs(n = 100, q = "") {
+    requireNumber(n, "n");
+    requireString(q, "q", true);
     return this._request("/api/logs", { query: this._query({ n, q }, ["q"]) });
   }
 
-  getHistory({ page = 1, perPage = 20, trigger = null, tag = null, flagged = null } = {}) {
+  getHistory({ page = 1, perPage = 20, trigger = null, tag = null, flagged = null, failureCategory = null } = {}) {
+    requireNumber(page, "page");
+    requireNumber(perPage, "perPage");
+    requireOptionalString(trigger, "trigger");
+    requireOptionalString(tag, "tag");
+    if (flagged !== null && typeof flagged !== "boolean") {
+      throw new TypeError("Invalid argument: flagged");
+    }
+    requireOptionalString(failureCategory, "failureCategory");
     return this._request("/api/history", {
-      query: this._query({ page, per_page: perPage, trigger, tag, flagged }),
+      query: this._query({ page, per_page: perPage, trigger, tag, flagged, failure_category: failureCategory }),
     });
   }
 
@@ -119,17 +134,24 @@ class AdlaireCI {
     return this._request("/api/pat-status");
   }
 
-  getAccessLog() {
-    return this._request("/api/access-log");
+  getAccessLog({ limit = 100, offset = 0 } = {}) {
+    requireNumber(limit, "limit");
+    requireNumber(offset, "offset");
+    return this._request("/api/access-log", { query: this._query({ limit, offset }) });
   }
 
   getApiAccessLog({ limit = 100, offset = 0, method = null, path = null, status = null } = {}) {
+    requireNumber(limit, "limit");
+    requireNumber(offset, "offset");
+    requireOptionalString(method, "method");
+    requireOptionalString(path, "path");
     return this._request("/api/api-access-log", {
       query: this._query({ limit, offset, method, path, status }),
     });
   }
 
   getStats(days = 7) {
+    requireNumber(days, "days");
     return this._request("/api/stats", { query: this._query({ days }) });
   }
 
@@ -191,20 +213,11 @@ class AdlaireCI {
     }
     this._requireToken();
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(new Error("timeout")), 30000);
-    const handle = {
-      error: null,
-      _closed: false,
-      close() {
-        if (!this._closed) {
-          this._closed = true;
-          controller.abort();
-        }
-      },
-      get closed() {
-        return this._closed;
-      },
-    };
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 30000);
     let response;
     try {
       response = await fetch(this.baseUrl + "/api/build/stream", {
@@ -212,22 +225,31 @@ class AdlaireCI {
         headers: { Accept: "text/event-stream", Authorization: `Bearer ${this._token}` },
         signal: controller.signal,
       });
+      if (!response.ok) {
+        return await this._json(response);
+      }
+      if (!isEventStreamMediaType(response.headers.get("Content-Type") || "")) {
+        throw new AdlaireCIError({ status: 0, message: "Invalid SSE response" });
+      }
+      if (!response.body || typeof response.body.getReader !== "function") {
+        throw new AdlaireCIError({ status: 0, message: "Invalid SSE response" });
+      }
     } catch (error) {
-      clearTimeout(timeout);
-      if (isAbortError(error)) {
+      if (error instanceof AdlaireCIError) {
+        throw error;
+      }
+      if (timedOut && isAbortError(error)) {
         throw new AdlaireCIError({ status: 0, message: "Request timeout" });
       }
       throw new AdlaireCIError({ status: 0, message: "Network error" });
+    } finally {
+      clearTimeout(timeout);
     }
-    clearTimeout(timeout);
-    if (!response.ok) {
-      await this._json(response, true);
-    }
-    if (!response.body || typeof response.body.getReader !== "function") {
-      throw new AdlaireCIError({ status: 0, message: "Unsupported browser runtime" });
-    }
-    readSse(response.body.getReader(), onLine, onEnd, handle);
-    return handle;
+    const reader = response.body.getReader();
+    const terminal = createStreamTerminal(controller);
+    terminal.setReader(reader);
+    readBuildSse(reader, onLine, onEnd, terminal);
+    return terminal.handle;
   }
 
   setLogLevel(level) {
@@ -244,8 +266,10 @@ class AdlaireCI {
     return this._request("/api/dashboard");
   }
 
-  getNotifyLog() {
-    return this._request("/api/notify-log");
+  getNotifyLog({ limit = 100, offset = 0 } = {}) {
+    requireNumber(limit, "limit");
+    requireNumber(offset, "offset");
+    return this._request("/api/notify-log", { query: this._query({ limit, offset }) });
   }
 
   getSessions() {
@@ -308,6 +332,12 @@ class AdlaireCI {
   }
 
   searchLogs(q = "", from = "", to = "", level = undefined) {
+    requireString(q, "q", true);
+    requireString(from, "from", true);
+    requireString(to, "to", true);
+    if (level !== undefined) {
+      requireString(level, "level");
+    }
     return this._request("/api/logs/search", {
       query: this._query({ q, from, to, level }, ["q", "from", "to"]),
     });
@@ -318,14 +348,17 @@ class AdlaireCI {
   }
 
   getStatsTimeline(days = 30) {
+    requireNumber(days, "days");
     return this._request("/api/stats/timeline", { query: this._query({ days }) });
   }
 
   getStatsBuildDuration(n = 10) {
+    requireNumber(n, "n");
     return this._request("/api/stats/build-duration", { query: this._query({ n }) });
   }
 
   getBuildTrends(n = 100) {
+    requireNumber(n, "n");
     return this._request("/api/stats/build-trends", { query: this._query({ n }) });
   }
 
@@ -341,8 +374,10 @@ class AdlaireCI {
     return this._request("/api/disk-usage");
   }
 
-  getConfigLog() {
-    return this._request("/api/config-log");
+  getConfigLog({ limit = 100, offset = 0 } = {}) {
+    requireNumber(limit, "limit");
+    requireNumber(offset, "offset");
+    return this._request("/api/config-log", { query: this._query({ limit, offset }) });
   }
 
   getApiRateLimit() {
@@ -368,6 +403,8 @@ class AdlaireCI {
   }
 
   getWebhookEvents(limit = 50, offset = 0) {
+    requireNumber(limit, "limit");
+    requireNumber(offset, "offset");
     return this._request("/api/webhook-events", { query: this._query({ limit, offset }) });
   }
 
@@ -410,9 +447,22 @@ class AdlaireCI {
     return this._request(`/api/history/${this._validateId(id)}/comment`, { method: "POST", body: { comment } });
   }
 
-  setRepoConfig(config) {
+  setRepoConfig(config = {}) {
     requireObject(config, "config");
-    return this._request("/api/repo-config", { method: "POST", body: config });
+    const { owner = undefined, repo = undefined } = config;
+    const patch = {};
+    if (owner !== undefined) {
+      requireString(owner, "owner");
+      patch.owner = owner;
+    }
+    if (repo !== undefined) {
+      requireString(repo, "repo");
+      patch.repo = repo;
+    }
+    if (owner === undefined && repo === undefined) {
+      throw new TypeError("Invalid argument: config");
+    }
+    return this._request("/api/repo-config", { method: "POST", body: patch });
   }
 
   exportHistory() {
@@ -427,7 +477,7 @@ class AdlaireCI {
   }
 
   setHistoryTags(id, tags) {
-    requireArray(tags, "tags");
+    requireStringArray(tags, "tags", true);
     return this._request(`/api/history/${this._validateId(id)}/tags`, { method: "POST", body: { tags } });
   }
 
@@ -441,10 +491,11 @@ class AdlaireCI {
 
   createToken(label, scopes = ["read"], expiresAt = null) {
     requireString(label, "label");
-    requireArray(scopes, "scopes");
+    requireStringArray(scopes, "scopes", false);
+    requireOptionalString(expiresAt, "expiresAt");
     return this._request("/api/tokens", {
       method: "POST",
-      body: { name: label, scopes, expires_at: expiresAt },
+      body: { label, scopes, expires_at: expiresAt },
     });
   }
 
@@ -482,7 +533,7 @@ class AdlaireCI {
   }
 
   setAccessControl(allowList) {
-    requireArray(allowList, "allowList");
+    requireStringArray(allowList, "allowList", true);
     return this._request("/api/access-control", { method: "POST", body: { allow: allowList } });
   }
 
@@ -493,6 +544,9 @@ class AdlaireCI {
   addHook(phase, commandArgs, abortOnFailure = true, timeoutSeconds = 300) {
     requireString(phase, "phase");
     requireArray(commandArgs, "commandArgs");
+    if (typeof abortOnFailure !== "boolean") {
+      throw new TypeError("Invalid argument: abortOnFailure");
+    }
     requireNumber(timeoutSeconds, "timeoutSeconds");
     return this._request("/api/hooks", {
       method: "POST",
@@ -515,6 +569,7 @@ class AdlaireCI {
   addAlertRule(metric, operator, threshold, level, message) {
     requireString(metric, "metric");
     requireString(operator, "operator");
+    requireNumber(threshold, "threshold");
     requireString(level, "level");
     requireString(message, "message");
     return this._request("/api/alert-rules", { method: "POST", body: { metric, operator, threshold, level, message } });
@@ -566,7 +621,14 @@ class AdlaireCI {
 
   setSmtpConfig(config) {
     requireObject(config, "config");
-    return this._request("/api/smtp-config", { method: "POST", body: config });
+    const body = {};
+    for (const [key, value] of Object.entries(config)) {
+      if (key === "password" && value === undefined) {
+        continue;
+      }
+      body[key] = value;
+    }
+    return this._request("/api/smtp-config", { method: "POST", body });
   }
 
   smtpTest() {
@@ -602,33 +664,39 @@ class AdlaireCI {
       options.body = JSON.stringify(body);
     }
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(new Error("timeout")), 30000);
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 30000);
     options.signal = controller.signal;
-    let response;
     try {
-      response = await fetch(url, options);
+      const response = await fetch(url, options);
+      if (binary && response.ok) {
+        return await readBinaryResponse(response);
+      }
+      return await this._json(response);
     } catch (error) {
-      clearTimeout(timeout);
-      if (isAbortError(error)) {
+      if (error instanceof AdlaireCIError) {
+        throw error;
+      }
+      if (timedOut && isAbortError(error)) {
         throw new AdlaireCIError({ status: 0, message: "Request timeout" });
       }
       throw new AdlaireCIError({ status: 0, message: "Network error" });
+    } finally {
+      clearTimeout(timeout);
     }
-    clearTimeout(timeout);
-    if (binary && response.ok) {
-      return response.blob();
-    }
-    return this._json(response, false);
   }
 
-  async _json(response, streamError) {
+  async _json(response) {
     const contentType = response.headers.get("Content-Type") || "";
-    const isJson = contentType.includes("application/json") || contentType.endsWith("+json");
+    const isJson = isJsonMediaType(contentType);
+    const text = await response.text();
     if (response.ok) {
       if (!isJson) {
         throw new AdlaireCIError({ status: 0, message: "Invalid JSON response" });
       }
-      const text = await response.text();
       if (text === "") {
         throw new AdlaireCIError({ status: 0, message: "Empty JSON response" });
       }
@@ -641,14 +709,13 @@ class AdlaireCI {
     let message = `HTTP ${response.status}`;
     let details = null;
     let responseBody = null;
-    const text = await response.text();
     if (isJson && text !== "") {
       try {
         responseBody = JSON.parse(text);
-        if (typeof responseBody.error === "string") {
+        if (responseBody && typeof responseBody.error === "string") {
           message = responseBody.error;
         }
-        if (Array.isArray(responseBody.details)) {
+        if (responseBody && Array.isArray(responseBody.details)) {
           details = responseBody.details;
         }
       } catch (_error) {
@@ -664,7 +731,7 @@ class AdlaireCI {
   }
 
   _query(values, keepEmpty = []) {
-    const params = new URLSearchParams();
+    const params = [];
     for (const [key, value] of Object.entries(values)) {
       if (value === undefined || value === null) {
         continue;
@@ -672,9 +739,9 @@ class AdlaireCI {
       if (value === "" && !keepEmpty.includes(key)) {
         continue;
       }
-      params.append(key, String(value));
+      params.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
     }
-    return params.toString();
+    return params.join("&");
   }
 
   _requireToken() {
@@ -685,7 +752,7 @@ class AdlaireCI {
 
   _validateId(id) {
     requireString(id, "id");
-    if (id === "." || id === ".." || id.includes("/") || id.includes("\\")) {
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
       throw new TypeError("Invalid argument: id");
     }
     return encodeURIComponent(id);
@@ -702,13 +769,39 @@ function runtimeSupported() {
   return typeof fetch === "function" &&
     typeof AbortController === "function" &&
     typeof ReadableStream !== "undefined" &&
-    typeof TextDecoder === "function" &&
-    typeof URLSearchParams === "function";
+    typeof TextDecoder === "function";
+}
+
+function normalizeBaseUrl(baseUrl) {
+  if (typeof baseUrl !== "string" || baseUrl.trim() === "") {
+    throw new TypeError("Invalid argument: baseUrl");
+  }
+  let url;
+  try {
+    url = new URL(baseUrl);
+  } catch (_error) {
+    throw new TypeError("Invalid argument: baseUrl");
+  }
+  if ((url.protocol !== "http:" && url.protocol !== "https:") ||
+      url.username !== "" ||
+      url.password !== "" ||
+      url.pathname !== "/" ||
+      url.search !== "" ||
+      url.hash !== "") {
+    throw new TypeError("Invalid argument: baseUrl");
+  }
+  return url.origin;
 }
 
 function requireString(value, name, allowEmpty = false) {
   if (typeof value !== "string" || (!allowEmpty && value === "")) {
     throw new TypeError(`Invalid argument: ${name}`);
+  }
+}
+
+function requireOptionalString(value, name) {
+  if (value !== null && value !== undefined) {
+    requireString(value, name);
   }
 }
 
@@ -724,6 +817,16 @@ function requireArray(value, name) {
   }
 }
 
+function requireStringArray(value, name, allowEmpty) {
+  requireArray(value, name);
+  if (!allowEmpty && value.length === 0) {
+    throw new TypeError(`Invalid argument: ${name}`);
+  }
+  for (const item of value) {
+    requireString(item, name);
+  }
+}
+
 function requireObject(value, name) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError(`Invalid argument: ${name}`);
@@ -731,47 +834,244 @@ function requireObject(value, name) {
 }
 
 function isAbortError(error) {
-  return error && (error.name === "AbortError" || error.message === "timeout");
+  return error && error.name === "AbortError";
 }
 
-async function readSse(reader, onLine, onEnd, handle) {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  try {
-    while (!handle.closed) {
-      const { value, done } = await reader.read();
-      if (done) {
-        handle._closed = true;
+function mediaType(contentType) {
+  return contentType.split(";")[0].trim().toLowerCase();
+}
+
+function isJsonMediaType(contentType) {
+  const type = mediaType(contentType);
+  if (type === "application/json") {
+    return true;
+  }
+  if (!type.startsWith("application/")) {
+    return false;
+  }
+  const subtype = type.slice("application/".length);
+  const suffixIndex = subtype.lastIndexOf("+json");
+  return suffixIndex > 0 && suffixIndex === subtype.length - "+json".length;
+}
+
+function isEventStreamMediaType(contentType) {
+  return mediaType(contentType) === "text/event-stream";
+}
+
+function isOctetStreamMediaType(contentType) {
+  return mediaType(contentType) === "application/octet-stream";
+}
+
+async function readBinaryResponse(response) {
+  if (!isOctetStreamMediaType(response.headers.get("Content-Type") || "")) {
+    throw new AdlaireCIError({ status: 0, message: "Invalid binary response" });
+  }
+  return await response.blob();
+}
+
+function createStreamTerminal(controller) {
+  let reader = null;
+  let closed = false;
+  let error = null;
+  let settled = false;
+  let resolveDone;
+  let rejectDone;
+  const done = new Promise((resolve, reject) => {
+    resolveDone = resolve;
+    rejectDone = reject;
+  });
+  const terminal = {
+    handle: {
+      close() {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        closed = true;
+        error = null;
+        try {
+          controller.abort();
+        } catch (_error) {
+          // close() is intentionally idempotent.
+        }
+        if (reader && typeof reader.cancel === "function") {
+          reader.cancel().catch(() => {});
+        }
+        resolveDone(null);
+      },
+      get closed() {
+        return closed;
+      },
+      get error() {
+        return error;
+      },
+      done,
+    },
+    setReader(value) {
+      reader = value;
+    },
+    isClosed() {
+      return closed;
+    },
+    succeed(summary) {
+      if (settled) {
         return;
       }
-      buffer += decoder.decode(value, { stream: true });
-      const frames = buffer.split("\n\n");
-      buffer = frames.pop() || "";
-      for (const frame of frames) {
-        const lines = frame.split("\n").filter((line) => line.startsWith("data:"));
-        for (const line of lines) {
-          let payload;
-          try {
-            payload = JSON.parse(line.slice(5).trim());
-          } catch (_error) {
-            throw new AdlaireCIError({ status: 0, message: "Invalid SSE frame" });
-          }
-          if (payload.type === "log") {
-            onLine(payload.line);
-          } else if (payload.type === "end") {
-            onEnd({ status: payload.status, duration_seconds: payload.duration_seconds });
-            handle._closed = true;
-            return;
-          }
+      settled = true;
+      closed = true;
+      error = null;
+      resolveDone(summary);
+    },
+    fail(value) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      closed = true;
+      error = value;
+      try {
+        controller.abort();
+      } catch (_error) {
+        // The stream may already be closed.
+      }
+      rejectDone(value);
+    },
+  };
+  return terminal;
+}
+
+async function readBuildSse(reader, onLine, onEnd, terminal) {
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let buffer = "";
+  let summary = null;
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+      let text;
+      try {
+        text = decoder.decode(value, { stream: true });
+      } catch (_error) {
+        throw invalidSseFrame();
+      }
+      if (text.includes("\r")) {
+        throw invalidSseFrame();
+      }
+      if (summary !== null && text.length > 0) {
+        throw invalidSseFrame();
+      }
+      buffer += text;
+
+      let frameEnd = buffer.indexOf("\n\n");
+      while (frameEnd !== -1) {
+        const frame = buffer.slice(0, frameEnd);
+        buffer = buffer.slice(frameEnd + 2);
+        if (summary !== null) {
+          throw invalidSseFrame();
         }
+        const payload = parseBuildSseFrame(frame);
+        if (payload.type === "log") {
+          try {
+            onLine(payload.line);
+          } catch (_error) {
+            throw streamCallbackFailed();
+          }
+        } else {
+          summary = { status: payload.status, duration_seconds: payload.duration_seconds };
+        }
+        frameEnd = buffer.indexOf("\n\n");
       }
     }
+
+    let tail;
+    try {
+      tail = decoder.decode();
+    } catch (_error) {
+      throw invalidSseFrame();
+    }
+    if (tail.includes("\r")) {
+      throw invalidSseFrame();
+    }
+    buffer += tail;
+    if (buffer !== "" || summary === null) {
+      throw invalidSseFrame();
+    }
+    try {
+      onEnd(summary);
+    } catch (_error) {
+      throw streamCallbackFailed();
+    }
+    terminal.succeed(summary);
   } catch (error) {
-    if (!handle.closed) {
-      handle.error = error instanceof AdlaireCIError ? error : new AdlaireCIError({ status: 0, message: "Network error" });
-      handle._closed = true;
+    if (terminal.isClosed()) {
+      return;
+    }
+    if (error instanceof AdlaireCIError) {
+      terminal.fail(error);
+      return;
+    }
+    terminal.fail(new AdlaireCIError({ status: 0, message: "Network error" }));
+  } finally {
+    if (typeof reader.releaseLock === "function") {
+      try {
+        reader.releaseLock();
+      } catch (_error) {
+        // The stream may already be released by close().
+      }
     }
   }
+}
+
+function parseBuildSseFrame(frame) {
+  if (frame === "" || frame.includes("\n") || frame.includes("\r") || !frame.startsWith("data: ")) {
+    throw invalidSseFrame();
+  }
+  let payload;
+  try {
+    payload = JSON.parse(frame.slice("data: ".length));
+  } catch (_error) {
+    throw invalidSseFrame();
+  }
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
+    throw invalidSseFrame();
+  }
+  if (payload.type === "log") {
+    if (!hasExactKeys(payload, ["type", "line", "at"]) ||
+        typeof payload.line !== "string" ||
+        !isUtcSecond(payload.at)) {
+      throw invalidSseFrame();
+    }
+    return payload;
+  }
+  if (payload.type === "end") {
+    if (!hasExactKeys(payload, ["type", "status", "duration_seconds"]) ||
+        !["running", "success", "failure", "cancelled"].includes(payload.status) ||
+        !(payload.duration_seconds === null || (typeof payload.duration_seconds === "number" && Number.isFinite(payload.duration_seconds)))) {
+      throw invalidSseFrame();
+    }
+    return payload;
+  }
+  throw invalidSseFrame();
+}
+
+function hasExactKeys(value, keys) {
+  const actual = Object.keys(value);
+  return actual.length === keys.length && keys.every((key) => actual.includes(key));
+}
+
+function isUtcSecond(value) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value);
+}
+
+function invalidSseFrame() {
+  return new AdlaireCIError({ status: 0, message: "Invalid SSE frame" });
+}
+
+function streamCallbackFailed() {
+  return new AdlaireCIError({ status: 0, message: "Stream callback failed" });
 }
 
 export { AdlaireCI, AdlaireCIError };
