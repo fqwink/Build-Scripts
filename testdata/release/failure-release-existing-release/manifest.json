@@ -1,0 +1,9 @@
+{
+  "name": "failure-release-existing-release",
+  "section": "R1-R7",
+  "feature": "release_contract",
+  "owner_component": "release",
+  "collaborator_components": [],
+  "expected_result": "failure",
+  "error_code": "RELEASE_EXISTS"
+}

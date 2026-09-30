@@ -24,7 +24,9 @@ import (
 )
 
 const builderBinaryName = "adlaire-ci-build"
-const builderDefaultVersion = "V.0.0-dev"
+
+var builderDefaultVersion = "V.0.0-dev"
+
 const maxMarkdownFileBytes int64 = 10 * 1024 * 1024
 
 type BuildConfig struct {

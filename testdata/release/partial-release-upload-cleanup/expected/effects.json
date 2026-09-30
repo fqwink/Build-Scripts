@@ -1,0 +1,7 @@
+{
+  "github_write": true,
+  "draft_cleanup": true,
+  "checkout_mutation": false,
+  "tag_mutation": false,
+  "release_asset_count": 0
+}
