@@ -9,8 +9,8 @@
 | 項目 | 内容 |
 |------|------|
 | owner component | `admin` |
-| 実装主体 | 単独の Go artifact は持たない。配布対象は [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、archive生成は`components/release.go`、配置は`components/setup.go`、HTTP静的配信は[`components/api.go`](../../components/api.go)とする。archive内容は本詳細本文、生成手順は[`docs/details/release.md`](release.md)、配置挙動は[`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)と[§26.8](setup.md#sec-26-8)を正本とする。 |
-| 持つ内容 | `admin` owner が主本文として定義する管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界。 |
+| 実装主体 | 配布対象は [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、CLI 管理クライアントは [`components/admin.go`](../../components/admin.go)、archive生成は`components/release.go`、配置は`components/setup.go`、HTTP静的配信は[`components/api.go`](../../components/api.go)とする。archive内容は本詳細本文、生成手順は[`docs/details/release.md`](release.md)、配置挙動は[`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)と[§26.8](setup.md#sec-26-8)を正本とする。 |
+| 持つ内容 | `admin` owner が主本文として定義する管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界、および CLI 管理クライアント。 |
 
 `admin` は、管理 UI 静的ファイルの中身を生成・変更してはならない。`ui` の DOM と動作は [`docs/details/ui.md`](ui.md) 詳細本文責務、標準管理 UI の視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract)、`sdk` の仕様は [`docs/details/sdk.md`](sdk.md) 詳細本文責務を参照する。
 

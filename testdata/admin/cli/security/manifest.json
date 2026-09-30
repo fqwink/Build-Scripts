@@ -1,0 +1,20 @@
+{
+  "name": "security-admin-cli-secret-redaction",
+  "section": "A7",
+  "feature": "admin_cli",
+  "category": "security",
+  "owner_component": "admin",
+  "collaborator_components": ["api", "security"],
+  "components": ["admin", "api", "security"],
+  "references": [
+    "docs/details/admin.md#sec-a7",
+    "docs/details/fixture.md#admin-cli-fixture-contract",
+    "docs/details/api.md#sec-27-54",
+    "docs/details/security.md#sec-27-42"
+  ],
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": ["input/cli.json", "input/fakes.json"],
+  "assertions": ["response", "request", "stdout", "stderr", "effects", "secret-mask", "no-write"]
+}

@@ -1,0 +1,19 @@
+{
+  "cases": [
+    {
+      "name": "http-error",
+      "status": 401,
+      "stderr": "api error: 401\n"
+    },
+    {
+      "name": "invalid-content-type",
+      "status": 200,
+      "stderr": "api error: invalid response\n"
+    },
+    {
+      "name": "network-error",
+      "status": null,
+      "stderr": "api error: connection failed\n"
+    }
+  ]
+}

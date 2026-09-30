@@ -1,0 +1,37 @@
+{
+  "requests": [
+    {
+      "order": 1,
+      "command": "status",
+      "method": "GET",
+      "path": "/api/status",
+      "headers": {
+        "Authorization": "${secret:admin_cli_token}",
+        "Accept": "application/json",
+        "User-Agent": "adlaire-ci-admin/<binary-version>"
+      },
+      "body": null,
+      "redirects_followed": 0,
+      "retry_count": 0,
+      "proxy_used": false,
+      "cookies_sent": 0
+    }
+  ],
+  "forbidden_requests": [
+    {
+      "method": "",
+      "path": "",
+      "reason": "secret-leak"
+    },
+    {
+      "method": "",
+      "path": "",
+      "reason": "redirect-follow"
+    },
+    {
+      "method": "",
+      "path": "",
+      "reason": "retry"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+status=success running=false
+queued=q2026093001
+snapshot=snap001

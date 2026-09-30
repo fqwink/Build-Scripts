@@ -1,0 +1,81 @@
+{
+  "requests": [
+    {
+      "order": 1,
+      "command": "status",
+      "method": "GET",
+      "path": "/api/status",
+      "headers": {
+        "Authorization": "${secret:admin_cli_token}",
+        "Accept": "application/json",
+        "User-Agent": "adlaire-ci-admin/<binary-version>"
+      },
+      "body": null,
+      "redirects_followed": 0,
+      "retry_count": 0,
+      "proxy_used": false,
+      "cookies_sent": 0
+    },
+    {
+      "order": 2,
+      "command": "trigger-build",
+      "method": "POST",
+      "path": "/api/build",
+      "headers": {
+        "Authorization": "${secret:admin_cli_token}",
+        "Accept": "application/json",
+        "User-Agent": "adlaire-ci-admin/<binary-version>",
+        "Content-Type": "application/json"
+      },
+      "body": "{}",
+      "redirects_followed": 0,
+      "retry_count": 0,
+      "proxy_used": false,
+      "cookies_sent": 0
+    },
+    {
+      "order": 3,
+      "command": "config-snapshot",
+      "method": "POST",
+      "path": "/adlaire/api/config-snapshots",
+      "headers": {
+        "Authorization": "${secret:admin_cli_token}",
+        "Accept": "application/json",
+        "User-Agent": "adlaire-ci-admin/<binary-version>",
+        "Content-Type": "application/json"
+      },
+      "body": "{\"label\":\"nightly\"}",
+      "redirects_followed": 0,
+      "retry_count": 0,
+      "proxy_used": false,
+      "cookies_sent": 0
+    }
+  ],
+  "forbidden_requests": [
+    {
+      "method": "POST",
+      "path": "/api/builds",
+      "reason": "wrong-endpoint"
+    },
+    {
+      "method": "",
+      "path": "",
+      "reason": "redirect-follow"
+    },
+    {
+      "method": "",
+      "path": "",
+      "reason": "retry"
+    },
+    {
+      "method": "",
+      "path": "",
+      "reason": "proxy"
+    },
+    {
+      "method": "",
+      "path": "",
+      "reason": "cookie"
+    }
+  ]
+}

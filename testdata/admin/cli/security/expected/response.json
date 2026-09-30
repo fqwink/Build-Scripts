@@ -1,0 +1,11 @@
+{
+  "cases": [
+    {
+      "name": "redirect-body-secret",
+      "status": 302,
+      "stderr": "api error: 302\n",
+      "body_output_allowed": false,
+      "location_output_allowed": false
+    }
+  ]
+}

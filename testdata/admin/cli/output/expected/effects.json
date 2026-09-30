@@ -1,0 +1,109 @@
+{
+  "external_calls": [
+    {
+      "order": 1,
+      "operation": "call",
+      "target": "admin_cli_api",
+      "input": {
+        "method": "GET",
+        "path": "/api/status",
+        "headers": {
+          "Authorization": "${secret:admin_cli_token}",
+          "Accept": "application/json",
+          "User-Agent": "adlaire-ci-admin/<binary-version>"
+        },
+        "body": null,
+        "timeout_milliseconds": 30000,
+        "redirect_policy": "manual",
+        "retry_count": 0,
+        "proxy_used": false,
+        "cookies_sent": 0
+      },
+      "output": {
+        "status": 401,
+        "body_size_bytes": 36,
+        "body_sha256": null,
+        "body_read_result": "success"
+      },
+      "result": "success",
+      "error_code": null
+    },
+    {
+      "order": 2,
+      "operation": "call",
+      "target": "admin_cli_api",
+      "input": {
+        "method": "GET",
+        "path": "/api/status",
+        "headers": {
+          "Authorization": "${secret:admin_cli_token}",
+          "Accept": "application/json",
+          "User-Agent": "adlaire-ci-admin/<binary-version>"
+        },
+        "body": null,
+        "timeout_milliseconds": 30000,
+        "redirect_policy": "manual",
+        "retry_count": 0,
+        "proxy_used": false,
+        "cookies_sent": 0
+      },
+      "output": {
+        "status": 200,
+        "body_size_bytes": 47,
+        "body_sha256": null,
+        "body_read_result": "success"
+      },
+      "result": "success",
+      "error_code": null
+    },
+    {
+      "order": 3,
+      "operation": "call",
+      "target": "admin_cli_api",
+      "input": {
+        "method": "GET",
+        "path": "/api/status",
+        "headers": {
+          "Authorization": "${secret:admin_cli_token}",
+          "Accept": "application/json",
+          "User-Agent": "adlaire-ci-admin/<binary-version>"
+        },
+        "body": null,
+        "timeout_milliseconds": 30000,
+        "redirect_policy": "manual",
+        "retry_count": 0,
+        "proxy_used": false,
+        "cookies_sent": 0
+      },
+      "output": {
+        "status": null,
+        "body_size_bytes": 0,
+        "body_sha256": null,
+        "body_read_result": "not_started"
+      },
+      "result": "failure",
+      "error_code": "connection_failed"
+    }
+  ],
+  "commands": [],
+  "notifications": [],
+  "downloads": [],
+  "streams": [],
+  "read_api_calls": [],
+  "unchanged_paths": [],
+  "deleted_paths": [],
+  "created_paths": [],
+  "updated_paths": [],
+  "write_order": [],
+  "forbidden_created_paths": [".admin_credentials", ".build_state", ".server_config"],
+  "forbidden_updated_paths": [".admin_credentials", ".build_state", ".server_config"],
+  "forbidden_deleted_paths": [".admin_credentials", ".build_state", ".server_config"],
+  "forbidden_writes": [".admin_credentials", ".build_state", ".server_config"],
+  "forbidden_calls": [
+    {
+      "category": "external_calls",
+      "operation": "call",
+      "target": "retry"
+    }
+  ]
+}
