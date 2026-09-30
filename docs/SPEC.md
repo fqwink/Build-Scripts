@@ -383,6 +383,10 @@ Phase を Pull Request の境界にすることは、Phase の一部分だけを
 
 `実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。必須 fixture、acceptance assertion、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
 
+バグ修正ゼロ化とは、実装済み機能について、既知の仕様不整合、未検証分岐、未固定の副作用、secret 漏えい可能性、状態 schema 揺れ、fixture 不足、環境依存の合格条件を実装後の追加修正へ残さない状態をいう。バグ修正ゼロ化は品質目標であり、仕様外の新機能追加、状態語彙の緩和、検証省略、または fixture 期待値の弱体化を許可する理由にしてはならない。
+
+バグ修正ゼロ化を目的とする Phase は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で対象 owner、対象機能、依存 Phase、現在状態を明示し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から対象詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できなければならない。個別の fixture 名、expected file、fake、実装検証証跡、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、statefile の lock、atomic write、strict schema、JSON Lines、read-only no mutation は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。
+
 <a id="49-仕様策定単位方針"></a>
 
 <a id="sec-4-9"></a>

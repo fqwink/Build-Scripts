@@ -128,6 +128,28 @@
 | Docker 検証 | `golang:1.22` container で `gofmt -w components/mcp.go components/mcp_test.go main.go main_test.go components/release.go` 実行後、`go test ./...` が成功した。 |
 | 状態反映 | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務では、Phase 10 `mcp`、[`components/mcp.go`](../../components/mcp.go)、[`main.go`](../../main.go)、および MCP サーバー機能群を `実装済み` と扱う。 |
 
+<a id="phase-11-quality-gate-contract"></a>
+**Phase 11 品質固定・正式 fixture harness 契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 11 の fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件だけを固定する。Phase 11 の現在状態と依存 Phase は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8)、詳細本文への入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 品質固定参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。
+
+| Phase 11 対象 | 必須証跡 | 合格条件 |
+|---------------|----------|----------|
+| `statefile` 共通永続化 | [`ALIGN-17`](#align-17)、[`docs/details/statefile.md` 詳細本文責務 Phase 11 statefile 品質固定対象](statefile.md#phase-11-statefile-quality-gate) に対応する `testdata/statefile/` fixture、`expected/effects.json`、I/O failure fake、並行更新 fixture。 | lock 内 read-modify-write、atomic write、JSON Lines append、strict schema、read-only no mutation、runtime directory mode `0700`、file / lock mode `0600`、rename 前後 failure、cleanup failure、lost update 防止、未知 key / 必須 key 欠落拒否を fixture で固定する。 |
+| API / SDK / UI cross fixture | [`ALIGN-03`](#align-03)、[`ALIGN-05`](#align-05)、[`ALIGN-15`](#align-15)、[`ALIGN-21`](#align-21)、[`ALIGN-23`](#align-23)、[`ALIGN-27`](#align-27)、[`ALIGN-31`](#align-31) に対応する `testdata/api/`、`testdata/sdk/`、`testdata/ui/` fixture、fake fetch / fake SDK transcript、response / SDK return / DOM assertion expected。 | endpoint、SDK method、UI 操作、request shape、response shape、status 別 UI 状態、成功後再取得、`409` / `422` / `429`、SSE terminal、body / query / path validation、state 不変を同一 fixture 群で固定する。 |
+| runner / security / external I/O regression | [`ALIGN-16`](#align-16)、[`ALIGN-18`](#align-18)、[`ALIGN-26`](#align-26)、[`ALIGN-32`](#align-32)、[`ALIGN-33`](#align-33)、[`ALIGN-34`](#align-34)、[`ALIGN-35`](#align-35)、[`ALIGN-36`](#align-36) に対応する `testdata/runner/`、`testdata/security/` fixture、fake GitHub server、fake ssh executable、fake notifier、fake filesystem、expected log / state / effects。 | 起動前検証、secret mask、GitHub schema、source materialize、SSH transfer、pending 保存失敗、finalizer、queue active 境界、output validation、build identity、REPORT 解析、warning 取り込み、終了結果保存を fixture で固定する。 |
+| output manifest / ID / binary version | [`ALIGN-29`](#align-29)、[`ALIGN-30`](#align-30)、[`ALIGN-37`](#align-37) に対応する cross fixture、expected manifest digest、ID collision fixture、version stdout fixture。 | output manifest は runner / API で同一算出結果にし、no-follow open 後 identity、hardlink、走査中変更、空 directory digest、ID suffix 上限、rollback / webhook id 境界、7 標準実行バイナリの `--version` を固定する。 |
+| 正式 fixture directory harness | [`ALIGN-07`](#align-07)、[`ALIGN-24`](#align-24)、[`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#sec-0g-8-f) に対応する manifest、input、expected、effects、security、実行 harness。 | Phase 11 対象 root の fixture manifest を実行 harness に接続し、未接続の fixture root、未実行 expected、未検証 failure injection、仕様外期待値を残さない。 |
+
+| acceptance gate | 合格条件 | 差し戻し条件 |
+|-----------------|----------|--------------|
+| 残証跡解消 | Phase 11 対象の `ALIGN-*` は、実装検証証跡で解消済みとして記録するか、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務で Phase 11 対象外の現在状態へ明示的に残す。 | Phase 11 対象の `ALIGN-*` に「後続証跡として残る」「未完了」「未作成」「未接続」が残る。 |
+| fixture completeness | Phase 11 対象の各 fixture は `manifest.json`、`input/`、`expected/`、必要な `expected/effects.json`、`expected/security.json`、fake transcript を持ち、manifest の owner / collaborator / feature / section が [manifest 識別子レジストリ固定契約](#sec-27-f-manifest-identity) に一致する。 | manifest 不在、owner 不一致、expected 不足、fake transcript 不足、fixture 名の衝突、host 固有 path、timestamp、乱数、実 network / 実 SSH / 実 GitHub / 実通知先への依存。 |
+| state mutation evidence | 状態変更 fixture は before / after、write order、no-op、partial failure、cleanup failure、read-only no mutation、secret mask の expected を持つ。 | 状態差分が expected で検証できない、更新済み file の自動 rollback を前提にする、read-only caller が file を作成または修復する、secret 原文を expected / log / stdout / stderr に含める。 |
+| runtime verification | Go 実装は `gofmt -l` と `go test ./...`、JavaScript 実装 artifact は Deno stable runtime による `deno check` の証跡を実装検証証跡へ記録する。 | 対象実装変更があるのに該当検証を未実行、または未実行理由が実装検証証跡にない。Node.js、npm、bundler、transpiler の成功を Deno 検証の代替にする。 |
+| scope exclusion | マルチユーザー対応、データストア切り替え、外部認証連携、管理 UI 静的 HTTP 配信、管理 UI 静的配布物構成・Archive 検証、ビルドキャッシュ、Prometheus、API バージョニング、API ドキュメント自動生成、読み取り専用共有リンクは Phase 11 の新規実装対象に含めない。 | Phase 11 の実装 PR で対象外機能の新規 endpoint、UI 操作、SDK method、状態 schema、配布物、外部連携を追加する。 |
+| completion evidence | Phase 11 完了時は、この節の対象表と acceptance gate の全行について pass / fail / 対象外理由を実装検証証跡に記録し、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の Phase 11 と対象機能の現在状態を同じ変更単位で整合する。 | pass / fail が未記録、対象外理由が [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務に到達しない、証跡だけ更新して実装または fixture harness が追随していない。 |
+
 以下は実在する実装 artifact と owner component 詳細本文を照合した、後続 Phase または横断 owner に残る証跡である。Phase 2 runner、Phase 3 api request lifecycle、Phase 4 api operations、Phase 5 sdk、Phase 6 ui、Phase 7 admin CLI、Phase 8 setup、Phase 9 release、および Phase 10 mcp の実装済み状態を取り消す一覧ではない。
 
 | ID | 対象 | 現在確認できる実装証跡 | 受け入れに必要な証跡 |

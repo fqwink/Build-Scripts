@@ -46,8 +46,9 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 8 | `setup` | 実装済み | Phase 7 |
 | Phase 9 | `release` | 実装済み | Phase 8 |
 | Phase 10 | `mcp` | 実装済み | Phase 9 |
+| Phase 11 | `statefile` / 正式 fixture directory harness / cross-owner regression gate | 仕様化済み・未実装 | Phase 10 |
 
-現在の active Phase は存在しない。初期実装 Phase 1 から Phase 10 まではすべて `実装済み` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
+現在の active Phase は Phase 11 である。初期実装 Phase 1 から Phase 10 まではすべて `実装済み` である。Phase 11 は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) のバグ修正ゼロ化に対応する品質固定 Phase として、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 品質固定参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) を入口に扱う。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 
 各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) を参照する。
 
@@ -67,6 +68,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 実装済み | 管理ツール・SDK | JavaScript SDK 公開契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | 管理ツール・UI | 標準管理ツール UI 契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 状態管理 | 状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 仕様化済み・未実装 | 検証基盤 | 正式 fixture directory harness / バグ修正ゼロ化品質ゲート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 品質固定参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的配布物構成・Archive 検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的 HTTP 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルドタイムアウト | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |

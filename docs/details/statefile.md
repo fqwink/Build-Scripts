@@ -1487,6 +1487,21 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 
 状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。
 
+<a id="phase-11-statefile-quality-gate"></a>
+**Phase 11 statefile 品質固定対象：**
+
+[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、Phase 11 の `statefile` owner 実装契約だけを固定する。Phase 11 の fixture、expected、fake、acceptance checklist、差し戻し条件は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 品質固定・正式 fixture harness 契約](fixture.md#phase-11-quality-gate-contract) を参照する。
+
+| 対象 | 実装契約 | 完了時に残してはならない状態 |
+|------|----------|------------------------------|
+| 共通 write adapter | runner と api が所有する runtime 状態ファイルの JSON object / JSON array / UTF-8 text 更新は、[状態ファイル更新手順](#statefile-update-procedure) を実行する単一の共通 write adapter を通す。既存 target の置換、create-only、chmod、file sync、parent directory sync、rename 前 cleanup、rename 後 failure の戻り値を adapter 外で分岐実装しない。 | `components/runner.go` と `components/api.go` に同じ write 手順の別実装、runtime directory mode `0755`、tmp 再利用、truncate write、parent sync 省略、chmod failure 成功扱いが残る。 |
+| locked update adapter | 既存値に基づく更新は [lock 内 read-modify-write adapter 固定契約](#statefile-locked-update-adapter-contract) を使用する。mutation callback は typed current value と事前確定済み業務入力だけを使用し、filesystem、network、command、clock、entropy、別 state lock、component memory lock を呼び出さない。 | lock 取得前に読んだ current value で保存する更新、read adapter と write adapter の分離による lost update、nested lock、複数 lock 同時保持、callback の副作用が残る。 |
+| JSON Lines append | JSON Lines 追記は 1 record 1 行、末尾 LF、lock、sync、secret mask、append failure の caller 返却を固定する append adapter を通す。壊れた行の read は [状態読取 adapter 固定契約](#statefile-read-adapter-contract) に従い、公開 response へ壊れた行数や内容を出さない。 | lock / sync なし direct append、部分行の成功扱い、壊れた行の無証跡無視、既存行 rewrite / sort / repair、secret 原文の log / expected 出力が残る。 |
+| strict schema adapter | JSON object / array / JSON Lines の読取と保存前検証は [strict schema 固定契約](#statefile-schema-strictness-contract) に従う。未知 key、必須 key 欠落、型不一致、nullable 不一致、enum 不一致、UTC 時刻形式不一致を暗黙修復せず失敗させる。 | 未知 key を保持または削除して成功扱いにする、欠落 key を read 時に保存へ補完する、型変換、旧 key migration、schema_version 変換、部分 schema の保存成功が残る。 |
+| read-only no mutation | read-only caller は [状態読取 adapter 固定契約](#statefile-read-adapter-contract) を通し、fallback 値を memory 上で返すだけにする。file 作成、chmod、lock 待機、lock 削除、corrupt backup、schema 変換保存、破損行除去書き戻しをしない。 | read endpoint、status / health / diagnostics / list 系処理が file を作成、修復、chmod、backup、正規化、lock 削除する副作用が残る。 |
+| path / mode | statefile owner が作成する runtime 状態 directory は `0700`、runtime 状態 file、tmp、lock は `0600` に固定する。path 解決は state dir 内だけを許可し、symlink 経由、absolute user input、`..`、secret path 逸脱を拒否する。 | state dir 外への書込、symlink 追従、runtime directory `0755`、file / lock `0644`、mode 不一致の成功扱い、path 原文や secret path の公開 log が残る。 |
+| caller 境界 | statefile owner は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当し、API / runner / security / archive の業務判断を代行しない。複数 file 更新では caller が定義した Write 列順を 1 file ずつ実行し、成功済み file の自動 rollback をしない。 | statefile adapter が endpoint、UI、SDK、build 成否、auth 成否、通知成否、archive 可否を判断する処理、または caller 固有 log を statefile owner が代行追記する処理が残る。 |
+
 <a id="sec-22-0d"></a>
 **22.0d 追加管理 API / MCP 状態 schema：**
 
