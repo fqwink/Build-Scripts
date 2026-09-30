@@ -1,0 +1,15 @@
+{
+  "name": "mcp-state-metrics-audit",
+  "section": "29.13-29.14",
+  "feature": "mcp_state_metrics_audit",
+  "category": "partial",
+  "owner_component": "mcp",
+  "components": ["mcp", "statefile"],
+  "references": [
+    "docs/details/mcp.md#sec-29-13",
+    "docs/details/fixture.md#mcp-fixture-contract",
+    "docs/details/statefile.md#sec-22-0d"
+  ],
+  "assertions": ["state", "logs", "effects", "secret-mask", "order", "idempotency"],
+  "not_applicable": ["request", "response", "events"]
+}

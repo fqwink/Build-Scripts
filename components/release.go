@@ -120,6 +120,7 @@ func SetBinaryVersion(version string) {
 	adminBinaryVersion = version
 	setupBinaryVersion = version
 	releaseBinaryVersion = version
+	mcpBinaryVersion = version
 }
 
 func RunRelease(args []string, stdout, stderr io.Writer) int {

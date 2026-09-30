@@ -1,0 +1,14 @@
+{
+  "name": "mcp-prompts",
+  "section": "29.9",
+  "feature": "mcp_prompts",
+  "category": "noop",
+  "owner_component": "mcp",
+  "components": ["mcp"],
+  "references": [
+    "docs/details/mcp.md#sec-29-9",
+    "docs/details/fixture.md#mcp-fixture-contract"
+  ],
+  "assertions": ["response", "effects", "secret-mask", "no-write"],
+  "not_applicable": ["request", "state", "logs", "events"]
+}

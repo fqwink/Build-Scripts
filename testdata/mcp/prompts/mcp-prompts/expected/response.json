@@ -1,0 +1,3 @@
+{
+  "prompts": ["adlaire.buildFailureTriage", "adlaire.releaseReadiness", "adlaire.configReview"]
+}

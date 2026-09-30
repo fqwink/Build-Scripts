@@ -587,9 +587,9 @@ confirmation_id は memory only とし、statefile へ保存しない。
 confirmation_id は `mcpconf_` + 128 bit 以上の乱数を Crockford Base32 26 文字で表現する。params hash は confirmation_id を除いた canonical JSON の SHA-256 lowercase hex とする。期限切れ、tool 名不一致、params hash 不一致、read-only mode、scope 不足は tool を実行せず、audit と metrics を更新しない。
 
 <a id="sec-29-16"></a>
-**29.16 仕様化済み対象：**
+**29.16 詳細仕様対象：**
 
-本書は以下を仕様化済み・未実装の詳細仕様として定義する。
+本書は以下の `mcp` owner component 詳細仕様を定義する。現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。
 
 | 機能 | 詳細仕様 |
 |------|----------|

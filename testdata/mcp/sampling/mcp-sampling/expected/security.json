@@ -1,0 +1,5 @@
+{
+  "raw_secret_values_present": false,
+  "forbidden_values": ["Authorization", "Bearer", "secret-token"],
+  "mask": "***"
+}

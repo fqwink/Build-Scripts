@@ -1,0 +1,5 @@
+{
+  "tool": "adlaire.analyzeBuildError",
+  "contains_sampling_request": true,
+  "stores_sampling_body": false
+}

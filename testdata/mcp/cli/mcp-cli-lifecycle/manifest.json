@@ -1,0 +1,14 @@
+{
+  "name": "mcp-cli-lifecycle",
+  "section": "29.0-29.3",
+  "feature": "mcp_cli_lifecycle",
+  "category": "partial",
+  "owner_component": "mcp",
+  "components": ["mcp"],
+  "references": [
+    "docs/details/mcp.md#sec-29-0",
+    "docs/details/fixture.md#mcp-fixture-contract"
+  ],
+  "assertions": ["stdout", "stderr", "effects", "secret-mask"],
+  "not_applicable": ["request", "response", "state", "logs", "events"]
+}

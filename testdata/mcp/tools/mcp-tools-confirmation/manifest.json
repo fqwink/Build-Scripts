@@ -1,0 +1,15 @@
+{
+  "name": "mcp-tools-confirmation",
+  "section": "29.6,29.15",
+  "feature": "mcp_tools_confirmation",
+  "category": "partial",
+  "owner_component": "mcp",
+  "components": ["mcp", "runner", "statefile"],
+  "references": [
+    "docs/details/mcp.md#sec-29-6",
+    "docs/details/fixture.md#mcp-fixture-contract",
+    "docs/details/statefile.md#sec-22-0d"
+  ],
+  "assertions": ["response", "state", "logs", "effects", "secret-mask", "order", "idempotency"],
+  "not_applicable": ["request", "events"]
+}

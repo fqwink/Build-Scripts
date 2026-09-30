@@ -1,0 +1,9 @@
+{
+  "created": {
+    ".mcp_audit_log": "append-only-json-lines",
+    ".mcp_metrics": "json-object",
+    ".build_state": "json-object"
+  },
+  "updated": {},
+  "deleted": []
+}

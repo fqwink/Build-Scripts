@@ -1,0 +1,15 @@
+{
+  "name": "mcp-sampling",
+  "section": "29.10",
+  "feature": "mcp_sampling",
+  "category": "partial",
+  "owner_component": "mcp",
+  "components": ["mcp", "statefile"],
+  "references": [
+    "docs/details/mcp.md#sec-29-10",
+    "docs/details/fixture.md#mcp-fixture-contract",
+    "docs/details/statefile.md#sec-22-0d"
+  ],
+  "assertions": ["response", "state", "effects", "secret-mask", "order"],
+  "not_applicable": ["logs", "events"]
+}

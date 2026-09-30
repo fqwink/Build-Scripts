@@ -1,0 +1,9 @@
+{
+  "created_paths": [".mcp_config", ".mcp_audit_log", ".mcp_client_log", ".mcp_metrics"],
+  "updated_paths": [],
+  "deleted_paths": [],
+  "unchanged_paths": [],
+  "forbidden_writes": [],
+  "external_calls": [],
+  "write_order": [".mcp_client_log", ".mcp_audit_log", ".mcp_metrics"]
+}

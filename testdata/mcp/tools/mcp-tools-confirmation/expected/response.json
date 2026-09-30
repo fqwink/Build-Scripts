@@ -1,0 +1,5 @@
+{
+  "confirmation_required_code": -32004,
+  "confirmation_prefix": "mcpconf_",
+  "success_wrap": {"ok": true, "warnings": []}
+}

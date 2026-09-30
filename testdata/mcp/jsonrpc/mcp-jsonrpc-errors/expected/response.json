@@ -1,0 +1,3 @@
+{
+  "cases": ["parse_error", "invalid_request", "batch_not_allowed", "method_not_found", "invalid_params", "unauthorized", "forbidden", "timeout"]
+}

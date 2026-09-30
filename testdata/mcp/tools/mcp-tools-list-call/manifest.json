@@ -1,0 +1,14 @@
+{
+  "name": "mcp-tools-list-call",
+  "section": "29.5-29.6",
+  "feature": "mcp_tools_list_call",
+  "category": "partial",
+  "owner_component": "mcp",
+  "components": ["mcp"],
+  "references": [
+    "docs/details/mcp.md#sec-29-5",
+    "docs/details/fixture.md#mcp-fixture-contract"
+  ],
+  "assertions": ["response", "state", "effects", "secret-mask"],
+  "not_applicable": ["request", "logs", "events"]
+}
