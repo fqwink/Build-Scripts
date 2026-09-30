@@ -338,6 +338,22 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 
 不正 record は完了証跡として扱わない。不正 record とは、`spec_refs` が空、`evidence_refs` が空、`status=closed` で `open_items` が空でない、`status=not_applicable` で `not_applicable_reason` または対象外理由 anchor がない、`status=open` を残したまま完了扱いにしている、または `closure_item` が [test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) の項目へ対応しない record を指す。
 
+<a id="test-verification-closure-record-set-contract"></a>
+**test verification closure record set 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、[test verification closure record schema 固定契約](#test-verification-closure-record-schema-contract) の record を完了判定単位として束ねる条件だけを固定する。Pull Request 本文への記録手順は [`AGENTS.md` Git 運用ルール](../../AGENTS.md#agents-git-operations)、完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) と [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit) を参照する。
+
+closure record set は、単一の検証対象単位ごとに 1 組作成する。検証対象単位は、1 つの実装 PR、1 つの fixture harness closure、1 つの owner artifact 検証、または 1 つの Phase 全体完了判定のいずれかに固定する。同じ closure record set で複数の検証対象単位を混在させてはならない。
+
+| 固定項目 | 契約 | 未完了条件 |
+|----------|------|------------|
+| record 数 | 1 つの closure record set は `scope_inventory`、`traceability_closure`、`fixture_root_closure`、`execution_evidence_closure`、`mutation_closure`、`contract_drift_closure`、`cross_owner_closure`、`final_open_item_count` の 8 record だけを各 1 件持つ。 | 8 件未満、9 件以上、同じ `closure_item` の重複、未登録 `closure_item` がある。 |
+| record 順序 | record を配列または箇条書きで記録する場合は、[test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) の表順と同じ順序にする。 | 順序不一致により review 時に欠落または重複を判定できない。 |
+| status closure | 完了扱いにできる closure record set は、全 record の `status` が `closed` または `not_applicable` であり、全 record の `open_items` が空であり、`final_open_item_count` が残件 `0` を示す。 | `status=open`、`open_items` 残存、残件数未記録、または残件を別変更で解消すると記録している。 |
+| scope consistency | 全 record の `owner_component`、`collaborator_components`、`artifacts`、`test_artifacts`、`fixture_roots`、`spec_refs`、`evidence_refs` は同じ検証対象単位を指す。 | record 間で対象 owner、artifact、fixture root、または根拠 anchor が別範囲を指している。 |
+| not applicable | `status=not_applicable` は、対象外理由、対象外にする owner / artifact / fixture root、責務正本 anchor、完了可否への影響を同じ record に持つ。 | 理由だけ、または anchor だけで対象外範囲と完了可否への影響が不明である。 |
+| PR evidence | 実装変更、検証変更、fixture 変更、または mutation test / contract drift の完了可否に関わる変更では、Pull Request の `Verification` に closure record set の記録先、または対象外理由を記録する。 | Pull Request 上で closure record set の所在、対象外理由、または未完了扱いが確認できない。 |
+
 <a id="mutation-test-evidence-contract"></a>
 **mutation test 証跡固定契約：**
 

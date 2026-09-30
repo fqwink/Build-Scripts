@@ -21,6 +21,7 @@
 | 検証実行証跡の分類と未完了条件 | [`docs/details/fixture.md` fixture 証跡責務 test execution evidence matrix 固定契約](details/fixture.md#test-execution-evidence-matrix-contract) |
 | 検証証跡クロージャと open item 0 判定 | [`docs/details/fixture.md` fixture 証跡責務 test verification closure checklist 固定契約](details/fixture.md#test-verification-closure-checklist-contract) |
 | 検証証跡クロージャ記録 schema | [`docs/details/fixture.md` fixture 証跡責務 test verification closure record schema 固定契約](details/fixture.md#test-verification-closure-record-schema-contract) |
+| 検証証跡クロージャ記録 set | [`docs/details/fixture.md` fixture 証跡責務 test verification closure record set 固定契約](details/fixture.md#test-verification-closure-record-set-contract) |
 | 生成静的 Web サイトと標準管理 UI のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
 | 利用入口 | [`README.md`](../README.md) |
 
