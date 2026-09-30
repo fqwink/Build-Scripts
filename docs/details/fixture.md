@@ -297,6 +297,24 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | cross-owner contract 検証 | API / SDK / UI、CLI / API、statefile / archive / security / runner、setup / release / admin の横断境界。 | 呼び出し元 owner、呼び出し先 owner、endpoint / method / command / state path、状態差分、security effect、成功後再取得、失敗時 no mutation、関連 fixture。 | 片側の契約だけを検証している、または collaborator の副作用、security、状態差分、失敗時固定が未確認。 |
 | 未実行・対象外証跡 | 必須検証を実行できない場合、または仕様上対象外とする場合。 | 未実行 command、未実行理由、影響 owner、影響 fixture、再実行条件、対象外にする責務正本 anchor、完了可否への影響。 | 必須検証の未実行理由がない、対象外 anchor がない、または未実行のまま完了扱いにしている。 |
 
+<a id="test-verification-closure-checklist-contract"></a>
+**test verification closure checklist 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、実装検証証跡を完了扱いにする直前のクロージャ項目だけを固定する。テスト方針、完了可否、mutation test 必須条件は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、Phase 11 仕様全般完了は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit)、現在状態と対象外理由は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、実在 test artifact と fixture root の所在は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 実装・テスト・fixture 所在](../DOCUMENT_INDEX.md#実装ファイル一覧) を参照する。
+
+実装検証証跡のクロージャ記録は、下表の全項目を `closed` または `not_applicable` として根拠 anchor 付きで記録する。`not_applicable` は、対象機能、対象 owner、対象 fixture root、対象外理由の正本 anchor がある場合だけ使用できる。`open`、根拠 anchor なし、実行結果だけ、または pass 件数だけの記録は、完了証跡として扱わない。
+
+| クロージャ項目 | 閉じる条件 | 未完了条件 |
+|----------------|------------|------------|
+| scope inventory | 対象 owner、collaborator、実装 artifact、test artifact、fixture root、owner 詳細本文 anchor、fixture 証跡 anchor、状態・計画 anchor が 1 件以上記録されている。 | 対象 artifact、対象 owner、または参照 anchor のいずれかが未記録。 |
+| traceability closure | 変更または対象にした test、subtest、contract assertion、fixture assertion が [test artifact traceability 固定契約](#test-artifact-traceability-contract) へ接続されている。 | 孤立 test、孤立 assertion、仕様に存在しない期待値が残る。 |
+| fixture root closure | 対象 fixture root が [fixture root coverage matrix 固定契約](#fixture-root-coverage-matrix-contract) の正式 fixture、実装検証証跡、または対象外理由へ到達できる。 | 未作成 root、未接続 root、重複 fixture、catalog 未登録 directory、harness 未参照 directory が残る。 |
+| execution evidence closure | 必須検証ごとに、対象 artifact、対象 owner、対象 fixture、実行 command、終了 code、期待結果、実結果、未実行理由、完了可否への影響が [test execution evidence matrix 固定契約](#test-execution-evidence-matrix-contract) の分類で記録されている。 | 実行成功だけの記録、scope 不明、必須検証の未実行理由なし、または標準外 runtime を代替根拠にしている。 |
+| mutation closure | 対象変更に適用する mutation class、対象 file、対象 fixture、判定、集計が [mutation test 証跡固定契約](#mutation-test-evidence-contract) に従い、`survived=0` である。 | mutation class 未定義、判定不能、`survived` 残存、`invalid` / `equivalent` の根拠 anchor 不足。 |
+| contract drift closure | [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の孤立 test、未検証契約、期待値ドリフト、harness ドリフトが 0 件である。 | いずれかの drift 種別が 1 件以上残る。 |
+| cross-owner closure | API / SDK / UI、CLI / API、statefile / archive / security / runner、setup / release / admin の横断境界について、呼び出し元 owner、呼び出し先 owner、状態差分、security effect、成功後再取得、失敗時 no mutation が記録されている。 | 片側 owner のみの確認、collaborator 副作用未確認、security expected 未接続、失敗時固定なし。 |
+| final open item count | 上記全項目の未完了条件が 0 件であり、残 open item が `0` として記録されている。 | open item が 1 件以上ある、件数が未記録、または残件を別変更で解消するとしている。 |
+
 <a id="mutation-test-evidence-contract"></a>
 **mutation test 証跡固定契約：**
 
