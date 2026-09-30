@@ -1,0 +1,121 @@
+{
+  "entropy": [],
+  "filesystem": [],
+  "timer": [],
+  "listener": [],
+  "signal": [],
+  "github": [],
+  "ssh": [],
+  "smtp": [],
+  "webhook": [],
+  "systemd": [],
+  "command": [],
+  "fetch": [
+    {
+      "order": 1,
+      "operation": "request",
+      "target": "admin_cli_api",
+      "input": {
+        "method": "GET",
+        "path": "/api/status",
+        "headers": {
+          "Authorization": "${secret:admin_cli_token}",
+          "Accept": "application/json",
+          "User-Agent": "adlaire-ci-admin/<binary-version>"
+        },
+        "body": null,
+        "timeout_milliseconds": 30000,
+        "redirect_policy": "manual",
+        "retry_count": 0,
+        "proxy_used": false,
+        "cookies_sent": 0
+      },
+      "output": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"last_build_status\":\"success\",\"running\":false}",
+        "body_size_bytes": 47,
+        "body_sha256": null,
+        "body_read_result": "success"
+      },
+      "result": "success",
+      "error_code": null
+    },
+    {
+      "order": 2,
+      "operation": "request",
+      "target": "admin_cli_api",
+      "input": {
+        "method": "POST",
+        "path": "/api/build",
+        "headers": {
+          "Authorization": "${secret:admin_cli_token}",
+          "Accept": "application/json",
+          "User-Agent": "adlaire-ci-admin/<binary-version>",
+          "Content-Type": "application/json"
+        },
+        "body": "{}",
+        "timeout_milliseconds": 30000,
+        "redirect_policy": "manual",
+        "retry_count": 0,
+        "proxy_used": false,
+        "cookies_sent": 0
+      },
+      "output": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": "{\"queued\":true,\"queue_id\":\"q2026093001\",\"dispatch\":\"requested\"}",
+        "body_size_bytes": 64,
+        "body_sha256": null,
+        "body_read_result": "success"
+      },
+      "result": "success",
+      "error_code": null
+    },
+    {
+      "order": 3,
+      "operation": "request",
+      "target": "admin_cli_api",
+      "input": {
+        "method": "POST",
+        "path": "/adlaire/api/config-snapshots",
+        "headers": {
+          "Authorization": "${secret:admin_cli_token}",
+          "Accept": "application/json",
+          "User-Agent": "adlaire-ci-admin/<binary-version>",
+          "Content-Type": "application/json"
+        },
+        "body": "{\"label\":\"nightly\"}",
+        "timeout_milliseconds": 30000,
+        "redirect_policy": "manual",
+        "retry_count": 0,
+        "proxy_used": false,
+        "cookies_sent": 0
+      },
+      "output": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"id\":\"snap001\"}",
+        "body_size_bytes": 16,
+        "body_sha256": null,
+        "body_read_result": "success"
+      },
+      "result": "success",
+      "error_code": null
+    }
+  ],
+  "sdk": [],
+  "archive": [],
+  "download": [],
+  "git": [],
+  "mtime": [],
+  "manifest": [],
+  "cache": [],
+  "clipboard": []
+}

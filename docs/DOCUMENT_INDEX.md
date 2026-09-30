@@ -66,8 +66,8 @@
 | [`components/runner_test.go`](../components/runner_test.go) | `runner` test | 実在 |
 | [`components/api.go`](../components/api.go) | `api` | 実在 |
 | [`components/api_test.go`](../components/api_test.go) | `api` test | 実在 |
-| `components/admin.go` | `admin` CLI | 未作成 |
-| `components/admin_test.go` | `admin` CLI test | 未作成 |
+| [`components/admin.go`](../components/admin.go) | `admin` CLI | 実在 |
+| [`components/admin_test.go`](../components/admin_test.go) | `admin` CLI test | 実在 |
 | `components/setup.go` | `setup` | 未作成 |
 | `components/setup_test.go` | `setup` test | 未作成 |
 | `components/release.go` | `release` | 未作成 |
@@ -85,7 +85,7 @@
 | `testdata/runner/` | `runner` fixture root | 未作成 |
 | `testdata/api/` | `api` fixture root | 未作成 |
 | `testdata/api/additional-management/` | 追加管理 API fixture root | 未作成 |
-| `testdata/admin/` | `admin` fixture root | 未作成 |
+| [`testdata/admin/`](../testdata/admin/) | `admin` fixture root | 実在 |
 | `testdata/sdk/` | `sdk` fixture root | 未作成 |
 | `testdata/sdk/additional-management/` | 追加管理 SDK fixture root | 未作成 |
 | `testdata/ui/` | `ui` fixture root | 未作成 |

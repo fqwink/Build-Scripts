@@ -21,6 +21,8 @@ func dispatchMain(name string, args []string, stdout io.Writer, stderr io.Writer
 		return components.RunRunner(args, stdout, stderr)
 	case "adlaire-ci-api":
 		return components.RunAPI(args, os.Stdin, stdout, stderr)
+	case "adlaire-ci-admin":
+		return components.RunAdmin(args, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command: %s\n", name)
 		return 2

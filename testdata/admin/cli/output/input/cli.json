@@ -1,0 +1,31 @@
+{
+  "cases": [
+    {
+      "name": "http-error",
+      "binary": "adlaire-ci-admin",
+      "argv": ["--api-url", "http://127.0.0.1:8765", "--token", "${secret:admin_cli_token}", "status"],
+      "env": {},
+      "cwd": ".",
+      "stdin": null,
+      "expected_exit_code": 1
+    },
+    {
+      "name": "invalid-json",
+      "binary": "adlaire-ci-admin",
+      "argv": ["--api-url", "http://127.0.0.1:8765", "--token", "${secret:admin_cli_token}", "status"],
+      "env": {},
+      "cwd": ".",
+      "stdin": null,
+      "expected_exit_code": 1
+    },
+    {
+      "name": "network-error",
+      "binary": "adlaire-ci-admin",
+      "argv": ["--api-url", "http://127.0.0.1:8765", "--token", "${secret:admin_cli_token}", "status"],
+      "env": {},
+      "cwd": ".",
+      "stdin": null,
+      "expected_exit_code": 1
+    }
+  ]
+}

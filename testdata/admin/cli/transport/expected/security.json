@@ -1,0 +1,16 @@
+{
+  "forbidden_plaintexts": [
+    {
+      "id": "admin_cli_token",
+      "source_file": "input/cli.json",
+      "source_pointer": "/cases/0/argv/3"
+    }
+  ],
+  "forbidden_headers": ["authorization", "cookie", "set-cookie"],
+  "forbidden_state_values": [],
+  "allowed_one_time_response_fields": [],
+  "hash_only_fields": [],
+  "memory_only_values": ["admin_cli_token"],
+  "one_time_response_assertions": [],
+  "scope_decisions": []
+}
