@@ -2,8 +2,33 @@
   "name": "success-release-assets-reproducible",
   "section": "R1-R7",
   "feature": "release_contract",
+  "category": "success",
   "owner_component": "release",
-  "collaborator_components": [],
-  "expected_result": "success",
-  "error_code": ""
+  "collaborator_components": [
+    "admin",
+    "setup"
+  ],
+  "components": [
+    "admin",
+    "release",
+    "setup"
+  ],
+  "references": [
+    "docs/details/release.md#release-responsibility-boundary",
+    "docs/details/fixture.md#release-fixture-contract",
+    "docs/details/admin.md#0-責務境界",
+    "docs/details/setup.md#0-責務境界"
+  ],
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/fakes.json"
+  ],
+  "assertions": [
+    "stdout",
+    "stderr",
+    "effects",
+    "secret-mask"
+  ]
 }

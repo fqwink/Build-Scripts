@@ -2,8 +2,26 @@
   "name": "partial-release-remote-race-cleanup",
   "section": "R1-R7",
   "feature": "release_contract",
+  "category": "partial",
   "owner_component": "release",
   "collaborator_components": [],
-  "expected_result": "failure",
-  "error_code": "PUBLISH_FAILED"
+  "components": [
+    "release"
+  ],
+  "references": [
+    "docs/details/release.md#release-responsibility-boundary",
+    "docs/details/fixture.md#release-fixture-contract"
+  ],
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/fakes.json"
+  ],
+  "assertions": [
+    "stdout",
+    "stderr",
+    "effects",
+    "secret-mask"
+  ]
 }
