@@ -292,6 +292,7 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | Go 構文・単体・contract 検証 | `main.go`、`components/*.go`、`*_test.go`、Go contract test。 | 対象 Go file、対象 test artifact、owner / collaborator、fixture root、実行 command、終了 code、差分有無、pass / fail、scope を限定した理由。 | Go 実装または Go test を変更したのに、対象 artifact と owner へ接続された Go 検証結果がない。 |
 | JavaScript / UI 静的検証 | `admin/adlaire-ci-sdk.js`、`admin/index.html`、SDK / UI contract。 | 対象 artifact、Deno stable runtime での検証結果、SDK / UI owner、関連 API / security collaborator、実行 command、終了 code、pass / fail。 | JavaScript 系 artifact または UI contract を変更したのに、Deno 検証証跡がない、または Node.js / npm / bundler を標準検証の代替として扱っている。 |
 | fixture schema / manifest 検証 | `testdata/`、`manifest.json`、`expected/`、`effects`、`security expected`。 | 対象 fixture root、fixture 名、directory 名、`manifest.json.name`、catalog 名、schema 検証結果、expected / effects / security expected の照合結果。 | manifest、directory、catalog、expected の対応が閉じていない、または [fixture root coverage matrix 固定契約](#fixture-root-coverage-matrix-contract) の未完了条件が残る。 |
+| test oracle 検証 | expected / actual 比較、negative case、状態差分、effects、security expected、禁止出力、禁止外部通信、失敗時 no mutation。 | 対象 owner、対象 anchor、入力、expected file、actual 取得元、比較単位、positive / negative case、禁止副作用、完了可否。 | [test oracle evidence set 固定契約](#test-oracle-evidence-set-contract) の未完了条件が残る。 |
 | test / contract drift 検証 | test、contract test、fixture assertion、owner 詳細本文の対応。 | test artifact、assertion 名または fixture 名、owner 詳細本文 anchor、fixture 証跡 anchor、drift 判定結果。 | [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の孤立 test、未検証契約、期待値ドリフト、harness ドリフトが残る。 |
 | test determinism 検証 | clock、timer、entropy、file order、map order、filesystem、network、GitHub API、systemd、process、browser runtime、parallel worker、retry 境界。 | 対象 artifact、対象 owner、変動要因、fake adapter、同一入力再実行結果、順序入替 case、禁止実環境依存、完了可否。 | [test determinism evidence set 固定契約](#test-determinism-evidence-set-contract) の未完了条件が残る。 |
 | mutation test 検証 | 実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion。 | mutation class、対象 file、対象 fixture、実行単位、判定、`killed` / `survived` / `invalid` / `equivalent` 件数。 | [mutation test 証跡固定契約](#mutation-test-evidence-contract) の `survived` が 1 件以上ある、または対象 mutation が未定義。 |
@@ -311,6 +312,7 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | traceability closure | 変更または対象にした test、subtest、contract assertion、fixture assertion が [test artifact traceability 固定契約](#test-artifact-traceability-contract) へ接続されている。 | 孤立 test、孤立 assertion、仕様に存在しない期待値が残る。 |
 | fixture root closure | 対象 fixture root が [fixture root coverage matrix 固定契約](#fixture-root-coverage-matrix-contract) の正式 fixture、実装検証証跡、または対象外理由へ到達できる。 | 未作成 root、未接続 root、重複 fixture、catalog 未登録 directory、harness 未参照 directory が残る。 |
 | execution evidence closure | 必須検証ごとに、対象 artifact、対象 owner、対象 fixture、実行 command、終了 code、期待結果、実結果、未実行理由、完了可否への影響が [test execution evidence matrix 固定契約](#test-execution-evidence-matrix-contract) の分類で記録されている。 | 実行成功だけの記録、scope 不明、必須検証の未実行理由なし、または標準外 runtime を代替根拠にしている。 |
+| oracle closure | 対象変更に関わる expected / actual、positive / negative case、状態差分、effects、security expected、禁止副作用、失敗時 no mutation が [test oracle evidence set 固定契約](#test-oracle-evidence-set-contract) に従い、責務正本 anchor と比較単位へ接続されている。 | 弱い oracle、実装結果の丸写し、snapshot 無条件受け入れ、status code だけ、fixture 存在だけ、禁止副作用未確認、失敗時 no mutation 未確認が残る。 |
 | determinism closure | 対象変更に関わる clock、timer、entropy、file order、map order、filesystem、network、process、parallel worker、retry 境界が [test determinism evidence set 固定契約](#test-determinism-evidence-set-contract) に従い、同一入力再実行と変動要因固定で同一結果を示す。 | flaky、retry pass、実時間、乱数、外部応答、OS 差分、順序差に依存する合格条件が残る。 |
 | mutation closure | 対象変更に適用する mutation class、対象 file、対象 fixture、判定、集計が [mutation test 証跡固定契約](#mutation-test-evidence-contract) に従い、`survived=0` である。 | mutation class 未定義、判定不能、`survived` 残存、`invalid` / `equivalent` の根拠 anchor 不足。 |
 | contract drift closure | [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の孤立 test、未検証契約、期待値ドリフト、harness ドリフトが 0 件である。 | いずれかの drift 種別が 1 件以上残る。 |
@@ -326,7 +328,7 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 
 | field | 固定値 / 形式 | 必須条件 |
 |-------|---------------|----------|
-| `closure_item` | `scope_inventory`、`traceability_closure`、`fixture_root_closure`、`execution_evidence_closure`、`determinism_closure`、`mutation_closure`、`contract_drift_closure`、`cross_owner_closure`、`final_open_item_count` のいずれか。 | [test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) のクロージャ項目と一致する。 |
+| `closure_item` | `scope_inventory`、`traceability_closure`、`fixture_root_closure`、`execution_evidence_closure`、`oracle_closure`、`determinism_closure`、`mutation_closure`、`contract_drift_closure`、`cross_owner_closure`、`final_open_item_count` のいずれか。 | [test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) のクロージャ項目と一致する。 |
 | `status` | `closed`、`not_applicable`、`open` のいずれか。 | `closed` は未完了条件 0 件、`not_applicable` は対象外理由 anchor あり、`open` は未解消項目ありの場合だけ使用する。 |
 | `owner_component` | 対象 owner component 名。 | 対象がある record では空にしてはならない。owner component の正本は [`docs/SPEC.md` 責務文書構成表](../SPEC.md#document-responsibility-map) と対象詳細本文を参照する。 |
 | `collaborator_components` | collaborator component 名の配列。該当なしの場合は空配列。 | 横断境界、API / SDK / UI、statefile / archive / security / runner、setup / release / admin の接続がある場合は空配列にしてはならない。 |
@@ -349,12 +351,31 @@ closure record set は、単一の検証対象単位ごとに 1 組作成する�
 
 | 固定項目 | 契約 | 未完了条件 |
 |----------|------|------------|
-| record 数 | 1 つの closure record set は `scope_inventory`、`traceability_closure`、`fixture_root_closure`、`execution_evidence_closure`、`determinism_closure`、`mutation_closure`、`contract_drift_closure`、`cross_owner_closure`、`final_open_item_count` の 9 record だけを各 1 件持つ。 | 9 件未満、10 件以上、同じ `closure_item` の重複、未登録 `closure_item` がある。 |
+| record 数 | 1 つの closure record set は `scope_inventory`、`traceability_closure`、`fixture_root_closure`、`execution_evidence_closure`、`oracle_closure`、`determinism_closure`、`mutation_closure`、`contract_drift_closure`、`cross_owner_closure`、`final_open_item_count` の 10 record だけを各 1 件持つ。 | 10 件未満、11 件以上、同じ `closure_item` の重複、未登録 `closure_item` がある。 |
 | record 順序 | record を配列または箇条書きで記録する場合は、[test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) の表順と同じ順序にする。 | 順序不一致により review 時に欠落または重複を判定できない。 |
 | status closure | 完了扱いにできる closure record set は、全 record の `status` が `closed` または `not_applicable` であり、全 record の `open_items` が空であり、`final_open_item_count` が残件 `0` を示す。 | `status=open`、`open_items` 残存、残件数未記録、または残件を別変更で解消すると記録している。 |
 | scope consistency | 全 record の `owner_component`、`collaborator_components`、`artifacts`、`test_artifacts`、`fixture_roots`、`spec_refs`、`evidence_refs` は同じ検証対象単位を指す。 | record 間で対象 owner、artifact、fixture root、または根拠 anchor が別範囲を指している。 |
 | not applicable | `status=not_applicable` は、対象外理由、対象外にする owner / artifact / fixture root、責務正本 anchor、完了可否への影響を同じ record に持つ。 | 理由だけ、または anchor だけで対象外範囲と完了可否への影響が不明である。 |
-| PR evidence | 実装変更、検証変更、fixture 変更、または mutation test / contract drift の完了可否に関わる変更では、Pull Request の `Verification` に closure record set の記録先、または対象外理由を記録する。 | Pull Request 上で closure record set の所在、対象外理由、または未完了扱いが確認できない。 |
+| PR evidence | 実装変更、検証変更、fixture 変更、または意味のあるテスト / oracle / mutation test / contract drift の完了可否に関わる変更では、Pull Request の `Verification` に closure record set の記録先、または対象外理由を記録する。 | Pull Request 上で closure record set の所在、対象外理由、または未完了扱いが確認できない。 |
+
+<a id="test-oracle-evidence-set-contract"></a>
+**test oracle evidence set 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、[`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) の oracle 条件を、対象変更単位ごとに完了判定できる証跡 set として記録する条件だけを固定する。弱い oracle、実装結果の丸写し、snapshot 無条件受け入れ、status code だけの確認、fixture 存在だけの確認、禁止副作用未確認の完了禁止は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、Pull Request 本文への記録手順は [`AGENTS.md` Git 運用ルール](../../AGENTS.md#agents-git-operations) を参照する。
+
+oracle evidence set は、単一の対象変更単位ごとに 1 組作成する。対象変更単位は、1 つの実装変更、1 つの検証変更、1 つの fixture / expected 変更、1 つの owner artifact 検証、または 1 つの Phase 全体完了判定のいずれかに固定する。同じ oracle evidence set で複数の対象変更単位を混在させてはならない。
+
+| 固定項目 | 契約 | 未完了条件 |
+|----------|------|------------|
+| oracle scope | 対象 owner、collaborator、対象 file、対象 test / fixture / expected / assertion、対象仕様 anchor、検出したい仕様違反を記録する。 | 対象 artifact、assertion、または責務正本 anchor が空であり、対象外理由もない。 |
+| input / expected / actual | 入力 fixture、fake input、expected file、actual 取得元、比較単位、比較方法、正規化有無を記録する。 | expected と actual の取得元が不明、実装出力をそのまま expected 化している、または比較単位が不明である。 |
+| positive / negative case | 正常系だけでなく、入力不正、権限不足、欠損、境界値、外部失敗、timeout、partial failure、rollback、cleanup failure の該当 case を記録する。 | 正常系だけ、または対象機能が持つ失敗系を対象外 anchor なしで省略している。 |
+| response / exit / error | HTTP status、JSON body、error code、CLI stdout、CLI stderr、exit code、SDK error、MCP JSON-RPC error の該当項目を固定する。 | status code だけ、stderr 空だけ、response body 不問、error class 不問、または終了 code 不問である。 |
+| state / effects / security | 状態差分、write order、updated / unchanged / forbidden paths、外部通信、notification、log、audit、cache、secret 非露出を固定する。 | 状態差分なし、禁止副作用未確認、security expected 未接続、または secret 出力確認なしである。 |
+| failure no mutation | 失敗 case では、業務状態、secret、audit、metrics、cache、snapshot、queue、external call の変更可否を固定し、禁止 mutation を `expected/effects.json` または同等の証跡へ接続する。 | 失敗時に何が変わらないか不明、または partial failure の許可副作用と禁止副作用が分離されていない。 |
+| closure connection | [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の `oracle_closure` record から oracle evidence set の所在へ到達できる。 | closure record set と oracle evidence set の対象 owner、artifact、fixture root、または scope が一致しない。 |
+
+oracle evidence set は、対象変更単位に含まれる expected、assertion、state diff、effects、security expected、error assertion、または failure case が 1 つでも責務正本 anchor と比較単位へ接続していない場合、完了証跡として扱わない。oracle evidence set を作れない場合は、対象外として扱わず、[`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) に従い仕様不足または検証不足として扱う。
 
 <a id="test-determinism-evidence-set-contract"></a>
 **test determinism evidence set 固定契約：**
