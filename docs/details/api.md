@@ -1900,7 +1900,7 @@ hook log JSON の保存 schema、保存タイミング、失敗時の runner 挙
 
 build 完了時の `output_sha256` 算出と history 保存は runner owner の責務とする。API owner は `GET /api/output-meta`、`GET /api/history/{id}/log`、`POST /api/verify-output` で保存値の読取り、現在出力の再計算、比較、HTTP response だけを担当する。runner と API の両方は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の出力成果物 manifest SHA-256 を使用する。
 
-API owner が現在出力 site を検査する場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の出力成果物 manifest SHA-256 と同じ path、file type、hardlink、no-follow open、identity、size、mtime、walk error の判定を使用する。API owner は symlink 追従、`os.Stat` 相当の追従検査、読取不能 file の黙殺、directory walk error の継続、runner と異なる file tree algorithm、または best-effort の size / mtime / hash 集計を実装してはならない。検査不能時の HTTP status、body、状態不変は対象 endpoint の詳細本文と [`docs/details/phase11.md` Phase 11 仕様詳細責務 Phase 11 source-code audit inventory](phase11.md#phase-11-source-audit-inventory) を参照する。
+API owner が現在出力 site を検査する場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の出力成果物 manifest SHA-256 と同じ path、file type、hardlink、no-follow open、identity、size、mtime、walk error の判定を使用する。API owner は symlink 追従、`os.Stat` 相当の追従検査、読取不能 file の黙殺、directory walk error の継続、runner と異なる file tree algorithm、または best-effort の size / mtime / hash 集計を実装してはならない。検査不能時の HTTP status、body、状態不変は対象 endpoint の詳細本文と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。
 
 `GET /api/output-meta` の response key、型、不在時値、参照順は [`GET /api/output-meta` レスポンス例](#output-meta-response) を唯一の正本とする。API owner は subset response や別名 field を定義しない。
 

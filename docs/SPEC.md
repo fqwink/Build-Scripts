@@ -42,8 +42,7 @@
 | ポリシー責務 | [`docs/SPEC.md`](SPEC.md) | **しなければならない／してはならない** | 遵守義務のある規則、制約、禁止事項、セキュリティ要件、運用ルール、バージョン管理規則。 |
 | 状態・計画責務 | [`docs/ROADMAP.md`](ROADMAP.md) | **現在どの状態か・いつ・どれを** | 実装 artifact と各機能の現在状態、Phase、機能インベントリ、将来計画。状態語彙と遷移条件は再定義しない。 |
 | 詳細仕様入口責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | **どこから読むか** | 詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口。 |
-| owner component 別詳細本文責務 | [`docs/details/*.md`](details/)。ただし [`docs/details/phase11.md`](details/phase11.md) と [`docs/details/fixture.md`](details/fixture.md) を除く。 | **どのように実装するか** | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
-| Phase 11 仕様詳細責務 | [`docs/details/phase11.md`](details/phase11.md) | **Phase 11 で何を潰すか** | Phase 11 バグ修正ゼロ化に限定した source-code audit、横断 owner 割当、acceptance gate、差し戻し条件、完了時の未残条件。 |
+| owner component 別詳細本文責務 | [`docs/details/*.md`](details/)。ただし [`docs/details/fixture.md`](details/fixture.md) を除く。 | **どのように実装するか** | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
 | fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) | **何で検証するか** | fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件。 |
 | デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | **どう見せるか** | 生成静的 Web サイトと標準管理 UI のデザイン関係。 |
 | 文書・実装ファイル所在の索引責務 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | **どこにあるか** | 文書、実装ファイル、testdata、未作成 path の所在。 |
@@ -60,7 +59,7 @@
 3. [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1)〜[`docs/SPEC.md` 方針責務 §4.10](SPEC.md#sec-4-10) で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、完全仕様詳細化、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
 4. [`docs/SPEC.md`](SPEC.md) のポリシー責務で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
 5. 生成静的 Web サイトまたは標準管理 UI のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
-6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。Phase 11 横断対象を扱う場合は [`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
+6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。Phase 11 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference)、実装契約は該当 owner 詳細本文責務を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
 
 ---
 
@@ -182,14 +181,14 @@ Adlaire CI は、`core`、`adlaire-ci-core`、`internal/core`、`common`、`base
 
 Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の最上位方針として採用する。
 
-[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則は [`docs/SPEC.md`](SPEC.md) 全体に適用する。[`docs/SPEC.md`](SPEC.md) 内の各記載は、方針責務、ポリシー責務、状態・計画責務の参照、詳細仕様入口責務の参照、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の参照、[`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務の参照、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の参照、文書・実装ファイル所在の索引責務の参照、利用入口責務の参照のいずれかとして読めなければならない。
+[`docs/SPEC.md` 方針責務 §4.2a](SPEC.md#sec-4-2a) の責務ベース明示的原則は [`docs/SPEC.md`](SPEC.md) 全体に適用する。[`docs/SPEC.md`](SPEC.md) 内の各記載は、方針責務、ポリシー責務、状態・計画責務の参照、詳細仕様入口責務の参照、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の参照、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の参照、文書・実装ファイル所在の索引責務の参照、利用入口責務の参照のいずれかとして読めなければならない。
 
 責務ベース明示的原則とは、方針・ポリシー・状態語彙・状態定義・状態遷移条件、実装 artifact と機能の現在状態・Phase・将来計画、詳細仕様本文、fixture・expected・fake・検証証跡、文書・実装所在を、それぞれ異なる責務として明示的に分離する原則である。
 
 <a id="spec-global-no-duplicate-principle"></a>
 **仕様全般重複記載禁止原則：**
 
-仕様上の一つの判断対象は、一つの責務正本だけが本文を持たなければならない。この原則は、[`docs/SPEC.md`](SPEC.md)、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/details/phase11.md`](details/phase11.md)、[`docs/details/fixture.md`](details/fixture.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の仕様全般に適用する。
+仕様上の一つの判断対象は、一つの責務正本だけが本文を持たなければならない。この原則は、[`docs/SPEC.md`](SPEC.md)、[`docs/DESIGN.md`](DESIGN.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/details/fixture.md`](details/fixture.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) の仕様全般に適用する。
 
 同一判断対象について、完全一致する記載、言い換え、要約、部分転載、表または箇条書きへの再掲、具体値、条件、禁止事項、schema、処理順序、異常系、検証条件の再定義を重複記載として禁止する。複数箇所の内容が一致する場合は重複違反、内容が一致しない場合は重複違反かつ仕様矛盾として扱う。
 
@@ -206,13 +205,13 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 - collaborator component が自分の責務として持つ接続、入力受け渡し、出力受け渡し、変換、失敗伝播の固有契約。
 - fixture 証跡責務が正本へのリンクとともに記録する入力、操作、期待結果、assertion、実装検証証跡。これらは仕様本文の正本ではなく、正本との一致を検証する証跡としてだけ扱う。
 
-正本参照先は、必ず責務名とファイル名で示す。文書を章構成、便宜分類、または他文書の従属章として扱ってはならない。[`docs/SPEC.md`](SPEC.md) 内部の見出しも責務名で示し、`Part` 名称で扱ってはならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/details/phase11.md`](details/phase11.md)、[`docs/details/fixture.md`](details/fixture.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) を [`docs/SPEC.md`](SPEC.md) の章として扱ってはならない。
+正本参照先は、必ず責務名とファイル名で示す。文書を章構成、便宜分類、または他文書の従属章として扱ってはならない。[`docs/SPEC.md`](SPEC.md) 内部の見出しも責務名で示し、`Part` 名称で扱ってはならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/details/fixture.md`](details/fixture.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) を [`docs/SPEC.md`](SPEC.md) の章として扱ってはならない。
 
 参照はリンク化を必須とする。文書間参照、節参照、表参照、責務正本参照、実装ファイル参照、fixture 参照を説明文として書く場合は、Markdown link を用いて参照先へ移動できる形にする。単なるファイル名、裸の節番号、裸の見出し名、または `参照` という文字だけで参照先を示した扱いにしてはならない。
 
 契約値そのものを記録するコードブロック、ディレクトリ tree、JSON schema、CLI 例、HTTP path、設定値、生成物名、状態ファイル名、および所在索引表の path セルは、Markdown link 化によって契約文字列が変わるためリンク化対象外とする。この例外は説明文中の参照には適用しない。説明文から実ファイルまたは文書へ移動させる目的がある場合は、同じ段落または表の参照列に Markdown link を併記する。
 
-リンク化する参照は、初出または単独参照の表示文言に責務名とファイル名を必ず含め、節または本文ラベルを参照する場合は固定 anchor へリンクする。同じ段落、同じ表セル、または同じ箇条書き内で、直前のリンクと同一ファイル・同一責務を指す連続参照だけは、表示文言を節番号、本文ラベル、または対象名へ短縮できる。短縮参照であっても自動生成 anchor へリンクしてはならない。例として、状態・計画責務を参照する場合は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様入口責務を参照する場合は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別詳細本文責務を参照する場合は [`docs/details/*.md`](details/) 詳細本文責務、Phase 11 仕様詳細責務を参照する場合は [`docs/details/phase11.md`](details/phase11.md)、fixture 証跡責務を参照する場合は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、文書・実装ファイル所在の索引責務を参照する場合は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、利用入口責務を参照する場合は [`README.md`](../README.md) のように記載する。リンク化できない生成物、PR 本文、外部ツール出力で参照を記録する場合でも、参照先ファイル名、責務名、節番号または固定 anchor 名を省略してはならない。
+リンク化する参照は、初出または単独参照の表示文言に責務名とファイル名を必ず含め、節または本文ラベルを参照する場合は固定 anchor へリンクする。同じ段落、同じ表セル、または同じ箇条書き内で、直前のリンクと同一ファイル・同一責務を指す連続参照だけは、表示文言を節番号、本文ラベル、または対象名へ短縮できる。短縮参照であっても自動生成 anchor へリンクしてはならない。例として、状態・計画責務を参照する場合は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様入口責務を参照する場合は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別詳細本文責務を参照する場合は [`docs/details/*.md`](details/) 詳細本文責務、fixture 証跡責務を参照する場合は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、文書・実装ファイル所在の索引責務を参照する場合は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、利用入口責務を参照する場合は [`README.md`](../README.md) のように記載する。リンク化できない生成物、PR 本文、外部ツール出力で参照を記録する場合でも、参照先ファイル名、責務名、節番号または固定 anchor 名を省略してはならない。
 
 細目を見出し化してはならない。詳細仕様、ロードマップ、索引、fixture 証跡では、実装項目、正常系、異常系、入力、出力、処理順序、検証条件、固定契約、確認ゲート、表名、schema 名、fixture 名、機能別補足を Markdown 見出しとして作成してはならない。これらは表の行、箇条書き、または本文内ラベルとして記載する。
 
@@ -234,7 +233,7 @@ owner component と実装 artifact は別の判断対象とする。owner compon
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact の現在状態と owner component が持つ機能の現在状態を区別して記録する。単独の専用 Go 実装 artifact を持たない `admin`、`statefile`、`archive`、`commitstatus`、`security` の owner component は、機能インベントリの現在状態で管理する。実装 artifact の path、起動名、入力 interface のいずれかが必要であるにもかかわらず未定義の機能は、実装可能な仕様として扱ってはならない。
 
-[責務文書構成表](#document-responsibility-map) の owner component 別詳細本文責務で [`docs/details/*.md`](details/) を総称として参照する場合でも、[`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を含めて読んではならない。
+[責務文書構成表](#document-responsibility-map) の owner component 別詳細本文責務で [`docs/details/*.md`](details/) を総称として参照する場合でも、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を含めて読んではならない。
 
 仕様全般を整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) を、各文書の個別整理規則より上位の方針として適用する。
 
@@ -315,7 +314,6 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   │   ├── archive.md
 │   │   ├── commitstatus.md
 │   │   ├── mcp.md
-│   │   ├── phase11.md
 │   │   └── fixture.md
 │   └── examples/
 │
@@ -339,7 +337,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) は、詳細仕様入口責務として、実装者が追加判断なしに該当する詳細本文へ到達できる粒度で記載する。
 
-owner component 別の [`docs/details/*.md`](details/) は、詳細本文責務として、抽象的な方針や目的の再掲ではなく、実装時に必要な具体値、処理順序、入出力、状態、失敗時の扱いを定義する。ただし [`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務は owner component 別詳細本文責務に含めない。
+owner component 別の [`docs/details/*.md`](details/) は、詳細本文責務として、抽象的な方針や目的の再掲ではなく、実装時に必要な具体値、処理順序、入出力、状態、失敗時の扱いを定義する。ただし [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務は owner component 別詳細本文責務に含めない。Phase 専用詳細仕様ファイルを作成して、owner component 別詳細本文責務を置き換えてはならない。
 
 仕様化済み・未実装の項目であっても、実装予定として扱う場合は実装者が迷わない粒度まで詳細化する。実装時期、設計判断、具体値が未確定の内容は、実装可能な仕様として扱わず、未仕様化または将来計画として明示する。
 
@@ -370,7 +368,7 @@ owner component 別の [`docs/details/*.md`](details/) は、詳細本文責務�
 <a id="sec-4-6"></a>
 **4.6 Phase 実装単位方針：**
 
-Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件を一体として管理する実装単位である。Phase 単位の必須操作、active Phase、優先度ラベルの使用禁止、途中追加禁止は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を唯一の正本とする。Phase の一覧、現在状態、順序、依存関係は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、個別の実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、Phase 11 の横断詳細は [`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。
+Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件を一体として管理する実装単位である。Phase 単位の必須操作、active Phase、優先度ラベルの使用禁止、途中追加禁止は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を唯一の正本とする。Phase の一覧、現在状態、順序、依存関係は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、個別の実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。Phase 専用の詳細仕様ファイルを作成してはならない。Phase は実装順序と完了境界を持つだけであり、詳細本文の責務正本を所有しない。
 
 実装作業の Pull Request は Phase を境界としなければならない。Phase を Pull Request の境界にする理由は、仕様根拠、対象 owner、実装範囲、検証条件、完了判定を一つの責務単位に固定し、複数 Phase の混在、同一 Phase の並行分割、後続 Phase の先取り、仕様根拠のない実装補完を禁止するためである。
 
@@ -388,15 +386,17 @@ Phase を Pull Request の境界にすることは、Phase の一部分だけを
 <a id="sec-4-8"></a>
 **4.8 完了判定方針：**
 
-`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。Phase 11 の横断 acceptance gate と差し戻し条件は [`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
+`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。Phase 11 の横断 acceptance gate、差し戻し条件、未残条件は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) を正本とし、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
 
 バグ修正ゼロ化とは、実装済み機能、実装中・検証未完了機能、または Phase 11 対象として [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に割り当てた検証基盤について、既知の仕様不整合、未検証分岐、未固定の副作用、secret 漏えい可能性、状態 schema 揺れ、fixture 不足、環境依存の合格条件、実装後の追加修正前提を残さない状態をいう。バグ修正ゼロ化は品質目標であり、仕様外の新機能追加、状態語彙の緩和、検証省略、または fixture 期待値の弱体化を許可する理由にしてはならない。
 
-Phase 11 は、バグ修正ゼロ化そのものを目的とする Phase である。Phase 11 は新機能追加 Phase、将来計画実装 Phase、仕様外補完 Phase、検証省略 Phase、または品質目標の一般論を記載する Phase ではない。Phase 11 対象は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で対象 owner、対象機能、依存 Phase、現在状態を明示し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から [`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務、対象 owner 詳細本文、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できなければならない。Phase 11 の source-code audit inventory、横断 owner 割当、acceptance gate、差し戻し条件、完了時の未残条件は [`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務、個別の fixture 名、expected file、fake、実装検証証跡の記録形式は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、statefile の lock、atomic write、strict schema、JSON Lines、read-only no mutation は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。
+Phase 11 は、バグ修正ゼロ化そのものを目的とする Phase である。Phase 11 は新機能追加 Phase、将来計画実装 Phase、仕様外補完 Phase、検証省略 Phase、または品質目標の一般論を記載する Phase ではない。Phase 11 対象は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で対象 owner、対象機能、依存 Phase、現在状態を明示し、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から対象 owner 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できなければならない。Phase 11 の source-code audit inventory、横断 owner 割当、acceptance gate、差し戻し条件、完了時の未残条件は、専用詳細ファイルではなく、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry)、対象 owner 詳細本文、[`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference) に分担して記載する。個別の fixture 名、expected file、fake、実装検証証跡の記録形式は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、statefile の lock、atomic write、strict schema、JSON Lines、read-only no mutation は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。
 
-Phase 11 のバグ修正ゼロ化は、文書上の未完了一覧だけでなく、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の標準実装 artifact と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務に実在する [`main.go`](../main.go)、[`components/*.go`](../components/)、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js)、[`admin/index.html`](../admin/index.html) の関数、状態 I/O、JSON / JSON Lines 処理、builder output publish / restore、generated site validation、setup install / rollback、release reproducibility / GitHub boundary、admin CLI / SDK / UI client boundary、API / MCP listener lifecycle、graceful shutdown、HTTP header / CORS / cookie boundary、clock / timer / entropy / request ID / time ID、goroutine / channel / worker ordering / cancel / timeout、MCP state bridge / read-only mutation、出力成果物検査、外部 I/O、認証・認可、secret 処理、queue / finalizer、fixture harness 接続を棚卸し対象に含める。棚卸しで検出した差分は、[`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務へ横断対象として割り当て、該当する owner 詳細本文へ実装契約を置き、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ検証証跡条件を置くか、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase 11 対象外として到達可能にするまで、完了扱いにしてはならない。既存 test の成功、既存実装済み状態、または別変更で解消するという説明だけで、source audit 由来の artifact 未分類、未固定分岐、直接状態書込、重複 algorithm、best-effort 読込、破損黙殺、secret 応答順序、実 OS listener / signal / sleep / random 依存、未接続 fixture root を残してはならない。
+Phase 11 では、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase 11 の対象として明示されていない新規機能を実装してはならない。マルチユーザー対応、データストア切り替え、外部認証連携、管理 UI 静的 HTTP 配信、管理 UI 静的配布物構成・Archive 検証、ビルドキャッシュ、Prometheus メトリクスエンドポイント、API バージョニング、API ドキュメント自動生成、読み取り専用共有リンクは、[`docs/ROADMAP.md` 状態・計画責務 §5](ROADMAP.md#522-統合ロードマップ表) の現在状態に従い、Phase 11 の新規実装対象外として扱う。これらを Phase 11 で実装、endpoint 化、SDK method 化、UI 操作化、状態 schema 化、配布物化、または外部連携化してはならない。
 
-Phase 11 の仕様全般完了は、[`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務の acceptance gate にある `source-code audit residual zero`、`artifact coverage zero gap`、`fixture root identity zero duplicate`、`test / contract drift zero`、`仕様全般完了` がすべて pass し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務のいずれにも Phase 11 対象の未割当、未接続、未検証、重複 fixture、孤立 test、孤立 assertion、対象外理由未到達が残らない場合だけ認める。仕様全般完了は、実装完了、検証完了、または Phase 11 の `実装済み` 遷移を意味しない。現在状態の変更は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) に従う。
+Phase 11 のバグ修正ゼロ化は、文書上の未完了一覧だけでなく、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の標準実装 artifact と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務に実在する [`main.go`](../main.go)、[`components/*.go`](../components/)、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js)、[`admin/index.html`](../admin/index.html) の関数、状態 I/O、JSON / JSON Lines 処理、builder output publish / restore、generated site validation、setup install / rollback、release reproducibility / GitHub boundary、admin CLI / SDK / UI client boundary、API / MCP listener lifecycle、graceful shutdown、HTTP header / CORS / cookie boundary、clock / timer / entropy / request ID / time ID、goroutine / channel / worker ordering / cancel / timeout、MCP state bridge / read-only mutation、出力成果物検査、外部 I/O、認証・認可、secret 処理、queue / finalizer、fixture harness 接続を棚卸し対象に含める。棚卸しで検出した差分は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) で対象 owner と fixture へ割り当て、該当する owner 詳細本文へ実装契約を置き、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ検証証跡条件を置くか、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase 11 対象外として到達可能にするまで、完了扱いにしてはならない。既存 test の成功、既存実装済み状態、または別変更で解消するという説明だけで、source audit 由来の artifact 未分類、未固定分岐、直接状態書込、重複 algorithm、best-effort 読込、破損黙殺、secret 応答順序、実 OS listener / signal / sleep / random 依存、未接続 fixture root を残してはならない。
+
+Phase 11 の仕様全般完了は、`source-code audit residual zero`、`artifact coverage zero gap`、`fixture root identity zero duplicate`、`test / contract drift zero`、`仕様全般完了` がすべて pass し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務のいずれにも Phase 11 対象の未割当、未接続、未検証、重複 fixture、孤立 test、孤立 assertion、対象外理由未到達が残らない場合だけ認める。Phase 11 の完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference) へ記録する。仕様全般完了は、実装完了、検証完了、または Phase 11 の `実装済み` 遷移を意味しない。現在状態の変更は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) に従う。
 
 <a id="49-仕様策定単位方針"></a>
 
@@ -592,7 +592,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 方針責務・ポリシー責務 | 方針、ポリシー、実装着手ゲート、完了判定が [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務に明記されている。 |
 | 状態・計画責務 | 実装 artifact と各機能の現在状態、Phase、将来計画が [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に明記され、状態語彙、実装可否、昇格条件が [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と矛盾していない。 |
 | 詳細仕様入口責務 | 対象機能の owner 対応表、owner 詳細本文から collaborator 境界へ到達する参照、詳細本文参照先、fixture 証跡参照先が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に明記されている。 |
-| owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。Phase 11 横断対象の場合は、[`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務から該当 owner 詳細本文へ到達できる。 |
+| owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。Phase 11 横断対象の場合も、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から該当 owner 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できる。 |
 | 横断契約 | API、SDK、UI、状態ファイル、認証、セットアップの対応関係が該当する詳細本文責務で同期している。 |
 | 重複記載 | [`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) への適合確認が完了し、未解消違反が 0 件である。 |
 | 索引責務 | ファイル名、正本参照先、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |
@@ -669,11 +669,11 @@ Go 版初期実装で新規実装へ着手できる対象は、[`docs/ROADMAP.md
 
 対象 Phase 全体が完了するまで、実装を主目的とする Pull Request を作成してはならない。既に active Phase に対応する open Pull Request が存在する場合、その Pull Request は Phase 全体完了まで work in progress として扱い、review ready、merge 可能、完了済みとして報告してはならない。
 
-Phase 全体完了とは、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan) で対象 Phase に割り当てられた全 owner、全機能、全依存条件について、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の実装契約、Phase 11 横断対象では [`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務の acceptance gate、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の必須 assertion と実装検証証跡、[`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition)、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) の完了判定を満たすことをいう。
+Phase 全体完了とは、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan) で対象 Phase に割り当てられた全 owner、全機能、全依存条件について、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の実装契約、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の必須 assertion と実装検証証跡、[`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition)、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) の完了判定を満たすことをいう。Phase 11 横断対象は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から該当 owner 詳細本文と fixture 証跡へ到達できなければならない。
 
 Phase 内に `仕様化済み・未実装`、`実装中・検証未完了`、未実行の必須検証、未記録の実装検証証跡、未解消の仕様不整合、未反映の状態・索引更新が残る場合、実装者は同一作業ブランチで実装、検証、不整合修正、再検証を繰り返さなければならない。この反復を省略して Pull Request 作成、完了報告、または merge 可能報告を行ってはならない。
 
-仕様全般に基づく実装とは、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、Phase 11 横断対象では [`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に到達し、その全てと矛盾しない実装だけを行うことをいう。これらのいずれかで対象 Phase、対象機能、入力、出力、状態、副作用、異常系、検証条件、完了条件が未定義または矛盾している場合、実装者はコード判断で補完してはならない。先に該当する責務正本を改訂し、仕様根拠を確定してから実装しなければならない。
+仕様全般に基づく実装とは、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に到達し、その全てと矛盾しない実装だけを行うことをいう。これらのいずれかで対象 Phase、対象機能、入力、出力、状態、副作用、異常系、検証条件、完了条件が未定義または矛盾している場合、実装者はコード判断で補完してはならない。先に該当する責務正本を改訂し、仕様根拠を確定してから実装しなければならない。
 
 対象 Phase に含まれる全機能は、実装着手前に [`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) と [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) を満たさなければならない。Phase の一部だけが完全仕様詳細化済みである状態、または一定の仕様だけを固定した状態で、その Phase の実装作業を開始してはならない。
 
