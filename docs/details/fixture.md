@@ -131,7 +131,7 @@
 <a id="phase-11-fixture-harness-reference"></a>
 **Phase 11 fixture harness 参照：**
 
-[`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 11 の fixture、expected、fake、実装検証証跡の一般形式と配置契約だけを固定する。Phase 11 の source-code audit inventory、横断 owner 割当、acceptance gate、scope exclusion、completion evidence は [`docs/details/phase11.md` Phase 11 仕様詳細責務](phase11.md) を正本とする。
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 11 の fixture、expected、fake、実装検証証跡の一般形式と配置契約だけを固定する。Phase 11 の source-code audit inventory、横断 owner 割当、acceptance gate、scope exclusion、仕様全般完了、completion evidence は [`docs/details/phase11.md` Phase 11 仕様詳細責務](phase11.md) を正本とする。
 
 Phase 11 対象の fixture root、manifest、input、expected、effects、security、fake transcript、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#sec-0g-8-f)、[`docs/details/fixture.md` fixture 証跡責務 §27-F runner / security 実装検証証跡 必須記録固定契約](fixture.md#sec-27-f-20)、および [`docs/details/phase11.md` Phase 11 仕様詳細責務 Phase 11 acceptance gate](phase11.md#phase-11-acceptance-gate) を同時に満たす。Phase 11 対象 root の網羅判定は、[`docs/details/phase11.md` Phase 11 仕様詳細責務 Phase 11 source-code audit inventory](phase11.md#phase-11-source-audit-inventory) で割り当てた `testdata/builder/`、`testdata/runner/`、`testdata/api/`、`testdata/sdk/`、`testdata/ui/`、`testdata/statefile/`、`testdata/archive/`、`testdata/commitstatus/`、`testdata/security/`、`testdata/admin/cli/`、`testdata/setup/`、`testdata/release/`、`testdata/mcp/` の各 root について、存在、manifest、expected、fake、harness 接続、対象外理由のいずれかへ到達できることで判定する。
 
