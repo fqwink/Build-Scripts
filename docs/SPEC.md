@@ -57,7 +57,7 @@
 
 1. [`docs/SPEC.md`](SPEC.md) の「文書責務」と「状態参照方針」で、正本範囲を確認する。
 2. [`docs/ROADMAP.md`](ROADMAP.md) で対象の現在状態、Phase、将来計画該当有無を確認し、実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) で判定する。
-3. [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1)〜[`docs/SPEC.md` 方針責務 §4.10](SPEC.md#sec-4-10) で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、詳細仕様粒度、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
+3. [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1)〜[`docs/SPEC.md` 方針責務 §4.10](SPEC.md#sec-4-10) で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、完全仕様詳細化、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
 4. [`docs/SPEC.md`](SPEC.md) のポリシー責務で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
 5. 生成静的 Web サイトまたは標準管理 UI のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
 6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。Phase 11 横断対象を扱う場合は [`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
@@ -345,6 +345,11 @@ owner component 別の [`docs/details/*.md`](details/) は、詳細本文責務�
 
 詳細仕様入口責務と詳細本文責務の組み合わせは、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) の全項目を追加判断なしで特定できる状態を満たす。[`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4) に必須項目を再掲して別の判定表としてはならない。
 
+<a id="complete-detail-specification-policy"></a>
+完全仕様詳細化は、全 Phase、全 owner component、全実装対象機能に適用する。完全仕様詳細化とは、実装者が設計判断、仕様補完、例外判断、検証条件の推測、既存実装への後追い合わせを行わずに、責務正本だけから実装、検証、完了判定を進められる状態をいう。
+
+完全仕様詳細化が完了していない機能は、一定の仕様が存在していても実装対象として扱わない。実装しながら仕様を決めること、テスト結果で仕様を後から確定すること、既存実装の挙動を理由に詳細本文の不足を補うことを、実装着手方針として認めない。
+
 <a id="45-仕様成熟度方針"></a>
 
 <a id="sec-4-5"></a>
@@ -532,6 +537,26 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 
 許可値、許可 path、許可副作用、許可依存、owner 候補、fixture component、schema key を列挙する契約では、`など`、`等`、`任意の同等物`、例示だけの列挙を使用して集合を開いてはならない。許可集合を固定列挙するか、追加値を許可する判定条件、登録先の正本、未登録値の拒否結果を同じ契約で明示する。禁止対象の理解を助ける例示は使用できるが、例示に含まれない対象を許可する意味に読めないことを明記する。
 
+<a id="complete-detail-specification-gate"></a>
+**完全仕様詳細化義務：**
+
+すべての実装対象機能は、実装着手前に完全仕様詳細化を完了しなければならない。完全仕様詳細化は [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#complete-detail-specification-policy) の定義、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) の仕様凍結条件をすべて満たすことをいう。
+
+以下のいずれかが責務正本で固定されていない場合、その機能は完全仕様詳細化未完了として扱い、実装着手、実装 PR の review ready 報告、merge 可能報告、`実装済み` 判定を禁止する。
+
+| 判定対象 | 固定が必要な内容 |
+|----------|------------------|
+| 入出力 | 入力元、型、必須性、既定値、許容値、HTTP method、request / response 形式、戻り値、終了コード、HTTP status。 |
+| 状態 | 状態ファイル path、schema、初期値、read / write 責務、更新順序、atomicity、lock、破損時処理、read-only no mutation。 |
+| 処理 | 正常系順序、分岐条件、境界値、アルゴリズム、成功条件、副作用の確定順序、再実行時の扱い。 |
+| 異常系 | 失敗条件、固定 error、固定 message、状態不変条件、partial failure、cleanup failure、rollback 要否、継続可否。 |
+| security | 認証、認可、scope、secret 保存禁止、secret 出力禁止、token / password / TOTP / session の露出境界。 |
+| 外部境界 | GitHub API、SSH、SMTP、systemd、webhook、browser fetch / SSE、MCP client、command 実行、filesystem の成功 / 失敗 / timeout / malformed 条件。 |
+| 制御 | retry、timeout、cancel、clock、timer、entropy、ID generation、goroutine、channel、worker ordering、並行更新、衝突時処理。 |
+| 検証証跡 | fixture、fake、expected、effects、security expected、pass / fail 条件、未実行時の扱い、完了証跡。 |
+
+実装中に完全仕様詳細化未完了の事項を発見した場合、実装者はコード判断で補完してはならない。該当箇所の実装を停止し、責務正本を先に改訂して完全仕様詳細化を完了させてから実装を再開しなければならない。
+
 <a id="policy-spec-maturity"></a>
 
 ## 0a. 仕様成熟度ポリシー
@@ -543,13 +568,13 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | 未仕様化 | 要求、目的、責務、入出力、処理、状態、検証条件のいずれかが実装判断に必要な粒度で定義されていない状態。 | 実装不可 |
 | 将来計画 | 将来的な方向性または候補として記録した状態。実装時期、整理順序、詳細仕様は未確定でもよい。整理順序は実装単位、PR 単位、完了判定単位ではない。 | 実装不可 |
 | 改訂予定 | 将来計画または未仕様化の項目を仕様化対象へ昇格した状態。詳細仕様の作成・改訂作業中であり、実装条件はまだ満たしていない。 | 実装不可 |
-| 仕様化済み・未実装 | [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を実装可能な粒度で特定済みだが、実装 artifact または実装コードが未作成・未反映の状態。 | 実装可 |
+| 仕様化済み・未実装 | [`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) を満たし、実装 artifact または実装コードが未作成・未反映の状態。 | 実装可 |
 | 実装中・検証未完了 | 仕様に基づくコード変更へ着手済みだが、必須検証、証跡、または関連文書の整合確認が未完了の状態。 | 検証待ち |
 | 実装済み | [`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition) をすべて満たした状態。 | 完了済み |
 
-`仕様化済み・未実装` へ昇格するには、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) のうち該当機能に適用する全項目が owner component 詳細本文で特定され、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から該当本文と fixture 証跡へ到達でき、実装判断に必要な未確定事項が残っていないことを必須とする。
+`仕様化済み・未実装` へ昇格するには、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) のうち該当機能に適用する全項目が owner component 詳細本文で特定され、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から該当本文と fixture 証跡へ到達でき、[`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) を満たし、実装判断に必要な未確定事項が残っていないことを必須とする。
 
-実装着手は、対象項目が `仕様化済み・未実装` の状態に到達している場合に限る。
+実装着手は、対象項目が `仕様化済み・未実装` の状態に到達し、かつ [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) の仕様凍結条件を満たしている場合に限る。完全仕様詳細化が未完了の項目は、`改訂予定` または `未仕様化` として扱い、実装不可とする。
 
 <a id="implementation-completion-transition"></a>
 実装完了は、コード変更だけでは成立しない。仕様との差分確認、構文確認、実行確認または生成物確認、必須 fixture と実装検証証跡、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否確認を完了した場合にのみ `実装済み` と扱う。
@@ -612,9 +637,10 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 成熟度 | 対象項目が `仕様化済み・未実装` である。 |
 | 詳細仕様 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から対象機能の owner component 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達でき、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に入力、出力、状態、処理順序、異常系、検証条件が明記されている。 |
 | 必須項目 | [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を満たしている。 |
+| 完全仕様詳細化 | [`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) を満たしている。 |
 | 対応表 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)〜[§0i.5](DETAIL_INDEX.md#0i5-setup--release) の詳細節対応表に対象機能が記載され、参照先の owner component 詳細本文と fixture 証跡の対象が一致している。 |
 | 横断整合 | API、SDK、UI、状態ファイル、セットアップ、受け入れ条件が矛盾していない。 |
-| 未確定事項 | 実装判断に必要な未確定事項が残っていない。 |
+| 未確定事項 | 実装者が設計判断、仕様補完、例外判断、検証条件の推測、既存実装への後追い合わせを行う余地が残っていない。 |
 | 変更境界 | 実装 PR で変更してよい範囲と変更してはならない範囲が明確である。 |
 
 仕様凍結後、実装中に仕様不足を発見した場合は、実装 PR 内で独自判断による補完を行わず、仕様改訂 PR または同一 PR 内の仕様改訂コミットで凍結状態を更新する。
@@ -648,6 +674,8 @@ Phase 全体完了とは、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP
 Phase 内に `仕様化済み・未実装`、`実装中・検証未完了`、未実行の必須検証、未記録の実装検証証跡、未解消の仕様不整合、未反映の状態・索引更新が残る場合、実装者は同一作業ブランチで実装、検証、不整合修正、再検証を繰り返さなければならない。この反復を省略して Pull Request 作成、完了報告、または merge 可能報告を行ってはならない。
 
 仕様全般に基づく実装とは、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、Phase 11 横断対象では [`docs/details/phase11.md`](details/phase11.md) Phase 11 仕様詳細責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に到達し、その全てと矛盾しない実装だけを行うことをいう。これらのいずれかで対象 Phase、対象機能、入力、出力、状態、副作用、異常系、検証条件、完了条件が未定義または矛盾している場合、実装者はコード判断で補完してはならない。先に該当する責務正本を改訂し、仕様根拠を確定してから実装しなければならない。
+
+対象 Phase に含まれる全機能は、実装着手前に [`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) と [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) を満たさなければならない。Phase の一部だけが完全仕様詳細化済みである状態、または一定の仕様だけを固定した状態で、その Phase の実装作業を開始してはならない。
 
 `P0`、`P1`、`P2〜P5` などの優先度ラベル、抽象段階、API 内部分類、fixture 分類を、実装単位、PR 単位、完了判定単位として使ってはならない。
 

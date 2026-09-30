@@ -77,9 +77,11 @@
 
 実在ファイルの確認には hidden fixture を含めて列挙できる `rg --files --hidden -g '!.git/**'` を使用する。
 
-新規実装の着手可否は、[`docs/SPEC.md` ポリシー責務 §0a](docs/SPEC.md#policy-spec-maturity) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](docs/SPEC.md#policy-spec-freeze) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) の active Phase 条件、[`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務の現在状態によって判定する。
+新規実装の着手可否は、[`docs/SPEC.md` ポリシー責務 §0a](docs/SPEC.md#policy-spec-maturity) の実装可否、[`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](docs/SPEC.md#complete-detail-specification-gate)、[`docs/SPEC.md` ポリシー責務 §0d](docs/SPEC.md#policy-spec-freeze) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) の active Phase 条件、[`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務の現在状態によって判定する。
 
-実装中に未定義の入力、出力、状態、異常系、セキュリティ条件、検証条件を発見した場合は、実装判断で補完せず、先に該当する責務正本を改訂する。
+実装中に未定義の入力、出力、状態、異常系、セキュリティ条件、検証条件、fixture、fake、expected、完了条件を発見した場合は、実装判断で補完せず、先に該当する責務正本を改訂する。
+
+完全仕様詳細化が未完了の機能、または一定の仕様だけを固定した機能は、実装着手不可として扱う。実装しながら仕様を決めること、既存実装やテスト結果に合わせて仕様を後追い確定すること、実装者判断で未定義事項を補うことを行ってはならない。
 
 Go 実装の標準配置は [docs/SPEC.md 方針責務 §4.3](docs/SPEC.md#sec-4-3) を参照する。[`main.go`](main.go) は起動入口 artifact、[`components/builder.go`](components/builder.go)、[`components/runner.go`](components/runner.go)、[`components/api.go`](components/api.go) はそれぞれ `builder`、`runner`、`api` owner component の標準 Go 実装 artifact、`components/admin.go` は `admin` owner component の CLI 管理クライアント用 Go 実装 artifact、`components/mcp.go` は `mcp` owner component の Go 実装 artifact、[`admin/adlaire-ci-sdk.js`](admin/adlaire-ci-sdk.js) と [`admin/index.html`](admin/index.html) はそれぞれ `sdk`、`ui` owner component の標準管理クライアント実装 artifact として扱う。owner component と実装 artifact を同一概念として扱ってはならない。各実装 artifact の現在状態は [docs/ROADMAP.md](docs/ROADMAP.md)、実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) を参照する。
 
