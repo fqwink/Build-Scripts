@@ -58,8 +58,9 @@
 2. [`docs/ROADMAP.md`](ROADMAP.md) で対象の現在状態、Phase、将来計画該当有無を確認し、実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) で判定する。
 3. [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1)〜[`docs/SPEC.md` 方針責務 §4.10](SPEC.md#sec-4-10) で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、完全仕様詳細化、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
 4. [`docs/SPEC.md`](SPEC.md) のポリシー責務で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
-5. 生成静的 Web サイトまたは標準管理 UI のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
-6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。Phase 11 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference)、実装契約は該当 owner 詳細本文責務を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
+5. 実装または検証を扱う場合は、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) の意味のあるテストポリシーを確認する。
+6. 生成静的 Web サイトまたは標準管理 UI のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
+7. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。Phase 11 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference)、実装契約は該当 owner 詳細本文責務を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
 
 ---
 
@@ -535,7 +536,7 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | 異常系 | エラー条件、応答、終了コード、固定メッセージ、ログ level、通知条件、継続可否。 |
 | 制御 | 再試行、lock、排他制御、冪等性、timeout、partial failure、再実行時の扱い。 |
 | security | 認証、認可、token、秘密情報、権限、公開境界、出力禁止情報。 |
-| 検証 | 必須 fixture、assertion、正常系・異常系確認、構文確認、実行確認、生成物確認、必須証跡。 |
+| 検証 | [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす意味のあるテスト、必須 fixture、assertion、正常系・異常系確認、境界値確認、mutation test、構文確認、実行確認、生成物確認、必須証跡。 |
 
 「適切に処理する」「必要に応じて対応する」「安全に扱う」のように実装判断を実装者へ委ねる表現を単独で完了仕様として扱ってはならない。使用する場合は、具体的な条件、処理、値、禁止事項、確認方法を併記する。
 
@@ -557,7 +558,7 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | security | 認証、認可、scope、secret 保存禁止、secret 出力禁止、token / password / TOTP / session の露出境界。 |
 | 外部境界 | GitHub API、SSH、SMTP、systemd、webhook、browser fetch / SSE、MCP client、command 実行、filesystem の成功 / 失敗 / timeout / malformed 条件。 |
 | 制御 | retry、timeout、cancel、clock、timer、entropy、ID generation、goroutine、channel、worker ordering、並行更新、衝突時処理。 |
-| 検証証跡 | fixture、fake、expected、effects、security expected、pass / fail 条件、未実行時の扱い、完了証跡。 |
+| 検証証跡 | fixture、fake、expected、effects、security expected、意味のあるテスト条件、mutation test 条件、pass / fail 条件、未実行時の扱い、完了証跡。 |
 
 実装中に完全仕様詳細化未完了の事項を発見した場合、実装者はコード判断で補完してはならない。該当箇所の実装を停止し、責務正本を先に改訂して完全仕様詳細化を完了させてから実装を再開しなければならない。
 
@@ -581,7 +582,7 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 実装着手は、対象項目が `仕様化済み・未実装` の状態に到達し、かつ [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) の仕様凍結条件を満たしている場合に限る。完全仕様詳細化が未完了の項目は、`改訂予定` または `未仕様化` として扱い、実装不可とする。
 
 <a id="implementation-completion-transition"></a>
-実装完了は、コード変更だけでは成立しない。仕様との差分確認、構文確認、実行確認または生成物確認、必須 fixture と実装検証証跡、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否確認を完了した場合にのみ `実装済み` と扱う。
+実装完了は、コード変更だけでは成立しない。仕様との差分確認、構文確認、実行確認または生成物確認、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす意味のあるテスト、mutation test、必須 fixture と実装検証証跡、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否確認を完了した場合にのみ `実装済み` と扱う。
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。いずれか一方だけを変更して完了扱いにしてはならない。
 
@@ -596,7 +597,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 方針責務・ポリシー責務 | 方針、ポリシー、実装着手ゲート、完了判定が [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務に明記されている。 |
 | 状態・計画責務 | 実装 artifact と各機能の現在状態、Phase、将来計画が [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に明記され、状態語彙、実装可否、昇格条件が [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と矛盾していない。 |
 | 詳細仕様入口責務 | 対象機能の owner 対応表、owner 詳細本文から collaborator 境界へ到達する参照、詳細本文参照先、fixture 証跡参照先が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に明記されている。 |
-| owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。Phase 11 横断対象の場合も、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から該当 owner 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できる。 |
+| owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。検証条件は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす。Phase 11 横断対象の場合も、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から該当 owner 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できる。 |
 | 横断契約 | API、SDK、UI、状態ファイル、認証、セットアップの対応関係が該当する詳細本文責務で同期している。 |
 | 重複記載 | [`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) への適合確認が完了し、未解消違反が 0 件である。 |
 | 索引責務 | ファイル名、正本参照先、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |
@@ -673,7 +674,7 @@ Go 版初期実装で新規実装へ着手できる対象は、[`docs/ROADMAP.md
 
 対象 Phase 全体が完了するまで、実装を主目的とする Pull Request を作成してはならない。既に active Phase に対応する open Pull Request が存在する場合、その Pull Request は Phase 全体完了まで work in progress として扱い、review ready、merge 可能、完了済みとして報告してはならない。
 
-Phase 全体完了とは、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan) で対象 Phase に割り当てられた全 owner、全機能、全依存条件について、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の実装契約、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の必須 assertion と実装検証証跡、[`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition)、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) の完了判定を満たすことをいう。Phase 11 横断対象は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から該当 owner 詳細本文と fixture 証跡へ到達できなければならない。
+Phase 全体完了とは、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan) で対象 Phase に割り当てられた全 owner、全機能、全依存条件について、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の実装契約、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の必須 assertion と実装検証証跡、[`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition)、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) の意味のあるテストポリシー、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) の完了判定を満たすことをいう。Phase 11 横断対象は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から該当 owner 詳細本文と fixture 証跡へ到達できなければならない。
 
 Phase 内に `仕様化済み・未実装`、`実装中・検証未完了`、未実行の必須検証、未記録の実装検証証跡、未解消の仕様不整合、未反映の状態・索引更新が残る場合、実装者は同一作業ブランチで実装、検証、不整合修正、再検証を繰り返さなければならない。この反復を省略して Pull Request 作成、完了報告、または merge 可能報告を行ってはならない。
 
@@ -692,6 +693,57 @@ Phase は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase
 Phase の途中で未仕様化、将来計画、改訂予定の機能を追加してはならない。追加する場合は、先に現在状態の割当、詳細仕様、検証条件、受け入れ条件を更新し、仕様凍結を再実施しなければならない。
 
 API の内部説明や fixture 名に既存の段階名が残る場合でも、それらは検証分類としてのみ扱い、実装順序、実装 PR、完了判定の正本にしてはならない。
+
+<a id="policy-meaningful-test"></a>
+
+## 0g. 意味のあるテストポリシー
+
+[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) は、実装変更、検証変更、fixture 変更、実装完了判定、Phase 完了判定に適用する。テスト方針と完了可否の本文は本節を正本とし、具体的な fixture、expected、fake、assertion、実行証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md)、owner 固有の入出力と異常系は owner component 別の [`docs/details/*.md` 詳細本文責務](details/) を正本とする。
+
+意味のあるテストとは、仕様違反、実装の分岐誤り、境界値誤り、副作用漏れ、認証・認可 bypass、secret 漏えい、状態破損、並行処理順序誤り、外部境界の失敗処理漏れ、または回帰を検出できるテストをいう。実装を一度実行するだけの smoke test、assertion が存在しないテスト、戻り値や副作用を検証しないテスト、正常系だけのテスト、実装詳細の存在だけを確認するテスト、coverage percentage だけを満たすテストは、意味のあるテストとして扱ってはならない。
+
+実装対象機能、実装変更、検証基盤変更は、以下をすべて満たさなければ完了扱いにしてはならない。
+
+| 判定対象 | 必須条件 |
+|----------|----------|
+| 仕様追跡性 | 各 test、fixture、expected、assertion は、対象 owner、対象仕様、対象 anchor、検出したい仕様違反を特定できる。仕様に存在しない期待値をテストだけへ埋め込まない。 |
+| assertion 強度 | 成功条件だけでなく、失敗時 response、stderr、終了コード、状態差分、副作用有無、禁止出力、禁止外部通信を検証する。 |
+| 正常系 / 異常系 | 正常系、入力不正、欠損、型不一致、境界値、権限不足、状態破損、外部失敗、timeout、partial failure、rollback、cleanup failure を対象機能に応じて固定する。 |
+| 境界値 | 空、最小、最大、上限超過、重複、順序差、path、文字コード、時刻、ID、JSON key、HTTP header、CLI option、state schema、archive entry の境界を検証する。 |
+| 決定性 | 時刻、乱数、file order、network、GitHub API、systemd、process、並行実行、timer、sleep に依存して結果が揺れない。必要な場合は fake clock、fake entropy、fake filesystem、fake HTTP、固定 fixture を使用する。 |
+| 契約横断 | API、SDK、UI、CLI、statefile、archive、release asset、MCP、setup の境界をまたぐ機能は、呼び出し元と呼び出し先の契約を同じ変更で検証する。 |
+| 副作用 | 期待する副作用だけでなく、禁止された状態 write、file 作成、外部通信、通知、log、secret 出力、cache 書込、audit 欠落が発生しないことを検証する。 |
+| 回帰 | 修正した不具合、Phase 11 のバグ修正ゼロ化対象、過去に検出した仕様不整合は、同種の再発で失敗する regression test を持つ。 |
+| 完了証跡 | 実行結果、未実行項目、対象外理由、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) へ到達できる形で記録する。 |
+
+mutation test（ミューテーションテスト）は必須とする。実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion を変更する場合、対象変更が検出すべき代表的な mutation を定義し、適用可能な mutation を kill しなければならない。mutation test を実施できない実装変更、または適用可能な mutation が生存する実装変更は、`実装済み`、Phase 全体完了、review ready、merge 可能として扱ってはならない。
+
+mutation test は、少なくとも次の mutation class を対象機能に応じて検出対象へ含める。
+
+| mutation class | 検出すべき誤り |
+|----------------|----------------|
+| 条件反転 | `==` / `!=`、`<` / `<=`、`>` / `>=`、nil 判定、空判定、feature flag、read-only 判定の反転。 |
+| 境界値変更 | 上限、下限、timeout、retry 回数、size、件数、permission scope、path depth、token 長、queue 順序の off-by-one。 |
+| エラー無視 | parse error、I/O error、HTTP status error、JSON decode error、state lock error、archive validation error、cleanup failure の握りつぶし。 |
+| 認証・認可 bypass | session、API token、scope、role、confirmation、read-only、loopback、CORS、CSRF 相当境界の bypass。 |
+| 状態更新漏れ | state write skip、atomic rename skip、lock skip、audit skip、metrics skip、history append skip、rollback skip。 |
+| 副作用過剰 | 禁止 file write、禁止 external call、禁止 notification、禁止 log、secret 平文出力、read-only 実行時 mutation。 |
+| 順序変更 | validation 優先順位、state write 順序、response 構築順、worker order、finalizer、cleanup、再取得順の変更。 |
+| response / schema 変更 | HTTP status、JSON key、型、必須 key、error code、CLI stdout / stderr、exit code、SDK error class、MCP JSON-RPC error の変更。 |
+| assertion 無効化 | expected file 比較、state diff、effects、security expected、manifest assertion、fixture presence check の削除または常時成功化。 |
+
+mutation の扱いは以下に固定する。
+
+| 判定 | 扱い |
+|------|------|
+| killed | 意味のあるテストが mutation を検出し、期待どおり失敗した状態。完了条件に使用できる。 |
+| survived | mutation が検出されず test が成功した状態。テスト不足または仕様不足として扱い、完了不可とする。 |
+| invalid | mutation が構文上成立しない、または対象仕様の観測可能挙動を作れない状態。理由、対象 file、対象 mutation class を証跡へ記録した場合だけ完了判定から除外できる。 |
+| equivalent | 責務正本に照らして観測可能挙動が完全に同一であることを、対象 anchor と理由で証明できる状態。証明できない場合は survived とする。 |
+
+coverage は参考指標に限る。line coverage、branch coverage、function coverage、statement coverage のいずれも、意味のあるテスト、mutation test、fixture 証跡、異常系、境界値、契約横断、副作用検証の代替にしてはならない。coverage が高い場合でも、mutation が生存する、assertion が弱い、失敗系がない、仕様追跡性がない、fixture 証跡がない場合は完了不可とする。
+
+テスト未整備の状態で実装を完了扱いにしてはならない。対象機能に対して意味のあるテストまたは mutation test を定義できない場合は、実装判断で対象外にせず、仕様不足として扱い、owner component 別の [`docs/details/*.md` 詳細本文責務](details/) または [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) を先に改訂しなければならない。仕様上明示された対象外だけは、対象外理由と正本 anchor を証跡へ記録した場合に限り、未実施テストとして扱わない。
 
 <a id="policy-versioning"></a>
 
