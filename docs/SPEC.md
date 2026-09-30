@@ -387,6 +387,8 @@ Phase を Pull Request の境界にすることは、Phase の一部分だけを
 
 Phase 11 は、バグ修正ゼロ化そのものを目的とする Phase である。Phase 11 は新機能追加 Phase、将来計画実装 Phase、仕様外補完 Phase、検証省略 Phase、または品質目標の一般論を記載する Phase ではない。Phase 11 対象は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で対象 owner、対象機能、依存 Phase、現在状態を明示し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から対象詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できなければならない。個別の fixture 名、expected file、fake、実装検証証跡、差し戻し条件は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、statefile の lock、atomic write、strict schema、JSON Lines、read-only no mutation は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。
 
+Phase 11 のバグ修正ゼロ化は、文書上の未完了一覧だけでなく、実在するソースコードの関数、状態 I/O、JSON / JSON Lines 処理、出力成果物検査、外部 I/O、認証・認可、secret 処理、queue / finalizer、fixture harness 接続を棚卸し対象に含める。棚卸しで検出した差分は、該当する責務正本へ実装契約と fixture 証跡条件として割り当てるか、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase 11 対象外として到達可能にするまで、完了扱いにしてはならない。既存 test の成功、既存実装済み状態、または別変更で解消するという説明だけで、source audit 由来の未固定分岐、直接状態書込、重複 algorithm、best-effort 読込、破損黙殺、secret 応答順序、未接続 fixture root を残してはならない。
+
 <a id="49-仕様策定単位方針"></a>
 
 <a id="sec-4-9"></a>
