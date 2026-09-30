@@ -68,8 +68,8 @@
 | [`components/api_test.go`](../components/api_test.go) | `api` test | 実在 |
 | [`components/admin.go`](../components/admin.go) | `admin` CLI | 実在 |
 | [`components/admin_test.go`](../components/admin_test.go) | `admin` CLI test | 実在 |
-| `components/setup.go` | `setup` | 未作成 |
-| `components/setup_test.go` | `setup` test | 未作成 |
+| [`components/setup.go`](../components/setup.go) | `setup` | 実在 |
+| [`components/setup_test.go`](../components/setup_test.go) | `setup` test | 実在 |
 | `components/release.go` | `release` | 未作成 |
 | `components/release_test.go` | `release` test | 未作成 |
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | `sdk` | 実在 |
@@ -95,7 +95,7 @@
 | `testdata/archive/` | `archive` fixture root | 未作成 |
 | `testdata/commitstatus/` | `commitstatus` fixture root | 未作成 |
 | `testdata/security/` | `security` fixture root | 未作成 |
-| `testdata/setup/` | `setup` fixture root | 未作成 |
+| [`testdata/setup/`](../testdata/setup/) | `setup` fixture root | 実在 |
 | `testdata/release/` | `release` fixture root | 未作成 |
 | `testdata/mcp/` | `mcp` fixture root | 未作成 |
 | `components/mcp.go` | `mcp` | 未作成 |
