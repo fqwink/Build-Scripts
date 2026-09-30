@@ -374,6 +374,25 @@ mutation test 証跡の集計では、`survived=0` を完了条件とする。`i
 
 mutation test 証跡は、coverage 証跡、`go test` 成功、`deno check` 成功、fixture 存在確認、snapshot 一致、手作業の確認、または実装者の判断で代替してはならない。coverage を記録する場合でも、未検出 mutation、弱い assertion、未接続 fixture、仕様 anchor 不足がある場合は完了不可とする。
 
+<a id="mutation-test-evidence-set-contract"></a>
+**mutation test evidence set 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、[mutation test 証跡固定契約](#mutation-test-evidence-contract) の証跡を対象変更単位ごとに束ね、`mutation_closure` の完了可否を判定できる条件だけを固定する。mutation test の必須条件、mutation class、判定語彙、完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、Pull Request 本文への記録手順は [`AGENTS.md` Git 運用ルール](../../AGENTS.md#agents-git-operations) を参照する。
+
+mutation evidence set は、単一の対象変更単位ごとに 1 組作成する。対象変更単位は、1 つの実装変更、1 つの検証変更、1 つの fixture / expected 変更、1 つの owner artifact 検証、または 1 つの Phase 全体完了判定のいずれかに固定する。同じ mutation evidence set で複数の対象変更単位を混在させてはならない。
+
+| 固定項目 | 契約 | 未完了条件 |
+|----------|------|------------|
+| 対象棚卸し | `owner_component`、`collaborator_components`、対象 file、対象 test / fixture / expected / assertion、対象仕様 anchor を記録する。 | 対象 artifact、test artifact、fixture root、または仕様 anchor が空であり、対象外理由もない。 |
+| mutation class decision | [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) の mutation class ごとに、`applicable` または `not_applicable` を記録する。`not_applicable` は対象外 owner / artifact / assertion、理由、責務正本 anchor、完了可否への影響を同じ record に持つ。 | mutation class の判断漏れ、理由だけの対象外、anchor だけの対象外、または対象外範囲が不明である。 |
+| applicable record | `applicable` とした mutation class は、[mutation test 証跡固定契約](#mutation-test-evidence-contract) の証跡項目を満たす record を 1 件以上持つ。 | `applicable` なのに record がない、または record が対象 file、対象 fixture、期待 failure、実際の failure へ到達できない。 |
+| verdict reconciliation | `killed` / `survived` / `invalid` / `equivalent` の集計は mutation evidence set 内の record 数と一致し、`survived=0` である。`invalid` と `equivalent` は個別 record に理由と責務正本 anchor を持つ。 | 集計不一致、`survived` 残存、`invalid` / `equivalent` の理由不足、または責務正本 anchor 不足がある。 |
+| changed artifact coverage | 対象変更単位に含まれる実装、test、fixture、expected、security expected、state diff、contract drift checker、harness assertion は、少なくとも 1 つの mutation class decision へ接続する。 | 変更 artifact が mutation class decision へ接続していない。 |
+| evidence refs | 実行 command、固定入力、fake clock / fake entropy / fake filesystem / fake HTTP / fake process / fake browser runtime、外部通信禁止確認、終了 code、重要 stdout / stderr 要約を記録する。 | 再実行できない、fake 境界が不明、外部通信禁止を確認できない、または実行結果だけで根拠が不足している。 |
+| closure connection | [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の `mutation_closure` record から mutation evidence set の所在へ到達できる。 | closure record set と mutation evidence set の対象 owner、artifact、fixture root、または scope が一致しない。 |
+
+mutation evidence set は、対象変更単位に含まれる変更 artifact が 1 つでも mutation class decision へ接続していない場合、完了証跡として扱わない。mutation evidence set を作れない場合は、対象外として扱わず、[`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) に従い仕様不足または検証不足として扱う。
+
 <a id="test-contract-drift-evidence-contract"></a>
 **test / contract drift 証跡固定契約：**
 
