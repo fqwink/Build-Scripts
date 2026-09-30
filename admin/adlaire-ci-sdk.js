@@ -59,6 +59,11 @@ class AdlaireCI {
   }
 
   getAuditLog({ limit = 100, offset = 0, actor = null, action = null, result = null } = {}) {
+    requireNumber(limit, "limit");
+    requireNumber(offset, "offset");
+    requireOptionalString(actor, "actor");
+    requireOptionalString(action, "action");
+    requireOptionalString(result, "result");
     return this._request("/api/audit-log", { query: this._query({ limit, offset, actor, action, result }) });
   }
 
@@ -71,15 +76,20 @@ class AdlaireCI {
   }
 
   getLogs(n = 100, q = "") {
+    requireNumber(n, "n");
+    requireString(q, "q", true);
     return this._request("/api/logs", { query: this._query({ n, q }, ["q"]) });
   }
 
   getHistory({ page = 1, perPage = 20, trigger = null, tag = null, flagged = null, failureCategory = null } = {}) {
     requireNumber(page, "page");
     requireNumber(perPage, "perPage");
+    requireOptionalString(trigger, "trigger");
+    requireOptionalString(tag, "tag");
     if (flagged !== null && typeof flagged !== "boolean") {
       throw new TypeError("Invalid argument: flagged");
     }
+    requireOptionalString(failureCategory, "failureCategory");
     return this._request("/api/history", {
       query: this._query({ page, per_page: perPage, trigger, tag, flagged, failure_category: failureCategory }),
     });
@@ -131,12 +141,17 @@ class AdlaireCI {
   }
 
   getApiAccessLog({ limit = 100, offset = 0, method = null, path = null, status = null } = {}) {
+    requireNumber(limit, "limit");
+    requireNumber(offset, "offset");
+    requireOptionalString(method, "method");
+    requireOptionalString(path, "path");
     return this._request("/api/api-access-log", {
       query: this._query({ limit, offset, method, path, status }),
     });
   }
 
   getStats(days = 7) {
+    requireNumber(days, "days");
     return this._request("/api/stats", { query: this._query({ days }) });
   }
 
@@ -317,6 +332,12 @@ class AdlaireCI {
   }
 
   searchLogs(q = "", from = "", to = "", level = undefined) {
+    requireString(q, "q", true);
+    requireString(from, "from", true);
+    requireString(to, "to", true);
+    if (level !== undefined) {
+      requireString(level, "level");
+    }
     return this._request("/api/logs/search", {
       query: this._query({ q, from, to, level }, ["q", "from", "to"]),
     });
@@ -327,14 +348,17 @@ class AdlaireCI {
   }
 
   getStatsTimeline(days = 30) {
+    requireNumber(days, "days");
     return this._request("/api/stats/timeline", { query: this._query({ days }) });
   }
 
   getStatsBuildDuration(n = 10) {
+    requireNumber(n, "n");
     return this._request("/api/stats/build-duration", { query: this._query({ n }) });
   }
 
   getBuildTrends(n = 100) {
+    requireNumber(n, "n");
     return this._request("/api/stats/build-trends", { query: this._query({ n }) });
   }
 
@@ -379,6 +403,8 @@ class AdlaireCI {
   }
 
   getWebhookEvents(limit = 50, offset = 0) {
+    requireNumber(limit, "limit");
+    requireNumber(offset, "offset");
     return this._request("/api/webhook-events", { query: this._query({ limit, offset }) });
   }
 
@@ -421,12 +447,16 @@ class AdlaireCI {
     return this._request(`/api/history/${this._validateId(id)}/comment`, { method: "POST", body: { comment } });
   }
 
-  setRepoConfig({ owner = undefined, repo = undefined } = {}) {
+  setRepoConfig(config = {}) {
+    requireObject(config, "config");
+    const { owner = undefined, repo = undefined } = config;
     const patch = {};
     if (owner !== undefined) {
+      requireString(owner, "owner");
       patch.owner = owner;
     }
     if (repo !== undefined) {
+      requireString(repo, "repo");
       patch.repo = repo;
     }
     if (owner === undefined && repo === undefined) {
@@ -447,7 +477,7 @@ class AdlaireCI {
   }
 
   setHistoryTags(id, tags) {
-    requireArray(tags, "tags");
+    requireStringArray(tags, "tags", true);
     return this._request(`/api/history/${this._validateId(id)}/tags`, { method: "POST", body: { tags } });
   }
 
@@ -461,7 +491,8 @@ class AdlaireCI {
 
   createToken(label, scopes = ["read"], expiresAt = null) {
     requireString(label, "label");
-    requireArray(scopes, "scopes");
+    requireStringArray(scopes, "scopes", false);
+    requireOptionalString(expiresAt, "expiresAt");
     return this._request("/api/tokens", {
       method: "POST",
       body: { label, scopes, expires_at: expiresAt },
@@ -502,7 +533,7 @@ class AdlaireCI {
   }
 
   setAccessControl(allowList) {
-    requireArray(allowList, "allowList");
+    requireStringArray(allowList, "allowList", true);
     return this._request("/api/access-control", { method: "POST", body: { allow: allowList } });
   }
 
@@ -768,6 +799,12 @@ function requireString(value, name, allowEmpty = false) {
   }
 }
 
+function requireOptionalString(value, name) {
+  if (value !== null && value !== undefined) {
+    requireString(value, name);
+  }
+}
+
 function requireNumber(value, name) {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new TypeError(`Invalid argument: ${name}`);
@@ -777,6 +814,16 @@ function requireNumber(value, name) {
 function requireArray(value, name) {
   if (!Array.isArray(value)) {
     throw new TypeError(`Invalid argument: ${name}`);
+  }
+}
+
+function requireStringArray(value, name, allowEmpty) {
+  requireArray(value, name);
+  if (!allowEmpty && value.length === 0) {
+    throw new TypeError(`Invalid argument: ${name}`);
+  }
+  for (const item of value) {
+    requireString(item, name);
   }
 }
 
