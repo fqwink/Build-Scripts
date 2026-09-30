@@ -22,7 +22,7 @@
 | 監査ログ | `components/mcp.go` が `statefile` owner の固定 state path へ追記 |
 | API 連携 | `api` owner の endpoint 契約を再利用 |
 | runner 連携 | `runner` owner の queue / build / history 契約を再利用 |
-| 検証接続 | 検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、fixture / expected / fake / mutation test 証跡 / test・contract drift 証跡の記録先は [`docs/details/fixture.md` fixture 証跡責務](fixture.md)、[mutation test 証跡固定契約](fixture.md#mutation-test-evidence-contract)、[test / contract drift 証跡固定契約](fixture.md#test-contract-drift-evidence-contract) を参照する。 |
+| 検証接続 | 検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、fixture / expected / fake / 実行証跡 / クロージャ記録 / mutation test 証跡 / test・contract drift 証跡の記録先は [`docs/details/fixture.md` fixture 証跡責務](fixture.md)、[test execution evidence matrix 固定契約](fixture.md#test-execution-evidence-matrix-contract)、[test verification closure checklist 固定契約](fixture.md#test-verification-closure-checklist-contract)、[test verification closure record schema 固定契約](fixture.md#test-verification-closure-record-schema-contract)、[mutation test 証跡固定契約](fixture.md#mutation-test-evidence-contract)、[test / contract drift 証跡固定契約](fixture.md#test-contract-drift-evidence-contract) を参照する。 |
 
 `components/mcp.go` は MCP 専用の protocol adapter として動作する。
 
