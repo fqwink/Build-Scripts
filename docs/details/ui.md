@@ -13,6 +13,7 @@ UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`d
 | owner component | `ui` |
 | 実装主体 | [`admin/index.html`](../../admin/index.html) の単一静的ファイル。 |
 | 持つ内容 | `ui` owner が主本文として定義する DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去。 |
+| 検証接続 | 検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、fixture / expected / fake / mutation test 証跡 / test・contract drift 証跡の記録先は [`docs/details/fixture.md` fixture 証跡責務](fixture.md)、[mutation test 証跡固定契約](fixture.md#mutation-test-evidence-contract)、[test / contract drift 証跡固定契約](fixture.md#test-contract-drift-evidence-contract) を参照する。 |
 
 ---
 

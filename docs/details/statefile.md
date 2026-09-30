@@ -11,6 +11,7 @@
 | owner component | `statefile` |
 | 実装主体 | 単独の Go artifact は持たない。runner が所有する状態の読み書きは [`components/runner.go`](../../components/runner.go)、API が所有する状態の読み書きは [`components/api.go`](../../components/api.go) に内包する。 |
 | 持つ内容 | `statefile` owner が主本文として定義する状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
+| 検証接続 | 検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、fixture / expected / fake / mutation test 証跡 / test・contract drift 証跡の記録先は [`docs/details/fixture.md` fixture 証跡責務](fixture.md)、[mutation test 証跡固定契約](fixture.md#mutation-test-evidence-contract)、[test / contract drift 証跡固定契約](fixture.md#test-contract-drift-evidence-contract) を参照する。 |
 
 ---
 

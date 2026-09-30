@@ -11,6 +11,7 @@
 | owner component | `security` |
 | 実装主体 | 単独の Go artifact は持たない。認証、認可、token、session、TOTP、rate limit、audit の実装は [`components/api.go`](../../components/api.go) に内包する。 |
 | 持つ内容 | `security` owner が主本文として定義する API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
+| 検証接続 | 検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、fixture / expected / fake / mutation test 証跡 / test・contract drift 証跡の記録先は [`docs/details/fixture.md` fixture 証跡責務](fixture.md)、[mutation test 証跡固定契約](fixture.md#mutation-test-evidence-contract)、[test / contract drift 証跡固定契約](fixture.md#test-contract-drift-evidence-contract) を参照する。 |
 
 ---
 
