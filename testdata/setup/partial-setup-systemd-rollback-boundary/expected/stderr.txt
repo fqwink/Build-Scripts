@@ -1,0 +1,1 @@
+setup: error SYSTEMD_FAILED stage=restart-services rollback=completed

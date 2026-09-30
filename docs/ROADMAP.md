@@ -16,9 +16,9 @@
 | [`main.go`](../main.go) | 実装中・検証未完了 | 起動入口の必須実装・証跡が未完了である。[`ALIGN-01`](details/fixture.md#align-01) |
 | [`components/builder.go`](../components/builder.go) | 実装済み | Phase 1 builder 実装は [PR #74](https://github.com/fqwink/Build-Scripts/pull/74) で merge 済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 1 builder 実装検証証跡](details/fixture.md#phase-1-builder-implementation-evidence) を参照する。 |
 | [`components/runner.go`](../components/runner.go) | 実装済み | Phase 2 runner 実装は [PR #75](https://github.com/fqwink/Build-Scripts/pull/75) で実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 2 runner 実装検証証跡](details/fixture.md#phase-2-runner-implementation-evidence) を参照する。 |
-| [`components/api.go`](../components/api.go) | 実装済み | Phase 4 `api` operations は実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 4 api operations 実装検証証跡](details/fixture.md#phase-4-api-operations-implementation-evidence) を参照する。追加管理 API、SDK、UI、admin、setup、release、mcp、正式 fixture directory harness の現在状態は各 owner の行と [統合機能インベントリ](#522-統合ロードマップ表) を参照する。 |
+| [`components/api.go`](../components/api.go) | 実装済み | Phase 4 `api` operations は実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 4 api operations 実装検証証跡](details/fixture.md#phase-4-api-operations-implementation-evidence) を参照する。追加管理 API、SDK、UI、admin、release、mcp、正式 fixture directory harness の現在状態は各 owner の行と [統合機能インベントリ](#522-統合ロードマップ表) を参照する。 |
 | [`components/admin.go`](../components/admin.go) | 実装済み | Phase 7 `admin` CLI 管理クライアントは実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 7 admin CLI 実装検証証跡](details/fixture.md#phase-7-admin-cli-implementation-evidence) を参照する。 |
-| `components/setup.go` | 仕様化済み・未実装 | 実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/setup.md`](details/setup.md)、現行実装証跡は [`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-37`](details/fixture.md#align-37) を参照する。 |
+| [`components/setup.go`](../components/setup.go) | 実装済み | Phase 8 `setup` は実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 8 setup 実装検証証跡](details/fixture.md#phase-8-setup-implementation-evidence) を参照する。 |
 | `components/release.go` | 仕様化済み・未実装 | 実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/release.md`](details/release.md)、現行実装証跡は [`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-37`](details/fixture.md#align-37) を参照する。 |
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | 実装済み | Phase 5 SDK 実装は実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 5 sdk 実装検証証跡](details/fixture.md#phase-5-sdk-implementation-evidence) を参照する。 |
 | [`admin/index.html`](../admin/index.html) | 実装済み | Phase 6 UI 実装は実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 6 ui 実装検証証跡](details/fixture.md#phase-6-ui-implementation-evidence) を参照する。正式 fixture directory harness の現在状態は [`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-24`](details/fixture.md#align-24) を参照する。 |
@@ -43,11 +43,11 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 5 | `sdk` | 実装済み | Phase 4 |
 | Phase 6 | `ui` | 実装済み | Phase 5 |
 | Phase 7 | `admin` CLI 管理クライアント | 実装済み | Phase 6 |
-| Phase 8 | `setup` | 仕様化済み・未実装 | Phase 7 |
+| Phase 8 | `setup` | 実装済み | Phase 7 |
 | Phase 9 | `release` | 仕様化済み・未実装 | Phase 8 |
 | Phase 10 | `mcp` | 仕様化済み・未実装 | Phase 9 |
 
-現在の active Phase は `Phase 8` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
+現在の active Phase は `Phase 9` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 
 各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) を参照する。
 
@@ -214,10 +214,10 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 実装済み | ビルドスクリプト | 印刷時 QR コード挿入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | ビルドスクリプト | 定義リストサポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | ビルドスクリプト | タスクリストサポート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | 配布・セットアップ | 初回セットアップ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
-| 仕様化済み・未実装 | 配布・セットアップ | 管理 API 導入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
-| 仕様化済み・未実装 | 配布・セットアップ | バイナリアップデート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
-| 仕様化済み・未実装 | 配布・セットアップ | アップデート rollback | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 実装済み | 配布・セットアップ | 初回セットアップ | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 実装済み | 配布・セットアップ | 管理 API 導入 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 実装済み | 配布・セットアップ | バイナリアップデート | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
+| 実装済み | 配布・セットアップ | アップデート rollback | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
 | 仕様化済み・未実装 | リリース | GitHub Release 成果物生成・公開前検証・公開 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.5](DETAIL_INDEX.md#0i5-setup--release) |
 | 仕様化済み・未実装 | MCP サーバー | MCP サーバー実装 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |
 | 仕様化済み・未実装 | MCP サーバー | MCP ツール・リソース公開 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.7](DETAIL_INDEX.md#0i7-mcp) |

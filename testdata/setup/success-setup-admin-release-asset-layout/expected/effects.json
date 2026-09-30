@@ -1,0 +1,1 @@
+{"downloaded":["adlaire-ci-api-linux-amd64","adlaire-ci-admin-linux-amd64","admin-ui.tar.gz","SHA256SUMS"],"installed":["adlaire-ci-api","adlaire-ci-admin","admin/index.html","admin/adlaire-ci-sdk.js"],"systemd":["adlaire-ci-api.service"]}
