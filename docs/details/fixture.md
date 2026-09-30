@@ -135,6 +135,8 @@
 
 Phase 11 対象の fixture root、manifest、input、expected、effects、security、fake transcript、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#sec-0g-8-f)、[`docs/details/fixture.md` fixture 証跡責務 §27-F runner / security 実装検証証跡 必須記録固定契約](fixture.md#sec-27-f-20)、および [`docs/details/phase11.md` Phase 11 仕様詳細責務 Phase 11 acceptance gate](phase11.md#phase-11-acceptance-gate) を同時に満たす。Phase 11 対象 root の網羅判定は、[`docs/details/phase11.md` Phase 11 仕様詳細責務 Phase 11 source-code audit inventory](phase11.md#phase-11-source-audit-inventory) で割り当てた `testdata/builder/`、`testdata/runner/`、`testdata/api/`、`testdata/sdk/`、`testdata/ui/`、`testdata/statefile/`、`testdata/archive/`、`testdata/commitstatus/`、`testdata/security/`、`testdata/admin/cli/`、`testdata/setup/`、`testdata/release/`、`testdata/mcp/` の各 root について、存在、manifest、expected、fake、harness 接続、対象外理由のいずれかへ到達できることで判定する。
 
+Phase 11 対象 root では、directory 名、`manifest.json.name`、fixture catalog 名が 1 対 1 に一致する場合だけ正式 fixture として扱う。`* 2` suffix 付き directory、同一 `manifest.json.name` を持つ複数 directory、fixture catalog 未登録 directory、harness から参照されない directory、expected だけを持つ directory は正式 fixture として扱わず、[`docs/details/phase11.md` Phase 11 仕様詳細責務 Phase 11 acceptance gate](phase11.md#phase-11-acceptance-gate) の `fixture root identity zero duplicate` で未完了として扱う。
+
 以下は実在する実装 artifact と owner component 詳細本文を照合した、後続 Phase または横断 owner に残る証跡である。Phase 2 runner、Phase 3 api request lifecycle、Phase 4 api operations、Phase 5 sdk、Phase 6 ui、Phase 7 admin CLI、Phase 8 setup、Phase 9 release、および Phase 10 mcp の実装済み状態を取り消す一覧ではない。
 
 | ID | 対象 | 現在確認できる実装証跡 | 受け入れに必要な証跡 |
