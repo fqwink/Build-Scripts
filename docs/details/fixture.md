@@ -137,6 +137,30 @@ Phase 11 対象の fixture root、manifest、input、expected、effects、securi
 
 Phase 11 対象 root では、directory 名、`manifest.json.name`、fixture catalog 名が 1 対 1 に一致する場合だけ正式 fixture として扱う。`* 2` suffix 付き directory、同一 `manifest.json.name` を持つ複数 directory、fixture catalog 未登録 directory、harness から参照されない directory、expected だけを持つ directory は正式 fixture として扱わず、[`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) の `fixture root identity zero duplicate` 判定で未完了として扱う。
 
+<a id="fixture-root-coverage-matrix-contract"></a>
+**fixture root coverage matrix 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、Phase 11 対象 fixture root の網羅判定と未完了条件だけを固定する。実在所在は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 実装・テスト・fixture 所在](../DOCUMENT_INDEX.md#実装ファイル一覧)、現在状態と対象外理由は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) を参照する。
+
+Phase 11 対象 root は、正式 fixture directory、実装検証証跡、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できる場合だけ閉じる。Phase 11 が割り当てた未作成 root は、正式 fixture、実装検証証跡、または対象外理由が追加されるまで未完了として扱う。`testdata/admin/` などの group root は正式 fixture directory として数えず、directory 名、`manifest.json.name`、fixture catalog 名が 1 対 1 に一致する下位 directory だけを正式 fixture として扱う。下表の未作成 root 共通未完了条件は、正式 fixture、実装検証証跡、対象外理由のいずれにも到達できない状態とする。
+
+| root / pattern | coverage status | closure source | incomplete condition |
+|----------------|-----------------|----------------|----------------------|
+| `testdata/builder/` | 部分実在 root。`single/`、`site/`、`empty-dir/` は実在し、`strict/`、`safe/`、`url-safety/`、`expected/` は builder fixture catalog の対象である。 | [`§8a-F`](#8a-f-builder-初期受け入れ-fixture-契約)、[`§28-F`](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md#実装ファイル一覧) | required builder fixture、expected、manifest、実装検証証跡のいずれかが欠ける場合は未完了。 |
+| `testdata/admin/cli/` | Admin CLI の正式 fixture root。 | [Admin CLI fixture 固定契約](#admin-cli-fixture-contract)、[`docs/DETAIL_INDEX.md` Phase 11 参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) | catalog / manifest / expected / effects / security の対応が欠ける場合は未完了。 |
+| `testdata/setup/` | setup の正式 fixture root。 | [`§27-F setup / admin / Release asset 連動 fixture`](#sec-27-f-19)、[`docs/DETAIL_INDEX.md` Phase 11 参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) | catalog / manifest / expected / effects の対応が欠ける場合は未完了。 |
+| `testdata/release/` | release の正式 fixture root。 | [Release fixture 固定契約](#release-fixture-contract)、[`docs/DETAIL_INDEX.md` Phase 11 参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) | catalog / manifest / expected / asset 証跡の対応が欠ける場合は未完了。 |
+| `testdata/mcp/` | MCP の正式 fixture root。 | [MCP fixture 固定契約](#mcp-fixture-contract)、[`docs/DETAIL_INDEX.md` Phase 11 参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) | catalog / manifest / expected / fake transcript の対応が欠ける場合は未完了。 |
+| `testdata/runner/` | Phase 11 対象の未作成 root。 | [`§15a-F`](#15a-f-runner-初期受け入れ-fixture-契約)、[`§27-F`](#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) | 未作成 root 共通未完了条件を適用。 |
+| `testdata/api/` | Phase 11 対象の未作成 root。 | [`§22-F`](#22-f-api-fixture-契約)、[`docs/DETAIL_INDEX.md` Phase 11 参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry)、[`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) | 未作成 root 共通未完了条件を適用。 |
+| `testdata/sdk/` | Phase 11 対象の未作成 root。 | [`§22-F`](#22-f-api-fixture-契約)、[`docs/details/sdk.md` 詳細本文責務](sdk.md)、[`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) | 未作成 root 共通未完了条件を適用。 |
+| `testdata/ui/` | Phase 11 対象の未作成 root。 | [`§22-F`](#22-f-api-fixture-契約)、[`docs/details/ui.md` 詳細本文責務](ui.md)、[`docs/DESIGN.md` デザイン責務](../DESIGN.md) | 未作成 root 共通未完了条件を適用。 |
+| `testdata/statefile/` | Phase 11 対象の未作成 root。 | [`docs/details/statefile.md` 詳細本文責務](statefile.md)、[`§0g.8-F`](#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[non-dedicated owner test routing 固定契約](#non-dedicated-owner-test-routing-contract) | 未作成 root 共通未完了条件を適用。 |
+| `testdata/archive/` | Phase 11 対象の未作成 root。 | [`docs/details/archive.md` 詳細本文責務](archive.md)、[`§0g.8-F`](#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[non-dedicated owner test routing 固定契約](#non-dedicated-owner-test-routing-contract) | 未作成 root 共通未完了条件を適用。 |
+| `testdata/commitstatus/` | Phase 11 対象の未作成 root。 | [`docs/details/commitstatus.md` 詳細本文責務](commitstatus.md)、[`§0g.8-F`](#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[non-dedicated owner test routing 固定契約](#non-dedicated-owner-test-routing-contract) | 未作成 root 共通未完了条件を適用。 |
+| `testdata/security/` | Phase 11 対象の未作成 root。 | [`docs/details/security.md` 詳細本文責務](security.md)、[`§0g.8-F`](#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[non-dedicated owner test routing 固定契約](#non-dedicated-owner-test-routing-contract) | 未作成 root 共通未完了条件を適用。 |
+| `testdata/admin/archive/`、`testdata/admin/static-serving/`、`testdata/admin/security/` | Admin group root 配下の候補 root。現時点では Admin CLI の正式 fixture root ではない。 | [Admin CLI fixture 固定契約](#admin-cli-fixture-contract)、[`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) | Admin CLI 完了証跡として数えた場合は未完了。作成する場合は該当 owner / state / fixture catalog を先に一致させる。 |
+
 Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*_test.go`、`sdk_contract_test.go`、`ui_contract_test.go` を fixture 証跡の補助 source として扱う。これらの test / contract assertion は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry)、owner 詳細本文、fixture catalog、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できなければならない。test file 自体を仕様正本として扱ってはならず、fixture catalog と owner 詳細本文へ到達しない assertion は Phase 11 の未解消 drift とする。mutation test 証跡は [mutation test 証跡固定契約](#mutation-test-evidence-contract) に従い、Phase 11 では `survived=0` を満たすまで完了扱いにしない。
 
 <a id="test-artifact-traceability-contract"></a>
