@@ -263,7 +263,7 @@ func TestRunAdminOutputAndAPIErrors(t *testing.T) {
 
 func TestAdminCLIFixturesExist(t *testing.T) {
 	fixtures := map[string][]string{
-		"lifecycle": {
+		"partial-admin-cli-lifecycle": {
 			"manifest.json",
 			"input/cli.json",
 			"expected/stdout.txt",
@@ -271,7 +271,7 @@ func TestAdminCLIFixturesExist(t *testing.T) {
 			"expected/effects.json",
 			"expected/security.json",
 		},
-		"transport": {
+		"success-admin-cli-transport": {
 			"manifest.json",
 			"input/cli.json",
 			"input/fakes.json",
@@ -281,7 +281,7 @@ func TestAdminCLIFixturesExist(t *testing.T) {
 			"expected/effects.json",
 			"expected/security.json",
 		},
-		"output": {
+		"failure-admin-cli-output-errors": {
 			"manifest.json",
 			"input/cli.json",
 			"input/fakes.json",
@@ -291,7 +291,7 @@ func TestAdminCLIFixturesExist(t *testing.T) {
 			"expected/effects.json",
 			"expected/security.json",
 		},
-		"security": {
+		"security-admin-cli-secret-redaction": {
 			"manifest.json",
 			"input/cli.json",
 			"input/fakes.json",

@@ -4,12 +4,25 @@
   "feature": "mcp_tools_confirmation",
   "category": "partial",
   "owner_component": "mcp",
+  "collaborator_components": ["runner", "statefile"],
   "components": ["mcp", "runner", "statefile"],
   "references": [
     "docs/details/mcp.md#sec-29-6",
     "docs/details/fixture.md#mcp-fixture-contract",
     "docs/details/statefile.md#sec-22-0d"
   ],
-  "assertions": ["response", "state", "logs", "effects", "secret-mask", "order", "idempotency"],
-  "not_applicable": ["request", "events"]
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [
+    {
+      "path": "expected/events.json",
+      "reason": "fixture does not assert protocol events"
+    },
+    {
+      "path": "expected/request.json",
+      "reason": "fixture does not assert outbound request"
+    }
+  ],
+  "missing_state": [],
+  "input_files": [],
+  "assertions": ["response", "state", "logs", "effects", "secret-mask", "order", "idempotency"]
 }

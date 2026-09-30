@@ -4,11 +4,28 @@
   "feature": "mcp_resources_subscription",
   "category": "success",
   "owner_component": "mcp",
+  "collaborator_components": [],
   "components": ["mcp"],
   "references": [
     "docs/details/mcp.md#sec-29-7",
     "docs/details/fixture.md#mcp-fixture-contract"
   ],
-  "assertions": ["response", "effects", "secret-mask", "order"],
-  "not_applicable": ["request", "state", "logs"]
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [
+    {
+      "path": "expected/logs/",
+      "reason": "fixture does not assert logs"
+    },
+    {
+      "path": "expected/request.json",
+      "reason": "fixture does not assert outbound request"
+    },
+    {
+      "path": "expected/state/",
+      "reason": "fixture does not assert state"
+    }
+  ],
+  "missing_state": [],
+  "input_files": [],
+  "assertions": ["response", "effects", "secret-mask", "order"]
 }

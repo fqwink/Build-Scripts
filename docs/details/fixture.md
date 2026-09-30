@@ -94,7 +94,7 @@
 | 対象 | 証跡 |
 |------|------|
 | Phase 7 `admin` CLI 実装検証 | [`main.go`](../../main.go)、[`main_test.go`](../../main_test.go)、[`components/admin.go`](../../components/admin.go)、[`components/admin_test.go`](../../components/admin_test.go) に、`adlaire-ci-admin` の完全一致 basename dispatch、`--help` / `--version` 優先、argv token safety、`--api-url` / `--token` / `--json` parse、URL 正規化、token 検証、7 command 固定表、request method / path / header / body、redirect 不追従、proxy 無効、retry なし、30 秒 timeout、1 MiB response body 上限、Content-Type 検証、JSON object 単一値検証、command 別 human stdout、`--json` wire body 出力、HTTP error / network error / invalid response、token 非表示を実装した。 |
-| fixture 証跡 | [`testdata/admin/cli/lifecycle/`](../../testdata/admin/cli/lifecycle/)、[`testdata/admin/cli/transport/`](../../testdata/admin/cli/transport/)、[`testdata/admin/cli/output/`](../../testdata/admin/cli/output/)、[`testdata/admin/cli/security/`](../../testdata/admin/cli/security/) に Admin CLI fixture 固定契約の必須 fixture を配置し、[`components/admin_test.go`](../../components/admin_test.go) で必須 fixture file の存在と JSON 妥当性を検証する。 |
+| fixture 証跡 | [`testdata/admin/cli/partial-admin-cli-lifecycle/`](../../testdata/admin/cli/partial-admin-cli-lifecycle/)、[`testdata/admin/cli/success-admin-cli-transport/`](../../testdata/admin/cli/success-admin-cli-transport/)、[`testdata/admin/cli/failure-admin-cli-output-errors/`](../../testdata/admin/cli/failure-admin-cli-output-errors/)、[`testdata/admin/cli/security-admin-cli-secret-redaction/`](../../testdata/admin/cli/security-admin-cli-secret-redaction/) に Admin CLI fixture 固定契約の必須 fixture を配置し、[`components/admin_test.go`](../../components/admin_test.go) で必須 fixture file の存在と JSON 妥当性を検証する。 |
 | Docker 検証 | `golang:1.22` container で `gofmt -l main.go main_test.go components/admin.go components/admin_test.go` が差分なし、`go test ./...` が成功した。 |
 | 状態反映 | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務では、Phase 7 `admin` CLI 管理クライアント、[`components/admin.go`](../../components/admin.go)、および `CLI 管理クライアント` を `実装済み` と扱う。管理 UI 静的配布物構成、管理 UI 静的 HTTP 配信、mcp、および正式 fixture harness の追加拡張は後続 Phase または横断 owner の残証跡として扱い、Phase 7 `admin` CLI 完了判定を取り消す根拠にしない。 |
 
@@ -1889,10 +1889,10 @@ Admin CLI fixture は [`docs/details/admin.md` 詳細本文責務 §A7](admin.md
 
 | fixture 名 | fixture 群 | 必須確認 |
 |------------|------------|----------|
-| `partial-admin-cli-lifecycle` | `testdata/admin/cli/lifecycle/` | `--help`、`--version`、argv token safety、option parse、必須 option、未知 command、終了 code、network / state no-write。 |
-| `success-admin-cli-transport` | `testdata/admin/cli/transport/` | `--api-url` path prefix 連結、method、path、header、request body byte、redirect 不追従、retry なし、proxy なし、timeout。 |
-| `failure-admin-cli-output-errors` | `testdata/admin/cli/output/` | command 別 human stdout、`--json` raw JSON、invalid JSON、Content-Type 不一致、body 上限超過、HTTP error、network error。 |
-| `security-admin-cli-secret-redaction` | `testdata/admin/cli/security/` | token、Authorization header、error body、URL、Location、server body 断片、fixture expected への secret 非出力。 |
+| `partial-admin-cli-lifecycle` | `testdata/admin/cli/partial-admin-cli-lifecycle/` | `--help`、`--version`、argv token safety、option parse、必須 option、未知 command、終了 code、network / state no-write。 |
+| `success-admin-cli-transport` | `testdata/admin/cli/success-admin-cli-transport/` | `--api-url` path prefix 連結、method、path、header、request body byte、redirect 不追従、retry なし、proxy なし、timeout。 |
+| `failure-admin-cli-output-errors` | `testdata/admin/cli/failure-admin-cli-output-errors/` | command 別 human stdout、`--json` raw JSON、invalid JSON、Content-Type 不一致、body 上限超過、HTTP error、network error。 |
+| `security-admin-cli-secret-redaction` | `testdata/admin/cli/security-admin-cli-secret-redaction/` | token、Authorization header、error body、URL、Location、server body 断片、fixture expected への secret 非出力。 |
 
 Admin CLI fixture の expected file は fixture 名ごとに以下へ固定する。対象外の expected file は `manifest.json.not_applicable` に理由を記録する。
 
@@ -2786,7 +2786,7 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 `additional-management-ui-flow` は event feed panel で `streamAdminEvents(query,onEvent)` だけを使用し、UI が `EventSource`、`fetch`、`ReadableStream` reader を直接生成しないことを `expected/ui_trace.json` で固定する。`onEvent` 受信時は API record の値だけを表示へ挿入し、stream error では error 表示 1 回と `getAdminEvents` 1 回、user stop では error 表示 0 回と `getAdminEvents` 1 回を `expected/ui_dom.json` と `expected/sdk_trace.json` で固定する。
 
-追加管理 API fixture の `manifest.json` は、`name`、`section`、`feature`、`owner_component`、`components`、`references`、`assertions`、`not_applicable` を必須 key とする。`section` は対象 [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、または [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) のいずれかを固定文字列で持つ。複数責務を横断する fixture は主 owner を 1 件だけ `owner_component` に置き、残りを `components` と `references` に記録する。`assertions` は実在する expected file と 1 対 1 で対応させ、fixture 実行時に使わない expected file は作成せず、`not_applicable` に理由を置く。ただし `expected/events.json` は protocol event evidence として fixture 名別 expected 固定表で要求し、`manifest.json.assertions` の値としては追加しない。
+追加管理 API fixture の `manifest.json` は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) に従う。`section` は対象 [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、または [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) のいずれかを固定文字列で持つ。複数責務を横断する fixture は主 owner を 1 件だけ `owner_component` に置き、残りを `collaborator_components`、`components`、`references` に記録する。`assertions` は実在する expected file と 1 対 1 で対応させ、fixture 実行時に使わない expected file は作成せず、`not_applicable` に理由を置く。ただし `expected/events.json` は protocol event evidence として fixture 名別 expected 固定表で要求し、`manifest.json.assertions` の値としては追加しない。
 
 追加管理 API fixture の `manifest.json.assertions` は次表に固定する。複数値は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) の列挙順で記録する。
 
@@ -2868,7 +2868,7 @@ MCP fixture の `manifest.json.category` は fixture 名ごとに以下へ固定
 
 MCP fixture は [`docs/details/mcp.md` 詳細本文責務 §29.6 Tool schema](mcp.md#sec-29-6) の未知 key、必須 key 不足、型不一致、範囲外を個別に検証する。params validation failure では `.mcp_audit_log`、`.mcp_metrics`、対象 owner state を更新しないことを固定する。
 
-MCP fixture の `manifest.json` は、`name`、`section`、`feature`、`owner_component`、`components`、`references`、`assertions`、`not_applicable` を必須 key とする。`owner_component` は `mcp` 固定、`components` は `mcp` と fixture が呼び出す owner component を ASCII 昇順で持つ。`section` は [`docs/details/mcp.md` 詳細本文責務 §29.0](mcp.md#sec-29-0)〜[§29.17](mcp.md#sec-29-17) の対象節を固定文字列で持つ。`references` は対象 MCP 節、呼び出す owner component 詳細本文、必要な [`docs/details/fixture.md` fixture 証跡責務 §30-F](fixture.md#mcp-fixture-contract) を含める。read-only 起動 fixture では副作用 tool を `tools/list` から除外する expected を必須とし、除外した tool 名を `not_applicable` ではなく `expected/response.json` に記録する。
+MCP fixture の `manifest.json` は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) に従う。`owner_component` は `mcp` 固定、`collaborator_components` は fixture が呼び出す owner component だけを持ち、`components` は `mcp` と `collaborator_components` を ASCII 昇順で持つ。`section` は [`docs/details/mcp.md` 詳細本文責務 §29.0](mcp.md#sec-29-0)〜[§29.17](mcp.md#sec-29-17) の対象節を固定文字列で持つ。`references` は対象 MCP 節、呼び出す owner component 詳細本文、必要な [`docs/details/fixture.md` fixture 証跡責務 §30-F](fixture.md#mcp-fixture-contract) を含める。read-only 起動 fixture では副作用 tool を `tools/list` から除外する expected を必須とし、除外した tool 名を `not_applicable` ではなく `expected/response.json` に記録する。
 
 MCP fixture の `manifest.json.assertions` は次表に固定する。複数値は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) の列挙順で記録する。`expected/events.json` と `expected/request.json` は MCP protocol evidence として fixture 名別 expected 固定表で要求し、`manifest.json.assertions` の値としては追加しない。
 
