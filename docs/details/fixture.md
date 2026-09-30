@@ -280,6 +280,23 @@ Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*
 
 component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) のいずれの実装検証証跡でも、記録形式は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) 詳細本文責務に同種の記録項目がある場合でも、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は証跡分類、不足時の扱い、差し戻し条件だけを固定する。
 
+<a id="test-execution-evidence-matrix-contract"></a>
+**test execution evidence matrix 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、実装検証結果をどの証跡分類で記録し、何が不足すると未完了になるかだけを固定する。テスト方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、実行手順と Pull Request への記録手順は [`AGENTS.md` Git 運用ルール](../../AGENTS.md#agents-git-operations)、実在 test artifact と fixture root の所在は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 実装・テスト・fixture 所在](../DOCUMENT_INDEX.md#実装ファイル一覧) を参照する。
+
+実装検証証跡では、実行した command、対象 artifact、対象 owner、対象 fixture、終了 code、重要 stdout / stderr の要約、期待結果、実結果、未実行理由、完了可否への影響を記録する。必須検証を未実行にする場合は、対象外理由、再実行条件、未完了扱いかどうかを責務正本 anchor へ到達できる形で記録する。実行成功だけを記録し、対象 artifact、対象 fixture、assertion、mutation、contract drift との接続を記録しない証跡は完了証跡として扱わない。
+
+| 証跡分類 | 対象 | 必須証跡 | 未完了条件 |
+|----------|------|----------|------------|
+| Go 構文・単体・contract 検証 | `main.go`、`components/*.go`、`*_test.go`、Go contract test。 | 対象 Go file、対象 test artifact、owner / collaborator、fixture root、実行 command、終了 code、差分有無、pass / fail、scope を限定した理由。 | Go 実装または Go test を変更したのに、対象 artifact と owner へ接続された Go 検証結果がない。 |
+| JavaScript / UI 静的検証 | `admin/adlaire-ci-sdk.js`、`admin/index.html`、SDK / UI contract。 | 対象 artifact、Deno stable runtime での検証結果、SDK / UI owner、関連 API / security collaborator、実行 command、終了 code、pass / fail。 | JavaScript 系 artifact または UI contract を変更したのに、Deno 検証証跡がない、または Node.js / npm / bundler を標準検証の代替として扱っている。 |
+| fixture schema / manifest 検証 | `testdata/`、`manifest.json`、`expected/`、`effects`、`security expected`。 | 対象 fixture root、fixture 名、directory 名、`manifest.json.name`、catalog 名、schema 検証結果、expected / effects / security expected の照合結果。 | manifest、directory、catalog、expected の対応が閉じていない、または [fixture root coverage matrix 固定契約](#fixture-root-coverage-matrix-contract) の未完了条件が残る。 |
+| test / contract drift 検証 | test、contract test、fixture assertion、owner 詳細本文の対応。 | test artifact、assertion 名または fixture 名、owner 詳細本文 anchor、fixture 証跡 anchor、drift 判定結果。 | [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の孤立 test、未検証契約、期待値ドリフト、harness ドリフトが残る。 |
+| mutation test 検証 | 実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion。 | mutation class、対象 file、対象 fixture、実行単位、判定、`killed` / `survived` / `invalid` / `equivalent` 件数。 | [mutation test 証跡固定契約](#mutation-test-evidence-contract) の `survived` が 1 件以上ある、または対象 mutation が未定義。 |
+| cross-owner contract 検証 | API / SDK / UI、CLI / API、statefile / archive / security / runner、setup / release / admin の横断境界。 | 呼び出し元 owner、呼び出し先 owner、endpoint / method / command / state path、状態差分、security effect、成功後再取得、失敗時 no mutation、関連 fixture。 | 片側の契約だけを検証している、または collaborator の副作用、security、状態差分、失敗時固定が未確認。 |
+| 未実行・対象外証跡 | 必須検証を実行できない場合、または仕様上対象外とする場合。 | 未実行 command、未実行理由、影響 owner、影響 fixture、再実行条件、対象外にする責務正本 anchor、完了可否への影響。 | 必須検証の未実行理由がない、対象外 anchor がない、または未実行のまま完了扱いにしている。 |
+
 <a id="mutation-test-evidence-contract"></a>
 **mutation test 証跡固定契約：**
 
