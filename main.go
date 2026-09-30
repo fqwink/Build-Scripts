@@ -37,6 +37,8 @@ func dispatchMain(name string, args []string, stdout io.Writer, stderr io.Writer
 		return components.RunSetup(args, stdout, stderr)
 	case "adlaire-ci-release":
 		return components.RunRelease(args, stdout, stderr)
+	case "adlaire-ci-mcp":
+		return components.RunMCP(args, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command: %s\n", name)
 		return 2

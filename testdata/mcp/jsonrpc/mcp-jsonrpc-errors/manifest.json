@@ -1,0 +1,14 @@
+{
+  "name": "mcp-jsonrpc-errors",
+  "section": "29.3",
+  "feature": "mcp_jsonrpc_errors",
+  "category": "failure",
+  "owner_component": "mcp",
+  "components": ["mcp"],
+  "references": [
+    "docs/details/mcp.md#sec-29-3",
+    "docs/details/fixture.md#mcp-fixture-contract"
+  ],
+  "assertions": ["response", "state", "effects", "secret-mask", "no-write"],
+  "not_applicable": ["request", "logs", "events"]
+}

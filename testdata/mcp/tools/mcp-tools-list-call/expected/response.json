@@ -1,0 +1,5 @@
+{
+  "tool_order_source": "docs/details/mcp.md#sec-29-5",
+  "descriptor_keys": ["name", "description", "inputSchema", "annotations"],
+  "read_only_excludes_side_effect_tools": true
+}

@@ -1,0 +1,15 @@
+{
+  "name": "mcp-initialize-client-log",
+  "section": "29.4",
+  "feature": "mcp_initialize_client_log",
+  "category": "success",
+  "owner_component": "mcp",
+  "components": ["mcp", "statefile"],
+  "references": [
+    "docs/details/mcp.md#sec-29-4",
+    "docs/details/fixture.md#mcp-fixture-contract",
+    "docs/details/statefile.md#sec-22-0d"
+  ],
+  "assertions": ["response", "state", "logs", "effects", "secret-mask", "order"],
+  "not_applicable": ["request", "events"]
+}

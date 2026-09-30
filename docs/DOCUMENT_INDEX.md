@@ -97,7 +97,7 @@
 | `testdata/security/` | `security` fixture root | 未作成 |
 | [`testdata/setup/`](../testdata/setup/) | `setup` fixture root | 実在 |
 | [`testdata/release/`](../testdata/release/) | `release` fixture root | 実在 |
-| `testdata/mcp/` | `mcp` fixture root | 未作成 |
-| `components/mcp.go` | `mcp` | 未作成 |
+| [`testdata/mcp/`](../testdata/mcp/) | `mcp` fixture root | 実在 |
+| [`components/mcp.go`](../components/mcp.go) | `mcp` | 実在 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。

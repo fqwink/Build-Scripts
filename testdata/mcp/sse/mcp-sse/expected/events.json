@@ -1,0 +1,3 @@
+{
+  "events": ["keepalive", "resource-updated", "shutdown", "client-disconnect"]
+}

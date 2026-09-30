@@ -1,0 +1,5 @@
+{
+  "protocolVersion": "2025-06-18",
+  "serverInfo": "adlaire-ci-mcp",
+  "capabilities": ["tools", "resources", "prompts", "logging", "sampling", "elicitation"]
+}

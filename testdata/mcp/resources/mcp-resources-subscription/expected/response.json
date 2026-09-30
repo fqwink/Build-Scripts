@@ -1,0 +1,3 @@
+{
+  "resources": ["adlaire://status", "adlaire://queue", "adlaire://history", "adlaire://history/{build_id}", "adlaire://logs/{build_id}", "adlaire://config", "adlaire://metrics", "adlaire://audit"]
+}

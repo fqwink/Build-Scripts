@@ -1,0 +1,9 @@
+{
+  "created_paths": [],
+  "updated_paths": [".mcp_metrics"],
+  "deleted_paths": [],
+  "unchanged_paths": [".build_state"],
+  "forbidden_writes": [".mcp_audit_log"],
+  "external_calls": [],
+  "write_order": [".mcp_metrics"]
+}

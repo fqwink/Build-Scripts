@@ -103,6 +103,19 @@ func TestDispatchMainExactBasename(t *testing.T) {
 	stdout.Reset()
 	stderr.Reset()
 
+	if code := dispatchMain("adlaire-ci-mcp", []string{"--help"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected mcp help exit code 0, got %d", code)
+	}
+	if got := stdout.String(); !strings.Contains(got, "Usage: adlaire-ci-mcp") {
+		t.Fatalf("expected mcp help usage, got %q", got)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for mcp help, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+
 	if code := dispatchMain("adlaire-ci-build-linux-amd64", []string{"--version"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("expected release asset build version exit code 0, got %d", code)
 	}
