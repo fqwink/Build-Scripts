@@ -578,7 +578,7 @@ setup / update と Release asset 受け入れに関わる結果は、[`docs/deta
 
 **setup / admin / Release asset 連動 fixture 参照：**
 
-setup / admin / Release asset 連動 fixture の fixture 群、対象 component、必須 input、必須 expected、合格条件は、[`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](fixture.md#sec-27-f-19) を正本とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存の実装受け入れ条件だけを扱う。
+setup / admin / Release asset 連動 fixture の fixture 名、正式 fixture directory の判定条件、対象 component、必須 input、必須 expected、合格条件は、[`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture 固定契約](fixture.md#sec-27-f-19) を正本とする。setup 詳細本文では、配置、保持、権限、起動、local 到達、rollback、secret 非保存の実装受け入れ条件だけを扱う。
 
 **setup / update 実装者向け出力固定：**
 

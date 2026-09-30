@@ -249,6 +249,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 ```text
 .
 ├── main.go
+├── main_test.go
 │
 ├── components/
 │   ├── builder.go
@@ -263,7 +264,8 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   ├── setup_test.go
 │   ├── release.go
 │   ├── release_test.go
-│   └── mcp.go
+│   ├── mcp.go
+│   └── mcp_test.go
 │
 ├── admin/
 │   ├── index.html
@@ -317,6 +319,8 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   │   └── fixture.md
 │   └── examples/
 │
+├── sdk_contract_test.go
+├── ui_contract_test.go
 ├── README.md
 ├── AGENTS.md
 └── go.mod
