@@ -11,10 +11,10 @@
 
 | surface | デザイン正本範囲 | 挙動の参照先 |
 |---------|------------------|--------------|
-| 生成静的 Web サイト | [生成静的 Web サイト視覚契約](#design-static-site) の token、selector、レイアウト、responsive、print。 | [`docs/details/builder.md`](details/builder.md) |
-| 標準管理 UI | [標準管理 UI 視覚契約](#admin-ui-visual-contract) の token、selector、レイアウト、responsive。 | [`docs/details/ui.md`](details/ui.md) |
+| 生成静的 Web サイト | [生成静的 Web サイト視覚契約](#design-static-site) の token、selector、レイアウト、responsive、print。 | [`docs/details/builder.md` 詳細本文責務](details/builder.md) |
+| 標準管理 UI | [標準管理 UI 視覚契約](#admin-ui-visual-contract) の token、selector、レイアウト、responsive。 | [`docs/details/ui.md` 詳細本文責務](details/ui.md) |
 
-デザイン外の正本参照先は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照する。
+デザイン外の正本参照先は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務](DOCUMENT_INDEX.md) を参照する。
 
 <a id="design-static-site"></a>
 
@@ -201,7 +201,7 @@
 
 **Builder 拡張コンポーネント視覚契約：**
 
-[`docs/details/builder.md` 詳細本文責務 §28](details/builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) で追加される生成 HTML の視覚仕様、レイアウト、レスポンシブ、印刷時の見え方は [`docs/DESIGN.md`](DESIGN.md) デザイン責務を正本とする。出力対象 selector、設定値、REPORT、状態、検証条件は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
+[`docs/details/builder.md` 詳細本文責務 §28](details/builder.md#28-builder-owner-静的サイト出力拡張追加仕様化機能-詳細仕様) で追加される生成 HTML の視覚仕様、レイアウト、レスポンシブ、印刷時の見え方は [`docs/DESIGN.md` デザイン責務](DESIGN.md) を正本とする。出力対象 selector、設定値、REPORT、状態、検証条件は [`docs/details/builder.md` 詳細本文責務](details/builder.md) を参照する。
 
 | 対象 | 視覚契約 |
 |------|----------|
@@ -268,9 +268,9 @@
 
 ## 8. 生成側参照
 
-ビルド実行方法、入出力パス、既定値、終了コード、レポート出力は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
+ビルド実行方法、入出力パス、既定値、終了コード、レポート出力は [`docs/details/builder.md` 詳細本文責務](details/builder.md) を参照する。
 
-`builder` が生成する `assets/style.css` は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務の token、selector、視覚値を実装しなければならない。生成処理と出力検証は [`docs/details/builder.md`](details/builder.md) 詳細本文責務を参照する。
+`builder` が生成する `assets/style.css` は、[`docs/DESIGN.md` デザイン責務](DESIGN.md) の token、selector、視覚値を実装しなければならない。生成処理と出力検証は [`docs/details/builder.md` 詳細本文責務](details/builder.md) を参照する。
 
 ---
 
@@ -278,7 +278,7 @@
 
 ## 9. 標準管理 UI 視覚契約
 
-標準管理 UI は反復操作と状態比較を行う運用画面とし、装飾的な hero、入れ子の card、背景画像、gradient、外部配信 font、外部配信 CSS、外部配信 JavaScript を使用しない。repository 内の [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) は必須のローカル ES Module として読み込む。ライトモード固定とし、色切替 UI と `prefers-color-scheme` 分岐を持たない。DOM、操作、表示状態、SDK 呼び出しは [`docs/details/ui.md`](details/ui.md)、配布と静的配信は [`docs/details/admin.md`](details/admin.md) を参照する。
+標準管理 UI は反復操作と状態比較を行う運用画面とし、装飾的な hero、入れ子の card、背景画像、gradient、外部配信 font、外部配信 CSS、外部配信 JavaScript を使用しない。repository 内の [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) は必須のローカル ES Module として読み込む。ライトモード固定とし、色切替 UI と `prefers-color-scheme` 分岐を持たない。DOM、操作、表示状態、SDK 呼び出しは [`docs/details/ui.md` 詳細本文責務](details/ui.md)、配布と静的配信は [`docs/details/admin.md` 詳細本文責務](details/admin.md) を参照する。
 
 **標準管理 UI カラートークン：**
 
@@ -334,7 +334,7 @@
 | `[hidden]` | `display: none !important`。表示切替で DOM 順序を変更しない。 |
 | disabled | cursor `not-allowed`、opacity `0.55`。寸法を変更しない。 |
 | keyboard focus | `button`、`input`、`select`、`textarea`、`a[href]` の `:focus-visible` は `outline: 2px solid var(--focus)` と `outline-offset: 2px` を使用する。border、padding、要素寸法を変更しない。 |
-| error / success / warning | 色だけに依存せず、[`docs/details/ui.md`](details/ui.md) の固定 text と領域で状態を示す。 |
+| error / success / warning | 色だけに依存せず、[`docs/details/ui.md` 詳細本文責務](details/ui.md) の固定 text と領域で状態を示す。 |
 | overflow | `pre` は内部 scroll を許可し、通常 text、label、button text、field text は親要素外へ不可視にはみ出さない。 |
 
-[`admin/index.html`](../admin/index.html) の inline CSS は、[標準管理 UI 視覚契約](#admin-ui-visual-contract) の token、selector、視覚値を実装しなければならない。視覚値を変更する場合は、先に [`docs/DESIGN.md`](DESIGN.md) デザイン責務を改訂する。
+[`admin/index.html`](../admin/index.html) の inline CSS は、[標準管理 UI 視覚契約](#admin-ui-visual-contract) の token、selector、視覚値を実装しなければならない。視覚値を変更する場合は、先に [`docs/DESIGN.md` デザイン責務](DESIGN.md) を改訂する。

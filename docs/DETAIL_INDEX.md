@@ -1,36 +1,36 @@
 # Adlaire CI — 詳細仕様入口
 
-[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、対象機能から唯一の owner component を確定する対応表、owner 詳細本文が定義する collaborator 境界への参照入口、fixture 証跡への参照入口、共通固定値だけを管理する。方針・ポリシー・状態定義・着手可否は [`docs/SPEC.md`](SPEC.md)、現在状態と実装計画は [`docs/ROADMAP.md`](ROADMAP.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を正本とする。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は、対象機能から唯一の owner component を確定する対応表、owner 詳細本文が定義する collaborator 境界への参照入口、fixture 証跡への参照入口、共通固定値だけを管理する。方針・ポリシー・状態定義・着手可否は [`docs/SPEC.md` 方針責務・ポリシー責務](SPEC.md)、現在状態と実装計画は [`docs/ROADMAP.md` 状態・計画責務](ROADMAP.md)、実在所在は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務](DOCUMENT_INDEX.md) を正本とする。
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務は owner component の処理本文、HTTP body、状態 schema、SDK method、UI DOM、fixture assertion、現在状態を再定義しない。
 
 <a id="詳細仕様参照入口"></a>
 **対象機能から詳細本文への選択手順：**
 
-1. [`docs/ROADMAP.md`](ROADMAP.md) で対象機能の現在状態と実装計画上の割当を確認する。
+1. [`docs/ROADMAP.md` 状態・計画責務](ROADMAP.md) で対象機能の現在状態と実装計画上の割当を確認する。
 2. [詳細節対応表](#0i-詳細節対応表) で機能の owner component を一件に確定し、対応する詳細節を開く。
 3. [詳細仕様参照表](#0b-詳細仕様参照表) で owner component の主本文が正しいことを確認する。
 4. collaborator がある場合だけ、その component の詳細本文を境界確認として読む。
-5. fixture と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) を読む。
+5. fixture と実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) を読む。
 
 <a id="0b-詳細仕様参照表"></a>
 **owner component 別詳細本文・fixture 参照表：**
 
 | owner component | 主本文 | fixture / 証跡 |
 |-----------------|--------|----------------|
-| `builder` | [`docs/details/builder.md`](details/builder.md) | [`docs/details/fixture.md` §8a-F](details/fixture.md#8a-f-builder-初期受け入れ-fixture-契約)、[`docs/details/fixture.md` §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) |
-| `runner` | [`docs/details/runner.md`](details/runner.md) | [`docs/details/fixture.md` §15a-F](details/fixture.md#15a-f-runner-初期受け入れ-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `api` | [`docs/details/api.md`](details/api.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `admin` | [`docs/details/admin.md`](details/admin.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[`docs/details/fixture.md` Admin CLI fixture 固定契約](details/fixture.md#admin-cli-fixture-contract) |
-| `sdk` | [`docs/details/sdk.md`](details/sdk.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `ui` | [`docs/details/ui.md`](details/ui.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `setup` | [`docs/details/setup.md`](details/setup.md) | [`docs/details/fixture.md` §0g.8-F](details/fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` §27-F setup / admin / Release asset 連動 fixture](details/fixture.md#sec-27-f-19) |
-| `release` | [`docs/details/release.md`](details/release.md) | [`docs/details/fixture.md` Release fixture 固定契約](details/fixture.md#release-fixture-contract) |
-| `statefile` | [`docs/details/statefile.md`](details/statefile.md) | [`docs/details/fixture.md` §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `archive` | [`docs/details/archive.md`](details/archive.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `commitstatus` | [`docs/details/commitstatus.md`](details/commitstatus.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `security` | [`docs/details/security.md`](details/security.md) | [`docs/details/fixture.md` §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
-| `mcp` | [`docs/details/mcp.md`](details/mcp.md) | [`docs/details/fixture.md` MCP fixture 固定契約](details/fixture.md#mcp-fixture-contract) |
+| `builder` | [`docs/details/builder.md` 詳細本文責務](details/builder.md) | [`docs/details/fixture.md` fixture 証跡責務 §8a-F](details/fixture.md#8a-f-builder-初期受け入れ-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §28-F](details/fixture.md#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約) |
+| `runner` | [`docs/details/runner.md` 詳細本文責務](details/runner.md) | [`docs/details/fixture.md` fixture 証跡責務 §15a-F](details/fixture.md#15a-f-runner-初期受け入れ-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `api` | [`docs/details/api.md` 詳細本文責務](details/api.md) | [`docs/details/fixture.md` fixture 証跡責務 §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `admin` | [`docs/details/admin.md` 詳細本文責務](details/admin.md) | [`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約)、[`docs/details/fixture.md` fixture 証跡責務 Admin CLI fixture 固定契約](details/fixture.md#admin-cli-fixture-contract) |
+| `sdk` | [`docs/details/sdk.md` 詳細本文責務](details/sdk.md) | [`docs/details/fixture.md` fixture 証跡責務 §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `ui` | [`docs/details/ui.md` 詳細本文責務](details/ui.md) | [`docs/details/fixture.md` fixture 証跡責務 §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `setup` | [`docs/details/setup.md` 詳細本文責務](details/setup.md) | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](details/fixture.md#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F setup / admin / Release asset 連動 fixture](details/fixture.md#sec-27-f-19) |
+| `release` | [`docs/details/release.md` 詳細本文責務](details/release.md) | [`docs/details/fixture.md` fixture 証跡責務 Release fixture 固定契約](details/fixture.md#release-fixture-contract) |
+| `statefile` | [`docs/details/statefile.md` 詳細本文責務](details/statefile.md) | [`docs/details/fixture.md` fixture 証跡責務 §22-F](details/fixture.md#22-f-api-fixture-契約)、[`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `archive` | [`docs/details/archive.md` 詳細本文責務](details/archive.md) | [`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `commitstatus` | [`docs/details/commitstatus.md` 詳細本文責務](details/commitstatus.md) | [`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `security` | [`docs/details/security.md` 詳細本文責務](details/security.md) | [`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
+| `mcp` | [`docs/details/mcp.md` 詳細本文責務](details/mcp.md) | [`docs/details/fixture.md` fixture 証跡責務 MCP fixture 固定契約](details/fixture.md#mcp-fixture-contract) |
 
 <a id="0b1-owner-component-別-owner-collaborator-境界管理"></a>
 **owner / collaborator 境界参照：**
@@ -90,12 +90,12 @@ owner / collaborator 境界の規則は [`docs/SPEC.md` 方針責務 §4.2a](SPE
 
 environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,63}$`、各 value は UTF-8 の 0〜4096 bytes とし、NUL、LF、CR を禁止する。利用者入力または保存対象の environment object では、`PATH`、`HOME`、`SHELL`、`USER`、`GITHUB_TOKEN`、`ADLAIRE_TOKEN`、`ADLAIRE_CHANGED_TARGETS` と `ADLAIRE_CI_` prefix を reserved とし、保存、利用者指定値としての process 注入を禁止する。runner が所有する固定 process environment は [`docs/details/runner.md` 詳細本文責務 §27.31](details/runner.md#sec-27-31) の列挙値だけを例外とし、利用者入力による上書きを禁止する。永続化する environment object は key を ASCII 昇順で保存する。
 
-状態ファイルの lock、atomic write、権限、JSON 処理は [`docs/details/statefile.md`](details/statefile.md)、秘密情報は [`docs/details/security.md`](details/security.md)、外部依存とデータ交換形式は [`docs/SPEC.md`](SPEC.md) を正本とする。
+状態ファイルの lock、atomic write、権限、JSON 処理は [`docs/details/statefile.md` 詳細本文責務](details/statefile.md)、秘密情報は [`docs/details/security.md` 詳細本文責務](details/security.md)、外部依存とデータ交換形式は [`docs/SPEC.md` 方針責務・ポリシー責務](SPEC.md) を正本とする。
 
 <a id="0e-完全実装検証マトリクス"></a>
 **完全実装検証参照：**
 
-対象 owner の詳細本文と fixture 証跡は [owner component 別詳細本文・fixture 参照表](#0b-詳細仕様参照表) の同一行を使用する。完了判定と状態遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+対象 owner の詳細本文と fixture 証跡は [owner component 別詳細本文・fixture 参照表](#0b-詳細仕様参照表) の同一行を使用する。完了判定と状態遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、現在状態は [`docs/ROADMAP.md` 状態・計画責務](ROADMAP.md) を参照する。
 
 <a id="phase-11-quality-gate-entry"></a>
 **Phase 11 バグ修正ゼロ化参照：**
@@ -133,7 +133,7 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 <a id="0i-詳細節対応表"></a>
 **機能・owner component・詳細本文対応表：**
 
-[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i 詳細節対応表](DETAIL_INDEX.md#0i-詳細節対応表) は対象機能から唯一の owner と関連詳細本文へ移動するための対応表である。`owner` 列だけが機能 owner の正本であり、collaborator の接続境界と担当処理は owner の該当詳細節を参照する。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、受け入れ assertion は [`docs/details/fixture.md`](details/fixture.md) を正本とし、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i 詳細節対応表](DETAIL_INDEX.md#0i-詳細節対応表) では再掲しない。
+[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i 詳細節対応表](DETAIL_INDEX.md#0i-詳細節対応表) は対象機能から唯一の owner と関連詳細本文へ移動するための対応表である。`owner` 列だけが機能 owner の正本であり、collaborator の接続境界と担当処理は owner の該当詳細節を参照する。現在状態は [`docs/ROADMAP.md` 状態・計画責務](ROADMAP.md)、受け入れ assertion は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) を正本とし、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i 詳細節対応表](DETAIL_INDEX.md#0i-詳細節対応表) では再掲しない。
 
 <a id="0i1-builder--静的-web-サイト出力"></a>
 **0i.1 Builder / 静的 Web サイト出力：**

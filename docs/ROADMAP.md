@@ -50,7 +50,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 
 現在の active Phase は Phase 11 である。初期実装 Phase 1 から Phase 10 まではすべて `実装済み` である。Phase 11 は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) のバグ修正ゼロ化そのものを実装・検証する Phase として、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) を入口に扱う。source-code audit により Phase 11 対象へ割り当てた各項目は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から対象 owner 詳細本文、[`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference)、または [`docs/ROADMAP.md` 状態・計画責務 §5](ROADMAP.md#522-統合ロードマップ表) の対象外理由へ到達させる。仕様全般完了 gate は Phase 11 の仕様策定上の閉じ条件であり、`実装済み` への状態変更ではない。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit)、Phase 専用詳細仕様ファイルの扱いは [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4) を参照する。
 
-各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) を参照する。
+各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) を参照する。
 
 後続 Phase の現在状態が `仕様化済み・未実装` または `実装中・検証未完了` であっても、active Phase でない Phase の新規実装着手可否は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 

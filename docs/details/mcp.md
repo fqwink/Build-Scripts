@@ -1,8 +1,8 @@
-# MCP 詳細仕様
+# Adlaire CI — MCP 詳細仕様
 
-本書は `mcp` owner component の詳細仕様正本である。
+[`docs/details/mcp.md`](mcp.md) 詳細本文責務は、`mcp` owner component の詳細仕様正本である。
 
-本書は [docs/SPEC.md](../SPEC.md)、[docs/ROADMAP.md](../ROADMAP.md)、[docs/DETAIL_INDEX.md](../DETAIL_INDEX.md)、[docs/details/fixture.md](fixture.md)、[docs/DOCUMENT_INDEX.md](../DOCUMENT_INDEX.md) を参照する。
+本書は [`docs/SPEC.md` 方針責務・ポリシー責務](../SPEC.md)、[`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務](../DETAIL_INDEX.md)、[`docs/details/fixture.md` fixture 証跡責務](fixture.md)、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務](../DOCUMENT_INDEX.md) を参照する。
 
 本書は方針、ポリシー、状態語彙、現在状態、Phase、将来計画を再定義しない。
 
