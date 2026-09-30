@@ -315,6 +315,29 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | cross-owner closure | API / SDK / UI、CLI / API、statefile / archive / security / runner、setup / release / admin の横断境界について、呼び出し元 owner、呼び出し先 owner、状態差分、security effect、成功後再取得、失敗時 no mutation が記録されている。 | 片側 owner のみの確認、collaborator 副作用未確認、security expected 未接続、失敗時固定なし。 |
 | final open item count | 上記全項目の未完了条件が 0 件であり、残 open item が `0` として記録されている。 | open item が 1 件以上ある、件数が未記録、または残件を別変更で解消するとしている。 |
 
+<a id="test-verification-closure-record-schema-contract"></a>
+**test verification closure record schema 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、[test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) の判定結果を残す記録 schema だけを固定する。テスト方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、Phase 11 仕様全般完了は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit)、現在状態と対象外理由は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan) を参照する。schema 記録は、方針、ポリシー、Phase 状態、owner 詳細本文、または実行手順を再定義してはならない。
+
+クロージャ記録は、下表の field を持つ。`closure_item` ごとに 1 record を作成し、全 record の `open_items` が空であり、`status` が `closed` または `not_applicable` だけになった場合に限り、該当検証証跡を完了扱いにできる。`status=open` が 1 件以上ある場合、または `final_open_item_count` の `open_items` が空でない場合は、完了証跡として扱わない。
+
+| field | 固定値 / 形式 | 必須条件 |
+|-------|---------------|----------|
+| `closure_item` | `scope_inventory`、`traceability_closure`、`fixture_root_closure`、`execution_evidence_closure`、`mutation_closure`、`contract_drift_closure`、`cross_owner_closure`、`final_open_item_count` のいずれか。 | [test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) のクロージャ項目と一致する。 |
+| `status` | `closed`、`not_applicable`、`open` のいずれか。 | `closed` は未完了条件 0 件、`not_applicable` は対象外理由 anchor あり、`open` は未解消項目ありの場合だけ使用する。 |
+| `owner_component` | 対象 owner component 名。 | 対象がある record では空にしてはならない。owner component の正本は [`docs/SPEC.md` 責務文書構成表](../SPEC.md#document-responsibility-map) と対象詳細本文を参照する。 |
+| `collaborator_components` | collaborator component 名の配列。該当なしの場合は空配列。 | 横断境界、API / SDK / UI、statefile / archive / security / runner、setup / release / admin の接続がある場合は空配列にしてはならない。 |
+| `artifacts` | 対象実装 artifact、文書 artifact、生成 artifact の配列。 | 対象 artifact がある record では空にしてはならない。実在所在は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 実装・テスト・fixture 所在](../DOCUMENT_INDEX.md#実装ファイル一覧) を参照する。 |
+| `test_artifacts` | 対象 test、contract test、harness、checker の配列。 | `status=closed` では空にしてはならない。対象外の場合は `not_applicable_reason` と対象外 anchor を記録する。 |
+| `fixture_roots` | 対象 fixture root の配列。 | fixture root を使う検証では空にしてはならない。fixture root が不要な検証では `evidence_refs` に不要根拠を記録する。 |
+| `spec_refs` | 仕様正本への Markdown link 配列。 | 空配列禁止。owner 詳細本文、fixture 証跡、[`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) のいずれかへ到達できる link を含める。 |
+| `evidence_refs` | 実行証跡、fixture 証跡、生成物確認、差分確認、未実行理由への参照配列。 | 空配列禁止。実行成功件数だけ、または pass / fail だけの参照は不可とする。 |
+| `open_items` | 未解消項目の配列。 | `status=closed` と `status=not_applicable` では空配列にする。1 件以上ある場合は `status=open` とする。 |
+| `not_applicable_reason` | 対象外理由の本文または参照。 | `status=not_applicable` では必須。`status=closed` と `status=open` では空にする。 |
+
+不正 record は完了証跡として扱わない。不正 record とは、`spec_refs` が空、`evidence_refs` が空、`status=closed` で `open_items` が空でない、`status=not_applicable` で `not_applicable_reason` または対象外理由 anchor がない、`status=open` を残したまま完了扱いにしている、または `closure_item` が [test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) の項目へ対応しない record を指す。
+
 <a id="mutation-test-evidence-contract"></a>
 **mutation test 証跡固定契約：**
 
