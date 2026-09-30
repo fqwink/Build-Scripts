@@ -11,7 +11,8 @@
 | 方針、ポリシー、状態語彙、状態遷移条件 | [`docs/SPEC.md`](SPEC.md) |
 | 実装 artifact と各機能の現在状態、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
-| owner component 別詳細本文 | [`docs/details/`](details/) |
+| 詳細仕様本文・証跡ディレクトリ | [`docs/details/`](details/) |
+| Phase 11 バグ修正ゼロ化の横断詳細 | [`docs/details/phase11.md`](details/phase11.md) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
 | 生成静的 Web サイトと標準管理 UI のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
 | 利用入口 | [`README.md`](../README.md) |
@@ -29,10 +30,11 @@
 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | 実在 |
 | [`docs/DESIGN.md`](DESIGN.md) | 実在 |
 | [`docs/details/`](details/) | 実在 |
+| [`docs/details/phase11.md`](details/phase11.md) | 実在 |
 | `docs/examples/` | 未作成 |
 
 <a id="詳細仕様本文の所在"></a>
-**owner component 別詳細本文所在：**
+**詳細仕様本文・証跡所在：**
 
 | パス | owner component / 責務 |
 |------|-------------------------|
@@ -49,6 +51,7 @@
 | [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` |
 | [`docs/details/security.md`](details/security.md) | `security` |
 | [`docs/details/mcp.md`](details/mcp.md) | `mcp` |
+| [`docs/details/phase11.md`](details/phase11.md) | Phase 11 仕様詳細責務 |
 | [`docs/details/fixture.md`](details/fixture.md) | fixture 証跡責務 |
 
 <a id="実装ファイル一覧"></a>

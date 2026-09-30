@@ -48,7 +48,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 10 | `mcp` | 実装済み | Phase 9 |
 | Phase 11 | バグ修正ゼロ化 / source-code audit / `statefile` / output manifest / secret・queue・cross-owner regression / 正式 fixture directory harness | 仕様化済み・未実装 | Phase 10 |
 
-現在の active Phase は Phase 11 である。初期実装 Phase 1 から Phase 10 まではすべて `実装済み` である。Phase 11 は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) のバグ修正ゼロ化そのものを実装・検証する Phase として、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) を入口に扱う。source-code audit により Phase 11 対象へ割り当てた direct runtime state write、JSON Lines append / corrupt read、output manifest / file tree 差異、secret / auth transaction、queue / finalizer、formal fixture root 接続は、同入口から owner 詳細本文と fixture 証跡へ到達させる。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
+現在の active Phase は Phase 11 である。初期実装 Phase 1 から Phase 10 まではすべて `実装済み` である。Phase 11 は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) のバグ修正ゼロ化そのものを実装・検証する Phase として、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) を入口に扱う。source-code audit により Phase 11 対象へ割り当てた direct runtime state write、JSON Lines append / corrupt read、output manifest / file tree 差異、secret / auth transaction、queue / finalizer、formal fixture root 接続は、[`docs/details/phase11.md` Phase 11 仕様詳細責務](details/phase11.md) から owner 詳細本文と fixture 証跡へ到達させる。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 
 各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) を参照する。
 
@@ -68,10 +68,10 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 実装済み | 管理ツール・SDK | JavaScript SDK 公開契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | 管理ツール・UI | 標準管理ツール UI 契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 状態管理 | 状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 仕様化済み・未実装 | 検証基盤 | バグ修正ゼロ化 / 正式 fixture directory harness / cross-owner regression gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
-| 仕様化済み・未実装 | 検証基盤 | source-code audit inventory / direct I/O elimination gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
-| 仕様化済み・未実装 | 検証基盤 | output manifest / file tree cross-owner consistency gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
-| 仕様化済み・未実装 | 検証基盤 | secret / auth / queue / finalizer cross-owner regression gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
+| 仕様化済み・未実装 | 検証基盤 | バグ修正ゼロ化 / 正式 fixture directory harness / cross-owner regression gate | [`docs/details/phase11.md` Phase 11 仕様詳細責務](details/phase11.md) |
+| 仕様化済み・未実装 | 検証基盤 | source-code audit inventory / direct I/O elimination gate | [`docs/details/phase11.md` Phase 11 仕様詳細責務 Phase 11 source-code audit inventory](details/phase11.md#phase-11-source-audit-inventory) |
+| 仕様化済み・未実装 | 検証基盤 | output manifest / file tree cross-owner consistency gate | [`docs/details/phase11.md` Phase 11 仕様詳細責務 Phase 11 source-code audit inventory](details/phase11.md#phase-11-source-audit-inventory) |
+| 仕様化済み・未実装 | 検証基盤 | secret / auth / queue / finalizer cross-owner regression gate | [`docs/details/phase11.md` Phase 11 仕様詳細責務 Phase 11 acceptance gate](details/phase11.md#phase-11-acceptance-gate) |
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的配布物構成・Archive 検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的 HTTP 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装済み | CI ランナー | ビルドタイムアウト | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
