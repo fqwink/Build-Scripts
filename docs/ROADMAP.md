@@ -21,7 +21,7 @@
 | `components/setup.go` | 仕様化済み・未実装 | 実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/setup.md`](details/setup.md)、現行実装証跡は [`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-37`](details/fixture.md#align-37) を参照する。 |
 | `components/release.go` | 仕様化済み・未実装 | 実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/release.md`](details/release.md)、現行実装証跡は [`ALIGN-01`](details/fixture.md#align-01)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-37`](details/fixture.md#align-37) を参照する。 |
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | 実装済み | Phase 5 SDK 実装は実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 5 sdk 実装検証証跡](details/fixture.md#phase-5-sdk-implementation-evidence) を参照する。 |
-| [`admin/index.html`](../admin/index.html) | 実装中・検証未完了 | owner 契約の必須実装・証跡が未完了である。[`ALIGN-05`](details/fixture.md#align-05)、[`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-10`](details/fixture.md#align-10)、[`ALIGN-24`](details/fixture.md#align-24)、[`ALIGN-31`](details/fixture.md#align-31) |
+| [`admin/index.html`](../admin/index.html) | 実装済み | Phase 6 UI 実装は実装・検証済みである。実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 6 ui 実装検証証跡](details/fixture.md#phase-6-ui-implementation-evidence) を参照する。正式 fixture directory harness の現在状態は [`ALIGN-07`](details/fixture.md#align-07)、[`ALIGN-24`](details/fixture.md#align-24) を参照する。 |
 | `components/mcp.go` | 仕様化済み・未実装 | 実装ファイル、test、fixture、起動経路、version 契約の実装が未作成である。詳細本文は [`docs/details/mcp.md`](details/mcp.md) を参照する。 |
 
 <a id="roadmap-phase-plan"></a>
@@ -41,13 +41,13 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 3 | `api` request lifecycle | 実装済み | Phase 2 |
 | Phase 4 | `api` operations | 実装済み | Phase 3 |
 | Phase 5 | `sdk` | 実装済み | Phase 4 |
-| Phase 6 | `ui` | 実装中・検証未完了 | Phase 5 |
+| Phase 6 | `ui` | 実装済み | Phase 5 |
 | Phase 7 | `admin` | 仕様化済み・未実装 | Phase 6 |
 | Phase 8 | `setup` | 仕様化済み・未実装 | Phase 7 |
 | Phase 9 | `release` | 仕様化済み・未実装 | Phase 8 |
 | Phase 10 | `mcp` | 仕様化済み・未実装 | Phase 9 |
 
-現在の active Phase は `Phase 6` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
+現在の active Phase は `Phase 7` である。active Phase の決定条件と後続 Phase の禁止事項は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 
 各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md`](details/fixture.md) を参照する。
 
@@ -65,7 +65,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 現在状態 | 担当領域 | 機能 | 詳細入口 / 次の扱い |
 |----------|----------|------|----------------------|
 | 実装済み | 管理ツール・SDK | JavaScript SDK 公開契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
-| 実装中・検証未完了 | 管理ツール・UI | 標準管理ツール UI 契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
+| 実装済み | 管理ツール・UI | 標準管理ツール UI 契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 実装中・検証未完了 | 状態管理 | 状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的配布物構成・Archive 検証 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 管理ツール・配布 | 管理 UI 静的 HTTP 配信 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
