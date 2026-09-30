@@ -20,6 +20,8 @@
 
 ---
 
+<a id="agents-approval-rules"></a>
+
 ## 1. 承認ルール
 
 変更作業では、承認工程を省略してはならない。
@@ -61,7 +63,7 @@
 
 仕様変更では、最初に [`docs/SPEC.md` 責務文書構成表](docs/SPEC.md#document-responsibility-map) で対象判断の責務正本を確定し、[`docs/SPEC.md` 方針責務 §4.2a](docs/SPEC.md#sec-4-2a) の記載範囲と禁止事項を適用する。[AGENTS.md](AGENTS.md) で同じ判断対象の正本分担または禁止事項を再定義してはならない。
 
-仕様変更の影響確認は、[文書整合ルール](#6-文書整合ルール) に従う。
+仕様変更の影響確認は、[文書整合ルール](#agents-document-consistency-rules) に従う。
 
 仕様変更の編集前と編集後に、[docs/SPEC.md 方針責務 §4.2a 仕様全般重複記載禁止原則](docs/SPEC.md#spec-global-no-duplicate-principle) への適合を確認する。完全一致する本文だけでなく、言い換え、要約、部分転載、表と本文の再掲、owner と collaborator 間の意味上の重複を確認する。確認では、判断対象、唯一の責務正本、重複候補の所在、削除または参照化の処置を特定し、未解消件数が 0 になるまで仕様変更を完了扱いにしてはならない。
 
@@ -215,7 +217,7 @@ Pull Request merge 後のローカル同期は、以下の手順を標準とす�
 
 承認済み変更作業が完了した場合、エージェントはユーザーからの追加指示および追加承認なしで、作業ブランチでのcommit、remoteへのpush、Pull Requestの作成または既存Pull Requestの更新まで自動実行する。
 
-Pull Request 作成自動化は、[承認ルール](#1-承認ルール) の承認済み範囲と、[本節](#agents-git-operations) の `main` 直接 push 禁止およびエージェントによる merge 禁止を例外なく適用する。
+Pull Request 作成自動化は、[承認ルール](#agents-approval-rules) の承認済み範囲と、[本節](#agents-git-operations) の `main` 直接 push 禁止およびエージェントによる merge 禁止を例外なく適用する。
 
 Pull Request 作成前には、変更内容に応じて以下を確認する。
 
@@ -226,7 +228,7 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - 実装変更では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) に従い、対象 Phase 全体が完了し、未実装、未検証、仕様不整合、証跡不足、状態更新不足が残っていないことを確認する。
 - 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。JavaScript 系実装では Deno stable runtime の `deno check ...` を標準の確認とする。
 - 実装変更では、変更した実装が実行可能な場合は対象スクリプトの実行確認または生成物確認を行う。実行不能な場合は理由を Pull Request 本文に記録する。
-- 仕様変更では、[文書整合ルール](#6-文書整合ルール) に従って責務正本、索引、デザイン、実装への影響を確認する。
+- 仕様変更では、[文書整合ルール](#agents-document-consistency-rules) に従って責務正本、索引、デザイン、実装への影響を確認する。
 
 Pull Request 本文には、少なくとも以下を記載する。
 
@@ -248,6 +250,8 @@ Pull Request 本文には、少なくとも以下を記載する。
 外部依存の追加、削除、更新、置換は変更作業として扱う。変更後は、[docs/SPEC.md ポリシー責務 §4](docs/SPEC.md#policy-dependencies) の許可一覧、[`go.mod`](go.mod)、実装 import、配布・セットアップ手順、検証結果が一致していることを確認する。
 
 ---
+
+<a id="agents-document-consistency-rules"></a>
 
 ## 6. 文書整合ルール
 

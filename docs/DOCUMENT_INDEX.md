@@ -59,6 +59,7 @@
 | パス | 実装上の役割 | 所在区分 |
 |------|-----------|----------|
 | [`main.go`](../main.go) | 起動入口 | 実在 |
+| [`main_test.go`](../main_test.go) | 起動入口 test | 実在 |
 | [`go.mod`](../go.mod) | Go module | 実在 |
 | [`sdk_contract_test.go`](../sdk_contract_test.go) | `sdk` contract test | 実在 |
 | [`ui_contract_test.go`](../ui_contract_test.go) | `ui` contract test | 実在 |
@@ -74,6 +75,8 @@
 | [`components/setup_test.go`](../components/setup_test.go) | `setup` test | 実在 |
 | [`components/release.go`](../components/release.go) | `release` | 実在 |
 | [`components/release_test.go`](../components/release_test.go) | `release` test | 実在 |
+| [`components/mcp.go`](../components/mcp.go) | `mcp` | 実在 |
+| [`components/mcp_test.go`](../components/mcp_test.go) | `mcp` test | 実在 |
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | `sdk` | 実在 |
 | [`admin/index.html`](../admin/index.html) | `ui` | 実在 |
 | [`testdata/builder/`](../testdata/builder/) | `builder` fixture root | 実在 |
@@ -100,6 +103,5 @@
 | [`testdata/setup/`](../testdata/setup/) | `setup` fixture root | 実在 |
 | [`testdata/release/`](../testdata/release/) | `release` fixture root | 実在 |
 | [`testdata/mcp/`](../testdata/mcp/) | `mcp` fixture root | 実在 |
-| [`components/mcp.go`](../components/mcp.go) | `mcp` | 実在 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
