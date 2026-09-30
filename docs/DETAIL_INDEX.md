@@ -98,15 +98,15 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 対象 owner の詳細本文と fixture 証跡は [owner component 別詳細本文・fixture 参照表](#0b-詳細仕様参照表) の同一行を使用する。完了判定と状態遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
 <a id="phase-11-quality-gate-entry"></a>
-**Phase 11 品質固定参照：**
+**Phase 11 バグ修正ゼロ化参照：**
 
-[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、Phase 11 の対象から該当する詳細本文と fixture 証跡への入口だけを固定する。Phase 11 の現在状態、依存 Phase、active Phase は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、Phase 11 のバグ修正ゼロ化対象から該当する詳細本文と fixture 証跡への入口だけを固定する。Phase 11 の現在状態、依存 Phase、active Phase は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 
 | 対象 | owner / 責務 | 詳細本文 / fixture 証跡 |
 |------|--------------|--------------------------|
-| 状態ファイル共通永続化契約 | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/statefile.md` 詳細本文責務 §22.0s](details/statefile.md#sec-22-0s)、[`docs/details/statefile.md` 詳細本文責務 Phase 11 statefile 品質固定対象](details/statefile.md#phase-11-statefile-quality-gate)、[`docs/details/fixture.md` fixture 証跡責務 Phase 11 品質固定・正式 fixture harness 契約](details/fixture.md#phase-11-quality-gate-contract) |
-| 正式 fixture directory harness | fixture 証跡責務 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](details/fixture.md#sec-0g-8-f)、[`docs/details/fixture.md` fixture 証跡責務 Phase 11 品質固定・正式 fixture harness 契約](details/fixture.md#phase-11-quality-gate-contract) |
-| cross-owner regression gate | fixture 証跡責務 | [`docs/details/fixture.md` fixture 証跡責務 Phase 11 品質固定・正式 fixture harness 契約](details/fixture.md#phase-11-quality-gate-contract)、[`docs/details/fixture.md` fixture 証跡責務 §27-F runner / security 実装検証証跡 必須記録固定契約](details/fixture.md#sec-27-f-20) |
+| 状態ファイル共通永続化契約 | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/statefile.md` 詳細本文責務 §22.0c](details/statefile.md#sec-22-0c)、[`docs/details/statefile.md` 詳細本文責務 §22.0s](details/statefile.md#sec-22-0s)、[`docs/details/statefile.md` 詳細本文責務 Phase 11 statefile バグ修正ゼロ化対象](details/statefile.md#phase-11-statefile-quality-gate)、[`docs/details/fixture.md` fixture 証跡責務 Phase 11 バグ修正ゼロ化・正式 fixture harness 契約](details/fixture.md#phase-11-quality-gate-contract) |
+| 正式 fixture directory harness | fixture 証跡責務 | [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](details/fixture.md#sec-0g-8-f)、[`docs/details/fixture.md` fixture 証跡責務 Phase 11 バグ修正ゼロ化・正式 fixture harness 契約](details/fixture.md#phase-11-quality-gate-contract) |
+| cross-owner regression gate | fixture 証跡責務 | [`docs/details/fixture.md` fixture 証跡責務 Phase 11 バグ修正ゼロ化・正式 fixture harness 契約](details/fixture.md#phase-11-quality-gate-contract)、[`docs/details/fixture.md` fixture 証跡責務 §27-F runner / security 実装検証証跡 必須記録固定契約](details/fixture.md#sec-27-f-20) |
 
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**

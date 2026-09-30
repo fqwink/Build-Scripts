@@ -1488,9 +1488,9 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 状態ファイル fixture 名、初期状態、操作、expected、合格条件、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §27-F](fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) statefile owner fixture 固定契約を正本とする。[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、schema、atomic write、lock、JSON Lines、破損時処理、保存順、read-only no mutation の実装契約だけを扱う。
 
 <a id="phase-11-statefile-quality-gate"></a>
-**Phase 11 statefile 品質固定対象：**
+**Phase 11 statefile バグ修正ゼロ化対象：**
 
-[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、Phase 11 の `statefile` owner 実装契約だけを固定する。Phase 11 の fixture、expected、fake、acceptance checklist、差し戻し条件は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 品質固定・正式 fixture harness 契約](fixture.md#phase-11-quality-gate-contract) を参照する。
+[`docs/details/statefile.md`](statefile.md) 詳細本文責務では、Phase 11 の `statefile` owner バグ修正ゼロ化対象に必要な実装契約だけを固定する。Phase 11 の fixture、expected、fake、acceptance checklist、差し戻し条件は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 バグ修正ゼロ化・正式 fixture harness 契約](fixture.md#phase-11-quality-gate-contract) を参照する。
 
 | 対象 | 実装契約 | 完了時に残してはならない状態 |
 |------|----------|------------------------------|
