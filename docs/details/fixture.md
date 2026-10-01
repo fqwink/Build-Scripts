@@ -369,6 +369,29 @@ closure record set は、単一の検証対象単位ごとに 1 組作成する�
 | not applicable | `status=not_applicable` は、対象外理由、対象外にする owner / artifact / fixture root、責務正本 anchor、完了可否への影響を同じ record に持つ。 | 理由だけ、または anchor だけで対象外範囲と完了可否への影響が不明である。 |
 | PR evidence | 実装変更、検証変更、fixture 変更、または意味のあるテスト / requirement coverage / oracle / failure diagnostics / boundary / failure matrix / isolation / determinism / concurrency / race / mutation test / harness self-verification / contract drift の完了可否に関わる変更では、Pull Request の `Verification` に closure record set の記録先、または対象外理由を記録する。 | Pull Request 上で closure record set の所在、対象外理由、または未完了扱いが確認できない。 |
 
+<a id="implementation-pr-evidence-template-contract"></a>
+**implementation PR evidence template 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、実装 PR、検証 PR、fixture PR、または Phase 全体完了 PR で Pull Request 本文に提出する証跡 package の最小構成だけを固定する。Pull Request 本文への記載義務は [`AGENTS.md` Git 運用ルール](../../AGENTS.md#agents-git-operations)、完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) と [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit)、対象 Phase と現在状態は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan) を参照する。
+
+implementation PR evidence package は、単一の Pull Request ごとに 1 組作成する。同じ package に複数 Phase、複数の無関係な owner、または同一 Pull Request で完了判定しない後続作業を混在させてはならない。
+
+| 提出物 | 最小記録形式 | 未完了条件 |
+|--------|--------------|------------|
+| submitted artifacts | 対象 Phase、対象 owner、collaborator、変更 artifact、test artifact、fixture root、expected / fake / effects / security expected、生成物、状態更新対象、対象外 artifact を列挙する。 | 対象 artifact、対象 owner、fixture root、対象外 artifact のいずれかが不明である。 |
+| requirement coverage ledger | [test requirement coverage ledger 固定契約](#test-requirement-coverage-ledger-contract) の所在、requirement id 数、covered 件数、not_applicable 件数、open 件数 `0` を記録する。 | ledger 所在なし、open 件数未記録、または `open>0`。 |
+| 16 record closure set | [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の所在、16 record の status 一覧、`final_open_item_count=0` を記録する。 | record 数不一致、`status=open`、`final_open_item_count` 未記録、または `open_items` 残存。 |
+| oracle evidence | [test oracle evidence set 固定契約](#test-oracle-evidence-set-contract) の所在、positive / negative case、expected / actual 比較単位、状態差分、禁止副作用、失敗時 no mutation を記録する。 | status code だけ、fixture 存在だけ、expected / actual 不明、禁止副作用未確認。 |
+| failure diagnostics evidence | [test assertion identity / failure diagnostics evidence set 固定契約](#test-assertion-failure-diagnostics-evidence-set-contract) の所在、assertion id、対象仕様 anchor、expected / actual / diff、failure reason、再現 command、secret-safe diagnostics を記録する。 | assertion id なし、差分不明、generic failure、secret-safe 診断未確認。 |
+| boundary / failure matrix evidence | [test boundary / failure matrix evidence set 固定契約](#test-boundary-failure-matrix-evidence-set-contract) の所在、入力 class、境界値、error taxonomy、partial failure、rollback、cleanup、retry / recovery、失敗時 no mutation を記録する。 | 正常系だけ、境界未固定、partial failure / rollback / cleanup / retry 未確認。 |
+| mutation evidence | [mutation test evidence set 固定契約](#mutation-test-evidence-set-contract) の所在、mutation class decision、`killed` / `survived` / `invalid` / `equivalent` 件数、`survived=0` を記録する。 | mutation class 未定義、`survived>0`、または `equivalent` 根拠 anchor 不足。 |
+| harness self-verification evidence | [test harness self-verification evidence set 固定契約](#test-harness-self-verification-evidence-set-contract) の所在、negative control、positive control、検出すべき不正、failure reason を記録する。 | harness が常に pass / 常に fail、negative / positive 片側だけ、failure reason 不明。 |
+| execution evidence | [test execution evidence matrix 固定契約](#test-execution-evidence-matrix-contract) の分類、実行 command、runtime、終了 code、対象 artifact、対象 fixture、未実行理由を記録する。 | 実行成功件数だけ、対象 artifact 不明、必須検証の未実行理由なし。 |
+| not applicable evidence | 対象外にした owner、artifact、fixture root、evidence set、理由、責務正本 anchor、完了可否への影響を記録する。 | 理由だけ、anchor だけ、対象外範囲不明、または将来対応を対象外理由にしている。 |
+| completion declaration | `open item=0`、対象 Phase 全体完了可否、`docs/ROADMAP.md` 更新要否、`docs/DOCUMENT_INDEX.md` 更新要否、未実施確認の有無を記録する。 | 残件を別 PR に送る、状態更新要否不明、または完了可否が Phase 全体と一致しない。 |
+
+implementation PR evidence package は、上表の適用項目すべてが記録され、未完了条件が 0 件である場合だけ完了証跡として扱う。実装変更がない文書整理 PR では、対象外理由を Pull Request 本文へ記録すればよい。実装変更または検証変更があるのに package を作れない場合は、[`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) に従い検証不足として扱う。
+
 <a id="test-requirement-coverage-ledger-contract"></a>
 **test requirement coverage ledger 固定契約：**
 

@@ -236,6 +236,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 - `Verification`
 - 競合防止確認
 - 未実施の確認がある場合は、その理由
+- 実装変更、検証変更、fixture 変更、または Phase 全体完了判定に関わる Pull Request では、[`docs/details/fixture.md` fixture 証跡責務 implementation PR evidence template 固定契約](docs/details/fixture.md#implementation-pr-evidence-template-contract) に基づき、提出物一覧、coverage ledger、closure record set、該当 evidence set、未実施理由、対象外理由、残 open item 0 を同一 Pull Request 本文へ記録する。
 - 実装変更、検証変更、fixture 変更、または意味のあるテスト / requirement coverage / failure diagnostics / boundary / failure matrix / concurrency / race / mutation test の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test verification closure record set 固定契約](docs/details/fixture.md#test-verification-closure-record-set-contract) に基づく closure record set の記録先、または仕様上対象外である理由
 - 実装変更、検証変更、fixture 変更、または requirement coverage の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test requirement coverage ledger 固定契約](docs/details/fixture.md#test-requirement-coverage-ledger-contract) に基づく coverage ledger の記録先、または仕様上対象外である理由
 - 実装変更、検証変更、fixture 変更、または test oracle の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test oracle evidence set 固定契約](docs/details/fixture.md#test-oracle-evidence-set-contract) に基づく oracle evidence set の記録先、または仕様上対象外である理由

@@ -23,6 +23,7 @@
 | 検証証跡クロージャと open item 0 判定 | [`docs/details/fixture.md` fixture 証跡責務 test verification closure checklist 固定契約](details/fixture.md#test-verification-closure-checklist-contract) |
 | 検証証跡クロージャ記録 schema | [`docs/details/fixture.md` fixture 証跡責務 test verification closure record schema 固定契約](details/fixture.md#test-verification-closure-record-schema-contract) |
 | 検証証跡クロージャ記録 set | [`docs/details/fixture.md` fixture 証跡責務 test verification closure record set 固定契約](details/fixture.md#test-verification-closure-record-set-contract) |
+| 実装 PR 証跡 package | [`docs/details/fixture.md` fixture 証跡責務 implementation PR evidence template 固定契約](details/fixture.md#implementation-pr-evidence-template-contract) |
 | test oracle 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test oracle evidence set 固定契約](details/fixture.md#test-oracle-evidence-set-contract) |
 | test assertion identity / failure diagnostics 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test assertion identity / failure diagnostics evidence set 固定契約](details/fixture.md#test-assertion-failure-diagnostics-evidence-set-contract) |
 | test boundary / failure matrix 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test boundary / failure matrix evidence set 固定契約](details/fixture.md#test-boundary-failure-matrix-evidence-set-contract) |
