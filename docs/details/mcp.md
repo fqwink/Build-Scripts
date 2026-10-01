@@ -22,7 +22,7 @@
 | 監査ログ | `components/mcp.go` が `statefile` owner の固定 state path へ追記 |
 | API 連携 | `api` owner の endpoint 契約を再利用 |
 | runner 連携 | `runner` owner の queue / build / history 契約を再利用 |
-| 検証接続 | 検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、owner から fixture への入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](../DETAIL_INDEX.md#0b-詳細仕様参照表)、横断テスト証跡は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)、Phase 11 横断入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。 |
+| 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
 `components/mcp.go` は MCP 専用の protocol adapter として動作する。
 

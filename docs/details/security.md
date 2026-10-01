@@ -11,7 +11,7 @@
 | owner component | `security` |
 | 実装主体 | 単独の Go artifact は持たない。認証、認可、token、session、TOTP、rate limit、audit の実装は [`components/api.go`](../../components/api.go) に内包する。 |
 | 持つ内容 | `security` owner が主本文として定義する API token scope、API key、audit、session timeout、TOTP、rate limit、漏えい禁止、security 横断順序。 |
-| 検証接続 | 検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、owner から fixture への入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](../DETAIL_INDEX.md#0b-詳細仕様参照表)、横断テスト証跡は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)、Phase 11 横断入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。 |
+| 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
 ---
 

@@ -330,6 +330,7 @@ test gap inventory record は、発見した問題点 1 件につき 1 record �
 | `owner_component` | 対象 owner component。テスト固有の仕様不足で owner component が複数に見える場合も、検証不足を閉じる主 owner を 1 件だけ記録し、残りは collaborator として `spec_anchor` または `evidence_target` から到達させる。 | owner 未記録、または [docs/DETAIL_INDEX.md 詳細仕様入口責務 §0i](../DETAIL_INDEX.md#0i-詳細節対応表) に存在しない owner。 |
 | `artifact` | 対象実装 artifact、test artifact、fixture、expected、fake、harness、checker、または文書 anchor。 | artifact が不明、または実在所在 / anchor へ到達できない。 |
 | `spec_anchor` | 問題点を判定する責務正本への Markdown link。 | anchor なし、または説明文だけで仕様判断している。 |
+| `spec_deficiency_record` | `source=spec-gap` の場合は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](../SPEC.md#spec-deficiency-inventory-record-contract) の `defect_id`。`source=spec-gap` 以外は `not_applicable`。 | `source=spec-gap` なのに `defect_id` がない、または仕様全般不備 inventory record と接続せず test gap だけで仕様不足を閉じている。 |
 | `gap_type` | `missing-test`、`weak-oracle`、`missing-assertion-id`、`missing-fixture`、`fixture-duplicate`、`contract-drift`、`mutation-survived`、`race-unverified`、`non-deterministic`、`skip-without-anchor`、`unknown-side-effect`、`spec-missing` のいずれか。 | 分類なし、または複数分類を 1 record に混在している。 |
 | `fixture_root` | 対象 fixture root、または `not_applicable` と対象外 anchor。 | fixture root が必要なのに空、または対象外理由がない。 |
 | `evidence_target` | 作成または更新すべき evidence set、ledger、matrix、closure item。 | 対応する証跡種別が不明で closure へ接続できない。 |
@@ -337,7 +338,7 @@ test gap inventory record は、発見した問題点 1 件につき 1 record �
 | `closure_record` | 接続先 closure record、batch closure item、または Pull Request evidence label。 | closure へ到達できない。 |
 | `status` | `open`、`closed`、`not_applicable` のいずれか。 | 完了時に `open` が残る、または `not_applicable` に責務正本 anchor がない。 |
 
-test gap inventory record は、status が `closed` または `not_applicable` であり、`spec_anchor`、`evidence_target`、`closure_record` へ到達できる場合だけ閉じる。`status=open` の record、分類不能 record、対象外理由 anchor のない record、または closure へ接続しない record が 1 件でも残る場合、test improvement batch は完了扱いにしない。
+test gap inventory record は、status が `closed` または `not_applicable` であり、`spec_anchor`、`evidence_target`、`closure_record` へ到達できる場合だけ閉じる。`source=spec-gap` の record は、`spec_deficiency_record` から [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](../SPEC.md#spec-deficiency-inventory-record-contract) へ到達できる場合だけ閉じる。`status=open` の record、分類不能 record、対象外理由 anchor のない record、または closure へ接続しない record が 1 件でも残る場合、test improvement batch は完了扱いにしない。
 
 <a id="test-improvement-batch-closure-contract"></a>
 **test improvement batch closure 固定契約：**

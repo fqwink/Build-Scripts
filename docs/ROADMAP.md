@@ -71,7 +71,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 仕様化済み・未実装 | 検証基盤 | バグ修正ゼロ化 / 仕様全般完了 gate / cross-owner regression gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | 仕様化済み・未実装 | 検証基盤 | 全標準実装 artifact source-code audit / artifact coverage zero gap | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | 仕様化済み・未実装 | 検証基盤 | 意味のあるテスト / test gap inventory / batch closure / race trigger / mutation selection / mutation zero survivor gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
-| 仕様化済み・未実装 | 検証基盤 | 仕様全般不備一括棚卸し / 重複ゼロ / spec-gap closure gate | [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
+| 仕様化済み・未実装 | 検証基盤 | 仕様全般不備一括棚卸し / 重複ゼロ / spec-gap closure gate | [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | 仕様化済み・未実装 | 検証基盤 | main dispatch / binary version / output manifest / file tree consistency gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | 仕様化済み・未実装 | 検証基盤 | source-code audit inventory / direct I/O elimination / statefile common persistence gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | 仕様化済み・未実装 | 検証基盤 | builder parser / config / output / generated site regression gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |

@@ -12,7 +12,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | owner component | `release` |
 | 実装主体 | `components/release.go`。起動入口は [`main.go`](../../main.go)、実行ファイル名は `adlaire-ci-release`。 |
 | 持つ内容 | Release 用バイナリ生成、admin archive 生成、checksum manifest 生成、再現性確認、GitHub draft Release 作成、asset upload・再取得検証、正式公開、失敗時 draft 削除。 |
-| 検証接続 | 検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、owner から fixture への入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](../DETAIL_INDEX.md#0b-詳細仕様参照表)、横断テスト証跡は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)、Phase 11 横断入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。 |
+| 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
 `adlaire-ci-release` は保守者がリポジトリ checkout で実行する Release 作成用バイナリであり、利用者向け Release asset に含めない。利用者向け setup 実行バイナリは `adlaire-ci-setup-linux-amd64` として公開する。
 
