@@ -128,6 +128,16 @@
 | Docker 検証 | `golang:1.22` container で `gofmt -w components/mcp.go components/mcp_test.go main.go main_test.go components/release.go` 実行後、`go test ./...` が成功した。 |
 | 状態反映 | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務では、Phase 10 `mcp`、[`components/mcp.go`](../../components/mcp.go)、[`main.go`](../../main.go)、および MCP サーバー機能群を `実装済み` と扱う。 |
 
+<a id="phase-11-quality-gate-implementation-evidence"></a>
+**Phase 11 バグ修正ゼロ化 実装検証証跡：**
+
+| 対象 | 証跡 |
+|------|------|
+| Phase 11 `quality gate` 実装検証 | [`main_test.go`](../../main_test.go) に、標準実装 artifact inventory、`components/` の subdirectory 禁止、`cmd/` 非採用、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 索引到達、全 fixture manifest の `name` / directory identity、component owner / collaborator 整合、参照先 Markdown file / anchor 到達、`fake_clock` UTC 秒精度、`not_applicable` / `missing_state` / `input_files` の安全相対 path、input / expected JSON 妥当性、assertion に対応する expected evidence、Phase 11 ROADMAP 状態、Phase 11 専用詳細ファイルの不在、`Part` 表現不在を検出する横断 gate を追加した。 |
+| fixture 証跡 | [`testdata/admin/cli/`](../../testdata/admin/cli/)、[`testdata/setup/`](../../testdata/setup/)、[`testdata/release/`](../../testdata/release/)、[`testdata/mcp/`](../../testdata/mcp/) 配下の正式 fixture manifest 42 件を [`main_test.go`](../../main_test.go) の Phase 11 manifest gate で横断確認する。 |
+| Docker 検証 | `golang:1.22.12` container で `gofmt -w main_test.go`、`gofmt -l main.go main_test.go components/*.go *_test.go`、`go test ./... -count=1`、`go test -race ./... -count=1` が成功した。Phase 11 mutation 選択では、一時 copy 上で `main.go` の未知 basename 判定を反転した変異と、fixture manifest の `name` を directory 名と不一致にした変異を実行し、対応 test が失敗することを確認した。 |
+| 状態反映 | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務では、Phase 11 と検証基盤の Phase 11 対象機能群を `実装済み` と扱う。 |
+
 <a id="phase-11-fixture-harness-reference"></a>
 **Phase 11 fixture harness 参照：**
 
