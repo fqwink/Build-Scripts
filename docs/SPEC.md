@@ -707,6 +707,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 | 判定対象 | 必須条件 |
 |----------|----------|
 | 仕様追跡性 | 各 test、fixture、expected、assertion は、対象 owner、対象仕様、対象 anchor、検出したい仕様違反を特定できる。仕様に存在しない期待値をテストだけへ埋め込まない。 |
+| 検証要求網羅 | owner 詳細本文、fixture 証跡、状態・計画責務で実装対象に要求された検証条件は、test artifact、fixture root、expected、assertion、mutation class、closure item のいずれかへ接続し、未検証契約を 0 件にする。 |
 | assertion 強度 | 成功条件だけでなく、失敗時 response、stderr、終了コード、状態差分、副作用有無、禁止出力、禁止外部通信を検証する。 |
 | failure diagnostics | 各 assertion は、assertion id、対象仕様 anchor、期待値、実値、差分、failure reason、再現条件を特定できる。fixture 名、test 名、pass / fail 件数だけを診断根拠にしない。 |
 | 検証基盤自己検証 | test harness、checker、assertion、expected 比較、security assertion、state diff assertion は、検出すべき不正を fail として検出できることを negative control と positive control の両方で証明する。 |
@@ -718,6 +719,8 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 | 副作用 | 期待する副作用だけでなく、禁止された状態 write、file 作成、外部通信、通知、log、secret 出力、cache 書込、audit 欠落が発生しないことを検証する。 |
 | 回帰 | 修正した不具合、Phase 11 のバグ修正ゼロ化対象、過去に検出した仕様不整合は、同種の再発で失敗する regression test を持つ。 |
 | 完了証跡 | 実行結果、未実行項目、対象外理由、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) へ到達できる形で記録する。 |
+
+owner 詳細本文の検証条件、fixture 証跡条件、状態・計画責務の Phase 対象、既存 test / fixture / expected / assertion のいずれかが test requirement coverage ledger へ到達できない場合は、意味のあるテストの完了証跡として扱ってはならない。test requirement coverage ledger の固定契約、記録項目、対象外理由、open item の扱いは [`docs/details/fixture.md` fixture 証跡責務 test requirement coverage ledger 固定契約](details/fixture.md#test-requirement-coverage-ledger-contract) を正本とする。
 
 弱い oracle、実装結果の丸写し、snapshot の無条件受け入れ、fixture 存在だけの確認、status code だけの確認、stdout / stderr の空確認だけ、状態差分または副作用を確認しない expected、禁止出力または禁止外部通信を確認しない test は、意味のあるテストとして扱ってはならない。test oracle は、正本 anchor、入力、期待 response、期待 error、終了 code、状態差分、effects、security expected、禁止副作用、失敗時 no mutation を対象機能に応じて固定しなければならない。test oracle の証跡 schema、記録項目、expected / actual 比較、禁止副作用、fixture assertion との対応は [`docs/details/fixture.md` fixture 証跡責務 test oracle evidence set 固定契約](details/fixture.md#test-oracle-evidence-set-contract) を正本とする。
 
