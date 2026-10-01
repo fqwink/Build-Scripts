@@ -30,8 +30,10 @@
 | test isolation 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test isolation evidence set 固定契約](details/fixture.md#test-isolation-evidence-set-contract) |
 | test determinism 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](details/fixture.md#test-determinism-evidence-set-contract) |
 | test concurrency / race 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](details/fixture.md#test-concurrency-race-evidence-set-contract) |
+| mutation test 証跡固定契約 | [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract) |
 | mutation test 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 mutation test evidence set 固定契約](details/fixture.md#mutation-test-evidence-set-contract) |
 | test harness self-verification 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) |
+| test / contract drift 証跡 | [`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](details/fixture.md#test-contract-drift-evidence-contract) |
 | 生成静的 Web サイトと標準管理 UI のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
 | 利用入口 | [`README.md`](../README.md) |
 

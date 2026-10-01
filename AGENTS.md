@@ -247,6 +247,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 - 実装変更、検証変更、fixture 変更、または concurrency / race の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](docs/details/fixture.md#test-concurrency-race-evidence-set-contract) に基づく concurrency / race evidence set の記録先、または仕様上対象外である理由
 - mutation test の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 mutation test evidence set 固定契約](docs/details/fixture.md#mutation-test-evidence-set-contract) に基づく mutation evidence set の記録先、または仕様上対象外である理由
 - 実装変更、検証変更、fixture 変更、test harness 変更、checker 変更、または assertion 変更では、[`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](docs/details/fixture.md#test-harness-self-verification-evidence-set-contract) に基づく harness self-verification evidence set の記録先、または仕様上対象外である理由
+- 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、または Phase 11 バグ修正ゼロ化の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](docs/details/fixture.md#test-contract-drift-evidence-contract) に基づく drift 件数、孤立 test、未検証契約、期待値ドリフト、harness ドリフトの記録先、または仕様上対象外である理由
 
 ---
 

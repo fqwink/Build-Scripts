@@ -367,7 +367,7 @@ closure record set は、単一の検証対象単位ごとに 1 組作成する�
 | status closure | 完了扱いにできる closure record set は、全 record の `status` が `closed` または `not_applicable` であり、全 record の `open_items` が空であり、`final_open_item_count` が残件 `0` を示す。 | `status=open`、`open_items` 残存、残件数未記録、または残件を別変更で解消すると記録している。 |
 | scope consistency | 全 record の `owner_component`、`collaborator_components`、`artifacts`、`test_artifacts`、`fixture_roots`、`spec_refs`、`evidence_refs` は同じ検証対象単位を指す。 | record 間で対象 owner、artifact、fixture root、または根拠 anchor が別範囲を指している。 |
 | not applicable | `status=not_applicable` は、対象外理由、対象外にする owner / artifact / fixture root、責務正本 anchor、完了可否への影響を同じ record に持つ。 | 理由だけ、または anchor だけで対象外範囲と完了可否への影響が不明である。 |
-| PR evidence | 実装変更、検証変更、fixture 変更、または意味のあるテスト / requirement coverage / oracle / failure diagnostics / boundary / failure matrix / isolation / determinism / concurrency / race / mutation test / harness self-verification / contract drift の完了可否に関わる変更では、Pull Request の `Verification` に closure record set の記録先、または対象外理由を記録する。 | Pull Request 上で closure record set の所在、対象外理由、または未完了扱いが確認できない。 |
+| PR evidence | 実装変更、検証変更、fixture 変更、または意味のあるテスト / requirement coverage / oracle / failure diagnostics / boundary / failure matrix / isolation / determinism / concurrency / race / mutation test / harness self-verification / contract drift の完了可否に関わる変更では、Pull Request の `Verification` に [implementation PR evidence template 固定契約](#implementation-pr-evidence-template-contract) に基づく implementation PR evidence package と closure record set の記録先、または対象外理由を記録する。 | Pull Request 上で implementation PR evidence package、closure record set の所在、対象外理由、または未完了扱いが確認できない。 |
 
 <a id="implementation-pr-evidence-template-contract"></a>
 **implementation PR evidence template 固定契約：**
@@ -384,11 +384,17 @@ implementation PR evidence package は、単一の Pull Request ごとに 1 組�
 | oracle evidence | [test oracle evidence set 固定契約](#test-oracle-evidence-set-contract) の所在、positive / negative case、expected / actual 比較単位、状態差分、禁止副作用、失敗時 no mutation を記録する。 | status code だけ、fixture 存在だけ、expected / actual 不明、禁止副作用未確認。 |
 | failure diagnostics evidence | [test assertion identity / failure diagnostics evidence set 固定契約](#test-assertion-failure-diagnostics-evidence-set-contract) の所在、assertion id、対象仕様 anchor、expected / actual / diff、failure reason、再現 command、secret-safe diagnostics を記録する。 | assertion id なし、差分不明、generic failure、secret-safe 診断未確認。 |
 | boundary / failure matrix evidence | [test boundary / failure matrix evidence set 固定契約](#test-boundary-failure-matrix-evidence-set-contract) の所在、入力 class、境界値、error taxonomy、partial failure、rollback、cleanup、retry / recovery、失敗時 no mutation を記録する。 | 正常系だけ、境界未固定、partial failure / rollback / cleanup / retry 未確認。 |
+| isolation evidence | [test isolation evidence set 固定契約](#test-isolation-evidence-set-contract) の所在、隔離境界、順序入替結果、共有状態初期化、cleanup、残留 resource、parallel 実行可否を記録する。 | 共有状態汚染、順序依存、cleanup 不明、残留 resource 未確認、parallel 可否未記録。 |
+| determinism evidence | [test determinism evidence set 固定契約](#test-determinism-evidence-set-contract) の所在、変動要因、fake adapter、同一入力再実行結果、順序入替 case、禁止実環境依存を記録する。 | retry 成功だけ、実時間 / 乱数 / host 依存、再実行一致未確認、fake 境界不明。 |
+| concurrency / race evidence | [test concurrency / race evidence set 固定契約](#test-concurrency-race-evidence-set-contract) の所在、共有 resource、race detector、schedule / interleaving、lock / channel / goroutine lifecycle、conflict outcome、atomicity、cleanup を記録する。 | data race 未確認、goroutine leak 未確認、lock / channel 終了条件不明、競合結果未固定。 |
 | mutation evidence | [mutation test evidence set 固定契約](#mutation-test-evidence-set-contract) の所在、mutation class decision、`killed` / `survived` / `invalid` / `equivalent` 件数、`survived=0` を記録する。 | mutation class 未定義、`survived>0`、または `equivalent` 根拠 anchor 不足。 |
 | harness self-verification evidence | [test harness self-verification evidence set 固定契約](#test-harness-self-verification-evidence-set-contract) の所在、negative control、positive control、検出すべき不正、failure reason を記録する。 | harness が常に pass / 常に fail、negative / positive 片側だけ、failure reason 不明。 |
+| contract drift evidence | [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の所在、孤立 test、未検証契約、期待値ドリフト、harness ドリフトの件数、各 drift の解消状態を記録する。 | drift 件数未記録、孤立 test 残存、未検証契約残存、期待値または harness の正本不一致。 |
 | execution evidence | [test execution evidence matrix 固定契約](#test-execution-evidence-matrix-contract) の分類、実行 command、runtime、終了 code、対象 artifact、対象 fixture、未実行理由を記録する。 | 実行成功件数だけ、対象 artifact 不明、必須検証の未実行理由なし。 |
 | not applicable evidence | 対象外にした owner、artifact、fixture root、evidence set、理由、責務正本 anchor、完了可否への影響を記録する。 | 理由だけ、anchor だけ、対象外範囲不明、または将来対応を対象外理由にしている。 |
 | completion declaration | `open item=0`、対象 Phase 全体完了可否、`docs/ROADMAP.md` 更新要否、`docs/DOCUMENT_INDEX.md` 更新要否、未実施確認の有無を記録する。 | 残件を別 PR に送る、状態更新要否不明、または完了可否が Phase 全体と一致しない。 |
+
+Pull Request 本文で implementation PR evidence package を記録する場合は、上表の提出物名を label として表順に並べる。適用外の提出物は削除せず、`not applicable evidence` に対象外範囲、理由、責務正本 anchor、完了可否への影響を記録する。上表にない任意 label、表順と異なる記録順、または `completion declaration` より後に残件を追記する形式を完了証跡として扱ってはならない。
 
 implementation PR evidence package は、上表の適用項目すべてが記録され、未完了条件が 0 件である場合だけ完了証跡として扱う。実装変更がない文書整理 PR では、対象外理由を Pull Request 本文へ記録すればよい。実装変更または検証変更があるのに package を作れない場合は、[`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) に従い検証不足として扱う。
 
