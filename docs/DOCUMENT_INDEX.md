@@ -13,6 +13,7 @@
 | 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
 | 詳細仕様本文・証跡ディレクトリ | [`docs/details/`](details/) |
 | Phase 11 バグ修正ゼロ化の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
+| 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
 | test artifact と fixture 証跡の接続 | [`docs/details/fixture.md` fixture 証跡責務 test artifact traceability 固定契約](details/fixture.md#test-artifact-traceability-contract) |
