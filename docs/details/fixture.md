@@ -129,14 +129,29 @@
 | 状態反映 | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務では、Phase 10 `mcp`、[`components/mcp.go`](../../components/mcp.go)、[`main.go`](../../main.go)、および MCP サーバー機能群を `実装済み` と扱う。 |
 
 <a id="phase-11-quality-gate-implementation-evidence"></a>
-**Phase 11 バグ修正ゼロ化 実装検証証跡：**
+**Phase 11 バグ修正ゼロ化 初期 quality gate 証跡：**
 
 | 対象 | 証跡 |
 |------|------|
-| Phase 11 `quality gate` 実装検証 | [`main_test.go`](../../main_test.go) に、標準実装 artifact inventory、`components/` の subdirectory 禁止、`cmd/` 非採用、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 索引到達、全 fixture manifest の `name` / directory identity、component owner / collaborator 整合、参照先 Markdown file / anchor 到達、`fake_clock` UTC 秒精度、`not_applicable` / `missing_state` / `input_files` の安全相対 path、input / expected JSON 妥当性、assertion に対応する expected evidence、Phase 11 ROADMAP 状態、Phase 11 専用詳細ファイルの不在、`Part` 表現不在を検出する横断 gate を追加した。 |
-| fixture 証跡 | [`testdata/admin/cli/`](../../testdata/admin/cli/)、[`testdata/setup/`](../../testdata/setup/)、[`testdata/release/`](../../testdata/release/)、[`testdata/mcp/`](../../testdata/mcp/) 配下の正式 fixture manifest 42 件を [`main_test.go`](../../main_test.go) の Phase 11 manifest gate で横断確認する。 |
-| Docker 検証 | `golang:1.22.12` container で `gofmt -w main_test.go`、`gofmt -l main.go main_test.go components/*.go *_test.go`、`go test ./... -count=1`、`go test -race ./... -count=1` が成功した。Phase 11 mutation 選択では、一時 copy 上で `main.go` の未知 basename 判定を反転した変異と、fixture manifest の `name` を directory 名と不一致にした変異を実行し、対応 test が失敗することを確認した。 |
-| 状態反映 | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務では、Phase 11 と検証基盤の Phase 11 対象機能群を `実装済み` と扱う。 |
+| Phase 11 `quality gate` 初期実装検証 | [`main_test.go`](../../main_test.go) に、標準実装 artifact inventory、`components/` の subdirectory 禁止、`cmd/` 非採用、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 索引到達、fixture manifest の `name` / directory identity、component owner / collaborator 整合、参照先 Markdown file / anchor 到達、`fake_clock` UTC 秒精度、`not_applicable` / `missing_state` / `input_files` の安全相対 path、input / expected JSON 妥当性、assertion に対応する expected evidence、Phase 11 ROADMAP 状態、Phase 11 専用詳細ファイルの不在、`Part` 表現不在、未登録 fixture directory を検出する横断 gate を追加した。 |
+| fixture 証跡 | [`testdata/admin/cli/`](../../testdata/admin/cli/)、[`testdata/setup/`](../../testdata/setup/)、[`testdata/release/`](../../testdata/release/)、[`testdata/mcp/`](../../testdata/mcp/) 配下の正式 fixture manifest 42 件を [`main_test.go`](../../main_test.go) の Phase 11 manifest gate で横断確認する。この 42 件確認は正式 fixture directory harness の一部証跡であり、[Phase 11 未完了 blocker](#phase-11-quality-gate-open-items) を閉じるまでは Phase 11 完了証跡として扱わない。 |
+| Docker 検証 | `golang:1.22.12` container で `gofmt -w main_test.go`、`gofmt -l main.go main_test.go components/*.go *_test.go`、`go test ./... -count=1`、`go test -race ./... -count=1` が成功した。Phase 11 mutation 選択では、一時 copy 上で `main.go` の未知 basename 判定を反転した変異と、fixture manifest の `name` を directory 名と不一致にした変異を実行し、対応 test が失敗することを確認した。この検証成功は初期 quality gate の証跡であり、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の `final_open_item_count=0` を代替しない。 |
+| 状態反映 | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務では、Phase 11 と検証基盤の Phase 11 対象機能群を `実装中・検証未完了` と扱う。 |
+
+<a id="phase-11-quality-gate-open-items"></a>
+**Phase 11 未完了 blocker：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 11 の完了を妨げる検証証跡上の open item を記録する。Phase 11 の現在状態は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8)、closure record set の条件は [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) を正本とする。
+
+| blocker id | 未完了条件 | closure 条件 |
+|------------|------------|---------------|
+| `p11-open-fixture-root-coverage` | `testdata/runner/`、`testdata/api/`、`testdata/sdk/`、`testdata/ui/`、`testdata/statefile/`、`testdata/archive/`、`testdata/commitstatus/`、`testdata/security/` が、正式 fixture、実装検証証跡、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達していない。 | [fixture root coverage matrix 固定契約](#fixture-root-coverage-matrix-contract) と [未作成 fixture root closure record 固定契約](#fixture-root-missing-closure-record-contract) に基づき、対象 root ごとに closure record を作成し、`closure_method=open` を 0 件にする。 |
+| `p11-open-builder-fixture-coverage` | `testdata/builder/` は部分実在 root であり、`strict/`、`safe/`、`url-safety/`、`expected/` の正式 fixture / expected / manifest / 実装検証証跡が閉じていない。 | [fixture root coverage matrix 固定契約](#fixture-root-coverage-matrix-contract) の `testdata/builder/` 行を満たし、builder fixture の expected と manifest を正式 fixture として接続する。 |
+| `p11-open-fixture-identity` | `* 2` suffix directory、同一 `manifest.json.name`、catalog 未登録 directory、harness 未参照 directory が実在する場合、fixture root identity zero duplicate を満たさない。 | [`main_test.go`](../../main_test.go) の Phase 11 manifest gate で未登録 directory を検出し、該当 directory を正式 fixture へ昇格するか削除し、formal fixture root 内の未登録 directory を 0 件にする。 |
+| `p11-open-closure-record-set` | [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record closure set が Phase 11 全体として作成されていない。 | `scope_inventory` から `final_open_item_count` までの 18 record を Phase 11 全体の同一検証対象単位で記録し、全 record の `status` を `closed` または `not_applicable`、`open_items` を空、`final_open_item_count=0` にする。 |
+| `p11-open-test-gap-inventory` | Phase 11 全体の test gap inventory、test improvement batch closure、requirement coverage ledger、contract drift report が `open=0` として接続されていない。 | [test gap inventory record 固定契約](#test-gap-inventory-record-contract)、[test improvement batch closure 固定契約](#test-improvement-batch-closure-contract)、[test requirement coverage ledger 固定契約](#test-requirement-coverage-ledger-contract)、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) を同じ closure record set へ接続する。 |
+| `p11-open-mutation-race-drift` | Phase 11 全体の mutation selection / mutation zero survivor、race trigger、concurrency / race、harness self-verification、contract drift の証跡が全 artifact へ接続されていない。 | [mutation selection ledger 固定契約](#mutation-selection-ledger-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)、[race trigger matrix 固定契約](#race-trigger-matrix-contract)、[test concurrency / race evidence set 固定契約](#test-concurrency-race-evidence-set-contract)、[test harness self-verification evidence set 固定契約](#test-harness-self-verification-evidence-set-contract) を接続し、`survived=0` と open trigger `0` を記録する。 |
+| `p11-open-statefile-persistence` | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務で `状態ファイル共通永続化契約` が `実装中・検証未完了` のままである。 | [`docs/details/statefile.md` 詳細本文責務](statefile.md) と該当 fixture 証跡に基づき、状態ファイル共通永続化契約を実装・検証し、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務で `実装済み` へ遷移できる条件を満たす。 |
 
 <a id="phase-11-fixture-harness-reference"></a>
 **Phase 11 fixture harness 参照：**

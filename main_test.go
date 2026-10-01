@@ -230,6 +230,8 @@ func TestPhase11StandardArtifactInventory(t *testing.T) {
 func TestPhase11FixtureManifestGate(t *testing.T) {
 	t.Parallel()
 
+	phase11RequireNoUnexpectedFixtureDirectories(t)
+
 	manifestPaths, err := phase11FindManifestFiles("testdata")
 	if err != nil {
 		t.Fatalf("find fixture manifests: %v", err)
@@ -360,22 +362,44 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	t.Parallel()
 
 	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
-	if !strings.Contains(roadmap, "| Phase 11 | バグ修正ゼロ化。") || !strings.Contains(roadmap, "| Phase 11 | バグ修正ゼロ化。source-code audit、横断 regression、正式 fixture harness、意味のあるテスト、test gap inventory / batch closure、race trigger、mutation selection / mutation zero survivor、contract drift の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。 | 実装済み | Phase 10 |") {
-		t.Fatalf("docs/ROADMAP.md must mark Phase 11 as 実装済み once Phase 11 quality gates are implemented")
+	fixtureSpec := phase11MustReadText(t, "docs/details/fixture.md")
+	phase11CompleteRow := "| Phase 11 | バグ修正ゼロ化。source-code audit、横断 regression、正式 fixture harness、意味のあるテスト、test gap inventory / batch closure、race trigger、mutation selection / mutation zero survivor、contract drift の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。 | 実装済み | Phase 10 |"
+	phase11IncompleteRow := strings.Replace(phase11CompleteRow, "| 実装済み |", "| 実装中・検証未完了 |", 1)
+
+	if strings.Contains(roadmap, phase11CompleteRow) {
+		t.Fatalf("docs/ROADMAP.md must not mark Phase 11 as 実装済み while Phase 11 blocker records remain open")
 	}
-	for _, feature := range []string{
-		"バグ修正ゼロ化 / 仕様全般完了 gate / cross-owner regression gate",
-		"全標準実装 artifact source-code audit / artifact coverage zero gap",
-		"意味のあるテスト / test gap inventory / batch closure / race trigger / mutation selection / mutation zero survivor gate",
-		"仕様全般不備一括棚卸し / 重複ゼロ / inspection pass / spec-gap closure gate",
-		"main dispatch / binary version / output manifest / file tree consistency gate",
-		"source-code audit inventory / direct I/O elimination / statefile common persistence gate",
-		"正式 fixture directory harness / fixture identity / fixture manifest / contract drift zero gate",
-	} {
-		want := "| 実装済み | 検証基盤 | " + feature + " |"
+	if !strings.Contains(roadmap, phase11IncompleteRow) {
+		t.Fatalf("docs/ROADMAP.md must mark Phase 11 as 実装中・検証未完了 until Phase 11 closure records reach final_open_item_count=0")
+	}
+	if !strings.Contains(roadmap, "現在の active Phase は Phase 11 とする。") {
+		t.Fatalf("docs/ROADMAP.md must keep Phase 11 as the active Phase while bug-fix-zeroization blockers remain")
+	}
+	if strings.Contains(roadmap, "初期実装 Phase 1 から Phase 11 まではすべて `実装済み`") {
+		t.Fatalf("docs/ROADMAP.md must not state that Phase 1 through Phase 11 are all implemented")
+	}
+
+	for _, feature := range phase11QualityGateFeatures {
+		want := "| 実装中・検証未完了 | 検証基盤 | " + feature + " |"
 		if !strings.Contains(roadmap, want) {
-			t.Fatalf("docs/ROADMAP.md must mark Phase 11 feature as 実装済み: %s", feature)
+			t.Fatalf("docs/ROADMAP.md must keep Phase 11 feature as 実装中・検証未完了: %s", feature)
 		}
+		forbidden := "| 実装済み | 検証基盤 | " + feature + " |"
+		if strings.Contains(roadmap, forbidden) {
+			t.Fatalf("docs/ROADMAP.md must not mark Phase 11 feature as 実装済み while blockers remain: %s", feature)
+		}
+	}
+
+	for _, root := range phase11Phase11OpenFixtureRoots {
+		if !strings.Contains(fixtureSpec, "`"+root+"`") {
+			t.Fatalf("docs/details/fixture.md must record open Phase 11 fixture root %s", root)
+		}
+	}
+	if !strings.Contains(fixtureSpec, "phase-11-quality-gate-open-items") {
+		t.Fatalf("docs/details/fixture.md must expose the Phase 11 open blocker anchor")
+	}
+	if !strings.Contains(roadmap, "状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md`") || !strings.Contains(roadmap, "| 実装中・検証未完了 | 状態管理 | 状態ファイル共通永続化契約 |") {
+		t.Fatalf("docs/ROADMAP.md must keep the statefile common persistence contract incomplete until verified")
 	}
 }
 
@@ -436,6 +460,85 @@ var phase11AllowedAssertions = map[string]bool{
 	"state":       true,
 	"stderr":      true,
 	"stdout":      true,
+}
+
+var phase11QualityGateFeatures = []string{
+	"バグ修正ゼロ化 / 仕様全般完了 gate / cross-owner regression gate",
+	"全標準実装 artifact source-code audit / artifact coverage zero gap",
+	"意味のあるテスト / test gap inventory / batch closure / race trigger / mutation selection / mutation zero survivor gate",
+	"仕様全般不備一括棚卸し / 重複ゼロ / inspection pass / spec-gap closure gate",
+	"main dispatch / binary version / output manifest / file tree consistency gate",
+	"source-code audit inventory / direct I/O elimination / statefile common persistence gate",
+	"builder parser / config / output / generated site regression gate",
+	"runner source / pipeline / deploy / notification / corrupt state regression gate",
+	"API auth / config / backup / webhook / read model / filesystem regression gate",
+	"SDK / UI / admin CLI / MCP bridge / route parity regression gate",
+	"setup / release distribution / filesystem / external boundary regression gate",
+	"正式 fixture directory harness / fixture identity / fixture manifest / contract drift zero gate",
+}
+
+var phase11Phase11OpenFixtureRoots = []string{
+	"testdata/runner/",
+	"testdata/api/",
+	"testdata/sdk/",
+	"testdata/ui/",
+	"testdata/statefile/",
+	"testdata/archive/",
+	"testdata/commitstatus/",
+	"testdata/security/",
+}
+
+func phase11RequireNoUnexpectedFixtureDirectories(t *testing.T) {
+	t.Helper()
+
+	var unexpected []string
+	err := filepath.WalkDir("testdata", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		if phase11HasNumericCopySuffix(d.Name()) {
+			unexpected = append(unexpected, filepath.ToSlash(path))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("scan fixture directories: %v", err)
+	}
+	for _, formalRoot := range []string{"testdata/admin/cli", "testdata/setup", "testdata/release"} {
+		entries, err := os.ReadDir(formalRoot)
+		if err != nil {
+			t.Fatalf("read formal fixture root %s: %v", formalRoot, err)
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			manifestPath := filepath.Join(formalRoot, entry.Name(), "manifest.json")
+			if _, err := os.Stat(manifestPath); err != nil {
+				unexpected = append(unexpected, filepath.ToSlash(filepath.Join(formalRoot, entry.Name())))
+			}
+		}
+	}
+	sort.Strings(unexpected)
+	if len(unexpected) != 0 {
+		t.Fatalf("unexpected or unregistered fixture directories remain: %v", unexpected)
+	}
+}
+
+func phase11HasNumericCopySuffix(name string) bool {
+	index := strings.LastIndex(name, " ")
+	if index < 0 || index == len(name)-1 {
+		return false
+	}
+	for _, char := range name[index+1:] {
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func phase11ReadManifest(t *testing.T, path string) phase11Manifest {
