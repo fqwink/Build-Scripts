@@ -1,0 +1,25 @@
+{
+  "name": "success-api-phase11-root-coverage",
+  "section": "phase-11",
+  "feature": "phase11_fixture_root_coverage",
+  "category": "success",
+  "owner_component": "api",
+  "collaborator_components": [],
+  "components": [
+    "api"
+  ],
+  "references": [
+    "docs/details/api.md#sec-22-0a",
+    "docs/details/fixture.md#fixture-root-coverage-matrix-contract"
+  ],
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/scope.json"
+  ],
+  "assertions": [
+    "effects",
+    "no-write"
+  ]
+}

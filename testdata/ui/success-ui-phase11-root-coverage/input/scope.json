@@ -1,0 +1,5 @@
+{
+  "fixture_root": "testdata/ui/",
+  "owner_component": "ui",
+  "scope": "phase11-root-coverage"
+}

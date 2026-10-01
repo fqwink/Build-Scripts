@@ -236,8 +236,8 @@ func TestPhase11FixtureManifestGate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("find fixture manifests: %v", err)
 	}
-	if len(manifestPaths) < 42 {
-		t.Fatalf("expected at least 42 formal fixture manifests, got %d", len(manifestPaths))
+	if len(manifestPaths) < 50 {
+		t.Fatalf("expected at least 50 formal fixture manifests, got %d", len(manifestPaths))
 	}
 
 	seenNames := make(map[string]string)
@@ -363,6 +363,7 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 
 	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
 	fixtureSpec := phase11MustReadText(t, "docs/details/fixture.md")
+	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
 	phase11CompleteRow := "| Phase 11 | バグ修正ゼロ化。source-code audit、横断 regression、正式 fixture harness、意味のあるテスト、test gap inventory / batch closure、race trigger、mutation selection / mutation zero survivor、contract drift の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。 | 実装済み | Phase 10 |"
 	phase11IncompleteRow := strings.Replace(phase11CompleteRow, "| 実装済み |", "| 実装中・検証未完了 |", 1)
 
@@ -390,10 +391,27 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 		}
 	}
 
-	for _, root := range phase11Phase11OpenFixtureRoots {
-		if !strings.Contains(fixtureSpec, "`"+root+"`") {
-			t.Fatalf("docs/details/fixture.md must record open Phase 11 fixture root %s", root)
+	for _, coverage := range phase11RootCoverageFixtures {
+		rootIndexRow := "| [`" + coverage.Root + "`](../" + coverage.Root + ") | `" + coverage.Owner + "` fixture root | 実在 |"
+		if !strings.Contains(documentIndex, rootIndexRow) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must index Phase 11 root coverage fixture root as 実在: %s", coverage.Root)
 		}
+		fixtureIndexRow := "| [`" + coverage.FixtureDir + "/`](../" + coverage.FixtureDir + "/) | `" + coverage.Owner + "` Phase 11 root coverage fixture | 実在 |"
+		if !strings.Contains(documentIndex, fixtureIndexRow) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must index Phase 11 root coverage fixture directory as 実在: %s", coverage.FixtureDir)
+		}
+		if _, err := os.Stat(filepath.Join(coverage.FixtureDir, "manifest.json")); err != nil {
+			t.Fatalf("Phase 11 root coverage fixture %s must include manifest.json: %v", coverage.FixtureDir, err)
+		}
+		if !strings.Contains(fixtureSpec, "`"+coverage.Root+"` | Phase 11 root coverage formal fixture root。") {
+			t.Fatalf("docs/details/fixture.md must record Phase 11 root coverage closure for %s", coverage.Root)
+		}
+		if strings.Contains(fixtureSpec, "`"+coverage.Root+"` | Phase 11 対象の"+"未作成 root。") {
+			t.Fatalf("docs/details/fixture.md must not keep %s as 未作成 root after root coverage closure", coverage.Root)
+		}
+	}
+	if strings.Contains(fixtureSpec, "`p11-open-"+"fixture-root-coverage`") {
+		t.Fatalf("docs/details/fixture.md must not keep closed root coverage as an open Phase 11 blocker")
 	}
 	if !strings.Contains(fixtureSpec, "phase-11-quality-gate-open-items") {
 		t.Fatalf("docs/details/fixture.md must expose the Phase 11 open blocker anchor")
@@ -477,15 +495,21 @@ var phase11QualityGateFeatures = []string{
 	"正式 fixture directory harness / fixture identity / fixture manifest / contract drift zero gate",
 }
 
-var phase11Phase11OpenFixtureRoots = []string{
-	"testdata/runner/",
-	"testdata/api/",
-	"testdata/sdk/",
-	"testdata/ui/",
-	"testdata/statefile/",
-	"testdata/archive/",
-	"testdata/commitstatus/",
-	"testdata/security/",
+type phase11RootCoverageFixture struct {
+	Root       string
+	Owner      string
+	FixtureDir string
+}
+
+var phase11RootCoverageFixtures = []phase11RootCoverageFixture{
+	{Root: "testdata/runner/", Owner: "runner", FixtureDir: "testdata/runner/success-runner-phase11-root-coverage"},
+	{Root: "testdata/api/", Owner: "api", FixtureDir: "testdata/api/success-api-phase11-root-coverage"},
+	{Root: "testdata/sdk/", Owner: "sdk", FixtureDir: "testdata/sdk/success-sdk-phase11-root-coverage"},
+	{Root: "testdata/ui/", Owner: "ui", FixtureDir: "testdata/ui/success-ui-phase11-root-coverage"},
+	{Root: "testdata/statefile/", Owner: "statefile", FixtureDir: "testdata/statefile/success-statefile-phase11-root-coverage"},
+	{Root: "testdata/archive/", Owner: "archive", FixtureDir: "testdata/archive/success-archive-phase11-root-coverage"},
+	{Root: "testdata/commitstatus/", Owner: "commitstatus", FixtureDir: "testdata/commitstatus/success-commitstatus-phase11-root-coverage"},
+	{Root: "testdata/security/", Owner: "security", FixtureDir: "testdata/security/success-security-phase11-root-coverage"},
 }
 
 func phase11RequireNoUnexpectedFixtureDirectories(t *testing.T) {
@@ -507,7 +531,11 @@ func phase11RequireNoUnexpectedFixtureDirectories(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scan fixture directories: %v", err)
 	}
-	for _, formalRoot := range []string{"testdata/admin/cli", "testdata/setup", "testdata/release"} {
+	formalRoots := []string{"testdata/admin/cli", "testdata/setup", "testdata/release"}
+	for _, coverage := range phase11RootCoverageFixtures {
+		formalRoots = append(formalRoots, strings.TrimSuffix(coverage.Root, "/"))
+	}
+	for _, formalRoot := range formalRoots {
 		entries, err := os.ReadDir(formalRoot)
 		if err != nil {
 			t.Fatalf("read formal fixture root %s: %v", formalRoot, err)
