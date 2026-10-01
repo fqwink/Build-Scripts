@@ -626,7 +626,42 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | `closure_evidence` | PR 本文、差分、または責務正本 anchor への link。 | 処置結果へ到達できない、または説明文だけで完了扱いにしている。 |
 | `status` | `open`、`closed`、`not_applicable` のいずれか。 | 完了時に `open` が残る、または `not_applicable` に責務正本 anchor がない。 |
 
+`canonical_responsibility` は、次の category routing に従って 1 件だけ選定する。複数の文書に症状が見える場合でも、record の `canonical_responsibility` は最終的な仕様判断または処置結果を所有する責務正本 1 件に固定する。補助的に参照する文書は `closure_evidence` に置き、`canonical_responsibility` へ複数正本を並べてはならない。
+
+| `category` | `canonical_responsibility` 選定規則 |
+|------------|--------------------------------------|
+| `重複記載` | 重複している判断対象の正本を [`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) と [`docs/SPEC.md` 責務文書構成表](SPEC.md#document-responsibility-map) で 1 件に確定する。 |
+| `責務外本文` | 本文を所有すべき正本を [`docs/SPEC.md` 責務文書構成表](SPEC.md#document-responsibility-map) で 1 件に確定する。 |
+| `参照切れ` | 参照対象が文書・実装 artifact の所在である場合は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、参照対象が仕様本文の anchor である場合はその anchor を所有する責務正本を 1 件に確定する。 |
+| `責務正本未確定` | 正本分担の判断は [`docs/SPEC.md` 責務文書構成表](SPEC.md#document-responsibility-map) を `canonical_responsibility` とする。 |
+| `状態不整合` | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を `canonical_responsibility` とする。 |
+| `索引不整合` | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を `canonical_responsibility` とする。 |
+| `詳細仕様不足` | 不足している実装契約を所有する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を `canonical_responsibility` とする。 |
+| `fixture 証跡不足` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を `canonical_responsibility` とする。 |
+| `デザイン責務混入` | [`docs/DESIGN.md`](DESIGN.md) デザイン責務を `canonical_responsibility` とする。 |
+| `作業ルール混入` | [`AGENTS.md`](../AGENTS.md) 最上位ルールブックを `canonical_responsibility` とする。 |
+| `実装 artifact 所在不整合` | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を `canonical_responsibility` とする。 |
+
 仕様全般不備 inventory record は、全 record の `status` が `closed` または `not_applicable`、`open` 件数が `0`、テスト固有の仕様不足がある場合は `test_gap_link` から [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) へ到達できる場合だけ閉じる。仕様全般不備を fixture 証跡責務の `source=spec-gap` だけで閉じること、またはテスト固有の仕様不足を本 record だけで閉じることを禁止する。
+
+<a id="spec-deficiency-batch-closure-contract"></a>
+**仕様全般不備 batch closure 固定契約：**
+
+仕様全般不備 batch closure は、仕様全般の再整備、重複箇所、問題点、改善点、または残存しない全件洗い出しを目的にする仕様 PR 1 本につき 1 組だけ作成する。batch closure の正本は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion) とし、Pull Request 本文、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/ROADMAP.md`](ROADMAP.md)、owner 詳細本文、または fixture 証跡責務で同じ schema を再定義してはならない。
+
+| field | 固定値 / 形式 | 未完了条件 |
+|-------|---------------|------------|
+| `batch_id` | `specbatch-<scope>-<number>` の lowercase kebab-case。 | 空、重複、または対象 scope を識別できない。 |
+| `inventory_location` | 仕様全般不備 inventory record 群の所在。Pull Request 本文に置く場合は `pr-verification`、文書内に置く場合は責務名付き Markdown link。 | 所在がない、口頭説明だけ、または実在しない path / anchor を指す。 |
+| `record_count` | inventory record の総数を整数で記録する。検出 0 件の場合も `0` を明示する。 | 件数未記録、または inventory record 数と一致しない。 |
+| `category_summary` | 使用した category ごとの件数と、未使用 category の `0` を記録する。 | category ごとの件数が不明、または未登録 category を含む。 |
+| `canonical_responsibility_summary` | 全 record が本節の category routing に従い、唯一の `canonical_responsibility` を持つことを記録する。 | 複数正本、正本未確定、裸のファイル名、または routing 不一致が残る。 |
+| `test_gap_connection` | テスト固有の仕様不足を含む場合は、対応する `defect_id` と [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract) の `gap_id` を 1 対 1 で列挙する。含まない場合は `not_applicable` と対象外理由。 | `source=spec-gap` の test gap と `defect_id` の対応がない、または非テスト不備を test gap だけで閉じている。 |
+| `disposition_summary` | `delete`、`reference`、`move-to-canonical`、`define-in-canonical`、`mark-not-applicable` ごとの件数と処置先への link。 | 処置件数が不明、処置先へ到達できない、または後続 PR 前提の処置を含む。 |
+| `final_unresolved_count` | 未解消 record 件数を整数で記録し、完了扱いでは `0` に固定する。 | 件数未記録、`0` 以外、または残件を別変更で閉じる説明がある。 |
+| `status` | `closed` または `not_applicable` のいずれか。 | `open`、未登録値、または `not_applicable` に対象外範囲と責務正本 anchor がない。 |
+
+仕様全般不備 batch closure は、全 inventory record の `status` が `closed` または `not_applicable`、`record_count` と実 record 数が一致、`final_unresolved_count=0`、category routing 違反 `0`、テスト固有 `source=spec-gap` と `test_gap_link` の未接続 `0`、処置先未到達 `0` の場合だけ閉じる。最終 record より後に残件、暫定対応、後続 PR 前提、または未確認事項を追記した batch closure は完了証跡として扱わない。
 
 仕様 PR は、未確定事項を「推奨」「検討」「適切に」等の表現だけで残してはならない。未確定事項を残す場合は、実装不可の `未仕様化` または `将来計画` として明示する。
 

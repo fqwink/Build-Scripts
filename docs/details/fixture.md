@@ -338,7 +338,7 @@ test gap inventory record は、発見した問題点 1 件につき 1 record �
 | `closure_record` | 接続先 closure record、batch closure item、または Pull Request evidence label。 | closure へ到達できない。 |
 | `status` | `open`、`closed`、`not_applicable` のいずれか。 | 完了時に `open` が残る、または `not_applicable` に責務正本 anchor がない。 |
 
-test gap inventory record は、status が `closed` または `not_applicable` であり、`spec_anchor`、`evidence_target`、`closure_record` へ到達できる場合だけ閉じる。`source=spec-gap` の record は、`spec_deficiency_record` から [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](../SPEC.md#spec-deficiency-inventory-record-contract) へ到達できる場合だけ閉じる。`status=open` の record、分類不能 record、対象外理由 anchor のない record、または closure へ接続しない record が 1 件でも残る場合、test improvement batch は完了扱いにしない。
+test gap inventory record は、status が `closed` または `not_applicable` であり、`spec_anchor`、`evidence_target`、`closure_record` へ到達できる場合だけ閉じる。`source=spec-gap` の record は、`spec_deficiency_record` から [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](../SPEC.md#spec-deficiency-inventory-record-contract) へ到達でき、かつ [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](../SPEC.md#spec-deficiency-batch-closure-contract) の `test_gap_connection` で当該 `defect_id` と `gap_id` の 1 対 1 対応が確認できる場合だけ閉じる。`status=open` の record、分類不能 record、対象外理由 anchor のない record、または closure へ接続しない record が 1 件でも残る場合、test improvement batch は完了扱いにしない。
 
 <a id="test-improvement-batch-closure-contract"></a>
 **test improvement batch closure 固定契約：**
