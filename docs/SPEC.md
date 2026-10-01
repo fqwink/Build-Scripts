@@ -210,7 +210,7 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 参照はリンク化を必須とする。文書間参照、節参照、表参照、責務正本参照、実装ファイル参照、fixture 参照を説明文として書く場合は、Markdown link を用いて参照先へ移動できる形にする。単なるファイル名、裸の節番号、裸の見出し名、または `参照` という文字だけで参照先を示した扱いにしてはならない。
 
-テスト方針、テスト完了可否、fixture 証跡 schema、assertion、mutation、drift、skip、fixture root closure、PR 証跡への参照は、owner 詳細本文、作業ルール、Pull Request 本文、状態・計画責務、文書・実装ファイル所在の索引責務、利用入口責務、または他の責務文書から行う場合、必ず [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由する。ただし、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) がテスト方針と完了可否の本文を持つ場合、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務が fixture 証跡本文を持つ場合、または [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務が所在索引として固定 anchor を列挙する場合は、それぞれの責務範囲内で直接リンクしてよい。owner 詳細本文、作業ルール、Pull Request 本文、状態・計画責務が同じテスト証跡の schema、必須 key、記録単位、例外条件、完了可否を個別に再掲または再定義することを禁止する。
+テスト方針、テスト完了可否、fixture 証跡 schema、assertion、test gap inventory、test improvement batch closure、mutation、mutation selection、race trigger、drift、skip、fixture root closure、PR 証跡への参照は、owner 詳細本文、作業ルール、Pull Request 本文、状態・計画責務、文書・実装ファイル所在の索引責務、利用入口責務、または他の責務文書から行う場合、必ず [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由する。ただし、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) がテスト方針と完了可否の本文を持つ場合、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務が fixture 証跡本文を持つ場合、または [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務が所在索引として固定 anchor を列挙する場合は、それぞれの責務範囲内で直接リンクしてよい。owner 詳細本文、作業ルール、Pull Request 本文、状態・計画責務が同じテスト証跡の schema、必須 key、記録単位、例外条件、完了可否を個別に再掲または再定義することを禁止する。
 
 契約値そのものを記録するコードブロック、ディレクトリ tree、JSON schema、CLI 例、HTTP path、設定値、生成物名、状態ファイル名、および所在索引表の path セルは、Markdown link 化によって契約文字列が変わるためリンク化対象外とする。この例外は説明文中の参照には適用しない。説明文から実ファイルまたは文書へ移動させる目的がある場合は、同じ段落または表の参照列に Markdown link を併記する。
 
@@ -538,7 +538,7 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | 異常系 | エラー条件、応答、終了コード、固定メッセージ、ログ level、通知条件、継続可否。 |
 | 制御 | 再試行、lock、排他制御、冪等性、timeout、partial failure、再実行時の扱い。 |
 | security | 認証、認可、token、秘密情報、権限、公開境界、出力禁止情報。 |
-| 検証 | [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす意味のあるテスト、必須 fixture、assertion、正常系・異常系確認、境界値確認、mutation test、構文確認、実行確認、生成物確認、必須証跡。 |
+| 検証 | [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす意味のあるテスト、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) から到達できる test gap inventory、test improvement batch closure、test evidence package、test verification closure record set、必須 fixture、assertion、requirement coverage、oracle、failure diagnostics、boundary / failure matrix、isolation、determinism、race trigger、concurrency / race、mutation selection、mutation test、harness self-verification、contract drift、skip / 未実行証跡、構文確認、実行確認、生成物確認、必須証跡。 |
 
 「適切に処理する」「必要に応じて対応する」「安全に扱う」のように実装判断を実装者へ委ねる表現を単独で完了仕様として扱ってはならない。使用する場合は、具体的な条件、処理、値、禁止事項、確認方法を併記する。
 
@@ -560,7 +560,7 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | security | 認証、認可、scope、secret 保存禁止、secret 出力禁止、token / password / TOTP / session の露出境界。 |
 | 外部境界 | GitHub API、SSH、SMTP、systemd、webhook、browser fetch / SSE、MCP client、command 実行、filesystem の成功 / 失敗 / timeout / malformed 条件。 |
 | 制御 | retry、timeout、cancel、clock、timer、entropy、ID generation、goroutine、channel、worker ordering、並行更新、衝突時処理。 |
-| 検証証跡 | fixture、fake、expected、effects、security expected、意味のあるテスト条件、mutation test 条件、pass / fail 条件、未実行時の扱い、完了証跡。 |
+| 検証証跡 | fixture、fake、expected、effects、security expected、意味のあるテスト条件、test gap inventory、test improvement batch closure、test evidence package、test verification closure record set、requirement coverage ledger、oracle evidence、failure diagnostics evidence、boundary / failure matrix evidence、isolation evidence、determinism evidence、race trigger matrix、concurrency / race evidence、mutation selection ledger、mutation test 条件、harness self-verification evidence、contract drift report、skip / 未実行時の扱い、pass / fail 条件、完了証跡。 |
 
 実装中に完全仕様詳細化未完了の事項を発見した場合、実装者はコード判断で補完してはならない。該当箇所の実装を停止し、責務正本を先に改訂して完全仕様詳細化を完了させてから実装を再開しなければならない。
 
@@ -584,7 +584,7 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 実装着手は、対象項目が `仕様化済み・未実装` の状態に到達し、かつ [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) の仕様凍結条件を満たしている場合に限る。完全仕様詳細化が未完了の項目は、`改訂予定` または `未仕様化` として扱い、実装不可とする。
 
 <a id="implementation-completion-transition"></a>
-実装完了は、コード変更だけでは成立しない。仕様との差分確認、構文確認、実行確認または生成物確認、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす意味のあるテスト、mutation test、必須 fixture と実装検証証跡、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否確認を完了した場合にのみ `実装済み` と扱う。
+実装完了は、コード変更だけでは成立しない。仕様との差分確認、構文確認、実行確認または生成物確認、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす意味のあるテスト、mutation test、必須 fixture、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) から到達できる test evidence package、test verification closure record set、`final_open_item_count=0` の実装検証証跡、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否確認を完了した場合にのみ `実装済み` と扱う。
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。いずれか一方だけを変更して完了扱いにしてはならない。
 
