@@ -142,7 +142,7 @@ Phase 11 対象 root では、directory 名、`manifest.json.name`、fixture cat
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、Phase 11 対象 fixture root の網羅判定と未完了条件だけを固定する。実在所在は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 実装・テスト・fixture 所在](../DOCUMENT_INDEX.md#実装ファイル一覧)、現在状態と対象外理由は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) を参照する。
 
-Phase 11 対象 root は、正式 fixture directory、実装検証証跡、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できる場合だけ閉じる。Phase 11 が割り当てた未作成 root は、正式 fixture、実装検証証跡、または対象外理由が追加されるまで未完了として扱う。`testdata/admin/` などの group root は正式 fixture directory として数えず、directory 名、`manifest.json.name`、fixture catalog 名が 1 対 1 に一致する下位 directory だけを正式 fixture として扱う。下表の未作成 root 共通未完了条件は、正式 fixture、実装検証証跡、対象外理由のいずれにも到達できない状態とする。
+Phase 11 対象 root は、正式 fixture directory、実装検証証跡、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できる場合だけ閉じる。Phase 11 が割り当てた未作成 root は、正式 fixture、実装検証証跡、または対象外理由が追加されるまで未完了として扱う。`testdata/admin/` は fixture group root であり、正式 fixture directory として数えない。`testdata/admin/cli/` は Admin CLI の formal fixture root であり、その配下で directory 名、`manifest.json.name`、fixture catalog 名が 1 対 1 に一致する下位 directory だけを正式 fixture directory として扱う。下表の未作成 root 共通未完了条件は、正式 fixture、実装検証証跡、対象外理由のいずれにも到達できない状態とする。
 
 | root / pattern | coverage status | closure source | incomplete condition |
 |----------------|-----------------|----------------|----------------------|

@@ -238,7 +238,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 - `Verification`
 - 競合防止確認
 - 未実施の確認がある場合は、その理由
-- 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、test harness 変更、checker 変更、assertion 変更、または Phase 全体完了判定に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `PR 証跡` と対象 evidence row に到達できる記録先、または仕様上対象外である理由を同一 Pull Request 本文へ記録する。
+- 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、test harness 変更、checker 変更、assertion 変更、または Phase 全体完了判定に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `PR 証跡` と対象証跡行に到達できる記録先、または仕様上対象外である理由を同一 Pull Request 本文へ記録する。
 - Pull Request 本文では、テスト方針、完了可否、fixture 証跡 schema、必須 key、記録単位、例外条件を再定義してはならない。必要な場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) への責務名付き Markdown link で参照する。
 
 ---

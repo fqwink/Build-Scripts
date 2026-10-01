@@ -19,6 +19,7 @@
 | test artifact と fixture 証跡の接続 | [`docs/details/fixture.md` fixture 証跡責務 test artifact traceability 固定契約](details/fixture.md#test-artifact-traceability-contract) |
 | 単独 test artifact を持たない owner の検証接続 | [`docs/details/fixture.md` fixture 証跡責務 non-dedicated owner test routing 固定契約](details/fixture.md#non-dedicated-owner-test-routing-contract) |
 | Phase 11 fixture root 網羅判定 | [`docs/details/fixture.md` fixture 証跡責務 fixture root coverage matrix 固定契約](details/fixture.md#fixture-root-coverage-matrix-contract) |
+| fixture group root と formal fixture root の境界 | [`docs/details/fixture.md` fixture 証跡責務 fixture root coverage matrix 固定契約](details/fixture.md#fixture-root-coverage-matrix-contract) |
 | 未作成 fixture root closure record | [`docs/details/fixture.md` fixture 証跡責務 未作成 fixture root closure record 固定契約](details/fixture.md#fixture-root-missing-closure-record-contract) |
 | 検証実行証跡の分類と未完了条件 | [`docs/details/fixture.md` fixture 証跡責務 test execution evidence matrix 固定契約](details/fixture.md#test-execution-evidence-matrix-contract) |
 | test evidence package 記録先 | [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract) |

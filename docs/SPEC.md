@@ -210,7 +210,7 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 参照はリンク化を必須とする。文書間参照、節参照、表参照、責務正本参照、実装ファイル参照、fixture 参照を説明文として書く場合は、Markdown link を用いて参照先へ移動できる形にする。単なるファイル名、裸の節番号、裸の見出し名、または `参照` という文字だけで参照先を示した扱いにしてはならない。
 
-テスト方針、テスト完了可否、fixture 証跡 schema、assertion、mutation、drift、skip、fixture root closure、PR 証跡への参照は、横断入口が必要な場合は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由する。owner 詳細本文、作業ルール、Pull Request 本文、状態・計画責務が同じテスト証跡の schema、必須 key、記録単位、例外条件、完了可否を個別に再掲または再定義することを禁止する。
+テスト方針、テスト完了可否、fixture 証跡 schema、assertion、mutation、drift、skip、fixture root closure、PR 証跡への参照は、owner 詳細本文、作業ルール、Pull Request 本文、状態・計画責務、文書・実装ファイル所在の索引責務、利用入口責務、または他の責務文書から行う場合、必ず [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由する。ただし、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) がテスト方針と完了可否の本文を持つ場合、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務が fixture 証跡本文を持つ場合、または [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務が所在索引として固定 anchor を列挙する場合は、それぞれの責務範囲内で直接リンクしてよい。owner 詳細本文、作業ルール、Pull Request 本文、状態・計画責務が同じテスト証跡の schema、必須 key、記録単位、例外条件、完了可否を個別に再掲または再定義することを禁止する。
 
 契約値そのものを記録するコードブロック、ディレクトリ tree、JSON schema、CLI 例、HTTP path、設定値、生成物名、状態ファイル名、および所在索引表の path セルは、Markdown link 化によって契約文字列が変わるためリンク化対象外とする。この例外は説明文中の参照には適用しない。説明文から実ファイルまたは文書へ移動させる目的がある場合は、同じ段落または表の参照列に Markdown link を併記する。
 
