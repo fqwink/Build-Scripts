@@ -69,6 +69,8 @@
 
 ユーザーが仕様全般、重複箇所、問題点、改善点、または全件洗い出しを一括で求めた場合は、[`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](docs/SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](docs/SPEC.md#spec-deficiency-batch-closure-contract) を適用する。作業者は検出した不備を責務正本別に分類し、処置先、処置内容、参照化または削除または正本本文化の結果、`final_unresolved_count=0` を Pull Request 本文へ記録する。テスト関連の不備を含む場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `test evidence package`、`test gap inventory / batch closure`、`18 record closure set` へ到達できる記録を併記し、仕様全般不備の `defect_id` と test gap の `gap_id` の対応を `test_gap_connection` として記録する。
 
+同じ条件で、全件洗い出し、残存しない洗い出し、完全実装精度レベルの確認、またはユーザーが反復回数を指定した確認を扱う場合は、同一 Pull Request 本文に `inspection_scope`、`inspection_pass_count`、`inspection_pass_summary` を記録する。`inspection_pass_count` は [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](docs/SPEC.md#spec-deficiency-batch-closure-contract) の必要 pass 数を満たし、最終 pass 後の未解消件数が `0` になるまで完了扱いにしてはならない。
+
 文書整理だけを目的とする変更では、機能契約、現在状態、実装可否、Phase、将来計画を変更してはならない。ただし、実装と必須証跡を確認した結果、既存の状態記載が事実と矛盾すると判明した場合は、承認済み範囲内で [docs/ROADMAP.md](docs/ROADMAP.md) の現在状態を事実へ一致させる。
 
 標準ディレクトリ構成は [docs/SPEC.md 方針責務 §4.3](docs/SPEC.md#sec-4-3)、実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) を確認する。未作成 path を実在ファイルとして扱ってはならない。
