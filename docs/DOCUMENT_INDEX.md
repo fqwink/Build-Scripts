@@ -23,10 +23,10 @@
 | 未作成 fixture root closure record | [`docs/details/fixture.md` fixture 証跡責務 未作成 fixture root closure record 固定契約](details/fixture.md#fixture-root-missing-closure-record-contract) |
 | 検証実行証跡の分類と未完了条件 | [`docs/details/fixture.md` fixture 証跡責務 test execution evidence matrix 固定契約](details/fixture.md#test-execution-evidence-matrix-contract) |
 | test evidence package 記録先 | [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract) |
-| test gap inventory 記録 | [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract) |
-| test improvement batch closure | [`docs/details/fixture.md` fixture 証跡責務 test improvement batch closure 固定契約](details/fixture.md#test-improvement-batch-closure-contract) |
-| 仕様全般不備 inventory record | [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract)。テスト固有の仕様不足は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由する。 |
-| 仕様全般不備 batch closure | [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract)。 |
+| test gap inventory 記録 | [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract)。テスト固有の仕様不足と仕様全般不備の接続入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)。 |
+| test improvement batch closure | [`docs/details/fixture.md` fixture 証跡責務 test improvement batch closure 固定契約](details/fixture.md#test-improvement-batch-closure-contract)。 |
+| 仕様全般不備 inventory record | [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract)。テスト固有の仕様不足と仕様全般不備の接続入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)。 |
+| 仕様全般不備 batch closure | [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract)。`test_gap_connection` の接続入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)。 |
 | assertion id 形式 | [`docs/details/fixture.md` fixture 証跡責務 assertion id 固定契約](details/fixture.md#test-assertion-id-contract) |
 | skip / 未実行証跡 | [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](details/fixture.md#test-skip-evidence-contract) |
 | 検証要求網羅 ledger | [`docs/details/fixture.md` fixture 証跡責務 test requirement coverage ledger 固定契約](details/fixture.md#test-requirement-coverage-ledger-contract) |
