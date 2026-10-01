@@ -87,13 +87,13 @@
 
 Go 実装の標準配置は [docs/SPEC.md 方針責務 §4.3](docs/SPEC.md#sec-4-3) を参照する。[`main.go`](main.go) は起動入口 artifact、[`components/builder.go`](components/builder.go)、[`components/runner.go`](components/runner.go)、[`components/api.go`](components/api.go) はそれぞれ `builder`、`runner`、`api` owner component の標準 Go 実装 artifact、`components/admin.go` は `admin` owner component の CLI 管理クライアント用 Go 実装 artifact、`components/mcp.go` は `mcp` owner component の Go 実装 artifact、[`admin/adlaire-ci-sdk.js`](admin/adlaire-ci-sdk.js) と [`admin/index.html`](admin/index.html) はそれぞれ `sdk`、`ui` owner component の標準管理クライアント実装 artifact として扱う。owner component と実装 artifact を同一概念として扱ってはならない。各実装 artifact の現在状態は [docs/ROADMAP.md](docs/ROADMAP.md)、実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) を参照する。
 
-実装変更後は、変更範囲に応じて構文確認、単体確認、実行確認、生成物確認、異常系確認、必須 fixture 確認、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) の意味のあるテスト、concurrency / race 検証、mutation test の確認を行う。
+実装変更後は、変更範囲に応じて構文確認、単体確認、実行確認、生成物確認、異常系確認、必須 fixture 確認、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) の意味のあるテスト、boundary / failure matrix 検証、concurrency / race 検証、mutation test の確認を行う。
 
 実装作業では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) に従い、active Phase 全体が完了するまで同一作業ブランチで実装、検証、不整合修正、再検証を繰り返す。
 
-active Phase 内に未実装、未検証、仕様不整合、意味のあるテスト不足、concurrency / race 証跡不足、mutation test 未完了、証跡不足、状態更新不足が残る場合は、実装作業を完了扱いにしてはならない。既存 Pull Request がある場合も Phase 全体完了まで work in progress として扱い、review ready、merge 可能、または完了済みと報告してはならない。
+active Phase 内に未実装、未検証、仕様不整合、意味のあるテスト不足、boundary / failure matrix 証跡不足、concurrency / race 証跡不足、mutation test 未完了、証跡不足、状態更新不足が残る場合は、実装作業を完了扱いにしてはならない。既存 Pull Request がある場合も Phase 全体完了まで work in progress として扱い、review ready、merge 可能、または完了済みと報告してはならない。
 
-Go 実装では、対象ファイルに `gofmt -l ...` を実行し、Go module が存在する場合は `go test ./...` を実行する。JavaScript 系実装では、[`docs/SPEC.md` 方針責務 §4 技術方針表](docs/SPEC.md#direction-technical) に従い、Deno stable runtime で対象 JavaScript file に `deno check ...` を実行する。Node.js、npm、bundler、transpiler を JavaScript 系実装の標準検証コマンドとして代替使用してはならない。concurrency / race 検証と mutation test の必要性および完了可否は [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) に従う。実行できない確認は、未実施理由を Pull Request 本文へ記録する。
+Go 実装では、対象ファイルに `gofmt -l ...` を実行し、Go module が存在する場合は `go test ./...` を実行する。JavaScript 系実装では、[`docs/SPEC.md` 方針責務 §4 技術方針表](docs/SPEC.md#direction-technical) に従い、Deno stable runtime で対象 JavaScript file に `deno check ...` を実行する。Node.js、npm、bundler、transpiler を JavaScript 系実装の標準検証コマンドとして代替使用してはならない。boundary / failure matrix 検証、concurrency / race 検証、mutation test の必要性および完了可否は [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) に従う。実行できない確認は、未実施理由を Pull Request 本文へ記録する。
 
 API、SDK、UI のいずれかを変更する場合は、対応する endpoint、SDK method、UI 操作、状態副作用、認証・認可、成功後再取得、失敗時固定、fixture 証跡を同じ変更で確認する。
 
@@ -225,7 +225,7 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - 文書変更では、`rg` で不要になった名称、矛盾参照、不要になったファイル名が残っていないか確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
-- 実装変更では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) と [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) に従い、対象 Phase 全体が完了し、未実装、未検証、仕様不整合、意味のあるテスト不足、concurrency / race 証跡不足、mutation test 未完了、証跡不足、状態更新不足が残っていないことを確認する。
+- 実装変更では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) と [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) に従い、対象 Phase 全体が完了し、未実装、未検証、仕様不整合、意味のあるテスト不足、boundary / failure matrix 証跡不足、concurrency / race 証跡不足、mutation test 未完了、証跡不足、状態更新不足が残っていないことを確認する。
 - 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。JavaScript 系実装では Deno stable runtime の `deno check ...` を標準の確認とする。
 - 実装変更では、変更した実装が実行可能な場合は対象スクリプトの実行確認または生成物確認を行う。実行不能な場合は理由を Pull Request 本文に記録する。
 - 仕様変更では、[文書整合ルール](#agents-document-consistency-rules) に従って責務正本、索引、デザイン、実装への影響を確認する。
@@ -236,8 +236,9 @@ Pull Request 本文には、少なくとも以下を記載する。
 - `Verification`
 - 競合防止確認
 - 未実施の確認がある場合は、その理由
-- 実装変更、検証変更、fixture 変更、または意味のあるテスト / concurrency / race / mutation test の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test verification closure record set 固定契約](docs/details/fixture.md#test-verification-closure-record-set-contract) に基づく closure record set の記録先、または仕様上対象外である理由
+- 実装変更、検証変更、fixture 変更、または意味のあるテスト / boundary / failure matrix / concurrency / race / mutation test の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test verification closure record set 固定契約](docs/details/fixture.md#test-verification-closure-record-set-contract) に基づく closure record set の記録先、または仕様上対象外である理由
 - 実装変更、検証変更、fixture 変更、または test oracle の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test oracle evidence set 固定契約](docs/details/fixture.md#test-oracle-evidence-set-contract) に基づく oracle evidence set の記録先、または仕様上対象外である理由
+- 実装変更、検証変更、fixture 変更、または boundary / failure matrix の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test boundary / failure matrix evidence set 固定契約](docs/details/fixture.md#test-boundary-failure-matrix-evidence-set-contract) に基づく boundary / failure matrix evidence set の記録先、または仕様上対象外である理由
 - 実装変更、検証変更、fixture 変更、または test isolation の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test isolation evidence set 固定契約](docs/details/fixture.md#test-isolation-evidence-set-contract) に基づく isolation evidence set の記録先、または仕様上対象外である理由
 - 実装変更、検証変更、fixture 変更、または test determinism の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](docs/details/fixture.md#test-determinism-evidence-set-contract) に基づく determinism evidence set の記録先、または仕様上対象外である理由
 - 実装変更、検証変更、fixture 変更、または concurrency / race の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](docs/details/fixture.md#test-concurrency-race-evidence-set-contract) に基づく concurrency / race evidence set の記録先、または仕様上対象外である理由
