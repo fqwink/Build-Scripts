@@ -317,6 +317,7 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | isolation closure | 対象変更に関わる test order、共有状態、fixture / expected mutation、環境変数、working directory、temp root、state dir、listener、goroutine、process、timer、file lock、network fake が [test isolation evidence set 固定契約](#test-isolation-evidence-set-contract) に従い、隔離境界と cleanup 証跡へ接続されている。 | 順序依存、共有状態汚染、fixture / expected 破壊、環境差分漏れ、残留 resource、cleanup failure 未確認、parallel 可否未記録が残る。 |
 | determinism closure | 対象変更に関わる clock、timer、entropy、file order、map order、filesystem、network、process、parallel worker、retry 境界が [test determinism evidence set 固定契約](#test-determinism-evidence-set-contract) に従い、同一入力再実行と変動要因固定で同一結果を示す。 | flaky、retry pass、実時間、乱数、外部応答、OS 差分、順序差に依存する合格条件が残る。 |
 | mutation closure | 対象変更に適用する mutation class、対象 file、対象 fixture、判定、集計が [mutation test 証跡固定契約](#mutation-test-evidence-contract) に従い、`survived=0` である。 | mutation class 未定義、判定不能、`survived` 残存、`invalid` / `equivalent` の根拠 anchor 不足。 |
+| harness self-verification closure | 対象変更に関わる test harness、checker、contract drift checker、fixture assertion、expected 比較、security assertion、state diff assertion が [test harness self-verification evidence set 固定契約](#test-harness-self-verification-evidence-set-contract) に従い、検出すべき不正 fixture、欠損 expected、禁止副作用、secret leak、fake transcript 不一致、cleanup failure、無効化 mutation を fail として検出する。 | harness / checker / assertion の失効、負例なし、fail すべき fixture の pass、failure message 未固定、fake 未消費または過剰消費の未検出、cleanup failure の隠蔽が残る。 |
 | contract drift closure | [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の孤立 test、未検証契約、期待値ドリフト、harness ドリフトが 0 件である。 | いずれかの drift 種別が 1 件以上残る。 |
 | cross-owner closure | API / SDK / UI、CLI / API、statefile / archive / security / runner、setup / release / admin の横断境界について、呼び出し元 owner、呼び出し先 owner、状態差分、security effect、成功後再取得、失敗時 no mutation が記録されている。 | 片側 owner のみの確認、collaborator 副作用未確認、security expected 未接続、失敗時固定なし。 |
 | final open item count | 上記全項目の未完了条件が 0 件であり、残 open item が `0` として記録されている。 | open item が 1 件以上ある、件数が未記録、または残件を別変更で解消するとしている。 |
@@ -330,7 +331,7 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 
 | field | 固定値 / 形式 | 必須条件 |
 |-------|---------------|----------|
-| `closure_item` | `scope_inventory`、`traceability_closure`、`fixture_root_closure`、`execution_evidence_closure`、`oracle_closure`、`isolation_closure`、`determinism_closure`、`mutation_closure`、`contract_drift_closure`、`cross_owner_closure`、`final_open_item_count` のいずれか。 | [test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) のクロージャ項目と一致する。 |
+| `closure_item` | `scope_inventory`、`traceability_closure`、`fixture_root_closure`、`execution_evidence_closure`、`oracle_closure`、`isolation_closure`、`determinism_closure`、`mutation_closure`、`harness_self_verification_closure`、`contract_drift_closure`、`cross_owner_closure`、`final_open_item_count` のいずれか。 | [test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) のクロージャ項目と一致する。 |
 | `status` | `closed`、`not_applicable`、`open` のいずれか。 | `closed` は未完了条件 0 件、`not_applicable` は対象外理由 anchor あり、`open` は未解消項目ありの場合だけ使用する。 |
 | `owner_component` | 対象 owner component 名。 | 対象がある record では空にしてはならない。owner component の正本は [`docs/SPEC.md` 責務文書構成表](../SPEC.md#document-responsibility-map) と対象詳細本文を参照する。 |
 | `collaborator_components` | collaborator component 名の配列。該当なしの場合は空配列。 | 横断境界、API / SDK / UI、statefile / archive / security / runner、setup / release / admin の接続がある場合は空配列にしてはならない。 |
@@ -353,12 +354,12 @@ closure record set は、単一の検証対象単位ごとに 1 組作成する�
 
 | 固定項目 | 契約 | 未完了条件 |
 |----------|------|------------|
-| record 数 | 1 つの closure record set は `scope_inventory`、`traceability_closure`、`fixture_root_closure`、`execution_evidence_closure`、`oracle_closure`、`isolation_closure`、`determinism_closure`、`mutation_closure`、`contract_drift_closure`、`cross_owner_closure`、`final_open_item_count` の 11 record だけを各 1 件持つ。 | 11 件未満、12 件以上、同じ `closure_item` の重複、未登録 `closure_item` がある。 |
+| record 数 | 1 つの closure record set は `scope_inventory`、`traceability_closure`、`fixture_root_closure`、`execution_evidence_closure`、`oracle_closure`、`isolation_closure`、`determinism_closure`、`mutation_closure`、`harness_self_verification_closure`、`contract_drift_closure`、`cross_owner_closure`、`final_open_item_count` の 12 record だけを各 1 件持つ。 | 12 件未満、13 件以上、同じ `closure_item` の重複、未登録 `closure_item` がある。 |
 | record 順序 | record を配列または箇条書きで記録する場合は、[test verification closure checklist 固定契約](#test-verification-closure-checklist-contract) の表順と同じ順序にする。 | 順序不一致により review 時に欠落または重複を判定できない。 |
 | status closure | 完了扱いにできる closure record set は、全 record の `status` が `closed` または `not_applicable` であり、全 record の `open_items` が空であり、`final_open_item_count` が残件 `0` を示す。 | `status=open`、`open_items` 残存、残件数未記録、または残件を別変更で解消すると記録している。 |
 | scope consistency | 全 record の `owner_component`、`collaborator_components`、`artifacts`、`test_artifacts`、`fixture_roots`、`spec_refs`、`evidence_refs` は同じ検証対象単位を指す。 | record 間で対象 owner、artifact、fixture root、または根拠 anchor が別範囲を指している。 |
 | not applicable | `status=not_applicable` は、対象外理由、対象外にする owner / artifact / fixture root、責務正本 anchor、完了可否への影響を同じ record に持つ。 | 理由だけ、または anchor だけで対象外範囲と完了可否への影響が不明である。 |
-| PR evidence | 実装変更、検証変更、fixture 変更、または意味のあるテスト / oracle / isolation / mutation test / contract drift の完了可否に関わる変更では、Pull Request の `Verification` に closure record set の記録先、または対象外理由を記録する。 | Pull Request 上で closure record set の所在、対象外理由、または未完了扱いが確認できない。 |
+| PR evidence | 実装変更、検証変更、fixture 変更、または意味のあるテスト / oracle / isolation / determinism / mutation test / harness self-verification / contract drift の完了可否に関わる変更では、Pull Request の `Verification` に closure record set の記録先、または対象外理由を記録する。 | Pull Request 上で closure record set の所在、対象外理由、または未完了扱いが確認できない。 |
 
 <a id="test-oracle-evidence-set-contract"></a>
 **test oracle evidence set 固定契約：**
@@ -456,6 +457,25 @@ mutation evidence set は、単一の対象変更単位ごとに 1 組作成す�
 | closure connection | [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の `mutation_closure` record から mutation evidence set の所在へ到達できる。 | closure record set と mutation evidence set の対象 owner、artifact、fixture root、または scope が一致しない。 |
 
 mutation evidence set は、対象変更単位に含まれる変更 artifact が 1 つでも mutation class decision へ接続していない場合、完了証跡として扱わない。mutation evidence set を作れない場合は、対象外として扱わず、[`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) に従い仕様不足または検証不足として扱う。
+
+<a id="test-harness-self-verification-evidence-set-contract"></a>
+**test harness self-verification evidence set 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、test harness、checker、contract drift checker、fixture assertion、expected 比較、security assertion、state diff assertion が、検出すべき不正を fail として検出できる証跡 set の条件だけを固定する。意味のあるテスト、完了可否、mutation test の必須条件は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、Pull Request 本文への記録手順は [`AGENTS.md` Git 運用ルール](../../AGENTS.md#agents-git-operations) を参照する。
+
+harness self-verification evidence set は、単一の対象変更単位ごとに 1 組作成する。対象変更単位は、1 つの実装変更、1 つの検証変更、1 つの fixture / expected 変更、1 つの owner artifact 検証、または 1 つの Phase 全体完了判定のいずれかに固定する。同じ harness self-verification evidence set で複数の対象変更単位を混在させてはならない。
+
+| 固定項目 | 契約 | 未完了条件 |
+|----------|------|------------|
+| harness scope | `owner_component`、`collaborator_components`、対象 test、対象 harness、対象 checker、対象 assertion、対象 fixture root、対象 expected、対象仕様 anchor を記録する。 | harness、checker、assertion、fixture root、expected、仕様 anchor のいずれかが空であり、対象外理由もない。 |
+| negative control set | expected 欠損、manifest / assertion mismatch、expected / actual mismatch、禁止副作用あり、secret leak あり、fake event 未消費、fake event 過剰、fake event 順序違反、cleanup failure、assertion 無効化、mutation disabled の該当 case を fail させる証跡を記録する。 | 該当する不正 case がない、または不正 case が pass している。 |
+| expected failure identity | 各 negative control は、期待 exit code、期待 error class、期待 stderr / log 要約、期待 failure reason、対象 assertion 名を固定する。 | fail した事実だけで、どの assertion が何を検出したか判定できない。 |
+| positive control boundary | 同じ harness / checker / assertion が、正しい fixture、正しい expected、正しい fake transcript、正しい cleanup では pass することを記録する。 | negative control だけで、harness 自体が常に fail する可能性を排除できない。 |
+| fake transcript verification | fake clock / entropy / filesystem / HTTP / process / browser runtime / GitHub / systemd / notifier を使う場合は、期待 call、消費順、未消費 event、過剰 call、禁止 external call の検出結果を記録する。 | fake input の未消費、過剰消費、順序違反、禁止 external call を検出できない。 |
+| self-test isolation | harness self-verification は canonical fixture / expected を直接破壊せず、copy、synthetic fixture、または temp root で不正 case を作る。 | canonical fixture / expected を mutation する、または自己検証の失敗が後続 test に影響する。 |
+| closure connection | [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の `harness_self_verification_closure` record から harness self-verification evidence set の所在へ到達できる。 | closure record set と harness self-verification evidence set の対象 owner、artifact、fixture root、または scope が一致しない。 |
+
+harness self-verification evidence set は、対象変更単位に含まれる harness、checker、assertion、expected 比較、security assertion、state diff assertion のいずれかが negative control set と positive control boundary の両方へ接続していない場合、完了証跡として扱わない。harness self-verification evidence set を作れない場合は、対象外として扱わず、[`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) に従い仕様不足または検証不足として扱う。
 
 <a id="test-contract-drift-evidence-contract"></a>
 **test / contract drift 証跡固定契約：**

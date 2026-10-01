@@ -241,6 +241,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 - 実装変更、検証変更、fixture 変更、または test isolation の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test isolation evidence set 固定契約](docs/details/fixture.md#test-isolation-evidence-set-contract) に基づく isolation evidence set の記録先、または仕様上対象外である理由
 - 実装変更、検証変更、fixture 変更、または test determinism の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](docs/details/fixture.md#test-determinism-evidence-set-contract) に基づく determinism evidence set の記録先、または仕様上対象外である理由
 - mutation test の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 mutation test evidence set 固定契約](docs/details/fixture.md#mutation-test-evidence-set-contract) に基づく mutation evidence set の記録先、または仕様上対象外である理由
+- 実装変更、検証変更、fixture 変更、test harness 変更、checker 変更、または assertion 変更では、[`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](docs/details/fixture.md#test-harness-self-verification-evidence-set-contract) に基づく harness self-verification evidence set の記録先、または仕様上対象外である理由
 
 ---
 
