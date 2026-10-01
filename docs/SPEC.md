@@ -708,6 +708,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 |----------|----------|
 | 仕様追跡性 | 各 test、fixture、expected、assertion は、対象 owner、対象仕様、対象 anchor、検出したい仕様違反を特定できる。仕様に存在しない期待値をテストだけへ埋め込まない。 |
 | assertion 強度 | 成功条件だけでなく、失敗時 response、stderr、終了コード、状態差分、副作用有無、禁止出力、禁止外部通信を検証する。 |
+| failure diagnostics | 各 assertion は、assertion id、対象仕様 anchor、期待値、実値、差分、failure reason、再現条件を特定できる。fixture 名、test 名、pass / fail 件数だけを診断根拠にしない。 |
 | 検証基盤自己検証 | test harness、checker、assertion、expected 比較、security assertion、state diff assertion は、検出すべき不正を fail として検出できることを negative control と positive control の両方で証明する。 |
 | 正常系 / 異常系 | 正常系、入力不正、欠損、型不一致、境界値、権限不足、状態破損、外部失敗、timeout、partial failure、rollback、cleanup failure を対象機能に応じて固定する。 |
 | 境界値 | 空、最小、最大、上限超過、重複、順序差、path、文字コード、時刻、ID、JSON key、HTTP header、CLI option、state schema、archive entry の境界を検証する。 |
@@ -719,6 +720,8 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 | 完了証跡 | 実行結果、未実行項目、対象外理由、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) へ到達できる形で記録する。 |
 
 弱い oracle、実装結果の丸写し、snapshot の無条件受け入れ、fixture 存在だけの確認、status code だけの確認、stdout / stderr の空確認だけ、状態差分または副作用を確認しない expected、禁止出力または禁止外部通信を確認しない test は、意味のあるテストとして扱ってはならない。test oracle は、正本 anchor、入力、期待 response、期待 error、終了 code、状態差分、effects、security expected、禁止副作用、失敗時 no mutation を対象機能に応じて固定しなければならない。test oracle の証跡 schema、記録項目、expected / actual 比較、禁止副作用、fixture assertion との対応は [`docs/details/fixture.md` fixture 証跡責務 test oracle evidence set 固定契約](details/fixture.md#test-oracle-evidence-set-contract) を正本とする。
+
+assertion id がない test、対象仕様 anchor へ到達できない test、失敗時に期待値、実値、差分、failure reason、再現条件を特定できない test、generic な failure message だけを返す test、pass / fail 件数だけを記録する test、secret を診断出力へ露出する test は、意味のあるテストとして扱ってはならない。failure diagnostics は、assertion id、対象 owner、対象仕様 anchor、expected / actual / diff、failure reason、reproduction command、secret-safe diagnostics を対象機能に応じて固定しなければならない。failure diagnostics の証跡 schema、記録項目、assertion identity、failure reason、secret-safe diagnostics、closure 接続は [`docs/details/fixture.md` fixture 証跡責務 test assertion identity / failure diagnostics evidence set 固定契約](details/fixture.md#test-assertion-failure-diagnostics-evidence-set-contract) を正本とする。
 
 正常系だけの test、代表的な異常系だけの test、境界値を 1 点だけ確認する test、HTTP status / exit code / error class だけを確認する test、partial failure、rollback、cleanup failure、retry 上限、timeout 境界、size / count / path / ID / schema / header / option の上限下限を固定しない test は、意味のあるテストとして扱ってはならない。boundary / failure matrix は、入力 class、limit、error taxonomy、partial failure、rollback、cleanup failure、retry / recovery、失敗時 no mutation を対象機能に応じて固定しなければならない。boundary / failure matrix の証跡 schema、記録項目、error taxonomy、partial failure、rollback、cleanup failure、closure 接続は [`docs/details/fixture.md` fixture 証跡責務 test boundary / failure matrix evidence set 固定契約](details/fixture.md#test-boundary-failure-matrix-evidence-set-contract) を正本とする。
 
