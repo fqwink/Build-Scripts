@@ -326,8 +326,8 @@ test gap inventory record は、発見した問題点 1 件につき 1 record �
 | field | 固定値 / 形式 | 未完了条件 |
 |-------|---------------|------------|
 | `gap_id` | `gap-<owner>-<scope>-<number>` の lowercase kebab-case。 | 空、重複、または対象 owner / scope を識別できない。 |
-| `source` | 発見元を `source-audit`、`test-drift`、`fixture-drift`、`mutation-survivor`、`race-trigger`、`review`、`validation`、`spec-gap` のいずれかで記録する。 | 発見元がない、または自由記述だけで分類できない。 |
-| `owner_component` | 対象 owner component。 | owner 未記録、または [docs/DETAIL_INDEX.md 詳細仕様入口責務 §0i](../DETAIL_INDEX.md#0i-詳細節対応表) に存在しない owner。 |
+| `source` | 発見元を `source-audit`、`test-drift`、`fixture-drift`、`mutation-survivor`、`race-trigger`、`review`、`validation`、`spec-gap` のいずれかで記録する。`spec-gap` は、テストまたは fixture の完了可否に影響する仕様不足だけに使用する。 | 発見元がない、自由記述だけで分類できない、またはテスト固有ではない仕様全般不備を `spec-gap` として混在している。 |
+| `owner_component` | 対象 owner component。テスト固有の仕様不足で owner component が複数に見える場合も、検証不足を閉じる主 owner を 1 件だけ記録し、残りは collaborator として `spec_anchor` または `evidence_target` から到達させる。 | owner 未記録、または [docs/DETAIL_INDEX.md 詳細仕様入口責務 §0i](../DETAIL_INDEX.md#0i-詳細節対応表) に存在しない owner。 |
 | `artifact` | 対象実装 artifact、test artifact、fixture、expected、fake、harness、checker、または文書 anchor。 | artifact が不明、または実在所在 / anchor へ到達できない。 |
 | `spec_anchor` | 問題点を判定する責務正本への Markdown link。 | anchor なし、または説明文だけで仕様判断している。 |
 | `gap_type` | `missing-test`、`weak-oracle`、`missing-assertion-id`、`missing-fixture`、`fixture-duplicate`、`contract-drift`、`mutation-survived`、`race-unverified`、`non-deterministic`、`skip-without-anchor`、`unknown-side-effect`、`spec-missing` のいずれか。 | 分類なし、または複数分類を 1 record に混在している。 |
