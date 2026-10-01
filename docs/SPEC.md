@@ -712,6 +712,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 | 正常系 / 異常系 | 正常系、入力不正、欠損、型不一致、境界値、権限不足、状態破損、外部失敗、timeout、partial failure、rollback、cleanup failure を対象機能に応じて固定する。 |
 | 境界値 | 空、最小、最大、上限超過、重複、順序差、path、文字コード、時刻、ID、JSON key、HTTP header、CLI option、state schema、archive entry の境界を検証する。 |
 | 決定性 | 時刻、乱数、file order、network、GitHub API、systemd、process、並行実行、timer、sleep に依存して結果が揺れない。必要な場合は fake clock、fake entropy、fake filesystem、fake HTTP、固定 fixture を使用する。 |
+| 並行処理 / race | goroutine、channel、worker、lock、listener、timer、file lock、queue、shutdown、共有状態更新、並行 request、同時刻 event を扱う変更は、data race、deadlock、goroutine leak、lost update、二重 commit、順序依存、cleanup 漏れを検出できる。 |
 | 契約横断 | API、SDK、UI、CLI、statefile、archive、release asset、MCP、setup の境界をまたぐ機能は、呼び出し元と呼び出し先の契約を同じ変更で検証する。 |
 | 副作用 | 期待する副作用だけでなく、禁止された状態 write、file 作成、外部通信、通知、log、secret 出力、cache 書込、audit 欠落が発生しないことを検証する。 |
 | 回帰 | 修正した不具合、Phase 11 のバグ修正ゼロ化対象、過去に検出した仕様不整合は、同種の再発で失敗する regression test を持つ。 |
@@ -722,6 +723,8 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 test 間で共有状態を汚染する test、実行順序に依存する test、fixture / expected を実行中に直接変更する test、環境変数、working directory、temp root、state dir、listener、goroutine、process、timer、file lock、network fake を残留させる test は、意味のあるテストとして扱ってはならない。test isolation は、test 単位の隔離境界、順序入替結果、共有状態の初期化、cleanup failure、parallel 実行可否、残留 resource 検出を対象機能に応じて固定しなければならない。test isolation の証跡 schema、記録項目、順序入替、共有状態、残留 resource、cleanup failure との対応は [`docs/details/fixture.md` fixture 証跡責務 test isolation evidence set 固定契約](details/fixture.md#test-isolation-evidence-set-contract) を正本とする。
 
 非決定的な test、flaky test、retry で偶然成功した test、実時間、乱数、file order、map order、network、GitHub API、systemd、process scheduling、goroutine scheduling、timer、sleep、host 固有 path、OS 差分、外部サービス応答に依存して結果が変わる test は、意味のあるテストとして扱ってはならない。失敗後の再実行で成功した結果、一定回数中の成功率、手元環境での成功、または CI 上の偶発的成功を完了根拠にしてはならない。決定性の証跡 schema、記録項目、fake adapter との対応、再実行一致条件は [`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](details/fixture.md#test-determinism-evidence-set-contract) を正本とする。
+
+data race を検出できない test、goroutine leak を残す test、lock / channel / worker の終了条件を確認しない test、並行 request や同時刻 event の競合結果を固定しない test、共有状態の lost update、二重 commit、二重 cleanup、重複通知、重複 audit、file lock 競合、shutdown 中 request の確定結果を検証しない test は、意味のあるテストとして扱ってはならない。並行処理 / race の証跡 schema、記録項目、race detector、schedule / interleaving、lock / channel / goroutine lifecycle、conflict outcome、atomicity、cleanup との対応は [`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](details/fixture.md#test-concurrency-race-evidence-set-contract) を正本とする。
 
 test harness、checker、contract drift checker、fixture assertion、expected 比較、security assertion、state diff assertion を変更する場合、またはこれらを実装完了・Phase 完了の根拠として使用する場合は、検出すべき不正 fixture、欠損 expected、禁止副作用、secret leak、fake transcript 不一致、cleanup failure、assertion 無効化を fail として検出できなければならない。常に fail する検証基盤、常に pass する検証基盤、negative control だけの検証、positive control だけの検証、または failure reason を特定できない検証基盤は、意味のあるテストの根拠として扱ってはならない。検証基盤自己検証の証跡 schema、negative control、positive control、fake transcript 検証、closure 接続は [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) を正本とする。
 
