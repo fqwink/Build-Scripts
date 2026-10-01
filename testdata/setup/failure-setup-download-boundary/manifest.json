@@ -1,1 +1,27 @@
-{"name":"failure-setup-download-boundary","component":"setup","kind":"failure"}
+{
+  "name": "failure-setup-download-boundary",
+  "section": "26.2b",
+  "feature": "setup_admin_integration",
+  "category": "failure",
+  "owner_component": "setup",
+  "collaborator_components": [],
+  "components": [
+    "setup"
+  ],
+  "references": [
+    "docs/details/setup.md#sec-26-2b",
+    "docs/details/fixture.md#sec-27-f-19"
+  ],
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/cli.json"
+  ],
+  "assertions": [
+    "stdout",
+    "stderr",
+    "effects",
+    "secret-mask"
+  ]
+}

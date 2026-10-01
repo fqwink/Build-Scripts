@@ -2,7 +2,7 @@
 
 Build-Scripts は、Adlaire CI の仕様、Go 実装、管理 UI、検証資産を管理するリポジトリです。
 
-文書構造、正本参照先、実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](docs/DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を参照します。
+文書構造、正本参照先、実装ファイルの所在は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務](docs/DOCUMENT_INDEX.md) を参照します。
 
 ## 最初に読む文書
 

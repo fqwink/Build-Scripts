@@ -20,6 +20,8 @@
 
 ---
 
+<a id="agents-approval-rules"></a>
+
 ## 1. 承認ルール
 
 変更作業では、承認工程を省略してはならない。
@@ -61,9 +63,13 @@
 
 仕様変更では、最初に [`docs/SPEC.md` 責務文書構成表](docs/SPEC.md#document-responsibility-map) で対象判断の責務正本を確定し、[`docs/SPEC.md` 方針責務 §4.2a](docs/SPEC.md#sec-4-2a) の記載範囲と禁止事項を適用する。[AGENTS.md](AGENTS.md) で同じ判断対象の正本分担または禁止事項を再定義してはならない。
 
-仕様変更の影響確認は、[文書整合ルール](#6-文書整合ルール) に従う。
+仕様変更の影響確認は、[文書整合ルール](#agents-document-consistency-rules) に従う。
 
 仕様変更の編集前と編集後に、[docs/SPEC.md 方針責務 §4.2a 仕様全般重複記載禁止原則](docs/SPEC.md#spec-global-no-duplicate-principle) への適合を確認する。完全一致する本文だけでなく、言い換え、要約、部分転載、表と本文の再掲、owner と collaborator 間の意味上の重複を確認する。確認では、判断対象、唯一の責務正本、重複候補の所在、削除または参照化の処置を特定し、未解消件数が 0 になるまで仕様変更を完了扱いにしてはならない。
+
+ユーザーが仕様全般、重複箇所、問題点、改善点、または全件洗い出しを一括で求めた場合は、[`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](docs/SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](docs/SPEC.md#spec-deficiency-batch-closure-contract) を適用する。作業者は検出した不備を責務正本別に分類し、処置先、処置内容、参照化または削除または正本本文化の結果、`final_unresolved_count=0` を Pull Request 本文へ記録する。テスト関連の不備を含む場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `test evidence package`、`test gap inventory / batch closure`、`18 record closure set` へ到達できる記録を併記し、仕様全般不備の `defect_id` と test gap の `gap_id` の対応を `test_gap_connection` として記録する。
+
+同じ条件で、全件洗い出し、残存しない洗い出し、完全実装精度レベルの確認、またはユーザーが反復回数を指定した確認を扱う場合は、同一 Pull Request 本文に `inspection_scope`、`inspection_pass_count`、`inspection_pass_summary` を記録する。`inspection_pass_count` は [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](docs/SPEC.md#spec-deficiency-batch-closure-contract) の必要 pass 数を満たし、最終 pass 後の未解消件数が `0` になるまで完了扱いにしてはならない。
 
 文書整理だけを目的とする変更では、機能契約、現在状態、実装可否、Phase、将来計画を変更してはならない。ただし、実装と必須証跡を確認した結果、既存の状態記載が事実と矛盾すると判明した場合は、承認済み範囲内で [docs/ROADMAP.md](docs/ROADMAP.md) の現在状態を事実へ一致させる。
 
@@ -77,19 +83,21 @@
 
 実在ファイルの確認には hidden fixture を含めて列挙できる `rg --files --hidden -g '!.git/**'` を使用する。
 
-新規実装の着手可否は、[`docs/SPEC.md` ポリシー責務 §0a](docs/SPEC.md#policy-spec-maturity) の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](docs/SPEC.md#policy-spec-freeze) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) の active Phase 条件、[`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務の現在状態によって判定する。
+新規実装の着手可否は、[`docs/SPEC.md` ポリシー責務 §0a](docs/SPEC.md#policy-spec-maturity) の実装可否、[`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](docs/SPEC.md#complete-detail-specification-gate)、[`docs/SPEC.md` ポリシー責務 §0d](docs/SPEC.md#policy-spec-freeze) の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) の active Phase 条件、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) の意味のあるテストポリシー、[`docs/ROADMAP.md`](docs/ROADMAP.md) 状態・計画責務の現在状態によって判定する。
 
-実装中に未定義の入力、出力、状態、異常系、セキュリティ条件、検証条件を発見した場合は、実装判断で補完せず、先に該当する責務正本を改訂する。
+実装中に未定義の入力、出力、状態、異常系、セキュリティ条件、検証条件、fixture、fake、expected、完了条件を発見した場合は、実装判断で補完せず、先に該当する責務正本を改訂する。
+
+完全仕様詳細化が未完了の機能、または一定の仕様だけを固定した機能は、実装着手不可として扱う。実装しながら仕様を決めること、既存実装やテスト結果に合わせて仕様を後追い確定すること、実装者判断で未定義事項を補うことを行ってはならない。
 
 Go 実装の標準配置は [docs/SPEC.md 方針責務 §4.3](docs/SPEC.md#sec-4-3) を参照する。[`main.go`](main.go) は起動入口 artifact、[`components/builder.go`](components/builder.go)、[`components/runner.go`](components/runner.go)、[`components/api.go`](components/api.go) はそれぞれ `builder`、`runner`、`api` owner component の標準 Go 実装 artifact、`components/admin.go` は `admin` owner component の CLI 管理クライアント用 Go 実装 artifact、`components/mcp.go` は `mcp` owner component の Go 実装 artifact、[`admin/adlaire-ci-sdk.js`](admin/adlaire-ci-sdk.js) と [`admin/index.html`](admin/index.html) はそれぞれ `sdk`、`ui` owner component の標準管理クライアント実装 artifact として扱う。owner component と実装 artifact を同一概念として扱ってはならない。各実装 artifact の現在状態は [docs/ROADMAP.md](docs/ROADMAP.md)、実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) を参照する。
 
-実装変更後は、変更範囲に応じて構文確認、単体確認、実行確認、生成物確認、異常系確認、必須 fixture 確認を行う。
+実装変更後は、変更範囲に応じて構文確認、単体確認、実行確認、生成物確認、異常系確認、必須 fixture 確認、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) の意味のあるテストポリシー、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の該当証跡を確認する。
 
 実装作業では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) に従い、active Phase 全体が完了するまで同一作業ブランチで実装、検証、不整合修正、再検証を繰り返す。
 
-active Phase 内に未実装、未検証、仕様不整合、証跡不足、状態更新不足が残る場合は、実装作業を完了扱いにしてはならない。既存 Pull Request がある場合も Phase 全体完了まで work in progress として扱い、review ready、merge 可能、または完了済みと報告してはならない。
+active Phase 内に未実装、未検証、仕様不整合、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) の未達、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の該当証跡不足、状態更新不足が残る場合は、実装作業を完了扱いにしてはならない。既存 Pull Request がある場合も Phase 全体完了まで work in progress として扱い、review ready、merge 可能、または完了済みと報告してはならない。
 
-Go 実装では、対象ファイルに `gofmt -l ...` を実行し、Go module が存在する場合は `go test ./...` を実行する。JavaScript 系実装では、[`docs/SPEC.md` 方針責務 §4 技術方針表](docs/SPEC.md#direction-technical) に従い、Deno stable runtime で対象 JavaScript file に `deno check ...` を実行する。Node.js、npm、bundler、transpiler を JavaScript 系実装の標準検証コマンドとして代替使用してはならない。実行できない確認は、未実施理由を Pull Request 本文へ記録する。
+Go 実装では、対象ファイルに `gofmt -l ...` を実行し、Go module が存在する場合は `go test ./...` を実行する。JavaScript 系実装では、[`docs/SPEC.md` 方針責務 §4 技術方針表](docs/SPEC.md#direction-technical) に従い、Deno stable runtime で対象 JavaScript file に `deno check ...` を実行する。Node.js、npm、bundler、transpiler を JavaScript 系実装の標準検証コマンドとして代替使用してはならない。テスト証跡の必要性および完了可否は [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) に従う。実行できない確認は、未実施理由を Pull Request 本文へ記録する。
 
 API、SDK、UI のいずれかを変更する場合は、対応する endpoint、SDK method、UI 操作、状態副作用、認証・認可、成功後再取得、失敗時固定、fixture 証跡を同じ変更で確認する。
 
@@ -213,7 +221,7 @@ Pull Request merge 後のローカル同期は、以下の手順を標準とす�
 
 承認済み変更作業が完了した場合、エージェントはユーザーからの追加指示および追加承認なしで、作業ブランチでのcommit、remoteへのpush、Pull Requestの作成または既存Pull Requestの更新まで自動実行する。
 
-Pull Request 作成自動化は、[承認ルール](#1-承認ルール) の承認済み範囲と、[本節](#agents-git-operations) の `main` 直接 push 禁止およびエージェントによる merge 禁止を例外なく適用する。
+Pull Request 作成自動化は、[承認ルール](#agents-approval-rules) の承認済み範囲と、[本節](#agents-git-operations) の `main` 直接 push 禁止およびエージェントによる merge 禁止を例外なく適用する。
 
 Pull Request 作成前には、変更内容に応じて以下を確認する。
 
@@ -221,17 +229,24 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - 文書変更では、`rg` で不要になった名称、矛盾参照、不要になったファイル名が残っていないか確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
-- 実装変更では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) に従い、対象 Phase 全体が完了し、未実装、未検証、仕様不整合、証跡不足、状態更新不足が残っていないことを確認する。
+- 実装変更では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit)、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) に従い、対象 Phase 全体が完了し、未実装、未検証、仕様不整合、該当テスト証跡不足、状態更新不足が残っていないことを確認する。
+- テスト関連改善、検証基盤変更、fixture 変更、test artifact 変更、harness 変更、checker 変更、assertion 変更、または Phase 完了判定では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `test evidence package`、`test gap inventory / batch closure`、`18 record closure set`、`mutation selection`、`race trigger`、`isolation / determinism / concurrency`、`PR 証跡` へ到達できる記録先を確認し、open item が 1 件でも残る場合は Pull Request を完了扱いにしない。
 - 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。JavaScript 系実装では Deno stable runtime の `deno check ...` を標準の確認とする。
+- 実装変更で goroutine、channel、worker、lock、listener、timer、file lock、queue、shutdown、共有状態、並行 request、同時刻 event のいずれかへ影響する場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の concurrency / race 証跡へ到達できる race detector または代替 interleaving 証跡を Pull Request 本文へ記録する。
+- 必須検証で `skip`、`t.Skip`、未実行、runtime 不足、tool 不足、環境 capability 不足、対象外判断が発生した場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の skip / 未実行証跡へ到達できる record の記録先を Pull Request 本文へ記録する。
 - 実装変更では、変更した実装が実行可能な場合は対象スクリプトの実行確認または生成物確認を行う。実行不能な場合は理由を Pull Request 本文に記録する。
-- 仕様変更では、[文書整合ルール](#6-文書整合ルール) に従って責務正本、索引、デザイン、実装への影響を確認する。
+- 仕様変更では、[文書整合ルール](#agents-document-consistency-rules) に従って責務正本、索引、デザイン、実装への影響を確認する。
 
 Pull Request 本文には、少なくとも以下を記載する。
 
 - `Summary`
 - `Verification`
 - 競合防止確認
+- 仕様全般、重複箇所、問題点、改善点、または全件洗い出しを扱う Pull Request では、[`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](docs/SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](docs/SPEC.md#spec-deficiency-batch-closure-contract) に基づく分類結果、責務正本、処置結果、category routing 結果、`inspection_scope`、`inspection_pass_count`、`inspection_pass_summary`、`record_count`、`final_unresolved_count=0`、`test_gap_connection` の適用結果、仕様全般不備 inventory record と batch closure の記録先を同一 Pull Request 本文へ記録する。
 - 未実施の確認がある場合は、その理由
+- 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、test harness 変更、checker 変更、assertion 変更、または Phase 全体完了判定に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `PR 証跡` と対象証跡行に到達できる記録先、または仕様上対象外である理由を同一 Pull Request 本文へ記録する。
+- テスト関連改善に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `test evidence package`、`test gap inventory / batch closure`、`18 record closure set` に到達できる記録先、最終 open item 件数 `0`、mutation selection の `survived=0`、race trigger の open item `0`、対象外項目の責務正本 anchor を同一 Pull Request 本文へ記録する。
+- Pull Request 本文では、仕様全般不備 inventory schema、仕様全般不備 batch closure schema、テスト方針、完了可否、fixture 証跡 schema、必須 key、記録単位、例外条件を再定義してはならない。必要な場合は、仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](docs/SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](docs/SPEC.md#spec-deficiency-batch-closure-contract)、テスト証跡は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) への責務名付き Markdown link で参照する。
 
 ---
 
@@ -246,6 +261,8 @@ Pull Request 本文には、少なくとも以下を記載する。
 外部依存の追加、削除、更新、置換は変更作業として扱う。変更後は、[docs/SPEC.md ポリシー責務 §4](docs/SPEC.md#policy-dependencies) の許可一覧、[`go.mod`](go.mod)、実装 import、配布・セットアップ手順、検証結果が一致していることを確認する。
 
 ---
+
+<a id="agents-document-consistency-rules"></a>
 
 ## 6. 文書整合ルール
 

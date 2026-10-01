@@ -13,6 +13,7 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 | owner component | `runner` |
 | 実装主体 | [`components/runner.go`](../../components/runner.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-runner` とする。 |
 | 持つ内容 | `runner` owner が主本文として定義する GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner 検証条件、runner owner 追加機能。 |
+| 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
 ---
 
@@ -1224,11 +1225,12 @@ runner owner component は、build log の生成タイミング、stdout / stder
 
 `[REPORT]` は stdout の LF 正規化済み各行について、行頭が完全に `[REPORT] ` と一致する行だけを候補とする。候補が 0 件なら `report:null` と `REPORT_MISSING`、2 件以上なら最初の候補だけを parse して `REPORT_DUPLICATE` を追加する。parse 対象の先頭 13 token は [`docs/details/builder.md` 詳細本文責務 §8](builder.md#8-実行方法) の key、順序、型を完全一致で検証する。key 欠落、順序違い、重複 key、未知 key の割込み、整数・boolean・UTC ISO 8601・build id・commit SHA の型または値不正は `REPORT_PARSE_FAILED` とし、部分的な Report object を保存してはならない。拡張 key は必須 13 token の後ろだけに許可し、Report object へ保存しない。
 
+<a id="build-history-json-lines-contract"></a>
 **`.build_history` JSON Lines 追記契約：**
 
 `.build_history` の保存 key、型、必須条件、許容値は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の `.build_history` JSON Lines schema を参照する。
 
-runner は build 結果確定後、`.build_history` へ 1 build につき 1 行だけ追記する。`status` は runner の最終結果、`trigger` は [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の許容値、`output_sha256` は当該 build id を割り当てた `BranchTarget.Out` だけを root として [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の出力成果物 manifest SHA-256 を算出した値とする。別 target の output、`RunnerConfig.StateDir` 配下の固定 path、直前に成功した target の値を使用してはならない。manifest 生成に失敗した場合のみ `output_sha256:null` を許可し、対応する warning を同じ build log に保存する。JSON Lines 追記は `O_APPEND|O_CREATE|O_WRONLY` で行い、1 行全体を書き込んでから file sync する。
+runner は build 結果確定後、`.build_history` へ 1 build につき 1 行だけ追記する。`status` は runner の最終結果、`trigger` は [`docs/details/runner.md` 詳細本文責務 §27.9](runner.md#sec-27-9) の許容値、`output_sha256` は当該 build id を割り当てた `BranchTarget.Out` だけを root として [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の出力成果物 manifest SHA-256 を算出した値とする。別 target の output、`RunnerConfig.StateDir` 配下の固定 path、直前に成功した target の値を使用してはならない。manifest 生成に失敗した場合のみ `output_sha256:null` を許可し、対応する warning を同じ build log に保存する。JSON Lines 追記は [`docs/details/statefile.md` 詳細本文責務 Phase 11 statefile バグ修正ゼロ化対象](statefile.md#phase-11-statefile-quality-gate) の JSON Lines append adapter を使用し、runner owner が direct append、独自 lock、独自 sync、既存行 rewrite、破損行 repair を再定義してはならない。
 
 **固定エラー文言：**
 
@@ -3130,4 +3132,5 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 | dry-run | dry-run は設定検証、対象判定、差分判定、実行可否の出力だけを行い、状態ファイル、lock、log、history、cache、notification、external write を作成・更新しない。 | dry-run 結果を後続実行用 cache として保存する。 |
 | secret mask | PAT、Webhook secret、SMTP password、branch env secret、hook output secret、remote credential は読込直後に mask 登録し、stdout / stderr / build log / history / status / pending / fixture expected に平文を残さない。 | mask 登録前にログ保存する、secret 長・hash・prefix・suffix を保存する。 |
 | schema strictness | runner が保存する object は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の key だけを持ち、nullable、UTC 時刻、列挙値、配列順を満たす。 | SDK / UI 用の表示名、計算済み label、未定義 fallback key を state に保存する。 |
+| source audit closure | Phase 11 で source-code audit により runner owner へ割り当てた状態更新、output manifest、queue / finalizer、external I/O、secret mask の差分は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) から runner owner 詳細本文と fixture 証跡へ到達させて pass を記録する。 | source audit 行を未接続、未検証、後続修正前提、または owner 未割当のまま runner 実装を完了扱いにする。 |
 | fixture evidence | 対象 [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) 機能の fixture は success、failure、partial、no-op、idempotency、secret mask、corrupt state のうち該当するケースを持つ。 | 正常系だけの fixture で runner / statefile 連動を確認済み扱いにする。 |

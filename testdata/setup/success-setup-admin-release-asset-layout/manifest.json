@@ -1,1 +1,31 @@
-{"name":"success-setup-admin-release-asset-layout","component":"setup","kind":"success"}
+{
+  "name": "success-setup-admin-release-asset-layout",
+  "section": "26",
+  "feature": "setup_admin_integration",
+  "category": "success",
+  "owner_component": "setup",
+  "collaborator_components": [
+    "admin"
+  ],
+  "components": [
+    "admin",
+    "setup"
+  ],
+  "references": [
+    "docs/details/setup.md#26-セットアップアップデート手順",
+    "docs/details/fixture.md#sec-27-f-19",
+    "docs/details/admin.md#0-責務境界"
+  ],
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/cli.json"
+  ],
+  "assertions": [
+    "stdout",
+    "stderr",
+    "effects",
+    "secret-mask"
+  ]
+}

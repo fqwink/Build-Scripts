@@ -4,11 +4,36 @@
   "feature": "mcp_cli_lifecycle",
   "category": "partial",
   "owner_component": "mcp",
+  "collaborator_components": [],
   "components": ["mcp"],
   "references": [
     "docs/details/mcp.md#sec-29-0",
     "docs/details/fixture.md#mcp-fixture-contract"
   ],
-  "assertions": ["stdout", "stderr", "effects", "secret-mask"],
-  "not_applicable": ["request", "response", "state", "logs", "events"]
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [
+    {
+      "path": "expected/events.json",
+      "reason": "fixture does not assert protocol events"
+    },
+    {
+      "path": "expected/logs/",
+      "reason": "fixture does not assert logs"
+    },
+    {
+      "path": "expected/request.json",
+      "reason": "fixture does not assert outbound request"
+    },
+    {
+      "path": "expected/response.json",
+      "reason": "fixture does not assert protocol response"
+    },
+    {
+      "path": "expected/state/",
+      "reason": "fixture does not assert state"
+    }
+  ],
+  "missing_state": [],
+  "input_files": [],
+  "assertions": ["stdout", "stderr", "effects", "secret-mask"]
 }

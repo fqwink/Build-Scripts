@@ -1,1 +1,34 @@
-{"name":"partial-setup-systemd-rollback-boundary","component":"setup","kind":"partial"}
+{
+  "name": "partial-setup-systemd-rollback-boundary",
+  "section": "26.5",
+  "feature": "setup_admin_integration",
+  "category": "partial",
+  "owner_component": "setup",
+  "collaborator_components": [
+    "api",
+    "runner"
+  ],
+  "components": [
+    "api",
+    "runner",
+    "setup"
+  ],
+  "references": [
+    "docs/details/setup.md#sec-26-5",
+    "docs/details/fixture.md#sec-27-f-19",
+    "docs/details/api.md#0-責務境界",
+    "docs/details/runner.md#0-責務境界"
+  ],
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/cli.json"
+  ],
+  "assertions": [
+    "stdout",
+    "stderr",
+    "effects",
+    "secret-mask"
+  ]
+}

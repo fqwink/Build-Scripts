@@ -2,8 +2,26 @@
   "name": "failure-release-permission",
   "section": "R1-R7",
   "feature": "release_contract",
+  "category": "failure",
   "owner_component": "release",
   "collaborator_components": [],
-  "expected_result": "failure",
-  "error_code": "DRAFT_CREATE_FAILED"
+  "components": [
+    "release"
+  ],
+  "references": [
+    "docs/details/release.md#release-responsibility-boundary",
+    "docs/details/fixture.md#release-fixture-contract"
+  ],
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/fakes.json"
+  ],
+  "assertions": [
+    "stdout",
+    "stderr",
+    "effects",
+    "secret-mask"
+  ]
 }

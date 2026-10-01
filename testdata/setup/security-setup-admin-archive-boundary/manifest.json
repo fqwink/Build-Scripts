@@ -1,1 +1,31 @@
-{"name":"security-setup-admin-archive-boundary","component":"setup","kind":"security"}
+{
+  "name": "security-setup-admin-archive-boundary",
+  "section": "A2",
+  "feature": "setup_admin_integration",
+  "category": "security",
+  "owner_component": "admin",
+  "collaborator_components": [
+    "setup"
+  ],
+  "components": [
+    "admin",
+    "setup"
+  ],
+  "references": [
+    "docs/details/admin.md#a2-管理-ui-archive-検証",
+    "docs/details/fixture.md#sec-27-f-19",
+    "docs/details/setup.md#0-責務境界"
+  ],
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/cli.json"
+  ],
+  "assertions": [
+    "stdout",
+    "stderr",
+    "effects",
+    "secret-mask"
+  ]
+}

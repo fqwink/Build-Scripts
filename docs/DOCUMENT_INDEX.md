@@ -11,8 +11,44 @@
 | 方針、ポリシー、状態語彙、状態遷移条件 | [`docs/SPEC.md`](SPEC.md) |
 | 実装 artifact と各機能の現在状態、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
-| owner component 別詳細本文 | [`docs/details/`](details/) |
+| 詳細仕様本文・証跡ディレクトリ | [`docs/details/`](details/) |
+| Phase 11 バグ修正ゼロ化の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
+| 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
+| Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
+| test artifact と fixture 証跡の接続 | [`docs/details/fixture.md` fixture 証跡責務 test artifact traceability 固定契約](details/fixture.md#test-artifact-traceability-contract) |
+| 単独 test artifact を持たない owner の検証接続 | [`docs/details/fixture.md` fixture 証跡責務 non-dedicated owner test routing 固定契約](details/fixture.md#non-dedicated-owner-test-routing-contract) |
+| Phase 11 fixture root 網羅判定 | [`docs/details/fixture.md` fixture 証跡責務 fixture root coverage matrix 固定契約](details/fixture.md#fixture-root-coverage-matrix-contract) |
+| fixture group root と formal fixture root の境界 | [`docs/details/fixture.md` fixture 証跡責務 fixture root coverage matrix 固定契約](details/fixture.md#fixture-root-coverage-matrix-contract) |
+| 未作成 fixture root closure record | [`docs/details/fixture.md` fixture 証跡責務 未作成 fixture root closure record 固定契約](details/fixture.md#fixture-root-missing-closure-record-contract) |
+| 検証実行証跡の分類と未完了条件 | [`docs/details/fixture.md` fixture 証跡責務 test execution evidence matrix 固定契約](details/fixture.md#test-execution-evidence-matrix-contract) |
+| test evidence package 記録先 | [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract) |
+| test gap inventory 記録 | [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract)。テスト固有の仕様不足と仕様全般不備の接続入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)。 |
+| test improvement batch closure | [`docs/details/fixture.md` fixture 証跡責務 test improvement batch closure 固定契約](details/fixture.md#test-improvement-batch-closure-contract)。 |
+| 仕様全般不備 inventory record | [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract)。テスト固有の仕様不足と仕様全般不備の接続入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)。 |
+| 仕様全般不備 batch closure | [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract)。`test_gap_connection` の接続入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)。 |
+| 仕様全般不備 inspection pass 証跡 | [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) の `inspection_scope`、`inspection_pass_count`、`inspection_pass_summary`。 |
+| assertion id 形式 | [`docs/details/fixture.md` fixture 証跡責務 assertion id 固定契約](details/fixture.md#test-assertion-id-contract) |
+| skip / 未実行証跡 | [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](details/fixture.md#test-skip-evidence-contract) |
+| 検証要求網羅 ledger | [`docs/details/fixture.md` fixture 証跡責務 test requirement coverage ledger 固定契約](details/fixture.md#test-requirement-coverage-ledger-contract) |
+| 検証証跡クロージャと open item 0 判定 | [`docs/details/fixture.md` fixture 証跡責務 test verification closure checklist 固定契約](details/fixture.md#test-verification-closure-checklist-contract) |
+| 検証証跡クロージャ記録 schema | [`docs/details/fixture.md` fixture 証跡責務 test verification closure record schema 固定契約](details/fixture.md#test-verification-closure-record-schema-contract) |
+| 検証証跡クロージャ記録 set | [`docs/details/fixture.md` fixture 証跡責務 test verification closure record set 固定契約](details/fixture.md#test-verification-closure-record-set-contract) |
+| 実装 PR 証跡 package | [`docs/details/fixture.md` fixture 証跡責務 implementation PR evidence template 固定契約](details/fixture.md#implementation-pr-evidence-template-contract) |
+| test oracle 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test oracle evidence set 固定契約](details/fixture.md#test-oracle-evidence-set-contract) |
+| test assertion identity / failure diagnostics 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test assertion identity / failure diagnostics evidence set 固定契約](details/fixture.md#test-assertion-failure-diagnostics-evidence-set-contract) |
+| test boundary / failure matrix 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test boundary / failure matrix evidence set 固定契約](details/fixture.md#test-boundary-failure-matrix-evidence-set-contract) |
+| test isolation 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test isolation evidence set 固定契約](details/fixture.md#test-isolation-evidence-set-contract) |
+| test determinism 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](details/fixture.md#test-determinism-evidence-set-contract) |
+| test concurrency / race 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](details/fixture.md#test-concurrency-race-evidence-set-contract) |
+| race trigger matrix | [`docs/details/fixture.md` fixture 証跡責務 race trigger matrix 固定契約](details/fixture.md#race-trigger-matrix-contract) |
+| mutation test 証跡固定契約 | [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract) |
+| mutation test 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 mutation test evidence set 固定契約](details/fixture.md#mutation-test-evidence-set-contract) |
+| mutation selection ledger | [`docs/details/fixture.md` fixture 証跡責務 mutation selection ledger 固定契約](details/fixture.md#mutation-selection-ledger-contract) |
+| test harness self-verification 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) |
+| test / contract drift 証跡 | [`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](details/fixture.md#test-contract-drift-evidence-contract) |
+| test / contract drift report schema | [`docs/details/fixture.md` fixture 証跡責務 test / contract drift report schema 固定契約](details/fixture.md#test-contract-drift-report-schema-contract) |
+| manifest not_applicable 境界 | [`docs/details/fixture.md` fixture 証跡責務 manifest not_applicable 境界固定契約](details/fixture.md#fixture-manifest-not-applicable-boundary-contract) |
 | 生成静的 Web サイトと標準管理 UI のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
 | 利用入口 | [`README.md`](../README.md) |
 
@@ -32,7 +68,7 @@
 | `docs/examples/` | 未作成 |
 
 <a id="詳細仕様本文の所在"></a>
-**owner component 別詳細本文所在：**
+**詳細仕様本文・証跡所在：**
 
 | パス | owner component / 責務 |
 |------|-------------------------|
@@ -57,6 +93,7 @@
 | パス | 実装上の役割 | 所在区分 |
 |------|-----------|----------|
 | [`main.go`](../main.go) | 起動入口 | 実在 |
+| [`main_test.go`](../main_test.go) | 起動入口 test | 実在 |
 | [`go.mod`](../go.mod) | Go module | 実在 |
 | [`sdk_contract_test.go`](../sdk_contract_test.go) | `sdk` contract test | 実在 |
 | [`ui_contract_test.go`](../ui_contract_test.go) | `ui` contract test | 実在 |
@@ -72,6 +109,8 @@
 | [`components/setup_test.go`](../components/setup_test.go) | `setup` test | 実在 |
 | [`components/release.go`](../components/release.go) | `release` | 実在 |
 | [`components/release_test.go`](../components/release_test.go) | `release` test | 実在 |
+| [`components/mcp.go`](../components/mcp.go) | `mcp` | 実在 |
+| [`components/mcp_test.go`](../components/mcp_test.go) | `mcp` test | 実在 |
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | `sdk` | 実在 |
 | [`admin/index.html`](../admin/index.html) | `ui` | 実在 |
 | [`testdata/builder/`](../testdata/builder/) | `builder` fixture root | 実在 |
@@ -85,7 +124,8 @@
 | `testdata/runner/` | `runner` fixture root | 未作成 |
 | `testdata/api/` | `api` fixture root | 未作成 |
 | `testdata/api/additional-management/` | 追加管理 API fixture root | 未作成 |
-| [`testdata/admin/`](../testdata/admin/) | `admin` fixture root | 実在 |
+| [`testdata/admin/`](../testdata/admin/) | `admin` fixture group root | 実在 |
+| [`testdata/admin/cli/`](../testdata/admin/cli/) | Admin CLI formal fixture root | 実在 |
 | `testdata/sdk/` | `sdk` fixture root | 未作成 |
 | `testdata/sdk/additional-management/` | 追加管理 SDK fixture root | 未作成 |
 | `testdata/ui/` | `ui` fixture root | 未作成 |
@@ -98,6 +138,5 @@
 | [`testdata/setup/`](../testdata/setup/) | `setup` fixture root | 実在 |
 | [`testdata/release/`](../testdata/release/) | `release` fixture root | 実在 |
 | [`testdata/mcp/`](../testdata/mcp/) | `mcp` fixture root | 実在 |
-| [`components/mcp.go`](../components/mcp.go) | `mcp` | 実在 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。

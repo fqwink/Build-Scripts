@@ -56,10 +56,11 @@
 
 1. [`docs/SPEC.md`](SPEC.md) の「文書責務」と「状態参照方針」で、正本範囲を確認する。
 2. [`docs/ROADMAP.md`](ROADMAP.md) で対象の現在状態、Phase、将来計画該当有無を確認し、実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) で判定する。
-3. [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1)〜[`docs/SPEC.md` 方針責務 §4.10](SPEC.md#sec-4-10) で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、詳細仕様粒度、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
+3. [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1)〜[`docs/SPEC.md` 方針責務 §4.10](SPEC.md#sec-4-10) で、ゼロ依存、責務ベース明示的原則、ディレクトリ構成、完全仕様詳細化、成熟度、着手ゲート、完了判定、Go 正本方針を確認する。
 4. [`docs/SPEC.md`](SPEC.md) のポリシー責務で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
-5. 生成静的 Web サイトまたは標準管理 UI のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
-6. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
+5. 実装または検証を扱う場合は、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) の意味のあるテストポリシーを確認する。
+6. 生成静的 Web サイトまたは標準管理 UI のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
+7. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。Phase 11 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference)、実装契約は該当 owner 詳細本文責務を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
 
 ---
 
@@ -205,9 +206,11 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 - collaborator component が自分の責務として持つ接続、入力受け渡し、出力受け渡し、変換、失敗伝播の固有契約。
 - fixture 証跡責務が正本へのリンクとともに記録する入力、操作、期待結果、assertion、実装検証証跡。これらは仕様本文の正本ではなく、正本との一致を検証する証跡としてだけ扱う。
 
-正本参照先は、必ず責務名とファイル名で示す。文書を章構成、便宜分類、または他文書の従属章として扱ってはならない。[`docs/SPEC.md`](SPEC.md) 内部の見出しも責務名で示し、`Part` 名称で扱ってはならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/details/*.md`](details/)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) を [`docs/SPEC.md`](SPEC.md) の章として扱ってはならない。
+正本参照先は、必ず責務名とファイル名で示す。文書を章構成、便宜分類、または他文書の従属章として扱ってはならない。[`docs/SPEC.md`](SPEC.md) 内部の見出しも責務名で示し、`Part` 名称で扱ってはならない。[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別の [`docs/details/*.md`](details/)、[`docs/details/fixture.md`](details/fixture.md)、[`docs/ROADMAP.md`](ROADMAP.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`README.md`](../README.md) を [`docs/SPEC.md`](SPEC.md) の章として扱ってはならない。
 
 参照はリンク化を必須とする。文書間参照、節参照、表参照、責務正本参照、実装ファイル参照、fixture 参照を説明文として書く場合は、Markdown link を用いて参照先へ移動できる形にする。単なるファイル名、裸の節番号、裸の見出し名、または `参照` という文字だけで参照先を示した扱いにしてはならない。
+
+テスト方針、テスト完了可否、fixture 証跡 schema、assertion、test gap inventory、test improvement batch closure、mutation、mutation selection、race trigger、drift、skip、fixture root closure、PR 証跡への参照は、owner 詳細本文、作業ルール、Pull Request 本文、状態・計画責務、文書・実装ファイル所在の索引責務、利用入口責務、または他の責務文書から行う場合、必ず [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由する。ただし、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) がテスト方針と完了可否の本文を持つ場合、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務が fixture 証跡本文を持つ場合、または [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務が所在索引として固定 anchor を列挙する場合は、それぞれの責務範囲内で直接リンクしてよい。owner 詳細本文、作業ルール、Pull Request 本文、状態・計画責務が同じテスト証跡の schema、必須 key、記録単位、例外条件、完了可否を個別に再掲または再定義することを禁止する。
 
 契約値そのものを記録するコードブロック、ディレクトリ tree、JSON schema、CLI 例、HTTP path、設定値、生成物名、状態ファイル名、および所在索引表の path セルは、Markdown link 化によって契約文字列が変わるためリンク化対象外とする。この例外は説明文中の参照には適用しない。説明文から実ファイルまたは文書へ移動させる目的がある場合は、同じ段落または表の参照列に Markdown link を併記する。
 
@@ -249,6 +252,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 ```text
 .
 ├── main.go
+├── main_test.go
 │
 ├── components/
 │   ├── builder.go
@@ -263,7 +267,8 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   ├── setup_test.go
 │   ├── release.go
 │   ├── release_test.go
-│   └── mcp.go
+│   ├── mcp.go
+│   └── mcp_test.go
 │
 ├── admin/
 │   ├── index.html
@@ -317,6 +322,8 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   │   └── fixture.md
 │   └── examples/
 │
+├── sdk_contract_test.go
+├── ui_contract_test.go
 ├── README.md
 ├── AGENTS.md
 └── go.mod
@@ -337,11 +344,16 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) は、詳細仕様入口責務として、実装者が追加判断なしに該当する詳細本文へ到達できる粒度で記載する。
 
-owner component 別の [`docs/details/*.md`](details/) は、詳細本文責務として、抽象的な方針や目的の再掲ではなく、実装時に必要な具体値、処理順序、入出力、状態、失敗時の扱いを定義する。
+owner component 別の [`docs/details/*.md`](details/) は、詳細本文責務として、抽象的な方針や目的の再掲ではなく、実装時に必要な具体値、処理順序、入出力、状態、失敗時の扱いを定義する。ただし [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務は owner component 別詳細本文責務に含めない。Phase 専用詳細仕様ファイルを作成して、owner component 別詳細本文責務を置き換えてはならない。
 
 仕様化済み・未実装の項目であっても、実装予定として扱う場合は実装者が迷わない粒度まで詳細化する。実装時期、設計判断、具体値が未確定の内容は、実装可能な仕様として扱わず、未仕様化または将来計画として明示する。
 
 詳細仕様入口責務と詳細本文責務の組み合わせは、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) の全項目を追加判断なしで特定できる状態を満たす。[`docs/SPEC.md` 方針責務 §4.4](SPEC.md#sec-4-4) に必須項目を再掲して別の判定表としてはならない。
+
+<a id="complete-detail-specification-policy"></a>
+完全仕様詳細化は、全 Phase、全 owner component、全実装対象機能に適用する。完全仕様詳細化とは、実装者が設計判断、仕様補完、例外判断、検証条件の推測、既存実装への後追い合わせを行わずに、責務正本だけから実装、検証、完了判定を進められる状態をいう。
+
+完全仕様詳細化が完了していない機能は、一定の仕様が存在していても実装対象として扱わない。実装しながら仕様を決めること、テスト結果で仕様を後から確定すること、既存実装の挙動を理由に詳細本文の不足を補うことを、実装着手方針として認めない。
 
 <a id="45-仕様成熟度方針"></a>
 
@@ -363,7 +375,7 @@ owner component 別の [`docs/details/*.md`](details/) は、詳細本文責務�
 <a id="sec-4-6"></a>
 **4.6 Phase 実装単位方針：**
 
-Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件を一体として管理する実装単位である。Phase 単位の必須操作、active Phase、優先度ラベルの使用禁止、途中追加禁止は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を唯一の正本とする。Phase の一覧、現在状態、順序、依存関係は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、個別の実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、acceptance assertion と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。
+Phase は、対象 owner component、実装範囲、依存条件、完了条件、検証条件を一体として管理する実装単位である。Phase 単位の必須操作、active Phase、優先度ラベルの使用禁止、途中追加禁止は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を唯一の正本とする。Phase の一覧、現在状態、順序、依存関係は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、個別の実装契約は owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を参照する。Phase 専用の詳細仕様ファイルを作成してはならない。Phase は実装順序と完了境界を持つだけであり、詳細本文の責務正本を所有しない。
 
 実装作業の Pull Request は Phase を境界としなければならない。Phase を Pull Request の境界にする理由は、仕様根拠、対象 owner、実装範囲、検証条件、完了判定を一つの責務単位に固定し、複数 Phase の混在、同一 Phase の並行分割、後続 Phase の先取り、仕様根拠のない実装補完を禁止するためである。
 
@@ -381,7 +393,17 @@ Phase を Pull Request の境界にすることは、Phase の一部分だけを
 <a id="sec-4-8"></a>
 **4.8 完了判定方針：**
 
-`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。必須 fixture、acceptance assertion、実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
+`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。Phase 11 の横断 acceptance gate、差し戻し条件、未残条件は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) を正本とし、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
+
+バグ修正ゼロ化とは、実装済み機能、実装中・検証未完了機能、または Phase 11 対象として [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に割り当てた検証基盤について、既知の仕様不整合、未検証分岐、未固定の副作用、secret 漏えい可能性、状態 schema 揺れ、fixture 不足、環境依存の合格条件、実装後の追加修正前提を残さない状態をいう。バグ修正ゼロ化は品質目標であり、仕様外の新機能追加、状態語彙の緩和、検証省略、または fixture 期待値の弱体化を許可する理由にしてはならない。
+
+Phase 11 は、バグ修正ゼロ化そのものを目的とする Phase である。Phase 11 は新機能追加 Phase、将来計画実装 Phase、仕様外補完 Phase、検証省略 Phase、または品質目標の一般論を記載する Phase ではない。Phase 11 対象は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で対象 owner、対象機能、依存 Phase、現在状態を明示し、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から対象 owner 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できなければならない。Phase 11 の source-code audit inventory、横断 owner 割当、acceptance gate、差し戻し条件、完了時の未残条件は、専用詳細ファイルではなく、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry)、対象 owner 詳細本文、[`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference) に分担して記載する。個別の fixture 名、expected file、fake、実装検証証跡の記録形式は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、statefile の lock、atomic write、strict schema、JSON Lines、read-only no mutation は [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする。
+
+Phase 11 では、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase 11 の対象として明示されていない新規機能を実装してはならない。Phase 11 の実装対象は、[`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan) の Phase 11 行、および [`docs/ROADMAP.md` 状態・計画責務 §5](ROADMAP.md#522-統合ロードマップ表) で現在状態が `仕様化済み・未実装` かつ `詳細入口 / 次の扱い` が [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) または [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference) へ到達する検証基盤項目だけとする。現在状態が `改訂予定`、`将来計画`、`未仕様化`、または Phase 11 参照入口へ到達しない項目を、Phase 11 で実装、endpoint 化、SDK method 化、UI 操作化、状態 schema 化、配布物化、または外部連携化してはならない。
+
+Phase 11 のバグ修正ゼロ化は、文書上の未完了一覧だけでなく、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の標準実装 artifact と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務に実在する [`main.go`](../main.go)、[`components/*.go`](../components/)、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js)、[`admin/index.html`](../admin/index.html) の関数、状態 I/O、JSON / JSON Lines 処理、builder output publish / restore、generated site validation、setup install / rollback、release reproducibility / GitHub boundary、admin CLI / SDK / UI client boundary、API / MCP listener lifecycle、graceful shutdown、HTTP header / CORS / cookie boundary、clock / timer / entropy / request ID / time ID、goroutine / channel / worker ordering / cancel / timeout、MCP state bridge / read-only mutation、出力成果物検査、外部 I/O、認証・認可、secret 処理、queue / finalizer、fixture harness 接続を棚卸し対象に含める。棚卸しで検出した差分は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) で対象 owner と fixture へ割り当て、該当する owner 詳細本文へ実装契約を置き、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ検証証跡条件を置くか、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase 11 対象外として到達可能にするまで、完了扱いにしてはならない。既存 test の成功、既存実装済み状態、または別変更で解消するという説明だけで、source audit 由来の artifact 未分類、未固定分岐、直接状態書込、重複 algorithm、best-effort 読込、破損黙殺、secret 応答順序、実 OS listener / signal / sleep / random 依存、未接続 fixture root を残してはならない。
+
+Phase 11 の仕様全般完了は、`source-code audit residual zero`、`artifact coverage zero gap`、`fixture root identity zero duplicate`、`test gap inventory zero open item`、`test / contract drift zero`、`仕様全般完了` がすべて pass し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務のいずれにも Phase 11 対象の未割当、未接続、未検証、重複 fixture、孤立 test、孤立 assertion、対象外理由未到達が残らない場合だけ認める。Phase 11 の完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference) へ記録する。仕様全般完了は、実装完了、検証完了、または Phase 11 の `実装済み` 遷移を意味しない。現在状態の変更は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) に従う。
 
 <a id="49-仕様策定単位方針"></a>
 
@@ -516,11 +538,31 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | 異常系 | エラー条件、応答、終了コード、固定メッセージ、ログ level、通知条件、継続可否。 |
 | 制御 | 再試行、lock、排他制御、冪等性、timeout、partial failure、再実行時の扱い。 |
 | security | 認証、認可、token、秘密情報、権限、公開境界、出力禁止情報。 |
-| 検証 | 必須 fixture、assertion、正常系・異常系確認、構文確認、実行確認、生成物確認、必須証跡。 |
+| 検証 | [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす意味のあるテスト、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) から到達できる test gap inventory、test improvement batch closure、test evidence package、test verification closure record set、必須 fixture、assertion、requirement coverage、oracle、failure diagnostics、boundary / failure matrix、isolation、determinism、race trigger、concurrency / race、mutation selection、mutation test、harness self-verification、contract drift、skip / 未実行証跡、構文確認、実行確認、生成物確認、必須証跡。 |
 
 「適切に処理する」「必要に応じて対応する」「安全に扱う」のように実装判断を実装者へ委ねる表現を単独で完了仕様として扱ってはならない。使用する場合は、具体的な条件、処理、値、禁止事項、確認方法を併記する。
 
 許可値、許可 path、許可副作用、許可依存、owner 候補、fixture component、schema key を列挙する契約では、`など`、`等`、`任意の同等物`、例示だけの列挙を使用して集合を開いてはならない。許可集合を固定列挙するか、追加値を許可する判定条件、登録先の正本、未登録値の拒否結果を同じ契約で明示する。禁止対象の理解を助ける例示は使用できるが、例示に含まれない対象を許可する意味に読めないことを明記する。
+
+<a id="complete-detail-specification-gate"></a>
+**完全仕様詳細化義務：**
+
+すべての実装対象機能は、実装着手前に完全仕様詳細化を完了しなければならない。完全仕様詳細化は [`docs/SPEC.md` 方針責務 §4.4](SPEC.md#complete-detail-specification-policy) の定義、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) の仕様凍結条件をすべて満たすことをいう。
+
+以下のいずれかが責務正本で固定されていない場合、その機能は完全仕様詳細化未完了として扱い、実装着手、実装 PR の review ready 報告、merge 可能報告、`実装済み` 判定を禁止する。
+
+| 判定対象 | 固定が必要な内容 |
+|----------|------------------|
+| 入出力 | 入力元、型、必須性、既定値、許容値、HTTP method、request / response 形式、戻り値、終了コード、HTTP status。 |
+| 状態 | 状態ファイル path、schema、初期値、read / write 責務、更新順序、atomicity、lock、破損時処理、read-only no mutation。 |
+| 処理 | 正常系順序、分岐条件、境界値、アルゴリズム、成功条件、副作用の確定順序、再実行時の扱い。 |
+| 異常系 | 失敗条件、固定 error、固定 message、状態不変条件、partial failure、cleanup failure、rollback 要否、継続可否。 |
+| security | 認証、認可、scope、secret 保存禁止、secret 出力禁止、token / password / TOTP / session の露出境界。 |
+| 外部境界 | GitHub API、SSH、SMTP、systemd、webhook、browser fetch / SSE、MCP client、command 実行、filesystem の成功 / 失敗 / timeout / malformed 条件。 |
+| 制御 | retry、timeout、cancel、clock、timer、entropy、ID generation、goroutine、channel、worker ordering、並行更新、衝突時処理。 |
+| 検証証跡 | fixture、fake、expected、effects、security expected、意味のあるテスト条件、test gap inventory、test improvement batch closure、test evidence package、test verification closure record set、requirement coverage ledger、oracle evidence、failure diagnostics evidence、boundary / failure matrix evidence、isolation evidence、determinism evidence、race trigger matrix、concurrency / race evidence、mutation selection ledger、mutation test 条件、harness self-verification evidence、contract drift report、skip / 未実行時の扱い、pass / fail 条件、完了証跡。 |
+
+実装中に完全仕様詳細化未完了の事項を発見した場合、実装者はコード判断で補完してはならない。該当箇所の実装を停止し、責務正本を先に改訂して完全仕様詳細化を完了させてから実装を再開しなければならない。
 
 <a id="policy-spec-maturity"></a>
 
@@ -533,16 +575,20 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | 未仕様化 | 要求、目的、責務、入出力、処理、状態、検証条件のいずれかが実装判断に必要な粒度で定義されていない状態。 | 実装不可 |
 | 将来計画 | 将来的な方向性または候補として記録した状態。実装時期、整理順序、詳細仕様は未確定でもよい。整理順序は実装単位、PR 単位、完了判定単位ではない。 | 実装不可 |
 | 改訂予定 | 将来計画または未仕様化の項目を仕様化対象へ昇格した状態。詳細仕様の作成・改訂作業中であり、実装条件はまだ満たしていない。 | 実装不可 |
-| 仕様化済み・未実装 | [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を実装可能な粒度で特定済みだが、実装 artifact または実装コードが未作成・未反映の状態。 | 実装可 |
+| 仕様化済み・未実装 | [`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) を満たし、実装 artifact または実装コードが未作成・未反映の状態。 | 実装可 |
 | 実装中・検証未完了 | 仕様に基づくコード変更へ着手済みだが、必須検証、証跡、または関連文書の整合確認が未完了の状態。 | 検証待ち |
 | 実装済み | [`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition) をすべて満たした状態。 | 完了済み |
 
-`仕様化済み・未実装` へ昇格するには、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) のうち該当機能に適用する全項目が owner component 詳細本文で特定され、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から該当本文と fixture 証跡へ到達でき、実装判断に必要な未確定事項が残っていないことを必須とする。
+`仕様化済み・未実装` へ昇格するには、[`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) のうち該当機能に適用する全項目が owner component 詳細本文で特定され、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から該当本文と fixture 証跡へ到達でき、[`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) を満たし、実装判断に必要な未確定事項が残っていないことを必須とする。
 
-実装着手は、対象項目が `仕様化済み・未実装` の状態に到達している場合に限る。
+`仕様化済み・未実装` は詳細仕様の成熟度を示す状態であり、単独では実装着手許可、Pull Request 作成許可、Phase 完了可能性を意味しない。実装着手には、対象機能が [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase に割り当てられ、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) の仕様凍結条件と [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の active Phase 条件を同時に満たす必要がある。
+
+詳細仕様入口、owner 詳細本文、または fixture 証跡の参照先が存在するだけでは、`仕様化済み・未実装` へ昇格してはならない。実装 artifact、入力、出力、状態、異常系、検証証跡、fixture root、Phase 割当、実装 PR 境界、完了条件のいずれかが未固定である場合は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で `改訂予定`、`将来計画`、または `未仕様化` として扱う。`詳細入口 / 次の扱い` の列にある link は、状態語彙または実装可否を上書きしない。
+
+実装着手は、対象項目が `仕様化済み・未実装` の状態に到達し、かつ [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) の仕様凍結条件を満たしている場合に限る。完全仕様詳細化が未完了の項目は、`改訂予定` または `未仕様化` として扱い、実装不可とする。
 
 <a id="implementation-completion-transition"></a>
-実装完了は、コード変更だけでは成立しない。仕様との差分確認、構文確認、実行確認または生成物確認、必須 fixture と実装検証証跡、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否確認を完了した場合にのみ `実装済み` と扱う。
+実装完了は、コード変更だけでは成立しない。仕様との差分確認、構文確認、実行確認または生成物確認、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす意味のあるテスト、mutation test、必須 fixture、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) から到達できる test evidence package、test verification closure record set、`final_open_item_count=0` の実装検証証跡、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否確認を完了した場合にのみ `実装済み` と扱う。
 
 API、SDK、標準管理ツールのいずれかを変更する場合は、API 仕様、SDK メソッド、UI 操作、詳細仕様の整合を同時に確認する。いずれか一方だけを変更して完了扱いにしてはならない。
 
@@ -557,14 +603,74 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 方針責務・ポリシー責務 | 方針、ポリシー、実装着手ゲート、完了判定が [`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務に明記されている。 |
 | 状態・計画責務 | 実装 artifact と各機能の現在状態、Phase、将来計画が [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に明記され、状態語彙、実装可否、昇格条件が [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と矛盾していない。 |
 | 詳細仕様入口責務 | 対象機能の owner 対応表、owner 詳細本文から collaborator 境界へ到達する参照、詳細本文参照先、fixture 証跡参照先が [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務に明記されている。 |
-| owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。 |
+| owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。検証条件は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす。Phase 11 横断対象の場合も、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から該当 owner 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できる。 |
 | 横断契約 | API、SDK、UI、状態ファイル、認証、セットアップの対応関係が該当する詳細本文責務で同期している。 |
 | 重複記載 | [`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) への適合確認が完了し、未解消違反が 0 件である。 |
+| 仕様全般不備一括棚卸し | 仕様全般の再整備、重複箇所、問題点、改善点、または残存しない全件洗い出しを目的にする仕様 PR では、検出した各不備を `重複記載`、`責務外本文`、`参照切れ`、`責務正本未確定`、`状態不整合`、`索引不整合`、`詳細仕様不足`、`fixture 証跡不足`、`デザイン責務混入`、`作業ルール混入`、`実装 artifact 所在不整合` のいずれかに分類し、各件について唯一の責務正本、処置先、処置内容、参照化または削除または正本本文化の結果、解消状態を同一 PR 内で閉じる。完了証跡は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) の両方を満たす。テスト関連の不備は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由して fixture 証跡責務へ接続する。未分類、責務正本未確定、未解消、対象外理由 anchor 不足、`inspection_scope` 不足、`inspection_pass_count` 未達、`inspection_pass_summary` 不足、`record_count` 不一致、`final_unresolved_count=0` 未達、category routing 違反、または `source=spec-gap` と `test_gap_connection` の未接続が 1 件でも残る場合は完了扱いにしてはならない。 |
 | 索引責務 | ファイル名、正本参照先、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |
 | owner 網羅 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に列挙された owner component のうち、[`docs/ROADMAP.md`](ROADMAP.md) で `未仕様化` または `将来計画` 以外の機能を持つ owner は、少なくとも 1 件の機能から owner 詳細本文と fixture 証跡へ到達できる。実装 artifact の行で owner 機能の現在状態を代用していない。 |
 | 列挙閉包 | 許可値、許可 path、許可副作用、許可依存、fixture component、schema key の集合が固定列挙または明示的な登録条件で閉じており、未登録値の扱いが確定している。 |
 | デザイン責務 | 生成静的 Web サイトと標準管理 UI の視覚値は [`docs/DESIGN.md`](DESIGN.md) にあり、owner 詳細本文は DOM、selector、状態、操作境界だけを持つ。 |
 | fixture 配置 | [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の `testdata/` tree、[`docs/details/fixture.md`](details/fixture.md) の配置契約、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) の実在所在が一致している。 |
+
+<a id="spec-deficiency-inventory-record-contract"></a>
+**仕様全般不備 inventory record 固定契約：**
+
+仕様全般不備 inventory record は、仕様全般の再整備、重複箇所、問題点、改善点、または残存しない全件洗い出しを目的にする仕様 PR で検出した不備 1 件につき 1 record 作成する。record の正本は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion) とし、owner 詳細本文、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、または Pull Request 本文で同じ schema を再定義してはならない。
+
+| field | 固定値 / 形式 | 未完了条件 |
+|-------|---------------|------------|
+| `defect_id` | `specdef-<responsibility>-<scope>-<number>` の lowercase kebab-case。 | 空、重複、または責務と scope を識別できない。 |
+| `category` | `重複記載`、`責務外本文`、`参照切れ`、`責務正本未確定`、`状態不整合`、`索引不整合`、`詳細仕様不足`、`fixture 証跡不足`、`デザイン責務混入`、`作業ルール混入`、`実装 artifact 所在不整合` のいずれか。 | 分類なし、未登録分類、または複数分類を 1 record に混在している。 |
+| `canonical_responsibility` | 不備を最終判断する唯一の責務正本への責務名付き Markdown link。 | 正本なし、裸のファイル名、または複数正本を並列にしている。 |
+| `detected_location` | 不備を検出した file path と固定 anchor、または Pull Request evidence label。 | 検出位置が不明、または行番号だけで責務 anchor がない。 |
+| `disposition` | `delete`、`reference`、`move-to-canonical`、`define-in-canonical`、`mark-not-applicable` のいずれか。 | 処置が自由記述だけ、または残件を後続 PR 前提にしている。 |
+| `target_location` | 処置先の file path と固定 anchor、または削除対象の責務 anchor。 | 処置先が不明、または実在しない path / anchor を指す。 |
+| `test_gap_link` | テスト固有の仕様不足を含む場合は [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract) の `gap_id`。含まない場合は `not_applicable` と対象外理由。 | テスト固有の不備なのに `gap_id` がない、または非テスト不備を test gap record だけで閉じている。 |
+| `closure_evidence` | PR 本文、差分、または責務正本 anchor への link。 | 処置結果へ到達できない、または説明文だけで完了扱いにしている。 |
+| `status` | `open`、`closed`、`not_applicable` のいずれか。 | 完了時に `open` が残る、または `not_applicable` に責務正本 anchor がない。 |
+
+`canonical_responsibility` は、次の category routing に従って 1 件だけ選定する。複数の文書に症状が見える場合でも、record の `canonical_responsibility` は最終的な仕様判断または処置結果を所有する責務正本 1 件に固定する。補助的に参照する文書は `closure_evidence` に置き、`canonical_responsibility` へ複数正本を並べてはならない。
+
+| `category` | `canonical_responsibility` 選定規則 |
+|------------|--------------------------------------|
+| `重複記載` | 重複している判断対象の正本を [`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) と [`docs/SPEC.md` 責務文書構成表](SPEC.md#document-responsibility-map) で 1 件に確定する。 |
+| `責務外本文` | 本文を所有すべき正本を [`docs/SPEC.md` 責務文書構成表](SPEC.md#document-responsibility-map) で 1 件に確定する。 |
+| `参照切れ` | 参照対象が文書・実装 artifact の所在である場合は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、参照対象が仕様本文の anchor である場合はその anchor を所有する責務正本を 1 件に確定する。 |
+| `責務正本未確定` | 正本分担の判断は [`docs/SPEC.md` 責務文書構成表](SPEC.md#document-responsibility-map) を `canonical_responsibility` とする。 |
+| `状態不整合` | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を `canonical_responsibility` とする。 |
+| `索引不整合` | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を `canonical_responsibility` とする。 |
+| `詳細仕様不足` | 不足している実装契約を所有する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を `canonical_responsibility` とする。 |
+| `fixture 証跡不足` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を `canonical_responsibility` とする。 |
+| `デザイン責務混入` | [`docs/DESIGN.md`](DESIGN.md) デザイン責務を `canonical_responsibility` とする。 |
+| `作業ルール混入` | [`AGENTS.md`](../AGENTS.md) 最上位ルールブックを `canonical_responsibility` とする。 |
+| `実装 artifact 所在不整合` | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を `canonical_responsibility` とする。 |
+
+仕様全般不備 inventory record は、全 record の `status` が `closed` または `not_applicable`、`open` 件数が `0`、テスト固有の仕様不足がある場合は `test_gap_link` から [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) へ到達し、かつ [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) の `test_gap_connection` で当該 `defect_id` と `gap_id` の 1 対 1 対応へ到達できる場合だけ閉じる。仕様全般不備を fixture 証跡責務の `source=spec-gap` だけで閉じること、またはテスト固有の仕様不足を本 record だけで閉じることを禁止する。
+
+<a id="spec-deficiency-batch-closure-contract"></a>
+**仕様全般不備 batch closure 固定契約：**
+
+仕様全般不備 batch closure は、仕様全般の再整備、重複箇所、問題点、改善点、または残存しない全件洗い出しを目的にする仕様 PR 1 本につき 1 組だけ作成する。batch closure の正本は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion) とし、Pull Request 本文、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/ROADMAP.md`](ROADMAP.md)、owner 詳細本文、または fixture 証跡責務で同じ schema を再定義してはならない。
+
+仕様全般不備 batch closure は、全件洗い出し、残存しない洗い出し、完全実装精度レベルの確認、またはユーザーが複数回の反復確認を求めた仕様 PR では、最低 5 pass の独立した確認を記録しなければならない。5 pass は、責務正本・重複、リンク・anchor・path、状態・Phase・現在状態、テスト証跡・fixture root、実装 artifact・索引・利用入口の確認をそれぞれ少なくとも 1 回含む。5 pass 未満、同一観点だけの反復、または pass ごとの検出件数と解消件数を記録できない確認は、全件洗い出しの完了証跡として扱わない。
+
+| field | 固定値 / 形式 | 未完了条件 |
+|-------|---------------|------------|
+| `batch_id` | `specbatch-<scope>-<number>` の lowercase kebab-case。 | 空、重複、または対象 scope を識別できない。 |
+| `inventory_location` | 仕様全般不備 inventory record 群の所在。Pull Request 本文に置く場合は `pr-verification`、文書内に置く場合は責務名付き Markdown link。 | 所在がない、口頭説明だけ、または実在しない path / anchor を指す。 |
+| `inspection_scope` | 確認した責務範囲を責務名で列挙する。全件洗い出しでは、方針責務、ポリシー責務、状態・計画責務、詳細仕様入口責務、owner component 別詳細本文責務、fixture 証跡責務、デザイン責務、文書・実装ファイル所在の索引責務、利用入口責務、[`AGENTS.md`](../AGENTS.md) 最上位ルールブックを含める。 | 確認範囲が不明、責務名なし、対象外にした責務の理由なし、またはテスト関連作業なのに fixture 証跡責務と横断テスト証跡共通入口を含まない。 |
+| `inspection_pass_count` | 実施した独立確認 pass 数を整数で記録する。全件洗い出し、残存しない洗い出し、完全実装精度レベルの確認、またはユーザー指定がある場合は `5` 以上に固定する。 | 件数未記録、必要条件より少ない、または同一出力の再掲だけを複数 pass と数えている。 |
+| `inspection_pass_summary` | 各 pass の `pass_id`、確認観点、対象責務、検出 record 数、closed / not_applicable 件数、pass 後の unresolved 件数、証跡 location を記録する。 | pass ごとの観点または件数が不明、最終 pass 後の unresolved 件数が `0` でない、または証跡へ到達できない。 |
+| `record_count` | inventory record の総数を整数で記録する。検出 0 件の場合も `0` を明示する。 | 件数未記録、または inventory record 数と一致しない。 |
+| `category_summary` | 使用した category ごとの件数と、未使用 category の `0` を記録する。 | category ごとの件数が不明、または未登録 category を含む。 |
+| `canonical_responsibility_summary` | 全 record が本節の category routing に従い、唯一の `canonical_responsibility` を持つことを記録する。 | 複数正本、正本未確定、裸のファイル名、または routing 不一致が残る。 |
+| `test_gap_connection` | テスト固有の仕様不足を含む場合は、対応する `defect_id` と [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract) の `gap_id` を 1 対 1 で列挙する。含まない場合は `not_applicable` と対象外理由。 | `source=spec-gap` の test gap と `defect_id` の対応がない、または非テスト不備を test gap だけで閉じている。 |
+| `disposition_summary` | `delete`、`reference`、`move-to-canonical`、`define-in-canonical`、`mark-not-applicable` ごとの件数と処置先への link。 | 処置件数が不明、処置先へ到達できない、または後続 PR 前提の処置を含む。 |
+| `final_unresolved_count` | 未解消 record 件数を整数で記録し、完了扱いでは `0` に固定する。 | 件数未記録、`0` 以外、または残件を別変更で閉じる説明がある。 |
+| `status` | `closed` または `not_applicable` のいずれか。 | `open`、未登録値、または `not_applicable` に対象外範囲と責務正本 anchor がない。 |
+
+仕様全般不備 batch closure は、全 inventory record の `status` が `closed` または `not_applicable`、`inspection_scope` が対象責務を閉じ、`inspection_pass_count` が必要 pass 数を満たし、`inspection_pass_summary` の最終 pass 後 unresolved 件数が `0`、`record_count` と実 record 数が一致、`final_unresolved_count=0`、category routing 違反 `0`、テスト固有 `source=spec-gap` の `test_gap_link` 未接続 `0`、`test_gap_connection` 未接続 `0`、処置先未到達 `0` の場合だけ閉じる。最終 record より後に残件、暫定対応、後続 PR 前提、または未確認事項を追記した batch closure は完了証跡として扱わない。
 
 仕様 PR は、未確定事項を「推奨」「検討」「適切に」等の表現だけで残してはならない。未確定事項を残す場合は、実装不可の `未仕様化` または `将来計画` として明示する。
 
@@ -602,9 +708,10 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | 成熟度 | 対象項目が `仕様化済み・未実装` である。 |
 | 詳細仕様 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務から対象機能の owner component 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達でき、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務に入力、出力、状態、処理順序、異常系、検証条件が明記されている。 |
 | 必須項目 | [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](SPEC.md#detail-contract-required-fields) を満たしている。 |
+| 完全仕様詳細化 | [`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) を満たしている。 |
 | 対応表 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.1](DETAIL_INDEX.md#0i1-builder--静的-web-サイト出力)〜[§0i.5](DETAIL_INDEX.md#0i5-setup--release) の詳細節対応表に対象機能が記載され、参照先の owner component 詳細本文と fixture 証跡の対象が一致している。 |
 | 横断整合 | API、SDK、UI、状態ファイル、セットアップ、受け入れ条件が矛盾していない。 |
-| 未確定事項 | 実装判断に必要な未確定事項が残っていない。 |
+| 未確定事項 | 実装者が設計判断、仕様補完、例外判断、検証条件の推測、既存実装への後追い合わせを行う余地が残っていない。 |
 | 変更境界 | 実装 PR で変更してよい範囲と変更してはならない範囲が明確である。 |
 
 仕様凍結後、実装中に仕様不足を発見した場合は、実装 PR 内で独自判断による補完を行わず、仕様改訂 PR または同一 PR 内の仕様改訂コミットで凍結状態を更新する。
@@ -633,11 +740,13 @@ Go 版初期実装で新規実装へ着手できる対象は、[`docs/ROADMAP.md
 
 対象 Phase 全体が完了するまで、実装を主目的とする Pull Request を作成してはならない。既に active Phase に対応する open Pull Request が存在する場合、その Pull Request は Phase 全体完了まで work in progress として扱い、review ready、merge 可能、完了済みとして報告してはならない。
 
-Phase 全体完了とは、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan) で対象 Phase に割り当てられた全 owner、全機能、全依存条件について、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の実装契約、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の必須 acceptance assertion と実装検証証跡、[`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition)、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) の完了判定を満たすことをいう。
+Phase 全体完了とは、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan) で対象 Phase に割り当てられた全 owner、全機能、全依存条件について、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務の実装契約、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務の必須 assertion と実装検証証跡、[`docs/SPEC.md` ポリシー責務 §0a 実装完了条件](SPEC.md#implementation-completion-transition)、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) の意味のあるテストポリシー、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) の完了判定を満たすことをいう。Phase 11 横断対象は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から該当 owner 詳細本文と fixture 証跡へ到達できなければならない。
 
 Phase 内に `仕様化済み・未実装`、`実装中・検証未完了`、未実行の必須検証、未記録の実装検証証跡、未解消の仕様不整合、未反映の状態・索引更新が残る場合、実装者は同一作業ブランチで実装、検証、不整合修正、再検証を繰り返さなければならない。この反復を省略して Pull Request 作成、完了報告、または merge 可能報告を行ってはならない。
 
 仕様全般に基づく実装とは、[`docs/SPEC.md`](SPEC.md) 方針責務・ポリシー責務、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan)、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務に到達し、その全てと矛盾しない実装だけを行うことをいう。これらのいずれかで対象 Phase、対象機能、入力、出力、状態、副作用、異常系、検証条件、完了条件が未定義または矛盾している場合、実装者はコード判断で補完してはならない。先に該当する責務正本を改訂し、仕様根拠を確定してから実装しなければならない。
+
+対象 Phase に含まれる全機能は、実装着手前に [`docs/SPEC.md` ポリシー責務 §0 完全仕様詳細化義務](SPEC.md#complete-detail-specification-gate) と [`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze) を満たさなければならない。Phase の一部だけが完全仕様詳細化済みである状態、または一定の仕様だけを固定した状態で、その Phase の実装作業を開始してはならない。
 
 `P0`、`P1`、`P2〜P5` などの優先度ラベル、抽象段階、API 内部分類、fixture 分類を、実装単位、PR 単位、完了判定単位として使ってはならない。
 
@@ -650,6 +759,95 @@ Phase は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase
 Phase の途中で未仕様化、将来計画、改訂予定の機能を追加してはならない。追加する場合は、先に現在状態の割当、詳細仕様、検証条件、受け入れ条件を更新し、仕様凍結を再実施しなければならない。
 
 API の内部説明や fixture 名に既存の段階名が残る場合でも、それらは検証分類としてのみ扱い、実装順序、実装 PR、完了判定の正本にしてはならない。
+
+<a id="policy-meaningful-test"></a>
+
+## 0g. 意味のあるテストポリシー
+
+[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) は、実装変更、検証変更、fixture 変更、実装完了判定、Phase 完了判定に適用する。テスト方針と完了可否の本文は本節を正本とし、具体的な fixture、expected、fake、assertion、実行証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md)、owner 固有の入出力と異常系は owner component 別の [`docs/details/*.md` 詳細本文責務](details/) を正本とする。横断的なテスト証跡の参照入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) とし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務はテスト方針、完了可否、fixture 証跡 schema、必須 key、例外条件を再定義してはならない。
+
+意味のあるテストとは、仕様違反、実装の分岐誤り、境界値誤り、副作用漏れ、認証・認可 bypass、secret 漏えい、状態破損、並行処理順序誤り、外部境界の失敗処理漏れ、または回帰を検出できるテストをいう。実装を一度実行するだけの smoke test、assertion が存在しないテスト、戻り値や副作用を検証しないテスト、正常系だけのテスト、実装詳細の存在だけを確認するテスト、coverage percentage だけを満たすテストは、意味のあるテストとして扱ってはならない。
+
+意味のあるテストの完了証跡は、対象 owner、対象仕様 anchor、assertion、実行証跡、未実行理由、対象外理由、mutation 判定、drift 判定、closure 状態へ到達できる記録でなければならない。実行した command 名、pass 件数、coverage percentage、fixture directory の存在、または Pull Request の説明文だけを完了証跡として扱ってはならない。完了証跡の記録単位と記録先は [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract)、assertion id は [`docs/details/fixture.md` fixture 証跡責務 assertion id 固定契約](details/fixture.md#test-assertion-id-contract)、skip / 未実行は [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](details/fixture.md#test-skip-evidence-contract)、drift report は [`docs/details/fixture.md` fixture 証跡責務 test / contract drift report schema 固定契約](details/fixture.md#test-contract-drift-report-schema-contract) を正本とする。
+
+テスト関連改善作業とは、test、fixture、expected、fake、harness、checker、assertion、mutation、race / concurrency、contract drift、実装検証証跡、または Phase 完了判定のいずれかを変更または評価する作業をいう。テスト関連改善作業は、発見した問題点を個別に散発修正してはならない。最初に全件棚卸しを作成し、各問題点を owner、artifact、仕様 anchor、fixture root、証跡種別、必要対応、closure 記録へ接続し、open item を `0` にする一括 closure まで完了させなければならない。対象変更単位の test evidence package 記録先、問題点の棚卸し schema、batch closure の記録条件、mutation 選定台帳、race trigger 判定表は [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract)、[`test gap inventory record 固定契約`](details/fixture.md#test-gap-inventory-record-contract)、[`test improvement batch closure 固定契約`](details/fixture.md#test-improvement-batch-closure-contract)、[`mutation selection ledger 固定契約`](details/fixture.md#mutation-selection-ledger-contract)、[`race trigger matrix 固定契約`](details/fixture.md#race-trigger-matrix-contract) を正本とする。
+
+テスト関連改善作業と仕様全般不備の洗い出しを同一変更で扱う場合、テスト方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、仕様全般不備の分類と完了可否は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) を正本とする。テスト固有ではない仕様不備を、test gap inventory の owner component record へ無理に混在させてはならない。テスト固有の仕様不足は `source=spec-gap` として fixture 証跡責務へ接続し、仕様全般不備 batch closure の `test_gap_connection` で `defect_id` と `gap_id` の 1 対 1 対応を閉じる。文書責務の重複、参照切れ、状態不整合、索引不整合、作業ルール混入のような仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) の完了条件で閉じる。
+
+テスト関連改善作業で open item、未分類 artifact、未接続仕様 anchor、未割当 fixture root、未判定 mutation class、未判定 race trigger、または証跡不足が 1 件でも残る場合は、実装完了、Phase 全体完了、review ready、merge 可能として扱ってはならない。将来計画、対象外、または not applicable とする場合でも、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務または該当 owner 詳細本文の責務正本 anchor へ到達できる記録を必須とし、説明文だけで残件を閉じてはならない。
+
+skip、`t.Skip`、環境機能不足、Docker / Deno / Go toolchain / race detector の未使用、または local 環境都合による未実行は、成功として扱ってはならない。必須検証を実行しない場合は、対象 owner、対象 requirement、未実行理由、代替証跡、再実行条件、完了可否への影響、責務正本 anchor を記録しなければならない。代替証跡または仕様上の対象外理由へ到達できない skip は open item として扱い、`実装済み`、Phase 全体完了、review ready、merge 可能として扱ってはならない。
+
+実装対象機能、実装変更、検証基盤変更は、以下をすべて満たさなければ完了扱いにしてはならない。
+
+| 判定対象 | 必須条件 |
+|----------|----------|
+| 仕様追跡性 | 各 test、fixture、expected、assertion は、対象 owner、対象仕様、対象 anchor、検出したい仕様違反を特定できる。仕様に存在しない期待値をテストだけへ埋め込まない。 |
+| 検証要求網羅 | owner 詳細本文、fixture 証跡、状態・計画責務で実装対象に要求された検証条件は、test artifact、fixture root、expected、assertion、mutation class、closure item のいずれかへ接続し、未検証契約を 0 件にする。 |
+| assertion 強度 | 成功条件だけでなく、失敗時 response、stderr、終了コード、状態差分、副作用有無、禁止出力、禁止外部通信を検証する。 |
+| failure diagnostics | 各 assertion は、assertion id、対象仕様 anchor、期待値、実値、差分、failure reason、再現条件を特定できる。fixture 名、test 名、pass / fail 件数だけを診断根拠にしない。 |
+| 検証基盤自己検証 | test harness、checker、assertion、expected 比較、security assertion、state diff assertion は、検出すべき不正を fail として検出できることを negative control と positive control の両方で証明する。 |
+| 正常系 / 異常系 | 正常系、入力不正、欠損、型不一致、境界値、権限不足、状態破損、外部失敗、timeout、partial failure、rollback、cleanup failure を対象機能に応じて固定する。 |
+| 境界値 | 空、最小、最大、上限超過、重複、順序差、path、文字コード、時刻、ID、JSON key、HTTP header、CLI option、state schema、archive entry の境界を検証する。 |
+| 決定性 | 時刻、乱数、file order、network、GitHub API、systemd、process、並行実行、timer、sleep に依存して結果が揺れない。必要な場合は fake clock、fake entropy、fake filesystem、fake HTTP、固定 fixture を使用する。 |
+| 並行処理 / race | goroutine、channel、worker、lock、listener、timer、file lock、queue、shutdown、共有状態更新、並行 request、同時刻 event を扱う変更は、data race、deadlock、goroutine leak、lost update、二重 commit、順序依存、cleanup 漏れを検出できる。 |
+| 契約横断 | API、SDK、UI、CLI、statefile、archive、release asset、MCP、setup の境界をまたぐ機能は、呼び出し元と呼び出し先の契約を同じ変更で検証する。 |
+| 副作用 | 期待する副作用だけでなく、禁止された状態 write、file 作成、外部通信、通知、log、secret 出力、cache 書込、audit 欠落が発生しないことを検証する。 |
+| 回帰 | 修正した不具合、Phase 11 のバグ修正ゼロ化対象、過去に検出した仕様不整合は、同種の再発で失敗する regression test を持つ。 |
+| 完了証跡 | 実行結果、未実行項目、対象外理由、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) へ到達できる形で記録する。 |
+
+owner 詳細本文の検証条件、fixture 証跡条件、状態・計画責務の Phase 対象、既存 test / fixture / expected / assertion のいずれかが test requirement coverage ledger へ到達できない場合は、意味のあるテストの完了証跡として扱ってはならない。test requirement coverage ledger の固定契約、記録項目、対象外理由、open item の扱いは [`docs/details/fixture.md` fixture 証跡責務 test requirement coverage ledger 固定契約](details/fixture.md#test-requirement-coverage-ledger-contract) を正本とする。
+
+弱い oracle、実装結果の丸写し、snapshot の無条件受け入れ、fixture 存在だけの確認、status code だけの確認、stdout / stderr の空確認だけ、状態差分または副作用を確認しない expected、禁止出力または禁止外部通信を確認しない test は、意味のあるテストとして扱ってはならない。test oracle は、正本 anchor、入力、期待 response、期待 error、終了 code、状態差分、effects、security expected、禁止副作用、失敗時 no mutation を対象機能に応じて固定しなければならない。test oracle の証跡 schema、記録項目、expected / actual 比較、禁止副作用、fixture assertion との対応は [`docs/details/fixture.md` fixture 証跡責務 test oracle evidence set 固定契約](details/fixture.md#test-oracle-evidence-set-contract) を正本とする。
+
+assertion id がない test、対象仕様 anchor へ到達できない test、失敗時に期待値、実値、差分、failure reason、再現条件を特定できない test、generic な failure message だけを返す test、pass / fail 件数だけを記録する test、secret を診断出力へ露出する test は、意味のあるテストとして扱ってはならない。failure diagnostics は、assertion id、対象 owner、対象仕様 anchor、expected / actual / diff、failure reason、reproduction command、secret-safe diagnostics を対象機能に応じて固定しなければならない。failure diagnostics の証跡 schema、記録項目、assertion identity、failure reason、secret-safe diagnostics、closure 接続は [`docs/details/fixture.md` fixture 証跡責務 test assertion identity / failure diagnostics evidence set 固定契約](details/fixture.md#test-assertion-failure-diagnostics-evidence-set-contract) を正本とする。
+
+assertion id は、test 名、fixture 名、line number、subtest の表示名、実行順、または自動採番だけで代用してはならない。assertion id は対象 owner、feature、case、assertion の意味を持つ安定識別子とし、名前変更、行番号変更、test 順序変更、fixture directory の移動だけで意味が変わってはならない。assertion id の形式、禁止形式、fixture manifest assertion との接続は [`docs/details/fixture.md` fixture 証跡責務 assertion id 固定契約](details/fixture.md#test-assertion-id-contract) を正本とする。
+
+正常系だけの test、代表的な異常系だけの test、境界値を 1 点だけ確認する test、HTTP status / exit code / error class だけを確認する test、partial failure、rollback、cleanup failure、retry 上限、timeout 境界、size / count / path / ID / schema / header / option の上限下限を固定しない test は、意味のあるテストとして扱ってはならない。boundary / failure matrix は、入力 class、limit、error taxonomy、partial failure、rollback、cleanup failure、retry / recovery、失敗時 no mutation を対象機能に応じて固定しなければならない。boundary / failure matrix の証跡 schema、記録項目、error taxonomy、partial failure、rollback、cleanup failure、closure 接続は [`docs/details/fixture.md` fixture 証跡責務 test boundary / failure matrix evidence set 固定契約](details/fixture.md#test-boundary-failure-matrix-evidence-set-contract) を正本とする。
+
+test 間で共有状態を汚染する test、実行順序に依存する test、fixture / expected を実行中に直接変更する test、環境変数、working directory、temp root、state dir、listener、goroutine、process、timer、file lock、network fake を残留させる test は、意味のあるテストとして扱ってはならない。test isolation は、test 単位の隔離境界、順序入替結果、共有状態の初期化、cleanup failure、parallel 実行可否、残留 resource 検出を対象機能に応じて固定しなければならない。test isolation の証跡 schema、記録項目、順序入替、共有状態、残留 resource、cleanup failure との対応は [`docs/details/fixture.md` fixture 証跡責務 test isolation evidence set 固定契約](details/fixture.md#test-isolation-evidence-set-contract) を正本とする。
+
+非決定的な test、flaky test、retry で偶然成功した test、実時間、乱数、file order、map order、network、GitHub API、systemd、process scheduling、goroutine scheduling、timer、sleep、host 固有 path、OS 差分、外部サービス応答に依存して結果が変わる test は、意味のあるテストとして扱ってはならない。失敗後の再実行で成功した結果、一定回数中の成功率、手元環境での成功、または CI 上の偶発的成功を完了根拠にしてはならない。決定性の証跡 schema、記録項目、fake adapter との対応、再実行一致条件は [`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](details/fixture.md#test-determinism-evidence-set-contract) を正本とする。
+
+data race を検出できない test、goroutine leak を残す test、lock / channel / worker の終了条件を確認しない test、並行 request や同時刻 event の競合結果を固定しない test、共有状態の lost update、二重 commit、二重 cleanup、重複通知、重複 audit、file lock 競合、shutdown 中 request の確定結果を検証しない test は、意味のあるテストとして扱ってはならない。並行処理 / race の証跡 schema、記録項目、race detector、schedule / interleaving、lock / channel / goroutine lifecycle、conflict outcome、atomicity、cleanup との対応は [`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](details/fixture.md#test-concurrency-race-evidence-set-contract) を正本とする。
+
+Go 実装で goroutine、channel、lock、listener、timer、file lock、queue、shutdown、共有状態、並行 request、同時刻 event を扱う変更は、race detector の実行証跡または race detector を対象外にできる責務正本 anchor 付き理由を持たなければならない。race detector を実行しないまま concurrency / race 対象変更を完了扱いにしてはならない。race detector が実行できない環境では、未実行理由と代替 interleaving 証跡を記録しても、対象外根拠がない限り open item として扱う。
+
+test harness、checker、contract drift checker、fixture assertion、expected 比較、security assertion、state diff assertion を変更する場合、またはこれらを実装完了・Phase 完了の根拠として使用する場合は、検出すべき不正 fixture、欠損 expected、禁止副作用、secret leak、fake transcript 不一致、cleanup failure、assertion 無効化を fail として検出できなければならない。常に fail する検証基盤、常に pass する検証基盤、negative control だけの検証、positive control だけの検証、または failure reason を特定できない検証基盤は、意味のあるテストの根拠として扱ってはならない。検証基盤自己検証の証跡 schema、negative control、positive control、fake transcript 検証、closure 接続は [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) を正本とする。
+
+mutation test（ミューテーションテスト）は必須とする。実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion を変更する場合、対象変更が検出すべき代表的な mutation を定義し、適用可能な mutation を kill しなければならない。mutation test を実施できない実装変更、または適用可能な mutation が生存する実装変更は、`実装済み`、Phase 全体完了、review ready、merge 可能として扱ってはならない。mutation test の証跡 schema、記録項目、fixture manifest との対応は [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract) を正本とする。
+
+mutation test は、ゼロ依存・フルインハウス原則に従い、本リポジトリで所有する Go 標準ライブラリ実装または既存の標準検証ランタイムだけで再現できなければならない。外部 mutation testing service、外部 hosted runner、許可外部ライブラリ、npm package、外部 framework、手作業の目視確認、coverage percentage だけを mutation test の完了根拠として使用してはならない。
+
+mutation test は、対象変更単位ごとに mutation operation、変異前、変異後、適用方法、実行 command、期待 failure、実際の failure、判定、集計へ到達できる再現可能な証跡を持たなければならない。mutation の目視確認、説明文だけの mutation、手元で一時的に試しただけの mutation、正本 artifact を直接変更したまま残す mutation、または再実行できない mutation は完了証跡として扱ってはならない。
+
+mutation test は、少なくとも次の mutation class を対象機能に応じて検出対象へ含める。
+
+| mutation class | 検出すべき誤り |
+|----------------|----------------|
+| 条件反転 | `==` / `!=`、`<` / `<=`、`>` / `>=`、nil 判定、空判定、feature flag、read-only 判定の反転。 |
+| 境界値変更 | 上限、下限、timeout、retry 回数、size、件数、permission scope、path depth、token 長、queue 順序の off-by-one。 |
+| エラー無視 | parse error、I/O error、HTTP status error、JSON decode error、state lock error、archive validation error、cleanup failure の握りつぶし。 |
+| 認証・認可 bypass | session、API token、scope、role、confirmation、read-only、loopback、CORS、CSRF 相当境界の bypass。 |
+| 状態更新漏れ | state write skip、atomic rename skip、lock skip、audit skip、metrics skip、history append skip、rollback skip。 |
+| 副作用過剰 | 禁止 file write、禁止 external call、禁止 notification、禁止 log、secret 平文出力、read-only 実行時 mutation。 |
+| 順序変更 | validation 優先順位、state write 順序、response 構築順、worker order、finalizer、cleanup、再取得順の変更。 |
+| response / schema 変更 | HTTP status、JSON key、型、必須 key、error code、CLI stdout / stderr、exit code、SDK error class、MCP JSON-RPC error の変更。 |
+| assertion 無効化 | expected file 比較、state diff、effects、security expected、manifest assertion、fixture presence check の削除または常時成功化。 |
+
+mutation の扱いは以下に固定する。
+
+| 判定 | 扱い |
+|------|------|
+| killed | 意味のあるテストが mutation を検出し、期待どおり失敗した状態。完了条件に使用できる。 |
+| survived | mutation が検出されず test が成功した状態。テスト不足または仕様不足として扱い、完了不可とする。 |
+| invalid | mutation が構文上成立しない、または対象仕様の観測可能挙動を作れない状態。理由、対象 file、対象 mutation class を証跡へ記録した場合だけ完了判定から除外できる。 |
+| equivalent | 責務正本に照らして観測可能挙動が完全に同一であることを、対象 anchor と理由で証明できる状態。証明できない場合は survived とする。 |
+
+coverage は参考指標に限る。line coverage、branch coverage、function coverage、statement coverage のいずれも、意味のあるテスト、mutation test、fixture 証跡、異常系、境界値、契約横断、副作用検証の代替にしてはならない。coverage が高い場合でも、mutation が生存する、assertion が弱い、失敗系がない、仕様追跡性がない、fixture 証跡がない場合は完了不可とする。
+
+テスト未整備の状態で実装を完了扱いにしてはならない。対象機能に対して意味のあるテストまたは mutation test を定義できない場合は、実装判断で対象外にせず、仕様不足として扱い、owner component 別の [`docs/details/*.md` 詳細本文責務](details/) または [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) を先に改訂しなければならない。仕様上明示された対象外だけは、対象外理由と正本 anchor を証跡へ記録した場合に限り、未実施テストとして扱わない。
 
 <a id="policy-versioning"></a>
 

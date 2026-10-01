@@ -13,6 +13,7 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 | owner component | `sdk` |
 | 実装主体 | [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js) の単一 ES Module。 |
 | 持つ内容 | `sdk` owner が主本文として定義する SDK class、method、HTTP 対応、query / body 生成、error、stream、token 破棄。 |
+| 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
 ---
 

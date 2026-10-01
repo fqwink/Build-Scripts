@@ -11,6 +11,7 @@
 | owner component | `commitstatus` |
 | 実装主体 | 単独の Go artifact は持たない。GitHub Commit Status の payload 生成、送信、結果保存は [`components/runner.go`](../../components/runner.go) に内包する。 |
 | 持つ内容 | `commitstatus` owner が主本文として定義する GitHub Commit Status API payload、送信順、失敗時非反転、保存値、secret mask、検証条件。 |
+| 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
 ---
 
