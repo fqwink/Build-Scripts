@@ -240,7 +240,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 - `Summary`
 - `Verification`
 - 競合防止確認
-- 仕様全般、重複箇所、問題点、改善点、または全件洗い出しを扱う Pull Request では、[`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](docs/SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](docs/SPEC.md#spec-deficiency-batch-closure-contract) に基づく分類結果、責務正本、処置結果、category routing 結果、`record_count`、`final_unresolved_count=0`、`test_gap_connection` の適用結果、仕様全般不備 inventory record と batch closure の記録先を同一 Pull Request 本文へ記録する。
+- 仕様全般、重複箇所、問題点、改善点、または全件洗い出しを扱う Pull Request では、[`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](docs/SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](docs/SPEC.md#spec-deficiency-batch-closure-contract) に基づく分類結果、責務正本、処置結果、category routing 結果、`inspection_scope`、`inspection_pass_count`、`inspection_pass_summary`、`record_count`、`final_unresolved_count=0`、`test_gap_connection` の適用結果、仕様全般不備 inventory record と batch closure の記録先を同一 Pull Request 本文へ記録する。
 - 未実施の確認がある場合は、その理由
 - 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、test harness 変更、checker 変更、assertion 変更、または Phase 全体完了判定に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `PR 証跡` と対象証跡行に到達できる記録先、または仕様上対象外である理由を同一 Pull Request 本文へ記録する。
 - テスト関連改善に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `test evidence package`、`test gap inventory / batch closure`、`18 record closure set` に到達できる記録先、最終 open item 件数 `0`、mutation selection の `survived=0`、race trigger の open item `0`、対象外項目の責務正本 anchor を同一 Pull Request 本文へ記録する。

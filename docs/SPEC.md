@@ -606,7 +606,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。検証条件は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす。Phase 11 横断対象の場合も、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から該当 owner 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できる。 |
 | 横断契約 | API、SDK、UI、状態ファイル、認証、セットアップの対応関係が該当する詳細本文責務で同期している。 |
 | 重複記載 | [`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) への適合確認が完了し、未解消違反が 0 件である。 |
-| 仕様全般不備一括棚卸し | 仕様全般の再整備、重複箇所、問題点、改善点、または残存しない全件洗い出しを目的にする仕様 PR では、検出した各不備を `重複記載`、`責務外本文`、`参照切れ`、`責務正本未確定`、`状態不整合`、`索引不整合`、`詳細仕様不足`、`fixture 証跡不足`、`デザイン責務混入`、`作業ルール混入`、`実装 artifact 所在不整合` のいずれかに分類し、各件について唯一の責務正本、処置先、処置内容、参照化または削除または正本本文化の結果、解消状態を同一 PR 内で閉じる。完了証跡は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) の両方を満たす。テスト関連の不備は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由して fixture 証跡責務へ接続する。未分類、責務正本未確定、未解消、対象外理由 anchor 不足、`record_count` 不一致、`final_unresolved_count=0` 未達、category routing 違反、または `source=spec-gap` と `test_gap_connection` の未接続が 1 件でも残る場合は完了扱いにしてはならない。 |
+| 仕様全般不備一括棚卸し | 仕様全般の再整備、重複箇所、問題点、改善点、または残存しない全件洗い出しを目的にする仕様 PR では、検出した各不備を `重複記載`、`責務外本文`、`参照切れ`、`責務正本未確定`、`状態不整合`、`索引不整合`、`詳細仕様不足`、`fixture 証跡不足`、`デザイン責務混入`、`作業ルール混入`、`実装 artifact 所在不整合` のいずれかに分類し、各件について唯一の責務正本、処置先、処置内容、参照化または削除または正本本文化の結果、解消状態を同一 PR 内で閉じる。完了証跡は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) の両方を満たす。テスト関連の不備は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由して fixture 証跡責務へ接続する。未分類、責務正本未確定、未解消、対象外理由 anchor 不足、`inspection_scope` 不足、`inspection_pass_count` 未達、`inspection_pass_summary` 不足、`record_count` 不一致、`final_unresolved_count=0` 未達、category routing 違反、または `source=spec-gap` と `test_gap_connection` の未接続が 1 件でも残る場合は完了扱いにしてはならない。 |
 | 索引責務 | ファイル名、正本参照先、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |
 | owner 網羅 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に列挙された owner component のうち、[`docs/ROADMAP.md`](ROADMAP.md) で `未仕様化` または `将来計画` 以外の機能を持つ owner は、少なくとも 1 件の機能から owner 詳細本文と fixture 証跡へ到達できる。実装 artifact の行で owner 機能の現在状態を代用していない。 |
 | 列挙閉包 | 許可値、許可 path、許可副作用、許可依存、fixture component、schema key の集合が固定列挙または明示的な登録条件で閉じており、未登録値の扱いが確定している。 |
@@ -653,10 +653,15 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 
 仕様全般不備 batch closure は、仕様全般の再整備、重複箇所、問題点、改善点、または残存しない全件洗い出しを目的にする仕様 PR 1 本につき 1 組だけ作成する。batch closure の正本は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion) とし、Pull Request 本文、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、[`docs/ROADMAP.md`](ROADMAP.md)、owner 詳細本文、または fixture 証跡責務で同じ schema を再定義してはならない。
 
+仕様全般不備 batch closure は、全件洗い出し、残存しない洗い出し、完全実装精度レベルの確認、またはユーザーが複数回の反復確認を求めた仕様 PR では、最低 5 pass の独立した確認を記録しなければならない。5 pass は、責務正本・重複、リンク・anchor・path、状態・Phase・現在状態、テスト証跡・fixture root、実装 artifact・索引・利用入口の確認をそれぞれ少なくとも 1 回含む。5 pass 未満、同一観点だけの反復、または pass ごとの検出件数と解消件数を記録できない確認は、全件洗い出しの完了証跡として扱わない。
+
 | field | 固定値 / 形式 | 未完了条件 |
 |-------|---------------|------------|
 | `batch_id` | `specbatch-<scope>-<number>` の lowercase kebab-case。 | 空、重複、または対象 scope を識別できない。 |
 | `inventory_location` | 仕様全般不備 inventory record 群の所在。Pull Request 本文に置く場合は `pr-verification`、文書内に置く場合は責務名付き Markdown link。 | 所在がない、口頭説明だけ、または実在しない path / anchor を指す。 |
+| `inspection_scope` | 確認した責務範囲を責務名で列挙する。全件洗い出しでは、方針責務、ポリシー責務、状態・計画責務、詳細仕様入口責務、owner component 別詳細本文責務、fixture 証跡責務、デザイン責務、文書・実装ファイル所在の索引責務、利用入口責務、[`AGENTS.md`](../AGENTS.md) 最上位ルールブックを含める。 | 確認範囲が不明、責務名なし、対象外にした責務の理由なし、またはテスト関連作業なのに fixture 証跡責務と横断テスト証跡共通入口を含まない。 |
+| `inspection_pass_count` | 実施した独立確認 pass 数を整数で記録する。全件洗い出し、残存しない洗い出し、完全実装精度レベルの確認、またはユーザー指定がある場合は `5` 以上に固定する。 | 件数未記録、必要条件より少ない、または同一出力の再掲だけを複数 pass と数えている。 |
+| `inspection_pass_summary` | 各 pass の `pass_id`、確認観点、対象責務、検出 record 数、closed / not_applicable 件数、pass 後の unresolved 件数、証跡 location を記録する。 | pass ごとの観点または件数が不明、最終 pass 後の unresolved 件数が `0` でない、または証跡へ到達できない。 |
 | `record_count` | inventory record の総数を整数で記録する。検出 0 件の場合も `0` を明示する。 | 件数未記録、または inventory record 数と一致しない。 |
 | `category_summary` | 使用した category ごとの件数と、未使用 category の `0` を記録する。 | category ごとの件数が不明、または未登録 category を含む。 |
 | `canonical_responsibility_summary` | 全 record が本節の category routing に従い、唯一の `canonical_responsibility` を持つことを記録する。 | 複数正本、正本未確定、裸のファイル名、または routing 不一致が残る。 |
@@ -665,7 +670,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | `final_unresolved_count` | 未解消 record 件数を整数で記録し、完了扱いでは `0` に固定する。 | 件数未記録、`0` 以外、または残件を別変更で閉じる説明がある。 |
 | `status` | `closed` または `not_applicable` のいずれか。 | `open`、未登録値、または `not_applicable` に対象外範囲と責務正本 anchor がない。 |
 
-仕様全般不備 batch closure は、全 inventory record の `status` が `closed` または `not_applicable`、`record_count` と実 record 数が一致、`final_unresolved_count=0`、category routing 違反 `0`、テスト固有 `source=spec-gap` の `test_gap_link` 未接続 `0`、`test_gap_connection` 未接続 `0`、処置先未到達 `0` の場合だけ閉じる。最終 record より後に残件、暫定対応、後続 PR 前提、または未確認事項を追記した batch closure は完了証跡として扱わない。
+仕様全般不備 batch closure は、全 inventory record の `status` が `closed` または `not_applicable`、`inspection_scope` が対象責務を閉じ、`inspection_pass_count` が必要 pass 数を満たし、`inspection_pass_summary` の最終 pass 後 unresolved 件数が `0`、`record_count` と実 record 数が一致、`final_unresolved_count=0`、category routing 違反 `0`、テスト固有 `source=spec-gap` の `test_gap_link` 未接続 `0`、`test_gap_connection` 未接続 `0`、処置先未到達 `0` の場合だけ閉じる。最終 record より後に残件、暫定対応、後続 PR 前提、または未確認事項を追記した batch closure は完了証跡として扱わない。
 
 仕様 PR は、未確定事項を「推奨」「検討」「適切に」等の表現だけで残してはならない。未確定事項を残す場合は、実装不可の `未仕様化` または `将来計画` として明示する。
 
