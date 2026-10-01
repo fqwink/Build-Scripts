@@ -161,6 +161,24 @@ Phase 11 対象 root は、正式 fixture directory、実装検証証跡、ま�
 | `testdata/security/` | Phase 11 対象の未作成 root。 | [`docs/details/security.md` 詳細本文責務](security.md)、[`§0g.8-F`](#0g8-f-fixture--testdata--fake--実装検証証跡契約)、[non-dedicated owner test routing 固定契約](#non-dedicated-owner-test-routing-contract) | 未作成 root 共通未完了条件を適用。 |
 | `testdata/admin/archive/`、`testdata/admin/static-serving/`、`testdata/admin/security/` | Admin group root 配下の候補 root。現時点では Admin CLI の正式 fixture root ではない。 | [Admin CLI fixture 固定契約](#admin-cli-fixture-contract)、[`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) | Admin CLI 完了証跡として数えた場合は未完了。作成する場合は該当 owner / state / fixture catalog を先に一致させる。 |
 
+<a id="fixture-root-missing-closure-record-contract"></a>
+**未作成 fixture root closure record 固定契約：**
+
+Phase 11 対象 root のうち [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務](../DOCUMENT_INDEX.md#実装ファイル一覧) で `未作成` とされている root は、正式 fixture directory、実装検証証跡、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できるまで closure できない。未作成 root を hidden fixture、既存 Go test、または PR 本文の説明だけで閉じてはならない。
+
+未作成 fixture root closure record は、root ごとに 1 件作成する。record は次の field を持つ。
+
+| field | 固定値 / 形式 | 未完了条件 |
+|-------|---------------|------------|
+| `fixture_root` | `testdata/<owner>/` または固定表に記載された root / pattern。 | root が空、または [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md#実装ファイル一覧) と一致しない。 |
+| `owner_component` | 対象 owner component 名。 | owner 不明、または root から推測だけで決めている。 |
+| `document_index_status` | `実在` または `未作成`。 | 索引責務の所在区分と一致しない。 |
+| `closure_method` | `formal_fixture`、`implementation_evidence`、`not_applicable`、`open` のいずれか。 | 未登録値、または根拠なしで `formal_fixture` / `implementation_evidence` / `not_applicable` にしている。 |
+| `closure_refs` | 正式 fixture directory、実装検証証跡、または対象外理由 anchor への責務名付き Markdown link 配列。 | 空、実在しない path、または責務正本 anchor なし。 |
+| `open_items` | 作成すべき fixture、expected、fake、assertion、mutation class、drift record を列挙する。 | `closure_method=open` なのに不足内容が不明、または `closure_method` が open 以外なのに残件がある。 |
+
+未作成 fixture root closure record の `closure_method=open` が 1 件でも残る場合、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の `fixture_root_closure` と `final_open_item_count` は closed にできない。
+
 Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*_test.go`、`sdk_contract_test.go`、`ui_contract_test.go` を fixture 証跡の補助 source として扱う。これらの test / contract assertion は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry)、owner 詳細本文、fixture catalog、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract)、または [`docs/ROADMAP.md` 状態・計画責務](../ROADMAP.md) の対象外理由へ到達できなければならない。test file 自体を仕様正本として扱ってはならず、fixture catalog と owner 詳細本文へ到達しない assertion は Phase 11 の未解消 drift とする。mutation test 証跡は [mutation test 証跡固定契約](#mutation-test-evidence-contract) に従い、Phase 11 では `survived=0` を満たすまで完了扱いにしない。
 
 <a id="test-artifact-traceability-contract"></a>
@@ -280,6 +298,40 @@ Phase 11 の test / contract drift 判定では、`main_test.go`、`components/*
 
 component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) / [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) のいずれの実装検証証跡でも、記録形式は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務の表に従う。owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/details/setup.md`](setup.md) 詳細本文責務に同種の記録項目がある場合でも、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は証跡分類、不足時の扱い、差し戻し条件だけを固定する。
 
+<a id="test-evidence-package-record-location-contract"></a>
+**test evidence package 記録先固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、実装変更、検証変更、fixture 変更、Phase 全体完了判定で提出する test evidence package の記録単位と到達条件だけを固定する。テスト方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、Pull Request 本文への記録手順は [`AGENTS.md` Git 運用ルール](../../AGENTS.md#agents-git-operations) を参照する。
+
+test evidence package は、単一の対象変更単位ごとに 1 組だけ作成する。対象変更単位は、1 つの実装 Pull Request、1 つの検証 Pull Request、1 つの fixture / expected 変更、1 つの owner artifact 検証、または 1 つの Phase 全体完了判定のいずれかに固定する。同じ test evidence package に複数 Phase、無関係な owner、後続 Phase、または完了判定しない将来作業を混在させてはならない。
+
+| 固定項目 | 契約 | 未完了条件 |
+|----------|------|------------|
+| `evidence_package_id` | `phase-<number>-<scope>` または `<owner>-<feature>-<scope>` の lowercase kebab-case とし、同一 Pull Request 内で一意にする。 | id がない、空、重複、line number、commit hash だけ、または対象 owner / Phase を識別できない。 |
+| `record_location` | Pull Request の `Verification` に記録する場合は `pr-verification`、fixture / expected / testdata に記録する場合は repository root 起点の path、文書内に記録する場合は責務名付き Markdown link を記録する。 | 記録先がない、口頭説明だけ、または実在しない path / anchor を記録している。 |
+| `scope` | 対象 Phase、対象 owner、collaborator、対象 artifact、対象 test artifact、対象 fixture root、対象仕様 anchor、対象外 artifact を列挙する。 | 対象 owner、artifact、fixture root、仕様 anchor のいずれかが不明である。 |
+| `required_evidence_sets` | 適用する coverage ledger、closure record set、oracle、failure diagnostics、boundary / failure matrix、isolation、determinism、concurrency / race、mutation、harness self-verification、contract drift を列挙する。 | 適用判断がない、または適用対象の evidence set が記録先へ到達できない。 |
+| `not_applicable_evidence_sets` | 適用外の evidence set は、対象外範囲、理由、責務正本 anchor、完了可否への影響を同じ package に記録する。 | 理由だけ、anchor だけ、将来対応、または対象外範囲不明で適用外にしている。 |
+| `final_open_item_count` | 全 evidence set と closure record set の open item 合計を整数で記録し、完了扱いでは `0` に固定する。 | 件数未記録、`0` 以外、または残件を別変更で閉じる説明がある。 |
+
+test evidence package は、[implementation PR evidence template 固定契約](#implementation-pr-evidence-template-contract)、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract)、[test requirement coverage ledger 固定契約](#test-requirement-coverage-ledger-contract)、該当 evidence set、[test / contract drift report schema 固定契約](#test-contract-drift-report-schema-contract) のいずれにも到達できない場合、完了証跡として扱わない。
+
+<a id="test-assertion-id-contract"></a>
+**assertion id 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、test、subtest、contract assertion、fixture assertion、expected 比較、security assertion、state diff assertion を安定識別する assertion id の形式だけを固定する。assertion id がない test の完了禁止は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、failure diagnostics evidence set は [test assertion identity / failure diagnostics evidence set 固定契約](#test-assertion-failure-diagnostics-evidence-set-contract) を参照する。
+
+assertion id は `owner.feature.case.assertion` を最小 4 segment とする lowercase dot notation に固定する。各 segment は `^[a-z][a-z0-9-]*$` とし、owner segment は `builder`、`runner`、`api`、`admin`、`sdk`、`ui`、`statefile`、`archive`、`commitstatus`、`setup`、`release`、`security`、`mcp` のいずれかにする。必要な場合だけ 5 segment 目以降に field、boundary、mutation class を追加できる。最大 segment 数は 7 とする。
+
+| 対象 | assertion id の条件 | 禁止形式 |
+|------|---------------------|----------|
+| Go test / subtest | 対象 owner、feature、case、assertion を id に含め、subtest 名と 1 対 1 で対応できる。 | line number、`TestX/1`、実行順、table index、乱数、timestamp、commit hash。 |
+| fixture assertion | `manifest.json.assertions` の値、expected file、比較対象 field、対象仕様 anchor へ接続する。 | fixture 名だけ、expected file 名だけ、`state` や `response` だけの汎用名。 |
+| contract assertion | API endpoint、SDK method、UI operation、CLI command、state path、MCP method のいずれかを case または assertion に含める。 | HTTP status だけ、method 名だけ、DOM selector だけ、snapshot 名だけ。 |
+| mutation assertion | mutation class、対象 file、期待 failure、実際の failure と接続する。 | mutation class だけ、対象 file だけ、`killed` 件数だけ。 |
+
+assertion id を変更する場合は、変更前 id、変更後 id、変更理由、対象 requirement、対象 evidence set、contract drift への影響を同じ test evidence package に記録する。assertion id の rename だけで検証要求を covered と扱ってはならない。
+
 <a id="test-execution-evidence-matrix-contract"></a>
 **test execution evidence matrix 固定契約：**
 
@@ -303,6 +355,26 @@ component、API、[`docs/details/runner.md` 詳細本文責務 §27](runner.md#2
 | mutation test 検証 | 実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion。 | mutation class、対象 file、対象 fixture、実行単位、判定、`killed` / `survived` / `invalid` / `equivalent` 件数。 | [mutation test 証跡固定契約](#mutation-test-evidence-contract) の `survived` が 1 件以上ある、または対象 mutation が未定義。 |
 | cross-owner contract 検証 | API / SDK / UI、CLI / API、statefile / archive / security / runner、setup / release / admin の横断境界。 | 呼び出し元 owner、呼び出し先 owner、endpoint / method / command / state path、状態差分、security effect、成功後再取得、失敗時 no mutation、関連 fixture。 | 片側の契約だけを検証している、または collaborator の副作用、security、状態差分、失敗時固定が未確認。 |
 | 未実行・対象外証跡 | 必須検証を実行できない場合、または仕様上対象外とする場合。 | 未実行 command、未実行理由、影響 owner、影響 fixture、再実行条件、対象外にする責務正本 anchor、完了可否への影響。 | 必須検証の未実行理由がない、対象外 anchor がない、または未実行のまま完了扱いにしている。 |
+
+<a id="test-skip-evidence-contract"></a>
+**skip / 未実行証跡固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、skip、未実行、環境機能不足、対象外判断を完了判定で扱うための証跡 schema だけを固定する。skip を成功として扱うことの禁止、対象外理由 anchor の必須条件は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) を参照する。
+
+skip / 未実行 record は、必須検証を実行しない command、test、subtest、fixture、assertion、evidence set ごとに 1 件作成する。複数の未実行理由を 1 record へまとめてはならない。
+
+| field | 固定値 / 形式 | 未完了条件 |
+|-------|---------------|------------|
+| `skip_id` | `skip.<owner>.<feature>.<case>` の lowercase dot notation。 | id がない、重複、対象 owner 不明。 |
+| `skip_type` | `environment_capability`、`tool_unavailable`、`runtime_unavailable`、`unsupported_platform`、`spec_not_applicable`、`blocked_by_open_item` のいずれか。 | 未登録値、または実行失敗を skip として分類している。 |
+| `target` | 未実行 command、test、subtest、fixture、assertion、evidence set、または mutation class。 | 対象が空、または複数対象を 1 record に混在させている。 |
+| `owner_component` | 対象 owner component 名。 | 対象 owner 不明。 |
+| `requirement_refs` | 対象 owner 詳細本文、fixture 証跡、[`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md) の責務名付き Markdown link 配列。 | anchor なし、裸のファイル名、または責務正本へ到達できない。 |
+| `reason` | 固定理由。環境機能不足の場合は不足した capability、確認方法、再実行条件を含める。 | `環境都合`、`手元で不可`、`不要` だけの説明。 |
+| `substitute_evidence_refs` | 代替証跡がある場合は evidence package、test、fixture、expected、manual でない実行証跡への link。代替なしは空配列。 | 代替ありと書いているが参照先がない。 |
+| `completion_impact` | `closed_by_alternative`、`not_applicable`、`open` のいずれか。 | 必須検証を未実行なのに `closed_by_alternative` または `not_applicable` の根拠がない。 |
+
+`completion_impact=open` の skip / 未実行 record が 1 件でも残る場合、test evidence package、closure record set、Phase 全体完了、`実装済み` 判定を完了扱いにしてはならない。`completion_impact=not_applicable` は責務正本 anchor がある場合だけ使用できる。`completion_impact=closed_by_alternative` は代替証跡が同じ requirement を covered にできる場合だけ使用できる。
 
 <a id="test-verification-closure-checklist-contract"></a>
 **test verification closure checklist 固定契約：**
@@ -546,6 +618,8 @@ mutation test の完了可否は [`docs/SPEC.md` ポリシー責務 §0g](../SPE
 | 対象責務 | owner component、collaborator component、対象機能、対象 file、対象 test 名または fixture 名、対象 anchor。 | 仕様追跡性不足として未完了。 |
 | mutation class | [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) の mutation class 名、変異対象、検出したい仕様違反。 | mutation 対象未定義として未完了。 |
 | mutation 実行単位 | 変更した実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion のいずれを変異対象にしたか。 | 実装変更と検証変更の対応不足として未完了。 |
+| mutation operation | `operation_id`、対象 file、対象 function / assertion / expected、変異前、変異後、適用方法、temp copy 使用有無を記録する。 | 変異内容が再現できない、変異前後が不明、または正本 artifact を直接変更したまま残している。 |
+| mutation patch 証跡 | unified diff、変換規則、または before / after expression のいずれかで mutation を再適用できる証跡を記録する。 | 文章説明だけ、目視確認だけ、または mutation を再実行できない。 |
 | 実行方法 | 実行コマンド、固定入力、fake clock / fake entropy / fake filesystem / fake HTTP / fake process / fake browser runtime の使用有無、外部通信禁止確認。 | 再現不能として未完了。 |
 | 判定 | `killed`、`survived`、`invalid`、`equivalent` のいずれか、期待 failure、実際の failure、終了コード、差分。 | 判定不能として未完了。 |
 | survived 対応 | `survived` が 1 件以上ある場合の不足 test、未固定仕様、追加すべき fixture、完了不可理由。 | `survived` を残したまま完了扱い不可。 |
@@ -605,6 +679,26 @@ test / contract drift 判定では、実装 test、contract test、fixture manif
 | 未検証契約 | owner 詳細本文に入力、出力、異常系、状態、副作用、security、境界値、mutation 条件があるが対応する test / fixture / expected / mutation 証跡がない。 | fixture と test を追加し、実装検証証跡へ記録する。 |
 | 期待値ドリフト | expected、snapshot、security expected、effects が owner 詳細本文または [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) と矛盾する。 | expected を責務正本に合わせる。実装挙動へ合わせるための期待値緩和は禁止する。 |
 | harness ドリフト | fixture manifest、fixture catalog、directory 名、test 名、実装検証証跡の対象 owner または fixture 名が一致しない。 | [manifest 識別子レジストリ固定契約](#sec-27-f-manifest-identity) と対象 fixture catalog へ一致させる。 |
+
+<a id="test-contract-drift-report-schema-contract"></a>
+**test / contract drift report schema 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の判定結果を対象変更単位ごとに残す record schema だけを固定する。drift の完了禁止は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、Phase 11 完了判定は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) を参照する。
+
+test / contract drift report は、単一の対象変更単位ごとに 1 組作成する。同じ report に複数 Phase、無関係な owner、または完了判定しない後続作業を混在させてはならない。
+
+| field | 固定値 / 形式 | 未完了条件 |
+|-------|---------------|------------|
+| `drift_id` | `drift.<owner>.<type>.<case>` の lowercase dot notation。 | id がない、重複、対象 owner 不明。 |
+| `drift_type` | `orphan_test`、`unverified_contract`、`expected_drift`、`harness_drift` のいずれか。 | 未登録値、または drift 種別不明。 |
+| `owner_component` | 対象 owner component 名。 | owner 不明、または collaborator のみで owner がない。 |
+| `source_ref` | test、fixture、expected、manifest、harness、checker、owner 詳細本文 anchor のいずれかへの責務名付き Markdown link。 | 裸のファイル名、line number だけ、または実在しない anchor。 |
+| `canonical_ref` | 正本とする owner 詳細本文、fixture 証跡、[`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md) の責務名付き Markdown link。 | 正本 anchor なし、または実装ファイルだけを正本にしている。 |
+| `evidence_refs` | drift 判定に用いた test artifact、fixture root、expected、manifest、coverage ledger、mutation evidence、closure record への link 配列。 | 判定根拠が説明文だけ、または pass 件数だけである。 |
+| `resolution` | `fixed`、`not_applicable`、`open` のいずれか。 | open なのに完了扱い、または `not_applicable` に責務正本 anchor がない。 |
+| `open_item` | `resolution=open` の場合に必要な追加 test、fixture、expected、mutation、詳細仕様改訂を記録する。 | open なのに不足内容が不明。 |
+
+test / contract drift report は、`resolution=open` が 1 件でも残る場合、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の `contract_drift_closure` と `final_open_item_count` を closed にできない。report を作れない場合は、対象外として扱わず、検証不足として扱う。
 
 <a id="sec-0g-8-f"></a>
 **[fixture 証跡責務 §0g.8-F fixture / testdata 配置固定契約](fixture.md#sec-0g-8-f)：**
@@ -1842,6 +1936,15 @@ Fixture manifest の component 識別子は `builder`、`runner`、`api`、`admi
 | `missing_state` | array[string] | 必須 | fixture の仮想実行 cwd 起点の `/` 区切り相対 path で、実行前に存在しないことを期待する状態 file だけを ASCII 昇順、重複なしで持つ。directory、symlink、絶対 path、`.` / `..` segment を禁止する。該当なしは空配列とする。 |
 | `input_files` | array[string] | 必須 | fixture directory からの `/` 区切り相対 path。対象 file set 契約が許可する `input/` 配下の通常 file だけを ASCII 昇順、重複なしで持ち、非空時は実在 input file set と完全一致させる。input file 不要時は空配列とする。directory、symlink、絶対 path、`.` / `..` segment を禁止する。 |
 | `assertions` | array[string] | 必須 | `response`、`request`、`sdk-trace`、`sdk-return`、`sdk-error`、`ui-trace`、`ui-dom`、`stdout`、`stderr`、`state`、`logs`、`effects`、`secret-mask`、`order`、`idempotency`、`no-write` の 1 件以上。重複を禁止し、複数値はこの列挙順で記録する。 |
+
+<a id="fixture-manifest-not-applicable-boundary-contract"></a>
+**manifest `not_applicable` 境界固定契約：**
+
+`manifest.json.not_applicable` は、fixture file set 内の条件付き候補 file または directory が当該 fixture で不要であることだけを示す。`manifest.json.not_applicable` を、意味のあるテスト、requirement coverage、mutation test、concurrency / race、contract drift、fixture root coverage、Phase 全体完了の対象外理由として扱ってはならない。
+
+完了判定上の対象外理由は、[test requirement coverage ledger 固定契約](#test-requirement-coverage-ledger-contract)、[test verification closure record schema 固定契約](#test-verification-closure-record-schema-contract)、[skip / 未実行証跡固定契約](#test-skip-evidence-contract)、[mutation test evidence set 固定契約](#mutation-test-evidence-set-contract)、または [test evidence package 記録先固定契約](#test-evidence-package-record-location-contract) の該当 record に、対象外範囲、理由、責務正本 anchor、完了可否への影響を記録した場合だけ成立する。
+
+`manifest.json.not_applicable` の `reason` と完了判定 record の対象外理由が矛盾する場合は、fixture 証跡不整合として扱う。`manifest.json.not_applicable` だけが存在し、完了判定 record がない場合は、対象外が成立したものとして扱わない。
 
 <a id="sec-27-f-9"></a>
 **[fixture 証跡責務 §27-F 合否判定固定契約](fixture.md#sec-27-f-9)：**

@@ -702,6 +702,10 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 意味のあるテストとは、仕様違反、実装の分岐誤り、境界値誤り、副作用漏れ、認証・認可 bypass、secret 漏えい、状態破損、並行処理順序誤り、外部境界の失敗処理漏れ、または回帰を検出できるテストをいう。実装を一度実行するだけの smoke test、assertion が存在しないテスト、戻り値や副作用を検証しないテスト、正常系だけのテスト、実装詳細の存在だけを確認するテスト、coverage percentage だけを満たすテストは、意味のあるテストとして扱ってはならない。
 
+意味のあるテストの完了証跡は、対象 owner、対象仕様 anchor、assertion、実行証跡、未実行理由、対象外理由、mutation 判定、drift 判定、closure 状態へ到達できる記録でなければならない。実行した command 名、pass 件数、coverage percentage、fixture directory の存在、または Pull Request の説明文だけを完了証跡として扱ってはならない。完了証跡の記録単位と記録先は [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract)、assertion id は [`docs/details/fixture.md` fixture 証跡責務 assertion id 固定契約](details/fixture.md#test-assertion-id-contract)、skip / 未実行は [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](details/fixture.md#test-skip-evidence-contract)、drift report は [`docs/details/fixture.md` fixture 証跡責務 test / contract drift report schema 固定契約](details/fixture.md#test-contract-drift-report-schema-contract) を正本とする。
+
+skip、`t.Skip`、環境機能不足、Docker / Deno / Go toolchain / race detector の未使用、または local 環境都合による未実行は、成功として扱ってはならない。必須検証を実行しない場合は、対象 owner、対象 requirement、未実行理由、代替証跡、再実行条件、完了可否への影響、責務正本 anchor を記録しなければならない。代替証跡または仕様上の対象外理由へ到達できない skip は open item として扱い、`実装済み`、Phase 全体完了、review ready、merge 可能として扱ってはならない。
+
 実装対象機能、実装変更、検証基盤変更は、以下をすべて満たさなければ完了扱いにしてはならない。
 
 | 判定対象 | 必須条件 |
@@ -726,6 +730,8 @@ owner 詳細本文の検証条件、fixture 証跡条件、状態・計画責務
 
 assertion id がない test、対象仕様 anchor へ到達できない test、失敗時に期待値、実値、差分、failure reason、再現条件を特定できない test、generic な failure message だけを返す test、pass / fail 件数だけを記録する test、secret を診断出力へ露出する test は、意味のあるテストとして扱ってはならない。failure diagnostics は、assertion id、対象 owner、対象仕様 anchor、expected / actual / diff、failure reason、reproduction command、secret-safe diagnostics を対象機能に応じて固定しなければならない。failure diagnostics の証跡 schema、記録項目、assertion identity、failure reason、secret-safe diagnostics、closure 接続は [`docs/details/fixture.md` fixture 証跡責務 test assertion identity / failure diagnostics evidence set 固定契約](details/fixture.md#test-assertion-failure-diagnostics-evidence-set-contract) を正本とする。
 
+assertion id は、test 名、fixture 名、line number、subtest の表示名、実行順、または自動採番だけで代用してはならない。assertion id は対象 owner、feature、case、assertion の意味を持つ安定識別子とし、名前変更、行番号変更、test 順序変更、fixture directory の移動だけで意味が変わってはならない。assertion id の形式、禁止形式、fixture manifest assertion との接続は [`docs/details/fixture.md` fixture 証跡責務 assertion id 固定契約](details/fixture.md#test-assertion-id-contract) を正本とする。
+
 正常系だけの test、代表的な異常系だけの test、境界値を 1 点だけ確認する test、HTTP status / exit code / error class だけを確認する test、partial failure、rollback、cleanup failure、retry 上限、timeout 境界、size / count / path / ID / schema / header / option の上限下限を固定しない test は、意味のあるテストとして扱ってはならない。boundary / failure matrix は、入力 class、limit、error taxonomy、partial failure、rollback、cleanup failure、retry / recovery、失敗時 no mutation を対象機能に応じて固定しなければならない。boundary / failure matrix の証跡 schema、記録項目、error taxonomy、partial failure、rollback、cleanup failure、closure 接続は [`docs/details/fixture.md` fixture 証跡責務 test boundary / failure matrix evidence set 固定契約](details/fixture.md#test-boundary-failure-matrix-evidence-set-contract) を正本とする。
 
 test 間で共有状態を汚染する test、実行順序に依存する test、fixture / expected を実行中に直接変更する test、環境変数、working directory、temp root、state dir、listener、goroutine、process、timer、file lock、network fake を残留させる test は、意味のあるテストとして扱ってはならない。test isolation は、test 単位の隔離境界、順序入替結果、共有状態の初期化、cleanup failure、parallel 実行可否、残留 resource 検出を対象機能に応じて固定しなければならない。test isolation の証跡 schema、記録項目、順序入替、共有状態、残留 resource、cleanup failure との対応は [`docs/details/fixture.md` fixture 証跡責務 test isolation evidence set 固定契約](details/fixture.md#test-isolation-evidence-set-contract) を正本とする。
@@ -734,11 +740,15 @@ test 間で共有状態を汚染する test、実行順序に依存する test�
 
 data race を検出できない test、goroutine leak を残す test、lock / channel / worker の終了条件を確認しない test、並行 request や同時刻 event の競合結果を固定しない test、共有状態の lost update、二重 commit、二重 cleanup、重複通知、重複 audit、file lock 競合、shutdown 中 request の確定結果を検証しない test は、意味のあるテストとして扱ってはならない。並行処理 / race の証跡 schema、記録項目、race detector、schedule / interleaving、lock / channel / goroutine lifecycle、conflict outcome、atomicity、cleanup との対応は [`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](details/fixture.md#test-concurrency-race-evidence-set-contract) を正本とする。
 
+Go 実装で goroutine、channel、lock、listener、timer、file lock、queue、shutdown、共有状態、並行 request、同時刻 event を扱う変更は、race detector の実行証跡または race detector を対象外にできる責務正本 anchor 付き理由を持たなければならない。race detector を実行しないまま concurrency / race 対象変更を完了扱いにしてはならない。race detector が実行できない環境では、未実行理由と代替 interleaving 証跡を記録しても、対象外根拠がない限り open item として扱う。
+
 test harness、checker、contract drift checker、fixture assertion、expected 比較、security assertion、state diff assertion を変更する場合、またはこれらを実装完了・Phase 完了の根拠として使用する場合は、検出すべき不正 fixture、欠損 expected、禁止副作用、secret leak、fake transcript 不一致、cleanup failure、assertion 無効化を fail として検出できなければならない。常に fail する検証基盤、常に pass する検証基盤、negative control だけの検証、positive control だけの検証、または failure reason を特定できない検証基盤は、意味のあるテストの根拠として扱ってはならない。検証基盤自己検証の証跡 schema、negative control、positive control、fake transcript 検証、closure 接続は [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) を正本とする。
 
 mutation test（ミューテーションテスト）は必須とする。実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion を変更する場合、対象変更が検出すべき代表的な mutation を定義し、適用可能な mutation を kill しなければならない。mutation test を実施できない実装変更、または適用可能な mutation が生存する実装変更は、`実装済み`、Phase 全体完了、review ready、merge 可能として扱ってはならない。mutation test の証跡 schema、記録項目、fixture manifest との対応は [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract) を正本とする。
 
 mutation test は、ゼロ依存・フルインハウス原則に従い、本リポジトリで所有する Go 標準ライブラリ実装または既存の標準検証ランタイムだけで再現できなければならない。外部 mutation testing service、外部 hosted runner、許可外部ライブラリ、npm package、外部 framework、手作業の目視確認、coverage percentage だけを mutation test の完了根拠として使用してはならない。
+
+mutation test は、対象変更単位ごとに mutation operation、変異前、変異後、適用方法、実行 command、期待 failure、実際の failure、判定、集計へ到達できる再現可能な証跡を持たなければならない。mutation の目視確認、説明文だけの mutation、手元で一時的に試しただけの mutation、正本 artifact を直接変更したまま残す mutation、または再実行できない mutation は完了証跡として扱ってはならない。
 
 mutation test は、少なくとも次の mutation class を対象機能に応じて検出対象へ含める。
 
