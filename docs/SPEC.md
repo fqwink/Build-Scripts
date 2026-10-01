@@ -602,7 +602,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | owner component 別詳細本文責務 | 実装に必要な具体値、入出力、状態、処理順序、異常系、検証条件が該当する [`docs/details/*.md`](details/) 詳細本文責務に明記されている。検証条件は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) を満たす。Phase 11 横断対象の場合も、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) から該当 owner 詳細本文と [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ到達できる。 |
 | 横断契約 | API、SDK、UI、状態ファイル、認証、セットアップの対応関係が該当する詳細本文責務で同期している。 |
 | 重複記載 | [`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) への適合確認が完了し、未解消違反が 0 件である。 |
-| 仕様全般不備一括棚卸し | 仕様全般の再整備、重複箇所、問題点、改善点、または残存しない全件洗い出しを目的にする仕様 PR では、検出した各不備を `重複記載`、`責務外本文`、`参照切れ`、`責務正本未確定`、`状態不整合`、`索引不整合`、`詳細仕様不足`、`fixture 証跡不足`、`デザイン責務混入`、`作業ルール混入`、`実装 artifact 所在不整合` のいずれかに分類し、各件について唯一の責務正本、処置先、処置内容、参照化または削除または正本本文化の結果、解消状態を同一 PR 内で閉じる。テスト関連の不備は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由して fixture 証跡責務へ接続する。未分類、責務正本未確定、未解消、対象外理由 anchor 不足が 1 件でも残る場合は完了扱いにしてはならない。 |
+| 仕様全般不備一括棚卸し | 仕様全般の再整備、重複箇所、問題点、改善点、または残存しない全件洗い出しを目的にする仕様 PR では、検出した各不備を `重複記載`、`責務外本文`、`参照切れ`、`責務正本未確定`、`状態不整合`、`索引不整合`、`詳細仕様不足`、`fixture 証跡不足`、`デザイン責務混入`、`作業ルール混入`、`実装 artifact 所在不整合` のいずれかに分類し、各件について唯一の責務正本、処置先、処置内容、参照化または削除または正本本文化の結果、解消状態を同一 PR 内で閉じる。完了証跡は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) の両方を満たす。テスト関連の不備は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由して fixture 証跡責務へ接続する。未分類、責務正本未確定、未解消、対象外理由 anchor 不足、`record_count` 不一致、`final_unresolved_count=0` 未達、category routing 違反、または `source=spec-gap` と `test_gap_connection` の未接続が 1 件でも残る場合は完了扱いにしてはならない。 |
 | 索引責務 | ファイル名、正本参照先、実装対象の変更がある場合、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新要否を確認している。 |
 | owner 網羅 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) に列挙された owner component のうち、[`docs/ROADMAP.md`](ROADMAP.md) で `未仕様化` または `将来計画` 以外の機能を持つ owner は、少なくとも 1 件の機能から owner 詳細本文と fixture 証跡へ到達できる。実装 artifact の行で owner 機能の現在状態を代用していない。 |
 | 列挙閉包 | 許可値、許可 path、許可副作用、許可依存、fixture component、schema key の集合が固定列挙または明示的な登録条件で閉じており、未登録値の扱いが確定している。 |
@@ -642,7 +642,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | `作業ルール混入` | [`AGENTS.md`](../AGENTS.md) 最上位ルールブックを `canonical_responsibility` とする。 |
 | `実装 artifact 所在不整合` | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を `canonical_responsibility` とする。 |
 
-仕様全般不備 inventory record は、全 record の `status` が `closed` または `not_applicable`、`open` 件数が `0`、テスト固有の仕様不足がある場合は `test_gap_link` から [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) へ到達できる場合だけ閉じる。仕様全般不備を fixture 証跡責務の `source=spec-gap` だけで閉じること、またはテスト固有の仕様不足を本 record だけで閉じることを禁止する。
+仕様全般不備 inventory record は、全 record の `status` が `closed` または `not_applicable`、`open` 件数が `0`、テスト固有の仕様不足がある場合は `test_gap_link` から [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) へ到達し、かつ [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) の `test_gap_connection` で当該 `defect_id` と `gap_id` の 1 対 1 対応へ到達できる場合だけ閉じる。仕様全般不備を fixture 証跡責務の `source=spec-gap` だけで閉じること、またはテスト固有の仕様不足を本 record だけで閉じることを禁止する。
 
 <a id="spec-deficiency-batch-closure-contract"></a>
 **仕様全般不備 batch closure 固定契約：**
@@ -661,7 +661,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | `final_unresolved_count` | 未解消 record 件数を整数で記録し、完了扱いでは `0` に固定する。 | 件数未記録、`0` 以外、または残件を別変更で閉じる説明がある。 |
 | `status` | `closed` または `not_applicable` のいずれか。 | `open`、未登録値、または `not_applicable` に対象外範囲と責務正本 anchor がない。 |
 
-仕様全般不備 batch closure は、全 inventory record の `status` が `closed` または `not_applicable`、`record_count` と実 record 数が一致、`final_unresolved_count=0`、category routing 違反 `0`、テスト固有 `source=spec-gap` と `test_gap_link` の未接続 `0`、処置先未到達 `0` の場合だけ閉じる。最終 record より後に残件、暫定対応、後続 PR 前提、または未確認事項を追記した batch closure は完了証跡として扱わない。
+仕様全般不備 batch closure は、全 inventory record の `status` が `closed` または `not_applicable`、`record_count` と実 record 数が一致、`final_unresolved_count=0`、category routing 違反 `0`、テスト固有 `source=spec-gap` の `test_gap_link` 未接続 `0`、`test_gap_connection` 未接続 `0`、処置先未到達 `0` の場合だけ閉じる。最終 record より後に残件、暫定対応、後続 PR 前提、または未確認事項を追記した batch closure は完了証跡として扱わない。
 
 仕様 PR は、未確定事項を「推奨」「検討」「適切に」等の表現だけで残してはならない。未確定事項を残す場合は、実装不可の `未仕様化` または `将来計画` として明示する。
 
@@ -763,7 +763,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 テスト関連改善作業とは、test、fixture、expected、fake、harness、checker、assertion、mutation、race / concurrency、contract drift、実装検証証跡、または Phase 完了判定のいずれかを変更または評価する作業をいう。テスト関連改善作業は、発見した問題点を個別に散発修正してはならない。最初に全件棚卸しを作成し、各問題点を owner、artifact、仕様 anchor、fixture root、証跡種別、必要対応、closure 記録へ接続し、open item を `0` にする一括 closure まで完了させなければならない。問題点の棚卸し schema、batch closure の記録条件、mutation 選定台帳、race trigger 判定表は [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract)、[`test improvement batch closure 固定契約`](details/fixture.md#test-improvement-batch-closure-contract)、[`mutation selection ledger 固定契約`](details/fixture.md#mutation-selection-ledger-contract)、[`race trigger matrix 固定契約`](details/fixture.md#race-trigger-matrix-contract) を正本とする。
 
-テスト関連改善作業と仕様全般不備の洗い出しを同一変更で扱う場合、テスト方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、仕様全般不備の分類と完了可否は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) を正本とする。テスト固有ではない仕様不備を、test gap inventory の owner component record へ無理に混在させてはならない。テスト固有の仕様不足は `source=spec-gap` として fixture 証跡責務へ接続し、文書責務の重複、参照切れ、状態不整合、索引不整合、作業ルール混入のような仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) の完了条件で閉じる。
+テスト関連改善作業と仕様全般不備の洗い出しを同一変更で扱う場合、テスト方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、仕様全般不備の分類と完了可否は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) を正本とする。テスト固有ではない仕様不備を、test gap inventory の owner component record へ無理に混在させてはならない。テスト固有の仕様不足は `source=spec-gap` として fixture 証跡責務へ接続し、仕様全般不備 batch closure の `test_gap_connection` で `defect_id` と `gap_id` の 1 対 1 対応を閉じる。文書責務の重複、参照切れ、状態不整合、索引不整合、作業ルール混入のような仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) の完了条件で閉じる。
 
 テスト関連改善作業で open item、未分類 artifact、未接続仕様 anchor、未割当 fixture root、未判定 mutation class、未判定 race trigger、または証跡不足が 1 件でも残る場合は、実装完了、Phase 全体完了、review ready、merge 可能として扱ってはならない。将来計画、対象外、または not applicable とする場合でも、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務または該当 owner 詳細本文の責務正本 anchor へ到達できる記録を必須とし、説明文だけで残件を閉じてはならない。
 
