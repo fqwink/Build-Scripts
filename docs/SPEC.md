@@ -708,6 +708,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 |----------|----------|
 | 仕様追跡性 | 各 test、fixture、expected、assertion は、対象 owner、対象仕様、対象 anchor、検出したい仕様違反を特定できる。仕様に存在しない期待値をテストだけへ埋め込まない。 |
 | assertion 強度 | 成功条件だけでなく、失敗時 response、stderr、終了コード、状態差分、副作用有無、禁止出力、禁止外部通信を検証する。 |
+| 検証基盤自己検証 | test harness、checker、assertion、expected 比較、security assertion、state diff assertion は、検出すべき不正を fail として検出できることを negative control と positive control の両方で証明する。 |
 | 正常系 / 異常系 | 正常系、入力不正、欠損、型不一致、境界値、権限不足、状態破損、外部失敗、timeout、partial failure、rollback、cleanup failure を対象機能に応じて固定する。 |
 | 境界値 | 空、最小、最大、上限超過、重複、順序差、path、文字コード、時刻、ID、JSON key、HTTP header、CLI option、state schema、archive entry の境界を検証する。 |
 | 決定性 | 時刻、乱数、file order、network、GitHub API、systemd、process、並行実行、timer、sleep に依存して結果が揺れない。必要な場合は fake clock、fake entropy、fake filesystem、fake HTTP、固定 fixture を使用する。 |
@@ -721,6 +722,8 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 test 間で共有状態を汚染する test、実行順序に依存する test、fixture / expected を実行中に直接変更する test、環境変数、working directory、temp root、state dir、listener、goroutine、process、timer、file lock、network fake を残留させる test は、意味のあるテストとして扱ってはならない。test isolation は、test 単位の隔離境界、順序入替結果、共有状態の初期化、cleanup failure、parallel 実行可否、残留 resource 検出を対象機能に応じて固定しなければならない。test isolation の証跡 schema、記録項目、順序入替、共有状態、残留 resource、cleanup failure との対応は [`docs/details/fixture.md` fixture 証跡責務 test isolation evidence set 固定契約](details/fixture.md#test-isolation-evidence-set-contract) を正本とする。
 
 非決定的な test、flaky test、retry で偶然成功した test、実時間、乱数、file order、map order、network、GitHub API、systemd、process scheduling、goroutine scheduling、timer、sleep、host 固有 path、OS 差分、外部サービス応答に依存して結果が変わる test は、意味のあるテストとして扱ってはならない。失敗後の再実行で成功した結果、一定回数中の成功率、手元環境での成功、または CI 上の偶発的成功を完了根拠にしてはならない。決定性の証跡 schema、記録項目、fake adapter との対応、再実行一致条件は [`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](details/fixture.md#test-determinism-evidence-set-contract) を正本とする。
+
+test harness、checker、contract drift checker、fixture assertion、expected 比較、security assertion、state diff assertion を変更する場合、またはこれらを実装完了・Phase 完了の根拠として使用する場合は、検出すべき不正 fixture、欠損 expected、禁止副作用、secret leak、fake transcript 不一致、cleanup failure、assertion 無効化を fail として検出できなければならない。常に fail する検証基盤、常に pass する検証基盤、negative control だけの検証、positive control だけの検証、または failure reason を特定できない検証基盤は、意味のあるテストの根拠として扱ってはならない。検証基盤自己検証の証跡 schema、negative control、positive control、fake transcript 検証、closure 接続は [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) を正本とする。
 
 mutation test（ミューテーションテスト）は必須とする。実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion を変更する場合、対象変更が検出すべき代表的な mutation を定義し、適用可能な mutation を kill しなければならない。mutation test を実施できない実装変更、または適用可能な mutation が生存する実装変更は、`実装済み`、Phase 全体完了、review ready、merge 可能として扱ってはならない。mutation test の証跡 schema、記録項目、fixture manifest との対応は [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract) を正本とする。
 
