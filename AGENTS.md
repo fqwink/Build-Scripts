@@ -87,13 +87,13 @@
 
 Go 実装の標準配置は [docs/SPEC.md 方針責務 §4.3](docs/SPEC.md#sec-4-3) を参照する。[`main.go`](main.go) は起動入口 artifact、[`components/builder.go`](components/builder.go)、[`components/runner.go`](components/runner.go)、[`components/api.go`](components/api.go) はそれぞれ `builder`、`runner`、`api` owner component の標準 Go 実装 artifact、`components/admin.go` は `admin` owner component の CLI 管理クライアント用 Go 実装 artifact、`components/mcp.go` は `mcp` owner component の Go 実装 artifact、[`admin/adlaire-ci-sdk.js`](admin/adlaire-ci-sdk.js) と [`admin/index.html`](admin/index.html) はそれぞれ `sdk`、`ui` owner component の標準管理クライアント実装 artifact として扱う。owner component と実装 artifact を同一概念として扱ってはならない。各実装 artifact の現在状態は [docs/ROADMAP.md](docs/ROADMAP.md)、実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) を参照する。
 
-実装変更後は、変更範囲に応じて構文確認、単体確認、実行確認、生成物確認、異常系確認、必須 fixture 確認、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) の意味のあるテスト、requirement coverage 検証、failure diagnostics 検証、boundary / failure matrix 検証、concurrency / race 検証、mutation test の確認を行う。
+実装変更後は、変更範囲に応じて構文確認、単体確認、実行確認、生成物確認、異常系確認、必須 fixture 確認、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) の意味のあるテストポリシー、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の該当証跡を確認する。
 
 実装作業では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) に従い、active Phase 全体が完了するまで同一作業ブランチで実装、検証、不整合修正、再検証を繰り返す。
 
-active Phase 内に未実装、未検証、仕様不整合、意味のあるテスト不足、requirement coverage 証跡不足、failure diagnostics 証跡不足、boundary / failure matrix 証跡不足、concurrency / race 証跡不足、mutation test 未完了、証跡不足、状態更新不足が残る場合は、実装作業を完了扱いにしてはならない。既存 Pull Request がある場合も Phase 全体完了まで work in progress として扱い、review ready、merge 可能、または完了済みと報告してはならない。
+active Phase 内に未実装、未検証、仕様不整合、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) の未達、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の該当証跡不足、状態更新不足が残る場合は、実装作業を完了扱いにしてはならない。既存 Pull Request がある場合も Phase 全体完了まで work in progress として扱い、review ready、merge 可能、または完了済みと報告してはならない。
 
-Go 実装では、対象ファイルに `gofmt -l ...` を実行し、Go module が存在する場合は `go test ./...` を実行する。JavaScript 系実装では、[`docs/SPEC.md` 方針責務 §4 技術方針表](docs/SPEC.md#direction-technical) に従い、Deno stable runtime で対象 JavaScript file に `deno check ...` を実行する。Node.js、npm、bundler、transpiler を JavaScript 系実装の標準検証コマンドとして代替使用してはならない。requirement coverage 検証、failure diagnostics 検証、boundary / failure matrix 検証、concurrency / race 検証、mutation test の必要性および完了可否は [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) に従う。実行できない確認は、未実施理由を Pull Request 本文へ記録する。
+Go 実装では、対象ファイルに `gofmt -l ...` を実行し、Go module が存在する場合は `go test ./...` を実行する。JavaScript 系実装では、[`docs/SPEC.md` 方針責務 §4 技術方針表](docs/SPEC.md#direction-technical) に従い、Deno stable runtime で対象 JavaScript file に `deno check ...` を実行する。Node.js、npm、bundler、transpiler を JavaScript 系実装の標準検証コマンドとして代替使用してはならない。テスト証跡の必要性および完了可否は [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) に従う。実行できない確認は、未実施理由を Pull Request 本文へ記録する。
 
 API、SDK、UI のいずれかを変更する場合は、対応する endpoint、SDK method、UI 操作、状態副作用、認証・認可、成功後再取得、失敗時固定、fixture 証跡を同じ変更で確認する。
 
@@ -225,7 +225,7 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - 文書変更では、`rg` で不要になった名称、矛盾参照、不要になったファイル名が残っていないか確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
-- 実装変更では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) と [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) に従い、対象 Phase 全体が完了し、未実装、未検証、仕様不整合、意味のあるテスト不足、requirement coverage 証跡不足、failure diagnostics 証跡不足、boundary / failure matrix 証跡不足、concurrency / race 証跡不足、mutation test 未完了、証跡不足、状態更新不足が残っていないことを確認する。
+- 実装変更では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit)、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) に従い、対象 Phase 全体が完了し、未実装、未検証、仕様不整合、該当テスト証跡不足、状態更新不足が残っていないことを確認する。
 - 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。JavaScript 系実装では Deno stable runtime の `deno check ...` を標準の確認とする。
 - 実装変更で goroutine、channel、worker、lock、listener、timer、file lock、queue、shutdown、共有状態、並行 request、同時刻 event のいずれかへ影響する場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の concurrency / race 証跡へ到達できる race detector または代替 interleaving 証跡を Pull Request 本文へ記録する。
 - 必須検証で `skip`、`t.Skip`、未実行、runtime 不足、tool 不足、環境 capability 不足、対象外判断が発生した場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の skip / 未実行証跡へ到達できる record の記録先を Pull Request 本文へ記録する。

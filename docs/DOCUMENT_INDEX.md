@@ -116,7 +116,8 @@
 | `testdata/runner/` | `runner` fixture root | 未作成 |
 | `testdata/api/` | `api` fixture root | 未作成 |
 | `testdata/api/additional-management/` | 追加管理 API fixture root | 未作成 |
-| [`testdata/admin/`](../testdata/admin/) | `admin` fixture root | 実在 |
+| [`testdata/admin/`](../testdata/admin/) | `admin` fixture group root | 実在 |
+| [`testdata/admin/cli/`](../testdata/admin/cli/) | Admin CLI formal fixture root | 実在 |
 | `testdata/sdk/` | `sdk` fixture root | 未作成 |
 | `testdata/sdk/additional-management/` | 追加管理 SDK fixture root | 未作成 |
 | `testdata/ui/` | `ui` fixture root | 未作成 |

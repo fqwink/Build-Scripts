@@ -210,6 +210,8 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 参照はリンク化を必須とする。文書間参照、節参照、表参照、責務正本参照、実装ファイル参照、fixture 参照を説明文として書く場合は、Markdown link を用いて参照先へ移動できる形にする。単なるファイル名、裸の節番号、裸の見出し名、または `参照` という文字だけで参照先を示した扱いにしてはならない。
 
+テスト方針、テスト完了可否、fixture 証跡 schema、assertion、mutation、drift、skip、fixture root closure、PR 証跡への参照は、横断入口が必要な場合は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) を経由する。owner 詳細本文、作業ルール、Pull Request 本文、状態・計画責務が同じテスト証跡の schema、必須 key、記録単位、例外条件、完了可否を個別に再掲または再定義することを禁止する。
+
 契約値そのものを記録するコードブロック、ディレクトリ tree、JSON schema、CLI 例、HTTP path、設定値、生成物名、状態ファイル名、および所在索引表の path セルは、Markdown link 化によって契約文字列が変わるためリンク化対象外とする。この例外は説明文中の参照には適用しない。説明文から実ファイルまたは文書へ移動させる目的がある場合は、同じ段落または表の参照列に Markdown link を併記する。
 
 リンク化する参照は、初出または単独参照の表示文言に責務名とファイル名を必ず含め、節または本文ラベルを参照する場合は固定 anchor へリンクする。同じ段落、同じ表セル、または同じ箇条書き内で、直前のリンクと同一ファイル・同一責務を指す連続参照だけは、表示文言を節番号、本文ラベル、または対象名へ短縮できる。短縮参照であっても自動生成 anchor へリンクしてはならない。例として、状態・計画責務を参照する場合は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様入口責務を参照する場合は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md)、owner component 別詳細本文責務を参照する場合は [`docs/details/*.md`](details/) 詳細本文責務、fixture 証跡責務を参照する場合は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務、文書・実装ファイル所在の索引責務を参照する場合は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、利用入口責務を参照する場合は [`README.md`](../README.md) のように記載する。リンク化できない生成物、PR 本文、外部ツール出力で参照を記録する場合でも、参照先ファイル名、責務名、節番号または固定 anchor 名を省略してはならない。
