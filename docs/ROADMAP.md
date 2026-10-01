@@ -70,7 +70,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | 実装中・検証未完了 | 状態管理 | 状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表) |
 | 仕様化済み・未実装 | 検証基盤 | バグ修正ゼロ化 / 仕様全般完了 gate / cross-owner regression gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | 仕様化済み・未実装 | 検証基盤 | 全標準実装 artifact source-code audit / artifact coverage zero gap | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
-| 仕様化済み・未実装 | 検証基盤 | 意味のあるテスト / mutation zero survivor gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
+| 仕様化済み・未実装 | 検証基盤 | 意味のあるテスト / test gap inventory / mutation zero survivor gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | 仕様化済み・未実装 | 検証基盤 | main dispatch / binary version / output manifest / file tree consistency gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | 仕様化済み・未実装 | 検証基盤 | source-code audit inventory / direct I/O elimination / statefile common persistence gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | 仕様化済み・未実装 | 検証基盤 | builder parser / config / output / generated site regression gate | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |

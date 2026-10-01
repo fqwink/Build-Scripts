@@ -133,7 +133,7 @@
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 11 の fixture、expected、fake、実装検証証跡の一般形式と配置契約だけを固定する。Phase 11 の完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8)、現在状態と対象外理由は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、owner 割当入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。
 
-Phase 11 対象の fixture root、manifest、input、expected、effects、security、fake transcript、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#sec-0g-8-f)、[`docs/details/fixture.md` fixture 証跡責務 test assertion identity / failure diagnostics evidence set 固定契約](fixture.md#test-assertion-failure-diagnostics-evidence-set-contract)、[`docs/details/fixture.md` fixture 証跡責務 test boundary / failure matrix evidence set 固定契約](fixture.md#test-boundary-failure-matrix-evidence-set-contract)、[`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](fixture.md#test-concurrency-race-evidence-set-contract)、[`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](fixture.md#mutation-test-evidence-contract)、[`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](fixture.md#test-contract-drift-evidence-contract)、[`docs/details/fixture.md` fixture 証跡責務 §27-F runner / security 実装検証証跡 必須記録固定契約](fixture.md#sec-27-f-20)、および [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) の Phase 11 完了判定を同時に満たす。Phase 11 対象 root の網羅判定は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) で割り当てた `testdata/builder/`、`testdata/runner/`、`testdata/api/`、`testdata/sdk/`、`testdata/ui/`、`testdata/statefile/`、`testdata/archive/`、`testdata/commitstatus/`、`testdata/security/`、`testdata/admin/cli/`、`testdata/setup/`、`testdata/release/`、`testdata/mcp/` の各 root について、存在、manifest、expected、fake、harness 接続、対象外理由のいずれかへ到達できることで判定する。
+Phase 11 対象の fixture root、manifest、input、expected、effects、security、fake transcript、実装検証証跡は [`docs/details/fixture.md` fixture 証跡責務 §0g.8-F](fixture.md#sec-0g-8-f)、[`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](fixture.md#test-gap-inventory-record-contract)、[`docs/details/fixture.md` fixture 証跡責務 test improvement batch closure 固定契約](fixture.md#test-improvement-batch-closure-contract)、[`docs/details/fixture.md` fixture 証跡責務 test assertion identity / failure diagnostics evidence set 固定契約](fixture.md#test-assertion-failure-diagnostics-evidence-set-contract)、[`docs/details/fixture.md` fixture 証跡責務 test boundary / failure matrix evidence set 固定契約](fixture.md#test-boundary-failure-matrix-evidence-set-contract)、[`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](fixture.md#test-concurrency-race-evidence-set-contract)、[`docs/details/fixture.md` fixture 証跡責務 race trigger matrix 固定契約](fixture.md#race-trigger-matrix-contract)、[`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](fixture.md#mutation-test-evidence-contract)、[`docs/details/fixture.md` fixture 証跡責務 mutation selection ledger 固定契約](fixture.md#mutation-selection-ledger-contract)、[`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](fixture.md#test-contract-drift-evidence-contract)、[`docs/details/fixture.md` fixture 証跡責務 §27-F runner / security 実装検証証跡 必須記録固定契約](fixture.md#sec-27-f-20)、および [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) の Phase 11 完了判定を同時に満たす。Phase 11 対象 root の網羅判定は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) で割り当てた `testdata/builder/`、`testdata/runner/`、`testdata/api/`、`testdata/sdk/`、`testdata/ui/`、`testdata/statefile/`、`testdata/archive/`、`testdata/commitstatus/`、`testdata/security/`、`testdata/admin/cli/`、`testdata/setup/`、`testdata/release/`、`testdata/mcp/` の各 root について、存在、manifest、expected、fake、harness 接続、対象外理由のいずれかへ到達できることで判定する。
 
 Phase 11 対象 root では、directory 名、`manifest.json.name`、fixture catalog 名が 1 対 1 に一致する場合だけ正式 fixture として扱う。`* 2` suffix 付き directory、同一 `manifest.json.name` を持つ複数 directory、fixture catalog 未登録 directory、harness から参照されない directory、expected だけを持つ directory は正式 fixture として扱わず、[`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) の `fixture root identity zero duplicate` 判定で未完了として扱う。
 
@@ -314,7 +314,91 @@ test evidence package は、単一の対象変更単位ごとに 1 組だけ作�
 | `not_applicable_evidence_sets` | 適用外の evidence set は、対象外範囲、理由、責務正本 anchor、完了可否への影響を同じ package に記録する。 | 理由だけ、anchor だけ、将来対応、または対象外範囲不明で適用外にしている。 |
 | `final_open_item_count` | 全 evidence set と closure record set の open item 合計を整数で記録し、完了扱いでは `0` に固定する。 | 件数未記録、`0` 以外、または残件を別変更で閉じる説明がある。 |
 
-test evidence package は、[implementation PR evidence template 固定契約](#implementation-pr-evidence-template-contract)、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract)、[test requirement coverage ledger 固定契約](#test-requirement-coverage-ledger-contract)、該当 evidence set、[test / contract drift report schema 固定契約](#test-contract-drift-report-schema-contract) のいずれにも到達できない場合、完了証跡として扱わない。
+test evidence package は、[implementation PR evidence template 固定契約](#implementation-pr-evidence-template-contract)、[test gap inventory record 固定契約](#test-gap-inventory-record-contract)、[test improvement batch closure 固定契約](#test-improvement-batch-closure-contract)、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract)、[test requirement coverage ledger 固定契約](#test-requirement-coverage-ledger-contract)、該当 evidence set、[test / contract drift report schema 固定契約](#test-contract-drift-report-schema-contract) のいずれにも到達できない場合、完了証跡として扱わない。
+
+<a id="test-gap-inventory-record-contract"></a>
+**test gap inventory record 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、テスト関連改善作業で発見した問題点の棚卸し record schema だけを固定する。全件棚卸し義務、open item 残存時の完了禁止、対象外判断の方針は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) を正本とする。
+
+test gap inventory record は、発見した問題点 1 件につき 1 record 作成する。同じ原因に見える問題でも、検出元、対象 artifact、対象 owner、fixture root、または必要対応が異なる場合は別 record とする。重複統合する場合も、統合前の検出元を record 内にすべて残す。
+
+| field | 固定値 / 形式 | 未完了条件 |
+|-------|---------------|------------|
+| `gap_id` | `gap-<owner>-<scope>-<number>` の lowercase kebab-case。 | 空、重複、または対象 owner / scope を識別できない。 |
+| `source` | 発見元を `source-audit`、`test-drift`、`fixture-drift`、`mutation-survivor`、`race-trigger`、`review`、`validation`、`spec-gap` のいずれかで記録する。 | 発見元がない、または自由記述だけで分類できない。 |
+| `owner_component` | 対象 owner component。 | owner 未記録、または [docs/DETAIL_INDEX.md 詳細仕様入口責務 §0i](../DETAIL_INDEX.md#0i-詳細節対応表) に存在しない owner。 |
+| `artifact` | 対象実装 artifact、test artifact、fixture、expected、fake、harness、checker、または文書 anchor。 | artifact が不明、または実在所在 / anchor へ到達できない。 |
+| `spec_anchor` | 問題点を判定する責務正本への Markdown link。 | anchor なし、または説明文だけで仕様判断している。 |
+| `gap_type` | `missing-test`、`weak-oracle`、`missing-assertion-id`、`missing-fixture`、`fixture-duplicate`、`contract-drift`、`mutation-survived`、`race-unverified`、`non-deterministic`、`skip-without-anchor`、`unknown-side-effect`、`spec-missing` のいずれか。 | 分類なし、または複数分類を 1 record に混在している。 |
+| `fixture_root` | 対象 fixture root、または `not_applicable` と対象外 anchor。 | fixture root が必要なのに空、または対象外理由がない。 |
+| `evidence_target` | 作成または更新すべき evidence set、ledger、matrix、closure item。 | 対応する証跡種別が不明で closure へ接続できない。 |
+| `required_action` | `specify`、`add-test`、`strengthen-oracle`、`add-fixture`、`dedupe-fixture`、`connect-anchor`、`add-mutation`、`add-race-evidence`、`mark-not-applicable` のいずれか。 | 必要対応が自由記述だけ、または実装判断で補完している。 |
+| `closure_record` | 接続先 closure record、batch closure item、または Pull Request evidence label。 | closure へ到達できない。 |
+| `status` | `open`、`closed`、`not_applicable` のいずれか。 | 完了時に `open` が残る、または `not_applicable` に責務正本 anchor がない。 |
+
+test gap inventory record は、status が `closed` または `not_applicable` であり、`spec_anchor`、`evidence_target`、`closure_record` へ到達できる場合だけ閉じる。`status=open` の record、分類不能 record、対象外理由 anchor のない record、または closure へ接続しない record が 1 件でも残る場合、test improvement batch は完了扱いにしない。
+
+<a id="test-improvement-batch-closure-contract"></a>
+**test improvement batch closure 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、テスト関連改善作業を一括で閉じる closure 条件だけを固定する。作業を一括 closure まで完了させる方針は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、Pull Request 本文への記録手順は [`AGENTS.md` Git 運用ルール](../../AGENTS.md#agents-git-operations) を参照する。
+
+test improvement batch closure は、単一の対象変更単位ごとに 1 組作成する。対象変更単位は、1 つの検証改善 Pull Request、1 つの fixture / expected 改善、1 つの owner artifact 検証、または 1 つの Phase 全体完了判定のいずれかに固定する。同じ batch closure に複数 Phase、無関係な owner、または完了判定しない後続作業を混在させてはならない。
+
+| closure item | 必須記録 | 未完了条件 |
+|--------------|----------|------------|
+| batch identity | `batch_id`、対象 Phase、対象 owner、対象 artifact、対象 fixture root、対象 Pull Request。 | batch 範囲が不明、または複数変更単位を混在している。 |
+| gap inventory | [test gap inventory record 固定契約](#test-gap-inventory-record-contract) の所在、record 件数、`open=0`、`not_applicable` 件数と anchor。 | inventory なし、record 件数未記録、または `open>0`。 |
+| requirement ledger | [test requirement coverage ledger 固定契約](#test-requirement-coverage-ledger-contract) の所在、未検証契約 `0`。 | ledger なし、未検証契約残存、または対象外理由 anchor 不足。 |
+| oracle / diagnostics / boundary | oracle、failure diagnostics、boundary / failure matrix の各 evidence set 所在、適用外理由。 | 弱い oracle、generic failure、境界未固定を残している。 |
+| isolation / determinism | isolation、determinism の evidence set 所在、順序依存と変動要因の解消状態。 | 順序依存、flaky、実環境依存、cleanup 不明を残している。 |
+| concurrency / race | [race trigger matrix 固定契約](#race-trigger-matrix-contract) と [test concurrency / race evidence set 固定契約](#test-concurrency-race-evidence-set-contract) の所在、open trigger `0`。 | race trigger 未判定、race detector / interleaving 証跡不足、または open trigger 残存。 |
+| mutation | [mutation selection ledger 固定契約](#mutation-selection-ledger-contract) と [mutation test evidence set 固定契約](#mutation-test-evidence-set-contract) の所在、`survived=0`。 | mutation class 未判定、`survived>0`、または invalid / equivalent 根拠不足。 |
+| harness self-verification | [test harness self-verification evidence set 固定契約](#test-harness-self-verification-evidence-set-contract) の所在、negative / positive control。 | harness が常時 pass / 常時 fail の可能性を排除できない。 |
+| contract drift | [test / contract drift report schema 固定契約](#test-contract-drift-report-schema-contract) の所在、孤立 test `0`、未検証契約 `0`、期待値ドリフト `0`。 | drift 残存、または解消先 anchor 不足。 |
+| fixture root closure | [fixture root coverage matrix 固定契約](#fixture-root-coverage-matrix-contract) と [未作成 fixture root closure record 固定契約](#fixture-root-missing-closure-record-contract) の所在。 | 未作成 root、重複 root、未接続 root を残している。 |
+| final closure | [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) への接続、`final_open_item_count=0`。 | final open item が 0 でない、または closure record set へ接続しない。 |
+
+test improvement batch closure は、上表の closure item を表順に記録する。適用外の closure item は削除せず、対象外範囲、理由、責務正本 anchor、完了可否への影響を記録する。最終 record より後に残件、暫定対応、後続 PR 前提、または未確認事項を追記した batch closure は完了証跡として扱わない。
+
+<a id="mutation-selection-ledger-contract"></a>
+**mutation selection ledger 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、変更 artifact ごとの mutation class 選定記録だけを固定する。mutation class、判定語彙、必須条件は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、具体的な mutation 実行証跡は [mutation test evidence set 固定契約](#mutation-test-evidence-set-contract) を参照する。
+
+| field | 固定値 / 形式 | 未完了条件 |
+|-------|---------------|------------|
+| `mutation_id` | `mut-<owner>-<artifact>-<number>` の lowercase kebab-case。 | 空、重複、または対象 artifact を識別できない。 |
+| `owner_component` | 対象 owner component。 | owner 未記録、または対象変更単位と一致しない。 |
+| `artifact` | 変異対象または対象外判断した実装、test、fixture、expected、security expected、state diff、harness、checker。 | 変更 artifact が ledger へ接続していない。 |
+| `spec_anchor` | 変異で検出すべき仕様違反の責務正本 anchor。 | anchor なし、または実装挙動だけで判定している。 |
+| `mutation_class` | [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) の mutation class。 | class 未判定、または任意 class だけで標準 class を飛ばしている。 |
+| `operation` | mutation operation、または `not_applicable`。 | applicable なのに operation がない。 |
+| `applicability` | `applicable`、`not_applicable` のいずれか。 | 判定漏れ、対象外理由だけで anchor がない。 |
+| `evidence_record` | [mutation test evidence set 固定契約](#mutation-test-evidence-set-contract) の record への参照、または対象外理由 anchor。 | evidence set へ到達できない。 |
+| `result` | `killed`、`invalid`、`equivalent`、`not_applicable` のいずれか。`survived` は closure 前の未完了状態としてだけ記録できる。 | 完了時に `survived` が残る、または invalid / equivalent の anchor がない。 |
+
+mutation selection ledger は、対象変更単位の全変更 artifact を少なくとも 1 件の `mutation_id` へ接続する。完了扱いでは `survived=0` を必須とし、`invalid` と `equivalent` は個別 record に責務正本 anchor と理由を持つ。
+
+<a id="race-trigger-matrix-contract"></a>
+**race trigger matrix 固定契約：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務は、並行処理 / race 検証を要する trigger の判定表だけを固定する。data race、deadlock、goroutine leak、lost update、cleanup 漏れを完了不可とする方針は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、具体的な証跡 set は [test concurrency / race evidence set 固定契約](#test-concurrency-race-evidence-set-contract) を参照する。
+
+| field | 固定値 / 形式 | 未完了条件 |
+|-------|---------------|------------|
+| `trigger_id` | `race-<owner>-<artifact>-<number>` の lowercase kebab-case。 | 空、重複、または対象 artifact を識別できない。 |
+| `owner_component` | 対象 owner component。 | owner 未記録、または対象変更単位と一致しない。 |
+| `artifact` | trigger を持つ実装、test、fixture、fake、harness、checker。 | artifact が不明、または実在所在へ到達できない。 |
+| `trigger_kind` | `goroutine`、`channel`、`worker`、`lock`、`listener`、`timer`、`file-lock`、`queue`、`shutdown`、`shared-state`、`parallel-request`、`same-time-event`、`not_applicable` のいずれか。 | trigger 未判定、または自由記述だけで分類できない。 |
+| `shared_resource` | 共有 resource、状態 path、listener、queue、lock、channel、file、clock、fake、または `none`。 | 競合対象が不明で evidence set へ接続できない。 |
+| `required_evidence` | race detector、interleaving case、lifecycle assertion、cleanup assertion、atomicity assertion のうち必要な証跡。 | 必須証跡の判定漏れ。 |
+| `race_detector` | `required`、`not_required`、`unavailable-open`、`not_applicable` のいずれか。 | race detector 対象なのに未実行理由だけで閉じている。 |
+| `interleaving_case` | 固定 schedule、並行 request、shutdown 中操作、lost update case、または対象外理由 anchor。 | interleaving 未固定、または代替証跡がない。 |
+| `status` | `open`、`closed`、`not_applicable` のいずれか。 | 完了時に `open` が残る、または `not_applicable` に責務正本 anchor がない。 |
+
+race trigger matrix は、変更 artifact が並行処理へ影響しない場合でも `not_applicable` record で対象外理由 anchor を残す。trigger が 1 件でも `open` の場合、concurrency / race closure と test improvement batch closure は完了扱いにしない。
 
 <a id="test-assertion-id-contract"></a>
 **assertion id 固定契約：**
@@ -451,6 +535,7 @@ implementation PR evidence package は、単一の Pull Request ごとに 1 組�
 | 提出物 | 最小記録形式 | 未完了条件 |
 |--------|--------------|------------|
 | submitted artifacts | 対象 Phase、対象 owner、collaborator、変更 artifact、test artifact、fixture root、expected / fake / effects / security expected、生成物、状態更新対象、対象外 artifact を列挙する。 | 対象 artifact、対象 owner、fixture root、対象外 artifact のいずれかが不明である。 |
+| test gap inventory / batch closure | [test gap inventory record 固定契約](#test-gap-inventory-record-contract) と [test improvement batch closure 固定契約](#test-improvement-batch-closure-contract) の所在、gap record 件数、`open=0`、`final_open_item_count=0` を記録する。 | inventory 所在なし、record 件数未記録、`open>0`、または batch closure と closure record set が接続していない。 |
 | requirement coverage ledger | [test requirement coverage ledger 固定契約](#test-requirement-coverage-ledger-contract) の所在、requirement id 数、covered 件数、not_applicable 件数、open 件数 `0` を記録する。 | ledger 所在なし、open 件数未記録、または `open>0`。 |
 | 16 record closure set | [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の所在、16 record の status 一覧、`final_open_item_count=0` を記録する。 | record 数不一致、`status=open`、`final_open_item_count` 未記録、または `open_items` 残存。 |
 | oracle evidence | [test oracle evidence set 固定契約](#test-oracle-evidence-set-contract) の所在、positive / negative case、expected / actual 比較単位、状態差分、禁止副作用、失敗時 no mutation を記録する。 | status code だけ、fixture 存在だけ、expected / actual 不明、禁止副作用未確認。 |
@@ -458,8 +543,8 @@ implementation PR evidence package は、単一の Pull Request ごとに 1 組�
 | boundary / failure matrix evidence | [test boundary / failure matrix evidence set 固定契約](#test-boundary-failure-matrix-evidence-set-contract) の所在、入力 class、境界値、error taxonomy、partial failure、rollback、cleanup、retry / recovery、失敗時 no mutation を記録する。 | 正常系だけ、境界未固定、partial failure / rollback / cleanup / retry 未確認。 |
 | isolation evidence | [test isolation evidence set 固定契約](#test-isolation-evidence-set-contract) の所在、隔離境界、順序入替結果、共有状態初期化、cleanup、残留 resource、parallel 実行可否を記録する。 | 共有状態汚染、順序依存、cleanup 不明、残留 resource 未確認、parallel 可否未記録。 |
 | determinism evidence | [test determinism evidence set 固定契約](#test-determinism-evidence-set-contract) の所在、変動要因、fake adapter、同一入力再実行結果、順序入替 case、禁止実環境依存を記録する。 | retry 成功だけ、実時間 / 乱数 / host 依存、再実行一致未確認、fake 境界不明。 |
-| concurrency / race evidence | [test concurrency / race evidence set 固定契約](#test-concurrency-race-evidence-set-contract) の所在、共有 resource、race detector、schedule / interleaving、lock / channel / goroutine lifecycle、conflict outcome、atomicity、cleanup を記録する。 | data race 未確認、goroutine leak 未確認、lock / channel 終了条件不明、競合結果未固定。 |
-| mutation evidence | [mutation test evidence set 固定契約](#mutation-test-evidence-set-contract) の所在、mutation class decision、`killed` / `survived` / `invalid` / `equivalent` 件数、`survived=0` を記録する。 | mutation class 未定義、`survived>0`、または `equivalent` 根拠 anchor 不足。 |
+| concurrency / race evidence | [race trigger matrix 固定契約](#race-trigger-matrix-contract) と [test concurrency / race evidence set 固定契約](#test-concurrency-race-evidence-set-contract) の所在、共有 resource、race trigger 件数、open trigger `0`、race detector、schedule / interleaving、lock / channel / goroutine lifecycle、conflict outcome、atomicity、cleanup を記録する。 | race trigger 未判定、data race 未確認、goroutine leak 未確認、lock / channel 終了条件不明、競合結果未固定。 |
+| mutation evidence | [mutation selection ledger 固定契約](#mutation-selection-ledger-contract) と [mutation test evidence set 固定契約](#mutation-test-evidence-set-contract) の所在、mutation class decision、`killed` / `survived` / `invalid` / `equivalent` 件数、`survived=0` を記録する。 | mutation class 未定義、`survived>0`、または `equivalent` 根拠 anchor 不足。 |
 | harness self-verification evidence | [test harness self-verification evidence set 固定契約](#test-harness-self-verification-evidence-set-contract) の所在、negative control、positive control、検出すべき不正、failure reason を記録する。 | harness が常に pass / 常に fail、negative / positive 片側だけ、failure reason 不明。 |
 | contract drift evidence | [test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) の所在、孤立 test、未検証契約、期待値ドリフト、harness ドリフトの件数、各 drift の解消状態を記録する。 | drift 件数未記録、孤立 test 残存、未検証契約残存、期待値または harness の正本不一致。 |
 | execution evidence | [test execution evidence matrix 固定契約](#test-execution-evidence-matrix-contract) の分類、実行 command、runtime、終了 code、対象 artifact、対象 fixture、未実行理由を記録する。 | 実行成功件数だけ、対象 artifact 不明、必須検証の未実行理由なし。 |

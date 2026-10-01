@@ -226,6 +226,7 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - 文書変更では、`git diff --stat` で変更範囲を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
 - 実装変更では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit)、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) に従い、対象 Phase 全体が完了し、未実装、未検証、仕様不整合、該当テスト証跡不足、状態更新不足が残っていないことを確認する。
+- テスト関連改善、検証基盤変更、fixture 変更、test artifact 変更、harness 変更、checker 変更、assertion 変更、または Phase 完了判定では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `test gap inventory / batch closure`、`mutation`、`isolation / determinism / concurrency`、`PR 証跡` へ到達できる記録先を確認し、open item が 1 件でも残る場合は Pull Request を完了扱いにしない。
 - 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。JavaScript 系実装では Deno stable runtime の `deno check ...` を標準の確認とする。
 - 実装変更で goroutine、channel、worker、lock、listener、timer、file lock、queue、shutdown、共有状態、並行 request、同時刻 event のいずれかへ影響する場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の concurrency / race 証跡へ到達できる race detector または代替 interleaving 証跡を Pull Request 本文へ記録する。
 - 必須検証で `skip`、`t.Skip`、未実行、runtime 不足、tool 不足、環境 capability 不足、対象外判断が発生した場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の skip / 未実行証跡へ到達できる record の記録先を Pull Request 本文へ記録する。
@@ -239,6 +240,7 @@ Pull Request 本文には、少なくとも以下を記載する。
 - 競合防止確認
 - 未実施の確認がある場合は、その理由
 - 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、test harness 変更、checker 変更、assertion 変更、または Phase 全体完了判定に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `PR 証跡` と対象証跡行に到達できる記録先、または仕様上対象外である理由を同一 Pull Request 本文へ記録する。
+- テスト関連改善に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `test gap inventory / batch closure` に到達できる記録先、最終 open item 件数 `0`、mutation selection の `survived=0`、race trigger の open item `0`、対象外項目の責務正本 anchor を同一 Pull Request 本文へ記録する。
 - Pull Request 本文では、テスト方針、完了可否、fixture 証跡 schema、必須 key、記録単位、例外条件を再定義してはならない。必要な場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) への責務名付き Markdown link で参照する。
 
 ---

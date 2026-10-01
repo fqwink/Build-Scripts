@@ -23,6 +23,8 @@
 | 未作成 fixture root closure record | [`docs/details/fixture.md` fixture 証跡責務 未作成 fixture root closure record 固定契約](details/fixture.md#fixture-root-missing-closure-record-contract) |
 | 検証実行証跡の分類と未完了条件 | [`docs/details/fixture.md` fixture 証跡責務 test execution evidence matrix 固定契約](details/fixture.md#test-execution-evidence-matrix-contract) |
 | test evidence package 記録先 | [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract) |
+| test gap inventory 記録 | [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract) |
+| test improvement batch closure | [`docs/details/fixture.md` fixture 証跡責務 test improvement batch closure 固定契約](details/fixture.md#test-improvement-batch-closure-contract) |
 | assertion id 形式 | [`docs/details/fixture.md` fixture 証跡責務 assertion id 固定契約](details/fixture.md#test-assertion-id-contract) |
 | skip / 未実行証跡 | [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](details/fixture.md#test-skip-evidence-contract) |
 | 検証要求網羅 ledger | [`docs/details/fixture.md` fixture 証跡責務 test requirement coverage ledger 固定契約](details/fixture.md#test-requirement-coverage-ledger-contract) |
@@ -36,8 +38,10 @@
 | test isolation 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test isolation evidence set 固定契約](details/fixture.md#test-isolation-evidence-set-contract) |
 | test determinism 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](details/fixture.md#test-determinism-evidence-set-contract) |
 | test concurrency / race 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](details/fixture.md#test-concurrency-race-evidence-set-contract) |
+| race trigger matrix | [`docs/details/fixture.md` fixture 証跡責務 race trigger matrix 固定契約](details/fixture.md#race-trigger-matrix-contract) |
 | mutation test 証跡固定契約 | [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract) |
 | mutation test 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 mutation test evidence set 固定契約](details/fixture.md#mutation-test-evidence-set-contract) |
+| mutation selection ledger | [`docs/details/fixture.md` fixture 証跡責務 mutation selection ledger 固定契約](details/fixture.md#mutation-selection-ledger-contract) |
 | test harness self-verification 証跡 set | [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) |
 | test / contract drift 証跡 | [`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](details/fixture.md#test-contract-drift-evidence-contract) |
 | test / contract drift report schema | [`docs/details/fixture.md` fixture 証跡責務 test / contract drift report schema 固定契約](details/fixture.md#test-contract-drift-report-schema-contract) |
