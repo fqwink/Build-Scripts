@@ -698,7 +698,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 ## 0g. 意味のあるテストポリシー
 
-[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) は、実装変更、検証変更、fixture 変更、実装完了判定、Phase 完了判定に適用する。テスト方針と完了可否の本文は本節を正本とし、具体的な fixture、expected、fake、assertion、実行証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md)、owner 固有の入出力と異常系は owner component 別の [`docs/details/*.md` 詳細本文責務](details/) を正本とする。
+[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) は、実装変更、検証変更、fixture 変更、実装完了判定、Phase 完了判定に適用する。テスト方針と完了可否の本文は本節を正本とし、具体的な fixture、expected、fake、assertion、実行証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md)、owner 固有の入出力と異常系は owner component 別の [`docs/details/*.md` 詳細本文責務](details/) を正本とする。横断的なテスト証跡の参照入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) とし、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務はテスト方針、完了可否、fixture 証跡 schema、必須 key、例外条件を再定義してはならない。
 
 意味のあるテストとは、仕様違反、実装の分岐誤り、境界値誤り、副作用漏れ、認証・認可 bypass、secret 漏えい、状態破損、並行処理順序誤り、外部境界の失敗処理漏れ、または回帰を検出できるテストをいう。実装を一度実行するだけの smoke test、assertion が存在しないテスト、戻り値や副作用を検証しないテスト、正常系だけのテスト、実装詳細の存在だけを確認するテスト、coverage percentage だけを満たすテストは、意味のあるテストとして扱ってはならない。
 

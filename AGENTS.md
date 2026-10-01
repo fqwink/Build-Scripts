@@ -227,8 +227,8 @@ Pull Request 作成前には、変更内容に応じて以下を確認する。
 - ファイル追加、削除、リネームを含む場合は、`git diff --cached --summary` で Git 上の扱いを確認する。
 - 実装変更では、[`docs/SPEC.md` ポリシー責務 §0f](docs/SPEC.md#policy-phase-unit) と [`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) に従い、対象 Phase 全体が完了し、未実装、未検証、仕様不整合、意味のあるテスト不足、requirement coverage 証跡不足、failure diagnostics 証跡不足、boundary / failure matrix 証跡不足、concurrency / race 証跡不足、mutation test 未完了、証跡不足、状態更新不足が残っていないことを確認する。
 - 実装変更では、対象言語に応じた構文確認を行う。Go 実装では `gofmt -l ...` を標準の整形確認とし、Go module が存在する場合は `go test ./...` を標準の確認とする。JavaScript 系実装では Deno stable runtime の `deno check ...` を標準の確認とする。
-- 実装変更で goroutine、channel、worker、lock、listener、timer、file lock、queue、shutdown、共有状態、並行 request、同時刻 event のいずれかへ影響する場合は、[`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](docs/details/fixture.md#test-concurrency-race-evidence-set-contract) へ到達できる race detector または代替 interleaving 証跡を Pull Request 本文へ記録する。
-- 必須検証で `skip`、`t.Skip`、未実行、runtime 不足、tool 不足、環境 capability 不足、対象外判断が発生した場合は、[`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](docs/details/fixture.md#test-skip-evidence-contract) に基づく skip / 未実行 record の記録先を Pull Request 本文へ記録する。
+- 実装変更で goroutine、channel、worker、lock、listener、timer、file lock、queue、shutdown、共有状態、並行 request、同時刻 event のいずれかへ影響する場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の concurrency / race 証跡へ到達できる race detector または代替 interleaving 証跡を Pull Request 本文へ記録する。
+- 必須検証で `skip`、`t.Skip`、未実行、runtime 不足、tool 不足、環境 capability 不足、対象外判断が発生した場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の skip / 未実行証跡へ到達できる record の記録先を Pull Request 本文へ記録する。
 - 実装変更では、変更した実装が実行可能な場合は対象スクリプトの実行確認または生成物確認を行う。実行不能な場合は理由を Pull Request 本文に記録する。
 - 仕様変更では、[文書整合ルール](#agents-document-consistency-rules) に従って責務正本、索引、デザイン、実装への影響を確認する。
 
@@ -238,22 +238,8 @@ Pull Request 本文には、少なくとも以下を記載する。
 - `Verification`
 - 競合防止確認
 - 未実施の確認がある場合は、その理由
-- 実装変更、検証変更、fixture 変更、または Phase 全体完了判定に関わる Pull Request では、[`docs/details/fixture.md` fixture 証跡責務 implementation PR evidence template 固定契約](docs/details/fixture.md#implementation-pr-evidence-template-contract) に基づき、提出物一覧、coverage ledger、closure record set、該当 evidence set、未実施理由、対象外理由、残 open item 0 を同一 Pull Request 本文へ記録する。
-- 実装変更、検証変更、fixture 変更、または Phase 全体完了判定に関わる Pull Request では、[`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](docs/details/fixture.md#test-evidence-package-record-location-contract) に基づく test evidence package の記録先を同一 Pull Request 本文へ記録する。
-- 実装変更、検証変更、fixture 変更、または意味のあるテスト / requirement coverage / failure diagnostics / boundary / failure matrix / concurrency / race / mutation test の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test verification closure record set 固定契約](docs/details/fixture.md#test-verification-closure-record-set-contract) に基づく closure record set の記録先、または仕様上対象外である理由
-- 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、または assertion 変更では、[`docs/details/fixture.md` fixture 証跡責務 assertion id 固定契約](docs/details/fixture.md#test-assertion-id-contract) に基づく assertion id、または仕様上 assertion id の対象外である理由
-- 必須検証で skip、未実行、環境 capability 不足、tool 不足、runtime 不足、または対象外判断がある Pull Request では、[`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](docs/details/fixture.md#test-skip-evidence-contract) に基づく skip / 未実行 record の記録先、または skip / 未実行がないこと
-- 実装変更、検証変更、fixture 変更、または requirement coverage の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test requirement coverage ledger 固定契約](docs/details/fixture.md#test-requirement-coverage-ledger-contract) に基づく coverage ledger の記録先、または仕様上対象外である理由
-- 実装変更、検証変更、fixture 変更、または test oracle の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test oracle evidence set 固定契約](docs/details/fixture.md#test-oracle-evidence-set-contract) に基づく oracle evidence set の記録先、または仕様上対象外である理由
-- 実装変更、検証変更、fixture 変更、または failure diagnostics の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test assertion identity / failure diagnostics evidence set 固定契約](docs/details/fixture.md#test-assertion-failure-diagnostics-evidence-set-contract) に基づく failure diagnostics evidence set の記録先、または仕様上対象外である理由
-- 実装変更、検証変更、fixture 変更、または boundary / failure matrix の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test boundary / failure matrix evidence set 固定契約](docs/details/fixture.md#test-boundary-failure-matrix-evidence-set-contract) に基づく boundary / failure matrix evidence set の記録先、または仕様上対象外である理由
-- 実装変更、検証変更、fixture 変更、または test isolation の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test isolation evidence set 固定契約](docs/details/fixture.md#test-isolation-evidence-set-contract) に基づく isolation evidence set の記録先、または仕様上対象外である理由
-- 実装変更、検証変更、fixture 変更、または test determinism の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](docs/details/fixture.md#test-determinism-evidence-set-contract) に基づく determinism evidence set の記録先、または仕様上対象外である理由
-- 実装変更、検証変更、fixture 変更、または concurrency / race の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test concurrency / race evidence set 固定契約](docs/details/fixture.md#test-concurrency-race-evidence-set-contract) に基づく concurrency / race evidence set の記録先、または仕様上対象外である理由
-- mutation test の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 mutation test evidence set 固定契約](docs/details/fixture.md#mutation-test-evidence-set-contract) に基づく mutation evidence set の記録先、または仕様上対象外である理由
-- 実装変更、検証変更、fixture 変更、test harness 変更、checker 変更、または assertion 変更では、[`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](docs/details/fixture.md#test-harness-self-verification-evidence-set-contract) に基づく harness self-verification evidence set の記録先、または仕様上対象外である理由
-- 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、または Phase 11 バグ修正ゼロ化の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](docs/details/fixture.md#test-contract-drift-evidence-contract) に基づく drift 件数、孤立 test、未検証契約、期待値ドリフト、harness ドリフトの記録先、または仕様上対象外である理由
-- 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、または Phase 11 バグ修正ゼロ化の完了可否に関わる変更では、[`docs/details/fixture.md` fixture 証跡責務 test / contract drift report schema 固定契約](docs/details/fixture.md#test-contract-drift-report-schema-contract) に基づく drift report の記録先、または drift report が対象外である理由
+- 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、test harness 変更、checker 変更、assertion 変更、または Phase 全体完了判定に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `PR 証跡` と対象 evidence row に到達できる記録先、または仕様上対象外である理由を同一 Pull Request 本文へ記録する。
+- Pull Request 本文では、テスト方針、完了可否、fixture 証跡 schema、必須 key、記録単位、例外条件を再定義してはならない。必要な場合は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) への責務名付き Markdown link で参照する。
 
 ---
 
