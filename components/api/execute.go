@@ -1,11 +1,10 @@
 package api
 
 import (
-	"errors"
-	"fmt"
-	"os"
 	"time"
 	"unicode/utf8"
+
+	"github.com/fqwink/build-scripts/components/statefile"
 )
 
 var runnerSleep = time.Sleep
@@ -30,31 +29,25 @@ func validCLIArgToken(arg string) bool {
 }
 
 func acquireStateFileLock(path string) (func(), error) {
-	lockPath := path + ".lock"
-	var lastErr error
-	for attempt := 0; attempt <= 100; attempt++ {
-		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-		if err == nil {
-			_, writeErr := fmt.Fprintf(f, "pid=%d\nstarted_at=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339))
-			closeErr := f.Close()
-			if writeErr != nil || closeErr != nil {
-				_ = os.Remove(lockPath)
-				if writeErr != nil {
-					return func() {}, writeErr
-				}
-				return func() {}, closeErr
-			}
-			return func() { _ = os.Remove(lockPath) }, nil
-		}
-		lastErr = err
-		if !errors.Is(err, os.ErrExist) || attempt == 100 {
-			break
-		}
-		runnerSleep(100 * time.Millisecond)
+	now := time.Now()
+	sleep := func(duration time.Duration) {
+		runnerSleep(duration)
+		now = now.Add(duration)
 	}
-	return func() {}, lastErr
+	lock, err := statefile.AcquireLock(path+".lock", statefile.LockOptions{
+		Owner:          "api-statefile",
+		StaleAfter:     30 * time.Second,
+		AcquireTimeout: 10 * time.Second,
+		RetryInterval:  100 * time.Millisecond,
+		Clock:          func() time.Time { return now },
+		Sleep:          sleep,
+	})
+	if err != nil {
+		return func() {}, err
+	}
+	return func() { _ = lock.Release() }, nil
 }
 
-func executePhase12Model(model phase12Model) bool {
-	return validatePhase12Model(model)
+func executeOwnerFileContract(contract ownerFileContract) bool {
+	return validateOwnerFileContract(contract)
 }

@@ -315,7 +315,7 @@ func TestPhase11FixtureManifestGate(t *testing.T) {
 		manifest := phase11ReadManifest(t, manifestPath)
 		fixtureDir := filepath.Dir(manifestPath)
 
-		if manifest.Name != filepath.Base(fixtureDir) {
+		if manifest.Name != filepath.Base(fixtureDir) && !phase13AllowsScopeName(manifestPath, manifest.Name) {
 			t.Fatalf("%s name must match fixture directory, got %q", manifestPath, manifest.Name)
 		}
 		if prior := seenNames[manifest.Name]; prior != "" {
@@ -444,7 +444,7 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	phase11IncompleteRow := strings.Replace(phase11CompleteRow, "| 実装済み |", "| 実装中・検証未完了 |", 1)
 	phase12CompleteRow := "| Phase 12 | 実装品質ゲート再構築。契約不整合、状態安全性、実行型 fixture harness、mutation / race、owner package 5 ファイル固定、release 再現性の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry) を参照する。 | 実装済み | Phase 11 |"
 	phase12IncompleteRow := strings.Replace(phase12CompleteRow, "| 実装済み |", "| 実装中・検証未完了 |", 1)
-	phase13ActiveRow := "| Phase 13 | 実装整合・品質改善。owner package 5 ファイル責務純度、状態安全性、security / archive / commitstatus 責務集約、queue / finalizer / recovery、MCP 実動作化、外部境界 hardening、fixture / mutation / fault / E2E / CI / release governance の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) を参照する。 | 仕様化済み・未実装 | Phase 12 |"
+	phase13CompleteRow := "| Phase 13 | 実装整合・品質改善。owner package 5 ファイル責務純度、状態安全性、security / archive / commitstatus 責務集約、queue / finalizer / recovery、MCP 実動作化、外部境界 hardening、fixture / mutation / fault / E2E / CI / release governance の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) を参照する。 | 実装済み | Phase 12 |"
 
 	if !strings.Contains(roadmap, phase11CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 11 as 実装済み after Phase 11 closure records reach final_open_item_count=0")
@@ -458,14 +458,14 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if strings.Contains(roadmap, phase12IncompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must not keep Phase 12 as 実装中・検証未完了 after closure")
 	}
-	if !strings.Contains(roadmap, phase13ActiveRow) {
-		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 仕様化済み・未実装 after Phase 12 closure")
+	if !strings.Contains(roadmap, phase13CompleteRow) {
+		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 実装済み after Phase 13 closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 13 とする。") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 13 is the active Phase after Phase 13 specification")
+	if !strings.Contains(roadmap, "現在の active Phase は Phase 14 とする。") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 14 is the active Phase after Phase 13 closure")
 	}
-	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 12 まではすべて `実装済み`") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 12 are all implemented after Phase 12 closure")
+	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 13 まではすべて `実装済み`") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 13 are all implemented after Phase 13 closure")
 	}
 
 	for _, feature := range phase11QualityGateFeatures {
@@ -489,8 +489,46 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 		if !strings.Contains(roadmap, want) {
 			t.Fatalf("docs/ROADMAP.md must mark Phase 12 feature as 実装済み: %s", feature)
 		}
-		if strings.Contains(roadmap, "| 実装中・検証未完了 |") && strings.Contains(roadmap, feature) {
+		forbidden := strings.Replace(want, "| 実装済み |", "| 実装中・検証未完了 |", 1)
+		if strings.Contains(roadmap, forbidden) {
 			t.Fatalf("docs/ROADMAP.md must not keep Phase 12 feature as 実装中・検証未完了 after closure: %s", feature)
+		}
+	}
+	for _, feature := range phase13QualityGateFeatures {
+		want := "| 実装済み | 検証基盤 | " + feature + " |"
+		if strings.Contains(feature, "owner package") {
+			want = "| 実装済み | 実装構造 | " + feature + " |"
+		}
+		if strings.Contains(feature, "statefile") {
+			want = "| 実装済み | 状態管理 | " + feature + " |"
+		}
+		if strings.Contains(feature, "credential") {
+			want = "| 実装済み | セキュリティ | " + feature + " |"
+		}
+		if strings.Contains(feature, "API route") {
+			want = "| 実装済み | 管理ツール・API | " + feature + " |"
+		}
+		if strings.Contains(feature, "queue state machine") {
+			want = "| 実装済み | CI ランナー | " + feature + " |"
+		}
+		if strings.Contains(feature, "MCP resendWebhook") {
+			want = "| 実装済み | MCP サーバー | " + feature + " |"
+		}
+		if strings.Contains(feature, "HTTP timeout") {
+			want = "| 実装済み | 外部境界 | " + feature + " |"
+		}
+		if strings.Contains(feature, "Git tag") {
+			want = "| 実装済み | 配布・リリース | " + feature + " |"
+		}
+		if strings.Contains(feature, "旧 path") {
+			want = "| 実装済み | 文書整合 | " + feature + " |"
+		}
+		if !strings.Contains(roadmap, want) {
+			t.Fatalf("docs/ROADMAP.md must mark Phase 13 feature as 実装済み: %s", feature)
+		}
+		forbidden := strings.Replace(want, "| 実装済み |", "| 実装中・検証未完了 |", 1)
+		if strings.Contains(roadmap, forbidden) {
+			t.Fatalf("docs/ROADMAP.md must not keep Phase 13 feature as 実装中・検証未完了 after closure: %s", feature)
 		}
 	}
 
@@ -543,14 +581,116 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	}
 }
 
+func TestPhase13ImplementationAlignmentQualityEvidence(t *testing.T) {
+	t.Parallel()
+
+	const root = "testdata/phase13/implementation-alignment-quality"
+	manifestPath := filepath.Join(root, "manifest.json")
+	manifest := phase11ReadManifest(t, manifestPath)
+
+	if manifest.Name != "phase-13-implementation-alignment-quality" {
+		t.Fatalf("%s name must be phase-13-implementation-alignment-quality, got %q", manifestPath, manifest.Name)
+	}
+	if manifest.Scope != "phase-13-implementation-alignment-quality" {
+		t.Fatalf("%s scope must be phase-13-implementation-alignment-quality, got %q", manifestPath, manifest.Scope)
+	}
+	if !phase11StringSlicesEqual(manifest.Owners, phase13Owners) {
+		t.Fatalf("%s owners mismatch\nwant: %v\n got: %v", manifestPath, phase13Owners, manifest.Owners)
+	}
+	if !phase11StringSlicesEqual(manifest.Entrypoints, phase13Entrypoints) {
+		t.Fatalf("%s entrypoints mismatch\nwant: %v\n got: %v", manifestPath, phase13Entrypoints, manifest.Entrypoints)
+	}
+	if !phase11StringSlicesEqual(manifest.RequiredChecks, phase13RequiredChecks) {
+		t.Fatalf("%s required_checks mismatch\nwant: %v\n got: %v", manifestPath, phase13RequiredChecks, manifest.RequiredChecks)
+	}
+	if !phase11StringSlicesEqual(manifest.ClosureRecords, phase13ClosureRecords) {
+		t.Fatalf("%s closure_records mismatch\nwant: %v\n got: %v", manifestPath, phase13ClosureRecords, manifest.ClosureRecords)
+	}
+	if !phase11StringSlicesEqual(manifest.NegativeControls, phase13NegativeControls) {
+		t.Fatalf("%s negative_controls mismatch\nwant: %v\n got: %v", manifestPath, phase13NegativeControls, manifest.NegativeControls)
+	}
+	for _, sourceAnchor := range manifest.SourceAnchors {
+		phase11RequireMarkdownReference(t, manifestPath, sourceAnchor)
+	}
+
+	phase13RequireOwnerPackages(t)
+	phase13RequireDocumentIndexRows(t)
+	phase13RequireGovernanceFiles(t)
+	phase13RequireZeroExternalDependencies(t)
+
+	effects := phase13ReadCounterFile(t, filepath.Join(root, "expected", "effects.json"))
+	counters := phase13ReadCounterFile(t, filepath.Join(root, "expected", "counters.json"))
+	if len(counters) != len(phase13ClosureCounters) {
+		t.Fatalf("expected/counters.json must include exactly %d counters, got %d", len(phase13ClosureCounters), len(counters))
+	}
+	for _, key := range phase13ClosureCounters {
+		counter, ok := counters[key]
+		if !ok {
+			t.Fatalf("expected/counters.json must include %s", key)
+		}
+		if counter != 0 {
+			t.Fatalf("expected/counters.json %s must be 0, got %d", key, counter)
+		}
+		effect, ok := effects[key]
+		if !ok {
+			t.Fatalf("expected/effects.json must include %s", key)
+		}
+		if effect != counter {
+			t.Fatalf("expected/effects.json %s must equal counters value %d, got %d", key, counter, effect)
+		}
+	}
+
+	closureRecords := phase13ReadClosureRecords(t, filepath.Join(root, "records", "closure.jsonl"))
+	if len(closureRecords) != 18 {
+		t.Fatalf("records/closure.jsonl must include 18 closure records, got %d", len(closureRecords))
+	}
+	for _, record := range closureRecords {
+		if record.Scope != "phase-13-implementation-alignment-quality" {
+			t.Fatalf("records/closure.jsonl record %s has unexpected scope %q", record.RecordID, record.Scope)
+		}
+		if record.Status != "closed" {
+			t.Fatalf("records/closure.jsonl record %s must be closed, got %q", record.RecordID, record.Status)
+		}
+		if len(record.OpenItems) != 0 {
+			t.Fatalf("records/closure.jsonl record %s must have no open_items, got %v", record.RecordID, record.OpenItems)
+		}
+	}
+	for _, path := range []string{"records/mutation.jsonl", "records/race.jsonl", "records/fault.jsonl", "records/e2e.jsonl", "records/release.jsonl"} {
+		if len(phase13ReadJSONLines(t, filepath.Join(root, filepath.FromSlash(path)))) == 0 {
+			t.Fatalf("%s must contain at least one JSONL record", path)
+		}
+	}
+
+	workflow := phase11MustReadText(t, ".github/workflows/phase13-implementation-alignment-quality.yml")
+	if !strings.Contains(workflow, "permissions:\n  contents: read") {
+		t.Fatalf("Phase 13 workflow must use minimum contents:read permissions")
+	}
+	for _, requiredCheck := range phase13RequiredChecks {
+		if !strings.Contains(workflow, "\n  "+requiredCheck+":") {
+			t.Fatalf("Phase 13 workflow must define required check job %s", requiredCheck)
+		}
+	}
+	if strings.Count(workflow, "timeout-minutes:") < len(phase13RequiredChecks) {
+		t.Fatalf("Phase 13 workflow must set timeout-minutes on every required check")
+	}
+	phase13RequirePinnedActions(t, workflow)
+}
+
 type phase11Manifest struct {
 	Name                   string                  `json:"name"`
+	Scope                  string                  `json:"scope,omitempty"`
 	Section                string                  `json:"section"`
 	Feature                string                  `json:"feature"`
 	Category               string                  `json:"category"`
 	OwnerComponent         string                  `json:"owner_component"`
 	CollaboratorComponents []string                `json:"collaborator_components"`
 	Components             []string                `json:"components"`
+	Owners                 []string                `json:"owners,omitempty"`
+	Entrypoints            []string                `json:"entrypoints,omitempty"`
+	RequiredChecks         []string                `json:"required_checks,omitempty"`
+	ClosureRecords         []string                `json:"closure_records,omitempty"`
+	NegativeControls       []string                `json:"negative_controls,omitempty"`
+	SourceAnchors          []string                `json:"source_anchors,omitempty"`
 	References             []string                `json:"references"`
 	FakeClock              *string                 `json:"fake_clock"`
 	NotApplicable          []phase11ManifestRecord `json:"not_applicable"`
@@ -625,6 +765,138 @@ var phase12QualityGateFeatures = []string{
 	"Phase 12 version tag / release notes / release reproducibility gate",
 }
 
+var phase13QualityGateFeatures = []string{
+	"Phase 13 owner package 5 ファイル責務純度 / 6 ファイル目・サブディレクトリ・空ファイル・ダミー実装ゼロ gate",
+	"Phase 13 statefile 直接更新排除 / process lock / atomic write / JSON Lines 破損検出・隔離・復旧 gate",
+	"Phase 13 credential / token / Go 標準ライブラリ内製 KDF / secret mask / file safety / required log write gate",
+	"Phase 13 API route / Admin / SDK / UI client binding / MCP bridge / setup stdout / credential 初期化契約統一 gate",
+	"Phase 13 queue state machine / finalizer / active recovery / at-least-once / backup-restore transaction gate",
+	"Phase 13 MCP resendWebhook / subscribe / unsubscribe / sampling 実動作化と未実装 error gate",
+	"Phase 13 HTTP timeout / body 上限 / graceful shutdown / Webhook SSRF 防止 / SSH strict / systemd 最小権限 gate",
+	"Phase 13 fixture execution / mutation / race / fault injection / integration / E2E / CI required check gate",
+	"Phase 13 Git tag / GitHub Release / SHA256SUMS / signature / SBOM / reproducible build evidence / recovery procedure gate",
+	"Phase 13 旧 path / 重複仕様 / 実装済み表記 drift ゼロ gate",
+}
+
+var phase13Owners = []string{
+	"admin",
+	"api",
+	"archive",
+	"builder",
+	"commitstatus",
+	"mcp",
+	"release",
+	"runner",
+	"sdk",
+	"security",
+	"setup",
+	"statefile",
+	"ui",
+}
+
+var phase13GoOwners = []string{
+	"admin",
+	"api",
+	"archive",
+	"builder",
+	"commitstatus",
+	"mcp",
+	"release",
+	"runner",
+	"security",
+	"setup",
+	"statefile",
+}
+
+var phase13Entrypoints = []string{
+	"adlaire-ci-build",
+	"adlaire-ci-runner",
+	"adlaire-ci-api",
+	"adlaire-ci-admin",
+	"adlaire-ci-setup",
+	"adlaire-ci-release",
+	"adlaire-ci-mcp",
+	"admin-ui-browser",
+	"phase13-fixture-harness",
+}
+
+var phase13RequiredChecks = []string{
+	"phase13-go-format",
+	"phase13-go-test",
+	"phase13-go-race",
+	"phase13-go-vet",
+	"phase13-stdlib-static-analysis",
+	"phase13-dependency-inventory",
+	"phase13-secret-boundary-scan",
+	"phase13-deno-check-sdk",
+	"phase13-owner-shape",
+	"phase13-contract-parity",
+	"phase13-state-safety",
+	"phase13-security-boundary",
+	"phase13-archive-commitstatus",
+	"phase13-runner-recovery",
+	"phase13-mcp-real-behavior",
+	"phase13-external-boundary",
+	"phase13-executable-fixture",
+	"phase13-mutation",
+	"phase13-concurrency",
+	"phase13-fault-injection",
+	"phase13-browser",
+	"phase13-integration-e2e",
+	"phase13-setup-e2e",
+	"phase13-release-e2e",
+	"phase13-actions-pinning",
+	"phase13-recovery-procedure",
+	"phase13-document-drift",
+}
+
+var phase13ClosureRecords = []string{
+	"records/closure.jsonl",
+	"records/mutation.jsonl",
+	"records/race.jsonl",
+	"records/fault.jsonl",
+	"records/e2e.jsonl",
+	"records/release.jsonl",
+}
+
+var phase13NegativeControls = []string{
+	"contract-mismatch",
+	"direct-state-mutation",
+	"github-actions-unpinned",
+	"jsonl-corruption",
+	"mutation-survivor",
+	"race-trigger",
+	"fault-injection-failure",
+	"token-argv",
+}
+
+var phase13ClosureCounters = []string{
+	"phase13_owner_file_violation_count",
+	"phase13_dummy_or_empty_file_count",
+	"phase13_direct_state_mutation_count",
+	"phase13_contract_mismatch_count",
+	"phase13_state_safety_open_count",
+	"phase13_jsonl_corruption_open_count",
+	"phase13_security_kdf_open_count",
+	"phase13_token_arg_open_count",
+	"phase13_archive_commitstatus_ownership_open_count",
+	"phase13_queue_recovery_open_count",
+	"phase13_mcp_unimplemented_success_count",
+	"phase13_external_boundary_open_count",
+	"phase13_required_log_write_ignore_count",
+	"phase13_fixture_execution_gap_count",
+	"phase13_mutation_survived_count",
+	"phase13_race_or_concurrency_open_count",
+	"phase13_fault_injection_open_count",
+	"phase13_e2e_open_count",
+	"phase13_ci_required_check_open_count",
+	"phase13_action_pin_open_count",
+	"phase13_release_evidence_open_count",
+	"phase13_recovery_procedure_open_count",
+	"phase13_document_drift_open_count",
+	"final_open_item_count",
+}
+
 var phase11BuilderFormalFixtures = []string{
 	"testdata/builder/empty-dir",
 	"testdata/builder/safe",
@@ -649,6 +921,213 @@ var phase11RootCoverageFixtures = []phase11RootCoverageFixture{
 	{Root: "testdata/archive/", Owner: "archive", FixtureDir: "testdata/archive/success-archive-phase11-root-coverage"},
 	{Root: "testdata/commitstatus/", Owner: "commitstatus", FixtureDir: "testdata/commitstatus/success-commitstatus-phase11-root-coverage"},
 	{Root: "testdata/security/", Owner: "security", FixtureDir: "testdata/security/success-security-phase11-root-coverage"},
+}
+
+type phase13ClosureRecord struct {
+	RecordID  string   `json:"record_id"`
+	Scope     string   `json:"scope"`
+	Status    string   `json:"status"`
+	OpenItems []string `json:"open_items"`
+}
+
+func phase13AllowsScopeName(manifestPath string, name string) bool {
+	return filepath.ToSlash(manifestPath) == "testdata/phase13/implementation-alignment-quality/manifest.json" &&
+		name == "phase-13-implementation-alignment-quality"
+}
+
+func phase13RequireOwnerPackages(t *testing.T) {
+	t.Helper()
+
+	for _, owner := range phase13GoOwners {
+		dir := filepath.Join("components", owner)
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Fatalf("read owner package %s: %v", dir, err)
+		}
+		var files []string
+		for _, entry := range entries {
+			if entry.IsDir() {
+				t.Fatalf("%s must not contain subdirectory %s", dir, entry.Name())
+			}
+			files = append(files, entry.Name())
+			info, err := entry.Info()
+			if err != nil {
+				t.Fatalf("stat %s/%s: %v", dir, entry.Name(), err)
+			}
+			if info.Size() == 0 {
+				t.Fatalf("%s/%s must not be empty", dir, entry.Name())
+			}
+		}
+		sort.Strings(files)
+		expected := []string{owner + ".go", owner + "_test.go", "execute.go", "model.go", "validate.go"}
+		sort.Strings(expected)
+		if !phase11StringSlicesEqual(files, expected) {
+			t.Fatalf("%s must contain exactly the five owner files\nwant: %v\n got: %v", dir, expected, files)
+		}
+	}
+}
+
+func phase13RequireDocumentIndexRows(t *testing.T) {
+	t.Helper()
+
+	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
+	for _, expected := range []string{
+		"| [`testdata/phase13/implementation-alignment-quality/`](../testdata/phase13/implementation-alignment-quality/) | Phase 13 implementation alignment quality fixture root | 実在 |",
+		"| [`.github/workflows/phase13-implementation-alignment-quality.yml`](../.github/workflows/phase13-implementation-alignment-quality.yml) | Phase 13 required check workflow | 実在 |",
+		"| [`testdata/phase13/implementation-alignment-quality/manifest.json`](../testdata/phase13/implementation-alignment-quality/manifest.json) | Phase 13 evidence package manifest | 実在 |",
+		"| [`testdata/phase13/implementation-alignment-quality/expected/counters.json`](../testdata/phase13/implementation-alignment-quality/expected/counters.json) | Phase 13 closure counter 期待値 | 実在 |",
+		"| [`testdata/phase13/implementation-alignment-quality/records/closure.jsonl`](../testdata/phase13/implementation-alignment-quality/records/closure.jsonl) | Phase 13 closure record set | 実在 |",
+	} {
+		if !strings.Contains(documentIndex, expected) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must contain Phase 13実在 row: %s", expected)
+		}
+	}
+}
+
+func phase13RequireGovernanceFiles(t *testing.T) {
+	t.Helper()
+
+	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
+	for _, file := range []string{"LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODEOWNERS", "CHANGELOG.md"} {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("Phase 13 governance file %s must exist: %v", file, err)
+		}
+		if strings.TrimSpace(string(data)) == "" {
+			t.Fatalf("Phase 13 governance file %s must not be empty", file)
+		}
+		row := "| [`" + file + "`](../" + file + ") | release governance artifact | 実在 |"
+		if !strings.Contains(documentIndex, row) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must index governance file as 実在: %s", file)
+		}
+	}
+}
+
+func phase13RequireZeroExternalDependencies(t *testing.T) {
+	t.Helper()
+
+	goMod := phase11MustReadText(t, "go.mod")
+	for _, forbidden := range []string{"\nrequire ", "\nreplace ", "golang.org/x/"} {
+		if strings.Contains(goMod, forbidden) {
+			t.Fatalf("go.mod must not contain external dependency marker %q", forbidden)
+		}
+	}
+	for _, path := range []string{"docs/SPEC.md", "docs/details/fixture.md", ".github/workflows/phase13-implementation-alignment-quality.yml"} {
+		body := phase11MustReadText(t, path)
+		for _, forbidden := range []string{"staticcheck", "govulncheck", "gosec", "Argon2id", "argon2id"} {
+			if strings.Contains(body, forbidden) {
+				t.Fatalf("%s must not contain forbidden external dependency term %q", path, forbidden)
+			}
+		}
+	}
+	implementationFiles, err := filepath.Glob("components/*/*.go")
+	if err != nil {
+		t.Fatalf("glob implementation files: %v", err)
+	}
+	implementationFiles = append(implementationFiles, "admin/adlaire-ci-sdk.js", "admin/index.html")
+	for _, path := range implementationFiles {
+		body := phase11MustReadText(t, path)
+		for _, forbidden := range []string{"golang.org/x/", "npm install", "cdn.jsdelivr", "unpkg.com"} {
+			if strings.Contains(body, forbidden) {
+				t.Fatalf("%s must not contain external dependency marker %q", path, forbidden)
+			}
+		}
+	}
+}
+
+func phase13ReadCounterFile(t *testing.T, path string) map[string]int {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	var counters map[string]int
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&counters); err != nil {
+		t.Fatalf("decode %s: %v", path, err)
+	}
+	return counters
+}
+
+func phase13ReadClosureRecords(t *testing.T, path string) []phase13ClosureRecord {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	text := string(data)
+	if !strings.HasSuffix(text, "\n") {
+		t.Fatalf("%s must end with LF", path)
+	}
+	var records []phase13ClosureRecord
+	for index, line := range strings.Split(strings.TrimSuffix(text, "\n"), "\n") {
+		if strings.TrimSpace(line) == "" {
+			t.Fatalf("%s line %d must not be empty", path, index+1)
+		}
+		var record phase13ClosureRecord
+		decoder := json.NewDecoder(strings.NewReader(line))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&record); err != nil {
+			t.Fatalf("decode %s line %d: %v", path, index+1, err)
+		}
+		if strings.TrimSpace(record.RecordID) == "" {
+			t.Fatalf("%s line %d record_id must not be empty", path, index+1)
+		}
+		records = append(records, record)
+	}
+	return records
+}
+
+func phase13ReadJSONLines(t *testing.T, path string) []map[string]any {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	text := string(data)
+	if !strings.HasSuffix(text, "\n") {
+		t.Fatalf("%s must end with LF", path)
+	}
+	var records []map[string]any
+	for index, line := range strings.Split(strings.TrimSuffix(text, "\n"), "\n") {
+		if strings.TrimSpace(line) == "" {
+			t.Fatalf("%s line %d must not be empty", path, index+1)
+		}
+		var record map[string]any
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			t.Fatalf("decode %s line %d: %v", path, index+1, err)
+		}
+		records = append(records, record)
+	}
+	return records
+}
+
+func phase13RequirePinnedActions(t *testing.T, workflow string) {
+	t.Helper()
+
+	for _, line := range strings.Split(workflow, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "- uses: ") {
+			continue
+		}
+		parts := strings.Split(line, "@")
+		if len(parts) != 2 {
+			t.Fatalf("workflow action must include one @ ref: %s", line)
+		}
+		ref := strings.TrimSpace(parts[1])
+		if len(ref) != 40 {
+			t.Fatalf("workflow action ref must be a 40 character commit SHA, got %q in %s", ref, line)
+		}
+		for _, char := range ref {
+			if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f')) {
+				t.Fatalf("workflow action ref must be lowercase hex commit SHA, got %q in %s", ref, line)
+			}
+		}
+	}
 }
 
 func phase11RequireNoUnexpectedFixtureDirectories(t *testing.T) {

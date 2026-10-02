@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"time"
 	"unicode/utf8"
+
+	"github.com/fqwink/build-scripts/components/security"
 )
 
 func hasExactArg(args []string, target string) bool {
@@ -49,7 +51,15 @@ func validateCredentials(path string) error {
 	if err := json.Unmarshal(data, &cred); err != nil {
 		return err
 	}
-	if cred.Algorithm != "sha256_iter_v1" || cred.Iterations != 260000 || cred.LoginCount < 0 || !setupIsLowerHex(cred.PasswordHash, 64) || !setupIsLowerHex(cred.Salt, 64) {
+	if err := security.ValidatePasswordRecord(security.PasswordRecord{
+		PasswordHash: cred.PasswordHash,
+		Salt:         cred.Salt,
+		Algorithm:    cred.Algorithm,
+		Iterations:   cred.Iterations,
+	}); err != nil {
+		return fmt.Errorf("invalid credentials")
+	}
+	if cred.LoginCount < 0 {
 		return fmt.Errorf("invalid credentials")
 	}
 	if _, err := time.Parse("2006-01-02T15:04:05Z", cred.UpdatedAt); err != nil {
@@ -86,6 +96,6 @@ func setupIsLowerHex(value string, length int) bool {
 	return true
 }
 
-func executePhase12Model(model phase12Model) bool {
-	return validatePhase12Model(model)
+func executeOwnerFileContract(contract ownerFileContract) bool {
+	return validateOwnerFileContract(contract)
 }

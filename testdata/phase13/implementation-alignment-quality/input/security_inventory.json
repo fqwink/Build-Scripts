@@ -1,0 +1,23 @@
+{
+  "scope": "phase-13-implementation-alignment-quality",
+  "password_kdf": {
+    "algorithm": "pbkdf2_hmac_sha256_v1",
+    "iterations": 600000,
+    "salt_bytes": 32,
+    "tag_bytes": 32,
+    "implementation_boundary": "go-standard-library-only"
+  },
+  "hash_vectors": [
+    {
+      "case_id": "pbkdf2-vector-fixed-salt",
+      "salt_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "verify_input_label": "fixture-password-label",
+      "expected_result": "valid-record-verifies"
+    }
+  ],
+  "token_sources": ["file", "stdin"],
+  "forbidden_token_sources": ["argv"],
+  "masked_outputs": ["stdout", "stderr", "audit-log", "access-log", "config-log"],
+  "file_safety_cases": ["state-dir-0700", "secret-file-0600", "symlink-rejected"],
+  "rotation_cases": ["preserve-existing-secret", "rotate-by-explicit-command"]
+}

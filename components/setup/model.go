@@ -1,9 +1,13 @@
 package setup
 
-type phase12Model struct {
-	owner string
+type ownerFileContract struct {
+	Owner string
+	Files []string
 }
 
-func newPhase12Model() phase12Model {
-	return phase12Model{owner: "setup"}
+func newOwnerFileContract() ownerFileContract {
+	return ownerFileContract{
+		Owner: "setup",
+		Files: []string{"setup.go", "model.go", "validate.go", "execute.go", "setup_test.go"},
+	}
 }

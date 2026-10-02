@@ -1,0 +1,64 @@
+{
+  "phase": "Phase 13",
+  "scope": "phase-13-implementation-alignment-quality",
+  "include": [
+    "main.go",
+    "main_test.go",
+    "go.mod",
+    "components/*/*.go",
+    "admin/index.html",
+    "admin/adlaire-ci-sdk.js",
+    "docs/**/*.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CODEOWNERS",
+    "CHANGELOG.md",
+    "testdata/phase13/implementation-alignment-quality/**",
+    ".github/workflows/phase13-implementation-alignment-quality.yml"
+  ],
+  "exclude": [
+    ".git/**",
+    "components/*/*/**",
+    "go.sum",
+    "node_modules/**",
+    "vendor/**"
+  ],
+  "owner_packages": [
+    "admin",
+    "api",
+    "archive",
+    "builder",
+    "commitstatus",
+    "mcp",
+    "release",
+    "runner",
+    "security",
+    "setup",
+    "statefile"
+  ],
+  "state_files": [
+    ".adlaire-ci/config.json",
+    ".adlaire-ci/queue.json",
+    ".adlaire-ci/events.jsonl",
+    ".build_history",
+    ".build_logs"
+  ],
+  "contract_sources": [
+    "docs/details/api.md#phase-13-api-alignment-contract",
+    "docs/details/admin.md#phase-13-admin-alignment-contract",
+    "docs/details/sdk.md#phase-13-sdk-alignment-contract",
+    "docs/details/ui.md#phase-13-ui-alignment-contract",
+    "docs/details/mcp.md#phase-13-mcp-alignment-contract",
+    "docs/details/setup.md#phase-13-setup-alignment-contract"
+  ],
+  "release_artifacts": [
+    "LICENSE",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CODEOWNERS",
+    "CHANGELOG.md",
+    "SHA256SUMS",
+    "SBOM"
+  ]
+}

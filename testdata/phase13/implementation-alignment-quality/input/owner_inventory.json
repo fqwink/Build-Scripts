@@ -1,0 +1,89 @@
+{
+  "scope": "phase-13-implementation-alignment-quality",
+  "owners": [
+    {
+      "owner": "admin",
+      "package_path": "components/admin",
+      "files": ["admin.go", "model.go", "validate.go", "execute.go", "admin_test.go"],
+      "package_name": "admin",
+      "import_path": "github.com/fqwink/build-scripts/components/admin"
+    },
+    {
+      "owner": "api",
+      "package_path": "components/api",
+      "files": ["api.go", "model.go", "validate.go", "execute.go", "api_test.go"],
+      "package_name": "api",
+      "import_path": "github.com/fqwink/build-scripts/components/api"
+    },
+    {
+      "owner": "archive",
+      "package_path": "components/archive",
+      "files": ["archive.go", "model.go", "validate.go", "execute.go", "archive_test.go"],
+      "package_name": "archive",
+      "import_path": "github.com/fqwink/build-scripts/components/archive"
+    },
+    {
+      "owner": "builder",
+      "package_path": "components/builder",
+      "files": ["builder.go", "model.go", "validate.go", "execute.go", "builder_test.go"],
+      "package_name": "builder",
+      "import_path": "github.com/fqwink/build-scripts/components/builder"
+    },
+    {
+      "owner": "commitstatus",
+      "package_path": "components/commitstatus",
+      "files": ["commitstatus.go", "model.go", "validate.go", "execute.go", "commitstatus_test.go"],
+      "package_name": "commitstatus",
+      "import_path": "github.com/fqwink/build-scripts/components/commitstatus"
+    },
+    {
+      "owner": "mcp",
+      "package_path": "components/mcp",
+      "files": ["mcp.go", "model.go", "validate.go", "execute.go", "mcp_test.go"],
+      "package_name": "mcp",
+      "import_path": "github.com/fqwink/build-scripts/components/mcp"
+    },
+    {
+      "owner": "release",
+      "package_path": "components/release",
+      "files": ["release.go", "model.go", "validate.go", "execute.go", "release_test.go"],
+      "package_name": "release",
+      "import_path": "github.com/fqwink/build-scripts/components/release"
+    },
+    {
+      "owner": "runner",
+      "package_path": "components/runner",
+      "files": ["runner.go", "model.go", "validate.go", "execute.go", "runner_test.go"],
+      "package_name": "runner",
+      "import_path": "github.com/fqwink/build-scripts/components/runner"
+    },
+    {
+      "owner": "security",
+      "package_path": "components/security",
+      "files": ["security.go", "model.go", "validate.go", "execute.go", "security_test.go"],
+      "package_name": "security",
+      "import_path": "github.com/fqwink/build-scripts/components/security"
+    },
+    {
+      "owner": "setup",
+      "package_path": "components/setup",
+      "files": ["setup.go", "model.go", "validate.go", "execute.go", "setup_test.go"],
+      "package_name": "setup",
+      "import_path": "github.com/fqwink/build-scripts/components/setup"
+    },
+    {
+      "owner": "statefile",
+      "package_path": "components/statefile",
+      "files": ["statefile.go", "model.go", "validate.go", "execute.go", "statefile_test.go"],
+      "package_name": "statefile",
+      "import_path": "github.com/fqwink/build-scripts/components/statefile"
+    }
+  ],
+  "forbidden_patterns": [
+    "components/*.go",
+    "components/*/*/**",
+    "components/**/helper.go",
+    "components/**/utils.go",
+    "components/**/common.go"
+  ]
+}

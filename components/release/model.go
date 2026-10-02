@@ -1,9 +1,13 @@
 package release
 
-type phase12Model struct {
-	owner string
+type ownerFileContract struct {
+	Owner string
+	Files []string
 }
 
-func newPhase12Model() phase12Model {
-	return phase12Model{owner: "release"}
+func newOwnerFileContract() ownerFileContract {
+	return ownerFileContract{
+		Owner: "release",
+		Files: []string{"release.go", "model.go", "validate.go", "execute.go", "release_test.go"},
+	}
 }

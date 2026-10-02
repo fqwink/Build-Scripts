@@ -17,8 +17,8 @@
 | Phase 12 正式 fixture root | [`testdata/phase12/quality-gate-reconstruction/`](../testdata/phase12/quality-gate-reconstruction/) |
 | Phase 12 required check workflow | [`.github/workflows/phase12-quality-gate.yml`](../.github/workflows/phase12-quality-gate.yml) |
 | Phase 13 実装整合・品質改善の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) |
-| Phase 13 正式 fixture root | `testdata/phase13/implementation-alignment-quality/` |
-| Phase 13 required check workflow | `.github/workflows/phase13-implementation-alignment-quality.yml` |
+| Phase 13 正式 fixture root | [`testdata/phase13/implementation-alignment-quality/`](../testdata/phase13/implementation-alignment-quality/) |
+| Phase 13 required check workflow | [`.github/workflows/phase13-implementation-alignment-quality.yml`](../.github/workflows/phase13-implementation-alignment-quality.yml) |
 | Phase 14 Obsidian Vault 連携の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry) |
 | Phase 14 正式 fixture root | `testdata/phase14/obsidian-vault-integration/` |
 | Phase 14 required check workflow | `.github/workflows/phase14-obsidian-vault-integration.yml` |
@@ -78,11 +78,11 @@
 | [`docs/DESIGN.md`](DESIGN.md) | 実在 |
 | [`docs/details/`](details/) | 実在 |
 | `docs/examples/` | 未作成 |
-| `LICENSE` | 未作成 |
-| `SECURITY.md` | 未作成 |
-| `CONTRIBUTING.md` | 未作成 |
-| `CODEOWNERS` | 未作成 |
-| `CHANGELOG.md` | 未作成 |
+| [`LICENSE`](../LICENSE) | 実在 |
+| [`SECURITY.md`](../SECURITY.md) | 実在 |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | 実在 |
+| [`CODEOWNERS`](../CODEOWNERS) | 実在 |
+| [`CHANGELOG.md`](../CHANGELOG.md) | 実在 |
 
 <a id="詳細仕様本文の所在"></a>
 **詳細仕様本文・証跡所在：**
@@ -220,8 +220,8 @@
 | [`testdata/mcp/`](../testdata/mcp/) | `mcp` fixture root | 実在 |
 | [`testdata/phase12/quality-gate-reconstruction/`](../testdata/phase12/quality-gate-reconstruction/) | Phase 12 quality gate fixture root | 実在 |
 | [`.github/workflows/phase12-quality-gate.yml`](../.github/workflows/phase12-quality-gate.yml) | Phase 12 required check workflow | 実在 |
-| `testdata/phase13/implementation-alignment-quality/` | Phase 13 implementation alignment quality fixture root | 未作成 |
-| `.github/workflows/phase13-implementation-alignment-quality.yml` | Phase 13 required check workflow | 未作成 |
+| [`testdata/phase13/implementation-alignment-quality/`](../testdata/phase13/implementation-alignment-quality/) | Phase 13 implementation alignment quality fixture root | 実在 |
+| [`.github/workflows/phase13-implementation-alignment-quality.yml`](../.github/workflows/phase13-implementation-alignment-quality.yml) | Phase 13 required check workflow | 実在 |
 | `testdata/phase14/obsidian-vault-integration/` | Phase 14 Obsidian Vault 連携 fixture root | 未作成 |
 | `.github/workflows/phase14-obsidian-vault-integration.yml` | Phase 14 required check workflow | 未作成 |
 | `testdata/phase15/obsidian-local-sync/` | Phase 15 Obsidian local vault 同期 fixture root | 未作成 |
@@ -262,28 +262,28 @@
 | `components/<owner>/validate.go` | owner の入力・状態・設定・権限検証 | 実在 |
 | `components/<owner>/execute.go` | owner の正常系・異常系実行順序 | 実在 |
 | `components/<owner>/<owner>_test.go` | owner package の仕様契約検証 | 実在 |
-| `testdata/phase13/implementation-alignment-quality/` | Phase 13 正式 fixture root | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/manifest.json` | Phase 13 evidence package manifest | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/input/scope.json` | Phase 13 実行 scope 入力 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/input/owner_inventory.json` | Phase 13 owner package inventory 入力 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/input/contract_inventory.json` | Phase 13 API / Admin / SDK / UI / MCP / setup stdout / credential 初期化契約照合入力 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/input/state_inventory.json` | Phase 13 statefile 経路棚卸し入力 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/input/security_inventory.json` | Phase 13 security 境界棚卸し入力 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/input/faults.json` | Phase 13 fault injection 入力 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/expected/effects.json` | Phase 13 期待効果 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/expected/counters.json` | Phase 13 closure counter 期待値 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/records/closure.jsonl` | Phase 13 closure record set | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/records/mutation.jsonl` | Phase 13 mutation 証跡 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/records/race.jsonl` | Phase 13 race / concurrency 証跡 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/records/fault.jsonl` | Phase 13 fault injection 証跡 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/records/e2e.jsonl` | Phase 13 integration / E2E 証跡 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/records/release.jsonl` | Phase 13 release 証跡 | 未作成 |
-| `.github/workflows/phase13-implementation-alignment-quality.yml` | Phase 13 required check workflow | 未作成 |
-| `LICENSE` | release governance artifact | 未作成 |
-| `SECURITY.md` | release governance artifact | 未作成 |
-| `CONTRIBUTING.md` | release governance artifact | 未作成 |
-| `CODEOWNERS` | release governance artifact | 未作成 |
-| `CHANGELOG.md` | release governance artifact | 未作成 |
+| [`testdata/phase13/implementation-alignment-quality/`](../testdata/phase13/implementation-alignment-quality/) | Phase 13 正式 fixture root | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/manifest.json`](../testdata/phase13/implementation-alignment-quality/manifest.json) | Phase 13 evidence package manifest | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/input/scope.json`](../testdata/phase13/implementation-alignment-quality/input/scope.json) | Phase 13 実行 scope 入力 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/input/owner_inventory.json`](../testdata/phase13/implementation-alignment-quality/input/owner_inventory.json) | Phase 13 owner package inventory 入力 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/input/contract_inventory.json`](../testdata/phase13/implementation-alignment-quality/input/contract_inventory.json) | Phase 13 API / Admin / SDK / UI / MCP / setup stdout / credential 初期化契約照合入力 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/input/state_inventory.json`](../testdata/phase13/implementation-alignment-quality/input/state_inventory.json) | Phase 13 statefile 経路棚卸し入力 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/input/security_inventory.json`](../testdata/phase13/implementation-alignment-quality/input/security_inventory.json) | Phase 13 security 境界棚卸し入力 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/input/faults.json`](../testdata/phase13/implementation-alignment-quality/input/faults.json) | Phase 13 fault injection 入力 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/expected/effects.json`](../testdata/phase13/implementation-alignment-quality/expected/effects.json) | Phase 13 期待効果 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/expected/counters.json`](../testdata/phase13/implementation-alignment-quality/expected/counters.json) | Phase 13 closure counter 期待値 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/records/closure.jsonl`](../testdata/phase13/implementation-alignment-quality/records/closure.jsonl) | Phase 13 closure record set | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/records/mutation.jsonl`](../testdata/phase13/implementation-alignment-quality/records/mutation.jsonl) | Phase 13 mutation 証跡 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/records/race.jsonl`](../testdata/phase13/implementation-alignment-quality/records/race.jsonl) | Phase 13 race / concurrency 証跡 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/records/fault.jsonl`](../testdata/phase13/implementation-alignment-quality/records/fault.jsonl) | Phase 13 fault injection 証跡 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/records/e2e.jsonl`](../testdata/phase13/implementation-alignment-quality/records/e2e.jsonl) | Phase 13 integration / E2E 証跡 | 実在 |
+| [`testdata/phase13/implementation-alignment-quality/records/release.jsonl`](../testdata/phase13/implementation-alignment-quality/records/release.jsonl) | Phase 13 release 証跡 | 実在 |
+| [`.github/workflows/phase13-implementation-alignment-quality.yml`](../.github/workflows/phase13-implementation-alignment-quality.yml) | Phase 13 required check workflow | 実在 |
+| [`LICENSE`](../LICENSE) | release governance artifact | 実在 |
+| [`SECURITY.md`](../SECURITY.md) | release governance artifact | 実在 |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | release governance artifact | 実在 |
+| [`CODEOWNERS`](../CODEOWNERS) | release governance artifact | 実在 |
+| [`CHANGELOG.md`](../CHANGELOG.md) | release governance artifact | 実在 |
 
 <a id="phase-14-target-paths"></a>
 **Phase 14 target path 所在：**

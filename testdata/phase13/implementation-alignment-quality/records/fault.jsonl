@@ -1,0 +1,1 @@
+{"record_id":"phase13-fault-01","scope":"phase-13-implementation-alignment-quality","fault_ids":["disk-full","permission-denied","short-write","fsync-failure","rename-failure","process-kill","network-timeout","dns-rebinding"],"open_faults":0,"status":"closed"}

@@ -74,13 +74,14 @@
 
 | 項目 | 仕様 |
 |------|------|
-| algorithm | Go 標準ライブラリのみで実装する `sha256_iter_v1`。 |
+| algorithm | `INHOUSE` 分類の `pbkdf2_hmac_sha256_v1`。Go 標準ライブラリ primitive だけで内製実装する。 |
 | salt 生成 | `crypto/rand` で 32 bytes を生成し、`encoding/hex` で 64 文字の hex 文字列として保存する。 |
-| 初回 digest | `salt_bytes` と `password_utf8_bytes` をこの順で byte 連結し、SHA-256 digest を生成する。 |
-| 反復 | `iterations = 260000`。2 回目以降は `previous_digest`、`salt_bytes`、`password_utf8_bytes` をこの順で byte 連結して SHA-256 digest を生成する処理を繰り返す。 |
-| 保存値 | 最終 digest を lowercase hex 文字列で `.admin_credentials.password_hash` に保存する。 |
-| 比較 | 入力 password から同一手順で digest を生成し、`crypto/subtle.ConstantTimeCompare` で比較する。 |
-| 実装境界 | `crypto/sha256`、`crypto/rand`、`crypto/subtle`、`encoding/hex` だけで成立する。外部依存の採否は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) を参照する。 |
+| PBKDF2 PRF | HMAC-SHA256。`crypto/hmac` と `crypto/sha256` だけを使用する。 |
+| block 入力 | 32 bytes tag のため block index `1` だけを使用する。`U_1 = HMAC(password_utf8_bytes, salt_bytes || 0x00000001)`、`U_n = HMAC(password_utf8_bytes, U_{n-1})` とし、`U_1` から `U_iterations` までを byte ごと XOR した 32 bytes を tag とする。 |
+| 反復 | `iterations = 600000` 固定。 |
+| 保存値 | tag 32 bytes を lowercase hex 64 文字列で `.admin_credentials.password_hash` に保存する。 |
+| 比較 | 入力 password から同一手順で tag を生成し、hex decode 後の 32 bytes 同士を `crypto/subtle.ConstantTimeCompare` で比較する。 |
+| 実装境界 | `crypto/hmac`、`crypto/sha256`、`crypto/rand`、`crypto/subtle`、`encoding/hex` だけで成立する。`golang.org/x/*`、外部 password hash / KDF library、外部 test helper、外部 vector generator を使用してはならない。 |
 
 **password 入力制約：**
 
@@ -160,7 +161,7 @@
 
 security owner は、credentials、TOTP、session、login ticket、TOTP setup 仮 secret、login 失敗 entry をまたぐ認証状態遷移を process 内の単一 auth transaction coordinator で直列化する。対象は `POST /api/login`、`POST /api/login/totp`、`POST /api/logout`、`POST /api/change-password`、`GET /api/sessions`、`POST /api/sessions/revoke-all`、`GET /api/auth/totp-status`、`POST /api/auth/totp-setup`、`POST /api/auth/totp-confirm`、`DELETE /api/auth/totp`、session 認証時の期限切れ削除と `last_used_at` 更新である。同じ request から coordinator を再帰取得してはならない。
 
-auth transaction coordinator の取得待ちは最大 10 秒とする。待機開始を elapsed `0` とし、elapsed `<10s` でだけ取得成功を許可する。elapsed `10s` 到達時は timeout を優先し、同時刻の解放を取得成功扱いにしない。timeout 時は endpoint 固有 body parse、credentials / TOTP read、entropy 取得、memory state 変更、状態 write、`.access_log`、`.audit_log` を開始せず、`409 {"error":"Conflict"}` を返す。request context が取得前に cancel された場合も副作用なしで終了する。取得後は、対象処理の認証副作用順序固定契約が完了するまで coordinator を保持し、response 値を確定した後に解放する。
+auth transaction coordinator の取得待ちは最大 60 秒とする。待機開始を elapsed `0` とし、elapsed `<60s` でだけ取得成功を許可する。elapsed `60s` 到達時は timeout を優先し、同時刻の解放を取得成功扱いにしない。timeout 時は endpoint 固有 body parse、credentials / TOTP read、entropy 取得、memory state 変更、状態 write、`.access_log`、`.audit_log` を開始せず、`409 {"error":"Conflict"}` を返す。request context が取得前に cancel された場合も副作用なしで終了する。取得後は、対象処理の認証副作用順序固定契約が完了するまで coordinator を保持し、response 値を確定した後に解放する。
 
 auth transaction coordinator は、statefile locked update adapter 内の file lock と memory auth lock のどちらよりも先に取得し、どちらを解放した後にも最後まで保持する。file lock と memory auth lock を同時に保持してはならず、一方を保持中に他方を取得してはならない。同じ transaction で両方が必要な場合は、memory auth lock で必要値を read-copy して解放 → statefile locked update adapter を完了して file lock を解放 → memory auth lock で確定済み mutation を適用して解放、の順に固定する。coordinator が他 request の認証状態遷移を排他するため、各区間の間に同じ auth 状態を別 request が変更することはない。filesystem、network、command、log write、password hash、TOTP 計算、entropy 読取は memory auth lock 外で実行する。memory auth lock 内では session、ticket、pending TOTP、login failure / rate entry の read-copy または確定済み mutation だけを行う。auth transaction coordinator は statefile I/O と log write をまたいで保持できるが、別 request の response writer、network client、systemd command を待ってはならない。
 
@@ -890,7 +891,7 @@ username は case-sensitive ではなく、保存前に lowercase に正規化�
 
 同一 username の active または disabled user が存在する場合、作成は `409` とする。
 
-password 更新時は平文を保存せず、既存 `.admin_credentials` と同じ hash 方式を使用する。
+password 更新時は平文を保存せず、`pbkdf2_hmac_sha256_v1` だけを使用する。
 
 password 未設定 user は local password login を禁止し、外部認証または API token だけを許可する。
 
@@ -934,8 +935,8 @@ share link の `scope` は `status`、`history`、`snapshot_diff` の単一値�
 
 | 対象 | 固定契約 |
 |------|----------|
-| password hash | 管理 credential の新規作成、password 変更、credential rotation では Argon2id を使用する。Argon2id 実装は本リポジトリ内の内製実装、または [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) の許可外部ライブラリ一覧へ登録済みの実装だけを許可する。独自 SHA-256 反復 KDF、単純 SHA-256、salt 連結 hash を新規保存形式として使用してはならない。 |
-| migration | 既存 credential を読み込む場合、旧 hash 形式を成功扱いにして温存せず、認証成功後または明示 rotation 時に Argon2id 形式へ更新する。更新失敗時は session、token、audit を成功扱いにしない。 |
+| password hash | 管理 credential の新規作成、password 変更、credential rotation では `pbkdf2_hmac_sha256_v1` だけを使用する。`pbkdf2_hmac_sha256_v1` は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) の `INHOUSE` 分類であり、Go 標準ライブラリ primitive だけで実装する。独自 SHA-256 反復 KDF、単純 SHA-256、salt 連結 hash、外部 password hash / KDF library を新規保存形式として使用してはならない。 |
+| migration | 既存 credential を読み込む場合、`pbkdf2_hmac_sha256_v1` 以外の algorithm を成功扱いにして温存しない。旧 `sha256_iter_v1` または未知 algorithm は credentials schema 不正として扱い、session、token、audit success、password change success を発生させない。 |
 | token input | Admin CLI と MCP の token は token file または stdin から取得する。token の command argv 取得、process list に残る token、shell history に残る token を許可しない。 |
 | token storage | token 本体は作成 response または stdin / file の入力 byte 以外へ保存しない。状態 file、log、fixture expected、release notes、PR 証跡には token hash、prefix、suffix、length を含めない。 |
 | secret mask | PAT、Webhook secret、SMTP password、API token、session token、MCP token、share token、credential URL は読込直後に mask 登録し、stdout、stderr、server log、build log、audit、access、config log、fixture expected に平文を残さない。 |
@@ -944,24 +945,35 @@ share link の `scope` は `status`、`history`、`snapshot_diff` の単一値�
 | required logs | security event の audit / access log が owner 詳細本文で必須書込みと定義される場合、書込み失敗を無視して成功 response を返してはならない。 |
 | credential rotation | rotation は旧 credential 検証、new credential 生成、statefile atomic write、audit、旧 token revoke、rollback 不可範囲の明示を同一 operation として扱う。途中失敗時の session / token / audit の状態は fixture で固定する。 |
 
-Argon2id credential hash の Phase 13 固定値は以下とする。下表の値を実装者判断で変更してはならない。値を変更する場合は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) と本文節を先に改訂する。
+`pbkdf2_hmac_sha256_v1` credential hash の Phase 13 固定値は以下とする。下表の値を実装者判断で変更してはならない。値を変更する場合は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) と本文節を先に改訂する。
 
 | 項目 | 値 |
 |------|----|
-| algorithm | `argon2id` |
-| version | `19` |
-| memory | `65536` KiB |
-| iterations | `3` |
-| parallelism | `1` |
-| salt length | 16 bytes |
+| classification | `INHOUSE` |
+| algorithm | `pbkdf2_hmac_sha256_v1` |
+| PRF | HMAC-SHA256 |
+| iterations | `600000` |
+| block count | `1` |
+| salt length | 32 bytes |
 | tag length | 32 bytes |
 | salt source | `crypto/rand.Reader` |
-| encoded format | `$adlaireci$argon2id$v=19$m=65536,t=3,p=1$<base64url-no-padding-salt>$<base64url-no-padding-tag>` |
+| saved salt format | lowercase hex 64 文字。`.admin_credentials.salt` に保存する。 |
+| saved tag format | lowercase hex 64 文字。`.admin_credentials.password_hash` に保存する。 |
 | password input | UTF-8 byte sequence、Unicode normalization は行わない |
-| maximum password length | 1024 bytes |
+| maximum KDF input length | 1024 bytes。password validation の最大長は [password 入力制約](#認証共通詳細) の 128 文字を先に適用する。 |
 | verification compare | constant-time compare |
-| legacy SHA-256 | 新規生成禁止。既存検出時は credential rotation required error と audit record を返す。 |
+| allowed primitives | `crypto/hmac`、`crypto/sha256`、`crypto/rand`、`crypto/subtle`、`encoding/hex` |
+| forbidden dependency | `golang.org/x/*`、外部 password hash / KDF library、外部 PBKDF2 library、外部 test helper |
+| legacy hash | `sha256_iter_v1` の新規生成と成功扱いを禁止する。既存検出時は credentials schema 不正として扱う。 |
 
-Phase 13 の security evidence は `input/security_inventory.json` に `hash_vectors`、`token_sources`、`masked_outputs`、`file_safety_cases`、`rotation_cases` を持たせる。`hash_vectors` は raw password を保存せず、case id、salt hex、encoded hash、verify input label、expected result だけを保存する。raw secret を fixture に保存した場合は `phase13_security_kdf_open_count` と `phase13_required_log_write_ignore_count` の両方へ未完了として計上する。
+`pbkdf2_hmac_sha256_v1` の実装確認 test vector は以下を固定値とする。implementation test は下表の `password` と `salt` を UTF-8 byte sequence として扱い、tag 32 bytes の lowercase hex が完全一致しなければならない。test vector 生成に外部 library、外部 command、外部 service を使用してはならない。
+
+| case id | password | salt | iterations | expected password_hash |
+|---------|----------|------|------------|------------------------|
+| `pbkdf2-sha256-rfc-short-1` | `password` | `salt` | `1` | `120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b` |
+| `pbkdf2-sha256-rfc-short-2` | `password` | `salt` | `2` | `ae4d0c95af6b46d32d0adff928f06dd02a303f8ef3c251dfd6e2d85a95474c43` |
+| `pbkdf2-sha256-production-600000` | `password` | `salt` | `600000` | `669cfe52482116fda1aa2cbe409b2f56c8e4563752b7a28f6eaab614ee005178` |
+
+Phase 13 の security evidence は `input/security_inventory.json` に `hash_vectors`、`token_sources`、`masked_outputs`、`file_safety_cases`、`rotation_cases` を持たせる。`hash_vectors` は raw password を保存せず、case id、salt hex、password_hash hex、verify input label、expected result だけを保存する。raw secret を fixture に保存した場合は `phase13_security_kdf_open_count` と `phase13_required_log_write_ignore_count` の両方へ未完了として計上する。
 
 Phase 13 の `security` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_security_kdf_open_count=0`、`phase13_token_arg_open_count=0`、`phase13_required_log_write_ignore_count=0` を満たすまで完了扱いにしてはならない。

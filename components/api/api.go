@@ -33,6 +33,9 @@ import (
 	"syscall"
 	"time"
 	"unicode/utf8"
+
+	"github.com/fqwink/build-scripts/components/security"
+	"github.com/fqwink/build-scripts/components/statefile"
 )
 
 const (
@@ -40,7 +43,7 @@ const (
 	defaultAPIAddr      = "127.0.0.1:8765"
 	defaultQueueMaxSize = 3
 	apiTimeLayout       = "2006-01-02T15:04:05Z"
-	passwordIterations  = 260000
+	passwordIterations  = security.CredentialIterations
 	maxLoginCount       = int64(9223372036854775807)
 )
 
@@ -1147,7 +1150,7 @@ func NewAPIServer(cfg APIConfig) (*APIServer, error) {
 		cfg.SystemdDir = "/etc/systemd/system"
 	}
 	if cfg.AuthTransactionTimeout <= 0 {
-		cfg.AuthTransactionTimeout = 10 * time.Second
+		cfg.AuthTransactionTimeout = 60 * time.Second
 	}
 	if err := validateCredentials(filepath.Join(cfg.StateDir, ".admin_credentials")); err != nil {
 		return nil, err
@@ -1269,16 +1272,16 @@ func InitCredentials(stateDir, password string, now time.Time) error {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	salt, err := randomHex(32)
+	record, err := security.NewPasswordRecord(password)
 	if err != nil {
 		return err
 	}
 	at := now.UTC().Format(apiTimeLayout)
 	cred := apiCredentials{
-		PasswordHash: hashPassword(password, salt),
-		Salt:         salt,
-		Algorithm:    "sha256_iter_v1",
-		Iterations:   passwordIterations,
+		PasswordHash: record.PasswordHash,
+		Salt:         record.Salt,
+		Algorithm:    record.Algorithm,
+		Iterations:   record.Iterations,
 		MustChange:   true,
 		LoginCount:   0,
 		LastLoginAt:  nil,
@@ -1478,7 +1481,7 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	if !passwordHashEqual(cred.PasswordHash, hashPassword(req.Password, cred.Salt)) {
+	if !credentialsPasswordEqual(cred, req.Password) {
 		s.recordLoginFailure(r)
 		if err := s.appendAuthAccessLog(r, "login_failure", "failure", "password_mismatch"); err != nil {
 			writeError(w, http.StatusInternalServerError, "Internal server error")
@@ -1528,7 +1531,7 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	now := s.nowString()
 	cred, err = updateCredentialsLocked(path, func(current apiCredentials) (apiCredentials, bool, error) {
-		if !passwordHashEqual(current.PasswordHash, hashPassword(req.Password, current.Salt)) {
+		if !credentialsPasswordEqual(current, req.Password) {
 			return current, false, errAPIPasswordMismatch
 		}
 		advanceCredentialsLogin(&current, now)
@@ -1743,27 +1746,27 @@ func (s *APIServer) handleChangePassword(w http.ResponseWriter, r *http.Request)
 		writeValidation(w, "current_password", "required")
 		return
 	}
-	if len(req.NewPassword) < 12 {
-		writeValidation(w, "new_password", "must be at least 12 characters")
-		return
-	}
-	salt, err := randomHex(32)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal server error")
+	if !validInitialPasswordString(req.NewPassword) {
+		writeValidation(w, "new_password", "invalid")
 		return
 	}
 	path := filepath.Join(s.cfg.StateDir, ".admin_credentials")
 	now := s.nowString()
-	_, err = updateCredentialsLocked(path, func(current apiCredentials) (apiCredentials, bool, error) {
-		currentHash := hashPassword(req.CurrentPassword, current.Salt)
-		if !passwordHashEqual(current.PasswordHash, currentHash) {
+	_, err := updateCredentialsLocked(path, func(current apiCredentials) (apiCredentials, bool, error) {
+		if !credentialsPasswordEqual(current, req.CurrentPassword) {
 			return current, false, errAPIPasswordMismatch
 		}
-		if passwordHashEqual(currentHash, hashPassword(req.NewPassword, current.Salt)) {
+		if credentialsPasswordEqual(current, req.NewPassword) {
 			return current, false, errAPIPasswordUnchanged
 		}
-		current.Salt = salt
-		current.PasswordHash = hashPassword(req.NewPassword, salt)
+		record, err := security.NewPasswordRecord(req.NewPassword)
+		if err != nil {
+			return current, false, err
+		}
+		current.PasswordHash = record.PasswordHash
+		current.Salt = record.Salt
+		current.Algorithm = record.Algorithm
+		current.Iterations = record.Iterations
 		current.MustChange = false
 		current.UpdatedAt = now
 		return current, true, nil
@@ -2369,7 +2372,7 @@ func (s *APIServer) enforceAPIRateLimit(w http.ResponseWriter, r *http.Request, 
 		window.Count++
 		state.Windows[key] = window
 	}
-	if err := atomicWriteJSON(statePath, state, 0600); err != nil {
+	if err := atomicWriteJSONLocked(statePath, state, 0600); err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		return false
 	}
@@ -2506,7 +2509,7 @@ func (s *APIServer) backupCorruptAPIRateLimitState(path string) error {
 	if err := os.Rename(path, backup); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	return atomicWriteJSON(path, apiRateLimitState{Windows: map[string]apiRateLimitWindow{}}, 0600)
+	return atomicWriteJSONLocked(path, apiRateLimitState{Windows: map[string]apiRateLimitWindow{}}, 0600)
 }
 
 func apiRateLimitStateValid(state apiRateLimitState) bool {
@@ -7112,7 +7115,7 @@ func updateCredentialsLocked(path string, mutate func(apiCredentials) (apiCreden
 	if err := validateCredentialsValue(next); err != nil {
 		return apiCredentials{}, err
 	}
-	if err := atomicWriteJSON(path, next, 0600); err != nil {
+	if err := atomicWriteJSONLocked(path, next, 0600); err != nil {
 		return apiCredentials{}, err
 	}
 	return next, nil
@@ -7127,13 +7130,30 @@ func readCredentials(path string) (apiCredentials, error) {
 }
 
 func validateCredentialsValue(cred apiCredentials) error {
-	if cred.Algorithm != "sha256_iter_v1" || cred.Iterations != passwordIterations || !isLowerHex(cred.PasswordHash, 64) || !isLowerHex(cred.Salt, 64) || cred.LoginCount < 0 || !validAPITime(cred.UpdatedAt) {
+	if err := security.ValidatePasswordRecord(credentialsPasswordRecord(cred)); err != nil {
+		return errors.New("invalid credentials")
+	}
+	if cred.LoginCount < 0 || !validAPITime(cred.UpdatedAt) {
 		return errors.New("invalid credentials")
 	}
 	if cred.LastLoginAt != nil && !validAPITime(*cred.LastLoginAt) {
 		return errors.New("invalid credentials")
 	}
 	return nil
+}
+
+func credentialsPasswordRecord(cred apiCredentials) security.PasswordRecord {
+	return security.PasswordRecord{
+		PasswordHash: cred.PasswordHash,
+		Salt:         cred.Salt,
+		Algorithm:    cred.Algorithm,
+		Iterations:   cred.Iterations,
+	}
+}
+
+func credentialsPasswordEqual(cred apiCredentials, password string) bool {
+	ok, err := security.VerifyPassword(credentialsPasswordRecord(cred), password)
+	return err == nil && ok
 }
 
 func passwordHashEqual(left, right string) bool {
@@ -7168,21 +7188,6 @@ func credentialsFingerprint(cred apiCredentials) string {
 	}, "\n")
 	sum := sha256.Sum256([]byte(payload))
 	return hex.EncodeToString(sum[:])
-}
-
-func hashPassword(password, saltHex string) string {
-	salt, _ := hex.DecodeString(saltHex)
-	digest := sha256.Sum256(append(salt, []byte(password)...))
-	current := digest[:]
-	for i := 1; i < passwordIterations; i++ {
-		buf := make([]byte, 0, len(current)+len(salt)+len(password))
-		buf = append(buf, current...)
-		buf = append(buf, salt...)
-		buf = append(buf, []byte(password)...)
-		next := sha256.Sum256(buf)
-		current = next[:]
-	}
-	return hex.EncodeToString(current)
 }
 
 func tokenHash(token string) string {
@@ -7277,7 +7282,7 @@ func updateTOTPSecretLocked(path string, mutate func(apiTOTPSecret) (apiTOTPSecr
 	if err := validateTOTPSecretValue(next); err != nil {
 		return apiTOTPSecret{}, err
 	}
-	if err := atomicWriteJSON(path, next, 0600); err != nil {
+	if err := atomicWriteJSONLocked(path, next, 0600); err != nil {
 		return apiTOTPSecret{}, err
 	}
 	return next, nil
@@ -9677,7 +9682,7 @@ func writeAPITokens(path string, tokens []apiTokenRecord) error {
 		}
 		return tokens[i].CreatedAt > tokens[j].CreatedAt
 	})
-	return atomicWriteJSON(path, apiTokenFile{Tokens: tokens}, 0600)
+	return atomicWriteJSONLocked(path, apiTokenFile{Tokens: tokens}, 0600)
 }
 
 func updateAPITokensLocked(path string, mutate func([]apiTokenRecord) ([]apiTokenRecord, bool, error)) ([]apiTokenRecord, error) {
@@ -10389,58 +10394,21 @@ func validApprovalRecord(record apiApprovalRecord) bool {
 }
 
 func appendJSONLine(path string, value any) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-	data, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
-	data = append(data, '\n')
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = f.Write(data)
-	return err
+	return statefile.AppendJSONLine(path, value, 0600)
 }
 
 func atomicWriteHistory(path string, records []apiHistoryRecord, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-	var b strings.Builder
+	values := make([]any, 0, len(records))
 	for _, item := range records {
-		data, err := json.Marshal(item)
-		if err != nil {
-			return err
-		}
-		b.Write(data)
-		b.WriteByte('\n')
+		values = append(values, item)
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(b.String()), mode); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return statefile.WriteJSONLinesAtomic(path, values, mode)
 }
 
 func readJSONLines(path string) []map[string]any {
-	data, err := os.ReadFile(path)
+	records, err := statefile.ReadJSONLines(path)
 	if err != nil {
 		return []map[string]any{}
-	}
-	records := []map[string]any{}
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		var record map[string]any
-		if json.Unmarshal([]byte(line), &record) == nil {
-			records = append(records, record)
-		}
 	}
 	return records
 }
@@ -10543,19 +10511,11 @@ func githubScopes(header string) []string {
 }
 
 func readJSONIfExists(path string, out any) error {
-	err := readJSONFile(path, out)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
-	return err
+	return statefile.ReadJSONIfExists(path, out)
 }
 
 func readJSONFile(path string, out any) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(data, out)
+	return statefile.ReadJSON(path, out)
 }
 
 func readStrictJSONFile(path string, out any) error {
@@ -10569,19 +10529,11 @@ func readStrictJSONFile(path string, out any) error {
 }
 
 func atomicWriteJSON(path string, value any, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(value, "", "  ")
-	if err != nil {
-		return err
-	}
-	data = append(data, '\n')
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, mode); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return statefile.WriteJSONAtomic(path, value, mode)
+}
+
+func atomicWriteJSONLocked(path string, value any, mode os.FileMode) error {
+	return statefile.WriteJSONAtomicLocked(path, value, mode)
 }
 
 func method(w http.ResponseWriter, r *http.Request, want string) bool {

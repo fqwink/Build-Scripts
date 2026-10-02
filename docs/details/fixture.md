@@ -237,7 +237,7 @@ Phase 13 の証跡 package は、下表の全対象を同一 closure record set 
 | contract parity | API route 表、Admin CLI command 表、SDK public method 表、UI operation 表、MCP tool 表、setup stdout、credential 初期化、HTTP method、path、query、request、response、status、auth、token 取得元の照合 record。 | 片側だけの修正、route / method / auth / response shape 差分、stdout 契約差分、token argv 取得、未照合 endpoint が 1 件以上ある。 |
 | state safety | statefile adapter 経由の read-modify-write lock、file / parent directory fsync、atomic rename、symlink 非追従、state directory `0700`、owner / mode 起動時検証、migration、stale lock、直接状態更新不在の証跡。 | API、runner、MCP、archive が状態 file を直接更新する、lock 範囲外 read-modify-write、fsync / rename / mode / owner 未検証、stale lock 復旧未定義が 1 件以上ある。 |
 | JSON Lines safety | append lock、flush、fsync、破損行検出、破損 file 隔離、復旧対象登録、黙殺禁止、必須 log 書込み失敗時の失敗伝播。 | 破損行を読み飛ばして成功扱いにする、best-effort 扱いが禁止された audit / access / config log write failure を無視する、または復旧記録がない。 |
-| security boundary | Argon2id credential hash、既存 SHA-256 反復 KDF 不在、token file / stdin、secret mask、署名、file safety、credential rotation、log / fixture / release notes の secret 不在証跡。 | 独自 SHA-256 反復 KDF 残存、token argv 残存、secret 出力、token hash / prefix / length 漏えい、credential rotation 未検証が 1 件以上ある。 |
+| security boundary | Go 標準ライブラリ内製 KDF、外部 password hash / KDF 依存不在、既存 SHA-256 反復 KDF 不在、token file / stdin、secret mask、署名、file safety、credential rotation、log / fixture / release notes の secret 不在証跡。 | 外部 KDF 依存、旧 SHA-256 反復 KDF 残存、token argv 残存、secret 出力、token hash / prefix / length 漏えい、credential rotation 未検証が 1 件以上ある。 |
 | queue / recovery | `waiting`、`active`、`cancelling`、`succeeded`、`failed`、`cancelled`、`recovery_required` の状態機械、waiting to active atomic transition、ID 採番、queue 上限、panic / timeout / cancel / 保存失敗 finalizer、active 復旧、at-least-once 実行。 | 状態遷移表にない遷移、未原子的な active 化、finalizer 未実行経路、再起動後 active 放置、at-least-once 証跡欠落が 1 件以上ある。 |
 | archive / commitstatus / release | archive owner の snapshot / compress / digest / verify / download / restore、commitstatus owner の retry / rate limit / timeout、release owner の tag / GitHub Release / SHA256SUMS / signature / SBOM / reproducible build evidence。 | 呼び出し元 owner に archive / commitstatus duplicate 実装が残る、release 証跡不足、SHA256SUMS / 署名 / SBOM / 再現ビルド証跡が未接続である。 |
 | MCP real behavior | `resendWebhook`、`subscribe`、`unsubscribe`、`sampling` の実動作証跡、未実装機能の明示 error、HTTP timeout、body 上限、graceful shutdown、statefile adapter 接続。 | no-op success、未実装 success、statefile 直接更新、HTTP lifecycle 未検証、sampling の外部 AI API 直接呼出しが 1 件以上ある。 |
@@ -245,7 +245,7 @@ Phase 13 の証跡 package は、下表の全対象を同一 closure record set 
 | executable fixture | fixture input を production entrypoint へ渡し、actual と expected を比較した実行記録、fixture 数や JSON 妥当性だけを完了証拠にしない negative control。 | fixture count、JSON parse、file 存在だけの合格、production entrypoint 未通過、expected 比較なし、negative control が fail しない。 |
 | mutation / race / fault | production code mutation selection、mutation evidence set、`survived=0`、race detector または代替 interleaving、disk full、permission denied、short write、fsync failure、rename failure、process kill。 | mutation survivor、race trigger 未判定、fault injection 未実行、skip に責務正本 anchor がない、障害を成功扱いする。 |
 | integration / E2E | Admin to API、UI to SDK to API、runner to statefile、MCP to statefile の統合テスト、setup、install-api、update、rollback、Release、実インストール E2E。 | 単体 test だけで統合済み扱い、stub だけで E2E 扱い、実インストール未実行の未実行証跡欠落、連携先副作用未比較が 1 件以上ある。 |
-| CI / GitHub Actions | format、test、race、vet、staticcheck、govulncheck、gosec、executable fixture、mutation、競合、fault、browser、setup、release の check、Actions の commit SHA pin、minimum permissions、timeout、required checks。 | required check 未設定、Actions tag pin、permissions 過大、timeout 欠落、skip success、CI 外の口頭説明だけで合格にする。 |
+| CI / GitHub Actions | format、test、race、vet、Go 標準 toolchain と内製検査による static analysis、dependency inventory、secret boundary scan、executable fixture、mutation、競合、fault、browser、setup、release の check、Actions の commit SHA pin、minimum permissions、timeout、required checks。 | required check 未設定、Actions tag pin、permissions 過大、timeout 欠落、外部解析 tool の導入、skip success、CI 外の口頭説明だけで合格にする。 |
 | governance / recovery | LICENSE、SECURITY.md、CONTRIBUTING.md、CODEOWNERS、CHANGELOG、stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順。 | governance file 未作成、復旧手順未記載、復旧手順が実装契約または fixture へ接続しない、document drift が 1 件以上ある。 |
 
 Phase 13 closure record set は、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record を使用し、各 record の `scope` に `phase-13-implementation-alignment-quality` を含める。Phase 13 では以下の集計値を同じ closure record set 内に記録する。
@@ -258,7 +258,7 @@ Phase 13 closure record set は、[test verification closure record set 固定�
 | `phase13_contract_mismatch_count` | `0` | API、Admin、SDK、UI、MCP、setup stdout、credential 初期化の契約差分がある。 |
 | `phase13_state_safety_open_count` | `0` | lock、atomic write、fsync、rename、owner / mode、migration、recovery、stale lock の未解消項目がある。 |
 | `phase13_jsonl_corruption_open_count` | `0` | JSON Lines 破損検出、隔離、復旧対象登録、黙殺禁止、append lock / flush / fsync に未解消項目がある。 |
-| `phase13_security_kdf_open_count` | `0` | 独自 SHA-256 反復 KDF 残存、Argon2id 未移行、credential hash fixture 未接続がある。 |
+| `phase13_security_kdf_open_count` | `0` | 外部 KDF 依存、旧 SHA-256 反復 KDF 残存、`pbkdf2_hmac_sha256_v1` fixture 未接続がある。 |
 | `phase13_token_arg_open_count` | `0` | Admin または MCP が token を command argv から受け取る、token file / stdin の検証がない。 |
 | `phase13_archive_commitstatus_ownership_open_count` | `0` | archive または commitstatus 責務が呼び出し元 owner に重複残存する。 |
 | `phase13_queue_recovery_open_count` | `0` | queue 状態機械、finalizer、active recovery、at-least-once、backup / restore transaction の残件がある。 |
@@ -277,7 +277,7 @@ Phase 13 closure record set は、[test verification closure record set 固定�
 | `phase13_document_drift_open_count` | `0` | 旧 path、重複仕様、実装済み表記、未作成 path、責務正本参照に drift がある。 |
 | `final_open_item_count` | `0` | 上記集計値または 18 record の `open_items` に残件がある。 |
 
-Phase 13 の正式 fixture root は `testdata/phase13/implementation-alignment-quality/` とする。同 root は Phase 13 実装 PR で作成する。作成前は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 13 target path 所在](../DOCUMENT_INDEX.md#phase-13-target-paths) で `未作成` として扱う。
+Phase 13 の正式 fixture root は `testdata/phase13/implementation-alignment-quality/` とする。同 root の実在所在は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 13 target path 所在](../DOCUMENT_INDEX.md#phase-13-target-paths) を参照する。
 
 Phase 13 の正式 fixture root は以下の file を必須とする。下表の必須 file が 1 件でも欠ける場合、`phase13_fixture_execution_gap_count` に 1 件以上を計上し、Phase 13 を完了扱いにしてはならない。
 
@@ -345,14 +345,14 @@ Phase 13 の CI required check は以下とする。GitHub workflow は YAML 禁
 | `phase13-go-test` | Go stable toolchain で `go test ./... -count=1`。 | exit code `0`、skip / 未実行 record なし。 |
 | `phase13-go-race` | Go stable toolchain で `go test -race ./... -count=1`。 | exit code `0`、race / concurrency open `0`。 |
 | `phase13-go-vet` | Go stable toolchain で `go vet ./...`。 | exit code `0`。 |
-| `phase13-staticcheck` | staticcheck の実行。 | exit code `0`、未実行時は skip / 未実行証跡と再実行条件を記録し、完了扱いにしない。 |
-| `phase13-govulncheck` | govulncheck の実行。 | exit code `0`、脆弱性 open `0`。 |
-| `phase13-gosec` | gosec の実行。 | exit code `0`、secret / file safety / command execution finding open `0`。 |
+| `phase13-stdlib-static-analysis` | Go 標準 toolchain と本リポジトリ内の内製検査だけで静的解析を実行する。 | exit code `0`、外部解析 tool 未使用、owner package 5 ファイル固定、unreachable fixture / obsolete path open `0`。 |
+| `phase13-dependency-inventory` | `go.mod`、Go import、JavaScript / HTML artifact、workflow を検査し、production 外部依存が 0 であることを確認する。 | exit code `0`、`go.mod` の外部 `require`、`golang.org/x/*`、third party import、npm / bundler / polyfill 依存 open `0`。 |
+| `phase13-secret-boundary-scan` | Go 標準 toolchain と内製検査だけで token argv、secret 出力、fixture / log / release notes secret 漏えい境界を検査する。 | exit code `0`、secret / file safety / command execution finding open `0`、外部 secret scan service 未使用。 |
 | `phase13-deno-check-sdk` | Deno stable runtime で `deno check admin/adlaire-ci-sdk.js`。 | exit code `0`。Node.js 代替禁止。 |
 | `phase13-owner-shape` | owner package inventory、5 ファイル固定、旧 root path、空 file、dummy / no-op success の検査。 | `phase13_owner_file_violation_count=0`、`phase13_dummy_or_empty_file_count=0`、`phase13_document_drift_open_count=0`。 |
 | `phase13-contract-parity` | API、Admin、SDK、UI、MCP、setup stdout、credential 初期化の契約自動照合。 | `phase13_contract_mismatch_count=0`、`phase13_mcp_unimplemented_success_count=0`。 |
 | `phase13-state-safety` | statefile 直接更新禁止、process lock、atomic write、JSON Lines safety、migration、recovery の検査。 | `phase13_direct_state_mutation_count=0`、`phase13_state_safety_open_count=0`、`phase13_jsonl_corruption_open_count=0`。 |
-| `phase13-security-boundary` | Argon2id、token file / stdin、secret mask、file safety、required log write の検査。 | `phase13_security_kdf_open_count=0`、`phase13_token_arg_open_count=0`、`phase13_required_log_write_ignore_count=0`。 |
+| `phase13-security-boundary` | Go 標準ライブラリ内製 KDF、token file / stdin、secret mask、file safety、required log write の検査。 | `phase13_security_kdf_open_count=0`、`phase13_token_arg_open_count=0`、`phase13_required_log_write_ignore_count=0`。 |
 | `phase13-archive-commitstatus` | archive / commitstatus の owner 集約、呼び出し元 duplicate 排除、retry、rate limit、timeout の検査。 | `phase13_archive_commitstatus_ownership_open_count=0`。 |
 | `phase13-runner-recovery` | queue 状態機械、finalizer、active recovery、at-least-once、backup / restore transaction の検査。 | `phase13_queue_recovery_open_count=0`、`phase13_race_or_concurrency_open_count=0`。 |
 | `phase13-mcp-real-behavior` | MCP `resendWebhook`、`subscribe`、`unsubscribe`、`sampling` の実動作、未実装 error、statefile 接続の検査。 | `phase13_mcp_unimplemented_success_count=0`、`phase13_direct_state_mutation_count=0`。 |
@@ -1424,7 +1424,7 @@ API 運用実装の完了証跡は [`docs/details/fixture.md` fixture 証跡責�
 | 認証 | auth-password-change | `forced` session で password 変更成功 | 新 salt/hash、`must_change:false`、現 session の `password_change_required=false`、現 session 以外削除、`password_change` ログ、password/hash/salt 平文なし。同じ現 session で通常 endpoint を使用できる。 |
 | 認証 | auth-log-write-failure | login 成功時に `.audit_log` 追記失敗 | `500`、session token を response しない。 |
 | 認証 | auth-concurrent-transactions | harness barrier で同時 password login 2 件、login と password change、旧 revision の TOTP ticket と password change、同時 TOTP setup 2 件、TOTP confirm と disable、revoke-all と通常認証、期限切れ session と logout の coordinator 取得順を各 subcase で固定する。 | request は [認証 transaction・並行更新固定契約](security.md#security-auth-concurrency-contract) の取得順に直列化する。login count の lost update 0、旧 password / ticket / setup secret の成功 0、revoke 後の次 request は `401`、二重 session 削除と二重 audit 0。 |
-| 認証 | auth-transaction-timeout | 先行 request が auth transaction coordinator を保持し、後続 request の timer target `auth_transaction_wait` を elapsed `9999ms` と `10000ms` へ進め、各時刻の coordinator 解放を個別に実行する。 | `9999ms` 解放は後続 request が取得して処理を継続する。`10000ms` 同時解放は timeout を優先して `409 {"error":"Conflict"}`。timeout case の body parse、credentials / TOTP read、entropy、memory mutation、state write、`.access_log`、`.audit_log` は 0 件。共通 `.api_access_log` だけ最終 status `409` で記録する。 |
+| 認証 | auth-transaction-timeout | 先行 request が auth transaction coordinator を保持し、後続 request の timer target `auth_transaction_wait` を elapsed `59999ms` と `60000ms` へ進め、各時刻の coordinator 解放を個別に実行する。 | `59999ms` 解放は後続 request が取得して処理を継続する。`60000ms` 同時解放は timeout を優先して `409 {"error":"Conflict"}`。timeout case の body parse、credentials / TOTP read、entropy、memory mutation、state write、`.access_log`、`.audit_log` は 0 件。共通 `.api_access_log` だけ最終 status `409` で記録する。 |
 | approval | approval-create | approval_required target に差分 | build なし、`requested_force` を含む pending record、`approval_pending` audit、通知成功または pending。 |
 | approval | approval-duplicate | branch/sha/target/requested_trigger/requested_force/delivery_id が同一の pending を再検出 | pending 重複作成なし。成功済み audit / channel 通知は重複しない。 |
 | approval | approval-pending-audit-recovery | pending 作成後の `approval_pending` audit 追記を失敗させ、同一要求を再検出 | pending は 1 件のまま、不足 audit を 1 件追記し、証跡のない channel だけ通知する。 |

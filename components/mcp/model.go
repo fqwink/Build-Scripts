@@ -1,9 +1,13 @@
 package mcp
 
-type phase12Model struct {
-	owner string
+type ownerFileContract struct {
+	Owner string
+	Files []string
 }
 
-func newPhase12Model() phase12Model {
-	return phase12Model{owner: "mcp"}
+func newOwnerFileContract() ownerFileContract {
+	return ownerFileContract{
+		Owner: "mcp",
+		Files: []string{"mcp.go", "model.go", "validate.go", "execute.go", "mcp_test.go"},
+	}
 }

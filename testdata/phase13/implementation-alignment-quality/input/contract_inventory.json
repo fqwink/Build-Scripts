@@ -1,0 +1,47 @@
+{
+  "scope": "phase-13-implementation-alignment-quality",
+  "contracts": [
+    {
+      "contract_id": "phase13-api-health",
+      "owner": "api",
+      "contract_kind": "http",
+      "method": "GET",
+      "path": "/health",
+      "query_schema_ref": "docs/details/api.md#phase-13-api-alignment-contract",
+      "request_schema_ref": "docs/details/api.md#phase-13-api-alignment-contract",
+      "response_schema_ref": "docs/details/api.md#phase-13-api-alignment-contract",
+      "error_schema_ref": "docs/details/api.md#phase-13-api-alignment-contract",
+      "auth": "none",
+      "status_codes": [200],
+      "state_effects": [],
+      "client_bindings": {
+        "admin_command": "status",
+        "sdk_method": "getHealth",
+        "ui_operation": "health-panel",
+        "mcp_tool": "getStatus"
+      },
+      "source_anchor": "docs/details/api.md#phase-13-api-alignment-contract"
+    },
+    {
+      "contract_id": "phase13-credential-init",
+      "owner": "setup",
+      "contract_kind": "stdout",
+      "method": "COMMAND",
+      "path": "adlaire-ci-setup install-api",
+      "query_schema_ref": "docs/details/setup.md#phase-13-setup-alignment-contract",
+      "request_schema_ref": "docs/details/setup.md#phase-13-setup-alignment-contract",
+      "response_schema_ref": "docs/details/setup.md#phase-13-setup-alignment-contract",
+      "error_schema_ref": "docs/details/setup.md#phase-13-setup-alignment-contract",
+      "auth": "local-operator",
+      "status_codes": [0],
+      "state_effects": ["credential_record_created_or_preserved"],
+      "client_bindings": {
+        "admin_command": "setup install-api",
+        "sdk_method": "none",
+        "ui_operation": "none",
+        "mcp_tool": "none"
+      },
+      "source_anchor": "docs/details/setup.md#phase-13-setup-alignment-contract"
+    }
+  ]
+}

@@ -1,1 +1,1 @@
-Usage: adlaire-ci-admin --api-url url --token token [--json] command [command-args]
+Usage: adlaire-ci-admin --api-url url (--token-file path | --token-stdin) [--json] command [command-args]

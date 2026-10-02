@@ -36,7 +36,7 @@
 `adlaire-ci-mcp` は以下の CLI を持つ。
 
 ```text
-adlaire-ci-mcp --state-dir <path> [--addr <host:port>] [--read-only] [--client-token <token>] [--allow-non-loopback]
+adlaire-ci-mcp --state-dir <path> [--addr <host:port>] [--read-only] [--client-token-file <path> | --client-token-stdin] [--allow-non-loopback]
 adlaire-ci-mcp --help
 adlaire-ci-mcp --version
 ```
@@ -46,28 +46,29 @@ adlaire-ci-mcp --version
 | `--state-dir <path>` | yes | none | statefile root。空でない絶対 path、既存 directory、symlink でないことを必須とする。 |
 | `--addr <host:port>` | no | `127.0.0.1:8766` | host は IPv4 literal または exact `localhost` だけを許可する。port は `1`〜`65535` の 10 進数。 |
 | `--read-only` | no | `false` | 副作用 tool を `tools/list` から除外し、既存 connection の副作用 tool call を `-32002 Forbidden` にする。 |
-| `--client-token <token>` | no | none | 指定時は `/mcp` と `/mcp/events` に `Authorization: Bearer <token>` を必須にする。`/health` では要求しない。 |
+| `--client-token-file <path>` | no | none | 指定時は regular file から client token を読み、`/mcp` と `/mcp/events` に `Authorization: Bearer <token>` を必須にする。`/health` では要求しない。 |
+| `--client-token-stdin` | no | none | 指定時は stdin から client token を読む。`--client-token-file` と同時指定してはならない。 |
 | `--allow-non-loopback` | no | `false` | 明示指定時のみ `--addr` の non-loopback IPv4 unicast host を許可する。指定がない場合、`127.0.0.0/8` と exact `localhost` 以外は拒否する。 |
 | `--help` | no | none | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) に従う。 |
 | `--version` | no | none | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) に従う。 |
 
-CLI parse は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) を使用する。短縮 option、未定義 option、未許可の `--name=value`、未定義位置引数を禁止する。`--state-dir`、`--addr`、`--client-token`、`--read-only`、`--allow-non-loopback` は同一 option の重複を禁止する。値 option と boolean option のどちらも、2 回目以降の出現を parse error とし、最後の値採用、重複 boolean の黙認、重複値の merge を行ってはならない。
+CLI parse は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) を使用する。短縮 option、未定義 option、未許可の `--name=value`、未定義位置引数を禁止する。`--state-dir`、`--addr`、`--client-token-file`、`--client-token-stdin`、`--read-only`、`--allow-non-loopback` は同一 option の重複を禁止する。値 option と boolean option のどちらも、2 回目以降の出現を parse error とし、最後の値採用、重複 boolean の黙認、重複値の merge を行ってはならない。client token source は `--client-token-file` または `--client-token-stdin` のどちらか 1 つだけを許可し、平文 token を command line 引数の値として受け取る option を実装してはならない。
 
 `--addr` の host 判定は文字列 parse 後、名前解決を行わずに実施する。exact `localhost` は loopback として扱い、その他の host 名、IPv6 literal、空 host、wildcard、zone identifier を禁止する。IPv4 literal は 4 octet dotted decimal だけを許可し、octet の空文字、符号、16 進表記、8 進表記、余分な空白、先頭 `+`、NUL、CR、LF を禁止する。`--allow-non-loopback` の有無にかかわらず、`0.0.0.0`、`255.255.255.255`、`224.0.0.0/4`、`240.0.0.0/4` は bind 対象として禁止する。`--allow-non-loopback` なしの場合は `127.0.0.0/8` と exact `localhost` だけを許可する。`--allow-non-loopback` ありの場合は、上記の禁止 host を除く IPv4 unicast literal と exact `localhost` を許可する。
 
 | 条件 | stdout | stderr | 終了 code | 副作用 |
 |------|--------|--------|-----------|--------|
-| `--help` | `Usage: adlaire-ci-mcp --state-dir path [--addr host:port] [--read-only] [--client-token token] [--allow-non-loopback] [--version] [--help]` + LF | 空 | `0` | 状態、listener、client log、metrics、audit に触れない。 |
+| `--help` | `Usage: adlaire-ci-mcp --state-dir path [--addr host:port] [--read-only] [--client-token-file path | --client-token-stdin] [--allow-non-loopback] [--version] [--help]` + LF | 空 | `0` | 状態、listener、client log、metrics、audit に触れない。 |
 | `--version` | `adlaire-ci-mcp <binary-version> go=<runtime.Version()>` + LF | 空 | `0` | 同上。 |
 | option 重複 | 空 | `duplicate option: <option>` + LF | `2` | 状態 read/write、listener、client log、metrics、audit を開始しない。 |
 | `--state-dir` 未指定 | 空 | `state directory is required` + LF | `2` | listener を起動しない。 |
 | `--state-dir` が symlink | 空 | `state directory must not be symlink: <path>` + LF | `2` | 同上。 |
 | `--addr` 形式不正 | 空 | `invalid listen address: <address>` + LF | `2` | 状態 read/write を開始しない。 |
 | non-loopback かつ `--allow-non-loopback` なし | 空 | `non-loopback address is not allowed: <address>` + LF | `2` | 同上。 |
-| `--client-token` が空文字 | 空 | `client token must not be empty` + LF | `2` | 同上。 |
+| client token source が空文字または不正 | 空 | `client token must not be empty` または `invalid client token source` + LF | `2` | 同上。 |
 | listener 起動失敗 | 空 | `listen failed` + LF | `1` | statefile を変更しない。 |
 
-CLI 検証順は、共通 option mode 確定、argv token safety、option parse、option 重複、`--state-dir` 未指定、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) の空文字・相対 path・不在・directory 判定、symlink 判定、`--addr` 形式、禁止 host 判定、loopback 判定、`--client-token` 検証、listener 起動の順に固定する。
+CLI 検証順は、共通 option mode 確定、argv token safety、option parse、option 重複、`--state-dir` 未指定、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI state directory 共通固定契約](../DETAIL_INDEX.md#common-state-dir-contract) の空文字・相対 path・不在・directory 判定、symlink 判定、`--addr` 形式、禁止 host 判定、loopback 判定、client token source 検証、listener 起動の順に固定する。
 
 <a id="sec-29-2"></a>
 **29.2 HTTP endpoint：**
@@ -529,7 +530,7 @@ scope は [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#
 
 token 未指定起動時は local trusted mode とし、loopback 接続に限り全 scope を許可する。この場合 `.mcp_config.scopes` は参照しない。
 
-token 指定起動時は `--client-token` 値の SHA-256 lowercase hex を `.mcp_config.scopes[].token_hash` と照合し、一致した record の `scopes` だけを許可する。該当 record が存在しない場合は `-32002 Forbidden` を返す。
+token source 指定起動時は読み取った token の SHA-256 lowercase hex を `.mcp_config.scopes[].token_hash` と照合し、一致した record の `scopes` だけを許可する。該当 record が存在しない場合は `-32002 Forbidden` を返す。
 
 scope 不足時は `-32002 Forbidden` を返す。
 
@@ -631,7 +632,7 @@ confirmation_id は `mcpconf_` + 128 bit 以上の乱数を Crockford Base32 26 
 - `.mcp_client_log`、`.mcp_metrics`、`.mcp_audit_log` の fixture assertion が存在する。
 - invalid CLI option、invalid addr、non-loopback 拒否、missing state-dir が固定 stderr と終了 code `2` を返す。
 - `/mcp` の invalid content type、body 上限超過、JSON parse 失敗、batch request、未初期化 method、params 不正が固定 error を返し、tool 副作用を開始しない。
-- `--client-token` 指定時、`/mcp` と `/mcp/events` は token 不一致を `401` で拒否し、`/health` は token 不要で応答する。
+- client token source 指定時、`/mcp` と `/mcp/events` は token 不一致を `401` で拒否し、`/health` は token 不要で応答する。
 - read-only mode では副作用 tool が `tools/list` に出ず、直接 `tools/call` されても `-32002 Forbidden` で状態を変更しない。
 - confirmation_id は memory only、5 分で期限切れ、params hash 不一致時に tool を実行しない。
 - [`docs/details/fixture.md` fixture 証跡責務 §30-F MCP fixture 固定契約](fixture.md#mcp-fixture-contract) の expected、category、assertions、no-write、secret-mask、order を満たす。

@@ -3,10 +3,10 @@
     {
       "name": "secret-redaction-http-error",
       "binary": "adlaire-ci-admin",
-      "argv": ["--api-url", "http://127.0.0.1:8765", "--token", "${secret:admin_cli_token}", "status"],
+      "argv": ["--api-url", "http://127.0.0.1:8765", "--token-stdin", "status"],
       "env": {},
       "cwd": ".",
-      "stdin": null,
+      "stdin": "${secret:admin_cli_token}",
       "expected_exit_code": 1
     }
   ]

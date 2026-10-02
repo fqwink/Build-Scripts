@@ -252,7 +252,7 @@ draft 作成後、正式公開前に失敗した場合は、作成した draft �
 | release evidence | Git tag、local commit、remote default branch、GitHub Release、asset count、SHA256SUMS、signature、SBOM、再現ビルド比較、download verify を 1 つの release evidence record に記録する。record 不在、asset 不足、checksum 未検証、再現性未確認を成功扱いにしない。 |
 | signature / SBOM | 署名 asset と SBOM asset を追加する場合は、asset 名、生成入力、digest 対象、検証方法、失敗時 error、Release asset count を [`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract) から [`docs/details/release.md` 詳細本文責務 §R7](release.md#release-acceptance-contract) へ先に追加する。未仕様の placeholder asset を作らない。 |
 | GitHub Actions pinning | release に関わる GitHub Actions は commit SHA pin、最小 permissions、timeout、required checks を証跡化する。workflow の所在は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、required check の合否は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。 |
-| governance files | `LICENSE`、`SECURITY.md`、`CONTRIBUTING.md`、`CODEOWNERS`、`CHANGELOG.md` は release governance artifact として所在を [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務で管理する。未作成の場合は未作成 path として扱い、存在を前提にしない。 |
+| governance files | `LICENSE`、`SECURITY.md`、`CONTRIBUTING.md`、`CODEOWNERS`、`CHANGELOG.md` は release governance artifact として実在させ、所在を [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務で管理する。 |
 | recovery procedure | stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順は、該当 owner 詳細本文と fixture evidence から到達できることを release readiness の条件に含める。 |
 
 Phase 13 の release governance artifact は以下の最低内容を満たす。file の法務・運用判断そのものは本文書で再定義しないが、空 file、placeholder、別文書への丸投げだけの file は `phase13_release_evidence_open_count` に計上する。

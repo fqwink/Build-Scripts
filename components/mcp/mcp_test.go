@@ -22,7 +22,7 @@ func TestRunMCPHelpVersionAndValidation(t *testing.T) {
 	if code := RunMCP([]string{"--help", "--bad"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("expected help success, got %d", code)
 	}
-	if got := stdout.String(); got != "Usage: adlaire-ci-mcp --state-dir path [--addr host:port] [--read-only] [--client-token token] [--allow-non-loopback] [--version] [--help]\n" {
+	if got := stdout.String(); got != "Usage: adlaire-ci-mcp --state-dir path [--addr host:port] [--read-only] [--client-token-file path | --client-token-stdin] [--allow-non-loopback] [--version] [--help]\n" {
 		t.Fatalf("unexpected help: %q", got)
 	}
 	if stderr.Len() != 0 {
