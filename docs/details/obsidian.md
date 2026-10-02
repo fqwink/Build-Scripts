@@ -23,9 +23,11 @@ Phase 14 は `adlaire-ci-build --input-mode obsidian-vault` で起動し、Obsid
 | entry note | `--obsidian-entry <relative-path>` で指定する vault root 相対 Markdown file。先頭 `/`、空 segment、`.`、`..`、backslash、NUL、CR、LF を禁止する。拡張子は `.md` だけを許可する。 |
 | output root | builder の既存 output option を使用する。Phase 14 は builder に渡す前の中間 root を自動作成し、公開 output は builder が所有する。 |
 | filter file | `--obsidian-filter-file <path>` を指定した場合だけ JSON object として読む。未指定時は entry note から到達する note と asset だけを対象にする。YAML、TOML、CSV、XML の filter を禁止する。 |
-| strict | `--strict` がある場合、warning 分類の未解決 link、unsupported syntax、未使用 asset、duplicate tag も失敗にする。 |
+| strict | `--strict` がある場合、warning 分類の未解決 link、未使用 asset、duplicate tag も失敗にする。 |
 
-`--obsidian-filter-file` は UTF-8 JSON object とし、top-level key は `include_notes`、`exclude_notes`、`include_assets`、`exclude_assets` だけを許可する。各 value は array of string とし、各 string は vault root 相対 path pattern で、先頭 `/`、空 segment、`.`、`..`、backslash、NUL、CR、LF、`**` を禁止する。未知 key、重複 key、型不一致、空 string は終了コード `2`。
+`--obsidian-filter-file` は UTF-8 JSON object とし、top-level key は `include_notes`、`exclude_notes`、`include_assets`、`exclude_assets` だけを許可する。各 value は array of string とし、各 string は vault root 相対 path pattern で、先頭 `/`、空 segment、`.`、`..`、backslash、NUL、CR、LF、`**` を禁止する。未知 key、重複 key、型不一致、空 string は終了コード `2`、stderr `OBSIDIAN_INVALID_FILTER` とする。
+
+filter pattern は slash 区切りの segment 列とする。通常 segment は exact byte match、segment 全体が `*` の場合だけ同一階層の任意 1 segment に一致する。`*.md`、`note*`、`*note`、character class、brace、escape、`?`、recursive wildcard、正規表現を禁止し、検出した場合は終了コード `2`、stderr `OBSIDIAN_INVALID_FILTER_PATTERN` とする。filter array の順序は意味を持たず、同一 string は 1 件へ重複排除する。適用順は `entry note graph`、`include_notes` / `include_assets` による追加、`exclude_notes` / `exclude_assets` による除外の順に固定し、exclude は include に必ず優先する。filter file によって note が asset pattern へ一致した場合、または asset が note pattern へ一致した場合は推測補正せず、終了コード `2`、stderr `OBSIDIAN_FILTER_TYPE_MISMATCH` とする。
 
 Phase 14 / Phase 15 の vault / project 相対 path は、UTF-8、slash 区切り、先頭 `/` なし、末尾 `/` なし、空 segment なし、`.` / `..` segment なし、backslash なし、NUL / CR / LF なし、drive prefix なし、`~` prefix なし、1 segment 255 bytes 以下、全体 4096 bytes 以下に固定する。root 判定は `EvalSymlinks` による解決後 path ではなく、open 対象の各 segment を `Lstat` し symlink を拒否する no-follow 境界で行う。directory、regular file 以外の device、socket、FIFO は拒否し、regular file の hardlink count が 2 以上の場合は `OBSIDIAN_HARDLINK_FORBIDDEN` とする。
 
@@ -41,6 +43,33 @@ Phase 14 は `.obsidian/` 配下を読まない。`.obsidian/` 配下の設定�
 | stdout | builder の標準 stdout 契約を維持し、Phase 14 追加 report key は `obsidian_assets`、`obsidian_diagnostics`、`obsidian_notes`、`obsidian_unresolved_links` だけを許可する。 |
 | stderr | 失敗時は 1 行目に machine error code、2 行目以降に path と line / column を出力する。secret、absolute vault path、token、home directory は出力しない。 |
 
+Phase 14 machine code は以下に固定する。終了コード `2` は入力、仕様外構文、path safety、filter、CLI contract の不合格、終了コード `1` は中間 root 書込み、report copy、builder handoff の実行失敗とする。終了コード列が `0 / 2` の code は non-strict では diagnostic `warning` として stdout report と `obsidian_map.json` に残し終了コード `0`、strict では同じ code を stderr へ出力し終了コード `2` とする。
+
+| error code | 終了コード | 条件 |
+|------------|------------|------|
+| `OBSIDIAN_INPUT_MODE_REQUIRED` | `2` | `--obsidian-*` option が指定され、`--input-mode obsidian-vault` がない。 |
+| `OBSIDIAN_INVALID_VAULT` | `2` | vault root が既存 directory ではない、または symlink / device / socket / FIFO / permission denied。 |
+| `OBSIDIAN_INVALID_ENTRY` | `2` | entry note が path safety または `.md` 拡張子条件に合格しない。 |
+| `OBSIDIAN_ENTRY_EXCLUDED` | `2` | filter exclude により entry note が対象外になる。 |
+| `OBSIDIAN_INVALID_FILTER` | `2` | filter file の JSON object、key、型、重複 key、空 string が固定契約に合格しない。 |
+| `OBSIDIAN_INVALID_FILTER_PATTERN` | `2` | filter pattern が固定 pattern grammar に合格しない。 |
+| `OBSIDIAN_FILTER_TYPE_MISMATCH` | `2` | note pattern と asset pattern の対象種別が一致しない。 |
+| `OBSIDIAN_PATH_ESCAPE` | `2` | 解決対象 path が vault root または中間 root の no-follow 境界外へ出る。 |
+| `OBSIDIAN_HARDLINK_FORBIDDEN` | `2` | regular file の hardlink count が 2 以上。 |
+| `OBSIDIAN_YAML_FRONTMATTER_UNSUPPORTED` | `2` | YAML frontmatter を検出した。 |
+| `OBSIDIAN_YAML_BLOCK_UNSUPPORTED` | `2` | YAML / YML fenced code block を検出した。 |
+| `OBSIDIAN_WIKILINK_MALFORMED` | `2` | wikilink / embed の bracket、target、alias、heading が grammar に合格しない。 |
+| `OBSIDIAN_NOTE_EMBED_UNSUPPORTED` | `2` | note embed を検出した。 |
+| `OBSIDIAN_AMBIGUOUS_NOTE_LINK` | `2` | basename link が複数 note に一致する。 |
+| `OBSIDIAN_UNRESOLVED_LINK` | `0 / 2` | note link または asset embed の target が解決不能。 |
+| `OBSIDIAN_DUPLICATE_TAG` | `0 / 2` | 1 note 内で同一 tag が重複した。 |
+| `OBSIDIAN_UNUSED_ASSET` | `0 / 2` | filter include または reachable graph 上の asset が出力で参照されない。 |
+| `OBSIDIAN_ASSET_UNSUPPORTED` | `2` | asset extension、media type、digest、path safety が不合格。 |
+| `OBSIDIAN_REPORT_PATH_INVALID` | `2` | `--obsidian-report-file` が output root 外または path safety 不合格。 |
+| `OBSIDIAN_INTERMEDIATE_WRITE_FAILED` | `1` | 中間 root への normalized note、asset、`obsidian_map.json` 書込みに失敗した。 |
+| `OBSIDIAN_REPORT_COPY_FAILED` | `1` | `--obsidian-report-file` への copy に失敗した。 |
+| `OBSIDIAN_BUILDER_FAILED` | `1` | builder handoff 後に builder owner component が失敗した。 |
+
 <a id="obsidian-phase14-output-schema-contract"></a>
 **Phase 14 output schema 契約：**
 
@@ -52,7 +81,7 @@ Phase 14 は `.obsidian/` 配下を読まない。`.obsidian/` 配下の設定�
 
 `outgoing_links` は `line`、`column`、`raw` の順に昇順 sort し、各 object の key 順を `raw`、`target`、`target_path`、`heading`、`alias`、`status`、`error_code`、`line`、`column` とする。`status` は `resolved`、`unresolved`、`ambiguous`、`unsupported` のいずれか、`error_code` は成功時 empty string、失敗時は本詳細本文の `OBSIDIAN_*` code とする。`target_path`、`heading`、`alias` は該当なしの場合 empty string とし、key を省略してはならない。
 
-`asset_embeds` と root `assets` は `source_path` の UTF-8 byte 昇順で sort し、各 object の key 順を `raw`、`source_path`、`normalized_path`、`sha256`、`size`、`media_type`、`status`、`error_code`、`line`、`column` とする。`media_type` は `.png=image/png`、`.jpg=image/jpeg`、`.jpeg=image/jpeg`、`.gif=image/gif`、`.webp=image/webp`、`.svg=image/svg+xml`、`.pdf=application/pdf` に固定する。禁止拡張子、vault 外参照、digest 不一致は `status=unsupported` または `status=unresolved` とし、strict でない場合も diagnostic record に残す。
+`asset_embeds` と root `assets` は `source_path` の UTF-8 byte 昇順で sort し、各 object の key 順を `raw`、`source_path`、`normalized_path`、`sha256`、`size`、`media_type`、`status`、`error_code`、`line`、`column` とする。`media_type` は `.png=image/png`、`.jpg=image/jpeg`、`.jpeg=image/jpeg`、`.gif=image/gif`、`.webp=image/webp`、`.svg=image/svg+xml`、`.pdf=application/pdf` に固定する。禁止拡張子、vault 外参照、digest 不一致は `status=unsupported` または `status=unresolved` とし、strict でない場合も diagnostic record に残す。SVG は opaque asset として copy だけを行い、inline 展開、XML parse、script 除去、外部参照 fetch、data URI 変換をしてはならない。
 
 `line` は LF 正規化後の 1-based line number、`column` は当該 line 先頭からの 1-based UTF-8 byte offset とする。multibyte 文字を rune 数、display width、grapheme cluster 数で数えてはならない。
 
@@ -90,6 +119,8 @@ YAML は使用禁止である。file 先頭が `---` + LF または `---` + CRLF
 | case mismatch | file system が case-insensitive でも path は byte の case-sensitive exact match とする。 |
 | unsupported syntax | `.canvas`、Dataview code block、Templater marker、external fetch directive は失敗にする。 |
 
+wikilink / embed parser は、code fence と inline code span を先に保護し、保護範囲内の `[[`、`![[`、`#` を通常 text として扱う。保護範囲外で `[[` または `![[` の直前 byte が backslash の場合は token 開始ではなく、backslash と bracket をそのまま通常 text として残す。保護範囲外で unescaped `[[` または `![[` を見つけた場合、同一 note 内の次の `]]` までを 1 token とし、その間に別の `[[` または `![[` が出現する場合は `OBSIDIAN_WIKILINK_MALFORMED` とする。target は trim 後に空であってはならず、target、heading、alias の各 field に NUL、CR、LF、backslash、`[`、`]` を含めてはならない。alias は output Markdown の link text へ使うだけで、target 解決、sort、digest、normalized path に影響してはならない。
+
 Phase 14 の link 解決は、entry note から到達可能な note graph だけを対象にする。filter file の include は到達対象を増やせるが、exclude が entry note を除外する場合は終了コード `2`、stderr `OBSIDIAN_ENTRY_EXCLUDED`。
 
 <a id="obsidian-phase14-builder-handoff-contract"></a>
@@ -117,6 +148,8 @@ Phase 15 は `adlaire-ci-obsidian sync plan`、`adlaire-ci-obsidian sync apply`�
 | direction | `import-only`、`export-only`、`bidirectional` だけを許可する。 |
 | delete policy | `reject`、`tombstone` だけを許可する。hard delete は Phase 15 で禁止する。 |
 
+`--conflict-dir` と `--tombstone-dir` は project root 相対 path とし、Phase 14 / Phase 15 共通 path safety に合格しなければならない。未指定時の既定値は `adlaire-ci-conflicts/` と `adlaire-ci-tombstones/` とする。指定値が vault root、project root 外、absolute path、symlink、hardlink、device、socket、FIFO、既存 regular file のいずれかに該当する場合は終了コード `2`、stderr `OBSIDIAN_SYNC_PATH_INVALID` とする。
+
 <a id="obsidian-phase15-cli-contract"></a>
 **Phase 15 CLI 契約：**
 
@@ -135,15 +168,19 @@ Phase 15 の成功時 stdout は canonical JSON object 1 行と LF だけとす�
 
 `sync_state.json` は root object とし、key 順を `schema_version`、`project_root_digest`、`vault_root_digest`、`entries`、`tombstones`、`conflicts`、`last_apply_id` に固定する。`schema_version` は `obsidian-sync-state-v1` とする。`entries` は `path` の UTF-8 byte 昇順 array とし、各 object の key 順を `path`、`project_digest`、`vault_digest`、`last_sync_digest`、`last_sync_unix` とする。存在しない側の digest は empty string とし、mtime だけで一致扱いにしてはならない。`tombstones` は `tombstone_id` 昇順、`conflicts` は `conflict_id` 昇順とする。
 
+`project_root_digest` と `vault_root_digest` は同期対象 regular file を normalized path の UTF-8 byte 昇順で並べ、各 file について `normalized_path` + LF + lowercase SHA-256 + LF + decimal size + LF を連結した byte 列の SHA-256 lowercase hex とする。`state_digest` は `sync_state.json` の canonical JSON byte 列の SHA-256 lowercase hex とする。state file が未作成の場合、実装は empty state object を canonical JSON として生成し、その byte 列から `state_digest` を算出する。empty state object の `entries`、`tombstones`、`conflicts` は `[]`、`last_apply_id` は empty string とし、`project_root_digest` と `vault_root_digest` は現在 tree digest を入れる。
+
 `plan.json` は root object とし、key 順を `schema_version`、`plan_id`、`created_at_unix`、`direction`、`delete_policy`、`project_root_digest`、`vault_root_digest`、`state_digest`、`operations`、`conflicts`、`tombstones` に固定する。`schema_version` は `obsidian-sync-plan-v1` とする。`plan_id` は `direction` + LF + `delete_policy` + LF + `project_root_digest` + LF + `vault_root_digest` + LF + `state_digest` + LF の SHA-256 lowercase hex とする。`plan_hash` は `plan.json` canonical JSON byte 列の SHA-256 lowercase hex とし、`plan.json` 内には格納しない。
 
 `operations` は `path` の UTF-8 byte 昇順、同一 path 内は `conflict`、`tombstone`、`create`、`update`、`noop` の順に sort する。各 object の key 順は `op`、`direction`、`path`、`source`、`destination`、`before_digest`、`after_digest`、`conflict_id`、`tombstone_id`、`rollback_required` とする。`op` は `conflict`、`tombstone`、`create`、`update`、`noop`、`direction` は `project-to-vault`、`vault-to-project`、`none` のいずれかとする。該当しない string field は empty string、`rollback_required` は boolean とし、key を省略してはならない。
 
-`conflicts` は `conflict_id` 昇順 array とし、各 object の key 順を `conflict_id`、`path`、`reason`、`project_digest`、`vault_digest`、`state_digest`、`resolution` に固定する。`reason` は `both-side-edit`、`delete-vs-edit`、`rename-collision`、`read-only-target`、`digest-changed` のいずれか、`resolution` は Phase 15 では常に `manual` とする。自動 merge、last-writer-wins、mtime 優先を禁止する。
+operation array は、project tree、vault tree、sync state entries、tombstones、conflicts の path 和集合に対して 1 path 以上 1 operation 以下を生成する。変更がない path は `noop` として残し、plan 作成時の対象集合を audit 可能にする。`import-only` は vault 側を source、project 側を destination とし、project だけが state から変更されている path は `conflict` / `opposite-side-edit` とする。`export-only` は project 側を source、vault 側を destination とし、vault だけが state から変更されている path は `conflict` / `opposite-side-edit` とする。`bidirectional` は片側だけが state から変更された path を変更側から反対側への `create` または `update` とし、両側が state から変更された path は `conflict` / `both-side-edit` とする。削除は `delete_policy=reject` では `conflict` / `delete-vs-edit`、`delete_policy=tombstone` では `tombstone` とし、hard delete operation を生成してはならない。
+
+`conflicts` は `conflict_id` 昇順 array とし、各 object の key 順を `conflict_id`、`path`、`reason`、`project_digest`、`vault_digest`、`state_digest`、`resolution` に固定する。`reason` は `both-side-edit`、`delete-vs-edit`、`rename-collision`、`read-only-target`、`digest-changed`、`opposite-side-edit` のいずれか、`resolution` は Phase 15 では常に `manual` とする。自動 merge、last-writer-wins、mtime 優先を禁止する。
 
 `tombstones` は `tombstone_id` 昇順 array とし、各 object の key 順を `tombstone_id`、`path`、`digest`、`direction`、`created_at_unix`、`tombstone_path` に固定する。`tombstone_path` は tombstone dir 相対 path とし、vault root または project root の絶対 path を含めてはならない。
 
-`rollback record` は root object とし、key 順を `schema_version`、`apply_id`、`plan_hash`、`started_at_unix`、`completed_at_unix`、`operations`、`state_before_digest`、`state_after_digest` に固定する。`schema_version` は `obsidian-sync-rollback-v1` とする。`operations` は apply 実行順で記録し、rollback 実行時は逆順で処理する。各 operation record の key 順は `op`、`path`、`destination`、`previous_digest`、`new_digest`、`backup_path`、`status`、`error_code` とし、`status` は `applied`、`skipped`、`failed` のいずれかとする。
+`rollback record` は root object とし、key 順を `schema_version`、`apply_id`、`plan_hash`、`started_at_unix`、`completed_at_unix`、`operations`、`state_before_digest`、`state_after_digest` に固定する。`schema_version` は `obsidian-sync-rollback-v1` とする。`operations` は apply 実行順で記録し、rollback 実行時は逆順で処理する。各 operation record の key 順は `op`、`path`、`destination`、`previous_digest`、`new_digest`、`backup_path`、`status`、`error_code` とし、`status` は `applied`、`skipped`、`failed` のいずれかとする。destination write 開始前の rollback record 初期版では、`completed_at_unix=0`、`state_after_digest=""`、全 operation `status=skipped`、`error_code=""` とする。
 
 Phase 15 の `created_at_unix`、`started_at_unix`、`completed_at_unix`、`last_sync_unix` は UTC Unix seconds の decimal integer とする。fixture では fake clock で固定し、実装は現在時刻を直接参照する箇所を sync plan / apply / rollback の時刻 provider 1 箇所へ集約する。各 timestamp は処理開始時に 1 回だけ取得し、同一 report 内で同じ意味の timestamp を複数回取得して揺らしてはならない。
 
@@ -152,9 +189,11 @@ Phase 15 の `created_at_unix`、`started_at_unix`、`completed_at_unix`、`last
 
 `sync plan` は project tree、vault tree、sync state を読み、operation array を `--plan-file` へ JSON で出力する。plan hash は canonical JSON byte 列の SHA-256 lowercase hex とする。operation order は path の UTF-8 byte 昇順、同一 path 内は `conflict`、`tombstone`、`create`、`update`、`noop` の順とする。
 
-`sync apply` は state dir の process lock を取得し、plan file を再読込し、plan hash を照合し、project tree / vault tree / sync state の digest が plan 作成時と一致することを確認してから staging へ書く。staging 書込み、file fsync、parent directory fsync、atomic rename、state update、rollback record 書込みの順序を固定する。途中失敗では、成功済み rename と state update を rollback record に記録し、終了コード `1` とする。
+`sync apply` は state dir の process lock を取得し、plan file を再読込し、plan hash を照合し、project tree / vault tree / sync state の digest が plan 作成時と一致することを確認してから staging へ書く。書込み順序は、rollback record 初期版を staging へ書く、file fsync、parent directory fsync、rollback record を `--rollback-file` へ atomic rename、各 destination の sibling staging へ新 content または tombstone content を書く、file fsync、parent directory fsync、destination atomic rename、operation record status 更新、rollback record atomic rewrite、`sync_state.json` staging 書込み、file fsync、parent directory fsync、state atomic rename、state parent directory fsync、rollback record の `completed_at_unix` と `state_after_digest` 更新の順に固定する。途中失敗では、成功済み rename と state update を rollback record に記録し、終了コード `1` とする。rollback record を作成できない場合は destination への write を開始してはならない。
 
 `sync rollback` は rollback record の operation を逆順に処理する。rollback record の対象 path が現在 digest と一致しない場合は上書きせず conflict とし、終了コード `1`、stderr `OBSIDIAN_ROLLBACK_CONFLICT` とする。
+
+rollback 実行時は operation `status` だけを信用してはならない。対象 destination の現在 digest が rollback record の `new_digest` と一致し、`previous_digest` または `backup_path` が存在する場合は、`status=skipped` のままでも crash recovery 対象として rollback を実行する。現在 digest が `previous_digest` と一致する operation は rollback 済みとして `skipped` 扱いにし、現在 digest が `previous_digest` とも `new_digest` とも一致しない operation は conflict とする。
 
 <a id="obsidian-phase15-conflict-tombstone-contract"></a>
 **Phase 15 conflict / tombstone 契約：**
@@ -185,5 +224,7 @@ Phase 15 の実装完了には `adlaire-ci-obsidian` 実行バイナリの配布
 | `OBSIDIAN_SYNC_PLAN_HASH_MISMATCH` | `2` | apply の `--plan-hash` が plan file と一致しない。 |
 | `OBSIDIAN_SYNC_STATE_CHANGED` | `1` | plan 作成後に project、vault、state の digest が変化した。 |
 | `OBSIDIAN_SYNC_CONFLICT` | `1` | conflict が 1 件以上ある。 |
+| `OBSIDIAN_SYNC_PATH_INVALID` | `2` | `--conflict-dir`、`--tombstone-dir`、destination、backup、または rollback path が path safety に合格しない。 |
 | `OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED` | `1` | staging、fsync、rename、state update、rollback record のいずれかに失敗した。 |
+| `OBSIDIAN_ROLLBACK_CONFLICT` | `1` | rollback 対象 path の現在 digest が rollback record の `previous_digest` / `new_digest` と一致しない。 |
 | `OBSIDIAN_SYNC_SERVICE_DEPENDENCY_FORBIDDEN` | `2` | Obsidian Sync service、cloud、remote API、plugin runtime への依存を検出した。 |

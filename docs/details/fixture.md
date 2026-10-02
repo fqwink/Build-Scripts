@@ -410,7 +410,7 @@ Phase 14 required check は以下に固定する。Phase 14 実装 PR は、下�
 | `phase14-builder-handoff` | Obsidian normalized root から builder への handoff | 入力 vault write が 0、handoff root 外 write が 0、builder stdout / stderr 契約差分が 0。 |
 | `phase14-document-drift` | [`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md)、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md)、[`docs/details/obsidian.md`](obsidian.md) | Phase 14 の状態、path、anchor、fixture root、未作成表記の drift が 0。 |
 
-Phase 14 fixture は negative control を必須とする。negative control は、YAML frontmatter、vault escape、symlink、hardlink、unresolved wikilink、duplicate basename、case mismatch、unsupported `.canvas`、Dataview block、Templater block、external fetch attempt、note embed の禁止 case を 1 件以上含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase14_fixture_execution_gap_count` に計上する。
+Phase 14 fixture は negative control を必須とする。negative control は、YAML frontmatter、vault escape、symlink、hardlink、invalid filter、invalid filter pattern、filter type mismatch、malformed wikilink、unresolved wikilink strict、duplicate tag strict、unused asset strict、duplicate basename、case mismatch、unsupported `.canvas`、Dataview block、Templater block、external fetch attempt、note embed の禁止 case を 1 件以上含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase14_fixture_execution_gap_count` に計上する。
 
 <a id="phase-15-obsidian-local-sync-evidence"></a>
 **Phase 15 Obsidian local vault 同期証跡：**
@@ -456,7 +456,7 @@ Phase 15 required check は以下に固定する。Phase 15 実装 PR は、下�
 | `phase15-release-setup-distribution` | `adlaire-ci-obsidian-linux-amd64` の Release / setup 連携 | `expected/distribution.json` と Release / setup 詳細本文の asset 名、asset count、checksum line count、version stdout が一致し、`phase15_distribution_open_count=0`。 |
 | `phase15-document-drift` | [`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md)、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md)、[`docs/details/obsidian.md`](obsidian.md) | Phase 15 の状態、path、anchor、fixture root、未作成表記の drift が 0。 |
 
-Phase 15 fixture は negative control を必須とする。negative control は、plan hash mismatch、both-side edit、delete vs edit、rename collision、clock skew、read-only file、permission denied、partial write、process kill、official Obsidian Sync service / cloud endpoint attempt、Obsidian URI 成功依存、vault outside write、Release asset 未追加、checksum 行不足、setup 取得対象不足を 1 件以上含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase15_fixture_execution_gap_count` または `phase15_distribution_open_count` に計上する。
+Phase 15 fixture は negative control を必須とする。negative control は、plan hash mismatch、both-side edit、opposite-side edit、delete vs edit、rename collision、clock skew、read-only file、permission denied、invalid conflict / tombstone dir、rollback record write failure、rollback conflict、partial write、process kill、official Obsidian Sync service / cloud endpoint attempt、Obsidian URI 成功依存、vault outside write、Release asset 未追加、checksum 行不足、setup 取得対象不足を 1 件以上含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase15_fixture_execution_gap_count` または `phase15_distribution_open_count` に計上する。
 
 <a id="fixture-root-coverage-matrix-contract"></a>
 **fixture root coverage matrix 固定契約：**
