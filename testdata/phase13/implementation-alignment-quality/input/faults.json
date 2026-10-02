@@ -1,0 +1,61 @@
+{
+  "scope": "phase-13-implementation-alignment-quality",
+  "faults": [
+    {
+      "fault_id": "disk-full",
+      "target_owner": "statefile",
+      "trigger": "write returns ENOSPC",
+      "expected_error": "STATE_WRITE_FAILED",
+      "must_preserve_state": true
+    },
+    {
+      "fault_id": "permission-denied",
+      "target_owner": "statefile",
+      "trigger": "open returns EACCES",
+      "expected_error": "STATE_PERMISSION_DENIED",
+      "must_preserve_state": true
+    },
+    {
+      "fault_id": "short-write",
+      "target_owner": "statefile",
+      "trigger": "writer reports fewer bytes than requested",
+      "expected_error": "STATE_SHORT_WRITE",
+      "must_preserve_state": true
+    },
+    {
+      "fault_id": "fsync-failure",
+      "target_owner": "statefile",
+      "trigger": "file or parent directory sync fails",
+      "expected_error": "STATE_SYNC_FAILED",
+      "must_preserve_state": true
+    },
+    {
+      "fault_id": "rename-failure",
+      "target_owner": "statefile",
+      "trigger": "atomic rename fails",
+      "expected_error": "STATE_RENAME_FAILED",
+      "must_preserve_state": true
+    },
+    {
+      "fault_id": "process-kill",
+      "target_owner": "runner",
+      "trigger": "process exits during active queue execution",
+      "expected_error": "RECOVERY_REQUIRED",
+      "must_preserve_state": true
+    },
+    {
+      "fault_id": "network-timeout",
+      "target_owner": "api",
+      "trigger": "HTTP client timeout",
+      "expected_error": "EXTERNAL_TIMEOUT",
+      "must_preserve_state": true
+    },
+    {
+      "fault_id": "dns-rebinding",
+      "target_owner": "api",
+      "trigger": "webhook hostname resolves to a private address after initial resolution",
+      "expected_error": "WEBHOOK_DNS_REBINDING_BLOCKED",
+      "must_preserve_state": true
+    }
+  ]
+}

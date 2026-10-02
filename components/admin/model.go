@@ -1,9 +1,13 @@
 package admin
 
-type phase12Model struct {
-	owner string
+type ownerFileContract struct {
+	Owner string
+	Files []string
 }
 
-func newPhase12Model() phase12Model {
-	return phase12Model{owner: "admin"}
+func newOwnerFileContract() ownerFileContract {
+	return ownerFileContract{
+		Owner: "admin",
+		Files: []string{"admin.go", "model.go", "validate.go", "execute.go", "admin_test.go"},
+	}
 }

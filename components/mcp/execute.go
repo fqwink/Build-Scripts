@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/fqwink/build-scripts/components/statefile"
 )
 
 const apiTimeLayout = "2006-01-02T15:04:05Z"
@@ -113,35 +116,50 @@ func validateAPIStateDir(path string) error {
 	return nil
 }
 
-func readJSONIfExists(path string, out any) error {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		return nil
+func readMCPTokenFile(path string) (string, error) {
+	if path == "" || !utf8.ValidString(path) || strings.ContainsAny(path, "\x00\n\r") {
+		return "", errors.New("invalid_client_token_file")
 	}
-	return readJSONFile(path, out)
+	info, err := os.Lstat(path)
+	if err != nil {
+		return "", err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > 4096 {
+		return "", errors.New("invalid_client_token_file")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	return readMCPTokenReader(file)
+}
+
+func readMCPTokenReader(reader io.Reader) (string, error) {
+	data, err := io.ReadAll(io.LimitReader(reader, 4097))
+	if err != nil {
+		return "", err
+	}
+	if len(data) > 4096 {
+		return "", errors.New("client_token_too_large")
+	}
+	token := strings.TrimSpace(string(data))
+	if token == "" || !utf8.ValidString(token) || strings.ContainsAny(token, "\x00\r\n") {
+		return "", errors.New("invalid_client_token")
+	}
+	return token, nil
+}
+
+func readJSONIfExists(path string, out any) error {
+	return statefile.ReadJSONIfExists(path, out)
 }
 
 func readJSONFile(path string, out any) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(data, out)
+	return statefile.ReadJSON(path, out)
 }
 
 func atomicWriteJSON(path string, value any, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(value, "", "  ")
-	if err != nil {
-		return err
-	}
-	data = append(data, '\n')
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, mode); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return statefile.WriteJSONAtomic(path, value, mode)
 }
 
 func readOptionalJSONMap(path string) (map[string]any, bool, error) {
@@ -156,40 +174,15 @@ func readOptionalJSONMap(path string) (map[string]any, bool, error) {
 }
 
 func readJSONLines(path string) []map[string]any {
-	data, err := os.ReadFile(path)
+	records, err := statefile.ReadJSONLines(path)
 	if err != nil {
 		return []map[string]any{}
-	}
-	records := []map[string]any{}
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		var record map[string]any
-		if json.Unmarshal([]byte(line), &record) == nil {
-			records = append(records, record)
-		}
 	}
 	return records
 }
 
 func appendJSONLine(path string, value any) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-	data, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
-	data = append(data, '\n')
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = f.Write(data)
-	return err
+	return statefile.AppendJSONLine(path, value, 0600)
 }
 
 func readBuildLogByID(stateDir, id string) (map[string]any, error) {
@@ -392,6 +385,6 @@ func (s *mcpServer) enqueueMCPBuildRequest(path string, payload map[string]any) 
 	return id, false, nil
 }
 
-func executePhase12Model(model phase12Model) bool {
-	return validatePhase12Model(model)
+func executeOwnerFileContract(contract ownerFileContract) bool {
+	return validateOwnerFileContract(contract)
 }

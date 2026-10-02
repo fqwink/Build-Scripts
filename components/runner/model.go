@@ -1,9 +1,13 @@
 package runner
 
-type phase12Model struct {
-	owner string
+type ownerFileContract struct {
+	Owner string
+	Files []string
 }
 
-func newPhase12Model() phase12Model {
-	return phase12Model{owner: "runner"}
+func newOwnerFileContract() ownerFileContract {
+	return ownerFileContract{
+		Owner: "runner",
+		Files: []string{"runner.go", "model.go", "validate.go", "execute.go", "runner_test.go"},
+	}
 }

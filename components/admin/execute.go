@@ -1,5 +1,5 @@
 package admin
 
-func executePhase12Model(model phase12Model) bool {
-	return validatePhase12Model(model)
+func executeOwnerFileContract(contract ownerFileContract) bool {
+	return validateOwnerFileContract(contract)
 }

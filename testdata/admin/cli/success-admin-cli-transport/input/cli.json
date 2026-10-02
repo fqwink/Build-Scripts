@@ -3,28 +3,28 @@
     {
       "name": "status-default-origin",
       "binary": "adlaire-ci-admin",
-      "argv": ["--api-url", "http://127.0.0.1:8765", "--token", "${secret:admin_cli_token}", "status"],
+      "argv": ["--api-url", "http://127.0.0.1:8765", "--token-stdin", "status"],
       "env": {},
       "cwd": ".",
-      "stdin": null,
+      "stdin": "${secret:admin_cli_token}",
       "expected_exit_code": 0
     },
     {
       "name": "trigger-build-endpoint",
       "binary": "adlaire-ci-admin",
-      "argv": ["--api-url", "http://127.0.0.1:8765", "--token", "${secret:admin_cli_token}", "trigger-build"],
+      "argv": ["--api-url", "http://127.0.0.1:8765", "--token-stdin", "trigger-build"],
       "env": {},
       "cwd": ".",
-      "stdin": null,
+      "stdin": "${secret:admin_cli_token}",
       "expected_exit_code": 0
     },
     {
       "name": "config-snapshot-label-body",
       "binary": "adlaire-ci-admin",
-      "argv": ["--api-url", "http://127.0.0.1:8765/adlaire/", "--token", "${secret:admin_cli_token}", "config-snapshot", "nightly"],
+      "argv": ["--api-url", "http://127.0.0.1:8765/adlaire/", "--token-stdin", "config-snapshot", "nightly"],
       "env": {},
       "cwd": ".",
-      "stdin": null,
+      "stdin": "${secret:admin_cli_token}",
       "expected_exit_code": 0
     }
   ]

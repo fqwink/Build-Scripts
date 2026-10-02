@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -56,12 +57,12 @@ type adminCLIRequest struct {
 }
 
 func RunAdmin(args []string, stdout, stderr io.Writer) int {
-	return runAdmin(args, stdout, stderr, newAdminHTTPClient())
+	return runAdmin(args, os.Stdin, stdout, stderr, newAdminHTTPClient())
 }
 
-func runAdmin(args []string, stdout, stderr io.Writer, client *http.Client) int {
+func runAdmin(args []string, stdin io.Reader, stdout, stderr io.Writer, client *http.Client) int {
 	if hasExactArg(args, "--help") {
-		fmt.Fprintln(stdout, "Usage: adlaire-ci-admin --api-url url --token token [--json] command [command-args]")
+		fmt.Fprintln(stdout, "Usage: adlaire-ci-admin --api-url url (--token-file path | --token-stdin) [--json] command [command-args]")
 		return 0
 	}
 	if hasExactArg(args, "--version") {
@@ -73,7 +74,7 @@ func runAdmin(args []string, stdout, stderr io.Writer, client *http.Client) int 
 		return 2
 	}
 
-	cfg, command, commandArgs, parseErr := parseAdminArgs(args)
+	cfg, command, commandArgs, parseErr := parseAdminArgs(args, stdin)
 	if parseErr != "" {
 		fmt.Fprintln(stderr, parseErr)
 		return 2
@@ -164,7 +165,7 @@ func safeArgvTokens(args []string) bool {
 	return true
 }
 
-func parseAdminArgs(args []string) (adminCLIConfig, string, []string, string) {
+func parseAdminArgs(args []string, stdin io.Reader) (adminCLIConfig, string, []string, string) {
 	cfg := adminCLIConfig{}
 	i := 0
 	for i < len(args) {
@@ -180,15 +181,29 @@ func parseAdminArgs(args []string) (adminCLIConfig, string, []string, string) {
 				}
 				cfg.APIURL = args[i+1]
 				i += 2
-			case "--token":
+			case "--token-file":
 				if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
-					return cfg, "", nil, "missing value: --token"
+					return cfg, "", nil, "missing value: --token-file"
 				}
 				if cfg.Token != "" {
 					return cfg, "", nil, "usage error"
 				}
-				cfg.Token = args[i+1]
+				token, err := readAdminTokenFile(args[i+1])
+				if err != nil {
+					return cfg, "", nil, "usage error"
+				}
+				cfg.Token = token
 				i += 2
+			case "--token-stdin":
+				if cfg.Token != "" {
+					return cfg, "", nil, "usage error"
+				}
+				token, err := readAdminTokenReader(stdin)
+				if err != nil {
+					return cfg, "", nil, "usage error"
+				}
+				cfg.Token = token
+				i++
 			case "--json":
 				if cfg.JSON {
 					return cfg, "", nil, "usage error"
@@ -227,6 +242,40 @@ func parseAdminArgs(args []string) (adminCLIConfig, string, []string, string) {
 		return cfg, "", nil, "usage error"
 	}
 	return cfg, command, commandArgs, ""
+}
+
+func readAdminTokenFile(path string) (string, error) {
+	if path == "" || !utf8.ValidString(path) || strings.ContainsAny(path, "\x00\n\r") {
+		return "", fmt.Errorf("invalid token file")
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		return "", err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > 4096 {
+		return "", fmt.Errorf("invalid token file")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	return readAdminTokenReader(file)
+}
+
+func readAdminTokenReader(reader io.Reader) (string, error) {
+	data, err := io.ReadAll(io.LimitReader(reader, 4097))
+	if err != nil {
+		return "", err
+	}
+	if len(data) > 4096 {
+		return "", fmt.Errorf("token too large")
+	}
+	token := strings.TrimSpace(string(data))
+	if !validAdminToken(token) {
+		return "", fmt.Errorf("invalid token")
+	}
+	return token, nil
 }
 
 func normalizeAdminAPIURL(input string) (string, bool) {

@@ -1,9 +1,13 @@
 package archive
 
-type phase12Model struct {
-	owner string
+type ownerFileContract struct {
+	Owner string
+	Files []string
 }
 
-func newPhase12Model() phase12Model {
-	return phase12Model{owner: Owner()}
+func newOwnerFileContract() ownerFileContract {
+	return ownerFileContract{
+		Owner: Owner(),
+		Files: []string{"archive.go", "model.go", "validate.go", "execute.go", "archive_test.go"},
+	}
 }

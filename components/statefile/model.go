@@ -1,9 +1,29 @@
 package statefile
 
-type phase12Model struct {
-	owner string
+import "time"
+
+type ownerFileContract struct {
+	Owner string
+	Files []string
 }
 
-func newPhase12Model() phase12Model {
-	return phase12Model{owner: Owner()}
+type LockOptions struct {
+	Owner          string
+	StaleAfter     time.Duration
+	RetryInterval  time.Duration
+	AcquireTimeout time.Duration
+	Clock          func() time.Time
+	Sleep          func(time.Duration)
+}
+
+type LockHandle struct {
+	path string
+	file string
+}
+
+func newOwnerFileContract() ownerFileContract {
+	return ownerFileContract{
+		Owner: Owner(),
+		Files: []string{"statefile.go", "model.go", "validate.go", "execute.go", "statefile_test.go"},
+	}
 }

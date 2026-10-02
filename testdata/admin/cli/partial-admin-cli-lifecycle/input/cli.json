@@ -21,10 +21,10 @@
     {
       "name": "unknown-command",
       "binary": "adlaire-ci-admin",
-      "argv": ["--api-url", "http://127.0.0.1:8765", "--token", "${secret:admin_cli_token}", "unknown"],
+      "argv": ["--api-url", "http://127.0.0.1:8765", "--token-stdin", "unknown"],
       "env": {},
       "cwd": ".",
-      "stdin": null,
+      "stdin": "${secret:admin_cli_token}",
       "expected_exit_code": 2
     }
   ]

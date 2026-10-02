@@ -1,9 +1,13 @@
 package builder
 
-type phase12Model struct {
-	owner string
+type ownerFileContract struct {
+	Owner string
+	Files []string
 }
 
-func newPhase12Model() phase12Model {
-	return phase12Model{owner: "builder"}
+func newOwnerFileContract() ownerFileContract {
+	return ownerFileContract{
+		Owner: "builder",
+		Files: []string{"builder.go", "model.go", "validate.go", "execute.go", "builder_test.go"},
+	}
 }

@@ -120,14 +120,14 @@ CLI 管理クライアントは `api` owner の endpoint を呼び出す client 
 **CLI 形式：**
 
 ```text
-adlaire-ci-admin --api-url <url> --token <token> [--json] <command> [command-args]
+adlaire-ci-admin --api-url <url> (--token-file <path> | --token-stdin) [--json] <command> [command-args]
 adlaire-ci-admin --help
 adlaire-ci-admin --version
 ```
 
-CLI parse の共通優先順位、argv token safety、`--help`、`--version` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) を使用する。`--help` の stdout は `Usage: adlaire-ci-admin --api-url url --token token [--json] command [command-args]` + LF とする。`--version` の stdout は `adlaire-ci-admin <binary-version> go=<runtime.Version()>` + LF とする。`--help` と `--version` は API URL 検証、token 検証、network、状態 file read/write、乱数取得を行わない。
+CLI parse の共通優先順位、argv token safety、`--help`、`--version` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) を使用する。`--help` の stdout は `Usage: adlaire-ci-admin --api-url url (--token-file path | --token-stdin) [--json] command [command-args]` + LF とする。`--version` の stdout は `adlaire-ci-admin <binary-version> go=<runtime.Version()>` + LF とする。`--help` と `--version` は API URL 検証、token 検証、network、状態 file read/write、乱数取得を行わない。
 
-option は `--name value` の 2 token 形式だけを許可する。`--name=value`、短縮 option、位置引数による option 値、同一 option の重複、未知 option は parse error とする。`--json` は値を取らない boolean option とし、複数回指定は parse error とする。`--api-url` は `http://` または `https://` の absolute URL とし、host 必須、userinfo、query、fragment を禁止する。path は空、または `/` から始まる clean path だけを許可し、`..` segment、重複 slash、backslash、NUL byte を禁止する。末尾 `/` は 1 個だけ除去し、`/api` を暗黙追加しない。`--token` は 1〜4096 byte の UTF-8 text とし、空文字、NUL、CR、LF を禁止する。
+option は `--name value` の 2 token 形式、または値を取らない fixed flag だけを許可する。`--name=value`、短縮 option、位置引数による option 値、同一 option の重複、未知 option は parse error とする。`--json` と `--token-stdin` は値を取らない boolean option とし、複数回指定は parse error とする。`--api-url` は `http://` または `https://` の absolute URL とし、host 必須、userinfo、query、fragment を禁止する。path は空、または `/` から始まる clean path だけを許可し、`..` segment、重複 slash、backslash、NUL byte を禁止する。末尾 `/` は 1 個だけ除去し、`/api` を暗黙追加しない。`--token-file` は token を読む regular file path を指定する。token file は symlink、directory、4096 byte 超過を拒否する。`--token-stdin` は stdin 全体を 4096 byte 上限で読む。token source は `--token-file` または `--token-stdin` のどちらか 1 つだけ必須とし、両方または重複指定を禁止する。読み取った token は trim 後 1〜4096 byte の UTF-8 text とし、空文字、NUL、CR、LF を禁止する。平文 token を command line 引数の値として受け取る option を実装してはならない。
 
 CLI 管理クライアントの parse / validation は次の順序に固定する。各順序で不合格を検出した場合は最初の 1 件だけを返し、後続順序を評価してはならない。network、state read/write、file read/write、乱数取得、HTTP request 作成、request body 構築は、次表の全順序が合格した後だけ開始する。
 
@@ -135,15 +135,15 @@ CLI 管理クライアントの parse / validation は次の順序に固定す�
 |------|------|----------|
 | 1 | exact `--help` / exact `--version` を [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) の優先順位で判定する。 | `--help` または `--version` の成功終了とし、他 token を検証しない。 |
 | 2 | argv token safety を [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) で判定する。 | stdout 空、stderr `invalid command line token` + LF、終了 code `2`。 |
-| 3 | command より前の option token を判定する。許可 option は `--api-url`、`--token`、`--json` だけとする。`--api-url` と `--token` は `--name value` だけを許可し、`--json` は値を取らない。 | 共通契約が固定する unknown option / missing value は共通契約の stderr、同一 option 重複と `--json` 複数指定は `usage error`。 |
-| 4 | `--api-url`、`--token`、command の存在を判定する。 | stdout 空、stderr `usage error` + LF、終了 code `2`。 |
+| 3 | command より前の option token を判定する。許可 option は `--api-url`、`--token-file`、`--token-stdin`、`--json` だけとする。`--api-url` と `--token-file` は `--name value` だけを許可し、`--token-stdin` と `--json` は値を取らない。 | 共通契約が固定する unknown option / missing value は共通契約の stderr、同一 option 重複と `--json` 複数指定は `usage error`。 |
+| 4 | `--api-url`、token source、command の存在を判定する。 | stdout 空、stderr `usage error` + LF、終了 code `2`。 |
 | 5 | `--api-url` の URL scheme、host、userinfo、query、fragment、path、末尾 `/` 正規化を判定する。 | stdout 空、stderr `usage error` + LF、終了 code `2`。 |
-| 6 | `--token` の byte 長、UTF-8、禁止文字を判定する。 | stdout 空、stderr `usage error` + LF、終了 code `2`。 |
+| 6 | token source の安全性、read 可否、byte 長、UTF-8、禁止文字を判定する。 | stdout 空、stderr `usage error` + LF、終了 code `2`。 |
 | 7 | command 固定表の 7 command と一致するかを判定する。 | stdout 空、stderr `unknown command: <command>` + LF、終了 code `2`。 |
 | 8 | command-args の個数、`cancel-queue` の `<queue_id>`、`config-snapshot` の `label` を判定する。 | stdout 空、stderr `usage error` + LF、終了 code `2`。 |
 | 9 | command、正規化済み `--api-url`、token、command-args から HTTP request method、path、header、body を決定する。 | この順序では parse error を発生させない。 |
 
-parse / validation 失敗時は stdout 空、stderr 固定 1 行、終了 code `2` とし、API URL、token、command-args、HTTP request body、Go error、OS error、絶対 path、network response を stdout、stderr、log、fixture expected に出力してはならない。`--api-url` の正規化は順序 5 だけで行い、順序 9 で path clean、percent decode、query 付与、`/api` 重複除去を行ってはならない。
+parse / validation 失敗時は stdout 空、stderr 固定 1 行、終了 code `2` とし、API URL、token、token file path、command-args、HTTP request body、Go error、OS error、絶対 path、network response を stdout、stderr、log、fixture expected に出力してはならない。`--api-url` の正規化は順序 5 だけで行い、順序 9 で path clean、percent decode、query 付与、`/api` 重複除去を行ってはならない。
 
 API request path は、正規化後の `--api-url` path prefix と command 固定 path を byte 連結して作る。例として `--api-url http://127.0.0.1:8765` の `status` は `http://127.0.0.1:8765/api/status`、`--api-url http://127.0.0.1:8765/adlaire` の `status` は `http://127.0.0.1:8765/adlaire/api/status` とする。path 連結時に percent decode、path clean、`/api` の重複除去、query 付与を行ってはならない。
 
@@ -163,7 +163,7 @@ API request path は、正規化後の `--api-url` path prefix と command 固�
 
 CLI 管理クライアントは command 固定表の 7 command だけを実装する。API 側に存在する他 endpoint を CLI command として追加する場合は、先に [`docs/details/admin.md` 詳細本文責務 §A7](admin.md#sec-a7) の command 固定表、stdout 固定表、検証条件、[`docs/details/fixture.md` fixture 証跡責務 Admin CLI fixture 固定契約](fixture.md#admin-cli-fixture-contract) を同じ変更で改訂する。未記載 endpoint を汎用 passthrough、任意 path、任意 method、任意 JSON body として呼び出してはならない。
 
-`--token` の値を stdout、stderr、server log、fixture expected に出力してはならない。
+読み取った token と token file path を stdout、stderr、server log、fixture expected に出力してはならない。
 
 全 API 呼び出しは `Authorization: Bearer <token>`、`Accept: application/json`、`User-Agent: adlaire-ci-admin/<binary-version>` を送信する。body を持つ command は `Content-Type: application/json` を送信する。Cookie、Referer、X-Forwarded-*、環境変数由来 proxy、redirect 追従、retry、connection reuse 前提の状態保持を使用してはならない。timeout は dial、TLS handshake、request body write、response header read、response body read の全体で 30 秒固定とする。
 
@@ -175,9 +175,9 @@ success response は `Content-Type` が `application/json` または `applicatio
 
 human stdout の field は固定順とする。`status` は `last_build_status` を string としてそのまま出し、`running` は JSON boolean を `true` / `false` の lowercase で出す。`queue` は `active` が `null` の場合だけ `active=none` とし、`active` が object の場合は `active.id` の string を出す。`queue` の `queued` は API response の `queued` array length だけを 10 進数で出し、数値 `queued`、`active` object の `id` 欠落、`active.id` の string 以外、`queued` の array 以外は invalid response とする。`history` は `total` を 10 進数で出し、`latest` は `history` array の先頭要素 `id` string、空配列の場合だけ `none` とする。`total` の integer 以外、`history` の array 以外、非空 `history[0].id` の string 以外は invalid response とする。`trigger-build` は `queue_id` の string を必須とし、`queued` は boolean `true`、`dispatch` は `requested` または `timer_fallback` だけを許可する。`queue_id` 欠落、空文字、`queued:false`、未知 `dispatch` は invalid response とし、`none` へ置換しない。`cancel-queue` は response body の `message` に依存せず固定 `queue cancelled` とする。`config-snapshot` は `id` の string を必須とし、欠落、空文字、string 以外は invalid response とする。`events` は `total` integer を 10 進数で出し、`events` array は paging 後の要素列として存在を検証するが stdout の件数には使用しない。`events` array length と `total` が異なることは、[`docs/details/api.md` 詳細本文責務 §27.66](api.md#sec-27-66) の paging 契約上 valid とする。`total` の integer 以外、`events` の array 以外は invalid response とする。
 
-未知 command は stdout 空、stderr `unknown command: <command>` + LF、終了 code `2` とする。未知 command の `<command>` は argv token safety 合格後、かつ `--token` の option 値ではない command token だけを使用する。
+未知 command は stdout 空、stderr `unknown command: <command>` + LF、終了 code `2` とする。未知 command の `<command>` は argv token safety 合格後、かつ token source option の値ではない command token だけを使用する。
 
-[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) が固定する argv token safety、unknown option、missing value、禁止位置引数の stderr は共通契約に従う。共通契約で stderr が固定されない admin 固有の同一 option 重複、`--json` 複数指定、引数不足、引数過多、`--api-url` 不正、`--token` 不正、command 固有引数不正は stdout 空、stderr `usage error` + LF、終了 code `2` とする。
+[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) が固定する argv token safety、unknown option、missing value、禁止位置引数の stderr は共通契約に従う。共通契約で stderr が固定されない admin 固有の同一 option 重複、`--json` 複数指定、引数不足、引数過多、`--api-url` 不正、token source 不正、command 固有引数不正は stdout 空、stderr `usage error` + LF、終了 code `2` とする。
 
 API が `2xx` 以外を返した場合、CLI は stdout 空、stderr `api error: <status>` + LF、終了 code `1` とする。
 

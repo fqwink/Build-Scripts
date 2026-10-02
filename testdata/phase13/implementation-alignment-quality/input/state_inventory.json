@@ -1,0 +1,26 @@
+{
+  "scope": "phase-13-implementation-alignment-quality",
+  "allowed_state_owner": "statefile",
+  "state_targets": [
+    {
+      "path_pattern": ".adlaire-ci/*.json",
+      "operations": ["read_json", "write_json_atomic", "read_modify_write_locked"],
+      "required_lock": true,
+      "required_parent_fsync": true,
+      "symlink_follow": false
+    },
+    {
+      "path_pattern": ".adlaire-ci/*.jsonl",
+      "operations": ["append_json_line_locked", "recover_jsonl_if_corrupt"],
+      "required_lock": true,
+      "required_parent_fsync": true,
+      "symlink_follow": false
+    }
+  ],
+  "forbidden_direct_mutation": [
+    "os.OpenFile(state path, O_TRUNC)",
+    "os.WriteFile(state path)",
+    "os.Rename(state path)",
+    "append without statefile.AppendJSONLine"
+  ]
+}

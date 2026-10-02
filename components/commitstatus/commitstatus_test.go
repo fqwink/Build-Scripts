@@ -2,11 +2,11 @@ package commitstatus
 
 import "testing"
 
-func TestPhase12OwnerContract(t *testing.T) {
+func TestOwnerFileContract(t *testing.T) {
 	if Owner() != "commitstatus" {
 		t.Fatalf("unexpected owner: %s", Owner())
 	}
-	if !executePhase12Model(newPhase12Model()) {
-		t.Fatalf("commitstatus phase12 model contract failed")
+	if !executeOwnerFileContract(newOwnerFileContract()) {
+		t.Fatalf("commitstatus owner file contract failed")
 	}
 }

@@ -30,6 +30,8 @@ import (
 	"syscall"
 	"time"
 	"unicode/utf8"
+
+	"github.com/fqwink/build-scripts/components/statefile"
 )
 
 var runnerGitHubAPIBase = "https://api.github.com"
@@ -5155,14 +5157,6 @@ func writeBuildLog(stateDir string, log buildLog) error {
 
 func appendHistory(stateDir string, log buildLog) error {
 	path := filepath.Join(stateDir, ".build_history")
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return err
-	}
-	release, err := acquireStateFileLock(path)
-	if err != nil {
-		return err
-	}
-	defer release()
 	var pages *int
 	warnings := 0
 	sizeWarn := false
@@ -5186,39 +5180,7 @@ func appendHistory(stateDir string, log buildLog) error {
 		RetryCount: log.RetryCount, FailureCategory: log.FailureCategory, CommitStatus: log.CommitStatus,
 		SnapshotID: log.SnapshotID, RollbackFrom: nil, ChainRunID: chainRunID,
 	}
-	data, err := json.Marshal(rec)
-	if err != nil {
-		return err
-	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
-	if err != nil {
-		return err
-	}
-	if info, err := f.Stat(); err == nil && info.Size() > 0 {
-		var last [1]byte
-		if _, err := f.ReadAt(last[:], info.Size()-1); err != nil {
-			_ = f.Close()
-			return err
-		}
-		if last[0] != '\n' {
-			if _, err := f.Write([]byte("\n")); err != nil {
-				_ = f.Close()
-				return err
-			}
-		}
-	}
-	if _, err := f.Write(append(data, '\n')); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	return syncParentDir(path)
+	return appendRunnerJSONLine(path, rec, 0600)
 }
 
 func appendApprovalPending(cfg RunnerConfig, target BranchTarget, buildID, digest string, changedTargets []string) error {
@@ -5238,51 +5200,7 @@ func appendApprovalPending(cfg RunnerConfig, target BranchTarget, buildID, diges
 }
 
 func appendRunnerJSONLine(path string, v any, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return err
-	}
-	release, err := acquireStateFileLock(path)
-	if err != nil {
-		return err
-	}
-	defer release()
-	data, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, mode)
-	if err != nil {
-		return err
-	}
-	if info, err := f.Stat(); err == nil && info.Size() > 0 {
-		var last [1]byte
-		if _, err := f.ReadAt(last[:], info.Size()-1); err != nil {
-			_ = f.Close()
-			return err
-		}
-		if last[0] != '\n' {
-			if _, err := f.Write([]byte("\n")); err != nil {
-				_ = f.Close()
-				return err
-			}
-		}
-	}
-	if _, err := f.Write(append(data, '\n')); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Chmod(mode); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	return syncParentDir(path)
+	return statefile.AppendJSONLine(path, v, mode)
 }
 
 func updateBuildTrends(cfg RunnerConfig, log buildLog) error {
@@ -5616,87 +5534,11 @@ func readJSONArray(path string, out any) error {
 }
 
 func runnerReadJSONFile(path string, out any) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(data, out)
+	return statefile.ReadJSON(path, out)
 }
 
 func runnerAtomicWriteJSON(path string, v any, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return err
-	}
-	release, err := acquireStateFileLock(path)
-	if err != nil {
-		return err
-	}
-	defer release()
-	data, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	data = append(data, '\n')
-	base := filepath.Base(path)
-	tmp := filepath.Join(filepath.Dir(path), fmt.Sprintf(".%s.tmp.%d", base, os.Getpid()))
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
-	if err != nil {
-		_ = os.Remove(tmp)
-		return err
-	}
-	if _, err := f.Write(data); err != nil {
-		_ = f.Close()
-		_ = os.Remove(tmp)
-		return err
-	}
-	if err := f.Chmod(mode); err != nil {
-		_ = f.Close()
-		_ = os.Remove(tmp)
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		_ = f.Close()
-		_ = os.Remove(tmp)
-		return err
-	}
-	if err := f.Close(); err != nil {
-		_ = os.Remove(tmp)
-		return err
-	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return err
-	}
-	return syncParentDir(path)
-}
-
-func acquireStateFileLock(path string) (func(), error) {
-	lockPath := path + ".lock"
-	var lastErr error
-	for attempt := 0; attempt <= 100; attempt++ {
-		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-		if err == nil {
-			_, writeErr := fmt.Fprintf(f, "pid=%d\nstarted_at=%s\n", os.Getpid(), runnerNow().UTC().Format(time.RFC3339))
-			closeErr := f.Close()
-			if writeErr != nil || closeErr != nil {
-				_ = os.Remove(lockPath)
-				if writeErr != nil {
-					return func() {}, writeErr
-				}
-				return func() {}, closeErr
-			}
-			return func() { _ = os.Remove(lockPath) }, nil
-		}
-		lastErr = err
-		if !errors.Is(err, os.ErrExist) || attempt == 100 {
-			break
-		}
-		runnerSleep(100 * time.Millisecond)
-	}
-	if lastErr == nil {
-		lastErr = errors.New("state file lock failed")
-	}
-	return func() {}, lastErr
+	return statefile.WriteJSONAtomic(path, v, mode)
 }
 
 func syncParentDir(path string) error {

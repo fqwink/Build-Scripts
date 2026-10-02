@@ -106,9 +106,9 @@ Adlaire CI は、Markdown からの静的 Web サイト生成、source 変更検
 
 Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核とする。
 
-[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のゼロ依存とは、各コンポーネントが外部ライブラリ、外部フレームワーク、外部ビルドツール、外部ホスティング実行基盤に機能成立を依存しないことを意味する。[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のフルインハウスとは、Markdown 変換、CI 実行、管理 API、SDK、標準管理ツール、状態管理、認証、ログ、通知、セットアップ、リリースの主要機能を本リポジトリ内で仕様化し、内製コードとして理解、検証、保守できる状態を意味する。
+[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のゼロ依存とは、production 実装が Go 標準ライブラリ、JavaScript / HTML / CSS の標準 runtime API、OS 標準 command、および本リポジトリ内の内製コードだけで成立し、外部ライブラリ、外部フレームワーク、外部ビルドツール、外部ホスティング実行基盤に機能成立を依存しないことを意味する。[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のフルインハウスとは、Markdown 変換、CI 実行、管理 API、SDK、標準管理ツール、状態管理、認証、ログ、通知、セットアップ、リリースの主要機能を本リポジトリ内で仕様化し、内製コードとして理解、検証、保守できる状態を意味する。
 
-実装者は、便利さ、実装速度、一般的な慣習を理由に外部ライブラリで未定義機能を補完してはならない。外部依存がなければ成立しない設計は設計不備として扱い、先に仕様を見直す。
+外部ライブラリを便利性、実装速度、保守負担軽減、一般慣習、業界標準、推奨実装の存在、導入容易性、機能充足、または検証済み実装の入手性を理由に採用することを排除するために、ゼロ依存・フルインハウス原則を最上位方針として置く。実装者は、外部ライブラリで未定義機能を補完してはならない。Go 標準ライブラリに存在しない技術、algorithm、protocol、parser、codec、暗号方式、圧縮方式、検証方式が必要になった場合は、外部依存を追加せず、内製化可否を評価する。内製化が困難、危険、またはバグ修正ゼロ化に反する場合は、その技術を不採用とし、仕様を Go 標準ライブラリだけで成立する方式へ見直す。
 
 各コンポーネントの自律性は以下を満たす。
 
@@ -125,7 +125,7 @@ Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核と
 | `statefile` | `components/statefile/` | Go 標準ライブラリだけで状態 schema、lock、atomic write、JSON Lines、破損検出を処理する。外部 database、storage engine、serialization library に依存しない。 |
 | `archive` | `components/archive/` | Go 標準ライブラリだけで archive、snapshot、展開、検証、世代管理を処理する。外部 archive tool、snapshot service、object storage SDK に依存しない。 |
 | `commitstatus` | `components/commitstatus/` | Go 標準ライブラリ `net/http` だけで GitHub Commit Status payload、送信、応答検証を処理する。外部 GitHub client library、CI status service に依存しない。 |
-| `security` | `components/security/` | Go 標準ライブラリだけで認証、認可、token、session、TOTP、rate limit、audit、secret 処理を実装する。外部 authentication framework、secret management SDK に依存しない。 |
+| `security` | `components/security/` | Go 標準ライブラリだけで認証、認可、password KDF、token、session、TOTP、rate limit、audit、secret 処理を実装する。外部 authentication framework、secret management SDK、外部 password hash / KDF library に依存しない。 |
 | `mcp` | `components/mcp/` | Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様は [`docs/details/mcp.md`](details/mcp.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。 |
 | `obsidian` | `components/obsidian/` | Go 標準ライブラリだけで Obsidian local vault の Markdown、wikilink、embed、tag、asset、同期 plan / apply / rollback を処理する。Obsidian application plugin、Obsidian Sync service、cloud API、外部 Markdown parser、YAML parser、filesystem watcher library に依存しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様は [`docs/details/obsidian.md`](details/obsidian.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。 |
 
@@ -133,7 +133,7 @@ Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核と
 
 [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) のコンポーネント自律性表はコンポーネント自律性の方針であり、関数単位の処理、入出力、状態、異常系、検証条件を定義するものではない。各コンポーネントの具体的な実装契約は、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を正本とする。
 
-外部依存の禁止条件、例外採用条件、許可外部ライブラリ一覧、登録要件は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#policy-dependencies) だけを正本とする。[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) はコンポーネント自律性だけを定義し、外部依存の採否手順または許可条件を再定義しない。
+外部依存の禁止条件、標準外技術の内製化判定、不採用判定、空の許可外部ライブラリ一覧は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#policy-dependencies) だけを正本とする。[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) はコンポーネント自律性だけを定義し、外部依存の禁止または許可外部ライブラリ一覧を再定義しない。
 
 <a id="42-core-非採用共通責務コンポーネント方針"></a>
 
@@ -394,6 +394,11 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 ├── ui_contract_test.go
 ├── README.md
 ├── AGENTS.md
+├── LICENSE
+├── SECURITY.md
+├── CONTRIBUTING.md
+├── CODEOWNERS
+├── CHANGELOG.md
 └── go.mod
 ```
 
@@ -557,7 +562,7 @@ Go 実装の判断基準は以下とする。
 GitHub API を定期的にポーリングし、対象変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（[`components/runner/`](../components/runner/)）。標準の変更検出・実行経路は GitHub Actions、Webhook、外部 CI サービスのいずれにも依存しない。管理 API の任意の GitHub Webhook 受信機能は補助 trigger 経路であり、無効または未実装でも runner の polling 経路と定期実行は単独で成立しなければならない。
 
 - 変更検出の具体的な API、比較値、保存先は [`docs/details/runner.md`](details/runner.md) 詳細本文責務を正本とする
-- Go 標準ライブラリを基本とし、外部依存を追加する場合は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#policy-dependencies) の例外承認を必須とする
+- Go 標準ライブラリと本リポジトリ内の内製コードだけで成立させ、外部依存を追加してはならない。標準ライブラリにない技術が必要に見える場合は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#policy-dependencies) の `STD` / `INHOUSE` / `REJECTED` 分類で先に仕様を確定する
 
 <a id="52-ci-ランナーの開発方針"></a>
 
@@ -1057,7 +1062,7 @@ coverage は参考指標に限る。line coverage、branch coverage、function c
 
 **基本原則：**
 
-ゼロ依存・フルインハウスの定義、各 component の自律性、仕様不足時の扱いは [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) を正本とする。この節は例外採用の禁止条件と許可一覧だけを追加定義する。
+ゼロ依存・フルインハウスの定義、各 component の自律性、仕様不足時の扱いは [`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) を正本とする。この節は外部ライブラリ・外部フレームワークの禁止、標準外技術の内製化判定、不採用判定、空の許可外部ライブラリ一覧だけを追加定義する。
 
 <a id="外部フレームワーク"></a>
 
@@ -1071,13 +1076,23 @@ coverage は参考指標に限る。line coverage、branch coverage、function c
 
 **外部ライブラリ：**
 
-外部ライブラリは禁止する。例外採用は、以下の条件をすべて満たし、かつ [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#policy-dependencies) の許可外部ライブラリ一覧に登録した場合に限る。
+外部ライブラリは禁止する。暫定採用、検証用採用、部分採用、vendoring、生成物への混入、標準実装がないことを理由にした採用を含め、**いかなる条件でも禁止する。**
 
-- 内製化が技術的に困難であり、標準ライブラリだけでは安全性または正確性を担保できない
-- 採用範囲が単一責務に限定され、コンポーネント全体の自律性を壊さない
-- 採用理由、代替困難性、責務範囲、削除方針、検証条件を [`docs/SPEC.md`](SPEC.md) ポリシー責務に明記している
+`golang.org/x/*`、third party Go module、npm package、browser polyfill、外部 SDK、外部 CLI library、外部 crypto / parser / codec / compression / test helper はすべて外部ライブラリとして扱う。Go 標準ライブラリではない実装を「準公式」「事実上標準」「信頼できる」「一般的」とみなして採用してはならない。
 
-開発コスト短縮、実装の容易さ、流行、一般的なベストプラクティスだけを理由にした採用は認めない。許可リスト外のライブラリ使用は認めない。
+便利である、実装が容易である、保守負荷が下がる、一般的な推奨である、業界標準である、既存実装の品質が高い、検証済みである、実装難易度が高い、納期が短い、または内製に時間がかかることを外部ライブラリ採用理由にしてはならない。
+
+標準ライブラリに存在しない技術、algorithm、protocol、parser、codec、crypto、compression、verification method が必要に見える場合は、実装着手前に以下の分類を対象責務正本へ明記する。分類がない仕様は完全仕様詳細化未完了であり、実装着手不可とする。
+
+| 分類 | 意味 | 実装可否 |
+|------|------|----------|
+| `STD` | Go 標準ライブラリ、JavaScript 標準 runtime API、HTML / CSS 標準仕様、または本仕様で許可された OS 標準 command だけで直接実装できる。 | 実装可。 |
+| `INHOUSE` | 外部実装を使用せず、許可された標準 primitive と本リポジトリ内コードだけで内製実装する。 | 入力、出力、状態、異常系、test vector、fixture、mutation、保守 owner、削除条件が対象責務正本で固定された場合だけ実装可。 |
+| `REJECTED` | 内製実装が危険、過大、検証困難、またはバグ修正ゼロ化に不適合である。 | 実装不可。仕様を Go 標準ライブラリだけで成立する代替へ改訂する。 |
+
+外部ライブラリを許可する分類、暫定採用分類、承認済み外部依存分類を作ってはならない。
+
+`INHOUSE` に分類する場合でも、外部実装の copy、port、vendor、生成物化、翻訳実装、外部 test helper 依存を禁止する。公開仕様、RFC、標準文書、または algorithm の数学的定義を参照することはできるが、実装コードを持ち込んではならない。
 
 <a id="内製共通処理"></a>
 
@@ -1091,6 +1106,8 @@ coverage は参考指標に限る。line coverage、branch coverage、function c
 
 内製実装の配置は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、現在状態と Phase 割当ては [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。実装着手可否は、[`docs/SPEC.md` 方針責務 §4.7](SPEC.md#sec-4-7)の着手ゲート、[`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)の実装可否、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze)の凍結条件、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit)の active Phase 条件、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の現在状態と Phase 割当てをすべて使用して判定する。この節では再定義しない。
 
+内製 crypto、password KDF、署名、parser、codec、状態復旧、lock、atomic write、外部境界防御は、`INHOUSE` 分類、固定 algorithm、固定 parameter、許可 primitive、forbidden dependency、test vector、failure mode、migration、rollback 可否、証跡 counter を対象責務正本で固定するまで実装してはならない。
+
 <a id="許可外部ライブラリ一覧"></a>
 
 **許可外部ライブラリ一覧：**
@@ -1101,7 +1118,7 @@ coverage は参考指標に限る。line coverage、branch coverage、function c
 |-----------|------|---------|
 | （なし） | — | — |
 
-> 許可外部ライブラリは存在しない。
+許可外部ライブラリ一覧は空を固定値とする。新規行を追加してはならない。
 
 ---
 

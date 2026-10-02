@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -138,7 +139,7 @@ var mcpTools = []mcpToolSpec{
 }
 
 func RunMCP(args []string, stdout, stderr io.Writer) int {
-	cfg, handled, err := parseMCPArgs(args, stdout)
+	cfg, handled, err := parseMCPArgs(args, os.Stdin, stdout)
 	if err != nil {
 		var ee exitError
 		if errors.As(err, &ee) {
@@ -165,10 +166,10 @@ func RunMCP(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func parseMCPArgs(args []string, stdout io.Writer) (mcpConfig, bool, error) {
+func parseMCPArgs(args []string, stdin io.Reader, stdout io.Writer) (mcpConfig, bool, error) {
 	cfg := mcpConfig{Addr: defaultMCPAddr, Now: func() time.Time { return time.Now().UTC() }}
 	if hasExactArg(args, "--help") {
-		fmt.Fprintln(stdout, "Usage: adlaire-ci-mcp --state-dir path [--addr host:port] [--read-only] [--client-token token] [--allow-non-loopback] [--version] [--help]")
+		fmt.Fprintln(stdout, "Usage: adlaire-ci-mcp --state-dir path [--addr host:port] [--read-only] [--client-token-file path | --client-token-stdin] [--allow-non-loopback] [--version] [--help]")
 		return cfg, true, nil
 	}
 	if hasExactArg(args, "--version") {
@@ -192,7 +193,7 @@ func parseMCPArgs(args []string, stdout io.Writer) (mcpConfig, bool, error) {
 			return cfg, false, exitError{Code: 2, Msg: "unknown option: " + arg}
 		}
 		switch arg {
-		case "--state-dir", "--addr", "--client-token":
+		case "--state-dir", "--addr", "--client-token-file":
 			if seen[arg] {
 				return cfg, false, exitError{Code: 2, Msg: "duplicate option: " + arg}
 			}
@@ -207,9 +208,26 @@ func parseMCPArgs(args []string, stdout io.Writer) (mcpConfig, bool, error) {
 				stateDirProvided = true
 			case "--addr":
 				cfg.Addr = args[i]
-			case "--client-token":
-				cfg.ClientToken = args[i]
+			case "--client-token-file":
+				if seen["--client-token-stdin"] {
+					return cfg, false, exitError{Code: 2, Msg: "duplicate option: client token source"}
+				}
+				token, err := readMCPTokenFile(args[i])
+				if err != nil {
+					return cfg, false, exitError{Code: 2, Msg: "invalid client token source"}
+				}
+				cfg.ClientToken = token
 			}
+		case "--client-token-stdin":
+			if seen[arg] || seen["--client-token-file"] {
+				return cfg, false, exitError{Code: 2, Msg: "duplicate option: client token source"}
+			}
+			seen[arg] = true
+			token, err := readMCPTokenReader(stdin)
+			if err != nil {
+				return cfg, false, exitError{Code: 2, Msg: "invalid client token source"}
+			}
+			cfg.ClientToken = token
 		case "--read-only":
 			if seen[arg] {
 				return cfg, false, exitError{Code: 2, Msg: "duplicate option: " + arg}
@@ -235,7 +253,7 @@ func parseMCPArgs(args []string, stdout io.Writer) (mcpConfig, bool, error) {
 	if err := validateMCPListenAddress(cfg.Addr, cfg.AllowNonLoopback); err != nil {
 		return cfg, false, err
 	}
-	if cfg.ClientToken == "" && seen["--client-token"] {
+	if cfg.ClientToken == "" && (seen["--client-token-file"] || seen["--client-token-stdin"]) {
 		return cfg, false, exitError{Code: 2, Msg: "client token must not be empty"}
 	}
 	return cfg, false, nil
@@ -718,8 +736,11 @@ func (s *mcpServer) executeTool(ctx context.Context, tool mcpToolSpec, args map[
 	case "adlaire.getAuditLog":
 		return s.toolAuditLog(args), "success", nil
 	case "adlaire.resendWebhook":
-		deliveryID, _ := args["delivery_id"].(string)
-		return map[string]any{"delivery_id": deliveryID, "resend": "accepted"}, "success", nil
+		data, err := s.toolResendWebhook(args)
+		if err != nil {
+			return nil, "error", mcpError(-32603, "Internal error", "webhook_resend_failed")
+		}
+		return data, "success", nil
 	default:
 		return nil, "error", mcpError(-32601, "Method not found", "tool_not_found")
 	}
@@ -1120,6 +1141,25 @@ func (s *mcpServer) toolAuditLog(args map[string]any) map[string]any {
 		end = len(records)
 	}
 	return map[string]any{"audit": records[offset:end], "total": len(records), "limit": limit, "offset": offset}
+}
+
+func (s *mcpServer) toolResendWebhook(args map[string]any) (map[string]any, error) {
+	deliveryID, _ := args["delivery_id"].(string)
+	now := s.now()
+	path := filepath.Join(s.cfg.StateDir, ".webhook_resend_requests")
+	requestID := s.nextLineID(path, "mcprsnd_", now)
+	if err := appendJSONLine(path, map[string]any{
+		"id":           requestID,
+		"delivery_id":  deliveryID,
+		"requested_at": mcpTime(now),
+		"requested_by": s.currentClientName(),
+		"source":       "mcp",
+		"status":       "requested",
+	}); err != nil {
+		return nil, err
+	}
+	s.publish(mcpSSEFrame{Event: "resource-updated", Data: map[string]any{"uri": "adlaire://events", "updated_at": mcpTime(s.now())}})
+	return map[string]any{"delivery_id": deliveryID, "request_id": requestID, "resend": "requested"}, nil
 }
 
 func (s *mcpServer) resourceText(uri string) (string, string, error) {
