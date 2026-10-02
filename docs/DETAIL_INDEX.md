@@ -200,6 +200,8 @@ Phase 12 で Go owner package 5 ファイル固定の対象にする owner は�
 | `commitstatus` | `components/runner.go` 内の GitHub Commit Status 責務 | `components/commitstatus/` の 5 ファイルだけ。`runner` owner package に Commit Status 実装詳細を残さない。 | [`docs/details/commitstatus.md` 詳細本文責務](details/commitstatus.md) |
 | `security` | `components/builder.go` / `components/runner.go` / `components/api.go` / `components/admin.go` / `components/setup.go` / `components/release.go` / `components/mcp.go` 内の security 責務 | `components/security/` の 5 ファイルだけ。呼び出し元 owner package に security 実装詳細を残さない。 | [`docs/details/security.md` 詳細本文責務](details/security.md) |
 
+Go owner package の package 名、import path、`components/` 直下 `.go` file 残存禁止、`main.go` からの参照境界は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) を正本とする。Phase 12 の owner package 検査は、上表の各 owner について directory、5 file set、package declaration、import graph、旧 root artifact 不在、呼び出し元 package への duplicate 実装不在をすべて確認する。
+
 | Phase 12 対象 | owner / 責務 | 詳細本文 / fixture 証跡 |
 |---------------|--------------|--------------------------|
 | Phase 11 と状態ファイル共通永続化の再評価 | 状態・計画責務 / fixture 証跡責務 / `statefile` | [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、[`docs/ROADMAP.md` 状態・計画責務 §5](ROADMAP.md#522-統合ロードマップ表)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) |

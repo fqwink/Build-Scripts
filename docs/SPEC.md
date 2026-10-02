@@ -350,6 +350,8 @@ components/<owner>/
 
 Phase 12 で Go owner package へ移行した owner の旧 root 実装 artifact は、同じ Phase 12 実装 PR で削除または移動完了しなければならない。Phase 12 完了後に `components/<owner>.go`、`components/<owner>_test.go`、または旧 root file 内の当該 owner 実装詳細を残してはならない。cross-cutting owner である `statefile`、`archive`、`commitstatus`、`security` は、呼び出し元 owner package から使用される独立 owner package として実在化し、呼び出し元 package 内に同じ責務の実装詳細、duplicate helper、fallback 実装、または copy を残してはならない。
 
+Phase 12 完了後の各 `components/<owner>/` は、Go package 名を `<owner>` と完全一致させる。import path は `github.com/fqwink/build-scripts/components/<owner>` だけを許可し、alias import、別名 package、`components` root package への集約、または複数 owner を単一 package に同居させることを禁止する。Phase 12 完了後に `components/` 直下の `.go` file を残してはならない。`main.go` は owner package の公開実行境界だけを呼び出し、owner package 内部の model、validation、execution detail、または cross-cutting owner の実装詳細を直接参照してはならない。
+
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
 ディレクトリ構成は方針上の到達形を示す。実ファイルの有無と未作成 path は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、実装 artifact と各機能の現在状態、Phase、将来計画への割当は [`docs/ROADMAP.md`](ROADMAP.md) を正本とする。ディレクトリ構成に含まれることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成してはならない。
