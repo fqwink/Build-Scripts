@@ -52,7 +52,7 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 
 各行の owner 詳細本文は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b](DETAIL_INDEX.md#0b-詳細仕様参照表)、機能別の詳細節は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i](DETAIL_INDEX.md#0i-詳細節対応表)、fixture 証跡は [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) を参照する。
 
-後続 Phase の現在状態が `仕様化済み・未実装` または `実装中・検証未完了` であっても、active Phase でない Phase の新規実装着手可否は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
+将来計画または改訂予定の現在状態が `仕様化済み・未実装` または `実装中・検証未完了` であっても、active Phase でない対象の新規実装着手可否は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を参照する。
 
 ---
 

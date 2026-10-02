@@ -342,6 +342,12 @@ func TestPhase11DocumentReferenceGate(t *testing.T) {
 		"Part 3",
 		"Part3",
 		"第3部",
+		"後続証跡として残る",
+		"後続 Phase または横断 owner",
+		"後続 Phase の現在状態",
+		"formal fixture harness の後続証跡",
+		"残証跡",
+		"未完了である",
 	}
 
 	markdownFiles, err := phase11FindMarkdownFiles()
