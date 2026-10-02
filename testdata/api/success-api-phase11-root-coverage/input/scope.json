@@ -1,0 +1,5 @@
+{
+  "fixture_root": "testdata/api/",
+  "owner_component": "api",
+  "scope": "phase11-root-coverage"
+}

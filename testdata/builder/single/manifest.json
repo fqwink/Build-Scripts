@@ -1,0 +1,26 @@
+{
+  "name": "single",
+  "section": "8a-F",
+  "feature": "builder_single_markdown_fixture",
+  "category": "success",
+  "owner_component": "builder",
+  "collaborator_components": [],
+  "components": [
+    "builder"
+  ],
+  "references": [
+    "docs/details/builder.md#8a-builder-受け入れ検証条件",
+    "docs/details/fixture.md#8a-f-builder-初期受け入れ-fixture-契約"
+  ],
+  "fake_clock": "2026-09-30T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "source.md"
+  ],
+  "assertions": [
+    "effects",
+    "stderr",
+    "stdout"
+  ]
+}

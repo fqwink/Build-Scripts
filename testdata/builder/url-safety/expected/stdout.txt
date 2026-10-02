@@ -1,0 +1,5 @@
+[WARN] UNSAFE_URL: link
+[WARN] BUILDER28_PATH_OUTSIDE_BASE: image
+[WARN] BROKEN_PAGE_LINK: guide/setup.md#missing
+[REPORT] pages=2
+warnings=4

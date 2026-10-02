@@ -1,0 +1,4 @@
+[WARN] BROKEN_LINK
+[WARN] UNCLOSED_FENCE
+[REPORT] pages=1
+warnings=2

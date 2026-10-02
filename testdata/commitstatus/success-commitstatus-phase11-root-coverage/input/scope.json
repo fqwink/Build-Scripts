@@ -1,0 +1,5 @@
+{
+  "fixture_root": "testdata/commitstatus/",
+  "owner_component": "commitstatus",
+  "scope": "phase11-root-coverage"
+}

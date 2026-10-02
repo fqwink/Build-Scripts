@@ -1,0 +1,13 @@
+{
+  "created_paths": [
+    "index.html",
+    "assets/style.css",
+    "assets/app.js",
+    "assets/search-index.json",
+    ".dependency_manifest.json"
+  ],
+  "forbidden_created_paths": [
+    "pages/"
+  ],
+  "external_calls": []
+}

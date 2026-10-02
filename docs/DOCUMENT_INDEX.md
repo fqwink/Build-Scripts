@@ -114,27 +114,42 @@
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | `sdk` | 実在 |
 | [`admin/index.html`](../admin/index.html) | `ui` | 実在 |
 | [`testdata/builder/`](../testdata/builder/) | `builder` fixture root | 実在 |
-| [`testdata/builder/single/source.md`](../testdata/builder/single/source.md) | `builder` fixture | 実在 |
+| [`testdata/builder/single/`](../testdata/builder/single/) | `builder` fixture | 実在 |
+| [`testdata/builder/single/source.md`](../testdata/builder/single/source.md) | `builder` fixture input | 実在 |
+| [`testdata/builder/single/expected/`](../testdata/builder/single/expected/) | `builder` expected | 実在 |
 | [`testdata/builder/site/`](../testdata/builder/site/) | `builder` fixture | 実在 |
-| `testdata/builder/empty-dir/.keep` | `builder` fixture marker | 実在 |
-| `testdata/builder/strict/` | `builder` fixture | 未作成 |
-| `testdata/builder/safe/` | `builder` fixture | 未作成 |
-| `testdata/builder/url-safety/` | `builder` fixture | 未作成 |
-| `testdata/builder/**/expected/` | `builder` expected | 未作成 |
-| `testdata/runner/` | `runner` fixture root | 未作成 |
-| `testdata/api/` | `api` fixture root | 未作成 |
+| [`testdata/builder/site/expected/`](../testdata/builder/site/expected/) | `builder` expected | 実在 |
+| [`testdata/builder/empty-dir/`](../testdata/builder/empty-dir/) | `builder` fixture | 実在 |
+| [`testdata/builder/empty-dir/.keep`](../testdata/builder/empty-dir/.keep) | `builder` fixture marker | 実在 |
+| [`testdata/builder/empty-dir/expected/`](../testdata/builder/empty-dir/expected/) | `builder` expected | 実在 |
+| [`testdata/builder/strict/`](../testdata/builder/strict/) | `builder` fixture | 実在 |
+| [`testdata/builder/strict/expected/`](../testdata/builder/strict/expected/) | `builder` expected | 実在 |
+| [`testdata/builder/safe/`](../testdata/builder/safe/) | `builder` fixture | 実在 |
+| [`testdata/builder/safe/expected/`](../testdata/builder/safe/expected/) | `builder` expected | 実在 |
+| [`testdata/builder/url-safety/`](../testdata/builder/url-safety/) | `builder` fixture | 実在 |
+| [`testdata/builder/url-safety/expected/`](../testdata/builder/url-safety/expected/) | `builder` expected | 実在 |
+| [`testdata/runner/`](../testdata/runner/) | `runner` fixture root | 実在 |
+| [`testdata/runner/success-runner-phase11-root-coverage/`](../testdata/runner/success-runner-phase11-root-coverage/) | `runner` Phase 11 root coverage fixture | 実在 |
+| [`testdata/api/`](../testdata/api/) | `api` fixture root | 実在 |
+| [`testdata/api/success-api-phase11-root-coverage/`](../testdata/api/success-api-phase11-root-coverage/) | `api` Phase 11 root coverage fixture | 実在 |
 | `testdata/api/additional-management/` | 追加管理 API fixture root | 未作成 |
 | [`testdata/admin/`](../testdata/admin/) | `admin` fixture group root | 実在 |
 | [`testdata/admin/cli/`](../testdata/admin/cli/) | Admin CLI formal fixture root | 実在 |
-| `testdata/sdk/` | `sdk` fixture root | 未作成 |
+| [`testdata/sdk/`](../testdata/sdk/) | `sdk` fixture root | 実在 |
+| [`testdata/sdk/success-sdk-phase11-root-coverage/`](../testdata/sdk/success-sdk-phase11-root-coverage/) | `sdk` Phase 11 root coverage fixture | 実在 |
 | `testdata/sdk/additional-management/` | 追加管理 SDK fixture root | 未作成 |
-| `testdata/ui/` | `ui` fixture root | 未作成 |
+| [`testdata/ui/`](../testdata/ui/) | `ui` fixture root | 実在 |
+| [`testdata/ui/success-ui-phase11-root-coverage/`](../testdata/ui/success-ui-phase11-root-coverage/) | `ui` Phase 11 root coverage fixture | 実在 |
 | `testdata/ui/additional-management/` | 追加管理 UI fixture root | 未作成 |
-| `testdata/statefile/` | `statefile` fixture root | 未作成 |
+| [`testdata/statefile/`](../testdata/statefile/) | `statefile` fixture root | 実在 |
+| [`testdata/statefile/success-statefile-phase11-root-coverage/`](../testdata/statefile/success-statefile-phase11-root-coverage/) | `statefile` Phase 11 root coverage fixture | 実在 |
 | `testdata/statefile/additional-management/` | 追加管理 statefile fixture root | 未作成 |
-| `testdata/archive/` | `archive` fixture root | 未作成 |
-| `testdata/commitstatus/` | `commitstatus` fixture root | 未作成 |
-| `testdata/security/` | `security` fixture root | 未作成 |
+| [`testdata/archive/`](../testdata/archive/) | `archive` fixture root | 実在 |
+| [`testdata/archive/success-archive-phase11-root-coverage/`](../testdata/archive/success-archive-phase11-root-coverage/) | `archive` Phase 11 root coverage fixture | 実在 |
+| [`testdata/commitstatus/`](../testdata/commitstatus/) | `commitstatus` fixture root | 実在 |
+| [`testdata/commitstatus/success-commitstatus-phase11-root-coverage/`](../testdata/commitstatus/success-commitstatus-phase11-root-coverage/) | `commitstatus` Phase 11 root coverage fixture | 実在 |
+| [`testdata/security/`](../testdata/security/) | `security` fixture root | 実在 |
+| [`testdata/security/success-security-phase11-root-coverage/`](../testdata/security/success-security-phase11-root-coverage/) | `security` Phase 11 root coverage fixture | 実在 |
 | [`testdata/setup/`](../testdata/setup/) | `setup` fixture root | 実在 |
 | [`testdata/release/`](../testdata/release/) | `release` fixture root | 実在 |
 | [`testdata/mcp/`](../testdata/mcp/) | `mcp` fixture root | 実在 |

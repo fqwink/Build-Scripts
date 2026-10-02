@@ -1,0 +1,5 @@
+{
+  "fixture_root": "testdata/statefile/",
+  "owner_component": "statefile",
+  "scope": "phase11-root-coverage"
+}

@@ -1,0 +1,5 @@
+{
+  "fixture_root": "testdata/security/",
+  "owner_component": "security",
+  "scope": "phase11-root-coverage"
+}

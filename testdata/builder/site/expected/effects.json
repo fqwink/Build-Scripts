@@ -1,0 +1,13 @@
+{
+  "created_paths": [
+    "index.html",
+    "pages/guide-setup.html",
+    "pages/guide-setup-copy.html",
+    "pages/intro.html",
+    "assets/search-index.json"
+  ],
+  "rewritten_links": [
+    "guide/setup.md#setup -> guide-setup.html#setup"
+  ],
+  "external_calls": []
+}

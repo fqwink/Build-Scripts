@@ -1,0 +1,5 @@
+{
+  "fixture_root": "testdata/runner/",
+  "owner_component": "runner",
+  "scope": "phase11-root-coverage"
+}

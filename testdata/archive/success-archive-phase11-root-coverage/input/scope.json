@@ -1,0 +1,5 @@
+{
+  "fixture_root": "testdata/archive/",
+  "owner_component": "archive",
+  "scope": "phase11-root-coverage"
+}

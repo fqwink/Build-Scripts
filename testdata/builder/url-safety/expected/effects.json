@@ -1,0 +1,14 @@
+{
+  "created_paths": [
+    "pages/intro.html",
+    "pages/guide-setup.html",
+    "assets/search-index.json"
+  ],
+  "forbidden_output_fragments": [
+    "javascript:alert",
+    "//example.com/x",
+    "../secret.png",
+    "token=secret"
+  ],
+  "external_calls": []
+}

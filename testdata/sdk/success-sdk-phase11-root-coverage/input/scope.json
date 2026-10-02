@@ -1,0 +1,5 @@
+{
+  "fixture_root": "testdata/sdk/",
+  "owner_component": "sdk",
+  "scope": "phase11-root-coverage"
+}
