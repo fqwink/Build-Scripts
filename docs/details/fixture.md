@@ -284,9 +284,9 @@ Phase 13 の正式 fixture root は以下の file を必須とする。下表の
 | path | 内容 | 完了条件 |
 |------|------|----------|
 | `manifest.json` | Phase 13 evidence package の識別子、対象 owner、実行順序、required check、closure record set の所在。 | `name` が `phase-13-implementation-alignment-quality`、`scope` が同値、`owners` が Phase 13 対象 owner をすべて含む。 |
-| `input/scope.json` | 実行対象の owner、file pattern、禁止 pattern、required check、source audit scope。 | `include`、`exclude`、`owner_packages`、`state_files`、`api_contract_sources`、`release_artifacts` を持つ。 |
+| `input/scope.json` | 実行対象の owner、file pattern、禁止 pattern、required check、source audit scope。 | `include`、`exclude`、`owner_packages`、`state_files`、`contract_sources`、`release_artifacts` を持つ。 |
 | `input/owner_inventory.json` | `components/<owner>/` の 5 file 固定、package 名、import path、file role、旧 root path の棚卸し入力。 | 全 Go owner を 1 回だけ列挙し、同一 owner の重複、空 owner、未作成 path の実在扱いがない。 |
-| `input/contract_inventory.json` | API route、Admin command、SDK method、UI operation、MCP tool、setup stdout、credential 初期化の照合入力。 | 各 entry は `owner`、`contract_kind`、`method`、`path`、`request_schema_ref`、`response_schema_ref`、`auth`、`source_anchor` を持つ。 |
+| `input/contract_inventory.json` | API route、Admin command、SDK method、UI operation、MCP tool、setup stdout、credential 初期化の照合入力。 | 各 entry は `contract_id`、`owner`、`contract_kind`、`method`、`path`、`query_schema_ref`、`request_schema_ref`、`response_schema_ref`、`error_schema_ref`、`auth`、`status_codes`、`state_effects`、`client_bindings`、`source_anchor` を持つ。 |
 | `input/state_inventory.json` | statefile 経由に集約する state file、JSON Lines log、migration、recovery、直接状態更新禁止の棚卸し入力。 | 直接 open / truncate / append / rename の検査対象 file pattern と許可 owner `statefile` を固定する。 |
 | `input/security_inventory.json` | password hash、token、secret mask、signature、file safety、credential rotation、required log の棚卸し入力。 | secret 値そのものを含めず、fixture secret は deterministic placeholder と hash / mask 判定だけを持つ。 |
 | `input/faults.json` | disk full、permission denied、short write、fsync failure、rename failure、process kill、network timeout、DNS rebinding の障害注入入力。 | 各 fault は `fault_id`、`target_owner`、`trigger`、`expected_error`、`must_preserve_state` を持つ。 |
@@ -312,10 +312,31 @@ Phase 13 の正式 fixture root は以下の file を必須とする。下表の
 | `negative_controls` | array[string] | 失敗しなければならない検査の id。 |
 | `source_anchors` | array[string] | Phase 13 対象の責務正本 anchor。 |
 
+`entrypoints` は下表の値だけを許可する。下表にない entrypoint を Phase 13 完了証跡へ追加する場合は、先に [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) と該当 owner 詳細本文を改訂する。
+
+| entrypoint | owner / 責務 | 実行境界 |
+|------------|--------------|----------|
+| `adlaire-ci-build` | `builder` | [`main.go`](../../main.go) の dispatch を経由して builder production entrypoint を実行する。 |
+| `adlaire-ci-runner` | `runner` | [`main.go`](../../main.go) の dispatch を経由して runner production entrypoint を実行する。 |
+| `adlaire-ci-api` | `api` | [`main.go`](../../main.go) の dispatch を経由して API production entrypoint を実行する。 |
+| `adlaire-ci-admin` | `admin` | [`main.go`](../../main.go) の dispatch を経由して Admin CLI production entrypoint を実行する。 |
+| `adlaire-ci-setup` | `setup` | [`main.go`](../../main.go) の dispatch を経由して setup production entrypoint を実行する。 |
+| `adlaire-ci-release` | `release` | [`main.go`](../../main.go) の dispatch を経由して release production entrypoint を実行する。 |
+| `adlaire-ci-mcp` | `mcp` | [`main.go`](../../main.go) の dispatch を経由して MCP production entrypoint を実行する。 |
+| `admin-ui-browser` | `ui` / `sdk` / `api` | browser runtime で [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js) を読み込み、UI to SDK to API fake の実行結果を照合する。 |
+| `phase13-fixture-harness` | fixture 証跡責務 | `manifest.json`、`input/*.json`、`expected/*.json`、`records/*.jsonl` を読み込み、production entrypoint 実行、actual / expected 比較、negative control、counter 集計を実行する。 |
+
+`required_checks` は [Phase 13 required check 固定表](#phase-13-required-checks) の `required check name` をすべて 1 回だけ含める。重複、欠落、表にない check name、skip success を許可する check name は `phase13_ci_required_check_open_count` に計上する。
+
+`source_anchors` は本節 [`Phase 13 実装整合・品質改善証跡`](#phase-13-implementation-alignment-quality-evidence)、[Phase 13 required check 固定表](#phase-13-required-checks)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、[`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 13 target path 所在](../DOCUMENT_INDEX.md#phase-13-target-paths)、[`docs/SPEC.md` 方針責務 §4.3](../SPEC.md#sec-4-3)、[`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8)、[`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit)、[`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test)、および Phase 13 対象 owner 詳細本文の各 `phase-13-*-alignment-contract` anchor を含める。anchor が存在しない、または owner だけが推測で補われる場合は `phase13_document_drift_open_count` に計上する。
+
+`expected/counters.json` は上記 closure counter 表の全 `phase13_*` counter と `final_open_item_count` を 1 回だけ持つ。追加 counter、欠落 counter、`expected/effects.json` と異なる counter 値、`records/closure.jsonl` の集計と一致しない counter 値、対象外理由 anchor のない対象外 counter を禁止する。
+
 Phase 13 fixture は negative control を必須とする。negative control は、少なくとも contract mismatch、direct state mutation、token argv、JSON Lines corruption、mutation survivor、race trigger、fault injection failure、GitHub Actions unpinned を 1 件ずつ含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase13_fixture_execution_gap_count` に計上する。
 
 Phase 13 の document drift 判定では、Phase 1〜Phase 10 の過去実装検証証跡として旧 root artifact を説明する履歴本文を、現行実装 path drift として数えない。drift として数える対象は、現在状態、実装着手可否、標準配置、Phase 13 target path、owner package inventory、API / SDK / UI / MCP / setup / release の現行契約が旧 root artifact を実在または標準配置として扱う記載だけとする。履歴本文を残す場合も、現行実装の正本は [`docs/SPEC.md` 方針責務 §4.3](../SPEC.md#sec-4-3) と [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 13 target path 所在](../DOCUMENT_INDEX.md#phase-13-target-paths) であることを Phase 13 closure record に記録する。
 
+<a id="phase-13-required-checks"></a>
 Phase 13 の CI required check は以下とする。GitHub workflow は YAML 禁止の対象外であるが、workflow から実行する Adlaire CI 入出力、fixture manifest、expected、state、設定形式は JSON 契約に従う。
 
 | required check name | 必須実行 | 完了条件 |
@@ -328,13 +349,25 @@ Phase 13 の CI required check は以下とする。GitHub workflow は YAML 禁
 | `phase13-govulncheck` | govulncheck の実行。 | exit code `0`、脆弱性 open `0`。 |
 | `phase13-gosec` | gosec の実行。 | exit code `0`、secret / file safety / command execution finding open `0`。 |
 | `phase13-deno-check-sdk` | Deno stable runtime で `deno check admin/adlaire-ci-sdk.js`。 | exit code `0`。Node.js 代替禁止。 |
+| `phase13-owner-shape` | owner package inventory、5 ファイル固定、旧 root path、空 file、dummy / no-op success の検査。 | `phase13_owner_file_violation_count=0`、`phase13_dummy_or_empty_file_count=0`、`phase13_document_drift_open_count=0`。 |
+| `phase13-contract-parity` | API、Admin、SDK、UI、MCP、setup stdout、credential 初期化の契約自動照合。 | `phase13_contract_mismatch_count=0`、`phase13_mcp_unimplemented_success_count=0`。 |
+| `phase13-state-safety` | statefile 直接更新禁止、process lock、atomic write、JSON Lines safety、migration、recovery の検査。 | `phase13_direct_state_mutation_count=0`、`phase13_state_safety_open_count=0`、`phase13_jsonl_corruption_open_count=0`。 |
+| `phase13-security-boundary` | Argon2id、token file / stdin、secret mask、file safety、required log write の検査。 | `phase13_security_kdf_open_count=0`、`phase13_token_arg_open_count=0`、`phase13_required_log_write_ignore_count=0`。 |
+| `phase13-archive-commitstatus` | archive / commitstatus の owner 集約、呼び出し元 duplicate 排除、retry、rate limit、timeout の検査。 | `phase13_archive_commitstatus_ownership_open_count=0`。 |
+| `phase13-runner-recovery` | queue 状態機械、finalizer、active recovery、at-least-once、backup / restore transaction の検査。 | `phase13_queue_recovery_open_count=0`、`phase13_race_or_concurrency_open_count=0`。 |
+| `phase13-mcp-real-behavior` | MCP `resendWebhook`、`subscribe`、`unsubscribe`、`sampling` の実動作、未実装 error、statefile 接続の検査。 | `phase13_mcp_unimplemented_success_count=0`、`phase13_direct_state_mutation_count=0`。 |
+| `phase13-external-boundary` | API / MCP HTTP lifecycle、Webhook SSRF、SSH strict、systemd 最小権限、state directory 権限の検査。 | `phase13_external_boundary_open_count=0`、`phase13_required_log_write_ignore_count=0`。 |
 | `phase13-executable-fixture` | production entrypoint 実行型 fixture harness。 | `phase13_fixture_execution_gap_count=0`。 |
 | `phase13-mutation` | production code mutation。 | `phase13_mutation_survived_count=0`。 |
 | `phase13-concurrency` | multi-process state update、queue transition、race trigger。 | `phase13_race_or_concurrency_open_count=0`。 |
 | `phase13-fault-injection` | disk full、permission denied、short write、fsync failure、rename failure、process kill。 | `phase13_fault_injection_open_count=0`。 |
 | `phase13-browser` | UI to SDK to API browser fixture。 | UI が API response にない値を合成せず、secret を表示しない。 |
+| `phase13-integration-e2e` | Admin to API、UI to SDK to API、runner to statefile、MCP to statefile の統合 E2E。 | `phase13_contract_mismatch_count=0`、`phase13_direct_state_mutation_count=0`、`phase13_e2e_open_count=0`。 |
 | `phase13-setup-e2e` | setup、install-api、update、rollback、実インストール E2E。 | `phase13_e2e_open_count=0`。 |
 | `phase13-release-e2e` | Git tag、GitHub Release、SHA256SUMS、signature、SBOM、再現ビルド証跡。 | `phase13_release_evidence_open_count=0`。 |
+| `phase13-actions-pinning` | GitHub Actions commit SHA pin、minimum permissions、timeout、required checks の検査。 | `phase13_action_pin_open_count=0`、`phase13_ci_required_check_open_count=0`。 |
+| `phase13-recovery-procedure` | stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順と実装契約接続の検査。 | `phase13_recovery_procedure_open_count=0`。 |
+| `phase13-document-drift` | 旧 path、重複仕様、実装済み表記、未作成 path、責務正本参照、ROADMAP / DOCUMENT_INDEX の drift 検査。 | `phase13_document_drift_open_count=0`、`final_open_item_count=0`。 |
 
 <a id="fixture-root-coverage-matrix-contract"></a>
 **fixture root coverage matrix 固定契約：**

@@ -246,7 +246,7 @@
 | `testdata/phase13/implementation-alignment-quality/manifest.json` | Phase 13 evidence package manifest | 未作成 |
 | `testdata/phase13/implementation-alignment-quality/input/scope.json` | Phase 13 実行 scope 入力 | 未作成 |
 | `testdata/phase13/implementation-alignment-quality/input/owner_inventory.json` | Phase 13 owner package inventory 入力 | 未作成 |
-| `testdata/phase13/implementation-alignment-quality/input/contract_inventory.json` | Phase 13 API / Admin / SDK / UI / MCP 契約照合入力 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/input/contract_inventory.json` | Phase 13 API / Admin / SDK / UI / MCP / setup stdout / credential 初期化契約照合入力 | 未作成 |
 | `testdata/phase13/implementation-alignment-quality/input/state_inventory.json` | Phase 13 statefile 経路棚卸し入力 | 未作成 |
 | `testdata/phase13/implementation-alignment-quality/input/security_inventory.json` | Phase 13 security 境界棚卸し入力 | 未作成 |
 | `testdata/phase13/implementation-alignment-quality/input/faults.json` | Phase 13 fault injection 入力 | 未作成 |
