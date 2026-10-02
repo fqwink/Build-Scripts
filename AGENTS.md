@@ -89,7 +89,7 @@
 
 完全仕様詳細化が未完了の機能、または一定の仕様だけを固定した機能は、実装着手不可として扱う。実装しながら仕様を決めること、既存実装やテスト結果に合わせて仕様を後追い確定すること、実装者判断で未定義事項を補うことを行ってはならない。
 
-Go 実装の標準配置は [docs/SPEC.md 方針責務 §4.3](docs/SPEC.md#sec-4-3) を参照する。[`main.go`](main.go) は起動入口 artifact、[`components/builder.go`](components/builder.go)、[`components/runner.go`](components/runner.go)、[`components/api.go`](components/api.go) はそれぞれ `builder`、`runner`、`api` owner component の標準 Go 実装 artifact、`components/admin.go` は `admin` owner component の CLI 管理クライアント用 Go 実装 artifact、`components/mcp.go` は `mcp` owner component の Go 実装 artifact、[`admin/adlaire-ci-sdk.js`](admin/adlaire-ci-sdk.js) と [`admin/index.html`](admin/index.html) はそれぞれ `sdk`、`ui` owner component の標準管理クライアント実装 artifact として扱う。owner component と実装 artifact を同一概念として扱ってはならない。各実装 artifact の現在状態は [docs/ROADMAP.md](docs/ROADMAP.md)、実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) を参照する。
+Go 実装の標準配置は [docs/SPEC.md 方針責務 §4.3](docs/SPEC.md#sec-4-3) を参照する。[`main.go`](main.go) は起動入口 artifact、`components/<owner>/` は標準 Go owner package artifact として扱う。`builder`、`runner`、`api`、`admin`、`setup`、`release`、`statefile`、`archive`、`commitstatus`、`security`、`mcp` の実在所在は [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、現在状態は [docs/ROADMAP.md](docs/ROADMAP.md) を参照する。[`admin/adlaire-ci-sdk.js`](admin/adlaire-ci-sdk.js) と [`admin/index.html`](admin/index.html) はそれぞれ `sdk`、`ui` owner component の標準管理クライアント実装 artifact として扱う。owner component と実装 artifact を同一概念として扱ってはならない。
 
 実装変更後は、変更範囲に応じて構文確認、単体確認、実行確認、生成物確認、異常系確認、必須 fixture 確認、[`docs/SPEC.md` ポリシー責務 §0g](docs/SPEC.md#policy-meaningful-test) の意味のあるテストポリシー、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の該当証跡を確認する。
 
@@ -272,6 +272,6 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 [docs/SPEC.md](docs/SPEC.md)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md)、または owner component 別の [docs/details/*.md](docs/details/) を改訂した場合は、[docs/DESIGN.md](docs/DESIGN.md)、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md)、実装ファイルへの影響を確認する。
 
-[docs/DESIGN.md](docs/DESIGN.md) を改訂した場合は、生成静的 Web サイトの変更では [`components/builder.go`](components/builder.go) 内の HTML / CSS / JavaScript / theme component テンプレート、標準管理 UI の変更では [`admin/index.html`](admin/index.html) の HTML / CSS との整合性を確認する。
+[docs/DESIGN.md](docs/DESIGN.md) を改訂した場合は、生成静的 Web サイトの変更では [`components/builder/`](components/builder/) 内の HTML / CSS / JavaScript / theme component テンプレート、標準管理 UI の変更では [`admin/index.html`](admin/index.html) の HTML / CSS との整合性を確認する。
 
 仕様化済み項目を実装した場合は、[docs/ROADMAP.md](docs/ROADMAP.md) の現在状態、[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) の「実装ファイル一覧」、[docs/DETAIL_INDEX.md](docs/DETAIL_INDEX.md) の対応表、owner component 別の [docs/details/*.md](docs/details/) の検証条件、実装ファイルの存在を整合させる。

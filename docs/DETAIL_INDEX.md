@@ -186,6 +186,8 @@ Phase 12 は以下の内部順序で実装、検証、証跡記録、状態更�
 <a id="phase-12-go-owner-package-targets"></a>
 Phase 12 で Go owner package 5 ファイル固定の対象にする owner は下表だけとする。`sdk` と `ui` は JavaScript / HTML artifact を正本とするため、Go owner package 化の対象に含めない。
 
+下表の `Phase 12 開始時の実装 artifact` は移行元を示す履歴情報であり、現行標準配置、実在ファイル、実装着手可否、Phase 13 target path の正本として扱ってはならない。現行標準配置は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、実在所在は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務](DOCUMENT_INDEX.md) を正本とする。
+
 | Go owner package target | Phase 12 開始時の実装 artifact | Phase 12 完了時の artifact | 主本文 |
 |-------------------------|-------------------------------|---------------------------|--------|
 | `builder` | `components/builder.go` | `components/builder/` の 5 ファイルだけ。`components/builder.go` と `components/builder_test.go` は残さない。 | [`docs/details/builder.md` 詳細本文責務](details/builder.md) |
