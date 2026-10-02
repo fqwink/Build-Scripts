@@ -10,7 +10,7 @@ owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口�
 | 項目 | 内容 |
 |------|------|
 | owner component | `release` |
-| 実装主体 | `components/release.go`。起動入口は [`main.go`](../../main.go)、実行ファイル名は `adlaire-ci-release`。 |
+| 実装主体 | [`components/release/`](../../components/release/)。起動入口は [`main.go`](../../main.go)、実行ファイル名は `adlaire-ci-release`。 |
 | 持つ内容 | Release 用バイナリ生成、admin archive 生成、checksum manifest 生成、再現性確認、GitHub draft Release 作成、asset upload・再取得検証、正式公開、失敗時 draft 削除。 |
 | 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 

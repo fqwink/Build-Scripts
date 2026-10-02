@@ -114,19 +114,19 @@ Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核と
 
 | owner component | 実装内包先 / 配布対象 | 自律性の条件 |
 |-----------------|---------------------|--------------|
-| `builder` | `components/builder.go` | Go 標準ライブラリだけで Markdown 解析、HTML/CSS/JS/search index 生成、検証レポート出力を行う。外部 Markdown parser、template engine、syntax highlight library、search library に依存しない。 |
-| `runner` | `components/runner.go` | Go 標準ライブラリと OS 標準コマンドだけで GitHub API polling、SHA 比較、ビルド起動、ログ、通知、SSH 転送、snapshot、lock、retry を処理する。外部 CI サービス、job queue、scheduler library に依存しない。 |
-| `api` | `components/api.go` | Go 標準ライブラリ `net/http` を基本に、認証、session、状態ファイル CRUD、入力検証、API response を内製実装する。外部 web framework、router、ORM、database driver に依存しない。 |
-| `setup` | `components/setup.go` | Go 標準ライブラリと明示した OS 標準 command だけで Release asset 取得、checksum 検証、配置、systemd 操作、更新、rollback を実装する。外部 installer framework、package manager、shell script を実装主体にしない。 |
-| `release` | `components/release.go` | Go 標準ライブラリ、Go toolchain、Git command、GitHub REST API だけで再現可能な成果物生成、checksum、draft upload、再取得検証、正式公開を実装する。外部 release framework、archive tool、checksum tool に依存しない。 |
+| `builder` | `components/builder/` | Go 標準ライブラリだけで Markdown 解析、HTML/CSS/JS/search index 生成、検証レポート出力を行う。外部 Markdown parser、template engine、syntax highlight library、search library に依存しない。 |
+| `runner` | `components/runner/` | Go 標準ライブラリと OS 標準コマンドだけで GitHub API polling、SHA 比較、ビルド起動、ログ、通知、SSH 転送、snapshot、lock、retry を処理する。外部 CI サービス、job queue、scheduler library に依存しない。 |
+| `api` | `components/api/` | Go 標準ライブラリ `net/http` を基本に、認証、session、状態ファイル CRUD、入力検証、API response を内製実装する。外部 web framework、router、ORM、database driver に依存しない。 |
+| `setup` | `components/setup/` | Go 標準ライブラリと明示した OS 標準 command だけで Release asset 取得、checksum 検証、配置、systemd 操作、更新、rollback を実装する。外部 installer framework、package manager、shell script を実装主体にしない。 |
+| `release` | `components/release/` | Go 標準ライブラリ、Go toolchain、Git command、GitHub REST API だけで再現可能な成果物生成、checksum、draft upload、再取得検証、正式公開を実装する。外部 release framework、archive tool、checksum tool に依存しない。 |
 | `sdk` | `admin/adlaire-ci-sdk.js` | 単一 ES Module とし、browser 標準 API のみで API client、error handling、streaming、timeout を実装する。npm package、bundler、polyfill、framework に依存しない。 |
 | `ui` | `admin/index.html` | HTML / CSS / Vanilla JavaScript だけで標準管理ツールを構成し、SDK 経由で通信する。React、Vue、Svelte、CSS framework、icon package、chart library に依存しない。 |
-| `admin` | `admin/index.html`、`admin/adlaire-ci-sdk.js`、`components/admin.go` | 管理 UI 静的配布物の構成、検証、配信境界、および CLI 管理クライアントを本リポジトリ内で完結させる。外部 asset pipeline、CDN、archive framework、CLI framework に依存しない。 |
-| `statefile` | `components/runner.go`、`components/api.go` | Go 標準ライブラリだけで状態 schema、lock、atomic write、JSON Lines、破損検出を処理する。外部 database、storage engine、serialization library に依存しない。 |
-| `archive` | `components/runner.go`、`components/api.go` | Go 標準ライブラリだけで archive、snapshot、展開、検証、世代管理を処理する。外部 archive tool、snapshot service、object storage SDK に依存しない。 |
-| `commitstatus` | `components/runner.go` | Go 標準ライブラリ `net/http` だけで GitHub Commit Status payload、送信、応答検証を処理する。外部 GitHub client library、CI status service に依存しない。 |
-| `security` | `components/api.go` | Go 標準ライブラリだけで認証、認可、token、session、TOTP、rate limit、audit、secret 処理を実装する。外部 authentication framework、secret management SDK に依存しない。 |
-| `mcp` | `components/mcp.go` | Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様は [`docs/details/mcp.md`](details/mcp.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。 |
+| `admin` | `admin/index.html`、`admin/adlaire-ci-sdk.js`、`components/admin/` | 管理 UI 静的配布物の構成、検証、配信境界、および CLI 管理クライアントを本リポジトリ内で完結させる。外部 asset pipeline、CDN、archive framework、CLI framework に依存しない。 |
+| `statefile` | `components/statefile/` | Go 標準ライブラリだけで状態 schema、lock、atomic write、JSON Lines、破損検出を処理する。外部 database、storage engine、serialization library に依存しない。 |
+| `archive` | `components/archive/` | Go 標準ライブラリだけで archive、snapshot、展開、検証、世代管理を処理する。外部 archive tool、snapshot service、object storage SDK に依存しない。 |
+| `commitstatus` | `components/commitstatus/` | Go 標準ライブラリ `net/http` だけで GitHub Commit Status payload、送信、応答検証を処理する。外部 GitHub client library、CI status service に依存しない。 |
+| `security` | `components/security/` | Go 標準ライブラリだけで認証、認可、token、session、TOTP、rate limit、audit、secret 処理を実装する。外部 authentication framework、secret management SDK に依存しない。 |
+| `mcp` | `components/mcp/` | Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様は [`docs/details/mcp.md`](details/mcp.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。 |
 
 「実装内包先 / 配布対象」列は、owner component の責務を実装または配布する artifact の所在を示す。同列を、owner component と artifact の同一視、単独専用 artifact の存在保証、現在状態、実装着手許可の根拠として使用してはならない。実装 artifact の実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、実装 artifact と機能の現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
 
@@ -331,7 +331,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 [`main.go`](../main.go) は 1 ファイルとし、起動入口、実行ファイル名の exact 判定、引数受け取り、binary version 注入値の受け渡し、対象 owner component 呼び出しだけを担当する。[`main.go`](../main.go) に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、setup、release、MCP 処理の実装詳細を書いてはならない。未知の実行ファイル名を既定 owner component へ fallback してはならない。
 
-`components/` の現行配置は Phase 11 完了時点の実在 artifact を示す。Go 実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin.go` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup.go` と `components/release.go` とする。`statefile`、`archive`、`commitstatus`、`security` は詳細仕様上の責務境界であり、Phase 12 で owner package へ移行するまで単独専用 Go artifact の存在を前提にしてはならない。`mcp.go` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+`components/` の現行配置は Phase 12 完了後の owner package 配置を示す。Go 実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin/` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup/` と `components/release/` とする。`statefile`、`archive`、`commitstatus`、`security` は Phase 12 で owner package として実在化済みの責務境界である。`mcp` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
 
 Phase 12 完了後の Go 実装標準配置は owner component package とし、`main.go` は 1 ファイル固定、各標準 Go owner package は 5 ファイル固定とする。5 ファイル固定は例外禁止であり、実装量、Go 慣習、既存巨大ファイル、共通化希望、テスト都合、将来拡張を理由に 6 ファイル目、補助 package、`helper.go`、`utils.go`、`common.go`、`misc.go`、責務外の集約ファイル、または owner 以外の逃がし先を作ってはならない。5 ファイルに収まらない場合は、ファイル数を増やさず、owner component の責務分割または仕様分割を先に行う。
 
@@ -464,7 +464,7 @@ Go 実装の判断基準は以下とする。
 <a id="sec-5-1"></a>
 **5.1 CI ランナーの目的：**
 
-GitHub API を定期的にポーリングし、対象変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（[`components/runner.go`](../components/runner.go)）。標準の変更検出・実行経路は GitHub Actions、Webhook、外部 CI サービスのいずれにも依存しない。管理 API の任意の GitHub Webhook 受信機能は補助 trigger 経路であり、無効または未実装でも runner の polling 経路と定期実行は単独で成立しなければならない。
+GitHub API を定期的にポーリングし、対象変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（[`components/runner/`](../components/runner/)）。標準の変更検出・実行経路は GitHub Actions、Webhook、外部 CI サービスのいずれにも依存しない。管理 API の任意の GitHub Webhook 受信機能は補助 trigger 経路であり、無効または未実装でも runner の polling 経路と定期実行は単独で成立しなければならない。
 
 - 変更検出の具体的な API、比較値、保存先は [`docs/details/runner.md`](details/runner.md) 詳細本文責務を正本とする
 - Go 標準ライブラリを基本とし、外部依存を追加する場合は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#policy-dependencies) の例外承認を必須とする
@@ -474,7 +474,7 @@ GitHub API を定期的にポーリングし、対象変更を検出してビル
 <a id="sec-5-2"></a>
 **5.2 CI ランナーの開発方針：**
 
-- **単一責務実装**：[`components/runner.go`](../components/runner.go) は CI ランナー責務に限定し、Markdown 変換と管理 API を内包しない
+- **単一責務実装**：[`components/runner/`](../components/runner/) は CI ランナー責務に限定し、Markdown 変換と管理 API を内包しない
 - **実行境界**：oneshot、差分検出、多重実行防止は [`docs/SPEC.md` ポリシー責務 §6](SPEC.md#policy-runner-execution) に従う
 
 <a id="53-github-actions-非依存方針"></a>
@@ -1082,7 +1082,7 @@ SDK の実装言語と技術は [`docs/SPEC.md` 方針責務 §4 技術方針表
 
 ## 12. 管理 API 公開境界・session ポリシー
 
-[`docs/SPEC.md` ポリシー責務 §12](SPEC.md#policy-api-exposure) は、[`components/api.go`](../components/api.go) に適用する。
+[`docs/SPEC.md` ポリシー責務 §12](SPEC.md#policy-api-exposure) は、[`components/api/`](../components/api/) に適用する。
 
 - 管理 API サーバーを外部へ直接公開してはならない
 - TLS 終端、listen host、session token、認証除外 endpoint の具体条件は [`docs/details/api.md`](details/api.md) 詳細本文責務と [`docs/details/security.md`](details/security.md) 詳細本文責務を正本とする

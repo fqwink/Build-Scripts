@@ -1,0 +1,17 @@
+{
+  "phase": "Phase 12",
+  "gate": "implementation quality gate reconstruction",
+  "owner_package_targets": [
+    "admin",
+    "api",
+    "archive",
+    "builder",
+    "commitstatus",
+    "mcp",
+    "release",
+    "runner",
+    "security",
+    "setup",
+    "statefile"
+  ]
+}

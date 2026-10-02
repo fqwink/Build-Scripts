@@ -9,7 +9,7 @@
 | 項目 | 内容 |
 |------|------|
 | owner component | `builder` |
-| 実装主体 | [`components/builder.go`](../../components/builder.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-build` とする。 |
+| 実装主体 | [`components/builder/`](../../components/builder/)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-build` とする。 |
 | 持つ内容 | `builder` owner が主本文として定義する Markdown 変換、静的 Web サイト出力、HTML / CSS / JavaScript、theme component、builder 検証条件、builder owner 追加機能。 |
 | 起動入口受け渡し | [`main.go`](../../main.go) は実行ファイル basename が `adlaire-ci-build` と完全一致する場合だけ `builder` owner を呼び出す。`builder` owner が受け取る argv は `os.Args[1:]` 相当の配列、binary version は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#common-cli-contract) の version 注入値とし、`builder` owner は `os.Args[0]`、process 名、環境変数、設定ファイルから owner 選択または version 値を再判定しない。 |
 | 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
