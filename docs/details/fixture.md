@@ -224,6 +224,81 @@ Phase 12 の CI required check は、GitHub workflow が作成されていない
 
 Phase 12 の実装 PR 本文は、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 implementation PR evidence template 固定契約に加えて、上表の集計値、closure record set 所在、対象外理由 anchor、状態復帰が必要になった [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の行、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新有無を記録する。集計値を口頭説明、検証コマンド名、または Pull Request の Summary だけで代替してはならない。
 
+<a id="phase-13-implementation-alignment-quality-evidence"></a>
+**Phase 13 実装整合・品質改善証跡：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 13 の fixture、expected、fake、fault injection、mutation、race、integration、E2E、CI、release evidence、closure record の証跡だけを固定する。Phase 13 の現在状態と実装割当は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、Go 実装配置は [`docs/SPEC.md` 方針責務 §4.3](../SPEC.md#sec-4-3)、Phase 完了単位は [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit)、テスト方針は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) を参照する。
+
+Phase 13 の証跡 package は、下表の全対象を同一 closure record set へ接続する。1 件でも `open` が残る場合、Phase 13 を `実装済み` にしてはならない。
+
+| 証跡対象 | 必須証跡 | 未完了条件 |
+|----------|----------|------------|
+| owner package 責務純度 | `components/<owner>/` の 5 ファイル固定検査、file role 検査、package 名検査、import path 検査、6 ファイル目・サブディレクトリ・空ファイル・ダミー実装・旧 root path 不在検査。 | 5 ファイル固定違反、空 file、dummy success、helper / utils / common 追加、旧 root path 参照、または責務外処理を別 owner へ逃がす実装が 1 件以上ある。 |
+| contract parity | API route 表、Admin CLI command 表、SDK public method 表、UI operation 表、MCP tool 表、setup stdout、credential 初期化、HTTP method、path、query、request、response、status、auth、token 取得元の照合 record。 | 片側だけの修正、route / method / auth / response shape 差分、stdout 契約差分、token argv 取得、未照合 endpoint が 1 件以上ある。 |
+| state safety | statefile adapter 経由の read-modify-write lock、file / parent directory fsync、atomic rename、symlink 非追従、state directory `0700`、owner / mode 起動時検証、migration、stale lock、直接状態更新不在の証跡。 | API、runner、MCP、archive が状態 file を直接更新する、lock 範囲外 read-modify-write、fsync / rename / mode / owner 未検証、stale lock 復旧未定義が 1 件以上ある。 |
+| JSON Lines safety | append lock、flush、fsync、破損行検出、破損 file 隔離、復旧対象登録、黙殺禁止、必須 log 書込み失敗時の失敗伝播。 | 破損行を読み飛ばして成功扱いにする、best-effort 扱いが禁止された audit / access / config log write failure を無視する、または復旧記録がない。 |
+| security boundary | Argon2id credential hash、既存 SHA-256 反復 KDF 不在、token file / stdin、secret mask、署名、file safety、credential rotation、log / fixture / release notes の secret 不在証跡。 | 独自 SHA-256 反復 KDF 残存、token argv 残存、secret 出力、token hash / prefix / length 漏えい、credential rotation 未検証が 1 件以上ある。 |
+| queue / recovery | `waiting`、`active`、`cancelling`、`succeeded`、`failed`、`cancelled`、`recovery_required` の状態機械、waiting to active atomic transition、ID 採番、queue 上限、panic / timeout / cancel / 保存失敗 finalizer、active 復旧、at-least-once 実行。 | 状態遷移表にない遷移、未原子的な active 化、finalizer 未実行経路、再起動後 active 放置、at-least-once 証跡欠落が 1 件以上ある。 |
+| archive / commitstatus / release | archive owner の snapshot / compress / digest / verify / download / restore、commitstatus owner の retry / rate limit / timeout、release owner の tag / GitHub Release / SHA256SUMS / signature / SBOM / reproducible build evidence。 | 呼び出し元 owner に archive / commitstatus duplicate 実装が残る、release 証跡不足、SHA256SUMS / 署名 / SBOM / 再現ビルド証跡が未接続である。 |
+| MCP real behavior | `resendWebhook`、`subscribe`、`unsubscribe`、`sampling` の実動作証跡、未実装機能の明示 error、HTTP timeout、body 上限、graceful shutdown、statefile adapter 接続。 | no-op success、未実装 success、statefile 直接更新、HTTP lifecycle 未検証、sampling の外部 AI API 直接呼出しが 1 件以上ある。 |
+| external boundary | API / MCP HTTP timeout、body 上限、graceful shutdown、Webhook redirect / SSRF / private IP / DNS rebinding 防止、SSH host key / known_hosts / timeout / remote path、systemd 専用 user / 最小権限 / 書込み先限定。 | redirect 追従、private IP 許可、DNS rebinding 未検出、known_hosts 未検証、systemd root 前提、write path 無制限が 1 件以上ある。 |
+| executable fixture | fixture input を production entrypoint へ渡し、actual と expected を比較した実行記録、fixture 数や JSON 妥当性だけを完了証拠にしない negative control。 | fixture count、JSON parse、file 存在だけの合格、production entrypoint 未通過、expected 比較なし、negative control が fail しない。 |
+| mutation / race / fault | production code mutation selection、mutation evidence set、`survived=0`、race detector または代替 interleaving、disk full、permission denied、short write、fsync failure、rename failure、process kill。 | mutation survivor、race trigger 未判定、fault injection 未実行、skip に責務正本 anchor がない、障害を成功扱いする。 |
+| integration / E2E | Admin to API、UI to SDK to API、runner to statefile、MCP to statefile の統合テスト、setup、install-api、update、rollback、Release、実インストール E2E。 | 単体 test だけで統合済み扱い、stub だけで E2E 扱い、実インストール未実行の未実行証跡欠落、連携先副作用未比較が 1 件以上ある。 |
+| CI / GitHub Actions | format、test、race、vet、staticcheck、govulncheck、gosec、executable fixture、mutation、競合、fault、browser、setup、release の check、Actions の commit SHA pin、minimum permissions、timeout、required checks。 | required check 未設定、Actions tag pin、permissions 過大、timeout 欠落、skip success、CI 外の口頭説明だけで合格にする。 |
+| governance / recovery | LICENSE、SECURITY.md、CONTRIBUTING.md、CODEOWNERS、CHANGELOG、stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順。 | governance file 未作成、復旧手順未記載、復旧手順が実装契約または fixture へ接続しない、document drift が 1 件以上ある。 |
+
+Phase 13 closure record set は、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record を使用し、各 record の `scope` に `phase-13-implementation-alignment-quality` を含める。Phase 13 では以下の集計値を同じ closure record set 内に記録する。
+
+| 集計値 | 完了値 | 未完了条件 |
+|--------|--------|------------|
+| `phase13_owner_file_violation_count` | `0` | 5 ファイル固定、file role、package 名、import path、root `.go` 残存、サブディレクトリ禁止に違反する。 |
+| `phase13_dummy_or_empty_file_count` | `0` | 空 file、dummy success、no-op success、placeholder、未実装を成功にする実装がある。 |
+| `phase13_direct_state_mutation_count` | `0` | API、runner、MCP、archive が statefile owner adapter を経由せず状態 file を変更する。 |
+| `phase13_contract_mismatch_count` | `0` | API、Admin、SDK、UI、MCP、setup stdout、credential 初期化の契約差分がある。 |
+| `phase13_state_safety_open_count` | `0` | lock、atomic write、fsync、rename、owner / mode、migration、recovery、stale lock の未解消項目がある。 |
+| `phase13_jsonl_corruption_open_count` | `0` | JSON Lines 破損検出、隔離、復旧対象登録、黙殺禁止、append lock / flush / fsync に未解消項目がある。 |
+| `phase13_security_kdf_open_count` | `0` | 独自 SHA-256 反復 KDF 残存、Argon2id 未移行、credential hash fixture 未接続がある。 |
+| `phase13_token_arg_open_count` | `0` | Admin または MCP が token を command argv から受け取る、token file / stdin の検証がない。 |
+| `phase13_archive_commitstatus_ownership_open_count` | `0` | archive または commitstatus 責務が呼び出し元 owner に重複残存する。 |
+| `phase13_queue_recovery_open_count` | `0` | queue 状態機械、finalizer、active recovery、at-least-once、backup / restore transaction の残件がある。 |
+| `phase13_mcp_unimplemented_success_count` | `0` | MCP の未実装機能が success を返す、または no-op success が残る。 |
+| `phase13_external_boundary_open_count` | `0` | HTTP、Webhook、SSH、systemd、state directory の外部境界 hardening 残件がある。 |
+| `phase13_required_log_write_ignore_count` | `0` | 必須 audit、access、config log の書込み失敗を無視する経路がある。 |
+| `phase13_fixture_execution_gap_count` | `0` | production entrypoint 実行、actual / expected 比較、negative control の未接続がある。 |
+| `phase13_mutation_survived_count` | `0` | 適用可能な production code mutation が survived である。 |
+| `phase13_race_or_concurrency_open_count` | `0` | race、multi-process 更新、interleaving、goroutine / listener / timer / worker leak の未判定がある。 |
+| `phase13_fault_injection_open_count` | `0` | disk full、permission denied、short write、fsync failure、rename failure、process kill の未実行または未接続がある。 |
+| `phase13_e2e_open_count` | `0` | setup、install-api、update、rollback、Release、実インストール E2E、Admin / UI / runner / MCP integration の未接続がある。 |
+| `phase13_ci_required_check_open_count` | `0` | Phase 13 required check が未作成、未実行、required 化未証跡、skip success 扱いである。 |
+| `phase13_action_pin_open_count` | `0` | GitHub Actions が commit SHA pin でない、minimum permissions または timeout が欠落する。 |
+| `phase13_release_evidence_open_count` | `0` | Git tag、GitHub Release、SHA256SUMS、signature、SBOM、再現ビルド証跡に未解消項目がある。 |
+| `phase13_recovery_procedure_open_count` | `0` | stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順が未接続である。 |
+| `phase13_document_drift_open_count` | `0` | 旧 path、重複仕様、実装済み表記、未作成 path、責務正本参照に drift がある。 |
+| `final_open_item_count` | `0` | 上記集計値または 18 record の `open_items` に残件がある。 |
+
+Phase 13 の正式 fixture root は `testdata/phase13/implementation-alignment-quality/` とする。同 root は Phase 13 実装 PR で作成する。作成前は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 13 target path 所在](../DOCUMENT_INDEX.md#phase-13-target-paths) で `未作成` として扱う。正式 fixture root には `manifest.json`、`input/scope.json`、`expected/effects.json`、closure record set への参照を置く。
+
+Phase 13 の CI required check は以下とする。GitHub workflow は YAML 禁止の対象外であるが、workflow から実行する Adlaire CI 入出力、fixture manifest、expected、state、設定形式は JSON 契約に従う。
+
+| required check name | 必須実行 | 完了条件 |
+|---------------------|----------|----------|
+| `phase13-go-format` | 全 Go file に `gofmt -l`。 | 出力空、owner package 5 ファイル固定、旧 root `.go` 残存 0。 |
+| `phase13-go-test` | Go stable toolchain で `go test ./... -count=1`。 | exit code `0`、skip / 未実行 record なし。 |
+| `phase13-go-race` | Go stable toolchain で `go test -race ./... -count=1`。 | exit code `0`、race / concurrency open `0`。 |
+| `phase13-go-vet` | Go stable toolchain で `go vet ./...`。 | exit code `0`。 |
+| `phase13-staticcheck` | staticcheck の実行。 | exit code `0`、未実行時は skip / 未実行証跡と再実行条件を記録し、完了扱いにしない。 |
+| `phase13-govulncheck` | govulncheck の実行。 | exit code `0`、脆弱性 open `0`。 |
+| `phase13-gosec` | gosec の実行。 | exit code `0`、secret / file safety / command execution finding open `0`。 |
+| `phase13-deno-check-sdk` | Deno stable runtime で `deno check admin/adlaire-ci-sdk.js`。 | exit code `0`。Node.js 代替禁止。 |
+| `phase13-executable-fixture` | production entrypoint 実行型 fixture harness。 | `phase13_fixture_execution_gap_count=0`。 |
+| `phase13-mutation` | production code mutation。 | `phase13_mutation_survived_count=0`。 |
+| `phase13-concurrency` | multi-process state update、queue transition、race trigger。 | `phase13_race_or_concurrency_open_count=0`。 |
+| `phase13-fault-injection` | disk full、permission denied、short write、fsync failure、rename failure、process kill。 | `phase13_fault_injection_open_count=0`。 |
+| `phase13-browser` | UI to SDK to API browser fixture。 | UI が API response にない値を合成せず、secret を表示しない。 |
+| `phase13-setup-e2e` | setup、install-api、update、rollback、実インストール E2E。 | `phase13_e2e_open_count=0`。 |
+| `phase13-release-e2e` | Git tag、GitHub Release、SHA256SUMS、signature、SBOM、再現ビルド証跡。 | `phase13_release_evidence_open_count=0`。 |
+
 <a id="fixture-root-coverage-matrix-contract"></a>
 **fixture root coverage matrix 固定契約：**
 

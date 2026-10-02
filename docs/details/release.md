@@ -239,3 +239,20 @@ draft 作成後、正式公開前に失敗した場合は、作成した draft �
 | evidence | [`docs/details/fixture.md` fixture 証跡責務 Release fixture 固定契約](fixture.md#release-fixture-contract) の全 fixture が合格する。 |
 
 実装完了と状態遷移の判定は [`docs/SPEC.md` ポリシー責務 §0a](../SPEC.md#policy-spec-maturity)、現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を正本とし、[`docs/details/release.md`](release.md) 詳細本文責務で再定義しない。
+
+---
+
+<a id="phase-13-release-alignment-contract"></a>
+**Phase 13 release 実装整合契約：**
+
+[`docs/details/release.md`](release.md) 詳細本文責務は、Phase 13 で Git tag 検証、GitHub Release、SHA256SUMS、署名、SBOM、再現ビルド証跡、GitHub Actions pinning、release governance artifact の境界を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| release evidence | Git tag、local commit、remote default branch、GitHub Release、asset count、SHA256SUMS、signature、SBOM、再現ビルド比較、download verify を 1 つの release evidence record に記録する。record 不在、asset 不足、checksum 未検証、再現性未確認を成功扱いにしない。 |
+| signature / SBOM | 署名 asset と SBOM asset を追加する場合は、asset 名、生成入力、digest 対象、検証方法、失敗時 error、Release asset count を [`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract) から [`docs/details/release.md` 詳細本文責務 §R7](release.md#release-acceptance-contract) へ先に追加する。未仕様の placeholder asset を作らない。 |
+| GitHub Actions pinning | release に関わる GitHub Actions は commit SHA pin、最小 permissions、timeout、required checks を証跡化する。workflow の所在は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、required check の合否は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。 |
+| governance files | `LICENSE`、`SECURITY.md`、`CONTRIBUTING.md`、`CODEOWNERS`、`CHANGELOG.md` は release governance artifact として所在を [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務で管理する。未作成の場合は未作成 path として扱い、存在を前提にしない。 |
+| recovery procedure | stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順は、該当 owner 詳細本文と fixture evidence から到達できることを release readiness の条件に含める。 |
+
+Phase 13 の `release` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_release_evidence_open_count=0`、`phase13_action_pin_open_count=0`、`phase13_recovery_procedure_open_count=0` を満たすまで完了扱いにしてはならない。

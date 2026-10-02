@@ -635,3 +635,21 @@ confirmation_id は `mcpconf_` + 128 bit 以上の乱数を Crockford Base32 26 
 - read-only mode では副作用 tool が `tools/list` に出ず、直接 `tools/call` されても `-32002 Forbidden` で状態を変更しない。
 - confirmation_id は memory only、5 分で期限切れ、params hash 不一致時に tool を実行しない。
 - [`docs/details/fixture.md` fixture 証跡責務 §30-F MCP fixture 固定契約](fixture.md#mcp-fixture-contract) の expected、category、assertions、no-write、secret-mask、order を満たす。
+
+---
+
+<a id="phase-13-mcp-alignment-contract"></a>
+**Phase 13 MCP 実装整合契約：**
+
+[`docs/details/mcp.md`](mcp.md) 詳細本文責務は、Phase 13 で MCP tool / resource / prompt / subscription / sampling / notification、token 取得、HTTP lifecycle、未実装 error、statefile 接続を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| 実動作化 | `resendWebhook`、`subscribe`、`unsubscribe`、`sampling` は仕様に定義された状態変化、event、audit、metrics、timeout、error を実際に発生させる。no-op success、固定 success mock、未接続 fake 成功を禁止する。 |
+| 未実装 error | 未実装 MCP feature は success response を返さず、JSON-RPC error `-32601 Method not found` または仕様で固定した未実装 error を返す。未実装なのに state、audit、metrics、notification を成功更新しない。 |
+| token 取得 | client token は command line 引数の平文値ではなく token file または stdin だけから取得する。file safety、secret mask、hash、保存禁止は [`docs/details/security.md` 詳細本文責務 Phase 13 security 実装整合契約](security.md#phase-13-security-alignment-contract) を参照する。 |
+| statefile 経路 | `.mcp_audit_log`、`.mcp_client_log`、`.mcp_metrics`、`.mcp_config`、subscription state は [`docs/details/statefile.md` 詳細本文責務 Phase 13 statefile 実装整合契約](statefile.md#phase-13-statefile-alignment-contract) の read / write / append / lock 経路だけを使用する。 |
+| HTTP lifecycle | `/mcp`、`/mcp/events`、`/health` は header read timeout、body 上限、invalid content type、batch request 拒否、SSE flush、graceful shutdown、client disconnect を固定し、未定義 fallback や partial success を返さない。 |
+| API bridge | MCP tool が API / runner / statefile / archive / security を呼ぶ場合、対象 owner 詳細本文の入力、出力、失敗、audit、secret mask に従う。MCP 側で API route、state schema、security policy を再定義しない。 |
+
+Phase 13 の `mcp` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_mcp_unimplemented_success_count=0`、`phase13_contract_mismatch_count=0`、`phase13_token_arg_open_count=0`、`phase13_direct_state_mutation_count=0`、`phase13_external_boundary_open_count=0` を満たすまで完了扱いにしてはならない。

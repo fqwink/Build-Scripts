@@ -601,3 +601,21 @@ setup / admin / Release asset 連動 fixture の fixture 名、正式 fixture di
 | update failure | rollback対象、systemd call順、復元後確認 | [update rollback 固定契約](#setup-update-rollback-contract) で許可した対象以外に差分がない。 |
 
 `setup` 実装変更は、[`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) Setup / Admin 配布実装確認ゲート の固定表の fixture、差分確認、secret 非表示確認、終了コード確認を記録する。いずれかが未実行の場合、対象段階を確認済み扱いにせず、未実行理由と再実行条件を記録する。
+
+---
+
+<a id="phase-13-setup-alignment-contract"></a>
+**Phase 13 setup 実装整合契約：**
+
+[`docs/details/setup.md`](setup.md) 詳細本文責務は、Phase 13 で setup / install-api / update / rollback、credential 初期化 stdout、systemd unit、state directory 権限、実インストール E2E の境界を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| credential stdout | API credential 初期化、setup、install-api、update、rollback の stdout / stderr は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) の出力固定契約と一致させる。credential 平文、token、password、generated secret、絶対 path、child process 出力を出さない。 |
+| state directory | state directory は mode `0700`、owner は実行専用 user、group / other 権限なしとする。起動時に owner、mode、symlink 非追従、通常 directory、書込み先限定を確認し、不合格時は service を成功扱いにしない。 |
+| systemd | systemd unit は dedicated user、最小権限、書込み先限定、環境変数 secret 非保存、restart policy、working directory、state directory だけへの write を固定する。root 実行、広範な write path、未定義 environment を許可しない。 |
+| install/update transaction | install、update、rollback は事前検証、staging、commit、rollback、最終確認、失敗時差分確認を持つ。rollback 失敗時に推測復旧を追加せず、固定 error と fixture effects だけで記録する。 |
+| local E2E | setup、install-api、update、rollback、Release asset からの実インストールは fixture 上で E2E 証跡を持つ。systemd 実起動が未実行の場合は未実行証跡として扱い、確認済みへ変換しない。 |
+| security 接続 | credential 生成、token file、secret mask、file safety は [`docs/details/security.md` 詳細本文責務 Phase 13 security 実装整合契約](security.md#phase-13-security-alignment-contract) を参照し、setup 側で hash、token、署名、mask を再定義しない。 |
+
+Phase 13 の `setup` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_e2e_open_count=0`、`phase13_external_boundary_open_count=0`、`phase13_recovery_procedure_open_count=0`、`phase13_required_log_write_ignore_count=0` を満たすまで完了扱いにしてはならない。

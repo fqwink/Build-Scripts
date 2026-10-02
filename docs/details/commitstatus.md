@@ -149,3 +149,21 @@ Commit Status fixture の fake GitHub Status API、expected/effects、expected l
 | description 長文 | 140 文字以内に切り詰められる。 |
 | pending 失敗 | build 継続、pending failure は WARN と effects で検証し、未定義 build log key を保存しない。 |
 | final 失敗 | final に送信しようとした state と固定 error reason を保存し、build result は反転しない。 |
+
+---
+
+<a id="phase-13-commitstatus-alignment-contract"></a>
+**Phase 13 commitstatus 実装整合契約：**
+
+[`docs/details/commitstatus.md`](commitstatus.md) 詳細本文責務は、Phase 13 で GitHub Commit Status payload、送信、retry、rate limit、timeout、結果正規化、保存境界を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| 責務集約 | GitHub Commit Status の HTTP request、payload 生成、response 判定、retry 可否、rate limit 判定、timeout、保存値正規化は `commitstatus` owner だけが実装する。`runner` は build lifecycle 上の呼出時点と結果受け取りだけを扱う。 |
+| retry / rate limit | `401`、`403`、`404`、`429`、`5xx`、network、timeout の分類は [`docs/details/commitstatus.md` 詳細本文責務 §27.1](commitstatus.md#sec-27-1) の error reason 固定契約へ一致させる。Phase 13 実装で retry を追加する場合は、retry 対象、回数、待機、最終保存値を同節へ先に追加する。 |
+| timeout | request 全体 timeout、response body 上限、body discard 条件、HTTP client redirect 禁止を `commitstatus` owner の実装内で固定し、呼び出し元が個別 timeout を注入して挙動を変えない。 |
+| secret safety | Authorization header、GitHub token、credential 付き URL、GitHub response body 全体を build log、history、server log、fixture expected に保存しない。secret mask の本文は [`docs/details/security.md` 詳細本文責務 Phase 13 security 実装整合契約](security.md#phase-13-security-alignment-contract) を参照する。 |
+| 状態保存 | `.build_logs`、`.build_history` への保存は [`docs/details/statefile.md` 詳細本文責務 Phase 13 statefile 実装整合契約](statefile.md#phase-13-statefile-alignment-contract) の statefile 経路だけを使用する。 |
+| duplicate 排除 | `components/runner/`、`components/api/`、`components/mcp/`、`components/archive/` に Commit Status HTTP payload 生成、GitHub status endpoint 直呼び、同等 retry、同等 error reason table を残さない。 |
+
+Phase 13 の `commitstatus` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_archive_commitstatus_ownership_open_count=0`、`phase13_external_boundary_open_count=0` を満たすまで完了扱いにしてはならない。

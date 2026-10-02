@@ -16,6 +16,9 @@
 | Phase 12 実装品質ゲート再構築の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry) |
 | Phase 12 正式 fixture root | [`testdata/phase12/quality-gate-reconstruction/`](../testdata/phase12/quality-gate-reconstruction/) |
 | Phase 12 required check workflow | [`.github/workflows/phase12-quality-gate.yml`](../.github/workflows/phase12-quality-gate.yml) |
+| Phase 13 実装整合・品質改善の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) |
+| Phase 13 正式 fixture root | `testdata/phase13/implementation-alignment-quality/` |
+| Phase 13 required check workflow | `.github/workflows/phase13-implementation-alignment-quality.yml` |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
@@ -69,6 +72,11 @@
 | [`docs/DESIGN.md`](DESIGN.md) | 実在 |
 | [`docs/details/`](details/) | 実在 |
 | `docs/examples/` | 未作成 |
+| `LICENSE` | 未作成 |
+| `SECURITY.md` | 未作成 |
+| `CONTRIBUTING.md` | 未作成 |
+| `CODEOWNERS` | 未作成 |
+| `CHANGELOG.md` | 未作成 |
 
 <a id="詳細仕様本文の所在"></a>
 **詳細仕様本文・証跡所在：**
@@ -199,6 +207,8 @@
 | [`testdata/mcp/`](../testdata/mcp/) | `mcp` fixture root | 実在 |
 | [`testdata/phase12/quality-gate-reconstruction/`](../testdata/phase12/quality-gate-reconstruction/) | Phase 12 quality gate fixture root | 実在 |
 | [`.github/workflows/phase12-quality-gate.yml`](../.github/workflows/phase12-quality-gate.yml) | Phase 12 required check workflow | 実在 |
+| `testdata/phase13/implementation-alignment-quality/` | Phase 13 implementation alignment quality fixture root | 未作成 |
+| `.github/workflows/phase13-implementation-alignment-quality.yml` | Phase 13 required check workflow | 未作成 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
 
@@ -219,3 +229,23 @@
 | `.github/workflows/phase12-quality-gate.yml` | Phase 12 required check workflow。[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) の required check name を実行する。 | 実在 |
 
 `<owner>` に入る値は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 Go owner package target owner](DETAIL_INDEX.md#phase-12-go-owner-package-targets) に存在する owner だけとする。JavaScript / HTML artifact である `sdk` と `ui` は、Go owner package target path として扱わず、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) と [`admin/index.html`](../admin/index.html) の実在行を正とする。
+
+<a id="phase-13-target-paths"></a>
+**Phase 13 target path 所在：**
+
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+
+| path pattern | 対象 | 所在区分 |
+|--------------|------|----------|
+| `components/<owner>/<owner>.go` | owner の公開実行境界 | 実在 |
+| `components/<owner>/model.go` | owner の入力・出力・状態 model | 実在 |
+| `components/<owner>/validate.go` | owner の入力・状態・設定・権限検証 | 実在 |
+| `components/<owner>/execute.go` | owner の正常系・異常系実行順序 | 実在 |
+| `components/<owner>/<owner>_test.go` | owner package の仕様契約検証 | 実在 |
+| `testdata/phase13/implementation-alignment-quality/` | Phase 13 正式 fixture root | 未作成 |
+| `.github/workflows/phase13-implementation-alignment-quality.yml` | Phase 13 required check workflow | 未作成 |
+| `LICENSE` | release governance artifact | 未作成 |
+| `SECURITY.md` | release governance artifact | 未作成 |
+| `CONTRIBUTING.md` | release governance artifact | 未作成 |
+| `CODEOWNERS` | release governance artifact | 未作成 |
+| `CHANGELOG.md` | release governance artifact | 未作成 |

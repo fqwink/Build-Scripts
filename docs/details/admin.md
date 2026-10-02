@@ -201,3 +201,20 @@ network error、TLS error、timeout、connection close before response は stdou
 | human output mapping | command ごとの固定 field、固定順、LF 1 個、stderr 0 byte を照合する。 |
 | response body limit | 1 MiB 超過 response を invalid response とし、body 断片を出さない。 |
 | fixture linkage | [`docs/details/fixture.md` fixture 証跡責務 Admin CLI fixture 固定契約](fixture.md#admin-cli-fixture-contract) の fixture を満たす。 |
+
+---
+
+<a id="phase-13-admin-alignment-contract"></a>
+**Phase 13 admin 実装整合契約：**
+
+[`docs/details/admin.md`](admin.md) 詳細本文責務は、Phase 13 で CLI 管理クライアントの command、API URL 連結、token 取得、stdout / stderr、API route 照合、管理 UI 配布境界を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| token 取得 | Phase 13 実装では token を command line 引数の平文値として受け取る経路を廃止し、token file または stdin だけから取得する。token file の安全読込、secret mask、保存禁止は [`docs/details/security.md` 詳細本文責務 Phase 13 security 実装整合契約](security.md#phase-13-security-alignment-contract) を参照する。 |
+| URL / route 照合 | CLI command 固定表の全 method、path、query、body、response mapping を [`docs/details/api.md` 詳細本文責務 Phase 13 API 実装整合契約](api.md#phase-13-api-alignment-contract) の API route 正本と自動照合する。表にない URL へ送信する汎用 passthrough を作らない。 |
+| stdout / stderr | setup/API credential 初期化と連動する admin 出力は [`docs/details/setup.md` 詳細本文責務 Phase 13 setup 実装整合契約](setup.md#phase-13-setup-alignment-contract) と一致させる。成功 stdout、失敗 stderr、終了 code、secret 非表示を fixture で照合する。 |
+| HTTP safety | redirect 追従、環境変数 proxy、Cookie、Referer、token query 化、retry、1 MiB 超過 body 出力を禁止する。timeout、body 上限、invalid response は固定 error へ写像する。 |
+| 配布境界 | 管理 UI 静的 file の存在、archive safety、no mutation、secret exposure 禁止は [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) から [`docs/details/admin.md` 詳細本文責務 §A6](admin.md#a6-admin-fixture-参照契約) を維持し、Phase 13 では API route parity と token 取得経路だけを追加確認する。 |
+
+Phase 13 の `admin` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_contract_mismatch_count=0`、`phase13_token_arg_open_count=0`、`phase13_external_boundary_open_count=0` を満たすまで完了扱いにしてはならない。
