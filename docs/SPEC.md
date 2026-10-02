@@ -60,7 +60,7 @@
 4. [`docs/SPEC.md`](SPEC.md) のポリシー責務で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
 5. 実装または検証を扱う場合は、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) の意味のあるテストポリシーを確認する。
 6. 生成静的 Web サイトまたは標準管理 UI のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
-7. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。Phase 11 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference)、実装契約は該当 owner 詳細本文責務を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
+7. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。Phase 11 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference)、実装契約は該当 owner 詳細本文責務を確認する。Phase 12 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence)、実装契約は該当 owner 詳細本文責務を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
 
 ---
 
@@ -331,7 +331,26 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 [`main.go`](../main.go) は 1 ファイルとし、起動入口、実行ファイル名の exact 判定、引数受け取り、binary version 注入値の受け渡し、対象 owner component 呼び出しだけを担当する。[`main.go`](../main.go) に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、setup、release、MCP 処理の実装詳細を書いてはならない。未知の実行ファイル名を既定 owner component へ fallback してはならない。
 
-`components/` は、1 標準 Go 実装対象 = 1 Go ファイルとする。この 1 ファイル原則は実装 artifact の配置規則であり、owner component と実装 artifact を同一概念にする規則ではない。Go 実装ファイルの所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin.go` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup.go` と `components/release.go` とする。`statefile`、`archive`、`commitstatus`、`security` は詳細仕様上の責務境界であり、単独 Go ファイルを作成する場合は該当 Phase または追加実装 PR で仕様状態と索引を更新してから追加する。`mcp.go` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+`components/` の現行配置は Phase 11 完了時点の実在 artifact を示す。Go 実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin.go` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup.go` と `components/release.go` とする。`statefile`、`archive`、`commitstatus`、`security` は詳細仕様上の責務境界であり、Phase 12 で owner package へ移行するまで単独専用 Go artifact の存在を前提にしてはならない。`mcp.go` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+
+Phase 12 完了後の Go 実装標準配置は owner component package とし、`main.go` は 1 ファイル固定、各標準 Go owner package は 5 ファイル固定とする。5 ファイル固定は例外禁止であり、実装量、Go 慣習、既存巨大ファイル、共通化希望、テスト都合、将来拡張を理由に 6 ファイル目、補助 package、`helper.go`、`utils.go`、`common.go`、`misc.go`、責務外の集約ファイル、または owner 以外の逃がし先を作ってはならない。5 ファイルに収まらない場合は、ファイル数を増やさず、owner component の責務分割または仕様分割を先に行う。
+
+Phase 12 完了後の各標準 Go owner package は以下の構成だけを許可する。`<owner>` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 Go owner package target owner](DETAIL_INDEX.md#phase-12-go-owner-package-targets) に定義された Go owner package target 名と一致させる。`sdk` と `ui` は JavaScript / HTML artifact を正本とし、Go owner package target として扱ってはならない。
+
+```text
+components/<owner>/
+├── <owner>.go
+├── model.go
+├── validate.go
+├── execute.go
+└── <owner>_test.go
+```
+
+`<owner>.go` は owner の公開実行境界、`model.go` は入力・出力・状態 model、`validate.go` は入力・状態・設定・権限の検証、`execute.go` は正常系・異常系の実行順序、`<owner>_test.go` は当該 owner package の仕様契約検証だけを担当する。root の横断契約 test、SDK 契約 test、UI 契約 test、fixture harness の横断検証は owner package の 5 ファイル数に含めないが、owner package 内へ逃がす目的で横断 test を作ってはならない。
+
+Phase 12 で Go owner package へ移行した owner の旧 root 実装 artifact は、同じ Phase 12 実装 PR で削除または移動完了しなければならない。Phase 12 完了後に `components/<owner>.go`、`components/<owner>_test.go`、または旧 root file 内の当該 owner 実装詳細を残してはならない。cross-cutting owner である `statefile`、`archive`、`commitstatus`、`security` は、呼び出し元 owner package から使用される独立 owner package として実在化し、呼び出し元 package 内に同じ責務の実装詳細、duplicate helper、fallback 実装、または copy を残してはならない。
+
+Phase 12 完了後の各 `components/<owner>/` は、Go package 名を `<owner>` と完全一致させる。import path は `github.com/fqwink/build-scripts/components/<owner>` だけを許可し、alias import、別名 package、`components` root package への集約、または複数 owner を単一 package に同居させることを禁止する。Phase 12 完了後に `components/` 直下の `.go` file を残してはならない。`main.go` は owner package の公開実行境界だけを呼び出し、owner package 内部の model、validation、execution detail、または cross-cutting owner の実装詳細を直接参照してはならない。
 
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
@@ -393,7 +412,7 @@ Phase を Pull Request の境界にすることは、Phase の一部分だけを
 <a id="sec-4-8"></a>
 **4.8 完了判定方針：**
 
-`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。Phase 11 の横断 acceptance gate、差し戻し条件、未残条件は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) を正本とし、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
+`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。Phase 11 の横断 acceptance gate、差し戻し条件、未残条件、Phase 12 の実装品質ゲート再構築、状態復帰条件、未残条件は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) を正本とし、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
 
 バグ修正ゼロ化とは、実装済み機能、実装中・検証未完了機能、または Phase 11 対象として [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に割り当てた検証基盤について、既知の仕様不整合、未検証分岐、未固定の副作用、secret 漏えい可能性、状態 schema 揺れ、fixture 不足、環境依存の合格条件、実装後の追加修正前提を残さない状態をいう。バグ修正ゼロ化は品質目標であり、仕様外の新機能追加、状態語彙の緩和、検証省略、または fixture 期待値の弱体化を許可する理由にしてはならない。
 
@@ -404,6 +423,12 @@ Phase 11 では、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase
 Phase 11 のバグ修正ゼロ化は、文書上の未完了一覧だけでなく、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の標準実装 artifact と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務に実在する [`main.go`](../main.go)、[`components/*.go`](../components/)、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js)、[`admin/index.html`](../admin/index.html) の関数、状態 I/O、JSON / JSON Lines 処理、builder output publish / restore、generated site validation、setup install / rollback、release reproducibility / GitHub boundary、admin CLI / SDK / UI client boundary、API / MCP listener lifecycle、graceful shutdown、HTTP header / CORS / cookie boundary、clock / timer / entropy / request ID / time ID、goroutine / channel / worker ordering / cancel / timeout、MCP state bridge / read-only mutation、出力成果物検査、外部 I/O、認証・認可、secret 処理、queue / finalizer、fixture harness 接続を棚卸し対象に含める。棚卸しで検出した差分は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) で対象 owner と fixture へ割り当て、該当する owner 詳細本文へ実装契約を置き、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ検証証跡条件を置くか、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase 11 対象外として到達可能にするまで、完了扱いにしてはならない。既存 test の成功、既存実装済み状態、または別変更で解消するという説明だけで、source audit 由来の artifact 未分類、未固定分岐、直接状態書込、重複 algorithm、best-effort 読込、破損黙殺、secret 応答順序、実 OS listener / signal / sleep / random 依存、未接続 fixture root を残してはならない。
 
 Phase 11 の仕様全般完了は、`source-code audit residual zero`、`artifact coverage zero gap`、`fixture root identity zero duplicate`、`test gap inventory zero open item`、`test / contract drift zero`、`仕様全般完了` がすべて pass し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務のいずれにも Phase 11 対象の未割当、未接続、未検証、重複 fixture、孤立 test、孤立 assertion、対象外理由未到達が残らない場合だけ認める。Phase 11 の完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference) へ記録する。仕様全般完了は、実装完了、検証完了、または Phase 11 の `実装済み` 遷移を意味しない。現在状態の変更は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) に従う。
+
+Phase 12 は、Phase 11 完了後に残る実装品質ゲートの構造不足を再構築する Phase である。Phase 12 は新機能追加 Phase ではなく、契約不整合、状態安全性、実行型 fixture harness、mutation / race、owner package 5 ファイル固定、CI required checks、release reproducibility を実装開始可能な品質ゲートとして固定する Phase とする。Phase 12 の対象は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan) の Phase 12 行、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry)、[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence)、および該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務へ到達するものだけとする。
+
+Phase 12 の実装開始時は、Phase 11 と状態ファイル共通永続化を完了済みの事実として盲信してはならない。Phase 12 の再評価で必須証跡不足、contract drift、statefile lock / append / atomic write 不備、fixture harness 未接続、mutation 生存、race trigger 未判定、owner package 違反、release reproducibility 不足を検出した場合は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の該当行を `実装中・検証未完了` へ戻し、同一 Phase 12 実装変更内で修正、検証、証跡記録、状態復帰を完了しなければならない。差分が検出されなかった対象だけを、Phase 12 closure record 上で `closed` または `not_applicable` として扱える。
+
+Phase 12 の完了は、[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) の全証跡対象が closed、`phase12_contract_mismatch_count=0`、`phase12_state_safety_open_count=0`、`phase12_fixture_harness_open_count=0`、`phase12_mutation_survived_count=0`、`phase12_race_trigger_open_count=0`、`phase12_owner_package_violation_count=0`、`phase12_ci_required_check_open_count=0`、`phase12_release_reproducibility_open_count=0`、`final_open_item_count=0`、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の実在 / 未作成 path 不整合 `0` を満たす場合だけ認める。Phase 12 完了後に owner package 5 ファイル固定へ移行した Go owner は、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の 5 ファイル固定構成以外へ戻してはならない。
 
 <a id="49-仕様策定単位方針"></a>
 
@@ -752,7 +777,7 @@ Phase 内に `仕様化済み・未実装`、`実装中・検証未完了`、未
 
 Phase は [`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan) に割り当てられた対象 owner、順序、依存関係に従わなければならない。実装契約は owner component 詳細本文、完了判定は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) を正本とする。
 
-新規実装作業の active Phase は同時に一つだけとする。active Phase は、[`docs/ROADMAP.md` 状態・計画責務 §4](ROADMAP.md#roadmap-phase-plan) の順序で最初に `実装済み` でない Phase とする。依存する Phase が `実装済み` でない後続 Phase で、新規機能実装、`仕様化済み・未実装` 機能の実装着手、または Phase 完了判定を行ってはならない。
+新規実装作業の active Phase は同時に一つだけとする。active Phase は、[`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan) の本文で明示された Phase だけとする。後続 Phase が `仕様化済み・未実装`、`改訂予定`、または `将来計画` として存在しても、[`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan) が active Phase として明示しない限り、新規実装作業の active Phase と扱ってはならない。依存する Phase が `実装済み` でない後続 Phase で、新規機能実装、`仕様化済み・未実装` 機能の実装着手、または Phase 完了判定を行ってはならない。
 
 後続 Phase に既存コードが存在する場合、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務はその事実に基づく現在状態を記録する。ただし、現在状態が `実装中・検証未完了` であることは active Phase であることを意味しない。後続 Phase の既存コードは、active Phase の固定契約を保つために必要な不整合修正、回帰修正、または検証だけを許可し、後続 Phase の機能拡張は許可しない。
 

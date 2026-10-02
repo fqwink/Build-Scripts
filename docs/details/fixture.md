@@ -175,6 +175,53 @@ Phase 11 対象の fixture root、manifest、input、expected、effects、securi
 
 Phase 11 対象 root では、directory 名、`manifest.json.name`、fixture catalog 名が 1 対 1 に一致する場合だけ正式 fixture として扱う。`* 2` suffix 付き directory、同一 `manifest.json.name` を持つ複数 directory、fixture catalog 未登録 directory、harness から参照されない directory、expected だけを持つ directory は正式 fixture として扱わず、[`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8) の `fixture root identity zero duplicate` 判定で未完了として扱う。
 
+<a id="phase-12-quality-gate-evidence"></a>
+**Phase 12 実装品質ゲート再構築証跡：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 12 の fixture、expected、fake、実行型 harness、mutation、race、contract drift、closure record の証跡だけを固定する。Phase 12 の現在状態と実装割当は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](../DETAIL_INDEX.md#phase-12-quality-gate-entry)、Go 実装配置は [`docs/SPEC.md` 方針責務 §4.3](../SPEC.md#sec-4-3)、Phase 完了単位は [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit)、テスト方針は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) を参照する。
+
+Phase 12 の証跡 package は、下表の全対象を同一 closure record set へ接続する。1 件でも `open` が残る場合、Phase 12 を `実装済み` にしてはならない。
+
+| 証跡対象 | 必須証跡 | 未完了条件 |
+|----------|----------|------------|
+| 契約不整合・状態安全性 | API credential 初期化と setup stdout、Admin CLI URL と API route 表、SDK method / UI 操作 / HTTP method / auth requirement / response schema、statefile read-modify-write lock、JSON Lines append lock / flush / 破損検出、strict JSON schema、secret redaction、atomic write / fsync / permission / crash recovery、冪等性、CLI exit code / stdout / stderr の照合 record。 | 照合対象の片側だけを確認している、route / method / auth / schema の差分が残る、statefile / JSON Lines / secret / atomic write の failure case が未記録、または差分を後続変更で閉じる説明がある。 |
+| 実行型 fixture harness | fixture input を production entrypoint へ渡した実行記録、actual / expected / effects / security expected の比較記録、clock / filesystem / HTTP / command / systemd fake adapter の binding 記録、harness self-verification の positive / negative control。 | fixture directory の存在だけ、mock 結果だけ、production entrypoint を通らない実行、expected 比較なし、fake adapter 未接続、または harness が意図的な不正を fail にできない。 |
+| mutation / race / queue state machine | production code への mutation selection ledger、mutation evidence set、`survived=0`、race detector または代替 interleaving 証跡、runner queue 遷移と finalizer の状態機械 coverage、goroutine / listener / shutdown / SSE / timer / queue / worker leak 証跡。 | mutation class 未定義、`survived>0`、race trigger 未判定、queue 状態遷移未網羅、goroutine / listener / timer leak 未検出、または race detector 未実行理由に正本 anchor がない。 |
+| owner package 5 ファイル固定 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 Go owner package target owner](../DETAIL_INDEX.md#phase-12-go-owner-package-targets) の各 owner package が [`docs/SPEC.md` 方針責務 §4.3](../SPEC.md#sec-4-3) の `<owner>.go`、`model.go`、`validate.go`、`execute.go`、`<owner>_test.go` だけを持つ検査結果、禁止ファイル名検出結果、巨大 component file 分割後の owner 責務接続、root 横断 test の除外理由。 | 6 ファイル目、禁止名、補助 package、owner 外逃がし、root 横断 test の誤分類、または 5 ファイルに収まらない責務を仕様分割せず残している。 |
+| ROADMAP / fixture 分類 / MCP / release | ROADMAP 文言検査 test と実装品質 test の分離、root coverage fixture の `inventory fixture` 分類、MCP no-op の明示的未実装 error または実処理、version tag と release notes、release reproducibility の証跡。 | 文書文言 test と品質 test の責務混在、root coverage fixture の分類未定義、MCP no-op が黙って成功する、version tag / release notes / release reproducibility の証跡がない。 |
+| CI required checks | GitHub Actions の通常 test、race、lint、fixture 実行 required check の結果、未実行時の skip / 未実行証跡、Pull Request 本文からの証跡到達。 | required check 未設定、未実行、skip を成功扱いにしている、または Pull Request 本文から対象証跡へ到達できない。 |
+| final closure | [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record へ Phase 12 対象を接続し、下表の全集計値を完了値で記録する。 | final open item が 0 でない、数値未記録、対象外理由 anchor 不足、または残件を後続 PR へ送っている。 |
+
+Phase 12 closure record set は、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record を使用し、各 record の `scope` に `phase-12-quality-gate-reconstruction` を含める。Phase 12 では以下の集計値を同じ closure record set 内に記録する。
+
+Phase 12 closure record set の記録先は、Phase 12 実装 PR 本文の `Verification` に置く implementation PR evidence package を必須とする。正式 fixture root を追加する場合は、同じ PR で `testdata/phase12/quality-gate-reconstruction/` を作成し、`manifest.json`、`input/`、`expected/`、closure record set への参照を置く。PR 本文または正式 fixture root のいずれにも closure record set の所在がない場合、Phase 12 を完了扱いにしてはならない。
+
+Phase 12 の CI required check は、GitHub workflow が作成されていない場合でも対象外にしてはならない。Phase 12 実装 PR は `.github/workflows/phase12-quality-gate.yml` を作成するか、同等の required check 名を GitHub 側で必須化した証跡を同じ PR 本文へ記録する。GitHub workflow は YAML 禁止の対象外であるが、workflow から実行する Adlaire CI 入出力、fixture manifest、expected、state、設定形式は JSON 契約に従う。
+
+| required check name | 必須実行 | 完了条件 |
+|---------------------|----------|----------|
+| `phase12-go-format` | `rg --files -g '*.go'` が返す全 Go file を対象に `gofmt -l` を実行し、Phase 12 後の owner package file set を検査する。 | `gofmt -l` 出力空、owner package が 5 ファイル固定、`components/` 直下 `.go` file 0 件。 |
+| `phase12-go-test` | Go stable toolchain で `go test ./... -count=1`。 | exit code `0`、skip / 未実行 record なし、対象 owner と fixture root が closure record set に接続済み。 |
+| `phase12-go-race` | Go stable toolchain で `go test -race ./... -count=1`。 | exit code `0`、race trigger open `0`、goroutine / listener / timer / worker leak の対象外理由または証跡あり。 |
+| `phase12-go-vet` | Go stable toolchain で `go vet ./...`。 | exit code `0`。外部 linter、npm、Node.js、Marketplace action で代替しない。 |
+| `phase12-deno-check-sdk` | Deno stable runtime で `deno check admin/adlaire-ci-sdk.js`。 | SDK artifact が存在する限り exit code `0`。Deno 不在、JS 未変更、または Node.js 代替を完了扱いにしない。 |
+| `phase12-fixture-harness` | Phase 12 で実在化した production entrypoint 実行型 fixture harness。 | `testdata/phase12/quality-gate-reconstruction/` または PR evidence package の closure record set に `phase12_fixture_harness_open_count=0` を記録する。 |
+| `phase12-mutation` | production code、harness、assertion、expected 比較、security assertion、state diff assertion を対象にした mutation selection と mutation evidence。 | `phase12_mutation_survived_count=0`、`equivalent` / `invalid` は責務正本 anchor 付き。 |
+
+| 集計値 | 完了値 | 未完了条件 |
+|--------|--------|------------|
+| `phase12_contract_mismatch_count` | `0` | API / SDK / UI / Admin CLI / route / method / auth / response schema / CLI 出力契約の差分が 1 件以上ある。 |
+| `phase12_state_safety_open_count` | `0` | statefile read-modify-write、JSON Lines append、atomic write、fsync、permission、crash recovery、strict JSON schema の未解消項目が 1 件以上ある。 |
+| `phase12_fixture_harness_open_count` | `0` | production entrypoint 実行、actual / expected 比較、fake adapter binding、harness self-verification の未接続が 1 件以上ある。 |
+| `phase12_mutation_survived_count` | `0` | production code、harness、assertion、expected 比較、security assertion、state diff assertion の適用可能 mutation が 1 件以上 survived である。 |
+| `phase12_race_trigger_open_count` | `0` | race trigger、race detector、代替 interleaving、goroutine / listener / timer / worker leak の未判定が 1 件以上ある。 |
+| `phase12_owner_package_violation_count` | `0` | owner package が 5 ファイル固定に違反する、package 名が owner 名と一致しない、import path が `github.com/fqwink/build-scripts/components/<owner>` 以外である、`components/` 直下 `.go` file が残る、禁止名を持つ、補助 package へ逃がす、旧 `components/<owner>.go` / `components/<owner>_test.go` が残る、cross-cutting owner の duplicate 実装が呼び出し元 package に残る、または root 横断 test を owner package 内へ混在させる。 |
+| `phase12_ci_required_check_open_count` | `0` | 通常 test、race、lint、fixture 実行 required check の未設定、未実行、skip 成功扱いが 1 件以上ある。 |
+| `phase12_release_reproducibility_open_count` | `0` | version tag、release notes、checksum、archive、GitHub Release boundary、再取得検証の未解消項目が 1 件以上ある。 |
+| `final_open_item_count` | `0` | 上記集計値または 18 record の `open_items` に残件がある。 |
+
+Phase 12 の実装 PR 本文は、[`docs/details/fixture.md`](fixture.md) fixture 証跡責務 implementation PR evidence template 固定契約に加えて、上表の集計値、closure record set 所在、対象外理由 anchor、状態復帰が必要になった [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の行、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の更新有無を記録する。集計値を口頭説明、検証コマンド名、または Pull Request の Summary だけで代替してはならない。
+
 <a id="fixture-root-coverage-matrix-contract"></a>
 **fixture root coverage matrix 固定契約：**
 
