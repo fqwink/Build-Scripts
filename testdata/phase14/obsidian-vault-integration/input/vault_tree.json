@@ -1,0 +1,36 @@
+{
+  "root": "<fixture-vault-root>",
+  "read_only": true,
+  "entries": [
+    {
+      "path": "Home.md",
+      "type": "file",
+      "kind": "note"
+    },
+    {
+      "path": "Projects/Build.md",
+      "type": "file",
+      "kind": "note"
+    },
+    {
+      "path": "images/logo.png",
+      "type": "file",
+      "kind": "asset"
+    },
+    {
+      "path": ".obsidian/workspace.json",
+      "type": "file",
+      "kind": "ignored"
+    }
+  ],
+  "negative_controls": [
+    "yaml-frontmatter",
+    "vault-escape",
+    "symlink",
+    "hardlink",
+    "unsupported-canvas",
+    "dataview-block",
+    "templater-block",
+    "external-fetch-attempt"
+  ]
+}

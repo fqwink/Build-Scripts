@@ -145,12 +145,12 @@
 | [`components/mcp/validate.go`](../components/mcp/validate.go) | `mcp` owner package validation | 実在 |
 | [`components/mcp/execute.go`](../components/mcp/execute.go) | `mcp` owner package execution | 実在 |
 | [`components/mcp/mcp_test.go`](../components/mcp/mcp_test.go) | `mcp` owner package test | 実在 |
-| `components/obsidian/` | `obsidian` owner package directory | 未作成 |
-| `components/obsidian/obsidian.go` | `obsidian` owner package 公開実行境界 | 未作成 |
-| `components/obsidian/model.go` | `obsidian` owner package model | 未作成 |
-| `components/obsidian/validate.go` | `obsidian` owner package validation | 未作成 |
-| `components/obsidian/execute.go` | `obsidian` owner package execution | 未作成 |
-| `components/obsidian/obsidian_test.go` | `obsidian` owner package test | 未作成 |
+| [`components/obsidian/`](../components/obsidian/) | `obsidian` owner package directory | 実在 |
+| [`components/obsidian/obsidian.go`](../components/obsidian/obsidian.go) | `obsidian` owner package 公開実行境界 | 実在 |
+| [`components/obsidian/model.go`](../components/obsidian/model.go) | `obsidian` owner package model | 実在 |
+| [`components/obsidian/validate.go`](../components/obsidian/validate.go) | `obsidian` owner package validation | 実在 |
+| [`components/obsidian/execute.go`](../components/obsidian/execute.go) | `obsidian` owner package execution | 実在 |
+| [`components/obsidian/obsidian_test.go`](../components/obsidian/obsidian_test.go) | `obsidian` owner package test | 実在 |
 | [`components/release/release.go`](../components/release/release.go) | `release` owner package 公開実行境界 | 実在 |
 | [`components/release/model.go`](../components/release/model.go) | `release` owner package model | 実在 |
 | [`components/release/validate.go`](../components/release/validate.go) | `release` owner package validation | 実在 |
@@ -222,8 +222,8 @@
 | [`.github/workflows/phase12-quality-gate.yml`](../.github/workflows/phase12-quality-gate.yml) | Phase 12 required check workflow | 実在 |
 | [`testdata/phase13/implementation-alignment-quality/`](../testdata/phase13/implementation-alignment-quality/) | Phase 13 implementation alignment quality fixture root | 実在 |
 | [`.github/workflows/phase13-implementation-alignment-quality.yml`](../.github/workflows/phase13-implementation-alignment-quality.yml) | Phase 13 required check workflow | 実在 |
-| `testdata/phase14/obsidian-vault-integration/` | Phase 14 Obsidian Vault 連携 fixture root | 未作成 |
-| `.github/workflows/phase14-obsidian-vault-integration.yml` | Phase 14 required check workflow | 未作成 |
+| [`testdata/phase14/obsidian-vault-integration/`](../testdata/phase14/obsidian-vault-integration/) | Phase 14 Obsidian Vault 連携 fixture root | 実在 |
+| [`.github/workflows/phase14-obsidian-vault-integration.yml`](../.github/workflows/phase14-obsidian-vault-integration.yml) | Phase 14 required check workflow | 実在 |
 | `testdata/phase15/obsidian-local-sync/` | Phase 15 Obsidian local vault 同期 fixture root | 未作成 |
 | `.github/workflows/phase15-obsidian-local-sync.yml` | Phase 15 required check workflow | 未作成 |
 
@@ -292,23 +292,24 @@
 
 | path pattern | 対象 | 所在区分 |
 |--------------|------|----------|
-| `components/obsidian/` | `obsidian` owner package directory | 未作成 |
-| `components/obsidian/obsidian.go` | `obsidian` owner の公開実行境界 | 未作成 |
-| `components/obsidian/model.go` | `obsidian` owner の入力・出力・状態 model | 未作成 |
-| `components/obsidian/validate.go` | `obsidian` owner の入力・状態・設定・権限検証 | 未作成 |
-| `components/obsidian/execute.go` | `obsidian` owner の正常系・異常系実行順序 | 未作成 |
-| `components/obsidian/obsidian_test.go` | `obsidian` owner package の仕様契約検証 | 未作成 |
-| `testdata/phase14/obsidian-vault-integration/` | Phase 14 正式 fixture root | 未作成 |
-| `testdata/phase14/obsidian-vault-integration/manifest.json` | Phase 14 evidence package manifest | 未作成 |
-| `testdata/phase14/obsidian-vault-integration/input/options.json` | Phase 14 CLI option 入力 | 未作成 |
-| `testdata/phase14/obsidian-vault-integration/input/vault_tree.json` | Phase 14 vault tree 入力 | 未作成 |
-| `testdata/phase14/obsidian-vault-integration/input/notes/` | Phase 14 note 入力 | 未作成 |
-| `testdata/phase14/obsidian-vault-integration/input/assets/` | Phase 14 asset 入力 | 未作成 |
-| `testdata/phase14/obsidian-vault-integration/expected/normalized.json` | Phase 14 normalized graph 期待値 | 未作成 |
-| `testdata/phase14/obsidian-vault-integration/expected/output_tree.json` | Phase 14 builder handoff output 期待値 | 未作成 |
-| `testdata/phase14/obsidian-vault-integration/expected/counters.json` | Phase 14 closure counter 期待値 | 未作成 |
-| `testdata/phase14/obsidian-vault-integration/records/closure.jsonl` | Phase 14 closure record set | 未作成 |
-| `.github/workflows/phase14-obsidian-vault-integration.yml` | Phase 14 required check workflow | 未作成 |
+| [`components/obsidian/`](../components/obsidian/) | `obsidian` owner package directory | 実在 |
+| [`components/obsidian/obsidian.go`](../components/obsidian/obsidian.go) | `obsidian` owner の公開実行境界 | 実在 |
+| [`components/obsidian/model.go`](../components/obsidian/model.go) | `obsidian` owner の入力・出力・状態 model | 実在 |
+| [`components/obsidian/validate.go`](../components/obsidian/validate.go) | `obsidian` owner の入力・状態・設定・権限検証 | 実在 |
+| [`components/obsidian/execute.go`](../components/obsidian/execute.go) | `obsidian` owner の正常系・異常系実行順序 | 実在 |
+| [`components/obsidian/obsidian_test.go`](../components/obsidian/obsidian_test.go) | `obsidian` owner package の仕様契約検証 | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/`](../testdata/phase14/obsidian-vault-integration/) | Phase 14 正式 fixture root | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/manifest.json`](../testdata/phase14/obsidian-vault-integration/manifest.json) | Phase 14 evidence package manifest | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/input/options.json`](../testdata/phase14/obsidian-vault-integration/input/options.json) | Phase 14 CLI option 入力 | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/input/vault_tree.json`](../testdata/phase14/obsidian-vault-integration/input/vault_tree.json) | Phase 14 vault tree 入力 | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/input/notes/`](../testdata/phase14/obsidian-vault-integration/input/notes/) | Phase 14 note 入力 | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/input/assets/`](../testdata/phase14/obsidian-vault-integration/input/assets/) | Phase 14 asset 入力 | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/expected/normalized.json`](../testdata/phase14/obsidian-vault-integration/expected/normalized.json) | Phase 14 normalized graph 期待値 | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/expected/output_tree.json`](../testdata/phase14/obsidian-vault-integration/expected/output_tree.json) | Phase 14 builder handoff output 期待値 | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/expected/counters.json`](../testdata/phase14/obsidian-vault-integration/expected/counters.json) | Phase 14 closure counter 期待値 | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/expected/effects.json`](../testdata/phase14/obsidian-vault-integration/expected/effects.json) | Phase 14 effects assertion 期待値 | 実在 |
+| [`testdata/phase14/obsidian-vault-integration/records/closure.jsonl`](../testdata/phase14/obsidian-vault-integration/records/closure.jsonl) | Phase 14 closure record set | 実在 |
+| [`.github/workflows/phase14-obsidian-vault-integration.yml`](../.github/workflows/phase14-obsidian-vault-integration.yml) | Phase 14 required check workflow | 実在 |
 
 <a id="phase-15-target-paths"></a>
 **Phase 15 target path 所在：**
@@ -317,12 +318,12 @@
 
 | path pattern | 対象 | 所在区分 |
 |--------------|------|----------|
-| `components/obsidian/` | `obsidian` owner package directory | 未作成 |
-| `components/obsidian/obsidian.go` | `obsidian` owner の公開実行境界 | 未作成 |
-| `components/obsidian/model.go` | `obsidian` owner の入力・出力・状態 model | 未作成 |
-| `components/obsidian/validate.go` | `obsidian` owner の入力・状態・設定・権限検証 | 未作成 |
-| `components/obsidian/execute.go` | `obsidian` owner の正常系・異常系実行順序 | 未作成 |
-| `components/obsidian/obsidian_test.go` | `obsidian` owner package の仕様契約検証 | 未作成 |
+| [`components/obsidian/`](../components/obsidian/) | `obsidian` owner package directory | 実在 |
+| [`components/obsidian/obsidian.go`](../components/obsidian/obsidian.go) | `obsidian` owner の公開実行境界 | 実在 |
+| [`components/obsidian/model.go`](../components/obsidian/model.go) | `obsidian` owner の入力・出力・状態 model | 実在 |
+| [`components/obsidian/validate.go`](../components/obsidian/validate.go) | `obsidian` owner の入力・状態・設定・権限検証 | 実在 |
+| [`components/obsidian/execute.go`](../components/obsidian/execute.go) | `obsidian` owner の正常系・異常系実行順序 | 実在 |
+| [`components/obsidian/obsidian_test.go`](../components/obsidian/obsidian_test.go) | `obsidian` owner package の仕様契約検証 | 実在 |
 | `testdata/phase15/obsidian-local-sync/` | Phase 15 正式 fixture root | 未作成 |
 | `testdata/phase15/obsidian-local-sync/manifest.json` | Phase 15 evidence package manifest | 未作成 |
 | `testdata/phase15/obsidian-local-sync/input/options.json` | Phase 15 CLI option 入力 | 未作成 |

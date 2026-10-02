@@ -1,0 +1,47 @@
+{
+  "created_paths": [
+    "index.html",
+    "assets/app.js",
+    "assets/images/logo.png",
+    "assets/search-index.json",
+    "assets/style.css",
+    "obsidian_map.json",
+    "pages/index.html",
+    "pages/projects-build.html"
+  ],
+  "updated_paths": [],
+  "deleted_paths": [],
+  "unchanged_paths": [
+    "input-vault/Home.md",
+    "input-vault/Projects/Build.md",
+    "input-vault/images/logo.png"
+  ],
+  "forbidden_writes": [],
+  "stdout_json_keys": [
+    "obsidian_assets",
+    "obsidian_diagnostics",
+    "obsidian_notes",
+    "obsidian_unresolved_links"
+  ],
+  "stderr_lines": [],
+  "normalized_note_sha256s": [
+    {
+      "path": "index.md",
+      "sha256": "<computed-by-harness>",
+      "size": 92
+    },
+    {
+      "path": "notes/Projects/Build.md",
+      "sha256": "<computed-by-harness>",
+      "size": 36
+    }
+  ],
+  "asset_sha256s": [
+    {
+      "path": "assets/images/logo.png",
+      "sha256": "<computed-by-harness>",
+      "size": 4,
+      "media_type": "image/png"
+    }
+  ]
+}

@@ -156,6 +156,7 @@ func TestPhase12StandardArtifactInventory(t *testing.T) {
 		"builder",
 		"commitstatus",
 		"mcp",
+		"obsidian",
 		"release",
 		"runner",
 		"security",
@@ -315,7 +316,7 @@ func TestPhase11FixtureManifestGate(t *testing.T) {
 		manifest := phase11ReadManifest(t, manifestPath)
 		fixtureDir := filepath.Dir(manifestPath)
 
-		if manifest.Name != filepath.Base(fixtureDir) && !phase13AllowsScopeName(manifestPath, manifest.Name) {
+		if manifest.Name != filepath.Base(fixtureDir) && !phase13AllowsScopeName(manifestPath, manifest.Name) && !phase14AllowsScopeName(manifestPath, manifest.Name) {
 			t.Fatalf("%s name must match fixture directory, got %q", manifestPath, manifest.Name)
 		}
 		if prior := seenNames[manifest.Name]; prior != "" {
@@ -461,11 +462,11 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if !strings.Contains(roadmap, phase13CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 実装済み after Phase 13 closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 14 とする。") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 14 is the active Phase after Phase 13 closure")
+	if !strings.Contains(roadmap, "現在の active Phase は Phase 15 とする。") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 15 is the active Phase after Phase 14 closure")
 	}
-	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 13 まではすべて `実装済み`") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 13 are all implemented after Phase 13 closure")
+	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 14 まではすべて `実装済み`") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 14 are all implemented after Phase 14 closure")
 	}
 
 	for _, feature := range phase11QualityGateFeatures {
@@ -578,6 +579,109 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	}
 	if !strings.Contains(roadmap, "状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md`") || !strings.Contains(roadmap, "| 実装済み | 状態管理 | 状態ファイル共通永続化契約 |") {
 		t.Fatalf("docs/ROADMAP.md must mark the statefile common persistence contract implemented after verification")
+	}
+}
+
+func TestPhase14ObsidianVaultIntegrationEvidence(t *testing.T) {
+	t.Parallel()
+
+	const root = "testdata/phase14/obsidian-vault-integration"
+	manifestPath := filepath.Join(root, "manifest.json")
+	manifest := phase11ReadManifest(t, manifestPath)
+	if manifest.Name != "phase-14-obsidian-vault-integration" {
+		t.Fatalf("%s name mismatch: %q", manifestPath, manifest.Name)
+	}
+	if !phase11StringSlicesEqual(manifest.Owners, []string{"obsidian"}) {
+		t.Fatalf("%s owners mismatch: %v", manifestPath, manifest.Owners)
+	}
+	if !phase11StringSlicesEqual(manifest.CollaboratorComponents, []string{"builder", "security"}) {
+		t.Fatalf("%s collaborators mismatch: %v", manifestPath, manifest.CollaboratorComponents)
+	}
+	if !phase11StringSlicesEqual(manifest.RequiredChecks, []string{"phase14-go-format", "phase14-go-test", "phase14-obsidian-vault-fixture", "phase14-builder-handoff", "phase14-document-drift"}) {
+		t.Fatalf("%s required checks mismatch: %v", manifestPath, manifest.RequiredChecks)
+	}
+	for _, rel := range []string{
+		"input/options.json",
+		"input/vault_tree.json",
+		"expected/normalized.json",
+		"expected/output_tree.json",
+		"expected/counters.json",
+		"records/closure.jsonl",
+	} {
+		if _, err := os.Stat(filepath.Join(root, rel)); err != nil {
+			t.Fatalf("Phase 14 fixture path missing %s: %v", rel, err)
+		}
+	}
+	counters := phase13ReadCounterFile(t, filepath.Join(root, "expected/counters.json"))
+	for _, key := range []string{
+		"phase14_obsidian_vault_boundary_open_count",
+		"phase14_obsidian_wikilink_open_count",
+		"phase14_obsidian_yaml_rejection_open_count",
+		"phase14_obsidian_asset_open_count",
+		"phase14_obsidian_builder_handoff_open_count",
+		"phase14_fixture_execution_gap_count",
+		"final_open_item_count",
+	} {
+		if counters[key] != 0 {
+			t.Fatalf("%s must be 0, got %d", key, counters[key])
+		}
+	}
+	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
+	if !strings.Contains(roadmap, "| Phase 14 | Obsidian Vault 連携。local vault 読取、wikilink / embed / tag / asset 正規化、YAML frontmatter 拒否、builder handoff の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry) を参照する。 | 実装済み | Phase 13 |") {
+		t.Fatalf("docs/ROADMAP.md must mark Phase 14 implemented")
+	}
+	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
+	for _, expected := range []string{
+		"| [`components/obsidian/`](../components/obsidian/) | `obsidian` owner package directory | 実在 |",
+		"| [`testdata/phase14/obsidian-vault-integration/`](../testdata/phase14/obsidian-vault-integration/) | Phase 14 正式 fixture root | 実在 |",
+		"| [`.github/workflows/phase14-obsidian-vault-integration.yml`](../.github/workflows/phase14-obsidian-vault-integration.yml) | Phase 14 required check workflow | 実在 |",
+	} {
+		if !strings.Contains(documentIndex, expected) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must contain Phase 14実在 row: %s", expected)
+		}
+	}
+}
+
+func TestPhase14ObsidianVaultProductionEntrypoint(t *testing.T) {
+	root := t.TempDir()
+	vault := filepath.Join(root, "vault")
+	phase14WriteFile(t, filepath.Join(vault, "Home.md"), "# Home\n\nSee [[Guide.md|Guide]].\n\n![[images/logo.png|Logo]]\n")
+	phase14WriteFile(t, filepath.Join(vault, "Guide.md"), "# Guide\n")
+	phase14WriteFile(t, filepath.Join(vault, "images", "logo.png"), "png")
+	out := filepath.Join(root, "site")
+	report := filepath.Join(out, "obsidian_map.json")
+	var stdout, stderr bytes.Buffer
+	code := dispatchMain("adlaire-ci-build", []string{
+		"--input-mode", "obsidian-vault",
+		"--obsidian-vault", vault,
+		"--obsidian-entry", "Home.md",
+		"--obsidian-report-file", report,
+		"--out", out,
+		"--title", "Vault",
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr must be empty: %s", stderr.String())
+	}
+	for _, rel := range []string{"index.html", "assets/images/logo.png", "obsidian_map.json"} {
+		if _, err := os.Stat(filepath.Join(out, rel)); err != nil {
+			t.Fatalf("missing production output %s: %v", rel, err)
+		}
+	}
+	if !strings.Contains(stdout.String(), "obsidian_notes=2") || !strings.Contains(stdout.String(), "obsidian_assets=1") {
+		t.Fatalf("production entrypoint missing obsidian report: %s", stdout.String())
+	}
+}
+
+func phase14WriteFile(t *testing.T, path string, body string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", path, err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatalf("write %s: %v", path, err)
 	}
 }
 
@@ -707,6 +811,7 @@ type phase11ManifestRecord struct {
 var phase11AllowedCategories = map[string]bool{
 	"failure":  true,
 	"noop":     true,
+	"obsidian": true,
 	"partial":  true,
 	"security": true,
 	"success":  true,
@@ -719,6 +824,7 @@ var phase11AllowedComponents = map[string]bool{
 	"builder":      true,
 	"commitstatus": true,
 	"mcp":          true,
+	"obsidian":     true,
 	"release":      true,
 	"runner":       true,
 	"sdk":          true,
@@ -933,6 +1039,11 @@ type phase13ClosureRecord struct {
 func phase13AllowsScopeName(manifestPath string, name string) bool {
 	return filepath.ToSlash(manifestPath) == "testdata/phase13/implementation-alignment-quality/manifest.json" &&
 		name == "phase-13-implementation-alignment-quality"
+}
+
+func phase14AllowsScopeName(manifestPath string, name string) bool {
+	return filepath.ToSlash(manifestPath) == "testdata/phase14/obsidian-vault-integration/manifest.json" &&
+		name == "phase-14-obsidian-vault-integration"
 }
 
 func phase13RequireOwnerPackages(t *testing.T) {

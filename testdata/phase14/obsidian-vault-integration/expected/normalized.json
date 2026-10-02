@@ -1,0 +1,37 @@
+{
+  "schema_version": "obsidian-map-v1",
+  "entry_source_path": "Home.md",
+  "entry_normalized_path": "index.md",
+  "notes": [
+    {
+      "source_path": "Home.md",
+      "normalized_path": "index.md",
+      "title": "Home",
+      "outgoing_link_count": 1,
+      "asset_embed_count": 1,
+      "tags": [
+        "docs",
+        "phase14"
+      ],
+      "diagnostic_count": 0
+    },
+    {
+      "source_path": "Projects/Build.md",
+      "normalized_path": "notes/Projects/Build.md",
+      "title": "Build",
+      "outgoing_link_count": 1,
+      "asset_embed_count": 0,
+      "tags": [],
+      "diagnostic_count": 0
+    }
+  ],
+  "assets": [
+    {
+      "source_path": "images/logo.png",
+      "normalized_path": "assets/images/logo.png",
+      "media_type": "image/png",
+      "status": "resolved"
+    }
+  ],
+  "diagnostics": []
+}
