@@ -31,11 +31,12 @@
 | `commitstatus` | [`docs/details/commitstatus.md` 詳細本文責務](details/commitstatus.md) | [`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `security` | [`docs/details/security.md` 詳細本文責務](details/security.md) | [`docs/details/fixture.md` fixture 証跡責務 §27-F](details/fixture.md#27-f-fixture-証跡責務--runnersecurity-実装検証証跡詳細契約) |
 | `mcp` | [`docs/details/mcp.md` 詳細本文責務](details/mcp.md) | [`docs/details/fixture.md` fixture 証跡責務 MCP fixture 固定契約](details/fixture.md#mcp-fixture-contract) |
+| `obsidian` | [`docs/details/obsidian.md` 詳細本文責務](details/obsidian.md) | [`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence)、[`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) |
 
 <a id="owner-detail-verification-route"></a>
 **owner 詳細本文 検証接続共通入口：**
 
-owner component 別詳細本文が検証接続を示す場合の参照入口である。検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、owner から fixture への入口は [詳細仕様参照表](#0b-詳細仕様参照表)、横断テスト証跡は [横断テスト証跡共通入口](#cross-test-evidence-route)、Phase 11 横断入口は [Phase 11 バグ修正ゼロ化参照](#phase-11-quality-gate-entry)、Phase 12 横断入口は [Phase 12 実装品質ゲート再構築参照](#phase-12-quality-gate-entry)、Phase 13 横断入口は [Phase 13 実装整合・品質改善参照](#phase-13-implementation-alignment-quality-entry)、仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) を参照する。
+owner component 別詳細本文が検証接続を示す場合の参照入口である。検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、owner から fixture への入口は [詳細仕様参照表](#0b-詳細仕様参照表)、横断テスト証跡は [横断テスト証跡共通入口](#cross-test-evidence-route)、Phase 11 横断入口は [Phase 11 バグ修正ゼロ化参照](#phase-11-quality-gate-entry)、Phase 12 横断入口は [Phase 12 実装品質ゲート再構築参照](#phase-12-quality-gate-entry)、Phase 13 横断入口は [Phase 13 実装整合・品質改善参照](#phase-13-implementation-alignment-quality-entry)、Phase 14 入口は [Phase 14 Obsidian Vault 連携参照](#phase-14-obsidian-vault-integration-entry)、Phase 15 入口は [Phase 15 Obsidian local vault 同期参照](#phase-15-obsidian-local-sync-entry)、仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) を参照する。
 
 <a id="cross-test-evidence-route"></a>
 **横断テスト証跡共通入口：**
@@ -278,6 +279,48 @@ Phase 13 の実装作業は下表の work unit に分けて進める。work unit
 | `phase13-mcp-release` | MCP 実動作化、commitstatus、release governance、GitHub Actions pinning | [`docs/details/mcp.md` Phase 13 MCP 実装整合契約](details/mcp.md#phase-13-mcp-alignment-contract)、[`docs/details/commitstatus.md` Phase 13 commitstatus 実装整合契約](details/commitstatus.md#phase-13-commitstatus-alignment-contract)、[`docs/details/release.md` Phase 13 release 実装整合契約](details/release.md#phase-13-release-alignment-contract) | `records/e2e.jsonl`、`records/release.jsonl` |
 | `phase13-final-closure` | mutation、race、fault、CI required checks、document drift、ROADMAP / DOCUMENT_INDEX 更新 | [`docs/details/fixture.md` Phase 13 実装整合・品質改善証跡](details/fixture.md#phase-13-implementation-alignment-quality-evidence)、[`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan) | `expected/counters.json`、全 `records/*.jsonl`、Pull Request 本文の closure summary |
 
+<a id="phase-14-obsidian-vault-integration-entry"></a>
+**Phase 14 Obsidian Vault 連携参照：**
+
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、Phase 14 の対象から `obsidian` owner 詳細本文、builder collaborator 境界、fixture 証跡、状態・計画責務への入口だけを固定する。Phase 14 の現在状態、依存 Phase、active Phase は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit)、fixture 証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) を参照する。
+
+Phase 14 の Go owner package target は `obsidian` だけとする。Phase 14 実装で `obsidian` 以外の新規 owner package を追加してはならない。`builder` と `security` は collaborator として参照し、Phase 14 の vault 読取、wikilink / embed / tag / asset 正規化、builder handoff 判断を所有してはならない。
+
+| 順序 | 固定する gate | 完了時の必須到達先 |
+|------|---------------|--------------------|
+| 1 | local vault 入力境界、vault root containment、symlink / hardlink / device 拒否、`.obsidian/` 非解釈 | [`docs/details/obsidian.md` 詳細本文責務 Phase 14 Obsidian Vault 連携契約](details/obsidian.md#obsidian-phase14-vault-integration-contract)、`phase14_obsidian_vault_boundary_open_count=0` |
+| 2 | Markdown / wikilink / embed / tag / asset の deterministic 正規化、未解決 link の失敗、YAML frontmatter 拒否 | [`docs/details/obsidian.md` 詳細本文責務 Phase 14 Obsidian 正規化契約](details/obsidian.md#obsidian-phase14-normalization-contract)、`phase14_obsidian_wikilink_open_count=0`、`phase14_obsidian_yaml_rejection_open_count=0`、`phase14_obsidian_asset_open_count=0` |
+| 3 | builder handoff、stdout / stderr / report、公開出力への副作用境界 | [`docs/details/builder.md` 詳細本文責務](details/builder.md)、[`docs/details/obsidian.md` 詳細本文責務 Phase 14 builder handoff 契約](details/obsidian.md#obsidian-phase14-builder-handoff-contract)、`phase14_obsidian_builder_handoff_open_count=0` |
+| 4 | fixture、negative control、closure record、DOCUMENT_INDEX 未作成 path | [`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence)、[`docs/DOCUMENT_INDEX.md` Phase 14 target path 所在](DOCUMENT_INDEX.md#phase-14-target-paths)、`phase14_fixture_execution_gap_count=0`、`final_open_item_count=0` |
+
+| Phase 14 対象 | owner / 責務 | 詳細本文 / fixture 証跡 |
+|---------------|--------------|--------------------------|
+| Obsidian local vault 読取と path safety | `obsidian` / `security` | [`docs/details/obsidian.md` 詳細本文責務 Phase 14 Obsidian Vault 連携契約](details/obsidian.md#obsidian-phase14-vault-integration-contract)、[`docs/details/security.md` 詳細本文責務 Phase 13 security 実装整合契約](details/security.md#phase-13-security-alignment-contract) |
+| wikilink / embed / tag / asset 正規化 | `obsidian` | [`docs/details/obsidian.md` 詳細本文責務 Phase 14 Obsidian 正規化契約](details/obsidian.md#obsidian-phase14-normalization-contract) |
+| builder handoff | `obsidian` / `builder` | [`docs/details/obsidian.md` 詳細本文責務 Phase 14 builder handoff 契約](details/obsidian.md#obsidian-phase14-builder-handoff-contract)、[`docs/details/builder.md` 詳細本文責務](details/builder.md) |
+| Phase 14 fixture / closure | fixture 証跡責務 | [`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) |
+
+<a id="phase-15-obsidian-local-sync-entry"></a>
+**Phase 15 Obsidian local vault 同期参照：**
+
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、Phase 15 の対象から `obsidian` owner 詳細本文、statefile / security collaborator 境界、fixture 証跡、状態・計画責務への入口だけを固定する。Phase 15 の現在状態、依存 Phase、active Phase は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit)、fixture 証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) を参照する。
+
+Phase 15 の Go owner package target は `obsidian` だけとする。Phase 15 実装で `obsidian` 以外の新規 owner package を追加してはならない。`statefile` と `security` は collaborator として参照し、Phase 15 の sync plan、sync apply、sync rollback、conflict、tombstone 判断を所有してはならない。
+
+| 順序 | 固定する gate | 完了時の必須到達先 |
+|------|---------------|--------------------|
+| 1 | `sync plan` の input snapshot、digest、change set、conflict 事前検出、no-write | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 Obsidian local vault 同期契約](details/obsidian.md#obsidian-phase15-local-sync-contract)、`phase15_sync_plan_mismatch_count=0` |
+| 2 | `sync apply` の plan hash 照合、process lock、staging、atomic rename、fsync、rollback record | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 apply / rollback 契約](details/obsidian.md#obsidian-phase15-apply-rollback-contract)、`phase15_sync_apply_atomicity_open_count=0`、`phase15_sync_rollback_open_count=0` |
+| 3 | conflict、tombstone、delete policy、clock skew、read-only file、partial write / kill 復旧 | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 conflict / tombstone 契約](details/obsidian.md#obsidian-phase15-conflict-tombstone-contract)、`phase15_sync_conflict_open_count=0`、`phase15_sync_tombstone_open_count=0` |
+| 4 | Obsidian Sync service / cloud / plugin 非依存、URI open の任意境界、fixture closure | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 外部境界契約](details/obsidian.md#obsidian-phase15-external-boundary-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence)、`phase15_sync_service_dependency_open_count=0`、`phase15_fixture_execution_gap_count=0`、`final_open_item_count=0` |
+
+| Phase 15 対象 | owner / 責務 | 詳細本文 / fixture 証跡 |
+|---------------|--------------|--------------------------|
+| Obsidian local vault 同期 plan / apply / rollback | `obsidian` / `statefile` | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 Obsidian local vault 同期契約](details/obsidian.md#obsidian-phase15-local-sync-contract)、[`docs/details/statefile.md` 詳細本文責務 Phase 13 statefile 実装整合契約](details/statefile.md#phase-13-statefile-alignment-contract) |
+| conflict / tombstone / delete policy | `obsidian` | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 conflict / tombstone 契約](details/obsidian.md#obsidian-phase15-conflict-tombstone-contract) |
+| local filesystem safety / secret 非保持 | `obsidian` / `security` | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 外部境界契約](details/obsidian.md#obsidian-phase15-external-boundary-contract)、[`docs/details/security.md` 詳細本文責務 Phase 13 security 実装整合契約](details/security.md#phase-13-security-alignment-contract) |
+| Phase 15 fixture / closure | fixture 証跡責務 | [`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) |
+
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**
 
@@ -499,3 +542,15 @@ Phase 13 の実装作業は下表の work unit に分けて進める。work unit
 | MCP ツール実行タイムアウト設定 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#sec-29-15) |
 | MCP 設定 CRUD ツール | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#sec-29-15) |
 | MCP Elicitation による副作用操作の確認 | `mcp` | [`docs/details/mcp.md` 詳細本文責務 §29.15](details/mcp.md#sec-29-15) |
+
+<a id="0i8-obsidian"></a>
+**0i.8 Obsidian：**
+
+| 機能 | owner | 詳細本文 |
+|------|-------|----------|
+| Obsidian Vault 連携 | `obsidian` | [`docs/details/obsidian.md` 詳細本文責務 Phase 14 Obsidian Vault 連携契約](details/obsidian.md#obsidian-phase14-vault-integration-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) |
+| Obsidian wikilink / embed / tag / asset 正規化 | `obsidian` | [`docs/details/obsidian.md` 詳細本文責務 Phase 14 Obsidian 正規化契約](details/obsidian.md#obsidian-phase14-normalization-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) |
+| Obsidian builder handoff | `obsidian` | [`docs/details/obsidian.md` 詳細本文責務 Phase 14 builder handoff 契約](details/obsidian.md#obsidian-phase14-builder-handoff-contract)、[`docs/details/builder.md` 詳細本文責務](details/builder.md) |
+| Obsidian local vault 同期 plan / apply / rollback | `obsidian` | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 Obsidian local vault 同期契約](details/obsidian.md#obsidian-phase15-local-sync-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) |
+| Obsidian conflict / tombstone / delete policy | `obsidian` | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 conflict / tombstone 契約](details/obsidian.md#obsidian-phase15-conflict-tombstone-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) |
+| Obsidian 外部境界 | `obsidian` | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 外部境界契約](details/obsidian.md#obsidian-phase15-external-boundary-contract)、[`docs/details/security.md` 詳細本文責務 Phase 13 security 実装整合契約](details/security.md#phase-13-security-alignment-contract) |

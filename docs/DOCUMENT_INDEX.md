@@ -19,6 +19,12 @@
 | Phase 13 実装整合・品質改善の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) |
 | Phase 13 正式 fixture root | `testdata/phase13/implementation-alignment-quality/` |
 | Phase 13 required check workflow | `.github/workflows/phase13-implementation-alignment-quality.yml` |
+| Phase 14 Obsidian Vault 連携の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry) |
+| Phase 14 正式 fixture root | `testdata/phase14/obsidian-vault-integration/` |
+| Phase 14 required check workflow | `.github/workflows/phase14-obsidian-vault-integration.yml` |
+| Phase 15 Obsidian local vault 同期の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry) |
+| Phase 15 正式 fixture root | `testdata/phase15/obsidian-local-sync/` |
+| Phase 15 required check workflow | `.github/workflows/phase15-obsidian-local-sync.yml` |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
@@ -96,6 +102,7 @@
 | [`docs/details/commitstatus.md`](details/commitstatus.md) | `commitstatus` |
 | [`docs/details/security.md`](details/security.md) | `security` |
 | [`docs/details/mcp.md`](details/mcp.md) | `mcp` |
+| [`docs/details/obsidian.md`](details/obsidian.md) | `obsidian` |
 | [`docs/details/fixture.md`](details/fixture.md) | fixture 証跡責務 |
 
 <a id="実装ファイル一覧"></a>
@@ -138,6 +145,12 @@
 | [`components/mcp/validate.go`](../components/mcp/validate.go) | `mcp` owner package validation | 実在 |
 | [`components/mcp/execute.go`](../components/mcp/execute.go) | `mcp` owner package execution | 実在 |
 | [`components/mcp/mcp_test.go`](../components/mcp/mcp_test.go) | `mcp` owner package test | 実在 |
+| `components/obsidian/` | `obsidian` owner package directory | 未作成 |
+| `components/obsidian/obsidian.go` | `obsidian` owner package 公開実行境界 | 未作成 |
+| `components/obsidian/model.go` | `obsidian` owner package model | 未作成 |
+| `components/obsidian/validate.go` | `obsidian` owner package validation | 未作成 |
+| `components/obsidian/execute.go` | `obsidian` owner package execution | 未作成 |
+| `components/obsidian/obsidian_test.go` | `obsidian` owner package test | 未作成 |
 | [`components/release/release.go`](../components/release/release.go) | `release` owner package 公開実行境界 | 実在 |
 | [`components/release/model.go`](../components/release/model.go) | `release` owner package model | 実在 |
 | [`components/release/validate.go`](../components/release/validate.go) | `release` owner package validation | 実在 |
@@ -209,6 +222,10 @@
 | [`.github/workflows/phase12-quality-gate.yml`](../.github/workflows/phase12-quality-gate.yml) | Phase 12 required check workflow | 実在 |
 | `testdata/phase13/implementation-alignment-quality/` | Phase 13 implementation alignment quality fixture root | 未作成 |
 | `.github/workflows/phase13-implementation-alignment-quality.yml` | Phase 13 required check workflow | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/` | Phase 14 Obsidian Vault 連携 fixture root | 未作成 |
+| `.github/workflows/phase14-obsidian-vault-integration.yml` | Phase 14 required check workflow | 未作成 |
+| `testdata/phase15/obsidian-local-sync/` | Phase 15 Obsidian local vault 同期 fixture root | 未作成 |
+| `.github/workflows/phase15-obsidian-local-sync.yml` | Phase 15 required check workflow | 未作成 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
 
@@ -267,3 +284,53 @@
 | `CONTRIBUTING.md` | release governance artifact | 未作成 |
 | `CODEOWNERS` | release governance artifact | 未作成 |
 | `CHANGELOG.md` | release governance artifact | 未作成 |
+
+<a id="phase-14-target-paths"></a>
+**Phase 14 target path 所在：**
+
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+
+| path pattern | 対象 | 所在区分 |
+|--------------|------|----------|
+| `components/obsidian/` | `obsidian` owner package directory | 未作成 |
+| `components/obsidian/obsidian.go` | `obsidian` owner の公開実行境界 | 未作成 |
+| `components/obsidian/model.go` | `obsidian` owner の入力・出力・状態 model | 未作成 |
+| `components/obsidian/validate.go` | `obsidian` owner の入力・状態・設定・権限検証 | 未作成 |
+| `components/obsidian/execute.go` | `obsidian` owner の正常系・異常系実行順序 | 未作成 |
+| `components/obsidian/obsidian_test.go` | `obsidian` owner package の仕様契約検証 | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/` | Phase 14 正式 fixture root | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/manifest.json` | Phase 14 evidence package manifest | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/input/options.json` | Phase 14 CLI option 入力 | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/input/vault_tree.json` | Phase 14 vault tree 入力 | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/input/notes/` | Phase 14 note 入力 | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/input/assets/` | Phase 14 asset 入力 | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/expected/normalized.json` | Phase 14 normalized graph 期待値 | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/expected/output_tree.json` | Phase 14 builder handoff output 期待値 | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/expected/counters.json` | Phase 14 closure counter 期待値 | 未作成 |
+| `testdata/phase14/obsidian-vault-integration/records/closure.jsonl` | Phase 14 closure record set | 未作成 |
+| `.github/workflows/phase14-obsidian-vault-integration.yml` | Phase 14 required check workflow | 未作成 |
+
+<a id="phase-15-target-paths"></a>
+**Phase 15 target path 所在：**
+
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+
+| path pattern | 対象 | 所在区分 |
+|--------------|------|----------|
+| `components/obsidian/` | `obsidian` owner package directory | 未作成 |
+| `components/obsidian/obsidian.go` | `obsidian` owner の公開実行境界 | 未作成 |
+| `components/obsidian/model.go` | `obsidian` owner の入力・出力・状態 model | 未作成 |
+| `components/obsidian/validate.go` | `obsidian` owner の入力・状態・設定・権限検証 | 未作成 |
+| `components/obsidian/execute.go` | `obsidian` owner の正常系・異常系実行順序 | 未作成 |
+| `components/obsidian/obsidian_test.go` | `obsidian` owner package の仕様契約検証 | 未作成 |
+| `testdata/phase15/obsidian-local-sync/` | Phase 15 正式 fixture root | 未作成 |
+| `testdata/phase15/obsidian-local-sync/manifest.json` | Phase 15 evidence package manifest | 未作成 |
+| `testdata/phase15/obsidian-local-sync/input/options.json` | Phase 15 CLI option 入力 | 未作成 |
+| `testdata/phase15/obsidian-local-sync/input/sync_state.json` | Phase 15 sync state 入力 | 未作成 |
+| `testdata/phase15/obsidian-local-sync/input/project_tree.json` | Phase 15 project tree 入力 | 未作成 |
+| `testdata/phase15/obsidian-local-sync/input/vault_tree.json` | Phase 15 vault tree 入力 | 未作成 |
+| `testdata/phase15/obsidian-local-sync/expected/plan.json` | Phase 15 sync plan 期待値 | 未作成 |
+| `testdata/phase15/obsidian-local-sync/expected/apply_state.json` | Phase 15 apply 後 state 期待値 | 未作成 |
+| `testdata/phase15/obsidian-local-sync/expected/counters.json` | Phase 15 closure counter 期待値 | 未作成 |
+| `testdata/phase15/obsidian-local-sync/records/closure.jsonl` | Phase 15 closure record set | 未作成 |
+| `.github/workflows/phase15-obsidian-local-sync.yml` | Phase 15 required check workflow | 未作成 |
