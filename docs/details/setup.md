@@ -99,6 +99,8 @@ parseと入力検証の順序は、共通option、mode、未知・重複option�
 
 Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を正本とする。setupはmodeに必要なassetだけを取得し、固定名と完全一致することを検証する。`$OS_ARCH`は`linux-amd64`だけを受け付け、未知OS/archは取得前に[setup出力・error固定契約](#setup-output-contract)の`UNSUPPORTED_PLATFORM`、終了コード`2`とする。`SHA256SUMS`は対象filenameが1回だけ存在し、未取得assetを含むrelease全体の7行が[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)と一致することを確認する。0件、重複、未知行、自己行、形式不正はchecksum検証失敗とする。
 
+Phase 15 で Obsidian local vault 同期を実装済みに遷移する場合は、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract) に従い、`adlaire-ci-obsidian-$OS_ARCH` を取得対象に追加する。Phase 15 完了後の setup は、Obsidian CLI 導入または更新対象で `adlaire-ci-obsidian-$OS_ARCH` と `SHA256SUMS` を取得し、release 全体の checksum 行数を 8 行として検証する。Phase 15 完了前に `adlaire-ci-obsidian-$OS_ARCH` を必須取得対象として扱ってはならない。
+
 <a id="sec-26-2b"></a>
 **[§26.2b セットアップ・アップデート機能単位](setup.md#sec-26-2b)：**
 

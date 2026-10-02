@@ -331,6 +331,7 @@
 | `testdata/phase15/obsidian-local-sync/input/vault_tree.json` | Phase 15 vault tree 入力 | 未作成 |
 | `testdata/phase15/obsidian-local-sync/expected/plan.json` | Phase 15 sync plan 期待値 | 未作成 |
 | `testdata/phase15/obsidian-local-sync/expected/apply_state.json` | Phase 15 apply 後 state 期待値 | 未作成 |
+| `testdata/phase15/obsidian-local-sync/expected/distribution.json` | Phase 15 Obsidian CLI 配布連携期待値 | 未作成 |
 | `testdata/phase15/obsidian-local-sync/expected/counters.json` | Phase 15 closure counter 期待値 | 未作成 |
 | `testdata/phase15/obsidian-local-sync/records/closure.jsonl` | Phase 15 closure record set | 未作成 |
 | `.github/workflows/phase15-obsidian-local-sync.yml` | Phase 15 required check workflow | 未作成 |

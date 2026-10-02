@@ -27,6 +27,10 @@ Phase 14 は `adlaire-ci-build --input-mode obsidian-vault` で起動し、Obsid
 
 `--obsidian-filter-file` は UTF-8 JSON object とし、top-level key は `include_notes`、`exclude_notes`、`include_assets`、`exclude_assets` だけを許可する。各 value は array of string とし、各 string は vault root 相対 path pattern で、先頭 `/`、空 segment、`.`、`..`、backslash、NUL、CR、LF、`**` を禁止する。未知 key、重複 key、型不一致、空 string は終了コード `2`。
 
+Phase 14 / Phase 15 の vault / project 相対 path は、UTF-8、slash 区切り、先頭 `/` なし、末尾 `/` なし、空 segment なし、`.` / `..` segment なし、backslash なし、NUL / CR / LF なし、drive prefix なし、`~` prefix なし、1 segment 255 bytes 以下、全体 4096 bytes 以下に固定する。root 判定は `EvalSymlinks` による解決後 path ではなく、open 対象の各 segment を `Lstat` し symlink を拒否する no-follow 境界で行う。directory、regular file 以外の device、socket、FIFO は拒否し、regular file の hardlink count が 2 以上の場合は `OBSIDIAN_HARDLINK_FORBIDDEN` とする。
+
+Phase 14 / Phase 15 が出力する JSON は canonical JSON とする。canonical JSON は UTF-8、object key は本仕様で列挙した順序、array は各項目で定義した sort key 順、indent なし、末尾 LF 1 個、未知 key なし、`null` なし、空 array は `[]` とする。実装が Go `map` を使って key 順を暗黙化することを禁止し、struct または明示順 writer で出力する。
+
 Phase 14 は `.obsidian/` 配下を読まない。`.obsidian/` 配下の設定、plugin data、workspace、canvas、sync metadata を、link 解決、tag 抽出、theme、alias、sort、出力に使ってはならない。
 
 | 出力 | 固定契約 |
@@ -36,6 +40,23 @@ Phase 14 は `.obsidian/` 配下を読まない。`.obsidian/` 配下の設定�
 | map | `obsidian_map.json` を中間 root 配下へ出力し、source path、normalized path、resolved link、asset、tag、diagnostic を持つ。 |
 | stdout | builder の標準 stdout 契約を維持し、Phase 14 追加 report key は `obsidian_assets`、`obsidian_diagnostics`、`obsidian_notes`、`obsidian_unresolved_links` だけを許可する。 |
 | stderr | 失敗時は 1 行目に machine error code、2 行目以降に path と line / column を出力する。secret、absolute vault path、token、home directory は出力しない。 |
+
+<a id="obsidian-phase14-output-schema-contract"></a>
+**Phase 14 output schema 契約：**
+
+中間 root は `index.md`、`notes/`、`assets/`、`obsidian_map.json` だけを top-level に持つ。entry note の normalized path は `index.md` に固定し、entry 以外の note は `notes/<source_path>`、asset は `assets/<source_path>` に固定する。`notes/` と `assets/` 配下の path は source path を維持し、拡張子、case、space を変更しない。source path の path safety に不合格な入力を percent encode、rename、推測補正して出力してはならない。
+
+`obsidian_map.json` は root object とし、key 順を `schema_version`、`vault_digest`、`entry_source_path`、`entry_normalized_path`、`notes`、`assets`、`diagnostics` に固定する。`schema_version` は `obsidian-map-v1`、`entry_normalized_path` は `index.md` とする。`vault_digest` は対象 regular file を source path の UTF-8 byte 昇順で並べ、各 file について `source_path` + LF + lowercase SHA-256 + LF + decimal size + LF を連結した byte 列の SHA-256 lowercase hex とする。
+
+`notes` は source path の UTF-8 byte 昇順の array とし、各 note object の key 順は `source_path`、`normalized_path`、`title`、`source_sha256`、`source_trailing_lf`、`outgoing_links`、`asset_embeds`、`tags`、`diagnostics` とする。`title` は最初の ATX heading text、存在しない場合は拡張子を除いた basename、`source_trailing_lf` は入力 byte が LF で終わる場合だけ `true` とする。`tags` は重複排除後の UTF-8 byte 昇順 array とする。
+
+`outgoing_links` は `line`、`column`、`raw` の順に昇順 sort し、各 object の key 順を `raw`、`target`、`target_path`、`heading`、`alias`、`status`、`error_code`、`line`、`column` とする。`status` は `resolved`、`unresolved`、`ambiguous`、`unsupported` のいずれか、`error_code` は成功時 empty string、失敗時は本詳細本文の `OBSIDIAN_*` code とする。`target_path`、`heading`、`alias` は該当なしの場合 empty string とし、key を省略してはならない。
+
+`asset_embeds` と root `assets` は `source_path` の UTF-8 byte 昇順で sort し、各 object の key 順を `raw`、`source_path`、`normalized_path`、`sha256`、`size`、`media_type`、`status`、`error_code`、`line`、`column` とする。`media_type` は `.png=image/png`、`.jpg=image/jpeg`、`.jpeg=image/jpeg`、`.gif=image/gif`、`.webp=image/webp`、`.svg=image/svg+xml`、`.pdf=application/pdf` に固定する。禁止拡張子、vault 外参照、digest 不一致は `status=unsupported` または `status=unresolved` とし、strict でない場合も diagnostic record に残す。
+
+`line` は LF 正規化後の 1-based line number、`column` は当該 line 先頭からの 1-based UTF-8 byte offset とする。multibyte 文字を rune 数、display width、grapheme cluster 数で数えてはならない。
+
+`diagnostics` は `source_path`、`line`、`column`、`code` の順に昇順 sort し、各 object の key 順を `code`、`severity`、`source_path`、`line`、`column`、`target` とする。`severity` は `error` または `warning` だけを許可する。free-form message、absolute path、home directory、host user 名、secret を diagnostic に含めてはならない。
 
 <a id="obsidian-phase14-cli-contract"></a>
 **Phase 14 CLI 契約：**
@@ -54,7 +75,7 @@ Phase 14 は `--obsidian-*` option が 1 つでも指定され、`--input-mode o
 <a id="obsidian-phase14-normalization-contract"></a>
 **Phase 14 Obsidian 正規化契約：**
 
-Markdown file は UTF-8 とし、invalid UTF-8、NUL、C0 制御文字は終了コード `2`。CRLF は LF へ正規化して中間 root へ出力する。入力 byte の末尾改行有無は `obsidian_map.json` に `source_trailing_lf` として記録する。
+Markdown file は UTF-8 とし、invalid UTF-8、NUL、HT / LF / CR を除く C0 制御文字は終了コード `2`。CRLF は LF へ正規化して中間 root へ出力する。入力 byte の末尾改行有無は `obsidian_map.json` に `source_trailing_lf` として記録する。
 
 YAML は使用禁止である。file 先頭が `---` + LF または `---` + CRLF で始まる場合は YAML frontmatter と判定し、終了コード `2`、stderr `OBSIDIAN_YAML_FRONTMATTER_UNSUPPORTED` とする。info string が `yaml` または `yml` の fenced code block は終了コード `2`、stderr `OBSIDIAN_YAML_BLOCK_UNSUPPORTED` とする。
 
@@ -107,6 +128,25 @@ Phase 15 は `adlaire-ci-obsidian sync plan`、`adlaire-ci-obsidian sync apply`�
 
 `--open-uri` は `true` または `false` だけを許可する。`true` の場合でも、Obsidian URI の起動成功を sync 成功条件にしてはならない。URI 起動失敗は warning として report に記録し、apply / rollback の filesystem 結果を覆さない。
 
+Phase 15 の成功時 stdout は canonical JSON object 1 行と LF だけとする。`sync plan` は key 順を `command`、`plan_file`、`plan_hash`、`operations`、`conflicts`、`tombstones`、`applied` に固定し、`applied=false` とする。`sync apply` は key 順を `command`、`plan_file`、`plan_hash`、`operations_applied`、`conflicts`、`tombstones`、`rollback_file`、`state_digest` に固定する。`sync rollback` は key 順を `command`、`rollback_file`、`operations_rolled_back`、`conflicts`、`state_digest` に固定する。失敗時 stdout は 0 byte、stderr は `obsidian: <error-code>` + LF の 1 行だけとし、path、digest、Go error、stack trace、URI、absolute path を出力してはならない。
+
+<a id="obsidian-phase15-schema-contract"></a>
+**Phase 15 schema 契約：**
+
+`sync_state.json` は root object とし、key 順を `schema_version`、`project_root_digest`、`vault_root_digest`、`entries`、`tombstones`、`conflicts`、`last_apply_id` に固定する。`schema_version` は `obsidian-sync-state-v1` とする。`entries` は `path` の UTF-8 byte 昇順 array とし、各 object の key 順を `path`、`project_digest`、`vault_digest`、`last_sync_digest`、`last_sync_unix` とする。存在しない側の digest は empty string とし、mtime だけで一致扱いにしてはならない。`tombstones` は `tombstone_id` 昇順、`conflicts` は `conflict_id` 昇順とする。
+
+`plan.json` は root object とし、key 順を `schema_version`、`plan_id`、`created_at_unix`、`direction`、`delete_policy`、`project_root_digest`、`vault_root_digest`、`state_digest`、`operations`、`conflicts`、`tombstones` に固定する。`schema_version` は `obsidian-sync-plan-v1` とする。`plan_id` は `direction` + LF + `delete_policy` + LF + `project_root_digest` + LF + `vault_root_digest` + LF + `state_digest` + LF の SHA-256 lowercase hex とする。`plan_hash` は `plan.json` canonical JSON byte 列の SHA-256 lowercase hex とし、`plan.json` 内には格納しない。
+
+`operations` は `path` の UTF-8 byte 昇順、同一 path 内は `conflict`、`tombstone`、`create`、`update`、`noop` の順に sort する。各 object の key 順は `op`、`direction`、`path`、`source`、`destination`、`before_digest`、`after_digest`、`conflict_id`、`tombstone_id`、`rollback_required` とする。`op` は `conflict`、`tombstone`、`create`、`update`、`noop`、`direction` は `project-to-vault`、`vault-to-project`、`none` のいずれかとする。該当しない string field は empty string、`rollback_required` は boolean とし、key を省略してはならない。
+
+`conflicts` は `conflict_id` 昇順 array とし、各 object の key 順を `conflict_id`、`path`、`reason`、`project_digest`、`vault_digest`、`state_digest`、`resolution` に固定する。`reason` は `both-side-edit`、`delete-vs-edit`、`rename-collision`、`read-only-target`、`digest-changed` のいずれか、`resolution` は Phase 15 では常に `manual` とする。自動 merge、last-writer-wins、mtime 優先を禁止する。
+
+`tombstones` は `tombstone_id` 昇順 array とし、各 object の key 順を `tombstone_id`、`path`、`digest`、`direction`、`created_at_unix`、`tombstone_path` に固定する。`tombstone_path` は tombstone dir 相対 path とし、vault root または project root の絶対 path を含めてはならない。
+
+`rollback record` は root object とし、key 順を `schema_version`、`apply_id`、`plan_hash`、`started_at_unix`、`completed_at_unix`、`operations`、`state_before_digest`、`state_after_digest` に固定する。`schema_version` は `obsidian-sync-rollback-v1` とする。`operations` は apply 実行順で記録し、rollback 実行時は逆順で処理する。各 operation record の key 順は `op`、`path`、`destination`、`previous_digest`、`new_digest`、`backup_path`、`status`、`error_code` とし、`status` は `applied`、`skipped`、`failed` のいずれかとする。
+
+Phase 15 の `created_at_unix`、`started_at_unix`、`completed_at_unix`、`last_sync_unix` は UTC Unix seconds の decimal integer とする。fixture では fake clock で固定し、実装は現在時刻を直接参照する箇所を sync plan / apply / rollback の時刻 provider 1 箇所へ集約する。各 timestamp は処理開始時に 1 回だけ取得し、同一 report 内で同じ意味の timestamp を複数回取得して揺らしてはならない。
+
 <a id="obsidian-phase15-apply-rollback-contract"></a>
 **Phase 15 apply / rollback 契約：**
 
@@ -134,6 +174,11 @@ Phase 15 は `adlaire-ci-obsidian sync plan`、`adlaire-ci-obsidian sync apply`�
 Phase 15 は Obsidian Sync service、Obsidian cloud、remote vault API、plugin runtime、community plugin、external watcher、external diff library を使用しない。network access は行わない。Obsidian URI は apply / rollback 成功後に対象 vault または file を開く任意補助だけに使用できる。URI は `obsidian://open` だけを許可し、query は percent-encoding し、vault 名と file path 以外を含めない。
 
 Phase 15 は credentials を扱わない。token、password、Obsidian account、Sync encryption password、remote endpoint、cloud credential を CLI、state、report、log、fixture に保存してはならない。
+
+<a id="obsidian-phase15-distribution-contract"></a>
+**Phase 15 配布連携契約：**
+
+Phase 15 の実装完了には `adlaire-ci-obsidian` 実行バイナリの配布契約が必要である。Phase 15 実装 PR は、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract) と [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) を同じ変更単位で整合させ、Release asset 生成、checksum、setup 取得対象、version 出力、fixture 証跡に `adlaire-ci-obsidian-linux-amd64` が含まれることを証跡化する。この配布連携が未完了の場合、sync plan / apply / rollback の実装が合格していても Phase 15 を `実装済み` に遷移してはならない。
 
 | error code | 終了コード | 条件 |
 |------------|------------|------|

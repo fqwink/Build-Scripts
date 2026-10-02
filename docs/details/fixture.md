@@ -388,6 +388,8 @@ Phase 14 の正式 fixture root は `testdata/phase14/obsidian-vault-integration
 | `expected/counters.json` | Phase 14 closure counter の期待値。 | 全 counter が `0`、対象外理由は anchor 付き。 |
 | `records/closure.jsonl` | Phase 14 closure record set。 | 1 行 1 record、UTF-8、LF 終端、`scope` は `phase-14-obsidian-vault-integration`。 |
 
+`expected/normalized.json` は [`docs/details/obsidian.md` 詳細本文責務 Phase 14 output schema 契約](obsidian.md#obsidian-phase14-output-schema-contract) の `obsidian_map.json` root key、note object、link object、asset object、diagnostic object と同じ key 順、型、sort order を持つ。fixture harness は actual `obsidian_map.json` を JSON parse 後に比較し、unknown key、欠落 key、array sort 差分、absolute path、free-form diagnostic message、`null` を失敗にする。`expected/output_tree.json` は `created_paths`、`updated_paths`、`deleted_paths`、`unchanged_paths`、`forbidden_writes`、`stdout_json_keys`、`stderr_lines` の root key だけを持ち、input vault 配下 write と handoff root 外 write を `forbidden_writes` で明示する。
+
 | 集計値 | 完了値 | 未完了条件 |
 |--------|--------|------------|
 | `phase14_obsidian_vault_boundary_open_count` | `0` | vault root containment、symlink / hardlink / device 拒否、`.obsidian/` 非解釈、vault 外 path 拒否に残件がある。 |
@@ -419,7 +421,7 @@ Phase 15 の正式 fixture root は `testdata/phase15/obsidian-local-sync/` と�
 
 | path | 内容 | 完了条件 |
 |------|------|----------|
-| `manifest.json` | Phase 15 evidence package の識別子、対象 owner、statefile / security collaborator、closure record set の所在。 | `name` が `phase-15-obsidian-local-sync`、`owners` が `obsidian`、`collaborators` が `statefile` と `security` を含む。 |
+| `manifest.json` | Phase 15 evidence package の識別子、対象 owner、statefile / security / release / setup collaborator、closure record set の所在。 | `name` が `phase-15-obsidian-local-sync`、`owners` が `obsidian`、`collaborators` が `statefile`、`security`、`release`、`setup` を含む。 |
 | `input/options.json` | `adlaire-ci-obsidian sync plan` / `sync apply` / `sync rollback` の CLI option。 | [`docs/details/obsidian.md` 詳細本文責務 Phase 15 CLI 契約](obsidian.md#obsidian-phase15-cli-contract) の全 option を持ち、未知 option がない。 |
 | `input/sync_state.json` | 前回同期 state、digest、tombstone、conflict、rollback metadata。 | mtime だけの同一性判定を持たず、content digest と normalized path を持つ。 |
 | `input/project_tree.json` | project 側 tree snapshot。 | create、modify、delete、rename、conflict、permission denied、read-only file を含む。 |
@@ -429,6 +431,8 @@ Phase 15 の正式 fixture root は `testdata/phase15/obsidian-local-sync/` と�
 | `expected/counters.json` | Phase 15 closure counter の期待値。 | 全 counter が `0`、対象外理由は anchor 付き。 |
 | `records/closure.jsonl` | Phase 15 closure record set。 | 1 行 1 record、UTF-8、LF 終端、`scope` は `phase-15-obsidian-local-sync`。 |
 
+`expected/plan.json` と `expected/apply_state.json` は [`docs/details/obsidian.md` 詳細本文責務 Phase 15 schema 契約](obsidian.md#obsidian-phase15-schema-contract) の `plan.json`、`sync_state.json`、conflict、tombstone、rollback record と同じ key 順、型、sort order を持つ。fixture harness は actual plan hash を canonical JSON byte から再計算し、`--plan-hash` 照合、no-write plan、apply 後 state digest、rollback record、stdout JSON key 順、stderr exact line を比較する。`expected/distribution.json` は `binary_asset`、`release_asset_count`、`checksum_line_count`、`setup_acceptance_asset`、`version_stdout`、`release_extension_anchor` の root key だけを持ち、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract) と一致しなければならない。
+
 | 集計値 | 完了値 | 未完了条件 |
 |--------|--------|------------|
 | `phase15_sync_plan_mismatch_count` | `0` | plan hash、operation order、digest、no-write、expected plan に差分がある。 |
@@ -437,6 +441,7 @@ Phase 15 の正式 fixture root は `testdata/phase15/obsidian-local-sync/` と�
 | `phase15_sync_tombstone_open_count` | `0` | delete policy、tombstone record、hard delete 禁止既定、restore path に残件がある。 |
 | `phase15_sync_rollback_open_count` | `0` | rollback precondition、rollback record、staging cleanup、failed apply 後復旧に残件がある。 |
 | `phase15_sync_service_dependency_open_count` | `0` | Obsidian Sync service、Obsidian cloud、remote vault API、plugin runtime、external watcher 依存が 1 件以上ある。 |
+| `phase15_distribution_open_count` | `0` | `adlaire-ci-obsidian-linux-amd64` の Release asset、checksum、setup 取得対象、version 出力、fixture expected に残件がある。 |
 | `phase15_fixture_execution_gap_count` | `0` | production entrypoint 実行、actual / expected 比較、negative control の未接続がある。 |
 | `final_open_item_count` | `0` | 上記集計値または closure record の `open_items` に残件がある。 |
 
@@ -448,9 +453,10 @@ Phase 15 required check は以下に固定する。Phase 15 実装 PR は、下�
 | `phase15-go-test` | Obsidian 同期に関係する production entrypoint と owner package | `go test ./...` が成功し、skip がある場合は対象外 anchor を記録する。 |
 | `phase15-obsidian-sync-fixture` | `testdata/phase15/obsidian-local-sync/` | production entrypoint を実行し、actual plan、apply state、rollback state、closure counters が expected と一致する。 |
 | `phase15-sync-atomicity` | lock、staging、fsync、atomic rename、state update、rollback record | partial write、process kill、rename failure、fsync failure、permission denied の failure injection が expected と一致する。 |
+| `phase15-release-setup-distribution` | `adlaire-ci-obsidian-linux-amd64` の Release / setup 連携 | `expected/distribution.json` と Release / setup 詳細本文の asset 名、asset count、checksum line count、version stdout が一致し、`phase15_distribution_open_count=0`。 |
 | `phase15-document-drift` | [`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md)、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md)、[`docs/details/obsidian.md`](obsidian.md) | Phase 15 の状態、path、anchor、fixture root、未作成表記の drift が 0。 |
 
-Phase 15 fixture は negative control を必須とする。negative control は、plan hash mismatch、both-side edit、delete vs edit、rename collision、clock skew、read-only file、permission denied、partial write、process kill、official Obsidian Sync service / cloud endpoint attempt、Obsidian URI 成功依存、vault outside write を 1 件以上含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase15_fixture_execution_gap_count` に計上する。
+Phase 15 fixture は negative control を必須とする。negative control は、plan hash mismatch、both-side edit、delete vs edit、rename collision、clock skew、read-only file、permission denied、partial write、process kill、official Obsidian Sync service / cloud endpoint attempt、Obsidian URI 成功依存、vault outside write、Release asset 未追加、checksum 行不足、setup 取得対象不足を 1 件以上含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase15_fixture_execution_gap_count` または `phase15_distribution_open_count` に計上する。
 
 <a id="fixture-root-coverage-matrix-contract"></a>
 **fixture root coverage matrix 固定契約：**

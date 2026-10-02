@@ -268,3 +268,21 @@ Phase 13 の release governance artifact は以下の最低内容を満たす。
 Phase 13 の `records/release.jsonl` は release evidence 1 件につき `release_id`、`git_tag`、`commit_sha`、`asset_names`、`sha256sums_digest`、`signature_verified`、`sbom_verified`、`reproducible_build_verified`、`download_verified`、`governance_files_verified` を持つ。未実行項目を `true` にしてはならない。
 
 Phase 13 の `release` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_release_evidence_open_count=0`、`phase13_action_pin_open_count=0`、`phase13_recovery_procedure_open_count=0` を満たすまで完了扱いにしてはならない。
+
+<a id="phase-15-obsidian-release-extension-contract"></a>
+**Phase 15 Obsidian Release 配布拡張契約：**
+
+Phase 15 で `adlaire-ci-obsidian` を実装済みに遷移する場合、Release asset 契約は Phase 15 実装 PR 内で次の差分を満たす。Phase 15 完了前の安定版 Release asset set は [R3 Release asset 固定契約](#release-asset-contract) を正とし、Phase 15 実装完了後は本拡張を加えた asset set を正とする。
+
+| 対象 | Phase 15 完了時の固定契約 |
+|------|--------------------------|
+| binary asset | `adlaire-ci-obsidian-linux-amd64` を追加する。mode は `0755`、root `main` package を build し、basename dispatch で `obsidian` owner を起動する。 |
+| binary count | Release 用実行バイナリは 6 件から 7 件へ増える。`adlaire-ci-release` は引き続き利用者向け asset に含めない。 |
+| asset count | 安定版 Release asset は 8 件から 9 件へ増える。追加 asset、source archive の独自 upload、debug binary、`latest` alias の禁止は維持する。 |
+| checksum | `SHA256SUMS` は `SHA256SUMS` 自身を除く 8 asset を filename の ASCII 昇順で並べる。`adlaire-ci-obsidian-linux-amd64` の checksum 欠落、重複、未知行を禁止する。 |
+| reproducibility | A / B snapshot から `adlaire-ci-obsidian-linux-amd64` を他 binary と同じ build argv、environment、version 検証で生成し、byte 一致を確認する。 |
+| GitHub publish | upload、asset list、download verify、Release 再取得、stdout JSON の `assets` array に `adlaire-ci-obsidian-linux-amd64` を含め、asset 件数を 9 として検証する。 |
+| setup acceptance | [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) の Release asset 受け入れ対象に `adlaire-ci-obsidian-$OS_ARCH` を追加し、Obsidian CLI 導入または更新時の取得対象にする。 |
+| fixture | [`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](fixture.md#phase-15-obsidian-local-sync-evidence) に release / setup 配布連携の expected を追加し、配布未反映を `phase15_distribution_open_count` に計上する。 |
+
+Phase 15 実装 PR は、[R3 Release asset 固定契約](#release-asset-contract)、[R4 ビルド・再現性固定契約](#release-build-contract)、[R5 GitHub Release 公開固定契約](#release-publish-contract)、[R6 出力・副作用固定契約](#release-output-contract)、[`docs/details/fixture.md` fixture 証跡責務 Release fixture 固定契約](fixture.md#release-fixture-contract) の asset 数、binary 数、checksum 行数、stdout JSON、fixture expected を同時に更新する。いずれか 1 箇所でも 8 asset / 6 binary / checksum 7 行のまま残る場合、Phase 15 を `実装済み` に遷移してはならない。
