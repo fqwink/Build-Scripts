@@ -10,7 +10,7 @@
 | fixture 証跡 | [`docs/details/fixture.md` Phase 14 Obsidian Vault 連携証跡](fixture.md#phase-14-obsidian-vault-integration-evidence)、[`docs/details/fixture.md` Phase 15 Obsidian local vault 同期証跡](fixture.md#phase-15-obsidian-local-sync-evidence) |
 | 実在 / 未作成 path | [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) |
 
-`obsidian` owner component は `builder`、`statefile`、`security` と連携できる。ただし、vault 読取、wikilink / embed / tag / asset 正規化、sync plan、sync apply、sync rollback の仕様判断は `obsidian` owner component が所有する。
+`obsidian` owner component は `builder`、`statefile`、`security`、`release`、`setup` と連携できる。ただし、vault 読取、wikilink / embed / tag / asset 正規化、sync plan、sync apply、sync rollback の仕様判断は `obsidian` owner component が所有する。`release` と `setup` は Phase 15 の `adlaire-ci-obsidian` 配布連携 collaborator であり、sync plan / apply / rollback の判断を所有してはならない。
 
 <a id="obsidian-phase14-vault-integration-contract"></a>
 **Phase 14 Obsidian Vault 連携契約：**
@@ -171,10 +171,10 @@ Phase 15 は `adlaire-ci-obsidian sync plan`、`adlaire-ci-obsidian sync apply`�
 | command | 必須 option | 任意 option | 書込み |
 |---------|-------------|-------------|--------|
 | `sync plan` | `--vault`、`--project-root`、`--state-dir`、`--plan-file`、`--direction` | `--delete-policy`、`--conflict-dir`、`--tombstone-dir` | `--plan-file` のみ |
-| `sync apply` | `--vault`、`--project-root`、`--state-dir`、`--plan-file`、`--plan-hash` | `--conflict-dir`、`--tombstone-dir`、`--rollback-file`、`--open-uri` | あり |
+| `sync apply` | `--vault`、`--project-root`、`--state-dir`、`--plan-file`、`--plan-hash` | `--rollback-file`、`--open-uri` | あり |
 | `sync rollback` | `--vault`、`--project-root`、`--state-dir`、`--rollback-file` | `--open-uri` | あり |
 
-`--delete-policy` の既定値は `reject`、`--open-uri` の既定値は `false` とする。`--open-uri` は `true` または `false` だけを許可する。`true` の場合でも、Obsidian URI の起動成功を sync 成功条件にしてはならない。URI 起動失敗は warning として report に記録し、apply / rollback の filesystem 結果を覆さない。
+`--delete-policy` の既定値は `reject`、`--conflict-dir` の既定値は `adlaire-ci-conflicts/`、`--tombstone-dir` の既定値は `adlaire-ci-tombstones/`、`--open-uri` の既定値は `false` とする。`sync apply` は conflict dir と tombstone dir を plan file からだけ読み、CLI option で再指定してはならない。`--open-uri` は `true` または `false` だけを許可する。`true` の場合でも、Obsidian URI の起動成功を sync 成功条件にしてはならない。URI 起動失敗は warning として report に記録し、apply / rollback の filesystem 結果を覆さない。
 
 Phase 15 CLI は、未知 command、未知 option、重複 option、必須 option 欠落、`--direction` の許可値外、`--delete-policy` の許可値外、`--open-uri` の `true` / `false` 以外を終了コード `2`、stderr `OBSIDIAN_SYNC_INVALID_OPTION` とする。path safety に到達した option 値の不合格は `OBSIDIAN_SYNC_PATH_INVALID` とし、enum / boolean / command / option の不合格と混同してはならない。
 
@@ -187,7 +187,7 @@ Phase 15 の成功時 stdout は canonical JSON object 1 行と LF だけとす�
 
 `project_root_digest` と `vault_root_digest` は同期対象 regular file を normalized path の UTF-8 byte 昇順で並べ、各 file について `normalized_path` + LF + lowercase SHA-256 + LF + decimal size + LF を連結した byte 列の SHA-256 lowercase hex とする。`state_digest` は `sync_state.json` の canonical JSON byte 列の SHA-256 lowercase hex とする。state file が未作成の場合、実装は empty state object を canonical JSON として生成し、その byte 列から `state_digest` を算出する。empty state object の `entries`、`tombstones`、`conflicts` は `[]`、`last_apply_id` は empty string とし、`project_root_digest` と `vault_root_digest` は現在 tree digest を入れる。
 
-`plan.json` は root object とし、key 順を `schema_version`、`plan_id`、`created_at_unix`、`direction`、`delete_policy`、`project_root_digest`、`vault_root_digest`、`state_digest`、`operations`、`conflicts`、`tombstones` に固定する。`schema_version` は `obsidian-sync-plan-v1` とする。`plan_id` は `direction` + LF + `delete_policy` + LF + `project_root_digest` + LF + `vault_root_digest` + LF + `state_digest` + LF の SHA-256 lowercase hex とする。`plan_hash` は `plan.json` canonical JSON byte 列の SHA-256 lowercase hex とし、`plan.json` 内には格納しない。
+`plan.json` は root object とし、key 順を `schema_version`、`plan_id`、`created_at_unix`、`direction`、`delete_policy`、`conflict_dir`、`tombstone_dir`、`project_root_digest`、`vault_root_digest`、`state_digest`、`operations`、`conflicts`、`tombstones` に固定する。`schema_version` は `obsidian-sync-plan-v1` とする。`conflict_dir` と `tombstone_dir` は project root 相対 path とし、plan 作成時に正規化した値だけを格納する。`plan_id` は `direction` + LF + `delete_policy` + LF + `conflict_dir` + LF + `tombstone_dir` + LF + `project_root_digest` + LF + `vault_root_digest` + LF + `state_digest` + LF の SHA-256 lowercase hex とする。`plan_hash` は `plan.json` canonical JSON byte 列の SHA-256 lowercase hex とし、`plan.json` 内には格納しない。
 
 `operations` は `path` の UTF-8 byte 昇順、同一 path 内は `conflict`、`tombstone`、`create`、`update`、`noop` の順に sort する。各 object の key 順は `op`、`direction`、`path`、`source`、`destination`、`before_digest`、`after_digest`、`conflict_id`、`tombstone_id`、`rollback_required` とする。`op` は `conflict`、`tombstone`、`create`、`update`、`noop`、`direction` は `project-to-vault`、`vault-to-project`、`none` のいずれかとする。該当しない string field は empty string、`rollback_required` は boolean とし、key を省略してはならない。
 
@@ -210,7 +210,7 @@ Phase 15 の `created_at_unix`、`started_at_unix`、`completed_at_unix`、`last
 
 `sync plan` は project tree、vault tree、sync state を読み、operation array を `--plan-file` へ JSON で出力する。plan hash は canonical JSON byte 列の SHA-256 lowercase hex とする。operation order は path の UTF-8 byte 昇順、同一 path 内は `conflict`、`tombstone`、`create`、`update`、`noop` の順とする。
 
-`sync apply` は state dir の process lock を取得し、plan file を再読込し、plan hash を照合し、project tree / vault tree / sync state の digest が plan 作成時と一致することを確認してから staging へ書く。書込み順序は、rollback record 初期版を staging へ書く、file fsync、parent directory fsync、rollback record を `--rollback-file` へ atomic rename、各 destination の sibling staging へ新 content または tombstone content を書く、file fsync、parent directory fsync、destination atomic rename、operation record status 更新、rollback record atomic rewrite、`sync_state.json` staging 書込み、file fsync、parent directory fsync、state atomic rename、state parent directory fsync、rollback record の `completed_at_unix` と `state_after_digest` 更新の順に固定する。途中失敗では、成功済み rename と state update を rollback record に記録し、終了コード `1` とする。rollback record を作成できない場合は destination への write を開始してはならない。
+`sync apply` は state dir の process lock を取得し、plan file を再読込し、plan hash を照合し、plan file 内の `conflict_dir` と `tombstone_dir` を含む全 path field を再検証し、project tree / vault tree / sync state の digest が plan 作成時と一致することを確認してから staging へ書く。書込み順序は、rollback record 初期版を staging へ書く、file fsync、parent directory fsync、rollback record を `--rollback-file` へ atomic rename、各 destination の sibling staging へ新 content または tombstone content を書く、file fsync、parent directory fsync、destination atomic rename、operation record status 更新、rollback record atomic rewrite、`sync_state.json` staging 書込み、file fsync、parent directory fsync、state atomic rename、state parent directory fsync、rollback record の `completed_at_unix` と `state_after_digest` 更新の順に固定する。途中失敗では、成功済み rename と state update を rollback record に記録し、終了コード `1` とする。rollback record を作成できない場合は destination への write を開始してはならない。
 
 `sync rollback` は rollback record の operation を逆順に処理する。rollback record の対象 path が現在 digest と一致しない場合は上書きせず conflict とし、終了コード `1`、stderr `OBSIDIAN_ROLLBACK_CONFLICT` とする。
 
