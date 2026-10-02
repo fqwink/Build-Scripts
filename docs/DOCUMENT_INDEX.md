@@ -14,8 +14,8 @@
 | 詳細仕様本文・証跡ディレクトリ | [`docs/details/`](details/) |
 | Phase 11 バグ修正ゼロ化の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | Phase 12 実装品質ゲート再構築の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry) |
-| Phase 12 正式 fixture root 候補 | [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 12 target path 所在](DOCUMENT_INDEX.md#phase-12-target-paths) |
-| Phase 12 required check workflow 候補 | [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 12 target path 所在](DOCUMENT_INDEX.md#phase-12-target-paths) |
+| Phase 12 正式 fixture root | [`testdata/phase12/quality-gate-reconstruction/`](../testdata/phase12/quality-gate-reconstruction/) |
+| Phase 12 required check workflow | [`.github/workflows/phase12-quality-gate.yml`](../.github/workflows/phase12-quality-gate.yml) |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
@@ -100,20 +100,61 @@
 | [`go.mod`](../go.mod) | Go module | 実在 |
 | [`sdk_contract_test.go`](../sdk_contract_test.go) | `sdk` contract test | 実在 |
 | [`ui_contract_test.go`](../ui_contract_test.go) | `ui` contract test | 実在 |
-| [`components/builder.go`](../components/builder.go) | `builder` | 実在 |
-| [`components/builder_test.go`](../components/builder_test.go) | `builder` test | 実在 |
-| [`components/runner.go`](../components/runner.go) | `runner` | 実在 |
-| [`components/runner_test.go`](../components/runner_test.go) | `runner` test | 実在 |
-| [`components/api.go`](../components/api.go) | `api` | 実在 |
-| [`components/api_test.go`](../components/api_test.go) | `api` test | 実在 |
-| [`components/admin.go`](../components/admin.go) | `admin` CLI | 実在 |
-| [`components/admin_test.go`](../components/admin_test.go) | `admin` CLI test | 実在 |
-| [`components/setup.go`](../components/setup.go) | `setup` | 実在 |
-| [`components/setup_test.go`](../components/setup_test.go) | `setup` test | 実在 |
-| [`components/release.go`](../components/release.go) | `release` | 実在 |
-| [`components/release_test.go`](../components/release_test.go) | `release` test | 実在 |
-| [`components/mcp.go`](../components/mcp.go) | `mcp` | 実在 |
-| [`components/mcp_test.go`](../components/mcp_test.go) | `mcp` test | 実在 |
+| [`components/admin/admin.go`](../components/admin/admin.go) | `admin` owner package 公開実行境界 | 実在 |
+| [`components/admin/model.go`](../components/admin/model.go) | `admin` owner package model | 実在 |
+| [`components/admin/validate.go`](../components/admin/validate.go) | `admin` owner package validation | 実在 |
+| [`components/admin/execute.go`](../components/admin/execute.go) | `admin` owner package execution | 実在 |
+| [`components/admin/admin_test.go`](../components/admin/admin_test.go) | `admin` owner package test | 実在 |
+| [`components/api/api.go`](../components/api/api.go) | `api` owner package 公開実行境界 | 実在 |
+| [`components/api/model.go`](../components/api/model.go) | `api` owner package model | 実在 |
+| [`components/api/validate.go`](../components/api/validate.go) | `api` owner package validation | 実在 |
+| [`components/api/execute.go`](../components/api/execute.go) | `api` owner package execution | 実在 |
+| [`components/api/api_test.go`](../components/api/api_test.go) | `api` owner package test | 実在 |
+| [`components/archive/archive.go`](../components/archive/archive.go) | `archive` owner package 公開実行境界 | 実在 |
+| [`components/archive/model.go`](../components/archive/model.go) | `archive` owner package model | 実在 |
+| [`components/archive/validate.go`](../components/archive/validate.go) | `archive` owner package validation | 実在 |
+| [`components/archive/execute.go`](../components/archive/execute.go) | `archive` owner package execution | 実在 |
+| [`components/archive/archive_test.go`](../components/archive/archive_test.go) | `archive` owner package test | 実在 |
+| [`components/builder/builder.go`](../components/builder/builder.go) | `builder` owner package 公開実行境界 | 実在 |
+| [`components/builder/model.go`](../components/builder/model.go) | `builder` owner package model | 実在 |
+| [`components/builder/validate.go`](../components/builder/validate.go) | `builder` owner package validation | 実在 |
+| [`components/builder/execute.go`](../components/builder/execute.go) | `builder` owner package execution | 実在 |
+| [`components/builder/builder_test.go`](../components/builder/builder_test.go) | `builder` owner package test | 実在 |
+| [`components/commitstatus/commitstatus.go`](../components/commitstatus/commitstatus.go) | `commitstatus` owner package 公開実行境界 | 実在 |
+| [`components/commitstatus/model.go`](../components/commitstatus/model.go) | `commitstatus` owner package model | 実在 |
+| [`components/commitstatus/validate.go`](../components/commitstatus/validate.go) | `commitstatus` owner package validation | 実在 |
+| [`components/commitstatus/execute.go`](../components/commitstatus/execute.go) | `commitstatus` owner package execution | 実在 |
+| [`components/commitstatus/commitstatus_test.go`](../components/commitstatus/commitstatus_test.go) | `commitstatus` owner package test | 実在 |
+| [`components/mcp/mcp.go`](../components/mcp/mcp.go) | `mcp` owner package 公開実行境界 | 実在 |
+| [`components/mcp/model.go`](../components/mcp/model.go) | `mcp` owner package model | 実在 |
+| [`components/mcp/validate.go`](../components/mcp/validate.go) | `mcp` owner package validation | 実在 |
+| [`components/mcp/execute.go`](../components/mcp/execute.go) | `mcp` owner package execution | 実在 |
+| [`components/mcp/mcp_test.go`](../components/mcp/mcp_test.go) | `mcp` owner package test | 実在 |
+| [`components/release/release.go`](../components/release/release.go) | `release` owner package 公開実行境界 | 実在 |
+| [`components/release/model.go`](../components/release/model.go) | `release` owner package model | 実在 |
+| [`components/release/validate.go`](../components/release/validate.go) | `release` owner package validation | 実在 |
+| [`components/release/execute.go`](../components/release/execute.go) | `release` owner package execution | 実在 |
+| [`components/release/release_test.go`](../components/release/release_test.go) | `release` owner package test | 実在 |
+| [`components/runner/runner.go`](../components/runner/runner.go) | `runner` owner package 公開実行境界 | 実在 |
+| [`components/runner/model.go`](../components/runner/model.go) | `runner` owner package model | 実在 |
+| [`components/runner/validate.go`](../components/runner/validate.go) | `runner` owner package validation | 実在 |
+| [`components/runner/execute.go`](../components/runner/execute.go) | `runner` owner package execution | 実在 |
+| [`components/runner/runner_test.go`](../components/runner/runner_test.go) | `runner` owner package test | 実在 |
+| [`components/security/security.go`](../components/security/security.go) | `security` owner package 公開実行境界 | 実在 |
+| [`components/security/model.go`](../components/security/model.go) | `security` owner package model | 実在 |
+| [`components/security/validate.go`](../components/security/validate.go) | `security` owner package validation | 実在 |
+| [`components/security/execute.go`](../components/security/execute.go) | `security` owner package execution | 実在 |
+| [`components/security/security_test.go`](../components/security/security_test.go) | `security` owner package test | 実在 |
+| [`components/setup/setup.go`](../components/setup/setup.go) | `setup` owner package 公開実行境界 | 実在 |
+| [`components/setup/model.go`](../components/setup/model.go) | `setup` owner package model | 実在 |
+| [`components/setup/validate.go`](../components/setup/validate.go) | `setup` owner package validation | 実在 |
+| [`components/setup/execute.go`](../components/setup/execute.go) | `setup` owner package execution | 実在 |
+| [`components/setup/setup_test.go`](../components/setup/setup_test.go) | `setup` owner package test | 実在 |
+| [`components/statefile/statefile.go`](../components/statefile/statefile.go) | `statefile` owner package 公開実行境界 | 実在 |
+| [`components/statefile/model.go`](../components/statefile/model.go) | `statefile` owner package model | 実在 |
+| [`components/statefile/validate.go`](../components/statefile/validate.go) | `statefile` owner package validation | 実在 |
+| [`components/statefile/execute.go`](../components/statefile/execute.go) | `statefile` owner package execution | 実在 |
+| [`components/statefile/statefile_test.go`](../components/statefile/statefile_test.go) | `statefile` owner package test | 実在 |
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | `sdk` | 実在 |
 | [`admin/index.html`](../admin/index.html) | `ui` | 実在 |
 | [`testdata/builder/`](../testdata/builder/) | `builder` fixture root | 実在 |
@@ -156,23 +197,25 @@
 | [`testdata/setup/`](../testdata/setup/) | `setup` fixture root | 実在 |
 | [`testdata/release/`](../testdata/release/) | `release` fixture root | 実在 |
 | [`testdata/mcp/`](../testdata/mcp/) | `mcp` fixture root | 実在 |
+| [`testdata/phase12/quality-gate-reconstruction/`](../testdata/phase12/quality-gate-reconstruction/) | Phase 12 quality gate fixture root | 実在 |
+| [`.github/workflows/phase12-quality-gate.yml`](../.github/workflows/phase12-quality-gate.yml) | Phase 12 required check workflow | 実在 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
 
 <a id="phase-12-target-paths"></a>
 **Phase 12 target path 所在：**
 
-以下は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) が定義する Phase 12 完了後の Go owner package 到達形であり、現時点の実在 path ではない。Phase 12 実装 PR で実在化した path は、同じ PR で [実装・テスト・fixture 所在](#実装ファイル一覧) の実在行へ移し、未作成行を残してはならない。
+以下は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) が定義する Phase 12 完了後の Go owner package 到達形であり、Phase 12 実装により実在化済みである。
 
 | path pattern | 対象 owner | 所在区分 |
 |--------------|------------|----------|
-| `components/<owner>/` | Phase 12 対象 Go owner package directory | 未作成 |
-| `components/<owner>/<owner>.go` | owner の公開実行境界 | 未作成 |
-| `components/<owner>/model.go` | owner の入力・出力・状態 model | 未作成 |
-| `components/<owner>/validate.go` | owner の入力・状態・設定・権限検証 | 未作成 |
-| `components/<owner>/execute.go` | owner の正常系・異常系実行順序 | 未作成 |
-| `components/<owner>/<owner>_test.go` | owner package の仕様契約検証 | 未作成 |
-| `testdata/phase12/quality-gate-reconstruction/` | Phase 12 正式 fixture root。作成する場合は closure record set 所在、manifest、input、expected を持つ。 | 未作成 |
-| `.github/workflows/phase12-quality-gate.yml` | Phase 12 required check workflow 候補。作成する場合は [`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) の required check name を実行する。 | 未作成 |
+| `components/<owner>/` | Phase 12 対象 Go owner package directory | 実在 |
+| `components/<owner>/<owner>.go` | owner の公開実行境界 | 実在 |
+| `components/<owner>/model.go` | owner の入力・出力・状態 model | 実在 |
+| `components/<owner>/validate.go` | owner の入力・状態・設定・権限検証 | 実在 |
+| `components/<owner>/execute.go` | owner の正常系・異常系実行順序 | 実在 |
+| `components/<owner>/<owner>_test.go` | owner package の仕様契約検証 | 実在 |
+| `testdata/phase12/quality-gate-reconstruction/` | Phase 12 正式 fixture root。closure record set 所在、manifest、input、expected を持つ。 | 実在 |
+| `.github/workflows/phase12-quality-gate.yml` | Phase 12 required check workflow。[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) の required check name を実行する。 | 実在 |
 
 `<owner>` に入る値は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 Go owner package target owner](DETAIL_INDEX.md#phase-12-go-owner-package-targets) に存在する owner だけとする。JavaScript / HTML artifact である `sdk` と `ui` は、Go owner package target path として扱わず、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) と [`admin/index.html`](../admin/index.html) の実在行を正とする。

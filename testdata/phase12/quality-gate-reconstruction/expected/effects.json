@@ -1,0 +1,11 @@
+{
+  "phase12_contract_mismatch_count": 0,
+  "phase12_state_safety_open_count": 0,
+  "phase12_fixture_harness_open_count": 0,
+  "phase12_mutation_survived_count": 0,
+  "phase12_race_trigger_open_count": 0,
+  "phase12_owner_package_violation_count": 0,
+  "phase12_ci_required_check_open_count": 0,
+  "phase12_release_reproducibility_open_count": 0,
+  "final_open_item_count": 0
+}

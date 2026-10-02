@@ -1,0 +1,42 @@
+{
+  "name": "quality-gate-reconstruction",
+  "section": "Phase 12 implementation quality gate reconstruction",
+  "feature": "owner package five-file fixed layout, CI required checks, mutation zero survivor, race trigger, fixture harness, release reproducibility closure",
+  "category": "success",
+  "owner_component": "runner",
+  "collaborator_components": [
+    "api",
+    "builder",
+    "commitstatus",
+    "mcp",
+    "release",
+    "security",
+    "setup",
+    "statefile"
+  ],
+  "components": [
+    "api",
+    "builder",
+    "commitstatus",
+    "mcp",
+    "release",
+    "runner",
+    "security",
+    "setup",
+    "statefile"
+  ],
+  "references": [
+    "docs/DETAIL_INDEX.md#phase-12-quality-gate-entry",
+    "docs/details/fixture.md#phase-12-quality-gate-evidence",
+    "docs/SPEC.md#sec-4-3"
+  ],
+  "fake_clock": "2026-10-02T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/scope.json"
+  ],
+  "assertions": [
+    "effects"
+  ]
+}

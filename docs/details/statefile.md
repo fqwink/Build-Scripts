@@ -9,7 +9,7 @@
 | 項目 | 内容 |
 |------|------|
 | owner component | `statefile` |
-| 実装主体 | 単独の Go artifact は持たない。runner が所有する状態の読み書きは [`components/runner.go`](../../components/runner.go)、API が所有する状態の読み書きは [`components/api.go`](../../components/api.go) に内包する。 |
+| 実装主体 | [`components/statefile/`](../../components/statefile/)。runner が所有する状態の読み書き境界は [`components/runner/`](../../components/runner/)、API が所有する状態の読み書き境界は [`components/api/`](../../components/api/) と接続する。 |
 | 持つ内容 | `statefile` owner が主本文として定義する状態ファイル共通仕様、lock、atomic write、JSON Lines、破損時処理、状態読取 adapter、主要 schema。 |
 | 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
@@ -1496,7 +1496,7 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | 対象 | 実装契約 | 完了時に残してはならない状態 |
 |------|----------|------------------------------|
 | source-code audit closure | Phase 11 で [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) から statefile owner へ割り当てた runtime 状態 write、JSON Lines append、read-only no mutation、strict schema、path / mode の差分は、statefile owner の adapter 契約と fixture 証跡で pass を記録する。 | source audit item が statefile owner へ割り当てられたまま未実装、未検証、owner 未確定、fixture 未接続、後続修正前提、または caller 独自実装残存として残る。 |
-| 共通 write adapter | runner と api が所有する runtime 状態ファイルの JSON object / JSON array / UTF-8 text 更新は、[状態ファイル更新手順](#statefile-update-procedure) を実行する単一の共通 write adapter を通す。既存 target の置換、create-only、chmod、file sync、parent directory sync、rename 前 cleanup、rename 後 failure の戻り値を adapter 外で分岐実装しない。 | `components/runner.go` と `components/api.go` に同じ write 手順の別実装、runtime directory mode `0755`、tmp 再利用、truncate write、parent sync 省略、chmod failure 成功扱いが残る。 |
+| 共通 write adapter | runner と api が所有する runtime 状態ファイルの JSON object / JSON array / UTF-8 text 更新は、[状態ファイル更新手順](#statefile-update-procedure) を実行する単一の共通 write adapter を通す。既存 target の置換、create-only、chmod、file sync、parent directory sync、rename 前 cleanup、rename 後 failure の戻り値を adapter 外で分岐実装しない。 | `components/runner/` と `components/api/` に同じ write 手順の別実装、runtime directory mode `0755`、tmp 再利用、truncate write、parent sync 省略、chmod failure 成功扱いが残る。 |
 | locked update adapter | 既存値に基づく更新は [lock 内 read-modify-write adapter 固定契約](#statefile-locked-update-adapter-contract) を使用する。mutation callback は typed current value と事前確定済み業務入力だけを使用し、filesystem、network、command、clock、entropy、別 state lock、component memory lock を呼び出さない。 | lock 取得前に読んだ current value で保存する更新、read adapter と write adapter の分離による lost update、nested lock、複数 lock 同時保持、callback の副作用が残る。 |
 | JSON Lines append | JSON Lines 追記は 1 record 1 行、末尾 LF、lock、sync、secret mask、append failure の caller 返却を固定する append adapter を通す。壊れた行の read は [状態読取 adapter 固定契約](#statefile-read-adapter-contract) に従い、公開 response へ壊れた行数や内容を出さない。 | lock / sync なし direct append、部分行の成功扱い、壊れた行の無証跡無視、既存行 rewrite / sort / repair、secret 原文の log / expected 出力が残る。 |
 | strict schema adapter | JSON object / array / JSON Lines の読取と保存前検証は [strict schema 固定契約](#statefile-schema-strictness-contract) に従う。未知 key、必須 key 欠落、型不一致、nullable 不一致、enum 不一致、UTC 時刻形式不一致を暗黙修復せず失敗させる。 | 未知 key を保持または削除して成功扱いにする、欠落 key を read 時に保存へ補完する、型変換、旧 key migration、schema_version 変換、部分 schema の保存成功が残る。 |

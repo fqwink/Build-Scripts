@@ -12,23 +12,23 @@
 | 項目 | 仕様 |
 |------|------|
 | owner component | `mcp` |
-| 実装対象ファイル | `components/mcp.go` |
+| 実装対象ファイル | [`components/mcp/`](../../components/mcp/) |
 | 起動入口 | `main.go` の command dispatch |
 | 配布 binary | `adlaire-ci-mcp` |
 | 通信方式 | loopback HTTP JSON-RPC 2.0 |
 | 既定 listen address | `127.0.0.1:8766` |
 | 外部公開 | 既定禁止 |
 | 永続化 | `statefile` owner の固定 state path を使用 |
-| 監査ログ | `components/mcp.go` が `statefile` owner の固定 state path へ追記 |
+| 監査ログ | [`components/mcp/`](../../components/mcp/) が `statefile` owner の固定 state path へ追記 |
 | API 連携 | `api` owner の endpoint 契約を再利用 |
 | runner 連携 | `runner` owner の queue / build / history 契約を再利用 |
 | 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
-`components/mcp.go` は MCP 専用の protocol adapter として動作する。
+`components/mcp/` は MCP 専用の protocol adapter として動作する。
 
-`components/mcp.go` は build、deploy、archive、commit status、API、SDK、UI、statefile、security の詳細仕様を再定義してはならない。
+`components/mcp/` は build、deploy、archive、commit status、API、SDK、UI、statefile、security の詳細仕様を再定義してはならない。
 
-`components/mcp.go` が他 owner の機能を操作する場合は、該当 owner の公開済み関数または state 契約だけを使用する。
+`components/mcp/` が他 owner の機能を操作する場合は、該当 owner の公開済み関数または state 契約だけを使用する。
 
 <a id="sec-29-1"></a>
 **29.1 起動 CLI：**

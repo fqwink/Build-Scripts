@@ -8,7 +8,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/fqwink/build-scripts/components"
+	"github.com/fqwink/build-scripts/components/admin"
+	"github.com/fqwink/build-scripts/components/api"
+	"github.com/fqwink/build-scripts/components/builder"
+	"github.com/fqwink/build-scripts/components/mcp"
+	"github.com/fqwink/build-scripts/components/release"
+	"github.com/fqwink/build-scripts/components/runner"
+	"github.com/fqwink/build-scripts/components/setup"
 )
 
 var binaryVersion = "V.0.0-dev"
@@ -19,26 +25,32 @@ func main() {
 
 func dispatchMain(name string, args []string, stdout io.Writer, stderr io.Writer) int {
 	name = canonicalBinaryName(name)
-	components.SetBinaryVersion(binaryVersion)
+	builder.SetBinaryVersion(binaryVersion)
+	runner.SetBinaryVersion(binaryVersion)
+	api.SetBinaryVersion(binaryVersion)
+	admin.SetBinaryVersion(binaryVersion)
+	setup.SetBinaryVersion(binaryVersion)
+	release.SetBinaryVersion(binaryVersion)
+	mcp.SetBinaryVersion(binaryVersion)
 	if hasMainExactArg(args, "--version") && isStandardBinaryName(name) {
 		fmt.Fprintf(stdout, "%s %s go=%s\n", name, binaryVersion, runtime.Version())
 		return 0
 	}
 	switch name {
 	case "adlaire-ci-build":
-		return components.RunBuild(args, stdout, stderr)
+		return builder.RunBuild(args, stdout, stderr)
 	case "adlaire-ci-runner":
-		return components.RunRunner(args, stdout, stderr)
+		return runner.RunRunner(args, stdout, stderr)
 	case "adlaire-ci-api":
-		return components.RunAPI(args, os.Stdin, stdout, stderr)
+		return api.RunAPI(args, os.Stdin, stdout, stderr)
 	case "adlaire-ci-admin":
-		return components.RunAdmin(args, stdout, stderr)
+		return admin.RunAdmin(args, stdout, stderr)
 	case "adlaire-ci-setup":
-		return components.RunSetup(args, stdout, stderr)
+		return setup.RunSetup(args, stdout, stderr)
 	case "adlaire-ci-release":
-		return components.RunRelease(args, stdout, stderr)
+		return release.RunRelease(args, stdout, stderr)
 	case "adlaire-ci-mcp":
-		return components.RunMCP(args, stdout, stderr)
+		return mcp.RunMCP(args, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command: %s\n", name)
 		return 2

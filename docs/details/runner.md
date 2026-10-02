@@ -11,7 +11,7 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 | 項目 | 内容 |
 |------|------|
 | owner component | `runner` |
-| 実装主体 | [`components/runner.go`](../../components/runner.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-runner` とする。 |
+| 実装主体 | [`components/runner/`](../../components/runner/)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-runner` とする。 |
 | 持つ内容 | `runner` owner が主本文として定義する GitHub 監視、設定読取、状態ファイル更新呼び出し、pipeline、deploy、snapshot 作成トリガー、通知、runner 検証条件、runner owner 追加機能。 |
 | 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
@@ -79,8 +79,8 @@ runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細�
 
 | パス | 用途 |
 |------|------|
-| `/usr/local/bin/adlaire-ci-runner` | `components/runner.go` から生成する CI ランナーバイナリ。 |
-| `/usr/local/bin/adlaire-ci-build` | `components/builder.go` から生成する Markdown → 静的 Web サイトビルドバイナリ。 |
+| `/usr/local/bin/adlaire-ci-runner` | `components/runner/` から生成する CI ランナーバイナリ。 |
+| `/usr/local/bin/adlaire-ci-build` | `components/builder/` から生成する Markdown → 静的 Web サイトビルドバイナリ。 |
 | `/opt/adlaire-builder/.github_token` | GitHub PAT。`runner` が読み込む。 |
 | `/opt/adlaire-builder/.last_sha` | 前回処理した target SHA / digest。JSON 形式で保存する。 |
 | `/opt/adlaire-builder/repo/docs/` | GitHub Blobs API から取得した Markdown の書き出し先。単一 Markdown の場合も本ディレクトリ内へ保存する。 |

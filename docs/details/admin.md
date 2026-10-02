@@ -9,7 +9,7 @@
 | 項目 | 内容 |
 |------|------|
 | owner component | `admin` |
-| 実装主体 | 配布対象は [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、CLI 管理クライアントは [`components/admin.go`](../../components/admin.go)、archive生成は`components/release.go`、配置は`components/setup.go`、HTTP静的配信は[`components/api.go`](../../components/api.go)とする。archive内容は本詳細本文、生成手順は[`docs/details/release.md`](release.md)、配置挙動は[`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)と[§26.8](setup.md#sec-26-8)を正本とする。 |
+| 実装主体 | 配布対象は [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js)、CLI 管理クライアントは [`components/admin/`](../../components/admin/)、archive 生成は [`components/release/`](../../components/release/)、配置は [`components/setup/`](../../components/setup/)、HTTP 静的配信は [`components/api/`](../../components/api/) とする。archive 内容は本詳細本文、生成手順は [`docs/details/release.md`](release.md)、配置挙動は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) と [§26.8](setup.md#sec-26-8) を正本とする。 |
 | 持つ内容 | `admin` owner が主本文として定義する管理 UI 静的ファイルの配布物構成、配置、検証、HTTP 静的配信境界、および CLI 管理クライアント。 |
 | 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
@@ -111,7 +111,7 @@ CLI 管理クライアントの owner は `admin` とする。
 
 配布 binary 名は `adlaire-ci-admin` とする。
 
-実装主体は `components/admin.go` とする。
+実装主体は `components/admin/` とする。
 
 起動入口は `main.go` の basename dispatch とする。
 

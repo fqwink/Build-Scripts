@@ -2,7 +2,7 @@
 
 [`docs/details/setup.md`](setup.md) 詳細本文責務は、バイナリ配布、配置、systemd、セットアップ、アップデート、Release 成果物の受け入れ・checksum 検証を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。実装 artifact と機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、fixture、fake、expected / effects、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
-[`docs/details/setup.md`](setup.md) が定義するのは `components/setup.go` が `adlaire-ci-setup` として実行する setup / update の挙動と、Release 成果物の受け入れ・checksum 検証契約である。GitHub Release 成果物の生成・公開前検証・公開は [`docs/details/release.md`](release.md) の `release` owner component が持ち、[`docs/details/setup.md`](setup.md) の責務に含めない。実装可否は [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](../SPEC.md#detail-contract-required-fields)、現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。
+[`docs/details/setup.md`](setup.md) が定義するのは [`components/setup/`](../../components/setup/) が `adlaire-ci-setup` として実行する setup / update の挙動と、Release 成果物の受け入れ・checksum 検証契約である。GitHub Release 成果物の生成・公開前検証・公開は [`docs/details/release.md`](release.md) の `release` owner component が持ち、[`docs/details/setup.md`](setup.md) の責務に含めない。実装可否は [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](../SPEC.md#detail-contract-required-fields)、現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。
 
 ---
 
@@ -13,7 +13,7 @@
 | 項目 | 内容 |
 |------|------|
 | owner component | `setup` |
-| 実装主体 | `components/setup.go`。起動入口は [`main.go`](../../main.go)、実行ファイル名は `adlaire-ci-setup`、起動 interface は [setup CLI 固定契約](#setup-cli-contract) とする。 |
+| 実装主体 | [`components/setup/`](../../components/setup/)。起動入口は [`main.go`](../../main.go)、実行ファイル名は `adlaire-ci-setup`、起動 interface は [setup CLI 固定契約](#setup-cli-contract) とする。 |
 | 持つ内容 | `setup` owner が主本文として定義するバイナリ配布、配置、systemd、セットアップ、アップデート、Release 成果物の受け入れ・checksum 検証。 |
 | 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
@@ -333,7 +333,7 @@ Go 版初回セットアップでは以下を実行しない。
 <a id="sec-26-4-1"></a>
 **[§26.4.1 Go 版 runner の systemd ファイル](setup.md#sec-26-4-1)：**
 
-**`/etc/systemd/system/adlaire-ci.service`**（[`components/runner.go`](../../components/runner.go)）：
+**`/etc/systemd/system/adlaire-ci.service`**（[`components/runner/`](../../components/runner/)）：
 
 ```ini
 [Unit]
@@ -346,7 +346,7 @@ WorkingDirectory=/opt/adlaire-builder
 ExecStart=/usr/local/bin/adlaire-ci-runner --state-dir /opt/adlaire-builder
 ```
 
-**`/etc/systemd/system/adlaire-ci.timer`**（[`components/runner.go`](../../components/runner.go) 定期起動タイマー）：
+**`/etc/systemd/system/adlaire-ci.timer`**（[`components/runner/`](../../components/runner/) 定期起動タイマー）：
 
 ```ini
 [Unit]
@@ -364,7 +364,7 @@ WantedBy=timers.target
 <a id="sec-26-4-2"></a>
 **[§26.4.2 管理 API 導入後の systemd ファイル](setup.md#sec-26-4-2)：**
 
-**`/etc/systemd/system/adlaire-ci-api.service`**（[`components/api.go`](../../components/api.go)）：
+**`/etc/systemd/system/adlaire-ci-api.service`**（[`components/api/`](../../components/api/)）：
 
 ```ini
 [Unit]

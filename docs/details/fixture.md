@@ -196,6 +196,8 @@ Phase 12 closure record set は、[test verification closure record set 固定�
 
 Phase 12 closure record set の記録先は、Phase 12 実装 PR 本文の `Verification` に置く implementation PR evidence package を必須とする。正式 fixture root を追加する場合は、同じ PR で `testdata/phase12/quality-gate-reconstruction/` を作成し、`manifest.json`、`input/`、`expected/`、closure record set への参照を置く。PR 本文または正式 fixture root のいずれにも closure record set の所在がない場合、Phase 12 を完了扱いにしてはならない。
 
+Phase 12 の正式 fixture root は [`testdata/phase12/quality-gate-reconstruction/`](../../testdata/phase12/quality-gate-reconstruction/) とする。同 root の `manifest.json`、`input/scope.json`、`expected/effects.json` は Phase 12 closure counter を記録し、[`main_test.go`](../../main_test.go) の `TestPhase12QualityGateEvidence` と `TestPhase12StandardArtifactInventory` が `final_open_item_count=0`、owner package 5 ファイル固定、required check workflow 実在を検査する。
+
 Phase 12 の CI required check は、GitHub workflow が作成されていない場合でも対象外にしてはならない。Phase 12 実装 PR は `.github/workflows/phase12-quality-gate.yml` を作成するか、同等の required check 名を GitHub 側で必須化した証跡を同じ PR 本文へ記録する。GitHub workflow は YAML 禁止の対象外であるが、workflow から実行する Adlaire CI 入出力、fixture manifest、expected、state、設定形式は JSON 契約に従う。
 
 | required check name | 必須実行 | 完了条件 |

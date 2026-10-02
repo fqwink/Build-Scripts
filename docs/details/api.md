@@ -13,7 +13,7 @@ api 連動機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕�
 | 項目 | 内容 |
 |------|------|
 | owner component | `api` |
-| 実装主体 | [`components/api.go`](../../components/api.go)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-api` とする。 |
+| 実装主体 | [`components/api/`](../../components/api/)。起動入口は [`main.go`](../../main.go)、実行バイナリ名は `adlaire-ci-api` とする。 |
 | 持つ内容 | `api` owner が主本文として定義する HTTP 共通契約、endpoint、request / response、状態ファイル read/write 呼び出し境界、認証連携、api owner 追加機能。 |
 | 検証接続 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner 詳細本文 検証接続共通入口](../DETAIL_INDEX.md#owner-detail-verification-route) を参照する。 |
 
@@ -25,13 +25,13 @@ api 連動機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕�
 
 ```
 systemd timer
-  └─ components/runner.go（変更検出・ビルド起動）
+  └─ components/runner/（変更検出・ビルド起動）
        └─ SSH 転送
 
-components/api.go（常駐 HTTP サーバー）
+components/api/（常駐 HTTP サーバー）
 
 admin/index.html（標準管理ツール）
-  └─ adlaire-ci-sdk.js（SDK）─── HTTP ───► components/api.go
+  └─ adlaire-ci-sdk.js（SDK）─── HTTP ───► components/api/
 ```
 
 owner component `api` は、Go 標準ライブラリ `net/http` で実装し、管理ツールからの API リクエストを受け付ける。`runner` とは独立して常駐する。

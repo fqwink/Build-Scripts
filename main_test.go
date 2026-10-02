@@ -146,83 +146,153 @@ func TestDispatchMainExactBasename(t *testing.T) {
 	}
 }
 
-func TestPhase11StandardArtifactInventory(t *testing.T) {
+func TestPhase12StandardArtifactInventory(t *testing.T) {
 	t.Parallel()
+
+	ownerPackages := []string{
+		"admin",
+		"api",
+		"archive",
+		"builder",
+		"commitstatus",
+		"mcp",
+		"release",
+		"runner",
+		"security",
+		"setup",
+		"statefile",
+	}
+	allowedOwnerFiles := map[string][]string{}
+	for _, owner := range ownerPackages {
+		allowedOwnerFiles[owner] = []string{
+			owner + ".go",
+			"model.go",
+			"validate.go",
+			"execute.go",
+			owner + "_test.go",
+		}
+	}
 
 	requiredFiles := []string{
 		"main.go",
 		"main_test.go",
 		"sdk_contract_test.go",
 		"ui_contract_test.go",
-		"components/admin.go",
-		"components/admin_test.go",
-		"components/api.go",
-		"components/api_test.go",
-		"components/builder.go",
-		"components/builder_test.go",
-		"components/mcp.go",
-		"components/mcp_test.go",
-		"components/release.go",
-		"components/release_test.go",
-		"components/runner.go",
-		"components/runner_test.go",
-		"components/setup.go",
-		"components/setup_test.go",
 		"admin/adlaire-ci-sdk.js",
 		"admin/index.html",
+		".github/workflows/phase12-quality-gate.yml",
+	}
+	for _, owner := range ownerPackages {
+		for _, file := range allowedOwnerFiles[owner] {
+			requiredFiles = append(requiredFiles, filepath.ToSlash(filepath.Join("components", owner, file)))
+		}
 	}
 	for _, path := range requiredFiles {
 		info, err := os.Stat(path)
 		if err != nil {
-			t.Fatalf("required Phase 11 artifact %s is missing: %v", path, err)
+			t.Fatalf("required Phase 12 artifact %s is missing: %v", path, err)
 		}
 		if info.IsDir() {
-			t.Fatalf("required Phase 11 artifact %s must be a file", path)
+			t.Fatalf("required Phase 12 artifact %s must be a file", path)
 		}
 	}
 
 	if _, err := os.Stat("cmd"); !os.IsNotExist(err) {
-		t.Fatalf("cmd directory must not exist in the standard Phase 11 layout: %v", err)
+		t.Fatalf("cmd directory must not exist in the standard Phase 12 layout: %v", err)
 	}
 
-	expectedComponentFiles := []string{
-		"components/admin.go",
-		"components/admin_test.go",
-		"components/api.go",
-		"components/api_test.go",
-		"components/builder.go",
-		"components/builder_test.go",
-		"components/mcp.go",
-		"components/mcp_test.go",
-		"components/release.go",
-		"components/release_test.go",
-		"components/runner.go",
-		"components/runner_test.go",
-		"components/setup.go",
-		"components/setup_test.go",
-	}
-	var componentFiles []string
 	entries, err := os.ReadDir("components")
 	if err != nil {
 		t.Fatalf("read components directory: %v", err)
 	}
+	var ownerDirs []string
 	for _, entry := range entries {
-		if entry.IsDir() {
-			t.Fatalf("components must remain a one-file-per-artifact directory, unexpected subdirectory %s", entry.Name())
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".go") {
+			t.Fatalf("components root must not contain Go file after Phase 12 owner package split: %s", entry.Name())
 		}
-		if strings.HasSuffix(entry.Name(), ".go") {
-			componentFiles = append(componentFiles, filepath.ToSlash(filepath.Join("components", entry.Name())))
+		if entry.IsDir() {
+			ownerDirs = append(ownerDirs, entry.Name())
 		}
 	}
-	sort.Strings(componentFiles)
-	if !phase11StringSlicesEqual(componentFiles, expectedComponentFiles) {
-		t.Fatalf("unexpected components Go files\nwant: %v\n got: %v", expectedComponentFiles, componentFiles)
+	sort.Strings(ownerDirs)
+	if !phase11StringSlicesEqual(ownerDirs, ownerPackages) {
+		t.Fatalf("unexpected components owner directories\nwant: %v\n got: %v", ownerPackages, ownerDirs)
+	}
+
+	for _, owner := range ownerPackages {
+		entries, err := os.ReadDir(filepath.Join("components", owner))
+		if err != nil {
+			t.Fatalf("read owner package %s: %v", owner, err)
+		}
+		var goFiles []string
+		for _, entry := range entries {
+			if entry.IsDir() {
+				t.Fatalf("owner package %s must not contain subdirectory %s", owner, entry.Name())
+			}
+			if strings.HasSuffix(entry.Name(), ".go") {
+				goFiles = append(goFiles, entry.Name())
+			}
+		}
+		sort.Strings(goFiles)
+		want := append([]string(nil), allowedOwnerFiles[owner]...)
+		sort.Strings(want)
+		if !phase11StringSlicesEqual(goFiles, want) {
+			t.Fatalf("owner package %s must use exactly five fixed files\nwant: %v\n got: %v", owner, want, goFiles)
+		}
 	}
 
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
 	for _, path := range requiredFiles {
 		if !strings.Contains(documentIndex, path) {
 			t.Fatalf("docs/DOCUMENT_INDEX.md does not index required artifact %s", path)
+		}
+	}
+}
+
+func TestPhase12QualityGateEvidence(t *testing.T) {
+	t.Parallel()
+
+	workflow := phase11MustReadText(t, ".github/workflows/phase12-quality-gate.yml")
+	for _, job := range []string{
+		"phase12-go-format:",
+		"phase12-go-test:",
+		"phase12-go-race:",
+		"phase12-go-vet:",
+		"phase12-deno-check-sdk:",
+		"phase12-fixture-harness:",
+		"phase12-mutation:",
+	} {
+		if !strings.Contains(workflow, job) {
+			t.Fatalf("Phase 12 workflow must include required job %s", strings.TrimSuffix(job, ":"))
+		}
+	}
+
+	effectsPath := "testdata/phase12/quality-gate-reconstruction/expected/effects.json"
+	var effects map[string]int
+	data, err := os.ReadFile(effectsPath)
+	if err != nil {
+		t.Fatalf("read Phase 12 effects: %v", err)
+	}
+	if err := json.Unmarshal(data, &effects); err != nil {
+		t.Fatalf("decode Phase 12 effects: %v", err)
+	}
+	for _, key := range []string{
+		"phase12_contract_mismatch_count",
+		"phase12_state_safety_open_count",
+		"phase12_fixture_harness_open_count",
+		"phase12_mutation_survived_count",
+		"phase12_race_trigger_open_count",
+		"phase12_owner_package_violation_count",
+		"phase12_ci_required_check_open_count",
+		"phase12_release_reproducibility_open_count",
+		"final_open_item_count",
+	} {
+		value, ok := effects[key]
+		if !ok {
+			t.Fatalf("Phase 12 effects must include %s", key)
+		}
+		if value != 0 {
+			t.Fatalf("Phase 12 effects %s must be 0, got %d", key, value)
 		}
 	}
 }
@@ -372,6 +442,8 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
 	phase11CompleteRow := "| Phase 11 | バグ修正ゼロ化。source-code audit、横断 regression、正式 fixture harness、意味のあるテスト、test gap inventory / batch closure、race trigger、mutation selection / mutation zero survivor、contract drift の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。 | 実装済み | Phase 10 |"
 	phase11IncompleteRow := strings.Replace(phase11CompleteRow, "| 実装済み |", "| 実装中・検証未完了 |", 1)
+	phase12CompleteRow := "| Phase 12 | 実装品質ゲート再構築。契約不整合、状態安全性、実行型 fixture harness、mutation / race、owner package 5 ファイル固定、release 再現性の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry) を参照する。 | 実装済み | Phase 11 |"
+	phase12IncompleteRow := strings.Replace(phase12CompleteRow, "| 実装済み |", "| 実装中・検証未完了 |", 1)
 
 	if !strings.Contains(roadmap, phase11CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 11 as 実装済み after Phase 11 closure records reach final_open_item_count=0")
@@ -379,11 +451,17 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if strings.Contains(roadmap, phase11IncompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must not keep Phase 11 as 実装中・検証未完了 after closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase はなしとする。") {
-		t.Fatalf("docs/ROADMAP.md must state that no active Phase remains after Phase 11 completion")
+	if !strings.Contains(roadmap, phase12CompleteRow) {
+		t.Fatalf("docs/ROADMAP.md must mark Phase 12 as 実装済み after Phase 12 closure records reach final_open_item_count=0")
 	}
-	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 11 まではすべて `実装済み`") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 11 are all implemented after Phase 11 closure")
+	if strings.Contains(roadmap, phase12IncompleteRow) {
+		t.Fatalf("docs/ROADMAP.md must not keep Phase 12 as 実装中・検証未完了 after closure")
+	}
+	if !strings.Contains(roadmap, "現在の active Phase はなしとする。") {
+		t.Fatalf("docs/ROADMAP.md must state that no active Phase remains after Phase 12 completion")
+	}
+	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 12 まではすべて `実装済み`") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 12 are all implemented after Phase 12 closure")
 	}
 
 	for _, feature := range phase11QualityGateFeatures {
@@ -394,6 +472,21 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 		forbidden := "| 実装中・検証未完了 | 検証基盤 | " + feature + " |"
 		if strings.Contains(roadmap, forbidden) {
 			t.Fatalf("docs/ROADMAP.md must not keep Phase 11 feature as 実装中・検証未完了 after closure: %s", feature)
+		}
+	}
+	for _, feature := range phase12QualityGateFeatures {
+		want := "| 実装済み | 検証基盤 | " + feature + " |"
+		if strings.Contains(feature, "owner package") {
+			want = "| 実装済み | 実装構造 | " + feature + " |"
+		}
+		if strings.Contains(feature, "version tag") {
+			want = "| 実装済み | 配布・リリース | " + feature + " |"
+		}
+		if !strings.Contains(roadmap, want) {
+			t.Fatalf("docs/ROADMAP.md must mark Phase 12 feature as 実装済み: %s", feature)
+		}
+		if strings.Contains(roadmap, "| 実装中・検証未完了 |") && strings.Contains(roadmap, feature) {
+			t.Fatalf("docs/ROADMAP.md must not keep Phase 12 feature as 実装中・検証未完了 after closure: %s", feature)
 		}
 	}
 
@@ -518,6 +611,14 @@ var phase11QualityGateFeatures = []string{
 	"SDK / UI / admin CLI / MCP bridge / route parity regression gate",
 	"setup / release distribution / filesystem / external boundary regression gate",
 	"正式 fixture directory harness / fixture identity / fixture manifest / contract drift zero gate",
+}
+
+var phase12QualityGateFeatures = []string{
+	"Phase 12 契約不整合・状態安全性 gate",
+	"Phase 12 実行型 fixture harness / dependency injection / production entrypoint / expected 比較 gate",
+	"Phase 12 mutation / race / queue state machine / CI required checks gate",
+	"Phase 12 owner package 5 ファイル固定 / 巨大コンポーネント分割 gate",
+	"Phase 12 version tag / release notes / release reproducibility gate",
 }
 
 var phase11BuilderFormalFixtures = []string{
