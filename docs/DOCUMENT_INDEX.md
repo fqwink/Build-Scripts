@@ -171,4 +171,4 @@
 | `components/<owner>/execute.go` | owner の正常系・異常系実行順序 | 未作成 |
 | `components/<owner>/<owner>_test.go` | owner package の仕様契約検証 | 未作成 |
 
-`<owner>` に入る値は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner component 別詳細本文・fixture 参照表](DETAIL_INDEX.md#0b-詳細仕様参照表) に存在し、Go owner package として実装する対象に限る。JavaScript / HTML artifact である `sdk` と `ui` は、Go owner package target path として扱わず、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) と [`admin/index.html`](../admin/index.html) の実在行を正とする。
+`<owner>` に入る値は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 Go owner package target owner](DETAIL_INDEX.md#phase-12-go-owner-package-targets) に存在する owner だけとする。JavaScript / HTML artifact である `sdk` と `ui` は、Go owner package target path として扱わず、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) と [`admin/index.html`](../admin/index.html) の実在行を正とする。

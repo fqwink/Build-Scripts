@@ -335,7 +335,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 Phase 12 完了後の Go 実装標準配置は owner component package とし、`main.go` は 1 ファイル固定、各標準 Go owner package は 5 ファイル固定とする。5 ファイル固定は例外禁止であり、実装量、Go 慣習、既存巨大ファイル、共通化希望、テスト都合、将来拡張を理由に 6 ファイル目、補助 package、`helper.go`、`utils.go`、`common.go`、`misc.go`、責務外の集約ファイル、または owner 以外の逃がし先を作ってはならない。5 ファイルに収まらない場合は、ファイル数を増やさず、owner component の責務分割または仕様分割を先に行う。
 
-Phase 12 完了後の各標準 Go owner package は以下の構成だけを許可する。`<owner>` は [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で定義された owner component 名と一致させる。
+Phase 12 完了後の各標準 Go owner package は以下の構成だけを許可する。`<owner>` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 Go owner package target owner](DETAIL_INDEX.md#phase-12-go-owner-package-targets) に定義された Go owner package target 名と一致させる。`sdk` と `ui` は JavaScript / HTML artifact を正本とし、Go owner package target として扱ってはならない。
 
 ```text
 components/<owner>/
@@ -408,7 +408,7 @@ Phase を Pull Request の境界にすることは、Phase の一部分だけを
 <a id="sec-4-8"></a>
 **4.8 完了判定方針：**
 
-`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。Phase 11 の横断 acceptance gate、差し戻し条件、未残条件は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) を正本とし、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
+`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。Phase 11 の横断 acceptance gate、差し戻し条件、未残条件、Phase 12 の実装品質ゲート再構築、状態復帰条件、未残条件は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) を正本とし、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
 
 バグ修正ゼロ化とは、実装済み機能、実装中・検証未完了機能、または Phase 11 対象として [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に割り当てた検証基盤について、既知の仕様不整合、未検証分岐、未固定の副作用、secret 漏えい可能性、状態 schema 揺れ、fixture 不足、環境依存の合格条件、実装後の追加修正前提を残さない状態をいう。バグ修正ゼロ化は品質目標であり、仕様外の新機能追加、状態語彙の緩和、検証省略、または fixture 期待値の弱体化を許可する理由にしてはならない。
 
@@ -424,7 +424,7 @@ Phase 12 は、Phase 11 完了後に残る実装品質ゲートの構造不足�
 
 Phase 12 の実装開始時は、Phase 11 と状態ファイル共通永続化を完了済みの事実として盲信してはならない。Phase 12 の再評価で必須証跡不足、contract drift、statefile lock / append / atomic write 不備、fixture harness 未接続、mutation 生存、race trigger 未判定、owner package 違反、release reproducibility 不足を検出した場合は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の該当行を `実装中・検証未完了` へ戻し、同一 Phase 12 実装変更内で修正、検証、証跡記録、状態復帰を完了しなければならない。差分が検出されなかった対象だけを、Phase 12 closure record 上で `closed` または `not_applicable` として扱える。
 
-Phase 12 の完了は、[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) の全証跡対象が closed、`final_open_item_count=0`、contract mismatch `0`、fixture harness open item `0`、mutation `survived=0`、race trigger open `0`、owner package violation `0`、CI required check 未実行 `0`、release reproducibility open item `0`、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の実在 / 未作成 path 不整合 `0` を満たす場合だけ認める。Phase 12 完了後に owner package 5 ファイル固定へ移行した Go owner は、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の 5 ファイル固定構成以外へ戻してはならない。
+Phase 12 の完了は、[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) の全証跡対象が closed、`phase12_contract_mismatch_count=0`、`phase12_state_safety_open_count=0`、`phase12_fixture_harness_open_count=0`、`phase12_mutation_survived_count=0`、`phase12_race_trigger_open_count=0`、`phase12_owner_package_violation_count=0`、`phase12_ci_required_check_open_count=0`、`phase12_release_reproducibility_open_count=0`、`final_open_item_count=0`、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の実在 / 未作成 path 不整合 `0` を満たす場合だけ認める。Phase 12 完了後に owner package 5 ファイル固定へ移行した Go owner は、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の 5 ファイル固定構成以外へ戻してはならない。
 
 <a id="49-仕様策定単位方針"></a>
 

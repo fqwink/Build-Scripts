@@ -170,6 +170,36 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 
 [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、Phase 12 の対象から該当する owner 詳細本文、fixture 証跡、方針責務、状態・計画責務への入口だけを固定する。Phase 12 の現在状態、依存 Phase、active Phase は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、Go 実装構造方針は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit)、テスト方針は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、fixture 証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) を参照する。
 
+<a id="phase-12-implementation-order"></a>
+Phase 12 は以下の内部順序で実装、検証、証跡記録、状態更新を進める。前の順序に open item が残る場合、後続順序を完了扱いにしてはならない。
+
+| 順序 | 固定する gate | 完了時の必須到達先 |
+|------|---------------|--------------------|
+| 1 | Phase 11 と状態ファイル共通永続化の再評価、必要な状態復帰 | [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) |
+| 2 | API / SDK / UI / Admin CLI / setup / security の契約不整合、状態安全性、出力契約 | 下表の契約不整合・状態安全性対象、`phase12_contract_mismatch_count=0`、`phase12_state_safety_open_count=0` |
+| 3 | production entrypoint 実行型 fixture harness、fake adapter、actual / expected 比較 | [`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence)、`phase12_fixture_harness_open_count=0` |
+| 4 | production code mutation、race trigger、runner queue / finalizer 状態機械 | `phase12_mutation_survived_count=0`、`phase12_race_trigger_open_count=0` |
+| 5 | Go owner package 5 ファイル固定、巨大 component file 分割、target path 整合 | [Phase 12 Go owner package target owner](#phase-12-go-owner-package-targets)、[`docs/DOCUMENT_INDEX.md` Phase 12 target path 所在](DOCUMENT_INDEX.md#phase-12-target-paths)、`phase12_owner_package_violation_count=0` |
+| 6 | CI required checks、release reproducibility、version tag、release notes | `phase12_ci_required_check_open_count=0`、`phase12_release_reproducibility_open_count=0` |
+| 7 | closure record set、対象外理由 anchor、状態復帰完了、PR 証跡 | `final_open_item_count=0`、[`docs/details/fixture.md` fixture 証跡責務 implementation PR evidence template 固定契約](details/fixture.md#implementation-pr-evidence-template-contract) |
+
+<a id="phase-12-go-owner-package-targets"></a>
+Phase 12 で Go owner package 5 ファイル固定の対象にする owner は下表だけとする。`sdk` と `ui` は JavaScript / HTML artifact を正本とするため、Go owner package 化の対象に含めない。
+
+| Go owner package target | Phase 12 開始時の実装 artifact | 主本文 |
+|-------------------------|-------------------------------|--------|
+| `builder` | `components/builder.go` | [`docs/details/builder.md` 詳細本文責務](details/builder.md) |
+| `runner` | `components/runner.go` | [`docs/details/runner.md` 詳細本文責務](details/runner.md) |
+| `api` | `components/api.go` | [`docs/details/api.md` 詳細本文責務](details/api.md) |
+| `admin` | `components/admin.go` | [`docs/details/admin.md` 詳細本文責務](details/admin.md) |
+| `setup` | `components/setup.go` | [`docs/details/setup.md` 詳細本文責務](details/setup.md) |
+| `release` | `components/release.go` | [`docs/details/release.md` 詳細本文責務](details/release.md) |
+| `mcp` | `components/mcp.go` | [`docs/details/mcp.md` 詳細本文責務](details/mcp.md) |
+| `statefile` | `components/api.go` / `components/runner.go` / `components/mcp.go` 内の状態ファイル共通責務 | [`docs/details/statefile.md` 詳細本文責務](details/statefile.md) |
+| `archive` | `components/api.go` / `components/admin.go` / `components/setup.go` / `components/release.go` 内の archive 責務 | [`docs/details/archive.md` 詳細本文責務](details/archive.md) |
+| `commitstatus` | `components/runner.go` 内の GitHub Commit Status 責務 | [`docs/details/commitstatus.md` 詳細本文責務](details/commitstatus.md) |
+| `security` | `components/builder.go` / `components/runner.go` / `components/api.go` / `components/admin.go` / `components/setup.go` / `components/release.go` / `components/mcp.go` 内の security 責務 | [`docs/details/security.md` 詳細本文責務](details/security.md) |
+
 | Phase 12 対象 | owner / 責務 | 詳細本文 / fixture 証跡 |
 |---------------|--------------|--------------------------|
 | Phase 11 と状態ファイル共通永続化の再評価 | 状態・計画責務 / fixture 証跡責務 / `statefile` | [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、[`docs/ROADMAP.md` 状態・計画責務 §5](ROADMAP.md#522-統合ロードマップ表)、[`docs/details/statefile.md` 詳細本文責務 §22.0a](details/statefile.md#sec-22-0a)、[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) |
