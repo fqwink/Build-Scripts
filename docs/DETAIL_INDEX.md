@@ -303,7 +303,7 @@ Phase 14 の Go owner package target は `obsidian` だけとする。Phase 14 �
 <a id="phase-15-obsidian-local-sync-entry"></a>
 **Phase 15 Obsidian local vault 同期参照：**
 
-[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、Phase 15 の対象から `obsidian` owner 詳細本文、statefile / security collaborator 境界、fixture 証跡、状態・計画責務への入口だけを固定する。Phase 15 の現在状態、依存 Phase、active Phase は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit)、fixture 証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) を参照する。
+[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務では、Phase 15 の対象から `obsidian` owner 詳細本文、statefile / security / release / setup collaborator 境界、fixture 証跡、状態・計画責務への入口だけを固定する。Phase 15 の現在状態、依存 Phase、active Phase は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、Phase 単位の完了条件は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit)、fixture 証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) を参照する。
 
 Phase 15 の Go owner package target は `obsidian` だけとする。Phase 15 実装で `obsidian` 以外の新規 owner package を追加してはならない。`statefile`、`security`、`release`、`setup` は collaborator として参照し、Phase 15 の sync plan、sync apply、sync rollback、conflict、tombstone 判断を所有してはならない。
 
