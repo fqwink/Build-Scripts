@@ -123,6 +123,19 @@ wikilink / embed parser は、code fence と inline code span を先に保護し
 
 Phase 14 の link 解決は、entry note から到達可能な note graph だけを対象にする。filter file の include は到達対象を増やせるが、exclude が entry note を除外する場合は終了コード `2`、stderr `OBSIDIAN_ENTRY_EXCLUDED`。
 
+normalized Markdown への変換は次に固定する。変換後の Markdown は UTF-8、LF、末尾 LF は入力 `source_trailing_lf` と一致させる。変換後に builder へ渡す link destination は normalized note file から見た slash 区切りの相対 path とし、`filepath.Rel` 相当の結果を `/` 区切りへ固定し、空文字、backslash、absolute path、`..` で中間 root 外へ出る path を禁止する。
+
+| 入力 token | resolved 時の normalized Markdown | unresolved / warning 時の normalized Markdown | failure 条件 |
+|------------|------------------------------------|----------------------------------------------|--------------|
+| note wikilink | `[display](relative-target.md)` または `[display](relative-target.md#slug)` に置換する。`display` は alias が非空なら alias、alias が空なら heading が非空なら heading、heading が空なら target の basename without extension とする。 | non-strict では raw token を byte 単位で保持し、`obsidian_map.json` diagnostics に記録する。strict では stderr `OBSIDIAN_UNRESOLVED_LINK`。 | target path safety 不合格、duplicate basename、heading slug 不一致、malformed token。 |
+| asset image embed | `![display](relative-asset-path)` に置換する。`.png`、`.jpg`、`.jpeg`、`.gif`、`.webp`、`.svg` を image embed とする。`display` は alias が非空なら alias、alias が空なら asset basename とする。 | non-strict では raw token を byte 単位で保持し、`obsidian_map.json` diagnostics に記録する。strict では stderr `OBSIDIAN_UNRESOLVED_LINK`。 | asset path safety 不合格、許可外 extension、digest 読取失敗、vault 外参照。 |
+| asset PDF embed | `[display](relative-asset-path)` に置換する。`display` は alias が非空なら alias、alias が空なら asset basename とする。 | non-strict では raw token を byte 単位で保持し、`obsidian_map.json` diagnostics に記録する。strict では stderr `OBSIDIAN_UNRESOLVED_LINK`。 | asset path safety 不合格、digest 読取失敗、vault 外参照。 |
+| tag | Markdown 本文 byte は変更しない。抽出結果だけを `obsidian_map.json` の `tags` へ記録する。 | duplicate tag は non-strict で warning、strict で stderr `OBSIDIAN_DUPLICATE_TAG`。 | tag 本文が固定 grammar に合格しない場合は通常 text。 |
+
+`relative-target.md` は target note の normalized path を source note の normalized path の parent から見た相対 path とする。entry note への link は `index.md`、entry 以外への link は `notes/<source_path>` を基準に計算する。heading link の `slug` は [`docs/details/builder.md` 詳細本文責務 §28 ID / slug / search index / JS state 決定性固定契約](builder.md#sec-28-common-determinism) と同じ slug base と duplicate slug 規則で target note 内の見出しから確定した値を使用する。Obsidian heading text を URL encode、percent decode、case fold、Unicode 正規化してはならない。
+
+Markdown link text と image alt text に使う `display` は `[`、`]`、NUL、CR、LF を含んではならない。`display` がこの条件に合格しない場合は `OBSIDIAN_WIKILINK_MALFORMED` とする。変換処理は code fence、inline code span、YAML rejection、wikilink / embed 解析、tag 抽出、heading slug 作成、link / embed 置換の順に実行する。置換は source note 内の token 開始 byte offset 降順で行い、先に置換した token が後続 token の line / column、diagnostic、map sort に影響してはならない。
+
 <a id="obsidian-phase14-builder-handoff-contract"></a>
 **Phase 14 builder handoff 契約：**
 
@@ -138,7 +151,7 @@ Phase 14 は正規化済み中間 root を builder owner component へ渡す。b
 <a id="obsidian-phase15-local-sync-contract"></a>
 **Phase 15 Obsidian local vault 同期契約：**
 
-Phase 15 は `adlaire-ci-obsidian sync plan`、`adlaire-ci-obsidian sync apply`、`adlaire-ci-obsidian sync rollback` で起動する。`sync plan` は書込みを行わない。`sync apply` は `sync plan` が生成した plan file と plan hash が一致する場合だけ書込みを行う。`sync rollback` は apply が生成した rollback record に基づいて、最後に成功または部分失敗した apply の影響を戻す。
+Phase 15 は `adlaire-ci-obsidian sync plan`、`adlaire-ci-obsidian sync apply`、`adlaire-ci-obsidian sync rollback` で起動する。`sync plan` は project root、vault root、`sync_state.json` を変更せず、`--plan-file` への plan JSON atomic write だけを行う。`sync apply` は `sync plan` が生成した plan file と plan hash が一致する場合だけ書込みを行う。`sync rollback` は apply が生成した rollback record に基づいて、最後に成功または部分失敗した apply の影響を戻す。
 
 | 同期対象 | 契約 |
 |----------|------|
@@ -150,16 +163,18 @@ Phase 15 は `adlaire-ci-obsidian sync plan`、`adlaire-ci-obsidian sync apply`�
 
 `--conflict-dir` と `--tombstone-dir` は project root 相対 path とし、Phase 14 / Phase 15 共通 path safety に合格しなければならない。未指定時の既定値は `adlaire-ci-conflicts/` と `adlaire-ci-tombstones/` とする。指定値が vault root、project root 外、absolute path、symlink、hardlink、device、socket、FIFO、既存 regular file のいずれかに該当する場合は終了コード `2`、stderr `OBSIDIAN_SYNC_PATH_INVALID` とする。
 
+`--plan-file` と `--rollback-file` は state dir 相対 path とし、Phase 14 / Phase 15 共通 path safety に合格しなければならない。absolute path、空 path、`.`、`..`、backslash、NUL、CR、LF、state dir 外、symlink、hardlink、device、socket、FIFO、既存 directory は終了コード `2`、stderr `OBSIDIAN_SYNC_PATH_INVALID` とする。`sync plan` の `--plan-file` は必須であり、既存 regular file がある場合は atomic rewrite する。`sync apply` の `--rollback-file` が未指定の場合は `rollback/<plan_hash>.json` を既定値とし、`rollback/` は state dir 配下に mode `0700` で作成する。`sync rollback` の `--rollback-file` は必須とし、既定値推測を行わない。
+
 <a id="obsidian-phase15-cli-contract"></a>
 **Phase 15 CLI 契約：**
 
 | command | 必須 option | 任意 option | 書込み |
 |---------|-------------|-------------|--------|
-| `sync plan` | `--vault`、`--project-root`、`--state-dir`、`--plan-file`、`--direction` | `--delete-policy`、`--conflict-dir`、`--tombstone-dir` | なし |
+| `sync plan` | `--vault`、`--project-root`、`--state-dir`、`--plan-file`、`--direction` | `--delete-policy`、`--conflict-dir`、`--tombstone-dir` | `--plan-file` のみ |
 | `sync apply` | `--vault`、`--project-root`、`--state-dir`、`--plan-file`、`--plan-hash` | `--conflict-dir`、`--tombstone-dir`、`--rollback-file`、`--open-uri` | あり |
 | `sync rollback` | `--vault`、`--project-root`、`--state-dir`、`--rollback-file` | `--open-uri` | あり |
 
-`--open-uri` は `true` または `false` だけを許可する。`true` の場合でも、Obsidian URI の起動成功を sync 成功条件にしてはならない。URI 起動失敗は warning として report に記録し、apply / rollback の filesystem 結果を覆さない。
+`--delete-policy` の既定値は `reject`、`--open-uri` の既定値は `false` とする。`--open-uri` は `true` または `false` だけを許可する。`true` の場合でも、Obsidian URI の起動成功を sync 成功条件にしてはならない。URI 起動失敗は warning として report に記録し、apply / rollback の filesystem 結果を覆さない。
 
 Phase 15 の成功時 stdout は canonical JSON object 1 行と LF だけとする。`sync plan` は key 順を `command`、`plan_file`、`plan_hash`、`operations`、`conflicts`、`tombstones`、`applied` に固定し、`applied=false` とする。`sync apply` は key 順を `command`、`plan_file`、`plan_hash`、`operations_applied`、`conflicts`、`tombstones`、`rollback_file`、`state_digest` に固定する。`sync rollback` は key 順を `command`、`rollback_file`、`operations_rolled_back`、`conflicts`、`state_digest` に固定する。失敗時 stdout は 0 byte、stderr は `obsidian: <error-code>` + LF の 1 行だけとし、path、digest、Go error、stack trace、URI、absolute path を出力してはならない。
 
@@ -181,6 +196,10 @@ operation array は、project tree、vault tree、sync state entries、tombstone
 `tombstones` は `tombstone_id` 昇順 array とし、各 object の key 順を `tombstone_id`、`path`、`digest`、`direction`、`created_at_unix`、`tombstone_path` に固定する。`tombstone_path` は tombstone dir 相対 path とし、vault root または project root の絶対 path を含めてはならない。
 
 `rollback record` は root object とし、key 順を `schema_version`、`apply_id`、`plan_hash`、`started_at_unix`、`completed_at_unix`、`operations`、`state_before_digest`、`state_after_digest` に固定する。`schema_version` は `obsidian-sync-rollback-v1` とする。`operations` は apply 実行順で記録し、rollback 実行時は逆順で処理する。各 operation record の key 順は `op`、`path`、`destination`、`previous_digest`、`new_digest`、`backup_path`、`status`、`error_code` とし、`status` は `applied`、`skipped`、`failed` のいずれかとする。destination write 開始前の rollback record 初期版では、`completed_at_unix=0`、`state_after_digest=""`、全 operation `status=skipped`、`error_code=""` とする。
+
+`apply_id` は `plan_hash` + LF + `state_before_digest` + LF + decimal `started_at_unix` + LF の SHA-256 lowercase hex とする。`conflict_id` は `path` + LF + `reason` + LF + `project_digest` + LF + `vault_digest` + LF + `state_digest` + LF の SHA-256 lowercase hex とする。`tombstone_id` は `path` + LF + `digest` + LF + `direction` + LF + decimal `created_at_unix` + LF の SHA-256 lowercase hex とする。ID 算出に absolute path、mtime、process id、random、map iteration order を含めてはならない。
+
+rollback backup は state dir 配下の `rollback-backups/<apply_id>/<ordinal>-<path_sha256>.bak` に保存する。`ordinal` は apply 実行順の 6 桁 decimal zero padding、`path_sha256` は operation `path` の UTF-8 byte 列の SHA-256 lowercase hex とする。`backup_path` は state dir 相対 path を記録し、absolute path を記録してはならない。destination が apply 前に存在しない create operation では apply 時の record を `previous_digest=""`、`backup_path=""` とし、rollback 時は destination の current digest が `new_digest` と一致する場合だけ、destination を state dir 配下の `rollback-created/<apply_id>/<ordinal>-<path_sha256>.bak` へ atomic rename してから state を戻す。rollback-created path は rollback record の当該 operation `backup_path` へ atomic rewrite で追記する。Phase 15 rollback は destination content を unlink で破棄してはならない。
 
 Phase 15 の `created_at_unix`、`started_at_unix`、`completed_at_unix`、`last_sync_unix` は UTC Unix seconds の decimal integer とする。fixture では fake clock で固定し、実装は現在時刻を直接参照する箇所を sync plan / apply / rollback の時刻 provider 1 箇所へ集約する。各 timestamp は処理開始時に 1 回だけ取得し、同一 report 内で同じ意味の timestamp を複数回取得して揺らしてはならない。
 
