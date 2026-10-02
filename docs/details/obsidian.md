@@ -176,7 +176,9 @@ Phase 15 は `adlaire-ci-obsidian sync plan`、`adlaire-ci-obsidian sync apply`�
 
 `--delete-policy` の既定値は `reject`、`--open-uri` の既定値は `false` とする。`--open-uri` は `true` または `false` だけを許可する。`true` の場合でも、Obsidian URI の起動成功を sync 成功条件にしてはならない。URI 起動失敗は warning として report に記録し、apply / rollback の filesystem 結果を覆さない。
 
-Phase 15 の成功時 stdout は canonical JSON object 1 行と LF だけとする。`sync plan` は key 順を `command`、`plan_file`、`plan_hash`、`operations`、`conflicts`、`tombstones`、`applied` に固定し、`applied=false` とする。`sync apply` は key 順を `command`、`plan_file`、`plan_hash`、`operations_applied`、`conflicts`、`tombstones`、`rollback_file`、`state_digest` に固定する。`sync rollback` は key 順を `command`、`rollback_file`、`operations_rolled_back`、`conflicts`、`state_digest` に固定する。失敗時 stdout は 0 byte、stderr は `obsidian: <error-code>` + LF の 1 行だけとし、path、digest、Go error、stack trace、URI、absolute path を出力してはならない。
+Phase 15 CLI は、未知 command、未知 option、重複 option、必須 option 欠落、`--direction` の許可値外、`--delete-policy` の許可値外、`--open-uri` の `true` / `false` 以外を終了コード `2`、stderr `OBSIDIAN_SYNC_INVALID_OPTION` とする。path safety に到達した option 値の不合格は `OBSIDIAN_SYNC_PATH_INVALID` とし、enum / boolean / command / option の不合格と混同してはならない。
+
+Phase 15 の成功時 stdout は canonical JSON object 1 行と LF だけとする。`sync plan` は key 順を `command`、`plan_file`、`plan_hash`、`operations`、`conflicts`、`tombstones`、`applied` に固定し、`applied=false` とする。`sync apply` は key 順を `command`、`plan_file`、`plan_hash`、`operations_applied`、`conflicts`、`tombstones`、`rollback_file`、`state_digest` に固定する。`sync rollback` は key 順を `command`、`rollback_file`、`operations_rolled_back`、`conflicts`、`state_digest` に固定する。stdout の `plan_file` と `rollback_file` は state dir 相対 path とし、absolute path、home directory、temporary directory、host 固有 path を出力してはならない。失敗時 stdout は 0 byte、stderr は `obsidian: <error-code>` + LF の 1 行だけとし、path、digest、Go error、stack trace、URI、absolute path を出力してはならない。
 
 <a id="obsidian-phase15-schema-contract"></a>
 **Phase 15 schema 契約：**
@@ -236,10 +238,11 @@ Phase 15 は credentials を扱わない。token、password、Obsidian account�
 <a id="obsidian-phase15-distribution-contract"></a>
 **Phase 15 配布連携契約：**
 
-Phase 15 の実装完了には `adlaire-ci-obsidian` 実行バイナリの配布契約が必要である。Phase 15 実装 PR は、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract) と [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) を同じ変更単位で整合させ、Release asset 生成、checksum、setup 取得対象、version 出力、fixture 証跡に `adlaire-ci-obsidian-linux-amd64` が含まれることを証跡化する。この配布連携が未完了の場合、sync plan / apply / rollback の実装が合格していても Phase 15 を `実装済み` に遷移してはならない。
+Phase 15 の実装完了には `adlaire-ci-obsidian` 実行バイナリの配布契約が必要である。Phase 15 実装 PR は、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract)、[`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)、[`docs/details/setup.md` 詳細本文責務 Phase 15 Obsidian CLI 導入手順](setup.md#phase-15-obsidian-setup-contract) を同じ変更単位で整合させ、Release asset 生成、checksum、setup 取得対象、`install-obsidian` mode、version 出力、fixture 証跡に `adlaire-ci-obsidian-linux-amd64` が含まれることを証跡化する。この配布連携が未完了の場合、sync plan / apply / rollback の実装が合格していても Phase 15 を `実装済み` に遷移してはならない。
 
 | error code | 終了コード | 条件 |
 |------------|------------|------|
+| `OBSIDIAN_SYNC_INVALID_OPTION` | `2` | Phase 15 CLI の command、option、必須 option、enum、boolean が固定契約に合格しない。 |
 | `OBSIDIAN_SYNC_PLAN_HASH_MISMATCH` | `2` | apply の `--plan-hash` が plan file と一致しない。 |
 | `OBSIDIAN_SYNC_STATE_CHANGED` | `1` | plan 作成後に project、vault、state の digest が変化した。 |
 | `OBSIDIAN_SYNC_CONFLICT` | `1` | conflict が 1 件以上ある。 |

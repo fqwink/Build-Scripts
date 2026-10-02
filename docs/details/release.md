@@ -282,7 +282,7 @@ Phase 15 で `adlaire-ci-obsidian` を実装済みに遷移する場合、Releas
 | checksum | `SHA256SUMS` は `SHA256SUMS` 自身を除く 8 asset を filename の ASCII 昇順で並べる。`adlaire-ci-obsidian-linux-amd64` の checksum 欠落、重複、未知行を禁止する。 |
 | reproducibility | A / B snapshot から `adlaire-ci-obsidian-linux-amd64` を他 binary と同じ build argv、environment、version 検証で生成し、byte 一致を確認する。 |
 | GitHub publish | upload、asset list、download verify、Release 再取得、stdout JSON の `assets` array に `adlaire-ci-obsidian-linux-amd64` を含め、asset 件数を 9 として検証する。 |
-| setup acceptance | [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) の Release asset 受け入れ対象に `adlaire-ci-obsidian-$OS_ARCH` を追加し、Obsidian CLI 導入または更新時の取得対象にする。 |
+| setup acceptance | [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) の Release asset 受け入れ対象に `adlaire-ci-obsidian-$OS_ARCH` を追加し、[`docs/details/setup.md` 詳細本文責務 Phase 15 Obsidian CLI 導入手順](setup.md#phase-15-obsidian-setup-contract) の `install-obsidian` と Obsidian CLI 導入後の `update` の取得対象にする。 |
 | fixture | [`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](fixture.md#phase-15-obsidian-local-sync-evidence) に release / setup 配布連携の expected を追加し、配布未反映を `phase15_distribution_open_count` に計上する。 |
 
 Phase 15 実装 PR は、[R3 Release asset 固定契約](#release-asset-contract)、[R4 ビルド・再現性固定契約](#release-build-contract)、[R5 GitHub Release 公開固定契約](#release-publish-contract)、[R6 出力・副作用固定契約](#release-output-contract)、[`docs/details/fixture.md` fixture 証跡責務 Release fixture 固定契約](fixture.md#release-fixture-contract) の asset 数、binary 数、checksum 行数、stdout JSON、fixture expected を同時に更新する。いずれか 1 箇所でも 8 asset / 6 binary / checksum 7 行のまま残る場合、Phase 15 を `実装済み` に遷移してはならない。
