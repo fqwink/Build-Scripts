@@ -926,3 +926,42 @@ share token 検証は、(1) path parameter を percent decode する、(2) URL-s
 share link 管理 API の `.audit_log` は [`docs/details/statefile.md` 詳細本文責務 `.audit_log` schema](statefile.md#audit-log-schema) の key だけを使用し、`action` は `share_link_create` または `share_link_revoke`、`target_type` は `share_link`、`target_id` は share link id、`actor_type` と `actor_id` は管理 session または API token とする。share link 管理 API の `.admin_events` は [`docs/details/statefile.md` 詳細本文責務 AdminEventRecord](statefile.md#sec-22-0d) の key だけを使用し、`type` は `security`、`target_type` は `share_link`、`target_id` は share link id、`actor` は管理 session user id または API token id、`message` は固定文言だけとする。`GET /api/share/{token}/status` は `.audit_log` と `.admin_events` を書き込まない。`.audit_log`、`.admin_events`、`.access_log`、`.api_access_log`、server log には token 本体、token hash、token prefix、token length、Authorization header、Cookie、raw path を保存してはならない。作成 response 返却後の token 再表示、list response への token 追加、SDK / UI による token 復元、log からの token 復元を禁止する。
 
 share link の `scope` は `status`、`history`、`snapshot_diff` の単一値だけを許可する。複数 scope、wildcard、空配列、将来 scope 名、permission 名、API path を受け付けてはならない。`scope` ごとの response composition は [`docs/details/api.md` 詳細本文責務 §27.67](api.md#sec-27-67) を参照し、security owner は token、hash、期限、revoke、漏えい禁止だけを正本として持つ。
+
+<a id="phase-13-security-alignment-contract"></a>
+**Phase 13 security 実装整合契約：**
+
+[`docs/details/security.md`](security.md) 詳細本文責務は、Phase 13 で password hash、token、署名、secret mask、file safety、credential rotation、必須 security log 境界を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| password hash | 管理 credential の新規作成、password 変更、credential rotation では Argon2id を使用する。Argon2id 実装は本リポジトリ内の内製実装、または [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) の許可外部ライブラリ一覧へ登録済みの実装だけを許可する。独自 SHA-256 反復 KDF、単純 SHA-256、salt 連結 hash を新規保存形式として使用してはならない。 |
+| migration | 既存 credential を読み込む場合、旧 hash 形式を成功扱いにして温存せず、認証成功後または明示 rotation 時に Argon2id 形式へ更新する。更新失敗時は session、token、audit を成功扱いにしない。 |
+| token input | Admin CLI と MCP の token は token file または stdin から取得する。token の command argv 取得、process list に残る token、shell history に残る token を許可しない。 |
+| token storage | token 本体は作成 response または stdin / file の入力 byte 以外へ保存しない。状態 file、log、fixture expected、release notes、PR 証跡には token hash、prefix、suffix、length を含めない。 |
+| secret mask | PAT、Webhook secret、SMTP password、API token、session token、MCP token、share token、credential URL は読込直後に mask 登録し、stdout、stderr、server log、build log、audit、access、config log、fixture expected に平文を残さない。 |
+| signature | Webhook、notification、release checksum、archive digest に関わる署名または digest の canonical input、algorithm、比較順、失敗時 response は owner 詳細本文から security owner へ到達できる。 |
+| file safety | secret file は symlink 非追従、通常 file、mode `0600`、owner 一致、UTF-8 または byte 契約一致を満たす場合だけ読む。directory、device、FIFO、socket、hardlink count 2 以上は拒否する。 |
+| required logs | security event の audit / access log が owner 詳細本文で必須書込みと定義される場合、書込み失敗を無視して成功 response を返してはならない。 |
+| credential rotation | rotation は旧 credential 検証、new credential 生成、statefile atomic write、audit、旧 token revoke、rollback 不可範囲の明示を同一 operation として扱う。途中失敗時の session / token / audit の状態は fixture で固定する。 |
+
+Argon2id credential hash の Phase 13 固定値は以下とする。下表の値を実装者判断で変更してはならない。値を変更する場合は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) と本文節を先に改訂する。
+
+| 項目 | 値 |
+|------|----|
+| algorithm | `argon2id` |
+| version | `19` |
+| memory | `65536` KiB |
+| iterations | `3` |
+| parallelism | `1` |
+| salt length | 16 bytes |
+| tag length | 32 bytes |
+| salt source | `crypto/rand.Reader` |
+| encoded format | `$adlaireci$argon2id$v=19$m=65536,t=3,p=1$<base64url-no-padding-salt>$<base64url-no-padding-tag>` |
+| password input | UTF-8 byte sequence、Unicode normalization は行わない |
+| maximum password length | 1024 bytes |
+| verification compare | constant-time compare |
+| legacy SHA-256 | 新規生成禁止。既存検出時は credential rotation required error と audit record を返す。 |
+
+Phase 13 の security evidence は `input/security_inventory.json` に `hash_vectors`、`token_sources`、`masked_outputs`、`file_safety_cases`、`rotation_cases` を持たせる。`hash_vectors` は raw password を保存せず、case id、salt hex、encoded hash、verify input label、expected result だけを保存する。raw secret を fixture に保存した場合は `phase13_security_kdf_open_count` と `phase13_required_log_write_ignore_count` の両方へ未完了として計上する。
+
+Phase 13 の `security` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_security_kdf_open_count=0`、`phase13_token_arg_open_count=0`、`phase13_required_log_write_ignore_count=0` を満たすまで完了扱いにしてはならない。

@@ -3474,3 +3474,42 @@ Webhook 送信履歴の手動再送 API の owner は `runner` とする。
 再送は元 record の `event`、`channel_id`、`payload_sha256`、`attempt` を検証した後、`.notify_config` から同じ Webhook channel を再取得し、secret は `.webhook_secret` または channel secret ref から再読込する。保存済み payload 本文は `.notify_log` にないため、再構成できない event は `409 {"error":"Webhook payload unavailable"}` とし、送信しない。secret、送信 URL、Authorization header、payload 本文は response、`.admin_events`、`.audit_log`、server log に含めない。
 
 同一 `delivery_id` の resend guard は process 内状態と `.admin_events` の未完了 resend event の両方で判定し、実行中なら `409` とする。送信要求を受理した時点で `202 {"accepted":true,"delivery_id":<delivery_id>,"queued_at":<now>}` を返し、`.admin_events` に `type:"notification"`、`target_type:"notify_log"`、`target_id:<delivery_id>` を追記する。実際の送信結果と `.notify_log` 追記は [`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) の通知 retry 契約に従う。
+
+---
+
+<a id="phase-13-api-alignment-contract"></a>
+**Phase 13 API 実装整合契約：**
+
+[`docs/details/api.md`](api.md) 詳細本文責務は、Phase 13 で API route、method、path、query、request、response、credential 初期化、HTTP lifecycle、Webhook 防御、backup / restore API 境界を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| API route 正本 | API route、method、path、query、request、response、status、media type、認証要否は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) と該当 endpoint 節だけを正本とする。Admin CLI、SDK、UI、MCP は API route を再定義しない。 |
+| 契約自動照合 | Phase 13 実装では、Admin CLI command 固定表、SDK transport 固定表、UI 操作表、MCP tool bridge が API route 正本と一致することを実行型 fixture で照合する。不一致は `phase13_contract_mismatch_count` に計上する。 |
+| credential 初期化 | API credential 初期化の出力、保存先、mode、再実行条件、既存 credential 保持、stdout / stderr は [`docs/details/setup.md` 詳細本文責務 Phase 13 setup 実装整合契約](setup.md#phase-13-setup-alignment-contract) と一致させる。API は credential 平文を response、log、statefile へ保存しない。 |
+| statefile 経路 | API handler は状態 file を直接 open / truncate / append / rename しない。read、write、append、migration、復旧、lock、atomic write は [`docs/details/statefile.md` 詳細本文責務 Phase 13 statefile 実装整合契約](statefile.md#phase-13-statefile-alignment-contract) の経路だけを使用する。 |
+| HTTP lifecycle | request header read、request body read、response write、shutdown、stream close、SSE flush、body 上限、invalid content type、malformed JSON、client disconnect の扱いを endpoint ごとに固定し、未定義の fallback response を返さない。 |
+| Webhook 防御 | Webhook URL は redirect 追従禁止、userinfo 禁止、private IP 禁止、loopback 禁止、link-local 禁止、DNS rebinding 再解決検査、body 上限、timeout を満たす場合だけ送信対象とする。防御結果は response、audit、admin event、notify log で secret を漏らさない。 |
+| backup / restore transaction | backup / restore API は事前検証、staging、commit、rollback、成功後再取得、失敗時固定 response を持つ。archive 実処理は [`docs/details/archive.md` 詳細本文責務 Phase 13 archive 実装整合契約](archive.md#phase-13-archive-alignment-contract) へ委譲する。 |
+| required log | audit、access、config、admin event の必須書込みに失敗した場合、仕様上 best-effort と定義された行を除き、成功 response を返さない。失敗を黙って無視しない。 |
+
+Phase 13 の API route contract は `input/contract_inventory.json` の各 API entry に以下の key を必須とする。API 実装、Admin CLI、SDK、UI、MCP bridge、setup stdout のいずれかがこの key を埋められない場合は `phase13_contract_mismatch_count` に計上する。
+
+| key | type | 固定内容 |
+|-----|------|----------|
+| `contract_id` | string | owner 間で一意の契約 id。 |
+| `owner` | string | `api` 固定。 |
+| `method` | string | HTTP method。 |
+| `path` | string | query を含まない absolute API path。 |
+| `query_schema_ref` | string/null | query を持つ場合の責務正本 anchor。 |
+| `request_schema_ref` | string/null | request body を持つ場合の責務正本 anchor。 |
+| `response_schema_ref` | string | success response の責務正本 anchor。 |
+| `error_schema_ref` | string | error response の責務正本 anchor。 |
+| `auth` | string | `none`、`admin_token`、`mcp_token`、`webhook_signature` のいずれか。 |
+| `status_codes` | array[integer] | success と expected error の HTTP status。 |
+| `state_effects` | array[string] | statefile 経由の副作用名。副作用なしは空配列。 |
+| `client_bindings` | object | `admin_command`、`sdk_method`、`ui_operation`、`mcp_tool` の対応。未対応は `null`。 |
+
+API credential 初期化と setup stdout の契約は、success stdout に平文 credential を出さず、作成された token / password の一回表示が必要な場合は表示先、mask、保存禁止、再表示不可、rotation 条件を `contract_inventory.json` と `security_inventory.json` の両方で照合する。片方だけに記録された credential 挙動は契約不一致として扱う。
+
+Phase 13 の `api` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_contract_mismatch_count=0`、`phase13_direct_state_mutation_count=0`、`phase13_external_boundary_open_count=0`、`phase13_required_log_write_ignore_count=0`、`phase13_e2e_open_count=0` を満たすまで完了扱いにしてはならない。

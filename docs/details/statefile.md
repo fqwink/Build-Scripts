@@ -1718,3 +1718,33 @@ ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全�
 `McpMetrics.tools` の key は [`docs/details/mcp.md` 詳細本文責務 §29.5](mcp.md#sec-29-5) の tool name だけを許可する。存在しない tool の metrics record は作成しない。
 
 `McpMetrics.tools` の value は `success_count`、`error_count`、`timeout_count`、`last_status`、`last_duration_ms`、`last_at` を持つ object とする。counter は 0 以上の integer、`last_status` は `success`、`error`、`timeout` のいずれか、`last_duration_ms` は 0 以上の integer、`last_at` は UTC ISO 8601 秒精度とする。tool の初回 metrics 更新時に value を作成し、作成時は該当 status の counter だけを 1、他 counter を 0 とする。
+
+<a id="phase-13-statefile-alignment-contract"></a>
+**Phase 13 statefile 実装整合契約：**
+
+[`docs/details/statefile.md`](statefile.md) 詳細本文責務は、Phase 13 で状態 file の schema、process 間 lock、read-modify-write、atomic write、JSON Lines、migration、復旧処理、file safety を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| direct state mutation | `api`、`runner`、`mcp`、`archive`、`security`、`setup`、`release` は状態 file を直接更新しない。状態の read、write、append、migration、recovery、schema validation は `statefile` owner の公開境界経由だけで行う。 |
+| read-modify-write | read、schema validation、migration、owner / mode 検証、write plan 作成、atomic write、file fsync、parent directory fsync、rename、post-rename validation、unlock までを同一 process 間 lock 内で実行する。 |
+| lock | lock file は symlink 非追従で作成し、owner pid、start time、hostname、operation、created_at を記録する。stale lock は owner process 不在、start time 不一致、lock age 上限超過をすべて満たす場合だけ safe unlock 候補にする。 |
+| atomic write | temporary file は state directory 内に作成し、existing path 非上書き、symlink 非追従、mode `0600`、write 完了後 file fsync、rename 後 parent directory fsync を行う。rename 失敗、short write、fsync failure では旧 file を維持する。 |
+| JSON Lines | append は record 単位で lock、UTF-8、LF 終端、flush、file fsync を行う。破損行、partial line、unknown key、型不一致を黙って読み飛ばさず、隔離対象、復旧対象、呼び出し元 error のいずれかへ分類する。 |
+| recovery | state corruption、JSON Lines corruption、stale lock、disk full、permission denied、short write、process kill 後の復旧は、復旧前 snapshot、隔離 path、復旧結果、呼び出し元へ返す固定 error を記録する。 |
+| required logs | audit、access、config log のうち owner 詳細本文で必須書込みと定義されたものは best-effort にしてはならない。必須 log write failure は呼び出し元 operation を失敗として返す。 |
+| state directory | state directory は mode `0700`、owner は起動 user と一致、group / other write 不可とする。起動時に不一致を検出した場合、状態変更を開始せず固定 error を返す。 |
+
+Phase 13 の statefile 実装は以下の operation 境界を持つ。operation 名は evidence 上の分類名であり、Go 関数名の指定ではない。実装者は同じ分類を `input/state_inventory.json` と `records/closure.jsonl` へ記録する。
+
+| operation | 必須順序 | 失敗時の固定結果 |
+|-----------|----------|------------------|
+| `read_state` | path 正規化、symlink 非追従、owner / mode 検証、file open、decode、schema validation、migration 判定。 | decode または schema validation 失敗は corruption error とし、成功値を返さない。 |
+| `update_state` | process lock 取得、read、migration、update plan 作成、temporary write、file fsync、atomic rename、parent fsync、post-rename read、unlock。 | temporary write 以降の失敗では旧 state を維持し、recovery record を残す。 |
+| `append_jsonl` | process lock 取得、record validation、canonical JSON encode、LF 終端 append、flush、file fsync、unlock。 | short write、flush failure、fsync failure は record 未確定として error を返し、呼び出し元を成功扱いにしない。 |
+| `recover_state` | corruption / stale lock / partial write の検出、隔離 path 決定、snapshot 作成、復旧 plan、復旧 write、検証、recovery record。 | 復旧不能時は `recovery_required` 状態を返し、破損 file を削除しない。 |
+| `verify_state_dir` | state directory path 正規化、owner、mode `0700`、group / other write 不可、symlink / non-directory 拒否。 | 不一致時は API / runner / MCP の状態変更を開始しない。 |
+
+JSON Lines corruption は、partial line、invalid UTF-8、invalid JSON、unknown required key、type mismatch、duplicate record id、future schema version を別々の reason として記録する。読み取り側が破損行を読み飛ばして残りを成功扱いにすることは禁止する。復旧処理で隔離する場合の隔離 path は同一 state directory 配下の `quarantine/` 以下とし、隔離後の path を recovery record に保存する。
+
+Phase 13 の `statefile` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_direct_state_mutation_count=0`、`phase13_state_safety_open_count=0`、`phase13_jsonl_corruption_open_count=0`、`phase13_required_log_write_ignore_count=0` を満たすまで完了扱いにしてはならない。

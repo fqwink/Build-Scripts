@@ -3134,3 +3134,39 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 | schema strictness | runner が保存する object は [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の key だけを持ち、nullable、UTC 時刻、列挙値、配列順を満たす。 | SDK / UI 用の表示名、計算済み label、未定義 fallback key を state に保存する。 |
 | source audit closure | Phase 11 で source-code audit により runner owner へ割り当てた状態更新、output manifest、queue / finalizer、external I/O、secret mask の差分は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) から runner owner 詳細本文と fixture 証跡へ到達させて pass を記録する。 | source audit 行を未接続、未検証、後続修正前提、または owner 未割当のまま runner 実装を完了扱いにする。 |
 | fixture evidence | 対象 [`docs/details/runner.md` 詳細本文責務 §27](runner.md#27-runner-owner-追加仕様化機能-詳細仕様) 機能の fixture は success、failure、partial、no-op、idempotency、secret mask、corrupt state のうち該当するケースを持つ。 | 正常系だけの fixture で runner / statefile 連動を確認済み扱いにする。 |
+
+---
+
+<a id="phase-13-runner-alignment-contract"></a>
+**Phase 13 runner 実装整合契約：**
+
+[`docs/details/runner.md`](runner.md) 詳細本文責務は、Phase 13 で queue 状態機械、waiting から active への遷移、ID 採番、queue 上限、finalizer、active 復旧、at-least-once 実行、backup / restore transaction 呼び出し、Webhook 送信、SSH deploy 境界を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| queue 状態機械 | queue entry の状態は `waiting`、`active`、`cancelling`、`succeeded`、`failed`、`cancelled`、`recovery_required` だけとする。未知状態、空状態、表示用状態、API 専用状態を runner 永続状態へ保存しない。 |
+| atomic 遷移 | waiting から active への遷移、ID 採番、queue 上限判定、重複排除、active slot 確保は [`docs/details/statefile.md` 詳細本文責務 Phase 13 statefile 実装整合契約](statefile.md#phase-13-statefile-alignment-contract) の process 間 lock 内で 1 回の read-modify-write として実行する。 |
+| finalizer | panic、timeout、cancel、process signal、builder failure、deploy failure、state save failure のいずれでも finalizer を 1 回だけ実行する。finalizer は未保存の実行結果、queue 状態、history、log、commitstatus、notification の失敗境界を固定し、二重完了 record を作らない。 |
+| restart recovery | 起動時に active queue entry を検出した場合、実行中 process の所有確認、stale 判定、復旧可否、`recovery_required` への遷移、at-least-once 再実行のどれを行ったかを statefile 経由で記録する。無根拠に `succeeded`、`failed`、`cancelled` へ補正しない。 |
+| backup / restore transaction | runner が backup / restore を起動する場合は、事前検証、staging、commit、rollback の各段階を [`docs/details/archive.md` 詳細本文責務 Phase 13 archive 実装整合契約](archive.md#phase-13-archive-alignment-contract) と [`docs/details/api.md` 詳細本文責務 Phase 13 API 実装整合契約](api.md#phase-13-api-alignment-contract) の境界へ渡す。runner は snapshot archive や digest 実処理を重複実装しない。 |
+| statefile 経路 | `.build_state`、`.build_logs`、`.build_history`、`.notify_log`、`.last_sha`、`.build_trends`、`.mcp_*` を runner が直接 open / truncate / append / rename しない。全状態更新は statefile owner の API 経由とする。 |
+| Webhook boundary | redirect 追従禁止、SSRF、private IP、DNS rebinding、timeout、body 上限、secret mask は [`docs/details/api.md` 詳細本文責務 Phase 13 API 実装整合契約](api.md#phase-13-api-alignment-contract) と [`docs/details/security.md` 詳細本文責務 Phase 13 security 実装整合契約](security.md#phase-13-security-alignment-contract) の境界と一致させる。 |
+| SSH boundary | SSH host key、known_hosts、timeout、remote path、write path、command argv、secret 出力禁止を検証し、不合格時は deploy を開始しない。systemd unit や OS user 作成は [`docs/details/setup.md` 詳細本文責務 Phase 13 setup 実装整合契約](setup.md#phase-13-setup-alignment-contract) の責務とする。 |
+| Commit Status | GitHub Commit Status の payload、HTTP、retry、rate limit、timeout は [`docs/details/commitstatus.md` 詳細本文責務 Phase 13 commitstatus 実装整合契約](commitstatus.md#phase-13-commitstatus-alignment-contract) へ委譲する。runner は送信時点、build result 変換、失敗非反転の境界だけを扱う。 |
+
+Phase 13 の queue state transition は以下だけを許可する。表にない遷移を実装した場合は `phase13_queue_recovery_open_count` に計上する。
+
+| from | to | trigger | 必須副作用 |
+|------|----|---------|------------|
+| `waiting` | `active` | runner が queue 上限、重複排除、active slot を statefile lock 内で通過した場合。 | `started_at`、`attempt`、`runner_owner`、`active_lock_id` を同一 read-modify-write で保存する。 |
+| `waiting` | `cancelled` | active 化前の cancel request が statefile lock 内で確定した場合。 | `cancelled_at`、`cancel_reason` を保存し、build / deploy を開始しない。 |
+| `active` | `cancelling` | active 中の cancel request を受理した場合。 | cancel signal または context cancel の送信時刻を保存する。 |
+| `active` | `succeeded` | build、deploy、history、required log、commitstatus boundary が成功した場合。 | finalizer が 1 回だけ完了 record を保存する。 |
+| `active` | `failed` | build、deploy、validation、required log、commitstatus boundary の失敗が確定した場合。 | finalizer が error reason、exit code、保存済み log reference を保存する。 |
+| `active` | `recovery_required` | state save failure、process kill、owner process 不明、active stale、finalizer 未確定を検出した場合。 | recovery record を保存し、成功・失敗へ推測補正しない。 |
+| `cancelling` | `cancelled` | cancel 後の停止と finalizer 保存が完了した場合。 | `cancelled_at`、partial result、log reference を保存する。 |
+| `cancelling` | `recovery_required` | cancel 中に process kill、state save failure、owner 不明を検出した場合。 | recovery record を保存する。 |
+| `recovery_required` | `waiting` | at-least-once 再実行が安全と判定され、重複副作用が rollback または idempotent と証明された場合。 | recovery decision、previous attempt、idempotency key を保存する。 |
+| `recovery_required` | `failed` | 復旧不能かつ副作用境界が失敗として確定した場合。 | operator action と recovery evidence を保存する。 |
+
+Phase 13 の `runner` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_queue_recovery_open_count=0`、`phase13_direct_state_mutation_count=0`、`phase13_external_boundary_open_count=0`、`phase13_required_log_write_ignore_count=0`、`phase13_race_or_concurrency_open_count=0` を満たすまで完了扱いにしてはならない。

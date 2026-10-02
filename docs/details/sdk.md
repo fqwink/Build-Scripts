@@ -537,3 +537,22 @@ binary response は `Blob`、text response は `string`、SSE response は `Stre
 | その他の追加管理 API method | `application/json` | API JSON object をそのまま返す。 |
 
 追加管理 API の SDK 完全性検証では、上表の public method が `AdlaireCI.prototype` に存在し、未定義 public method が存在しないことを確認する。
+
+---
+
+<a id="phase-13-sdk-alignment-contract"></a>
+**Phase 13 SDK 実装整合契約：**
+
+[`docs/details/sdk.md`](sdk.md) 詳細本文責務は、Phase 13 で SDK public method、path / query / body 生成、media type、timeout、error object、stream、binary response、token mutation 境界を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| method 完全性 | `AdlaireCI.prototype` の public method は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) と [`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8) の SDK method だけに一致させる。未定義 public method、alias、互換 shim を残さない。 |
+| transport exactness | method、path、query key、request body、body 禁止 endpoint、path parameter encode、media type を API route 正本と自動照合する。SDK は API response schema を補完、削除、rename、再集計しない。 |
+| timeout / body 上限 | JSON、binary、SSE の timeout、body 上限、abort、reader close、invalid media type は [SDK 共通実装契約](#sdk-common-contract) と追加管理 API SDK transport 固定表に従う。未定義 retry を行わない。 |
+| token mutation | `login()` 成功、`logout()`、`401`、stream close の token mutation だけを許可する。token、password、PAT、Webhook secret、SMTP password、TOTP secret、share token を SDK property、console、error message、fixture expected に保存しない。 |
+| UI 連動 | UI は [`docs/details/ui.md` 詳細本文責務 Phase 13 UI 実装整合契約](ui.md#phase-13-ui-alignment-contract) に従い、SDK public method だけを呼ぶ。SDK は DOM、panel、UI disabled 状態を知らない。 |
+
+Phase 13 の SDK public method は `input/contract_inventory.json` の `client_bindings.sdk_method` によって API route contract と 1 対 1 に紐づく。API route にない method、複数 route へ暗黙分岐する method、response を SDK 側で独自合成する method は `phase13_contract_mismatch_count` に計上する。
+
+Phase 13 の `sdk` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_contract_mismatch_count=0`、`phase13_external_boundary_open_count=0`、`phase13_e2e_open_count=0` を満たすまで完了扱いにしてはならない。

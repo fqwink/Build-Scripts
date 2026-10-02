@@ -444,6 +444,7 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	phase11IncompleteRow := strings.Replace(phase11CompleteRow, "| 実装済み |", "| 実装中・検証未完了 |", 1)
 	phase12CompleteRow := "| Phase 12 | 実装品質ゲート再構築。契約不整合、状態安全性、実行型 fixture harness、mutation / race、owner package 5 ファイル固定、release 再現性の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry) を参照する。 | 実装済み | Phase 11 |"
 	phase12IncompleteRow := strings.Replace(phase12CompleteRow, "| 実装済み |", "| 実装中・検証未完了 |", 1)
+	phase13ActiveRow := "| Phase 13 | 実装整合・品質改善。owner package 5 ファイル責務純度、状態安全性、security / archive / commitstatus 責務集約、queue / finalizer / recovery、MCP 実動作化、外部境界 hardening、fixture / mutation / fault / E2E / CI / release governance の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) を参照する。 | 仕様化済み・未実装 | Phase 12 |"
 
 	if !strings.Contains(roadmap, phase11CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 11 as 実装済み after Phase 11 closure records reach final_open_item_count=0")
@@ -457,8 +458,11 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if strings.Contains(roadmap, phase12IncompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must not keep Phase 12 as 実装中・検証未完了 after closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase はなしとする。") {
-		t.Fatalf("docs/ROADMAP.md must state that no active Phase remains after Phase 12 completion")
+	if !strings.Contains(roadmap, phase13ActiveRow) {
+		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 仕様化済み・未実装 after Phase 12 closure")
+	}
+	if !strings.Contains(roadmap, "現在の active Phase は Phase 13 とする。") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 13 is the active Phase after Phase 13 specification")
 	}
 	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 12 まではすべて `実装済み`") {
 		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 12 are all implemented after Phase 12 closure")

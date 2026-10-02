@@ -30,7 +30,7 @@
 
 | 項目 | 要件 |
 |------|------|
-| Go 版バイナリ | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`。管理 API 導入時は `adlaire-ci-api` と `adlaire-ci-admin`、MCP 導入時は `adlaire-ci-mcp` も配置する。 |
+| Go 版バイナリ | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`。管理 API 導入時は `adlaire-ci-api` と `adlaire-ci-admin`、MCP 導入時は `adlaire-ci-mcp`、Phase 15 完了後の Obsidian CLI 導入時は `adlaire-ci-obsidian` も配置する。 |
 | 配布形式 | GitHub Release 添付 asset を取得対象とする。Release 形式と標準 OS/arch は [`docs/SPEC.md` ポリシー責務 §1](../SPEC.md#policy-versioning)、取得対象 asset は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) を参照する。 |
 | Go toolchain | 利用環境には不要。リリースバイナリをそのまま配置し、利用環境で `go build` しない。 |
 | checksum | `SHA256SUMS` 自身を除く取得対象 Release asset の SHA-256 checksum を取得し、配置または展開前に必ず検証する。`SHA256SUMS` 自身を checksum 対象にしない。 |
@@ -57,11 +57,12 @@
 <a id="setup-cli-contract"></a>
 **[§26.2c setup CLI 固定契約](setup.md#setup-cli-contract)：**
 
-実行形式は次の3 modeに固定する。第1位置引数だけをmodeとして許可し、その他の位置引数を禁止する。
+実行形式は次の4 modeに固定する。第1位置引数だけをmodeとして許可し、その他の位置引数を禁止する。
 
 ```text
 adlaire-ci-setup install --target-version V.X.N --github-token-file path [options]
 adlaire-ci-setup install-api --target-version V.X.N [--initial-password-file path] [options]
+adlaire-ci-setup install-obsidian --target-version V.X.N [options]
 adlaire-ci-setup update --target-version V.X.N [options]
 ```
 
@@ -70,14 +71,14 @@ adlaire-ci-setup update --target-version V.X.N [options]
 | `--target-version` | 全mode | 必須 | `VERSION`へ対応し、`^V\.[1-9][0-9]*\.[0-9]+$`。共通option`--version`は実行バイナリ自身のversion表示だけに使用する。 |
 | `--repository` | 全mode | `fqwink/Build-Scripts` | [`docs/details/release.md` 詳細本文責務 §R1](release.md#release-cli-contract) と同じrepository形式。 |
 | `--os-arch` | 全mode | `linux-amd64` | 初期標準では`linux-amd64`だけを許可する。 |
-| `--install-dir` | 全mode | `/opt/adlaire-builder` | 絶対path、clean済みpath、`/`禁止、symlink segment禁止。 |
+| `--install-dir` | `install`、`install-api`、`update` | `/opt/adlaire-builder` | 絶対path、clean済みpath、`/`禁止、symlink segment禁止。`install-obsidian`での指定を禁止する。 |
 | `--bin-dir` | 全mode | `/usr/local/bin` | 絶対path、clean済みpath、`/`禁止、symlink segment禁止。 |
-| `--service-user` | `install`、`install-api` | `root` | 空文字、NUL、CR、LF、ASCII空白、`:`を禁止する。`update`での指定を禁止する。 |
+| `--service-user` | `install`、`install-api` | `root` | 空文字、NUL、CR、LF、ASCII空白、`:`を禁止する。`install-obsidian`、`update`での指定を禁止する。 |
 | `--download-dir` | 全mode | `/tmp/adlaire-ci-release-<version>` | 絶対path、`/`禁止、symlink禁止。既存時はsetup所有の同version directoryだけを許可する。 |
 | `--github-token-file` | `install` | 必須 | `GITHUB_TOKEN_FILE`へ対応する。他modeでの指定を禁止する。 |
 | `--initial-password-file` | `install-api` | credentials不在時だけ必須 | `ADMIN_INITIAL_PASSWORD_FILE`へ対応する。他modeでの指定を禁止する。 |
 
-値optionは`--name value`だけを許可し、`--name=value`、短縮option、重複optionを禁止する。固定helpは`Usage: adlaire-ci-setup <install|install-api|update> --target-version V.X.N [options] [--version] [--help]` + LF、version出力のbinary nameは`adlaire-ci-setup`とする。
+値optionは`--name value`だけを許可し、`--name=value`、短縮option、重複optionを禁止する。固定helpは`Usage: adlaire-ci-setup <install|install-api|install-obsidian|update> --target-version V.X.N [options] [--version] [--help]` + LF、version出力のbinary nameは`adlaire-ci-setup`とする。
 
 parseと入力検証の順序は、共通option、mode、未知・重複option、mode別許可option、必須option、version、repository、OS/arch、install dir、bin dir、service user、download dir、secret file、既存配置状態の順とする。CLI parse失敗は共通固定契約、parse後の入力検証失敗は[setup出力・error固定契約](#setup-output-contract)に従い、終了コード`2`とし、directory作成、download、file変更、systemd操作を行わない。
 
@@ -94,10 +95,13 @@ parseと入力検証の順序は、共通option、mode、未知・重複option�
 | `adlaire-ci-setup-$OS_ARCH` | 初回セットアップ、アップデート | root `main` packageから生成し、basename dispatchで`setup` ownerを起動する実行バイナリ。 |
 | `adlaire-ci-admin-$OS_ARCH` | 管理 API 導入手順、管理 API 導入後のアップデート | root `main` packageから生成し、basename dispatchで`admin` owner の CLI 管理クライアントを起動する実行バイナリ。 |
 | `adlaire-ci-mcp-$OS_ARCH` | MCP 導入手順、MCP 導入後のアップデート | root `main` packageから生成し、basename dispatchで`mcp` ownerを起動する実行バイナリ。 |
+| `adlaire-ci-obsidian-$OS_ARCH` | Phase 15 完了後の Obsidian CLI 導入手順、Obsidian CLI 導入後のアップデート | root `main` packageから生成し、basename dispatchで`obsidian` ownerを起動する実行バイナリ。Phase 15 完了前は取得対象にしない。 |
 | `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | `SHA256SUMS` 自身を除く取得対象 Release asset の SHA-256 checksum 一覧。 |
 
-Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を正本とする。setupはmodeに必要なassetだけを取得し、固定名と完全一致することを検証する。`$OS_ARCH`は`linux-amd64`だけを受け付け、未知OS/archは取得前に[setup出力・error固定契約](#setup-output-contract)の`UNSUPPORTED_PLATFORM`、終了コード`2`とする。`SHA256SUMS`は対象filenameが1回だけ存在し、未取得assetを含むrelease全体の7行が[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)と一致することを確認する。0件、重複、未知行、自己行、形式不正はchecksum検証失敗とする。
+Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を正本とする。setupはmodeに必要なassetだけを取得し、固定名と完全一致することを検証する。`$OS_ARCH`は`linux-amd64`だけを受け付け、未知OS/archは取得前に[setup出力・error固定契約](#setup-output-contract)の`UNSUPPORTED_PLATFORM`、終了コード`2`とする。Phase 15 完了前の `SHA256SUMS` は対象filenameが1回だけ存在し、未取得assetを含むrelease全体の7行が[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)と一致することを確認する。Phase 15 完了後の `SHA256SUMS` は次段落の8行契約を適用する。0件、重複、未知行、自己行、形式不正はchecksum検証失敗とする。
+
+Phase 15 で Obsidian local vault 同期を実装済みに遷移する場合は、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract) に従い、`adlaire-ci-obsidian-$OS_ARCH` を取得対象に追加する。Phase 15 完了後の setup は、Obsidian CLI 導入または更新対象で `adlaire-ci-obsidian-$OS_ARCH` と `SHA256SUMS` を取得し、release 全体の checksum 行数を 8 行として検証する。Phase 15 完了前に `adlaire-ci-obsidian-$OS_ARCH` を必須取得対象として扱ってはならない。
 
 <a id="sec-26-2b"></a>
 **[§26.2b セットアップ・アップデート機能単位](setup.md#sec-26-2b)：**
@@ -108,7 +112,7 @@ Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細�
 |------|------|------|----------|------------------|
 | Release asset resolver | `VERSION`、`OS_ARCH`、取得対象成果物名、GitHub Release URL | `DOWNLOAD_DIR` 内の取得済みファイル | `VERSION` / `OS_ARCH` 空、HTTP status 非 2xx、取得ファイル 0 byte | 取得済みファイルを配置せず終了 |
 | checksum verifier | `SHA256SUMS`、取得済み成果物 | 検証済み成果物一覧 | `SHA256SUMS` 不在、対象行不在、SHA-256 不一致 | バイナリ配置を実行せず終了 |
-| binary installer | 検証済みバイナリ、`BIN_DIR` | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`、API 導入対象の実装では `adlaire-ci-api` と `adlaire-ci-admin`、MCP 導入対象の実装では `adlaire-ci-mcp` | 入力バイナリ不在、実行権限付与失敗、atomic replace失敗 | systemd 変更を実行せず終了 |
+| binary installer | 検証済みバイナリ、`BIN_DIR` | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`、API 導入対象の実装では `adlaire-ci-api` と `adlaire-ci-admin`、MCP 導入対象の実装では `adlaire-ci-mcp`、Phase 15 完了後の Obsidian CLI 導入対象では `adlaire-ci-obsidian` | 入力バイナリ不在、実行権限付与失敗、atomic replace失敗 | systemd 変更を実行せず終了 |
 | secret initializer | [`docs/details/runner.md` 詳細本文責務 GitHub token 読み込み契約](runner.md#github-token-読み込み契約) に一致する PAT 入力、管理 API 新規導入時は `ADMIN_INITIAL_PASSWORD_FILE`、`INSTALL_DIR` | statefile create-only mode で作成した `.github_token` mode `0600`、管理 API 新規導入時は `adlaire-ci-api --init-credentials` が作成した `.admin_credentials` mode `0600`、または検証済み既存ファイルの byte 単位保持 | PAT 不正、初期 password file 不正、既存 secret 不正、statefile create-only failure、credentials 初期化失敗 | systemd 変更を実行せず終了 |
 | state initializer | `INSTALL_DIR` | statefile create-only mode で作成した `.last_sha`、または schema 検証済み既存ファイルの byte 単位保持。build log 保存対象の実装では `.build_logs/`、snapshot 保存対象の実装では `.snapshots/` | 既存ファイル破損、statefile create-only failure、directory 作成または mode 確定失敗 | systemd 変更を実行せず終了 |
 | admin UI installer | `admin-ui.tar.gz`、`INSTALL_DIR` | `$INSTALL_DIR/admin/index.html`、`$INSTALL_DIR/admin/adlaire-ci-sdk.js` | archive 不在、checksum 不一致、展開後必須ファイル不在 | API 導入・更新対象では API service 起動 / restart を実行せず終了。runner のみの初回セットアップでは本機能を対象外とし、後続の systemd 処理へ進む。 |
@@ -168,6 +172,7 @@ asset 1 件の request から保存完了までの timeout は `5m`、local API 
 | `adlaire-ci-api` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-api` へ配置する。 | `0755` | API service を restart / start しない。 |
 | `adlaire-ci-admin` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-admin` へ配置する。 | `0755` | API service を restart / start しない。 |
 | `adlaire-ci-mcp` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-mcp` へ配置する。 | `0755` | MCP server を起動しない。 |
+| `adlaire-ci-obsidian` | Phase 15 完了後に、検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-obsidian` へ配置する。 | `0755` | Obsidian application、plugin、Sync service、watcher を起動しない。 |
 | `.github_token` | PAT を `strings.TrimSpace` した値 + LF 1 個を、[`docs/details/statefile.md` 詳細本文責務 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode へ渡す。 | `0600` | systemd unit を変更しない。secret 平文を stderr/stdout に出さない。 |
 | `.last_sha` | `{"sha":""}` + LF 1 個を、[`docs/details/statefile.md` 詳細本文責務 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode へ渡す。 | `0600` | systemd unit を変更しない。 |
 | `.admin_credentials` | 検証済み `ADMIN_INITIAL_PASSWORD_FILE` の内容を stdin として `adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"` を起動し、[`docs/details/security.md` 詳細本文責務 `--init-credentials` CLI 固定契約](security.md#init-credentials-cli-contract)で生成する。 | `0600` | API service を enable/start しない。password を argv、environment、stdout、stderr、log へ出さない。 |
@@ -219,6 +224,7 @@ CLI parse error は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通�
 |------|----------------------|
 | `install` | `validate`、`download`、`checksum`、`install-binaries`、`initialize-secrets`、`initialize-state`、`configure-systemd`、`activate-services`、`verify` |
 | `install-api` | `validate`、`download`、`checksum`、`prepare-runtime`、`install-api-binary`、`install-admin`、`initialize-credentials`、`configure-systemd`、`activate-api`、`verify` |
+| `install-obsidian` | `validate`、`download`、`checksum`、`install-binaries`、`verify` |
 | `update`（API 未導入） | `validate`、`backup`、`download`、`checksum`、`install-binaries`、`restart-services`、`verify` |
 | `update`（API 導入済み） | `validate`、`backup`、`download`、`checksum`、`install-binaries`、`install-admin`、`restart-services`、`verify` |
 
@@ -327,6 +333,17 @@ Go 版初回セットアップでは以下を実行しない。
 
 `curl -fsS http://127.0.0.1:8765/api/health` は運用者の手動確認例として使用できるが、setup / update 実装は `curl` を起動してはならない。API response の具体契約は [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従い、未確認のまま API 導入確認を満たした扱いにしてはならない。
 
+<a id="phase-15-obsidian-setup-contract"></a>
+**Phase 15 Obsidian CLI 導入手順：**
+
+`install-obsidian` は Phase 15 完了後だけ有効な mode とする。Phase 15 完了前の build では `install-obsidian` を `INVALID_INPUT`、終了コード `2` とし、directory 作成、download、binary 配置、systemd 操作、state / secret 変更を行ってはならない。
+
+`install-obsidian` は `adlaire-ci-obsidian-$OS_ARCH` と `SHA256SUMS` だけを取得対象とし、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract) の asset count `9`、checksum 行数 `8`、asset 名 `adlaire-ci-obsidian-linux-amd64` を検証する。`admin-ui.tar.gz`、`adlaire-ci-api-$OS_ARCH`、`adlaire-ci-admin-$OS_ARCH`、`adlaire-ci-mcp-$OS_ARCH`、runner systemd unit、API service、state directory、secret file、credentials file を取得、作成、変更、起動してはならない。
+
+`install-obsidian` の配置対象は `$BIN_DIR/adlaire-ci-obsidian` だけとし、既存配置先が directory、symlink、device、socket、FIFO の場合は `INSTALL_FAILED`、終了コード `1` とする。既存通常 file がある場合は、検証済み新 binary を sibling temporary file へ `0755` で書き、file sync、parent directory sync、atomic rename、parent directory sync の順で置換する。置換前に失敗した場合は既存 binary を保持し、置換後に `--version` が不合格の場合は更新失敗として既存 binary を復元できる rollback record を fixture に記録する。
+
+`install-obsidian` の固定確認は `$BIN_DIR/adlaire-ci-obsidian --version` だけとする。合格条件は exit `0`、stderr 空、stdout が exact `adlaire-ci-obsidian $VERSION go=<non-empty>` + LF、`$VERSION` が Release asset の tag と一致し、`V.0.0-dev` ではないことである。`install-obsidian` は Obsidian application、Obsidian plugin、Obsidian Sync service、filesystem watcher、systemd unit を起動してはならない。
+
 <a id="sec-26-4"></a>
 **[§26.4 systemd サービスファイル](setup.md#sec-26-4)：**
 
@@ -399,7 +416,7 @@ systemd unit は [`docs/details/setup.md` 詳細本文責務 §26.4](setup.md#se
 
 `git pull`、利用環境での `go build`、開発ブランチ checkout は使用しない。タグ付き安定版のリリースバイナリを配置し、サービスを再起動する。管理 API を導入していない構成では、管理 API サービスは再起動対象に含めない。
 
-更新対象 version cohort は、常に `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`、API 導入済みの場合は加えて `adlaire-ci-api`、`adlaire-ci-admin`、`admin-ui.tar.gz`、MCP 導入済みの場合は加えて `adlaire-ci-mcp` の全対象とする。成功時は全対象を同一 `VERSION`、rollback 時は全対象を更新開始前の旧 version cohort へ戻す。後段失敗時に一部の新バイナリまたは新 admin UI を残し、新旧 version を混在させてはならない。
+更新対象 version cohort は、常に `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`、API 導入済みの場合は加えて `adlaire-ci-api`、`adlaire-ci-admin`、`admin-ui.tar.gz`、MCP 導入済みの場合は加えて `adlaire-ci-mcp`、Obsidian CLI 導入済みの場合は加えて `adlaire-ci-obsidian` の全対象とする。成功時は全対象を同一 `VERSION`、rollback 時は全対象を更新開始前の旧 version cohort へ戻す。後段失敗時に一部の新バイナリまたは新 admin UI を残し、新旧 version を混在させてはならない。
 
 アップデートは以下の順序で実行し、途中失敗時は [アップデート rollback 固定契約](#setup-update-rollback-contract) に従う。
 
@@ -437,20 +454,22 @@ restart 回数は rollback 処理内の回数を表す。runner restart 失敗�
 1. 既存`$BIN_DIR/adlaire-ci-build`、`$BIN_DIR/adlaire-ci-runner`、`$BIN_DIR/adlaire-ci-setup`の存在を確認する。いずれかが不在の場合は終了コード`2`とし、更新を開始しない。
 2. API 導入済み判定は `$BIN_DIR/adlaire-ci-api` が通常ファイルとして存在し、`systemctl is-enabled adlaire-ci-api` が `enabled` または `static` を返す場合だけ `true` とする。
 3. MCP 導入済み判定は `$BIN_DIR/adlaire-ci-mcp` が通常ファイルとして存在する場合だけ `true` とする。
-4. API 導入済みでない場合、`adlaire-ci-api-$OS_ARCH`、`adlaire-ci-admin-$OS_ARCH`、`admin-ui.tar.gz` は取得しない。
-5. MCP 導入済みでない場合、`adlaire-ci-mcp-$OS_ARCH` は取得しない。
-6. API 導入済みの場合、build / runner / setup / api / admin binary と admin UI を同じ `VERSION` の asset から取得する。MCP 導入済みの場合は mcp binary も同じ `VERSION` の asset から取得する。version 混在は禁止する。
-7. すべての対象 asset の checksum 検証が成功するまで、既存 binary、既存 admin UI、systemd unit を変更しない。
-8. binary 配置後の version 確認に失敗した場合は、その binary を配置失敗として rollback 対象に含める。
-9. runner restart が失敗した場合、API restart と admin UI 更新へ進まない。
-10. admin UI 更新が失敗した場合は [アップデート rollback 固定契約「admin UI 展開失敗」](#setup-update-rollback-contract)を 1 回適用し、API restart へ進まない。
-11. admin UI 差し替え後の API restart が失敗した場合は [アップデート rollback 固定契約「admin UI 差し替え後 API restart 失敗」](#setup-update-rollback-contract)を 1 回適用する。
+4. Phase 15 完了後の Obsidian CLI 導入済み判定は `$BIN_DIR/adlaire-ci-obsidian` が通常ファイルとして存在する場合だけ `true` とする。Phase 15 完了前は常に `false` とする。
+5. API 導入済みでない場合、`adlaire-ci-api-$OS_ARCH`、`adlaire-ci-admin-$OS_ARCH`、`admin-ui.tar.gz` は取得しない。
+6. MCP 導入済みでない場合、`adlaire-ci-mcp-$OS_ARCH` は取得しない。
+7. Obsidian CLI 導入済みでない場合、`adlaire-ci-obsidian-$OS_ARCH` は取得しない。
+8. API 導入済みの場合、build / runner / setup / api / admin binary と admin UI を同じ `VERSION` の asset から取得する。MCP 導入済みの場合は mcp binary も同じ `VERSION` の asset から取得する。Obsidian CLI 導入済みの場合は obsidian binary も同じ `VERSION` の asset から取得する。version 混在は禁止する。
+9. すべての対象 asset の checksum 検証が成功するまで、既存 binary、既存 admin UI、systemd unit を変更しない。
+10. binary 配置後の version 確認に失敗した場合は、その binary を配置失敗として rollback 対象に含める。
+11. runner restart が失敗した場合、API restart と admin UI 更新へ進まない。
+12. admin UI 更新が失敗した場合は [アップデート rollback 固定契約「admin UI 展開失敗」](#setup-update-rollback-contract)を 1 回適用し、API restart へ進まない。
+13. admin UI 差し替え後の API restart が失敗した場合は [アップデート rollback 固定契約「admin UI 差し替え後 API restart 失敗」](#setup-update-rollback-contract)を 1 回適用する。
 
 **アップデート後確認固定契約：**
 
 | 確認 | API 未導入 | API 導入済み |
 |------|------------|--------------|
-| binary version | build / runner / setup の各 `--version` が exit `0`、stderr 空、exact `<binary-name> $VERSION go=<non-empty>` + LF。MCP 導入済みの場合は `adlaire-ci-mcp` も同じ条件で確認する。 | build / runner / setup / API / admin の各 `--version` が exit `0`、stderr 空、exact `<binary-name> $VERSION go=<non-empty>` + LF。MCP 導入済みの場合は `adlaire-ci-mcp` も同じ条件で確認する。 |
+| binary version | build / runner / setup の各 `--version` が exit `0`、stderr 空、exact `<binary-name> $VERSION go=<non-empty>` + LF。MCP 導入済みの場合は `adlaire-ci-mcp`、Obsidian CLI 導入済みの場合は `adlaire-ci-obsidian` も同じ条件で確認する。 | build / runner / setup / API / admin の各 `--version` が exit `0`、stderr 空、exact `<binary-name> $VERSION go=<non-empty>` + LF。MCP 導入済みの場合は `adlaire-ci-mcp`、Obsidian CLI 導入済みの場合は `adlaire-ci-obsidian` も同じ条件で確認する。 |
 | service | `systemctl is-active adlaire-ci.timer` が `active`、`systemctl cat adlaire-ci.service` と `systemctl cat adlaire-ci.timer` が exit `0`。 | API 未導入の 3 確認に加え、`systemctl is-active adlaire-ci-api` が `active`、`systemctl cat adlaire-ci-api.service` が exit `0`。 |
 | admin UI | 確認しない。 | `$INSTALL_DIR/admin/index.html` と `$INSTALL_DIR/admin/adlaire-ci-sdk.js` が存在する。 |
 | local API | 確認しない。 | [`docs/details/setup.md` 詳細本文責務 §26.2b](setup.md#sec-26-2b) setup 共通確認契約に従い、API service が local health check に応答する。 |
@@ -601,3 +620,23 @@ setup / admin / Release asset 連動 fixture の fixture 名、正式 fixture di
 | update failure | rollback対象、systemd call順、復元後確認 | [update rollback 固定契約](#setup-update-rollback-contract) で許可した対象以外に差分がない。 |
 
 `setup` 実装変更は、[`docs/details/setup.md` 詳細本文責務 §26.8](setup.md#sec-26-8) Setup / Admin 配布実装確認ゲート の固定表の fixture、差分確認、secret 非表示確認、終了コード確認を記録する。いずれかが未実行の場合、対象段階を確認済み扱いにせず、未実行理由と再実行条件を記録する。
+
+---
+
+<a id="phase-13-setup-alignment-contract"></a>
+**Phase 13 setup 実装整合契約：**
+
+[`docs/details/setup.md`](setup.md) 詳細本文責務は、Phase 13 で setup / install-api / update / rollback、credential 初期化 stdout、systemd unit、state directory 権限、実インストール E2E の境界を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| credential stdout | API credential 初期化、setup、install-api、update、rollback の stdout / stderr は [`docs/details/setup.md` 詳細本文責務 §26](setup.md#26-セットアップアップデート手順) の出力固定契約と一致させる。credential 平文、token、password、generated secret、絶対 path、child process 出力を出さない。 |
+| state directory | state directory は mode `0700`、owner は実行専用 user、group / other 権限なしとする。起動時に owner、mode、symlink 非追従、通常 directory、書込み先限定を確認し、不合格時は service を成功扱いにしない。 |
+| systemd | systemd unit は dedicated user、最小権限、書込み先限定、環境変数 secret 非保存、restart policy、working directory、state directory だけへの write を固定する。root 実行、広範な write path、未定義 environment を許可しない。 |
+| install/update transaction | install、update、rollback は事前検証、staging、commit、rollback、最終確認、失敗時差分確認を持つ。rollback 失敗時に推測復旧を追加せず、固定 error と fixture effects だけで記録する。 |
+| local E2E | setup、install-api、update、rollback、Release asset からの実インストールは fixture 上で E2E 証跡を持つ。systemd 実起動が未実行の場合は未実行証跡として扱い、確認済みへ変換しない。 |
+| security 接続 | credential 生成、token file、secret mask、file safety は [`docs/details/security.md` 詳細本文責務 Phase 13 security 実装整合契約](security.md#phase-13-security-alignment-contract) を参照し、setup 側で hash、token、署名、mask を再定義しない。 |
+
+Phase 13 の setup stdout / stderr 契約は `input/contract_inventory.json` と `input/security_inventory.json` の両方に記録する。credential 初期化、install-api、update、rollback の出力が片方にだけ定義される場合、または stdout に secret / token / password / absolute state path が含まれる場合は `phase13_contract_mismatch_count` と `phase13_required_log_write_ignore_count` に計上する。
+
+Phase 13 の `setup` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_e2e_open_count=0`、`phase13_external_boundary_open_count=0`、`phase13_recovery_procedure_open_count=0`、`phase13_required_log_write_ignore_count=0` を満たすまで完了扱いにしてはならない。

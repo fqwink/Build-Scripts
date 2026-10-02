@@ -267,3 +267,24 @@ archive / snapshot の fixture 名、合格条件、expected / effects、stream 
 | rollback pending | `success_deploy_pending` と [`docs/details/statefile.md` 詳細本文責務 §22.0c](statefile.md#sec-22-0c) の schema に一致する pending 候補を runner owner へ返し、archive owner は状態 file を書き込まない。 |
 | rollback running | api / runner owner が archive owner を呼び出さず、archive 状態差分なし。 |
 | delete log failure | archive owner は削除成功後の log 失敗に関与せず、削除済み snapshot を復元しない。 |
+
+<a id="phase-13-archive-alignment-contract"></a>
+**Phase 13 archive 実装整合契約：**
+
+[`docs/details/archive.md`](archive.md) 詳細本文責務は、Phase 13 で snapshot、圧縮、digest、検証、download、restore、backup / restore transaction の archive 実処理を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| ownership | `api`、`runner`、`setup`、`release` は archive の tar / gzip / digest / snapshot validation / restore 実装を重複保持しない。呼び出し元 owner は archive owner の公開境界へ入力を渡し、結果を解釈するだけとする。 |
+| snapshot | snapshot 作成は入力 directory の symlink 非追従、通常 file 検証、digest 計算、temporary directory 作成、archive 作成、archive 再検証、atomic publish の順で実行する。 |
+| download | download は保存済み archive の再検証後、同一 file descriptor から stream する。stream 開始前の検証失敗では body を開始しない。stream 開始後の read failure は固定 error 証跡へ記録する。 |
+| restore | restore は事前検証、staging 展開、commit、rollback の transaction とする。事前検証失敗では staging を作らず、commit 後の失敗では定義済み rollback だけを行う。 |
+| digest | digest は archive byte、manifest、展開後 file set の少なくとも 3 点で照合する。`SHA256SUMS`、release digest、snapshot digest の正本は release owner と archive owner の参照境界で分離する。 |
+| state boundary | archive owner は `.pending_transfers`、`.build_history`、`.audit_log`、HTTP response を直接更新または生成しない。必要な状態候補だけを runner / api owner へ返す。 |
+| corruption | archive 破損、metadata mismatch、unsafe entry、secret path、traversal、hardlink、symlink、device、short read は黙って除外せず固定 error とする。 |
+
+Phase 13 の backup / restore transaction record は `transaction_id`、`operation`、`source_ref`、`staging_path`、`precheck_result`、`commit_result`、`rollback_result`、`published_artifact`、`digest_verified`、`state_effects` を持つ。`precheck`、`stage`、`commit`、`rollback` のどの段階で失敗したかを記録できない実装は、restore 成功扱いにしてはならない。
+
+Restore の `commit` 前に検出した失敗は statefile へ永続状態を変更しない。`commit` 後に検出した失敗は rollback を試み、rollback の成否を `recovery_required` の候補として呼び出し元へ返す。archive owner が runner queue 状態や API response を直接確定してはならない。
+
+Phase 13 の `archive` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_archive_commitstatus_ownership_open_count=0`、`phase13_release_evidence_open_count=0`、`phase13_recovery_procedure_open_count=0` を満たすまで完了扱いにしてはならない。

@@ -60,7 +60,7 @@
 4. [`docs/SPEC.md`](SPEC.md) のポリシー責務で、対象領域の禁止事項、セキュリティ、バージョン、外部依存を確認する。
 5. 実装または検証を扱う場合は、[`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) の意味のあるテストポリシーを確認する。
 6. 生成静的 Web サイトまたは標準管理 UI のデザイン関係を扱う場合は、[`docs/DESIGN.md`](DESIGN.md) デザイン責務で視覚仕様を確認する。
-7. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。Phase 11 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference)、実装契約は該当 owner 詳細本文責務を確認する。Phase 12 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence)、実装契約は該当 owner 詳細本文責務を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
+7. [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務で詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口を確認し、該当する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務で実装に必要な入出力、状態、異常系、検証条件を確認する。Phase 11 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference)、実装契約は該当 owner 詳細本文責務を確認する。Phase 12 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence)、実装契約は該当 owner 詳細本文責務を確認する。Phase 13 を扱う場合も専用詳細ファイルを作らず、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](details/fixture.md#phase-13-implementation-alignment-quality-evidence)、実装契約は該当 owner 詳細本文責務を確認する。Phase 14 と Phase 15 を扱う場合は、状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry) と [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry)、実装契約は [`docs/details/obsidian.md`](details/obsidian.md) 詳細本文責務、fixture は [`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) と [`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) を確認する。文書と実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を確認する。
 
 ---
 
@@ -127,6 +127,7 @@ Adlaire CI は、ゼロ依存・フルインハウスを技術哲学の中核と
 | `commitstatus` | `components/commitstatus/` | Go 標準ライブラリ `net/http` だけで GitHub Commit Status payload、送信、応答検証を処理する。外部 GitHub client library、CI status service に依存しない。 |
 | `security` | `components/security/` | Go 標準ライブラリだけで認証、認可、token、session、TOTP、rate limit、audit、secret 処理を実装する。外部 authentication framework、secret management SDK に依存しない。 |
 | `mcp` | `components/mcp/` | Go 標準ライブラリを前提とし、MCP 通信、JSON-RPC 処理、API bridge、監査ログを内製する。外部 MCP framework に依存する前提で仕様化しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様は [`docs/details/mcp.md`](details/mcp.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。 |
+| `obsidian` | `components/obsidian/` | Go 標準ライブラリだけで Obsidian local vault の Markdown、wikilink、embed、tag、asset、同期 plan / apply / rollback を処理する。Obsidian application plugin、Obsidian Sync service、cloud API、外部 Markdown parser、YAML parser、filesystem watcher library に依存しない。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様は [`docs/details/obsidian.md`](details/obsidian.md)、実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) を参照する。 |
 
 「実装内包先 / 配布対象」列は、owner component の責務を実装または配布する artifact の所在を示す。同列を、owner component と artifact の同一視、単独専用 artifact の存在保証、現在状態、実装着手許可の根拠として使用してはならない。実装 artifact の実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、実装 artifact と機能の現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を正本とする。
 
@@ -232,7 +233,7 @@ Adlaire CI の仕様体系は、責務ベース明示的原則を仕様全般の
 
 owner component は対象機能の詳細本文を持つ。collaborator component は、境界、接続、入力受け渡し、出力受け渡し、検証観点として参照される。collaborator component は、owner component の本文を置き換えたり、同じ判断対象を別正本として再定義したりしてはならない。
 
-owner component と実装 artifact は別の判断対象とする。owner component は機能契約の責務境界であり、単独の実装ファイルが存在することを意味しない。実装 artifact は [`main.go`](../main.go)、`components/*.go`、`admin/*`、実行バイナリ、配布物、または運用実行物のように、リポジトリまたはリリースで実在と実行可否を確認できる対象をいう。owner component が持つ機能の現在状態を、同名の実装 artifact が存在するという理由だけで判定してはならない。
+owner component と実装 artifact は別の判断対象とする。owner component は機能契約の責務境界であり、単独の実装ファイルが存在することを意味しない。実装 artifact は [`main.go`](../main.go)、`components/<owner>/` 配下の Go file、`admin/*`、実行バイナリ、配布物、または運用実行物のように、リポジトリまたはリリースで実在と実行可否を確認できる対象をいう。owner component が持つ機能の現在状態を、同名の実装 artifact が存在するという理由だけで判定してはならない。
 
 [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務は、実装 artifact の現在状態と owner component が持つ機能の現在状態を区別して記録する。単独の専用 Go 実装 artifact を持たない `admin`、`statefile`、`archive`、`commitstatus`、`security` の owner component は、機能インベントリの現在状態で管理する。実装 artifact の path、起動名、入力 interface のいずれかが必要であるにもかかわらず未定義の機能は、実装可能な仕様として扱ってはならない。
 
@@ -255,20 +256,78 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 ├── main_test.go
 │
 ├── components/
-│   ├── builder.go
-│   ├── builder_test.go
-│   ├── runner.go
-│   ├── runner_test.go
-│   ├── api.go
-│   ├── api_test.go
-│   ├── admin.go
-│   ├── admin_test.go
-│   ├── setup.go
-│   ├── setup_test.go
-│   ├── release.go
-│   ├── release_test.go
-│   ├── mcp.go
-│   └── mcp_test.go
+│   ├── admin/
+│   │   ├── admin.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── admin_test.go
+│   ├── api/
+│   │   ├── api.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── api_test.go
+│   ├── archive/
+│   │   ├── archive.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── archive_test.go
+│   ├── builder/
+│   │   ├── builder.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── builder_test.go
+│   ├── commitstatus/
+│   │   ├── commitstatus.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── commitstatus_test.go
+│   ├── mcp/
+│   │   ├── mcp.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── mcp_test.go
+│   ├── obsidian/
+│   │   ├── obsidian.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── obsidian_test.go
+│   ├── release/
+│   │   ├── release.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── release_test.go
+│   ├── runner/
+│   │   ├── runner.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── runner_test.go
+│   ├── security/
+│   │   ├── security.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── security_test.go
+│   ├── setup/
+│   │   ├── setup.go
+│   │   ├── model.go
+│   │   ├── validate.go
+│   │   ├── execute.go
+│   │   └── setup_test.go
+│   └── statefile/
+│       ├── statefile.go
+│       ├── model.go
+│       ├── validate.go
+│       ├── execute.go
+│       └── statefile_test.go
 │
 ├── admin/
 │   ├── index.html
@@ -297,7 +356,15 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   ├── security/
 │   ├── setup/
 │   ├── release/
-│   └── mcp/
+│   ├── mcp/
+│   ├── phase12/
+│   │   └── quality-gate-reconstruction/
+│   ├── phase13/
+│   │   └── implementation-alignment-quality/
+│   ├── phase14/
+│   │   └── obsidian-vault-integration/
+│   └── phase15/
+│       └── obsidian-local-sync/
 │
 ├── docs/
 │   ├── SPEC.md
@@ -319,6 +386,7 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   │   ├── archive.md
 │   │   ├── commitstatus.md
 │   │   ├── mcp.md
+│   │   ├── obsidian.md
 │   │   └── fixture.md
 │   └── examples/
 │
@@ -331,11 +399,11 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 
 [`main.go`](../main.go) は 1 ファイルとし、起動入口、実行ファイル名の exact 判定、引数受け取り、binary version 注入値の受け渡し、対象 owner component 呼び出しだけを担当する。[`main.go`](../main.go) に Markdown 変換、CI 実行、HTTP handler、状態ファイル操作、archive 処理、GitHub Commit Status 送信、setup、release、MCP 処理の実装詳細を書いてはならない。未知の実行ファイル名を既定 owner component へ fallback してはならない。
 
-`components/` の現行配置は Phase 12 完了後の owner package 配置を示す。Go 実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin/` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup/` と `components/release/` とする。`statefile`、`archive`、`commitstatus`、`security` は Phase 12 で owner package として実在化済みの責務境界である。`mcp` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。
+`components/` の配置は owner package 配置を示す。Go 実装ファイルの実在所在は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。`admin` は `admin/` 配下の静的配布物と、CLI 管理クライアント用の `components/admin/` を所有する責務境界として扱う。`setup` と `release` の標準 Go 実装 artifact はそれぞれ `components/setup/` と `components/release/` とする。`statefile`、`archive`、`commitstatus`、`security` は Phase 12 で owner package として実在化済みの責務境界である。`mcp` の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、実装可否と追加条件は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) と該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を参照する。`obsidian` は Phase 14 と Phase 15 で実装対象になる owner component であり、実装前は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務で未作成 path として扱う。
 
 Phase 12 完了後の Go 実装標準配置は owner component package とし、`main.go` は 1 ファイル固定、各標準 Go owner package は 5 ファイル固定とする。5 ファイル固定は例外禁止であり、実装量、Go 慣習、既存巨大ファイル、共通化希望、テスト都合、将来拡張を理由に 6 ファイル目、補助 package、`helper.go`、`utils.go`、`common.go`、`misc.go`、責務外の集約ファイル、または owner 以外の逃がし先を作ってはならない。5 ファイルに収まらない場合は、ファイル数を増やさず、owner component の責務分割または仕様分割を先に行う。
 
-Phase 12 完了後の各標準 Go owner package は以下の構成だけを許可する。`<owner>` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 Go owner package target owner](DETAIL_INDEX.md#phase-12-go-owner-package-targets) に定義された Go owner package target 名と一致させる。`sdk` と `ui` は JavaScript / HTML artifact を正本とし、Go owner package target として扱ってはならない。
+Phase 12 完了後の各標準 Go owner package、および Phase 14 / Phase 15 で新設する `obsidian` owner package は以下の構成だけを許可する。`<owner>` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 Go owner package target owner](DETAIL_INDEX.md#phase-12-go-owner-package-targets) または [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry) / [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry) に定義された Go owner package target 名と一致させる。`sdk` と `ui` は JavaScript / HTML artifact を正本とし、Go owner package target として扱ってはならない。
 
 ```text
 components/<owner>/
@@ -412,7 +480,7 @@ Phase を Pull Request の境界にすることは、Phase の一部分だけを
 <a id="sec-4-8"></a>
 **4.8 完了判定方針：**
 
-`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。Phase 11 の横断 acceptance gate、差し戻し条件、未残条件、Phase 12 の実装品質ゲート再構築、状態復帰条件、未残条件は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) を正本とし、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
+`実装済み` への遷移は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、仕様変更の完了は [`docs/SPEC.md` ポリシー責務 §0b](SPEC.md#policy-spec-pr-completion)、Phase の完了単位は [`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の条件で判定する。Phase 11 の横断 acceptance gate、差し戻し条件、未残条件、Phase 12 の実装品質ゲート再構築、状態復帰条件、未残条件、Phase 13 の実装整合・品質改善、状態安全性強化、未残条件、Phase 14 の Obsidian Vault 連携、Phase 15 の Obsidian local vault 同期は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) を正本とし、fixture の一般形式と実装検証証跡は [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を正本とする。
 
 バグ修正ゼロ化とは、実装済み機能、実装中・検証未完了機能、または Phase 11 対象として [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務に割り当てた検証基盤について、既知の仕様不整合、未検証分岐、未固定の副作用、secret 漏えい可能性、状態 schema 揺れ、fixture 不足、環境依存の合格条件、実装後の追加修正前提を残さない状態をいう。バグ修正ゼロ化は品質目標であり、仕様外の新機能追加、状態語彙の緩和、検証省略、または fixture 期待値の弱体化を許可する理由にしてはならない。
 
@@ -420,7 +488,7 @@ Phase 11 は、バグ修正ゼロ化そのものを目的とする Phase であ�
 
 Phase 11 では、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase 11 の対象として明示されていない新規機能を実装してはならない。Phase 11 の実装対象は、[`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan) の Phase 11 行、および [`docs/ROADMAP.md` 状態・計画責務 §5](ROADMAP.md#522-統合ロードマップ表) で現在状態が `仕様化済み・未実装` かつ `詳細入口 / 次の扱い` が [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) または [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference) へ到達する検証基盤項目だけとする。現在状態が `改訂予定`、`将来計画`、`未仕様化`、または Phase 11 参照入口へ到達しない項目を、Phase 11 で実装、endpoint 化、SDK method 化、UI 操作化、状態 schema 化、配布物化、または外部連携化してはならない。
 
-Phase 11 のバグ修正ゼロ化は、文書上の未完了一覧だけでなく、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の標準実装 artifact と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務に実在する [`main.go`](../main.go)、[`components/*.go`](../components/)、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js)、[`admin/index.html`](../admin/index.html) の関数、状態 I/O、JSON / JSON Lines 処理、builder output publish / restore、generated site validation、setup install / rollback、release reproducibility / GitHub boundary、admin CLI / SDK / UI client boundary、API / MCP listener lifecycle、graceful shutdown、HTTP header / CORS / cookie boundary、clock / timer / entropy / request ID / time ID、goroutine / channel / worker ordering / cancel / timeout、MCP state bridge / read-only mutation、出力成果物検査、外部 I/O、認証・認可、secret 処理、queue / finalizer、fixture harness 接続を棚卸し対象に含める。棚卸しで検出した差分は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) で対象 owner と fixture へ割り当て、該当する owner 詳細本文へ実装契約を置き、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ検証証跡条件を置くか、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase 11 対象外として到達可能にするまで、完了扱いにしてはならない。既存 test の成功、既存実装済み状態、または別変更で解消するという説明だけで、source audit 由来の artifact 未分類、未固定分岐、直接状態書込、重複 algorithm、best-effort 読込、破損黙殺、secret 応答順序、実 OS listener / signal / sleep / random 依存、未接続 fixture root を残してはならない。
+Phase 11 のバグ修正ゼロ化は、文書上の未完了一覧だけでなく、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の標準実装 artifact と [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務に実在する [`main.go`](../main.go)、[`components/`](../components/) 配下の owner package、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js)、[`admin/index.html`](../admin/index.html) の関数、状態 I/O、JSON / JSON Lines 処理、builder output publish / restore、generated site validation、setup install / rollback、release reproducibility / GitHub boundary、admin CLI / SDK / UI client boundary、API / MCP listener lifecycle、graceful shutdown、HTTP header / CORS / cookie boundary、clock / timer / entropy / request ID / time ID、goroutine / channel / worker ordering / cancel / timeout、MCP state bridge / read-only mutation、出力成果物検査、外部 I/O、認証・認可、secret 処理、queue / finalizer、fixture harness 接続を棚卸し対象に含める。棚卸しで検出した差分は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) で対象 owner と fixture へ割り当て、該当する owner 詳細本文へ実装契約を置き、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務へ検証証跡条件を置くか、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で Phase 11 対象外として到達可能にするまで、完了扱いにしてはならない。既存 test の成功、既存実装済み状態、または別変更で解消するという説明だけで、source audit 由来の artifact 未分類、未固定分岐、直接状態書込、重複 algorithm、best-effort 読込、破損黙殺、secret 応答順序、実 OS listener / signal / sleep / random 依存、未接続 fixture root を残してはならない。
 
 Phase 11 の仕様全般完了は、`source-code audit residual zero`、`artifact coverage zero gap`、`fixture root identity zero duplicate`、`test gap inventory zero open item`、`test / contract drift zero`、`仕様全般完了` がすべて pass し、[`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) 詳細仕様入口責務、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、[`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務のいずれにも Phase 11 対象の未割当、未接続、未検証、重複 fixture、孤立 test、孤立 assertion、対象外理由未到達が残らない場合だけ認める。Phase 11 の完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 fixture harness 参照](details/fixture.md#phase-11-fixture-harness-reference) へ記録する。仕様全般完了は、実装完了、検証完了、または Phase 11 の `実装済み` 遷移を意味しない。現在状態の変更は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務と [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) に従う。
 
@@ -429,6 +497,28 @@ Phase 12 は、Phase 11 完了後に残る実装品質ゲートの構造不足�
 Phase 12 の実装開始時は、Phase 11 と状態ファイル共通永続化を完了済みの事実として盲信してはならない。Phase 12 の再評価で必須証跡不足、contract drift、statefile lock / append / atomic write 不備、fixture harness 未接続、mutation 生存、race trigger 未判定、owner package 違反、release reproducibility 不足を検出した場合は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務の該当行を `実装中・検証未完了` へ戻し、同一 Phase 12 実装変更内で修正、検証、証跡記録、状態復帰を完了しなければならない。差分が検出されなかった対象だけを、Phase 12 closure record 上で `closed` または `not_applicable` として扱える。
 
 Phase 12 の完了は、[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) の全証跡対象が closed、`phase12_contract_mismatch_count=0`、`phase12_state_safety_open_count=0`、`phase12_fixture_harness_open_count=0`、`phase12_mutation_survived_count=0`、`phase12_race_trigger_open_count=0`、`phase12_owner_package_violation_count=0`、`phase12_ci_required_check_open_count=0`、`phase12_release_reproducibility_open_count=0`、`final_open_item_count=0`、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務の実在 / 未作成 path 不整合 `0` を満たす場合だけ認める。Phase 12 完了後に owner package 5 ファイル固定へ移行した Go owner は、[`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) の 5 ファイル固定構成以外へ戻してはならない。
+
+Phase 13 は、Phase 12 完了後の実装構造を前提に、実装整合、状態安全性、セキュリティ境界、外部境界、検証品質、リリース証跡、復旧手順を実態と仕様へ一致させる品質改善 Phase である。Phase 13 は新しい汎用機能追加 Phase ではなく、既存 owner component の責務逸脱、直接状態更新、契約不一致、未実行 fixture、mutation survivor、race、未固定 failure、未整備 release governance を 0 にする Phase とする。Obsidian 連携、Obsidian 同期、外部 notebook / knowledge base 連携は Phase 13 に含めず、Phase 14 または Phase 15 の対象として扱う。
+
+Phase 13 の対象は、[`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan) の Phase 13 行、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](details/fixture.md#phase-13-implementation-alignment-quality-evidence)、および該当 owner component 別の [`docs/details/*.md`](details/) 詳細本文責務へ到達するものだけとする。Phase 13 専用の詳細仕様ファイルを作成してはならない。
+
+Phase 13 の仕様策定完了は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) に work unit と対象 owner の入口が揃い、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](details/fixture.md#phase-13-implementation-alignment-quality-evidence) に evidence package、必須 file、fixed entrypoint、required check 固定表、source anchor、closure counter、`expected/counters.json` 完全列挙、contract inventory 必須 key、negative control が揃い、各対象 owner 詳細本文に Phase 13 実装整合契約があり、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務が未作成 path を未作成として列挙している場合だけ認める。いずれかが欠ける場合、Phase 13 実装へ着手してはならない。
+
+Phase 13 の完了は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](details/fixture.md#phase-13-implementation-alignment-quality-evidence) の全 closure counter が完了値を満たし、`phase13_owner_file_violation_count=0`、`phase13_dummy_or_empty_file_count=0`、`phase13_direct_state_mutation_count=0`、`phase13_contract_mismatch_count=0`、`phase13_state_safety_open_count=0`、`phase13_jsonl_corruption_open_count=0`、`phase13_security_kdf_open_count=0`、`phase13_token_arg_open_count=0`、`phase13_archive_commitstatus_ownership_open_count=0`、`phase13_queue_recovery_open_count=0`、`phase13_mcp_unimplemented_success_count=0`、`phase13_external_boundary_open_count=0`、`phase13_required_log_write_ignore_count=0`、`phase13_fixture_execution_gap_count=0`、`phase13_mutation_survived_count=0`、`phase13_race_or_concurrency_open_count=0`、`phase13_fault_injection_open_count=0`、`phase13_e2e_open_count=0`、`phase13_ci_required_check_open_count=0`、`phase13_action_pin_open_count=0`、`phase13_release_evidence_open_count=0`、`phase13_recovery_procedure_open_count=0`、`phase13_document_drift_open_count=0`、`final_open_item_count=0` を満たす場合だけ認める。
+
+Phase 14 は、Obsidian local vault を入力として静的 Web サイト生成へ接続する Obsidian Vault 連携 Phase である。Phase 14 は Obsidian application plugin、Obsidian Sync service、Obsidian cloud、外部同期 API、外部 Markdown parser、YAML parser、filesystem watcher library を前提にしない。Phase 14 の対象は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan) の Phase 14 行、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry)、[`docs/details/obsidian.md` 詳細本文責務 Phase 14 Obsidian Vault 連携契約](details/obsidian.md#obsidian-phase14-vault-integration-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) へ到達するものだけとする。Phase 14 は vault を破壊せず、入力 vault への write、副作用を伴う Obsidian URI 実行、plugin data 解釈、YAML frontmatter 解釈、未解決 wikilink の暗黙成功、case-insensitive fuzzy 解決、同名 note の推測解決を禁止する。
+
+Phase 14 の仕様策定完了は、[`docs/details/obsidian.md`](details/obsidian.md) 詳細本文責務に local vault 境界、CLI 入力、path 正規化、symlink / hardlink 拒否、canonical JSON、`obsidian_map.json` schema、Markdown / wikilink / embed / tag / asset 正規化、YAML frontmatter 拒否、builder handoff、stdout / stderr / report、異常系、fixture 接続が固定され、[`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) に evidence package、必須 file、schema 照合、closure counter、negative control が揃い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務が未作成 path を未作成として列挙している場合だけ認める。
+
+Phase 14 の完了は、[`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) の全 closure counter が完了値を満たし、`phase14_obsidian_vault_boundary_open_count=0`、`phase14_obsidian_wikilink_open_count=0`、`phase14_obsidian_yaml_rejection_open_count=0`、`phase14_obsidian_asset_open_count=0`、`phase14_obsidian_builder_handoff_open_count=0`、`phase14_fixture_execution_gap_count=0`、`final_open_item_count=0` を満たす場合だけ認める。
+
+Phase 15 は、Adlaire CI と Obsidian local vault の同期を plan / apply / rollback で処理する Obsidian local vault 同期 Phase である。Phase 15 は Phase 14 完了後だけ着手できる。Phase 15 は Obsidian Sync service、Obsidian cloud、remote vault API、plugin runtime、外部 diff library、filesystem watcher library を前提にしない。同期は local filesystem 上の project tree、vault tree、statefile、staging、tombstone、conflict record、rollback record だけで成立しなければならない。Phase 15 の実装完了には、`adlaire-ci-obsidian` の Release 配布、setup 取得、checksum、version、fixture 証跡の配布連携が含まれる。
+
+Phase 15 の対象は [`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan) の Phase 15 行、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry)、[`docs/details/obsidian.md` 詳細本文責務 Phase 15 Obsidian local vault 同期契約](details/obsidian.md#obsidian-phase15-local-sync-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) へ到達するものだけとする。Phase 15 は apply 前 plan hash 一致なしの書込み、hard delete 既定化、競合の自動上書き、mtime だけの同一性判定、partial write 黙殺、vault 外 path への write、Obsidian URI を同期処理の成功条件にすることを禁止する。
+
+Phase 15 の仕様策定完了は、[`docs/details/obsidian.md`](details/obsidian.md) 詳細本文責務に sync plan、apply、state schema、canonical JSON、plan hash、operation schema、conflict / tombstone schema、rollback record schema、digest、staging、lock、atomic write、exit code、stdout / stderr、report、fixture 接続、配布連携が固定され、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](details/release.md#phase-15-obsidian-release-extension-contract)、[`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a)、[`docs/details/setup.md` 詳細本文責務 Phase 15 Obsidian CLI 導入手順](details/setup.md#phase-15-obsidian-setup-contract) へ到達でき、[`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) に evidence package、必須 file、schema 照合、closure counter、negative control が揃い、[`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務が未作成 path を未作成として列挙している場合だけ認める。
+
+Phase 15 の完了は、[`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) の全 closure counter が完了値を満たし、`phase15_sync_plan_mismatch_count=0`、`phase15_sync_apply_atomicity_open_count=0`、`phase15_sync_conflict_open_count=0`、`phase15_sync_tombstone_open_count=0`、`phase15_sync_rollback_open_count=0`、`phase15_sync_service_dependency_open_count=0`、`phase15_distribution_open_count=0`、`phase15_fixture_execution_gap_count=0`、`final_open_item_count=0` を満たす場合だけ認める。
 
 <a id="49-仕様策定単位方針"></a>
 
@@ -453,7 +543,7 @@ Phase 12 の完了は、[`docs/details/fixture.md` fixture 証跡責務 Phase 12
 Go 実装の判断基準は以下とする。
 
 - 標準 Go 実装 artifact は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) のディレクトリ構成 tree に従う。
-- `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-api`、`adlaire-ci-setup`、`adlaire-ci-release`、`adlaire-ci-admin`、`adlaire-ci-mcp` を標準実行バイナリ名とする。
+- `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-api`、`adlaire-ci-setup`、`adlaire-ci-release`、`adlaire-ci-admin`、`adlaire-ci-mcp`、`adlaire-ci-obsidian` を標準実行バイナリ名とする。`adlaire-ci-obsidian` の実装可否は Phase 14 / Phase 15 の現在状態に従う。
 - 仕様未記載の自動変換処理、暗黙の読み替え処理、仕様外分岐を実装判断で追加してはならない。
 - 該当する責務正本に記載されていない挙動は、仕様対象外として扱う。
 
@@ -928,7 +1018,7 @@ coverage は参考指標に限る。line coverage、branch coverage、function c
 | リリース形式 | バイナリ配布を標準とする。利用者は GitHub Release から OS/arch 別の実行バイナリを取得し、ソースからのビルドを標準導入手順に含めない |
 | バイナリバージョン | Release 用実行バイナリ asset の `--version` が、バイナリ名に続く第 2 token として tag と同一のリリースバージョンを返す。`V.0.0-dev`、tag と不一致の値、未注入値を含む実行バイナリ asset は公開禁止とする |
 | 標準 OS/arch | 初期標準は Linux x86_64（`linux-amd64`）とする。追加 OS/arch は将来のリリース対象として個別に仕様化する |
-| 添付ファイル | builder、runner、管理API、setup、管理 CLI、MCP の各`linux-amd64`実行バイナリ、管理UI archive、checksum manifestの8件だけを添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)を正本とする。`adlaire-ci-release`、生成静的Webサイト、debug binaryをRelease assetとして添付しない |
+| 添付ファイル | Phase 15 完了前は builder、runner、管理API、setup、管理 CLI、MCP の各`linux-amd64`実行バイナリ、管理UI archive、checksum manifestの8件だけを添付する。Phase 15 完了後は `adlaire-ci-obsidian-linux-amd64` を加えた9件だけを添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)と[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](details/release.md#phase-15-obsidian-release-extension-contract)を正本とする。`adlaire-ci-release`、生成静的Webサイト、debug binaryをRelease assetとして添付しない |
 | 管理 UI 配布物 | 管理UIは実行バイナリと分離した単独のarchive assetとして全安定版Releaseへ添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)、archive内容は[`docs/details/admin.md` 詳細本文責務 §A1](details/admin.md#a1-管理-ui-静的ファイル境界)、setup側の安全検証は[`docs/details/admin.md` 詳細本文責務 §A2](details/admin.md#a2-管理-ui-archive-検証)を正本とする |
 | checksum | checksum manifest 自身を除く全 Release asset の SHA-256 checksum を checksum manifest で提供する。checksum manifest 自身を再帰的な checksum 対象にしてはならない。exact asset 名、生成形式、公開前検証は [`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract) を正本とし、受け入れ・配置前検証は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を正本とする |
 | プレリリースフラグ | 安定版リリースでは `Pre-release` にチェックを入れない |

@@ -2914,3 +2914,20 @@ task list marker は list item text の先頭だけを対象にする。許可 m
 | 実装言語または外部依存が [`docs/SPEC.md` 方針責務 §4.1](../SPEC.md#sec-4-1)、[`docs/SPEC.md` 方針責務 §4.10](../SPEC.md#410-go-正本策定方針)、[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) に違反する、または builder 出力が CDN、外部 API、runtime network fetch、browser 専用 build tool を要求する。 | 上位方針違反または builder runtime 契約違反。 |
 | 失敗時に既存出力または manifest が更新された。 | atomicity 違反。 |
 | 実装検証証跡に対象機能、fixture、REPORT、strict / non-strict、基準出力安定性、対象外機能が列挙されていない。 | 実装証跡不足。 |
+
+<a id="phase-13-builder-alignment-contract"></a>
+**Phase 13 builder 実装整合契約：**
+
+[`docs/details/builder.md`](builder.md) 詳細本文責務は、Phase 13 で `builder` owner package の 5 ファイル責務純度、production entrypoint 実行、静的 Web サイト出力の actual / expected 比較、Markdown 入力境界、生成 asset 境界、builder output の許可副作用と禁止副作用を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| owner package shape | `components/builder/` は [`docs/SPEC.md` 方針責務 §4.3](../SPEC.md#sec-4-3) の 5 ファイル固定構成だけを許可する。Markdown 解析、site 出力、theme、search index、report 生成を別 package、helper directory、root `components/builder.go`、または dummy owner へ逃がしてはならない。 |
+| production entrypoint | Phase 13 fixture は `adlaire-ci-build` を [`main.go`](../../main.go) dispatch 経由で実行し、CLI 入力、終了 code、stdout、stderr、出力 directory、generated HTML / CSS / JavaScript / search index、report を actual として採取する。builder 内部関数だけの直接呼び出しを completion evidence にしてはならない。 |
+| input boundary | `--src`、`--out`、`--title`、`--theme`、`--base-dir`、`--strict`、`--build-id`、`--commit-sha`、`--build-at` の検証順、path safety、symlink rejection、UTF-8 rejection、source / output containment は本詳細本文の該当節だけを正本とする。Phase 13 で未記載値を実装判断で補完してはならない。 |
+| output parity | 生成静的 Web サイトの file set、relative path、HTML metadata、CSS class、JavaScript behavior、search index、warning / report は、builder fixture の expected と byte-level または schema-level で照合する。fixture 数、JSON parse、file 存在だけを成功証跡にしてはならない。 |
+| state / side effect | builder は statefile、credential、API queue、MCP state、archive、release artifact を直接更新しない。許可副作用は `--out` 配下の生成物と stdout / stderr / report だけとし、禁止副作用は Phase 13 closure record で検出対象にする。 |
+| collaborator boundary | CI 実行、queue、commit attribution、deploy、snapshot、release packaging は `runner`、`statefile`、`archive`、`release` の詳細本文責務を参照し、builder はこれらを再定義しない。builder が受け取る build metadata は検証済み入力として扱い、builder 内で生成または補完しない。 |
+| negative control | Phase 13 では少なくとも source / output containment violation、symlink input、invalid UTF-8、unknown theme、stale expected output、missing generated asset、unexpected state write、report mismatch を fail として検出する。negative control が成功扱いになる場合は `phase13_fixture_execution_gap_count` または `phase13_document_drift_open_count` に計上する。 |
+
+Phase 13 の `builder` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_owner_file_violation_count=0`、`phase13_dummy_or_empty_file_count=0`、`phase13_fixture_execution_gap_count=0`、`phase13_mutation_survived_count=0`、`phase13_document_drift_open_count=0` を満たすまで完了扱いにしてはならない。

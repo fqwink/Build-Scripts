@@ -562,3 +562,22 @@ SSE stream は panel 離脱、logout、`401`、明示 stop 操作で close す�
 UI は Prometheus metric、SVG badge、OpenAPI document、snapshot diff、config diff を再計算せず、SDK response を表示用に整形するだけとする。
 
 event feed panel は SDK の `onEvent` callback が渡す `AdminEventRecord` を、`timestamp` 降順、同一 `timestamp` は `id` ASCII 昇順の表示順に挿入する。UI は event id、type、severity、actor、target、message を生成・補完せず、stream frame の parse、keepalive 処理、error frame 処理を直接実装しない。stream error では panel summary に error を 1 回表示し、`getAdminEvents` を 1 回だけ再取得する。user stop の `done=null` では error を表示せず、`getAdminEvents` を 1 回だけ再取得する。
+
+---
+
+<a id="phase-13-ui-alignment-contract"></a>
+**Phase 13 UI 実装整合契約：**
+
+[`docs/details/ui.md`](ui.md) 詳細本文責務は、Phase 13 で UI 操作、SDK 呼び出し、成功後再取得、error / disabled 優先順位、one-time secret 表示、browser fixture 境界を所有する。Phase 13 の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](../DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry)、完了証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。
+
+| 対象 | 固定契約 |
+|------|----------|
+| SDK only | UI は `AdlaireCI` public method だけを呼び、直接 `fetch()`、`XMLHttpRequest`、`EventSource`、状態 file 操作、fixture file 操作を行わない。 |
+| route parity | UI 操作表の使用 SDK method、成功後再取得、confirmation、secret clearing を [`docs/details/sdk.md` 詳細本文責務 Phase 13 SDK 実装整合契約](sdk.md#phase-13-sdk-alignment-contract) と自動照合する。UI は API route を再定義しない。 |
+| no speculative state | status、queue、token、permission、rate limit、failure category、environment、MCP event、snapshot diff、release evidence を API / SDK response なしに確定表示しない。 |
+| one-time secret | 発行 token、share token、TOTP secret、otpauth URI、ticket、password、Webhook secret、SMTP password、external auth secret は専用表示領域と消去条件だけで扱い、一覧、event feed、error、log、DOM hidden field へ残さない。 |
+| browser fixture | Phase 13 の UI 検証は、SDK fake だけでなく browser runtime 上で UI → SDK → API fake の操作結果、disabled 優先順位、field error、stream close、one-time secret 消去、no direct fetch を確認する。 |
+
+Phase 13 の UI operation は `input/contract_inventory.json` の `client_bindings.ui_operation` によって SDK public method と API route contract へ到達する。UI にだけ存在する操作、SDK method を経由しない操作、API response にない値を表示状態として確定する操作は `phase13_contract_mismatch_count` に計上する。
+
+Phase 13 の `ui` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_contract_mismatch_count=0`、`phase13_e2e_open_count=0`、`phase13_external_boundary_open_count=0` を満たすまで完了扱いにしてはならない。
