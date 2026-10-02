@@ -235,8 +235,11 @@
 
 以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
 
+`components/<owner>/...` の `<owner>` 解釈は、[Phase 12 target path 所在](#phase-12-target-paths) で定義した Go owner package target 範囲と同一とする。`sdk` と `ui` は Phase 13 の契約照合対象であり、Go owner package target ではないため、実在所在は [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) と [`admin/index.html`](../admin/index.html) の行を正とする。
+
 | path pattern | 対象 | 所在区分 |
 |--------------|------|----------|
+| `components/<owner>/` | Phase 13 対象 Go owner package directory | 実在 |
 | `components/<owner>/<owner>.go` | owner の公開実行境界 | 実在 |
 | `components/<owner>/model.go` | owner の入力・出力・状態 model | 実在 |
 | `components/<owner>/validate.go` | owner の入力・状態・設定・権限検証 | 実在 |
