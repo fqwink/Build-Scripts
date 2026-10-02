@@ -1,0 +1,3 @@
+[REPORT] pages=1
+theme=adlaire-default
+Done

@@ -483,22 +483,7 @@ func TestFixtureHeadingLevelsFiveAndSix(t *testing.T) {
 
 func TestFixtureURLSafety(t *testing.T) {
 	root := t.TempDir()
-	docs := filepath.Join(root, "docs")
-	writeFile(t, filepath.Join(docs, "intro.md"), `# Intro
-
-## Safe
-
-[ok](guide/setup.md#setup)
-[external](https://example.com/path?q=1)
-[email](mailto:team@example.com)
-[missing](guide/setup.md?token=secret#missing)
-[bad](javascript:alert)
-[protocol](//example.com/x)
-![escape](../secret.png)
-![remote](https://example.com/img.png)
-`)
-	writeFile(t, filepath.Join(docs, "guide", "setup.md"), `# Setup
-`)
+	docs := "../testdata/builder/url-safety/input/docs"
 	out := filepath.Join(root, "dist")
 
 	var stdout, stderr bytes.Buffer
@@ -541,11 +526,7 @@ func TestFixtureURLSafety(t *testing.T) {
 
 func TestFixtureURLSafetyStrictKeepsExistingOutput(t *testing.T) {
 	root := t.TempDir()
-	docs := filepath.Join(root, "docs")
-	writeFile(t, filepath.Join(docs, "index.md"), `# Intro
-
-[bad](javascript:alert)
-`)
+	docs := "../testdata/builder/url-safety/input/docs"
 	out := filepath.Join(root, "dist")
 	writeFile(t, filepath.Join(out, "index.html"), "old")
 
@@ -557,7 +538,7 @@ func TestFixtureURLSafetyStrictKeepsExistingOutput(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("expected no stderr for strict warning, got %q", stderr.String())
 	}
-	for _, want := range []string{"[WARN] UNSAFE_URL: link", "[REPORT] pages=1", "warnings=1"} {
+	for _, want := range []string{"[WARN] UNSAFE_URL: link", "[REPORT] pages=2", "warnings=4"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("stdout missing %q: %s", want, stdout.String())
 		}
@@ -567,6 +548,33 @@ func TestFixtureURLSafetyStrictKeepsExistingOutput(t *testing.T) {
 	}
 	if got := readFile(t, filepath.Join(out, "index.html")); got != "old" {
 		t.Fatalf("strict warning replaced existing output: %q", got)
+	}
+}
+
+func TestFixtureStrictWarningUsesFormalFixture(t *testing.T) {
+	root := t.TempDir()
+	docs := "../testdata/builder/strict/input/docs"
+	out := filepath.Join(root, "dist")
+	writeFile(t, filepath.Join(out, "index.html"), "old")
+
+	var stdout, stderr bytes.Buffer
+	code := RunBuild([]string{"--src", docs, "--out", out, "--title", "Docs", "--strict"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("exit=%d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for strict fixture warning, got %q", stderr.String())
+	}
+	for _, want := range []string{"[WARN] BROKEN_LINK", "[WARN] UNCLOSED_FENCE", "[REPORT] pages=1", "warnings=2"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout missing %q: %s", want, stdout.String())
+		}
+	}
+	if strings.Contains(stdout.String(), "Done") {
+		t.Fatalf("strict fixture warning must not emit Done: %s", stdout.String())
+	}
+	if got := readFile(t, filepath.Join(out, "index.html")); got != "old" {
+		t.Fatalf("strict fixture warning replaced existing output: %q", got)
 	}
 }
 

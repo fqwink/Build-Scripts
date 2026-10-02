@@ -236,8 +236,8 @@ func TestPhase11FixtureManifestGate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("find fixture manifests: %v", err)
 	}
-	if len(manifestPaths) < 50 {
-		t.Fatalf("expected at least 50 formal fixture manifests, got %d", len(manifestPaths))
+	if len(manifestPaths) < 56 {
+		t.Fatalf("expected at least 56 formal fixture manifests, got %d", len(manifestPaths))
 	}
 
 	seenNames := make(map[string]string)
@@ -367,27 +367,40 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	phase11CompleteRow := "| Phase 11 | バグ修正ゼロ化。source-code audit、横断 regression、正式 fixture harness、意味のあるテスト、test gap inventory / batch closure、race trigger、mutation selection / mutation zero survivor、contract drift の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) を参照する。 | 実装済み | Phase 10 |"
 	phase11IncompleteRow := strings.Replace(phase11CompleteRow, "| 実装済み |", "| 実装中・検証未完了 |", 1)
 
-	if strings.Contains(roadmap, phase11CompleteRow) {
-		t.Fatalf("docs/ROADMAP.md must not mark Phase 11 as 実装済み while Phase 11 blocker records remain open")
+	if !strings.Contains(roadmap, phase11CompleteRow) {
+		t.Fatalf("docs/ROADMAP.md must mark Phase 11 as 実装済み after Phase 11 closure records reach final_open_item_count=0")
 	}
-	if !strings.Contains(roadmap, phase11IncompleteRow) {
-		t.Fatalf("docs/ROADMAP.md must mark Phase 11 as 実装中・検証未完了 until Phase 11 closure records reach final_open_item_count=0")
+	if strings.Contains(roadmap, phase11IncompleteRow) {
+		t.Fatalf("docs/ROADMAP.md must not keep Phase 11 as 実装中・検証未完了 after closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 11 とする。") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 11 as the active Phase while bug-fix-zeroization blockers remain")
+	if !strings.Contains(roadmap, "現在の active Phase はなしとする。") {
+		t.Fatalf("docs/ROADMAP.md must state that no active Phase remains after Phase 11 completion")
 	}
-	if strings.Contains(roadmap, "初期実装 Phase 1 から Phase 11 まではすべて `実装済み`") {
-		t.Fatalf("docs/ROADMAP.md must not state that Phase 1 through Phase 11 are all implemented")
+	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 11 まではすべて `実装済み`") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 11 are all implemented after Phase 11 closure")
 	}
 
 	for _, feature := range phase11QualityGateFeatures {
-		want := "| 実装中・検証未完了 | 検証基盤 | " + feature + " |"
+		want := "| 実装済み | 検証基盤 | " + feature + " |"
 		if !strings.Contains(roadmap, want) {
-			t.Fatalf("docs/ROADMAP.md must keep Phase 11 feature as 実装中・検証未完了: %s", feature)
+			t.Fatalf("docs/ROADMAP.md must mark Phase 11 feature as 実装済み: %s", feature)
 		}
-		forbidden := "| 実装済み | 検証基盤 | " + feature + " |"
+		forbidden := "| 実装中・検証未完了 | 検証基盤 | " + feature + " |"
 		if strings.Contains(roadmap, forbidden) {
-			t.Fatalf("docs/ROADMAP.md must not mark Phase 11 feature as 実装済み while blockers remain: %s", feature)
+			t.Fatalf("docs/ROADMAP.md must not keep Phase 11 feature as 実装中・検証未完了 after closure: %s", feature)
+		}
+	}
+
+	for _, fixture := range phase11BuilderFormalFixtures {
+		indexRow := "| [`" + fixture + "/`](../" + fixture + "/) | `builder` fixture | 実在 |"
+		if !strings.Contains(documentIndex, indexRow) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must index builder formal fixture directory as 実在: %s", fixture)
+		}
+		if _, err := os.Stat(filepath.Join(fixture, "manifest.json")); err != nil {
+			t.Fatalf("builder formal fixture %s must include manifest.json: %v", fixture, err)
+		}
+		if _, err := os.Stat(filepath.Join(fixture, "expected")); err != nil {
+			t.Fatalf("builder formal fixture %s must include expected/: %v", fixture, err)
 		}
 	}
 
@@ -410,14 +423,20 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 			t.Fatalf("docs/details/fixture.md must not keep %s as 未作成 root after root coverage closure", coverage.Root)
 		}
 	}
-	if strings.Contains(fixtureSpec, "`p11-open-"+"fixture-root-coverage`") {
+	if strings.Contains(fixtureSpec, "`p11-"+"open-"+"fixture-root-coverage`") {
 		t.Fatalf("docs/details/fixture.md must not keep closed root coverage as an open Phase 11 blocker")
 	}
-	if !strings.Contains(fixtureSpec, "phase-11-quality-gate-open-items") {
-		t.Fatalf("docs/details/fixture.md must expose the Phase 11 open blocker anchor")
+	if strings.Contains(fixtureSpec, "`p11-"+"open-") {
+		t.Fatalf("docs/details/fixture.md must not keep any open Phase 11 blocker ids after closure")
 	}
-	if !strings.Contains(roadmap, "状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md`") || !strings.Contains(roadmap, "| 実装中・検証未完了 | 状態管理 | 状態ファイル共通永続化契約 |") {
-		t.Fatalf("docs/ROADMAP.md must keep the statefile common persistence contract incomplete until verified")
+	if !strings.Contains(fixtureSpec, "| `final_open_item_count` | `closed` | `0` | `[]` |") {
+		t.Fatalf("docs/details/fixture.md must record Phase 11 final_open_item_count=0")
+	}
+	if !strings.Contains(fixtureSpec, "`survived=0`") {
+		t.Fatalf("docs/details/fixture.md must record Phase 11 mutation zero survivor evidence")
+	}
+	if !strings.Contains(roadmap, "状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md`") || !strings.Contains(roadmap, "| 実装済み | 状態管理 | 状態ファイル共通永続化契約 |") {
+		t.Fatalf("docs/ROADMAP.md must mark the statefile common persistence contract implemented after verification")
 	}
 }
 
@@ -495,6 +514,15 @@ var phase11QualityGateFeatures = []string{
 	"正式 fixture directory harness / fixture identity / fixture manifest / contract drift zero gate",
 }
 
+var phase11BuilderFormalFixtures = []string{
+	"testdata/builder/empty-dir",
+	"testdata/builder/safe",
+	"testdata/builder/single",
+	"testdata/builder/site",
+	"testdata/builder/strict",
+	"testdata/builder/url-safety",
+}
+
 type phase11RootCoverageFixture struct {
 	Root       string
 	Owner      string
@@ -531,7 +559,7 @@ func phase11RequireNoUnexpectedFixtureDirectories(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scan fixture directories: %v", err)
 	}
-	formalRoots := []string{"testdata/admin/cli", "testdata/setup", "testdata/release"}
+	formalRoots := []string{"testdata/admin/cli", "testdata/builder", "testdata/setup", "testdata/release"}
 	for _, coverage := range phase11RootCoverageFixtures {
 		formalRoots = append(formalRoots, strings.TrimSuffix(coverage.Root, "/"))
 	}

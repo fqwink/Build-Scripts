@@ -1,0 +1,21 @@
+{
+  "allowed_schemes": [
+    "http",
+    "https",
+    "mailto",
+    "tel",
+    "fragment",
+    "relative-markdown"
+  ],
+  "rejected_schemes": [
+    "javascript",
+    "protocol-relative"
+  ],
+  "forbidden_leaks": [
+    "token=secret",
+    "javascript:alert",
+    "//example.com/x",
+    "../secret.png"
+  ],
+  "external_calls": []
+}

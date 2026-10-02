@@ -114,13 +114,20 @@
 | [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) | `sdk` | 実在 |
 | [`admin/index.html`](../admin/index.html) | `ui` | 実在 |
 | [`testdata/builder/`](../testdata/builder/) | `builder` fixture root | 実在 |
-| [`testdata/builder/single/source.md`](../testdata/builder/single/source.md) | `builder` fixture | 実在 |
+| [`testdata/builder/single/`](../testdata/builder/single/) | `builder` fixture | 実在 |
+| [`testdata/builder/single/source.md`](../testdata/builder/single/source.md) | `builder` fixture input | 実在 |
+| [`testdata/builder/single/expected/`](../testdata/builder/single/expected/) | `builder` expected | 実在 |
 | [`testdata/builder/site/`](../testdata/builder/site/) | `builder` fixture | 実在 |
-| `testdata/builder/empty-dir/.keep` | `builder` fixture marker | 実在 |
-| `testdata/builder/strict/` | `builder` fixture | 未作成 |
-| `testdata/builder/safe/` | `builder` fixture | 未作成 |
-| `testdata/builder/url-safety/` | `builder` fixture | 未作成 |
-| `testdata/builder/**/expected/` | `builder` expected | 未作成 |
+| [`testdata/builder/site/expected/`](../testdata/builder/site/expected/) | `builder` expected | 実在 |
+| [`testdata/builder/empty-dir/`](../testdata/builder/empty-dir/) | `builder` fixture | 実在 |
+| [`testdata/builder/empty-dir/.keep`](../testdata/builder/empty-dir/.keep) | `builder` fixture marker | 実在 |
+| [`testdata/builder/empty-dir/expected/`](../testdata/builder/empty-dir/expected/) | `builder` expected | 実在 |
+| [`testdata/builder/strict/`](../testdata/builder/strict/) | `builder` fixture | 実在 |
+| [`testdata/builder/strict/expected/`](../testdata/builder/strict/expected/) | `builder` expected | 実在 |
+| [`testdata/builder/safe/`](../testdata/builder/safe/) | `builder` fixture | 実在 |
+| [`testdata/builder/safe/expected/`](../testdata/builder/safe/expected/) | `builder` expected | 実在 |
+| [`testdata/builder/url-safety/`](../testdata/builder/url-safety/) | `builder` fixture | 実在 |
+| [`testdata/builder/url-safety/expected/`](../testdata/builder/url-safety/expected/) | `builder` expected | 実在 |
 | [`testdata/runner/`](../testdata/runner/) | `runner` fixture root | 実在 |
 | [`testdata/runner/success-runner-phase11-root-coverage/`](../testdata/runner/success-runner-phase11-root-coverage/) | `runner` Phase 11 root coverage fixture | 実在 |
 | [`testdata/api/`](../testdata/api/) | `api` fixture root | 実在 |

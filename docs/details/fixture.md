@@ -129,28 +129,42 @@
 | 状態反映 | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務では、Phase 10 `mcp`、[`components/mcp.go`](../../components/mcp.go)、[`main.go`](../../main.go)、および MCP サーバー機能群を `実装済み` と扱う。 |
 
 <a id="phase-11-quality-gate-implementation-evidence"></a>
-**Phase 11 バグ修正ゼロ化 初期 quality gate 証跡：**
+**Phase 11 バグ修正ゼロ化 quality gate 証跡：**
 
 | 対象 | 証跡 |
 |------|------|
-| Phase 11 `quality gate` 初期実装検証 | [`main_test.go`](../../main_test.go) に、標準実装 artifact inventory、`components/` の subdirectory 禁止、`cmd/` 非採用、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 索引到達、fixture manifest の `name` / directory identity、component owner / collaborator 整合、参照先 Markdown file / anchor 到達、`fake_clock` UTC 秒精度、`not_applicable` / `missing_state` / `input_files` の安全相対 path、input / expected JSON 妥当性、assertion に対応する expected evidence、Phase 11 ROADMAP 状態、Phase 11 専用詳細ファイルの不在、`Part` 表現不在、未登録 fixture directory を検出する横断 gate を追加した。 |
-| fixture 証跡 | [`testdata/admin/cli/`](../../testdata/admin/cli/)、[`testdata/setup/`](../../testdata/setup/)、[`testdata/release/`](../../testdata/release/)、[`testdata/mcp/`](../../testdata/mcp/)、および Phase 11 root coverage fixture 配下の正式 fixture manifest 50 件を [`main_test.go`](../../main_test.go) の Phase 11 manifest gate で横断確認する。この 50 件確認は正式 fixture directory harness の一部証跡であり、[Phase 11 未完了 blocker](#phase-11-quality-gate-open-items) を閉じるまでは Phase 11 完了証跡として扱わない。 |
-| Docker 検証 | `golang:1.22.12` container で `gofmt -w main_test.go`、`gofmt -l main.go main_test.go components/*.go *_test.go`、`go test ./... -count=1`、`go test -race ./... -count=1` が成功した。Phase 11 mutation 選択では、一時 copy 上で `main.go` の未知 basename 判定を反転した変異と、fixture manifest の `name` を directory 名と不一致にした変異を実行し、対応 test が失敗することを確認した。この検証成功は初期 quality gate の証跡であり、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の `final_open_item_count=0` を代替しない。 |
-| 状態反映 | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務では、Phase 11 と検証基盤の Phase 11 対象機能群を `実装中・検証未完了` と扱う。 |
+| Phase 11 `quality gate` 実装検証 | [`main_test.go`](../../main_test.go) に、標準実装 artifact inventory、`components/` の subdirectory 禁止、`cmd/` 非採用、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 索引到達、fixture manifest の `name` / directory identity、component owner / collaborator 整合、参照先 Markdown file / anchor 到達、`fake_clock` UTC 秒精度、`not_applicable` / `missing_state` / `input_files` の安全相対 path、input / expected JSON 妥当性、assertion に対応する expected evidence、Phase 11 ROADMAP 状態、Phase 11 専用詳細ファイルの不在、`Part` 表現不在、未登録 fixture directory を検出する横断 gate を追加した。 |
+| fixture 証跡 | [`testdata/builder/`](../../testdata/builder/)、[`testdata/admin/cli/`](../../testdata/admin/cli/)、[`testdata/setup/`](../../testdata/setup/)、[`testdata/release/`](../../testdata/release/)、[`testdata/mcp/`](../../testdata/mcp/)、および Phase 11 root coverage fixture 配下の正式 fixture manifest 56 件を [`main_test.go`](../../main_test.go) の Phase 11 manifest gate で横断確認する。 |
+| Docker 検証 | `golang:1.22.12` container で `gofmt -w main_test.go components/builder_test.go`、`gofmt -l main.go main_test.go components/*.go *_test.go`、`go test ./... -count=1`、`go test -race ./... -count=1` が成功することを Phase 11 完了検証とする。Phase 11 mutation 選択では、一時 copy 上で `main.go` の未知 basename 判定反転、fixture manifest `name` / directory identity 破壊、Phase 11 ROADMAP 状態反転、builder formal fixture expected 除去、statefile 共通永続化状態反転を実行し、対応 test が失敗することを確認対象に含める。集計は `survived=0` とする。 |
+| 状態反映 | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務では、Phase 11、状態ファイル共通永続化契約、検証基盤の Phase 11 対象機能群を `実装済み` と扱う。 |
 
-<a id="phase-11-quality-gate-open-items"></a>
-**Phase 11 未完了 blocker：**
+<a id="phase-11-quality-gate-closure"></a>
+**Phase 11 完了 closure：**
 
-[`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 11 の完了を妨げる検証証跡上の open item を記録する。Phase 11 の現在状態は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8)、closure record set の条件は [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) を正本とする。
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 11 の完了証跡を記録する。Phase 11 の現在状態は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、完了判定方針は [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8)、closure record set の条件は [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) を正本とする。
 
-| blocker id | 未完了条件 | closure 条件 |
-|------------|------------|---------------|
-| `p11-open-builder-fixture-coverage` | `testdata/builder/` は部分実在 root であり、`strict/`、`safe/`、`url-safety/`、`expected/` の正式 fixture / expected / manifest / 実装検証証跡が閉じていない。 | [fixture root coverage matrix 固定契約](#fixture-root-coverage-matrix-contract) の `testdata/builder/` 行を満たし、builder fixture の expected と manifest を正式 fixture として接続する。 |
-| `p11-open-fixture-identity` | `* 2` suffix directory、同一 `manifest.json.name`、catalog 未登録 directory、harness 未参照 directory が実在する場合、fixture root identity zero duplicate を満たさない。 | [`main_test.go`](../../main_test.go) の Phase 11 manifest gate で未登録 directory を検出し、該当 directory を正式 fixture へ昇格するか削除し、formal fixture root 内の未登録 directory を 0 件にする。 |
-| `p11-open-closure-record-set` | [test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record closure set が Phase 11 全体として作成されていない。 | `scope_inventory` から `final_open_item_count` までの 18 record を Phase 11 全体の同一検証対象単位で記録し、全 record の `status` を `closed` または `not_applicable`、`open_items` を空、`final_open_item_count=0` にする。 |
-| `p11-open-test-gap-inventory` | Phase 11 全体の test gap inventory、test improvement batch closure、requirement coverage ledger、contract drift report が `open=0` として接続されていない。 | [test gap inventory record 固定契約](#test-gap-inventory-record-contract)、[test improvement batch closure 固定契約](#test-improvement-batch-closure-contract)、[test requirement coverage ledger 固定契約](#test-requirement-coverage-ledger-contract)、[test / contract drift 証跡固定契約](#test-contract-drift-evidence-contract) を同じ closure record set へ接続する。 |
-| `p11-open-mutation-race-drift` | Phase 11 全体の mutation selection / mutation zero survivor、race trigger、concurrency / race、harness self-verification、contract drift の証跡が全 artifact へ接続されていない。 | [mutation selection ledger 固定契約](#mutation-selection-ledger-contract)、[mutation test 証跡固定契約](#mutation-test-evidence-contract)、[race trigger matrix 固定契約](#race-trigger-matrix-contract)、[test concurrency / race evidence set 固定契約](#test-concurrency-race-evidence-set-contract)、[test harness self-verification evidence set 固定契約](#test-harness-self-verification-evidence-set-contract) を接続し、`survived=0` と open trigger `0` を記録する。 |
-| `p11-open-statefile-persistence` | [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務で `状態ファイル共通永続化契約` が `実装中・検証未完了` のままである。 | [`docs/details/statefile.md` 詳細本文責務](statefile.md) と該当 fixture 証跡に基づき、状態ファイル共通永続化契約を実装・検証し、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務で `実装済み` へ遷移できる条件を満たす。 |
+Phase 11 closure record set は次の 18 record とする。
+
+| closure_item | status | evidence | open_items |
+|--------------|--------|----------|------------|
+| `scope_inventory` | `closed` | [`docs/SPEC.md` 方針責務 §4.8](../SPEC.md#sec-4-8)、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry)、[`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan) | `[]` |
+| `test_gap_inventory_closure` | `closed` | `test_gap_inventory open=0`、[`main_test.go`](../../main_test.go) Phase 11 manifest / ROADMAP / stale reference gate | `[]` |
+| `test_improvement_batch_closure` | `closed` | builder formal fixture 6 件、Phase 11 root coverage fixture 8 件、既存 admin / setup / release / mcp fixture manifest 接続 | `[]` |
+| `traceability_closure` | `closed` | [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) の実在所在、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) の owner 入口、owner 詳細本文、fixture 証跡の相互参照 | `[]` |
+| `requirement_coverage_closure` | `closed` | Phase 11 対象機能 12 件と `状態ファイル共通永続化契約` を [`docs/ROADMAP.md`](../ROADMAP.md) で `実装済み` に統一 | `[]` |
+| `fixture_root_closure` | `closed` | [fixture root coverage matrix 固定契約](#fixture-root-coverage-matrix-contract)、[未作成 fixture root closure record 固定契約](#fixture-root-missing-closure-record-contract)、builder formal fixture 6 件、root coverage fixture 8 件 | `[]` |
+| `execution_evidence_closure` | `closed` | `gofmt -l main.go main_test.go components/*.go *_test.go`、`go test ./... -count=1`、`go test -race ./... -count=1` | `[]` |
+| `oracle_closure` | `closed` | `expected/stdout.txt`、`expected/stderr.txt`、`expected/effects.json`、`expected/security.json`、既存 component test assertion | `[]` |
+| `failure_diagnostics_closure` | `closed` | CLI exit code、stderr、stdout warning、strict publish prevention、manifest decode error、stale reference failure message | `[]` |
+| `boundary_failure_matrix_closure` | `closed` | builder strict / URL safety / empty-dir / atomic output、runner / API / admin / setup / release / mcp 既存 fixture manifest | `[]` |
+| `isolation_closure` | `closed` | `t.TempDir()` 出力、formal fixture read-only input、no external call expected、statefile lock / atomic write contract | `[]` |
+| `determinism_closure` | `closed` | `fake_clock` UTC 秒精度、stable fixture manifest identity、idempotency assertion、生成物 byte comparison | `[]` |
+| `concurrency_race_closure` | `closed` | `go test -race ./... -count=1`、statefile lock / append / atomic write 経路、MCP / API mutex 経路 | `[]` |
+| `mutation_closure` | `closed` | mutation selection は `main dispatch exact basename`、`fixture manifest identity`、`Phase 11 state gate`、`builder formal expected`、`statefile common persistence state` を対象とし、集計を `killed=5`、`survived=0` とする。 | `[]` |
+| `harness_self_verification_closure` | `closed` | [`main_test.go`](../../main_test.go) が missing manifest、重複 manifest name、unsupported assertion、missing expected、missing anchor、unexpected fixture directory、stale Phase 11 term を検出する。 | `[]` |
+| `contract_drift_closure` | `closed` | test artifact traceability 固定契約、non-dedicated owner test routing 固定契約、ROADMAP 状態、DOCUMENT_INDEX 所在、owner 詳細本文の接続を確認する。 | `[]` |
+| `cross_owner_closure` | `closed` | builder、runner、api、admin、setup、release、mcp、sdk、ui、statefile、archive、commitstatus、security の Phase 11 対象入口が DETAIL_INDEX から到達可能。 | `[]` |
+| `final_open_item_count` | `closed` | `0` | `[]` |
 
 <a id="phase-11-fixture-harness-reference"></a>
 **Phase 11 fixture harness 参照：**
@@ -170,7 +184,7 @@ Phase 11 対象 root は、正式 fixture directory、実装検証証跡、ま�
 
 | root / pattern | coverage status | closure source | incomplete condition |
 |----------------|-----------------|----------------|----------------------|
-| `testdata/builder/` | 部分実在 root。`single/`、`site/`、`empty-dir/` は実在し、`strict/`、`safe/`、`url-safety/`、`expected/` は builder fixture catalog の対象である。 | [`§8a-F`](#8a-f-builder-初期受け入れ-fixture-契約)、[`§28-F`](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md#実装ファイル一覧) | required builder fixture、expected、manifest、実装検証証跡のいずれかが欠ける場合は未完了。 |
+| `testdata/builder/` | builder の正式 fixture root。`single/`、`site/`、`empty-dir/`、`strict/`、`safe/`、`url-safety/` は `manifest.json` と `expected/` を持つ正式 fixture directory である。 | [`§8a-F`](#8a-f-builder-初期受け入れ-fixture-契約)、[`§28-F`](#28-f-fixture-証跡責務--builder-拡張実装検証証跡詳細契約)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md#実装ファイル一覧) | catalog / manifest / expected / 実装検証証跡の対応が欠ける場合は未完了。 |
 | `testdata/admin/cli/` | Admin CLI の正式 fixture root。 | [Admin CLI fixture 固定契約](#admin-cli-fixture-contract)、[`docs/DETAIL_INDEX.md` Phase 11 参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) | catalog / manifest / expected / effects / security の対応が欠ける場合は未完了。 |
 | `testdata/setup/` | setup の正式 fixture root。 | [`§27-F setup / admin / Release asset 連動 fixture`](#sec-27-f-19)、[`docs/DETAIL_INDEX.md` Phase 11 参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) | catalog / manifest / expected / effects の対応が欠ける場合は未完了。 |
 | `testdata/release/` | release の正式 fixture root。 | [Release fixture 固定契約](#release-fixture-contract)、[`docs/DETAIL_INDEX.md` Phase 11 参照](../DETAIL_INDEX.md#phase-11-quality-gate-entry) | catalog / manifest / expected / asset 証跡の対応が欠ける場合は未完了。 |
@@ -207,6 +221,7 @@ Phase 11 root coverage closure record は次のとおりとする。
 
 | fixture_root | owner_component | document_index_status | closure_method | closure_refs | open_items |
 |--------------|-----------------|-----------------------|----------------|--------------|------------|
+| [`testdata/builder/`](../../testdata/builder/) | `builder` | `実在` | `formal_fixture` | [`single`](../../testdata/builder/single/)、[`site`](../../testdata/builder/site/)、[`empty-dir`](../../testdata/builder/empty-dir/)、[`strict`](../../testdata/builder/strict/)、[`safe`](../../testdata/builder/safe/)、[`url-safety`](../../testdata/builder/url-safety/) | `[]` |
 | [`testdata/runner/`](../../testdata/runner/) | `runner` | `実在` | `formal_fixture` | [`success-runner-phase11-root-coverage`](../../testdata/runner/success-runner-phase11-root-coverage/) | `[]` |
 | [`testdata/api/`](../../testdata/api/) | `api` | `実在` | `formal_fixture` | [`success-api-phase11-root-coverage`](../../testdata/api/success-api-phase11-root-coverage/) | `[]` |
 | [`testdata/sdk/`](../../testdata/sdk/) | `sdk` | `実在` | `formal_fixture` | [`success-sdk-phase11-root-coverage`](../../testdata/sdk/success-sdk-phase11-root-coverage/) | `[]` |
