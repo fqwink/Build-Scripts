@@ -194,6 +194,8 @@ Phase 12 の証跡 package は、下表の全対象を同一 closure record set 
 
 Phase 12 closure record set は、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record を使用し、各 record の `scope` に `phase-12-quality-gate-reconstruction` を含める。Phase 12 では以下の集計値を同じ closure record set 内に記録する。
 
+Phase 12 closure record set の記録先は、Phase 12 実装 PR 本文の `Verification` に置く implementation PR evidence package を必須とする。正式 fixture root を追加する場合は、同じ PR で `testdata/phase12/quality-gate-reconstruction/` を作成し、`manifest.json`、`input/`、`expected/`、closure record set への参照を置く。PR 本文または正式 fixture root のいずれにも closure record set の所在がない場合、Phase 12 を完了扱いにしてはならない。
+
 | 集計値 | 完了値 | 未完了条件 |
 |--------|--------|------------|
 | `phase12_contract_mismatch_count` | `0` | API / SDK / UI / Admin CLI / route / method / auth / response schema / CLI 出力契約の差分が 1 件以上ある。 |
@@ -201,7 +203,7 @@ Phase 12 closure record set は、[test verification closure record set 固定�
 | `phase12_fixture_harness_open_count` | `0` | production entrypoint 実行、actual / expected 比較、fake adapter binding、harness self-verification の未接続が 1 件以上ある。 |
 | `phase12_mutation_survived_count` | `0` | production code、harness、assertion、expected 比較、security assertion、state diff assertion の適用可能 mutation が 1 件以上 survived である。 |
 | `phase12_race_trigger_open_count` | `0` | race trigger、race detector、代替 interleaving、goroutine / listener / timer / worker leak の未判定が 1 件以上ある。 |
-| `phase12_owner_package_violation_count` | `0` | owner package が 5 ファイル固定に違反する、禁止名を持つ、補助 package へ逃がす、または root 横断 test を owner package 内へ混在させる。 |
+| `phase12_owner_package_violation_count` | `0` | owner package が 5 ファイル固定に違反する、禁止名を持つ、補助 package へ逃がす、旧 `components/<owner>.go` / `components/<owner>_test.go` が残る、cross-cutting owner の duplicate 実装が呼び出し元 package に残る、または root 横断 test を owner package 内へ混在させる。 |
 | `phase12_ci_required_check_open_count` | `0` | 通常 test、race、lint、fixture 実行 required check の未設定、未実行、skip 成功扱いが 1 件以上ある。 |
 | `phase12_release_reproducibility_open_count` | `0` | version tag、release notes、checksum、archive、GitHub Release boundary、再取得検証の未解消項目が 1 件以上ある。 |
 | `final_open_item_count` | `0` | 上記集計値または 18 record の `open_items` に残件がある。 |

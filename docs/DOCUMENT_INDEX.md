@@ -14,6 +14,7 @@
 | 詳細仕様本文・証跡ディレクトリ | [`docs/details/`](details/) |
 | Phase 11 バグ修正ゼロ化の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | Phase 12 実装品質ゲート再構築の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry) |
+| Phase 12 正式 fixture root 候補 | [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 12 target path 所在](DOCUMENT_INDEX.md#phase-12-target-paths) |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
@@ -170,5 +171,6 @@
 | `components/<owner>/validate.go` | owner の入力・状態・設定・権限検証 | 未作成 |
 | `components/<owner>/execute.go` | owner の正常系・異常系実行順序 | 未作成 |
 | `components/<owner>/<owner>_test.go` | owner package の仕様契約検証 | 未作成 |
+| `testdata/phase12/quality-gate-reconstruction/` | Phase 12 正式 fixture root。作成する場合は closure record set 所在、manifest、input、expected を持つ。 | 未作成 |
 
 `<owner>` に入る値は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 Go owner package target owner](DETAIL_INDEX.md#phase-12-go-owner-package-targets) に存在する owner だけとする。JavaScript / HTML artifact である `sdk` と `ui` は、Go owner package target path として扱わず、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) と [`admin/index.html`](../admin/index.html) の実在行を正とする。

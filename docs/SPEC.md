@@ -348,6 +348,8 @@ components/<owner>/
 
 `<owner>.go` は owner の公開実行境界、`model.go` は入力・出力・状態 model、`validate.go` は入力・状態・設定・権限の検証、`execute.go` は正常系・異常系の実行順序、`<owner>_test.go` は当該 owner package の仕様契約検証だけを担当する。root の横断契約 test、SDK 契約 test、UI 契約 test、fixture harness の横断検証は owner package の 5 ファイル数に含めないが、owner package 内へ逃がす目的で横断 test を作ってはならない。
 
+Phase 12 で Go owner package へ移行した owner の旧 root 実装 artifact は、同じ Phase 12 実装 PR で削除または移動完了しなければならない。Phase 12 完了後に `components/<owner>.go`、`components/<owner>_test.go`、または旧 root file 内の当該 owner 実装詳細を残してはならない。cross-cutting owner である `statefile`、`archive`、`commitstatus`、`security` は、呼び出し元 owner package から使用される独立 owner package として実在化し、呼び出し元 package 内に同じ責務の実装詳細、duplicate helper、fallback 実装、または copy を残してはならない。
+
 `admin/` は標準管理 UI の静的ファイルを配置する。`testdata/` は責務別 fixture を配置する。`docs/examples/` は利用例、設定例、サンプル構成を配置する。
 
 ディレクトリ構成は方針上の到達形を示す。実ファイルの有無と未作成 path は [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md)、実装 artifact と各機能の現在状態、Phase、将来計画への割当は [`docs/ROADMAP.md`](ROADMAP.md) を正本とする。ディレクトリ構成に含まれることだけを理由に、未実装ファイル、将来追加予定 path、空ディレクトリ、placeholder を作成してはならない。

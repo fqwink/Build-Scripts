@@ -186,19 +186,19 @@ Phase 12 は以下の内部順序で実装、検証、証跡記録、状態更�
 <a id="phase-12-go-owner-package-targets"></a>
 Phase 12 で Go owner package 5 ファイル固定の対象にする owner は下表だけとする。`sdk` と `ui` は JavaScript / HTML artifact を正本とするため、Go owner package 化の対象に含めない。
 
-| Go owner package target | Phase 12 開始時の実装 artifact | 主本文 |
-|-------------------------|-------------------------------|--------|
-| `builder` | `components/builder.go` | [`docs/details/builder.md` 詳細本文責務](details/builder.md) |
-| `runner` | `components/runner.go` | [`docs/details/runner.md` 詳細本文責務](details/runner.md) |
-| `api` | `components/api.go` | [`docs/details/api.md` 詳細本文責務](details/api.md) |
-| `admin` | `components/admin.go` | [`docs/details/admin.md` 詳細本文責務](details/admin.md) |
-| `setup` | `components/setup.go` | [`docs/details/setup.md` 詳細本文責務](details/setup.md) |
-| `release` | `components/release.go` | [`docs/details/release.md` 詳細本文責務](details/release.md) |
-| `mcp` | `components/mcp.go` | [`docs/details/mcp.md` 詳細本文責務](details/mcp.md) |
-| `statefile` | `components/api.go` / `components/runner.go` / `components/mcp.go` 内の状態ファイル共通責務 | [`docs/details/statefile.md` 詳細本文責務](details/statefile.md) |
-| `archive` | `components/api.go` / `components/admin.go` / `components/setup.go` / `components/release.go` 内の archive 責務 | [`docs/details/archive.md` 詳細本文責務](details/archive.md) |
-| `commitstatus` | `components/runner.go` 内の GitHub Commit Status 責務 | [`docs/details/commitstatus.md` 詳細本文責務](details/commitstatus.md) |
-| `security` | `components/builder.go` / `components/runner.go` / `components/api.go` / `components/admin.go` / `components/setup.go` / `components/release.go` / `components/mcp.go` 内の security 責務 | [`docs/details/security.md` 詳細本文責務](details/security.md) |
+| Go owner package target | Phase 12 開始時の実装 artifact | Phase 12 完了時の artifact | 主本文 |
+|-------------------------|-------------------------------|---------------------------|--------|
+| `builder` | `components/builder.go` | `components/builder/` の 5 ファイルだけ。`components/builder.go` と `components/builder_test.go` は残さない。 | [`docs/details/builder.md` 詳細本文責務](details/builder.md) |
+| `runner` | `components/runner.go` | `components/runner/` の 5 ファイルだけ。`components/runner.go` と `components/runner_test.go` は残さない。 | [`docs/details/runner.md` 詳細本文責務](details/runner.md) |
+| `api` | `components/api.go` | `components/api/` の 5 ファイルだけ。`components/api.go` と `components/api_test.go` は残さない。 | [`docs/details/api.md` 詳細本文責務](details/api.md) |
+| `admin` | `components/admin.go` | `components/admin/` の 5 ファイルだけ。`components/admin.go` と `components/admin_test.go` は残さない。 | [`docs/details/admin.md` 詳細本文責務](details/admin.md) |
+| `setup` | `components/setup.go` | `components/setup/` の 5 ファイルだけ。`components/setup.go` と `components/setup_test.go` は残さない。 | [`docs/details/setup.md` 詳細本文責務](details/setup.md) |
+| `release` | `components/release.go` | `components/release/` の 5 ファイルだけ。`components/release.go` と `components/release_test.go` は残さない。 | [`docs/details/release.md` 詳細本文責務](details/release.md) |
+| `mcp` | `components/mcp.go` | `components/mcp/` の 5 ファイルだけ。`components/mcp.go` と `components/mcp_test.go` は残さない。 | [`docs/details/mcp.md` 詳細本文責務](details/mcp.md) |
+| `statefile` | `components/api.go` / `components/runner.go` / `components/mcp.go` 内の状態ファイル共通責務 | `components/statefile/` の 5 ファイルだけ。呼び出し元 owner package に状態ファイル共通責務の実装詳細を残さない。 | [`docs/details/statefile.md` 詳細本文責務](details/statefile.md) |
+| `archive` | `components/api.go` / `components/admin.go` / `components/setup.go` / `components/release.go` 内の archive 責務 | `components/archive/` の 5 ファイルだけ。呼び出し元 owner package に archive 実装詳細を残さない。 | [`docs/details/archive.md` 詳細本文責務](details/archive.md) |
+| `commitstatus` | `components/runner.go` 内の GitHub Commit Status 責務 | `components/commitstatus/` の 5 ファイルだけ。`runner` owner package に Commit Status 実装詳細を残さない。 | [`docs/details/commitstatus.md` 詳細本文責務](details/commitstatus.md) |
+| `security` | `components/builder.go` / `components/runner.go` / `components/api.go` / `components/admin.go` / `components/setup.go` / `components/release.go` / `components/mcp.go` 内の security 責務 | `components/security/` の 5 ファイルだけ。呼び出し元 owner package に security 実装詳細を残さない。 | [`docs/details/security.md` 詳細本文責務](details/security.md) |
 
 | Phase 12 対象 | owner / 責務 | 詳細本文 / fixture 証跡 |
 |---------------|--------------|--------------------------|
