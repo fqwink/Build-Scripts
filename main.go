@@ -12,6 +12,7 @@ import (
 	"github.com/fqwink/build-scripts/components/api"
 	"github.com/fqwink/build-scripts/components/builder"
 	"github.com/fqwink/build-scripts/components/mcp"
+	"github.com/fqwink/build-scripts/components/obsidian"
 	"github.com/fqwink/build-scripts/components/release"
 	"github.com/fqwink/build-scripts/components/runner"
 	"github.com/fqwink/build-scripts/components/setup"
@@ -32,13 +33,14 @@ func dispatchMain(name string, args []string, stdout io.Writer, stderr io.Writer
 	setup.SetBinaryVersion(binaryVersion)
 	release.SetBinaryVersion(binaryVersion)
 	mcp.SetBinaryVersion(binaryVersion)
+	obsidian.SetBinaryVersion(binaryVersion)
 	if hasMainExactArg(args, "--version") && isStandardBinaryName(name) {
 		fmt.Fprintf(stdout, "%s %s go=%s\n", name, binaryVersion, runtime.Version())
 		return 0
 	}
 	switch name {
 	case "adlaire-ci-build":
-		return builder.RunBuild(args, stdout, stderr)
+		return obsidian.RunBuild(args, stdout, stderr)
 	case "adlaire-ci-runner":
 		return runner.RunRunner(args, stdout, stderr)
 	case "adlaire-ci-api":

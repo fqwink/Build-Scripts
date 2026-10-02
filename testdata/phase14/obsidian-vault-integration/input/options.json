@@ -1,0 +1,21 @@
+{
+  "entrypoint": "adlaire-ci-build",
+  "args": [
+    "--input-mode",
+    "obsidian-vault",
+    "--obsidian-vault",
+    "<fixture-vault-root>",
+    "--obsidian-entry",
+    "Home.md",
+    "--obsidian-report-file",
+    "<fixture-output-root>/obsidian_map.json",
+    "--out",
+    "<fixture-output-root>",
+    "--title",
+    "Phase 14 Vault"
+  ],
+  "strict_negative_args": [
+    "--strict"
+  ],
+  "unknown_options_allowed": false
+}

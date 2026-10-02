@@ -374,7 +374,7 @@ Phase 13 の CI required check は以下とする。GitHub workflow は YAML 禁
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 14 の Obsidian local vault 入力、wikilink / embed / tag / asset 正規化、YAML frontmatter 拒否、builder handoff、closure record の証跡だけを固定する。Phase 14 の現在状態と実装割当は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](../DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry)、実装契約は [`docs/details/obsidian.md` 詳細本文責務 Phase 14 Obsidian Vault 連携契約](obsidian.md#obsidian-phase14-vault-integration-contract) を参照する。
 
-Phase 14 の正式 fixture root は `testdata/phase14/obsidian-vault-integration/` とする。同 root は Phase 14 実装 PR で作成する。作成前は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 14 target path 所在](../DOCUMENT_INDEX.md#phase-14-target-paths) で `未作成` として扱う。
+Phase 14 の正式 fixture root は `testdata/phase14/obsidian-vault-integration/` とする。同 root は Phase 14 実装 PR で実在化し、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 14 target path 所在](../DOCUMENT_INDEX.md#phase-14-target-paths) で `実在` として扱う。
 
 | path | 内容 | 完了条件 |
 |------|------|----------|

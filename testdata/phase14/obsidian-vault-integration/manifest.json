@@ -1,0 +1,77 @@
+{
+  "name": "phase-14-obsidian-vault-integration",
+  "scope": "phase-14-obsidian-vault-integration",
+  "section": "Phase 14 Obsidian Vault Integration",
+  "feature": "Obsidian Vault integration",
+  "category": "obsidian",
+  "owner_component": "obsidian",
+  "collaborator_components": [
+    "builder",
+    "security"
+  ],
+  "components": [
+    "builder",
+    "obsidian",
+    "security"
+  ],
+  "owners": [
+    "obsidian"
+  ],
+  "entrypoints": [
+    "adlaire-ci-build"
+  ],
+  "required_checks": [
+    "phase14-go-format",
+    "phase14-go-test",
+    "phase14-obsidian-vault-fixture",
+    "phase14-builder-handoff",
+    "phase14-document-drift"
+  ],
+  "closure_records": [
+    "records/closure.jsonl"
+  ],
+  "negative_controls": [
+    "yaml-frontmatter",
+    "vault-escape",
+    "symlink",
+    "hardlink",
+    "invalid-filter",
+    "invalid-filter-pattern",
+    "filter-type-mismatch",
+    "malformed-wikilink",
+    "display-text-invalid",
+    "unresolved-wikilink-strict",
+    "duplicate-tag-strict",
+    "unused-asset-strict",
+    "duplicate-basename",
+    "case-mismatch",
+    "heading-slug-mismatch",
+    "relative-link-escape",
+    "unsupported-canvas",
+    "dataview-block",
+    "templater-block",
+    "external-fetch-attempt",
+    "note-embed"
+  ],
+  "source_anchors": [
+    "docs/DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry",
+    "docs/details/obsidian.md#obsidian-phase14-vault-integration-contract",
+    "docs/details/fixture.md#phase-14-obsidian-vault-integration-evidence",
+    "docs/DOCUMENT_INDEX.md#phase-14-target-paths"
+  ],
+  "references": [
+    "docs/DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry",
+    "docs/details/obsidian.md#obsidian-phase14-vault-integration-contract",
+    "docs/details/fixture.md#phase-14-obsidian-vault-integration-evidence"
+  ],
+  "fake_clock": null,
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/options.json",
+    "input/vault_tree.json"
+  ],
+  "assertions": [
+    "effects"
+  ]
+}
