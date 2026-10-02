@@ -13,6 +13,7 @@
 | 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
 | 詳細仕様本文・証跡ディレクトリ | [`docs/details/`](details/) |
 | Phase 11 バグ修正ゼロ化の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
+| Phase 12 実装品質ゲート再構築の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry) |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
@@ -155,3 +156,19 @@
 | [`testdata/mcp/`](../testdata/mcp/) | `mcp` fixture root | 実在 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
+
+<a id="phase-12-target-paths"></a>
+**Phase 12 target path 所在：**
+
+以下は [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3) が定義する Phase 12 完了後の Go owner package 到達形であり、現時点の実在 path ではない。Phase 12 実装 PR で実在化した path は、同じ PR で [実装・テスト・fixture 所在](#実装ファイル一覧) の実在行へ移し、未作成行を残してはならない。
+
+| path pattern | 対象 owner | 所在区分 |
+|--------------|------------|----------|
+| `components/<owner>/` | Phase 12 対象 Go owner package directory | 未作成 |
+| `components/<owner>/<owner>.go` | owner の公開実行境界 | 未作成 |
+| `components/<owner>/model.go` | owner の入力・出力・状態 model | 未作成 |
+| `components/<owner>/validate.go` | owner の入力・状態・設定・権限検証 | 未作成 |
+| `components/<owner>/execute.go` | owner の正常系・異常系実行順序 | 未作成 |
+| `components/<owner>/<owner>_test.go` | owner package の仕様契約検証 | 未作成 |
+
+`<owner>` に入る値は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 owner component 別詳細本文・fixture 参照表](DETAIL_INDEX.md#0b-詳細仕様参照表) に存在し、Go owner package として実装する対象に限る。JavaScript / HTML artifact である `sdk` と `ui` は、Go owner package target path として扱わず、[`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) と [`admin/index.html`](../admin/index.html) の実在行を正とする。

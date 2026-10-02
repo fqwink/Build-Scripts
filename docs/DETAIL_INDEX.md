@@ -35,7 +35,7 @@
 <a id="owner-detail-verification-route"></a>
 **owner 詳細本文 検証接続共通入口：**
 
-owner component 別詳細本文が検証接続を示す場合の参照入口である。検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、owner から fixture への入口は [詳細仕様参照表](#0b-詳細仕様参照表)、横断テスト証跡は [横断テスト証跡共通入口](#cross-test-evidence-route)、Phase 11 横断入口は [Phase 11 バグ修正ゼロ化参照](#phase-11-quality-gate-entry)、仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) を参照する。
+owner component 別詳細本文が検証接続を示す場合の参照入口である。検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、owner から fixture への入口は [詳細仕様参照表](#0b-詳細仕様参照表)、横断テスト証跡は [横断テスト証跡共通入口](#cross-test-evidence-route)、Phase 11 横断入口は [Phase 11 バグ修正ゼロ化参照](#phase-11-quality-gate-entry)、Phase 12 横断入口は [Phase 12 実装品質ゲート再構築参照](#phase-12-quality-gate-entry)、仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) を参照する。
 
 <a id="cross-test-evidence-route"></a>
 **横断テスト証跡共通入口：**
@@ -194,6 +194,7 @@ environment object は 0〜100 key とする。各 key は `^[A-Z_][A-Z0-9_]{0,6
 | root coverage fixture の inventory fixture 分類 | fixture 証跡責務 / 文書・実装ファイル所在の索引責務 | [`docs/details/fixture.md` fixture 証跡責務 fixture root coverage matrix 固定契約](details/fixture.md#fixture-root-coverage-matrix-contract)、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 実装・テスト・fixture 所在](DOCUMENT_INDEX.md#実装ファイル一覧) |
 | MCP no-op 実装の明示的未実装 error または実処理化 | `mcp` / `api` / `security` / fixture 証跡責務 | [`docs/details/mcp.md` 詳細本文責務 §29.0](details/mcp.md#sec-29-0)、[`docs/details/api.md` 詳細本文責務 §22](details/api.md#22-バックエンド-api-仕様)、[`docs/details/security.md` 詳細本文責務](details/security.md)、[`docs/details/fixture.md` MCP fixture 固定契約](details/fixture.md#mcp-fixture-contract) |
 | version tag と release notes 整備、release 再現性 gate | `release` / `setup` / `security` / fixture 証跡責務 | [`docs/SPEC.md` ポリシー責務 §1](SPEC.md#policy-versioning)、[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)、[`docs/details/setup.md` 詳細本文責務 §26](details/setup.md#26-セットアップアップデート手順)、[`docs/details/security.md` 詳細本文責務](details/security.md)、[`docs/details/fixture.md` fixture 証跡責務 Release fixture 固定契約](details/fixture.md#release-fixture-contract) |
+| Phase 12 完了 closure / 状態復帰 gate | 方針責務 / 状態・計画責務 / fixture 証跡責務 / 文書・実装ファイル所在の索引責務 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、[`docs/ROADMAP.md` 状態・計画責務 §4.1](ROADMAP.md#roadmap-initial-phase-plan)、[`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence)、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務](DOCUMENT_INDEX.md) |
 
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**
