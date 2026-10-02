@@ -166,4 +166,8 @@ Commit Status fixture の fake GitHub Status API、expected/effects、expected l
 | 状態保存 | `.build_logs`、`.build_history` への保存は [`docs/details/statefile.md` 詳細本文責務 Phase 13 statefile 実装整合契約](statefile.md#phase-13-statefile-alignment-contract) の statefile 経路だけを使用する。 |
 | duplicate 排除 | `components/runner/`、`components/api/`、`components/mcp/`、`components/archive/` に Commit Status HTTP payload 生成、GitHub status endpoint 直呼び、同等 retry、同等 error reason table を残さない。 |
 
+Phase 13 の Commit Status result record は `commit_sha`、`context`、`state`、`target_url_hash`、`description`、`attempt_count`、`final_http_status`、`final_error_reason`、`rate_limit_reset_at`、`timeout_ms`、`secret_masked` を持つ。`state` は GitHub Commit Status API が許可する状態だけを保存し、runner 独自状態を保存しない。`target_url_hash` は URL raw value を保存せず canonical URL の SHA-256 lowercase hex とする。
+
+Commit Status 送信失敗は runner の build result を成功へ反転してはならない。送信失敗が build failure を意味するか、status notification failure を意味するかは `final_error_reason` と runner finalizer record の両方で区別する。
+
 Phase 13 の `commitstatus` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_archive_commitstatus_ownership_open_count=0`、`phase13_external_boundary_open_count=0` を満たすまで完了扱いにしてはならない。

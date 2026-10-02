@@ -277,7 +277,44 @@ Phase 13 closure record set は、[test verification closure record set 固定�
 | `phase13_document_drift_open_count` | `0` | 旧 path、重複仕様、実装済み表記、未作成 path、責務正本参照に drift がある。 |
 | `final_open_item_count` | `0` | 上記集計値または 18 record の `open_items` に残件がある。 |
 
-Phase 13 の正式 fixture root は `testdata/phase13/implementation-alignment-quality/` とする。同 root は Phase 13 実装 PR で作成する。作成前は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 13 target path 所在](../DOCUMENT_INDEX.md#phase-13-target-paths) で `未作成` として扱う。正式 fixture root には `manifest.json`、`input/scope.json`、`expected/effects.json`、closure record set への参照を置く。
+Phase 13 の正式 fixture root は `testdata/phase13/implementation-alignment-quality/` とする。同 root は Phase 13 実装 PR で作成する。作成前は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 13 target path 所在](../DOCUMENT_INDEX.md#phase-13-target-paths) で `未作成` として扱う。
+
+Phase 13 の正式 fixture root は以下の file を必須とする。下表の必須 file が 1 件でも欠ける場合、`phase13_fixture_execution_gap_count` に 1 件以上を計上し、Phase 13 を完了扱いにしてはならない。
+
+| path | 内容 | 完了条件 |
+|------|------|----------|
+| `manifest.json` | Phase 13 evidence package の識別子、対象 owner、実行順序、required check、closure record set の所在。 | `name` が `phase-13-implementation-alignment-quality`、`scope` が同値、`owners` が Phase 13 対象 owner をすべて含む。 |
+| `input/scope.json` | 実行対象の owner、file pattern、禁止 pattern、required check、source audit scope。 | `include`、`exclude`、`owner_packages`、`state_files`、`api_contract_sources`、`release_artifacts` を持つ。 |
+| `input/owner_inventory.json` | `components/<owner>/` の 5 file 固定、package 名、import path、file role、旧 root path の棚卸し入力。 | 全 Go owner を 1 回だけ列挙し、同一 owner の重複、空 owner、未作成 path の実在扱いがない。 |
+| `input/contract_inventory.json` | API route、Admin command、SDK method、UI operation、MCP tool、setup stdout、credential 初期化の照合入力。 | 各 entry は `owner`、`contract_kind`、`method`、`path`、`request_schema_ref`、`response_schema_ref`、`auth`、`source_anchor` を持つ。 |
+| `input/state_inventory.json` | statefile 経由に集約する state file、JSON Lines log、migration、recovery、直接状態更新禁止の棚卸し入力。 | 直接 open / truncate / append / rename の検査対象 file pattern と許可 owner `statefile` を固定する。 |
+| `input/security_inventory.json` | password hash、token、secret mask、signature、file safety、credential rotation、required log の棚卸し入力。 | secret 値そのものを含めず、fixture secret は deterministic placeholder と hash / mask 判定だけを持つ。 |
+| `input/faults.json` | disk full、permission denied、short write、fsync failure、rename failure、process kill、network timeout、DNS rebinding の障害注入入力。 | 各 fault は `fault_id`、`target_owner`、`trigger`、`expected_error`、`must_preserve_state` を持つ。 |
+| `expected/effects.json` | Phase 13 実行後の状態差分、log、artifact、counter、error、recovery の期待結果。 | 全 `phase13_*` counter と `final_open_item_count` の期待値を持つ。 |
+| `expected/counters.json` | closure counter の期待値だけを機械照合する正規化 JSON。 | 全 counter の値が `0` であり、対象外は `not_applicable_reason_anchor` を併記する。 |
+| `records/closure.jsonl` | 18 record closure set と Phase 13 counter の実行記録。 | 1 行 1 record、UTF-8、LF 終端、JSON object、`scope` は `phase-13-implementation-alignment-quality`。 |
+| `records/mutation.jsonl` | mutation selection、applied mutation、killed / survived、対象外理由。 | 適用可能 mutation の `survived` が `0`。 |
+| `records/race.jsonl` | race detector または代替 interleaving、multi-process state update、queue transition の実行記録。 | 未判定 owner がない。 |
+| `records/fault.jsonl` | fault injection の実行記録。 | `input/faults.json` の全 `fault_id` が 1 回以上実行され、期待 error と state preservation が一致する。 |
+| `records/e2e.jsonl` | Admin to API、UI to SDK to API、runner to statefile、MCP to statefile、setup、release の E2E 記録。 | stub だけの成功を E2E と扱わない。 |
+| `records/release.jsonl` | Git tag、GitHub Release、SHA256SUMS、signature、SBOM、reproducible build evidence の記録。 | release 証跡不足がない。 |
+
+`manifest.json` は以下の key を必須とする。未定義 key を実装側の自由解釈にしてはならない。
+
+| key | type | 値 |
+|-----|------|----|
+| `name` | string | `phase-13-implementation-alignment-quality` 固定。 |
+| `scope` | string | `phase-13-implementation-alignment-quality` 固定。 |
+| `owners` | array[string] | `builder`、`runner`、`api`、`admin`、`setup`、`release`、`statefile`、`security`、`archive`、`commitstatus`、`mcp`、`sdk`、`ui` を含む。 |
+| `entrypoints` | array[string] | production entrypoint として実行する binary / browser / fixture harness 名。 |
+| `required_checks` | array[string] | Phase 13 required check name をすべて含む。 |
+| `closure_records` | array[string] | `records/*.jsonl` の相対 path。 |
+| `negative_controls` | array[string] | 失敗しなければならない検査の id。 |
+| `source_anchors` | array[string] | Phase 13 対象の責務正本 anchor。 |
+
+Phase 13 fixture は negative control を必須とする。negative control は、少なくとも contract mismatch、direct state mutation、token argv、JSON Lines corruption、mutation survivor、race trigger、fault injection failure、GitHub Actions unpinned を 1 件ずつ含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase13_fixture_execution_gap_count` に計上する。
+
+Phase 13 の document drift 判定では、Phase 1〜Phase 10 の過去実装検証証跡として旧 root artifact を説明する履歴本文を、現行実装 path drift として数えない。drift として数える対象は、現在状態、実装着手可否、標準配置、Phase 13 target path、owner package inventory、API / SDK / UI / MCP / setup / release の現行契約が旧 root artifact を実在または標準配置として扱う記載だけとする。履歴本文を残す場合も、現行実装の正本は [`docs/SPEC.md` 方針責務 §4.3](../SPEC.md#sec-4-3) と [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 13 target path 所在](../DOCUMENT_INDEX.md#phase-13-target-paths) であることを Phase 13 closure record に記録する。
 
 Phase 13 の CI required check は以下とする。GitHub workflow は YAML 禁止の対象外であるが、workflow から実行する Adlaire CI 入出力、fixture manifest、expected、state、設定形式は JSON 契約に従う。
 

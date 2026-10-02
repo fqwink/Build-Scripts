@@ -652,4 +652,6 @@ confirmation_id は `mcpconf_` + 128 bit 以上の乱数を Crockford Base32 26 
 | HTTP lifecycle | `/mcp`、`/mcp/events`、`/health` は header read timeout、body 上限、invalid content type、batch request 拒否、SSE flush、graceful shutdown、client disconnect を固定し、未定義 fallback や partial success を返さない。 |
 | API bridge | MCP tool が API / runner / statefile / archive / security を呼ぶ場合、対象 owner 詳細本文の入力、出力、失敗、audit、secret mask に従う。MCP 側で API route、state schema、security policy を再定義しない。 |
 
+Phase 13 の MCP tool は `input/contract_inventory.json` の `client_bindings.mcp_tool` によって API route contract または MCP-only contract へ到達する。MCP-only contract の場合も request、response、error、audit、metrics、state effects の anchor を必須とする。anchor がない tool、success だけ返す tool、未実装を成功にする tool は `phase13_mcp_unimplemented_success_count` に計上する。
+
 Phase 13 の `mcp` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_mcp_unimplemented_success_count=0`、`phase13_contract_mismatch_count=0`、`phase13_token_arg_open_count=0`、`phase13_direct_state_mutation_count=0`、`phase13_external_boundary_open_count=0` を満たすまで完了扱いにしてはならない。

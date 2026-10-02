@@ -255,4 +255,16 @@ draft 作成後、正式公開前に失敗した場合は、作成した draft �
 | governance files | `LICENSE`、`SECURITY.md`、`CONTRIBUTING.md`、`CODEOWNERS`、`CHANGELOG.md` は release governance artifact として所在を [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務で管理する。未作成の場合は未作成 path として扱い、存在を前提にしない。 |
 | recovery procedure | stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順は、該当 owner 詳細本文と fixture evidence から到達できることを release readiness の条件に含める。 |
 
+Phase 13 の release governance artifact は以下の最低内容を満たす。file の法務・運用判断そのものは本文書で再定義しないが、空 file、placeholder、別文書への丸投げだけの file は `phase13_release_evidence_open_count` に計上する。
+
+| file | 最低内容 |
+|------|----------|
+| `LICENSE` | license 名、copyright holder、license text、適用範囲。 |
+| `SECURITY.md` | supported versions、vulnerability report channel、secret leakage report handling、expected response policy。 |
+| `CONTRIBUTING.md` | branch / PR 方針への参照、spec-first requirement、test evidence requirement、Phase 単位実装 requirement。 |
+| `CODEOWNERS` | 仕様文書、Go owner package、admin static artifact、workflow、release governance file の reviewer ownership。 |
+| `CHANGELOG.md` | release version、date placeholder 禁止、change category、breaking / security / migration note、GitHub Release note 接続。 |
+
+Phase 13 の `records/release.jsonl` は release evidence 1 件につき `release_id`、`git_tag`、`commit_sha`、`asset_names`、`sha256sums_digest`、`signature_verified`、`sbom_verified`、`reproducible_build_verified`、`download_verified`、`governance_files_verified` を持つ。未実行項目を `true` にしてはならない。
+
 Phase 13 の `release` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_release_evidence_open_count=0`、`phase13_action_pin_open_count=0`、`phase13_recovery_procedure_open_count=0` を満たすまで完了扱いにしてはならない。

@@ -553,4 +553,6 @@ binary response は `Blob`、text response は `string`、SSE response は `Stre
 | token mutation | `login()` 成功、`logout()`、`401`、stream close の token mutation だけを許可する。token、password、PAT、Webhook secret、SMTP password、TOTP secret、share token を SDK property、console、error message、fixture expected に保存しない。 |
 | UI 連動 | UI は [`docs/details/ui.md` 詳細本文責務 Phase 13 UI 実装整合契約](ui.md#phase-13-ui-alignment-contract) に従い、SDK public method だけを呼ぶ。SDK は DOM、panel、UI disabled 状態を知らない。 |
 
+Phase 13 の SDK public method は `input/contract_inventory.json` の `client_bindings.sdk_method` によって API route contract と 1 対 1 に紐づく。API route にない method、複数 route へ暗黙分岐する method、response を SDK 側で独自合成する method は `phase13_contract_mismatch_count` に計上する。
+
 Phase 13 の `sdk` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_contract_mismatch_count=0`、`phase13_external_boundary_open_count=0`、`phase13_e2e_open_count=0` を満たすまで完了扱いにしてはならない。

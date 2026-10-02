@@ -217,4 +217,6 @@ network error、TLS error、timeout、connection close before response は stdou
 | HTTP safety | redirect 追従、環境変数 proxy、Cookie、Referer、token query 化、retry、1 MiB 超過 body 出力を禁止する。timeout、body 上限、invalid response は固定 error へ写像する。 |
 | 配布境界 | 管理 UI 静的 file の存在、archive safety、no mutation、secret exposure 禁止は [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) から [`docs/details/admin.md` 詳細本文責務 §A6](admin.md#a6-admin-fixture-参照契約) を維持し、Phase 13 では API route parity と token 取得経路だけを追加確認する。 |
 
+Phase 13 の Admin CLI command は `input/contract_inventory.json` の `client_bindings.admin_command` によって API route contract と 1 対 1 に紐づく。Admin CLI にだけ存在する command、API route に紐づかない URL、または複数 API route へ曖昧に展開される command は `phase13_contract_mismatch_count` に計上する。
+
 Phase 13 の `admin` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_contract_mismatch_count=0`、`phase13_token_arg_open_count=0`、`phase13_external_boundary_open_count=0` を満たすまで完了扱いにしてはならない。

@@ -283,4 +283,8 @@ archive / snapshot の fixture 名、合格条件、expected / effects、stream 
 | state boundary | archive owner は `.pending_transfers`、`.build_history`、`.audit_log`、HTTP response を直接更新または生成しない。必要な状態候補だけを runner / api owner へ返す。 |
 | corruption | archive 破損、metadata mismatch、unsafe entry、secret path、traversal、hardlink、symlink、device、short read は黙って除外せず固定 error とする。 |
 
+Phase 13 の backup / restore transaction record は `transaction_id`、`operation`、`source_ref`、`staging_path`、`precheck_result`、`commit_result`、`rollback_result`、`published_artifact`、`digest_verified`、`state_effects` を持つ。`precheck`、`stage`、`commit`、`rollback` のどの段階で失敗したかを記録できない実装は、restore 成功扱いにしてはならない。
+
+Restore の `commit` 前に検出した失敗は statefile へ永続状態を変更しない。`commit` 後に検出した失敗は rollback を試み、rollback の成否を `recovery_required` の候補として呼び出し元へ返す。archive owner が runner queue 状態や API response を直接確定してはならない。
+
 Phase 13 の `archive` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_archive_commitstatus_ownership_open_count=0`、`phase13_release_evidence_open_count=0`、`phase13_recovery_procedure_open_count=0` を満たすまで完了扱いにしてはならない。

@@ -3493,4 +3493,23 @@ Webhook 送信履歴の手動再送 API の owner は `runner` とする。
 | backup / restore transaction | backup / restore API は事前検証、staging、commit、rollback、成功後再取得、失敗時固定 response を持つ。archive 実処理は [`docs/details/archive.md` 詳細本文責務 Phase 13 archive 実装整合契約](archive.md#phase-13-archive-alignment-contract) へ委譲する。 |
 | required log | audit、access、config、admin event の必須書込みに失敗した場合、仕様上 best-effort と定義された行を除き、成功 response を返さない。失敗を黙って無視しない。 |
 
+Phase 13 の API route contract は `input/contract_inventory.json` の各 API entry に以下の key を必須とする。API 実装、Admin CLI、SDK、UI、MCP bridge、setup stdout のいずれかがこの key を埋められない場合は `phase13_contract_mismatch_count` に計上する。
+
+| key | type | 固定内容 |
+|-----|------|----------|
+| `contract_id` | string | owner 間で一意の契約 id。 |
+| `owner` | string | `api` 固定。 |
+| `method` | string | HTTP method。 |
+| `path` | string | query を含まない absolute API path。 |
+| `query_schema_ref` | string/null | query を持つ場合の責務正本 anchor。 |
+| `request_schema_ref` | string/null | request body を持つ場合の責務正本 anchor。 |
+| `response_schema_ref` | string | success response の責務正本 anchor。 |
+| `error_schema_ref` | string | error response の責務正本 anchor。 |
+| `auth` | string | `none`、`admin_token`、`mcp_token`、`webhook_signature` のいずれか。 |
+| `status_codes` | array[integer] | success と expected error の HTTP status。 |
+| `state_effects` | array[string] | statefile 経由の副作用名。副作用なしは空配列。 |
+| `client_bindings` | object | `admin_command`、`sdk_method`、`ui_operation`、`mcp_tool` の対応。未対応は `null`。 |
+
+API credential 初期化と setup stdout の契約は、success stdout に平文 credential を出さず、作成された token / password の一回表示が必要な場合は表示先、mask、保存禁止、再表示不可、rotation 条件を `contract_inventory.json` と `security_inventory.json` の両方で照合する。片方だけに記録された credential 挙動は契約不一致として扱う。
+
 Phase 13 の `api` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_contract_mismatch_count=0`、`phase13_direct_state_mutation_count=0`、`phase13_external_boundary_open_count=0`、`phase13_required_log_write_ignore_count=0`、`phase13_e2e_open_count=0` を満たすまで完了扱いにしてはならない。

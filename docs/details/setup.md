@@ -618,4 +618,6 @@ setup / admin / Release asset 連動 fixture の fixture 名、正式 fixture di
 | local E2E | setup、install-api、update、rollback、Release asset からの実インストールは fixture 上で E2E 証跡を持つ。systemd 実起動が未実行の場合は未実行証跡として扱い、確認済みへ変換しない。 |
 | security 接続 | credential 生成、token file、secret mask、file safety は [`docs/details/security.md` 詳細本文責務 Phase 13 security 実装整合契約](security.md#phase-13-security-alignment-contract) を参照し、setup 側で hash、token、署名、mask を再定義しない。 |
 
+Phase 13 の setup stdout / stderr 契約は `input/contract_inventory.json` と `input/security_inventory.json` の両方に記録する。credential 初期化、install-api、update、rollback の出力が片方にだけ定義される場合、または stdout に secret / token / password / absolute state path が含まれる場合は `phase13_contract_mismatch_count` と `phase13_required_log_write_ignore_count` に計上する。
+
 Phase 13 の `setup` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_e2e_open_count=0`、`phase13_external_boundary_open_count=0`、`phase13_recovery_procedure_open_count=0`、`phase13_required_log_write_ignore_count=0` を満たすまで完了扱いにしてはならない。

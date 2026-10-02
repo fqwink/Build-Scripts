@@ -243,6 +243,21 @@
 | `components/<owner>/execute.go` | owner の正常系・異常系実行順序 | 実在 |
 | `components/<owner>/<owner>_test.go` | owner package の仕様契約検証 | 実在 |
 | `testdata/phase13/implementation-alignment-quality/` | Phase 13 正式 fixture root | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/manifest.json` | Phase 13 evidence package manifest | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/input/scope.json` | Phase 13 実行 scope 入力 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/input/owner_inventory.json` | Phase 13 owner package inventory 入力 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/input/contract_inventory.json` | Phase 13 API / Admin / SDK / UI / MCP 契約照合入力 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/input/state_inventory.json` | Phase 13 statefile 経路棚卸し入力 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/input/security_inventory.json` | Phase 13 security 境界棚卸し入力 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/input/faults.json` | Phase 13 fault injection 入力 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/expected/effects.json` | Phase 13 期待効果 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/expected/counters.json` | Phase 13 closure counter 期待値 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/records/closure.jsonl` | Phase 13 closure record set | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/records/mutation.jsonl` | Phase 13 mutation 証跡 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/records/race.jsonl` | Phase 13 race / concurrency 証跡 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/records/fault.jsonl` | Phase 13 fault injection 証跡 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/records/e2e.jsonl` | Phase 13 integration / E2E 証跡 | 未作成 |
+| `testdata/phase13/implementation-alignment-quality/records/release.jsonl` | Phase 13 release 証跡 | 未作成 |
 | `.github/workflows/phase13-implementation-alignment-quality.yml` | Phase 13 required check workflow | 未作成 |
 | `LICENSE` | release governance artifact | 未作成 |
 | `SECURITY.md` | release governance artifact | 未作成 |

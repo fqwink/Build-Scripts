@@ -1735,4 +1735,16 @@ ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全�
 | required logs | audit、access、config log のうち owner 詳細本文で必須書込みと定義されたものは best-effort にしてはならない。必須 log write failure は呼び出し元 operation を失敗として返す。 |
 | state directory | state directory は mode `0700`、owner は起動 user と一致、group / other write 不可とする。起動時に不一致を検出した場合、状態変更を開始せず固定 error を返す。 |
 
+Phase 13 の statefile 実装は以下の operation 境界を持つ。operation 名は evidence 上の分類名であり、Go 関数名の指定ではない。実装者は同じ分類を `input/state_inventory.json` と `records/closure.jsonl` へ記録する。
+
+| operation | 必須順序 | 失敗時の固定結果 |
+|-----------|----------|------------------|
+| `read_state` | path 正規化、symlink 非追従、owner / mode 検証、file open、decode、schema validation、migration 判定。 | decode または schema validation 失敗は corruption error とし、成功値を返さない。 |
+| `update_state` | process lock 取得、read、migration、update plan 作成、temporary write、file fsync、atomic rename、parent fsync、post-rename read、unlock。 | temporary write 以降の失敗では旧 state を維持し、recovery record を残す。 |
+| `append_jsonl` | process lock 取得、record validation、canonical JSON encode、LF 終端 append、flush、file fsync、unlock。 | short write、flush failure、fsync failure は record 未確定として error を返し、呼び出し元を成功扱いにしない。 |
+| `recover_state` | corruption / stale lock / partial write の検出、隔離 path 決定、snapshot 作成、復旧 plan、復旧 write、検証、recovery record。 | 復旧不能時は `recovery_required` 状態を返し、破損 file を削除しない。 |
+| `verify_state_dir` | state directory path 正規化、owner、mode `0700`、group / other write 不可、symlink / non-directory 拒否。 | 不一致時は API / runner / MCP の状態変更を開始しない。 |
+
+JSON Lines corruption は、partial line、invalid UTF-8、invalid JSON、unknown required key、type mismatch、duplicate record id、future schema version を別々の reason として記録する。読み取り側が破損行を読み飛ばして残りを成功扱いにすることは禁止する。復旧処理で隔離する場合の隔離 path は同一 state directory 配下の `quarantine/` 以下とし、隔離後の path を recovery record に保存する。
+
 Phase 13 の `statefile` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_direct_state_mutation_count=0`、`phase13_state_safety_open_count=0`、`phase13_jsonl_corruption_open_count=0`、`phase13_required_log_write_ignore_count=0` を満たすまで完了扱いにしてはならない。

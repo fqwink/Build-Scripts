@@ -3154,4 +3154,19 @@ FailureCategory 値と FailureEvidence object の key、型、列挙値は [`doc
 | SSH boundary | SSH host key、known_hosts、timeout、remote path、write path、command argv、secret 出力禁止を検証し、不合格時は deploy を開始しない。systemd unit や OS user 作成は [`docs/details/setup.md` 詳細本文責務 Phase 13 setup 実装整合契約](setup.md#phase-13-setup-alignment-contract) の責務とする。 |
 | Commit Status | GitHub Commit Status の payload、HTTP、retry、rate limit、timeout は [`docs/details/commitstatus.md` 詳細本文責務 Phase 13 commitstatus 実装整合契約](commitstatus.md#phase-13-commitstatus-alignment-contract) へ委譲する。runner は送信時点、build result 変換、失敗非反転の境界だけを扱う。 |
 
+Phase 13 の queue state transition は以下だけを許可する。表にない遷移を実装した場合は `phase13_queue_recovery_open_count` に計上する。
+
+| from | to | trigger | 必須副作用 |
+|------|----|---------|------------|
+| `waiting` | `active` | runner が queue 上限、重複排除、active slot を statefile lock 内で通過した場合。 | `started_at`、`attempt`、`runner_owner`、`active_lock_id` を同一 read-modify-write で保存する。 |
+| `waiting` | `cancelled` | active 化前の cancel request が statefile lock 内で確定した場合。 | `cancelled_at`、`cancel_reason` を保存し、build / deploy を開始しない。 |
+| `active` | `cancelling` | active 中の cancel request を受理した場合。 | cancel signal または context cancel の送信時刻を保存する。 |
+| `active` | `succeeded` | build、deploy、history、required log、commitstatus boundary が成功した場合。 | finalizer が 1 回だけ完了 record を保存する。 |
+| `active` | `failed` | build、deploy、validation、required log、commitstatus boundary の失敗が確定した場合。 | finalizer が error reason、exit code、保存済み log reference を保存する。 |
+| `active` | `recovery_required` | state save failure、process kill、owner process 不明、active stale、finalizer 未確定を検出した場合。 | recovery record を保存し、成功・失敗へ推測補正しない。 |
+| `cancelling` | `cancelled` | cancel 後の停止と finalizer 保存が完了した場合。 | `cancelled_at`、partial result、log reference を保存する。 |
+| `cancelling` | `recovery_required` | cancel 中に process kill、state save failure、owner 不明を検出した場合。 | recovery record を保存する。 |
+| `recovery_required` | `waiting` | at-least-once 再実行が安全と判定され、重複副作用が rollback または idempotent と証明された場合。 | recovery decision、previous attempt、idempotency key を保存する。 |
+| `recovery_required` | `failed` | 復旧不能かつ副作用境界が失敗として確定した場合。 | operator action と recovery evidence を保存する。 |
+
 Phase 13 の `runner` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_queue_recovery_open_count=0`、`phase13_direct_state_mutation_count=0`、`phase13_external_boundary_open_count=0`、`phase13_required_log_write_ignore_count=0`、`phase13_race_or_concurrency_open_count=0` を満たすまで完了扱いにしてはならない。

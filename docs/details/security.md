@@ -944,4 +944,24 @@ share link の `scope` は `status`、`history`、`snapshot_diff` の単一値�
 | required logs | security event の audit / access log が owner 詳細本文で必須書込みと定義される場合、書込み失敗を無視して成功 response を返してはならない。 |
 | credential rotation | rotation は旧 credential 検証、new credential 生成、statefile atomic write、audit、旧 token revoke、rollback 不可範囲の明示を同一 operation として扱う。途中失敗時の session / token / audit の状態は fixture で固定する。 |
 
+Argon2id credential hash の Phase 13 固定値は以下とする。下表の値を実装者判断で変更してはならない。値を変更する場合は [`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies) と本文節を先に改訂する。
+
+| 項目 | 値 |
+|------|----|
+| algorithm | `argon2id` |
+| version | `19` |
+| memory | `65536` KiB |
+| iterations | `3` |
+| parallelism | `1` |
+| salt length | 16 bytes |
+| tag length | 32 bytes |
+| salt source | `crypto/rand.Reader` |
+| encoded format | `$adlaireci$argon2id$v=19$m=65536,t=3,p=1$<base64url-no-padding-salt>$<base64url-no-padding-tag>` |
+| password input | UTF-8 byte sequence、Unicode normalization は行わない |
+| maximum password length | 1024 bytes |
+| verification compare | constant-time compare |
+| legacy SHA-256 | 新規生成禁止。既存検出時は credential rotation required error と audit record を返す。 |
+
+Phase 13 の security evidence は `input/security_inventory.json` に `hash_vectors`、`token_sources`、`masked_outputs`、`file_safety_cases`、`rotation_cases` を持たせる。`hash_vectors` は raw password を保存せず、case id、salt hex、encoded hash、verify input label、expected result だけを保存する。raw secret を fixture に保存した場合は `phase13_security_kdf_open_count` と `phase13_required_log_write_ignore_count` の両方へ未完了として計上する。
+
 Phase 13 の `security` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_security_kdf_open_count=0`、`phase13_token_arg_open_count=0`、`phase13_required_log_write_ignore_count=0` を満たすまで完了扱いにしてはならない。

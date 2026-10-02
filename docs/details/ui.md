@@ -578,4 +578,6 @@ event feed panel は SDK の `onEvent` callback が渡す `AdminEventRecord` を
 | one-time secret | 発行 token、share token、TOTP secret、otpauth URI、ticket、password、Webhook secret、SMTP password、external auth secret は専用表示領域と消去条件だけで扱い、一覧、event feed、error、log、DOM hidden field へ残さない。 |
 | browser fixture | Phase 13 の UI 検証は、SDK fake だけでなく browser runtime 上で UI → SDK → API fake の操作結果、disabled 優先順位、field error、stream close、one-time secret 消去、no direct fetch を確認する。 |
 
+Phase 13 の UI operation は `input/contract_inventory.json` の `client_bindings.ui_operation` によって SDK public method と API route contract へ到達する。UI にだけ存在する操作、SDK method を経由しない操作、API response にない値を表示状態として確定する操作は `phase13_contract_mismatch_count` に計上する。
+
 Phase 13 の `ui` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_contract_mismatch_count=0`、`phase13_e2e_open_count=0`、`phase13_external_boundary_open_count=0` を満たすまで完了扱いにしてはならない。
