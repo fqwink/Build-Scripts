@@ -36,7 +36,7 @@
 <a id="owner-detail-verification-route"></a>
 **owner 詳細本文 検証接続共通入口：**
 
-owner component 別詳細本文が検証接続を示す場合の参照入口である。検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、owner から fixture への入口は [詳細仕様参照表](#0b-詳細仕様参照表)、横断テスト証跡は [横断テスト証跡共通入口](#cross-test-evidence-route)、Phase 11 横断入口は [Phase 11 バグ修正ゼロ化参照](#phase-11-quality-gate-entry)、Phase 12 横断入口は [Phase 12 実装品質ゲート再構築参照](#phase-12-quality-gate-entry)、Phase 13 横断入口は [Phase 13 実装整合・品質改善参照](#phase-13-implementation-alignment-quality-entry)、Phase 14 入口は [Phase 14 Obsidian Vault 連携参照](#phase-14-obsidian-vault-integration-entry)、Phase 15 入口は [Phase 15 Obsidian local vault 同期参照](#phase-15-obsidian-local-sync-entry)、Phase 16 入口は [Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](#phase-16-quality-evidence-closure-entry)、仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) を参照する。
+owner component 別詳細本文が検証接続を示す場合の参照入口である。検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、owner から fixture への入口は [詳細仕様参照表](#0b-詳細仕様参照表)、横断テスト証跡は [横断テスト証跡共通入口](#cross-test-evidence-route)、Phase 11 横断入口は [Phase 11 バグ修正ゼロ化参照](#phase-11-quality-gate-entry)、Phase 12 横断入口は [Phase 12 実装品質ゲート再構築参照](#phase-12-quality-gate-entry)、Phase 13 横断入口は [Phase 13 実装整合・品質改善参照](#phase-13-implementation-alignment-quality-entry)、Phase 14 入口は [Phase 14 Obsidian Vault 連携参照](#phase-14-obsidian-vault-integration-entry)、Phase 15 入口は [Phase 15 Obsidian local vault 同期参照](#phase-15-obsidian-local-sync-entry)、Phase 16 入口は [Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](#phase-16-quality-evidence-closure-entry)、Phase 17 入口は [Phase 17 本番環境同等検証参照](#phase-17-production-validation-entry)、仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) を参照する。
 
 <a id="cross-test-evidence-route"></a>
 **横断テスト証跡共通入口：**
@@ -378,6 +378,34 @@ Phase 16 の各 work unit は、下表の inventory と owner 範囲をすべて
 Phase 16 の実装者は、各 inventory の `required_action` が `future_plan` の場合でも、[`docs/ROADMAP.md` 状態・計画責務 §5](ROADMAP.md#522-統合ロードマップ表) への到達可能な `future_ref` を記録する。`future_ref` を持たない将来計画維持、`closure_ref` を持たない完了、`not_applicable_ref` を持たない対象外、または同一 item の複数 action は未完了として扱う。
 
 Phase 16 の完了判定では、[`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) を必ず通過する。checker が live source coverage set から検出した対象を `input/source_coverage.json`、各 inventory、`expected/actions.json`、`records/*.jsonl`、closure counter に再導出できない場合、該当 work unit は `closed` にしてはならない。手書き counter、手書き closure record、または PR 本文だけを checker の代替証跡にしてはならない。checker の stdout / stderr、exit code、diagnostic schema、source coverage detection registry は [`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) のみを正本とする。
+
+<a id="phase-17-production-validation-entry"></a>
+**Phase 17 本番環境同等検証参照：**
+
+Phase 17 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、本番環境同等検証の本文は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務、fixture と required check は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 本番環境同等検証証跡](details/fixture.md#phase-17-production-validation-evidence)、実在 path は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 17 target path 所在](DOCUMENT_INDEX.md#phase-17-target-paths) を参照する。
+
+Phase 17 は owner component を追加しない。ConoHa VPS 先行検証、本番環境同等 simulation、destructive operation 禁止境界、エックスサーバ VPS 将来判断の本文は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務だけに置く。API、Admin、SDK、UI、runner、statefile、setup、release、security、archive、commitstatus、mcp の処理仕様は各 owner component 別詳細本文を参照し、Phase 17 本文では再定義しない。
+
+| 判断対象 | 正本参照 | 固定判断 |
+|----------|----------|----------|
+| provider target | [`docs/details/production-validation.md` 本番検証詳細本文責務 §2](details/production-validation.md#phase-17-provider-targets) | `conoha-vps-primary` は必須、`xserver-vps-future` は将来判断。 |
+| 検証 mode | [`docs/details/production-validation.md` 本番検証詳細本文責務 §3](details/production-validation.md#phase-17-validation-modes) | `real-conoha-vps` と `production-equivalent-simulation` の 2 mode。 |
+| ConoHa VPS 先行検証 | [`docs/details/production-validation.md` 本番検証詳細本文責務 §6](details/production-validation.md#phase-17-conoha-contract) | preflight、install、runtime-flow、update、rollback、reboot-recovery、cleanup を必須 record にする。 |
+| エックスサーバ VPS 将来判断 | [`docs/details/production-validation.md` 本番検証詳細本文責務 §7](details/production-validation.md#phase-17-xserver-future-contract) | `classification=future_plan`、`phase17_completion_blocker=false`。 |
+| 証跡・完了条件 | [`docs/details/fixture.md` fixture 証跡責務 Phase 17 本番環境同等検証証跡](details/fixture.md#phase-17-production-validation-evidence) | 全 closure counter と `final_open_item_count` を `0` にする。 |
+
+Phase 17 実装 PR は、下表の required check を同一 PR 本文へ記録する。check 名と完了条件の本文は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 本番環境同等検証証跡](details/fixture.md#phase-17-production-validation-evidence) を正本とする。
+
+| required check | 対象 |
+|----------------|------|
+| `phase17-conoha-vps-preflight` | ConoHa VPS preflight と provider target record。 |
+| `phase17-conoha-install-update-rollback` | install、update、rollback、cleanup。 |
+| `phase17-systemd-lifecycle` | systemd enable / start / restart / stop / status / reboot recovery。 |
+| `phase17-runtime-flow` | API、Admin、SDK、UI、runner、build / deploy dry-run。 |
+| `phase17-production-simulation` | 本番環境同等 simulation。 |
+| `phase17-failure-injection` | disk、permission、write、fsync、rename、process、network、SSH failure。 |
+| `phase17-security-boundary` | secret leak、destructive operation 禁止、provider credential 非保存。 |
+| `phase17-document-drift` | Phase 17 状態、path、anchor、fixture root、workflow、future target drift。 |
 
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**

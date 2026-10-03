@@ -40,6 +40,10 @@
 | Phase 16 source coverage detection registry | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡](details/fixture.md#phase-16-quality-evidence-closure-evidence) |
 | Phase 16 implementation sequence | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 implementation sequence 固定契約](details/fixture.md#phase-16-implementation-sequence-contract) |
 | Phase 16 required check workflow | `.github/workflows/phase16-quality-evidence-closure.yml` |
+| Phase 17 本番環境同等検証の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 17 本番環境同等検証参照](DETAIL_INDEX.md#phase-17-production-validation-entry) |
+| Phase 17 本番検証詳細本文 | [`docs/details/production-validation.md`](details/production-validation.md) |
+| Phase 17 正式 fixture root | `testdata/phase17/production-validation/` |
+| Phase 17 required check workflow | `.github/workflows/phase17-production-validation.yml` |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
@@ -92,6 +96,7 @@
 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | 実在 |
 | [`docs/DESIGN.md`](DESIGN.md) | 実在 |
 | [`docs/details/`](details/) | 実在 |
+| [`docs/details/production-validation.md`](details/production-validation.md) | 実在 |
 | `docs/examples/` | 未作成 |
 | [`LICENSE`](../LICENSE) | 実在 |
 | [`SECURITY.md`](../SECURITY.md) | 実在 |
@@ -119,6 +124,7 @@
 | [`docs/details/mcp.md`](details/mcp.md) | `mcp` |
 | [`docs/details/obsidian.md`](details/obsidian.md) | `obsidian` |
 | [`docs/details/fixture.md`](details/fixture.md) | fixture 証跡責務 |
+| [`docs/details/production-validation.md`](details/production-validation.md) | 本番検証詳細本文責務 |
 
 <a id="実装ファイル一覧"></a>
 **実装・テスト・fixture 所在：**
@@ -243,6 +249,8 @@
 | [`.github/workflows/phase15-obsidian-local-sync.yml`](../.github/workflows/phase15-obsidian-local-sync.yml) | Phase 15 required check workflow | 実在 |
 | `testdata/phase16/quality-evidence-closure/` | Phase 16 quality evidence closure fixture root | 未作成 |
 | `.github/workflows/phase16-quality-evidence-closure.yml` | Phase 16 required check workflow | 未作成 |
+| `testdata/phase17/production-validation/` | Phase 17 production validation fixture root | 未作成 |
+| `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 未作成 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
 
@@ -381,3 +389,25 @@
 | `testdata/phase16/quality-evidence-closure/records/fault.jsonl` | Phase 16 fault injection 証跡 | 未作成 |
 | `testdata/phase16/quality-evidence-closure/records/workflow.jsonl` | Phase 16 workflow hardening 証跡 | 未作成 |
 | `.github/workflows/phase16-quality-evidence-closure.yml` | Phase 16 required check workflow | 未作成 |
+
+<a id="phase-17-target-paths"></a>
+**Phase 17 target path 所在：**
+
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 17 本番環境同等検証参照](DETAIL_INDEX.md#phase-17-production-validation-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+
+| path | 役割 | 所在 |
+|------|------|------|
+| [`docs/details/production-validation.md`](details/production-validation.md) | Phase 17 本番検証詳細本文 | 実在 |
+| `testdata/phase17/production-validation/` | Phase 17 正式 fixture root | 未作成 |
+| `testdata/phase17/production-validation/manifest.json` | Phase 17 evidence package manifest | 未作成 |
+| `testdata/phase17/production-validation/input/provider_targets.json` | provider target と future target 分類入力 | 未作成 |
+| `testdata/phase17/production-validation/input/conoha_vps_environment.json` | ConoHa VPS preflight / environment 棚卸し入力 | 未作成 |
+| `testdata/phase17/production-validation/input/simulation_matrix.json` | 本番環境同等 simulation / failure class 入力 | 未作成 |
+| `testdata/phase17/production-validation/input/security_boundary.json` | secret leak / destructive operation 境界入力 | 未作成 |
+| `testdata/phase17/production-validation/expected/counters.json` | Phase 17 closure counter 期待値 | 未作成 |
+| `testdata/phase17/production-validation/expected/runtime_flow.json` | Phase 17 runtime flow 期待値 | 未作成 |
+| `testdata/phase17/production-validation/records/real_conoha.jsonl` | ConoHa VPS 実検証証跡 | 未作成 |
+| `testdata/phase17/production-validation/records/simulation.jsonl` | 本番環境同等 simulation 証跡 | 未作成 |
+| `testdata/phase17/production-validation/records/failure.jsonl` | failure injection 証跡 | 未作成 |
+| `testdata/phase17/production-validation/records/security.jsonl` | secret / destructive operation 境界証跡 | 未作成 |
+| `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 未作成 |
