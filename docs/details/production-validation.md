@@ -113,6 +113,18 @@ Phase 17 の禁止 secret 入力経路は以下に固定する。
 
 Phase 17 の証跡に保存できる secret 関連情報は、`secret_class`、`input_channel`、`redacted_reference`、`secret_reference_policy=metadata-only`、`secret_value_present=false`、`scan_target`、`mask_result`、`credential_storage_result`、`boundary_result` だけとする。`scan_target` は検査対象分類だけを表し、host、IP、path、secret 値、credential file path を含めてはならない。secret 値、secret 値の hash、private key fingerprint、provider account id、credential file path、host 固有 secret、IP 固有 secret、実 token の prefix / suffix を保存してはならない。
 
+<a id="phase-17-trial-operation-window"></a>
+
+## 3c. 試験本番運用窓・停止条件
+
+Phase 17 の `trial-production-conoha-vps` の試験本番運用窓は `continuous-24h` 固定とする。運用窓は `operation-baseline` の成功後に開始し、service start、API health、Admin CLI health、runner dry-run、state write、audit log、secret mask の初回成功を記録してから 24 時間連続で監視する。24 時間未満、監視開始条件未達、または監視 record の欠落がある場合は、試験本番運用を完了扱いにしてはならない。
+
+Phase 17 の監視間隔は `300` 秒固定とし、`continuous-24h` の必須監視 sample 数は `288` 件固定とする。監視 sample は health、systemd state、state write、audit / access / config log write、disk usage、network reachability、secret leakage boundary、known bug status を同一 sample として記録する。監視 sample の時刻、index、結果、停止条件判定、再検証参照は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の `records/operation.jsonl` へ接続する。
+
+Phase 17 の連続監視 failure 許容数は `1` 件までとする。2 件以上の連続 `failed`、`unknown`、記録欠落、または同一 sample の必須観測値欠落は、試験本番運用の未完了として fixture 証跡へ接続する。単発 failure を検出した場合も、仕様全般策定先行、修正、再配置、再検証、再監視 sample の証跡が揃うまで Phase 17 を完了扱いにしてはならない。
+
+Phase 17 の停止条件は `secret-boundary-failure`、`destructive-operation-boundary-failure`、`state-corruption`、`service-unrecoverable`、`known-critical-bug` に固定する。停止条件が発火した場合は、試験本番運用を成功扱いせず、停止理由、直前 sample、仕様全般策定先、修正対象、再検証条件、復旧可否を証跡化する。停止条件発火後の修正は、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務と本ファイルの試験本番運用ループに従い、仕様全般策定を先行しなければならない。
+
 <a id="phase-17-validation-targets"></a>
 
 ## 4. 検証対象
@@ -132,7 +144,7 @@ Phase 17 は以下を検証対象に含める。
 | network | DNS、IPv4 / IPv6 境界、redirect 禁止、timeout、firewall 影響、provider outbound / inbound 境界。 |
 | failure injection | disk full、permission denied、short write、fsync failure、rename failure、process kill、reboot、中断復旧。 |
 | log / audit / secret | audit log、access log、config log の必須書込み失敗、secret mask、token / key 非出力。 |
-| trial production operation | 継続稼働、問題検出、仕様全般策定、バグ修正、再配置、再検証、証跡記録の反復。 |
+| trial production operation | `continuous-24h`、300 秒間隔、288 sample、停止条件、継続稼働、問題検出、仕様全般策定、バグ修正、再配置、再検証、証跡記録の反復。 |
 | document drift | Phase 17 状態、path、anchor、fixture root、workflow、required check、future target の drift。 |
 
 各対象の詳細な owner 実装契約は、対象 owner component 別詳細本文を参照する。Phase 17 は、これらの実装契約を本番環境同等条件で検証する入口であり、owner 詳細本文の処理仕様を再定義しない。
