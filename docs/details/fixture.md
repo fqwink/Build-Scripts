@@ -485,9 +485,32 @@ Phase 16 の正式 fixture root は `testdata/phase16/quality-evidence-closure/`
 | `records/fault.jsonl` | disk full、permission denied、short write、fsync failure、rename failure、process kill、partial write、client disconnect の障害注入証跡。 | failure injection が実行され、期待 failure code、rollback、recovery、no silent success が一致する。 |
 | `records/workflow.jsonl` | workflow hardening と required check 実行証跡。 | action SHA pin、permissions、timeout、required check、Docker fallback、Deno stable、release rehearsal、Phase 12 workflow 差分が閉じている。 |
 
-Phase 16 の棚卸し対象 source は、`rg --files --hidden -g '!.git/**'` で列挙できる実在 path と、必須所在確認対象の不在 record を基準にする。実装者は同列挙結果から `main.go`、`go.mod`、`components/*/*.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html`、`.github/workflows/*.yml`、`.github/workflows/*.yaml`、`testdata/phase12/quality-gate-reconstruction/**`、`testdata/phase13/implementation-alignment-quality/**`、`testdata/phase14/obsidian-vault-integration/**`、`testdata/phase15/obsidian-local-sync/**`、`docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`docs/details/fixture.md`、`docs/details/*.md` を Phase 16 source coverage set として扱う。`go.sum` は必須所在確認対象とし、実在する場合は source coverage set に含め、実在しない場合は `go.sum` が存在しないことを `input/source_coverage.json` の `not_applicable` record として扱い、存在しない file を作成して補ってはならない。source coverage set は UTF-8 byte 昇順の一意 path とし、重複 pattern で同一 path が複数回一致しても record は 1 件だけ作成する。source coverage set に含まれる path を inventory から省略してはならない。対象外とする場合も、該当 inventory record に `classification=not_applicable`、`not_applicable_ref`、`status=not_applicable` を記録する。
+Phase 16 の棚卸し対象 source は、`rg --files --hidden -g '!.git/**'` で列挙できる実在 path と、必須所在確認対象の不在 record を基準にする。実装者は同列挙結果から `AGENTS.md`、`README.md`、`main.go`、`go.mod`、`components/*/*.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html`、`.github/workflows/*.yml`、`.github/workflows/*.yaml`、`testdata/phase12/quality-gate-reconstruction/**`、`testdata/phase13/implementation-alignment-quality/**`、`testdata/phase14/obsidian-vault-integration/**`、`testdata/phase15/obsidian-local-sync/**`、`testdata/phase16/quality-evidence-closure/**`、`docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`docs/DESIGN.md`、`docs/details/fixture.md`、`docs/details/*.md` を Phase 16 source coverage set として扱う。`go.sum` は必須所在確認対象とし、実在する場合は source coverage set に含め、実在しない場合は `go.sum` が存在しないことを `input/source_coverage.json` の `not_applicable` record として扱い、存在しない file を作成して補ってはならない。source coverage set は UTF-8 byte 昇順の一意 path とし、重複 pattern で同一 path が複数回一致しても record は 1 件だけ作成する。source coverage set に含まれる path を inventory から省略してはならない。対象外とする場合も、該当 inventory record に `classification=not_applicable`、`not_applicable_ref`、`status=not_applicable` を記録する。
 
 Phase 16 の source coverage set では、`_ =`、ignored return、`panic(`、`t.Skip`、`Skip(`、`time.Now`、`time.Sleep`、`time.After`、timer、timeout、`rand.`、`crypto/rand`、`http.Client`、`http.Server`、`http.NewRequest`、response `Write`、`Flush`、`exec.Command`、`exec.CommandContext`、`systemctl`、`os.Rename`、`os.Remove`、`os.OpenFile`、`os.WriteFile`、`Write`、`Sync`、`Close`、`filepath.WalkDir`、symlink 判定、`require`、`replace`、module path、外部 import path、JSONL record、closure counter、workflow action、workflow permissions、workflow timeout、Deno check、Docker fallback、Release rehearsal、5 ファイル原則、空 file、dummy 実装、owner file line count を検出対象に含める。owner file line count は LF 区切りの物理行数で数え、末尾 LF のない最終行も 1 行として数える。検出対象が source coverage set に存在するのに対応 inventory record がない場合、`phase16_execution_evidence_gap_count` または該当する `phase16_*_open_count` を `0` にしてはならない。
+
+Phase 16 source coverage detection registry は以下に固定する。checker は対象 source を UTF-8 text として読み、コメント、文字列、Markdown code block、HTML comment、workflow comment の区別をせず、下表の `match` を case-sensitive UTF-8 substring として検出する。UTF-8 として読めない source は `phase16_execution_evidence_gap_count` に計上する。検出対象語が documentation だけに現れる場合も、該当 inventory record で `not_applicable`、`future_plan`、または `reject_invalid_evidence` に分類し、未記録のまま完了扱いにしてはならない。
+
+| detected term id | match | counter routing |
+|------------------|-------|-----------------|
+| `ignored_assignment` | `_ =` | `phase16_ignored_error_unclassified_count` |
+| `ignored_return_phrase` | `ignored return` | `phase16_ignored_error_unclassified_count` |
+| `panic_call` | `panic(` | `phase16_panic_unclassified_count` |
+| `test_skip_call` | `t.Skip`、`Skip(` | `phase16_skip_open_count` |
+| `clock_now` | `time.Now` | `phase16_determinism_open_count` |
+| `sleep_or_after` | `time.Sleep`、`time.After` | `phase16_determinism_open_count` |
+| `timer_or_timeout` | `timer`、`timeout`、`Timeout` | `phase16_determinism_open_count` |
+| `entropy` | `rand.`、`crypto/rand` | `phase16_determinism_open_count` |
+| `http_boundary` | `http.Client`、`http.Server`、`http.NewRequest`、`response Write`、`Flush` | `phase16_http_boundary_open_count` |
+| `external_command` | `exec.Command`、`exec.CommandContext`、`systemctl` | `phase16_validation_portability_open_count` |
+| `filesystem_write` | `os.Rename`、`os.Remove`、`os.OpenFile`、`os.WriteFile`、`Write`、`Sync`、`Close`、`filepath.WalkDir` | `phase16_filesystem_durability_open_count` |
+| `symlink_boundary` | `symlink`、`EvalSymlinks`、`Lstat` | `phase16_filesystem_durability_open_count` |
+| `dependency_boundary` | `require`、`replace`、`golang.org/`、`github.com/`、`npm`、`node_modules` | `phase16_execution_evidence_gap_count` |
+| `jsonl_or_counter` | `JSONL record`、`closure counter`、`final_open_item_count` | `phase16_declarative_evidence_open_count` |
+| `workflow_hardening` | `uses:`、`permissions:`、`timeout-minutes`、`required check` | `phase16_workflow_hardening_open_count` |
+| `runtime_portability` | `Deno check`、`Docker fallback`、`go test`、`gofmt` | `phase16_validation_portability_open_count` |
+| `release_rehearsal` | `Release rehearsal`、`SHA256SUMS`、`SBOM`、`signature`、`reproducible build` | `phase16_release_rehearsal_open_count` |
+| `owner_shape` | `5 ファイル原則`、`空 file`、`dummy 実装`、`owner file line count` | `phase16_large_owner_risk_open_count` |
 
 Phase 16 `manifest.json` は以下の key だけを持つ JSON object とする。未知 key、欠落 key、型違い、空配列、空文字列、重複値は `phase16_execution_evidence_gap_count` に計上する。
 
@@ -565,6 +588,8 @@ checker は closure counter を `input/*.json` と `records/*.jsonl` から再�
 
 checker の診断は deterministic とし、`work_unit`、`owner_component`、`source_ref`、`source_locator`、`id`、`record_id` の ASCII 昇順で出力する。診断は free-form message だけにしてはならず、少なくとも `failure_code`、`inventory_id`、`record_id`、`counter_key`、`source_ref`、`expected`、`actual` を持つ。checker が内部 error、panic、partial read、JSONL parse error、filesystem error、source enumeration error、hash mismatch を検出した場合は、成功扱いせず `phase16_execution_evidence_gap_count` に計上する。
 
+checker の process 入出力は次のとおり固定する。成功時は exit code `0`、stdout は root object に `schema_version`、`scope`、`result`、`source_count`、`inventory_count`、`action_count`、`record_count`、`negative_control_count`、`counters_sha256`、`records_sha256`、`final_open_item_count` だけを持つ JSON object、stderr は空とする。失敗時は exit code `1`、stdout は成功時と同じ root key を持ち `result=failed`、`final_open_item_count` は 1 以上、stderr は 1 行 1 JSON object の diagnostic JSON Lines とする。diagnostic JSON Lines は `failure_code`、`severity`、`inventory_id`、`record_id`、`counter_key`、`source_ref`、`expected`、`actual`、`remediation_ref` だけを持つ。checker の exit code だけ、stdout summary だけ、stderr message だけを合格根拠にしてはならず、`records/execution.jsonl` の `stdout_sha256`、`stderr_sha256`、`actual_sha256` と照合する。
+
 Phase 16 closure record set は、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record を使用し、各 record の `scope` に `phase-16-quality-evidence-closure` を含める。Phase 16 では以下の集計値を同じ closure record set 内に記録する。
 
 | 集計値 | 完了値 | 未完了条件 |
@@ -603,7 +628,7 @@ Phase 16 required check は以下に固定する。Phase 16 実装 PR は、下�
 | `phase16-workflow-hardening` | `.github/workflows/*.yml`、`.github/workflows/*.yaml` と required check | action SHA pin、permissions、timeout、required check、Phase 12 workflow hardening がすべて閉じる。 |
 | `phase16-document-drift` | [`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md)、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md)、[`docs/details/fixture.md`](fixture.md)、対象 owner 詳細本文 | Phase 16 の状態、path、anchor、fixture root、workflow、counter、対象外理由、将来計画維持の drift が 0。 |
 
-Phase 16 fixture は negative control を必須とする。negative control は、JSON duplicate key を受理、source coverage set の path 省略、JSONL record だけで成功、counter だけで成功、実行していない mutation を killed と扱う、survived mutation を 0 と誤集計、fault injection 未実行、skip を成功扱い、required write failure の無視、panic 未分類、clock / sleep / timeout の非決定、response write failure 無視、client disconnect 無視、fsync failure 無視、rename failure 無視、parent directory fsync 欠落、workflow tag pin、workflow permissions 欠落、workflow timeout 欠落、host tool 不在時の成功扱い、Deno 未実行の JavaScript 成功扱い、release rehearsal 未実行、巨大 owner risk ledger 欠落、`ALIGN-*` 未分類、将来計画対象を Phase 16 完了対象として誤計上する case を 1 件以上含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase16_execution_evidence_gap_count`、`phase16_align_unclassified_count`、または該当する `phase16_*_open_count` に計上する。
+Phase 16 fixture は negative control を必須とする。negative control は、JSON duplicate key を受理、source coverage set の path 省略、detection registry の検出漏れ、checker stdout / stderr schema 不一致、JSONL record だけで成功、counter だけで成功、実行していない mutation を killed と扱う、survived mutation を 0 と誤集計、fault injection 未実行、skip を成功扱い、required write failure の無視、panic 未分類、clock / sleep / timeout の非決定、response write failure 無視、client disconnect 無視、fsync failure 無視、rename failure 無視、parent directory fsync 欠落、workflow tag pin、workflow permissions 欠落、workflow timeout 欠落、host tool 不在時の成功扱い、Deno 未実行の JavaScript 成功扱い、release rehearsal 未実行、巨大 owner risk ledger 欠落、`ALIGN-*` 未分類、将来計画対象を Phase 16 完了対象として誤計上する case を 1 件以上含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase16_execution_evidence_gap_count`、`phase16_align_unclassified_count`、または該当する `phase16_*_open_count` に計上する。
 
 <a id="fixture-root-coverage-matrix-contract"></a>
 **fixture root coverage matrix 固定契約：**

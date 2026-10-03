@@ -337,7 +337,7 @@ Phase 16 は以下の内部順序で仕様確認、実装、検証、証跡記�
 | 4 | clock、sleep、timeout、entropy、parallel worker、HTTP lifecycle、partial write、client disconnect、external I/O を deterministic fake または実行証跡へ接続する | [`docs/details/fixture.md` fixture 証跡責務 test determinism evidence set 固定契約](details/fixture.md#test-determinism-evidence-set-contract)、`phase16_determinism_open_count=0`、`phase16_http_boundary_open_count=0` |
 | 5 | state、config、audit、history、snapshot、archive、release、setup、Obsidian sync の atomic write、fsync、parent directory fsync、rename、symlink 非追従、recovery を owner 間で同じ証跡水準へ揃える | [`docs/details/statefile.md` 詳細本文責務](details/statefile.md)、[`docs/details/archive.md` 詳細本文責務](details/archive.md)、`phase16_filesystem_durability_open_count=0` |
 | 6 | `.github/workflows/phase12-quality-gate.yml` を含む required workflow hardening、Docker 検証手順、Deno stable runtime による JavaScript 検証、release rehearsal、巨大 owner risk ledger、5 ファイル原則維持を closure へ接続する | [`docs/SPEC.md` 方針責務 §4.3](SPEC.md#sec-4-3)、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 16 target path 所在](DOCUMENT_INDEX.md#phase-16-target-paths)、`phase16_workflow_hardening_open_count=0`、`phase16_validation_portability_open_count=0`、`phase16_large_owner_risk_open_count=0` |
-| 7 | closure record set、正式 fixture root、checker 再導出、required check、ROADMAP 状態、DOCUMENT_INDEX 所在、PR 証跡を一致させる | [`docs/details/fixture.md` fixture 証跡責務 implementation PR evidence template 固定契約](details/fixture.md#implementation-pr-evidence-template-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract)、`final_open_item_count=0` |
+| 7 | closure record set、正式 fixture root、checker 再導出、checker 入出力、required check、ROADMAP 状態、DOCUMENT_INDEX 所在、PR 証跡を一致させる | [`docs/details/fixture.md` fixture 証跡責務 implementation PR evidence template 固定契約](details/fixture.md#implementation-pr-evidence-template-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract)、`final_open_item_count=0` |
 
 | Phase 16 対象 | owner / 責務 | 詳細本文 / fixture 証跡 |
 |---------------|--------------|--------------------------|
@@ -375,7 +375,7 @@ Phase 16 の各 work unit は、下表の inventory と owner 範囲をすべて
 
 Phase 16 の実装者は、各 inventory の `required_action` が `future_plan` の場合でも、[`docs/ROADMAP.md` 状態・計画責務 §5](ROADMAP.md#522-統合ロードマップ表) への到達可能な `future_ref` を記録する。`future_ref` を持たない将来計画維持、`closure_ref` を持たない完了、`not_applicable_ref` を持たない対象外、または同一 item の複数 action は未完了として扱う。
 
-Phase 16 の完了判定では、[`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) を必ず通過する。checker が live source coverage set から検出した対象を `input/source_coverage.json`、各 inventory、`expected/actions.json`、`records/*.jsonl`、closure counter に再導出できない場合、該当 work unit は `closed` にしてはならない。手書き counter、手書き closure record、または PR 本文だけを checker の代替証跡にしてはならない。
+Phase 16 の完了判定では、[`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) を必ず通過する。checker が live source coverage set から検出した対象を `input/source_coverage.json`、各 inventory、`expected/actions.json`、`records/*.jsonl`、closure counter に再導出できない場合、該当 work unit は `closed` にしてはならない。手書き counter、手書き closure record、または PR 本文だけを checker の代替証跡にしてはならない。checker の stdout / stderr、exit code、diagnostic schema、source coverage detection registry は [`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) のみを正本とする。
 
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**
