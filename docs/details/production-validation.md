@@ -111,9 +111,9 @@ Phase 17 の禁止 secret 入力経路は以下に固定する。
 | `log` | log へ secret を保存することを禁止する。 |
 | `screen-shot` | screen shot へ secret を写すことを禁止する。 |
 
-禁止入力経路を使用した record は成功扱いせず、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の secret boundary counter へ接続する。
+禁止入力経路を secret 入力として成功扱いしてはならない。禁止入力経路の検査 record は、禁止経路を遮断した境界証跡として [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の `records/security.jsonl` へ記録し、`boundary_result=blocked` と secret boundary counter へ接続する。
 
-Phase 17 の証跡に保存できる secret 関連情報は、`secret_class`、`input_channel`、`redacted_reference`、`secret_reference_policy=metadata-only`、`secret_value_present=false`、`scan_target`、`mask_result`、`credential_storage_result`、`boundary_result` だけとする。`scan_target` は検査対象分類だけを表し、host、IP、path、secret 値、credential file path を含めてはならない。secret 値、secret 値の hash、private key fingerprint、provider account id、credential file path、host 固有 secret、IP 固有 secret、実 token の prefix / suffix を保存してはならない。
+Phase 17 の証跡に保存できる secret 関連情報は、`secret_class`、`input_channel`、`redacted_reference`、`secret_reference_policy=metadata-only`、`secret_value_present=false`、`scan_target`、`secret_scan_result`、`mask_result`、`credential_storage_result`、`destructive_operation_result`、`boundary_result` だけとする。`scan_target` は検査対象分類だけを表し、host、IP、path、secret 値、credential file path を含めてはならない。secret 値、secret 値の hash、private key fingerprint、provider account id、credential file path、host 固有 secret、IP 固有 secret、実 token の prefix / suffix を保存してはならない。
 
 <a id="phase-17-trial-operation-window"></a>
 
