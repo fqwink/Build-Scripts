@@ -739,7 +739,7 @@ Phase 16 required check は以下に固定する。Phase 16 実装 PR は、下�
 Phase 16 fixture は `input/negative_controls.json` による negative control を必須とする。negative control は、JSON duplicate key を受理、diagnostic JSON Lines の必須 key 欠落を受理、`severity=warning` を成功扱い、`failure_code` registry 外値を受理、source coverage set の path 省略、`go.sum` 不在 record 欠落、`go.mod` の外部 `require` / `replace` を未検出、`detected_terms` を raw string だけで受理、detection registry の検出漏れ、checker stdout / stderr schema 不一致、JSONL record だけで成功、counter だけで成功、実行していない mutation を killed と扱う、survived mutation を 0 と誤集計、fault injection 未実行、skip を成功扱い、required write failure の無視、panic 未分類、clock / sleep / timeout の非決定、response write failure 無視、client disconnect 無視、fsync failure 無視、rename failure 無視、parent directory fsync 欠落、workflow tag pin、workflow permissions 欠落、workflow timeout 欠落、host tool 不在時の成功扱い、Deno 未実行の JavaScript 成功扱い、release rehearsal 未実行、巨大 owner risk ledger 欠落、`ALIGN-*` 未分類、将来計画対象を Phase 16 完了対象として誤計上する case、Phase 17 以降の未作成 fixture root または required check を Phase 16 blocker として誤計上する case を 1 件以上含める。checker は各 negative control を `isolation_mode=temporary_copy` で fixture root の一時 copy にだけ適用し、live fixture root、source coverage set、expected、record を直接破壊してはならない。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase16_execution_evidence_gap_count`、`phase16_align_unclassified_count`、または該当する `phase16_*_open_count` に計上する。
 
 <a id="phase-17-production-validation-evidence"></a>
-**Phase 17 本番環境同等検証証跡：**
+**Phase 17 ConoHa VPS 試験本番運用証跡：**
 
 Phase 17 の正式 fixture root は `testdata/phase17/production-validation/` 固定とする。Phase 17 実装前に同 root が未作成である場合、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 17 target path 所在](../DOCUMENT_INDEX.md#phase-17-target-paths) で `未作成` として扱い、Phase 17 を `実装済み` に遷移してはならない。
 
@@ -750,26 +750,35 @@ Phase 17 fixture は以下の path だけを持つ。未知 path、欠落 path�
 | `manifest.json` | Phase 17 evidence package manifest。 |
 | `input/provider_targets.json` | `conoha-vps-primary` と `xserver-vps-future` の分類入力。 |
 | `input/conoha_vps_environment.json` | ConoHa VPS preflight、environment、capability、state directory、network 入力。 |
+| `input/trial_operation.json` | 試験本番運用ループ、問題検出、仕様全般策定、バグ修正、再配置、再検証の入力。 |
 | `input/simulation_matrix.json` | 本番環境同等 simulation、failure class、destructive operation 代替検証入力。 |
 | `input/security_boundary.json` | secret leak、provider credential 非保存、token / key mask、destructive operation 禁止境界入力。 |
 | `expected/counters.json` | Phase 17 closure counter 期待値。 |
 | `expected/runtime_flow.json` | setup、update、rollback、systemd、API、Admin、SDK、UI、runner、build / deploy dry-run の期待 flow。 |
-| `records/real_conoha.jsonl` | `real-conoha-vps` の実行証跡。 |
+| `expected/bugfix_loop.json` | 運用中バグ修正の仕様全般策定先行、再検証、既知バグ 0 の期待値。 |
+| `records/real_conoha.jsonl` | `trial-production-conoha-vps` の実行証跡。 |
+| `records/operation.jsonl` | 試験本番運用ループの実行証跡。 |
+| `records/bugfix.jsonl` | 運用中バグ修正、仕様全般策定、再検証の証跡。 |
 | `records/simulation.jsonl` | `production-equivalent-simulation` の実行証跡。 |
 | `records/failure.jsonl` | failure injection と recovery の実行証跡。 |
 | `records/security.jsonl` | secret leak、destructive operation 境界、credential 非保存の証跡。 |
 
-`manifest.json` は root object に `schema_version`、`name`、`scope`、`provider_targets`、`validation_modes`、`required_checks`、`fixture_root` だけを持つ。`schema_version` は `1`、`name` と `scope` は `phase-17-production-validation`、`fixture_root` は `testdata/phase17/production-validation/` 固定とする。`provider_targets` は `conoha-vps-primary`、`xserver-vps-future` の順序固定、`validation_modes` は `real-conoha-vps`、`production-equivalent-simulation` の順序固定、`required_checks` は本節 required check 表の check 名だけを順序固定で持つ。
+`manifest.json` は root object に `schema_version`、`name`、`scope`、`provider_targets`、`validation_modes`、`required_checks`、`fixture_root` だけを持つ。`schema_version` は `1`、`name` と `scope` は `phase-17-production-validation`、`fixture_root` は `testdata/phase17/production-validation/` 固定とする。`provider_targets` は `conoha-vps-primary`、`xserver-vps-future` の順序固定、`validation_modes` は `trial-production-conoha-vps`、`production-equivalent-simulation` の順序固定、`required_checks` は本節 required check 表の check 名だけを順序固定で持つ。
 
-`input/provider_targets.json` は `provider_target` ごとに 1 record だけを持つ。`provider_target=conoha-vps-primary` は `classification=required_real_validation`、`completion_blocker=true` 固定とする。`provider_target=xserver-vps-future` は `classification=future_plan`、`completion_blocker=false`、`future_ref` に [`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) への責務名付き Markdown link を持つ。`xserver-vps-future` を required check、failure、open item、または blocker として記録した場合は `phase17_xserver_future_misclassified_count` に計上する。
+`input/provider_targets.json` は `provider_target` ごとに 1 record だけを持つ。`provider_target=conoha-vps-primary` は `classification=required_trial_production`、`completion_blocker=true`、`os=ubuntu-server-24.04-lts-64bit`、`minimum_ram_mb=1024`、`excluded_plan=512mb` 固定とする。`provider_target=xserver-vps-future` は `classification=future_plan`、`completion_blocker=false`、`future_ref` に [`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) への責務名付き Markdown link を持つ。`xserver-vps-future` を required check、failure、open item、または blocker として記録した場合は `phase17_xserver_future_misclassified_count` に計上する。
 
-`records/*.jsonl` の各 record は `record_id`、`scope`、`provider_target`、`validation_mode`、`check_name`、`source_ref`、`result`、`counter_key`、`started_at`、`ended_at`、`stdout_sha256`、`stderr_sha256`、`secret_scan_result`、`destructive_operation_result`、`evidence_ref` を必須とする。`scope` は `phase-17-production-validation`、`provider_target` は `conoha-vps-primary` または `xserver-vps-future`、`validation_mode` は `real-conoha-vps`、`production-equivalent-simulation`、または `future_plan` とする。`result` は `passed`、`failed`、`not_applicable`、`future_plan`、`rejected` のいずれかとし、Phase 17 完了時に `failed` と `rejected` は 0 件でなければならない。
+`records/*.jsonl` の各 record は `record_id`、`scope`、`provider_target`、`validation_mode`、`check_name`、`source_ref`、`result`、`counter_key`、`started_at`、`ended_at`、`stdout_sha256`、`stderr_sha256`、`secret_scan_result`、`destructive_operation_result`、`evidence_ref` を必須とする。`scope` は `phase-17-production-validation`、`provider_target` は `conoha-vps-primary` または `xserver-vps-future`、`validation_mode` は `trial-production-conoha-vps`、`production-equivalent-simulation`、または `future_plan` とする。`result` は `passed`、`failed`、`not_applicable`、`future_plan`、`rejected` のいずれかとし、Phase 17 完了時に `failed` と `rejected` は 0 件でなければならない。
+
+`records/operation.jsonl` の各 record は、共通 key に加えて `operation_step`、`service_state`、`health_result`、`state_write_result`、`log_write_result`、`revalidation_ref` を必須とする。`operation_step` は `operation-start`、`monitor`、`issue-detect`、`spec-general-update`、`implementation-fix`、`redeploy`、`revalidate`、`evidence-record`、`known-bug-zero-check` のいずれかとし、同一 issue に対してこの順序が崩れた場合は `phase17_trial_operation_open_count` に計上する。
+
+`records/bugfix.jsonl` の各 record は、共通 key に加えて `bug_id`、`spec_update_ref`、`responsibility_source_ref`、`implementation_ref`、`revalidation_ref`、`known_bug_status` を必須とする。`spec_update_ref` と `responsibility_source_ref` は責務名付き Markdown link とし、空文字、裸 path、PR 本文だけの参照を禁止する。`implementation_ref` が存在し、`spec_update_ref` が存在しない場合は `phase17_bugfix_spec_gap_count` に計上する。`known_bug_status` は `closed`、`not_applicable`、`future_plan` のいずれかとし、Phase 17 完了時に `open`、`failed`、`unknown` 相当の状態を残してはならない。
 
 Phase 17 closure counter は以下に固定する。`expected/counters.json` は root object に `schema_version`、`scope`、`counters` だけを持ち、`counters` は下表の全 key だけを 1 回ずつ持つ。各 counter 値は integer `0` 固定であり、string `"0"`、boolean、null、負数、未記録、追加 counter、欠落 counter、同名 counter の重複、closure record と異なる値を禁止する。
 
 | counter | 完了値 | 未完了条件 |
 |---------|--------|------------|
-| `phase17_conoha_real_validation_open_count` | `0` | ConoHa VPS 実環境検証の必須 record が不足している。 |
+| `phase17_conoha_trial_operation_open_count` | `0` | ConoHa VPS 試験本番運用の必須 record が不足している。 |
+| `phase17_buildout_open_count` | `0` | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 17 構築プラン](production-validation.md#phase-17-buildout-plan) の work unit に未実行、順序不一致、証跡不足、または禁止 provider operation がある。 |
 | `phase17_production_simulation_open_count` | `0` | 本番環境同等 simulation の必須 record が不足している。 |
 | `phase17_install_update_rollback_open_count` | `0` | install、update、rollback のいずれかに未検証または未証跡がある。 |
 | `phase17_systemd_lifecycle_open_count` | `0` | systemd lifecycle、専用 user、最小権限、書込み先制限に未完了がある。 |
@@ -779,22 +788,28 @@ Phase 17 closure counter は以下に固定する。`expected/counters.json` は
 | `phase17_destructive_operation_open_count` | `0` | destructive operation が禁止境界を越えている、または検出証跡が不足している。 |
 | `phase17_xserver_future_misclassified_count` | `0` | `xserver-vps-future` が必須検証、未完了 item、または blocker として扱われている。 |
 | `phase17_document_drift_open_count` | `0` | Phase 17 の状態、path、anchor、fixture root、workflow、required check、future target に drift がある。 |
+| `phase17_trial_operation_open_count` | `0` | 試験本番運用ループの継続稼働、問題検出、再配置、再検証、証跡記録に未完了がある。 |
+| `phase17_bugfix_spec_gap_count` | `0` | 運用中に検出したバグまたは不整合に対し、仕様全般策定を先行していない修正がある。 |
+| `phase17_known_bug_open_count` | `0` | Phase 17 完了時点で既知重大バグまたは未修正バグが残っている。 |
 | `final_open_item_count` | `0` | 上記 counter または closure record に残件がある。 |
 
 Phase 17 required check は以下に固定する。Phase 17 実装 PR は、下表の check 名、対象、完了条件を同一 Pull Request 本文へ記録する。
 
 | check 名 | 対象 | 完了条件 |
 |----------|------|----------|
-| `phase17-conoha-vps-preflight` | `conoha-vps-primary` の preflight | OS、systemd、filesystem、disk、network、DNS、user、sudo capability、state directory parent、time sync、required command availability が記録され、`phase17_conoha_real_validation_open_count=0` に接続する。 |
+| `phase17-conoha-vps-preflight` | `conoha-vps-primary` の preflight | Ubuntu Server 24.04 LTS 64bit、RAM 1GB 以上、512MB plan 対象外、systemd、filesystem、disk、network、DNS、user、sudo capability、state directory parent、time sync、required command availability が記録され、`phase17_conoha_trial_operation_open_count=0` に接続する。 |
+| `phase17-trial-production-buildout` | 試験本番運用環境構築 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 17 構築プラン](production-validation.md#phase-17-buildout-plan) の全 work unit が順序固定で実行され、provider resource の作成、削除、plan 変更、disk rebuild、volume 操作、firewall lockout を Adlaire CI の実装機能として自動化しておらず、`phase17_buildout_open_count=0`。 |
 | `phase17-conoha-install-update-rollback` | setup install、update、rollback、cleanup | release asset、checksum、binary 起動、state directory、service start、version 遷移、rollback staging、rollback 後 service、cleanup が検証され、`phase17_install_update_rollback_open_count=0`。 |
 | `phase17-systemd-lifecycle` | systemd unit と service lifecycle | enable、start、restart、stop、status、journal、専用 user、最小権限、書込み先制限、reboot recovery が成功し、`phase17_systemd_lifecycle_open_count=0`。 |
 | `phase17-runtime-flow` | API、Admin、SDK、UI、runner、build / deploy dry-run | health、credential 初期化、admin CLI、SDK method、UI 疎通、runner dry-run、build dry-run、state write、audit log、secret mask が成功し、`phase17_runtime_flow_open_count=0`。 |
+| `phase17-trial-operation-loop` | 試験本番運用ループ | `operation-start` から `known-bug-zero-check` までの運用、問題検出、仕様全般策定、バグ修正、再配置、再検証、証跡記録が順序固定で接続され、`phase17_trial_operation_open_count=0`。 |
 | `phase17-production-simulation` | `production-equivalent-simulation` | 本番同等 filesystem、network、process、permission、SSH、log write failure が実行され、`phase17_production_simulation_open_count=0`。 |
 | `phase17-failure-injection` | disk full、permission denied、short write、fsync failure、rename failure、process kill、network refusal、DNS failure、SSH failure | 各 failure class が silent success にならず、復旧または失敗固定が記録され、`phase17_failure_injection_open_count=0`。 |
 | `phase17-security-boundary` | secret、credential、destructive operation 禁止境界 | provider token、admin token、SSH private key、IP 固有 secret が証跡へ出ず、VPS deletion、disk rebuild、volume detach、firewall lockout、SSH lockout が実行されず、`phase17_secret_leak_open_count=0` と `phase17_destructive_operation_open_count=0`。 |
+| `phase17-bugfix-spec-first` | 運用中バグ修正 | すべての `records/bugfix.jsonl` record が仕様全般策定先行、責務正本 link、実装修正、再検証を持ち、`phase17_bugfix_spec_gap_count=0` と `phase17_known_bug_open_count=0`。 |
 | `phase17-document-drift` | [`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md)、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md)、[`docs/details/production-validation.md`](production-validation.md)、本節 | Phase 17 の状態、path、anchor、fixture root、workflow、required check、future target の drift が 0。 |
 
-Phase 17 fixture は destructive operation negative boundary を必須とする。negative boundary は、`xserver-vps-future` を blocker として扱う、simulation だけで real ConoHa 検証を完了扱いにする、secret を stdout / stderr / record へ出す、VPS deletion を required check として扱う、firewall lockout を実 provider に実行する、実運用 credential を fixture に保存する、screen shot だけで成功扱いにする、failure injection 未実行で counter だけ 0 にする case を 1 件以上含める。negative boundary が成功扱いになる場合、Phase 17 checker 自体を未完成として `phase17_destructive_operation_open_count`、`phase17_secret_leak_open_count`、`phase17_xserver_future_misclassified_count`、または `final_open_item_count` に計上する。
+Phase 17 fixture は destructive operation negative boundary、buildout negative boundary、bugfix spec-first negative boundary を必須とする。negative boundary は、`xserver-vps-future` を blocker として扱う、simulation だけで ConoHa 試験本番運用を完了扱いにする、secret を stdout / stderr / record へ出す、VPS deletion を required check として扱う、firewall lockout を実 provider に実行する、実運用 credential を fixture に保存する、screen shot だけで成功扱いにする、failure injection 未実行で counter だけ 0 にする、構築 work unit を順序外で成功扱いにする、provider resource 作成または削除の自動化を成功扱いにする、仕様全般策定なしの hotfix を成功扱いにする、`known_bug_status=open` を残したまま完了扱いにする case を 1 件以上含める。negative boundary が成功扱いになる場合、Phase 17 checker 自体を未完成として `phase17_buildout_open_count`、`phase17_destructive_operation_open_count`、`phase17_secret_leak_open_count`、`phase17_xserver_future_misclassified_count`、`phase17_bugfix_spec_gap_count`、`phase17_known_bug_open_count`、または `final_open_item_count` に計上する。
 
 <a id="fixture-root-coverage-matrix-contract"></a>
 **fixture root coverage matrix 固定契約：**
