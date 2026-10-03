@@ -418,6 +418,6 @@
 | `testdata/phase17/production-validation/records/bugfix.jsonl` | 仕様全般策定先行バグ修正証跡 | 未作成 |
 | `testdata/phase17/production-validation/records/simulation.jsonl` | 本番環境同等 simulation 証跡 | 未作成 |
 | `testdata/phase17/production-validation/records/failure.jsonl` | failure injection 証跡 | 未作成 |
-| `testdata/phase17/production-validation/records/security.jsonl` | secret / destructive operation 境界証跡 | 未作成 |
+| `testdata/phase17/production-validation/records/security.jsonl` | secret input channel / secret / destructive operation 境界証跡 | 未作成 |
 | `testdata/phase17/production-validation/records/document_drift.jsonl` | Phase 17 状態 / path / anchor / workflow / required check drift 証跡 | 未作成 |
 | `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 未作成 |

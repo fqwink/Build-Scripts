@@ -83,11 +83,35 @@ ConoHa VPS resource の作成、削除、plan 変更、disk rebuild、volume 操
 
 Phase 17 の試験本番運用検証で使用する provider API token、admin token、SSH private key、IP 固有 secret、host 固有 secret は、repository、fixture、expected、record、workflow、log、stdout、stderr、Pull Request body、issue comment、chat message、screen shot に保存してはならない。
 
-Phase 17 の secret 入力経路は `operator-local-file`、`operator-stdin`、`ssh-agent`、`systemd-credential`、`not-required` だけを許可する。`operator-local-file` は repository root 外の file とし、記録できるのは file path ではなく `secret_class` と `input_channel` と `redacted_reference` だけとする。`operator-stdin` は値を record、stdout、stderr、shell history、log に残してはならない。`ssh-agent` と `systemd-credential` は secret 値を取り出して記録してはならない。`not-required` は対象 check が secret を必要としない場合だけ使用する。
+Phase 17 の許可 secret 入力経路は以下に固定する。
 
-Phase 17 の secret 入力経路として、`repository-file`、`fixture-file`、`command-argument`、`environment-variable`、`pr-body`、`issue-comment`、`chat-message`、`stdout`、`stderr`、`log`、`screen-shot` を禁止する。禁止入力経路を使用した record は成功扱いせず、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の secret boundary counter へ接続する。
+| input channel | 許可条件 |
+|---------------|----------|
+| `operator-local-file` | repository root 外の operator local file だけを使用し、証跡には file path を保存せず `secret_class`、`input_channel`、`redacted_reference` だけを保存する。 |
+| `operator-stdin` | secret 値を record、stdout、stderr、shell history、log に残さない。 |
+| `ssh-agent` | secret 値を取り出して記録しない。 |
+| `systemd-credential` | secret 値を取り出して記録しない。 |
+| `not-required` | 対象 check が secret を必要としない場合だけ使用する。 |
 
-Phase 17 の証跡に保存できる secret 関連情報は、`secret_class`、`input_channel`、`redacted_reference`、`secret_reference_policy=metadata-only`、`secret_value_present=false`、`mask_result`、`credential_storage_result`、`boundary_result` だけとする。secret 値、secret 値の hash、private key fingerprint、provider account id、credential file path、host 固有 secret、IP 固有 secret、実 token の prefix / suffix を保存してはならない。
+Phase 17 の禁止 secret 入力経路は以下に固定する。
+
+| input channel | 禁止条件 |
+|---------------|----------|
+| `repository-file` | repository 内 file へ secret を置くことを禁止する。 |
+| `fixture-file` | fixture、expected、record へ secret を置くことを禁止する。 |
+| `command-argument` | shell command argument として secret を渡すことを禁止する。 |
+| `environment-variable` | 環境変数として secret を渡すことを禁止する。 |
+| `pr-body` | Pull Request body へ secret を保存することを禁止する。 |
+| `issue-comment` | issue comment へ secret を保存することを禁止する。 |
+| `chat-message` | chat message へ secret を保存することを禁止する。 |
+| `stdout` | stdout へ secret を出すことを禁止する。 |
+| `stderr` | stderr へ secret を出すことを禁止する。 |
+| `log` | log へ secret を保存することを禁止する。 |
+| `screen-shot` | screen shot へ secret を写すことを禁止する。 |
+
+禁止入力経路を使用した record は成功扱いせず、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の secret boundary counter へ接続する。
+
+Phase 17 の証跡に保存できる secret 関連情報は、`secret_class`、`input_channel`、`redacted_reference`、`secret_reference_policy=metadata-only`、`secret_value_present=false`、`scan_target`、`mask_result`、`credential_storage_result`、`boundary_result` だけとする。`scan_target` は検査対象分類だけを表し、host、IP、path、secret 値、credential file path を含めてはならない。secret 値、secret 値の hash、private key fingerprint、provider account id、credential file path、host 固有 secret、IP 固有 secret、実 token の prefix / suffix を保存してはならない。
 
 <a id="phase-17-validation-targets"></a>
 
