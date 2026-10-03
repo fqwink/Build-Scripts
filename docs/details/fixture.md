@@ -829,7 +829,7 @@ Phase 17 required check は以下に固定する。Phase 17 実装 PR は、下�
 
 | check 名 | 対象 | 完了条件 |
 |----------|------|----------|
-| `phase17-conoha-vps-preflight` | `conoha-vps-primary` の preflight | Ubuntu Server 24.04 LTS 64bit、RAM 1GB 以上、512MB plan 対象外、systemd、filesystem、disk、network、DNS、user、sudo capability、state directory parent、time sync、required command availability が記録され、`phase17_conoha_trial_operation_open_count=0` に接続する。 |
+| `phase17-conoha-vps-preflight` | `conoha-vps-primary` の preflight | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 17 provider target](production-validation.md#phase-17-provider-targets) の OS / plan 前提、systemd、filesystem、disk、network、DNS、user、sudo capability、state directory parent、time sync、required command availability が記録され、`phase17_conoha_trial_operation_open_count=0` に接続する。 |
 | `phase17-trial-production-buildout` | 試験本番運用環境構築 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 17 構築プラン](production-validation.md#phase-17-buildout-plan) の全 work unit が順序固定で実行され、provider resource の作成、削除、plan 変更、disk rebuild、volume 操作、firewall lockout を Adlaire CI の実装機能として自動化しておらず、`phase17_buildout_open_count=0`。 |
 | `phase17-conoha-install-update-rollback` | setup install、update、rollback、cleanup | release asset、checksum、binary 起動、state directory、service start、version 遷移、rollback staging、rollback 後 service、cleanup が検証され、`phase17_install_update_rollback_open_count=0`。 |
 | `phase17-systemd-lifecycle` | systemd unit と service lifecycle | enable、start、restart、stop、status、journal、専用 user、最小権限、書込み先制限、reboot recovery が成功し、`phase17_systemd_lifecycle_open_count=0`。 |
