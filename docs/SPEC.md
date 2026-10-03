@@ -44,7 +44,7 @@
 | 詳細仕様入口責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | **どこから読むか** | 詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口。 |
 | owner component 別詳細本文責務 | [`docs/details/*.md`](details/)。ただし [`docs/details/fixture.md`](details/fixture.md) と [`docs/details/production-validation.md`](details/production-validation.md) を除く。 | **どのように実装するか** | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
 | fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) | **何で検証するか** | fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件。 |
-| 本番検証詳細本文責務 | [`docs/details/production-validation.md`](details/production-validation.md) | **本番同等で何を検証するか** | ConoHa VPS 試験本番運用、本番環境同等検証、本番検証、VPS simulation、provider target、destructive operation 禁止境界、運用中バグ修正順序、fixture 証跡への接続。 |
+| 本番検証詳細本文責務 | [`docs/details/production-validation.md`](details/production-validation.md) | **本番同等で何を検証するか** | ConoHa VPS 試験本番運用、本番環境同等検証、本番検証、VPS simulation、provider target、destructive operation 禁止境界、運用中バグ修正順序、fixture 証跡への接続条件。 |
 | デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | **どう見せるか** | 生成静的 Web サイトと標準管理 UI のデザイン関係。 |
 | 文書・実装ファイル所在の索引責務 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | **どこにあるか** | 文書、実装ファイル、testdata、未作成 path の所在。 |
 | 利用入口責務 | [`README.md`](../README.md) | **どう始めるか** | 利用者向け入口、概要、参照先。 |

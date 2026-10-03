@@ -384,7 +384,7 @@ Phase 16 の完了判定では、[`docs/details/fixture.md` fixture 証跡責務
 <a id="phase-17-production-validation-entry"></a>
 **Phase 17 ConoHa VPS 試験本番運用参照：**
 
-Phase 17 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、ConoHa VPS 試験本番運用の本文は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務、fixture と required check は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence)、実在 path は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 17 target path 所在](DOCUMENT_INDEX.md#phase-17-target-paths) を参照する。
+Phase 17 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、ConoHa VPS 試験本番運用の本文と証跡接続条件は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務、fixture と required check は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence)、実在 path は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 17 target path 所在](DOCUMENT_INDEX.md#phase-17-target-paths) を参照する。
 
 Phase 17 は owner component を追加しない。ConoHa VPS 試験本番運用、provider target、OS / plan 前提、検証 mode、本番環境同等 simulation、destructive operation 禁止境界、credential / SSH 入力境界、運用中バグ修正順序、エックスサーバ VPS 将来判断の本文は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務だけに置く。fixture path、input / expected / record schema、closure counter、required check、required check workflow、checker 実行入口、negative boundary、document drift record の本文は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) だけに置く。API、Admin、SDK、UI、runner、statefile、setup、release、security、archive、commitstatus、mcp の処理仕様は各 owner component 別詳細本文を参照し、Phase 17 本文では再定義しない。
 
