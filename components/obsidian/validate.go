@@ -116,6 +116,242 @@ func parseBuildArgs(args []string) (obsidianConfig, bool, *obsidianError) {
 	return cfg, true, nil
 }
 
+func parseSyncArgs(args []string) (obsidianSyncConfig, *obsidianError) {
+	cfg := obsidianSyncConfig{
+		DeletePolicy: "reject",
+		ConflictDir:  "adlaire-ci-conflicts",
+		TombstoneDir: "adlaire-ci-tombstones",
+	}
+	if len(args) < 2 || args[0] != "sync" {
+		return cfg, newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+	}
+	switch args[1] {
+	case "plan", "apply", "rollback":
+		cfg.Action = args[1]
+	default:
+		return cfg, newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+	}
+	seen := map[string]bool{}
+	for i := 2; i < len(args); {
+		name := args[i]
+		if !syncKnownOption(cfg.Action, name) || strings.Contains(name, "=") {
+			return cfg, newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+		}
+		if seen[name] {
+			return cfg, newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+		}
+		seen[name] = true
+		if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
+			return cfg, newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+		}
+		value := args[i+1]
+		switch name {
+		case "--vault":
+			cfg.VaultRoot = value
+		case "--project-root":
+			cfg.ProjectRoot = value
+		case "--state-dir":
+			cfg.StateDir = value
+		case "--plan-file":
+			cfg.PlanFile = filepath.ToSlash(value)
+		case "--plan-hash":
+			cfg.PlanHash = value
+		case "--rollback-file":
+			cfg.RollbackFile = filepath.ToSlash(value)
+		case "--direction":
+			cfg.Direction = value
+		case "--delete-policy":
+			cfg.DeletePolicy = value
+		case "--conflict-dir":
+			cfg.ConflictDir = normalizeSyncDirOption(value)
+		case "--tombstone-dir":
+			cfg.TombstoneDir = normalizeSyncDirOption(value)
+		case "--open-uri":
+			cfg.OpenURISet = true
+			switch value {
+			case "true":
+				cfg.OpenURI = true
+			case "false":
+				cfg.OpenURI = false
+			default:
+				return cfg, newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+			}
+		}
+		i += 2
+	}
+	if err := validateSyncRequired(cfg); err != nil {
+		return cfg, err
+	}
+	if err := validateSyncEnums(cfg); err != nil {
+		return cfg, err
+	}
+	if err := validateSyncPaths(cfg); err != nil {
+		return cfg, err
+	}
+	return cfg, nil
+}
+
+func syncKnownOption(action, name string) bool {
+	switch action {
+	case "plan":
+		switch name {
+		case "--vault", "--project-root", "--state-dir", "--plan-file", "--direction", "--delete-policy", "--conflict-dir", "--tombstone-dir":
+			return true
+		}
+	case "apply":
+		switch name {
+		case "--vault", "--project-root", "--state-dir", "--plan-file", "--plan-hash", "--rollback-file", "--open-uri":
+			return true
+		}
+	case "rollback":
+		switch name {
+		case "--vault", "--project-root", "--state-dir", "--rollback-file", "--open-uri":
+			return true
+		}
+	}
+	return false
+}
+
+func validateSyncRequired(cfg obsidianSyncConfig) *obsidianError {
+	if cfg.VaultRoot == "" || cfg.ProjectRoot == "" || cfg.StateDir == "" {
+		return newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+	}
+	switch cfg.Action {
+	case "plan":
+		if cfg.PlanFile == "" || cfg.Direction == "" {
+			return newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+		}
+	case "apply":
+		if cfg.PlanFile == "" || cfg.PlanHash == "" {
+			return newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+		}
+	case "rollback":
+		if cfg.RollbackFile == "" {
+			return newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+		}
+	}
+	return nil
+}
+
+func validateSyncEnums(cfg obsidianSyncConfig) *obsidianError {
+	if cfg.Action == "plan" {
+		switch cfg.Direction {
+		case "import-only", "export-only", "bidirectional":
+		default:
+			return newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+		}
+		switch cfg.DeletePolicy {
+		case "reject", "tombstone":
+		default:
+			return newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+		}
+	}
+	if cfg.PlanHash != "" && !isLowerHexDigest(cfg.PlanHash) {
+		return newObsError("OBSIDIAN_SYNC_INVALID_OPTION", 2, "", 0, 0)
+	}
+	return nil
+}
+
+func validateSyncPaths(cfg obsidianSyncConfig) *obsidianError {
+	for _, root := range []string{cfg.VaultRoot, cfg.ProjectRoot, cfg.StateDir} {
+		if root == "" || !filepath.IsAbs(root) || !filepath.IsLocal(filepath.Base(root)) {
+			return newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+		}
+	}
+	if validateSyncRoot(cfg.VaultRoot) != nil || validateSyncRoot(cfg.ProjectRoot) != nil || validateSyncRoot(cfg.StateDir) != nil {
+		return newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	if cfg.PlanFile != "" && validateSyncStateFilePath(cfg.StateDir, cfg.PlanFile) != nil {
+		return newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	if cfg.RollbackFile != "" && validateSyncStateFilePath(cfg.StateDir, cfg.RollbackFile) != nil {
+		return newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	if cfg.Action == "plan" {
+		if validateSyncProjectDirPath(cfg.ProjectRoot, cfg.ConflictDir) != nil || validateSyncProjectDirPath(cfg.ProjectRoot, cfg.TombstoneDir) != nil {
+			return newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+		}
+	}
+	return nil
+}
+
+func validateSyncRoot(root string) error {
+	info, err := os.Lstat(root)
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("invalid root")
+	}
+	return nil
+}
+
+func validateSyncStateFilePath(stateDir, rel string) error {
+	rel = filepath.ToSlash(rel)
+	if validateRelativePath(rel, false) != nil {
+		return fmt.Errorf("invalid state path")
+	}
+	abs := filepath.Join(stateDir, filepath.FromSlash(rel))
+	cleanAbs := filepath.Clean(abs)
+	cleanRoot := filepath.Clean(stateDir)
+	r, err := filepath.Rel(cleanRoot, cleanAbs)
+	if err != nil || r == "." || strings.HasPrefix(filepath.ToSlash(r), "../") || filepath.IsAbs(r) {
+		return fmt.Errorf("state escape")
+	}
+	if info, err := os.Lstat(cleanAbs); err == nil {
+		if info.IsDir() || info.Mode()&os.ModeSymlink != 0 || hasMultipleHardlinks(info) || !info.Mode().IsRegular() {
+			return fmt.Errorf("invalid existing state path")
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func validateSyncProjectDirPath(projectRoot, rel string) error {
+	rel = normalizeSyncDirOption(rel)
+	if validateRelativePath(rel, false) != nil {
+		return fmt.Errorf("invalid project dir")
+	}
+	abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
+	cleanAbs := filepath.Clean(abs)
+	cleanRoot := filepath.Clean(projectRoot)
+	r, err := filepath.Rel(cleanRoot, cleanAbs)
+	if err != nil || r == "." || strings.HasPrefix(filepath.ToSlash(r), "../") || filepath.IsAbs(r) {
+		return fmt.Errorf("project escape")
+	}
+	if info, err := os.Lstat(cleanAbs); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return fmt.Errorf("invalid existing project dir")
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func normalizeSyncDirOption(value string) string {
+	return strings.TrimSuffix(filepath.ToSlash(value), "/")
+}
+
+func isLowerHexDigest(value string) bool {
+	if len(value) != 64 {
+		return false
+	}
+	for _, r := range value {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) {
+			return false
+		}
+	}
+	return true
+}
+
+func exactArg(args []string, want string) bool {
+	for _, arg := range args {
+		if arg == want {
+			return true
+		}
+	}
+	return false
+}
+
 func splitOption(arg string) (string, string, bool) {
 	if eq := strings.IndexByte(arg, '='); eq >= 0 {
 		return arg[:eq], arg[eq+1:], true

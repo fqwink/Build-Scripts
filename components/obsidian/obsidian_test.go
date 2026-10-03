@@ -121,6 +121,266 @@ func TestObsidianAmbiguousBasenameFailsWithoutStrict(t *testing.T) {
 	}
 }
 
+func TestRunObsidianSyncPlanApplyRollback(t *testing.T) {
+	withFixedSyncClock(t, 1000)
+	root := t.TempDir()
+	project := filepath.Join(root, "project")
+	vault := filepath.Join(root, "vault")
+	state := filepath.Join(root, "state")
+	writeObsidianTestFile(t, filepath.Join(project, "docs", "project.md"), "# Project\n")
+	writeObsidianTestFile(t, filepath.Join(vault, "docs", "vault.md"), "# Vault\n")
+	mkdirObsidianTestDir(t, state)
+
+	plan := runObsidianSyncPlan(t, project, vault, state, "bidirectional")
+	if plan.Operations != 2 || plan.Conflicts != 0 || plan.Tombstones != 0 || plan.Applied {
+		t.Fatalf("unexpected plan response: %+v", plan)
+	}
+	if _, err := os.Stat(filepath.Join(state, "sync_state.json")); !os.IsNotExist(err) {
+		t.Fatalf("sync plan must not write sync_state.json")
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := RunObsidian([]string{
+		"sync", "apply",
+		"--project-root", project,
+		"--vault", vault,
+		"--state-dir", state,
+		"--plan-file", "plans/sync.json",
+		"--plan-hash", plan.PlanHash,
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("apply exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("apply stderr must be empty: %s", stderr.String())
+	}
+	var apply obsidianSyncApplyResponse
+	decodeObsidianSyncJSON(t, stdout.Bytes(), &apply)
+	if apply.OperationsApplied != 2 || apply.RollbackFile == "" || apply.StateDigest == "" {
+		t.Fatalf("unexpected apply response: %+v", apply)
+	}
+	for _, path := range []string{filepath.Join(project, "docs", "vault.md"), filepath.Join(vault, "docs", "project.md"), filepath.Join(state, "sync_state.json"), filepath.Join(state, filepath.FromSlash(apply.RollbackFile))} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("missing apply path %s: %v", path, err)
+		}
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = RunObsidian([]string{
+		"sync", "rollback",
+		"--project-root", project,
+		"--vault", vault,
+		"--state-dir", state,
+		"--rollback-file", apply.RollbackFile,
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("rollback exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	var rollback obsidianSyncRollbackResponse
+	decodeObsidianSyncJSON(t, stdout.Bytes(), &rollback)
+	if rollback.OperationsRolledBack != 2 || rollback.StateDigest == "" {
+		t.Fatalf("unexpected rollback response: %+v", rollback)
+	}
+	for _, path := range []string{filepath.Join(project, "docs", "vault.md"), filepath.Join(vault, "docs", "project.md")} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("rollback must remove created path %s", path)
+		}
+	}
+}
+
+func TestRunObsidianSyncPlanHashMismatch(t *testing.T) {
+	withFixedSyncClock(t, 1100)
+	root := t.TempDir()
+	project := filepath.Join(root, "project")
+	vault := filepath.Join(root, "vault")
+	state := filepath.Join(root, "state")
+	writeObsidianTestFile(t, filepath.Join(project, "docs", "project.md"), "# Project\n")
+	mkdirObsidianTestDir(t, vault)
+	mkdirObsidianTestDir(t, state)
+	_ = runObsidianSyncPlan(t, project, vault, state, "export-only")
+
+	var stdout, stderr bytes.Buffer
+	code := RunObsidian([]string{
+		"sync", "apply",
+		"--project-root", project,
+		"--vault", vault,
+		"--state-dir", state,
+		"--plan-file", "plans/sync.json",
+		"--plan-hash", strings.Repeat("0", 64),
+	}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("expected plan hash mismatch exit 2, got %d", code)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("failure stdout must be empty: %s", stdout.String())
+	}
+	if stderr.String() != "obsidian: OBSIDIAN_SYNC_PLAN_HASH_MISMATCH\n" {
+		t.Fatalf("unexpected stderr: %s", stderr.String())
+	}
+}
+
+func TestRunObsidianSyncConflictRequiresManualResolution(t *testing.T) {
+	withFixedSyncClock(t, 1200)
+	root := t.TempDir()
+	project := filepath.Join(root, "project")
+	vault := filepath.Join(root, "vault")
+	state := filepath.Join(root, "state")
+	writeObsidianTestFile(t, filepath.Join(project, "shared.md"), "# Project\n")
+	writeObsidianTestFile(t, filepath.Join(vault, "shared.md"), "# Vault\n")
+	mkdirObsidianTestDir(t, state)
+	plan := runObsidianSyncPlan(t, project, vault, state, "bidirectional")
+	if plan.Conflicts != 1 {
+		t.Fatalf("expected one conflict, got %+v", plan)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := RunObsidian([]string{
+		"sync", "apply",
+		"--project-root", project,
+		"--vault", vault,
+		"--state-dir", state,
+		"--plan-file", "plans/sync.json",
+		"--plan-hash", plan.PlanHash,
+	}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("expected conflict exit 1, got %d", code)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("conflict stdout must be empty: %s", stdout.String())
+	}
+	if stderr.String() != "obsidian: OBSIDIAN_SYNC_CONFLICT\n" {
+		t.Fatalf("unexpected conflict stderr: %s", stderr.String())
+	}
+}
+
+func TestRunObsidianSyncRollbackRestoresPreviousContent(t *testing.T) {
+	withFixedSyncClock(t, 1300)
+	root := t.TempDir()
+	project := filepath.Join(root, "project")
+	vault := filepath.Join(root, "vault")
+	state := filepath.Join(root, "state")
+	writeObsidianTestFile(t, filepath.Join(project, "shared.md"), "# New\n")
+	writeObsidianTestFile(t, filepath.Join(vault, "shared.md"), "# Old\n")
+	mkdirObsidianTestDir(t, state)
+	oldDigest, err := fileSHA256(filepath.Join(vault, "shared.md"))
+	if err != nil {
+		t.Fatalf("digest old vault file: %v", err)
+	}
+	initialState := obsidianSyncState{
+		SchemaVersion:     obsidianSyncStateSchemaVersion,
+		ProjectRootDigest: "",
+		VaultRootDigest:   "",
+		Entries: []obsidianSyncStateEntry{{
+			Path:           "shared.md",
+			ProjectDigest:  oldDigest,
+			VaultDigest:    oldDigest,
+			LastSyncDigest: oldDigest,
+			LastSyncUnix:   1,
+		}},
+		Tombstones:  []obsidianSyncTombstone{},
+		Conflicts:   []obsidianSyncConflict{},
+		LastApplyID: "seed",
+	}
+	initialStateBytes, err := syncCanonicalJSON(initialState)
+	if err != nil {
+		t.Fatalf("encode initial state: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(state, "sync_state.json"), initialStateBytes, 0o600); err != nil {
+		t.Fatalf("write initial state: %v", err)
+	}
+
+	plan := runObsidianSyncPlan(t, project, vault, state, "bidirectional")
+	var stdout, stderr bytes.Buffer
+	code := RunObsidian([]string{
+		"sync", "apply",
+		"--project-root", project,
+		"--vault", vault,
+		"--state-dir", state,
+		"--plan-file", "plans/sync.json",
+		"--plan-hash", plan.PlanHash,
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("apply exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	if got := readObsidianTestFile(t, filepath.Join(vault, "shared.md")); got != "# New\n" {
+		t.Fatalf("vault should receive project content, got %q", got)
+	}
+	var apply obsidianSyncApplyResponse
+	decodeObsidianSyncJSON(t, stdout.Bytes(), &apply)
+
+	stdout.Reset()
+	stderr.Reset()
+	code = RunObsidian([]string{
+		"sync", "rollback",
+		"--project-root", project,
+		"--vault", vault,
+		"--state-dir", state,
+		"--rollback-file", apply.RollbackFile,
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("rollback exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	if got := readObsidianTestFile(t, filepath.Join(vault, "shared.md")); got != "# Old\n" {
+		t.Fatalf("vault rollback content mismatch: %q", got)
+	}
+}
+
+func runObsidianSyncPlan(t *testing.T, project, vault, state, direction string) obsidianSyncPlanResponse {
+	t.Helper()
+
+	var stdout, stderr bytes.Buffer
+	code := RunObsidian([]string{
+		"sync", "plan",
+		"--project-root", project,
+		"--vault", vault,
+		"--state-dir", state,
+		"--plan-file", "plans/sync.json",
+		"--direction", direction,
+		"--delete-policy", "tombstone",
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("plan exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("plan stderr must be empty: %s", stderr.String())
+	}
+	var response obsidianSyncPlanResponse
+	decodeObsidianSyncJSON(t, stdout.Bytes(), &response)
+	if response.Command != "sync plan" || response.PlanFile != "plans/sync.json" || response.PlanHash == "" {
+		t.Fatalf("unexpected plan response: %+v", response)
+	}
+	return response
+}
+
+func decodeObsidianSyncJSON(t *testing.T, data []byte, target any) {
+	t.Helper()
+	if len(data) == 0 || data[len(data)-1] != '\n' {
+		t.Fatalf("sync JSON response must end with LF: %q", string(data))
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		t.Fatalf("decode sync JSON: %v\n%s", err, string(data))
+	}
+}
+
+func withFixedSyncClock(t *testing.T, unix int64) {
+	t.Helper()
+	previous := obsidianSyncNowUnix
+	obsidianSyncNowUnix = func() int64 { return unix }
+	t.Cleanup(func() {
+		obsidianSyncNowUnix = previous
+	})
+}
+
+func mkdirObsidianTestDir(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", path, err)
+	}
+}
+
 func writeObsidianTestFile(t *testing.T, path string, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -129,4 +389,13 @@ func writeObsidianTestFile(t *testing.T, path string, body string) {
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)
 	}
+}
+
+func readObsidianTestFile(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return string(data)
 }

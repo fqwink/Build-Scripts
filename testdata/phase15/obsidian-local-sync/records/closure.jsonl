@@ -1,0 +1,9 @@
+{"record_id":"phase15-sync-plan","scope":"phase-15-obsidian-local-sync","status":"closed","open_items":[]}
+{"record_id":"phase15-apply-atomicity","scope":"phase-15-obsidian-local-sync","status":"closed","open_items":[]}
+{"record_id":"phase15-conflict","scope":"phase-15-obsidian-local-sync","status":"closed","open_items":[]}
+{"record_id":"phase15-tombstone","scope":"phase-15-obsidian-local-sync","status":"closed","open_items":[]}
+{"record_id":"phase15-rollback","scope":"phase-15-obsidian-local-sync","status":"closed","open_items":[]}
+{"record_id":"phase15-service-boundary","scope":"phase-15-obsidian-local-sync","status":"closed","open_items":[]}
+{"record_id":"phase15-distribution","scope":"phase-15-obsidian-local-sync","status":"closed","open_items":[]}
+{"record_id":"phase15-fixture-execution","scope":"phase-15-obsidian-local-sync","status":"closed","open_items":[]}
+{"record_id":"phase15-final","scope":"phase-15-obsidian-local-sync","status":"closed","open_items":[]}

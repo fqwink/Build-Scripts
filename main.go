@@ -53,6 +53,8 @@ func dispatchMain(name string, args []string, stdout io.Writer, stderr io.Writer
 		return release.RunRelease(args, stdout, stderr)
 	case "adlaire-ci-mcp":
 		return mcp.RunMCP(args, stdout, stderr)
+	case "adlaire-ci-obsidian":
+		return obsidian.RunObsidian(args, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command: %s\n", name)
 		return 2
@@ -71,7 +73,7 @@ func canonicalBinaryName(name string) string {
 
 func isStandardBinaryName(name string) bool {
 	switch name {
-	case "adlaire-ci-build", "adlaire-ci-runner", "adlaire-ci-api", "adlaire-ci-admin", "adlaire-ci-setup", "adlaire-ci-release", "adlaire-ci-mcp":
+	case "adlaire-ci-build", "adlaire-ci-runner", "adlaire-ci-api", "adlaire-ci-admin", "adlaire-ci-setup", "adlaire-ci-release", "adlaire-ci-mcp", "adlaire-ci-obsidian":
 		return true
 	default:
 		return false

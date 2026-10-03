@@ -355,13 +355,14 @@ func releaseAssetNames() []string {
 		"adlaire-ci-setup-linux-amd64",
 		"adlaire-ci-admin-linux-amd64",
 		"adlaire-ci-mcp-linux-amd64",
+		"adlaire-ci-obsidian-linux-amd64",
 		"admin-ui.tar.gz",
 		"SHA256SUMS",
 	}
 }
 
 func releaseBinaryAssetNames() []string {
-	return releaseAssetNames()[:6]
+	return releaseAssetNames()[:7]
 }
 
 func releaseBuildError(err error) (int, string) {
@@ -435,7 +436,7 @@ func verifyReleaseAssetSet(assets []releaseAsset) error {
 
 func validateReleaseChecksumManifest(data []byte, assets map[string]releaseAsset) error {
 	lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
-	wantNames := append([]string{}, releaseAssetNames()[:7]...)
+	wantNames := append([]string{}, releaseAssetNames()[:len(releaseAssetNames())-1]...)
 	sort.Strings(wantNames)
 	if len(lines) != len(wantNames) {
 		return errors.New("checksum line count")

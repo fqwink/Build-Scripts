@@ -1,0 +1,73 @@
+{
+  "name": "phase-15-obsidian-local-sync",
+  "scope": "phase-15-obsidian-local-sync",
+  "section": "Phase 15 Obsidian local vault sync evidence",
+  "feature": "Phase 15 Obsidian local vault 同期 / plan / apply / rollback / conflict / tombstone / atomic write / adlaire-ci-obsidian 配布連携 gate",
+  "category": "obsidian",
+  "owner_component": "obsidian",
+  "collaborator_components": [
+    "release",
+    "security",
+    "setup",
+    "statefile"
+  ],
+  "components": [
+    "obsidian",
+    "release",
+    "security",
+    "setup",
+    "statefile"
+  ],
+  "owners": [
+    "obsidian"
+  ],
+  "entrypoints": [
+    "adlaire-ci-obsidian"
+  ],
+  "required_checks": [
+    "phase15-go-format",
+    "phase15-go-test",
+    "phase15-obsidian-sync-fixture",
+    "phase15-sync-atomicity",
+    "phase15-release-setup-distribution",
+    "phase15-document-drift"
+  ],
+  "closure_records": [
+    "records/closure.jsonl"
+  ],
+  "negative_controls": [
+    "apply-conflict-rejected",
+    "invalid-direction",
+    "invalid-path",
+    "plan-hash-mismatch",
+    "rollback-conflict",
+    "unknown-option"
+  ],
+  "source_anchors": [
+    "docs/DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry",
+    "docs/details/obsidian.md#obsidian-phase15-local-sync-contract",
+    "docs/details/fixture.md#phase-15-obsidian-local-sync-evidence"
+  ],
+  "references": [
+    "docs/DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry",
+    "docs/details/obsidian.md#obsidian-phase15-local-sync-contract",
+    "docs/details/obsidian.md#obsidian-phase15-apply-rollback-contract",
+    "docs/details/release.md#phase-15-obsidian-release-extension-contract",
+    "docs/details/setup.md#phase-15-obsidian-setup-contract",
+    "docs/details/fixture.md#phase-15-obsidian-local-sync-evidence"
+  ],
+  "fake_clock": "2026-10-03T00:00:00Z",
+  "not_applicable": [],
+  "missing_state": [],
+  "input_files": [
+    "input/options.json",
+    "input/sync_state.json",
+    "input/project_tree.json",
+    "input/vault_tree.json"
+  ],
+  "assertions": [
+    "idempotency",
+    "no-write",
+    "order"
+  ]
+}

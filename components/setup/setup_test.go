@@ -303,7 +303,7 @@ func seedSetupBinary(t *testing.T, ops *fakeSetupOps, dir, name, version string)
 func TestRunSetupHelpVersionPrecedence(t *testing.T) {
 	ops := newFakeSetupOps()
 	code, stdout, stderr := runSetupForTest(ops, "--help", "bad\narg")
-	if code != 0 || stdout != "Usage: adlaire-ci-setup <install|install-api|update> --target-version V.X.N [options] [--version] [--help]\n" || stderr != "" {
+	if code != 0 || stdout != "Usage: adlaire-ci-setup <install|install-api|install-obsidian|update> --target-version V.X.N [options] [--version] [--help]\n" || stderr != "" {
 		t.Fatalf("help mismatch: code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 
@@ -370,6 +370,48 @@ func TestRunSetupInstallSuccess(t *testing.T) {
 	}
 	if !containsSetupCall(ops.systemctlCalls, "enable --now adlaire-ci.timer") {
 		t.Fatalf("missing timer enable call: %v", ops.systemctlCalls)
+	}
+}
+
+func TestRunSetupInstallObsidianSuccess(t *testing.T) {
+	root := t.TempDir()
+	binDir := filepath.Join(root, "bin")
+	downloadDir := filepath.Join(root, "download")
+	ops := newFakeSetupOps()
+
+	code, stdout, stderr := runSetupForTest(ops,
+		"install-obsidian",
+		"--target-version", "V.1.1",
+		"--bin-dir", binDir,
+		"--download-dir", downloadDir,
+	)
+	if code != 0 || stderr != "" {
+		t.Fatalf("install-obsidian failed: code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	wantStdout := strings.Join([]string{
+		"setup: start install-obsidian validate",
+		"setup: ok install-obsidian validate",
+		"setup: start install-obsidian download",
+		"setup: ok install-obsidian download",
+		"setup: start install-obsidian checksum",
+		"setup: ok install-obsidian checksum",
+		"setup: start install-obsidian install-binaries",
+		"setup: ok install-obsidian install-binaries",
+		"setup: start install-obsidian verify",
+		"setup: ok install-obsidian verify",
+		"setup: success install-obsidian V.1.1",
+		"",
+	}, "\n")
+	if stdout != wantStdout {
+		t.Fatalf("stdout mismatch:\n got %q\nwant %q", stdout, wantStdout)
+	}
+	if ops.versions[filepath.Join(binDir, "adlaire-ci-obsidian")] != "V.1.1" {
+		t.Fatalf("missing installed obsidian version")
+	}
+	for _, forbidden := range []string{"daemon-reload", "enable --now adlaire-ci.timer", "is-active adlaire-ci.timer"} {
+		if containsSetupCall(ops.systemctlCalls, forbidden) {
+			t.Fatalf("install-obsidian must not call systemd %q: %v", forbidden, ops.systemctlCalls)
+		}
 	}
 }
 

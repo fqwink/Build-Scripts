@@ -122,6 +122,19 @@ func TestDispatchMainExactBasename(t *testing.T) {
 	stdout.Reset()
 	stderr.Reset()
 
+	if code := dispatchMain("adlaire-ci-obsidian", []string{"--help"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected obsidian help exit code 0, got %d", code)
+	}
+	if got := stdout.String(); !strings.Contains(got, "Usage: adlaire-ci-obsidian") {
+		t.Fatalf("expected obsidian help usage, got %q", got)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for obsidian help, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+
 	if code := dispatchMain("adlaire-ci-build-linux-amd64", []string{"--version"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("expected release asset build version exit code 0, got %d", code)
 	}
@@ -143,6 +156,19 @@ func TestDispatchMainExactBasename(t *testing.T) {
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("expected no stderr for release asset mcp version, got %q", stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+
+	if code := dispatchMain("adlaire-ci-obsidian-linux-amd64", []string{"--version"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected release asset obsidian version exit code 0, got %d", code)
+	}
+	if got := stdout.String(); !strings.HasPrefix(got, "adlaire-ci-obsidian V.0.0-dev go=") {
+		t.Fatalf("expected canonical obsidian version, got %q", got)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr for release asset obsidian version, got %q", stderr.String())
 	}
 }
 
@@ -316,7 +342,7 @@ func TestPhase11FixtureManifestGate(t *testing.T) {
 		manifest := phase11ReadManifest(t, manifestPath)
 		fixtureDir := filepath.Dir(manifestPath)
 
-		if manifest.Name != filepath.Base(fixtureDir) && !phase13AllowsScopeName(manifestPath, manifest.Name) && !phase14AllowsScopeName(manifestPath, manifest.Name) {
+		if manifest.Name != filepath.Base(fixtureDir) && !phase13AllowsScopeName(manifestPath, manifest.Name) && !phase14AllowsScopeName(manifestPath, manifest.Name) && !phase15AllowsScopeName(manifestPath, manifest.Name) {
 			t.Fatalf("%s name must match fixture directory, got %q", manifestPath, manifest.Name)
 		}
 		if prior := seenNames[manifest.Name]; prior != "" {
@@ -462,11 +488,11 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if !strings.Contains(roadmap, phase13CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 実装済み after Phase 13 closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 15 とする。") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 15 is the active Phase after Phase 14 closure")
+	if !strings.Contains(roadmap, "現在の active Phase は未設定とする。") {
+		t.Fatalf("docs/ROADMAP.md must state that no active Phase remains after Phase 15 closure")
 	}
-	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 14 まではすべて `実装済み`") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 14 are all implemented after Phase 14 closure")
+	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 15 まではすべて `実装済み`") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 15 are all implemented after Phase 15 closure")
 	}
 
 	for _, feature := range phase11QualityGateFeatures {
@@ -675,6 +701,57 @@ func TestPhase14ObsidianVaultProductionEntrypoint(t *testing.T) {
 	}
 }
 
+func TestPhase15ObsidianLocalSyncProductionEntrypoint(t *testing.T) {
+	root := t.TempDir()
+	project := filepath.Join(root, "project")
+	vault := filepath.Join(root, "vault")
+	state := filepath.Join(root, "state")
+	phase14WriteFile(t, filepath.Join(project, "docs", "project.md"), "# Project\n")
+	if err := os.MkdirAll(vault, 0o755); err != nil {
+		t.Fatalf("mkdir vault: %v", err)
+	}
+	if err := os.MkdirAll(state, 0o755); err != nil {
+		t.Fatalf("mkdir state: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := dispatchMain("adlaire-ci-obsidian", []string{
+		"sync", "plan",
+		"--project-root", project,
+		"--vault", vault,
+		"--state-dir", state,
+		"--plan-file", "plans/sync.json",
+		"--direction", "export-only",
+		"--delete-policy", "tombstone",
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr must be empty: %s", stderr.String())
+	}
+	var response struct {
+		Command    string `json:"command"`
+		PlanFile   string `json:"plan_file"`
+		PlanHash   string `json:"plan_hash"`
+		Operations int    `json:"operations"`
+		Conflicts  int    `json:"conflicts"`
+		Tombstones int    `json:"tombstones"`
+		Applied    bool   `json:"applied"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(stdout.Bytes()))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&response); err != nil {
+		t.Fatalf("decode production sync response: %v\n%s", err, stdout.String())
+	}
+	if response.Command != "sync plan" || response.PlanFile != "plans/sync.json" || response.PlanHash == "" || response.Operations != 1 || response.Applied {
+		t.Fatalf("unexpected production sync response: %+v", response)
+	}
+	if _, err := os.Stat(filepath.Join(state, "plans", "sync.json")); err != nil {
+		t.Fatalf("production entrypoint must write plan file: %v", err)
+	}
+}
+
 func phase14WriteFile(t *testing.T, path string, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -776,6 +853,86 @@ func TestPhase13ImplementationAlignmentQualityEvidence(t *testing.T) {
 	}
 	if strings.Count(workflow, "timeout-minutes:") < len(phase13RequiredChecks) {
 		t.Fatalf("Phase 13 workflow must set timeout-minutes on every required check")
+	}
+	phase13RequirePinnedActions(t, workflow)
+}
+
+func TestPhase15ObsidianLocalSyncEvidence(t *testing.T) {
+	t.Parallel()
+
+	const root = "testdata/phase15/obsidian-local-sync"
+	manifestPath := filepath.Join(root, "manifest.json")
+	manifest := phase11ReadManifest(t, manifestPath)
+	if manifest.Name != "phase-15-obsidian-local-sync" {
+		t.Fatalf("%s name mismatch: %q", manifestPath, manifest.Name)
+	}
+	if !phase11StringSlicesEqual(manifest.Owners, []string{"obsidian"}) {
+		t.Fatalf("%s owners mismatch: %v", manifestPath, manifest.Owners)
+	}
+	if !phase11StringSlicesEqual(manifest.CollaboratorComponents, []string{"release", "security", "setup", "statefile"}) {
+		t.Fatalf("%s collaborators mismatch: %v", manifestPath, manifest.CollaboratorComponents)
+	}
+	if !phase11StringSlicesEqual(manifest.RequiredChecks, []string{"phase15-go-format", "phase15-go-test", "phase15-obsidian-sync-fixture", "phase15-sync-atomicity", "phase15-release-setup-distribution", "phase15-document-drift"}) {
+		t.Fatalf("%s required checks mismatch: %v", manifestPath, manifest.RequiredChecks)
+	}
+	for _, rel := range []string{
+		"input/options.json",
+		"input/sync_state.json",
+		"input/project_tree.json",
+		"input/vault_tree.json",
+		"expected/plan.json",
+		"expected/apply_state.json",
+		"expected/distribution.json",
+		"expected/counters.json",
+		"records/closure.jsonl",
+	} {
+		if _, err := os.Stat(filepath.Join(root, rel)); err != nil {
+			t.Fatalf("Phase 15 fixture path missing %s: %v", rel, err)
+		}
+	}
+	counters := phase13ReadCounterFile(t, filepath.Join(root, "expected/counters.json"))
+	for _, key := range []string{
+		"phase15_sync_plan_mismatch_count",
+		"phase15_sync_apply_atomicity_open_count",
+		"phase15_sync_conflict_open_count",
+		"phase15_sync_tombstone_open_count",
+		"phase15_sync_rollback_open_count",
+		"phase15_sync_service_dependency_open_count",
+		"phase15_distribution_open_count",
+		"phase15_fixture_execution_gap_count",
+		"final_open_item_count",
+	} {
+		if counters[key] != 0 {
+			t.Fatalf("%s must be 0, got %d", key, counters[key])
+		}
+	}
+	distribution := phase11MustReadText(t, filepath.Join(root, "expected/distribution.json"))
+	for _, required := range []string{`"binary_asset":"adlaire-ci-obsidian-linux-amd64"`, `"release_asset_count":9`, `"checksum_line_count":8`, `"setup_mode":"install-obsidian"`} {
+		if !strings.Contains(distribution, required) {
+			t.Fatalf("expected distribution fixture to contain %s", required)
+		}
+	}
+	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
+	if !strings.Contains(roadmap, "| Phase 15 | Obsidian local vault 同期。plan / apply / rollback、conflict、tombstone、state schema、atomic write、`adlaire-ci-obsidian` 配布連携の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry) を参照する。 | 実装済み | Phase 14 |") {
+		t.Fatalf("docs/ROADMAP.md must mark Phase 15 implemented")
+	}
+	if !strings.Contains(roadmap, "| 実装済み | Obsidian 同期 | Phase 15 Obsidian local vault 同期 / plan / apply / rollback / conflict / tombstone / atomic write / `adlaire-ci-obsidian` 配布連携 gate |") {
+		t.Fatalf("docs/ROADMAP.md must mark the Phase 15 feature implemented")
+	}
+	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
+	for _, expected := range []string{
+		"| [`testdata/phase15/obsidian-local-sync/`](../testdata/phase15/obsidian-local-sync/) | Phase 15 Obsidian local vault 同期 fixture root | 実在 |",
+		"| [`.github/workflows/phase15-obsidian-local-sync.yml`](../.github/workflows/phase15-obsidian-local-sync.yml) | Phase 15 required check workflow | 実在 |",
+	} {
+		if !strings.Contains(documentIndex, expected) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must contain Phase 15 実在 row: %s", expected)
+		}
+	}
+	workflow := phase11MustReadText(t, ".github/workflows/phase15-obsidian-local-sync.yml")
+	for _, requiredCheck := range manifest.RequiredChecks {
+		if !strings.Contains(workflow, "\n  "+requiredCheck+":") {
+			t.Fatalf("Phase 15 workflow must define required check job %s", requiredCheck)
+		}
 	}
 	phase13RequirePinnedActions(t, workflow)
 }
@@ -1044,6 +1201,11 @@ func phase13AllowsScopeName(manifestPath string, name string) bool {
 func phase14AllowsScopeName(manifestPath string, name string) bool {
 	return filepath.ToSlash(manifestPath) == "testdata/phase14/obsidian-vault-integration/manifest.json" &&
 		name == "phase-14-obsidian-vault-integration"
+}
+
+func phase15AllowsScopeName(manifestPath string, name string) bool {
+	return filepath.ToSlash(manifestPath) == "testdata/phase15/obsidian-local-sync/manifest.json" &&
+		name == "phase-15-obsidian-local-sync"
 }
 
 func phase13RequireOwnerPackages(t *testing.T) {

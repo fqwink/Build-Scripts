@@ -30,7 +30,7 @@
 
 | 項目 | 要件 |
 |------|------|
-| Go 版バイナリ | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`。管理 API 導入時は `adlaire-ci-api` と `adlaire-ci-admin`、MCP 導入時は `adlaire-ci-mcp`、Phase 15 完了後の Obsidian CLI 導入時は `adlaire-ci-obsidian` も配置する。 |
+| Go 版バイナリ | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`。管理 API 導入時は `adlaire-ci-api` と `adlaire-ci-admin`、MCP 導入時は `adlaire-ci-mcp`、Obsidian CLI 導入時は `adlaire-ci-obsidian` も配置する。 |
 | 配布形式 | GitHub Release 添付 asset を取得対象とする。Release 形式と標準 OS/arch は [`docs/SPEC.md` ポリシー責務 §1](../SPEC.md#policy-versioning)、取得対象 asset は [`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a) を参照する。 |
 | Go toolchain | 利用環境には不要。リリースバイナリをそのまま配置し、利用環境で `go build` しない。 |
 | checksum | `SHA256SUMS` 自身を除く取得対象 Release asset の SHA-256 checksum を取得し、配置または展開前に必ず検証する。`SHA256SUMS` 自身を checksum 対象にしない。 |
@@ -95,13 +95,13 @@ parseと入力検証の順序は、共通option、mode、未知・重複option�
 | `adlaire-ci-setup-$OS_ARCH` | 初回セットアップ、アップデート | root `main` packageから生成し、basename dispatchで`setup` ownerを起動する実行バイナリ。 |
 | `adlaire-ci-admin-$OS_ARCH` | 管理 API 導入手順、管理 API 導入後のアップデート | root `main` packageから生成し、basename dispatchで`admin` owner の CLI 管理クライアントを起動する実行バイナリ。 |
 | `adlaire-ci-mcp-$OS_ARCH` | MCP 導入手順、MCP 導入後のアップデート | root `main` packageから生成し、basename dispatchで`mcp` ownerを起動する実行バイナリ。 |
-| `adlaire-ci-obsidian-$OS_ARCH` | Phase 15 完了後の Obsidian CLI 導入手順、Obsidian CLI 導入後のアップデート | root `main` packageから生成し、basename dispatchで`obsidian` ownerを起動する実行バイナリ。Phase 15 完了前は取得対象にしない。 |
+| `adlaire-ci-obsidian-$OS_ARCH` | Obsidian CLI 導入手順、Obsidian CLI 導入後のアップデート | root `main` packageから生成し、basename dispatchで`obsidian` ownerを起動する実行バイナリ。 |
 | `admin-ui.tar.gz` | 管理 API 導入手順、管理 API 導入後のアップデート | [`docs/details/admin.md` 詳細本文責務 §A1](admin.md#a1-管理-ui-静的ファイル境界) の管理 UI 配布物。 |
 | `SHA256SUMS` | Release 添付ファイル取得時 | `SHA256SUMS` 自身を除く取得対象 Release asset の SHA-256 checksum 一覧。 |
 
-Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を正本とする。setupはmodeに必要なassetだけを取得し、固定名と完全一致することを検証する。`$OS_ARCH`は`linux-amd64`だけを受け付け、未知OS/archは取得前に[setup出力・error固定契約](#setup-output-contract)の`UNSUPPORTED_PLATFORM`、終了コード`2`とする。Phase 15 完了前の `SHA256SUMS` は対象filenameが1回だけ存在し、未取得assetを含むrelease全体の7行が[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)と一致することを確認する。Phase 15 完了後の `SHA256SUMS` は次段落の8行契約を適用する。0件、重複、未知行、自己行、形式不正はchecksum検証失敗とする。
+Release assetの生成名とmanifest形式は[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)を正本とする。setupはmodeに必要なassetだけを取得し、固定名と完全一致することを検証する。`$OS_ARCH`は`linux-amd64`だけを受け付け、未知OS/archは取得前に[setup出力・error固定契約](#setup-output-contract)の`UNSUPPORTED_PLATFORM`、終了コード`2`とする。`SHA256SUMS` は対象filenameが1回だけ存在し、未取得assetを含むrelease全体の8行が[`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract)と一致することを確認する。0件、重複、未知行、自己行、形式不正はchecksum検証失敗とする。
 
-Phase 15 で Obsidian local vault 同期を実装済みに遷移する場合は、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract) に従い、`adlaire-ci-obsidian-$OS_ARCH` を取得対象に追加する。Phase 15 完了後の setup は、Obsidian CLI 導入または更新対象で `adlaire-ci-obsidian-$OS_ARCH` と `SHA256SUMS` を取得し、release 全体の checksum 行数を 8 行として検証する。Phase 15 完了前に `adlaire-ci-obsidian-$OS_ARCH` を必須取得対象として扱ってはならない。
+Obsidian CLI 導入または更新対象では、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract) に従い、`adlaire-ci-obsidian-$OS_ARCH` と `SHA256SUMS` を取得し、release 全体の checksum 行数を 8 行として検証する。
 
 <a id="sec-26-2b"></a>
 **[§26.2b セットアップ・アップデート機能単位](setup.md#sec-26-2b)：**
@@ -112,7 +112,7 @@ Phase 15 で Obsidian local vault 同期を実装済みに遷移する場合は�
 |------|------|------|----------|------------------|
 | Release asset resolver | `VERSION`、`OS_ARCH`、取得対象成果物名、GitHub Release URL | `DOWNLOAD_DIR` 内の取得済みファイル | `VERSION` / `OS_ARCH` 空、HTTP status 非 2xx、取得ファイル 0 byte | 取得済みファイルを配置せず終了 |
 | checksum verifier | `SHA256SUMS`、取得済み成果物 | 検証済み成果物一覧 | `SHA256SUMS` 不在、対象行不在、SHA-256 不一致 | バイナリ配置を実行せず終了 |
-| binary installer | 検証済みバイナリ、`BIN_DIR` | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`、API 導入対象の実装では `adlaire-ci-api` と `adlaire-ci-admin`、MCP 導入対象の実装では `adlaire-ci-mcp`、Phase 15 完了後の Obsidian CLI 導入対象では `adlaire-ci-obsidian` | 入力バイナリ不在、実行権限付与失敗、atomic replace失敗 | systemd 変更を実行せず終了 |
+| binary installer | 検証済みバイナリ、`BIN_DIR` | `adlaire-ci-build`、`adlaire-ci-runner`、`adlaire-ci-setup`、API 導入対象の実装では `adlaire-ci-api` と `adlaire-ci-admin`、MCP 導入対象の実装では `adlaire-ci-mcp`、Obsidian CLI 導入対象では `adlaire-ci-obsidian` | 入力バイナリ不在、実行権限付与失敗、atomic replace失敗 | systemd 変更を実行せず終了 |
 | secret initializer | [`docs/details/runner.md` 詳細本文責務 GitHub token 読み込み契約](runner.md#github-token-読み込み契約) に一致する PAT 入力、管理 API 新規導入時は `ADMIN_INITIAL_PASSWORD_FILE`、`INSTALL_DIR` | statefile create-only mode で作成した `.github_token` mode `0600`、管理 API 新規導入時は `adlaire-ci-api --init-credentials` が作成した `.admin_credentials` mode `0600`、または検証済み既存ファイルの byte 単位保持 | PAT 不正、初期 password file 不正、既存 secret 不正、statefile create-only failure、credentials 初期化失敗 | systemd 変更を実行せず終了 |
 | state initializer | `INSTALL_DIR` | statefile create-only mode で作成した `.last_sha`、または schema 検証済み既存ファイルの byte 単位保持。build log 保存対象の実装では `.build_logs/`、snapshot 保存対象の実装では `.snapshots/` | 既存ファイル破損、statefile create-only failure、directory 作成または mode 確定失敗 | systemd 変更を実行せず終了 |
 | admin UI installer | `admin-ui.tar.gz`、`INSTALL_DIR` | `$INSTALL_DIR/admin/index.html`、`$INSTALL_DIR/admin/adlaire-ci-sdk.js` | archive 不在、checksum 不一致、展開後必須ファイル不在 | API 導入・更新対象では API service 起動 / restart を実行せず終了。runner のみの初回セットアップでは本機能を対象外とし、後続の systemd 処理へ進む。 |
@@ -172,7 +172,7 @@ asset 1 件の request から保存完了までの timeout は `5m`、local API 
 | `adlaire-ci-api` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-api` へ配置する。 | `0755` | API service を restart / start しない。 |
 | `adlaire-ci-admin` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-admin` へ配置する。 | `0755` | API service を restart / start しない。 |
 | `adlaire-ci-mcp` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-mcp` へ配置する。 | `0755` | MCP server を起動しない。 |
-| `adlaire-ci-obsidian` | Phase 15 完了後に、検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-obsidian` へ配置する。 | `0755` | Obsidian application、plugin、Sync service、watcher を起動しない。 |
+| `adlaire-ci-obsidian` | 検証済み asset を `install -m 0755` で `$BIN_DIR/adlaire-ci-obsidian` へ配置する。 | `0755` | Obsidian application、plugin、Sync service、watcher を起動しない。 |
 | `.github_token` | PAT を `strings.TrimSpace` した値 + LF 1 個を、[`docs/details/statefile.md` 詳細本文責務 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode へ渡す。 | `0600` | systemd unit を変更しない。secret 平文を stderr/stdout に出さない。 |
 | `.last_sha` | `{"sha":""}` + LF 1 個を、[`docs/details/statefile.md` 詳細本文責務 状態ファイル更新手順](statefile.md#statefile-update-procedure) の create-only mode へ渡す。 | `0600` | systemd unit を変更しない。 |
 | `.admin_credentials` | 検証済み `ADMIN_INITIAL_PASSWORD_FILE` の内容を stdin として `adlaire-ci-api --init-credentials --state-dir "$INSTALL_DIR"` を起動し、[`docs/details/security.md` 詳細本文責務 `--init-credentials` CLI 固定契約](security.md#init-credentials-cli-contract)で生成する。 | `0600` | API service を enable/start しない。password を argv、environment、stdout、stderr、log へ出さない。 |
@@ -336,7 +336,7 @@ Go 版初回セットアップでは以下を実行しない。
 <a id="phase-15-obsidian-setup-contract"></a>
 **Phase 15 Obsidian CLI 導入手順：**
 
-`install-obsidian` は Phase 15 完了後だけ有効な mode とする。Phase 15 完了前の build では `install-obsidian` を `INVALID_INPUT`、終了コード `2` とし、directory 作成、download、binary 配置、systemd 操作、state / secret 変更を行ってはならない。
+`install-obsidian` は Obsidian CLI だけを導入する有効な mode とする。`install-obsidian` は runner、API、admin UI、MCP、state、secret、credentials、systemd unit を導入対象に含めてはならない。
 
 `install-obsidian` は `adlaire-ci-obsidian-$OS_ARCH` と `SHA256SUMS` だけを取得対象とし、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract) の asset count `9`、checksum 行数 `8`、asset 名 `adlaire-ci-obsidian-linux-amd64` を検証する。`admin-ui.tar.gz`、`adlaire-ci-api-$OS_ARCH`、`adlaire-ci-admin-$OS_ARCH`、`adlaire-ci-mcp-$OS_ARCH`、runner systemd unit、API service、state directory、secret file、credentials file を取得、作成、変更、起動してはならない。
 
@@ -454,7 +454,7 @@ restart 回数は rollback 処理内の回数を表す。runner restart 失敗�
 1. 既存`$BIN_DIR/adlaire-ci-build`、`$BIN_DIR/adlaire-ci-runner`、`$BIN_DIR/adlaire-ci-setup`の存在を確認する。いずれかが不在の場合は終了コード`2`とし、更新を開始しない。
 2. API 導入済み判定は `$BIN_DIR/adlaire-ci-api` が通常ファイルとして存在し、`systemctl is-enabled adlaire-ci-api` が `enabled` または `static` を返す場合だけ `true` とする。
 3. MCP 導入済み判定は `$BIN_DIR/adlaire-ci-mcp` が通常ファイルとして存在する場合だけ `true` とする。
-4. Phase 15 完了後の Obsidian CLI 導入済み判定は `$BIN_DIR/adlaire-ci-obsidian` が通常ファイルとして存在する場合だけ `true` とする。Phase 15 完了前は常に `false` とする。
+4. Obsidian CLI 導入済み判定は `$BIN_DIR/adlaire-ci-obsidian` が通常ファイルとして存在する場合だけ `true` とする。
 5. API 導入済みでない場合、`adlaire-ci-api-$OS_ARCH`、`adlaire-ci-admin-$OS_ARCH`、`admin-ui.tar.gz` は取得しない。
 6. MCP 導入済みでない場合、`adlaire-ci-mcp-$OS_ARCH` は取得しない。
 7. Obsidian CLI 導入済みでない場合、`adlaire-ci-obsidian-$OS_ARCH` は取得しない。

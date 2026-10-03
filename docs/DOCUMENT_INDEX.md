@@ -23,8 +23,8 @@
 | Phase 14 正式 fixture root | `testdata/phase14/obsidian-vault-integration/` |
 | Phase 14 required check workflow | `.github/workflows/phase14-obsidian-vault-integration.yml` |
 | Phase 15 Obsidian local vault 同期の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry) |
-| Phase 15 正式 fixture root | `testdata/phase15/obsidian-local-sync/` |
-| Phase 15 required check workflow | `.github/workflows/phase15-obsidian-local-sync.yml` |
+| Phase 15 正式 fixture root | [`testdata/phase15/obsidian-local-sync/`](../testdata/phase15/obsidian-local-sync/) |
+| Phase 15 required check workflow | [`.github/workflows/phase15-obsidian-local-sync.yml`](../.github/workflows/phase15-obsidian-local-sync.yml) |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
@@ -224,8 +224,8 @@
 | [`.github/workflows/phase13-implementation-alignment-quality.yml`](../.github/workflows/phase13-implementation-alignment-quality.yml) | Phase 13 required check workflow | 実在 |
 | [`testdata/phase14/obsidian-vault-integration/`](../testdata/phase14/obsidian-vault-integration/) | Phase 14 Obsidian Vault 連携 fixture root | 実在 |
 | [`.github/workflows/phase14-obsidian-vault-integration.yml`](../.github/workflows/phase14-obsidian-vault-integration.yml) | Phase 14 required check workflow | 実在 |
-| `testdata/phase15/obsidian-local-sync/` | Phase 15 Obsidian local vault 同期 fixture root | 未作成 |
-| `.github/workflows/phase15-obsidian-local-sync.yml` | Phase 15 required check workflow | 未作成 |
+| [`testdata/phase15/obsidian-local-sync/`](../testdata/phase15/obsidian-local-sync/) | Phase 15 Obsidian local vault 同期 fixture root | 実在 |
+| [`.github/workflows/phase15-obsidian-local-sync.yml`](../.github/workflows/phase15-obsidian-local-sync.yml) | Phase 15 required check workflow | 実在 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
 
@@ -324,15 +324,15 @@
 | [`components/obsidian/validate.go`](../components/obsidian/validate.go) | `obsidian` owner の入力・状態・設定・権限検証 | 実在 |
 | [`components/obsidian/execute.go`](../components/obsidian/execute.go) | `obsidian` owner の正常系・異常系実行順序 | 実在 |
 | [`components/obsidian/obsidian_test.go`](../components/obsidian/obsidian_test.go) | `obsidian` owner package の仕様契約検証 | 実在 |
-| `testdata/phase15/obsidian-local-sync/` | Phase 15 正式 fixture root | 未作成 |
-| `testdata/phase15/obsidian-local-sync/manifest.json` | Phase 15 evidence package manifest | 未作成 |
-| `testdata/phase15/obsidian-local-sync/input/options.json` | Phase 15 CLI option 入力 | 未作成 |
-| `testdata/phase15/obsidian-local-sync/input/sync_state.json` | Phase 15 sync state 入力 | 未作成 |
-| `testdata/phase15/obsidian-local-sync/input/project_tree.json` | Phase 15 project tree 入力 | 未作成 |
-| `testdata/phase15/obsidian-local-sync/input/vault_tree.json` | Phase 15 vault tree 入力 | 未作成 |
-| `testdata/phase15/obsidian-local-sync/expected/plan.json` | Phase 15 sync plan 期待値 | 未作成 |
-| `testdata/phase15/obsidian-local-sync/expected/apply_state.json` | Phase 15 apply 後 state 期待値 | 未作成 |
-| `testdata/phase15/obsidian-local-sync/expected/distribution.json` | Phase 15 Obsidian CLI 配布連携期待値 | 未作成 |
-| `testdata/phase15/obsidian-local-sync/expected/counters.json` | Phase 15 closure counter 期待値 | 未作成 |
-| `testdata/phase15/obsidian-local-sync/records/closure.jsonl` | Phase 15 closure record set | 未作成 |
-| `.github/workflows/phase15-obsidian-local-sync.yml` | Phase 15 required check workflow | 未作成 |
+| [`testdata/phase15/obsidian-local-sync/`](../testdata/phase15/obsidian-local-sync/) | Phase 15 正式 fixture root | 実在 |
+| [`testdata/phase15/obsidian-local-sync/manifest.json`](../testdata/phase15/obsidian-local-sync/manifest.json) | Phase 15 evidence package manifest | 実在 |
+| [`testdata/phase15/obsidian-local-sync/input/options.json`](../testdata/phase15/obsidian-local-sync/input/options.json) | Phase 15 CLI option 入力 | 実在 |
+| [`testdata/phase15/obsidian-local-sync/input/sync_state.json`](../testdata/phase15/obsidian-local-sync/input/sync_state.json) | Phase 15 sync state 入力 | 実在 |
+| [`testdata/phase15/obsidian-local-sync/input/project_tree.json`](../testdata/phase15/obsidian-local-sync/input/project_tree.json) | Phase 15 project tree 入力 | 実在 |
+| [`testdata/phase15/obsidian-local-sync/input/vault_tree.json`](../testdata/phase15/obsidian-local-sync/input/vault_tree.json) | Phase 15 vault tree 入力 | 実在 |
+| [`testdata/phase15/obsidian-local-sync/expected/plan.json`](../testdata/phase15/obsidian-local-sync/expected/plan.json) | Phase 15 sync plan 期待値 | 実在 |
+| [`testdata/phase15/obsidian-local-sync/expected/apply_state.json`](../testdata/phase15/obsidian-local-sync/expected/apply_state.json) | Phase 15 apply 後 state 期待値 | 実在 |
+| [`testdata/phase15/obsidian-local-sync/expected/distribution.json`](../testdata/phase15/obsidian-local-sync/expected/distribution.json) | Phase 15 Obsidian CLI 配布連携期待値 | 実在 |
+| [`testdata/phase15/obsidian-local-sync/expected/counters.json`](../testdata/phase15/obsidian-local-sync/expected/counters.json) | Phase 15 closure counter 期待値 | 実在 |
+| [`testdata/phase15/obsidian-local-sync/records/closure.jsonl`](../testdata/phase15/obsidian-local-sync/records/closure.jsonl) | Phase 15 closure record set | 実在 |
+| [`.github/workflows/phase15-obsidian-local-sync.yml`](../.github/workflows/phase15-obsidian-local-sync.yml) | Phase 15 required check workflow | 実在 |
