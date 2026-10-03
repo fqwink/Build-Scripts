@@ -50,11 +50,15 @@ Phase 17 の検証 mode は以下に固定する。
 | mode | 実行場所 | 用途 |
 |------|----------|------|
 | `trial-production-conoha-vps` | ConoHa VPS の試験本番運用環境 | 継続稼働、install、update、rollback、service lifecycle、API health、admin CLI health、runner dry-run、state directory、network timeout、reboot recovery、運用中バグ修正ループを検証する。 |
-| `production-equivalent-simulation` | local または container による本番同等 simulation | disk full、permission denied、short write、fsync failure、rename failure、process kill、network refusal、DNS failure、SSH failure、log write failure、destructive operation 境界を検証する。 |
+| `production-equivalent-simulation` | local または container による本番同等 simulation | [Phase 17 failure class 固定 set](#phase-17-failure-class-set) と destructive operation 境界を検証する。 |
 
 `production-equivalent-simulation` は destructive operation と fault injection の検証に使用する。`production-equivalent-simulation` の成功だけで `trial-production-conoha-vps` の必須運用検証を代替してはならない。
 
 `trial-production-conoha-vps` は provider 固有の lifecycle と継続稼働を確認するために使用するが、VPS deletion、disk rebuild、volume detach、firewall lockout、SSH lockout、秘密情報の出力、customer data の投入を実行してはならない。
+
+<a id="phase-17-failure-class-set"></a>
+
+Phase 17 failure class 固定 set は `disk full`、`permission denied`、`short write`、`fsync failure`、`rename failure`、`process kill`、`network refusal`、`DNS failure`、`SSH failure`、`log write failure`、`reboot recovery`、`interrupted recovery` の順序固定 array とする。Phase 17 の simulation、failure injection、required check、fixture、record、PR 証跡は、この固定 set 以外の failure class 名、欠落、追加、重複、順序変更、`reboot` / `中断復旧` などの別表記を使用してはならない。
 
 <a id="phase-17-buildout-plan"></a>
 
@@ -144,7 +148,7 @@ Phase 17 は以下を検証対象に含める。
 | statefile | state directory `0700`、owner / mode 検証、lock、atomic write、JSON Lines、migration、復旧。 |
 | SSH / remote path | known_hosts、host key、timeout、remote path validation、private IP / SSRF 境界。 |
 | network | DNS、IPv4 / IPv6 境界、redirect 禁止、timeout、firewall 影響、provider outbound / inbound 境界。 |
-| failure injection | disk full、permission denied、short write、fsync failure、rename failure、process kill、reboot、中断復旧。 |
+| failure injection | [Phase 17 failure class 固定 set](#phase-17-failure-class-set) 全件。 |
 | log / audit / secret | audit log、access log、config log の必須書込み失敗、secret mask、token / key 非出力。 |
 | trial production operation | `continuous-24h`、300 秒間隔、288 sample、停止条件、継続稼働、問題検出、仕様全般策定、バグ修正、再配置、再検証、証跡記録の反復。 |
 | document drift | Phase 17 状態、path、anchor、fixture root、workflow、required check、future target の drift。 |
