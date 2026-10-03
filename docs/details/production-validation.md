@@ -4,7 +4,7 @@
 
 ## 0. 責務境界
 
-本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用に関する、運用対象、provider target、OS / plan 前提、検証対象、検証 mode、禁止操作、運用中バグ修正順序、fixture 証跡への接続、完了条件を所有する。
+本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用に関する、運用対象、provider target、OS / plan 前提、検証対象、検証 mode、禁止操作、運用中バグ修正順序、fixture 証跡への接続条件を所有する。
 
 本番検証詳細本文責務は、owner component の通常処理、API route、SDK method、UI DOM、runner pipeline、state schema、release asset format、setup install 処理、VPS provider API 操作実装、GitHub 設定、credential 管理方式を本文として定義しない。これらは該当する owner component 別詳細本文、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、または [`AGENTS.md`](../../AGENTS.md) 作業ルールを参照する。ただし、Phase 17 検証で secret を証跡へ混入させないための入力境界、許可入力経路、禁止入力経路、証跡化禁止事項は本番検証詳細本文責務が所有する。これは Adlaire CI の credential 管理方式ではなく、試験本番運用検証の boundary contract として扱う。
 
@@ -189,9 +189,9 @@ Phase 17 の fixture 証跡へ接続する future target 分類は、`xserver-vp
 
 <a id="phase-17-production-validation-completion"></a>
 
-## 8. 証跡・完了条件
+## 8. 証跡接続条件
 
-Phase 17 の fixture 証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) を正本とする。
+Phase 17 の fixture 証跡、closure counter、required check、required check workflow、checker 実行入口、negative boundary、document drift record は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) を正本とする。
 
 Phase 17 は、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の closure counter、required check、required check workflow、checker 実行入口、negative boundary、document drift record がすべて完了条件を満たすまで `実装済み` に遷移してはならない。本番検証詳細本文責務では、closure counter の key、完了値、未完了条件、required check 名、record schema を再掲しない。
 
