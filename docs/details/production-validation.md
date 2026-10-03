@@ -1,6 +1,6 @@
 # Adlaire CI — 試験本番運用詳細仕様
 
-[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、ConoHa VPS 試験本番運用、本番運用前提の本番検証、本番環境同等テスト、VPS simulation、provider target、destructive operation 禁止境界、運用中バグ修正順序、完了証跡だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
+[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、ConoHa VPS 試験本番運用、本番運用前提の本番検証、本番環境同等テスト、VPS simulation、provider target、destructive operation 禁止境界、運用中バグ修正順序、fixture 証跡への接続だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
 
 ## 0. 責務境界
 
@@ -140,7 +140,7 @@ Phase 17 の試験本番運用ループは `operation-start`、`monitor`、`issu
 
 エックスサーバ VPS は Phase 17 時点では `xserver-vps-future` として扱う。
 
-Phase 17 の証跡は、`xserver-vps-future` について以下を記録する。
+Phase 17 の fixture 証跡へ接続する future target 分類は、`xserver-vps-future` について以下を記録する。
 
 | key | 固定値 |
 |-----|--------|

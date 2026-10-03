@@ -42,7 +42,7 @@
 | Phase 16 future Phase document boundary | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 future Phase document boundary 固定契約](details/fixture.md#phase-16-future-phase-document-boundary) |
 | Phase 16 required check workflow | `.github/workflows/phase16-quality-evidence-closure.yml` |
 | Phase 17 ConoHa VPS 試験本番運用の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 17 ConoHa VPS 試験本番運用参照](DETAIL_INDEX.md#phase-17-production-validation-entry) |
-| Phase 17 試験本番運用詳細本文 | [`docs/details/production-validation.md`](details/production-validation.md) |
+| Phase 17 試験本番運用詳細本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務](details/production-validation.md) |
 | Phase 17 正式 fixture root | `testdata/phase17/production-validation/` |
 | Phase 17 required check workflow | `.github/workflows/phase17-production-validation.yml` |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
