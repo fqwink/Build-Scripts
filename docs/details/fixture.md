@@ -464,7 +464,7 @@ Phase 15 fixture は negative control を必須とする。negative control は�
 
 [`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 16 の宣言型証跡の実行型証跡化、`ALIGN-*` 追加検証候補分類、ignored error 分類、skip / 未実行 closure、determinism、filesystem durability parity、workflow hardening、Docker 検証、release rehearsal、巨大 owner risk ledger の証跡だけを固定する。Phase 16 の現在状態と実装割当は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](../DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry)、Phase 完了単位は [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit)、テスト方針は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) を参照する。
 
-Phase 16 の正式 fixture root は `testdata/phase16/quality-evidence-closure/` とする。同 root は Phase 16 実装 PR で実在化し、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 16 target path 所在](../DOCUMENT_INDEX.md#phase-16-target-paths) で `実在` として扱う。仕様策定時点で root が未作成の場合は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 16 target path 所在](../DOCUMENT_INDEX.md#phase-16-target-paths) に `未作成` として記録し、Phase 16 を `実装済み` に遷移させてはならない。
+Phase 16 の正式 fixture root は `testdata/phase16/quality-evidence-closure/` とする。同 root は Phase 16 実装 artifact として実在していなければならず、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 16 target path 所在](../DOCUMENT_INDEX.md#phase-16-target-paths) で `実在` として扱う。fixture root、manifest、expected、input、records、required check workflow のいずれかが実在しない状態へ退行した場合、Phase 16 を `実装済み` として扱ってはならない。
 
 <a id="phase-16-implementation-sequence-contract"></a>
 **Phase 16 implementation sequence 固定契約：**

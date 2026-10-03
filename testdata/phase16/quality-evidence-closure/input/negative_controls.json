@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "scope": "phase-16-quality-evidence-closure",
+  "negative_controls": [
+    {
+      "id": "phase16.negative.json-duplicate-key",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "target_contract": "json-duplicate-key",
+      "expected_failure_code": "PHASE16_JSON_DUPLICATE_KEY",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-quality-evidence-fixture",
+      "counter_key": "phase16_execution_evidence_gap_count",
+      "positive_control_ref": "docs/details/fixture.md#phase-16-checker-contract"
+    },
+    {
+      "id": "phase16.negative.diagnostic-schema",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "target_contract": "diagnostic-schema",
+      "expected_failure_code": "PHASE16_SCHEMA_MISSING_KEY",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-quality-evidence-fixture",
+      "counter_key": "phase16_execution_evidence_gap_count",
+      "positive_control_ref": "docs/details/fixture.md#phase-16-checker-contract"
+    },
+    {
+      "id": "phase16.negative.source-coverage-omission",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "target_contract": "source-coverage",
+      "expected_failure_code": "PHASE16_SOURCE_UNTRACKED",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-quality-evidence-fixture",
+      "counter_key": "phase16_execution_evidence_gap_count",
+      "positive_control_ref": "docs/details/fixture.md#phase-16-source-enumeration-digest-contract"
+    },
+    {
+      "id": "phase16.negative.counter-only-success",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "target_contract": "counter-reaggregation",
+      "expected_failure_code": "PHASE16_COUNTER_MISMATCH",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-quality-evidence-fixture",
+      "counter_key": "phase16_declarative_evidence_open_count",
+      "positive_control_ref": "docs/details/fixture.md#phase-16-quality-evidence-closure-evidence"
+    },
+    {
+      "id": "phase16.negative.mutation-survivor",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "target_contract": "mutation-survivor",
+      "expected_failure_code": "PHASE16_RECORD_RESULT_OPEN",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-mutation",
+      "counter_key": "phase16_mutation_survived_count",
+      "positive_control_ref": "docs/details/fixture.md#mutation-test-evidence-contract"
+    },
+    {
+      "id": "phase16.negative.fault-unexecuted",
+      "work_unit": "phase16-filesystem-durability",
+      "owner_component": "statefile",
+      "target_contract": "fault-injection",
+      "expected_failure_code": "PHASE16_RUNTIME_UNEXECUTED",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-fault-injection",
+      "counter_key": "phase16_fault_injection_open_count",
+      "positive_control_ref": "docs/details/fixture.md#test-boundary-failure-matrix-evidence-set-contract"
+    },
+    {
+      "id": "phase16.negative.skip-success",
+      "work_unit": "phase16-error-boundary",
+      "owner_component": "runner",
+      "target_contract": "skip-success",
+      "expected_failure_code": "PHASE16_RECORD_RESULT_OPEN",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-go-test",
+      "counter_key": "phase16_skip_open_count",
+      "positive_control_ref": "docs/details/fixture.md#test-skip-evidence-contract"
+    },
+    {
+      "id": "phase16.negative.workflow-unpinned",
+      "work_unit": "phase16-ci-release-portability",
+      "owner_component": "runner",
+      "target_contract": "workflow-hardening",
+      "expected_failure_code": "PHASE16_DOCUMENT_DRIFT",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-workflow-hardening",
+      "counter_key": "phase16_workflow_hardening_open_count",
+      "positive_control_ref": "docs/details/fixture.md#phase-16-quality-evidence-closure-evidence"
+    },
+    {
+      "id": "phase16.negative.deno-unexecuted",
+      "work_unit": "phase16-ci-release-portability",
+      "owner_component": "sdk",
+      "target_contract": "deno-runtime",
+      "expected_failure_code": "PHASE16_RUNTIME_UNEXECUTED",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-deno-check",
+      "counter_key": "phase16_validation_portability_open_count",
+      "positive_control_ref": "docs/details/fixture.md#phase-16-quality-evidence-closure-evidence"
+    },
+    {
+      "id": "phase16.negative.release-unexecuted",
+      "work_unit": "phase16-ci-release-portability",
+      "owner_component": "release",
+      "target_contract": "release-rehearsal",
+      "expected_failure_code": "PHASE16_RUNTIME_UNEXECUTED",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-workflow-hardening",
+      "counter_key": "phase16_release_rehearsal_open_count",
+      "positive_control_ref": "docs/details/fixture.md#phase-16-quality-evidence-closure-evidence"
+    },
+    {
+      "id": "phase16.negative.align-unclassified",
+      "work_unit": "phase16-align-closure",
+      "owner_component": "runner",
+      "target_contract": "align-unclassified",
+      "expected_failure_code": "PHASE16_RECORD_UNLINKED",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-quality-evidence-fixture",
+      "counter_key": "phase16_align_unclassified_count",
+      "positive_control_ref": "docs/DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry"
+    },
+    {
+      "id": "phase16.negative.future-phase-blocker",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "target_contract": "future-phase-boundary",
+      "expected_failure_code": "PHASE16_DOCUMENT_DRIFT",
+      "isolation_mode": "temporary_copy",
+      "required_check": "phase16-document-drift",
+      "counter_key": "phase16_document_drift_open_count",
+      "positive_control_ref": "docs/details/fixture.md#phase-16-future-phase-document-boundary"
+    }
+  ]
+}

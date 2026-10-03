@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "scope": "phase-16-quality-evidence-closure",
+  "work_unit": "phase16-ci-release-portability",
+  "records": [
+    {
+      "id": "phase16.workflow.required-checks",
+      "work_unit": "phase16-ci-release-portability",
+      "owner_component": "runner",
+      "source_ref": ".github/workflows/phase16-quality-evidence-closure.yml",
+      "classification": "fix_and_close",
+      "status": "closed",
+      "counter_key": "phase16_workflow_hardening_open_count",
+      "closure_ref": "records/workflow.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl",
+        "records/workflow.jsonl"
+      ]
+    },
+    {
+      "id": "phase16.workflow.portability",
+      "work_unit": "phase16-ci-release-portability",
+      "owner_component": "setup",
+      "source_ref": "docs/details/fixture.md#phase-16-quality-evidence-closure-evidence",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_validation_portability_open_count",
+      "closure_ref": "records/workflow.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl",
+        "records/workflow.jsonl"
+      ]
+    },
+    {
+      "id": "phase16.workflow.release-rehearsal",
+      "work_unit": "phase16-ci-release-portability",
+      "owner_component": "release",
+      "source_ref": "docs/details/release.md#phase-13-release-alignment-contract",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_release_rehearsal_open_count",
+      "closure_ref": "records/workflow.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl",
+        "records/workflow.jsonl"
+      ]
+    }
+  ]
+}
