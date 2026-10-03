@@ -402,8 +402,8 @@
 | [`docs/details/production-validation.md`](details/production-validation.md) | Phase 17 試験本番運用詳細本文 | 実在 |
 | `testdata/phase17/production-validation/` | Phase 17 正式 fixture root | 未作成 |
 | `testdata/phase17/production-validation/manifest.json` | Phase 17 evidence package manifest | 未作成 |
-| `testdata/phase17/production-validation/input/provider_targets.json` | provider target と future target 分類入力 | 未作成 |
-| `testdata/phase17/production-validation/input/conoha_vps_environment.json` | ConoHa VPS preflight / opaque environment identity / environment 棚卸し入力 | 未作成 |
+| `testdata/phase17/production-validation/input/provider_targets.json` | provider target / fixed minimum plan class / future target 分類入力 | 未作成 |
+| `testdata/phase17/production-validation/input/conoha_vps_environment.json` | ConoHa VPS preflight / fixed minimum plan class / opaque environment identity / environment 棚卸し入力 | 未作成 |
 | `testdata/phase17/production-validation/input/buildout_plan.json` | 試験本番運用環境構築 work unit / 禁止 provider operation 境界入力 | 未作成 |
 | `testdata/phase17/production-validation/input/trial_operation.json` | 試験本番運用ループ / 運用窓 / 停止条件 / バグ修正順序入力 | 未作成 |
 | `testdata/phase17/production-validation/input/simulation_matrix.json` | 本番環境同等 simulation / failure class 入力 | 未作成 |

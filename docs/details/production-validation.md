@@ -1,16 +1,18 @@
 # Adlaire CI — 試験本番運用詳細仕様
 
-[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、ConoHa VPS 試験本番運用、本番運用前提の本番検証、本番環境同等テスト、VPS simulation、provider target、opaque environment identity、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、fixture 証跡への接続条件だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
+[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、ConoHa VPS 試験本番運用、本番運用前提の本番検証、本番環境同等テスト、VPS simulation、provider target、minimum plan class、opaque environment identity、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、fixture 証跡への接続条件だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
 
-## 0. 責務境界
+<a id="phase-17-responsibility-boundary"></a>
+**0. 責務境界：**
 
-本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用に関する、運用対象、provider target、OS / plan 前提、opaque environment identity、検証対象、検証 mode、credential / SSH 入力境界、試験本番運用窓・停止条件、禁止操作、運用中バグ修正順序、fixture 証跡への接続条件を所有する。
+本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用に関する、運用対象、provider target、OS / plan 前提、minimum plan class、opaque environment identity、検証対象、検証 mode、credential / SSH 入力境界、試験本番運用窓・停止条件、禁止操作、運用中バグ修正順序、fixture 証跡への接続条件を所有する。
 
 本番検証詳細本文責務は、owner component の通常処理、API route、SDK method、UI DOM、runner pipeline、state schema、release asset format、setup install 処理、VPS provider API 操作実装、GitHub 設定、credential 管理方式を本文として定義しない。これらは該当する owner component 別詳細本文、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、または [`AGENTS.md`](../../AGENTS.md) 作業ルールを参照する。ただし、Phase 17 検証で secret を証跡へ混入させないための入力境界、許可入力経路、禁止入力経路、証跡化禁止事項は本番検証詳細本文責務が所有する。これは Adlaire CI の credential 管理方式ではなく、試験本番運用検証の boundary contract として扱う。
 
 Phase 17 は ConoHa VPS 試験本番運用の Phase であり、正式本番運用、customer data を扱う実運用、ユーザー環境の破壊的変更、provider resource の作成・削除自動化を目的にしてはならない。
 
-## 1. Phase 17 目的
+<a id="phase-17-purpose"></a>
+**1. Phase 17 目的：**
 
 Phase 17 は、ConoHa VPS 上に本番運用前提の試験本番環境を置き、実際に稼働させながら、本番検証、本番環境同等テスト、simulation、問題検出、仕様全般策定、バグ修正、再検証、安定化を反復する試験本番運用 Phase とする。
 
@@ -24,7 +26,7 @@ Phase 17 は以下を目的とする。
 
 <a id="phase-17-provider-targets"></a>
 
-## 2. 本番環境想定
+**2. 本番環境想定：**
 
 Phase 17 の provider target は以下に固定する。
 
@@ -37,13 +39,13 @@ Phase 17 の provider target は以下に固定する。
 
 `xserver-vps-future` は、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の将来判断行へ接続する。`xserver-vps-future` を Phase 17 の未完了 item、必須 check、failure、または blocker として扱ってはならない。
 
-Phase 17 の ConoHa VPS 試験本番運用環境は、Ubuntu Server 24.04 LTS 64bit を固定 OS とし、Ubuntu 24.04 の要件を満たす ConoHa VPS 最小 plan を採用する。ConoHa VPS 上の最小採用 plan は RAM 1GB 以上とし、512MB plan は Phase 17 の対象外とする。Ubuntu 26.04、Ubuntu 22.04、Debian、AlmaLinux、Rocky Linux、CentOS Stream、Oracle Linux、FreeBSD、および application template は Phase 17 の標準 OS として扱わない。
+Phase 17 の ConoHa VPS 試験本番運用環境は、Ubuntu Server 24.04 LTS 64bit を固定 OS とし、`minimum_plan_class=conoha-vps-1gb-memory-class` を固定最小 plan class とする。`minimum_plan_class` は、RAM が 1024 MB 以上で Ubuntu Server 24.04 LTS 64bit を選択できる ConoHa VPS の最小 memory class を表す repository 内固定 token であり、provider 画面や API の SKU 表示名を正本にしない。provider 側の plan 表示名、plan id、region、instance 名は `provider_plan_label` 等の opaque label としてだけ fixture 証跡に記録し、`minimum_plan_class` の値を変更してはならない。512MB plan、Ubuntu 26.04、Ubuntu 22.04、Debian、AlmaLinux、Rocky Linux、CentOS Stream、Oracle Linux、FreeBSD、および application template は Phase 17 の標準 OS / plan として扱わない。
 
 ConoHa VPS 試験本番運用環境の provider plan、region、VPS instance、public endpoint は、fixture 証跡では opaque label としてだけ記録する。provider account id、provider resource id、グローバル IP address、hostname、FQDN、credential file path、secret 値、secret hash を fixture、expected、record、Pull Request body、log、stdout、stderr に保存してはならない。実 provider の識別が必要な場合は、operator が管理する repository 外の対応表で照合し、repository 内の証跡には `metadata_policy=opaque-non-secret-labels` を記録する。
 
 <a id="phase-17-validation-modes"></a>
 
-## 3. 検証 mode
+**3. 検証 mode：**
 
 Phase 17 の検証 mode は以下に固定する。
 
@@ -62,13 +64,13 @@ Phase 17 failure class 固定 set は `disk full`、`permission denied`、`short
 
 <a id="phase-17-buildout-plan"></a>
 
-## 3a. 構築プラン
+**3a. 構築プラン：**
 
 Phase 17 の構築は、以下の work unit を順序固定で実行する。
 
 | work unit | 完了条件 |
 |-----------|----------|
-| `provider-prerequisite` | ConoHa VPS 上に Ubuntu Server 24.04 LTS 64bit、RAM 1GB 以上の試験本番運用専用 VPS が存在し、512MB plan、別 OS、application template、正式本番 data が使われていないことを記録する。provider plan、region、VPS instance、public endpoint は opaque label だけで記録し、provider account id、resource id、IP address、hostname、FQDN を証跡化しない。 |
+| `provider-prerequisite` | ConoHa VPS 上に Ubuntu Server 24.04 LTS 64bit、`minimum_plan_class=conoha-vps-1gb-memory-class` の試験本番運用専用 VPS が存在し、512MB plan、別 OS、application template、正式本番 data が使われていないことを記録する。provider plan、region、VPS instance、public endpoint は opaque label だけで記録し、provider account id、resource id、IP address、hostname、FQDN を証跡化しない。 |
 | `access-baseline` | SSH 到達性、known_hosts、host key、管理用 user、sudo capability、時刻同期、opaque host label、network、DNS、firewall の初期状態を記録する。hostname、IP address、FQDN は証跡へ保存しない。 |
 | `system-baseline` | kernel、systemd、filesystem、available disk、required command、umask、locale、timezone、state directory parent の owner / mode を記録する。 |
 | `release-acquisition` | GitHub Release asset、SHA256SUMS、version、binary 起動結果を取得し、checksum mismatch、取得失敗、version mismatch を失敗として固定する。 |
@@ -85,7 +87,7 @@ ConoHa VPS resource の作成、削除、plan 変更、disk rebuild、volume 操
 
 <a id="phase-17-secret-input-boundary"></a>
 
-## 3b. credential / SSH 入力境界
+**3b. credential / SSH 入力境界：**
 
 Phase 17 の試験本番運用検証で使用する provider API token、admin token、SSH private key、IP 固有 secret、host 固有 secret は、repository、fixture、expected、record、workflow、log、stdout、stderr、Pull Request body、issue comment、chat message、screen shot に保存してはならない。
 
@@ -121,7 +123,7 @@ Phase 17 の証跡に保存できる secret 関連情報は、`secret_class`、`
 
 <a id="phase-17-trial-operation-window"></a>
 
-## 3c. 試験本番運用窓・停止条件
+**3c. 試験本番運用窓・停止条件：**
 
 Phase 17 の `trial-production-conoha-vps` の試験本番運用窓は `continuous-24h` 固定とする。運用窓は `operation-baseline` の成功後に開始し、service start、API health、Admin CLI health、runner dry-run、state write、audit log、secret mask の初回成功を記録してから 24 時間連続で監視する。24 時間未満、監視開始条件未達、または監視 record の欠落がある場合は、試験本番運用を完了扱いにしてはならない。
 
@@ -133,7 +135,7 @@ Phase 17 の停止条件は `secret-boundary-failure`、`destructive-operation-b
 
 <a id="phase-17-validation-targets"></a>
 
-## 4. 検証対象
+**4. 検証対象：**
 
 Phase 17 は以下を検証対象に含める。
 
@@ -155,7 +157,8 @@ Phase 17 は以下を検証対象に含める。
 
 各対象の詳細な owner 実装契約は、対象 owner component 別詳細本文を参照する。Phase 17 は、これらの実装契約を本番環境同等条件で検証する入口であり、owner 詳細本文の処理仕様を再定義しない。
 
-## 5. 禁止事項
+<a id="phase-17-forbidden-items"></a>
+**5. 禁止事項：**
 
 Phase 17 では以下を禁止する。
 
@@ -170,7 +173,7 @@ Phase 17 では以下を禁止する。
 
 <a id="phase-17-conoha-contract"></a>
 
-## 6. ConoHa VPS 先行試験本番運用契約
+**6. ConoHa VPS 先行試験本番運用契約：**
 
 `trial-production-conoha-vps` は `conoha-vps-primary` に対して実行する。
 
@@ -190,7 +193,7 @@ Phase 17 の試験本番運用ループは `operation-start`、`monitor`、`issu
 
 <a id="phase-17-xserver-future-contract"></a>
 
-## 7. エックスサーバ VPS 将来判断契約
+**7. エックスサーバ VPS 将来判断契約：**
 
 エックスサーバ VPS は Phase 17 時点では `xserver-vps-future` として扱う。
 
@@ -208,7 +211,7 @@ Phase 17 の fixture 証跡へ接続する future target 分類は、`xserver-vp
 <a id="phase-17-production-validation-evidence-connection"></a>
 <a id="phase-17-production-validation-completion"></a>
 
-## 8. 証跡接続条件
+**8. 証跡接続条件：**
 
 Phase 17 の fixture 証跡、closure counter、required check、required check workflow、checker 実行入口、negative boundary、document drift record は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) を正本とする。
 
