@@ -398,7 +398,7 @@ Phase 17 は owner component を追加しない。ConoHa VPS 試験本番運用�
 | エックスサーバ VPS 将来判断 | [`docs/details/production-validation.md` 本番検証詳細本文責務 §7](details/production-validation.md#phase-17-xserver-future-contract) | `classification=future_plan`、`phase17_completion_blocker=false`。 |
 | 証跡・完了条件 | [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) | 全 closure counter と `final_open_item_count` を `0` にする。 |
 
-Phase 17 実装 PR は、下表の required check を同一 PR 本文へ記録する。check 名と完了条件の本文は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) を正本とする。
+Phase 17 実装 PR は、下表の required check を同一 PR 本文へ記録する。check 名、完了条件、required check workflow 契約、checker 実行入口、document drift record の本文は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) を正本とする。
 
 | required check | 対象 |
 |----------------|------|
