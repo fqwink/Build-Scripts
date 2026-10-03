@@ -1,10 +1,10 @@
 # Adlaire CI — 試験本番運用詳細仕様
 
-[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、ConoHa VPS 試験本番運用、本番運用前提の本番検証、本番環境同等テスト、VPS simulation、provider target、destructive operation 禁止境界、運用中バグ修正順序、fixture 証跡への接続条件だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
+[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、ConoHa VPS 試験本番運用、本番運用前提の本番検証、本番環境同等テスト、VPS simulation、provider target、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、fixture 証跡への接続条件だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
 
 ## 0. 責務境界
 
-本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用に関する、運用対象、provider target、OS / plan 前提、検証対象、検証 mode、禁止操作、運用中バグ修正順序、fixture 証跡への接続条件を所有する。
+本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用に関する、運用対象、provider target、OS / plan 前提、検証対象、検証 mode、credential / SSH 入力境界、試験本番運用窓・停止条件、禁止操作、運用中バグ修正順序、fixture 証跡への接続条件を所有する。
 
 本番検証詳細本文責務は、owner component の通常処理、API route、SDK method、UI DOM、runner pipeline、state schema、release asset format、setup install 処理、VPS provider API 操作実装、GitHub 設定、credential 管理方式を本文として定義しない。これらは該当する owner component 別詳細本文、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、または [`AGENTS.md`](../../AGENTS.md) 作業ルールを参照する。ただし、Phase 17 検証で secret を証跡へ混入させないための入力境界、許可入力経路、禁止入力経路、証跡化禁止事項は本番検証詳細本文責務が所有する。これは Adlaire CI の credential 管理方式ではなく、試験本番運用検証の boundary contract として扱う。
 
@@ -39,6 +39,8 @@ Phase 17 の provider target は以下に固定する。
 
 Phase 17 の ConoHa VPS 試験本番運用環境は、Ubuntu Server 24.04 LTS 64bit を固定 OS とし、Ubuntu 24.04 の要件を満たす ConoHa VPS 最小 plan を採用する。ConoHa VPS 上の最小採用 plan は RAM 1GB 以上とし、512MB plan は Phase 17 の対象外とする。Ubuntu 26.04、Ubuntu 22.04、Debian、AlmaLinux、Rocky Linux、CentOS Stream、Oracle Linux、FreeBSD、および application template は Phase 17 の標準 OS として扱わない。
 
+ConoHa VPS 試験本番運用環境の provider plan、region、VPS instance、public endpoint は、fixture 証跡では opaque label としてだけ記録する。provider account id、provider resource id、グローバル IP address、hostname、FQDN、credential file path、secret 値、secret hash を fixture、expected、record、Pull Request body、log、stdout、stderr に保存してはならない。実 provider の識別が必要な場合は、operator が管理する repository 外の対応表で照合し、repository 内の証跡には `metadata_policy=opaque-non-secret-labels` を記録する。
+
 <a id="phase-17-validation-modes"></a>
 
 ## 3. 検証 mode
@@ -62,8 +64,8 @@ Phase 17 の構築は、以下の work unit を順序固定で実行する。
 
 | work unit | 完了条件 |
 |-----------|----------|
-| `provider-prerequisite` | ConoHa VPS 上に Ubuntu Server 24.04 LTS 64bit、RAM 1GB 以上の試験本番運用専用 VPS が存在し、512MB plan、別 OS、application template、正式本番 data が使われていないことを記録する。 |
-| `access-baseline` | SSH 到達性、known_hosts、host key、管理用 user、sudo capability、時刻同期、hostname、network、DNS、firewall の初期状態を記録する。 |
+| `provider-prerequisite` | ConoHa VPS 上に Ubuntu Server 24.04 LTS 64bit、RAM 1GB 以上の試験本番運用専用 VPS が存在し、512MB plan、別 OS、application template、正式本番 data が使われていないことを記録する。provider plan、region、VPS instance、public endpoint は opaque label だけで記録し、provider account id、resource id、IP address、hostname、FQDN を証跡化しない。 |
+| `access-baseline` | SSH 到達性、known_hosts、host key、管理用 user、sudo capability、時刻同期、opaque host label、network、DNS、firewall の初期状態を記録する。hostname、IP address、FQDN は証跡へ保存しない。 |
 | `system-baseline` | kernel、systemd、filesystem、available disk、required command、umask、locale、timezone、state directory parent の owner / mode を記録する。 |
 | `release-acquisition` | GitHub Release asset、SHA256SUMS、version、binary 起動結果を取得し、checksum mismatch、取得失敗、version mismatch を失敗として固定する。 |
 | `install-bootstrap` | state directory、config、credential 初期化、systemd unit、専用 user、最小権限、service start、health endpoint を構築し、stdout / stderr contract を記録する。 |
