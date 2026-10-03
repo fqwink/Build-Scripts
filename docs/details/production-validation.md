@@ -75,6 +75,8 @@ Phase 17 の構築は、以下の work unit を順序固定で実行する。
 
 ConoHa VPS resource の作成、削除、plan 変更、disk rebuild、volume 操作、firewall lockout は、Adlaire CI の Phase 17 実装機能として自動化しない。Phase 17 は、試験本番運用専用 VPS が存在することを preflight で検証し、その後の install、service、runtime、update、rollback、運用、simulation の結果を証跡化する。
 
+禁止 provider operation token は `vps-create`、`vps-delete`、`plan-change`、`disk-rebuild`、`volume-create`、`volume-delete`、`volume-attach`、`volume-detach`、`firewall-lockout`、`ssh-lockout` に固定する。Phase 17 の fixture、negative boundary、required check、PR 証跡は、この token set 以外の名称で禁止 provider operation を表現してはならない。
+
 ## 4. 検証対象
 
 Phase 17 は以下を検証対象に含める。

@@ -750,13 +750,16 @@ Phase 17 fixture は以下の path だけを持つ。未知 path、欠落 path�
 | `manifest.json` | Phase 17 evidence package manifest。 |
 | `input/provider_targets.json` | `conoha-vps-primary` と `xserver-vps-future` の分類入力。 |
 | `input/conoha_vps_environment.json` | ConoHa VPS preflight、environment、capability、state directory、network 入力。 |
+| `input/buildout_plan.json` | 試験本番運用環境構築 work unit、順序、禁止 provider operation 境界入力。 |
 | `input/trial_operation.json` | 試験本番運用ループ、問題検出、仕様全般策定、バグ修正、再配置、再検証の入力。 |
 | `input/simulation_matrix.json` | 本番環境同等 simulation、failure class、destructive operation 代替検証入力。 |
 | `input/security_boundary.json` | secret leak、provider credential 非保存、token / key mask、destructive operation 禁止境界入力。 |
 | `expected/counters.json` | Phase 17 closure counter 期待値。 |
 | `expected/runtime_flow.json` | setup、update、rollback、systemd、API、Admin、SDK、UI、runner、build / deploy dry-run の期待 flow。 |
+| `expected/buildout.json` | 試験本番運用環境構築の work unit 順序、許可操作、禁止操作、counter 接続期待値。 |
 | `expected/bugfix_loop.json` | 運用中バグ修正の仕様全般策定先行、再検証、既知バグ 0 の期待値。 |
 | `records/real_conoha.jsonl` | `trial-production-conoha-vps` の実行証跡。 |
+| `records/buildout.jsonl` | 試験本番運用環境構築 work unit の実行証跡。 |
 | `records/operation.jsonl` | 試験本番運用ループの実行証跡。 |
 | `records/bugfix.jsonl` | 運用中バグ修正、仕様全般策定、再検証の証跡。 |
 | `records/simulation.jsonl` | `production-equivalent-simulation` の実行証跡。 |
@@ -767,7 +770,13 @@ Phase 17 fixture は以下の path だけを持つ。未知 path、欠落 path�
 
 `input/provider_targets.json` は `provider_target` ごとに 1 record だけを持つ。`provider_target=conoha-vps-primary` は `classification=required_trial_production`、`completion_blocker=true`、`os=ubuntu-server-24.04-lts-64bit`、`minimum_ram_mb=1024`、`excluded_plan=512mb` 固定とする。`provider_target=xserver-vps-future` は `classification=future_plan`、`completion_blocker=false`、`future_ref` に [`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) への責務名付き Markdown link を持つ。`xserver-vps-future` を required check、failure、open item、または blocker として記録した場合は `phase17_xserver_future_misclassified_count` に計上する。
 
+`input/buildout_plan.json` は root object に `schema_version`、`scope`、`provider_target`、`validation_mode`、`required_check`、`work_units`、`forbidden_provider_operations` だけを持つ。`schema_version` は `1`、`scope` は `phase-17-production-validation`、`provider_target` は `conoha-vps-primary`、`validation_mode` は `trial-production-conoha-vps`、`required_check` は `phase17-trial-production-buildout` 固定とする。`work_units` は [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 17 構築プラン](production-validation.md#phase-17-buildout-plan) の `work unit` 列と同じ値を同じ順序で持つ array とし、欠落、追加、重複、順序変更を禁止する。`forbidden_provider_operations` は [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 17 構築プラン](production-validation.md#phase-17-buildout-plan) の禁止 provider operation token set と同じ値を同じ順序で持つ array とし、Phase 17 実装機能として成功扱いしてはならない。
+
+`expected/buildout.json` は root object に `schema_version`、`scope`、`required_check`、`expected_work_unit_order`、`allowed_provider_operation_classes`、`forbidden_provider_operations`、`counter_key`、`counter_value` だけを持つ。`expected_work_unit_order` は `input/buildout_plan.json` の `work_units` と完全一致し、`allowed_provider_operation_classes` は `read-only`、`service-lifecycle` の順序固定 array とし、`forbidden_provider_operations` は `input/buildout_plan.json` の `forbidden_provider_operations` と完全一致する。`counter_key` は `phase17_buildout_open_count`、`counter_value` は integer `0` 固定とする。
+
 `records/*.jsonl` の各 record は `record_id`、`scope`、`provider_target`、`validation_mode`、`check_name`、`source_ref`、`result`、`counter_key`、`started_at`、`ended_at`、`stdout_sha256`、`stderr_sha256`、`secret_scan_result`、`destructive_operation_result`、`evidence_ref` を必須とする。`scope` は `phase-17-production-validation`、`provider_target` は `conoha-vps-primary` または `xserver-vps-future`、`validation_mode` は `trial-production-conoha-vps`、`production-equivalent-simulation`、または `future_plan` とする。`result` は `passed`、`failed`、`not_applicable`、`future_plan`、`rejected` のいずれかとし、Phase 17 完了時に `failed` と `rejected` は 0 件でなければならない。
+
+`records/buildout.jsonl` の各 record は、共通 key に加えて `buildout_step`、`sequence`、`work_unit_result`、`provider_operation_class`、`forbidden_provider_operation_detected`、`precondition_ref`、`actual_ref`、`expected_ref` を必須とする。`check_name` は `phase17-trial-production-buildout`、`counter_key` は `phase17_buildout_open_count` 固定とする。`buildout_step` と `sequence` は `input/buildout_plan.json` の `work_units` 順序と完全一致しなければならない。`provider_operation_class` は `read-only` または `service-lifecycle` だけを許可し、`forbidden_provider_operation_detected` は boolean `false` 固定とする。欠落 record、順序不一致、`work_unit_result` の `failed` / `skipped` / `unknown`、禁止 provider operation の検出、screen shot だけの証跡、または `expected/buildout.json` との不一致は `phase17_buildout_open_count` と `final_open_item_count` に計上する。
 
 `records/operation.jsonl` の各 record は、共通 key に加えて `operation_step`、`service_state`、`health_result`、`state_write_result`、`log_write_result`、`revalidation_ref` を必須とする。`operation_step` は `operation-start`、`monitor`、`issue-detect`、`spec-general-update`、`implementation-fix`、`redeploy`、`revalidate`、`evidence-record`、`known-bug-zero-check` のいずれかとし、同一 issue に対してこの順序が崩れた場合は `phase17_trial_operation_open_count` に計上する。
 

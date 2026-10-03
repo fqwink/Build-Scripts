@@ -403,7 +403,7 @@ Phase 17 実装 PR は、下表の required check を同一 PR 本文へ記録�
 | required check | 対象 |
 |----------------|------|
 | `phase17-conoha-vps-preflight` | ConoHa VPS preflight、OS / plan 前提、provider target record。 |
-| `phase17-trial-production-buildout` | 試験本番運用環境構築。 |
+| `phase17-trial-production-buildout` | 試験本番運用環境構築。構築 plan input、構築 expected、構築 record は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) を参照する。 |
 | `phase17-conoha-install-update-rollback` | install、update、rollback、cleanup。 |
 | `phase17-systemd-lifecycle` | systemd enable / start / restart / stop / status / reboot recovery。 |
 | `phase17-runtime-flow` | API、Admin、SDK、UI、runner、build / deploy dry-run。 |
