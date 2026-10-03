@@ -147,7 +147,7 @@ Phase 17 の証跡は、`xserver-vps-future` について以下を記録する�
 | `provider_target` | `xserver-vps-future` |
 | `classification` | `future_plan` |
 | `future_ref` | [`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) |
-| `phase17_completion_blocker` | `false` |
+| `completion_blocker` | `false` |
 
 `xserver-vps-future` に対して required check、fixture root、provider credential、VPS execution record、simulation 専用分岐を作成する場合は、Phase 17 の完了条件ではなく、将来 Phase または改訂予定 item として扱う。
 
