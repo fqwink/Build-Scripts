@@ -39,6 +39,7 @@
 | Phase 16 negative control coverage matrix | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 negative control coverage matrix 固定契約](details/fixture.md#phase-16-negative-control-coverage-matrix) |
 | Phase 16 source coverage detection registry | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡](details/fixture.md#phase-16-quality-evidence-closure-evidence) |
 | Phase 16 implementation sequence | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 implementation sequence 固定契約](details/fixture.md#phase-16-implementation-sequence-contract) |
+| Phase 16 future Phase document boundary | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 future Phase document boundary 固定契約](details/fixture.md#phase-16-future-phase-document-boundary) |
 | Phase 16 required check workflow | `.github/workflows/phase16-quality-evidence-closure.yml` |
 | Phase 17 本番環境同等検証の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 17 本番環境同等検証参照](DETAIL_INDEX.md#phase-17-production-validation-entry) |
 | Phase 17 本番検証詳細本文 | [`docs/details/production-validation.md`](details/production-validation.md) |
