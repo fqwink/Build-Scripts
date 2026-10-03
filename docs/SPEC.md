@@ -363,8 +363,10 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   │   └── implementation-alignment-quality/
 │   ├── phase14/
 │   │   └── obsidian-vault-integration/
-│   └── phase15/
-│       └── obsidian-local-sync/
+│   ├── phase15/
+│   │   └── obsidian-local-sync/
+│   └── phase16/
+│       └── quality-evidence-closure/
 │
 ├── docs/
 │   ├── SPEC.md
