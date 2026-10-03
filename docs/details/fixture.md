@@ -479,7 +479,7 @@ Phase 16 の実装は下表の順序で進める。前段の artifact、schema�
 | 4 | 各 inventory から `expected/actions.json`、`records/*.jsonl`、closure counter を再導出し、hand-written counter、record 存在だけの完了、PR 本文だけの完了を拒否する。 | 1 inventory record、1 action、1 件以上の evidence record、1 counter の接続が成立し、再集計 counter が `expected/counters.json` と一致する。 |
 | 5 | `input/negative_controls.json` と [Phase 16 negative control coverage matrix 固定契約](#phase-16-negative-control-coverage-matrix) を実装し、失敗すべき変異を `isolation_mode=temporary_copy` だけで実行する。 | すべての negative control が失敗として検出され、`negative_control_passed_count=0`、`negative_control_failed_count=negative_control_count` になる。 |
 | 6 | `phase16-go-format`、`phase16-go-test`、`phase16-deno-check`、`phase16-race`、`phase16-quality-evidence-fixture`、`phase16-mutation`、`phase16-fault-injection`、`phase16-workflow-hardening`、`phase16-document-drift` を required check として接続する。 | `records/execution.jsonl`、`records/mutation.jsonl`、`records/fault.jsonl`、`records/workflow.jsonl` が required check 表の全 check 名へ接続する。 |
-| 7 | [`docs/ROADMAP.md`](../ROADMAP.md) の現在状態、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) の所在、Phase 16 fixture root、workflow、counter、PR evidence、対象外理由、将来計画維持の drift を checker で 0 にする。 | `phase16_document_drift_open_count=0`、`final_open_item_count=0`、checker stdout の `result=passed`、stderr 空、`diagnostic_count=0` を同時に満たす。 |
+| 7 | [`docs/ROADMAP.md`](../ROADMAP.md) の現在状態、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) の所在、Phase 16 fixture root、workflow、counter、PR evidence、対象外理由、将来計画維持、後続 Phase 文書境界の drift を checker で 0 にする。 | `phase16_document_drift_open_count=0`、`final_open_item_count=0`、checker stdout の `result=passed`、stderr 空、`diagnostic_count=0` を同時に満たす。 |
 
 Phase 16 実装では、順序 1 の checker skeleton が未完成のまま fixture file だけを増やしてはならない。順序 2 の schema を checker が読めない状態で inventory を完了扱いにしてはならない。順序 3 の live source coverage set 再導出が未完成のまま `expected/counters.json` を `0` にしてはならない。順序 4 の inventory / action / record / counter 接続が未完成のまま negative control を追加してはならない。順序 5 の negative control が成功扱いになる状態で required check を成功扱いにしてはならない。順序 6 の required check が未接続のまま ROADMAP を `実装済み` にしてはならない。順序 7 の document drift が 1 件でも残る場合、Phase 16 は `仕様化済み・未実装` または `実装中・検証未完了` のままとする。
 
@@ -504,6 +504,15 @@ Phase 16 実装では、順序 1 の checker skeleton が未完成のまま fixt
 | `records/workflow.jsonl` | workflow hardening と required check 実行証跡。 | action SHA pin、permissions、timeout、required check、Docker fallback、Deno stable、release rehearsal、Phase 12 workflow 差分が閉じている。 |
 
 Phase 16 の棚卸し対象 source は、[Phase 16 source enumeration / digest 固定契約](#phase-16-source-enumeration-digest-contract) で列挙できる実在 path と、必須所在確認対象の不在 record を基準にする。実装者は同列挙結果から `AGENTS.md`、`README.md`、`main.go`、`go.mod`、`components/*/*.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html`、`.github/workflows/*.yml`、`.github/workflows/*.yaml`、`testdata/phase12/quality-gate-reconstruction/**`、`testdata/phase13/implementation-alignment-quality/**`、`testdata/phase14/obsidian-vault-integration/**`、`testdata/phase15/obsidian-local-sync/**`、`testdata/phase16/quality-evidence-closure/**`、`docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`docs/DESIGN.md`、`docs/details/fixture.md`、`docs/details/*.md` を Phase 16 source coverage set として扱う。`go.sum` は必須所在確認対象とし、実在する場合は source coverage set に含め、実在しない場合は `go.sum` が存在しないことを `input/source_coverage.json` の `not_applicable` record として扱い、存在しない file を作成して補ってはならない。source coverage set は UTF-8 byte 昇順の一意 path とし、重複 pattern で同一 path が複数回一致しても record は 1 件だけ作成する。source coverage set に含まれる path を inventory から省略してはならない。対象外とする場合も、該当 inventory record に `classification=not_applicable`、`not_applicable_ref`、`status=not_applicable` を記録する。
+
+<a id="phase-16-future-phase-document-boundary"></a>
+**Phase 16 future Phase document boundary 固定契約：**
+
+Phase 16 checker は、Phase 17 以降の詳細本文、ROADMAP 行、target path、required check、fixture root を Phase 16 の実装対象、必須 fixture、必須 workflow、未完了 work unit、または completion blocker として扱ってはならない。Phase 17 以降の文書を読む場合は、Phase 16 の active Phase 境界、依存順序、将来計画維持、文書 drift だけを確認する document boundary input とする。
+
+Phase 16 source coverage set に Phase 17 以降の文書が含まれる場合、`input/source_coverage.json` の record は `path_kind=document`、`classification=future_plan`、`required_action=keep_future_plan`、`status=future_plan`、`future_ref` に [`docs/ROADMAP.md` 状態・計画責務 §5](../ROADMAP.md#522-統合ロードマップ表) または該当する後続 Phase 入口への責務名付き Markdown link を持つ。Phase 17 以降の未作成 fixture root、未作成 workflow、未作成 required check、未実行 provider validation、未実行 production simulation を Phase 16 の `open`、`failed`、`rejected`、または `execute_and_close` に分類してはならない。
+
+Phase 16 checker は、Phase 17 以降の文書に現れる検出対象語を未分類の term として失敗させるのではなく、future Phase boundary record に接続する。future Phase boundary record が欠落している場合、または Phase 17 以降の対象を Phase 16 の完了必須項目へ誤分類した場合は、`PHASE16_DOCUMENT_DRIFT` とし、`phase16_document_drift_open_count` と `final_open_item_count` を `0` にしてはならない。
 
 <a id="phase-16-source-enumeration-digest-contract"></a>
 **Phase 16 source enumeration / digest 固定契約：**
@@ -625,7 +634,7 @@ Phase 16 の `input/negative_controls.json` は、下表の `target_contract` �
 | `workflow` | workflow action SHA pin 欠落、permissions 欠落、timeout 欠落、required check 不一致、または skip success を検出する。 | `PHASE16_DOCUMENT_DRIFT`、`PHASE16_SCHEMA_MISSING_KEY`、`PHASE16_SCHEMA_TYPE_MISMATCH` のいずれか。 | `phase16_workflow_hardening_open_count` | `phase16-workflow-hardening` |
 | `mutation` | mutation 未実行、survived mutation の 0 誤集計、または invalid / equivalent の根拠欠落を検出する。 | `PHASE16_RUNTIME_UNEXECUTED`、`PHASE16_RECORD_RESULT_OPEN`、`PHASE16_COUNTER_MISMATCH` のいずれか。 | `phase16_mutation_survived_count` | `phase16-mutation` |
 | `fault` | fault injection 未実行、silent success、rollback / recovery 不一致、または fault record 未接続を検出する。 | `PHASE16_RUNTIME_UNEXECUTED`、`PHASE16_RECORD_RESULT_OPEN`、`PHASE16_RECORD_UNLINKED` のいずれか。 | `phase16_fault_injection_open_count` | `phase16-fault-injection` |
-| `document_drift` | Phase 16 の状態、path、anchor、fixture root、workflow、required check、対象外理由、将来計画維持の drift を検出する。 | `PHASE16_DOCUMENT_DRIFT` | `phase16_document_drift_open_count` | `phase16-document-drift` |
+| `document_drift` | Phase 16 の状態、path、anchor、fixture root、workflow、required check、対象外理由、将来計画維持、後続 Phase 文書境界の drift を検出する。 | `PHASE16_DOCUMENT_DRIFT` | `phase16_document_drift_open_count` | `phase16-document-drift` |
 
 checker は、上表の各 `target_contract` に対して 1 件以上の negative control record、1 件の `expected/actions.json` action、1 件以上の `records/execution.jsonl` record、1 件の diagnostic expectation、1 件の positive control reference が存在することを再導出する。いずれかの接続が欠ける場合、`PHASE16_RECORD_UNLINKED` または `PHASE16_NEGATIVE_CONTROL_SCHEMA_INVALID` として扱う。
 
@@ -682,7 +691,7 @@ diagnostic JSON Lines は `failure_code`、`severity`、`inventory_id`、`record
 | `PHASE16_NEGATIVE_CONTROL_SCHEMA_INVALID` | `input/negative_controls.json` の schema、期待 failure code、isolation、positive control 接続が不正である。 |
 | `PHASE16_NEGATIVE_CONTROL_PASSED` | 失敗すべき negative control が成功扱いになった。 |
 | `PHASE16_RUNTIME_UNEXECUTED` | 必須 runtime / production entrypoint / Deno / Docker / mutation / fault / race / release rehearsal が未実行である。 |
-| `PHASE16_DOCUMENT_DRIFT` | path、anchor、状態、workflow、required check、対象外理由、将来計画維持に drift がある。 |
+| `PHASE16_DOCUMENT_DRIFT` | path、anchor、状態、workflow、required check、対象外理由、将来計画維持、後続 Phase 文書境界に drift がある。 |
 | `PHASE16_INTERNAL_ERROR` | checker の内部 error、panic、partial read、filesystem error、source enumeration error が発生した。 |
 
 Phase 16 closure record set は、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record を使用し、各 record の `scope` に `phase-16-quality-evidence-closure` を含める。Phase 16 では以下の集計値を同じ closure record set 内に記録する。
@@ -706,7 +715,7 @@ Phase 16 closure record set は、[test verification closure record set 固定�
 | `phase16_validation_portability_open_count` | `0` | host Go / Deno 不在時の Docker 検証手順、runtime version、実行 command、失敗時扱いが固定されていない。 |
 | `phase16_release_rehearsal_open_count` | `0` | release rehearsal、tag / checksum / signature / SBOM / reproducible build 証跡、setup install rehearsal に残件がある。 |
 | `phase16_large_owner_risk_open_count` | `0` | 巨大 owner file に risk ledger、内部責務区画、test artifact 接続、5 ファイル原則維持証跡がない。 |
-| `phase16_document_drift_open_count` | `0` | Phase 16 の状態、path、anchor、fixture root、workflow、required check、対象外理由、将来計画維持の drift がある。 |
+| `phase16_document_drift_open_count` | `0` | Phase 16 の状態、path、anchor、fixture root、workflow、required check、対象外理由、将来計画維持、後続 Phase 文書境界の drift がある。 |
 | `final_open_item_count` | `0` | 上記集計値または closure record の `open_items` に残件がある。 |
 
 Phase 16 required check は以下に固定する。Phase 16 実装 PR は、下表の check 名、対象、完了条件を同一 Pull Request 本文へ記録する。
@@ -721,9 +730,9 @@ Phase 16 required check は以下に固定する。Phase 16 実装 PR は、下�
 | `phase16-mutation` | production code mutation | `records/mutation.jsonl` の `survived=0`。 |
 | `phase16-fault-injection` | filesystem、HTTP、process、permission、write failure | `records/fault.jsonl` が全 failure class を実行し、silent success が 0。 |
 | `phase16-workflow-hardening` | `.github/workflows/*.yml`、`.github/workflows/*.yaml` と required check | action SHA pin、permissions、timeout、required check、Phase 12 workflow hardening がすべて閉じる。 |
-| `phase16-document-drift` | [`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md)、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md)、[`docs/details/fixture.md`](fixture.md)、対象 owner 詳細本文 | Phase 16 の状態、path、anchor、fixture root、workflow、counter、対象外理由、将来計画維持の drift が 0。 |
+| `phase16-document-drift` | [`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md)、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md)、[`docs/details/fixture.md`](fixture.md)、対象 owner 詳細本文、後続 Phase 詳細本文 | Phase 16 の状態、path、anchor、fixture root、workflow、counter、対象外理由、将来計画維持、後続 Phase 文書境界の drift が 0。 |
 
-Phase 16 fixture は `input/negative_controls.json` による negative control を必須とする。negative control は、JSON duplicate key を受理、diagnostic JSON Lines の必須 key 欠落を受理、`severity=warning` を成功扱い、`failure_code` registry 外値を受理、source coverage set の path 省略、`go.sum` 不在 record 欠落、`go.mod` の外部 `require` / `replace` を未検出、`detected_terms` を raw string だけで受理、detection registry の検出漏れ、checker stdout / stderr schema 不一致、JSONL record だけで成功、counter だけで成功、実行していない mutation を killed と扱う、survived mutation を 0 と誤集計、fault injection 未実行、skip を成功扱い、required write failure の無視、panic 未分類、clock / sleep / timeout の非決定、response write failure 無視、client disconnect 無視、fsync failure 無視、rename failure 無視、parent directory fsync 欠落、workflow tag pin、workflow permissions 欠落、workflow timeout 欠落、host tool 不在時の成功扱い、Deno 未実行の JavaScript 成功扱い、release rehearsal 未実行、巨大 owner risk ledger 欠落、`ALIGN-*` 未分類、将来計画対象を Phase 16 完了対象として誤計上する case を 1 件以上含める。checker は各 negative control を `isolation_mode=temporary_copy` で fixture root の一時 copy にだけ適用し、live fixture root、source coverage set、expected、record を直接破壊してはならない。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase16_execution_evidence_gap_count`、`phase16_align_unclassified_count`、または該当する `phase16_*_open_count` に計上する。
+Phase 16 fixture は `input/negative_controls.json` による negative control を必須とする。negative control は、JSON duplicate key を受理、diagnostic JSON Lines の必須 key 欠落を受理、`severity=warning` を成功扱い、`failure_code` registry 外値を受理、source coverage set の path 省略、`go.sum` 不在 record 欠落、`go.mod` の外部 `require` / `replace` を未検出、`detected_terms` を raw string だけで受理、detection registry の検出漏れ、checker stdout / stderr schema 不一致、JSONL record だけで成功、counter だけで成功、実行していない mutation を killed と扱う、survived mutation を 0 と誤集計、fault injection 未実行、skip を成功扱い、required write failure の無視、panic 未分類、clock / sleep / timeout の非決定、response write failure 無視、client disconnect 無視、fsync failure 無視、rename failure 無視、parent directory fsync 欠落、workflow tag pin、workflow permissions 欠落、workflow timeout 欠落、host tool 不在時の成功扱い、Deno 未実行の JavaScript 成功扱い、release rehearsal 未実行、巨大 owner risk ledger 欠落、`ALIGN-*` 未分類、将来計画対象を Phase 16 完了対象として誤計上する case、Phase 17 以降の未作成 fixture root または required check を Phase 16 blocker として誤計上する case を 1 件以上含める。checker は各 negative control を `isolation_mode=temporary_copy` で fixture root の一時 copy にだけ適用し、live fixture root、source coverage set、expected、record を直接破壊してはならない。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase16_execution_evidence_gap_count`、`phase16_align_unclassified_count`、または該当する `phase16_*_open_count` に計上する。
 
 <a id="phase-17-production-validation-evidence"></a>
 **Phase 17 本番環境同等検証証跡：**

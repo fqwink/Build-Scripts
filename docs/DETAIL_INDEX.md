@@ -377,6 +377,8 @@ Phase 16 の各 work unit は、下表の inventory と owner 範囲をすべて
 
 Phase 16 の実装者は、各 inventory の `required_action` が `future_plan` の場合でも、[`docs/ROADMAP.md` 状態・計画責務 §5](ROADMAP.md#522-統合ロードマップ表) への到達可能な `future_ref` を記録する。`future_ref` を持たない将来計画維持、`closure_ref` を持たない完了、`not_applicable_ref` を持たない対象外、または同一 item の複数 action は未完了として扱う。
 
+Phase 16 は後続 Phase 文書を Phase 16 の未完了項目として吸収してはならない。Phase 17 以降の詳細本文、target path、fixture root、required check、provider validation、production simulation は、[`docs/details/fixture.md` fixture 証跡責務 Phase 16 future Phase document boundary 固定契約](details/fixture.md#phase-16-future-phase-document-boundary) に従い、document drift と将来計画維持の境界確認だけに使用する。
+
 Phase 16 の完了判定では、[`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) を必ず通過する。checker が live source coverage set から検出した対象を `input/source_coverage.json`、各 inventory、`expected/actions.json`、`records/*.jsonl`、closure counter に再導出できない場合、該当 work unit は `closed` にしてはならない。手書き counter、手書き closure record、または PR 本文だけを checker の代替証跡にしてはならない。checker の stdout / stderr、exit code、diagnostic schema、source coverage detection registry は [`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) のみを正本とする。
 
 <a id="phase-17-production-validation-entry"></a>

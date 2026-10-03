@@ -389,6 +389,7 @@
 | `testdata/phase16/quality-evidence-closure/records/fault.jsonl` | Phase 16 fault injection 証跡 | 未作成 |
 | `testdata/phase16/quality-evidence-closure/records/workflow.jsonl` | Phase 16 workflow hardening 証跡 | 未作成 |
 | `.github/workflows/phase16-quality-evidence-closure.yml` | Phase 16 required check workflow | 未作成 |
+| [`docs/details/production-validation.md`](details/production-validation.md) | Phase 16 future Phase document boundary 入力。Phase 16 checker は Phase 17 文書を document drift 境界確認だけに使用し、Phase 16 blocker として扱わない。 | 実在 |
 
 <a id="phase-17-target-paths"></a>
 **Phase 17 target path 所在：**
