@@ -34,6 +34,7 @@
 | Phase 16 checker execution entrypoint | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) |
 | Phase 16 checker diagnostic schema | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) |
 | Phase 16 negative control schema | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 inventory 共通 schema](details/fixture.md#phase-16-inventory-common-schema) |
+| Phase 16 negative control coverage matrix | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 negative control coverage matrix 固定契約](details/fixture.md#phase-16-negative-control-coverage-matrix) |
 | Phase 16 source coverage detection registry | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡](details/fixture.md#phase-16-quality-evidence-closure-evidence) |
 | Phase 16 required check workflow | `.github/workflows/phase16-quality-evidence-closure.yml` |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
@@ -367,9 +368,9 @@
 | `testdata/phase16/quality-evidence-closure/input/filesystem_inventory.json` | filesystem durability 棚卸し入力 | 未作成 |
 | `testdata/phase16/quality-evidence-closure/input/workflow_inventory.json` | workflow hardening / Docker 検証棚卸し入力 | 未作成 |
 | `testdata/phase16/quality-evidence-closure/input/large_owner_inventory.json` | 巨大 owner risk ledger 入力 | 未作成 |
-| `testdata/phase16/quality-evidence-closure/input/negative_controls.json` | Phase 16 checker / harness / counter / diagnostic 負例入力 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/input/negative_controls.json` | Phase 16 checker / harness / counter / diagnostic 負例入力。coverage matrix の入力を兼ねる。 | 未作成 |
 | `testdata/phase16/quality-evidence-closure/expected/counters.json` | Phase 16 closure counter 期待値 | 未作成 |
-| `testdata/phase16/quality-evidence-closure/expected/actions.json` | Phase 16 closure action 期待値 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/expected/actions.json` | Phase 16 closure action 期待値。negative control coverage matrix の action 接続を含む。 | 未作成 |
 | `testdata/phase16/quality-evidence-closure/records/closure.jsonl` | Phase 16 closure record set | 未作成 |
 | `testdata/phase16/quality-evidence-closure/records/execution.jsonl` | Phase 16 execution 証跡 | 未作成 |
 | `testdata/phase16/quality-evidence-closure/records/mutation.jsonl` | Phase 16 mutation 証跡 | 未作成 |
