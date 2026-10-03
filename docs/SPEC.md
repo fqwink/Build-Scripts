@@ -366,8 +366,10 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   │   └── obsidian-vault-integration/
 │   ├── phase15/
 │   │   └── obsidian-local-sync/
-│   └── phase16/
-│       └── quality-evidence-closure/
+│   ├── phase16/
+│   │   └── quality-evidence-closure/
+│   └── phase17/
+│       └── production-validation/
 │
 ├── docs/
 │   ├── SPEC.md
@@ -390,7 +392,8 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 │   │   ├── commitstatus.md
 │   │   ├── mcp.md
 │   │   ├── obsidian.md
-│   │   └── fixture.md
+│   │   ├── fixture.md
+│   │   └── production-validation.md
 │   └── examples/
 │
 ├── sdk_contract_test.go
