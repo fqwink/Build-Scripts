@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "scope": "phase-16-quality-evidence-closure",
+  "counters": {
+    "phase16_declarative_evidence_open_count": 0,
+    "phase16_execution_evidence_gap_count": 0,
+    "phase16_mutation_survived_count": 0,
+    "phase16_fault_injection_open_count": 0,
+    "phase16_align_unclassified_count": 0,
+    "phase16_align_open_count": 0,
+    "phase16_ignored_error_unclassified_count": 0,
+    "phase16_required_write_failure_open_count": 0,
+    "phase16_skip_open_count": 0,
+    "phase16_panic_unclassified_count": 0,
+    "phase16_determinism_open_count": 0,
+    "phase16_http_boundary_open_count": 0,
+    "phase16_filesystem_durability_open_count": 0,
+    "phase16_workflow_hardening_open_count": 0,
+    "phase16_validation_portability_open_count": 0,
+    "phase16_release_rehearsal_open_count": 0,
+    "phase16_large_owner_risk_open_count": 0,
+    "phase16_document_drift_open_count": 0,
+    "final_open_item_count": 0
+  }
+}

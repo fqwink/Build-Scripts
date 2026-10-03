@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scope": "phase-16-quality-evidence-closure",
+  "work_unit": "phase16-maintainability",
+  "records": [
+    {
+      "id": "phase16.large-owner.risk-ledger",
+      "work_unit": "phase16-maintainability",
+      "owner_component": "runner",
+      "source_ref": "docs/SPEC.md#sec-4-3",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_large_owner_risk_open_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl"
+      ]
+    }
+  ]
+}

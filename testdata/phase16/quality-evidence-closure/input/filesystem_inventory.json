@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "scope": "phase-16-quality-evidence-closure",
+  "work_unit": "phase16-filesystem-durability",
+  "records": [
+    {
+      "id": "phase16.filesystem.durability",
+      "work_unit": "phase16-filesystem-durability",
+      "owner_component": "statefile",
+      "source_ref": "docs/details/statefile.md#sec-22-0a",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_filesystem_durability_open_count",
+      "closure_ref": "records/fault.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl",
+        "records/fault.jsonl"
+      ]
+    }
+  ]
+}

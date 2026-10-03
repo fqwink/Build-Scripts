@@ -2,7 +2,11 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -342,7 +346,7 @@ func TestPhase11FixtureManifestGate(t *testing.T) {
 		manifest := phase11ReadManifest(t, manifestPath)
 		fixtureDir := filepath.Dir(manifestPath)
 
-		if manifest.Name != filepath.Base(fixtureDir) && !phase13AllowsScopeName(manifestPath, manifest.Name) && !phase14AllowsScopeName(manifestPath, manifest.Name) && !phase15AllowsScopeName(manifestPath, manifest.Name) {
+		if manifest.Name != filepath.Base(fixtureDir) && !phase13AllowsScopeName(manifestPath, manifest.Name) && !phase14AllowsScopeName(manifestPath, manifest.Name) && !phase15AllowsScopeName(manifestPath, manifest.Name) && !phase16AllowsScopeName(manifestPath, manifest.Name) {
 			t.Fatalf("%s name must match fixture directory, got %q", manifestPath, manifest.Name)
 		}
 		if prior := seenNames[manifest.Name]; prior != "" {
@@ -488,11 +492,11 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if !strings.Contains(roadmap, phase13CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 実装済み after Phase 13 closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 16 とする。") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 16 is the active Phase after Phase 15 closure")
+	if !strings.Contains(roadmap, "現在の active Phase は Phase 17 とする。") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 17 is the active Phase after Phase 16 closure")
 	}
-	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 15 まではすべて `実装済み`") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 15 are all implemented after Phase 15 closure")
+	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 16 まではすべて `実装済み`") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 16 are all implemented after Phase 16 closure")
 	}
 
 	for _, feature := range phase11QualityGateFeatures {
@@ -606,6 +610,72 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if !strings.Contains(roadmap, "状態ファイル共通永続化契約 | [`docs/DETAIL_INDEX.md`") || !strings.Contains(roadmap, "| 実装済み | 状態管理 | 状態ファイル共通永続化契約 |") {
 		t.Fatalf("docs/ROADMAP.md must mark the statefile common persistence contract implemented after verification")
 	}
+}
+
+func TestPhase16QualityEvidenceClosure(t *testing.T) {
+	t.Parallel()
+
+	const root = "testdata/phase16/quality-evidence-closure"
+	phase16RequireFixtureFiles(t, root)
+
+	manifestPath := filepath.Join(root, "manifest.json")
+	manifest := phase11ReadManifest(t, manifestPath)
+	if manifest.Name != phase16Scope {
+		t.Fatalf("%s name must be %s, got %q", manifestPath, phase16Scope, manifest.Name)
+	}
+	if manifest.Scope != phase16Scope {
+		t.Fatalf("%s scope must be %s, got %q", manifestPath, phase16Scope, manifest.Scope)
+	}
+	if !phase11StringSlicesEqual(manifest.Owners, phase16Owners) {
+		t.Fatalf("%s owners mismatch\nwant: %v\n got: %v", manifestPath, phase16Owners, manifest.Owners)
+	}
+	if !phase11StringSlicesEqual(manifest.Components, phase16Components) {
+		t.Fatalf("%s components mismatch\nwant: %v\n got: %v", manifestPath, phase16Components, manifest.Components)
+	}
+	if !phase11StringSlicesEqual(manifest.RequiredChecks, phase16RequiredChecks) {
+		t.Fatalf("%s required_checks mismatch\nwant: %v\n got: %v", manifestPath, phase16RequiredChecks, manifest.RequiredChecks)
+	}
+	if !phase11StringSlicesEqual(manifest.ClosureRecords, phase16ClosureRecords) {
+		t.Fatalf("%s closure_records mismatch\nwant: %v\n got: %v", manifestPath, phase16ClosureRecords, manifest.ClosureRecords)
+	}
+	for _, sourceAnchor := range manifest.SourceAnchors {
+		phase11RequireMarkdownReference(t, manifestPath, sourceAnchor)
+	}
+
+	counters := phase16ReadCounters(t, filepath.Join(root, "expected", "counters.json"))
+	phase16RequireAllCountersZero(t, counters)
+
+	inventory := phase16ReadInventoryFiles(t, root)
+	negativeControls := phase16ReadNegativeControls(t, filepath.Join(root, "input", "negative_controls.json"))
+	for _, control := range negativeControls {
+		if _, exists := inventory[control.ID]; exists {
+			t.Fatalf("negative control inventory id is duplicated: %s", control.ID)
+		}
+		inventory[control.ID] = phase16InventoryRecord{
+			ID:             control.ID,
+			WorkUnit:       control.WorkUnit,
+			OwnerComponent: control.OwnerComponent,
+			SourceRef:      control.PositiveControlRef,
+			Classification: "negative_control",
+			Status:         "closed",
+			CounterKey:     control.CounterKey,
+			ClosureRef:     control.PositiveControlRef,
+			EvidenceRecords: []string{
+				"records/execution.jsonl",
+			},
+		}
+	}
+
+	actions := phase16ReadActions(t, filepath.Join(root, "expected", "actions.json"))
+	records := phase16ReadEvidenceRecords(t, root)
+
+	phase16RequireSourceCoverage(t, filepath.Join(root, "input", "source_coverage.json"), inventory)
+	phase16RequireInventoryActionRecordClosure(t, inventory, actions, records, counters)
+	phase16RequireClosureRecordSet(t, records["records/closure.jsonl"])
+	phase16RequireRequiredChecks(t, manifest, records)
+	phase16RequireNegativeControls(t, negativeControls, actions, records)
+	phase16RequireWorkflow(t, ".github/workflows/phase16-quality-evidence-closure.yml")
+	phase16RequireDocumentDriftClosed(t)
 }
 
 func TestPhase14ObsidianVaultIntegrationEvidence(t *testing.T) {
@@ -1160,6 +1230,254 @@ var phase13ClosureCounters = []string{
 	"final_open_item_count",
 }
 
+const phase16Scope = "phase-16-quality-evidence-closure"
+
+var phase16Owners = []string{
+	"admin",
+	"api",
+	"archive",
+	"builder",
+	"commitstatus",
+	"mcp",
+	"obsidian",
+	"release",
+	"runner",
+	"sdk",
+	"security",
+	"setup",
+	"statefile",
+	"ui",
+}
+
+var phase16Components = []string{
+	"admin",
+	"api",
+	"archive",
+	"builder",
+	"commitstatus",
+	"mcp",
+	"obsidian",
+	"release",
+	"runner",
+	"sdk",
+	"security",
+	"setup",
+	"statefile",
+	"ui",
+}
+
+var phase16RequiredChecks = []string{
+	"phase16-go-format",
+	"phase16-go-test",
+	"phase16-deno-check",
+	"phase16-race",
+	"phase16-quality-evidence-fixture",
+	"phase16-mutation",
+	"phase16-fault-injection",
+	"phase16-workflow-hardening",
+	"phase16-document-drift",
+}
+
+var phase16ClosureRecords = []string{
+	"records/closure.jsonl",
+	"records/execution.jsonl",
+	"records/mutation.jsonl",
+	"records/fault.jsonl",
+	"records/workflow.jsonl",
+}
+
+var phase16ClosureCounters = []string{
+	"phase16_declarative_evidence_open_count",
+	"phase16_execution_evidence_gap_count",
+	"phase16_mutation_survived_count",
+	"phase16_fault_injection_open_count",
+	"phase16_align_unclassified_count",
+	"phase16_align_open_count",
+	"phase16_ignored_error_unclassified_count",
+	"phase16_required_write_failure_open_count",
+	"phase16_skip_open_count",
+	"phase16_panic_unclassified_count",
+	"phase16_determinism_open_count",
+	"phase16_http_boundary_open_count",
+	"phase16_filesystem_durability_open_count",
+	"phase16_workflow_hardening_open_count",
+	"phase16_validation_portability_open_count",
+	"phase16_release_rehearsal_open_count",
+	"phase16_large_owner_risk_open_count",
+	"phase16_document_drift_open_count",
+	"final_open_item_count",
+}
+
+var phase16RequiredFixtureFiles = []string{
+	"manifest.json",
+	"input/source_coverage.json",
+	"input/evidence_inventory.json",
+	"input/align_inventory.json",
+	"input/error_inventory.json",
+	"input/determinism_inventory.json",
+	"input/filesystem_inventory.json",
+	"input/workflow_inventory.json",
+	"input/large_owner_inventory.json",
+	"input/negative_controls.json",
+	"expected/counters.json",
+	"expected/actions.json",
+	"records/closure.jsonl",
+	"records/execution.jsonl",
+	"records/mutation.jsonl",
+	"records/fault.jsonl",
+	"records/workflow.jsonl",
+}
+
+var phase16InventoryFiles = []string{
+	"input/evidence_inventory.json",
+	"input/align_inventory.json",
+	"input/error_inventory.json",
+	"input/determinism_inventory.json",
+	"input/filesystem_inventory.json",
+	"input/workflow_inventory.json",
+	"input/large_owner_inventory.json",
+}
+
+type phase16CounterFile struct {
+	SchemaVersion int            `json:"schema_version"`
+	Scope         string         `json:"scope"`
+	Counters      map[string]int `json:"counters"`
+}
+
+type phase16InventoryFile struct {
+	SchemaVersion int                      `json:"schema_version"`
+	Scope         string                   `json:"scope"`
+	WorkUnit      string                   `json:"work_unit"`
+	Records       []phase16InventoryRecord `json:"records"`
+}
+
+type phase16InventoryRecord struct {
+	ID               string   `json:"id"`
+	WorkUnit         string   `json:"work_unit"`
+	OwnerComponent   string   `json:"owner_component"`
+	SourceRef        string   `json:"source_ref"`
+	Classification   string   `json:"classification"`
+	Status           string   `json:"status"`
+	CounterKey       string   `json:"counter_key"`
+	ClosureRef       string   `json:"closure_ref"`
+	NotApplicableRef *string  `json:"not_applicable_ref"`
+	FutureRef        *string  `json:"future_ref"`
+	EvidenceRecords  []string `json:"evidence_records"`
+}
+
+type phase16ActionFile struct {
+	SchemaVersion int             `json:"schema_version"`
+	Scope         string          `json:"scope"`
+	Actions       []phase16Action `json:"actions"`
+}
+
+type phase16Action struct {
+	ID                 string `json:"id"`
+	InventoryID        string `json:"inventory_id"`
+	Action             string `json:"action"`
+	OwnerComponent     string `json:"owner_component"`
+	ExpectedCounterKey string `json:"expected_counter_key"`
+	ExpectedStatus     string `json:"expected_status"`
+	EvidenceRecord     string `json:"evidence_record"`
+}
+
+type phase16NegativeControlFile struct {
+	SchemaVersion    int                      `json:"schema_version"`
+	Scope            string                   `json:"scope"`
+	NegativeControls []phase16NegativeControl `json:"negative_controls"`
+}
+
+type phase16NegativeControl struct {
+	ID                  string `json:"id"`
+	WorkUnit            string `json:"work_unit"`
+	OwnerComponent      string `json:"owner_component"`
+	TargetContract      string `json:"target_contract"`
+	ExpectedFailureCode string `json:"expected_failure_code"`
+	IsolationMode       string `json:"isolation_mode"`
+	RequiredCheck       string `json:"required_check"`
+	CounterKey          string `json:"counter_key"`
+	PositiveControlRef  string `json:"positive_control_ref"`
+}
+
+type phase16SourceCoverageFile struct {
+	SchemaVersion     int                   `json:"schema_version"`
+	Scope             string                `json:"scope"`
+	GeneratedFrom     string                `json:"generated_from"`
+	SourceGroupSHA256 string                `json:"source_group_sha256"`
+	GoSum             phase16GoSumRecord    `json:"go_sum"`
+	Sources           []phase16SourceRecord `json:"sources"`
+}
+
+type phase16GoSumRecord struct {
+	Path         string  `json:"path"`
+	SourceExists bool    `json:"source_exists"`
+	SHA256       *string `json:"sha256"`
+	SizeBytes    int64   `json:"size_bytes"`
+	Reason       string  `json:"reason"`
+	InventoryID  string  `json:"inventory_id"`
+}
+
+type phase16SourceRecord struct {
+	Path           string                `json:"path"`
+	SourceExists   bool                  `json:"source_exists"`
+	SHA256         string                `json:"sha256"`
+	SizeBytes      int64                 `json:"size_bytes"`
+	OwnerComponent string                `json:"owner_component"`
+	Area           string                `json:"area"`
+	DetectedTerms  []phase16DetectedTerm `json:"detected_terms"`
+	InventoryRefs  []string              `json:"inventory_refs"`
+}
+
+type phase16DetectedTerm struct {
+	TermID             string `json:"term_id"`
+	Match              string `json:"match"`
+	MatchMode          string `json:"match_mode"`
+	Count              int    `json:"count"`
+	FirstSourceLocator string `json:"first_source_locator"`
+}
+
+type phase16EvidenceRecord struct {
+	RecordID               string `json:"record_id"`
+	Scope                  string `json:"scope"`
+	WorkUnit               string `json:"work_unit"`
+	InventoryID            string `json:"inventory_id"`
+	OwnerComponent         string `json:"owner_component"`
+	SourceRef              string `json:"source_ref"`
+	Result                 string `json:"result"`
+	CounterKey             string `json:"counter_key"`
+	CheckName              string `json:"check_name,omitempty"`
+	Command                string `json:"command,omitempty"`
+	Runtime                string `json:"runtime,omitempty"`
+	InputSHA256            string `json:"input_sha256,omitempty"`
+	ExpectedSHA256         string `json:"expected_sha256,omitempty"`
+	ActualSHA256           string `json:"actual_sha256,omitempty"`
+	DiffResult             string `json:"diff_result,omitempty"`
+	ExitCode               *int   `json:"exit_code,omitempty"`
+	StdoutSHA256           string `json:"stdout_sha256,omitempty"`
+	StderrSHA256           string `json:"stderr_sha256,omitempty"`
+	MutationTarget         string `json:"mutation_target,omitempty"`
+	MutationClass          string `json:"mutation_class,omitempty"`
+	BeforeSHA256           string `json:"before_sha256,omitempty"`
+	AfterSHA256            string `json:"after_sha256,omitempty"`
+	ExpectedFailure        string `json:"expected_failure,omitempty"`
+	ActualFailure          string `json:"actual_failure,omitempty"`
+	MutationResult         string `json:"mutation_result,omitempty"`
+	FaultClass             string `json:"fault_class,omitempty"`
+	InjectionResult        string `json:"injection_result,omitempty"`
+	RecoveryResult         string `json:"recovery_result,omitempty"`
+	SilentSuccess          *bool  `json:"silent_success,omitempty"`
+	WorkflowPath           string `json:"workflow_path,omitempty"`
+	JobName                string `json:"job_name,omitempty"`
+	ActionPinResult        string `json:"action_pin_result,omitempty"`
+	PermissionsResult      string `json:"permissions_result,omitempty"`
+	TimeoutResult          string `json:"timeout_result,omitempty"`
+	RequiredCheckResult    string `json:"required_check_result,omitempty"`
+	DockerFallbackResult   string `json:"docker_fallback_result,omitempty"`
+	RuntimeVersionResult   string `json:"runtime_version_result,omitempty"`
+	DenoCheckResult        string `json:"deno_check_result,omitempty"`
+	ReleaseRehearsalResult string `json:"release_rehearsal_result,omitempty"`
+}
+
 var phase11BuilderFormalFixtures = []string{
 	"testdata/builder/empty-dir",
 	"testdata/builder/safe",
@@ -1206,6 +1524,702 @@ func phase14AllowsScopeName(manifestPath string, name string) bool {
 func phase15AllowsScopeName(manifestPath string, name string) bool {
 	return filepath.ToSlash(manifestPath) == "testdata/phase15/obsidian-local-sync/manifest.json" &&
 		name == "phase-15-obsidian-local-sync"
+}
+
+func phase16AllowsScopeName(manifestPath string, name string) bool {
+	return filepath.ToSlash(manifestPath) == "testdata/phase16/quality-evidence-closure/manifest.json" &&
+		name == phase16Scope
+}
+
+func phase16RequireFixtureFiles(t *testing.T, root string) {
+	t.Helper()
+
+	info, err := os.Stat(root)
+	if err != nil {
+		t.Fatalf("Phase 16 fixture root must exist: %v", err)
+	}
+	if !info.IsDir() {
+		t.Fatalf("Phase 16 fixture root must be a directory: %s", root)
+	}
+	for _, rel := range phase16RequiredFixtureFiles {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("Phase 16 fixture path missing %s: %v", rel, err)
+		}
+		if info.IsDir() {
+			t.Fatalf("Phase 16 fixture path must be a file: %s", rel)
+		}
+		if strings.HasSuffix(rel, ".json") || strings.HasSuffix(rel, ".jsonl") {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read %s: %v", path, err)
+			}
+			if len(data) == 0 || data[len(data)-1] != '\n' {
+				t.Fatalf("%s must end with LF", path)
+			}
+			if strings.HasSuffix(rel, ".json") {
+				phase16RequireNoDuplicateJSONKeys(t, path, data)
+			}
+		}
+	}
+}
+
+func phase16ReadCounters(t *testing.T, path string) map[string]int {
+	t.Helper()
+
+	var file phase16CounterFile
+	phase16ReadStrictJSON(t, path, &file)
+	if file.SchemaVersion != 1 || file.Scope != phase16Scope {
+		t.Fatalf("%s must use schema_version=1 and scope=%s", path, phase16Scope)
+	}
+	return file.Counters
+}
+
+func phase16RequireAllCountersZero(t *testing.T, counters map[string]int) {
+	t.Helper()
+
+	if len(counters) != len(phase16ClosureCounters) {
+		t.Fatalf("Phase 16 counters must include exactly %d keys, got %d", len(phase16ClosureCounters), len(counters))
+	}
+	for _, key := range phase16ClosureCounters {
+		value, ok := counters[key]
+		if !ok {
+			t.Fatalf("Phase 16 counters missing %s", key)
+		}
+		if value != 0 {
+			t.Fatalf("Phase 16 counter %s must be 0, got %d", key, value)
+		}
+	}
+}
+
+func phase16ReadInventoryFiles(t *testing.T, root string) map[string]phase16InventoryRecord {
+	t.Helper()
+
+	records := map[string]phase16InventoryRecord{}
+	for _, rel := range phase16InventoryFiles {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		var file phase16InventoryFile
+		phase16ReadStrictJSON(t, path, &file)
+		if file.SchemaVersion != 1 || file.Scope != phase16Scope || strings.TrimSpace(file.WorkUnit) == "" {
+			t.Fatalf("%s must use schema_version=1, scope=%s, and non-empty work_unit", path, phase16Scope)
+		}
+		if len(file.Records) == 0 {
+			t.Fatalf("%s must include at least one inventory record", path)
+		}
+		for _, record := range file.Records {
+			phase16RequireInventoryRecord(t, path, record, file.WorkUnit)
+			if _, exists := records[record.ID]; exists {
+				t.Fatalf("duplicate Phase 16 inventory id %s", record.ID)
+			}
+			records[record.ID] = record
+		}
+	}
+	return records
+}
+
+func phase16RequireInventoryRecord(t *testing.T, path string, record phase16InventoryRecord, fileWorkUnit string) {
+	t.Helper()
+
+	if record.ID == "" || record.WorkUnit == "" || record.OwnerComponent == "" || record.SourceRef == "" || record.Classification == "" || record.Status == "" || record.CounterKey == "" || record.ClosureRef == "" {
+		t.Fatalf("%s inventory record must not contain empty required fields: %+v", path, record)
+	}
+	if record.WorkUnit != fileWorkUnit {
+		t.Fatalf("%s record %s work_unit mismatch: file=%s record=%s", path, record.ID, fileWorkUnit, record.WorkUnit)
+	}
+	if record.Status != "closed" && record.Status != "not_applicable" && record.Status != "future_plan" {
+		t.Fatalf("%s record %s has invalid status %q", path, record.ID, record.Status)
+	}
+	if !phase16CounterAllowed(record.CounterKey) {
+		t.Fatalf("%s record %s uses unknown counter %s", path, record.ID, record.CounterKey)
+	}
+	if len(record.EvidenceRecords) == 0 {
+		t.Fatalf("%s record %s must connect to at least one evidence record file", path, record.ID)
+	}
+	for _, rel := range record.EvidenceRecords {
+		if !phase16ClosureRecordAllowed(rel) {
+			t.Fatalf("%s record %s uses unknown evidence record %s", path, record.ID, rel)
+		}
+	}
+}
+
+func phase16ReadActions(t *testing.T, path string) []phase16Action {
+	t.Helper()
+
+	var file phase16ActionFile
+	phase16ReadStrictJSON(t, path, &file)
+	if file.SchemaVersion != 1 || file.Scope != phase16Scope {
+		t.Fatalf("%s must use schema_version=1 and scope=%s", path, phase16Scope)
+	}
+	if len(file.Actions) == 0 {
+		t.Fatalf("%s must include actions", path)
+	}
+	return file.Actions
+}
+
+func phase16ReadNegativeControls(t *testing.T, path string) []phase16NegativeControl {
+	t.Helper()
+
+	var file phase16NegativeControlFile
+	phase16ReadStrictJSON(t, path, &file)
+	if file.SchemaVersion != 1 || file.Scope != phase16Scope {
+		t.Fatalf("%s must use schema_version=1 and scope=%s", path, phase16Scope)
+	}
+	if len(file.NegativeControls) < len(phase16RequiredChecks) {
+		t.Fatalf("%s must include at least one negative control per required check", path)
+	}
+	seenTargets := map[string]bool{}
+	for _, control := range file.NegativeControls {
+		if control.ID == "" || control.WorkUnit == "" || control.OwnerComponent == "" || control.TargetContract == "" || control.ExpectedFailureCode == "" || control.RequiredCheck == "" || control.CounterKey == "" || control.PositiveControlRef == "" {
+			t.Fatalf("%s negative control must not contain empty required fields: %+v", path, control)
+		}
+		if control.IsolationMode != "temporary_copy" {
+			t.Fatalf("%s negative control %s must use isolation_mode=temporary_copy", path, control.ID)
+		}
+		if !strings.HasPrefix(control.ExpectedFailureCode, "PHASE16_") {
+			t.Fatalf("%s negative control %s failure code must start with PHASE16_", path, control.ID)
+		}
+		if !phase16RequiredCheckAllowed(control.RequiredCheck) {
+			t.Fatalf("%s negative control %s uses unknown required check %s", path, control.ID, control.RequiredCheck)
+		}
+		if !phase16CounterAllowed(control.CounterKey) {
+			t.Fatalf("%s negative control %s uses unknown counter %s", path, control.ID, control.CounterKey)
+		}
+		seenTargets[control.TargetContract] = true
+	}
+	for _, target := range []string{
+		"json-duplicate-key",
+		"source-coverage",
+		"counter-reaggregation",
+		"mutation-survivor",
+		"fault-injection",
+		"workflow-hardening",
+		"future-phase-boundary",
+	} {
+		if !seenTargets[target] {
+			t.Fatalf("%s must include negative control target_contract=%s", path, target)
+		}
+	}
+	return file.NegativeControls
+}
+
+func phase16ReadEvidenceRecords(t *testing.T, root string) map[string][]phase16EvidenceRecord {
+	t.Helper()
+
+	records := map[string][]phase16EvidenceRecord{}
+	for _, rel := range phase16ClosureRecords {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		records[rel] = phase16ReadEvidenceRecordFile(t, path, rel)
+		if len(records[rel]) == 0 {
+			t.Fatalf("%s must include at least one record", path)
+		}
+	}
+	return records
+}
+
+func phase16ReadEvidenceRecordFile(t *testing.T, path string, rel string) []phase16EvidenceRecord {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	text := string(data)
+	if !strings.HasSuffix(text, "\n") {
+		t.Fatalf("%s must end with LF", path)
+	}
+	var records []phase16EvidenceRecord
+	seen := map[string]bool{}
+	for index, line := range strings.Split(strings.TrimSuffix(text, "\n"), "\n") {
+		if strings.TrimSpace(line) == "" {
+			t.Fatalf("%s line %d must not be empty", path, index+1)
+		}
+		phase16RequireNoDuplicateJSONKeys(t, fmt.Sprintf("%s line %d", path, index+1), []byte(line))
+		var record phase16EvidenceRecord
+		decoder := json.NewDecoder(strings.NewReader(line))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&record); err != nil {
+			t.Fatalf("decode %s line %d: %v", path, index+1, err)
+		}
+		if record.RecordID == "" || record.Scope != phase16Scope || record.WorkUnit == "" || record.InventoryID == "" || record.OwnerComponent == "" || record.SourceRef == "" || record.Result == "" || record.CounterKey == "" {
+			t.Fatalf("%s line %d common fields are invalid: %+v", path, index+1, record)
+		}
+		if seen[record.RecordID] {
+			t.Fatalf("%s repeats record_id %s", path, record.RecordID)
+		}
+		seen[record.RecordID] = true
+		if !strings.HasPrefix(record.RecordID, "phase16.record."+strings.TrimSuffix(filepath.Base(rel), ".jsonl")+".") {
+			t.Fatalf("%s line %d record_id does not match record file: %s", path, index+1, record.RecordID)
+		}
+		if record.Result == "failed" || record.Result == "rejected" {
+			t.Fatalf("%s line %d must not leave failed or rejected result: %s", path, index+1, record.Result)
+		}
+		if !phase16CounterAllowed(record.CounterKey) {
+			t.Fatalf("%s line %d uses unknown counter %s", path, index+1, record.CounterKey)
+		}
+		phase16RequireRecordSpecificFields(t, path, index+1, rel, record)
+		records = append(records, record)
+	}
+	return records
+}
+
+func phase16RequireRecordSpecificFields(t *testing.T, path string, line int, rel string, record phase16EvidenceRecord) {
+	t.Helper()
+
+	switch rel {
+	case "records/execution.jsonl":
+		if record.CheckName == "" || record.Command == "" || record.Runtime == "" || record.InputSHA256 == "" || record.ExpectedSHA256 == "" || record.ActualSHA256 == "" || record.DiffResult == "" || record.ExitCode == nil || record.StdoutSHA256 == "" || record.StderrSHA256 == "" {
+			t.Fatalf("%s line %d execution record missing required execution fields: %+v", path, line, record)
+		}
+		if strings.HasPrefix(record.InventoryID, "phase16.negative.") {
+			if !strings.HasPrefix(record.DiffResult, "PHASE16_") {
+				t.Fatalf("%s line %d negative execution diff_result must be PHASE16_* failure code, got %q", path, line, record.DiffResult)
+			}
+		} else if record.DiffResult != "empty" {
+			t.Fatalf("%s line %d execution diff_result must be empty, got %q", path, line, record.DiffResult)
+		}
+	case "records/mutation.jsonl":
+		if record.MutationTarget == "" || record.MutationClass == "" || record.BeforeSHA256 == "" || record.AfterSHA256 == "" || record.ExpectedFailure == "" || record.ActualFailure == "" || record.MutationResult == "" {
+			t.Fatalf("%s line %d mutation record missing required fields: %+v", path, line, record)
+		}
+		if record.MutationResult == "survived" {
+			t.Fatalf("%s line %d mutation must not survive", path, line)
+		}
+	case "records/fault.jsonl":
+		if record.FaultClass == "" || record.InjectionResult == "" || record.RecoveryResult == "" || record.SilentSuccess == nil {
+			t.Fatalf("%s line %d fault record missing required fields: %+v", path, line, record)
+		}
+		if *record.SilentSuccess {
+			t.Fatalf("%s line %d fault record must not be silent success", path, line)
+		}
+	case "records/workflow.jsonl":
+		if record.WorkflowPath == "" || record.JobName == "" || record.ActionPinResult == "" || record.PermissionsResult == "" || record.TimeoutResult == "" || record.RequiredCheckResult == "" || record.DockerFallbackResult == "" || record.RuntimeVersionResult == "" || record.DenoCheckResult == "" || record.ReleaseRehearsalResult == "" {
+			t.Fatalf("%s line %d workflow record missing required fields: %+v", path, line, record)
+		}
+		for _, result := range []string{record.ActionPinResult, record.PermissionsResult, record.TimeoutResult, record.RequiredCheckResult, record.DockerFallbackResult, record.RuntimeVersionResult, record.DenoCheckResult, record.ReleaseRehearsalResult} {
+			if result != "passed" && result != "not_applicable" {
+				t.Fatalf("%s line %d workflow result must be passed or not_applicable, got %q", path, line, result)
+			}
+		}
+	}
+}
+
+func phase16RequireSourceCoverage(t *testing.T, path string, inventory map[string]phase16InventoryRecord) {
+	t.Helper()
+
+	var file phase16SourceCoverageFile
+	phase16ReadStrictJSON(t, path, &file)
+	if file.SchemaVersion != 1 || file.Scope != phase16Scope || file.GeneratedFrom == "" {
+		t.Fatalf("%s must use schema_version=1, scope=%s, and generated_from", path, phase16Scope)
+	}
+	if file.GoSum.Path != "go.sum" {
+		t.Fatalf("%s go_sum path must be go.sum", path)
+	}
+	_, goSumErr := os.Stat("go.sum")
+	if os.IsNotExist(goSumErr) {
+		if file.GoSum.SourceExists || file.GoSum.SHA256 != nil || file.GoSum.SizeBytes != 0 || file.GoSum.InventoryID == "" {
+			t.Fatalf("%s must record absent go.sum as non-existent source", path)
+		}
+	} else if goSumErr == nil {
+		if !file.GoSum.SourceExists || file.GoSum.SHA256 == nil || *file.GoSum.SHA256 != phase16FileSHA256(t, "go.sum") {
+			t.Fatalf("%s go_sum hash must match live go.sum", path)
+		}
+	} else {
+		t.Fatalf("stat go.sum: %v", goSumErr)
+	}
+
+	if len(file.Sources) < 10 {
+		t.Fatalf("%s must include at least 10 source coverage records", path)
+	}
+	seen := map[string]bool{}
+	var digestMaterial strings.Builder
+	for _, source := range file.Sources {
+		if source.Path == "" || source.OwnerComponent == "" || source.Area == "" || len(source.InventoryRefs) == 0 || len(source.DetectedTerms) == 0 {
+			t.Fatalf("%s source record must not contain empty required fields: %+v", path, source)
+		}
+		if seen[source.Path] {
+			t.Fatalf("%s repeats source path %s", path, source.Path)
+		}
+		seen[source.Path] = true
+		info, err := os.Stat(filepath.FromSlash(source.Path))
+		if err != nil {
+			t.Fatalf("%s source path %s must exist: %v", path, source.Path, err)
+		}
+		if info.IsDir() {
+			t.Fatalf("%s source path %s must be a file", path, source.Path)
+		}
+		if !source.SourceExists {
+			t.Fatalf("%s source path %s must use source_exists=true", path, source.Path)
+		}
+		if source.SizeBytes != info.Size() {
+			t.Fatalf("%s source %s size mismatch: want %d got %d", path, source.Path, info.Size(), source.SizeBytes)
+		}
+		if got := phase16FileSHA256(t, source.Path); got != source.SHA256 {
+			t.Fatalf("%s source %s sha256 mismatch: want %s got %s", path, source.Path, source.SHA256, got)
+		}
+		for _, ref := range source.InventoryRefs {
+			if _, ok := inventory[ref]; !ok {
+				t.Fatalf("%s source %s references unknown inventory id %s", path, source.Path, ref)
+			}
+		}
+		for _, term := range source.DetectedTerms {
+			if term.TermID == "" || term.Match == "" || term.MatchMode == "" || term.Count < 1 || term.FirstSourceLocator == "" {
+				t.Fatalf("%s source %s contains invalid detected term: %+v", path, source.Path, term)
+			}
+		}
+		digestMaterial.WriteString(source.Path)
+		digestMaterial.WriteByte('\n')
+		digestMaterial.WriteString(source.SHA256)
+		digestMaterial.WriteByte('\n')
+	}
+	if file.SourceGroupSHA256 != phase16StringSHA256(digestMaterial.String()) {
+		t.Fatalf("%s source_group_sha256 mismatch", path)
+	}
+}
+
+func phase16RequireInventoryActionRecordClosure(t *testing.T, inventory map[string]phase16InventoryRecord, actions []phase16Action, records map[string][]phase16EvidenceRecord, counters map[string]int) {
+	t.Helper()
+
+	actionByInventory := map[string]phase16Action{}
+	for _, action := range actions {
+		if action.ID == "" || action.InventoryID == "" || action.Action == "" || action.OwnerComponent == "" || action.ExpectedCounterKey == "" || action.ExpectedStatus == "" || action.EvidenceRecord == "" {
+			t.Fatalf("Phase 16 action must not contain empty required fields: %+v", action)
+		}
+		if _, ok := inventory[action.InventoryID]; !ok {
+			t.Fatalf("Phase 16 action %s references unknown inventory id %s", action.ID, action.InventoryID)
+		}
+		if _, duplicate := actionByInventory[action.InventoryID]; duplicate {
+			t.Fatalf("Phase 16 inventory id %s has multiple actions", action.InventoryID)
+		}
+		if _, ok := counters[action.ExpectedCounterKey]; !ok {
+			t.Fatalf("Phase 16 action %s references unknown counter %s", action.ID, action.ExpectedCounterKey)
+		}
+		if !phase16ClosureRecordAllowed(action.EvidenceRecord) {
+			t.Fatalf("Phase 16 action %s references unknown evidence record %s", action.ID, action.EvidenceRecord)
+		}
+		actionByInventory[action.InventoryID] = action
+	}
+	if len(actionByInventory) != len(inventory) {
+		t.Fatalf("Phase 16 actions must cover every inventory record: actions=%d inventory=%d", len(actionByInventory), len(inventory))
+	}
+
+	recordByInventory := map[string][]phase16EvidenceRecord{}
+	for rel, recordSet := range records {
+		for _, record := range recordSet {
+			if _, ok := inventory[record.InventoryID]; !ok {
+				t.Fatalf("%s record %s references unknown inventory id %s", rel, record.RecordID, record.InventoryID)
+			}
+			if _, ok := counters[record.CounterKey]; !ok {
+				t.Fatalf("%s record %s references unknown counter %s", rel, record.RecordID, record.CounterKey)
+			}
+			recordByInventory[record.InventoryID] = append(recordByInventory[record.InventoryID], record)
+		}
+	}
+	for id, record := range inventory {
+		action := actionByInventory[id]
+		if action.OwnerComponent != record.OwnerComponent || action.ExpectedCounterKey != record.CounterKey || action.ExpectedStatus != record.Status {
+			t.Fatalf("Phase 16 action %s does not match inventory record %+v", action.ID, record)
+		}
+		var connected bool
+		for _, evidence := range recordByInventory[id] {
+			if phase16RecordFileForID(evidence.RecordID) == action.EvidenceRecord {
+				connected = true
+				break
+			}
+		}
+		if !connected {
+			t.Fatalf("Phase 16 inventory %s is not connected to action evidence %s", id, action.EvidenceRecord)
+		}
+	}
+}
+
+func phase16RequireClosureRecordSet(t *testing.T, records []phase16EvidenceRecord) {
+	t.Helper()
+
+	if len(records) != 18 {
+		t.Fatalf("Phase 16 closure record set must include 18 records, got %d", len(records))
+	}
+	for index, record := range records {
+		want := fmt.Sprintf("phase16.record.closure.all.closure-%02d", index+1)
+		if record.RecordID != want {
+			t.Fatalf("Phase 16 closure record order mismatch: want %s got %s", want, record.RecordID)
+		}
+		if record.Result != "passed" || record.CounterKey == "" {
+			t.Fatalf("Phase 16 closure record %s must be passed and counter-connected", record.RecordID)
+		}
+	}
+}
+
+func phase16RequireRequiredChecks(t *testing.T, manifest phase11Manifest, records map[string][]phase16EvidenceRecord) {
+	t.Helper()
+
+	required := map[string]bool{}
+	for _, check := range phase16RequiredChecks {
+		required[check] = false
+	}
+	if !phase11StringSlicesEqual(manifest.RequiredChecks, phase16RequiredChecks) {
+		t.Fatalf("Phase 16 manifest required checks drift")
+	}
+	for _, record := range records["records/execution.jsonl"] {
+		if _, ok := required[record.CheckName]; ok {
+			required[record.CheckName] = true
+		}
+	}
+	for _, record := range records["records/workflow.jsonl"] {
+		if _, ok := required[record.JobName]; ok {
+			required[record.JobName] = true
+		}
+	}
+	for check, seen := range required {
+		if !seen {
+			t.Fatalf("Phase 16 required check %s is not connected to execution/workflow records", check)
+		}
+	}
+}
+
+func phase16RequireNegativeControls(t *testing.T, controls []phase16NegativeControl, actions []phase16Action, records map[string][]phase16EvidenceRecord) {
+	t.Helper()
+
+	actionByInventory := map[string]phase16Action{}
+	for _, action := range actions {
+		actionByInventory[action.InventoryID] = action
+	}
+	executionByInventory := map[string][]phase16EvidenceRecord{}
+	for _, record := range records["records/execution.jsonl"] {
+		executionByInventory[record.InventoryID] = append(executionByInventory[record.InventoryID], record)
+	}
+	for _, control := range controls {
+		action, ok := actionByInventory[control.ID]
+		if !ok {
+			t.Fatalf("negative control %s must have action", control.ID)
+		}
+		if action.Action != "execute_and_close" || action.EvidenceRecord != "records/execution.jsonl" || action.ExpectedStatus != "closed" {
+			t.Fatalf("negative control %s action must execute_and_close via records/execution.jsonl", control.ID)
+		}
+		var detected bool
+		for _, record := range executionByInventory[control.ID] {
+			if record.CheckName == control.RequiredCheck && record.DiffResult == control.ExpectedFailureCode && record.Result == "passed" {
+				detected = true
+				break
+			}
+		}
+		if !detected {
+			t.Fatalf("negative control %s expected failure %s was not detected", control.ID, control.ExpectedFailureCode)
+		}
+	}
+}
+
+func phase16RequireWorkflow(t *testing.T, path string) {
+	t.Helper()
+
+	workflow := phase11MustReadText(t, path)
+	if !strings.Contains(workflow, "permissions:\n  contents: read") {
+		t.Fatalf("%s must use minimum contents:read permissions", path)
+	}
+	for _, requiredCheck := range phase16RequiredChecks {
+		if !strings.Contains(workflow, "\n  "+requiredCheck+":") {
+			t.Fatalf("%s must define required check job %s", path, requiredCheck)
+		}
+	}
+	if strings.Count(workflow, "timeout-minutes:") < len(phase16RequiredChecks) {
+		t.Fatalf("%s must set timeout-minutes on every required check", path)
+	}
+	phase13RequirePinnedActions(t, workflow)
+}
+
+func phase16RequireDocumentDriftClosed(t *testing.T) {
+	t.Helper()
+
+	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
+	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
+	if !strings.Contains(roadmap, "| Phase 16 | 実装済み品質証跡実体化・追加検証候補 closure。") || !strings.Contains(roadmap, "| 実装済み | Phase 15 |") {
+		t.Fatalf("docs/ROADMAP.md must mark Phase 16 as 実装済み")
+	}
+	if !strings.Contains(roadmap, "現在の active Phase は Phase 17 とする。") {
+		t.Fatalf("docs/ROADMAP.md must move active Phase to Phase 17 after Phase 16 closure")
+	}
+	for _, feature := range []string{
+		"Phase 16 source coverage set / detection registry / evidence package manifest / inventory / negative control / expected / record schema / checker implementation artifact / checker 実行入口 / checker 再導出 gate",
+		"Phase 16 宣言型証跡の実行型証跡化 / production entrypoint 実行 / actual expected 比較 gate",
+		"Phase 16 `ALIGN-*` 追加検証候補分類・完了 / 未分類 0 gate",
+		"Phase 16 ignored error 分類 / required write failure / panic / skip closure gate",
+		"Phase 16 clock / sleep / timeout / entropy determinism gate",
+		"Phase 16 filesystem durability parity / atomic write / fsync / parent directory fsync / symlink 非追従 gate",
+		"Phase 16 Phase 12 workflow hardening / Docker 検証手順固定 / Deno stable JavaScript 検証 / release rehearsal gate",
+		"Phase 16 巨大 owner file risk ledger / 5 ファイル原則維持 / 内部責務区画検査 gate",
+	} {
+		if !strings.Contains(roadmap, "| 実装済み |") || !strings.Contains(roadmap, feature) {
+			t.Fatalf("docs/ROADMAP.md must mark Phase 16 feature implemented: %s", feature)
+		}
+		if strings.Contains(roadmap, "| 仕様化済み・未実装 | 検証基盤 | "+feature+" |") ||
+			strings.Contains(roadmap, "| 仕様化済み・未実装 | 実装品質 | "+feature+" |") ||
+			strings.Contains(roadmap, "| 仕様化済み・未実装 | 状態管理 | "+feature+" |") ||
+			strings.Contains(roadmap, "| 仕様化済み・未実装 | CI / 配布 | "+feature+" |") ||
+			strings.Contains(roadmap, "| 仕様化済み・未実装 | 保守性 | "+feature+" |") {
+			t.Fatalf("docs/ROADMAP.md must not keep Phase 16 feature unimplemented: %s", feature)
+		}
+	}
+	for _, expected := range []string{
+		"| [`testdata/phase16/quality-evidence-closure/`](../testdata/phase16/quality-evidence-closure/) | Phase 16 quality evidence closure fixture root | 実在 |",
+		"| [`.github/workflows/phase16-quality-evidence-closure.yml`](../.github/workflows/phase16-quality-evidence-closure.yml) | Phase 16 required check workflow | 実在 |",
+		"| `testdata/phase16/quality-evidence-closure/manifest.json` | Phase 16 evidence package manifest | 実在 |",
+		"| `testdata/phase16/quality-evidence-closure/records/workflow.jsonl` | Phase 16 workflow hardening 証跡 | 実在 |",
+	} {
+		if !strings.Contains(documentIndex, expected) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must contain Phase 16実在 row: %s", expected)
+		}
+	}
+	for _, forbidden := range []string{
+		"| `testdata/phase16/quality-evidence-closure/` | Phase 16 quality evidence closure fixture root | 未作成 |",
+		"| `.github/workflows/phase16-quality-evidence-closure.yml` | Phase 16 required check workflow | 未作成 |",
+		"| `testdata/phase16/quality-evidence-closure/manifest.json` | Phase 16 evidence package manifest | 未作成 |",
+		"| `testdata/phase16/quality-evidence-closure/records/workflow.jsonl` | Phase 16 workflow hardening 証跡 | 未作成 |",
+	} {
+		if strings.Contains(documentIndex, forbidden) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must not keep Phase 16 path as 未作成: %s", forbidden)
+		}
+	}
+}
+
+func phase16ReadStrictJSON(t *testing.T, path string, out any) {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	if len(data) == 0 || data[len(data)-1] != '\n' {
+		t.Fatalf("%s must end with LF", path)
+	}
+	phase16RequireNoDuplicateJSONKeys(t, path, data)
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(out); err != nil {
+		t.Fatalf("decode %s: %v", path, err)
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		t.Fatalf("%s must contain exactly one JSON value", path)
+	}
+}
+
+func phase16RequireNoDuplicateJSONKeys(t *testing.T, path string, data []byte) {
+	t.Helper()
+
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := phase16CheckJSONValueForDuplicateKeys(decoder); err != nil {
+		t.Fatalf("%s duplicate-key check failed: %v", path, err)
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		t.Fatalf("%s must contain exactly one JSON value", path)
+	}
+}
+
+func phase16CheckJSONValueForDuplicateKeys(decoder *json.Decoder) error {
+	token, err := decoder.Token()
+	if err != nil {
+		return err
+	}
+	delim, ok := token.(json.Delim)
+	if !ok {
+		return nil
+	}
+	switch delim {
+	case '{':
+		seen := map[string]bool{}
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return err
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return fmt.Errorf("object key is not string")
+			}
+			if seen[key] {
+				return fmt.Errorf("duplicate key %q", key)
+			}
+			seen[key] = true
+			if err := phase16CheckJSONValueForDuplicateKeys(decoder); err != nil {
+				return err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if end != json.Delim('}') {
+			return fmt.Errorf("object not closed")
+		}
+	case '[':
+		for decoder.More() {
+			if err := phase16CheckJSONValueForDuplicateKeys(decoder); err != nil {
+				return err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if end != json.Delim(']') {
+			return fmt.Errorf("array not closed")
+		}
+	default:
+		return fmt.Errorf("unexpected delimiter %q", delim)
+	}
+	return nil
+}
+
+func phase16CounterAllowed(key string) bool {
+	for _, allowed := range phase16ClosureCounters {
+		if key == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+func phase16ClosureRecordAllowed(rel string) bool {
+	for _, allowed := range phase16ClosureRecords {
+		if rel == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+func phase16RequiredCheckAllowed(check string) bool {
+	for _, allowed := range phase16RequiredChecks {
+		if check == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+func phase16RecordFileForID(recordID string) string {
+	parts := strings.Split(recordID, ".")
+	if len(parts) < 3 {
+		return ""
+	}
+	return "records/" + parts[2] + ".jsonl"
+}
+
+func phase16FileSHA256(t *testing.T, path string) string {
+	t.Helper()
+
+	data, err := os.ReadFile(filepath.FromSlash(path))
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+func phase16StringSHA256(data string) string {
+	sum := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(sum[:])
 }
 
 func phase13RequireOwnerPackages(t *testing.T) {

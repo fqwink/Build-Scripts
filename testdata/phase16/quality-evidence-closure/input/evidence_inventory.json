@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "scope": "phase-16-quality-evidence-closure",
+  "work_unit": "phase16-evidence-execution",
+  "records": [
+    {
+      "id": "phase16.evidence.phase12-to-15",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "source_ref": "docs/details/fixture.md#phase-16-quality-evidence-closure-evidence",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_declarative_evidence_open_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl",
+        "records/execution.jsonl"
+      ]
+    },
+    {
+      "id": "phase16.evidence.execution-records",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "source_ref": "docs/details/fixture.md#phase-16-checker-contract",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_execution_evidence_gap_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl",
+        "records/execution.jsonl"
+      ]
+    },
+    {
+      "id": "phase16.evidence.checker-implementation",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "source_ref": "main_test.go",
+      "classification": "fix_and_close",
+      "status": "closed",
+      "counter_key": "phase16_execution_evidence_gap_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl",
+        "records/execution.jsonl"
+      ]
+    },
+    {
+      "id": "phase16.evidence.evidence-package",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "source_ref": "testdata/phase16/quality-evidence-closure/manifest.json",
+      "classification": "fix_and_close",
+      "status": "closed",
+      "counter_key": "phase16_execution_evidence_gap_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl",
+        "records/execution.jsonl"
+      ]
+    },
+    {
+      "id": "phase16.evidence.document-drift",
+      "work_unit": "phase16-evidence-execution",
+      "owner_component": "runner",
+      "source_ref": "docs/DOCUMENT_INDEX.md#phase-16-target-paths",
+      "classification": "fix_and_close",
+      "status": "closed",
+      "counter_key": "phase16_document_drift_open_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl",
+        "records/execution.jsonl"
+      ]
+    }
+  ]
+}

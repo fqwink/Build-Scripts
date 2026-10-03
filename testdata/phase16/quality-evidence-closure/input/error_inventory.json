@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "scope": "phase-16-quality-evidence-closure",
+  "work_unit": "phase16-error-boundary",
+  "records": [
+    {
+      "id": "phase16.error.ignored-error",
+      "work_unit": "phase16-error-boundary",
+      "owner_component": "security",
+      "source_ref": "docs/DETAIL_INDEX.md#cross-test-evidence-route",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_ignored_error_unclassified_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl"
+      ]
+    },
+    {
+      "id": "phase16.error.required-write",
+      "work_unit": "phase16-error-boundary",
+      "owner_component": "statefile",
+      "source_ref": "docs/DETAIL_INDEX.md#cross-test-evidence-route",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_required_write_failure_open_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl",
+        "records/fault.jsonl"
+      ]
+    },
+    {
+      "id": "phase16.error.skip-panic",
+      "work_unit": "phase16-error-boundary",
+      "owner_component": "runner",
+      "source_ref": "docs/details/fixture.md#test-skip-evidence-contract",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_skip_open_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl"
+      ]
+    }
+  ]
+}

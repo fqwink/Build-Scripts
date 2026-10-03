@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "scope": "phase-16-quality-evidence-closure",
+  "work_unit": "phase16-determinism-boundary",
+  "records": [
+    {
+      "id": "phase16.determinism.runtime-boundary",
+      "work_unit": "phase16-determinism-boundary",
+      "owner_component": "runner",
+      "source_ref": "docs/details/fixture.md#test-determinism-evidence-set-contract",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_determinism_open_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl"
+      ]
+    },
+    {
+      "id": "phase16.determinism.http-boundary",
+      "work_unit": "phase16-determinism-boundary",
+      "owner_component": "api",
+      "source_ref": "docs/details/fixture.md#test-boundary-failure-matrix-evidence-set-contract",
+      "classification": "execute_and_close",
+      "status": "closed",
+      "counter_key": "phase16_http_boundary_open_count",
+      "closure_ref": "records/closure.jsonl",
+      "not_applicable_ref": null,
+      "future_ref": null,
+      "evidence_records": [
+        "records/closure.jsonl"
+      ]
+    }
+  ]
+}
