@@ -386,33 +386,15 @@ Phase 16 の完了判定では、[`docs/details/fixture.md` fixture 証跡責務
 
 Phase 17 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、ConoHa VPS 試験本番運用の本文は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務、fixture と required check は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence)、実在 path は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 17 target path 所在](DOCUMENT_INDEX.md#phase-17-target-paths) を参照する。
 
-Phase 17 は owner component を追加しない。ConoHa VPS 試験本番運用、Ubuntu Server 24.04 LTS 64bit / RAM 1GB 以上の最小 plan 前提、本番環境同等 simulation、destructive operation 禁止境界、運用中バグ修正順序、エックスサーバ VPS 将来判断の本文は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務だけに置く。API、Admin、SDK、UI、runner、statefile、setup、release、security、archive、commitstatus、mcp の処理仕様は各 owner component 別詳細本文を参照し、Phase 17 本文では再定義しない。
+Phase 17 は owner component を追加しない。ConoHa VPS 試験本番運用、provider target、OS / plan 前提、検証 mode、本番環境同等 simulation、destructive operation 禁止境界、運用中バグ修正順序、エックスサーバ VPS 将来判断の本文は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務だけに置く。fixture path、input / expected / record schema、closure counter、required check、required check workflow、checker 実行入口、negative boundary、document drift record の本文は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) だけに置く。API、Admin、SDK、UI、runner、statefile、setup、release、security、archive、commitstatus、mcp の処理仕様は各 owner component 別詳細本文を参照し、Phase 17 本文では再定義しない。
 
-| 判断対象 | 正本参照 | 固定判断 |
-|----------|----------|----------|
-| provider target | [`docs/details/production-validation.md` 本番検証詳細本文責務 §2](details/production-validation.md#phase-17-provider-targets) | `conoha-vps-primary` は試験本番運用必須、`xserver-vps-future` は将来判断。 |
-| OS / plan 前提 | [`docs/details/production-validation.md` 本番検証詳細本文責務 §2](details/production-validation.md#phase-17-provider-targets) | Ubuntu Server 24.04 LTS 64bit、RAM 1GB 以上、512MB plan 対象外。 |
-| 検証 mode | [`docs/details/production-validation.md` 本番検証詳細本文責務 §3](details/production-validation.md#phase-17-validation-modes) | `trial-production-conoha-vps` と `production-equivalent-simulation` の 2 mode。 |
-| 構築プラン | [`docs/details/production-validation.md` 本番検証詳細本文責務 §3a](details/production-validation.md#phase-17-buildout-plan) | 試験本番運用環境の構築 work unit と禁止 provider operation。 |
-| ConoHa VPS 試験本番運用 | [`docs/details/production-validation.md` 本番検証詳細本文責務 §6](details/production-validation.md#phase-17-conoha-contract) | preflight、install、runtime-flow、update、rollback、reboot-recovery、cleanup、試験本番運用ループを必須 record にする。 |
-| エックスサーバ VPS 将来判断 | [`docs/details/production-validation.md` 本番検証詳細本文責務 §7](details/production-validation.md#phase-17-xserver-future-contract) | `classification=future_plan`、`phase17_completion_blocker=false`。 |
-| 証跡・完了条件 | [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) | 全 closure counter と `final_open_item_count` を `0` にする。 |
+| 判断対象 | 正本参照 | DETAIL_INDEX での扱い |
+|----------|----------|-----------------------|
+| provider target / OS / plan / 検証 mode / 構築プラン / ConoHa VPS 試験本番運用 / エックスサーバ VPS 将来判断 | [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務 | 固定値、順序、禁止境界を再掲しない。 |
+| fixture path / input schema / expected schema / record schema / closure counter / required check / workflow / checker / negative boundary / document drift record | [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) | schema、check 名、完了条件を再掲しない。 |
+| 実在 path / 未作成 path | [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 17 target path 所在](DOCUMENT_INDEX.md#phase-17-target-paths) | 所在確認だけを行う。 |
 
-Phase 17 実装 PR は、下表の required check を同一 PR 本文へ記録する。check 名、完了条件、required check workflow 契約、checker 実行入口、document drift record の本文は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) を正本とする。
-
-| required check | 対象 |
-|----------------|------|
-| `phase17-conoha-vps-preflight` | ConoHa VPS preflight、OS / plan 前提、provider target record。 |
-| `phase17-trial-production-buildout` | 試験本番運用環境構築。構築 plan input、構築 expected、構築 record は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) を参照する。 |
-| `phase17-conoha-install-update-rollback` | install、update、rollback、cleanup。 |
-| `phase17-systemd-lifecycle` | systemd enable / start / restart / stop / status / reboot recovery。 |
-| `phase17-runtime-flow` | API、Admin、SDK、UI、runner、build / deploy dry-run。 |
-| `phase17-trial-operation-loop` | 試験本番運用の継続稼働、問題検出、仕様全般策定、バグ修正、再配置、再検証、証跡記録。 |
-| `phase17-production-simulation` | 本番環境同等 simulation。 |
-| `phase17-failure-injection` | disk、permission、write、fsync、rename、process、network、SSH failure。 |
-| `phase17-security-boundary` | secret leak、destructive operation 禁止、provider credential 非保存。 |
-| `phase17-bugfix-spec-first` | 運用中バグ修正が仕様全般策定を先行し、無仕様 hotfix が 0 であること。 |
-| `phase17-document-drift` | Phase 17 状態、path、anchor、fixture root、workflow、future target drift。 |
+Phase 17 実装 PR は、required check 名、完了条件、required check workflow 契約、checker 実行入口、document drift record を [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) から参照し、同一 PR 本文へ記録する。
 
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**

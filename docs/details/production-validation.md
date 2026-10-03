@@ -157,24 +157,6 @@ Phase 17 の証跡は、`xserver-vps-future` について以下を記録する�
 
 Phase 17 の fixture 証跡は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) を正本とする。
 
-Phase 17 は、以下の closure counter がすべて `0` になるまで `実装済み` に遷移してはならない。
+Phase 17 は、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の closure counter、required check、required check workflow、checker 実行入口、negative boundary、document drift record がすべて完了条件を満たすまで `実装済み` に遷移してはならない。本番検証詳細本文責務では、closure counter の key、完了値、未完了条件、required check 名、record schema を再掲しない。
 
-| counter | 完了値 | 未完了条件 |
-|---------|--------|------------|
-| `phase17_conoha_trial_operation_open_count` | `0` | ConoHa VPS 試験本番運用の必須 record が不足している。 |
-| `phase17_buildout_open_count` | `0` | Phase 17 構築プランの work unit に未実行、順序不一致、証跡不足、または禁止 provider operation がある。 |
-| `phase17_production_simulation_open_count` | `0` | 本番同等 simulation の必須 record が不足している。 |
-| `phase17_install_update_rollback_open_count` | `0` | install、update、rollback のいずれかに未検証または未証跡がある。 |
-| `phase17_systemd_lifecycle_open_count` | `0` | systemd lifecycle、専用 user、最小権限、書込み先制限に未完了がある。 |
-| `phase17_runtime_flow_open_count` | `0` | API、Admin、SDK、UI、runner、build、deploy dry-run の runtime flow に未完了がある。 |
-| `phase17_failure_injection_open_count` | `0` | failure injection class に未実行、silent success、または復旧未検証がある。 |
-| `phase17_secret_leak_open_count` | `0` | secret、token、private key、IP 固有 secret が証跡へ出力される。 |
-| `phase17_destructive_operation_open_count` | `0` | destructive operation が禁止境界を越えている、または検出証跡が不足している。 |
-| `phase17_xserver_future_misclassified_count` | `0` | `xserver-vps-future` が必須検証、未完了 item、または blocker として扱われている。 |
-| `phase17_document_drift_open_count` | `0` | Phase 17 の状態、path、anchor、fixture root、workflow、required check、future target に drift がある。 |
-| `phase17_trial_operation_open_count` | `0` | 試験本番運用ループの継続稼働、問題検出、再配置、再検証、証跡記録に未完了がある。 |
-| `phase17_bugfix_spec_gap_count` | `0` | 運用中に検出したバグまたは不整合に対し、仕様全般策定を先行していない修正がある。 |
-| `phase17_known_bug_open_count` | `0` | Phase 17 完了時点で既知重大バグまたは未修正バグが残っている。 |
-| `final_open_item_count` | `0` | 上記 counter または closure record に残件がある。 |
-
-Phase 17 の実装 PR は、ConoHa VPS 試験本番運用 record、構築 record、本番同等 simulation record、failure injection record、secret leak 検査 record、destructive operation 境界 record、運用中バグ修正 record、document drift record を同一証跡 package に含める。
+Phase 17 の実装 PR は、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) が要求する全 record を同一証跡 package に含める。
