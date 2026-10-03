@@ -77,6 +77,8 @@ ConoHa VPS resource の作成、削除、plan 変更、disk rebuild、volume 操
 
 禁止 provider operation token は `vps-create`、`vps-delete`、`plan-change`、`disk-rebuild`、`volume-create`、`volume-delete`、`volume-attach`、`volume-detach`、`firewall-lockout`、`ssh-lockout` に固定する。Phase 17 の fixture、negative boundary、required check、PR 証跡は、この token set 以外の名称で禁止 provider operation を表現してはならない。
 
+<a id="phase-17-validation-targets"></a>
+
 ## 4. 検証対象
 
 Phase 17 は以下を検証対象に含める。
@@ -147,7 +149,7 @@ Phase 17 の証跡は、`xserver-vps-future` について以下を記録する�
 | `future_ref` | [`docs/ROADMAP.md` 状態・計画責務 統合機能インベントリ](../ROADMAP.md#522-統合ロードマップ表) |
 | `phase17_completion_blocker` | `false` |
 
-`xserver-vps-future` に対して required check、fixture root、provider credential、real VPS execution、simulation 専用分岐を作成する場合は、Phase 17 の完了条件ではなく、将来 Phase または改訂予定 item として扱う。
+`xserver-vps-future` に対して required check、fixture root、provider credential、VPS execution record、simulation 専用分岐を作成する場合は、Phase 17 の完了条件ではなく、将来 Phase または改訂予定 item として扱う。
 
 <a id="phase-17-production-validation-completion"></a>
 

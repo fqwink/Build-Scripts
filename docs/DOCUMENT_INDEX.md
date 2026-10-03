@@ -412,7 +412,7 @@
 | `testdata/phase17/production-validation/expected/runtime_flow.json` | Phase 17 runtime flow 期待値 | 未作成 |
 | `testdata/phase17/production-validation/expected/buildout.json` | 試験本番運用環境構築 work unit 順序 / 許可操作 / 禁止操作 / counter 接続期待値 | 未作成 |
 | `testdata/phase17/production-validation/expected/bugfix_loop.json` | 運用中バグ修正 / 既知バグ 0 期待値 | 未作成 |
-| `testdata/phase17/production-validation/records/real_conoha.jsonl` | ConoHa VPS 試験本番運用証跡 | 未作成 |
+| `testdata/phase17/production-validation/records/trial_conoha.jsonl` | ConoHa VPS 試験本番運用証跡 | 未作成 |
 | `testdata/phase17/production-validation/records/buildout.jsonl` | 試験本番運用環境構築 work unit 証跡 | 未作成 |
 | `testdata/phase17/production-validation/records/operation.jsonl` | 試験本番運用ループ証跡 | 未作成 |
 | `testdata/phase17/production-validation/records/bugfix.jsonl` | 仕様全般策定先行バグ修正証跡 | 未作成 |
