@@ -466,6 +466,23 @@ Phase 15 fixture は negative control を必須とする。negative control は�
 
 Phase 16 の正式 fixture root は `testdata/phase16/quality-evidence-closure/` とする。同 root は Phase 16 実装 PR で実在化し、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 16 target path 所在](../DOCUMENT_INDEX.md#phase-16-target-paths) で `実在` として扱う。仕様策定時点で root が未作成の場合は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 16 target path 所在](../DOCUMENT_INDEX.md#phase-16-target-paths) に `未作成` として記録し、Phase 16 を `実装済み` に遷移させてはならない。
 
+<a id="phase-16-implementation-sequence-contract"></a>
+**Phase 16 implementation sequence 固定契約：**
+
+Phase 16 の実装は下表の順序で進める。前段の artifact、schema、record、counter、negative control、required check、document drift が未完了の場合、後段の実装または検証を Phase 16 完了証跡として扱ってはならない。下表の順序は Phase 16 Pull Request を分割する根拠ではなく、同一 Phase 16 Pull Request 内での作業順序と完了判定順序である。
+
+| 実装順序 | 実装対象 | 次順序へ進む条件 |
+|----------|----------|------------------|
+| 1 | [`main_test.go`](../../main_test.go) に `TestPhase16QualityEvidenceClosure` の checker skeleton、fixture root 探索、stdout / stderr 固定 schema、失敗時 diagnostic JSON Lines を実装する。 | fixture root 未作成、schema 不足、required check 未接続を成功扱いせず、`PHASE16_SCHEMA_MISSING_KEY` または `PHASE16_SOURCE_MISSING` として deterministic に失敗できる。 |
+| 2 | `testdata/phase16/quality-evidence-closure/` の `manifest.json`、`input/*.json`、`expected/*.json`、`records/*.jsonl` を作成し、duplicate key、unknown key、欠落 key、enum、sort、LF 終端を checker が検出する。 | checker が全 fixture file を読み、schema failure と source coverage failure を区別できる。 |
+| 3 | source coverage set、source enumeration / digest、detection registry、`go.sum` 不在 record、path sort、sha256 group digest を実装する。 | live source coverage set と `input/source_coverage.json` の差分を `PHASE16_SOURCE_UNTRACKED`、`PHASE16_SOURCE_EXTRA`、`PHASE16_SOURCE_HASH_MISMATCH` として検出できる。 |
+| 4 | 各 inventory から `expected/actions.json`、`records/*.jsonl`、closure counter を再導出し、hand-written counter、record 存在だけの完了、PR 本文だけの完了を拒否する。 | 1 inventory record、1 action、1 件以上の evidence record、1 counter の接続が成立し、再集計 counter が `expected/counters.json` と一致する。 |
+| 5 | `input/negative_controls.json` と [Phase 16 negative control coverage matrix 固定契約](#phase-16-negative-control-coverage-matrix) を実装し、失敗すべき変異を `isolation_mode=temporary_copy` だけで実行する。 | すべての negative control が失敗として検出され、`negative_control_passed_count=0`、`negative_control_failed_count=negative_control_count` になる。 |
+| 6 | `phase16-go-format`、`phase16-go-test`、`phase16-deno-check`、`phase16-race`、`phase16-quality-evidence-fixture`、`phase16-mutation`、`phase16-fault-injection`、`phase16-workflow-hardening`、`phase16-document-drift` を required check として接続する。 | `records/execution.jsonl`、`records/mutation.jsonl`、`records/fault.jsonl`、`records/workflow.jsonl` が required check 表の全 check 名へ接続する。 |
+| 7 | [`docs/ROADMAP.md`](../ROADMAP.md) の現在状態、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) の所在、Phase 16 fixture root、workflow、counter、PR evidence、対象外理由、将来計画維持の drift を checker で 0 にする。 | `phase16_document_drift_open_count=0`、`final_open_item_count=0`、checker stdout の `result=passed`、stderr 空、`diagnostic_count=0` を同時に満たす。 |
+
+Phase 16 実装では、順序 1 の checker skeleton が未完成のまま fixture file だけを増やしてはならない。順序 2 の schema を checker が読めない状態で inventory を完了扱いにしてはならない。順序 3 の live source coverage set 再導出が未完成のまま `expected/counters.json` を `0` にしてはならない。順序 4 の inventory / action / record / counter 接続が未完成のまま negative control を追加してはならない。順序 5 の negative control が成功扱いになる状態で required check を成功扱いにしてはならない。順序 6 の required check が未接続のまま ROADMAP を `実装済み` にしてはならない。順序 7 の document drift が 1 件でも残る場合、Phase 16 は `仕様化済み・未実装` または `実装中・検証未完了` のままとする。
+
 | path | 内容 | 完了条件 |
 |------|------|----------|
 | `manifest.json` | Phase 16 evidence package の識別子、対象 owner、work unit、required check、closure record set の所在。 | `name` が `phase-16-quality-evidence-closure`、`scope` が同値、対象 owner が Phase 16 work unit に必要な owner をすべて含む。 |

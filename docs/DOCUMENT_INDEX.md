@@ -38,6 +38,7 @@
 | Phase 16 negative control schema | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 inventory 共通 schema](details/fixture.md#phase-16-inventory-common-schema) |
 | Phase 16 negative control coverage matrix | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 negative control coverage matrix 固定契約](details/fixture.md#phase-16-negative-control-coverage-matrix) |
 | Phase 16 source coverage detection registry | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡](details/fixture.md#phase-16-quality-evidence-closure-evidence) |
+| Phase 16 implementation sequence | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 implementation sequence 固定契約](details/fixture.md#phase-16-implementation-sequence-contract) |
 | Phase 16 required check workflow | `.github/workflows/phase16-quality-evidence-closure.yml` |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
