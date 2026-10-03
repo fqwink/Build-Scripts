@@ -175,7 +175,7 @@ func (gh *fakeReleaseGitHub) DeleteDraft(rel releaseGitHubRelease, cfg releaseCo
 
 func releaseTestAssets(tag string) []releaseAsset {
 	assets := []releaseAsset{}
-	for _, name := range releaseAssetNames()[:7] {
+	for _, name := range releaseAssetNames()[:len(releaseAssetNames())-1] {
 		mode := os.FileMode(0755)
 		if name == "admin-ui.tar.gz" {
 			mode = 0644
@@ -211,8 +211,8 @@ func TestRunReleaseSuccessPublishesAssets(t *testing.T) {
 	if !ops.wroteOut {
 		t.Fatal("expected output artifacts to be written")
 	}
-	if len(ops.github.uploads) != 8 {
-		t.Fatalf("expected 8 uploads, got %v", ops.github.uploads)
+	if len(ops.github.uploads) != 9 {
+		t.Fatalf("expected 9 uploads, got %v", ops.github.uploads)
 	}
 	if ops.github.deletes != 0 {
 		t.Fatalf("expected no cleanup on success")
@@ -292,10 +292,10 @@ func TestReleaseChecksumManifest(t *testing.T) {
 		byName[asset.Name] = asset
 	}
 	lines := strings.Split(strings.TrimSuffix(string(byName["SHA256SUMS"].Data), "\n"), "\n")
-	if len(lines) != 7 {
-		t.Fatalf("expected 7 checksum lines, got %d", len(lines))
+	if len(lines) != 8 {
+		t.Fatalf("expected 8 checksum lines, got %d", len(lines))
 	}
-	wantNames := releaseAssetNames()[:7]
+	wantNames := releaseAssetNames()[:len(releaseAssetNames())-1]
 	sortStrings(wantNames)
 	for i, line := range lines {
 		fields := strings.Split(line, "  ")

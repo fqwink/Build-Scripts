@@ -1,0 +1,17 @@
+{
+  "conflicts": [],
+  "entries": [
+    {
+      "last_sync_digest": "old-sha256-placeholder",
+      "last_sync_unix": 1,
+      "path": "shared.md",
+      "project_digest": "old-sha256-placeholder",
+      "vault_digest": "old-sha256-placeholder"
+    }
+  ],
+  "last_apply_id": "fixture-seed",
+  "project_root_digest": "fixture-project-root-before",
+  "schema_version": "obsidian-sync-state-v1",
+  "tombstones": [],
+  "vault_root_digest": "fixture-vault-root-before"
+}

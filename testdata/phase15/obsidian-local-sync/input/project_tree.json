@@ -1,0 +1,15 @@
+{
+  "files": [
+    {
+      "digest": "new-sha256-placeholder",
+      "path": "shared.md",
+      "size": 6
+    },
+    {
+      "digest": "project-only-sha256-placeholder",
+      "path": "docs/project.md",
+      "size": 10
+    }
+  ],
+  "root_digest": "fixture-project-root-before"
+}

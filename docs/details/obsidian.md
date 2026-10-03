@@ -238,7 +238,7 @@ Phase 15 は credentials を扱わない。token、password、Obsidian account�
 <a id="obsidian-phase15-distribution-contract"></a>
 **Phase 15 配布連携契約：**
 
-Phase 15 の実装完了には `adlaire-ci-obsidian` 実行バイナリの配布契約が必要である。Phase 15 実装 PR は、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract)、[`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)、[`docs/details/setup.md` 詳細本文責務 Phase 15 Obsidian CLI 導入手順](setup.md#phase-15-obsidian-setup-contract) を同じ変更単位で整合させ、Release asset 生成、checksum、setup 取得対象、`install-obsidian` mode、version 出力、fixture 証跡に `adlaire-ci-obsidian-linux-amd64` が含まれることを証跡化する。この配布連携が未完了の場合、sync plan / apply / rollback の実装が合格していても Phase 15 を `実装済み` に遷移してはならない。
+Phase 15 の実装完了には `adlaire-ci-obsidian` 実行バイナリの配布契約が必要である。Phase 15 完了状態では、[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](release.md#phase-15-obsidian-release-extension-contract)、[`docs/details/setup.md` 詳細本文責務 §26.2a](setup.md#sec-26-2a)、[`docs/details/setup.md` 詳細本文責務 Phase 15 Obsidian CLI 導入手順](setup.md#phase-15-obsidian-setup-contract) が整合し、Release asset 生成、checksum、setup 取得対象、`install-obsidian` mode、version 出力、fixture 証跡に `adlaire-ci-obsidian-linux-amd64` が含まれる。この配布連携が未完了の場合、sync plan / apply / rollback の実装が合格していても Phase 15 を `実装済み` に遷移してはならない。
 
 | error code | 終了コード | 条件 |
 |------------|------------|------|

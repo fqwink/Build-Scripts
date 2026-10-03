@@ -1,0 +1,27 @@
+{
+  "apply_id": "derived-from-plan-hash-state-digest-and-clock",
+  "backup_paths": [
+    "rollback-backups/<apply_id>/000002-<path_digest>.bak"
+  ],
+  "conflict_ids": [],
+  "conflicts": [],
+  "delete_policy_default": "reject",
+  "entries": [
+    {
+      "last_sync_digest": "project-only-sha256-placeholder",
+      "path": "docs/project.md"
+    },
+    {
+      "last_sync_digest": "vault-only-sha256-placeholder",
+      "path": "docs/vault.md"
+    },
+    {
+      "last_sync_digest": "new-sha256-placeholder",
+      "path": "shared.md"
+    }
+  ],
+  "open_uri_default": false,
+  "rollback_file_default": "rollback/<plan_hash>.json",
+  "schema_version": "obsidian-sync-state-v1",
+  "tombstone_ids": []
+}

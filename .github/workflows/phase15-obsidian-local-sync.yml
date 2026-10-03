@@ -1,0 +1,75 @@
+name: phase15-obsidian-local-sync
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  phase15-go-format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: "1.22"
+      - run: test -z "$(gofmt -l main.go main_test.go components/*/*.go)"
+
+  phase15-go-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: "1.22"
+      - run: go test ./... -count=1
+
+  phase15-obsidian-sync-fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: "1.22"
+      - run: go test . ./components/obsidian -run 'TestPhase15ObsidianLocalSyncProductionEntrypoint|TestRunObsidianSyncPlanApplyRollback' -count=1
+
+  phase15-sync-atomicity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: "1.22"
+      - run: go test ./components/obsidian -run 'TestRunObsidianSyncPlanHashMismatch|TestRunObsidianSyncConflictRequiresManualResolution|TestRunObsidianSyncRollbackRestoresPreviousContent' -count=1
+
+  phase15-release-setup-distribution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: "1.22"
+      - run: go test ./components/release ./components/setup -run 'TestRunReleaseSuccessPublishesAssets|TestReleaseChecksumManifest|TestRunSetupInstallObsidianSuccess' -count=1
+
+  phase15-document-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: "1.22"
+      - run: go test ./... -run TestPhase15ObsidianLocalSyncEvidence -count=1

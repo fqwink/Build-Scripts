@@ -1,0 +1,18 @@
+{
+  "apply": {
+    "open_uri": false,
+    "plan_file": "plans/sync.json",
+    "rollback_file_default": "rollback/<plan_hash>.json"
+  },
+  "plan": {
+    "conflict_dir": "adlaire-ci-conflicts",
+    "delete_policy": "tombstone",
+    "direction": "bidirectional",
+    "plan_file": "plans/sync.json",
+    "tombstone_dir": "adlaire-ci-tombstones"
+  },
+  "rollback": {
+    "open_uri": false,
+    "rollback_file": "rollback/<plan_hash>.json"
+  }
+}

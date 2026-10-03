@@ -58,9 +58,10 @@ var (
 type setupMode string
 
 const (
-	setupModeInstall    setupMode = "install"
-	setupModeInstallAPI setupMode = "install-api"
-	setupModeUpdate     setupMode = "update"
+	setupModeInstall         setupMode = "install"
+	setupModeInstallAPI      setupMode = "install-api"
+	setupModeInstallObsidian setupMode = "install-obsidian"
+	setupModeUpdate          setupMode = "update"
 )
 
 type setupConfig struct {
@@ -83,12 +84,13 @@ type setupAsset struct {
 }
 
 type setupRunState struct {
-	Assets        []setupAsset
-	APIInstalled  bool
-	MCPInstalled  bool
-	GitHubToken   string
-	HasCredential bool
-	Backup        setupBackup
+	Assets            []setupAsset
+	APIInstalled      bool
+	MCPInstalled      bool
+	ObsidianInstalled bool
+	GitHubToken       string
+	HasCredential     bool
+	Backup            setupBackup
 }
 
 type setupBackup struct {
@@ -156,7 +158,7 @@ func RunSetup(args []string, stdout, stderr io.Writer) int {
 
 func runSetup(args []string, stdout, stderr io.Writer, ops setupOperations) int {
 	if hasExactArg(args, "--help") {
-		fmt.Fprintln(stdout, "Usage: adlaire-ci-setup <install|install-api|update> --target-version V.X.N [options] [--version] [--help]")
+		fmt.Fprintln(stdout, "Usage: adlaire-ci-setup <install|install-api|install-obsidian|update> --target-version V.X.N [options] [--version] [--help]")
 		return 0
 	}
 	if hasExactArg(args, "--version") {
@@ -254,6 +256,13 @@ func setupStages(cfg setupConfig, state *setupRunState, ops setupOperations) []s
 			{name: "activate-api", run: func() *setupFailure { return setupActivateAPI(cfg, state, ops) }},
 			{name: "verify", run: func() *setupFailure { return setupVerify(cfg, state, ops) }},
 		}
+	case setupModeInstallObsidian:
+		return []setupStage{
+			{name: "download", run: func() *setupFailure { return setupDownload(cfg, state, ops) }},
+			{name: "checksum", run: func() *setupFailure { return setupChecksum(cfg, state, ops) }},
+			{name: "install-binaries", run: func() *setupFailure { return setupInstallBinaries(cfg, state, ops) }},
+			{name: "verify", run: func() *setupFailure { return setupVerify(cfg, state, ops) }},
+		}
 	case setupModeUpdate:
 		stages := []setupStage{
 			{name: "backup", run: func() *setupFailure { return setupBackupCurrent(cfg, state, ops) }},
@@ -298,7 +307,7 @@ func parseSetupArgs(args []string) (setupConfig, string) {
 		return cfg, "unknown option: " + args[0]
 	}
 	switch setupMode(args[0]) {
-	case setupModeInstall, setupModeInstallAPI, setupModeUpdate:
+	case setupModeInstall, setupModeInstallAPI, setupModeInstallObsidian, setupModeUpdate:
 		cfg.Mode = setupMode(args[0])
 	default:
 		return cfg, "unknown command: " + args[0]
@@ -378,6 +387,8 @@ func setupOptionAllowed(mode setupMode, name string) bool {
 		return mode == setupModeInstallAPI
 	case "--service-user":
 		return mode == setupModeInstall || mode == setupModeInstallAPI
+	case "--install-dir":
+		return mode != setupModeInstallObsidian
 	default:
 		return true
 	}
@@ -393,12 +404,19 @@ func validateSetupConfig(cfg setupConfig, state *setupRunState, ops setupOperati
 	if !validSetupServiceUser(cfg.ServiceUser) {
 		return setupFail("INVALID_INPUT", "validate")
 	}
-	for _, path := range []string{cfg.InstallDir, cfg.BinDir, cfg.DownloadDir} {
+	paths := []string{cfg.InstallDir, cfg.BinDir, cfg.DownloadDir}
+	if cfg.Mode == setupModeInstallObsidian {
+		paths = []string{cfg.BinDir, cfg.DownloadDir}
+	}
+	for _, path := range paths {
 		if err := ops.ValidatePath(path); err != nil {
 			return setupFail("INVALID_INPUT", "validate")
 		}
 	}
-	if setupDangerousPathRelation(cfg.InstallDir, cfg.BinDir) || setupDangerousPathRelation(cfg.InstallDir, cfg.DownloadDir) || setupDangerousPathRelation(cfg.BinDir, cfg.DownloadDir) {
+	if cfg.Mode != setupModeInstallObsidian && (setupDangerousPathRelation(cfg.InstallDir, cfg.BinDir) || setupDangerousPathRelation(cfg.InstallDir, cfg.DownloadDir)) {
+		return setupFail("INVALID_INPUT", "validate")
+	}
+	if setupDangerousPathRelation(cfg.BinDir, cfg.DownloadDir) {
 		return setupFail("INVALID_INPUT", "validate")
 	}
 
@@ -437,6 +455,10 @@ func validateSetupConfig(cfg setupConfig, state *setupRunState, ops setupOperati
 			setupBinaryAsset("adlaire-ci-admin", cfg.OSArch),
 			setupNamedAsset("admin-ui.tar.gz", setupAdminUILimitBytes),
 		}
+	case setupModeInstallObsidian:
+		state.Assets = []setupAsset{
+			setupBinaryAsset("adlaire-ci-obsidian", cfg.OSArch),
+		}
 	case setupModeUpdate:
 		for _, name := range []string{"adlaire-ci-build", "adlaire-ci-runner", "adlaire-ci-setup"} {
 			if !ops.BinaryExists(filepath.Join(cfg.BinDir, name)) {
@@ -446,6 +468,7 @@ func validateSetupConfig(cfg setupConfig, state *setupRunState, ops setupOperati
 		apiEnabled := ops.Systemctl("is-enabled", "adlaire-ci-api")
 		state.APIInstalled = ops.BinaryExists(filepath.Join(cfg.BinDir, "adlaire-ci-api")) && apiEnabled.ExitCode == 0 && (strings.TrimSpace(apiEnabled.Stdout) == "enabled" || strings.TrimSpace(apiEnabled.Stdout) == "static")
 		state.MCPInstalled = ops.BinaryExists(filepath.Join(cfg.BinDir, "adlaire-ci-mcp"))
+		state.ObsidianInstalled = ops.BinaryExists(filepath.Join(cfg.BinDir, "adlaire-ci-obsidian"))
 		state.Assets = []setupAsset{
 			setupBinaryAsset("adlaire-ci-build", cfg.OSArch),
 			setupBinaryAsset("adlaire-ci-runner", cfg.OSArch),
@@ -460,6 +483,9 @@ func validateSetupConfig(cfg setupConfig, state *setupRunState, ops setupOperati
 		}
 		if state.MCPInstalled {
 			state.Assets = append(state.Assets, setupBinaryAsset("adlaire-ci-mcp", cfg.OSArch))
+		}
+		if state.ObsidianInstalled {
+			state.Assets = append(state.Assets, setupBinaryAsset("adlaire-ci-obsidian", cfg.OSArch))
 		}
 	}
 	return nil
@@ -816,7 +842,7 @@ func setupReleaseAssetNames(osArch string) map[string]bool {
 	names := map[string]bool{
 		"admin-ui.tar.gz": true,
 	}
-	for _, binary := range []string{"adlaire-ci-build", "adlaire-ci-runner", "adlaire-ci-api", "adlaire-ci-setup", "adlaire-ci-admin", "adlaire-ci-mcp"} {
+	for _, binary := range []string{"adlaire-ci-build", "adlaire-ci-runner", "adlaire-ci-api", "adlaire-ci-setup", "adlaire-ci-admin", "adlaire-ci-mcp", "adlaire-ci-obsidian"} {
 		names[binary+"-"+osArch] = true
 	}
 	return names

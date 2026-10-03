@@ -6,6 +6,7 @@
     "adlaire-ci-setup-linux-amd64",
     "adlaire-ci-admin-linux-amd64",
     "adlaire-ci-mcp-linux-amd64",
+    "adlaire-ci-obsidian-linux-amd64",
     "admin-ui.tar.gz",
     "SHA256SUMS"
   ],
@@ -16,6 +17,7 @@
     "adlaire-ci-setup-linux-amd64",
     "adlaire-ci-admin-linux-amd64",
     "adlaire-ci-mcp-linux-amd64",
+    "adlaire-ci-obsidian-linux-amd64",
     "admin-ui.tar.gz"
   ],
   "builds": [
@@ -24,7 +26,8 @@
     "adlaire-ci-api-linux-amd64",
     "adlaire-ci-setup-linux-amd64",
     "adlaire-ci-admin-linux-amd64",
-    "adlaire-ci-mcp-linux-amd64"
+    "adlaire-ci-mcp-linux-amd64",
+    "adlaire-ci-obsidian-linux-amd64"
   ],
   "archive": [
     "adlaire-ci-sdk.js",

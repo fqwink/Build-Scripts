@@ -1,0 +1,15 @@
+{
+  "files": [
+    {
+      "digest": "old-sha256-placeholder",
+      "path": "shared.md",
+      "size": 6
+    },
+    {
+      "digest": "vault-only-sha256-placeholder",
+      "path": "docs/vault.md",
+      "size": 8
+    }
+  ],
+  "root_digest": "fixture-vault-root-before"
+}

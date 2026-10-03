@@ -15,11 +15,16 @@ import (
 	"sort"
 	"strings"
 	"syscall"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/fqwink/build-scripts/components/builder"
 )
+
+var obsidianSyncNowUnix = func() int64 {
+	return time.Now().UTC().Unix()
+}
 
 func executeVaultBuild(cfg obsidianConfig, stdout, stderr io.Writer) int {
 	if obsErr := validateVaultRoot(cfg.VaultRoot); obsErr != nil {
@@ -1048,4 +1053,919 @@ func uniqueSlug(base string, counts map[string]int) string {
 		return base
 	}
 	return fmt.Sprintf("%s-%d", base, n+1)
+}
+
+func executeSyncPlan(cfg obsidianSyncConfig, stdout, stderr io.Writer) int {
+	now := obsidianSyncNowUnix()
+	plan, planHash, obsErr := buildSyncPlan(cfg, now)
+	if obsErr != nil {
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	planPath := filepath.Join(cfg.StateDir, filepath.FromSlash(cfg.PlanFile))
+	planBytes, err := syncCanonicalJSON(plan)
+	if err != nil || syncAtomicWriteFile(planPath, planBytes, 0600) != nil {
+		writeObsidianSyncError(stderr, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0))
+		return 1
+	}
+	response := obsidianSyncPlanResponse{
+		Command:    "sync plan",
+		PlanFile:   cfg.PlanFile,
+		PlanHash:   planHash,
+		Operations: len(plan.Operations),
+		Conflicts:  len(plan.Conflicts),
+		Tombstones: len(plan.Tombstones),
+		Applied:    false,
+	}
+	return writeSyncJSON(stdout, stderr, response)
+}
+
+func executeSyncApply(cfg obsidianSyncConfig, stdout, stderr io.Writer) int {
+	plan, raw, obsErr := readSyncPlan(filepath.Join(cfg.StateDir, filepath.FromSlash(cfg.PlanFile)))
+	if obsErr != nil {
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	actualHash := sha256Hex(raw)
+	if actualHash != cfg.PlanHash {
+		writeObsidianSyncError(stderr, newObsError("OBSIDIAN_SYNC_PLAN_HASH_MISMATCH", 2, "", 0, 0))
+		return 2
+	}
+	if obsErr := validatePlanPaths(cfg, plan); obsErr != nil {
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	if len(plan.Conflicts) > 0 {
+		writeObsidianSyncError(stderr, newObsError("OBSIDIAN_SYNC_CONFLICT", 1, "", 0, 0))
+		return 1
+	}
+	unlock, obsErr := acquireSyncLock(cfg.StateDir)
+	if obsErr != nil {
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	defer unlock()
+	project, vault, state, stateDigest, obsErr := readSyncInputs(cfg.ProjectRoot, cfg.VaultRoot, cfg.StateDir)
+	if obsErr != nil {
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	if project.RootDigest != plan.ProjectRootDigest || vault.RootDigest != plan.VaultRootDigest || stateDigest != plan.StateDigest {
+		writeObsidianSyncError(stderr, newObsError("OBSIDIAN_SYNC_STATE_CHANGED", 1, "", 0, 0))
+		return 1
+	}
+	now := obsidianSyncNowUnix()
+	rollbackFile := cfg.RollbackFile
+	if rollbackFile == "" {
+		rollbackFile = "rollback/" + cfg.PlanHash + ".json"
+	}
+	if err := validateSyncStateFilePath(cfg.StateDir, rollbackFile); err != nil {
+		writeObsidianSyncError(stderr, newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0))
+		return 2
+	}
+	rollback := newSyncRollback(plan, cfg.PlanHash, stateDigest, now)
+	rollbackPath := filepath.Join(cfg.StateDir, filepath.FromSlash(rollbackFile))
+	if err := writeSyncRollback(rollbackPath, rollback); err != nil {
+		writeObsidianSyncError(stderr, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0))
+		return 1
+	}
+	applied, obsErr := applySyncOperations(cfg, plan, rollbackPath, &rollback)
+	if obsErr != nil {
+		_ = writeSyncRollback(rollbackPath, rollback)
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	nextProject, nextVault, _, _, obsErr := readSyncInputs(cfg.ProjectRoot, cfg.VaultRoot, cfg.StateDir)
+	if obsErr != nil {
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	nextState := buildSyncStateFromTrees(nextProject, nextVault, state.Tombstones, []obsidianSyncConflict{}, rollback.ApplyID, now)
+	stateBytes, err := syncCanonicalJSON(nextState)
+	if err != nil || syncAtomicWriteFile(syncStatePath(cfg.StateDir), stateBytes, 0600) != nil {
+		writeObsidianSyncError(stderr, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0))
+		return 1
+	}
+	rollback.CompletedAtUnix = now
+	rollback.StateAfterDigest = sha256Hex(stateBytes)
+	if err := writeSyncRollback(rollbackPath, rollback); err != nil {
+		writeObsidianSyncError(stderr, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0))
+		return 1
+	}
+	response := obsidianSyncApplyResponse{
+		Command:           "sync apply",
+		PlanFile:          cfg.PlanFile,
+		PlanHash:          cfg.PlanHash,
+		OperationsApplied: applied,
+		Conflicts:         0,
+		Tombstones:        len(plan.Tombstones),
+		RollbackFile:      rollbackFile,
+		StateDigest:       rollback.StateAfterDigest,
+	}
+	return writeSyncJSON(stdout, stderr, response)
+}
+
+func executeSyncRollback(cfg obsidianSyncConfig, stdout, stderr io.Writer) int {
+	rollbackPath := filepath.Join(cfg.StateDir, filepath.FromSlash(cfg.RollbackFile))
+	rollback, obsErr := readSyncRollback(rollbackPath)
+	if obsErr != nil {
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	unlock, obsErr := acquireSyncLock(cfg.StateDir)
+	if obsErr != nil {
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	defer unlock()
+	rolledBack, obsErr := rollbackSyncOperations(cfg, rollback)
+	if obsErr != nil {
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	now := obsidianSyncNowUnix()
+	project, vault, state, _, obsErr := readSyncInputs(cfg.ProjectRoot, cfg.VaultRoot, cfg.StateDir)
+	if obsErr != nil {
+		writeObsidianSyncError(stderr, obsErr)
+		return obsErr.Exit
+	}
+	nextState := buildSyncStateFromTrees(project, vault, state.Tombstones, state.Conflicts, state.LastApplyID, now)
+	stateBytes, err := syncCanonicalJSON(nextState)
+	if err != nil || syncAtomicWriteFile(syncStatePath(cfg.StateDir), stateBytes, 0600) != nil {
+		writeObsidianSyncError(stderr, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0))
+		return 1
+	}
+	response := obsidianSyncRollbackResponse{
+		Command:              "sync rollback",
+		RollbackFile:         cfg.RollbackFile,
+		OperationsRolledBack: rolledBack,
+		Conflicts:            0,
+		StateDigest:          sha256Hex(stateBytes),
+	}
+	return writeSyncJSON(stdout, stderr, response)
+}
+
+func buildSyncPlan(cfg obsidianSyncConfig, now int64) (obsidianSyncPlan, string, *obsidianError) {
+	project, vault, state, stateDigest, obsErr := readSyncInputs(cfg.ProjectRoot, cfg.VaultRoot, cfg.StateDir)
+	if obsErr != nil {
+		return obsidianSyncPlan{}, "", obsErr
+	}
+	plan := obsidianSyncPlan{
+		SchemaVersion:     obsidianSyncPlanSchemaVersion,
+		CreatedAtUnix:     now,
+		Direction:         cfg.Direction,
+		DeletePolicy:      cfg.DeletePolicy,
+		ConflictDir:       normalizeSyncDirOption(cfg.ConflictDir),
+		TombstoneDir:      normalizeSyncDirOption(cfg.TombstoneDir),
+		ProjectRootDigest: project.RootDigest,
+		VaultRootDigest:   vault.RootDigest,
+		StateDigest:       stateDigest,
+		Operations:        []obsidianSyncOperation{},
+		Conflicts:         []obsidianSyncConflict{},
+		Tombstones:        []obsidianSyncTombstone{},
+	}
+	plan.PlanID = syncPlanID(plan)
+	entries := syncStateEntryMap(state)
+	paths := syncUnionPaths(project.Files, vault.Files, entries)
+	for _, rel := range paths {
+		op, conflict, tombstone := planSyncOperation(cfg, rel, project.Files[rel], vault.Files[rel], entries[rel], stateDigest, now)
+		if conflict.ConflictID != "" {
+			op.ConflictID = conflict.ConflictID
+			plan.Conflicts = append(plan.Conflicts, conflict)
+		}
+		if tombstone.TombstoneID != "" {
+			op.TombstoneID = tombstone.TombstoneID
+			plan.Tombstones = append(plan.Tombstones, tombstone)
+		}
+		plan.Operations = append(plan.Operations, op)
+	}
+	sortSyncPlan(&plan)
+	planBytes, err := syncCanonicalJSON(plan)
+	if err != nil {
+		return obsidianSyncPlan{}, "", newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0)
+	}
+	return plan, sha256Hex(planBytes), nil
+}
+
+func planSyncOperation(cfg obsidianSyncConfig, rel string, projectFile, vaultFile obsidianSyncFile, entry obsidianSyncStateEntry, stateDigest string, now int64) (obsidianSyncOperation, obsidianSyncConflict, obsidianSyncTombstone) {
+	projectDigest := projectFile.Digest
+	vaultDigest := vaultFile.Digest
+	last := entry.LastSyncDigest
+	base := obsidianSyncOperation{Path: rel, Direction: "none", Source: "", Destination: "", BeforeDigest: "", AfterDigest: "", ConflictID: "", TombstoneID: "", RollbackRequired: false}
+	if projectDigest != "" && vaultDigest != "" && projectDigest == vaultDigest {
+		base.Op = "noop"
+		base.BeforeDigest = projectDigest
+		base.AfterDigest = projectDigest
+		return base, obsidianSyncConflict{}, obsidianSyncTombstone{}
+	}
+	if last != "" && (projectDigest == "" || vaultDigest == "") {
+		if cfg.DeletePolicy == "tombstone" {
+			digest := projectDigest
+			direction := "project-to-vault"
+			if digest == "" {
+				digest = vaultDigest
+				direction = "vault-to-project"
+			}
+			tombstone := newSyncTombstone(rel, digest, direction, now, cfg.TombstoneDir)
+			base.Op = "tombstone"
+			base.Direction = direction
+			base.Source = syncSourceName(direction)
+			base.Destination = "tombstone"
+			base.BeforeDigest = digest
+			base.AfterDigest = digest
+			base.RollbackRequired = true
+			return base, obsidianSyncConflict{}, tombstone
+		}
+		conflict := newSyncConflict(rel, "delete-vs-edit", projectDigest, vaultDigest, stateDigest)
+		base.Op = "conflict"
+		base.BeforeDigest = last
+		return base, conflict, obsidianSyncTombstone{}
+	}
+	switch cfg.Direction {
+	case "import-only":
+		return planOneWaySync(rel, "vault-to-project", vaultDigest, projectDigest, last, stateDigest)
+	case "export-only":
+		return planOneWaySync(rel, "project-to-vault", projectDigest, vaultDigest, last, stateDigest)
+	default:
+		projectChanged := projectDigest != "" && projectDigest != last
+		vaultChanged := vaultDigest != "" && vaultDigest != last
+		if projectDigest != "" && vaultDigest != "" && projectChanged && vaultChanged {
+			conflict := newSyncConflict(rel, "both-side-edit", projectDigest, vaultDigest, stateDigest)
+			base.Op = "conflict"
+			return base, conflict, obsidianSyncTombstone{}
+		}
+		if projectDigest != "" && (vaultDigest == "" || projectChanged) {
+			return syncWriteOperation(rel, "project-to-vault", vaultDigest, projectDigest), obsidianSyncConflict{}, obsidianSyncTombstone{}
+		}
+		if vaultDigest != "" && (projectDigest == "" || vaultChanged) {
+			return syncWriteOperation(rel, "vault-to-project", projectDigest, vaultDigest), obsidianSyncConflict{}, obsidianSyncTombstone{}
+		}
+		base.Op = "noop"
+		base.BeforeDigest = projectDigest
+		base.AfterDigest = vaultDigest
+		return base, obsidianSyncConflict{}, obsidianSyncTombstone{}
+	}
+}
+
+func planOneWaySync(rel, direction, sourceDigest, destDigest, last, stateDigest string) (obsidianSyncOperation, obsidianSyncConflict, obsidianSyncTombstone) {
+	if sourceDigest == "" {
+		return obsidianSyncOperation{Op: "noop", Direction: "none", Path: rel}, obsidianSyncConflict{}, obsidianSyncTombstone{}
+	}
+	if destDigest != "" && last != "" && destDigest != last && sourceDigest == last {
+		conflict := newSyncConflict(rel, "opposite-side-edit", destDigest, sourceDigest, stateDigest)
+		return obsidianSyncOperation{Op: "conflict", Direction: "none", Path: rel, ConflictID: conflict.ConflictID}, conflict, obsidianSyncTombstone{}
+	}
+	if destDigest == sourceDigest {
+		return obsidianSyncOperation{Op: "noop", Direction: "none", Path: rel, BeforeDigest: destDigest, AfterDigest: sourceDigest}, obsidianSyncConflict{}, obsidianSyncTombstone{}
+	}
+	return syncWriteOperation(rel, direction, destDigest, sourceDigest), obsidianSyncConflict{}, obsidianSyncTombstone{}
+}
+
+func syncWriteOperation(rel, direction, before, after string) obsidianSyncOperation {
+	op := "update"
+	if before == "" {
+		op = "create"
+	}
+	return obsidianSyncOperation{
+		Op:               op,
+		Direction:        direction,
+		Path:             rel,
+		Source:           syncSourceName(direction),
+		Destination:      syncDestinationName(direction),
+		BeforeDigest:     before,
+		AfterDigest:      after,
+		ConflictID:       "",
+		TombstoneID:      "",
+		RollbackRequired: true,
+	}
+}
+
+func readSyncInputs(projectRoot, vaultRoot, stateDir string) (obsidianSyncTree, obsidianSyncTree, obsidianSyncState, string, *obsidianError) {
+	project, obsErr := inventorySyncTree(projectRoot)
+	if obsErr != nil {
+		return obsidianSyncTree{}, obsidianSyncTree{}, obsidianSyncState{}, "", obsErr
+	}
+	vault, obsErr := inventorySyncTree(vaultRoot)
+	if obsErr != nil {
+		return obsidianSyncTree{}, obsidianSyncTree{}, obsidianSyncState{}, "", obsErr
+	}
+	state, stateDigest, obsErr := readSyncState(stateDir, project.RootDigest, vault.RootDigest)
+	if obsErr != nil {
+		return obsidianSyncTree{}, obsidianSyncTree{}, obsidianSyncState{}, "", obsErr
+	}
+	return project, vault, state, stateDigest, nil
+}
+
+func inventorySyncTree(root string) (obsidianSyncTree, *obsidianError) {
+	out := obsidianSyncTree{Files: map[string]obsidianSyncFile{}}
+	err := filepath.WalkDir(root, func(abs string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if abs == root {
+			return nil
+		}
+		rel, err := filepath.Rel(root, abs)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		if rel == ".obsidian" || strings.HasPrefix(rel, ".obsidian/") {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		info, err := os.Lstat(abs)
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return newWalkError("OBSIDIAN_SYNC_PATH_INVALID", rel)
+		}
+		if entry.IsDir() {
+			if validateRelativePath(rel, false) != nil {
+				return newWalkError("OBSIDIAN_SYNC_PATH_INVALID", rel)
+			}
+			return nil
+		}
+		if !info.Mode().IsRegular() || hasMultipleHardlinks(info) || validateRelativePath(rel, false) != nil {
+			return newWalkError("OBSIDIAN_SYNC_PATH_INVALID", rel)
+		}
+		sum, err := fileSHA256(abs)
+		if err != nil {
+			return err
+		}
+		out.Files[rel] = obsidianSyncFile{Path: rel, Abs: abs, Digest: sum, Size: info.Size()}
+		return nil
+	})
+	if err != nil {
+		if wrapped, ok := err.(walkError); ok {
+			return obsidianSyncTree{}, newObsError(wrapped.Code, 2, "", 0, 0)
+		}
+		return obsidianSyncTree{}, newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	out.RootDigest = syncRootDigest(out.Files)
+	return out, nil
+}
+
+func readSyncState(stateDir, projectDigest, vaultDigest string) (obsidianSyncState, string, *obsidianError) {
+	state := obsidianSyncState{
+		SchemaVersion:     obsidianSyncStateSchemaVersion,
+		ProjectRootDigest: projectDigest,
+		VaultRootDigest:   vaultDigest,
+		Entries:           []obsidianSyncStateEntry{},
+		Tombstones:        []obsidianSyncTombstone{},
+		Conflicts:         []obsidianSyncConflict{},
+		LastApplyID:       "",
+	}
+	data, err := os.ReadFile(syncStatePath(stateDir))
+	if err == nil {
+		dec := json.NewDecoder(bytes.NewReader(data))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&state); err != nil || state.SchemaVersion != obsidianSyncStateSchemaVersion {
+			return obsidianSyncState{}, "", newObsError("OBSIDIAN_SYNC_STATE_CHANGED", 1, "", 0, 0)
+		}
+		state.ProjectRootDigest = projectDigest
+		state.VaultRootDigest = vaultDigest
+		state.Entries = nonNilSyncEntries(state.Entries)
+		state.Tombstones = nonNilSyncTombstones(state.Tombstones)
+		state.Conflicts = nonNilSyncConflicts(state.Conflicts)
+		sortSyncState(&state)
+	} else if !os.IsNotExist(err) {
+		return obsidianSyncState{}, "", newObsError("OBSIDIAN_SYNC_STATE_CHANGED", 1, "", 0, 0)
+	}
+	raw, err := syncCanonicalJSON(state)
+	if err != nil {
+		return obsidianSyncState{}, "", newObsError("OBSIDIAN_SYNC_STATE_CHANGED", 1, "", 0, 0)
+	}
+	return state, sha256Hex(raw), nil
+}
+
+func buildSyncStateFromTrees(project, vault obsidianSyncTree, tombstones []obsidianSyncTombstone, conflicts []obsidianSyncConflict, applyID string, now int64) obsidianSyncState {
+	paths := syncUnionPaths(project.Files, vault.Files, map[string]obsidianSyncStateEntry{})
+	entries := []obsidianSyncStateEntry{}
+	for _, rel := range paths {
+		projectDigest := project.Files[rel].Digest
+		vaultDigest := vault.Files[rel].Digest
+		last := ""
+		if projectDigest != "" && projectDigest == vaultDigest {
+			last = projectDigest
+		}
+		entries = append(entries, obsidianSyncStateEntry{Path: rel, ProjectDigest: projectDigest, VaultDigest: vaultDigest, LastSyncDigest: last, LastSyncUnix: now})
+	}
+	state := obsidianSyncState{
+		SchemaVersion:     obsidianSyncStateSchemaVersion,
+		ProjectRootDigest: project.RootDigest,
+		VaultRootDigest:   vault.RootDigest,
+		Entries:           entries,
+		Tombstones:        nonNilSyncTombstones(tombstones),
+		Conflicts:         nonNilSyncConflicts(conflicts),
+		LastApplyID:       applyID,
+	}
+	sortSyncState(&state)
+	return state
+}
+
+func applySyncOperations(cfg obsidianSyncConfig, plan obsidianSyncPlan, rollbackPath string, rollback *obsidianSyncRollback) (int, *obsidianError) {
+	applied := 0
+	for i, op := range plan.Operations {
+		if op.Op == "noop" {
+			continue
+		}
+		if op.Op == "tombstone" {
+			if obsErr := applySyncTombstone(cfg, plan, op, i, rollback); obsErr != nil {
+				rollback.Operations[i].Status = "failed"
+				rollback.Operations[i].ErrorCode = obsErr.Code
+				return applied, obsErr
+			}
+			applied++
+			_ = writeSyncRollback(rollbackPath, *rollback)
+			continue
+		}
+		if op.Op != "create" && op.Op != "update" {
+			continue
+		}
+		src := syncOperationSourcePath(cfg, op)
+		dst := syncOperationDestinationPath(cfg, op)
+		if src == "" || dst == "" {
+			return applied, newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+		}
+		record := &rollback.Operations[i]
+		record.PreviousDigest = syncExistingDigest(dst)
+		if record.PreviousDigest != "" {
+			backupRel := syncBackupRelPath(rollback.ApplyID, i, op.Path)
+			backupAbs := filepath.Join(cfg.StateDir, filepath.FromSlash(backupRel))
+			backupData, err := os.ReadFile(dst)
+			if err != nil || syncAtomicWriteFile(backupAbs, backupData, 0600) != nil {
+				return applied, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0)
+			}
+			record.BackupPath = backupRel
+		}
+		data, err := os.ReadFile(src)
+		if err != nil || syncAtomicWriteFile(dst, data, 0644) != nil {
+			record.Status = "failed"
+			record.ErrorCode = "OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED"
+			return applied, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0)
+		}
+		record.NewDigest = syncExistingDigest(dst)
+		record.Status = "applied"
+		record.ErrorCode = ""
+		applied++
+		_ = writeSyncRollback(rollbackPath, *rollback)
+	}
+	return applied, nil
+}
+
+func applySyncTombstone(cfg obsidianSyncConfig, plan obsidianSyncPlan, op obsidianSyncOperation, ordinal int, rollback *obsidianSyncRollback) *obsidianError {
+	var tombstone obsidianSyncTombstone
+	for _, item := range plan.Tombstones {
+		if item.TombstoneID == op.TombstoneID {
+			tombstone = item
+			break
+		}
+	}
+	if tombstone.TombstoneID == "" || validateRelativePath(tombstone.TombstonePath, false) != nil {
+		return newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	target := filepath.Join(cfg.ProjectRoot, filepath.FromSlash(tombstone.TombstonePath))
+	data, err := syncCanonicalJSON(tombstone)
+	if err != nil || syncAtomicWriteFile(target, data, 0644) != nil {
+		return newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0)
+	}
+	record := &rollback.Operations[ordinal]
+	record.Destination = "project:" + tombstone.TombstonePath
+	record.PreviousDigest = ""
+	record.NewDigest = syncExistingDigest(target)
+	record.Status = "applied"
+	record.ErrorCode = ""
+	return nil
+}
+
+func rollbackSyncOperations(cfg obsidianSyncConfig, rollback obsidianSyncRollback) (int, *obsidianError) {
+	rolledBack := 0
+	for i := len(rollback.Operations) - 1; i >= 0; i-- {
+		op := rollback.Operations[i]
+		if op.Status != "applied" || op.Destination == "" {
+			continue
+		}
+		dst := syncRollbackDestinationPath(cfg, op.Destination)
+		if dst == "" {
+			return rolledBack, newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+		}
+		current := syncExistingDigest(dst)
+		if current == op.PreviousDigest {
+			continue
+		}
+		if current != op.NewDigest {
+			return rolledBack, newObsError("OBSIDIAN_ROLLBACK_CONFLICT", 1, "", 0, 0)
+		}
+		if op.BackupPath != "" {
+			backup := filepath.Join(cfg.StateDir, filepath.FromSlash(op.BackupPath))
+			data, err := os.ReadFile(backup)
+			if err != nil || syncAtomicWriteFile(dst, data, 0644) != nil {
+				return rolledBack, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0)
+			}
+		} else if op.PreviousDigest == "" {
+			createdRel := syncCreatedRollbackRelPath(rollback.ApplyID, i, op.Path)
+			createdAbs := filepath.Join(cfg.StateDir, filepath.FromSlash(createdRel))
+			if err := syncAtomicMoveFile(dst, createdAbs); err != nil {
+				return rolledBack, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0)
+			}
+		}
+		rolledBack++
+	}
+	return rolledBack, nil
+}
+
+func newSyncRollback(plan obsidianSyncPlan, planHash, stateDigest string, started int64) obsidianSyncRollback {
+	applyID := sha256Hex([]byte(planHash + "\n" + stateDigest + "\n" + fmt.Sprintf("%d", started) + "\n"))
+	ops := []obsidianSyncRollbackOperation{}
+	for _, op := range plan.Operations {
+		destination := ""
+		if op.Op == "create" || op.Op == "update" {
+			destination = op.Destination + ":" + op.Path
+		}
+		if op.Op == "tombstone" {
+			destination = "project:" + plan.TombstoneDir + "/" + op.Path + ".tombstone.json"
+		}
+		ops = append(ops, obsidianSyncRollbackOperation{Op: op.Op, Path: op.Path, Destination: destination, PreviousDigest: "", NewDigest: "", BackupPath: "", Status: "skipped", ErrorCode: ""})
+	}
+	return obsidianSyncRollback{
+		SchemaVersion:     obsidianSyncRollbackSchemaVersion,
+		ApplyID:           applyID,
+		PlanHash:          planHash,
+		StartedAtUnix:     started,
+		CompletedAtUnix:   0,
+		Operations:        ops,
+		StateBeforeDigest: stateDigest,
+		StateAfterDigest:  "",
+	}
+}
+
+func writeSyncRollback(path string, rollback obsidianSyncRollback) error {
+	data, err := syncCanonicalJSON(rollback)
+	if err != nil {
+		return err
+	}
+	return syncAtomicWriteFile(path, data, 0600)
+}
+
+func readSyncPlan(path string) (obsidianSyncPlan, []byte, *obsidianError) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return obsidianSyncPlan{}, nil, newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	var plan obsidianSyncPlan
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&plan); err != nil || plan.SchemaVersion != obsidianSyncPlanSchemaVersion {
+		return obsidianSyncPlan{}, nil, newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	plan.Operations = nonNilSyncOperations(plan.Operations)
+	plan.Conflicts = nonNilSyncConflicts(plan.Conflicts)
+	plan.Tombstones = nonNilSyncTombstones(plan.Tombstones)
+	sortSyncPlan(&plan)
+	canonical, err := syncCanonicalJSON(plan)
+	if err != nil {
+		return obsidianSyncPlan{}, nil, newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	if !bytes.Equal(raw, canonical) {
+		return obsidianSyncPlan{}, nil, newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	return plan, raw, nil
+}
+
+func readSyncRollback(path string) (obsidianSyncRollback, *obsidianError) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return obsidianSyncRollback{}, newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	var rollback obsidianSyncRollback
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&rollback); err != nil || rollback.SchemaVersion != obsidianSyncRollbackSchemaVersion {
+		return obsidianSyncRollback{}, newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	if rollback.Operations == nil {
+		rollback.Operations = []obsidianSyncRollbackOperation{}
+	}
+	return rollback, nil
+}
+
+func validatePlanPaths(cfg obsidianSyncConfig, plan obsidianSyncPlan) *obsidianError {
+	if validateSyncProjectDirPath(cfg.ProjectRoot, plan.ConflictDir) != nil || validateSyncProjectDirPath(cfg.ProjectRoot, plan.TombstoneDir) != nil {
+		return newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+	}
+	for _, op := range plan.Operations {
+		if validateRelativePath(op.Path, false) != nil {
+			return newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+		}
+	}
+	for _, tombstone := range plan.Tombstones {
+		if validateRelativePath(tombstone.TombstonePath, false) != nil {
+			return newObsError("OBSIDIAN_SYNC_PATH_INVALID", 2, "", 0, 0)
+		}
+	}
+	return nil
+}
+
+func acquireSyncLock(stateDir string) (func(), *obsidianError) {
+	lockPath := filepath.Join(stateDir, "sync.lock")
+	f, err := os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return nil, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0)
+	}
+	_, _ = fmt.Fprintf(f, "pid=%d\n", os.Getpid())
+	_ = f.Sync()
+	_ = f.Close()
+	return func() { _ = os.Remove(lockPath) }, nil
+}
+
+func syncOperationSourcePath(cfg obsidianSyncConfig, op obsidianSyncOperation) string {
+	switch op.Source {
+	case "project":
+		return filepath.Join(cfg.ProjectRoot, filepath.FromSlash(op.Path))
+	case "vault":
+		return filepath.Join(cfg.VaultRoot, filepath.FromSlash(op.Path))
+	default:
+		return ""
+	}
+}
+
+func syncOperationDestinationPath(cfg obsidianSyncConfig, op obsidianSyncOperation) string {
+	switch op.Destination {
+	case "project":
+		return filepath.Join(cfg.ProjectRoot, filepath.FromSlash(op.Path))
+	case "vault":
+		return filepath.Join(cfg.VaultRoot, filepath.FromSlash(op.Path))
+	default:
+		return ""
+	}
+}
+
+func syncRollbackDestinationPath(cfg obsidianSyncConfig, destination string) string {
+	side, rel, ok := strings.Cut(destination, ":")
+	if !ok || validateRelativePath(rel, false) != nil {
+		return ""
+	}
+	switch side {
+	case "project":
+		return filepath.Join(cfg.ProjectRoot, filepath.FromSlash(rel))
+	case "vault":
+		return filepath.Join(cfg.VaultRoot, filepath.FromSlash(rel))
+	default:
+		return ""
+	}
+}
+
+func syncSourceName(direction string) string {
+	if direction == "project-to-vault" {
+		return "project"
+	}
+	if direction == "vault-to-project" {
+		return "vault"
+	}
+	return ""
+}
+
+func syncDestinationName(direction string) string {
+	if direction == "project-to-vault" {
+		return "vault"
+	}
+	if direction == "vault-to-project" {
+		return "project"
+	}
+	return ""
+}
+
+func syncStatePath(stateDir string) string {
+	return filepath.Join(stateDir, "sync_state.json")
+}
+
+func syncExistingDigest(path string) string {
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return ""
+	}
+	sum, err := fileSHA256(path)
+	if err != nil {
+		return ""
+	}
+	return sum
+}
+
+func syncAtomicWriteFile(target string, data []byte, mode os.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
+		return err
+	}
+	if info, err := os.Lstat(target); err == nil {
+		if info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return fmt.Errorf("invalid target")
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	tmp := target + ".tmp"
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		_ = os.Remove(tmp)
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		_ = os.Remove(tmp)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	if err := os.Chmod(tmp, mode); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	if err := os.Rename(tmp, target); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return syncParentDir(target)
+}
+
+func syncAtomicMoveFile(src, dst string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0700); err != nil {
+		return err
+	}
+	if err := os.Rename(src, dst); err != nil {
+		return err
+	}
+	return syncParentDir(dst)
+}
+
+func syncParentDir(target string) error {
+	dir, err := os.Open(filepath.Dir(target))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
+}
+
+func syncCanonicalJSON(value any) ([]byte, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	return append(data, '\n'), nil
+}
+
+func writeSyncJSON(stdout, stderr io.Writer, value any) int {
+	data, err := syncCanonicalJSON(value)
+	if err != nil {
+		writeObsidianSyncError(stderr, newObsError("OBSIDIAN_SYNC_ATOMIC_WRITE_FAILED", 1, "", 0, 0))
+		return 1
+	}
+	_, _ = stdout.Write(data)
+	return 0
+}
+
+func sha256Hex(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+func syncRootDigest(files map[string]obsidianSyncFile) string {
+	paths := make([]string, 0, len(files))
+	for rel := range files {
+		paths = append(paths, rel)
+	}
+	sort.Strings(paths)
+	var b strings.Builder
+	for _, rel := range paths {
+		file := files[rel]
+		b.WriteString(rel)
+		b.WriteByte('\n')
+		b.WriteString(file.Digest)
+		b.WriteByte('\n')
+		b.WriteString(fmt.Sprintf("%d", file.Size))
+		b.WriteByte('\n')
+	}
+	return sha256Hex([]byte(b.String()))
+}
+
+func syncPlanID(plan obsidianSyncPlan) string {
+	body := plan.Direction + "\n" + plan.DeletePolicy + "\n" + plan.ConflictDir + "\n" + plan.TombstoneDir + "\n" + plan.ProjectRootDigest + "\n" + plan.VaultRootDigest + "\n" + plan.StateDigest + "\n"
+	return sha256Hex([]byte(body))
+}
+
+func newSyncConflict(rel, reason, projectDigest, vaultDigest, stateDigest string) obsidianSyncConflict {
+	id := sha256Hex([]byte(rel + "\n" + reason + "\n" + projectDigest + "\n" + vaultDigest + "\n" + stateDigest + "\n"))
+	return obsidianSyncConflict{ConflictID: id, Path: rel, Reason: reason, ProjectDigest: projectDigest, VaultDigest: vaultDigest, StateDigest: stateDigest, Resolution: "manual"}
+}
+
+func newSyncTombstone(rel, digest, direction string, now int64, tombstoneDir string) obsidianSyncTombstone {
+	id := sha256Hex([]byte(rel + "\n" + digest + "\n" + direction + "\n" + fmt.Sprintf("%d", now) + "\n"))
+	return obsidianSyncTombstone{TombstoneID: id, Path: rel, Digest: digest, Direction: direction, CreatedAtUnix: now, TombstonePath: normalizeSyncDirOption(tombstoneDir) + "/" + rel + ".tombstone.json"}
+}
+
+func syncBackupRelPath(applyID string, ordinal int, rel string) string {
+	return "rollback-backups/" + applyID + "/" + fmt.Sprintf("%06d", ordinal) + "-" + sha256Hex([]byte(rel)) + ".bak"
+}
+
+func syncCreatedRollbackRelPath(applyID string, ordinal int, rel string) string {
+	return "rollback-created/" + applyID + "/" + fmt.Sprintf("%06d", ordinal) + "-" + sha256Hex([]byte(rel)) + ".bak"
+}
+
+func syncStateEntryMap(state obsidianSyncState) map[string]obsidianSyncStateEntry {
+	out := map[string]obsidianSyncStateEntry{}
+	for _, entry := range state.Entries {
+		out[entry.Path] = entry
+	}
+	return out
+}
+
+func syncUnionPaths(project map[string]obsidianSyncFile, vault map[string]obsidianSyncFile, entries map[string]obsidianSyncStateEntry) []string {
+	seen := map[string]bool{}
+	for rel := range project {
+		seen[rel] = true
+	}
+	for rel := range vault {
+		seen[rel] = true
+	}
+	for rel := range entries {
+		seen[rel] = true
+	}
+	paths := make([]string, 0, len(seen))
+	for rel := range seen {
+		paths = append(paths, rel)
+	}
+	sort.Strings(paths)
+	return paths
+}
+
+func sortSyncPlan(plan *obsidianSyncPlan) {
+	sort.Slice(plan.Operations, func(i, j int) bool {
+		if plan.Operations[i].Path != plan.Operations[j].Path {
+			return plan.Operations[i].Path < plan.Operations[j].Path
+		}
+		return syncOperationOrder(plan.Operations[i].Op) < syncOperationOrder(plan.Operations[j].Op)
+	})
+	sort.Slice(plan.Conflicts, func(i, j int) bool { return plan.Conflicts[i].ConflictID < plan.Conflicts[j].ConflictID })
+	sort.Slice(plan.Tombstones, func(i, j int) bool { return plan.Tombstones[i].TombstoneID < plan.Tombstones[j].TombstoneID })
+	plan.Operations = nonNilSyncOperations(plan.Operations)
+	plan.Conflicts = nonNilSyncConflicts(plan.Conflicts)
+	plan.Tombstones = nonNilSyncTombstones(plan.Tombstones)
+}
+
+func sortSyncState(state *obsidianSyncState) {
+	sort.Slice(state.Entries, func(i, j int) bool { return state.Entries[i].Path < state.Entries[j].Path })
+	sort.Slice(state.Tombstones, func(i, j int) bool { return state.Tombstones[i].TombstoneID < state.Tombstones[j].TombstoneID })
+	sort.Slice(state.Conflicts, func(i, j int) bool { return state.Conflicts[i].ConflictID < state.Conflicts[j].ConflictID })
+}
+
+func syncOperationOrder(op string) int {
+	switch op {
+	case "conflict":
+		return 0
+	case "tombstone":
+		return 1
+	case "create":
+		return 2
+	case "update":
+		return 3
+	default:
+		return 4
+	}
+}
+
+func nonNilSyncOperations(items []obsidianSyncOperation) []obsidianSyncOperation {
+	if items == nil {
+		return []obsidianSyncOperation{}
+	}
+	return items
+}
+
+func nonNilSyncEntries(items []obsidianSyncStateEntry) []obsidianSyncStateEntry {
+	if items == nil {
+		return []obsidianSyncStateEntry{}
+	}
+	return items
+}
+
+func nonNilSyncConflicts(items []obsidianSyncConflict) []obsidianSyncConflict {
+	if items == nil {
+		return []obsidianSyncConflict{}
+	}
+	return items
+}
+
+func nonNilSyncTombstones(items []obsidianSyncTombstone) []obsidianSyncTombstone {
+	if items == nil {
+		return []obsidianSyncTombstone{}
+	}
+	return items
 }

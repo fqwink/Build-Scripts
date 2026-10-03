@@ -1,0 +1,11 @@
+{
+  "final_open_item_count": 0,
+  "phase15_distribution_open_count": 0,
+  "phase15_fixture_execution_gap_count": 0,
+  "phase15_sync_apply_atomicity_open_count": 0,
+  "phase15_sync_conflict_open_count": 0,
+  "phase15_sync_plan_mismatch_count": 0,
+  "phase15_sync_rollback_open_count": 0,
+  "phase15_sync_service_dependency_open_count": 0,
+  "phase15_sync_tombstone_open_count": 0
+}
