@@ -403,9 +403,9 @@
 | `testdata/phase17/production-validation/` | Phase 17 正式 fixture root | 未作成 |
 | `testdata/phase17/production-validation/manifest.json` | Phase 17 evidence package manifest | 未作成 |
 | `testdata/phase17/production-validation/input/provider_targets.json` | provider target と future target 分類入力 | 未作成 |
-| `testdata/phase17/production-validation/input/conoha_vps_environment.json` | ConoHa VPS preflight / environment 棚卸し入力 | 未作成 |
+| `testdata/phase17/production-validation/input/conoha_vps_environment.json` | ConoHa VPS preflight / opaque environment identity / environment 棚卸し入力 | 未作成 |
 | `testdata/phase17/production-validation/input/buildout_plan.json` | 試験本番運用環境構築 work unit / 禁止 provider operation 境界入力 | 未作成 |
-| `testdata/phase17/production-validation/input/trial_operation.json` | 試験本番運用ループ / バグ修正順序入力 | 未作成 |
+| `testdata/phase17/production-validation/input/trial_operation.json` | 試験本番運用ループ / 運用窓 / 停止条件 / バグ修正順序入力 | 未作成 |
 | `testdata/phase17/production-validation/input/simulation_matrix.json` | 本番環境同等 simulation / failure class 入力 | 未作成 |
 | `testdata/phase17/production-validation/input/security_boundary.json` | secret input channel / secret leak / destructive operation 境界入力 | 未作成 |
 | `testdata/phase17/production-validation/expected/counters.json` | Phase 17 closure counter 期待値 | 未作成 |
@@ -414,7 +414,7 @@
 | `testdata/phase17/production-validation/expected/bugfix_loop.json` | 運用中バグ修正 / 既知バグ 0 期待値 | 未作成 |
 | `testdata/phase17/production-validation/records/trial_conoha.jsonl` | ConoHa VPS 試験本番運用証跡 | 未作成 |
 | `testdata/phase17/production-validation/records/buildout.jsonl` | 試験本番運用環境構築 work unit 証跡 | 未作成 |
-| `testdata/phase17/production-validation/records/operation.jsonl` | 試験本番運用ループ証跡 | 未作成 |
+| `testdata/phase17/production-validation/records/operation.jsonl` | 試験本番運用ループ / monitor sample / 停止条件証跡 | 未作成 |
 | `testdata/phase17/production-validation/records/bugfix.jsonl` | 仕様全般策定先行バグ修正証跡 | 未作成 |
 | `testdata/phase17/production-validation/records/simulation.jsonl` | 本番環境同等 simulation 証跡 | 未作成 |
 | `testdata/phase17/production-validation/records/failure.jsonl` | failure injection 証跡 | 未作成 |
