@@ -32,6 +32,7 @@
 | Phase 16 source coverage record schema | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 inventory 共通 schema](details/fixture.md#phase-16-inventory-common-schema) |
 | Phase 16 inventory 共通 schema | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 inventory 共通 schema](details/fixture.md#phase-16-inventory-common-schema) |
 | Phase 16 checker 固定契約 | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) |
+| Phase 16 checker implementation artifact | [`main_test.go`](../main_test.go) |
 | Phase 16 checker execution entrypoint | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) |
 | Phase 16 checker diagnostic schema | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) |
 | Phase 16 negative control schema | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 inventory 共通 schema](details/fixture.md#phase-16-inventory-common-schema) |
@@ -124,7 +125,7 @@
 | パス | 実装上の役割 | 所在区分 |
 |------|-----------|----------|
 | [`main.go`](../main.go) | 起動入口 | 実在 |
-| [`main_test.go`](../main_test.go) | 起動入口 test | 実在 |
+| [`main_test.go`](../main_test.go) | 起動入口 test / Phase 16 checker implementation artifact | 実在 |
 | [`go.mod`](../go.mod) | Go module | 実在 |
 | [`sdk_contract_test.go`](../sdk_contract_test.go) | `sdk` contract test | 実在 |
 | [`ui_contract_test.go`](../ui_contract_test.go) | `ui` contract test | 実在 |
@@ -359,6 +360,7 @@
 
 | path | 役割 | 所在 |
 |------|------|------|
+| `main_test.go` | Phase 16 checker implementation artifact / `TestPhase16QualityEvidenceClosure` | 実在 |
 | `testdata/phase16/quality-evidence-closure/` | Phase 16 正式 fixture root | 未作成 |
 | `testdata/phase16/quality-evidence-closure/manifest.json` | Phase 16 evidence package manifest | 未作成 |
 | `testdata/phase16/quality-evidence-closure/input/source_coverage.json` | Phase 16 live source coverage set 棚卸し入力 | 未作成 |
