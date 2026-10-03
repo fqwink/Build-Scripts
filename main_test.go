@@ -488,8 +488,8 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if !strings.Contains(roadmap, phase13CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 実装済み after Phase 13 closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は未設定とする。") {
-		t.Fatalf("docs/ROADMAP.md must state that no active Phase remains after Phase 15 closure")
+	if !strings.Contains(roadmap, "現在の active Phase は Phase 16 とする。") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 16 is the active Phase after Phase 15 closure")
 	}
 	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 15 まではすべて `実装済み`") {
 		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 15 are all implemented after Phase 15 closure")
