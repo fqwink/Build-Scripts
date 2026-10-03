@@ -459,6 +459,152 @@ Phase 15 required check は以下に固定する。Phase 15 実装 PR は、下�
 
 Phase 15 fixture は negative control を必須とする。negative control は、invalid command、unknown option、duplicate option、必須 option 欠落、invalid direction、invalid delete policy、invalid open-uri、apply 時の conflict / tombstone dir CLI 再指定、plan hash mismatch、both-side edit、opposite-side edit、delete vs edit、rename collision、clock skew、read-only file、permission denied、invalid plan file path、invalid rollback file path、invalid conflict / tombstone dir、plan file 内 conflict / tombstone dir path escape、default rollback file collision、stdout absolute path leak、rollback record write failure、rollback conflict、backup path escape、partial write、process kill、official Obsidian Sync service / cloud endpoint attempt、Obsidian URI 成功依存、vault outside write、Release asset 未追加、checksum 行不足、setup 取得対象不足を 1 件以上含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase15_fixture_execution_gap_count` または `phase15_distribution_open_count` に計上する。
 
+<a id="phase-16-quality-evidence-closure-evidence"></a>
+**Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡：**
+
+[`docs/details/fixture.md`](fixture.md) fixture 証跡責務では、Phase 16 の宣言型証跡の実行型証跡化、`ALIGN-*` 追加検証候補分類、ignored error 分類、skip / 未実行 closure、determinism、filesystem durability parity、workflow hardening、Docker 検証、release rehearsal、巨大 owner risk ledger の証跡だけを固定する。Phase 16 の現在状態と実装割当は [`docs/ROADMAP.md` 状態・計画責務 §4.1](../ROADMAP.md#roadmap-initial-phase-plan)、対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](../DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry)、Phase 完了単位は [`docs/SPEC.md` ポリシー責務 §0f](../SPEC.md#policy-phase-unit)、テスト方針は [`docs/SPEC.md` ポリシー責務 §0g](../SPEC.md#policy-meaningful-test) を参照する。
+
+Phase 16 の正式 fixture root は `testdata/phase16/quality-evidence-closure/` とする。同 root は Phase 16 実装 PR で実在化し、[`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 16 target path 所在](../DOCUMENT_INDEX.md#phase-16-target-paths) で `実在` として扱う。仕様策定時点で root が未作成の場合は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 16 target path 所在](../DOCUMENT_INDEX.md#phase-16-target-paths) に `未作成` として記録し、Phase 16 を `実装済み` に遷移させてはならない。
+
+| path | 内容 | 完了条件 |
+|------|------|----------|
+| `manifest.json` | Phase 16 evidence package の識別子、対象 owner、work unit、required check、closure record set の所在。 | `name` が `phase-16-quality-evidence-closure`、`scope` が同値、対象 owner が Phase 16 work unit に必要な owner をすべて含む。 |
+| `input/source_coverage.json` | live source coverage set から生成した Phase 16 対象 source と検出語の棚卸し。 | `rg --files --hidden -g '!.git/**'` の対象結果から Phase 16 source coverage set を再導出し、各 source の検出語、sha256、inventory 接続を記録する。 |
+| `input/evidence_inventory.json` | Phase 12 から Phase 15 の manifest、records、expected、workflow、PR evidence、skip、未実行、対象外理由、counter の棚卸し。 | 宣言型証跡、record 存在確認だけの証跡、actual / expected 比較未接続、mutation 実行未接続、fault / race / E2E / release 実行未接続を分類する。 |
+| `input/align_inventory.json` | [`docs/details/fixture.md` fixture 証跡責務 現行実装整合証跡](#current-implementation-alignment-evidence) の `ALIGN-*` 追加検証候補一覧。 | 各 `ALIGN-*` に `phase16_action`、`owner_component`、`closure_ref`、`future_ref`、`not_applicable_ref` のいずれかを持ち、未分類を残さない。 |
+| `input/error_inventory.json` | ignored error、required write、audit / access / config / state / JSON Lines write、panic、skip / 未実行の棚卸し。 | safe ignore、must handle、must fail、cleanup only、hash writer、test skip、not applicable を区別し、根拠 anchor を持つ。 |
+| `input/determinism_inventory.json` | clock、sleep、timeout、entropy、parallel worker、HTTP lifecycle、external I/O の棚卸し。 | fake adapter、固定時刻、固定 timeout、body limit、client disconnect、partial write、retry backoff の実行証跡接続先を持つ。 |
+| `input/filesystem_inventory.json` | state、config、audit、history、snapshot、archive、release、setup、Obsidian sync の file operation 棚卸し。 | atomic write、fsync、parent directory fsync、rename、symlink 非追従、stale lock、recovery、permission failure を分類する。 |
+| `input/workflow_inventory.json` | Phase 12 から Phase 16 の GitHub workflow と required check の棚卸し。 | action SHA pin、minimum permissions、timeout、skip success 禁止、required check 名、Docker 検証手順を分類する。 |
+| `input/large_owner_inventory.json` | 巨大 owner file、5 ファイル原則、内部責務区画、test artifact 接続の棚卸し。 | 6 ファイル目、subdirectory、空 file、dummy 実装を 0 とし、巨大 file は risk ledger と内部責務区画検査で閉じる。 |
+| `expected/counters.json` | Phase 16 closure counter の期待値。 | 本節の全 `phase16_*` counter と `final_open_item_count` が `0`。 |
+| `expected/actions.json` | Phase 16 で実施する修正・対象外・将来計画維持の期待分類。 | `ALIGN-*`、skip、ignored error、workflow、durability、determinism、large owner の各 item が 1 件ずつ closure action を持つ。 |
+| `records/closure.jsonl` | Phase 16 closure record set。 | 1 行 1 record、UTF-8、LF 終端、`scope` は `phase-16-quality-evidence-closure`。 |
+| `records/execution.jsonl` | production entrypoint 実行、actual / expected 比較、fixture harness、Docker 検証の実行証跡。 | 実行 command、input、actual、expected、diff、exit code、stdout / stderr、runtime、skip 有無を記録する。 |
+| `records/mutation.jsonl` | production code mutation 実行証跡。 | mutation target、before、after、expected failure、actual failure、killed / survived / invalid / equivalent を記録し、`survived=0`。 |
+| `records/fault.jsonl` | disk full、permission denied、short write、fsync failure、rename failure、process kill、partial write、client disconnect の障害注入証跡。 | failure injection が実行され、期待 failure code、rollback、recovery、no silent success が一致する。 |
+| `records/workflow.jsonl` | workflow hardening と required check 実行証跡。 | action SHA pin、permissions、timeout、required check、Docker fallback、Deno stable、release rehearsal、Phase 12 workflow 差分が閉じている。 |
+
+Phase 16 の棚卸し対象 source は、`rg --files --hidden -g '!.git/**'` で列挙できる実在 path と、必須所在確認対象の不在 record を基準にする。実装者は同列挙結果から `main.go`、`go.mod`、`components/*/*.go`、`admin/adlaire-ci-sdk.js`、`admin/index.html`、`.github/workflows/*.yml`、`.github/workflows/*.yaml`、`testdata/phase12/quality-gate-reconstruction/**`、`testdata/phase13/implementation-alignment-quality/**`、`testdata/phase14/obsidian-vault-integration/**`、`testdata/phase15/obsidian-local-sync/**`、`docs/SPEC.md`、`docs/ROADMAP.md`、`docs/DETAIL_INDEX.md`、`docs/DOCUMENT_INDEX.md`、`docs/details/fixture.md`、`docs/details/*.md` を Phase 16 source coverage set として扱う。`go.sum` は必須所在確認対象とし、実在する場合は source coverage set に含め、実在しない場合は `go.sum` が存在しないことを `input/source_coverage.json` の `not_applicable` record として扱い、存在しない file を作成して補ってはならない。source coverage set は UTF-8 byte 昇順の一意 path とし、重複 pattern で同一 path が複数回一致しても record は 1 件だけ作成する。source coverage set に含まれる path を inventory から省略してはならない。対象外とする場合も、該当 inventory record に `classification=not_applicable`、`not_applicable_ref`、`status=not_applicable` を記録する。
+
+Phase 16 の source coverage set では、`_ =`、ignored return、`panic(`、`t.Skip`、`Skip(`、`time.Now`、`time.Sleep`、`time.After`、timer、timeout、`rand.`、`crypto/rand`、`http.Client`、`http.Server`、`http.NewRequest`、response `Write`、`Flush`、`exec.Command`、`exec.CommandContext`、`systemctl`、`os.Rename`、`os.Remove`、`os.OpenFile`、`os.WriteFile`、`Write`、`Sync`、`Close`、`filepath.WalkDir`、symlink 判定、`require`、`replace`、module path、外部 import path、JSONL record、closure counter、workflow action、workflow permissions、workflow timeout、Deno check、Docker fallback、Release rehearsal、5 ファイル原則、空 file、dummy 実装、owner file line count を検出対象に含める。owner file line count は LF 区切りの物理行数で数え、末尾 LF のない最終行も 1 行として数える。検出対象が source coverage set に存在するのに対応 inventory record がない場合、`phase16_execution_evidence_gap_count` または該当する `phase16_*_open_count` を `0` にしてはならない。
+
+Phase 16 `manifest.json` は以下の key だけを持つ JSON object とする。未知 key、欠落 key、型違い、空配列、空文字列、重複値は `phase16_execution_evidence_gap_count` に計上する。
+
+| key | 型 | 固定値 / 条件 |
+|-----|----|---------------|
+| `name` | string | `phase-16-quality-evidence-closure` 固定。 |
+| `scope` | string | `phase-16-quality-evidence-closure` 固定。 |
+| `schema_version` | integer | `1` 固定。 |
+| `fixture_root` | string | `testdata/phase16/quality-evidence-closure/` 固定。 |
+| `owner_components` | array[string] | `admin`、`api`、`archive`、`builder`、`commitstatus`、`mcp`、`obsidian`、`release`、`runner`、`sdk`、`security`、`setup`、`statefile`、`ui` を含む。順序は ASCII 昇順。 |
+| `work_units` | array[string] | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 16 work unit](../DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry) の 7 work unit をすべて含む。順序は work unit 表の順序。 |
+| `input_files` | array[string] | 本節 path 表の `input/*.json` をすべて含む。 |
+| `expected_files` | array[string] | `expected/counters.json`、`expected/actions.json` を含む。 |
+| `record_files` | array[string] | `records/closure.jsonl`、`records/execution.jsonl`、`records/mutation.jsonl`、`records/fault.jsonl`、`records/workflow.jsonl` を含む。 |
+| `required_checks` | array[string] | 本節 required check 表の check 名をすべて含む。 |
+| `counters` | object | 本節 closure counter 表の全 key を持ち、値はすべて `0`。 |
+
+<a id="phase-16-inventory-common-schema"></a>
+**Phase 16 inventory 共通 schema：**
+
+Phase 16 の `input/*.json` は、root object に `schema_version`、`scope`、`records` だけを持つ。未知 key、欠落 key、型違い、空配列、空文字列、重複 key は `phase16_execution_evidence_gap_count` に計上する。`schema_version` は `1`、`scope` は `phase-16-quality-evidence-closure`、`records` は 1 件以上の array とする。全 inventory record は下表の key を必須とし、各 inventory 固有 key は後続表で追加する。
+
+| key | 型 | 固定条件 |
+|-----|----|----------|
+| `id` | string | `phase16.<work_unit_slug>.<owner_or_area>.<slug>` 形式。`work_unit_slug` は `phase16-` prefix を除いた work unit 名を `.` 区切りへ変換した値とする。lowercase、ASCII、dot notation。重複禁止。 |
+| `work_unit` | string | Phase 16 の 7 work unit のいずれか。 |
+| `owner_component` | string | owner component 名、または workflow / document / cross のような責務領域名。空文字禁止。 |
+| `source_ref` | string | 責務名付き Markdown link で到達できる正本 anchor、実装 path、workflow path、または fixture path。裸の説明文だけを禁止する。 |
+| `source_locator` | string | `symbol:<name>`、`function:<name>`、`file:<basename>`、`fixture:<name>`、`workflow:<job>`、`align:<id>`、`counter:<key>`、`record:<file>` のいずれか。行番号に依存する値を禁止する。 |
+| `classification` | string | `execute`、`fix`、`not_applicable`、`future_plan`、`reject_invalid_evidence` のいずれか。 |
+| `required_action` | string | `execute_and_close`、`fix_and_close`、`classify_not_applicable`、`keep_future_plan`、`reject_as_invalid_evidence` のいずれか。 |
+| `closure_ref` | string/null | 完了証跡へ到達できる責務名付き Markdown link、または Phase 16 実装前は `null`。`classification=execute` または `fix` の完了時は null 禁止。 |
+| `not_applicable_ref` | string/null | 対象外理由の正本 anchor。`classification=not_applicable` 以外では `null`。 |
+| `future_ref` | string/null | 将来計画維持の到達先。`classification=future_plan` 以外では `null`。 |
+| `status` | string | `open`、`closed`、`not_applicable`、`future_plan`、`rejected` のいずれか。 |
+| `counter_key` | string | 本節 closure counter 表のいずれか。 |
+
+`closure_ref`、`not_applicable_ref`、`future_ref` のうち、完了時に値を持てる key は 1 つだけとする。`status=open` の record が 1 件でもある場合、対応する `phase16_*` counter と `final_open_item_count` は `0` にしてはならない。
+
+| inventory | 追加必須 key | 固定条件 |
+|-----------|--------------|----------|
+| `input/source_coverage.json` | `path`、`path_kind`、`sha256`、`detected_terms`、`inventory_refs` | `path` は source coverage set の UTF-8 byte 昇順 path、`path_kind` は `go`、`module`、`javascript`、`html`、`workflow`、`fixture`、`document` のいずれか、`sha256` は file content digest または未作成 file では `null`、`detected_terms` は検出対象語の一意 array、`inventory_refs` は該当 inventory record `id` の 1 件以上の array。検出対象語がない source でも `detected_terms=[]` とし、`inventory_refs` には対象外または drift 確認 record を接続する。 |
+| `input/evidence_inventory.json` | `evidence_kind`、`phase_source`、`execution_requirement` | `evidence_kind` は `counter_only`、`record_exists_only`、`pr_text_only`、`skip_or_unexecuted`、`mutation_unexecuted`、`fault_unexecuted`、`race_unexecuted`、`release_unrehearsed`、`executable` のいずれか。`phase_source` は `phase12`、`phase13`、`phase14`、`phase15` のいずれか。`execution_requirement` は production entrypoint、actual / expected 比較、mutation、fault、race、release rehearsal のいずれかを含む。 |
+| `input/align_inventory.json` | `align_id`、`align_title`、`phase16_action` | `align_id` は `ALIGN-` と 2 桁以上の数字。`phase16_action` は `execute`、`future_plan`、`not_applicable` のいずれか。 |
+| `input/error_inventory.json` | `error_kind`、`must_fail`、`safe_ignore_reason` | `error_kind` は `ignored_return`、`required_write_failure`、`cleanup_failure`、`panic`、`skip`、`http_write_failure`、`hash_writer`、`best_effort` のいずれか。`must_fail` は boolean。`safe_ignore_reason` は safe ignore 以外では `null`。 |
+| `input/determinism_inventory.json` | `source_kind`、`fake_adapter`、`repeat_count` | `source_kind` は `clock`、`timer`、`sleep`、`timeout`、`entropy`、`http_client`、`command`、`systemd`、`filesystem_order`、`parallel_worker` のいずれか。`fake_adapter` は責務正本 anchor または `null`。`repeat_count` は 2 以上。 |
+| `input/filesystem_inventory.json` | `operation_kind`、`durability_requirement`、`failure_class` | `operation_kind` は `write`、`append`、`flush`、`fsync`、`parent_fsync`、`rename`、`remove`、`walk`、`lock`、`symlink_check`、`recovery` のいずれか。`durability_requirement` は statefile owner の手順または collaborator 固有手順への link。`failure_class` は 1 件以上の array。 |
+| `input/workflow_inventory.json` | `workflow_path`、`job_name`、`hardening_items` | `hardening_items` は `action_sha_pin`、`permissions`、`timeout`、`required_check`、`skip_success_forbidden`、`docker_fallback`、`runtime_version`、`deno_check`、`release_rehearsal` のうち 1 件以上。Deno 不在時は Docker 上の Deno stable runtime 実行証跡だけを代替証跡として認める。 |
+| `input/large_owner_inventory.json` | `owner_path`、`go_file_count`、`risk_items` | `go_file_count` は 5 以下。`risk_items` は `oversized_file`、`mixed_responsibility`、`missing_internal_section`、`test_gap`、`dummy_or_empty_file`、`subdirectory`、`none` のうち 1 件以上。production Go file が 2000 行を超える場合は `oversized_file` とする。test Go file が 2000 行を超える場合は `test_gap` として test artifact 分割または検証責務の見直し対象にする。`none` は `classification=not_applicable` の場合だけ許可する。 |
+
+Phase 16 の `expected/counters.json` は root object に `schema_version`、`scope`、`counters` だけを持つ。未知 key、欠落 key、型違い、重複 key を禁止する。`schema_version` は `1`、`scope` は `phase-16-quality-evidence-closure`、`counters` は本節 closure counter 表の全 key だけを 1 回ずつ持つ object とする。各 counter 値は integer `0` 固定であり、string `"0"`、boolean、null、負数、未記録、追加 counter、欠落 counter、同名 counter の重複、closure record set と異なる値を禁止する。
+
+Phase 16 の `expected/actions.json` は root object に `schema_version`、`scope`、`actions` だけを持つ。未知 key、欠落 key、型違い、重複 key を禁止する。`actions[]` は `id`、`inventory_id`、`action`、`owner_component`、`expected_counter_key`、`expected_status`、`evidence_record` を必須とする。`inventory_id` はいずれかの inventory record `id` と一致し、`action` は `execute_and_close`、`fix_and_close`、`classify_not_applicable`、`keep_future_plan`、`reject_as_invalid_evidence` のいずれか、`evidence_record` は完了時に `records/closure.jsonl`、`records/execution.jsonl`、`records/mutation.jsonl`、`records/fault.jsonl`、`records/workflow.jsonl` のいずれかへ到達する。1 つの `inventory_id` に対する action は 1 件だけとし、複数 action、未接続 action、inventory に存在しない action、action のない inventory record を禁止する。
+
+Phase 16 の `records/*.jsonl` は、1 行 1 JSON object、UTF-8、LF 終端、空行禁止、未知 key 禁止とする。全 record は `record_id`、`scope`、`work_unit`、`inventory_id`、`owner_component`、`source_ref`、`result`、`counter_key` を必須とする。`record_id` は `phase16.record.<record_file_slug>.<owner_or_area>.<slug>` 形式、`record_file_slug` は拡張子なしの record file 名とする。`inventory_id` はいずれかの inventory record `id` と一致する。`scope` は `phase-16-quality-evidence-closure`、`result` は `passed`、`failed`、`not_applicable`、`future_plan`、`rejected` のいずれかとし、完了時に `failed` は 0 件でなければならない。
+
+| record file | 追加必須 key | 固定条件 |
+|-------------|--------------|----------|
+| `records/execution.jsonl` | `command`、`runtime`、`input_sha256`、`expected_sha256`、`actual_sha256`、`diff_result`、`exit_code`、`stdout_sha256`、`stderr_sha256` | `command` は実行した本番 entrypoint または checker。`diff_result` は `empty` または failure reason。exit code だけを合格根拠にしてはならない。 |
+| `records/mutation.jsonl` | `mutation_id`、`target_ref`、`mutation_kind`、`expected_failure`、`actual_failure`、`mutation_result` | `mutation_result` は `killed`、`survived`、`invalid`、`equivalent` のいずれか。`survived` は完了時 0 件。`equivalent` は責務正本 anchor がある場合だけ許可する。 |
+| `records/fault.jsonl` | `fault_id`、`fault_kind`、`injection_point`、`expected_recovery`、`actual_recovery`、`silent_success` | `silent_success` は完了時 `false`。`fault_kind` は disk full、permission denied、short write、fsync failure、rename failure、process kill、partial write、client disconnect のいずれか。 |
+| `records/workflow.jsonl` | `workflow_path`、`job_name`、`action_pin_result`、`permissions_result`、`timeout_result`、`required_check_result`、`docker_fallback_result`、`runtime_version_result`、`deno_check_result`、`release_rehearsal_result` | 各 result は `passed`、`failed`、`not_applicable` のいずれか。`workflow_path` は `.github/workflows/*.yml` または `.github/workflows/*.yaml` に一致する。`deno_check_result=not_applicable` は Phase 16 で standalone JavaScript file を触らない場合だけ許可し、正本 anchor 必須。`release_rehearsal_result=not_applicable` は release / setup / distribution に影響がない場合だけ許可し、正本 anchor 必須。その他の `not_applicable` も正本 anchor 必須。 |
+| `records/closure.jsonl` | `closure_status`、`open_items`、`closed_items`、`not_applicable_items`、`future_items` | `closure_status` は `closed`、`open` のいずれか。完了時は `closed` かつ `open_items=[]`。 |
+
+<a id="phase-16-checker-contract"></a>
+**Phase 16 checker 固定契約：**
+
+Phase 16 checker は `testdata/phase16/quality-evidence-closure/` を入力に取り、live source coverage set、`manifest.json`、`input/*.json`、`expected/*.json`、`records/*.jsonl`、closure counter を相互照合する単一 gate とする。checker は JSON decode 前に duplicate key を検出し、duplicate key、unknown key、欠落 key、型違い、空文字列、不正 enum、不正 sort、LF 終端欠落、JSONL 空行、同一 `id` / `record_id` の重複をすべて失敗にする。
+
+checker は `rg --files --hidden -g '!.git/**'` の実行結果から Phase 16 source coverage set を再構築し、`input/source_coverage.json` と一致させる。live source coverage set に存在する path が `input/source_coverage.json` にない場合、または `input/source_coverage.json` の path が live source coverage set に存在しない場合、`phase16_document_drift_open_count` と `phase16_execution_evidence_gap_count` を `0` にしてはならない。checker は各 source の sha256、検出対象語、owner / area、inventory_refs を再計算し、対応 inventory record がない検出対象を失敗にする。
+
+checker は各 inventory record から `expected/actions.json` と `records/*.jsonl` を再導出し、1 inventory record に 1 action、1 action に 1 件以上の evidence record、1 evidence record に 1 counter が接続していることを確認する。`closure_ref`、`not_applicable_ref`、`future_ref`、`counter_key`、`status`、`result` の組み合わせが矛盾する場合、手書き counter が `0` でも失敗にする。
+
+checker は closure counter を `input/*.json` と `records/*.jsonl` から再集計する。`expected/counters.json`、`manifest.json.counters`、closure record set に記録された counter が再集計値と一致しない場合、または failed / open / survived / silent_success / unclassified / gap が 1 件以上ある場合、該当 counter と `final_open_item_count` は `0` にできない。
+
+checker の診断は deterministic とし、`work_unit`、`owner_component`、`source_ref`、`source_locator`、`id`、`record_id` の ASCII 昇順で出力する。診断は free-form message だけにしてはならず、少なくとも `failure_code`、`inventory_id`、`record_id`、`counter_key`、`source_ref`、`expected`、`actual` を持つ。checker が内部 error、panic、partial read、JSONL parse error、filesystem error、source enumeration error、hash mismatch を検出した場合は、成功扱いせず `phase16_execution_evidence_gap_count` に計上する。
+
+Phase 16 closure record set は、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record を使用し、各 record の `scope` に `phase-16-quality-evidence-closure` を含める。Phase 16 では以下の集計値を同じ closure record set 内に記録する。
+
+| 集計値 | 完了値 | 未完了条件 |
+|--------|--------|------------|
+| `phase16_declarative_evidence_open_count` | `0` | JSONL record 存在、counter `0`、PR 本文記載、manifest 存在だけを実行証跡として扱う item が 1 件以上ある。 |
+| `phase16_execution_evidence_gap_count` | `0` | production entrypoint 実行、actual / expected 比較、diff、stdout / stderr、exit code、fixture harness 接続が欠ける item がある。 |
+| `phase16_mutation_survived_count` | `0` | production code mutation の survived が 1 件以上、または mutation を実際に加えた証跡がない。 |
+| `phase16_fault_injection_open_count` | `0` | disk full、permission denied、short write、fsync failure、rename failure、process kill、partial write、client disconnect の注入・復旧証跡に残件がある。 |
+| `phase16_align_unclassified_count` | `0` | `ALIGN-*` 追加検証候補に Phase 16 実施、将来計画維持、対象外 anchor のいずれもない。 |
+| `phase16_align_open_count` | `0` | Phase 16 実施対象に分類した `ALIGN-*` に未実装、未検証、未証跡がある。 |
+| `phase16_ignored_error_unclassified_count` | `0` | `_ =`、ignored write、cleanup、hash writer、best effort の分類がない箇所がある。 |
+| `phase16_required_write_failure_open_count` | `0` | audit、access、config、state、JSON Lines、release、archive、rollback、credential の必須 write failure を無視する経路がある。 |
+| `phase16_skip_open_count` | `0` | skip / 未実行が対象外 anchor、代替実行証跡、または失敗扱いに接続していない。 |
+| `phase16_panic_unclassified_count` | `0` | panic が programmer error として明示許可されるか、error return に置換されるかの分類がない。 |
+| `phase16_determinism_open_count` | `0` | clock、sleep、timeout、entropy、parallel worker、retry backoff が固定 fake または実行証跡に接続していない。 |
+| `phase16_http_boundary_open_count` | `0` | response write failure、partial write、client disconnect、body limit、graceful shutdown、timeout、redirect / SSRF 境界の証跡に残件がある。 |
+| `phase16_filesystem_durability_open_count` | `0` | atomic write、fsync、parent directory fsync、rename、symlink 非追従、stale lock、recovery、permission failure の owner 間水準差が残る。 |
+| `phase16_workflow_hardening_open_count` | `0` | action SHA pin、minimum permissions、timeout、required check、skip success 禁止、Phase 12 workflow hardening に残件がある。 |
+| `phase16_validation_portability_open_count` | `0` | host Go / Deno 不在時の Docker 検証手順、runtime version、実行 command、失敗時扱いが固定されていない。 |
+| `phase16_release_rehearsal_open_count` | `0` | release rehearsal、tag / checksum / signature / SBOM / reproducible build 証跡、setup install rehearsal に残件がある。 |
+| `phase16_large_owner_risk_open_count` | `0` | 巨大 owner file に risk ledger、内部責務区画、test artifact 接続、5 ファイル原則維持証跡がない。 |
+| `phase16_document_drift_open_count` | `0` | Phase 16 の状態、path、anchor、fixture root、workflow、required check、対象外理由、将来計画維持の drift がある。 |
+| `final_open_item_count` | `0` | 上記集計値または closure record の `open_items` に残件がある。 |
+
+Phase 16 required check は以下に固定する。Phase 16 実装 PR は、下表の check 名、対象、完了条件を同一 Pull Request 本文へ記録する。
+
+| check 名 | 対象 | 完了条件 |
+|----------|------|----------|
+| `phase16-go-format` | Phase 16 で触れた Go file | `gofmt -l` の差分が 0。 |
+| `phase16-go-test` | Phase 16 の対象 owner と横断 gate | `go test ./...` が成功し、skip がある場合は [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](#test-skip-evidence-contract) に接続する。 |
+| `phase16-deno-check` | [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js) と Phase 16 で触れた standalone JavaScript file | Deno stable runtime の `deno check` が成功する。Deno が host にない場合は Docker 上の Deno stable runtime 実行証跡を `phase16_validation_portability_open_count=0` に接続する。Node.js、npm、bundler、transpiler を代替完了根拠にしてはならない。[`admin/index.html`](../../admin/index.html) 内の inline JavaScript は `phase16-quality-evidence-fixture` で UI / SDK / API interaction として検証し、standalone JavaScript file として扱わない。 |
+| `phase16-race` | statefile、runner、api、mcp、obsidian、archive、release、setup の並行更新または lock に関係する test | race detector または仕様化済み interleaving 証跡が成功し、`phase16_determinism_open_count=0`。 |
+| `phase16-quality-evidence-fixture` | `testdata/phase16/quality-evidence-closure/` | production entrypoint 実行、actual / expected 比較、checker 再導出、closure counters、negative control が一致する。 |
+| `phase16-mutation` | production code mutation | `records/mutation.jsonl` の `survived=0`。 |
+| `phase16-fault-injection` | filesystem、HTTP、process、permission、write failure | `records/fault.jsonl` が全 failure class を実行し、silent success が 0。 |
+| `phase16-workflow-hardening` | `.github/workflows/*.yml`、`.github/workflows/*.yaml` と required check | action SHA pin、permissions、timeout、required check、Phase 12 workflow hardening がすべて閉じる。 |
+| `phase16-document-drift` | [`docs/SPEC.md`](../SPEC.md)、[`docs/ROADMAP.md`](../ROADMAP.md)、[`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md)、[`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md)、[`docs/details/fixture.md`](fixture.md)、対象 owner 詳細本文 | Phase 16 の状態、path、anchor、fixture root、workflow、counter、対象外理由、将来計画維持の drift が 0。 |
+
+Phase 16 fixture は negative control を必須とする。negative control は、JSON duplicate key を受理、source coverage set の path 省略、JSONL record だけで成功、counter だけで成功、実行していない mutation を killed と扱う、survived mutation を 0 と誤集計、fault injection 未実行、skip を成功扱い、required write failure の無視、panic 未分類、clock / sleep / timeout の非決定、response write failure 無視、client disconnect 無視、fsync failure 無視、rename failure 無視、parent directory fsync 欠落、workflow tag pin、workflow permissions 欠落、workflow timeout 欠落、host tool 不在時の成功扱い、Deno 未実行の JavaScript 成功扱い、release rehearsal 未実行、巨大 owner risk ledger 欠落、`ALIGN-*` 未分類、将来計画対象を Phase 16 完了対象として誤計上する case を 1 件以上含める。negative control が成功扱いになる場合、該当 checker 自体を未完成として `phase16_execution_evidence_gap_count`、`phase16_align_unclassified_count`、または該当する `phase16_*_open_count` に計上する。
+
 <a id="fixture-root-coverage-matrix-contract"></a>
 **fixture root coverage matrix 固定契約：**
 

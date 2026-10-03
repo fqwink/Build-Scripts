@@ -25,6 +25,12 @@
 | Phase 15 Obsidian local vault 同期の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry) |
 | Phase 15 正式 fixture root | [`testdata/phase15/obsidian-local-sync/`](../testdata/phase15/obsidian-local-sync/) |
 | Phase 15 required check workflow | [`.github/workflows/phase15-obsidian-local-sync.yml`](../.github/workflows/phase15-obsidian-local-sync.yml) |
+| Phase 16 実装済み品質証跡実体化・追加検証候補 closure の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry) |
+| Phase 16 正式 fixture root | `testdata/phase16/quality-evidence-closure/` |
+| Phase 16 source coverage set | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡](details/fixture.md#phase-16-quality-evidence-closure-evidence) |
+| Phase 16 inventory 共通 schema | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 inventory 共通 schema](details/fixture.md#phase-16-inventory-common-schema) |
+| Phase 16 checker 固定契約 | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) |
+| Phase 16 required check workflow | `.github/workflows/phase16-quality-evidence-closure.yml` |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
@@ -226,6 +232,8 @@
 | [`.github/workflows/phase14-obsidian-vault-integration.yml`](../.github/workflows/phase14-obsidian-vault-integration.yml) | Phase 14 required check workflow | 実在 |
 | [`testdata/phase15/obsidian-local-sync/`](../testdata/phase15/obsidian-local-sync/) | Phase 15 Obsidian local vault 同期 fixture root | 実在 |
 | [`.github/workflows/phase15-obsidian-local-sync.yml`](../.github/workflows/phase15-obsidian-local-sync.yml) | Phase 15 required check workflow | 実在 |
+| `testdata/phase16/quality-evidence-closure/` | Phase 16 quality evidence closure fixture root | 未作成 |
+| `.github/workflows/phase16-quality-evidence-closure.yml` | Phase 16 required check workflow | 未作成 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
 
@@ -336,3 +344,29 @@
 | [`testdata/phase15/obsidian-local-sync/expected/counters.json`](../testdata/phase15/obsidian-local-sync/expected/counters.json) | Phase 15 closure counter 期待値 | 実在 |
 | [`testdata/phase15/obsidian-local-sync/records/closure.jsonl`](../testdata/phase15/obsidian-local-sync/records/closure.jsonl) | Phase 15 closure record set | 実在 |
 | [`.github/workflows/phase15-obsidian-local-sync.yml`](../.github/workflows/phase15-obsidian-local-sync.yml) | Phase 15 required check workflow | 実在 |
+
+<a id="phase-16-target-paths"></a>
+**Phase 16 target path 所在：**
+
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+
+| path | 役割 | 所在 |
+|------|------|------|
+| `testdata/phase16/quality-evidence-closure/` | Phase 16 正式 fixture root | 未作成 |
+| `testdata/phase16/quality-evidence-closure/manifest.json` | Phase 16 evidence package manifest | 未作成 |
+| `testdata/phase16/quality-evidence-closure/input/source_coverage.json` | Phase 16 live source coverage set 棚卸し入力 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/input/evidence_inventory.json` | Phase 12 から Phase 15 の証跡棚卸し入力 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/input/align_inventory.json` | `ALIGN-*` 追加検証候補分類入力 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/input/error_inventory.json` | ignored error / required write / panic / skip 棚卸し入力 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/input/determinism_inventory.json` | clock / sleep / timeout / entropy / HTTP 境界棚卸し入力 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/input/filesystem_inventory.json` | filesystem durability 棚卸し入力 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/input/workflow_inventory.json` | workflow hardening / Docker 検証棚卸し入力 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/input/large_owner_inventory.json` | 巨大 owner risk ledger 入力 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/expected/counters.json` | Phase 16 closure counter 期待値 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/expected/actions.json` | Phase 16 closure action 期待値 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/records/closure.jsonl` | Phase 16 closure record set | 未作成 |
+| `testdata/phase16/quality-evidence-closure/records/execution.jsonl` | Phase 16 execution 証跡 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/records/mutation.jsonl` | Phase 16 mutation 証跡 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/records/fault.jsonl` | Phase 16 fault injection 証跡 | 未作成 |
+| `testdata/phase16/quality-evidence-closure/records/workflow.jsonl` | Phase 16 workflow hardening 証跡 | 未作成 |
+| `.github/workflows/phase16-quality-evidence-closure.yml` | Phase 16 required check workflow | 未作成 |
