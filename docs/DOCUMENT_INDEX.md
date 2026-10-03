@@ -28,6 +28,7 @@
 | Phase 16 実装済み品質証跡実体化・追加検証候補 closure の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry) |
 | Phase 16 正式 fixture root | `testdata/phase16/quality-evidence-closure/` |
 | Phase 16 source coverage set | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡](details/fixture.md#phase-16-quality-evidence-closure-evidence) |
+| Phase 16 source enumeration / digest contract | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 source enumeration / digest 固定契約](details/fixture.md#phase-16-source-enumeration-digest-contract) |
 | Phase 16 source coverage record schema | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 inventory 共通 schema](details/fixture.md#phase-16-inventory-common-schema) |
 | Phase 16 inventory 共通 schema | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 inventory 共通 schema](details/fixture.md#phase-16-inventory-common-schema) |
 | Phase 16 checker 固定契約 | [`docs/details/fixture.md` fixture 証跡責務 Phase 16 checker 固定契約](details/fixture.md#phase-16-checker-contract) |
