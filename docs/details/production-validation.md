@@ -6,7 +6,7 @@
 
 本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用に関する、運用対象、provider target、OS / plan 前提、検証対象、検証 mode、禁止操作、運用中バグ修正順序、fixture 証跡への接続、完了条件を所有する。
 
-本番検証詳細本文責務は、owner component の通常処理、API route、SDK method、UI DOM、runner pipeline、state schema、release asset format、setup install 処理、VPS provider API 操作実装、GitHub 設定、credential 管理方式を本文として定義しない。これらは該当する owner component 別詳細本文、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、または [`AGENTS.md`](../../AGENTS.md) 作業ルールを参照する。
+本番検証詳細本文責務は、owner component の通常処理、API route、SDK method、UI DOM、runner pipeline、state schema、release asset format、setup install 処理、VPS provider API 操作実装、GitHub 設定、credential 管理方式を本文として定義しない。これらは該当する owner component 別詳細本文、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、または [`AGENTS.md`](../../AGENTS.md) 作業ルールを参照する。ただし、Phase 17 検証で secret を証跡へ混入させないための入力境界、許可入力経路、禁止入力経路、証跡化禁止事項は本番検証詳細本文責務が所有する。これは Adlaire CI の credential 管理方式ではなく、試験本番運用検証の boundary contract として扱う。
 
 Phase 17 は ConoHa VPS 試験本番運用の Phase であり、正式本番運用、customer data を扱う実運用、ユーザー環境の破壊的変更、provider resource の作成・削除自動化を目的にしてはならない。
 
@@ -76,6 +76,18 @@ Phase 17 の構築は、以下の work unit を順序固定で実行する。
 ConoHa VPS resource の作成、削除、plan 変更、disk rebuild、volume 操作、firewall lockout は、Adlaire CI の Phase 17 実装機能として自動化しない。Phase 17 は、試験本番運用専用 VPS が存在することを preflight で検証し、その後の install、service、runtime、update、rollback、運用、simulation の結果を証跡化する。
 
 禁止 provider operation token は `vps-create`、`vps-delete`、`plan-change`、`disk-rebuild`、`volume-create`、`volume-delete`、`volume-attach`、`volume-detach`、`firewall-lockout`、`ssh-lockout` に固定する。Phase 17 の fixture、negative boundary、required check、PR 証跡は、この token set 以外の名称で禁止 provider operation を表現してはならない。
+
+<a id="phase-17-secret-input-boundary"></a>
+
+## 3b. credential / SSH 入力境界
+
+Phase 17 の試験本番運用検証で使用する provider API token、admin token、SSH private key、IP 固有 secret、host 固有 secret は、repository、fixture、expected、record、workflow、log、stdout、stderr、Pull Request body、issue comment、chat message、screen shot に保存してはならない。
+
+Phase 17 の secret 入力経路は `operator-local-file`、`operator-stdin`、`ssh-agent`、`systemd-credential`、`not-required` だけを許可する。`operator-local-file` は repository root 外の file とし、記録できるのは file path ではなく `secret_class` と `input_channel` と `redacted_reference` だけとする。`operator-stdin` は値を record、stdout、stderr、shell history、log に残してはならない。`ssh-agent` と `systemd-credential` は secret 値を取り出して記録してはならない。`not-required` は対象 check が secret を必要としない場合だけ使用する。
+
+Phase 17 の secret 入力経路として、`repository-file`、`fixture-file`、`command-argument`、`environment-variable`、`pr-body`、`issue-comment`、`chat-message`、`stdout`、`stderr`、`log`、`screen-shot` を禁止する。禁止入力経路を使用した record は成功扱いせず、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の secret boundary counter へ接続する。
+
+Phase 17 の証跡に保存できる secret 関連情報は、`secret_class`、`input_channel`、`redacted_reference`、`secret_reference_policy=metadata-only`、`secret_value_present=false`、`mask_result`、`credential_storage_result`、`boundary_result` だけとする。secret 値、secret 値の hash、private key fingerprint、provider account id、credential file path、host 固有 secret、IP 固有 secret、実 token の prefix / suffix を保存してはならない。
 
 <a id="phase-17-validation-targets"></a>
 

@@ -407,7 +407,7 @@
 | `testdata/phase17/production-validation/input/buildout_plan.json` | 試験本番運用環境構築 work unit / 禁止 provider operation 境界入力 | 未作成 |
 | `testdata/phase17/production-validation/input/trial_operation.json` | 試験本番運用ループ / バグ修正順序入力 | 未作成 |
 | `testdata/phase17/production-validation/input/simulation_matrix.json` | 本番環境同等 simulation / failure class 入力 | 未作成 |
-| `testdata/phase17/production-validation/input/security_boundary.json` | secret leak / destructive operation 境界入力 | 未作成 |
+| `testdata/phase17/production-validation/input/security_boundary.json` | secret input channel / secret leak / destructive operation 境界入力 | 未作成 |
 | `testdata/phase17/production-validation/expected/counters.json` | Phase 17 closure counter 期待値 | 未作成 |
 | `testdata/phase17/production-validation/expected/runtime_flow.json` | Phase 17 runtime flow 期待値 | 未作成 |
 | `testdata/phase17/production-validation/expected/buildout.json` | 試験本番運用環境構築 work unit 順序 / 許可操作 / 禁止操作 / counter 接続期待値 | 未作成 |
