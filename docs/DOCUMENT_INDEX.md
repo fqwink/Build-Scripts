@@ -46,7 +46,7 @@
 | Phase 17 正式 fixture root | `testdata/phase17/production-validation/` |
 | Phase 17 required check workflow | `.github/workflows/phase17-production-validation.yml` |
 | Phase 18 試験本番VPS 実運用接続・運用証跡の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 試験本番VPS 実運用接続・運用証跡参照](DETAIL_INDEX.md#phase-18-trial-production-operation-entry) |
-| Phase 18 試験本番運用詳細本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 試験本番VPS 実運用接続・運用証跡契約](details/production-validation.md#phase-18-trial-production-operation-contract) |
+| Phase 18 試験本番VPS 実運用接続・運用証跡詳細本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 試験本番VPS 実運用接続・運用証跡契約](details/production-validation.md#phase-18-trial-production-operation-contract) |
 | Phase 18 正式 fixture root | `testdata/phase18/trial-production-operation/` |
 | Phase 18 required check workflow | `.github/workflows/phase18-trial-production-operation.yml` |
 | Phase 18 checker implementation artifact 配置先 | [`main_test.go`](../main_test.go) |
@@ -257,7 +257,7 @@
 | [`.github/workflows/phase16-quality-evidence-closure.yml`](../.github/workflows/phase16-quality-evidence-closure.yml) | Phase 16 required check workflow | 実在 |
 | `testdata/phase17/production-validation/` | Phase 17 trial production operation fixture root | 実在 |
 | `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 実在 |
-| `testdata/phase18/trial-production-operation/` | Phase 18 trial production operation fixture root | 未作成 |
+| `testdata/phase18/trial-production-operation/` | Phase 18 正式 fixture root | 未作成 |
 | `.github/workflows/phase18-trial-production-operation.yml` | Phase 18 required check workflow | 未作成 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
@@ -452,6 +452,6 @@
 | `testdata/phase18/trial-production-operation/records/update_rollback.jsonl` | update / rollback / service restart / state migration / failure cleanup 証跡 | 未作成 |
 | `testdata/phase18/trial-production-operation/records/bugfix.jsonl` | 運用中 issue / 仕様全般策定 / 実装修正 / 再検証 / known bug 0 証跡 | 未作成 |
 | `testdata/phase18/trial-production-operation/records/security.jsonl` | secret 境界 / opaque metadata / 禁止 provider operation / destructive operation 境界証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/document_drift.jsonl` | Phase 18 状態 / path / anchor / workflow / required check drift 証跡 | 未作成 |
+| `testdata/phase18/trial-production-operation/records/document_drift.jsonl` | Phase 18 状態 / path / anchor / fixture root / workflow / required check / checker artifact / closure counter drift 証跡 | 未作成 |
 | `.github/workflows/phase18-trial-production-operation.yml` | Phase 18 required check workflow | 未作成 |
 | [`main_test.go`](../main_test.go) | Phase 18 checker implementation artifact 配置先 | 実在 |

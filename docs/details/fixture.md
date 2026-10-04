@@ -892,7 +892,7 @@ Phase 18 fixture は以下の path だけを持つ。未知 path、欠落 path�
 | `records/update_rollback.jsonl` | update、rollback、service restart、state migration、failure cleanup 証跡。 |
 | `records/bugfix.jsonl` | 運用中 issue、仕様全般策定、実装修正、再検証、known bug 0 証跡。 |
 | `records/security.jsonl` | secret 境界、opaque metadata、禁止 provider operation、destructive operation 境界証跡。 |
-| `records/document_drift.jsonl` | Phase 18 状態、path、anchor、fixture root、workflow、required check drift 証跡。 |
+| `records/document_drift.jsonl` | Phase 18 状態、path、anchor、fixture root、workflow、required check、checker artifact、closure counter drift 証跡。 |
 
 `manifest.json` は root object に `schema_version`、`name`、`scope`、`provider_targets`、`validation_modes`、`required_checks`、`fixture_root` だけを持つ。`schema_version` は `1`、`name` と `scope` は `phase-18-trial-production-operation`、`fixture_root` は `testdata/phase18/trial-production-operation/` 固定とする。`provider_targets` は `conoha-vps-primary`、`xserver-vps-future` の順序固定、`validation_modes` は `trial-production-operation`、`future_plan` の順序固定とする。`required_checks` は `phase18-environment-handover`、`phase18-operation-session`、`phase18-service-health`、`phase18-runtime-flow`、`phase18-runner-operation`、`phase18-update-rollback`、`phase18-bugfix-spec-first`、`phase18-security-boundary`、`phase18-document-drift` の順序固定 array とし、欠落、追加、重複、別名、順序変更を禁止する。
 
@@ -974,7 +974,7 @@ Phase 18 required check と evidence file の接続は以下に固定する。ch
 | `phase18-update-rollback` | `records/update_rollback.jsonl` | `input/operation_scope.json`、`expected/session_flow.json` | `phase18_update_rollback_open_count` |
 | `phase18-bugfix-spec-first` | `records/bugfix.jsonl` | `expected/bugfix_closure.json` | `phase18_bugfix_spec_gap_count`、`phase18_known_bug_open_count` |
 | `phase18-security-boundary` | `records/security.jsonl` | `input/security_boundary.json` | `phase18_secret_leak_open_count`、`phase18_destructive_operation_open_count` |
-| `phase18-document-drift` | `records/document_drift.jsonl` | `manifest.json` | `phase18_document_drift_open_count` |
+| `phase18-document-drift` | `records/document_drift.jsonl` | `manifest.json`、`expected/counters.json` | `phase18_document_drift_open_count` |
 
 `TestPhase18TrialProductionOperationEvidence` checker の実装 artifact は [`main_test.go`](../../main_test.go) 固定とする。Phase 18 checker のために owner component、owner `<owner>_test.go`、専用 CLI、別 executable、外部 tool、fixture 配下の helper、または repository root の追加 test artifact を作成してはならない。`TestPhase18TrialProductionOperationEvidence` checker は、Go 標準ライブラリだけを使用し、`testdata/phase18/trial-production-operation/` 配下の `manifest.json`、全 `input/*.json`、全 `expected/*.json`、全 `records/*.jsonl`、および本節の Phase 18 anchor だけを入力として検査する。checker は provider API、SSH、systemd、GitHub write API、network、shell command、VPS operation、実 service 操作、実 state 変更を実行してはならない。checker は証跡 package の JSON / JSON Lines 構造、固定配列、record 接続、counter 再集計、secret-safe 境界、document drift だけを判定し、実運用操作の代替実行器として扱ってはならない。
 
