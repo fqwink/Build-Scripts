@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "name": "phase-17-production-validation",
+  "scope": "phase-17-production-validation",
+  "provider_targets": [
+    "conoha-vps-primary",
+    "xserver-vps-future"
+  ],
+  "validation_modes": [
+    "trial-production-conoha-vps",
+    "production-equivalent-simulation"
+  ],
+  "required_checks": [
+    "phase17-conoha-vps-preflight",
+    "phase17-trial-production-buildout",
+    "phase17-conoha-install-update-rollback",
+    "phase17-systemd-lifecycle",
+    "phase17-runtime-flow",
+    "phase17-trial-operation-loop",
+    "phase17-production-simulation",
+    "phase17-failure-injection",
+    "phase17-security-boundary",
+    "phase17-bugfix-spec-first",
+    "phase17-document-drift"
+  ],
+  "fixture_root": "testdata/phase17/production-validation/"
+}

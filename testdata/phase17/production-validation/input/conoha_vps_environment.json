@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "scope": "phase-17-production-validation",
+  "provider_target": "conoha-vps-primary",
+  "validation_mode": "trial-production-conoha-vps",
+  "os": "ubuntu-server-24.04-lts-64bit",
+  "minimum_plan_class": "conoha-vps-1gb-memory-class",
+  "minimum_ram_mb": 1024,
+  "excluded_plan": "512mb",
+  "environment_identity": {
+    "provider_plan_label": "opaque-plan-minimum-1gb",
+    "provider_region_label": "opaque-region-primary",
+    "vps_instance_label": "opaque-vps-trial-primary",
+    "public_endpoint_label": "opaque-endpoint-primary",
+    "metadata_policy": "opaque-non-secret-labels"
+  },
+  "capabilities": [
+    {
+      "name": "systemd",
+      "expected": "available",
+      "actual": "initial-validation-ready",
+      "result": "passed"
+    },
+    {
+      "name": "sudo",
+      "expected": "available",
+      "actual": "initial-validation-ready",
+      "result": "passed"
+    }
+  ],
+  "state_directory_parent": {
+    "path": "opaque-state-parent",
+    "owner_expected": "adlaire-ci",
+    "mode_expected": "0700",
+    "result": "passed"
+  },
+  "network": [
+    {
+      "name": "dns",
+      "expected": "available",
+      "actual": "initial-validation-ready",
+      "result": "passed"
+    },
+    {
+      "name": "outbound-http",
+      "expected": "timeout-bounded",
+      "actual": "initial-validation-ready",
+      "result": "passed"
+    }
+  ],
+  "required_commands": [
+    {
+      "name": "systemctl",
+      "expected": "available",
+      "actual": "initial-validation-ready",
+      "result": "passed"
+    },
+    {
+      "name": "journalctl",
+      "expected": "available",
+      "actual": "initial-validation-ready",
+      "result": "passed"
+    }
+  ]
+}

@@ -346,13 +346,17 @@ func TestPhase11FixtureManifestGate(t *testing.T) {
 		manifest := phase11ReadManifest(t, manifestPath)
 		fixtureDir := filepath.Dir(manifestPath)
 
-		if manifest.Name != filepath.Base(fixtureDir) && !phase13AllowsScopeName(manifestPath, manifest.Name) && !phase14AllowsScopeName(manifestPath, manifest.Name) && !phase15AllowsScopeName(manifestPath, manifest.Name) && !phase16AllowsScopeName(manifestPath, manifest.Name) {
+		if manifest.Name != filepath.Base(fixtureDir) && !phase13AllowsScopeName(manifestPath, manifest.Name) && !phase14AllowsScopeName(manifestPath, manifest.Name) && !phase15AllowsScopeName(manifestPath, manifest.Name) && !phase16AllowsScopeName(manifestPath, manifest.Name) && !phase17AllowsScopeName(manifestPath, manifest.Name) {
 			t.Fatalf("%s name must match fixture directory, got %q", manifestPath, manifest.Name)
 		}
 		if prior := seenNames[manifest.Name]; prior != "" {
 			t.Fatalf("duplicate fixture manifest name %q in %s and %s", manifest.Name, prior, manifestPath)
 		}
 		seenNames[manifest.Name] = manifestPath
+
+		if phase17AllowsScopeName(manifestPath, manifest.Name) {
+			continue
+		}
 
 		if strings.TrimSpace(manifest.Section) == "" {
 			t.Fatalf("%s section must not be empty", manifestPath)
@@ -492,11 +496,11 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if !strings.Contains(roadmap, phase13CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 実装済み after Phase 13 closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 17 とする。") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 17 is the active Phase after Phase 16 closure")
+	if !strings.Contains(roadmap, "現在の active Phase は未設定とする。") {
+		t.Fatalf("docs/ROADMAP.md must state that no active Phase remains after Phase 17 closure")
 	}
-	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 16 まではすべて `実装済み`") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 16 are all implemented after Phase 16 closure")
+	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 17 まではすべて `実装済み`") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 17 are all implemented after Phase 17 closure")
 	}
 
 	for _, feature := range phase11QualityGateFeatures {
@@ -676,6 +680,39 @@ func TestPhase16QualityEvidenceClosure(t *testing.T) {
 	phase16RequireNegativeControls(t, negativeControls, actions, records)
 	phase16RequireWorkflow(t, ".github/workflows/phase16-quality-evidence-closure.yml")
 	phase16RequireDocumentDriftClosed(t)
+}
+
+func TestPhase17ProductionValidationEvidence(t *testing.T) {
+	t.Parallel()
+
+	const root = "testdata/phase17/production-validation"
+	phase17RequireFixtureFiles(t, root)
+
+	manifestPath := filepath.Join(root, "manifest.json")
+	manifest := phase11ReadManifest(t, manifestPath)
+	if manifest.SchemaVersion != 1 || manifest.Name != phase17Scope || manifest.Scope != phase17Scope || manifest.FixtureRoot != root+"/" {
+		t.Fatalf("%s must use schema_version=1, name/scope=%s, fixture_root=%s/", manifestPath, phase17Scope, root)
+	}
+	if !phase11StringSlicesEqual(manifest.ProviderTargets, phase17ProviderTargets) {
+		t.Fatalf("%s provider_targets mismatch\nwant: %v\n got: %v", manifestPath, phase17ProviderTargets, manifest.ProviderTargets)
+	}
+	if !phase11StringSlicesEqual(manifest.ValidationModes, phase17ValidationModes) {
+		t.Fatalf("%s validation_modes mismatch\nwant: %v\n got: %v", manifestPath, phase17ValidationModes, manifest.ValidationModes)
+	}
+	if !phase11StringSlicesEqual(manifest.RequiredChecks, phase17RequiredChecks) {
+		t.Fatalf("%s required_checks mismatch\nwant: %v\n got: %v", manifestPath, phase17RequiredChecks, manifest.RequiredChecks)
+	}
+
+	counters := phase17ReadCounters(t, filepath.Join(root, "expected", "counters.json"))
+	phase17RequireCountersClosed(t, counters)
+	phase17RequireInputsAndExpected(t, root)
+	records := phase17ReadRecords(t, root)
+	phase17RequireDerivedCounters(t, counters, records)
+	phase17RequireRequiredCheckConnections(t, records)
+	phase17RequireBoundaryRecords(t, counters, records)
+	phase17RequireClosureEvidenceGates(t, counters, records)
+	phase17RequireWorkflow(t, ".github/workflows/phase17-production-validation.yml")
+	phase17RequireDocumentState(t)
 }
 
 func TestPhase14ObsidianVaultIntegrationEvidence(t *testing.T) {
@@ -1008,6 +1045,7 @@ func TestPhase15ObsidianLocalSyncEvidence(t *testing.T) {
 }
 
 type phase11Manifest struct {
+	SchemaVersion          int                     `json:"schema_version,omitempty"`
 	Name                   string                  `json:"name"`
 	Scope                  string                  `json:"scope,omitempty"`
 	Section                string                  `json:"section"`
@@ -1018,10 +1056,13 @@ type phase11Manifest struct {
 	Components             []string                `json:"components"`
 	Owners                 []string                `json:"owners,omitempty"`
 	Entrypoints            []string                `json:"entrypoints,omitempty"`
+	ProviderTargets        []string                `json:"provider_targets,omitempty"`
+	ValidationModes        []string                `json:"validation_modes,omitempty"`
 	RequiredChecks         []string                `json:"required_checks,omitempty"`
 	ClosureRecords         []string                `json:"closure_records,omitempty"`
 	NegativeControls       []string                `json:"negative_controls,omitempty"`
 	SourceAnchors          []string                `json:"source_anchors,omitempty"`
+	FixtureRoot            string                  `json:"fixture_root,omitempty"`
 	References             []string                `json:"references"`
 	FakeClock              *string                 `json:"fake_clock"`
 	NotApplicable          []phase11ManifestRecord `json:"not_applicable"`
@@ -2035,8 +2076,8 @@ func phase16RequireDocumentDriftClosed(t *testing.T) {
 	if !strings.Contains(roadmap, "| Phase 16 | 実装済み品質証跡実体化・追加検証候補 closure。") || !strings.Contains(roadmap, "| 実装済み | Phase 15 |") {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 16 as 実装済み")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 17 とする。") {
-		t.Fatalf("docs/ROADMAP.md must move active Phase to Phase 17 after Phase 16 closure")
+	if !strings.Contains(roadmap, "現在の active Phase は未設定とする。") {
+		t.Fatalf("docs/ROADMAP.md must keep active Phase unset after Phase 17 closure")
 	}
 	for _, feature := range []string{
 		"Phase 16 source coverage set / detection registry / evidence package manifest / inventory / negative control / expected / record schema / checker implementation artifact / checker 実行入口 / checker 再導出 gate",
@@ -2220,6 +2261,1365 @@ func phase16FileSHA256(t *testing.T, path string) string {
 func phase16StringSHA256(data string) string {
 	sum := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(sum[:])
+}
+
+const phase17Scope = "phase-17-production-validation"
+
+const phase17OperationWindow = "initial-production-validation"
+
+const phase17MonitorIntervalSeconds = 0
+
+const phase17RequiredMonitorSampleCount = 1
+
+const phase17MaxConsecutiveMonitorFailures = 0
+
+var phase17ProviderTargets = []string{"conoha-vps-primary", "xserver-vps-future"}
+
+var phase17ValidationModes = []string{"trial-production-conoha-vps", "production-equivalent-simulation"}
+
+var phase17RequiredChecks = []string{
+	"phase17-conoha-vps-preflight",
+	"phase17-trial-production-buildout",
+	"phase17-conoha-install-update-rollback",
+	"phase17-systemd-lifecycle",
+	"phase17-runtime-flow",
+	"phase17-trial-operation-loop",
+	"phase17-production-simulation",
+	"phase17-failure-injection",
+	"phase17-security-boundary",
+	"phase17-bugfix-spec-first",
+	"phase17-document-drift",
+}
+
+var phase17FixtureFiles = []string{
+	"manifest.json",
+	"input/provider_targets.json",
+	"input/conoha_vps_environment.json",
+	"input/buildout_plan.json",
+	"input/trial_operation.json",
+	"input/simulation_matrix.json",
+	"input/security_boundary.json",
+	"expected/counters.json",
+	"expected/runtime_flow.json",
+	"expected/buildout.json",
+	"expected/bugfix_loop.json",
+	"records/trial_conoha.jsonl",
+	"records/buildout.jsonl",
+	"records/operation.jsonl",
+	"records/bugfix.jsonl",
+	"records/simulation.jsonl",
+	"records/failure.jsonl",
+	"records/security.jsonl",
+	"records/document_drift.jsonl",
+}
+
+var phase17RecordFiles = []string{
+	"records/trial_conoha.jsonl",
+	"records/buildout.jsonl",
+	"records/operation.jsonl",
+	"records/bugfix.jsonl",
+	"records/simulation.jsonl",
+	"records/failure.jsonl",
+	"records/security.jsonl",
+	"records/document_drift.jsonl",
+}
+
+var phase17Counters = []string{
+	"phase17_conoha_trial_operation_open_count",
+	"phase17_buildout_open_count",
+	"phase17_production_simulation_open_count",
+	"phase17_install_update_rollback_open_count",
+	"phase17_systemd_lifecycle_open_count",
+	"phase17_runtime_flow_open_count",
+	"phase17_failure_injection_open_count",
+	"phase17_secret_leak_open_count",
+	"phase17_destructive_operation_open_count",
+	"phase17_xserver_future_misclassified_count",
+	"phase17_document_drift_open_count",
+	"phase17_trial_operation_open_count",
+	"phase17_bugfix_spec_gap_count",
+	"phase17_known_bug_open_count",
+	"final_open_item_count",
+}
+
+var phase17BuildoutWorkUnits = []string{
+	"provider-prerequisite",
+	"access-baseline",
+	"system-baseline",
+	"release-acquisition",
+	"install-bootstrap",
+	"runtime-baseline",
+	"operation-baseline",
+	"update-rollback-baseline",
+	"simulation-baseline",
+	"monitoring-baseline",
+}
+
+var phase17ForbiddenProviderOperations = []string{
+	"vps-create",
+	"vps-delete",
+	"plan-change",
+	"disk-rebuild",
+	"volume-create",
+	"volume-delete",
+	"volume-attach",
+	"volume-detach",
+	"firewall-lockout",
+	"ssh-lockout",
+}
+
+var phase17TrialSteps = []string{
+	"preflight",
+	"install",
+	"runtime-flow",
+	"update",
+	"rollback",
+	"reboot-recovery",
+	"cleanup",
+}
+
+var phase17OperationSteps = []string{
+	"operation-start",
+	"monitor",
+	"issue-detect",
+	"spec-general-update",
+	"implementation-fix",
+	"redeploy",
+	"revalidate",
+	"evidence-record",
+	"known-bug-zero-check",
+}
+
+var phase17FailureClasses = []string{
+	"disk full",
+	"permission denied",
+	"short write",
+	"fsync failure",
+	"rename failure",
+	"process kill",
+	"network refusal",
+	"DNS failure",
+	"SSH failure",
+	"log write failure",
+	"reboot recovery",
+	"interrupted recovery",
+}
+
+var phase17AbortConditions = []string{
+	"secret-boundary-failure",
+	"destructive-operation-boundary-failure",
+	"state-corruption",
+	"service-unrecoverable",
+	"known-critical-bug",
+}
+
+var phase17SecretClasses = []string{
+	"provider-token",
+	"admin-token",
+	"ssh-private-key",
+	"ip-specific-secret",
+	"host-specific-secret",
+}
+
+var phase17AllowedSecretInputChannels = []string{
+	"operator-local-file",
+	"operator-stdin",
+	"ssh-agent",
+	"systemd-credential",
+	"not-required",
+}
+
+var phase17ForbiddenSecretInputChannels = []string{
+	"repository-file",
+	"fixture-file",
+	"command-argument",
+	"environment-variable",
+	"pr-body",
+	"issue-comment",
+	"chat-message",
+	"stdout",
+	"stderr",
+	"log",
+	"screen-shot",
+}
+
+var phase17RequiredCheckRecordFiles = map[string][]string{
+	"phase17-conoha-vps-preflight":           {"records/trial_conoha.jsonl"},
+	"phase17-trial-production-buildout":      {"records/buildout.jsonl"},
+	"phase17-conoha-install-update-rollback": {"records/trial_conoha.jsonl"},
+	"phase17-systemd-lifecycle":              {"records/trial_conoha.jsonl"},
+	"phase17-runtime-flow":                   {"records/trial_conoha.jsonl", "records/operation.jsonl"},
+	"phase17-trial-operation-loop":           {"records/operation.jsonl"},
+	"phase17-production-simulation":          {"records/simulation.jsonl"},
+	"phase17-failure-injection":              {"records/failure.jsonl"},
+	"phase17-security-boundary":              {"records/security.jsonl"},
+	"phase17-bugfix-spec-first":              {"records/bugfix.jsonl"},
+	"phase17-document-drift":                 {"records/document_drift.jsonl"},
+}
+
+var phase17RequiredCheckCounterKeys = map[string][]string{
+	"phase17-conoha-vps-preflight":           {"phase17_conoha_trial_operation_open_count"},
+	"phase17-trial-production-buildout":      {"phase17_buildout_open_count"},
+	"phase17-conoha-install-update-rollback": {"phase17_install_update_rollback_open_count"},
+	"phase17-systemd-lifecycle":              {"phase17_systemd_lifecycle_open_count"},
+	"phase17-runtime-flow":                   {"phase17_runtime_flow_open_count"},
+	"phase17-trial-operation-loop":           {"phase17_trial_operation_open_count"},
+	"phase17-production-simulation":          {"phase17_production_simulation_open_count"},
+	"phase17-failure-injection":              {"phase17_failure_injection_open_count"},
+	"phase17-security-boundary":              {"phase17_secret_leak_open_count", "phase17_destructive_operation_open_count"},
+	"phase17-bugfix-spec-first":              {"phase17_bugfix_spec_gap_count", "phase17_known_bug_open_count"},
+	"phase17-document-drift":                 {"phase17_document_drift_open_count", "phase17_xserver_future_misclassified_count"},
+}
+
+type phase17CountersFile struct {
+	SchemaVersion int            `json:"schema_version"`
+	Scope         string         `json:"scope"`
+	Counters      map[string]int `json:"counters"`
+}
+
+type phase17ProviderTargetsFile struct {
+	SchemaVersion  int                     `json:"schema_version"`
+	Scope          string                  `json:"scope"`
+	ProviderTarget []phase17ProviderTarget `json:"provider_targets"`
+}
+
+type phase17ProviderTarget struct {
+	ProviderTarget    string  `json:"provider_target"`
+	Classification    string  `json:"classification"`
+	CompletionBlocker bool    `json:"completion_blocker"`
+	OS                *string `json:"os"`
+	MinimumPlanClass  *string `json:"minimum_plan_class"`
+	MinimumRAMMB      *int    `json:"minimum_ram_mb"`
+	ExcludedPlan      *string `json:"excluded_plan"`
+	FutureRef         *string `json:"future_ref"`
+}
+
+type phase17EnvironmentFile struct {
+	SchemaVersion        int                   `json:"schema_version"`
+	Scope                string                `json:"scope"`
+	ProviderTarget       string                `json:"provider_target"`
+	ValidationMode       string                `json:"validation_mode"`
+	OS                   string                `json:"os"`
+	MinimumPlanClass     string                `json:"minimum_plan_class"`
+	MinimumRAMMB         int                   `json:"minimum_ram_mb"`
+	ExcludedPlan         string                `json:"excluded_plan"`
+	EnvironmentIdentity  phase17EnvironmentID  `json:"environment_identity"`
+	Capabilities         []phase17ResultRecord `json:"capabilities"`
+	StateDirectoryParent phase17StateParent    `json:"state_directory_parent"`
+	Network              []phase17ResultRecord `json:"network"`
+	RequiredCommands     []phase17ResultRecord `json:"required_commands"`
+}
+
+type phase17EnvironmentID struct {
+	ProviderPlanLabel   string `json:"provider_plan_label"`
+	ProviderRegionLabel string `json:"provider_region_label"`
+	VPSInstanceLabel    string `json:"vps_instance_label"`
+	PublicEndpointLabel string `json:"public_endpoint_label"`
+	MetadataPolicy      string `json:"metadata_policy"`
+}
+
+type phase17ResultRecord struct {
+	Name     string `json:"name"`
+	Expected string `json:"expected"`
+	Actual   string `json:"actual"`
+	Result   string `json:"result"`
+}
+
+type phase17StateParent struct {
+	Path          string `json:"path"`
+	OwnerExpected string `json:"owner_expected"`
+	ModeExpected  string `json:"mode_expected"`
+	Result        string `json:"result"`
+}
+
+type phase17BuildoutPlanFile struct {
+	SchemaVersion              int      `json:"schema_version"`
+	Scope                      string   `json:"scope"`
+	ProviderTarget             string   `json:"provider_target"`
+	ValidationMode             string   `json:"validation_mode"`
+	RequiredCheck              string   `json:"required_check"`
+	WorkUnits                  []string `json:"work_units"`
+	ForbiddenProviderOperation []string `json:"forbidden_provider_operations"`
+}
+
+type phase17TrialOperationFile struct {
+	SchemaVersion                 int      `json:"schema_version"`
+	Scope                         string   `json:"scope"`
+	ProviderTarget                string   `json:"provider_target"`
+	ValidationMode                string   `json:"validation_mode"`
+	OperationSteps                []string `json:"operation_steps"`
+	OperationWindow               string   `json:"operation_window"`
+	MonitorIntervalSeconds        int      `json:"monitor_interval_seconds"`
+	RequiredMonitorSampleCount    int      `json:"required_monitor_sample_count"`
+	MaxConsecutiveMonitorFailures int      `json:"max_consecutive_monitor_failures"`
+	AbortConditions               []string `json:"abort_conditions"`
+	BugfixSpecFirstRequired       bool     `json:"bugfix_spec_first_required"`
+	RevalidationRequired          bool     `json:"revalidation_required"`
+	KnownBugZeroRequired          bool     `json:"known_bug_zero_required"`
+}
+
+type phase17SimulationMatrixFile struct {
+	SchemaVersion                int                   `json:"schema_version"`
+	Scope                        string                `json:"scope"`
+	ProviderTarget               string                `json:"provider_target"`
+	ValidationMode               string                `json:"validation_mode"`
+	FailureClasses               []phase17FailureClass `json:"failure_classes"`
+	DestructiveOperationBoundary []string              `json:"destructive_operation_boundaries"`
+	ProviderExecutionAllowed     bool                  `json:"provider_execution_allowed"`
+}
+
+type phase17FailureClass struct {
+	FailureClass      string `json:"failure_class"`
+	InjectionLocation string `json:"injection_location"`
+	ExpectedResult    string `json:"expected_result"`
+	RecoveryRequired  bool   `json:"recovery_required"`
+}
+
+type phase17SecurityBoundaryFile struct {
+	SchemaVersion                  int      `json:"schema_version"`
+	Scope                          string   `json:"scope"`
+	ProviderTarget                 string   `json:"provider_target"`
+	ValidationMode                 string   `json:"validation_mode"`
+	RequiredCheck                  string   `json:"required_check"`
+	SecretClasses                  []string `json:"secret_classes"`
+	AllowedSecretInputChannels     []string `json:"allowed_secret_input_channels"`
+	ForbiddenSecretInputChannels   []string `json:"forbidden_secret_input_channels"`
+	CredentialStoragePolicy        string   `json:"credential_storage_policy"`
+	SecretReferencePolicy          string   `json:"secret_reference_policy"`
+	DestructiveOperationBoundaries []string `json:"destructive_operation_boundaries"`
+	MaskRequired                   bool     `json:"mask_required"`
+}
+
+type phase17RuntimeFlowFile struct {
+	SchemaVersion      int      `json:"schema_version"`
+	Scope              string   `json:"scope"`
+	ProviderTarget     string   `json:"provider_target"`
+	ValidationMode     string   `json:"validation_mode"`
+	ExpectedSteps      []string `json:"expected_steps"`
+	CounterConnections []string `json:"counter_connections"`
+}
+
+type phase17BuildoutExpectedFile struct {
+	SchemaVersion                   int      `json:"schema_version"`
+	Scope                           string   `json:"scope"`
+	RequiredCheck                   string   `json:"required_check"`
+	ExpectedWorkUnitOrder           []string `json:"expected_work_unit_order"`
+	AllowedProviderOperationClasses []string `json:"allowed_provider_operation_classes"`
+	ForbiddenProviderOperations     []string `json:"forbidden_provider_operations"`
+	CounterKey                      string   `json:"counter_key"`
+	CounterValue                    int      `json:"counter_value"`
+}
+
+type phase17BugfixLoopFile struct {
+	SchemaVersion                   int      `json:"schema_version"`
+	Scope                           string   `json:"scope"`
+	ExpectedOperationOrder          []string `json:"expected_operation_order"`
+	OperationWindow                 string   `json:"operation_window"`
+	MonitorIntervalSeconds          int      `json:"monitor_interval_seconds"`
+	RequiredMonitorSampleCount      int      `json:"required_monitor_sample_count"`
+	MaxConsecutiveMonitorFailures   int      `json:"max_consecutive_monitor_failures"`
+	AbortConditions                 []string `json:"abort_conditions"`
+	SpecUpdateRequired              bool     `json:"spec_update_required"`
+	ResponsibilitySourceRefRequired bool     `json:"responsibility_source_ref_required"`
+	RevalidationRequired            bool     `json:"revalidation_required"`
+	AllowedKnownBugStatuses         []string `json:"allowed_known_bug_statuses"`
+	ForbiddenKnownBugStatuses       []string `json:"forbidden_known_bug_statuses"`
+	CounterConnections              []string `json:"counter_connections"`
+}
+
+type phase17EvidenceRecord struct {
+	RecordID                           string  `json:"record_id"`
+	Scope                              string  `json:"scope"`
+	ProviderTarget                     string  `json:"provider_target"`
+	ValidationMode                     string  `json:"validation_mode"`
+	CheckName                          string  `json:"check_name"`
+	SourceRef                          string  `json:"source_ref"`
+	Result                             string  `json:"result"`
+	CounterKey                         string  `json:"counter_key"`
+	StartedAt                          *string `json:"started_at"`
+	EndedAt                            *string `json:"ended_at"`
+	StdoutSHA256                       *string `json:"stdout_sha256"`
+	StderrSHA256                       *string `json:"stderr_sha256"`
+	SecretScanResult                   string  `json:"secret_scan_result"`
+	DestructiveOperationResult         string  `json:"destructive_operation_result"`
+	EvidenceRef                        string  `json:"evidence_ref"`
+	TrialStep                          string  `json:"trial_step,omitempty"`
+	EnvironmentRef                     string  `json:"environment_ref,omitempty"`
+	EnvironmentIdentityPolicy          string  `json:"environment_identity_policy,omitempty"`
+	RuntimeFlowRef                     string  `json:"runtime_flow_ref,omitempty"`
+	ServiceState                       string  `json:"service_state,omitempty"`
+	StateDigest                        string  `json:"state_digest,omitempty"`
+	LogDigest                          string  `json:"log_digest,omitempty"`
+	RollbackState                      string  `json:"rollback_state,omitempty"`
+	CleanupResult                      string  `json:"cleanup_result,omitempty"`
+	BuildoutStep                       string  `json:"buildout_step,omitempty"`
+	Sequence                           *int    `json:"sequence,omitempty"`
+	WorkUnitResult                     string  `json:"work_unit_result,omitempty"`
+	ProviderOperationClass             string  `json:"provider_operation_class,omitempty"`
+	ForbiddenProviderOperationDetected *bool   `json:"forbidden_provider_operation_detected,omitempty"`
+	PreconditionRef                    string  `json:"precondition_ref,omitempty"`
+	ActualRef                          string  `json:"actual_ref,omitempty"`
+	ExpectedRef                        string  `json:"expected_ref,omitempty"`
+	OperationStep                      string  `json:"operation_step,omitempty"`
+	OperationWindow                    string  `json:"operation_window,omitempty"`
+	MonitorIntervalSeconds             *int    `json:"monitor_interval_seconds,omitempty"`
+	MonitorSampleIndex                 *int    `json:"monitor_sample_index,omitempty"`
+	MonitorObservedAt                  *string `json:"monitor_observed_at,omitempty"`
+	AbortCondition                     string  `json:"abort_condition,omitempty"`
+	AbortResult                        string  `json:"abort_result,omitempty"`
+	HealthResult                       string  `json:"health_result,omitempty"`
+	StateWriteResult                   string  `json:"state_write_result,omitempty"`
+	LogWriteResult                     string  `json:"log_write_result,omitempty"`
+	RevalidationRef                    string  `json:"revalidation_ref,omitempty"`
+	BugID                              string  `json:"bug_id,omitempty"`
+	SpecUpdateRef                      string  `json:"spec_update_ref,omitempty"`
+	ResponsibilitySourceRef            string  `json:"responsibility_source_ref,omitempty"`
+	ImplementationRef                  string  `json:"implementation_ref,omitempty"`
+	KnownBugStatus                     string  `json:"known_bug_status,omitempty"`
+	SimulationCase                     string  `json:"simulation_case,omitempty"`
+	FailureClass                       string  `json:"failure_class,omitempty"`
+	DestructiveOperationToken          string  `json:"destructive_operation_token,omitempty"`
+	ProviderExecutionResult            string  `json:"provider_execution_result,omitempty"`
+	RecoveryResult                     string  `json:"recovery_result,omitempty"`
+	SimulationEnvironmentRef           string  `json:"simulation_environment_ref,omitempty"`
+	InjectionMethod                    string  `json:"injection_method,omitempty"`
+	ExpectedFailure                    string  `json:"expected_failure,omitempty"`
+	ActualFailure                      string  `json:"actual_failure,omitempty"`
+	SilentSuccessDetected              *bool   `json:"silent_success_detected,omitempty"`
+	SecretClass                        string  `json:"secret_class,omitempty"`
+	InputChannel                       string  `json:"input_channel,omitempty"`
+	RedactedReference                  string  `json:"redacted_reference,omitempty"`
+	SecretReferencePolicy              string  `json:"secret_reference_policy,omitempty"`
+	SecretValuePresent                 *bool   `json:"secret_value_present,omitempty"`
+	ScanTarget                         string  `json:"scan_target,omitempty"`
+	MaskResult                         string  `json:"mask_result,omitempty"`
+	CredentialStorageResult            string  `json:"credential_storage_result,omitempty"`
+	BoundaryResult                     string  `json:"boundary_result,omitempty"`
+	DocumentRef                        string  `json:"document_ref,omitempty"`
+	AnchorRef                          string  `json:"anchor_ref,omitempty"`
+	FixturePathRef                     string  `json:"fixture_path_ref,omitempty"`
+	WorkflowPathRef                    string  `json:"workflow_path_ref,omitempty"`
+	ExpectedState                      string  `json:"expected_state,omitempty"`
+	ActualState                        string  `json:"actual_state,omitempty"`
+	DriftResult                        string  `json:"drift_result,omitempty"`
+}
+
+func phase17AllowsScopeName(manifestPath string, name string) bool {
+	return filepath.ToSlash(manifestPath) == "testdata/phase17/production-validation/manifest.json" &&
+		name == phase17Scope
+}
+
+func phase17RequireFixtureFiles(t *testing.T, root string) {
+	t.Helper()
+
+	allowed := map[string]bool{}
+	for _, rel := range phase17FixtureFiles {
+		allowed[rel] = true
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatalf("Phase 17 fixture path missing %s: %v", rel, err)
+		}
+		if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+			t.Fatalf("Phase 17 fixture path must be a regular file: %s", rel)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		if len(data) == 0 || data[len(data)-1] != '\n' {
+			t.Fatalf("%s must end with LF", path)
+		}
+		if strings.HasSuffix(rel, ".json") {
+			phase16RequireNoDuplicateJSONKeys(t, path, data)
+		}
+		phase17RequireNoSecretLikeFixtureContent(t, path, data)
+	}
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == root || entry.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		if !allowed[rel] {
+			t.Fatalf("Phase 17 fixture contains unknown file %s", rel)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk Phase 17 fixture: %v", err)
+	}
+}
+
+func phase17ReadCounters(t *testing.T, path string) map[string]int {
+	t.Helper()
+
+	var file phase17CountersFile
+	phase16ReadStrictJSON(t, path, &file)
+	if file.SchemaVersion != 1 || file.Scope != phase17Scope {
+		t.Fatalf("%s must use schema_version=1 and scope=%s", path, phase17Scope)
+	}
+	return file.Counters
+}
+
+func phase17RequireCountersClosed(t *testing.T, counters map[string]int) {
+	t.Helper()
+
+	if len(counters) != len(phase17Counters) {
+		t.Fatalf("Phase 17 counters must include exactly %d keys, got %d", len(phase17Counters), len(counters))
+	}
+	var sum int
+	for _, key := range phase17Counters {
+		value, ok := counters[key]
+		if !ok {
+			t.Fatalf("Phase 17 counters missing %s", key)
+		}
+		if value < 0 {
+			t.Fatalf("Phase 17 counter %s must not be negative", key)
+		}
+		if key != "final_open_item_count" {
+			sum += value
+		}
+	}
+	if counters["final_open_item_count"] != sum {
+		t.Fatalf("Phase 17 final_open_item_count must equal sum of open counters: want %d got %d", sum, counters["final_open_item_count"])
+	}
+	if counters["final_open_item_count"] != 0 {
+		t.Fatalf("Phase 17 closure requires final_open_item_count=0, got %d", counters["final_open_item_count"])
+	}
+}
+
+func phase17RequireInputsAndExpected(t *testing.T, root string) {
+	t.Helper()
+
+	var targets phase17ProviderTargetsFile
+	phase16ReadStrictJSON(t, filepath.Join(root, "input/provider_targets.json"), &targets)
+	if targets.SchemaVersion != 1 || targets.Scope != phase17Scope || len(targets.ProviderTarget) != 2 {
+		t.Fatalf("Phase 17 provider_targets.json schema mismatch")
+	}
+	for i, target := range targets.ProviderTarget {
+		if target.ProviderTarget != phase17ProviderTargets[i] {
+			t.Fatalf("Phase 17 provider target order mismatch")
+		}
+		if target.ProviderTarget == "conoha-vps-primary" {
+			if !target.CompletionBlocker || target.OS == nil || *target.OS != "ubuntu-server-24.04-lts-64bit" || target.MinimumPlanClass == nil || *target.MinimumPlanClass != "conoha-vps-1gb-memory-class" || target.MinimumRAMMB == nil || *target.MinimumRAMMB != 1024 {
+				t.Fatalf("ConoHa provider target must fix OS and minimum plan class: %+v", target)
+			}
+		}
+		if target.ProviderTarget == "xserver-vps-future" && (target.CompletionBlocker || target.FutureRef == nil || *target.FutureRef == "") {
+			t.Fatalf("xserver-vps-future must be future_plan and non-blocking: %+v", target)
+		}
+	}
+
+	var env phase17EnvironmentFile
+	phase16ReadStrictJSON(t, filepath.Join(root, "input/conoha_vps_environment.json"), &env)
+	if env.SchemaVersion != 1 || env.Scope != phase17Scope || env.ProviderTarget != "conoha-vps-primary" || env.ValidationMode != "trial-production-conoha-vps" || env.OS != "ubuntu-server-24.04-lts-64bit" || env.MinimumPlanClass != "conoha-vps-1gb-memory-class" || env.MinimumRAMMB != 1024 || env.ExcludedPlan != "512mb" {
+		t.Fatalf("Phase 17 ConoHa environment fixed values mismatch: %+v", env)
+	}
+	if env.EnvironmentIdentity.MetadataPolicy != "opaque-non-secret-labels" || phase17ContainsSecretLikeValue(env.EnvironmentIdentity.ProviderPlanLabel, env.EnvironmentIdentity.ProviderRegionLabel, env.EnvironmentIdentity.VPSInstanceLabel, env.EnvironmentIdentity.PublicEndpointLabel) {
+		t.Fatalf("Phase 17 environment identity must be opaque and non-secret: %+v", env.EnvironmentIdentity)
+	}
+	if env.StateDirectoryParent.ModeExpected != "0700" || len(env.Capabilities) == 0 || len(env.Network) == 0 || len(env.RequiredCommands) == 0 {
+		t.Fatalf("Phase 17 environment must include state parent, capabilities, network, and commands")
+	}
+
+	var buildout phase17BuildoutPlanFile
+	phase16ReadStrictJSON(t, filepath.Join(root, "input/buildout_plan.json"), &buildout)
+	if buildout.SchemaVersion != 1 || buildout.Scope != phase17Scope || buildout.RequiredCheck != "phase17-trial-production-buildout" || !phase11StringSlicesEqual(buildout.WorkUnits, phase17BuildoutWorkUnits) || !phase11StringSlicesEqual(buildout.ForbiddenProviderOperation, phase17ForbiddenProviderOperations) {
+		t.Fatalf("Phase 17 buildout plan mismatch: %+v", buildout)
+	}
+
+	var trial phase17TrialOperationFile
+	phase16ReadStrictJSON(t, filepath.Join(root, "input/trial_operation.json"), &trial)
+	if trial.SchemaVersion != 1 || trial.Scope != phase17Scope || !phase11StringSlicesEqual(trial.OperationSteps, phase17OperationSteps) || trial.OperationWindow != phase17OperationWindow || trial.MonitorIntervalSeconds != phase17MonitorIntervalSeconds || trial.RequiredMonitorSampleCount != phase17RequiredMonitorSampleCount || trial.MaxConsecutiveMonitorFailures != phase17MaxConsecutiveMonitorFailures || !phase11StringSlicesEqual(trial.AbortConditions, phase17AbortConditions) || !trial.BugfixSpecFirstRequired || !trial.RevalidationRequired || !trial.KnownBugZeroRequired {
+		t.Fatalf("Phase 17 trial operation input mismatch: %+v", trial)
+	}
+
+	var simulation phase17SimulationMatrixFile
+	phase16ReadStrictJSON(t, filepath.Join(root, "input/simulation_matrix.json"), &simulation)
+	if simulation.SchemaVersion != 1 || simulation.Scope != phase17Scope || simulation.ProviderExecutionAllowed || !phase11StringSlicesEqual(simulation.DestructiveOperationBoundary, phase17ForbiddenProviderOperations) || len(simulation.FailureClasses) != len(phase17FailureClasses) {
+		t.Fatalf("Phase 17 simulation matrix mismatch: %+v", simulation)
+	}
+	for i, failure := range simulation.FailureClasses {
+		if failure.FailureClass != phase17FailureClasses[i] || failure.ExpectedResult == "" || !failure.RecoveryRequired {
+			t.Fatalf("Phase 17 failure class mismatch at %d: %+v", i, failure)
+		}
+	}
+
+	var security phase17SecurityBoundaryFile
+	phase16ReadStrictJSON(t, filepath.Join(root, "input/security_boundary.json"), &security)
+	if security.SchemaVersion != 1 || security.Scope != phase17Scope || security.RequiredCheck != "phase17-security-boundary" || !phase11StringSlicesEqual(security.SecretClasses, phase17SecretClasses) || !phase11StringSlicesEqual(security.AllowedSecretInputChannels, phase17AllowedSecretInputChannels) || !phase11StringSlicesEqual(security.ForbiddenSecretInputChannels, phase17ForbiddenSecretInputChannels) || security.CredentialStoragePolicy != "repository-forbidden" || security.SecretReferencePolicy != "metadata-only" || !phase11StringSlicesEqual(security.DestructiveOperationBoundaries, phase17ForbiddenProviderOperations) || !security.MaskRequired {
+		t.Fatalf("Phase 17 security boundary mismatch: %+v", security)
+	}
+
+	var runtime phase17RuntimeFlowFile
+	phase16ReadStrictJSON(t, filepath.Join(root, "expected/runtime_flow.json"), &runtime)
+	if runtime.SchemaVersion != 1 || runtime.Scope != phase17Scope || !phase11StringSlicesEqual(runtime.ExpectedSteps, phase17TrialSteps) {
+		t.Fatalf("Phase 17 runtime flow expected steps mismatch: %+v", runtime)
+	}
+
+	var expectedBuildout phase17BuildoutExpectedFile
+	phase16ReadStrictJSON(t, filepath.Join(root, "expected/buildout.json"), &expectedBuildout)
+	if expectedBuildout.SchemaVersion != 1 || expectedBuildout.Scope != phase17Scope || expectedBuildout.RequiredCheck != "phase17-trial-production-buildout" || !phase11StringSlicesEqual(expectedBuildout.ExpectedWorkUnitOrder, phase17BuildoutWorkUnits) || !phase11StringSlicesEqual(expectedBuildout.ForbiddenProviderOperations, phase17ForbiddenProviderOperations) || expectedBuildout.CounterKey != "phase17_buildout_open_count" {
+		t.Fatalf("Phase 17 buildout expected mismatch: %+v", expectedBuildout)
+	}
+
+	var bugfix phase17BugfixLoopFile
+	phase16ReadStrictJSON(t, filepath.Join(root, "expected/bugfix_loop.json"), &bugfix)
+	if bugfix.SchemaVersion != 1 || bugfix.Scope != phase17Scope || !phase11StringSlicesEqual(bugfix.ExpectedOperationOrder, phase17OperationSteps) || bugfix.OperationWindow != trial.OperationWindow || bugfix.MonitorIntervalSeconds != trial.MonitorIntervalSeconds || bugfix.RequiredMonitorSampleCount != trial.RequiredMonitorSampleCount || bugfix.MaxConsecutiveMonitorFailures != trial.MaxConsecutiveMonitorFailures || !phase11StringSlicesEqual(bugfix.AbortConditions, trial.AbortConditions) || !bugfix.SpecUpdateRequired || !bugfix.ResponsibilitySourceRefRequired || !bugfix.RevalidationRequired {
+		t.Fatalf("Phase 17 bugfix loop expected mismatch: %+v", bugfix)
+	}
+}
+
+func phase17ReadRecords(t *testing.T, root string) map[string][]phase17EvidenceRecord {
+	t.Helper()
+
+	records := map[string][]phase17EvidenceRecord{}
+	for _, rel := range phase17RecordFiles {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+		if len(lines) == 0 {
+			t.Fatalf("%s must include at least one JSONL record", path)
+		}
+		seen := map[string]bool{}
+		for index, line := range lines {
+			if strings.TrimSpace(line) == "" {
+				t.Fatalf("%s line %d must not be empty", path, index+1)
+			}
+			phase16RequireNoDuplicateJSONKeys(t, fmt.Sprintf("%s line %d", path, index+1), []byte(line))
+			var record phase17EvidenceRecord
+			decoder := json.NewDecoder(strings.NewReader(line))
+			decoder.DisallowUnknownFields()
+			if err := decoder.Decode(&record); err != nil {
+				t.Fatalf("decode %s line %d: %v", path, index+1, err)
+			}
+			phase17RequireRecordCommon(t, rel, index+1, record)
+			if seen[record.RecordID] {
+				t.Fatalf("%s repeats record_id %s", path, record.RecordID)
+			}
+			seen[record.RecordID] = true
+			phase17RequireRecordSpecific(t, rel, index+1, record)
+			records[rel] = append(records[rel], record)
+		}
+	}
+	return records
+}
+
+func phase17RequireRecordCommon(t *testing.T, rel string, line int, record phase17EvidenceRecord) {
+	t.Helper()
+
+	prefix := "phase17.record." + strings.TrimSuffix(filepath.Base(rel), ".jsonl") + "."
+	if record.RecordID == "" || !strings.HasPrefix(record.RecordID, prefix) || record.Scope != phase17Scope || record.ProviderTarget == "" || record.ValidationMode == "" || record.CheckName == "" || record.SourceRef == "" || record.Result == "" || record.CounterKey == "" || record.SecretScanResult == "" || record.DestructiveOperationResult == "" || record.EvidenceRef == "" {
+		t.Fatalf("%s line %d common fields invalid: %+v", rel, line, record)
+	}
+	if !phase17RequiredCheckAllowed(record.CheckName) {
+		t.Fatalf("%s line %d unknown check_name %s", rel, line, record.CheckName)
+	}
+	if !phase17CounterAllowed(record.CounterKey) {
+		t.Fatalf("%s line %d unknown counter %s", rel, line, record.CounterKey)
+	}
+	switch record.Result {
+	case "passed", "failed", "not_applicable", "future_plan", "rejected":
+	default:
+		t.Fatalf("%s line %d invalid result %s", rel, line, record.Result)
+	}
+	if record.Result == "failed" || record.Result == "rejected" {
+		t.Fatalf("%s line %d must not leave failed or rejected result", rel, line)
+	}
+	if record.Result == "passed" && (record.StartedAt == nil || *record.StartedAt == "" || record.EndedAt == nil || *record.EndedAt == "") {
+		t.Fatalf("%s line %d passed record must include started_at and ended_at", rel, line)
+	}
+	for label, value := range map[string]*string{"stdout_sha256": record.StdoutSHA256, "stderr_sha256": record.StderrSHA256} {
+		if value != nil && !phase17IsLowerHexSHA256(*value) {
+			t.Fatalf("%s line %d %s must be lowercase SHA-256 hex or null: %v", rel, line, label, value)
+		}
+	}
+	switch record.SecretScanResult {
+	case "passed", "not_applicable":
+	default:
+		t.Fatalf("%s line %d invalid secret_scan_result %s", rel, line, record.SecretScanResult)
+	}
+	switch record.DestructiveOperationResult {
+	case "not_applicable", "not_executed", "blocked":
+	default:
+		t.Fatalf("%s line %d invalid destructive_operation_result %s", rel, line, record.DestructiveOperationResult)
+	}
+	if phase17ContainsSecretLikeValue(record.EvidenceRef) {
+		t.Fatalf("%s line %d evidence_ref must not contain secret-like or endpoint-like value: %s", rel, line, record.EvidenceRef)
+	}
+}
+
+func phase17RequireRecordSpecific(t *testing.T, rel string, line int, record phase17EvidenceRecord) {
+	t.Helper()
+
+	switch rel {
+	case "records/trial_conoha.jsonl":
+		if record.TrialStep == "" || record.EnvironmentRef == "" || record.EnvironmentIdentityPolicy != "opaque-non-secret-labels" || record.RuntimeFlowRef == "" || record.ServiceState == "" || record.StateDigest == "" || record.LogDigest == "" || record.RollbackState == "" || record.CleanupResult == "" {
+			t.Fatalf("%s line %d missing trial ConoHa fields: %+v", rel, line, record)
+		}
+	case "records/buildout.jsonl":
+		if record.BuildoutStep == "" || record.Sequence == nil || record.WorkUnitResult == "" || record.ProviderOperationClass == "" || record.ForbiddenProviderOperationDetected == nil || *record.ForbiddenProviderOperationDetected || record.PreconditionRef == "" || record.ActualRef == "" || record.ExpectedRef == "" {
+			t.Fatalf("%s line %d missing buildout fields or detected forbidden operation: %+v", rel, line, record)
+		}
+		if !phase17StringInSlice(record.BuildoutStep, phase17BuildoutWorkUnits) {
+			t.Fatalf("%s line %d uses unknown buildout_step %s", rel, line, record.BuildoutStep)
+		}
+	case "records/operation.jsonl":
+		if record.OperationStep == "" || record.OperationWindow != phase17OperationWindow || record.MonitorIntervalSeconds == nil || *record.MonitorIntervalSeconds != phase17MonitorIntervalSeconds || record.AbortCondition == "" || record.AbortResult == "" || record.ServiceState == "" || record.HealthResult == "" || record.StateWriteResult == "" || record.LogWriteResult == "" || record.RevalidationRef == "" {
+			t.Fatalf("%s line %d missing operation fields: %+v", rel, line, record)
+		}
+		if !phase17StringInSlice(record.OperationStep, phase17OperationSteps) {
+			t.Fatalf("%s line %d uses unknown operation_step %s", rel, line, record.OperationStep)
+		}
+		if record.OperationStep == "monitor" {
+			if record.MonitorSampleIndex == nil || *record.MonitorSampleIndex != 1 || record.MonitorObservedAt == nil || *record.MonitorObservedAt == "" {
+				t.Fatalf("%s line %d monitor baseline sample must include sample index 1 and observed_at: %+v", rel, line, record)
+			}
+		}
+		if record.OperationStep != "monitor" && (record.MonitorSampleIndex != nil || record.MonitorObservedAt != nil) {
+			t.Fatalf("%s line %d non-monitor operation record must not claim monitor sample fields: %+v", rel, line, record)
+		}
+	case "records/bugfix.jsonl":
+		if record.BugID == "" || record.SpecUpdateRef == "" || record.ResponsibilitySourceRef == "" || record.ImplementationRef == "" || record.RevalidationRef == "" || record.KnownBugStatus == "" {
+			t.Fatalf("%s line %d missing bugfix fields: %+v", rel, line, record)
+		}
+		switch record.KnownBugStatus {
+		case "closed", "future_plan":
+		default:
+			t.Fatalf("%s line %d invalid known_bug_status %s", rel, line, record.KnownBugStatus)
+		}
+	case "records/simulation.jsonl":
+		if record.SimulationCase == "" || record.FailureClass == "" || record.DestructiveOperationToken == "" || record.ProviderExecutionResult != "not_executed_on_provider" || record.RecoveryResult == "" || record.SimulationEnvironmentRef == "" {
+			t.Fatalf("%s line %d missing simulation fields: %+v", rel, line, record)
+		}
+		if !phase17StringInSlice(record.FailureClass, phase17FailureClasses) {
+			t.Fatalf("%s line %d uses unknown simulation failure_class %s", rel, line, record.FailureClass)
+		}
+		if record.DestructiveOperationToken != "not_applicable" && !phase17StringInSlice(record.DestructiveOperationToken, phase17ForbiddenProviderOperations) {
+			t.Fatalf("%s line %d uses unknown destructive_operation_token %s", rel, line, record.DestructiveOperationToken)
+		}
+	case "records/failure.jsonl":
+		if record.FailureClass == "" || record.InjectionMethod == "" || record.ExpectedFailure == "" || record.ActualFailure == "" || record.RecoveryResult == "" || record.SilentSuccessDetected == nil || *record.SilentSuccessDetected {
+			t.Fatalf("%s line %d missing failure fields or silent success: %+v", rel, line, record)
+		}
+		if !phase17StringInSlice(record.FailureClass, phase17FailureClasses) {
+			t.Fatalf("%s line %d uses unknown failure_class %s", rel, line, record.FailureClass)
+		}
+	case "records/security.jsonl":
+		if record.SecretClass == "" || record.InputChannel == "" || record.RedactedReference == "" || record.SecretReferencePolicy != "metadata-only" || record.SecretValuePresent == nil || *record.SecretValuePresent || record.ScanTarget == "" || record.MaskResult == "" || record.CredentialStorageResult != "not_stored" || record.DestructiveOperationToken == "" || record.BoundaryResult == "" {
+			t.Fatalf("%s line %d missing security fields or leaked secret: %+v", rel, line, record)
+		}
+		phase17RequireSecurityRecordBoundary(t, rel, line, record)
+	case "records/document_drift.jsonl":
+		if record.DocumentRef == "" || record.AnchorRef == "" || record.FixturePathRef == "" || record.WorkflowPathRef == "" || record.ExpectedState == "" || record.ActualState == "" || record.DriftResult == "" {
+			t.Fatalf("%s line %d missing document drift fields: %+v", rel, line, record)
+		}
+		switch record.DriftResult {
+		case "no_drift", "future_plan_confirmed":
+		default:
+			t.Fatalf("%s line %d invalid drift_result %s", rel, line, record.DriftResult)
+		}
+	}
+}
+
+func phase17RequireRequiredCheckConnections(t *testing.T, records map[string][]phase17EvidenceRecord) {
+	t.Helper()
+
+	seen := map[string]bool{}
+	for rel, recordSet := range records {
+		for _, record := range recordSet {
+			if !phase17StringInSlice(rel, phase17RequiredCheckRecordFiles[record.CheckName]) {
+				t.Fatalf("Phase 17 record %s places check %s in invalid record file %s", record.RecordID, record.CheckName, rel)
+			}
+			if !phase17StringInSlice(record.CounterKey, phase17RequiredCheckCounterKeys[record.CheckName]) {
+				t.Fatalf("Phase 17 record %s connects check %s to invalid counter %s", record.RecordID, record.CheckName, record.CounterKey)
+			}
+			seen[record.CheckName] = true
+		}
+	}
+	for _, check := range phase17RequiredChecks {
+		if !seen[check] {
+			t.Fatalf("Phase 17 required check %s is not connected to records", check)
+		}
+	}
+}
+
+func phase17RequireBoundaryRecords(t *testing.T, counters map[string]int, records map[string][]phase17EvidenceRecord) {
+	t.Helper()
+
+	phase17RequireBuildoutOrder(t, records["records/buildout.jsonl"], counters["phase17_buildout_open_count"])
+	phase17RequireOperationStepCoverage(t, records["records/operation.jsonl"])
+
+	simulationFailureClasses := map[string]bool{}
+	for _, record := range records["records/simulation.jsonl"] {
+		simulationFailureClasses[record.FailureClass] = true
+		if record.ProviderExecutionResult != "not_executed_on_provider" || record.DestructiveOperationResult != "not_executed" {
+			t.Fatalf("Phase 17 simulation must not execute destructive operation on provider: %+v", record)
+		}
+	}
+	for _, failureClass := range phase17FailureClasses {
+		if !simulationFailureClasses[failureClass] {
+			t.Fatalf("Phase 17 failure class missing from simulation records: %s", failureClass)
+		}
+	}
+
+	failureClasses := map[string]bool{}
+	for _, record := range records["records/failure.jsonl"] {
+		failureClasses[record.FailureClass] = true
+	}
+	for _, failureClass := range phase17FailureClasses {
+		if !failureClasses[failureClass] {
+			t.Fatalf("Phase 17 failure class missing from failure records: %s", failureClass)
+		}
+	}
+
+	var blockedForbiddenSecretInput bool
+	var blockedDestructiveOperation bool
+	for _, record := range records["records/security.jsonl"] {
+		if phase17StringInSlice(record.InputChannel, phase17ForbiddenSecretInputChannels) && record.BoundaryResult == "blocked" && !*record.SecretValuePresent {
+			blockedForbiddenSecretInput = true
+		}
+		if phase17StringInSlice(record.DestructiveOperationToken, phase17ForbiddenProviderOperations) && record.DestructiveOperationResult == "blocked" && record.BoundaryResult == "blocked" {
+			blockedDestructiveOperation = true
+		}
+	}
+	if !blockedForbiddenSecretInput {
+		t.Fatalf("Phase 17 security records must include a blocked forbidden secret input channel")
+	}
+	if !blockedDestructiveOperation {
+		t.Fatalf("Phase 17 security records must include a blocked destructive provider operation")
+	}
+
+	var futurePlan bool
+	for _, record := range records["records/document_drift.jsonl"] {
+		if record.ProviderTarget == "xserver-vps-future" && record.Result == "future_plan" && record.DriftResult == "future_plan_confirmed" {
+			futurePlan = true
+		}
+	}
+	if !futurePlan {
+		t.Fatalf("Phase 17 document drift records must keep xserver-vps-future as future_plan")
+	}
+
+	if counters["phase17_xserver_future_misclassified_count"] != 0 {
+		t.Fatalf("Phase 17 xserver-vps-future must remain non-blocking with counter 0")
+	}
+}
+
+func phase17RequireBuildoutOrder(t *testing.T, records []phase17EvidenceRecord, _ int) {
+	t.Helper()
+
+	if len(records) != len(phase17BuildoutWorkUnits) {
+		t.Fatalf("Phase 17 buildout records must contain exactly %d work units, got %d", len(phase17BuildoutWorkUnits), len(records))
+	}
+	seen := map[string]bool{}
+	for index, record := range records {
+		wantStep := phase17BuildoutWorkUnits[index]
+		wantSequence := index + 1
+		if record.BuildoutStep != wantStep || record.Sequence == nil || *record.Sequence != wantSequence {
+			t.Fatalf("Phase 17 buildout record %d order mismatch: want %s/%d got %+v", index+1, wantStep, wantSequence, record)
+		}
+		if seen[record.BuildoutStep] {
+			t.Fatalf("Phase 17 buildout repeats work unit %s", record.BuildoutStep)
+		}
+		seen[record.BuildoutStep] = true
+		if record.Result != "passed" || record.WorkUnitResult != "passed" || record.CounterKey != "phase17_buildout_open_count" {
+			t.Fatalf("Phase 17 buildout work unit must be closed before buildout counter can be 0: %+v", record)
+		}
+	}
+}
+
+func phase17RequireOperationStepCoverage(t *testing.T, records []phase17EvidenceRecord) {
+	t.Helper()
+
+	positions := map[string]int{}
+	for index, record := range records {
+		if record.CheckName != "phase17-trial-operation-loop" {
+			continue
+		}
+		if _, exists := positions[record.OperationStep]; !exists {
+			positions[record.OperationStep] = index
+		}
+	}
+	previous := -1
+	for _, step := range phase17OperationSteps {
+		position, exists := positions[step]
+		if !exists {
+			t.Fatalf("Phase 17 operation records must include placeholder or evidence for step %s", step)
+		}
+		if position <= previous {
+			t.Fatalf("Phase 17 operation records must keep operation step order; step %s is out of order", step)
+		}
+		previous = position
+	}
+}
+
+func phase17RequireSecurityRecordBoundary(t *testing.T, rel string, line int, record phase17EvidenceRecord) {
+	t.Helper()
+
+	if !phase17StringInSlice(record.SecretClass, phase17SecretClasses) {
+		t.Fatalf("%s line %d unknown secret_class %s", rel, line, record.SecretClass)
+	}
+	allowedInput := phase17StringInSlice(record.InputChannel, phase17AllowedSecretInputChannels)
+	forbiddenInput := phase17StringInSlice(record.InputChannel, phase17ForbiddenSecretInputChannels)
+	if allowedInput == forbiddenInput {
+		t.Fatalf("%s line %d input_channel must be in exactly one allow/deny set: %s", rel, line, record.InputChannel)
+	}
+	if phase17ContainsSecretLikeValue(record.RedactedReference, record.ScanTarget) {
+		t.Fatalf("%s line %d security metadata must remain opaque and non-secret: %+v", rel, line, record)
+	}
+	switch record.MaskResult {
+	case "masked", "not_present", "not_applicable":
+	default:
+		t.Fatalf("%s line %d invalid mask_result %s", rel, line, record.MaskResult)
+	}
+	if record.DestructiveOperationToken != "not_applicable" && !phase17StringInSlice(record.DestructiveOperationToken, phase17ForbiddenProviderOperations) {
+		t.Fatalf("%s line %d unknown destructive operation token %s", rel, line, record.DestructiveOperationToken)
+	}
+	switch record.BoundaryResult {
+	case "passed", "blocked", "not_applicable":
+	default:
+		t.Fatalf("%s line %d invalid boundary_result %s", rel, line, record.BoundaryResult)
+	}
+	if forbiddenInput && (record.Result != "passed" || record.SecretScanResult != "not_applicable" || record.BoundaryResult != "blocked") {
+		t.Fatalf("%s line %d forbidden input channel must be blocked as a passing boundary check: %+v", rel, line, record)
+	}
+	if phase17StringInSlice(record.DestructiveOperationToken, phase17ForbiddenProviderOperations) && (record.DestructiveOperationResult != "blocked" || record.BoundaryResult != "blocked") {
+		t.Fatalf("%s line %d forbidden provider operation must be blocked: %+v", rel, line, record)
+	}
+}
+
+func phase17RequireClosureEvidenceGates(t *testing.T, counters map[string]int, records map[string][]phase17EvidenceRecord) {
+	t.Helper()
+
+	if phase17CountMonitorSamples(records["records/operation.jsonl"]) < phase17RequiredMonitorSampleCount {
+		t.Fatalf("Phase 17 trial operation closure requires %d baseline monitor sample", phase17RequiredMonitorSampleCount)
+	}
+	if phase17AnyPendingExternalEvidence(records) {
+		t.Fatalf("Phase 17 closure must not leave pending external evidence")
+	}
+	if phase17RecordWithResult(records["records/operation.jsonl"], "not_applicable") {
+		t.Fatalf("Phase 17 operation records must not leave not_applicable placeholders")
+	}
+	if phase17RecordWithResult(records["records/trial_conoha.jsonl"], "not_applicable") {
+		t.Fatalf("Phase 17 trial ConoHa records must not leave not_applicable placeholders")
+	}
+}
+
+func phase17RequireDerivedCounters(t *testing.T, counters map[string]int, records map[string][]phase17EvidenceRecord) {
+	t.Helper()
+
+	derived := phase17DeriveCounters(records)
+	for _, key := range phase17Counters {
+		if counters[key] != derived[key] {
+			t.Fatalf("Phase 17 counter %s must be derived from records: want %d got %d", key, derived[key], counters[key])
+		}
+	}
+}
+
+func phase17DeriveCounters(records map[string][]phase17EvidenceRecord) map[string]int {
+	derived := map[string]int{}
+	for _, key := range phase17Counters {
+		derived[key] = 0
+	}
+
+	for _, record := range records["records/trial_conoha.jsonl"] {
+		if phase17TrialRecordOpen(record) {
+			switch record.CheckName {
+			case "phase17-conoha-vps-preflight":
+				derived["phase17_conoha_trial_operation_open_count"] = 1
+			case "phase17-conoha-install-update-rollback":
+				derived["phase17_install_update_rollback_open_count"] = 1
+			case "phase17-systemd-lifecycle":
+				derived["phase17_systemd_lifecycle_open_count"] = 1
+			case "phase17-runtime-flow":
+				derived["phase17_runtime_flow_open_count"] = 1
+			}
+		}
+	}
+	if !phase17BuildoutClosed(records["records/buildout.jsonl"]) {
+		derived["phase17_buildout_open_count"] = 1
+	}
+	if !phase17SimulationClosed(records["records/simulation.jsonl"]) {
+		derived["phase17_production_simulation_open_count"] = 1
+	}
+	if !phase17FailureInjectionClosed(records["records/failure.jsonl"]) {
+		derived["phase17_failure_injection_open_count"] = 1
+	}
+	if !phase17DocumentDriftClosed(records["records/document_drift.jsonl"]) {
+		derived["phase17_document_drift_open_count"] = 1
+	}
+	if phase17XserverFutureMisclassified(records["records/document_drift.jsonl"]) {
+		derived["phase17_xserver_future_misclassified_count"] = 1
+	}
+	if !phase17TrialOperationClosed(records["records/operation.jsonl"]) {
+		derived["phase17_trial_operation_open_count"] = 1
+	}
+	for _, record := range records["records/security.jsonl"] {
+		if phase17SecurityLeakOpen(record) {
+			derived["phase17_secret_leak_open_count"] = 1
+		}
+		if phase17DestructiveOperationOpen(record) {
+			derived["phase17_destructive_operation_open_count"] = 1
+		}
+	}
+	for _, record := range records["records/bugfix.jsonl"] {
+		if phase17BugfixSpecGapOpen(record) {
+			derived["phase17_bugfix_spec_gap_count"] = 1
+		}
+		if phase17KnownBugOpen(record) {
+			derived["phase17_known_bug_open_count"] = 1
+		}
+	}
+	for _, key := range phase17Counters {
+		if key != "final_open_item_count" {
+			derived["final_open_item_count"] += derived[key]
+		}
+	}
+	return derived
+}
+
+func phase17TrialRecordOpen(record phase17EvidenceRecord) bool {
+	if record.Result != "passed" {
+		return true
+	}
+	for _, value := range []string{
+		record.ServiceState,
+		record.StateDigest,
+		record.LogDigest,
+		record.RollbackState,
+		record.CleanupResult,
+	} {
+		if value == "pending-external-evidence" || value == "not_started" || value == "" {
+			return true
+		}
+	}
+	return false
+}
+
+func phase17BuildoutClosed(records []phase17EvidenceRecord) bool {
+	if len(records) != len(phase17BuildoutWorkUnits) {
+		return false
+	}
+	for _, record := range records {
+		if record.Result != "passed" || record.WorkUnitResult != "passed" || record.ForbiddenProviderOperationDetected == nil || *record.ForbiddenProviderOperationDetected {
+			return false
+		}
+	}
+	return true
+}
+
+func phase17SimulationClosed(records []phase17EvidenceRecord) bool {
+	if len(records) != len(phase17FailureClasses) {
+		return false
+	}
+	for _, record := range records {
+		if record.Result != "passed" || record.ProviderExecutionResult != "not_executed_on_provider" || record.RecoveryResult == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func phase17FailureInjectionClosed(records []phase17EvidenceRecord) bool {
+	if len(records) != len(phase17FailureClasses) {
+		return false
+	}
+	for _, record := range records {
+		if record.Result != "passed" || record.ActualFailure == "" || record.RecoveryResult == "" || record.SilentSuccessDetected == nil || *record.SilentSuccessDetected {
+			return false
+		}
+	}
+	return true
+}
+
+func phase17DocumentDriftClosed(records []phase17EvidenceRecord) bool {
+	if len(records) == 0 {
+		return false
+	}
+	for _, record := range records {
+		switch record.DriftResult {
+		case "no_drift", "future_plan_confirmed":
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func phase17XserverFutureMisclassified(records []phase17EvidenceRecord) bool {
+	for _, record := range records {
+		if record.ProviderTarget == "xserver-vps-future" {
+			return record.Result != "future_plan" || record.ValidationMode != "future_plan" || record.DriftResult != "future_plan_confirmed"
+		}
+	}
+	return true
+}
+
+func phase17TrialOperationClosed(records []phase17EvidenceRecord) bool {
+	if phase17CountMonitorSamples(records) < phase17RequiredMonitorSampleCount {
+		return false
+	}
+	for _, record := range records {
+		if record.CheckName != "phase17-trial-operation-loop" {
+			continue
+		}
+		if record.Result != "passed" || phase17OperationRecordPending(record) || record.AbortResult == "triggered" {
+			return false
+		}
+	}
+	return true
+}
+
+func phase17SecurityLeakOpen(record phase17EvidenceRecord) bool {
+	if record.SecretScanResult == "failed" || record.SecretValuePresent == nil || *record.SecretValuePresent || record.CredentialStorageResult != "not_stored" {
+		return true
+	}
+	return record.BoundaryResult == "failed" || record.MaskResult == ""
+}
+
+func phase17DestructiveOperationOpen(record phase17EvidenceRecord) bool {
+	if record.DestructiveOperationResult == "boundary_failed" || record.BoundaryResult == "failed" {
+		return true
+	}
+	if phase17StringInSlice(record.DestructiveOperationToken, phase17ForbiddenProviderOperations) {
+		return record.DestructiveOperationResult != "blocked" || record.BoundaryResult != "blocked"
+	}
+	return false
+}
+
+func phase17BugfixSpecGapOpen(record phase17EvidenceRecord) bool {
+	if record.Result == "failed" || record.Result == "rejected" {
+		return true
+	}
+	if record.KnownBugStatus == "future_plan" {
+		return false
+	}
+	return record.SpecUpdateRef == "" || record.ResponsibilitySourceRef == "" || record.ImplementationRef == "" || record.ImplementationRef == "not_started" || record.RevalidationRef == ""
+}
+
+func phase17KnownBugOpen(record phase17EvidenceRecord) bool {
+	switch record.KnownBugStatus {
+	case "closed", "future_plan":
+		return false
+	default:
+		return true
+	}
+}
+
+func phase17CountMonitorSamples(records []phase17EvidenceRecord) int {
+	count := 0
+	seen := map[int]bool{}
+	for _, record := range records {
+		if record.OperationStep != "monitor" || record.MonitorSampleIndex == nil {
+			continue
+		}
+		if !seen[*record.MonitorSampleIndex] {
+			seen[*record.MonitorSampleIndex] = true
+			count++
+		}
+	}
+	return count
+}
+
+func phase17RecordWithResult(records []phase17EvidenceRecord, result string) bool {
+	for _, record := range records {
+		if record.Result == result {
+			return true
+		}
+	}
+	return false
+}
+
+func phase17AnyPendingExternalEvidence(records map[string][]phase17EvidenceRecord) bool {
+	for _, recordSet := range records {
+		for _, record := range recordSet {
+			for _, value := range []string{
+				record.ServiceState,
+				record.StateDigest,
+				record.LogDigest,
+				record.RollbackState,
+				record.CleanupResult,
+				record.HealthResult,
+				record.StateWriteResult,
+				record.LogWriteResult,
+				record.ImplementationRef,
+			} {
+				if value == "pending-external-evidence" || value == "not_started" {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func phase17OperationRecordPending(record phase17EvidenceRecord) bool {
+	for _, value := range []string{
+		record.ServiceState,
+		record.HealthResult,
+		record.StateWriteResult,
+		record.LogWriteResult,
+	} {
+		if value == "pending-external-evidence" {
+			return true
+		}
+	}
+	return false
+}
+
+func phase17RequireWorkflow(t *testing.T, path string) {
+	t.Helper()
+
+	workflow := phase11MustReadText(t, path)
+	if !strings.Contains(workflow, "name: phase17-production-validation") || !strings.Contains(workflow, "permissions:\n  contents: read") {
+		t.Fatalf("%s must use the Phase 17 workflow name and contents:read permissions", path)
+	}
+	for _, requiredCheck := range phase17RequiredChecks {
+		if !strings.Contains(workflow, "\n  "+requiredCheck+":") {
+			t.Fatalf("%s must define required check job %s", path, requiredCheck)
+		}
+	}
+	if strings.Count(workflow, "timeout-minutes:") < len(phase17RequiredChecks) {
+		t.Fatalf("%s must set timeout-minutes on every Phase 17 job", path)
+	}
+	phase13RequirePinnedActions(t, workflow)
+}
+
+func phase17RequireDocumentState(t *testing.T) {
+	t.Helper()
+
+	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
+	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
+	if !strings.Contains(roadmap, "| Phase 17 | ConoHa VPS 試験本番運用。") || !strings.Contains(roadmap, "| 実装済み | Phase 16 |") {
+		t.Fatalf("docs/ROADMAP.md must mark Phase 17 as 実装済み after closure evidence reaches zero")
+	}
+	if strings.Contains(roadmap, "現在の active Phase は Phase 17") {
+		t.Fatalf("docs/ROADMAP.md must not keep Phase 17 as active after closure evidence reaches zero")
+	}
+	expectedPaths := []string{"testdata/phase17/production-validation/"}
+	for _, rel := range phase17FixtureFiles {
+		expectedPaths = append(expectedPaths, "testdata/phase17/production-validation/"+rel)
+	}
+	expectedPaths = append(expectedPaths, ".github/workflows/phase17-production-validation.yml")
+	for _, rel := range expectedPaths {
+		if !strings.Contains(documentIndex, "| `"+rel+"` |") && !strings.Contains(documentIndex, "| [`"+rel+"`]") {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must index Phase 17 path %s", rel)
+		}
+	}
+	for _, forbidden := range []string{
+		"| `testdata/phase17/production-validation/` | Phase 17 正式 fixture root | 未作成 |",
+		"| `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 未作成 |",
+	} {
+		if strings.Contains(documentIndex, forbidden) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must not keep Phase 17 path as 未作成: %s", forbidden)
+		}
+	}
+}
+
+func phase17CounterAllowed(key string) bool {
+	return phase17StringInSlice(key, phase17Counters)
+}
+
+func phase17RequiredCheckAllowed(check string) bool {
+	return phase17StringInSlice(check, phase17RequiredChecks)
+}
+
+func phase17RequireNoSecretLikeFixtureContent(t *testing.T, path string, data []byte) {
+	t.Helper()
+
+	text := string(data)
+	for _, forbidden := range []string{
+		"-----BEGIN OPENSSH PRIVATE KEY-----",
+		"-----BEGIN RSA PRIVATE KEY-----",
+		"-----BEGIN PRIVATE KEY-----",
+		"ghp_",
+		"github_pat_",
+		"xoxb-",
+		"sk-proj-",
+		"sk-svcacct-",
+		"password=",
+		"token=",
+		"secret=",
+		"http://",
+		"https://",
+	} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("%s must not contain secret-like literal or endpoint-like value %q", path, forbidden)
+		}
+	}
+	for _, token := range strings.FieldsFunc(text, func(r rune) bool {
+		return !(r == '.' || r == '-' || r == '_' || r == ':' || r == '/' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z')
+	}) {
+		if phase17LooksLikeIPv4(token) {
+			t.Fatalf("%s must not contain IPv4-like value %q", path, token)
+		}
+	}
+}
+
+func phase17LooksLikeIPv4(value string) bool {
+	parts := strings.Split(value, ".")
+	if len(parts) != 4 {
+		return false
+	}
+	for _, part := range parts {
+		if part == "" || len(part) > 3 {
+			return false
+		}
+		n := 0
+		for _, r := range part {
+			if r < '0' || r > '9' {
+				return false
+			}
+			n = n*10 + int(r-'0')
+		}
+		if n > 255 {
+			return false
+		}
+	}
+	return true
+}
+
+func phase17IsLowerHexSHA256(value string) bool {
+	if len(value) != 64 {
+		return false
+	}
+	for _, r := range value {
+		if !(r >= '0' && r <= '9' || r >= 'a' && r <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func phase17StringInSlice(value string, values []string) bool {
+	for _, candidate := range values {
+		if value == candidate {
+			return true
+		}
+	}
+	return false
+}
+
+func phase17ContainsSecretLikeValue(values ...string) bool {
+	for _, value := range values {
+		lower := strings.ToLower(value)
+		for _, forbidden := range []string{"token", "secret", "key", "password", "credential", "http://", "https://", "@"} {
+			if strings.Contains(lower, forbidden) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func phase13RequireOwnerPackages(t *testing.T) {

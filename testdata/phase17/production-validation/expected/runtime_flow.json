@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "scope": "phase-17-production-validation",
+  "provider_target": "conoha-vps-primary",
+  "validation_mode": "trial-production-conoha-vps",
+  "expected_steps": [
+    "preflight",
+    "install",
+    "runtime-flow",
+    "update",
+    "rollback",
+    "reboot-recovery",
+    "cleanup"
+  ],
+  "counter_connections": [
+    "phase17_conoha_trial_operation_open_count",
+    "phase17_install_update_rollback_open_count",
+    "phase17_systemd_lifecycle_open_count",
+    "phase17_runtime_flow_open_count"
+  ]
+}

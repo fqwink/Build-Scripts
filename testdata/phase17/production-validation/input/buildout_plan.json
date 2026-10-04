@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "scope": "phase-17-production-validation",
+  "provider_target": "conoha-vps-primary",
+  "validation_mode": "trial-production-conoha-vps",
+  "required_check": "phase17-trial-production-buildout",
+  "work_units": [
+    "provider-prerequisite",
+    "access-baseline",
+    "system-baseline",
+    "release-acquisition",
+    "install-bootstrap",
+    "runtime-baseline",
+    "operation-baseline",
+    "update-rollback-baseline",
+    "simulation-baseline",
+    "monitoring-baseline"
+  ],
+  "forbidden_provider_operations": [
+    "vps-create",
+    "vps-delete",
+    "plan-change",
+    "disk-rebuild",
+    "volume-create",
+    "volume-delete",
+    "volume-attach",
+    "volume-detach",
+    "firewall-lockout",
+    "ssh-lockout"
+  ]
+}
