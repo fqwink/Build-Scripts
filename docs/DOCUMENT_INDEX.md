@@ -138,7 +138,7 @@
 | パス | 実装上の役割 | 所在区分 |
 |------|-----------|----------|
 | [`main.go`](../main.go) | 起動入口 | 実在 |
-| [`main_test.go`](../main_test.go) | 起動入口 test / Phase 16 checker implementation artifact 配置先 | 実在 |
+| [`main_test.go`](../main_test.go) | 起動入口 test / Phase 16 / Phase 18 checker implementation artifact 配置先 | 実在 |
 | [`go.mod`](../go.mod) | Go module | 実在 |
 | [`sdk_contract_test.go`](../sdk_contract_test.go) | `sdk` contract test | 実在 |
 | [`ui_contract_test.go`](../ui_contract_test.go) | `ui` contract test | 実在 |
