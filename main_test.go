@@ -3776,6 +3776,31 @@ var phase18SourceChannels = []string{"integration-head", "stable-release"}
 
 var phase18TopologyRoles = []string{"ci-cd", "site", "single-node"}
 
+var phase18BootstrapInvocationTokens = []string{
+	"sh",
+	"adlaire-ci-vps-pull-bootstrap.sh",
+	"--source-channel",
+	"integration-head|stable-release",
+	"--topology-role",
+	"ci-cd|site|single-node",
+	"--source",
+	"absolute-https-url-or-absolute-file-path",
+	"--sha256",
+	"64-lowercase-hex",
+	"--install-dir",
+	"/opt/adlaire-builder",
+	"--bin-dir",
+	"/usr/local/bin",
+	"--state-dir",
+	"/opt/adlaire-builder",
+	"--service-user",
+	"root",
+}
+
+var phase18BootstrapRequiredCommands = []string{"sh", "mktemp", "mkdir", "chmod", "install", "mv", "rm", "sha256sum", "systemctl"}
+
+var phase18BootstrapHTTPClientOrder = []string{"curl", "wget"}
+
 var phase18ForbiddenProviderOperations = []string{
 	"vps-create",
 	"vps-delete",
@@ -3923,6 +3948,8 @@ var phase18NegativeBoundarySpecs = []phase18NegativeBoundarySpec{
 	{"bootstrap-session-three-samples-missing-treated-as-success", "bootstrap-session", "session-mismatch", "phase18_bootstrap_session_open_count"},
 	{"twenty-four-hour-monitoring-absence-treated-as-blocker", "bootstrap-session", "schema-mismatch", "phase18_bootstrap_session_open_count"},
 	{"bootstrap-script-contract-missing-treated-as-success", "bootstrap-runtime", "record-link-missing", "phase18_bootstrap_runtime_open_count"},
+	{"bootstrap-script-command-contract-missing-treated-as-success", "bootstrap-runtime", "record-link-missing", "phase18_bootstrap_runtime_open_count"},
+	{"bootstrap-script-output-contract-missing-treated-as-success", "bootstrap-runtime", "record-link-missing", "phase18_bootstrap_runtime_open_count"},
 	{"release-asset-or-version-evidence-missing-treated-as-success", "bootstrap-runtime", "record-link-missing", "phase18_bootstrap_runtime_open_count"},
 	{"runner-evidence-missing-counter-zero", "pull-runner-foundation", "counter-mismatch", "phase18_pull_runner_foundation_open_count"},
 	{"update-rollback-missing-treated-as-success", "update-rollback", "record-link-missing", "phase18_bootstrap_update_rollback_open_count"},
@@ -4003,6 +4030,13 @@ type phase18OperationScopeFile struct {
 	BootstrapServiceUser        string   `json:"bootstrap_service_user"`
 	BootstrapSecretInputPolicy  string   `json:"bootstrap_secret_input_policy"`
 	BootstrapStateModel         string   `json:"bootstrap_state_model"`
+	BootstrapCLIContract        string   `json:"bootstrap_cli_contract"`
+	BootstrapInvocationTokens   []string `json:"bootstrap_invocation_tokens"`
+	BootstrapRequiredCommands   []string `json:"bootstrap_required_commands"`
+	BootstrapHTTPClientOrder    []string `json:"bootstrap_http_client_order"`
+	BootstrapStdoutContract     string   `json:"bootstrap_stdout_contract"`
+	BootstrapStderrContract     string   `json:"bootstrap_stderr_contract"`
+	BootstrapExitCodeContract   string   `json:"bootstrap_exit_code_contract"`
 	OperationTargets            []string `json:"operation_targets"`
 	ForbiddenProviderOperations []string `json:"forbidden_provider_operations"`
 	XserverFuturePolicy         string   `json:"xserver_future_policy"`
@@ -4291,7 +4325,7 @@ func phase18RequireInputsAndExpected(t *testing.T, root string) phase18InputSet 
 	}
 
 	phase16ReadStrictJSON(t, filepath.Join(root, "input/operation_scope.json"), &inputs.Scope)
-	if inputs.Scope.SchemaVersion != 1 || inputs.Scope.Scope != phase18Scope || inputs.Scope.ProviderTarget != "conoha-vps-primary" || inputs.Scope.ValidationMode != "vps-pull-bootstrap" || inputs.Scope.BootstrapScriptArtifact != "adlaire-ci-vps-pull-bootstrap.sh" || inputs.Scope.BootstrapScriptRuntime != "/bin/sh" || inputs.Scope.BootstrapScriptInvocation != "operator-runs-sh-script-on-vps" || !phase11StringSlicesEqual(inputs.Scope.SourceChannels, phase18SourceChannels) || inputs.Scope.ActiveSourceChannel != "integration-head" || !phase11StringSlicesEqual(inputs.Scope.TopologyRoles, phase18TopologyRoles) || inputs.Scope.MinimumTopologyRole != "single-node" || inputs.Scope.BootstrapSourceIDFormat != "absolute-https-url-or-absolute-file-path" || inputs.Scope.BootstrapDigestAlgorithm != "sha256" || inputs.Scope.BootstrapInstallDirectory != "/opt/adlaire-builder" || inputs.Scope.BootstrapBinDirectory != "/usr/local/bin" || inputs.Scope.BootstrapStateDirectory != "/opt/adlaire-builder" || inputs.Scope.BootstrapServiceUser != "root" || inputs.Scope.BootstrapSecretInputPolicy != "no-command-argument-secret" || inputs.Scope.BootstrapStateModel != "staging-verify-commit-rollback" || !phase11StringSlicesEqual(inputs.Scope.OperationTargets, phase18OperationTargets) || !phase11StringSlicesEqual(inputs.Scope.ForbiddenProviderOperations, phase18ForbiddenProviderOperations) || inputs.Scope.XserverFuturePolicy != "future_plan_not_blocker" {
+	if inputs.Scope.SchemaVersion != 1 || inputs.Scope.Scope != phase18Scope || inputs.Scope.ProviderTarget != "conoha-vps-primary" || inputs.Scope.ValidationMode != "vps-pull-bootstrap" || inputs.Scope.BootstrapScriptArtifact != "adlaire-ci-vps-pull-bootstrap.sh" || inputs.Scope.BootstrapScriptRuntime != "/bin/sh" || inputs.Scope.BootstrapScriptInvocation != "operator-runs-sh-script-on-vps" || !phase11StringSlicesEqual(inputs.Scope.SourceChannels, phase18SourceChannels) || inputs.Scope.ActiveSourceChannel != "integration-head" || !phase11StringSlicesEqual(inputs.Scope.TopologyRoles, phase18TopologyRoles) || inputs.Scope.MinimumTopologyRole != "single-node" || inputs.Scope.BootstrapSourceIDFormat != "absolute-https-url-or-absolute-file-path" || inputs.Scope.BootstrapDigestAlgorithm != "sha256" || inputs.Scope.BootstrapInstallDirectory != "/opt/adlaire-builder" || inputs.Scope.BootstrapBinDirectory != "/usr/local/bin" || inputs.Scope.BootstrapStateDirectory != "/opt/adlaire-builder" || inputs.Scope.BootstrapServiceUser != "root" || inputs.Scope.BootstrapSecretInputPolicy != "no-command-argument-secret" || inputs.Scope.BootstrapStateModel != "staging-verify-commit-rollback" || inputs.Scope.BootstrapCLIContract != "fixed-token-flag-interface" || !phase11StringSlicesEqual(inputs.Scope.BootstrapInvocationTokens, phase18BootstrapInvocationTokens) || !phase11StringSlicesEqual(inputs.Scope.BootstrapRequiredCommands, phase18BootstrapRequiredCommands) || !phase11StringSlicesEqual(inputs.Scope.BootstrapHTTPClientOrder, phase18BootstrapHTTPClientOrder) || inputs.Scope.BootstrapStdoutContract != "single-json-object-secret-safe" || inputs.Scope.BootstrapStderrContract != "diagnostic-json-lines-on-failure" || inputs.Scope.BootstrapExitCodeContract != "common-cli-exit-code-contract" || !phase11StringSlicesEqual(inputs.Scope.OperationTargets, phase18OperationTargets) || !phase11StringSlicesEqual(inputs.Scope.ForbiddenProviderOperations, phase18ForbiddenProviderOperations) || inputs.Scope.XserverFuturePolicy != "future_plan_not_blocker" {
 		t.Fatalf("Phase 18 operation scope mismatch: %+v", inputs.Scope)
 	}
 
@@ -4576,8 +4610,8 @@ func phase18RequireHealthRecords(t *testing.T, records []phase18EvidenceRecord) 
 			t.Fatalf("Phase 18 log-write health target must pass log write: %+v", record)
 		}
 		if record.HealthTarget == "bootstrap-script" {
-			expectedState := "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback"
-			if record.SourceRef != "input/operation_scope.json" || record.OwnerRef != "docs/details/production-validation.md" || record.EndpointOrCommandRef != "input/operation_scope.json" || record.ExpectedState != expectedState || record.ActualState != expectedState || !strings.Contains(record.Diagnostic, "source identifier") || !strings.Contains(record.Diagnostic, "secret policy") {
+			expectedState := "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback fixed-token-flag-interface sh adlaire-ci-vps-pull-bootstrap.sh --source-channel integration-head|stable-release --topology-role ci-cd|site|single-node --source absolute-https-url-or-absolute-file-path --sha256 64-lowercase-hex --install-dir /opt/adlaire-builder --bin-dir /usr/local/bin --state-dir /opt/adlaire-builder --service-user root sh mktemp mkdir chmod install mv rm sha256sum systemctl curl wget single-json-object-secret-safe diagnostic-json-lines-on-failure common-cli-exit-code-contract"
+			if record.SourceRef != "input/operation_scope.json" || record.OwnerRef != "docs/details/production-validation.md" || record.EndpointOrCommandRef != "input/operation_scope.json" || record.ExpectedState != expectedState || record.ActualState != expectedState || !strings.Contains(record.Diagnostic, "source identifier") || !strings.Contains(record.Diagnostic, "secret policy") || !strings.Contains(record.Diagnostic, "cli token") || !strings.Contains(record.Diagnostic, "required command") || !strings.Contains(record.Diagnostic, "http client") || !strings.Contains(record.Diagnostic, "exit code") {
 				t.Fatalf("Phase 18 bootstrap script health target must prove exact bootstrap contract: %+v", record)
 			}
 		}
