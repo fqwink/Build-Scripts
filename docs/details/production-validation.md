@@ -260,6 +260,8 @@ Phase 18 の `redeploy-and-revalidate` は、実装修正があった場合は�
 
 Phase 18 の operation session closure package は、Phase 17 引継ぎ、開始 sample、runtime sample、終了 sample、service health、Admin / API / SDK / UI runtime、runner real operation、update / rollback drill、issue triage、仕様先行修正判定、再検証、secret 境界、destructive operation 境界、document drift 境界、cleanup 判定を同一 session id に接続する。同一 session id で接続できない証跡、別 session の結果を寄せ集めた証跡、session id を持たない証跡、または fixture counter だけの完了報告を Phase 18 の完了根拠にしてはならない。
 
+Phase 18 の実運用完了証跡は、試験本番VPS上の実測結果から作成する。[`docs/details/fixture.md` fixture 証跡責務 Phase 18 試験本番VPS 実運用接続・運用証跡](fixture.md#phase-18-trial-production-operation-evidence) の `testdata/phase18/trial-production-operation/records/*.jsonl` が `evidence_origin=checker-acceptance-fixture` と `execution_environment=repository-fixture` を持つ場合、その record は checker acceptance fixture としてだけ扱い、Phase 18 の実運用完了証跡として扱ってはならない。
+
 Phase 18 の運用中バグ修正 loop は `issue-detect`、`spec-general-update`、`implementation-fix`、`redeploy`、`revalidate`、`evidence-record`、`known-bug-zero-check` の順序に固定する。`spec-general-update` を通過しない `implementation-fix` を禁止する。
 
 Phase 18 の停止条件は `secret-boundary-failure`、`destructive-operation-boundary-failure`、`state-corruption`、`service-unrecoverable`、`known-critical-bug`、`document-drift-blocker` に固定する。停止条件が発火した場合は、運用 session を成功扱いせず、停止理由、直前 sample、責務正本、修正条件、再検証条件、復旧可否を証跡化する。

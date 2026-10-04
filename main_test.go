@@ -4049,6 +4049,8 @@ type phase18InputSet struct {
 type phase18EvidenceRecord struct {
 	RecordID                           string   `json:"record_id"`
 	Scope                              string   `json:"scope"`
+	EvidenceOrigin                     string   `json:"evidence_origin"`
+	ExecutionEnvironment               string   `json:"execution_environment"`
 	ProviderTarget                     string   `json:"provider_target"`
 	ValidationMode                     string   `json:"validation_mode"`
 	CheckName                          string   `json:"check_name"`
@@ -4354,7 +4356,7 @@ func phase18RequireRecordCommon(t *testing.T, rel string, line int, record phase
 	t.Helper()
 
 	prefix := "phase18.record." + strings.TrimSuffix(filepath.Base(rel), ".jsonl") + "."
-	if record.RecordID == "" || !strings.HasPrefix(record.RecordID, prefix) || record.Scope != phase18Scope || record.ProviderTarget == "" || record.ValidationMode == "" || record.CheckName == "" || record.SourceRef == "" || record.Result == "" || record.CounterKey == "" || record.SecretScanResult == "" || record.DestructiveOperationResult == "" || record.EvidenceRef == "" {
+	if record.RecordID == "" || !strings.HasPrefix(record.RecordID, prefix) || record.Scope != phase18Scope || record.EvidenceOrigin != "checker-acceptance-fixture" || record.ExecutionEnvironment != "repository-fixture" || record.ProviderTarget == "" || record.ValidationMode == "" || record.CheckName == "" || record.SourceRef == "" || record.Result == "" || record.CounterKey == "" || record.SecretScanResult == "" || record.DestructiveOperationResult == "" || record.EvidenceRef == "" {
 		t.Fatalf("%s line %d common fields invalid: %+v", rel, line, record)
 	}
 	if !phase17StringInSlice(record.ProviderTarget, phase18ProviderTargets) {
