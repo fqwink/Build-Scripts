@@ -496,8 +496,8 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if !strings.Contains(roadmap, phase13CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 実装済み after Phase 13 closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は未設定とする。") {
-		t.Fatalf("docs/ROADMAP.md must state that no active Phase remains after Phase 17 closure")
+	if !strings.Contains(roadmap, "現在の active Phase は Phase 18 とする。") {
+		t.Fatalf("docs/ROADMAP.md must keep Phase 18 active after Phase 17 closure until real operation completes")
 	}
 	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 17 まではすべて `実装済み`") {
 		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 17 are all implemented after Phase 17 closure")
@@ -2114,8 +2114,8 @@ func phase16RequireDocumentDriftClosed(t *testing.T) {
 	if !strings.Contains(roadmap, "| Phase 16 | 実装済み品質証跡実体化・追加検証候補 closure。") || !strings.Contains(roadmap, "| 実装済み | Phase 15 |") {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 16 as 実装済み")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は未設定とする。") {
-		t.Fatalf("docs/ROADMAP.md must keep active Phase unset after Phase 17 closure")
+	if !strings.Contains(roadmap, "現在の active Phase は Phase 18 とする。") {
+		t.Fatalf("docs/ROADMAP.md must keep Phase 18 active after Phase 17 closure until real operation completes")
 	}
 	for _, feature := range []string{
 		"Phase 16 source coverage set / detection registry / evidence package manifest / inventory / negative control / expected / record schema / checker implementation artifact / checker 実行入口 / checker 再導出 gate",
@@ -4242,7 +4242,7 @@ func phase18RequireCountersClosed(t *testing.T, counters map[string]int) {
 		t.Fatalf("Phase 18 final_open_item_count must equal open counter sum: want %d got %d", sum, counters["final_open_item_count"])
 	}
 	if counters["final_open_item_count"] != 0 {
-		t.Fatalf("Phase 18 closure requires final_open_item_count=0, got %d", counters["final_open_item_count"])
+		t.Fatalf("Phase 18 checker acceptance fixture requires final_open_item_count=0, got %d", counters["final_open_item_count"])
 	}
 }
 
@@ -4795,23 +4795,31 @@ func phase18RequireDocumentState(t *testing.T) {
 
 	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
-	if !strings.Contains(roadmap, "| Phase 18 | 試験本番VPS 実運用接続・運用証跡。") || !strings.Contains(roadmap, "| 実装済み | Phase 17 |") {
-		t.Fatalf("docs/ROADMAP.md must mark Phase 18 as 実装済み after closure evidence reaches zero")
+	phase18Row := "| Phase 18 | 試験本番VPS 実運用接続・運用証跡。"
+	phase18InProgressStatus := "| 実装中・実運用検証未完了 | Phase 17 |"
+	phase18ImplementedStatus := "| 実装済み | Phase 17 |"
+	if !strings.Contains(roadmap, phase18Row) || !strings.Contains(roadmap, phase18InProgressStatus) {
+		t.Fatalf("docs/ROADMAP.md must keep Phase 18 as 実装中・実運用検証未完了 until real trial production operation evidence exists")
 	}
-	if strings.Contains(roadmap, "現在の active Phase は Phase 18") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
-		t.Fatalf("docs/ROADMAP.md must not keep Phase 18 active or unimplemented after closure evidence reaches zero")
+	if !strings.Contains(roadmap, "現在の active Phase は Phase 18") {
+		t.Fatalf("docs/ROADMAP.md must keep Phase 18 as the active Phase until real trial production operation is complete")
+	}
+	if strings.Contains(roadmap, phase18ImplementedStatus) || strings.Contains(roadmap, "Phase 18 も `実装済み`") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
+		t.Fatalf("docs/ROADMAP.md must not mark Phase 18 implemented or unimplemented while real trial production operation remains incomplete")
 	}
 	for _, feature := range []string{
 		"Phase 18 試験本番VPS 実運用接続 / Phase 17 handover / operation session / service health / runtime flow gate",
 		"Phase 18 runner real operation / update / rollback drill / 運用中 issue / 仕様先行バグ修正 / 再検証 / known bug 0 gate",
 		"Phase 18 secret / destructive operation / opaque metadata / document drift gate",
 	} {
-		if !strings.Contains(roadmap, "| 実装済み |") || !strings.Contains(roadmap, feature) {
-			t.Fatalf("docs/ROADMAP.md must mark Phase 18 feature implemented: %s", feature)
+		if !strings.Contains(roadmap, "| 実装中・実運用検証未完了 |") || !strings.Contains(roadmap, feature) {
+			t.Fatalf("docs/ROADMAP.md must mark Phase 18 feature in progress until real operation completes: %s", feature)
 		}
-		if strings.Contains(roadmap, "| 仕様化済み・未実装 | 試験本番運用 | "+feature+" |") ||
+		if strings.Contains(roadmap, "| 実装済み | 試験本番運用 | "+feature+" |") ||
+			strings.Contains(roadmap, "| 実装済み | 本番検証 | "+feature+" |") ||
+			strings.Contains(roadmap, "| 仕様化済み・未実装 | 試験本番運用 | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | 本番検証 | "+feature+" |") {
-			t.Fatalf("docs/ROADMAP.md must not keep Phase 18 feature unimplemented: %s", feature)
+			t.Fatalf("docs/ROADMAP.md must not mark Phase 18 feature implemented or unimplemented while real operation remains incomplete: %s", feature)
 		}
 	}
 	expectedPaths := []string{"testdata/phase18/trial-production-operation/"}

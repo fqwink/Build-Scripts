@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "b6238de4671cf08fe387762716f502390c70c53275ac5da10e60ddbe754ec613",
+  "source_group_sha256": "0e1a153be9d8c6ff7582f0e9ae8804114964af33d573b7e301ed784af4ce1fa1",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -45,8 +45,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "1cf589ca41471095d85f74cdaea19ee6cd912e315be36ca9d7accd706ef672af",
-      "size_bytes": 225656,
+      "sha256": "65d2c6ec4e7c76b86a5d7bb18c7462aaa3e66e627bfc93e8dedddf360e6af089",
+      "size_bytes": 226470,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [{"term_id":"phase16-checker","match":"TestPhase16QualityEvidenceClosure","match_mode":"literal","count":1,"first_source_locator":"file:main_test.go#line:1"}],
@@ -75,8 +75,8 @@
     {
       "path": "docs/ROADMAP.md",
       "source_exists": true,
-      "sha256": "96d9968273fa572bf98c18d296755e83b436c126cde894782e57da4e254cc1dc",
-      "size_bytes": 62302,
+      "sha256": "64a583fa2631e619e62812513f05e53cb2989d02991d27a85b4503ca6e076c94",
+      "size_bytes": 62712,
       "owner_component": "runner",
       "area": "roadmap",
       "detected_terms": [{"term_id":"phase16-roadmap","match":"Phase 16","match_mode":"literal","count":1,"first_source_locator":"file:docs/ROADMAP.md#line:1"}],
@@ -105,8 +105,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "efe2da5a32a744cf4013d8deea31605ee2d230a099d90280bfcafeff54565763",
-      "size_bytes": 946834,
+      "sha256": "aa0fb7dfa2c9c562cc4c6c11f431a147facf96204e3c513df7c232606e5301e4",
+      "size_bytes": 948321,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [{"term_id":"phase16-fixture-spec","match":"phase-16-quality-evidence-closure-evidence","match_mode":"literal","count":1,"first_source_locator":"file:docs/details/fixture.md#line:1"}],
