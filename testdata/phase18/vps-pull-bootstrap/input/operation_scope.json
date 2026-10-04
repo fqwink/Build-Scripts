@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
-  "scope": "phase-18-trial-production-operation",
+  "scope": "phase-18-vps-pull-bootstrap",
   "provider_target": "conoha-vps-primary",
-  "validation_mode": "trial-production-operation",
+  "validation_mode": "vps-pull-bootstrap",
   "operation_targets": [
-    "release-and-service-health",
-    "admin-and-api-runtime",
-    "runner-real-operation",
-    "update-rollback-drill",
-    "issue-triage",
+    "bootstrap-artifact-health",
+    "bootstrap-runtime-flow",
+    "pull-runner-foundation",
+    "bootstrap-update-rollback-drill",
+    "bootstrap-issue-triage",
     "spec-first-fix",
-    "redeploy-and-revalidate"
+    "rebootstrap-and-revalidate"
   ],
   "forbidden_provider_operations": [
     "vps-create",

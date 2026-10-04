@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "phase-18-trial-production-operation",
+  "scope": "phase-18-vps-pull-bootstrap",
   "issue_flow": [
     "issue-detect",
     "spec-general-update",

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "phase-18-trial-production-operation",
+  "scope": "phase-18-vps-pull-bootstrap",
   "phase17_ref": "[docs/details/fixture.md fixture証跡責務 Phase17](docs/details/fixture.md#phase-17-production-validation-evidence)",
   "provider_target": "conoha-vps-primary",
   "os": "ubuntu-server-24.04-lts-64bit",
@@ -27,7 +27,7 @@
       "missing_checks": []
     },
     "phase17_open_items": 0,
-    "trial_vps_prerequisite": "passed",
+    "bootstrap_prerequisite": "passed",
     "result": "passed"
   }
 }

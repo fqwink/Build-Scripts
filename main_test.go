@@ -497,7 +497,7 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 実装済み after Phase 13 closure")
 	}
 	if !strings.Contains(roadmap, "現在の active Phase は Phase 18 とする。") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 active after Phase 17 closure until real operation completes")
+		t.Fatalf("docs/ROADMAP.md must keep Phase 18 active after Phase 17 closure until real VPS Pull Bootstrap completes")
 	}
 	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 17 まではすべて `実装済み`") {
 		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 17 are all implemented after Phase 17 closure")
@@ -715,10 +715,10 @@ func TestPhase17ProductionValidationEvidence(t *testing.T) {
 	phase17RequireDocumentState(t)
 }
 
-func TestPhase18TrialProductionOperationEvidence(t *testing.T) {
+func TestPhase18VPSPullBootstrapEvidence(t *testing.T) {
 	t.Parallel()
 
-	const root = "testdata/phase18/trial-production-operation"
+	const root = "testdata/phase18/vps-pull-bootstrap"
 	phase18RequireFixtureFiles(t, root)
 
 	manifestPath := filepath.Join(root, "manifest.json")
@@ -749,7 +749,7 @@ func TestPhase18TrialProductionOperationEvidence(t *testing.T) {
 	phase18RequireSecurityRecords(t, records["records/security.jsonl"], inputs)
 	phase18RequireDocumentDriftRecords(t, records["records/document_drift.jsonl"])
 	phase18RequireDerivedCounters(t, counters, records)
-	phase18RequireWorkflow(t, ".github/workflows/phase18-trial-production-operation.yml")
+	phase18RequireWorkflow(t, ".github/workflows/phase18-vps-pull-bootstrap.yml")
 	phase18RequireDocumentState(t)
 }
 
@@ -2115,7 +2115,7 @@ func phase16RequireDocumentDriftClosed(t *testing.T) {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 16 as 実装済み")
 	}
 	if !strings.Contains(roadmap, "現在の active Phase は Phase 18 とする。") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 active after Phase 17 closure until real operation completes")
+		t.Fatalf("docs/ROADMAP.md must keep Phase 18 active after Phase 17 closure until real VPS Pull Bootstrap completes")
 	}
 	for _, feature := range []string{
 		"Phase 16 source coverage set / detection registry / evidence package manifest / inventory / negative control / expected / record schema / checker implementation artifact / checker 実行入口 / checker 再導出 gate",
@@ -2748,7 +2748,7 @@ func phase17AllowsScopeName(manifestPath string, name string) bool {
 }
 
 func phase18AllowsScopeName(manifestPath string, name string) bool {
-	return filepath.ToSlash(manifestPath) == "testdata/phase18/trial-production-operation/manifest.json" &&
+	return filepath.ToSlash(manifestPath) == "testdata/phase18/vps-pull-bootstrap/manifest.json" &&
 		name == phase18Scope
 }
 
@@ -3665,19 +3665,19 @@ func phase17ContainsSecretLikeValue(values ...string) bool {
 	return false
 }
 
-const phase18Scope = "phase-18-trial-production-operation"
+const phase18Scope = "phase-18-vps-pull-bootstrap"
 
 var phase18ProviderTargets = []string{"conoha-vps-primary", "xserver-vps-future"}
 
-var phase18ValidationModes = []string{"trial-production-operation", "future_plan"}
+var phase18ValidationModes = []string{"vps-pull-bootstrap", "future_plan"}
 
 var phase18RequiredChecks = []string{
-	"phase18-environment-handover",
-	"phase18-operation-session",
-	"phase18-service-health",
-	"phase18-runtime-flow",
-	"phase18-runner-operation",
-	"phase18-update-rollback",
+	"phase18-bootstrap-prerequisite",
+	"phase18-bootstrap-session",
+	"phase18-bootstrap-artifact-health",
+	"phase18-bootstrap-runtime-flow",
+	"phase18-pull-runner-foundation",
+	"phase18-bootstrap-update-rollback",
 	"phase18-bugfix-spec-first",
 	"phase18-security-boundary",
 	"phase18-document-drift",
@@ -3713,11 +3713,11 @@ var phase18RecordFiles = []string{
 }
 
 var phase18Counters = []string{
-	"phase18_environment_handover_open_count",
-	"phase18_operation_session_open_count",
-	"phase18_runtime_health_open_count",
-	"phase18_runner_operation_open_count",
-	"phase18_update_rollback_open_count",
+	"phase18_bootstrap_prerequisite_open_count",
+	"phase18_bootstrap_session_open_count",
+	"phase18_bootstrap_runtime_open_count",
+	"phase18_pull_runner_foundation_open_count",
+	"phase18_bootstrap_update_rollback_open_count",
 	"phase18_bugfix_spec_gap_count",
 	"phase18_known_bug_open_count",
 	"phase18_secret_leak_open_count",
@@ -3742,15 +3742,15 @@ var phase18Phase17RequiredChecks = []string{
 
 var phase18WorkUnits = []string{
 	"phase17-handover",
-	"operation-session-open",
-	"release-and-service-health",
-	"admin-and-api-runtime",
-	"runner-real-operation",
-	"update-rollback-drill",
-	"issue-triage",
+	"bootstrap-session-open",
+	"bootstrap-artifact-health",
+	"bootstrap-runtime-flow",
+	"pull-runner-foundation",
+	"bootstrap-update-rollback-drill",
+	"bootstrap-issue-triage",
 	"spec-first-fix",
-	"redeploy-and-revalidate",
-	"operation-session-close",
+	"rebootstrap-and-revalidate",
+	"bootstrap-session-close",
 }
 
 var phase18AbortConditions = []string{
@@ -3763,13 +3763,13 @@ var phase18AbortConditions = []string{
 }
 
 var phase18OperationTargets = []string{
-	"release-and-service-health",
-	"admin-and-api-runtime",
-	"runner-real-operation",
-	"update-rollback-drill",
-	"issue-triage",
+	"bootstrap-artifact-health",
+	"bootstrap-runtime-flow",
+	"pull-runner-foundation",
+	"bootstrap-update-rollback-drill",
+	"bootstrap-issue-triage",
 	"spec-first-fix",
-	"redeploy-and-revalidate",
+	"rebootstrap-and-revalidate",
 }
 
 var phase18ForbiddenProviderOperations = []string{
@@ -3882,27 +3882,27 @@ var phase18DocumentDriftTargets = []string{
 }
 
 var phase18RequiredCheckRecordFiles = map[string][]string{
-	"phase18-environment-handover": {"records/session.jsonl"},
-	"phase18-operation-session":    {"records/session.jsonl"},
-	"phase18-service-health":       {"records/health.jsonl"},
-	"phase18-runtime-flow":         {"records/health.jsonl", "records/runtime.jsonl"},
-	"phase18-runner-operation":     {"records/runtime.jsonl"},
-	"phase18-update-rollback":      {"records/update_rollback.jsonl"},
-	"phase18-bugfix-spec-first":    {"records/bugfix.jsonl"},
-	"phase18-security-boundary":    {"records/security.jsonl"},
-	"phase18-document-drift":       {"records/document_drift.jsonl"},
+	"phase18-bootstrap-prerequisite":    {"records/session.jsonl"},
+	"phase18-bootstrap-session":         {"records/session.jsonl"},
+	"phase18-bootstrap-artifact-health": {"records/health.jsonl"},
+	"phase18-bootstrap-runtime-flow":    {"records/health.jsonl", "records/runtime.jsonl"},
+	"phase18-pull-runner-foundation":    {"records/runtime.jsonl"},
+	"phase18-bootstrap-update-rollback": {"records/update_rollback.jsonl"},
+	"phase18-bugfix-spec-first":         {"records/bugfix.jsonl"},
+	"phase18-security-boundary":         {"records/security.jsonl"},
+	"phase18-document-drift":            {"records/document_drift.jsonl"},
 }
 
 var phase18RequiredCheckCounterKeys = map[string][]string{
-	"phase18-environment-handover": {"phase18_environment_handover_open_count"},
-	"phase18-operation-session":    {"phase18_operation_session_open_count"},
-	"phase18-service-health":       {"phase18_runtime_health_open_count"},
-	"phase18-runtime-flow":         {"phase18_runtime_health_open_count"},
-	"phase18-runner-operation":     {"phase18_runner_operation_open_count"},
-	"phase18-update-rollback":      {"phase18_update_rollback_open_count"},
-	"phase18-bugfix-spec-first":    {"phase18_bugfix_spec_gap_count", "phase18_known_bug_open_count"},
-	"phase18-security-boundary":    {"phase18_secret_leak_open_count", "phase18_destructive_operation_open_count"},
-	"phase18-document-drift":       {"phase18_document_drift_open_count"},
+	"phase18-bootstrap-prerequisite":    {"phase18_bootstrap_prerequisite_open_count"},
+	"phase18-bootstrap-session":         {"phase18_bootstrap_session_open_count"},
+	"phase18-bootstrap-artifact-health": {"phase18_bootstrap_runtime_open_count"},
+	"phase18-bootstrap-runtime-flow":    {"phase18_bootstrap_runtime_open_count"},
+	"phase18-pull-runner-foundation":    {"phase18_pull_runner_foundation_open_count"},
+	"phase18-bootstrap-update-rollback": {"phase18_bootstrap_update_rollback_open_count"},
+	"phase18-bugfix-spec-first":         {"phase18_bugfix_spec_gap_count", "phase18_known_bug_open_count"},
+	"phase18-security-boundary":         {"phase18_secret_leak_open_count", "phase18_destructive_operation_open_count"},
+	"phase18-document-drift":            {"phase18_document_drift_open_count"},
 }
 
 type phase18NegativeBoundarySpec struct {
@@ -3913,13 +3913,13 @@ type phase18NegativeBoundarySpec struct {
 }
 
 var phase18NegativeBoundarySpecs = []phase18NegativeBoundarySpec{
-	{"phase17-handover-missing-treated-as-success", "environment-handover", "record-link-missing", "phase18_environment_handover_open_count"},
-	{"handover-open-sample-counted-as-session-open", "operation-session", "session-mismatch", "phase18_operation_session_open_count"},
-	{"operation-session-three-samples-missing-treated-as-success", "operation-session", "session-mismatch", "phase18_operation_session_open_count"},
-	{"twenty-four-hour-monitoring-absence-treated-as-blocker", "operation-session", "schema-mismatch", "phase18_operation_session_open_count"},
-	{"release-asset-or-version-evidence-missing-treated-as-success", "runtime-health", "record-link-missing", "phase18_runtime_health_open_count"},
-	{"runner-evidence-missing-counter-zero", "runner-operation", "counter-mismatch", "phase18_runner_operation_open_count"},
-	{"update-rollback-missing-treated-as-success", "update-rollback", "record-link-missing", "phase18_update_rollback_open_count"},
+	{"phase17-handover-missing-treated-as-success", "bootstrap-prerequisite", "record-link-missing", "phase18_bootstrap_prerequisite_open_count"},
+	{"handover-open-sample-counted-as-session-open", "bootstrap-session", "session-mismatch", "phase18_bootstrap_session_open_count"},
+	{"bootstrap-session-three-samples-missing-treated-as-success", "bootstrap-session", "session-mismatch", "phase18_bootstrap_session_open_count"},
+	{"twenty-four-hour-monitoring-absence-treated-as-blocker", "bootstrap-session", "schema-mismatch", "phase18_bootstrap_session_open_count"},
+	{"release-asset-or-version-evidence-missing-treated-as-success", "bootstrap-runtime", "record-link-missing", "phase18_bootstrap_runtime_open_count"},
+	{"runner-evidence-missing-counter-zero", "pull-runner-foundation", "counter-mismatch", "phase18_pull_runner_foundation_open_count"},
+	{"update-rollback-missing-treated-as-success", "update-rollback", "record-link-missing", "phase18_bootstrap_update_rollback_open_count"},
 	{"hotfix-without-spec-treated-as-success", "bugfix-spec-first", "record-link-missing", "phase18_bugfix_spec_gap_count"},
 	{"known-bug-open-treated-as-complete", "known-bug", "schema-mismatch", "phase18_known_bug_open_count"},
 	{"provider-identifier-written-to-evidence", "secret-boundary", "secret-boundary-failure", "phase18_secret_leak_open_count"},
@@ -3955,7 +3955,7 @@ type phase18HandoverResults struct {
 	Phase17Status         string                         `json:"phase17_status"`
 	Phase17RequiredChecks phase18Phase17RequiredCheckSet `json:"phase17_required_checks"`
 	Phase17OpenItems      int                            `json:"phase17_open_items"`
-	TrialVPSPrerequisite  string                         `json:"trial_vps_prerequisite"`
+	BootstrapPrerequisite string                         `json:"bootstrap_prerequisite"`
 	Result                string                         `json:"result"`
 }
 
@@ -4257,7 +4257,7 @@ func phase18RequireInputsAndExpected(t *testing.T, root string) phase18InputSet 
 		t.Fatalf("Phase 18 environment handover fixed values mismatch: %+v", inputs.Handover)
 	}
 	phase18RequireSafeReference(t, "input/environment_handover.json phase17_ref", inputs.Handover.Phase17Ref)
-	if inputs.Handover.HandoverResults.Phase17Status != "implemented" || inputs.Handover.HandoverResults.Phase17OpenItems != 0 || inputs.Handover.HandoverResults.TrialVPSPrerequisite != "passed" || inputs.Handover.HandoverResults.Result != "passed" {
+	if inputs.Handover.HandoverResults.Phase17Status != "implemented" || inputs.Handover.HandoverResults.Phase17OpenItems != 0 || inputs.Handover.HandoverResults.BootstrapPrerequisite != "passed" || inputs.Handover.HandoverResults.Result != "passed" {
 		t.Fatalf("Phase 18 handover must close Phase 17 prerequisites: %+v", inputs.Handover.HandoverResults)
 	}
 	if !phase11StringSlicesEqual(inputs.Handover.HandoverResults.Phase17RequiredChecks.PassedChecks, phase18Phase17RequiredChecks) || len(inputs.Handover.HandoverResults.Phase17RequiredChecks.FailedChecks) != 0 || len(inputs.Handover.HandoverResults.Phase17RequiredChecks.MissingChecks) != 0 {
@@ -4265,17 +4265,17 @@ func phase18RequireInputsAndExpected(t *testing.T, root string) phase18InputSet 
 	}
 
 	phase16ReadStrictJSON(t, filepath.Join(root, "input/session_plan.json"), &inputs.Session)
-	if inputs.Session.SchemaVersion != 1 || inputs.Session.Scope != phase18Scope || inputs.Session.SessionKind != "manual-approved-operation-session" || inputs.Session.RequiredSessionCount != 1 || inputs.Session.RequiredOperationSampleCount != 3 || !phase11StringSlicesEqual(inputs.Session.WorkUnits, phase18WorkUnits) || !phase11StringSlicesEqual(inputs.Session.AbortConditions, phase18AbortConditions) || !inputs.Session.BugfixSpecFirstRequired || !inputs.Session.KnownBugZeroRequired {
+	if inputs.Session.SchemaVersion != 1 || inputs.Session.Scope != phase18Scope || inputs.Session.SessionKind != "operator-approved-bootstrap-session" || inputs.Session.RequiredSessionCount != 1 || inputs.Session.RequiredOperationSampleCount != 3 || !phase11StringSlicesEqual(inputs.Session.WorkUnits, phase18WorkUnits) || !phase11StringSlicesEqual(inputs.Session.AbortConditions, phase18AbortConditions) || !inputs.Session.BugfixSpecFirstRequired || !inputs.Session.KnownBugZeroRequired {
 		t.Fatalf("Phase 18 session plan mismatch: %+v", inputs.Session)
 	}
 
 	phase16ReadStrictJSON(t, filepath.Join(root, "input/operation_scope.json"), &inputs.Scope)
-	if inputs.Scope.SchemaVersion != 1 || inputs.Scope.Scope != phase18Scope || inputs.Scope.ProviderTarget != "conoha-vps-primary" || inputs.Scope.ValidationMode != "trial-production-operation" || !phase11StringSlicesEqual(inputs.Scope.OperationTargets, phase18OperationTargets) || !phase11StringSlicesEqual(inputs.Scope.ForbiddenProviderOperations, phase18ForbiddenProviderOperations) || inputs.Scope.XserverFuturePolicy != "future_plan_not_blocker" {
+	if inputs.Scope.SchemaVersion != 1 || inputs.Scope.Scope != phase18Scope || inputs.Scope.ProviderTarget != "conoha-vps-primary" || inputs.Scope.ValidationMode != "vps-pull-bootstrap" || !phase11StringSlicesEqual(inputs.Scope.OperationTargets, phase18OperationTargets) || !phase11StringSlicesEqual(inputs.Scope.ForbiddenProviderOperations, phase18ForbiddenProviderOperations) || inputs.Scope.XserverFuturePolicy != "future_plan_not_blocker" {
 		t.Fatalf("Phase 18 operation scope mismatch: %+v", inputs.Scope)
 	}
 
 	phase16ReadStrictJSON(t, filepath.Join(root, "input/security_boundary.json"), &inputs.Security)
-	if inputs.Security.SchemaVersion != 1 || inputs.Security.Scope != phase18Scope || inputs.Security.ProviderTarget != "conoha-vps-primary" || inputs.Security.ValidationMode != "trial-production-operation" || inputs.Security.SecretReferencePolicy != "metadata-only" || inputs.Security.MetadataPolicy != "opaque-non-secret-labels" || !phase11StringSlicesEqual(inputs.Security.SecretClasses, phase18SecretClasses) || !phase11StringSlicesEqual(inputs.Security.ForbiddenEvidenceValues, phase18ForbiddenEvidenceValues) || !phase11StringSlicesEqual(inputs.Security.DestructiveOperationBoundaries, phase18ForbiddenProviderOperations) || !inputs.Security.MaskRequired {
+	if inputs.Security.SchemaVersion != 1 || inputs.Security.Scope != phase18Scope || inputs.Security.ProviderTarget != "conoha-vps-primary" || inputs.Security.ValidationMode != "vps-pull-bootstrap" || inputs.Security.SecretReferencePolicy != "metadata-only" || inputs.Security.MetadataPolicy != "opaque-non-secret-labels" || !phase11StringSlicesEqual(inputs.Security.SecretClasses, phase18SecretClasses) || !phase11StringSlicesEqual(inputs.Security.ForbiddenEvidenceValues, phase18ForbiddenEvidenceValues) || !phase11StringSlicesEqual(inputs.Security.DestructiveOperationBoundaries, phase18ForbiddenProviderOperations) || !inputs.Security.MaskRequired {
 		t.Fatalf("Phase 18 security boundary mismatch: %+v", inputs.Security)
 	}
 
@@ -4416,7 +4416,7 @@ func phase18RequireRecordSpecific(t *testing.T, rel string, line int, record pha
 
 	switch rel {
 	case "records/session.jsonl":
-		if record.SessionID == "" || record.SessionKind != "manual-approved-operation-session" || record.OperatorApprovalRef == "" || record.SampleIndex == nil || record.OperationSample == "" || record.WorkUnit == "" || len(record.SampleObservations) == 0 || record.ServiceState == "" || record.APIHealth == "" || record.AdminCLIHealth == "" || record.RunnerState == "" || record.StatefileDigest == "" || record.AuditLogWrite == "" || record.AccessLogWrite == "" || record.ConfigLogWrite == "" || record.SecretLeakageBoundary == "" || record.KnownBugStatus == "" || record.DocumentDriftStatus == "" || record.AbortCondition == "" || record.CloseResult == "" {
+		if record.SessionID == "" || record.SessionKind != "operator-approved-bootstrap-session" || record.OperatorApprovalRef == "" || record.SampleIndex == nil || record.OperationSample == "" || record.WorkUnit == "" || len(record.SampleObservations) == 0 || record.ServiceState == "" || record.APIHealth == "" || record.AdminCLIHealth == "" || record.RunnerState == "" || record.StatefileDigest == "" || record.AuditLogWrite == "" || record.AccessLogWrite == "" || record.ConfigLogWrite == "" || record.SecretLeakageBoundary == "" || record.KnownBugStatus == "" || record.DocumentDriftStatus == "" || record.AbortCondition == "" || record.CloseResult == "" {
 			t.Fatalf("%s line %d missing session fields: %+v", rel, line, record)
 		}
 		if !phase17IsLowerHexSHA256(record.StatefileDigest) || !phase11StringSlicesEqual(record.SampleObservations, phase18SampleObservations) || !phase17StringInSlice(record.OperationSample, phase18OperationSamples) || (!phase17StringInSlice(record.AbortCondition, phase18AbortConditions) && record.AbortCondition != "not_triggered") {
@@ -4426,7 +4426,7 @@ func phase18RequireRecordSpecific(t *testing.T, rel string, line int, record pha
 		if record.SessionID == "" || record.HealthTarget == "" || record.OwnerRef == "" || record.EndpointOrCommandRef == "" || record.ExpectedState == "" || record.ActualState == "" || record.HealthResult == "" || record.LogWriteResult == "" || record.StateReadResult == "" || record.SecretMaskResult == "" || record.Diagnostic == "" || record.ClosureAction == "" {
 			t.Fatalf("%s line %d missing health fields: %+v", rel, line, record)
 		}
-		if !phase17StringInSlice(record.HealthTarget, phase18HealthTargets) || record.CounterKey != "phase18_runtime_health_open_count" || record.HealthResult != "passed" || record.StateReadResult != "passed" || record.SecretMaskResult != "passed" {
+		if !phase17StringInSlice(record.HealthTarget, phase18HealthTargets) || record.CounterKey != "phase18_bootstrap_runtime_open_count" || record.HealthResult != "passed" || record.StateReadResult != "passed" || record.SecretMaskResult != "passed" {
 			t.Fatalf("%s line %d health result mismatch: %+v", rel, line, record)
 		}
 		if record.HealthTarget == "log-write" && record.LogWriteResult != "passed" {
@@ -4446,7 +4446,7 @@ func phase18RequireRecordSpecific(t *testing.T, rel string, line int, record pha
 		if record.SessionID == "" || record.OperationType == "" || record.FromVersion == "" || record.ToVersion == "" || record.ServiceRestartResult == "" || record.StateMigrationResult == "" || record.RollbackState == "" || record.FailureCleanupResult == "" || record.VersionAfterOperation == "" || record.Diagnostic == "" || record.ClosureAction == "" {
 			t.Fatalf("%s line %d missing update/rollback fields: %+v", rel, line, record)
 		}
-		if !phase17StringInSlice(record.OperationType, phase18UpdateRollbackOperations) || record.CounterKey != "phase18_update_rollback_open_count" {
+		if !phase17StringInSlice(record.OperationType, phase18UpdateRollbackOperations) || record.CounterKey != "phase18_bootstrap_update_rollback_open_count" {
 			t.Fatalf("%s line %d update/rollback operation mismatch: %+v", rel, line, record)
 		}
 	case "records/bugfix.jsonl":
@@ -4506,16 +4506,16 @@ func phase18RequireSessionRecords(t *testing.T, records []phase18EvidenceRecord,
 			sessionID = record.SessionID
 		}
 		if record.SessionID != sessionID {
-			t.Fatalf("Phase 18 trial operation records must reuse a single session_id: %s vs %s", record.SessionID, sessionID)
+			t.Fatalf("Phase 18 bootstrap records must reuse a single session_id: %s vs %s", record.SessionID, sessionID)
 		}
-		if record.CheckName == "phase18-environment-handover" {
-			if record.WorkUnit != "phase17-handover" || record.OperationSample != "open" || record.CounterKey != "phase18_environment_handover_open_count" {
+		if record.CheckName == "phase18-bootstrap-prerequisite" {
+			if record.WorkUnit != "phase17-handover" || record.OperationSample != "open" || record.CounterKey != "phase18_bootstrap_prerequisite_open_count" {
 				t.Fatalf("Phase 18 handover session record mismatch: %+v", record)
 			}
 			handover = true
 			continue
 		}
-		if record.CheckName == "phase18-operation-session" {
+		if record.CheckName == "phase18-bootstrap-session" {
 			operationSamples[record.OperationSample] = record
 		}
 	}
@@ -4523,15 +4523,15 @@ func phase18RequireSessionRecords(t *testing.T, records []phase18EvidenceRecord,
 		t.Fatalf("Phase 18 session records must include environment handover record")
 	}
 	if len(operationSamples) != inputs.Session.RequiredOperationSampleCount {
-		t.Fatalf("Phase 18 operation session must include exactly %d samples, got %d", inputs.Session.RequiredOperationSampleCount, len(operationSamples))
+		t.Fatalf("Phase 18 bootstrap session must include exactly %d samples, got %d", inputs.Session.RequiredOperationSampleCount, len(operationSamples))
 	}
 	for index, sample := range phase18OperationSamples {
 		record, ok := operationSamples[sample]
 		if !ok {
-			t.Fatalf("Phase 18 operation session missing sample %s", sample)
+			t.Fatalf("Phase 18 bootstrap session missing sample %s", sample)
 		}
 		if record.SampleIndex == nil || *record.SampleIndex != index+1 {
-			t.Fatalf("Phase 18 operation session sample %s index mismatch: %+v", sample, record)
+			t.Fatalf("Phase 18 bootstrap session sample %s index mismatch: %+v", sample, record)
 		}
 	}
 	closeRecord := operationSamples["close"]
@@ -4570,11 +4570,11 @@ func phase18RequireRuntimeRecords(t *testing.T, records []phase18EvidenceRecord)
 	for _, record := range records {
 		seen[record.RuntimeTarget] = true
 		if record.RuntimeTarget == "admin-api-sdk-ui" {
-			if record.CheckName != "phase18-runtime-flow" || record.CounterKey != "phase18_runtime_health_open_count" {
+			if record.CheckName != "phase18-bootstrap-runtime-flow" || record.CounterKey != "phase18_bootstrap_runtime_open_count" {
 				t.Fatalf("Phase 18 admin/api/sdk/ui runtime target must connect to runtime-flow: %+v", record)
 			}
-		} else if record.CheckName != "phase18-runner-operation" || record.CounterKey != "phase18_runner_operation_open_count" {
-			t.Fatalf("Phase 18 runner runtime target must connect to runner-operation: %+v", record)
+		} else if record.CheckName != "phase18-pull-runner-foundation" || record.CounterKey != "phase18_pull_runner_foundation_open_count" {
+			t.Fatalf("Phase 18 runner runtime target must connect to pull-runner-foundation: %+v", record)
 		}
 		if record.RuntimeTarget == "runner-queue" && record.QueueState != "succeeded" {
 			t.Fatalf("Phase 18 runner queue must reach succeeded: %+v", record)
@@ -4777,16 +4777,16 @@ func phase18RequireWorkflow(t *testing.T, path string) {
 	t.Helper()
 
 	workflow := phase11MustReadText(t, path)
-	if !strings.Contains(workflow, "name: phase18-trial-production-operation") || !strings.Contains(workflow, "permissions:\n  contents: read") {
+	if !strings.Contains(workflow, "name: phase18-vps-pull-bootstrap") || !strings.Contains(workflow, "permissions:\n  contents: read") {
 		t.Fatalf("%s must use the Phase 18 workflow name and contents:read permissions", path)
 	}
-	if !strings.Contains(workflow, "\n  phase18-trial-production-operation:") {
+	if !strings.Contains(workflow, "\n  phase18-vps-pull-bootstrap:") {
 		t.Fatalf("%s must define primary Phase 18 job", path)
 	}
 	if !strings.Contains(workflow, "timeout-minutes: 30") {
 		t.Fatalf("%s must set timeout-minutes <= 30 for Phase 18 job", path)
 	}
-	if !strings.Contains(workflow, "go test ./... -run TestPhase18TrialProductionOperationEvidence -count=1") {
+	if !strings.Contains(workflow, "go test ./... -run TestPhase18VPSPullBootstrapEvidence -count=1") {
 		t.Fatalf("%s must run the Phase 18 evidence checker directly", path)
 	}
 	phase13RequirePinnedActions(t, workflow)
@@ -4797,38 +4797,40 @@ func phase18RequireDocumentState(t *testing.T) {
 
 	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
-	phase18Row := "| Phase 18 | 試験本番VPS 実運用接続・運用証跡。"
-	phase18InProgressStatus := "| 実装中・実運用検証未完了 | Phase 17 |"
+	phase18Row := "| Phase 18 | VPS Pull Bootstrap。"
+	phase18InProgressStatus := "| 実装中・bootstrap 検証未完了 | Phase 17 |"
 	phase18ImplementedStatus := "| 実装済み | Phase 17 |"
 	if !strings.Contains(roadmap, phase18Row) || !strings.Contains(roadmap, phase18InProgressStatus) {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 as 実装中・実運用検証未完了 until real trial production operation evidence exists")
+		t.Fatalf("docs/ROADMAP.md must keep Phase 18 as 実装中・bootstrap 検証未完了 until real VPS Pull Bootstrap evidence exists")
 	}
 	if !strings.Contains(roadmap, "現在の active Phase は Phase 18") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 as the active Phase until real trial production operation is complete")
+		t.Fatalf("docs/ROADMAP.md must keep Phase 18 as the active Phase until real VPS Pull Bootstrap is complete")
 	}
 	if strings.Contains(roadmap, phase18ImplementedStatus) || strings.Contains(roadmap, "Phase 18 も `実装済み`") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
-		t.Fatalf("docs/ROADMAP.md must not mark Phase 18 implemented or unimplemented while real trial production operation remains incomplete")
+		t.Fatalf("docs/ROADMAP.md must not mark Phase 18 implemented or unimplemented while real VPS Pull Bootstrap remains incomplete")
 	}
 	for _, feature := range []string{
-		"Phase 18 試験本番VPS 実運用接続 / Phase 17 handover / operation session / service health / runtime flow gate",
-		"Phase 18 runner real operation / update / rollback drill / 運用中 issue / 仕様先行バグ修正 / 再検証 / known bug 0 gate",
+		"Phase 18 VPS Pull Bootstrap / Phase 17 handover / topology role / source channel / bootstrap session / bootstrap artifact health / bootstrap runtime flow gate",
+		"Phase 18 pull runner foundation / bootstrap update / rollback drill / bootstrap 中 issue / 仕様先行バグ修正 / 再検証 / known bug 0 gate",
 		"Phase 18 secret / destructive operation / opaque metadata / document drift gate",
 	} {
-		if !strings.Contains(roadmap, "| 実装中・実運用検証未完了 |") || !strings.Contains(roadmap, feature) {
-			t.Fatalf("docs/ROADMAP.md must mark Phase 18 feature in progress until real operation completes: %s", feature)
+		if !strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 |") || !strings.Contains(roadmap, feature) {
+			t.Fatalf("docs/ROADMAP.md must mark Phase 18 feature in progress until real bootstrap completes: %s", feature)
 		}
-		if strings.Contains(roadmap, "| 実装済み | 試験本番運用 | "+feature+" |") ||
+		if strings.Contains(roadmap, "| 実装済み | CI/CD Bootstrap | "+feature+" |") ||
+			strings.Contains(roadmap, "| 実装済み | 試験本番運用 | "+feature+" |") ||
 			strings.Contains(roadmap, "| 実装済み | 本番検証 | "+feature+" |") ||
+			strings.Contains(roadmap, "| 仕様化済み・未実装 | CI/CD Bootstrap | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | 試験本番運用 | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | 本番検証 | "+feature+" |") {
-			t.Fatalf("docs/ROADMAP.md must not mark Phase 18 feature implemented or unimplemented while real operation remains incomplete: %s", feature)
+			t.Fatalf("docs/ROADMAP.md must not mark Phase 18 feature implemented or unimplemented while real bootstrap remains incomplete: %s", feature)
 		}
 	}
-	expectedPaths := []string{"testdata/phase18/trial-production-operation/"}
+	expectedPaths := []string{"testdata/phase18/vps-pull-bootstrap/"}
 	for _, rel := range phase18FixtureFiles {
-		expectedPaths = append(expectedPaths, "testdata/phase18/trial-production-operation/"+rel)
+		expectedPaths = append(expectedPaths, "testdata/phase18/vps-pull-bootstrap/"+rel)
 	}
-	expectedPaths = append(expectedPaths, ".github/workflows/phase18-trial-production-operation.yml")
+	expectedPaths = append(expectedPaths, ".github/workflows/phase18-vps-pull-bootstrap.yml")
 	for _, rel := range expectedPaths {
 		if !strings.Contains(documentIndex, "| `"+rel+"` |") && !strings.Contains(documentIndex, "| [`"+rel+"`]") {
 			t.Fatalf("docs/DOCUMENT_INDEX.md must index Phase 18 path %s", rel)

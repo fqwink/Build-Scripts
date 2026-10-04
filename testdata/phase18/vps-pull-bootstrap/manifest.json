@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "name": "phase-18-vps-pull-bootstrap",
+  "scope": "phase-18-vps-pull-bootstrap",
+  "provider_targets": [
+    "conoha-vps-primary",
+    "xserver-vps-future"
+  ],
+  "validation_modes": [
+    "vps-pull-bootstrap",
+    "future_plan"
+  ],
+  "required_checks": [
+    "phase18-bootstrap-prerequisite",
+    "phase18-bootstrap-session",
+    "phase18-bootstrap-artifact-health",
+    "phase18-bootstrap-runtime-flow",
+    "phase18-pull-runner-foundation",
+    "phase18-bootstrap-update-rollback",
+    "phase18-bugfix-spec-first",
+    "phase18-security-boundary",
+    "phase18-document-drift"
+  ],
+  "fixture_root": "testdata/phase18/vps-pull-bootstrap/"
+}

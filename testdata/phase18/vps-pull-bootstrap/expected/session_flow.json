@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "scope": "phase-18-trial-production-operation",
-  "session_kind": "manual-approved-operation-session",
+  "scope": "phase-18-vps-pull-bootstrap",
+  "session_kind": "operator-approved-bootstrap-session",
   "operation_samples": [
     "open",
     "runtime",
@@ -22,15 +22,15 @@
   ],
   "work_units": [
     "phase17-handover",
-    "operation-session-open",
-    "release-and-service-health",
-    "admin-and-api-runtime",
-    "runner-real-operation",
-    "update-rollback-drill",
-    "issue-triage",
+    "bootstrap-session-open",
+    "bootstrap-artifact-health",
+    "bootstrap-runtime-flow",
+    "pull-runner-foundation",
+    "bootstrap-update-rollback-drill",
+    "bootstrap-issue-triage",
     "spec-first-fix",
-    "redeploy-and-revalidate",
-    "operation-session-close"
+    "rebootstrap-and-revalidate",
+    "bootstrap-session-close"
   ],
   "no_op_policy": "explicit-not-required-record-required",
   "closure_policy": "single-session-id-required"
