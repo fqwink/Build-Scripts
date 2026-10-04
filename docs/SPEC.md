@@ -593,7 +593,7 @@ Go 実装の判断基準は以下とする。
 <a id="sec-5-1"></a>
 **5.1 CI ランナーの目的：**
 
-GitHub API を定期的にポーリングし、対象変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（[`components/runner/`](../components/runner/)）。標準の変更検出・実行経路は GitHub Actions、Webhook、外部 CI サービスのいずれにも依存しない。管理 API の任意の GitHub Webhook 受信機能は補助 trigger 経路であり、無効または未実装でも runner の polling 経路と定期実行は単独で成立しなければならない。
+GitHub API を定期的にポーリングし、対象変更を検出してビルドパイプラインを自動実行する自己ホスト型 CI ランナー（[`components/runner/`](../components/runner/)）。Adlaire CI の production runtime としての標準の変更検出・実行経路は GitHub Actions、Webhook、外部 CI サービスのいずれにも依存しない。管理 API の任意の GitHub Webhook 受信機能は補助 trigger 経路であり、無効または未実装でも runner の polling 経路と定期実行は単独で成立しなければならない。
 
 - 変更検出の具体的な API、比較値、保存先は [`docs/details/runner.md`](details/runner.md) 詳細本文責務を正本とする
 - Go 標準ライブラリと本リポジトリ内の内製コードだけで成立させ、外部依存を追加してはならない。標準ライブラリにない技術が必要に見える場合は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#policy-dependencies) の `STD` / `INHOUSE` / `REJECTED` 分類で先に仕様を確定する
@@ -606,12 +606,20 @@ GitHub API を定期的にポーリングし、対象変更を検出してビル
 - **単一責務実装**：[`components/runner/`](../components/runner/) は CI ランナー責務に限定し、Markdown 変換と管理 API を内包しない
 - **実行境界**：oneshot、差分検出、多重実行防止は [`docs/SPEC.md` ポリシー責務 §6](SPEC.md#policy-runner-execution) に従う
 
-<a id="53-github-actions-非依存方針"></a>
+<a id="53-github-actions-使用方針"></a>
 
 <a id="sec-5-3"></a>
-**5.3 GitHub Actions 非依存方針：**
+**5.3 GitHub Actions 使用方針：**
 
-Adlaire CI は GitHub Actions の workflow、hosted runner、Marketplace action、push webhook を前提にしない。内製ランナーの起動方式、pipeline 実行方式、secret 参照、変更検出、通知、転送は [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/setup.md`](details/setup.md) 詳細本文責務を正本とする。
+GitHub Actions は、リポジトリ検証、Pull Request required check、Phase required workflow、release rehearsal、document drift checker、fixture checker の標準検証基盤として使用する。
+
+GitHub Actions は、Adlaire CI production runtime の外部依存、Adlaire CI runner の代替実装、内製 CI/CD の代替、または利用者環境の必須実行基盤として扱ってはならない。内製ランナーの起動方式、pipeline 実行方式、secret 参照、変更検出、通知、転送、deploy、rollback は [`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/setup.md`](details/setup.md) 詳細本文責務、[`docs/details/release.md`](details/release.md) 詳細本文責務を正本とする。
+
+GitHub Actions workflow は YAML 禁止の対象外である。ただし、workflow から読み書きする Adlaire CI の入力、出力、fixture、expected、record、state、設定、診断出力は JSON / JSON Lines 契約に従う。
+
+Phase 19 は内製 CI 強化と内製 CD を同一 Phase として扱う。Phase 19 を CI と CD の別 Phase に分割してはならない。Phase 20 は内製 IaC を扱う後続 Phase とし、Terraform または外部 IaC tool を production 実装依存として採用する前提で仕様化してはならない。
+
+Phase 19 と Phase 20 の仕様全般策定は Phase 18 完了前でも行える。ただし、Phase 19 または Phase 20 の実装着手、実装 PR、完了判定は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示され、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の active Phase 条件を満たすまで禁止する。
 
 <a id="direction-management-tools"></a>
 

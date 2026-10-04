@@ -411,6 +411,24 @@ Phase 18 は owner component を追加しない。試験本番VPS の実運用�
 
 Phase 18 実装 PR は、required check 名、完了条件、required check workflow 契約、checker 実行入口、checker implementation artifact、document drift record を [`docs/details/fixture.md` fixture 証跡責務 Phase 18 試験本番VPS 実運用接続・運用証跡](details/fixture.md#phase-18-trial-production-operation-evidence) と [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 18 target path 所在](DOCUMENT_INDEX.md#phase-18-target-paths) から参照し、同一 PR 本文へ記録する。
 
+<a id="phase-19-inhouse-cicd-entry"></a>
+**Phase 19 内製 CI/CD 強化参照：**
+
+Phase 19 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、GitHub Actions 使用方針と内製 CI/CD の境界は [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3) を参照する。
+
+Phase 19 は、GitHub Actions required check、Adlaire CI 内製 CI 実行、Adlaire CI 内製 CD、deploy、rollback、release verification、required check 証跡を同一 Phase として扱う。Phase 19 を CI 強化 Phase と CD Phase に分割してはならない。
+
+Phase 19 は Phase 18 完了前に仕様全般策定を進めてよい。ただし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示されるまで、実装着手、実装 PR、完了判定を行ってはならない。Phase 19 の詳細本文、fixture、required workflow、target path は未確定であり、実装可能な詳細仕様入口として扱ってはならない。
+
+<a id="phase-20-inhouse-iac-entry"></a>
+**Phase 20 内製 IaC 参照：**
+
+Phase 20 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、外部依存の禁止条件は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#policy-dependencies)、GitHub Actions 使用方針と後続 Phase 境界は [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3) を参照する。
+
+Phase 20 は、Terraform 的な infrastructure manifest、plan、apply、rollback、drift detection、provider operation boundary を内製 IaC として扱う後続 Phase である。Terraform、外部 IaC tool、外部 provider SDK を production 実装依存として採用する前提で仕様化してはならない。
+
+Phase 20 は Phase 18 完了前に仕様全般策定を進めてよい。ただし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示されるまで、実装着手、実装 PR、完了判定を行ってはならない。Phase 20 の owner component、詳細本文、fixture、required workflow、target path は未確定であり、実装可能な詳細仕様入口として扱ってはならない。
+
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**
 
