@@ -446,6 +446,7 @@
 | `testdata/phase18/trial-production-operation/expected/counters.json` | Phase 18 closure counter 期待値 | 未作成 |
 | `testdata/phase18/trial-production-operation/expected/session_flow.json` | Phase 18 work unit 順序 / session sample 期待値 | 未作成 |
 | `testdata/phase18/trial-production-operation/expected/bugfix_closure.json` | 仕様先行バグ修正 / 再検証 / known bug 0 期待値 | 未作成 |
+| `testdata/phase18/trial-production-operation/expected/negative_boundaries.json` | Phase 18 negative boundary case 期待値 | 未作成 |
 | `testdata/phase18/trial-production-operation/records/session.jsonl` | 運用 session / 開始 / runtime / 終了 sample 証跡 | 未作成 |
 | `testdata/phase18/trial-production-operation/records/health.jsonl` | service / API / Admin / SDK / UI / systemd / log write health 証跡 | 未作成 |
 | `testdata/phase18/trial-production-operation/records/runtime.jsonl` | runner / build / statefile / audit / commit status / deploy simulation 証跡 | 未作成 |
