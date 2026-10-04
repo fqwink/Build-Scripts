@@ -64,6 +64,17 @@
   "bootstrap_stdout_contract": "single-json-object-secret-safe",
   "bootstrap_stderr_contract": "diagnostic-json-lines-on-failure",
   "bootstrap_exit_code_contract": "common-cli-exit-code-contract",
+  "bootstrap_failure_codes": [
+    "bootstrap-script-http-client-missing",
+    "bootstrap-script-source-unreachable",
+    "bootstrap-script-digest-mismatch",
+    "bootstrap-script-version-mismatch",
+    "bootstrap-script-executable-permission-invalid",
+    "bootstrap-script-systemd-unit-invalid",
+    "bootstrap-script-state-directory-invalid",
+    "bootstrap-script-health-failed",
+    "bootstrap-script-rollback-failed"
+  ],
   "operation_targets": [
     "bootstrap-artifact-health",
     "bootstrap-runtime-flow",

@@ -11,17 +11,17 @@
       "source_ref": "[docs/details/fixture.md fixture証跡責務 Phase18 negative boundary](docs/details/fixture.md#phase-18-negative-boundary-contract)"
     },
     {
-      "case_id": "phase18.negative.bootstrap-session.handover-open-sample-counted-as-session-open",
+      "case_id": "phase18.negative.bootstrap-session.bootstrap-session-three-samples-missing-treated-as-success",
       "boundary_group": "bootstrap-session",
-      "forbidden_success_condition": "handover-open-sample-counted-as-session-open",
+      "forbidden_success_condition": "bootstrap-session-three-samples-missing-treated-as-success",
       "expected_diagnostic_code": "session-mismatch",
       "expected_counter_key": "phase18_bootstrap_session_open_count",
       "source_ref": "[docs/details/fixture.md fixture証跡責務 Phase18 negative boundary](docs/details/fixture.md#phase-18-negative-boundary-contract)"
     },
     {
-      "case_id": "phase18.negative.bootstrap-session.bootstrap-session-three-samples-missing-treated-as-success",
+      "case_id": "phase18.negative.bootstrap-session.handover-open-sample-counted-as-session-open",
       "boundary_group": "bootstrap-session",
-      "forbidden_success_condition": "bootstrap-session-three-samples-missing-treated-as-success",
+      "forbidden_success_condition": "handover-open-sample-counted-as-session-open",
       "expected_diagnostic_code": "session-mismatch",
       "expected_counter_key": "phase18_bootstrap_session_open_count",
       "source_ref": "[docs/details/fixture.md fixture証跡責務 Phase18 negative boundary](docs/details/fixture.md#phase-18-negative-boundary-contract)"
@@ -35,6 +35,14 @@
       "source_ref": "[docs/details/fixture.md fixture証跡責務 Phase18 negative boundary](docs/details/fixture.md#phase-18-negative-boundary-contract)"
     },
     {
+      "case_id": "phase18.negative.bootstrap-runtime.bootstrap-script-command-contract-missing-treated-as-success",
+      "boundary_group": "bootstrap-runtime",
+      "forbidden_success_condition": "bootstrap-script-command-contract-missing-treated-as-success",
+      "expected_diagnostic_code": "record-link-missing",
+      "expected_counter_key": "phase18_bootstrap_runtime_open_count",
+      "source_ref": "[docs/details/fixture.md fixture証跡責務 Phase18 negative boundary](docs/details/fixture.md#phase-18-negative-boundary-contract)"
+    },
+    {
       "case_id": "phase18.negative.bootstrap-runtime.bootstrap-script-contract-missing-treated-as-success",
       "boundary_group": "bootstrap-runtime",
       "forbidden_success_condition": "bootstrap-script-contract-missing-treated-as-success",
@@ -43,9 +51,9 @@
       "source_ref": "[docs/details/fixture.md fixture証跡責務 Phase18 negative boundary](docs/details/fixture.md#phase-18-negative-boundary-contract)"
     },
     {
-      "case_id": "phase18.negative.bootstrap-runtime.bootstrap-script-command-contract-missing-treated-as-success",
+      "case_id": "phase18.negative.bootstrap-runtime.bootstrap-script-failure-code-missing-treated-as-success",
       "boundary_group": "bootstrap-runtime",
-      "forbidden_success_condition": "bootstrap-script-command-contract-missing-treated-as-success",
+      "forbidden_success_condition": "bootstrap-script-failure-code-missing-treated-as-success",
       "expected_diagnostic_code": "record-link-missing",
       "expected_counter_key": "phase18_bootstrap_runtime_open_count",
       "source_ref": "[docs/details/fixture.md fixture証跡責務 Phase18 negative boundary](docs/details/fixture.md#phase-18-negative-boundary-contract)"
