@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "0e1a153be9d8c6ff7582f0e9ae8804114964af33d573b7e301ed784af4ce1fa1",
+  "source_group_sha256": "6ad9494d9592a2d9aa80b27f97fd4016ba5c9f25c7a21b39b2e8b969ac09e0d9",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -65,8 +65,8 @@
     {
       "path": "docs/SPEC.md",
       "source_exists": true,
-      "sha256": "78931d36fffcac46b2747ce6a15bef5291d3a6353cd4f491de7d8f232db81964",
-      "size_bytes": 188419,
+      "sha256": "9071a4da00a84fdd44a9fa71941069780e26649a3f9c25aa637c1059a02c8336",
+      "size_bytes": 189274,
       "owner_component": "runner",
       "area": "policy",
       "detected_terms": [{"term_id":"phase16-policy","match":"policy-phase-unit","match_mode":"literal","count":1,"first_source_locator":"file:docs/SPEC.md#line:1"}],
@@ -75,8 +75,8 @@
     {
       "path": "docs/ROADMAP.md",
       "source_exists": true,
-      "sha256": "64a583fa2631e619e62812513f05e53cb2989d02991d27a85b4503ca6e076c94",
-      "size_bytes": 62712,
+      "sha256": "092906755eb5bb37afc8e343ccb9c106bef7fd9aaf124ef2b6ae0459427126b8",
+      "size_bytes": 63026,
       "owner_component": "runner",
       "area": "roadmap",
       "detected_terms": [{"term_id":"phase16-roadmap","match":"Phase 16","match_mode":"literal","count":1,"first_source_locator":"file:docs/ROADMAP.md#line:1"}],

@@ -41,6 +41,8 @@ Phase 17 の provider target は以下に固定する。
 
 Phase 17 の ConoHa VPS 試験本番運用環境は、Ubuntu Server 24.04 LTS 64bit を固定 OS とし、`minimum_plan_class=conoha-vps-1gb-memory-class` を固定最小 plan class とする。`minimum_plan_class` は、RAM が 1024 MB 以上で Ubuntu Server 24.04 LTS 64bit を選択できる ConoHa VPS の最小 memory class を表す repository 内固定 token であり、provider 画面や API の SKU 表示名を正本にしない。provider 側の plan 表示名、plan id、region、instance 名は `provider_plan_label` 等の opaque label としてだけ fixture 証跡に記録し、`minimum_plan_class` の値を変更してはならない。512MB plan、Ubuntu 26.04、Ubuntu 22.04、Debian、AlmaLinux、Rocky Linux、CentOS Stream、Oracle Linux、FreeBSD、および application template は Phase 17 の標準 OS / plan として扱わない。
 
+`Build-Scripts-vps-2026` は、`conoha-vps-primary` の非秘密 name tag として使用する。この tag は試験本番運用・開発検証兼用 VPS の opaque environment identity であり、Phase 17 と Phase 18 の試験本番運用、開発検証、運用中バグ修正後の再検証、update / rollback 確認に使用できる。`Build-Scripts-vps-2026` を正式本番 VPS、customer data 用 VPS、Phase 専用 VPS、または provider resource id として扱ってはならない。
+
 ConoHa VPS 試験本番運用環境の provider plan、region、VPS instance、public endpoint は、fixture 証跡では opaque label としてだけ記録する。provider account id、provider resource id、グローバル IP address、hostname、FQDN、credential file path、secret 値、secret hash を fixture、expected、record、Pull Request body、log、stdout、stderr に保存してはならない。実 provider の識別が必要な場合は、operator が管理する repository 外の対応表で照合し、repository 内の証跡には `metadata_policy=opaque-non-secret-labels` を記録する。
 
 <a id="phase-17-validation-modes"></a>
