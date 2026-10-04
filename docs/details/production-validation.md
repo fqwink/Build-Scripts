@@ -241,6 +241,14 @@ Phase 18 の topology role は `ci-cd`、`site`、`single-node` に固定する�
 
 Phase 18 の source channel は `integration-head` と `stable-release` を区別する。Phase 18 では `integration-head` を bootstrap 検証用の取得経路、`stable-release` を将来の本番運用用取得経路として定義する。`stable-release` の正式 CD、配信 channel、release selection、rollback policy は Phase 19 以降の対象であり、Phase 18 の完了条件へ混入してはならない。
 
+Phase 18 の bootstrap script artifact は配布物名 `adlaire-ci-vps-pull-bootstrap.sh`、runtime `/bin/sh`、呼出し境界 `operator-runs-sh-script-on-vps` に固定する。bootstrap script は provider 固有の startup script 機能ではなく、operator が作成済み VPS 内で初回実行する shell artifact である。bootstrap script は Go 標準実装で生成または配布される実行基盤を VPS 内へ導入する入口に限定し、provider API、GitHub Actions、GitHub Secrets、GitHub self-hosted runner、SSH key 管理、VPS 作成、VPS 削除、plan 変更を内包してはならない。
+
+Phase 18 の bootstrap script は `/bin/sh` で構文解釈できる範囲に固定し、Bash 固有構文、外部 shell framework、外部 package manager helper、外部 library、Git clone 必須化、repository hosting provider 固有 API 必須化を禁止する。HTTP 取得が必要な場合は、VPS に既に存在する OS 標準 command の可用性を bootstrap artifact health で記録し、取得 command が存在しない場合は bootstrap session を成功扱いせず `bootstrap-script-http-client-missing` として issue triage へ接続する。取得 command を暗黙に install して成功扱いにしてはならない。
+
+Phase 18 の bootstrap script 入力は、`integration-head` または `stable-release` の source channel、`ci-cd` / `site` / `single-node` の topology role、取得元識別子、取得対象 digest、install directory、bin directory、state directory、service user に限定する。取得元識別子形式は `absolute-https-url-or-absolute-file-path`、digest algorithm は `sha256`、install directory は `/opt/adlaire-builder`、bin directory は `/usr/local/bin`、state directory は `/opt/adlaire-builder`、service user は `root` 固定とする。入力値は command argument として secret を渡してはならず、secret を必要とする取得経路は Phase 18 の完了条件に含めない。source channel、topology role、bootstrap script artifact、source identifier 形式、digest algorithm、install / bin / state directory、service user、secret 入力禁止、state model は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) の `input/operation_scope.json` と `records/health.jsonl` に接続しなければならない。
+
+Phase 18 の bootstrap script state model は `staging-verify-commit-rollback` 固定とする。bootstrap script は staging directory へ取得し、digest 検証、実行権限検証、version 検証、systemd unit 検証、state directory 検証、health 検証を完了してから commit し、検証前の失敗では既存 binary、既存 service、既存 state、既存 credential を変更してはならない。commit 後の health 失敗では rollback 証跡を作成し、復旧可否、直前 version、失敗段階、再実行条件を bootstrap update / rollback drill と issue triage へ接続する。
+
 Phase 18 の work unit は以下の順序固定とする。
 
 | work unit | 完了条件 |

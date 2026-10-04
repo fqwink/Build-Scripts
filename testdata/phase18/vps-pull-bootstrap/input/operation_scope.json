@@ -3,6 +3,28 @@
   "scope": "phase-18-vps-pull-bootstrap",
   "provider_target": "conoha-vps-primary",
   "validation_mode": "vps-pull-bootstrap",
+  "bootstrap_script_artifact": "adlaire-ci-vps-pull-bootstrap.sh",
+  "bootstrap_script_runtime": "/bin/sh",
+  "bootstrap_script_invocation": "operator-runs-sh-script-on-vps",
+  "source_channels": [
+    "integration-head",
+    "stable-release"
+  ],
+  "active_source_channel": "integration-head",
+  "topology_roles": [
+    "ci-cd",
+    "site",
+    "single-node"
+  ],
+  "minimum_topology_role": "single-node",
+  "bootstrap_source_identifier_format": "absolute-https-url-or-absolute-file-path",
+  "bootstrap_digest_algorithm": "sha256",
+  "bootstrap_install_directory": "/opt/adlaire-builder",
+  "bootstrap_bin_directory": "/usr/local/bin",
+  "bootstrap_state_directory": "/opt/adlaire-builder",
+  "bootstrap_service_user": "root",
+  "bootstrap_secret_input_policy": "no-command-argument-secret",
+  "bootstrap_state_model": "staging-verify-commit-rollback",
   "operation_targets": [
     "bootstrap-artifact-health",
     "bootstrap-runtime-flow",

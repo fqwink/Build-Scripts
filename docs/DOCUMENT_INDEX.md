@@ -441,14 +441,14 @@
 | [`testdata/phase18/vps-pull-bootstrap/manifest.json`](../testdata/phase18/vps-pull-bootstrap/manifest.json) | Phase 18 evidence package manifest | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/input/environment_handover.json`](../testdata/phase18/vps-pull-bootstrap/input/environment_handover.json) | Phase 17 引継ぎ状態 / 試験本番VPS 前提入力 | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/input/session_plan.json`](../testdata/phase18/vps-pull-bootstrap/input/session_plan.json) | bootstrap session / 3 sample / work unit 順序 / 停止条件入力 | 実在 |
-| [`testdata/phase18/vps-pull-bootstrap/input/operation_scope.json`](../testdata/phase18/vps-pull-bootstrap/input/operation_scope.json) | provider target / validation mode / 禁止 provider operation 入力 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/input/operation_scope.json`](../testdata/phase18/vps-pull-bootstrap/input/operation_scope.json) | provider target / validation mode / bootstrap script artifact / source channel / topology role / source identifier / digest / install / bin / state directory / service user / 禁止 provider operation 入力 | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/input/security_boundary.json`](../testdata/phase18/vps-pull-bootstrap/input/security_boundary.json) | secret 非保存 / opaque metadata / destructive operation 境界入力 | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/expected/counters.json`](../testdata/phase18/vps-pull-bootstrap/expected/counters.json) | Phase 18 closure counter 期待値 | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/expected/session_flow.json`](../testdata/phase18/vps-pull-bootstrap/expected/session_flow.json) | Phase 18 work unit 順序 / session sample 期待値 | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/expected/bugfix_closure.json`](../testdata/phase18/vps-pull-bootstrap/expected/bugfix_closure.json) | 仕様先行バグ修正 / 再検証 / known bug 0 期待値 | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/expected/negative_boundaries.json`](../testdata/phase18/vps-pull-bootstrap/expected/negative_boundaries.json) | Phase 18 negative boundary case 期待値 | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/records/session.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/session.jsonl) | bootstrap session / 開始 / runtime / 終了 sample 証跡 | 実在 |
-| [`testdata/phase18/vps-pull-bootstrap/records/health.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/health.jsonl) | service / API / Admin / SDK / UI / systemd / log write health 証跡 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/records/health.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/health.jsonl) | bootstrap script / source channel / service / API / Admin / SDK / UI / systemd / log write health 証跡 | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/records/runtime.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/runtime.jsonl) | runner / build / statefile / audit / commit status / deploy simulation 証跡 | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/records/update_rollback.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/update_rollback.jsonl) | update / rollback / service restart / state migration / failure cleanup 証跡 | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/records/bugfix.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/bugfix.jsonl) | bootstrap 中 issue / 仕様全般策定 / 実装修正 / 再検証 / known bug 0 証跡 | 実在 |

@@ -3772,6 +3772,10 @@ var phase18OperationTargets = []string{
 	"rebootstrap-and-revalidate",
 }
 
+var phase18SourceChannels = []string{"integration-head", "stable-release"}
+
+var phase18TopologyRoles = []string{"ci-cd", "site", "single-node"}
+
 var phase18ForbiddenProviderOperations = []string{
 	"vps-create",
 	"vps-delete",
@@ -3822,6 +3826,7 @@ var phase18SampleObservations = []string{
 }
 
 var phase18HealthTargets = []string{
+	"bootstrap-script",
 	"release-asset",
 	"binary-version",
 	"systemd-service",
@@ -3917,6 +3922,7 @@ var phase18NegativeBoundarySpecs = []phase18NegativeBoundarySpec{
 	{"handover-open-sample-counted-as-session-open", "bootstrap-session", "session-mismatch", "phase18_bootstrap_session_open_count"},
 	{"bootstrap-session-three-samples-missing-treated-as-success", "bootstrap-session", "session-mismatch", "phase18_bootstrap_session_open_count"},
 	{"twenty-four-hour-monitoring-absence-treated-as-blocker", "bootstrap-session", "schema-mismatch", "phase18_bootstrap_session_open_count"},
+	{"bootstrap-script-contract-missing-treated-as-success", "bootstrap-runtime", "record-link-missing", "phase18_bootstrap_runtime_open_count"},
 	{"release-asset-or-version-evidence-missing-treated-as-success", "bootstrap-runtime", "record-link-missing", "phase18_bootstrap_runtime_open_count"},
 	{"runner-evidence-missing-counter-zero", "pull-runner-foundation", "counter-mismatch", "phase18_pull_runner_foundation_open_count"},
 	{"update-rollback-missing-treated-as-success", "update-rollback", "record-link-missing", "phase18_bootstrap_update_rollback_open_count"},
@@ -3982,6 +3988,21 @@ type phase18OperationScopeFile struct {
 	Scope                       string   `json:"scope"`
 	ProviderTarget              string   `json:"provider_target"`
 	ValidationMode              string   `json:"validation_mode"`
+	BootstrapScriptArtifact     string   `json:"bootstrap_script_artifact"`
+	BootstrapScriptRuntime      string   `json:"bootstrap_script_runtime"`
+	BootstrapScriptInvocation   string   `json:"bootstrap_script_invocation"`
+	SourceChannels              []string `json:"source_channels"`
+	ActiveSourceChannel         string   `json:"active_source_channel"`
+	TopologyRoles               []string `json:"topology_roles"`
+	MinimumTopologyRole         string   `json:"minimum_topology_role"`
+	BootstrapSourceIDFormat     string   `json:"bootstrap_source_identifier_format"`
+	BootstrapDigestAlgorithm    string   `json:"bootstrap_digest_algorithm"`
+	BootstrapInstallDirectory   string   `json:"bootstrap_install_directory"`
+	BootstrapBinDirectory       string   `json:"bootstrap_bin_directory"`
+	BootstrapStateDirectory     string   `json:"bootstrap_state_directory"`
+	BootstrapServiceUser        string   `json:"bootstrap_service_user"`
+	BootstrapSecretInputPolicy  string   `json:"bootstrap_secret_input_policy"`
+	BootstrapStateModel         string   `json:"bootstrap_state_model"`
 	OperationTargets            []string `json:"operation_targets"`
 	ForbiddenProviderOperations []string `json:"forbidden_provider_operations"`
 	XserverFuturePolicy         string   `json:"xserver_future_policy"`
@@ -4270,7 +4291,7 @@ func phase18RequireInputsAndExpected(t *testing.T, root string) phase18InputSet 
 	}
 
 	phase16ReadStrictJSON(t, filepath.Join(root, "input/operation_scope.json"), &inputs.Scope)
-	if inputs.Scope.SchemaVersion != 1 || inputs.Scope.Scope != phase18Scope || inputs.Scope.ProviderTarget != "conoha-vps-primary" || inputs.Scope.ValidationMode != "vps-pull-bootstrap" || !phase11StringSlicesEqual(inputs.Scope.OperationTargets, phase18OperationTargets) || !phase11StringSlicesEqual(inputs.Scope.ForbiddenProviderOperations, phase18ForbiddenProviderOperations) || inputs.Scope.XserverFuturePolicy != "future_plan_not_blocker" {
+	if inputs.Scope.SchemaVersion != 1 || inputs.Scope.Scope != phase18Scope || inputs.Scope.ProviderTarget != "conoha-vps-primary" || inputs.Scope.ValidationMode != "vps-pull-bootstrap" || inputs.Scope.BootstrapScriptArtifact != "adlaire-ci-vps-pull-bootstrap.sh" || inputs.Scope.BootstrapScriptRuntime != "/bin/sh" || inputs.Scope.BootstrapScriptInvocation != "operator-runs-sh-script-on-vps" || !phase11StringSlicesEqual(inputs.Scope.SourceChannels, phase18SourceChannels) || inputs.Scope.ActiveSourceChannel != "integration-head" || !phase11StringSlicesEqual(inputs.Scope.TopologyRoles, phase18TopologyRoles) || inputs.Scope.MinimumTopologyRole != "single-node" || inputs.Scope.BootstrapSourceIDFormat != "absolute-https-url-or-absolute-file-path" || inputs.Scope.BootstrapDigestAlgorithm != "sha256" || inputs.Scope.BootstrapInstallDirectory != "/opt/adlaire-builder" || inputs.Scope.BootstrapBinDirectory != "/usr/local/bin" || inputs.Scope.BootstrapStateDirectory != "/opt/adlaire-builder" || inputs.Scope.BootstrapServiceUser != "root" || inputs.Scope.BootstrapSecretInputPolicy != "no-command-argument-secret" || inputs.Scope.BootstrapStateModel != "staging-verify-commit-rollback" || !phase11StringSlicesEqual(inputs.Scope.OperationTargets, phase18OperationTargets) || !phase11StringSlicesEqual(inputs.Scope.ForbiddenProviderOperations, phase18ForbiddenProviderOperations) || inputs.Scope.XserverFuturePolicy != "future_plan_not_blocker" {
 		t.Fatalf("Phase 18 operation scope mismatch: %+v", inputs.Scope)
 	}
 
@@ -4554,6 +4575,12 @@ func phase18RequireHealthRecords(t *testing.T, records []phase18EvidenceRecord) 
 		if record.HealthTarget == "log-write" && record.LogWriteResult != "passed" {
 			t.Fatalf("Phase 18 log-write health target must pass log write: %+v", record)
 		}
+		if record.HealthTarget == "bootstrap-script" {
+			expectedState := "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback"
+			if record.SourceRef != "input/operation_scope.json" || record.OwnerRef != "docs/details/production-validation.md" || record.EndpointOrCommandRef != "input/operation_scope.json" || record.ExpectedState != expectedState || record.ActualState != expectedState || !strings.Contains(record.Diagnostic, "source identifier") || !strings.Contains(record.Diagnostic, "secret policy") {
+				t.Fatalf("Phase 18 bootstrap script health target must prove exact bootstrap contract: %+v", record)
+			}
+		}
 		seen[record.HealthTarget] = true
 	}
 	for _, target := range phase18HealthTargets {
@@ -4810,7 +4837,7 @@ func phase18RequireDocumentState(t *testing.T) {
 		t.Fatalf("docs/ROADMAP.md must not mark Phase 18 implemented or unimplemented while real VPS Pull Bootstrap remains incomplete")
 	}
 	for _, feature := range []string{
-		"Phase 18 VPS Pull Bootstrap / Phase 17 handover / topology role / source channel / bootstrap session / bootstrap artifact health / bootstrap runtime flow gate",
+		"Phase 18 VPS Pull Bootstrap / Phase 17 handover / bootstrap script artifact / topology role / source channel / bootstrap session / bootstrap artifact health / bootstrap runtime flow gate",
 		"Phase 18 pull runner foundation / bootstrap update / rollback drill / bootstrap 中 issue / 仕様先行バグ修正 / 再検証 / known bug 0 gate",
 		"Phase 18 secret / destructive operation / opaque metadata / document drift gate",
 	} {
