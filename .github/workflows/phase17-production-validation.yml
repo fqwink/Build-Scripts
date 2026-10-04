@@ -15,7 +15,7 @@ defaults:
 
 jobs:
   phase17-conoha-vps-preflight:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -25,7 +25,7 @@ jobs:
       - run: go test ./... -run TestPhase17ProductionValidationEvidence -count=1
 
   phase17-trial-production-buildout:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -35,7 +35,7 @@ jobs:
       - run: go test ./... -run TestPhase17ProductionValidationEvidence -count=1
 
   phase17-conoha-install-update-rollback:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -45,7 +45,7 @@ jobs:
       - run: go test ./... -run TestPhase17ProductionValidationEvidence -count=1
 
   phase17-systemd-lifecycle:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -55,7 +55,7 @@ jobs:
       - run: go test ./... -run TestPhase17ProductionValidationEvidence -count=1
 
   phase17-runtime-flow:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -65,7 +65,7 @@ jobs:
       - run: go test ./... -run TestPhase17ProductionValidationEvidence -count=1
 
   phase17-trial-operation-loop:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -75,7 +75,7 @@ jobs:
       - run: go test ./... -run TestPhase17ProductionValidationEvidence -count=1
 
   phase17-production-simulation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -85,7 +85,7 @@ jobs:
       - run: go test ./... -run TestPhase17ProductionValidationEvidence -count=1
 
   phase17-failure-injection:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -95,7 +95,7 @@ jobs:
       - run: go test ./... -run TestPhase17ProductionValidationEvidence -count=1
 
   phase17-security-boundary:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -105,7 +105,7 @@ jobs:
       - run: go test ./... -run TestPhase17ProductionValidationEvidence -count=1
 
   phase17-bugfix-spec-first:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -115,7 +115,7 @@ jobs:
       - run: go test ./... -run TestPhase17ProductionValidationEvidence -count=1
 
   phase17-document-drift:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

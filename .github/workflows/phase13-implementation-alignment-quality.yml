@@ -15,7 +15,7 @@ defaults:
 
 jobs:
   phase13-go-format:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -25,7 +25,7 @@ jobs:
       - run: test -z "$(gofmt -l main.go main_test.go sdk_contract_test.go ui_contract_test.go components/*/*.go)"
 
   phase13-go-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -35,7 +35,7 @@ jobs:
       - run: go test ./... -count=1
 
   phase13-go-race:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -45,7 +45,7 @@ jobs:
       - run: go test -race ./... -count=1
 
   phase13-go-vet:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -55,7 +55,7 @@ jobs:
       - run: go vet ./...
 
   phase13-stdlib-static-analysis:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -65,7 +65,7 @@ jobs:
       - run: go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1
 
   phase13-dependency-inventory:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -75,7 +75,7 @@ jobs:
       - run: go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1
 
   phase13-secret-boundary-scan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -85,7 +85,7 @@ jobs:
       - run: go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1
 
   phase13-deno-check-sdk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -95,7 +95,7 @@ jobs:
       - run: deno check admin/adlaire-ci-sdk.js
 
   phase13-owner-shape:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -105,7 +105,7 @@ jobs:
       - run: go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1
 
   phase13-contract-parity:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -115,7 +115,7 @@ jobs:
       - run: go test ./... -run 'TestSDK|TestUI|TestPhase13ImplementationAlignmentQualityEvidence' -count=1
 
   phase13-state-safety:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -125,7 +125,7 @@ jobs:
       - run: go test ./components/statefile ./components/runner ./components/api ./components/mcp -count=1
 
   phase13-security-boundary:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -135,7 +135,7 @@ jobs:
       - run: go test ./components/security ./components/api ./components/setup ./components/mcp -count=1
 
   phase13-archive-commitstatus:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -145,7 +145,7 @@ jobs:
       - run: go test ./components/archive ./components/commitstatus ./components/release -count=1
 
   phase13-runner-recovery:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -155,7 +155,7 @@ jobs:
       - run: go test ./components/runner ./components/statefile -count=1
 
   phase13-mcp-real-behavior:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -165,7 +165,7 @@ jobs:
       - run: go test ./components/mcp ./components/statefile -count=1
 
   phase13-external-boundary:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -175,7 +175,7 @@ jobs:
       - run: go test ./components/api ./components/mcp ./components/runner ./components/setup -count=1
 
   phase13-executable-fixture:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -185,7 +185,7 @@ jobs:
       - run: go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1
 
   phase13-mutation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -195,7 +195,7 @@ jobs:
       - run: go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1
 
   phase13-concurrency:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -205,7 +205,7 @@ jobs:
       - run: go test -race ./components/statefile ./components/runner ./components/api ./components/mcp -count=1
 
   phase13-fault-injection:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -215,7 +215,7 @@ jobs:
       - run: go test ./components/statefile ./components/runner ./components/api -count=1
 
   phase13-browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -225,7 +225,7 @@ jobs:
       - run: deno check admin/adlaire-ci-sdk.js
 
   phase13-integration-e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -235,7 +235,7 @@ jobs:
       - run: go test ./... -run 'TestDispatchMain|TestPhase13ImplementationAlignmentQualityEvidence' -count=1
 
   phase13-setup-e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -245,7 +245,7 @@ jobs:
       - run: go test ./components/setup -count=1
 
   phase13-release-e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -255,7 +255,7 @@ jobs:
       - run: go test ./components/release -count=1
 
   phase13-actions-pinning:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -265,7 +265,7 @@ jobs:
       - run: go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1
 
   phase13-recovery-procedure:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -275,7 +275,7 @@ jobs:
       - run: go test ./components/statefile ./components/api ./components/runner -count=1
 
   phase13-document-drift:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
