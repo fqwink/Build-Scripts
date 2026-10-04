@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "scope": "phase-17-production-validation",
+  "required_check": "phase17-trial-production-buildout",
+  "expected_work_unit_order": [
+    "provider-prerequisite",
+    "access-baseline",
+    "system-baseline",
+    "release-acquisition",
+    "install-bootstrap",
+    "runtime-baseline",
+    "operation-baseline",
+    "update-rollback-baseline",
+    "simulation-baseline",
+    "monitoring-baseline"
+  ],
+  "allowed_provider_operation_classes": [
+    "read-only",
+    "service-lifecycle"
+  ],
+  "forbidden_provider_operations": [
+    "vps-create",
+    "vps-delete",
+    "plan-change",
+    "disk-rebuild",
+    "volume-create",
+    "volume-delete",
+    "volume-attach",
+    "volume-detach",
+    "firewall-lockout",
+    "ssh-lockout"
+  ],
+  "counter_key": "phase17_buildout_open_count",
+  "counter_value": 0
+}

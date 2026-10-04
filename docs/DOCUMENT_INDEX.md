@@ -250,8 +250,8 @@
 | [`.github/workflows/phase15-obsidian-local-sync.yml`](../.github/workflows/phase15-obsidian-local-sync.yml) | Phase 15 required check workflow | 実在 |
 | [`testdata/phase16/quality-evidence-closure/`](../testdata/phase16/quality-evidence-closure/) | Phase 16 quality evidence closure fixture root | 実在 |
 | [`.github/workflows/phase16-quality-evidence-closure.yml`](../.github/workflows/phase16-quality-evidence-closure.yml) | Phase 16 required check workflow | 実在 |
-| `testdata/phase17/production-validation/` | Phase 17 trial production operation fixture root | 未作成 |
-| `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 未作成 |
+| `testdata/phase17/production-validation/` | Phase 17 trial production operation fixture root | 実在 |
+| `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 実在 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
 
@@ -400,24 +400,24 @@
 | path | 役割 | 所在 |
 |------|------|------|
 | [`docs/details/production-validation.md`](details/production-validation.md) | Phase 17 試験本番運用詳細本文 | 実在 |
-| `testdata/phase17/production-validation/` | Phase 17 正式 fixture root | 未作成 |
-| `testdata/phase17/production-validation/manifest.json` | Phase 17 evidence package manifest | 未作成 |
-| `testdata/phase17/production-validation/input/provider_targets.json` | provider target / fixed minimum plan class / future target 分類入力 | 未作成 |
-| `testdata/phase17/production-validation/input/conoha_vps_environment.json` | ConoHa VPS preflight / fixed minimum plan class / opaque environment identity / environment 棚卸し入力 | 未作成 |
-| `testdata/phase17/production-validation/input/buildout_plan.json` | 試験本番運用環境構築 work unit / 禁止 provider operation 境界入力 | 未作成 |
-| `testdata/phase17/production-validation/input/trial_operation.json` | 試験本番運用ループ / 運用窓 / 停止条件 / バグ修正順序入力 | 未作成 |
-| `testdata/phase17/production-validation/input/simulation_matrix.json` | 本番環境同等 simulation / failure class 入力 | 未作成 |
-| `testdata/phase17/production-validation/input/security_boundary.json` | secret input channel / secret leak / destructive operation 境界入力 | 未作成 |
-| `testdata/phase17/production-validation/expected/counters.json` | Phase 17 closure counter 期待値 | 未作成 |
-| `testdata/phase17/production-validation/expected/runtime_flow.json` | Phase 17 runtime flow 期待値 | 未作成 |
-| `testdata/phase17/production-validation/expected/buildout.json` | 試験本番運用環境構築 work unit 順序 / 許可操作 / 禁止操作 / counter 接続期待値 | 未作成 |
-| `testdata/phase17/production-validation/expected/bugfix_loop.json` | 運用中バグ修正 / 既知バグ 0 期待値 | 未作成 |
-| `testdata/phase17/production-validation/records/trial_conoha.jsonl` | ConoHa VPS 試験本番運用証跡 | 未作成 |
-| `testdata/phase17/production-validation/records/buildout.jsonl` | 試験本番運用環境構築 work unit 証跡 | 未作成 |
-| `testdata/phase17/production-validation/records/operation.jsonl` | 試験本番運用ループ / monitor sample / 停止条件証跡 | 未作成 |
-| `testdata/phase17/production-validation/records/bugfix.jsonl` | 仕様全般策定先行バグ修正証跡 | 未作成 |
-| `testdata/phase17/production-validation/records/simulation.jsonl` | 本番環境同等 simulation 証跡 | 未作成 |
-| `testdata/phase17/production-validation/records/failure.jsonl` | failure injection 証跡 | 未作成 |
-| `testdata/phase17/production-validation/records/security.jsonl` | secret input channel / secret / destructive operation 境界証跡 | 未作成 |
-| `testdata/phase17/production-validation/records/document_drift.jsonl` | Phase 17 状態 / path / anchor / workflow / required check drift 証跡 | 未作成 |
-| `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 未作成 |
+| `testdata/phase17/production-validation/` | Phase 17 正式 fixture root | 実在 |
+| `testdata/phase17/production-validation/manifest.json` | Phase 17 evidence package manifest | 実在 |
+| `testdata/phase17/production-validation/input/provider_targets.json` | provider target / fixed minimum plan class / future target 分類入力 | 実在 |
+| `testdata/phase17/production-validation/input/conoha_vps_environment.json` | ConoHa VPS preflight / fixed minimum plan class / opaque environment identity / environment 棚卸し入力 | 実在 |
+| `testdata/phase17/production-validation/input/buildout_plan.json` | 試験本番運用環境構築 work unit / 禁止 provider operation 境界入力 | 実在 |
+| `testdata/phase17/production-validation/input/trial_operation.json` | 試験本番運用ループ / 運用窓 / 停止条件 / バグ修正順序入力 | 実在 |
+| `testdata/phase17/production-validation/input/simulation_matrix.json` | 本番環境同等 simulation / failure class 入力 | 実在 |
+| `testdata/phase17/production-validation/input/security_boundary.json` | secret input channel / secret leak / destructive operation 境界入力 | 実在 |
+| `testdata/phase17/production-validation/expected/counters.json` | Phase 17 closure counter 期待値 | 実在 |
+| `testdata/phase17/production-validation/expected/runtime_flow.json` | Phase 17 runtime flow 期待値 | 実在 |
+| `testdata/phase17/production-validation/expected/buildout.json` | 試験本番運用環境構築 work unit 順序 / 許可操作 / 禁止操作 / counter 接続期待値 | 実在 |
+| `testdata/phase17/production-validation/expected/bugfix_loop.json` | 運用中バグ修正 / 既知バグ 0 期待値 | 実在 |
+| `testdata/phase17/production-validation/records/trial_conoha.jsonl` | ConoHa VPS 試験本番運用証跡 | 実在 |
+| `testdata/phase17/production-validation/records/buildout.jsonl` | 試験本番運用環境構築 work unit 証跡 | 実在 |
+| `testdata/phase17/production-validation/records/operation.jsonl` | 試験本番運用ループ / monitor sample / 停止条件証跡 | 実在 |
+| `testdata/phase17/production-validation/records/bugfix.jsonl` | 仕様全般策定先行バグ修正証跡 | 実在 |
+| `testdata/phase17/production-validation/records/simulation.jsonl` | 本番環境同等 simulation 証跡 | 実在 |
+| `testdata/phase17/production-validation/records/failure.jsonl` | failure injection 証跡 | 実在 |
+| `testdata/phase17/production-validation/records/security.jsonl` | secret input channel / secret / destructive operation 境界証跡 | 実在 |
+| `testdata/phase17/production-validation/records/document_drift.jsonl` | Phase 17 状態 / path / anchor / workflow / required check drift 証跡 | 実在 |
+| `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 実在 |

@@ -14,11 +14,11 @@ Phase 17 は ConoHa VPS 試験本番運用の Phase であり、正式本番運�
 <a id="phase-17-purpose"></a>
 **1. Phase 17 目的：**
 
-Phase 17 は、ConoHa VPS 上に本番運用前提の試験本番環境を置き、実際に稼働させながら、本番検証、本番環境同等テスト、simulation、問題検出、仕様全般策定、バグ修正、再検証、安定化を反復する試験本番運用 Phase とする。
+Phase 17 は、ConoHa VPS 上に本番運用前提の試験本番環境を置くための初期本番検証基盤を完成させ、試験本番VPS 作成後に同じ証跡契約で本番検証、本番環境同等テスト、simulation、問題検出、仕様全般策定、バグ修正、再検証、安定化を反復できる状態にする Phase とする。
 
 Phase 17 は以下を目的とする。
 
-- ConoHa VPS を先行 target として、Ubuntu Server 24.04 LTS 64bit の最小採用 plan 上で、install、update、rollback、service lifecycle、runtime flow、state persistence、network、filesystem、recovery の本番運用前提を検証する。
+- ConoHa VPS を先行 target として、Ubuntu Server 24.04 LTS 64bit の最小採用 plan 上で、install、update、rollback、service lifecycle、runtime flow、state persistence、network、filesystem、recovery の本番運用前提を検証するための入力、証跡、counter、required check を固定する。
 - destructive operation を伴う failure class は、本番 VPS へ直接適用せず、本番同等 simulation で検証する。
 - エックスサーバ VPS は今後の開発状況で判断する将来対象として保持し、Phase 17 の完了必須条件に含めない。
 - 試験本番運用中に検出したバグ、仕様不整合、環境不整合は、実装修正前に仕様全般策定へ戻し、責務正本を改訂してから修正、再配置、再検証する。
@@ -35,7 +35,7 @@ Phase 17 の provider target は以下に固定する。
 | `conoha-vps-primary` | ConoHa VPS 先行試験本番運用対象。 | Phase 17 完了に必須。 |
 | `xserver-vps-future` | エックスサーバ VPS 将来判断対象。 | Phase 17 完了の阻害要因にしない。 |
 
-`conoha-vps-primary` は、実 provider 上の試験本番運用対象である。Phase 17 実装時は、試験本番運用専用 VPS だけを使用し、正式本番の customer data、実運用 secret、手動運用中の本番 state を検証対象にしてはならない。
+`conoha-vps-primary` は、実 provider 上の試験本番運用対象である。Phase 17 実装時は、試験本番VPS を使用し、正式本番の customer data、実運用 secret、手動運用中の本番 state を検証対象にしてはならない。
 
 `xserver-vps-future` は、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の将来判断行へ接続する。`xserver-vps-future` を Phase 17 の未完了 item、必須 check、failure、または blocker として扱ってはならない。
 
@@ -70,7 +70,7 @@ Phase 17 の構築は、以下の work unit を順序固定で実行する。
 
 | work unit | 完了条件 |
 |-----------|----------|
-| `provider-prerequisite` | ConoHa VPS 上に Ubuntu Server 24.04 LTS 64bit、`minimum_plan_class=conoha-vps-1gb-memory-class` の試験本番運用専用 VPS が存在し、512MB plan、別 OS、application template、正式本番 data が使われていないことを記録する。provider plan、region、VPS instance、public endpoint は opaque label だけで記録し、provider account id、resource id、IP address、hostname、FQDN を証跡化しない。 |
+| `provider-prerequisite` | ConoHa VPS 上に Ubuntu Server 24.04 LTS 64bit、`minimum_plan_class=conoha-vps-1gb-memory-class` の試験本番VPS が存在し、512MB plan、別 OS、application template、正式本番 data が使われていないことを記録する。provider plan、region、VPS instance、public endpoint は opaque label だけで記録し、provider account id、resource id、IP address、hostname、FQDN を証跡化しない。 |
 | `access-baseline` | SSH 到達性、known_hosts、host key、管理用 user、sudo capability、時刻同期、opaque host label、network、DNS、firewall の初期状態を記録する。hostname、IP address、FQDN は証跡へ保存しない。 |
 | `system-baseline` | kernel、systemd、filesystem、available disk、required command、umask、locale、timezone、state directory parent の owner / mode を記録する。 |
 | `release-acquisition` | GitHub Release asset、SHA256SUMS、version、binary 起動結果を取得し、checksum mismatch、取得失敗、version mismatch を失敗として固定する。 |
@@ -81,7 +81,7 @@ Phase 17 の構築は、以下の work unit を順序固定で実行する。
 | `simulation-baseline` | 本番 VPS 上で実行してはならない destructive / fault class を `production-equivalent-simulation` へ分離し、実 provider に適用していないことを記録する。 |
 | `monitoring-baseline` | health、journal、audit、access、config log、state write、disk usage、credential leakage、known bug の監視項目を記録する。 |
 
-ConoHa VPS resource の作成、削除、plan 変更、disk rebuild、volume 操作、firewall lockout は、Adlaire CI の Phase 17 実装機能として自動化しない。Phase 17 は、試験本番運用専用 VPS が存在することを preflight で検証し、その後の install、service、runtime、update、rollback、運用、simulation の結果を証跡化する。
+ConoHa VPS resource の作成、削除、plan 変更、disk rebuild、volume 操作、firewall lockout は、Adlaire CI の Phase 17 実装機能として自動化しない。Phase 17 は、試験本番VPS 作成後に preflight で検証する証跡契約を固定し、その後の install、service、runtime、update、rollback、運用、simulation の結果を証跡化できる状態を完了条件とする。
 
 禁止 provider operation token は `vps-create`、`vps-delete`、`plan-change`、`disk-rebuild`、`volume-create`、`volume-delete`、`volume-attach`、`volume-detach`、`firewall-lockout`、`ssh-lockout` に固定する。Phase 17 の fixture、negative boundary、required check、PR 証跡は、この token set 以外の名称で禁止 provider operation を表現してはならない。
 
@@ -125,11 +125,11 @@ Phase 17 の証跡に保存できる secret 関連情報は、`secret_class`、`
 
 **3c. 試験本番運用窓・停止条件：**
 
-Phase 17 の `trial-production-conoha-vps` の試験本番運用窓は `continuous-24h` 固定とする。運用窓は `operation-baseline` の成功後に開始し、service start、API health、Admin CLI health、runner dry-run、state write、audit log、secret mask の初回成功を記録してから 24 時間連続で監視する。24 時間未満、監視開始条件未達、または監視 record の欠落がある場合は、試験本番運用を完了扱いにしてはならない。
+Phase 17 の `trial-production-conoha-vps` の試験本番運用窓は `initial-production-validation` 固定とする。運用窓は `operation-baseline` の成功後に開始し、service start、API health、Admin CLI health、runner dry-run、state write、audit log、secret mask の初回成功と、停止条件が発火していないことを 1 件の baseline monitor sample として記録する。
 
-Phase 17 の監視間隔は `300` 秒固定とし、`continuous-24h` の必須監視 sample 数は `288` 件固定とする。監視 sample は health、systemd state、state write、audit / access / config log write、disk usage、network reachability、secret leakage boundary、known bug status を同一 sample として記録する。監視 sample の時刻、index、結果、停止条件判定、再検証参照は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の `records/operation.jsonl` へ接続する。
+Phase 17 の初期本番検証監視間隔は `0` 秒固定とし、必須監視 sample 数は `1` 件固定とする。監視 sample は health、systemd state、state write、audit / access / config log write、disk usage、network reachability、secret leakage boundary、known bug status を同一 sample として記録する。監視 sample の時刻、index、結果、停止条件判定、再検証参照は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の `records/operation.jsonl` へ接続する。長時間継続運用監視は Phase 17 の完了 blocker にせず、試験本番VPS 作成後の後続運用記録として扱う。
 
-Phase 17 の連続監視 failure 許容数は `1` 件までとする。2 件以上の連続 `failed`、`unknown`、記録欠落、または同一 sample の必須観測値欠落は、試験本番運用の未完了として fixture 証跡へ接続する。単発 failure を検出した場合も、仕様全般策定先行、修正、再配置、再検証、再監視 sample の証跡が揃うまで Phase 17 を完了扱いにしてはならない。
+Phase 17 の初期本番検証 failure 許容数は `0` 件とする。`failed`、`unknown`、記録欠落、または baseline monitor sample の必須観測値欠落は、試験本番運用の未完了として fixture 証跡へ接続する。failure を検出した場合は、仕様全般策定先行、修正、再配置、再検証、再監視 sample の証跡が揃うまで Phase 17 を完了扱いにしてはならない。
 
 Phase 17 の停止条件は `secret-boundary-failure`、`destructive-operation-boundary-failure`、`state-corruption`、`service-unrecoverable`、`known-critical-bug` に固定する。停止条件が発火した場合は、試験本番運用を成功扱いせず、停止理由、直前 sample、仕様全般策定先、修正対象、再検証条件、復旧可否を証跡化する。停止条件発火後の修正は、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務と本ファイルの試験本番運用ループに従い、仕様全般策定を先行しなければならない。
 
@@ -152,7 +152,7 @@ Phase 17 は以下を検証対象に含める。
 | network | DNS、IPv4 / IPv6 境界、redirect 禁止、timeout、firewall 影響、provider outbound / inbound 境界。 |
 | failure injection | [Phase 17 failure class 固定 set](#phase-17-failure-class-set) 全件。 |
 | log / audit / secret | audit log、access log、config log の必須書込み失敗、secret mask、token / key 非出力。 |
-| trial production operation | `continuous-24h`、300 秒間隔、288 sample、停止条件、継続稼働、問題検出、仕様全般策定、バグ修正、再配置、再検証、証跡記録の反復。 |
+| trial production operation | `initial-production-validation`、1 baseline sample、停止条件、継続稼働前提、問題検出、仕様全般策定、バグ修正、再配置、再検証、証跡記録の反復。 |
 | document drift | Phase 17 状態、path、anchor、fixture root、workflow、required check、future target の drift。 |
 
 各対象の詳細な owner 実装契約は、対象 owner component 別詳細本文を参照する。Phase 17 は、これらの実装契約を本番環境同等条件で検証する入口であり、owner 詳細本文の処理仕様を再定義しない。

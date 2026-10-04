@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "scope": "phase-17-production-validation",
+  "expected_operation_order": [
+    "operation-start",
+    "monitor",
+    "issue-detect",
+    "spec-general-update",
+    "implementation-fix",
+    "redeploy",
+    "revalidate",
+    "evidence-record",
+    "known-bug-zero-check"
+  ],
+  "operation_window": "initial-production-validation",
+  "monitor_interval_seconds": 0,
+  "required_monitor_sample_count": 1,
+  "max_consecutive_monitor_failures": 0,
+  "abort_conditions": [
+    "secret-boundary-failure",
+    "destructive-operation-boundary-failure",
+    "state-corruption",
+    "service-unrecoverable",
+    "known-critical-bug"
+  ],
+  "spec_update_required": true,
+  "responsibility_source_ref_required": true,
+  "revalidation_required": true,
+  "allowed_known_bug_statuses": [
+    "closed",
+    "not_applicable",
+    "future_plan"
+  ],
+  "forbidden_known_bug_statuses": [
+    "open",
+    "failed",
+    "unknown"
+  ],
+  "counter_connections": [
+    "phase17_trial_operation_open_count",
+    "phase17_bugfix_spec_gap_count",
+    "phase17_known_bug_open_count"
+  ]
+}

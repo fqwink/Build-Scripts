@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "scope": "phase-17-production-validation",
+  "counters": {
+    "phase17_conoha_trial_operation_open_count": 0,
+    "phase17_buildout_open_count": 0,
+    "phase17_production_simulation_open_count": 0,
+    "phase17_install_update_rollback_open_count": 0,
+    "phase17_systemd_lifecycle_open_count": 0,
+    "phase17_runtime_flow_open_count": 0,
+    "phase17_failure_injection_open_count": 0,
+    "phase17_secret_leak_open_count": 0,
+    "phase17_destructive_operation_open_count": 0,
+    "phase17_xserver_future_misclassified_count": 0,
+    "phase17_document_drift_open_count": 0,
+    "phase17_trial_operation_open_count": 0,
+    "phase17_bugfix_spec_gap_count": 0,
+    "phase17_known_bug_open_count": 0,
+    "final_open_item_count": 0
+  }
+}

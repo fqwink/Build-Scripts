@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "scope": "phase-17-production-validation",
+  "provider_targets": [
+    {
+      "provider_target": "conoha-vps-primary",
+      "classification": "required_trial_production",
+      "completion_blocker": true,
+      "os": "ubuntu-server-24.04-lts-64bit",
+      "minimum_plan_class": "conoha-vps-1gb-memory-class",
+      "minimum_ram_mb": 1024,
+      "excluded_plan": "512mb",
+      "future_ref": null
+    },
+    {
+      "provider_target": "xserver-vps-future",
+      "classification": "future_plan",
+      "completion_blocker": false,
+      "os": null,
+      "minimum_plan_class": null,
+      "minimum_ram_mb": null,
+      "excluded_plan": null,
+      "future_ref": "[docs/ROADMAP.md 状態・計画責務 統合機能インベントリ](../../../docs/ROADMAP.md#522-統合ロードマップ表)"
+    }
+  ]
+}

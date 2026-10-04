@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "e735dac9372516ae34c906239a86c555c720c4eb14130531386db16120b4126d",
+  "source_group_sha256": "21c4d133362d43d27131cd8d0d8636e05cb63667e5596764e15ce59e8dbf6a82",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -45,8 +45,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "b9cbf222546df853bb84e52a9bb4ad192979df11a9f187cc4a009ffaf5172ecc",
-      "size_bytes": 103820,
+      "sha256": "c7cb6c002c7c12aa5cb375434dc46e4892af6e2747969d1ef0b43155df05ec2d",
+      "size_bytes": 164196,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [{"term_id":"phase16-checker","match":"TestPhase16QualityEvidenceClosure","match_mode":"literal","count":1,"first_source_locator":"file:main_test.go#line:1"}],
@@ -75,8 +75,8 @@
     {
       "path": "docs/ROADMAP.md",
       "source_exists": true,
-      "sha256": "d0d0aca72f74e8e03da12e35f0910a7125ee079286985aea9b947d82b0cde5fb",
-      "size_bytes": 58911,
+      "sha256": "aa349eaa17222129609191968330d082550d875f29ecbe2eb93359ee88f03e1d",
+      "size_bytes": 58801,
       "owner_component": "runner",
       "area": "roadmap",
       "detected_terms": [{"term_id":"phase16-roadmap","match":"Phase 16","match_mode":"literal","count":1,"first_source_locator":"file:docs/ROADMAP.md#line:1"}],
@@ -95,8 +95,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "32bdc51a04f1bce9cb04487038f74d251235bdd4c7480cab0e9bb2dd50f95dd8",
-      "size_bytes": 50528,
+      "sha256": "d98e6a9bebd3131db43a69eb626f47b54ca6775e2e1ef2673545a72dcd2819ba",
+      "size_bytes": 50459,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [{"term_id":"phase16-document-index","match":"phase-16-target-paths","match_mode":"literal","count":1,"first_source_locator":"file:docs/DOCUMENT_INDEX.md#line:1"}],
@@ -105,8 +105,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "0b39f0c760b4753b2a693f6e9c85aa48ce5849b62710e4da6c3412a4d99cc914",
-      "size_bytes": 875208,
+      "sha256": "2c67fa294a5c13311bf886924932a630d183fdde9c993e1b703ca86afae52092",
+      "size_bytes": 878979,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [{"term_id":"phase16-fixture-spec","match":"phase-16-quality-evidence-closure-evidence","match_mode":"literal","count":1,"first_source_locator":"file:docs/details/fixture.md#line:1"}],

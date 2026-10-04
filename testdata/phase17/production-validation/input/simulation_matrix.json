@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "scope": "phase-17-production-validation",
+  "provider_target": "conoha-vps-primary",
+  "validation_mode": "production-equivalent-simulation",
+  "failure_classes": [
+    {
+      "failure_class": "disk full",
+      "injection_location": "filesystem",
+      "expected_result": "write-fails-and-recovers-without-state-corruption",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "permission denied",
+      "injection_location": "filesystem",
+      "expected_result": "permission-error-is-reported-and-state-is-unchanged",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "short write",
+      "injection_location": "filesystem",
+      "expected_result": "partial-write-is-detected-and-recovered",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "fsync failure",
+      "injection_location": "filesystem",
+      "expected_result": "fsync-error-blocks-success-and-keeps-recovery-record",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "rename failure",
+      "injection_location": "filesystem",
+      "expected_result": "atomic-rename-error-is-detected-and-rolled-back",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "process kill",
+      "injection_location": "process",
+      "expected_result": "interrupted-process-recovers-or-records-recovery-required",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "network refusal",
+      "injection_location": "network",
+      "expected_result": "network-refusal-is-timeout-bounded-and-retry-classified",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "DNS failure",
+      "injection_location": "network",
+      "expected_result": "dns-failure-is-classified-without-secret-output",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "SSH failure",
+      "injection_location": "ssh",
+      "expected_result": "ssh-failure-is-bounded-and-known-hosts-safe",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "log write failure",
+      "injection_location": "log",
+      "expected_result": "required-log-write-failure-blocks-success",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "reboot recovery",
+      "injection_location": "service-lifecycle",
+      "expected_result": "service-and-state-recover-after-reboot",
+      "recovery_required": true
+    },
+    {
+      "failure_class": "interrupted recovery",
+      "injection_location": "service-lifecycle",
+      "expected_result": "second-start-continues-or-isolates-recovery",
+      "recovery_required": true
+    }
+  ],
+  "destructive_operation_boundaries": [
+    "vps-create",
+    "vps-delete",
+    "plan-change",
+    "disk-rebuild",
+    "volume-create",
+    "volume-delete",
+    "volume-attach",
+    "volume-detach",
+    "firewall-lockout",
+    "ssh-lockout"
+  ],
+  "provider_execution_allowed": false
+}
