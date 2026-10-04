@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "65940cb1f8c51ca8c4bfcee8119cfb365d7cb0bf8b5730148232b1d50ac9c8fd",
+  "source_group_sha256": "b6238de4671cf08fe387762716f502390c70c53275ac5da10e60ddbe754ec613",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -115,8 +115,8 @@
     {
       "path": ".github/workflows/phase16-quality-evidence-closure.yml",
       "source_exists": true,
-      "sha256": "bd2c4e8a383943e135d3452d86a94a4f9fc516cb59f3fdc798d3e4aebc840466",
-      "size_bytes": 3252,
+      "sha256": "f0fa9ff7f48d4d97789fb19851289fba1d24ec34eff32b3c4fd0dae1998526ce",
+      "size_bytes": 3243,
       "owner_component": "runner",
       "area": "workflow",
       "detected_terms": [{"term_id":"phase16-workflow","match":"phase16-quality-evidence-closure","match_mode":"literal","count":1,"first_source_locator":"file:.github/workflows/phase16-quality-evidence-closure.yml#line:1"}],
