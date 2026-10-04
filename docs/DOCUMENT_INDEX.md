@@ -49,6 +49,7 @@
 | Phase 18 試験本番運用詳細本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 試験本番VPS 実運用接続・運用証跡契約](details/production-validation.md#phase-18-trial-production-operation-contract) |
 | Phase 18 正式 fixture root | `testdata/phase18/trial-production-operation/` |
 | Phase 18 required check workflow | `.github/workflows/phase18-trial-production-operation.yml` |
+| Phase 18 checker implementation artifact 配置先 | [`main_test.go`](../main_test.go) |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
 | fixture、expected、fake、実装検証証跡 | [`docs/details/fixture.md`](details/fixture.md) |
@@ -453,3 +454,4 @@
 | `testdata/phase18/trial-production-operation/records/security.jsonl` | secret 境界 / opaque metadata / 禁止 provider operation / destructive operation 境界証跡 | 未作成 |
 | `testdata/phase18/trial-production-operation/records/document_drift.jsonl` | Phase 18 状態 / path / anchor / workflow / required check drift 証跡 | 未作成 |
 | `.github/workflows/phase18-trial-production-operation.yml` | Phase 18 required check workflow | 未作成 |
+| [`main_test.go`](../main_test.go) | Phase 18 checker implementation artifact 配置先 | 実在 |
