@@ -1,13 +1,13 @@
 # Adlaire CI — 試験本番運用詳細仕様
 
-[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、ConoHa VPS 試験本番運用、本番運用前提の本番検証、本番環境同等テスト、VPS simulation、provider target、minimum plan class、opaque environment identity、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、fixture 証跡への接続条件だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
+[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、ConoHa VPS 試験本番運用、本番運用前提の本番検証、本番環境同等テスト、VPS simulation、provider target、minimum plan class、opaque environment identity、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、試験本番VPS 実運用接続、運用 session、運用証跡、fixture 証跡への接続条件だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
 
 <a id="phase-17-responsibility-boundary"></a>
 **0. 責務境界：**
 
-本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用に関する、運用対象、provider target、OS / plan 前提、minimum plan class、opaque environment identity、検証対象、検証 mode、credential / SSH 入力境界、試験本番運用窓・停止条件、禁止操作、運用中バグ修正順序、fixture 証跡への接続条件を所有する。
+本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用と Phase 18 の試験本番VPS 実運用接続・運用証跡に関する、運用対象、provider target、OS / plan 前提、minimum plan class、opaque environment identity、検証対象、検証 mode、credential / SSH 入力境界、試験本番運用窓・停止条件、禁止操作、運用中バグ修正順序、実運用接続、運用 session、fixture 証跡への接続条件を所有する。
 
-本番検証詳細本文責務は、owner component の通常処理、API route、SDK method、UI DOM、runner pipeline、state schema、release asset format、setup install 処理、VPS provider API 操作実装、GitHub 設定、credential 管理方式を本文として定義しない。これらは該当する owner component 別詳細本文、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、または [`AGENTS.md`](../../AGENTS.md) 作業ルールを参照する。ただし、Phase 17 検証で secret を証跡へ混入させないための入力境界、許可入力経路、禁止入力経路、証跡化禁止事項は本番検証詳細本文責務が所有する。これは Adlaire CI の credential 管理方式ではなく、試験本番運用検証の boundary contract として扱う。
+本番検証詳細本文責務は、owner component の通常処理、API route、SDK method、UI DOM、runner pipeline、state schema、release asset format、setup install 処理、VPS provider API 操作実装、GitHub 設定、credential 管理方式を本文として定義しない。これらは該当する owner component 別詳細本文、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、または [`AGENTS.md`](../../AGENTS.md) 作業ルールを参照する。ただし、Phase 17 と Phase 18 の検証で secret を証跡へ混入させないための入力境界、許可入力経路、禁止入力経路、証跡化禁止事項は本番検証詳細本文責務が所有する。これは Adlaire CI の credential 管理方式ではなく、試験本番運用検証の boundary contract として扱う。
 
 Phase 17 は ConoHa VPS 試験本番運用の Phase であり、正式本番運用、customer data を扱う実運用、ユーザー環境の破壊的変更、provider resource の作成・削除自動化を目的にしてはならない。
 
@@ -218,3 +218,58 @@ Phase 17 の fixture 証跡、closure counter、required check、required check 
 Phase 17 は、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) の closure counter、required check、required check workflow、checker 実行入口、negative boundary、document drift record がすべて完了条件を満たすまで `実装済み` に遷移してはならない。本番検証詳細本文責務では、closure counter の key、完了値、未完了条件、required check 名、record schema を再掲しない。
 
 Phase 17 の実装 PR は、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) が要求する全 record を同一証跡 package に含める。
+
+<a id="phase-18-trial-production-operation-contract"></a>
+
+**9. Phase 18 試験本番VPS 実運用接続・運用証跡契約：**
+
+Phase 18 は、Phase 17 で固定した試験本番VPS 前提を引き継ぎ、作成済みの試験本番VPSへ実運用接続し、Adlaire CI の install 済み service、API、Admin、SDK、UI、runner、update / rollback、運用中 issue、仕様先行バグ修正、再検証、document drift を同一運用 session の証跡へ接続する Phase とする。
+
+Phase 18 の provider target は `conoha-vps-primary` を必須対象、`xserver-vps-future` を将来判断対象に固定する。`xserver-vps-future` は Phase 18 の未完了 item、required check、failure、または blocker として扱わない。
+
+Phase 18 は VPS 作成、VPS 削除、plan 変更、disk rebuild、volume 操作、firewall lockout、SSH lockout、provider account 設定変更、GitHub 設定変更を実装対象にしない。これらが必要になった場合は Phase 18 の実装作業を停止し、該当する責務正本を先に改訂する。
+
+Phase 18 の実行環境前提は Phase 17 と同じく、Ubuntu Server 24.04 LTS 64bit、`minimum_plan_class=conoha-vps-1gb-memory-class`、`minimum_ram_mb=1024`、`metadata_policy=opaque-non-secret-labels` に固定する。試験本番VPS の用途 label は `試験本番VPS` とし、Phase 専用 VPS、正式本番 VPS、customer data 用 VPS と表現してはならない。
+
+Phase 18 の validation mode は `trial-production-operation` 固定とする。`production-equivalent-simulation` は Phase 17 の destructive / fault class 検証 mode であり、Phase 18 の実運用接続を代替してはならない。
+
+Phase 18 の運用 session は `manual-approved-operation-session` 固定とする。Phase 18 実装完了には 1 件以上の運用 session を必須とし、24 時間継続監視は完了 blocker にしない。運用 session 内では、開始時、runtime flow 完了後、終了時の 3 sample を最小証跡として記録する。各 sample は service state、API health、Admin CLI health、runner state、statefile digest、audit / access / config log write、secret leakage boundary、known bug status、document drift status を含む。
+
+Phase 18 の work unit は以下の順序固定とする。
+
+| work unit | 完了条件 |
+|-----------|----------|
+| `phase17-handover` | Phase 17 の fixture 証跡、required check、状態、試験本番VPS 前提、未残条件が Phase 18 の開始条件として到達可能である。 |
+| `operation-session-open` | `manual-approved-operation-session` を開始し、operator 承認、session id、開始時 sample、secret 境界、禁止 provider operation 境界を記録する。 |
+| `release-and-service-health` | release asset、binary version、systemd service、health endpoint、state directory、log write が成功し、失敗または未実施を open item へ接続する。 |
+| `admin-and-api-runtime` | Admin CLI、API、SDK、UI の疎通、認証、timeout、body limit、secret mask、状態再取得が成功する。 |
+| `runner-real-operation` | runner queue、build、状態更新、audit log、commit status 対象外または成功、deploy simulation または承認済み deploy target が証跡化される。 |
+| `update-rollback-drill` | update、rollback、service restart、state migration、rollback 後 version、failure cleanup が成功する。 |
+| `issue-triage` | 運用中 issue、仕様不整合、環境不整合、known bug を検出し、分類、責務正本、修正要否、再検証条件を記録する。 |
+| `spec-first-fix` | 修正が必要な issue は、実装修正前に仕様全般策定、責務正本改訂、検証条件固定を完了する。 |
+| `redeploy-and-revalidate` | 修正後の再配置、service 復旧、対象 required check 再実行、再検証結果、known bug 0 判定を記録する。 |
+| `operation-session-close` | 終了時 sample、open item 0、secret 漏えい 0、destructive operation 0、document drift 0、cleanup 結果を記録して session を閉じる。 |
+
+Phase 18 の運用 session は、`operation-session-open` で開始 sample を記録し、`admin-and-api-runtime`、`runner-real-operation`、`update-rollback-drill` の完了後に runtime sample を記録し、`redeploy-and-revalidate` と cleanup 判定後に終了 sample を記録する。開始 sample を runtime 実行後に後付けで作成すること、runtime sample を update / rollback 前の状態で代替すること、終了 sample を open item の有無を確認せず作成することを禁止する。
+
+Phase 18 の `issue-triage` は、運用中 issue を検出した場合だけでなく、issue が検出されなかった場合も `no_issue_detected` として記録する。`spec-first-fix` は `fix_required`、`environment_only`、`not_required` のいずれかを明示し、`fix_required` の場合は仕様全般策定、責務正本改訂、実装修正、再検証を同一運用 session の証跡へ接続する。`environment_only` または `not_required` の場合も、修正不要理由、責務正本、再検証条件を記録し、作業省略を口頭判断または暗黙の成功として扱ってはならない。
+
+Phase 18 の `redeploy-and-revalidate` は、実装修正があった場合は再配置後の service 復旧と対象再検証を記録し、実装修正がない場合は no-op 再検証として、実運用接続、runtime flow、停止条件、known bug 0、document drift 0 の再判定を記録する。実装修正がないことを理由に `redeploy-and-revalidate` の記録を省略してはならない。
+
+Phase 18 の operation session closure package は、Phase 17 引継ぎ、開始 sample、runtime sample、終了 sample、service health、Admin / API / SDK / UI runtime、runner real operation、update / rollback drill、issue triage、仕様先行修正判定、再検証、secret 境界、destructive operation 境界、document drift 境界、cleanup 判定を同一 session id に接続する。同一 session id で接続できない証跡、別 session の結果を寄せ集めた証跡、session id を持たない証跡、または fixture counter だけの完了報告を Phase 18 の完了根拠にしてはならない。
+
+Phase 18 の運用中バグ修正 loop は `issue-detect`、`spec-general-update`、`implementation-fix`、`redeploy`、`revalidate`、`evidence-record`、`known-bug-zero-check` の順序に固定する。`spec-general-update` を通過しない `implementation-fix` を禁止する。
+
+Phase 18 の停止条件は `secret-boundary-failure`、`destructive-operation-boundary-failure`、`state-corruption`、`service-unrecoverable`、`known-critical-bug`、`document-drift-blocker` に固定する。停止条件が発火した場合は、運用 session を成功扱いせず、停止理由、直前 sample、責務正本、修正条件、再検証条件、復旧可否を証跡化する。
+
+Phase 18 では以下を禁止する。
+
+- customer data、実運用 credential、実運用 secret、private key、個人情報を repository、fixture、log、PR body、artifact に保存する。
+- provider account id、provider resource id、IP address、hostname、FQDN、credential file path、secret 値、secret hash、token prefix / suffix を証跡化する。
+- VPS 作成、VPS 削除、plan 変更、disk rebuild、volume 操作、firewall lockout、SSH lockout を Phase 18 の成功操作として扱う。
+- `xserver-vps-future` を Phase 18 の必須検証未完了 item として扱う。
+- 24 時間監視がないことだけを理由に Phase 18 を未完了扱いにする。
+- スクリーンショット、口頭報告、手作業メモ、provider 画面確認だけを完了証跡にする。
+- 仕様全般策定なしの hotfix、実装者判断だけの修正、または fixture counter だけの完了報告を成功扱いにする。
+
+Phase 18 の fixture 証跡、closure counter、required check、required check workflow、checker 実行入口、negative boundary、document drift record は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 試験本番VPS 実運用接続・運用証跡](fixture.md#phase-18-trial-production-operation-evidence) を正本とする。本番検証詳細本文責務では、Phase 18 closure counter の key、完了値、record schema、required check 名を再掲しない。
