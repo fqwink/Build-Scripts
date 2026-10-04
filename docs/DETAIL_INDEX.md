@@ -36,7 +36,7 @@
 <a id="owner-detail-verification-route"></a>
 **owner 詳細本文 検証接続共通入口：**
 
-owner component 別詳細本文が検証接続を示す場合の参照入口である。検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、owner から fixture への入口は [詳細仕様参照表](#0b-詳細仕様参照表)、横断テスト証跡は [横断テスト証跡共通入口](#cross-test-evidence-route)、Phase 11 横断入口は [Phase 11 バグ修正ゼロ化参照](#phase-11-quality-gate-entry)、Phase 12 横断入口は [Phase 12 実装品質ゲート再構築参照](#phase-12-quality-gate-entry)、Phase 13 横断入口は [Phase 13 実装整合・品質改善参照](#phase-13-implementation-alignment-quality-entry)、Phase 14 入口は [Phase 14 Obsidian Vault 連携参照](#phase-14-obsidian-vault-integration-entry)、Phase 15 入口は [Phase 15 Obsidian local vault 同期参照](#phase-15-obsidian-local-sync-entry)、Phase 16 入口は [Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](#phase-16-quality-evidence-closure-entry)、Phase 17 入口は [Phase 17 ConoHa VPS 試験本番運用参照](#phase-17-production-validation-entry)、仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) を参照する。
+owner component 別詳細本文が検証接続を示す場合の参照入口である。検証方針と完了可否は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test)、owner から fixture への入口は [詳細仕様参照表](#0b-詳細仕様参照表)、横断テスト証跡は [横断テスト証跡共通入口](#cross-test-evidence-route)、Phase 11 横断入口は [Phase 11 バグ修正ゼロ化参照](#phase-11-quality-gate-entry)、Phase 12 横断入口は [Phase 12 実装品質ゲート再構築参照](#phase-12-quality-gate-entry)、Phase 13 横断入口は [Phase 13 実装整合・品質改善参照](#phase-13-implementation-alignment-quality-entry)、Phase 14 入口は [Phase 14 Obsidian Vault 連携参照](#phase-14-obsidian-vault-integration-entry)、Phase 15 入口は [Phase 15 Obsidian local vault 同期参照](#phase-15-obsidian-local-sync-entry)、Phase 16 入口は [Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](#phase-16-quality-evidence-closure-entry)、Phase 17 入口は [Phase 17 ConoHa VPS 試験本番運用参照](#phase-17-production-validation-entry)、Phase 18 入口は [Phase 18 試験本番VPS 実運用接続・運用証跡参照](#phase-18-trial-production-operation-entry)、仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](SPEC.md#spec-deficiency-batch-closure-contract) を参照する。
 
 <a id="cross-test-evidence-route"></a>
 **横断テスト証跡共通入口：**
@@ -395,6 +395,39 @@ Phase 17 は owner component を追加しない。ConoHa VPS 試験本番運用�
 | 実在 path / 未作成 path | [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 17 target path 所在](DOCUMENT_INDEX.md#phase-17-target-paths) | 所在確認だけを行う。 |
 
 Phase 17 実装 PR は、required check 名、完了条件、required check workflow 契約、checker 実行入口、document drift record を [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) から参照し、同一 PR 本文へ記録する。
+
+<a id="phase-18-trial-production-operation-entry"></a>
+**Phase 18 試験本番VPS 実運用接続・運用証跡参照：**
+
+Phase 18 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、試験本番VPS 実運用接続・運用証跡の本文は [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 試験本番VPS 実運用接続・運用証跡契約](details/production-validation.md#phase-18-trial-production-operation-contract)、fixture と required check は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 試験本番VPS 実運用接続・運用証跡](details/fixture.md#phase-18-trial-production-operation-evidence)、実在 path は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 18 target path 所在](DOCUMENT_INDEX.md#phase-18-target-paths) を参照する。
+
+Phase 18 は owner component を追加しない。試験本番VPS の実運用接続、Phase 17 からの引継ぎ、運用 session、service health、runtime flow、update / rollback drill、運用中 issue、仕様先行バグ修正、再検証、secret / destructive operation 境界、document drift の本文は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務だけに置く。fixture path、input / expected / record schema、closure counter、required check、required check workflow、checker 実行入口、checker implementation artifact、negative boundary、document drift record の本文は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 試験本番VPS 実運用接続・運用証跡](details/fixture.md#phase-18-trial-production-operation-evidence) と [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 18 target path 所在](DOCUMENT_INDEX.md#phase-18-target-paths) だけに置く。API、Admin、SDK、UI、runner、statefile、setup、release、security、archive、commitstatus、mcp の処理仕様は各 owner component 別詳細本文を参照し、Phase 18 本文では再定義しない。
+
+| 判断対象 | 正本参照 | DETAIL_INDEX での扱い |
+|----------|----------|-----------------------|
+| 実運用接続 / Phase 17 引継ぎ / 運用 session / service health / runtime flow / update / rollback drill / issue / bugfix loop / secret 境界 / destructive operation 境界 / document drift 境界 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 試験本番VPS 実運用接続・運用証跡契約](details/production-validation.md#phase-18-trial-production-operation-contract) | 固定値、順序、禁止境界を再掲しない。 |
+| fixture path / input schema / expected schema / record schema / closure counter / required check / workflow / checker / negative boundary / document drift record | [`docs/details/fixture.md` fixture 証跡責務 Phase 18 試験本番VPS 実運用接続・運用証跡](details/fixture.md#phase-18-trial-production-operation-evidence) | schema、check 名、完了条件を再掲しない。 |
+| 実在 path / 未作成 path / checker implementation artifact | [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 18 target path 所在](DOCUMENT_INDEX.md#phase-18-target-paths) | 所在確認だけを行う。 |
+
+Phase 18 実装 PR は、required check 名、完了条件、required check workflow 契約、checker 実行入口、checker implementation artifact、document drift record を [`docs/details/fixture.md` fixture 証跡責務 Phase 18 試験本番VPS 実運用接続・運用証跡](details/fixture.md#phase-18-trial-production-operation-evidence) と [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 18 target path 所在](DOCUMENT_INDEX.md#phase-18-target-paths) から参照し、同一 PR 本文へ記録する。
+
+<a id="phase-19-inhouse-cicd-entry"></a>
+**Phase 19 内製 CI/CD 強化参照：**
+
+Phase 19 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、GitHub Actions 使用方針と内製 CI/CD の境界は [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3) を参照する。
+
+Phase 19 は、GitHub Actions required check、Adlaire CI 内製 CI 実行、Adlaire CI 内製 CD、deploy、rollback、release verification、required check 証跡を同一 Phase として扱う。Phase 19 を CI 強化 Phase と CD Phase に分割してはならない。
+
+Phase 19 は Phase 18 完了前に仕様全般策定を進めてよい。ただし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示されるまで、実装着手、実装 PR、完了判定を行ってはならない。Phase 19 の詳細本文、fixture、required workflow、target path は未確定であり、実装可能な詳細仕様入口として扱ってはならない。
+
+<a id="phase-20-inhouse-iac-entry"></a>
+**Phase 20 内製 IaC 参照：**
+
+Phase 20 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、外部依存の禁止条件は [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#policy-dependencies)、GitHub Actions 使用方針と後続 Phase 境界は [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3) を参照する。
+
+Phase 20 は、Terraform 的な infrastructure manifest、plan、apply、rollback、drift detection、provider operation boundary を内製 IaC として扱う後続 Phase である。Terraform、外部 IaC tool、外部 provider SDK を production 実装依存として採用する前提で仕様化してはならない。
+
+Phase 20 は Phase 18 完了前に仕様全般策定を進めてよい。ただし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示されるまで、実装着手、実装 PR、完了判定を行ってはならない。Phase 20 の owner component、詳細本文、fixture、required workflow、target path は未確定であり、実装可能な詳細仕様入口として扱ってはならない。
 
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**
