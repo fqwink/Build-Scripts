@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "scope": "phase-18-trial-production-operation",
+  "issue_flow": [
+    "issue-detect",
+    "spec-general-update",
+    "implementation-fix",
+    "redeploy",
+    "revalidate",
+    "evidence-record",
+    "known-bug-zero-check"
+  ],
+  "triage_results": [
+    "fix_required",
+    "environment_only",
+    "not_required",
+    "no_issue_detected"
+  ],
+  "fix_modes": [
+    "spec-first-fix",
+    "environment-only-revalidate",
+    "not-required-revalidate"
+  ],
+  "required_refs": [
+    "issue_ref",
+    "spec_general_update_ref",
+    "responsibility_source_ref",
+    "implementation_fix_ref",
+    "revalidation_ref",
+    "evidence_ref"
+  ],
+  "terminal_known_bug_status": "none",
+  "disallowed_fix_modes": [
+    "hotfix-without-spec",
+    "implementation-only-fix",
+    "counter-only-closure"
+  ]
+}

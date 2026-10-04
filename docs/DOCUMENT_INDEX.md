@@ -47,8 +47,8 @@
 | Phase 17 required check workflow | `.github/workflows/phase17-production-validation.yml` |
 | Phase 18 試験本番VPS 実運用接続・運用証跡の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 試験本番VPS 実運用接続・運用証跡参照](DETAIL_INDEX.md#phase-18-trial-production-operation-entry) |
 | Phase 18 試験本番VPS 実運用接続・運用証跡詳細本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 試験本番VPS 実運用接続・運用証跡契約](details/production-validation.md#phase-18-trial-production-operation-contract) |
-| Phase 18 正式 fixture root | `testdata/phase18/trial-production-operation/` |
-| Phase 18 required check workflow | `.github/workflows/phase18-trial-production-operation.yml` |
+| Phase 18 正式 fixture root | [`testdata/phase18/trial-production-operation/`](../testdata/phase18/trial-production-operation/) |
+| Phase 18 required check workflow | [`.github/workflows/phase18-trial-production-operation.yml`](../.github/workflows/phase18-trial-production-operation.yml) |
 | Phase 18 checker implementation artifact 配置先 | [`main_test.go`](../main_test.go) |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
@@ -257,8 +257,8 @@
 | [`.github/workflows/phase16-quality-evidence-closure.yml`](../.github/workflows/phase16-quality-evidence-closure.yml) | Phase 16 required check workflow | 実在 |
 | `testdata/phase17/production-validation/` | Phase 17 trial production operation fixture root | 実在 |
 | `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 実在 |
-| `testdata/phase18/trial-production-operation/` | Phase 18 正式 fixture root | 未作成 |
-| `.github/workflows/phase18-trial-production-operation.yml` | Phase 18 required check workflow | 未作成 |
+| [`testdata/phase18/trial-production-operation/`](../testdata/phase18/trial-production-operation/) | Phase 18 正式 fixture root | 実在 |
+| [`.github/workflows/phase18-trial-production-operation.yml`](../.github/workflows/phase18-trial-production-operation.yml) | Phase 18 required check workflow | 実在 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
 
@@ -437,22 +437,22 @@
 | path | 役割 | 所在 |
 |------|------|------|
 | [`docs/details/production-validation.md`](details/production-validation.md) | Phase 18 試験本番VPS 実運用接続・運用証跡詳細本文 | 実在 |
-| `testdata/phase18/trial-production-operation/` | Phase 18 正式 fixture root | 未作成 |
-| `testdata/phase18/trial-production-operation/manifest.json` | Phase 18 evidence package manifest | 未作成 |
-| `testdata/phase18/trial-production-operation/input/environment_handover.json` | Phase 17 引継ぎ状態 / 試験本番VPS 前提入力 | 未作成 |
-| `testdata/phase18/trial-production-operation/input/session_plan.json` | 運用 session / 3 sample / work unit 順序 / 停止条件入力 | 未作成 |
-| `testdata/phase18/trial-production-operation/input/operation_scope.json` | provider target / validation mode / 禁止 provider operation 入力 | 未作成 |
-| `testdata/phase18/trial-production-operation/input/security_boundary.json` | secret 非保存 / opaque metadata / destructive operation 境界入力 | 未作成 |
-| `testdata/phase18/trial-production-operation/expected/counters.json` | Phase 18 closure counter 期待値 | 未作成 |
-| `testdata/phase18/trial-production-operation/expected/session_flow.json` | Phase 18 work unit 順序 / session sample 期待値 | 未作成 |
-| `testdata/phase18/trial-production-operation/expected/bugfix_closure.json` | 仕様先行バグ修正 / 再検証 / known bug 0 期待値 | 未作成 |
-| `testdata/phase18/trial-production-operation/expected/negative_boundaries.json` | Phase 18 negative boundary case 期待値 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/session.jsonl` | 運用 session / 開始 / runtime / 終了 sample 証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/health.jsonl` | service / API / Admin / SDK / UI / systemd / log write health 証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/runtime.jsonl` | runner / build / statefile / audit / commit status / deploy simulation 証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/update_rollback.jsonl` | update / rollback / service restart / state migration / failure cleanup 証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/bugfix.jsonl` | 運用中 issue / 仕様全般策定 / 実装修正 / 再検証 / known bug 0 証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/security.jsonl` | secret 境界 / opaque metadata / 禁止 provider operation / destructive operation 境界証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/document_drift.jsonl` | Phase 18 状態 / path / anchor / fixture root / workflow / required check / checker artifact / closure counter drift 証跡 | 未作成 |
-| `.github/workflows/phase18-trial-production-operation.yml` | Phase 18 required check workflow | 未作成 |
+| [`testdata/phase18/trial-production-operation/`](../testdata/phase18/trial-production-operation/) | Phase 18 正式 fixture root | 実在 |
+| [`testdata/phase18/trial-production-operation/manifest.json`](../testdata/phase18/trial-production-operation/manifest.json) | Phase 18 evidence package manifest | 実在 |
+| [`testdata/phase18/trial-production-operation/input/environment_handover.json`](../testdata/phase18/trial-production-operation/input/environment_handover.json) | Phase 17 引継ぎ状態 / 試験本番VPS 前提入力 | 実在 |
+| [`testdata/phase18/trial-production-operation/input/session_plan.json`](../testdata/phase18/trial-production-operation/input/session_plan.json) | 運用 session / 3 sample / work unit 順序 / 停止条件入力 | 実在 |
+| [`testdata/phase18/trial-production-operation/input/operation_scope.json`](../testdata/phase18/trial-production-operation/input/operation_scope.json) | provider target / validation mode / 禁止 provider operation 入力 | 実在 |
+| [`testdata/phase18/trial-production-operation/input/security_boundary.json`](../testdata/phase18/trial-production-operation/input/security_boundary.json) | secret 非保存 / opaque metadata / destructive operation 境界入力 | 実在 |
+| [`testdata/phase18/trial-production-operation/expected/counters.json`](../testdata/phase18/trial-production-operation/expected/counters.json) | Phase 18 closure counter 期待値 | 実在 |
+| [`testdata/phase18/trial-production-operation/expected/session_flow.json`](../testdata/phase18/trial-production-operation/expected/session_flow.json) | Phase 18 work unit 順序 / session sample 期待値 | 実在 |
+| [`testdata/phase18/trial-production-operation/expected/bugfix_closure.json`](../testdata/phase18/trial-production-operation/expected/bugfix_closure.json) | 仕様先行バグ修正 / 再検証 / known bug 0 期待値 | 実在 |
+| [`testdata/phase18/trial-production-operation/expected/negative_boundaries.json`](../testdata/phase18/trial-production-operation/expected/negative_boundaries.json) | Phase 18 negative boundary case 期待値 | 実在 |
+| [`testdata/phase18/trial-production-operation/records/session.jsonl`](../testdata/phase18/trial-production-operation/records/session.jsonl) | 運用 session / 開始 / runtime / 終了 sample 証跡 | 実在 |
+| [`testdata/phase18/trial-production-operation/records/health.jsonl`](../testdata/phase18/trial-production-operation/records/health.jsonl) | service / API / Admin / SDK / UI / systemd / log write health 証跡 | 実在 |
+| [`testdata/phase18/trial-production-operation/records/runtime.jsonl`](../testdata/phase18/trial-production-operation/records/runtime.jsonl) | runner / build / statefile / audit / commit status / deploy simulation 証跡 | 実在 |
+| [`testdata/phase18/trial-production-operation/records/update_rollback.jsonl`](../testdata/phase18/trial-production-operation/records/update_rollback.jsonl) | update / rollback / service restart / state migration / failure cleanup 証跡 | 実在 |
+| [`testdata/phase18/trial-production-operation/records/bugfix.jsonl`](../testdata/phase18/trial-production-operation/records/bugfix.jsonl) | 運用中 issue / 仕様全般策定 / 実装修正 / 再検証 / known bug 0 証跡 | 実在 |
+| [`testdata/phase18/trial-production-operation/records/security.jsonl`](../testdata/phase18/trial-production-operation/records/security.jsonl) | secret 境界 / opaque metadata / 禁止 provider operation / destructive operation 境界証跡 | 実在 |
+| [`testdata/phase18/trial-production-operation/records/document_drift.jsonl`](../testdata/phase18/trial-production-operation/records/document_drift.jsonl) | Phase 18 状態 / path / anchor / fixture root / workflow / required check / checker artifact / closure counter drift 証跡 | 実在 |
+| [`.github/workflows/phase18-trial-production-operation.yml`](../.github/workflows/phase18-trial-production-operation.yml) | Phase 18 required check workflow | 実在 |
 | [`main_test.go`](../main_test.go) | Phase 18 checker implementation artifact 配置先 | 実在 |

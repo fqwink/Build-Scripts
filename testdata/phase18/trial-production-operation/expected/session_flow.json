@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "scope": "phase-18-trial-production-operation",
+  "session_kind": "manual-approved-operation-session",
+  "operation_samples": [
+    "open",
+    "runtime",
+    "close"
+  ],
+  "sample_observations": [
+    "service_state",
+    "api_health",
+    "admin_cli_health",
+    "runner_state",
+    "statefile_digest",
+    "audit_log_write",
+    "access_log_write",
+    "config_log_write",
+    "secret_leakage_boundary",
+    "known_bug_status",
+    "document_drift_status"
+  ],
+  "work_units": [
+    "phase17-handover",
+    "operation-session-open",
+    "release-and-service-health",
+    "admin-and-api-runtime",
+    "runner-real-operation",
+    "update-rollback-drill",
+    "issue-triage",
+    "spec-first-fix",
+    "redeploy-and-revalidate",
+    "operation-session-close"
+  ],
+  "no_op_policy": "explicit-not-required-record-required",
+  "closure_policy": "single-session-id-required"
+}

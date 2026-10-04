@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "name": "phase-18-trial-production-operation",
+  "scope": "phase-18-trial-production-operation",
+  "provider_targets": [
+    "conoha-vps-primary",
+    "xserver-vps-future"
+  ],
+  "validation_modes": [
+    "trial-production-operation",
+    "future_plan"
+  ],
+  "required_checks": [
+    "phase18-environment-handover",
+    "phase18-operation-session",
+    "phase18-service-health",
+    "phase18-runtime-flow",
+    "phase18-runner-operation",
+    "phase18-update-rollback",
+    "phase18-bugfix-spec-first",
+    "phase18-security-boundary",
+    "phase18-document-drift"
+  ],
+  "fixture_root": "testdata/phase18/trial-production-operation/"
+}

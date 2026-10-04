@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "scope": "phase-18-trial-production-operation",
+  "counters": {
+    "phase18_environment_handover_open_count": 0,
+    "phase18_operation_session_open_count": 0,
+    "phase18_runtime_health_open_count": 0,
+    "phase18_runner_operation_open_count": 0,
+    "phase18_update_rollback_open_count": 0,
+    "phase18_bugfix_spec_gap_count": 0,
+    "phase18_known_bug_open_count": 0,
+    "phase18_secret_leak_open_count": 0,
+    "phase18_destructive_operation_open_count": 0,
+    "phase18_document_drift_open_count": 0,
+    "final_open_item_count": 0
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "scope": "phase-18-trial-production-operation",
+  "provider_target": "conoha-vps-primary",
+  "validation_mode": "trial-production-operation",
+  "secret_reference_policy": "metadata-only",
+  "metadata_policy": "opaque-non-secret-labels",
+  "secret_classes": [
+    "provider-token",
+    "admin-token",
+    "ssh-private-key",
+    "ip-specific-secret",
+    "host-specific-secret"
+  ],
+  "forbidden_evidence_values": [
+    "provider-account-id",
+    "provider-resource-id",
+    "ip-address",
+    "hostname",
+    "fqdn",
+    "credential-file-path",
+    "secret-value",
+    "secret-hash",
+    "token-prefix-suffix"
+  ],
+  "destructive_operation_boundaries": [
+    "vps-create",
+    "vps-delete",
+    "plan-change",
+    "disk-rebuild",
+    "volume-create",
+    "volume-delete",
+    "volume-attach",
+    "volume-detach",
+    "firewall-lockout",
+    "ssh-lockout"
+  ],
+  "mask_required": true
+}

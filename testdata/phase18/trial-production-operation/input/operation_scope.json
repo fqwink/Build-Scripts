@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scope": "phase-18-trial-production-operation",
+  "provider_target": "conoha-vps-primary",
+  "validation_mode": "trial-production-operation",
+  "operation_targets": [
+    "release-and-service-health",
+    "admin-and-api-runtime",
+    "runner-real-operation",
+    "update-rollback-drill",
+    "issue-triage",
+    "spec-first-fix",
+    "redeploy-and-revalidate"
+  ],
+  "forbidden_provider_operations": [
+    "vps-create",
+    "vps-delete",
+    "plan-change",
+    "disk-rebuild",
+    "volume-create",
+    "volume-delete",
+    "volume-attach",
+    "volume-detach",
+    "firewall-lockout",
+    "ssh-lockout"
+  ],
+  "xserver_future_policy": "future_plan_not_blocker"
+}
