@@ -5005,13 +5005,12 @@ func phase18RequireDocumentState(t *testing.T) {
 		t.Fatalf("docs/ROADMAP.md must not mark Phase 18 implemented or unimplemented while real VPS Pull Bootstrap remains incomplete")
 	}
 	for _, token := range []string{
-		"Phase 18 を `実装済み` へ遷移する条件は、本 ROADMAP で再定義せず、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate)",
 		"Phase 11 から Phase 17 の完了証跡条件、closure counter、record schema、required check は ROADMAP 本文で再掲せず",
-		"`live VPS completion summary` を同一 PR 本文へ secret-safe に記録",
-		"repository 内 fixture、GitHub Actions success、Docker success、または closure counter 完了値だけを、Phase 18 の状態遷移根拠として扱わない",
+		"Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない",
+		"状態遷移判断は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate)",
 	} {
 		if !strings.Contains(roadmap, token) {
-			t.Fatalf("docs/ROADMAP.md must connect Phase 18 state transition to live VPS completion summary token %q", token)
+			t.Fatalf("docs/ROADMAP.md must keep Phase 18 state transition as canonical-reference-only text: %q", token)
 		}
 	}
 	for _, forbidden := range []string{
@@ -5023,6 +5022,10 @@ func phase18RequireDocumentState(t *testing.T) {
 		"Phase 16 は [`docs/details/fixture.md` fixture 証跡責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡](details/fixture.md#phase-16-quality-evidence-closure-evidence) に記録された全 closure counter の完了値を満たす",
 		"Phase 17 は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) に記録された全 closure counter の完了値を満たす",
 		"Phase 18 は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) に記録された全 closure counter の完了値",
+		"Phase 18 を `実装済み` へ遷移する条件は、本 ROADMAP で再定義せず",
+		"Phase 18 を `実装済み` へ遷移する場合は、[`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) の checker acceptance fixture 完了に加え",
+		"`live VPS completion summary` を同一 PR 本文へ secret-safe に記録しなければならない",
+		"repository 内 fixture、GitHub Actions success、Docker success、または closure counter 完了値だけを、Phase 18 の状態遷移根拠として扱わない",
 	} {
 		if strings.Contains(roadmap, forbidden) {
 			t.Fatalf("docs/ROADMAP.md must not replay closure counter detail owned by fixture/detail specs: %q", forbidden)
