@@ -278,6 +278,42 @@ Phase 18 の bootstrap closure package は、Phase 17 引継ぎ、開始 sample�
 
 Phase 18 の bootstrap 完了証跡は、VPS 内の実測結果から作成する。[`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) の `testdata/phase18/vps-pull-bootstrap/records/*.jsonl` が `evidence_origin=checker-acceptance-fixture` と `execution_environment=repository-fixture` を持つ場合、その record は checker acceptance fixture としてだけ扱い、Phase 18 の bootstrap 完了証跡として扱ってはならない。
 
+Phase 18 の bootstrap 完了判定で Pull Request 本文に記録する `live VPS completion summary` は下表に固定する。この summary は fixture record schema ではなく、VPS 内実測結果を Phase 18 完了判定へ接続するための secret-safe 接続項目である。下表の item が 1 件でも欠ける場合、または禁止値を含む場合、Phase 18 を `実装済み` へ遷移してはならない。
+
+| summary item | 固定値 / 条件 |
+|--------------|---------------|
+| `evidence_origin` | `live-vps-bootstrap` 固定。 |
+| `execution_environment` | `vps` 固定。 |
+| `provider_target` | `conoha-vps-primary` 固定。 |
+| `vps_label` | `試験本番VPS` 固定。 |
+| `validation_mode` | `vps-pull-bootstrap` 固定。 |
+| `bootstrap_session_id` | `phase18.session.<slug>` 形式。`slug` は lowercase ASCII dot notation とし、timestamp、乱数、provider 識別子、resource id、IP address、hostname、credential file path、secret 由来値を含めない。 |
+| `bootstrap_session_kind` | `operator-approved-bootstrap-session` 固定。 |
+| `topology_role` | `ci-cd`、`site`、`single-node` のいずれか。 |
+| `source_channel` | Phase 18 完了判定では `integration-head` 固定。`stable-release` は Phase 19 以降の本番運用 channel として扱い、Phase 18 完了判定の代替にしない。 |
+| `bootstrap_script_artifact` | `adlaire-ci-vps-pull-bootstrap.sh` 固定。 |
+| `bootstrap_runtime` | `/bin/sh` 固定。 |
+| `source_identifier_kind` | `absolute-https-url` または `absolute-file-path`。raw 取得元値は public non-secret で host 固有情報を含まない場合だけ記録できる。 |
+| `source_digest_sha256` | 取得対象 byte 列の SHA-256 lowercase hex 64 桁。 |
+| `install_dir` | `/opt/adlaire-builder` 固定。 |
+| `bin_dir` | `/usr/local/bin` 固定。 |
+| `state_dir` | `/opt/adlaire-builder` 固定。 |
+| `service_user` | `root` 固定。 |
+| `operation_samples` | `open`、`runtime`、`close` の 3 sample が同一 session id へ接続済み。 |
+| `work_unit_result` | 本節の Phase 18 work unit が順序固定で全件完了済み。 |
+| `fixture_gate_result` | [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) の checker acceptance fixture が成功済み。ただし `checker-acceptance-fixture` を `live-vps-bootstrap` の代替にしない。 |
+| `closure_counter_result` | [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) の closure counter が完了値に一致済み。counter key と完了値は fixture 証跡責務を正本とする。 |
+| `required_check_result` | [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) の required check が全件成功済み。required check 名と完了条件は fixture 証跡責務を正本とする。 |
+| `bugfix_loop_result` | `no_issue_detected`、または `spec-first-fix-completed-and-revalidated`。 |
+| `secret_boundary_result` | `passed` 固定。 |
+| `destructive_operation_result` | `blocked_zero` 固定。 |
+| `known_bug_status` | `none` 固定。 |
+| `document_drift_status` | `no_drift` 固定。 |
+| `cleanup_result` | `passed` 固定。 |
+| `final_open_item_result` | `0` 固定。 |
+
+`live VPS completion summary` には、provider account id、provider resource id、IP address、hostname、FQDN、credential file path、secret 値、secret hash、token prefix / suffix、private key、個人情報、raw stdout、raw stderr、provider 画面 screenshot、口頭報告、手作業メモを含めてはならない。secret-safe summary を作成できない実測結果は Phase 18 の完了根拠として使用せず、停止条件または issue triage へ接続する。
+
 Phase 18 の bootstrap 中バグ修正 loop は `issue-detect`、`spec-general-update`、`implementation-fix`、`redeploy`、`revalidate`、`evidence-record`、`known-bug-zero-check` の順序に固定する。`spec-general-update` を通過しない `implementation-fix` を禁止する。
 
 Phase 18 の停止条件は `secret-boundary-failure`、`destructive-operation-boundary-failure`、`state-corruption`、`service-unrecoverable`、`known-critical-bug`、`document-drift-blocker` に固定する。停止条件が発火した場合は、bootstrap session を成功扱いせず、停止理由、直前 sample、責務正本、修正条件、再検証条件、復旧可否を証跡化する。

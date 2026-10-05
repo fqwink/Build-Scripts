@@ -4959,6 +4959,7 @@ func phase18RequireDocumentState(t *testing.T) {
 
 	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
+	productionValidation := phase11MustReadText(t, "docs/details/production-validation.md")
 	phase18Row := "| Phase 18 | VPS Pull Bootstrap。"
 	phase18InProgressStatus := "| 実装中・bootstrap 検証未完了 | Phase 17 |"
 	phase18ImplementedStatus := "| 実装済み | Phase 17 |"
@@ -4986,6 +4987,28 @@ func phase18RequireDocumentState(t *testing.T) {
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | 試験本番運用 | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | 本番検証 | "+feature+" |") {
 			t.Fatalf("docs/ROADMAP.md must not mark Phase 18 feature implemented or unimplemented while real bootstrap remains incomplete: %s", feature)
+		}
+	}
+	for _, token := range []string{
+		"`live VPS completion summary`",
+		"`evidence_origin` | `live-vps-bootstrap`",
+		"`execution_environment` | `vps`",
+		"`provider_target` | `conoha-vps-primary`",
+		"`vps_label` | `試験本番VPS`",
+		"`validation_mode` | `vps-pull-bootstrap`",
+		"`bootstrap_session_id` | `phase18.session.<slug>`",
+		"`source_channel` | Phase 18 完了判定では `integration-head` 固定",
+		"`fixture_gate_result`",
+		"`checker-acceptance-fixture` を `live-vps-bootstrap` の代替にしない",
+		"`closure_counter_result`",
+		"`required_check_result`",
+		"`final_open_item_result` | `0` 固定",
+		"raw stdout",
+		"raw stderr",
+		"secret-safe summary を作成できない実測結果",
+	} {
+		if !strings.Contains(productionValidation, token) {
+			t.Fatalf("docs/details/production-validation.md must define Phase 18 live VPS completion summary token %q", token)
 		}
 	}
 	expectedPaths := []string{"testdata/phase18/vps-pull-bootstrap/"}
