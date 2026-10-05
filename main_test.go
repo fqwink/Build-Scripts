@@ -5162,22 +5162,6 @@ func phase18RequireRecordReferences(t *testing.T, rel string, line int, record p
 	}
 }
 
-func phase18RequireMarkdownOrFixtureLocalReferenceForm(t *testing.T, label string, value string) {
-	t.Helper()
-
-	if value == "not_applicable" || value == "not_required_for_non_open_sample" {
-		return
-	}
-	if phase18IsMarkdownReference(value) {
-		return
-	}
-	target := strings.SplitN(phase18ReferenceTarget(value), "#", 2)[0]
-	if phase18LooksFixtureLocalReference(target) {
-		return
-	}
-	t.Fatalf("%s must use a responsibility-named Markdown link or Phase 18 fixture-local path: %s", label, value)
-}
-
 func phase18RequireMarkdownReferenceForm(t *testing.T, label string, value string) {
 	t.Helper()
 
