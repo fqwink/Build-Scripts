@@ -5184,11 +5184,12 @@ func phase18RequireResolvableReference(t *testing.T, label string, value string)
 	if value == "not_applicable" || value == "not_required_for_non_open_sample" {
 		return
 	}
-	target := phase18ReferenceTarget(value)
-	if target == "" {
+	rawTarget := phase18ReferenceTarget(value)
+	if rawTarget == "" {
 		t.Fatalf("%s must include a non-empty reference target: %s", label, value)
 	}
-	target = strings.SplitN(target, "#", 2)[0]
+	targetParts := strings.SplitN(rawTarget, "#", 2)
+	target := targetParts[0]
 	if target == "" {
 		t.Fatalf("%s must not use an anchor-only reference: %s", label, value)
 	}
@@ -5196,12 +5197,38 @@ func phase18RequireResolvableReference(t *testing.T, label string, value string)
 	if phase18LooksFixtureLocalReference(target) {
 		candidates = append(candidates, filepath.Join("testdata/phase18/vps-pull-bootstrap", target))
 	}
+	resolved := ""
 	for _, candidate := range candidates {
 		if _, err := os.Lstat(candidate); err == nil {
-			return
+			resolved = candidate
+			break
 		}
 	}
-	t.Fatalf("%s must resolve to an existing repository or Phase 18 fixture path: %s", label, value)
+	if resolved == "" {
+		t.Fatalf("%s must resolve to an existing repository or Phase 18 fixture path: %s", label, value)
+	}
+	if len(targetParts) == 2 {
+		phase18RequireExplicitAnchor(t, label, value, resolved, targetParts[1])
+	}
+}
+
+func phase18RequireExplicitAnchor(t *testing.T, label string, value string, resolved string, anchor string) {
+	t.Helper()
+
+	if strings.TrimSpace(anchor) == "" {
+		t.Fatalf("%s must not use an empty anchor reference: %s", label, value)
+	}
+	data, err := os.ReadFile(resolved)
+	if err != nil {
+		t.Fatalf("%s must read anchor target %s: %v", label, resolved, err)
+	}
+	body := string(data)
+	doubleQuotedID := `id="` + anchor + `"`
+	singleQuotedID := `id='` + anchor + `'`
+	if strings.Contains(body, doubleQuotedID) || strings.Contains(body, singleQuotedID) {
+		return
+	}
+	t.Fatalf("%s must resolve to an explicit anchor id %q in %s: %s", label, anchor, resolved, value)
 }
 
 func phase18ReferenceTarget(value string) string {
