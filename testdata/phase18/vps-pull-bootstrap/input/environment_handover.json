@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "phase-18-vps-pull-bootstrap",
-  "phase17_ref": "[docs/details/fixture.md fixture証跡責務 Phase17](docs/details/fixture.md#phase-17-production-validation-evidence)",
+  "phase17_ref": "[docs/details/fixture.md fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](docs/details/fixture.md#phase-17-production-validation-evidence)",
   "provider_target": "conoha-vps-primary",
   "os": "ubuntu-server-24.04-lts-64bit",
   "minimum_plan_class": "conoha-vps-1gb-memory-class",

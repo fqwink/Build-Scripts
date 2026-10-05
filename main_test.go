@@ -3945,6 +3945,7 @@ var phase18ReferenceLabels = map[string]string{
 	".github/workflows/phase18-vps-pull-bootstrap.yml": "Phase 18 required check workflow",
 	"main_test.go":                                     "Phase 18 checker implementation artifact",
 	"docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract": "本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約",
+	"docs/details/fixture.md#phase-17-production-validation-evidence":            "fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡",
 	"docs/details/fixture.md#phase-18-negative-boundary-contract":                "fixture 証跡責務 Phase 18 negative boundary 固定契約",
 	"docs/details/release.md#release-responsibility-boundary":                    "Release 詳細本文責務 責務境界",
 	"docs/details/setup.md#0-責務境界":                                               "Setup 詳細本文責務 責務境界",
@@ -4410,6 +4411,9 @@ func phase18RequireInputsAndExpected(t *testing.T, root string) phase18InputSet 
 		t.Fatalf("Phase 18 environment handover fixed values mismatch: %+v", inputs.Handover)
 	}
 	phase18RequireSafeReference(t, "input/environment_handover.json phase17_ref", inputs.Handover.Phase17Ref)
+	phase18RequireMarkdownReferenceForm(t, "input/environment_handover.json phase17_ref", inputs.Handover.Phase17Ref)
+	phase18RequireResolvableReference(t, "input/environment_handover.json phase17_ref", inputs.Handover.Phase17Ref)
+	phase18RequireCanonicalReferenceLabel(t, "input/environment_handover.json phase17_ref", inputs.Handover.Phase17Ref)
 	if inputs.Handover.HandoverResults.Phase17Status != "implemented" || inputs.Handover.HandoverResults.Phase17OpenItems != 0 || inputs.Handover.HandoverResults.BootstrapPrerequisite != "passed" || inputs.Handover.HandoverResults.Result != "passed" {
 		t.Fatalf("Phase 18 handover must close Phase 17 prerequisites: %+v", inputs.Handover.HandoverResults)
 	}
@@ -5148,6 +5152,7 @@ func phase18RequireRecordReferences(t *testing.T, rel string, line int, record p
 		phase18RequireSafeReference(t, label, value)
 		phase18RequireMarkdownReferenceForm(t, label, value)
 		phase18RequireResolvableReference(t, label, value)
+		phase18RequireCanonicalReferenceLabel(t, label, value)
 	}
 }
 
@@ -5209,6 +5214,22 @@ func phase18RequireResolvableReference(t *testing.T, label string, value string)
 	}
 	if len(targetParts) == 2 {
 		phase18RequireExplicitAnchor(t, label, value, resolved, targetParts[1])
+	}
+}
+
+func phase18RequireCanonicalReferenceLabel(t *testing.T, label string, value string) {
+	t.Helper()
+
+	if value == "not_applicable" || value == "not_required_for_non_open_sample" {
+		return
+	}
+	target := phase18ReferenceTarget(value)
+	if _, ok := phase18ReferenceLabels[target]; !ok {
+		return
+	}
+	expected := phase18MarkdownRef(target)
+	if value != expected {
+		t.Fatalf("%s must use canonical responsibility reference label: want %s got %s", label, expected, value)
 	}
 }
 

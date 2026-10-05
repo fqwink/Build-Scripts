@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "77d7c40a4a84beafe1f64f6e8bfc162441342fc260d8be7dbd933f255c0ea79a",
+  "source_group_sha256": "aeaa42cd8dd4e1e2e4abd6fc5579ea76c8c3a73e2bafd41138a5207d5db30e66",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "ccb4702d7e2ba1d9085ae41b6afa6a315fec0df49e37b74bad100a7a73dc1017",
-      "size_bytes": 256264,
+      "sha256": "62dd0671ef32e4ea69d059a7d30b9c21763cc77d49fc3d04f07b548cd4b8519b",
+      "size_bytes": 257286,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "3287d9e59cd4f17e90d5c0878c259336b637778111418fc1f69e1b89a947fba3",
-      "size_bytes": 964260,
+      "sha256": "31f2af1638ea8acefa0b16ca1f59da650c97e442a00f89567e5aa703816801dc",
+      "size_bytes": 964713,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [
