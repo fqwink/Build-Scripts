@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "07fa57dc0a297287c42705bac42ce878cdc118d3d17cfbe7acde75695d4abaf9",
+  "source_group_sha256": "df94162ca89d6266c7032e65c5a3e78721065ae43bc5235885fa721e7f668a5e",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -45,8 +45,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "e8ff3a2550d163372d8cda05a050548d97d6a0517691a40e666c79c75d70e7a4",
-      "size_bytes": 237835,
+      "sha256": "6287d6385ff77b500b639a90879ef6d7033e47e88babbe91356620ec0bc0a6cf",
+      "size_bytes": 238589,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [{"term_id":"phase16-checker","match":"TestPhase16QualityEvidenceClosure","match_mode":"literal","count":1,"first_source_locator":"file:main_test.go#line:1"}],
