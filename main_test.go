@@ -5063,6 +5063,14 @@ func phase18RequireDocumentState(t *testing.T) {
 			t.Fatalf("docs/DOCUMENT_INDEX.md must index Phase 18 path %s", rel)
 		}
 	}
+	for _, token := range []string{
+		"docs/DETAIL_INDEX.md#phase-18-state-transition-gate",
+		"Phase 18 状態遷移 gate",
+	} {
+		if !strings.Contains(documentIndex, token) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must index Phase 18 state transition gate token %q", token)
+		}
+	}
 	phase18IndexStart := strings.Index(documentIndex, "<a id=\"phase-18-target-paths\"></a>")
 	if phase18IndexStart < 0 {
 		t.Fatalf("docs/DOCUMENT_INDEX.md must define phase-18-target-paths anchor")

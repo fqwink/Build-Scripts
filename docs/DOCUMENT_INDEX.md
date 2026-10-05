@@ -437,6 +437,7 @@
 | path | 役割 | 所在 |
 |------|------|------|
 | [`docs/details/production-validation.md`](details/production-validation.md) | Phase 18 VPS Pull Bootstrap 詳細本文 | 実在 |
+| [`docs/DETAIL_INDEX.md#phase-18-state-transition-gate`](DETAIL_INDEX.md#phase-18-state-transition-gate) | Phase 18 状態遷移 gate | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/`](../testdata/phase18/vps-pull-bootstrap/) | Phase 18 正式 fixture root | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/manifest.json`](../testdata/phase18/vps-pull-bootstrap/manifest.json) | Phase 18 evidence package manifest | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/input/environment_handover.json`](../testdata/phase18/vps-pull-bootstrap/input/environment_handover.json) | Phase 17 引継ぎ状態 / 試験本番VPS 前提入力 | 実在 |
