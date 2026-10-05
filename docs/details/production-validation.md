@@ -1,13 +1,13 @@
-# Adlaire CI — 試験本番運用詳細仕様
+# Adlaire CI — 本番検証・VPS Pull Bootstrap 詳細仕様
 
-[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、ConoHa VPS 試験本番運用、本番運用前提の本番検証、本番環境同等テスト、VPS simulation、provider target、minimum plan class、opaque environment identity、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、試験本番VPS 実運用接続、運用 session、運用証跡、fixture 証跡への接続条件だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
+[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、Phase 17 の ConoHa VPS 試験本番運用と Phase 18 の VPS Pull Bootstrap に関する、provider target、minimum plan class、opaque environment identity、credential / SSH 入力境界、Phase 17 試験本番運用窓、Phase 18 bootstrap session 停止条件、destructive operation 禁止境界、運用中バグ修正順序、bootstrap session、bootstrap 証跡、fixture 証跡への接続条件だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
 
 <a id="phase-17-responsibility-boundary"></a>
 **0. 責務境界：**
 
-本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用と Phase 18 の試験本番VPS 実運用接続・運用証跡に関する、運用対象、provider target、OS / plan 前提、minimum plan class、opaque environment identity、検証対象、検証 mode、credential / SSH 入力境界、試験本番運用窓・停止条件、禁止操作、運用中バグ修正順序、実運用接続、運用 session、fixture 証跡への接続条件を所有する。
+本番検証詳細本文責務は Phase 17 の ConoHa VPS 試験本番運用と Phase 18 の VPS Pull Bootstrap に関する、運用対象、provider target、OS / plan 前提、minimum plan class、opaque environment identity、検証対象、検証 mode、credential / SSH 入力境界、Phase 17 試験本番運用窓、Phase 18 bootstrap session 停止条件、禁止操作、運用中バグ修正順序、bootstrap session、fixture 証跡への接続条件を所有する。
 
-本番検証詳細本文責務は、owner component の通常処理、API route、SDK method、UI DOM、runner pipeline、state schema、release asset format、setup install 処理、VPS provider API 操作実装、GitHub 設定、credential 管理方式を本文として定義しない。これらは該当する owner component 別詳細本文、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、または [`AGENTS.md`](../../AGENTS.md) 作業ルールを参照する。ただし、Phase 17 と Phase 18 の検証で secret を証跡へ混入させないための入力境界、許可入力経路、禁止入力経路、証跡化禁止事項は本番検証詳細本文責務が所有する。これは Adlaire CI の credential 管理方式ではなく、試験本番運用検証の boundary contract として扱う。
+本番検証詳細本文責務は、owner component の通常処理、API route、SDK method、UI DOM、runner pipeline、state schema、release asset format、setup install 処理、VPS provider API 操作実装、GitHub 設定、credential 管理方式を本文として定義しない。これらは該当する owner component 別詳細本文、[`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、または [`AGENTS.md`](../../AGENTS.md) 作業ルールを参照する。ただし、Phase 17 と Phase 18 の検証で secret を証跡へ混入させないための入力境界、許可入力経路、禁止入力経路、証跡化禁止事項は本番検証詳細本文責務が所有する。これは Adlaire CI の credential 管理方式ではなく、本番検証の boundary contract として扱う。
 
 Phase 17 は ConoHa VPS 試験本番運用の Phase であり、正式本番運用、customer data を扱う実運用、ユーザー環境の破壊的変更、provider resource の作成・削除自動化を目的にしてはならない。
 
@@ -40,6 +40,8 @@ Phase 17 の provider target は以下に固定する。
 `xserver-vps-future` は、[`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務の将来判断行へ接続する。`xserver-vps-future` を Phase 17 の未完了 item、必須 check、failure、または blocker として扱ってはならない。
 
 Phase 17 の ConoHa VPS 試験本番運用環境は、Ubuntu Server 24.04 LTS 64bit を固定 OS とし、`minimum_plan_class=conoha-vps-1gb-memory-class` を固定最小 plan class とする。`minimum_plan_class` は、RAM が 1024 MB 以上で Ubuntu Server 24.04 LTS 64bit を選択できる ConoHa VPS の最小 memory class を表す repository 内固定 token であり、provider 画面や API の SKU 表示名を正本にしない。provider 側の plan 表示名、plan id、region、instance 名は `provider_plan_label` 等の opaque label としてだけ fixture 証跡に記録し、`minimum_plan_class` の値を変更してはならない。512MB plan、Ubuntu 26.04、Ubuntu 22.04、Debian、AlmaLinux、Rocky Linux、CentOS Stream、Oracle Linux、FreeBSD、および application template は Phase 17 の標準 OS / plan として扱わない。
+
+`Build-Scripts-vps-2026` は、`conoha-vps-primary` の非秘密 name tag として使用する。この tag は用途 label `試験本番VPS` を持つ VPS の opaque environment identity であり、Phase 17 の試験本番運用、Phase 18 の VPS Pull Bootstrap、開発検証、運用中バグ修正後の再検証、update / rollback 確認に使用できる。`Build-Scripts-vps-2026` を正式本番 VPS、customer data 用 VPS、Phase 専用 VPS、または provider resource id として扱ってはならない。
 
 ConoHa VPS 試験本番運用環境の provider plan、region、VPS instance、public endpoint は、fixture 証跡では opaque label としてだけ記録する。provider account id、provider resource id、グローバル IP address、hostname、FQDN、credential file path、secret 値、secret hash を fixture、expected、record、Pull Request body、log、stdout、stderr に保存してはならない。実 provider の識別が必要な場合は、operator が管理する repository 外の対応表で照合し、repository 内の証跡には `metadata_policy=opaque-non-secret-labels` を記録する。
 
@@ -219,57 +221,116 @@ Phase 17 は、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa V
 
 Phase 17 の実装 PR は、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](fixture.md#phase-17-production-validation-evidence) が要求する全 record を同一証跡 package に含める。
 
-<a id="phase-18-trial-production-operation-contract"></a>
+<a id="phase-18-vps-pull-bootstrap-contract"></a>
 
-**9. Phase 18 試験本番VPS 実運用接続・運用証跡契約：**
+**9. Phase 18 VPS Pull Bootstrap 契約：**
 
-Phase 18 は、Phase 17 で固定した試験本番VPS 前提を引き継ぎ、作成済みの試験本番VPSへ実運用接続し、Adlaire CI の install 済み service、API、Admin、SDK、UI、runner、update / rollback、運用中 issue、仕様先行バグ修正、再検証、document drift を同一運用 session の証跡へ接続する Phase とする。
+Phase 18 は、作成済み VPS に `VPS Pull Bootstrap` を導入し、Adlaire CI の CI 実行基盤と将来 CD 基盤の受け口を VPS 側へ入れる Phase とする。`VPS Pull Bootstrap` は shell 製 bootstrap script による初回導入方式であり、GitHub Actions、GitHub Secrets、GitHub self-hosted runner、provider 固有の startup script 機能、または provider API を Phase 18 の必須実行基盤として扱ってはならない。`.github/workflows/phase18-vps-pull-bootstrap.yml` は repository 側 checker required check の実行経路であり、VPS bootstrap 実行、secret delivery、source 取得、deploy 制御、または `live VPS completion summary` の代替ではない。
 
-Phase 18 の provider target は `conoha-vps-primary` を必須対象、`xserver-vps-future` を将来判断対象に固定する。`xserver-vps-future` は Phase 18 の未完了 item、required check、failure、または blocker として扱わない。
+Phase 18 における将来 CD 基盤の受け口とは、Phase 19 以降が `stable-release` channel、deploy、rollback、release selection、promotion を実装する際に使用する source channel、topology role、install directory、bin directory、state directory、service unit、log / state boundary を VPS 内に固定することである。Phase 18 では deploy decision、production release selection、CD pipeline execution、customer environment promotion を実装対象、完了条件、または bootstrap 成功条件として扱ってはならない。
 
-Phase 18 は VPS 作成、VPS 削除、plan 変更、disk rebuild、volume 操作、firewall lockout、SSH lockout、provider account 設定変更、GitHub 設定変更を実装対象にしない。これらが必要になった場合は Phase 18 の実装作業を停止し、該当する責務正本を先に改訂する。
+Phase 18 の provider target は `conoha-vps-primary` を先行対象、`xserver-vps-future` を将来判断対象に固定する。`xserver-vps-future` は Phase 18 の未完了 item、required check、failure、または blocker として扱わない。Phase 18 は provider 非依存の bootstrap 契約を固定する Phase であり、ConoHa 固有機能を正本条件として埋め込んではならない。
 
-Phase 18 の実行環境前提は Phase 17 と同じく、Ubuntu Server 24.04 LTS 64bit、`minimum_plan_class=conoha-vps-1gb-memory-class`、`minimum_ram_mb=1024`、`metadata_policy=opaque-non-secret-labels` に固定する。試験本番VPS の用途 label は `試験本番VPS` とし、Phase 専用 VPS、正式本番 VPS、customer data 用 VPS と表現してはならない。
+Phase 18 は VPS 作成、VPS 削除、plan 変更、disk rebuild、volume 操作、firewall lockout、SSH lockout、provider account 設定変更、GitHub 設定変更を実装対象にしない。VPS の作成と bootstrap script の初回実行は operator が実施する前提であり、Phase 18 の仕様は、その後 VPS 内で Adlaire CI 実行基盤が自律的に pull / update / rollback / evidence 記録できる状態を固定する。
 
-Phase 18 の validation mode は `trial-production-operation` 固定とする。`production-equivalent-simulation` は Phase 17 の destructive / fault class 検証 mode であり、Phase 18 の実運用接続を代替してはならない。
+Phase 18 の実行環境前提は Phase 17 と同じく、Ubuntu Server 24.04 LTS 64bit、`minimum_plan_class=conoha-vps-1gb-memory-class`、`minimum_ram_mb=1024`、`metadata_policy=opaque-non-secret-labels` に固定する。VPS の用途 label は `試験本番VPS` とする。ただし Phase 18 自体を試験本番運用 Phase と呼んではならず、Phase 18 は `VPS Pull Bootstrap` による実行基盤導入 Phase として扱う。
 
-Phase 18 の運用 session は `manual-approved-operation-session` 固定とする。Phase 18 実装完了には 1 件以上の運用 session を必須とし、24 時間継続監視は完了 blocker にしない。運用 session 内では、開始時、runtime flow 完了後、終了時の 3 sample を最小証跡として記録する。各 sample は service state、API health、Admin CLI health、runner state、statefile digest、audit / access / config log write、secret leakage boundary、known bug status、document drift status を含む。
+Phase 18 の validation mode は `vps-pull-bootstrap` 固定とする。`production-equivalent-simulation` は Phase 17 の destructive / fault class 検証 mode であり、Phase 18 の bootstrap 契約を代替してはならない。
+
+Phase 18 の bootstrap session は `operator-approved-bootstrap-session` 固定とする。Phase 18 実装完了には 1 件以上の bootstrap session を必須とし、24 時間継続監視は完了 blocker にしない。bootstrap session 内では、開始時、bootstrap runtime flow 完了後、終了時の 3 sample を最小証跡として記録する。各 sample は service state、API health、Admin CLI health、runner state、statefile digest、audit / access / config log write、secret leakage boundary、known bug status、document drift status を含む。
+
+Phase 18 の topology role は `ci-cd`、`site`、`single-node` に固定する。標準運用は Linux CI/CD server と静的サイト配信 server の 2 台構成である。最小運用は 1 台 VPS の `single-node` として、CI 実行基盤、将来 CD 基盤の受け口、静的サイト配信境界を同一 VPS 内に同居できる。`single-node` は最小構成であり、2 台構成の置換ではなく bootstrap 契約上の許可構成として扱う。
+
+Phase 18 の `topology_role=ci-cd` は VPS 内の配置 role 名であり、Phase 18 で CD 実行、deploy decision、production release selection、customer environment promotion を許可する意味を持たない。`topology_role=ci-cd` の成功証跡は、CI 実行基盤と将来 CD 基盤の受け口が導入されたことだけを示す。
+
+Phase 18 の source channel は `integration-head` と `stable-release` を区別する。Phase 18 では `integration-head` を bootstrap 検証用の取得経路、`stable-release` を将来の本番運用用取得経路として定義する。`stable-release` の正式 CD、配信 channel、release selection、rollback policy は Phase 19 以降の対象であり、Phase 18 の完了条件へ混入してはならない。
+
+Phase 18 の bootstrap script artifact は配布物名 `adlaire-ci-vps-pull-bootstrap.sh`、runtime `/bin/sh`、呼出し境界 `operator-runs-sh-script-on-vps` に固定する。bootstrap script は provider 固有の startup script 機能ではなく、operator が作成済み VPS 内で初回実行する shell artifact である。bootstrap script は Go 標準実装で生成または配布される実行基盤を VPS 内へ導入する入口に限定し、provider API、GitHub Actions、GitHub Secrets、GitHub self-hosted runner、SSH key 管理、VPS 作成、VPS 削除、plan 変更を内包してはならない。
+
+Phase 18 の bootstrap script は `/bin/sh` で構文解釈できる範囲に固定し、Bash 固有構文、外部 shell framework、外部 package manager helper、外部 library、Git clone 必須化、repository hosting provider 固有 API 必須化を禁止する。HTTP 取得が必要な場合は、VPS に既に存在する OS 標準 command の可用性を bootstrap artifact health で記録し、取得 command が存在しない場合は bootstrap session を成功扱いせず `bootstrap-script-http-client-missing` として issue triage へ接続する。取得 command を暗黙に install して成功扱いにしてはならない。
+
+Phase 18 の bootstrap script 入力は、`integration-head` または `stable-release` の source channel、`ci-cd` / `site` / `single-node` の topology role、取得元識別子、取得対象 digest、install directory、bin directory、state directory、service user に限定する。取得元識別子形式は `absolute-https-url-or-absolute-file-path`、digest algorithm は `sha256`、install directory は `/opt/adlaire-builder`、bin directory は `/usr/local/bin`、state directory は `/opt/adlaire-builder`、service user は `root` 固定とする。入力値は command argument として secret を渡してはならず、secret を必要とする取得経路は Phase 18 の完了条件に含めない。source channel、topology role、bootstrap script artifact、source identifier 形式、digest algorithm、install / bin / state directory、service user、secret 入力禁止、state model、CLI token、required command、HTTP client 選択順、stdout / stderr / exit code 契約、failure code は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) の `input/operation_scope.json` と `records/health.jsonl` に接続しなければならない。
+
+Phase 18 の bootstrap script 呼出し token は `sh`、`adlaire-ci-vps-pull-bootstrap.sh`、`--source-channel`、`integration-head|stable-release`、`--topology-role`、`ci-cd|site|single-node`、`--source`、`absolute-https-url-or-absolute-file-path`、`--sha256`、`64-lowercase-hex`、`--install-dir`、`/opt/adlaire-builder`、`--bin-dir`、`/usr/local/bin`、`--state-dir`、`/opt/adlaire-builder`、`--service-user`、`root` の順序固定 array とする。短縮 option、`--name=value` 形式、未列挙 option、位置引数追加、secret 値、secret file path、環境変数だけでの入力、対話 prompt による入力補完を禁止する。bootstrap script の required OS command は `sh`、`mktemp`、`mkdir`、`chmod`、`install`、`mv`、`rm`、`sha256sum`、`systemctl` に固定する。HTTP client 候補は `curl`、`wget` の順序固定とし、両方が存在しない場合は `bootstrap-script-http-client-missing` として失敗させる。stdout は secret-safe な single JSON object だけを許可し、stderr は失敗時 diagnostic JSON Lines だけを許可する。exit code は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI 共通固定契約](../DETAIL_INDEX.md#common-cli-contract) の `0`、`1`、`2`、`3`、`4` だけを使用する。
+
+Phase 18 の bootstrap script failure code は `bootstrap-script-http-client-missing`、`bootstrap-script-source-unreachable`、`bootstrap-script-digest-mismatch`、`bootstrap-script-version-mismatch`、`bootstrap-script-executable-permission-invalid`、`bootstrap-script-systemd-unit-invalid`、`bootstrap-script-state-directory-invalid`、`bootstrap-script-health-failed`、`bootstrap-script-rollback-failed` の順序固定 array とする。bootstrap script は該当 failure code のいずれかが発生した場合、bootstrap session を成功扱いしてはならない。failure code は発生 stage、対象 source channel、source identifier 種別、target digest、直前 version、target version、rollback action、cleanup result、再実行条件のうち該当する項目と同じ record に接続する。provider account id、provider resource id、IP address、hostname、FQDN、credential file path、secret 値、secret hash、token prefix / suffix を failure code 証跡へ含めてはならない。
+
+Phase 18 の bootstrap script state model は `staging-verify-commit-rollback` 固定とする。bootstrap script は staging directory へ取得し、digest 検証、実行権限検証、version 検証、systemd unit 検証、state directory 検証、health 検証を完了してから commit し、検証前の失敗では既存 binary、既存 service、既存 state、既存 credential を変更してはならない。commit 後の health 失敗では rollback 証跡を作成し、復旧可否、直前 version、失敗段階、再実行条件を bootstrap update / rollback drill と issue triage へ接続する。
 
 Phase 18 の work unit は以下の順序固定とする。
 
 | work unit | 完了条件 |
 |-----------|----------|
-| `phase17-handover` | Phase 17 の fixture 証跡、required check、状態、試験本番VPS 前提、未残条件が Phase 18 の開始条件として到達可能である。 |
-| `operation-session-open` | `manual-approved-operation-session` を開始し、operator 承認、session id、開始時 sample、secret 境界、禁止 provider operation 境界を記録する。 |
-| `release-and-service-health` | release asset、binary version、systemd service、health endpoint、state directory、log write が成功し、失敗または未実施を open item へ接続する。 |
-| `admin-and-api-runtime` | Admin CLI、API、SDK、UI の疎通、認証、timeout、body limit、secret mask、状態再取得が成功する。 |
-| `runner-real-operation` | runner queue、build、状態更新、audit log、commit status 対象外または成功、deploy simulation または承認済み deploy target が証跡化される。 |
-| `update-rollback-drill` | update、rollback、service restart、state migration、rollback 後 version、failure cleanup が成功する。 |
-| `issue-triage` | 運用中 issue、仕様不整合、環境不整合、known bug を検出し、分類、責務正本、修正要否、再検証条件を記録する。 |
+| `phase17-handover` | Phase 17 の fixture 証跡、required check、状態、VPS 前提、未残条件が Phase 18 の開始条件として到達可能である。 |
+| `bootstrap-session-open` | `operator-approved-bootstrap-session` を開始し、operator 承認、session id、開始時 sample、secret 境界、禁止 provider operation 境界を記録する。 |
+| `bootstrap-artifact-health` | bootstrap script、取得 channel、binary version、systemd service、health endpoint、state directory、log write が成功し、失敗または未実施を open item へ接続する。 |
+| `bootstrap-runtime-flow` | API、Admin CLI、SDK、UI の疎通、認証、timeout、body limit、secret mask、状態再取得が成功する。 |
+| `pull-runner-foundation` | runner queue、pull source、build、状態更新、audit log、commit status 対象外または成功、deploy simulation が証跡化される。Phase 18 では承認済み deploy target、正式本番 deploy、customer environment deploy を成功証跡として扱わない。 |
+| `bootstrap-update-rollback-drill` | update、rollback、service restart、state migration、rollback 後 version、failure cleanup が成功する。 |
+| `bootstrap-issue-triage` | bootstrap 中の issue、仕様不整合、環境不整合、known bug を検出し、分類、責務正本、修正要否、再検証条件を記録する。 |
 | `spec-first-fix` | 修正が必要な issue は、実装修正前に仕様全般策定、責務正本改訂、検証条件固定を完了する。 |
-| `redeploy-and-revalidate` | 修正後の再配置、service 復旧、対象 required check 再実行、再検証結果、known bug 0 判定を記録する。 |
-| `operation-session-close` | 終了時 sample、open item 0、secret 漏えい 0、destructive operation 0、document drift 0、cleanup 結果を記録して session を閉じる。 |
+| `rebootstrap-and-revalidate` | 修正後の再配置、service 復旧、対象 required check 再実行、再検証結果、known bug 0 判定を記録する。 |
+| `bootstrap-session-close` | 終了時 sample、open item 0、secret 漏えい 0、destructive operation 0、document drift 0、cleanup 結果を記録して session を閉じる。 |
 
-Phase 18 の運用 session は、`operation-session-open` で開始 sample を記録し、`admin-and-api-runtime`、`runner-real-operation`、`update-rollback-drill` の完了後に runtime sample を記録し、`redeploy-and-revalidate` と cleanup 判定後に終了 sample を記録する。開始 sample を runtime 実行後に後付けで作成すること、runtime sample を update / rollback 前の状態で代替すること、終了 sample を open item の有無を確認せず作成することを禁止する。
+Phase 18 の bootstrap session は、`bootstrap-session-open` で開始 sample を記録し、`bootstrap-runtime-flow`、`pull-runner-foundation`、`bootstrap-update-rollback-drill` の完了後に runtime sample を記録し、`rebootstrap-and-revalidate` と cleanup 判定後に終了 sample を記録する。開始 sample を runtime 実行後に後付けで作成すること、runtime sample を update / rollback 前の状態で代替すること、終了 sample を open item の有無を確認せず作成することを禁止する。
 
-Phase 18 の `issue-triage` は、運用中 issue を検出した場合だけでなく、issue が検出されなかった場合も `no_issue_detected` として記録する。`spec-first-fix` は `fix_required`、`environment_only`、`not_required` のいずれかを明示し、`fix_required` の場合は仕様全般策定、責務正本改訂、実装修正、再検証を同一運用 session の証跡へ接続する。`environment_only` または `not_required` の場合も、修正不要理由、責務正本、再検証条件を記録し、作業省略を口頭判断または暗黙の成功として扱ってはならない。
+Phase 18 の `bootstrap-issue-triage` は、bootstrap 中の issue を検出した場合だけでなく、issue が検出されなかった場合も `no_issue_detected` として記録する。`spec-first-fix` は `fix_required`、`environment_only`、`not_required` のいずれかを明示し、`fix_required` の場合は仕様全般策定、責務正本改訂、実装修正、再検証を同一 bootstrap session の証跡へ接続する。`environment_only` または `not_required` の場合も、修正不要理由、責務正本、再検証条件を記録し、作業省略を口頭判断または暗黙の成功として扱ってはならない。
 
-Phase 18 の `redeploy-and-revalidate` は、実装修正があった場合は再配置後の service 復旧と対象再検証を記録し、実装修正がない場合は no-op 再検証として、実運用接続、runtime flow、停止条件、known bug 0、document drift 0 の再判定を記録する。実装修正がないことを理由に `redeploy-and-revalidate` の記録を省略してはならない。
+Phase 18 の `rebootstrap-and-revalidate` は、実装修正があった場合は再 bootstrap 後の service 復旧と対象再検証を記録し、実装修正がない場合は no-op 再検証として、bootstrap runtime flow、停止条件、known bug 0、document drift 0 の再判定を記録する。実装修正がないことを理由に `rebootstrap-and-revalidate` の記録を省略してはならない。
 
-Phase 18 の operation session closure package は、Phase 17 引継ぎ、開始 sample、runtime sample、終了 sample、service health、Admin / API / SDK / UI runtime、runner real operation、update / rollback drill、issue triage、仕様先行修正判定、再検証、secret 境界、destructive operation 境界、document drift 境界、cleanup 判定を同一 session id に接続する。同一 session id で接続できない証跡、別 session の結果を寄せ集めた証跡、session id を持たない証跡、または fixture counter だけの完了報告を Phase 18 の完了根拠にしてはならない。
+Phase 18 の bootstrap closure package は、Phase 17 引継ぎ、開始 sample、runtime sample、終了 sample、bootstrap artifact health、API / Admin / SDK / UI runtime、pull runner foundation、bootstrap update / rollback drill、issue triage、仕様先行修正判定、再検証、secret 境界、destructive operation 境界、document drift 境界、cleanup 判定を同一 session id に接続する。同一 session id で接続できない証跡、別 session の結果を寄せ集めた証跡、session id を持たない証跡、または fixture counter だけの完了報告を Phase 18 の完了根拠にしてはならない。
 
-Phase 18 の運用中バグ修正 loop は `issue-detect`、`spec-general-update`、`implementation-fix`、`redeploy`、`revalidate`、`evidence-record`、`known-bug-zero-check` の順序に固定する。`spec-general-update` を通過しない `implementation-fix` を禁止する。
+Phase 18 の bootstrap 完了証跡は、VPS 内の実測結果から作成する。[`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) の `testdata/phase18/vps-pull-bootstrap/records/*.jsonl` が `evidence_origin=checker-acceptance-fixture` と `execution_environment=repository-fixture` を持つ場合、その record は checker acceptance fixture としてだけ扱い、Phase 18 の bootstrap 完了証跡として扱ってはならない。
 
-Phase 18 の停止条件は `secret-boundary-failure`、`destructive-operation-boundary-failure`、`state-corruption`、`service-unrecoverable`、`known-critical-bug`、`document-drift-blocker` に固定する。停止条件が発火した場合は、運用 session を成功扱いせず、停止理由、直前 sample、責務正本、修正条件、再検証条件、復旧可否を証跡化する。
+Phase 18 の bootstrap 完了判定で Pull Request 本文に記録する `live VPS completion summary` は下表に固定する。この summary は fixture record schema ではなく、VPS 内実測結果を Phase 18 完了判定へ接続するための secret-safe 接続項目である。下表の item が 1 件でも欠ける場合、または禁止値を含む場合、Phase 18 を `実装済み` へ遷移してはならない。
+
+| summary item | 固定値 / 条件 |
+|--------------|---------------|
+| `evidence_origin` | `live-vps-bootstrap` 固定。 |
+| `execution_environment` | `vps` 固定。 |
+| `provider_target` | `conoha-vps-primary` 固定。 |
+| `vps_label` | `試験本番VPS` 固定。 |
+| `validation_mode` | `vps-pull-bootstrap` 固定。 |
+| `bootstrap_session_id` | `phase18.session.<slug>` 形式。`slug` は lowercase ASCII dot notation とし、timestamp、乱数、provider 識別子、resource id、IP address、hostname、credential file path、secret 由来値を含めない。 |
+| `bootstrap_session_kind` | `operator-approved-bootstrap-session` 固定。 |
+| `topology_role` | `ci-cd`、`site`、`single-node` のいずれか。 |
+| `source_channel` | Phase 18 完了判定では `integration-head` 固定。`stable-release` は Phase 19 以降の本番運用 channel として扱い、Phase 18 完了判定の代替にしない。 |
+| `bootstrap_script_artifact` | `adlaire-ci-vps-pull-bootstrap.sh` 固定。 |
+| `bootstrap_runtime` | `/bin/sh` 固定。 |
+| `source_identifier_kind` | `absolute-https-url` または `absolute-file-path`。raw 取得元値は public non-secret で host 固有情報を含まない場合だけ記録できる。 |
+| `source_digest_sha256` | 取得対象 byte 列の SHA-256 lowercase hex 64 桁。 |
+| `install_dir` | `/opt/adlaire-builder` 固定。 |
+| `bin_dir` | `/usr/local/bin` 固定。 |
+| `state_dir` | `/opt/adlaire-builder` 固定。 |
+| `service_user` | `root` 固定。 |
+| `operation_samples` | `open`、`runtime`、`close` の 3 sample が同一 session id へ接続済み。 |
+| `work_unit_result` | 本節の Phase 18 work unit が順序固定で全件完了済み。 |
+| `fixture_gate_result` | [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) の checker acceptance fixture が成功済み。ただし `checker-acceptance-fixture` を `live-vps-bootstrap` の代替にしない。 |
+| `closure_counter_result` | [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) の closure counter が完了値に一致済み。counter key と完了値は fixture 証跡責務を正本とする。 |
+| `required_check_result` | [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) の required check が全件成功済み。required check 名と完了条件は fixture 証跡責務を正本とする。 |
+| `bugfix_loop_result` | `no_issue_detected`、または `spec-first-fix-completed-and-revalidated`。 |
+| `secret_boundary_result` | `passed` 固定。 |
+| `destructive_operation_result` | `blocked_zero` 固定。 |
+| `known_bug_status` | `none` 固定。 |
+| `document_drift_status` | `no_drift` 固定。 |
+| `cleanup_result` | `passed` 固定。 |
+| `final_open_item_result` | `0` 固定。 |
+
+`live VPS completion summary` には、provider account id、provider resource id、IP address、hostname、FQDN、credential file path、secret 値、secret hash、token prefix / suffix、private key、個人情報、raw stdout、raw stderr、provider 画面 screenshot、口頭報告、手作業メモを含めてはならない。secret-safe summary を作成できない実測結果は Phase 18 の完了根拠として使用せず、停止条件または issue triage へ接続する。
+
+Phase 18 の bootstrap 中バグ修正 loop は `issue-detect`、`spec-general-update`、`implementation-fix`、`redeploy`、`revalidate`、`evidence-record`、`known-bug-zero-check` の順序に固定する。`spec-general-update` を通過しない `implementation-fix` を禁止する。
+
+Phase 18 の停止条件は `secret-boundary-failure`、`destructive-operation-boundary-failure`、`state-corruption`、`service-unrecoverable`、`known-critical-bug`、`document-drift-blocker` に固定する。停止条件が発火した場合は、bootstrap session を成功扱いせず、停止理由、直前 sample、責務正本、修正条件、再検証条件、復旧可否を証跡化する。
 
 Phase 18 では以下を禁止する。
 
 - customer data、実運用 credential、実運用 secret、private key、個人情報を repository、fixture、log、PR body、artifact に保存する。
 - provider account id、provider resource id、IP address、hostname、FQDN、credential file path、secret 値、secret hash、token prefix / suffix を証跡化する。
 - VPS 作成、VPS 削除、plan 変更、disk rebuild、volume 操作、firewall lockout、SSH lockout を Phase 18 の成功操作として扱う。
+- GitHub Actions、GitHub Secrets、GitHub self-hosted runner、provider startup script 機能、または provider API を Phase 18 の必須実行面として扱う。ただし repository 側 checker required check としての `.github/workflows/phase18-vps-pull-bootstrap.yml` は除外し、同 workflow を VPS bootstrap 実行、secret delivery、source 取得、deploy 制御、または `live VPS completion summary` の代替として扱うことは禁止する。
 - `xserver-vps-future` を Phase 18 の必須検証未完了 item として扱う。
 - 24 時間監視がないことだけを理由に Phase 18 を未完了扱いにする。
 - スクリーンショット、口頭報告、手作業メモ、provider 画面確認だけを完了証跡にする。
 - 仕様全般策定なしの hotfix、実装者判断だけの修正、または fixture counter だけの完了報告を成功扱いにする。
 
-Phase 18 の fixture 証跡、closure counter、required check、required check workflow、checker 実行入口、negative boundary、document drift record は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 試験本番VPS 実運用接続・運用証跡](fixture.md#phase-18-trial-production-operation-evidence) を正本とする。本番検証詳細本文責務では、Phase 18 closure counter の key、完了値、record schema、required check 名を再掲しない。
+Phase 18 の fixture 証跡、closure counter、required check、required check workflow、checker 実行入口、negative boundary、document drift record は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](fixture.md#phase-18-vps-pull-bootstrap-evidence) を正本とする。本番検証詳細本文責務では、Phase 18 closure counter の key、完了値、record schema、required check 名を再掲しない。

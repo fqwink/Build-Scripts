@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "scope": "phase-18-vps-pull-bootstrap",
+  "phase17_ref": "[docs/details/fixture.md fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](docs/details/fixture.md#phase-17-production-validation-evidence)",
+  "provider_target": "conoha-vps-primary",
+  "os": "ubuntu-server-24.04-lts-64bit",
+  "minimum_plan_class": "conoha-vps-1gb-memory-class",
+  "minimum_ram_mb": 1024,
+  "environment_identity_policy": "opaque-non-secret-labels",
+  "handover_results": {
+    "phase17_status": "implemented",
+    "phase17_required_checks": {
+      "passed_checks": [
+        "phase17-conoha-vps-preflight",
+        "phase17-trial-production-buildout",
+        "phase17-conoha-install-update-rollback",
+        "phase17-systemd-lifecycle",
+        "phase17-runtime-flow",
+        "phase17-trial-operation-loop",
+        "phase17-production-simulation",
+        "phase17-failure-injection",
+        "phase17-security-boundary",
+        "phase17-bugfix-spec-first",
+        "phase17-document-drift"
+      ],
+      "failed_checks": [],
+      "missing_checks": []
+    },
+    "phase17_open_items": 0,
+    "bootstrap_prerequisite": "passed",
+    "result": "passed"
+  }
+}

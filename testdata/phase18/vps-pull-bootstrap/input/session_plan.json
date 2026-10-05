@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "scope": "phase-18-vps-pull-bootstrap",
+  "session_kind": "operator-approved-bootstrap-session",
+  "required_session_count": 1,
+  "required_operation_sample_count": 3,
+  "work_units": [
+    "phase17-handover",
+    "bootstrap-session-open",
+    "bootstrap-artifact-health",
+    "bootstrap-runtime-flow",
+    "pull-runner-foundation",
+    "bootstrap-update-rollback-drill",
+    "bootstrap-issue-triage",
+    "spec-first-fix",
+    "rebootstrap-and-revalidate",
+    "bootstrap-session-close"
+  ],
+  "abort_conditions": [
+    "secret-boundary-failure",
+    "destructive-operation-boundary-failure",
+    "state-corruption",
+    "service-unrecoverable",
+    "known-critical-bug",
+    "document-drift-blocker"
+  ],
+  "bugfix_spec_first_required": true,
+  "known_bug_zero_required": true
+}

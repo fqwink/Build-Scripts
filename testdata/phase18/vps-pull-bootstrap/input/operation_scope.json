@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "scope": "phase-18-vps-pull-bootstrap",
+  "provider_target": "conoha-vps-primary",
+  "validation_mode": "vps-pull-bootstrap",
+  "bootstrap_script_artifact": "adlaire-ci-vps-pull-bootstrap.sh",
+  "bootstrap_script_runtime": "/bin/sh",
+  "bootstrap_script_invocation": "operator-runs-sh-script-on-vps",
+  "source_channels": [
+    "integration-head",
+    "stable-release"
+  ],
+  "active_source_channel": "integration-head",
+  "topology_roles": [
+    "ci-cd",
+    "site",
+    "single-node"
+  ],
+  "minimum_topology_role": "single-node",
+  "bootstrap_source_identifier_format": "absolute-https-url-or-absolute-file-path",
+  "bootstrap_digest_algorithm": "sha256",
+  "bootstrap_install_directory": "/opt/adlaire-builder",
+  "bootstrap_bin_directory": "/usr/local/bin",
+  "bootstrap_state_directory": "/opt/adlaire-builder",
+  "bootstrap_service_user": "root",
+  "bootstrap_secret_input_policy": "no-command-argument-secret",
+  "bootstrap_state_model": "staging-verify-commit-rollback",
+  "bootstrap_cli_contract": "fixed-token-flag-interface",
+  "bootstrap_invocation_tokens": [
+    "sh",
+    "adlaire-ci-vps-pull-bootstrap.sh",
+    "--source-channel",
+    "integration-head|stable-release",
+    "--topology-role",
+    "ci-cd|site|single-node",
+    "--source",
+    "absolute-https-url-or-absolute-file-path",
+    "--sha256",
+    "64-lowercase-hex",
+    "--install-dir",
+    "/opt/adlaire-builder",
+    "--bin-dir",
+    "/usr/local/bin",
+    "--state-dir",
+    "/opt/adlaire-builder",
+    "--service-user",
+    "root"
+  ],
+  "bootstrap_required_commands": [
+    "sh",
+    "mktemp",
+    "mkdir",
+    "chmod",
+    "install",
+    "mv",
+    "rm",
+    "sha256sum",
+    "systemctl"
+  ],
+  "bootstrap_http_client_order": [
+    "curl",
+    "wget"
+  ],
+  "bootstrap_stdout_contract": "single-json-object-secret-safe",
+  "bootstrap_stderr_contract": "diagnostic-json-lines-on-failure",
+  "bootstrap_exit_code_contract": "common-cli-exit-code-contract",
+  "bootstrap_failure_codes": [
+    "bootstrap-script-http-client-missing",
+    "bootstrap-script-source-unreachable",
+    "bootstrap-script-digest-mismatch",
+    "bootstrap-script-version-mismatch",
+    "bootstrap-script-executable-permission-invalid",
+    "bootstrap-script-systemd-unit-invalid",
+    "bootstrap-script-state-directory-invalid",
+    "bootstrap-script-health-failed",
+    "bootstrap-script-rollback-failed"
+  ],
+  "operation_targets": [
+    "bootstrap-artifact-health",
+    "bootstrap-runtime-flow",
+    "pull-runner-foundation",
+    "bootstrap-update-rollback-drill",
+    "bootstrap-issue-triage",
+    "spec-first-fix",
+    "rebootstrap-and-revalidate"
+  ],
+  "forbidden_provider_operations": [
+    "vps-create",
+    "vps-delete",
+    "plan-change",
+    "disk-rebuild",
+    "volume-create",
+    "volume-delete",
+    "volume-attach",
+    "volume-detach",
+    "firewall-lockout",
+    "ssh-lockout"
+  ],
+  "xserver_future_policy": "future_plan_not_blocker"
+}

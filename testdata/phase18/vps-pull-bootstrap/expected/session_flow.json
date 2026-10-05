@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "scope": "phase-18-vps-pull-bootstrap",
+  "session_kind": "operator-approved-bootstrap-session",
+  "operation_samples": [
+    "open",
+    "runtime",
+    "close"
+  ],
+  "sample_observations": [
+    "service_state",
+    "api_health",
+    "admin_cli_health",
+    "runner_state",
+    "statefile_digest",
+    "audit_log_write",
+    "access_log_write",
+    "config_log_write",
+    "secret_leakage_boundary",
+    "known_bug_status",
+    "document_drift_status"
+  ],
+  "work_units": [
+    "phase17-handover",
+    "bootstrap-session-open",
+    "bootstrap-artifact-health",
+    "bootstrap-runtime-flow",
+    "pull-runner-foundation",
+    "bootstrap-update-rollback-drill",
+    "bootstrap-issue-triage",
+    "spec-first-fix",
+    "rebootstrap-and-revalidate",
+    "bootstrap-session-close"
+  ],
+  "no_op_policy": "explicit-not-required-record-required",
+  "closure_policy": "single-session-id-required"
+}

@@ -45,10 +45,10 @@
 | Phase 17 試験本番運用詳細本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務](details/production-validation.md) |
 | Phase 17 正式 fixture root | `testdata/phase17/production-validation/` |
 | Phase 17 required check workflow | `.github/workflows/phase17-production-validation.yml` |
-| Phase 18 試験本番VPS 実運用接続・運用証跡の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 試験本番VPS 実運用接続・運用証跡参照](DETAIL_INDEX.md#phase-18-trial-production-operation-entry) |
-| Phase 18 試験本番VPS 実運用接続・運用証跡詳細本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 試験本番VPS 実運用接続・運用証跡契約](details/production-validation.md#phase-18-trial-production-operation-contract) |
-| Phase 18 正式 fixture root | `testdata/phase18/trial-production-operation/` |
-| Phase 18 required check workflow | `.github/workflows/phase18-trial-production-operation.yml` |
+| Phase 18 VPS Pull Bootstrap の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 VPS Pull Bootstrap 参照](DETAIL_INDEX.md#phase-18-vps-pull-bootstrap-entry) |
+| Phase 18 VPS Pull Bootstrap 詳細本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](details/production-validation.md#phase-18-vps-pull-bootstrap-contract) |
+| Phase 18 正式 fixture root | [`testdata/phase18/vps-pull-bootstrap/`](../testdata/phase18/vps-pull-bootstrap/) |
+| Phase 18 required check workflow | [`.github/workflows/phase18-vps-pull-bootstrap.yml`](../.github/workflows/phase18-vps-pull-bootstrap.yml) |
 | Phase 18 checker implementation artifact 配置先 | [`main_test.go`](../main_test.go) |
 | 横断テスト証跡の共通入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) |
 | Phase 11 仕様全般完了判定の所在 | [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) |
@@ -257,8 +257,8 @@
 | [`.github/workflows/phase16-quality-evidence-closure.yml`](../.github/workflows/phase16-quality-evidence-closure.yml) | Phase 16 required check workflow | 実在 |
 | `testdata/phase17/production-validation/` | Phase 17 trial production operation fixture root | 実在 |
 | `.github/workflows/phase17-production-validation.yml` | Phase 17 required check workflow | 実在 |
-| `testdata/phase18/trial-production-operation/` | Phase 18 正式 fixture root | 未作成 |
-| `.github/workflows/phase18-trial-production-operation.yml` | Phase 18 required check workflow | 未作成 |
+| [`testdata/phase18/vps-pull-bootstrap/`](../testdata/phase18/vps-pull-bootstrap/) | Phase 18 正式 fixture root | 実在 |
+| [`.github/workflows/phase18-vps-pull-bootstrap.yml`](../.github/workflows/phase18-vps-pull-bootstrap.yml) | Phase 18 required check workflow | 実在 |
 
 所在区分はファイルまたは path の存在だけを示す。現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、状態語彙と実装可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity) を参照する。
 
@@ -283,7 +283,7 @@
 <a id="phase-13-target-paths"></a>
 **Phase 13 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、完了可否は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) と [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](details/fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。本節は path 所在だけを正本とする。
 
 `components/<owner>/...` の `<owner>` 解釈は、[Phase 12 target path 所在](#phase-12-target-paths) で定義した Go owner package target 範囲と同一とする。`sdk` と `ui` は Phase 13 の契約照合対象であり、Go owner package target ではないため、実在所在は [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) と [`admin/index.html`](../admin/index.html) の行を正とする。
 
@@ -321,7 +321,7 @@
 <a id="phase-14-target-paths"></a>
 **Phase 14 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、完了可否は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) と [`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) を参照する。本節は path 所在だけを正本とする。
 
 | path pattern | 対象 | 所在区分 |
 |--------------|------|----------|
@@ -347,7 +347,7 @@
 <a id="phase-15-target-paths"></a>
 **Phase 15 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、完了可否は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) と [`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) を参照する。本節は path 所在だけを正本とする。
 
 | path pattern | 対象 | 所在区分 |
 |--------------|------|----------|
@@ -373,7 +373,7 @@
 <a id="phase-16-target-paths"></a>
 **Phase 16 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、完了可否は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) と [`docs/details/fixture.md` fixture 証跡責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡](details/fixture.md#phase-16-quality-evidence-closure-evidence) を参照する。本節は path 所在だけを正本とする。
 
 | path | 役割 | 所在 |
 |------|------|------|
@@ -402,7 +402,7 @@
 <a id="phase-17-target-paths"></a>
 **Phase 17 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 17 ConoHa VPS 試験本番運用参照](DETAIL_INDEX.md#phase-17-production-validation-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 17 ConoHa VPS 試験本番運用参照](DETAIL_INDEX.md#phase-17-production-validation-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、完了可否は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、[`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) を参照する。本節は path 所在だけを正本とする。
 
 | path | 役割 | 所在 |
 |------|------|------|
@@ -432,27 +432,28 @@
 <a id="phase-18-target-paths"></a>
 **Phase 18 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 試験本番VPS 実運用接続・運用証跡参照](DETAIL_INDEX.md#phase-18-trial-production-operation-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 VPS Pull Bootstrap 参照](DETAIL_INDEX.md#phase-18-vps-pull-bootstrap-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、`実装済み` 遷移可否は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate)、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、[`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](details/production-validation.md#phase-18-vps-pull-bootstrap-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) を参照する。本節は path 所在だけを正本とする。
 
 | path | 役割 | 所在 |
 |------|------|------|
-| [`docs/details/production-validation.md`](details/production-validation.md) | Phase 18 試験本番VPS 実運用接続・運用証跡詳細本文 | 実在 |
-| `testdata/phase18/trial-production-operation/` | Phase 18 正式 fixture root | 未作成 |
-| `testdata/phase18/trial-production-operation/manifest.json` | Phase 18 evidence package manifest | 未作成 |
-| `testdata/phase18/trial-production-operation/input/environment_handover.json` | Phase 17 引継ぎ状態 / 試験本番VPS 前提入力 | 未作成 |
-| `testdata/phase18/trial-production-operation/input/session_plan.json` | 運用 session / 3 sample / work unit 順序 / 停止条件入力 | 未作成 |
-| `testdata/phase18/trial-production-operation/input/operation_scope.json` | provider target / validation mode / 禁止 provider operation 入力 | 未作成 |
-| `testdata/phase18/trial-production-operation/input/security_boundary.json` | secret 非保存 / opaque metadata / destructive operation 境界入力 | 未作成 |
-| `testdata/phase18/trial-production-operation/expected/counters.json` | Phase 18 closure counter 期待値 | 未作成 |
-| `testdata/phase18/trial-production-operation/expected/session_flow.json` | Phase 18 work unit 順序 / session sample 期待値 | 未作成 |
-| `testdata/phase18/trial-production-operation/expected/bugfix_closure.json` | 仕様先行バグ修正 / 再検証 / known bug 0 期待値 | 未作成 |
-| `testdata/phase18/trial-production-operation/expected/negative_boundaries.json` | Phase 18 negative boundary case 期待値 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/session.jsonl` | 運用 session / 開始 / runtime / 終了 sample 証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/health.jsonl` | service / API / Admin / SDK / UI / systemd / log write health 証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/runtime.jsonl` | runner / build / statefile / audit / commit status / deploy simulation 証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/update_rollback.jsonl` | update / rollback / service restart / state migration / failure cleanup 証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/bugfix.jsonl` | 運用中 issue / 仕様全般策定 / 実装修正 / 再検証 / known bug 0 証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/security.jsonl` | secret 境界 / opaque metadata / 禁止 provider operation / destructive operation 境界証跡 | 未作成 |
-| `testdata/phase18/trial-production-operation/records/document_drift.jsonl` | Phase 18 状態 / path / anchor / fixture root / workflow / required check / checker artifact / closure counter drift 証跡 | 未作成 |
-| `.github/workflows/phase18-trial-production-operation.yml` | Phase 18 required check workflow | 未作成 |
+| [`docs/details/production-validation.md`](details/production-validation.md) | Phase 18 VPS Pull Bootstrap 詳細本文 | 実在 |
+| [`docs/DETAIL_INDEX.md#phase-18-state-transition-gate`](DETAIL_INDEX.md#phase-18-state-transition-gate) | Phase 18 状態遷移 gate | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/`](../testdata/phase18/vps-pull-bootstrap/) | Phase 18 正式 fixture root | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/manifest.json`](../testdata/phase18/vps-pull-bootstrap/manifest.json) | Phase 18 evidence package manifest | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/input/environment_handover.json`](../testdata/phase18/vps-pull-bootstrap/input/environment_handover.json) | Phase 17 引継ぎ状態 / 試験本番VPS 前提入力 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/input/session_plan.json`](../testdata/phase18/vps-pull-bootstrap/input/session_plan.json) | bootstrap session / 3 sample / work unit 順序 / 停止条件入力 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/input/operation_scope.json`](../testdata/phase18/vps-pull-bootstrap/input/operation_scope.json) | provider target / validation mode / bootstrap script artifact / source channel / topology role / source identifier / digest / install / bin / state directory / service user / CLI token / required command / HTTP client / stdout / stderr / exit code / failure code / 禁止 provider operation 入力 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/input/security_boundary.json`](../testdata/phase18/vps-pull-bootstrap/input/security_boundary.json) | secret 非保存 / opaque metadata / destructive operation 境界入力 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/expected/counters.json`](../testdata/phase18/vps-pull-bootstrap/expected/counters.json) | Phase 18 closure counter 期待値 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/expected/session_flow.json`](../testdata/phase18/vps-pull-bootstrap/expected/session_flow.json) | Phase 18 work unit 順序 / session sample 期待値 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/expected/bugfix_closure.json`](../testdata/phase18/vps-pull-bootstrap/expected/bugfix_closure.json) | 仕様先行バグ修正 / 再検証 / known bug 0 期待値 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/expected/negative_boundaries.json`](../testdata/phase18/vps-pull-bootstrap/expected/negative_boundaries.json) | Phase 18 negative boundary case 期待値 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/records/session.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/session.jsonl) | bootstrap session / 開始 / runtime / 終了 sample 証跡 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/records/health.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/health.jsonl) | bootstrap script / source channel / service / API / Admin / SDK / UI / systemd / log write health 証跡 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/records/runtime.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/runtime.jsonl) | runner / build / statefile / audit / commit status / deploy simulation 証跡 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/records/update_rollback.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/update_rollback.jsonl) | update / rollback / service restart / state migration / failure cleanup 証跡 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/records/bugfix.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/bugfix.jsonl) | bootstrap 中 issue / 仕様全般策定 / 実装修正 / 再検証 / known bug 0 証跡 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/records/security.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/security.jsonl) | secret 境界 / opaque metadata / 禁止 provider operation / destructive operation 境界証跡 | 実在 |
+| [`testdata/phase18/vps-pull-bootstrap/records/document_drift.jsonl`](../testdata/phase18/vps-pull-bootstrap/records/document_drift.jsonl) | Phase 18 状態 / path / anchor / fixture root / workflow / required check / checker artifact / closure counter drift 証跡 | 実在 |
+| [`.github/workflows/phase18-vps-pull-bootstrap.yml`](../.github/workflows/phase18-vps-pull-bootstrap.yml) | Phase 18 required check workflow | 実在 |
 | [`main_test.go`](../main_test.go) | Phase 18 checker implementation artifact 配置先 | 実在 |
