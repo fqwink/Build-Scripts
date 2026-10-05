@@ -4475,6 +4475,7 @@ func phase18RequireRecordCommon(t *testing.T, rel string, line int, record phase
 	}
 	phase18RequireSafeReference(t, fmt.Sprintf("%s line %d source_ref", rel, line), record.SourceRef)
 	phase18RequireSafeReference(t, fmt.Sprintf("%s line %d evidence_ref", rel, line), record.EvidenceRef)
+	phase18RequireRecordReferences(t, rel, line, record)
 	if record.ProviderTarget == "xserver-vps-future" && (rel != "records/document_drift.jsonl" || record.ValidationMode != "future_plan" || record.Result != "future_plan" || record.CheckName != "phase18-document-drift") {
 		t.Fatalf("%s line %d xserver-vps-future is allowed only as a document_drift future plan classification record: %+v", rel, line, record)
 	}
@@ -4794,9 +4795,11 @@ func phase18RequireDocumentDriftRecords(t *testing.T, records []phase18EvidenceR
 
 	targetCoverage := map[string]bool{}
 	var futurePlan bool
+	futurePlanSourceRef := "[docs/details/production-validation.md 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract)"
+	futurePlanEvidenceRef := "[docs/ROADMAP.md 状態・計画責務 §4.1](docs/ROADMAP.md#roadmap-initial-phase-plan)"
 	for _, record := range records {
 		if record.ProviderTarget == "xserver-vps-future" {
-			if record.SessionID != "not_applicable" || record.ValidationMode != "future_plan" || record.Result != "future_plan" || record.DriftResult != "future_plan_confirmed" || record.ClosureResult != "not_applicable" || record.CounterKey != "phase18_document_drift_open_count" || record.SourceRef != "docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract" || record.EvidenceRef != "docs/ROADMAP.md#roadmap-initial-phase-plan" || record.DocumentRef != "docs/details/production-validation.md" || record.AnchorRef != "phase-18-vps-pull-bootstrap-contract" || record.FixturePathRef != "not_applicable" || record.WorkflowPathRef != "not_applicable" || record.ExpectedRef != "not_applicable" || record.ActualRef != "not_applicable" || record.CorrectiveActionRef != "not_applicable" {
+			if record.SessionID != "not_applicable" || record.ValidationMode != "future_plan" || record.Result != "future_plan" || record.DriftResult != "future_plan_confirmed" || record.ClosureResult != "not_applicable" || record.CounterKey != "phase18_document_drift_open_count" || record.SourceRef != futurePlanSourceRef || record.EvidenceRef != futurePlanEvidenceRef || record.DocumentRef != futurePlanSourceRef || record.AnchorRef != futurePlanSourceRef || record.FixturePathRef != "not_applicable" || record.WorkflowPathRef != "not_applicable" || record.ExpectedRef != "not_applicable" || record.ActualRef != "not_applicable" || record.CorrectiveActionRef != "not_applicable" {
 				t.Fatalf("Phase 18 xserver future plan classification mismatch: %+v", record)
 			}
 			futurePlan = true
@@ -4936,6 +4939,85 @@ func phase18RequireSafeReference(t *testing.T, label string, value string) {
 	if phase18ContainsForbiddenEvidenceLiteral(value) || phase17LooksLikeIPv4(value) {
 		t.Fatalf("%s contains forbidden literal: %s", label, value)
 	}
+}
+
+func phase18RequireRecordReferences(t *testing.T, rel string, line int, record phase18EvidenceRecord) {
+	t.Helper()
+
+	references := map[string]string{
+		"source_ref":                record.SourceRef,
+		"evidence_ref":              record.EvidenceRef,
+		"operator_approval_ref":     record.OperatorApprovalRef,
+		"owner_ref":                 record.OwnerRef,
+		"endpoint_or_command_ref":   record.EndpointOrCommandRef,
+		"operation_ref":             record.OperationRef,
+		"issue_ref":                 record.IssueRef,
+		"spec_general_update_ref":   record.SpecGeneralUpdateRef,
+		"responsibility_source_ref": record.ResponsibilitySourceRef,
+		"implementation_fix_ref":    record.ImplementationFixRef,
+		"revalidation_ref":          record.RevalidationRef,
+		"document_ref":              record.DocumentRef,
+		"fixture_path_ref":          record.FixturePathRef,
+		"workflow_path_ref":         record.WorkflowPathRef,
+		"expected_ref":              record.ExpectedRef,
+		"actual_ref":                record.ActualRef,
+		"corrective_action_ref":     record.CorrectiveActionRef,
+	}
+	for field, value := range references {
+		if value == "" {
+			continue
+		}
+		label := fmt.Sprintf("%s line %d %s", rel, line, field)
+		phase18RequireSafeReference(t, label, value)
+		phase18RequireResolvableReference(t, label, value)
+	}
+}
+
+func phase18RequireResolvableReference(t *testing.T, label string, value string) {
+	t.Helper()
+
+	if value == "not_applicable" || value == "not_required_for_non_open_sample" {
+		return
+	}
+	target := phase18ReferenceTarget(value)
+	if target == "" {
+		t.Fatalf("%s must include a non-empty reference target: %s", label, value)
+	}
+	target = strings.SplitN(target, "#", 2)[0]
+	if target == "" {
+		t.Fatalf("%s must not use an anchor-only reference: %s", label, value)
+	}
+	candidates := []string{target}
+	if phase18LooksFixtureLocalReference(target) {
+		candidates = append(candidates, filepath.Join("testdata/phase18/vps-pull-bootstrap", target))
+	}
+	for _, candidate := range candidates {
+		if _, err := os.Lstat(candidate); err == nil {
+			return
+		}
+	}
+	t.Fatalf("%s must resolve to an existing repository or Phase 18 fixture path: %s", label, value)
+}
+
+func phase18ReferenceTarget(value string) string {
+	if start := strings.LastIndex(value, "]("); strings.HasPrefix(value, "[") && start >= 0 && strings.HasSuffix(value, ")") {
+		return strings.TrimSpace(value[start+2 : len(value)-1])
+	}
+	return strings.TrimSpace(value)
+}
+
+func phase18LooksFixtureLocalReference(target string) bool {
+	if strings.HasPrefix(target, "docs/") ||
+		strings.HasPrefix(target, ".github/") ||
+		strings.HasPrefix(target, "testdata/") ||
+		strings.HasPrefix(target, "components/") ||
+		target == "main.go" ||
+		target == "main_test.go" ||
+		target == "README.md" ||
+		target == "AGENTS.md" {
+		return false
+	}
+	return true
 }
 
 func phase18ContainsForbiddenEvidenceLiteral(value string) bool {
