@@ -30,7 +30,7 @@
       "case_id": "phase18.negative.bootstrap-session.twenty-four-hour-monitoring-absence-treated-as-blocker",
       "boundary_group": "bootstrap-session",
       "forbidden_success_condition": "twenty-four-hour-monitoring-absence-treated-as-blocker",
-      "expected_diagnostic_code": "schema-mismatch",
+      "expected_diagnostic_code": "session-mismatch",
       "expected_counter_key": "phase18_bootstrap_session_open_count",
       "source_ref": "[docs/details/fixture.md fixture 証跡責務 Phase 18 negative boundary 固定契約](docs/details/fixture.md#phase-18-negative-boundary-contract)"
     },

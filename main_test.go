@@ -4049,7 +4049,7 @@ var phase18NegativeBoundarySpecs = []phase18NegativeBoundarySpec{
 	{"phase17-handover-missing-treated-as-success", "bootstrap-prerequisite", "record-link-missing", "phase18_bootstrap_prerequisite_open_count"},
 	{"bootstrap-session-three-samples-missing-treated-as-success", "bootstrap-session", "session-mismatch", "phase18_bootstrap_session_open_count"},
 	{"handover-open-sample-counted-as-session-open", "bootstrap-session", "session-mismatch", "phase18_bootstrap_session_open_count"},
-	{"twenty-four-hour-monitoring-absence-treated-as-blocker", "bootstrap-session", "schema-mismatch", "phase18_bootstrap_session_open_count"},
+	{"twenty-four-hour-monitoring-absence-treated-as-blocker", "bootstrap-session", "session-mismatch", "phase18_bootstrap_session_open_count"},
 	{"bootstrap-script-command-contract-missing-treated-as-success", "bootstrap-runtime", "record-link-missing", "phase18_bootstrap_runtime_open_count"},
 	{"bootstrap-script-contract-missing-treated-as-success", "bootstrap-runtime", "record-link-missing", "phase18_bootstrap_runtime_open_count"},
 	{"bootstrap-script-failure-code-missing-treated-as-success", "bootstrap-runtime", "record-link-missing", "phase18_bootstrap_runtime_open_count"},
