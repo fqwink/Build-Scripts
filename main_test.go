@@ -4879,8 +4879,10 @@ func phase18RequireDocumentDriftRecords(t *testing.T, records []phase18EvidenceR
 
 	targetCoverage := map[string]bool{}
 	var futurePlan bool
+	var stateTransitionGate bool
 	futurePlanSourceRef := "[docs/details/production-validation.md 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract)"
 	futurePlanEvidenceRef := "[docs/ROADMAP.md 状態・計画責務 §4.1](docs/ROADMAP.md#roadmap-initial-phase-plan)"
+	stateTransitionGateRef := "[docs/DETAIL_INDEX.md 詳細仕様入口責務 Phase 18 状態遷移 gate](docs/DETAIL_INDEX.md#phase-18-state-transition-gate)"
 	for _, record := range records {
 		if record.ProviderTarget == "xserver-vps-future" {
 			if record.SessionID != "not_applicable" || record.ValidationMode != "future_plan" || record.Result != "future_plan" || record.DriftResult != "future_plan_confirmed" || record.ClosureResult != "not_applicable" || record.CounterKey != "phase18_document_drift_open_count" || record.SourceRef != futurePlanSourceRef || record.EvidenceRef != futurePlanEvidenceRef || record.DocumentRef != futurePlanSourceRef || record.AnchorRef != futurePlanSourceRef || record.FixturePathRef != "not_applicable" || record.WorkflowPathRef != "not_applicable" || record.ExpectedRef != "not_applicable" || record.ActualRef != "not_applicable" || record.CorrectiveActionRef != "not_applicable" {
@@ -4893,11 +4895,20 @@ func phase18RequireDocumentDriftRecords(t *testing.T, records []phase18EvidenceR
 			t.Fatalf("Phase 18 document drift record mismatch: %+v", record)
 		}
 		targetCoverage[record.DriftTarget] = true
+		if record.RecordID == "phase18.record.document_drift.state-transition-gate" {
+			if record.DriftTarget != "anchor" || record.SourceRef != stateTransitionGateRef || record.DocumentRef != stateTransitionGateRef || record.AnchorRef != stateTransitionGateRef || record.ExpectedRef != stateTransitionGateRef || record.ActualRef != stateTransitionGateRef {
+				t.Fatalf("Phase 18 state-transition gate document drift record mismatch: %+v", record)
+			}
+			stateTransitionGate = true
+		}
 	}
 	for _, target := range phase18DocumentDriftTargets {
 		if !targetCoverage[target] {
 			t.Fatalf("Phase 18 document drift records missing target %s", target)
 		}
+	}
+	if !stateTransitionGate {
+		t.Fatalf("Phase 18 document drift records must cover state-transition gate anchor")
 	}
 	if !futurePlan {
 		t.Fatalf("Phase 18 document drift records must keep xserver-vps-future as non-blocking future_plan")
