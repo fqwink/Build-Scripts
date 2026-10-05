@@ -4626,7 +4626,8 @@ func phase18RequireHealthRecords(t *testing.T, records []phase18EvidenceRecord) 
 		}
 		if record.HealthTarget == "bootstrap-script" {
 			expectedState := "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback fixed-token-flag-interface sh adlaire-ci-vps-pull-bootstrap.sh --source-channel integration-head|stable-release --topology-role ci-cd|site|single-node --source absolute-https-url-or-absolute-file-path --sha256 64-lowercase-hex --install-dir /opt/adlaire-builder --bin-dir /usr/local/bin --state-dir /opt/adlaire-builder --service-user root sh mktemp mkdir chmod install mv rm sha256sum systemctl curl wget single-json-object-secret-safe diagnostic-json-lines-on-failure common-cli-exit-code-contract bootstrap-script-http-client-missing bootstrap-script-source-unreachable bootstrap-script-digest-mismatch bootstrap-script-version-mismatch bootstrap-script-executable-permission-invalid bootstrap-script-systemd-unit-invalid bootstrap-script-state-directory-invalid bootstrap-script-health-failed bootstrap-script-rollback-failed"
-			if record.SourceRef != "input/operation_scope.json" || record.OwnerRef != "docs/details/production-validation.md" || record.EndpointOrCommandRef != "input/operation_scope.json" || record.ExpectedState != expectedState || record.ActualState != expectedState || !strings.Contains(record.Diagnostic, "source identifier") || !strings.Contains(record.Diagnostic, "secret policy") || !strings.Contains(record.Diagnostic, "cli token") || !strings.Contains(record.Diagnostic, "required command") || !strings.Contains(record.Diagnostic, "http client") || !strings.Contains(record.Diagnostic, "exit code") || !strings.Contains(record.Diagnostic, "failure code") {
+			expectedOwnerRef := "[docs/details/production-validation.md 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract)"
+			if record.SourceRef != "input/operation_scope.json" || record.OwnerRef != expectedOwnerRef || record.EndpointOrCommandRef != "input/operation_scope.json" || record.ExpectedState != expectedState || record.ActualState != expectedState || !strings.Contains(record.Diagnostic, "source identifier") || !strings.Contains(record.Diagnostic, "secret policy") || !strings.Contains(record.Diagnostic, "cli token") || !strings.Contains(record.Diagnostic, "required command") || !strings.Contains(record.Diagnostic, "http client") || !strings.Contains(record.Diagnostic, "exit code") || !strings.Contains(record.Diagnostic, "failure code") {
 				t.Fatalf("Phase 18 bootstrap script health target must prove exact bootstrap contract: %+v", record)
 			}
 		}
@@ -4957,6 +4958,7 @@ func phase18RequireRecordReferences(t *testing.T, rel string, line int, record p
 		"implementation_fix_ref":    record.ImplementationFixRef,
 		"revalidation_ref":          record.RevalidationRef,
 		"document_ref":              record.DocumentRef,
+		"anchor_ref":                record.AnchorRef,
 		"fixture_path_ref":          record.FixturePathRef,
 		"workflow_path_ref":         record.WorkflowPathRef,
 		"expected_ref":              record.ExpectedRef,
@@ -4969,14 +4971,17 @@ func phase18RequireRecordReferences(t *testing.T, rel string, line int, record p
 		}
 		label := fmt.Sprintf("%s line %d %s", rel, line, field)
 		phase18RequireSafeReference(t, label, value)
-		if field == "source_ref" || field == "evidence_ref" {
-			phase18RequireSourceOrEvidenceReferenceForm(t, label, value)
+		if field != "fixture_path_ref" && field != "workflow_path_ref" {
+			phase18RequireMarkdownOrFixtureLocalReferenceForm(t, label, value)
+		}
+		if rel == "records/document_drift.jsonl" && field == "anchor_ref" {
+			phase18RequireMarkdownReferenceForm(t, label, value)
 		}
 		phase18RequireResolvableReference(t, label, value)
 	}
 }
 
-func phase18RequireSourceOrEvidenceReferenceForm(t *testing.T, label string, value string) {
+func phase18RequireMarkdownOrFixtureLocalReferenceForm(t *testing.T, label string, value string) {
 	t.Helper()
 
 	if value == "not_applicable" || value == "not_required_for_non_open_sample" {
@@ -4990,6 +4995,17 @@ func phase18RequireSourceOrEvidenceReferenceForm(t *testing.T, label string, val
 		return
 	}
 	t.Fatalf("%s must use a responsibility-named Markdown link or Phase 18 fixture-local path: %s", label, value)
+}
+
+func phase18RequireMarkdownReferenceForm(t *testing.T, label string, value string) {
+	t.Helper()
+
+	if value == "not_applicable" {
+		return
+	}
+	if !phase18IsMarkdownReference(value) {
+		t.Fatalf("%s must use a responsibility-named Markdown link: %s", label, value)
+	}
 }
 
 func phase18RequireResolvableReference(t *testing.T, label string, value string) {
