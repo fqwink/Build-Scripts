@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "38c82041992b2d739852a4fbefafa64ba9b125540adb868281c50840ab766c7f",
+  "source_group_sha256": "ab2ea2108a0eb47836d0ab9d88f130225ecdd0d177e67bf7f83a3de344554682",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "d47b06cd973b10ad0ed13ffcafb648dd7d50a951eb4adb01b0eaa3273d8e983b",
-      "size_bytes": 264688,
+      "sha256": "18a65c310c8f3060f32e0ded3495167ae62954cec9bd152d41bea3eb903441b1",
+      "size_bytes": 268125,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "dfe91add9ef8afd73309ef0ab6b1c85aae0eab7215b0187bd0b39a7ab4d173b5",
-      "size_bytes": 58297,
+      "sha256": "f6d9515de0a914c3c2e47ad2ebb66323ac002f904eab55656252da66234f39b8",
+      "size_bytes": 58552,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "da14025a1938e497ae99ccf5bbc96721f95144918ac49a80a290fbe7fe0f6f85",
-      "size_bytes": 963709,
+      "sha256": "6afe414cc3e7f5ea57de3148d67e5b547a2b7fce5d86d14cb2e9646e3b9b571d",
+      "size_bytes": 963971,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [

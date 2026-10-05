@@ -47,6 +47,7 @@
 | Phase 17 required check workflow | `.github/workflows/phase17-production-validation.yml` |
 | Phase 18 VPS Pull Bootstrap の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 VPS Pull Bootstrap 参照](DETAIL_INDEX.md#phase-18-vps-pull-bootstrap-entry) |
 | Phase 18 VPS Pull Bootstrap 詳細本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](details/production-validation.md#phase-18-vps-pull-bootstrap-contract) |
+| Phase 18 VPS Pull Bootstrap shell artifact | [`adlaire-ci-vps-pull-bootstrap.sh`](../adlaire-ci-vps-pull-bootstrap.sh) |
 | Phase 18 正式 fixture root | [`testdata/phase18/vps-pull-bootstrap/`](../testdata/phase18/vps-pull-bootstrap/) |
 | Phase 18 required check workflow | [`.github/workflows/phase18-vps-pull-bootstrap.yml`](../.github/workflows/phase18-vps-pull-bootstrap.yml) |
 | Phase 18 checker implementation artifact 配置先 | [`main_test.go`](../main_test.go) |
@@ -436,6 +437,7 @@
 
 | path | 役割 | 所在 |
 |------|------|------|
+| [`adlaire-ci-vps-pull-bootstrap.sh`](../adlaire-ci-vps-pull-bootstrap.sh) | Phase 18 VPS Pull Bootstrap shell artifact | 実在 |
 | [`docs/details/production-validation.md`](details/production-validation.md) | Phase 18 VPS Pull Bootstrap 詳細本文 | 実在 |
 | [`docs/DETAIL_INDEX.md#phase-18-state-transition-gate`](DETAIL_INDEX.md#phase-18-state-transition-gate) | Phase 18 状態遷移 gate | 実在 |
 | [`testdata/phase18/vps-pull-bootstrap/`](../testdata/phase18/vps-pull-bootstrap/) | Phase 18 正式 fixture root | 実在 |

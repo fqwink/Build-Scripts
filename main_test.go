@@ -739,6 +739,7 @@ func TestPhase18VPSPullBootstrapEvidence(t *testing.T) {
 	counters := phase18ReadCounters(t, filepath.Join(root, "expected", "counters.json"))
 	phase18RequireCountersClosed(t, counters)
 	inputs := phase18RequireInputsAndExpected(t, root)
+	phase18RequireBootstrapScriptArtifact(t, phase18BootstrapScriptPath, inputs.Scope)
 	records := phase18ReadRecords(t, root)
 	phase18RequireRequiredCheckConnections(t, records)
 	phase18RequireSessionRecords(t, records["records/session.jsonl"], inputs)
@@ -3925,6 +3926,18 @@ var phase18DocumentDriftTargets = []string{
 
 const phase18BootstrapScriptExpectedState = "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback fixed-token-flag-interface sh adlaire-ci-vps-pull-bootstrap.sh --source-channel integration-head|stable-release --topology-role ci-cd|site|single-node --source absolute-https-url-or-absolute-file-path --sha256 64-lowercase-hex --install-dir /opt/adlaire-builder --bin-dir /usr/local/bin --state-dir /opt/adlaire-builder --service-user root sh mktemp mkdir chmod install mv rm sha256sum systemctl curl wget single-json-object-secret-safe diagnostic-json-lines-on-failure common-cli-exit-code-contract bootstrap-script-http-client-missing bootstrap-script-source-unreachable bootstrap-script-digest-mismatch bootstrap-script-version-mismatch bootstrap-script-executable-permission-invalid bootstrap-script-systemd-unit-invalid bootstrap-script-state-directory-invalid bootstrap-script-health-failed bootstrap-script-rollback-failed"
 
+const phase18BootstrapScriptPath = "adlaire-ci-vps-pull-bootstrap.sh"
+
+var phase18BootstrapInstalledBinaries = []string{
+	"adlaire-ci-build",
+	"adlaire-ci-runner",
+	"adlaire-ci-api",
+	"adlaire-ci-setup",
+	"adlaire-ci-admin",
+	"adlaire-ci-mcp",
+	"adlaire-ci-obsidian",
+}
+
 var phase18ReferenceLabels = map[string]string{
 	"manifest.json":                                                              "Phase 18 manifest",
 	"input/environment_handover.json":                                            "Phase 18 environment handover",
@@ -3942,6 +3955,7 @@ var phase18ReferenceLabels = map[string]string{
 	"records/security.jsonl":                                                     "Phase 18 security records",
 	"records/document_drift.jsonl":                                               "Phase 18 document drift records",
 	"testdata/phase18/vps-pull-bootstrap/":                                       "Phase 18 fixture root",
+	"adlaire-ci-vps-pull-bootstrap.sh":                                           "Phase 18 VPS Pull Bootstrap shell artifact",
 	".github/workflows/phase18-vps-pull-bootstrap.yml":                           "Phase 18 required check workflow",
 	"main_test.go":                                                               "Phase 18 checker implementation artifact",
 	"docs/ROADMAP.md#roadmap-initial-phase-plan":                                 "状態・計画責務 §4.1",
@@ -4983,6 +4997,95 @@ func phase18RequireWorkflow(t *testing.T, path string) {
 	phase13RequirePinnedActions(t, workflow)
 }
 
+func phase18RequireBootstrapScriptArtifact(t *testing.T, path string, scope phase18OperationScopeFile) {
+	t.Helper()
+
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatalf("missing-file: %s must exist as Phase 18 VPS Pull Bootstrap shell artifact: %v", path, err)
+	}
+	if info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("schema-mismatch: %s must be a regular non-symlink shell artifact", path)
+	}
+	if info.Mode().Perm()&0111 == 0 {
+		t.Fatalf("schema-mismatch: %s must be executable", path)
+	}
+	script := phase11MustReadText(t, path)
+	if !strings.HasPrefix(script, "#!/bin/sh\n") {
+		t.Fatalf("schema-mismatch: %s must start with #!/bin/sh", path)
+	}
+	for _, forbidden := range []string{
+		"#!/usr/bin/env bash",
+		"#!/bin/bash",
+		"[[",
+		"function ",
+		"pipefail",
+		"git clone",
+		"gh ",
+		"GITHUB_TOKEN",
+		"CONOHA",
+		"self-hosted",
+		"ssh-key",
+		"vps-create",
+		"vps-delete",
+		"plan-change",
+	} {
+		if strings.Contains(script, forbidden) {
+			t.Fatalf("forbidden-side-effect: %s must not contain forbidden bootstrap token %q", path, forbidden)
+		}
+	}
+	for _, token := range []string{
+		scope.BootstrapScriptArtifact,
+		scope.BootstrapScriptRuntime,
+		scope.ActiveSourceChannel,
+		scope.MinimumTopologyRole,
+		scope.BootstrapSourceIDFormat,
+		scope.BootstrapDigestAlgorithm,
+		scope.BootstrapInstallDirectory,
+		scope.BootstrapBinDirectory,
+		scope.BootstrapStateDirectory,
+		scope.BootstrapServiceUser,
+		scope.BootstrapSecretInputPolicy,
+		scope.BootstrapStateModel,
+		scope.BootstrapCLIContract,
+		scope.BootstrapStdoutContract,
+		scope.BootstrapStderrContract,
+		scope.BootstrapExitCodeContract,
+		"single-node",
+		"stable-release",
+		"absolute-https-url",
+		"absolute-file-path",
+		"/etc/systemd/system/adlaire-ci.service",
+		"/etc/systemd/system/adlaire-ci.timer",
+		"/etc/systemd/system/adlaire-ci-api.service",
+		".admin_credentials",
+	} {
+		if !strings.Contains(script, token) {
+			t.Fatalf("document-drift: %s must contain Phase 18 bootstrap contract token %q", path, token)
+		}
+	}
+	for _, token := range scope.BootstrapInvocationTokens {
+		if !strings.Contains(script, token) {
+			t.Fatalf("document-drift: %s must contain fixed invocation token %q", path, token)
+		}
+	}
+	for _, command := range append(scope.BootstrapRequiredCommands, scope.BootstrapHTTPClientOrder...) {
+		if !strings.Contains(script, command) {
+			t.Fatalf("document-drift: %s must contain required command/client token %q", path, command)
+		}
+	}
+	for _, failureCode := range scope.BootstrapFailureCodes {
+		if !strings.Contains(script, failureCode) {
+			t.Fatalf("document-drift: %s must contain failure code %q", path, failureCode)
+		}
+	}
+	for _, binary := range phase18BootstrapInstalledBinaries {
+		if !strings.Contains(script, binary) {
+			t.Fatalf("document-drift: %s must install standard binary %q", path, binary)
+		}
+	}
+}
+
 func phase18RequireDocumentState(t *testing.T) {
 	t.Helper()
 
@@ -5120,6 +5223,7 @@ func phase18RequireDocumentState(t *testing.T) {
 	}
 	for _, token := range []string{
 		"Phase 18 checker acceptance fixture は repository 内の仕様・schema・record・counter・required check・document drift の受入証跡",
+		"bootstrap script artifact の静的契約",
 		"`live VPS completion summary` を同一 PR 本文へ接続する",
 		"fixture 証跡責務では `live VPS completion summary` の item を再掲しない",
 		"Phase 18 Go test checker acceptance 契約",
@@ -5143,6 +5247,7 @@ func phase18RequireDocumentState(t *testing.T) {
 	for _, rel := range phase18FixtureFiles {
 		expectedPaths = append(expectedPaths, "testdata/phase18/vps-pull-bootstrap/"+rel)
 	}
+	expectedPaths = append(expectedPaths, "adlaire-ci-vps-pull-bootstrap.sh")
 	expectedPaths = append(expectedPaths, ".github/workflows/phase18-vps-pull-bootstrap.yml")
 	for _, rel := range expectedPaths {
 		if !strings.Contains(documentIndex, "| `"+rel+"` |") && !strings.Contains(documentIndex, "| [`"+rel+"`]") {
