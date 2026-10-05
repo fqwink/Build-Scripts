@@ -411,6 +411,8 @@ Phase 18 は owner component を追加しない。VPS Pull Bootstrap、Phase 17 
 
 Phase 18 実装 PR は、required check 名、完了条件、required check workflow 契約、checker 実行入口、checker implementation artifact、document drift record を [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) と [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 18 target path 所在](DOCUMENT_INDEX.md#phase-18-target-paths) から参照し、同一 PR 本文へ記録する。
 
+Phase 18 の状態遷移判断は、repository 内 checker acceptance fixture の成功だけでは完了しない。`実装済み` への遷移では、[`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](details/production-validation.md#phase-18-vps-pull-bootstrap-contract) の `live VPS completion summary` と [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) の checker acceptance fixture を同一 PR 本文で接続する。詳細仕様入口責務では summary item、counter key、required check 名、record schema を再掲しない。
+
 <a id="phase-19-inhouse-cicd-entry"></a>
 **Phase 19 内製 CI/CD 強化参照：**
 

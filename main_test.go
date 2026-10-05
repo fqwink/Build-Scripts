@@ -4959,7 +4959,9 @@ func phase18RequireDocumentState(t *testing.T) {
 
 	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
+	detailIndex := phase11MustReadText(t, "docs/DETAIL_INDEX.md")
 	productionValidation := phase11MustReadText(t, "docs/details/production-validation.md")
+	fixture := phase11MustReadText(t, "docs/details/fixture.md")
 	phase18Row := "| Phase 18 | VPS Pull Bootstrap。"
 	phase18InProgressStatus := "| 実装中・bootstrap 検証未完了 | Phase 17 |"
 	phase18ImplementedStatus := "| 実装済み | Phase 17 |"
@@ -4971,6 +4973,14 @@ func phase18RequireDocumentState(t *testing.T) {
 	}
 	if strings.Contains(roadmap, phase18ImplementedStatus) || strings.Contains(roadmap, "Phase 18 も `実装済み`") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
 		t.Fatalf("docs/ROADMAP.md must not mark Phase 18 implemented or unimplemented while real VPS Pull Bootstrap remains incomplete")
+	}
+	for _, token := range []string{
+		"`live VPS completion summary` を同一 PR 本文へ secret-safe に記録",
+		"repository 内 fixture、GitHub Actions success、Docker success、または closure counter 完了値だけを、Phase 18 の状態遷移根拠として扱わない",
+	} {
+		if !strings.Contains(roadmap, token) {
+			t.Fatalf("docs/ROADMAP.md must connect Phase 18 state transition to live VPS completion summary token %q", token)
+		}
 	}
 	for _, feature := range []string{
 		"Phase 18 VPS Pull Bootstrap / Phase 17 handover / bootstrap script artifact / topology role / source channel / bootstrap session / bootstrap artifact health / bootstrap runtime flow gate",
@@ -5009,6 +5019,24 @@ func phase18RequireDocumentState(t *testing.T) {
 	} {
 		if !strings.Contains(productionValidation, token) {
 			t.Fatalf("docs/details/production-validation.md must define Phase 18 live VPS completion summary token %q", token)
+		}
+	}
+	for _, token := range []string{
+		"repository 内 checker acceptance fixture の成功だけでは完了しない",
+		"`live VPS completion summary` と [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap]",
+		"summary item、counter key、required check 名、record schema を再掲しない",
+	} {
+		if !strings.Contains(detailIndex, token) {
+			t.Fatalf("docs/DETAIL_INDEX.md must route Phase 18 completion without redefinition token %q", token)
+		}
+	}
+	for _, token := range []string{
+		"Phase 18 checker acceptance fixture は repository 内の仕様・schema・record・counter・required check・document drift の受入証跡",
+		"`live VPS completion summary` を同一 PR 本文へ接続する",
+		"fixture 証跡責務では `live VPS completion summary` の item を再掲しない",
+	} {
+		if !strings.Contains(fixture, token) {
+			t.Fatalf("docs/details/fixture.md must keep Phase 18 fixture/live summary boundary token %q", token)
 		}
 	}
 	expectedPaths := []string{"testdata/phase18/vps-pull-bootstrap/"}

@@ -1016,6 +1016,8 @@ Phase 18 の `provider_target=conoha-vps-primary` かつ `validation_mode=vps-pu
 
 Phase 18 closure counter は以下に固定する。Phase 18 bootstrap 完了 PR は、下表の counter がすべて完了値になったことを同一証跡 package で示す。Phase 18 checker acceptance fixture の完了値だけを、VPS 上の bootstrap 完了根拠として扱ってはならない。
 
+Phase 18 checker acceptance fixture は repository 内の仕様・schema・record・counter・required check・document drift の受入証跡であり、VPS 内実測結果そのものではない。Phase 18 を `実装済み` へ遷移する場合は、本節の checker acceptance fixture に加え、[`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](production-validation.md#phase-18-vps-pull-bootstrap-contract) の `live VPS completion summary` を同一 PR 本文へ接続する。fixture 証跡責務では `live VPS completion summary` の item を再掲しない。
+
 | counter | 完了値 | 未完了条件 |
 |---------|--------|------------|
 | `phase18_bootstrap_prerequisite_open_count` | `0` | Phase 17 証跡、試験本番VPS 前提、OS / plan、未残条件の引継ぎに欠落がある。 |
