@@ -5045,7 +5045,7 @@ func phase18RequireDocumentState(t *testing.T) {
 		}
 	}
 	for _, token := range []string{
-		"bootstrap 完了判定または `実装済み` 遷移を扱う PR は、[詳細仕様入口責務 Phase 18 状態遷移 gate](#phase-18-state-transition-gate) に従う",
+		"bootstrap 完了判定または `実装済み` 遷移を扱う PR は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](#phase-18-state-transition-gate) に従う",
 		"<a id=\"phase-18-state-transition-gate\"></a>",
 		"repository 内 checker acceptance fixture の成功だけでは完了しない",
 		"`live VPS completion summary` と [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap]",
