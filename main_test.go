@@ -3926,24 +3926,30 @@ var phase18DocumentDriftTargets = []string{
 const phase18BootstrapScriptExpectedState = "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback fixed-token-flag-interface sh adlaire-ci-vps-pull-bootstrap.sh --source-channel integration-head|stable-release --topology-role ci-cd|site|single-node --source absolute-https-url-or-absolute-file-path --sha256 64-lowercase-hex --install-dir /opt/adlaire-builder --bin-dir /usr/local/bin --state-dir /opt/adlaire-builder --service-user root sh mktemp mkdir chmod install mv rm sha256sum systemctl curl wget single-json-object-secret-safe diagnostic-json-lines-on-failure common-cli-exit-code-contract bootstrap-script-http-client-missing bootstrap-script-source-unreachable bootstrap-script-digest-mismatch bootstrap-script-version-mismatch bootstrap-script-executable-permission-invalid bootstrap-script-systemd-unit-invalid bootstrap-script-state-directory-invalid bootstrap-script-health-failed bootstrap-script-rollback-failed"
 
 var phase18ReferenceLabels = map[string]string{
-	"manifest.json":                                    "Phase 18 manifest",
-	"input/environment_handover.json":                  "Phase 18 environment handover",
-	"input/session_plan.json":                          "Phase 18 session plan",
-	"input/operation_scope.json":                       "Phase 18 operation scope",
-	"input/security_boundary.json":                     "Phase 18 security boundary",
-	"expected/counters.json":                           "Phase 18 closure counters",
-	"expected/session_flow.json":                       "Phase 18 session flow",
-	"expected/bugfix_closure.json":                     "Phase 18 bugfix closure",
-	"records/session.jsonl":                            "Phase 18 session records",
-	"records/health.jsonl":                             "Phase 18 health records",
-	"records/runtime.jsonl":                            "Phase 18 runtime records",
-	"records/update_rollback.jsonl":                    "Phase 18 update rollback records",
-	"records/bugfix.jsonl":                             "Phase 18 bugfix records",
-	"records/security.jsonl":                           "Phase 18 security records",
-	"records/document_drift.jsonl":                     "Phase 18 document drift records",
-	"testdata/phase18/vps-pull-bootstrap/":             "Phase 18 fixture root",
-	".github/workflows/phase18-vps-pull-bootstrap.yml": "Phase 18 required check workflow",
-	"main_test.go":                                     "Phase 18 checker implementation artifact",
+	"manifest.json":                                                              "Phase 18 manifest",
+	"input/environment_handover.json":                                            "Phase 18 environment handover",
+	"input/session_plan.json":                                                    "Phase 18 session plan",
+	"input/operation_scope.json":                                                 "Phase 18 operation scope",
+	"input/security_boundary.json":                                               "Phase 18 security boundary",
+	"expected/counters.json":                                                     "Phase 18 closure counters",
+	"expected/session_flow.json":                                                 "Phase 18 session flow",
+	"expected/bugfix_closure.json":                                               "Phase 18 bugfix closure",
+	"records/session.jsonl":                                                      "Phase 18 session records",
+	"records/health.jsonl":                                                       "Phase 18 health records",
+	"records/runtime.jsonl":                                                      "Phase 18 runtime records",
+	"records/update_rollback.jsonl":                                              "Phase 18 update rollback records",
+	"records/bugfix.jsonl":                                                       "Phase 18 bugfix records",
+	"records/security.jsonl":                                                     "Phase 18 security records",
+	"records/document_drift.jsonl":                                               "Phase 18 document drift records",
+	"testdata/phase18/vps-pull-bootstrap/":                                       "Phase 18 fixture root",
+	".github/workflows/phase18-vps-pull-bootstrap.yml":                           "Phase 18 required check workflow",
+	"main_test.go":                                                               "Phase 18 checker implementation artifact",
+	"docs/ROADMAP.md#roadmap-initial-phase-plan":                                 "状態・計画責務 §4.1",
+	"docs/SPEC.md#policy-spec-maturity":                                          "ポリシー責務 §0a",
+	"docs/DETAIL_INDEX.md#phase-18-vps-pull-bootstrap-entry":                     "詳細仕様入口責務 Phase 18 VPS Pull Bootstrap 参照",
+	"docs/DETAIL_INDEX.md#phase-18-state-transition-gate":                        "詳細仕様入口責務 Phase 18 状態遷移 gate",
+	"docs/DOCUMENT_INDEX.md#phase-18-target-paths":                               "文書・実装ファイル所在の索引責務 Phase 18 target path 所在",
+	"docs/details/fixture.md#phase-18-vps-pull-bootstrap-evidence":               "fixture 証跡責務 Phase 18 VPS Pull Bootstrap",
 	"docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract": "本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約",
 	"docs/details/fixture.md#phase-17-production-validation-evidence":            "fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡",
 	"docs/details/fixture.md#phase-18-negative-boundary-contract":                "fixture 証跡責務 Phase 18 negative boundary 固定契約",
@@ -4801,7 +4807,7 @@ func phase18RequireBugfixRecords(t *testing.T, records []phase18EvidenceRecord, 
 	var specFirst bool
 	var noIssue bool
 	for _, record := range records {
-		if record.SourceRef != phase18MarkdownRef("expected/bugfix_closure.json") || record.EvidenceRef != phase18MarkdownRef("records/bugfix.jsonl") || record.SpecGeneralUpdateRef != "[docs/ROADMAP.md 状態・計画責務 §4.1](docs/ROADMAP.md#roadmap-initial-phase-plan)" || record.ResponsibilitySourceRef != phase18MarkdownRef("docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract") || record.RevalidationRef != phase18MarkdownRef("records/bugfix.jsonl") {
+		if record.SourceRef != phase18MarkdownRef("expected/bugfix_closure.json") || record.EvidenceRef != phase18MarkdownRef("records/bugfix.jsonl") || record.SpecGeneralUpdateRef != phase18MarkdownRef("docs/ROADMAP.md#roadmap-initial-phase-plan") || record.ResponsibilitySourceRef != phase18MarkdownRef("docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract") || record.RevalidationRef != phase18MarkdownRef("records/bugfix.jsonl") {
 			t.Fatalf("Phase 18 bugfix record must use fixed linked source, evidence, spec, responsibility, and revalidation refs: %+v", record)
 		}
 		if record.CounterKey != "phase18_bugfix_spec_gap_count" && record.CounterKey != "phase18_known_bug_open_count" {
@@ -4892,9 +4898,9 @@ func phase18RequireDocumentDriftRecords(t *testing.T, records []phase18EvidenceR
 	targetCoverage := map[string]bool{}
 	var futurePlan bool
 	var stateTransitionGate bool
-	futurePlanSourceRef := "[docs/details/production-validation.md 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract)"
-	futurePlanEvidenceRef := "[docs/ROADMAP.md 状態・計画責務 §4.1](docs/ROADMAP.md#roadmap-initial-phase-plan)"
-	stateTransitionGateRef := "[docs/DETAIL_INDEX.md 詳細仕様入口責務 Phase 18 状態遷移 gate](docs/DETAIL_INDEX.md#phase-18-state-transition-gate)"
+	futurePlanSourceRef := phase18MarkdownRef("docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract")
+	futurePlanEvidenceRef := phase18MarkdownRef("docs/ROADMAP.md#roadmap-initial-phase-plan")
+	stateTransitionGateRef := phase18MarkdownRef("docs/DETAIL_INDEX.md#phase-18-state-transition-gate")
 	for _, record := range records {
 		if record.ProviderTarget == "xserver-vps-future" {
 			if record.SessionID != "not_applicable" || record.ValidationMode != "future_plan" || record.Result != "future_plan" || record.DriftResult != "future_plan_confirmed" || record.ClosureResult != "not_applicable" || record.CounterKey != "phase18_document_drift_open_count" || record.SourceRef != futurePlanSourceRef || record.EvidenceRef != futurePlanEvidenceRef || record.DocumentRef != futurePlanSourceRef || record.AnchorRef != futurePlanSourceRef || record.FixturePathRef != "not_applicable" || record.WorkflowPathRef != "not_applicable" || record.ExpectedRef != "not_applicable" || record.ActualRef != "not_applicable" || record.CorrectiveActionRef != "not_applicable" {
