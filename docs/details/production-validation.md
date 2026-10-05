@@ -225,7 +225,7 @@ Phase 17 の実装 PR は、[`docs/details/fixture.md` fixture 証跡責務 Phas
 
 **9. Phase 18 VPS Pull Bootstrap 契約：**
 
-Phase 18 は、作成済み VPS に `VPS Pull Bootstrap` を導入し、Adlaire CI の CI 実行基盤と将来 CD 基盤の受け口を VPS 側へ入れる Phase とする。`VPS Pull Bootstrap` は shell 製 bootstrap script による初回導入方式であり、GitHub Actions、GitHub Secrets、GitHub self-hosted runner、provider 固有の startup script 機能、または provider API を Phase 18 の必須実行基盤として扱ってはならない。
+Phase 18 は、作成済み VPS に `VPS Pull Bootstrap` を導入し、Adlaire CI の CI 実行基盤と将来 CD 基盤の受け口を VPS 側へ入れる Phase とする。`VPS Pull Bootstrap` は shell 製 bootstrap script による初回導入方式であり、GitHub Actions、GitHub Secrets、GitHub self-hosted runner、provider 固有の startup script 機能、または provider API を Phase 18 の必須実行基盤として扱ってはならない。`.github/workflows/phase18-vps-pull-bootstrap.yml` は repository 側 checker required check の実行経路であり、VPS bootstrap 実行、secret delivery、source 取得、deploy 制御、または `live VPS completion summary` の代替ではない。
 
 Phase 18 における将来 CD 基盤の受け口とは、Phase 19 以降が `stable-release` channel、deploy、rollback、release selection、promotion を実装する際に使用する source channel、topology role、install directory、bin directory、state directory、service unit、log / state boundary を VPS 内に固定することである。Phase 18 では deploy decision、production release selection、CD pipeline execution、customer environment promotion を実装対象、完了条件、または bootstrap 成功条件として扱ってはならない。
 
@@ -327,7 +327,7 @@ Phase 18 では以下を禁止する。
 - customer data、実運用 credential、実運用 secret、private key、個人情報を repository、fixture、log、PR body、artifact に保存する。
 - provider account id、provider resource id、IP address、hostname、FQDN、credential file path、secret 値、secret hash、token prefix / suffix を証跡化する。
 - VPS 作成、VPS 削除、plan 変更、disk rebuild、volume 操作、firewall lockout、SSH lockout を Phase 18 の成功操作として扱う。
-- GitHub Actions、GitHub Secrets、GitHub self-hosted runner、provider startup script 機能、または provider API を Phase 18 の必須実行面として扱う。
+- GitHub Actions、GitHub Secrets、GitHub self-hosted runner、provider startup script 機能、または provider API を Phase 18 の必須実行面として扱う。ただし repository 側 checker required check としての `.github/workflows/phase18-vps-pull-bootstrap.yml` は除外し、同 workflow を VPS bootstrap 実行、secret delivery、source 取得、deploy 制御、または `live VPS completion summary` の代替として扱うことは禁止する。
 - `xserver-vps-future` を Phase 18 の必須検証未完了 item として扱う。
 - 24 時間監視がないことだけを理由に Phase 18 を未完了扱いにする。
 - スクリーンショット、口頭報告、手作業メモ、provider 画面確認だけを完了証跡にする。

@@ -5018,6 +5018,8 @@ func phase18RequireDocumentState(t *testing.T) {
 		"Phase 18 の完了は、[`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約]",
 		"repository 内 checker acceptance fixture、GitHub Actions success、Docker success、または closure counter 完了値だけでは認めない",
 		"`live VPS completion summary` の summary item、Phase 18 closure counter の key、完了値、record 種別、required check 名を再掲しない",
+		"GitHub Actions は repository 側 checker required check としてだけ扱い",
+		"VPS bootstrap の実行面、secret delivery、source 取得、deploy 制御、または live VPS completion summary の代替として扱ってはならない",
 	} {
 		if !strings.Contains(spec, token) {
 			t.Fatalf("docs/SPEC.md must keep Phase 18 top-level completion policy connected to live VPS summary token %q", token)
@@ -5061,6 +5063,8 @@ func phase18RequireDocumentState(t *testing.T) {
 		"Phase 18 では deploy decision、production release selection、CD pipeline execution、customer environment promotion を実装対象、完了条件、または bootstrap 成功条件として扱ってはならない",
 		"`topology_role=ci-cd` は VPS 内の配置 role 名",
 		"承認済み deploy target、正式本番 deploy、customer environment deploy を成功証跡として扱わない",
+		"`.github/workflows/phase18-vps-pull-bootstrap.yml` は repository 側 checker required check の実行経路",
+		"VPS bootstrap 実行、secret delivery、source 取得、deploy 制御、または `live VPS completion summary` の代替ではない",
 		"`fixture_gate_result`",
 		"`checker-acceptance-fixture` を `live-vps-bootstrap` の代替にしない",
 		"`closure_counter_result`",

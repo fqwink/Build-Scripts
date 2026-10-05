@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "e993f7ad0ef572c2853bdef52a9698e193e2a31ebf37d3c067da4cc7431863ee",
+  "source_group_sha256": "eca78da7a720f3e581407c815085c2faf69210c67b13bd83983d2d4b84f9b792",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "808c0da525ffb1cf231f58aadc9151d95324afab972fbb468cedae92bfea020f",
-      "size_bytes": 260147,
+      "sha256": "20dd02a682a554ef260a2ec12e8ff9afc0cc194b02d75916d61b52f0d58b0ab2",
+      "size_bytes": 260650,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -115,8 +115,8 @@
     {
       "path": "docs/SPEC.md",
       "source_exists": true,
-      "sha256": "e782baee6deb5f3ccf7dcda6e0cc6f9fbaac3e29ed5945c34a9b59509f5287d4",
-      "size_bytes": 189815,
+      "sha256": "6c244abac29629ad877e15ec16cadf36782fc065bf92c047301d96d48f48689c",
+      "size_bytes": 190080,
       "owner_component": "runner",
       "area": "policy",
       "detected_terms": [
