@@ -4796,7 +4796,7 @@ func phase18RequireDocumentDriftRecords(t *testing.T, records []phase18EvidenceR
 	var futurePlan bool
 	for _, record := range records {
 		if record.ProviderTarget == "xserver-vps-future" {
-			if record.SessionID != "not_applicable" || record.ValidationMode != "future_plan" || record.Result != "future_plan" || record.DriftResult != "future_plan_confirmed" || record.ClosureResult != "not_applicable" || record.CounterKey != "phase18_document_drift_open_count" {
+			if record.SessionID != "not_applicable" || record.ValidationMode != "future_plan" || record.Result != "future_plan" || record.DriftResult != "future_plan_confirmed" || record.ClosureResult != "not_applicable" || record.CounterKey != "phase18_document_drift_open_count" || record.SourceRef != "docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract" || record.EvidenceRef != "docs/ROADMAP.md#roadmap-initial-phase-plan" || record.DocumentRef != "docs/details/production-validation.md" || record.AnchorRef != "phase-18-vps-pull-bootstrap-contract" || record.FixturePathRef != "not_applicable" || record.WorkflowPathRef != "not_applicable" || record.ExpectedRef != "not_applicable" || record.ActualRef != "not_applicable" || record.CorrectiveActionRef != "not_applicable" {
 				t.Fatalf("Phase 18 xserver future plan classification mismatch: %+v", record)
 			}
 			futurePlan = true
