@@ -54,6 +54,7 @@
     "install",
     "mv",
     "rm",
+    "cp",
     "sha256sum",
     "systemctl",
     "sleep",

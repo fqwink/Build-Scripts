@@ -1000,7 +1000,8 @@ func TestAPIRepoAndBranchConfigEndpoints(t *testing.T) {
 
 func TestAPIScheduleEndpoints(t *testing.T) {
 	state := newAPIState(t)
-	if err := os.WriteFile(filepath.Join(state, ".server_config"), []byte("{\"watch_mode\":\"local\"}\n"), 0600); err != nil {
+	initialConfig := `{"watch_mode":"local","snapshots_keep":0,"queue_max_size":0,"history_retention":{"enabled":true,"max_count":77,"max_age_days":9,"updated_at":null},"duration_anomaly":{"enabled":true,"min_samples":3,"avg_multiplier":1.5,"p95_multiplier":2},"tag_filter":{"enabled":true,"patterns":["release-*"]},"build_cache_enabled":true,"deploy_parallelism":4,"remote_build":{"enabled":false,"host":null,"user":null,"work_dir":null,"command_args":[],"artifact_path":null},"approval_timeout_seconds":600}` + "\n"
+	if err := os.WriteFile(filepath.Join(state, ".server_config"), []byte(initialConfig), 0600); err != nil {
 		t.Fatal(err)
 	}
 	server := newTestAPI(t, state)
@@ -1121,6 +1122,19 @@ func TestAPIScheduleEndpoints(t *testing.T) {
 	readTestJSON(t, filepath.Join(state, ".server_config"), &cfg)
 	if cfg.SchedulePaused || cfg.ForceBuildIntervalHours != 24 || cfg.BuildCooldownSeconds != 120 || cfg.AllowedHours != nil || cfg.WatchMode != "local" {
 		t.Fatalf("schedule values were not saved: %#v", cfg)
+	}
+	if cfg.SnapshotsKeep != 0 || cfg.QueueMaxSize != 0 || !cfg.BuildCacheEnabled || cfg.DeployParallelism != 4 || cfg.ApprovalTimeoutSeconds != 600 {
+		t.Fatalf("schedule update changed preserved scalar config: %#v", cfg)
+	}
+	for field, pair := range map[string][2]json.RawMessage{
+		"history_retention": {cfg.HistoryRetention, json.RawMessage(`{"enabled":true,"max_count":77,"max_age_days":9,"updated_at":null}`)},
+		"duration_anomaly":  {cfg.DurationAnomaly, json.RawMessage(`{"enabled":true,"min_samples":3,"avg_multiplier":1.5,"p95_multiplier":2}`)},
+		"tag_filter":        {cfg.TagFilter, json.RawMessage(`{"enabled":true,"patterns":["release-*"]}`)},
+		"remote_build":      {cfg.RemoteBuild, json.RawMessage(`{"enabled":false,"host":null,"user":null,"work_dir":null,"command_args":[],"artifact_path":null}`)},
+	} {
+		if string(pair[0]) != string(pair[1]) {
+			t.Fatalf("schedule update changed %s: got=%s want=%s", field, pair[0], pair[1])
+		}
 	}
 
 	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/interval", token, map[string]int{"interval_seconds": 1})

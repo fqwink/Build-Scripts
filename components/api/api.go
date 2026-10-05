@@ -309,6 +309,7 @@ type apiAccessControl struct {
 type apiServerConfig struct {
 	LogMaxLines             int              `json:"log_max_lines"`
 	HistoryMaxCount         int              `json:"history_max_count"`
+	HistoryRetention        json.RawMessage  `json:"history_retention"`
 	BuildTimeoutSeconds     int              `json:"build_timeout_seconds"`
 	LogRetentionDays        int              `json:"log_retention_days"`
 	LogArchiveAfterDays     int              `json:"log_archive_after_days"`
@@ -322,6 +323,7 @@ type apiServerConfig struct {
 	CommitStatusContext     string           `json:"commit_status_context"`
 	CommitStatusTargetURL   *string          `json:"commit_status_target_url"`
 	BuildTrendKeepCount     int              `json:"build_trend_keep_count"`
+	DurationAnomaly         json.RawMessage  `json:"duration_anomaly"`
 	SessionTimeoutSeconds   int              `json:"session_timeout_seconds"`
 	ForceBuildIntervalHours int              `json:"force_build_interval_hours"`
 	BuildCooldownSeconds    int              `json:"build_cooldown_seconds"`
@@ -329,6 +331,11 @@ type apiServerConfig struct {
 	SchedulePaused          bool             `json:"schedule_paused"`
 	AllowedHours            *apiAllowedHours `json:"allowed_hours"`
 	WatchMode               string           `json:"watch_mode"`
+	TagFilter               json.RawMessage  `json:"tag_filter"`
+	BuildCacheEnabled       bool             `json:"build_cache_enabled"`
+	DeployParallelism       int              `json:"deploy_parallelism"`
+	RemoteBuild             json.RawMessage  `json:"remote_build"`
+	ApprovalTimeoutSeconds  int              `json:"approval_timeout_seconds"`
 	APIRateLimit            map[string]any   `json:"api_rate_limit,omitempty"`
 }
 
@@ -6664,30 +6671,30 @@ func (s *APIServer) readMergedConfig() (apiServerConfig, error) {
 	if err := json.Unmarshal(data, &patch); err != nil {
 		return cfg, err
 	}
-	var fileCfg apiServerConfig
-	if err := json.Unmarshal(data, &fileCfg); err != nil {
+	for key := range patch {
+		if !serverConfigStorageKeyAllowed(key) {
+			return cfg, fmt.Errorf("unknown server config key")
+		}
+	}
+	defaultData, err := json.Marshal(cfg)
+	if err != nil {
 		return cfg, err
 	}
-	fileCfg = normalizeServerConfig(fileCfg)
-	if _, ok := patch["log_retention_days"]; ok && fileCfg.LogRetentionDays == defaultServerConfig().LogRetentionDays {
-		var v int
-		if json.Unmarshal(patch["log_retention_days"], &v) == nil {
-			fileCfg.LogRetentionDays = v
-		}
+	var merged map[string]json.RawMessage
+	if err := json.Unmarshal(defaultData, &merged); err != nil {
+		return cfg, err
 	}
-	if _, ok := patch["snapshots_keep"]; ok && fileCfg.SnapshotsKeep == defaultServerConfig().SnapshotsKeep {
-		var v int
-		if json.Unmarshal(patch["snapshots_keep"], &v) == nil {
-			fileCfg.SnapshotsKeep = v
-		}
+	for key, value := range patch {
+		merged[key] = value
 	}
-	if _, ok := patch["queue_max_size"]; ok && fileCfg.QueueMaxSize == defaultServerConfig().QueueMaxSize {
-		var v int
-		if json.Unmarshal(patch["queue_max_size"], &v) == nil {
-			fileCfg.QueueMaxSize = v
-		}
+	mergedData, err := json.Marshal(merged)
+	if err != nil {
+		return cfg, err
 	}
-	return fileCfg, nil
+	if err := json.Unmarshal(mergedData, &cfg); err != nil {
+		return cfg, err
+	}
+	return cfg, nil
 }
 
 func (s *APIServer) readRepoConfig() (apiRepoConfig, error) {
@@ -7682,13 +7689,21 @@ func readBuildLogByID(stateDir, id string) (apiBuildLog, error) {
 func defaultServerConfig() apiServerConfig {
 	return apiServerConfig{
 		LogMaxLines: 500, HistoryMaxCount: 100, BuildTimeoutSeconds: 300,
+		HistoryRetention: json.RawMessage(`{"enabled":false,"max_count":1000,"max_age_days":null,"updated_at":null}`),
 		LogRetentionDays: 30, LogArchiveAfterDays: 0, LogLevel: "INFO",
 		SnapshotsKeep: 5, QueueMaxSize: defaultQueueMaxSize,
 		BuildRetryMax: 0, BuildRetryBaseSeconds: 5,
 		CommitStatusEnabled: false, CommitStatusContext: "Adlaire CI",
-		BuildTrendKeepCount: 1000, SessionTimeoutSeconds: 28800,
+		BuildTrendKeepCount:     1000,
+		DurationAnomaly:         json.RawMessage(`{"enabled":false,"min_samples":20,"avg_multiplier":2.0,"p95_multiplier":1.5}`),
+		SessionTimeoutSeconds:   28800,
 		ScheduleIntervalSeconds: 300,
 		WatchMode:               "github",
+		TagFilter:               json.RawMessage(`{"enabled":false,"patterns":[]}`),
+		BuildCacheEnabled:       false,
+		DeployParallelism:       1,
+		RemoteBuild:             json.RawMessage(`{"enabled":false,"host":null,"user":null,"work_dir":null,"command_args":[],"artifact_path":null}`),
+		ApprovalTimeoutSeconds:  86400,
 		APIRateLimit:            apiRateLimitPolicyToMap(defaultAPIRateLimitPolicy()),
 	}
 }
@@ -7897,12 +7912,6 @@ func normalizeServerConfig(cfg apiServerConfig) apiServerConfig {
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = def.LogLevel
 	}
-	if cfg.SnapshotsKeep == 0 {
-		cfg.SnapshotsKeep = def.SnapshotsKeep
-	}
-	if cfg.QueueMaxSize == 0 {
-		cfg.QueueMaxSize = def.QueueMaxSize
-	}
 	if cfg.BuildRetryBaseSeconds == 0 {
 		cfg.BuildRetryBaseSeconds = def.BuildRetryBaseSeconds
 	}
@@ -7920,6 +7929,24 @@ func normalizeServerConfig(cfg apiServerConfig) apiServerConfig {
 	}
 	if cfg.WatchMode == "" {
 		cfg.WatchMode = def.WatchMode
+	}
+	if len(cfg.HistoryRetention) == 0 {
+		cfg.HistoryRetention = append(json.RawMessage(nil), def.HistoryRetention...)
+	}
+	if len(cfg.DurationAnomaly) == 0 {
+		cfg.DurationAnomaly = append(json.RawMessage(nil), def.DurationAnomaly...)
+	}
+	if len(cfg.TagFilter) == 0 {
+		cfg.TagFilter = append(json.RawMessage(nil), def.TagFilter...)
+	}
+	if cfg.DeployParallelism == 0 {
+		cfg.DeployParallelism = def.DeployParallelism
+	}
+	if len(cfg.RemoteBuild) == 0 {
+		cfg.RemoteBuild = append(json.RawMessage(nil), def.RemoteBuild...)
+	}
+	if cfg.ApprovalTimeoutSeconds == 0 {
+		cfg.ApprovalTimeoutSeconds = def.ApprovalTimeoutSeconds
 	}
 	if cfg.APIRateLimit == nil {
 		cfg.APIRateLimit = apiRateLimitPolicyToMap(defaultAPIRateLimitPolicy())
@@ -8184,6 +8211,22 @@ func validateConfigDryRun(cfg apiServerConfig, raw map[string]json.RawMessage, o
 func configPatchKeyAllowed(key string) bool {
 	switch key {
 	case "log_max_lines", "history_max_count", "build_timeout_seconds", "log_retention_days", "log_archive_after_days", "log_level", "pat_expires_at", "snapshots_keep", "queue_max_size", "build_retry_max", "build_retry_base_seconds", "commit_status_enabled", "commit_status_context", "commit_status_target_url", "build_trend_keep_count", "session_timeout_seconds":
+		return true
+	default:
+		return false
+	}
+}
+
+func serverConfigStorageKeyAllowed(key string) bool {
+	switch key {
+	case "log_max_lines", "history_max_count", "history_retention", "build_timeout_seconds",
+		"log_retention_days", "log_archive_after_days", "log_level", "pat_expires_at",
+		"snapshots_keep", "queue_max_size", "build_retry_max", "build_retry_base_seconds",
+		"commit_status_enabled", "commit_status_context", "commit_status_target_url",
+		"build_trend_keep_count", "duration_anomaly", "watch_mode", "tag_filter",
+		"build_cache_enabled", "deploy_parallelism", "remote_build", "approval_timeout_seconds",
+		"force_build_interval_hours", "build_cooldown_seconds", "schedule_interval_seconds",
+		"schedule_paused", "allowed_hours", "session_timeout_seconds", "api_rate_limit":
 		return true
 	default:
 		return false

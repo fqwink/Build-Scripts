@@ -599,6 +599,107 @@ func TestPhase18MaterializeAdminRejectsUnsafeTarget(t *testing.T) {
 	}
 }
 
+func TestSetupAtomicWriteTextSyncsFileAndParent(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "asset.txt")
+	ops := defaultSetupAtomicWriteOps()
+	syncTargets := []string{}
+	ops.sync = func(file *os.File) error {
+		syncTargets = append(syncTargets, file.Name())
+		return file.Sync()
+	}
+	if err := atomicWriteTextWithOps(target, "new-value", 0644, ops); err != nil {
+		t.Fatalf("atomic write failed: %v", err)
+	}
+	if len(syncTargets) != 2 || filepath.Dir(syncTargets[0]) != dir || syncTargets[1] != dir {
+		t.Fatalf("file and parent directory must be synced in order: %#v", syncTargets)
+	}
+	data, err := os.ReadFile(target)
+	if err != nil || string(data) != "new-value" {
+		t.Fatalf("unexpected target data=%q err=%v", string(data), err)
+	}
+	info, err := os.Stat(target)
+	if err != nil || info.Mode().Perm() != 0644 {
+		t.Fatalf("unexpected target mode info=%v err=%v", info, err)
+	}
+}
+
+func TestSetupAtomicWriteTextFailureKeepsExistingTarget(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(*setupAtomicWriteOps)
+	}{
+		{
+			name: "file-sync",
+			mutate: func(ops *setupAtomicWriteOps) {
+				ops.sync = func(*os.File) error { return errors.New("sync failed") }
+			},
+		},
+		{
+			name: "rename",
+			mutate: func(ops *setupAtomicWriteOps) {
+				ops.rename = func(string, string) error { return errors.New("rename failed") }
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			dir := t.TempDir()
+			target := filepath.Join(dir, "asset.txt")
+			if err := os.WriteFile(target, []byte("old-value"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			ops := defaultSetupAtomicWriteOps()
+			test.mutate(&ops)
+			if err := atomicWriteTextWithOps(target, "new-value", 0644, ops); err == nil {
+				t.Fatal("expected atomic write failure")
+			}
+			data, err := os.ReadFile(target)
+			if err != nil || string(data) != "old-value" {
+				t.Fatalf("existing target changed data=%q err=%v", string(data), err)
+			}
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, entry := range entries {
+				if strings.HasPrefix(entry.Name(), ".asset.txt.tmp-") {
+					t.Fatalf("temporary file was not removed: %s", entry.Name())
+				}
+			}
+		})
+	}
+}
+
+func TestPhase18MaterializeAdminRejectsAssetSymlink(t *testing.T) {
+	originalIndex := append([]byte(nil), setupEmbeddedAdminIndex...)
+	originalSDK := append([]byte(nil), setupEmbeddedAdminSDK...)
+	t.Cleanup(func() { SetEmbeddedAdminAssets(originalIndex, originalSDK) })
+	SetEmbeddedAdminAssets([]byte("index"), []byte("sdk"))
+
+	installDir := filepath.Join(t.TempDir(), "runtime")
+	adminDir := filepath.Join(installDir, "admin")
+	if err := os.MkdirAll(adminDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside")
+	if err := os.WriteFile(outside, []byte("unchanged"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(adminDir, "index.html")); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := RunSetup([]string{"phase18-materialize-admin", "--install-dir", installDir}, &stdout, &stderr)
+	if code != 1 || stdout.Len() != 0 || stderr.String() != "admin asset materialization failed\n" {
+		t.Fatalf("asset symlink result code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	data, err := os.ReadFile(outside)
+	if err != nil || string(data) != "unchanged" {
+		t.Fatalf("symlink target changed data=%q err=%v", string(data), err)
+	}
+}
+
 func TestSetupInitCredentialsAcceptsSpecifiedChildOutput(t *testing.T) {
 	root := t.TempDir()
 	apiPath := filepath.Join(root, "api")
