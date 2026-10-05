@@ -565,11 +565,11 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if !strings.Contains(roadmap, phase13CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 実装済み after Phase 13 closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 18 とする。") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 active after Phase 17 closure until real VPS Pull Bootstrap completes")
+	if !strings.Contains(roadmap, "現在の active Phase は未指定とする。") {
+		t.Fatalf("docs/ROADMAP.md must leave the active Phase unspecified after Phase 18 closure")
 	}
-	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 17 まではすべて `実装済み`") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 17 are all implemented after Phase 17 closure")
+	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 18 まではすべて `実装済み`") {
+		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 18 are all implemented after Phase 18 closure")
 	}
 
 	for _, feature := range phase11QualityGateFeatures {
@@ -2184,8 +2184,8 @@ func phase16RequireDocumentDriftClosed(t *testing.T) {
 	if !strings.Contains(roadmap, "| Phase 16 | 実装済み品質証跡実体化・追加検証候補 closure。") || !strings.Contains(roadmap, "| 実装済み | Phase 15 |") {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 16 as 実装済み")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 18 とする。") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 active after Phase 17 closure until real VPS Pull Bootstrap completes")
+	if !strings.Contains(roadmap, "現在の active Phase は未指定とする。") {
+		t.Fatalf("docs/ROADMAP.md must leave the active Phase unspecified after Phase 18 closure")
 	}
 	for _, feature := range []string{
 		"Phase 16 source coverage set / detection registry / evidence package manifest / inventory / negative control / expected / record schema / checker implementation artifact / checker 実行入口 / checker 再導出 gate",
@@ -5180,17 +5180,17 @@ func phase18RequireDocumentState(t *testing.T) {
 	phase18Row := "| Phase 18 | VPS Pull Bootstrap。"
 	phase18InProgressStatus := "| 実装中・bootstrap 検証未完了 | Phase 17 |"
 	phase18ImplementedStatus := "| 実装済み | Phase 17 |"
-	if !strings.Contains(roadmap, phase18Row) || !strings.Contains(roadmap, phase18InProgressStatus) {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 as 実装中・bootstrap 検証未完了 until real VPS Pull Bootstrap evidence exists")
+	if !strings.Contains(roadmap, phase18Row) || !strings.Contains(roadmap, phase18ImplementedStatus) {
+		t.Fatalf("docs/ROADMAP.md must mark Phase 18 implemented after live VPS Pull Bootstrap evidence closes the transition gate")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 18") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 as the active Phase until real VPS Pull Bootstrap is complete")
+	if !strings.Contains(roadmap, "現在の active Phase は未指定とする。") {
+		t.Fatalf("docs/ROADMAP.md must leave the active Phase unspecified after Phase 18 closure")
 	}
-	if strings.Contains(roadmap, phase18ImplementedStatus) || strings.Contains(roadmap, "Phase 18 も `実装済み`") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
-		t.Fatalf("docs/ROADMAP.md must not mark Phase 18 implemented or unimplemented while real VPS Pull Bootstrap remains incomplete")
+	if strings.Contains(roadmap, phase18InProgressStatus) || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
+		t.Fatalf("docs/ROADMAP.md must not keep Phase 18 incomplete after live VPS Pull Bootstrap evidence closes the transition gate")
 	}
 	for _, token := range []string{
-		"Phase 11 から Phase 17 の完了証跡条件、closure counter、record schema、required check は ROADMAP 本文で再掲せず",
+		"Phase 11 から Phase 18 の完了証跡条件、closure counter、record schema、required check は ROADMAP 本文で再掲せず",
 		"Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない",
 		"状態遷移判断は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate)",
 	} {
@@ -5233,24 +5233,22 @@ func phase18RequireDocumentState(t *testing.T) {
 		"Phase 18 pull runner foundation / bootstrap update / rollback drill / bootstrap 中 issue / 仕様先行バグ修正 / 再検証 / known bug 0 gate",
 		"Phase 18 secret / destructive operation / opaque metadata / document drift gate",
 	} {
-		if !strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 |") || !strings.Contains(roadmap, feature) {
-			t.Fatalf("docs/ROADMAP.md must mark Phase 18 feature in progress until real bootstrap completes: %s", feature)
-		}
 		if strings.Contains(feature, "secret / destructive operation / opaque metadata / document drift") {
-			if !strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | 本番検証 | "+feature+" |") {
-				t.Fatalf("docs/ROADMAP.md must keep Phase 18 boundary feature in 本番検証 category: %s", feature)
+			if !strings.Contains(roadmap, "| 実装済み | 本番検証 | "+feature+" |") {
+				t.Fatalf("docs/ROADMAP.md must mark the Phase 18 boundary feature implemented in the 本番検証 category: %s", feature)
 			}
-		} else if !strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | VPS Pull Bootstrap | "+feature+" |") {
-			t.Fatalf("docs/ROADMAP.md must keep Phase 18 bootstrap feature in VPS Pull Bootstrap category: %s", feature)
+		} else if !strings.Contains(roadmap, "| 実装済み | VPS Pull Bootstrap | "+feature+" |") {
+			t.Fatalf("docs/ROADMAP.md must mark the Phase 18 bootstrap feature implemented in the VPS Pull Bootstrap category: %s", feature)
 		}
 		if strings.Contains(roadmap, "| 実装済み | CI/CD Bootstrap | "+feature+" |") ||
 			strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | CI/CD Bootstrap | "+feature+" |") ||
 			strings.Contains(roadmap, "| 実装済み | 試験本番運用 | "+feature+" |") ||
-			strings.Contains(roadmap, "| 実装済み | 本番検証 | "+feature+" |") ||
+			strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | VPS Pull Bootstrap | "+feature+" |") ||
+			strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | 本番検証 | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | CI/CD Bootstrap | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | 試験本番運用 | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | 本番検証 | "+feature+" |") {
-			t.Fatalf("docs/ROADMAP.md must not mark Phase 18 feature implemented or unimplemented while real bootstrap remains incomplete: %s", feature)
+			t.Fatalf("docs/ROADMAP.md must not classify the implemented Phase 18 feature under a stale or incorrect state/category: %s", feature)
 		}
 	}
 	for _, token := range []string{
