@@ -4958,6 +4958,7 @@ func phase18RequireDocumentState(t *testing.T) {
 	t.Helper()
 
 	roadmap := phase11MustReadText(t, "docs/ROADMAP.md")
+	spec := phase11MustReadText(t, "docs/SPEC.md")
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
 	detailIndex := phase11MustReadText(t, "docs/DETAIL_INDEX.md")
 	productionValidation := phase11MustReadText(t, "docs/details/production-validation.md")
@@ -4975,11 +4976,22 @@ func phase18RequireDocumentState(t *testing.T) {
 		t.Fatalf("docs/ROADMAP.md must not mark Phase 18 implemented or unimplemented while real VPS Pull Bootstrap remains incomplete")
 	}
 	for _, token := range []string{
+		"Phase 18 は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) に記録された全 closure counter の完了値と [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約]",
 		"`live VPS completion summary` を同一 PR 本文へ secret-safe に記録",
 		"repository 内 fixture、GitHub Actions success、Docker success、または closure counter 完了値だけを、Phase 18 の状態遷移根拠として扱わない",
 	} {
 		if !strings.Contains(roadmap, token) {
 			t.Fatalf("docs/ROADMAP.md must connect Phase 18 state transition to live VPS completion summary token %q", token)
+		}
+	}
+	for _, token := range []string{
+		"`live VPS completion summary` の接続条件",
+		"Phase 18 の完了は、[`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約]",
+		"repository 内 checker acceptance fixture、GitHub Actions success、Docker success、または closure counter 完了値だけでは認めない",
+		"`live VPS completion summary` の summary item、Phase 18 closure counter の key、完了値、record 種別、required check 名を再掲しない",
+	} {
+		if !strings.Contains(spec, token) {
+			t.Fatalf("docs/SPEC.md must keep Phase 18 top-level completion policy connected to live VPS summary token %q", token)
 		}
 	}
 	for _, feature := range []string{
