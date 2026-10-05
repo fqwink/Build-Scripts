@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "0bf73a870f6721d9c8acaa93a969b11594e211b356a263aaaf9de09e868ee903",
+  "source_group_sha256": "e900d8fd34594871142f1a96afb6d3e7632d87ed5d3d64b1f963f6a481582438",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -19,8 +19,18 @@
       "size_bytes": 29478,
       "owner_component": "runner",
       "area": "rulebook",
-      "detected_terms": [{"term_id":"phase16-rulebook","match":"Phase 16","match_mode":"literal","count":1,"first_source_locator":"file:AGENTS.md#line:1"}],
-      "inventory_refs": ["phase16.evidence.phase12-to-15"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-rulebook",
+          "match": "Phase 16",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:AGENTS.md#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.evidence.phase12-to-15"
+      ]
     },
     {
       "path": "README.md",
@@ -29,8 +39,18 @@
       "size_bytes": 1616,
       "owner_component": "runner",
       "area": "readme",
-      "detected_terms": [{"term_id":"phase16-readme","match":"Adlaire CI","match_mode":"literal","count":1,"first_source_locator":"file:README.md#line:1"}],
-      "inventory_refs": ["phase16.evidence.phase12-to-15"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-readme",
+          "match": "Adlaire CI",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:README.md#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.evidence.phase12-to-15"
+      ]
     },
     {
       "path": "main.go",
@@ -39,18 +59,38 @@
       "size_bytes": 2572,
       "owner_component": "runner",
       "area": "entrypoint",
-      "detected_terms": [{"term_id":"phase16-main-entrypoint","match":"dispatchMain","match_mode":"literal","count":1,"first_source_locator":"file:main.go#line:1"}],
-      "inventory_refs": ["phase16.evidence.execution-records"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-main-entrypoint",
+          "match": "dispatchMain",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:main.go#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.evidence.execution-records"
+      ]
     },
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "712d96b52f184e3bedb1c771310a28e75f32abb7cf2a5f44c40f3151546421b3",
-      "size_bytes": 239245,
+      "sha256": "75725bdedf4df85cc101404fca1af76ec74e1006ac4447cc847043f97200b82e",
+      "size_bytes": 249831,
       "owner_component": "runner",
       "area": "checker",
-      "detected_terms": [{"term_id":"phase16-checker","match":"TestPhase16QualityEvidenceClosure","match_mode":"literal","count":1,"first_source_locator":"file:main_test.go#line:1"}],
-      "inventory_refs": ["phase16.evidence.checker-implementation"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-checker",
+          "match": "TestPhase16QualityEvidenceClosure",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:main_test.go#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.evidence.checker-implementation"
+      ]
     },
     {
       "path": "go.mod",
@@ -59,8 +99,18 @@
       "size_bytes": 48,
       "owner_component": "runner",
       "area": "dependency",
-      "detected_terms": [{"term_id":"phase16-go-mod","match":"go 1.22","match_mode":"literal","count":1,"first_source_locator":"file:go.mod#line:1"}],
-      "inventory_refs": ["phase16.evidence.phase12-to-15"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-go-mod",
+          "match": "go 1.22",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:go.mod#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.evidence.phase12-to-15"
+      ]
     },
     {
       "path": "docs/SPEC.md",
@@ -69,8 +119,18 @@
       "size_bytes": 189313,
       "owner_component": "runner",
       "area": "policy",
-      "detected_terms": [{"term_id":"phase16-policy","match":"policy-phase-unit","match_mode":"literal","count":1,"first_source_locator":"file:docs/SPEC.md#line:1"}],
-      "inventory_refs": ["phase16.evidence.phase12-to-15"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-policy",
+          "match": "policy-phase-unit",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:docs/SPEC.md#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.evidence.phase12-to-15"
+      ]
     },
     {
       "path": "docs/ROADMAP.md",
@@ -79,8 +139,18 @@
       "size_bytes": 63330,
       "owner_component": "runner",
       "area": "roadmap",
-      "detected_terms": [{"term_id":"phase16-roadmap","match":"Phase 16","match_mode":"literal","count":1,"first_source_locator":"file:docs/ROADMAP.md#line:1"}],
-      "inventory_refs": ["phase16.evidence.document-drift"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-roadmap",
+          "match": "Phase 16",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:docs/ROADMAP.md#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.evidence.document-drift"
+      ]
     },
     {
       "path": "docs/DETAIL_INDEX.md",
@@ -89,8 +159,18 @@
       "size_bytes": 172408,
       "owner_component": "runner",
       "area": "detail-index",
-      "detected_terms": [{"term_id":"phase16-detail-entry","match":"phase-16-quality-evidence-closure-entry","match_mode":"literal","count":1,"first_source_locator":"file:docs/DETAIL_INDEX.md#line:1"}],
-      "inventory_refs": ["phase16.align.current-implementation"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-detail-entry",
+          "match": "phase-16-quality-evidence-closure-entry",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:docs/DETAIL_INDEX.md#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.align.current-implementation"
+      ]
     },
     {
       "path": "docs/DOCUMENT_INDEX.md",
@@ -99,18 +179,38 @@
       "size_bytes": 56126,
       "owner_component": "runner",
       "area": "document-index",
-      "detected_terms": [{"term_id":"phase16-document-index","match":"phase-16-target-paths","match_mode":"literal","count":1,"first_source_locator":"file:docs/DOCUMENT_INDEX.md#line:1"}],
-      "inventory_refs": ["phase16.evidence.document-drift"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-document-index",
+          "match": "phase-16-target-paths",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:docs/DOCUMENT_INDEX.md#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.evidence.document-drift"
+      ]
     },
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "74a7b738e0edab98d53c996df98a053de361b1fce2330c30f45eaa33fde46c2d",
-      "size_bytes": 955465,
+      "sha256": "f8b9d262fc99188569dcb748c91a0a42a329bbf08764709b6a63b99bc94554ab",
+      "size_bytes": 962376,
       "owner_component": "runner",
       "area": "fixture-spec",
-      "detected_terms": [{"term_id":"phase16-fixture-spec","match":"phase-16-quality-evidence-closure-evidence","match_mode":"literal","count":1,"first_source_locator":"file:docs/details/fixture.md#line:1"}],
-      "inventory_refs": ["phase16.evidence.execution-records"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-fixture-spec",
+          "match": "phase-16-quality-evidence-closure-evidence",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:docs/details/fixture.md#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.evidence.execution-records"
+      ]
     },
     {
       "path": ".github/workflows/phase16-quality-evidence-closure.yml",
@@ -119,8 +219,18 @@
       "size_bytes": 3243,
       "owner_component": "runner",
       "area": "workflow",
-      "detected_terms": [{"term_id":"phase16-workflow","match":"phase16-quality-evidence-closure","match_mode":"literal","count":1,"first_source_locator":"file:.github/workflows/phase16-quality-evidence-closure.yml#line:1"}],
-      "inventory_refs": ["phase16.workflow.required-checks"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-workflow",
+          "match": "phase16-quality-evidence-closure",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:.github/workflows/phase16-quality-evidence-closure.yml#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.workflow.required-checks"
+      ]
     },
     {
       "path": "testdata/phase16/quality-evidence-closure/manifest.json",
@@ -129,8 +239,18 @@
       "size_bytes": 3620,
       "owner_component": "runner",
       "area": "fixture",
-      "detected_terms": [{"term_id":"phase16-manifest","match":"phase-16-quality-evidence-closure","match_mode":"literal","count":1,"first_source_locator":"file:testdata/phase16/quality-evidence-closure/manifest.json#line:1"}],
-      "inventory_refs": ["phase16.evidence.evidence-package"]
+      "detected_terms": [
+        {
+          "term_id": "phase16-manifest",
+          "match": "phase-16-quality-evidence-closure",
+          "match_mode": "literal",
+          "count": 1,
+          "first_source_locator": "file:testdata/phase16/quality-evidence-closure/manifest.json#line:1"
+        }
+      ],
+      "inventory_refs": [
+        "phase16.evidence.evidence-package"
+      ]
     }
   ]
 }

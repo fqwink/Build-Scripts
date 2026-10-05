@@ -3923,6 +3923,87 @@ var phase18DocumentDriftTargets = []string{
 	"closure-counter",
 }
 
+const phase18BootstrapScriptExpectedState = "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback fixed-token-flag-interface sh adlaire-ci-vps-pull-bootstrap.sh --source-channel integration-head|stable-release --topology-role ci-cd|site|single-node --source absolute-https-url-or-absolute-file-path --sha256 64-lowercase-hex --install-dir /opt/adlaire-builder --bin-dir /usr/local/bin --state-dir /opt/adlaire-builder --service-user root sh mktemp mkdir chmod install mv rm sha256sum systemctl curl wget single-json-object-secret-safe diagnostic-json-lines-on-failure common-cli-exit-code-contract bootstrap-script-http-client-missing bootstrap-script-source-unreachable bootstrap-script-digest-mismatch bootstrap-script-version-mismatch bootstrap-script-executable-permission-invalid bootstrap-script-systemd-unit-invalid bootstrap-script-state-directory-invalid bootstrap-script-health-failed bootstrap-script-rollback-failed"
+
+var phase18ReferenceLabels = map[string]string{
+	"manifest.json":                                    "Phase 18 manifest",
+	"input/environment_handover.json":                  "Phase 18 environment handover",
+	"input/session_plan.json":                          "Phase 18 session plan",
+	"input/operation_scope.json":                       "Phase 18 operation scope",
+	"input/security_boundary.json":                     "Phase 18 security boundary",
+	"expected/counters.json":                           "Phase 18 closure counters",
+	"expected/session_flow.json":                       "Phase 18 session flow",
+	"expected/bugfix_closure.json":                     "Phase 18 bugfix closure",
+	"records/session.jsonl":                            "Phase 18 session records",
+	"records/health.jsonl":                             "Phase 18 health records",
+	"records/runtime.jsonl":                            "Phase 18 runtime records",
+	"records/update_rollback.jsonl":                    "Phase 18 update rollback records",
+	"records/bugfix.jsonl":                             "Phase 18 bugfix records",
+	"records/security.jsonl":                           "Phase 18 security records",
+	"records/document_drift.jsonl":                     "Phase 18 document drift records",
+	"testdata/phase18/vps-pull-bootstrap/":             "Phase 18 fixture root",
+	".github/workflows/phase18-vps-pull-bootstrap.yml": "Phase 18 required check workflow",
+	"main_test.go":                                     "Phase 18 checker implementation artifact",
+	"docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract": "本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約",
+	"docs/details/release.md#release-responsibility-boundary":                    "Release 詳細本文責務 責務境界",
+	"docs/details/setup.md#0-責務境界":                                               "Setup 詳細本文責務 責務境界",
+	"docs/details/api.md#0-責務境界":                                                 "API 詳細本文責務 責務境界",
+	"docs/details/admin.md#0-責務境界":                                               "Admin 詳細本文責務 責務境界",
+	"docs/details/sdk.md#0-責務境界":                                                 "SDK 詳細本文責務 責務境界",
+	"docs/details/ui.md#0-責務境界":                                                  "UI 詳細本文責務 責務境界",
+	"docs/details/statefile.md#0-責務境界":                                           "Statefile 詳細本文責務 責務境界",
+	"docs/details/runner.md#0-責務境界":                                              "Runner 詳細本文責務 責務境界",
+	"docs/details/builder.md#0-責務境界":                                             "Builder 詳細本文責務 責務境界",
+	"docs/details/commitstatus.md#0-責務境界":                                        "Commit Status 詳細本文責務 責務境界",
+}
+
+type phase18HealthTargetExpectation struct {
+	CheckName            string
+	SourceRef            string
+	OwnerRef             string
+	EndpointOrCommandRef string
+	State                string
+	LogWriteResult       string
+	LatencyRequired      bool
+}
+
+var phase18HealthTargetExpectations = map[string]phase18HealthTargetExpectation{
+	"bootstrap-script": {"phase18-bootstrap-artifact-health", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract"), phase18MarkdownRef("input/operation_scope.json"), phase18BootstrapScriptExpectedState, "not_applicable", false},
+	"release-asset":    {"phase18-bootstrap-artifact-health", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/release.md#release-responsibility-boundary"), phase18MarkdownRef("docs/details/release.md#release-responsibility-boundary"), "release-artifact-evidence", "not_applicable", false},
+	"binary-version":   {"phase18-bootstrap-artifact-health", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/release.md#release-responsibility-boundary"), phase18MarkdownRef("docs/details/release.md#release-responsibility-boundary"), "binary-version-evidence", "not_applicable", false},
+	"systemd-service":  {"phase18-bootstrap-artifact-health", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/setup.md#0-責務境界"), phase18MarkdownRef("docs/details/setup.md#0-責務境界"), "service-active", "not_applicable", false},
+	"api-health":       {"phase18-bootstrap-artifact-health", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/api.md#0-責務境界"), phase18MarkdownRef("docs/details/api.md#0-責務境界"), "api-health-passed", "not_applicable", true},
+	"admin-cli":        {"phase18-bootstrap-runtime-flow", phase18MarkdownRef("expected/session_flow.json"), phase18MarkdownRef("docs/details/admin.md#0-責務境界"), phase18MarkdownRef("docs/details/admin.md#0-責務境界"), "admin-cli-passed", "not_applicable", true},
+	"sdk-client":       {"phase18-bootstrap-runtime-flow", phase18MarkdownRef("expected/session_flow.json"), phase18MarkdownRef("docs/details/sdk.md#0-責務境界"), phase18MarkdownRef("docs/details/sdk.md#0-責務境界"), "sdk-client-passed", "not_applicable", true},
+	"ui-runtime":       {"phase18-bootstrap-runtime-flow", phase18MarkdownRef("expected/session_flow.json"), phase18MarkdownRef("docs/details/ui.md#0-責務境界"), phase18MarkdownRef("docs/details/ui.md#0-責務境界"), "ui-runtime-passed", "not_applicable", true},
+	"state-directory":  {"phase18-bootstrap-artifact-health", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/statefile.md#0-責務境界"), phase18MarkdownRef("docs/details/statefile.md#0-責務境界"), "state-directory-safe", "not_applicable", false},
+	"log-write":        {"phase18-bootstrap-artifact-health", phase18MarkdownRef("expected/session_flow.json"), phase18MarkdownRef("docs/details/statefile.md#0-責務境界"), phase18MarkdownRef("docs/details/statefile.md#0-責務境界"), "audit-access-config-log-write", "passed", false},
+}
+
+type phase18RuntimeTargetExpectation struct {
+	CheckName          string
+	CounterKey         string
+	SourceRef          string
+	OwnerRef           string
+	OperationRef       string
+	QueueState         string
+	BuildResult        string
+	StateUpdateResult  string
+	AuditResult        string
+	CommitStatusResult string
+	DeployResult       string
+}
+
+var phase18RuntimeTargetExpectations = map[string]phase18RuntimeTargetExpectation{
+	"admin-api-sdk-ui":        {"phase18-bootstrap-runtime-flow", "phase18_bootstrap_runtime_open_count", phase18MarkdownRef("expected/session_flow.json"), phase18MarkdownRef("docs/details/api.md#0-責務境界"), phase18MarkdownRef("docs/details/admin.md#0-責務境界"), "not_applicable", "not_applicable", "not_applicable", "not_applicable", "not_applicable", "not_applicable"},
+	"runner-queue":            {"phase18-pull-runner-foundation", "phase18_pull_runner_foundation_open_count", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/runner.md#0-責務境界"), phase18MarkdownRef("docs/details/runner.md#0-責務境界"), "succeeded", "not_applicable", "not_applicable", "not_applicable", "not_applicable", "not_applicable"},
+	"build-execution":         {"phase18-pull-runner-foundation", "phase18_pull_runner_foundation_open_count", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/builder.md#0-責務境界"), phase18MarkdownRef("docs/details/runner.md#0-責務境界"), "not_applicable", "passed", "not_applicable", "not_applicable", "not_applicable", "not_applicable"},
+	"statefile-update":        {"phase18-pull-runner-foundation", "phase18_pull_runner_foundation_open_count", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/statefile.md#0-責務境界"), phase18MarkdownRef("docs/details/statefile.md#0-責務境界"), "not_applicable", "not_applicable", "passed", "not_applicable", "not_applicable", "not_applicable"},
+	"audit-access-config-log": {"phase18-pull-runner-foundation", "phase18_pull_runner_foundation_open_count", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/statefile.md#0-責務境界"), phase18MarkdownRef("docs/details/statefile.md#0-責務境界"), "not_applicable", "not_applicable", "not_applicable", "passed", "not_applicable", "not_applicable"},
+	"commit-status":           {"phase18-pull-runner-foundation", "phase18_pull_runner_foundation_open_count", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/commitstatus.md#0-責務境界"), phase18MarkdownRef("docs/details/commitstatus.md#0-責務境界"), "not_applicable", "not_applicable", "not_applicable", "not_applicable", "passed", "not_applicable"},
+	"deploy-simulation":       {"phase18-pull-runner-foundation", "phase18_pull_runner_foundation_open_count", phase18MarkdownRef("input/operation_scope.json"), phase18MarkdownRef("docs/details/runner.md#0-責務境界"), phase18MarkdownRef("docs/details/runner.md#0-責務境界"), "not_applicable", "not_applicable", "not_applicable", "not_applicable", "not_applicable", "passed"},
+}
+
 var phase18RequiredCheckRecordFiles = map[string][]string{
 	"phase18-bootstrap-prerequisite":    {"records/session.jsonl"},
 	"phase18-bootstrap-session":         {"records/session.jsonl"},
@@ -4615,21 +4696,26 @@ func phase18RequireHealthRecords(t *testing.T, records []phase18EvidenceRecord) 
 
 	seen := map[string]bool{}
 	for _, record := range records {
+		expected, ok := phase18HealthTargetExpectations[record.HealthTarget]
+		if !ok {
+			t.Fatalf("Phase 18 health target has no fixed expectation: %+v", record)
+		}
+		if record.CheckName != expected.CheckName || record.SourceRef != expected.SourceRef || record.OwnerRef != expected.OwnerRef || record.EndpointOrCommandRef != expected.EndpointOrCommandRef || record.ExpectedState != expected.State || record.ActualState != expected.State || record.LogWriteResult != expected.LogWriteResult {
+			t.Fatalf("Phase 18 health target fixed references or state mismatch: %+v", record)
+		}
 		if record.Result != "passed" || record.HealthResult != "passed" || record.StateReadResult != "passed" || record.SecretMaskResult != "passed" {
 			t.Fatalf("Phase 18 health target must pass: %+v", record)
 		}
-		if record.HealthTarget != "log-write" && record.LogWriteResult != "not_applicable" {
-			t.Fatalf("Phase 18 non-log health target must use log_write_result=not_applicable: %+v", record)
-		}
-		if record.HealthTarget == "log-write" && record.LogWriteResult != "passed" {
-			t.Fatalf("Phase 18 log-write health target must pass log write: %+v", record)
-		}
 		if record.HealthTarget == "bootstrap-script" {
-			expectedState := "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback fixed-token-flag-interface sh adlaire-ci-vps-pull-bootstrap.sh --source-channel integration-head|stable-release --topology-role ci-cd|site|single-node --source absolute-https-url-or-absolute-file-path --sha256 64-lowercase-hex --install-dir /opt/adlaire-builder --bin-dir /usr/local/bin --state-dir /opt/adlaire-builder --service-user root sh mktemp mkdir chmod install mv rm sha256sum systemctl curl wget single-json-object-secret-safe diagnostic-json-lines-on-failure common-cli-exit-code-contract bootstrap-script-http-client-missing bootstrap-script-source-unreachable bootstrap-script-digest-mismatch bootstrap-script-version-mismatch bootstrap-script-executable-permission-invalid bootstrap-script-systemd-unit-invalid bootstrap-script-state-directory-invalid bootstrap-script-health-failed bootstrap-script-rollback-failed"
-			expectedOwnerRef := "[docs/details/production-validation.md 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract)"
-			if record.SourceRef != "input/operation_scope.json" || record.OwnerRef != expectedOwnerRef || record.EndpointOrCommandRef != "input/operation_scope.json" || record.ExpectedState != expectedState || record.ActualState != expectedState || !strings.Contains(record.Diagnostic, "source identifier") || !strings.Contains(record.Diagnostic, "secret policy") || !strings.Contains(record.Diagnostic, "cli token") || !strings.Contains(record.Diagnostic, "required command") || !strings.Contains(record.Diagnostic, "http client") || !strings.Contains(record.Diagnostic, "exit code") || !strings.Contains(record.Diagnostic, "failure code") {
+			if !strings.Contains(record.Diagnostic, "source identifier") || !strings.Contains(record.Diagnostic, "secret policy") || !strings.Contains(record.Diagnostic, "cli token") || !strings.Contains(record.Diagnostic, "required command") || !strings.Contains(record.Diagnostic, "http client") || !strings.Contains(record.Diagnostic, "exit code") || !strings.Contains(record.Diagnostic, "failure code") {
 				t.Fatalf("Phase 18 bootstrap script health target must prove exact bootstrap contract: %+v", record)
 			}
+		}
+		if expected.LatencyRequired && record.LatencyMS == nil {
+			t.Fatalf("Phase 18 interactive health target must include latency_ms: %+v", record)
+		}
+		if !expected.LatencyRequired && record.LatencyMS != nil {
+			t.Fatalf("Phase 18 non-interactive health target must not include latency_ms: %+v", record)
 		}
 		seen[record.HealthTarget] = true
 	}
@@ -4646,33 +4732,12 @@ func phase18RequireRuntimeRecords(t *testing.T, records []phase18EvidenceRecord)
 	seen := map[string]bool{}
 	for _, record := range records {
 		seen[record.RuntimeTarget] = true
-		if record.RuntimeTarget == "admin-api-sdk-ui" {
-			if record.CheckName != "phase18-bootstrap-runtime-flow" || record.CounterKey != "phase18_bootstrap_runtime_open_count" {
-				t.Fatalf("Phase 18 admin/api/sdk/ui runtime target must connect to runtime-flow: %+v", record)
-			}
-		} else if record.CheckName != "phase18-pull-runner-foundation" || record.CounterKey != "phase18_pull_runner_foundation_open_count" {
-			t.Fatalf("Phase 18 runner runtime target must connect to pull-runner-foundation: %+v", record)
+		expected, ok := phase18RuntimeTargetExpectations[record.RuntimeTarget]
+		if !ok {
+			t.Fatalf("Phase 18 runtime target has no fixed expectation: %+v", record)
 		}
-		if record.RuntimeTarget == "runner-queue" && record.QueueState != "succeeded" {
-			t.Fatalf("Phase 18 runner queue must reach succeeded: %+v", record)
-		}
-		if record.RuntimeTarget == "build-execution" && record.BuildResult != "passed" {
-			t.Fatalf("Phase 18 build execution must pass: %+v", record)
-		}
-		if record.RuntimeTarget == "statefile-update" && record.StateUpdateResult != "passed" {
-			t.Fatalf("Phase 18 statefile update must pass: %+v", record)
-		}
-		if record.RuntimeTarget == "audit-access-config-log" && record.AuditResult != "passed" {
-			t.Fatalf("Phase 18 audit/access/config log runtime must pass: %+v", record)
-		}
-		if record.RuntimeTarget == "commit-status" && record.CommitStatusResult != "passed" && record.CommitStatusResult != "not_applicable" {
-			t.Fatalf("Phase 18 commit status result invalid: %+v", record)
-		}
-		if record.RuntimeTarget == "deploy-simulation" && record.DeployResult != "passed" {
-			t.Fatalf("Phase 18 deploy simulation must pass: %+v", record)
-		}
-		if record.NoCustomerDataResult != "passed" {
-			t.Fatalf("Phase 18 runtime records must prove no customer data use: %+v", record)
+		if record.CheckName != expected.CheckName || record.CounterKey != expected.CounterKey || record.SourceRef != expected.SourceRef || record.OwnerRef != expected.OwnerRef || record.OperationRef != expected.OperationRef || record.QueueState != expected.QueueState || record.BuildResult != expected.BuildResult || record.StateUpdateResult != expected.StateUpdateResult || record.AuditResult != expected.AuditResult || record.CommitStatusResult != expected.CommitStatusResult || record.DeployResult != expected.DeployResult || record.NoCustomerDataResult != "passed" {
+			t.Fatalf("Phase 18 runtime target fixed references or result mismatch: %+v", record)
 		}
 	}
 	for _, target := range phase18RuntimeTargets {
@@ -4688,6 +4753,9 @@ func phase18RequireUpdateRollbackRecords(t *testing.T, records []phase18Evidence
 	seen := map[string]bool{}
 	for _, record := range records {
 		seen[record.OperationType] = true
+		if record.SourceRef != phase18MarkdownRef("input/operation_scope.json") || record.EvidenceRef != phase18MarkdownRef("records/update_rollback.jsonl") {
+			t.Fatalf("Phase 18 update/rollback record must use fixed linked source and evidence refs: %+v", record)
+		}
 		if record.Result != "passed" || record.FromVersion == "unknown" || record.ToVersion == "unknown" || record.VersionAfterOperation == "unknown" {
 			t.Fatalf("Phase 18 update/rollback records must pass with concrete versions: %+v", record)
 		}
@@ -4721,6 +4789,9 @@ func phase18RequireBugfixRecords(t *testing.T, records []phase18EvidenceRecord, 
 	var specFirst bool
 	var noIssue bool
 	for _, record := range records {
+		if record.SourceRef != phase18MarkdownRef("expected/bugfix_closure.json") || record.EvidenceRef != phase18MarkdownRef("records/bugfix.jsonl") || record.SpecGeneralUpdateRef != "[docs/ROADMAP.md 状態・計画責務 §4.1](docs/ROADMAP.md#roadmap-initial-phase-plan)" || record.ResponsibilitySourceRef != phase18MarkdownRef("docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract") || record.RevalidationRef != phase18MarkdownRef("records/bugfix.jsonl") {
+			t.Fatalf("Phase 18 bugfix record must use fixed linked source, evidence, spec, responsibility, and revalidation refs: %+v", record)
+		}
 		if record.CounterKey != "phase18_bugfix_spec_gap_count" && record.CounterKey != "phase18_known_bug_open_count" {
 			t.Fatalf("Phase 18 bugfix record uses invalid counter: %+v", record)
 		}
@@ -4732,6 +4803,9 @@ func phase18RequireBugfixRecords(t *testing.T, records []phase18EvidenceRecord, 
 		}
 		if record.FixMode == "spec-first-fix" {
 			specFirst = true
+			if record.IssueRef != phase18MarkdownRef("records/bugfix.jsonl") || record.ImplementationFixRef != phase18MarkdownRef("main_test.go") {
+				t.Fatalf("Phase 18 spec-first bugfix record must link issue and implementation fix refs: %+v", record)
+			}
 			for label, ref := range map[string]string{
 				"spec_general_update_ref":   record.SpecGeneralUpdateRef,
 				"responsibility_source_ref": record.ResponsibilitySourceRef,
@@ -4744,7 +4818,7 @@ func phase18RequireBugfixRecords(t *testing.T, records []phase18EvidenceRecord, 
 		}
 		if record.IssueClassification == "no_issue" {
 			noIssue = true
-			if record.IssueID != "not_applicable" || record.TriageResult != "no_issue_detected" || record.FixMode != "not-required-revalidate" || record.ImplementationFixRef != "not_applicable" {
+			if record.IssueID != "not_applicable" || record.TriageResult != "no_issue_detected" || record.FixMode != "not-required-revalidate" || record.IssueRef != "not_applicable" || record.ImplementationFixRef != "not_applicable" {
 				t.Fatalf("Phase 18 no_issue bugfix record mismatch: %+v", record)
 			}
 		}
@@ -4760,7 +4834,13 @@ func phase18RequireSecurityRecords(t *testing.T, records []phase18EvidenceRecord
 	secretCoverage := map[string]bool{}
 	operationCoverage := map[string]bool{}
 	for _, record := range records {
+		if record.EvidenceRef != phase18MarkdownRef("records/security.jsonl") {
+			t.Fatalf("Phase 18 security record must use fixed linked evidence_ref: %+v", record)
+		}
 		if record.SecretClass != "not_applicable" {
+			if record.SourceRef != phase18MarkdownRef("input/security_boundary.json") || record.CounterKey != "phase18_secret_leak_open_count" {
+				t.Fatalf("Phase 18 secret coverage record must use security boundary source and secret counter: %+v", record)
+			}
 			if !phase17StringInSlice(record.SecretClass, inputs.Security.SecretClasses) {
 				t.Fatalf("Phase 18 security record unknown secret_class: %+v", record)
 			}
@@ -4770,6 +4850,9 @@ func phase18RequireSecurityRecords(t *testing.T, records []phase18EvidenceRecord
 			secretCoverage[record.SecretClass] = true
 		}
 		if record.ForbiddenProviderOperationToken != "not_applicable" {
+			if record.SourceRef != phase18MarkdownRef("input/operation_scope.json") || record.CounterKey != "phase18_destructive_operation_open_count" {
+				t.Fatalf("Phase 18 destructive-operation boundary record must use operation scope source and destructive counter: %+v", record)
+			}
 			if !phase17StringInSlice(record.ForbiddenProviderOperationToken, inputs.Scope.ForbiddenProviderOperations) {
 				t.Fatalf("Phase 18 security record unknown forbidden operation: %+v", record)
 			}
@@ -4971,12 +5054,7 @@ func phase18RequireRecordReferences(t *testing.T, rel string, line int, record p
 		}
 		label := fmt.Sprintf("%s line %d %s", rel, line, field)
 		phase18RequireSafeReference(t, label, value)
-		if field != "fixture_path_ref" && field != "workflow_path_ref" {
-			phase18RequireMarkdownOrFixtureLocalReferenceForm(t, label, value)
-		}
-		if rel == "records/document_drift.jsonl" && field == "anchor_ref" {
-			phase18RequireMarkdownReferenceForm(t, label, value)
-		}
+		phase18RequireMarkdownReferenceForm(t, label, value)
 		phase18RequireResolvableReference(t, label, value)
 	}
 }
@@ -5000,7 +5078,7 @@ func phase18RequireMarkdownOrFixtureLocalReferenceForm(t *testing.T, label strin
 func phase18RequireMarkdownReferenceForm(t *testing.T, label string, value string) {
 	t.Helper()
 
-	if value == "not_applicable" {
+	if value == "not_applicable" || value == "not_required_for_non_open_sample" {
 		return
 	}
 	if !phase18IsMarkdownReference(value) {
@@ -5089,6 +5167,15 @@ func phase18ContainsForbiddenEvidenceLiteral(value string) bool {
 		}
 	}
 	return false
+}
+
+func phase18MarkdownRef(target string) string {
+	label, ok := phase18ReferenceLabels[target]
+	if !ok {
+		panic("missing Phase 18 reference label for " + target)
+	}
+	displayTarget := strings.SplitN(target, "#", 2)[0]
+	return "[" + displayTarget + " " + label + "](" + target + ")"
 }
 
 func phase13RequireOwnerPackages(t *testing.T) {
