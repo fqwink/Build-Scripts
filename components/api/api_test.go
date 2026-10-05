@@ -126,6 +126,72 @@ func TestRunAPICLI(t *testing.T) {
 	})
 }
 
+func TestAPIAdminStaticServingContract(t *testing.T) {
+	state := newAPIState(t)
+	adminDir := filepath.Join(state, "admin")
+	if err := os.Mkdir(adminDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(adminDir, "index.html"), []byte("<main>admin</main>\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(adminDir, "adlaire-ci-sdk.js"), []byte("export const ready = true;\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	server, err := NewAPIServer(APIConfig{StateDir: state})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		method       string
+		path         string
+		status       int
+		contentType  string
+		cacheControl string
+		body         string
+	}{
+		{http.MethodGet, "/", http.StatusOK, "text/html; charset=utf-8", "no-store", "<main>admin</main>\n"},
+		{http.MethodGet, "/admin/", http.StatusOK, "text/html; charset=utf-8", "no-store", "<main>admin</main>\n"},
+		{http.MethodGet, "/admin/index.html", http.StatusOK, "text/html; charset=utf-8", "no-store", "<main>admin</main>\n"},
+		{http.MethodHead, "/admin/index.html", http.StatusOK, "text/html; charset=utf-8", "no-store", ""},
+		{http.MethodGet, "/admin/adlaire-ci-sdk.js", http.StatusOK, "text/javascript; charset=utf-8", "no-cache", "export const ready = true;\n"},
+	}
+	for _, tc := range tests {
+		req := httptest.NewRequest(tc.method, tc.path, nil)
+		resp := httptest.NewRecorder()
+		server.Handler().ServeHTTP(resp, req)
+		if resp.Code != tc.status || resp.Header().Get("Content-Type") != tc.contentType || resp.Header().Get("Cache-Control") != tc.cacheControl || resp.Body.String() != tc.body {
+			t.Fatalf("%s %s code=%d type=%q cache=%q body=%q", tc.method, tc.path, resp.Code, resp.Header().Get("Content-Type"), resp.Header().Get("Cache-Control"), resp.Body.String())
+		}
+	}
+
+	for _, path := range []string{"/admin/missing", "/admin/../.admin_credentials", "/.admin_credentials"} {
+		resp := httptest.NewRecorder()
+		server.Handler().ServeHTTP(resp, httptest.NewRequest(http.MethodGet, path, nil))
+		if resp.Code != http.StatusNotFound {
+			t.Fatalf("unsafe path %s returned %d", path, resp.Code)
+		}
+	}
+	resp := httptest.NewRecorder()
+	server.Handler().ServeHTTP(resp, httptest.NewRequest(http.MethodPost, "/admin/index.html", strings.NewReader("ignored")))
+	if resp.Code != http.StatusMethodNotAllowed || resp.Header().Get("Allow") != "GET, HEAD" {
+		t.Fatalf("method contract code=%d allow=%q", resp.Code, resp.Header().Get("Allow"))
+	}
+
+	if err := os.Remove(filepath.Join(adminDir, "adlaire-ci-sdk.js")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(state, ".admin_credentials"), filepath.Join(adminDir, "adlaire-ci-sdk.js")); err != nil {
+		t.Fatal(err)
+	}
+	resp = httptest.NewRecorder()
+	server.Handler().ServeHTTP(resp, httptest.NewRequest(http.MethodGet, "/admin/adlaire-ci-sdk.js", nil))
+	if resp.Code != http.StatusNotFound {
+		t.Fatalf("symlink asset returned %d", resp.Code)
+	}
+}
+
 func TestAPILoginStatusAndQueue(t *testing.T) {
 	state := newAPIState(t)
 	server := newTestAPI(t, state)
@@ -934,6 +1000,9 @@ func TestAPIRepoAndBranchConfigEndpoints(t *testing.T) {
 
 func TestAPIScheduleEndpoints(t *testing.T) {
 	state := newAPIState(t)
+	if err := os.WriteFile(filepath.Join(state, ".server_config"), []byte("{\"watch_mode\":\"local\"}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	server := newTestAPI(t, state)
 	token := login(t, server, "password123")
 	systemdCalls := []string{}
@@ -1050,7 +1119,7 @@ func TestAPIScheduleEndpoints(t *testing.T) {
 		t.Fatalf("clear allowed-hours code=%d body=%s", resp.Code, resp.Body.String())
 	}
 	readTestJSON(t, filepath.Join(state, ".server_config"), &cfg)
-	if cfg.SchedulePaused || cfg.ForceBuildIntervalHours != 24 || cfg.BuildCooldownSeconds != 120 || cfg.AllowedHours != nil {
+	if cfg.SchedulePaused || cfg.ForceBuildIntervalHours != 24 || cfg.BuildCooldownSeconds != 120 || cfg.AllowedHours != nil || cfg.WatchMode != "local" {
 		t.Fatalf("schedule values were not saved: %#v", cfg)
 	}
 

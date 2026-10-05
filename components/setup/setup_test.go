@@ -551,6 +551,75 @@ func TestRunSetupUpdateAPIRollback(t *testing.T) {
 	}
 }
 
+func TestPhase18MaterializeAdminAssets(t *testing.T) {
+	originalIndex := append([]byte(nil), setupEmbeddedAdminIndex...)
+	originalSDK := append([]byte(nil), setupEmbeddedAdminSDK...)
+	t.Cleanup(func() { SetEmbeddedAdminAssets(originalIndex, originalSDK) })
+	SetEmbeddedAdminAssets([]byte("<main>phase18</main>\n"), []byte("export const phase18 = true;\n"))
+
+	installDir := filepath.Join(t.TempDir(), "runtime")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := RunSetup([]string{"phase18-materialize-admin", "--install-dir", installDir}, &stdout, &stderr)
+	if code != 0 || stdout.String() != "setup: success phase18-materialize-admin\n" || stderr.Len() != 0 {
+		t.Fatalf("materialize result code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	for name, want := range map[string]string{
+		"index.html":        "<main>phase18</main>\n",
+		"adlaire-ci-sdk.js": "export const phase18 = true;\n",
+	} {
+		path := filepath.Join(installDir, "admin", name)
+		data, err := os.ReadFile(path)
+		if err != nil || string(data) != want {
+			t.Fatalf("asset %s mismatch data=%q err=%v", name, string(data), err)
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.Mode().Perm() != 0644 {
+			t.Fatalf("asset %s mode mismatch info=%v err=%v", name, info, err)
+		}
+	}
+}
+
+func TestPhase18MaterializeAdminRejectsUnsafeTarget(t *testing.T) {
+	originalIndex := append([]byte(nil), setupEmbeddedAdminIndex...)
+	originalSDK := append([]byte(nil), setupEmbeddedAdminSDK...)
+	t.Cleanup(func() { SetEmbeddedAdminAssets(originalIndex, originalSDK) })
+	SetEmbeddedAdminAssets([]byte("index"), []byte("sdk"))
+
+	root := t.TempDir()
+	target := filepath.Join(root, "target")
+	if err := os.Symlink(filepath.Join(root, "missing"), target); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := RunSetup([]string{"phase18-materialize-admin", "--install-dir", target}, &stdout, &stderr)
+	if code != 1 || stdout.Len() != 0 || stderr.String() != "admin asset materialization failed\n" {
+		t.Fatalf("unsafe target result code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestSetupInitCredentialsAcceptsSpecifiedChildOutput(t *testing.T) {
+	root := t.TempDir()
+	apiPath := filepath.Join(root, "api")
+	passwordPath := filepath.Join(root, "password")
+	if err := os.WriteFile(apiPath, []byte("#!/bin/sh\nprintf 'credentials initialized\\n'\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(passwordPath, []byte("password123\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := (setupRealOps{}).InitCredentials(apiPath, root, passwordPath); err != nil {
+		t.Fatalf("specified init output rejected: %v", err)
+	}
+	if err := os.WriteFile(apiPath, []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := (setupRealOps{}).InitCredentials(apiPath, root, passwordPath); err == nil || err.Error() != "credentials command output mismatch" {
+		t.Fatalf("unexpected mismatch result: %v", err)
+	}
+}
+
 func TestSetupFixturesExist(t *testing.T) {
 	fixtures := []string{
 		"success-setup-admin-release-asset-layout",

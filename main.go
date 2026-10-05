@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
 	"os"
@@ -20,6 +21,13 @@ import (
 
 var binaryVersion = "V.0.0-dev"
 
+var (
+	//go:embed admin/index.html
+	embeddedAdminIndex []byte
+	//go:embed admin/adlaire-ci-sdk.js
+	embeddedAdminSDK []byte
+)
+
 func main() {
 	os.Exit(dispatchMain(filepath.Base(os.Args[0]), os.Args[1:], os.Stdout, os.Stderr))
 }
@@ -31,6 +39,7 @@ func dispatchMain(name string, args []string, stdout io.Writer, stderr io.Writer
 	api.SetBinaryVersion(binaryVersion)
 	admin.SetBinaryVersion(binaryVersion)
 	setup.SetBinaryVersion(binaryVersion)
+	setup.SetEmbeddedAdminAssets(embeddedAdminIndex, embeddedAdminSDK)
 	release.SetBinaryVersion(binaryVersion)
 	mcp.SetBinaryVersion(binaryVersion)
 	obsidian.SetBinaryVersion(binaryVersion)

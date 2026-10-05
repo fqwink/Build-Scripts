@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -173,6 +174,74 @@ func TestDispatchMainExactBasename(t *testing.T) {
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("expected no stderr for release asset obsidian version, got %q", stderr.String())
+	}
+}
+
+func TestPhase18EmbeddedAdminMaterialization(t *testing.T) {
+	installDir := filepath.Join(t.TempDir(), "runtime")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := dispatchMain("adlaire-ci-setup", []string{"phase18-materialize-admin", "--install-dir", installDir}, &stdout, &stderr)
+	if code != 0 || stdout.String() != "setup: success phase18-materialize-admin\n" || stderr.Len() != 0 {
+		t.Fatalf("materialize code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	for _, name := range []string{"index.html", "adlaire-ci-sdk.js"} {
+		want, err := os.ReadFile(filepath.Join("admin", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := os.ReadFile(filepath.Join(installDir, "admin", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Fatalf("materialized %s differs from canonical asset", name)
+		}
+	}
+}
+
+func TestPhase18BootstrapAcceptsExactArgumentVector(t *testing.T) {
+	fakeBin := t.TempDir()
+	for _, name := range []string{"systemctl", "curl"} {
+		if err := os.WriteFile(filepath.Join(fakeBin, name), []byte("#!/bin/sh\nexit 1\n"), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	args := []string{
+		phase18BootstrapScriptPath,
+		"--source-channel", "integration-head",
+		"--topology-role", "single-node",
+		"--source", "/tmp/phase18-source",
+		"--sha256", strings.Repeat("0", 64),
+		"--install-dir", "/opt/adlaire-builder",
+		"--bin-dir", "/usr/local/bin",
+		"--state-dir", "/opt/adlaire-builder",
+		"--service-user", "root",
+	}
+	cmd := exec.Command("sh", args...)
+	cmd.Stdin = strings.NewReader("")
+	cmd.Env = append(os.Environ(), "PATH="+fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok || exitErr.ExitCode() != 2 {
+		t.Fatalf("bootstrap exact argv exit error=%v stderr=%q", err, stderr.String())
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("bootstrap exact argv must not write stdout on failure, got %q", stdout.String())
+	}
+	var diagnostic struct {
+		FailureCode string `json:"failure_code"`
+		Stage       string `json:"stage"`
+	}
+	if err := json.Unmarshal(bytes.TrimSpace(stderr.Bytes()), &diagnostic); err != nil {
+		t.Fatalf("bootstrap diagnostic must be JSON: %v output=%q", err, stderr.String())
+	}
+	if diagnostic.FailureCode != "bootstrap-script-health-failed" || diagnostic.Stage != "admin-password-stdin" {
+		t.Fatalf("exact 16-token vector must reach stdin boundary, got %+v", diagnostic)
 	}
 }
 
@@ -3798,9 +3867,9 @@ var phase18BootstrapInvocationTokens = []string{
 	"root",
 }
 
-var phase18BootstrapRequiredCommands = []string{"sh", "mktemp", "mkdir", "chmod", "install", "mv", "rm", "sha256sum", "systemctl"}
+var phase18BootstrapRequiredCommands = []string{"sh", "mktemp", "mkdir", "chmod", "install", "mv", "rm", "sha256sum", "systemctl", "sleep", "od"}
 
-var phase18BootstrapHTTPClientOrder = []string{"curl", "wget"}
+var phase18BootstrapHTTPClientOrder = []string{"curl"}
 
 var phase18BootstrapFailureCodes = []string{
 	"bootstrap-script-http-client-missing",
@@ -3924,7 +3993,7 @@ var phase18DocumentDriftTargets = []string{
 	"closure-counter",
 }
 
-const phase18BootstrapScriptExpectedState = "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback fixed-token-flag-interface sh adlaire-ci-vps-pull-bootstrap.sh --source-channel integration-head|stable-release --topology-role ci-cd|site|single-node --source absolute-https-url-or-absolute-file-path --sha256 64-lowercase-hex --install-dir /opt/adlaire-builder --bin-dir /usr/local/bin --state-dir /opt/adlaire-builder --service-user root sh mktemp mkdir chmod install mv rm sha256sum systemctl curl wget single-json-object-secret-safe diagnostic-json-lines-on-failure common-cli-exit-code-contract bootstrap-script-http-client-missing bootstrap-script-source-unreachable bootstrap-script-digest-mismatch bootstrap-script-version-mismatch bootstrap-script-executable-permission-invalid bootstrap-script-systemd-unit-invalid bootstrap-script-state-directory-invalid bootstrap-script-health-failed bootstrap-script-rollback-failed"
+const phase18BootstrapScriptExpectedState = "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback fixed-token-flag-interface sh adlaire-ci-vps-pull-bootstrap.sh --source-channel integration-head|stable-release --topology-role ci-cd|site|single-node --source absolute-https-url-or-absolute-file-path --sha256 64-lowercase-hex --install-dir /opt/adlaire-builder --bin-dir /usr/local/bin --state-dir /opt/adlaire-builder --service-user root sh mktemp mkdir chmod install mv rm sha256sum systemctl sleep od curl single-json-object-secret-safe diagnostic-json-lines-on-failure common-cli-exit-code-contract bootstrap-script-http-client-missing bootstrap-script-source-unreachable bootstrap-script-digest-mismatch bootstrap-script-version-mismatch bootstrap-script-executable-permission-invalid bootstrap-script-systemd-unit-invalid bootstrap-script-state-directory-invalid bootstrap-script-health-failed bootstrap-script-rollback-failed"
 
 const phase18BootstrapScriptPath = "adlaire-ci-vps-pull-bootstrap.sh"
 
@@ -5014,6 +5083,9 @@ func phase18RequireBootstrapScriptArtifact(t *testing.T, path string, scope phas
 	if !strings.HasPrefix(script, "#!/bin/sh\n") {
 		t.Fatalf("schema-mismatch: %s must start with #!/bin/sh", path)
 	}
+	if output, err := exec.Command("sh", "-n", path).CombinedOutput(); err != nil {
+		t.Fatalf("schema-mismatch: %s must pass /bin/sh syntax validation: %v output=%s", path, err, output)
+	}
 	for _, forbidden := range []string{
 		"#!/usr/bin/env bash",
 		"#!/bin/bash",
@@ -5059,6 +5131,16 @@ func phase18RequireBootstrapScriptArtifact(t *testing.T, path string, scope phas
 		"/etc/systemd/system/adlaire-ci.timer",
 		"/etc/systemd/system/adlaire-ci-api.service",
 		".admin_credentials",
+		"phase18-materialize-admin",
+		"--init-credentials",
+		"/api/login",
+		"/api/change-password",
+		"/api/schedule/cooldown",
+		"--token-file",
+		"phase18-source",
+		"phase18-site",
+		"run_update_rollback_drill",
+		"no_issue_detected",
 	} {
 		if !strings.Contains(script, token) {
 			t.Fatalf("document-drift: %s must contain Phase 18 bootstrap contract token %q", path, token)

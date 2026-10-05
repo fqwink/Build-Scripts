@@ -46,8 +46,18 @@ const (
 
 var setupBinaryVersion = "V.0.0-dev"
 
+var (
+	setupEmbeddedAdminIndex []byte
+	setupEmbeddedAdminSDK   []byte
+)
+
 func SetBinaryVersion(version string) {
 	setupBinaryVersion = version
+}
+
+func SetEmbeddedAdminAssets(indexHTML, sdkJS []byte) {
+	setupEmbeddedAdminIndex = append(setupEmbeddedAdminIndex[:0], indexHTML...)
+	setupEmbeddedAdminSDK = append(setupEmbeddedAdminSDK[:0], sdkJS...)
 }
 
 var (
@@ -153,7 +163,85 @@ type setupOperations interface {
 type setupRealOps struct{}
 
 func RunSetup(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "phase18-materialize-admin" {
+		return runPhase18MaterializeAdmin(args, stdout, stderr)
+	}
 	return runSetup(args, stdout, stderr, setupRealOps{})
+}
+
+func runPhase18MaterializeAdmin(args []string, stdout, stderr io.Writer) int {
+	if !safeArgvTokens(args) {
+		fmt.Fprintln(stderr, "invalid command line token")
+		return 2
+	}
+	if len(args) != 3 || args[1] != "--install-dir" {
+		fmt.Fprintln(stderr, "usage error")
+		return 2
+	}
+	installDir := args[2]
+	if installDir == "" || !filepath.IsAbs(installDir) || installDir == "/" {
+		fmt.Fprintln(stderr, "invalid install directory")
+		return 2
+	}
+	if len(setupEmbeddedAdminIndex) == 0 || len(setupEmbeddedAdminSDK) == 0 {
+		fmt.Fprintln(stderr, "embedded admin assets unavailable")
+		return 1
+	}
+	if err := materializePhase18AdminAssets(installDir); err != nil {
+		fmt.Fprintln(stderr, "admin asset materialization failed")
+		return 1
+	}
+	fmt.Fprintln(stdout, "setup: success phase18-materialize-admin")
+	return 0
+}
+
+func materializePhase18AdminAssets(installDir string) error {
+	if info, err := os.Lstat(installDir); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return errors.New("invalid install directory")
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.MkdirAll(installDir, 0755); err != nil {
+		return err
+	}
+	if err := os.Chmod(installDir, 0755); err != nil {
+		return err
+	}
+	adminDir := filepath.Join(installDir, "admin")
+	if info, err := os.Lstat(adminDir); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return errors.New("invalid admin directory")
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.MkdirAll(adminDir, 0755); err != nil {
+		return err
+	}
+	if err := os.Chmod(adminDir, 0755); err != nil {
+		return err
+	}
+	assets := []struct {
+		name string
+		data []byte
+	}{
+		{name: "index.html", data: setupEmbeddedAdminIndex},
+		{name: "adlaire-ci-sdk.js", data: setupEmbeddedAdminSDK},
+	}
+	for _, asset := range assets {
+		path := filepath.Join(adminDir, asset.name)
+		if info, err := os.Lstat(path); err == nil && info.Mode()&os.ModeSymlink != 0 {
+			return errors.New("admin asset is symlink")
+		} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		if err := atomicWriteText(path, string(asset.data), 0644); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func runSetup(args []string, stdout, stderr io.Writer, ops setupOperations) int {
@@ -1330,8 +1418,8 @@ func (setupRealOps) InitCredentials(apiPath, installDir, passwordFile string) er
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-	if stdout.Len() != 0 || stderr.Len() != 0 {
-		return errors.New("credentials command produced output")
+	if stdout.String() != "credentials initialized\n" || stderr.Len() != 0 {
+		return errors.New("credentials command output mismatch")
 	}
 	return nil
 }

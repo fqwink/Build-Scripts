@@ -328,6 +328,7 @@ type apiServerConfig struct {
 	ScheduleIntervalSeconds int              `json:"schedule_interval_seconds"`
 	SchedulePaused          bool             `json:"schedule_paused"`
 	AllowedHours            *apiAllowedHours `json:"allowed_hours"`
+	WatchMode               string           `json:"watch_mode"`
 	APIRateLimit            map[string]any   `json:"api_rate_limit,omitempty"`
 }
 
@@ -1388,7 +1389,7 @@ func (s *APIServer) Handler() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
-			mux.ServeHTTP(w, r)
+			s.handleAdminStatic(w, r)
 			return
 		}
 		start := time.Now()
@@ -1415,6 +1416,52 @@ func (s *APIServer) Handler() http.Handler {
 		}
 		_ = s.appendAPIAccessLog(r, requestID, rec.status, start)
 	})
+}
+
+func (s *APIServer) handleAdminStatic(w http.ResponseWriter, r *http.Request) {
+	var name, contentType, cacheControl string
+	switch r.URL.Path {
+	case "/", "/admin/", "/admin/index.html":
+		name = "index.html"
+		contentType = "text/html; charset=utf-8"
+		cacheControl = "no-store"
+	case "/admin/adlaire-ci-sdk.js":
+		name = "adlaire-ci-sdk.js"
+		contentType = "text/javascript; charset=utf-8"
+		cacheControl = "no-cache"
+	default:
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+	adminDir := filepath.Join(s.cfg.StateDir, "admin")
+	adminInfo, err := os.Lstat(adminDir)
+	if err != nil || adminInfo.Mode()&os.ModeSymlink != 0 || !adminInfo.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+	path := filepath.Join(adminDir, name)
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		http.NotFound(w, r)
+		return
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", cacheControl)
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	w.WriteHeader(http.StatusOK)
+	if r.Method == http.MethodGet {
+		_, _ = w.Write(data)
+	}
 }
 
 func (s *APIServer) HTTPServer() *http.Server {
@@ -7641,6 +7688,7 @@ func defaultServerConfig() apiServerConfig {
 		CommitStatusEnabled: false, CommitStatusContext: "Adlaire CI",
 		BuildTrendKeepCount: 1000, SessionTimeoutSeconds: 28800,
 		ScheduleIntervalSeconds: 300,
+		WatchMode:               "github",
 		APIRateLimit:            apiRateLimitPolicyToMap(defaultAPIRateLimitPolicy()),
 	}
 }
@@ -7869,6 +7917,9 @@ func normalizeServerConfig(cfg apiServerConfig) apiServerConfig {
 	}
 	if cfg.ScheduleIntervalSeconds == 0 {
 		cfg.ScheduleIntervalSeconds = def.ScheduleIntervalSeconds
+	}
+	if cfg.WatchMode == "" {
+		cfg.WatchMode = def.WatchMode
 	}
 	if cfg.APIRateLimit == nil {
 		cfg.APIRateLimit = apiRateLimitPolicyToMap(defaultAPIRateLimitPolicy())
