@@ -5031,7 +5031,15 @@ func phase18RequireDocumentState(t *testing.T) {
 		if !strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 |") || !strings.Contains(roadmap, feature) {
 			t.Fatalf("docs/ROADMAP.md must mark Phase 18 feature in progress until real bootstrap completes: %s", feature)
 		}
+		if strings.Contains(feature, "secret / destructive operation / opaque metadata / document drift") {
+			if !strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | 本番検証 | "+feature+" |") {
+				t.Fatalf("docs/ROADMAP.md must keep Phase 18 boundary feature in 本番検証 category: %s", feature)
+			}
+		} else if !strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | VPS Pull Bootstrap | "+feature+" |") {
+			t.Fatalf("docs/ROADMAP.md must keep Phase 18 bootstrap feature in VPS Pull Bootstrap category: %s", feature)
+		}
 		if strings.Contains(roadmap, "| 実装済み | CI/CD Bootstrap | "+feature+" |") ||
+			strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | CI/CD Bootstrap | "+feature+" |") ||
 			strings.Contains(roadmap, "| 実装済み | 試験本番運用 | "+feature+" |") ||
 			strings.Contains(roadmap, "| 実装済み | 本番検証 | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | CI/CD Bootstrap | "+feature+" |") ||
@@ -5051,6 +5059,8 @@ func phase18RequireDocumentState(t *testing.T) {
 		"`source_channel` | Phase 18 完了判定では `integration-head` 固定",
 		"将来 CD 基盤の受け口とは、Phase 19 以降が `stable-release` channel、deploy、rollback、release selection、promotion を実装する際に使用する source channel、topology role、install directory、bin directory、state directory、service unit、log / state boundary を VPS 内に固定すること",
 		"Phase 18 では deploy decision、production release selection、CD pipeline execution、customer environment promotion を実装対象、完了条件、または bootstrap 成功条件として扱ってはならない",
+		"`topology_role=ci-cd` は VPS 内の配置 role 名",
+		"承認済み deploy target、正式本番 deploy、customer environment deploy を成功証跡として扱わない",
 		"`fixture_gate_result`",
 		"`checker-acceptance-fixture` を `live-vps-bootstrap` の代替にしない",
 		"`closure_counter_result`",
@@ -5063,6 +5073,9 @@ func phase18RequireDocumentState(t *testing.T) {
 		if !strings.Contains(productionValidation, token) {
 			t.Fatalf("docs/details/production-validation.md must define Phase 18 live VPS completion summary token %q", token)
 		}
+	}
+	if strings.Contains(productionValidation, "deploy simulation または承認済み deploy target") || strings.Contains(fixture, "deploy simulation または承認済み deploy target") {
+		t.Fatalf("Phase 18 must not allow approved deploy target as an alternative to deploy simulation evidence")
 	}
 	for _, token := range []string{
 		"bootstrap 完了判定または `実装済み` 遷移を扱う PR は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](#phase-18-state-transition-gate) に従う",

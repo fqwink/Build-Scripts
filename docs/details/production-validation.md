@@ -241,6 +241,8 @@ Phase 18 の bootstrap session は `operator-approved-bootstrap-session` 固定�
 
 Phase 18 の topology role は `ci-cd`、`site`、`single-node` に固定する。標準運用は Linux CI/CD server と静的サイト配信 server の 2 台構成である。最小運用は 1 台 VPS の `single-node` として、CI 実行基盤、将来 CD 基盤の受け口、静的サイト配信境界を同一 VPS 内に同居できる。`single-node` は最小構成であり、2 台構成の置換ではなく bootstrap 契約上の許可構成として扱う。
 
+Phase 18 の `topology_role=ci-cd` は VPS 内の配置 role 名であり、Phase 18 で CD 実行、deploy decision、production release selection、customer environment promotion を許可する意味を持たない。`topology_role=ci-cd` の成功証跡は、CI 実行基盤と将来 CD 基盤の受け口が導入されたことだけを示す。
+
 Phase 18 の source channel は `integration-head` と `stable-release` を区別する。Phase 18 では `integration-head` を bootstrap 検証用の取得経路、`stable-release` を将来の本番運用用取得経路として定義する。`stable-release` の正式 CD、配信 channel、release selection、rollback policy は Phase 19 以降の対象であり、Phase 18 の完了条件へ混入してはならない。
 
 Phase 18 の bootstrap script artifact は配布物名 `adlaire-ci-vps-pull-bootstrap.sh`、runtime `/bin/sh`、呼出し境界 `operator-runs-sh-script-on-vps` に固定する。bootstrap script は provider 固有の startup script 機能ではなく、operator が作成済み VPS 内で初回実行する shell artifact である。bootstrap script は Go 標準実装で生成または配布される実行基盤を VPS 内へ導入する入口に限定し、provider API、GitHub Actions、GitHub Secrets、GitHub self-hosted runner、SSH key 管理、VPS 作成、VPS 削除、plan 変更を内包してはならない。
@@ -263,7 +265,7 @@ Phase 18 の work unit は以下の順序固定とする。
 | `bootstrap-session-open` | `operator-approved-bootstrap-session` を開始し、operator 承認、session id、開始時 sample、secret 境界、禁止 provider operation 境界を記録する。 |
 | `bootstrap-artifact-health` | bootstrap script、取得 channel、binary version、systemd service、health endpoint、state directory、log write が成功し、失敗または未実施を open item へ接続する。 |
 | `bootstrap-runtime-flow` | API、Admin CLI、SDK、UI の疎通、認証、timeout、body limit、secret mask、状態再取得が成功する。 |
-| `pull-runner-foundation` | runner queue、pull source、build、状態更新、audit log、commit status 対象外または成功、deploy simulation または承認済み deploy target が証跡化される。 |
+| `pull-runner-foundation` | runner queue、pull source、build、状態更新、audit log、commit status 対象外または成功、deploy simulation が証跡化される。Phase 18 では承認済み deploy target、正式本番 deploy、customer environment deploy を成功証跡として扱わない。 |
 | `bootstrap-update-rollback-drill` | update、rollback、service restart、state migration、rollback 後 version、failure cleanup が成功する。 |
 | `bootstrap-issue-triage` | bootstrap 中の issue、仕様不整合、環境不整合、known bug を検出し、分類、責務正本、修正要否、再検証条件を記録する。 |
 | `spec-first-fix` | 修正が必要な issue は、実装修正前に仕様全般策定、責務正本改訂、検証条件固定を完了する。 |

@@ -1023,7 +1023,7 @@ Phase 18 checker acceptance fixture は repository 内の仕様・schema・recor
 | `phase18_bootstrap_prerequisite_open_count` | `0` | Phase 17 証跡、試験本番VPS 前提、OS / plan、未残条件の引継ぎに欠落がある。 |
 | `phase18_bootstrap_session_open_count` | `0` | `operator-approved-bootstrap-session`、3 sample、開始 / runtime / 終了のいずれかに欠落がある。 |
 | `phase18_bootstrap_runtime_open_count` | `0` | service、API、Admin、SDK、UI、log write、state directory health に未完了がある。 |
-| `phase18_pull_runner_foundation_open_count` | `0` | runner queue、build、state update、audit、commit status、deploy simulation または承認済み deploy target の証跡に欠落がある。 |
+| `phase18_pull_runner_foundation_open_count` | `0` | runner queue、build、state update、audit、commit status、deploy simulation の証跡に欠落がある。承認済み deploy target、正式本番 deploy、customer environment deploy を Phase 18 の成功証跡として扱った場合も open item とする。 |
 | `phase18_bootstrap_update_rollback_open_count` | `0` | update、rollback、service restart、state migration、failure cleanup に未完了がある。 |
 | `phase18_bugfix_spec_gap_count` | `0` | 仕様全般策定を先行しない修正、責務正本未接続、再検証未接続がある。 |
 | `phase18_known_bug_open_count` | `0` | Phase 18 完了時点で既知重大バグまたは未修正バグが残っている。 |
@@ -1042,7 +1042,7 @@ Phase 18 required check は以下に固定する。Phase 18 bootstrap 完了 PR 
 | `phase18-bootstrap-session` | bootstrap session | `operator-approved-bootstrap-session`、3 sample、停止条件、session close が記録され、`phase18_bootstrap_session_open_count=0`。 |
 | `phase18-bootstrap-artifact-health` | release asset / binary version / service / API / state directory / log write health | release asset、binary version、health、認証、timeout、body limit、log write、secret mask が成功し、`phase18_bootstrap_runtime_open_count=0`。 |
 | `phase18-bootstrap-runtime-flow` | bootstrap runtime flow | Admin、API、SDK、UI、statefile、audit、access、config log の実 runtime が証跡化され、`phase18_bootstrap_runtime_open_count=0`。 |
-| `phase18-pull-runner-foundation` | pull runner foundation | runner queue、build、state update、audit、commit status、deploy simulation または承認済み deploy target が証跡化され、`phase18_pull_runner_foundation_open_count=0`。 |
+| `phase18-pull-runner-foundation` | pull runner foundation | runner queue、build、state update、audit、commit status、deploy simulation が証跡化され、承認済み deploy target、正式本番 deploy、customer environment deploy を成功証跡にせず、`phase18_pull_runner_foundation_open_count=0`。 |
 | `phase18-bootstrap-update-rollback` | bootstrap update / rollback drill | update、rollback、service restart、state migration、failure cleanup が成功し、`phase18_bootstrap_update_rollback_open_count=0`。 |
 | `phase18-bugfix-spec-first` | bootstrap 中 issue と修正 loop | すべての issue が仕様全般策定、実装修正、再検証、known bug 0 へ接続し、`phase18_bugfix_spec_gap_count=0` と `phase18_known_bug_open_count=0`。 |
 | `phase18-security-boundary` | secret / destructive operation 境界 | secret と provider 識別情報が証跡へ出ず、禁止 provider operation が成功扱いされず、`phase18_secret_leak_open_count=0` と `phase18_destructive_operation_open_count=0`。 |
