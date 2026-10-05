@@ -3945,6 +3945,7 @@ var phase18ReferenceLabels = map[string]string{
 	".github/workflows/phase18-vps-pull-bootstrap.yml": "Phase 18 required check workflow",
 	"main_test.go":                                     "Phase 18 checker implementation artifact",
 	"docs/details/production-validation.md#phase-18-vps-pull-bootstrap-contract": "本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約",
+	"docs/details/fixture.md#phase-18-negative-boundary-contract":                "fixture 証跡責務 Phase 18 negative boundary 固定契約",
 	"docs/details/release.md#release-responsibility-boundary":                    "Release 詳細本文責務 責務境界",
 	"docs/details/setup.md#0-責務境界":                                               "Setup 詳細本文責務 責務境界",
 	"docs/details/api.md#0-責務境界":                                                 "API 詳細本文責務 責務境界",
@@ -3956,6 +3957,8 @@ var phase18ReferenceLabels = map[string]string{
 	"docs/details/builder.md#0-責務境界":                                             "Builder 詳細本文責務 責務境界",
 	"docs/details/commitstatus.md#0-責務境界":                                        "Commit Status 詳細本文責務 責務境界",
 }
+
+var phase18NegativeBoundarySourceRef = phase18MarkdownRef("docs/details/fixture.md#phase-18-negative-boundary-contract")
 
 type phase18HealthTargetExpectation struct {
 	CheckName            string
@@ -4455,7 +4458,12 @@ func phase18RequireInputsAndExpected(t *testing.T, root string) phase18InputSet 
 			t.Fatalf("Phase 18 negative boundary repeats forbidden_success_condition %s", got.ForbiddenSuccessCondition)
 		}
 		seenCondition[got.ForbiddenSuccessCondition] = true
+		if got.SourceRef != phase18NegativeBoundarySourceRef {
+			t.Fatalf("Phase 18 negative boundary %s source_ref mismatch: want %s got %s", got.CaseID, phase18NegativeBoundarySourceRef, got.SourceRef)
+		}
 		phase18RequireSafeReference(t, "negative boundary source_ref", got.SourceRef)
+		phase18RequireMarkdownReferenceForm(t, "negative boundary source_ref", got.SourceRef)
+		phase18RequireResolvableReference(t, "negative boundary source_ref", got.SourceRef)
 	}
 	return inputs
 }
