@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "b65bbc06483c9ff7c8967c086cbdb17683b91532b5c83e26e601156c60ceb102",
+  "source_group_sha256": "38c82041992b2d739852a4fbefafa64ba9b125540adb868281c50840ab766c7f",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "4d476605c4d30ae4a8441d58214590c5f3f20963658fbf17566b87a4513b65d4",
-      "size_bytes": 263126,
+      "sha256": "d47b06cd973b10ad0ed13ffcafb648dd7d50a951eb4adb01b0eaa3273d8e983b",
+      "size_bytes": 264688,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -135,8 +135,8 @@
     {
       "path": "docs/ROADMAP.md",
       "source_exists": true,
-      "sha256": "2783de363945c28ae99c21f8f654187814d0228a5c998a3fdc7b3fdfdd572852",
-      "size_bytes": 61252,
+      "sha256": "e378db6991a1cb1c29e1ce5d2d04e45184f10331dee8c138f9e3ab6dcd73cdb9",
+      "size_bytes": 61251,
       "owner_component": "runner",
       "area": "roadmap",
       "detected_terms": [
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "1f455cf33e09fedfad662bf9403c7cd84cf328e06bed172f320b39b917e5c50b",
-      "size_bytes": 56272,
+      "sha256": "dfe91add9ef8afd73309ef0ab6b1c85aae0eab7215b0187bd0b39a7ab4d173b5",
+      "size_bytes": 58297,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [

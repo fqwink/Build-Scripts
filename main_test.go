@@ -5074,6 +5074,7 @@ func phase18RequireDocumentState(t *testing.T) {
 		"`execution_environment` | `vps`",
 		"`provider_target` | `conoha-vps-primary`",
 		"`vps_label` | `試験本番VPS`",
+		"用途 label `試験本番VPS` を持つ VPS の opaque environment identity",
 		"`validation_mode` | `vps-pull-bootstrap`",
 		"`bootstrap_session_id` | `phase18.session.<slug>`",
 		"`source_channel` | Phase 18 完了判定では `integration-head` 固定",
@@ -5098,6 +5099,13 @@ func phase18RequireDocumentState(t *testing.T) {
 	}
 	if strings.Contains(productionValidation, "deploy simulation または承認済み deploy target") || strings.Contains(fixture, "deploy simulation または承認済み deploy target") {
 		t.Fatalf("Phase 18 must not allow approved deploy target as an alternative to deploy simulation evidence")
+	}
+	if !strings.Contains(roadmap, "`Build-Scripts-vps-2026` の非秘密 name tag と `試験本番VPS` の用途 label") {
+		t.Fatalf("docs/ROADMAP.md must connect Phase 18 active state to Build-Scripts-vps-2026 and the 試験本番VPS purpose label")
+	}
+	ambiguousPhase18VPSLabel := "試験本番運用・" + "開発検証兼用 VPS"
+	if strings.Contains(roadmap, ambiguousPhase18VPSLabel) || strings.Contains(productionValidation, ambiguousPhase18VPSLabel) {
+		t.Fatalf("Phase 18 must use the 試験本番VPS purpose label instead of an ambiguous trial-production/development VPS label")
 	}
 	for _, token := range []string{
 		"bootstrap 完了判定または `実装済み` 遷移を扱う PR は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](#phase-18-state-transition-gate) に従う",
@@ -5156,6 +5164,26 @@ func phase18RequireDocumentState(t *testing.T) {
 	phase18IndexSection := documentIndex[phase18IndexStart:]
 	if strings.Contains(phase18IndexSection, "未作成") {
 		t.Fatalf("docs/DOCUMENT_INDEX.md must not keep Phase 18 paths as 未作成")
+	}
+	for _, forbidden := range []string{
+		"現在状態と完了可否は " + "[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する",
+	} {
+		if strings.Contains(documentIndex, forbidden) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must not assign current state and completion possibility to ROADMAP together: %q", forbidden)
+		}
+	}
+	for _, token := range []string{
+		"Phase 13 実装整合・品質改善証跡",
+		"Phase 14 Obsidian Vault 連携証跡",
+		"Phase 15 Obsidian local vault 同期証跡",
+		"Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡",
+		"Phase 17 ConoHa VPS 試験本番運用証跡",
+		"Phase 18 状態遷移 gate",
+		"本節は path 所在だけを正本とする",
+	} {
+		if !strings.Contains(documentIndex, token) {
+			t.Fatalf("docs/DOCUMENT_INDEX.md must keep responsibility-split Phase 13-18 index token %q", token)
+		}
 	}
 }
 

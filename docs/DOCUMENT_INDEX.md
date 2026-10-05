@@ -283,7 +283,7 @@
 <a id="phase-13-target-paths"></a>
 **Phase 13 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 13 実装整合・品質改善参照](DETAIL_INDEX.md#phase-13-implementation-alignment-quality-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、完了可否は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) と [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](details/fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。本節は path 所在だけを正本とする。
 
 `components/<owner>/...` の `<owner>` 解釈は、[Phase 12 target path 所在](#phase-12-target-paths) で定義した Go owner package target 範囲と同一とする。`sdk` と `ui` は Phase 13 の契約照合対象であり、Go owner package target ではないため、実在所在は [`admin/adlaire-ci-sdk.js`](../admin/adlaire-ci-sdk.js) と [`admin/index.html`](../admin/index.html) の行を正とする。
 
@@ -321,7 +321,7 @@
 <a id="phase-14-target-paths"></a>
 **Phase 14 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 14 Obsidian Vault 連携参照](DETAIL_INDEX.md#phase-14-obsidian-vault-integration-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、完了可否は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) と [`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) を参照する。本節は path 所在だけを正本とする。
 
 | path pattern | 対象 | 所在区分 |
 |--------------|------|----------|
@@ -347,7 +347,7 @@
 <a id="phase-15-target-paths"></a>
 **Phase 15 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 15 Obsidian local vault 同期参照](DETAIL_INDEX.md#phase-15-obsidian-local-sync-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、完了可否は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) と [`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) を参照する。本節は path 所在だけを正本とする。
 
 | path pattern | 対象 | 所在区分 |
 |--------------|------|----------|
@@ -373,7 +373,7 @@
 <a id="phase-16-target-paths"></a>
 **Phase 16 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 参照](DETAIL_INDEX.md#phase-16-quality-evidence-closure-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、完了可否は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8) と [`docs/details/fixture.md` fixture 証跡責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡](details/fixture.md#phase-16-quality-evidence-closure-evidence) を参照する。本節は path 所在だけを正本とする。
 
 | path | 役割 | 所在 |
 |------|------|------|
@@ -402,7 +402,7 @@
 <a id="phase-17-target-paths"></a>
 **Phase 17 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 17 ConoHa VPS 試験本番運用参照](DETAIL_INDEX.md#phase-17-production-validation-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 17 ConoHa VPS 試験本番運用参照](DETAIL_INDEX.md#phase-17-production-validation-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、完了可否は [`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、[`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務、[`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) を参照する。本節は path 所在だけを正本とする。
 
 | path | 役割 | 所在 |
 |------|------|------|
@@ -432,7 +432,7 @@
 <a id="phase-18-target-paths"></a>
 **Phase 18 target path 所在：**
 
-以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 VPS Pull Bootstrap 参照](DETAIL_INDEX.md#phase-18-vps-pull-bootstrap-entry) から参照される所在である。現在状態と完了可否は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を参照する。
+以下は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 VPS Pull Bootstrap 参照](DETAIL_INDEX.md#phase-18-vps-pull-bootstrap-entry) から参照される所在である。現在状態は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、`実装済み` 遷移可否は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate)、[`docs/SPEC.md` 方針責務 §4.8](SPEC.md#sec-4-8)、[`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](details/production-validation.md#phase-18-vps-pull-bootstrap-contract)、[`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) を参照する。本節は path 所在だけを正本とする。
 
 | path | 役割 | 所在 |
 |------|------|------|
