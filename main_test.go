@@ -5049,6 +5049,8 @@ func phase18RequireDocumentState(t *testing.T) {
 		"`validation_mode` | `vps-pull-bootstrap`",
 		"`bootstrap_session_id` | `phase18.session.<slug>`",
 		"`source_channel` | Phase 18 完了判定では `integration-head` 固定",
+		"将来 CD 基盤の受け口とは、Phase 19 以降が `stable-release` channel、deploy、rollback、release selection、promotion を実装する際に使用する source channel、topology role、install directory、bin directory、state directory、service unit、log / state boundary を VPS 内に固定すること",
+		"Phase 18 では deploy decision、production release selection、CD pipeline execution、customer environment promotion を実装対象、完了条件、または bootstrap 成功条件として扱ってはならない",
 		"`fixture_gate_result`",
 		"`checker-acceptance-fixture` を `live-vps-bootstrap` の代替にしない",
 		"`closure_counter_result`",

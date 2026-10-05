@@ -225,7 +225,9 @@ Phase 17 の実装 PR は、[`docs/details/fixture.md` fixture 証跡責務 Phas
 
 **9. Phase 18 VPS Pull Bootstrap 契約：**
 
-Phase 18 は、作成済み VPS に `VPS Pull Bootstrap` を導入し、Adlaire CI の CI/CD 実行基盤を VPS 側へ入れる Phase とする。`VPS Pull Bootstrap` は shell 製 bootstrap script による初回導入方式であり、GitHub Actions、GitHub Secrets、GitHub self-hosted runner、provider 固有の startup script 機能、または provider API を Phase 18 の必須実行基盤として扱ってはならない。
+Phase 18 は、作成済み VPS に `VPS Pull Bootstrap` を導入し、Adlaire CI の CI 実行基盤と将来 CD 基盤の受け口を VPS 側へ入れる Phase とする。`VPS Pull Bootstrap` は shell 製 bootstrap script による初回導入方式であり、GitHub Actions、GitHub Secrets、GitHub self-hosted runner、provider 固有の startup script 機能、または provider API を Phase 18 の必須実行基盤として扱ってはならない。
+
+Phase 18 における将来 CD 基盤の受け口とは、Phase 19 以降が `stable-release` channel、deploy、rollback、release selection、promotion を実装する際に使用する source channel、topology role、install directory、bin directory、state directory、service unit、log / state boundary を VPS 内に固定することである。Phase 18 では deploy decision、production release selection、CD pipeline execution、customer environment promotion を実装対象、完了条件、または bootstrap 成功条件として扱ってはならない。
 
 Phase 18 の provider target は `conoha-vps-primary` を先行対象、`xserver-vps-future` を将来判断対象に固定する。`xserver-vps-future` は Phase 18 の未完了 item、required check、failure、または blocker として扱わない。Phase 18 は provider 非依存の bootstrap 契約を固定する Phase であり、ConoHa 固有機能を正本条件として埋め込んではならない。
 
@@ -237,7 +239,7 @@ Phase 18 の validation mode は `vps-pull-bootstrap` 固定とする。`product
 
 Phase 18 の bootstrap session は `operator-approved-bootstrap-session` 固定とする。Phase 18 実装完了には 1 件以上の bootstrap session を必須とし、24 時間継続監視は完了 blocker にしない。bootstrap session 内では、開始時、bootstrap runtime flow 完了後、終了時の 3 sample を最小証跡として記録する。各 sample は service state、API health、Admin CLI health、runner state、statefile digest、audit / access / config log write、secret leakage boundary、known bug status、document drift status を含む。
 
-Phase 18 の topology role は `ci-cd`、`site`、`single-node` に固定する。標準運用は Linux CI/CD server と静的サイト配信 server の 2 台構成である。最小運用は 1 台 VPS の `single-node` として、CI/CD 実行基盤と静的サイト配信を同一 VPS 内に同居できる。`single-node` は最小構成であり、2 台構成の置換ではなく bootstrap 契約上の許可構成として扱う。
+Phase 18 の topology role は `ci-cd`、`site`、`single-node` に固定する。標準運用は Linux CI/CD server と静的サイト配信 server の 2 台構成である。最小運用は 1 台 VPS の `single-node` として、CI 実行基盤、将来 CD 基盤の受け口、静的サイト配信境界を同一 VPS 内に同居できる。`single-node` は最小構成であり、2 台構成の置換ではなく bootstrap 契約上の許可構成として扱う。
 
 Phase 18 の source channel は `integration-head` と `stable-release` を区別する。Phase 18 では `integration-head` を bootstrap 検証用の取得経路、`stable-release` を将来の本番運用用取得経路として定義する。`stable-release` の正式 CD、配信 channel、release selection、rollback policy は Phase 19 以降の対象であり、Phase 18 の完了条件へ混入してはならない。
 
