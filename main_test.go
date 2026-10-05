@@ -5077,9 +5077,21 @@ func phase18RequireDocumentState(t *testing.T) {
 		"Phase 18 checker acceptance fixture は repository 内の仕様・schema・record・counter・required check・document drift の受入証跡",
 		"`live VPS completion summary` を同一 PR 本文へ接続する",
 		"fixture 証跡責務では `live VPS completion summary` の item を再掲しない",
+		"Phase 18 Go test checker acceptance 契約",
+		"`TestPhase18VPSPullBootstrapEvidence` は standalone CLI ではない",
+		"custom stdout / stderr JSON schema",
+		"`expected/negative_boundaries.json.expected_diagnostic_code` は、checker が検出すべき failure classification の期待値",
 	} {
 		if !strings.Contains(fixture, token) {
 			t.Fatalf("docs/details/fixture.md must keep Phase 18 fixture/live summary boundary token %q", token)
+		}
+	}
+	for _, forbidden := range []string{
+		"Phase 18 checker " + "process 入出力契約",
+		"checker " + "process 入出力契約不一致",
+	} {
+		if strings.Contains(fixture, forbidden) {
+			t.Fatalf("docs/details/fixture.md must not describe Phase 18 as a standalone process checker: %q", forbidden)
 		}
 	}
 	expectedPaths := []string{"testdata/phase18/vps-pull-bootstrap/"}
