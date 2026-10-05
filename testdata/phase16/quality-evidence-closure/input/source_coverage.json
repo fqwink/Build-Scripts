@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "eca78da7a720f3e581407c815085c2faf69210c67b13bd83983d2d4b84f9b792",
+  "source_group_sha256": "ad8a9e937d5474a07e296d7ced5667ee521cf603d18b57efc07e9ec0f8cd28f5",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "20dd02a682a554ef260a2ec12e8ff9afc0cc194b02d75916d61b52f0d58b0ab2",
-      "size_bytes": 260650,
+      "sha256": "fbbe593a80bee8407932fc75b458eb5b58572c635e981b1e1cb855df75e7500c",
+      "size_bytes": 262754,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -135,8 +135,8 @@
     {
       "path": "docs/ROADMAP.md",
       "source_exists": true,
-      "sha256": "3afb0e8b167e3b943425f2573b4b2d764a3250018a554297f61d7c550ae68897",
-      "size_bytes": 64261,
+      "sha256": "e22883cc86dca304b75f47b679825f939d5e5c1be6c21d91da1d8c8df4d717e4",
+      "size_bytes": 61886,
       "owner_component": "runner",
       "area": "roadmap",
       "detected_terms": [

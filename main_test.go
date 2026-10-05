@@ -5005,12 +5005,27 @@ func phase18RequireDocumentState(t *testing.T) {
 		t.Fatalf("docs/ROADMAP.md must not mark Phase 18 implemented or unimplemented while real VPS Pull Bootstrap remains incomplete")
 	}
 	for _, token := range []string{
-		"Phase 18 は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) に記録された全 closure counter の完了値と [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約]",
+		"Phase 18 を `実装済み` へ遷移する条件は、本 ROADMAP で再定義せず、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate)",
+		"Phase 11 から Phase 17 の完了証跡条件、closure counter、record schema、required check は ROADMAP 本文で再掲せず",
 		"`live VPS completion summary` を同一 PR 本文へ secret-safe に記録",
 		"repository 内 fixture、GitHub Actions success、Docker success、または closure counter 完了値だけを、Phase 18 の状態遷移根拠として扱わない",
 	} {
 		if !strings.Contains(roadmap, token) {
 			t.Fatalf("docs/ROADMAP.md must connect Phase 18 state transition to live VPS completion summary token %q", token)
+		}
+	}
+	for _, forbidden := range []string{
+		"Phase 11 は [`docs/details/fixture.md` fixture 証跡責務 Phase 11 完了 closure](details/fixture.md#phase-11-quality-gate-closure) に記録された closure record set の `final_open_item_count=0`",
+		"Phase 12 は [`docs/details/fixture.md` fixture 証跡責務 Phase 12 実装品質ゲート再構築証跡](details/fixture.md#phase-12-quality-gate-evidence) に記録された closure counter の `final_open_item_count=0`",
+		"Phase 13 は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](details/fixture.md#phase-13-implementation-alignment-quality-evidence) に記録された全 closure counter の完了値を満たす",
+		"Phase 14 は [`docs/details/fixture.md` fixture 証跡責務 Phase 14 Obsidian Vault 連携証跡](details/fixture.md#phase-14-obsidian-vault-integration-evidence) に記録された全 closure counter の完了値を満たす",
+		"Phase 15 は [`docs/details/fixture.md` fixture 証跡責務 Phase 15 Obsidian local vault 同期証跡](details/fixture.md#phase-15-obsidian-local-sync-evidence) に記録された全 closure counter の完了値を満たす",
+		"Phase 16 は [`docs/details/fixture.md` fixture 証跡責務 Phase 16 実装済み品質証跡実体化・追加検証候補 closure 証跡](details/fixture.md#phase-16-quality-evidence-closure-evidence) に記録された全 closure counter の完了値を満たす",
+		"Phase 17 は [`docs/details/fixture.md` fixture 証跡責務 Phase 17 ConoHa VPS 試験本番運用証跡](details/fixture.md#phase-17-production-validation-evidence) に記録された全 closure counter の完了値を満たす",
+		"Phase 18 は [`docs/details/fixture.md` fixture 証跡責務 Phase 18 VPS Pull Bootstrap](details/fixture.md#phase-18-vps-pull-bootstrap-evidence) に記録された全 closure counter の完了値",
+	} {
+		if strings.Contains(roadmap, forbidden) {
+			t.Fatalf("docs/ROADMAP.md must not replay closure counter detail owned by fixture/detail specs: %q", forbidden)
 		}
 	}
 	for _, token := range []string{
