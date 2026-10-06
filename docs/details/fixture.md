@@ -246,7 +246,21 @@ Phase 13 の証跡 package は、下表の全対象を同一 closure record set 
 | mutation / race / fault | production code mutation selection、mutation evidence set、`survived=0`、race detector または代替 interleaving、disk full、permission denied、short write、fsync failure、rename failure、process kill。 | mutation survivor、race trigger 未判定、fault injection 未実行、skip に責務正本 anchor がない、障害を成功扱いする。 |
 | integration / E2E | Admin to API、UI to SDK to API、runner to statefile、MCP to statefile の統合テスト、setup、install-api、update、rollback、Release、実インストール E2E。 | 単体 test だけで統合済み扱い、stub だけで E2E 扱い、実インストール未実行の未実行証跡欠落、連携先副作用未比較が 1 件以上ある。 |
 | CI / GitHub Actions | format、test、race、vet、Go 標準 toolchain と内製検査による static analysis、dependency inventory、secret boundary scan、executable fixture、mutation、競合、fault、browser、setup、release の check、Actions の commit SHA pin、minimum permissions、timeout、required checks。 | required check 未設定、Actions tag pin、permissions 過大、timeout 欠落、外部解析 tool の導入、skip success、CI 外の口頭説明だけで合格にする。 |
-| governance / recovery | LICENSE、SECURITY.md、CONTRIBUTING.md、CODEOWNERS、CHANGELOG、stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順。 | governance file 未作成、復旧手順未記載、復旧手順が実装契約または fixture へ接続しない、document drift が 1 件以上ある。 |
+| governance / recovery | LICENSE、SECURITY.md、CONTRIBUTING.md、CODEOWNERS、[変更履歴 artifact 境界検査](#change-history-artifact-boundary-evidence)、stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順。 | governance file 未作成、境界検査失敗、復旧手順未記載、復旧手順が実装契約または fixture へ接続しない、document drift が 1 件以上ある。 |
+
+<a id="change-history-artifact-boundary-evidence"></a>
+**変更履歴 artifact 境界検査：**
+
+判断根拠は [`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](../SPEC.md#policy-change-history-artifact-ban) とする。実行入口は [`main_test.go`](../../main_test.go) の `TestChangeHistoryArtifactBoundary`、`TestChangeHistoryArtifactBoundaryControls`、`TestPhase13ImplementationAlignmentQualityEvidence` とし、`go test . -run 'TestChangeHistoryArtifactBoundary|TestPhase13ImplementationAlignmentQualityEvidence' -count=1` で検査する。既存 Phase 13 required workflow の fixture checker と full Go test から同じ境界検査へ到達する。
+
+| 入力 / 操作 | 期待結果 / assertion | 差し戻し条件 |
+|-------------|----------------------|--------------|
+| リポジトリ全 path を `filepath.WalkDir` で列挙し、名称を policy の検出境界で照合する。 | `.git` 管理記録以外の禁止 path `0`。探索失敗も fail とし、file / directory / symlink を同じ名称境界で検査する。 | 禁止 path が存在する、探索 error を成功扱いする、hidden / nested path が未検査。 |
+| 隔離された一時 directory に、内容を持たない合成禁止名を置く。 | canonical、大小文字、hidden、別拡張子、区切り、後置 version、nested directory、symlink 名の各 negative control で禁止 path を検出する。 | 禁止名を見逃す、検査対象を root だけに限定する、`.git` 以外を除外する。 |
+| ビルド履歴、監査ログ、状態、公開入力を表す合成 path と `.git` 管理記録を置く。 | 固有責務の path を開発変更履歴として誤検出しない。 | `.build_history`、`config_changes.jsonl`、Release 単版の本文入力の `notes.md` を禁止 path として検出する。 |
+| Phase 13 governance file と `input/scope.json` の `include` / `release_artifacts` を照合する。 | 現行 governance file の存在・内容・索引を検証し、禁止 artifact 宣言 `0`。 | 存在確認を削るだけで artifact 必須宣言を残す、禁止 artifact を fixture に再登録する。 |
+
+証跡は同一 PR の Verification と [implementation PR evidence template 固定契約](#implementation-pr-evidence-template-contract) に接続し、実行コマンド、negative control 結果、任意名称 / 生成・配布設定の差分確認、最終 open item 件数を記録する。新しい production code、共有状態、goroutine を追加しない検査の race trigger / production mutation 対象外根拠は、[test concurrency / race evidence set 固定契約](#test-concurrency-race-evidence-set-contract) と [mutation selection ledger 固定契約](#mutation-selection-ledger-contract) の対象選択へ接続する。checker の名称照合・探索除外を無効化した場合は対応 negative control が検出することを確認する。
 
 Phase 13 closure record set は、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record を使用し、各 record の `scope` に `phase-13-implementation-alignment-quality` を含める。Phase 13 では以下の集計値を同じ closure record set 内に記録する。
 

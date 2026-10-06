@@ -3,7 +3,7 @@
 **対象 surface：** `adlaire-ci-build` が生成する静的 Web サイトと [`admin/index.html`](../admin/index.html) の標準管理 UI
 **実装 artifact：** 生成静的 Web サイトは [`components/builder/`](../components/builder/)、標準管理 UI は [`admin/index.html`](../admin/index.html)
 **デザインシステム正本 revision：** [Adlaire Design System `3c51349791883b8b7dd599a569b63c11779dfa88`](https://github.com/fqwink/Adlaire-Design-System/tree/3c51349791883b8b7dd599a569b63c11779dfa88)
-**更新履歴：** 日付本文を正本化しない。デザイン変更の時系列は Git 履歴と Pull Request を正とする。
+**変更記録：** [`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](SPEC.md#policy-change-history-artifact-ban) を参照。
 
 ---
 

@@ -5,7 +5,7 @@
 **Builder 標準出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **仕様世代：** Go 初期仕様
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記）。[`docs/SPEC.md` ポリシー責務 §1](SPEC.md#policy-versioning) 参照。
-**更新履歴：** 日付本文を正本化しない。仕様変更の時系列は Git 履歴と Pull Request を正とする。
+**変更記録：** [`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](SPEC.md#policy-change-history-artifact-ban) を参照。
 
 ---
 
@@ -242,6 +242,11 @@ owner component と実装 artifact は別の判断対象とする。owner compon
 
 仕様全般を整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) を、各文書の個別整理規則より上位の方針として適用する。
 
+<a id="direction-change-history-single-source"></a>
+**変更記録の一元化方針：**
+
+仕様・開発・リリースの変更記録は、Git 履歴、Pull Request、GitHub Release の各公開記録へ接続する。独立した変更履歴 artifact の並行管理は、転記漏れ、時系列のずれ、古い記載の参照、正本との不一致を増やし、誤った仕様判断と回帰不具合につながるため採用しない。禁止対象と適用範囲は [`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](SPEC.md#policy-change-history-artifact-ban) を参照する。
+
 <a id="43-ディレクトリ構成"></a>
 
 <a id="sec-4-3"></a>
@@ -406,7 +411,6 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 ├── SECURITY.md
 ├── CONTRIBUTING.md
 ├── CODEOWNERS
-├── CHANGELOG.md
 └── go.mod
 ```
 
@@ -725,6 +729,17 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | 検証証跡 | fixture、fake、expected、effects、security expected、意味のあるテスト条件、test gap inventory、test improvement batch closure、test evidence package、test verification closure record set、requirement coverage ledger、oracle evidence、failure diagnostics evidence、boundary / failure matrix evidence、isolation evidence、determinism evidence、race trigger matrix、concurrency / race evidence、mutation selection ledger、mutation test 条件、harness self-verification evidence、contract drift report、skip / 未実行時の扱い、pass / fail 条件、完了証跡。 |
 
 実装中に完全仕様詳細化未完了の事項を発見した場合、実装者はコード判断で補完してはならない。該当箇所の実装を停止し、責務正本を先に改訂して完全仕様詳細化を完了させてから実装を再開しなければならない。
+
+<a id="policy-change-history-artifact-ban"></a>
+**変更履歴 artifact 禁止契約：**
+
+本リポジトリの仕様・開発・リリースの変更内容、変更日、変更前後、version / Phase 別の変更一覧を独立して管理する変更履歴 artifact を全面禁止する。作成、追加、編集、追記、移動、リネーム、自動生成、テンプレート化、配布物への同梱、復元、再導入、必須成果物への指定を行ってはならない。禁止は手動作業、エージェント、script、workflow、release 手順に同じく適用し、名称、拡張子、言語、配置場所、単版型 / 累積型、保存形式を変更して回避してはならない。既存文書への履歴一覧の埋込みも、独立した変更履歴 artifact の代替として行ってはならない。
+
+`CHANGELOG`、`CHANGE-LOG`、`CHANGES`、`HISTORY`、`RELEASE-NOTES`、`RELEASENOTES`、`CHANGE-HISTORY`、`UPDATE-HISTORY`、`RELEASE-HISTORY`、`変更履歴`、`更新履歴`、`リリース履歴`、`リリースノート` は禁止対象の名称例であり、例示に含まれない名称を許可する意味ではない。規約検査では、リポジトリ配下の file / directory / symlink 名について、大文字小文字、先頭の `.`、区切りの `-` / `_` / `.` / space、拡張子、後置する version / 日付 / template 名を変えたこれらの名称も検出する。`.git` 内の Git 管理記録だけは探索しない。任意名称の履歴本文や生成設定による回避は、名称検査の合格を理由に許可せず、変更差分と生成・配布契約の確認対象とする。
+
+変更の時系列と変更理由は Git 履歴と Pull Request、リリース利用者向けの単版の告知は GitHub Release 本文に記録する。独立した変更履歴 artifact を正本、索引対象、完了条件、fixture 必須 artifact、release governance artifact にしてはならない。現行仕様、現在状態、利用手順は、それぞれの責務正本の現在の本文を更新する。
+
+ビルド履歴、設定変更の監査ログ、運用イベント、状態ファイル、テスト証跡、仕様上定義された GitHub Release 単版の本文入力は、実行結果・操作・検証・公開入力を扱う固有責務であり、開発変更履歴の並行管理へ転用してはならない。Release 本文入力を累積履歴、変更履歴の正本、governance file、配布 asset として管理してはならない。negative control 用の合成入力は、リポジトリ外の隔離された一時 directory 内で検査し、実際の変更履歴を記録・保存しない。
 
 <a id="policy-spec-maturity"></a>
 

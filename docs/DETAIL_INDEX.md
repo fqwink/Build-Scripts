@@ -56,6 +56,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | mutation | [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract)、[`mutation test evidence set 固定契約`](details/fixture.md#mutation-test-evidence-set-contract)、[`mutation selection ledger 固定契約`](details/fixture.md#mutation-selection-ledger-contract) |
 | harness self-verification | [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) |
 | contract drift | [`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](details/fixture.md#test-contract-drift-evidence-contract)、[`test / contract drift report schema 固定契約`](details/fixture.md#test-contract-drift-report-schema-contract) |
+| 変更履歴 artifact 境界検査 | [`docs/details/fixture.md` fixture 証跡責務 変更履歴 artifact 境界検査](details/fixture.md#change-history-artifact-boundary-evidence) |
 | test evidence package | [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract) |
 | skip / 未実行 | [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](details/fixture.md#test-skip-evidence-contract) |
 | fixture root closure | [`docs/details/fixture.md` fixture 証跡責務 未作成 fixture root closure record 固定契約](details/fixture.md#fixture-root-missing-closure-record-contract) |

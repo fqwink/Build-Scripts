@@ -1585,6 +1585,7 @@ func TestPhase13ImplementationAlignmentQualityEvidence(t *testing.T) {
 	phase13RequireOwnerPackages(t)
 	phase13RequireDocumentIndexRows(t)
 	phase13RequireGovernanceFiles(t)
+	requireChangeHistoryArtifactBoundary(t)
 	phase13RequireZeroExternalDependencies(t)
 
 	effects := phase13ReadCounterFile(t, filepath.Join(root, "expected", "effects.json"))
@@ -6192,11 +6193,174 @@ func phase13RequireDocumentIndexRows(t *testing.T) {
 	}
 }
 
+func TestChangeHistoryArtifactBoundary(t *testing.T) {
+	t.Parallel()
+	requireChangeHistoryArtifactBoundary(t)
+}
+
+func TestChangeHistoryArtifactBoundaryControls(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		"CHANGELOG.md", "docs/cHaNgElOg.TXT", "archive/.history.JSON",
+		"templates/CHANGE-LOG.template.yaml", "releases/RELEASE_NOTES.v1.txt",
+		"metadata/CHANGES", "hidden/.private/HISTORY-2026.md", "docs/変更履歴.rst",
+		"nested/CHANGE.LOG.xml", "notes/リリースノート.txt",
+	} {
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			fullPath := filepath.Join(root, filepath.FromSlash(path))
+			if err := os.MkdirAll(filepath.Dir(fullPath), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(fullPath, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			got, err := changeHistoryArtifactPaths(root)
+			if err != nil || !phase11StringSlicesEqual(got, []string{path}) {
+				t.Fatalf("forbidden path must be detected: path=%s got=%v err=%v", path, got, err)
+			}
+		})
+	}
+	t.Run("directory-and-symlink", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(root, "exports", "UPDATE_HISTORY"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "notes.md"), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink("notes.md", filepath.Join(root, "release-history.txt")); err != nil {
+			t.Fatal(err)
+		}
+		got, err := changeHistoryArtifactPaths(root)
+		want := []string{"exports/UPDATE_HISTORY", "release-history.txt"}
+		if err != nil || !phase11StringSlicesEqual(got, want) {
+			t.Fatalf("forbidden directory and symlink must be detected: got=%v err=%v", got, err)
+		}
+	})
+	t.Run("functional-records-and-git", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		for _, path := range []string{".git/CHANGELOG", ".build_history", "state/config_changes.jsonl", "state/events.jsonl", "release/notes.md"} {
+			fullPath := filepath.Join(root, filepath.FromSlash(path))
+			if err := os.MkdirAll(filepath.Dir(fullPath), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(fullPath, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		got, err := changeHistoryArtifactPaths(root)
+		if err != nil || len(got) != 0 {
+			t.Fatalf("functional records and Git metadata must pass: got=%v err=%v", got, err)
+		}
+	})
+	t.Run("missing-root", func(t *testing.T) {
+		t.Parallel()
+		if _, err := changeHistoryArtifactPaths(filepath.Join(t.TempDir(), "missing")); err == nil {
+			t.Fatal("scan failure must not pass")
+		}
+	})
+	t.Run("artifact-declarations", func(t *testing.T) {
+		t.Parallel()
+		for _, path := range []string{"CHANGELOG.md", "templates/HISTORY/**", "hidden/.release_notes.json"} {
+			if !changeHistoryArtifactPath(path) {
+				t.Fatalf("forbidden artifact declaration must be detected: %s", path)
+			}
+		}
+		for _, path := range []string{"docs/**/*.md", ".build_history", "state/config_changes.jsonl", "notes.md"} {
+			if changeHistoryArtifactPath(path) {
+				t.Fatalf("functional artifact declaration must pass: %s", path)
+			}
+		}
+	})
+}
+
+func requireChangeHistoryArtifactBoundary(t *testing.T) {
+	t.Helper()
+	paths, err := changeHistoryArtifactPaths(".")
+	if err != nil {
+		t.Fatalf("scan change history artifacts: %v", err)
+	}
+	if len(paths) != 0 {
+		t.Fatalf("forbidden change history artifacts: %v", paths)
+	}
+	var scope struct {
+		Include          []string `json:"include"`
+		ReleaseArtifacts []string `json:"release_artifacts"`
+	}
+	path := "testdata/phase13/implementation-alignment-quality/input/scope.json"
+	if err := json.Unmarshal([]byte(phase11MustReadText(t, path)), &scope); err != nil {
+		t.Fatalf("parse governance scope: %v", err)
+	}
+	if len(scope.Include) == 0 || len(scope.ReleaseArtifacts) == 0 {
+		t.Fatal("governance scope must declare include and release_artifacts")
+	}
+	for _, entries := range [][]string{scope.Include, scope.ReleaseArtifacts} {
+		for _, entry := range entries {
+			if changeHistoryArtifactPath(entry) {
+				t.Fatalf("forbidden change history artifact declaration in %s: %s", path, entry)
+			}
+		}
+	}
+}
+
+func changeHistoryArtifactPaths(root string) ([]string, error) {
+	var paths []string
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == root {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		if rel == ".git" {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if changeHistoryArtifactPath(entry.Name()) {
+			paths = append(paths, filepath.ToSlash(rel))
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+		}
+		return nil
+	})
+	sort.Strings(paths)
+	return paths, err
+}
+
+func changeHistoryArtifactPath(path string) bool {
+	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+		fields := strings.FieldsFunc(strings.ToLower(part), func(r rune) bool {
+			return r == '.' || r == '-' || r == '_' || r == ' '
+		})
+		var prefix string
+		for _, field := range fields {
+			prefix += field
+			switch prefix {
+			case "changelog", "changes", "history", "releasenotes", "changehistory", "updatehistory", "releasehistory", "変更履歴", "更新履歴", "リリース履歴", "リリースノート":
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func phase13RequireGovernanceFiles(t *testing.T) {
 	t.Helper()
 
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
-	for _, file := range []string{"LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODEOWNERS", "CHANGELOG.md"} {
+	for _, file := range []string{"LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODEOWNERS"} {
 		data, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatalf("Phase 13 governance file %s must exist: %v", file, err)

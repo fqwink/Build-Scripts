@@ -109,7 +109,6 @@
 | [`SECURITY.md`](../SECURITY.md) | 実在 |
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | 実在 |
 | [`CODEOWNERS`](../CODEOWNERS) | 実在 |
-| [`CHANGELOG.md`](../CHANGELOG.md) | 実在 |
 
 <a id="詳細仕様本文の所在"></a>
 **詳細仕様本文・証跡所在：**
@@ -317,7 +316,6 @@
 | [`SECURITY.md`](../SECURITY.md) | release governance artifact | 実在 |
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | release governance artifact | 実在 |
 | [`CODEOWNERS`](../CODEOWNERS) | release governance artifact | 実在 |
-| [`CHANGELOG.md`](../CHANGELOG.md) | release governance artifact | 実在 |
 
 <a id="phase-14-target-paths"></a>
 **Phase 14 target path 所在：**
