@@ -126,6 +126,72 @@ func TestRunAPICLI(t *testing.T) {
 	})
 }
 
+func TestAPIAdminStaticServingContract(t *testing.T) {
+	state := newAPIState(t)
+	adminDir := filepath.Join(state, "admin")
+	if err := os.Mkdir(adminDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(adminDir, "index.html"), []byte("<main>admin</main>\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(adminDir, "adlaire-ci-sdk.js"), []byte("export const ready = true;\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	server, err := NewAPIServer(APIConfig{StateDir: state})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		method       string
+		path         string
+		status       int
+		contentType  string
+		cacheControl string
+		body         string
+	}{
+		{http.MethodGet, "/", http.StatusOK, "text/html; charset=utf-8", "no-store", "<main>admin</main>\n"},
+		{http.MethodGet, "/admin/", http.StatusOK, "text/html; charset=utf-8", "no-store", "<main>admin</main>\n"},
+		{http.MethodGet, "/admin/index.html", http.StatusOK, "text/html; charset=utf-8", "no-store", "<main>admin</main>\n"},
+		{http.MethodHead, "/admin/index.html", http.StatusOK, "text/html; charset=utf-8", "no-store", ""},
+		{http.MethodGet, "/admin/adlaire-ci-sdk.js", http.StatusOK, "text/javascript; charset=utf-8", "no-cache", "export const ready = true;\n"},
+	}
+	for _, tc := range tests {
+		req := httptest.NewRequest(tc.method, tc.path, nil)
+		resp := httptest.NewRecorder()
+		server.Handler().ServeHTTP(resp, req)
+		if resp.Code != tc.status || resp.Header().Get("Content-Type") != tc.contentType || resp.Header().Get("Cache-Control") != tc.cacheControl || resp.Body.String() != tc.body {
+			t.Fatalf("%s %s code=%d type=%q cache=%q body=%q", tc.method, tc.path, resp.Code, resp.Header().Get("Content-Type"), resp.Header().Get("Cache-Control"), resp.Body.String())
+		}
+	}
+
+	for _, path := range []string{"/admin/missing", "/admin/../.admin_credentials", "/.admin_credentials"} {
+		resp := httptest.NewRecorder()
+		server.Handler().ServeHTTP(resp, httptest.NewRequest(http.MethodGet, path, nil))
+		if resp.Code != http.StatusNotFound {
+			t.Fatalf("unsafe path %s returned %d", path, resp.Code)
+		}
+	}
+	resp := httptest.NewRecorder()
+	server.Handler().ServeHTTP(resp, httptest.NewRequest(http.MethodPost, "/admin/index.html", strings.NewReader("ignored")))
+	if resp.Code != http.StatusMethodNotAllowed || resp.Header().Get("Allow") != "GET, HEAD" {
+		t.Fatalf("method contract code=%d allow=%q", resp.Code, resp.Header().Get("Allow"))
+	}
+
+	if err := os.Remove(filepath.Join(adminDir, "adlaire-ci-sdk.js")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(state, ".admin_credentials"), filepath.Join(adminDir, "adlaire-ci-sdk.js")); err != nil {
+		t.Fatal(err)
+	}
+	resp = httptest.NewRecorder()
+	server.Handler().ServeHTTP(resp, httptest.NewRequest(http.MethodGet, "/admin/adlaire-ci-sdk.js", nil))
+	if resp.Code != http.StatusNotFound {
+		t.Fatalf("symlink asset returned %d", resp.Code)
+	}
+}
+
 func TestAPILoginStatusAndQueue(t *testing.T) {
 	state := newAPIState(t)
 	server := newTestAPI(t, state)
@@ -934,6 +1000,10 @@ func TestAPIRepoAndBranchConfigEndpoints(t *testing.T) {
 
 func TestAPIScheduleEndpoints(t *testing.T) {
 	state := newAPIState(t)
+	initialConfig := `{"watch_mode":"local","snapshots_keep":0,"queue_max_size":0,"history_retention":{"enabled":true,"max_count":77,"max_age_days":9,"updated_at":null},"duration_anomaly":{"enabled":true,"min_samples":3,"avg_multiplier":1.5,"p95_multiplier":2},"tag_filter":{"enabled":true,"patterns":["release-*"]},"build_cache_enabled":true,"deploy_parallelism":4,"remote_build":{"enabled":false,"host":null,"user":null,"work_dir":null,"command_args":[],"artifact_path":null},"approval_timeout_seconds":600}` + "\n"
+	if err := os.WriteFile(filepath.Join(state, ".server_config"), []byte(initialConfig), 0600); err != nil {
+		t.Fatal(err)
+	}
 	server := newTestAPI(t, state)
 	token := login(t, server, "password123")
 	systemdCalls := []string{}
@@ -1050,8 +1120,21 @@ func TestAPIScheduleEndpoints(t *testing.T) {
 		t.Fatalf("clear allowed-hours code=%d body=%s", resp.Code, resp.Body.String())
 	}
 	readTestJSON(t, filepath.Join(state, ".server_config"), &cfg)
-	if cfg.SchedulePaused || cfg.ForceBuildIntervalHours != 24 || cfg.BuildCooldownSeconds != 120 || cfg.AllowedHours != nil {
+	if cfg.SchedulePaused || cfg.ForceBuildIntervalHours != 24 || cfg.BuildCooldownSeconds != 120 || cfg.AllowedHours != nil || cfg.WatchMode != "local" {
 		t.Fatalf("schedule values were not saved: %#v", cfg)
+	}
+	if cfg.SnapshotsKeep != 0 || cfg.QueueMaxSize != 0 || !cfg.BuildCacheEnabled || cfg.DeployParallelism != 4 || cfg.ApprovalTimeoutSeconds != 600 {
+		t.Fatalf("schedule update changed preserved scalar config: %#v", cfg)
+	}
+	for field, pair := range map[string][2]json.RawMessage{
+		"history_retention": {cfg.HistoryRetention, json.RawMessage(`{"enabled":true,"max_count":77,"max_age_days":9,"updated_at":null}`)},
+		"duration_anomaly":  {cfg.DurationAnomaly, json.RawMessage(`{"enabled":true,"min_samples":3,"avg_multiplier":1.5,"p95_multiplier":2}`)},
+		"tag_filter":        {cfg.TagFilter, json.RawMessage(`{"enabled":true,"patterns":["release-*"]}`)},
+		"remote_build":      {cfg.RemoteBuild, json.RawMessage(`{"enabled":false,"host":null,"user":null,"work_dir":null,"command_args":[],"artifact_path":null}`)},
+	} {
+		if string(pair[0]) != string(pair[1]) {
+			t.Fatalf("schedule update changed %s: got=%s want=%s", field, pair[0], pair[1])
+		}
 	}
 
 	resp = apiRequest(t, server, http.MethodPost, "/api/schedule/interval", token, map[string]int{"interval_seconds": 1})

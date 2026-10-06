@@ -82,6 +82,15 @@ adlaire-ci-setup update --target-version V.X.N [options]
 
 parseと入力検証の順序は、共通option、mode、未知・重複option、mode別許可option、必須option、version、repository、OS/arch、install dir、bin dir、service user、download dir、secret file、既存配置状態の順とする。CLI parse失敗は共通固定契約、parse後の入力検証失敗は[setup出力・error固定契約](#setup-output-contract)に従い、終了コード`2`とし、directory作成、download、file変更、systemd操作を行わない。
 
+<a id="phase-18-admin-materialization-contract"></a>
+**[Phase 18 Admin asset materialization 固定契約](setup.md#phase-18-admin-materialization-contract)：**
+
+`phase18-materialize-admin` は [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](production-validation.md#phase-18-vps-pull-bootstrap-contract) だけが使用する内部 mode とし、前記4 public modeへ追加してはならない。呼出しは `adlaire-ci-setup phase18-materialize-admin --install-dir <absolute-path>` の完全一致に固定する。未知 option、重複 option、相対 path、空 path、`/`、symlink の install directory、symlink の `admin/`、symlink の既存 asset を拒否する。
+
+root multi-call Go binary は repository 正本の [`admin/index.html`](../../admin/index.html) と [`admin/adlaire-ci-sdk.js`](../../admin/adlaire-ci-sdk.js) を `go:embed` で保持する。内部 mode は `<install-dir>/admin/index.html` と `<install-dir>/admin/adlaire-ci-sdk.js` だけを同一 directory 内の atomic write で materialize し、directory mode `0755`、file mode `0644` に固定する。embedded asset が空、directory または既存 asset が不正、write、chmod、file sync、rename、parent sync のいずれかが失敗した場合は stdout を空、stderr を `admin asset materialization failed` + LF、終了コード `1` とする。成功時は stdout を `setup: success phase18-materialize-admin` + LF、stderr を空、終了コード `0` とする。
+
+内部 mode は Release asset 取得、network 通信、credential 初期化、systemd 操作、runner state 変更を行ってはならない。Phase 18 bootstrap script は staging directory で内部 mode を実行し、2 asset の存在と固定出力を確認した後だけ commit 対象にできる。
+
 <a id="sec-26-2a"></a>
 **[§26.2a Release asset 受け入れ対象](setup.md#sec-26-2a)：**
 

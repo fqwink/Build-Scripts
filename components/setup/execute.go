@@ -3,6 +3,7 @@ package setup
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -73,15 +74,84 @@ func validateCredentials(path string) error {
 	return nil
 }
 
+type setupAtomicWriteOps struct {
+	createTemp func(string, string) (*os.File, error)
+	rename     func(string, string) error
+	remove     func(string) error
+	open       func(string) (*os.File, error)
+	sync       func(*os.File) error
+}
+
+func defaultSetupAtomicWriteOps() setupAtomicWriteOps {
+	return setupAtomicWriteOps{
+		createTemp: os.CreateTemp,
+		rename:     os.Rename,
+		remove:     os.Remove,
+		open:       os.Open,
+		sync:       func(file *os.File) error { return file.Sync() },
+	}
+}
+
 func atomicWriteText(path, value string, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	return atomicWriteTextWithOps(path, value, mode, defaultSetupAtomicWriteOps())
+}
+
+func atomicWriteTextWithOps(path, value string, mode os.FileMode, ops setupAtomicWriteOps) (resultErr error) {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(value), mode); err != nil {
+	if info, err := os.Lstat(path); err == nil && info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("target is symlink")
+	} else if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	return os.Rename(tmp, path)
+	tmp, err := ops.createTemp(dir, "."+filepath.Base(path)+".tmp-")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	tmpClosed := false
+	defer func() {
+		if !tmpClosed {
+			if err := tmp.Close(); resultErr == nil && err != nil {
+				resultErr = err
+			}
+		}
+		if err := ops.remove(tmpPath); resultErr == nil && err != nil && !os.IsNotExist(err) {
+			resultErr = err
+		}
+	}()
+	if err := tmp.Chmod(mode); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(tmp, value); err != nil {
+		return err
+	}
+	if err := ops.sync(tmp); err != nil {
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	tmpClosed = true
+	if info, err := os.Lstat(path); err == nil && info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("target is symlink")
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err := ops.rename(tmpPath, path); err != nil {
+		return err
+	}
+	directory, err := ops.open(dir)
+	if err != nil {
+		return err
+	}
+	if err := ops.sync(directory); err != nil {
+		_ = directory.Close()
+		return err
+	}
+	return directory.Close()
 }
 
 func setupIsLowerHex(value string, length int) bool {

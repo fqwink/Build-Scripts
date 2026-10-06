@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -174,6 +175,647 @@ func TestDispatchMainExactBasename(t *testing.T) {
 	if stderr.Len() != 0 {
 		t.Fatalf("expected no stderr for release asset obsidian version, got %q", stderr.String())
 	}
+}
+
+func TestPhase18EmbeddedAdminMaterialization(t *testing.T) {
+	installDir := filepath.Join(t.TempDir(), "runtime")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := dispatchMain("adlaire-ci-setup", []string{"phase18-materialize-admin", "--install-dir", installDir}, &stdout, &stderr)
+	if code != 0 || stdout.String() != "setup: success phase18-materialize-admin\n" || stderr.Len() != 0 {
+		t.Fatalf("materialize code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	for _, name := range []string{"index.html", "adlaire-ci-sdk.js"} {
+		want, err := os.ReadFile(filepath.Join("admin", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := os.ReadFile(filepath.Join(installDir, "admin", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Fatalf("materialized %s differs from canonical asset", name)
+		}
+	}
+}
+
+type phase18BootstrapHarness struct {
+	root       string
+	scriptPath string
+	sourcePath string
+	stateDir   string
+	binDir     string
+	systemdDir string
+	lockDir    string
+	fakeBinDir string
+	tmpDir     string
+	digest     string
+}
+
+func phase18WriteExecutable(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func phase18FakeSource(version string) string {
+	return `#!/bin/sh
+name=${0##*/}
+if [ "${1:-}" = "--version" ]; then
+  printf '%s ` + version + ` go=fake\n' "$name"
+  exit 0
+fi
+case "$name" in
+  adlaire-ci-setup)
+    if [ "${1:-}" != "phase18-materialize-admin" ] || [ "${2:-}" != "--install-dir" ] || [ -z "${3:-}" ]; then exit 2; fi
+    mkdir -p "$3/admin" || exit 1
+    printf '<html>phase18</html>\n' >"$3/admin/index.html" || exit 1
+    printf 'export const phase18 = true;\n' >"$3/admin/adlaire-ci-sdk.js" || exit 1
+    chmod 0644 "$3/admin/index.html" "$3/admin/adlaire-ci-sdk.js" || exit 1
+    printf 'setup: success phase18-materialize-admin\n'
+    ;;
+  adlaire-ci-api)
+    state=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --state-dir) state="$2"; shift 2 ;;
+        --init-credentials) shift ;;
+        *) shift ;;
+      esac
+    done
+    [ -n "$state" ] || exit 2
+    IFS= read -r password || exit 1
+    [ -n "$password" ] || exit 1
+    mkdir -p "$state" || exit 1
+    printf '{"password_hash":"fake","salt":"fake","algorithm":"pbkdf2-sha256","iterations":1,"updated_at":"2026-10-06T00:00:00Z","last_login_at":null,"login_count":0}\n' >"$state/.admin_credentials" || exit 1
+    chmod 0600 "$state/.admin_credentials" || exit 1
+    printf 'credentials initialized\n'
+    ;;
+  adlaire-ci-admin)
+    printf '{"last_build_status":"success","running":false}\n'
+    ;;
+  adlaire-ci-runner)
+    state=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --state-dir) state="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    [ -n "$state" ] || exit 2
+    out=$(sed -n 's/.*"out":"\([^"]*\)".*/\1/p' "$state/.branch_config")
+    [ -n "$out" ] || exit 1
+    mkdir -p "$out" || exit 1
+    printf '<html>built</html>\n' >"$out/index.html" || exit 1
+    printf '{}\n' >"$out/.dependency_manifest.json" || exit 1
+    printf '{"id":"phase18","status":"success"}\n' >"$state/.build_history" || exit 1
+    printf '{"status":"success"}\n' >"$state/.build_status.json" || exit 1
+    ;;
+  *) exit 2 ;;
+esac
+`
+}
+
+func newPhase18BootstrapHarness(t *testing.T) *phase18BootstrapHarness {
+	t.Helper()
+	root := t.TempDir()
+	h := &phase18BootstrapHarness{
+		root:       root,
+		scriptPath: filepath.Join(root, "adlaire-ci-vps-pull-bootstrap.sh"),
+		sourcePath: filepath.Join(root, "adlaire-ci-source"),
+		stateDir:   filepath.Join(root, "state"),
+		binDir:     filepath.Join(root, "bin"),
+		systemdDir: filepath.Join(root, "systemd"),
+		lockDir:    filepath.Join(root, "bootstrap.lock"),
+		fakeBinDir: filepath.Join(root, "fake-bin"),
+		tmpDir:     filepath.Join(root, "tmp"),
+	}
+	for _, dir := range []string{h.binDir, h.systemdDir, h.fakeBinDir, h.tmpDir} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	phase18WriteExecutable(t, h.sourcePath, phase18FakeSource("V.18.0"))
+	source, err := os.ReadFile(h.sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(source)
+	h.digest = hex.EncodeToString(sum[:])
+
+	script, err := os.ReadFile(phase18BootstrapScriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	transformed := strings.NewReplacer(
+		"/run/lock/adlaire-ci-vps-pull-bootstrap.lock", h.lockDir,
+		"/etc/systemd/system", h.systemdDir,
+		"/opt/adlaire-builder", h.stateDir,
+		"/usr/local/bin", h.binDir,
+	).Replace(string(script))
+	phase18WriteExecutable(t, h.scriptPath, transformed)
+
+	phase18WriteExecutable(t, filepath.Join(h.fakeBinDir, "systemctl"), `#!/bin/sh
+state=$PHASE18_FAKE_SYSTEMD_STATE
+mkdir -p "$state" || exit 1
+command_name=${1:-}
+shift || true
+case "$command_name" in
+  is-enabled) [ -f "$state/enabled-$1" ] ;;
+  is-active) [ -f "$state/active-$1" ] ;;
+  enable) for unit in "$@"; do : >"$state/enabled-$unit" || exit 1; done ;;
+  disable) for unit in "$@"; do rm -f "$state/enabled-$unit" || exit 1; done ;;
+  start) for unit in "$@"; do : >"$state/active-$unit" || exit 1; done ;;
+  stop) for unit in "$@"; do rm -f "$state/active-$unit" || exit 1; done ;;
+  restart)
+    if [ "${PHASE18_FAKE_FAIL_API_RESTART_ONCE:-0}" = "1" ] && [ "${1:-}" = "adlaire-ci-api.service" ] && [ ! -f "$state/restart-failed" ]; then
+      : >"$state/restart-failed"
+      exit 1
+    fi
+    for unit in "$@"; do : >"$state/active-$unit" || exit 1; done
+    ;;
+  cat|daemon-reload) exit 0 ;;
+  *) exit 1 ;;
+esac
+`)
+	phase18WriteExecutable(t, filepath.Join(h.fakeBinDir, "cp"), `#!/bin/sh
+if [ "${1:-}" = "-a" ] && [ "${2:-}" = "$PHASE18_TEST_STATE" ]; then
+  for unit in adlaire-ci-api.service adlaire-ci.timer adlaire-ci.service; do
+    [ ! -f "$PHASE18_FAKE_SYSTEMD_STATE/active-$unit" ] || exit 1
+  done
+fi
+exec /bin/cp "$@"
+`)
+	phase18WriteExecutable(t, filepath.Join(h.fakeBinDir, "rm"), `#!/bin/sh
+if [ "${PHASE18_FAKE_FAIL_STAGE_CLEANUP_ONCE:-0}" = "1" ] && [ "${1:-}" = "-rf" ]; then
+  case "${2:-}" in
+    "$TMPDIR"/adlaire-ci-bootstrap.*)
+      if [ ! -f "$PHASE18_FAKE_CLEANUP_MARKER" ]; then
+        : >"$PHASE18_FAKE_CLEANUP_MARKER" || exit 1
+        exit 1
+      fi
+      ;;
+  esac
+fi
+exec /bin/rm "$@"
+`)
+	phase18WriteExecutable(t, filepath.Join(h.fakeBinDir, "sleep"), "#!/bin/sh\nexit 0\n")
+	phase18WriteExecutable(t, filepath.Join(h.fakeBinDir, "curl"), `#!/bin/sh
+config=${2:-}
+[ "$1" = "--config" ] && [ -f "$config" ] || exit 2
+output=$(sed -n 's/^output = "\(.*\)"$/\1/p' "$config")
+url=$(sed -n 's/^url = "\(.*\)"$/\1/p' "$config")
+data=$(sed -n 's/^data-binary = "@\(.*\)"$/\1/p' "$config")
+[ -n "$output" ] || exit 2
+mkdir -p "$PHASE18_TEST_STATE" || exit 1
+for log in .access_log .audit_log .api_access_log .config_log; do printf '{}\n' >>"$PHASE18_TEST_STATE/$log" || exit 1; done
+case "$url" in
+  */api/health)
+    if [ -n "${PHASE18_FAKE_HEALTH_BODY:-}" ]; then
+      printf '%s\n' "$PHASE18_FAKE_HEALTH_BODY" >"$output"
+    else
+      printf '{"checks":[],"last_build_at":null,"last_build_status":"none","last_deploy_at":null,"last_deploy_status":null,"pending_transfers":0,"status":"ok","uptime_seconds":1}\n' >"$output"
+    fi
+    ;;
+  */api/login)
+    printf 'login\n' >>"$PHASE18_TEST_SESSION_EVENTS" || exit 1
+    printf '{"must_change":"none","token":"acs_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}\n' >"$output"
+    ;;
+  */api/change-password) printf '{"message":"Password changed"}\n' >"$output" ;;
+  */api/logout)
+    printf 'logout\n' >>"$PHASE18_TEST_SESSION_EVENTS" || exit 1
+    printf '{"message":"Logged out"}\n' >"$output"
+    ;;
+  */api/schedule/cooldown)
+    if grep -q '"seconds":0' "$data"; then seconds=0; else seconds=2; fi
+    printf '{"message":"Build cooldown updated","seconds":%s}\n' "$seconds" >"$output"
+    ;;
+  */admin/adlaire-ci-sdk.js) cp "$PHASE18_TEST_STATE/admin/adlaire-ci-sdk.js" "$output" ;;
+  */) cp "$PHASE18_TEST_STATE/admin/index.html" "$output" ;;
+  *) exit 22 ;;
+esac
+`)
+	phase18WriteExecutable(t, filepath.Join(h.fakeBinDir, "sha256sum"), `#!/bin/sh
+if [ -x /usr/bin/sha256sum ]; then exec /usr/bin/sha256sum "$@"; fi
+if [ -x /usr/bin/openssl ]; then exec /usr/bin/openssl dgst -sha256 -r "$@"; fi
+exit 127
+`)
+	return h
+}
+
+func (h *phase18BootstrapHarness) args() []string {
+	return []string{
+		h.scriptPath,
+		"--source-channel", "integration-head",
+		"--topology-role", "single-node",
+		"--source", h.sourcePath,
+		"--sha256", h.digest,
+		"--install-dir", h.stateDir,
+		"--bin-dir", h.binDir,
+		"--state-dir", h.stateDir,
+		"--service-user", "root",
+	}
+}
+
+func (h *phase18BootstrapHarness) run(input string, extraEnv ...string) (int, string, string) {
+	cmd := exec.Command("sh", h.args()...)
+	cmd.Stdin = strings.NewReader(input)
+	cmd.Env = append(os.Environ(),
+		"PATH="+h.fakeBinDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"TMPDIR="+h.tmpDir,
+		"PHASE18_FAKE_SYSTEMD_STATE="+filepath.Join(h.root, "systemctl-state"),
+		"PHASE18_TEST_STATE="+h.stateDir,
+		"PHASE18_TEST_SESSION_EVENTS="+filepath.Join(h.root, "session-events"),
+		"PHASE18_FAKE_CLEANUP_MARKER="+filepath.Join(h.root, "cleanup-failed-once"),
+	)
+	cmd.Env = append(cmd.Env, extraEnv...)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		return 0, stdout.String(), stderr.String()
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		return exitErr.ExitCode(), stdout.String(), stderr.String()
+	}
+	return -1, stdout.String(), stderr.String()
+}
+
+func phase18SeedOperationalState(t *testing.T, h *phase18BootstrapHarness) map[string][]byte {
+	t.Helper()
+	if err := os.MkdirAll(h.stateDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	values := map[string][]byte{
+		".admin_credentials": []byte("existing-credentials\n"),
+		".server_config":     []byte("{\"watch_mode\":\"local\",\"snapshots_keep\":0,\"queue_max_size\":0,\"build_cooldown_seconds\":37}\n"),
+		".pipeline_config":   []byte("{\"extra_args\":[\"--strict\"],\"env\":{\"MODE\":\"existing\"}}\n"),
+		".branch_config":     []byte("{\"branch_targets\":[]}\n"),
+		".last_sha":          []byte("{\"sha\":\"existing-sha\"}\n"),
+		".pending_transfers": []byte("[{\"id\":\"existing-transfer\"}]\n"),
+		".notify_pending":    []byte("[{\"id\":\"existing-notification\"}]\n"),
+		"preserve.txt":       []byte("preserve-me\n"),
+	}
+	for name, data := range values {
+		if err := os.WriteFile(filepath.Join(h.stateDir, name), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return values
+}
+
+func phase18ReadDiagnostic(t *testing.T, stderr string) map[string]any {
+	t.Helper()
+	lines := strings.Split(strings.TrimSpace(stderr), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("bootstrap failure must emit one diagnostic JSON line: %q", stderr)
+	}
+	var diagnostic map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &diagnostic); err != nil {
+		t.Fatalf("invalid bootstrap diagnostic: %v output=%q", err, stderr)
+	}
+	return diagnostic
+}
+
+func TestPhase18BootstrapAcceptsExactArgumentVector(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		input string
+	}{
+		{name: "empty", input: ""},
+		{name: "missing-line-feed", input: "ValidPassword123"},
+		{name: "trailing-data-without-line-feed", input: "ValidPassword123\ntrailing"},
+		{name: "second-line", input: "ValidPassword123\ntrailing\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			h := newPhase18BootstrapHarness(t)
+			code, stdout, stderr := h.run(test.input)
+			if code != 2 || stdout != "" {
+				t.Fatalf("stdin boundary code=%d stdout=%q stderr=%q", code, stdout, stderr)
+			}
+			diagnostic := phase18ReadDiagnostic(t, stderr)
+			if diagnostic["failure_code"] != "bootstrap-script-health-failed" || diagnostic["stage"] != "admin-password-stdin" {
+				t.Fatalf("exact argument vector must reach strict stdin boundary: %#v", diagnostic)
+			}
+			if _, err := os.Lstat(h.lockDir); !os.IsNotExist(err) {
+				t.Fatalf("failed bootstrap retained process lock: %v", err)
+			}
+		})
+	}
+}
+
+func phase18TreeSnapshot(t *testing.T, root string) map[string]string {
+	t.Helper()
+	snapshot := map[string]string{}
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil || rel == "." {
+			return err
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		value := info.Mode().String()
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(path)
+			if err != nil {
+				return err
+			}
+			value += ":" + target
+		} else if info.Mode().IsRegular() {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			sum := sha256.Sum256(data)
+			value += ":" + hex.EncodeToString(sum[:])
+		}
+		snapshot[filepath.ToSlash(rel)] = value
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return snapshot
+}
+
+func TestPhase18BootstrapPreservesOperationalStateAndClosesEvidence(t *testing.T) {
+	h := newPhase18BootstrapHarness(t)
+	preserved := phase18SeedOperationalState(t, h)
+	code, stdout, stderr := h.run("ValidPassword123\n")
+	if code != 0 || stderr != "" {
+		t.Fatalf("bootstrap success code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	var completion map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace([]byte(stdout)), &completion); err != nil {
+		t.Fatalf("bootstrap completion must be one JSON object: %v output=%q", err, stdout)
+	}
+	if completion["status"] != "ok" || completion["final_open_item_result"] != float64(0) || completion["cleanup_result"] != "passed" {
+		t.Fatalf("unexpected bootstrap completion: %#v", completion)
+	}
+	for name, want := range preserved {
+		if name == "preserve.txt" || strings.HasPrefix(name, ".") {
+			got, err := os.ReadFile(filepath.Join(h.stateDir, name))
+			if err != nil || !bytes.Equal(got, want) {
+				t.Fatalf("operational state %s changed got=%q want=%q err=%v", name, string(got), string(want), err)
+			}
+		}
+	}
+	runtimeStateDir := filepath.Join(h.stateDir, ".phase18-runtime")
+	var runtimeBranchConfig struct {
+		BranchTargets []struct {
+			SHAFile string `json:"sha_file"`
+			Src     string `json:"src"`
+			Out     string `json:"out"`
+		} `json:"branch_targets"`
+	}
+	runtimeBranchData, err := os.ReadFile(filepath.Join(runtimeStateDir, ".branch_config"))
+	if err != nil || json.Unmarshal(runtimeBranchData, &runtimeBranchConfig) != nil || len(runtimeBranchConfig.BranchTargets) != 1 {
+		t.Fatalf("invalid isolated runtime branch config: %v data=%q", err, string(runtimeBranchData))
+	}
+	runtimeTarget := runtimeBranchConfig.BranchTargets[0]
+	if runtimeTarget.SHAFile != filepath.Join(runtimeStateDir, ".last_sha") || runtimeTarget.Src != filepath.Join(runtimeStateDir, "phase18-source") || runtimeTarget.Out != filepath.Join(runtimeStateDir, "phase18-site") {
+		t.Fatalf("runtime branch paths escaped isolated state: %+v", runtimeTarget)
+	}
+	for _, name := range []string{"open.json", "runtime.json", "update-rollback.json", "issue-triage.json", "spec-first-fix.json", "revalidation.json", "close.json"} {
+		if info, err := os.Lstat(filepath.Join(h.stateDir, ".phase18-evidence", name)); err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0600 {
+			t.Fatalf("missing or unsafe evidence %s info=%v err=%v", name, info, err)
+		}
+	}
+	var drill map[string]any
+	drillData, err := os.ReadFile(filepath.Join(h.stateDir, ".phase18-evidence", "update-rollback.json"))
+	if err != nil || json.Unmarshal(drillData, &drill) != nil {
+		t.Fatalf("invalid update/rollback evidence: %v data=%q", err, string(drillData))
+	}
+	if drill["start_digest"] == drill["update_digest"] || drill["source_digest"] != h.digest || drill["result"] != "passed" {
+		t.Fatalf("update/rollback drill did not use distinct cohorts: %#v", drill)
+	}
+	if _, err := os.Lstat(h.lockDir); !os.IsNotExist(err) {
+		t.Fatalf("successful bootstrap retained process lock: %v", err)
+	}
+	sessionEvents, err := os.ReadFile(filepath.Join(h.root, "session-events"))
+	if err != nil || string(sessionEvents) != "login\nlogout\nlogin\nlogout\n" {
+		t.Fatalf("bootstrap session tokens were not balanced events=%q err=%v", string(sessionEvents), err)
+	}
+	entries, err := os.ReadDir(h.tmpDir)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("successful bootstrap retained staging content entries=%v err=%v", entries, err)
+	}
+}
+
+func TestPhase18BootstrapRollsBackWhenFinalCleanupFails(t *testing.T) {
+	h := newPhase18BootstrapHarness(t)
+	phase18SeedOperationalState(t, h)
+	stateBefore := phase18TreeSnapshot(t, h.stateDir)
+	binBefore := phase18TreeSnapshot(t, h.binDir)
+	unitBefore := phase18TreeSnapshot(t, h.systemdDir)
+
+	code, stdout, stderr := h.run("ValidPassword123\n", "PHASE18_FAKE_FAIL_STAGE_CLEANUP_ONCE=1")
+	if code != 1 || stdout != "" {
+		t.Fatalf("cleanup failure path code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	diagnostic := phase18ReadDiagnostic(t, stderr)
+	if diagnostic["failure_code"] != "bootstrap-script-health-failed" || diagnostic["stage"] != "cleanup" || diagnostic["rollback_action"] != "restored" || diagnostic["cleanup_result"] != "passed" {
+		t.Fatalf("unexpected cleanup rollback diagnostic: %#v", diagnostic)
+	}
+	if got := phase18TreeSnapshot(t, h.stateDir); !mapsEqual(stateBefore, got) {
+		t.Fatalf("cleanup failure did not restore state\nwant=%#v\n got=%#v", stateBefore, got)
+	}
+	if got := phase18TreeSnapshot(t, h.binDir); !mapsEqual(binBefore, got) {
+		t.Fatalf("cleanup failure did not restore binaries\nwant=%#v\n got=%#v", binBefore, got)
+	}
+	if got := phase18TreeSnapshot(t, h.systemdDir); !mapsEqual(unitBefore, got) {
+		t.Fatalf("cleanup failure did not restore units\nwant=%#v\n got=%#v", unitBefore, got)
+	}
+	if _, err := os.Lstat(h.lockDir); !os.IsNotExist(err) {
+		t.Fatalf("cleanup rollback retained process lock: %v", err)
+	}
+}
+
+func TestPhase18BootstrapRestoresFullStateAfterCommitFailure(t *testing.T) {
+	h := newPhase18BootstrapHarness(t)
+	phase18SeedOperationalState(t, h)
+	oldSource := phase18FakeSource("V.17.0")
+	for _, name := range phase18BootstrapInstalledBinaries {
+		phase18WriteExecutable(t, filepath.Join(h.binDir, name), oldSource)
+	}
+	for _, name := range []string{"adlaire-ci.service", "adlaire-ci.timer", "adlaire-ci-api.service"} {
+		if err := os.WriteFile(filepath.Join(h.systemdDir, name), []byte("old-"+name+"\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fakeSystemd := filepath.Join(h.root, "systemctl-state")
+	if err := os.MkdirAll(fakeSystemd, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, unit := range []string{"adlaire-ci.service", "adlaire-ci.timer", "adlaire-ci-api.service"} {
+		for _, prefix := range []string{"enabled-", "active-"} {
+			if err := os.WriteFile(filepath.Join(fakeSystemd, prefix+unit), []byte{}, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	stateBefore := phase18TreeSnapshot(t, h.stateDir)
+	binBefore := phase18TreeSnapshot(t, h.binDir)
+	unitBefore := phase18TreeSnapshot(t, h.systemdDir)
+
+	code, stdout, stderr := h.run("ValidPassword123\n", "PHASE18_FAKE_FAIL_API_RESTART_ONCE=1")
+	if code != 1 || stdout != "" {
+		t.Fatalf("rollback failure path code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	diagnostic := phase18ReadDiagnostic(t, stderr)
+	if diagnostic["failure_code"] != "bootstrap-script-health-failed" || diagnostic["stage"] != "api-service-start" || diagnostic["rollback_action"] != "restored" || diagnostic["cleanup_result"] != "passed" {
+		t.Fatalf("unexpected rollback diagnostic: %#v", diagnostic)
+	}
+	if got := phase18TreeSnapshot(t, h.stateDir); !mapsEqual(stateBefore, got) {
+		t.Fatalf("state tree was not fully restored\nwant=%#v\n got=%#v", stateBefore, got)
+	}
+	if got := phase18TreeSnapshot(t, h.binDir); !mapsEqual(binBefore, got) {
+		t.Fatalf("binary cohort was not restored\nwant=%#v\n got=%#v", binBefore, got)
+	}
+	if got := phase18TreeSnapshot(t, h.systemdDir); !mapsEqual(unitBefore, got) {
+		t.Fatalf("systemd units were not restored\nwant=%#v\n got=%#v", unitBefore, got)
+	}
+	for _, unit := range []string{"adlaire-ci.service", "adlaire-ci.timer", "adlaire-ci-api.service"} {
+		for _, prefix := range []string{"enabled-", "active-"} {
+			if _, err := os.Stat(filepath.Join(fakeSystemd, prefix+unit)); err != nil {
+				t.Fatalf("service state %s%s was not restored: %v", prefix, unit, err)
+			}
+		}
+	}
+	if _, err := os.Lstat(h.lockDir); !os.IsNotExist(err) {
+		t.Fatalf("rollback retained process lock: %v", err)
+	}
+}
+
+func TestPhase18BootstrapRejectsMalformedRuntimeJSON(t *testing.T) {
+	h := newPhase18BootstrapHarness(t)
+	phase18SeedOperationalState(t, h)
+	code, stdout, stderr := h.run("ValidPassword123\n", `PHASE18_FAKE_HEALTH_BODY={"note":"status ok"}`)
+	if code != 1 || stdout != "" {
+		t.Fatalf("malformed health code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	diagnostic := phase18ReadDiagnostic(t, stderr)
+	if diagnostic["failure_code"] != "bootstrap-script-health-failed" || diagnostic["stage"] != "api-health-open" || diagnostic["rollback_action"] != "restored" {
+		t.Fatalf("unexpected malformed health diagnostic: %#v", diagnostic)
+	}
+	if _, err := os.Lstat(filepath.Join(h.stateDir, ".phase18-evidence", "close.json")); !os.IsNotExist(err) {
+		t.Fatalf("failed runtime validation created close evidence: %v", err)
+	}
+}
+
+func TestPhase18BootstrapRejectsNonRegularCredentialState(t *testing.T) {
+	h := newPhase18BootstrapHarness(t)
+	if err := os.MkdirAll(filepath.Join(h.stateDir, ".admin_credentials"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	code, stdout, stderr := h.run("ValidPassword123\n")
+	if code != 1 || stdout != "" {
+		t.Fatalf("credential type code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	diagnostic := phase18ReadDiagnostic(t, stderr)
+	if diagnostic["failure_code"] != "bootstrap-script-state-directory-invalid" || diagnostic["stage"] != "credentials-type" || diagnostic["rollback_action"] != "not_required" {
+		t.Fatalf("unexpected credential type diagnostic: %#v", diagnostic)
+	}
+	if info, err := os.Stat(filepath.Join(h.stateDir, ".admin_credentials")); err != nil || !info.IsDir() {
+		t.Fatalf("invalid credential state changed info=%v err=%v", info, err)
+	}
+}
+
+func TestPhase18BootstrapProcessLockRejectsLiveOwnerAndRecoversStaleOwner(t *testing.T) {
+	t.Run("live-owner", func(t *testing.T) {
+		h := newPhase18BootstrapHarness(t)
+		if err := os.Mkdir(h.lockDir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(h.lockDir, "owner"), []byte(fmt.Sprintf("%d\n", os.Getpid())), 0600); err != nil {
+			t.Fatal(err)
+		}
+		code, stdout, stderr := h.run("ValidPassword123\n")
+		if code != 1 || stdout != "" {
+			t.Fatalf("live lock code=%d stdout=%q stderr=%q", code, stdout, stderr)
+		}
+		diagnostic := phase18ReadDiagnostic(t, stderr)
+		if diagnostic["stage"] != "process-lock" {
+			t.Fatalf("unexpected live lock diagnostic: %#v", diagnostic)
+		}
+		if _, err := os.Stat(filepath.Join(h.lockDir, "owner")); err != nil {
+			t.Fatalf("foreign live lock was modified: %v", err)
+		}
+	})
+
+	t.Run("malformed-owner", func(t *testing.T) {
+		h := newPhase18BootstrapHarness(t)
+		if err := os.Mkdir(h.lockDir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(h.lockDir, "owner"), []byte("99999999\n123\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		code, stdout, stderr := h.run("ValidPassword123\n")
+		if code != 1 || stdout != "" {
+			t.Fatalf("malformed lock code=%d stdout=%q stderr=%q", code, stdout, stderr)
+		}
+		diagnostic := phase18ReadDiagnostic(t, stderr)
+		if diagnostic["stage"] != "process-lock" {
+			t.Fatalf("unexpected malformed lock diagnostic: %#v", diagnostic)
+		}
+		data, err := os.ReadFile(filepath.Join(h.lockDir, "owner"))
+		if err != nil || string(data) != "99999999\n123\n" {
+			t.Fatalf("malformed foreign lock was modified data=%q err=%v", string(data), err)
+		}
+	})
+
+	t.Run("stale-owner", func(t *testing.T) {
+		h := newPhase18BootstrapHarness(t)
+		if err := os.Mkdir(h.lockDir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(h.lockDir, "owner"), []byte("99999999\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		staleStage := filepath.Join(h.tmpDir, "adlaire-ci-bootstrap.stale")
+		if err := os.Mkdir(staleStage, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(staleStage, "partial"), []byte("stale"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		code, stdout, stderr := h.run("")
+		if code != 2 || stdout != "" {
+			t.Fatalf("stale lock recovery code=%d stdout=%q stderr=%q", code, stdout, stderr)
+		}
+		diagnostic := phase18ReadDiagnostic(t, stderr)
+		if diagnostic["stage"] != "admin-password-stdin" {
+			t.Fatalf("stale lock was not recovered before stdin validation: %#v", diagnostic)
+		}
+		if _, err := os.Lstat(h.lockDir); !os.IsNotExist(err) {
+			t.Fatalf("stale lock recovery retained lock: %v", err)
+		}
+		if _, err := os.Lstat(staleStage); !os.IsNotExist(err) {
+			t.Fatalf("stale staging cleanup retained path: %v", err)
+		}
+	})
+}
+
+func mapsEqual(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for key, value := range a {
+		if b[key] != value {
+			return false
+		}
+	}
+	return true
 }
 
 func TestPhase12StandardArtifactInventory(t *testing.T) {
@@ -496,13 +1138,6 @@ func TestPhase11RoadmapStateGate(t *testing.T) {
 	if !strings.Contains(roadmap, phase13CompleteRow) {
 		t.Fatalf("docs/ROADMAP.md must define Phase 13 as 実装済み after Phase 13 closure")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 18 とする。") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 active after Phase 17 closure until real VPS Pull Bootstrap completes")
-	}
-	if !strings.Contains(roadmap, "初期実装 Phase 1 から Phase 17 まではすべて `実装済み`") {
-		t.Fatalf("docs/ROADMAP.md must state that Phase 1 through Phase 17 are all implemented after Phase 17 closure")
-	}
-
 	for _, feature := range phase11QualityGateFeatures {
 		want := "| 実装済み | 検証基盤 | " + feature + " |"
 		if !strings.Contains(roadmap, want) {
@@ -739,6 +1374,7 @@ func TestPhase18VPSPullBootstrapEvidence(t *testing.T) {
 	counters := phase18ReadCounters(t, filepath.Join(root, "expected", "counters.json"))
 	phase18RequireCountersClosed(t, counters)
 	inputs := phase18RequireInputsAndExpected(t, root)
+	phase18RequireBootstrapScriptArtifact(t, phase18BootstrapScriptPath, inputs.Scope)
 	records := phase18ReadRecords(t, root)
 	phase18RequireRequiredCheckConnections(t, records)
 	phase18RequireSessionRecords(t, records["records/session.jsonl"], inputs)
@@ -751,6 +1387,13 @@ func TestPhase18VPSPullBootstrapEvidence(t *testing.T) {
 	phase18RequireDerivedCounters(t, counters, records)
 	phase18RequireWorkflow(t, ".github/workflows/phase18-vps-pull-bootstrap.yml")
 	phase18RequireDocumentState(t)
+	t.Run("strict-stdin", TestPhase18BootstrapAcceptsExactArgumentVector)
+	t.Run("state-preservation-and-close", TestPhase18BootstrapPreservesOperationalStateAndClosesEvidence)
+	t.Run("full-rollback", TestPhase18BootstrapRestoresFullStateAfterCommitFailure)
+	t.Run("cleanup-rollback", TestPhase18BootstrapRollsBackWhenFinalCleanupFails)
+	t.Run("runtime-json-boundary", TestPhase18BootstrapRejectsMalformedRuntimeJSON)
+	t.Run("credential-type-boundary", TestPhase18BootstrapRejectsNonRegularCredentialState)
+	t.Run("process-lock", TestPhase18BootstrapProcessLockRejectsLiveOwnerAndRecoversStaleOwner)
 }
 
 func TestPhase14ObsidianVaultIntegrationEvidence(t *testing.T) {
@@ -2113,9 +2756,6 @@ func phase16RequireDocumentDriftClosed(t *testing.T) {
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
 	if !strings.Contains(roadmap, "| Phase 16 | 実装済み品質証跡実体化・追加検証候補 closure。") || !strings.Contains(roadmap, "| 実装済み | Phase 15 |") {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 16 as 実装済み")
-	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 18 とする。") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 active after Phase 17 closure until real VPS Pull Bootstrap completes")
 	}
 	for _, feature := range []string{
 		"Phase 16 source coverage set / detection registry / evidence package manifest / inventory / negative control / expected / record schema / checker implementation artifact / checker 実行入口 / checker 再導出 gate",
@@ -3797,9 +4437,9 @@ var phase18BootstrapInvocationTokens = []string{
 	"root",
 }
 
-var phase18BootstrapRequiredCommands = []string{"sh", "mktemp", "mkdir", "chmod", "install", "mv", "rm", "sha256sum", "systemctl"}
+var phase18BootstrapRequiredCommands = []string{"sh", "mktemp", "mkdir", "chmod", "install", "mv", "rm", "cp", "sha256sum", "systemctl", "sleep", "od"}
 
-var phase18BootstrapHTTPClientOrder = []string{"curl", "wget"}
+var phase18BootstrapHTTPClientOrder = []string{"curl"}
 
 var phase18BootstrapFailureCodes = []string{
 	"bootstrap-script-http-client-missing",
@@ -3923,7 +4563,19 @@ var phase18DocumentDriftTargets = []string{
 	"closure-counter",
 }
 
-const phase18BootstrapScriptExpectedState = "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback fixed-token-flag-interface sh adlaire-ci-vps-pull-bootstrap.sh --source-channel integration-head|stable-release --topology-role ci-cd|site|single-node --source absolute-https-url-or-absolute-file-path --sha256 64-lowercase-hex --install-dir /opt/adlaire-builder --bin-dir /usr/local/bin --state-dir /opt/adlaire-builder --service-user root sh mktemp mkdir chmod install mv rm sha256sum systemctl curl wget single-json-object-secret-safe diagnostic-json-lines-on-failure common-cli-exit-code-contract bootstrap-script-http-client-missing bootstrap-script-source-unreachable bootstrap-script-digest-mismatch bootstrap-script-version-mismatch bootstrap-script-executable-permission-invalid bootstrap-script-systemd-unit-invalid bootstrap-script-state-directory-invalid bootstrap-script-health-failed bootstrap-script-rollback-failed"
+const phase18BootstrapScriptExpectedState = "adlaire-ci-vps-pull-bootstrap.sh /bin/sh integration-head single-node absolute-https-url-or-absolute-file-path sha256 /opt/adlaire-builder /usr/local/bin /opt/adlaire-builder root no-command-argument-secret staging-verify-commit-rollback fixed-token-flag-interface sh adlaire-ci-vps-pull-bootstrap.sh --source-channel integration-head|stable-release --topology-role ci-cd|site|single-node --source absolute-https-url-or-absolute-file-path --sha256 64-lowercase-hex --install-dir /opt/adlaire-builder --bin-dir /usr/local/bin --state-dir /opt/adlaire-builder --service-user root sh mktemp mkdir chmod install mv rm cp sha256sum systemctl sleep od curl single-json-object-secret-safe diagnostic-json-lines-on-failure common-cli-exit-code-contract bootstrap-script-http-client-missing bootstrap-script-source-unreachable bootstrap-script-digest-mismatch bootstrap-script-version-mismatch bootstrap-script-executable-permission-invalid bootstrap-script-systemd-unit-invalid bootstrap-script-state-directory-invalid bootstrap-script-health-failed bootstrap-script-rollback-failed"
+
+const phase18BootstrapScriptPath = "adlaire-ci-vps-pull-bootstrap.sh"
+
+var phase18BootstrapInstalledBinaries = []string{
+	"adlaire-ci-build",
+	"adlaire-ci-runner",
+	"adlaire-ci-api",
+	"adlaire-ci-setup",
+	"adlaire-ci-admin",
+	"adlaire-ci-mcp",
+	"adlaire-ci-obsidian",
+}
 
 var phase18ReferenceLabels = map[string]string{
 	"manifest.json":                                                              "Phase 18 manifest",
@@ -3942,6 +4594,7 @@ var phase18ReferenceLabels = map[string]string{
 	"records/security.jsonl":                                                     "Phase 18 security records",
 	"records/document_drift.jsonl":                                               "Phase 18 document drift records",
 	"testdata/phase18/vps-pull-bootstrap/":                                       "Phase 18 fixture root",
+	"adlaire-ci-vps-pull-bootstrap.sh":                                           "Phase 18 VPS Pull Bootstrap shell artifact",
 	".github/workflows/phase18-vps-pull-bootstrap.yml":                           "Phase 18 required check workflow",
 	"main_test.go":                                                               "Phase 18 checker implementation artifact",
 	"docs/ROADMAP.md#roadmap-initial-phase-plan":                                 "状態・計画責務 §4.1",
@@ -4983,6 +5636,108 @@ func phase18RequireWorkflow(t *testing.T, path string) {
 	phase13RequirePinnedActions(t, workflow)
 }
 
+func phase18RequireBootstrapScriptArtifact(t *testing.T, path string, scope phase18OperationScopeFile) {
+	t.Helper()
+
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatalf("missing-file: %s must exist as Phase 18 VPS Pull Bootstrap shell artifact: %v", path, err)
+	}
+	if info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("schema-mismatch: %s must be a regular non-symlink shell artifact", path)
+	}
+	if info.Mode().Perm()&0111 == 0 {
+		t.Fatalf("schema-mismatch: %s must be executable", path)
+	}
+	script := phase11MustReadText(t, path)
+	if !strings.HasPrefix(script, "#!/bin/sh\n") {
+		t.Fatalf("schema-mismatch: %s must start with #!/bin/sh", path)
+	}
+	if output, err := exec.Command("sh", "-n", path).CombinedOutput(); err != nil {
+		t.Fatalf("schema-mismatch: %s must pass /bin/sh syntax validation: %v output=%s", path, err, output)
+	}
+	for _, forbidden := range []string{
+		"#!/usr/bin/env bash",
+		"#!/bin/bash",
+		"[[",
+		"function ",
+		"pipefail",
+		"git clone",
+		"gh ",
+		"GITHUB_TOKEN",
+		"CONOHA",
+		"self-hosted",
+		"ssh-key",
+		"vps-create",
+		"vps-delete",
+		"plan-change",
+	} {
+		if strings.Contains(script, forbidden) {
+			t.Fatalf("forbidden-side-effect: %s must not contain forbidden bootstrap token %q", path, forbidden)
+		}
+	}
+	for _, token := range []string{
+		scope.BootstrapScriptArtifact,
+		scope.BootstrapScriptRuntime,
+		scope.ActiveSourceChannel,
+		scope.MinimumTopologyRole,
+		scope.BootstrapSourceIDFormat,
+		scope.BootstrapDigestAlgorithm,
+		scope.BootstrapInstallDirectory,
+		scope.BootstrapBinDirectory,
+		scope.BootstrapStateDirectory,
+		scope.BootstrapServiceUser,
+		scope.BootstrapSecretInputPolicy,
+		scope.BootstrapStateModel,
+		scope.BootstrapCLIContract,
+		scope.BootstrapStdoutContract,
+		scope.BootstrapStderrContract,
+		scope.BootstrapExitCodeContract,
+		"single-node",
+		"stable-release",
+		"absolute-https-url",
+		"absolute-file-path",
+		"/etc/systemd/system/adlaire-ci.service",
+		"/etc/systemd/system/adlaire-ci.timer",
+		"/etc/systemd/system/adlaire-ci-api.service",
+		".admin_credentials",
+		"phase18-materialize-admin",
+		"--init-credentials",
+		"/api/login",
+		"/api/change-password",
+		"/api/schedule/cooldown",
+		"--token-file",
+		"phase18-source",
+		"phase18-site",
+		"run_update_rollback_drill",
+		"no_issue_detected",
+	} {
+		if !strings.Contains(script, token) {
+			t.Fatalf("document-drift: %s must contain Phase 18 bootstrap contract token %q", path, token)
+		}
+	}
+	for _, token := range scope.BootstrapInvocationTokens {
+		if !strings.Contains(script, token) {
+			t.Fatalf("document-drift: %s must contain fixed invocation token %q", path, token)
+		}
+	}
+	for _, command := range append(scope.BootstrapRequiredCommands, scope.BootstrapHTTPClientOrder...) {
+		if !strings.Contains(script, command) {
+			t.Fatalf("document-drift: %s must contain required command/client token %q", path, command)
+		}
+	}
+	for _, failureCode := range scope.BootstrapFailureCodes {
+		if !strings.Contains(script, failureCode) {
+			t.Fatalf("document-drift: %s must contain failure code %q", path, failureCode)
+		}
+	}
+	for _, binary := range phase18BootstrapInstalledBinaries {
+		if !strings.Contains(script, binary) {
+			t.Fatalf("document-drift: %s must install standard binary %q", path, binary)
+		}
+	}
+}
+
 func phase18RequireDocumentState(t *testing.T) {
 	t.Helper()
 
@@ -4995,17 +5750,20 @@ func phase18RequireDocumentState(t *testing.T) {
 	phase18Row := "| Phase 18 | VPS Pull Bootstrap。"
 	phase18InProgressStatus := "| 実装中・bootstrap 検証未完了 | Phase 17 |"
 	phase18ImplementedStatus := "| 実装済み | Phase 17 |"
-	if !strings.Contains(roadmap, phase18Row) || !strings.Contains(roadmap, phase18InProgressStatus) {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 as 実装中・bootstrap 検証未完了 until real VPS Pull Bootstrap evidence exists")
+	if !strings.Contains(roadmap, phase18Row) || !strings.Contains(roadmap, phase18ImplementedStatus) {
+		t.Fatalf("docs/ROADMAP.md must mark Phase 18 implemented after repository and live VPS completion evidence close the state-transition gate")
 	}
-	if !strings.Contains(roadmap, "現在の active Phase は Phase 18") {
-		t.Fatalf("docs/ROADMAP.md must keep Phase 18 as the active Phase until real VPS Pull Bootstrap is complete")
+	if !strings.Contains(roadmap, "現在の active Phase は設定しない。") {
+		t.Fatalf("docs/ROADMAP.md must leave active Phase unset after Phase 18 completion while Phase 19 remains 改訂予定")
 	}
-	if strings.Contains(roadmap, phase18ImplementedStatus) || strings.Contains(roadmap, "Phase 18 も `実装済み`") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
-		t.Fatalf("docs/ROADMAP.md must not mark Phase 18 implemented or unimplemented while real VPS Pull Bootstrap remains incomplete")
+	if strings.Contains(roadmap, phase18InProgressStatus) || strings.Contains(roadmap, "現在の active Phase は Phase 18") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
+		t.Fatalf("docs/ROADMAP.md must not retain a stale Phase 18 active or incomplete state after the state-transition gate closes")
+	}
+	if !strings.Contains(roadmap, "Phase 19 と Phase 20 は `改訂予定` の後続 Phase") || strings.Contains(roadmap, "現在の active Phase は Phase 19") || strings.Contains(roadmap, "現在の active Phase は Phase 20") {
+		t.Fatalf("docs/ROADMAP.md must keep Phase 19 and Phase 20 non-active until their specification gates are complete")
 	}
 	for _, token := range []string{
-		"Phase 11 から Phase 17 の完了証跡条件、closure counter、record schema、required check は ROADMAP 本文で再掲せず",
+		"Phase 11 から Phase 18 の完了証跡条件、closure counter、record schema、required check は ROADMAP 本文で再掲せず",
 		"Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない",
 		"状態遷移判断は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate)",
 	} {
@@ -5048,24 +5806,22 @@ func phase18RequireDocumentState(t *testing.T) {
 		"Phase 18 pull runner foundation / bootstrap update / rollback drill / bootstrap 中 issue / 仕様先行バグ修正 / 再検証 / known bug 0 gate",
 		"Phase 18 secret / destructive operation / opaque metadata / document drift gate",
 	} {
-		if !strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 |") || !strings.Contains(roadmap, feature) {
-			t.Fatalf("docs/ROADMAP.md must mark Phase 18 feature in progress until real bootstrap completes: %s", feature)
-		}
 		if strings.Contains(feature, "secret / destructive operation / opaque metadata / document drift") {
-			if !strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | 本番検証 | "+feature+" |") {
-				t.Fatalf("docs/ROADMAP.md must keep Phase 18 boundary feature in 本番検証 category: %s", feature)
+			if !strings.Contains(roadmap, "| 実装済み | 本番検証 | "+feature+" |") {
+				t.Fatalf("docs/ROADMAP.md must mark the Phase 18 boundary feature implemented in the 本番検証 category: %s", feature)
 			}
-		} else if !strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | VPS Pull Bootstrap | "+feature+" |") {
-			t.Fatalf("docs/ROADMAP.md must keep Phase 18 bootstrap feature in VPS Pull Bootstrap category: %s", feature)
+		} else if !strings.Contains(roadmap, "| 実装済み | VPS Pull Bootstrap | "+feature+" |") {
+			t.Fatalf("docs/ROADMAP.md must mark the Phase 18 bootstrap feature implemented in the VPS Pull Bootstrap category: %s", feature)
 		}
 		if strings.Contains(roadmap, "| 実装済み | CI/CD Bootstrap | "+feature+" |") ||
-			strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | CI/CD Bootstrap | "+feature+" |") ||
 			strings.Contains(roadmap, "| 実装済み | 試験本番運用 | "+feature+" |") ||
-			strings.Contains(roadmap, "| 実装済み | 本番検証 | "+feature+" |") ||
+			strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | CI/CD Bootstrap | "+feature+" |") ||
+			strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | VPS Pull Bootstrap | "+feature+" |") ||
+			strings.Contains(roadmap, "| 実装中・bootstrap 検証未完了 | 本番検証 | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | CI/CD Bootstrap | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | 試験本番運用 | "+feature+" |") ||
 			strings.Contains(roadmap, "| 仕様化済み・未実装 | 本番検証 | "+feature+" |") {
-			t.Fatalf("docs/ROADMAP.md must not mark Phase 18 feature implemented or unimplemented while real bootstrap remains incomplete: %s", feature)
+			t.Fatalf("docs/ROADMAP.md must not classify the completed Phase 18 feature under a stale or incorrect state/category: %s", feature)
 		}
 	}
 	for _, token := range []string{
@@ -5100,8 +5856,8 @@ func phase18RequireDocumentState(t *testing.T) {
 	if strings.Contains(productionValidation, "deploy simulation または承認済み deploy target") || strings.Contains(fixture, "deploy simulation または承認済み deploy target") {
 		t.Fatalf("Phase 18 must not allow approved deploy target as an alternative to deploy simulation evidence")
 	}
-	if !strings.Contains(roadmap, "`Build-Scripts-vps-2026` の非秘密 name tag と `試験本番VPS` の用途 label") {
-		t.Fatalf("docs/ROADMAP.md must connect Phase 18 active state to Build-Scripts-vps-2026 and the 試験本番VPS purpose label")
+	if !strings.Contains(roadmap, "Phase 18 は、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 状態遷移 gate](DETAIL_INDEX.md#phase-18-state-transition-gate) の完了証跡が同一実装 Pull Request に接続されたため `実装済み` とする。") {
+		t.Fatalf("docs/ROADMAP.md must connect the Phase 18 implemented state to the canonical state-transition gate without replaying live evidence")
 	}
 	ambiguousPhase18VPSLabel := "試験本番運用・" + "開発検証兼用 VPS"
 	if strings.Contains(roadmap, ambiguousPhase18VPSLabel) || strings.Contains(productionValidation, ambiguousPhase18VPSLabel) {
@@ -5120,6 +5876,7 @@ func phase18RequireDocumentState(t *testing.T) {
 	}
 	for _, token := range []string{
 		"Phase 18 checker acceptance fixture は repository 内の仕様・schema・record・counter・required check・document drift の受入証跡",
+		"bootstrap script artifact の静的契約",
 		"`live VPS completion summary` を同一 PR 本文へ接続する",
 		"fixture 証跡責務では `live VPS completion summary` の item を再掲しない",
 		"Phase 18 Go test checker acceptance 契約",
@@ -5143,6 +5900,7 @@ func phase18RequireDocumentState(t *testing.T) {
 	for _, rel := range phase18FixtureFiles {
 		expectedPaths = append(expectedPaths, "testdata/phase18/vps-pull-bootstrap/"+rel)
 	}
+	expectedPaths = append(expectedPaths, "adlaire-ci-vps-pull-bootstrap.sh")
 	expectedPaths = append(expectedPaths, ".github/workflows/phase18-vps-pull-bootstrap.yml")
 	for _, rel := range expectedPaths {
 		if !strings.Contains(documentIndex, "| `"+rel+"` |") && !strings.Contains(documentIndex, "| [`"+rel+"`]") {
