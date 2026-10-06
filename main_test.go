@@ -6206,6 +6206,9 @@ func TestChangeHistoryArtifactBoundaryControls(t *testing.T) {
 		"templates/CHANGE-LOG.template.yaml", "releases/RELEASE_NOTES.v1.txt",
 		"metadata/CHANGES", "hidden/.private/HISTORY-2026.md", "docs/変更履歴.rst",
 		"nested/CHANGE.LOG.xml", "notes/リリースノート.txt",
+		"notes/RELEASENOTES.md", "metadata/CHANGE_HISTORY.json",
+		"updates/更新_履歴.2026.txt", "releases/リリース履歴.md",
+		"templates/.release notes.template.md",
 	} {
 		t.Run(path, func(t *testing.T) {
 			t.Parallel()
@@ -6266,15 +6269,41 @@ func TestChangeHistoryArtifactBoundaryControls(t *testing.T) {
 	})
 	t.Run("artifact-declarations", func(t *testing.T) {
 		t.Parallel()
-		for _, path := range []string{"CHANGELOG.md", "templates/HISTORY/**", "hidden/.release_notes.json"} {
-			if !changeHistoryArtifactPath(path) {
-				t.Fatalf("forbidden artifact declaration must be detected: %s", path)
-			}
-		}
-		for _, path := range []string{"docs/**/*.md", ".build_history", "state/config_changes.jsonl", "notes.md"} {
-			if changeHistoryArtifactPath(path) {
-				t.Fatalf("functional artifact declaration must pass: %s", path)
-			}
+		for _, tc := range []struct {
+			name      string
+			data      string
+			wantError string
+		}{
+			{"invalid-json", `{`, "parse governance scope"},
+			{"include-type", `{"include":true,"release_artifacts":["LICENSE"]}`, "parse governance scope"},
+			{"release-artifacts-type", `{"include":["docs/**/*.md"],"release_artifacts":"LICENSE"}`, "parse governance scope"},
+			{"missing-include", `{"release_artifacts":["LICENSE"]}`, "include must be a non-empty string array"},
+			{"null-include", `{"include":null,"release_artifacts":["LICENSE"]}`, "include must be a non-empty string array"},
+			{"empty-include", `{"include":[],"release_artifacts":["LICENSE"]}`, "include must be a non-empty string array"},
+			{"missing-release-artifacts", `{"include":["docs/**/*.md"]}`, "release_artifacts must be a non-empty string array"},
+			{"null-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":null}`, "release_artifacts must be a non-empty string array"},
+			{"empty-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":[]}`, "release_artifacts must be a non-empty string array"},
+			{"include-item-type", `{"include":[1],"release_artifacts":["LICENSE"]}`, "parse governance scope"},
+			{"null-include-item", `{"include":[null],"release_artifacts":["LICENSE"]}`, "include must not contain empty entries"},
+			{"blank-include-item", `{"include":["  "],"release_artifacts":["LICENSE"]}`, "include must not contain empty entries"},
+			{"empty-release-artifacts-item", `{"include":["docs/**/*.md"],"release_artifacts":[""]}`, "release_artifacts must not contain empty entries"},
+			{"forbidden-include", `{"include":["docs/**/*.md","CHANGELOG.md"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: CHANGELOG.md"},
+			{"forbidden-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["LICENSE","CHANGELOG.md"]}`, "forbidden change history artifact declaration in release_artifacts: CHANGELOG.md"},
+			{"nested-include", `{"include":["templates/HISTORY/**"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: templates/HISTORY/**"},
+			{"hidden-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["hidden/.release_notes.json"]}`, "forbidden change history artifact declaration in release_artifacts: hidden/.release_notes.json"},
+			{"functional-records", `{"include":["docs/**/*.md",".build_history","state/config_changes.jsonl"],"release_artifacts":["LICENSE","notes.md"]}`, ""},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				err := validateChangeHistoryArtifactScope([]byte(tc.data))
+				if tc.wantError == "" {
+					if err != nil {
+						t.Fatalf("functional artifact declarations must pass: %v", err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+					t.Fatalf("invalid artifact declarations: want error containing %q, got %v", tc.wantError, err)
+				}
+			})
 		}
 	})
 }
@@ -6288,24 +6317,40 @@ func requireChangeHistoryArtifactBoundary(t *testing.T) {
 	if len(paths) != 0 {
 		t.Fatalf("forbidden change history artifacts: %v", paths)
 	}
+	path := "testdata/phase13/implementation-alignment-quality/input/scope.json"
+	if err := validateChangeHistoryArtifactScope([]byte(phase11MustReadText(t, path))); err != nil {
+		t.Fatalf("%s: %v", path, err)
+	}
+}
+
+func validateChangeHistoryArtifactScope(data []byte) error {
 	var scope struct {
 		Include          []string `json:"include"`
 		ReleaseArtifacts []string `json:"release_artifacts"`
 	}
-	path := "testdata/phase13/implementation-alignment-quality/input/scope.json"
-	if err := json.Unmarshal([]byte(phase11MustReadText(t, path)), &scope); err != nil {
-		t.Fatalf("parse governance scope: %v", err)
+	if err := json.Unmarshal(data, &scope); err != nil {
+		return fmt.Errorf("parse governance scope: %w", err)
 	}
-	if len(scope.Include) == 0 || len(scope.ReleaseArtifacts) == 0 {
-		t.Fatal("governance scope must declare include and release_artifacts")
-	}
-	for _, entries := range [][]string{scope.Include, scope.ReleaseArtifacts} {
-		for _, entry := range entries {
+	for _, field := range []struct {
+		name    string
+		entries []string
+	}{
+		{"include", scope.Include},
+		{"release_artifacts", scope.ReleaseArtifacts},
+	} {
+		if len(field.entries) == 0 {
+			return fmt.Errorf("%s must be a non-empty string array", field.name)
+		}
+		for _, entry := range field.entries {
+			if strings.TrimSpace(entry) == "" {
+				return fmt.Errorf("%s must not contain empty entries", field.name)
+			}
 			if changeHistoryArtifactPath(entry) {
-				t.Fatalf("forbidden change history artifact declaration in %s: %s", path, entry)
+				return fmt.Errorf("forbidden change history artifact declaration in %s: %s", field.name, entry)
 			}
 		}
 	}
+	return nil
 }
 
 func changeHistoryArtifactPaths(root string) ([]string, error) {

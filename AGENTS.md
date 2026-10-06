@@ -61,7 +61,7 @@
 
 ## 2. 仕様書管理ルール
 
-変更記録を扱う作業では、[`docs/SPEC.md` 方針責務 変更記録の一元化方針](docs/SPEC.md#direction-change-history-single-source) と [`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](docs/SPEC.md#policy-change-history-artifact-ban) を先に確認する。作業開始前と Pull Request 作成前に、hidden file を含む実在 path、変更差分、生成・配布設定、template、必須 artifact 宣言を確認する。自動確認と negative control の実行入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の変更履歴 artifact 境界検査を参照し、不適合が残る場合は同一承認済み範囲で解消してから作業を完了する。解消が承認範囲を超える場合は追加承認ルールを適用する。
+本リポジトリのすべての変更作業では、[`docs/SPEC.md` 方針責務 変更記録の一元化方針](docs/SPEC.md#direction-change-history-single-source) と [`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](docs/SPEC.md#policy-change-history-artifact-ban) を先に確認する。作業開始前と Pull Request 作成・更新前に、hidden file を含む実在 path、変更差分、生成・配布設定、template、必須 artifact 宣言を確認する。自動確認と negative control は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の変更履歴 artifact 境界検査の入口で実行し、不適合が残る場合は同一承認済み範囲で解消してから作業を完了する。解消が承認範囲を超える場合は追加承認ルールを適用する。
 
 仕様変更では、最初に [`docs/SPEC.md` 責務文書構成表](docs/SPEC.md#document-responsibility-map) で対象判断の責務正本を確定し、[`docs/SPEC.md` 方針責務 §4.2a](docs/SPEC.md#sec-4-2a) の記載範囲と禁止事項を適用する。[AGENTS.md](AGENTS.md) で同じ判断対象の正本分担または禁止事項を再定義してはならない。
 
