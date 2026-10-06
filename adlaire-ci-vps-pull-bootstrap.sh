@@ -540,9 +540,13 @@ write_staged_state() {
 	done
 	chmod 0644 "$stage_dir/state/source.md" >/dev/null 2>&1 || json_fail "bootstrap-script-state-directory-invalid" "state-mode" 1
 	mkdir -p "$stage_dir/runtime-state/phase18-source" >/dev/null 2>&1 || json_fail "bootstrap-script-state-directory-invalid" "runtime-state-stage" 1
-	for runtime_state_file in .pipeline_config .server_config .branch_config .last_sha .pending_transfers .notify_pending; do
+	for runtime_state_file in .pipeline_config .server_config .last_sha .pending_transfers .notify_pending; do
 		cp -a "$stage_dir/state/$runtime_state_file" "$stage_dir/runtime-state/$runtime_state_file" >/dev/null 2>&1 || json_fail "bootstrap-script-state-directory-invalid" "runtime-state-stage" 1
 	done
+	runtime_validation_state_dir="$state_dir/.phase18-runtime"
+	printf '{"branch_targets":[{"branch":"main","target_file":"phase18","target_files":[],"sha_file":"%s/.last_sha","src":"%s/phase18-source","out":"%s/phase18-site","approval_required":false,"env":{},"deploy_targets":[]}]}\n' \
+		"$runtime_validation_state_dir" "$runtime_validation_state_dir" "$runtime_validation_state_dir" >"$stage_dir/runtime-state/.branch_config" || json_fail "bootstrap-script-state-directory-invalid" "runtime-state-stage" 1
+	chmod 0600 "$stage_dir/runtime-state/.branch_config" >/dev/null 2>&1 || json_fail "bootstrap-script-state-directory-invalid" "runtime-state-mode" 1
 	cp -a "$stage_dir/state/source.md" "$stage_dir/runtime-state/phase18-source/index.md" >/dev/null 2>&1 || json_fail "bootstrap-script-state-directory-invalid" "runtime-state-stage" 1
 	chmod 0700 "$stage_dir/runtime-state" >/dev/null 2>&1 || json_fail "bootstrap-script-state-directory-invalid" "runtime-state-mode" 1
 }

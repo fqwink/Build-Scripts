@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "2b8b599f532e3293baabc461c2ea3e468677be03e43e7120fbb50220e4ffd587",
+  "source_group_sha256": "21eff4c306092a432254aa25843a4db45d74b2935a11dcafc3c2dcd8f90ac357",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "0406e73aaa4cfc4203f96fe40442c92500a1a5c65d2c4b2da545f2947cd606be",
-      "size_bytes": 292317,
+      "sha256": "7ed12585a6309ef2da1105fcb2678ee6c55f71dbbaee76c9dda1be5df0314a17",
+      "size_bytes": 293303,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [

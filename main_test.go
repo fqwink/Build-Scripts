@@ -265,9 +265,11 @@ case "$name" in
       esac
     done
     [ -n "$state" ] || exit 2
-    mkdir -p "$state/phase18-site" || exit 1
-    printf '<html>built</html>\n' >"$state/phase18-site/index.html" || exit 1
-    printf '{}\n' >"$state/phase18-site/.dependency_manifest.json" || exit 1
+    out=$(sed -n 's/.*"out":"\([^"]*\)".*/\1/p' "$state/.branch_config")
+    [ -n "$out" ] || exit 1
+    mkdir -p "$out" || exit 1
+    printf '<html>built</html>\n' >"$out/index.html" || exit 1
+    printf '{}\n' >"$out/.dependency_manifest.json" || exit 1
     printf '{"id":"phase18","status":"success"}\n' >"$state/.build_history" || exit 1
     printf '{"status":"success"}\n' >"$state/.build_status.json" || exit 1
     ;;
@@ -566,6 +568,22 @@ func TestPhase18BootstrapPreservesOperationalStateAndClosesEvidence(t *testing.T
 				t.Fatalf("operational state %s changed got=%q want=%q err=%v", name, string(got), string(want), err)
 			}
 		}
+	}
+	runtimeStateDir := filepath.Join(h.stateDir, ".phase18-runtime")
+	var runtimeBranchConfig struct {
+		BranchTargets []struct {
+			SHAFile string `json:"sha_file"`
+			Src     string `json:"src"`
+			Out     string `json:"out"`
+		} `json:"branch_targets"`
+	}
+	runtimeBranchData, err := os.ReadFile(filepath.Join(runtimeStateDir, ".branch_config"))
+	if err != nil || json.Unmarshal(runtimeBranchData, &runtimeBranchConfig) != nil || len(runtimeBranchConfig.BranchTargets) != 1 {
+		t.Fatalf("invalid isolated runtime branch config: %v data=%q", err, string(runtimeBranchData))
+	}
+	runtimeTarget := runtimeBranchConfig.BranchTargets[0]
+	if runtimeTarget.SHAFile != filepath.Join(runtimeStateDir, ".last_sha") || runtimeTarget.Src != filepath.Join(runtimeStateDir, "phase18-source") || runtimeTarget.Out != filepath.Join(runtimeStateDir, "phase18-site") {
+		t.Fatalf("runtime branch paths escaped isolated state: %+v", runtimeTarget)
 	}
 	for _, name := range []string{"open.json", "runtime.json", "update-rollback.json", "issue-triage.json", "spec-first-fix.json", "revalidation.json", "close.json"} {
 		if info, err := os.Lstat(filepath.Join(h.stateDir, ".phase18-evidence", name)); err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0600 {
