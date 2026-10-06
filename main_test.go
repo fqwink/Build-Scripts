@@ -6267,6 +6267,23 @@ func TestChangeHistoryArtifactBoundaryControls(t *testing.T) {
 			t.Fatal("scan failure must not pass")
 		}
 	})
+	t.Run("non-directory-root", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		file := filepath.Join(root, "notes.md")
+		if err := os.WriteFile(file, nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+		link := filepath.Join(root, "linked-root")
+		if err := os.Symlink(root, link); err != nil {
+			t.Fatal(err)
+		}
+		for _, path := range []string{file, link, link + string(os.PathSeparator)} {
+			if _, err := changeHistoryArtifactPaths(path); err == nil || !strings.Contains(err.Error(), "scan root must be a directory") {
+				t.Fatalf("non-directory scan root must fail: path=%s err=%v", path, err)
+			}
+		}
+	})
 	t.Run("artifact-declarations", func(t *testing.T) {
 		t.Parallel()
 		for _, tc := range []struct {
@@ -6291,6 +6308,14 @@ func TestChangeHistoryArtifactBoundaryControls(t *testing.T) {
 			{"forbidden-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["LICENSE","CHANGELOG.md"]}`, "forbidden change history artifact declaration in release_artifacts: CHANGELOG.md"},
 			{"nested-include", `{"include":["templates/HISTORY/**"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: templates/HISTORY/**"},
 			{"hidden-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["hidden/.release_notes.json"]}`, "forbidden change history artifact declaration in release_artifacts: hidden/.release_notes.json"},
+			{"duplicate-include", `{"include":["CHANGELOG.md"],"include":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, `duplicate key "include"`},
+			{"duplicate-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["CHANGELOG.md"],"release_artifacts":["LICENSE"]}`, `duplicate key "release_artifacts"`},
+			{"escaped-duplicate-include", `{"include":["CHANGELOG.md"],"incl\u0075de":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, `duplicate key "include"`},
+			{"include-case-shadow", `{"include":["CHANGELOG.md"],"Include":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, "governance scope must use canonical key include"},
+			{"release-artifacts-case-shadow", `{"include":["docs/**/*.md"],"release_artifacts":["CHANGELOG.md"],"Release_Artifacts":["LICENSE"]}`, "governance scope must use canonical key release_artifacts"},
+			{"noncanonical-include", `{"INCLUDE":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, "governance scope must use canonical key include"},
+			{"noncanonical-release-artifacts", `{"include":["docs/**/*.md"],"RELEASE_ARTIFACTS":["LICENSE"]}`, "governance scope must use canonical key release_artifacts"},
+			{"metadata-fields", `{"phase":"Phase 13","owner_packages":["release"],"include":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, ""},
 			{"functional-records", `{"include":["docs/**/*.md",".build_history","state/config_changes.jsonl"],"release_artifacts":["LICENSE","notes.md"]}`, ""},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
@@ -6324,29 +6349,36 @@ func requireChangeHistoryArtifactBoundary(t *testing.T) {
 }
 
 func validateChangeHistoryArtifactScope(data []byte) error {
-	var scope struct {
-		Include          []string `json:"include"`
-		ReleaseArtifacts []string `json:"release_artifacts"`
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := phase16CheckJSONValueForDuplicateKeys(decoder); err != nil {
+		return fmt.Errorf("parse governance scope keys: %w", err)
 	}
+	var scope map[string]json.RawMessage
 	if err := json.Unmarshal(data, &scope); err != nil {
 		return fmt.Errorf("parse governance scope: %w", err)
 	}
-	for _, field := range []struct {
-		name    string
-		entries []string
-	}{
-		{"include", scope.Include},
-		{"release_artifacts", scope.ReleaseArtifacts},
-	} {
-		if len(field.entries) == 0 {
-			return fmt.Errorf("%s must be a non-empty string array", field.name)
+	for _, name := range []string{"include", "release_artifacts"} {
+		for key := range scope {
+			if key != name && strings.EqualFold(key, name) {
+				return fmt.Errorf("governance scope must use canonical key %s", name)
+			}
 		}
-		for _, entry := range field.entries {
+		var entries []string
+		if raw, ok := scope[name]; ok {
+			if err := json.Unmarshal(raw, &entries); err != nil {
+				return fmt.Errorf("parse governance scope %s: %w", name, err)
+			}
+		}
+		if len(entries) == 0 {
+			return fmt.Errorf("%s must be a non-empty string array", name)
+		}
+		for _, entry := range entries {
 			if strings.TrimSpace(entry) == "" {
-				return fmt.Errorf("%s must not contain empty entries", field.name)
+				return fmt.Errorf("%s must not contain empty entries", name)
 			}
 			if changeHistoryArtifactPath(entry) {
-				return fmt.Errorf("forbidden change history artifact declaration in %s: %s", field.name, entry)
+				return fmt.Errorf("forbidden change history artifact declaration in %s: %s", name, entry)
 			}
 		}
 	}
@@ -6354,12 +6386,16 @@ func validateChangeHistoryArtifactScope(data []byte) error {
 }
 
 func changeHistoryArtifactPaths(root string) ([]string, error) {
+	root = filepath.Clean(root)
 	var paths []string
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if path == root {
+			if !entry.IsDir() {
+				return fmt.Errorf("scan root must be a directory: %s", root)
+			}
 			return nil
 		}
 		rel, err := filepath.Rel(root, path)

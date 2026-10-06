@@ -255,10 +255,10 @@ Phase 13 の証跡 package は、下表の全対象を同一 closure record set 
 
 | 入力 / 操作 | 期待結果 / assertion | 差し戻し条件 |
 |-------------|----------------------|--------------|
-| リポジトリ全 path を `filepath.WalkDir` で列挙し、名称を policy の検出境界で照合する。 | `.git` 管理記録以外の禁止 path `0`。探索失敗も fail とし、file / directory / symlink を同じ名称境界で検査する。 | 禁止 path が存在する、探索 error を成功扱いする、hidden / nested path が未検査。 |
+| リポジトリ全 path を `filepath.WalkDir` で列挙し、名称を policy の検出境界で照合する。 | `.git` 管理記録以外の禁止 path `0`。探索入口は path を clean した後の実在 directory とし、通常 file、symlink、不存在を fail とする。探索失敗も fail とし、file / directory / symlink を同じ名称境界で検査する。 | 禁止 path が存在する、探索 error を成功扱いする、directory ではない入口を空の成功結果にする、hidden / nested path が未検査。 |
 | 隔離された一時 directory に、内容を持たない合成禁止名を置く。 | policy のすべての名称例を照合し、canonical、大小文字、hidden、別拡張子、区切り、後置 version / 日付 / template、nested directory、symlink 名の各 negative control で禁止 path を検出する。 | 禁止名を見逃す、検査対象を root だけに限定する、`.git` 以外を除外する。 |
 | ビルド履歴、監査ログ、状態、公開入力を表す合成 path と `.git` 管理記録を置く。 | 固有責務の path を開発変更履歴として誤検出しない。 | `.build_history`、`config_changes.jsonl`、Release 単版の本文入力の `notes.md` を禁止 path として検出する。 |
-| Phase 13 governance file と `input/scope.json` の `include` / `release_artifacts` を照合する。 | 現行 governance file の存在・内容・索引を検証し、禁止 artifact 宣言 `0`。両欄は非空の文字列配列、各要素は空白だけではない文字列とし、JSON 不正、型不一致、欠落、null、空配列、空要素を fail とする。 | 存在確認を削るだけで artifact 必須宣言を残す、禁止 artifact を fixture に再登録する、不正な宣言を成功扱いする。 |
+| Phase 13 governance file と `input/scope.json` の `include` / `release_artifacts` を照合する。 | 現行 governance file の存在・内容・索引を検証し、禁止 artifact 宣言 `0`。両欄は非空の文字列配列、各要素は空白だけではない文字列とし、JSON 不正、型不一致、欠落、null、空配列、空要素を fail とする。重複 key と必須 key の大小文字違いも fail とし、escape 表記による同じ key の再定義、後置 key による禁止名の上書きを認めない。既存の他の scope field は維持する。 | 存在確認を削るだけで artifact 必須宣言を残す、禁止 artifact を fixture に再登録する、不正・曖昧な宣言を成功扱いする。 |
 | 合成 scope JSON を実際の宣言検査関数へ渡す。 | `include` と `release_artifacts` を独立に検証し、各欄の禁止名と不正入力を拒否する。固有責務の path と既存の include pattern を持つ正常 JSON は成功する。 | 名称 helper だけを試して JSON 解析・両欄の検査を通さない、片方の欄の検査を削っても controls が成功する。 |
 
 証跡は同一 PR の Verification と [implementation PR evidence template 固定契約](#implementation-pr-evidence-template-contract) に接続し、実行コマンド、negative control 結果、任意名称 / 生成・配布設定の差分確認、最終 open item 件数を記録する。新しい production code、共有状態、goroutine を追加しない検査の race trigger / production mutation 対象外根拠は、[test concurrency / race evidence set 固定契約](#test-concurrency-race-evidence-set-contract) と [mutation selection ledger 固定契約](#mutation-selection-ledger-contract) の対象選択へ接続する。checker の名称照合・探索除外を無効化した場合は対応 negative control が検出することを確認する。
