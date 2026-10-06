@@ -6209,6 +6209,8 @@ func TestChangeHistoryArtifactBoundaryControls(t *testing.T) {
 		"notes/RELEASENOTES.md", "metadata/CHANGE_HISTORY.json",
 		"updates/更新_履歴.2026.txt", "releases/リリース履歴.md",
 		"templates/.release notes.template.md",
+		"docs/CHANGELOG*.md", "releases/RELEASE_NOTES?.txt",
+		"templates/.HISTORY[0-9].md",
 	} {
 		t.Run(path, func(t *testing.T) {
 			t.Parallel()
@@ -6316,6 +6318,10 @@ func TestChangeHistoryArtifactBoundaryControls(t *testing.T) {
 			{"noncanonical-include", `{"INCLUDE":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, "governance scope must use canonical key include"},
 			{"noncanonical-release-artifacts", `{"include":["docs/**/*.md"],"RELEASE_ARTIFACTS":["LICENSE"]}`, "governance scope must use canonical key release_artifacts"},
 			{"metadata-fields", `{"phase":"Phase 13","owner_packages":["release"],"include":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, ""},
+			{"glob-include", `{"include":["docs/CHANGELOG*.md"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: docs/CHANGELOG*.md"},
+			{"glob-release-artifact", `{"include":["docs/**/*.md"],"release_artifacts":["releases/RELEASE_NOTES?.txt"]}`, "forbidden change history artifact declaration in release_artifacts: releases/RELEASE_NOTES?.txt"},
+			{"glob-directory", `{"include":["templates/.HISTORY[0-9]/**"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: templates/.HISTORY[0-9]/**"},
+			{"general-and-functional-patterns", `{"include":["docs/**/*.md","components/*/*.go",".build_history*","state/config_changes?.jsonl"],"release_artifacts":["LICENSE","release/notes[0-9].md"]}`, ""},
 			{"functional-records", `{"include":["docs/**/*.md",".build_history","state/config_changes.jsonl"],"release_artifacts":["LICENSE","notes.md"]}`, ""},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
@@ -6422,6 +6428,9 @@ func changeHistoryArtifactPaths(root string) ([]string, error) {
 
 func changeHistoryArtifactPath(path string) bool {
 	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+		if index := strings.IndexAny(part, "*?["); index >= 0 {
+			part = part[:index]
+		}
 		fields := strings.FieldsFunc(strings.ToLower(part), func(r rune) bool {
 			return r == '.' || r == '-' || r == '_' || r == ' '
 		})

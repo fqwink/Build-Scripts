@@ -737,6 +737,8 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 
 `CHANGELOG`、`CHANGE-LOG`、`CHANGES`、`HISTORY`、`RELEASE-NOTES`、`RELEASENOTES`、`CHANGE-HISTORY`、`UPDATE-HISTORY`、`RELEASE-HISTORY`、`変更履歴`、`更新履歴`、`リリース履歴`、`リリースノート` は禁止対象の名称例であり、例示に含まれない名称を許可する意味ではない。規約検査では、リポジトリ配下の file / directory / symlink 名について、大文字小文字、先頭の `.`、区切りの `-` / `_` / `.` / space、拡張子、後置する version / 日付 / template 名を変えたこれらの名称も検出する。`.git` 内の Git 管理記録だけは探索しない。任意名称の履歴本文や生成設定による回避は、名称検査の合格を理由に許可せず、変更差分と生成・配布契約の確認対象とする。
 
+artifact 宣言の path pattern では、各 segment の最初の `*` / `?` / `[` より前の固定名称も同じ名称境界で照合する。禁止名称への wildcard 後置を、必須 artifact 宣言の回避手段にしてはならない。この照合は汎用 include pattern のすべての展開候補を禁止する判断ではなく、実在 path の検査と任意名称の差分確認を置き換えない。
+
 変更の時系列と変更理由は Git 履歴と Pull Request、リリース利用者向けの単版の告知は GitHub Release 本文に記録する。独立した変更履歴 artifact を正本、索引対象、完了条件、fixture 必須 artifact、release governance artifact にしてはならない。現行仕様、現在状態、利用手順は、それぞれの責務正本の現在の本文を更新する。
 
 ビルド履歴、設定変更の監査ログ、運用イベント、状態ファイル、テスト証跡、仕様上定義された GitHub Release 単版の本文入力は、実行結果・操作・検証・公開入力を扱う固有責務であり、開発変更履歴の並行管理へ転用してはならない。Release 本文入力を累積履歴、変更履歴の正本、governance file、配布 asset として管理してはならない。negative control 用の合成入力は、リポジトリ外の隔離された一時 directory 内で検査し、実際の変更履歴を記録・保存しない。
