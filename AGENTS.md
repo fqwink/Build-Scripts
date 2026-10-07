@@ -243,12 +243,27 @@ Pull Request 本文には、少なくとも以下を記載する。
 
 - `Summary`
 - `Verification`
+- 開発自動化の変更または正式検証では、[開発 GitHub Actions 作業手順](#agents-development-actions) による適用範囲と、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の開発 Actions 証跡への記録先。文書策定だけの場合は、運用適用を行っていないこと。
 - 競合防止確認
 - 仕様全般、重複箇所、問題点、改善点、または全件洗い出しを扱う Pull Request では、[`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](docs/SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](docs/SPEC.md#spec-deficiency-batch-closure-contract) に基づく分類結果、責務正本、処置結果、category routing 結果、`inspection_scope`、`inspection_pass_count`、`inspection_pass_summary`、`record_count`、`final_unresolved_count=0`、`test_gap_connection` の適用結果、仕様全般不備 inventory record と batch closure の記録先を同一 Pull Request 本文へ記録する。
 - 未実施の確認がある場合は、その理由
 - 実装変更、検証変更、fixture 変更、test artifact 変更、owner 詳細本文変更、test harness 変更、checker 変更、assertion 変更、または Phase 全体完了判定に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `PR 証跡` と対象証跡行に到達できる記録先、または仕様上対象外である理由を同一 Pull Request 本文へ記録する。
 - テスト関連改善に関わる Pull Request では、[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の `test evidence package`、`test gap inventory / batch closure`、`18 record closure set` に到達できる記録先、最終 open item 件数 `0`、mutation selection の `survived=0`、race trigger の open item `0`、対象外項目の責務正本 anchor を同一 Pull Request 本文へ記録する。
 - Pull Request 本文では、仕様全般不備 inventory schema、仕様全般不備 batch closure schema、テスト方針、完了可否、fixture 証跡 schema、必須 key、記録単位、例外条件を再定義してはならない。必要な場合は、仕様全般不備は [`docs/SPEC.md` ポリシー責務 仕様全般不備 inventory record 固定契約](docs/SPEC.md#spec-deficiency-inventory-record-contract) と [`docs/SPEC.md` ポリシー責務 仕様全般不備 batch closure 固定契約](docs/SPEC.md#spec-deficiency-batch-closure-contract)、テスト証跡は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) への責務名付き Markdown link で参照する。
+
+---
+
+<a id="agents-development-actions"></a>
+**開発 GitHub Actions 作業手順：**
+
+開発自動化を変更する場合、または正式検証を提出する場合は、以下を順に実施する。方針と必須条件は [`docs/SPEC.md` 方針責務 §5.3](docs/SPEC.md#sec-5-3) と [`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](docs/SPEC.md#policy-development-actions)、証跡 schema は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](docs/DETAIL_INDEX.md#cross-test-evidence-route) の開発 Actions 証跡を参照し、本手順で再定義しない。
+
+1. 実在 workflow、対象 ref、trigger、job、runner、権限、secret 利用境界、required check と保護設定を読み取り、責務正本との適用差分を特定する。
+2. workflow 定義 record と適用対象を確認する。変更が必要なファイル、runner、GitHub 設定、実行副作用を個別に提示し、[承認ルール](#agents-approval-rules) の承認済み範囲を確定してから変更・実行する。文書策定と運用適用を混同しない。
+3. ローカル補助確認を行い、承認済みの branch / ref で対象 workflow を実行する。公開・配備を伴う run は承認対象と実行入力の対応を再確認する。
+4. `gh run view`、`gh pr checks` または GitHub API で実際の run / attempt / job と結果を取得し、最新 source SHA、base SHA、tested SHA、実行環境を照合する。集約表示だけでなく対象必須 job と未実行項目を確認する。
+5. 実行証跡を横断テスト証跡共通入口の既存 package と Pull Request の `Verification` へ接続する。失敗・未実行・対象外・障害時例外は各責務正本の record へ接続し、未解消の検証を成功として記載しない。
+6. Pull Request 更新前に対象 SHA と結果を再照合し、検証後のコード・base 更新があれば必要な再実行を行う。運用適用を完了と報告する場合は、workflow / runner / 設定の再取得結果と適用差分の解消を確認する。確認できない項目は未適用・未検証として報告する。
 
 ---
 

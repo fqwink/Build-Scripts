@@ -1416,6 +1416,28 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
 | cross-owner contract 検証 | API / SDK / UI、CLI / API、statefile / archive / security / runner、setup / release / admin の横断境界。 | 呼び出し元 owner、呼び出し先 owner、endpoint / method / command / state path、状態差分、security effect、成功後再取得、失敗時 no mutation、関連 fixture。 | 片側の契約だけを検証している、または collaborator の副作用、security、状態差分、失敗時固定が未確認。 |
 | 未実行・対象外証跡 | 必須検証を実行できない場合、または仕様上対象外とする場合。 | 未実行 command、未実行理由、影響 owner、影響 fixture、再実行条件、対象外にする責務正本 anchor、完了可否への影響。 | 必須検証の未実行理由がない、対象外 anchor がない、または未実行のまま完了扱いにしている。 |
 
+<a id="development-actions-evidence-contract"></a>
+**開発 Actions 証跡固定契約：**
+
+本契約は開発 workflow の定義、実行対象、結果、運用適用状況の記録 schema を所有する。開発基盤の方針・必須条件・例外可否は [`docs/SPEC.md` 方針責務 §5.3](../SPEC.md#sec-5-3) と [`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](../SPEC.md#policy-development-actions)、実行・承認・PR 記録の手順は [`AGENTS.md` 開発 GitHub Actions 作業手順](../../AGENTS.md#agents-development-actions) を参照する。
+
+定義 record は workflow path / revision ごと、実行 record は run id / attempt ごと、適用 record は承認済み適用範囲ごとに作成し、既存 Pull Request の `Verification` へ記録する。検証結果は [test execution evidence matrix 固定契約](#test-execution-evidence-matrix-contract)、該当 [test evidence package 記録先固定契約](#test-evidence-package-record-location-contract) の `record_location` と既存 `execution_evidence_closure` の `evidence_refs` へ接続する。本契約のために独立した履歴ファイル、19 件目の closure item、未作成の checker path を宣言しない。該当 package を使用しない文書策定では対象外範囲・理由・正本 anchor を PR に記録する。
+
+| record / field | 記録形式・照合対象 |
+|----------------|--------------------|
+| 定義 `workflow_ref` / `spec_refs` / `responsible_owner` | 実在 path、定義 commit SHA、責務正本 anchor、開発 workflow の管理責任者。管理責任者を product の owner component と同一概念にしない。 |
+| 定義 `triggers` / `inputs` / `target_refs` | event、branch / path filter、手動・定期・tag 契機、入力型と許容値、検証対象 ref の選択、公開・配備の許可範囲。 |
+| 定義 `jobs` | job id / check 名、matrix 軸と組合せ、依存 job、command、必須・対象外判定と anchor、runner 種別 / group / label、OS / architecture / toolchain、permissions、secret 名と利用 job、timeout、concurrency、failure / retry / cleanup 条件。秘密値は含めない。 |
+| 定義 `dependencies` / `outputs` | Action / reusable workflow の提供元と完全 commit SHA、依存確認、承認参照、更新責任者。artifact / cache の用途、生成 job、検証方法、保存期間、公開・配備先。 |
+| 実行 `workflow_ref` / `run_url` / `run_id` / `run_attempt` / `event` | 定義 record と一致する workflow revision、実在 run URL、run id、正整数 attempt、実際の起動 event。再実行は別 attempt として識別する。 |
+| 実行 `source_sha` / `base_sha` / `tested_sha` | source / 実 checkout commit の 40 文字 lowercase hex。PR merge ref では base SHA も記録し、head・base・tested merge の対応証跡を付す。base がない event は `base_sha=null` として event 根拠を示す。 |
+| 実行 `job_results` | 必須 job / matrix ごとの job id、組合せ、実在 job URL、runner 種別、OS / architecture、runtime version、command、終了 code、実 conclusion、assertion / evidence 参照、未実行理由。起動しなかった job は job URL・終了 code を `null` とし、欠落を success へ置換しない。 |
+| 実行 `gate_result` / `artifact_refs` | 適用対象一覧と最終 gate の job URL / conclusion、対象外の正本 anchor。成果物がある場合は生成 source SHA、run / attempt / job、実在参照、SHA-256 digest、保持期限、公開・配備前の一致確認。 |
+| 実行 `runner_evidence_refs` / `exception` | self-hosted では隔離・起動前確認・cleanup・保守責任者への証跡参照。例外なしは `null`、例外ありは対象、理由、責任者、ユーザー承認参照、代替証跡、UTC 期限、復旧・再実行条件、完了可否への影響。未実行 record は [skip / 未実行証跡固定契約](#test-skip-evidence-contract) へ接続する。 |
+| 適用 `scope` / `configuration_refs` / `differences` / `status` | 承認対象 workflow / runner / GitHub 設定、実設定の再取得証跡、規則ごとの適用差分と処置先。`status` は `document_only`、`pending`、`applied` のいずれか。`applied` は差分 0 件で、対象最新 SHA の実行 record へ到達する場合だけ記録する。 |
+
+実行証跡の照合 case は、定義済み全必須 job 成功・同一 SHA の positive case と、必須 job 欠落、skip / neutral / cancel / timeout、終了 code 隠蔽、旧 SHA、head / base 更新、artifact digest 不一致、未信頼 ref の self-hosted 選択、secret / 権限境界違反、Action の tag 参照、timeout 欠落、cleanup 失敗の negative case を識別する。各 case の入力、期待拒否理由、actual、assertion、実行証跡を対象 workflow の検証 package へ接続する。run URL のみ、全体の緑表示のみ、架空 job URL、未取得の環境情報、到達不能な証跡、または負例を実行せず拒否済みと記載した record は完全な実行証跡にしない。
+
 <a id="test-skip-evidence-contract"></a>
 **skip / 未実行証跡固定契約：**
 
