@@ -253,7 +253,7 @@ draft 作成後、正式公開前に失敗した場合は、作成した draft �
 | release evidence | Git tag、local commit、remote default branch、GitHub Release、asset count、SHA256SUMS、signature、SBOM、再現ビルド比較、download verify を 1 つの release evidence record に記録する。record 不在、asset 不足、checksum 未検証、再現性未確認を成功扱いにしない。 |
 | signature / SBOM | 署名 asset と SBOM asset を追加する場合は、asset 名、生成入力、digest 対象、検証方法、失敗時 error、Release asset count を [`docs/details/release.md` 詳細本文責務 §R3](release.md#release-asset-contract) から [`docs/details/release.md` 詳細本文責務 §R7](release.md#release-acceptance-contract) へ先に追加する。未仕様の placeholder asset を作らない。 |
 | GitHub Actions pinning | release に関わる GitHub Actions は commit SHA pin、最小 permissions、timeout、required checks を証跡化する。workflow の所在は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務、required check の合否は [`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) を参照する。 |
-| governance files | `LICENSE`、`SECURITY.md`、`CONTRIBUTING.md`、`CODEOWNERS`、`CHANGELOG.md` は release governance artifact として実在させ、所在を [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務で管理する。 |
+| governance files | `LICENSE`、`SECURITY.md`、`CONTRIBUTING.md`、`CODEOWNERS` を release governance artifact として実在させ、所在を [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務で管理する。変更記録の扱いは [`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](../SPEC.md#policy-change-history-artifact-ban) を参照する。 |
 | recovery procedure | stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順は、該当 owner 詳細本文と fixture evidence から到達できることを release readiness の条件に含める。 |
 
 Phase 13 の release governance artifact は以下の最低内容を満たす。file の法務・運用判断そのものは本文書で再定義しないが、空 file、placeholder、別文書への丸投げだけの file は `phase13_release_evidence_open_count` に計上する。
@@ -264,7 +264,6 @@ Phase 13 の release governance artifact は以下の最低内容を満たす。
 | `SECURITY.md` | supported versions、vulnerability report channel、secret leakage report handling、expected response policy。 |
 | `CONTRIBUTING.md` | branch / PR 方針への参照、spec-first requirement、test evidence requirement、Phase 単位実装 requirement。 |
 | `CODEOWNERS` | 仕様文書、Go owner package、admin static artifact、workflow、release governance file の reviewer ownership。 |
-| `CHANGELOG.md` | release version、date placeholder 禁止、change category、breaking / security / migration note、GitHub Release note 接続。 |
 
 Phase 13 の `records/release.jsonl` は release evidence 1 件につき `release_id`、`git_tag`、`commit_sha`、`asset_names`、`sha256sums_digest`、`signature_verified`、`sbom_verified`、`reproducible_build_verified`、`download_verified`、`governance_files_verified` を持つ。未実行項目を `true` にしてはならない。
 

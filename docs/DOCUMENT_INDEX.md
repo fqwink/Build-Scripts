@@ -8,6 +8,9 @@
 | 確認対象 | 参照先 |
 |----------|--------|
 | 作業ルール | [`AGENTS.md`](../AGENTS.md) |
+| 開発 GitHub Actions 方針・ポリシーの所在 | [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3)、[`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions) |
+| 開発 GitHub Actions 作業手順の所在 | [`AGENTS.md` 開発 GitHub Actions 作業手順](../AGENTS.md#agents-development-actions) |
+| 開発 Actions 定義・実行・適用証跡の所在 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)、[`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) |
 | 方針、ポリシー、状態語彙、状態遷移条件 | [`docs/SPEC.md`](SPEC.md) |
 | 実装 artifact と各機能の現在状態、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
@@ -109,7 +112,6 @@
 | [`SECURITY.md`](../SECURITY.md) | 実在 |
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | 実在 |
 | [`CODEOWNERS`](../CODEOWNERS) | 実在 |
-| [`CHANGELOG.md`](../CHANGELOG.md) | 実在 |
 
 <a id="詳細仕様本文の所在"></a>
 **詳細仕様本文・証跡所在：**
@@ -317,7 +319,6 @@
 | [`SECURITY.md`](../SECURITY.md) | release governance artifact | 実在 |
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | release governance artifact | 実在 |
 | [`CODEOWNERS`](../CODEOWNERS) | release governance artifact | 実在 |
-| [`CHANGELOG.md`](../CHANGELOG.md) | release governance artifact | 実在 |
 
 <a id="phase-14-target-paths"></a>
 **Phase 14 target path 所在：**

@@ -1585,6 +1585,7 @@ func TestPhase13ImplementationAlignmentQualityEvidence(t *testing.T) {
 	phase13RequireOwnerPackages(t)
 	phase13RequireDocumentIndexRows(t)
 	phase13RequireGovernanceFiles(t)
+	requireChangeHistoryArtifactBoundary(t)
 	phase13RequireZeroExternalDependencies(t)
 
 	effects := phase13ReadCounterFile(t, filepath.Join(root, "expected", "effects.json"))
@@ -6192,11 +6193,264 @@ func phase13RequireDocumentIndexRows(t *testing.T) {
 	}
 }
 
+func TestChangeHistoryArtifactBoundary(t *testing.T) {
+	t.Parallel()
+	requireChangeHistoryArtifactBoundary(t)
+}
+
+func TestChangeHistoryArtifactBoundaryControls(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		"CHANGELOG.md", "docs/cHaNgElOg.TXT", "archive/.history.JSON",
+		"templates/CHANGE-LOG.template.yaml", "releases/RELEASE_NOTES.v1.txt",
+		"metadata/CHANGES", "hidden/.private/HISTORY-2026.md", "docs/変更履歴.rst",
+		"nested/CHANGE.LOG.xml", "notes/リリースノート.txt",
+		"notes/RELEASENOTES.md", "metadata/CHANGE_HISTORY.json",
+		"updates/更新_履歴.2026.txt", "releases/リリース履歴.md",
+		"templates/.release notes.template.md",
+		"docs/CHANGELOG*.md", "releases/RELEASE_NOTES?.txt",
+		"templates/.HISTORY[0-9].md",
+	} {
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			fullPath := filepath.Join(root, filepath.FromSlash(path))
+			if err := os.MkdirAll(filepath.Dir(fullPath), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(fullPath, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			got, err := changeHistoryArtifactPaths(root)
+			if err != nil || !phase11StringSlicesEqual(got, []string{path}) {
+				t.Fatalf("forbidden path must be detected: path=%s got=%v err=%v", path, got, err)
+			}
+		})
+	}
+	t.Run("directory-and-symlink", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(root, "exports", "UPDATE_HISTORY"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "notes.md"), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink("notes.md", filepath.Join(root, "release-history.txt")); err != nil {
+			t.Fatal(err)
+		}
+		got, err := changeHistoryArtifactPaths(root)
+		want := []string{"exports/UPDATE_HISTORY", "release-history.txt"}
+		if err != nil || !phase11StringSlicesEqual(got, want) {
+			t.Fatalf("forbidden directory and symlink must be detected: got=%v err=%v", got, err)
+		}
+	})
+	t.Run("functional-records-and-git", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		for _, path := range []string{".git/CHANGELOG", ".build_history", "state/config_changes.jsonl", "state/events.jsonl", "release/notes.md"} {
+			fullPath := filepath.Join(root, filepath.FromSlash(path))
+			if err := os.MkdirAll(filepath.Dir(fullPath), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(fullPath, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		got, err := changeHistoryArtifactPaths(root)
+		if err != nil || len(got) != 0 {
+			t.Fatalf("functional records and Git metadata must pass: got=%v err=%v", got, err)
+		}
+	})
+	t.Run("missing-root", func(t *testing.T) {
+		t.Parallel()
+		if _, err := changeHistoryArtifactPaths(filepath.Join(t.TempDir(), "missing")); err == nil {
+			t.Fatal("scan failure must not pass")
+		}
+	})
+	t.Run("non-directory-root", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		file := filepath.Join(root, "notes.md")
+		if err := os.WriteFile(file, nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+		link := filepath.Join(root, "linked-root")
+		if err := os.Symlink(root, link); err != nil {
+			t.Fatal(err)
+		}
+		for _, path := range []string{file, link, link + string(os.PathSeparator)} {
+			if _, err := changeHistoryArtifactPaths(path); err == nil || !strings.Contains(err.Error(), "scan root must be a directory") {
+				t.Fatalf("non-directory scan root must fail: path=%s err=%v", path, err)
+			}
+		}
+	})
+	t.Run("artifact-declarations", func(t *testing.T) {
+		t.Parallel()
+		for _, tc := range []struct {
+			name      string
+			data      string
+			wantError string
+		}{
+			{"invalid-json", `{`, "parse governance scope"},
+			{"include-type", `{"include":true,"release_artifacts":["LICENSE"]}`, "parse governance scope"},
+			{"release-artifacts-type", `{"include":["docs/**/*.md"],"release_artifacts":"LICENSE"}`, "parse governance scope"},
+			{"missing-include", `{"release_artifacts":["LICENSE"]}`, "include must be a non-empty string array"},
+			{"null-include", `{"include":null,"release_artifacts":["LICENSE"]}`, "include must be a non-empty string array"},
+			{"empty-include", `{"include":[],"release_artifacts":["LICENSE"]}`, "include must be a non-empty string array"},
+			{"missing-release-artifacts", `{"include":["docs/**/*.md"]}`, "release_artifacts must be a non-empty string array"},
+			{"null-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":null}`, "release_artifacts must be a non-empty string array"},
+			{"empty-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":[]}`, "release_artifacts must be a non-empty string array"},
+			{"include-item-type", `{"include":[1],"release_artifacts":["LICENSE"]}`, "parse governance scope"},
+			{"null-include-item", `{"include":[null],"release_artifacts":["LICENSE"]}`, "include must not contain empty entries"},
+			{"blank-include-item", `{"include":["  "],"release_artifacts":["LICENSE"]}`, "include must not contain empty entries"},
+			{"empty-release-artifacts-item", `{"include":["docs/**/*.md"],"release_artifacts":[""]}`, "release_artifacts must not contain empty entries"},
+			{"forbidden-include", `{"include":["docs/**/*.md","CHANGELOG.md"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: CHANGELOG.md"},
+			{"forbidden-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["LICENSE","CHANGELOG.md"]}`, "forbidden change history artifact declaration in release_artifacts: CHANGELOG.md"},
+			{"nested-include", `{"include":["templates/HISTORY/**"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: templates/HISTORY/**"},
+			{"hidden-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["hidden/.release_notes.json"]}`, "forbidden change history artifact declaration in release_artifacts: hidden/.release_notes.json"},
+			{"duplicate-include", `{"include":["CHANGELOG.md"],"include":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, `duplicate key "include"`},
+			{"duplicate-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["CHANGELOG.md"],"release_artifacts":["LICENSE"]}`, `duplicate key "release_artifacts"`},
+			{"escaped-duplicate-include", `{"include":["CHANGELOG.md"],"incl\u0075de":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, `duplicate key "include"`},
+			{"include-case-shadow", `{"include":["CHANGELOG.md"],"Include":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, "governance scope must use canonical key include"},
+			{"release-artifacts-case-shadow", `{"include":["docs/**/*.md"],"release_artifacts":["CHANGELOG.md"],"Release_Artifacts":["LICENSE"]}`, "governance scope must use canonical key release_artifacts"},
+			{"noncanonical-include", `{"INCLUDE":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, "governance scope must use canonical key include"},
+			{"noncanonical-release-artifacts", `{"include":["docs/**/*.md"],"RELEASE_ARTIFACTS":["LICENSE"]}`, "governance scope must use canonical key release_artifacts"},
+			{"metadata-fields", `{"phase":"Phase 13","owner_packages":["release"],"include":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, ""},
+			{"glob-include", `{"include":["docs/CHANGELOG*.md"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: docs/CHANGELOG*.md"},
+			{"glob-release-artifact", `{"include":["docs/**/*.md"],"release_artifacts":["releases/RELEASE_NOTES?.txt"]}`, "forbidden change history artifact declaration in release_artifacts: releases/RELEASE_NOTES?.txt"},
+			{"glob-directory", `{"include":["templates/.HISTORY[0-9]/**"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: templates/.HISTORY[0-9]/**"},
+			{"general-and-functional-patterns", `{"include":["docs/**/*.md","components/*/*.go",".build_history*","state/config_changes?.jsonl"],"release_artifacts":["LICENSE","release/notes[0-9].md"]}`, ""},
+			{"functional-records", `{"include":["docs/**/*.md",".build_history","state/config_changes.jsonl"],"release_artifacts":["LICENSE","notes.md"]}`, ""},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				err := validateChangeHistoryArtifactScope([]byte(tc.data))
+				if tc.wantError == "" {
+					if err != nil {
+						t.Fatalf("functional artifact declarations must pass: %v", err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+					t.Fatalf("invalid artifact declarations: want error containing %q, got %v", tc.wantError, err)
+				}
+			})
+		}
+	})
+}
+
+func requireChangeHistoryArtifactBoundary(t *testing.T) {
+	t.Helper()
+	paths, err := changeHistoryArtifactPaths(".")
+	if err != nil {
+		t.Fatalf("scan change history artifacts: %v", err)
+	}
+	if len(paths) != 0 {
+		t.Fatalf("forbidden change history artifacts: %v", paths)
+	}
+	path := "testdata/phase13/implementation-alignment-quality/input/scope.json"
+	if err := validateChangeHistoryArtifactScope([]byte(phase11MustReadText(t, path))); err != nil {
+		t.Fatalf("%s: %v", path, err)
+	}
+}
+
+func validateChangeHistoryArtifactScope(data []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := phase16CheckJSONValueForDuplicateKeys(decoder); err != nil {
+		return fmt.Errorf("parse governance scope keys: %w", err)
+	}
+	var scope map[string]json.RawMessage
+	if err := json.Unmarshal(data, &scope); err != nil {
+		return fmt.Errorf("parse governance scope: %w", err)
+	}
+	for _, name := range []string{"include", "release_artifacts"} {
+		for key := range scope {
+			if key != name && strings.EqualFold(key, name) {
+				return fmt.Errorf("governance scope must use canonical key %s", name)
+			}
+		}
+		var entries []string
+		if raw, ok := scope[name]; ok {
+			if err := json.Unmarshal(raw, &entries); err != nil {
+				return fmt.Errorf("parse governance scope %s: %w", name, err)
+			}
+		}
+		if len(entries) == 0 {
+			return fmt.Errorf("%s must be a non-empty string array", name)
+		}
+		for _, entry := range entries {
+			if strings.TrimSpace(entry) == "" {
+				return fmt.Errorf("%s must not contain empty entries", name)
+			}
+			if changeHistoryArtifactPath(entry) {
+				return fmt.Errorf("forbidden change history artifact declaration in %s: %s", name, entry)
+			}
+		}
+	}
+	return nil
+}
+
+func changeHistoryArtifactPaths(root string) ([]string, error) {
+	root = filepath.Clean(root)
+	var paths []string
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == root {
+			if !entry.IsDir() {
+				return fmt.Errorf("scan root must be a directory: %s", root)
+			}
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		if rel == ".git" {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if changeHistoryArtifactPath(entry.Name()) {
+			paths = append(paths, filepath.ToSlash(rel))
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+		}
+		return nil
+	})
+	sort.Strings(paths)
+	return paths, err
+}
+
+func changeHistoryArtifactPath(path string) bool {
+	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+		if index := strings.IndexAny(part, "*?["); index >= 0 {
+			part = part[:index]
+		}
+		fields := strings.FieldsFunc(strings.ToLower(part), func(r rune) bool {
+			return r == '.' || r == '-' || r == '_' || r == ' '
+		})
+		var prefix string
+		for _, field := range fields {
+			prefix += field
+			switch prefix {
+			case "changelog", "changes", "history", "releasenotes", "changehistory", "updatehistory", "releasehistory", "変更履歴", "更新履歴", "リリース履歴", "リリースノート":
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func phase13RequireGovernanceFiles(t *testing.T) {
 	t.Helper()
 
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
-	for _, file := range []string{"LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODEOWNERS", "CHANGELOG.md"} {
+	for _, file := range []string{"LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODEOWNERS"} {
 		data, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatalf("Phase 13 governance file %s must exist: %v", file, err)
