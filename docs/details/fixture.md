@@ -4917,6 +4917,42 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 追加管理 API fixture の `manifest.json` は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) に従う。`section` は対象 [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、または [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) のいずれかを固定文字列で持つ。複数責務を横断する fixture は主 owner を 1 件だけ `owner_component` に置き、残りを `collaborator_components`、`components`、`references` に記録する。`assertions` は実在する expected file と 1 対 1 で対応させ、fixture 実行時に使わない expected file は作成せず、`not_applicable` に理由を置く。ただし `expected/events.json` は protocol event evidence として fixture 名別 expected 固定表で要求し、`manifest.json.assertions` の値としては追加しない。
 
+<a id="oidc-fixed-vector"></a>
+**OIDC固定暗号vector：** 下記JSONはtest専用の公開RSA鍵と固定署名tokenであり、実credentialではない。秘密鍵は保存せず、署名生成に使ったGo標準rsa実装から独立したverify結果とPKCE期待値を `TestAdditionalSpecificationVectors` で確認する。PKCE値は [RFC7636 Appendix B](https://www.rfc-editor.org/rfc/rfc7636#appendix-B) と照合する。JWK/claimsは [security詳細本文責務](security.md#oidc-code-flow-contract) の入力として固定する。暗号vector成功はHTTP flow/user lookup/TOTP完了の実装証跡ではない。
+
+checkerは固定JSONのunknown key/duplicate key/invalid UTF-8/trailing JSONを拒否し、positive vectorとPKCE/key/signature/algorithm/expiryの5負例を比較する。assertion IDは `security.spec-vector.presence`、`security.spec-vector.schema`、`security.spec-vector.positive`、`security.spec-vector.negative.<case>`。checker実変異はPKCE照合skip/RSA検証skip/expiry境界変更/unknown key許可/alg検証skip/duplicate key許可/invalid UTF-8許可の7件を隔離copyへ1件ずつ適用し、コンパイル成功と該当assertion failureを確認する。常時失敗・compile errorをkillに数えない。各変異復元後のbaselineと元source hash一致を必須とする。
+
+```json
+{"challenge":"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZpeHR1cmUta2V5LTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2lkLmV4YW1wbGUudGVzdCIsImF1ZCI6ImFkbGFpcmUtY2ktdGVzdCIsInN1YiI6InN1YmplY3QtMSIsIm5vbmNlIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc2NzMxMjAwMCwiZXhwIjoxNzY3MzEyMzAwfQ.X2W2K6he5sffLcJcpNervh9Wi9iWKu_dOFG93-rGQHYimNvlP70GSbb6kplAcYFZW-PgHyvPt5wvBQPZSbop4FOdX62tQ5Gm2E0FUb0sZi41QQ19P7LoJaXEWzLv65-uoXOL4SMsWx1_O1Weiji8Stjjp_mJXAL3uGYebdXKwD6-MG18a7w-rusuFlczGC-M_TSZ3UoxSOO9lMkDRvZDt6IYdZdbHOQwoIuoIM0rzMVWJuGF85rSsEhw27Fc50Dwu1U0nC0_pAvUwNJW6110kLSCLaVc0l04tTf5aIikYp1YhdDz9H671CsiHZ09IZhw8UGkuAd3Jg29mOR3mdOxGQ","jwk":{"alg":"RS256","e":"AQAB","kid":"fixture-key-1","kty":"RSA","n":"shqEww903XVwbq-GRoFm3JHFSfCtXB60fO44g52dnhggYLIw7N-5AXIz0HoE_7Oh140kNa687X8Wc7FvtUtLaG1Ecb_ug8b4HbjWDTuBgxzPG0mjDdqqFRGUG-RJ-C3k6_7i-dnjcPpmVXnTCxzVmIY8sX23pjdW03ClS_hbAtNmLrzVE07dW_YJCEBTBxRTRZwSgVUEqcf17XXHK3UJduJbRELlMwp0h8N-j3fcOvxhFp0GS-sJaJiuYXLC8F4hwiWVCHi5qspQcGAyihtVyC8Nzp04dDMty9287UxZaGhB2hTtrUW6aYkEzht_-WvWfB0RdA6JSe-pXTEd9S2ePQ","use":"sig"},"now":"2026-01-02T00:00:00Z","verifier":"dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"}
+```
+
+HTTP fixtureはissuer=`https://id.example.test`、client_id=`adlaire-ci-test`、redirect_uri=`https://admin.example.test/`、provider_id=`fixture`、flow開始/now=上記now、nonceはtoken内の値、subject=`subject-1`を使用する。DNS/HTTPSはin-process fake adapterで公開IP `192.0.2.1` へ写像し、実DNS/HTTPを実行しない（test addressの許可はfake内だけ）。discoveryは同originの `/authorize`、`/token`、`/jwks`、code/S256/RS256対応を返す。token fakeは200 `{"id_token":<上記固定token>,"token_type":"Bearer","access_token":"fixture-unused"}`、JWKSは上記key1件。userはid=`usr_00000000000000000000000001`、active/admin、provider_id/subject一致、TOTP無効。成功はsession1件・user login_count+1・旧credential/TOTP file不変、外部call順discovery→jwks→token各1回を比較する。
+
+| 具体variant | 入力差分 / expected |
+|---|---|
+| PKCE | verifier固定→challenge完全一致。SHA256省略/plain/SHA512変異をreject。 |
+| signature | JWTのsignature先頭byteをxor1、またはpayloadのsubject-1をsubject-2へ変更して再署名なし→401/session0。 |
+| binding | 完了cookieを別の32byte値→401/token call0、正しいcookieで再完了は成功。stateは有効値の末尾1文字変更→401/token call0。 |
+| expiry/replay | now=flow開始+300秒→401/token call0。成功後同じstate/codeで再完了→401/token call1のまま。 |
+| claims/key | issuer末尾slash・aud違い・nonce違い・kid違い・alg=noneを各独立に投入→401。改変claimはtest専用署名fakeでも署名検証をskipせず、各claim変異専用署名vectorの追加を必要とする。 |
+| upstream | token fake503/timeout/262145byte/redirect→502、flow消費済み、session0、secret/raw body非露出。 |
+
+<a id="inhouse-iac-fixture-contract"></a>
+**内製IaC検証入口：** 将来rootは `testdata/setup/inhouse-iac/`、主owner setup、collaborator statefile/security、実装checkerは `components/setup/setup_test.go`。実装PRでは既存phase13 setup jobからこのcheckerへ到達させ、[開発Actions証跡](#development-actions-evidence-contract) のworkflow定義を別途承認して更新する。現在のworkflowを実行済みIaC検証とみなさない。manifest/CLI/stateは [setup詳細本文責務](setup.md#inhouse-iac-contract)、schemaは [statefile詳細本文責務](statefile.md#inhouse-iac-state)。
+
+共通入力manifestは `{"schema_version":1,"provider":"existing-vps-v1","target_id":"fixture-vps-1","resources":[{"id":"api","type":"service","unit":"adlaire-cicd-api.service","active":true,"enabled":true}]}`。clock=`2026-01-02T00:00:00Z`、identity.target_id=`fixture-vps-1`、systemctl初期観測はloaded/inactive/disabled。clock/command/lock/write/fsyncをfake順序制御し実root/systemctl/SSHを起動しない。success planのobservedは `[{"id":"api","type":"service","before":{"active":false,"enabled":false}}]`、changesは `[{"id":"api","action":"set_service","after":{"active":true,"enabled":true}}]`、期限は `2026-01-02T00:05:00Z`、digestは正本canonical algorithmで算出した固定入力値と独立再計算を比較する。
+
+| case | fake入力 / 必須expected |
+|---|---|
+| plan/apply | 観測→plan→同値再観測2回→enable→start→観測active/enabled。exit0、最終step applied/status succeeded、順序完全比較。 |
+| noop/drift | 初期active/enabled→changes=[]/drifted=false、全state byte/mtime不変、command変更0。 |
+| stale | plan後active=true/enabled=falseへ第三者変更、またはclock期限同秒→exit3/stale_plan、intent/変更command0。 |
+| rollback | success後after一致→stop→disable→inactive/disabled、rolled_back。第三者changed configは上書きせずexit5。 |
+| crash | intent確定前、enable後/start前、start後/観測前、applied保存前でそれぞれ停止→recoverはbefore/after/混在を区別、混在だけrecovery_required、command再発行0。 |
+| unsafe | type=vm、provider=terraform、unit=sshd.service、重複id、symlink、target違い、unknown key→exit2、state write/command0。 |
+
+各caseはresponse/state/effects/security/orderを共通manifestへ接続する。必須mutationはdigest照合skip、expiry<=を<へ変更、再観測skip、intent保存順反転、第三者変更上書き、未知type受理。raceは同じplanを2processでapplyするscheduleで一方だけが変更を開始すること、lock解放・全fake process終了を検証する。具体config-resource payloadとcrash/fault別expected実体が全件揃うまでIaC仕様成熟度を昇格しない。
+
 <a id="additional-management-concrete-oracles"></a>
 **追加管理APIの具体oracle：** 次のcaseは上の既存fixture群へ含める将来の実行入力/expectedであり、現時点の文書checker成功を製品機能の合格へ換算しない。共通clockは `2026-01-02T00:00:00Z`。Q1/Q2は異なるschema-valid queue idの記号、B1/B2/B3は異なるschema-valid build idの記号とし、fixture実体で固定文字列へ束縛する。各caseのtime/entropy/lock/I/Oはfakeで順序制御し、実sleepで競合を待たない。
 

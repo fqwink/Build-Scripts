@@ -3,7 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto"
+	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -12,6 +15,7 @@ import (
 	"go/token"
 	"io"
 	"io/fs"
+	"math/big"
 	"net/url"
 	"os"
 	"os/exec"
@@ -124,6 +128,156 @@ func specificationReferenceIntegrity(documents map[string]string, exists func(st
 				}
 			}
 		}
+	}
+	return nil
+}
+
+type additionalOIDCVector struct {
+	Challenge string `json:"challenge"`
+	IDToken   string `json:"id_token"`
+	JWK       struct {
+		Algorithm string `json:"alg"`
+		Exponent  string `json:"e"`
+		ID        string `json:"kid"`
+		Type      string `json:"kty"`
+		Modulus   string `json:"n"`
+		Use       string `json:"use"`
+	} `json:"jwk"`
+	Now      string `json:"now"`
+	Verifier string `json:"verifier"`
+}
+
+func TestAdditionalSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	document := phase11MustReadText(t, "docs/details/fixture.md")
+	pattern := regexp.MustCompile("(?s)<a id=\"oidc-fixed-vector\"></a>.*?```json\\n(.*?)\\n```")
+	match := pattern.FindStringSubmatch(document)
+	if len(match) != 2 {
+		t.Fatal("security.spec-vector.presence: missing fixed JSON vector")
+	}
+	vector, err := additionalDecodeOIDCVector(match[1])
+	if err != nil {
+		t.Fatalf("security.spec-vector.schema: %v", err)
+	}
+	for _, input := range []string{
+		strings.Replace(match[1], "{", `{"unknown":true,`, 1),
+		strings.Replace(match[1], "{", `{"now":"duplicate",`, 1),
+		strings.Replace(match[1], "dBjft", string([]byte{0xff})+"dBjft", 1),
+		match[1] + " {}",
+	} {
+		if _, err := additionalDecodeOIDCVector(input); err == nil {
+			t.Fatal("security.spec-vector.schema: invalid input accepted")
+		}
+	}
+	if err := additionalVerifyOIDCVector(vector); err != nil {
+		t.Fatalf("security.spec-vector.positive: %v", err)
+	}
+	for _, control := range []struct {
+		name   string
+		change func(*additionalOIDCVector)
+		want   string
+	}{
+		{"pkce", func(v *additionalOIDCVector) { v.Challenge += "x" }, "pkce"},
+		{"key", func(v *additionalOIDCVector) { v.JWK.Exponent = "Aw" }, "key"},
+		{"signature", func(v *additionalOIDCVector) {
+			parts := strings.Split(v.IDToken, ".")
+			signature, err := base64.RawURLEncoding.Strict().DecodeString(parts[2])
+			if err != nil {
+				t.Fatal(err)
+			}
+			signature[0] ^= 1
+			parts[2] = base64.RawURLEncoding.EncodeToString(signature)
+			v.IDToken = strings.Join(parts, ".")
+		}, "signature"},
+		{"algorithm", func(v *additionalOIDCVector) {
+			parts := strings.Split(v.IDToken, ".")
+			parts[0] = base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none","kid":"fixture-key-1","typ":"JWT"}`))
+			v.IDToken = strings.Join(parts, ".")
+		}, "header"},
+		{"expiry", func(v *additionalOIDCVector) { v.Now = "2026-01-02T00:05:30Z" }, "claims"},
+	} {
+		t.Run(control.name, func(t *testing.T) {
+			changed := vector
+			control.change(&changed)
+			if err := additionalVerifyOIDCVector(changed); err == nil || err.Error() != control.want {
+				t.Fatalf("security.spec-vector.negative.%s: expected %s, actual %v", control.name, control.want, err)
+			}
+		})
+	}
+}
+
+func additionalDecodeOIDCVector(input string) (additionalOIDCVector, error) {
+	var vector additionalOIDCVector
+	if !utf8.ValidString(input) {
+		return vector, fmt.Errorf("invalid UTF-8")
+	}
+	if err := phase16CheckJSONValueForDuplicateKeys(json.NewDecoder(strings.NewReader(input))); err != nil {
+		return vector, err
+	}
+	decoder := json.NewDecoder(strings.NewReader(input))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&vector); err != nil {
+		return vector, err
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		return vector, fmt.Errorf("trailing input")
+	}
+	return vector, nil
+}
+
+// This checks the published oracle, not the future OIDC HTTP implementation.
+func additionalVerifyOIDCVector(v additionalOIDCVector) error {
+	digest := sha256.Sum256([]byte(v.Verifier))
+	if len(v.Verifier) != 43 || base64.RawURLEncoding.EncodeToString(digest[:]) != v.Challenge {
+		return fmt.Errorf("pkce")
+	}
+	decode := base64.RawURLEncoding.Strict().DecodeString
+	n, err := decode(v.JWK.Modulus)
+	if err != nil || len(n) < 256 || len(n) > 512 || v.JWK.Exponent != "AQAB" || v.JWK.Type != "RSA" || v.JWK.Algorithm != "RS256" || v.JWK.Use != "sig" {
+		return fmt.Errorf("key")
+	}
+	key := &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: 65537}
+	parts := strings.Split(v.IDToken, ".")
+	if len(parts) != 3 {
+		return fmt.Errorf("header")
+	}
+	header, err := decode(parts[0])
+	if err != nil {
+		return fmt.Errorf("header")
+	}
+	var h struct {
+		Algorithm string `json:"alg"`
+		ID        string `json:"kid"`
+		Type      string `json:"typ"`
+	}
+	d := json.NewDecoder(bytes.NewReader(header))
+	d.DisallowUnknownFields()
+	if d.Decode(&h) != nil || h.Algorithm != "RS256" || h.ID != v.JWK.ID || h.Type != "JWT" {
+		return fmt.Errorf("header")
+	}
+	signature, err := decode(parts[2])
+	if err != nil {
+		return fmt.Errorf("signature")
+	}
+	signed := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
+	if rsa.VerifyPKCS1v15(key, crypto.SHA256, signed[:], signature) != nil {
+		return fmt.Errorf("signature")
+	}
+	payload, err := decode(parts[1])
+	if err != nil {
+		return fmt.Errorf("claims")
+	}
+	var c struct {
+		Issuer   string `json:"iss"`
+		Audience string `json:"aud"`
+		Subject  string `json:"sub"`
+		Nonce    string `json:"nonce"`
+		Issued   int64  `json:"iat"`
+		Expires  int64  `json:"exp"`
+	}
+	now, err := time.Parse(time.RFC3339, v.Now)
+	if err != nil || json.Unmarshal(payload, &c) != nil || c.Issuer != "https://id.example.test" || c.Audience != "adlaire-ci-test" || c.Subject != "subject-1" || c.Nonce != strings.Repeat("A", 43) || c.Issued != 1767312000 || c.Expires != 1767312300 || now.Unix() >= c.Expires+30 {
+		return fmt.Errorf("claims")
 	}
 	return nil
 }

@@ -457,7 +457,7 @@ Phase 20 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状�
 
 Phase 20 は、Terraform 的な infrastructure manifest、plan、apply、rollback、drift detection、provider operation boundary を内製 IaC として扱う後続 Phase である。Terraform、外部 IaC tool、外部 provider SDK を production 実装依存として採用する前提で仕様化してはならない。
 
-Phase 20 は Phase 18 完了前に仕様全般策定を進めてよい。ただし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示されるまで、実装着手、実装 PR、完了判定を行ってはならない。Phase 20 の owner component、詳細本文、fixture、required workflow、target path は未確定であり、実装可能な詳細仕様入口として扱ってはならない。
+Phase 20の主ownerはsetup、collaboratorはstatefile/security/fixture。採用resource/provider範囲・manifest/plan/apply/drift/rollback/recoverは [setup詳細本文責務](details/setup.md#inhouse-iac-contract)、保存型は [statefile詳細本文責務](details/statefile.md#inhouse-iac-state)、検証case/workflow入口は [fixture証跡責務](details/fixture.md#inhouse-iac-fixture-contract)、実装/未作成artifact所在は [DOCUMENT_INDEX索引責務](DOCUMENT_INDEX.md#future-management-artifact-location)。成熟度とactive Phaseは [ROADMAP状態・計画責務](ROADMAP.md#roadmap-phase-plan) で判断し、入口の具体化だけを着手許可にしない。
 
 <a id="0f-仕様策定完了チェック"></a>
 **仕様策定完了条件の参照：**

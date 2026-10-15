@@ -351,3 +351,6 @@ refresh/retry/cancel/downloadは既存管理UIのicon button style、accessible 
 | overflow | `pre` は内部 scroll を許可し、通常 text、label、button text、field text は親要素外へ不可視にはみ出さない。 |
 
 [`admin/index.html`](../admin/index.html) の inline CSS は、[標準管理 UI 視覚契約](#admin-ui-visual-contract) の token、selector、視覚値を実装しなければならない。視覚値を変更する場合は、先に [`docs/DESIGN.md` デザイン責務](DESIGN.md) を改訂する。
+
+<a id="status-badge-visual-contract"></a>
+**管理API status badge視覚契約：** 寸法は120×20px、viewBox=`0 0 120 20`、角丸なし。左領域x=0..65、右領域x=66..119、左背景`#555555`、文字`#ffffff`、font-family=`Verdana,Arial,sans-serif`、font-size=10px、letter-spacing=0。左textは`Adlaire CI`、x=33/y=14、右textはstatus、x=93/y=14、両方text-anchor=middle。右背景はsuccess=`#2e7d32`、failure=`#c62828`、running=`#1565c0`、skipped=`#6d6d6d`、unknown=`#455a64`。shadow/gradient/animation/外部fontは使用しない。aria-labelは`Adlaire CI: {status}`、role=img。status導出・HTTP・動的値の禁止境界は [api詳細本文責務](details/api.md#sec-27-56) を参照する。

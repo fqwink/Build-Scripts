@@ -56,6 +56,8 @@ Phase の実装単位、禁止事項、着手条件、完了判定方針は [`do
 | Phase 18 | VPS Pull Bootstrap。作成済み VPS に Adlaire CI の CI 実行基盤と将来 CD 基盤の受け口を導入し、Phase 17 の試験本番VPS 前提、bootstrap session、bootstrap script artifact、topology role、source channel、bootstrap artifact health、bootstrap runtime flow、bootstrap update / rollback drill、bootstrap 中 issue、仕様先行バグ修正、再検証、secret / destructive operation 境界、document drift の対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 18 VPS Pull Bootstrap 参照](DETAIL_INDEX.md#phase-18-vps-pull-bootstrap-entry) を参照する。 | 実装済み | Phase 17 |
 | Phase 19 | 内製 CI/CD 強化。GitHub Actions をリポジトリ検証と required check の標準基盤として使用しつつ、Adlaire CI の内製 CI 実行、内製 CD、deploy、rollback、release verification、required check 証跡を同一 Phase で強化する。対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 内製 CI/CD 強化参照](DETAIL_INDEX.md#phase-19-inhouse-cicd-entry) を参照する。 | 仕様化済み・未実装 | Phase 18 |
 | Phase 20 | 内製 IaC。Terraform 的な infrastructure plan / apply / rollback / drift detection / provider operation boundary を、外部 IaC tool 依存ではなく Go 標準ライブラリと内製 manifest で扱う後続 Phase とする。対象入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 20 内製 IaC 参照](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) を参照する。 | 改訂予定 | Phase 19 |
+| Phase 21 | 既存実行profileの追加管理機能全体。multi-user/RBAC/OIDC、追加管理API §27.48〜§27.70、管理UI配布/配信、builder cache、SDK/UI、状態移行、横断fixtureを一体で扱う。実装PRは全ownerを同一branchへまとめ、Phase19 namespaceの仕様・状態とは独立に照合する。 | 改訂予定 | Phase 20 |
+| Phase 22 | エックスサーバVPSの限定受入検証。既存VPS・provider API非使用の採用範囲を [本番検証詳細本文責務](details/production-validation.md#xserver-vps-adoption-contract) で確認する。実機操作は別承認対象。 | 改訂予定 | Phase 21 |
 
 <a id="phase-19-planning-scope"></a>
 **Phase 19 策定対象の現在割当：**
@@ -109,11 +111,10 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 
 | 範囲 | 未完了理由 / 判断先 |
 |---|---|
-| Phase20 | 採用resource集合、owner、provider操作境界と復旧契約が未確定。[Phase20詳細入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry)。 |
-| multi-user / RBAC / 外部認証 | legacy単一管理者からの移行、API tokenのuser紐付け、user別TOTP、OIDC開始/完了と鍵検証の全契約が未固定。[security詳細本文責務](details/security.md#sec-27-48)。 |
-| 複数project管理 | repository refの入力文法、実行対象との対応、projectをまたぐ権限境界が未固定。[statefile詳細本文責務](details/statefile.md#sec-22-0d)。 |
-| Webhook手動再送 | dropped判定は保存schemaに対応しているが、再送受付のdurable record、再起動時の不確定送信照合、payload再構成可能eventの閉じた集合が未固定。[API詳細本文責務](details/api.md#sec-27-70)。 |
-| 追加機能全体 | 後続Phase/実装PR境界と全caseの具体fixture payload/expectedの確定が未完了。[fixture証跡責務](details/fixture.md#additional-management-concrete-oracles)。 |
+| Phase20 | 採用resource/owner/復旧本文は [Phase20詳細入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) に接続済み。config resourceと各crash/faultの具体fixture全体が未完了。 |
+| multi-user / RBAC / 外部認証 | 移行・token所有者/失効・user別TOTP・code flow本文は [security詳細本文責務](details/security.md#multi-user-migration-contract) に接続済み。各移行中断/flow異常系の具体入力とexpected全体が未完了。 |
+| 複数project / Webhook手動再送 | 入力/実行/権限対応と耐久再送本文は各ownerで固定済み。全ケースの具体state/fake/expectedは [fixture証跡責務](details/fixture.md#additional-management-concrete-oracles) で継続する。 |
+| 追加機能全体 | Phase21/22と実装PR境界は割当済み。全caseの具体fixture payload/expected確定と横断レビューが未完了。既存実装・CI成功を未実装機能の完成証拠にしない。 |
 
 上表以外の潜在不備が0件であることは未証明である。現在の改訂予定27機能を、本文参照が増えたことや文書検査成功だけで昇格しない。active Phaseは引き続き未設定とする。
 

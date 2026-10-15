@@ -844,6 +844,8 @@ role または permission が変更された場合、既存 session の `permiss
 
 最後の active admin user を disabled、locked、role 剥奪してはならない。
 
+さらにactive adminかつlocal credential非nullのuserを最低1件維持し、外部provider障害で全管理者が復旧不能になる変更を409とする。user createでpassword省略かつexternal_subjects空は422。初期移行userはdisplay_name=username、external_subjects=[]、role_ids=["admin"]、created_at/updated_at=journal.started_at、status=activeに固定する。
+
 user/roleの更新と最後のadmin判定は同一authorization更新lock内で最新users/rolesを読み、更新後全体を検証してから保存する。別requestが同時に最後の2管理者を相互に無効化する場合も、片方を409にして最低1件を維持する。user/role参照をread途中で混在させない。password変更または資格情報削除は主state確定直後にそのuserの全memory sessionを失効させ、audit失敗でも再有効化しない。permissions_hashはrole id ASCII昇順と解決済みpermissionの重複なしASCII昇順のcanonical JSONに対するSHA-256とし、保存済みsession値と毎requestで比較する。
 
 **監査対象：**
@@ -854,6 +856,24 @@ user/roleの更新と最後のadmin判定は同一authorization更新lock内で�
 | user update | `user_update` |
 | user disable | `user_disable` |
 | role assignment change | `user_role_update` |
+
+<a id="multi-user-migration-contract"></a>
+**単一管理者からの明示移行：** owner=`security`、分類=`STD`（既存KDF/TOTP primitiveは各正本の分類を継承）。legacy-v1とcicd-v1の認証を混在させず、追加管理機能の認証profileは `multi-user-v1` とする。profile状態とlockは [statefile詳細本文責務](statefile.md#multi-user-profile-state)。通常起動で自動移行しない。
+
+移行CLIは `adlaire-ci-api --migrate-users --state-dir ABS --username NAME`。他operationとの併用・未知/重複optionはexit2、stdoutは成功時だけ `{"profile":"multi-user-v1","migrated":true}` + LF、stderrは `AUTH_MIGRATION_INVALID` / `AUTH_MIGRATION_BUSY` / `AUTH_MIGRATION_FAILED` の固定code + LF、exitは順に2/3/4。secretの入力・再表示を行わない。API停止をlifecycle flockで確認してから、旧credential/TOTP/tokenの完全schema/権限、未作成のusers/roles/profile、usernameを検証する。旧TOTP不在は無効値、旧tokens不在は空配列。旧credential不在・旧algorithm・破損・非対応profileは拒否する。
+
+乱数User idと開始時刻を確定しprepared journalをcreate-only保存→system roles作成→初期active admin user作成（credential/TOTPは元の全keyを変更せずcopy）→全旧tokenをそのuserへ紐付け、revoked_atがnullのものを開始時刻で失効→全出力をread-back検証→auth_profile atomic作成→journalをcommittedへ更新→journal削除/parent syncの順。旧credential/TOTP fileは消さず0600で保持するが、新profileでは認証に使用しない。移行後のlegacyへのdowngradeは禁止。初期管理者を新password無しで作る別経路は設けない。
+
+preparedからの再実行は保存済みid/時刻/source digestだけを使用し、元fileが変更済みなら停止する。既存出力はjournal.output_sha256とcanonical digestが一致するものだけ再利用し、差分は上書きしない。tokens書換済みの再開は全recordのuser_id/revoked_atが予定値に一致する場合だけ許可する。profile未commitでjournalがあればHTTP起動を拒否する。profile commit後のcleanup失敗は新profileを維持し、同CLIでcleanupだけを再開する。journal無し・profile存在の再移行はexit2。移行前APIを再開するためにjournalやprofileを手作業削除する復旧を許可しない。
+
+<a id="multi-user-token-totp-contract"></a>
+**user資格情報・token/TOTP結合：** loginはmulti-user-v1だけusername必須（正規化はユーザー管理契約）、passwordは該当user credentialを照合する。不在/locked/disabled/credential=nullは同じ401、username存在性を返さずrate limitを適用する。must_change、login_count、last_login_atは当該credentialだけを更新する。session/user id、TOTP ticket/setup仮secretは同じuserへ束縛し、他userへの流用・role変更後のticket消費を拒否する。
+
+TOTPのalgorithm/window/replay/confirmは [既存TOTP詳細本文責務](#sec-27-46) を再利用し、保存先だけUserRecord.totpへ変更する。setup/confirm/deleteは本人sessionと現passwordを必要としAPI token/OIDC-only userは実行不可。無効化は当該user全session/ticket失効、last_accepted_step更新はusers lock内のcompare-and-updateとする。totp_enabledだけの保存・全user共有secret・UserPatch経由のTOTP解除は禁止。OIDC loginもlocal TOTP有効userには同じTOTP ticketを発行し、完了前にsessionを発行しない。
+
+token発行user_idは本人sessionから確定しrequestでは指定させない。自分のtokenだけをlist/revokeでき、system adminだけが全userを管理できる。毎requestでtoken hash/期限/revoke→owner user active→現在permission→scopeの順に検証する。追加管理routeではread操作にread、config:writeにconfig、build:writeにoperate、user:admin/system:adminにadminを必要とし、role permissionとの積集合だけを許可する。既存scopeを新permissionへ自動昇格しない。user無効化/lock/password変更/credential削除時に当該userの有効tokenを全失効する。users commit後tokens write失敗はAPI500・当該userのtoken認証をprocess内で停止し、次起動も未完了revocationを検出するまで受付しない。復旧の永続revocation markerは [statefile詳細本文責務](statefile.md#multi-user-revocation-state) を参照する。
+
+multi-user-v1の既存routeは、追加管理permission表にない場合system adminのみに制限する。ただし本人tokenのGET/POST `/api/tokens` とDELETE `/api/tokens/{id}` は本人active session（他user対象はsystem admin）で許可する。GET `/api/status`、`/api/history`、`/api/health` はstatus:readで許可し、POST `/api/build`、`/api/build/force` はbuild:writeで許可する（tokenは既存trigger scopeも必要）。login/logout/change-password/TOTPは本人認証契約、署名Webhook/認証不要routeは従来契約を適用する。この閉じた例外以外にprefixやmethodから権限を推測しない。
 
 <a id="sec-27-50"></a>
 **27.50 外部認証連携：**
@@ -871,6 +891,19 @@ provider secret は `.external_auth_config` に保存せず、`client_secret_ref
 callback 検証では `state`、`nonce`、`issuer`、`audience`、`exp`、`iat`、`sub` を検証する。
 
 検証失敗は `401` とし、失敗理由の詳細、token、claim 全文を response、server log、audit log に出してはならない。
+
+<a id="oidc-code-flow-contract"></a>
+**OIDC開始・完了と鍵検証：** `INHOUSE`、owner=`security`。規範は [OIDC Core code flow](https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth)、[RFC7636](https://www.rfc-editor.org/rfc/rfc7636)、[RFC7517](https://www.rfc-editor.org/rfc/rfc7517)。Go標準crypto/rsa・sha256・rand・subtle・encoding/json/base64・net/http/urlだけを使用し外部実装を移植しない。code flow + PKCE S256 + RS256だけを採用し、implicit/hybrid/none/HS*/EC/暗号化JWT/dynamic registration/UserInfo/emailによる自動user作成は不採用。
+
+provider idは `[a-z][a-z0-9_-]{0,63}`、最大16provider、issuerはquery/fragment/userinfo/末尾slashなしのHTTPS URL。scopesは `["openid"]` 固定。redirect_uriは管理UIの検証済みHTTPS origin + `/` で、開始requestのOriginとexact一致を必要とする。client_secret_ref=nullならpublic client、非nullならclient_secret_basicだけを採用する。client secretは既存secret file adapterで0600保存、rawをconfig/responseへ入れない。disabled provider削除/issuer変更は紐付くuserがいれば409。provider更新は未完了flowを全失効する。
+
+discovery/JWKS/token通信は各10秒・response最大262144byte・redirect禁止、TLS検証必須、環境proxy禁止。全接続でDNS解決結果すべてを公開global unicastに限定し、検証済みIPへdial（TLS ServerNameは元host）、private/loopback/link-local/multicastを拒否する。discovery issuerは設定とbyte一致、authorization/token/jwksは同じissuer originのHTTPS URLに限定する。metadataのcode/S256/RS256対応を確認し非対応なら拒否。metadata/JWKSはflow開始時取得しmemoryへ5分保持、完了時は同じsnapshotだけを使用、未知kidで外部再取得・任意jku/x5u追従をしない。
+
+開始ごとにstate/nonce/browser binding/code_verifierを別々のCSPRNG32byteからpadding無しbase64url生成する。verifier43文字、challenge=base64url(SHA256(verifier ASCII))。最大128flow、TTL300秒、単一process memoryだけ、再起動で全失効。browser bindingはHttpOnly/Secure/SameSite=Lax/Path=/の `__Host-adlaire-oidc` cookie、Max-Age=300。開始は既存flow cookieを置換して当該flowを失効し、満杯は409、entropy失敗は500。authorization URLへresponse_type=code/client_id/redirect_uri/scope/state/nonce/code_challenge/code_challenge_method=S256だけをpercent encodeして付与する。
+
+完了はstate・cookieをconstant-time照合し、有効flowをmutex内で一回だけ消費してからcodeを交換する。cookie不一致ではflowを消費しない。codeは1..2048byte、NUL/CR/LF禁止。token formはgrant_type=authorization_code/code/redirect_uri/code_verifier/client_id、confidentialだけBasic headerを加える。200のJSONからid_tokenを取得し、access/refresh tokenは保存/使用しない。JWTは16384byte以下、3segmentのstrict unpadded base64url、JSON duplicate key/invalid UTF-8/未知critを拒否。header alg=RS256、kid必須、jku/x5u/x5c/crit禁止。JWKS最大32key、kid一意、RSA n=2048..4096bit・e=65537、useがあればsig、key_opsがあればverifyだけ、algがあればRS256。秘密key parameterを拒否し、一致するkey1件だけでrsa.VerifyPKCS1v15(SHA256)を行う。
+
+署名成功後iss exact、audはclient_id単独stringまたは重複なし配列（複数ならazp=client_id）、nonce exact、subは保存型、exp/iatは整数Unix秒を確認する。now < exp+30、iat <= now+30、iat >= flow.started_at-30、exp > iat、exp-iat <=3600、nbfがあればnow+30 >= nbf。未知claimは無視するがclaimをuser属性へcopyしない。全検証後にprovider_id/subの既存active user一件だけへ接続し、最新role/TOTPを再検証、必須auth logとcredential login更新が成功してからsessionまたはTOTP ticketを返す。流出や不具合時はprovider無効化・未完了flow/session失効を行い、当該provider参照userが0になった場合だけ削除できる。
 
 <a id="sec-27-58"></a>
 **27.58 ロールベースアクセス制御：**

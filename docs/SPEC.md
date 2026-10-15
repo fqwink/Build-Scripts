@@ -1085,7 +1085,7 @@ GitHub Actions 障害、runner 不足、ネットワーク障害をローカル�
 
 | profile | 適用と互換境界 |
 |---|---|
-| legacy-v1（既存・default） | 本節のPhase19 anchor外の既存runner oneshot、builder専用pipeline、単一管理者、Release固定集合を維持する。既存入力からcicd-v1を推測起動しない。 |
+| legacy-v1（既存・default） | 本節のPhase19 anchor外の既存runner oneshot、builder専用pipeline、単一管理者、Release固定集合を維持する。既存入力からcicd-v1を推測起動しない。追加管理の明示認証拡張だけは [security詳細本文責務のmulti-user-v1移行](details/security.md#multi-user-migration-contract) を使用し、実行profile/Release集合を変更しない。 |
 | cicd-v1（明示選択） | 各ownerのPhase19 anchorで定義したdaemon coordinator、SSH worker/site-agent、登録executor、複数identity、専用API/site mode、署名付きReleaseを適用する。共通禁止事項を解除しない。移行・復旧はsetup/statefile正本、endpointとstatic modeの分離はapi正本。 |
 
 既存節のoneshot/固定asset数/単一userという条件はlegacy-v1に適用する。cicd-v1が既存節を参照する時は明示された共通algorithm/既定値だけを利用し、異なるprofileの処理を混在させない。機能実装の着手承認・active Phase設定は仕様成熟度と別に判定する。
@@ -1329,6 +1329,7 @@ SDK の実装言語と技術は [`docs/SPEC.md` 方針責務 §4 技術方針表
 [`docs/SPEC.md` ポリシー責務 §11](SPEC.md#policy-single-user-auth) は、管理 API サーバーおよび標準管理ツールに適用する。
 
 - 初期構成の既定はシングルユーザーとする。マルチユーザー対応の現在状態は [`docs/ROADMAP.md`](ROADMAP.md)、詳細仕様は [`docs/details/security.md`](details/security.md) を正本とする
+- 追加管理のmulti-user-v1は既存実行profileに対する明示認証拡張であり、cicd-v1のidentity/grantとの共用・自動変換を禁止する。移行・token/TOTP・OIDCの処理本文は [security詳細本文責務](details/security.md#multi-user-migration-contract)、保存型は [statefile詳細本文責務](details/statefile.md#multi-user-profile-state) を正本とする。
 - 初期認証、初回変更、強制変更、session、保存形式の具体条件は [`docs/details/api.md`](details/api.md) 詳細本文責務と [`docs/details/security.md`](details/security.md) 詳細本文責務を正本とする
 - パスワードは平文保存禁止とし、保存が必要な認証情報はハッシュ化または secret として扱う
 

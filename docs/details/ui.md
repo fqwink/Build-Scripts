@@ -578,11 +578,16 @@ UI 連動 fixture 名、入力、fake SDK、expected、合格条件、禁止条�
 
 [`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8) は API request / response schema、SDK method 本文、state schema を再定義しない。
 
+<a id="oidc-ui-flow"></a>
+**外部login操作：** 起動設定でmulti-user-v1を選択したlogin画面だけにusername入力とprovider選択を表示する。providerは運用者が同じoriginのUI起動設定へ登録したid/表示名/issuer_originだけ（最大16件）とし、未認証で管理configを取得しない。選択→SDK start成功→authorization_urlのHTTPS/same issuer-originを確認→location.assignの順。callbackはroot URLのqueryにcode/stateまたはerrorを1件ずつ受け、値をmemoryへ捕捉して即座にhistory.replaceStateでquery/fragmentを除去→SDK finish1回。error/code重複/fragment token/未知queryはfinishせず一般login失敗表示。値はtextContent、DOM属性、trace、storageへ残さない。finish後は成功・失敗ともcode/stateを消去し、再試行は新規startから行う。TOTP ticketをsessionと誤認せず、ticket失効時は外部loginから再開始する。API500/502時もcodeを再交換しない。
+
 | UI 領域 | 対象機能 | 使用 SDK method | 成功後再取得 |
 |---------|----------|-----------------|--------------|
 | ユーザー管理 panel | マルチユーザー対応、ユーザー管理 API | `getUsers`, `createUser`, `updateUser`, `disableUser` | `getUsers`, `getAuditLog` |
 | ロール管理 panel | ロールベースアクセス制御 | `getRoles`, `createRole`, `updateRole`, `deleteRole` | `getRoles`, `getAuditLog` |
 | 外部認証 panel | 外部認証連携 | `getExternalAuthConfig`, `setExternalAuthConfig`, `testExternalAuth` | `getExternalAuthConfig`, `getAuditLog` |
+| 外部login | `multi-user-v1`の明示login領域 | `startOidcLogin`, `finishOidcLogin` | session確定後だけ既存初期ロード、TOTP ticketならTOTP入力へ |
+| 本人TOTP | multi-user-v1のsecurity領域 | 既存setup/confirm/disable methodへpassword optionsを渡す | 成功後本人session再login、入力password/secret/codeを消去。local credentialなしでは操作不可。 |
 | データストア panel | データストア切り替え | `getDatastore`, `switchDatastore` | `getDatastore`, `getAdminEvents` |
 | 統計 export panel | 統計データの JSON エクスポート | `exportStats` | なし |
 | queue 操作 panel | キュー内個別エントリのキャンセル、ビルドキューの手動並び替え | `cancelQueueEntry`, `reorderQueue`, `getQueue` | `getQueue`, `getStatus` |

@@ -1,5 +1,31 @@
 # Adlaire CI — Setup 詳細仕様
 
+<a id="inhouse-iac-contract"></a>
+**内製IaC v1採用範囲：** owner=`setup`、分類=`INHOUSE`（plan差分/復旧制御）、primitiveはGo標準encoding/json・crypto/sha256・os・syscall/flock・os/execと既存statefile adapter、systemctlだけ。既存VPS上の既存cicd-v1構成を宣言状態へ整合させる `existing-vps-v1` providerを採用する。VM作成/削除/resize、課金、IP/volume/firewall/DNS変更、任意shell、OS package導入、Terraform/provider SDKは不採用。対象外操作をno-op成功へ変換しない。全cloud provisioningに相当するとは表記しない。
+
+<a id="inhouse-iac-manifest"></a>
+**manifest・plan：** manifestはUTF-8 JSON最大1MiB、全key必須、duplicate/unknown key禁止。閉じた型は `{schema_version:1,provider:"existing-vps-v1",target_id:Id,resources:Resource[]}`。Idは `[a-z][a-z0-9_-]{0,63}`、resource数1..64、id一意。Resourceは次の2variantだけ。
+
+| type | 全key / 型と制約 |
+|---|---|
+| config | `{id:Id,type:"config",role:"coordinator"|"worker"|"site",config:object}`。configは [cicd setup入力](#phase-19-setup-input) の完全な同型でrole/id一致。対象pathはその固定config pathから導出し任意path入力禁止。対象は既存fileだけ、内容secret禁止。 |
+| service | `{id:Id,type:"service",unit:string,active:bool,enabled:bool}`。unitはadlaire-cicd-coordinator.service/adlaire-cicd-api.service/adlaire-cicd-site.serviceのいずれか。同unit重複禁止、既存unitがsetup正本と一致することを前提とする。任意unit/生成unitは拒否。 |
+
+target_idは当該state-dirに導入時create-onlyで記録したhost identityとexact一致させ、hostname/IPから推測しない。configはsemantic canonical JSONで比較し、同値ならformatだけを直さない。mode/owner不一致やsymlink/hardlinkはdriftではなくunsafe_inputで拒否する。service観測は `systemctl show UNIT --property=LoadState,ActiveState,UnitFileState --no-pager` の固定argv、loaded/activeまたはinactive/enabledまたはdisabledだけを受理し、activating/failed/masked/static/未知値は拒否する。実行timeout10秒、output65536byte、LANG=C、環境secret継承禁止。
+
+planは `{schema_version:1,target_id:Id,manifest_sha256:Digest,created_at:Time,expires_at:Time,observed:Observation[],changes:Change[],sha256:Digest}`。expires_at=created_at+300秒。Observationは `{id:Id,type:"config"|"service",before:object}`、config.before=`{sha256:Digest,uid:integer,gid:integer,mode:"0640"}`、service.before=`{active:bool,enabled:bool}`。Changeは `{id:Id,action:"replace_config"|"set_service",after:object}`、afterはmanifestのconfig objectまたは `{active,enabled}`。全resourceのobservedをid ASCII昇順、changesはconfig id昇順→service id昇順、同値resourceはchangesへ含めない。sha256は自身keyを除くplan canonical JSON、manifest hashも同じcanonical規則。planへ旧file本文・secret・command stdoutを保存しない。
+
+<a id="inhouse-iac-execution"></a>
+**CLI・適用・drift・復旧：** `adlaire-ci-setup iac-plan|iac-drift --manifest ABS --state-dir ABS`、`iac-apply --manifest ABS --plan-file ABS --confirmation-file ABS --state-dir ABS`、`iac-rollback --operation-id ID --confirmation-file ABS --state-dir ABS`、`iac-recover --operation-id ID --state-dir ABS`。optionは重複/未知/短縮/`=`形式を拒否する。rootだけを許可し、絶対path・no-follow・通常file・実行owner・0600の入力を必要とする（既存configのmodeはその正本を使う）。plan/driftは状態を一切writeしない。apply/rollbackのconfirmation fileは `{target_id:Id,plan_sha256:Digest,action:"apply"|"rollback"}` の全key必須で対象一致を要求し、file存在をユーザー作業承認の代用にしない。
+
+applyはmanifest/plan/digest/target/期限→全resource再観測exact一致→state-dir内IaC排他lock→全resource再観測→operation prepared保存→旧config byte snapshot保存・sync→各change intent保存→直前precondition再確認→変更→read-back確認→applied保存の順。plan生成後の差分はstale_planで拒否、部分実行しない。configはsetupのroot管理config用atomic adapterで置換し、元uid/gid・mode0640を保持する。runtime state用0600 adapterを流用してmodeを変えない。serviceはenable/disable→start/stopの固定argvだけを実行する。各command10秒、health確認はsystemctl再観測だけでアプリの健全性を保証しない。変更0件はsuccess/noop、journal/snapshot/logの新規作成も行わない。
+
+確定した前段までの失敗は旧値を逆順で復元し、各対象が本operationのafterと一致するときだけ復元する。第三者変更は上書きせずrecovery_required。rollbackも現在値=保存afterを全件確認してから逆順復元する。provider全体のatomic適用を保証しない。crash後recoverはintent対象をbefore/afterと照合し、beforeなら未適用、afterなら適用済みと記録する。どちらでもなければrecovery_required、後続apply/rollbackを止め、実resourceを変更せずjournal照合だけを行うrecoverを許可する。不確定service commandを無条件再発行しない。復旧不能状態の解除は仕様外の自動修復ではなく運用者による実状態整合と再観測を必要とする。
+
+stdoutはplanで上記Plan、driftで `{target_id,manifest_sha256,drifted:bool,resource_ids:Id[]}`（差分id昇順）、他は `{operation_id:Id|null,status:"succeeded"|"rolled_back"|"recovery_required"|"failed",code:string}`、JSON1個+LF。exit0成功/2入力・権限/3stale・競合/4変更失敗/5不確定、stderrは同じcode+LFだけ。codeはok/noop/invalid_input/unsafe_input/target_mismatch/stale_plan/busy/command_failed/state_failed/recovery_required。生のOS error/path/config本文を出さない。
+
+状態schemaは [statefile詳細本文責務](statefile.md#inhouse-iac-state)、具体vector/fixture/mutationは [fixture証跡責務](fixture.md#inhouse-iac-fixture-contract)。保守ownerはsetup、provider廃止は未完了operation=0と検証済みexport後だけ。resource variant追加はこのmanifest/復旧/fixtureを先に改訂し、未知variantを既存config操作へfallbackしない。
+
 <a id="phase-19-setup-contract"></a>
 
 **Phase 19 profile導入・隔離・受入：**

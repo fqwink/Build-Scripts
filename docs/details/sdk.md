@@ -515,6 +515,7 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 | マルチユーザー対応 / ユーザー管理 API | `getUsers(query)`, `createUser(input)`, `updateUser(id,input)`, `disableUser(id)` |
 | ロールベースアクセス制御 | `getRoles()`, `createRole(input)`, `updateRole(id,input)`, `deleteRole(id)` |
 | 外部認証連携 | `getExternalAuthConfig()`, `setExternalAuthConfig(input)`, `testExternalAuth(input)` |
+| 外部login | `startOidcLogin(providerId)`, `finishOidcLogin(state,code)`。契約は [OIDC transport](#oidc-sdk-transport)。 |
 | データストア切り替え | `getDatastore()`, `switchDatastore(input)` |
 | 統計データの JSON エクスポート | `exportStats(query)` |
 | キュー内個別エントリのキャンセル | `cancelQueueEntry(queueId)` |
@@ -535,6 +536,11 @@ SDK は成功 response を補完、削除、rename、既定値 merge、再集計
 | Webhook 送信履歴の手動再送 API | `resendWebhook(deliveryId,input)` |
 
 **追加管理 API SDK transport 固定表：**
+
+<a id="oidc-sdk-transport"></a>
+**OIDC transport：** startOidcLoginはproviderId string、finishOidcLoginはstate/code stringを検証し、[API詳細本文責務](api.md#oidc-http-contract) へJSON POST1回だけ送る。auth headerを付けずcredentials=`same-origin`、redirect=`error`、通常timeoutを適用する。JSからHttpOnly cookieを読書きしない。成功値はAPIの型をそのまま返し、session/TOTP ticketは既存memory保持だけ。自動retry・URL遷移・sessionStorage/localStorage・code/state/tokenのtraceを禁止。multi-user password loginは既存loginへoptions.username stringを渡す明示overloadとし、旧profileのrequestへusernameを追加しない。profile選択は呼出側設定から行い、401で別profileへ再送しない。
+
+multi-user-v1でのTOTP操作は `setupTotp(options)`、`confirmTotp(code,options)`、`disableTotp(code,options)` のoptions.password stringを必須とし、APIの本人操作bodyへ渡す。options省略を別profileへfallbackする条件にしない。旧profileは従来bodyを維持する。passwordは送信完了時に参照を解放し、trace/errorへ含めない。
 
 | SDK method | HTTP | path / query / body |
 |------------|------|---------------------|

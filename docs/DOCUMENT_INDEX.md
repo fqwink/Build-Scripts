@@ -3,6 +3,20 @@
 [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) は、Build-Scripts リポジトリ内の文書、実装ファイル、テスト、fixture、未作成 path の所在だけを示す索引である。方針、状態定義、現在状態、実装詳細、デザイン、検証契約は本文として定義しない。
 
 <a id="索引責務の使い方"></a>
+<a id="future-management-artifact-location"></a>
+**追加管理・IaC仕様所在：**
+
+| artifact / 判断対象 | 所在 | 実在区分 |
+|---|---|---|
+| 明示認証移行・user token/TOTP・OIDC | [security詳細本文責務](details/security.md#multi-user-migration-contract)、[API HTTP境界](details/api.md#oidc-http-contract)、[SDK transport](details/sdk.md#oidc-sdk-transport)、[UI操作](details/ui.md#oidc-ui-flow) | 実在 |
+| 認証profile/失効復旧状態・project対応 | [statefile詳細本文責務](details/statefile.md#multi-user-profile-state)、[project binding](details/statefile.md#additional-project-binding) | 実在 |
+| 再送ledger・consumer・復旧 | [statefile詳細本文責務](details/statefile.md#manual-webhook-resend-state)、[runner詳細本文責務](details/runner.md#manual-webhook-resend-contract) | 実在 |
+| 内製IaC manifest/CLI/復旧・状態 | [setup詳細本文責務](details/setup.md#inhouse-iac-contract)、[statefile詳細本文責務](details/statefile.md#inhouse-iac-state) | 実在 |
+| IaC検証root | `testdata/setup/inhouse-iac/` | 未作成 |
+| OIDC固定暗号vector / checker | [fixture証跡責務](details/fixture.md#oidc-fixed-vector)、[main_test.go](../main_test.go) の `TestAdditionalSpecificationVectors` | 実在 |
+| badge視覚・Xserver限定受入 | [DESIGNデザイン責務](DESIGN.md#status-badge-visual-contract)、[本番検証詳細本文責務](details/production-validation.md#xserver-vps-adoption-contract) | 実在 |
+
+<a id="document-index-common-reference"></a>
 **所在確認対象と参照先：**
 
 | 確認対象 | 参照先 |

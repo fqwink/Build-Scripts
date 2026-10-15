@@ -3225,7 +3225,7 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 | `PATCH` | `/api/users/{id}` | `UserPatchInput` | `AdditionalUserView` | `200` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
 | `DELETE` | `/api/users/{id}` | body 禁止 | `{ "message": "User disabled" }` | `200` | `401`, `403`, `404`, `409`, `500` |
 
-AdditionalUserViewは保存用UserRecordからcredentialを除いた `{id,username,display_name,status,role_ids,external_subjects,totp_enabled,created_at,updated_at,password_set:bool}` の閉じた公開型とし、password_setはcredential!=nullから計算する。全list/create/patch応答で同じ投影を使用する。password、password_hash、salt、KDF parameter、TOTP secret、認証内部recordは返さない。id/username等の型は [`docs/details/statefile.md` 詳細本文責務 UserRecord](statefile.md#sec-22-0d) を参照する。raw stateをresponse writerへ渡さない。
+AdditionalUserViewは `{id,username,display_name,status,role_ids,external_subjects,totp_enabled,created_at,updated_at,password_set:bool}` の閉じた公開型とし、password_setはcredential!=null、totp_enabledはtotp.enabledから計算する。全list/create/patch応答で同じ投影を使用する。credential、totp object、password、password_hash、salt、KDF parameter、TOTP secret、認証内部recordは返さない。id/username等の型は [`docs/details/statefile.md` 詳細本文責務 UserRecord](statefile.md#sec-22-0d) を参照する。raw stateをresponse writerへ渡さない。
 
 `DELETE /api/users/{id}` は物理削除せず `status:"disabled"` にする。
 
@@ -3261,6 +3261,20 @@ AdditionalUserViewは保存用UserRecordからcredentialを除いた `{id,userna
 | `POST` | `/api/external-auth/test` | `ExternalAuthTestInput` | `ExternalAuthTestResponse` | `200` | `400`, `401`, `403`, `422`, `502` |
 
 response に client secret、private key、raw token を含めてはならない。
+
+provider入力は保存型のid/type/enabled/issuer/client_id/scopes/redirect_uriと任意client_secretだけ。client_secret_ref/時刻/client_secret_setは入力禁止。新規secret省略/nullはpublic client、更新省略/`***`は保持、更新nullは削除、stringは1..4096byteでNUL/CR/LF禁止。APIがstatefileの固定secret pathへcreate-only保存してrefを生成する。旧secretを上書きせず、新secret保存→config atomic確定の順。config失敗は旧ref維持・新fileを未参照のまま保持、旧secret復元を要しない。provider削除/secret交換後の未参照fileは認証に使用せず、API停止中の明示保守だけで削除する。testのdiscovery_url指定は登録済みenabled providerの導出URLとexact一致する場合だけ許可し、任意URL probeを禁止する。response providerは保存型からclient_secret_refを除きclient_secret_setを加えた閉じた型。
+
+<a id="oidc-http-contract"></a>
+**外部login HTTP境界：** multi-user-v1だけに以下を登録し、legacy/cicd-v1で暗黙有効化しない。認証手順は [security詳細本文責務](security.md#oidc-code-flow-contract)。同origin JSON POSTだけを許可し、Origin欠落/不一致は403、CORS公開しない。両routeはsession不要、login rate limit対象、body最大4096byte、Cookieとcode/stateはaccess logにも保存しない。
+
+| method/path | JSON request | 成功response | 失敗 |
+|---|---|---|---|
+| POST `/api/auth/oidc/start` | `{provider_id:string}` のみ | 200 `{authorization_url:string,expires_at:Time}`、binding cookie | malformed400、provider不在/disabled422、Origin403、満杯409、rate429、I/O500、upstream502 |
+| POST `/api/auth/oidc/finish` | `{state:string,code:string}` のみ | 200の既存login response、または既存TOTP ticket response | malformed400、Origin403、rate429、flow/claim/signature/user不正401、I/O500、upstream502 |
+
+全応答no-store、cookieを完了時/失敗消費時にMax-Age=0で消去する。401は `{"error":"Unauthorized"}` だけ、502は `{"error":"Upstream unavailable"}`、code/token/上流bodyをdetailsへ出さない。HTTP timeout/非200/非JSONは502、正しく受信したJWTの不正は401。最終cookie失効/response書込失敗でも消費済みflowを再利用しない。browser redirect callbackは管理UI rootだけで処理し、APIからsession入りURLへのredirectを行わない。API tokenはstart/finishを使用できない。
+
+users/roles/external-auth-config/testとOIDC routeはmulti-user-v1だけに登録し、他profileは404とする。multi-user-v1の既存POST `/api/login` はusername/passwordを必須とし、他profileでusernameの有無からprofileを推測しない。TOTP本人操作にはpassword keyを必須追加し、現在userのlocal資格情報を再検証する。既存route responseは維持し、user管理入力でTOTP値を受け取らない。
 
 <a id="sec-27-51"></a>
 **27.51 統計データの JSON エクスポート API 境界：**
@@ -3369,7 +3383,7 @@ SVG は script、external reference、inline event handler、remote image を含
 
 `GET /api/badge/status.svg` は `GET /api/status` と同じ status 算出結果を read-only で参照し、状態 file の作成、修復、更新、`.response_cache` read/write、audit、admin event を行わない。`target` と `branch` が指定された場合は status 算出対象をその条件へ限定し、該当する status が存在しない場合は `404 {"error":"Status not found"}` とする。
 
-SVG は UTF-8、XML declaration なし、`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20" role="img" aria-label="Adlaire CI: {status}">` を root とする。表示 text は左 `Adlaire CI`、右は `success`、`failure`、`running`、`skipped`、`unknown` のいずれかとし、右背景色は `success=#2e7d32`、`failure=#c62828`、`running=#1565c0`、`skipped=#6d6d6d`、`unknown=#455a64` に固定する。status 文字列以外の動的 text、branch、target、path、error、secret は SVG に含めない。
+SVG は UTF-8、XML declarationなし、xmlns=`http://www.w3.org/2000/svg` のsvg rootとし、寸法・text・色・配置・accessibility属性は [DESIGNデザイン責務 status badge](../DESIGN.md#status-badge-visual-contract) だけを参照する。右statusは `success`、`failure`、`running`、`skipped`、`unknown` の閉集合。status以外の動的text、branch、target、path、error、secretは含めない。要素順は背景rect左/右、text左/右、各属性順はfixtureのcanonical SVG比較で固定する。
 
 response header は `Content-Type: image/svg+xml; charset=utf-8`、`Cache-Control: no-store` とし、`ETag`、`Last-Modified`、`Set-Cookie` を付与しない。
 
@@ -3651,7 +3665,7 @@ Webhook 送信履歴の手動再送 API の owner は `runner` とする。
 
 `WebhookResendInput` は `confirmation:"RESEND_WEBHOOK"` を必須とする。
 
-再送対象 payload は保存済み payload hash と delivery metadata から再構成し、secret は statefile から再取得する。
+再送payloadは [statefile詳細本文責務の永続payload](statefile.md#manual-webhook-resend-state) を検証して取得し、secretは送信直前に再取得する。metadataだけから本文を推測しない。
 
 同一 `delivery_id` の再送実行中は `409` とする。
 
@@ -3659,7 +3673,7 @@ Webhook 送信履歴の手動再送 API の owner は `runner` とする。
 
 再送は元 record の `event`、`channel_id`、`payload_sha256`、`attempt` を検証した後、`.notify_config` から同じ Webhook channel を再取得し、secret は `.webhook_secret` または channel secret ref から再読込する。保存済み payload 本文は `.notify_log` にないため、再構成できない event は `409 {"error":"Webhook payload unavailable"}` とし、送信しない。secret、送信 URL、Authorization header、payload 本文は response、`.admin_events`、`.audit_log`、server log に含めない。
 
-同一 `delivery_id` の resend guard は process 内状態と `.admin_events` の未完了 resend event の両方で判定し、実行中なら `409` とする。送信要求を受理した時点で `202 {"accepted":true,"delivery_id":<delivery_id>,"queued_at":<now>}` を返し、`.admin_events` に `type:"notification"`、`target_type:"notify_log"`、`target_id:<delivery_id>` を追記する。実際の送信結果と `.notify_log` 追記は [`docs/details/runner.md` 詳細本文責務 §27.32](runner.md#sec-27-32) の通知 retry 契約に従う。
+受付と再起動guardは `.notify_resends` を唯一の正本とし、process memoryやadmin eventから未完了状態を推測しない。最新log/payload/channel検証→ledger lockでsource_delivery_id重複確認→新delivery_id用payloadを同じ本文/hashでcreate-only保存→queued record atomic commit→audit→admin eventの順。ledger失敗後の未参照payloadを送信や受付の証拠にしない。失敗は500、確定済みqueued recordは戻さない。202は全必須保存成功後だけ返し、bodyは `{"accepted":true,"delivery_id":<元id>,"queued_at":<保存時刻>}`。同じ元idはterminalを含め再受付409。結果不明のclientは再POSTせずnotify log/eventで確認する。runner消費・結果保存・不確定復旧は [runner詳細本文責務](runner.md#manual-webhook-resend-contract) を参照する。
 
 ---
 

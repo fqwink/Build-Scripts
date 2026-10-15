@@ -2196,6 +2196,11 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | path / mode | statefile owner が作成する runtime 状態 directory は `0700`、runtime 状態 file、tmp、lock は `0600` に固定する。path 解決は state dir 内だけを許可し、symlink 経由、absolute user input、`..`、secret path 逸脱を拒否する。 | state dir 外への書込、symlink 追従、runtime directory `0755`、file / lock `0644`、mode 不一致の成功扱い、path 原文や secret path の公開 log が残る。 |
 | caller 境界 | statefile owner は path、schema、lock、atomic write、JSON Lines、破損時処理だけを担当し、API / runner / security / archive の業務判断を代行しない。複数 file 更新では caller が定義した Write 列順を 1 file ずつ実行し、成功済み file の自動 rollback をしない。 | statefile adapter が endpoint、UI、SDK、build 成否、auth 成否、通知成否、archive 可否を判断する処理、または caller 固有 log を statefile owner が代行追記する処理が残る。 |
 
+<a id="inhouse-iac-state"></a>
+**内製IaC状態：** `.iac/identity.json` は `{schema_version:1,target_id:string}`、setup導入時の明示入力でcreate-only。`.iac/operations/{id}.json` は `{schema_version:1,id:string,target_id:string,plan:object,status:string,step_index:integer,steps:object[],created_at:Time,updated_at:Time}`、idは `iac_` + Crockford26文字。planは [setup詳細本文責務](setup.md#inhouse-iac-manifest) の同型、statusはprepared/applying/succeeded/rolling_back/rolled_back/failed/recovery_required、step_indexは0..changes.length。stepsはchange順に `{resource_id:string,state:"pending"|"intent"|"applied"|"reverted",before:object,after:object,snapshot_sha256:Digest|null}`。before/afterはplanの同型、configだけsnapshot_sha256非null。config snapshotは `.iac/snapshots/{operation_id}/{resource_id}.json` に元configのJSON byteを0600保存し、digest不一致は復旧停止。未作成のsnapshotを成功済みに記録しない。
+
+全directory0700/file0600、既存adapterのatomic/fsync/no-follow適用。lockは `.iac/lock` のOS flock、process間排他、10秒超busy、lock fileをunlinkしない。journal最大4MiB、operation最大1000件/全snapshot64MiB。満杯は新apply前にbusy、既存復旧は容量予約分を使う（1operationにつき4MiB journal+64MiB snapshotを事前確保確認）。失敗/破損/不明operationは自動削除しない。stateは稼働・復旧の正本であり変更履歴fileとして生成・配布しない。runtime保持/明示export以外にrepoへcommitしない。
+
 <a id="sec-22-0d"></a>
 **22.0d 追加管理 API / MCP 状態 schema：**
 
@@ -2208,6 +2213,9 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `.users` | `{ "users": UserRecord[] }` |
 | `.roles` | `{ "roles": RoleRecord[] }` |
 | `.external_auth_config` | `{ "enabled": boolean, "providers": ExternalAuthProvider[] }` |
+| `.external_auth_secrets/{provider_id}/{secret_id}` | UTF-8 secret、1..4096byte、NUL/CR/LF禁止、0600。secret_idはCSPRNG16byteのlowercase hex。create-only immutable、任意ref入力は禁止。 |
+| `.auth_profile`, `.auth_migration`, `.user_revocations`, `.management_api.lock` | [追加管理認証profile状態](#multi-user-profile-state) と [失効復旧状態](#multi-user-revocation-state)。lockは既存OS flock形式。 |
+| `.notify_payloads/{delivery_id}.json`, `.notify_resends` | [手動再送状態](#manual-webhook-resend-state)。 |
 | `.datastore_config` | `{ "active_store": string, "stores": DatastoreStore[], "pending_switch": DatastoreSwitchRecord|null }` |
 | `.config_snapshots/{id}.json` | `ConfigSnapshotObject` |
 | `.projects` | `{ "projects": ProjectRecord[] }` |
@@ -2237,8 +2245,23 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 
 read validation のJSON Lines破損判定は、読取adapterが行単位除外を明示するfileでは「不正行を検出してcallerへ分類を返す」ことを意味する。`.admin_events` のread-only一覧/streamは [API詳細本文責務](api.md#sec-27-66) の除外規則を使用し、fileを修復しない。write callerは破損した既存JSON Linesへ追記しない。
 
+<a id="multi-user-profile-state"></a>
+**追加管理認証のprofile状態：** `.auth_profile` は不在ならlegacy単一管理者、存在時は閉じたJSON `{schema_version:1,profile:"multi-user-v1",admin_user_id:string,migrated_at:string}`。admin_user_idは移行したUserRecord.id、migrated_atはUTC秒精度。cicd-v1のstateとは共有しない。破損/読取不能はAPI起動拒否でありlegacy fallbackしない。`.auth_migration` は閉じたJSON `{schema_version:1,admin_user_id:string,started_at:string,source_sha256:object,output_sha256:object,phase:"prepared"|"committed"}`。source_sha256のkeyは `.admin_credentials`、`.totp_secret`、`.api_tokens`、値は元file byteのSHA256（不在はnull）。output_sha256は予定するusers/roles/api_tokensのcanonical JSON digestを持ち、prepared保存前に全出力を構築して固定する。journalはruntime復旧状態であり変更記録ではない。0600/owner一致、破損時は停止し自動再生成しない。
+
+multi-user-v1では `.users`、`.roles` は必須で不在fallback禁止。`.api_tokens` の各recordは既存schemaに `user_id`（実在UserRecord.id、必須）を加えた閉じた型とする。legacyではこのkeyを追加しない。`.users` は最大1000件、`.roles` は最大128件、各file最大4MiB。auth profileを見ずにschemaを推測しない。user credential/totpを旧2fileと二重読取・二重更新しない。
+
+APIは起動からshutdownまで `.management_api.lock` のnonblocking OS flockを保持し、同state-dirの2つ目のAPI/移行CLIを拒否する。fileは0600、inodeをunlinkしない。認証更新はprocess内の単一authorization mutexでread/validate/一つの主file commitを直列化する。通常のuser更新はusersだけ、role更新はrolesだけ、token更新はapi_tokensだけを変更し、跨fileの同時変更APIを作らない。statefile個別adapterのlockとは別のlifecycle排他であり、callback内から別adapterを呼ぶ許可ではない。readも同mutexでusers/roles/tokenの世代混在を防ぐ。
+
+<a id="multi-user-revocation-state"></a>
+**user token失効の復旧状態：** `.user_revocations` は `{users:[{user_id:string,requested_at:string}]}` の閉じたJSON、最大1000件、user_id一意、ASCII昇順、UTC秒精度。不在は空集合。破損はAPI起動停止・認証拒否であり空集合再生成禁止。失効対象userを記録してsync→users主state変更→tokensの対象user全件revoked_atを設定→marker除去の順。失敗時はmarkerを維持し、そのuserの全認証を拒否する。再起動はlisten前に同じ失効を完了してmarkerを除去する。users変更前に中断した場合も失効は取消さない。tokensが既に失効済みなら元時刻を維持する。通常file0600、statefile adapterだけで更新する。
+
 <a id="additional-management-initial-state"></a>
 **追加管理初期状態：** 追加管理機能の明示初期化時に、callerは検証済み `repository_root`（絶対path）、`branch`（ProjectRecordの制約）、`initialized_at`（UTC秒精度）を渡す。`.roles` は [security詳細本文責務のsystem role表](security.md#sec-27-58) を全件、表の順に生成し、各recordのcreated_at/updated_atをinitialized_atとする。`.projects` はdefault recordを1件だけ生成し、root/branchを上記入力、created_at/updated_atをinitialized_atとする。既存fileの欠損key補完や上書きには使わない。不在fileのread-only応答では同じ構築関数をmemory上だけで使用し、時刻は `1970-01-01T00:00:00Z` 固定とする。repository_root/branchを取得できない場合はread failureであり、不完全recordを返さない。
+
+<a id="manual-webhook-resend-state"></a>
+**手動再送状態：** owner=`statefile`、`STD`。payload objectは `{delivery_id:string,channel_id:string,event:string,payload:NotificationPayload,payload_sha256:Digest,created_at:Time}` の全key必須、65536byte以下。delivery id/event/channelはnotify_logとexact一致、hashは既存canonical JSONを使用する。再送対応の通常Webhookは初回送信前にcreate-only保存し、同id内容違いは送信拒否。旧logだけからpayloadを推測復元しない。保存fileは0600、directory0700、symlink/hardlink禁止、破損は送信拒否。最大1000fileまたは64MiB、超過時は新しいpayload保存と対応送信を拒否し自動削除しない。手動再送有効化前の既存通知経路は変更しない。有効化はmulti-user-v1導入時に行う。
+
+`.notify_resends` は `{schema_version:1,records:ResendRecord[]}`、最大1000record/4MiB、時刻/id昇順、破損時は自動再生成せず再送停止。ResendRecordは `{id:string,source_delivery_id:string,delivery_id:string,payload_sha256:Digest,channel_id:string,status:string,queued_at:Time,updated_at:Time,attempt:integer,next_attempt_at:Time|null,result_code:string|null}` の閉じた型。idは `rsnd_` + 26 Crockford文字、source_delivery_idは全recordで一意、delivery_idは新規notify id（旧idと異なる）、statusはqueued/sending/succeeded/failed/recovery_required、attemptは0..11、result_codeはnull/http_success/http_failure/timeout/channel_unavailable/payload_unavailable/abandoned。queuedはattempt0..10/next_attempt_at非null、sendingはattempt>=1/next_attempt_at=null、terminal/recoveryはnext_attempt_at=null。recordsの物理削除APIは設けない。満杯は新規受付409とし、既存の結果照合は継続する。
 
 <a id="additional-management-datastore-contract"></a>
 **追加管理データストア選択：** `STD`。許可store集合はid/type=`statefile`、enabled=true、path=nullの1件だけ、active_store=`statefile`、pending_switch=nullに固定する。外部DB、別state directoryへの移送、plugin/provider追加をこのAPIの実装判断で許可しない。target_store=`statefile` の検証はschema/owner/mode/readabilityの順とし、各checkのnameは `schema`、`ownership`、`permissions`、`readability`、statusは成功時 `ok`、messageは `OK`。1件でも失敗した場合はcallerへ失敗を返し、stateを変更しない。現在storeへの選択はdry_runの有無によらずno-opとする。将来の別store採用は本契約と [SPECポリシー責務](../SPEC.md#policy-dependencies) の先行改訂なしには行わない。
@@ -2267,7 +2290,7 @@ read validation のJSON Lines破損判定は、読取adapterが行単位除外�
 | `role_ids` | string[] | yes | `.roles.roles[].id` に存在するidを1..32件、重複なしASCII昇順。空配列禁止。 |
 | `credential` | AdminCredentials|null | yes | local password 未設定時は `null`。非nullは [主要状態schema](#sec-22-0c) の `.admin_credentials` と同じ閉じた型。資格情報をhash文字列だけで保存せず、salt/algorithm/parameterを同型に結び付ける。API投影対象外。 |
 | `external_subjects` | object[] | yes | `{provider_id:string,subject:string}` だけを持つobjectを0..16件。provider_idは存在するExternalAuthProvider.id、subjectは1..255byte UTF-8（NUL/CR/LF禁止）。provider_id/subjectの組は全user間で一意、provider_id/subjectのbyte昇順。 |
-| `totp_enabled` | boolean | yes | TOTP 有効状態。 |
+| `totp` | TOTPSecret | yes | [主要状態schema](#sec-22-0c) の `.totp_secret` と同じ閉じた型。公開投影のtotp_enabledはtotp.enabledから算出する。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
 
@@ -2293,6 +2316,7 @@ read validation のJSON Lines破損判定は、読取adapterが行単位除外�
 | `client_id` | string | yes | 1〜256 文字。 |
 | `client_secret_ref` | string|null | yes | secret path または `null`。secret 本体禁止。 |
 | `scopes` | string[] | yes | OIDC scope。 |
+| `redirect_uri` | string | yes | HTTPSの管理UI origin + `/`。query/fragment/userinfo禁止。securityのOIDC開始・完了契約を参照。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
 
@@ -2327,13 +2351,20 @@ ConfigSnapshotObject の secret file marker は `{"secret_set":boolean,"value":"
 | `id` | string | yes | lowercase ASCII、digit、`-`、`_`。`default` は既定 project だけが使用する。 |
 | `name` | string | yes | 1〜128 Unicode scalar values。 |
 | `status` | string | yes | `active`、`archived` のいずれか。 |
-| `root` | string | yes | absolute path または repository ref 表現。NUL、CR、LF 禁止。 |
-| `branch` | string | yes | branch 名。空文字、NUL、CR、LF、`..`、先頭 `/` 禁止。 |
+| `root` | string | yes | [project入力・実行対応](#additional-project-binding) の絶対pathまたは `repo:default`。 |
+| `branch` | string | yes | [project入力・実行対応](#additional-project-binding) の短いbranch名。 |
 | `default` | boolean | yes | 既定 project だけ `true`。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
 
 ProjectRecord は `.projects.projects` 内で `id` を一意とし、`default:true` の record を 1 件だけ持つ。`default:true` の record は `status:"active"` 固定とし、archive、物理削除、id 変更を禁止する。`root` は保存時に前後空白を保持せず、入力に前後空白がある場合は validation failure とする。
+
+<a id="additional-project-binding"></a>
+**project入力・実行対応：** `STD`。idは1..64文字。repository refの許可集合は `repo:default` だけとし、setupで検証済みの当該API instanceのrepository_rootへ解決する。URL、SSH ref、`repo:`の未知名、相対path、環境変数展開、tilde展開は禁止する。絶対pathは4096byte以下のcleanなLinux pathとし、空要素、`.`、`..`、NUL、CR/LF、前後空白、symlink ancestorを拒否する。登録時は既存directoryとそのowner/modeをread-only検証し、repository_root以外のpathは422。登録によってclone、fetch、mkdir、shellを実行しない。
+
+branchはUTF-8で1..255byte、ASCII英数から始まり、以降はASCII英数・`-`・`_`・`.`・`/`だけ。末尾`.`/`/`、`//`、`..`、`@{`、先頭`.`のsegment、末尾`.lock`のsegment、`HEAD`、`refs/` prefixは禁止。実行先はrunnerの既存branch targetであり、登録branchは最新branch_configのtarget branchにexact一致しなければ422。projectはそのtargetへの管理用labelであって新executor、別checkout、別state dirを生成しない。target削除後のdangling projectは実行解決時409、archiveだけ許可する。
+
+追加管理の権限はinstance全体であり、project別ACL・tenant隔離を保証しない。project作成は既存permissionを拡張せず、userはsecurityのinstance権限で全projectを参照/変更する。build triggerの既存入力へproject_idを暗黙追加しない。別repository実行またはproject単位認可はcicd-v1の登録projectと明示grantだけを使用し、本recordと相互変換しない。
 
 **ConfigTemplateRecord：**
 

@@ -2714,6 +2714,15 @@ runner は `approval_required=true` の target に対して、approval queue 以
 | 失敗境界 | key 不正、value 不正、mask failure では build または保存を成功扱いにせず、失敗地点以降の状態更新を行わない。 |
 | 確認条件 | fixture は env 注入、system env 上書き、secret stdout mask、不正 key、lowercase key 拒否、reserved key、mask failure をすべて固定する。 |
 
+<a id="manual-webhook-resend-contract"></a>
+**手動Webhook再送の耐久受付・実行：** `STD`、owner=`runner`。payloadの閉じたevent集合は [statefile NotificationPayload表](statefile.md#sec-22-0c) にあるstart/success/failure/deploy_failure/weekly_summary/approval_required/duration_anomaly/config_corruptだけ。notify_test/smtp_test/未知eventは再送不可。新規送信前のpayload保存、受付ledger schemaは [statefile詳細本文責務](statefile.md#manual-webhook-resend-state)。hashだけで再構成可能とみなさない。secretは新しいchannelから再取得し、payloadの保存時markerを平文へ復元しない。
+
+runner oneshotの通常pending retry直前に、process lock取得成功後、ledger内queuedのうちnow>=next_attempt_atだけをqueued_at/id昇順で最大100件処理する。別runnerがprocess lockを保持中はsending復旧判定も行わない。file lockでsending/attempt+1をsync確定してからHTTPを開始し、他processは同recordを消費しない。channelがdisabled/不在なら送信前にfailed/channel_unavailable、payload不在/不一致ならfailed/payload_unavailableへ終端する。送信URL安全性・timeout・retry間隔/上限は既存通知契約を使用するが、手動再送をnotify_pendingにも登録しない。実送信結果のnotify_logを新delivery_id/attemptで1行確定してからledgerを更新する。成功はsucceeded/http_success、非retryable/上限到達はfailed/http_failure、retry可能ならqueued/next_attempt_atを設定する。受付時刻とattempt番号を再試行で戻さない。
+
+再起動時sendingは、同delivery_id/attemptのschema-valid logが1件だけあればその保存済み結果を用いて終端/再queueする。0件または矛盾する複数件はrecovery_requiredとし自動再送しない。log保存前の切断/timeoutで受信側処理の有無が不明な場合もrecovery_required、exactly-onceや受信側重複防止を保証しない。通常のHTTP5xx応答を受信できた場合だけ既存retry契約を適用する。
+
+復旧CLIは `adlaire-ci-runner --abandon-resend ID --state-dir ABS`、他operationと併用禁止、root/実行ownerのみ。recovery_requiredのrecordだけをfailed/abandonedへ変更し、送信・成功log作成をしない。stdoutは `{"id":ID,"status":"failed","result_code":"abandoned"}` + LF、exit0、入力2/競合3/I/O1、stderrは固定 `RESEND_INVALID` / `RESEND_CONFLICT` / `RESEND_FAILED`。誤って配達済みを成功扱いに直す操作は設けない。配達有無を別途確認した運用者だけが新しい通知操作を行い、本CLIを再送承認と混同しない。
+
 <a id="sec-27-32"></a>
 **27.32 ビルド通知連携：**
 

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "f2e556157eb6543837d1c2658d21a711d0ef8a6edb04b9e89be8c84702aabb23",
+  "source_group_sha256": "8ff0c3a85266602e0ed7a21958be0682fa7bb65e980e37ec24f02127aef218dd",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -75,8 +75,8 @@
     {
       "path": "main_test.go",
       "source_exists": true,
-      "sha256": "9bca6ab2e2e46118ec11aabba578cc7cefe12ef4660ecc493154188120434584",
-      "size_bytes": 384583,
+      "sha256": "fbf43e49d82a1083b14b4927ecb98b21ac5ef3621229227f57532cb6c264118a",
+      "size_bytes": 389959,
       "owner_component": "runner",
       "area": "checker",
       "detected_terms": [
@@ -115,8 +115,8 @@
     {
       "path": "docs/SPEC.md",
       "source_exists": true,
-      "sha256": "63a05243054cb76837471ee96572fe1eec553ee57992396c3d2ceecb6fc9d39a",
-      "size_bytes": 213514,
+      "sha256": "f056bea5c843b18e88c95893c3991ff81584a342fa537f07befafb755229f849",
+      "size_bytes": 214124,
       "owner_component": "runner",
       "area": "policy",
       "detected_terms": [
@@ -135,8 +135,8 @@
     {
       "path": "docs/ROADMAP.md",
       "source_exists": true,
-      "sha256": "961ca7f2c35dbb3506e8d99c2e5397983196c565354c99200626b0f72ad8a500",
-      "size_bytes": 67835,
+      "sha256": "815c4f051a6a7572b7abd61c533df65d4cb28e05b3b934b1e4d5f0e382916c1f",
+      "size_bytes": 68392,
       "owner_component": "runner",
       "area": "roadmap",
       "detected_terms": [
@@ -155,8 +155,8 @@
     {
       "path": "docs/DETAIL_INDEX.md",
       "source_exists": true,
-      "sha256": "ece9706c6328b42fca0fd2d5c3036dcf5ee395c2d29350e5c35742f05143e532",
-      "size_bytes": 178444,
+      "sha256": "6affdac88832033022b563aada889b90fa751dc74414f03f5d35f8a24a9ef730",
+      "size_bytes": 178691,
       "owner_component": "runner",
       "area": "detail-index",
       "detected_terms": [
@@ -175,8 +175,8 @@
     {
       "path": "docs/DOCUMENT_INDEX.md",
       "source_exists": true,
-      "sha256": "c231e72c853d9f56904688e02c23f8372e498694d0c429b1e034e1dd66d92e70",
-      "size_bytes": 62754,
+      "sha256": "9ec4540f20f5c90ba591d993108dfb83b72bdbb60efbb4c2c8fa882b936a698a",
+      "size_bytes": 64309,
       "owner_component": "runner",
       "area": "document-index",
       "detected_terms": [
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "98ef83921bbd7268500d8b4b89a35353d1064e288e92412968870d33f76a4050",
-      "size_bytes": 1024996,
+      "sha256": "8a2e68e40438be968a2f3196d97602a0ddd4036b6820b599f88ceb63956d7a24",
+      "size_bytes": 1032211,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [
