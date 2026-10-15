@@ -27,7 +27,7 @@ expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,tra
 | P19-WORKER | runner | drain/lease30秒境界/旧世代result/EOF/262144 byte frame境界/2 MiB metadata/4slot同時照会 | 新割当0、期限後commit拒否、slot再利用前照合 | lease_generation照合を除去 |
 | P19-ISOLATION | setup | host sentinel/network/exec/readonly/memory/disk/tasks/output上限/workerと他job UIDへのsignal/偽SO_PEERCRED | 各禁止操作失敗、上限停止、child残存0、未能力はP19_CAPABILITY | sandbox propertyを1項ずつ除去 |
 | P19-CACHE | runner | 別project/secretあり/同key異bytes/TTL境界/in_use GC競合 | 越境hit0、secret指定拒否、破損miss、pin中削除0 | keyからprojectを除去 |
-| P19-ARTIFACT | archive | tar traversal/link/重複/size超過/digest改竄/pinとGC | 展開外write0、全file比較、deleting新pin拒否 | pin検査を除去 |
+| P19-ARTIFACT | archive | tar traversal/link/重複/size超過/digest改竄/pinとGC/別source SHAの同一payload再登録 | 展開外write0、全file比較、deleting新pin拒否 | pin検査を除去 |
 | P19-APPROVAL | security | 本人/同user別token/3600秒境界/失効/plan変更 | 人数増加なし、期限now>=expires拒否、配備起動0 | plan_digest照合を除去 |
 | P19-DEPLOY | runner | 全3strategy/古い世代/部分切替/health不良/返信消失/canary複数step/10秒窓境界/Routeと操作結果commit間crash/Host binding未知・越境・Forwarded偽装 | file/Route世代/旧digest実復元、finalize後stable一致、query前再送0、不明blocked | health後終端条件を除去 |
 | P19-DURABILITY | statefile | 全write/fsync/rename前後crash/容量/Head改竄 | precommit Head不変、postrename不確定、保護参照不変 | directory fsyncを除去 |
