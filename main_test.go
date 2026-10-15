@@ -6905,7 +6905,13 @@ type developmentActionsWorkflow struct {
 	Jobs  []developmentActionsJob `json:"jobs"`
 }
 
-const developmentActionsGateCommand = "go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls)$' -count=1 -v"
+const developmentActionsGateCommand = `test "$ADLAIRE_ACTIONS_GATE" = required
+test -n "$ADLAIRE_ACTIONS_NEEDS"
+go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls)$' -count=1 -v | tee "$RUNNER_TEMP/development-actions-gate.log"
+for required_test in TestDevelopmentActionsRequiredGate TestDevelopmentActionsWorkflowContract TestDevelopmentActionsGateControls; do
+  grep -Fq -- "--- PASS: $required_test (" "$RUNNER_TEMP/development-actions-gate.log"
+done
+grep -Fq '"record_type":"development-actions-gate"' "$RUNNER_TEMP/development-actions-gate.log"`
 
 func developmentActionsDefinitions(t *testing.T) []developmentActionsWorkflow {
 	t.Helper()
@@ -6999,8 +7005,8 @@ func developmentActionsWorkflowText(w developmentActionsWorkflow) string {
 	b.WriteString("    runs-on: ubuntu-24.04\n    timeout-minutes: 10\n    steps:\n")
 	b.WriteString(checkout)
 	b.WriteString(setupGo)
-	b.WriteString("      - name: Verify required checks and checkout identity\n        env:\n          ADLAIRE_ACTIONS_GATE: required\n          ADLAIRE_ACTIONS_NEEDS: ${{ toJSON(needs) }}\n        run: |\n          test \"$ADLAIRE_ACTIONS_GATE\" = required\n          test -n \"$ADLAIRE_ACTIONS_NEEDS\"\n          ")
-	b.WriteString(developmentActionsGateCommand)
+	b.WriteString("      - name: Verify required checks and checkout identity\n        env:\n          ADLAIRE_ACTIONS_GATE: required\n          ADLAIRE_ACTIONS_NEEDS: ${{ toJSON(needs) }}\n        run: |\n          ")
+	b.WriteString(strings.ReplaceAll(developmentActionsGateCommand, "\n", "\n          "))
 	b.WriteByte('\n')
 	return b.String()
 }
@@ -7204,6 +7210,9 @@ func TestDevelopmentActionsRequiredGate(t *testing.T) {
 	}
 	var definition developmentActionsWorkflow
 	for _, candidate := range developmentActionsDefinitions(t) {
+		if err := developmentActionsCheckWorkflow(candidate, phase11MustReadText(t, ".github/workflows/"+candidate.Name+".yml")); err != nil {
+			t.Fatal(err)
+		}
 		if candidate.Name == os.Getenv("GITHUB_WORKFLOW") {
 			definition = candidate
 		}
@@ -7277,6 +7286,34 @@ func TestDevelopmentActionsGateControls(t *testing.T) {
 					Env:   map[string]string{"ADLAIRE_ACTIONS_GATE": "required", "GITHUB_ACTIONS": "true", "GITHUB_REPOSITORY": "fqwink/Build-Scripts", "GITHUB_SERVER_URL": "https://github.com", "GITHUB_RUN_ID": "123", "GITHUB_RUN_ATTEMPT": "1", "GITHUB_JOB": w.gateID(), "GITHUB_WORKFLOW": w.Name, "GITHUB_WORKFLOW_REF": "fqwink/Build-Scripts/.github/workflows/" + w.Name + ".yml@refs/pull/99/merge", "GITHUB_REF": "refs/pull/99/merge", "GITHUB_SHA": target, "GITHUB_WORKFLOW_SHA": target, "GITHUB_EVENT_NAME": "pull_request", "RUNNER_ENVIRONMENT": "github-hosted", "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64"},
 					Needs: encoded, Event: []byte(`{"number":99,"pull_request":{"head":{"sha":"` + source + `"},"base":{"sha":"` + base + `"}}}`), TestedSHA: target, Parents: []string{base, source}, OSRelease: "ID=ubuntu\nVERSION_ID=\"24.04\"\n",
 				}
+			}
+			passLines := "--- PASS: TestDevelopmentActionsRequiredGate (0.01s)\n--- PASS: TestDevelopmentActionsWorkflowContract (0.01s)\n--- PASS: TestDevelopmentActionsGateControls (0.01s)\n"
+			marker := `{"record_type":"development-actions-gate"}` + "\n"
+			for _, fixture := range []struct {
+				name, output string
+				exit         int
+				mode, needs  string
+				success      bool
+			}{
+				{"complete", passLines + marker, 0, "required", "{}", true},
+				{"no-tests", "testing: warning: no tests to run\nPASS\n", 0, "required", "{}", false},
+				{"missing-root", strings.Replace(passLines, "--- PASS: TestDevelopmentActionsRequiredGate (0.01s)\n", "", 1) + marker, 0, "required", "{}", false},
+				{"missing-marker", passLines, 0, "required", "{}", false},
+				{"failed-exit", passLines + marker, 7, "required", "{}", false},
+				{"missing-mode", passLines + marker, 0, "", "{}", false},
+				{"missing-needs", passLines + marker, 0, "required", "", false},
+			} {
+				t.Run("release.development-actions."+w.Name+".script-"+fixture.name+".exit-code", func(t *testing.T) {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					fake := "go() { printf '%s' '" + fixture.output + "'; return " + strconv.Itoa(fixture.exit) + "; }\n"
+					command := exec.CommandContext(ctx, "bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", fake+developmentActionsGateCommand)
+					command.Env = append(os.Environ(), "RUNNER_TEMP="+t.TempDir(), "ADLAIRE_ACTIONS_GATE="+fixture.mode, "ADLAIRE_ACTIONS_NEEDS="+fixture.needs)
+					output, err := command.CombinedOutput()
+					if (err == nil) != fixture.success {
+						t.Fatalf("gate script expected success=%t, err=%v output=%q", fixture.success, err, output)
+					}
+				})
 			}
 			positive := fresh()
 			record, err := developmentActionsValidateGate(w, positive)
@@ -7472,7 +7509,7 @@ func TestDevelopmentActionsGateControls(t *testing.T) {
 				{"persist-credentials: false", "persist-credentials: true"}, {"11d5960a326750d5838078e36cf38b85af677262", "v4"},
 				{"runs-on: ubuntu-24.04", "runs-on: self-hosted"}, {"cancel-in-progress:", "cancel-disabled:"},
 				{"ADLAIRE_ACTIONS_GATE: required", "ADLAIRE_ACTIONS_GATE: optional"},
-				{"      - " + first + "\n", ""}, {developmentActionsGateCommand, "true"},
+				{"      - " + first + "\n", ""}, {strings.ReplaceAll(developmentActionsGateCommand, "\n", "\n          "), "true"},
 				{"    steps:\n", "    continue-on-error: true\n    steps:\n"},
 				{"    steps:\n", "    if: false\n    steps:\n"},
 			} {

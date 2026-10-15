@@ -111,4 +111,8 @@ jobs:
         run: |
           test "$ADLAIRE_ACTIONS_GATE" = required
           test -n "$ADLAIRE_ACTIONS_NEEDS"
-          go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls)$' -count=1 -v
+          go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls)$' -count=1 -v | tee "$RUNNER_TEMP/development-actions-gate.log"
+          for required_test in TestDevelopmentActionsRequiredGate TestDevelopmentActionsWorkflowContract TestDevelopmentActionsGateControls; do
+            grep -Fq -- "--- PASS: $required_test (" "$RUNNER_TEMP/development-actions-gate.log"
+          done
+          grep -Fq '"record_type":"development-actions-gate"' "$RUNNER_TEMP/development-actions-gate.log"
