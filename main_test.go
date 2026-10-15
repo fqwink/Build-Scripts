@@ -7992,7 +7992,7 @@ func TestDevelopmentActionsBootstrapControls(t *testing.T) {
 				phase18WriteExecutable(t, filepath.Join(fake, "sha256sum"), "#!/bin/sh\nprintf 'digest\\n' >> \"$FAKE_TRACE\"\nif [ \"$FAKE_FAILURE\" = digest-read ]; then echo fixture-secret-canary >&2; exit 7; fi\nif [ \"$FAKE_FAILURE\" = digest ]; then echo invalid; else printf '%s  %s\\n' \"$FAKE_DIGEST\" \"$2\"; fi\n")
 				phase18WriteExecutable(t, filepath.Join(fake, "tar"), "#!/bin/sh\n"+
 					"case \"$1\" in\n"+
-					" -tzf) printf 'list\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = archive-list ]; then exit 7; fi; if [ \"$FAKE_FAILURE\" = archive-entry ]; then printf 'go/bin/go\\ngo/../escape\\n'; else printf 'go/\\ngo/bin/\\ngo/bin/go\\n'; fi;;\n"+
+					" -tzf) printf 'list\\n' >> \"$FAKE_TRACE\"; [ \"${3:-}\" = --quoting-style=literal ] || exit 8; if [ \"$FAKE_FAILURE\" = archive-list ]; then exit 7; fi; if [ \"$FAKE_FAILURE\" = archive-entry ]; then printf 'go/bin/go\\ngo/../escape\\n'; else printf 'go/\\ngo/bin/\\ngo/bin/go\\ngo/test/\\303\\236foo.go\\n'; fi;;\n"+
 					" -tvzf) printf 'types\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = archive-type ]; then echo 'lrwx go/bin/go'; else echo '-rwx go/bin/go'; fi;;\n"+
 					" --extract) printf 'extract\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = extract ]; then exit 7; fi; while [ \"$#\" -gt 0 ]; do if [ \"$1\" = --directory ]; then shift; dest=$1; fi; shift; done; mkdir -p \"$dest/go/bin\"; if [ \"$FAKE_FAILURE\" = executable ]; then ln -s \"$FAKE_RUNTIME\" \"$dest/go/bin/go\"; else cp \"$FAKE_RUNTIME\" \"$dest/go/bin/go\"; fi;;\n"+
 					" *) exit 8;;\nesac\n")

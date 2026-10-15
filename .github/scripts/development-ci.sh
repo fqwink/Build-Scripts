@@ -63,7 +63,7 @@ digest_output=$(sha256sum -- "$archive" 2>/dev/null) || fail digest-read
 [[ "${digest_output%% *}" == "$expected" ]] || fail digest
 
 if [[ "$1" == go ]]; then
-  tar -tzf "$archive" >"$root/list" 2>/dev/null || fail archive-list
+  tar -tzf "$archive" --quoting-style=literal >"$root/list" 2>/dev/null || fail archive-list
   [[ -s "$root/list" ]] || fail archive-entry
   while IFS= read -r entry; do
     case "$entry" in
