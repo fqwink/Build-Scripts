@@ -23,7 +23,7 @@ deny-by-default。User/Service IDのsystem/worker/siteは予約済みで作成�
 | project-admin | operator + definition/template/environment/secretの変更、project内user/serviceへのviewer/operator/approver付与。platform-adminや別project権限を付与できない。 |
 | platform-admin | project/worker/target/user/service作成、project-admin付与、global設定・recover。project data操作は対象projectの明示grantも必要。 |
 
-disabled projectは新規run/deploy開始・retry/resumeを拒否するが、初期構成のため設定変更/読取/cancel/reconcileは各role行列の範囲で許可する。project削除は非対応でenabled=falseによる停止だけ、user削除は無効化のみ、最後の有効platform-adminを失効/無効化できない。quota値を現在利用量より下げる変更は409。worker/target変更はdrainかつactive lease/deploymentなしが条件。認証→scope認可→resource lookup→body decodeの順にし、他project IDは403（存在detailなし）。
+disabled projectは新規run/deploy開始・retry/resumeを拒否するが、初期構成のため設定変更/読取/cancel/reconcileは各role行列の範囲で許可する。project削除は非対応でenabled=falseによる停止だけ、user削除は無効化のみ、最後の有効platform-adminを失効/無効化できない。subject自身の有効grantはAPI Authorization projectionへ渡し、他subjectや無効/期限切れgrantを含めない。1subjectのprojectionがAPI byte上限を超えるgrant変更はP19_QUOTAで拒否する。quota値を現在利用量より下げる変更は409。worker/target変更はdrainかつactive lease/deploymentなしが条件。認証→scope認可→resource lookup→body decodeの順にし、他project IDは403（存在detailなし）。
 
 承認対象はDeployPlan digest、承認有効期限は発行から3600秒、必要人数はEnvironment.approvals（0〜2）。production=trueは1以上かつallow_self_approval=false。同一subject重複不可、service不可。approver grantが失効/無効化、plan内容/環境revision/期待世代変更で承認無効。self禁止時requester本人は拒否。rejectはdeployment.failed/P19_APPROVALとして終端化、承認だけで実体配備はしない。
 

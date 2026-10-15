@@ -6,7 +6,7 @@
 
 ownerは `ui`、実装artifactは [admin/index.html](../../admin/index.html)。すべての通信は [`docs/details/sdk.md` 詳細本文責務 SDK公開契約](sdk.md#phase-19-sdk-contract) を通し、直接fetch/HTTP/secret storageを追加しない。視覚値は [`docs/DESIGN.md` デザイン責務 DESIGN正本](../DESIGN.md#phase-19-admin-visual-contract)、型とエラーはAPI正本を参照する。
 
-navigationはprojects/runs/artifacts/environments/workers/access/operationsの7view。project選択は全view共通、切替時に古いview requestをabortしcursor/selection/confirmationを破棄する。権限のないactionは非表示、既に開いていたviewの403は表示を破棄し権限エラーへ移る。platform-adminのglobal viewとproject grantを混同しない。既存管理画面から「CI/CD」入口で切替え、legacy操作は別viewのまま残す。
+navigationはprojects/runs/artifacts/environments/workers/access/operationsの7view。project選択は全view共通、切替時に古いview requestをabortしcursor/selection/confirmationを破棄する。各success/errorのauthorizationをmemoryに保持し、generationが現在値以上でsubject一致の場合だけ権限表示を更新する。初回認証後はprojectsListのauthorizationを受け取るまで操作を表示せず、表示の権限は同grantとAPI role表から導出する。保存済tokenだけからroleを推測しない。権限のないactionは非表示、既に開いていたviewの403は表示を破棄し権限エラーへ移る。platform-adminのglobal viewとproject grantを混同しない。既存管理画面から「CI/CD」入口で切替え、legacy操作は別viewのまま残す。
 
 以下はDOM action IDとSDK methodの一対一対応。methodと同じoperation IDがjoin keyでありendpointを本書へ複製しない。list/getはviewのdata loader、mutationは同IDのbutton/form submit、login/logoutはsession操作とする。Session.must_change=forcedではpasswordChange/logoutだけを表示し、変更成功時にloginへ戻す。promptでは変更案内だけを出し、強制として操作を止めない。全IDに `data-cicd-action="operationID"` を付け、重複DOM ID禁止。
 

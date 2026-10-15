@@ -31,7 +31,7 @@ expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,tra
 | P19-APPROVAL | security | 本人/同user別token/3600秒境界/失効/plan変更 | 人数増加なし、期限now>=expires拒否、配備起動0 | plan_digest照合を除去 |
 | P19-DEPLOY | runner | 全3strategy/古い世代/部分切替/health不良/返信消失/canary複数step/10秒窓境界/Routeと操作結果commit間crash/Host binding未知・越境・Forwarded偽装 | file/Route世代/旧digest実復元、finalize後stable一致、query前再送0、不明blocked | health後終端条件を除去 |
 | P19-DURABILITY | statefile | 全write/fsync/rename前後crash/容量/Head改竄 | precommit Head不変、postrename不確定、保護参照不変 | directory fsyncを除去 |
-| P19-ACCESS | security | 全role×operation/他project/期限/quota/token失効/UserInputへcredential混入/安全整数のgeneration/immutable revision+1 | 403と副作用0、資格情報projection0、quota超過拒否 | scope照合を除去 |
+| P19-ACCESS | security | 全role×operation/他project/期限/quota/token失効/UserInputへcredential混入/安全整数のgeneration/immutable revision+1/本人だけのAuthorization projection/遅延旧世代permission | 403と副作用0、資格情報projection0、quota超過拒否 | scope照合を除去 |
 | P19-LOG-UI | ui | secret全byte境界/17MiB出力/cursor410/遅延response | mask前の保存0/保存後のleak0、ring<=1MiB、旧view更新0、poll停止 | mask chunk保留を除去 |
 | P19-RELEASE | release | 独立build/署名既知値/鍵失効/manifest改竄/cohort混在 | 10checksum/12assets、tamper全拒否、old cohort維持 | signature Verifyを除去 |
 | P19-STATUS | commitstatus | 旧attempt遅延/送信timeout/通知disabled/SHA違い | 旧結果送信0、実行結果不変、Actions証跡へ流用0 | 最新attempt照合を除去 |

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "ea0b8b4f1e16b6cae4cf4f935e31898da85d989736b573724d9d9aaf863f9fb4",
+  "source_group_sha256": "2f591cb704864c02c5a8fe2fc7df3a23c0ae1bbc6db912e660364386afb9f48e",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -195,8 +195,8 @@
     {
       "path": "docs/details/fixture.md",
       "source_exists": true,
-      "sha256": "b3dcef96a29e9e6f5e8f15c60a1f5e86013501b49a1bfdf40a5c7f0c94957d1d",
-      "size_bytes": 1018836,
+      "sha256": "87198830fe2032560573f92d85cd0ca4eedeae87708006c175350ef4c1808193",
+      "size_bytes": 1018902,
       "owner_component": "runner",
       "area": "fixture-spec",
       "detected_terms": [
