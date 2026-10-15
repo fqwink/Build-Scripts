@@ -46,6 +46,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | 対象 | 正本参照 |
 |------|----------|
 | テスト方針 / 完了可否 | [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) |
+| Node 禁止適合 / 非依存準備 / 再混入control | [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](SPEC.md#policy-node-runtime-ban)、[`docs/details/fixture.md` fixture 証跡責務 Node 非依存開発検証契約](details/fixture.md#development-actions-node-free-contract) |
 | 開発 GitHub Actions 方針 / 必須条件 / 作業手順 | [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3)、[`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions)、[`AGENTS.md` 開発 GitHub Actions 作業手順](../AGENTS.md#agents-development-actions) |
 | 開発 Actions 定義 / 実行 / 適用証跡 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) |
 | 既存 7 workflow required gate / 入力 fixture / checker / 正例・負例 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract) |

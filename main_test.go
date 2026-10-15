@@ -7,11 +7,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -1647,7 +1651,7 @@ func TestPhase13ImplementationAlignmentQualityEvidence(t *testing.T) {
 	if strings.Count(workflow, "timeout-minutes:") < len(phase13RequiredChecks) {
 		t.Fatalf("Phase 13 workflow must set timeout-minutes on every required check")
 	}
-	phase13RequirePinnedActions(t, workflow)
+	phase13RequireNodeFreeWorkflow(t, workflow)
 }
 
 func TestPhase15ObsidianLocalSyncEvidence(t *testing.T) {
@@ -1727,7 +1731,7 @@ func TestPhase15ObsidianLocalSyncEvidence(t *testing.T) {
 			t.Fatalf("Phase 15 workflow must define required check job %s", requiredCheck)
 		}
 	}
-	phase13RequirePinnedActions(t, workflow)
+	phase13RequireNodeFreeWorkflow(t, workflow)
 }
 
 type phase11Manifest struct {
@@ -2751,7 +2755,7 @@ func phase16RequireWorkflow(t *testing.T, path string) {
 	if strings.Count(workflow, "timeout-minutes:") < len(phase16RequiredChecks) {
 		t.Fatalf("%s must set timeout-minutes on every required check", path)
 	}
-	phase13RequirePinnedActions(t, workflow)
+	phase13RequireNodeFreeWorkflow(t, workflow)
 }
 
 func phase16RequireDocumentDriftClosed(t *testing.T) {
@@ -4180,7 +4184,7 @@ func phase17RequireWorkflow(t *testing.T, path string) {
 	if strings.Count(workflow, "timeout-minutes:") < len(phase17RequiredChecks) {
 		t.Fatalf("%s must set timeout-minutes on every Phase 17 job", path)
 	}
-	phase13RequirePinnedActions(t, workflow)
+	phase13RequireNodeFreeWorkflow(t, workflow)
 }
 
 func phase17RequireDocumentState(t *testing.T) {
@@ -5638,7 +5642,7 @@ func phase18RequireWorkflow(t *testing.T, path string) {
 	if !strings.Contains(workflow, "go test ./... -run TestPhase18VPSPullBootstrapEvidence -count=1") {
 		t.Fatalf("%s must run the Phase 18 evidence checker directly", path)
 	}
-	phase13RequirePinnedActions(t, workflow)
+	phase13RequireNodeFreeWorkflow(t, workflow)
 }
 
 func phase18RequireBootstrapScriptArtifact(t *testing.T, path string, scope phase18OperationScopeFile) {
@@ -6572,28 +6576,17 @@ func phase13ReadJSONLines(t *testing.T, path string) []map[string]any {
 	return records
 }
 
-func phase13RequirePinnedActions(t *testing.T, workflow string) {
+func phase13RequireNodeFreeWorkflow(t *testing.T, workflow string) {
 	t.Helper()
-
-	for _, line := range strings.Split(workflow, "\n") {
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "- uses: ") {
-			continue
-		}
-		parts := strings.Split(line, "@")
-		if len(parts) != 2 {
-			t.Fatalf("workflow action must include one @ ref: %s", line)
-		}
-		ref := strings.TrimSpace(parts[1])
-		if len(ref) != 40 {
-			t.Fatalf("workflow action ref must be a 40 character commit SHA, got %q in %s", ref, line)
-		}
-		for _, char := range ref {
-			if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f')) {
-				t.Fatalf("workflow action ref must be lowercase hex commit SHA, got %q in %s", ref, line)
+	for _, definition := range developmentActionsDefinitions(t) {
+		if strings.HasPrefix(workflow, "name: "+definition.Name+"\n") {
+			if err := developmentActionsCheckWorkflow(definition, workflow); err != nil {
+				t.Fatal(err)
 			}
+			return
 		}
 	}
+	t.Fatal("actions-workflow-contract: unknown workflow")
 }
 
 func phase11RequireNoUnexpectedFixtureDirectories(t *testing.T) {
@@ -6900,15 +6893,56 @@ type developmentActionsJob struct {
 }
 
 type developmentActionsWorkflow struct {
-	Phase int                     `json:"phase"`
-	Name  string                  `json:"name"`
-	Jobs  []developmentActionsJob `json:"jobs"`
+	Phase int                      `json:"phase"`
+	Name  string                   `json:"name"`
+	Jobs  []developmentActionsJob  `json:"jobs"`
+	Setup *developmentActionsSetup `json:"-"`
+}
+
+type developmentActionsSetup struct {
+	GoVersion    string `json:"go_version"`
+	GoSHA256     string `json:"go_sha256"`
+	DenoVersion  string `json:"deno_version"`
+	DenoSHA256   string `json:"deno_sha256"`
+	HelperSHA256 string `json:"helper_sha256"`
+	Checkout     string `json:"checkout"`
+}
+
+func developmentActionsSetupDefinition(t *testing.T) *developmentActionsSetup {
+	t.Helper()
+	text := phase11MustReadText(t, "docs/details/fixture.md")
+	_, section, ok := strings.Cut(text, `<a id="development-actions-node-free-contract"></a>`)
+	if !ok {
+		t.Fatal("actions-setup: missing canonical anchor")
+	}
+	_, section, ok = strings.Cut(section, "```json\n")
+	if !ok {
+		t.Fatal("actions-setup: missing definition")
+	}
+	data, _, ok := strings.Cut(section, "\n```")
+	if !ok {
+		t.Fatal("actions-setup: missing definition end")
+	}
+	var setup developmentActionsSetup
+	if err := developmentActionsDecodeJSON([]byte(data), &setup, 2<<20, true); err != nil {
+		t.Fatal(err)
+	}
+	for _, digest := range []string{setup.GoSHA256, setup.DenoSHA256, setup.HelperSHA256} {
+		decoded, err := hex.DecodeString(digest)
+		if err != nil || len(decoded) != 32 || strings.ToLower(digest) != digest {
+			t.Fatal("actions-setup: invalid digest")
+		}
+	}
+	if !regexp.MustCompile(`^1\.22\.[0-9]+$`).MatchString(setup.GoVersion) || !regexp.MustCompile(`^2\.[0-9]+\.[0-9]+$`).MatchString(setup.DenoVersion) || setup.Checkout == "" {
+		t.Fatal("actions-setup: invalid definition")
+	}
+	return &setup
 }
 
 const developmentActionsGateCommand = `test "$ADLAIRE_ACTIONS_GATE" = required
 test -n "$ADLAIRE_ACTIONS_NEEDS"
-go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls)$' -count=1 -v | tee "$RUNNER_TEMP/development-actions-gate.log"
-for required_test in TestDevelopmentActionsRequiredGate TestDevelopmentActionsWorkflowContract TestDevelopmentActionsGateControls; do
+go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls|NodeFreeControls|BootstrapControls)$' -count=1 -v | tee "$RUNNER_TEMP/development-actions-gate.log"
+for required_test in TestDevelopmentActionsRequiredGate TestDevelopmentActionsWorkflowContract TestDevelopmentActionsGateControls TestDevelopmentActionsNodeFreeControls TestDevelopmentActionsBootstrapControls; do
   grep -Fq -- "--- PASS: $required_test (" "$RUNNER_TEMP/development-actions-gate.log"
 done
 grep -Fq '"record_type":"development-actions-gate"' "$RUNNER_TEMP/development-actions-gate.log"`
@@ -6938,6 +6972,7 @@ func developmentActionsDefinitions(t *testing.T) []developmentActionsWorkflow {
 		t.Fatal("actions-definition: workflow set mismatch")
 	}
 	for i, definition := range definitions {
+		definitions[i].Setup = developmentActionsSetupDefinition(t)
 		if definition.Phase != i+12 || definition.Name != names[i] || len(definition.Jobs) != counts[i] {
 			t.Fatal("actions-definition: workflow identity or required job count mismatch")
 		}
@@ -6970,26 +7005,24 @@ func developmentActionsIdentifier(value string) bool {
 
 // This is a fixed workflow serialization oracle, not a general YAML parser.
 func developmentActionsWorkflowText(w developmentActionsWorkflow) string {
+	if w.Setup == nil {
+		return "missing setup definition\n"
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "name: %s\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n", w.Name)
 	if w.Phase == 18 {
 		b.WriteString("  workflow_dispatch:\n")
 	}
 	b.WriteString("  push:\n    branches:\n      - main\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}\n  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n\ndefaults:\n  run:\n    shell: bash\n\njobs:\n")
-	checkout := "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n        with:\n          ref: ${{ github.sha }}\n          persist-credentials: false\n"
-	setupGo := "      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff\n        with:\n          go-version: \"1.22\"\n"
-	setupDeno := "      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed\n        with:\n          deno-version: v2.x\n"
+	checkout := "      - name: Checkout exact source without external actions\n        run: |\n          " + strings.ReplaceAll(w.Setup.Checkout, "\n", "\n          ") + "\n"
+	cleanup := "      - name: Clean temporary toolchain\n        if: ${{ always() }}\n        run: |\n          if test -f .github/scripts/development-ci.sh; then\n            bash .github/scripts/development-ci.sh cleanup\n          else\n            test -z \"${ADLAIRE_CI_TOOLS:-}\"\n          fi\n"
 	for i, job := range w.Jobs {
 		if i != 0 {
 			b.WriteByte('\n')
 		}
 		fmt.Fprintf(&b, "  %s:\n    runs-on: ubuntu-24.04\n    timeout-minutes: %d\n    steps:\n", job.ID, job.Timeout)
 		b.WriteString(checkout)
-		if job.Runtime == "go" {
-			b.WriteString(setupGo)
-		} else {
-			b.WriteString(setupDeno)
-		}
+		fmt.Fprintf(&b, "      - name: Prepare verified %s runtime\n        run: bash .github/scripts/development-ci.sh %s\n", job.Runtime, job.Runtime)
 		if strings.Contains(job.Command, "\n") {
 			b.WriteString("      - run: |\n          ")
 			b.WriteString(strings.ReplaceAll(job.Command, "\n", "\n          "))
@@ -6997,6 +7030,7 @@ func developmentActionsWorkflowText(w developmentActionsWorkflow) string {
 		} else {
 			fmt.Fprintf(&b, "      - run: %s\n", job.Command)
 		}
+		b.WriteString(cleanup)
 	}
 	fmt.Fprintf(&b, "\n  %s:\n    if: ${{ always() }}\n    needs:\n", w.gateID())
 	for _, job := range w.Jobs {
@@ -7004,10 +7038,11 @@ func developmentActionsWorkflowText(w developmentActionsWorkflow) string {
 	}
 	b.WriteString("    runs-on: ubuntu-24.04\n    timeout-minutes: 10\n    steps:\n")
 	b.WriteString(checkout)
-	b.WriteString(setupGo)
+	b.WriteString("      - name: Prepare verified go runtime\n        run: bash .github/scripts/development-ci.sh go\n")
 	b.WriteString("      - name: Verify required checks and checkout identity\n        env:\n          ADLAIRE_ACTIONS_GATE: required\n          ADLAIRE_ACTIONS_NEEDS: ${{ toJSON(needs) }}\n        run: |\n          ")
 	b.WriteString(strings.ReplaceAll(developmentActionsGateCommand, "\n", "\n          "))
 	b.WriteByte('\n')
+	b.WriteString(cleanup)
 	return b.String()
 }
 
@@ -7022,6 +7057,13 @@ func developmentActionsCheckWorkflow(w developmentActionsWorkflow, actual string
 
 func TestDevelopmentActionsWorkflowContract(t *testing.T) {
 	t.Parallel()
+	setup := developmentActionsSetupDefinition(t)
+	if err := developmentActionsCheckHelper(setup, []byte(phase11MustReadText(t, ".github/scripts/development-ci.sh"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := developmentActionsCheckNodeFreeRepository("."); err != nil {
+		t.Fatal(err)
+	}
 	for _, definition := range developmentActionsDefinitions(t) {
 		t.Run("release.development-actions."+definition.Name+".workflow-contract.exact", func(t *testing.T) {
 			path := ".github/workflows/" + definition.Name + ".yml"
@@ -7208,6 +7250,13 @@ func TestDevelopmentActionsRequiredGate(t *testing.T) {
 		}
 		return
 	}
+	setup := developmentActionsSetupDefinition(t)
+	if err := developmentActionsCheckHelper(setup, []byte(phase11MustReadText(t, ".github/scripts/development-ci.sh"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := developmentActionsCheckNodeFreeRepository("."); err != nil {
+		t.Fatal(err)
+	}
 	var definition developmentActionsWorkflow
 	for _, candidate := range developmentActionsDefinitions(t) {
 		if err := developmentActionsCheckWorkflow(candidate, phase11MustReadText(t, ".github/workflows/"+candidate.Name+".yml")); err != nil {
@@ -7228,7 +7277,7 @@ func TestDevelopmentActionsRequiredGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" || !strings.HasPrefix(runtime.Version(), "go1.22.") {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" || runtime.Version() != "go"+definition.Setup.GoVersion {
 		t.Fatal("actions-gate:runtime")
 	}
 	record, err := developmentActionsValidateGate(definition, input)
@@ -7236,6 +7285,14 @@ func TestDevelopmentActionsRequiredGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	record["runtime"] = runtime.Version()
+	setupJSON, err := json.Marshal(definition.Setup)
+	if err != nil {
+		t.Fatal("actions-setup: encoding")
+	}
+	setupSum := sha256.Sum256(setupJSON)
+	record["setup_definition_sha256"] = hex.EncodeToString(setupSum[:])
+	record["helper_sha256"] = definition.Setup.HelperSHA256
+	record["external_action_count"] = 0
 	record["log_retention_days"] = os.Getenv("GITHUB_RETENTION_DAYS")
 	encoded, err := json.Marshal(record)
 	if err != nil {
@@ -7287,7 +7344,7 @@ func TestDevelopmentActionsGateControls(t *testing.T) {
 					Needs: encoded, Event: []byte(`{"number":99,"pull_request":{"head":{"sha":"` + source + `"},"base":{"sha":"` + base + `"}}}`), TestedSHA: target, Parents: []string{base, source}, OSRelease: "ID=ubuntu\nVERSION_ID=\"24.04\"\n",
 				}
 			}
-			passLines := "--- PASS: TestDevelopmentActionsRequiredGate (0.01s)\n--- PASS: TestDevelopmentActionsWorkflowContract (0.01s)\n--- PASS: TestDevelopmentActionsGateControls (0.01s)\n"
+			passLines := "--- PASS: TestDevelopmentActionsRequiredGate (0.01s)\n--- PASS: TestDevelopmentActionsWorkflowContract (0.01s)\n--- PASS: TestDevelopmentActionsGateControls (0.01s)\n--- PASS: TestDevelopmentActionsNodeFreeControls (0.01s)\n--- PASS: TestDevelopmentActionsBootstrapControls (0.01s)\n"
 			marker := `{"record_type":"development-actions-gate"}` + "\n"
 			for _, fixture := range []struct {
 				name, output string
@@ -7505,8 +7562,8 @@ func TestDevelopmentActionsGateControls(t *testing.T) {
 			}
 			for _, change := range [][2]string{
 				{"contents: read", "contents: write"}, {"timeout-minutes: 10", "timeout-minutes: 0"},
-				{"${{ always() }}", "${{ success() }}"}, {"ref: ${{ github.sha }}", "ref: main"},
-				{"persist-credentials: false", "persist-credentials: true"}, {"11d5960a326750d5838078e36cf38b85af677262", "v4"},
+				{"${{ always() }}", "${{ success() }}"}, {"test \"$tested_sha\" = \"$GITHUB_SHA\"", "true"},
+				{"GIT_TERMINAL_PROMPT=0", "GIT_TERMINAL_PROMPT=1"}, {"--no-tags --depth=1", "--tags --depth=5"},
 				{"runs-on: ubuntu-24.04", "runs-on: self-hosted"}, {"cancel-in-progress:", "cancel-disabled:"},
 				{"ADLAIRE_ACTIONS_GATE: required", "ADLAIRE_ACTIONS_GATE: optional"},
 				{"      - " + first + "\n", ""}, {strings.ReplaceAll(developmentActionsGateCommand, "\n", "\n          "), "true"},
@@ -7517,6 +7574,581 @@ func TestDevelopmentActionsGateControls(t *testing.T) {
 				if mutated == canonical || developmentActionsCheckWorkflow(w, mutated) == nil {
 					t.Fatalf("actions-control: canonical workflow mutation not rejected: %s", change[0])
 				}
+			}
+		})
+	}
+}
+
+var developmentActionsNodeCommand = regexp.MustCompile("(?i)(^|[\\s;&|(\"'\\x60])(?:[^\\s;&|(\"'\\x60]*/)?(?:node(?:js)?|npm|npx|pnpm|yarn|corepack)(?:\\.exe)?($|[\\s;&|)\"'\\x60])")
+var developmentActionsNodeAPI = regexp.MustCompile("(?m)[\"'\\x60](?:node:|npm:)|\\brequire\\s*\\(|\\bmodule\\s*\\.\\s*exports\\b|\\bexports\\s*[.\\[]|\\bprocess\\s*[.\\[]|\\bBuffer\\s*\\.|\\b__dirname\\b|\\b__filename\\b")
+
+func developmentActionsStaticString(expr ast.Expr) (string, bool) {
+	switch expr := expr.(type) {
+	case *ast.BasicLit:
+		if expr.Kind == token.STRING {
+			value, err := strconv.Unquote(expr.Value)
+			return value, err == nil
+		}
+	case *ast.ParenExpr:
+		return developmentActionsStaticString(expr.X)
+	case *ast.BinaryExpr:
+		if expr.Op == token.ADD {
+			left, okLeft := developmentActionsStaticString(expr.X)
+			right, okRight := developmentActionsStaticString(expr.Y)
+			return left + right, okLeft && okRight
+		}
+	}
+	return "", false
+}
+
+func developmentActionsCheckNodeContent(path string, data []byte) error {
+	ext := filepath.Ext(path)
+	if ext == ".go" {
+		tree, err := parser.ParseFile(token.NewFileSet(), path, data, parser.SkipObjectResolution)
+		if err != nil {
+			return fmt.Errorf("node-ban:go-syntax")
+		}
+		execNames := map[string]bool{}
+		processNames := map[string]bool{}
+		for _, imp := range tree.Imports {
+			name, err := strconv.Unquote(imp.Path.Value)
+			if err != nil {
+				return fmt.Errorf("node-ban:go-syntax")
+			}
+			if name == "os/exec" || name == "os" || name == "syscall" {
+				alias := "exec"
+				if name == "os" || name == "syscall" {
+					alias = name
+				}
+				if imp.Name != nil {
+					alias = imp.Name.Name
+				}
+				if alias == "." {
+					return fmt.Errorf("node-ban:command")
+				}
+				if name == "os/exec" {
+					execNames[alias] = true
+				} else {
+					processNames[alias] = true
+				}
+			}
+		}
+		var violation error
+		ast.Inspect(tree, func(n ast.Node) bool {
+			if violation != nil {
+				return false
+			}
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			pkg, ok := sel.X.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			spawn := execNames[pkg.Name] && (sel.Sel.Name == "Command" || sel.Sel.Name == "CommandContext" || sel.Sel.Name == "LookPath")
+			spawn = spawn || processNames[pkg.Name] && (sel.Sel.Name == "StartProcess" || sel.Sel.Name == "Exec" || sel.Sel.Name == "ForkExec")
+			if !spawn {
+				return true
+			}
+			start := 0
+			if sel.Sel.Name == "CommandContext" {
+				start = 1
+			}
+			if len(call.Args) <= start {
+				violation = fmt.Errorf("node-ban:go-syntax")
+				return false
+			}
+			for _, argument := range call.Args[start:] {
+				if value, ok := developmentActionsStaticString(argument); ok && developmentActionsNodeCommand.MatchString(value) {
+					violation = fmt.Errorf("node-ban:command")
+				}
+			}
+			return true
+		})
+		if violation != nil {
+			return violation
+		}
+		if !strings.HasSuffix(path, "_test.go") {
+			var found bool
+			ast.Inspect(tree, func(n ast.Node) bool {
+				if value, ok := n.(*ast.BasicLit); ok && value.Kind == token.STRING {
+					text, err := strconv.Unquote(value.Value)
+					if err == nil && developmentActionsNodeAPI.MatchString(text) {
+						found = true
+					}
+				}
+				return true
+			})
+			if found {
+				return fmt.Errorf("node-ban:api")
+			}
+		}
+		return nil
+	}
+	if ext == ".js" || ext == ".mjs" || ext == ".html" || ext == ".sh" {
+		if developmentActionsNodeAPI.Match(data) {
+			return fmt.Errorf("node-ban:api")
+		}
+		if ext == ".sh" && developmentActionsNodeCommand.Match(data) {
+			return fmt.Errorf("node-ban:command")
+		}
+		if regexp.MustCompile("(?m)^#![^\\n]*\\bnode(?:js)?\\b").Match(data) {
+			return fmt.Errorf("node-ban:command")
+		}
+		if ext != ".sh" {
+			imports := regexp.MustCompile("(?:\\bfrom\\s+|\\bimport\\s*(?:\\(\\s*)?)[\"']([^\"']+)[\"']").FindAllSubmatch(data, -1)
+			for _, match := range imports {
+				name := string(match[1])
+				if !strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "/") && !strings.HasPrefix(name, "https://") {
+					return fmt.Errorf("node-ban:api")
+				}
+			}
+			spawns := regexp.MustCompile("\\bDeno\\s*\\.\\s*(?:Command|run)\\s*\\(\\s*(?:\\{\\s*cmd\\s*:\\s*\\[\\s*)?[\"']([^\"']+)[\"']").FindAllSubmatch(data, -1)
+			for _, match := range spawns {
+				if developmentActionsNodeCommand.Match(match[1]) {
+					return fmt.Errorf("node-ban:command")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func developmentActionsCheckNodeFreeRepository(root string) error {
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return fmt.Errorf("node-ban:read")
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return fmt.Errorf("node-ban:read")
+		}
+		rel = filepath.ToSlash(rel)
+		if rel == ".git" {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("node-ban:symlink")
+		}
+		name := strings.ToLower(d.Name())
+		switch name {
+		case "node", "node.exe", "nodejs", "nodejs.exe", "node_modules", "package.json", "package-lock.json", "npm-shrinkwrap.json", ".npmrc", ".nvmrc", ".node-version", ".yarnrc", ".yarnrc.yml", "yarn.lock", "pnpm-lock.yaml", "pnpm-workspace.yaml", "bun.lock", "bun.lockb":
+			return fmt.Errorf("node-ban:artifact")
+		}
+		if strings.HasSuffix(name, ".cjs") || strings.HasSuffix(name, ".cts") {
+			return fmt.Errorf("node-ban:artifact")
+		}
+		if rel == ".github/actions" {
+			return fmt.Errorf("node-ban:action")
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasPrefix(rel, ".github/workflows/") {
+			valid := false
+			for _, name := range []string{"phase12-quality-gate", "phase13-implementation-alignment-quality", "phase14-obsidian-vault-integration", "phase15-obsidian-local-sync", "phase16-quality-evidence-closure", "phase17-production-validation", "phase18-vps-pull-bootstrap"} {
+				if rel == ".github/workflows/"+name+".yml" {
+					valid = true
+				}
+			}
+			if !valid {
+				return fmt.Errorf("node-ban:workflow")
+			}
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("node-ban:read")
+		}
+		if strings.HasPrefix(rel, ".github/") && (filepath.Ext(rel) == ".yml" || filepath.Ext(rel) == ".yaml") {
+			if regexp.MustCompile("(?m)(^|[\\s{,])uses\\s*:").Match(data) {
+				return fmt.Errorf("node-ban:action")
+			}
+			if regexp.MustCompile("(?m)^\\s*(?:container|services)\\s*:").Match(data) {
+				return fmt.Errorf("node-ban:action")
+			}
+			if developmentActionsNodeCommand.Match(data) {
+				return fmt.Errorf("node-ban:command")
+			}
+		}
+		return developmentActionsCheckNodeContent(rel, data)
+	})
+}
+
+func TestDevelopmentActionsNodeFreeControls(t *testing.T) {
+	t.Parallel()
+	spec := phase11MustReadText(t, "docs/SPEC.md")
+	_, policy, ok := strings.Cut(spec, `<a id="policy-node-runtime-ban"></a>`)
+	if !ok || strings.Count(spec, `<a id="policy-node-runtime-ban"></a>`) != 1 {
+		t.Fatal("Node policy canonical anchor missing or duplicated")
+	}
+	policy, _, _ = strings.Cut(policy, `<a id="policy-runner-secrets"></a>`)
+	if !strings.Contains(policy, "いかなる条件下でも禁止する。例外はない。") {
+		t.Fatal("unconditional Node prohibition missing")
+	}
+	for _, path := range []string{"AGENTS.md", "docs/DETAIL_INDEX.md", "docs/DOCUMENT_INDEX.md"} {
+		if !strings.Contains(phase11MustReadText(t, path), "#policy-node-runtime-ban") {
+			t.Fatal("Node policy route missing: " + path)
+		}
+	}
+	setup := developmentActionsSetupDefinition(t)
+	helper := []byte(phase11MustReadText(t, ".github/scripts/development-ci.sh"))
+	if err := developmentActionsCheckHelper(setup, helper); err != nil {
+		t.Fatal(err)
+	}
+	if err := developmentActionsCheckHelper(setup, append(append([]byte{}, helper...), '\n')); err == nil {
+		t.Fatal("helper drift not rejected")
+	}
+	wrongDefinition := *setup
+	wrongDefinition.DenoVersion = "2.0.0"
+	if err := developmentActionsCheckHelper(&wrongDefinition, helper); err == nil {
+		t.Fatal("helper runtime definition drift not rejected")
+	}
+	if err := developmentActionsCheckNodeFreeRepository("."); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"node", "node.exe", "nodejs", "node_modules", "package.json", "package-lock.json", "npm-shrinkwrap.json", ".npmrc", ".nvmrc", ".node-version", ".yarnrc", ".yarnrc.yml", "yarn.lock", "pnpm-lock.yaml", "pnpm-workspace.yaml", "bun.lock", "bun.lockb", "adapter.cjs", "adapter.cts"} {
+		t.Run("release.node-ban."+strings.ReplaceAll(name, ".", "-")+".artifact-reject", func(t *testing.T) {
+			root := t.TempDir()
+			dir := filepath.Join(root, ".hidden", "nested")
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, name), nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := developmentActionsCheckNodeFreeRepository(root); err == nil || err.Error() != "node-ban:artifact" {
+				t.Fatalf("expected artifact rejection, got %v", err)
+			}
+		})
+	}
+	for _, command := range []string{"node --version", "nodejs script.js", "/usr/bin/node script.js", "exec /opt/runtime/node script.js", "npm install", "npx tool", "pnpm install", "yarn install", "corepack enable", "echo ok; node script.js", "NODE.EXE app.js"} {
+		t.Run("release.node-ban.command-"+strings.Fields(command)[0]+".reject", func(t *testing.T) {
+			if err := developmentActionsCheckNodeContent("script.sh", []byte("#!/bin/sh\n"+command+"\n")); err == nil || err.Error() != "node-ban:command" {
+				t.Fatalf("expected command rejection, got %v", err)
+			}
+			source := "package fixture\nimport e \"os/exec\"\nfunc f(){ e.Command(\"sh\", \"-c\", " + strconv.Quote(command) + ") }\n"
+			if err := developmentActionsCheckNodeContent("tool.go", []byte(source)); err == nil || err.Error() != "node-ban:command" {
+				t.Fatalf("expected Go command rejection, got %v", err)
+			}
+		})
+	}
+	for _, source := range []string{"import fs from 'node:fs';", "import('npm:tool');", "require('fs');", "module.exports = {};", "exports.value = 1;", "process.env.TOKEN", "process.exit(0)", "Buffer.from('x')", "Buffer.byteLength('x')", "__dirname", "__filename"} {
+		if err := developmentActionsCheckNodeContent("client.js", []byte(source)); err == nil || err.Error() != "node-ban:api" {
+			t.Fatalf("expected API rejection, got %v", err)
+		}
+	}
+	for _, source := range []string{"import fs from 'fs';", "import('child_process');", "import 'buffer';"} {
+		if err := developmentActionsCheckNodeContent("client.js", []byte(source)); err == nil || err.Error() != "node-ban:api" {
+			t.Fatal("bare Node module not rejected")
+		}
+	}
+	for _, source := range []string{"new Deno.Command('node');", "Deno.run({cmd: ['npm', 'install']});", "#!/usr/bin/env node\n"} {
+		if err := developmentActionsCheckNodeContent("tool.js", []byte(source)); err == nil || err.Error() != "node-ban:command" {
+			t.Fatal("JavaScript process runtime not rejected")
+		}
+	}
+	for _, source := range []string{"package p\nimport \"os/exec\"\nfunc f(){ exec.Command(\"no\"+\"de\", \"--version\") }", "package p\nimport \"os/exec\"\nfunc f(){ exec.CommandContext(nil,\"npm\",\"install\") }"} {
+		if err := developmentActionsCheckNodeContent("tool.go", []byte(source)); err == nil {
+			t.Fatal("Go command alias/constant not rejected")
+		}
+	}
+	for _, source := range []string{"package p\nimport \"os\"\nfunc f(){ os.StartProcess(\"/usr/bin/node\",nil,nil) }", "package p\nimport \"syscall\"\nfunc f(){ syscall.Exec(\"node\",nil,nil) }", "package p\nimport . \"os/exec\"\nfunc f(){ Command(\"node\") }"} {
+		if err := developmentActionsCheckNodeContent("tool.go", []byte(source)); err == nil || err.Error() != "node-ban:command" {
+			t.Fatal("alternate process API not rejected")
+		}
+	}
+	if err := developmentActionsCheckNodeContent("tool.go", []byte("package p\nimport \"os/exec\"\nfunc f(){ exec.CommandContext() }")); err == nil || err.Error() != "node-ban:go-syntax" {
+		t.Fatal("incomplete process call not rejected")
+	}
+	for _, fixture := range []struct{ path, text string }{
+		{"client.js", "const node = document.createTextNode('ok'); fetch('/api');"},
+		{"script.sh", "#!/bin/sh\ngo version\ndeno check client.js\nprintf '%s' single-node\n"},
+		{"sample_test.go", "package p\nconst negative = \"import x from 'node:fs';\"\n"},
+	} {
+		if err := developmentActionsCheckNodeContent(fixture.path, []byte(fixture.text)); err != nil {
+			t.Fatalf("positive input rejected: %v", err)
+		}
+	}
+	root := t.TempDir()
+	if err := developmentActionsCheckNodeFreeRepository(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("missing", filepath.Join(root, "adapter")); err != nil {
+		t.Fatal(err)
+	}
+	if err := developmentActionsCheckNodeFreeRepository(root); err == nil || err.Error() != "node-ban:symlink" {
+		t.Fatalf("expected symlink rejection, got %v", err)
+	}
+	for _, fixture := range []struct{ path, text, code string }{
+		{".github/workflows/extra.yml", "jobs: {}", "workflow"},
+		{".github/workflows/phase12-quality-gate.yml", "jobs:\n  bad:\n    uses: org/repo/.github/workflows/ci.yml@main\n", "action"},
+		{".github/workflows/phase12-quality-gate.yml", "jobs:\n  bad:\n    steps: [{uses: './local'}]\n", "action"},
+		{".github/workflows/phase12-quality-gate.yml", "jobs:\n  bad:\n    steps:\n      - run: node --version\n", "command"},
+		{".github/workflows/phase12-quality-gate.yml", "jobs:\n  bad:\n    container: node:24\n", "action"},
+		{".github/actions/local/action.yml", "runs:\n  using: node24\n", "action"},
+	} {
+		root := t.TempDir()
+		path := filepath.Join(root, filepath.FromSlash(fixture.path))
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(fixture.text), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := developmentActionsCheckNodeFreeRepository(root); err == nil || err.Error() != "node-ban:"+fixture.code {
+			t.Fatalf("expected %s, got %v", fixture.code, err)
+		}
+	}
+	if err := developmentActionsCheckNodeFreeRepository(filepath.Join(t.TempDir(), "missing")); err == nil || err.Error() != "node-ban:read" {
+		t.Fatalf("expected read rejection, got %v", err)
+	}
+	worktree := t.TempDir()
+	if err := os.WriteFile(filepath.Join(worktree, ".git"), []byte("gitdir: unused"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktree, "package.json"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := developmentActionsCheckNodeFreeRepository(worktree); err == nil || err.Error() != "node-ban:artifact" {
+		t.Fatal("git metadata file hid later artifact")
+	}
+}
+
+func developmentActionsCheckHelper(setup *developmentActionsSetup, data []byte) error {
+	digest := sha256.Sum256(data)
+	if hex.EncodeToString(digest[:]) != setup.HelperSHA256 {
+		return fmt.Errorf("actions-setup:helper-digest")
+	}
+	for _, line := range []string{
+		"  version=" + setup.GoVersion, "  expected=" + setup.GoSHA256,
+		"  url=https://go.dev/dl/go" + setup.GoVersion + ".linux-amd64.tar.gz",
+		"  version=" + setup.DenoVersion, "  expected=" + setup.DenoSHA256,
+		"  url=https://github.com/denoland/deno/releases/download/v" + setup.DenoVersion + "/deno-x86_64-unknown-linux-gnu.zip",
+	} {
+		if !bytes.Contains(data, []byte("\n"+line+"\n")) {
+			return fmt.Errorf("actions-setup:helper-definition")
+		}
+	}
+	return nil
+}
+
+func TestDevelopmentActionsBootstrapControls(t *testing.T) {
+	t.Parallel()
+	setup := developmentActionsSetupDefinition(t)
+	helper, err := filepath.Abs(".github/scripts/development-ci.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"go", "deno"} {
+		for _, failure := range []string{"", "output-boundary", "staging", "download", "digest-read", "digest", "archive-list", "archive-entry", "archive-type", "extract", "executable", "version", "version-exit", "publish", "platform"} {
+			if kind == "deno" && failure == "archive-type" {
+				continue
+			}
+			label := failure
+			if label == "" {
+				label = "success"
+			}
+			t.Run("release.bootstrap."+kind+"."+label+".outcome", func(t *testing.T) {
+				base := t.TempDir()
+				temp, fake := filepath.Join(base, "temp"), filepath.Join(base, "bin")
+				for _, path := range []string{temp, fake} {
+					if err := os.Mkdir(path, 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+				pathFile, envFile := filepath.Join(base, "path"), filepath.Join(base, "env")
+				for _, path := range []string{pathFile, envFile} {
+					if err := os.WriteFile(path, nil, 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if failure == "output-boundary" {
+					if err := os.Remove(envFile); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.Mkdir(envFile, 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+				trace := filepath.Join(base, "trace")
+				runtimeFile := filepath.Join(base, "runtime")
+				phase18WriteExecutable(t, runtimeFile, "#!/bin/sh\n"+
+					"printf 'version\\n' >> \"$FAKE_TRACE\"\n"+
+					"if [ \"$FAKE_FAILURE\" = version-exit ]; then if [ \"$FAKE_KIND\" = go ]; then echo 'go version go1.22.12 linux/amd64'; else echo 'deno 2.9.7 (stable, release, x86_64-unknown-linux-gnu)'; fi; echo fixture-secret-canary >&2; exit 7; fi\n"+
+					"if [ \"$FAKE_FAILURE\" = publish ]; then /bin/rm \"$GITHUB_PATH\"; mkdir \"$GITHUB_PATH\"; fi\n"+
+					"if [ \"$FAKE_FAILURE\" = version ]; then echo invalid; elif [ \"$FAKE_KIND\" = go ]; then echo 'go version go1.22.12 linux/amd64'; else echo 'deno 2.9.7 (stable, release, x86_64-unknown-linux-gnu)'; fi\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "uname"), "#!/bin/sh\nif [ \"$FAKE_FAILURE\" = platform ] && [ \"$1\" = -s ]; then echo Linux; exit 7; fi\nif [ \"$1\" = -s ]; then echo Linux; else echo x86_64; fi\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "mktemp"), "#!/bin/sh\nif [ \"$FAKE_FAILURE\" = staging ]; then exit 7; fi\nexec /usr/bin/mktemp \"$@\"\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "rm"), "#!/bin/sh\nif [ \"$FAKE_FAILURE\" = cleanup-failure ]; then exit 7; fi\nexec /bin/rm \"$@\"\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "curl"), "#!/bin/sh\nprintf 'download\\n' >> \"$FAKE_TRACE\"\nif [ \"$FAKE_FAILURE\" = download ]; then echo fixture-secret-canary >&2; exit 7; fi\nwhile [ \"$#\" -gt 0 ]; do if [ \"$1\" = --output ]; then shift; output=$1; fi; shift; done\nprintf archive > \"$output\"\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "sha256sum"), "#!/bin/sh\nprintf 'digest\\n' >> \"$FAKE_TRACE\"\nif [ \"$FAKE_FAILURE\" = digest-read ]; then echo fixture-secret-canary >&2; exit 7; fi\nif [ \"$FAKE_FAILURE\" = digest ]; then echo invalid; else printf '%s  %s\\n' \"$FAKE_DIGEST\" \"$2\"; fi\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "tar"), "#!/bin/sh\n"+
+					"case \"$1\" in\n"+
+					" -tzf) printf 'list\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = archive-list ]; then exit 7; fi; if [ \"$FAKE_FAILURE\" = archive-entry ]; then printf 'go/bin/go\\ngo/../escape\\n'; else printf 'go/\\ngo/bin/\\ngo/bin/go\\n'; fi;;\n"+
+					" -tvzf) printf 'types\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = archive-type ]; then echo 'lrwx go/bin/go'; else echo '-rwx go/bin/go'; fi;;\n"+
+					" --extract) printf 'extract\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = extract ]; then exit 7; fi; while [ \"$#\" -gt 0 ]; do if [ \"$1\" = --directory ]; then shift; dest=$1; fi; shift; done; mkdir -p \"$dest/go/bin\"; if [ \"$FAKE_FAILURE\" = executable ]; then ln -s \"$FAKE_RUNTIME\" \"$dest/go/bin/go\"; else cp \"$FAKE_RUNTIME\" \"$dest/go/bin/go\"; fi;;\n"+
+					" *) exit 8;;\nesac\n")
+				phase18WriteExecutable(t, filepath.Join(fake, "unzip"), "#!/bin/sh\n"+
+					"if [ \"$1\" = -Z1 ]; then printf 'list\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = archive-list ]; then exit 7; elif [ \"$FAKE_FAILURE\" = archive-entry ]; then printf 'deno\\n../escape\\n'; else echo deno; fi\n"+
+					"elif [ \"$1\" = -q ]; then printf 'extract\\n' >> \"$FAKE_TRACE\"; if [ \"$FAKE_FAILURE\" = extract ]; then exit 7; elif [ \"$FAKE_FAILURE\" = executable ]; then ln -s \"$FAKE_RUNTIME\" \"$4/deno\"; else cp \"$FAKE_RUNTIME\" \"$4/deno\"; fi\nelse exit 8; fi\n")
+				digest := setup.GoSHA256
+				if kind == "deno" {
+					digest = setup.DenoSHA256
+				}
+				env := append(os.Environ(), "PATH="+fake+":"+os.Getenv("PATH"), "RUNNER_TEMP="+temp, "GITHUB_PATH="+pathFile, "GITHUB_ENV="+envFile, "ADLAIRE_CI_TOOLS=", "FAKE_KIND="+kind, "FAKE_FAILURE="+failure, "FAKE_TRACE="+trace, "FAKE_RUNTIME="+runtimeFile, "FAKE_DIGEST="+digest)
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				defer cancel()
+				cmd := exec.CommandContext(ctx, "bash", "--noprofile", "--norc", helper, kind)
+				cmd.Env = env
+				output, err := cmd.CombinedOutput()
+				pathData, pathErr := os.ReadFile(pathFile)
+				envData, envErr := os.ReadFile(envFile)
+				stages, globErr := filepath.Glob(filepath.Join(temp, "adlaire-tools.*"))
+				if globErr != nil {
+					t.Fatal(globErr)
+				}
+				if bytes.Contains(output, []byte("fixture-secret-canary")) {
+					t.Fatal("bootstrap secret canary leaked")
+				}
+				traceData, traceErr := os.ReadFile(trace)
+				if failure == "" {
+					if err != nil || pathErr != nil || envErr != nil || len(stages) != 1 || !bytes.Contains(output, []byte(`"record_type":"development-actions-bootstrap"`)) {
+						t.Fatalf("bootstrap positive: err=%v output=%q stages=%v", err, output, stages)
+					}
+					root := stages[0]
+					expectedBin := root + "/go/bin\n"
+					expectedTrace := "download\ndigest\nlist\ntypes\nextract\nversion\n"
+					if kind == "deno" {
+						expectedBin = root + "/deno\n"
+						expectedTrace = "download\ndigest\nlist\nextract\nversion\n"
+					}
+					if string(pathData) != expectedBin || traceErr != nil || string(traceData) != expectedTrace {
+						t.Fatalf("bootstrap order/path expected %q/%q got %q/%q", expectedTrace, expectedBin, traceData, pathData)
+					}
+					if !strings.Contains(string(envData), "ADLAIRE_CI_TOOLS="+root+"\n") || !strings.Contains(string(envData), "GOTOOLCHAIN=local\n") || !strings.Contains(string(envData), "DENO_NO_PACKAGE_JSON=1\n") {
+						t.Fatal("bootstrap environment missing")
+					}
+					cleanup := exec.CommandContext(ctx, "bash", "--noprofile", "--norc", helper, "cleanup")
+					cleanup.Env = append(env, "ADLAIRE_CI_TOOLS="+root, "FAKE_FAILURE=cleanup-failure")
+					if out, err := cleanup.CombinedOutput(); err == nil || !bytes.Contains(out, []byte("ci-setup:cleanup\n")) {
+						t.Fatal("cleanup failure not propagated")
+					}
+					if _, err := os.Stat(root); err != nil {
+						t.Fatal("failed cleanup must leave identifiable stage")
+					}
+					cleanup = exec.CommandContext(ctx, "bash", "--noprofile", "--norc", helper, "cleanup")
+					cleanup.Env = append(env, "ADLAIRE_CI_TOOLS="+root)
+					if out, err := cleanup.CombinedOutput(); err != nil || len(out) != 0 {
+						t.Fatalf("cleanup err=%v output=%q", err, out)
+					}
+					if _, err := os.Lstat(root); !os.IsNotExist(err) {
+						t.Fatal("bootstrap stage survived cleanup")
+					}
+				} else {
+					reason := failure
+					if reason == "version-exit" {
+						reason = "version"
+					}
+					if err == nil || !bytes.Contains(output, []byte("ci-setup:"+reason+"\n")) || bytes.Contains(output, []byte("record_type")) || len(stages) != 0 || len(envData) != 0 || len(pathData) != 0 {
+						t.Fatalf("bootstrap expected=%s err=%v output=%q stages=%v env=%q path=%q", reason, err, output, stages, envData, pathData)
+					}
+					for boundary, forbidden := range map[string]string{"download": "digest", "digest-read": "list", "digest": "list", "archive-list": "extract", "archive-entry": "extract", "archive-type": "extract", "extract": "version", "executable": "version"} {
+						if failure == boundary && strings.Contains(string(traceData), forbidden+"\n") {
+							t.Fatalf("bootstrap continued after %s: %s", boundary, traceData)
+						}
+					}
+				}
+			})
+		}
+	}
+	t.Run("release.bootstrap.cleanup-symlink.reject", func(t *testing.T) {
+		temp, target := t.TempDir(), t.TempDir()
+		link := filepath.Join(temp, "adlaire-tools.ABCDEFGH")
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command("bash", "--noprofile", "--norc", helper, "cleanup")
+		cmd.Env = append(os.Environ(), "RUNNER_TEMP="+temp, "ADLAIRE_CI_TOOLS="+link)
+		output, err := cmd.CombinedOutput()
+		if err == nil || !bytes.Contains(output, []byte("ci-setup:cleanup-boundary\n")) {
+			t.Fatal("cleanup symlink not rejected")
+		}
+		if info, err := os.Stat(target); err != nil || !info.IsDir() {
+			t.Fatal("cleanup touched symlink target")
+		}
+	})
+	t.Run("release.bootstrap.arguments.reject", func(t *testing.T) {
+		cmd := exec.Command("bash", "--noprofile", "--norc", helper)
+		if output, err := cmd.CombinedOutput(); err == nil || !bytes.Contains(output, []byte("ci-setup:arguments\n")) {
+			t.Fatal("missing argument not rejected")
+		}
+	})
+	for _, fixture := range []struct{ name, argument, temp, root, reason string }{
+		{"runtime", "other", "", "", "runtime"},
+		{"relative-temp", "go", "relative", "", "temp-boundary"},
+		{"missing-temp", "go", "/missing-node-free-fixture", "", "temp-boundary"},
+		{"cleanup-outside", "cleanup", "", "/outside", "cleanup-boundary"},
+	} {
+		t.Run("release.bootstrap."+fixture.name+".reject", func(t *testing.T) {
+			temp := fixture.temp
+			if temp == "" {
+				temp = t.TempDir()
+			}
+			cmd := exec.Command("bash", "--noprofile", "--norc", helper, fixture.argument)
+			cmd.Env = append(os.Environ(), "RUNNER_TEMP="+temp, "ADLAIRE_CI_TOOLS="+fixture.root)
+			output, err := cmd.CombinedOutput()
+			if err == nil || !bytes.Contains(output, []byte("ci-setup:"+fixture.reason+"\n")) {
+				t.Fatalf("boundary expected=%s err=%v output=%q", fixture.reason, err, output)
+			}
+		})
+	}
+	for _, failure := range []string{"", "init", "remote", "fetch", "checkout", "sha", "dirty", "bad-sha", "repository"} {
+		t.Run("release.checkout."+failure+".outcome", func(t *testing.T) {
+			base := t.TempDir()
+			workspace, fake := filepath.Join(base, "workspace"), filepath.Join(base, "bin")
+			for _, path := range []string{workspace, fake} {
+				if err := os.Mkdir(path, 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			trace := filepath.Join(base, "trace")
+			target := strings.Repeat("a", 40)
+			if failure == "dirty" {
+				if err := os.WriteFile(filepath.Join(workspace, "existing"), nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			phase18WriteExecutable(t, filepath.Join(fake, "git"), "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$FAKE_TRACE\"\ncase \"$*\" in\n*' init '*) stage=init;; *' remote '*) stage=remote;; *' fetch '*) stage=fetch;; *' checkout '*) stage=checkout;; 'rev-parse HEAD') if [ \"$FAKE_FAILURE\" = sha ]; then echo invalid; else echo \"$GITHUB_SHA\"; fi; exit 0;; *) exit 8;; esac\n[ \"$FAKE_FAILURE\" != \"$stage\" ] || exit 7\n")
+			repository := "fqwink/Build-Scripts"
+			if failure == "repository" {
+				repository = "unknown/repo"
+			}
+			if failure == "bad-sha" {
+				target = strings.Repeat("A", 40)
+			}
+			cmd := exec.Command("bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", setup.Checkout)
+			cmd.Dir = workspace
+			cmd.Env = append(os.Environ(), "PATH="+fake+":"+os.Getenv("PATH"), "GITHUB_REPOSITORY="+repository, "GITHUB_SERVER_URL=https://github.com", "GITHUB_SHA="+target, "GITHUB_WORKSPACE="+workspace, "FAKE_TRACE="+trace, "FAKE_FAILURE="+failure)
+			output, err := cmd.CombinedOutput()
+			if (err == nil) != (failure == "") {
+				t.Fatalf("checkout expected success=%t err=%v output=%q", failure == "", err, output)
+			}
+			traceData, _ := os.ReadFile(trace)
+			count := len(strings.Split(strings.TrimSpace(string(traceData)), "\n"))
+			if len(traceData) == 0 {
+				count = 0
+			}
+			expected := map[string]int{"": 5, "init": 1, "remote": 2, "fetch": 3, "checkout": 4, "sha": 5, "dirty": 0, "bad-sha": 0, "repository": 0}[failure]
+			if count != expected {
+				t.Fatalf("checkout stopped at wrong boundary: want %d got %d trace=%q", expected, count, traceData)
 			}
 		})
 	}

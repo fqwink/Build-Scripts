@@ -10,6 +10,7 @@
 | 作業ルール | [`AGENTS.md`](../AGENTS.md) |
 | 開発 GitHub Actions 方針・ポリシーの所在 | [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3)、[`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions) |
 | 開発 GitHub Actions 作業手順の所在 | [`AGENTS.md` 開発 GitHub Actions 作業手順](../AGENTS.md#agents-development-actions) |
+| Node 禁止契約 / 非依存開発準備の所在 | [`docs/SPEC.md` ポリシー責務 §4a](SPEC.md#policy-node-runtime-ban)、[`docs/details/fixture.md` fixture 証跡責務 Node 非依存開発検証契約](details/fixture.md#development-actions-node-free-contract)、[`.github/scripts/development-ci.sh`](../.github/scripts/development-ci.sh) |
 | 開発 Actions 定義・実行・適用証跡の所在 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route)、[`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) |
 | 開発 Actions required gate 定義 fixture / 検証 artifact | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract)、[`main_test.go`](../main_test.go) |
 | 方針、ポリシー、状態語彙、状態遷移条件 | [`docs/SPEC.md`](SPEC.md) |
@@ -143,6 +144,7 @@
 |------|-----------|----------|
 | [`main.go`](../main.go) | 起動入口 | 実在 |
 | [`main_test.go`](../main_test.go) | 起動入口 test / Phase 16 / Phase 18 checker implementation artifact 配置先 | 実在 |
+| [`.github/scripts/development-ci.sh`](../.github/scripts/development-ci.sh) | 開発 Actions runtime 準備・cleanup script | 実在 |
 | [`go.mod`](../go.mod) | Go module | 実在 |
 | [`sdk_contract_test.go`](../sdk_contract_test.go) | `sdk` contract test | 実在 |
 | [`ui_contract_test.go`](../ui_contract_test.go) | `ui` contract test | 実在 |

@@ -206,7 +206,7 @@ Phase 12 の CI required check は、GitHub workflow が作成されていない
 | `phase12-go-test` | Go stable toolchain で `go test ./... -count=1`。 | exit code `0`、skip / 未実行 record なし、対象 owner と fixture root が closure record set に接続済み。 |
 | `phase12-go-race` | Go stable toolchain で `go test -race ./... -count=1`。 | exit code `0`、race trigger open `0`、goroutine / listener / timer / worker leak の対象外理由または証跡あり。 |
 | `phase12-go-vet` | Go stable toolchain で `go vet ./...`。 | exit code `0`。外部 linter、npm、Node.js、Marketplace action で代替しない。 |
-| `phase12-deno-check-sdk` | Deno stable runtime で `deno check admin/adlaire-ci-sdk.js`。 | SDK artifact が存在する限り exit code `0`。Deno 不在、JS 未変更、または Node.js 代替を完了扱いにしない。 |
+| `phase12-deno-check-sdk` | Deno stable runtime で `deno check --no-config --no-npm admin/adlaire-ci-sdk.js`。 | SDK artifact が存在する限り exit code `0`。Deno 不在、JS 未変更、または Node.js 代替を完了扱いにしない。 |
 | `phase12-fixture-harness` | Phase 12 で実在化した production entrypoint 実行型 fixture harness。 | `testdata/phase12/quality-gate-reconstruction/` または PR evidence package の closure record set に `phase12_fixture_harness_open_count=0` を記録する。 |
 | `phase12-mutation` | production code、harness、assertion、expected 比較、security assertion、state diff assertion を対象にした mutation selection と mutation evidence。 | `phase12_mutation_survived_count=0`、`equivalent` / `invalid` は責務正本 anchor 付き。 |
 
@@ -363,7 +363,7 @@ Phase 13 の CI required check は以下とする。GitHub workflow は YAML 禁
 | `phase13-stdlib-static-analysis` | Go 標準 toolchain と本リポジトリ内の内製検査だけで静的解析を実行する。 | exit code `0`、外部解析 tool 未使用、owner package 5 ファイル固定、unreachable fixture / obsolete path open `0`。 |
 | `phase13-dependency-inventory` | `go.mod`、Go import、JavaScript / HTML artifact、workflow を検査し、production 外部依存が 0 であることを確認する。 | exit code `0`、`go.mod` の外部 `require`、`golang.org/x/*`、third party import、npm / bundler / polyfill 依存 open `0`。 |
 | `phase13-secret-boundary-scan` | Go 標準 toolchain と内製検査だけで token argv、secret 出力、fixture / log / release notes secret 漏えい境界を検査する。 | exit code `0`、secret / file safety / command execution finding open `0`、外部 secret scan service 未使用。 |
-| `phase13-deno-check-sdk` | Deno stable runtime で `deno check admin/adlaire-ci-sdk.js`。 | exit code `0`。Node.js 代替禁止。 |
+| `phase13-deno-check-sdk` | Deno stable runtime で `deno check --no-config --no-npm admin/adlaire-ci-sdk.js`。 | exit code `0`。Node.js 代替禁止。 |
 | `phase13-owner-shape` | owner package inventory、5 ファイル固定、旧 root path、空 file、dummy / no-op success の検査。 | `phase13_owner_file_violation_count=0`、`phase13_dummy_or_empty_file_count=0`、`phase13_document_drift_open_count=0`。 |
 | `phase13-contract-parity` | API、Admin、SDK、UI、MCP、setup stdout、credential 初期化の契約自動照合。 | `phase13_contract_mismatch_count=0`、`phase13_mcp_unimplemented_success_count=0`。 |
 | `phase13-state-safety` | statefile 直接更新禁止、process lock、atomic write、JSON Lines safety、migration、recovery の検査。 | `phase13_direct_state_mutation_count=0`、`phase13_state_safety_open_count=0`、`phase13_jsonl_corruption_open_count=0`。 |
@@ -1438,6 +1438,37 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
 
 実行証跡の照合 case は、定義済み全必須 job 成功・同一 SHA の positive case と、必須 job 欠落、skip / neutral / cancel / timeout、終了 code 隠蔽、旧 SHA、head / base 更新、artifact digest 不一致、未信頼 ref の self-hosted 選択、secret / 権限境界違反、Action の tag 参照、timeout 欠落、cleanup 失敗の negative case を識別する。各 case の入力、期待拒否理由、actual、assertion、実行証跡を対象 workflow の検証 package へ接続する。run URL のみ、全体の緑表示のみ、架空 job URL、未取得の環境情報、到達不能な証跡、または負例を実行せず拒否済みと記載した record は完全な実行証跡にしない。
 
+<a id="development-actions-node-free-contract"></a>
+**Node 非依存開発検証契約：**
+
+本節は [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](../SPEC.md#policy-node-runtime-ban) の検証入力、expected、fake、準備 script の境界を所有する。禁止条件は再定義しない。開発基盤の管理責任者は repository maintainer、検証 artifact は `main_test.go`、準備 artifact は `.github/scripts/development-ci.sh` とする。製品実装、Phase 状態、VPS、公開・配備、self-hosted 導入を変更しない。
+
+| 固定対象 | 入力・expected・異常系 |
+|----------|----------------------|
+| 取得・準備 | 全73 job は下記 JSON の checkout command を bash で実行後、`bash .github/scripts/development-ci.sh go\|deno` を実行する。checkout は空の実 workspace、固定の公開 HTTPS repository、40文字 lowercase SHA、Git hook / global config / credential 非使用を確認し、depth 1 fetch と detached checkout 後の実 HEAD を照合する。token と secret は渡さない。既存の全 job / gate / check 名、permissions、timeout、concurrency を保持し、step と job の `uses` は 0 件とする。 |
+| 固定 runtime | 下記 JSON は公式 Go download catalog と公式 Deno Release asset digest で確認した Linux amd64 archive の固定版・SHA-256 とする。URL は Go `https://go.dev/dl/go<go_version>.linux-amd64.tar.gz`、Deno `https://github.com/denoland/deno/releases/download/v<deno_version>/deno-x86_64-unknown-linux-gnu.zip` だけ。helper 全 byte の SHA-256 は `helper_sha256` と完全一致させ、helper の version / URL / archive SHA-256 定数行も同じ JSON field と照合する。既存 Deno check の引数へ `--no-config --no-npm` を追加する。 |
+| helper 入出力 | 引数は `go`、`deno`、`cleanup` の exactly 1 件。実行 platform は Linux / x86_64。`RUNNER_TEMP` は既存 absolute directory、`GITHUB_PATH` / `GITHUB_ENV` は既存 absolute regular file とし、symlink、CR / LF / backslash を拒否する。fresh `adlaire-tools.<8 alphanumeric>` root を mode 0700 で確保する。helper はローカル cache / package manager / remote installer script を使用しない。 |
+| download / digest | curl config を無効化し、HTTPS のみ、redirect も HTTPS、接続15秒・取得180秒・retry上限2・retry時間90秒・上限200000000 byte とする。取得先は private staging。SHA-256 不一致、取得・digest command 失敗は、展開・実行・file-command公開前に停止する。child の raw download / version error は出力しない。 |
+| archive / version | Go は一覧非空、全 entry が `go/` 配下、dot / dot-dot / absolute / backslash / empty segment なし、regular file / directory のみ、`go/bin/go` 必須とする。Deno zip は entry が `deno` exactly 1 件。展開前に一覧を検証し、展開後の binary は通常 file・非symlink。Go version exact `go version go1.22.12 linux/amd64`、Deno先頭行 exact `deno 2.9.7 (stable, release, x86_64-unknown-linux-gnu)` を確認する。 |
+| 公開・cleanup | 検証後だけ bin path を `GITHUB_PATH`、root と cache path / Go local-only設定 / Deno package無効設定を `GITHUB_ENV` へ渡し、bootstrap JSON を1件出す。Goは `GOENV=off GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off`。Denoは `DENO_NO_PACKAGE_JSON=1 DENO_NO_UPDATE_CHECK=1 DENO_NO_PROMPT=1`。失敗はnonzero、固定 `ci-setup:<reason>`、stage削除、成功markerなし。file-command部分書込後の失敗もstage削除とjob失敗とし、残るpathを後続成功へ流用しない。各job末尾の `if=always()` cleanup が同じhelperを呼び、mintしたrootだけを削除する。範囲外root、symlink、削除失敗は拒否する。 |
+| reason / 副作用 | 固定理由は `arguments / temp-boundary / cleanup-boundary / cleanup / runtime / platform / output-boundary / staging / download / digest-read / digest / archive-list / archive-entry / archive-type / extract / executable / version / publish`。repository、home、system toolchain、GitHub設定へ書かず、secretを取得しない。許可書込はstageとrunner file-commandのみ。成功後のroot以外の取得物を消し、job cleanup後の残留stageは0。 |
+| 検査境界 | repository walk は `.git` metadata だけを除き、hidden pathを含む全実在pathを調べる。Node系manifest / lock / 設定 / `node_modules`、Node runtime名のbinary、`.cjs / .cts`、symlinkを拒否する。`.github/workflows` は定義7件だけ、全workflowはcanonical bytes一致、helperは固定digest一致。Go sourceは標準ASTで `os/exec` / `os` / `syscall` の直接・shell経由のNode系commandを拒否する。JavaScript / HTML / shellとproduction Go文字列は Node import / Node専用API / Node commandを検査する。bare import、Deno process command、shebang、workflow内の直接commandと未確認container経路も負例へ接続する。禁止説明と非実行負例をruntimeと誤分類しない。既存scopeの探索除外で禁止pathを隠さない。 |
+| 正例・負例 | `TestDevelopmentActionsNodeFreeControls` は空rootと標準web APIを正例、各禁止path、hidden / nested / symlink、各Node系command、Node import / CommonJS、Go command、未知workflow / Action / reusable workflow、helper改変を負例にする。同じvalidatorへ入力し固定reasonを比較する。負例データを保存・解析するだけで、禁止runtimeを実行しない。 |
+| 実行型control | `TestDevelopmentActionsBootstrapControls` は実helperと実checkout commandを固定fake git / curl / checksum / archive / runtimeへ接続する。Go/Deno成功、各I/O失敗、digest改変、unsafe entry / link、version不一致、出力境界、cleanup逸脱を実行し、exit / transcript順 / marker / file-command / stage残留 / secret canary非露出を比較する。fake切替のproduction envは作らず、テスト専用PATHとtemp rootに隔離する。 |
+| 正式入口・mutation | 既存3 gate rootに加え上記2 rootのPASS記録をgate shellが確認する。正式入口は全workflow、helper、repository境界を検証してからgate JSONを出し、setup definition digest / helper digest / `external_action_count=0` を接続する。条件除去、digest比較緩和、unsafe entry許可、cleanup逸脱許可、Node guard無効化、canonical比較無効化を同じcontrolsで検出し `survived=0` を既存PR packageへ記録する。 |
+| 証跡・対象外 | directory fixture root は `not_applicable` と本anchorを記録する。定義は下記JSON、fake / expectedはroot tests内で完結し、正式fixture件数は増やさない。公式取得資料・digest、実run / job / SHA、準備log、正例・負例、mutation、race、18-record closureを同一PRへ接続する。プラットフォーム管理外の未使用binaryの不存在や他環境の全processは、この証跡から推定しない。 |
+
+```json
+{
+  "go_version": "1.22.12",
+  "go_sha256": "4fa4f869b0f7fc6bb1eb2660e74657fbf04cdd290b5aef905585c86051b34d43",
+  "deno_version": "2.9.7",
+  "deno_sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490",
+  "helper_sha256": "5c210cdc48ec91ca702beea81ffd8530bc34cfef3e8b95a45183064d10bb1401",
+  "checkout": "test \"$GITHUB_REPOSITORY\" = fqwink/Build-Scripts\ntest \"$GITHUB_SERVER_URL\" = https://github.com\n[[ \"$GITHUB_SHA\" =~ ^[0-9a-f]{40}$ ]]\nworkspace=$(pwd -P)\nexpected_workspace=$(cd \"$GITHUB_WORKSPACE\" && pwd -P)\ntest \"$workspace\" = \"$expected_workspace\"\nworkspace_entry=$(find . -mindepth 1 -maxdepth 1 -print -quit)\ntest -z \"$workspace_entry\"\nexport GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0\ngit -c core.hooksPath=/dev/null init --quiet --template= .\ngit -c core.hooksPath=/dev/null remote add origin https://github.com/fqwink/Build-Scripts.git\ngit -c core.hooksPath=/dev/null fetch --quiet --no-tags --depth=1 origin \"$GITHUB_SHA\"\ngit -c core.hooksPath=/dev/null checkout --quiet --detach \"$GITHUB_SHA\"\ntested_sha=$(git rev-parse HEAD)\ntest \"$tested_sha\" = \"$GITHUB_SHA\""
+}
+```
+
 <a id="development-actions-required-gate-contract"></a>
 **開発 Actions required gate 固定契約：**
 
@@ -1445,10 +1476,10 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
 
 | 固定対象 | 入力・expected・検証接続 |
 |----------|-------------------------|
-| 定義単位 | 下記 JSON は Phase 12〜18 の既存 workflow 名と既存 66 job の `id / timeout / runtime / command` を順序付きで固定する。path は `.github/workflows/<name>.yml`、管理責任者は repository maintainer、全既存 job は必須、matrix・対象外 job・secret・公開出力はなしとする。runtime は Go `1.22` または Deno `v2.x`、runner は `ubuntu-24.04` とする。 |
+| 定義単位 | 下記 JSON は Phase 12〜18 の既存 workflow 名と既存 66 job の `id / timeout / runtime / command` を順序付きで固定する。path は `.github/workflows/<name>.yml`、管理責任者は repository maintainer、全既存 job は必須、matrix・対象外 job・secret・公開出力はなしとする。runtime の固定版と導入は [Node 非依存開発検証契約](#development-actions-node-free-contract)、runner は `ubuntu-24.04` とする。 |
 | 共通 envelope | trigger は `pull_request.types=[opened,synchronize,reopened,ready_for_review]` と `push.branches=[main]`、Phase 18 だけ既存 `workflow_dispatch` を保持する。`permissions.contents=read`、既定 shell は bash。concurrency group は `github.workflow` と `github.event.pull_request.number \|\| github.run_id` の連結、取消条件は `github.event_name == 'pull_request'` とし、main / 手動 run を相互取消しない。 |
-| Action / checkout | checkout は `actions/checkout@11d5960a326750d5838078e36cf38b85af677262`、Go は `actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff`、Deno は `denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed` を保持する。全 checkout の `ref=github.sha`、`persist-credentials=false` を固定する。新規 Action・外部 library は追加しない。 |
-| gate job | workflow ごとに `phase<N>-required-gate` を 1 件追加し、既存全 job を `needs` に列挙する。`if=always()`、timeout 10 分、同じ runner / checkout / Go runtime を使用する。gate の `ADLAIRE_ACTIONS_GATE=required` と `ADLAIRE_ACTIONS_NEEDS=toJSON(needs)` は env 経由で渡す。script は両 env の存在確認後、`go test . -run '^TestDevelopmentActions(RequiredGate\|WorkflowContract\|GateControls)$' -count=1 -v` を実行する。bash pipefail と `tee` で失敗を伝播し、`RUNNER_TEMP/development-actions-gate.log` の3 root test の `--- PASS:` と照合 JSON marker を `grep -Fq` で確認する。test 不在・no tests to run・記録欠損・log 保存失敗を合格にしない。temporary log は実行診断であり、repository file / history artifact / 配布 artifact へ保存しない。 |
+| 取得・runtime 準備 | [Node 非依存開発検証契約](#development-actions-node-free-contract) の checkout command、準備helper、cleanupと固定archiveを使用する。 |
+| gate job | workflow ごとに `phase<N>-required-gate` を 1 件追加し、既存全 job を `needs` に列挙する。`if=always()`、timeout 10 分、同じ runner / checkout / Go runtime を使用する。gate の `ADLAIRE_ACTIONS_GATE=required` と `ADLAIRE_ACTIONS_NEEDS=toJSON(needs)` は env 経由で渡す。script は両 env の存在確認後、`go test . -run '^TestDevelopmentActions(RequiredGate\|WorkflowContract\|GateControls\|NodeFreeControls\|BootstrapControls)$' -count=1 -v` を実行する。bash pipefail と `tee` で失敗を伝播し、`RUNNER_TEMP/development-actions-gate.log` の5 root test の `--- PASS:` と照合 JSON marker を `grep -Fq` で確認する。test 不在・no tests to run・記録欠損・log 保存失敗を合格にしない。temporary log は実行診断であり、repository file / history artifact / 配布 artifact へ保存しない。 |
 | canonical workflow oracle | [`main_test.go`](../../main_test.go) の `TestDevelopmentActionsWorkflowContract` は、本定義の固定 envelope / job / gate を LF・2 space・固定 field 順の YAML へ展開した expected bytes と実在 7 file を完全比較する。一般 YAML parser として扱わず、追加 key、alias、未知 job、job 条件、continue-on-error、pin / 権限 / timeout / ref の改変、gate の迂回を契約外として拒否する。既存 command の存在だけ、件数だけでは判定しない。 |
 | gate 入力 | `TestDevelopmentActionsRequiredGate` は GitHub 既定の event / workflow / workflow ref・SHA / repository / run id・attempt / job / runner 情報、event JSON、実際の `git rev-parse HEAD` と `git cat-file -p HEAD` の親 commit、および needs JSON を入力にする。event / 定義 JSON は 2 MiB 以下、needs JSON は 256 KiB 以下、UTF-8、単一 JSON 値、重複 key なし。標準 JSON 構文検査を重複 key の再帰検査より先に実行し、過剰な nesting を拒否する。needs は既存 job id の exact set、各値は `result / outputs` だけを持ち、`result=success`、`outputs={}` の場合だけ合格する。 |
 | SHA / event oracle | tested SHA と workflow SHA は `GITHUB_SHA` と一致する 40 文字 lowercase hex。PR は event の number / head.sha / base.sha と `refs/pull/<number>/merge` を照合し、実 merge commit の親が base、head の順で exactly 2 件であることを確認する。push は event.after と target SHA、event.ref と `refs/heads/main` を照合する。手動実行は Phase 18 の branch / tag ref のみ。最新 PR head / base への対応は GitHub の check 接続と strict required checks でも確認する。 |
@@ -1457,7 +1488,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
 | local / unit mode | gate env がない通常 Go suite は、gate 入力欠損が拒否される assertion を実行し、正式合格 JSON を出さない。正式 workflow は env 必須 script と canonical workflow oracle の両方を通す。skip や空 test による代用はしない。 |
 | context reader fake / failure oracle | env 取得、file 読取、Git command を境界 adapter とする。固定 fake は event file、Ubuntu os-release、target SHA の rev-parse、base / head 親を持つ commit header を順に返す。各境界の I/O 失敗を exactly 1 回ずつ注入し、その境界で停止、後続呼出しなし、固定診断 code、raw error / secret canary 非露出を比較する。正式 gate は実 adapter だけを使用し、env による fake 切替を持たない。 |
 | format command oracle | 既存 5 format job の検証対象 file は維持し、command を `format_output=$(gofmt -l ...)` と `test -z "$format_output"` の 2 行に固定する。bash の失敗終了で assignment 失敗を伝播させる。固定 fake formatter の成功・整形差分・終了 code 7 の 3 case を実 command に通し、成功だけ exit 0、他は nonzero を比較する。 |
-| gate script oracle | 正式 entry は入力照合前に全7実在 workflow の canonical 比較を行う。script の固定 fake Go は3 root PASS行と照合 marker を返す正例、空実行、root欠損、marker欠損、正しい表示後の exit 7、mode欠損、needs欠損の負例を持つ。同一 script を bash で実行し exit code を比較し、temporary root は case ごとに隔離・cleanup する。 |
+| gate script oracle | 正式 entry は入力照合前に全7実在 workflow の canonical 比較を行う。script の固定 fake Go は5 root PASS行と照合 marker を返す正例、空実行、root欠損、marker欠損、正しい表示後の exit 7、mode欠損、needs欠損の負例を持つ。同一 script を bash で実行し exit code を比較し、temporary root は case ごとに隔離・cleanup する。 |
 | self-verification / mutation | `TestDevelopmentActionsGateControls` は下記定義全件の成功、PR / main push / Phase 18 手動の正例を実行する。負例は job 欠損・余分・各非 success 値・null / 型不正 / 未知 key / 重複 key / trailing JSON / 上限超過、旧 tested / workflow SHA、head / base / 親順序 / ref / event 不一致、run identity 不正、self-hosted / runner 不一致、canonical workflow 改変を含む。判定条件除去・比較緩和・oracle 常時成功 mutation を同じ controls で kill し、選定台帳と `survived=0` を既存 PR の package へ記録する。 |
 | 設定・closure | 新 gate 7 件の実行成功後に、main の required checks をこれらの安定名、GitHub Actions app id `15368`、`strict=true` へ設定し、他の既存保護値を保持する。実 API 再取得、最新 SHA の 73 job 成功、負例拒否、mutation、既存 18-record closure を同一 PR へ接続する。公開・配備・self-hosted 証跡は本適用範囲外とし、それらを適用済みとは記録しない。 |
 
@@ -1497,7 +1528,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
         "id": "phase12-deno-check-sdk",
         "timeout": 10,
         "runtime": "deno",
-        "command": "deno check admin/adlaire-ci-sdk.js"
+        "command": "deno check --no-config --no-npm admin/adlaire-ci-sdk.js"
       },
       {
         "id": "phase12-fixture-harness",
@@ -1563,7 +1594,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
         "id": "phase13-deno-check-sdk",
         "timeout": 10,
         "runtime": "deno",
-        "command": "deno check admin/adlaire-ci-sdk.js"
+        "command": "deno check --no-config --no-npm admin/adlaire-ci-sdk.js"
       },
       {
         "id": "phase13-owner-shape",
@@ -1641,7 +1672,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
         "id": "phase13-browser",
         "timeout": 15,
         "runtime": "deno",
-        "command": "deno check admin/adlaire-ci-sdk.js"
+        "command": "deno check --no-config --no-npm admin/adlaire-ci-sdk.js"
       },
       {
         "id": "phase13-integration-e2e",
@@ -1779,7 +1810,7 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
         "id": "phase16-deno-check",
         "timeout": 10,
         "runtime": "deno",
-        "command": "deno check admin/adlaire-ci-sdk.js"
+        "command": "deno check --no-config --no-npm admin/adlaire-ci-sdk.js"
       },
       {
         "id": "phase16-race",

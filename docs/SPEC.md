@@ -96,7 +96,7 @@ Adlaire CI は、Markdown からの静的 Web サイト生成、source 変更検
 | データベース | なし（ファイルベース） |
 | Git・GitHub 参照 | `runner` の source 取得は GitHub REST API の Blobs / Trees API を Go 標準ライブラリ `net/http` 経由で行う。`release` の local commit / tag / source 参照は read-only Git command、remote repository / branch / tag / Release 参照は GitHub REST API を使用する。実行時の Git 状態変更、ref 作成・更新・削除、fetch、checkout、merge、commit、push は行わない。 |
 | フロントエンド | HTML / CSS / Vanilla JavaScript |
-| JavaScript 検証ランタイム | JavaScript 系実装 artifact の構文・型検証は Deno stable runtime を標準とする。Node.js、npm、bundler、transpiler を標準検証ランタイムとして使用しない。Deno は検証ランタイムであり、Adlaire CI の production dependency、配布物同梱 dependency、外部ライブラリ許可条件として扱ってはならない。 |
+| JavaScript 検証ランタイム | JavaScript 系実装 artifact の構文・型検証は Deno stable runtime を標準とする。bundler、transpiler を標準検証ランタイムとして使用しない。Node 関連の適合性は [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](SPEC.md#policy-node-runtime-ban) を正本とする。Deno は検証ランタイムであり、Adlaire CI の production dependency、配布物同梱 dependency、外部ライブラリ許可条件として扱ってはならない。 |
 | 標準運用 | systemd を使用する自己管理 Linux CI/CD サーバーと静的サイト配信サーバーの 2 台構成を標準とする。最小運用では [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](details/production-validation.md#phase-18-vps-pull-bootstrap-contract) に従い、1 台 VPS の `single-node` 構成を許可する。 |
 | データ交換形式 | 構造化 API request / response、Adlaire CI が読み書きまたは解釈する状態ファイル、設定ファイル、build 拡張設定は JSON に統一し、YAML・CSV・XML 等の代替構造化形式を使用しない。この禁止は Adlaire CI の runtime / API / state / build 定義に適用し、GitHub Actions / GitHub workflow の `.github/workflows/*.yml` / `.github/workflows/*.yaml` は対象外とする。例外は、保存済み build log の有限 SSE response、保存済み snapshot の binary response、管理ツールの静的 asset response だけとする。例外となる endpoint、media type、body、失敗時 JSON response は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK の受信・変換契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする。詳細本文責務に明示されていない非 JSON API 交換、状態設定、build 定義を実装してはならない |
 
@@ -1057,7 +1057,7 @@ coverage は参考指標に限る。line coverage、branch coverage、function c
 
 | 判断対象 | 必須条件 |
 |----------|----------|
-| Action 依存 | 外部 Action と外部 reusable workflow は、提供元、利用理由、処理内容、必要権限、保守・更新・削除方針を確認して承認し、完全な commit SHA に固定する。参照先の依存も確認し、tag / branch / `latest` へ置換しない。許可は開発基盤の用途に限定し、外部解析サービス、実装ライブラリ、production 依存の追加許可へ拡張しない。 |
+| Action 依存 | 依存 runtime の採否は [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](SPEC.md#policy-node-runtime-ban) を先に適用する。その適合を満たす外部 Action と外部 reusable workflow だけを、提供元、利用理由、処理内容、必要権限、保守・更新・削除方針を確認して承認し、完全な commit SHA に固定する。参照先の依存も確認し、tag / branch / `latest` へ置換しない。許可は開発基盤の用途に限定し、外部解析サービス、実装ライブラリ、production 依存の追加許可へ拡張しない。 |
 | 最小権限 | workflow の `GITHUB_TOKEN` は原則 `contents: read` とし、不要な権限を与えない。書込み、公開、配備、認証連携の追加権限は必要な job だけに限定する。環境別に credential を分離し、秘密値を workflow 本文、入力例、log、cache、artifact、fixture、PR 本文へ保存しない。mask だけで漏えい防止済みとは判定せず、漏えい時は停止、失効・再発行、影響確認を行う。 |
 | 未信頼コード | fork、外部 Pull Request、その他未信頼 ref は、secret・書込み権限・機密ネットワーク接続を持たない GitHub-hosted runner で検証する。self-hosted runner では実行しない。`pull_request_target` / `workflow_run` 等の権限付き文脈で未信頼コードを checkout・実行しない。event の文字列を shell / script へ直接展開せず、入力検証と data としての受渡しを行う。 |
 | self-hosted 隔離 | runner group または同等の対象 repository / job 制限で信頼済みコード専用の割当を設定し、label だけを信頼判定に使わない。日常作業端末、production credential、機密ネットワークから分離し、job ごとに使い捨ての実行環境または同等の清浄化を保証する。共用 workspace、credential、process、cache、network 接続を次 job へ残さない。environment 承認だけを隔離保証にしない。 |
@@ -1224,6 +1224,20 @@ GitHub Actions 障害、runner 不足、ネットワーク障害をローカル�
 許可外部ライブラリ一覧は空を固定値とする。新規行を追加してはならない。
 
 ---
+
+<a id="policy-node-runtime-ban"></a>
+
+## 4a. Node 全面禁止契約
+
+本リポジトリに関する作業と管理対象の実行経路では、Node.js / Node runtime の使用、起動、導入、ダウンロード、同梱、配布、直接依存、間接依存を、バージョンと用途を問わず、いかなる条件下でも禁止する。例外はない。production、開発、調査、debug、検証、テスト、fixture harness、build、setup、release、配備、運用、一時利用、障害時代替、エージェントの作業用 command に同じ禁止を適用する。
+
+`node` / `nodejs`、Node を必要とする `npm` / `npx` / `pnpm` / `yarn` / `corepack`、Node 専用 API / CommonJS、Deno の `node:` / `npm:` import と Node 互換機能への依存、Node を起動する installer / script / container / 開発用 tool、JavaScript Action、composite Action または reusable workflow の内部・再帰依存も禁止対象とする。公式提供、一般的な利用、SHA 固定、推移的利用、利用者から見えない内部処理、承認済み、利便性、速度、検証用、短期間、緊急対応を禁止の解除理由にしてはならない。作業承認と開発基盤の障害時例外は、この禁止を解除しない。
+
+利用可能な runtime と標準 command は [`docs/SPEC.md` 方針責務 §4 技術方針表](SPEC.md#direction-technical) と該当責務正本による。JavaScript という言語、browser 標準 API、DOM の node、禁止説明、検出用文字列、実行しない負例データを Node runtime の利用と混同して削除してはならない。一方、名称変更、PATH からの隠蔽、警告の抑制、別 tool の内部への移動を排除の証拠にしてはならない。
+
+導入前と正式検証前に、hidden path、実行 command、配布物、runtime 準備、workflow / Action / reusable workflow とその依存を確認する。未確認・判定不能の依存経路は使用しない。違反または未確認項目が残る経路を起動、再実行、正式合格または本契約準拠として報告してはならない。証跡、正例・負例、再混入検査と準備処理の固定入力は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](DETAIL_INDEX.md#cross-test-evidence-route) の Node 非依存開発検証契約を参照する。
+
+GitHub Actions を開発基盤として使用する方針は継続する。管理対象 job が Node を起動・導入・依存しないことを検証し、GitHub 管理ホスト全体の未使用ソフトウェアの不存在を、その検証結果から推定してはならない。
 
 <a id="policy-runner-secrets"></a>
 
