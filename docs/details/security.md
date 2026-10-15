@@ -12,7 +12,7 @@ service tokenは32 random bytes、base64url paddedなし43文字、DBにはSHA25
 <a id="phase-19-permission-matrix"></a>
 **権限行列：**
 
-deny-by-default。enabledかつexpires_at=nullまたはnow<expiryのGrantだけを採用し、roleの和集合を許可する。platform-adminだけproject_id/environment_id両方null、他roleはproject必須。approverはenvironment必須、他roleのenvironmentはnull。対象外scope組合せは保存拒否。viewer/operator/project-adminの包含関係以外を暗黙包含しない。
+deny-by-default。User/Service IDのsystem/worker/siteは予約済みで作成拒否、adminは初期Userだけ、user/service間のID重複も拒否する。enabledかつexpires_at=nullまたはnow<expiryのGrantだけを採用し、roleの和集合を許可する。platform-adminだけproject_id/environment_id両方null、他roleはproject必須。approverはenvironment必須、他roleのenvironmentはnull。対象外scope組合せは保存拒否。viewer/operator/project-adminの包含関係以外を暗黙包含しない。
 
 | role | 許可 |
 |---|---|
