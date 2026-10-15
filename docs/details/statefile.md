@@ -621,7 +621,7 @@ Root内operationは30日保持、run / deploymentは各project retention経過�
 
 **adapter interface：** `ReadCICD() (Root,Head,error)`、`UpdateCICD(opID,requestDigest,mutate) (Operation,error)`、`WriteCICDLog(Log) error`、`ReadCICDLog(identity) (Log,error)`。mutateは既に検証した入力を用いる純粋なRoot更新だけで、I/Oを呼ばない。ログ単体は同directoryのO_EXCL temporary → write / fsync / close → rename / directory fsyncで更新する。caller固有の直接書込は許可しない。全error codeの公開対応は [`docs/details/api.md` 詳細本文責務 Phase 19 error](api.md#phase-19-error-catalog)、検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
 
-**canonical bytes：** digest対象JSONはobject keyをUTF-8 byte昇順、配列順維持、空白なし、整数10進、stringはJSON必須escapeだけ（HTML escapeなし、slash非escape）、末尾LFなし、UTF-8でencodeする。浮動小数は全schemaで不使用。HTTP送受信bytesとcanonical bytesを混同しない。\u2028/\u2029はUTF-8のままとする。
+**canonical bytes：** digest対象JSONはobject keyをUTF-8 byte昇順、配列順維持、空白なし、整数10進、stringはquotation/backslashをそれぞれbackslashでescapeし、U+0008/U+0009/U+000A/U+000C/U+000Dは順に `\b` / `\t` / `\n` / `\f` / `\r`、その他U+0000〜001Fはlowercase hex4桁の `\u00xx` とする（入力で禁止されたcodepointの許可にはならない）。それ以外は元のUTF-8 byteを維持し、HTML escapeなし、slash非escape、Unicode正規化なし、末尾LFなし、UTF-8でencodeする。浮動小数は全schemaで不使用。HTTP送受信bytesとcanonical bytesを混同しない。\u2028/\u2029はUTF-8のままとする。
 
 ---
 
