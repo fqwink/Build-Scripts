@@ -1,35 +1,128 @@
 # Adlaire CI — API 詳細仕様
 
 <a id="phase-19-api-contract"></a>
-**Phase 19 API 接続策定契約：**
+**Phase 19 管理API契約：**
+ownerは `api`、実装主体は [components/api/](../../components/api/)。型の唯一の正本は [`docs/details/statefile.md` 詳細本文責務 statefile schema registry](statefile.md#phase-19-schema-registry)、認可は [`docs/details/security.md` 詳細本文責務 security権限行列](security.md#phase-19-permission-matrix)。既存endpointの動作を変更せず、cicd-v1有効時だけ下記namespaceを登録する。
 
-本節は `api` が所有する新規操作境界の設計本文である。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。次表の path は既存 route の別名ではなく、新規接続の策定対象であり、既存 endpoint / SDK 対応表へ実装済みとして加えない。
+**共通wire契約：** 管理APIは既存loopback/TLS tunnel境界。全bodyはUTF-8 JSON、Content-Type application/json必須、Content-Encoding拒否、最大1048576 bytes（超過413）、decode depth32、duplicate/unknown key拒否、末尾token拒否。GET/DELETE queryは列挙keyだけ、同名重複禁止、pathは一度だけpercent decodeしslash/backslash/dotdot/制御文字拒否。attemptは1〜100、ID/digestはschemaで検査する。method不一致405/Allow、未知route404。認証前のparseでscope情報を返さない。
 
-| 操作 ID | method / path 案 | owner 呼出境界 |
-|---------|-------------------|----------------|
-| `project-list` | `GET /api/cicd/projects` | security が許可した project の statefile 読取。 |
-| `definition-read` / `definition-write` | `GET` / `PUT /api/cicd/projects/{project_id}/definition` | statefile の revision 付き読取 / 更新。 |
-| `plan` | `POST /api/cicd/projects/{project_id}/plan` | runner の計画生成。実行要求を生成しない。 |
-| `run-list` / `run-start` | `GET` / `POST /api/cicd/projects/{project_id}/runs` | runner の検索 / 開始受付。 |
-| `run-read` | `GET /api/cicd/projects/{project_id}/runs/{run_id}` | attempt、job、配備参照の読取。 |
-| `run-cancel` / `run-retry` | `POST /api/cicd/projects/{project_id}/runs/{run_id}/cancel` / `POST /api/cicd/projects/{project_id}/runs/{run_id}/retry` | runner の対象 attempt 確認と操作受付。 |
-| `job-log` | `GET /api/cicd/projects/{project_id}/runs/{run_id}/jobs/{job_id}/logs` | statefile の上限付き log 読取。 |
-| `worker-list` / `worker-drain` | `GET /api/cicd/projects/{project_id}/workers`、`POST /api/cicd/projects/{project_id}/workers/{worker_id}/drain` | runner の割当状況読取 / 新規割当停止。 |
-| `artifact-list` / `artifact-compare` | `GET /api/cicd/projects/{project_id}/artifacts`、`POST /api/cicd/projects/{project_id}/artifacts/compare` | archive の project 内成果物参照 / 比較。 |
-| `deployment-plan` / `deployment-start` | `POST /api/cicd/projects/{project_id}/deployments/plan` / `POST /api/cicd/projects/{project_id}/deployments` | runner の環境計画 / 配備受付。 |
-| `deployment-read` / `deployment-approve` | `GET /api/cicd/projects/{project_id}/deployments/{deployment_id}`、`POST /api/cicd/projects/{project_id}/deployments/{deployment_id}/approve` | runner 参照と security の承認者判定。 |
-| `deployment-rollback` | `POST /api/cicd/projects/{project_id}/deployments/{deployment_id}/rollback` | runner に新しい復旧操作の受付を要求する。 |
-| `metrics-read` | `GET /api/cicd/projects/{project_id}/metrics` | 認可済み集計の JSON 読取。 |
+成功envelopeは `{data:T,request_id:Id}`、errorは `{error:string,code:string,request_id:Id,details:[]}`（detailsは常に空）。全応答no-store、JSON nosniff。request_idはserver発行o-ID。login/logout以外の副作用requestは `Idempotency-Key: o-32hex` 必須、digest対象は `{subject,method,path,body}` のcanonical bytes。acceptedは202、完了済み同期変更は200、作成も200。mutationのdataは一律OperationResult=`{operation:Operation,result:T|null,one_time:null|string}` とし、下表data列はresultの論理型を示す（Operation行はresult=null）。Operation.idはIdempotency-Keyと一致する。初回同期成功だけresultを返し、user/service作成時だけone_timeに初期password/tokenを一度返す。再送同digestは保存済みOperationを同じ200/202で返すがresult=null/one_time=nullとし、clientはoperationとtargetのGET/listを再取得する。秘密応答やrequest本文をidempotency保存しない。operationは30日照会可能。login/logoutはmemory-only認証操作でOperationResult対象外、loginだけ認証前body decodeを許可する。認証・rate-limit拒否はidempotency保存せず、監査の機密境界に従う。
 
-全操作で認証と project / environment の認可を行う。新しい公開認証除外を追加しない。業務処理、状態ファイル直接更新、process 停止を handler へ複製せず、表の owner に要求を渡す。定義更新は期待 revision、実行操作は要求識別子と対象 attempt / 環境世代を受け取り、異なる内容による同一識別子の再利用を拒否する。保存の比較条件は [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](statefile.md#phase-19-state-contract) を参照する。
+Write<T>は `{expected_revision:int(0,2147483647),value:T}`。新規はexpected=0/value.revision=1、更新はexpected=current/value.revision=current+1。server管理fieldはread-only値と一致を要求し、変更を拒否する。Job/Plan/Operationなどをclientが直接書くrouteはない。Definition/Templateはrevisionごとimmutable、既存revision上書き禁止、新revision=max+1。project.definitionは存在revisionだけを参照する。Project新規作成時はdefinition_id=null/revision=0/enabled=falseとし、Definition作成後に存在revisionを関連付けて有効化する。enabled=trueでnull指定は禁止。
 
-非同期操作の `202` は durable な受付結果と操作 ID を返したことだけを表す。完了結果は別の認証済み読取で取得し、受付応答へ成功を先取りして埋め込まない。開始前の audit 不成立、権限不一致、古い世代、入力不正では owner の実行を開始しない。権限判定は [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](security.md#phase-19-security-contract)、実行結果は [`docs/details/runner.md` 詳細本文責務 Phase 19 実行契約](runner.md#phase-19-runner-contract) を参照する。
+<a id="phase-19-operation-catalog"></a>
+**operation catalog：** IDはSDK・UI・CLI対応の結合key。[]応答はPageEnvelopeで返す。role名の意味はsecurity正本。grant-ownerは読取時は自分が管理するscopeだけ、変更時は自分が付与可能なscope/roleだけ、deployment-readerはviewerまたは対象approver、operation-readerはrequesterまたは同scope project-admin（globalはplatform-admin）。
 
-実行中 log は JSON の位置付き有限取得とし、要求した attempt / job / stream と cursor を結び付ける。応答は次 cursor、取得可能な先頭位置、欠落の有無、終端状態を識別できる形とする。失効 cursor と範囲外要求を黙って先頭へ戻さない。保存済み log の既存有限 SSE を live tail へ読み替えない。metrics も JSON とし、別形式の公開 endpoint を本節から追加しない。
+| operation ID | method / path | request | data | role |
+|---|---|---|---|---|
+| login | POST `/api/cicd/login` | Login | Session | public |
+| logout | POST `/api/cicd/logout` | Empty | Empty | authenticated |
+| passwordChange | POST `/api/cicd/password` | PasswordChange | Empty | authenticated-user |
+| projectsList | GET `/api/cicd/projects` | Page | ProjectView[] | platform-admin |
+| projectPut | PUT `/api/cicd/projects/{id}` | Write<Project> | ProjectView | platform-admin |
+| workersList | GET `/api/cicd/workers` | Page | WorkerView[] | platform-admin |
+| workerPut | PUT `/api/cicd/workers/{id}` | Write<Worker> | WorkerView | platform-admin |
+| targetsList | GET `/api/cicd/targets` | Page | TargetView[] | platform-admin |
+| targetPut | PUT `/api/cicd/targets/{id}` | Write<Target> | TargetView | platform-admin |
+| usersList | GET `/api/cicd/users` | Page | UserView[] | platform-admin |
+| userPut | PUT `/api/cicd/users/{id}` | Write<User> | UserView | platform-admin |
+| servicesList | GET `/api/cicd/services` | Page | ServiceView[] | platform-admin |
+| servicePut | PUT `/api/cicd/services/{id}` | Write<Service> | ServiceView | platform-admin |
+| definitionsList | GET `/api/cicd/projects/{project}/definitions` | Page | Definition[] | viewer |
+| definitionPut | PUT `/api/cicd/projects/{project}/definitions/{id}` | Write<Definition> | Definition | project-admin |
+| templatesList | GET `/api/cicd/projects/{project}/templates` | Page | Template[] | viewer |
+| templatePut | PUT `/api/cicd/projects/{project}/templates/{id}` | Write<Template> | Template | project-admin |
+| environmentsList | GET `/api/cicd/projects/{project}/environments` | Page | Environment[] | viewer |
+| environmentPut | PUT `/api/cicd/projects/{project}/environments/{id}` | Write<Environment> | Environment | project-admin |
+| grantsList | GET `/api/cicd/grants` | Page | Grant[] | grant-owner |
+| grantPut | PUT `/api/cicd/grants` | GrantWrite | Grant | grant-owner |
+| secretPut | PUT `/api/cicd/projects/{project}/secrets/{id}` | SecretWrite | SecretView | project-admin |
+| secretsList | GET `/api/cicd/projects/{project}/secrets` | Page | SecretView[] | project-admin |
+| workerDrain | POST `/api/cicd/workers/{id}/drain` | Revision | WorkerView | platform-admin |
+| workerResume | POST `/api/cicd/workers/{id}/resume` | Revision | Operation | platform-admin |
+| plan | POST `/api/cicd/projects/{project}/plans` | PlanRequest | Plan | viewer |
+| runStart | POST `/api/cicd/projects/{project}/runs` | RunStart | Operation | operator |
+| runsList | GET `/api/cicd/projects/{project}/runs` | Page | Run[] | viewer |
+| runGet | GET `/api/cicd/projects/{project}/runs/{run}/attempts/{attempt}` | Empty | Run | viewer |
+| runRetry | POST `/api/cicd/projects/{project}/runs/{run}/attempts/{attempt}/retry` | Revision | Operation | operator |
+| runResume | POST `/api/cicd/projects/{project}/runs/{run}/attempts/{attempt}/resume` | Revision | Operation | operator |
+| runCancel | POST `/api/cicd/projects/{project}/runs/{run}/attempts/{attempt}/cancel` | Revision | Operation | operator |
+| logsGet | GET `/api/cicd/projects/{project}/runs/{run}/attempts/{attempt}/jobs/{job}/logs` | LogQuery | LogPage | viewer |
+| artifactsList | GET `/api/cicd/projects/{project}/artifacts` | Page | Artifact[] | viewer |
+| artifactGet | GET `/api/cicd/projects/{project}/artifacts/{digest}` | Empty | ArtifactManifest | viewer |
+| artifactDownload | GET `/api/cicd/projects/{project}/artifacts/{digest}/download` | ChunkQuery | Chunk | viewer |
+| artifactCompare | POST `/api/cicd/projects/{project}/artifact-compare` | Compare | FileDiff[] | viewer |
+| artifactPin | POST `/api/cicd/projects/{project}/artifacts/{digest}/pins` | Pin | Artifact | operator |
+| cachesList | GET `/api/cicd/projects/{project}/caches` | Page | CacheEntry[] | viewer |
+| cacheDelete | DELETE `/api/cicd/projects/{project}/caches/{digest}` | Revision | Operation | project-admin |
+| environmentStatus | GET `/api/cicd/projects/{project}/environments/{id}/status` | Empty | EnvironmentState | viewer |
+| deploymentPlan | POST `/api/cicd/projects/{project}/deploy-plans` | DeployRequest | DeployPreview | operator |
+| deploymentStart | POST `/api/cicd/projects/{project}/deployments` | DeployStart | Operation | operator |
+| deploymentsList | GET `/api/cicd/projects/{project}/deployments` | Page | Deployment[] | viewer |
+| deploymentGet | GET `/api/cicd/projects/{project}/deployments/{id}` | Empty | Deployment | deployment-reader |
+| deploymentApprove | POST `/api/cicd/projects/{project}/deployments/{id}/approve` | Revision | Operation | approver |
+| deploymentReject | POST `/api/cicd/projects/{project}/deployments/{id}/reject` | Revision | Operation | approver |
+| deploymentCancel | POST `/api/cicd/projects/{project}/deployments/{id}/cancel` | Revision | Operation | operator |
+| deploymentRollback | POST `/api/cicd/projects/{project}/deployments/{id}/rollback` | Revision | Operation | operator |
+| deploymentReconcile | POST `/api/cicd/projects/{project}/deployments/{id}/reconcile` | Reconcile | Operation | platform-admin |
+| operationGet | GET `/api/cicd/operations/{id}` | Empty | Operation | operation-reader |
+| metricsGet | GET `/api/cicd/projects/{project}/metrics` | Empty | Metrics | viewer |
+| auditsList | GET `/api/cicd/projects/{project}/audits` | Page | Audit[] | project-admin |
 
-**詳細化を残す判断対象：** 各操作の全 request / response key と型、body / page / log 上限、cursor encoding、revision / 要求識別子の渡し方、認証後の検査順、固定 HTTP status / error / message、worker 再開・利用者管理・grant 更新・template 操作の route と全 client 対応を本節で閉じる。表の path 案だけで実装着手条件を満たしたとしない。
+**request型（本節所有のwire schema）：**
 
-検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+wire略記のId/Digest/Time/RelPathはstatefile registryを参照し、同名fieldは保存型の制約を継承する。略記stringはUTF-8 0〜4096 bytes、単独intは0〜9007199254740991の安全整数、boolはJSON boolean。objectは記載key全必須、unknown/duplicate拒否。型引数T/[]/PageEnvelope以外の暗黙拡張はない。
+
+PasswordChange=`{current_password:text(1,4096),new_password:text(1,4096),totp:null|string}`。session user本人だけ、service不可。既存password policy/KDF/同値拒否に従い、成功時そのuserの全sessionを失効する。admin aliasは既存credential正本を更新する。named userのTOTP設定/解除は本profile非対応でtotp=nullを要求し、admin TOTPは既存認証endpointでのみ管理する。
+
+`Empty={}`、`Revision={expected_revision:int(1,2147483647)}`。GET Emptyはquery/bodyなし。DELETE RevisionはJSON body。Pageはquery `limit=1..100`（省略50）、`cursor`（省略null）だけ。PageEnvelopeは `{items:T[],next_cursor:null|string}`、id、複合keyがあればproject,id,revision,attemptのbyte昇順、artifact/cacheはdigest/key順、auditはat,operation_id,phase順。一覧は認可後にscope filterし、secret projectionしてから返す。cursorはsecurity cursor_keyのHMAC-SHA256、payloadはcanonical `{version:1,subject,scope,operation,last_key,filter_digest,expires_at}`、base64url(payload)+"."+64hexMAC、期限3600秒、decoded<=1024 bytes、定時間MAC比較。更新中一覧はsnapshot isolationを保証せずlast_keyより後だけを返す。未存在cursorは410。フィルタ変更/別subject再利用は403。
+
+- Login=`{user_id:Id,password:text(1,4096),totp:null|6digit}`。Session=`{token:text(64,64),user_id:Id,expires_at:Time}`、既存session TTLを適用。logoutは現在tokenだけを失効。
+- GrantWrite=`{grant:Grant,expected_generation:int(1,9007199254740991)}`、Root generation一致を要求し、expiry/権限をtransaction内再評価する。Grant列挙をproject-adminで行う場合はqueryにproject_id必須（Pageの固定追加key）。
+- SecretWrite=`{expected_version:int(0,2147483647),value:text(1,4096)}`、SecretView=`{id,version,created_at}`。created_atはSecretCipher.created_atであり、mtimeや保持期間付き監査から推定しない。secret削除routeはなく、参照しない版のGCはsecurity契約。
+- PlanRequest=`{definition_id,definition_revision,ref_kind,ref,values:ScalarMap}`。RunStartは同field+`plan_digest:Digest`。計画をserver再計算し一致時だけ受付。source取得中の失敗は503。
+- LogQuery=query `stream=stdout|stderr` 必須、cursor省略null、limit_bytes=1..65536（省略65536）。LogPage=`{data,first_offset,next_offset,next_cursor,truncated,gap,terminal}`。cursorは上記署名方式、scopeにrun/attempt/job/stream/offsetを含め期限86400秒。ringより前は410 P19_CURSORであり黙って先頭へ戻さない。UTF-8境界で最大byte以下に切る。現在末尾はdata空でcursor不変。
+- ChunkQuery=query `offset:int(0,1073741824)` 必須。Chunk=`{offset,data:base64,next_offset,total_bytes,digest,final:bool}`、decoded chunk<=12288 bytes、offset>totalは422。ArtifactManifestはarchive正本manifest。
+- Compare=`{from:Digest,to:Digest}`。FileDiff=`{path,kind:added|removed|changed|same,old:null|{size,sha256,mode},new:null|{size,sha256,mode}}`。最大10000行、応答はPageEnvelope、Pageのqueryを追加許可。
+- Pin=`{pin_id:Id,enabled:bool}`、自分のo-IDだけを手動pinに利用可能。cacheDeleteのexpected_revisionはRoot.generation（cache単体revisionなし）。
+- DeployRequest=`{environment_id,artifact,expected_generation,rollback_of:null|Id}`。DeployPreview=`{plan:DeployPlan,digest:Digest}`。DeployStartはDeployRequest+`plan_digest`、開始時再計算。deploymentRollbackは対象成功/失敗deploymentのprevious_artifactを選んだ新DeployPlanを作り、approvalを再取得する。旧approvalを流用しない。
+- Reconcile=`{expected_revision,targets:list({target_id,generation,artifact:null|Digest},1,32)}`。入力を信用せずsite-agent queryと全件一致した場合だけblocked解除。照合不能ならrecovery_requiredを維持。
+- Metrics=`{window_from,window_until,success,failed,cancelled,recovery_required,skipped_jobs,retried_jobs,success_rate_basis_points:null|int(0,10000),queue_count,active_jobs,wait_avg_ms:null|int,wait_p95_ms:null|int,run_avg_ms:null|int,run_p95_ms:null|int,workers_online,workers_draining,environments_blocked}`。計算法はrunner正本。
+
+ProjectViewはProjectそのもの。WorkerView/TargetViewは保存型からSSH user/host/pathを除きhost_registered=trueだけを追加する（platform-admin自身には保存型を返せる）。UserViewはcredential/totpを含めず `{id,name,revision,enabled,created_at,totp_enabled}`。ServiceViewはtoken_sha256を含めず `{id,revision,enabled,expires_at}`。tokenはOperationResult.one_timeだけへ返す。User/ServiceのWrite.valueは資格情報fieldを受けず、作成はserver生成、更新はenabled/name/expiryだけ。Workerのtoolchain_digest/total_memory_mb/leases/last_seenはprobe/runner所有、新規要求はprobe確認値と一致を要求する。Targetを含めserver所有fieldの変更を拒否する。Worker/Targetのleases/last_seenはserver所有で新規は空/null、変更拒否。Root全体・master・暗号文はroute非公開。
+
+<a id="phase-19-error-catalog"></a>
+**閉じたerror catalog：**
+
+wire errorは下表のmessageだけ、stderr/path/secretを足さない。codeはstate/JobResultにも共用し、nullは成功または未終端だけ。OS詳細はmask済み診断へ別保存。未知internal errorはP19_INTERNALへ集約する。
+
+| HTTP | codes | error message |
+|---|---|---|
+| 400 | P19_JSON, P19_INPUT | invalid request |
+| 401 | P19_AUTH | authentication required |
+| 403 | P19_FORBIDDEN | permission denied |
+| 404 | P19_NOT_FOUND | not found |
+| 405 | P19_METHOD | method not allowed |
+| 409 | P19_REVISION, P19_STALE, P19_IDEMPOTENCY, P19_BUSY, P19_APPROVAL, P19_FREEZE | state conflict |
+| 410 | P19_CURSOR | cursor expired |
+| 413 | P19_BODY | request too large |
+| 415 | P19_MEDIA | unsupported media type |
+| 422 | P19_SCHEMA, P19_DAG, P19_MATRIX, P19_EMPTY, P19_CAPABILITY, P19_SOURCE, P19_DIGEST, P19_ARCHIVE, P19_SIGNATURE, P19_TRUST | validation failed |
+| 429 | P19_QUOTA, P19_RATE | limit exceeded |
+| 500 | P19_INTERNAL, P19_ENTROPY, P19_SECRET, P19_EXIT, P19_OUTPUT, P19_TIMEOUT, P19_CLEANUP, P19_HEALTH, P19_CANCELLED | operation failed |
+| 503 | P19_TRANSPORT, P19_LEASE, P19_STATE_CORRUPT, P19_STATE_UNCERTAIN, P19_SHUTDOWN | unavailable |
+| 507 | P19_STORAGE | storage unavailable |
+
+P19_CANCELLEDはcancel終端のJobResultだけ、受付HTTP成功を500へ変えない。P19_CLEANUPは実体状態に応じfailed/recovery_requiredであってcleanup warningがbusiness成功を遡及変更しない。時刻/entropy/leaseなど環境failureも成功に丸めない。429/503はRetry-After:1を返すがclient自動再実行を許可する意味ではない。
+
+<a id="phase-19-site-serving"></a>
+**site専用配信mode：**
+
+`adlaire-ci-api --cicd-site --config CONFIG --state-dir S` はmanagement modeと排他的。setupが指定したlisten/TLS証明書でGET/HEADだけを受け、管理・login・状態export endpointを一切登録しない。static directoryはarchive verified contentのみ。URL pathを一度decodeしdot/backslash/NUL/隠しsegment/manifest未登録を404、directoryはindex.htmlだけ、listing/redirect/template実行なし。symlink拒否、open後fstatとmanifest size/hash照合。Range/圧縮動的変換なし。MIMEは既存static MIME表、未知はapplication/octet-stream、nosniff、cache-control no-store。本文はfile byteそのもの、HEADは同headerでbodyなし。最大request header16384、ReadHeaderTimeout5s、IdleTimeout30s、WriteTimeout30s、最大同時128。
+
+Route readは各request開始時のimmutable snapshot、stable=nullかつcandidateなしは503。canary bucketはcrypto/rand16bytesのhex cookie `adlaire_bucket` の最初の8hexをuint32としてmod100。cookieは32hex以外再発行、Max-Age86400/Path=/;HttpOnly;SameSite=Lax;Secure（TLS必須）。cookieは認証ではないため署名しない。bucket<percentならcandidate、他はstable、candidate=nullならstable。health reserved routeはRouteのcandidate（なければstable）とgenerationをJSONで返し、file検証済みでない場合503。通常trafficはTLS必須、検証loopbackだけ明示allow_http=true。site-agent queryで同generationの各観測窓request/5xx counterを返す。health/HEADは母数から除外、response完了時にcount。generation変更で新窓開始し古い窓を24h保持、再起動後counter欠落はinsufficientとしてcanaryを進めない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) へ接続する。
 
 api 連動機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](../DETAIL_INDEX.md#0i3-api--sdk--ui) を入口とする。endpoint、成功時・失敗時動作、状態副作用は [`docs/details/api.md`](api.md)、SDK method は [`docs/details/sdk.md`](sdk.md)、UI 操作は [`docs/details/ui.md`](ui.md)、状態 schema は [`docs/details/statefile.md`](statefile.md)、検証証跡は [`docs/details/fixture.md`](fixture.md) を正本とする。
 

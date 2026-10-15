@@ -447,7 +447,7 @@ Phase 19 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状�
 | 管理画面の視覚配置 | デザイン責務 | [`docs/DESIGN.md` デザイン責務 Phase 19 管理画面](DESIGN.md#phase-19-admin-visual-contract) |
 | 本番同等の実行・配備・復旧検証 | 本番検証詳細本文責務 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 19 検証](details/production-validation.md#phase-19-production-validation-contract) |
 
-fixture・受け入れ証跡への接続は [横断テスト証跡共通入口](#cross-test-evidence-route) の Phase 19 策定対象を参照する。正式 fixture / checker / workflow / target path の所在確認は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 19 所在](DOCUMENT_INDEX.md#phase-19-artifact-location) を参照する。
+fixture・受け入れ証跡への接続は [横断テスト証跡共通入口](#cross-test-evidence-route) の Phase 19 策定対象を参照する。schema/処理/異常系は各owner行の正本へ、fixture layout/checker/required workflowは [fixture証跡責務 Phase19](details/fixture.md#phase-19-cicd-evidence-contract) へ到達する。正式 fixture / checker / workflow / target path の所在確認は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 19 所在](DOCUMENT_INDEX.md#phase-19-artifact-location) を参照する。
 
 <a id="phase-20-inhouse-iac-entry"></a>
 **Phase 20 内製 IaC 参照：**

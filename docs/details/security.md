@@ -1,23 +1,43 @@
 # Adlaire CI — Security 詳細仕様
 
 <a id="phase-19-security-contract"></a>
-**Phase 19 利用者・権限策定契約：**
+**Phase 19 identity・認可・secret契約：**
 
-本節の owner は `security` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。project と環境の保存形式は [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](statefile.md#phase-19-state-contract)、承認対象への結付けと消費時再照合は [`docs/details/runner.md` 詳細本文責務 配備・承認・復旧](runner.md#phase-19-deployment-contract) が所有する。
+ownerは `security`、実装主体は [components/security/](../../components/security/)。適用profileは [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、schemaは [`docs/details/statefile.md` 詳細本文責務 schema](statefile.md#phase-19-schema-registry)。legacy login/sessionを黙って複数userへ拡張しない。
 
-| 権限対象 | 判定境界 |
-|----------|----------|
-| identity | 個人の user ID、service identity、worker identity を区別する。共有ログインを複数人承認の証拠にしない。無効化・失効を承認消費時と job 割当時にも確認する。 |
-| project role | `viewer`、`operator`、`approver`、`project-admin` を詳細化対象とする。viewer は読取、operator は実行操作、approver は承認、project-admin は project 設定管理を基本責務とし、未定義の操作を許可しない。環境権限は別の明示 grant を必要とする。 |
-| environment grant | project role だけで本番配備・承認を許可しない。対象 environment、操作、subject の対応を照合する。project-admin に自動承認権限を付けない。 |
-| 複数人承認 | 要求者、成果物を変更できる主体、承認者の分離条件と必要人数を設定単位で判定する。同一人物の複数 session / token を別承認者として数えない。 |
-| secret | 定義と計画は secret ID / version 参照を持ち、値を持たない。worker には割当 job に必要な値だけを渡す。plan、cache、artifact、API error、通常 audit へ値を保存しない。mask 対象は runner の保存前処理へ渡す。 |
-| project 隔離 | run、artifact、log、統計、cache、worker 操作ごとに対象 project を検証する。ID を知っていること、別 endpoint で認証済みであることを認可にしない。 |
-| audit | 配備・承認・権限変更・worker 管理の要求者、対象参照、判定、結果を接続する。必須 audit を開始前に確定できない操作は外部副作用を開始しない。終了時 audit 失敗は黙殺せず、処理結果と保存失敗を分けて呼出元へ返す。 |
+**認証：** cicd loginはuser ID/password/nullable totpを受け、既存credentialのKDF・定時間比較・TOTP・lockout規則へ接続する。id=adminだけcredential=nullを許し既存.admin_credentialsを唯一の資格情報とする。他userはCredential必須。無効/未知user/不正passwordは同じP19_AUTH、存在を漏らすdetail禁止。TOTP未設定ならnull、設定済みなら6桁必須。新user初期passwordはcrypto/rand32 bytesのbase64url、OperationResult.one_timeで1回だけ返し、credentialへ既存KDFで保存する。新規user作成・passwordChange時は既存sessionを全失効。admin以外のTOTPは現profileではnull固定（外部認証/TOTP拡張は別仕様であり暗黙実装しない）。session tokenは既存方式のmemory-only、userIDへ紐付け、再起動で失効。毎requestでenabled/grant/expiryを再検査する。login rate limitはIPとuserごと10回/60秒、超過P19_RATE、失敗カウンタ上限4096（期限切れから回収、満杯は新login拒否）。
 
-**詳細化を残す判断対象：** user / service / worker credential の形式・失効手順、既存 single-user からの移行、permission の閉じた一覧と role 対応表、二者分離の設定 schema、secret version の更新・破棄・mask 境界、audit record / failure code を本節で固定する。外部認証 provider の導入、既存の session 永続化禁止の緩和は本節の採用範囲に含めない。
+service tokenは32 random bytes、base64url paddedなし43文字、DBにはSHA256だけ、期限は発行から1秒〜30日、responseで1回だけ返す。Bearerでsessionと同じ入口へ渡し定時間比較、role/grantを毎回再検査する。serviceの承認・user/grant操作は禁止。worker SSH identityはAPI Bearerではない。
 
-検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+<a id="phase-19-permission-matrix"></a>
+**権限行列：**
+
+deny-by-default。enabledかつexpires_at=nullまたはnow<expiryのGrantだけを採用し、roleの和集合を許可する。platform-adminだけproject_id/environment_id両方null、他roleはproject必須。approverはenvironment必須、他roleのenvironmentはnull。対象外scope組合せは保存拒否。viewer/operator/project-adminの包含関係以外を暗黙包含しない。
+
+| role | 許可 |
+|---|---|
+| viewer | 自projectの設定（secret値除く）、run/log/artifact/環境/統計の読取、plan preview |
+| operator | viewer + run開始/retry/resume/cancel、手動pin、配備plan/開始/cancel/rollback |
+| approver | 対象project/environmentの配備plan読取とapprove/rejectだけ。run/log/secretの読取権限は与えない。 |
+| project-admin | operator + project設定/definition/template/environment/quota/secretの変更、project内user/serviceへのviewer/operator/approver付与。platform-adminや別project権限を付与できない。 |
+| platform-admin | project/worker/target/user/service作成、project-admin付与、global設定・recover。project data操作は対象projectの明示grantも必要。 |
+
+disabled projectへの変更は再有効化とcancel/reconcileだけ。project削除は非対応でenabled=falseによる停止だけ、user削除は無効化のみ、最後の有効platform-adminを失効/無効化できない。quota値を現在利用量より下げる変更は409。worker/target変更はdrainかつactive lease/deploymentなしが条件。認証→scope認可→resource lookup→body decodeの順にし、他project IDは403（存在detailなし）。
+
+承認対象はDeployPlan digest、承認有効期限は発行から3600秒、必要人数はEnvironment.approvals（0〜2）。production=trueは1以上かつallow_self_approval=false。同一subject重複不可、service不可。approver grantが失効/無効化、plan内容/環境revision/期待世代変更で承認無効。self禁止時requester本人は拒否。rejectはdeployment.failed/P19_APPROVALとして終端化、承認だけで実体配備はしない。
+
+<a id="phase-19-secret-crypto"></a>
+**secret暗号・投入・mask：**
+
+master.jsonのencryption_key/cursor_keyは各crypto/rand32 bytes、相互一致拒否、file0600/parent0700。AES-256-GCM（Go crypto/aes + cipher.NewGCM、tag16 bytes）を使用し、nonceはsecret versionごと12 random bytes、同一keyで既存nonce一致時3回再生成後P19_ENTROPY。AADはUTF-8 `p19-secret-v1\0PROJECT\0ID\0VERSION`（VERSIONは10進）とする。ciphertextはSealのtag付きbytesをbase64。復号失敗はP19_SECRET、平文や暗号文をerrorへ含めない。master自動再生成/backup同梱/鍵なしfallbackは禁止。明示初期化以外はmaster不在で起動拒否。
+
+secret平文はUTF-8一行、1〜4096 bytes、CR/LF/NULなし。入力bodyだけで受け、argv/URL/環境file/状態snapshotに保存しない。versionは既存最大+1、旧版はactive参照がある間削除不可。jobのsecret参照はversion固定、secret数16/合計16384 bytes以内。復号はdurable start直前、worker stdinでだけ渡し、利用後byte sliceを上書きする（GCによる全copy消去を保証しない）。deploy key/SSH/masterはjobに渡さない。
+
+mask patternはraw値、standard base64、base64url、url.QueryEscape、url.PathEscapeを重複排除し、byte長降順→byte辞書順で最長一致を `[REDACTED]` に置換する。長さ1のsecretもmaskする。chunk境界処理はrunner正本。mask後だけlog/notification/diagnosticへ渡す。任意変換・暗号化・分割された悪意ある出力の完全検出は保証せず、untrusted userへsecret使用権を付与しない。Node禁止をmaskで代替しない。
+
+auditはOperation受付/拒否/終端、user/grant/secret/worker変更、approve/reject/recoverを同じstate transactionに記録する。秘密値・password・token・nonce・秘密hash・request本文を含めず、subject/scope/action/target/codeだけを残す。監査保存失敗は変更/実行を止める。読取失敗と403はrate-limited診断、認証前subjectはsystemに固定する。公開read modelからcredential/totp/token_sha256/SSH pathを必ず除く。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
 
 ---
 

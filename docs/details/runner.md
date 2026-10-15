@@ -1,46 +1,96 @@
 # Adlaire CI — Runner 詳細仕様
 
 <a id="phase-19-runner-contract"></a>
-**Phase 19 実行・配備策定契約：**
+**Phase 19 実行契約（cicd-v1）：**
 
-本節は `runner` が所有する拡張設計本文である。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、策定対象の現在状態は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。既存の [ビルドパイプライン実行](#runner-build-pipeline-execution)、[ビルド依存チェーン](#sec-27-34)、[ビルド優先度キュー](#sec-27-35) を汎用ジョブ実装済みの根拠にしない。
+ownerは `runner`、実装主体は [components/runner/](../../components/runner/)。適用境界は [`docs/SPEC.md` ポリシー責務 SPEC ポリシー責務](../SPEC.md#policy-inhouse-cicd)、型・canonical bytes・保存は [`docs/details/statefile.md` 詳細本文責務 statefile 詳細本文責務](statefile.md#phase-19-schema-registry)、認可は [`docs/details/security.md` 詳細本文責務 security 詳細本文責務](security.md#phase-19-security-contract)。本節は従来builder専用oneshotの仕様を変更せず、明示profileでだけ使用する。
 
-| 判断対象 | 入力 / 処理 / 結果 |
-|----------|--------------------|
-| 定義・テンプレート展開 | project、source SHA、定義 revision、型付き入力を受け、保存済みテンプレートの指定 revision を展開する。未知 key、型違反、重複 job ID、未知依存、循環、未登録 executor、展開上限超過を拒否し、実行副作用を発生させない。定義保存と識別子は [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](statefile.md#phase-19-state-contract) を参照する。 |
-| 実行計画 | 展開済み job、依存辺、選択条件、matrix、必要 capability、対象環境、成果物入力を確定する。定義順を同順位の順序基準とし、matrix 軸と値の定義順で展開する。計画の元 bytes の digest を固定し、開始後に最新設定へ読み替えない。 |
-| executor 登録 | 登録単位は実行方式 ID、実行ファイル、許可 argv、作業領域、環境変数、必要 capability、終了判定とする。builder、Go test / vet / build、Deno check、成果物検証、配備を登録対象として詳細化する。名称だけの登録を実行許可にせず、方式ごとの exact argv と異常系が閉じるまで採用しない。 |
-| 条件評価 | branch、tag、変更 path、定期時刻を同じ source snapshot に対して評価する。変更一覧を取得できない状態を「変更なし」としない。定期イベントは予定時刻で識別し、再起動時の追いつき範囲を固定する。古い実行の集約は未開始 job を対象とし、配備開始済みの処理を黙って破棄しない。 |
-| DAG・matrix | 必須依存の失敗・cancel により依存 job を起動しない。optional failure と fail-fast は定義上で区別する。fail-fast は未開始 job を停止対象とし、起動済み job の cancel は明示された方針で行う。queue、project、worker の各上限を満たした場合だけ割り当てる。 |
-| 再実行・再開 | run と attempt を分け、再実行時に新しい attempt を作る。再利用できるのは同じ source、計画、実行環境と検証済み成果物に結び付く完了 job だけとする。配備の途中状態は再利用済み成功にせず、環境状態を照合してから処置する。 |
-| retry | 一時的な通信・割当失敗と、入力・権限・digest 不一致を分類する。後者を自動 retry しない。回数と待機上限を有限にし、再試行で source、定義、成果物を変更しない。再試行の各結果と最終結果を分ける。 |
-| cancel | queue 内では未割当を確認して取消し、実行中は新規割当を止めて対象 process tree へ停止要求を送る。終了待ち、強制停止、log drain、workspace cleanup の結果を取得してから終端化する。状態 flag の変更だけで cancel 成功を返さない。 |
-| worker | capability、登録 identity、health、割当世代、lease、有効な job を照合する。drain は新規割当だけを停止し、実行中 job は継続する。切断で lease が失効した後の結果は現在の job 状態へ採用しない。別 worker への再投入前に外部副作用を照合する。 |
-| workspace・資源 | attempt / job ごとに専用領域を割り当てる。CPU、memory、wall time、process 数、disk、出力量、通信先の条件を実行前に確認し、制限違反と cleanup 失敗を別結果で記録する。隔離機構は [`docs/details/setup.md` 詳細本文責務 Phase 19 環境受け入れ](setup.md#phase-19-setup-contract) と接続する。 |
-| job cache | source inputs、展開済み定義、executor / toolchain、OS / arch、許可された環境入力を key へ含める。secret 値を key や cache へ保存しない。project と信頼境界を分離し、entry digest 不一致は miss として隔離する。書込競合、容量、TTL、使用中参照を評価してから回収する。既存 builder のページ変換 cache とは別機能とする。 |
-| 実行中 log | stdout / stderr を実行中に drain し、secret を mask してから上限付き保存へ渡す。切詰め・欠落位置を残し、全量を保持して終了後に trim する方式を採用しない。取得境界は [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](api.md#phase-19-api-contract) を参照する。 |
-| 通知・統計入力 | queue 待機開始、実行開始、終了、取消、承認待ち、配備停止を識別して出力する。再送を同一イベントと対応付け、通知失敗で実行結果を反転しない。成功率の母数、retry、skip、cancel は別に集計できる結果を保持する。 |
+<a id="phase-19-plan-algorithm"></a>
+**入力と計画：**
+
+Definition / Template / Projectを保存する時とplan時に次の順序で検査する。保存はcode実行もsource取得も行わない。planは読取専用でありrun・approval・quotaを予約しない。
+
+1. schema、project有効性、definition revision、入力keyの完全一致を検査する。Input.kindに対してdefault / choicesも同じ型を要求する。required=trueではdefault=null、値必須。required=falseのdefault=nullは欠落値を許可するが、そのkeyへの参照は禁止。stringのmin/maxはUTF-8 byte長（0〜4096）、integerは数値、booleanはmin=0,max=1。choices空は列挙制限なし、非空では一致必須。min<=max、同一choices重複拒否。
+2. TemplateUseは指定project内の指定revisionだけを取得する。入力の適用規則はDefinitionと共通。展開jobのIDとneedsへ `prefix + "_" + id` を適用する。合計48文字を超える場合は拒否。templateのjobはtemplate内だけを参照し、外部jobとの依存は定義側jobのneedsから展開後IDを指定する。他template参照・再帰・最新revisionへの読み替えは禁止。
+3. 文字列fieldの値全体が `${input.ID}` / `${matrix.ID}` の場合だけ型を保って置換する。置換先が要求するschemaに一致しなければ拒否。連結、式、関数、shell、二重展開は禁止。path/task/env/condition.input_equalsだけを置換対象とし、識別子・needs・secret参照・資源値は置換しない。
+4. matrix axesはkeyのASCII順、値は定義配列順の直積。各軸の値は同じ型で一意、空axesは空tuple1個。excludeは既存軸の非空部分tupleと一致するtupleを除外する。includeは全軸keyが一致する完全tupleだけを末尾追加し、重複は拒否する。includeの新軸・暗黙mergeは禁止。展開IDは `base_job_id + "_m" + index`（indexは1始まり10進）とし、matrixなしは元ID。展開後64文字以内、全体256 job以内、空展開拒否。
+5. needsはbase IDを指定し、その全展開jobへの辺へ置換する。DeployTask.artifact_fromはneeds内の単一展開のbuilder/go-buildだけを指定し、matrixで複数になる参照は拒否する。重複ID、自己辺、未知辺、循環を拒否する。Kahn法の同順位は展開前定義順、次にmatrix index順で固定する。
+6. branch/tagはsourceの種別に合うselectorだけ評価する。各リスト内OR、非空リスト同士AND、空リストはtrue。pathsは変更pathのいずれかに一致、input_equalsはkeyごとの型付き完全一致AND。不一致jobはskippedとなり、その必須依存先もskipped。globはcase-sensitive、`?`がsegment内1 Unicode scalar、`*`がsegment内0個以上、独立segment `**` が0個以上のsegment。escape/否定/文字class/波括弧を拒否し、pattern<=240 bytes / 32segment、DP計算上限100000cellを超えれば入力拒否。
+7. GitHub Trees/Blobs APIをsource.sha固定で読む。owner/repoは既存GitHub入力規則を使用し、recursive treeのtruncated=true、submodule、symlink、未知mode、file10000超、単体10 MiB超、合計100 MiB超を拒否する。regular mode100644/100755だけを採用し、blobのGit SHA1を検証してからSHA256を計算する。変更pathはwatchの前SHAと今回SHAの完全treeのpath+digest差分（削除含む）。前SHAなしは全path。取得失敗を変更なしへ変換しない。
+8. capability・executor・資源・quota・成果物参照を検査し、PlanDataとそのcanonical SHA256をPlanにする。source.files、Project.toolchain_digestをPlanDataへ固定し、実行開始時にWorker.toolchain_digestと照合する。有効Projectはtoolchain_digest必須、未設定/一致worker不在はP19_CAPABILITY。PlanData canonical長は921600 bytes以下（超過P19_BODY）。run受付ではplan digest / source / revisionを再取得して一致を確認し、不一致はP19_STALE、未検査の値を最新値で補完しない。
+
+<a id="phase-19-executor-registry"></a>
+**閉じた実行方式 registry：**
+
+実行fileはsetupでdigest検証したprofile内の絶対pathだけ。cwdは `/source`、outputは `/job/output`、一時領域は `/job/tmp`。Task.sourceは/source相対、Task.outputは/job/output相対に正規化し、出力先は入力と重ならない。環境は `PATH=/tools/bin`, `HOME=/job/home`, `TMPDIR=/job/tmp`, `LANG=C.UTF-8`, `TZ=UTC` と許可env / secretだけ。環境keyは `^[A-Z][A-Z0-9_]{0,63}$`、PATH/HOME/TMPDIR/LANG/TZ/LD_*/DYLD_*/GO*/DENO_*/NODE_*/NPM_*上書きを拒否。作成時点の不足capabilityはP19_CAPABILITYであり代替executorを選ばない。
+
+| kind / capability | exact argv / 成功条件 |
+|---|---|
+| builder / builder | `adlaire-ci-build --src SOURCE --out OUTPUT --build-id RUN --commit-sha SHA --build-at CREATED_AT`。既存builder入力契約に適合するsourceだけ。exit0に加えarchive検証したoutputが必要。 |
+| go-test / go | `go list -json PACKAGES...` をbounded JSON decodeし、標準libraryかsource内packageのみを許可。ImportPath昇順に `go test -c -vet=off -o /job/tests/N.test PACKAGE`、生成物をread-only別mountに固定後 `/job/tests/N.test -test.v -test.timeout=Ns` を順次実行。N秒はjob deadline残り秒を切上げ、0ならtimeout。test fileなしは明示no_tests、全packageにtestなしはP19_EMPTY。raceはfalseだけを受理（production profileのCGO=0制約）。開発Actionsのrace検証とは別である。 |
+| go-vet / go | `go vet PACKAGES...`。package許可はgo-testと共通、exit0で成功。 |
+| go-build / go | `go build -trimpath -buildvcs=false -o OUTPUT PACKAGE`。単一main packageだけ、生成実行fileをjob内で起動しない。exit0 + archive検証が成功条件。 |
+| deno-check / deno | `deno check --check-js --no-config --no-lock --no-npm --no-remote FILES...`。拡張子.jsのローカル標準JSだけ、npm:/node:/http:/https:/jsr: importを拒否。exit0で成功。Denoはこの任意capabilityだけで、製品必須runtimeではない。 |
+| artifact-verify / archive | 外部commandなし。archive adapterで指定digestのmanifest / 全fileを検証。 |
+| deploy / deploy | 外部commandなし。本書配備state machineへ渡す。job workerへ配備secretを送らない。 |
+
+Go環境追加は `CGO_ENABLED=0 GOPROXY=off GOSUMDB=off GOENV=off GOWORK=off GOTOOLCHAIN=local GOCACHE=/job/gocache GOMODCACHE=/job/modcache`。go.mod require/replace、vendor、go:generate、exec script、Node関連manifest/runtime入力を拒否する。go.modはmodule/go/toolchain行と空白/commentだけを受理し、require/replace/exclude/retract/useを含む行やblockは拒否する。Go compilerが解釈する前にこの閉じたgrammarを検査し、toolchain行は導入版と一致しなければ拒否する。sourceから任意command、plugin、download、外部module解決を行わない。source file admissionはNode禁止契約に従う。Go testのcompile段階とtest実行段階はsandboxを作り直し、前者の実行allowlistはGo toolchain、後者は検証済みtest digestとtrusted wrapperだけにする。実行しない検証結果をexit0へ変換しない。
+
+<a id="phase-19-trigger-state"></a>
+**trigger / queue / attempt：**
+
+coordinatorは250ms tick、同一state-dirで1processだけ（起動lock保持）、shutdownは新受付・割当を止め実行jobをcancelし最大30秒で終了する。watchはintervalごとに固定refを解決し、TriggerCursor.last_shaと違う時だけeventを作る。scheduleのdueはanchor+k*every_seconds（k>=0）。停止中dueはcatch_up=skipで破棄、latestで最後のdue1件だけ生成する。future anchorは待機。予定時刻はUTC、backward clockではlast_due以前を再生成しない。
+
+event_keyはcanonical `{project_id,definition_revision,kind,trigger_id,source_sha,due}` のSHA256。manual/retry/resumeではtrigger_idに要求ID、due=null。watchはdue=null。last_sha / last_due更新と受付を同じtransactionでcommitする。取得失敗はcursorを進めず、1/2/4/8/16/30秒のbackoffで次回へ回す。watchの新SHA受付時、同一project/definition/refの未割当queued runだけをcancelledに集約する。既にassigned以上のrunは残す。queueがproject上限ならP19_QUOTAでcursor不変。
+
+queue順はcreated_at,run.id,attempt。ready jobは上記topological順。project同時実行数はQuota.parallel、global64、active run16。workerはcapability / project /toolchain digest /空slotを満たし、割当memory合計+新job.memory_mb<=total_memory_mb-512を要求してworker.id昇順にround-robin（最後の割当IDの次、末尾で先頭）する。deployはenvironment排他でcoordinatorが処理する。
+
+Runはqueued→running→succeeded/failed/cancelled/recovery_required、cancel_requestedはqueued/runningからのみ。JobResultはqueued→assigned→running→succeeded/failed（artifact-verify/deployはworker不要のlocal assigned/runningをdurable保存）、cancel要求時はcancel_requested→cancelled。dependency停止はskipped。required job1件でもfailedならrun failed、optionalだけの失敗はrun succeededだがJobResult失敗を保持。全job skippedはP19_EMPTYでfailed。fail_fast=trueは最初のrequired失敗で未開始jobをskippedにし、実行中にもcancel要求を送る。自発cancelとfail-fastの原因はoperation.kindで区別する。
+
+retryはP19_TRANSPORT/P19_LEASEで、かつ外部副作用なしを照合できる場合だけ、retry.max_attemptsまで。同一job内try_numberを増やし、待機はbackoff_seconds*2^(try_number-1)、最大30秒。input/auth/capability/digest/timeout/exit不良はretryしない。配備切替の不確定結果はrecovery_requiredで自動再送しない。再実行はattempt+1で全jobを再実行、resumeは同じplan/source/toolchainで成功し検証済みartifactを持つ非deploy jobだけをreused_from_attempt付きで再利用する。go-test/vet/checkなどartifactなしjobは再実行する。attempt100超は拒否。旧attempt不変。
+
+cancel受付は202 Operationであって完了ではない。coordinatorが新割当停止→worker停止要求→process group TERM→5秒待機→KILL→Wait→log drain→workspace cleanup→終端保存を行う。cleanup失敗はP19_CLEANUPでworkerをdrainし、processが生存/照合不能ならrecovery_required。実体停止前にcancelledを返さない。再起動時assigned/runningをlease照合し、未起動と確認できる場合だけqueueへ戻し、実行済み不明はrecovery_required。
+
+<a id="phase-19-worker-protocol"></a>
+**worker / transport / lease：**
+
+Site RPCも同じSSH framingを使用する。site専用typeはstage/switch/finalize/observe/query/restore/delete、payloadは `{project_id,environment_id,expected_generation,operation_id,artifact:null|Digest,config_digest,percent:int(0,100),from:null|Time,until:null|Time}`（全key必須）。stageは直前chunk群をarchive検証、switch/restore/finalizeはRoute CAS、observeは指定窓counter、queryはRoute/verified digest、deleteは非参照releaseだけ。応答payloadはstatefile registryのSiteResult。worker用typeとの混在を拒否する。siteはsetup configのallowed_projects以外をP19_FORBIDDENで拒否する。初回stageは未作成Routeをgeneration0/stable=null/candidate=null/percent0/operation_id=要求IDで初期化し、設定されたproject/environment以外のdirectoryを開かない。site1processがenvironment lockを保持し、同opの段階ごとの結果をRoute.operation_id/phaseと一致検査して返す。siteはstatefile registryのSiteOperationを同environment配下operations.json（最大1024件/1 MiB、30日保持、active参照は回収不可）にdurable保存し、同opのswitchとfinalizeを別phaseとして識別する。違う内容の同phase再送はP19_IDEMPOTENCY、上限不足は新配備拒否。Route/counterはsite APIと同statefile adapterでatomic更新し、counter I/O失敗は503で観測を停止する。
+
+coordinator→worker/siteはOpenSSH固定forced-commandだけ。exact接続argvは `ssh -F /dev/null -T -o BatchMode=yes -o IdentitiesOnly=yes -o IdentityAgent=none -o StrictHostKeyChecking=yes -o UserKnownHostsFile=KNOWN -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -o ClearAllForwardings=yes -i IDENTITY -p PORT USER@HOST adlaire-cicd-v1`。hostはASCII DNS label（各1〜63文字、英数始終・中間hyphen、全253以内）またはnet.ParseIPで検証したIP、userはId、port1〜65535、pathはsetup検証済み絶対path（shell metacharacterなし）だけに限定し、remote引数は定数。setupがidentityとauthorized forced commandを検査する。runnerは受信portを開かない。
+
+transportはUTF-8 JSON Lines、frame最大262144 bytes、outstanding64、seqは1始まり連続。frameは `{version:1,operation_id,lease_generation,seq,type,payload}`、typeはhello/assign/chunk/start/heartbeat/log/result/cancel/query/ack/errorだけ。未知type/key、重複seq、順不同、identity不一致は切断。payloadはhello={worker_id,capabilities,slots,utc}、assign={project_id,run_id,attempt,job:PlannedJob,lease:Lease,source:Source}、chunk={kind:source|artifact|test,path,offset,data:base64,final:bool,digest}、start/cancel/query={job_id}、heartbeat={job_id,utc}、log={job_id,stream,data:base64}、result={job:JobResult}、ack={seq,lease_until:null|Time}、error={code}。chunkはdecoded<=12288 bytes、offset連続、finalで全体digest一致が必要。秘密envはstart payloadだけに `secret_env:map(EnvValue,0,16)` を追加し、ディスク・argv・journalへ記録しない。queryは現在job結果だけを返す。
+
+hello時計差<=5秒、heartbeat5秒、lease30秒、renew5秒。coordinatorはheartbeatへのackで新lease_untilを返し、workerは検証した世代でだけ期限を延長する。期限到達時は自律的にprocess groupを停止し、期限切れresultを成功として再送しない。割当前durable lease、start前durable running claimをcommitする。lease_generationを再割当ごとに増やし、遅延resultは破棄・監査する。EOF/timeoutでworkerは子groupを停止・cleanupし、結果はworker.jsonへ記録する。coordinatorは期限切れをP19_LEASEとして照合する。drainは新規だけ停止、resumeは新probe成功が条件。capabilityは自己申告でなくsetup probe結果との積集合とする。
+
+<a id="phase-19-cache-log-metrics"></a>
+**cache / log / 通知 / 集計：**
+
+cache key=SHA256(canonical `{project_id,trust:"registered",plan_digest,job_id,source_tree_digest,toolchain_digest,os:"linux",arch,env}`)。toolchain_digestはsetup profile manifest digest。secret参照ありjobのcache有効指定は拒否。pathsは/job内出力相対pathだけ、source/secret/toolchainを含めない。形式はarchiveと同じmanifest+payload、project namespace分離、O_EXCL staging→検証→metadata commit→publish。TTLはcreated_at起点、上限はQuota.cache_mb、期限切れ→last_used_at,key昇順LRUで回収。in_useありは回収禁止、同時同keyは先勝ち、内容差はP19_DIGEST。破損はquarantineしてmiss、容量不足はcache未保存warningでjob成功を変えない。
+
+logは各stream raw byteを継続drainする。security正本のmask後にUTF-8へ変換（不正sequenceはU+FFFD）、最長secret pattern長-1 bytesを次chunkまで保留して分割leakを防ぐ。raw累積がResources.output_mbを超えれば停止しP19_OUTPUT。保存は各stream最新1 MiB、先頭/末尾offsetはmask後UTF-8 byte位置、切詰めはrune境界。200msまたは64 KiBごとにatomic保存、必須保存失敗でjob停止。crash時の未flushはlog_gap=true。保存終端flush後だけterminal=true。cursor契約はAPI正本を参照する。
+
+Notificationはqueue/start/terminal/approval待ち/配備停止の各遷移と同じtransactionで1件生成する。既存通知設定の検証済みHTTP/SMTP adapterだけを利用し、bodyは `{event_id,project_id,target_id,event,at,code}`（secret/logなし）。HTTPはContent-Type application/json、timeout10秒、2xx成功、redirect禁止。SMTPは既存TLS境界。通知retryは1秒/4秒後、最大3回、再送event_id不変。失敗はnotification.failedでありrun結果を反転しない。
+
+metricsは直近24時間の終端run（attempt単位）からsuccess/failed/cancelled/recovery_required/skipped_jobs/retried_jobsを別count。success_rateはsuccess/(success+failed)、母数0はnull、表示用basis_points整数0〜10000。待機/実行時間は非負ms、平均は整数切捨て、p95は昇順ceil(0.95*n)-1、母数0はnull。queue/worker health/環境blockedは現在snapshotから計算する。秘密・任意label・利用者IPをdimensionにしない。
 
 <a id="phase-19-deployment-contract"></a>
-**配備・承認・復旧の処理境界：**
+**配備・承認・復旧：**
 
-配備要求は project、environment、成果物 digest、設定 digest、元 run / attempt を指定する。成果物選定後は環境間の昇格で再ビルドせず、同じ内容を使う。成果物の検証・展開・保持は [`docs/details/archive.md` 詳細本文責務 Phase 19 成果物契約](archive.md#phase-19-artifact-contract)、承認者の判定は [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](security.md#phase-19-security-contract) に渡す。
+DeployPlanはartifact/source検証、Environment revision、設定canonical digest、EnvironmentState.generationを固定し、そのcanonical bytesのdigestを承認対象にする。approvalsはsecurity正本の人数・有効性を毎開始時再判定する。freezeはUTC [from,until)、from<until、重複拒否、開始前にだけ判定する。新freezeで進行中配備を強制中断しない。同一environmentはactive_deploymentがnullの場合だけdurable claimでき、generationを+1予約する。通常配備はexpected_generation不一致でP19_STALE、rollbackは旧artifactを新計画で選択し世代を進める。
 
-1. 現在の環境世代、配備済み digest、対象構成から変更計画を作成する。権限・禁止時間帯・必要容量を検査する。
-2. 承認は project、environment、成果物 digest、設定 digest、配備計画 digest、有効期限へ結び付ける。どれかが変わった場合は承認待ちへ戻す。既存のビルド開始前承認と混用しない。
-3. 環境単位の排他取得後に世代を再照合する。古い通常配備を拒否する。古い成果物への明示 rollback は、新しい操作 ID と環境世代を持つ要求として扱う。
-4. staging、転送後検証、切替前検証、切替、health、結果保存を順に実行する。いずれかの結果が不確定なら後続の同環境配備を止める。
-5. rollback は選択した保持済み成果物を実際に復元し、切替と health を確認して終端化する。復元前の `success` 記録、受付だけでの復旧完了表示を行わない。復旧失敗は元の配備失敗とは別に保持する。
+stateはwaiting_approval→queued→staging→switching→observing→succeeded。どの段階も失敗時failed、切替済みならrolling_back→rolled_backまたはrecovery_required。cancelは未切替ならcancel_requested→cancelled、切替後はrollback成功してcancelled、復旧不明ならrecovery_required。codeは元失敗、recovery_codeは復旧失敗を別保存する。EnvironmentState.blocked=trueは照合操作だけで解除でき、通常startで上書きしない。
 
-| 配備方式 | 固定する動作と前提 |
-|----------|--------------------|
-| 順次 / 段階配備 | 定義順の対象 group ごとに検証し、失敗した段階から次 group を開始しない。成功済み group と失敗 group を区別して照合・復旧する。 |
-| 旧新版併存・切替 | 独立した配置先と通信切替機構を持ち、切替前後の health と戻し先を検証できる場合に限る。既存ファイル上書きを blue/green と表記しない。 |
-| 一部への先行配備 | 対象集合または traffic 比率を明示し、観測窓と停止閾値を満たすまで拡大しない。routing を制御できない構成で canary を有効にしない。 |
+targetはsetup登録site-agentで、artifact転送→archive検証→digest名directory配置→事前health→route CAS→配信health→target結果保存の順。切替要求はoperation_idとexpected generationを持ち、同一op/digestは照会結果再返却、違いはP19_IDEMPOTENCY。reply消失はqueryでRouteとfile digestを照合し、一致なら続行、不一致/応答不能ならunknownとして後続停止。query前の無条件切替再送は禁止。切替のstate claimは外部送信前にdurable保存する。
 
-**詳細化を残す判断対象：** executor ごとの exact argv / 許可入力、条件式の文法、matrix と各資源の数値上限、schedule の追いつき規則、retry 時間列、worker transport / 登録 / 起動主体、lease の時間条件、cache 保存形式、環境切替 adapter、health 閾値と timeout、停止・補償の固定 error を本節で確定するまで、新経路を実行可能契約として扱わない。既存 oneshot と受信待受制限を実装判断で緩和しない。
+| strategy | 閉じた段階規則 |
+|---|---|
+| rolling | stagesのtarget_idsはEnvironment.targetsの重複なし完全partition、percent=100、min_requests=0、max_error_percent=0。定義順groupを切替、全targetのhealth成功後に次groupへ進む。最初の失敗で停止し、既に切替えたtargetを逆順に旧artifactへ戻す。 |
+| blue-green | stage1件、全target、percent=100、min_requests=0、max_error_percent=0。全targetの独立candidateを事前検証後、target.id順にroute切替。複数target同時atomicとは保証しない。途中失敗は切替済みを逆順復旧。 |
+| canary | 全stageが全target、percent厳密増加、最終100。各stage切替後observe_secondsを計測し、完了request数>=min_requests（1以上）かつ5xx率basis_points<=max_error_percent*100が必要。0request/不足はP19_HEALTHで停止・復旧。観測中の失敗閾値超過は即停止。 |
 
-検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+site Routeはstable/candidate/percentを持つ。初回stable=nullはrolling/blue-greenだけ、canary初回拒否。healthはbase_urlの `/.adlaire-ci/health` にTLS検証付きGET、timeoutは環境値、3回・1秒間隔、HTTP200かつ `{project_id,environment_id,generation,artifact}` 完全一致が条件。staging検証はsite-agentがcandidate内Environment.health_path（現profileはindex.html固定）をGET相当で読み検証するため公開routeを先に変えない。rollbackも旧artifactの存在・hash・route・healthの全確認が必要。旧artifactなし初回失敗はrouteをnullへ戻し503を確認してrolled_backとする。最終100%のhealth/観測成功後は同じoperation/generationでRoute.stableを新digest、candidate=null、percent=0へfinalizeし、query一致を確認する。このfinalizeもdurable intentとidempotencyを持ち、途中不明はblockedにする。これにより次配備の戻し先は直前成功digestとなる。成功後だけEnvironmentState.artifactを更新しactiveを解放する。途中resultはTargetResultに保存し失敗時も残す。
+
+公開static配信主体・routing cookie・TLSは [`docs/details/api.md` 詳細本文責務 api 詳細本文責務](api.md#phase-19-site-serving)、隔離条件は [`docs/details/setup.md` 詳細本文責務 setup 詳細本文責務](setup.md#phase-19-setup-contract)、成果物は [`docs/details/archive.md` 詳細本文責務 archive 詳細本文責務](archive.md#phase-19-artifact-contract)、実行型検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) に接続する。
 
 runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](../DETAIL_INDEX.md#0i2-runner--ci-実行) を入口とする。runner の処理順と副作用は [`docs/details/runner.md`](runner.md)、状態 schema は [`docs/details/statefile.md`](statefile.md)、archive 実体は [`docs/details/archive.md`](archive.md)、Commit Status は [`docs/details/commitstatus.md`](commitstatus.md)、API / SDK / UI 接続は各 owner 詳細本文、検証証跡は [`docs/details/fixture.md`](fixture.md) を正本とする。
 

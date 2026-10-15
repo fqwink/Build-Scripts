@@ -1,25 +1,79 @@
 # Adlaire CI — UI 詳細仕様
 
 <a id="phase-19-ui-contract"></a>
-**Phase 19 管理画面策定契約：**
+**Phase 19 管理画面契約：**
 
-本節の owner は `ui` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope)、client 操作は [`docs/details/sdk.md` 詳細本文責務 Phase 19 SDK 接続](sdk.md#phase-19-sdk-contract)、視覚配置は [`docs/DESIGN.md` デザイン責務 Phase 19 管理画面](../DESIGN.md#phase-19-admin-visual-contract) を参照する。
+ownerは `ui`、実装artifactは [admin/index.html](../../admin/index.html)。すべての通信は [`docs/details/sdk.md` 詳細本文責務 SDK公開契約](sdk.md#phase-19-sdk-contract) を通し、直接fetch/HTTP/secret storageを追加しない。視覚値は [`docs/DESIGN.md` デザイン責務 DESIGN正本](../DESIGN.md#phase-19-admin-visual-contract)、型とエラーはAPI正本を参照する。
 
-| view 案 | UI が所有する操作と表示 |
-|---------|------------------------|
-| project / definitions | 選択中 project、定義 revision、型付き入力、計画生成結果を表示する。編集済み入力と計画の元入力が変わった場合は、旧計画の開始操作を無効にする。 |
-| runs | run / attempt 別に job 依存関係、待機理由、割当、開始・終了、再試行、cancel 結果を表示する。受付を終端成功として扱わない。 |
-| workers | capability、health、割当、drain を区別する。管理操作成功後に一覧と対象詳細を再取得し、失敗時に表示状態を先取り変更しない。 |
-| artifacts | 元 run / attempt と digest、比較結果、配備・復旧用保持を表示する。表示名だけで昇格対象を選択させない。 |
-| environments / deployments | 現在の配備、要求した配備、承認対象、期限、停止理由、復旧操作を別に表示する。権限不足と health 不良を同じ「実行不可」だけで隠さない。 |
-| users / grants / quotas | project と environment の対象を明示する。権限を変更した後は自分の操作可否も再取得し、非表示の button を認可の代替にしない。 |
-| operations | 実行中 log、queue 待機時間、成功率、実行時間を表示する。log の欠落・切詰めを表示し、全量取得を自動反復しない。統計の対象期間と取得時点を示す。 |
+navigationはprojects/runs/artifacts/environments/workers/access/operationsの7view。project選択は全view共通、切替時に古いview requestをabortしcursor/selection/confirmationを破棄する。権限のないactionは非表示、既に開いていたviewの403は表示を破棄し権限エラーへ移る。platform-adminのglobal viewとproject grantを混同しない。既存管理画面から「CI/CD」入口で切替え、legacy操作は別viewのまま残す。
 
-全 view は loading / empty / error / stale / unauthorized を区別する。project、run、attempt の切替前に開始した request が遅れて完了しても、新しい選択の DOM を更新しない。polling は view の生存期間だけ行い、切替・logout・認証失効で停止する。承認や再試行の失敗後も入力を維持するが、secret 値は既存の消去境界に従う。API への直接 fetch や独立した状態書込を追加しない。
+以下はDOM action IDとSDK methodの一対一対応。methodと同じoperation IDがjoin keyでありendpointを本書へ複製しない。list/getはviewのdata loader、mutationは同IDのbutton/form submit、login/logoutはsession操作とする。全IDに `data-cicd-action="operationID"` を付け、重複DOM ID禁止。
 
-**詳細化を残す判断対象：** panel / DOM id、各 SDK method との一対一対応、固定 message、poll 間隔と取得上限、操作順、確認 dialog、focus / ARIA、競合応答時と再認証時の固定動作を本節で閉じる。画面名だけで現行の操作一覧へ追加しない。
+| SDK method | view | DOM ID |
+|---|---|---|
+| login | session | `cicd-login` |
+| logout | session | `cicd-logout` |
+| passwordChange | session | `cicd-password-change` |
+| projectsList | projects | `cicd-projects-list` |
+| projectPut | projects | `cicd-project-put` |
+| workersList | workers | `cicd-workers-list` |
+| workerPut | workers | `cicd-worker-put` |
+| targetsList | workers | `cicd-targets-list` |
+| targetPut | workers | `cicd-target-put` |
+| usersList | access | `cicd-users-list` |
+| userPut | access | `cicd-user-put` |
+| servicesList | access | `cicd-services-list` |
+| servicePut | access | `cicd-service-put` |
+| definitionsList | projects | `cicd-definitions-list` |
+| definitionPut | projects | `cicd-definition-put` |
+| templatesList | projects | `cicd-templates-list` |
+| templatePut | projects | `cicd-template-put` |
+| environmentsList | environments | `cicd-environments-list` |
+| environmentPut | environments | `cicd-environment-put` |
+| grantsList | access | `cicd-grants-list` |
+| grantPut | access | `cicd-grant-put` |
+| secretPut | access | `cicd-secret-put` |
+| secretsList | access | `cicd-secrets-list` |
+| workerDrain | workers | `cicd-worker-drain` |
+| workerResume | workers | `cicd-worker-resume` |
+| plan | projects | `cicd-plan` |
+| runStart | runs | `cicd-run-start` |
+| runsList | runs | `cicd-runs-list` |
+| runGet | runs | `cicd-run-get` |
+| runRetry | runs | `cicd-run-retry` |
+| runResume | runs | `cicd-run-resume` |
+| runCancel | runs | `cicd-run-cancel` |
+| logsGet | runs | `cicd-logs-get` |
+| artifactsList | artifacts | `cicd-artifacts-list` |
+| artifactGet | artifacts | `cicd-artifact-get` |
+| artifactDownload | artifacts | `cicd-artifact-download` |
+| artifactCompare | artifacts | `cicd-artifact-compare` |
+| artifactPin | artifacts | `cicd-artifact-pin` |
+| cachesList | artifacts | `cicd-caches-list` |
+| cacheDelete | artifacts | `cicd-cache-delete` |
+| environmentStatus | environments | `cicd-environment-status` |
+| deploymentPlan | environments | `cicd-deployment-plan` |
+| deploymentStart | environments | `cicd-deployment-start` |
+| deploymentsList | environments | `cicd-deployments-list` |
+| deploymentGet | environments | `cicd-deployment-get` |
+| deploymentApprove | environments | `cicd-deployment-approve` |
+| deploymentReject | environments | `cicd-deployment-reject` |
+| deploymentCancel | environments | `cicd-deployment-cancel` |
+| deploymentRollback | environments | `cicd-deployment-rollback` |
+| deploymentReconcile | environments | `cicd-deployment-reconcile` |
+| operationGet | runs | `cicd-operation-get` |
+| metricsGet | operations | `cicd-metrics-get` |
+| auditsList | operations | `cicd-audits-list` |
 
-検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+projectsはproject設定、definition/templateのJSON editor、入力型editor、plan DAG（table：job/needs/task/resources）、matrix展開結果を持つ。runsはqueue一覧/attempt切替/job状態/両stream log/再実行・再開・取消。artifactsはdigest一覧/pin/download/manifest差分/cache。environmentsは現在世代/digest/plan差分/承認/禁止時間帯/段階進捗/復旧。workersはhealth/lease/capability/drain/resumeとtarget登録。accessはuser/service/grant/secret version/quota。operationsは24h統計と監査。JSON editorはparse/schema errorのfield pathだけを表示しsecret本文をerrorへ載せない。入力の全必須値と既定値はschema正本へ接続し、未設定を隠れたdefaultで送らない。
+
+**view state machine：** idle→loading→ready|empty|error|unauthenticated。mutationはready→submitting→accepted→polling→succeeded|failed|recovery_required。submitting応答はOperationResult.operationを採用し、result=nullなら対象GET/listで取得する。pollingはoperationGet、terminal確認後にaffected list/detail/環境statusを再取得するまで成功表示を確定しない。stale409は現在revisionとplanを再取得し入力内容を保持して差分表示、同じmutationの自動再送禁止。error時は確定前データと新データを混ぜず「更新失敗」状態を表示する。遅延responseはview generationとrequest sequenceが現在と一致する場合だけ適用する。
+
+実行中logは2秒、run/operation/環境進行は5秒、metrics/workerは30秒poll。document.hidden、logout、project/view変更では停止/abortし、復帰時は再取得。1resourceにつきin-flight最大1、429/503はRetry-After秒（1〜30へclamp）、その他失敗はpoll停止し再読込actionを出す。log cursor410は欠落表示と明示再読込、末尾追従は利用者が最下部にいる時だけ。logはtextContent/pre、HTML解釈禁止、最大1 MiB/stream、copy/downloadもmask後だけ。
+
+開始/取消/rollback/秘密更新/権限変更/drainはconfirmationでproject/対象ID/revision/digest/環境世代を固定する。確認後のselection変化で無効化。submit中二重押下禁止、o-IDはフォーム1回の操作に固定。secret入力は送信/close/logoutで消去しDOM再描画へ残さない。one-time credentialはそのresponse内でだけ表示しview離脱で破棄する。approveとdeploy開始は別action、受付を配備完了や復旧成功と表示しない。
+
+全フォームlabel、errorのaria-describedby、status role=status、dialog focus trap/escape/close後focus復帰、table caption/th scope、icon aria-labelを必須にする。キーボードだけで全操作可能、色だけで状態を伝えない。検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
 
 UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) を参照する。標準管理 UI の色、寸法、余白、配置、responsive、focus の視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 

@@ -1,27 +1,627 @@
 # Adlaire CI — Statefile 詳細仕様
 
 <a id="phase-19-state-contract"></a>
-**Phase 19 保存境界策定契約：**
+**Phase 19 状態・schema 固定契約：**
 
-本節の owner は `statefile` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。実行判断は [`docs/details/runner.md` 詳細本文責務 Phase 19 実行契約](runner.md#phase-19-runner-contract)、利用者・権限判断は [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](security.md#phase-19-security-contract) が所有する。
+owner は `statefile`、実装主体は [`components/statefile/`](../../components/statefile/)。適用 profile は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)。以下は `cicd-v1` の正本であり、legacy の [`docs/details/statefile.md` 詳細本文責務 状態ファイル共通仕様](#sec-22-0a) を上書きしない。
 
-| 保存対象 | 固定する情報と読書境界 |
-|----------|------------------------|
-| project / environment | project ID、environment ID、設定 revision、割当上限、環境世代、現在の配備参照を保持する。表示名を識別子へ流用しない。更新は期待 revision との一致確認後に行う。 |
-| definition / template | 型付き入力宣言、template revision、展開元 revision を保存する。更新は新 revision とし、過去 run が参照する revision を書き換えない。展開済み計画の確定 bytes に SHA-256 を付け、整形だけの変更も別 digest とする。 |
-| run / attempt / job | project ID、run ID、attempt 番号、job ID を別 field とする。source SHA、計画 digest、実行環境参照、結果参照を結ぶ。旧 build ID との対応を必要とする場合は明示 field とし、文字列の推測分解で変換しない。 |
-| worker / lease | worker identity、capability revision、job 割当、lease 世代、有効期限を保存する。結果書込には期待世代を要求し、更新済み世代との不一致では書き込まない。 |
-| request identity | project、操作種別、要求識別子、request digest、受付結果を接続する。同一識別子・同一内容は元の受付結果へ到達させ、異なる内容への使い回しは競合として拒否する。保持期限後の重複保証を無期限と表記しない。 |
-| approval / deployment | 承認対象参照、actor 参照、有効期限、環境の期待世代、配備段階、復旧先、失敗結果を保持する。承認判定と配備遷移の意味は runner と security の各正本を参照する。 |
-| artifact references | digest、project 所有、元 run / attempt、配備・復旧・実行中参照を保存する。archive owner の回収判断へ同一 revision の参照集合を渡す。 |
-| job cache metadata | project / trust partition、key、entry digest、作成・最終利用時刻、期限、size、使用中参照を保持する。key の計算は runner、保存内容の整合は保存 adapter の責務とする。 |
-| bounded log | stream ごとの位置、取得可能な先頭・末尾位置、欠落区間、mask 済み内容、終了状態を保持する。cursor を filesystem path として使用しない。 |
+<a id="phase-19-schema-registry"></a>
+**型記法と唯一の schema registry：**
 
-保存更新は read / validate / compare revision / write / durable commit の境界を持たせる。単一 JSON の atomic write を、複数ファイルと外部配備全体の transaction と同一視しない。複数書込は復旧に必要な段階を先に記録し、起動時に一致確認できない要求は隔離して通常の割当・配備を停止する。read-only 照会で破損修復や schema migration を行わない。
+全 object は列挙 key がすべて必須、未知 key / duplicate key は拒否する。欠落値の補完は行わない。`nullable(T)` は明示 null、`list(T,min,max)` は順序付き配列、`map(T,min,max)` は key が Id の object、`oneof` は一致する型が1件だけの union、`enum` は列挙値、`int(min,max)` は指数・小数・負のゼロを許さない10進安全整数、`text(min,max)` はUTF-8 byte長である。空白・並び順を除く JSON 文法は encoding/json に従い、NUL / CR は全 string で拒否する。LF は text と log.data だけ許可し、identifier・path・環境値では拒否する。const(v)はJSON literal vとの一致、boolはJSON booleanを表す。schema 文法自体の未知関数・不明な型参照も不正とする。
 
-**詳細化を残す判断対象：** 各保存 path、全 key・型・enum・上限・初期値、run ID / attempt 採番、operation 保持期限、commit marker、fsync / lock の取得順、crash 時の各復旧分岐、旧状態からの移行と旧版への戻し可否を本節で固定する。既存の状態ファイル固定表へ、未確定の保存形式を許可済みとして混入させない。
+| primitive | 閉じた定義 |
+|---|---|
+| id / jobid | `^[a-z][a-z0-9_-]{0,63}$` / 同48文字以内。run / deployment / operation は `r-` / `d-` / `o-` + crypto/rand 16 bytes の32 lowercase hex。要求識別子は同じ o-形式。衝突は3回まで採番し、なお衝突なら P19_ENTROPY。 |
+| digest / sha | lowercase hex 64 / 40文字。 |
+| utc | exact UTC秒精度 `YYYY-MM-DDTHH:MM:SSZ`、年1970〜9999、実在時刻のみ。 |
+| relpath | UTF-8 1〜240 bytes、相対、segment 1〜64 bytes、空 / dot / dotdot / backslash / colon / 制御文字を拒否。`.` は task の source / package だけの固定例外。package の末尾 `/...` と単独 `./...` はGo package fieldだけ許可。 |
+| abspath | clean absolute UTF-8 1〜4096 bytes、dot / dotdot / backslash / 制御文字なし、各既存ancestorをLstatしsymlinkを拒否。新規childは検証済みparent descriptorから作成する。 |
+| ref / glob | ref はUTF-8 1〜255 bytes、ASCII control/space/DELと `~ ^ : ? * [ backslash`、`..`、`@{`、単独`@`、先頭末尾slash、連続slash、先頭dotのsegment、末尾dot、各segmentの`.lock` suffixを拒否する。branch/tag prefixは別fieldでありrefに`refs/`を要求しない。glob 文法は runner 正本へ接続する。 |
+| url | scheme http / https、userinfo / fragmentなし、hostあり、2048 bytes以内。対象host・portの可否は使用先ownerが判定する。 |
+| scalar | UTF-8 0〜4096 bytesの一行string、int(-2147483648,2147483647)、booleanのいずれか。 |
+| base64 | RFC4648 standard padded encodingをstrict decode後に再encodeして一致、decoded長0〜262144 bytes。秘密情報の個別長はsecurity正本が追加制限する。 |
+| legacy(AdminCredentials) / legacy(TOTPSecret) | 本書 [`docs/details/statefile.md` 詳細本文責務 主要状態schema](#sec-22-0c) の `.admin_credentials` / `.totp_secret` と同じ型。別のKDF・TOTP形式を作らない。 |
 
-検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+```json
+{
+  "schema_version": 1,
+  "profile": "cicd-v1",
+  "types": {
+    "Id": "id",
+    "JobId": "jobid",
+    "Digest": "digest",
+    "SHA": "sha",
+    "Time": "utc",
+    "RelPath": "relpath",
+    "AbsPath": "abspath",
+    "Glob": "glob",
+    "Ref": "ref",
+    "URL": "url",
+    "Scalar": "scalar",
+    "Bytes": "base64",
+    "Credential": "legacy(AdminCredentials)",
+    "TOTP": "legacy(TOTPSecret)",
+    "Quota": {
+      "parallel": "int(1,16)",
+      "queue": "int(1,512)",
+      "artifact_mb": "int(128,102400)",
+      "cache_mb": "int(0,10240)",
+      "retention_days": "int(1,30)"
+    },
+    "Resources": {
+      "cpu_percent": "int(10,400)",
+      "memory_mb": "int(512,8192)",
+      "disk_mb": "int(128,2048)",
+      "tasks": "int(8,256)",
+      "timeout_seconds": "int(1,3600)",
+      "output_mb": "int(1,16)"
+    },
+    "Input": {
+      "kind": "enum(string,integer,boolean)",
+      "required": "bool",
+      "default": "nullable(Scalar)",
+      "choices": "list(Scalar,0,32)",
+      "min": "int(-2147483648,2147483647)",
+      "max": "int(-2147483648,2147483647)"
+    },
+    "Condition": {
+      "branches": "list(Glob,0,32)",
+      "tags": "list(Glob,0,32)",
+      "paths": "list(Glob,0,32)",
+      "input_equals": "map(Scalar,0,32)"
+    },
+    "Matrix": {
+      "axes": "map(ScalarList,0,4)",
+      "exclude": "list(ScalarMap,0,64)",
+      "include": "list(ScalarMap,0,64)"
+    },
+    "ScalarList": "list(Scalar,1,32)",
+    "ScalarMap": "map(Scalar,0,32)",
+    "Retry": {
+      "max_attempts": "int(1,3)",
+      "backoff_seconds": "int(1,30)"
+    },
+    "CachePolicy": {
+      "enabled": "bool",
+      "paths": "list(RelPath,0,16)",
+      "ttl_seconds": "int(60,2592000)"
+    },
+    "SecretRef": {
+      "id": "Id",
+      "version": "int(1,2147483647)"
+    },
+    "BuilderTask": {
+      "kind": "enum(builder)",
+      "source": "RelPath",
+      "output": "RelPath"
+    },
+    "GoTestTask": {
+      "kind": "enum(go-test)",
+      "packages": "list(RelPath,1,64)",
+      "race": "const(false)"
+    },
+    "GoVetTask": {
+      "kind": "enum(go-vet)",
+      "packages": "list(RelPath,1,64)"
+    },
+    "GoBuildTask": {
+      "kind": "enum(go-build)",
+      "package": "RelPath",
+      "output": "RelPath"
+    },
+    "DenoTask": {
+      "kind": "enum(deno-check)",
+      "files": "list(RelPath,1,64)"
+    },
+    "VerifyTask": {
+      "kind": "enum(artifact-verify)",
+      "artifact": "Digest"
+    },
+    "DeployTask": {
+      "kind": "enum(deploy)",
+      "environment_id": "Id",
+      "artifact_from": "JobId"
+    },
+    "Task": "oneof(BuilderTask,GoTestTask,GoVetTask,GoBuildTask,DenoTask,VerifyTask,DeployTask)",
+    "Job": {
+      "id": "JobId",
+      "needs": "list(JobId,0,32)",
+      "condition": "Condition",
+      "task": "Task",
+      "matrix": "Matrix",
+      "resources": "Resources",
+      "retry": "Retry",
+      "cache": "CachePolicy",
+      "env": "map(EnvValue,0,64)",
+      "secrets": "map(SecretRef,0,16)",
+      "optional": "bool"
+    },
+    "EnvValue": "text(0,4096)",
+    "Watch": {
+      "id": "Id",
+      "ref_kind": "enum(branch,tag)",
+      "ref": "Ref",
+      "interval_seconds": "int(60,3600)"
+    },
+    "Schedule": {
+      "id": "Id",
+      "ref_kind": "enum(branch,tag)",
+      "ref": "Ref",
+      "anchor": "Time",
+      "every_seconds": "int(60,604800)",
+      "catch_up": "enum(skip,latest)",
+      "enabled": "bool"
+    },
+    "TemplateUse": {
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "prefix": "JobId",
+      "values": "ScalarMap"
+    },
+    "Definition": {
+      "project_id": "Id",
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "inputs": "map(Input,0,32)",
+      "manual": "bool",
+      "watches": "list(Watch,0,32)",
+      "schedules": "list(Schedule,0,32)",
+      "templates": "list(TemplateUse,0,16)",
+      "jobs": "list(Job,1,128)",
+      "fail_fast": "bool"
+    },
+    "Template": {
+      "project_id": "Id",
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "inputs": "map(Input,0,32)",
+      "jobs": "list(Job,1,128)"
+    },
+    "Source": {
+      "owner": "text(1,100)",
+      "repo": "text(1,100)",
+      "ref_kind": "enum(branch,tag)",
+      "ref": "Ref",
+      "sha": "SHA",
+      "tree_digest": "Digest",
+      "files": "list(SourceFile,0,10000)"
+    },
+    "PlannedJob": {
+      "id": "Id",
+      "base_job_id": "JobId",
+      "matrix_values": "ScalarMap",
+      "needs": "list(Id,0,256)",
+      "task": "Task",
+      "resources": "Resources",
+      "retry": "Retry",
+      "cache": "CachePolicy",
+      "env": "map(EnvValue,0,64)",
+      "secrets": "map(SecretRef,0,16)",
+      "optional": "bool"
+    },
+    "PlanData": {
+      "project_id": "Id",
+      "definition_id": "Id",
+      "definition_revision": "int(1,2147483647)",
+      "source": "Source",
+      "values": "ScalarMap",
+      "jobs": "list(PlannedJob,1,256)",
+      "fail_fast": "bool",
+      "toolchain_digest": "Digest"
+    },
+    "Plan": {
+      "digest": "Digest",
+      "data": "PlanData"
+    },
+    "Project": {
+      "id": "Id",
+      "name": "text(1,128)",
+      "revision": "int(1,2147483647)",
+      "enabled": "bool",
+      "source_owner": "text(1,100)",
+      "source_repo": "text(1,100)",
+      "definition_id": "nullable(Id)",
+      "definition_revision": "int(0,2147483647)",
+      "quota": "Quota",
+      "toolchain_digest": "nullable(Digest)"
+    },
+    "Stage": {
+      "target_ids": "list(Id,1,32)",
+      "percent": "int(1,100)",
+      "observe_seconds": "int(10,3600)",
+      "max_error_percent": "int(0,100)",
+      "min_requests": "int(0,10000)"
+    },
+    "Freeze": {
+      "from": "Time",
+      "until": "Time"
+    },
+    "Environment": {
+      "project_id": "Id",
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "production": "bool",
+      "approvals": "int(0,2)",
+      "allow_self_approval": "bool",
+      "targets": "list(Id,1,32)",
+      "strategy": "enum(rolling,blue-green,canary)",
+      "stages": "list(Stage,1,16)",
+      "freeze": "list(Freeze,0,32)",
+      "health_timeout_seconds": "int(1,60)",
+      "retained_successes": "int(2,30)",
+      "health_path": "enum(index.html)"
+    },
+    "Grant": {
+      "subject_kind": "enum(user,service)",
+      "subject_id": "Id",
+      "project_id": "nullable(Id)",
+      "environment_id": "nullable(Id)",
+      "role": "enum(viewer,operator,approver,project-admin,platform-admin)",
+      "enabled": "bool",
+      "expires_at": "nullable(Time)"
+    },
+    "User": {
+      "id": "Id",
+      "name": "text(1,128)",
+      "revision": "int(1,2147483647)",
+      "enabled": "bool",
+      "credential": "nullable(Credential)",
+      "totp": "nullable(TOTP)",
+      "created_at": "Time"
+    },
+    "Service": {
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "token_sha256": "Digest",
+      "enabled": "bool",
+      "expires_at": "Time"
+    },
+    "Lease": {
+      "run_id": "Id",
+      "attempt": "int(1,100)",
+      "job_id": "Id",
+      "generation": "int(1,9007199254740991)",
+      "until": "Time"
+    },
+    "Worker": {
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "enabled": "bool",
+      "draining": "bool",
+      "host": "text(1,253)",
+      "port": "int(1,65535)",
+      "user": "Id",
+      "allowed_projects": "list(Id,1,64)",
+      "capabilities": "list(text(1,64),1,16)",
+      "slots": "int(1,4)",
+      "last_seen": "nullable(Time)",
+      "leases": "list(Lease,0,4)",
+      "toolchain_digest": "Digest",
+      "total_memory_mb": "int(2048,1048576)"
+    },
+    "JobResult": {
+      "id": "Id",
+      "state": "enum(queued,assigned,running,cancel_requested,succeeded,failed,cancelled,skipped,recovery_required)",
+      "try_number": "int(0,3)",
+      "worker_id": "nullable(Id)",
+      "lease_generation": "int(0,9007199254740991)",
+      "started_at": "nullable(Time)",
+      "finished_at": "nullable(Time)",
+      "duration_ms": "nullable(int(0,9007199254740991))",
+      "code": "nullable(text(1,64))",
+      "artifact": "nullable(Digest)",
+      "reused_from_attempt": "nullable(int(1,100))",
+      "log_gap": "bool"
+    },
+    "Run": {
+      "project_id": "Id",
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "attempt": "int(1,100)",
+      "event_key": "Digest",
+      "requester": "Id",
+      "plan": "Plan",
+      "state": "enum(queued,running,cancel_requested,succeeded,failed,cancelled,recovery_required)",
+      "created_at": "Time",
+      "started_at": "nullable(Time)",
+      "finished_at": "nullable(Time)",
+      "jobs": "list(JobResult,1,256)",
+      "cancel_requested": "bool",
+      "trigger": "enum(manual,watch,schedule,retry,resume)"
+    },
+    "Approval": {
+      "subject": "Id",
+      "at": "Time",
+      "plan_digest": "Digest",
+      "expires_at": "Time"
+    },
+    "DeployPlan": {
+      "project_id": "Id",
+      "environment_id": "Id",
+      "environment_revision": "int(1,2147483647)",
+      "expected_generation": "int(0,9007199254740991)",
+      "artifact": "Digest",
+      "config_digest": "Digest",
+      "strategy": "enum(rolling,blue-green,canary)",
+      "stages": "list(Stage,1,16)",
+      "rollback_of": "nullable(Id)"
+    },
+    "Deployment": {
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "plan": "DeployPlan",
+      "plan_digest": "Digest",
+      "requester": "Id",
+      "state": "enum(waiting_approval,queued,staging,switching,observing,succeeded,failed,rolling_back,rolled_back,cancel_requested,cancelled,recovery_required)",
+      "generation": "int(1,9007199254740991)",
+      "created_at": "Time",
+      "finished_at": "nullable(Time)",
+      "approvals": "list(Approval,0,2)",
+      "stage_index": "int(0,16)",
+      "previous_artifact": "nullable(Digest)",
+      "code": "nullable(text(1,64))",
+      "recovery_code": "nullable(text(1,64))",
+      "targets": "list(TargetResult,1,32)"
+    },
+    "Artifact": {
+      "project_id": "Id",
+      "digest": "Digest",
+      "manifest_digest": "Digest",
+      "size_bytes": "int(1,1073741824)",
+      "created_at": "Time",
+      "source_sha": "SHA",
+      "run_id": "Id",
+      "attempt": "int(1,100)",
+      "job_id": "Id",
+      "pins": "list(Id,0,1024)",
+      "deleting": "bool"
+    },
+    "CacheEntry": {
+      "project_id": "Id",
+      "key": "Digest",
+      "digest": "Digest",
+      "size_bytes": "int(1,1073741824)",
+      "created_at": "Time",
+      "last_used_at": "Time",
+      "expires_at": "Time",
+      "in_use": "list(Id,0,256)",
+      "deleting": "bool"
+    },
+    "Operation": {
+      "id": "Id",
+      "project_id": "nullable(Id)",
+      "subject": "Id",
+      "request_digest": "Digest",
+      "kind": "text(1,64)",
+      "state": "enum(accepted,succeeded,failed,recovery_required)",
+      "target_id": "nullable(Id)",
+      "created_at": "Time",
+      "expires_at": "Time",
+      "code": "nullable(text(1,64))"
+    },
+    "Audit": {
+      "operation_id": "Id",
+      "subject": "Id",
+      "project_id": "nullable(Id)",
+      "environment_id": "nullable(Id)",
+      "action": "text(1,64)",
+      "phase": "enum(accepted,finished,rejected)",
+      "at": "Time",
+      "target_id": "nullable(Id)",
+      "code": "nullable(text(1,64))"
+    },
+    "Route": {
+      "project_id": "Id",
+      "environment_id": "Id",
+      "generation": "int(0,9007199254740991)",
+      "operation_id": "Id",
+      "stable": "nullable(Digest)",
+      "candidate": "nullable(Digest)",
+      "percent": "int(0,100)",
+      "config_digest": "Digest"
+    },
+    "Log": {
+      "schema_version": "const(1)",
+      "project_id": "Id",
+      "run_id": "Id",
+      "attempt": "int(1,100)",
+      "job_id": "Id",
+      "stream": "enum(stdout,stderr)",
+      "first_offset": "int(0,9007199254740991)",
+      "next_offset": "int(0,9007199254740991)",
+      "data": "text(0,1048576)",
+      "truncated": "bool",
+      "gap": "bool",
+      "terminal": "bool"
+    },
+    "Root": {
+      "schema_version": "const(1)",
+      "generation": "int(1,9007199254740991)",
+      "projects": "list(Project,0,64)",
+      "definitions": "list(Definition,0,1024)",
+      "templates": "list(Template,0,1024)",
+      "environments": "list(Environment,0,1024)",
+      "users": "list(User,1,256)",
+      "services": "list(Service,0,256)",
+      "grants": "list(Grant,1,4096)",
+      "workers": "list(Worker,0,32)",
+      "runs": "list(Run,0,512)",
+      "deployments": "list(Deployment,0,1024)",
+      "artifacts": "list(Artifact,0,10000)",
+      "caches": "list(CacheEntry,0,10000)",
+      "operations": "list(Operation,0,10000)",
+      "audits": "list(Audit,0,20000)",
+      "targets": "list(Target,0,1024)",
+      "environment_states": "list(EnvironmentState,0,1024)",
+      "notifications": "list(Notification,0,10000)",
+      "trigger_cursors": "list(TriggerCursor,0,4096)",
+      "status_deliveries": "list(StatusDelivery,0,1024)"
+    },
+    "Head": {
+      "schema_version": "const(1)",
+      "generation": "int(1,9007199254740991)",
+      "sha256": "Digest"
+    },
+    "Master": {
+      "schema_version": "const(1)",
+      "encryption_key": "Bytes",
+      "cursor_key": "Bytes"
+    },
+    "SecretCipher": {
+      "schema_version": "const(1)",
+      "project_id": "Id",
+      "id": "Id",
+      "version": "int(1,2147483647)",
+      "nonce": "Bytes",
+      "ciphertext": "Bytes",
+      "created_at": "Time"
+    },
+    "Target": {
+      "id": "Id",
+      "revision": "int(1,2147483647)",
+      "project_id": "Id",
+      "host": "text(1,253)",
+      "port": "int(1,65535)",
+      "user": "Id",
+      "base_url": "URL",
+      "enabled": "bool"
+    },
+    "EnvironmentState": {
+      "project_id": "Id",
+      "environment_id": "Id",
+      "generation": "int(0,9007199254740991)",
+      "artifact": "nullable(Digest)",
+      "active_deployment": "nullable(Id)",
+      "blocked": "bool"
+    },
+    "TargetResult": {
+      "target_id": "Id",
+      "generation": "int(0,9007199254740991)",
+      "artifact": "nullable(Digest)",
+      "phase": "enum(pending,staged,switched,healthy,restored,failed,unknown)",
+      "code": "nullable(text(1,64))"
+    },
+    "Notification": {
+      "id": "Id",
+      "project_id": "Id",
+      "event": "enum(queued,started,finished,cancelled,waiting_approval,stopped)",
+      "target_id": "Id",
+      "attempt": "int(1,3)",
+      "state": "enum(queued,sent,failed)",
+      "next_at": "Time",
+      "code": "nullable(text(1,64))",
+      "at": "Time"
+    },
+    "SourceFile": {
+      "path": "RelPath",
+      "blob_sha": "SHA",
+      "sha256": "Digest",
+      "size": "int(0,10485760)",
+      "executable": "bool"
+    },
+    "TriggerCursor": {
+      "project_id": "Id",
+      "definition_id": "Id",
+      "trigger_id": "Id",
+      "kind": "enum(watch,schedule)",
+      "last_sha": "nullable(SHA)",
+      "last_due": "nullable(Time)"
+    },
+    "StatusDelivery": {
+      "project_id": "Id",
+      "run_id": "Id",
+      "attempt": "int(1,100)",
+      "state": "enum(pending,success,failure,error)",
+      "sent": "bool",
+      "code": "nullable(text(1,64))",
+      "at": "Time"
+    },
+    "SiteResult": {
+      "route": "Route",
+      "verified": "bool",
+      "requests": "int(0,9007199254740991)",
+      "errors": "int(0,9007199254740991)",
+      "code": "nullable(text(1,64))"
+    },
+    "SiteOperation": {
+      "operation_id": "Id",
+      "type": "enum(stage,switch,finalize,observe,query,restore,delete)",
+      "request_digest": "Digest",
+      "result": "SiteResult"
+    },
+    "SiteWindow": {
+      "from": "Time",
+      "until": "Time",
+      "requests": "int(0,9007199254740991)",
+      "errors": "int(0,9007199254740991)"
+    },
+    "SiteCounters": {
+      "generation": "int(0,9007199254740991)",
+      "windows": "list(SiteWindow,0,8640)"
+    },
+    "SetupState": {
+      "schema_version": "const(1)",
+      "trust_revision": "int(1,2147483647)",
+      "trust_digest": "Digest",
+      "revoked_key_ids": "list(Digest,0,32)",
+      "current_release": "text(1,128)",
+      "previous_releases": "list(text(1,128),0,2)"
+    }
+  }
+}
+```
+
+**複合制約と既定値：** record 配列は owner の複合キーで一意とする。definition / template は project,id,revision、environment は project,id、run は project,id,attempt、artifact は project,digest、cache は project,key、grant は subject_kind,subject_id,project_id,environment_id,role。他のentityはid一意。全entity参照は同一project内で解決し（user/worker/serviceはglobal、digestを識別子へ代用しない）、不在・無効・deleting参照を拒否する。rev / generationの上限では wrap せず P19_REVISION。Timeの順序逆転・不正なstate / timestamp組合せは P19_STATE_CORRUPT。Task、Grant、Environmentの意味上の制約は各owner正本を参照する。
+
+保存時のschema既定値はない。作成UIの初期値だけを `Quota={parallel:1,queue:64,artifact_mb:1024,cache_mb:256,retention_days:7}`、`Resources={cpu_percent:100,memory_mb:1024,disk_mb:512,tasks:128,timeout_seconds:900,output_mb:16}`、`Retry={max_attempts:1,backoff_seconds:1}`、cache無効・paths空・TTL604800秒、empty selector / matrix / template / env / secret、optional=false、fail_fast=false とする。memory_mb >= disk_mb+256、env全値合計32768 bytes以下、secret投入後の合計16384 bytes以下を要求する。Templateは他Templateを参照しない。EnvironmentStateはproject,environmentで一意。TriggerCursorはproject,definition,kind,trigger_idで一意であり、immutable Definitionとは別に更新する。StatusDeliveryはproject,run,attempt,stateで一意。Notification.idはeventとtarget_idのcanonical JSONのSHA256先頭63文字にnを付ける。Source.filesはpath昇順、UTF-8合計100 MiB以下、tree_digestはcanonical files配列のSHA256。snapshot全体は32 MiB、active run16、全実行job64、projectごとの上限はQuotaでさらに制限する。
+
+<a id="phase-19-state-paths"></a>
+**保存 path と権限：**
+
+S は起動時に検証した state-dir。以下の S 相対pathだけを新規管理対象とする。directoryは0700、JSONは0600、所有者はsetupで割り当てた専用user。API viewにRootを丸ごと返さない。
+
+| path | 形式 / 最大byte / writer |
+|---|---|
+| `cicd/head.json` | Head / 4096 / statefile |
+| `cicd/snapshots/g-{generation}.json` | Root / 33554432 / statefile、immutable |
+| `cicd/state.lock` | OS flock用空regular file / 0 / statefile。取得中のunlink禁止。 |
+| `cicd/master.json` | Master / 4096 / setup初期化、security読取 |
+| `cicd/secrets/{project}/{id}/{version}.json` | SecretCipher / 16384 / securityがstatefile adapter経由で書込 |
+| `cicd/logs/{project}/{run}/{attempt}/{job}/{stream}.json` | Log / 6291456（JSON escape込み）/ statefile |
+| `cicd/artifacts/{project}/{digest}/` | archive正本の固定file集合 / archive |
+| `cicd/cache/{project}/{key}/` | runner正本の固定file集合 / runnerからstatefile adapter |
+| `cicd/work/{operation}/` | staging directory、終端後回収 / runner・archive |
+| `cicd/ssh/{worker}/identity`, `known_hosts` | SSH用UTF-8 text / 各65536 / setup入力、runner読取だけ |
+| `cicd/routes/{project}/{environment}.json` | Route / 16384 / site-agentからstatefile adapter |
+| `cicd/worker.json` | Worker（leases含む）/ 262144 / worker adapter |
+| `cicd/site/{project}/{environment}/releases/{digest}/` | archive正本のcontent/manifest/verified集合 / site-agent |
+| `cicd/site/{project}/{environment}/counters.json` | SiteCounters、最大1 MiB / site API、UTC10秒窓、原子的更新 |
+| `cicd/setup.json` | SetupState / 65536 / setup |
+| `cicd/locks/{role}.lock` | lifetime flock用空regular file / 0 / coordinator/site-agent/setup |
+| `cicd/site/{project}/{environment}/operations.json` | list(SiteOperation,0,1024) / 1 MiB / site-agent adapter |
+
+secret / SSH / master はsnapshot export、成果物、cache、通常backup、API一覧から除外する。job rootへのmount対象にも含めない。cicd配下のfilesystem上のfile集合がこれを超える場合は自動採用せず P19_STATE_CORRUPT とする。ただし以下のtransaction一時fileとarchive / runner正本のchildだけを許可する。
+
+<a id="phase-19-state-transaction"></a>
+**commit / crash / lock 固定順：**
+
+process内mutex → `state.lock` の非blocking flock(LOCK_EX)を10ms間隔、最大2秒で取得する。保持中にnetwork / child / response送信を待たない。read-onlyはHeadから一つのimmutable snapshotを読み、hash / schema / generationを検証し、書込・修復・migrationをしない。snapshot不在でHeadが既に進んだ場合だけ新Headで最大3回読み直す（GC競合）。同Headで不在/不正hashなら即corrupt、3回すべて世代更新ならP19_BUSY。
+
+1. lock下でHeadと現在snapshotを再読込し、entity revision・要求識別子を照合する。同一operation ID / digestなら元Operationを返し、内容違いは P19_IDEMPOTENCY。
+2. 全制約と容量を検証する。新しい進行中operationにつき終端用65536 bytesとOperation/Audit終端1行ずつを予約し、snapshot byte数 + 予約総量 <= 33554432 を満たさなければ P19_STORAGE。active対象、監査、保護参照を容量対策で消さない。
+3. generation+1のsnapshotを `snapshots/.{o-id}.tmp` にO_EXCLで作成、write-all、chmod、fsync、close、未存在のg-nameへrename、snapshots directory fsync。
+4. 新Headを `cicd/.head.{o-id}.tmp` に同順で書き、head.jsonへatomic renameし、cicd directory fsync。この完了だけをdurable commitとする。
+5. commit後は現snapshotと直前2世代を保持して古いsnapshotを削除する。削除失敗はP19_CLEANUPの診断とし、commit済み結果を反転しない。空き256 MiB未満では新規受付を止める。
+6. lockを解放する。応答前crashに備え、操作IDで結果を再照会できる状態を保持する。
+
+手順3以前の失敗はHead不変。3成功・4rename前のcrashは未参照snapshotだけを次回lock下で回収する。4rename後のfsync失敗は P19_STATE_UNCERTAIN とし、commit不成立・副作用なしを断言しない。runnerは外部副作用前に別のdurable claimを必ずcommitする。Head破損、参照先不在、hash不一致、世代逆転は P19_STATE_CORRUPT とし通常処理を停止、旧世代への推測fallbackを禁止する。明示 `cicd-recover` だけが、対象generationとdigest、外部operation照合を受け、検証したsnapshotを新世代へ復元する。
+
+Root内operationは30日保持、run / deploymentは各project retention経過かつ非active・非参照だけをcreated_at,id昇順で回収する。全監査をoperationと同時に保持する。期限切れ要求IDの再利用は新規要求となるため、clientは再利用しない。過去Runのattemptは上書きしない。schema_version=1以外は拒否し自動upgradeしない。legacy状態の自動importは行わない。新規projectと環境を明示作成し、既存Release/成果物はarchive検証を通した明示登録だけを許可する。legacy fileを変更しない。cicd-v1開始後のlegacyへの逆migrationは非対応であり、進行中処理を終端化・exportしたうえでprofile無効化する。
+
+**adapter interface：** `ReadCICD() (Root,Head,error)`、`UpdateCICD(opID,requestDigest,mutate) (Operation,error)`、`WriteCICDLog(Log) error`、`ReadCICDLog(identity) (Log,error)`。mutateは既に検証した入力を用いる純粋なRoot更新だけで、I/Oを呼ばない。ログ単体は同directoryのO_EXCL temporary → write / fsync / close → rename / directory fsyncで更新する。caller固有の直接書込は許可しない。全error codeの公開対応は [`docs/details/api.md` 詳細本文責務 Phase 19 error](api.md#phase-19-error-catalog)、検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
+
+**canonical bytes：** digest対象JSONはobject keyをUTF-8 byte昇順、配列順維持、空白なし、整数10進、stringはJSON必須escapeだけ（HTML escapeなし、slash非escape）、末尾LFなし、UTF-8でencodeする。浮動小数は全schemaで不使用。HTTP送受信bytesとcanonical bytesを混同しない。\u2028/\u2029はUTF-8のままとする。
 
 ---
 

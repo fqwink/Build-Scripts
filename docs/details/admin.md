@@ -1,23 +1,71 @@
 # Adlaire CI — Admin 詳細仕様
 
 <a id="phase-19-admin-contract"></a>
-**Phase 19 管理クライアント策定契約：**
+**Phase 19 CLI / package契約：**
 
-本節の owner は `admin` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope)、server 境界は [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](api.md#phase-19-api-contract) を参照する。
+ownerは `admin`、実装主体は [components/admin/](../../components/admin/)。既存CLIへ `cicd` namespaceを追加する。API routeは [`docs/details/api.md` 詳細本文責務 operation catalog](api.md#phase-19-operation-catalog)、認証/権限はsecurity正本。管理clientはAPI操作だけを行いstate-dirを直接更新しない。
 
-| CLI 操作群の策定対象 | client 固有の境界 |
-|----------------------|--------------------|
-| project / definition / plan | project を明示し、JSON 入力を API へ渡す。plan の表示だけでは run を開始しない。 |
-| run / cancel / retry / logs | run と attempt を識別して要求する。非同期受付と終端結果の終了条件を別にし、待機の有無を明示する。 |
-| worker / artifact | drain、保持、比較の対象 ID と project を送る。remote filesystem を CLI が直接変更しない。 |
-| deployment / approval / rollback | 計画と成果物参照を明示する。対話確認だけを server 側承認の代替にせず、要求識別子を保った再照会を可能にする。 |
-| user / grant / quota / metrics | server の認可結果を保持し、CLI 独自の権限判定や再集計を加えない。 |
+exact形は `adlaire-ci-admin --api-url URL --token-file ABS --json cicd COMMAND --params-file ABS --body-file ABS`。token-fileと既存token-stdinは排他、loginだけtoken不要。params-fileはpath/query keyのJSON object（Emptyなら{}）、body-fileはrequest JSON（body不要ならnull）、各1 MiBまでregular0600・symlink拒否、secret含むfileはcheckout外。body-fileに `-` を指定してstdin読取可、token-stdinとの併用禁止。未知/重複/省略optionを拒否、--name valueだけ。login/logout以外のmutationには `--idempotency-key o-HEX` 必須。--waitは受け付けず、operation-getで明示照会する。
 
-既存 [`docs/details/admin.md` 詳細本文責務 A7 CLI 管理クライアント](#sec-a7) の token 入力・argv safety・stdout / stderr の境界を使う。新 command の exact token、option、JSON schema、timeout、終了 code、待機中断の結果は本節で詳細化してから command 一覧へ追加する。未登録 command を shell や汎用 HTTP wrapper として実行しない。
+| COMMAND | operation結合key |
+|---|---|
+| `login` | login |
+| `logout` | logout |
+| `password-change` | passwordChange |
+| `projects-list` | projectsList |
+| `project-put` | projectPut |
+| `workers-list` | workersList |
+| `worker-put` | workerPut |
+| `targets-list` | targetsList |
+| `target-put` | targetPut |
+| `users-list` | usersList |
+| `user-put` | userPut |
+| `services-list` | servicesList |
+| `service-put` | servicePut |
+| `definitions-list` | definitionsList |
+| `definition-put` | definitionPut |
+| `templates-list` | templatesList |
+| `template-put` | templatePut |
+| `environments-list` | environmentsList |
+| `environment-put` | environmentPut |
+| `grants-list` | grantsList |
+| `grant-put` | grantPut |
+| `secret-put` | secretPut |
+| `secrets-list` | secretsList |
+| `worker-drain` | workerDrain |
+| `worker-resume` | workerResume |
+| `plan` | plan |
+| `run-start` | runStart |
+| `runs-list` | runsList |
+| `run-get` | runGet |
+| `run-retry` | runRetry |
+| `run-resume` | runResume |
+| `run-cancel` | runCancel |
+| `logs-get` | logsGet |
+| `artifacts-list` | artifactsList |
+| `artifact-get` | artifactGet |
+| `artifact-download` | artifactDownload |
+| `artifact-compare` | artifactCompare |
+| `artifact-pin` | artifactPin |
+| `caches-list` | cachesList |
+| `cache-delete` | cacheDelete |
+| `environment-status` | environmentStatus |
+| `deployment-plan` | deploymentPlan |
+| `deployment-start` | deploymentStart |
+| `deployments-list` | deploymentsList |
+| `deployment-get` | deploymentGet |
+| `deployment-approve` | deploymentApprove |
+| `deployment-reject` | deploymentReject |
+| `deployment-cancel` | deploymentCancel |
+| `deployment-rollback` | deploymentRollback |
+| `deployment-reconcile` | deploymentReconcile |
+| `operation-get` | operationGet |
+| `metrics-get` | metricsGet |
+| `audits-list` | auditsList |
 
-静的配布は `ui` / `sdk` owner が確定した artifact を package へ渡す接続だけを所有する。CLI 追加を理由に管理 UI archive へ build tool、runtime、secret、状態 file を同梱しない。
+HTTP method/path/body/query/authはcatalogへ一致、JSON successをstdoutへ1行、errorもAPI envelopeをstdoutへ1行、診断はmask済みstderrへ。exit0はHTTP2xx（202は未完了を維持）、2入力、3認証/権限、4HTTP4xx/5xx、5transport/protocol。network自動retryなし、timeout10秒。secret/token/passwordはJSON出力の一回だけでstderrやデバッグに載せない。responseも1 MiB上限（planが超過する場合はP19_BODYで失敗し表示省略による成功を返さない）。
 
-検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+admin archiveには既存のindex.html/adlaire-ci-sdk.jsを同cohortで含め、新たなbundle/依存/runtimeを追加しない。未実装methodをruntime stub成功で埋めない。CLIとAPI catalogの全件wire比較、SDK/UI同cohortの検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
 
 ---
 

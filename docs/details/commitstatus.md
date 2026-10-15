@@ -1,15 +1,15 @@
 # Adlaire CI — Commit Status 詳細仕様
 
 <a id="phase-19-commitstatus-contract"></a>
-**Phase 19 結果通知接続策定契約：**
+**Phase 19 任意Commit Status接続：**
 
-本節の owner は `commitstatus` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。通知の入力は runner が確定した source SHA、run / attempt、集約結果、認可済み詳細参照とする。required job と optional job、skip、cancel、未確定配備を含む集約判断は [`docs/details/runner.md` 詳細本文責務 Phase 19 実行契約](runner.md#phase-19-runner-contract) に戻し、送信 owner が再計算しない。
+ownerは `commitstatus`。cicd-v1の送信は既存.server_config.commit_status_enabled=trueだけで有効化し、falseなら外部送信0でも製品run/配備は成立する。既存 [`docs/details/commitstatus.md` 詳細本文責務 GitHub payload/timeout/secret境界](#sec-27-1) を参照し、本節は新run/attempt対応だけを所有する。
 
-開発 GitHub Actions の required check 証跡と、製品が任意送信する Commit Status は別の接続とする。source SHA、base SHA、tested SHA、run / attempt の対応が異なる場合、製品の通知を正式開発検証の代替へ流用しない。通知を無効にした利用者環境でも内製ジョブ・配備制御は成立させる。
+source SHAを送信先とし、contextは `adlaire-cicd/PROJECT/DEFINITION`（ASCII<=140 bytes、超過設定拒否）、target_urlは既存明示設定値だけ（管理loopback/secret URLを自動公開しない）。pendingはdurable run running後、finalは全必須jobと配備の終端保存後。succeeded→success、failed→failure、cancelled/recovery_required→error、承認待ち/未確定配備はpending維持。descriptionはそれぞれCI/CD started、CI/CD succeeded、CI/CD failed、CI/CD cancelled、CI/CD recovery required（固定文字列）。
 
-送信順、GitHub payload、送信失敗時の実行結果非反転は既存 [§27.1](#sec-27-1) を参照する。新しい run / attempt の通知順序、古い attempt の遅延送信抑止、context 名、URL の公開境界、retry / rate limit、固定 error は本節で詳細化するまで既存の通知集合へ追加しない。
+送信直前に同project/definition/sourceの最新attemptをstatefileから読み、旧attemptは送信せずstale診断だけ残す。同scope送信は単一worker queueで直列化し、既に送信中の旧結果は取り消せないため完了後最新statusを必ず送信する。送信1回、timeout10秒、HTTP201だけ成功、retryなし、rate-limitは送信失敗として通知診断へ保存し実行結果を変えない。run/attempt/event identityとstatus結果はStatusDeliveryへ保存しNotificationのtargetとOperation監査へ対応付ける。
 
-検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+製品statusは開発Actions required checkの代替ではない。source/base/tested SHAとrun identityが異なる証跡を成功へ流用しない。検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
 
 ---
 

@@ -25,6 +25,162 @@ import (
 	"unicode/utf8"
 )
 
+func TestPhase19SpecificationContracts(t *testing.T) {
+	t.Parallel()
+
+	files := []string{
+		"docs/SPEC.md", "docs/ROADMAP.md", "docs/DETAIL_INDEX.md",
+		"docs/DOCUMENT_INDEX.md", "docs/DESIGN.md",
+		"docs/details/statefile.md", "docs/details/runner.md",
+		"docs/details/archive.md", "docs/details/security.md",
+		"docs/details/api.md", "docs/details/sdk.md", "docs/details/ui.md",
+		"docs/details/admin.md", "docs/details/release.md",
+		"docs/details/setup.md", "docs/details/commitstatus.md",
+		"docs/details/fixture.md", "docs/details/production-validation.md",
+	}
+	documents := make(map[string]string, len(files))
+	for _, path := range files {
+		documents[path] = phase11MustReadText(t, path)
+	}
+	if err := phase19ValidateSpecification(documents); err != nil {
+		t.Fatal(err)
+	}
+	for _, mutation := range []struct {
+		name string
+		path string
+		from string
+		to   string
+	}{
+		{"unknown-type", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "MissingType"`},
+		{"missing-sdk", "docs/details/sdk.md", "| `runStart(params,body,options)` |", "| `missing(params,body,options)` |"},
+		{"missing-ui", "docs/details/ui.md", "| runStart |", "| missing |"},
+		{"missing-cli", "docs/details/admin.md", "| `run-start` | runStart |", "| `missing` | missing |"},
+		{"duplicate-route", "docs/details/api.md", "| runStart | POST", "| plan | POST"},
+		{"duplicate-anchor", "docs/details/security.md", "<a id=\"phase-19-permission-matrix\"></a>", "<a id=\"phase-19-permission-matrix\"></a><a id=\"phase-19-permission-matrix\"></a>"},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			changed := make(map[string]string, len(documents))
+			for path, content := range documents {
+				changed[path] = content
+			}
+			if !strings.Contains(changed[mutation.path], mutation.from) {
+				t.Fatalf("mutation target missing: %s", mutation.name)
+			}
+			changed[mutation.path] = strings.Replace(changed[mutation.path], mutation.from, mutation.to, 1)
+			if err := phase19ValidateSpecification(changed); err == nil {
+				t.Fatalf("specification mutation survived: %s", mutation.name)
+			}
+		})
+	}
+}
+
+func phase19ValidateSpecification(documents map[string]string) error {
+	for path, content := range documents {
+		anchors := regexp.MustCompile("<a id=\"(phase-19-[^\"]+)\"></a>").FindAllStringSubmatch(content, -1)
+		seen := make(map[string]bool)
+		for _, anchor := range anchors {
+			if seen[anchor[1]] {
+				return fmt.Errorf("duplicate Phase 19 anchor in %s: %s", path, anchor[1])
+			}
+			seen[anchor[1]] = true
+		}
+	}
+	state := documents["docs/details/statefile.md"]
+	block := regexp.MustCompile("(?s)```json\\n(.*?)\\n```").FindStringSubmatch(state)
+	if len(block) != 2 {
+		return fmt.Errorf("Phase 19 schema registry missing")
+	}
+	var registry struct {
+		SchemaVersion int                        `json:"schema_version"`
+		Profile       string                     `json:"profile"`
+		Types         map[string]json.RawMessage `json:"types"`
+	}
+	if err := json.Unmarshal([]byte(block[1]), &registry); err != nil {
+		return fmt.Errorf("Phase 19 schema registry: %w", err)
+	}
+	if registry.SchemaVersion != 1 || registry.Profile != "cicd-v1" || len(registry.Types) != 79 {
+		return fmt.Errorf("Phase 19 registry identity or coverage invalid")
+	}
+	identifiers := regexp.MustCompile("[A-Za-z][A-Za-z0-9_]*")
+	builtins := map[string]bool{
+		"id": true, "jobid": true, "digest": true, "sha": true, "utc": true,
+		"relpath": true, "abspath": true, "glob": true, "ref": true,
+		"url": true, "scalar": true, "base64": true, "bool": true,
+		"nullable": true, "list": true, "map": true, "oneof": true,
+		"int": true, "text": true,
+	}
+	validateExpression := func(expression string) error {
+		cleaned := regexp.MustCompile("(enum|const|legacy)\\([^()]*\\)").ReplaceAllString(expression, "")
+		for _, identifier := range identifiers.FindAllString(cleaned, -1) {
+			if !builtins[identifier] && registry.Types[identifier] == nil {
+				return fmt.Errorf("unknown Phase 19 schema type %q", identifier)
+			}
+		}
+		return nil
+	}
+	for name, raw := range registry.Types {
+		var alias string
+		if json.Unmarshal(raw, &alias) == nil {
+			if err := validateExpression(alias); err != nil {
+				return fmt.Errorf("%s: %w", name, err)
+			}
+			continue
+		}
+		var fields map[string]string
+		if err := json.Unmarshal(raw, &fields); err != nil || len(fields) == 0 {
+			return fmt.Errorf("invalid Phase 19 object schema %s", name)
+		}
+		for field, expression := range fields {
+			if err := validateExpression(expression); err != nil {
+				return fmt.Errorf("%s.%s: %w", name, field, err)
+			}
+		}
+	}
+	api := documents["docs/details/api.md"]
+	section := strings.Split(api, "<a id=\"phase-19-error-catalog\"></a>")[0]
+	routes := regexp.MustCompile("(?m)^\\| ([A-Za-z][A-Za-z0-9]*) \\| (GET|POST|PUT|DELETE) `([^\x60]+)` \\|").FindAllStringSubmatch(section, -1)
+	if len(routes) != 53 {
+		return fmt.Errorf("Phase 19 operation catalog incomplete")
+	}
+	seenIDs := make(map[string]bool)
+	seenRoutes := make(map[string]bool)
+	for _, route := range routes {
+		id, wire := route[1], route[2]+" "+route[3]
+		if seenIDs[id] || seenRoutes[wire] {
+			return fmt.Errorf("duplicate Phase 19 operation %s", id)
+		}
+		seenIDs[id], seenRoutes[wire] = true, true
+		if !strings.Contains(documents["docs/details/sdk.md"], "| `"+id+"(params,body,options)` | "+id+" |") {
+			return fmt.Errorf("Phase 19 SDK method missing: %s", id)
+		}
+		if !regexp.MustCompile("(?m)^\\| " + id + " \\| [a-z]+ \\| `cicd-[a-z-]+` \\|$").MatchString(documents["docs/details/ui.md"]) {
+			return fmt.Errorf("Phase 19 UI action missing: %s", id)
+		}
+		if !regexp.MustCompile("(?m)^\\| `[a-z-]+` \\| " + id + " \\|$").MatchString(documents["docs/details/admin.md"]) {
+			return fmt.Errorf("Phase 19 CLI command missing: %s", id)
+		}
+	}
+	for _, token := range []string{
+		"現在の active Phase は設定しない。",
+		"Phase 19 は `仕様化済み・未実装`",
+		"Phase 20 は `改訂予定`",
+	} {
+		if !strings.Contains(documents["docs/ROADMAP.md"], token) {
+			return fmt.Errorf("Phase 19 maturity boundary missing: %s", token)
+		}
+	}
+	fixture := documents["docs/details/fixture.md"]
+	for _, id := range []string{
+		"PLAN", "EVENT", "DAG", "RETRY", "CANCEL", "WORKER", "ISOLATION", "CACHE",
+		"ARTIFACT", "APPROVAL", "DEPLOY", "DURABILITY", "ACCESS", "LOG-UI", "RELEASE", "STATUS",
+	} {
+		if !strings.Contains(fixture, "| P19-"+id+" |") {
+			return fmt.Errorf("Phase 19 fixture contract missing: %s", id)
+		}
+	}
+	return nil
+}
+
 func TestDispatchMainExactBasename(t *testing.T) {
 	t.Parallel()
 
@@ -5763,12 +5919,12 @@ func phase18RequireDocumentState(t *testing.T) {
 		t.Fatalf("docs/ROADMAP.md must mark Phase 18 implemented after repository and live VPS completion evidence close the state-transition gate")
 	}
 	if !strings.Contains(roadmap, "現在の active Phase は設定しない。") {
-		t.Fatalf("docs/ROADMAP.md must leave active Phase unset after Phase 18 completion while Phase 19 remains 改訂予定")
+		t.Fatalf("docs/ROADMAP.md must leave active Phase unset after Phase 18 completion while Phase 19 awaits implementation approval")
 	}
 	if strings.Contains(roadmap, phase18InProgressStatus) || strings.Contains(roadmap, "現在の active Phase は Phase 18") || strings.Contains(roadmap, "Phase 18 は `仕様化済み・未実装`") {
 		t.Fatalf("docs/ROADMAP.md must not retain a stale Phase 18 active or incomplete state after the state-transition gate closes")
 	}
-	if !strings.Contains(roadmap, "Phase 19 と Phase 20 は `改訂予定` の後続 Phase") || strings.Contains(roadmap, "現在の active Phase は Phase 19") || strings.Contains(roadmap, "現在の active Phase は Phase 20") {
+	if !strings.Contains(roadmap, "Phase 19 は `仕様化済み・未実装`") || !strings.Contains(roadmap, "Phase 20 は `改訂予定`") || strings.Contains(roadmap, "現在の active Phase は Phase 19") || strings.Contains(roadmap, "現在の active Phase は Phase 20") {
 		t.Fatalf("docs/ROADMAP.md must keep Phase 19 and Phase 20 non-active until their specification gates are complete")
 	}
 	for _, token := range []string{

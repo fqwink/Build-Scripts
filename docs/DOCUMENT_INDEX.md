@@ -106,8 +106,8 @@
 | 視覚仕様 | [`docs/DESIGN.md` デザイン責務 Phase 19 管理画面](DESIGN.md#phase-19-admin-visual-contract) |
 | 本番同等検証本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 19 検証](details/production-validation.md#phase-19-production-validation-contract) |
 | fixture 設計本文 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
-| Phase 19 正式 fixture root / manifest / expected / fake | 未確定・未作成。上記 fixture 設計本文を参照する。 |
-| Phase 19 専用 checker / required workflow / required check | 未確定・未作成。既存 Phase 12 から Phase 18 の artifact は別の所在行を参照する。 |
+| Phase 19 正式 fixture root / manifest / expected / fake | `testdata/phase19/inhouse-cicd/manifest.json` とcase配下5種JSON（未作成）。[fixture証跡責務 layout](details/fixture.md#phase-19-fixture-layout)で将来配置を固定。 |
+| Phase 19 専用 checker / required workflow / required check | `main_test.go` の文書契約検査は実在。製品checker関数と `.github/workflows/phase19-inhouse-cicd.yml` は未作成。[fixture証跡責務 checker](details/fixture.md#phase-19-checker-entry)を参照。 |
 
 <a id="文書一覧"></a>
 **文書所在：**

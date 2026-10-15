@@ -1,23 +1,25 @@
 # Adlaire CI — Archive 詳細仕様
 
 <a id="phase-19-artifact-contract"></a>
-**Phase 19 成果物策定契約：**
+**Phase 19 immutable成果物契約：**
 
-本節の owner は `archive` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。配備先の選択・進行・復旧判断は [`docs/details/runner.md` 詳細本文責務 配備・承認・復旧](runner.md#phase-19-deployment-contract)、参照集合の保存は [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](statefile.md#phase-19-state-contract) を参照する。
+ownerは `archive`、実装主体は [components/archive/](../../components/archive/)。適用は [`docs/SPEC.md` ポリシー責務 SPEC ポリシー責務](../SPEC.md#policy-inhouse-cicd)、保存metadataは [`docs/details/statefile.md` 詳細本文責務 statefile schema正本](statefile.md#phase-19-schema-registry)。既存snapshot形式は変更しない。
 
-| 処理 | 入力 / 実体処理 / 結果 |
-|------|------------------------|
-| 登録 | project、元 run / attempt、成果物 bytes、manifest を受ける。staging で size と SHA-256 を検証した後に内容識別の immutable artifact として確定する。同じ名前でも bytes が異なれば別 artifact とする。 |
-| 重複排除 | 同一 project 内の同一 digest は既存 bytes と照合して再利用する。別 project の存在・容量・所有情報を参照側へ公開しない。物理共有を project 認可の代替にしない。 |
-| 取得・展開 | 保存済み bytes と manifest を再検証し、caller に固定 artifact 参照を返す。archive の traversal、symlink、特殊 file、重複 entry、展開量超過を拒否する。検証失敗を空成果物として成功させない。 |
-| 昇格用受渡し | runner が選んだ digest の bytes を渡し、移動先での検証結果を返す。環境に合わせた再生成・再圧縮を同一 digest の成果物として扱わない。 |
-| 復旧用保持 | 現在配備、実行中配備、選択済み復旧先、承認待ち要求の参照を回収保護へ含める。保持数または期限だけで保護対象を削除しない。 |
-| 回収 | 同一 revision の参照集合を取得し、削除対象確定時にも参照を再確認する。容量不足でも保護を外さず、新規登録を失敗させる。途中削除失敗と参照保存失敗を別結果で返す。 |
-| 比較 | artifact manifest と file digest の差分を返す。巨大な全 file body を比較応答へ展開しない。project の読取権限を取得と同じ境界で適用する。 |
+登録入力はproject、run/attempt/job、source SHA、regular directory。sourceと同一directory、symlink/hardlink（nlink!=1）、device/FIFO/socket、dotdot/絶対path/重複/大小文字だけ違うpathを拒否する。fileは10000個、単体100 MiB、全展開1 GiB、compressed1 GiB、pathはRelPath以内、必須index.html（builder/deploy用だけ）を検査する。go-build成果物は実行fileとして保存可能だがsite配備時は拒否する。
 
-**詳細化を残す判断対象：** artifact format、manifest schema、保存 path、圧縮条件、登録・展開・比較の各上限、pin / unpin interface、GC と配備の lock 順、途中失敗 cleanup、digest 衝突疑い時の固定 error を本節で固定する。Release 用 asset と利用者 build 成果物を同じ schema と仮定しない。
+成果物directoryの固定集合は `manifest.json` と `payload.tar.gz`。manifestは `{schema_version:1,kind:"site"|"binary",source_sha:SHA,files:[{path:RelPath,size:int(0,104857600),sha256:Digest,mode:"0644"|"0755"}]}`、filesはpath byte昇順、一意、directory entryは格納しない。tarはUSTAR regular fileだけ、owner/group 0、name空、mtime=0、順序はmanifest、modeは記載値。gzipはmtime0/name空/comment空/OS255、Go compress/gzip BestCompression。PAX/GNU拡張、link、追加member、trailing非zero byte、manifestにないfileを拒否する。digest=SHA256(payload.tar.gzの全bytes)、manifest_digest=SHA256(canonical manifest)。展開前に全headerと累積上限を検査し、展開中にも検査する。圧縮率は安全判定の代用にしない。
 
-検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+登録はwork下O_EXCL staging→全file検証→各fileとdirectory fsync→project/digestへ非上書きrename→親fsync→metadata commit。既存digestなら両fileを再検証し一致した場合だけ重複排除する。metadata commit失敗は未参照directoryとして次GCで回収、成功したdigest内容は更新禁止。artifact source metadataは同じdigestの最初の登録を保持し、後続runはdigest参照を保存する。
+
+環境昇格は再ビルド・再圧縮せずdigestのpinを増やす。pin IDはactive run/deployment/environment/approval/手動operationのID、全pin先の存在をtransactionで検査する。自動pin解除はその参照の終端か更新と同じtransaction。手動pinはoperatorが取得し同じ主体またはproject-adminが解除する。current環境、直前Environment.retained_successes件の成功配備、進行中・承認待ちは解除不能。retention経過だけでpinを無視しない。
+
+GCは期限切れかつpins空のartifactをcreated_at,digest順、quota超時も同順に選択。lock下でdeleting=true→新pin拒否→実file削除/親fsync→metadata削除。途中失敗はdeletingを保持し再試行、pinを消して成功へ偽装しない。回収できない容量不足はP19_STORAGEで新登録を止める。
+
+比較は同じprojectの2digestを検証してmanifest pathの和集合を走査し、追加/削除/変更/同一を返す。変更はsize/hash/modeのいずれか差、表示にはpathと旧新size/digest/modeだけ、file本文は返さない。path昇順、API pagination適用。downloadはpayloadの固定offset chunkをJSON base64で返し、clientが最終digestを検証する。アクセスにはproject viewer以上、deletingはP19_NOT_FOUND。
+
+site-agentへの配置は専用state-dir配下 `cicd/site/{project}/{environment}/releases/{digest}/content/`、同階層manifest.json、展開完了marker `verified.json={digest,manifest_digest}`（atomic JSON）。site配信はverifiedと全file manifest一致が確定したdirectoryだけを開く。配置済み内容を上書きせず、新digestへ置く。site GCはRouteのstable/candidateと保持済みrollback digestを除外する。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
 
 ---
 

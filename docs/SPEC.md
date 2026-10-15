@@ -96,9 +96,9 @@ Adlaire CI は、Markdown からの静的 Web サイト生成、source 変更検
 | データベース | なし（ファイルベース） |
 | Git・GitHub 参照 | `runner` の source 取得は GitHub REST API の Blobs / Trees API を Go 標準ライブラリ `net/http` 経由で行う。`release` の local commit / tag / source 参照は read-only Git command、remote repository / branch / tag / Release 参照は GitHub REST API を使用する。実行時の Git 状態変更、ref 作成・更新・削除、fetch、checkout、merge、commit、push は行わない。 |
 | フロントエンド | HTML / CSS / Vanilla JavaScript |
-| JavaScript 検証ランタイム | JavaScript 系実装 artifact の構文・型検証は Deno stable runtime を標準とする。bundler、transpiler を標準検証ランタイムとして使用しない。Node 関連の適合性は [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](SPEC.md#policy-node-runtime-ban) を正本とする。Deno は検証ランタイムであり、Adlaire CI の production dependency、配布物同梱 dependency、外部ライブラリ許可条件として扱ってはならない。 |
+| JavaScript 検証ランタイム | JavaScript 系実装 artifact の構文・型検証は Deno stable runtime を標準とする。bundler、transpiler を標準検証ランタイムとして使用しない。Node 関連の適合性は [`docs/SPEC.md` ポリシー責務 §4a Node 全面禁止契約](SPEC.md#policy-node-runtime-ban) を正本とする。Deno は検証ランタイムであり、Adlaire CI の必須 production dependency、配布物同梱 dependency、外部ライブラリ許可条件として扱ってはならない。明示cicd-v1の任意deno-check capabilityだけは利用者が別途導入したDenoで検証jobを実行できる。許可argvと能力検査はrunner/setup詳細本文責務を参照する。 |
 | 標準運用 | systemd を使用する自己管理 Linux CI/CD サーバーと静的サイト配信サーバーの 2 台構成を標準とする。最小運用では [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 18 VPS Pull Bootstrap 契約](details/production-validation.md#phase-18-vps-pull-bootstrap-contract) に従い、1 台 VPS の `single-node` 構成を許可する。 |
-| データ交換形式 | 構造化 API request / response、Adlaire CI が読み書きまたは解釈する状態ファイル、設定ファイル、build 拡張設定は JSON に統一し、YAML・CSV・XML 等の代替構造化形式を使用しない。この禁止は Adlaire CI の runtime / API / state / build 定義に適用し、GitHub Actions / GitHub workflow の `.github/workflows/*.yml` / `.github/workflows/*.yaml` は対象外とする。例外は、保存済み build log の有限 SSE response、保存済み snapshot の binary response、管理ツールの静的 asset response だけとする。例外となる endpoint、media type、body、失敗時 JSON response は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK の受信・変換契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする。詳細本文責務に明示されていない非 JSON API 交換、状態設定、build 定義を実装してはならない |
+| データ交換形式 | 構造化 API request / response、Adlaire CI が読み書きまたは解釈する状態ファイル、設定ファイル、build 拡張設定は JSON に統一し、YAML・CSV・XML 等の代替構造化形式を使用しない。この禁止は Adlaire CI の runtime / API / state / build 定義に適用し、GitHub Actions / GitHub workflow の `.github/workflows/*.yml` / `.github/workflows/*.yaml` は対象外とする。例外は、保存済み build log の有限 SSE response、保存済み snapshot の binary response、管理ツールの静的 asset response、明示cicd-v1のsite専用modeの静的配信だけとする。SSH framingはJSON Linesとbase64、SSH鍵入力、署名/配布checksum、archive payload、OS unitは各owner正本が固定した非JSON形式に限る。例外となる endpoint、media type、body、失敗時 JSON response は [`docs/details/api.md`](details/api.md) 詳細本文責務、SDK の受信・変換契約は [`docs/details/sdk.md`](details/sdk.md) 詳細本文責務を正本とする。詳細本文責務に明示されていない非 JSON API 交換、状態設定、build 定義を実装してはならない |
 
 <a id="41-ゼロ依存フルインハウス原則"></a>
 
@@ -1081,7 +1081,14 @@ GitHub Actions 障害、runner 不足、ネットワーク障害をローカル�
 
 ## 0i. 内製 CI/CD 安全境界契約
 
-本節は内製 CI/CD 拡張の設計判断に適用する。詳細化対象は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope)、実装可否は [`docs/SPEC.md` ポリシー責務 §0a](#policy-spec-maturity)、[§0d](#policy-spec-freeze)、[§0f](#policy-phase-unit) を正本とする。本節および各 owner の Phase 19 策定本文は、現行の builder 専用経路、oneshot 起動、既存 API、既存状態 schema、Release asset 一覧を暗黙に置換するものではない。新しい経路の起動を許可する場合は、既存契約との適用区分、移行、復旧を詳細化してから凍結する。
+本節は内製 CI/CD 拡張の設計判断に適用する。詳細化対象は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope)、実装可否は [`docs/SPEC.md` ポリシー責務 §0a](#policy-spec-maturity)、[§0d](#policy-spec-freeze)、[§0f](#policy-phase-unit) を正本とする。本節および各 owner の Phase 19 策定本文は、現行の builder 専用経路、oneshot 起動、既存 API、既存状態 schema、Release asset 一覧を暗黙に置換するものではない。新しい経路は明示profile `cicd-v1` だけに適用し、以下のprofile境界と各owner正本を合わせて使用する。
+
+| profile | 適用と互換境界 |
+|---|---|
+| legacy-v1（既存・default） | 本節のPhase19 anchor外の既存runner oneshot、builder専用pipeline、単一管理者、Release固定集合を維持する。既存入力からcicd-v1を推測起動しない。 |
+| cicd-v1（明示選択） | 各ownerのPhase19 anchorで定義したdaemon coordinator、SSH worker/site-agent、登録executor、複数identity、専用API/site mode、署名付きReleaseを適用する。共通禁止事項を解除しない。移行・復旧はsetup/statefile正本、endpointとstatic modeの分離はapi正本。 |
+
+既存節のoneshot/固定asset数/単一userという条件はlegacy-v1に適用する。cicd-v1が既存節を参照する時は明示された共通algorithm/既定値だけを利用し、異なるprofileの処理を混在させない。機能実装の着手承認・active Phase設定は仕様成熟度と別に判定する。
 
 | 判断対象 | 必須境界 |
 |----------|----------|
@@ -1149,9 +1156,9 @@ GitHub Actions 障害、runner 不足、ネットワーク障害をローカル�
 | リリース形式 | バイナリ配布を標準とする。利用者は GitHub Release から OS/arch 別の実行バイナリを取得し、ソースからのビルドを標準導入手順に含めない |
 | バイナリバージョン | Release 用実行バイナリ asset の `--version` が、バイナリ名に続く第 2 token として tag と同一のリリースバージョンを返す。`V.0.0-dev`、tag と不一致の値、未注入値を含む実行バイナリ asset は公開禁止とする |
 | 標準 OS/arch | 初期標準は Linux x86_64（`linux-amd64`）とする。追加 OS/arch は将来のリリース対象として個別に仕様化する |
-| 添付ファイル | builder、runner、管理API、setup、管理 CLI、MCP、Obsidian CLI の各`linux-amd64`実行バイナリ、管理UI archive、checksum manifestの9件だけを添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)と[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](details/release.md#phase-15-obsidian-release-extension-contract)を正本とする。`adlaire-ci-release`、生成静的Webサイト、debug binaryをRelease assetとして添付しない |
+| 添付ファイル | builder、runner、管理API、setup、管理 CLI、MCP、Obsidian CLI の各`linux-amd64`実行バイナリ、管理UI archive、checksum manifestの9件をlegacy-v1で添付する。明示cicd-v1の集合は[`docs/details/release.md` 詳細本文責務 Phase19](details/release.md#phase-19-release-contract)を正本とする。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)と[`docs/details/release.md` 詳細本文責務 Phase 15 Obsidian Release 配布拡張契約](details/release.md#phase-15-obsidian-release-extension-contract)を正本とする。`adlaire-ci-release`、生成静的Webサイト、debug binaryをRelease assetとして添付しない |
 | 管理 UI 配布物 | 管理UIは実行バイナリと分離した単独のarchive assetとして全安定版Releaseへ添付する。exact asset名と生成条件は[`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract)、archive内容は[`docs/details/admin.md` 詳細本文責務 §A1](details/admin.md#a1-管理-ui-静的ファイル境界)、setup側の安全検証は[`docs/details/admin.md` 詳細本文責務 §A2](details/admin.md#a2-管理-ui-archive-検証)を正本とする |
-| checksum | checksum manifest 自身を除く全 Release asset の SHA-256 checksum を checksum manifest で提供する。checksum manifest 自身を再帰的な checksum 対象にしてはならない。exact asset 名、生成形式、公開前検証は [`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract) を正本とし、受け入れ・配置前検証は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を正本とする |
+| checksum | legacy-v1ではchecksum manifest 自身を除く全 Release asset の SHA-256 checksum を checksum manifest で提供する。cicd-v1の署名による自己参照回避と対象集合は[`docs/details/release.md` 詳細本文責務 Phase19](details/release.md#phase-19-release-contract)を正本とする。checksum manifest 自身を再帰的な checksum 対象にしてはならない。exact asset 名、生成形式、公開前検証は [`docs/details/release.md` 詳細本文責務 §R3](details/release.md#release-asset-contract) を正本とし、受け入れ・配置前検証は [`docs/details/setup.md` 詳細本文責務 §26.2a](details/setup.md#sec-26-2a) を正本とする |
 | プレリリースフラグ | 安定版リリースでは `Pre-release` にチェックを入れない |
 | ドラフト公開禁止 | Draft Release のまま公開しない |
 
@@ -1276,7 +1283,7 @@ GitHub Actions を開発基盤として使用する方針は継続する。管�
 ## 6. CI ランナー実行境界ポリシー
 
 - 変更がない場合はビルドをスキップしなければならない
-- `adlaire-ci-runner` は oneshot 実行とし、多重実行を防止しなければならない
+- legacy-v1の`adlaire-ci-runner` は oneshot 実行とし、多重実行を防止しなければならない。明示cicd-v1の起動は[ポリシー責務 §0i](#policy-inhouse-cicd)を適用する
 - 成功、失敗、再試行、状態更新、ログ記録の具体条件は [`docs/details/runner.md`](details/runner.md) 詳細本文責務と [`docs/details/statefile.md`](details/statefile.md) 詳細本文責務を正本とする
 
 ## 7. CI ランナー branch target ポリシー

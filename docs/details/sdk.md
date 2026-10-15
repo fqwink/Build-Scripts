@@ -1,29 +1,71 @@
 # Adlaire CI — SDK 詳細仕様
 
 <a id="phase-19-sdk-contract"></a>
-**Phase 19 SDK 接続策定契約：**
+**Phase 19 SDK公開契約：**
 
-本節の owner は `sdk` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope)、HTTP 境界は [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](api.md#phase-19-api-contract) を参照する。次表は新規 public method の設計対応であり、既存 class 宣言の public method 集合を変更しない。
+ownerは `sdk`、実装artifactは [admin/adlaire-ci-sdk.js](../../admin/adlaire-ci-sdk.js)。新しい公開class `AdlaireCICDClient` を同fileへ追加し、既存 `AdlaireCIClient` を変更しない。endpoint / wire型は [`docs/details/api.md` 詳細本文責務 API operation catalog正本](api.md#phase-19-operation-catalog) だけを参照する。
 
-| API 操作 ID | SDK method 案 |
-|-------------|----------------|
-| `project-list` | `listCIProjects(query)` |
-| `definition-read` / `definition-write` | `getCIDefinition(projectId)` / `setCIDefinition(projectId, request)` |
-| `plan` | `planCIRun(projectId, request)` |
-| `run-list` / `run-start` / `run-read` | `listCIRuns(projectId, query)` / `startCIRun(projectId, request)` / `getCIRun(projectId, runId)` |
-| `run-cancel` / `run-retry` | `cancelCIRun(projectId, runId, request)` / `retryCIRun(projectId, runId, request)` |
-| `job-log` | `getCIJobLog(projectId, runId, jobId, query)` |
-| `worker-list` / `worker-drain` | `listCIWorkers(projectId, query)` / `drainCIWorker(projectId, workerId, request)` |
-| `artifact-list` / `artifact-compare` | `listCIArtifacts(projectId, query)` / `compareCIArtifacts(projectId, request)` |
-| `deployment-plan` / `deployment-start` | `planCIDeployment(projectId, request)` / `startCIDeployment(projectId, request)` |
-| `deployment-read` / `deployment-approve` / `deployment-rollback` | `getCIDeployment(projectId, deploymentId)` / `approveCIDeployment(projectId, deploymentId, request)` / `rollbackCIDeployment(projectId, deploymentId, request)` |
-| `metrics-read` | `getCIMetrics(projectId, query)` |
+constructorは `new AdlaireCICDClient({baseUrl,token,onUnauthorized,timeoutMs=10000,fetchImpl=globalThis.fetch})`。baseUrlは既存管理API origin制約、tokenはmemory-only、storage/cookie/URLへ保存しない。method共通形は `method(params={},body=null,{signal,idempotencyKey}={})`。paramsはcatalog path placeholderとGET queryの名前だけ、bodyはcatalog request型、不要bodyはnull。login/logout以外のmutationはcaller指定o-ID必須、SDKが失敗時に新しいIDを作ってretryしない。AbortSignal/timeoutはAbortControllerへ合成し、cleanupでtimer/listenerを解除する。
 
-SDK は request を API 契約どおりに渡し、未知項目を削除して入力不正を隠さない。受付応答は加工せず返し、成功への変換、job の代替実行、timeout 時の自動再送をしない。要求識別子を SDK 内部で黙って更新しない。log は有限 JSON 取得として返し、SDK 内で polling / reconnect / cursor 巻戻しを開始しない。既存 error / token 消去・transport 契約と、復帰後の明示的な再取得を接続する。
+methodはoperation IDと完全同名、一覧は以下の閉集合。path組立はplaceholderごとencodeURIComponentを一回適用し、HTTP verb/bodyをcatalogと一致させる。未知params、null必須body、path欠落はnetwork前TypeError。成功Promiseは `{data,requestId,status}`、response不正/非JSON/未知codeは `CICDProtocolError`。非2xxは `CICDError{code,status,requestId,message}`、networkはcode=P19_TRANSPORT/status=0、abortはDOMException AbortError。401だけtokenをclearしonUnauthorizedを1回呼ぶ。403/409/410/429/503を成功へ変換しない。全request credentials=omit、redirect=error、cache=no-store、Accept application/json、Bearerはtokenがある場合だけ。
 
-**詳細化を残す判断対象：** 引数の全型・省略規則、API 検査との責任分担、method 順、有限 log 応答の扱い、利用者・権限・template・worker 再開の method、error と abort の正負例を本節で確定する。HTTP schema を本節へ再掲しない。
+| method | API結合key |
+|---|---|
+| `login(params,body,options)` | login |
+| `logout(params,body,options)` | logout |
+| `passwordChange(params,body,options)` | passwordChange |
+| `projectsList(params,body,options)` | projectsList |
+| `projectPut(params,body,options)` | projectPut |
+| `workersList(params,body,options)` | workersList |
+| `workerPut(params,body,options)` | workerPut |
+| `targetsList(params,body,options)` | targetsList |
+| `targetPut(params,body,options)` | targetPut |
+| `usersList(params,body,options)` | usersList |
+| `userPut(params,body,options)` | userPut |
+| `servicesList(params,body,options)` | servicesList |
+| `servicePut(params,body,options)` | servicePut |
+| `definitionsList(params,body,options)` | definitionsList |
+| `definitionPut(params,body,options)` | definitionPut |
+| `templatesList(params,body,options)` | templatesList |
+| `templatePut(params,body,options)` | templatePut |
+| `environmentsList(params,body,options)` | environmentsList |
+| `environmentPut(params,body,options)` | environmentPut |
+| `grantsList(params,body,options)` | grantsList |
+| `grantPut(params,body,options)` | grantPut |
+| `secretPut(params,body,options)` | secretPut |
+| `secretsList(params,body,options)` | secretsList |
+| `workerDrain(params,body,options)` | workerDrain |
+| `workerResume(params,body,options)` | workerResume |
+| `plan(params,body,options)` | plan |
+| `runStart(params,body,options)` | runStart |
+| `runsList(params,body,options)` | runsList |
+| `runGet(params,body,options)` | runGet |
+| `runRetry(params,body,options)` | runRetry |
+| `runResume(params,body,options)` | runResume |
+| `runCancel(params,body,options)` | runCancel |
+| `logsGet(params,body,options)` | logsGet |
+| `artifactsList(params,body,options)` | artifactsList |
+| `artifactGet(params,body,options)` | artifactGet |
+| `artifactDownload(params,body,options)` | artifactDownload |
+| `artifactCompare(params,body,options)` | artifactCompare |
+| `artifactPin(params,body,options)` | artifactPin |
+| `cachesList(params,body,options)` | cachesList |
+| `cacheDelete(params,body,options)` | cacheDelete |
+| `environmentStatus(params,body,options)` | environmentStatus |
+| `deploymentPlan(params,body,options)` | deploymentPlan |
+| `deploymentStart(params,body,options)` | deploymentStart |
+| `deploymentsList(params,body,options)` | deploymentsList |
+| `deploymentGet(params,body,options)` | deploymentGet |
+| `deploymentApprove(params,body,options)` | deploymentApprove |
+| `deploymentReject(params,body,options)` | deploymentReject |
+| `deploymentCancel(params,body,options)` | deploymentCancel |
+| `deploymentRollback(params,body,options)` | deploymentRollback |
+| `deploymentReconcile(params,body,options)` | deploymentReconcile |
+| `operationGet(params,body,options)` | operationGet |
+| `metricsGet(params,body,options)` | metricsGet |
+| `auditsList(params,body,options)` | auditsList |
 
-検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+mutationはOperationResultをそのままdataに保ち、one_timeをcacheしない。UI/CLIはoperation.stateとresult=nullを明示判定する。login成功時だけ返却tokenをmemoryへ設定し、logoutは失敗時もローカルtokenを破棄する。secret/service token/user初期passwordは呼出元へ1回だけ返し、consoleやevent payloadへ転載しない。SDKはpolling/状態変更の自動再送を内蔵しない。UIがoperationGetで完了確認する。downloadのbyte連結とdigest検証はcaller責務でありbase64文字列連結を行わない。Deno標準runtimeでcheckとnative fetch fakeによる全method wire比較を行う。検証接続は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
 
 SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を参照する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務は SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 

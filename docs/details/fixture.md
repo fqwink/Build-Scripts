@@ -1,36 +1,59 @@
 # Adlaire CI — Fixture 詳細仕様
 
 <a id="phase-19-cicd-evidence-contract"></a>
-**Phase 19 内製 CI/CD 検証策定契約：**
+**Phase 19 実行型fixture・完了判定契約：**
 
-本節は fixture 証跡責務として、Phase 19 の受け入れ設計を所有する。対象の現在状態は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope)、owner 詳細本文への入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 owner 対応](../DETAIL_INDEX.md#phase-19-owner-route) を参照する。以下は fixture を詳細化する対象であり、実在 fixture、実行済み結果、既存 Phase の closure record ではない。
+本節はfixture証跡責務。機能の処理値はowner詳細本文を参照し、本節はoracle/入力生成/記録を所有する。仕様策定時のdocument検査と、将来の製品実装検証を混同しない。責務入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 DETAIL_INDEX](../DETAIL_INDEX.md#phase-19-owner-route)。
 
-| 設計 case | 入力 / 操作 | 必要な oracle と異常系 |
-|-----------|-------------|-------------------------|
-| `P19-PLAN` | 未知 key、型違反、重複 ID、循環、未登録 executor、展開超過を含む計画生成。 | 正規化結果と拒否位置を比較し、job / 配備 / 承認消費の副作用がないことを確認する。 |
-| `P19-EVENT` | 同一イベントの再送、時刻境界、path 取得失敗、古い queue の集約。 | run と要求識別子を照合し、二重受付と「取得不能を変更なし」の誤判定を検出する。 |
-| `P19-DAG` | 必須 / optional 依存、matrix、上限、fail-fast を組み合わせる。 | 起動順・非起動集合・最大同時数を観測し、集約文字列だけで判定しない。 |
-| `P19-RETRY` | 一時失敗、恒久失敗、上限到達、再起動後の再開。 | source / 定義 / 成果物の同一性、attempt の区別、再利用した完了 job の実体を照合する。 |
-| `P19-CANCEL` | queue と実行中の取消、子 process、停止無視、cleanup 失敗。 | process tree の終了・待機・log drain・残存 file を確認し、state flag の変更だけを成功にしない。 |
-| `P19-WORKER` | drain、切断、lease 失効、再割当後の古い結果。 | 現行割当だけが結果を commit し、遅延した worker が状態を上書きできないことを確認する。 |
-| `P19-ISOLATION` | capability 不足、CPU / memory / disk / process / output 超過、禁止通信。 | 起動拒否と各制限の実効性を分けて観測する。別 job の workspace・secret を参照できないことを確認する。 |
-| `P19-CACHE` | 条件変更、別 project、改竄 entry、同時書込、TTL / 容量回収。 | key と保存 bytes を照合し、誤 hit、secret 混入、使用中 entry の削除を検出する。 |
-| `P19-ARTIFACT` | 登録、再取得、展開、比較、配備と GC の競合。 | digest・展開 bytes・pin 集合を照合し、traversal と復旧対象消失を検出する。 |
-| `P19-APPROVAL` | 対象変更、期限切れ、同一人物の複数 token、権限失効。 | 承認無効化と配備非開始を確認し、画面上の button 制御だけで判定しない。 |
-| `P19-DEPLOY` | 古い通常配備、明示 rollback、段階失敗、切替失敗、health 不良。 | 配備先の file digest、通信先、環境世代、復元先を観測し、受付と実体復旧の成功を区別する。 |
-| `P19-DURABILITY` | 必須 write / fsync の各失敗点、process crash、容量不足。 | 再起動後の状態・外部副作用・保護参照を比較し、二重 commit、誤成功、推測復旧を検出する。 |
-| `P19-ACCESS` | 別 project の ID、role / environment grant 不足、利用上限到達。 | API / SDK / UI / CLI の結果と副作用非発生を対応付け、log / artifact / 統計の越境を検出する。 |
-| `P19-LOG-UI` | 大量 log、secret 境界分割、欠落 cursor、view 切替後の遅延応答。 | 保存前 mask、保持量、cursor、表示対象、poll 停止を実測する。メモリ無制限の実装を短い log の成功で許可しない。 |
-| `P19-RELEASE` | 正常署名、未知鍵、改竄 manifest / asset、SBOM 不一致、旧版更新。 | 独立 test vector と再取得 bytes を比較し、検証未実行の真値化と cohort 混在を検出する。 |
-| `P19-STATUS` | 古い attempt の遅延通知、送信失敗、source / tested SHA 不一致。 | 通知先・順序と実行結果を照合し、製品通知を開発 required check と混同しない。 |
+<a id="phase-19-fixture-layout"></a>
+**正式root / artifact：** 実装時に `testdata/phase19/inhouse-cicd/` を作り、rootに `manifest.json`、各case IDのlowercase directory（例 `p19-plan/`）に `input.json`, `fake.json`, `expected.json`, `effects.json`, `security_expected.json` を配置する。これらは現時点で未作成、実在を索引へ偽記載しない。harnessは既存 `main_test.go`、owner testは既存 `components/<owner>/<owner>_test.go`、SDK/UI Deno test driverは既存root Go testからtemporaryへ抽出してDenoで実行する。owner package6個目のGo fileやPhase専用仕様書を作らない。
 
-**現行経路からの再検証対象：** [`components/api/api.go`](../../components/api/api.go) の `handleHistoryPath` における rollback 受付と、[`components/runner/runner.go`](../../components/runner/runner.go) の `runPipeline` における stdout / stderr 保持を上記 `P19-DEPLOY` / `P19-LOG-UI` へ接続する。前者は復元前の成功記録、後者は終了後 trim の前に全量保持する経路を source 読取で確認した対象であり、今回実装修正・実行検証をした記録ではない。既存 gate の成功だけでこれらの受け入れを満たしたとしない。
+manifest schemaは `{schema_version:1,profile:"cicd-v1",cases:[{id,owner,contract_ref,input_sha256,fake_sha256,expected_sha256,effects_sha256,security_expected_sha256,assertions:string[],mutations:string[],race_triggers:string[]}]}`。16caseを下表順、unknown/duplicate/missing/hash差はharness起動前fail。contract_refはowner正本anchor、hashは実file bytesから再導出する。expectedをproduction出力から生成して一致させない。
 
-case ごとに、正常、上下限、部分失敗、cleanup 失敗、再開、並行 interleaving を対象 owner の固定値へ結び付ける。各制御を除去・反転した mutation が対応 oracle で失敗すること、失敗箇所を識別する diagnostics、fixture 自体の正例・負例を用意する。定数の success counter を closure の oracle として代用しない。
+input.json=`{schema_version:1,case_id,variants:[{id,initial_root:Root,requests:[{operation_id,params,body}],advance_ms:int[],faults:[{boundary,call:int(1,2147483647),result:"error"|"crash"|"timeout"}]}]}`。
+fake.json=`{clock_start:"2026-01-01T00:00:00Z",entropy_hex:string,github:[{method,path,status,body}],transport:[{peer,frame,result}],filesystem:[{boundary,call,result}],process:[{argv,exit,stdout_base64,stderr_base64,ignore_term:bool}]}`。全fakeは呼出順と残未使用入力を検査し、未登録呼出を成功させない。clock/sleep/entropy/network/process/fs adapterをproduction入口へ注入する。testが本番処理をコピーして代替しない。
 
-本番同等の環境選定・故障注入範囲は [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 19 検証](production-validation.md#phase-19-production-validation-contract)、共通証跡形式は [test evidence package 記録先固定契約](#test-evidence-package-record-location-contract)、[test gap inventory record 固定契約](#test-gap-inventory-record-contract)、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) を参照する。開発 Actions の定義・実行証跡は [開発 Actions 証跡固定契約](#development-actions-evidence-contract) へ接続し、製品側実行証跡と分ける。
+expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,trace:[{kind,target,at_ms}],diagnostics:string[]}]}`、effects.json=`{variants:[{id,files:[{path,sha256,mode}],absent_paths:string[],max_parallel:int,remaining_processes:int}]}`、security_expected.json=`{variants:[{id,forbidden_bytes_base64:string[],forbidden_paths:string[],denied_operations:string[]}]}`。全object key必須、unknown/duplicate拒否、配列順を比較し、Rootだけ時刻/乱数をfake値へ結び付ける。秘密scanはstdout/stderr/state/log/cache/artifact/notification/診断の全bytesを対象にし、暗号ciphertext中の偶然一致はplain leakと誤判定しない（secret markerは固定32byte以上のtest値）。
 
-**詳細化を残す判断対象：** 正式 fixture root、manifest、各 input / fake / expected / effects / security expected、assertion ID、test artifact / checker 実行入口、mutation 集合、race trigger、実機能力不足時の record、required workflow / job / gate、記録先と閉包条件を本節で固定する。新 fixture / checker / workflow は今回作成せず、既存 Phase 12 から Phase 18 の記録を Phase 19 の実行証跡へ転用しない。
+全caseは `normal` / `lower-bound` / `upper-bound` / `fault` / `restart` / `concurrent` の6variantを必須とする。境界はownerの最小値-1/最小値/最大値/最大値+1をそれぞれ有効性と副作用で検査する。faultは下表の異常入力、restartはdurable claim前/後・外部effect前/後・terminal commit前/後の6停止点、concurrentは同一資源2要求をbarrierで前後両順へ制御する。timing sleepだけのrace再現は禁止。各variantのassertion IDは `CASE/VARIANT/{response,state,effects,security}` の4個（計384）とし、下表oracleをこの4面へ接続する。
+
+| case | owner | 固定入力・故障 | oracle | 必須mutation |
+|---|---|---|---|---|
+| P19-PLAN | runner | 不正schema/未知key/入力型/duplicate ID/cycle/257展開 | P19_SCHEMA/P19_DAG/P19_MATRIX、process0、approval消費0 | DAG循環検査を除去 |
+| P19-EVENT | runner | 同一watch2回/anchor境界/clock逆行/tree取得失敗/coalescing | run1件、cursor不変on失敗、assignedは取消されない | event_key照合を除去 |
+| P19-DAG | runner | A→B、optional C失敗、matrix 2x2、parallel=2、fail-fast | BはA終端後、同時<=2、optionalはrun失敗へ反転しない | required依存判定を反転 |
+| P19-RETRY | runner | transport失敗2回/恒久失敗/attempt上限/resume digest不一致 | try列1,2,3、待機1,2秒、恒久retry0、旧attempt不変 | retry分類を全error許可 |
+| P19-CANCEL | runner | queued cancel/TERM無視child/cleanup失敗 | KILL後Wait/残存0でのみcancelled、不明はrecovery_required | process Waitを除去 |
+| P19-WORKER | runner | drain/lease30秒境界/旧世代result/EOF | 新割当0、期限後commit拒否、slot再利用前照合 | lease_generation照合を除去 |
+| P19-ISOLATION | setup | host sentinel/network/exec/readonly/memory/disk/tasks/output上限 | 各禁止操作失敗、上限停止、child残存0、未能力はP19_CAPABILITY | sandbox propertyを1項ずつ除去 |
+| P19-CACHE | runner | 別project/secretあり/同key異bytes/TTL境界/in_use GC競合 | 越境hit0、secret指定拒否、破損miss、pin中削除0 | keyからprojectを除去 |
+| P19-ARTIFACT | archive | tar traversal/link/重複/size超過/digest改竄/pinとGC | 展開外write0、全file比較、deleting新pin拒否 | pin検査を除去 |
+| P19-APPROVAL | security | 本人/同user別token/3600秒境界/失効/plan変更 | 人数増加なし、期限now>=expires拒否、配備起動0 | plan_digest照合を除去 |
+| P19-DEPLOY | runner | 全3strategy/古い世代/部分切替/health不良/返信消失 | file/Route世代/旧digest実復元、finalize後stable一致、query前再送0、不明blocked | health後終端条件を除去 |
+| P19-DURABILITY | statefile | 全write/fsync/rename前後crash/容量/Head改竄 | precommit Head不変、postrename不確定、保護参照不変 | directory fsyncを除去 |
+| P19-ACCESS | security | 全role×operation/他project/期限/quota/token失効 | 403と副作用0、資格情報projection0、quota超過拒否 | scope照合を除去 |
+| P19-LOG-UI | ui | secret全byte境界/17MiB出力/cursor410/遅延response | 保存mask前leak0、ring<=1MiB、旧view更新0、poll停止 | mask chunk保留を除去 |
+| P19-RELEASE | release | 独立build/署名既知値/鍵失効/manifest改竄/cohort混在 | 10checksum/12assets、tamper全拒否、old cohort維持 | signature Verifyを除去 |
+| P19-STATUS | commitstatus | 旧attempt遅延/送信timeout/通知disabled/SHA違い | 旧結果送信0、実行結果不変、Actions証跡へ流用0 | 最新attempt照合を除去 |
+
+**fault / fakeの閉じた入力：** boundaryは `state.open/write/fsync-file/rename/fsync-directory/read-head/read-snapshot`、`archive.header/read/write/publish/gc`、`worker.assign/start/heartbeat/result/cleanup`、`site.stage/switch/finalize/health/query/restore`、`http.request/response`、`log.mask/flush/read` だけ。callは同boundaryの1始まり累積呼出回数、未知名/未消費指定はtest失敗。advance_msは0〜7200000の非負値で順にfake clockだけを進める。entropy_hexは64hex seed、fake entropyはSHA256(seed bytes || uint64 big-endian counter)をcounter0から連結し必要長だけ返す。production crypto/randを置換するのはtest injection内だけ。process.argvはrunner exact argvのplaceholderをfixture identityで置換した配列、未登録argvは即test失敗。stateful network/site fakeは必ず前request後のRouteとfile bytesを更新し、常時成功応答を返すだけのfakeは禁止する。
+
+**補助固定vector：** canonical JSONは `{"b":2,"a":1}` → `{"a":1,"b":2}`、duplicate keyは拒否。matrix {os:[linux,other],v:[1,2]}はaxis ASCII順で4tuple、exclude={v:2}で2tuple。leaseはnow=untilで失効、approvalもnow=expiresで失効。freezeはfrom含む/until含まない。AES-GCMは [Go標準AEAD仕様](https://pkg.go.dev/crypto/cipher#NewGCM) のencrypt/decryptに加えkey/nonce/AAD/tag各1bit反転の拒否、Ed25519は [RFC8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032#section-7.1) のTEST1〜3を独立既知値として取り込み、公開鍵/署名/message改竄を拒否する。既知値は実装出力で再生成しない。
+
+<a id="phase-19-checker-entry"></a>
+**checker / workflow：**
+
+実装時のchecker入口は `go test ./... -run TestPhase19InhouseCICDEvidence -count=1`。内部subtest名はcase ID/variant/assertion、全384 assertionを実体観測し、件数定数だけでpassを出さない。mutationは表の各制御を1つずつ除去して同じ入口を走らせ、oracleがfailすること、未適用/compile failureをkilled扱いしない。isolation propertyは各property1mutation、最低16ではなく実selection件数を記録しsurvived=0を要求する。
+
+race triggerは同run cancel/terminal、lease renew/expiry/result、pin/GC、cache publish、environment CAS、approve/revoke、Head update、log read/trimの8組。各組のbarrier全順列を `TestPhase19InhouseCICDRace` で実行し、`go test -race ./... -run TestPhase19InhouseCICDRace -count=10`、race detectorなしで代用しない。test自身も乱数seed/clock/env/tempdirをcaseごと独立、network fakeへ隔離、全process cleanupをt.Cleanupで確認する。
+
+将来のworkflow pathは `.github/workflows/phase19-inhouse-cicd.yml`、workflow名phase19-inhouse-cicd、pull_request opened/synchronize/reopened/ready_for_review + main push + workflow_dispatch。contents:readのみ、secret不要、外部Action0、Node0、既存development-ci.shのverified Go/Deno bootstrapを使用する。PR concurrencyはworkflow+PRでcancel-in-progress=true。checkoutは既存workflowと同じsource/base/tested SHA検証付きnative Git、最後にalways cleanup。
+
+jobsは `spec`（ubuntu-24.04、10分、TestPhase19SpecificationContracts）、`unit`（30分、go test ./... -count=1）、`fixture`（30分、上記Evidence入口）、`race`（30分、上記race入口）、`sandbox`（承認済self-hosted Linux amd64専用一時環境、30分、TestPhase19SandboxAcceptance）、`required-gate`（ubuntu-24.04、10分、always/needs全5job、skip含め全successのみ成功）。sandbox runnerはfork/untrusted PRへ割当禁止、scope不足は正式未実行。Deno testはunit内で実行し欠落時skipでgateを通さない。これは将来の定義契約で、今回workflowを作成・実行・required protection設定しない。
+
+証跡は既存 [`docs/details/fixture.md` fixture証跡責務 test evidence package](#test-evidence-package-record-location-contract)、[`docs/details/fixture.md` fixture証跡責務 gap inventory](#test-gap-inventory-record-contract)、[`docs/details/fixture.md` fixture証跡責務 18 record closure set](#test-verification-closure-record-set-contract)、[`docs/details/fixture.md` fixture証跡責務 開発Actions証跡](#development-actions-evidence-contract) のschemaへ接続する。Phase19用package idは `phase19-inhouse-cicd`、recordはPR VerificationとActions job log、runtime巨大出力はworkflow temporary外部成果物へ保存しrepo履歴artifactを追加しない。gap_id=case/variant、mutation selection/race trigger/skip/能力不足も同packageへ接続する。
+
+Phase実装完了は全16case/96variant/384assertion、mutation survived0、race open0、required job未実行0、production-validation必須session成功、全API/SDK/UI/CLI対応、実装状態索引一致、未解消0が揃った場合だけ。本仕様策定PRの検査成功をこの機能実装証跡へ代用しない。既存handleHistoryPath rollbackの実体復元前成功、runPipelineの終了後trimはP19-DEPLOY/P19-LOG-UIの修正対象として実装時に再検証し、今回は修正済みと報告しない。
 
 [`docs/details/fixture.md`](fixture.md) は、[`docs/SPEC.md` 責務文書構成](../SPEC.md#document-responsibility-map) で割り当てられた fixture 証跡責務として、fixture 入力、expected、fake、effects、assertion、実装検証証跡、acceptance checklist、差し戻し条件だけを扱う。owner / collaborator 境界は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) を参照し、owner component 別詳細本文を再定義しない。
 

@@ -1,22 +1,23 @@
 # Adlaire CI — Release 詳細仕様
 
 <a id="phase-19-release-contract"></a>
-**Phase 19 Release 検証策定契約：**
+**Phase 19 署名付きRelease profile：**
 
-本節の owner は `release` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。利用者 build の配備制御は [`docs/details/runner.md` 詳細本文責務 配備・承認・復旧](runner.md#phase-19-deployment-contract)、配布物受入は [`docs/details/setup.md` 詳細本文責務 Phase 19 環境受け入れ](setup.md#phase-19-setup-contract) が所有する。
+ownerは `release`、実装主体は [components/release/](../../components/release/)。[`docs/SPEC.md` 方針・ポリシー責務 SPEC 適用profile](../SPEC.md#policy-inhouse-cicd) に従い、本節の `cicd-v1` だけを拡張する。本書R1〜R7の既存9 asset / 8 checksum行は `legacy-v1` の契約とする。build option、7binaryの名前、admin archive内容、公開tag形式、draft補償は既存契約を参照し、次の差分以外を変えない。
 
-| 検証対象 | 生成・検証の設計境界 |
-|----------|----------------------|
-| provenance | source commit、source snapshot、展開済み定義 digest、toolchain / OS / arch、build option、生成 artifact digest を結び付ける。実行していない build の情報を既存 record から合成しない。 |
-| 署名 | 信頼済み公開鍵の選定と署名対象 bytes を分離する。取得した artifact と同じ未信頼経路から鍵を受け取っただけで信頼済みにしない。Go 標準ライブラリの Ed25519 を `STD` の詳細化対象とし、鍵 ID、domain separation、canonical bytes、失効・更新・署名なし旧版の扱いを固定する。 |
-| SBOM | 実際に用いた source / module / toolchain / 同梱 file を収集し、artifact digest と対応付ける。外部 module がないことを理由に空の成功 record を作らない。出力形式と必須項目を確定するまでは SPDX / CycloneDX 対応を名乗らない。 |
-| 再現性 | 固定 source と build 入力から独立に生成した artifact bytes を比較する。時刻・署名・実行 ID を含む検証 record と比較対象の実行バイナリを区別する。既存 [R4 ビルド・再現性固定契約](#release-build-contract) に接続する。 |
-| 公開前照合 | 実際に upload した全対象を再取得し、digest、署名、SBOM と provenance の artifact 対応を照合する。検証不一致または必須検証不能なら公開しない。 |
-| stable-release 接続 | 検証済み Release identity と固定 asset digest を返す。source branch の最新値や可変な表示名だけで本番配備対象を選ばない。環境昇格判断を release owner へ移さない。 |
+**入力：** 既存R1 exact argvへ `--profile cicd-v1 --signing-key-file ABS --source-date-epoch N` を追加する。profile省略はlegacy-v1、legacyで追加2optionは禁止。Nは指定commitのcommitter UTC Unix秒と完全一致、非負整数。signing-key-fileはcheckout外regular0600、parent0700、owner一致、JSON `{schema_version:1,seed:base64}`（decoded32 bytes）、最大4096 bytes。key_idは対応Ed25519 public key32 bytesのSHA256。seedをログ/環境/assetに出さない。新依存はなくGo crypto/ed25519を使用する。
 
-**詳細化を残す判断対象：** provenance / SBOM / signature の全 schema と exact asset 名、署名対象の exact bytes、checksum 対象集合と自己参照の排除、鍵の導入・失効・rollback、asset 数と checksum 行数、公開失敗時の補償、固定 error を本節で閉じる。[R3 Release asset 固定契約](#release-asset-contract) から [R7 受け入れ条件](#release-acceptance-contract) と setup の受け入れ集合を同時に改訂するまで、現行 asset 一覧へ追加 asset を生成・公開しない。
+**asset閉集合：** 既存7binary + admin archive + `SHA256SUMS` + `provenance.json` + `sbom.json` + `release-signature.json` =12。checksumはpayload8 + provenance + SBOMの10行、file名byte昇順、既存行形式。SHA256SUMSとsignature自身はchecksum対象外。signatureがmanifest全bytesを署名するため自己参照を作らない。
 
-検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+**provenance schema：** `{schema_version:1,profile:"cicd-v1",repository:string,tag:string,commit:SHA,source_date_epoch:int,go_version:string,goos:"linux",goarch:"amd64",cgo_enabled:false,build_args:string[],source_files:[{path:RelPath,sha256:Digest}],artifacts:[{name:string,sha256:Digest,size:int}]}`。source_filesは実buildに使用したGit管理source全件（.git除く、dirty/untrackedがbuild対象にあれば拒否）をpath順。artifactsはpayload8だけname順、空配列禁止。入力と実際のbuildtoolchainを照合し、異なる実行の情報を合成しない。
+
+**SBOM schema：** `{schema_version:1,format:"adlaire-native-v1",commit:SHA,toolchain:{name:"go",version:string},modules:[{path:string,version:null|string,kind:"main"|"stdlib"}],files:[{asset:string,path:string,sha256:Digest}]}`。modulesはgo.modのmainと実toolchain stdlib、外部require/replaceは拒否。filesはbinary7 + admin archive内全file（asset名、archive相対path）をasset,path順。binaryのpathはbasename。空成功不可、provenanceとのdigest不一致は拒否。SPDX/CycloneDX/SLSA適合や脆弱性不存在を名乗らない。
+
+**signature schema / bytes：** `{schema_version:1,algorithm:"Ed25519",key_id:Digest,tag:string,commit:SHA,manifest_sha256:Digest,signature:base64}`。署名対象はUTF-8 `"adlaire-ci-release-v1\n"+tag+"\n"+commit+"\n"` にSHA256SUMSのraw bytesを連結したもの。Ed25519通常署名（prehash/contextなし）、signature decoded64 bytes。JSON3種はstatefile canonical bytes +末尾LF1個を出力し、signature bytesはJSONの並び順へ依存させない。SHA256はfileの末尾LFも含む。署名時刻を含めない。
+
+固定source/toolchain/epochで独立2buildしpayload8/provenance/SBOM/manifestがbyte一致することを要求する。同じseedの署名も一致確認する。実行ID/検証時刻はPR証跡だけに置きassetへ混入しない。公開は全12asset upload→全件再取得→count/size/hash/署名/JSON cross-reference照合→draft解除の順。途中失敗は既存draft補償を実施し、delete失敗を別errorで記録、公開成功にしない。既存同tagを上書きしない。
+
+生成側の検証errorは [`docs/details/api.md` 詳細本文責務 API error catalog](api.md#phase-19-error-catalog) のP19_SIGNATURE/P19_DIGEST/P19_SCHEMA/P19_TRANSPORT、CLI exitは既存release終了値へ対応させる。trust root・旧版受入・失効は [`docs/details/setup.md` 詳細本文責務 setup受入正本](setup.md#phase-19-setup-contract)、暗号既知値と再現性fixtureは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) へ接続する。Ed25519の方式確認は [RFC8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032#section-7.1) を使用し、独自署名algorithmを実装しない。
 
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。Release の作成条件、バージョン体系、標準 OS/arch は [`docs/SPEC.md` ポリシー責務 §1 GitHub リリースポリシー](../SPEC.md#github-リリースポリシー)、asset の受け入れと配置は [`docs/details/setup.md`](setup.md)、admin archive の内容は [`docs/details/admin.md`](admin.md)、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
