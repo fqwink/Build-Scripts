@@ -51,6 +51,15 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 		from string
 		to   string
 	}{
+		{"invalid-arity", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "int(1)"`},
+		{"reversed-range", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "int(16,1)"`},
+		{"unknown-function", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "execute(1,16)"`},
+		{"duplicate-json-key", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "int(1,16)", "parallel": "int(1,16)"`},
+		{"duplicate-enum", "docs/details/statefile.md", `enum(builder)`, `enum(builder,builder)`},
+		{"recursive-type", "docs/details/statefile.md", `"Id": "id"`, `"Id": "Id"`},
+		{"environment-key-type", "docs/details/statefile.md", `"env": "envmap(EnvValue,0,64)"`, `"env": "map(EnvValue,0,64)"`},
+		{"site-atomic-state", "docs/details/statefile.md", `"counters": "SiteCounters"`, `"wrong_counters": "SiteCounters"`},
+		{"roadmap-inventory-state", "docs/ROADMAP.md", "| 仕様化済み・未実装 | CI / CD | Phase 19", "| 改訂予定 | CI / CD | Phase 19"},
 		{"unknown-type", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "MissingType"`},
 		{"missing-sdk", "docs/details/sdk.md", "| `runStart(params,body,options)` |", "| `missing(params,body,options)` |"},
 		{"missing-ui", "docs/details/ui.md", "| runStart |", "| missing |"},
@@ -74,6 +83,133 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 	}
 }
 
+func phase19SchemaReferences(expression string, types map[string]json.RawMessage) ([]string, error) {
+	tokens := regexp.MustCompile("[A-Za-z][A-Za-z0-9_.-]*|-?[0-9]+|[(),]").FindAllString(expression, -1)
+	if strings.Join(tokens, "") != expression || len(tokens) == 0 {
+		return nil, fmt.Errorf("invalid schema syntax %q", expression)
+	}
+	position := 0
+	take := func() string {
+		if position >= len(tokens) {
+			return ""
+		}
+		value := tokens[position]
+		position++
+		return value
+	}
+	require := func(want string) error {
+		if got := take(); got != want {
+			return fmt.Errorf("expected %q, got %q in %s", want, got, expression)
+		}
+		return nil
+	}
+	number := func() (int64, error) {
+		token := take()
+		value, err := strconv.ParseInt(token, 10, 64)
+		if err != nil || value < -9007199254740991 || value > 9007199254740991 || strconv.FormatInt(value, 10) != token {
+			return 0, fmt.Errorf("invalid schema integer %q", token)
+		}
+		return value, nil
+	}
+	atoms := map[string]bool{"id": true, "jobid": true, "digest": true, "sha": true, "utc": true,
+		"relpath": true, "abspath": true, "glob": true, "ref": true, "url": true,
+		"scalar": true, "base64": true, "bool": true}
+	references := []string{}
+	var parse func(int) error
+	parse = func(depth int) error {
+		if depth > 32 {
+			return fmt.Errorf("schema nesting too deep")
+		}
+		name := take()
+		if atoms[name] {
+			return nil
+		}
+		if types[name] != nil {
+			references = append(references, name)
+			return nil
+		}
+		if err := require("("); err != nil {
+			return fmt.Errorf("unknown schema type/function %q: %w", name, err)
+		}
+		switch name {
+		case "nullable", "list", "map", "envmap":
+			if err := parse(depth + 1); err != nil {
+				return err
+			}
+			if name != "nullable" {
+				if err := require(","); err != nil {
+					return err
+				}
+				minimum, err := number()
+				if err != nil {
+					return err
+				}
+				if err := require(","); err != nil {
+					return err
+				}
+				maximum, err := number()
+				if err != nil || minimum < 0 || maximum < minimum {
+					return fmt.Errorf("invalid schema collection range")
+				}
+			}
+		case "int", "text":
+			minimum, err := number()
+			if err != nil {
+				return err
+			}
+			if err := require(","); err != nil {
+				return err
+			}
+			maximum, err := number()
+			if err != nil || maximum < minimum || (name == "text" && minimum < 0) {
+				return fmt.Errorf("invalid schema scalar range")
+			}
+		case "oneof", "enum":
+			seen := map[string]bool{}
+			for {
+				start := position
+				if name == "oneof" {
+					if err := parse(depth + 1); err != nil {
+						return err
+					}
+				} else if !regexp.MustCompile("^[A-Za-z][A-Za-z0-9_.-]*$").MatchString(take()) {
+					return fmt.Errorf("invalid enum value")
+				}
+				value := strings.Join(tokens[start:position], "")
+				if seen[value] {
+					return fmt.Errorf("duplicate schema alternative %s", value)
+				}
+				seen[value] = true
+				if position >= len(tokens) || tokens[position] != "," {
+					break
+				}
+				position++
+			}
+			if name == "oneof" && len(seen) < 2 {
+				return fmt.Errorf("oneof requires two alternatives")
+			}
+		case "legacy":
+			if name := take(); name != "AdminCredentials" && name != "TOTPSecret" {
+				return fmt.Errorf("unknown legacy type")
+			}
+		case "const":
+			if value := take(); value != "1" && value != "false" {
+				return fmt.Errorf("unsupported schema constant")
+			}
+		default:
+			return fmt.Errorf("unknown schema function %s", name)
+		}
+		return require(")")
+	}
+	if err := parse(0); err != nil {
+		return nil, err
+	}
+	if position != len(tokens) {
+		return nil, fmt.Errorf("trailing schema tokens in %s", expression)
+	}
+	return references, nil
+}
+
 func phase19ValidateSpecification(documents map[string]string) error {
 	for path, content := range documents {
 		anchors := regexp.MustCompile("<a id=\"(phase-19-[^\"]+)\"></a>").FindAllStringSubmatch(content, -1)
@@ -95,46 +231,74 @@ func phase19ValidateSpecification(documents map[string]string) error {
 		Profile       string                     `json:"profile"`
 		Types         map[string]json.RawMessage `json:"types"`
 	}
-	if err := json.Unmarshal([]byte(block[1]), &registry); err != nil {
+	if err := developmentActionsDecodeJSON([]byte(block[1]), &registry, 1048576, true); err != nil {
 		return fmt.Errorf("Phase 19 schema registry: %w", err)
 	}
-	if registry.SchemaVersion != 1 || registry.Profile != "cicd-v1" || len(registry.Types) != 79 {
+	if registry.SchemaVersion != 1 || registry.Profile != "cicd-v1" || len(registry.Types) != 82 {
 		return fmt.Errorf("Phase 19 registry identity or coverage invalid")
 	}
-	identifiers := regexp.MustCompile("[A-Za-z][A-Za-z0-9_]*")
-	builtins := map[string]bool{
-		"id": true, "jobid": true, "digest": true, "sha": true, "utc": true,
-		"relpath": true, "abspath": true, "glob": true, "ref": true,
-		"url": true, "scalar": true, "base64": true, "bool": true,
-		"nullable": true, "list": true, "map": true, "oneof": true,
-		"int": true, "text": true,
-	}
-	validateExpression := func(expression string) error {
-		cleaned := regexp.MustCompile("(enum|const|legacy)\\([^()]*\\)").ReplaceAllString(expression, "")
-		for _, identifier := range identifiers.FindAllString(cleaned, -1) {
-			if !builtins[identifier] && registry.Types[identifier] == nil {
-				return fmt.Errorf("unknown Phase 19 schema type %q", identifier)
-			}
-		}
-		return nil
-	}
+	dependencies := make(map[string][]string)
 	for name, raw := range registry.Types {
+		if !regexp.MustCompile("^[A-Za-z][A-Za-z0-9]*$").MatchString(name) {
+			return fmt.Errorf("invalid Phase 19 type name %s", name)
+		}
+		expressions := map[string]string{}
 		var alias string
 		if json.Unmarshal(raw, &alias) == nil {
-			if err := validateExpression(alias); err != nil {
-				return fmt.Errorf("%s: %w", name, err)
-			}
-			continue
-		}
-		var fields map[string]string
-		if err := json.Unmarshal(raw, &fields); err != nil || len(fields) == 0 {
+			expressions[name] = alias
+		} else if err := json.Unmarshal(raw, &expressions); err != nil || len(expressions) == 0 {
 			return fmt.Errorf("invalid Phase 19 object schema %s", name)
 		}
-		for field, expression := range fields {
-			if err := validateExpression(expression); err != nil {
+		for field, expression := range expressions {
+			refs, err := phase19SchemaReferences(expression, registry.Types)
+			if err != nil {
 				return fmt.Errorf("%s.%s: %w", name, field, err)
 			}
+			dependencies[name] = append(dependencies[name], refs...)
 		}
+	}
+	visiting, complete := map[string]bool{}, map[string]bool{}
+	var visit func(string) error
+	visit = func(name string) error {
+		if visiting[name] {
+			return fmt.Errorf("recursive Phase 19 schema %s", name)
+		}
+		if complete[name] {
+			return nil
+		}
+		visiting[name] = true
+		for _, dependency := range dependencies[name] {
+			if err := visit(dependency); err != nil {
+				return err
+			}
+		}
+		visiting[name], complete[name] = false, true
+		return nil
+	}
+	for name := range registry.Types {
+		if err := visit(name); err != nil {
+			return err
+		}
+	}
+	for name, fields := range map[string]map[string]string{
+		"Job":             {"env": "envmap(EnvValue,0,64)", "secrets": "envmap(SecretRef,0,16)"},
+		"PlannedJob":      {"env": "envmap(EnvValue,0,64)", "secrets": "envmap(SecretRef,0,16)"},
+		"SiteState":       {"route": "Route", "operations": "list(SiteOperation,0,1024)", "counters": "SiteCounters"},
+		"Root":            {"secrets": "list(SecretMeta,0,10000)"},
+		"WorkerExecution": {"job": "JobResult", "lease_generation": "int(1,9007199254740991)"},
+	} {
+		var actual map[string]string
+		if err := json.Unmarshal(registry.Types[name], &actual); err != nil {
+			return fmt.Errorf("required Phase 19 schema %s: %w", name, err)
+		}
+		for field, want := range fields {
+			if actual[field] != want {
+				return fmt.Errorf("Phase 19 %s.%s: want %s, got %s", name, field, want, actual[field])
+			}
+		}
+	}
+	if strings.Contains(documents["docs/ROADMAP.md"], "| 改訂予定 | CI / CD | Phase 19") {
+		return fmt.Errorf("Phase 19 inventory maturity contradicts phase plan")
 	}
 	api := documents["docs/details/api.md"]
 	section := strings.Split(api, "<a id=\"phase-19-error-catalog\"></a>")[0]

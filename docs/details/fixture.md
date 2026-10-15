@@ -13,7 +13,7 @@ manifest schemaは `{schema_version:1,profile:"cicd-v1",cases:[{id,owner,contrac
 input.json=`{schema_version:1,case_id,variants:[{id,initial_root:Root,requests:[{operation_id,params,body}],advance_ms:int[],faults:[{boundary,call:int(1,2147483647),result:"error"|"crash"|"timeout"}]}]}`。
 fake.json=`{clock_start:"2026-01-01T00:00:00Z",entropy_hex:string,github:[{method,path,status,body}],transport:[{peer,frame,result}],filesystem:[{boundary,call,result}],process:[{argv,exit,stdout_base64,stderr_base64,ignore_term:bool}]}`。全fakeは呼出順と残未使用入力を検査し、未登録呼出を成功させない。clock/sleep/entropy/network/process/fs adapterをproduction入口へ注入する。testが本番処理をコピーして代替しない。
 
-expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,trace:[{kind,target,at_ms}],diagnostics:string[]}]}`、effects.json=`{variants:[{id,files:[{path,sha256,mode}],absent_paths:string[],max_parallel:int,remaining_processes:int}]}`、security_expected.json=`{variants:[{id,forbidden_bytes_base64:string[],forbidden_paths:string[],denied_operations:string[]}]}`。全object key必須、unknown/duplicate拒否、配列順を比較し、Rootだけ時刻/乱数をfake値へ結び付ける。秘密scanはstdout/stderr/state/log/cache/artifact/notification/診断の全bytesを対象にし、暗号ciphertext中の偶然一致はplain leakと誤判定しない（secret markerは固定32byte以上のtest値）。
+expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,trace:[{kind,target,at_ms}],diagnostics:string[]}]}`、effects.json=`{variants:[{id,files:[{path,sha256,mode}],absent_paths:string[],max_parallel:int,remaining_processes:int}]}`、security_expected.json=`{variants:[{id,forbidden_bytes_base64:string[],forbidden_paths:string[],denied_operations:string[]}]}`。全object key必須、unknown/duplicate拒否、配列順を比較し、Rootだけ時刻/乱数をfake値へ結び付ける。秘密scanはstdout/stderr/state/log/cache/artifact/notification/診断の全bytesを対象にし、暗号ciphertext中の偶然一致はplain leakと誤判定しない（secret markerは固定32byte以上のtest値）。schema/JSON/IPCの追加oracleは15個のdocument負例に加え、metadata全長/offset/final digest、broker peer UIDとstage順、SiteState同時commit、PageEnvelopeのgeneration/byte分割、認証must_changeを各該当caseのnormal/fault/concurrentへ入力し、期待失敗codeと禁止副作用を比較する。
 
 全caseは `normal` / `lower-bound` / `upper-bound` / `fault` / `restart` / `concurrent` の6variantを必須とする。境界はownerの最小値-1/最小値/最大値/最大値+1をそれぞれ有効性と副作用で検査する。faultは下表の異常入力、restartはdurable claim前/後・外部effect前/後・terminal commit前/後の6停止点、concurrentは同一資源2要求をbarrierで前後両順へ制御する。timing sleepだけのrace再現は禁止。各variantのassertion IDは `CASE/VARIANT/{response,state,effects,security}` の4個（計384）とし、下表oracleをこの4面へ接続する。
 
@@ -24,24 +24,26 @@ expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,tra
 | P19-DAG | runner | A→B、optional C失敗、matrix 2x2、parallel=2、fail-fast | BはA終端後、同時<=2、optionalはrun失敗へ反転しない | required依存判定を反転 |
 | P19-RETRY | runner | transport失敗2回/恒久失敗/attempt上限/resume digest不一致 | try列1,2,3、待機1,2秒、恒久retry0、旧attempt不変 | retry分類を全error許可 |
 | P19-CANCEL | runner | queued cancel/TERM無視child/cleanup失敗 | KILL後Wait/残存0でのみcancelled、不明はrecovery_required | process Waitを除去 |
-| P19-WORKER | runner | drain/lease30秒境界/旧世代result/EOF | 新割当0、期限後commit拒否、slot再利用前照合 | lease_generation照合を除去 |
-| P19-ISOLATION | setup | host sentinel/network/exec/readonly/memory/disk/tasks/output上限 | 各禁止操作失敗、上限停止、child残存0、未能力はP19_CAPABILITY | sandbox propertyを1項ずつ除去 |
+| P19-WORKER | runner | drain/lease30秒境界/旧世代result/EOF/262144 byte frame境界/2 MiB metadata/4slot同時照会 | 新割当0、期限後commit拒否、slot再利用前照合 | lease_generation照合を除去 |
+| P19-ISOLATION | setup | host sentinel/network/exec/readonly/memory/disk/tasks/output上限/workerと他job UIDへのsignal/偽SO_PEERCRED | 各禁止操作失敗、上限停止、child残存0、未能力はP19_CAPABILITY | sandbox propertyを1項ずつ除去 |
 | P19-CACHE | runner | 別project/secretあり/同key異bytes/TTL境界/in_use GC競合 | 越境hit0、secret指定拒否、破損miss、pin中削除0 | keyからprojectを除去 |
 | P19-ARTIFACT | archive | tar traversal/link/重複/size超過/digest改竄/pinとGC | 展開外write0、全file比較、deleting新pin拒否 | pin検査を除去 |
 | P19-APPROVAL | security | 本人/同user別token/3600秒境界/失効/plan変更 | 人数増加なし、期限now>=expires拒否、配備起動0 | plan_digest照合を除去 |
-| P19-DEPLOY | runner | 全3strategy/古い世代/部分切替/health不良/返信消失 | file/Route世代/旧digest実復元、finalize後stable一致、query前再送0、不明blocked | health後終端条件を除去 |
+| P19-DEPLOY | runner | 全3strategy/古い世代/部分切替/health不良/返信消失/canary複数step/10秒窓境界/Routeと操作結果commit間crash | file/Route世代/旧digest実復元、finalize後stable一致、query前再送0、不明blocked | health後終端条件を除去 |
 | P19-DURABILITY | statefile | 全write/fsync/rename前後crash/容量/Head改竄 | precommit Head不変、postrename不確定、保護参照不変 | directory fsyncを除去 |
-| P19-ACCESS | security | 全role×operation/他project/期限/quota/token失効 | 403と副作用0、資格情報projection0、quota超過拒否 | scope照合を除去 |
-| P19-LOG-UI | ui | secret全byte境界/17MiB出力/cursor410/遅延response | 保存mask前leak0、ring<=1MiB、旧view更新0、poll停止 | mask chunk保留を除去 |
+| P19-ACCESS | security | 全role×operation/他project/期限/quota/token失効/UserInputへcredential混入/安全整数のgeneration/immutable revision+1 | 403と副作用0、資格情報projection0、quota超過拒否 | scope照合を除去 |
+| P19-LOG-UI | ui | secret全byte境界/17MiB出力/cursor410/遅延response | mask前の保存0/保存後のleak0、ring<=1MiB、旧view更新0、poll停止 | mask chunk保留を除去 |
 | P19-RELEASE | release | 独立build/署名既知値/鍵失効/manifest改竄/cohort混在 | 10checksum/12assets、tamper全拒否、old cohort維持 | signature Verifyを除去 |
 | P19-STATUS | commitstatus | 旧attempt遅延/送信timeout/通知disabled/SHA違い | 旧結果送信0、実行結果不変、Actions証跡へ流用0 | 最新attempt照合を除去 |
 
-**fault / fakeの閉じた入力：** boundaryは `state.open/write/fsync-file/rename/fsync-directory/read-head/read-snapshot`、`archive.header/read/write/publish/gc`、`worker.assign/start/heartbeat/result/cleanup`、`site.stage/switch/finalize/health/query/restore`、`http.request/response`、`log.mask/flush/read` だけ。callは同boundaryの1始まり累積呼出回数、未知名/未消費指定はtest失敗。advance_msは0〜7200000の非負値で順にfake clockだけを進める。entropy_hexは64hex seed、fake entropyはSHA256(seed bytes || uint64 big-endian counter)をcounter0から連結し必要長だけ返す。production crypto/randを置換するのはtest injection内だけ。process.argvはrunner exact argvのplaceholderをfixture identityで置換した配列、未登録argvは即test失敗。stateful network/site fakeは必ず前request後のRouteとfile bytesを更新し、常時成功応答を返すだけのfakeは禁止する。
+**fault / fakeの閉じた入力：** boundaryは `state.open/write/fsync-file/rename/fsync-directory/read-head/read-snapshot`、`archive.header/read/write/publish/gc`、`worker.assign/start/heartbeat/result/cleanup`、`site.stage/switch/finalize/health/query/restore`、`broker.peer/claim/unit-start/unit-wait/cleanup`、`http.request/response`、`log.mask/flush/read` だけ。callは同boundaryの1始まり累積呼出回数、未知名/未消費指定はtest失敗。advance_msは0〜7200000の非負値で順にfake clockだけを進める。entropy_hexは64hex seed、fake entropyはSHA256(seed bytes || uint64 big-endian counter)をcounter0から連結し必要長だけ返す。production crypto/randを置換するのはtest injection内だけ。process.argvはrunner exact argvのplaceholderをfixture identityで置換した配列、未登録argvは即test失敗。stateful network/site fakeは必ず前request後のRouteとfile bytesを更新し、常時成功応答を返すだけのfakeは禁止する。
 
 **補助固定vector：** canonical JSONは `{"b":2,"a":1}` → `{"a":1,"b":2}`、duplicate keyは拒否。matrix {os:[linux,other],v:[1,2]}はaxis ASCII順で4tuple、exclude={v:2}で2tuple。leaseはnow=untilで失効、approvalもnow=expiresで失効。freezeはfrom含む/until含まない。AES-GCMは [Go標準AEAD仕様](https://pkg.go.dev/crypto/cipher#NewGCM) のencrypt/decryptに加えkey/nonce/AAD/tag各1bit反転の拒否、Ed25519は [RFC8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032#section-7.1) のTEST1〜3を独立既知値として取り込み、公開鍵/署名/message改竄を拒否する。既知値は実装出力で再生成しない。
 
 <a id="phase-19-checker-entry"></a>
 **checker / workflow：**
+
+現時点の文書checker `TestPhase19SpecificationContracts` はregistryのstrict JSON/型式arity/range/参照cycle/環境map/atomic SiteState構造、53操作のSDK/UI/CLI接続、状態表の一致を検査する。negative controlは未知型、arity不足、逆転range、未知関数、duplicate JSON key/enum、型cycle、環境map差替、SiteState counter欠落、状態逆戻り、SDK/UI/CLI欠落、route/anchor重複。これらは文書入力の負例であり、製品runtimeのmutation成功件数へ加算しない。checker自体の常時成功化も隔離copyでコンパイル・実行し、負例testが失敗することを確認する。
 
 実装時のchecker入口は `go test ./... -run TestPhase19InhouseCICDEvidence -count=1`。内部subtest名はcase ID/variant/assertion、全384 assertionを実体観測し、件数定数だけでpassを出さない。mutationは表の各制御を1つずつ除去して同じ入口を走らせ、oracleがfailすること、未適用/compile failureをkilled扱いしない。isolation propertyは各property1mutation、最低16ではなく実selection件数を記録しsurvived=0を要求する。
 

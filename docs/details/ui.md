@@ -1,13 +1,14 @@
 # Adlaire CI — UI 詳細仕様
 
 <a id="phase-19-ui-contract"></a>
+
 **Phase 19 管理画面契約：**
 
 ownerは `ui`、実装artifactは [admin/index.html](../../admin/index.html)。すべての通信は [`docs/details/sdk.md` 詳細本文責務 SDK公開契約](sdk.md#phase-19-sdk-contract) を通し、直接fetch/HTTP/secret storageを追加しない。視覚値は [`docs/DESIGN.md` デザイン責務 DESIGN正本](../DESIGN.md#phase-19-admin-visual-contract)、型とエラーはAPI正本を参照する。
 
 navigationはprojects/runs/artifacts/environments/workers/access/operationsの7view。project選択は全view共通、切替時に古いview requestをabortしcursor/selection/confirmationを破棄する。権限のないactionは非表示、既に開いていたviewの403は表示を破棄し権限エラーへ移る。platform-adminのglobal viewとproject grantを混同しない。既存管理画面から「CI/CD」入口で切替え、legacy操作は別viewのまま残す。
 
-以下はDOM action IDとSDK methodの一対一対応。methodと同じoperation IDがjoin keyでありendpointを本書へ複製しない。list/getはviewのdata loader、mutationは同IDのbutton/form submit、login/logoutはsession操作とする。全IDに `data-cicd-action="operationID"` を付け、重複DOM ID禁止。
+以下はDOM action IDとSDK methodの一対一対応。methodと同じoperation IDがjoin keyでありendpointを本書へ複製しない。list/getはviewのdata loader、mutationは同IDのbutton/form submit、login/logoutはsession操作とする。Session.must_change=forcedではpasswordChange/logoutだけを表示し、変更成功時にloginへ戻す。promptでは変更案内だけを出し、強制として操作を止めない。全IDに `data-cicd-action="operationID"` を付け、重複DOM ID禁止。
 
 | SDK method | view | DOM ID |
 |---|---|---|
@@ -65,9 +66,9 @@ navigationはprojects/runs/artifacts/environments/workers/access/operationsの7v
 | metricsGet | operations | `cicd-metrics-get` |
 | auditsList | operations | `cicd-audits-list` |
 
-projectsはproject設定、definition/templateのJSON editor、入力型editor、plan DAG（table：job/needs/task/resources）、matrix展開結果を持つ。runsはqueue一覧/attempt切替/job状態/両stream log/再実行・再開・取消。artifactsはdigest一覧/pin/download/manifest差分/cache。environmentsは現在世代/digest/plan差分/承認/禁止時間帯/段階進捗/復旧。workersはhealth/lease/capability/drain/resumeとtarget登録。accessはuser/service/grant/secret version/quota。operationsは24h統計と監査。JSON editorはparse/schema errorのfield pathだけを表示しsecret本文をerrorへ載せない。入力の全必須値と既定値はschema正本へ接続し、未設定を隠れたdefaultで送らない。
+projectsはproject設定、definition/templateのJSON editor、入力型editor、plan DAG（table：job/needs/task/resources）、matrix展開結果を持つ。runsはqueue一覧/attempt切替/job状態/両stream log/再実行・再開・取消。artifactsはdigest一覧/pin/download/manifest差分/cache。environmentsは現在世代/digest/plan差分/承認/禁止時間帯/段階進捗/復旧。workersはhealth/lease/capability/drain/resumeとtarget登録。accessはuser/service/grant/secret version/quota。operationsは24h統計と監査。JSON editorのローカルJSON構文検査は固定「入力形式が不正です」だけを表示し、parserのraw messageを転記しない。schema検証の正本はAPIであり、server errorはAPIの固定message/codeだけを表示する（detailsが空の応答からfield pathを推測しない）。secret本文をerrorへ載せない。入力の全必須値と既定値はschema正本へ接続し、未設定を隠れたdefaultで送らない。
 
-**view state machine：** idle→loading→ready|empty|error|unauthenticated。mutationはready→submitting→accepted→polling→succeeded|failed|recovery_required。submitting応答はOperationResult.operationを採用し、result=nullなら対象GET/listで取得する。pollingはoperationGet、terminal確認後にaffected list/detail/環境statusを再取得するまで成功表示を確定しない。stale409は現在revisionとplanを再取得し入力内容を保持して差分表示、同じmutationの自動再送禁止。error時は確定前データと新データを混ぜず「更新失敗」状態を表示する。遅延responseはview generationとrequest sequenceが現在と一致する場合だけ適用する。
+**view state machine：** idle→loading→ready|empty|error|unauthenticated。mutationはready→submitting→accepted→polling→succeeded|failed|recovery_required。submitting応答はOperationResult.operationを採用し、同期terminalならaccepted/pollingを経ずterminal処理へ進む。result=nullなら対象GET/listで取得する。pollingはoperationGet、terminal確認後にaffected list/detail/環境statusを再取得するまで成功表示を確定しない。stale409は現在revisionとplanを再取得し入力内容を保持して差分表示、同じmutationの自動再送禁止。error時は確定前データと新データを混ぜず「更新失敗」状態を表示する。遅延responseはview generationとrequest sequenceが現在と一致する場合だけ適用する。
 
 実行中logは2秒、run/operation/環境進行は5秒、metrics/workerは30秒poll。document.hidden、logout、project/view変更では停止/abortし、復帰時は再取得。1resourceにつきin-flight最大1、429/503はRetry-After秒（1〜30へclamp）、その他失敗はpoll停止し再読込actionを出す。log cursor410は欠落表示と明示再読込、末尾追従は利用者が最下部にいる時だけ。logはtextContent/pre、HTML解釈禁止、最大1 MiB/stream、copy/downloadもmask後だけ。
 
@@ -78,6 +79,9 @@ projectsはproject設定、definition/templateのJSON editor、入力型editor�
 UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) を参照する。標準管理 UI の色、寸法、余白、配置、responsive、focus の視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
 ---
+
+<a id="phase-19-ui-implementation-classification"></a>
+**実装分類：** view generation・confirmation・poll lifecycleは `INHOUSE`、使用primitiveはDOM、Promise、AbortController、SDK（`STD`）。入力/状態/異常系は[`docs/details/ui.md` 詳細本文責務](#phase-19-ui-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `ui`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 

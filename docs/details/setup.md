@@ -1,6 +1,7 @@
 # Adlaire CI — Setup 詳細仕様
 
 <a id="phase-19-setup-contract"></a>
+
 **Phase 19 profile導入・隔離・受入：**
 
 ownerは `setup`、実装主体は [components/setup/](../../components/setup/)。[`docs/SPEC.md` 方針・ポリシー責務 SPEC profile適用](../SPEC.md#policy-inhouse-cicd) に従う。既存setupのroot導入/oneshot unitと本節の専用user profileは別であり、既存unitを自動置換しない。VPS作成/resize/課金操作は扱わない。
@@ -11,26 +12,28 @@ ownerは `setup`、実装主体は [components/setup/](../../components/setup/)�
 `adlaire-ci-setup cicd-install|cicd-update|cicd-rollback|cicd-probe --config ABS --trust-file ABS --release-dir ABS`。recoverだけ `adlaire-ci-setup cicd-recover --config ABS --generation N --snapshot-sha256 HEX --confirmation-file ABS --credential-stdin`。未知/重複/短縮option拒否、--name valueだけ。probeはread-onlyでcapabilityの実測用temporaryをstate-dir/work下に作り必ず削除し、登録・unit変更なし。install/update/rollbackはroot実行、job/coordinator/site実行はnon-root。stdout JSON `{operation,state,code,previous_release,current_release,capabilities:[],cleanup_ok}`、exit0成功/2入力/3環境検証失敗/4変更失敗/5復旧不明、stderrはmask済みcodeのみ。
 
 config JSONは全key必須：
-`{schema_version:1,profile:"cicd-v1",role:"coordinator"|"worker"|"site",id:Id,allowed_projects:list(Id,0,64),user:Id,state_dir:AbsPath,release_id:string,listen:string,tls_cert_file:null|AbsPath,tls_key_file:null|AbsPath,allow_http:bool,toolchains:[{capability:"builder"|"go"|"deno",version:string,root:AbsPath,files:[{path:RelPath,sha256:Digest,executable:bool}]}],ssh_authorized_key_file:null|AbsPath}`。allowed_projectsはcoordinatorでは空、worker/siteでは1件以上で重複禁止。roleごと専用user、uid!=0、login shell nologin、home=state_dir、coordinator `adlaire-cicd` / worker `adlaire-worker` / site `adlaire-site` がUI初期値。state_dirは/var/lib/adlaire-ci/{role}/{id}以下、他role/userと共有禁止。listenはcoordinatorで127.0.0.1:9321、workerは空、siteは指定host:port（1024以上、default8443）。siteだけTLS2file必須、allow_http=trueは127.0.0.1だけ。private key0600、cert0644、directory0700。config最大1 MiB、trust最大65536 bytes。
+`{schema_version:1,profile:"cicd-v1",role:"coordinator"|"worker"|"site",id:Id,allowed_projects:list(Id,0,64),allowed_environments:list({project_id:Id,environment_id:Id},0,1024),user:Id,state_dir:AbsPath,release_id:string,listen:string,tls_cert_file:null|AbsPath,tls_key_file:null|AbsPath,allow_http:bool,worker_slots:int(1,4),toolchains:[{capability:"builder"|"go"|"deno",version:string,root:AbsPath,files:[{path:RelPath,sha256:Digest,executable:bool}]}],ssh_authorized_key_file:null|AbsPath}`。allowed_projectsはcoordinatorでは空、worker/siteでは1件以上で重複禁止。allowed_environmentsはcoordinator/workerで空、siteでは1件以上、project/environmentの組を重複禁止しallowed_projects内だけ。worker_slotsはworkerで同時job上限、他roleでは1固定。roleごと専用user、uid!=0、home=state_dir。coordinatorのlogin shellはnologin、SSHを受けるworker/siteだけはroot所有・非書込の/bin/shとする（sshdがforced commandもlogin shellの-cで起動するため）。password authentication/keyboard-interactive/TTY/forwarding/user rc/user environmentを専用Match Userで無効化し、公開鍵と固定forced command以外ではログインさせない。対話shellを許可したと解釈しない。coordinator `adlaire-cicd` / worker `adlaire-worker` / site `adlaire-site` がUI初期値。state_dirは/var/lib/adlaire-ci/{role}/{id}以下、他role/userと共有禁止。listenはcoordinatorで127.0.0.1:9321、workerは空、siteは指定host:port（1024以上、default8443）。siteだけTLS2file必須、allow_http=trueは127.0.0.1だけ。private key0600、cert0644、directory0700。config最大1 MiB、trust最大65536 bytes。
 
 **trust schema：** `{schema_version:1,revision:int(1,2147483647),keys:[{key_id:Digest,public_key:base64,status:"active"|"revoked",valid_from:Time,valid_until:Time}]}`、1〜32key、decodedpublic32bytes、key_id=SHA256public、from<until、一意。管理者が別経路で/etc/adlaire-ci/trust.jsonへroot0600配置、downloadしたReleaseから鍵を導入しない。revisionは保存済み値以上、同revision内容差拒否、revokedを同key_idで再有効化禁止。検証時nowが有効半開区間でactiveだけを採用。rollbackでも失効鍵/署名なしを許可しない。legacy版はcicd profileへ取り込めず、新規cicd初期化だけを許可する。
 
-release-dirは [`docs/details/release.md` 詳細本文責務 release asset正本](release.md#phase-19-release-contract) の12file閉集合。HTTPS取得は既存GitHub Release adapterでstagingへ行い、設定release_idに固定し、全signature/checksum/provenance/SBOM/OSarch/tagcommitを検証後だけ配置する。旧版/新版admin混在不可。currentは `/opt/adlaire-ci/cicd/releases/{release_id}` のcohortを指すatomic symlink（setupだけの固定例外、jobから不可視）。profile専用のbin/admin/config/systemdを一緒に切替える。前2cohortを保持、untrusted既存installからの逆引きtrustは禁止。
+release-dirは [`docs/details/release.md` 詳細本文責務 release asset正本](release.md#phase-19-release-contract) の12file閉集合。HTTPS取得は既存GitHub Release adapterでstagingへ行い、設定release_idに固定し、全signature/checksum/provenance/SBOM/OSarch/tagcommitを検証後だけ配置する。旧版/新版admin混在不可。`/opt/adlaire-ci/cicd/current` は `/opt/adlaire-ci/cicd/releases/{release_id}` のcohortを指すatomic symlink（setupだけの固定例外、jobから不可視）。profile専用のbin/admin/config/systemdを一緒に切替える。前2cohortを保持、untrusted既存installからの逆引きtrustは禁止。
 
 <a id="phase-19-sandbox-profile"></a>
 **Linux capability profile：**
 
-workerはLinux amd64、systemd>=255、cgroup v2、user namespace、user manager、RAM>=2 GiB、state-dir空き>=4 GiBが必要。rootでsource/jobを実行しない。OpenSSHの専用keyに `restrict,command="/opt/adlaire-ci/cicd/current/bin/adlaire-ci-runner --cicd-worker-stdio --state-dir S"`（siteは--cicd-site-agent）を設定する。Sは検証済み定数。shell入力からcommandを組立てず、SSH_ORIGINAL_COMMANDは定数adlaire-cicd-v1以外拒否。coordinator identity/known_hostsはstatefile登録path、更新時はdrain後再probe。
+workerはLinux amd64、systemd>=255、cgroup v2、user namespace、system systemd manager、RAM>=2 GiB、state-dir空き>=4 GiBが必要。rootでsource/jobを実行しない。OpenSSHの専用keyに `restrict,command="/opt/adlaire-ci/cicd/current/bin/adlaire-ci-runner --cicd-worker-stdio --state-dir S"`（siteは--cicd-site-agent）を設定する。Sは検証済み定数。shell入力からcommandを組立てず、SSH_ORIGINAL_COMMANDは定数adlaire-cicd-v1以外拒否。coordinator identity/known_hostsはstatefile登録path、更新時はdrain後再probe。
 
-job sandboxはverified minimal RootDirectoryをwork下に作り、trusted runner wrapperとtoolchain manifestの全fileだけをread-only配置する。Node/シェル/SSH/systemctl/host state/秘密fileは配置しない。`systemd-run --user --wait --collect --pipe --quiet --unit adlaire-job-OP --property NAME=VALUE ... /tools/bin/adlaire-ci-runner --cicd-job-stdio` をexec.Commandでtoken配列として起動する。OPはo-ID、root pathはhost側state/work/OP/root。固定propertyは以下。
+job sandboxは下記brokerがroot所有のverified minimal RootDirectoryを作り、trusted runner wrapperとtoolchain manifestの全fileだけをread-only配置する。Node/シェル/SSH/systemctl/host state/秘密fileは配置しない。`systemd-run --system --wait --collect --pipe --quiet --unit adlaire-job-OP-sN --property NAME=VALUE ... /tools/bin/adlaire-ci-runner --cicd-job-stdio` をexec.Commandでtoken配列として起動する。OPはjob/tryのo-ID、Nはstage番号0〜64。各stage終了後にunitとrootを回収し次stageでrootを再作成する。root pathは下記broker専用root/OP/root。systemd-runを起動するのはbrokerだけであり、workerにsystem managerの任意unit作成権限を与えない。固定propertyは以下。
 
 | property | exact値 |
 |---|---|
 | RootDirectory | 上記root絶対path |
+| DynamicUser / PrivateTmp / RemoveIPC / RestrictSUIDSGID | yes / yes / yes / yes。User/Group指定なし、同時unitは異なる非root host UID。 |
+| CapabilityBoundingSet / AmbientCapabilities | 空集合 / 空集合 |
 | PrivateUsers / PrivateNetwork / PrivateDevices / NoNewPrivileges | yes / yes / yes / yes |
 | ProtectSystem / ProtectHome | strict / yes |
 | InaccessiblePaths | /proc /sys /run /home /root |
-| TemporaryFileSystem | /job:rw,size=DISK_MB M（実argvは空白なしの `size=512M` 形式） |
+| TemporaryFileSystem | `/job:rw,size=DISK_MBM,mode=1777`（DISK_MB=512なら `size=512M`）。各子directoryはwrapperが0700作成。 |
 | WorkingDirectory | /source |
 | NoExecPaths | / |
 | ExecPaths | /tools/bin/adlaire-ci-runner + 実行stageのmanifest検証済み絶対実行fileだけ |
@@ -38,14 +41,27 @@ job sandboxはverified minimal RootDirectoryをwork下に作り、trusted runner
 | RuntimeMaxSec / TimeoutStopSec / KillMode | timeout_seconds / 5 / control-group |
 | RestrictAddressFamilies / UMask | AF_UNIX / 0077 |
 
-workerが取得sourceをroot外stagingへ書き、root内/sourceと/job/testsの空mountpointを作り、全digest検査後に `BindReadOnlyPaths=HOST_SOURCE:/source` を追加する。起動wrapperはstdinのassign/secretを読み、source bytesを再取得しない。/jobはunit専用tmpfs、output/cache/tmp/home/test compile先をここへ作る。rootからhost /procを見せず、jobにmount権限を与えない。outputはtrusted wrapperがarchive framingでworkerへ返し、host側workへ検証保存する。compile test fileもこの方式で転送し、次stageでは `BindReadOnlyPaths=HOST_TESTS:/job/tests` を追加する。compileとtest実行はrunner契約どおり別unit。sourceへexec許可を与えない。Goのtool実行pathはmanifest列挙に限り、test実行stageは凍結testfileのdigestを再検証して追加する。Denoは--no-npm/--no-remoteでlocal JS checkだけ。実行時downloadやtoolchain自動更新なし。
+brokerがworkerからのsource byte列をroot所有stagingへ再コピーし、file0444/directory0555へ固定する。FDを保持して全digestを再検証し、root内/sourceと/job/testsの空mountpointを作り、 `BindReadOnlyPaths=HOST_SOURCE:/source` を追加する。起動wrapperはstdinのassign/secretを読み、source bytesを再取得しない。/jobはunit専用tmpfs、output/cache/tmp/home/test compile先をここへ作る。rootからhost /procを見せず、jobにmount権限を与えない。outputはtrusted wrapperがarchive framingでworkerへ返し、host側workへ検証保存する。compile test fileもこの方式で転送し、次stageでは `BindReadOnlyPaths=HOST_TESTS:/job/tests` を追加する。compileとtest実行はrunner契約どおり別unit。sourceへexec許可を与えない。Goのtool実行pathはmanifest列挙に限り、test実行stageは凍結testfileのdigestを再検証して追加する。Denoは--no-npm/--no-remoteでlocal JS checkだけ。実行時downloadやtoolchain自動更新なし。
 
-probeは各制御を実測する：host sentinel読取不可、/proc親process不可、TCP接続不可、未許可file exec不可、source書換不可、memory/disk/task上限停止、TERM後5秒以内KILL、child残存0、workspace残存0。全制御が成功したcapabilityだけを返し、unsupported/権限拒否を省略設定で通さない。systemd仕様の根拠は [systemd.exec v255](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.exec.xml) と [resource-control v255](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.resource-control.xml)。本表の値は本製品の選択であり、OS名称だけで有効性を保証しない。
+probeは各制御を実測する：worker/coordinatorとjobのhost UID不一致、同時2jobのUID不一致、他job/workerへのsignal・ptrace拒否、host sentinel読取不可、/proc親process不可、TCP接続不可、未許可file exec不可、source書換不可、memory/disk/task上限停止、TERM後5秒以内KILL、child残存0、workspace残存0。全制御が成功したcapabilityだけを返し、unsupported/権限拒否を省略設定で通さない。systemd仕様の根拠は [systemd.exec v255](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.exec.xml) と [resource-control v255](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.resource-control.xml)。本表の値は本製品の選択であり、OS名称だけで有効性を保証しない。
+
+<a id="phase-19-sandbox-broker"></a>
+**隔離起動brokerの境界：**
+
+実装主体は既存runner owner package、起動は `adlaire-ci-runner --cicd-sandbox-broker --config CONFIG --state-dir B`、worker hostだけのroot system unit `adlaire-cicd-sandbox.service`。B=`/var/lib/adlaire-ci/sandbox/{worker-id}` はroot0700、root所有cohort/configだけを読む。root processはsource/test/builderを起動せず、検証済みsystemd-runを通してDynamicUser unit内のtrusted wrapperを起動する。setupが検証したworkerのUIDだけをUNIX peer credential SO_PEERCREDで受理する。socketは `/run/adlaire-ci-sandbox/{worker-id}.sock`、root:worker-group0660、parent root:worker-group0750、TCP listenerなし。
+
+IPCはrunnerのSSH framingと同じcodecを使うがtransportはUNIX stream。1connection=1job/try、認証済peerへだけhello、assign/metadata/source chunk/start/cancel/queryと結果/log/artifact/test chunkだけを受け渡す。shell文字列、任意argv/property、任意host path/UID、別worker IDは受けない。command・resource上限・mount元・rootをbrokerがregistry/configから導出し、client提示値で置き換えない。secret_envだけはstart時memory pipe、永続化しない。空環境からregistryのallowlistを再構成し、user manager/SSH/service managerの環境をjobへ継承しない。
+
+B下の許可pathは `broker.json`、`broker.lock`、`work/{operation}/root/`、`work/{operation}/source/`、`work/{operation}/tests/`、`work/{operation}/output/` だけ。broker.jsonはstatefile WorkerExecution配列（最大256/4 MiB）、lockは非blocking flock、JSON0600のatomic adapter。broker unitはType=simple/User=root/UMask0077/Restart=on-failure/RestartSec5/TimeoutStopSec30/ProtectSystem=strict/ProtectHome=yes/PrivateTmp=yes/ReadWritePaths=Bとsocket parent、通信はAF_UNIXだけ、secret環境なし。system managerの制御socketはhostにだけ見せ、jobへmountしない。sourceは100 MiB、test/outputは各job.disk_mb以下、全work合計4 GiB、brokerはWorkerExecution.resources.memory_mb合計が実RAM-512 MiB以下、実行数がworker_slots以下であることもclaim lock下で検査する。空き256 MiB未満またはslot不足はP19_STORAGE/P19_BUSYで拒否する。metadataにないpath/link/device/重複chunkを拒否し、上限はwrite前に検査する。受信完了前にunitを作らず、stagingはrootだけが変更できる。
+
+受理claimをdurable保存→root/source検証→unit作成→非root UID/制御を検査→start→出力drain→Waitとunit cgroup空を照合→残存file/mountを回収→終端保存の順。EOF/lease期限/期限切れcancelはunit停止後に照会可能な終端記録を残す。broker再起動は記録unitをsystemdへ照会して停止・回収し、確認不能ならそのslotをrecovery_requiredで閉鎖する。起動しなかったことを確認するまで再割当しない。DynamicUser UIDを解放する前にwritable mount/process/IPC残存0を確認する。root側stagingだけをGCし、任意path削除を受け付けない。brokerにschema制約のないroot command実行機能を作らない。
+
+この境界はsystemdの [DynamicUser仕様](https://raw.githubusercontent.com/systemd/systemd/v255/man/systemd.exec.xml) と [OpenSSHのlogin shell/forced-command仕様](https://man.openbsd.org/sshd.8) を使用する。sourceからbrokerへ直接接続できないこともprobeで検証する。
 
 <a id="phase-19-service-lifecycle"></a>
 **起動・更新・障害復旧：**
 
-coordinatorは `adlaire-ci-runner --cicd-coordinator --config CONFIG --state-dir S`、worker/site-agentはSSH forced commandで要求時起動、site配信はAPI site mode。system unitは `adlaire-cicd-coordinator.service` / `adlaire-cicd-api.service` / `adlaire-cicd-site.service`、Type=simple、User=専用user、UMask0077、Restart=on-failure、RestartSec5、TimeoutStopSec30、NoNewPrivilegesyes、ProtectSystemstrict、ProtectHomeyes、ReadWritePaths=該当S、PrivateTmpyes、LimitNOFILE4096。API/coordinatorは同user/Sだけを共有し、worker/siteとは分離する。workerのsystemd user managerはlingerを有効にしてsandbox unitを起動可能にする。unit内secret環境禁止。管理APIは既存認証設定を使用しprofile configを追加する。
+coordinatorは `adlaire-ci-runner --cicd-coordinator --config CONFIG --state-dir S`、worker/site-agentはSSH forced commandで要求時起動、site配信はAPI site mode。system unitは `adlaire-cicd-coordinator.service` / `adlaire-cicd-api.service` / `adlaire-cicd-site.service`、Type=simple、User=専用user、UMask0077、Restart=on-failure、RestartSec5、TimeoutStopSec30、NoNewPrivilegesyes、ProtectSystemstrict、ProtectHomeyes、ReadWritePaths=該当S、PrivateTmpyes、LimitNOFILE4096。API/coordinatorは同user/Sだけを共有し、worker/siteとは分離する。workerのjob起動はsandbox brokerへ限定し、linger/user manager/sudoを実行権限の代替にしない。unit内secret環境禁止。管理APIは既存認証設定を使用しprofile configを追加する。
 
 installはcapability/署名/容量→専用user/directory→masterと初期Root→unit生成→daemon-reload→start→health（1秒間隔、最大30秒）の順。初期Rootはgeneration1、admin user/有効platform-admin grant、他配列空、head hash一致。admin credentialはlegacy認証初期化を明示実行しnull aliasへ接続する。worker/siteはcoordinator Rootを作らずlocal adapterだけ初期化する。
 
@@ -60,6 +76,9 @@ recoverは停止/drain済み、generation/digest一致snapshot、confirmation JS
 [`docs/details/setup.md`](setup.md) が定義するのは [`components/setup/`](../../components/setup/) が `adlaire-ci-setup` として実行する setup / update の挙動と、Release 成果物の受け入れ・checksum 検証契約である。GitHub Release 成果物の生成・公開前検証・公開は [`docs/details/release.md`](release.md) の `release` owner component が持ち、[`docs/details/setup.md`](setup.md) の責務に含めない。実装可否は [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](../SPEC.md#detail-contract-required-fields)、現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。
 
 ---
+
+<a id="phase-19-setup-implementation-classification"></a>
+**実装分類：** trust/cohort/復旧と限定sandbox brokerは `INHOUSE`、使用primitiveはcrypto/ed25519、encoding/json、os/exec、syscall SO_PEERCRED、OS systemd/OpenSSH（`STD`）。入力/状態/異常系は[`docs/details/setup.md` 詳細本文責務](#phase-19-sandbox-broker)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `setup`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 

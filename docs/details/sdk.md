@@ -1,11 +1,12 @@
 # Adlaire CI — SDK 詳細仕様
 
 <a id="phase-19-sdk-contract"></a>
+
 **Phase 19 SDK公開契約：**
 
-ownerは `sdk`、実装artifactは [admin/adlaire-ci-sdk.js](../../admin/adlaire-ci-sdk.js)。新しい公開class `AdlaireCICDClient` を同fileへ追加し、既存 `AdlaireCIClient` を変更しない。endpoint / wire型は [`docs/details/api.md` 詳細本文責務 API operation catalog正本](api.md#phase-19-operation-catalog) だけを参照する。
+ownerは `sdk`、実装artifactは [admin/adlaire-ci-sdk.js](../../admin/adlaire-ci-sdk.js)。新しい公開class `AdlaireCICDClient` を同fileへ追加し、既存 `AdlaireCI` / `AdlaireCIError` export を変更せず、新classと `CICDError` / `CICDProtocolError` をnamed exportへ追加する。endpoint / wire型は [`docs/details/api.md` 詳細本文責務 API operation catalog正本](api.md#phase-19-operation-catalog) だけを参照する。
 
-constructorは `new AdlaireCICDClient({baseUrl,token,onUnauthorized,timeoutMs=10000,fetchImpl=globalThis.fetch})`。baseUrlは既存管理API origin制約、tokenはmemory-only、storage/cookie/URLへ保存しない。method共通形は `method(params={},body=null,{signal,idempotencyKey}={})`。paramsはcatalog path placeholderとGET queryの名前だけ、bodyはcatalog request型、不要bodyはnull。login/logout以外のmutationはcaller指定o-ID必須、SDKが失敗時に新しいIDを作ってretryしない。AbortSignal/timeoutはAbortControllerへ合成し、cleanupでtimer/listenerを解除する。
+constructorは `new AdlaireCICDClient({baseUrl,token,onUnauthorized,timeoutMs=10000,fetchImpl=globalThis.fetch})`。baseUrlは既存管理API origin制約、tokenはsession 64 lowercase hexまたはservice 43 base64url unpaddedのどちらか（nullも可）を受付け、形式不正はnetwork前TypeError。tokenはmemory-only、storage/cookie/URLへ保存しない。method共通形は `method(params={},body=null,{signal,idempotencyKey}={})`。paramsはcatalog path placeholderとGET queryの名前だけ、bodyはcatalog request型、不要bodyはnull。login/logout以外のmutationはcaller指定o-ID必須、SDKが失敗時に新しいIDを作ってretryしない。AbortSignal/timeoutはAbortControllerへ合成し、cleanupでtimer/listenerを解除する。
 
 methodはoperation IDと完全同名、一覧は以下の閉集合。path組立はplaceholderごとencodeURIComponentを一回適用し、HTTP verb/bodyをcatalogと一致させる。未知params、null必須body、path欠落はnetwork前TypeError。成功Promiseは `{data,requestId,status}`、response不正/非JSON/未知codeは `CICDProtocolError`。非2xxは `CICDError{code,status,requestId,message}`、networkはcode=P19_TRANSPORT/status=0、abortはDOMException AbortError。401だけtokenをclearしonUnauthorizedを1回呼ぶ。403/409/410/429/503を成功へ変換しない。全request credentials=omit、redirect=error、cache=no-store、Accept application/json、Bearerはtokenがある場合だけ。
 
@@ -70,6 +71,9 @@ mutationはOperationResultをそのままdataに保ち、one_timeをcacheしな�
 SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を参照する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務は SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
 ---
+
+<a id="phase-19-sdk-implementation-classification"></a>
+**実装分類：** catalog引数変換・protocol検証・cancel/timeout合成は `INHOUSE`、使用primitiveはbrowser fetch、AbortController、JSON（`STD`）。入力/状態/異常系は[`docs/details/sdk.md` 詳細本文責務](#phase-19-sdk-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `sdk`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 

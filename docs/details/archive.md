@@ -1,13 +1,14 @@
 # Adlaire CI — Archive 詳細仕様
 
 <a id="phase-19-artifact-contract"></a>
+
 **Phase 19 immutable成果物契約：**
 
 ownerは `archive`、実装主体は [components/archive/](../../components/archive/)。適用は [`docs/SPEC.md` ポリシー責務 SPEC ポリシー責務](../SPEC.md#policy-inhouse-cicd)、保存metadataは [`docs/details/statefile.md` 詳細本文責務 statefile schema正本](statefile.md#phase-19-schema-registry)。既存snapshot形式は変更しない。
 
 登録入力はproject、run/attempt/job、source SHA、regular directory。sourceと同一directory、symlink/hardlink（nlink!=1）、device/FIFO/socket、dotdot/絶対path/重複/大小文字だけ違うpathを拒否する。fileは10000個、単体100 MiB、全展開1 GiB、compressed1 GiB、pathはRelPath以内、必須index.html（builder/deploy用だけ）を検査する。go-build成果物は実行fileとして保存可能だがsite配備時は拒否する。
 
-成果物directoryの固定集合は `manifest.json` と `payload.tar.gz`。manifestは `{schema_version:1,kind:"site"|"binary",source_sha:SHA,files:[{path:RelPath,size:int(0,104857600),sha256:Digest,mode:"0644"|"0755"}]}`、filesはpath byte昇順、一意、directory entryは格納しない。tarはUSTAR regular fileだけ（name100/prefix155 bytesにsegment境界で表現不能なpathはP19_ARCHIVE、暗黙PAX化禁止）、owner/group 0、name空、mtime=0、順序はmanifest、modeは記載値。gzipはmtime0/name空/comment空/OS255、Go compress/gzip BestCompression。PAX/GNU拡張、link、追加member、trailing非zero byte、manifestにないfileを拒否する。digest=SHA256(payload.tar.gzの全bytes)、manifest_digest=SHA256(canonical manifest)。展開前に全headerと累積上限を検査し、展開中にも検査する。圧縮率は安全判定の代用にしない。
+成果物directoryの固定集合は `manifest.json` と `payload.tar.gz`。manifestは `{schema_version:1,kind:"site"|"binary",source_sha:SHA,files:[{path:RelPath,size:int(0,104857600),sha256:Digest,mode:"0644"|"0755"}]}`、filesはpath byte昇順、一意、directory entryは格納しない。manifestのcanonical長は921600 bytes以下とし、file件数上限と同時に満たさなければ登録をP19_ARCHIVEで拒否する。tarはUSTAR regular fileだけ（name100/prefix155 bytesにsegment境界で表現不能なpathはP19_ARCHIVE、暗黙PAX化禁止）、owner/group 0、name空、mtime=0、順序はmanifest、modeは記載値。gzipはmtime0/name空/comment空/OS255、Go compress/gzip BestCompression。PAX/GNU拡張、link、追加member、trailing非zero byte、manifestにないfileを拒否する。digest=SHA256(payload.tar.gzの全bytes)、manifest_digest=SHA256(canonical manifest)。展開前に全headerと累積上限を検査し、展開中にも検査する。圧縮率は安全判定の代用にしない。
 
 登録はwork下O_EXCL staging→全file検証→各fileとdirectory fsync→project/digestへ非上書きrename→親fsync→metadata commit。既存digestなら両fileを再検証し一致した場合だけ重複排除する。metadata commit失敗は未参照directoryとして次GCで回収、成功したdigest内容は更新禁止。artifact source metadataは同じdigestの最初の登録を保持し、後続runはdigest参照を保存する。
 
@@ -22,6 +23,9 @@ site-agentへの配置は専用state-dir配下 `cicd/site/{project}/{environment
 検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
 
 ---
+
+<a id="phase-19-archive-implementation-classification"></a>
+**実装分類：** 閉集合manifest検証・pin/GC/比較は `INHOUSE`、使用primitiveはarchive/tar、compress/gzip、crypto/sha256、os（`STD`）。入力/状態/異常系は[`docs/details/archive.md` 詳細本文責務](#phase-19-artifact-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `archive`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 

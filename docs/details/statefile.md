@@ -1,6 +1,7 @@
 # Adlaire CI — Statefile 詳細仕様
 
 <a id="phase-19-state-contract"></a>
+
 **Phase 19 状態・schema 固定契約：**
 
 owner は `statefile`、実装主体は [`components/statefile/`](../../components/statefile/)。適用 profile は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)。以下は `cicd-v1` の正本であり、legacy の [`docs/details/statefile.md` 詳細本文責務 状態ファイル共通仕様](#sec-22-0a) を上書きしない。
@@ -8,7 +9,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
 <a id="phase-19-schema-registry"></a>
 **型記法と唯一の schema registry：**
 
-全 object は列挙 key がすべて必須、未知 key / duplicate key は拒否する。欠落値の補完は行わない。`nullable(T)` は明示 null、`list(T,min,max)` は順序付き配列、`map(T,min,max)` は key が Id の object、`oneof` は一致する型が1件だけの union、`enum` は列挙値、`int(min,max)` は指数・小数・負のゼロを許さない10進安全整数、`text(min,max)` はUTF-8 byte長である。空白・並び順を除く JSON 文法は encoding/json に従い、NUL / CR は全 string で拒否する。LF は text と log.data だけ許可し、identifier・path・環境値では拒否する。const(v)はJSON literal vとの一致、boolはJSON booleanを表す。schema 文法自体の未知関数・不明な型参照も不正とする。
+全 object は列挙 key がすべて必須、未知 key / duplicate key は拒否する。欠落値の補完は行わない。`nullable(T)` は明示 null、`list(T,min,max)` は順序付き配列、`map(T,min,max)` は key が Id の object、`envmap(T,min,max)` はkeyがrunnerの環境変数名規則のobject、`oneof` は一致する型が1件だけの union、`enum` は列挙値、`int(min,max)` は指数・小数・負のゼロを許さない10進安全整数、`text(min,max)` はUTF-8 byte長である。空白・並び順を除く JSON 文法は encoding/json に従い、NUL / CR はlog.dataを除く全stringで拒否する。log.dataは任意のUnicode scalar（JSON escape必須controlを含む）を許す。LF は text と log.data だけ許可し、identifier・path・環境値では拒否する。const(v)はJSON literal vとの一致、boolはJSON booleanを表す。schema 文法自体の未知関数・不明な型参照も不正とする。型名はASCII英字始まり英数字、enum値は英字始まり英数字/underscore/hyphen/dot。式の空白は禁止。atomはprimitiveまたは登録型名、nullableは型引数1、oneofは異なる型2以上、list/map/envmapは型1と整数min/max、int/textは整数min/max、enumは一意値1以上、constは本registryで使用する1/falseだけ、legacyはAdminCredentials/TOTPSecretだけ。整数引数は符号付き安全整数、先頭0/負の0拒否、min<=max、list/map/envmap/textはmin>=0。登録型の参照graphは非再帰（cycle拒否）で、objectはfield名一意・1field以上。JSON tokenの重複を先に検査してから型式を解析し、json.Unmarshalによる重複keyの上書きを許可しない。
 
 | primitive | 閉じた定義 |
 |---|---|
@@ -133,8 +134,8 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "resources": "Resources",
       "retry": "Retry",
       "cache": "CachePolicy",
-      "env": "map(EnvValue,0,64)",
-      "secrets": "map(SecretRef,0,16)",
+      "env": "envmap(EnvValue,0,64)",
+      "secrets": "envmap(SecretRef,0,16)",
       "optional": "bool"
     },
     "EnvValue": "text(0,4096)",
@@ -196,8 +197,8 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "resources": "Resources",
       "retry": "Retry",
       "cache": "CachePolicy",
-      "env": "map(EnvValue,0,64)",
-      "secrets": "map(SecretRef,0,16)",
+      "env": "envmap(EnvValue,0,64)",
+      "secrets": "envmap(SecretRef,0,16)",
       "optional": "bool"
     },
     "PlanData": {
@@ -435,6 +436,12 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "gap": "bool",
       "terminal": "bool"
     },
+    "SecretMeta": {
+      "project_id": "Id",
+      "id": "Id",
+      "version": "int(1,2147483647)",
+      "created_at": "Time"
+    },
     "Root": {
       "schema_version": "const(1)",
       "generation": "int(1,9007199254740991)",
@@ -444,6 +451,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "environments": "list(Environment,0,1024)",
       "users": "list(User,1,256)",
       "services": "list(Service,0,256)",
+      "secrets": "list(SecretMeta,0,10000)",
       "grants": "list(Grant,1,4096)",
       "workers": "list(Worker,0,32)",
       "runs": "list(Run,0,512)",
@@ -500,6 +508,8 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "generation": "int(0,9007199254740991)",
       "artifact": "nullable(Digest)",
       "phase": "enum(pending,staged,switched,healthy,restored,failed,unknown)",
+      "next_step": "int(1,128)",
+      "previous_route": "nullable(Route)",
       "code": "nullable(text(1,64))"
     },
     "Notification": {
@@ -546,7 +556,8 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
     },
     "SiteOperation": {
       "operation_id": "Id",
-      "type": "enum(stage,switch,finalize,observe,query,restore,delete)",
+      "step": "int(1,128)",
+      "type": "enum(stage,switch,finalize,restore,delete)",
       "request_digest": "Digest",
       "result": "SiteResult"
     },
@@ -557,8 +568,31 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "errors": "int(0,9007199254740991)"
     },
     "SiteCounters": {
+      "step": "int(0,128)",
       "generation": "int(0,9007199254740991)",
       "windows": "list(SiteWindow,0,8640)"
+    },
+    "WorkerExecution": {
+      "operation_id": "Id",
+      "project_id": "Id",
+      "run_id": "Id",
+      "attempt": "int(1,100)",
+      "job_id": "Id",
+      "lease_generation": "int(1,9007199254740991)",
+      "lease_until": "Time",
+      "unit_names": "list(text(1,128),0,65)",
+      "resources": "Resources",
+      "job": "JobResult",
+      "updated_at": "Time",
+      "cleanup_ok": "bool"
+    },
+    "SiteState": {
+      "schema_version": "const(1)",
+      "route": "Route",
+      "active_operation": "nullable(Id)",
+      "previous_route": "nullable(Route)",
+      "operations": "list(SiteOperation,0,1024)",
+      "counters": "SiteCounters"
     },
     "SetupState": {
       "schema_version": "const(1)",
@@ -572,7 +606,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
 }
 ```
 
-**複合制約と既定値：** record 配列は owner の複合キーで一意とする。definition / template は project,id,revision、environment は project,id、run は project,id,attempt、artifact は project,digest、cache は project,key、grant は subject_kind,subject_id,project_id,environment_id,role。他のentityはid一意。全entity参照は同一project内で解決し（user/worker/serviceはglobal、digestを識別子へ代用しない）、不在・無効・deleting参照を拒否する。rev / generationの上限では wrap せず P19_REVISION。Timeの順序逆転・不正なstate / timestamp組合せは P19_STATE_CORRUPT。Task、Grant、Environmentの意味上の制約は各owner正本を参照する。
+**複合制約と既定値：** record 配列は owner の複合キーで一意とする。definition / template は project,id,revision、environment は project,id、run は project,id,attempt、artifact は project,digest、cache は project,key、grant は subject_kind,subject_id,project_id,environment_id,role。SecretMetaはproject_id,id,version一意。idを持つその他のRoot entityはid一意。Credentialのcicd-v1 login_countだけは安全整数上限9007199254740991以下に追加制限する（legacy fileの型は変更しない）。全entity参照は同一project内で解決し（user/worker/serviceはglobal、digestを識別子へ代用しない）、不在・無効・deleting参照を拒否する。rev / generationの上限では wrap せず P19_REVISION。Timeの順序逆転・不正なstate / timestamp組合せは P19_STATE_CORRUPT。Task、Grant、Environmentの意味上の制約は各owner正本を参照する。
 
 保存時のschema既定値はない。作成UIの初期値だけを `Quota={parallel:1,queue:64,artifact_mb:1024,cache_mb:256,retention_days:7}`、`Resources={cpu_percent:100,memory_mb:1024,disk_mb:512,tasks:128,timeout_seconds:900,output_mb:16}`、`Retry={max_attempts:1,backoff_seconds:1}`、cache無効・paths空・TTL604800秒、empty selector / matrix / template / env / secret、optional=false、fail_fast=false とする。memory_mb >= disk_mb+256、env全値合計32768 bytes以下、secret投入後の合計16384 bytes以下を要求する。Templateは他Templateを参照しない。EnvironmentStateはproject,environmentで一意。TriggerCursorはproject,definition,kind,trigger_idで一意であり、immutable Definitionとは別に更新する。StatusDeliveryはproject,run,attempt,stateで一意。Notification.idはeventとtarget_idのcanonical JSONのSHA256先頭63文字にnを付ける。Source.filesはpath昇順、UTF-8合計100 MiB以下、tree_digestはcanonical files配列のSHA256。snapshot全体は32 MiB、active run16、全実行job64、projectごとの上限はQuotaでさらに制限する。
 
@@ -593,13 +627,19 @@ S は起動時に検証した state-dir。以下の S 相対pathだけを新規�
 | `cicd/cache/{project}/{key}/` | runner正本の固定file集合 / runnerからstatefile adapter |
 | `cicd/work/{operation}/` | staging directory、終端後回収 / runner・archive |
 | `cicd/ssh/{worker}/identity`, `known_hosts` | SSH用UTF-8 text / 各65536 / setup入力、runner読取だけ |
-| `cicd/routes/{project}/{environment}.json` | Route / 16384 / site-agentからstatefile adapter |
+| `cicd/site/{project}/{environment}/state.json` | SiteState / 1048576 / site-agentからstatefile adapter、Routeと操作結果の唯一のcommit単位 |
 | `cicd/worker.json` | Worker（leases含む）/ 262144 / worker adapter |
+| `cicd/worker-jobs.json` | list(WorkerExecution,0,256) / 4194304 / worker adapter |
 | `cicd/site/{project}/{environment}/releases/{digest}/` | archive正本のcontent/manifest/verified集合 / site-agent |
-| `cicd/site/{project}/{environment}/counters.json` | SiteCounters、最大1 MiB / site API、UTC10秒窓、原子的更新 |
+| `cicd/site/{project}/{environment}/state.json` の `counters` | SiteCounters / SiteStateの共通上限内 / site APIが同adapterで更新、別fileへ分離しない |
 | `cicd/setup.json` | SetupState / 65536 / setup |
-| `cicd/locks/{role}.lock` | lifetime flock用空regular file / 0 / coordinator/site-agent/setup |
-| `cicd/site/{project}/{environment}/operations.json` | list(SiteOperation,0,1024) / 1 MiB / site-agent adapter |
+| `cicd/locks/{role}.lock` | lifetime flock用空regular file / 0 / coordinator/setup（roleはcoordinator/setupのみ）。siteは下記local state更新排他。 |
+| `cicd/locks/worker.lock` | worker複数stdio間のlocal state排他用flock、接続寿命ではなく更新中だけ保持 |
+| `cicd/locks/site.lock` | site API/stdio間のlocal state排他用flock、file更新中だけ保持、network中保持禁止 |
+
+WorkerExecutionはoperation_id一意、job/lease identity一致を要求し、terminal/cleanup_ok=trueの記録だけupdated_atから30日後に回収する。満杯時はactiveを削除せず新assignをP19_STORAGEで拒否する。worker/local brokerの再起動照合で使う実行記録であり、worker.jsonへJobResultを混入しない。
+
+SiteStateはRoute・SiteOperation・SiteCountersを単一fileのatomic rename/fsyncでcommitする。Routeなし初期値はgeneration=0/operation_id=初回要求ID/stable=candidate=null/percent=0/config_digest=要求値、active_operationとprevious_routeはnull、operations空、countersはstep=0/generation=0/windows空。mutating RPCの外部可視route変更と再送結果を別fileへ分離しない。keyはoperation_id,step、type/digest一致を検査する。SiteOperationは30日保持、active/previous_route/current route参照分は回収不可、期限経過分だけcommit前に古い順で回収する。query/observeは記録を増やさない。初回claimでprevious_routeを固定し、同operation内の保存済step最大+1だけを受け付け、finalize/restore成功時だけactive_operationをnullにする。activeの結果を消さず、容量不足は変更前に拒否する。
 
 secret / SSH / master はsnapshot export、成果物、cache、通常backup、API一覧から除外する。job rootへのmount対象にも含めない。cicd配下のfilesystem上のfile集合がこれを超える場合は自動採用せず P19_STATE_CORRUPT とする。ただし以下のtransaction一時fileとarchive / runner正本のchildだけを許可する。
 
@@ -619,11 +659,16 @@ process内mutex → `state.lock` の非blocking flock(LOCK_EX)を10ms間隔、�
 
 Root内operationは30日保持、run / deploymentは各project retention経過かつ非active・非参照だけをcreated_at,id昇順で回収する。全監査をoperationと同時に保持する。期限切れ要求IDの再利用は新規要求となるため、clientは再利用しない。過去Runのattemptは上書きしない。schema_version=1以外は拒否し自動upgradeしない。legacy状態の自動importは行わない。新規projectと環境を明示作成し、既存Release/成果物はarchive検証を通した明示登録だけを許可する。legacy fileを変更しない。cicd-v1開始後のlegacyへの逆migrationは非対応であり、進行中処理を終端化・exportしたうえでprofile無効化する。
 
+named user loginの認証更新は内部o-ID付きUpdateCICDAuth(userID,credentialFingerprint,mutate)でlock下に最新Credentialを再照合し、count/time/Auditだけを一つのRoot更新にする。Operationは作らず、commit後だけmemory sessionを公開する。admin aliasは既存credential adapterの保存順を使用し、失敗時sessionを発行しない。login/logoutをOperationResult対象外とするAPI例外は、認証記録の永続化省略を意味しない。
+
 **adapter interface：** `ReadCICD() (Root,Head,error)`、`UpdateCICD(opID,requestDigest,mutate) (Operation,error)`、`WriteCICDLog(Log) error`、`ReadCICDLog(identity) (Log,error)`。mutateは既に検証した入力を用いる純粋なRoot更新だけで、I/Oを呼ばない。ログ単体は同directoryのO_EXCL temporary → write / fsync / close → rename / directory fsyncで更新する。caller固有の直接書込は許可しない。全error codeの公開対応は [`docs/details/api.md` 詳細本文責務 Phase 19 error](api.md#phase-19-error-catalog)、検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) を参照する。
 
 **canonical bytes：** digest対象JSONはobject keyをUTF-8 byte昇順、配列順維持、空白なし、整数10進、stringはquotation/backslashをそれぞれbackslashでescapeし、U+0008/U+0009/U+000A/U+000C/U+000Dは順に `\b` / `\t` / `\n` / `\f` / `\r`、その他U+0000〜001Fはlowercase hex4桁の `\u00xx` とする（入力で禁止されたcodepointの許可にはならない）。それ以外は元のUTF-8 byteを維持し、HTML escapeなし、slash非escape、Unicode正規化なし、末尾LFなし、UTF-8でencodeする。浮動小数は全schemaで不使用。HTTP送受信bytesとcanonical bytesを混同しない。\u2028/\u2029はUTF-8のままとする。
 
 ---
+
+<a id="phase-19-statefile-implementation-classification"></a>
+**実装分類：** 型式parser・canonical JSON・世代lock/atomic snapshotとsite/local state adapterは `INHOUSE`、使用primitiveはencoding/json、crypto/sha256、os、syscall flock（`STD`）。入力/状態/異常系は[`docs/details/statefile.md` 詳細本文責務](#phase-19-state-transaction)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `statefile`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 

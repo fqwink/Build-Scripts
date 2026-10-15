@@ -1,6 +1,7 @@
 # Adlaire CI — Release 詳細仕様
 
 <a id="phase-19-release-contract"></a>
+
 **Phase 19 署名付きRelease profile：**
 
 ownerは `release`、実装主体は [components/release/](../../components/release/)。[`docs/SPEC.md` 方針・ポリシー責務 SPEC 適用profile](../SPEC.md#policy-inhouse-cicd) に従い、本節の `cicd-v1` だけを拡張する。本書R1〜R7の既存9 asset / 8 checksum行は `legacy-v1` の契約とする。build option、7binaryの名前、admin archive内容、公開tag形式、draft補償は既存契約を参照し、次の差分以外を変えない。
@@ -22,6 +23,9 @@ ownerは `release`、実装主体は [components/release/](../../components/rele
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。Release の作成条件、バージョン体系、標準 OS/arch は [`docs/SPEC.md` ポリシー責務 §1 GitHub リリースポリシー](../SPEC.md#github-リリースポリシー)、asset の受け入れと配置は [`docs/details/setup.md`](setup.md)、admin archive の内容は [`docs/details/admin.md`](admin.md)、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---
+
+<a id="phase-19-release-implementation-classification"></a>
+**実装分類：** provenance/SBOM cross-reference・cohort再現性/公開補償は `INHOUSE`、使用primitiveはcrypto/ed25519、crypto/sha256、archive/tar、compress/gzip、Go toolchain、Git（`STD`）。入力/状態/異常系は[`docs/details/release.md` 詳細本文責務](#phase-19-release-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `release`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="release-responsibility-boundary"></a>
 **責務境界：**

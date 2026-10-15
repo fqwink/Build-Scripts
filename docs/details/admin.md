@@ -1,6 +1,7 @@
 # Adlaire CI — Admin 詳細仕様
 
 <a id="phase-19-admin-contract"></a>
+
 **Phase 19 CLI / package契約：**
 
 ownerは `admin`、実装主体は [components/admin/](../../components/admin/)。既存CLIへ `cicd` namespaceを追加する。API routeは [`docs/details/api.md` 詳細本文責務 operation catalog](api.md#phase-19-operation-catalog)、認証/権限はsecurity正本。管理clientはAPI操作だけを行いstate-dirを直接更新しない。
@@ -68,6 +69,9 @@ HTTP method/path/body/query/authはcatalogへ一致、JSON successをstdoutへ1�
 admin archiveには既存のindex.html/adlaire-ci-sdk.jsを同cohortで含め、新たなbundle/依存/runtimeを追加しない。未実装methodをruntime stub成功で埋めない。CLIとAPI catalogの全件wire比較、SDK/UI同cohortの検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
 
 ---
+
+<a id="phase-19-admin-implementation-classification"></a>
+**実装分類：** CLI/catalog変換・入力file境界は `INHOUSE`、使用primitiveはflag、encoding/json、net/http、os（`STD`）。入力/状態/異常系は[`docs/details/admin.md` 詳細本文責務](#phase-19-admin-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `admin`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 

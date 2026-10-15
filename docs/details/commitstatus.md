@@ -1,6 +1,7 @@
 # Adlaire CI — Commit Status 詳細仕様
 
 <a id="phase-19-commitstatus-contract"></a>
+
 **Phase 19 任意Commit Status接続：**
 
 ownerは `commitstatus`。cicd-v1の送信は既存.server_config.commit_status_enabled=trueだけで有効化し、falseなら外部送信0でも製品run/配備は成立する。既存 [`docs/details/commitstatus.md` 詳細本文責務 GitHub payload/timeout/secret境界](#sec-27-1) を参照し、本節は新run/attempt対応だけを所有する。
@@ -12,6 +13,9 @@ source SHAを送信先とし、contextは `adlaire-cicd/PROJECT/DEFINITION`（AS
 製品statusは開発Actions required checkの代替ではない。source/base/tested SHAとrun identityが異なる証跡を成功へ流用しない。検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)。
 
 ---
+
+<a id="phase-19-commitstatus-implementation-classification"></a>
+**実装分類：** 最新attempt照合と配信dedupは `INHOUSE`、使用primitiveはnet/http、encoding/json、既存Commit Status adapter（`STD`）。入力/状態/異常系は[`docs/details/commitstatus.md` 詳細本文責務](#phase-19-commitstatus-contract)、test vector・fixture・mutationは[`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route)から本ownerのPhase19 caseへ接続する。保守ownerは `commitstatus`。削除はcicd-v1を無効化し、active処理と当該schema参照が0、保持データを検証済みexportした場合だけとし、legacy profileへの暗黙移行は行わない。依存採否は[`docs/SPEC.md` ポリシー責務 §4](../SPEC.md#policy-dependencies)を参照する。
 
 <a id="0-責務境界"></a>
 
