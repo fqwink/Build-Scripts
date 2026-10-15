@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "phase-16-quality-evidence-closure",
   "generated_from": "phase16-live-source-coverage-set",
-  "source_group_sha256": "8ff0c3a85266602e0ed7a21958be0682fa7bb65e980e37ec24f02127aef218dd",
+  "source_group_sha256": "99e8127dab55cbe4e3be84eaf98006d185dd7eb2edd62d018af49aea61491500",
   "go_sum": {
     "path": "go.sum",
     "source_exists": false,
@@ -115,8 +115,8 @@
     {
       "path": "docs/SPEC.md",
       "source_exists": true,
-      "sha256": "f056bea5c843b18e88c95893c3991ff81584a342fa537f07befafb755229f849",
-      "size_bytes": 214124,
+      "sha256": "bf8ee20e2d210ea2cad613005aa682c90faf081a1d30b10d673a417dae5c5f87",
+      "size_bytes": 214413,
       "owner_component": "runner",
       "area": "policy",
       "detected_terms": [

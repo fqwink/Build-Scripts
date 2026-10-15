@@ -824,7 +824,7 @@ API、SDK、標準管理ツールのいずれかを変更する場合は、API �
 | `責務正本未確定` | 正本分担の判断は [`docs/SPEC.md` 責務文書構成表](SPEC.md#document-responsibility-map) を `canonical_responsibility` とする。 |
 | `状態不整合` | [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務を `canonical_responsibility` とする。 |
 | `索引不整合` | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を `canonical_responsibility` とする。 |
-| `詳細仕様不足` | 不足している実装契約を所有する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務を `canonical_responsibility` とする。 |
+| `詳細仕様不足` | 不足している契約を所有する owner component 別の [`docs/details/*.md`](details/) 詳細本文責務、または本番検証の詳細契約については [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務を `canonical_responsibility` とする。選択は [責務文書構成表](#document-responsibility-map) の問いに従い、fixture証跡schemaの不足と混同しない。 |
 | `fixture 証跡不足` | [`docs/details/fixture.md`](details/fixture.md) fixture 証跡責務を `canonical_responsibility` とする。 |
 | `デザイン責務混入` | [`docs/DESIGN.md`](DESIGN.md) デザイン責務を `canonical_responsibility` とする。 |
 | `作業ルール混入` | [`AGENTS.md`](../AGENTS.md) 最上位ルールブックを `canonical_responsibility` とする。 |
