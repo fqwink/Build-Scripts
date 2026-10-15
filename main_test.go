@@ -43,7 +43,7 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 		documents[path] = phase11MustReadText(t, path)
 	}
 	if err := phase19ValidateSpecification(documents); err != nil {
-		t.Fatal(err)
+		t.Fatalf("runner.phase19-spec.positive.accept: expected valid specification, actual %v", err)
 	}
 	for _, mutation := range []struct {
 		name string
@@ -73,11 +73,11 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 				changed[path] = content
 			}
 			if !strings.Contains(changed[mutation.path], mutation.from) {
-				t.Fatalf("mutation target missing: %s", mutation.name)
+				t.Fatalf("runner.phase19-spec.%s.fixture: expected mutation target, actual missing", mutation.name)
 			}
 			changed[mutation.path] = strings.Replace(changed[mutation.path], mutation.from, mutation.to, 1)
 			if err := phase19ValidateSpecification(changed); err == nil {
-				t.Fatalf("specification mutation survived: %s", mutation.name)
+				t.Fatalf("runner.phase19-spec.%s.reject: expected rejected, actual accepted; specification mutation survived: %s", mutation.name, mutation.name)
 			}
 		})
 	}
