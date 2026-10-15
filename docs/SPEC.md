@@ -5,7 +5,7 @@
 **Builder 標準出力形式：** 静的 Web サイト（HTML / CSS / JavaScript / search index）
 **仕様世代：** Go 初期仕様
 **仕様バージョン：** V.N（正式リリース前の暫定表記）/ **リリースバージョン：** V.X.N（正式リリース前の暫定表記）。[`docs/SPEC.md` ポリシー責務 §1](SPEC.md#policy-versioning) 参照。
-**更新履歴：** 日付本文を正本化しない。仕様変更の時系列は Git 履歴と Pull Request を正とする。
+**変更記録：** [`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](SPEC.md#policy-change-history-artifact-ban) を参照。
 
 ---
 
@@ -242,6 +242,11 @@ owner component と実装 artifact は別の判断対象とする。owner compon
 
 仕様全般を整理する場合は、[`docs/SPEC.md` 方針責務 §4.2a 仕様全般重複記載禁止原則](SPEC.md#spec-global-no-duplicate-principle) を、各文書の個別整理規則より上位の方針として適用する。
 
+<a id="direction-change-history-single-source"></a>
+**変更記録の一元化方針：**
+
+仕様・開発・リリースの変更記録は、Git 履歴、Pull Request、GitHub Release の各公開記録へ接続する。独立した変更履歴 artifact の並行管理は、転記漏れ、時系列のずれ、古い記載の参照、正本との不一致を増やし、誤った仕様判断と回帰不具合につながるため採用しない。禁止対象と適用範囲は [`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](SPEC.md#policy-change-history-artifact-ban) を参照する。
+
 <a id="43-ディレクトリ構成"></a>
 
 <a id="sec-4-3"></a>
@@ -406,7 +411,6 @@ Adlaire CI のディレクトリ構成は、責務ベースで整理する。
 ├── SECURITY.md
 ├── CONTRIBUTING.md
 ├── CODEOWNERS
-├── CHANGELOG.md
 └── go.mod
 ```
 
@@ -611,7 +615,7 @@ GitHub API を定期的にポーリングし、対象変更を検出してビル
 <a id="sec-5-3"></a>
 **5.3 GitHub Actions 使用方針：**
 
-GitHub Actions は、リポジトリ検証、Pull Request required check、Phase required workflow、release rehearsal、document drift checker、fixture checker の標準検証基盤として使用する。
+GitHub Actions は、本リポジトリの開発全般における自動化と正式検証の標準基盤として使用する。対象は、ビルド、テスト、静的解析、文書整合確認、fixture checker、Pull Request 品質ゲート、Phase required workflow、成果物生成、開発・検証環境への配備、release rehearsal、リリース自動化とする。個別の開発工程だけを別 CI/CD 基盤へ分散させない。仕様検討、編集、ローカルデバッグは開発者の作業環境で行えるが、その成功を正式検証の代替にしない。適用条件、runner 選択、安全境界、完了判定は [`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions) を正本とする。
 
 GitHub Actions は、Adlaire CI production runtime の外部依存、Adlaire CI runner の代替実装、内製 CI/CD の代替、または利用者環境の必須実行基盤として扱ってはならない。内製ランナーの起動方式、pipeline 実行方式、secret 参照、変更検出、通知、転送、deploy、rollback は [`docs/details/runner.md`](details/runner.md) 詳細本文責務、[`docs/details/setup.md`](details/setup.md) 詳細本文責務、[`docs/details/release.md`](details/release.md) 詳細本文責務を正本とする。
 
@@ -725,6 +729,19 @@ owner component 別の [`docs/details/*.md`](details/) の各仕様項目は、�
 | 検証証跡 | fixture、fake、expected、effects、security expected、意味のあるテスト条件、test gap inventory、test improvement batch closure、test evidence package、test verification closure record set、requirement coverage ledger、oracle evidence、failure diagnostics evidence、boundary / failure matrix evidence、isolation evidence、determinism evidence、race trigger matrix、concurrency / race evidence、mutation selection ledger、mutation test 条件、harness self-verification evidence、contract drift report、skip / 未実行時の扱い、pass / fail 条件、完了証跡。 |
 
 実装中に完全仕様詳細化未完了の事項を発見した場合、実装者はコード判断で補完してはならない。該当箇所の実装を停止し、責務正本を先に改訂して完全仕様詳細化を完了させてから実装を再開しなければならない。
+
+<a id="policy-change-history-artifact-ban"></a>
+**変更履歴 artifact 禁止契約：**
+
+本リポジトリの仕様・開発・リリースの変更内容、変更日、変更前後、version / Phase 別の変更一覧を独立して管理する変更履歴 artifact を全面禁止する。作成、追加、編集、追記、移動、リネーム、自動生成、テンプレート化、配布物への同梱、復元、再導入、必須成果物への指定を行ってはならない。禁止は手動作業、エージェント、script、workflow、release 手順に同じく適用し、名称、拡張子、言語、配置場所、単版型 / 累積型、保存形式を変更して回避してはならない。既存文書への履歴一覧の埋込みも、独立した変更履歴 artifact の代替として行ってはならない。
+
+`CHANGELOG`、`CHANGE-LOG`、`CHANGES`、`HISTORY`、`RELEASE-NOTES`、`RELEASENOTES`、`CHANGE-HISTORY`、`UPDATE-HISTORY`、`RELEASE-HISTORY`、`変更履歴`、`更新履歴`、`リリース履歴`、`リリースノート` は禁止対象の名称例であり、例示に含まれない名称を許可する意味ではない。規約検査では、リポジトリ配下の file / directory / symlink 名について、大文字小文字、先頭の `.`、区切りの `-` / `_` / `.` / space、拡張子、後置する version / 日付 / template 名を変えたこれらの名称も検出する。`.git` 内の Git 管理記録だけは探索しない。任意名称の履歴本文や生成設定による回避は、名称検査の合格を理由に許可せず、変更差分と生成・配布契約の確認対象とする。
+
+artifact 宣言の path pattern では、各 segment の最初の `*` / `?` / `[` より前の固定名称も同じ名称境界で照合する。禁止名称への wildcard 後置を、必須 artifact 宣言の回避手段にしてはならない。この照合は汎用 include pattern のすべての展開候補を禁止する判断ではなく、実在 path の検査と任意名称の差分確認を置き換えない。
+
+変更の時系列と変更理由は Git 履歴と Pull Request、リリース利用者向けの単版の告知は GitHub Release 本文に記録する。独立した変更履歴 artifact を正本、索引対象、完了条件、fixture 必須 artifact、release governance artifact にしてはならない。現行仕様、現在状態、利用手順は、それぞれの責務正本の現在の本文を更新する。
+
+ビルド履歴、設定変更の監査ログ、運用イベント、状態ファイル、テスト証跡、仕様上定義された GitHub Release 単版の本文入力は、実行結果・操作・検証・公開入力を扱う固有責務であり、開発変更履歴の並行管理へ転用してはならない。Release 本文入力を累積履歴、変更履歴の正本、governance file、配布 asset として管理してはならない。negative control 用の合成入力は、リポジトリ外の隔離された一時 directory 内で検査し、実際の変更履歴を記録・保存しない。
 
 <a id="policy-spec-maturity"></a>
 
@@ -932,7 +949,7 @@ API の内部説明や fixture 名に既存の段階名が残る場合でも、�
 
 意味のあるテストの完了証跡は、対象 owner、対象仕様 anchor、assertion、実行証跡、未実行理由、対象外理由、mutation 判定、drift 判定、closure 状態へ到達できる記録でなければならない。実行した command 名、pass 件数、coverage percentage、fixture directory の存在、または Pull Request の説明文だけを完了証跡として扱ってはならない。完了証跡の記録単位と記録先は [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract)、assertion id は [`docs/details/fixture.md` fixture 証跡責務 assertion id 固定契約](details/fixture.md#test-assertion-id-contract)、skip / 未実行は [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](details/fixture.md#test-skip-evidence-contract)、drift report は [`docs/details/fixture.md` fixture 証跡責務 test / contract drift report schema 固定契約](details/fixture.md#test-contract-drift-report-schema-contract) を正本とする。
 
-標準検証経路は、GitHub Actions と VPS 上のクラウド検証を優先する。ローカル Docker は禁止せず、クラウド検証が未接続、失敗、または切り分け不能な場合の補助・バックアップ検証として使用できる。ただし、試験本番運用、VPS Pull Bootstrap、systemd、bootstrap artifact health、network、update / rollback、bootstrap session、または本番同等の外部境界証跡が必須条件になっている Phase では、ローカル Docker の成功だけを完了根拠、review ready、merge 可能、または `実装済み` 遷移根拠にしてはならない。VPS の運用対象、用途、secret-safe 境界、証跡接続条件は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務を正本とする。
+開発の正式検証経路とローカル補助検証の位置付けは [`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions) に従う。ローカル Docker は、クラウド検証が未接続、失敗、または切り分け不能な場合の補助・バックアップ検証として使用できる。ただし、試験本番運用、VPS Pull Bootstrap、systemd、bootstrap artifact health、network、update / rollback、bootstrap session、または本番同等の外部境界証跡が必須条件になっている Phase では、GitHub Actions またはローカル Docker の成功だけを完了根拠、review ready、merge 可能、または `実装済み` 遷移根拠にしてはならない。VPS の運用対象、用途、secret-safe 境界、証跡接続条件は [`docs/details/production-validation.md`](details/production-validation.md) 本番検証詳細本文責務を正本とする。
 
 テスト関連改善作業とは、test、fixture、expected、fake、harness、checker、assertion、mutation、race / concurrency、contract drift、実装検証証跡、または Phase 完了判定のいずれかを変更または評価する作業をいう。テスト関連改善作業は、発見した問題点を個別に散発修正してはならない。最初に全件棚卸しを作成し、各問題点を owner、artifact、仕様 anchor、fixture root、証跡種別、必要対応、closure 記録へ接続し、open item を `0` にする一括 closure まで完了させなければならない。対象変更単位の test evidence package 記録先、問題点の棚卸し schema、batch closure の記録条件、mutation 選定台帳、race trigger 判定表は [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract)、[`test gap inventory record 固定契約`](details/fixture.md#test-gap-inventory-record-contract)、[`test improvement batch closure 固定契約`](details/fixture.md#test-improvement-batch-closure-contract)、[`mutation selection ledger 固定契約`](details/fixture.md#mutation-selection-ledger-contract)、[`race trigger matrix 固定契約`](details/fixture.md#race-trigger-matrix-contract) を正本とする。
 
@@ -982,7 +999,7 @@ test harness、checker、contract drift checker、fixture assertion、expected �
 
 mutation test（ミューテーションテスト）は必須とする。実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion を変更する場合、対象変更が検出すべき代表的な mutation を定義し、適用可能な mutation を kill しなければならない。mutation test を実施できない実装変更、または適用可能な mutation が生存する実装変更は、`実装済み`、Phase 全体完了、review ready、merge 可能として扱ってはならない。mutation test の証跡 schema、記録項目、fixture manifest との対応は [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract) を正本とする。
 
-mutation test は、ゼロ依存・フルインハウス原則に従い、本リポジトリで所有する Go 標準ライブラリ実装または既存の標準検証ランタイムだけで再現できなければならない。外部 mutation testing service、外部 hosted runner、許可外部ライブラリ、npm package、外部 framework、手作業の目視確認、coverage percentage だけを mutation test の完了根拠として使用してはならない。
+mutation test は、ゼロ依存・フルインハウス原則に従い、本リポジトリで所有する Go 標準ライブラリ実装または既存の標準検証ランタイムだけで再現できなければならない。外部 mutation testing service、許可外部ライブラリ、npm package、外部 framework、手作業の目視確認、coverage percentage だけを mutation test の完了根拠として使用してはならない。実行基盤には [`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions) の runner を使用できるが、runner 提供元の成功表示だけを mutation 判定の代替にしてはならない。
 
 mutation test は、対象変更単位ごとに mutation operation、変異前、変異後、適用方法、実行 command、期待 failure、実際の failure、判定、集計へ到達できる再現可能な証跡を持たなければならない。mutation の目視確認、説明文だけの mutation、手元で一時的に試しただけの mutation、正本 artifact を直接変更したまま残す mutation、または再実行できない mutation は完了証跡として扱ってはならない。
 
@@ -1012,6 +1029,48 @@ mutation の扱いは以下に固定する。
 coverage は参考指標に限る。line coverage、branch coverage、function coverage、statement coverage のいずれも、意味のあるテスト、mutation test、fixture 証跡、異常系、境界値、契約横断、副作用検証の代替にしてはならない。coverage が高い場合でも、mutation が生存する、assertion が弱い、失敗系がない、仕様追跡性がない、fixture 証跡がない場合は完了不可とする。
 
 テスト未整備の状態で実装を完了扱いにしてはならない。対象機能に対して意味のあるテストまたは mutation test を定義できない場合は、実装判断で対象外にせず、仕様不足として扱い、owner component 別の [`docs/details/*.md` 詳細本文責務](details/) または [`docs/details/fixture.md` fixture 証跡責務](details/fixture.md) を先に改訂しなければならない。仕様上明示された対象外だけは、対象外理由と正本 anchor を証跡へ記録した場合に限り、未実施テストとして扱わない。
+
+<a id="policy-development-actions"></a>
+
+## 0h. 開発 GitHub Actions 標準使用契約
+
+本節は [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3) の開発自動化に適用する必須条件を所有する。実行・承認・Pull Request 記録の手順は [`AGENTS.md` 開発 GitHub Actions 作業手順](../AGENTS.md#agents-development-actions)、workflow 定義と実行結果の証跡 schema は [`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) を正本とする。開発基盤の採用は、[`docs/SPEC.md` 方針責務 §4.1](SPEC.md#sec-4-1) と [`docs/SPEC.md` ポリシー責務 §4](SPEC.md#policy-dependencies) の production 依存条件、既存 owner 契約、Phase、必須 VPS 証跡を変更するものではない。
+
+<a id="development-actions-workflow-contract"></a>
+**workflow 定義・品質ゲート契約：**
+
+| 判断対象 | 必須条件 |
+|----------|----------|
+| 実行基盤 | GitHub-hosted runner と self-hosted runner のどちらも GitHub Actions の実行 worker として扱い、品質、承認、証跡、完了判定を同じ基準で適用する。self-hosted は runner の自己管理方式であり、独立した CI/CD 製品または GitHub から独立した制御基盤を意味しない。 |
+| 実行契機 | Pull Request の作成、更新、再開、draft 解除と `main` への push を正式検証の契機にする。手動実行、定期実行、tag / Release 契機は、目的、対象 ref、入力、頻度、承認、許可する副作用を個別契約で固定する。手動・定期実行だけで Pull Request の必須検証を置換しない。 |
+| 実装前契約 | workflow ごとに責任者、目的、仕様 anchor、trigger / filter、入力、検証対象 ref、job / matrix、依存順序、必須・対象外判定、command、runner / OS / toolchain、権限、secret 名と利用境界、timeout、concurrency、出力・保存期間、失敗・再実行・cleanup 条件を固定する。未定義のまま workflow、runner、required check を変更しない。 |
+| 必須検証の選定 | Go は `gofmt -l`、`go test ./...`、`go vet ./...`、JavaScript は Deno stable の `deno check`、文書は参照・責務・整合確認と変更履歴 artifact 境界検査を基準とする。fixture、異常系、境界値、negative / positive control、mutation、race、契約横断、VPS 証跡の適用判定は [`docs/SPEC.md` ポリシー責務 §0g](SPEC.md#policy-meaningful-test) と対象責務正本に従う。差分が小さいこと、runner 不足、runtime 不足を対象外根拠にしない。 |
+| 検証対象の一致 | 正式結果は最新の対象 source SHA と実際に checkout・検証した tested SHA を特定できなければならない。Pull Request の merge ref を検証する場合は head SHA、base SHA、tested merge SHA の対応を確認する。head または検証対象 base が更新された結果、別 ref、過去の run、変更前の artifact を最新検証として流用しない。 |
+| 最終ゲート | workflow の必須 job / matrix と対象外判断を集約する安定名の gate job を必須とする。先行 job の失敗・skip 後も gate 判定を実行し、実際に実行された必須項目すべての成功、対象 SHA、証跡接続を確認した場合だけ成功にする。`skipped`、`neutral`、`cancelled`、timeout、未実行、欠落結果、`continue-on-error` や終了コードの握りつぶしを必須項目の成功へ変換してはならない。対象外は、事前定義した適用判定と責務正本 anchor を記録する。 |
+| required check | `main` の保護対象に安定した gate check 名と GitHub Actions の check 提供元を対応させる。check 名の重複、path / branch filter による必須 gate の消失、設定だけでの skip / neutral 合格を防止する。merge 判定時には最新 head / base に対応した gate 結果を確認する。保護設定、check 名、必須 job の変更は [`AGENTS.md` Git 運用ルール](../AGENTS.md#agents-git-operations) の承認・Pull Request・ユーザー merge 手順を適用する。 |
+| timeout / concurrency | 全 job に有限の `timeout-minutes` を設定する。古い Pull Request の検証は同一対象の新 run により取消できる。公開・配備は対象環境ごとに直列化し、進行中の副作用を新 run の到着だけで中断しない。retry 上限、失敗後の実状態確認、復旧・cleanup を個別契約で固定し、再実行成功だけで初回失敗を隠さない。 |
+| artifact / cache | 成果物は生成 commit、run / attempt、生成 job、digest、保存期間へ接続し、検証済みの同一成果物だけを公開・配備する。cache は再生成可能な補助に限り、合格証跡の代替にしない。未信頼 run の artifact / cache を権限付き job に無検証で取り込まない。保持期限切れ・削除で証跡へ到達できない場合は再検証する。 |
+| 公開・配備境界 | build / verification と公開・配備を job、権限、secret、対象環境で分離する。公開先、配備先、対象 commit / digest、実行権限、副作用、復旧条件についてユーザー承認を得た範囲だけを実行する。workflow の dispatch、PR 承認、environment の通過、または token の保有だけをリポジトリ作業の `承認` の代替にしない。 |
+
+<a id="development-actions-runner-security"></a>
+**権限・依存・runner 安全契約：**
+
+| 判断対象 | 必須条件 |
+|----------|----------|
+| Action 依存 | 外部 Action と外部 reusable workflow は、提供元、利用理由、処理内容、必要権限、保守・更新・削除方針を確認して承認し、完全な commit SHA に固定する。参照先の依存も確認し、tag / branch / `latest` へ置換しない。許可は開発基盤の用途に限定し、外部解析サービス、実装ライブラリ、production 依存の追加許可へ拡張しない。 |
+| 最小権限 | workflow の `GITHUB_TOKEN` は原則 `contents: read` とし、不要な権限を与えない。書込み、公開、配備、認証連携の追加権限は必要な job だけに限定する。環境別に credential を分離し、秘密値を workflow 本文、入力例、log、cache、artifact、fixture、PR 本文へ保存しない。mask だけで漏えい防止済みとは判定せず、漏えい時は停止、失効・再発行、影響確認を行う。 |
+| 未信頼コード | fork、外部 Pull Request、その他未信頼 ref は、secret・書込み権限・機密ネットワーク接続を持たない GitHub-hosted runner で検証する。self-hosted runner では実行しない。`pull_request_target` / `workflow_run` 等の権限付き文脈で未信頼コードを checkout・実行しない。event の文字列を shell / script へ直接展開せず、入力検証と data としての受渡しを行う。 |
+| self-hosted 隔離 | runner group または同等の対象 repository / job 制限で信頼済みコード専用の割当を設定し、label だけを信頼判定に使わない。日常作業端末、production credential、機密ネットワークから分離し、job ごとに使い捨ての実行環境または同等の清浄化を保証する。共用 workspace、credential、process、cache、network 接続を次 job へ残さない。environment 承認だけを隔離保証にしない。 |
+| self-hosted 保守 | 責任者を明示し、OS・runner・toolchain の更新、稼働監視、容量・ログ管理、登録 token / credential 管理、廃止、復旧を所有する。起動前確認と job 終了後 cleanup の結果を残し、更新失敗、汚染、残留 resource、cleanup 失敗時は runner を隔離して再利用を停止する。復旧確認前の再登録・job 再投入で障害を隠さない。 |
+
+<a id="development-actions-application-boundary"></a>
+**証跡・障害・適用完了契約：**
+
+正式検証は [`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) の定義 record、run / job 結果、runner 環境、SHA 対応を既存の test evidence package と Pull Request の `Verification` へ接続する。実行履歴・変更一覧を別ファイルへ蓄積せず、[`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](SPEC.md#policy-change-history-artifact-ban) を維持する。
+
+GitHub Actions 障害、runner 不足、ネットワーク障害をローカル成功で正式合格へ置換してはならない。例外は、対象必須項目、理由、同じ要求を満たす代替証跡、責任者、期限、復旧・再実行条件、完了可否への影響について事前に `承認` を得た場合に限る。代替が要求を満たさない場合、承認の有無にかかわらず対象完了判定は未完了とする。secret 境界、未信頼コードの隔離、SHA 一致、変更履歴 artifact 禁止を例外で解除してはならない。
+
+本節の文書策定完了と運用適用完了は別判定とする。運用適用では、実在 workflow、required check / 保護設定、使用する runner、権限、artifact、実行証跡を照合し、適用差分を既存 Pull Request に記録して閉じる。未設定・未検証項目が残る段階を本節準拠、運用適用済み、または新基準による正式合格として報告してはならない。workflow / runner / GitHub 設定の適用変更は、文書改訂の承認だけで実行しない。
 
 <a id="policy-versioning"></a>
 

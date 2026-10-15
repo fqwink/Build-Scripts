@@ -246,7 +246,22 @@ Phase 13 の証跡 package は、下表の全対象を同一 closure record set 
 | mutation / race / fault | production code mutation selection、mutation evidence set、`survived=0`、race detector または代替 interleaving、disk full、permission denied、short write、fsync failure、rename failure、process kill。 | mutation survivor、race trigger 未判定、fault injection 未実行、skip に責務正本 anchor がない、障害を成功扱いする。 |
 | integration / E2E | Admin to API、UI to SDK to API、runner to statefile、MCP to statefile の統合テスト、setup、install-api、update、rollback、Release、実インストール E2E。 | 単体 test だけで統合済み扱い、stub だけで E2E 扱い、実インストール未実行の未実行証跡欠落、連携先副作用未比較が 1 件以上ある。 |
 | CI / GitHub Actions | format、test、race、vet、Go 標準 toolchain と内製検査による static analysis、dependency inventory、secret boundary scan、executable fixture、mutation、競合、fault、browser、setup、release の check、Actions の commit SHA pin、minimum permissions、timeout、required checks。 | required check 未設定、Actions tag pin、permissions 過大、timeout 欠落、外部解析 tool の導入、skip success、CI 外の口頭説明だけで合格にする。 |
-| governance / recovery | LICENSE、SECURITY.md、CONTRIBUTING.md、CODEOWNERS、CHANGELOG、stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順。 | governance file 未作成、復旧手順未記載、復旧手順が実装契約または fixture へ接続しない、document drift が 1 件以上ある。 |
+| governance / recovery | LICENSE、SECURITY.md、CONTRIBUTING.md、CODEOWNERS、[変更履歴 artifact 境界検査](#change-history-artifact-boundary-evidence)、stale lock、状態破損、容量不足、credential rotation、rollback の復旧手順。 | governance file 未作成、境界検査失敗、復旧手順未記載、復旧手順が実装契約または fixture へ接続しない、document drift が 1 件以上ある。 |
+
+<a id="change-history-artifact-boundary-evidence"></a>
+**変更履歴 artifact 境界検査：**
+
+判断根拠は [`docs/SPEC.md` ポリシー責務 変更履歴 artifact 禁止契約](../SPEC.md#policy-change-history-artifact-ban) とする。実行入口は [`main_test.go`](../../main_test.go) の `TestChangeHistoryArtifactBoundary`、`TestChangeHistoryArtifactBoundaryControls`、`TestPhase13ImplementationAlignmentQualityEvidence` とし、`go test . -run 'TestChangeHistoryArtifactBoundary|TestPhase13ImplementationAlignmentQualityEvidence' -count=1` で検査する。既存 Phase 13 required workflow の fixture checker と full Go test から同じ境界検査へ到達する。
+
+| 入力 / 操作 | 期待結果 / assertion | 差し戻し条件 |
+|-------------|----------------------|--------------|
+| リポジトリ全 path を `filepath.WalkDir` で列挙し、名称を policy の検出境界で照合する。 | `.git` 管理記録以外の禁止 path `0`。探索入口は path を clean した後の実在 directory とし、通常 file、symlink、不存在を fail とする。探索失敗も fail とし、file / directory / symlink を同じ名称境界で検査する。 | 禁止 path が存在する、探索 error を成功扱いする、directory ではない入口を空の成功結果にする、hidden / nested path が未検査。 |
+| 隔離された一時 directory に、内容を持たない合成禁止名を置く。 | policy のすべての名称例を照合し、canonical、大小文字、hidden、別拡張子、区切り、後置 version / 日付 / template、nested directory、symlink 名の各 negative control で禁止 path を検出する。 | 禁止名を見逃す、検査対象を root だけに限定する、`.git` 以外を除外する。 |
+| ビルド履歴、監査ログ、状態、公開入力を表す合成 path と `.git` 管理記録を置く。 | 固有責務の path を開発変更履歴として誤検出しない。 | `.build_history`、`config_changes.jsonl`、Release 単版の本文入力の `notes.md` を禁止 path として検出する。 |
+| Phase 13 governance file と `input/scope.json` の `include` / `release_artifacts` を照合する。 | 現行 governance file の存在・内容・索引を検証し、禁止 artifact 宣言 `0`。両欄は非空の文字列配列、各要素は空白だけではない文字列とし、JSON 不正、型不一致、欠落、null、空配列、空要素を fail とする。重複 key と必須 key の大小文字違いも fail とし、escape 表記による同じ key の再定義、後置 key による禁止名の上書きを認めない。既存の他の scope field は維持する。 | 存在確認を削るだけで artifact 必須宣言を残す、禁止 artifact を fixture に再登録する、不正・曖昧な宣言を成功扱いする。 |
+| 合成 scope JSON を実際の宣言検査関数へ渡す。 | `include` と `release_artifacts` を独立に検証し、各欄の禁止名、不正入力、禁止名称へ wildcard を後置した path pattern を拒否する。固有責務の path と既存の汎用 include pattern を持つ正常 JSON は成功する。 | 名称 helper だけを試して JSON 解析・両欄の検査を通さない、片方の欄の検査または wildcard 前の固定名称照合を削っても controls が成功する。 |
+
+証跡は同一 PR の Verification と [implementation PR evidence template 固定契約](#implementation-pr-evidence-template-contract) に接続し、実行コマンド、negative control 結果、任意名称 / 生成・配布設定の差分確認、最終 open item 件数を記録する。新しい production code、共有状態、goroutine を追加しない検査の race trigger / production mutation 対象外根拠は、[test concurrency / race evidence set 固定契約](#test-concurrency-race-evidence-set-contract) と [mutation selection ledger 固定契約](#mutation-selection-ledger-contract) の対象選択へ接続する。checker の名称照合・探索除外を無効化した場合は対応 negative control が検出することを確認する。
 
 Phase 13 closure record set は、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) の 18 record を使用し、各 record の `scope` に `phase-13-implementation-alignment-quality` を含める。Phase 13 では以下の集計値を同じ closure record set 内に記録する。
 
@@ -1400,6 +1415,496 @@ assertion id を変更する場合は、変更前 id、変更後 id、変更理�
 | mutation test 検証 | 実装コード、test harness、fixture assertion、expected 比較、security assertion、state diff assertion。 | mutation class、対象 file、対象 fixture、実行単位、判定、`killed` / `survived` / `invalid` / `equivalent` 件数。 | [mutation test 証跡固定契約](#mutation-test-evidence-contract) の `survived` が 1 件以上ある、または対象 mutation が未定義。 |
 | cross-owner contract 検証 | API / SDK / UI、CLI / API、statefile / archive / security / runner、setup / release / admin の横断境界。 | 呼び出し元 owner、呼び出し先 owner、endpoint / method / command / state path、状態差分、security effect、成功後再取得、失敗時 no mutation、関連 fixture。 | 片側の契約だけを検証している、または collaborator の副作用、security、状態差分、失敗時固定が未確認。 |
 | 未実行・対象外証跡 | 必須検証を実行できない場合、または仕様上対象外とする場合。 | 未実行 command、未実行理由、影響 owner、影響 fixture、再実行条件、対象外にする責務正本 anchor、完了可否への影響。 | 必須検証の未実行理由がない、対象外 anchor がない、または未実行のまま完了扱いにしている。 |
+
+<a id="development-actions-evidence-contract"></a>
+**開発 Actions 証跡固定契約：**
+
+本契約は開発 workflow の定義、実行対象、結果、運用適用状況の記録 schema を所有する。開発基盤の方針・必須条件・例外可否は [`docs/SPEC.md` 方針責務 §5.3](../SPEC.md#sec-5-3) と [`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](../SPEC.md#policy-development-actions)、実行・承認・PR 記録の手順は [`AGENTS.md` 開発 GitHub Actions 作業手順](../../AGENTS.md#agents-development-actions) を参照する。
+
+定義 record は workflow path / revision ごと、実行 record は run id / attempt ごと、適用 record は承認済み適用範囲ごとに作成し、既存 Pull Request の `Verification` へ記録する。検証結果は [test execution evidence matrix 固定契約](#test-execution-evidence-matrix-contract)、該当 [test evidence package 記録先固定契約](#test-evidence-package-record-location-contract) の `record_location` と既存 `execution_evidence_closure` の `evidence_refs` へ接続する。本契約のために独立した履歴ファイル、19 件目の closure item、未作成の checker path を宣言しない。該当 package を使用しない文書策定では対象外範囲・理由・正本 anchor を PR に記録する。
+
+| record / field | 記録形式・照合対象 |
+|----------------|--------------------|
+| 定義 `workflow_ref` / `spec_refs` / `responsible_owner` | 実在 path、定義 commit SHA、責務正本 anchor、開発 workflow の管理責任者。管理責任者を product の owner component と同一概念にしない。 |
+| 定義 `triggers` / `inputs` / `target_refs` | event、branch / path filter、手動・定期・tag 契機、入力型と許容値、検証対象 ref の選択、公開・配備の許可範囲。 |
+| 定義 `jobs` | job id / check 名、matrix 軸と組合せ、依存 job、command、必須・対象外判定と anchor、runner 種別 / group / label、OS / architecture / toolchain、permissions、secret 名と利用 job、timeout、concurrency、failure / retry / cleanup 条件。秘密値は含めない。 |
+| 定義 `dependencies` / `outputs` | Action / reusable workflow の提供元と完全 commit SHA、依存確認、承認参照、更新責任者。artifact / cache の用途、生成 job、検証方法、保存期間、公開・配備先。 |
+| 実行 `workflow_ref` / `run_url` / `run_id` / `run_attempt` / `event` | 定義 record と一致する workflow revision、実在 run URL、run id、正整数 attempt、実際の起動 event。再実行は別 attempt として識別する。 |
+| 実行 `source_sha` / `base_sha` / `tested_sha` | source / 実 checkout commit の 40 文字 lowercase hex。PR merge ref では base SHA も記録し、head・base・tested merge の対応証跡を付す。base がない event は `base_sha=null` として event 根拠を示す。 |
+| 実行 `job_results` | 必須 job / matrix ごとの job id、組合せ、実在 job URL、runner 種別、OS / architecture、runtime version、command、終了 code、実 conclusion、assertion / evidence 参照、未実行理由。起動しなかった job は job URL・終了 code を `null` とし、欠落を success へ置換しない。 |
+| 実行 `gate_result` / `artifact_refs` | 適用対象一覧と最終 gate の job URL / conclusion、対象外の正本 anchor。成果物がある場合は生成 source SHA、run / attempt / job、実在参照、SHA-256 digest、保持期限、公開・配備前の一致確認。 |
+| 実行 `runner_evidence_refs` / `exception` | self-hosted では隔離・起動前確認・cleanup・保守責任者への証跡参照。例外なしは `null`、例外ありは対象、理由、責任者、ユーザー承認参照、代替証跡、UTC 期限、復旧・再実行条件、完了可否への影響。未実行 record は [skip / 未実行証跡固定契約](#test-skip-evidence-contract) へ接続する。 |
+| 適用 `scope` / `configuration_refs` / `differences` / `status` | 承認対象 workflow / runner / GitHub 設定、実設定の再取得証跡、規則ごとの適用差分と処置先。`status` は `document_only`、`pending`、`applied` のいずれか。`applied` は差分 0 件で、対象最新 SHA の実行 record へ到達する場合だけ記録する。 |
+
+実行証跡の照合 case は、定義済み全必須 job 成功・同一 SHA の positive case と、必須 job 欠落、skip / neutral / cancel / timeout、終了 code 隠蔽、旧 SHA、head / base 更新、artifact digest 不一致、未信頼 ref の self-hosted 選択、secret / 権限境界違反、Action の tag 参照、timeout 欠落、cleanup 失敗の negative case を識別する。各 case の入力、期待拒否理由、actual、assertion、実行証跡を対象 workflow の検証 package へ接続する。run URL のみ、全体の緑表示のみ、架空 job URL、未取得の環境情報、到達不能な証跡、または負例を実行せず拒否済みと記載した record は完全な実行証跡にしない。
+
+<a id="development-actions-required-gate-contract"></a>
+**開発 Actions required gate 固定契約：**
+
+本節は既存 GitHub-hosted 検証 7 workflow の定義入力、expected、checker と負例を固定する。適用方針は [`docs/SPEC.md` ポリシー責務 §0h](../SPEC.md#policy-development-actions)、記録 schema は [開発 Actions 証跡固定契約](#development-actions-evidence-contract) を参照する。これは開発検証基盤の保守であり、製品 Phase の追加・状態遷移、VPS 操作、公開・配備、self-hosted 導入を含めない。
+
+| 固定対象 | 入力・expected・検証接続 |
+|----------|-------------------------|
+| 定義単位 | 下記 JSON は Phase 12〜18 の既存 workflow 名と既存 66 job の `id / timeout / runtime / command` を順序付きで固定する。path は `.github/workflows/<name>.yml`、管理責任者は repository maintainer、全既存 job は必須、matrix・対象外 job・secret・公開出力はなしとする。runtime は Go `1.22` または Deno `v2.x`、runner は `ubuntu-24.04` とする。 |
+| 共通 envelope | trigger は `pull_request.types=[opened,synchronize,reopened,ready_for_review]` と `push.branches=[main]`、Phase 18 だけ既存 `workflow_dispatch` を保持する。`permissions.contents=read`、既定 shell は bash。concurrency group は `github.workflow` と `github.event.pull_request.number \|\| github.run_id` の連結、取消条件は `github.event_name == 'pull_request'` とし、main / 手動 run を相互取消しない。 |
+| Action / checkout | checkout は `actions/checkout@11d5960a326750d5838078e36cf38b85af677262`、Go は `actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff`、Deno は `denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed` を保持する。全 checkout の `ref=github.sha`、`persist-credentials=false` を固定する。新規 Action・外部 library は追加しない。 |
+| gate job | workflow ごとに `phase<N>-required-gate` を 1 件追加し、既存全 job を `needs` に列挙する。`if=always()`、timeout 10 分、同じ runner / checkout / Go runtime を使用する。gate の `ADLAIRE_ACTIONS_GATE=required` と `ADLAIRE_ACTIONS_NEEDS=toJSON(needs)` は env 経由で渡す。script は両 env の存在確認後、`go test . -run '^TestDevelopmentActions(RequiredGate\|WorkflowContract\|GateControls)$' -count=1 -v` を実行する。bash pipefail と `tee` で失敗を伝播し、`RUNNER_TEMP/development-actions-gate.log` の3 root test の `--- PASS:` と照合 JSON marker を `grep -Fq` で確認する。test 不在・no tests to run・記録欠損・log 保存失敗を合格にしない。temporary log は実行診断であり、repository file / history artifact / 配布 artifact へ保存しない。 |
+| canonical workflow oracle | [`main_test.go`](../../main_test.go) の `TestDevelopmentActionsWorkflowContract` は、本定義の固定 envelope / job / gate を LF・2 space・固定 field 順の YAML へ展開した expected bytes と実在 7 file を完全比較する。一般 YAML parser として扱わず、追加 key、alias、未知 job、job 条件、continue-on-error、pin / 権限 / timeout / ref の改変、gate の迂回を契約外として拒否する。既存 command の存在だけ、件数だけでは判定しない。 |
+| gate 入力 | `TestDevelopmentActionsRequiredGate` は GitHub 既定の event / workflow / workflow ref・SHA / repository / run id・attempt / job / runner 情報、event JSON、実際の `git rev-parse HEAD` と `git cat-file -p HEAD` の親 commit、および needs JSON を入力にする。event / 定義 JSON は 2 MiB 以下、needs JSON は 256 KiB 以下、UTF-8、単一 JSON 値、重複 key なし。標準 JSON 構文検査を重複 key の再帰検査より先に実行し、過剰な nesting を拒否する。needs は既存 job id の exact set、各値は `result / outputs` だけを持ち、`result=success`、`outputs={}` の場合だけ合格する。 |
+| SHA / event oracle | tested SHA と workflow SHA は `GITHUB_SHA` と一致する 40 文字 lowercase hex。PR は event の number / head.sha / base.sha と `refs/pull/<number>/merge` を照合し、実 merge commit の親が base、head の順で exactly 2 件であることを確認する。push は event.after と target SHA、event.ref と `refs/heads/main` を照合する。手動実行は Phase 18 の branch / tag ref のみ。最新 PR head / base への対応は GitHub の check 接続と strict required checks でも確認する。 |
+| run / runner oracle | `GITHUB_ACTIONS=true`、正整数 run id / attempt、`GITHUB_WORKFLOW` / `GITHUB_JOB` / `GITHUB_WORKFLOW_REF` の定義対応、GitHub.com の repository 名を照合する。今回は `RUNNER_ENVIRONMENT=github-hosted`、Linux / X64、実 Go runtime linux/amd64 と Ubuntu 24.04 を確認する。self-hosted を label だけで許可しない。 |
+| 正常出力 / 失敗出力 | 合格時だけ `development-actions-gate` JSON を job log へ 1 件出力し、run URL / attempt、workflow / job、source / base / tested SHA、定義 digest、各 job result、runner / runtime を記録する。job URL と残りの個別 job 環境・終了 code は GitHub API / job log の実証跡へ接続する。失敗は固定診断 code と test failure、nonzero exit とし、raw event / needs / secret 値を診断へ出さない。生成 artifact / cache を完了証跡にせず、run log 保持期間は GitHub の実設定値を証跡へ記録する。 |
+| local / unit mode | gate env がない通常 Go suite は、gate 入力欠損が拒否される assertion を実行し、正式合格 JSON を出さない。正式 workflow は env 必須 script と canonical workflow oracle の両方を通す。skip や空 test による代用はしない。 |
+| context reader fake / failure oracle | env 取得、file 読取、Git command を境界 adapter とする。固定 fake は event file、Ubuntu os-release、target SHA の rev-parse、base / head 親を持つ commit header を順に返す。各境界の I/O 失敗を exactly 1 回ずつ注入し、その境界で停止、後続呼出しなし、固定診断 code、raw error / secret canary 非露出を比較する。正式 gate は実 adapter だけを使用し、env による fake 切替を持たない。 |
+| format command oracle | 既存 5 format job の検証対象 file は維持し、command を `format_output=$(gofmt -l ...)` と `test -z "$format_output"` の 2 行に固定する。bash の失敗終了で assignment 失敗を伝播させる。固定 fake formatter の成功・整形差分・終了 code 7 の 3 case を実 command に通し、成功だけ exit 0、他は nonzero を比較する。 |
+| gate script oracle | 正式 entry は入力照合前に全7実在 workflow の canonical 比較を行う。script の固定 fake Go は3 root PASS行と照合 marker を返す正例、空実行、root欠損、marker欠損、正しい表示後の exit 7、mode欠損、needs欠損の負例を持つ。同一 script を bash で実行し exit code を比較し、temporary root は case ごとに隔離・cleanup する。 |
+| self-verification / mutation | `TestDevelopmentActionsGateControls` は下記定義全件の成功、PR / main push / Phase 18 手動の正例を実行する。負例は job 欠損・余分・各非 success 値・null / 型不正 / 未知 key / 重複 key / trailing JSON / 上限超過、旧 tested / workflow SHA、head / base / 親順序 / ref / event 不一致、run identity 不正、self-hosted / runner 不一致、canonical workflow 改変を含む。判定条件除去・比較緩和・oracle 常時成功 mutation を同じ controls で kill し、選定台帳と `survived=0` を既存 PR の package へ記録する。 |
+| 設定・closure | 新 gate 7 件の実行成功後に、main の required checks をこれらの安定名、GitHub Actions app id `15368`、`strict=true` へ設定し、他の既存保護値を保持する。実 API 再取得、最新 SHA の 73 job 成功、負例拒否、mutation、既存 18-record closure を同一 PR へ接続する。公開・配備・self-hosted 証跡は本適用範囲外とし、それらを適用済みとは記録しない。 |
+
+下記は checker が読む唯一の workflow 定義 fixture とする。文書の別節や PR 本文へ同じ定義を複製しない。定義入力は本節の JSON、fake / expected は `main_test.go` の固定 case で完結するため、directory fixture root は `not_applicable` と本 anchor を記録し、manifest / catalog の件数へ加算しない。
+
+```json
+[
+  {
+    "phase": 12,
+    "name": "phase12-quality-gate",
+    "jobs": [
+      {
+        "id": "phase12-go-format",
+        "timeout": 10,
+        "runtime": "go",
+        "command": "format_output=$(gofmt -l main.go main_test.go components/*/*.go)\ntest -z \"$format_output\""
+      },
+      {
+        "id": "phase12-go-test",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./..."
+      },
+      {
+        "id": "phase12-go-race",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test -race ./..."
+      },
+      {
+        "id": "phase12-go-vet",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go vet ./..."
+      },
+      {
+        "id": "phase12-deno-check-sdk",
+        "timeout": 10,
+        "runtime": "deno",
+        "command": "deno check admin/adlaire-ci-sdk.js"
+      },
+      {
+        "id": "phase12-fixture-harness",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -run 'TestPhase12|TestPhase11FixtureManifestGate'"
+      },
+      {
+        "id": "phase12-mutation",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase12QualityGateEvidence"
+      }
+    ]
+  },
+  {
+    "phase": 13,
+    "name": "phase13-implementation-alignment-quality",
+    "jobs": [
+      {
+        "id": "phase13-go-format",
+        "timeout": 10,
+        "runtime": "go",
+        "command": "format_output=$(gofmt -l main.go main_test.go sdk_contract_test.go ui_contract_test.go components/*/*.go)\ntest -z \"$format_output\""
+      },
+      {
+        "id": "phase13-go-test",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -count=1"
+      },
+      {
+        "id": "phase13-go-race",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test -race ./... -count=1"
+      },
+      {
+        "id": "phase13-go-vet",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go vet ./..."
+      },
+      {
+        "id": "phase13-stdlib-static-analysis",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1"
+      },
+      {
+        "id": "phase13-dependency-inventory",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1"
+      },
+      {
+        "id": "phase13-secret-boundary-scan",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1"
+      },
+      {
+        "id": "phase13-deno-check-sdk",
+        "timeout": 10,
+        "runtime": "deno",
+        "command": "deno check admin/adlaire-ci-sdk.js"
+      },
+      {
+        "id": "phase13-owner-shape",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1"
+      },
+      {
+        "id": "phase13-contract-parity",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -run 'TestSDK|TestUI|TestPhase13ImplementationAlignmentQualityEvidence' -count=1"
+      },
+      {
+        "id": "phase13-state-safety",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./components/statefile ./components/runner ./components/api ./components/mcp -count=1"
+      },
+      {
+        "id": "phase13-security-boundary",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./components/security ./components/api ./components/setup ./components/mcp -count=1"
+      },
+      {
+        "id": "phase13-archive-commitstatus",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./components/archive ./components/commitstatus ./components/release -count=1"
+      },
+      {
+        "id": "phase13-runner-recovery",
+        "timeout": 25,
+        "runtime": "go",
+        "command": "go test ./components/runner ./components/statefile -count=1"
+      },
+      {
+        "id": "phase13-mcp-real-behavior",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./components/mcp ./components/statefile -count=1"
+      },
+      {
+        "id": "phase13-external-boundary",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./components/api ./components/mcp ./components/runner ./components/setup -count=1"
+      },
+      {
+        "id": "phase13-executable-fixture",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1"
+      },
+      {
+        "id": "phase13-mutation",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1"
+      },
+      {
+        "id": "phase13-concurrency",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test -race ./components/statefile ./components/runner ./components/api ./components/mcp -count=1"
+      },
+      {
+        "id": "phase13-fault-injection",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./components/statefile ./components/runner ./components/api -count=1"
+      },
+      {
+        "id": "phase13-browser",
+        "timeout": 15,
+        "runtime": "deno",
+        "command": "deno check admin/adlaire-ci-sdk.js"
+      },
+      {
+        "id": "phase13-integration-e2e",
+        "timeout": 25,
+        "runtime": "go",
+        "command": "go test ./... -run 'TestDispatchMain|TestPhase13ImplementationAlignmentQualityEvidence' -count=1"
+      },
+      {
+        "id": "phase13-setup-e2e",
+        "timeout": 25,
+        "runtime": "go",
+        "command": "go test ./components/setup -count=1"
+      },
+      {
+        "id": "phase13-release-e2e",
+        "timeout": 25,
+        "runtime": "go",
+        "command": "go test ./components/release -count=1"
+      },
+      {
+        "id": "phase13-actions-pinning",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1"
+      },
+      {
+        "id": "phase13-recovery-procedure",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./components/statefile ./components/api ./components/runner -count=1"
+      },
+      {
+        "id": "phase13-document-drift",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase13ImplementationAlignmentQualityEvidence -count=1"
+      }
+    ]
+  },
+  {
+    "phase": 14,
+    "name": "phase14-obsidian-vault-integration",
+    "jobs": [
+      {
+        "id": "phase14-go-format",
+        "timeout": 10,
+        "runtime": "go",
+        "command": "format_output=$(gofmt -l main.go main_test.go components/*/*.go)\ntest -z \"$format_output\""
+      },
+      {
+        "id": "phase14-go-test",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -count=1"
+      },
+      {
+        "id": "phase14-obsidian-vault-fixture",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test . ./components/obsidian -run 'TestPhase14ObsidianVaultProductionEntrypoint|TestRunBuildObsidianVault' -count=1"
+      },
+      {
+        "id": "phase14-builder-handoff",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./components/obsidian ./components/builder -count=1"
+      },
+      {
+        "id": "phase14-document-drift",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase14ObsidianVaultIntegrationEvidence -count=1"
+      }
+    ]
+  },
+  {
+    "phase": 15,
+    "name": "phase15-obsidian-local-sync",
+    "jobs": [
+      {
+        "id": "phase15-go-format",
+        "timeout": 10,
+        "runtime": "go",
+        "command": "format_output=$(gofmt -l main.go main_test.go components/*/*.go)\ntest -z \"$format_output\""
+      },
+      {
+        "id": "phase15-go-test",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -count=1"
+      },
+      {
+        "id": "phase15-obsidian-sync-fixture",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test . ./components/obsidian -run 'TestPhase15ObsidianLocalSyncProductionEntrypoint|TestRunObsidianSyncPlanApplyRollback' -count=1"
+      },
+      {
+        "id": "phase15-sync-atomicity",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./components/obsidian -run 'TestRunObsidianSyncPlanHashMismatch|TestRunObsidianSyncConflictRequiresManualResolution|TestRunObsidianSyncRollbackRestoresPreviousContent' -count=1"
+      },
+      {
+        "id": "phase15-release-setup-distribution",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./components/release ./components/setup -run 'TestRunReleaseSuccessPublishesAssets|TestReleaseChecksumManifest|TestRunSetupInstallObsidianSuccess' -count=1"
+      },
+      {
+        "id": "phase15-document-drift",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase15ObsidianLocalSyncEvidence -count=1"
+      }
+    ]
+  },
+  {
+    "phase": 16,
+    "name": "phase16-quality-evidence-closure",
+    "jobs": [
+      {
+        "id": "phase16-go-format",
+        "timeout": 10,
+        "runtime": "go",
+        "command": "format_output=$(gofmt -l main.go main_test.go sdk_contract_test.go ui_contract_test.go components/*/*.go)\ntest -z \"$format_output\""
+      },
+      {
+        "id": "phase16-go-test",
+        "timeout": 25,
+        "runtime": "go",
+        "command": "go test ./... -count=1"
+      },
+      {
+        "id": "phase16-deno-check",
+        "timeout": 10,
+        "runtime": "deno",
+        "command": "deno check admin/adlaire-ci-sdk.js"
+      },
+      {
+        "id": "phase16-race",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test -race ./... -count=1"
+      },
+      {
+        "id": "phase16-quality-evidence-fixture",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase16QualityEvidenceClosure -count=1"
+      },
+      {
+        "id": "phase16-mutation",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase16QualityEvidenceClosure -count=1"
+      },
+      {
+        "id": "phase16-fault-injection",
+        "timeout": 20,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase16QualityEvidenceClosure -count=1"
+      },
+      {
+        "id": "phase16-workflow-hardening",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase16QualityEvidenceClosure -count=1"
+      },
+      {
+        "id": "phase16-document-drift",
+        "timeout": 15,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase16QualityEvidenceClosure -count=1"
+      }
+    ]
+  },
+  {
+    "phase": 17,
+    "name": "phase17-production-validation",
+    "jobs": [
+      {
+        "id": "phase17-conoha-vps-preflight",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      },
+      {
+        "id": "phase17-trial-production-buildout",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      },
+      {
+        "id": "phase17-conoha-install-update-rollback",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      },
+      {
+        "id": "phase17-systemd-lifecycle",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      },
+      {
+        "id": "phase17-runtime-flow",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      },
+      {
+        "id": "phase17-trial-operation-loop",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      },
+      {
+        "id": "phase17-production-simulation",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      },
+      {
+        "id": "phase17-failure-injection",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      },
+      {
+        "id": "phase17-security-boundary",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      },
+      {
+        "id": "phase17-bugfix-spec-first",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      },
+      {
+        "id": "phase17-document-drift",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase17ProductionValidationEvidence -count=1"
+      }
+    ]
+  },
+  {
+    "phase": 18,
+    "name": "phase18-vps-pull-bootstrap",
+    "jobs": [
+      {
+        "id": "phase18-vps-pull-bootstrap",
+        "timeout": 30,
+        "runtime": "go",
+        "command": "go test ./... -run TestPhase18VPSPullBootstrapEvidence -count=1"
+      }
+    ]
+  }
+]
+```
 
 <a id="test-skip-evidence-contract"></a>
 **skip / 未実行証跡固定契約：**

@@ -13,7 +13,6 @@
     "SECURITY.md",
     "CONTRIBUTING.md",
     "CODEOWNERS",
-    "CHANGELOG.md",
     "testdata/phase13/implementation-alignment-quality/**",
     ".github/workflows/phase13-implementation-alignment-quality.yml"
   ],
@@ -57,7 +56,6 @@
     "SECURITY.md",
     "CONTRIBUTING.md",
     "CODEOWNERS",
-    "CHANGELOG.md",
     "SHA256SUMS",
     "SBOM"
   ]

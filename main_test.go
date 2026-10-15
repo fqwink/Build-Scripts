@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -11,10 +12,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 func TestDispatchMainExactBasename(t *testing.T) {
@@ -1585,6 +1589,7 @@ func TestPhase13ImplementationAlignmentQualityEvidence(t *testing.T) {
 	phase13RequireOwnerPackages(t)
 	phase13RequireDocumentIndexRows(t)
 	phase13RequireGovernanceFiles(t)
+	requireChangeHistoryArtifactBoundary(t)
 	phase13RequireZeroExternalDependencies(t)
 
 	effects := phase13ReadCounterFile(t, filepath.Join(root, "expected", "effects.json"))
@@ -6192,11 +6197,264 @@ func phase13RequireDocumentIndexRows(t *testing.T) {
 	}
 }
 
+func TestChangeHistoryArtifactBoundary(t *testing.T) {
+	t.Parallel()
+	requireChangeHistoryArtifactBoundary(t)
+}
+
+func TestChangeHistoryArtifactBoundaryControls(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		"CHANGELOG.md", "docs/cHaNgElOg.TXT", "archive/.history.JSON",
+		"templates/CHANGE-LOG.template.yaml", "releases/RELEASE_NOTES.v1.txt",
+		"metadata/CHANGES", "hidden/.private/HISTORY-2026.md", "docs/変更履歴.rst",
+		"nested/CHANGE.LOG.xml", "notes/リリースノート.txt",
+		"notes/RELEASENOTES.md", "metadata/CHANGE_HISTORY.json",
+		"updates/更新_履歴.2026.txt", "releases/リリース履歴.md",
+		"templates/.release notes.template.md",
+		"docs/CHANGELOG*.md", "releases/RELEASE_NOTES?.txt",
+		"templates/.HISTORY[0-9].md",
+	} {
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			fullPath := filepath.Join(root, filepath.FromSlash(path))
+			if err := os.MkdirAll(filepath.Dir(fullPath), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(fullPath, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			got, err := changeHistoryArtifactPaths(root)
+			if err != nil || !phase11StringSlicesEqual(got, []string{path}) {
+				t.Fatalf("forbidden path must be detected: path=%s got=%v err=%v", path, got, err)
+			}
+		})
+	}
+	t.Run("directory-and-symlink", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(root, "exports", "UPDATE_HISTORY"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "notes.md"), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink("notes.md", filepath.Join(root, "release-history.txt")); err != nil {
+			t.Fatal(err)
+		}
+		got, err := changeHistoryArtifactPaths(root)
+		want := []string{"exports/UPDATE_HISTORY", "release-history.txt"}
+		if err != nil || !phase11StringSlicesEqual(got, want) {
+			t.Fatalf("forbidden directory and symlink must be detected: got=%v err=%v", got, err)
+		}
+	})
+	t.Run("functional-records-and-git", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		for _, path := range []string{".git/CHANGELOG", ".build_history", "state/config_changes.jsonl", "state/events.jsonl", "release/notes.md"} {
+			fullPath := filepath.Join(root, filepath.FromSlash(path))
+			if err := os.MkdirAll(filepath.Dir(fullPath), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(fullPath, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		got, err := changeHistoryArtifactPaths(root)
+		if err != nil || len(got) != 0 {
+			t.Fatalf("functional records and Git metadata must pass: got=%v err=%v", got, err)
+		}
+	})
+	t.Run("missing-root", func(t *testing.T) {
+		t.Parallel()
+		if _, err := changeHistoryArtifactPaths(filepath.Join(t.TempDir(), "missing")); err == nil {
+			t.Fatal("scan failure must not pass")
+		}
+	})
+	t.Run("non-directory-root", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		file := filepath.Join(root, "notes.md")
+		if err := os.WriteFile(file, nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+		link := filepath.Join(root, "linked-root")
+		if err := os.Symlink(root, link); err != nil {
+			t.Fatal(err)
+		}
+		for _, path := range []string{file, link, link + string(os.PathSeparator)} {
+			if _, err := changeHistoryArtifactPaths(path); err == nil || !strings.Contains(err.Error(), "scan root must be a directory") {
+				t.Fatalf("non-directory scan root must fail: path=%s err=%v", path, err)
+			}
+		}
+	})
+	t.Run("artifact-declarations", func(t *testing.T) {
+		t.Parallel()
+		for _, tc := range []struct {
+			name      string
+			data      string
+			wantError string
+		}{
+			{"invalid-json", `{`, "parse governance scope"},
+			{"include-type", `{"include":true,"release_artifacts":["LICENSE"]}`, "parse governance scope"},
+			{"release-artifacts-type", `{"include":["docs/**/*.md"],"release_artifacts":"LICENSE"}`, "parse governance scope"},
+			{"missing-include", `{"release_artifacts":["LICENSE"]}`, "include must be a non-empty string array"},
+			{"null-include", `{"include":null,"release_artifacts":["LICENSE"]}`, "include must be a non-empty string array"},
+			{"empty-include", `{"include":[],"release_artifacts":["LICENSE"]}`, "include must be a non-empty string array"},
+			{"missing-release-artifacts", `{"include":["docs/**/*.md"]}`, "release_artifacts must be a non-empty string array"},
+			{"null-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":null}`, "release_artifacts must be a non-empty string array"},
+			{"empty-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":[]}`, "release_artifacts must be a non-empty string array"},
+			{"include-item-type", `{"include":[1],"release_artifacts":["LICENSE"]}`, "parse governance scope"},
+			{"null-include-item", `{"include":[null],"release_artifacts":["LICENSE"]}`, "include must not contain empty entries"},
+			{"blank-include-item", `{"include":["  "],"release_artifacts":["LICENSE"]}`, "include must not contain empty entries"},
+			{"empty-release-artifacts-item", `{"include":["docs/**/*.md"],"release_artifacts":[""]}`, "release_artifacts must not contain empty entries"},
+			{"forbidden-include", `{"include":["docs/**/*.md","CHANGELOG.md"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: CHANGELOG.md"},
+			{"forbidden-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["LICENSE","CHANGELOG.md"]}`, "forbidden change history artifact declaration in release_artifacts: CHANGELOG.md"},
+			{"nested-include", `{"include":["templates/HISTORY/**"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: templates/HISTORY/**"},
+			{"hidden-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["hidden/.release_notes.json"]}`, "forbidden change history artifact declaration in release_artifacts: hidden/.release_notes.json"},
+			{"duplicate-include", `{"include":["CHANGELOG.md"],"include":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, `duplicate key "include"`},
+			{"duplicate-release-artifacts", `{"include":["docs/**/*.md"],"release_artifacts":["CHANGELOG.md"],"release_artifacts":["LICENSE"]}`, `duplicate key "release_artifacts"`},
+			{"escaped-duplicate-include", `{"include":["CHANGELOG.md"],"incl\u0075de":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, `duplicate key "include"`},
+			{"include-case-shadow", `{"include":["CHANGELOG.md"],"Include":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, "governance scope must use canonical key include"},
+			{"release-artifacts-case-shadow", `{"include":["docs/**/*.md"],"release_artifacts":["CHANGELOG.md"],"Release_Artifacts":["LICENSE"]}`, "governance scope must use canonical key release_artifacts"},
+			{"noncanonical-include", `{"INCLUDE":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, "governance scope must use canonical key include"},
+			{"noncanonical-release-artifacts", `{"include":["docs/**/*.md"],"RELEASE_ARTIFACTS":["LICENSE"]}`, "governance scope must use canonical key release_artifacts"},
+			{"metadata-fields", `{"phase":"Phase 13","owner_packages":["release"],"include":["docs/**/*.md"],"release_artifacts":["LICENSE"]}`, ""},
+			{"glob-include", `{"include":["docs/CHANGELOG*.md"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: docs/CHANGELOG*.md"},
+			{"glob-release-artifact", `{"include":["docs/**/*.md"],"release_artifacts":["releases/RELEASE_NOTES?.txt"]}`, "forbidden change history artifact declaration in release_artifacts: releases/RELEASE_NOTES?.txt"},
+			{"glob-directory", `{"include":["templates/.HISTORY[0-9]/**"],"release_artifacts":["LICENSE"]}`, "forbidden change history artifact declaration in include: templates/.HISTORY[0-9]/**"},
+			{"general-and-functional-patterns", `{"include":["docs/**/*.md","components/*/*.go",".build_history*","state/config_changes?.jsonl"],"release_artifacts":["LICENSE","release/notes[0-9].md"]}`, ""},
+			{"functional-records", `{"include":["docs/**/*.md",".build_history","state/config_changes.jsonl"],"release_artifacts":["LICENSE","notes.md"]}`, ""},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				err := validateChangeHistoryArtifactScope([]byte(tc.data))
+				if tc.wantError == "" {
+					if err != nil {
+						t.Fatalf("functional artifact declarations must pass: %v", err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+					t.Fatalf("invalid artifact declarations: want error containing %q, got %v", tc.wantError, err)
+				}
+			})
+		}
+	})
+}
+
+func requireChangeHistoryArtifactBoundary(t *testing.T) {
+	t.Helper()
+	paths, err := changeHistoryArtifactPaths(".")
+	if err != nil {
+		t.Fatalf("scan change history artifacts: %v", err)
+	}
+	if len(paths) != 0 {
+		t.Fatalf("forbidden change history artifacts: %v", paths)
+	}
+	path := "testdata/phase13/implementation-alignment-quality/input/scope.json"
+	if err := validateChangeHistoryArtifactScope([]byte(phase11MustReadText(t, path))); err != nil {
+		t.Fatalf("%s: %v", path, err)
+	}
+}
+
+func validateChangeHistoryArtifactScope(data []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := phase16CheckJSONValueForDuplicateKeys(decoder); err != nil {
+		return fmt.Errorf("parse governance scope keys: %w", err)
+	}
+	var scope map[string]json.RawMessage
+	if err := json.Unmarshal(data, &scope); err != nil {
+		return fmt.Errorf("parse governance scope: %w", err)
+	}
+	for _, name := range []string{"include", "release_artifacts"} {
+		for key := range scope {
+			if key != name && strings.EqualFold(key, name) {
+				return fmt.Errorf("governance scope must use canonical key %s", name)
+			}
+		}
+		var entries []string
+		if raw, ok := scope[name]; ok {
+			if err := json.Unmarshal(raw, &entries); err != nil {
+				return fmt.Errorf("parse governance scope %s: %w", name, err)
+			}
+		}
+		if len(entries) == 0 {
+			return fmt.Errorf("%s must be a non-empty string array", name)
+		}
+		for _, entry := range entries {
+			if strings.TrimSpace(entry) == "" {
+				return fmt.Errorf("%s must not contain empty entries", name)
+			}
+			if changeHistoryArtifactPath(entry) {
+				return fmt.Errorf("forbidden change history artifact declaration in %s: %s", name, entry)
+			}
+		}
+	}
+	return nil
+}
+
+func changeHistoryArtifactPaths(root string) ([]string, error) {
+	root = filepath.Clean(root)
+	var paths []string
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == root {
+			if !entry.IsDir() {
+				return fmt.Errorf("scan root must be a directory: %s", root)
+			}
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		if rel == ".git" {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if changeHistoryArtifactPath(entry.Name()) {
+			paths = append(paths, filepath.ToSlash(rel))
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+		}
+		return nil
+	})
+	sort.Strings(paths)
+	return paths, err
+}
+
+func changeHistoryArtifactPath(path string) bool {
+	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+		if index := strings.IndexAny(part, "*?["); index >= 0 {
+			part = part[:index]
+		}
+		fields := strings.FieldsFunc(strings.ToLower(part), func(r rune) bool {
+			return r == '.' || r == '-' || r == '_' || r == ' '
+		})
+		var prefix string
+		for _, field := range fields {
+			prefix += field
+			switch prefix {
+			case "changelog", "changes", "history", "releasenotes", "changehistory", "updatehistory", "releasehistory", "変更履歴", "更新履歴", "リリース履歴", "リリースノート":
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func phase13RequireGovernanceFiles(t *testing.T) {
 	t.Helper()
 
 	documentIndex := phase11MustReadText(t, "docs/DOCUMENT_INDEX.md")
-	for _, file := range []string{"LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODEOWNERS", "CHANGELOG.md"} {
+	for _, file := range []string{"LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODEOWNERS"} {
 		data, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatalf("Phase 13 governance file %s must exist: %v", file, err)
@@ -6632,6 +6890,636 @@ func phase11StringSlicesEqual(a []string, b []string) bool {
 		}
 	}
 	return true
+}
+
+type developmentActionsJob struct {
+	ID      string `json:"id"`
+	Timeout int    `json:"timeout"`
+	Runtime string `json:"runtime"`
+	Command string `json:"command"`
+}
+
+type developmentActionsWorkflow struct {
+	Phase int                     `json:"phase"`
+	Name  string                  `json:"name"`
+	Jobs  []developmentActionsJob `json:"jobs"`
+}
+
+const developmentActionsGateCommand = `test "$ADLAIRE_ACTIONS_GATE" = required
+test -n "$ADLAIRE_ACTIONS_NEEDS"
+go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls)$' -count=1 -v | tee "$RUNNER_TEMP/development-actions-gate.log"
+for required_test in TestDevelopmentActionsRequiredGate TestDevelopmentActionsWorkflowContract TestDevelopmentActionsGateControls; do
+  grep -Fq -- "--- PASS: $required_test (" "$RUNNER_TEMP/development-actions-gate.log"
+done
+grep -Fq '"record_type":"development-actions-gate"' "$RUNNER_TEMP/development-actions-gate.log"`
+
+func developmentActionsDefinitions(t *testing.T) []developmentActionsWorkflow {
+	t.Helper()
+	text := phase11MustReadText(t, "docs/details/fixture.md")
+	_, section, ok := strings.Cut(text, `<a id="development-actions-required-gate-contract"></a>`)
+	if !ok {
+		t.Fatal("actions-definition: missing canonical fixture anchor")
+	}
+	_, section, ok = strings.Cut(section, "```json\n")
+	if !ok {
+		t.Fatal("actions-definition: missing JSON fixture")
+	}
+	data, _, ok := strings.Cut(section, "\n```\n")
+	if !ok {
+		t.Fatal("actions-definition: unterminated JSON fixture")
+	}
+	var definitions []developmentActionsWorkflow
+	if err := developmentActionsDecodeJSON([]byte(data), &definitions, 2<<20, true); err != nil {
+		t.Fatalf("actions-definition: %v", err)
+	}
+	names := []string{"phase12-quality-gate", "phase13-implementation-alignment-quality", "phase14-obsidian-vault-integration", "phase15-obsidian-local-sync", "phase16-quality-evidence-closure", "phase17-production-validation", "phase18-vps-pull-bootstrap"}
+	counts := []int{7, 27, 5, 6, 9, 11, 1}
+	if len(definitions) != len(names) {
+		t.Fatal("actions-definition: workflow set mismatch")
+	}
+	for i, definition := range definitions {
+		if definition.Phase != i+12 || definition.Name != names[i] || len(definition.Jobs) != counts[i] {
+			t.Fatal("actions-definition: workflow identity or required job count mismatch")
+		}
+		seen := map[string]bool{}
+		for _, job := range definition.Jobs {
+			if !strings.HasPrefix(job.ID, fmt.Sprintf("phase%d-", definition.Phase)) || !developmentActionsIdentifier(job.ID) || seen[job.ID] || job.ID == definition.gateID() || job.Timeout < 1 || job.Timeout > 30 || (job.Runtime != "go" && job.Runtime != "deno") || job.Command == "" || strings.ContainsAny(job.Command, "\x00\r") {
+				t.Fatal("actions-definition: invalid required job")
+			}
+			seen[job.ID] = true
+		}
+	}
+	return definitions
+}
+
+func (w developmentActionsWorkflow) gateID() string {
+	return fmt.Sprintf("phase%d-required-gate", w.Phase)
+}
+
+func developmentActionsIdentifier(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, c := range value {
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+// This is a fixed workflow serialization oracle, not a general YAML parser.
+func developmentActionsWorkflowText(w developmentActionsWorkflow) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "name: %s\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n", w.Name)
+	if w.Phase == 18 {
+		b.WriteString("  workflow_dispatch:\n")
+	}
+	b.WriteString("  push:\n    branches:\n      - main\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}\n  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n\ndefaults:\n  run:\n    shell: bash\n\njobs:\n")
+	checkout := "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n        with:\n          ref: ${{ github.sha }}\n          persist-credentials: false\n"
+	setupGo := "      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff\n        with:\n          go-version: \"1.22\"\n"
+	setupDeno := "      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed\n        with:\n          deno-version: v2.x\n"
+	for i, job := range w.Jobs {
+		if i != 0 {
+			b.WriteByte('\n')
+		}
+		fmt.Fprintf(&b, "  %s:\n    runs-on: ubuntu-24.04\n    timeout-minutes: %d\n    steps:\n", job.ID, job.Timeout)
+		b.WriteString(checkout)
+		if job.Runtime == "go" {
+			b.WriteString(setupGo)
+		} else {
+			b.WriteString(setupDeno)
+		}
+		if strings.Contains(job.Command, "\n") {
+			b.WriteString("      - run: |\n          ")
+			b.WriteString(strings.ReplaceAll(job.Command, "\n", "\n          "))
+			b.WriteByte('\n')
+		} else {
+			fmt.Fprintf(&b, "      - run: %s\n", job.Command)
+		}
+	}
+	fmt.Fprintf(&b, "\n  %s:\n    if: ${{ always() }}\n    needs:\n", w.gateID())
+	for _, job := range w.Jobs {
+		fmt.Fprintf(&b, "      - %s\n", job.ID)
+	}
+	b.WriteString("    runs-on: ubuntu-24.04\n    timeout-minutes: 10\n    steps:\n")
+	b.WriteString(checkout)
+	b.WriteString(setupGo)
+	b.WriteString("      - name: Verify required checks and checkout identity\n        env:\n          ADLAIRE_ACTIONS_GATE: required\n          ADLAIRE_ACTIONS_NEEDS: ${{ toJSON(needs) }}\n        run: |\n          ")
+	b.WriteString(strings.ReplaceAll(developmentActionsGateCommand, "\n", "\n          "))
+	b.WriteByte('\n')
+	return b.String()
+}
+
+func developmentActionsCheckWorkflow(w developmentActionsWorkflow, actual string) error {
+	if actual != developmentActionsWorkflowText(w) {
+		expected := sha256.Sum256([]byte(developmentActionsWorkflowText(w)))
+		got := sha256.Sum256([]byte(actual))
+		return fmt.Errorf("actions-workflow-contract: %s expected_sha256=%x actual_sha256=%x", w.Name, expected, got)
+	}
+	return nil
+}
+
+func TestDevelopmentActionsWorkflowContract(t *testing.T) {
+	t.Parallel()
+	for _, definition := range developmentActionsDefinitions(t) {
+		t.Run("release.development-actions."+definition.Name+".workflow-contract.exact", func(t *testing.T) {
+			path := ".github/workflows/" + definition.Name + ".yml"
+			if err := developmentActionsCheckWorkflow(definition, phase11MustReadText(t, path)); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func developmentActionsDecodeJSON(data []byte, target any, limit int, strict bool) error {
+	if len(data) == 0 || len(data) > limit || !utf8.Valid(data) {
+		return fmt.Errorf("json-size-or-encoding")
+	}
+	if !json.Valid(data) {
+		return fmt.Errorf("json-syntax-or-depth")
+	}
+	check := json.NewDecoder(bytes.NewReader(data))
+	if err := phase16CheckJSONValueForDuplicateKeys(check); err != nil {
+		return fmt.Errorf("json-duplicate-or-syntax")
+	}
+	if _, err := check.Token(); err != io.EOF {
+		return fmt.Errorf("json-trailing-data")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if strict {
+		decoder.DisallowUnknownFields()
+	}
+	if err := decoder.Decode(target); err != nil {
+		return fmt.Errorf("json-shape")
+	}
+	return nil
+}
+
+type developmentActionsGateInput struct {
+	Env       map[string]string
+	Needs     []byte
+	Event     []byte
+	TestedSHA string
+	Parents   []string
+	OSRelease string
+}
+
+func developmentActionsSHA(value string) bool {
+	if len(value) != 40 || value != strings.ToLower(value) {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
+}
+
+func developmentActionsPositiveInteger(value string) bool {
+	n, err := strconv.ParseUint(value, 10, 64)
+	return err == nil && n > 0 && strconv.FormatUint(n, 10) == value
+}
+
+func developmentActionsValidateGate(w developmentActionsWorkflow, input developmentActionsGateInput) (map[string]any, error) {
+	env := input.Env
+	fail := func(code string) (map[string]any, error) { return nil, fmt.Errorf("actions-gate:%s", code) }
+	if env["ADLAIRE_ACTIONS_GATE"] != "required" || env["GITHUB_ACTIONS"] != "true" {
+		return fail("gate-mode")
+	}
+	if env["GITHUB_REPOSITORY"] != "fqwink/Build-Scripts" || env["GITHUB_SERVER_URL"] != "https://github.com" || !developmentActionsPositiveInteger(env["GITHUB_RUN_ID"]) || !developmentActionsPositiveInteger(env["GITHUB_RUN_ATTEMPT"]) || env["GITHUB_JOB"] != w.gateID() || env["GITHUB_WORKFLOW"] != w.Name || env["GITHUB_WORKFLOW_REF"] != env["GITHUB_REPOSITORY"]+"/.github/workflows/"+w.Name+".yml@"+env["GITHUB_REF"] {
+		return fail("run-identity")
+	}
+	if env["RUNNER_ENVIRONMENT"] != "github-hosted" || env["RUNNER_OS"] != "Linux" || env["RUNNER_ARCH"] != "X64" || !strings.Contains("\n"+input.OSRelease, "\nID=ubuntu\n") || !strings.Contains("\n"+input.OSRelease, "\nVERSION_ID=\"24.04\"\n") {
+		return fail("runner-identity")
+	}
+	target := env["GITHUB_SHA"]
+	if !developmentActionsSHA(target) || !developmentActionsSHA(input.TestedSHA) || input.TestedSHA != target || env["GITHUB_WORKFLOW_SHA"] != target {
+		return fail("tested-sha")
+	}
+	var event map[string]json.RawMessage
+	if err := developmentActionsDecodeJSON(input.Event, &event, 2<<20, false); err != nil || event == nil {
+		return fail("event-json")
+	}
+	source, base := target, ""
+	switch env["GITHUB_EVENT_NAME"] {
+	case "pull_request":
+		var number int
+		var pr map[string]json.RawMessage
+		var head, baseRef map[string]json.RawMessage
+		if json.Unmarshal(event["number"], &number) != nil || number < 1 || json.Unmarshal(event["pull_request"], &pr) != nil || json.Unmarshal(pr["head"], &head) != nil || json.Unmarshal(pr["base"], &baseRef) != nil || json.Unmarshal(head["sha"], &source) != nil || json.Unmarshal(baseRef["sha"], &base) != nil || !developmentActionsSHA(source) || !developmentActionsSHA(base) || env["GITHUB_REF"] != fmt.Sprintf("refs/pull/%d/merge", number) || len(input.Parents) != 2 || input.Parents[0] != base || input.Parents[1] != source {
+			return fail("pr-checkout")
+		}
+	case "push":
+		var after, ref string
+		if json.Unmarshal(event["after"], &after) != nil || json.Unmarshal(event["ref"], &ref) != nil || after != target || ref != "refs/heads/main" || env["GITHUB_REF"] != ref {
+			return fail("push-checkout")
+		}
+	case "workflow_dispatch":
+		ref := env["GITHUB_REF"]
+		if w.Phase != 18 || (!strings.HasPrefix(ref, "refs/heads/") && !strings.HasPrefix(ref, "refs/tags/")) || strings.HasSuffix(ref, "/") || strings.ContainsAny(ref, "\x00\r\n ") {
+			return fail("dispatch-checkout")
+		}
+	default:
+		return fail("event-type")
+	}
+	var needs map[string]json.RawMessage
+	if err := developmentActionsDecodeJSON(input.Needs, &needs, 256<<10, true); err != nil || needs == nil {
+		return fail("needs-json")
+	}
+	if len(needs) != len(w.Jobs) {
+		return fail("needs-count")
+	}
+	results := make([]map[string]string, 0, len(w.Jobs))
+	for _, job := range w.Jobs {
+		var fields map[string]json.RawMessage
+		if json.Unmarshal(needs[job.ID], &fields) != nil || len(fields) != 2 {
+			return fail("needs-job")
+		}
+		var result string
+		var outputs map[string]json.RawMessage
+		if json.Unmarshal(fields["result"], &result) != nil || json.Unmarshal(fields["outputs"], &outputs) != nil || outputs == nil || len(outputs) != 0 {
+			return fail("needs-job")
+		}
+		if result != "success" {
+			return fail("required-job-not-success")
+		}
+		results = append(results, map[string]string{"job": job.ID, "result": result})
+	}
+	definition, err := json.Marshal(w)
+	if err != nil {
+		return fail("definition-encoding")
+	}
+	digest := sha256.Sum256(definition)
+	attempt, err := strconv.ParseUint(env["GITHUB_RUN_ATTEMPT"], 10, 64)
+	if err != nil {
+		return fail("run-identity")
+	}
+	var baseValue any
+	if base != "" {
+		baseValue = base
+	}
+	return map[string]any{
+		"record_type": "development-actions-gate", "workflow": w.Name, "job": w.gateID(),
+		"run_url":     env["GITHUB_SERVER_URL"] + "/" + env["GITHUB_REPOSITORY"] + "/actions/runs/" + env["GITHUB_RUN_ID"],
+		"run_attempt": attempt, "event": env["GITHUB_EVENT_NAME"],
+		"source_sha": source, "base_sha": baseValue, "tested_sha": input.TestedSHA,
+		"definition_sha256": hex.EncodeToString(digest[:]), "job_results": results,
+		"runner_environment": env["RUNNER_ENVIRONMENT"], "runner_os": env["RUNNER_OS"], "runner_arch": env["RUNNER_ARCH"],
+	}, nil
+}
+
+func developmentActionsReadContext(getenv func(string) string, readFile func(string) ([]byte, error), git func(...string) ([]byte, error)) (developmentActionsGateInput, error) {
+	input := developmentActionsGateInput{Env: map[string]string{}, Needs: []byte(getenv("ADLAIRE_ACTIONS_NEEDS"))}
+	for _, key := range []string{"ADLAIRE_ACTIONS_GATE", "GITHUB_ACTIONS", "GITHUB_REPOSITORY", "GITHUB_SERVER_URL", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB", "GITHUB_WORKFLOW", "GITHUB_WORKFLOW_REF", "GITHUB_REF", "GITHUB_SHA", "GITHUB_WORKFLOW_SHA", "GITHUB_EVENT_NAME", "RUNNER_ENVIRONMENT", "RUNNER_OS", "RUNNER_ARCH"} {
+		input.Env[key] = getenv(key)
+	}
+	var err error
+	input.Event, err = readFile(getenv("GITHUB_EVENT_PATH"))
+	if err != nil {
+		return input, fmt.Errorf("actions-gate:event-read")
+	}
+	osRelease, err := readFile("/etc/os-release")
+	if err != nil {
+		return input, fmt.Errorf("actions-gate:os-release")
+	}
+	input.OSRelease = string(osRelease)
+	checkout, err := git("rev-parse", "HEAD")
+	if err != nil {
+		return input, fmt.Errorf("actions-gate:checkout-read")
+	}
+	input.TestedSHA = strings.TrimSpace(string(checkout))
+	commit, err := git("cat-file", "-p", "HEAD")
+	if err != nil {
+		return input, fmt.Errorf("actions-gate:commit-read")
+	}
+	for _, line := range strings.Split(string(commit), "\n") {
+		if line == "" {
+			break
+		}
+		if strings.HasPrefix(line, "parent ") {
+			input.Parents = append(input.Parents, strings.TrimPrefix(line, "parent "))
+		}
+	}
+	return input, nil
+}
+
+func TestDevelopmentActionsRequiredGate(t *testing.T) {
+	if os.Getenv("ADLAIRE_ACTIONS_GATE") == "" {
+		if _, err := developmentActionsValidateGate(developmentActionsWorkflow{}, developmentActionsGateInput{}); err == nil || err.Error() != "actions-gate:gate-mode" {
+			t.Fatal("actions-gate: unit invocation must reject absent formal inputs")
+		}
+		return
+	}
+	var definition developmentActionsWorkflow
+	for _, candidate := range developmentActionsDefinitions(t) {
+		if err := developmentActionsCheckWorkflow(candidate, phase11MustReadText(t, ".github/workflows/"+candidate.Name+".yml")); err != nil {
+			t.Fatal(err)
+		}
+		if candidate.Name == os.Getenv("GITHUB_WORKFLOW") {
+			definition = candidate
+		}
+	}
+	if definition.Name == "" {
+		t.Fatal("actions-gate: unknown workflow")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	input, err := developmentActionsReadContext(os.Getenv, os.ReadFile, func(args ...string) ([]byte, error) {
+		return exec.CommandContext(ctx, "git", args...).Output()
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" || !strings.HasPrefix(runtime.Version(), "go1.22.") {
+		t.Fatal("actions-gate:runtime")
+	}
+	record, err := developmentActionsValidateGate(definition, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record["runtime"] = runtime.Version()
+	record["log_retention_days"] = os.Getenv("GITHUB_RETENTION_DAYS")
+	encoded, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal("actions-gate:record-encoding")
+	}
+	fmt.Println(string(encoded))
+}
+
+func TestDevelopmentActionsGateControls(t *testing.T) {
+	t.Parallel()
+	for _, w := range developmentActionsDefinitions(t) {
+		w := w
+		t.Run(w.Name, func(t *testing.T) {
+			t.Parallel()
+			for _, job := range w.Jobs {
+				if !strings.HasSuffix(job.ID, "-go-format") {
+					continue
+				}
+				for _, fixture := range []struct {
+					name, formatter string
+					success         bool
+				}{
+					{"clean", "gofmt() { return 0; }\n", true},
+					{"dirty", "gofmt() { printf 'dirty.go\\n'; }\n", false},
+					{"failed", "gofmt() { return 7; }\n", false},
+				} {
+					t.Run("release.development-actions."+job.ID+"."+fixture.name+".exit-code", func(t *testing.T) {
+						ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+						defer cancel()
+						output, err := exec.CommandContext(ctx, "bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", fixture.formatter+job.Command).CombinedOutput()
+						if (err == nil) != fixture.success || len(output) != 0 {
+							t.Fatalf("formatter exit propagation expected success=%t, err=%v output=%q", fixture.success, err, output)
+						}
+					})
+				}
+			}
+			fresh := func() developmentActionsGateInput {
+				target, base, source := strings.Repeat("a", 40), strings.Repeat("b", 40), strings.Repeat("c", 40)
+				needs := map[string]any{}
+				for _, job := range w.Jobs {
+					needs[job.ID] = map[string]any{"result": "success", "outputs": map[string]any{}}
+				}
+				encoded, err := json.Marshal(needs)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return developmentActionsGateInput{
+					Env:   map[string]string{"ADLAIRE_ACTIONS_GATE": "required", "GITHUB_ACTIONS": "true", "GITHUB_REPOSITORY": "fqwink/Build-Scripts", "GITHUB_SERVER_URL": "https://github.com", "GITHUB_RUN_ID": "123", "GITHUB_RUN_ATTEMPT": "1", "GITHUB_JOB": w.gateID(), "GITHUB_WORKFLOW": w.Name, "GITHUB_WORKFLOW_REF": "fqwink/Build-Scripts/.github/workflows/" + w.Name + ".yml@refs/pull/99/merge", "GITHUB_REF": "refs/pull/99/merge", "GITHUB_SHA": target, "GITHUB_WORKFLOW_SHA": target, "GITHUB_EVENT_NAME": "pull_request", "RUNNER_ENVIRONMENT": "github-hosted", "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64"},
+					Needs: encoded, Event: []byte(`{"number":99,"pull_request":{"head":{"sha":"` + source + `"},"base":{"sha":"` + base + `"}}}`), TestedSHA: target, Parents: []string{base, source}, OSRelease: "ID=ubuntu\nVERSION_ID=\"24.04\"\n",
+				}
+			}
+			passLines := "--- PASS: TestDevelopmentActionsRequiredGate (0.01s)\n--- PASS: TestDevelopmentActionsWorkflowContract (0.01s)\n--- PASS: TestDevelopmentActionsGateControls (0.01s)\n"
+			marker := `{"record_type":"development-actions-gate"}` + "\n"
+			for _, fixture := range []struct {
+				name, output string
+				exit         int
+				mode, needs  string
+				success      bool
+			}{
+				{"complete", passLines + marker, 0, "required", "{}", true},
+				{"no-tests", "testing: warning: no tests to run\nPASS\n", 0, "required", "{}", false},
+				{"missing-root", strings.Replace(passLines, "--- PASS: TestDevelopmentActionsRequiredGate (0.01s)\n", "", 1) + marker, 0, "required", "{}", false},
+				{"missing-marker", passLines, 0, "required", "{}", false},
+				{"failed-exit", passLines + marker, 7, "required", "{}", false},
+				{"missing-mode", passLines + marker, 0, "", "{}", false},
+				{"missing-needs", passLines + marker, 0, "required", "", false},
+			} {
+				t.Run("release.development-actions."+w.Name+".script-"+fixture.name+".exit-code", func(t *testing.T) {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					fake := "go() { printf '%s' '" + fixture.output + "'; return " + strconv.Itoa(fixture.exit) + "; }\n"
+					command := exec.CommandContext(ctx, "bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", fake+developmentActionsGateCommand)
+					command.Env = append(os.Environ(), "RUNNER_TEMP="+t.TempDir(), "ADLAIRE_ACTIONS_GATE="+fixture.mode, "ADLAIRE_ACTIONS_NEEDS="+fixture.needs)
+					output, err := command.CombinedOutput()
+					if (err == nil) != fixture.success {
+						t.Fatalf("gate script expected success=%t, err=%v output=%q", fixture.success, err, output)
+					}
+				})
+			}
+			positive := fresh()
+			record, err := developmentActionsValidateGate(w, positive)
+			if err != nil || record["tested_sha"] != positive.TestedSHA || record["source_sha"] != positive.Parents[1] || record["base_sha"] != positive.Parents[0] || len(record["job_results"].([]map[string]string)) != len(w.Jobs) {
+				t.Fatalf("actions-control: positive PR oracle: %v", err)
+			}
+			for _, field := range []string{"needs", "event"} {
+				t.Run("release.development-actions."+w.Name+"."+field+"-size-limit.accept", func(t *testing.T) {
+					input := fresh()
+					if field == "needs" {
+						input.Needs = append(input.Needs, bytes.Repeat([]byte(" "), (256<<10)-len(input.Needs))...)
+					} else {
+						input.Event = append(input.Event, bytes.Repeat([]byte(" "), (2<<20)-len(input.Event))...)
+					}
+					if _, err := developmentActionsValidateGate(w, input); err != nil {
+						t.Fatal(err)
+					}
+				})
+			}
+			for fault := -1; fault < 4; fault++ {
+				fixture := fresh()
+				calls := []string{}
+				steps := []string{"read:event", "read:os-release", "git:rev-parse HEAD", "git:cat-file -p HEAD"}
+				codes := []string{"event-read", "os-release", "checkout-read", "commit-read"}
+				call := func(name string, data []byte) ([]byte, error) {
+					index := len(calls)
+					calls = append(calls, name)
+					if index >= len(steps) || steps[index] != name {
+						t.Fatalf("assertion=release.development-actions.context-order.exact expected %v got %v", steps, calls)
+					}
+					if index == fault {
+						return nil, fmt.Errorf("fixture-secret-canary")
+					}
+					return data, nil
+				}
+				getenv := func(key string) string {
+					switch key {
+					case "GITHUB_EVENT_PATH":
+						return "fixture-event"
+					case "ADLAIRE_ACTIONS_NEEDS":
+						return string(fixture.Needs)
+					default:
+						return fixture.Env[key]
+					}
+				}
+				input, err := developmentActionsReadContext(getenv, func(path string) ([]byte, error) {
+					if path == "fixture-event" {
+						return call("read:event", fixture.Event)
+					}
+					if path != "/etc/os-release" {
+						t.Fatal("actions-control: unexpected file read")
+					}
+					return call("read:os-release", []byte(fixture.OSRelease))
+				}, func(args ...string) ([]byte, error) {
+					if strings.Join(args, " ") == "rev-parse HEAD" {
+						return call("git:rev-parse HEAD", []byte(fixture.TestedSHA+"\n"))
+					}
+					return call("git:"+strings.Join(args, " "), []byte("tree "+strings.Repeat("d", 40)+"\nparent "+fixture.Parents[0]+"\nparent "+fixture.Parents[1]+"\n\nparent must-not-parse-body\n"))
+				})
+				if fault >= 0 {
+					if err == nil || err.Error() != "actions-gate:"+codes[fault] || len(calls) != fault+1 {
+						t.Fatalf("assertion=release.development-actions.%s.fail-closed err=%v calls=%v", codes[fault], err, calls)
+					}
+				} else if err != nil {
+					t.Fatal(err)
+				} else if _, err := developmentActionsValidateGate(w, input); err != nil || len(calls) != 4 {
+					t.Fatalf("assertion=release.development-actions.context-positive.accept err=%v calls=%v", err, calls)
+				}
+			}
+			canary := fresh()
+			canary.Event = []byte(strings.Replace(string(canary.Event), "{", `{"unknown":"fixture-secret-canary",`, 1))
+			canaryRecord, err := developmentActionsValidateGate(w, canary)
+			if err != nil {
+				t.Fatal(err)
+			}
+			canaryJSON, err := json.Marshal(canaryRecord)
+			if err != nil || bytes.Contains(canaryJSON, []byte("fixture-secret-canary")) {
+				t.Fatal("assertion=release.development-actions.secret-safe.no-leak")
+			}
+			for _, event := range []string{"push", "workflow_dispatch"} {
+				input := fresh()
+				input.Env["GITHUB_EVENT_NAME"] = event
+				input.Env["GITHUB_REF"] = "refs/heads/main"
+				input.Env["GITHUB_WORKFLOW_REF"] = "fqwink/Build-Scripts/.github/workflows/" + w.Name + ".yml@refs/heads/main"
+				input.Event = []byte(`{"ref":"refs/heads/main","after":"` + input.TestedSHA + `"}`)
+				_, err := developmentActionsValidateGate(w, input)
+				if (event == "push" || w.Phase == 18) != (err == nil) {
+					t.Fatalf("actions-control: event %s applicability: %v", event, err)
+				}
+			}
+			type gateCase struct {
+				name string
+				edit func(*developmentActionsGateInput)
+				code string
+			}
+			tests := []gateCase{
+				{"mode", func(i *developmentActionsGateInput) { delete(i.Env, "ADLAIRE_ACTIONS_GATE") }, "gate-mode"},
+				{"not-actions", func(i *developmentActionsGateInput) { i.Env["GITHUB_ACTIONS"] = "false" }, "gate-mode"},
+				{"tested-sha", func(i *developmentActionsGateInput) { i.TestedSHA = strings.Repeat("d", 40) }, "tested-sha"},
+				{"workflow-sha", func(i *developmentActionsGateInput) { i.Env["GITHUB_WORKFLOW_SHA"] = strings.Repeat("d", 40) }, "tested-sha"},
+				{"bad-sha", func(i *developmentActionsGateInput) { i.Env["GITHUB_SHA"] = "invalid" }, "tested-sha"},
+				{"uppercase-sha", func(i *developmentActionsGateInput) { i.Env["GITHUB_SHA"] = strings.Repeat("A", 40) }, "tested-sha"},
+				{"base", func(i *developmentActionsGateInput) { i.Parents[0] = strings.Repeat("d", 40) }, "pr-checkout"},
+				{"head", func(i *developmentActionsGateInput) { i.Parents[1] = strings.Repeat("d", 40) }, "pr-checkout"},
+				{"parent-order", func(i *developmentActionsGateInput) { i.Parents[0], i.Parents[1] = i.Parents[1], i.Parents[0] }, "pr-checkout"},
+				{"parent-count", func(i *developmentActionsGateInput) { i.Parents = nil }, "pr-checkout"},
+				{"event-json", func(i *developmentActionsGateInput) { i.Event = []byte("{") }, "event-json"},
+				{"event-empty", func(i *developmentActionsGateInput) { i.Event = []byte("{}") }, "pr-checkout"},
+				{"event-null", func(i *developmentActionsGateInput) { i.Event = []byte("null") }, "event-json"},
+				{"event-duplicate", func(i *developmentActionsGateInput) {
+					i.Event = []byte(strings.Replace(string(i.Event), `"number":99`, `"number":98,"number":99`, 1))
+				}, "event-json"},
+				{"event-trailing", func(i *developmentActionsGateInput) { i.Event = append(i.Event, []byte(" {}")...) }, "event-json"},
+				{"event-oversize", func(i *developmentActionsGateInput) { i.Event = bytes.Repeat([]byte(" "), (2<<20)+1) }, "event-json"},
+				{"pr-ref", func(i *developmentActionsGateInput) {
+					i.Env["GITHUB_REF"] = "refs/pull/98/merge"
+					i.Env["GITHUB_WORKFLOW_REF"] = "fqwink/Build-Scripts/.github/workflows/" + w.Name + ".yml@refs/pull/98/merge"
+				}, "pr-checkout"},
+				{"event-type", func(i *developmentActionsGateInput) { i.Env["GITHUB_EVENT_NAME"] = "pull_request_target" }, "event-type"},
+				{"push-after", func(i *developmentActionsGateInput) { i.Env["GITHUB_EVENT_NAME"] = "push" }, "push-checkout"},
+				{"dispatch-ref", func(i *developmentActionsGateInput) { i.Env["GITHUB_EVENT_NAME"] = "workflow_dispatch" }, "dispatch-checkout"},
+				{"self-hosted", func(i *developmentActionsGateInput) { i.Env["RUNNER_ENVIRONMENT"] = "self-hosted" }, "runner-identity"},
+				{"runner-os", func(i *developmentActionsGateInput) { i.Env["RUNNER_OS"] = "Windows" }, "runner-identity"},
+				{"runner-arch", func(i *developmentActionsGateInput) { i.Env["RUNNER_ARCH"] = "ARM64" }, "runner-identity"},
+				{"os-version", func(i *developmentActionsGateInput) { i.OSRelease = "ID=ubuntu\nVERSION_ID=\"22.04\"\n" }, "runner-identity"},
+				{"needs-missing", func(i *developmentActionsGateInput) { i.Needs = []byte("{}") }, "needs-count"},
+				{"needs-extra", func(i *developmentActionsGateInput) {
+					i.Needs = []byte(strings.Replace(string(i.Needs), "{", `{"unknown":{"result":"success","outputs":{}},`, 1))
+				}, "needs-count"},
+				{"needs-renamed", func(i *developmentActionsGateInput) {
+					i.Needs = []byte(strings.Replace(string(i.Needs), `"`+w.Jobs[0].ID+`":`, `"unknown":`, 1))
+				}, "needs-job"},
+				{"needs-duplicate", func(i *developmentActionsGateInput) {
+					i.Needs = []byte(strings.Replace(string(i.Needs), "{", `{"`+w.Jobs[0].ID+`":{"result":"success","outputs":{}},`, 1))
+				}, "needs-json"},
+				{"needs-null", func(i *developmentActionsGateInput) { i.Needs = []byte("null") }, "needs-json"},
+				{"needs-malformed", func(i *developmentActionsGateInput) { i.Needs = []byte("{") }, "needs-json"},
+				{"needs-depth", func(i *developmentActionsGateInput) {
+					i.Needs = []byte(strings.Repeat("[", 10001) + "0" + strings.Repeat("]", 10001))
+				}, "needs-json"},
+				{"needs-trailing", func(i *developmentActionsGateInput) { i.Needs = append(i.Needs, []byte(" {}")...) }, "needs-json"},
+				{"needs-oversize", func(i *developmentActionsGateInput) { i.Needs = bytes.Repeat([]byte(" "), (256<<10)+1) }, "needs-json"},
+				{"needs-utf8", func(i *developmentActionsGateInput) { i.Needs = []byte{0xff} }, "needs-json"},
+			}
+			for _, key := range []string{"GITHUB_REPOSITORY", "GITHUB_SERVER_URL", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB", "GITHUB_WORKFLOW", "GITHUB_WORKFLOW_REF"} {
+				key := key
+				tests = append(tests, gateCase{"identity-" + strings.ReplaceAll(strings.ToLower(key), "_", "-"), func(i *developmentActionsGateInput) { i.Env[key] = "invalid" }, "run-identity"})
+			}
+			for _, test := range tests {
+				t.Run("release.development-actions."+w.Name+"."+test.name+".reject", func(t *testing.T) {
+					input := fresh()
+					test.edit(&input)
+					if _, err := developmentActionsValidateGate(w, input); err == nil || err.Error() != "actions-gate:"+test.code {
+						t.Errorf("expected %s, got %v", test.code, err)
+					}
+				})
+			}
+			first := w.Jobs[0].ID
+			for _, invalid := range []struct{ name, value string }{
+				{"failure", `{"result":"failure","outputs":{}}`},
+				{"skipped", `{"result":"skipped","outputs":{}}`},
+				{"neutral", `{"result":"neutral","outputs":{}}`},
+				{"cancelled", `{"result":"cancelled","outputs":{}}`},
+				{"timeout", `{"result":"timed_out","outputs":{}}`},
+				{"empty-result", `{"result":"","outputs":{}}`},
+				{"null-result", `{"result":null,"outputs":{}}`},
+				{"case-alias", `{"Result":"success","outputs":{}}`},
+				{"null-outputs", `{"result":"success","outputs":null}`},
+				{"unexpected-outputs", `{"result":"success","outputs":{"ignored":"value"}}`},
+				{"unknown-field", `{"result":"success","outputs":{},"extra":true}`},
+				{"duplicate-result", `{"result":"skipped","result":"success","outputs":{}}`},
+				{"escaped-duplicate", `{"result":"skipped","resul\u0074":"success","outputs":{}}`},
+				{"null-job", `null`}, {"array-job", `[]`}, {"boolean-job", `true`},
+			} {
+				t.Run("release.development-actions."+w.Name+"."+invalid.name+".reject", func(t *testing.T) {
+					input := fresh()
+					input.Needs = []byte(strings.Replace(string(input.Needs), `"`+first+`":{"outputs":{},"result":"success"}`, `"`+first+`":`+invalid.value, 1))
+					if bytes.Equal(input.Needs, positive.Needs) {
+						t.Fatal("actions-control: invalid needs was not injected")
+					}
+					if _, err := developmentActionsValidateGate(w, input); err == nil {
+						t.Error("invalid job result accepted")
+					}
+				})
+			}
+			canonical := developmentActionsWorkflowText(w)
+			if err := developmentActionsCheckWorkflow(w, canonical); err != nil {
+				t.Fatal(err)
+			}
+			for _, change := range [][2]string{
+				{"contents: read", "contents: write"}, {"timeout-minutes: 10", "timeout-minutes: 0"},
+				{"${{ always() }}", "${{ success() }}"}, {"ref: ${{ github.sha }}", "ref: main"},
+				{"persist-credentials: false", "persist-credentials: true"}, {"11d5960a326750d5838078e36cf38b85af677262", "v4"},
+				{"runs-on: ubuntu-24.04", "runs-on: self-hosted"}, {"cancel-in-progress:", "cancel-disabled:"},
+				{"ADLAIRE_ACTIONS_GATE: required", "ADLAIRE_ACTIONS_GATE: optional"},
+				{"      - " + first + "\n", ""}, {strings.ReplaceAll(developmentActionsGateCommand, "\n", "\n          "), "true"},
+				{"    steps:\n", "    continue-on-error: true\n    steps:\n"},
+				{"    steps:\n", "    if: false\n    steps:\n"},
+			} {
+				mutated := strings.Replace(canonical, change[0], change[1], 1)
+				if mutated == canonical || developmentActionsCheckWorkflow(w, mutated) == nil {
+					t.Fatalf("actions-control: canonical workflow mutation not rejected: %s", change[0])
+				}
+			}
+		})
+	}
 }
 
 func phase11MustReadText(t *testing.T, path string) string {
