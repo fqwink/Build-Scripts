@@ -4917,6 +4917,27 @@ stdout、stderr、`[REPORT]` は、同じ入力から常に同じ順序で出力
 
 追加管理 API fixture の `manifest.json` は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) に従う。`section` は対象 [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48)〜[§27.70](api.md#sec-27-70)、[`docs/details/sdk.md` 詳細本文責務 §23.8](sdk.md#sec-23-8)、[`docs/details/ui.md` 詳細本文責務 §24.8](ui.md#sec-24-8)、または [`docs/details/statefile.md` 詳細本文責務 §22.0d](statefile.md#sec-22-0d) のいずれかを固定文字列で持つ。複数責務を横断する fixture は主 owner を 1 件だけ `owner_component` に置き、残りを `collaborator_components`、`components`、`references` に記録する。`assertions` は実在する expected file と 1 対 1 で対応させ、fixture 実行時に使わない expected file は作成せず、`not_applicable` に理由を置く。ただし `expected/events.json` は protocol event evidence として fixture 名別 expected 固定表で要求し、`manifest.json.assertions` の値としては追加しない。
 
+<a id="additional-management-concrete-oracles"></a>
+**追加管理APIの具体oracle：** 次のcaseは上の既存fixture群へ含める将来の実行入力/expectedであり、現時点の文書checker成功を製品機能の合格へ換算しない。共通clockは `2026-01-02T00:00:00Z`。Q1/Q2は異なるschema-valid queue idの記号、B1/B2/B3は異なるschema-valid build idの記号とし、fixture実体で固定文字列へ束縛する。各caseのtime/entropy/lock/I/Oはfakeで順序制御し、実sleepで競合を待たない。
+
+| fixture群 / case | 固定入力・interleaving | 必須expected / mutation |
+|---|---|---|
+| queue-retention-webhook / empty-reorder | queued=[],queue_order=[]。SDK reorderQueue([])→API。 | HTTP1回/bodyのqueue_ids=[]、200、全state/log byte不変。空配列TypeErrorへの変異をkill。 |
+| queue-retention-webhook / manual-priority | Q1=low/created_seq1、Q2=urgent/created_seq2。reorder=[Q1,Q2]後にrunner再起動。 | 次activeはQ1、Q2はwaiting。priority/seq/payload不変、queue_order=[Q2]。priority再sort変異をkill。 |
+| queue-retention-webhook / dequeue-cancel-race | runnerのQ1 active移動commit後にcancel lockを解放。逆順も別schedule。 | runner先ならcancel409でactive維持。cancel先ならQ1未実行、queuedから除去、build_history/logなし、audit/event各1回。lost update/二重実行をkill。 |
+| users-roles-success / last-admin-race | active admin2件。各々をdisabledにするrequestを同時preflight後、主state lockを順に解放。 | 先行200、後行409、active admin1件、後行の主state/log差分なし。checkをlock外へ移す変異をkill。 |
+| auth-permission-denied / route-closure | API追加route表の全method/pathについてpermissionを欠くactorを使用。version/shareの認証除外は各正本を適用。 | protected routeは403、対象業務state no-read/no-write。users/{id}/roles/{id}/projects/{id}/template deleteを含める。未登録prefix継承をkill。 |
+| request-validation / json-duplicates | 同一objectにenabledを2回、trailing JSON、invalid UTF-8をそれぞれ投入。 | 各400、後続状態read/write/外部callなし。最後のkey採用への変異をkill。 |
+| cache-share-diff / stats-boundaries | B1/B2はfrom/to同時刻境界内、status=success/failure_build、duration=10/null。B3はto+1秒。 | summary={total:2,status_counts:{failure_build:1,success:1},duration_count:1,duration_sum_seconds:10}。B3不在、build/day/monthの同じ総数。両端排他/欠損durationの0件加算をkill。 |
+| cache-share-diff / prometheus-gauges | running=true、queued2、有効history3、pending1。 | 4family、値1/2/3/1、順/HELP/TYPE gauge/末尾LF byte比較。label/counter混入をkill。 |
+| cache-share-diff / stale-fill | readがgeneration7で停止→更新で8→purge→read再開。 | generation7のentryは保存しない、残ってもhit不可。cache missで最新handlerを呼ぶ。generation再確認削除をkill。 |
+| cache-share-diff / cache-atomic-fault | 128entry、body262144/262145byte、rename前/後失敗、clock逆行。 | 閾値内だけ保存、eviction順固定、前失敗は旧全体/後失敗は新全体。partial entry削除なし、原response維持、旧世代復活なし。 |
+| cache-share-diff / stream-bounds | 128/129未送信、65536/65537byte、認証失効をkeepalive直前、write timeout10秒。 | 上限超過だけerror/close、失効後eventなし、全reader/timer/goroutine終了、secret診断なし。閾値+1/auth再検証skipをkill。 |
+| config-state-order / snapshot-diff-null | 左filesのa=null/b=[1,2]、右a欠落/b=[2,1]/c=null、keyに~/を含むobject。 | removed/modified/addedを区別し、arrayは1差分、path escapeをbyte比較、secretはmarkerだけ。null/欠損同一視とarray sortをkill。 |
+| config-state-order / auto-snapshot-fault | enabled=true/max_count1、既存0→1、次変更は満杯。snapshot write前/後、主state writeでfault。 | snapshot確定前は主state不変、主state失敗でも旧設定snapshot保持。満杯は変更拒否、disable-only例外以外のwriteなし。snapshotを主state後へ移す変異をkill。 |
+
+上表はsymbolを持つspec oracleであり、具体fixture artifact全体の実体化完了を意味しない。製品実装時は各caseを対象ownerと [requirement coverage ledger](#test-requirement-coverage-ledger-contract)、[18 record closure set](#test-verification-closure-record-set-contract) へ接続し、expectedを実装出力から自動承認しない。
+
 追加管理 API fixture の `manifest.json.assertions` は次表に固定する。複数値は [fixture 証跡責務共通 manifest schema 固定契約](#sec-27-f-8) の列挙順で記録する。
 
 | fixture 名 | 必須 assertions |

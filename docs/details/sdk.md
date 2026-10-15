@@ -575,7 +575,7 @@ SDK は上表にない追加管理 API public method を作成してはならな
 | `id` / `queueId` / `deliveryId` / `leftId` / `rightId` | string 以外、空文字、`/`、NUL、CR、LF、`.`、`..` | `encodeURIComponent` を 1 回だけ適用する。 |
 | `token` | string 以外、空文字、`/`、NUL、CR、LF | path parameter として 1 回だけ encode する。 |
 | `query` object | object 以外、array、未知 key | `undefined` / `null` の値は送信しない。 |
-| `queueIds` | array 以外、空配列、string 以外の要素、重複 | `{queue_ids: queueIds}` を body にする。 |
+| `queueIds` | array 以外、string 以外の要素、重複 | 空配列も `{queue_ids: queueIds}` として送る。実在queued集合との一致はAPIが判定する。 |
 | `input` object | object 以外、array、`null` | API schema の unknown key 判定は API に委譲する。 |
 | confirmation input | confirmation key が string 以外 | 値の一致判定は API に委譲する。 |
 | `onEvent` | function 以外 | `streamAdminEvents()` の callback として保持し、request body または query に含めない。 |

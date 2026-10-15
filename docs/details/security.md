@@ -844,6 +844,8 @@ role または permission が変更された場合、既存 session の `permiss
 
 最後の active admin user を disabled、locked、role 剥奪してはならない。
 
+user/roleの更新と最後のadmin判定は同一authorization更新lock内で最新users/rolesを読み、更新後全体を検証してから保存する。別requestが同時に最後の2管理者を相互に無効化する場合も、片方を409にして最低1件を維持する。user/role参照をread途中で混在させない。password変更または資格情報削除は主state確定直後にそのuserの全memory sessionを失効させ、audit失敗でも再有効化しない。permissions_hashはrole id ASCII昇順と解決済みpermissionの重複なしASCII昇順のcanonical JSONに対するSHA-256とし、保存済みsession値と毎requestで比較する。
+
 **監査対象：**
 
 | 操作 | audit action |
@@ -891,10 +893,10 @@ API endpoint group と必要 permission は以下に固定する。ここにな�
 
 | endpoint 群 | 必要 permission |
 |--------------|----------------|
-| `/api/users`, `/api/roles`, `/api/external-auth-*`, `/api/share-links`, `/api/share/{token}/status` | `user:admin`。ただし `/api/share/{token}/status` は share token 検証成功時だけ session permission 不要。 |
+| `/api/users`, `/api/users/{id}`, `/api/roles`, `/api/roles/{id}`, `/api/external-auth-config`, `/api/external-auth/test`, `/api/share-links`, `/api/share-links/{id}`, `/api/share/{token}/status` | `user:admin`。ただし `/api/share/{token}/status` は share token 検証成功時だけ session permission 不要。 |
 | `/api/datastore`, `/api/datastore/switch`, `/api/cache-policy`, `/api/response-cache`, `/api/events`, `/api/events/stream`, `/api/notify-log/{delivery_id}/resend` | `system:admin` |
-| `/api/config-snapshots`, `/api/config-snapshots/{id}`, `/api/config-snapshots/{id}/restore`, `/api/config-snapshots/{left_id}/diff/{right_id}`, `/api/config-templates`, `/api/config-templates/{id}/apply` | read は `config:read`、write / restore / apply / delete は `config:write` |
-| `/api/projects` | read は `config:read`、write / archive は `config:write` |
+| `/api/config-snapshots`, `/api/config-snapshots/{id}`, `/api/config-snapshots/{id}/restore`, `/api/config-snapshots/{left_id}/diff/{right_id}`, `/api/config-templates`, `/api/config-templates/{id}`, `/api/config-templates/{id}/apply` | read は `config:read`、write / restore / apply / delete は `config:write` |
+| `/api/projects`, `/api/projects/{id}` | read は `config:read`、write / archive は `config:write` |
 | `/api/queue/{queue_id}`, `/api/queue/reorder` | `build:write` |
 | `/api/history/retention`, `/api/history/retention/run` | read は `status:read`、write / run は `system:admin` |
 | `/api/stats/export`, `/api/metrics`, `/api/badge/status.svg`, `/api/snapshots/{left_id}/diff/{right_id}` | `status:read` |
@@ -923,7 +925,7 @@ API endpoint group と必要 permission は以下に固定する。ここにな�
 
 system role は削除禁止、`id` 変更禁止、`system:false` への変更禁止とする。system role の `name` と `permissions` を変更する request は `409` とし、状態を変更しない。
 
-role 削除時、対象 role を持つ active user が 1 件でも存在する場合は `409` とする。
+role削除時はstatusを問わず対象roleを参照するuserが1件でもあれば409とする。disabled/locked userの参照をdanglingにしてから再有効化する経路を作らない。上表はroute templateのexact集合であり、prefix wildcard、末尾slash、未知subrouteにpermissionを継承しない。version aliasはAPIが確定したcanonical route templateで判定する。
 
 <a id="sec-27-61"></a>
 **27.61 ユーザー管理 API：**
@@ -932,7 +934,7 @@ role 削除時、対象 role を持つ active user が 1 件でも存在する�
 
 username は case-sensitive ではなく、保存前に lowercase に正規化する。
 
-同一 username の active または disabled user が存在する場合、作成は `409` とする。
+同一usernameはstatusを問わず全UserRecordで一意とし、locked userとの重複も409とする。ASCII uppercaseだけをlowercaseへ変換し、Unicode case fold、前後空白除去、全角変換は行わない。正規化後の保存型を満たさない値は422。
 
 password 更新時は平文を保存せず、`pbkdf2_hmac_sha256_v1` だけを使用する。
 

@@ -642,6 +642,8 @@ UI は Prometheus metric、SVG badge、OpenAPI document、snapshot diff、config
 
 event feed panel は SDK の `onEvent` callback が渡す `AdminEventRecord` を、`timestamp` 降順、同一 `timestamp` は `id` ASCII 昇順の表示順に挿入する。UI は event id、type、severity、actor、target、message を生成・補完せず、stream frame の parse、keepalive 処理、error frame 処理を直接実装しない。stream error では panel summary に error を 1 回表示し、`getAdminEvents` を 1 回だけ再取得する。user stop の `done=null` では error を表示せず、`getAdminEvents` を 1 回だけ再取得する。
 
+queue並べ替えの送信値は表示上のqueued全件とし、空表示なら[]を送信できる。409/422ではローカル順を成功表示せずgetQueueを1回再取得し、競合前の表示を新応答で置換する。server側active移動を手動順へ戻さない。設定snapshot panelの自動設定は `config-snapshot-auto-enabled` checkboxと `config-snapshot-max-count` number inputで扱い、getConfig/setConfigの既存経路だけを使う。保存前の値域は [statefile詳細本文責務](statefile.md#automatic-config-snapshot-contract)、成功後はgetConfig→getConfigSnapshots、失敗時は入力値を保持して成功表示しない。容量不足時に自動削除せず、snapshotの手動deleteまたはdisable-only操作を明示選択させる。
+
 ---
 
 <a id="phase-13-ui-alignment-contract"></a>

@@ -1682,12 +1682,12 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | cache key | `sha256(input_relative_path + "\n" + input_sha256 + "\n" + builder_version + "\n" + theme + "\n" + build_config_hash)` の hex。 |
 | page file | `.build_cache/pages/{cache_key}.json`。 |
 | hit 検証 | cache entry の `cache_key`、`input_path`、`input_sha256`、依存 SHA、builder version、theme、build config hash がすべて一致する場合だけ hit。 |
-| 破損 entry | `BUILD_CACHE_ENTRY_INVALID` を WARN で出し、該当 page file だけを `os.Remove` で 1 回削除する。削除成功と `os.IsNotExist` は cleanup 成功とする。それ以外の削除失敗は `BUILD_CACHE_ENTRY_CLEANUP_FAILED` を WARN で出し、再試行せず、当該 entry を miss として build を継続する。warning に absolute path または cache 内容を出力しない。 |
+| 破損 entry | `BUILD_CACHE_ENTRY_INVALID` を WARN で出し、該当 page file の削除を成功build後のcleanup planへ登録し、同じkeyの正常pageを保存できた場合は削除せず、未置換の破損pageだけをstatefile更新lock内で再読込して破損のままの場合に限り `os.Remove` で1回削除する。同時buildが正常pageへ置換済みなら削除しない。削除成功と `os.IsNotExist` は cleanup 成功とする。それ以外の削除失敗は `BUILD_CACHE_ENTRY_CLEANUP_FAILED` を WARN で出し、再試行せず、当該 entry を miss として build を継続する。warning に absolute path または cache 内容を出力しない。 |
 | report | `cache_hits`、`cache_misses` は integer、`cache_disabled_reason` は `null` または固定文字列。 |
 
 **無効化条件：**
 
-`--strict`、theme 変更、builder version 変更、依存 file 変更、cache schema version 不一致、cache entry 破損時は該当 entry を miss とする。
+`--strict` の全cache無効化は [cache決定性契約](#builder-cache-determinism-contract) を適用する。theme/builder version/依存file変更は新keyでmiss、cache schema version不一致とentry破損は該当entryをmissとする。
 
 **異常系：**
 
@@ -1705,11 +1705,20 @@ Go 版 CI ランナーでは、`runner` が [`docs/details/runner.md` 詳細本�
 | cache root | `--cache-dir` の値を `filepath.Abs` → `filepath.Clean` した path だけを root とし、index は `{cache-dir}/.build_cache.json`、page entry は `{cache-dir}/.build_cache/pages/{cache_key}.json` とする。`--out`、入力 root、その他状態ファイルへ cache entry を作らない。 |
 | atomic save | `.build_cache/pages/{cache_key}.json` と `.build_cache.json` の各保存は [`docs/details/statefile.md` 詳細本文責務 §22.0a 状態ファイル更新手順](statefile.md#statefile-update-procedure) の通常 mode を使用する。builder owner は tmp 名、lock 名、rename、cleanup を再定義しない。rename 前失敗では対象の既存 cache index / page を変更せず、rename 後 partial failure では statefile owner の戻り値を cache write failure として扱う。 |
 | hit 出力 | cache hit でも最終 HTML、assets、search index、manifest は通常 build と同じ staging → rename 契約で出力する。cache fragment を公開出力へ直接コピーしない。 |
-| byte 一致 | cache hit 出力は同一入力を通常変換した場合の HTML fragment と byte 等価でなければならない。違う場合は hit を破棄し miss とする。 |
-| dependency 連動 | `.dependency_manifest.json` が存在し、該当 page の dependency SHA が一致する場合だけ hit を許可する。dependency manifest 破損時は全 entry miss。 |
+| byte 一致 | cache hitは通常変換とのbyte等価を受入条件とする。各hitで通常変換を再実行して比較するalgorithmではない。保存内容の検証と独立したcached/uncached差分fixtureで等価性を確認する。 |
+| dependency 連動 | `.dependency_manifest.json` が存在し、該当 page の dependency SHA が一致する場合だけ hit を許可する。dependency manifest破損時の無効化/reportは [cache決定性契約](#builder-cache-determinism-contract) を適用する。 |
 | report | `[REPORT] cache_hits=N`、`cache_misses=N`、`cache_write_failures=N` を必ず出力する。`cache_disabled_reason` は JSON 値または `null` とする。 |
 | failure | build failure、strict failure、output validation failure では cache index / page を新規保存しない。既存 cache は維持する。 |
 | secret | cache entry は Markdown 変換結果だけを保存し、environment、token、secret、absolute input path、user home path を保存しない。 |
+
+<a id="builder-cache-determinism-contract"></a>
+**cache決定性・保存境界：** `STD`。build_config_hashは、通常変換に渡す正規化済み設定objectからCLIのcache-dir/src/out、報告出力先、実行時刻を除いた値のcanonical JSON SHA-256とする。正規化と既定値適用は通常変換と同じ関数を使い、全ての変換設定keyを含める。入力pathで解決する参照はdepsに内容SHAを含める。実行時刻/環境値を変換結果へ挿入する機能が有効であればcacheを使用せず、推測した除外keyでhitを許可しない。
+
+cache_disabled_reasonの閉じた集合は `not_requested`、`strict`、`development_version`、`dynamic_input`、`dependency_manifest_invalid`、nullとする。この順に最初の適用理由を選ぶ。`V.0.0-dev` の異なるコードを同一versionとして再利用しない。disabledではcache fileをread/write/deleteせずhits/misses/write_failuresを全て0とする。enabledでは対象Markdown1件ごとにhitかmissを1増やす。
+
+hitはCachePageのschema、input_sha256、cache key再計算、deps全件、content_sha256を検証した場合だけ許可する。cache rootは実行user所有、group/other書込不可、全親segmentはsymlink禁止とし、entryは通常fileかつhardlink数1だけを読む。不一致はmissであり、公開stagingへのcache fragment直コピーを許可しない。権限を持つ実行user自身による改ざんをdigestだけで防止したとは報告しない。
+
+cache保存と破損entry cleanupは、サイト全体のvalidationと公開output commit成功後にだけ行う。失敗buildではcacheを削除もしない。成功buildではpageを先に保存し、その成功pageだけindexへ追加する。index更新はstatefileのread-modify-write lock内で最新indexとmergeし、同時builderの別page更新を消さない。page/indexいずれかの保存失敗はcache_write_failuresを保存単位ごとに1増やし、通常build成功を変更しない。index更新失敗で残る非参照pageは次回hitに使用しない。
 
 **検証条件：**
 

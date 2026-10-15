@@ -17,6 +17,8 @@
 | 実装 artifact と各機能の現在状態、Phase、将来計画 | [`docs/ROADMAP.md`](ROADMAP.md) |
 | 詳細仕様入口、共通固定値、owner 対応表、collaborator 境界参照入口 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) |
 | 詳細仕様本文・証跡ディレクトリ | [`docs/details/`](details/) |
+| 追加管理APIの具体oracle所在 | [`docs/details/fixture.md` fixture証跡責務](details/fixture.md#additional-management-concrete-oracles)。fixture群の実在/未作成は本索引のfixture所在表を参照する。 |
+| 追加queue制御 / builder cache詳細所在 | [`docs/details/runner.md` 詳細本文責務](details/runner.md#additional-queue-control)、[`docs/details/builder.md` 詳細本文責務](details/builder.md#builder-cache-determinism-contract) |
 | Phase 11 バグ修正ゼロ化の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 11 バグ修正ゼロ化参照](DETAIL_INDEX.md#phase-11-quality-gate-entry) |
 | Phase 12 実装品質ゲート再構築の参照入口 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 12 実装品質ゲート再構築参照](DETAIL_INDEX.md#phase-12-quality-gate-entry) |
 | Phase 12 正式 fixture root | [`testdata/phase12/quality-gate-reconstruction/`](../testdata/phase12/quality-gate-reconstruction/) |

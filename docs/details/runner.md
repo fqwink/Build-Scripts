@@ -2794,12 +2794,12 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 | retry 結果 | `.notify_log` | `.notify_pending` |
 |------------|---------------|-------------------|
 | HTTP 2xx | 今回 attempt 番号で `result:"success"` を 1 件追記する。 | entry を削除する。 |
-| HTTP 5xx / timeout、かつ `今回 attempt 番号 - 1 < retry_count` | 今回 attempt 番号で `result:"failure"` と `http_5xx` / `timeout` を 1 件追記する。 | `attempts=今回 attempt 番号`、`next_attempt_at=今回結果確定時刻+retry_interval_seconds`、`last_error` を更新して保持する。 |
+| HTTP 5xx / timeout、かつ `今回 attempt 番号 - 1 < retry_count` | 今回 attempt 番号で `result:"failure"` と `http_5xx` / `timeout` を 1 件追記する。 | `attempts=今回 attempt 番号`、`next_attempt_at=今回結果確定時刻+retry_interval_seconds` を更新して保持する。errorはnotify_logだけに保存し、schema外のlast_errorをpendingへ追加しない。 |
 | HTTP 5xx / timeout、かつ `今回 attempt 番号 - 1 >= retry_count` | 今回 attempt 番号で `result:"dropped"`、`error_code:"retry_exhausted"`、`error:"retry exhausted"` を 1 件だけ追記する。同じ attempt の `failure` record は追記しない。 | entry を削除する。 |
 | HTTP 1xx / 3xx / 4xx / response 受信前の接続失敗 | 今回 attempt 番号で `result:"failure"` と `http_1xx` / `http_3xx` / `http_4xx` / `network_error` の該当値を 1 件追記する。 | retry 非対象へ遷移したため entry を削除する。 |
 | `.notify_log` 追記失敗 | 新規 record なし。`NOTIFY_LOG_WRITE_FAILED: channel_id={json_id} attempt={attempt}` を ERROR で 1 行記録する。 | entry を byte 単位で変更せず保持する。次回 retry は同じ attempt 番号を再使用する。 |
 
-`.notify_config` または pending の `channel_id` と一致する `enabled=true` / `type="webhook"` channel が利用不能な場合は送信 attempt として数えず、`.notify_log` を追記せず、entry の `attempts`、`next_attempt_at`、`last_error` を変更しない。利用可能な channel の `retry_count` と `retry_interval_seconds` は retry 判定時の現在値を使用する。
+`.notify_config` または pending の `channel_id` と一致する `enabled=true` / `type="webhook"` channel が利用不能な場合は送信 attempt として数えず、`.notify_log` を追記せず、entry の `attempts`、`next_attempt_at` を変更しない。利用可能な channel の `retry_count` と `retry_interval_seconds` は retry 判定時の現在値を使用する。
 
 **異常系：**
 
@@ -2991,6 +2991,16 @@ runner 起動時の pending retry は `next_attempt_at <= now` の entry を `cr
 2. circuit closed かつ active entry がある場合は priority に関係なく active を再実行し、active がない場合だけ priority 数値昇順、同一 priority では created_seq 昇順で waiting から 1 件を active へ移す。circuit open では active / waiting を変更しない。
 3. runner が読む waiting queue は priority / created_seq / id 順で固定する。
 4. runner は waiting queue を clear しない。API による clear 完了後は保存状態から消失した waiting entry を実行対象に戻さず、保持された active entry だけを引き続き実行対象にできる。clear の HTTP 契約は [`docs/details/api.md`](api.md) 詳細本文責務の `DELETE /api/queue` を正本とする。
+
+<a id="additional-queue-control"></a>
+**追加queue制御：** `STD`。この拡張を実装した経路では手動順queue_orderをpriority順より先に適用する。queue_order内の先頭queued entryを優先し、queue_orderが空の場合だけ従来のpriority/created_seq/id順を使う。新規appendはqueue_orderを変更しないため、手動指定済みentryの後に従来優先度で処理される。active優先/circuit openの禁止条件は変えない。
+
+reorderはstatefileの同一build_state read-modify-write lock内で最新queued集合を検証し、queue_idsが全件exact一致した場合だけqueued配列とqueue_orderの両方をrequest順へ変更する。既に同順ならno-op（audit/eventなし）。空queue/空配列もno-op。created_seq/priority/payload/queued_at/requested_by/activeは保持する。lock取得10秒超は409、集合不一致は422。途中でrunnerがactiveへ移したentryをrequestへ戻さない。
+
+cancelは同じlock内で対象がactiveなら409、queuedにもなければ404、queuedなら1件だけ除去してqueue_orderからも除く。QueueEntryへstatusを追加せず、build_history/build_logを作らず、audit action=`queue_cancel`、admin event message=`Queue entry cancelled` にterminal結果を記録する。reorderのaudit actionは `queue_reorder`、event messageは `Queue reordered`。成功write順はbuild_state、audit、admin_eventsであり、主state成功後のlog失敗は500・主state維持。再取消は404。clearはqueuedとqueue_orderを同時に[]にする。active移動・cancel・reorder・clear・appendは全て同じlockで直列化し、古いread結果で保存しない。
+
+<a id="additional-history-retention-schedule"></a>
+**追加履歴retention実行契機：** 自動実行はoneshot runnerのfinalizerでhistory確定/必須log保存/build_state終端化/自分のbuild lock解放が全て成功した直後に1回だけ試行する。skip/failureで終端化未完了なら実行しない。API手動実行と自動実行は同じ排他coordinatorを使用し、他build/rollback/retentionがlockを保持していれば自動実行はno-op（成功件数へ加算せず）、手動は409。coordinatorは排他取得後に最新policy/history/lock状態を読み、削除計画完了までlockを保持する。削除順・partial failureは [API詳細本文責務](api.md#sec-27-57) へ委譲する。自動失敗は `HISTORY_RETENTION_FAILED` 固定ERROR、runner exitを最低1とするが、完了済みbuild statusをfailureへ書き換えない。再試行は次回runnerまたは明示runだけで、無限retry/timerを追加しない。
 
 **priority / created_seq 固定契約：**
 

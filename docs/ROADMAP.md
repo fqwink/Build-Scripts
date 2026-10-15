@@ -103,7 +103,19 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 | Phase20内製IaC | 改訂予定。provider操作の採用範囲・owner・詳細本文・fixture・Phase全体の実装条件は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase20入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) から仕様策定する。 |
 | エックスサーバVPS検証判断 | 改訂予定。[本番検証詳細本文責務](details/production-validation.md#phase-17-xserver-future-contract)に接続する。 |
 | 管理UI配布/配信・builder cache | 改訂予定。各ownerと検証の入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務](DETAIL_INDEX.md#0i-詳細節対応表) を参照する。 |
-| 追加管理API | 改訂予定の各機能を下表で個別管理する。保存用資格情報とAPI公開型の分離は補完したが、全入力型・全異常系・具体fixture・後続Phase割当の確認は未完了。入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 追加管理API対応](DETAIL_INDEX.md#0i6-追加管理api機能)。 |
+| 追加管理API | 改訂予定の各機能を下表で個別管理する。入力値、queue実行順、集計、cache世代、snapshot、認可の詳細本文と [具体oracle](details/fixture.md#additional-management-concrete-oracles) は存在するが、下の未確定契約と後続Phase割当を閉じるまで凍結しない。入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 追加管理API対応](DETAIL_INDEX.md#0i6-追加管理api機能)。 |
+
+**仕様凍結前の残存境界：** 次は現在の改訂予定範囲に残る未完了理由であり、仕様化済み/実装済みへ昇格する根拠ではない。
+
+| 範囲 | 未完了理由 / 判断先 |
+|---|---|
+| Phase20 | 採用resource集合、owner、provider操作境界と復旧契約が未確定。[Phase20詳細入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry)。 |
+| multi-user / RBAC / 外部認証 | legacy単一管理者からの移行、API tokenのuser紐付け、user別TOTP、OIDC開始/完了と鍵検証の全契約が未固定。[security詳細本文責務](details/security.md#sec-27-48)。 |
+| 複数project管理 | repository refの入力文法、実行対象との対応、projectをまたぐ権限境界が未固定。[statefile詳細本文責務](details/statefile.md#sec-22-0d)。 |
+| Webhook手動再送 | dropped判定は保存schemaに対応しているが、再送受付のdurable record、再起動時の不確定送信照合、payload再構成可能eventの閉じた集合が未固定。[API詳細本文責務](details/api.md#sec-27-70)。 |
+| 追加機能全体 | 後続Phase/実装PR境界と全caseの具体fixture payload/expectedの確定が未完了。[fixture証跡責務](details/fixture.md#additional-management-concrete-oracles)。 |
+
+上表以外の潜在不備が0件であることは未証明である。現在の改訂予定27機能を、本文参照が増えたことや文書検査成功だけで昇格しない。active Phaseは引き続き未設定とする。
 
 <a id="522-統合ロードマップ表"></a>
 **統合機能インベントリ：** 以下を全機能の現在状態に関する唯一の一覧とする。

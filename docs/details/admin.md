@@ -119,6 +119,10 @@ admin archive の検証は以下の順序に固定する。
 
 いずれかの検証に失敗した場合は、既存 `$INSTALL_DIR/admin/` を変更しない。
 
+archive入力は圧縮8MiB以下、展開合計16MiB以下、各file8MiB以下とする。gzip memberは1件、trailing data/multistreamは禁止、CRC/sizeをEOFまで検証する。tarはrelease正本と同じUSTAR形式の通常file2件だけとし、directory、PAX/GNU拡張header、重複名、長名entryも拒否する。size上限を超えた時点で読込を止め、検証完了前に最終配置先へ展開しない。安全なstagingの確保/cleanup/終了codeは [setup詳細本文責務](setup.md#sec-26-7) を使用する。`STD`、Goのarchive/tar・compress/gzipと標準I/Oだけを使用する。
+
+gzipはbuffered ByteReader上でMultistream(false)として読み、tar EOF後も展開上限内でgzip EOFまで読み切る。tar終端後の展開byteはzero paddingだけを許可し、gzip EOF後に圧縮入力byteが残れば拒否する。header列挙完了だけでCRC/trailing検査を完了扱いにしない。
+
 ---
 
 <a id="a3-静的配信契約"></a>
@@ -136,6 +140,8 @@ admin archive の検証は以下の順序に固定する。
 未定義 path、directory listing、path traversal、hidden file、状態ファイル、secret file へのアクセスは `404` とする。認証前に配信する file は [`docs/details/admin.md` 詳細本文責務 §A3](admin.md#a3-静的配信契約) の固定表の静的 file だけとし、API response、状態ファイル、credential、build log、snapshot を静的配信してはならない。
 
 静的配信処理は request body を読まない。`GET` と `HEAD` 以外の method は `405` を返す。
+
+raw request pathのpercent encoding/backslash/空segment/dot segmentを正規化redirectで許可pathへ変換しない。queryはfile選択へ使用しない。path未登録はmethodによらず404、登録pathのmethod不正は405とAllow=`GET, HEAD`。成功HEADはGETと同じContent-Type/Cache-Control/Content-Length、body0byteとする。Range/If-None-Match/If-Modified-Sinceは処理せず、206/304/ETag/Last-Modifiedを生成しない。静的fileは毎requestで安全なdirectory descriptorに対する固定basenameのnon-follow openとfstatで通常file/hardlink数1を確認し、pathnameの事前Lstatだけを安全性判定にしない。symlink/型不正/不在は404、読取不能は500、どちらもpath/OS errorを応答へ含めない。X-Content-Type-Options=`nosniff`を全静的応答へ付与する。業務state、audit、admin eventを書かず、共通access logだけを適用する。
 
 ---
 

@@ -634,13 +634,15 @@ Phase 20 は Phase 18 完了前に仕様全般策定を進めてよい。ただ�
 <a id="0i6-追加管理api機能"></a>
 **0i.6 追加管理 API 機能：**
 
+下表の横断fixture入口は [fixture証跡責務の追加管理API契約](details/fixture.md#additional-management-api-fixture-contract)、具体case oracleは [fixture証跡責務](details/fixture.md#additional-management-concrete-oracles) を参照する。各入口の存在は機能の成熟度または実行済み検証を意味せず、現在状態は [ROADMAP状態・計画責務](ROADMAP.md#specification-completeness-status) を参照する。
+
 | 機能 | owner | 詳細本文 |
 |------|-------|----------|
 | マルチユーザー対応 | `security` | [`docs/details/security.md` 詳細本文責務 §27.48](details/security.md#sec-27-48)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.48](details/api.md#sec-27-48) |
 | データストア切り替え | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.49](details/api.md#sec-27-49) |
 | 外部認証連携 | `security` | [`docs/details/security.md` 詳細本文責務 §27.50](details/security.md#sec-27-50)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.50](details/api.md#sec-27-50) |
 | 統計データの JSON エクスポート | `api` | [`docs/details/api.md` 詳細本文責務 §27.51](details/api.md#sec-27-51)、SDK は [`docs/details/sdk.md` 詳細本文責務 §23.8](details/sdk.md#sec-23-8)、UI は [`docs/details/ui.md` 詳細本文責務 §24.8](details/ui.md#sec-24-8) |
-| キュー内個別エントリのキャンセル | `runner` | [`docs/details/runner.md` 詳細本文責務 §27.35 queue 契約](details/runner.md#sec-27-35)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.52](details/api.md#sec-27-52) |
+| キュー内個別エントリのキャンセル | `runner` | [`docs/details/runner.md` 詳細本文責務 追加queue制御](details/runner.md#additional-queue-control)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.52](details/api.md#sec-27-52) |
 | Prometheus メトリクスエンドポイント | `api` | [`docs/details/api.md` 詳細本文責務 §27.53](details/api.md#sec-27-53) |
 | CLI 管理クライアント | `admin` | [`docs/details/admin.md` 詳細本文責務 §A7](details/admin.md#sec-a7)、API 対応は [`docs/details/api.md` 詳細本文責務 §27.54](details/api.md#sec-27-54)、fixture 証跡は [`docs/details/fixture.md` Admin CLI fixture 固定契約](details/fixture.md#admin-cli-fixture-contract) |
 | 設定の自動スナップショット | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.55](details/api.md#sec-27-55) |
@@ -652,13 +654,13 @@ Phase 20 は Phase 18 完了前に仕様全般策定を進めてよい。ただ�
 | ユーザー管理 API | `security` | [`docs/details/security.md` 詳細本文責務 §27.61](details/security.md#sec-27-61)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.61](details/api.md#sec-27-61) |
 | API バージョニング | `api` | [`docs/details/api.md` 詳細本文責務 §27.62](details/api.md#sec-27-62) |
 | API ドキュメント自動生成 | `api` | [`docs/details/api.md` 詳細本文責務 §27.63](details/api.md#sec-27-63) |
-| ビルドキューの手動並び替え | `runner` | [`docs/details/runner.md` 詳細本文責務 §27.35 queue 契約](details/runner.md#sec-27-35)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.64](details/api.md#sec-27-64) |
+| ビルドキューの手動並び替え | `runner` | [`docs/details/runner.md` 詳細本文責務 追加queue制御](details/runner.md#additional-queue-control)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.64](details/api.md#sec-27-64) |
 | 設定テンプレート | `statefile` | [`docs/details/statefile.md` 詳細本文責務 §22.0d](details/statefile.md#sec-22-0d)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.65](details/api.md#sec-27-65) |
 | 管理者向けイベントフィード | `api` | [`docs/details/api.md` 詳細本文責務 §27.66](details/api.md#sec-27-66) |
 | 読み取り専用共有リンク | `security` | [`docs/details/security.md` 詳細本文責務 §27.67](details/security.md#sec-27-67)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.67](details/api.md#sec-27-67) |
 | API レスポンスキャッシュ制御 | `api` | [`docs/details/api.md` 詳細本文責務 §27.68](details/api.md#sec-27-68) |
 | スナップショット間サイト差分 API | `archive` | [`docs/details/archive.md` 詳細本文責務 snapshot 契約](details/archive.md#sec-27-15)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.69](details/api.md#sec-27-69) |
-| Webhook 送信履歴の手動再送 API | `runner` | [`docs/details/runner.md` 詳細本文責務 notification 契約](details/runner.md#sec-27-38)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.70](details/api.md#sec-27-70) |
+| Webhook 送信履歴の手動再送 API | `runner` | [`docs/details/runner.md` 詳細本文責務 通知連携](details/runner.md#sec-27-32)、API 境界は [`docs/details/api.md` 詳細本文責務 §27.70](details/api.md#sec-27-70) |
 
 <a id="0i7-mcp"></a>
 **0i.7 MCP：**

@@ -764,11 +764,11 @@ named user loginの認証更新は内部o-ID付きUpdateCICDAuth(userID,credenti
 | `.smtp_secret` | UTF-8 text | 不在 | `api` | 読み込み不能時は SMTP caller へ secret read failure を返す。 |
 | `.dashboard_layout` | JSON object | `{"widgets":["status","stats","schedule","alerts","disk","rate_limit","snapshots","maintenance","queue"]}` | `api` | 初期値で再生成し、ERROR ログを記録する。 |
 | `.users` | JSON object | `{"users":[]}` | `api` | 破損時は自動再生成せず、user caller へ破損失敗を返す。意図しない再許可を防ぐため上書きしない。 |
-| `.roles` | JSON object | `{"roles":[{"id":"admin","name":"Admin","permissions":["*"],"system":true}]}` | `api` | 破損時は自動再生成せず、role caller へ破損失敗を返す。 |
+| `.roles` | JSON object | [追加管理初期状態](#additional-management-initial-state) | `api` | 破損時は自動再生成せず、role caller へ破損失敗を返す。 |
 | `.external_auth_config` | JSON object | `{"enabled":false,"providers":[]}` | `api` | secret を含む破損 payload は response に出さず、破損失敗を返す。 |
-| `.datastore_config` | JSON object | `{"active_store":"statefile","stores":[{"id":"statefile","type":"statefile","enabled":true}],"pending_switch":null}` | `api` | 破損時は切り替えを禁止し、現在 store を不明として caller へ破損失敗を返す。 |
+| `.datastore_config` | JSON object | `{"active_store":"statefile","stores":[{"id":"statefile","type":"statefile","enabled":true,"path":null}],"pending_switch":null}` | `api` | 破損時は切り替えを禁止し、現在 store を不明として caller へ破損失敗を返す。 |
 | `.config_snapshots/{id}.json` | JSON object | snapshot 作成時に新規作成 | `api` | 個別破損 snapshot は list から除外せず `corrupted:true` で返し、restore を禁止する。 |
-| `.projects` | JSON object | `{"projects":[{"id":"default","name":"default","status":"active","default":true}]}` | `api` / `runner` | 破損時は project caller へ破損失敗を返し、default project を自動再生成しない。 |
+| `.projects` | JSON object | [追加管理初期状態](#additional-management-initial-state) | `api` / `runner` | 破損時は project caller へ破損失敗を返し、default project を自動再生成しない。 |
 | `.config_templates` | JSON object | `{"templates":[]}` | `api` | 破損時は template caller へ破損失敗を返し、自動再生成しない。 |
 | `.admin_events` | JSON Lines | 空ファイル | `api` / `runner` | 読み込み可能な行のみ返し、壊れた行は ERROR ログへ記録して無視する。 |
 | `.share_links` | JSON object | `{"links":[]}` | `api` | 破損時は share link caller へ破損失敗を返し、自動再生成しない。 |
@@ -896,6 +896,8 @@ JSON Lines adapter は空行、JSON parse 失敗、JSON object 以外、必須 k
 | `log_max_lines` | integer | `500` | 1〜10000 | `GET/POST /api/config` | `GET /api/logs` が返す最大行数。 |
 | `history_max_count` | integer | `100` | 1〜10000 | `GET/POST /api/config` | `.build_history` の通常表示上限。削除処理の上限ではない。 |
 | `history_retention` | object | `{"enabled":false,"max_count":1000,"max_age_days":null,"updated_at":null}` | [HistoryRetentionPolicy object](#history-retention-policy-object) | `GET/POST /api/history/retention`, `POST /api/history/retention/run` | `.build_history` と対応 log の自動削除 policy。 |
+| `response_cache_policy` | object | `{"enabled":false,"ttl_seconds":30,"endpoints":[]}` | [追加管理cache policy](#additional-response-cache-policy) | `GET/POST /api/cache-policy` | 追加管理API用。 |
+| `config_snapshot_policy` | object | `{"enabled":false,"max_count":100}` | [自動設定snapshot](#automatic-config-snapshot-contract) | `GET/POST /api/config` | 追加管理API用。 |
 | `build_timeout_seconds` | integer | `300` | 1〜86400 | `GET/POST /api/config` | 手動/自動ビルドのタイムアウト秒数。 |
 | `log_retention_days` | integer | `30` | 0〜3650 | `GET/POST /api/config`, `POST /api/logs/cleanup` | `0` は自動削除なし。 |
 | `log_level` | string | `"INFO"` | `"INFO"` / `"DEBUG"` / `"WARNING"` / `"ERROR"` | `GET/POST /api/config`, `POST /api/log-level` | `api` のランタイムログレベル。 |
@@ -1150,7 +1152,7 @@ NotificationPayload object は canonical JSON 生成時に key を ASCII 昇順�
 
 `trigger="deploy"` は `source_kind="output"`、`out`非 `null`、`rollback_from=null`、`snapshot_id=null` とする。`trigger="rollback"` は `source_kind="snapshot"`、`out=null`、`rollback_from`と `snapshot_id` を非 `null` の同一 snapshot id とする。それ以外の組合せは schema 不正とする。`output_sha256` は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) の固定アルゴリズムで算出した値とする。
 
-array は投入順を保持する。転送先識別子は `branch`、`target_id`、`host`、`user`、`dest_dir` の完全一致とする。同一転送先の新しい build が pending になった場合は、既存 entry の array 位置を保ったまま `build_id`、`trigger`、`source_kind`、`rollback_from`、`snapshot_id`、`out`、`output_sha256`、`failed_at`、`last_error` を新しい値へ置換し、`retry_count=0` とする。同一転送先への新しい build が転送成功した場合は、対応する既存 pending entry を削除する。再送元の検証、snapshot 再展開、転送、cleanup は [`docs/details/runner.md` 詳細本文責務 §14a](runner.md#14a-ssh-サイト転送) と [`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) を参照する。
+array は投入順を保持する。転送先識別子は `branch`、`target_id`、`host`、`user`、`dest_dir` の完全一致とする。同一転送先の新しい build が pending になった場合は、既存 entry の array 位置を保ったまま `build_id`、`trigger`、`source_kind`、`rollback_from`、`snapshot_id`、`out`、`output_sha256`、`failed_at` を新しい値へ置換し、`retry_count=0` とする。同一転送先への新しい build が転送成功した場合は、対応する既存 pending entry を削除する。再送元の検証、snapshot 再展開、転送、cleanup は [`docs/details/runner.md` 詳細本文責務 §14a](runner.md#14a-ssh-サイト転送) と [`docs/details/archive.md` 詳細本文責務 §27.15](archive.md#sec-27-15) を参照する。
 
 <a id="branch-config-schema"></a>
 **`.branch_config` schema：**
@@ -1264,12 +1266,14 @@ file 内容は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 target SHA / dig
 |------|----|------|--------|------|
 | `cache_key` | string | 必須 | file 名と同じ 64 文字 lowercase hex | cache entry 識別子。 |
 | `input_path` | string | 必須 | index の input relative path | cache index key と一致させる。 |
+| `input_sha256` | string | 必須 | 64 文字 lowercase hex | 変換入力 byte 列の SHA-256。 |
 | `builder_version` | string | 必須 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0d](../DETAIL_INDEX.md#0d-共通固定値) のバイナリバージョン | cache を作成した builder の注入済みバージョン。 |
 | `theme` | string | 必須 | builder の theme 列挙値 | 変換時 theme。 |
 | `build_config_hash` | string | 必須 | 64 文字 lowercase hex | 正規化済み build config SHA-256。 |
 | `deps` | object | 必須 | string:string | key は dependency 相対 path、value は 64 文字 lowercase hex。 |
 | `html_fragment` | string | 必須 | UTF-8 string | page body の変換済み HTML fragment。 |
 | `metadata` | object | 必須 | CachePageMetadata object | site assembly と search index 再生成に必要な page metadata。 |
+| `content_sha256` | string | 必須 | 64 文字 lowercase hex | `{html_fragment,metadata}` を [追加管理状態共通のcanonical JSON](#additional-management-statefile-common-contract) で符号化した SHA-256。認証署名ではなく破損検出用。 |
 | `created_at` | string | 必須 | UTC ISO 8601 秒精度 | cache entry 作成時刻。 |
 
 CachePageMetadata object は `title` string、`slug` string、`output_path` string、`headings` object[]、`warnings` string[]、`reading_time` integer を必須 key とする。`headings[]` は `level` integer 1〜6、`id` string、`text` string の 3 key だけを持つ。`output_path` と `deps` の key は input base または output root からの `/` 区切り相対 path とし、絶対 path、user home path、temporary path を保存しない。
@@ -1558,6 +1562,7 @@ repo config write caller は request の `owner` または `repo` のうち指�
 | `current_build_id` | string/null | 必須 | build id または `null` | 実行中 build id。 |
 | `active_queue_entry` | object/null | 必須 | Queue entry schema または `null` | runner が待機列から取得し、結果未確定の queue entry。 |
 | `queued` | object[] | 必須 | running 中は 0〜`queue_max_size` 件、idle 中は 0〜`max(1, queue_max_size)` 件 | durable build dispatch queue。 |
+| `queue_order` | string[] | 追加queue制御で必須、既存形式では省略可 | queued idの重複なし部分列 | [runner詳細本文責務の追加queue制御](runner.md#additional-queue-control) で保存する手動順。既存形式の省略はmemory上の[]として読む。 |
 | `last_started_at` | string/null | 必須 | ISO 8601 または `null` | 最終開始日時。 |
 | `last_finished_at` | string/null | 必須 | ISO 8601 または `null` | 最終完了日時。 |
 | `weekly_summary_last_sent_at` | string/null | 必須 | ISO 8601 または `null` | 週次サマリー最終送信日時。 |
@@ -1588,6 +1593,8 @@ Queue entry `payload` は trigger ごとに以下を許可する。未知 key �
 `running:true` の場合、`current_build_id` は非 `null` の build id とする。`running:false` の場合、`current_build_id` は `null` とする。この対応が崩れた object は `.build_state` 破損とし、read adapter は値を補完しない。`active_queue_entry` は runner が結果を確定できず再実行を必要とする場合に限り `running:false` でも非 `null` を許可する。`active_queue_entry` と `queued[]` に同じ queue id が同時に存在してはならない。waiting queue の表示・追加・clear は [`docs/details/api.md`](api.md) 詳細本文責務の queue API 契約、active 選択・取得・完了遷移は [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) を参照する。
 
 `.build_state` の key ごとの書込責務は次に固定する。`api` は `queued` の append / clear だけを書き込み、`runner` は `active_queue_entry`、`running`、`current_build_id`、`last_started_at`、`last_finished_at`、`weekly_summary_last_sent_at`、`weekly_summary_sent_date` を書き込む。`api` は runner 起動要求だけで runner 所有 field を変更せず、`runner` は API 要求の waiting clear を実行しない。書込条件と遷移順は [`docs/details/api.md`](api.md) 詳細本文責務の queue / build API 契約と [`docs/details/runner.md` 詳細本文責務 §27.19](runner.md#sec-27-19) / [`docs/details/runner.md` 詳細本文責務 §27.35](runner.md#sec-27-35) を参照する。
+
+追加queue制御を実装する変更では、apiの書込許可へqueuedの個別remove/reorderとqueue_orderを加える。runnerはactive移動と同じatomic更新で選択idをqueue_orderから除く。queue_orderにqueued不在id、重複、active idがある保存値は破損であり、自動補正しない。既存legacy経路のpriority契約を実装済みとする証跡は、この追加field/処理の実装完了証拠にはならない。
 
 queue 保存上限は、valid running `.build_lock`、`.build_state.running=true`、または `active_queue_entry != null` のいずれかが成立する場合に `queue_max_size`、すべて成立しない場合に `max(1, queue_max_size)` とする。上限判定、重複判定、append、clear、runner の active 移動は `.build_state` lock 内で行う。`queue_max_size=0` かつ active のない idle 状態の最初の entry は runner 起動要求を durable に渡す dispatch slot であり、2 件目を許可しない。
 
@@ -2228,6 +2235,27 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | write validation | caller は write 前に対象 record 全体を schema validation する。部分 object だけの保存、未知 key 維持、既存破損 file への追記は禁止する。 |
 | JSON Lines append | `.admin_events`、`.mcp_audit_log`、`.mcp_client_log` は 1 record 1 行、末尾 LF 必須、途中改行禁止とする。append 失敗時は部分行を残さない。 |
 
+read validation のJSON Lines破損判定は、読取adapterが行単位除外を明示するfileでは「不正行を検出してcallerへ分類を返す」ことを意味する。`.admin_events` のread-only一覧/streamは [API詳細本文責務](api.md#sec-27-66) の除外規則を使用し、fileを修復しない。write callerは破損した既存JSON Linesへ追記しない。
+
+<a id="additional-management-initial-state"></a>
+**追加管理初期状態：** 追加管理機能の明示初期化時に、callerは検証済み `repository_root`（絶対path）、`branch`（ProjectRecordの制約）、`initialized_at`（UTC秒精度）を渡す。`.roles` は [security詳細本文責務のsystem role表](security.md#sec-27-58) を全件、表の順に生成し、各recordのcreated_at/updated_atをinitialized_atとする。`.projects` はdefault recordを1件だけ生成し、root/branchを上記入力、created_at/updated_atをinitialized_atとする。既存fileの欠損key補完や上書きには使わない。不在fileのread-only応答では同じ構築関数をmemory上だけで使用し、時刻は `1970-01-01T00:00:00Z` 固定とする。repository_root/branchを取得できない場合はread failureであり、不完全recordを返さない。
+
+<a id="additional-management-datastore-contract"></a>
+**追加管理データストア選択：** `STD`。許可store集合はid/type=`statefile`、enabled=true、path=nullの1件だけ、active_store=`statefile`、pending_switch=nullに固定する。外部DB、別state directoryへの移送、plugin/provider追加をこのAPIの実装判断で許可しない。target_store=`statefile` の検証はschema/owner/mode/readabilityの順とし、各checkのnameは `schema`、`ownership`、`permissions`、`readability`、statusは成功時 `ok`、messageは `OK`。1件でも失敗した場合はcallerへ失敗を返し、stateを変更しない。現在storeへの選択はdry_runの有無によらずno-opとする。将来の別store採用は本契約と [SPECポリシー責務](../SPEC.md#policy-dependencies) の先行改訂なしには行わない。
+
+<a id="additional-response-cache-policy"></a>
+**追加管理cache policy：** 閉じたobjectでenabledはbool、ttl_secondsはinteger 1..300、endpointsは重複なしstring配列0..10、保存順ASCII昇順とする。許可値は [API詳細本文責務](api.md#sec-27-68) を参照する。未知key/型不正を保存しない。不在keyのreadだけはserver_config表の既定値をmemory適用する。保存先は `.server_config.response_cache_policy` であり、top-levelにttl_seconds/endpointsを作らない。
+
+<a id="automatic-config-snapshot-contract"></a>
+**自動設定snapshot：** `STD`。config_snapshot_policyはenabled bool/max_count integer 1..1000の全key必須。APIの設定変更callerは [backup/restore対象](api.md#backup-restore-contract) のJSON設定fileを変更する際、変更前policyがenabled=trueかつ実際の差分がある場合だけ、主state write前に既存設定一式をsnapshotとして保存する。対象一覧は同参照を唯一の集合とし、snapshot自体のcreate/delete、cache保存、log追記、user/role変更は再帰的snapshotを作らない。label=null、created_by=`system`、時刻/id/secret marker/hashはConfigSnapshotObjectを使用する。
+
+全config変更のpreflight→snapshot→主state→必須logを同一設定更新coordinatorで直列化し、snapshotは変更前stateだけを表す。snapshot作成失敗は主stateを変更しない。主state失敗でも確定済みsnapshotは残し、失敗を成功と表記しない。既存snapshot数がmax_count以上なら追加前にconflictを返し、自動削除/無断上書きをしない。手動deleteで空きを作るまで変更を拒否する。policy無効化も変更前policyを適用し、容量不足ならdisable-only更新に限りsnapshot不要として明示的に保存できる。この例外は他設定との同時更新を許可しない。手動snapshot作成にも同じ件数上限を適用する。
+
+<a id="config-snapshot-diff-contract"></a>
+**設定snapshot差分：** `STD`。左右snapshotを全件schema/hash検証してから、files objectを再帰比較する。objectはkey集合のbyte昇順、arrayは要素差分へ分割せず1値として比較、numberはschema-valid値の数学的一致、その他は型と値の一致を用いる。未存在とJSON nullを区別する。pathはfiles直下keyから始まる `/` 区切りで、keyの `~`→`~0`、`/`→`~1` をこの順でescapeする。
+
+差分は `{path,change,left,right}`、changeはadded/removed/modifiedのいずれか。addedのleftとremovedのrightはnull、他方は該当値とする。secret値は比較前にmarkerへ置換し、差分本文へ平文/secret hashを渡さない。結果はpathのUTF-8 byte昇順、同一snapshot idは空changes。missingはnot-found、schema/hash不一致はcorruption、read failureはread-failedをcallerへ返し、入力snapshotを変更しない。
+
 **UserRecord：**
 
 | key | 型 | 必須 | 仕様 |
@@ -2236,9 +2264,9 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `username` | string | yes | 3〜64 文字。lowercase ASCII、digit、`-`、`_` だけを許可する。 |
 | `display_name` | string | yes | 1〜128 Unicode scalar values。 |
 | `status` | string | yes | `active`、`disabled`、`locked` のいずれか。 |
-| `role_ids` | string[] | yes | `.roles.roles[].id` に存在する id。空配列禁止。 |
+| `role_ids` | string[] | yes | `.roles.roles[].id` に存在するidを1..32件、重複なしASCII昇順。空配列禁止。 |
 | `credential` | AdminCredentials|null | yes | local password 未設定時は `null`。非nullは [主要状態schema](#sec-22-0c) の `.admin_credentials` と同じ閉じた型。資格情報をhash文字列だけで保存せず、salt/algorithm/parameterを同型に結び付ける。API投影対象外。 |
-| `external_subjects` | object[] | yes | provider id と subject の組。 |
+| `external_subjects` | object[] | yes | `{provider_id:string,subject:string}` だけを持つobjectを0..16件。provider_idは存在するExternalAuthProvider.id、subjectは1..255byte UTF-8（NUL/CR/LF禁止）。provider_id/subjectの組は全user間で一意、provider_id/subjectのbyte昇順。 |
 | `totp_enabled` | boolean | yes | TOTP 有効状態。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
@@ -2247,9 +2275,9 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 
 | key | 型 | 必須 | 仕様 |
 |-----|----|------|------|
-| `id` | string | yes | lowercase ASCII、digit、`-`、`_`。 |
+| `id` | string | yes | 1..64文字、lowercase ASCII、digit、`-`、`_`。同じroles内で一意。 |
 | `name` | string | yes | 1〜64 Unicode scalar values。 |
-| `permissions` | string[] | yes | [`docs/details/security.md` 詳細本文責務 §27.58](security.md#sec-27-58) の permission 名。 |
+| `permissions` | string[] | yes | [`docs/details/security.md` 詳細本文責務 §27.58](security.md#sec-27-58) のpermissionを1..7件、重複なしASCII昇順。 |
 | `system` | boolean | yes | system role は削除禁止。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |
 | `updated_at` | string | yes | UTC ISO 8601 秒精度。 |
@@ -2357,6 +2385,10 @@ ConfigTemplateRecord の `name` は `.config_templates.templates` 内で完全�
 | `headers` | object | yes | cache response に必要な公開 header。`Set-Cookie`、`Authorization` 禁止。 |
 | `body_sha256` | string | yes | body canonical JSON byte の SHA-256 lowercase hex。 |
 | `body` | object | yes | JSON response だけを保存する。binary、SVG、SSE、user 固有 response は保存禁止。 |
+| `instance_id` | string | yes | 起動instanceの16byte乱数を表す32文字lowercase hex。secret/認証IDではない。 |
+| `generation` | integer | yes | 0..9007199254740991。保存元API processのcache世代。 |
+
+既存のinstance_id/generation欠落entryはmissとして扱い、read時に補完保存しない。世代と保存上限は [API詳細本文責務](api.md#additional-response-cache-concurrency) を参照する。
 
 **McpConfig：**
 
@@ -2430,6 +2462,6 @@ Phase 13 の statefile 実装は以下の operation 境界を持つ。operation 
 | `recover_state` | corruption / stale lock / partial write の検出、隔離 path 決定、snapshot 作成、復旧 plan、復旧 write、検証、recovery record。 | 復旧不能時は `recovery_required` 状態を返し、破損 file を削除しない。 |
 | `verify_state_dir` | state directory path 正規化、owner、mode `0700`、group / other write 不可、symlink / non-directory 拒否。 | 不一致時は API / runner / MCP の状態変更を開始しない。 |
 
-JSON Lines corruption は、partial line、invalid UTF-8、invalid JSON、unknown required key、type mismatch、duplicate record id、future schema version を別々の reason として記録する。読み取り側が破損行を読み飛ばして残りを成功扱いにすることは禁止する。復旧処理で隔離する場合の隔離 path は同一 state directory 配下の `quarantine/` 以下とし、隔離後の path を recovery record に保存する。
+JSON Lines corruption は、partial line、invalid UTF-8、invalid JSON、unknown required key、type mismatch、duplicate record id、future schema version を別々の reason として記録する。明示read adapterの行単位除外契約なしに、破損行を黙って読み飛ばすことは禁止する。除外契約があるread-only callerは同契約の分類を行い、修復保存しない。復旧処理で隔離する場合の隔離 path は同一 state directory 配下の `quarantine/` 以下とし、隔離後の path を recovery record に保存する。
 
 Phase 13 の `statefile` 実装は、[`docs/details/fixture.md` fixture 証跡責務 Phase 13 実装整合・品質改善証跡](fixture.md#phase-13-implementation-alignment-quality-evidence) の `phase13_direct_state_mutation_count=0`、`phase13_state_safety_open_count=0`、`phase13_jsonl_corruption_open_count=0`、`phase13_required_log_write_ignore_count=0` を満たすまで完了扱いにしてはならない。
