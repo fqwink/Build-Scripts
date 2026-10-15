@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -11,10 +12,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 func TestDispatchMainExactBasename(t *testing.T) {
@@ -6886,6 +6890,599 @@ func phase11StringSlicesEqual(a []string, b []string) bool {
 		}
 	}
 	return true
+}
+
+type developmentActionsJob struct {
+	ID      string `json:"id"`
+	Timeout int    `json:"timeout"`
+	Runtime string `json:"runtime"`
+	Command string `json:"command"`
+}
+
+type developmentActionsWorkflow struct {
+	Phase int                     `json:"phase"`
+	Name  string                  `json:"name"`
+	Jobs  []developmentActionsJob `json:"jobs"`
+}
+
+const developmentActionsGateCommand = "go test . -run '^TestDevelopmentActions(RequiredGate|WorkflowContract|GateControls)$' -count=1 -v"
+
+func developmentActionsDefinitions(t *testing.T) []developmentActionsWorkflow {
+	t.Helper()
+	text := phase11MustReadText(t, "docs/details/fixture.md")
+	_, section, ok := strings.Cut(text, `<a id="development-actions-required-gate-contract"></a>`)
+	if !ok {
+		t.Fatal("actions-definition: missing canonical fixture anchor")
+	}
+	_, section, ok = strings.Cut(section, "```json\n")
+	if !ok {
+		t.Fatal("actions-definition: missing JSON fixture")
+	}
+	data, _, ok := strings.Cut(section, "\n```\n")
+	if !ok {
+		t.Fatal("actions-definition: unterminated JSON fixture")
+	}
+	var definitions []developmentActionsWorkflow
+	if err := developmentActionsDecodeJSON([]byte(data), &definitions, 2<<20, true); err != nil {
+		t.Fatalf("actions-definition: %v", err)
+	}
+	names := []string{"phase12-quality-gate", "phase13-implementation-alignment-quality", "phase14-obsidian-vault-integration", "phase15-obsidian-local-sync", "phase16-quality-evidence-closure", "phase17-production-validation", "phase18-vps-pull-bootstrap"}
+	counts := []int{7, 27, 5, 6, 9, 11, 1}
+	if len(definitions) != len(names) {
+		t.Fatal("actions-definition: workflow set mismatch")
+	}
+	for i, definition := range definitions {
+		if definition.Phase != i+12 || definition.Name != names[i] || len(definition.Jobs) != counts[i] {
+			t.Fatal("actions-definition: workflow identity or required job count mismatch")
+		}
+		seen := map[string]bool{}
+		for _, job := range definition.Jobs {
+			if !strings.HasPrefix(job.ID, fmt.Sprintf("phase%d-", definition.Phase)) || !developmentActionsIdentifier(job.ID) || seen[job.ID] || job.ID == definition.gateID() || job.Timeout < 1 || job.Timeout > 30 || (job.Runtime != "go" && job.Runtime != "deno") || job.Command == "" || strings.ContainsAny(job.Command, "\x00\r") {
+				t.Fatal("actions-definition: invalid required job")
+			}
+			seen[job.ID] = true
+		}
+	}
+	return definitions
+}
+
+func (w developmentActionsWorkflow) gateID() string {
+	return fmt.Sprintf("phase%d-required-gate", w.Phase)
+}
+
+func developmentActionsIdentifier(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, c := range value {
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+// This is a fixed workflow serialization oracle, not a general YAML parser.
+func developmentActionsWorkflowText(w developmentActionsWorkflow) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "name: %s\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n", w.Name)
+	if w.Phase == 18 {
+		b.WriteString("  workflow_dispatch:\n")
+	}
+	b.WriteString("  push:\n    branches:\n      - main\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}\n  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n\ndefaults:\n  run:\n    shell: bash\n\njobs:\n")
+	checkout := "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n        with:\n          ref: ${{ github.sha }}\n          persist-credentials: false\n"
+	setupGo := "      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff\n        with:\n          go-version: \"1.22\"\n"
+	setupDeno := "      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed\n        with:\n          deno-version: v2.x\n"
+	for i, job := range w.Jobs {
+		if i != 0 {
+			b.WriteByte('\n')
+		}
+		fmt.Fprintf(&b, "  %s:\n    runs-on: ubuntu-24.04\n    timeout-minutes: %d\n    steps:\n", job.ID, job.Timeout)
+		b.WriteString(checkout)
+		if job.Runtime == "go" {
+			b.WriteString(setupGo)
+		} else {
+			b.WriteString(setupDeno)
+		}
+		if strings.Contains(job.Command, "\n") {
+			b.WriteString("      - run: |\n          ")
+			b.WriteString(strings.ReplaceAll(job.Command, "\n", "\n          "))
+			b.WriteByte('\n')
+		} else {
+			fmt.Fprintf(&b, "      - run: %s\n", job.Command)
+		}
+	}
+	fmt.Fprintf(&b, "\n  %s:\n    if: ${{ always() }}\n    needs:\n", w.gateID())
+	for _, job := range w.Jobs {
+		fmt.Fprintf(&b, "      - %s\n", job.ID)
+	}
+	b.WriteString("    runs-on: ubuntu-24.04\n    timeout-minutes: 10\n    steps:\n")
+	b.WriteString(checkout)
+	b.WriteString(setupGo)
+	b.WriteString("      - name: Verify required checks and checkout identity\n        env:\n          ADLAIRE_ACTIONS_GATE: required\n          ADLAIRE_ACTIONS_NEEDS: ${{ toJSON(needs) }}\n        run: |\n          test \"$ADLAIRE_ACTIONS_GATE\" = required\n          test -n \"$ADLAIRE_ACTIONS_NEEDS\"\n          ")
+	b.WriteString(developmentActionsGateCommand)
+	b.WriteByte('\n')
+	return b.String()
+}
+
+func developmentActionsCheckWorkflow(w developmentActionsWorkflow, actual string) error {
+	if actual != developmentActionsWorkflowText(w) {
+		expected := sha256.Sum256([]byte(developmentActionsWorkflowText(w)))
+		got := sha256.Sum256([]byte(actual))
+		return fmt.Errorf("actions-workflow-contract: %s expected_sha256=%x actual_sha256=%x", w.Name, expected, got)
+	}
+	return nil
+}
+
+func TestDevelopmentActionsWorkflowContract(t *testing.T) {
+	t.Parallel()
+	for _, definition := range developmentActionsDefinitions(t) {
+		t.Run("release.development-actions."+definition.Name+".workflow-contract.exact", func(t *testing.T) {
+			path := ".github/workflows/" + definition.Name + ".yml"
+			if err := developmentActionsCheckWorkflow(definition, phase11MustReadText(t, path)); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func developmentActionsDecodeJSON(data []byte, target any, limit int, strict bool) error {
+	if len(data) == 0 || len(data) > limit || !utf8.Valid(data) {
+		return fmt.Errorf("json-size-or-encoding")
+	}
+	if !json.Valid(data) {
+		return fmt.Errorf("json-syntax-or-depth")
+	}
+	check := json.NewDecoder(bytes.NewReader(data))
+	if err := phase16CheckJSONValueForDuplicateKeys(check); err != nil {
+		return fmt.Errorf("json-duplicate-or-syntax")
+	}
+	if _, err := check.Token(); err != io.EOF {
+		return fmt.Errorf("json-trailing-data")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if strict {
+		decoder.DisallowUnknownFields()
+	}
+	if err := decoder.Decode(target); err != nil {
+		return fmt.Errorf("json-shape")
+	}
+	return nil
+}
+
+type developmentActionsGateInput struct {
+	Env       map[string]string
+	Needs     []byte
+	Event     []byte
+	TestedSHA string
+	Parents   []string
+	OSRelease string
+}
+
+func developmentActionsSHA(value string) bool {
+	if len(value) != 40 || value != strings.ToLower(value) {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
+}
+
+func developmentActionsPositiveInteger(value string) bool {
+	n, err := strconv.ParseUint(value, 10, 64)
+	return err == nil && n > 0 && strconv.FormatUint(n, 10) == value
+}
+
+func developmentActionsValidateGate(w developmentActionsWorkflow, input developmentActionsGateInput) (map[string]any, error) {
+	env := input.Env
+	fail := func(code string) (map[string]any, error) { return nil, fmt.Errorf("actions-gate:%s", code) }
+	if env["ADLAIRE_ACTIONS_GATE"] != "required" || env["GITHUB_ACTIONS"] != "true" {
+		return fail("gate-mode")
+	}
+	if env["GITHUB_REPOSITORY"] != "fqwink/Build-Scripts" || env["GITHUB_SERVER_URL"] != "https://github.com" || !developmentActionsPositiveInteger(env["GITHUB_RUN_ID"]) || !developmentActionsPositiveInteger(env["GITHUB_RUN_ATTEMPT"]) || env["GITHUB_JOB"] != w.gateID() || env["GITHUB_WORKFLOW"] != w.Name || env["GITHUB_WORKFLOW_REF"] != env["GITHUB_REPOSITORY"]+"/.github/workflows/"+w.Name+".yml@"+env["GITHUB_REF"] {
+		return fail("run-identity")
+	}
+	if env["RUNNER_ENVIRONMENT"] != "github-hosted" || env["RUNNER_OS"] != "Linux" || env["RUNNER_ARCH"] != "X64" || !strings.Contains("\n"+input.OSRelease, "\nID=ubuntu\n") || !strings.Contains("\n"+input.OSRelease, "\nVERSION_ID=\"24.04\"\n") {
+		return fail("runner-identity")
+	}
+	target := env["GITHUB_SHA"]
+	if !developmentActionsSHA(target) || !developmentActionsSHA(input.TestedSHA) || input.TestedSHA != target || env["GITHUB_WORKFLOW_SHA"] != target {
+		return fail("tested-sha")
+	}
+	var event map[string]json.RawMessage
+	if err := developmentActionsDecodeJSON(input.Event, &event, 2<<20, false); err != nil || event == nil {
+		return fail("event-json")
+	}
+	source, base := target, ""
+	switch env["GITHUB_EVENT_NAME"] {
+	case "pull_request":
+		var number int
+		var pr map[string]json.RawMessage
+		var head, baseRef map[string]json.RawMessage
+		if json.Unmarshal(event["number"], &number) != nil || number < 1 || json.Unmarshal(event["pull_request"], &pr) != nil || json.Unmarshal(pr["head"], &head) != nil || json.Unmarshal(pr["base"], &baseRef) != nil || json.Unmarshal(head["sha"], &source) != nil || json.Unmarshal(baseRef["sha"], &base) != nil || !developmentActionsSHA(source) || !developmentActionsSHA(base) || env["GITHUB_REF"] != fmt.Sprintf("refs/pull/%d/merge", number) || len(input.Parents) != 2 || input.Parents[0] != base || input.Parents[1] != source {
+			return fail("pr-checkout")
+		}
+	case "push":
+		var after, ref string
+		if json.Unmarshal(event["after"], &after) != nil || json.Unmarshal(event["ref"], &ref) != nil || after != target || ref != "refs/heads/main" || env["GITHUB_REF"] != ref {
+			return fail("push-checkout")
+		}
+	case "workflow_dispatch":
+		ref := env["GITHUB_REF"]
+		if w.Phase != 18 || (!strings.HasPrefix(ref, "refs/heads/") && !strings.HasPrefix(ref, "refs/tags/")) || strings.HasSuffix(ref, "/") || strings.ContainsAny(ref, "\x00\r\n ") {
+			return fail("dispatch-checkout")
+		}
+	default:
+		return fail("event-type")
+	}
+	var needs map[string]json.RawMessage
+	if err := developmentActionsDecodeJSON(input.Needs, &needs, 256<<10, true); err != nil || needs == nil {
+		return fail("needs-json")
+	}
+	if len(needs) != len(w.Jobs) {
+		return fail("needs-count")
+	}
+	results := make([]map[string]string, 0, len(w.Jobs))
+	for _, job := range w.Jobs {
+		var fields map[string]json.RawMessage
+		if json.Unmarshal(needs[job.ID], &fields) != nil || len(fields) != 2 {
+			return fail("needs-job")
+		}
+		var result string
+		var outputs map[string]json.RawMessage
+		if json.Unmarshal(fields["result"], &result) != nil || json.Unmarshal(fields["outputs"], &outputs) != nil || outputs == nil || len(outputs) != 0 {
+			return fail("needs-job")
+		}
+		if result != "success" {
+			return fail("required-job-not-success")
+		}
+		results = append(results, map[string]string{"job": job.ID, "result": result})
+	}
+	definition, err := json.Marshal(w)
+	if err != nil {
+		return fail("definition-encoding")
+	}
+	digest := sha256.Sum256(definition)
+	attempt, err := strconv.ParseUint(env["GITHUB_RUN_ATTEMPT"], 10, 64)
+	if err != nil {
+		return fail("run-identity")
+	}
+	var baseValue any
+	if base != "" {
+		baseValue = base
+	}
+	return map[string]any{
+		"record_type": "development-actions-gate", "workflow": w.Name, "job": w.gateID(),
+		"run_url":     env["GITHUB_SERVER_URL"] + "/" + env["GITHUB_REPOSITORY"] + "/actions/runs/" + env["GITHUB_RUN_ID"],
+		"run_attempt": attempt, "event": env["GITHUB_EVENT_NAME"],
+		"source_sha": source, "base_sha": baseValue, "tested_sha": input.TestedSHA,
+		"definition_sha256": hex.EncodeToString(digest[:]), "job_results": results,
+		"runner_environment": env["RUNNER_ENVIRONMENT"], "runner_os": env["RUNNER_OS"], "runner_arch": env["RUNNER_ARCH"],
+	}, nil
+}
+
+func developmentActionsReadContext(getenv func(string) string, readFile func(string) ([]byte, error), git func(...string) ([]byte, error)) (developmentActionsGateInput, error) {
+	input := developmentActionsGateInput{Env: map[string]string{}, Needs: []byte(getenv("ADLAIRE_ACTIONS_NEEDS"))}
+	for _, key := range []string{"ADLAIRE_ACTIONS_GATE", "GITHUB_ACTIONS", "GITHUB_REPOSITORY", "GITHUB_SERVER_URL", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB", "GITHUB_WORKFLOW", "GITHUB_WORKFLOW_REF", "GITHUB_REF", "GITHUB_SHA", "GITHUB_WORKFLOW_SHA", "GITHUB_EVENT_NAME", "RUNNER_ENVIRONMENT", "RUNNER_OS", "RUNNER_ARCH"} {
+		input.Env[key] = getenv(key)
+	}
+	var err error
+	input.Event, err = readFile(getenv("GITHUB_EVENT_PATH"))
+	if err != nil {
+		return input, fmt.Errorf("actions-gate:event-read")
+	}
+	osRelease, err := readFile("/etc/os-release")
+	if err != nil {
+		return input, fmt.Errorf("actions-gate:os-release")
+	}
+	input.OSRelease = string(osRelease)
+	checkout, err := git("rev-parse", "HEAD")
+	if err != nil {
+		return input, fmt.Errorf("actions-gate:checkout-read")
+	}
+	input.TestedSHA = strings.TrimSpace(string(checkout))
+	commit, err := git("cat-file", "-p", "HEAD")
+	if err != nil {
+		return input, fmt.Errorf("actions-gate:commit-read")
+	}
+	for _, line := range strings.Split(string(commit), "\n") {
+		if line == "" {
+			break
+		}
+		if strings.HasPrefix(line, "parent ") {
+			input.Parents = append(input.Parents, strings.TrimPrefix(line, "parent "))
+		}
+	}
+	return input, nil
+}
+
+func TestDevelopmentActionsRequiredGate(t *testing.T) {
+	if os.Getenv("ADLAIRE_ACTIONS_GATE") == "" {
+		if _, err := developmentActionsValidateGate(developmentActionsWorkflow{}, developmentActionsGateInput{}); err == nil || err.Error() != "actions-gate:gate-mode" {
+			t.Fatal("actions-gate: unit invocation must reject absent formal inputs")
+		}
+		return
+	}
+	var definition developmentActionsWorkflow
+	for _, candidate := range developmentActionsDefinitions(t) {
+		if candidate.Name == os.Getenv("GITHUB_WORKFLOW") {
+			definition = candidate
+		}
+	}
+	if definition.Name == "" {
+		t.Fatal("actions-gate: unknown workflow")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	input, err := developmentActionsReadContext(os.Getenv, os.ReadFile, func(args ...string) ([]byte, error) {
+		return exec.CommandContext(ctx, "git", args...).Output()
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" || !strings.HasPrefix(runtime.Version(), "go1.22.") {
+		t.Fatal("actions-gate:runtime")
+	}
+	record, err := developmentActionsValidateGate(definition, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record["runtime"] = runtime.Version()
+	record["log_retention_days"] = os.Getenv("GITHUB_RETENTION_DAYS")
+	encoded, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal("actions-gate:record-encoding")
+	}
+	fmt.Println(string(encoded))
+}
+
+func TestDevelopmentActionsGateControls(t *testing.T) {
+	t.Parallel()
+	for _, w := range developmentActionsDefinitions(t) {
+		w := w
+		t.Run(w.Name, func(t *testing.T) {
+			t.Parallel()
+			for _, job := range w.Jobs {
+				if !strings.HasSuffix(job.ID, "-go-format") {
+					continue
+				}
+				for _, fixture := range []struct {
+					name, formatter string
+					success         bool
+				}{
+					{"clean", "gofmt() { return 0; }\n", true},
+					{"dirty", "gofmt() { printf 'dirty.go\\n'; }\n", false},
+					{"failed", "gofmt() { return 7; }\n", false},
+				} {
+					t.Run("release.development-actions."+job.ID+"."+fixture.name+".exit-code", func(t *testing.T) {
+						ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+						defer cancel()
+						output, err := exec.CommandContext(ctx, "bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", fixture.formatter+job.Command).CombinedOutput()
+						if (err == nil) != fixture.success || len(output) != 0 {
+							t.Fatalf("formatter exit propagation expected success=%t, err=%v output=%q", fixture.success, err, output)
+						}
+					})
+				}
+			}
+			fresh := func() developmentActionsGateInput {
+				target, base, source := strings.Repeat("a", 40), strings.Repeat("b", 40), strings.Repeat("c", 40)
+				needs := map[string]any{}
+				for _, job := range w.Jobs {
+					needs[job.ID] = map[string]any{"result": "success", "outputs": map[string]any{}}
+				}
+				encoded, err := json.Marshal(needs)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return developmentActionsGateInput{
+					Env:   map[string]string{"ADLAIRE_ACTIONS_GATE": "required", "GITHUB_ACTIONS": "true", "GITHUB_REPOSITORY": "fqwink/Build-Scripts", "GITHUB_SERVER_URL": "https://github.com", "GITHUB_RUN_ID": "123", "GITHUB_RUN_ATTEMPT": "1", "GITHUB_JOB": w.gateID(), "GITHUB_WORKFLOW": w.Name, "GITHUB_WORKFLOW_REF": "fqwink/Build-Scripts/.github/workflows/" + w.Name + ".yml@refs/pull/99/merge", "GITHUB_REF": "refs/pull/99/merge", "GITHUB_SHA": target, "GITHUB_WORKFLOW_SHA": target, "GITHUB_EVENT_NAME": "pull_request", "RUNNER_ENVIRONMENT": "github-hosted", "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64"},
+					Needs: encoded, Event: []byte(`{"number":99,"pull_request":{"head":{"sha":"` + source + `"},"base":{"sha":"` + base + `"}}}`), TestedSHA: target, Parents: []string{base, source}, OSRelease: "ID=ubuntu\nVERSION_ID=\"24.04\"\n",
+				}
+			}
+			positive := fresh()
+			record, err := developmentActionsValidateGate(w, positive)
+			if err != nil || record["tested_sha"] != positive.TestedSHA || record["source_sha"] != positive.Parents[1] || record["base_sha"] != positive.Parents[0] || len(record["job_results"].([]map[string]string)) != len(w.Jobs) {
+				t.Fatalf("actions-control: positive PR oracle: %v", err)
+			}
+			for _, field := range []string{"needs", "event"} {
+				t.Run("release.development-actions."+w.Name+"."+field+"-size-limit.accept", func(t *testing.T) {
+					input := fresh()
+					if field == "needs" {
+						input.Needs = append(input.Needs, bytes.Repeat([]byte(" "), (256<<10)-len(input.Needs))...)
+					} else {
+						input.Event = append(input.Event, bytes.Repeat([]byte(" "), (2<<20)-len(input.Event))...)
+					}
+					if _, err := developmentActionsValidateGate(w, input); err != nil {
+						t.Fatal(err)
+					}
+				})
+			}
+			for fault := -1; fault < 4; fault++ {
+				fixture := fresh()
+				calls := []string{}
+				steps := []string{"read:event", "read:os-release", "git:rev-parse HEAD", "git:cat-file -p HEAD"}
+				codes := []string{"event-read", "os-release", "checkout-read", "commit-read"}
+				call := func(name string, data []byte) ([]byte, error) {
+					index := len(calls)
+					calls = append(calls, name)
+					if index >= len(steps) || steps[index] != name {
+						t.Fatalf("assertion=release.development-actions.context-order.exact expected %v got %v", steps, calls)
+					}
+					if index == fault {
+						return nil, fmt.Errorf("fixture-secret-canary")
+					}
+					return data, nil
+				}
+				getenv := func(key string) string {
+					switch key {
+					case "GITHUB_EVENT_PATH":
+						return "fixture-event"
+					case "ADLAIRE_ACTIONS_NEEDS":
+						return string(fixture.Needs)
+					default:
+						return fixture.Env[key]
+					}
+				}
+				input, err := developmentActionsReadContext(getenv, func(path string) ([]byte, error) {
+					if path == "fixture-event" {
+						return call("read:event", fixture.Event)
+					}
+					if path != "/etc/os-release" {
+						t.Fatal("actions-control: unexpected file read")
+					}
+					return call("read:os-release", []byte(fixture.OSRelease))
+				}, func(args ...string) ([]byte, error) {
+					if strings.Join(args, " ") == "rev-parse HEAD" {
+						return call("git:rev-parse HEAD", []byte(fixture.TestedSHA+"\n"))
+					}
+					return call("git:"+strings.Join(args, " "), []byte("tree "+strings.Repeat("d", 40)+"\nparent "+fixture.Parents[0]+"\nparent "+fixture.Parents[1]+"\n\nparent must-not-parse-body\n"))
+				})
+				if fault >= 0 {
+					if err == nil || err.Error() != "actions-gate:"+codes[fault] || len(calls) != fault+1 {
+						t.Fatalf("assertion=release.development-actions.%s.fail-closed err=%v calls=%v", codes[fault], err, calls)
+					}
+				} else if err != nil {
+					t.Fatal(err)
+				} else if _, err := developmentActionsValidateGate(w, input); err != nil || len(calls) != 4 {
+					t.Fatalf("assertion=release.development-actions.context-positive.accept err=%v calls=%v", err, calls)
+				}
+			}
+			canary := fresh()
+			canary.Event = []byte(strings.Replace(string(canary.Event), "{", `{"unknown":"fixture-secret-canary",`, 1))
+			canaryRecord, err := developmentActionsValidateGate(w, canary)
+			if err != nil {
+				t.Fatal(err)
+			}
+			canaryJSON, err := json.Marshal(canaryRecord)
+			if err != nil || bytes.Contains(canaryJSON, []byte("fixture-secret-canary")) {
+				t.Fatal("assertion=release.development-actions.secret-safe.no-leak")
+			}
+			for _, event := range []string{"push", "workflow_dispatch"} {
+				input := fresh()
+				input.Env["GITHUB_EVENT_NAME"] = event
+				input.Env["GITHUB_REF"] = "refs/heads/main"
+				input.Env["GITHUB_WORKFLOW_REF"] = "fqwink/Build-Scripts/.github/workflows/" + w.Name + ".yml@refs/heads/main"
+				input.Event = []byte(`{"ref":"refs/heads/main","after":"` + input.TestedSHA + `"}`)
+				_, err := developmentActionsValidateGate(w, input)
+				if (event == "push" || w.Phase == 18) != (err == nil) {
+					t.Fatalf("actions-control: event %s applicability: %v", event, err)
+				}
+			}
+			type gateCase struct {
+				name string
+				edit func(*developmentActionsGateInput)
+				code string
+			}
+			tests := []gateCase{
+				{"mode", func(i *developmentActionsGateInput) { delete(i.Env, "ADLAIRE_ACTIONS_GATE") }, "gate-mode"},
+				{"not-actions", func(i *developmentActionsGateInput) { i.Env["GITHUB_ACTIONS"] = "false" }, "gate-mode"},
+				{"tested-sha", func(i *developmentActionsGateInput) { i.TestedSHA = strings.Repeat("d", 40) }, "tested-sha"},
+				{"workflow-sha", func(i *developmentActionsGateInput) { i.Env["GITHUB_WORKFLOW_SHA"] = strings.Repeat("d", 40) }, "tested-sha"},
+				{"bad-sha", func(i *developmentActionsGateInput) { i.Env["GITHUB_SHA"] = "invalid" }, "tested-sha"},
+				{"uppercase-sha", func(i *developmentActionsGateInput) { i.Env["GITHUB_SHA"] = strings.Repeat("A", 40) }, "tested-sha"},
+				{"base", func(i *developmentActionsGateInput) { i.Parents[0] = strings.Repeat("d", 40) }, "pr-checkout"},
+				{"head", func(i *developmentActionsGateInput) { i.Parents[1] = strings.Repeat("d", 40) }, "pr-checkout"},
+				{"parent-order", func(i *developmentActionsGateInput) { i.Parents[0], i.Parents[1] = i.Parents[1], i.Parents[0] }, "pr-checkout"},
+				{"parent-count", func(i *developmentActionsGateInput) { i.Parents = nil }, "pr-checkout"},
+				{"event-json", func(i *developmentActionsGateInput) { i.Event = []byte("{") }, "event-json"},
+				{"event-empty", func(i *developmentActionsGateInput) { i.Event = []byte("{}") }, "pr-checkout"},
+				{"event-null", func(i *developmentActionsGateInput) { i.Event = []byte("null") }, "event-json"},
+				{"event-duplicate", func(i *developmentActionsGateInput) {
+					i.Event = []byte(strings.Replace(string(i.Event), `"number":99`, `"number":98,"number":99`, 1))
+				}, "event-json"},
+				{"event-trailing", func(i *developmentActionsGateInput) { i.Event = append(i.Event, []byte(" {}")...) }, "event-json"},
+				{"event-oversize", func(i *developmentActionsGateInput) { i.Event = bytes.Repeat([]byte(" "), (2<<20)+1) }, "event-json"},
+				{"pr-ref", func(i *developmentActionsGateInput) {
+					i.Env["GITHUB_REF"] = "refs/pull/98/merge"
+					i.Env["GITHUB_WORKFLOW_REF"] = "fqwink/Build-Scripts/.github/workflows/" + w.Name + ".yml@refs/pull/98/merge"
+				}, "pr-checkout"},
+				{"event-type", func(i *developmentActionsGateInput) { i.Env["GITHUB_EVENT_NAME"] = "pull_request_target" }, "event-type"},
+				{"push-after", func(i *developmentActionsGateInput) { i.Env["GITHUB_EVENT_NAME"] = "push" }, "push-checkout"},
+				{"dispatch-ref", func(i *developmentActionsGateInput) { i.Env["GITHUB_EVENT_NAME"] = "workflow_dispatch" }, "dispatch-checkout"},
+				{"self-hosted", func(i *developmentActionsGateInput) { i.Env["RUNNER_ENVIRONMENT"] = "self-hosted" }, "runner-identity"},
+				{"runner-os", func(i *developmentActionsGateInput) { i.Env["RUNNER_OS"] = "Windows" }, "runner-identity"},
+				{"runner-arch", func(i *developmentActionsGateInput) { i.Env["RUNNER_ARCH"] = "ARM64" }, "runner-identity"},
+				{"os-version", func(i *developmentActionsGateInput) { i.OSRelease = "ID=ubuntu\nVERSION_ID=\"22.04\"\n" }, "runner-identity"},
+				{"needs-missing", func(i *developmentActionsGateInput) { i.Needs = []byte("{}") }, "needs-count"},
+				{"needs-extra", func(i *developmentActionsGateInput) {
+					i.Needs = []byte(strings.Replace(string(i.Needs), "{", `{"unknown":{"result":"success","outputs":{}},`, 1))
+				}, "needs-count"},
+				{"needs-renamed", func(i *developmentActionsGateInput) {
+					i.Needs = []byte(strings.Replace(string(i.Needs), `"`+w.Jobs[0].ID+`":`, `"unknown":`, 1))
+				}, "needs-job"},
+				{"needs-duplicate", func(i *developmentActionsGateInput) {
+					i.Needs = []byte(strings.Replace(string(i.Needs), "{", `{"`+w.Jobs[0].ID+`":{"result":"success","outputs":{}},`, 1))
+				}, "needs-json"},
+				{"needs-null", func(i *developmentActionsGateInput) { i.Needs = []byte("null") }, "needs-json"},
+				{"needs-malformed", func(i *developmentActionsGateInput) { i.Needs = []byte("{") }, "needs-json"},
+				{"needs-depth", func(i *developmentActionsGateInput) {
+					i.Needs = []byte(strings.Repeat("[", 10001) + "0" + strings.Repeat("]", 10001))
+				}, "needs-json"},
+				{"needs-trailing", func(i *developmentActionsGateInput) { i.Needs = append(i.Needs, []byte(" {}")...) }, "needs-json"},
+				{"needs-oversize", func(i *developmentActionsGateInput) { i.Needs = bytes.Repeat([]byte(" "), (256<<10)+1) }, "needs-json"},
+				{"needs-utf8", func(i *developmentActionsGateInput) { i.Needs = []byte{0xff} }, "needs-json"},
+			}
+			for _, key := range []string{"GITHUB_REPOSITORY", "GITHUB_SERVER_URL", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB", "GITHUB_WORKFLOW", "GITHUB_WORKFLOW_REF"} {
+				key := key
+				tests = append(tests, gateCase{"identity-" + strings.ReplaceAll(strings.ToLower(key), "_", "-"), func(i *developmentActionsGateInput) { i.Env[key] = "invalid" }, "run-identity"})
+			}
+			for _, test := range tests {
+				t.Run("release.development-actions."+w.Name+"."+test.name+".reject", func(t *testing.T) {
+					input := fresh()
+					test.edit(&input)
+					if _, err := developmentActionsValidateGate(w, input); err == nil || err.Error() != "actions-gate:"+test.code {
+						t.Errorf("expected %s, got %v", test.code, err)
+					}
+				})
+			}
+			first := w.Jobs[0].ID
+			for _, invalid := range []struct{ name, value string }{
+				{"failure", `{"result":"failure","outputs":{}}`},
+				{"skipped", `{"result":"skipped","outputs":{}}`},
+				{"neutral", `{"result":"neutral","outputs":{}}`},
+				{"cancelled", `{"result":"cancelled","outputs":{}}`},
+				{"timeout", `{"result":"timed_out","outputs":{}}`},
+				{"empty-result", `{"result":"","outputs":{}}`},
+				{"null-result", `{"result":null,"outputs":{}}`},
+				{"case-alias", `{"Result":"success","outputs":{}}`},
+				{"null-outputs", `{"result":"success","outputs":null}`},
+				{"unexpected-outputs", `{"result":"success","outputs":{"ignored":"value"}}`},
+				{"unknown-field", `{"result":"success","outputs":{},"extra":true}`},
+				{"duplicate-result", `{"result":"skipped","result":"success","outputs":{}}`},
+				{"escaped-duplicate", `{"result":"skipped","resul\u0074":"success","outputs":{}}`},
+				{"null-job", `null`}, {"array-job", `[]`}, {"boolean-job", `true`},
+			} {
+				t.Run("release.development-actions."+w.Name+"."+invalid.name+".reject", func(t *testing.T) {
+					input := fresh()
+					input.Needs = []byte(strings.Replace(string(input.Needs), `"`+first+`":{"outputs":{},"result":"success"}`, `"`+first+`":`+invalid.value, 1))
+					if bytes.Equal(input.Needs, positive.Needs) {
+						t.Fatal("actions-control: invalid needs was not injected")
+					}
+					if _, err := developmentActionsValidateGate(w, input); err == nil {
+						t.Error("invalid job result accepted")
+					}
+				})
+			}
+			canonical := developmentActionsWorkflowText(w)
+			if err := developmentActionsCheckWorkflow(w, canonical); err != nil {
+				t.Fatal(err)
+			}
+			for _, change := range [][2]string{
+				{"contents: read", "contents: write"}, {"timeout-minutes: 10", "timeout-minutes: 0"},
+				{"${{ always() }}", "${{ success() }}"}, {"ref: ${{ github.sha }}", "ref: main"},
+				{"persist-credentials: false", "persist-credentials: true"}, {"11d5960a326750d5838078e36cf38b85af677262", "v4"},
+				{"runs-on: ubuntu-24.04", "runs-on: self-hosted"}, {"cancel-in-progress:", "cancel-disabled:"},
+				{"ADLAIRE_ACTIONS_GATE: required", "ADLAIRE_ACTIONS_GATE: optional"},
+				{"      - " + first + "\n", ""}, {developmentActionsGateCommand, "true"},
+				{"    steps:\n", "    continue-on-error: true\n    steps:\n"},
+				{"    steps:\n", "    if: false\n    steps:\n"},
+			} {
+				mutated := strings.Replace(canonical, change[0], change[1], 1)
+				if mutated == canonical || developmentActionsCheckWorkflow(w, mutated) == nil {
+					t.Fatalf("actions-control: canonical workflow mutation not rejected: %s", change[0])
+				}
+			}
+		})
+	}
 }
 
 func phase11MustReadText(t *testing.T, path string) string {
