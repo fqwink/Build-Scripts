@@ -7815,7 +7815,8 @@ func TestDevelopmentActionsNodeFreeControls(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"node", "node.exe", "nodejs", "node_modules", "package.json", "package-lock.json", "npm-shrinkwrap.json", ".npmrc", ".nvmrc", ".node-version", ".yarnrc", ".yarnrc.yml", "yarn.lock", "pnpm-lock.yaml", "pnpm-workspace.yaml", "bun.lock", "bun.lockb", "adapter.cjs", "adapter.cts"} {
-		t.Run("release.node-ban."+strings.ReplaceAll(name, ".", "-")+".artifact-reject", func(t *testing.T) {
+		label := strings.NewReplacer(".", "-", "_", "-").Replace(strings.ToLower(name))
+		t.Run("release.node-ban.artifact-"+label+".reject", func(t *testing.T) {
 			root := t.TempDir()
 			dir := filepath.Join(root, ".hidden", "nested")
 			if err := os.MkdirAll(dir, 0700); err != nil {
@@ -7830,7 +7831,8 @@ func TestDevelopmentActionsNodeFreeControls(t *testing.T) {
 		})
 	}
 	for _, command := range []string{"node --version", "nodejs script.js", "/usr/bin/node script.js", "exec /opt/runtime/node script.js", "npm install", "npx tool", "pnpm install", "yarn install", "corepack enable", "echo ok; node script.js", "NODE.EXE app.js"} {
-		t.Run("release.node-ban.command-"+strings.Fields(command)[0]+".reject", func(t *testing.T) {
+		label := regexp.MustCompile("[^a-z0-9-]").ReplaceAllString(strings.ToLower(strings.Fields(command)[0]), "-")
+		t.Run("release.node-ban.command-"+label+".reject", func(t *testing.T) {
 			if err := developmentActionsCheckNodeContent("script.sh", []byte("#!/bin/sh\n"+command+"\n")); err == nil || err.Error() != "node-ban:command" {
 				t.Fatalf("expected command rejection, got %v", err)
 			}
@@ -8111,7 +8113,11 @@ func TestDevelopmentActionsBootstrapControls(t *testing.T) {
 		})
 	}
 	for _, failure := range []string{"", "init", "remote", "fetch", "checkout", "sha", "dirty", "bad-sha", "repository"} {
-		t.Run("release.checkout."+failure+".outcome", func(t *testing.T) {
+		label := failure
+		if label == "" {
+			label = "success"
+		}
+		t.Run("release.checkout."+label+".outcome", func(t *testing.T) {
 			base := t.TempDir()
 			workspace, fake := filepath.Join(base, "workspace"), filepath.Join(base, "bin")
 			for _, path := range []string{workspace, fake} {
