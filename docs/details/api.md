@@ -5,6 +5,9 @@
 **Phase 19 管理API契約：**
 ownerは `api`、実装主体は [components/api/](../../components/api/)。型の唯一の正本は [`docs/details/statefile.md` 詳細本文責務 statefile schema registry](statefile.md#phase-19-schema-registry)、認可は [`docs/details/security.md` 詳細本文責務 security権限行列](security.md#phase-19-permission-matrix)。既存endpointの動作を変更せず、cicd-v1有効時だけ下記namespaceを登録する。
 
+<a id="phase-19-api-cli"></a>
+**管理profile起動interface：** exact形は `adlaire-ci-api --cicd-management --config ABS --state-dir S`。config.role=coordinator、state-dir=config.state_dir一致、listenはconfig.listenを使用し、既存--addrと併用しない。site専用mode、init-credentials、legacy optionとの混在、未知/重複option、位置引数はexit2/P19_INPUTでlistener/状態I/O前拒否する。ただしhelp/versionは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI共通固定契約](../DETAIL_INDEX.md#common-cli-contract) の優先順位を先に適用する。config/状態検証失敗はexit3、listener/必須I/O失敗はexit4、正常shutdownはexit0。cicd namespaceと既存管理namespaceを別認証middlewareで登録し、TOTP管理を含むlegacy経路へcicd tokenを流用しない。adminのlegacy資格情報管理には別途legacy loginを使用する。管理listenerはloopback限定で、siteの公開listen設定を流用しない。configの型/permissionは [`docs/details/setup.md` 詳細本文責務 config入力](setup.md#phase-19-setup-input)。
+
 **共通wire契約：** 管理APIは既存loopback/TLS tunnel境界。全bodyはUTF-8 JSON、Content-Type application/json必須、Content-Encoding拒否、最大1048576 bytes（超過413）、decode depth32、duplicate/unknown key拒否、末尾token拒否。GET/DELETE queryは列挙keyだけ、同名重複禁止、pathは一度だけpercent decodeしslash/backslash/dotdot/制御文字拒否。attemptは1〜100、ID/digestはschemaで検査する。method不一致405/Allow、未知route404。認証前のparseでscope情報を返さない。
 
 成功envelopeは `{data:T,request_id:Id,authorization:Authorization}`、errorは `{error:string,code:string,request_id:Id,details:[],authorization:null|Authorization}`（detailsは常に空）。Authorization=`{subject_kind:enum(user,service),subject_id:Id,generation:int(1,9007199254740991),grants:Grant[],expires_at:Time}`。認証済subject自身の有効grantだけをRoot.generationと同じsnapshotから返す。unauthenticated errorはnull、authenticated 403も自分のgrant以外を含めない。loginは発行sessionに対応し、logoutは失効直前の認証snapshotを返す。正規化Authorization長は65536 bytes以下（grant保存時にsubjectごと検査）とし、他subject/grant/credentialを列挙しない。全応答no-store、JSON nosniff。request_idはserver発行o-ID。login/logout以外の副作用requestは `Idempotency-Key: o-32hex` 必須、digest対象は `{subject,method,path,body}` のcanonical bytes。acceptedは202、完了済み同期変更は200、作成も200。read-only POSTはplan/deploymentPlan/artifactCompareの3操作で、idempotency/Operation生成/認可済み状態変更を行わない。SDKのmutation判定もこのoperation分類に固定する。mutationのdataは一律OperationResult=`{operation:Operation,result:T|null,one_time:null|string}` とし、下表data列はresultの論理型を示す（Operation行はresult=null）。Operation.idはIdempotency-Keyと一致する。初回同期成功だけresultを返し、user/service作成時だけone_timeに初期password/tokenを一度返す。再送同digestは保存済みOperationを同じ200/202で返すがresult=null/one_time=nullとし、clientはoperationとtargetのGET/listを再取得する。秘密応答やrequest本文をidempotency保存しない。operationは30日照会可能。login/logoutはmemory-only認証操作でOperationResult対象外、loginだけ認証前body decodeを許可する。認証・rate-limit拒否はidempotency保存せず、監査の機密境界に従う。
@@ -3095,7 +3098,7 @@ response 算出時点で `reset_at` が現在時刻以下の window は `state_s
 
 | 型名 | API 側で固定する key | 値の扱い |
 |------|----------------------|----------|
-| `UserListResponse` | `users`, `total`, `limit`, `offset` | `users` は [`docs/details/statefile.md` 詳細本文責務 UserRecord](statefile.md#sec-22-0d) の配列、`total` は filter 後 paging 前件数。 |
+| `UserListResponse` | `users`, `total`, `limit`, `offset` | `users` は本節の `AdditionalUserView` の配列、`total` は filter 後 paging 前件数。 |
 | `UserCreateInput` | `username`, `display_name`, `role_ids`, `password`, `external_subjects` | `username`、`display_name`、`role_ids` は必須、`password` と `external_subjects` は任意。未知 key は `422`。 |
 | `UserPatchInput` | `display_name`, `role_ids`, `password`, `external_subjects`, `status` | 1 key 以上必須。未指定 key は既存値維持。`status` は `active`、`disabled`、`locked`。 |
 | `RoleListResponse` | `roles` | [`docs/details/statefile.md` 詳細本文責務 RoleRecord](statefile.md#sec-22-0d) の配列。 |
@@ -3203,9 +3206,11 @@ list response の配列順は、状態 file または JSON Lines の保存順を
 | method | path | request | response | 成功 | 失敗 |
 |--------|------|---------|----------|------|------|
 | `GET` | `/api/users` | query `limit`, `offset`, `status`, `role_id` | `UserListResponse` | `200` | `401`, `403`, `422`, `500` |
-| `POST` | `/api/users` | `UserCreateInput` | `UserRecord` | `201` | `400`, `401`, `403`, `409`, `422`, `500` |
-| `PATCH` | `/api/users/{id}` | `UserPatchInput` | `UserRecord` | `200` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
+| `POST` | `/api/users` | `UserCreateInput` | `AdditionalUserView` | `201` | `400`, `401`, `403`, `409`, `422`, `500` |
+| `PATCH` | `/api/users/{id}` | `UserPatchInput` | `AdditionalUserView` | `200` | `400`, `401`, `403`, `404`, `409`, `422`, `500` |
 | `DELETE` | `/api/users/{id}` | body 禁止 | `{ "message": "User disabled" }` | `200` | `401`, `403`, `404`, `409`, `500` |
+
+AdditionalUserViewは保存用UserRecordからcredentialを除いた `{id,username,display_name,status,role_ids,external_subjects,totp_enabled,created_at,updated_at,password_set:bool}` の閉じた公開型とし、password_setはcredential!=nullから計算する。全list/create/patch応答で同じ投影を使用する。password、password_hash、salt、KDF parameter、TOTP secret、認証内部recordは返さない。id/username等の型は [`docs/details/statefile.md` 詳細本文責務 UserRecord](statefile.md#sec-22-0d) を参照する。raw stateをresponse writerへ渡さない。
 
 `DELETE /api/users/{id}` は物理削除せず `status:"disabled"` にする。
 
@@ -3490,11 +3495,11 @@ apply は `confirmation:"APPLY_CONFIG_TEMPLATE"` を必須とする。
 
 `GET /api/config-templates` は `.config_templates.templates` の保存順で返し、`total` は配列件数とする。不在時は空配列を返し、file を作成しない。破損または読取不能は `500 {"error":"Config templates read failed"}` とする。
 
-`POST /api/config-templates` は `name` の完全一致重複を `409` とし、`values` を [`RestoreObject`](#backup-restore-api-effect-contract) の subset として検証する。`values` に secret 平文、`webhook_secret`、`smtp_password`、`*_set`、`exported_at`、未知 key、schema-invalid partial object を含めてはならない。成功時は `tmpl_` id、`created_at`、`updated_at` を補完し、`.config_templates` → `.admin_events` の順で書く。
+`POST /api/config-templates` は `name` の完全一致重複を `409` とし、`values` を [`RestoreObject`](#backup-restore-api-effect-contract) の subset として検証する。`values` に secret 平文、`webhook_secret`、`smtp_password`、`*_set`、`exported_at`、未知 key、schema-invalid partial object を含めてはならない。成功時は `tmpl_` id、`created_at`、`updated_at` を補完し、[追加管理API状態更新順固定契約](#additional-management-state-order) の `config snapshots / diff / templates` 行を適用し、restore/apply専用のconfig更新・config logは行わない。
 
 `POST /api/config-templates/{id}/apply` は template の `values` に含まれる state file だけを [`backup / restore 固定契約](#backup-restore-contract) の restore 書込順で atomic write する。適用前に対象全 payload を検証し、1 件でも不正なら `422` として書込を開始しない。途中 write 失敗では未処理 file、`.config_log`、`.audit_log`、`.admin_events` を書かず、成功済み file は巻き戻さない。`updated_paths` は実際に書いた path の ASCII 昇順とする。
 
-`DELETE /api/config-templates/{id}` は `.config_templates.templates` から対象 1 件を除去し、template 適用済み設定を巻き戻さない。成功時は `.config_templates` → `.admin_events` の順で書く。
+`DELETE /api/config-templates/{id}` は `.config_templates.templates` から対象 1 件を除去し、template 適用済み設定を巻き戻さない。成功時は [追加管理API状態更新順固定契約](#additional-management-state-order) の `config snapshots / diff / templates` 行を適用し、restore/apply専用のconfig更新・config logは行わない。
 
 <a id="sec-27-66"></a>
 **27.66 管理者向けイベントフィード：**

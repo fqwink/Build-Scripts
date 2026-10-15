@@ -6,6 +6,19 @@
 
 ownerは `runner`、実装主体は [components/runner/](../../components/runner/)。適用境界は [`docs/SPEC.md` ポリシー責務 SPEC ポリシー責務](../SPEC.md#policy-inhouse-cicd)、型・canonical bytes・保存は [`docs/details/statefile.md` 詳細本文責務 statefile 詳細本文責務](statefile.md#phase-19-schema-registry)、認可は [`docs/details/security.md` 詳細本文責務 security 詳細本文責務](security.md#phase-19-security-contract)。本節は従来builder専用oneshotの仕様を変更せず、明示profileでだけ使用する。
 
+<a id="phase-19-runner-cli"></a>
+**profile起動interface：** 全modeはexact flagを1個だけ選び、以下以外の組合せはexit2/stderr P19_INPUT+LFでI/O前拒否する。引数は--name valueだけ、未知・重複・短縮・位置引数を拒否する。help/versionは [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 CLI共通固定契約](../DETAIL_INDEX.md#common-cli-contract) の優先順位で、profileの他引数parseより先に確定する。
+
+| mode flag | 必須option / config role | 実行境界 |
+|---|---|---|
+| --cicd-coordinator | --config ABS --state-dir S / coordinator | coordinator daemon。 |
+| --cicd-worker-stdio | --config ABS --state-dir S / worker | SSH worker stdio。 |
+| --cicd-site-agent | --config ABS --state-dir S / site | SSH site RPC stdio。 |
+| --cicd-sandbox-broker | --config ABS --state-dir B / worker | setupが認証したroot brokerだけ。 |
+| --cicd-job-stdio | 追加optionなし / configなし | brokerがsandbox内に起動するwrapperだけ。assign等はstdin、JSON Linesはstdout、診断はmask済みstderr。 |
+
+configの型・所有権・roleとstate-dir一致は [`docs/details/setup.md` 詳細本文責務 config入力](setup.md#phase-19-setup-input) を参照する。設定読込/能力不足はexit3、起動後の状態/必須I/O失敗はexit4、外部結果不確定はexit5、正常停止はexit0。SSH modeは人間向けtextをstdoutへ混在させない。legacy optionとprofile modeの混在をfallback解釈しない。
+
 <a id="phase-19-plan-algorithm"></a>
 **入力と計画：**
 
@@ -15,7 +28,7 @@ Definition / Template / Projectを保存する時とplan時に次の順序で検
 2. TemplateUseは指定project内の指定revisionだけを取得する。入力の適用規則はDefinitionと共通。展開jobのIDとneedsへ `prefix + "_" + id` を適用する。合計48文字を超える場合は拒否。templateのjobはtemplate内だけを参照し、外部jobとの依存は定義側jobのneedsから展開後IDを指定する。他template参照・再帰・最新revisionへの読み替えは禁止。
 3. 文字列fieldの値全体が `${input.ID}` / `${matrix.ID}` の場合だけ型を保って置換する。置換先が要求するschemaに一致しなければ拒否。連結、式、関数、shell、二重展開は禁止。path/task/env/condition.input_equalsだけを置換対象とし、識別子・needs・secret参照・資源値は置換しない。
 4. matrix axesはkeyのASCII順、値は定義配列順の直積。各軸の値は同じ型で一意、空axesは空tuple1個。excludeは既存軸の非空部分tupleと一致するtupleを除外する。includeは全軸keyが一致する完全tupleだけを末尾追加し、重複は拒否する。includeの新軸・暗黙mergeは禁止。展開IDは `base_job_id + "_m" + index`（indexは1始まり10進）とし、matrixなしは元ID。展開後64文字以内、全体256 job以内、空展開拒否。
-5. needsはbase IDを指定し、その全展開jobへの辺へ置換する。DeployTask.artifact_fromはneeds内の単一展開のbuilder/go-buildだけを指定し、matrixで複数になる参照は拒否する。重複ID、自己辺、未知辺、循環を拒否する。Kahn法の同順位は展開前定義順、次にmatrix index順で固定する。
+5. needsはbase IDを指定し、その全展開jobへの辺へ置換する。DeployTask.artifact_fromはneeds内の単一展開のbuilderだけを指定し、go-buildまたはmatrixで複数になる参照はP19_SCHEMAで拒否する。site以外の成果物を配備へ暗黙変換しない。重複ID、自己辺、未知辺、循環を拒否する。Kahn法の同順位は展開前定義順、次にmatrix index順で固定する。
 6. branch/tagはsourceの種別に合うselectorだけ評価する。各リスト内OR、非空リスト同士AND、空リストはtrue。pathsは変更pathのいずれかに一致、input_equalsはkeyごとの型付き完全一致AND。不一致jobはskippedとなり、その必須依存先もskipped。globはcase-sensitive、`?`がsegment内1 Unicode scalar、`*`がsegment内0個以上、独立segment `**` が0個以上のsegment。escape/否定/文字class/波括弧を拒否し、pattern<=240 bytes / 32segment、DP計算上限100000cellを超えれば入力拒否。
 7. GitHub Trees/Blobs APIをsource.sha固定で読む。owner/repoは既存GitHub入力規則を使用し、recursive treeのtruncated=true、submodule、symlink、未知mode、file10000超、単体10 MiB超、合計100 MiB超を拒否する。regular mode100644/100755だけを採用し、blobのGit SHA1を検証してからSHA256を計算する。変更pathはwatchの前SHAと今回SHAの完全treeのpath+digest差分（削除含む）。前SHAなしは全path。取得失敗を変更なしへ変換しない。
 8. capability・executor・資源・quota・成果物参照を検査し、PlanDataとそのcanonical SHA256をPlanにする。source.files、Project.toolchain_digestをPlanDataへ固定し、実行開始時にWorker.toolchain_digestと照合する。有効Projectはtoolchain_digest必須、未設定/一致worker不在はP19_CAPABILITY。PlanData canonical長は524288 bytes以下（超過P19_BODY）。run受付ではplan digest / source / revisionを再取得して一致を確認し、不一致はP19_STALE、未検査の値を最新値で補完しない。
@@ -93,7 +106,9 @@ targetはsetup登録site-agentで、plan前にTarget.base_urlのhost/portがsite
 | blue-green | stage1件、全target、percent=100、min_requests=0、max_error_percent=0。全targetの独立candidateを事前検証後、target.id順にroute切替。複数target同時atomicとは保証しない。途中失敗は切替済みを逆順復旧し、未切替targetもrestoreでclaimを解放する。 |
 | canary | 全stageが全target、percent厳密増加、最終100。observe_secondsは10の倍数だけ。各stage切替完了後の次のUTC10秒境界（境界上ならその時刻）をfromとし、until=from+observe_secondsまで進め、完了request数>=min_requests（1以上）かつ5xx率basis_points<=max_error_percent*100が必要。0request/不足はP19_HEALTHで停止・復旧。各完了10秒窓の合計がmin_requests以上になった後の失敗率閾値超過は、その窓照会時に停止する（1requestだけの初期失敗で停止しない）。 |
 
-site Routeはstable/candidate/percentを持つ。初回stable=nullはrolling/blue-greenだけ、canary初回拒否。healthはbase_urlの `/.adlaire-ci/health` にTLS検証付きGET、timeoutは環境値、3回・1秒間隔、HTTP200かつ `{project_id,environment_id,generation,artifact}` 完全一致が条件。staging検証はsite-agentがcandidate内Environment.health_path（現profileはindex.html固定）をGET相当で読み検証するため公開routeを先に変えない。rollbackも旧artifactの存在・hash・route・healthの全確認が必要。旧artifactなし初回失敗はrouteをnullへ戻し503を確認してrolled_backとする。最終100%のhealth/観測成功後は同じoperation/generationでRoute.stableを新digest、candidate=null、percent=0へfinalizeし、query一致を確認する。このfinalizeもdurable intentとidempotencyを持ち、途中不明はblockedにする。これにより次配備の戻し先は直前成功digestとなる。成功後だけEnvironmentState.artifactを更新しactiveを解放する。途中resultはTargetResultに保存し失敗時も残す。
+site Routeはstable/candidate/percentを持つ。初回stable=nullはrolling/blue-greenだけ、canary初回拒否。DeployPlan作成時と開始時にarchive manifest.kind=siteとindex.htmlを確認し、binaryはP19_ARCHIVEで副作用前拒否する。healthはbase_urlの `/.adlaire-ci/health` にTLS検証付きGET、timeoutは環境値、3回・1秒間隔、HTTP200かつ `{project_id,environment_id,generation,artifact}` 完全一致が条件。staging検証はsite-agentがcandidate内Environment.health_path（現profileはindex.html固定）をGET相当で読み検証するため公開routeを先に変えない。rollbackも旧artifactの存在・hash・route・healthの全確認が必要。旧artifactなし初回失敗はrouteをnullへ戻し503を確認してrolled_backとする。最終100%のhealth/観測成功後は同じoperation/generationでRoute.stableを新digest、candidate=null、percent=0へfinalizeし、query一致を確認する。このfinalizeもdurable intentとidempotencyを持ち、途中不明はblockedにする。これにより次配備の戻し先は直前成功digestとなる。成功後だけEnvironmentState.artifactを更新しactiveを解放する。途中resultはTargetResultに保存し失敗時も残す。
+
+canaryの観測はDeployment.observationsへtarget_id/stage_index一意で保存し、target_id順に並べる。各段階のfrom/until確定と同時にobserving、observed_until=from、requests=errors=0でdurable作成する。完了10秒窓のqueryごとに同世代/stepの累積値とobserved_untilをatomic更新し、0<=errors<=requests、from<=observed_until<=untilを要求する。untilまで全窓が揃い閾値合格でpassed、閾値/母数不足はfailed/P19_HEALTH、通信断/欠落窓はunknown/P19_HEALTHで停止する。先行targetの成功だけで段階を進めず全target passedを必要とする。再起動時observingを保存値から成功へ補完せず、同一窓全体を照合できなければunknownとして復旧へ進める。過去段階の記録は次switch後も保持し、APIのDeployment投影で返す。rolling/blue-greenはこのcanary観測配列を空とする。
 
 公開static配信主体・routing cookie・TLSは [`docs/details/api.md` 詳細本文責務 api 詳細本文責務](api.md#phase-19-site-serving)、隔離条件は [`docs/details/setup.md` 詳細本文責務 setup 詳細本文責務](setup.md#phase-19-setup-contract)、成果物は [`docs/details/archive.md` 詳細本文責務 archive 詳細本文責務](archive.md#phase-19-artifact-contract)、実行型検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) に接続する。
 

@@ -95,6 +95,16 @@ Phase 18 の `実装済み` 遷移可否は本 ROADMAP で本文定義しない�
 
 `改訂予定` の行に記載する詳細入口は、仕様策定先または再評価先を示す。`改訂予定` の詳細入口は、実装着手根拠、Phase 11 実装対象、または `仕様化済み・未実装` の代替根拠として扱わない。`仕様化済み・未実装` の行であっても、実装着手可否は [`docs/SPEC.md` ポリシー責務 §0a](SPEC.md#policy-spec-maturity)、[`docs/SPEC.md` ポリシー責務 §0d](SPEC.md#policy-spec-freeze)、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) を同時に満たす場合だけ成立する。
 
+<a id="specification-completeness-status"></a>
+**仕様全般詳細化の現在状態：** 全機能の現状は下の統合機能インベントリを参照する。Phase19の仕様策定済み判定を、残る改訂予定機能の仕様完成へ読み替えない。特にPhase20、エックスサーバVPS検証判断、管理UI配布/配信、builder cache、追加管理APIは現在も改訂予定であり、全般の完全仕様化を完了した状態ではない。追加管理APIの既存namespaceとPhase19専用namespaceは独立の割当であり、同じ機能名だけを理由に片方の状態を昇格しない。
+
+| 未完了範囲 | 現在状態 / 次の判断先 |
+|---|---|
+| Phase20内製IaC | 改訂予定。provider操作の採用範囲・owner・詳細本文・fixture・Phase全体の実装条件は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase20入口](DETAIL_INDEX.md#phase-20-inhouse-iac-entry) から仕様策定する。 |
+| エックスサーバVPS検証判断 | 改訂予定。[本番検証詳細本文責務](details/production-validation.md#phase-17-xserver-future-contract)に接続する。 |
+| 管理UI配布/配信・builder cache | 改訂予定。各ownerと検証の入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務](DETAIL_INDEX.md#0i-詳細節対応表) を参照する。 |
+| 追加管理API | 改訂予定の各機能を下表で個別管理する。保存用資格情報とAPI公開型の分離は補完したが、全入力型・全異常系・具体fixture・後続Phase割当の確認は未完了。入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 追加管理API対応](DETAIL_INDEX.md#0i6-追加管理api機能)。 |
+
 <a id="522-統合ロードマップ表"></a>
 **統合機能インベントリ：** 以下を全機能の現在状態に関する唯一の一覧とする。
 

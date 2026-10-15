@@ -61,6 +61,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | mutation | [`docs/details/fixture.md` fixture 証跡責務 mutation test 証跡固定契約](details/fixture.md#mutation-test-evidence-contract)、[`mutation test evidence set 固定契約`](details/fixture.md#mutation-test-evidence-set-contract)、[`mutation selection ledger 固定契約`](details/fixture.md#mutation-selection-ledger-contract) |
 | harness self-verification | [`docs/details/fixture.md` fixture 証跡責務 test harness self-verification evidence set 固定契約](details/fixture.md#test-harness-self-verification-evidence-set-contract) |
 | contract drift | [`docs/details/fixture.md` fixture 証跡責務 test / contract drift 証跡固定契約](details/fixture.md#test-contract-drift-evidence-contract)、[`test / contract drift report schema 固定契約`](details/fixture.md#test-contract-drift-report-schema-contract) |
+| 全仕様文書のpath / 固定anchor / anchor一意性 | [`docs/details/fixture.md` fixture証跡責務 全仕様参照checker](details/fixture.md#specification-reference-checker) |
 | 変更履歴 artifact 境界検査 | [`docs/details/fixture.md` fixture 証跡責務 変更履歴 artifact 境界検査](details/fixture.md#change-history-artifact-boundary-evidence) |
 | test evidence package | [`docs/details/fixture.md` fixture 証跡責務 test evidence package 記録先固定契約](details/fixture.md#test-evidence-package-record-location-contract) |
 | skip / 未実行 | [`docs/details/fixture.md` fixture 証跡責務 skip / 未実行証跡固定契約](details/fixture.md#test-skip-evidence-contract) |
@@ -437,7 +438,7 @@ Phase 19 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状�
 | project・template・run・lease・保存 schema・durability | `statefile` | [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](details/statefile.md#phase-19-state-contract) |
 | 成果物登録・重複排除・検証・保持・回収・比較 | `archive` | [`docs/details/archive.md` 詳細本文責務 Phase 19 成果物契約](details/archive.md#phase-19-artifact-contract) |
 | 利用者・role・環境 grant・承認者・secret・audit | `security` | [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](details/security.md#phase-19-security-contract) |
-| endpoint・request / response・JSON log / metrics | `api` | [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](details/api.md#phase-19-api-contract) |
+| profile起動・endpoint・request / response・JSON log / metrics | `api` | [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](details/api.md#phase-19-api-contract) |
 | SDK method・transport 接続 | `sdk` | [`docs/details/sdk.md` 詳細本文責務 Phase 19 SDK 接続](details/sdk.md#phase-19-sdk-contract) |
 | view・操作・DOM・非同期表示 | `ui` | [`docs/details/ui.md` 詳細本文責務 Phase 19 管理画面](details/ui.md#phase-19-ui-contract) |
 | CLI・静的 package 接続 | `admin` | [`docs/details/admin.md` 詳細本文責務 Phase 19 管理クライアント](details/admin.md#phase-19-admin-contract) |

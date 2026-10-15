@@ -12,6 +12,7 @@ import (
 	"go/token"
 	"io"
 	"io/fs"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +25,108 @@ import (
 	"time"
 	"unicode/utf8"
 )
+
+func TestSpecificationReferenceIntegrity(t *testing.T) {
+	t.Parallel()
+	documents := map[string]string{}
+	paths := []string{"AGENTS.md", "README.md"}
+	if err := filepath.WalkDir("docs", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() && strings.HasSuffix(path, ".md") {
+			paths = append(paths, path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range paths {
+		documents[filepath.ToSlash(path)] = phase11MustReadText(t, path)
+	}
+	exists := func(path string) bool {
+		_, err := os.Lstat(filepath.FromSlash(path))
+		return err == nil
+	}
+	if err := specificationReferenceIntegrity(documents, exists); err != nil {
+		t.Fatalf("statefile.spec-reference.positive.accept: expected valid references, actual %v", err)
+	}
+	for _, control := range []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{"missing-path", "[target](missing.md)", "missing path"},
+		{"missing-anchor", "[target](target.md#missing)", "missing anchor"},
+		{"duplicate-anchor", "<a id=\"same\"></a><a id=\"same\"></a>", "duplicate anchor"},
+	} {
+		t.Run(control.name, func(t *testing.T) {
+			input := map[string]string{"index.md": control.content, "target.md": "<a id=\"valid\"></a>"}
+			err := specificationReferenceIntegrity(input, func(path string) bool { _, ok := input[path]; return ok })
+			if err == nil || !strings.Contains(err.Error(), control.want) {
+				t.Fatalf("statefile.spec-reference.%s.reject: expected %s, actual %v", control.name, control.want, err)
+			}
+		})
+	}
+	input := map[string]string{"index.md": "`[example](missing.md)`\n```text\n[example](missing.md)\n```\n[ok](target.md#valid)", "target.md": "<a id=\"valid\"></a>"}
+	if err := specificationReferenceIntegrity(input, func(path string) bool { _, ok := input[path]; return ok }); err != nil {
+		t.Fatalf("statefile.spec-reference.examples.accept: expected literal examples ignored, actual %v", err)
+	}
+}
+
+func specificationReferenceIntegrity(documents map[string]string, exists func(string) bool) error {
+	anchors := map[string]map[string]bool{}
+	anchorPattern := regexp.MustCompile(`<a id="([^"]+)"></a>`)
+	for path, content := range documents {
+		anchors[path] = map[string]bool{}
+		for _, match := range anchorPattern.FindAllStringSubmatch(content, -1) {
+			if anchors[path][match[1]] {
+				return fmt.Errorf("duplicate anchor %s#%s", path, match[1])
+			}
+			anchors[path][match[1]] = true
+		}
+	}
+	linkPattern := regexp.MustCompile(`\[[^\]\n]*\]\(([^)\n]+)\)`)
+	inlineCode := regexp.MustCompile("(`+)[^`]*`+")
+	for path, content := range documents {
+		fence := ""
+		for number, line := range strings.Split(content, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+				marker := trimmed[:3]
+				if fence == "" {
+					fence = marker
+				} else if fence == marker {
+					fence = ""
+				}
+				continue
+			}
+			if fence != "" {
+				continue
+			}
+			for _, match := range linkPattern.FindAllStringSubmatch(inlineCode.ReplaceAllString(line, ""), -1) {
+				ref, err := url.Parse(strings.Trim(match[1], "<>"))
+				if err != nil {
+					return fmt.Errorf("invalid reference %s:%d: %s", path, number+1, match[1])
+				}
+				if ref.IsAbs() || ref.Host != "" {
+					continue
+				}
+				target := path
+				if ref.Path != "" {
+					target = filepath.ToSlash(filepath.Clean(filepath.Join(filepath.Dir(path), ref.Path)))
+				}
+				if !exists(target) {
+					return fmt.Errorf("missing path %s:%d: %s", path, number+1, target)
+				}
+				if ref.Fragment != "" && strings.HasSuffix(target, ".md") && !anchors[target][ref.Fragment] {
+					return fmt.Errorf("missing anchor %s:%d: %s#%s", path, number+1, target, ref.Fragment)
+				}
+			}
+		}
+	}
+	return nil
+}
 
 func TestPhase19SpecificationContracts(t *testing.T) {
 	t.Parallel()
@@ -59,6 +162,9 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 		{"recursive-type", "docs/details/statefile.md", `"Id": "id"`, `"Id": "Id"`},
 		{"environment-key-type", "docs/details/statefile.md", `"env": "envmap(EnvValue,0,64)"`, `"env": "map(EnvValue,0,64)"`},
 		{"site-atomic-state", "docs/details/statefile.md", `"counters": "SiteCounters"`, `"wrong_counters": "SiteCounters"`},
+		{"site-retention-clock", "docs/details/statefile.md", `"committed_at": "Time"`, `"committed_at": "Id"`},
+		{"deployment-observation", "docs/details/statefile.md", `"observations": "list(StageObservation,0,512)"`, `"observations": "list(StageObservation,0,32)"`},
+		{"notification-attempt", "docs/details/statefile.md", `"target_attempt": "int(1,100)"`, `"target_attempt": "int(1,3)"`},
 		{"roadmap-inventory-state", "docs/ROADMAP.md", "| 仕様化済み・未実装 | CI / CD | Phase 19", "| 改訂予定 | CI / CD | Phase 19"},
 		{"unknown-type", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "MissingType"`},
 		{"missing-sdk", "docs/details/sdk.md", "| `runStart(params,body,options)` |", "| `missing(params,body,options)` |"},
@@ -234,7 +340,7 @@ func phase19ValidateSpecification(documents map[string]string) error {
 	if err := developmentActionsDecodeJSON([]byte(block[1]), &registry, 1048576, true); err != nil {
 		return fmt.Errorf("Phase 19 schema registry: %w", err)
 	}
-	if registry.SchemaVersion != 1 || registry.Profile != "cicd-v1" || len(registry.Types) != 82 {
+	if registry.SchemaVersion != 1 || registry.Profile != "cicd-v1" || len(registry.Types) != 83 {
 		return fmt.Errorf("Phase 19 registry identity or coverage invalid")
 	}
 	dependencies := make(map[string][]string)
@@ -286,6 +392,9 @@ func phase19ValidateSpecification(documents map[string]string) error {
 		"SiteState":       {"route": "Route", "operations": "list(SiteOperation,0,1024)", "counters": "SiteCounters"},
 		"Root":            {"secrets": "list(SecretMeta,0,10000)"},
 		"WorkerExecution": {"job": "JobResult", "lease_generation": "int(1,9007199254740991)"},
+		"SiteOperation":   {"committed_at": "Time"},
+		"Deployment":      {"observations": "list(StageObservation,0,512)"},
+		"Notification":    {"target_attempt": "int(1,100)", "source_revision": "int(1,2147483647)"},
 	} {
 		var actual map[string]string
 		if err := json.Unmarshal(registry.Types[name], &actual); err != nil {

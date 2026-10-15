@@ -363,7 +363,8 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "previous_artifact": "nullable(Digest)",
       "code": "nullable(text(1,64))",
       "recovery_code": "nullable(text(1,64))",
-      "targets": "list(TargetResult,1,32)"
+      "targets": "list(TargetResult,1,32)",
+      "observations": "list(StageObservation,0,512)"
     },
     "Artifact": {
       "project_id": "Id",
@@ -399,6 +400,19 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "target_id": "nullable(Id)",
       "created_at": "Time",
       "expires_at": "Time",
+      "code": "nullable(text(1,64))"
+    },
+    "StageObservation": {
+      "target_id": "Id",
+      "stage_index": "int(1,16)",
+      "generation": "int(1,9007199254740991)",
+      "step": "int(1,128)",
+      "from": "Time",
+      "until": "Time",
+      "observed_until": "Time",
+      "requests": "int(0,9007199254740991)",
+      "errors": "int(0,9007199254740991)",
+      "state": "enum(observing,passed,failed,unknown)",
       "code": "nullable(text(1,64))"
     },
     "Audit": {
@@ -517,6 +531,8 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "project_id": "Id",
       "event": "enum(queued,started,finished,cancelled,waiting_approval,stopped)",
       "target_id": "Id",
+      "target_attempt": "int(1,100)",
+      "source_revision": "int(1,2147483647)",
       "attempt": "int(1,3)",
       "state": "enum(queued,sent,failed)",
       "next_at": "Time",
@@ -559,6 +575,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "step": "int(1,128)",
       "type": "enum(stage,switch,finalize,restore,delete)",
       "request_digest": "Digest",
+      "committed_at": "Time",
       "result": "SiteResult"
     },
     "SiteWindow": {
@@ -608,7 +625,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
 
 **複合制約と既定値：** record 配列は owner の複合キーで一意とする。definition / template は project,id,revision、environment は project,id、run は project,id,attempt、artifact は project,digest、cache は project,key、grant は subject_kind,subject_id,project_id,environment_id,role。SecretMetaはproject_id,id,version一意。idを持つその他のRoot entityはid一意。Credentialのcicd-v1 login_countだけは安全整数上限9007199254740991以下に追加制限する（legacy fileの型は変更しない）。全entity参照は同一project内で解決し（user/worker/serviceはglobal、digestを識別子へ代用しない）、不在・無効・deleting参照を拒否する。rev / generationの上限では wrap せず P19_REVISION。Timeの順序逆転・不正なstate / timestamp組合せは P19_STATE_CORRUPT。Task、Grant、Environmentの意味上の制約は各owner正本を参照する。
 
-保存時のschema既定値はない。作成UIの初期値だけを `Quota={parallel:1,queue:64,artifact_mb:1024,cache_mb:256,retention_days:7}`、`Resources={cpu_percent:100,memory_mb:1024,disk_mb:512,tasks:128,timeout_seconds:900,output_mb:16}`、`Retry={max_attempts:1,backoff_seconds:1}`、cache無効・paths空・TTL604800秒、empty selector / matrix / template / env / secret、optional=false、fail_fast=false とする。memory_mb >= disk_mb+256、env全値合計32768 bytes以下、secret投入後の合計16384 bytes以下を要求する。Templateは他Templateを参照しない。EnvironmentStateはproject,environmentで一意。TriggerCursorはproject,definition,kind,trigger_idで一意であり、immutable Definitionとは別に更新する。StatusDeliveryはproject,run,attempt,stateで一意。Notification.idはeventとtarget_idのcanonical JSONのSHA256先頭63文字にnを付ける。Source.filesはpath昇順、UTF-8合計100 MiB以下、tree_digestはcanonical files配列のSHA256。snapshot全体は32 MiB、active run16、全実行job64、projectごとの上限はQuotaでさらに制限する。
+保存時のschema既定値はない。作成UIの初期値だけを `Quota={parallel:1,queue:64,artifact_mb:1024,cache_mb:256,retention_days:7}`、`Resources={cpu_percent:100,memory_mb:1024,disk_mb:512,tasks:128,timeout_seconds:900,output_mb:16}`、`Retry={max_attempts:1,backoff_seconds:1}`、cache無効・paths空・TTL604800秒、empty selector / matrix / template / env / secret、optional=false、fail_fast=false とする。memory_mb >= disk_mb+256、env全値合計32768 bytes以下、secret投入後の合計16384 bytes以下を要求する。Templateは他Templateを参照しない。EnvironmentStateはproject,environmentで一意。TriggerCursorはproject,definition,kind,trigger_idで一意であり、immutable Definitionとは別に更新する。StatusDeliveryはproject,run,attempt,stateで一意。Notification.idはcanonical `{project_id,target_id,target_attempt,source_revision,event}` のSHA256先頭63文字にnを付ける。target_attemptはRun.attempt（Deploymentは1）、source_revisionは通知を生成する遷移後のRun/Deployment.revision。同一遷移再処理では同じidとし、配信retry用attemptと混同しない。Source.filesはpath昇順、UTF-8合計100 MiB以下、tree_digestはcanonical files配列のSHA256。snapshot全体は32 MiB、active run16、全実行job64、projectごとの上限はQuotaでさらに制限する。
 
 <a id="phase-19-state-paths"></a>
 **保存 path と権限：**
@@ -639,7 +656,7 @@ S は起動時に検証した state-dir。以下の S 相対pathだけを新規�
 
 WorkerExecutionはoperation_id一意、job/lease identity一致を要求し、terminal/cleanup_ok=trueの記録だけupdated_atから30日後に回収する。満杯時はactiveを削除せず新assignをP19_STORAGEで拒否する。worker/local brokerの再起動照合で使う実行記録であり、worker.jsonへJobResultを混入しない。
 
-SiteStateはRoute・SiteOperation・SiteCountersを単一fileのatomic rename/fsyncでcommitする。Routeなし初期値はgeneration=0/operation_id=初回要求ID/stable=candidate=null/percent=0/config_digest=要求値、active_operationとprevious_routeはnull、operations空、countersはstep=0/generation=0/windows空。mutating RPCの外部可視route変更と再送結果を別fileへ分離しない。keyはoperation_id,step、type/digest一致を検査する。SiteOperationは30日保持、active/previous_route/current route参照分は回収不可、期限経過分だけcommit前に古い順で回収する。query/observeは記録を増やさない。初回claimでprevious_routeを固定し、同operation内の保存済step最大+1だけを受け付け、finalize/restore成功時だけactive_operationをnullにする。activeの結果を消さず、容量不足は変更前に拒否する。
+SiteStateはRoute・SiteOperation・SiteCountersを単一fileのatomic rename/fsyncでcommitする。Routeなし初期値はgeneration=0/operation_id=初回要求ID/stable=candidate=null/percent=0/config_digest=要求値、active_operationとprevious_routeはnull、operations空、countersはstep=0/generation=0/windows空。mutating RPCの外部可視route変更と再送結果を別fileへ分離しない。keyはoperation_id,step、type/digest一致を検査する。SiteOperation.committed_atはそのstepを最初にcommitしたsite UTC時刻で再送時不変。now>=committed_at+30日を満たす場合だけ期限経過とする。SiteOperationは30日保持、active/previous_route/current route参照分は回収不可、期限経過分だけcommit前に古い順で回収する。query/observeは記録を増やさない。初回claimでprevious_routeを固定し、同operation内の保存済step最大+1だけを受け付け、finalize/restore成功時だけactive_operationをnullにする。activeの結果を消さず、容量不足は変更前に拒否する。
 
 secret / SSH / master はsnapshot export、成果物、cache、通常backup、API一覧から除外する。job rootへのmount対象にも含めない。cicd配下のfilesystem上のfile集合がこれを超える場合は自動採用せず P19_STATE_CORRUPT とする。ただし以下のtransaction一時fileとarchive / runner正本のchildだけを許可する。
 
@@ -649,7 +666,7 @@ secret / SSH / master はsnapshot export、成果物、cache、通常backup、AP
 process内mutex → `state.lock` の非blocking flock(LOCK_EX)を10ms間隔、最大2秒で取得する。保持中にnetwork / child / response送信を待たない。read-onlyはHeadから一つのimmutable snapshotを読み、hash / schema / generationを検証し、書込・修復・migrationをしない。snapshot不在でHeadが既に進んだ場合だけ新Headで最大3回読み直す（GC競合）。同Headで不在/不正hashなら即corrupt、3回すべて世代更新ならP19_BUSY。
 
 1. lock下でHeadと現在snapshotを再読込し、entity revision・要求識別子を照合する。同一operation ID / digestなら元Operationを返し、内容違いは P19_IDEMPOTENCY。
-2. 全制約と容量を検証する。新しい進行中operationにつき終端用65536 bytesとOperation/Audit終端1行ずつを予約し、snapshot byte数 + 予約総量 <= 33554432 を満たさなければ P19_STORAGE。active対象、監査、保護参照を容量対策で消さない。
+2. 全制約と容量を検証する。新しい進行中operationにつき終端用262144 bytesとOperation/Audit終端1行ずつを予約し、snapshot byte数 + 予約総量 <= 33554432 を満たさなければ P19_STORAGE。active対象、監査、保護参照を容量対策で消さない。
 3. generation+1のsnapshotを `snapshots/.{o-id}.tmp` にO_EXCLで作成、write-all、chmod、fsync、close、未存在のg-nameへrename、snapshots directory fsync。
 4. 新Headを `cicd/.head.{o-id}.tmp` に同順で書き、head.jsonへatomic renameし、cicd directory fsync。この完了だけをdurable commitとする。
 5. commit後は現snapshotと直前2世代を保持して古いsnapshotを削除する。削除失敗はP19_CLEANUPの診断とし、commit済み結果を反転しない。空き256 MiB未満では新規受付を止める。
@@ -2220,7 +2237,7 @@ runner / archive / commitstatus / security / api が同じ実装変更で状態�
 | `display_name` | string | yes | 1〜128 Unicode scalar values。 |
 | `status` | string | yes | `active`、`disabled`、`locked` のいずれか。 |
 | `role_ids` | string[] | yes | `.roles.roles[].id` に存在する id。空配列禁止。 |
-| `password_hash` | string|null | yes | local password 未設定時は `null`。平文禁止。 |
+| `credential` | AdminCredentials|null | yes | local password 未設定時は `null`。非nullは [主要状態schema](#sec-22-0c) の `.admin_credentials` と同じ閉じた型。資格情報をhash文字列だけで保存せず、salt/algorithm/parameterを同型に結び付ける。API投影対象外。 |
 | `external_subjects` | object[] | yes | provider id と subject の組。 |
 | `totp_enabled` | boolean | yes | TOTP 有効状態。 |
 | `created_at` | string | yes | UTC ISO 8601 秒精度。 |

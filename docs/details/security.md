@@ -936,7 +936,7 @@ username は case-sensitive ではなく、保存前に lowercase に正規化�
 
 password 更新時は平文を保存せず、`pbkdf2_hmac_sha256_v1` だけを使用する。
 
-password 未設定 user は local password login を禁止し、外部認証または API token だけを許可する。
+UserRecord.credential=nullのuserはlocal password loginを禁止し、外部認証またはAPI tokenだけを許可する。資格情報の型は [`docs/details/statefile.md` 詳細本文責務 UserRecord](statefile.md#sec-22-0d)、公開投影は [`docs/details/api.md` 詳細本文責務 §27.48](api.md#sec-27-48) を参照する。
 
 disabled user の session は次 request で `401` とする。
 
