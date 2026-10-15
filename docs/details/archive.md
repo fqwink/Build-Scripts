@@ -1,5 +1,24 @@
 # Adlaire CI — Archive 詳細仕様
 
+<a id="phase-19-artifact-contract"></a>
+**Phase 19 成果物策定契約：**
+
+本節の owner は `archive` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。配備先の選択・進行・復旧判断は [`docs/details/runner.md` 詳細本文責務 配備・承認・復旧](runner.md#phase-19-deployment-contract)、参照集合の保存は [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](statefile.md#phase-19-state-contract) を参照する。
+
+| 処理 | 入力 / 実体処理 / 結果 |
+|------|------------------------|
+| 登録 | project、元 run / attempt、成果物 bytes、manifest を受ける。staging で size と SHA-256 を検証した後に内容識別の immutable artifact として確定する。同じ名前でも bytes が異なれば別 artifact とする。 |
+| 重複排除 | 同一 project 内の同一 digest は既存 bytes と照合して再利用する。別 project の存在・容量・所有情報を参照側へ公開しない。物理共有を project 認可の代替にしない。 |
+| 取得・展開 | 保存済み bytes と manifest を再検証し、caller に固定 artifact 参照を返す。archive の traversal、symlink、特殊 file、重複 entry、展開量超過を拒否する。検証失敗を空成果物として成功させない。 |
+| 昇格用受渡し | runner が選んだ digest の bytes を渡し、移動先での検証結果を返す。環境に合わせた再生成・再圧縮を同一 digest の成果物として扱わない。 |
+| 復旧用保持 | 現在配備、実行中配備、選択済み復旧先、承認待ち要求の参照を回収保護へ含める。保持数または期限だけで保護対象を削除しない。 |
+| 回収 | 同一 revision の参照集合を取得し、削除対象確定時にも参照を再確認する。容量不足でも保護を外さず、新規登録を失敗させる。途中削除失敗と参照保存失敗を別結果で返す。 |
+| 比較 | artifact manifest と file digest の差分を返す。巨大な全 file body を比較応答へ展開しない。project の読取権限を取得と同じ境界で適用する。 |
+
+**詳細化を残す判断対象：** artifact format、manifest schema、保存 path、圧縮条件、登録・展開・比較の各上限、pin / unpin interface、GC と配備の lock 順、途中失敗 cleanup、digest 衝突疑い時の固定 error を本節で固定する。Release 用 asset と利用者 build 成果物を同じ schema と仮定しない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
 ---
 
 <a id="0-責務境界"></a>

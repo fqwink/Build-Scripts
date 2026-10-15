@@ -50,6 +50,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | 開発 GitHub Actions 方針 / 必須条件 / 作業手順 | [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3)、[`docs/SPEC.md` ポリシー責務 §0h 開発 GitHub Actions 標準使用契約](SPEC.md#policy-development-actions)、[`AGENTS.md` 開発 GitHub Actions 作業手順](../AGENTS.md#agents-development-actions) |
 | 開発 Actions 定義 / 実行 / 適用証跡 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions 証跡固定契約](details/fixture.md#development-actions-evidence-contract) |
 | 既存 7 workflow required gate / 入力 fixture / checker / 正例・負例 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract) |
+| Phase 19 策定対象 / 故障・復旧・並行実行の受け入れ設計 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
 | traceability / owner routing / fixture coverage | [`docs/details/fixture.md` fixture 証跡責務 test artifact traceability 固定契約](details/fixture.md#test-artifact-traceability-contract)、[`non-dedicated owner test routing 固定契約`](details/fixture.md#non-dedicated-owner-test-routing-contract)、[`fixture root coverage matrix 固定契約`](details/fixture.md#fixture-root-coverage-matrix-contract) |
 | test execution / closure | [`docs/details/fixture.md` fixture 証跡責務 test execution evidence matrix 固定契約](details/fixture.md#test-execution-evidence-matrix-contract)、[`test verification closure checklist 固定契約`](details/fixture.md#test-verification-closure-checklist-contract)、[`test verification closure record schema 固定契約`](details/fixture.md#test-verification-closure-record-schema-contract)、[`test verification closure record set 固定契約`](details/fixture.md#test-verification-closure-record-set-contract) |
 | test gap inventory / batch closure | [`docs/details/fixture.md` fixture 証跡責務 test gap inventory record 固定契約](details/fixture.md#test-gap-inventory-record-contract)、[`test improvement batch closure 固定契約`](details/fixture.md#test-improvement-batch-closure-contract) |
@@ -424,9 +425,29 @@ Phase 18 の状態遷移判断は、repository 内 checker acceptance fixture �
 
 Phase 19 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務、GitHub Actions 使用方針と内製 CI/CD の境界は [`docs/SPEC.md` 方針責務 §5.3](SPEC.md#sec-5-3) を参照する。
 
-Phase 19 は、GitHub Actions required check、Adlaire CI 内製 CI 実行、Adlaire CI 内製 CD、deploy、rollback、release verification、required check 証跡を同一 Phase として扱う。Phase 19 を CI 強化 Phase と CD Phase に分割してはならない。
+設計の安全境界は [`docs/SPEC.md` ポリシー責務 §0i](SPEC.md#policy-inhouse-cicd)、策定対象の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope)、実装着手可否は [実装前参照](#0c-実装前確認項目) を参照する。
 
-Phase 19 は Phase 18 完了前に仕様全般策定を進めてよい。ただし、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示されるまで、実装着手、実装 PR、完了判定を行ってはならない。Phase 19 の詳細本文、fixture、required workflow、target path は未確定であり、実装可能な詳細仕様入口として扱ってはならない。
+<a id="phase-19-owner-route"></a>
+**Phase 19 owner / collaborator 境界参照：**
+
+| 判断対象 | owner | 詳細本文 / 接続先 |
+|----------|-------|--------------------|
+| 計画・条件・DAG・matrix・再試行・cancel・worker・隔離実行・job cache | `runner` | [`docs/details/runner.md` 詳細本文責務 Phase 19 実行契約](details/runner.md#phase-19-runner-contract) |
+| 配備・承認対象・段階配備・切替・復旧進行 | `runner` | [`docs/details/runner.md` 詳細本文責務 配備・承認・復旧](details/runner.md#phase-19-deployment-contract) |
+| project・template・run・lease・保存 schema・durability | `statefile` | [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](details/statefile.md#phase-19-state-contract) |
+| 成果物登録・重複排除・検証・保持・回収・比較 | `archive` | [`docs/details/archive.md` 詳細本文責務 Phase 19 成果物契約](details/archive.md#phase-19-artifact-contract) |
+| 利用者・role・環境 grant・承認者・secret・audit | `security` | [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](details/security.md#phase-19-security-contract) |
+| endpoint・request / response・JSON log / metrics | `api` | [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](details/api.md#phase-19-api-contract) |
+| SDK method・transport 接続 | `sdk` | [`docs/details/sdk.md` 詳細本文責務 Phase 19 SDK 接続](details/sdk.md#phase-19-sdk-contract) |
+| view・操作・DOM・非同期表示 | `ui` | [`docs/details/ui.md` 詳細本文責務 Phase 19 管理画面](details/ui.md#phase-19-ui-contract) |
+| CLI・静的 package 接続 | `admin` | [`docs/details/admin.md` 詳細本文責務 Phase 19 管理クライアント](details/admin.md#phase-19-admin-contract) |
+| provenance・署名・SBOM・公開前検証 | `release` | [`docs/details/release.md` 詳細本文責務 Phase 19 Release 検証](details/release.md#phase-19-release-contract) |
+| Release 受入・trust root・worker 環境受入 | `setup` | [`docs/details/setup.md` 詳細本文責務 Phase 19 環境受け入れ](details/setup.md#phase-19-setup-contract) |
+| 任意 Commit Status への結果接続 | `commitstatus` | [`docs/details/commitstatus.md` 詳細本文責務 Phase 19 結果通知](details/commitstatus.md#phase-19-commitstatus-contract) |
+| 管理画面の視覚配置 | デザイン責務 | [`docs/DESIGN.md` デザイン責務 Phase 19 管理画面](DESIGN.md#phase-19-admin-visual-contract) |
+| 本番同等の実行・配備・復旧検証 | 本番検証詳細本文責務 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 19 検証](details/production-validation.md#phase-19-production-validation-contract) |
+
+fixture・受け入れ証跡への接続は [横断テスト証跡共通入口](#cross-test-evidence-route) の Phase 19 策定対象を参照する。正式 fixture / checker / workflow / target path の所在確認は [`docs/DOCUMENT_INDEX.md` 文書・実装ファイル所在の索引責務 Phase 19 所在](DOCUMENT_INDEX.md#phase-19-artifact-location) を参照する。
 
 <a id="phase-20-inhouse-iac-entry"></a>
 **Phase 20 内製 IaC 参照：**

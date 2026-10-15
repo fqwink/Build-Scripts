@@ -1,5 +1,24 @@
 # Adlaire CI — Security 詳細仕様
 
+<a id="phase-19-security-contract"></a>
+**Phase 19 利用者・権限策定契約：**
+
+本節の owner は `security` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。project と環境の保存形式は [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](statefile.md#phase-19-state-contract)、承認対象への結付けと消費時再照合は [`docs/details/runner.md` 詳細本文責務 配備・承認・復旧](runner.md#phase-19-deployment-contract) が所有する。
+
+| 権限対象 | 判定境界 |
+|----------|----------|
+| identity | 個人の user ID、service identity、worker identity を区別する。共有ログインを複数人承認の証拠にしない。無効化・失効を承認消費時と job 割当時にも確認する。 |
+| project role | `viewer`、`operator`、`approver`、`project-admin` を詳細化対象とする。viewer は読取、operator は実行操作、approver は承認、project-admin は project 設定管理を基本責務とし、未定義の操作を許可しない。環境権限は別の明示 grant を必要とする。 |
+| environment grant | project role だけで本番配備・承認を許可しない。対象 environment、操作、subject の対応を照合する。project-admin に自動承認権限を付けない。 |
+| 複数人承認 | 要求者、成果物を変更できる主体、承認者の分離条件と必要人数を設定単位で判定する。同一人物の複数 session / token を別承認者として数えない。 |
+| secret | 定義と計画は secret ID / version 参照を持ち、値を持たない。worker には割当 job に必要な値だけを渡す。plan、cache、artifact、API error、通常 audit へ値を保存しない。mask 対象は runner の保存前処理へ渡す。 |
+| project 隔離 | run、artifact、log、統計、cache、worker 操作ごとに対象 project を検証する。ID を知っていること、別 endpoint で認証済みであることを認可にしない。 |
+| audit | 配備・承認・権限変更・worker 管理の要求者、対象参照、判定、結果を接続する。必須 audit を開始前に確定できない操作は外部副作用を開始しない。終了時 audit 失敗は黙殺せず、処理結果と保存失敗を分けて呼出元へ返す。 |
+
+**詳細化を残す判断対象：** user / service / worker credential の形式・失効手順、既存 single-user からの移行、permission の閉じた一覧と role 対応表、二者分離の設定 schema、secret version の更新・破棄・mask 境界、audit record / failure code を本節で固定する。外部認証 provider の導入、既存の session 永続化禁止の緩和は本節の採用範囲に含めない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
 ---
 
 <a id="0-責務境界"></a>

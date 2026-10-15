@@ -1,5 +1,37 @@
 # Adlaire CI — Fixture 詳細仕様
 
+<a id="phase-19-cicd-evidence-contract"></a>
+**Phase 19 内製 CI/CD 検証策定契約：**
+
+本節は fixture 証跡責務として、Phase 19 の受け入れ設計を所有する。対象の現在状態は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope)、owner 詳細本文への入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 owner 対応](../DETAIL_INDEX.md#phase-19-owner-route) を参照する。以下は fixture を詳細化する対象であり、実在 fixture、実行済み結果、既存 Phase の closure record ではない。
+
+| 設計 case | 入力 / 操作 | 必要な oracle と異常系 |
+|-----------|-------------|-------------------------|
+| `P19-PLAN` | 未知 key、型違反、重複 ID、循環、未登録 executor、展開超過を含む計画生成。 | 正規化結果と拒否位置を比較し、job / 配備 / 承認消費の副作用がないことを確認する。 |
+| `P19-EVENT` | 同一イベントの再送、時刻境界、path 取得失敗、古い queue の集約。 | run と要求識別子を照合し、二重受付と「取得不能を変更なし」の誤判定を検出する。 |
+| `P19-DAG` | 必須 / optional 依存、matrix、上限、fail-fast を組み合わせる。 | 起動順・非起動集合・最大同時数を観測し、集約文字列だけで判定しない。 |
+| `P19-RETRY` | 一時失敗、恒久失敗、上限到達、再起動後の再開。 | source / 定義 / 成果物の同一性、attempt の区別、再利用した完了 job の実体を照合する。 |
+| `P19-CANCEL` | queue と実行中の取消、子 process、停止無視、cleanup 失敗。 | process tree の終了・待機・log drain・残存 file を確認し、state flag の変更だけを成功にしない。 |
+| `P19-WORKER` | drain、切断、lease 失効、再割当後の古い結果。 | 現行割当だけが結果を commit し、遅延した worker が状態を上書きできないことを確認する。 |
+| `P19-ISOLATION` | capability 不足、CPU / memory / disk / process / output 超過、禁止通信。 | 起動拒否と各制限の実効性を分けて観測する。別 job の workspace・secret を参照できないことを確認する。 |
+| `P19-CACHE` | 条件変更、別 project、改竄 entry、同時書込、TTL / 容量回収。 | key と保存 bytes を照合し、誤 hit、secret 混入、使用中 entry の削除を検出する。 |
+| `P19-ARTIFACT` | 登録、再取得、展開、比較、配備と GC の競合。 | digest・展開 bytes・pin 集合を照合し、traversal と復旧対象消失を検出する。 |
+| `P19-APPROVAL` | 対象変更、期限切れ、同一人物の複数 token、権限失効。 | 承認無効化と配備非開始を確認し、画面上の button 制御だけで判定しない。 |
+| `P19-DEPLOY` | 古い通常配備、明示 rollback、段階失敗、切替失敗、health 不良。 | 配備先の file digest、通信先、環境世代、復元先を観測し、受付と実体復旧の成功を区別する。 |
+| `P19-DURABILITY` | 必須 write / fsync の各失敗点、process crash、容量不足。 | 再起動後の状態・外部副作用・保護参照を比較し、二重 commit、誤成功、推測復旧を検出する。 |
+| `P19-ACCESS` | 別 project の ID、role / environment grant 不足、利用上限到達。 | API / SDK / UI / CLI の結果と副作用非発生を対応付け、log / artifact / 統計の越境を検出する。 |
+| `P19-LOG-UI` | 大量 log、secret 境界分割、欠落 cursor、view 切替後の遅延応答。 | 保存前 mask、保持量、cursor、表示対象、poll 停止を実測する。メモリ無制限の実装を短い log の成功で許可しない。 |
+| `P19-RELEASE` | 正常署名、未知鍵、改竄 manifest / asset、SBOM 不一致、旧版更新。 | 独立 test vector と再取得 bytes を比較し、検証未実行の真値化と cohort 混在を検出する。 |
+| `P19-STATUS` | 古い attempt の遅延通知、送信失敗、source / tested SHA 不一致。 | 通知先・順序と実行結果を照合し、製品通知を開発 required check と混同しない。 |
+
+**現行経路からの再検証対象：** [`components/api/api.go`](../../components/api/api.go) の `handleHistoryPath` における rollback 受付と、[`components/runner/runner.go`](../../components/runner/runner.go) の `runPipeline` における stdout / stderr 保持を上記 `P19-DEPLOY` / `P19-LOG-UI` へ接続する。前者は復元前の成功記録、後者は終了後 trim の前に全量保持する経路を source 読取で確認した対象であり、今回実装修正・実行検証をした記録ではない。既存 gate の成功だけでこれらの受け入れを満たしたとしない。
+
+case ごとに、正常、上下限、部分失敗、cleanup 失敗、再開、並行 interleaving を対象 owner の固定値へ結び付ける。各制御を除去・反転した mutation が対応 oracle で失敗すること、失敗箇所を識別する diagnostics、fixture 自体の正例・負例を用意する。定数の success counter を closure の oracle として代用しない。
+
+本番同等の環境選定・故障注入範囲は [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 19 検証](production-validation.md#phase-19-production-validation-contract)、共通証跡形式は [test evidence package 記録先固定契約](#test-evidence-package-record-location-contract)、[test gap inventory record 固定契約](#test-gap-inventory-record-contract)、[test verification closure record set 固定契約](#test-verification-closure-record-set-contract) を参照する。開発 Actions の定義・実行証跡は [開発 Actions 証跡固定契約](#development-actions-evidence-contract) へ接続し、製品側実行証跡と分ける。
+
+**詳細化を残す判断対象：** 正式 fixture root、manifest、各 input / fake / expected / effects / security expected、assertion ID、test artifact / checker 実行入口、mutation 集合、race trigger、実機能力不足時の record、required workflow / job / gate、記録先と閉包条件を本節で固定する。新 fixture / checker / workflow は今回作成せず、既存 Phase 12 から Phase 18 の記録を Phase 19 の実行証跡へ転用しない。
+
 [`docs/details/fixture.md`](fixture.md) は、[`docs/SPEC.md` 責務文書構成](../SPEC.md#document-responsibility-map) で割り当てられた fixture 証跡責務として、fixture 入力、expected、fake、effects、assertion、実装検証証跡、acceptance checklist、差し戻し条件だけを扱う。owner / collaborator 境界は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) を参照し、owner component 別詳細本文を再定義しない。
 
 ---

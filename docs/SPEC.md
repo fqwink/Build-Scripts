@@ -44,7 +44,7 @@
 | 詳細仕様入口責務 | [`docs/DETAIL_INDEX.md`](DETAIL_INDEX.md) | **どこから読むか** | 詳細仕様参照入口、共通固定値、owner 対応表、collaborator 境界参照入口。 |
 | owner component 別詳細本文責務 | [`docs/details/*.md`](details/)。ただし [`docs/details/fixture.md`](details/fixture.md) と [`docs/details/production-validation.md`](details/production-validation.md) を除く。 | **どのように実装するか** | owner component 別の入出力、状態、処理順序、異常系、検証条件。 |
 | fixture 証跡責務 | [`docs/details/fixture.md`](details/fixture.md) | **何で検証するか** | fixture、expected、fake、実装検証証跡、acceptance checklist、差し戻し条件。 |
-| 本番検証詳細本文責務 | [`docs/details/production-validation.md`](details/production-validation.md) | **本番同等で何を検証するか** | ConoHa VPS 試験本番運用、本番環境同等検証、本番検証、VPS simulation、provider target、opaque environment identity、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、VPS Pull Bootstrap、bootstrap session、運用証跡、fixture 証跡への接続条件。 |
+| 本番検証詳細本文責務 | [`docs/details/production-validation.md`](details/production-validation.md) | **本番同等で何を検証するか** | ConoHa VPS 試験本番運用、本番環境同等検証、本番検証、VPS simulation、provider target、opaque environment identity、credential / SSH 入力境界、試験本番運用窓・停止条件、destructive operation 禁止境界、運用中バグ修正順序、VPS Pull Bootstrap、bootstrap session、内製 CI/CD 運用検証、運用証跡、fixture 証跡への接続条件。 |
 | デザイン責務 | [`docs/DESIGN.md`](DESIGN.md) | **どう見せるか** | 生成静的 Web サイトと標準管理 UI のデザイン関係。 |
 | 文書・実装ファイル所在の索引責務 | [`docs/DOCUMENT_INDEX.md`](DOCUMENT_INDEX.md) | **どこにあるか** | 文書、実装ファイル、testdata、未作成 path の所在。 |
 | 利用入口責務 | [`README.md`](../README.md) | **どう始めるか** | 利用者向け入口、概要、参照先。 |
@@ -625,6 +625,11 @@ Phase 19 は内製 CI 強化と内製 CD を同一 Phase として扱う。Phase
 
 Phase 19 と Phase 20 の仕様全般策定は Phase 18 完了前でも行える。ただし、Phase 19 または Phase 20 の実装着手、実装 PR、完了判定は、[`docs/ROADMAP.md`](ROADMAP.md) 状態・計画責務で active Phase として明示され、[`docs/SPEC.md` ポリシー責務 §0f](SPEC.md#policy-phase-unit) の active Phase 条件を満たすまで禁止する。
 
+<a id="direction-inhouse-cicd"></a>
+**内製 CI/CD 拡張方針：**
+
+内製 CI/CD は、source から配備・復旧までの追跡性を高め、project と実行対象が増えた場合の運用負荷と障害復旧時間を減らすために拡張する。採用範囲と順序は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope)、責務別の入口は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 内製 CI/CD 強化参照](DETAIL_INDEX.md#phase-19-inhouse-cicd-entry)、必須安全境界は [`docs/SPEC.md` ポリシー責務 §0i](SPEC.md#policy-inhouse-cicd) を参照する。
+
 <a id="direction-management-tools"></a>
 
 ## 6. 管理ツール方針
@@ -1071,6 +1076,24 @@ coverage は参考指標に限る。line coverage、branch coverage、function c
 GitHub Actions 障害、runner 不足、ネットワーク障害をローカル成功で正式合格へ置換してはならない。例外は、対象必須項目、理由、同じ要求を満たす代替証跡、責任者、期限、復旧・再実行条件、完了可否への影響について事前に `承認` を得た場合に限る。代替が要求を満たさない場合、承認の有無にかかわらず対象完了判定は未完了とする。secret 境界、未信頼コードの隔離、SHA 一致、変更履歴 artifact 禁止を例外で解除してはならない。
 
 本節の文書策定完了と運用適用完了は別判定とする。運用適用では、実在 workflow、required check / 保護設定、使用する runner、権限、artifact、実行証跡を照合し、適用差分を既存 Pull Request に記録して閉じる。未設定・未検証項目が残る段階を本節準拠、運用適用済み、または新基準による正式合格として報告してはならない。workflow / runner / GitHub 設定の適用変更は、文書改訂の承認だけで実行しない。
+
+<a id="policy-inhouse-cicd"></a>
+
+## 0i. 内製 CI/CD 安全境界契約
+
+本節は内製 CI/CD 拡張の設計判断に適用する。詳細化対象は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope)、実装可否は [`docs/SPEC.md` ポリシー責務 §0a](#policy-spec-maturity)、[§0d](#policy-spec-freeze)、[§0f](#policy-phase-unit) を正本とする。本節および各 owner の Phase 19 策定本文は、現行の builder 専用経路、oneshot 起動、既存 API、既存状態 schema、Release asset 一覧を暗黙に置換するものではない。新しい経路の起動を許可する場合は、既存契約との適用区分、移行、復旧を詳細化してから凍結する。
+
+| 判断対象 | 必須境界 |
+|----------|----------|
+| 計画と実行 | 入力検証と実行計画の確定前に、ジョブ起動、配備、承認消費を行ってはならない。プレビューは実行予約ではなく、実行時に対象 revision と権限を再確認する。 |
+| 実行方式 | 汎用ジョブ化は追加 executor の採用判断として扱う。未登録の実行方式、任意 shell、外部 plugin を既存経路へ混入させてはならない。登録条件と正規化済み argv を runner 正本で固定する。 |
+| 隔離 | 利用者コードの実行に必要な OS 隔離、資源制限、秘密情報・通信の境界を確認できない環境では実行を拒否する。Go の使用、専用 directory、runner label だけを sandbox の証拠にしない。 |
+| 成功確定 | API 受付、queue 登録、command 終了、転送終了だけで配備・復旧成功を確定してはならない。実体の整合、切替、health、必須状態保存の結果を判断へ含める。 |
+| 不確定結果 | 通信断・process crash により外部副作用の成否が不明な場合、無条件再送で解消してはならない。照合可能な操作 ID と世代を用い、照合不能なら後続配備を停止する。外部操作全体の exactly-once を保証したと表記しない。 |
+| 配備方式 | 無停止、旧新版併存、一部利用者への先行配備は、通信切替の管理主体、必要容量、health、切戻しを固定できる構成だけで扱う。構成条件を満たさない環境へ自動で代替方式を選ばない。 |
+| 証明の範囲 | digest 一致、署名、SBOM、再現性はそれぞれ別の検証対象とする。一つの成功で他の成功、脆弱性不存在、第三者基準への適合を推定してはならない。 |
+
+開発自動化との分離は [`docs/SPEC.md` 方針責務 §5.3](#sec-5-3)、依存採否は [方針責務 §4.1](#sec-4-1) と [ポリシー責務 §4](#policy-dependencies)、Node 適合は [ポリシー責務 §4a](#policy-node-runtime-ban)、変更記録は [変更履歴 artifact 禁止契約](#policy-change-history-artifact-ban) を参照する。本節をこれらの例外許可として使用してはならない。
 
 <a id="policy-versioning"></a>
 

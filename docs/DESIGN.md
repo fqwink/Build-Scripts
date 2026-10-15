@@ -1,5 +1,21 @@
 # Adlaire CI Web デザイン仕様
 
+<a id="phase-19-admin-visual-contract"></a>
+**Phase 19 管理画面視覚策定契約：**
+
+本節は標準管理 UI の新規 view に関するデザイン本文である。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope)、操作・DOM・取得状態は [`docs/details/ui.md` 詳細本文責務 Phase 19 管理画面](details/ui.md#phase-19-ui-contract) を参照する。生成静的 Web サイトの theme 変更は対象にしない。
+
+| 視覚面 | 策定する配置・表現 |
+|--------|--------------------|
+| 基本配置 | 既存 [標準管理 UI 視覚契約](#admin-ui-visual-contract) の token・余白・focus・responsive を使う。project 選択と現在の対象を上部に保ち、一覧から詳細へ移っても対象を見失わない構成とする。 |
+| run / DAG | 一覧を主表示とし、依存図は同じ job の補助表示とする。待機理由、開始・終了、結果を同じ列順で比較できるようにする。 |
+| log | 専用領域内で scroll し、欠落位置・切詰め・終端を本文と区別する。新着で行の選択や閲覧位置を強制移動しない。 |
+| environment | 現在配備と要求中の配備を隣接比較し、artifact digest と承認対象を省略表示から確認できる形にする。破壊的操作を通常の再取得操作から分離する。 |
+| 操作部品 | mode は tabs / segmented control、真偽値は checkbox / toggle、数値は input、選択肢は select を用いる。tool command は識別可能な icon と accessible name を持たせ、外部 icon package を追加せず browser 標準の描画手段で詳細化する。 |
+| 狭い画面 | 情報の重なりや本文の不可視切詰めを避け、比較表は内部 scroll または列の再配置で扱う。状態表示は色だけに依存しない。 |
+
+**詳細化を残す判断対象：** 各 view の grid / table 寸法、依存図と一覧の切替、固定列、log 領域の高さ、icon と tooltip、長い識別子の表示、viewport ごとの配置を本節で確定する。寸法・色を UI 詳細本文へ再掲しない。
+
 **対象 surface：** `adlaire-ci-build` が生成する静的 Web サイトと [`admin/index.html`](../admin/index.html) の標準管理 UI
 **実装 artifact：** 生成静的 Web サイトは [`components/builder/`](../components/builder/)、標準管理 UI は [`admin/index.html`](../admin/index.html)
 **デザインシステム正本 revision：** [Adlaire Design System `3c51349791883b8b7dd599a569b63c11779dfa88`](https://github.com/fqwink/Adlaire-Design-System/tree/3c51349791883b8b7dd599a569b63c11779dfa88)

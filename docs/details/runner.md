@@ -1,5 +1,47 @@
 # Adlaire CI — Runner 詳細仕様
 
+<a id="phase-19-runner-contract"></a>
+**Phase 19 実行・配備策定契約：**
+
+本節は `runner` が所有する拡張設計本文である。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、策定対象の現在状態は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。既存の [ビルドパイプライン実行](#runner-build-pipeline-execution)、[ビルド依存チェーン](#sec-27-34)、[ビルド優先度キュー](#sec-27-35) を汎用ジョブ実装済みの根拠にしない。
+
+| 判断対象 | 入力 / 処理 / 結果 |
+|----------|--------------------|
+| 定義・テンプレート展開 | project、source SHA、定義 revision、型付き入力を受け、保存済みテンプレートの指定 revision を展開する。未知 key、型違反、重複 job ID、未知依存、循環、未登録 executor、展開上限超過を拒否し、実行副作用を発生させない。定義保存と識別子は [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](statefile.md#phase-19-state-contract) を参照する。 |
+| 実行計画 | 展開済み job、依存辺、選択条件、matrix、必要 capability、対象環境、成果物入力を確定する。定義順を同順位の順序基準とし、matrix 軸と値の定義順で展開する。計画の元 bytes の digest を固定し、開始後に最新設定へ読み替えない。 |
+| executor 登録 | 登録単位は実行方式 ID、実行ファイル、許可 argv、作業領域、環境変数、必要 capability、終了判定とする。builder、Go test / vet / build、Deno check、成果物検証、配備を登録対象として詳細化する。名称だけの登録を実行許可にせず、方式ごとの exact argv と異常系が閉じるまで採用しない。 |
+| 条件評価 | branch、tag、変更 path、定期時刻を同じ source snapshot に対して評価する。変更一覧を取得できない状態を「変更なし」としない。定期イベントは予定時刻で識別し、再起動時の追いつき範囲を固定する。古い実行の集約は未開始 job を対象とし、配備開始済みの処理を黙って破棄しない。 |
+| DAG・matrix | 必須依存の失敗・cancel により依存 job を起動しない。optional failure と fail-fast は定義上で区別する。fail-fast は未開始 job を停止対象とし、起動済み job の cancel は明示された方針で行う。queue、project、worker の各上限を満たした場合だけ割り当てる。 |
+| 再実行・再開 | run と attempt を分け、再実行時に新しい attempt を作る。再利用できるのは同じ source、計画、実行環境と検証済み成果物に結び付く完了 job だけとする。配備の途中状態は再利用済み成功にせず、環境状態を照合してから処置する。 |
+| retry | 一時的な通信・割当失敗と、入力・権限・digest 不一致を分類する。後者を自動 retry しない。回数と待機上限を有限にし、再試行で source、定義、成果物を変更しない。再試行の各結果と最終結果を分ける。 |
+| cancel | queue 内では未割当を確認して取消し、実行中は新規割当を止めて対象 process tree へ停止要求を送る。終了待ち、強制停止、log drain、workspace cleanup の結果を取得してから終端化する。状態 flag の変更だけで cancel 成功を返さない。 |
+| worker | capability、登録 identity、health、割当世代、lease、有効な job を照合する。drain は新規割当だけを停止し、実行中 job は継続する。切断で lease が失効した後の結果は現在の job 状態へ採用しない。別 worker への再投入前に外部副作用を照合する。 |
+| workspace・資源 | attempt / job ごとに専用領域を割り当てる。CPU、memory、wall time、process 数、disk、出力量、通信先の条件を実行前に確認し、制限違反と cleanup 失敗を別結果で記録する。隔離機構は [`docs/details/setup.md` 詳細本文責務 Phase 19 環境受け入れ](setup.md#phase-19-setup-contract) と接続する。 |
+| job cache | source inputs、展開済み定義、executor / toolchain、OS / arch、許可された環境入力を key へ含める。secret 値を key や cache へ保存しない。project と信頼境界を分離し、entry digest 不一致は miss として隔離する。書込競合、容量、TTL、使用中参照を評価してから回収する。既存 builder のページ変換 cache とは別機能とする。 |
+| 実行中 log | stdout / stderr を実行中に drain し、secret を mask してから上限付き保存へ渡す。切詰め・欠落位置を残し、全量を保持して終了後に trim する方式を採用しない。取得境界は [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](api.md#phase-19-api-contract) を参照する。 |
+| 通知・統計入力 | queue 待機開始、実行開始、終了、取消、承認待ち、配備停止を識別して出力する。再送を同一イベントと対応付け、通知失敗で実行結果を反転しない。成功率の母数、retry、skip、cancel は別に集計できる結果を保持する。 |
+
+<a id="phase-19-deployment-contract"></a>
+**配備・承認・復旧の処理境界：**
+
+配備要求は project、environment、成果物 digest、設定 digest、元 run / attempt を指定する。成果物選定後は環境間の昇格で再ビルドせず、同じ内容を使う。成果物の検証・展開・保持は [`docs/details/archive.md` 詳細本文責務 Phase 19 成果物契約](archive.md#phase-19-artifact-contract)、承認者の判定は [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](security.md#phase-19-security-contract) に渡す。
+
+1. 現在の環境世代、配備済み digest、対象構成から変更計画を作成する。権限・禁止時間帯・必要容量を検査する。
+2. 承認は project、environment、成果物 digest、設定 digest、配備計画 digest、有効期限へ結び付ける。どれかが変わった場合は承認待ちへ戻す。既存のビルド開始前承認と混用しない。
+3. 環境単位の排他取得後に世代を再照合する。古い通常配備を拒否する。古い成果物への明示 rollback は、新しい操作 ID と環境世代を持つ要求として扱う。
+4. staging、転送後検証、切替前検証、切替、health、結果保存を順に実行する。いずれかの結果が不確定なら後続の同環境配備を止める。
+5. rollback は選択した保持済み成果物を実際に復元し、切替と health を確認して終端化する。復元前の `success` 記録、受付だけでの復旧完了表示を行わない。復旧失敗は元の配備失敗とは別に保持する。
+
+| 配備方式 | 固定する動作と前提 |
+|----------|--------------------|
+| 順次 / 段階配備 | 定義順の対象 group ごとに検証し、失敗した段階から次 group を開始しない。成功済み group と失敗 group を区別して照合・復旧する。 |
+| 旧新版併存・切替 | 独立した配置先と通信切替機構を持ち、切替前後の health と戻し先を検証できる場合に限る。既存ファイル上書きを blue/green と表記しない。 |
+| 一部への先行配備 | 対象集合または traffic 比率を明示し、観測窓と停止閾値を満たすまで拡大しない。routing を制御できない構成で canary を有効にしない。 |
+
+**詳細化を残す判断対象：** executor ごとの exact argv / 許可入力、条件式の文法、matrix と各資源の数値上限、schedule の追いつき規則、retry 時間列、worker transport / 登録 / 起動主体、lease の時間条件、cache 保存形式、環境切替 adapter、health 閾値と timeout、停止・補償の固定 error を本節で確定するまで、新経路を実行可能契約として扱わない。既存 oneshot と受信待受制限を実装判断で緩和しない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
 runner 拡張機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.2](../DETAIL_INDEX.md#0i2-runner--ci-実行) を入口とする。runner の処理順と副作用は [`docs/details/runner.md`](runner.md)、状態 schema は [`docs/details/statefile.md`](statefile.md)、archive 実体は [`docs/details/archive.md`](archive.md)、Commit Status は [`docs/details/commitstatus.md`](commitstatus.md)、API / SDK / UI 接続は各 owner 詳細本文、検証証跡は [`docs/details/fixture.md`](fixture.md) を正本とする。
 
 ---

@@ -1,5 +1,30 @@
 # Adlaire CI — SDK 詳細仕様
 
+<a id="phase-19-sdk-contract"></a>
+**Phase 19 SDK 接続策定契約：**
+
+本節の owner は `sdk` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope)、HTTP 境界は [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](api.md#phase-19-api-contract) を参照する。次表は新規 public method の設計対応であり、既存 class 宣言の public method 集合を変更しない。
+
+| API 操作 ID | SDK method 案 |
+|-------------|----------------|
+| `project-list` | `listCIProjects(query)` |
+| `definition-read` / `definition-write` | `getCIDefinition(projectId)` / `setCIDefinition(projectId, request)` |
+| `plan` | `planCIRun(projectId, request)` |
+| `run-list` / `run-start` / `run-read` | `listCIRuns(projectId, query)` / `startCIRun(projectId, request)` / `getCIRun(projectId, runId)` |
+| `run-cancel` / `run-retry` | `cancelCIRun(projectId, runId, request)` / `retryCIRun(projectId, runId, request)` |
+| `job-log` | `getCIJobLog(projectId, runId, jobId, query)` |
+| `worker-list` / `worker-drain` | `listCIWorkers(projectId, query)` / `drainCIWorker(projectId, workerId, request)` |
+| `artifact-list` / `artifact-compare` | `listCIArtifacts(projectId, query)` / `compareCIArtifacts(projectId, request)` |
+| `deployment-plan` / `deployment-start` | `planCIDeployment(projectId, request)` / `startCIDeployment(projectId, request)` |
+| `deployment-read` / `deployment-approve` / `deployment-rollback` | `getCIDeployment(projectId, deploymentId)` / `approveCIDeployment(projectId, deploymentId, request)` / `rollbackCIDeployment(projectId, deploymentId, request)` |
+| `metrics-read` | `getCIMetrics(projectId, query)` |
+
+SDK は request を API 契約どおりに渡し、未知項目を削除して入力不正を隠さない。受付応答は加工せず返し、成功への変換、job の代替実行、timeout 時の自動再送をしない。要求識別子を SDK 内部で黙って更新しない。log は有限 JSON 取得として返し、SDK 内で polling / reconnect / cursor 巻戻しを開始しない。既存 error / token 消去・transport 契約と、復帰後の明示的な再取得を接続する。
+
+**詳細化を残す判断対象：** 引数の全型・省略規則、API 検査との責任分担、method 順、有限 log 応答の扱い、利用者・権限・template・worker 再開の method、error と abort の正負例を本節で確定する。HTTP schema を本節へ再掲しない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
 SDK が呼び出す API endpoint の method、path、request、response、error、認証要否は [`docs/details/api.md` 詳細本文責務 §22.0e](api.md#sec-22-0e) を参照する。[`docs/details/sdk.md`](sdk.md) 詳細本文責務は SDK 側の class、method、引数変換、transport、error、stream、token 破棄を定義する。
 
 ---

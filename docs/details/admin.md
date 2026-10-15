@@ -1,5 +1,24 @@
 # Adlaire CI — Admin 詳細仕様
 
+<a id="phase-19-admin-contract"></a>
+**Phase 19 管理クライアント策定契約：**
+
+本節の owner は `admin` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope)、server 境界は [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](api.md#phase-19-api-contract) を参照する。
+
+| CLI 操作群の策定対象 | client 固有の境界 |
+|----------------------|--------------------|
+| project / definition / plan | project を明示し、JSON 入力を API へ渡す。plan の表示だけでは run を開始しない。 |
+| run / cancel / retry / logs | run と attempt を識別して要求する。非同期受付と終端結果の終了条件を別にし、待機の有無を明示する。 |
+| worker / artifact | drain、保持、比較の対象 ID と project を送る。remote filesystem を CLI が直接変更しない。 |
+| deployment / approval / rollback | 計画と成果物参照を明示する。対話確認だけを server 側承認の代替にせず、要求識別子を保った再照会を可能にする。 |
+| user / grant / quota / metrics | server の認可結果を保持し、CLI 独自の権限判定や再集計を加えない。 |
+
+既存 [`docs/details/admin.md` 詳細本文責務 A7 CLI 管理クライアント](#sec-a7) の token 入力・argv safety・stdout / stderr の境界を使う。新 command の exact token、option、JSON schema、timeout、終了 code、待機中断の結果は本節で詳細化してから command 一覧へ追加する。未登録 command を shell や汎用 HTTP wrapper として実行しない。
+
+静的配布は `ui` / `sdk` owner が確定した artifact を package へ渡す接続だけを所有する。CLI 追加を理由に管理 UI archive へ build tool、runtime、secret、状態 file を同梱しない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
 ---
 
 <a id="0-責務境界"></a>

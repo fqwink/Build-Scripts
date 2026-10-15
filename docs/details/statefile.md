@@ -1,5 +1,28 @@
 # Adlaire CI — Statefile 詳細仕様
 
+<a id="phase-19-state-contract"></a>
+**Phase 19 保存境界策定契約：**
+
+本節の owner は `statefile` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。実行判断は [`docs/details/runner.md` 詳細本文責務 Phase 19 実行契約](runner.md#phase-19-runner-contract)、利用者・権限判断は [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](security.md#phase-19-security-contract) が所有する。
+
+| 保存対象 | 固定する情報と読書境界 |
+|----------|------------------------|
+| project / environment | project ID、environment ID、設定 revision、割当上限、環境世代、現在の配備参照を保持する。表示名を識別子へ流用しない。更新は期待 revision との一致確認後に行う。 |
+| definition / template | 型付き入力宣言、template revision、展開元 revision を保存する。更新は新 revision とし、過去 run が参照する revision を書き換えない。展開済み計画の確定 bytes に SHA-256 を付け、整形だけの変更も別 digest とする。 |
+| run / attempt / job | project ID、run ID、attempt 番号、job ID を別 field とする。source SHA、計画 digest、実行環境参照、結果参照を結ぶ。旧 build ID との対応を必要とする場合は明示 field とし、文字列の推測分解で変換しない。 |
+| worker / lease | worker identity、capability revision、job 割当、lease 世代、有効期限を保存する。結果書込には期待世代を要求し、更新済み世代との不一致では書き込まない。 |
+| request identity | project、操作種別、要求識別子、request digest、受付結果を接続する。同一識別子・同一内容は元の受付結果へ到達させ、異なる内容への使い回しは競合として拒否する。保持期限後の重複保証を無期限と表記しない。 |
+| approval / deployment | 承認対象参照、actor 参照、有効期限、環境の期待世代、配備段階、復旧先、失敗結果を保持する。承認判定と配備遷移の意味は runner と security の各正本を参照する。 |
+| artifact references | digest、project 所有、元 run / attempt、配備・復旧・実行中参照を保存する。archive owner の回収判断へ同一 revision の参照集合を渡す。 |
+| job cache metadata | project / trust partition、key、entry digest、作成・最終利用時刻、期限、size、使用中参照を保持する。key の計算は runner、保存内容の整合は保存 adapter の責務とする。 |
+| bounded log | stream ごとの位置、取得可能な先頭・末尾位置、欠落区間、mask 済み内容、終了状態を保持する。cursor を filesystem path として使用しない。 |
+
+保存更新は read / validate / compare revision / write / durable commit の境界を持たせる。単一 JSON の atomic write を、複数ファイルと外部配備全体の transaction と同一視しない。複数書込は復旧に必要な段階を先に記録し、起動時に一致確認できない要求は隔離して通常の割当・配備を停止する。read-only 照会で破損修復や schema migration を行わない。
+
+**詳細化を残す判断対象：** 各保存 path、全 key・型・enum・上限・初期値、run ID / attempt 採番、operation 保持期限、commit marker、fsync / lock の取得順、crash 時の各復旧分岐、旧状態からの移行と旧版への戻し可否を本節で固定する。既存の状態ファイル固定表へ、未確定の保存形式を許可済みとして混入させない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
 ---
 
 <a id="0-責務境界"></a>

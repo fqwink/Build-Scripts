@@ -1,6 +1,25 @@
 # Adlaire CI — 本番検証・VPS Pull Bootstrap 詳細仕様
 
-[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、Phase 17 の ConoHa VPS 試験本番運用と Phase 18 の VPS Pull Bootstrap に関する、provider target、minimum plan class、opaque environment identity、credential / SSH 入力境界、Phase 17 試験本番運用窓、Phase 18 bootstrap session 停止条件、destructive operation 禁止境界、運用中バグ修正順序、bootstrap session、bootstrap 証跡、fixture 証跡への接続条件だけを定義する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
+<a id="phase-19-production-validation-contract"></a>
+**Phase 19 内製 CI/CD 本番同等検証策定契約：**
+
+本節は本番検証詳細本文責務として、内製 CI/CD の運用構成・故障注入・復旧確認の設計を所有する。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope)、実行・配備の実装契約は [`docs/details/runner.md` 詳細本文責務 Phase 19 実行契約](runner.md#phase-19-runner-contract) と [配備・承認・復旧](runner.md#phase-19-deployment-contract) を参照する。ここでの検証設計は VPS 操作の実行承認ではない。
+
+| 検証面 | 環境前提 / 観測する結果 |
+|--------|-------------------------|
+| topology | 既存の CI/CD server と site server、または single-node の区分を入力で固定する。worker と配備先の identity を分け、台数だけで隔離・無停止性を判定しない。 |
+| 実行能力 | OS / arch、toolchain、隔離、資源制限、process tree 終了、通信制限を観測する。既存 bootstrap 成功を新しい worker capability の実証へ流用しない。 |
+| worker 故障 | 割当前、実行中、結果送信中の切断を分ける。lease 失効後の遅延結果、復帰時の二重実行、残存 process / workspace を観測する。 |
+| 配備故障 | 転送前、転送後検証、切替、health、状態保存の各段階で停止する。部分配備状態と復旧 bytes、現在環境世代を照合する。 |
+| routing | 旧新版切替 / 先行配備は、その構成で制御可能な通信切替と観測窓を明示した場合だけ検証する。切替機構がない場合は未検証として扱い、順次転送の成功で置換しない。 |
+| durability / 容量 | state / log / artifact 保存の容量不足、write / fsync 失敗、再起動を隔離環境で注入し、誤成功、参照消失、復旧対象の回収がないことを観測する。 |
+| 更新互換性 | Release cohort と trust root、旧設定、進行中操作、保持済み成果物を固定し、update / rollback の受入結果を確認する。customer data の破壊を伴う試験は行わない。 |
+
+credential と SSH 接続の検証入力は既存 [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 17 secret 入力境界](#phase-17-secret-input-boundary) へ接続し、証跡には opaque な環境参照だけを渡す。実 credential や IP を fixture expected へ固定しない。provider resource の作成・削除・変更、実 customer traffic の切替、production secret の持込みを本節から許可しない。
+
+**詳細化を残す判断対象：** Phase 19 の検証 mode / session、許可環境、停止条件、health と観測窓、障害注入点、cleanup、実機と simulation の必要件数、環境不足時の判定を本節で固定する。fixture schema・記録先・受け入れ assertion は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
+[`docs/details/production-validation.md`](production-validation.md) は、本番検証詳細本文責務として、Phase 17 の ConoHa VPS 試験本番運用、Phase 18 の VPS Pull Bootstrap、[Phase 19 内製 CI/CD 本番同等検証](#phase-19-production-validation-contract) の運用入力・観測境界を定義する。Phase 17 / Phase 18 の provider target、minimum plan class、opaque environment identity、credential / SSH 入力境界、試験本番運用窓、bootstrap session 停止条件、destructive operation 禁止境界、運用中バグ修正順序、bootstrap 証跡は各節を参照する。状態、Phase、実装可否は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務、方針とポリシーは [`docs/SPEC.md`](../SPEC.md) 方針責務・ポリシー責務、参照入口は [`docs/DETAIL_INDEX.md`](../DETAIL_INDEX.md) 詳細仕様入口責務、fixture schema と記録先は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務、実在 path は [`docs/DOCUMENT_INDEX.md`](../DOCUMENT_INDEX.md) 文書・実装ファイル所在の索引責務を正本とする。
 
 <a id="phase-17-responsibility-boundary"></a>
 **0. 責務境界：**

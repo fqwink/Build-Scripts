@@ -1,5 +1,36 @@
 # Adlaire CI — API 詳細仕様
 
+<a id="phase-19-api-contract"></a>
+**Phase 19 API 接続策定契約：**
+
+本節は `api` が所有する新規操作境界の設計本文である。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。次表の path は既存 route の別名ではなく、新規接続の策定対象であり、既存 endpoint / SDK 対応表へ実装済みとして加えない。
+
+| 操作 ID | method / path 案 | owner 呼出境界 |
+|---------|-------------------|----------------|
+| `project-list` | `GET /api/cicd/projects` | security が許可した project の statefile 読取。 |
+| `definition-read` / `definition-write` | `GET` / `PUT /api/cicd/projects/{project_id}/definition` | statefile の revision 付き読取 / 更新。 |
+| `plan` | `POST /api/cicd/projects/{project_id}/plan` | runner の計画生成。実行要求を生成しない。 |
+| `run-list` / `run-start` | `GET` / `POST /api/cicd/projects/{project_id}/runs` | runner の検索 / 開始受付。 |
+| `run-read` | `GET /api/cicd/projects/{project_id}/runs/{run_id}` | attempt、job、配備参照の読取。 |
+| `run-cancel` / `run-retry` | `POST /api/cicd/projects/{project_id}/runs/{run_id}/cancel` / `POST /api/cicd/projects/{project_id}/runs/{run_id}/retry` | runner の対象 attempt 確認と操作受付。 |
+| `job-log` | `GET /api/cicd/projects/{project_id}/runs/{run_id}/jobs/{job_id}/logs` | statefile の上限付き log 読取。 |
+| `worker-list` / `worker-drain` | `GET /api/cicd/projects/{project_id}/workers`、`POST /api/cicd/projects/{project_id}/workers/{worker_id}/drain` | runner の割当状況読取 / 新規割当停止。 |
+| `artifact-list` / `artifact-compare` | `GET /api/cicd/projects/{project_id}/artifacts`、`POST /api/cicd/projects/{project_id}/artifacts/compare` | archive の project 内成果物参照 / 比較。 |
+| `deployment-plan` / `deployment-start` | `POST /api/cicd/projects/{project_id}/deployments/plan` / `POST /api/cicd/projects/{project_id}/deployments` | runner の環境計画 / 配備受付。 |
+| `deployment-read` / `deployment-approve` | `GET /api/cicd/projects/{project_id}/deployments/{deployment_id}`、`POST /api/cicd/projects/{project_id}/deployments/{deployment_id}/approve` | runner 参照と security の承認者判定。 |
+| `deployment-rollback` | `POST /api/cicd/projects/{project_id}/deployments/{deployment_id}/rollback` | runner に新しい復旧操作の受付を要求する。 |
+| `metrics-read` | `GET /api/cicd/projects/{project_id}/metrics` | 認可済み集計の JSON 読取。 |
+
+全操作で認証と project / environment の認可を行う。新しい公開認証除外を追加しない。業務処理、状態ファイル直接更新、process 停止を handler へ複製せず、表の owner に要求を渡す。定義更新は期待 revision、実行操作は要求識別子と対象 attempt / 環境世代を受け取り、異なる内容による同一識別子の再利用を拒否する。保存の比較条件は [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](statefile.md#phase-19-state-contract) を参照する。
+
+非同期操作の `202` は durable な受付結果と操作 ID を返したことだけを表す。完了結果は別の認証済み読取で取得し、受付応答へ成功を先取りして埋め込まない。開始前の audit 不成立、権限不一致、古い世代、入力不正では owner の実行を開始しない。権限判定は [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](security.md#phase-19-security-contract)、実行結果は [`docs/details/runner.md` 詳細本文責務 Phase 19 実行契約](runner.md#phase-19-runner-contract) を参照する。
+
+実行中 log は JSON の位置付き有限取得とし、要求した attempt / job / stream と cursor を結び付ける。応答は次 cursor、取得可能な先頭位置、欠落の有無、終端状態を識別できる形とする。失効 cursor と範囲外要求を黙って先頭へ戻さない。保存済み log の既存有限 SSE を live tail へ読み替えない。metrics も JSON とし、別形式の公開 endpoint を本節から追加しない。
+
+**詳細化を残す判断対象：** 各操作の全 request / response key と型、body / page / log 上限、cursor encoding、revision / 要求識別子の渡し方、認証後の検査順、固定 HTTP status / error / message、worker 再開・利用者管理・grant 更新・template 操作の route と全 client 対応を本節で閉じる。表の path 案だけで実装着手条件を満たしたとしない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
 api 連動機能の owner / collaborator は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0i.3](../DETAIL_INDEX.md#0i3-api--sdk--ui) を入口とする。endpoint、成功時・失敗時動作、状態副作用は [`docs/details/api.md`](api.md)、SDK method は [`docs/details/sdk.md`](sdk.md)、UI 操作は [`docs/details/ui.md`](ui.md)、状態 schema は [`docs/details/statefile.md`](statefile.md)、検証証跡は [`docs/details/fixture.md`](fixture.md) を正本とする。
 
 [`docs/details/security.md` 詳細本文責務 §27.42](security.md#sec-27-42)〜[§27.47](security.md#sec-27-47) は security 領域の詳細本文責務である。api が security 機能に関わる場合、[`docs/details/api.md`](api.md) 詳細本文責務は endpoint dispatch、request / response、状態ファイル read/write 呼び出し境界だけを担当し、scope、token、audit、session、TOTP、rate limit、漏えい禁止、security 横断順序の主本文は [`docs/details/security.md`](security.md) 詳細本文責務を参照する。

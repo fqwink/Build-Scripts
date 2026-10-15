@@ -1,5 +1,23 @@
 # Adlaire CI — Release 詳細仕様
 
+<a id="phase-19-release-contract"></a>
+**Phase 19 Release 検証策定契約：**
+
+本節の owner は `release` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。利用者 build の配備制御は [`docs/details/runner.md` 詳細本文責務 配備・承認・復旧](runner.md#phase-19-deployment-contract)、配布物受入は [`docs/details/setup.md` 詳細本文責務 Phase 19 環境受け入れ](setup.md#phase-19-setup-contract) が所有する。
+
+| 検証対象 | 生成・検証の設計境界 |
+|----------|----------------------|
+| provenance | source commit、source snapshot、展開済み定義 digest、toolchain / OS / arch、build option、生成 artifact digest を結び付ける。実行していない build の情報を既存 record から合成しない。 |
+| 署名 | 信頼済み公開鍵の選定と署名対象 bytes を分離する。取得した artifact と同じ未信頼経路から鍵を受け取っただけで信頼済みにしない。Go 標準ライブラリの Ed25519 を `STD` の詳細化対象とし、鍵 ID、domain separation、canonical bytes、失効・更新・署名なし旧版の扱いを固定する。 |
+| SBOM | 実際に用いた source / module / toolchain / 同梱 file を収集し、artifact digest と対応付ける。外部 module がないことを理由に空の成功 record を作らない。出力形式と必須項目を確定するまでは SPDX / CycloneDX 対応を名乗らない。 |
+| 再現性 | 固定 source と build 入力から独立に生成した artifact bytes を比較する。時刻・署名・実行 ID を含む検証 record と比較対象の実行バイナリを区別する。既存 [R4 ビルド・再現性固定契約](#release-build-contract) に接続する。 |
+| 公開前照合 | 実際に upload した全対象を再取得し、digest、署名、SBOM と provenance の artifact 対応を照合する。検証不一致または必須検証不能なら公開しない。 |
+| stable-release 接続 | 検証済み Release identity と固定 asset digest を返す。source branch の最新値や可変な表示名だけで本番配備対象を選ばない。環境昇格判断を release owner へ移さない。 |
+
+**詳細化を残す判断対象：** provenance / SBOM / signature の全 schema と exact asset 名、署名対象の exact bytes、checksum 対象集合と自己参照の排除、鍵の導入・失効・rollback、asset 数と checksum 行数、公開失敗時の補償、固定 error を本節で閉じる。[R3 Release asset 固定契約](#release-asset-contract) から [R7 受け入れ条件](#release-acceptance-contract) と setup の受け入れ集合を同時に改訂するまで、現行 asset 一覧へ追加 asset を生成・公開しない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
 owner / collaborator 境界管理は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 §0b.1](../DETAIL_INDEX.md#0b1-owner-component-別-owner-collaborator-境界管理) に従う。Release の作成条件、バージョン体系、標準 OS/arch は [`docs/SPEC.md` ポリシー責務 §1 GitHub リリースポリシー](../SPEC.md#github-リリースポリシー)、asset の受け入れと配置は [`docs/details/setup.md`](setup.md)、admin archive の内容は [`docs/details/admin.md`](admin.md)、fixture と実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 ---

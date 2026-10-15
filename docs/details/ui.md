@@ -1,5 +1,26 @@
 # Adlaire CI — UI 詳細仕様
 
+<a id="phase-19-ui-contract"></a>
+**Phase 19 管理画面策定契約：**
+
+本節の owner は `ui` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope)、client 操作は [`docs/details/sdk.md` 詳細本文責務 Phase 19 SDK 接続](sdk.md#phase-19-sdk-contract)、視覚配置は [`docs/DESIGN.md` デザイン責務 Phase 19 管理画面](../DESIGN.md#phase-19-admin-visual-contract) を参照する。
+
+| view 案 | UI が所有する操作と表示 |
+|---------|------------------------|
+| project / definitions | 選択中 project、定義 revision、型付き入力、計画生成結果を表示する。編集済み入力と計画の元入力が変わった場合は、旧計画の開始操作を無効にする。 |
+| runs | run / attempt 別に job 依存関係、待機理由、割当、開始・終了、再試行、cancel 結果を表示する。受付を終端成功として扱わない。 |
+| workers | capability、health、割当、drain を区別する。管理操作成功後に一覧と対象詳細を再取得し、失敗時に表示状態を先取り変更しない。 |
+| artifacts | 元 run / attempt と digest、比較結果、配備・復旧用保持を表示する。表示名だけで昇格対象を選択させない。 |
+| environments / deployments | 現在の配備、要求した配備、承認対象、期限、停止理由、復旧操作を別に表示する。権限不足と health 不良を同じ「実行不可」だけで隠さない。 |
+| users / grants / quotas | project と environment の対象を明示する。権限を変更した後は自分の操作可否も再取得し、非表示の button を認可の代替にしない。 |
+| operations | 実行中 log、queue 待機時間、成功率、実行時間を表示する。log の欠落・切詰めを表示し、全量取得を自動反復しない。統計の対象期間と取得時点を示す。 |
+
+全 view は loading / empty / error / stale / unauthorized を区別する。project、run、attempt の切替前に開始した request が遅れて完了しても、新しい選択の DOM を更新しない。polling は view の生存期間だけ行い、切替・logout・認証失効で停止する。承認や再試行の失敗後も入力を維持するが、secret 値は既存の消去境界に従う。API への直接 fetch や独立した状態書込を追加しない。
+
+**詳細化を残す判断対象：** panel / DOM id、各 SDK method との一対一対応、固定 message、poll 間隔と取得上限、操作順、確認 dialog、focus / ARIA、競合応答時と再認証時の固定動作を本節で閉じる。画面名だけで現行の操作一覧へ追加しない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
 UI が呼び出す SDK method、戻り値、error、stream、token 破棄は [`docs/details/sdk.md` 詳細本文責務 §23](sdk.md#23-javascript-sdk-仕様) を参照する。標準管理 UI の色、寸法、余白、配置、responsive、focus の視覚値は [`docs/DESIGN.md` デザイン責務 標準管理 UI 視覚契約](../DESIGN.md#admin-ui-visual-contract) を参照する。[`docs/details/ui.md`](ui.md) 詳細本文責務は UI 側の DOM id、panel、操作、表示状態、SDK 呼び出し、秘密情報消去を定義する。
 
 ---

@@ -1,5 +1,23 @@
 # Adlaire CI — Setup 詳細仕様
 
+<a id="phase-19-setup-contract"></a>
+**Phase 19 環境・Release 受け入れ策定契約：**
+
+本節の owner は `setup` とする。適用区分は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)、現在の割当は [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](../ROADMAP.md#phase-19-planning-scope) を参照する。生成側は [`docs/details/release.md` 詳細本文責務 Phase 19 Release 検証](release.md#phase-19-release-contract)、job 実行側は [`docs/details/runner.md` 詳細本文責務 Phase 19 実行契約](runner.md#phase-19-runner-contract) を参照する。
+
+| 受け入れ対象 | setup が所有する確認・副作用境界 |
+|--------------|------------------------------------|
+| Release cohort | 選択した Release identity の全必要 artifact を staging で取得し、対応する manifest・digest・署名・provenance・SBOM を検証してから配置へ進む。旧版 artifact と新しい管理 UI を混在させない。 |
+| trust root | 管理者が別の信頼境界で導入した鍵・失効情報を読み、検証対象から自動導入しない。鍵更新、旧版受け入れ、緊急 rollback の条件を省略しない。 |
+| worker capability | OS / arch、runtime、専用 user、実行・作業領域、資源制御、通信制限、process 終了・cleanup を検査し、実証した capability だけを登録へ渡す。未対応を capability 有りとして報告しない。 |
+| 機能有効化 | 既存 binary の配置成功だけで汎用 executor / worker を起動しない。起動主体、service unit、認証、割当、隔離の設定が揃った場合だけ新経路へ渡す。 |
+| update / rollback | Adlaire CI 自体の binary / admin cohort を復旧対象とする。利用者サイトの成果物復元を setup rollback の成功へ含めず、runner の配備・復旧へ分離する。 |
+| 部分失敗 | staging 検証失敗では現行配置を変更しない。配置後の health・service・cleanup 失敗は各段階の結果を返し、復旧不能を成功へ変換しない。 |
+
+**詳細化を残す判断対象：** 新 asset の取得・受け入れ集合、trust root path / schema、署名なし旧版からの移行、OS capability と許可 primitive の対応表、実行 user / directory / unit、health / rollback の timeout と error を本節で固定する。既存 systemd unit を未承認の常駐 worker へ変更せず、VPS provider resource 操作を追加しない。
+
+検証は [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 横断テスト証跡共通入口](../DETAIL_INDEX.md#cross-test-evidence-route) の Phase 19 策定対象へ接続する。
+
 [`docs/details/setup.md`](setup.md) 詳細本文責務は、バイナリ配布、配置、systemd、セットアップ、アップデート、Release 成果物の受け入れ・checksum 検証を定義する。runner / api / sdk / ui / admin の個別機能本文は各 owner component 別の [`docs/details/*.md`](../details/) 詳細本文責務を参照する。実装 artifact と機能の現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照し、fixture、fake、expected / effects、実装検証証跡は [`docs/details/fixture.md`](fixture.md) fixture 証跡責務を参照する。
 
 [`docs/details/setup.md`](setup.md) が定義するのは [`components/setup/`](../../components/setup/) が `adlaire-ci-setup` として実行する setup / update の挙動と、Release 成果物の受け入れ・checksum 検証契約である。GitHub Release 成果物の生成・公開前検証・公開は [`docs/details/release.md`](release.md) の `release` owner component が持ち、[`docs/details/setup.md`](setup.md) の責務に含めない。実装可否は [`docs/SPEC.md` ポリシー責務 §0 詳細仕様必須項目](../SPEC.md#detail-contract-required-fields)、現在状態は [`docs/ROADMAP.md`](../ROADMAP.md) 状態・計画責務を参照する。

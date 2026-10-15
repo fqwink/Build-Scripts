@@ -95,6 +95,20 @@
 | 生成静的 Web サイトと標準管理 UI のデザイン | [`docs/DESIGN.md`](DESIGN.md) |
 | 利用入口 | [`README.md`](../README.md) |
 
+<a id="phase-19-artifact-location"></a>
+**Phase 19 策定本文の所在：**
+
+| 対象 | 所在 |
+|------|------|
+| 方針・安全境界 | [`docs/SPEC.md` 方針責務 内製 CI/CD 拡張方針](SPEC.md#direction-inhouse-cicd)、[`docs/SPEC.md` ポリシー責務 §0i](SPEC.md#policy-inhouse-cicd) |
+| 状態・割当 | [`docs/ROADMAP.md` 状態・計画責務 Phase 19 策定対象](ROADMAP.md#phase-19-planning-scope) |
+| owner 詳細本文・接続先 | [`docs/DETAIL_INDEX.md` 詳細仕様入口責務 Phase 19 owner 対応](DETAIL_INDEX.md#phase-19-owner-route) |
+| 視覚仕様 | [`docs/DESIGN.md` デザイン責務 Phase 19 管理画面](DESIGN.md#phase-19-admin-visual-contract) |
+| 本番同等検証本文 | [`docs/details/production-validation.md` 本番検証詳細本文責務 Phase 19 検証](details/production-validation.md#phase-19-production-validation-contract) |
+| fixture 設計本文 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
+| Phase 19 正式 fixture root / manifest / expected / fake | 未確定・未作成。上記 fixture 設計本文を参照する。 |
+| Phase 19 専用 checker / required workflow / required check | 未確定・未作成。既存 Phase 12 から Phase 18 の artifact は別の所在行を参照する。 |
+
 <a id="文書一覧"></a>
 **文書所在：**
 
