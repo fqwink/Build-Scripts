@@ -16,9 +16,7 @@
 | IaC固定具体入力 / checker | [docs/details/fixture.md fixture証跡責務](details/fixture.md#inhouse-iac-concrete-oracles)、[適用受付境界入力](details/fixture.md#inhouse-iac-admission-vectors)、[main_test.go](../main_test.go) の `TestAdditionalIaCSpecificationVectors` / `TestIaCSpecificationAdmissionVectors` | 実在 |
 | IaC検証root | `testdata/setup/inhouse-iac/` | 未作成 |
 | OIDC固定暗号vector / checker | [基準vector](details/fixture.md#oidc-fixed-vector)、[再署名50case](details/fixture.md#oidc-signed-claim-vectors)、[HTTP具体oracle](details/fixture.md#oidc-http-concrete-oracles)、[main_test.go](../main_test.go) の `TestAdditionalSpecificationVectors` / `TestAdditionalOIDCSignedClaimVectors` | 実在 |
-| Xserver受入固定入力・証跡 | [fixture証跡責務](details/fixture.md#xserver-acceptance-evidence-contract)、`testdata/production-validation/xserver-vps/`、`.github/workflows/phase22-xserver-acceptance.yml` | 本文実在/root・workflow未作成 |
-| Xserver操作承認 / 将来workflow / 文書checker | [docs/details/production-validation.md 本番検証詳細本文責務 操作承認](details/production-validation.md#xserver-acceptance-authorization)、[docs/details/fixture.md fixture証跡責務 将来workflow](details/fixture.md#xserver-acceptance-workflow-contract)、[仕様入力](details/fixture.md#xserver-acceptance-authorization-vectors)、[main_test.go](../main_test.go) の `TestXserverAcceptanceSpecificationVectors` | 本文・文書checker実在。`TestPhase22XserverAcceptance` / `TestPhase22XserverRequiredGate` は未作成 |
-| badge視覚・Xserver限定受入 | [DESIGNデザイン責務](DESIGN.md#status-badge-visual-contract)、[本番検証詳細本文責務](details/production-validation.md#xserver-vps-adoption-contract) | 実在 |
+| badge視覚 | [DESIGNデザイン責務](DESIGN.md#status-badge-visual-contract) | 実在 |
 
 <a id="document-index-common-reference"></a>
 **所在確認対象と参照先：**

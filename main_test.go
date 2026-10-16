@@ -135,237 +135,6 @@ func specificationReferenceIntegrity(documents map[string]string, exists func(st
 	return nil
 }
 
-type xserverSpecificationVector struct {
-	Now           string `json:"now"`
-	Repository    string `json:"repository"`
-	Ref           string `json:"ref"`
-	SourceSHA     string `json:"source_sha"`
-	WorkflowSHA   string `json:"workflow_sha"`
-	EnvironmentID string `json:"environment_id"`
-	ApprovalID    string `json:"approval_id"`
-	RunIsolated   bool   `json:"run_isolated"`
-	Approval      struct {
-		SchemaVersion       int    `json:"schema_version"`
-		ApprovalID          string `json:"approval_id"`
-		Repository          string `json:"repository"`
-		WorkflowRef         string `json:"workflow_ref"`
-		SourceSHA           string `json:"source_sha"`
-		EnvironmentID       string `json:"environment_id"`
-		ApprovedAt          string `json:"approved_at"`
-		ExpiresAt           string `json:"expires_at"`
-		HumanApprovalRef    string `json:"human_approval_ref"`
-		AllowRootOperations bool   `json:"allow_root_operations"`
-	} `json:"approval"`
-	JobResults map[string]string `json:"job_results"`
-	Stages     []string          `json:"stages"`
-	Cycles     []struct {
-		Mode         string `json:"mode"`
-		CycleID      int    `json:"cycle_id"`
-		EvidenceRoot string `json:"evidence_root"`
-	} `json:"cycles"`
-}
-
-func decodeXserverSpecificationVector(input []byte) (xserverSpecificationVector, error) {
-	var v xserverSpecificationVector
-	root, err := additionalOIDCJSONObject(input)
-	if err != nil {
-		return v, err
-	}
-	required := func(object map[string]json.RawMessage, keys ...string) bool {
-		if len(object) != len(keys) {
-			return false
-		}
-		for _, key := range keys {
-			value, exists := object[key]
-			if !exists || bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
-				return false
-			}
-		}
-		return true
-	}
-	approval, err := additionalOIDCJSONObject(root["approval"])
-	if err != nil || !required(root, "now", "repository", "ref", "source_sha", "workflow_sha", "environment_id", "approval_id", "run_isolated", "approval", "job_results", "stages", "cycles") || !required(approval, "schema_version", "approval_id", "repository", "workflow_ref", "source_sha", "environment_id", "approved_at", "expires_at", "human_approval_ref", "allow_root_operations") {
-		return v, fmt.Errorf("required keys")
-	}
-	var cycles []map[string]json.RawMessage
-	if json.Unmarshal(root["cycles"], &cycles) != nil {
-		return v, fmt.Errorf("cycle schema")
-	}
-	for _, cycle := range cycles {
-		if !required(cycle, "mode", "cycle_id", "evidence_root") {
-			return v, fmt.Errorf("cycle keys")
-		}
-	}
-	var jobs map[string]json.RawMessage
-	if json.Unmarshal(root["job_results"], &jobs) != nil {
-		return v, fmt.Errorf("job schema")
-	}
-	for _, result := range jobs {
-		if bytes.Equal(bytes.TrimSpace(result), []byte("null")) {
-			return v, fmt.Errorf("job result")
-		}
-	}
-	decoder := json.NewDecoder(bytes.NewReader(input))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&v); err != nil {
-		return v, err
-	}
-	return v, nil
-}
-
-// This validates published specification inputs, not operator approval or a live VPS.
-func xserverSpecificationOracle(v xserverSpecificationVector) string {
-	if v.Repository != "fqwink/Build-Scripts" || v.Ref != "refs/heads/main" || !regexp.MustCompile(`^[0-9a-f]{40}$`).MatchString(v.SourceSHA) || v.WorkflowSHA != v.SourceSHA {
-		return "trust"
-	}
-	a := v.Approval
-	id := regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)
-	if !id.MatchString(v.EnvironmentID) || !id.MatchString(v.ApprovalID) || a.SchemaVersion != 1 || a.ApprovalID != v.ApprovalID || a.Repository != v.Repository || a.SourceSHA != v.SourceSHA || a.EnvironmentID != v.EnvironmentID || a.WorkflowRef != "fqwink/Build-Scripts/.github/workflows/phase22-xserver-acceptance.yml@refs/heads/main" || !a.AllowRootOperations || !regexp.MustCompile(`^https://github\.com/fqwink/Build-Scripts/pull/[1-9][0-9]*#issuecomment-[1-9][0-9]*$`).MatchString(a.HumanApprovalRef) {
-		return "approval"
-	}
-	parseTime := func(text string) (time.Time, error) {
-		if !regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$`).MatchString(text) {
-			return time.Time{}, fmt.Errorf("timestamp")
-		}
-		return time.Parse(time.RFC3339, text)
-	}
-	now, nowErr := parseTime(v.Now)
-	approved, approvedErr := parseTime(a.ApprovedAt)
-	expires, expiresErr := parseTime(a.ExpiresAt)
-	if nowErr != nil || approvedErr != nil || expiresErr != nil || now.Before(approved) || !now.Before(expires) || !expires.After(approved) || expires.Sub(approved) > time.Hour {
-		return "time"
-	}
-	if !v.RunIsolated || len(v.JobResults) != 2 || v.JobResults["simulation"] != "success" || v.JobResults["isolated-acceptance"] != "success" {
-		return "jobs"
-	}
-	stages := []string{"preflight", "install", "restart", "update", "rollback", "permission-denied", "connection-loss", "secret-redaction", "cleanup"}
-	if !phase11StringSlicesEqual(v.Stages, stages) || len(v.Cycles) != 3 {
-		return "coverage"
-	}
-	for index, cycle := range v.Cycles {
-		mode := "isolated-vps"
-		if index == 0 {
-			mode = "simulation"
-		}
-		if cycle.CycleID != index || cycle.Mode != mode || cycle.EvidenceRoot != fmt.Sprintf("evidence/cycle-%d", index) {
-			return "coverage"
-		}
-	}
-	return "ok"
-}
-
-func TestXserverAcceptanceSpecificationVectors(t *testing.T) {
-	t.Parallel()
-	document := phase11MustReadText(t, "docs/details/fixture.md")
-	pattern := regexp.MustCompile("(?s)<a id=\"xserver-acceptance-authorization-vectors\"></a>.*?```json\\n(.*?)\\n```")
-	match := pattern.FindStringSubmatch(document)
-	if len(match) != 2 {
-		t.Fatal("setup.xserver-spec.presence: expected fixed JSON at fixture.md#xserver-acceptance-authorization-vectors")
-	}
-	read := func(t *testing.T) xserverSpecificationVector {
-		t.Helper()
-		v, err := decodeXserverSpecificationVector([]byte(match[1]))
-		if err != nil {
-			t.Fatalf("setup.xserver-spec.schema: expected valid fixed JSON, actual %v", err)
-		}
-		return v
-	}
-	check := func(t *testing.T, assertionID string, v xserverSpecificationVector, want string) {
-		t.Helper()
-		if got := xserverSpecificationOracle(v); got != want {
-			t.Fatalf("setup.xserver-spec.%s: expected %s, actual %s; fixture.md#xserver-acceptance-authorization-vectors; reproduce: go test . -run '^TestXserverAcceptanceSpecificationVectors$' -count=1", assertionID, want, got)
-		}
-	}
-	check(t, "fixed-input.accept", read(t), "ok")
-	for _, control := range []struct {
-		name   string
-		change func(*xserverSpecificationVector)
-		want   string
-	}{
-		{"repository", func(v *xserverSpecificationVector) { v.Repository = "other/Build-Scripts" }, "trust"},
-		{"pr-ref", func(v *xserverSpecificationVector) { v.Ref = "refs/pull/100/merge" }, "trust"},
-		{"branch-ref", func(v *xserverSpecificationVector) { v.Ref = "refs/heads/other" }, "trust"},
-		{"workflow-sha", func(v *xserverSpecificationVector) { v.WorkflowSHA = strings.Repeat("f", 40) }, "trust"},
-		{"source-sha", func(v *xserverSpecificationVector) { v.SourceSHA = strings.Repeat("A", 40) }, "trust"},
-		{"source-size", func(v *xserverSpecificationVector) { v.SourceSHA = "1" }, "trust"},
-		{"approval-id", func(v *xserverSpecificationVector) { v.Approval.ApprovalID = "other" }, "approval"},
-		{"approval-source", func(v *xserverSpecificationVector) { v.Approval.SourceSHA = strings.Repeat("f", 40) }, "approval"},
-		{"approval-environment", func(v *xserverSpecificationVector) { v.Approval.EnvironmentID = "other" }, "approval"},
-		{"approval-repository", func(v *xserverSpecificationVector) { v.Approval.Repository = "other/Build-Scripts" }, "approval"},
-		{"approval-workflow", func(v *xserverSpecificationVector) { v.Approval.WorkflowRef += "x" }, "approval"},
-		{"approval-root", func(v *xserverSpecificationVector) { v.Approval.AllowRootOperations = false }, "approval"},
-		{"approval-ref", func(v *xserverSpecificationVector) { v.Approval.HumanApprovalRef = "https://example.com/approval" }, "approval"},
-		{"approval-ref-repository", func(v *xserverSpecificationVector) {
-			v.Approval.HumanApprovalRef = "https://github.com/other/Build-Scripts/pull/100#issuecomment-1"
-		}, "approval"},
-		{"approval-ref-empty", func(v *xserverSpecificationVector) { v.Approval.HumanApprovalRef = "" }, "approval"},
-		{"environment-path", func(v *xserverSpecificationVector) { v.EnvironmentID = "../host" }, "approval"},
-		{"approval-path", func(v *xserverSpecificationVector) { v.ApprovalID = "../approval" }, "approval"},
-		{"exclusive-expiry", func(v *xserverSpecificationVector) { v.Now = v.Approval.ExpiresAt }, "time"},
-		{"before-approved", func(v *xserverSpecificationVector) { v.Now = "2026-01-01T23:59:59Z" }, "time"},
-		{"reversed-window", func(v *xserverSpecificationVector) { v.Approval.ExpiresAt = "2026-01-01T23:59:59Z" }, "time"},
-		{"long-window", func(v *xserverSpecificationVector) { v.Approval.ExpiresAt = "2026-01-02T01:00:01Z" }, "time"},
-		{"time-offset", func(v *xserverSpecificationVector) { v.Now = "2026-01-02T00:00:00+00:00" }, "time"},
-		{"time-fraction", func(v *xserverSpecificationVector) { v.Now = "2026-01-02T00:00:00.1Z" }, "time"},
-		{"simulation-only", func(v *xserverSpecificationVector) { v.RunIsolated = false }, "jobs"},
-		{"job-missing", func(v *xserverSpecificationVector) { delete(v.JobResults, "isolated-acceptance") }, "jobs"},
-		{"job-extra", func(v *xserverSpecificationVector) { v.JobResults["other"] = "success" }, "jobs"},
-		{"cycle-missing", func(v *xserverSpecificationVector) { v.Cycles = v.Cycles[:2] }, "coverage"},
-		{"cycle-duplicate", func(v *xserverSpecificationVector) { v.Cycles[2] = v.Cycles[1] }, "coverage"},
-		{"cycle-order", func(v *xserverSpecificationVector) { v.Cycles[1], v.Cycles[2] = v.Cycles[2], v.Cycles[1] }, "coverage"},
-		{"cycle-mode", func(v *xserverSpecificationVector) { v.Cycles[2].Mode = "simulation" }, "coverage"},
-		{"root-reuse", func(v *xserverSpecificationVector) { v.Cycles[2].EvidenceRoot = v.Cycles[1].EvidenceRoot }, "coverage"},
-		{"stage-missing", func(v *xserverSpecificationVector) { v.Stages = v.Stages[:8] }, "coverage"},
-		{"stage-duplicate", func(v *xserverSpecificationVector) { v.Stages[1] = v.Stages[0] }, "coverage"},
-		{"stage-order", func(v *xserverSpecificationVector) { v.Stages[1], v.Stages[2] = v.Stages[2], v.Stages[1] }, "coverage"},
-	} {
-		t.Run(control.name, func(t *testing.T) {
-			v := read(t)
-			control.change(&v)
-			check(t, control.name+".reject", v, control.want)
-		})
-	}
-	for _, job := range []string{"simulation", "isolated-acceptance"} {
-		for _, result := range []string{"failure", "skipped", "neutral", "cancelled", "timed_out", ""} {
-			t.Run(job+"-"+result, func(t *testing.T) {
-				v := read(t)
-				v.JobResults[job] = result
-				resultID := result
-				if resultID == "" {
-					resultID = "empty"
-				}
-				check(t, job+"-"+resultID+".reject", v, "jobs")
-			})
-		}
-	}
-	for _, control := range []struct{ id, now string }{
-		{"window-lower-bound.accept", "2026-01-02T00:00:00Z"},
-		{"window-before-expiry.accept", "2026-01-02T00:59:59Z"},
-	} {
-		v := read(t)
-		v.Now = control.now
-		check(t, control.id, v, "ok")
-	}
-	for _, control := range []struct{ id, input string }{
-		{"schema-unknown-key", strings.Replace(match[1], "{", `{"unknown":true,`, 1)},
-		{"schema-nested-duplicate", strings.Replace(match[1], `"allow_root_operations": true`, `"allow_root_operations": true,"allow_root_operations":true`, 1)},
-		{"schema-null-permission", strings.Replace(match[1], `"allow_root_operations": true`, `"allow_root_operations": null`, 1)},
-		{"schema-string-bool", strings.Replace(match[1], `"run_isolated": true`, `"run_isolated": "true"`, 1)},
-		{"schema-null-cycle", strings.Replace(match[1], `"cycle_id": 0`, `"cycle_id": null`, 1)},
-		{"schema-missing-version", strings.Replace(match[1], `"schema_version": 1,`, ``, 1)},
-		{"schema-fractional-version", strings.Replace(match[1], `"schema_version": 1`, `"schema_version": 1.0`, 1)},
-		{"schema-null-job", strings.Replace(match[1], `"simulation": "success"`, `"simulation": null`, 1)},
-		{"schema-invalid-utf8", strings.Replace(match[1], `"now"`, string([]byte{0xff})+`"now"`, 1)},
-		{"schema-trailing-json", match[1] + " {}"},
-	} {
-		t.Run(control.id, func(t *testing.T) {
-			if _, err := decodeXserverSpecificationVector([]byte(control.input)); err == nil {
-				t.Fatalf("setup.xserver-spec.%s.reject: expected schema rejection, actual accepted; fixture.md#xserver-acceptance-authorization-vectors", control.id)
-			}
-		})
-	}
-}
-
 type additionalOIDCVector struct {
 	Challenge string `json:"challenge"`
 	IDToken   string `json:"id_token"`
@@ -1333,10 +1102,10 @@ func TestAdditionalManagementInputVectors(t *testing.T) {
 }
 
 func plannedPhaseMaturityBoundary(roadmap string) error {
-	if !strings.Contains(roadmap, "現在の active Phase は設定しない。") || regexp.MustCompile("現在の active Phase は Phase (19|20|21|22)").MatchString(roadmap) {
+	if !strings.Contains(roadmap, "現在の active Phase は設定しない。") || regexp.MustCompile("現在の active Phase は Phase (19|20|21)").MatchString(roadmap) {
 		return fmt.Errorf("planned Phase activation boundary violated")
 	}
-	for phase := 19; phase <= 22; phase++ {
+	for phase := 19; phase <= 21; phase++ {
 		pattern := fmt.Sprintf("(?m)^\\| Phase %d \\| [^\\n]+ \\| 仕様化済み・未実装 \\| Phase %d \\|$", phase, phase-1)
 		if len(regexp.MustCompile(pattern).FindAllString(roadmap, -1)) != 1 {
 			return fmt.Errorf("planned Phase %d must remain specified and unimplemented", phase)
@@ -1385,7 +1154,7 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 		{"roadmap-inventory-state", "docs/ROADMAP.md", "| 仕様化済み・未実装 | CI / CD | Phase 19", "| 改訂予定 | CI / CD | Phase 19"},
 		{"roadmap-phase20-implemented", "docs/ROADMAP.md", "| 仕様化済み・未実装 | Phase 19 |", "| 実装済み | Phase 19 |"},
 		{"roadmap-phase21-active", "docs/ROADMAP.md", "現在の active Phase は設定しない。", "現在の active Phase は Phase 21。"},
-		{"roadmap-phase22-missing", "docs/ROADMAP.md", "| Phase 22 |", "| Phase 23 |"},
+		{"roadmap-phase21-missing", "docs/ROADMAP.md", "| Phase 21 |", "| Phase 99 |"},
 		{"unknown-type", "docs/details/statefile.md", `"parallel": "int(1,16)"`, `"parallel": "MissingType"`},
 		{"missing-sdk", "docs/details/sdk.md", "| `runStart(params,body,options)` |", "| `missing(params,body,options)` |"},
 		{"missing-ui", "docs/details/ui.md", "| runStart |", "| missing |"},
