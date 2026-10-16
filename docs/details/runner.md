@@ -101,7 +101,16 @@ hello時計差<=5秒、heartbeat5秒、lease30秒、renew5秒。coordinatorはhe
 <a id="phase-19-cache-log-metrics"></a>
 **cache / log / 通知 / 集計：**
 
-cache key=SHA256(canonical `{project_id,trust:"registered",plan_digest,job_id,source_tree_digest,toolchain_digest,os:"linux",arch,env}`)。toolchain_digestはsetup profile manifest digest。secret参照ありjobのcache有効指定は拒否。pathsは/job内出力相対pathだけ、source/secret/toolchainを含めない。形式はarchiveと同じmanifest+payload、project namespace分離、O_EXCL staging→検証→metadata commit→publish。TTLはcreated_at起点、上限はQuota.cache_mb、期限切れ→last_used_at,key昇順LRUで回収。in_useありは回収禁止、同時同keyは先勝ち、内容差はP19_DIGEST。破損はquarantineしてmiss、容量不足はcache未保存warningでjob成功を変えない。
+cacheの入力・key・公開・hit/restore・保持は [cache lifecycle](#phase-19-cache-lifecycle) を参照する。
+
+<a id="phase-19-cache-lifecycle"></a>
+**cache入力とkey：** cacheはjobの出力file再利用であり、JobResultや実行成功のmemoizationではない。hitでも登録executorを通常どおり実行する。keyはSHA256(canonical `{project_id,trust:"registered",plan_digest,job_id,source_tree_digest,toolchain_digest,os:"linux",arch,env}`)。plan_digestはRun.plan.digest、job_idは展開済PlannedJob.id、source_tree_digestはRun.plan.data.source.tree_digest、toolchain_digestは同PlanData.toolchain_digest（setup profile manifest digest）。envは展開済PlannedJob.envのstring mapだけで、固定base/Go環境値を重複追加しない。archは現在linux-amd64のamd64だけ。secret参照ありjobのcache有効指定、enabled=true/paths空はplan時P19_SCHEMA。pathsは `/job/output` 相対のRelPath、重複・祖先子孫の重複指定・globを拒否し、job output以外のmountへ解決されるpathを拒否する。形式の唯一の正本は [docs/details/archive.md 詳細本文責務 CacheManifest/envelope](archive.md#phase-19-archive-envelope)。files.pathはoutput相対pathを保持する。全指定pathが通常fileまたは通常directoryで存在し、各directoryに少なくとも1fileがある場合だけ保存する。欠損/空directoryはcache未保存/P19_EMPTYの診断とし、部分集合だけを保存しない。
+
+**公開と中断：** 検証済みwork stagingにCacheManifestとpayloadを作り、全file/directoryをfsyncする。[docs/details/statefile.md 詳細本文責務 artifact/cache write adapter](statefile.md#phase-19-artifact-read-guard) でproject/keyの現metadataと容量を再確認し、非上書きpublish→親fsync→CacheEntryをRoot commitの順で参照可能にする。metadata確定前の公開directoryをhitの根拠にしない。publish前失敗はstagingだけを回収、publish後Root commit失敗は未参照directoryとして次のlock下GCで再照合・回収する。metadataなしの既存directoryをscan採用しない。既存deleting/期限切れentryは上書きせず、回収完了までcache未保存とする。同keyが有効状態で先にcommit済みならdigest・全payload bytes・manifestの一致を再確認し、同一だけ先勝ちを再利用する。差はcache未保存/P19_DIGESTとし既存値を上書きしない。cache保存の容量/I/O失敗は診断に残し、正常なexecutor結果を失敗へ反転しない。ただしRoot自体のcorrupt/uncertainは通常処理を止める。
+
+**hitとrestore：** Root lock下でproject/key一致、deleting=false、now<expires_atを確認してjobのrun Idをin_useへ重複なしで登録し、commit後だけpayloadを読む。Runの全attemptが終端化し、worker停止/cleanupを確認できたRoot commitでだけ解除する。同runの別job/attemptがactiveまたはrecovery_requiredなら消さない。metadata不在/期限一致以後/deletingはmiss。guard取得やin_useの必須保存に失敗した場合はcacheを開かずmiss、Root corrupt/uncertainは停止とする。manifest・compressed digest・全file・pathを検証して別stagingへ展開し、空のjob output領域へpublishしてからhitとする。既存outputへmerge、検証前の部分展開採用、source/toolsへの書込をしない。破損はdeleting=trueで新hitを止め、既存in_useを維持したままmissへ戻し、検証用stagingを破棄してexecutorへ空outputを渡す。状態保存不能やstaging cleanup不明は成功hitにせず、jobを復旧判断へ渡す。未登録quarantine pathは作成しない。使用後のlast_used_atはmax(保存値,now)、新規はcreated_atと同値。
+
+**期限・容量・削除：** expires_at=created_at+CachePolicy.ttl_seconds、再利用で延長しない。Quota.cache_mb=0は新規保存もhitも行わない。通常GCはnow>=expires_atかつin_use空をlast_used_at/key昇順、容量GCはまず期限切れ、次に期限前のin_use空を同順で選ぶ。Root lock下でdeleting claim→新規in_use拒否→実file削除/親fsync→metadata削除。deleting=trueでも既存in_useが残る間は実体を削除しない。削除失敗はclaimを保持し後続tickで再照合する。API cacheDeleteはこの処理へ接続し、取消や再生成で既存claimを解除しない。API受付operationの成否は [operation完了接続](#phase-19-operation-completion) を参照する。
 
 <a id="phase-19-streaming-log-contract"></a>
 **streaming logのbyte境界：**

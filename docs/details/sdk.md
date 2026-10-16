@@ -72,6 +72,9 @@ SDK が呼び出す API endpoint の method、path、request、response、error�
 
 ---
 
+<a id="phase-19-sdk-artifact-chunk"></a>
+**artifactDownloadのprotocol検証：** [docs/details/api.md 詳細本文責務 download wire](api.md#phase-19-artifact-download) の全key/型を検査し、offsetが要求params.offset、digestが要求params.digestに一致することを要求する。dataはstrict standard padded base64をdecode・再encodeして完全一致、decoded長とnext_offset/total_bytes/finalの関係もAPI契約へ一致させる。任意に短いchunk、nonfinal空chunk、次offsetの飛び/後退、最終flagの早期確定をCICDProtocolErrorにする。offset=total_bytesの空finalは正規の範囲応答であり、SDK単体が全file受信/検証済みと主張しない。戻り値は既存wire型を維持し、内部でbase64文字列を連結、poll、GC対策pin作成、別digestへの切替を行わない。複数request間のtotal_bytes固定と最終全bytes SHA256はcallerが検証する。
+
 <a id="phase-19-sdk-operation-result"></a>
 **operation受信境界：** mutation応答のoperation.idが送信key、kindが呼出method、target_attemptがrun系の対象attempt制約に一致することを検証する。runRetry/runResumeは要求attempt+1、runCancelは要求attempt、runStartは1、それ以外はnull。HTTP statusはAPI正本のkind分類と比較し、不一致はCICDProtocolError。202かどうかで完了を判定しない。result=nullを空entityとして補完せず、one_time=nullも再発行要求へ変換しない。operationGetの404や通信断は「未実行」と解釈せず、そのerrorをそのままcallerへ渡す。timeout/abort時も操作がserverで止まったとは保証しない。SDKはoperation照会のためにbodyや秘密値を保存せず、callerが持つkeyだけでoperationGetを呼べる境界を維持する。
 

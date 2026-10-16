@@ -7,7 +7,9 @@
 owner は `statefile`、実装主体は [`components/statefile/`](../../components/statefile/)。適用 profile は [`docs/SPEC.md` ポリシー責務 §0i](../SPEC.md#policy-inhouse-cicd)。以下は `cicd-v1` の正本であり、legacy の [`docs/details/statefile.md` 詳細本文責務 状態ファイル共通仕様](#sec-22-0a) を上書きしない。
 
 <a id="phase-19-schema-registry"></a>
-**型記法と唯一の schema registry：**
+**型記法と共有保存型の schema registry：**
+
+本registryはRootとその参照型、IPC/local stateの共有型を扱う。API専用request/responseのwire型は [docs/details/api.md 詳細本文責務 operation catalog](api.md#phase-19-operation-catalog)、payload内manifestは [docs/details/archive.md 詳細本文責務 artifact](archive.md#phase-19-artifact-contract) と [cache envelope](archive.md#phase-19-archive-envelope) を参照する。同じ型を本registryへ複製しない。
 
 全 object は列挙 key がすべて必須、未知 key / duplicate key は拒否する。欠落値の補完は行わない。`nullable(T)` は明示 null、`list(T,min,max)` は順序付き配列、`map(T,min,max)` は key が Id の object、`envmap(T,min,max)` はkeyがrunnerの環境変数名規則のobject、`oneof` は一致する型が1件だけの union、`enum` は列挙値、`int(min,max)` は指数・小数・負のゼロを許さない10進安全整数、`text(min,max)` はUTF-8 byte長である。空白・並び順を除く JSON 文法は encoding/json に従い、NUL / CR はlog.dataを除く全stringで拒否する。log.dataは任意のUnicode scalar（JSON escape必須controlを含む）を許す。LF は text と log.data だけ許可し、identifier・path・環境値では拒否する。const(v)はJSON literal vとの一致、boolはJSON booleanを表す。schema 文法自体の未知関数・不明な型参照も不正とする。型名はASCII英字始まり英数字、enum値は英字始まり英数字/underscore/hyphen/dot。式の空白は禁止。atomはprimitiveまたは登録型名、nullableは型引数1、oneofは異なる型2以上、list/map/envmapは型1と整数min/max、int/textは整数min/max、enumは一意値1以上、constは本registryで使用する1/falseだけ、legacyはAdminCredentials/TOTPSecretだけ。整数引数は符号付き安全整数、先頭0/負の0拒否、min<=max、list/map/envmap/textはmin>=0。登録型の参照graphは非再帰（cycle拒否）で、objectはfield名一意・1field以上。JSON tokenの重複を先に検査してから型式を解析し、json.Unmarshalによる重複keyの上書きを許可しない。
 
@@ -424,7 +426,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "action": "text(1,64)",
       "phase": "enum(accepted,finished,rejected)",
       "at": "Time",
-      "target_id": "nullable(Id)",
+      "target_id": "nullable(text(1,64))",
       "code": "nullable(text(1,64))"
     },
     "Route": {
@@ -679,12 +681,19 @@ operation/監査の回収は [operation lifecycle](#phase-19-operation-lifecycle
 
 named user loginの認証更新は内部o-ID付きUpdateCICDAuth(userID,credentialFingerprint,mutate)でlock下に最新Credentialを再照合し、count/time/Auditだけを一つのRoot更新にする。Operationは作らず、commit後だけmemory sessionを公開する。admin aliasは既存credential adapterの保存順を使用し、失敗時sessionを発行しない。login/logoutをOperationResult対象外とするAPI例外は、認証記録の永続化省略を意味しない。
 
+<a id="phase-19-artifact-read-guard"></a>
+**成果物のread guard：** `WithCICDArtifactRead(project,digests,read)` は同一projectの重複なしdigest1〜2件をbyte昇順で受け、process内mutexの後、既存state.lockをcreate/truncateせずread-onlyで開き、LOCK_SHの非blocking flockを10ms間隔/最大2秒で取得する。guard下で最新Head/Rootを検証して指定digestのArtifactとRoot.generationだけをreadへ渡し、callbackは既存fileのopen/Fstat/有限read/closeだけを行う。callback前後でRoot/head/世代/監査を更新しない。全return経路でguard/descriptorを解放し、network/response送信へ保持を持ち越さない。書込・publish・deleting claim・実file削除は既存LOCK_EXを使用し、share lockをupgradeしない。read結果はcallbackで確定したmemory値に限る。guard取得不能はP19_BUSY、lock file不正/Root破損はP19_STATE_CORRUPT。file readの結果変換は [docs/details/archive.md 詳細本文責務 read/GC](archive.md#phase-19-artifact-read-gc) を参照する。
+
+**artifact/cache write adapter：** `CommitCICDContent(expectedGeneration,effect,mutate)` は登録済archive/runnerだけが使う専用内部境界。LOCK_EX取得後に最新Root・expectedGeneration・対象project/digest/key・pin/in_use/容量を検査し、effectによる検証済みstagingのpublishまたは既存deleting対象の削除と親fsyncを実行後、純粋mutateによるRoot更新を既存snapshot/Head順でcommitする。effectは上記検査で固定したartifact/cache pathのfilesystem I/Oだけで、network/child/response/Root直接書込を呼ばない。一般UpdateCICDのmutateにI/Oを持ち込まず、guard内で同じadapterを再入取得しない。世代不一致はeffect未実行でP19_REVISION。effect後のRoot失敗は未参照公開directoryまたはdeleting metadataとして保持し、原状不変を断言しない。head rename後fsync失敗は既存P19_STATE_UNCERTAINで停止する。
+
 <a id="phase-19-operation-lifecycle"></a>
 **受付と内部進行の分離：** `UpdateCICD(opID,requestDigest,mutate)` は新規受付専用。最新認可の再評価・既存key照合後、新規だけmutateを1回適用し、Operationと業務差分とaccepted/finished監査を一つのRoot commitにする。既存同digestはmutateを呼ばず現Operationを返す。API側の照合順とkind集合は [docs/details/api.md 詳細本文責務 operation受付](api.md#phase-19-operation-admission) を参照する。IDはRoot全体で一意、subject/kind/request_digest/created_at/expires_at/target_id/target_attemptは初回commit後不変。target_idはartifactPin/cacheDeleteではDigest、grantPutでは変更対象subjectのId、passwordChangeでは本人Id、他のAPI mutationでは作成・変更するentityのIdを要求し、API mutationでnullは禁止する。内部eventで対象なしの場合だけnullを許す。text型を任意文字列targetの許可と解釈しない。runStart/runRetry/runResume/runCancelではtarget_attemptを対象Run.attemptで固定し、それ以外はnull。runRetry/runResumeは新attempt、runCancelはpathで指定したattemptであり、latestへ読み替えない。target_id/attemptが参照する保存値はoperation保持中に回収しない。保持中のrun/deploymentのGCを防止する参照であり、対象設定のrevision更新、grant変更、cacheDeleteによる実体削除、security正本の旧secret版回収を禁止する参照ではない。対象identifierを別entityへ再利用しない。
 
 内部進行は `AdvanceCICDOperation(opID,expectedGeneration,mutate) (Operation,error)` を使用する。呼出元はrunnerのdurable claimを所有するcoordinator、または受付済operationを完了するapi ownerに限定し、HTTP入力から直接呼ばない。lock下のRoot.generation不一致はP19_REVISIONでmutate未実行、callerは再読取・lease/target状態再照合後だけ再構成する。新key作成や受付digestの再判定へ流さない。Operationの状態変更・対象進捗・必要監査・予約容量解放を同一commitにする。accepted監査は受付時に1行、finished監査はsucceeded/failedへの終端時に1行だけとし、recovery_requiredへの進行や結果一致の再照合でfinishedを追加しない。acceptedはcode=null、accepted→succeeded/failed/recovery_required、recovery_required→succeeded/failedを許可する。recovery_requiredは未終端で参照と容量予約を維持する。succeededはcode=null、failed/recovery_requiredはcatalogの非null code必須。終端後は完全同一結果の照合だけを許し、別状態/codeへの上書きをP19_STALEで拒否する。結果一致の内部再送は監査・世代を増やさない。対象state machineの追加制約は [docs/details/runner.md 詳細本文責務 operation完了接続](runner.md#phase-19-operation-completion) を参照する。
 
 **期限とGC：** expires_atはcreated_at+2592000秒、期限加算がTime範囲を超える入力時刻はP19_STATE_CORRUPT。最終更新時刻や再送で延長しない。GCはlock下でnowを1回固定し、succeeded/failedかつnow>=expires_atかつactive claim/lease/復旧/他entityからの保護参照なし、の全条件を満たすOperationだけをexpires_at,id順で回収する。accepted/recovery_requiredは期限超過でも回収・自動失敗化しない。対応するAudit全行を同commitで回収し、operationだけ先に消さない。容量不足でも保護中operation/監査/対象を捨てずP19_STORAGEで新規受付を止める。GC前なら期限後でも元keyは再送照合され、GC後に同keyが来れば新規受付になる。clientは一度使用したkeyを別操作や新しい受付へ再利用しない。読取APIはGCを起動しない。
+
+**operation監査のtarget結合：** Operationに対応するAuditのsubject/project_id/target_idは当該Operationの値と一致を要求する。target_idはArtifact/CacheEntryを指すDigestも保持するためtext型とし、Operation側のkind別制約を共用して arbitrary textを許可しない。拒否前に対象を検証できない監査だけtarget_id=nullを使う。認証更新などOperationを生成しない既存監査の例外はそれぞれの認証契約を維持する。Auditへattempt fieldを重複追加せず、保持中Operation.target_attemptから参照する。
 
 <a id="phase-19-log-invariants"></a>
 **Logの保存整合：** 全read/writeでschemaに加え `0<=first_offset<=next_offset<=9007199254740991`、UTF-8有効、`next_offset-first_offset=len(data bytes)`、truncated=(first_offset>0)を検証する。同一identityの更新はfirst/nextを減算せず、gap=trueをfalseへ戻さない。terminal=trueは封印済みであり、以後は完全同一Logの再送を既存値として返すだけとし、byte/offset/flagを更新しない。terminal=false同士でも保存済みと重なる絶対offset区間のbyte不一致を拒否する。新規は両offset=0/data空/truncated=false/gap=false/terminal=false。空streamもEOF時にterminal=trueを保存する。破損はP19_STATE_CORRUPTで自動修復しない。容量はJSON escapeと全fieldを含むserialized byte長で検証し、既存fileを置換する前に上限超過をP19_STORAGEで拒否する。全NULのdata最大長はescapeだけで6291456 bytesを使うため、path表のenvelope込み上限を適用し、schema上有効な最大dataをheader分で欠落させない。書込失敗時のjob停止は [docs/details/runner.md 詳細本文責務 streaming log](runner.md#phase-19-streaming-log-contract) を参照する。

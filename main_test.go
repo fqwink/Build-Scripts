@@ -118,6 +118,386 @@ func phase19LogRingOracle(data []byte, first int64) ([]byte, int64, int64) {
 	return data[drop:], first + int64(drop), first + int64(len(data))
 }
 
+type phase19ContentChunk struct {
+	Offset int64  `json:"offset"`
+	Data   string `json:"data"`
+	Next   int64  `json:"next_offset"`
+	Total  int64  `json:"total_bytes"`
+	Digest string `json:"digest"`
+	Final  bool   `json:"final"`
+}
+
+type phase19CacheKeyInput struct {
+	Project   string            `json:"project_id"`
+	Trust     string            `json:"trust"`
+	Plan      string            `json:"plan_digest"`
+	Job       string            `json:"job_id"`
+	Source    string            `json:"source_tree_digest"`
+	Toolchain string            `json:"toolchain_digest"`
+	OS        string            `json:"os"`
+	Arch      string            `json:"arch"`
+	Env       map[string]string `json:"env"`
+}
+
+type phase19ContentSpecificationVector struct {
+	SchemaVersion int `json:"schema_version"`
+	Chunks        []struct {
+		ID     string `json:"id"`
+		Total  int64  `json:"total_bytes"`
+		Offset int64  `json:"offset"`
+		Bytes  int64  `json:"expected_bytes"`
+		Next   int64  `json:"expected_next"`
+		Final  bool   `json:"expected_final"`
+		Code   string `json:"expected_code"`
+	} `json:"chunk_cases"`
+	Queries []struct {
+		ID     string `json:"id"`
+		Offset string `json:"offset"`
+		Code   string `json:"expected_code"`
+	} `json:"query_cases"`
+	Wires []struct {
+		ID     string              `json:"id"`
+		Offset int64               `json:"requested_offset"`
+		Digest string              `json:"requested_digest"`
+		Wire   phase19ContentChunk `json:"wire"`
+		Code   string              `json:"expected_code"`
+	} `json:"wire_cases"`
+	Caches []struct {
+		ID          string `json:"id"`
+		Metadata    bool   `json:"metadata"`
+		MatchingKey bool   `json:"matching_key"`
+		Published   bool   `json:"published"`
+		Deleting    bool   `json:"deleting"`
+		Quota       int    `json:"quota_mb"`
+		Now         int64  `json:"now"`
+		Expires     int64  `json:"expires_at"`
+		Verified    bool   `json:"verified"`
+		Expected    string `json:"expected"`
+	} `json:"cache_cases"`
+	Keys []struct {
+		ID       string               `json:"id"`
+		Input    phase19CacheKeyInput `json:"input"`
+		Expected string               `json:"expected_sha256"`
+	} `json:"key_cases"`
+	Envelopes []struct {
+		ID       string  `json:"id"`
+		Sizes    []int64 `json:"sizes"`
+		Mutation string  `json:"mutation"`
+		Code     string  `json:"expected_code"`
+	} `json:"envelope_cases"`
+}
+
+func decodePhase19ContentSpecification(input []byte) (phase19ContentSpecificationVector, error) {
+	var v phase19ContentSpecificationVector
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	encoded, err := json.Marshal(v)
+	var a, b any
+	if err != nil || json.Unmarshal(input, &a) != nil || json.Unmarshal(encoded, &b) != nil ||
+		!bytes.Equal(iacSpecificationCanonical(a), iacSpecificationCanonical(b)) {
+		return v, fmt.Errorf("required fields and null boundary")
+	}
+	if v.SchemaVersion != 1 || v.Chunks == nil || v.Queries == nil || v.Wires == nil || v.Caches == nil || v.Keys == nil || v.Envelopes == nil {
+		return v, fmt.Errorf("vector identity")
+	}
+	seen := map[string]bool{}
+	id := func(s string) bool {
+		if !regexp.MustCompile(`^[a-z][a-z0-9-]*$`).MatchString(s) || seen[s] {
+			return false
+		}
+		seen[s] = true
+		return true
+	}
+	validCode := func(s string) bool {
+		return phase17StringInSlice(s, []string{"ok", "P19_INPUT", "P19_SCHEMA", "P19_STATE_CORRUPT", "P19_ARCHIVE", "protocol"})
+	}
+	for _, c := range v.Chunks {
+		if !id(c.ID) || !validCode(c.Code) {
+			return v, fmt.Errorf("chunk schema")
+		}
+	}
+	for _, c := range v.Queries {
+		if !id(c.ID) || !validCode(c.Code) {
+			return v, fmt.Errorf("query schema")
+		}
+	}
+	for _, c := range v.Wires {
+		if !id(c.ID) || !validCode(c.Code) || !phase17IsLowerHexSHA256(c.Digest) || !phase17IsLowerHexSHA256(c.Wire.Digest) {
+			return v, fmt.Errorf("wire schema")
+		}
+	}
+	for _, c := range v.Caches {
+		if !id(c.ID) || c.Quota < 0 || c.Now < 0 || c.Expires < 0 || !phase17StringInSlice(c.Expected, []string{"hit", "miss", "invalidate"}) {
+			return v, fmt.Errorf("cache schema")
+		}
+	}
+	for _, c := range v.Keys {
+		k := c.Input
+		if !id(c.ID) || !phase17IsLowerHexSHA256(c.Expected) || k.Env == nil || k.Project == "" || k.Job == "" || k.Trust != "registered" || k.OS != "linux" || k.Arch != "amd64" ||
+			!phase17IsLowerHexSHA256(k.Plan) || !phase17IsLowerHexSHA256(k.Source) || !phase17IsLowerHexSHA256(k.Toolchain) {
+			return v, fmt.Errorf("key schema")
+		}
+	}
+	for _, c := range v.Envelopes {
+		if !id(c.ID) || c.Sizes == nil || len(c.Sizes) < 1 || len(c.Sizes) > 2 || !validCode(c.Code) ||
+			!phase17StringInSlice(c.Mutation, []string{"none", "gzip-empty-member", "gzip-trailing-zero", "gzip-trailing-byte", "gzip-crc", "gzip-truncated", "tar-extra-zero", "tar-short-terminator", "tar-data-padding", "tar-pax-prefix"}) {
+			return v, fmt.Errorf("envelope schema")
+		}
+		for _, size := range c.Sizes {
+			if size < 0 || size > 1024 {
+				return v, fmt.Errorf("synthetic file size")
+			}
+		}
+	}
+	return v, nil
+}
+
+func phase19ChunkRangeOracle(total, offset int64) (int64, int64, bool, string) {
+	if total < 1 || total > 1073741824 {
+		return 0, 0, false, "P19_STATE_CORRUPT"
+	}
+	if offset < 0 || offset > total {
+		return 0, 0, false, "P19_SCHEMA"
+	}
+	n := total - offset
+	if n > 12288 {
+		n = 12288
+	}
+	next := offset + n
+	return n, next, next == total, "ok"
+}
+
+func phase19ChunkQueryOracle(offset string) string {
+	if !regexp.MustCompile(`^(0|[1-9][0-9]*)$`).MatchString(offset) {
+		return "P19_INPUT"
+	}
+	n, err := strconv.ParseUint(offset, 10, 64)
+	if err != nil || n > 1073741824 {
+		return "P19_SCHEMA"
+	}
+	return "ok"
+}
+
+func phase19ChunkWireOracle(offset int64, digest string, c phase19ContentChunk) string {
+	n, next, final, code := phase19ChunkRangeOracle(c.Total, offset)
+	data, err := base64.StdEncoding.Strict().DecodeString(c.Data)
+	if code != "ok" || c.Offset != offset || c.Digest != digest || err != nil || base64.StdEncoding.EncodeToString(data) != c.Data ||
+		int64(len(data)) != n || c.Next != next || c.Final != final {
+		return "protocol"
+	}
+	return "ok"
+}
+
+func phase19CacheHitOracle(metadata, matchingKey, published, deleting bool, quota int, now, expires int64, verified bool) string {
+	if !metadata || !matchingKey || deleting || quota == 0 || now >= expires {
+		return "miss"
+	}
+	if !published || !verified {
+		return "invalidate"
+	}
+	return "hit"
+}
+
+func phase19CacheKeyOracle(input phase19CacheKeyInput) (string, error) {
+	b, err := json.Marshal(input)
+	if err != nil {
+		return "", err
+	}
+	var value any
+	if err := json.Unmarshal(b, &value); err != nil {
+		return "", err
+	}
+	h := sha256.Sum256(iacSpecificationCanonical(value))
+	return hex.EncodeToString(h[:]), nil
+}
+
+func phase19ContentEnvelopeOracle(payload []byte, sizes []int64) string {
+	expected := int64(1024)
+	for _, size := range sizes {
+		expected += 512 + ((size+511)/512)*512
+	}
+	if !bytes.HasPrefix(payload, []byte{0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 2, 255}) {
+		return "P19_ARCHIVE"
+	}
+	compressed := bytes.NewReader(payload)
+	gr, err := gzip.NewReader(compressed)
+	if err != nil {
+		return "P19_ARCHIVE"
+	}
+	gr.Multistream(false)
+	raw, err := io.ReadAll(io.LimitReader(gr, expected+1))
+	closeErr := gr.Close()
+	if err != nil || closeErr != nil || int64(len(raw)) != expected || compressed.Len() != 0 {
+		return "P19_ARCHIVE"
+	}
+	pos := int64(0)
+	for _, size := range sizes {
+		header := raw[pos : pos+512]
+		if header[156] != '0' || !bytes.Equal(header[257:265], []byte{'u', 's', 't', 'a', 'r', 0, '0', '0'}) {
+			return "P19_ARCHIVE"
+		}
+		end := pos + 512 + size
+		padded := pos + 512 + ((size+511)/512)*512
+		if !bytes.Equal(raw[end:padded], make([]byte, padded-end)) {
+			return "P19_ARCHIVE"
+		}
+		pos = padded
+	}
+	if !bytes.Equal(raw[pos:], make([]byte, 1024)) {
+		return "P19_ARCHIVE"
+	}
+	tr := tar.NewReader(bytes.NewReader(raw))
+	for i, size := range sizes {
+		h, err := tr.Next()
+		if err != nil || h.Name != string(rune('a'+i)) || h.Typeflag != tar.TypeReg || h.Size != size || h.Mode != 0644 || h.Uid != 0 || h.Gid != 0 || h.Uname != "" || h.Gname != "" || h.ModTime.Unix() != 0 {
+			return "P19_ARCHIVE"
+		}
+		data, err := io.ReadAll(tr)
+		if err != nil || !bytes.Equal(data, bytes.Repeat([]byte{'a'}, int(size))) {
+			return "P19_ARCHIVE"
+		}
+	}
+	if _, err := tr.Next(); err != io.EOF {
+		return "P19_ARCHIVE"
+	}
+	return "ok"
+}
+
+func TestPhase19ContentSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	doc := phase11MustReadText(t, "docs/details/fixture.md")
+	match := regexp.MustCompile("(?s)<a id=\"phase-19-content-vectors\"></a>.*?\x60\x60\x60json\\n(.*?)\\n\x60\x60\x60").FindStringSubmatch(doc)
+	if len(match) != 2 {
+		t.Fatal("archive.content-spec.presence: missing fixed input")
+	}
+	input := []byte(match[1])
+	v, err := decodePhase19ContentSpecification(input)
+	if err != nil || len(v.Chunks) != 11 || len(v.Queries) != 8 || len(v.Wires) != 12 || len(v.Caches) != 9 || len(v.Keys) != 3 || len(v.Envelopes) != 13 {
+		t.Fatalf("archive.content-spec.schema: expected 11/8/12/9/3/13 valid vectors actual %v", err)
+	}
+	for _, c := range v.Chunks {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			n, next, final, code := phase19ChunkRangeOracle(c.Total, c.Offset)
+			if n != c.Bytes || next != c.Next || final != c.Final || code != c.Code {
+				t.Fatalf("api.content-spec.%s.result: spec=docs/details/api.md#phase-19-artifact-download expected=%d/%d/%t/%s actual=%d/%d/%t/%s", c.ID, c.Bytes, c.Next, c.Final, c.Code, n, next, final, code)
+			}
+		})
+	}
+	for _, c := range v.Queries {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			if got := phase19ChunkQueryOracle(c.Offset); got != c.Code {
+				t.Fatalf("api.content-spec.%s.result: spec=docs/details/api.md#phase-19-artifact-download expected=%s actual=%s", c.ID, c.Code, got)
+			}
+		})
+	}
+	for _, c := range v.Wires {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			if got := phase19ChunkWireOracle(c.Offset, c.Digest, c.Wire); got != c.Code {
+				t.Fatalf("api.content-spec.%s.result: spec=docs/details/api.md#phase-19-artifact-download expected=%s actual=%s", c.ID, c.Code, got)
+			}
+		})
+	}
+	for _, c := range v.Caches {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			if got := phase19CacheHitOracle(c.Metadata, c.MatchingKey, c.Published, c.Deleting, c.Quota, c.Now, c.Expires, c.Verified); got != c.Expected {
+				t.Fatalf("runner.content-spec.%s.result: spec=docs/details/runner.md#phase-19-cache-lifecycle expected=%s actual=%s", c.ID, c.Expected, got)
+			}
+		})
+	}
+	for _, c := range v.Keys {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			if got, err := phase19CacheKeyOracle(c.Input); err != nil || got != c.Expected {
+				t.Fatalf("runner.content-spec.%s.result: spec=docs/details/runner.md#phase-19-cache-lifecycle expected=%s actual=%s error=%v", c.ID, c.Expected, got, err)
+			}
+		})
+	}
+	gzipBytes := func(raw []byte) []byte {
+		var out bytes.Buffer
+		gw, err := gzip.NewWriterLevel(&out, gzip.BestCompression)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = gw.Write(raw); err != nil {
+			t.Fatal(err)
+		}
+		if err = gw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return out.Bytes()
+	}
+	for _, c := range v.Envelopes {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			for i, size := range c.Sizes {
+				header := &tar.Header{Name: string(rune('a' + i)), Mode: 0644, Size: size, Typeflag: tar.TypeReg, ModTime: time.Unix(0, 0).UTC(), Format: tar.FormatUSTAR}
+				if c.Mutation == "tar-pax-prefix" && i == 0 {
+					header.Format = tar.FormatPAX
+					header.PAXRecords = map[string]string{"comment": "x"}
+				}
+				if err := tw.WriteHeader(header); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := tw.Write(bytes.Repeat([]byte{'a'}, int(size))); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := tw.Close(); err != nil {
+				t.Fatal(err)
+			}
+			raw := append([]byte{}, buf.Bytes()...)
+			switch c.Mutation {
+			case "tar-extra-zero":
+				raw = append(raw, make([]byte, 512)...)
+			case "tar-short-terminator":
+				raw = raw[:len(raw)-512]
+			case "tar-data-padding":
+				raw[512+c.Sizes[0]] = 1
+			}
+			payload := gzipBytes(raw)
+			switch c.Mutation {
+			case "gzip-empty-member":
+				payload = append(payload, gzipBytes(nil)...)
+			case "gzip-trailing-zero":
+				payload = append(payload, 0)
+			case "gzip-trailing-byte":
+				payload = append(payload, 1)
+			case "gzip-crc":
+				payload[len(payload)-8] ^= 1
+			case "gzip-truncated":
+				payload = payload[:len(payload)-1]
+			}
+			if got := phase19ContentEnvelopeOracle(payload, c.Sizes); got != c.Code {
+				t.Fatalf("archive.content-spec.%s.result: spec=docs/details/archive.md#phase-19-archive-envelope expected=%s actual=%s", c.ID, c.Code, got)
+			}
+		})
+	}
+	for _, bad := range []struct {
+		id    string
+		input []byte
+	}{
+		{"missing", []byte(strings.Replace(string(input), `"schema_version": 1,`, "", 1))},
+		{"unknown", []byte(strings.Replace(string(input), `"schema_version": 1,`, `"schema_version": 1, "unknown": true,`, 1))},
+		{"duplicate", []byte(strings.Replace(string(input), `"schema_version": 1,`, `"schema_version": 1, "schema_version": 1,`, 1))},
+		{"null", []byte(strings.Replace(string(input), `"metadata": true`, `"metadata": null`, 1))},
+		{"trailing", append(append([]byte{}, input...), []byte("{}")...)},
+		{"utf8", append(append([]byte{}, input...), 0xff)},
+	} {
+		t.Run("schema-"+bad.id, func(t *testing.T) {
+			if _, err := decodePhase19ContentSpecification(bad.input); err == nil {
+				t.Fatalf("statefile.content-spec.schema-%s.reject: expected rejected actual accepted", bad.id)
+			}
+		})
+	}
+}
+
 type phase19OperationSpecificationVector struct {
 	SchemaVersion int `json:"schema_version"`
 	Admission     []struct {
@@ -1728,6 +2108,7 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 		{"site-retention-clock", "docs/details/statefile.md", `"committed_at": "Time"`, `"committed_at": "Id"`},
 		{"operation-attempt", "docs/details/statefile.md", `"target_attempt": "nullable(int(1,100))"`, `"target_attempt": "nullable(Id)"`},
 		{"operation-digest-target", "docs/details/statefile.md", `"target_id": "nullable(text(1,64))"`, `"target_id": "nullable(Id)"`},
+		{"audit-digest-target", "docs/details/statefile.md", "\"at\": \"Time\",\n      \"target_id\": \"nullable(text(1,64))\"", "\"at\": \"Time\",\n      \"target_id\": \"nullable(Id)\""},
 		{"deployment-observation", "docs/details/statefile.md", `"observations": "list(StageObservation,0,512)"`, `"observations": "list(StageObservation,0,32)"`},
 		{"notification-attempt", "docs/details/statefile.md", `"target_attempt": "int(1,100)"`, `"target_attempt": "int(1,3)"`},
 		{"roadmap-inventory-state", "docs/ROADMAP.md", "| 仕様化済み・未実装 | CI / CD | Phase 19", "| 改訂予定 | CI / CD | Phase 19"},
@@ -1962,6 +2343,7 @@ func phase19ValidateSpecification(documents map[string]string) error {
 		"WorkerExecution": {"job": "JobResult", "lease_generation": "int(1,9007199254740991)"},
 		"SiteOperation":   {"committed_at": "Time"},
 		"Operation":       {"target_id": "nullable(text(1,64))", "target_attempt": "nullable(int(1,100))"},
+		"Audit":           {"target_id": "nullable(text(1,64))"},
 		"Deployment":      {"observations": "list(StageObservation,0,512)"},
 		"Notification":    {"target_attempt": "int(1,100)", "source_revision": "int(1,2147483647)"},
 	} {

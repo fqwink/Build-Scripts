@@ -40,6 +40,607 @@ expected.json=`{variants:[{id,responses:[{status,code,data}],final_root:Root,tra
 
 **補助固定vector：** canonical JSONは `{"b":2,"a":1}` → `{"a":1,"b":2}`、duplicate keyは拒否。matrix {os:[linux,other],v:[1,2]}はaxis ASCII順で4tuple、exclude={v:2}で2tuple。leaseはnow=untilで失効、approvalもnow=expiresで失効。freezeはfrom含む/until含まない。AES-GCMは [Go標準AEAD仕様](https://pkg.go.dev/crypto/cipher#NewGCM) に加え、[NIST GCM-AES256 Example #1〜4](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/AES_GCM.pdf) のkey/IV/AAD/plaintext/ciphertext/tagを固定独立oracleとして用い、Seal結果をciphertext||tagへbyte完全一致させOpen結果も比較する。空/非空AAD・plainの両方を含め、key/nonce/AAD/tag各1bit反転を拒否する。製品固有AADはsecurity正本の区切りを含むbyte列を別oracleで検査し、roundtripだけでAAD不使用を見逃さない、Ed25519は [RFC8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032#section-7.1) のTEST1〜3を独立既知値として取り込み、公開鍵/署名/message改竄を拒否する。既知値は実装出力で再生成しない。
 
+<a id="phase-19-content-vectors"></a>
+**artifact/cacheの文書入力：** 処理の正本は [docs/details/archive.md 詳細本文責務 envelope](archive.md#phase-19-archive-envelope)、[read/GC](archive.md#phase-19-artifact-read-gc)、[docs/details/runner.md 詳細本文責務 cache lifecycle](runner.md#phase-19-cache-lifecycle)、[docs/details/api.md 詳細本文責務 download](api.md#phase-19-artifact-download)。TestPhase19ContentSpecificationVectorsは以下の固定入力を読む純粋なdocument oracleであり、実際の製品API/Filesystem/lockを検証した証跡ではない。全key必須、unknown/duplicate/null拒否、IDは全配列で一意、key hashは独立したRuby標準JSON/sha256で固定してからcheckerを作成する。大小文字や環境値の変更を同じkeyへ丸めない。
+
+```json
+{
+  "schema_version": 1,
+  "chunk_cases": [
+    {
+      "id": "chunk-one",
+      "total_bytes": 1,
+      "offset": 0,
+      "expected_bytes": 1,
+      "expected_next": 1,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-exact",
+      "total_bytes": 12288,
+      "offset": 0,
+      "expected_bytes": 12288,
+      "expected_next": 12288,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-first",
+      "total_bytes": 12289,
+      "offset": 0,
+      "expected_bytes": 12288,
+      "expected_next": 12288,
+      "expected_final": false,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-last",
+      "total_bytes": 12289,
+      "offset": 12288,
+      "expected_bytes": 1,
+      "expected_next": 12289,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-unaligned",
+      "total_bytes": 12289,
+      "offset": 1,
+      "expected_bytes": 12288,
+      "expected_next": 12289,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-tail",
+      "total_bytes": 12289,
+      "offset": 12289,
+      "expected_bytes": 0,
+      "expected_next": 12289,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-future",
+      "total_bytes": 1,
+      "offset": 2,
+      "expected_bytes": 0,
+      "expected_next": 0,
+      "expected_final": false,
+      "expected_code": "P19_SCHEMA"
+    },
+    {
+      "id": "chunk-negative",
+      "total_bytes": 1,
+      "offset": -1,
+      "expected_bytes": 0,
+      "expected_next": 0,
+      "expected_final": false,
+      "expected_code": "P19_SCHEMA"
+    },
+    {
+      "id": "chunk-empty-metadata",
+      "total_bytes": 0,
+      "offset": 0,
+      "expected_bytes": 0,
+      "expected_next": 0,
+      "expected_final": false,
+      "expected_code": "P19_STATE_CORRUPT"
+    },
+    {
+      "id": "chunk-max",
+      "total_bytes": 1073741824,
+      "offset": 1073741820,
+      "expected_bytes": 4,
+      "expected_next": 1073741824,
+      "expected_final": true,
+      "expected_code": "ok"
+    },
+    {
+      "id": "chunk-large-metadata",
+      "total_bytes": 1073741825,
+      "offset": 0,
+      "expected_bytes": 0,
+      "expected_next": 0,
+      "expected_final": false,
+      "expected_code": "P19_STATE_CORRUPT"
+    }
+  ],
+  "query_cases": [
+    {
+      "id": "query-zero",
+      "offset": "0",
+      "expected_code": "ok"
+    },
+    {
+      "id": "query-max",
+      "offset": "1073741824",
+      "expected_code": "ok"
+    },
+    {
+      "id": "query-large",
+      "offset": "1073741825",
+      "expected_code": "P19_SCHEMA"
+    },
+    {
+      "id": "query-leading-zero",
+      "offset": "01",
+      "expected_code": "P19_INPUT"
+    },
+    {
+      "id": "query-sign",
+      "offset": "-1",
+      "expected_code": "P19_INPUT"
+    },
+    {
+      "id": "query-space",
+      "offset": " 1",
+      "expected_code": "P19_INPUT"
+    },
+    {
+      "id": "query-exponent",
+      "offset": "1e2",
+      "expected_code": "P19_INPUT"
+    },
+    {
+      "id": "query-overflow",
+      "offset": "999999999999999999999999",
+      "expected_code": "P19_SCHEMA"
+    }
+  ],
+  "wire_cases": [
+    {
+      "id": "receive-one",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YQ==",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "ok"
+    },
+    {
+      "id": "receive-tail",
+      "requested_offset": 1,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 1,
+        "data": "",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "ok"
+    },
+    {
+      "id": "receive-padding",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YQ",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-digest",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YQ==",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-offset",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 1,
+        "data": "",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-short",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YQ==",
+        "next_offset": 2,
+        "total_bytes": 2,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-final",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YWE=",
+        "next_offset": 2,
+        "total_bytes": 2,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": false
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-empty",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "",
+        "next_offset": 0,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": false
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-gap",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YWE=",
+        "next_offset": 3,
+        "total_bytes": 2,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-zero",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "",
+        "next_offset": 0,
+        "total_bytes": 0,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-overlong",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YWE=",
+        "next_offset": 2,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    },
+    {
+      "id": "receive-whitespace",
+      "requested_offset": 0,
+      "requested_digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "wire": {
+        "offset": 0,
+        "data": "YQ==\n",
+        "next_offset": 1,
+        "total_bytes": 1,
+        "digest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "final": true
+      },
+      "expected_code": "protocol"
+    }
+  ],
+  "cache_cases": [
+    {
+      "id": "cache-hit",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "hit"
+    },
+    {
+      "id": "cache-no-metadata",
+      "metadata": false,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    },
+    {
+      "id": "cache-no-payload",
+      "metadata": true,
+      "matching_key": true,
+      "published": false,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "invalidate"
+    },
+    {
+      "id": "cache-corrupt",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": false,
+      "expected": "invalidate"
+    },
+    {
+      "id": "cache-other-key",
+      "metadata": true,
+      "matching_key": false,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    },
+    {
+      "id": "cache-deleting",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": true,
+      "quota_mb": 1,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    },
+    {
+      "id": "cache-disabled-quota",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 0,
+      "now": 99,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    },
+    {
+      "id": "cache-at-expiry",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 100,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    },
+    {
+      "id": "cache-after-expiry",
+      "metadata": true,
+      "matching_key": true,
+      "published": true,
+      "deleting": false,
+      "quota_mb": 1,
+      "now": 101,
+      "expires_at": 100,
+      "verified": true,
+      "expected": "miss"
+    }
+  ],
+  "key_cases": [
+    {
+      "id": "key-alpha",
+      "input": {
+        "project_id": "alpha",
+        "trust": "registered",
+        "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "job_id": "build",
+        "source_tree_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "toolchain_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "os": "linux",
+        "arch": "amd64",
+        "env": {
+          "A": "x",
+          "Z": "y"
+        }
+      },
+      "expected_sha256": "ca2976169a805db6e49878c6a1076cf7ab4f4a72b2cc7aa38f0937f232dad1c2"
+    },
+    {
+      "id": "key-beta",
+      "input": {
+        "project_id": "beta",
+        "trust": "registered",
+        "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "job_id": "build",
+        "source_tree_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "toolchain_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "os": "linux",
+        "arch": "amd64",
+        "env": {
+          "A": "x",
+          "Z": "y"
+        }
+      },
+      "expected_sha256": "9c4d03c161118ca17f279ef0607e740e8e3486063c559e3bdfaa1b09168caa0a"
+    },
+    {
+      "id": "key-env",
+      "input": {
+        "project_id": "alpha",
+        "trust": "registered",
+        "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "job_id": "build",
+        "source_tree_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "toolchain_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "os": "linux",
+        "arch": "amd64",
+        "env": {
+          "A": "x",
+          "Z": "z"
+        }
+      },
+      "expected_sha256": "dc6983c1d2f9bdbb4eb49a005807d37e0e5aa98ba1f60521c75eb9115b3c755c"
+    }
+  ],
+  "envelope_cases": [
+    {
+      "id": "envelope-empty-file",
+      "sizes": [
+        0
+      ],
+      "mutation": "none",
+      "expected_code": "ok"
+    },
+    {
+      "id": "envelope-one",
+      "sizes": [
+        1
+      ],
+      "mutation": "none",
+      "expected_code": "ok"
+    },
+    {
+      "id": "envelope-block",
+      "sizes": [
+        512
+      ],
+      "mutation": "none",
+      "expected_code": "ok"
+    },
+    {
+      "id": "envelope-split",
+      "sizes": [
+        513,
+        0
+      ],
+      "mutation": "none",
+      "expected_code": "ok"
+    },
+    {
+      "id": "envelope-extra-member",
+      "sizes": [
+        1
+      ],
+      "mutation": "gzip-empty-member",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-gzip-zero",
+      "sizes": [
+        1
+      ],
+      "mutation": "gzip-trailing-zero",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-gzip-byte",
+      "sizes": [
+        1
+      ],
+      "mutation": "gzip-trailing-byte",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-crc",
+      "sizes": [
+        1
+      ],
+      "mutation": "gzip-crc",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-truncated",
+      "sizes": [
+        1
+      ],
+      "mutation": "gzip-truncated",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-tar-zero",
+      "sizes": [
+        1
+      ],
+      "mutation": "tar-extra-zero",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-short-end",
+      "sizes": [
+        1
+      ],
+      "mutation": "tar-short-terminator",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-padding",
+      "sizes": [
+        1
+      ],
+      "mutation": "tar-data-padding",
+      "expected_code": "P19_ARCHIVE"
+    },
+    {
+      "id": "envelope-pax",
+      "sizes": [
+        1
+      ],
+      "mutation": "tar-pax-prefix",
+      "expected_code": "P19_ARCHIVE"
+    }
+  ]
+}
+```
+
+chunk_casesはoffset/length/next/finalの算術、query_casesはquery grammar、wire_casesはSDK/CLIが観測するbase64と応答整合、cache_casesはmetadata先行拒否/namespace/容量/期限/破損の判断を検査する。envelope入力は各sizesのfileをpath a,b順、本文ASCII aのsize回反復、mode0644、UID/GID0・mtime0・USTARで構築し、BestCompressionのgzipにする。正規raw tar長はowner式から求め、gzip-empty-memberは空gzip memberを追加、gzip-trailing-zero/byteは1byte 00/01を追加、gzip-crcはtrailer先頭1bit反転、gzip-truncatedは末尾1byte削除、tar-extra-zero/short-terminatorは512zero追加/削除、tar-data-paddingは最初のfile直後paddingを01へ変更する。tar-pax-prefixはcomment=xのPAX前置header付き同fileで、正常tarへ自動変換して受理しない。
+
+schema負例はmissing/unknown/duplicate/null/trailing/invalid UTF-8の6種。assertion IDはapi.content-spec.<case>.result / runner.content-spec.<case>.result / archive.content-spec.<case>.result / statefile.content-spec.schema-<case>.reject。mutationはquery先頭0、chunk上限/終端、wire長検査、cache期限/metadata/破損、keyのproject除去、gzip member/trailing、tar padding、Audit.target_id型の適用可能な代表を隔離sourceで実行する。生成payloadはtest memory内だけで、実repoのfixture/expectedを書き換えない。
+
+将来P19-CACHEはpublish/親fsync/Root commit各停止点、同keyの同bytes/異bytes競合、未参照公開directoryの再起動回収、in_use中のinvalidate/GC、quota0、TTL一致とlast_used_at逆行をnormal/fault/restart/concurrentへ接続する。P19-ARTIFACTはread先行/GC先行をbarrier制御し、metadata/payload不在・差替/symlink/nlink/short-read、guard取得失敗、response中lock保持0、current pin保護、quota evict順を比較する。P19-ACCESSはdigest targetのOperation/Audit一致を検査する。P19-LOG-UIはchunk不整合/404/遅延view/途中取消/hash不一致/Blob失敗で未完了bufferとobject URLを破棄し、最終hash前のdownload成功0を観測する。cache-kindをartifact登録/API/site配備へ流用する負例も必須とする。これらの実runtime検証は未実装で、文書oracle合格では閉じない。
+
 <a id="phase-19-operation-vectors"></a>
 **operation文書入力：** 受付は [docs/details/api.md 詳細本文責務](api.md#phase-19-operation-admission)、保存進行・GCは [docs/details/statefile.md 詳細本文責務](statefile.md#phase-19-operation-lifecycle)、対象処理の完了は [docs/details/runner.md 詳細本文責務](runner.md#phase-19-operation-completion) を正本とする。以下はTestPhase19OperationSpecificationVectorsの純粋なdocument oracleであり、製品のlock/認可/通信/復旧を実行した証跡ではない。全key必須、unknown/duplicate/null拒否、case IDは全配列で一意。admissionは認可済みscopeの最新検査をauthorizedで、既存keyのsubject/digest一致と新規revisionをbooleanで与える。transitionのsame_resultはstateだけでなくcode/対象結果/不変fieldが完全一致する場合だけtrue。GCの時刻はcreated_atからの秒数。期待値は固定であり製品出力から生成しない。
 
@@ -692,7 +1293,7 @@ assertion IDはrunner.log-spec.<case>.result、api.log-spec.<case>.result、stat
 <a id="specification-reference-checker"></a>
 全仕様文書の参照検査は `TestSpecificationReferenceIntegrity` とし、AGENTS/README/CONTRIBUTING/SECURITYとdocs配下全Markdownの説明文linkを対象に、実在path、固定anchor、同一file内anchor一意性を検査する。fenced/inline code内の構文例は参照と混同しない。missing-path/missing-anchor/duplicate-anchorの3負例と構文例を除外する正例でcheckerを検証する。assertion IDは `statefile.spec-reference.positive.accept`、`statefile.spec-reference.<case>.reject`、`statefile.spec-reference.examples.accept`、失敗診断は検出path/line/anchorへ接続する。同じrootでROADMAPのPhase行を唯一の登録集合として、現在のPhase1〜21の欠落/重複/未登録行を拒否し、全対象文書のPhase番号参照を照合する。単独番号だけでなくslash/comma/rangeの連記、path表記、英字大小、フェーズ表記も対象にし、番号末尾と日本語本文の間にword boundaryを要求しない。syntheticな次の未登録番号は最大登録番号+1で作り、joined-list/comma-list/range/spaced/path/japanese/leading-zero/zero/unregistered-row/duplicate-rowの10負例を実行する。assertion IDはstatefile.spec-phase.positive.acceptとstatefile.spec-phase.<case>.reject、負例を通すchecker-source mutationは検証失敗とする。この検査は意味上の重複・機能完全性を証明しない。
 
-現時点の文書checker `TestPhase19SpecificationContracts` はregistryのstrict JSON/型式arity/range/参照cycle/環境map/atomic SiteState構造/保持時刻/観測record/通知attempt結合、53操作のSDK/UI/CLI接続、状態表の一致を検査する。negative controlは未知型、arity不足、逆転range、未知関数、duplicate JSON key/enum、型cycle、環境map差替、SiteState counter欠落、SiteOperation保持時刻型差替、Operation対象Digest型/attempt型差替、Deployment観測数差替、Notification対象attempt上限差替、状態逆戻り、SDK/UI/CLI欠落、route/anchor重複。これらは文書入力の負例であり、製品runtimeのmutation成功件数へ加算しない。checker自体の常時成功化も隔離copyでコンパイル・実行し、負例testが失敗することを確認する。現在のdocument assertionは `runner.phase19-spec.positive.accept` と `runner.phase19-spec.<negative-case>.reject`、fixture前提不足は `runner.phase19-spec.<negative-case>.fixture`。display用subtest名/行番号とは別の安定IDで期待値/実値を診断する。
+現時点の文書checker `TestPhase19SpecificationContracts` はregistryのstrict JSON/型式arity/range/参照cycle/環境map/atomic SiteState構造/保持時刻/観測record/通知attempt結合、53操作のSDK/UI/CLI接続、状態表の一致を検査する。negative controlは未知型、arity不足、逆転range、未知関数、duplicate JSON key/enum、型cycle、環境map差替、SiteState counter欠落、SiteOperation保持時刻型差替、Operation対象Digest型/attempt型差替、Audit対象Digest型差替、Deployment観測数差替、Notification対象attempt上限差替、状態逆戻り、SDK/UI/CLI欠落、route/anchor重複。これらは文書入力の負例であり、製品runtimeのmutation成功件数へ加算しない。checker自体の常時成功化も隔離copyでコンパイル・実行し、負例testが失敗することを確認する。現在のdocument assertionは `runner.phase19-spec.positive.accept` と `runner.phase19-spec.<negative-case>.reject`、fixture前提不足は `runner.phase19-spec.<negative-case>.fixture`。display用subtest名/行番号とは別の安定IDで期待値/実値を診断する。
 
 実装時のchecker入口は `go test ./... -run TestPhase19InhouseCICDEvidence -count=1`。内部subtest名はcase ID/variant/assertion、全384 assertionを実体観測し、件数定数だけでpassを出さない。mutationは表の各制御を1つずつ除去して同じ入口を走らせ、oracleがfailすること、未適用/compile failureをkilled扱いしない。isolation propertyは各property1mutation、最低16ではなく実selection件数を記録しsurvived=0を要求する。
 

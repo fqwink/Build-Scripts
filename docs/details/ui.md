@@ -74,6 +74,11 @@ projectsはproject設定、definition/templateのJSON editor、入力型editor�
 
 開始/取消/rollback/秘密更新/権限変更/drainはconfirmationでproject/対象ID/revision/digest/環境世代を固定する。確認後のselection変化で無効化。submit中二重押下禁止、o-IDはフォーム1回の操作に固定。secret入力は送信/close/logoutで消去しDOM再描画へ残さない。one-time credentialはそのresponse内でだけ表示しview離脱で破棄する。approveとdeploy開始は別action、受付を配備完了や復旧成功と表示しない。
 
+<a id="phase-19-ui-artifact-download"></a>
+**成果物の検証済みdownload：** artifactDownloadは1件ずつoffset0からSDKを呼び、開始時のproject/digestと最初のtotal_bytesをmemoryへ固定する。各dataをbase64 decodeしたbyte列として連結し、次requestは返却next_offsetだけを使う。SDK成功後も後続chunkのtotal_bytes/digest一致を確認し、変更・不連続・404・権限失効・通信失敗では中止して部分bufferを破棄する。最後に受信byte数=total_bytesとcrypto.subtle SHA-256=要求digestの両方を確認した後だけBlob/object URLからpayload.tar.gzをdownload可能にする。最終chunkのflagだけ、空finalだけ、manifest_digest一致だけで成功表示しない。allocation/digest/Blob生成失敗も未完了として扱う。
+
+logout・view/project/digest変更・取消でrequestをabortしbuffer/object URLを破棄する。遅延chunkはview generation/request sequence一致時だけ受理し、object URLは利用終了/取消/view離脱でrevokeする。GC404では別artifactへ切り替えず明示再取得入口だけを出す。download開始からpin変更を自動発行しない。file名は固定payload.tar.gz、file内容をDOMへHTMLとして展開しない。
+
 <a id="phase-19-ui-operation-uncertainty"></a>
 **応答消失時の表示：** submitting中の通信断/timeout/abortはerrorと結果未確認の両方を表示し、同じフォームへ新しいo-IDを割り当てて再送しない。memoryに保持するのは要求key・operation名・非秘密の対象identity/attemptだけで、body/secret/credentialを再送用に残さない。利用者の結果確認actionは同keyのoperationGetを行い、保存済みならOperationの実状態と対象GET/listを再取得する。404は未受付の断定に使わず、保持期限経過・応答消失を含む未確認状態として自動再実行を止める。再loginやview変更でも秘密入力を復元しない。ページ再読み込みでmemoryのkeyを失った場合は対象一覧・監査の再取得から確認し、operationを自動合成しない。新しい操作には別の利用者確認と新keyを要求し、元操作の照合ができなければ二重実行リスクを表示する。Operationのtarget_attemptと選択attemptを比較し、旧attemptの完了を新attemptの成功へ表示しない。
 

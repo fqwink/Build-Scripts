@@ -52,6 +52,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | 既存 7 workflow required gate / 入力 fixture / checker / 正例・負例 | [`docs/details/fixture.md` fixture 証跡責務 開発 Actions required gate 固定契約](details/fixture.md#development-actions-required-gate-contract) |
 | streaming log / UTF-8 page / 出力上限 / 保存容量の文書oracle | [docs/details/fixture.md fixture証跡責務 log境界入力](details/fixture.md#phase-19-log-boundary-vectors) |
 | operation再送 / 内部進行 / 期限GC / attempt結合の文書oracle | [docs/details/fixture.md fixture証跡責務 operation境界入力](details/fixture.md#phase-19-operation-vectors) |
+| artifact/cache envelope / download byte範囲 / cache保持の文書oracle | [docs/details/fixture.md fixture証跡責務 content境界入力](details/fixture.md#phase-19-content-vectors) |
 | Phase 19 策定対象 / 故障・復旧・並行実行の受け入れ設計 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
 | Phase20 IaC / plan意味整合 / 適用受付時刻 / 文書入力oracle | [docs/details/fixture.md fixture証跡責務 IaC検証入口](details/fixture.md#inhouse-iac-fixture-contract)、[完全入力と中断oracle](details/fixture.md#inhouse-iac-concrete-oracles)、[適用受付境界入力](details/fixture.md#inhouse-iac-admission-vectors) |
 | traceability / owner routing / fixture coverage | [`docs/details/fixture.md` fixture 証跡責務 test artifact traceability 固定契約](details/fixture.md#test-artifact-traceability-contract)、[`non-dedicated owner test routing 固定契約`](details/fixture.md#non-dedicated-owner-test-routing-contract)、[`fixture root coverage matrix 固定契約`](details/fixture.md#fixture-root-coverage-matrix-contract) |
@@ -440,6 +441,9 @@ Phase 19 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状�
 | 配備・承認対象・段階配備・切替・復旧進行 | `runner` | [`docs/details/runner.md` 詳細本文責務 配備・承認・復旧](details/runner.md#phase-19-deployment-contract) |
 | project・template・run・lease・保存 schema・durability | `statefile` | [`docs/details/statefile.md` 詳細本文責務 Phase 19 保存境界](details/statefile.md#phase-19-state-contract) |
 | 成果物登録・重複排除・検証・保持・回収・比較 | `archive` | [`docs/details/archive.md` 詳細本文責務 Phase 19 成果物契約](details/archive.md#phase-19-artifact-contract) |
+| 成果物read/GC・単一gzip/tar終端・cache形式 | `archive` | [docs/details/archive.md 詳細本文責務 envelope](details/archive.md#phase-19-archive-envelope)、[read/GC](details/archive.md#phase-19-artifact-read-gc) |
+| job cache公開・hit/restore・期限/容量削除 | `runner` | [docs/details/runner.md 詳細本文責務 cache lifecycle](details/runner.md#phase-19-cache-lifecycle) |
+| artifact/cache filesystem I/OとRoot commitの排他 | `statefile` | [docs/details/statefile.md 詳細本文責務 read/write guard](details/statefile.md#phase-19-artifact-read-guard) |
 | 利用者・role・環境 grant・承認者・secret・audit | `security` | [`docs/details/security.md` 詳細本文責務 Phase 19 権限契約](details/security.md#phase-19-security-contract) |
 | profile起動・endpoint・request / response・JSON log / metrics | `api` | [`docs/details/api.md` 詳細本文責務 Phase 19 API 接続](details/api.md#phase-19-api-contract) |
 | operation受付・再送・結果照会 | `api` | [docs/details/api.md 詳細本文責務 受付](details/api.md#phase-19-operation-admission) |
