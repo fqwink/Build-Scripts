@@ -288,6 +288,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
       "expires_at": "Time"
     },
     "Lease": {
+      "project_id": "Id",
       "run_id": "Id",
       "attempt": "int(1,100)",
       "job_id": "Id",
@@ -312,6 +313,7 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
     },
     "JobResult": {
       "id": "Id",
+      "execution_id": "nullable(Id)",
       "state": "enum(queued,assigned,running,cancel_requested,succeeded,failed,cancelled,skipped,recovery_required)",
       "try_number": "int(0,3)",
       "worker_id": "nullable(Id)",
@@ -602,6 +604,9 @@ owner は `statefile`、実装主体は [`components/statefile/`](../../componen
     },
     "WorkerExecution": {
       "operation_id": "Id",
+      "assignment_bytes": "int(1,2097152)",
+      "assignment_digest": "Digest",
+      "toolchain_digest": "Digest",
       "project_id": "Id",
       "run_id": "Id",
       "attempt": "int(1,100)",
@@ -676,6 +681,13 @@ S は起動時に検証した state-dir。以下の S 相対pathだけを新規�
 | `cicd/locks/site.lock` | site API/stdio間のlocal state排他用flock、file更新中だけ保持、network中保持禁止 |
 
 WorkerExecutionはoperation_id一意、job/lease identity一致を要求し、terminal/cleanup_ok=trueの記録だけupdated_atから30日後に回収する。満杯時はactiveを削除せず新assignをP19_STORAGEで拒否する。worker/local brokerの再起動照合で使う実行記録であり、worker.jsonへJobResultを混入しない。
+
+<a id="phase-19-worker-state-identity"></a>
+**coordinatorの再照会identity：** worker割当時はjob/tryのoperation_idをJobResult.execution_idへLeaseと同一Root commitで保存してから接続する。worker側のJobResult.execution_idもWorkerExecution.operation_idと一致を要求する。同tryでは不変、確認済み停止後の次tryだけ新ID/世代へ更新し、coordinator再起動時はこの保存IDでqueryする。queued/非選択skipped/依存skipped/reused jobとcoordinator専用deploy/artifact-verifyはnull。worker実行に入った終端jobは最後の実行IDを保持し、API要求Operation.idと同一にしない。不在をjob ID/現在clock/新乱数で補完しない。型に加えこのnullable条件を全read/writeで検証する。
+
+**worker保存identity：** Leaseの複合identityはproject_id/run_id/attempt/job_id/generationであり、別projectで同名run/jobを同一leaseとしない。WorkerExecutionはoperation_idに加えこのidentity、job.id=job_id、job.worker_id=当該Worker.id、job.lease_generation=lease_generationを照合する。assignment_bytes/digestはassign headerが宣言するcanonical metadataの長さ/SHA256とし、final chunkで実bytesとの一致を確認してからstartを許可する値であり、初回claim後はidentity・resources・toolchain_digestとともに不変。claim時のJobResultはassigned/try_number=header値/worker_id=当該Worker.id/lease_generation=header値、started_at/finished_at/duration_ms/code/artifact/reused_from_attemptはnull、log_gap=false、unit_namesは空とする。job.try_numberは当該tryの1〜3で固定する。同operationの異なるmetadataを新しい実行として受理しない。worker.jsonの同世代leaseとWorkerExecutionのlease_untilをlocal lock下で照合し、食違い・片側だけのcrash残存は通常assignを止めbroker照会へ接続する。どちらかを推測上書きしてslotを空けない。
+
+coordinatorの割当commitは1件ずつ行い、そのcommitの新Root.generationをlease_generationとする。既存JobResult/Leaseへ同値を保存してから送信し、終了leaseを削除した後も世代を1へ戻さない。generation上限では割当不可/P19_REVISION。local worker/brokerの世代はcoordinatorが指定した値を保持し、自前counterで代用しない。lease延長時はworkerの両fileを同時atomicに更新できると主張せず、WorkerExecution→worker.jsonの順に各atomic保存し、両方成功後だけ新期限を利用する。途中crashは前段の不一致照合へ進む。broker.jsonは同じWorkerExecutionを自身のadapterで保存するが、別host/別fileとの分散atomic commitは保証しない。通信と停止境界は [docs/details/runner.md 詳細本文責務 lease](runner.md#phase-19-worker-lease-deadlines) を参照する。
 
 SiteStateはRoute・SiteOperation・SiteCountersを単一fileのatomic rename/fsyncでcommitする。Routeなし初期値はgeneration=0/operation_id=初回要求ID/stable=candidate=null/percent=0/config_digest=要求値、active_operationとprevious_routeはnull、operations空、countersはstep=0/generation=0/windows空。mutating RPCの外部可視route変更と再送結果を別fileへ分離しない。keyはoperation_id,step、type/digest一致を検査する。SiteOperation.committed_atはそのstepを最初にcommitしたsite UTC時刻で再送時不変。now>=committed_at+30日を満たす場合だけ期限経過とする。SiteOperationは30日保持、active/previous_route/current route参照分は回収不可、期限経過分だけcommit前に古い順で回収する。query/observeは記録を増やさない。初回claimでprevious_routeを固定し、同operation内の保存済step最大+1だけを受け付け、finalize/restore成功時だけactive_operationをnullにする。activeの結果を消さず、容量不足は変更前に拒否する。
 

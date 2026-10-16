@@ -615,6 +615,256 @@ func TestPhase19PlanSpecificationVectors(t *testing.T) {
 	}
 }
 
+type phase19WorkerFrame struct {
+	Direction string `json:"direction"`
+	Type      string `json:"type"`
+	Seq       int64  `json:"seq"`
+	Ack       int64  `json:"ack_seq"`
+}
+
+type phase19WorkerAckCase struct {
+	ID      string               `json:"id"`
+	Frames  []phase19WorkerFrame `json:"frames"`
+	Pending []int                `json:"expected_pending"`
+	Code    string               `json:"expected_code"`
+}
+
+type phase19WorkerChunk struct {
+	Offset int64  `json:"offset"`
+	Data   string `json:"data"`
+	Repeat int    `json:"repeat"`
+	Final  bool   `json:"final"`
+	Digest string `json:"digest"`
+}
+
+type phase19WorkerChunkCase struct {
+	ID     string               `json:"id"`
+	Total  int64                `json:"total_bytes"`
+	Digest string               `json:"digest"`
+	Chunks []phase19WorkerChunk `json:"chunks"`
+	Code   string               `json:"expected_code"`
+}
+
+type phase19WorkerLeaseCase struct {
+	ID           string `json:"id"`
+	Wall         int64  `json:"wall_ms"`
+	Mono         int64  `json:"mono_ms"`
+	Until        int64  `json:"until_ms"`
+	Deadline     int64  `json:"deadline_ms"`
+	Proposed     int64  `json:"proposed_ms"`
+	Generation   bool   `json:"generation_matches"`
+	Durable      bool   `json:"durable"`
+	WantUntil    int64  `json:"expected_until_ms"`
+	WantDeadline int64  `json:"expected_deadline_ms"`
+	Code         string `json:"expected_code"`
+}
+
+type phase19WorkerSpecificationVector struct {
+	Version int                      `json:"schema_version"`
+	Acks    []phase19WorkerAckCase   `json:"ack_cases"`
+	Chunks  []phase19WorkerChunkCase `json:"chunk_cases"`
+	Leases  []phase19WorkerLeaseCase `json:"lease_cases"`
+}
+
+func phase19WorkerAckOracle(frames []phase19WorkerFrame) ([2]int, string) {
+	next, waiting := [2]int64{1, 1}, [2]int64{}
+	pending := func() [2]int {
+		count := [2]int{}
+		for i, seq := range waiting {
+			if seq != 0 {
+				count[i] = 1
+			}
+		}
+		return count
+	}
+	for _, f := range frames {
+		d := 0
+		if f.Direction == "w2c" {
+			d = 1
+		} else if f.Direction != "c2w" {
+			return pending(), "P19_INPUT"
+		}
+		if f.Seq != next[d] || f.Seq > 9007199254740991 {
+			return pending(), "P19_INPUT"
+		}
+		switch f.Type {
+		case "ack":
+			if waiting[1-d] == 0 || f.Ack != waiting[1-d] {
+				return pending(), "P19_INPUT"
+			}
+			waiting[1-d] = 0
+		case "error":
+			return pending(), "P19_TRANSPORT"
+		default:
+			if !phase17StringInSlice(f.Type, []string{"hello", "assign", "chunk", "start", "heartbeat", "log", "result", "cancel", "query"}) || f.Ack != 0 || waiting[d] != 0 {
+				return pending(), "P19_INPUT"
+			}
+			waiting[d] = f.Seq
+		}
+		next[d]++
+	}
+	return pending(), "ok"
+}
+
+func phase19WorkerChunkOracle(c phase19WorkerChunkCase) string {
+	data, final := []byte{}, false
+	for _, chunk := range c.Chunks {
+		wire := chunk.Data
+		if chunk.Repeat > 1 {
+			one, err := base64.StdEncoding.Strict().DecodeString(wire)
+			if err != nil || len(one) != 1 {
+				return "P19_INPUT"
+			}
+			wire = base64.StdEncoding.EncodeToString(bytes.Repeat(one, chunk.Repeat))
+		}
+		part, err := base64.StdEncoding.Strict().DecodeString(wire)
+		if err != nil || base64.StdEncoding.EncodeToString(part) != wire || final || chunk.Offset != int64(len(data)) || len(part) > 12288 {
+			return "P19_INPUT"
+		}
+		end := int64(len(data)) + int64(len(part))
+		if end > c.Total || chunk.Final != (end == c.Total) || (len(part) == 0 && !(c.Total == 0 && chunk.Final && chunk.Offset == 0)) {
+			return "P19_INPUT"
+		}
+		if chunk.Digest != c.Digest {
+			return "P19_DIGEST"
+		}
+		data = append(data, part...)
+		final = chunk.Final
+	}
+	if !final || int64(len(data)) != c.Total {
+		return "P19_INPUT"
+	}
+	digest := sha256.Sum256(data)
+	if hex.EncodeToString(digest[:]) != c.Digest {
+		return "P19_DIGEST"
+	}
+	return "ok"
+}
+
+func phase19WorkerLeaseOracle(c phase19WorkerLeaseCase) (int64, int64, string) {
+	if c.Wall >= c.Until || c.Mono >= c.Deadline || !c.Generation {
+		return c.Until, c.Deadline, "P19_LEASE"
+	}
+	if c.Proposed == 0 || c.Proposed <= c.Until {
+		return c.Until, c.Deadline, "ok"
+	}
+	remaining := c.Proposed - c.Wall
+	if remaining <= 0 || remaining > 35000 || !c.Durable {
+		return c.Until, c.Deadline, "P19_LEASE"
+	}
+	if remaining > 30000 {
+		remaining = 30000
+	}
+	return c.Proposed, c.Mono + remaining, "ok"
+}
+
+func decodePhase19WorkerSpecification(input []byte) (phase19WorkerSpecificationVector, error) {
+	var v phase19WorkerSpecificationVector
+	if err := developmentActionsDecodeJSON(input, &v, 65536, true); err != nil {
+		return v, err
+	}
+	encoded, err := json.Marshal(v)
+	var a, b any
+	if err != nil || json.Unmarshal(input, &a) != nil || json.Unmarshal(encoded, &b) != nil || !bytes.Equal(iacSpecificationCanonical(a), iacSpecificationCanonical(b)) {
+		return v, fmt.Errorf("required fields")
+	}
+	if v.Version != 1 || v.Acks == nil || v.Chunks == nil || v.Leases == nil {
+		return v, fmt.Errorf("vector identity")
+	}
+	seen := map[string]bool{}
+	id := func(s, code string) bool {
+		if !regexp.MustCompile("^[a-z][a-z0-9-]*$").MatchString(s) || seen[s] || !phase17StringInSlice(code, []string{"ok", "P19_INPUT", "P19_TRANSPORT", "P19_DIGEST", "P19_LEASE"}) {
+			return false
+		}
+		seen[s] = true
+		return true
+	}
+	for _, c := range v.Acks {
+		if !id(c.ID, c.Code) || c.Frames == nil || len(c.Frames) == 0 || len(c.Pending) != 2 || c.Pending[0] < 0 || c.Pending[0] > 1 || c.Pending[1] < 0 || c.Pending[1] > 1 {
+			return v, fmt.Errorf("ack case")
+		}
+	}
+	for _, c := range v.Chunks {
+		if !id(c.ID, c.Code) || c.Total < 0 || c.Total > 2097152 || !phase17IsLowerHexSHA256(c.Digest) || len(c.Chunks) == 0 {
+			return v, fmt.Errorf("chunk case")
+		}
+		for _, x := range c.Chunks {
+			if x.Repeat < 1 || x.Repeat > 12289 || !phase17IsLowerHexSHA256(x.Digest) {
+				return v, fmt.Errorf("chunk generator")
+			}
+		}
+	}
+	for _, c := range v.Leases {
+		if !id(c.ID, c.Code) || c.Mono < 0 || c.Until < 0 || c.Deadline < 0 || c.Proposed < 0 {
+			return v, fmt.Errorf("lease case")
+		}
+	}
+	return v, nil
+}
+
+func TestPhase19WorkerSpecificationVectors(t *testing.T) {
+	t.Parallel()
+	doc := phase11MustReadText(t, "docs/details/fixture.md")
+	match := regexp.MustCompile("(?s)<a id=\"phase-19-worker-vectors\"></a>.*?\\x60\\x60\\x60json\\n(.*?)\\n\\x60\\x60\\x60").FindStringSubmatch(doc)
+	if len(match) != 2 {
+		t.Fatal("runner.worker-spec.presence: missing fixed input")
+	}
+	input := []byte(match[1])
+	v, err := decodePhase19WorkerSpecification(input)
+	if err != nil || len(v.Acks) != 12 || len(v.Chunks) != 16 || len(v.Leases) != 12 {
+		t.Fatalf("runner.worker-spec.schema: fixture.md#phase-19-worker-vectors expected 12/16/12 cases actual %v", err)
+	}
+	for _, c := range v.Acks {
+		t.Run(c.ID, func(t *testing.T) {
+			pending, code := phase19WorkerAckOracle(c.Frames)
+			if code != c.Code || pending != [2]int{c.Pending[0], c.Pending[1]} {
+				t.Fatalf("runner.worker-spec.%s.result: runner.md#phase-19-ipc-framing expected=%s/%v actual=%s/%v; reproduce: go test . -run '^TestPhase19WorkerSpecificationVectors$' -count=1", c.ID, c.Code, c.Pending, code, pending)
+			}
+		})
+	}
+	for _, c := range v.Chunks {
+		t.Run(c.ID, func(t *testing.T) {
+			if code := phase19WorkerChunkOracle(c); code != c.Code {
+				t.Fatalf("runner.worker-spec.%s.result: runner.md#phase-19-worker-session expected=%s actual=%s; reproduce: go test . -run '^TestPhase19WorkerSpecificationVectors$' -count=1", c.ID, c.Code, code)
+			}
+		})
+	}
+	for _, c := range v.Leases {
+		t.Run(c.ID, func(t *testing.T) {
+			until, deadline, code := phase19WorkerLeaseOracle(c)
+			if code != c.Code || until != c.WantUntil || deadline != c.WantDeadline {
+				t.Fatalf("runner.worker-spec.%s.result: runner.md#phase-19-worker-lease-deadlines expected=%s/%d/%d actual=%s/%d/%d; reproduce: go test . -run '^TestPhase19WorkerSpecificationVectors$' -count=1", c.ID, c.Code, c.WantUntil, c.WantDeadline, code, until, deadline)
+			}
+		})
+	}
+	var nullValue map[string]json.RawMessage
+	if err := json.Unmarshal(input, &nullValue); err != nil {
+		t.Fatal(err)
+	}
+	nullValue["ack_cases"] = json.RawMessage("null")
+	nullInput, err := json.Marshal(nullValue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		id    string
+		input []byte
+	}{
+		{"missing", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "", 1))},
+		{"unknown", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "\"schema_version\": 1,\"unknown\":true,", 1))},
+		{"duplicate", []byte(strings.Replace(string(input), "\"schema_version\": 1,", "\"schema_version\": 1,\"schema_version\": 1,", 1))},
+		{"null", nullInput},
+		{"trailing", append(append([]byte{}, input...), []byte("{}")...)},
+		{"invalid-utf8", append([]byte{0xff}, input...)},
+	} {
+		t.Run("schema-"+c.id, func(t *testing.T) {
+			if _, err := decodePhase19WorkerSpecification(c.input); err == nil {
+				t.Fatalf("runner.worker-spec.schema-%s.reject: fixture.md#phase-19-worker-vectors expected rejected actual accepted", c.id)
+			}
+		})
+	}
+}
+
 func phase19LogRingOracle(data []byte, first int64) ([]byte, int64, int64) {
 	drop := len(data) - 1048576
 	if drop < 0 {
@@ -2623,6 +2873,11 @@ func TestPhase19SpecificationContracts(t *testing.T) {
 		{"audit-digest-target", "docs/details/statefile.md", "\"at\": \"Time\",\n      \"target_id\": \"nullable(text(1,64))\"", "\"at\": \"Time\",\n      \"target_id\": \"nullable(Id)\""},
 		{"deployment-observation", "docs/details/statefile.md", `"observations": "list(StageObservation,0,512)"`, `"observations": "list(StageObservation,0,32)"`},
 		{"notification-attempt", "docs/details/statefile.md", `"target_attempt": "int(1,100)"`, `"target_attempt": "int(1,3)"`},
+		{"worker-lease-project", "docs/details/statefile.md", "\"Lease\": {\n      \"project_id\": \"Id\"", "\"Lease\": {\n      \"project_id\": \"JobId\""},
+		{"worker-assignment-digest", "docs/details/statefile.md", `"assignment_digest": "Digest"`, `"assignment_digest": "Id"`},
+		{"worker-execution-id", "docs/details/statefile.md", `"execution_id": "nullable(Id)"`, `"execution_id": "nullable(Digest)"`},
+		{"worker-assignment-size", "docs/details/statefile.md", `"assignment_bytes": "int(1,2097152)"`, `"assignment_bytes": "int(0,2097152)"`},
+		{"worker-toolchain-digest", "docs/details/statefile.md", "\"assignment_digest\": \"Digest\",\n      \"toolchain_digest\": \"Digest\"", "\"assignment_digest\": \"Digest\",\n      \"toolchain_digest\": \"Id\""},
 		{"roadmap-inventory-state", "docs/ROADMAP.md", "| 仕様化済み・未実装 | CI / CD | Phase 19", "| 改訂予定 | CI / CD | Phase 19"},
 		{"roadmap-phase20-implemented", "docs/ROADMAP.md", "| 仕様化済み・未実装 | Phase 19 |", "| 実装済み | Phase 19 |"},
 		{"roadmap-phase21-active", "docs/ROADMAP.md", "現在の active Phase は設定しない。", "現在の active Phase は Phase 21。"},
@@ -2854,7 +3109,9 @@ func phase19ValidateSpecification(documents map[string]string) error {
 		"TriggerCursor":     {"definition_revision": "int(1,2147483647)"},
 		"SiteState":         {"route": "Route", "operations": "list(SiteOperation,0,1024)", "counters": "SiteCounters"},
 		"Root":              {"secrets": "list(SecretMeta,0,10000)"},
-		"WorkerExecution":   {"job": "JobResult", "lease_generation": "int(1,9007199254740991)"},
+		"Lease":             {"project_id": "Id"},
+		"JobResult":         {"execution_id": "nullable(Id)"},
+		"WorkerExecution":   {"job": "JobResult", "lease_generation": "int(1,9007199254740991)", "assignment_bytes": "int(1,2097152)", "assignment_digest": "Digest", "toolchain_digest": "Digest"},
 		"SiteOperation":     {"committed_at": "Time"},
 		"Operation":         {"target_id": "nullable(text(1,64))", "target_attempt": "nullable(int(1,100))"},
 		"Audit":             {"target_id": "nullable(text(1,64))"},

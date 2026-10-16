@@ -53,6 +53,7 @@ owner component 別詳細本文、作業ルール、または Pull Request 本�
 | streaming log / UTF-8 page / 出力上限 / 保存容量の文書oracle | [docs/details/fixture.md fixture証跡責務 log境界入力](details/fixture.md#phase-19-log-boundary-vectors) |
 | operation再送 / 内部進行 / 期限GC / attempt結合の文書oracle | [docs/details/fixture.md fixture証跡責務 operation境界入力](details/fixture.md#phase-19-operation-vectors) |
 | 固定Plan / 型付き入力 / matrix / DAG選択 / trigger識別の文書oracle | [docs/details/fixture.md fixture証跡責務 Plan固定入力](details/fixture.md#phase-19-plan-vectors) |
+| worker ACK / chunk完了 / lease期限 / 保存identityの文書oracle | [docs/details/fixture.md fixture証跡責務 worker固定入力](details/fixture.md#phase-19-worker-vectors) |
 | artifact/cache envelope / download byte範囲 / cache保持の文書oracle | [docs/details/fixture.md fixture証跡責務 content境界入力](details/fixture.md#phase-19-content-vectors) |
 | Phase 19 策定対象 / 故障・復旧・並行実行の受け入れ設計 | [`docs/details/fixture.md` fixture 証跡責務 Phase 19 検証策定契約](details/fixture.md#phase-19-cicd-evidence-contract) |
 | Phase20 IaC / plan意味整合 / 適用受付時刻 / 文書入力oracle | [docs/details/fixture.md fixture証跡責務 IaC検証入口](details/fixture.md#inhouse-iac-fixture-contract)、[完全入力と中断oracle](details/fixture.md#inhouse-iac-concrete-oracles)、[適用受付境界入力](details/fixture.md#inhouse-iac-admission-vectors) |
@@ -439,6 +440,8 @@ Phase 19 の現在状態と依存順序は [`docs/ROADMAP.md`](ROADMAP.md) 状�
 | 判断対象 | owner | 詳細本文 / 接続先 |
 |----------|-------|--------------------|
 | 計画・条件・DAG・matrix・再試行・cancel・worker・隔離実行・job cache | `runner` | [`docs/details/runner.md` 詳細本文責務 Phase 19 実行契約](details/runner.md#phase-19-runner-contract) |
+| IPC framing・ACK・接続・lease期限 | `runner` | [framing](details/runner.md#phase-19-ipc-framing)、[接続と転送](details/runner.md#phase-19-worker-session)、[lease](details/runner.md#phase-19-worker-lease-deadlines) |
+| worker leaseのproject識別・metadata固定・世代採番・local保存照合 | `statefile` | [worker保存identity](details/statefile.md#phase-19-worker-state-identity) |
 | 入力正規化・matrix順・選択保存・自動trigger・固定Plan再実行 | `runner` | [docs/details/runner.md 詳細本文責務 入力](details/runner.md#phase-19-input-normalization)、[matrix](details/runner.md#phase-19-matrix-order)、[条件選択](details/runner.md#phase-19-plan-selection)、[trigger](details/runner.md#phase-19-trigger-admission)、[再実行](details/runner.md#phase-19-attempt-plan) |
 | Plan整合・展開task・revision別cursor | `statefile` | [docs/details/statefile.md 詳細本文責務 保存Plan](details/statefile.md#phase-19-plan-state-invariants) |
 | 自動triggerの予約主体 | `security` | [docs/details/security.md 詳細本文責務](details/security.md#phase-19-automatic-subject) |
